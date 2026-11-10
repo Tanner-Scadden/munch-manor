@@ -88,6 +88,12 @@ import {
 // Guns level up with kills: a carried gun carries its `kills`, the shop
 // sells no upgrades (the item codes after the first moved), and a new
 // event, GunLeveled, says whose gun reached which tier.
+// Display cases and feats: the World holds the run's `cases` (keyed by id:
+// a spot, a prize, a feat, and Locked, Opened, or Emptied by a slot), each
+// seat its feats' tally (`feats`), a seat's purchase can target a Case, a
+// ZombieKilled event names its killer and what made the kill
+// (`maybeKiller`, `source`), and a new event, CaseOpened, says which seat
+// a case opened for and what it held.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

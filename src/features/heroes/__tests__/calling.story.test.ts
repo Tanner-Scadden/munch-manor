@@ -23,6 +23,7 @@ import {
   tapLobbyHero,
   writeSave,
 } from '../../../test/testing'
+import { giveWeapon } from '../../../world/fridge/leftovers'
 import { playerSpeed } from '../../../world/gear/powerups'
 import { heldGun, maybeCarried } from '../../../world/gear/weapons'
 import { playerOfCalling } from '../../../world/heroes/callingPlayer'
@@ -38,7 +39,7 @@ import {
   Invulnerability,
   idleBoosts,
 } from '../../../world/schema/worldSchema'
-import { priceFor, tryPurchase, verdictFor } from '../../../world/shop/shop'
+import { priceFor, verdictFor } from '../../../world/shop/shop'
 import { woundPlayer } from '../../../world/step/combat'
 import { isHeroPickerUp } from '../../lobby/model'
 import {
@@ -226,18 +227,7 @@ describe('the quirks in play', () => {
   test('the Track Star runs faster and fills a smaller magazine', () => {
     const star = focusOf(shopping('TrackStar')).player
     expect(playerSpeed(idleBoosts, star)).toBeCloseTo(PLAYER_SPEED * 1.2)
-    const bought = tryPurchase(
-      shopping('TrackStar'),
-      focusSlotOf(shopping('TrackStar')),
-      'Smg',
-    )
-    expect(bought._tag).toBe('Success')
-    const gun = Option.getOrThrow(
-      Option.flatMap(
-        Option.fromNullishOr(bought._tag === 'Success' ? bought.success : null),
-        world => maybeCarried(focusOf(world).player, 'Smg'),
-      ),
-    )
+    const gun = Option.getOrThrow(maybeCarried(giveWeapon(star, 'Smg'), 'Smg'))
     expect(gun.loaded).toBe(29)
   })
 
@@ -304,10 +294,14 @@ describe('what the player sees of a calling', () => {
               direction: { x: 1, y: 0 },
               bounty: 20,
               kind: 'Tank',
+              maybeKiller: Option.none(),
+              source: 'Other',
             }),
           ],
         }),
-        { player: player => modifyFields(player, { calling: () => calling }) },
+        {
+          player: player => modifyFields(player, { calling: () => calling }),
+        },
       ),
       16,
       16,

@@ -15,7 +15,7 @@ import {
   fridgeBoxOf,
   fridgePriceFor,
 } from '../../../src/world/fridge/leftovers'
-import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
+import { freshGun, isCarrying, maxTier } from '../../../src/world/gear/weapons'
 import { maxHpOf } from '../../../src/world/heroes/calling'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import {
@@ -41,7 +41,6 @@ import { KEYS, type Model, type Vector, send } from './basics'
 import {
   type Gun,
   firearmOf,
-  fridgeSpareOf,
   gunValue,
   gunsOfBot,
   pistolOf,
@@ -59,18 +58,15 @@ export const STALL_FRONT: Vector = {
   y: STALL_BOX.top - 3,
 }
 
-// The bot shops the way a careful player would: a heart when low, the
-// first gun it can afford (the cheap shotgun right after the tutorial, the
-// SMG once it can), two Plank Piles, then Grumpy Gnomes while it keeps a
-// small reserve for a heart. A gun's tiers are earned by its kills
-// (src/world/gear/gunLevels.ts), so it buys none.
+// The bot shops the way a careful player would: a heart when low, two
+// Plank Piles, then Grumpy Gnomes while it keeps a small reserve for a
+// heart. Guns sit in display cases (src/world/feats/cases.ts), which the
+// bot leaves alone, and a gun's tiers are earned by its kills
+// (src/world/gear/gunLevels.ts), so it buys neither.
 // NO_GNOME=1 keeps the old bot that never buys a gnome, and NO_PLANKS=1 a
 // bot that never buys a Plank Pile, to check planks help without carrying.
 const NO_GNOME = isKnobSet('NO_GNOME')
 const NO_PLANKS = isKnobSet('NO_PLANKS')
-// NOTE: GUN=shotgun plays a Barn Buster run: the bot buys the shotgun as its
-// gun and never trades it for the Chatterbox.
-const IS_SHOTGUN_RUN = knobText('GUN') === 'shotgun'
 const RESERVE = knobNumber('RESERVE', 30)
 
 type ItemId = Parameters<typeof priceFor>[2]
@@ -100,9 +96,9 @@ export const wantedPurchase: {
   (model: Model): (state: BotState) => ItemId | undefined
   (state: BotState, model: Model): ItemId | undefined
 } = Function.dual(2, (state: BotState, model: Model): ItemId | undefined => {
-  const firearm = firearmOf(model)
-  const fridge = fridgeSpareOf(model)
-  const spare = spareOf(model)
+  // NOTE: guns sit in display cases now (src/world/feats/cases.ts), which
+  // the bot leaves alone, so with no gun of its own the pistol is its gun.
+  const spare = spareOf(model) ?? pistolOf(model)
   const isAvailable = (item: ItemId) =>
     verdictFor(model, focusSlotOf(model), item)._tag === 'Available'
   const canSpare = (item: ItemId) =>
@@ -112,29 +108,8 @@ export const wantedPurchase: {
   if (focusOf(model).player.hp <= 3 && isAvailable('Heart')) {
     return 'Heart'
   }
-  // NOTE: a Line Cook starts with the Cooker and no pistol, so its first
-  // buy is a firearm, as a player would make it, with the pot kept as a spare.
-  const isCook =
-    state.options.calling === 'LineCook' && pistolOf(model) === undefined
-  if (firearm === undefined && (fridge === undefined || isCook)) {
-    if (!IS_SHOTGUN_RUN && isAvailable('Smg')) {
-      return 'Smg'
-    }
-    if (isAvailable('Shotgun')) {
-      return 'Shotgun'
-    }
-    return undefined
-  }
   if (spare === undefined) {
     return undefined
-  }
-  if (
-    !IS_SHOTGUN_RUN &&
-    spare.kind === 'Shotgun' &&
-    spare.tier === 0 &&
-    isAvailable('Smg')
-  ) {
-    return 'Smg'
   }
   const barricades =
     focusOf(model).trapStock.Barricade +
@@ -198,13 +173,13 @@ const plankCount = (model: Model) =>
   Array.filter(model.traps, trap => trap._tag === 'Barricade').length
 
 const wantsKitchen = (model: Model): boolean => {
-  const spare = firearmOf(model)
+  const spare = firearmOf(model) ?? pistolOf(model)
   return (
     !NO_KITCHEN &&
     !isKitchenOpen(model) &&
     isExitOfferOpenFor(model.phase) &&
-    spare?.kind === 'Smg' &&
-    spare.tier >= 2 &&
+    spare !== undefined &&
+    spare.tier >= Math.min(2, maxTier(spare.kind)) &&
     (NO_GNOME || turretCount(model) >= 1) &&
     (NO_PLANKS || plankCount(model) >= 2) &&
     focusOf(model).wallet.balance - EXIT_RULES.price >= RESERVE

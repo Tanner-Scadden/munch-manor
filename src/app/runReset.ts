@@ -12,6 +12,7 @@ import { startingCallingOf } from '../features/heroes/callingPick'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
 import { noTellWatch } from '../render/renderSchema'
+import { rollCases } from '../world/feats/cases'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
 import { MANOR, startingLevel } from '../world/level/arena'
@@ -58,6 +59,7 @@ export type RunFields = Pick<
   | 'pantry'
   | 'stove'
   | 'gasValve'
+  | 'cases'
   | 'elapsedMs'
   | 'frameEvents'
   | 'hitStop'
@@ -114,6 +116,7 @@ export const freshRun = (model: Model): RunFields => ({
   pantry: barePantry,
   stove: freshStove(model.rngState),
   gasValve: shutValve,
+  cases: rollCases(model.rngState, model.difficulty.chosen),
   elapsedMs: 0,
   frameEvents: [],
   hitStop: initialHitStop,

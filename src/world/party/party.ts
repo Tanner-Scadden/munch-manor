@@ -22,6 +22,7 @@ import {
   type Wallet,
   emptyTrapStock,
   emptyWallet,
+  freshTally,
   idleBoosts,
   idleIntent,
   initialPlayer,
@@ -94,6 +95,7 @@ export const soloState: SeatState = {
   laserSight: 'None',
   purchase: Purchase.Idle(),
   cooking: noCooking,
+  feats: freshTally,
 }
 
 const MAX_BITE_GRACE_MS = 100

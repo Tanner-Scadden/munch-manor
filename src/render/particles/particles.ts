@@ -115,6 +115,10 @@ import { stepParticle } from './particlePhysics'
 const KITCHEN_KILL_COINS = 3
 const KITCHEN_KILL_SPARKS = 2
 
+// NOTE: a display case springing open: a burst of sparks and glints.
+const CASE_SPARKS = 10
+const CASE_GLINTS = 4
+
 const kitchenKillParticles = (
   state: number,
   killed: Parameters<typeof killParticles>[1],
@@ -263,6 +267,12 @@ const eventParticles = (
       generateMany(state, FRIDGE_FOG, fogPuff({ x, y: y + 14 })),
     FridgeSlammed: ({ x, y }) => dustRing({ x, y: y + 16 }, SLAM_DUST)(state),
     PrizeTaken: ({ x, y }) => sparks({ x, y: y + 14 }, LID_SPARKS)(state),
+    CaseOpened: ({ x, y }) =>
+      chain(state, [
+        sparks({ x, y: y - 8 }, CASE_SPARKS),
+        drawState =>
+          generateMany(drawState, CASE_GLINTS, coin({ x, y: y - 4 })),
+      ]),
     PrizeLeft: ({ x, y }) =>
       generateMany(state, DUD_FOG, fogPuff({ x, y: y + 14 })),
     DudBurped: () => noParticles(state),

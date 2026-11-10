@@ -18,6 +18,7 @@ import {
   PREPARATION_MS,
 } from '../../shared/constants'
 import { type Calling, callingOfCode } from '../../shared/playerData'
+import { rollCases } from '../feats/cases'
 import { TURRET_WEAPON } from '../gear/traps'
 import { seatedAs } from '../heroes/callingPlayer'
 import { freshOvens } from '../kitchen/kitchen'
@@ -380,6 +381,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   pantry: barePantry,
   stove: freshStove(seed),
   gasValve: shutValve,
+  cases: rollCases(seed, settings.difficulty),
   hitStop: initialHitStop,
   lessons: settledLessons,
   practice: noPractice,
@@ -421,7 +423,9 @@ const seatCallings = (
   callings: RoomSettings['callings'],
 ): World =>
   Array.reduce(callings, world, (current, { slot, calling }) =>
-    modifySeat(current, slot, { player: player => seatedAs(player, calling) }),
+    modifySeat(current, slot, {
+      player: player => seatedAs(player, calling),
+    }),
   )
 
 export const startRoomWorld: {

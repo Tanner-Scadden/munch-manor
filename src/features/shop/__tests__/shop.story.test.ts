@@ -55,7 +55,6 @@ import { WEAPONS, heldGun } from '../../../world/gear/weapons'
 import { focusOf, focusSlotOf, modifyFocus } from '../../../world/party/party'
 import { noModifiers } from '../../../world/run/modifiers'
 import {
-  LASER_SIGHT_PRICE,
   SHOP_ITEMS,
   StockTag,
   itemsIn,
@@ -74,7 +73,6 @@ import {
   gun,
   holdingSpare,
   preparing,
-  resolveFocusShopItem,
   resolveShowShop,
   shopReady,
   withHp,
@@ -120,6 +118,8 @@ describe('money', () => {
               direction: { x: 1, y: 0 },
               bounty: SHAMBLER_BOUNTY,
               kind: 'Shambler',
+              maybeKiller: Option.none(),
+              source: 'Pistol',
             }),
           ),
         )
@@ -233,7 +233,7 @@ describe('the shop stall', () => {
       Story.Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
       Story.model(({ seats: [{ shop }], shopDialog, input }) => {
-        expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Shotgun' }))
+        expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'LaserSight' }))
         expect(shopDialog.dialog.isOpen).toBe(true)
         expect(input.pressedKeys).toEqual([])
       }),
@@ -409,60 +409,45 @@ describe('the shop stall', () => {
 
 describe('buying', () => {
   it.effect(
-    'buying a gun deducts its price, puts it in the second slot, and bursts coins',
+    'Rattles sells no case gun: the buy is refused and its row says CASE',
     () =>
       Story.story(
         APPLICATION,
         Story.given(browsing(withMoney(shopReady, 100))),
         buyAtCounter('Shotgun'),
-        resolveFocusShopItem,
-        Story.model(({ seats: [{ wallet, player }], particles }) => {
-          expect(wallet.balance).toBe(100 - SHOP_ITEMS.Shotgun.price)
-          expect(wallet.earned).toBe(100)
-          expect(player.arsenal).toEqual(holdingSpare(16))
-          expect(
-            Array.filter(particles, ({ kind }) => kind === 'Coin'),
-          ).toHaveLength(COINS_PER_PURCHASE)
+        Story.model(current => {
+          expect(focusOf(current).wallet.balance).toBe(100)
+          expect(focusOf(current).player.arsenal._tag).toBe('OneGun')
+          expect(current.particles).toEqual([])
+          expect(stockTag(current, focusSlotOf(current), 'Smg')).toEqual(
+            StockTag.Done({ label: 'CASE' }),
+          )
         }),
       ),
   )
 
-  it.effect('a new gun replaces the one in hand, and the other gun stays', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withArsenal(
-          browsing(withMoney(shopReady, 200)),
-          holdingSecond(gun('Shotgun', 3)),
+  it.effect(
+    'a heart heals one with a burst of coins, and is refused at full hearts',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          withHp(browsing(withMoney(shopReady, 60)), PLAYER_MAX_HP - 1),
         ),
+        buyAtCounter('Heart'),
+        Story.model(({ seats: [{ player, wallet }], particles }) => {
+          expect(player.hp).toBe(PLAYER_MAX_HP)
+          expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
+          expect(
+            Array.filter(particles, ({ kind }) => kind === 'Coin'),
+          ).toHaveLength(COINS_PER_PURCHASE)
+        }),
+        buyAtCounter('Heart'),
+        Story.model(({ seats: [{ player, wallet }] }) => {
+          expect(player.hp).toBe(PLAYER_MAX_HP)
+          expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
+        }),
       ),
-      buyAtCounter('Smg'),
-      Story.model(({ seats: [{ player, wallet }] }) => {
-        expect(player.arsenal).toEqual(
-          holdingSecond(gun('Smg', WEAPONS.Smg.magazine)),
-        )
-        expect(wallet.balance).toBe(200 - SHOP_ITEMS.Smg.price)
-      }),
-    ),
-  )
-
-  it.effect('a heart heals one and is refused at full hearts', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withHp(browsing(withMoney(shopReady, 60)), PLAYER_MAX_HP - 1),
-      ),
-      buyAtCounter('Heart'),
-      Story.model(({ seats: [{ player, wallet }] }) => {
-        expect(player.hp).toBe(PLAYER_MAX_HP)
-        expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
-      }),
-      buyAtCounter('Heart'),
-      Story.model(({ seats: [{ player, wallet }] }) => {
-        expect(player.hp).toBe(PLAYER_MAX_HP)
-        expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
-      }),
-    ),
   )
 
   it.effect(
@@ -518,38 +503,24 @@ describe('buying', () => {
     }),
   )
 
-  it.effect(
-    'the laser sight is dear, fits once, lists last under GUNS, and goes with the run',
-    () =>
-      Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(browsing(withMoney(shopReady, LASER_SIGHT_PRICE - 1))),
-          Story.model(current => {
-            expect(
-              Array.last(itemsIn(current, focusSlotOf(current), 'Guns')),
-            ).toEqual(Option.some('LaserSight'))
-          }),
-          buyAtCounter('LaserSight'),
-          Story.model(({ seats: [{ laserSight, wallet }] }) => {
-            expect(laserSight).toBe('None')
-            expect(wallet.balance).toBe(LASER_SIGHT_PRICE - 1)
-          }),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(browsing(withMoney(shopReady, LASER_SIGHT_PRICE + 10))),
-          buyAtCounter('LaserSight'),
-          Story.model(({ seats: [{ laserSight, wallet }] }) => {
-            expect(laserSight).toBe('Fitted')
-            expect(wallet.balance).toBe(10)
-          }),
-          buyAtCounter('LaserSight'),
-          Story.model(({ seats: [{ wallet }] }) => {
-            expect(wallet.balance).toBe(10)
-          }),
+  it.effect('the Laser Sight is not for sale: it sits in a case', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(browsing(withMoney(shopReady, 1000))),
+      Story.model(current => {
+        expect(
+          Array.last(itemsIn(current, focusSlotOf(current), 'Guns')),
+        ).toEqual(Option.some('LaserSight'))
+        expect(stockTag(current, focusSlotOf(current), 'LaserSight')).toEqual(
+          StockTag.Done({ label: 'CASE' }),
         )
       }),
+      buyAtCounter('LaserSight'),
+      Story.model(({ seats: [{ laserSight, wallet }] }) => {
+        expect(laserSight).toBe('None')
+        expect(wallet.balance).toBe(1000)
+      }),
+    ),
   )
 })
 

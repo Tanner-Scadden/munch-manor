@@ -5,7 +5,7 @@ import { COIN_SPRITE } from '../../art/font'
 import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
 import { HEART_SPRITE } from '../../art/sprites/hearts'
 import type { Drawable } from '../../render/depth'
-import { rect } from '../../render/drawing'
+import { GLINT, rect } from '../../render/drawing'
 import { isKitchenShown } from '../../render/room/kitchenView'
 import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import { levelOf } from '../../world/level/arena'
@@ -34,11 +34,6 @@ const GOODIE_LOOKS: Readonly<Record<PantryGoodie, GoodieLook>> = {
 const SHADOW: Sprite = bakeShapes([
   rect(-3, 0, 7, 1, 'rgba(0, 0, 0, 0.35)'),
   rect(-2, 1, 5, 1, 'rgba(0, 0, 0, 0.2)'),
-])
-
-const GLINT: Sprite = bakeShapes([
-  rect(0, -2, 1, 5, '#fff7d0'),
-  rect(-2, 0, 5, 1, '#fff7d0'),
 ])
 
 // NOTE: the stash sorts with what stands around it, by the floor it sits on.

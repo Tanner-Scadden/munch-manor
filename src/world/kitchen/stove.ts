@@ -1,7 +1,9 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import type { Calling } from '../../shared/playerData'
 import { nextRandom } from '../../shared/prng'
+import { type FeatLock, hasDone } from '../feats/feats'
 import {
   carriedMagazine,
   heldGun,
@@ -9,32 +11,36 @@ import {
   isWieldingMelee,
   mapHeld,
 } from '../gear/weapons'
-import { stovePriceFor } from '../heroes/calling'
+import { stoveKillsFor } from '../heroes/calling'
 import { type Box, levelOf } from '../level/arena'
 import { spendOn } from '../level/exits'
 import { atSeat, seatStateAt } from '../party/party'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
   type CarriedGun,
+  Feat,
   type GunPerk,
   Phase,
   type Player,
   type PlayerSlot,
   Purchasable,
+  type Vector,
 } from '../schema/worldSchema'
 import type { Offer } from '../shop/purchase'
 import { isKitchenOpen, ovenBoxesOf } from './kitchen'
 
 // The kitchen's stove bench (owner, 2026-11-02): one of the two stoves
-// cooks the gun in a player's hands into a perk for the rest of the run,
-// one Rattles never sells. Each break it offers one perk, rolled from its
-// own generator, shown on its tag over the stove. A player cooks by the
-// same stand or hold to buy as the boards and the fridge (src/world/shop/purchase.ts),
-// with a longer hold, once a break, at a price that climbs with each cook.
-// The perks themselves are in src/world/gear/weapons.ts (PERK_RULES).
+// cooks the gun in a player's hands into a perk for the rest of the run.
+// Each break it offers one perk, rolled from its own generator, shown on its
+// tag over the stove. It is never bought (owner, 2026-11-10): it opens for a
+// player by a feat (src/world/feats/feats.ts), 15 kills in the kitchen in the
+// last wave and this break, and they cook by the same stand or hold as the
+// boards and the fridge (src/world/shop/purchase.ts), with a longer hold,
+// once a break. The perks themselves are in src/world/gear/weapons.ts
+// (PERK_RULES).
 
 type StoveRules = Readonly<{
-  prices: Array.NonEmptyReadonlyArray<number>
+  kitchenKills: number
   holdMs: number
   reachPx: number
   tagDropPx: number
@@ -45,12 +51,19 @@ type StoveRules = Readonly<{
 // order: the east one, by the back door, so a cook is a little risky.
 // `holdMs` is the key's one second; standing takes twice that, two.
 export const STOVE_RULES: StoveRules = {
-  prices: [90, 180, 300],
+  kitchenKills: 15,
   holdMs: 1000,
   reachPx: 14,
   tagDropPx: 2,
   ovenIndex: 1,
 }
+
+// NOTE: the feat that lights the stove for a player: the Line Cook's asks
+// for half the kills (src/world/heroes/calling.ts, stoveKillsFor).
+const stoveFeatOf = (calling: Calling): Feat =>
+  Feat.KitchenKills({
+    count: stoveKillsFor(calling, STOVE_RULES.kitchenKills),
+  })
 
 const PERKS: Array.NonEmptyReadonlyArray<GunPerk> = [
   'Spicy',
@@ -96,22 +109,40 @@ const hasCookedThisBreak = (world: World, slot: PlayerSlot): boolean =>
   Phase.isAnyOf(['Preparation'])(world.phase) &&
   seatStateAt(world, slot).cooking.lastWave === world.phase.wave
 
-// NOTE: the Line Cook pays less (src/world/heroes/calling.ts, stovePriceFor).
-const cookPriceFor = (world: World, slot: PlayerSlot): number => {
-  const { prices } = STOVE_RULES
-  const { cooking, player } = seatStateAt(world, slot)
-  return stovePriceFor(
-    player.calling,
-    Option.getOrElse(Array.get(prices, cooking.cooks), () =>
-      Array.lastNonEmpty(prices),
-    ),
-  )
-}
+// NOTE: whether the seat at `slot` has earned a cook this break.
+const hasStoveFeat: {
+  (slot: PlayerSlot): (world: World) => boolean
+  (world: World, slot: PlayerSlot): boolean
+} = Function.dual(2, (world: World, slot: PlayerSlot): boolean =>
+  hasDone(world, slot, stoveFeatOf(seatStateAt(world, slot).player.calling)),
+)
 
 // NOTE: only a gun Rattles sells, in the player's hands, cooks: never the
 // knife, the Clang Pan, or a fridge weapon.
 const canCook = (player: Player): boolean =>
   !isWieldingMelee(player) && isCookable(heldGun(player.arsenal).kind)
+
+const stoveSpotOf = (box: Box): Vector => ({
+  x: Math.round((box.left + box.right) / 2),
+  y: box.top + STOVE_RULES.tagDropPx,
+})
+
+// NOTE: the stove a seat has not earned this break yet: its feat, and the
+// spot its lock hangs from.
+export const maybeStoveLock: {
+  (slot: PlayerSlot): (world: World) => Option.Option<FeatLock>
+  (world: World, slot: PlayerSlot): Option.Option<FeatLock>
+} = Function.dual(
+  2,
+  (world: World, slot: PlayerSlot): Option.Option<FeatLock> =>
+    Option.filter(
+      Option.zipWith(maybeStovePerk(world), stoveBoxOf(world), (_, box) => ({
+        feat: stoveFeatOf(seatStateAt(world, slot).player.calling),
+        spot: stoveSpotOf(box),
+      })),
+      () => !hasCookedThisBreak(world, slot) && !hasStoveFeat(world, slot),
+    ),
+)
 
 export const stoveOffers: {
   (slot: PlayerSlot): (world: World) => ReadonlyArray<Offer>
@@ -120,21 +151,18 @@ export const stoveOffers: {
   Option.match(
     Option.filter(
       Option.zipWith(maybeStovePerk(world), stoveBoxOf(world), (_, box) => box),
-      () => !hasCookedThisBreak(world, slot),
+      () => !hasCookedThisBreak(world, slot) && hasStoveFeat(world, slot),
     ),
     {
       onNone: () => [],
       onSome: box => [
         {
           target: Purchasable.Stove(),
-          price: cookPriceFor(world, slot),
+          price: 0,
           box,
           reachPx: STOVE_RULES.reachPx,
           isFull: !canCook(seatStateAt(world, slot).player),
-          spot: {
-            x: Math.round((box.left + box.right) / 2),
-            y: box.top + STOVE_RULES.tagDropPx,
-          },
+          spot: stoveSpotOf(box),
         },
       ],
     },
@@ -167,6 +195,7 @@ export const cookGun: {
       const { player, wallet } = seatStateAt(world, slot)
       if (
         hasCookedThisBreak(world, slot) ||
+        !hasStoveFeat(world, slot) ||
         !canCook(player) ||
         wallet.balance < price
       ) {

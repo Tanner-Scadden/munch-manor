@@ -7,6 +7,8 @@ import {
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
 } from '../../shared/constants'
+import { advanceCases } from '../feats/cases'
+import { tallyFeats } from '../feats/feats'
 import {
   advanceLobs,
   fireFridgeWeapon,
@@ -460,6 +462,8 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     shed => resolveShatters(model, shed),
     downed => advanceParty(downed, deltaMs),
     endWhenDefeated,
+    ended => tallyFeats(model, ended),
+    advanceCases,
     shutStallOutsideBreak,
   )
 }

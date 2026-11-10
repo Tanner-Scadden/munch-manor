@@ -41,12 +41,13 @@ const nameOf = (target: Purchasable): string =>
     Prize: () => 'the prize from the fridge, free',
     Stove: () => String.toLowerCase(STOVE_NAME),
     Valve: () => String.toLowerCase(VALVE_NAME),
+    Case: () => 'the prize in the case',
   })
 
 // NOTE: a weapon on offer is already paid for, so its button says TAKE
 // where a price would be.
 const badgeOf = (offer: Offer): string => {
-  if (Purchasable.isAnyOf(['Prize'])(offer.target)) {
+  if (Purchasable.isAnyOf(['Prize', 'Case'])(offer.target)) {
     return 'TAKE'
   } else if (offer.isFull) {
     return Purchasable.isAnyOf(['Stove'])(offer.target) ? 'NOPE' : 'FULL'
@@ -69,7 +70,8 @@ const labelOf = (model: Model, offer: Offer): string =>
             onNone: () => '',
             onSome: perk => String.toLowerCase(GUN_PERK_NAMES[perk]),
           })} for ${priceWords(offer.price)}`,
-    Valve: () => `Hold to light the fireplace for ${priceWords(offer.price)}`,
+    Valve: () => 'Hold to light the fireplace',
+    Case: () => 'Hold to take the prize from the case',
   })
 
 // NOTE: what the player is at: the offer in reach, or the one they still

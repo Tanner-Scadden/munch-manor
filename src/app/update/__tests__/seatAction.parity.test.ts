@@ -105,9 +105,9 @@ const inBreak = modifyFocus(
 )
 
 // NOTE: at the counter with the dialog up and a heart down. Rattles' focus
-// stays on the Shotgun row, so a buy moves no focus.
+// stays on the Laser Sight's row, so a buy moves no focus.
 const atCounter = modifyFocus(withShopDialogOpen(inBreak), {
-  shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+  shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
   player: player => modifyFields(player, { hp: hp => hp - 1 }),
 })
 

@@ -42,11 +42,7 @@ import {
   type TrapKind,
   WeaponKind,
 } from '../../world/schema/worldSchema'
-import {
-  LASER_SIGHT_PRICE,
-  SHOP_ITEMS,
-  repairItemId,
-} from '../../world/shop/shop'
+import { SHOP_ITEMS, repairItemId } from '../../world/shop/shop'
 import { SHATTER_SCALE } from '../../world/step/combat'
 
 // THE SHOP GUIDE
@@ -205,15 +201,22 @@ const gunEntry = (
   item: FixedShopItemId,
   line: string,
 ): GuideEntry => ({
+  ...caseGunEntry(weapon, line),
+  price:
+    SHOP_ITEMS[item].price > 0
+      ? Option.some(SHOP_ITEMS[item].price)
+      : Option.none(),
+})
+
+// NOTE: a gun only a display case holds (src/world/feats/cases.ts): no
+// price.
+const caseGunEntry = (weapon: WeaponKind, line: string): GuideEntry => ({
   id: weapon,
   section: 'Guns',
   name: WEAPONS[weapon].name,
   line,
   art: GuideArt.Gun({ weapon, tier: 0 }),
-  price:
-    SHOP_ITEMS[item].price > 0
-      ? Option.some(SHOP_ITEMS[item].price)
-      : Option.none(),
+  price: Option.none(),
   bars: gunBars(weapon),
   ladder: ladderOf(weapon),
   chips: [],
@@ -222,15 +225,15 @@ const gunEntry = (
 
 const gunEntries = (): ReadonlyArray<GuideEntry> => [
   gunEntry('Pistol', 'Pistol', 'Always free.'),
-  gunEntry('Shotgun', 'Shotgun', 'Seven pellets. Up close only.'),
-  gunEntry('Smg', 'Smg', 'Fast and a little wobbly.'),
+  caseGunEntry('Shotgun', 'Seven pellets. Up close only.'),
+  caseGunEntry('Smg', 'Fast and a little wobbly.'),
   {
     id: 'LaserSight',
     section: 'Guns',
     name: SHOP_ITEMS.LaserSight.name,
     line: 'Shows where the shot goes.',
     art: GuideArt.Item({ id: 'LaserSight' }),
-    price: Option.some(LASER_SIGHT_PRICE),
+    price: Option.none(),
     bars: [],
     ladder: [],
     chips: [],
@@ -443,13 +446,13 @@ const houseEntries = (): ReadonlyArray<GuideEntry> => [
   ),
   houseEntry(
     'Stove',
-    'In a break. Hold to cook your gun.',
-    Option.some(STOVE_RULES.prices[0]),
+    `${STOVE_RULES.kitchenKills} kitchen kills, then hold to cook your gun.`,
+    Option.none(),
   ),
   houseEntry(
     'Valve',
-    'Hold to light the fireplace.',
-    Option.some(VALVE_RULES.price),
+    `${VALVE_RULES.standKills} kills in the kitchen, then hold to light the fireplace.`,
+    Option.none(),
   ),
 ]
 

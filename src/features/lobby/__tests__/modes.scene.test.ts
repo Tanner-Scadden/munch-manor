@@ -261,7 +261,7 @@ describe("A gun's level in the shop", () => {
           Scene.text(
             'Replaces your Barn Buster DELUXE, and its kills and level go with it',
           ),
-        ).toExist(),
+        ).toBeAbsent(),
       ),
   )
 })

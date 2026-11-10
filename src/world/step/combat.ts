@@ -25,6 +25,7 @@ import {
   type Bullet,
   GameEvent,
   Invulnerability,
+  type KillSource,
   type Player,
   type PlayerSlot,
   type Vector,
@@ -125,6 +126,9 @@ export const hitEvent: {
     }),
 )
 
+// NOTE: a kill names no killer and no source until the rule that made it
+// credits it (creditKillEvents), so the feats (src/world/feats/feats.ts)
+// read who did it and with what off the event.
 export const killEvent: {
   (direction: Vector): (zombie: Zombie) => GameEvent
   (zombie: Zombie, direction: Vector): GameEvent
@@ -135,7 +139,35 @@ export const killEvent: {
     direction,
     bounty: statsOf(zombie).bounty,
     kind: zombie.kind,
+    maybeKiller: Option.none(),
+    source: 'Other',
   }),
+)
+
+// NOTE: the kills among `events`, credited to the seat that made them (or
+// to nobody) and to what they were made with.
+export const creditKillEvents: {
+  (
+    maybeKiller: Option.Option<PlayerSlot>,
+    source: KillSource,
+  ): (events: ReadonlyArray<GameEvent>) => ReadonlyArray<GameEvent>
+  (
+    events: ReadonlyArray<GameEvent>,
+    maybeKiller: Option.Option<PlayerSlot>,
+    source: KillSource,
+  ): ReadonlyArray<GameEvent>
+} = Function.dual(
+  3,
+  (
+    events: ReadonlyArray<GameEvent>,
+    maybeKiller: Option.Option<PlayerSlot>,
+    source: KillSource,
+  ): ReadonlyArray<GameEvent> =>
+    Array.map(events, event =>
+      GameEvent.isAnyOf(['ZombieKilled'])(event)
+        ? GameEvent.ZombieKilled({ ...event, maybeKiller, source })
+        : event,
+    ),
 )
 
 const invulnerableMsAt = (hp: number): number =>
@@ -371,6 +403,32 @@ export const bountyOf: {
   ),
 )
 
+// NOTE: a Kaboomer's blast is credited, for the feats only, to the standing
+// player nearest it: the one who drew it in or shot it there. Its kills
+// still pay the whole crew.
+const nearestStandingSlot = (
+  model: World,
+  at: Vector,
+): Option.Option<PlayerSlot> =>
+  pipe(
+    model.seats,
+    Array.filter(({ seat }) => isStanding(seat)),
+    Array.map(({ seat, player }) => ({
+      slot: seat.slot,
+      distance: Math.hypot(player.x - at.x, player.y - at.y),
+    })),
+    Array.match({
+      onEmpty: () => Option.none(),
+      onNonEmpty: standing =>
+        Option.some(
+          Array.min(
+            standing,
+            Order.mapInput(Order.Number, ({ distance }) => distance),
+          ).slot,
+        ),
+    }),
+  )
+
 const detonate = (model: World, bomberId: number): World => {
   const rest = Array.filter(model.zombies, ({ id }) => id !== bomberId)
   const maybeBlast = pipe(
@@ -382,6 +440,11 @@ const detonate = (model: World, bomberId: number): World => {
     onNone: () => modifyFields(model, { zombies: () => rest }),
     onSome: blast => {
       const zombieOutcome = blastAll(blast, rest, ZOMBIE_BLAST_TARGET)
+      const zombieEvents = creditKillEvents(
+        zombieOutcome.events,
+        nearestStandingSlot(model, blast),
+        'Blast',
+      )
       const trapOutcome = blastAll(
         blast,
         model.traps,
@@ -405,11 +468,11 @@ const detonate = (model: World, bomberId: number): World => {
           traps: () => trapOutcome.targets,
           frameEvents: frameEvents => [
             ...frameEvents,
-            ...zombieOutcome.events,
+            ...zombieEvents,
             ...trapOutcome.events,
           ],
         }),
-        bountyOf(levelOf(model), zombieOutcome.events),
+        bountyOf(levelOf(model), zombieEvents),
       )
     },
   })

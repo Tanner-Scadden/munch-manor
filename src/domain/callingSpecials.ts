@@ -12,7 +12,7 @@ import {
   shopPriceFor,
   speedScaleOf,
   startsWithCooker,
-  stovePriceFor,
+  stoveKillsFor,
   woundGraceScaleOf,
 } from '../world/heroes/calling'
 import { SPECIAL_LINES } from '../world/names'
@@ -96,7 +96,9 @@ const SPECIALS: Readonly<Record<Calling, ReadonlyArray<Special>>> = {
       : []),
     perk(
       QUIRK_ICONS.Tag,
-      SPECIAL_LINES.stoveOff(percentLess(stovePriceFor('LineCook', 100))),
+      SPECIAL_LINES.stoveFewerKills(
+        percentLess(stoveKillsFor('LineCook', 100)),
+      ),
     ),
     ...(isPistolBarred('LineCook')
       ? [drawback(QUIRK_ICONS.NoPistol, SPECIAL_LINES.noPistol)]

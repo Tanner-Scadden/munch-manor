@@ -118,23 +118,34 @@ type Keyed<A> = Readonly<{ key: number; item: A }>
 const byKey = <A>(): Order.Order<Keyed<A>> =>
   Order.mapInput(Order.Number, ({ key }: Keyed<A>) => key)
 
-const shuffle = <A>(
-  state: number,
-  items: Array.NonEmptyReadonlyArray<A>,
-): Seeded<Array.NonEmptyReadonlyArray<A>> => {
-  const [nextState, keyed] = Array.mapAccum(
-    items,
-    state,
-    (drawState, item): Seeded<Keyed<A>> => {
-      const draw = nextRandom(drawState)
-      return [draw.nextState, { key: draw.value, item }]
-    },
-  )
-  return [
-    nextState,
-    Array.map(Array.sort(keyed, byKey<A>()), ({ item }) => item),
-  ]
-}
+export const shuffle: {
+  <A>(
+    items: Array.NonEmptyReadonlyArray<A>,
+  ): (state: number) => Seeded<Array.NonEmptyReadonlyArray<A>>
+  <A>(
+    state: number,
+    items: Array.NonEmptyReadonlyArray<A>,
+  ): Seeded<Array.NonEmptyReadonlyArray<A>>
+} = Function.dual(
+  2,
+  <A>(
+    state: number,
+    items: Array.NonEmptyReadonlyArray<A>,
+  ): Seeded<Array.NonEmptyReadonlyArray<A>> => {
+    const [nextState, keyed] = Array.mapAccum(
+      items,
+      state,
+      (drawState, item): Seeded<Keyed<A>> => {
+        const draw = nextRandom(drawState)
+        return [draw.nextState, { key: draw.value, item }]
+      },
+    )
+    return [
+      nextState,
+      Array.map(Array.sort(keyed, byKey<A>()), ({ item }) => item),
+    ]
+  },
+)
 
 const groupDoors = (
   group: SpawnGroup,

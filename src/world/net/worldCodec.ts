@@ -63,6 +63,7 @@ const KEYED_LISTS: ReadonlyMap<string, KeyOf> = new Map([
   ['lobs', idOf],
   ['pickups', idOf],
   ['traps', idOf],
+  ['cases', idOf],
   ['seats', seatSlotOf],
 ])
 

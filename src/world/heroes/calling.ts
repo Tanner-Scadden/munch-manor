@@ -206,19 +206,16 @@ export const plankPriceFor: {
   calling === 'Handyman' ? Math.round(price / 2) : price,
 )
 
-// NOTE: the stove (src/world/kitchen/stove.ts) cooks for the Line Cook at 25%
-// off, rounded to the nearest dollar. It took the place of his smaller
-// starting lid stack when ammo went endless (docs/ESCAPE_PLAN.md, "Endless
-// ammo"); not tuned on the balance bot yet.
-const COOK_STOVE_PERCENT = 75
-
-export const stovePriceFor: {
-  (price: number): (calling: Calling) => number
-  (calling: Calling, price: number): number
-} = Function.dual(2, (calling: Calling, price: number): number =>
-  calling === 'LineCook'
-    ? Math.round((price * COOK_STOVE_PERCENT) / 100)
-    : price,
+// NOTE: the stove (src/world/kitchen/stove.ts) lights for the Line Cook
+// after half the kitchen kills, rounded up: he knows his way round a
+// kitchen. It took the place of his smaller starting lid stack when ammo
+// went endless (docs/ESCAPE_PLAN.md, "The stove and the valve"); not tuned
+// on the balance bot yet.
+export const stoveKillsFor: {
+  (kills: number): (calling: Calling) => number
+  (calling: Calling, kills: number): number
+} = Function.dual(2, (calling: Calling, kills: number): number =>
+  calling === 'LineCook' ? Math.ceil(kills / 2) : kills,
 )
 
 // KILL PAY

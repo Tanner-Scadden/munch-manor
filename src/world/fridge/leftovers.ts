@@ -376,7 +376,10 @@ export const fridgeOffers: {
 // NOTE: the Cooker and Brain Freeze go in a gun slot, as a bought gun
 // does. The Pan goes in the melee slot in place of the knife and both guns
 // stay; a reload of the last gun carries on, as it does with the knife out.
-const giveWeapon = (player: Player, kind: WeaponKind): Player =>
+export const giveWeapon: {
+  (kind: WeaponKind): (player: Player) => Player
+  (player: Player, kind: WeaponKind): Player
+} = Function.dual(2, (player: Player, kind: WeaponKind): Player =>
   kind === 'Pan'
     ? modifyFields(takePan(dropCharge(player), freshGun(kind)), {
         fireCooldownMs: () => 0,
@@ -385,7 +388,8 @@ const giveWeapon = (player: Player, kind: WeaponKind): Player =>
         arsenal: arsenal => takeGun(arsenal, freshGun(kind, player.calling)),
         wield: () => 'Gun',
         fireCooldownMs: () => 0,
-      })
+      }),
+)
 
 // NOTE: a gag resolves at once: the Sandwich heals a heart, and both
 // gags burp cash back. A weapon waits on offer in the door.
@@ -531,7 +535,9 @@ export const takePrize: {
         const spot = spotOf(world)
         return shut(
           modifyFields(world, {
-            seats: atSeat(slot, { player: player => giveWeapon(player, kind) }),
+            seats: atSeat(slot, {
+              player: player => giveWeapon(player, kind),
+            }),
             frameEvents: frameEvents => [
               ...frameEvents,
               GameEvent.PrizeTaken({ x: spot.x, y: spot.y }),

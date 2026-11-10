@@ -48,6 +48,7 @@ import { MAX_BODY_RADIUS_PX, groundedGrid } from '../zombies/zombieGrid'
 import { Behavior, bodyRadiusOf, isFree, statsOf } from '../zombies/zombies'
 import {
   bulletDirection,
+  creditKillEvents,
   hitEvent,
   killEvent,
   strikeZombie,
@@ -233,16 +234,16 @@ const hitEventOn =
     )
   }
 
-const killEventOn =
+// NOTE: a bullet's kill is the last hit's: its shooter (none for a gnome's
+// pea) and its gun.
+const killEventsOn =
   (hits: ReadonlyArray<BulletHit>) =>
-  (zombie: Zombie): GameEvent =>
-    killEvent(
-      zombie,
-      Option.match(Array.last(hitsOn(hits, zombie.id)), {
-        onNone: () => ZERO_VECTOR,
-        onSome: ({ direction }) => direction,
-      }),
-    )
+  (zombie: Zombie): ReadonlyArray<GameEvent> =>
+    Option.match(Array.last(hitsOn(hits, zombie.id)), {
+      onNone: () => [killEvent(zombie, ZERO_VECTOR)],
+      onSome: ({ direction, maybeShooter, weapon }) =>
+        creditKillEvents([killEvent(zombie, direction)], maybeShooter, weapon),
+    })
 
 const skewer =
   (hits: ReadonlyArray<BulletHit>) =>
@@ -316,7 +317,7 @@ export const resolveBulletHits: {
       frameEvents: frameEvents => [
         ...frameEvents,
         ...Array.getSomes(Array.map(hitZombies, hitEventOn(hits))),
-        ...Array.map(killedZombies, killEventOn(hits)),
+        ...Array.flatMap(killedZombies, killEventsOn(hits)),
       ],
     })
     return resolveFriendlyFire(

@@ -182,6 +182,7 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     FridgeOpened: () => Option.some<SoundEffect>('FridgeSpin'),
     FridgeSlammed: () => Option.some<SoundEffect>('Rumble'),
     PrizeTaken: () => Option.some<SoundEffect>('Swap'),
+    CaseOpened: () => Option.some<SoundEffect>('PackBonus'),
     PrizeLeft: () => Option.some<SoundEffect>('Thud'),
     DudBurped: () => Option.none<SoundEffect>(),
     PantryTaken: ({ goodie }) => Option.some(PANTRY_SOUNDS[goodie]),
@@ -324,7 +325,10 @@ export const playSounds =
     }
   }
 
-export const uiCue = (sound: SoundEffect): SoundCue => ({ sound, variation: 0 })
+export const uiCue = (sound: SoundEffect): SoundCue => ({
+  sound,
+  variation: 0,
+})
 
 // NOTE: a soft pop on the home menu's own buttons, so a tap feels pressed.
 export const tapSound: UpdateStep = playSounds([uiCue('Pop')])

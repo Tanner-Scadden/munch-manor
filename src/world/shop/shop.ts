@@ -322,12 +322,12 @@ const statusOf = (gun: CarriedGun): string =>
     '. ',
   )
 
-// NOTE: the guns Rattles sells, always in this order, pistol first.
-const GUN_LINES: Array.NonEmptyReadonlyArray<GunLine> = [
-  { weapon: 'Pistol', gun: 'Pistol' },
-  { weapon: 'Shotgun', gun: 'Shotgun' },
-  { weapon: 'Smg', gun: 'Smg' },
-]
+// NOTE: the pistol, which Rattles always sells back.
+const PISTOL_LINE: GunLine = { weapon: 'Pistol', gun: 'Pistol' }
+
+// NOTE: the guns in display cases (src/world/feats/cases.ts), never sold
+// (owner, 2026-11-10): a card only once carried, as a fridge weapon's.
+const CASE_WEAPONS: ReadonlyArray<WeaponKind> = ['Shotgun', 'Smg']
 
 // NOTE: a fridge weapon with tiers has a card only while a player carries
 // it, with its tier and kills. Brain Freeze has no tiers, so it has none.
@@ -340,11 +340,14 @@ const ownedShelf = (gun: CarriedGun): GunShelf =>
     status: statusOf(gun),
   })
 
-const fridgeShelves = (player: Player): ReadonlyArray<GunShelf> =>
-  Array.filterMap(LEVELED_FRIDGE_WEAPONS, weapon =>
+const ownedShelves = (
+  player: Player,
+  weapons: ReadonlyArray<WeaponKind>,
+): ReadonlyArray<GunShelf> =>
+  Array.filterMap(weapons, weapon =>
     Option.match(maybeCarried(player, weapon), {
       onNone: () => Result.failVoid,
-      onSome: spare => Result.succeed(ownedShelf(spare)),
+      onSome: gun => Result.succeed(ownedShelf(gun)),
     }),
   )
 
@@ -371,10 +374,11 @@ export const gunShelves: {
   2,
   (model: World, slot: PlayerSlot): Array.NonEmptyReadonlyArray<GunShelf> =>
     Array.appendAll(
-      Array.map(GUN_LINES, line =>
-        gunShelf(seatStateAt(model, slot).player, line),
+      Array.prepend(
+        ownedShelves(seatStateAt(model, slot).player, CASE_WEAPONS),
+        gunShelf(seatStateAt(model, slot).player, PISTOL_LINE),
       ),
-      fridgeShelves(seatStateAt(model, slot).player),
+      ownedShelves(seatStateAt(model, slot).player, LEVELED_FRIDGE_WEAPONS),
     ),
 )
 
@@ -401,6 +405,8 @@ export const itemsIn: {
     slot: PlayerSlot,
     category: ShopCategory,
   ): Array.NonEmptyReadonlyArray<ShopItemId> => {
+    // NOTE: the Laser Sight's row stays, refused while it sits in a case,
+    // so the Guns tab always has a row to focus once the pistol is carried.
     if (category === 'Guns') {
       return Array.append(
         Array.flatMap(gunShelves(model, slot), shelfItems),
@@ -584,7 +590,9 @@ const blockedBy = (
   const { player } = seatStateAt(model, slot)
   return ShopGood.match(good, {
     Gun: ({ weapon }) => {
-      if (isCarrying(player, weapon)) {
+      if (Array.contains(CASE_WEAPONS, weapon)) {
+        return block('It sits in a display case', 'CASE')
+      } else if (isCarrying(player, weapon)) {
         return block('You already carry it', 'OWNED')
       } else if (weapon === SIDEARM && isPistolBarred(player.calling)) {
         return block('Rattles will not sell you that', 'NO')
@@ -619,7 +627,7 @@ const blockedBy = (
     Sight: () =>
       seatStateAt(model, slot).laserSight === 'Fitted'
         ? block('Already fitted', 'OWNED')
-        : Option.none(),
+        : block('It sits in a display case', 'CASE'),
   })
 }
 

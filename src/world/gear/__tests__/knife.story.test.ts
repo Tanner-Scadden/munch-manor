@@ -18,14 +18,20 @@ import { initialModel } from '../../../app/pureApp'
 import { Message as ShopMessage } from '../../../features/shop/message'
 import { FocusItem } from '../../../features/shop/steps'
 import { FIXED_STEP_MS, PISTOL_MAGAZINE } from '../../../shared/constants'
-import { DISTANT_SPAWN, withSeat } from '../../../test/model.fixture'
+import {
+  DISTANT_SPAWN,
+  atOpenedCase,
+  withSeat,
+} from '../../../test/model.fixture'
 import {
   APPLICATION,
   FIRE_LIFT,
   FIRE_PRESS,
   FIRE_PUSH,
+  HOLD_TICKS,
   SURFACE,
   buyAtCounter,
+  holdEnter,
   holdFire,
   holdingFirst,
   holdingSecond,
@@ -515,26 +521,10 @@ describe('the knife', () => {
   it.effect('a new gun goes in hand, putting the knife away', () =>
     Effect.gen(function* () {
       const drawn = yield* knifed([])
-      const shopping = modifyFocus(
-        modifyFields(drawn, {
-          phase: () =>
-            Phase.Preparation({
-              wave: 2,
-              remainingMs: 15_000,
-              durationMs: 20_000,
-              spawns: [DISTANT_SPAWN],
-            }),
-        }),
-        {
-          wallet: () => ({ balance: 200, earned: 200, shown: 200 }),
-          shop: () => ShopState.Browsing({ focusedItem: 'Smg' }),
-        },
-      )
       return yield* Story.story(
         APPLICATION,
-        Story.given(shopping),
-        buyAtCounter('Smg'),
-        Story.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
+        Story.given(atOpenedCase(drawn, 'Smg')),
+        ...holdEnter(HOLD_TICKS),
         Story.model(({ seats: [{ player }] }) => {
           expect(player.wield).toBe('Gun')
           expect(heldWeapon(player.arsenal)).toBe('Smg')
@@ -567,11 +557,11 @@ describe('two gun slots', () => {
       player: player => modifyFields(player, { arsenal: () => arsenal }),
     })
 
-  it.effect('the first gun bought fills the empty second slot', () =>
+  it.effect('the first gun taken fills the empty second slot', () =>
     Story.story(
       APPLICATION,
-      Story.given(browsing(armed(pistolOnly()), 200)),
-      buyAtCounter('Smg'),
+      Story.given(atOpenedCase(armed(pistolOnly()), 'Smg')),
+      ...holdEnter(HOLD_TICKS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(holdingSecond(freshGun('Smg')))
       }),
@@ -583,9 +573,10 @@ describe('two gun slots', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(browsing(armed(holdingFirst(freshGun('Smg'))), 200)),
-        buyAtCounter('Shotgun'),
-        Story.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
+        Story.given(
+          atOpenedCase(armed(holdingFirst(freshGun('Smg'))), 'Shotgun'),
+        ),
+        ...holdEnter(HOLD_TICKS),
         Story.model(({ seats: [{ player }] }) => {
           expect(player.arsenal).toEqual(
             Arsenal.HoldingFirst({
@@ -620,6 +611,10 @@ describe('two gun slots', () => {
         APPLICATION,
         Story.given(traded),
         buyAtCounter('Pistol'),
+        Story.Command.resolve(
+          FocusItem({ item: 'LaserSight' }),
+          ShopMessage.CompletedFocusItem(),
+        ),
         Story.model(({ seats: [{ player, wallet }] }) => {
           expect(player.arsenal).toEqual(
             Arsenal.HoldingSecond({
