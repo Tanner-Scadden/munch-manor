@@ -17,6 +17,7 @@ import {
 } from '../../../src/world/gear/crates'
 import { MEND_RULES, isDamaged, trapBox } from '../../../src/world/gear/traps'
 import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
+import { maxHpOf } from '../../../src/world/heroes/calling'
 import { heldKeys } from '../../../src/world/keys/keys'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import { KITCHEN_EXIT, exitOffers } from '../../../src/world/level/exits'
@@ -27,11 +28,17 @@ import {
 } from '../../../src/world/party/party'
 import { type Offer, maybeOfferInReach } from '../../../src/world/shop/purchase'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
-import { FRAME_MS, KEYS, type Model, type Vector } from './basics'
-import { escapeTarget, wantedBoards } from './escape'
+import { FRAME_MS, KEYS, type Model, type Vector, distance } from './basics'
+import {
+  caseTarget,
+  deliveryTarget,
+  escapeTarget,
+  holdPoint,
+  wantedBoards,
+  wantsStoveFeat,
+} from './escape'
 import { type Gun, gunValue, weakerGun } from './guns'
 import { isKnobSet, knobNumber, knobText } from './knobs'
-import { isInKitchen } from './route'
 import { type BotState } from './state'
 
 // KEYS
@@ -196,6 +203,13 @@ export const isOfferedToBot = (model: Model): boolean =>
   model.fridge.door._tag === 'Offering' &&
   model.fridge.door.slot === leadSeatOf(model).slot
 
+// NOTE: two hearts down, the bot pulls for the Sandwich too, as a player
+// with keys to spare would, and leaves a weapon it would not carry.
+const isHurtForSandwich = (model: Model): boolean => {
+  const { player } = focusOf(model)
+  return player.hp <= maxHpOf(player) - 2
+}
+
 const wantsFridge = (model: Model): boolean =>
   !NO_FRIDGE &&
   model.phase._tag === 'Preparation' &&
@@ -204,7 +218,7 @@ const wantsFridge = (model: Model): boolean =>
   (model.fridge.door._tag === 'Open' ||
     (isOfferedToBot(model) && wouldTake(model)) ||
     (model.fridge.door._tag === 'Shut' &&
-      wouldTakeAnyPrize(model) &&
+      (wouldTakeAnyPrize(model) || isHurtForSandwich(model)) &&
       heldKeys(model) - fridgePriceFor(model) >= RESERVE))
 
 // At the fridge it holds the interact key while the door is shut, lets go
@@ -299,6 +313,8 @@ export const isAtMend = (model: Model): boolean => {
 
 type PrepPlan =
   | 'Room'
+  | 'Case'
+  | 'Deliver'
   | 'Crate'
   | 'Barricade'
   | 'Gnome'
@@ -323,12 +339,26 @@ export const gnomeSpot = (model: Model): Vector =>
 
 // NOTE: a break waits for READY below Hard, and the bot steers straight at
 // what it wants, so cover in the way (the trunk, the couch, a tea table)
-// could hold it there for good. After 30 seconds it goes, by READY's
-// button where the key is taken (at a purchasable), as a player would.
-const BREAK_FRAMES = 30_000 / FRAME_MS
+// could hold it there for good. After a minute it walks back to where it
+// holds, and after a minute and a half it goes wherever it stands, by
+// READY's button where the key is taken (at a purchasable), as a player
+// would.
+const BREAK_FRAMES = 90_000 / FRAME_MS
+const LATE_FRAMES = 60_000 / FRAME_MS
+
+// NOTE: how near its hold point the bot starts a wave: the kitchen's while
+// it chases the stove's feat, within a few steps of the dining room's aisle
+// otherwise, so a case or a thing in a far room never leaves it starting
+// the wave there.
+const STATION_PX = 20
+const RETURN_PX = 60
 
 export const isBreakOverdue = (state: BotState): boolean =>
   state.breakFrames > BREAK_FRAMES
+
+const isAwayFromHold = (model: Model): boolean =>
+  distance(focusOf(model).player, holdPoint(model)) >
+  (wantsStoveFeat(model) ? STATION_PX : RETURN_PX)
 
 export const prepPlan: {
   (model: Model): (state: BotState) => PrepPlan
@@ -337,8 +367,17 @@ export const prepPlan: {
   if (isBreakOverdue(state)) {
     return 'Go'
   }
+  if (state.breakFrames > LATE_FRAMES) {
+    return isAwayFromHold(model) ? 'Return' : 'Go'
+  }
   if (wantsRoom(model)) {
     return 'Room'
+  }
+  if (caseTarget(model) !== undefined) {
+    return 'Case'
+  }
+  if (deliveryTarget(model) !== undefined) {
+    return 'Deliver'
   }
   if (crateTarget(model) !== undefined) {
     return 'Crate'
@@ -358,7 +397,7 @@ export const prepPlan: {
   if (wantsFridge(model)) {
     return 'Fridge'
   }
-  if (isInKitchen(focusOf(model).player) && escapeTarget(model) === undefined) {
+  if (isAwayFromHold(model) && escapeTarget(model) === undefined) {
     return 'Return'
   }
   return 'Go'

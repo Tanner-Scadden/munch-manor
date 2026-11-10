@@ -25,6 +25,7 @@ import { SURFACE } from '../determinism/script'
 import {
   type BotOptions,
   FRAME_MS,
+  KEYS,
   type Kind,
   type Model,
   ROOM_CENTER,
@@ -39,7 +40,15 @@ import {
   walking,
 } from './bot/basics'
 import { bossOf } from './bot/dodging'
-import { escapeTarget, escapeTargetInWave } from './bot/escape'
+import {
+  caseTakePrize,
+  caseTarget,
+  deliveryTarget,
+  escapeTarget,
+  escapeTargetInWave,
+  holdPoint,
+  isAtCase,
+} from './bot/escape'
 import {
   AIM_EVERY_FRAMES,
   MOVE_EVERY_FRAMES,
@@ -276,6 +285,13 @@ export const play: {
     const timelines: Array<WaveTimeline> = []
     const bossLog: BossLog = []
     const newKinds = emptyNewKinds()
+    const escapeLog = {
+      casesOpened: 0,
+      delivered: 0,
+      found: 0,
+      listDoneWave: 0,
+      hatWave: 0,
+    }
     while (
       (model.phase._tag === 'Preparation' || model.phase._tag === 'Wave') &&
       model.stats.runMs < maxRunMs(options) &&
@@ -301,7 +317,10 @@ export const play: {
         const escapeTo = escapeTarget(model)
         // NOTE: with a thing of the dare's list to fetch, or the front door
         // open, the bot walks there before it starts the wave.
-        if (plan === 'Go' && escapeTo === undefined) {
+        if (
+          plan === 'Go' &&
+          (escapeTo === undefined || isBreakOverdue(state))
+        ) {
           state.gnomeTries = 0
           model = pressKeys(model, new Set())
           const other = Option.getOrUndefined(
@@ -329,21 +348,25 @@ export const play: {
             ? (escapeTo ?? ROOM_CENTER)
             : plan === 'Room'
               ? (roomTarget(model) ?? ROOM_CENTER)
-              : plan === 'Crate'
-                ? (crateTarget(model) ?? ROOM_CENTER)
-                : plan === 'Mend'
-                  ? (mendTarget(model) ?? ROOM_CENTER)
-                  : plan === 'Gnome'
-                    ? gnomeSpot(model)
-                    : plan === 'Fridge'
-                      ? (fridgeStand(model) ?? ROOM_CENTER)
-                      : plan === 'Return'
-                        ? ROOM_CENTER
-                        : boxCenter(
-                            levelOf(model).thresholds[
-                              busiestDoor(model) ?? 'North'
-                            ].box,
-                          )
+              : plan === 'Case'
+                ? (caseTarget(model) ?? ROOM_CENTER)
+                : plan === 'Deliver'
+                  ? (deliveryTarget(model) ?? ROOM_CENTER)
+                  : plan === 'Crate'
+                    ? (crateTarget(model) ?? ROOM_CENTER)
+                    : plan === 'Mend'
+                      ? (mendTarget(model) ?? ROOM_CENTER)
+                      : plan === 'Gnome'
+                        ? gnomeSpot(model)
+                        : plan === 'Fridge'
+                          ? (fridgeStand(model) ?? ROOM_CENTER)
+                          : plan === 'Return'
+                            ? holdPoint(model)
+                            : boxCenter(
+                                levelOf(model).thresholds[
+                                  busiestDoor(model) ?? 'North'
+                                ].box,
+                              )
         if (
           plan === 'Fridge' &&
           isOfferedToBot(model) &&
@@ -352,7 +375,21 @@ export const play: {
         ) {
           model = holdToReplace(model, weakerGun(model))
         }
-        if (plan === 'Fridge' && isFridgeInReach(model)) {
+        if (plan === 'Case' && isAtCase(model)) {
+          const prize = caseTakePrize(model)
+          const ready =
+            prize === undefined || prize === 'LaserSight'
+              ? model
+              : holdToReplace(model, weakerGun(model))
+          // NOTE: the hold lets go once a take is done, so the next starts
+          // fresh, as at the fridge.
+          model = pressKeys(
+            ready,
+            focusOf(ready).purchase._tag === 'Done'
+              ? new Set()
+              : new Set([KEYS.interact]),
+          )
+        } else if (plan === 'Fridge' && isFridgeInReach(model)) {
           model = pressKeys(model, fridgeKeys(model))
         } else if (plan === 'Mend' && isAtMend(model)) {
           model = pressKeys(model, new Set())
@@ -473,6 +510,21 @@ export const play: {
           state.fridgeLog.firstPullWave ||= wave
           state.fridgeLog.prizes[event.prize] =
             (state.fridgeLog.prizes[event.prize] ?? 0) + 1
+        }
+        if (event._tag === 'CaseOpened') {
+          escapeLog.casesOpened += 1
+        }
+        if (event._tag === 'DareDelivered') {
+          escapeLog.delivered += 1
+        }
+        if (event._tag === 'DareFound') {
+          escapeLog.found += 1
+          if (event.kind === 'PartyHat') {
+            escapeLog.hatWave ||= wave
+          }
+        }
+        if (event._tag === 'DareListDone') {
+          escapeLog.listDoneWave ||= wave
         }
         if (event._tag === 'LidLaunched') {
           state.fridgeLog.lids += 1
@@ -752,6 +804,7 @@ export const play: {
         ...state.fridgeLog,
         endedWith: finalFridge?.kind ?? 'None',
       },
+      escape: escapeLog,
     }
   },
 )

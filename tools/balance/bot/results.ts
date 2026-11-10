@@ -36,6 +36,17 @@ export const FridgeLog = Schema.Struct({
 })
 export type FridgeLog = typeof FridgeLog.Type
 
+// How the run's escape went: display cases opened for the bot and things
+// delivered to them, things on the list found, and the waves the list was
+// done in and Uncle Chunk's hat taken in (0 when never).
+const EscapeLog = Schema.Struct({
+  casesOpened: Schema.Finite,
+  delivered: Schema.Finite,
+  found: Schema.Finite,
+  listDoneWave: Schema.Finite,
+  hatWave: Schema.Finite,
+})
+
 // What the Big Leaguer, the Ankle Biter, and frenzied packs did in a run.
 export const NewKindLog = Schema.Struct({
   throws: Schema.Finite,
@@ -155,6 +166,7 @@ export const RunResult = Schema.Struct({
   // The wave whose break the kitchen was bought in, or 0 when it never was.
   kitchenWave: Schema.Finite,
   fridge: FridgeLog,
+  escape: EscapeLog,
 })
 export type RunResult = typeof RunResult.Type
 

@@ -33,6 +33,15 @@ const isStandable = (level: Level, column: number, row: number): boolean =>
   isInsideRoom(level, column, row) &&
   !hasTileFlag(level, tileIndex(level, column, row), TILE_PLAYER_SOLID)
 
+// NOTE: whether a player could stand on the tile under a point.
+export const isStandableAt: {
+  (point: Vector): (level: Level) => boolean
+  (level: Level, point: Vector): boolean
+} = Function.dual(2, (level: Level, point: Vector): boolean => {
+  const { column, row } = tileOfIndex(level, tileIndexAt(level, point))
+  return isStandable(level, column, row)
+})
+
 const STEPS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
   [-1, 0],
