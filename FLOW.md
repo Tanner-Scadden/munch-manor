@@ -114,7 +114,7 @@ flowchart TD
 
 ## 3. Escape the manor (proposed)
 
-The direction in `LORE.md`: you came to dinner and you are the main course. You fill in your RSVP, a short intro sees you in and locks the door behind you, you start at the table in the dining room, and this run's list of what you need to leave is rolled from a pool, longer the harder the difficulty. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2. Nothing here is decided.
+The direction in `LORE.md`: you came to dinner and you are the main course. You fill in your RSVP, you walk into the manor expecting dinner and the front door locks behind you, the run kicks off in the dining room with its exits boarded as today, and this run's list of what you need to leave is rolled from a pool, longer the harder the difficulty. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2. Nothing here is decided.
 
 ```mermaid
 flowchart TD
@@ -122,17 +122,16 @@ flowchart TD
   seal[Stamp the wax seal]:::proposed --> intro
 
   subgraph Intro [The intro: a few seconds, skippable, shorter after the first]
-    intro[The card flies off as an envelope, up the drive to the manor]:::proposed --> door[The front door swings open, then slams and locks behind you]:::proposed
-    door --> sit[Into the dining room: you take your seat at the table]:::proposed
+    intro[You walk into the manor, expecting dinner: the table is set]:::proposed --> door[The front door slams and locks behind you]:::proposed
   end
 
-  sit --> arrive
-  arrive([Seated in the dining room. Every door locked]):::proposed --> list
+  door --> arrive
+  arrive([The run kicks off in the dining room, its exits boarded]):::proposed --> list
 
   list[Roll this run's list from the pool: 2 to 4 things, by difficulty]:::proposed --> waves
   waves[Waves count up, each harder than the last: the number is how far you got]:::proposed --> explore
 
-  explore[Unlock doors, room by room: bought as boards are today]:::proposed --> roomRoll{Which room is behind the door?}
+  explore[Buy boards open, room by room]:::built --> roomRoll{Which room is behind the boards?}
   roomRoll -->|Today| fixedRoom[The kitchen, always]:::built
   roomRoll -.->|Rolled rooms| dish[A cloche lifts: one of a few hand-made rooms]:::proposed
 

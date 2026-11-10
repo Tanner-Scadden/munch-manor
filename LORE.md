@@ -108,7 +108,7 @@ Games that already proved parts of this idea. We borrow the shape of what worked
 | Game                                           | What worked                                                                                                                                                                                                                                                                                                             | What we take                                                                                                                                                                                          |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Call of Duty Zombies** (Treyarch, 2008 on)   | Our closest relative: waves, buying doors open, a mystery box, a gun upgrade machine. Its later maps add a power switch, parts built into tools, and secret quests, some ending in a real escape (Mob of the Dead's plane off the island). In TranZit a buildable's parts appear in one of a few fixed spots each game. | Parts that spawn in one of a few hand-picked spots per run. A power switch that changes the house. An escape that is a quest layered on the waves, so players who ignore it still play the wave game. |
-| **Blue Prince** (Dogubomb, 2025)               | A manor whose rooms are drafted: open a door, pick one of three rooms to put behind it. The house resets every day, the goal is a room you have to reach. Proved "random rooms in a mansion" is a hit.                                                                                                                  | When a locked door opens, the room behind it is drawn from a pool of hand-made rooms. Maybe a peek: pick one of two.                                                                                  |
+| **Blue Prince** (Dogubomb, 2025)               | A manor whose rooms are drafted: open a door, pick one of three rooms to put behind it. The house resets every day, the goal is a room you have to reach. Proved "random rooms in a mansion" is a hit.                                                                                                                  | When boards come down, the room behind them is drawn from a pool of hand-made rooms. Maybe a peek: pick one of two.                                                                                   |
 | **Resident Evil** (Capcom, 1996)               | The mansion as a lock puzzle: crest keys, each opening one kind of door, a safe room with a box and a typewriter. Backtracking feels like progress because the map opens up.                                                                                                                                            | A few key kinds, each opening one kind of door. Rattles' stall as the safe room.                                                                                                                      |
 | **Luigi's Mansion** (Nintendo, 2001)           | Goofy haunted house. The hook: Luigi "won" a mansion in a contest he never entered. Rooms go from dark to lit as you clear them.                                                                                                                                                                                        | A silly reason you are here (see the twist). Rooms that change once cleared or once the power is on.                                                                                                  |
 | **Hades** (Supergiant, 2020)                   | A run is an escape from your family's house. Dying sends you home, and the story moves forward between deaths: the cast remembers how you died.                                                                                                                                                                         | Dying is part of the story. Rattles reacts to how the last run ended and how far you got.                                                                                                             |
@@ -149,7 +149,7 @@ The invitation says "Dinner at Munch Manor. Formal. Bring an appetite." It does 
 
 The invitation is an asset to build around, not a screen to wait on (owner, 2026-11-09: the loading splash is too quick to read one). A card on the home menu, the app icon, the store art, the share card: seen everywhere, read in a glance, never in the way.
 
-You came to a dinner party (Clue). The family (the Munches) and the other guests have already turned. Uncle Chunk is the host, still in his party hat. The house is hungry. Every run you sit down at the table in the dining room, the doors are locked behind you, and the only way out is the front door.
+You came to a dinner party (Clue). The family (the Munches) and the other guests have already turned. Uncle Chunk is the host, still in his party hat. The house is hungry. Every run you sit down at the table in the dining room, the front door locks behind you, the other ways out are boarded, and the only way out is the front door.
 
 This ties together what the game already says: the Groaner "eats the host", Uncle Chunk is "the relative nobody invited", MUNCHED!, the soup, the fridge, the party hat.
 
@@ -165,17 +165,11 @@ Proposed by the owner on 2026-11-09. A run starts in the dining room, at your pl
 
 The cheap way is to redress the parlour as the dining room: keep its tiles, doors, cover footprints, and stall where they are, so the waves and the balance stay as tuned, and swap the art. The seating group becomes a long dining table set for a party that never finished, the piano a sideboard, the hearth stays (dining rooms have them too), a candelabra, a chandelier. The boarded double door with the fork and knife sign already leads to the kitchen, which fits a dining room better than a parlour. A new room with its own layout is the costly way: new cover, new lanes, and the waves tuned again.
 
-### The intro: from the RSVP to your seat
+### The intro: the door locks behind you
 
-Proposed by the owner on 2026-11-09. START stamps the seal, and a short intro carries you from the card to the table: the card folds into an envelope and flies up the drive to the manor, the front door swings open, you step in and it slams and locks behind you, and you take your seat in the dining room as the first wave's doors start to rattle.
+Proposed by the owner on 2026-11-09. START stamps the seal, and you walk into the manor expecting dinner: the table is set, the candles are lit, nobody is there. The front door slams and locks behind you, and that is what kicks the run off. The dining room's other ways out are boarded, as the parlour's are today, and bought open the same way.
 
 A few seconds at most, with no words, and skippable by any key or tap. It plays in full the first time, and shorter after that (the door slam only), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the intro is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same, and co-op's room waits for no one's intro.
-
-### Locked, not boarded
-
-Owner, 2026-11-09: the house's doors are locked, not boarded. A guest at a dinner party finds the doors locked behind them, which says "you are not leaving" better than planks. The front door locks in the intro, and every way out of the dining room is a locked door.
-
-Unlocking a door works as buying boards open does today: stand still or hold at the door, pay, and it opens, mid-wave too. The art changes (a door with a padlock or a heavy lock plate in place of planks, a click and a creak in place of splinters), the rule does not. Zombies still burst through their own doors as they do now. The Plank Pile stays a trap: planks are what you nail up, locks are what the house does.
 
 ### What you need to leave changes every run
 
@@ -190,7 +184,7 @@ What makes the list fun is less which object it is than how each one comes back 
 | Your shoes             | A marked zombie wears them: kill it and grab the drop (CoD style)         |
 | The doggy bag          | Cooked at the kitchen's stove, as a perk is                               |
 | Your phone             | It rings somewhere in the house: follow the sound                         |
-| Your umbrella          | Behind the locked door of a room you have not opened yet                  |
+| Your umbrella          | Behind the boards of a room you have not opened yet                       |
 | A goodbye to the host  | Always last: Uncle Chunk at the front door. Politely. With a shotgun.     |
 
 Objects, no reading needed. The HUD shows this run's list as empty outlines that fill in.
@@ -216,7 +210,7 @@ So an escape run has no fixed wave count. The waves ramp until the list is done,
 
 ### Rooms come out like dishes
 
-When a locked door opens, the room behind it is one of a few hand-made rooms (Blue Prince, Betrayal). A cloche over the doorway lifts to show which: a reveal like the fridge's. The kitchen stays fixed as the first room; the rooms after it roll. The house plan is the same shape every run, only which room is where changes.
+When boards come down, the room behind them is one of a few hand-made rooms (Blue Prince, Betrayal). A cloche over the doorway lifts to show which: a reveal like the fridge's. The kitchen stays fixed as the first room; the rooms after it roll. The house plan is the same shape every run, only which room is where changes.
 
 ### The house gets hungrier
 
