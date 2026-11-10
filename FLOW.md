@@ -173,7 +173,7 @@ flowchart TD
 
 ### No shop: how you get stronger
 
-There is no shopkeeper. You get stronger from the house itself, and zombies drop skeleton keys, the one thing you count.
+There is no shopkeeper. You get stronger from the house itself, and zombies drop skeleton keys, the one thing you count. Ammo never runs out, but magazines and reloads stay.
 
 ```mermaid
 flowchart LR
@@ -184,7 +184,8 @@ flowchart LR
   feats --> cases[Display cases spring open: a gun]:::proposed
   find[Things the dare did not ask for]:::proposed --> cases
   kill --> use[Kills with a gun level it up: Beefy, DELUXE, 3000]:::proposed
-  rooms[Rooms and drops]:::proposed --> found[Ammo, hearts, traps found where they lie]:::proposed
+  rooms[Rooms and drops]:::proposed --> found[Hearts and traps found where they lie]:::proposed
+  ammo2[Ammo never runs out. Reloads stay]:::proposed
 
   classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
 ```
@@ -239,4 +240,4 @@ The lore choices that most change these charts, from `LORE.md`:
 3. Which feats open which display cases, and how many skeleton keys a room and a fridge pull cost?
 4. Do rooms roll, or only what is in them?
 
-Settled on 2026-11-10: no shop (feats open display cases, guns level up with use, zombies drop skeleton keys for rooms and the fridge); your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.
+Settled on 2026-11-10: no shop (feats open display cases, guns level up with use, zombies drop skeleton keys for rooms and the fridge); endless ammo with reloads kept; your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.

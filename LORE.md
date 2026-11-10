@@ -207,7 +207,8 @@ The owner, 2026-11-10: there is no shopkeeper and no shop. You get stronger from
 - **Feats of every kind** (owner, 2026-11-10): kill counts (25 kills, 10 knife kills, 5 Big Lugs), skill (a wave without a hit, a 20 kill streak, a Kaboomer caught in its own blast), exploring (a key off a marked zombie, a room opened, the fireplace lit), and the house's things.
 - **Things the dare did not ask for open cases too** (owner, 2026-11-10). The pool holds more things than any one dare asks for, so opening a room and finding something off your list is never a letdown: carry it to a display case and it opens.
 - **Guns level up with use.** The tiers stay (Beefy, DELUXE, 3000), earned by kills with that gun instead of bought.
-- **Ammo, hearts, and traps are found.** Ammo from drops and crates in rooms, hearts from the Pickled Heart and the pantry, traps where they stand in the house (a gnome on a mantel, a plank pile in the hall).
+- **Ammo never runs out** (owner, 2026-11-10). Every gun has endless ammo, but magazines and reloads stay: a reload is still the moment a horde gets scary, and a bigger magazine or a faster reload is still worth earning.
+- **Hearts and traps are found.** Hearts from the Pickled Heart and the pantry, traps where they stand in the house (a gnome on a mantel, a plank pile in the hall).
 - **Skeleton keys open rooms and the fridge** (owner, 2026-11-10). Zombies drop skeleton keys: the daredevils were collecting them, trying to find the way out. Each set of boards wears a padlock with a number on it; spend that many keys and the boards drop. The fridge's padlock takes keys for a pull. Keys are the one thing you count, so every key is still a choice: a room now, or the fridge.
 
 What this changes is in "Escape the manor" in `GAME_DESIGN.md`: the shop, Rattles' stall and dialog, money, the heroes and modifiers that read prices, co-op's money split, and the balance bot all move.
@@ -341,7 +342,7 @@ The heroes are daredevils with their own reasons: the Handyman was paid by the t
 Ordered from cheapest to most work, so the story can land before the systems do:
 
 1. **Words and art only.** The difficulty names, the power-ups renamed and restyled as the house's things, the zombies restyled as guests and daredevils, the Munchopedia's bios, the dare card as art (the home menu, the icon, the share card). No rule changes.
-2. **No shop.** Display cases opened by feats, guns that level up with use, found ammo, hearts, and traps, and skeleton keys for rooms and the fridge. A large rules change: balance, the bot, heroes, modifiers, and co-op all move.
+2. **No shop.** Display cases opened by feats, guns that level up with use, endless ammo with reloads kept, found hearts and traps, and skeleton keys for rooms and the fridge. A large rules change: balance, the bot, heroes, modifiers, and co-op all move.
 3. **One fixed list in fixed spots.** The dare as a goal over the existing ten waves. Victory becomes "you got out".
 4. **Rolled spots and a rolled list.** The things move between a few hand-picked hiding spots, and the list itself rolls from the pool, sized by difficulty, from their own seeded stream.
 5. **Rolled rooms.** Needs a second room and a pool, and a change to "Not now".
