@@ -146,7 +146,10 @@ describe('the manor', () => {
   test('is where every run starts, with every room boarded shut', () => {
     expect(initialModel.level).toEqual(startingLevel)
     expect(levelOf(initialModel)).toBe(MANOR)
-    expect(freshRun(initialModel).level).toEqual(startingLevel)
+    expect(freshRun(initialModel).level).toEqual({
+      ...startingLevel,
+      arrangement: freshRun(initialModel).level.arrangement,
+    })
     expect(Array.map(closedExits(MANOR), ({ id }) => id)).toEqual([
       'Kitchen',
       'West',

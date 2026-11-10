@@ -3,7 +3,7 @@
 // not care about reads as a name, and the steps it is about stay in the test.
 // Steps and locators live in `testing.ts`.
 
-import { Array, Function, Option, Order, Record } from 'effect'
+import { Array, Function, Option, Order } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -35,9 +35,10 @@ import {
   levelOf,
   openExitIn,
   startingLevel,
+  startingLevelFor,
 } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
-import { LEVEL_SPECS } from '../world/level/plan'
+import { EVERY_LEVEL_SPEC, SLOTS, SLOT_IDS } from '../world/level/plan'
 import {
   atSeatBy,
   focusOf,
@@ -50,17 +51,21 @@ import {
 import { biteGraceScale } from '../world/run/difficulty'
 import { type World, modifyWorldFields, withWorld } from '../world/schema/world'
 import {
+  type Arrangement,
   type Arsenal,
   type CasePrize,
   CaseState,
+  type ExitId,
   Feat,
   type FeatTally,
   Invulnerability,
+  type LevelState,
   type Life,
   type Pickup,
   type PickupKind,
   type Seat,
   type SeatState,
+  type SlotRoomId,
 } from '../world/schema/worldSchema'
 import { PHONE_PORTRAIT, SURFACE, zombieOf } from './testing'
 import { asVeteran } from './veteran'
@@ -69,7 +74,7 @@ import { asVeteran } from './veteran'
 // play: a bite's invulnerability is the base times this.
 // NOTE: every level the game builds, shut and with all its exits open.
 export const EVERY_LEVEL: ReadonlyArray<Level> = Array.flatMap(
-  Record.values(LEVEL_SPECS),
+  EVERY_LEVEL_SPEC,
   spec => [
     levelFor(spec),
     levelFor(
@@ -335,6 +340,37 @@ export const inPortrait = (model: Model): Model =>
 
 export const withNewerBuild = (model: Model): Model =>
   modifyFields(model, { maybeNewerBuild: () => Option.some('newer-build') })
+
+// THE HOUSE
+
+// NOTE: the boards to open, in order, to reach a slot room where the house
+// stands it: those its slot requires, then its own.
+export const exitsToRoom: {
+  (room: SlotRoomId): (arrangement: Arrangement) => ReadonlyArray<ExitId>
+  (arrangement: Arrangement, room: SlotRoomId): ReadonlyArray<ExitId>
+} = Function.dual(
+  2,
+  (arrangement: Arrangement, room: SlotRoomId): ReadonlyArray<ExitId> =>
+    Option.match(
+      Array.findFirst(SLOT_IDS, slot => arrangement[slot] === room),
+      {
+        onNone: () => [],
+        onSome: slot => [...SLOTS[slot].requires, SLOTS[slot].exit],
+      },
+    ),
+)
+
+// NOTE: a run's house stood as `arrangement`, its boards to `room` open.
+export const roomOpenIn: {
+  (room: SlotRoomId): (arrangement: Arrangement) => LevelState
+  (arrangement: Arrangement, room: SlotRoomId): LevelState
+} = Function.dual(2, (arrangement: Arrangement, room: SlotRoomId): LevelState =>
+  Array.reduce(
+    exitsToRoom(arrangement, room),
+    startingLevelFor(arrangement),
+    (state, exit) => openExitIn(state, exit),
+  ),
+)
 
 // MYSTERY LEFTOVERS
 

@@ -361,17 +361,31 @@ export const DoorId = Schema.Literals([
 ])
 export type DoorId = typeof DoorId.Type
 
-export const LevelId = Schema.Literals(['Parlour', 'Manor'])
-export type LevelId = typeof LevelId.Type
+const LevelId = Schema.Literals(['Parlour', 'Manor'])
 
 export const ExitId = Schema.String
 export type ExitId = typeof ExitId.Type
 
-// NOTE: which level the run is in, which of its boarded exits are open, and
-// which of its drops lie in their spots (the dining room's chandelier). The
-// built Level, with its tile lookups and doors, comes from levelOf.
+// NOTE: the hand-made rooms that roll into the house's three slots, and
+// which stands in each slot this run (src/world/level/plan.ts).
+export const SlotRoomId = Schema.Literals(['Parlour', 'Library', 'Cellar'])
+export type SlotRoomId = typeof SlotRoomId.Type
+
+export const Arrangement = Schema.Struct({
+  West: SlotRoomId,
+  East: SlotRoomId,
+  Far: SlotRoomId,
+})
+export type Arrangement = typeof Arrangement.Type
+
+// NOTE: which level the run is in, which room stands in each of its slots
+// (rolled at run start, so co-op rooms agree), which of its boarded exits
+// are open, and which of its drops lie in their spots (the dining room's
+// chandelier). The built Level, with its tile lookups and doors, comes from
+// levelOf.
 export const LevelState = Schema.Struct({
   id: LevelId,
+  arrangement: Arrangement,
   openExits: Schema.Array(ExitId),
   dropped: Schema.Array(Schema.String),
 })

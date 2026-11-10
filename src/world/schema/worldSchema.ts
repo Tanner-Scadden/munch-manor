@@ -7,7 +7,9 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '../../shared/constants'
 import { Difficulty } from '../../shared/playerData'
-import { START_LEVEL } from '../level/arena'
+import { nextRandom } from '../../shared/prng'
+import { START_LEVEL, startingLevelFor } from '../level/arena'
+import { arrangementAt } from '../level/plan'
 import { Modifiers } from '../run/modifiers'
 import {
   Arsenal,
@@ -972,6 +974,17 @@ export const freshLoot = (seed: number): Loot => ({
 })
 
 const STOVE_SEED_SALT = 0x5709e3c1
+const HOUSE_SEED_SALT = 0x40a5e5ed
+
+// NOTE: the house stream: one draw off the run's seed, salted apart from
+// every other stream so it moves no other roll, picks which hand-made room
+// stands in each of the house's three slots. Single player and a co-op
+// room both start a run from the seed, so every client of a room stands in
+// the same house, and the arrangement rides the wire in the level state.
+export const freshLevel = (seed: number): LevelState =>
+  startingLevelFor(
+    arrangementAt(nextRandom((seed ^ HOUSE_SEED_SALT) >>> 0).value),
+  )
 
 // NOTE: the stove's own generator, apart from the run's, so its rolls move
 // no other; `wave` 0 is no break yet, so the first break rolls its perk.

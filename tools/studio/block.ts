@@ -29,6 +29,9 @@ export const SavedView = Schema.Struct({
   maybeSelectedId: Schema.OptionFromNullOr(Schema.String),
   room: StudioRoom,
   isKitchenOpen: Schema.Boolean,
+  // NOTE: which of the manor's rolled arrangements the manor shows, by its
+  // place in ARRANGEMENTS (src/world/level/plan.ts).
+  house: Schema.Finite,
   // NOTE: a drafted room's twist: the chandelier down, the shelf open.
   isTwistOn: Schema.Boolean,
   isGridOn: Schema.Boolean,
@@ -75,6 +78,7 @@ export const DEFAULT_VIEW: SavedView = {
   maybeSelectedId: Option.none(),
   room: 'Manor',
   isKitchenOpen: true,
+  house: 0,
   isTwistOn: false,
   isGridOn: true,
   isOnion: false,
@@ -98,6 +102,7 @@ export const Message = defineMessageUnion({
   ClickedGrid: {},
   ClickedRoom: { room: StudioRoom },
   ClickedRoomToggle: {},
+  ClickedHouse: { house: Schema.Finite },
   TickedFrame: { deltaTime: Schema.Finite },
   ClickedEntry: { id: Schema.String },
   ClickedNote: { tab: Tab, targetId: Schema.String },

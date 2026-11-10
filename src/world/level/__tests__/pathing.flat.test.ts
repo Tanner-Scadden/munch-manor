@@ -13,8 +13,8 @@ import {
   readAll,
 } from './pathing.flat.fixture'
 
-// NOTE: the fast tier's sample: the parlour shut and open, and the
-// manor with every exit open, from every 241st tile.
+// NOTE: the fast tier's sample: the parlour shut and open, and the first
+// house with every exit open, from every 241st tile.
 // pathing.flat.sim.test.ts checks every level from every seventh tile.
 const SAMPLED: ReadonlyArray<Level> = [
   ...Array.take(EVERY_LEVEL, 2),

@@ -410,7 +410,10 @@ describe('holding to buy the kitchen open', () => {
 
   test('the next run starts with the kitchen boarded and the ovens ready', () => {
     const run = freshRun(fightingInKitchen(base))
-    expect(run.level).toEqual(startingLevel)
+    expect(run.level).toEqual({
+      ...startingLevel,
+      arrangement: run.level.arrangement,
+    })
     expect(Array.every(run.ovens, Oven.guards.Ready)).toBe(true)
     expect(run.ovens).toHaveLength(ovenBoxesOf(MANOR).length)
   })

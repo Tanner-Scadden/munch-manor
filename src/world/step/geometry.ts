@@ -68,6 +68,9 @@ export const clamp: {
   Math.min(max, Math.max(min, value)),
 )
 
+// NOTE: a share of 0 to 1 eased out, fast at first and settling.
+export const easeOut = (share: number): number => 1 - (1 - share) * (1 - share)
+
 export const circlesOverlap: {
   (
     firstRadius: number,

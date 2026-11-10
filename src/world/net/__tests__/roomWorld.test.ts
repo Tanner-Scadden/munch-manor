@@ -4,6 +4,8 @@ import { describe, expect, test } from 'vitest'
 
 import { NEUTRAL_INPUT, makeReader, makeWriter } from '@munch/netcode'
 
+import { initialModel } from '../../../app/pureApp'
+import { freshRun } from '../../../app/runReset'
 import { INTENSITY_PER_HEART } from '../../../shared/constants'
 import { withSeat } from '../../../test/model.fixture'
 import {
@@ -12,8 +14,9 @@ import {
   scriptedTicks,
 } from '../../../test/roomTesting'
 import { holdingSecond, zombieAt } from '../../../test/testing'
+import { openExitIn } from '../../level/arena'
 import { maybePlayerAt, modifyFocus } from '../../party/party'
-import { Phase, idleIntent } from '../../schema/worldSchema'
+import { Phase, freshLevel, idleIntent } from '../../schema/worldSchema'
 import { SeatAction } from '../../step/stepWorld'
 import { FINAL_WAVE } from '../../waves/wavePlans'
 import { beginPreparation } from '../../waves/waves'
@@ -387,6 +390,47 @@ describe('own-player prediction', () => {
       Option.getOrThrow(maybePlayerAt(room.world, 0)).player.x
     expect(xOf(halfway)).toBeCloseTo((xOf(TWO_SEAT_ROOM) + xOf(later)) / 2, 5)
     expect(scriptedTicks(TWO_SEAT_ROOM).length).toBe(2)
+  })
+})
+
+describe('the rolled house', () => {
+  const SEEDS = Array.range(0, 23)
+  const settings = roomSettingsOf('Campaign', 'Normal')
+
+  test('a room stands in the house its seed rolls, as single player on that seed does', () => {
+    Array.forEach(SEEDS, seed => {
+      const room = roomWorldFor(settings).start([0, 1], seed)
+      expect(room.world.level).toEqual(freshLevel(seed))
+      expect(
+        freshRun({ ...initialModel, rngState: seed }).level.arrangement,
+      ).toEqual(room.world.level.arrangement)
+    })
+  })
+
+  test('every client reads the same house off the wire, from a snapshot or the diffs', () => {
+    const rolled = Array.dedupe(
+      Array.map(SEEDS, seed => {
+        const { West, East, Far } = roomWorldFor(settings).start([0, 1], seed)
+          .world.level.arrangement
+        return `${West}-${East}-${Far}`
+      }),
+    )
+    expect(rolled.length).toBeGreaterThan(1)
+    Array.forEach(SEEDS, seed => {
+      const room = roomWorldFor(settings).start([0, 1], seed)
+      expect(readBack(room).world.level).toEqual(room.world.level)
+      const opened = {
+        ...room,
+        world: modifyFields(room.world, {
+          level: level => openExitIn(level, 'West'),
+        }),
+      }
+      const writer = makeWriter()
+      writeRoomDiff(writer, room, opened)
+      expect(
+        readRoomDiff(makeReader(writer.finish()), readBack(room)).world.level,
+      ).toEqual(opened.world.level)
+    })
   })
 })
 

@@ -220,7 +220,7 @@ describe('tank pathing', () => {
     }>
   > = [
     {
-      state: { id: 'Parlour', openExits: [], dropped: [] },
+      state: { ...startingLevel, id: 'Parlour' },
       level: PARLOUR,
       targets: [{ x: 20, y: 48 }, PARLOUR.start],
     },

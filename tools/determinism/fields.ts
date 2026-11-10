@@ -75,6 +75,7 @@ export const FIELD_CLASSES = {
   callouts: 'Cosmetic',
   levelCallouts: 'Cosmetic',
   prizeFlight: 'Cosmetic',
+  clocheLift: 'Cosmetic',
   kitchenCall: 'Cosmetic',
   breakIdleMs: 'Cosmetic',
   cosmeticRngState: 'Cosmetic',

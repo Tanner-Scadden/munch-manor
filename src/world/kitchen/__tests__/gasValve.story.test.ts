@@ -4,13 +4,19 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { GasValve, type Model, Phase } from '../../../app/model'
+import {
+  type Arrangement,
+  GasValve,
+  type Model,
+  Phase,
+} from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
   atValve,
   freshRunModel,
   kitchenBreak,
+  roomOpenIn,
   withFeatsOf,
 } from '../../../test/model.fixture'
 import {
@@ -22,8 +28,12 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { levelOf, openExitIn } from '../../level/arena'
-import { WEST_EXIT } from '../../level/plan'
+import { type Box, boxCenter, levelOf, roomAt } from '../../level/arena'
+import {
+  ARRANGEMENTS,
+  DEFAULT_ARRANGEMENT,
+  PARLOUR_ROOM_ID,
+} from '../../level/plan'
 import {
   focusOf,
   focusSlotOf,
@@ -56,45 +66,51 @@ const isValveOffered = (current: Model): boolean =>
     ({ target }) => target._tag === 'Valve',
   )
 
-// NOTE: the fireplace is in the parlour, behind the dining room's west
-// boards, so the fire burns once they are open.
-const parlourOpen = (): Model =>
+// NOTE: the fireplace is in the parlour, behind whichever boards the run's
+// house put it, so the fire burns once they are open.
+const parlourOpen = (arrangement: Arrangement = DEFAULT_ARRANGEMENT): Model =>
   modifyFields(freshRunModel(), {
-    level: level => openExitIn(level, WEST_EXIT),
+    level: () => roomOpenIn(arrangement, PARLOUR_ROOM_ID),
   })
 
-const zone = Option.getOrThrow(flameZoneOf(levelOf(parlourOpen())))
+const zoneIn = (arrangement: Arrangement): Box =>
+  Option.getOrThrow(flameZoneOf(levelOf(parlourOpen(arrangement))))
 
-const IN_THE_FIRE = {
-  x: (zone.left + zone.right) / 2 + 12,
-  y: (zone.top + zone.bottom) / 2,
-}
-
-const OUT_OF_THE_FIRE = { x: IN_THE_FIRE.x, y: zone.bottom + 40 }
+const zone = zoneIn(DEFAULT_ARRANGEMENT)
 
 // NOTE: a wave with the valve already turned by `owner`, the player
 // standing in the fire at its west end, and a Shambler with `hp` in the
 // fire and another out of it, neither walking.
-const litWith = (hp: number, owner = 0): Model =>
-  modifyFields(parlourOpen(), {
+const litWith = (
+  hp: number,
+  owner = 0,
+  arrangement: Arrangement = DEFAULT_ARRANGEMENT,
+): Model => {
+  const fire = zoneIn(arrangement)
+  const inTheFire = {
+    x: (fire.left + fire.right) / 2 + 12,
+    y: (fire.top + fire.bottom) / 2,
+  }
+  return modifyFields(parlourOpen(arrangement), {
     phase: () => midWave,
     gasValve: () =>
       GasValve.Lit({ owner, nextBurnMs: VALVE_RULES.burnEveryMs }),
     zombies: () => [
-      zombieOf('Shambler', 900, IN_THE_FIRE.x, IN_THE_FIRE.y, { hp }),
-      zombieOf('Shambler', 901, OUT_OF_THE_FIRE.x, OUT_OF_THE_FIRE.y, { hp }),
+      zombieOf('Shambler', 900, inTheFire.x, inTheFire.y, { hp }),
+      zombieOf('Shambler', 901, inTheFire.x, fire.bottom + 40, { hp }),
     ],
     seats: seats =>
       Array.map(seats, state =>
         modifyFields(state, {
           player: player =>
             modifyFields(player, {
-              x: () => zone.left + 4,
-              y: () => IN_THE_FIRE.y,
+              x: () => fire.left + 4,
+              y: () => inTheFire.y,
             }),
         }),
       ),
   })
+}
 
 const hpOf = (world: World, id: number): number =>
   Option.getOrElse(
@@ -199,6 +215,21 @@ describe('turning the gas valve', () => {
 })
 
 describe('the lit fireplace', () => {
+  test.each(ARRANGEMENTS)(
+    'lights the parlour wherever it rolls: %o',
+    arrangement => {
+      const crew = withWorld(litWith(20, 0, arrangement), world =>
+        seatCrew(world, 2),
+      )
+      const once = withWorld(crew, world => steppedWorld(world, BURN_TICKS + 1))
+      expect(hpOf(once, 900)).toBe(20 - VALVE_RULES.damage)
+      expect(hpOf(once, 901)).toBe(20)
+      expect(roomAt(levelOf(crew), boxCenter(zoneIn(arrangement))).id).toBe(
+        PARLOUR_ROOM_ID,
+      )
+    },
+  )
+
   test('burns a zombie in front of the hearth 2 every 0.3 s, and not one outside', () => {
     const crew = withWorld(litWith(20), world => seatCrew(world, 2))
     const once = withWorld(crew, world => steppedWorld(world, BURN_TICKS + 1))

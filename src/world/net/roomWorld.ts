@@ -22,7 +22,7 @@ import { rollCases } from '../feats/cases'
 import { TURRET_WEAPON } from '../gear/traps'
 import { seatedAs } from '../heroes/callingPlayer'
 import { freshOvens } from '../kitchen/kitchen'
-import { START_LEVEL, startingLevel } from '../level/arena'
+import { START_LEVEL } from '../level/arena'
 import {
   biteGraceFor,
   focusSeat,
@@ -62,6 +62,7 @@ import {
   calmPacing,
   freshCrates,
   freshKeys,
+  freshLevel,
   freshLoot,
   freshStats,
   freshStove,
@@ -337,7 +338,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   traps: [],
   pickups: [],
   loot: freshLoot(seed),
-  level: startingLevel,
+  level: freshLevel(seed),
   ovens: freshOvens(START_LEVEL),
   rngState: seed,
   fridge: shutFridge,

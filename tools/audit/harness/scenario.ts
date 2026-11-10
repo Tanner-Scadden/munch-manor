@@ -30,6 +30,7 @@ import { heroIdOf } from '@game/shared/playerData'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
+import { ARRANGEMENTS } from '@game/world/level/plan'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
 
@@ -476,6 +477,14 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       ],
     })
   }
+  // NOTE: the scene stands in one house, never the one its run happened to
+  // roll, so a scenario draws the same rooms every time.
+  const house = Option.getOrElse(Array.get(ARRANGEMENTS, config.house), () =>
+    Array.headNonEmpty(ARRANGEMENTS),
+  )
+  model = modifyFields(model, {
+    level: level => ({ ...level, arrangement: house }),
+  })
   const openexits = config.openexits
   if (openexits !== undefined) {
     model = modifyFields(model, {

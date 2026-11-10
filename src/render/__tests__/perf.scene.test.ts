@@ -18,6 +18,7 @@ import {
   BulletGlaze,
   type CarriedGun,
   Charge,
+  ClocheLift,
   Frenzy,
   FridgeDoor,
   Glob,
@@ -64,9 +65,17 @@ import { asVeteran } from '../../test/veteran'
 import { DROP_RULES } from '../../world/gear/powerups'
 import { TRAPS as TRAP_STATS } from '../../world/gear/traps'
 import { freshGun } from '../../world/gear/weapons'
-import { DOOR_IDS, openExitIn } from '../../world/level/arena'
+import { DOOR_IDS, openExitIn, startingLevelFor } from '../../world/level/arena'
 import { KITCHEN_EXIT } from '../../world/level/exits'
-import { EAST_EXIT, FAR_EXIT } from '../../world/level/plan'
+import {
+  CELLAR_ROOM_ID,
+  EAST_EXIT,
+  FAR_EXIT,
+  LIBRARY_ROOM_ID,
+  PARLOUR_ROOM_ID,
+  SECRET_EXIT,
+  WEST_EXIT,
+} from '../../world/level/plan'
 import { modifyFocus } from '../../world/party/party'
 import { rollSpawns } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
@@ -602,12 +611,13 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // cellar fits the same budget: its mask is about a dozen shapes, cut from
 // baked light pools, and a zombie out in the dark draws only its eyes.
 // The cellar's own display case, locked in view, paints 597 steady
-// operations there, so that budget went from 590 to 600.
+// operations there, so that budget went from 590 to 600, and 603 with the
+// rolled house's cloche, so 610 (and its shapes painted 638, so 640).
 const BUDGET: FrameCost = {
   shapesBuilt: 760,
-  steadyPaintOps: 600,
+  steadyPaintOps: 610,
   steadyFillStyleChanges: 500,
-  steadyShapesPainted: 630,
+  steadyShapesPainted: 640,
   fullRepaintPaintOps: 1200,
 }
 
@@ -674,6 +684,50 @@ const cellarRoom = (wave: number): Model => {
         modifyFields(player, {
           x: () => CELLAR_SPOT.x,
           y: () => CELLAR_SPOT.y,
+          recoilRemainingMs: () => 40,
+        }),
+    },
+  )
+}
+
+// NOTE: the worst house a roll can stand: the dark cellar in the west slot
+// beside the dining room, so the camera holds the cellar's mask and the
+// dining room both, every room and the shelf open so the floor canvas holds
+// all five room images, the crowd in the cellar, and the cloche lifting
+// over the far boards.
+const rolledCellarRoom = (wave: number): Model => {
+  const room = fullRoom(RunMode.Campaign(), wave, 2)
+  return modifyFocus(
+    modifyFields(room, {
+      level: () =>
+        Array.reduce(
+          [KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT, SECRET_EXIT],
+          startingLevelFor({
+            West: CELLAR_ROOM_ID,
+            East: LIBRARY_ROOM_ID,
+            Far: PARLOUR_ROOM_ID,
+          }),
+          openExitIn,
+        ),
+      zombies: zombies =>
+        Array.map(zombies, (zombie, index) =>
+          modifyFields(zombie, {
+            x: () => -300 + ((index * 37) % 300),
+            y: () => 65 + ((index * 23) % 145),
+          }),
+        ),
+      clocheLift: () =>
+        ClocheLift.Lifting({
+          room: PARLOUR_ROOM_ID,
+          at: { x: -10, y: 125 },
+          ageMs: 500,
+        }),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => -40,
+          y: () => 130,
           recoilRemainingMs: () => 40,
         }),
     },
@@ -769,6 +823,10 @@ const SCENARIOS: ReadonlyArray<Readonly<{ name: string; model: Model }>> = [
   {
     name: 'campaign wave 9 in the dark cellar at the alive cap, firing',
     model: cellarRoom(9),
+  },
+  {
+    name: 'campaign wave 9 in a rolled house, the dark cellar west, every room open',
+    model: rolledCellarRoom(9),
   },
   {
     name: 'campaign wave 10 at the alive cap with the boss enraged mid-charge',

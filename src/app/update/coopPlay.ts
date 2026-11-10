@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Room as CoopRoom } from '../../domain/coopRoom'
 import { maybeRunRoom, runDifficultyOf } from '../../domain/onlineRun'
+import { raiseCloche } from '../../features/cloche/clocheReveal'
 import { launchPrize } from '../../features/fridge/fridgeReveal'
 import {
   ageDebutCard,
@@ -313,25 +314,28 @@ const drawTraced = ({
       ),
       taken => stopForHits(taken, frameMs),
     )
-    const drawn = launchPrize(
+    const drawn = raiseCloche(
       base,
-      ageDebutCard(
-        endRoundOnClient(
-          base,
-          raiseDebutCardFrom(
+      launchPrize(
+        base,
+        ageDebutCard(
+          endRoundOnClient(
             base,
-            leanFor(
-              advanceCosmetics(
-                tallyFrame(base, applied, frameMs),
-                frameMs,
+            raiseDebutCardFrom(
+              base,
+              leanFor(
+                advanceCosmetics(
+                  tallyFrame(base, applied, frameMs),
+                  frameMs,
+                  frameMs,
+                ),
                 frameMs,
               ),
-              frameMs,
             ),
+            runDifficultyOf(base),
           ),
-          runDifficultyOf(base),
+          frameMs,
         ),
-        frameMs,
       ),
     )
     return Update.combineSteps([
