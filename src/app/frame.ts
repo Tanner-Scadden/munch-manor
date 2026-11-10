@@ -31,6 +31,7 @@ import {
 import { TRAP_KIND_ORDER } from '../world/gear/traps'
 import { levelOf } from '../world/level/arena'
 import { focusOf, modifyFocus } from '../world/party/party'
+import { isArriving, isRunUnderway } from '../world/run/arrival'
 import { withWorld } from '../world/schema/world'
 import { clamp } from '../world/step/geometry'
 import {
@@ -124,21 +125,27 @@ type Stepped = Readonly<{
   worldMs: number
 }>
 
-// NOTE: a tick that ends the round ends the frame's ticks.
+// NOTE: the slam ends the frame's ticks, so the first break starts on a
+// frame of its own.
+const hasSlammed = (before: Phase, after: Phase): boolean =>
+  isArriving(before) && !isArriving(after)
+
+// NOTE: a tick that ends the round ends the frame's ticks. The intro's
+// ticks run its clock (src/world/run/arrival.ts).
 const runTicks = (stepped: Stepped, count: number): Stepped => {
-  if (count <= 0 || !isRoundActive(stepped.model.phase)) {
+  if (count <= 0 || !isRunUnderway(stepped.model.phase)) {
     return stepped
   }
   const intended = botsPressed(refreshIntent(stepped.model))
   const ticked = stepWorld(intended, inputsOf(intended))
-  return runTicks(
-    {
-      model: withWorld(intended, () => ticked.world),
-      events: [...stepped.events, ...ticked.events],
-      worldMs: stepped.worldMs + ticked.worldMs,
-    },
-    count - 1,
-  )
+  const next = {
+    model: withWorld(intended, () => ticked.world),
+    events: [...stepped.events, ...ticked.events],
+    worldMs: stepped.worldMs + ticked.worldMs,
+  }
+  return hasSlammed(stepped.model.phase, ticked.world.phase)
+    ? next
+    : runTicks(next, count - 1)
 }
 
 // NOTE: a refused placement's notice fades on world time, on the client.

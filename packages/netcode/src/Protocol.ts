@@ -128,6 +128,9 @@ import {
 // is Out (a new Life), with three events, FrontDoorUnlocking,
 // FrontDoorOpened, and SteppedOut, and a won run ends
 // in an Escaped phase, with its wave, in place of Victory.
+// The intro: a run starts Arriving, a new phase that holds the intro's
+// clock (`elapsedMs`) and its cut (`cut`, Full or Short), before the
+// first break; the room's clock sets the slam for every player.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

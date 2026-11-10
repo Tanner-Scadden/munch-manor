@@ -63,6 +63,7 @@ const BREAK_MS = 15_000
 const remainingOf = (current: Model): number =>
   Phase.match(current.phase, {
     Ready: () => 0,
+    Arriving: () => 0,
     Preparation: ({ remainingMs }) => remainingMs,
     Wave: () => 0,
     Paused: () => 0,

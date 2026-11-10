@@ -32,6 +32,7 @@ import {
   resolveFocusLobby,
   showDialog,
   startRunFromHome,
+  throughIntro,
   tick,
   writeSave,
 } from '../../../test/testing'
@@ -301,6 +302,7 @@ describe('the mode in the lobby', () => {
         ),
         resolveFocusLobby(),
         Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(current.mode).toEqual(RunMode.Endless())
@@ -327,6 +329,7 @@ describe('the mode in the lobby', () => {
       press('KeyE'),
       resolveFocusLobby(),
       press('Enter'),
+      throughIntro,
       press('Escape'),
       press('KeyH'),
       showDialog(),

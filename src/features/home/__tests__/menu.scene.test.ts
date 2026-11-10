@@ -32,6 +32,7 @@ import {
   shareMountEnded,
   shareMountSettles,
   showDialogInScene,
+  throughIntroInScene,
 } from '../../../test/testing'
 import { pause } from '../../../world/waves/waves'
 import { Message as ProfileMessage } from '../../profile/message'
@@ -436,6 +437,7 @@ describe('Home menu', () => {
           Scene.expect(lobbyScreen).toExist(),
           Scene.expect(manorButton).toBeAbsent(),
           emitPressedKey('Enter'),
+          ...throughIntroInScene(),
           Scene.expect(Scene.role('status')).toContainText(PREPARING),
           Scene.expect(lobbyScreen).toBeAbsent(),
         )
@@ -461,6 +463,7 @@ describe('Home menu', () => {
             'true',
           ),
           emitPressedKey('Enter'),
+          ...throughIntroInScene(),
           Scene.expect(Scene.role('status')).toContainText(
             'Get ready for endless wave 1.',
           ),

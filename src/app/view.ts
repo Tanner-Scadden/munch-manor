@@ -176,6 +176,7 @@ const statusText = (model: Model): string =>
   Phase.match(model.phase, {
     Ready: () =>
       `${GAME_TITLE}, an early alpha. ${isLobbyUp(model) ? LOBBY_MENU : HOME_MENU}`,
+    Arriving: () => 'Arriving at the manor. Press any key or tap to skip.',
     Preparation: ({ wave }) =>
       `Get ready for ${statusWave(model, wave)}. ${isOpenBreak(model) ? 'There is no timer this break. ' : ''}Press Enter, or use the Start wave button, to start it now.${practiceGateNote(model)}${keysHint(model)}`,
     Wave: ({ wave }) =>

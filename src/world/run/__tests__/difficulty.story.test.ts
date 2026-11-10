@@ -39,6 +39,7 @@ import {
   showDialog,
   startRunFromHome,
   startedRun,
+  throughIntro,
   tick,
 } from '../../../test/testing'
 import { focusOf, modifyFocus } from '../../party/party'
@@ -52,6 +53,7 @@ const pick = (difficulty: Difficulty) =>
 const preparationSpawns = (current: Model) =>
   Phase.match(current.phase, {
     Ready: () => [],
+    Arriving: () => [],
     Preparation: ({ spawns }) => spawns,
     Wave: ({ spawns }) => spawns,
     Paused: () => [],
@@ -87,6 +89,7 @@ describe('the first-time difficulty card', () => {
         }),
         pick('Easy'),
         closeDialog(),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(current.mode).toEqual(RunMode.Campaign())
@@ -133,6 +136,7 @@ describe('the first-time difficulty card', () => {
         expect(current.panelDialog.isOpen).toBe(false)
       }),
       press('Enter'),
+      throughIntro,
       Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.panelDialog.isOpen).toBe(false)

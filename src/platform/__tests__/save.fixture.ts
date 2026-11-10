@@ -18,6 +18,7 @@ export const learnedSave: PlayerSave = {
     },
     trapHint: 'Seen',
     introducedKinds: ZOMBIE_KIND_ORDER,
+    intro: 'Seen',
   },
   homeScreenTip: 'Dismissed',
   settings: {

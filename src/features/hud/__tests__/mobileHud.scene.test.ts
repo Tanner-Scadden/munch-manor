@@ -17,6 +17,7 @@ import {
   closeDialog,
   holdingSecond,
   measureSurface,
+  pauseButton,
   resolveFocusLobbyInScene,
   showDialog,
 } from '../../../test/testing'
@@ -57,7 +58,6 @@ const breakWithTraps: Model = modifyFocus(
 )
 
 const reloadButton = Scene.selector('.reload-button')
-const pauseButton = Scene.role('button', { name: 'Pause' })
 const muteButton = Scene.role('button', { name: 'Mute sound' })
 const musicButton = Scene.role('button', { name: 'Music' })
 const fullscreenButton = Scene.role('button', { name: 'Full screen' })

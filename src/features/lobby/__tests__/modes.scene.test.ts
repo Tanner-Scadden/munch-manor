@@ -23,6 +23,7 @@ import {
   retryButton,
   shareMountSettles,
   startRunInScene,
+  throughIntroInScene,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 
@@ -49,6 +50,7 @@ describe('Mode choice', () => {
         Scene.expect(endlessModeButton).toHaveAttr('aria-pressed', 'true'),
         Scene.expect(lobbyMode('Campaign')).toHaveAttr('aria-pressed', 'false'),
         Scene.click(lobbyStartButton),
+        ...throughIntroInScene(),
         Scene.expect(Scene.role('status')).toHaveText(
           `Get ready for endless wave 1. ${START_PROMPT} Keys on the ring: 0.`,
         ),

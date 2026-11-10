@@ -3,13 +3,13 @@ import { Array, Option, String } from 'effect'
 import type { Model } from '../app/model'
 import { rankOf, totalPointsOf } from '../world/heroes/rank'
 import { isCoop, leadSeatOf, playerCountOf } from '../world/party/party'
+import { isRunUnderway } from '../world/run/arrival'
 import type { Modifiers } from '../world/run/modifiers'
 import {
   type Difficulty,
   Phase,
   type PlayerSlot,
 } from '../world/schema/worldSchema'
-import { isRoundActive } from '../world/waves/waves'
 import { botNameOf, botSlotOf, isBotCrew } from './bots'
 import { type Room as CoopRoom, isInLobby, maybeRoomOf } from './coopRoom'
 
@@ -63,9 +63,10 @@ export const effectiveModifiersOf = (run: Model): Modifiers => {
   }
 }
 
-// NOTE: an online run in a round: its presses and frames go to the room.
+// NOTE: an online run under way, its intro too: its presses and frames go
+// to the room.
 export const isRunOn = (model: Model): boolean =>
-  isOnlineRun(model) && isRoundActive(model.phase)
+  isOnlineRun(model) && isRunUnderway(model.phase)
 
 // NOTE: a run with bots has no lobby: the human is their own name, and each
 // bot its goofy one.

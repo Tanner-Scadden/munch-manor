@@ -13,6 +13,7 @@ export const isPaused = Phase.isAnyOf(['Paused'])
 const canStart = (model: Model): boolean =>
   Phase.match(model.phase, {
     Ready: () => true,
+    Arriving: () => false,
     Preparation: () => false,
     Wave: () => false,
     Paused: () => true,
@@ -34,8 +35,8 @@ export const startsRun: {
   2,
   (before: Model, after: Model): boolean =>
     !isRoundActive(before.phase) &&
-    !Phase.isAnyOf(['Paused'])(before.phase) &&
-    Phase.isAnyOf(['Preparation'])(after.phase),
+    !Phase.isAnyOf(['Paused', 'Arriving'])(before.phase) &&
+    Phase.isAnyOf(['Arriving', 'Preparation'])(after.phase),
 )
 
 export const startFromButton: {

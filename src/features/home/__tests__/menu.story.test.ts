@@ -50,6 +50,7 @@ import {
   closeDialog,
   scoring,
   showDialog,
+  throughIntro,
 } from '../../../test/testing'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 import { scoreOf } from '../../../world/run/stats'
@@ -121,6 +122,7 @@ describe('the bests', () => {
       APPLICATION,
       Story.given(over),
       Story.message(Message.ClickedEndlessButton()),
+      throughIntro,
       Story.model(({ phase, stats, bests, runTally }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(stats.kills.Shambler).toBe(0)

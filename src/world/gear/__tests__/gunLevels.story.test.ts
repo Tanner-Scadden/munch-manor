@@ -37,6 +37,7 @@ import {
   pistolOf,
   pistolOnly,
   press,
+  throughIntro,
   tick,
   zombieAt,
 } from '../../../test/testing'
@@ -323,6 +324,7 @@ describe('a gun keeps its level while carried', () => {
       ),
       ...Array.makeBy(RESTART_GRACE_TICKS, () => tick(GRACE_TICK_MS)),
       press('Enter'),
+      throughIntro,
       Story.model(({ phase, seats: [{ player }] }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(player.arsenal).toEqual(pistolOnly())

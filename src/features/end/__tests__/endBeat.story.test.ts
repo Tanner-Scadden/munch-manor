@@ -19,7 +19,7 @@ import {
 } from '../../../shared/constants'
 import { noSavedRunRecords } from '../../../shared/playerData'
 import { lastHeart, readyModel, withKeys } from '../../../test/model.fixture'
-import { APPLICATION, press, tick } from '../../../test/testing'
+import { APPLICATION, press, throughIntro, tick } from '../../../test/testing'
 import { focusOf, seatCrew } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
 import {
@@ -145,6 +145,7 @@ describe('skipping and retrying', () => {
           expect(after.screenMs).toBe(doneMs('Munched'))
         }),
         press('Enter'),
+        throughIntro,
         Story.model(after => {
           expect(after.phase._tag).toBe('Preparation')
         }),
@@ -165,6 +166,7 @@ describe('skipping and retrying', () => {
           ),
         ),
         press('Enter'),
+        throughIntro,
         Story.model(after => {
           expect(after.phase._tag).toBe('Preparation')
           expect(after.mode).toEqual(RunMode.Endless())
@@ -196,6 +198,7 @@ describe('skipping and retrying', () => {
       APPLICATION,
       Story.given(onEndScreen(gameOver, doneMs('Munched'))),
       Story.message(Message.ClickedRetryButton()),
+      throughIntro,
       Story.model(after => {
         expect(after.phase._tag).toBe('Preparation')
       }),

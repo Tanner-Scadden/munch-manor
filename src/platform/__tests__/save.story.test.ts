@@ -41,6 +41,7 @@ import {
   jsonOf,
   resolveFocusLobby,
   showDialog,
+  throughIntro,
   tick,
   writeSave,
 } from '../../test/testing'
@@ -517,6 +518,7 @@ describe('loading the save', () => {
         }),
         Story.message(Message.ClickedCampaignButton()),
         tick(50),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(shownHints(current)).toEqual([])
@@ -546,6 +548,7 @@ describe('loading the save', () => {
         closeDialog(),
         writeSave(),
         tick(50),
+        throughIntro,
         Story.model(current => {
           expect(current.saveStatus).toBe('Read')
           expect(isPracticeGateHeld(current)).toBe(true)

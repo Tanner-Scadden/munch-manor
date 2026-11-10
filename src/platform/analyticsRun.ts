@@ -86,6 +86,7 @@ export const maybeRunOutcome: {
 
     return Phase.match(after.phase, {
       Ready: () => Option.some(QuitRun.make({})),
+      Arriving: () => Option.some(QuitRun.make({})),
       Preparation: () => Option.none(),
       Wave: () => Option.none(),
       Paused: () => Option.none(),

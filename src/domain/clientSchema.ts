@@ -204,6 +204,12 @@ export const DifficultyCard = defineTaggedUnion({
 })
 export type DifficultyCard = typeof DifficultyCard.Type
 
+// NOTE: the intro's skip in this run (src/features/intro/introBeat.ts): in
+// co-op only the client's drawing skips, to the knock, and waits there for
+// the room's slam.
+export const IntroSkip = Schema.Literals(['Watching', 'Skipped'])
+export type IntroSkip = typeof IntroSkip.Type
+
 // NOTE: Rattles' holler about the boarded kitchen (src/features/kitchen/kitchenCall.ts):
 // once a break, until the boards are open, a bubble points at them for a
 // few seconds. `Quiet` remembers the last break it called in, so a break is

@@ -12,7 +12,12 @@ import { PlaySound } from '../../../app/update/sound'
 import { type SoundEffect, positionVariation } from '../../../audio/audio'
 import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import { withKeys } from '../../../test/model.fixture'
-import { APPLICATION, checkPendingSounds } from '../../../test/testing'
+import {
+  APPLICATION,
+  changeModel,
+  checkPendingSounds,
+  press,
+} from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { heldKeys } from '../../../world/keys/keys'
 import {
@@ -20,9 +25,15 @@ import {
   type RoomWorld,
   actionCodeOf,
   ownWorldOf,
+  pastArrival,
   startRoomWorld,
 } from '../../../world/net/roomWorld'
-import { focusOf, leadSeatOf, maybePlayerAt } from '../../../world/party/party'
+import {
+  focusOf,
+  leadSeatOf,
+  maybePlayerAt,
+} from '../../../world/party/party'
+import { slamAtMs } from '../../../world/run/arrival'
 import {
   type Bullet,
   GameEvent,
@@ -38,6 +49,7 @@ import { freshRoom } from '../../coop/roomState'
 import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom, SendRoomFrames } from '../../coop/update'
+import { maybeIntroFrameOf } from '../../intro/introBeat'
 
 // An online co-op run in the root (src/app/update/coopPlay.ts): the room's World drawn
 // as the game, this player's own seat as the player, presses sent to the
@@ -51,7 +63,9 @@ const graduated: Model = modifyFields(asVeteran(initialModel), {
 
 const OWN_SLOT = 1
 
-const roomWorld = startRoomWorld([0, OWN_SLOT], 7, DEFAULT_ROOM_SETTINGS)
+const roomWorld = pastArrival(
+  startRoomWorld([0, OWN_SLOT], 7, DEFAULT_ROOM_SETTINGS),
+)
 
 const inRun = (world: RoomWorld, isAnchored = false): Model =>
   modifyFields(graduated, {
@@ -112,6 +126,63 @@ const queuedOf = (current: Model): ReadonlyArray<number> =>
     onNone: () => [],
     onSome: room => room.presses.queued,
   })
+
+describe("an online co-op run's intro", () => {
+  const fresh = startRoomWorld([0, OWN_SLOT], 7, {
+    ...DEFAULT_ROOM_SETTINGS,
+    intro: 'Full',
+  })
+  const arrivingAt = (elapsedMs: number): RoomWorld => ({
+    ...fresh,
+    world: modifyFields(fresh.world, {
+      phase: () => Phase.Arriving({ elapsedMs, cut: 'Full' }),
+    }),
+  })
+  const beatOf = (current: Model) =>
+    Option.map(maybeIntroFrameOf(current), ({ beat }) => beat)
+
+  it.effect(
+    "plays off the room's clock, and a skip waits at the door for the room's slam",
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(inRun(arrivingAt(0))),
+        Story.message(roomFrame(100)),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Arriving')
+          expect(beatOf(current)).toEqual(Option.some('Drive'))
+        }),
+        press('Escape'),
+        Story.model(current => {
+          expect(current.introSkip).toBe('Skipped')
+          expect(current.phase).toEqual(
+            Phase.Arriving({ elapsedMs: 0, cut: 'Full' }),
+          )
+          expect(beatOf(current)).toEqual(Option.some('Knock'))
+        }),
+        changeModel(current =>
+          showing(current, arrivingAt(slamAtMs('Full') - 500)),
+        ),
+        Story.message(roomFrame(200)),
+        Story.model(current => {
+          expect(beatOf(current)).toEqual(Option.some('Knock'))
+        }),
+        changeModel(current =>
+          showing(current, arrivingAt(slamAtMs('Full') + 20)),
+        ),
+        Story.message(roomFrame(300)),
+        Story.model(current => {
+          expect(beatOf(current)).toEqual(Option.some('Slam'))
+        }),
+        changeModel(current => showing(current, pastArrival(fresh))),
+        Story.message(roomFrame(400)),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Preparation')
+          expect(current.stats.runMs).toBeLessThan(500)
+        }),
+      ),
+  )
+})
 
 describe('an online co-op run', () => {
   it.effect(

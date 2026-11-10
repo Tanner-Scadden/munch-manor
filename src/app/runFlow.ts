@@ -6,12 +6,12 @@ import {
   raiseDebutCard,
   settleLessons,
 } from '../features/onboarding/onboarding'
-import { FIRST_PREPARATION_MS } from '../shared/constants'
 import { rollDare } from '../world/dare/dare'
 import { seatCrew, withStartingHearts } from '../world/party/party'
+import { beginArrival } from '../world/run/arrival'
 import { withWorld } from '../world/schema/world'
+import type { IntroCut } from '../world/schema/worldSchema'
 import { SeatAction } from '../world/step/stepWorld'
-import { beginPreparation } from '../world/waves/waves'
 import { type Model, Phase, Round, type RunMode } from './model'
 import { freshRun } from './runReset'
 import { actAsLead } from './update/action'
@@ -19,6 +19,12 @@ import { actAsLead } from './update/action'
 // Starting, resuming, and starting a wave from the player's side: each
 // resets or reads client state (the run's fields, the lessons settled from
 // the save, the new zombie card) around the World's own step.
+
+// NOTE: a run opens on the intro (src/world/run/arrival.ts): the whole
+// drive up the first time on this device, the knock and the slam after.
+// The first break begins on the slam.
+const introCutOf = (model: Model): IntroCut =>
+  model.introSeen === 'Seen' ? 'Short' : 'Full'
 
 // NOTE: a `?local=N` link seats N players at this keyboard, and the
 // lobby's bots sit after them, all before the first wave is rolled, so the
@@ -33,9 +39,10 @@ const startRun = (model: Model, mode: RunMode): Model => {
       mode,
       lessons: settleLessons(model.lessons),
       crewBots: bots,
+      introSeen: 'Seen',
     },
     world =>
-      beginPreparation(
+      beginArrival(
         withStartingHearts(
           seatCallings(
             seatCrew(rollDare(world), model.localPlayers + bots.length),
@@ -43,8 +50,7 @@ const startRun = (model: Model, mode: RunMode): Model => {
             Array.map(bots, ({ calling }) => calling),
           ),
         ),
-        1,
-        FIRST_PREPARATION_MS,
+        introCutOf(model),
       ),
   )
 }
@@ -64,6 +70,7 @@ export const startOrResume: {
 } = Function.dual(2, (model: Model, mode: RunMode): Model =>
   Phase.match(model.phase, {
     Ready: () => startRun(model, mode),
+    Arriving: () => model,
     Preparation: () => model,
     Wave: () => model,
     Paused: ({ round }) => resume(model, round),
