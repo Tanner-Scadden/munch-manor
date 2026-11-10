@@ -236,8 +236,8 @@ flowchart LR
 The lore choices that most change these charts, from `LORE.md`:
 
 1. What goes in the pool of things the dare asks for, and how does each one come to you?
-2. Rattles has no shop now: does he stay as a character, or go?
+2. What does Rattles say now? He stays as the 1924 daredevil who gives hints.
 3. Which feats open which display cases, and how many skeleton keys a room and a fridge pull cost?
 4. Do rooms roll, or only what is in them?
 
-Settled on 2026-11-10: no shop (feats open display cases, guns level up with use, zombies drop skeleton keys for rooms and the fridge); endless ammo with reloads kept; your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.
+The build is planned in [`docs/ESCAPE_PLAN.md`](./docs/ESCAPE_PLAN.md). Settled on 2026-11-10: no shop (feats open display cases, guns level up with use, zombies drop skeleton keys for rooms and the fridge); endless ammo with reloads kept; your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.

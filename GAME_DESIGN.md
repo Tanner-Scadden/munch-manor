@@ -62,7 +62,7 @@ Decided with the owner on 2026-10-29. This replaces the first playable's one-roo
 
 ### Escape the manor
 
-Proposed by the owner on 2026-11-09, shaped with Demi, and set as the direction on 2026-11-10: the Munch Manor dare. Its parts are proposals until they are built. The story, the games it borrows from, and the open questions are in [`LORE.md`](./LORE.md); this section holds what it would change in the game. The flow is charted in [`FLOW.md`](./FLOW.md).
+Proposed by the owner on 2026-11-09, shaped with Demi, and set as the direction on 2026-11-10: the Munch Manor dare. Its parts are proposals until they are built. The story, the games it borrows from, and the open questions are in [`LORE.md`](./LORE.md); this section holds what it would change in the game. The flow is charted in [`FLOW.md`](./FLOW.md), and the build, layer by layer, is planned in [`docs/ESCAPE_PLAN.md`](./docs/ESCAPE_PLAN.md).
 
 - **The goal.** A campaign run becomes an escape: you are locked in, find what the dare asks for, and get out the front door. The waves stay as the pressure, so a player who ignores the hunt still plays the wave game. It answers "a goal beyond surviving" in the sketch above.
 - **The premise: a dare (owner, 2026-11-10).** Everyone in town knows Munch Manor: a hundred years ago the Munches threw a dinner party, the doors shut, and nobody came out. Kids dare each other to go in, bring back proof, and get out. Little friction to get in, a story people tell. The party never ended: Uncle Chunk is still the host, the zombies are the party's guests and every daredevil who failed, and Rattles has no shop; whether he stays as a character is open. See "The Munch Manor twist" in `LORE.md`.

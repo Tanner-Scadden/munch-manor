@@ -215,7 +215,7 @@ What this changes is in "Escape the manor" in `GAME_DESIGN.md`: the shop, Rattle
 
 ### Rattles
 
-With no shop, Rattles has no stall. Whether he stays as a character (the first daredevil, from 1924, who gives hints) or leaves the game is open, with Demi reinventing him.
+With no shop, Rattles has no stall. He stays as a character (owner, 2026-11-10): the first daredevil, from 1924, who never got out and hollers hints in his bubble. What he says, and whether his look changes, Demi is reinventing.
 
 ### PLAY is the dare, the lobby is the dare card
 
@@ -354,7 +354,7 @@ The lore choices that most change the game, roughly in order.
 
 1. **The dare.** The direction, chosen 2026-11-10. Your friends write the dare card (owner, 2026-11-10). Left: exactly what you bring back for it.
 2. **What goes in the pool?** Which things the dare asks for, and how each one comes back to you (see "What the dare asks for changes every run").
-3. **Rattles.** No shop, so no shopkeeper: does he stay as a character, or go? (Demi is reinventing him.)
+3. **Rattles.** He stays as the 1924 daredevil who gives hints (owner, 2026-11-10). Left: what he says, and his look.
 4. **Which feats open which cases,** and how many skeleton keys a room and a fridge pull cost.
 5. **What is a Bone?** What you earn across runs, now that the run's own currency is skeleton keys.
 6. **Do rooms roll, or only what is in them?** See "What it goes against".
