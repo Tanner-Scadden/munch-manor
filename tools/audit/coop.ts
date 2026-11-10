@@ -343,6 +343,22 @@ const program = Effect.gen(function* () {
   }
   yield* wait(400)
   yield* shot(host, 'countdown')
+
+  // THE INTRO
+
+  // NOTE: the room's first run opens on the whole intro
+  // (src/world/run/arrival.ts). A key skips each page's own drawing to the
+  // door, and the room's slam starts the first break for everyone at once.
+  for (const page of everyone) {
+    yield* attempt(() => page.keyboard.press('Escape'))
+  }
+  yield* untilWithin(
+    "the room's slam starts the first break on every page",
+    Effect.map(Effect.forEach(everyone, readoutOf), readouts =>
+      Array.every(readouts, readout => readout?.phase === 'Preparation'),
+    ),
+    25_000,
+  )
   const netsOfEveryone = Effect.forEach(everyone, netOf, {
     concurrency: 'unbounded',
   })
