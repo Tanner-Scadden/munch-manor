@@ -322,7 +322,7 @@ describe('drops', () => {
   )
 
   it.effect(
-    'wave 1 drops one Hot Sauce on its third kill and nothing else',
+    'wave 1 drops one Wind-Up Key on its third kill and nothing else',
     () => {
       const victims = victimsOf('Shambler', 5)
       return Story.story(
@@ -539,7 +539,7 @@ describe('explaining a power-up once', () => {
 
 describe('effects', () => {
   it.effect(
-    'Hot Sauce tops off the magazine, fires faster, spends no rounds, and never reloads',
+    'the Wind-Up Key tops off the magazine, fires faster, spends no rounds, and never reloads',
     () => {
       const loaded = modifyFocus(fighting, {
         player: player =>
@@ -560,30 +560,33 @@ describe('effects', () => {
     },
   )
 
-  it.effect('grabbing Hot Sauce mid-reload fills the magazine at once', () => {
-    const reloading = modifyFocus(fighting, {
-      player: player =>
-        modifyFields(
-          withPistol(player, pistol => ({ ...pistol, loaded: 0 })),
-          {
-            reload: () =>
-              Reload.Reloading({ remainingMs: 700, durationMs: 800 }),
-          },
-        ),
-    })
-    return Story.story(
-      APPLICATION,
-      Story.given(underPlayer(reloading, 'RapidFire')),
-      tick(FRAME_MS),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
-        expect(pistolOf(player).loaded).toBeGreaterThan(0)
-      }),
-    )
-  })
+  it.effect(
+    'grabbing the Wind-Up Key mid-reload fills the magazine at once',
+    () => {
+      const reloading = modifyFocus(fighting, {
+        player: player =>
+          modifyFields(
+            withPistol(player, pistol => ({ ...pistol, loaded: 0 })),
+            {
+              reload: () =>
+                Reload.Reloading({ remainingMs: 700, durationMs: 800 }),
+            },
+          ),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(underPlayer(reloading, 'RapidFire')),
+        tick(FRAME_MS),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
+          expect(pistolOf(player).loaded).toBeGreaterThan(0)
+        }),
+      )
+    },
+  )
 
   it.effect(
-    'Mean Beans doubles the damage and adds knockback to every shot',
+    'the Family Silver doubles the damage and adds knockback to every shot',
     () =>
       Story.story(
         APPLICATION,
@@ -599,7 +602,7 @@ describe('effects', () => {
       ),
   )
 
-  it.effect('Zoomy Socks make the player run faster', () => {
+  it.effect('Dancing Shoes make the player run faster', () => {
     const startX = focusOf(fighting).player.x
     return Story.story(
       APPLICATION,
@@ -629,7 +632,7 @@ describe('effects', () => {
         ),
     })
 
-  it.effect('Shish Kebullets send one shot through four zombies', () =>
+  it.effect('Hat Pins send one shot through four zombies', () =>
     Effect.gen(function* () {
       yield* Story.story(
         APPLICATION,
@@ -661,7 +664,7 @@ describe('effects', () => {
   )
 
   it.effect(
-    'a Big Burp blasts every zombie in reach and pays for the kills',
+    'a Dinner Gong blasts every zombie in reach and pays for the kills',
     () => {
       const { x, y } = focusOf(fighting).player
       const near = zombieOf('Shambler', 300, x + 50, y, { hp: BURP_DAMAGE })

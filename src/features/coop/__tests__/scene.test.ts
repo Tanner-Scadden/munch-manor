@@ -270,7 +270,7 @@ describe('the lobby', () => {
       ),
       Scene.expect(Scene.role('button', { name: 'Keep going' })).not.toExist(),
       Scene.expect(
-        Scene.role('button', { name: 'Nightmare, locked' }),
+        Scene.role('button', { name: 'Triple Dog Dare, locked' }),
       ).toHaveAttr('aria-disabled', 'true'),
       Scene.click(Scene.role('button', { name: 'Endless' })),
       Scene.Command.resolve(
@@ -282,7 +282,7 @@ describe('the lobby', () => {
         }),
         Message.CompletedChangeLobby(),
       ),
-      Scene.click(Scene.role('button', { name: 'Hard' })),
+      Scene.click(Scene.role('button', { name: 'Triple Dare' })),
       Scene.Command.resolve(
         ChangeLobby({
           change: LobbyChange.ChangedPicks({
@@ -392,7 +392,7 @@ describe('the lobby', () => {
         COOP_SCENE,
         Scene.given(guest('Locked')),
         Scene.expect(Scene.selector('.coop-nudge')).toHaveText(
-          'Beat Hard to unlock',
+          'Beat Triple Dare first',
         ),
         Scene.expect(Scene.selector('.coop-crown-flash-b')).not.toExist(),
       )
@@ -451,12 +451,14 @@ describe('the lobby', () => {
           }),
         }),
       ),
-      Scene.expect(Scene.selector('[aria-label="Keep going, Hard"]')).toExist(),
+      Scene.expect(
+        Scene.selector('[aria-label="Keep going, Triple Dare"]'),
+      ).toExist(),
       Scene.expect(Scene.role('button', { name: 'Keep going' })).toHaveAttr(
         'aria-disabled',
         'true',
       ),
-      Scene.expect(Scene.role('button', { name: 'Hard' })).toHaveAttr(
+      Scene.expect(Scene.role('button', { name: 'Triple Dare' })).toHaveAttr(
         'aria-pressed',
         'true',
       ),

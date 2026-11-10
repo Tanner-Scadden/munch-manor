@@ -55,7 +55,7 @@ const check = (url: string) =>
     yield* attempt(() => page.keyboard.press('Enter'))
     yield* wait(800)
 
-    const normal = page.getByRole('button', { name: /^Normal/ })
+    const normal = page.getByRole('button', { name: /^Double Dare/ })
     if ((yield* attempt(() => normal.count())) > 0) {
       yield* attempt(() => normal.first().click())
       yield* wait(800)

@@ -42,10 +42,10 @@ export type SharedRun = Readonly<{
 }>
 
 const SHOUTED: Readonly<Record<Difficulty, string>> = {
-  Easy: 'Easy',
-  Normal: 'Normal',
-  Hard: 'HARD',
-  Nightmare: 'NIGHTMARE',
+  Easy: 'Dare',
+  Normal: 'Double Dare',
+  Hard: 'TRIPLE DARE',
+  Nightmare: 'TRIPLE DOG DARE',
 }
 
 const splatted = (kills: number): string =>

@@ -156,7 +156,7 @@ type PickupStats = Readonly<{
 export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
   RapidFire: {
     name: PICKUP_NAMES.RapidFire,
-    blurb: 'FASTER, NO RELOADS',
+    blurb: 'WOUND UP! NO RELOADS',
     weight: 24,
     effect: PickupEffect.Boost({ boost: 'RapidFire' }),
     sound: 'GrabHotSauce',
@@ -164,7 +164,7 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
   },
   Damage: {
     name: PICKUP_NAMES.Damage,
-    blurb: 'DOUBLE DAMAGE',
+    blurb: 'FANCY! DOUBLE DAMAGE',
     weight: 22,
     effect: PickupEffect.Boost({ boost: 'Damage' }),
     sound: 'GrabMeanBeans',
@@ -172,7 +172,7 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
   },
   Speed: {
     name: PICKUP_NAMES.Speed,
-    blurb: 'RUN FASTER',
+    blurb: 'CHA-CHA! RUN FASTER',
     weight: 16,
     effect: PickupEffect.Boost({ boost: 'Speed' }),
     sound: 'GrabZoomySocks',
@@ -180,7 +180,7 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
   },
   Pierce: {
     name: PICKUP_NAMES.Pierce,
-    blurb: 'SHOTS GO THROUGH',
+    blurb: 'SHOTS POKE THROUGH',
     weight: 20,
     effect: PickupEffect.Boost({ boost: 'Pierce' }),
     sound: 'GrabKebullets',
@@ -188,7 +188,7 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
   },
   Burp: {
     name: PICKUP_NAMES.Burp,
-    blurb: 'EVERYBODY BACK!',
+    blurb: 'BONG! EVERYBODY BACK!',
     weight: 10,
     effect: PickupEffect.Burp(),
     sound: 'GrabBurp',
