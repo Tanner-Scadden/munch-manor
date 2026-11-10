@@ -173,9 +173,16 @@ const GUN_STATS: ReadonlyArray<readonly [GuideStat, StatReader]> = [
 const everyTier = (weapon: WeaponKind): ReadonlyArray<number> =>
   Array.makeBy(maxTier(weapon) + 1, tier => tier)
 
+// NOTE: the guns the guide lists: Rattles' three, then the old manor's
+// two. Only the pistol is sold; the rest sit in display cases
+// (src/world/feats/cases.ts).
+const CASE_GUNS: ReadonlyArray<WeaponKind> = ['Rifle', 'Blunderbuss']
+
+const GUIDE_GUNS: ReadonlyArray<WeaponKind> = [...SHOP_GUNS, ...CASE_GUNS]
+
 const gunBest = (read: StatReader): number =>
   Math.max(
-    ...Array.flatMap(SHOP_GUNS, weapon =>
+    ...Array.flatMap(GUIDE_GUNS, weapon =>
       Array.map(everyTier(weapon), tier => read(weapon, tier)),
     ),
   )
@@ -227,6 +234,8 @@ const gunEntries = (): ReadonlyArray<GuideEntry> => [
   gunEntry('Pistol', 'Pistol', 'Always free.'),
   caseGunEntry('Shotgun', 'Seven pellets. Up close only.'),
   caseGunEntry('Smg', 'Fast and a little wobbly.'),
+  caseGunEntry('Rifle', 'Slow. Shoots through a whole line.'),
+  caseGunEntry('Blunderbuss', 'A wall of pellets. Big shove.'),
   {
     id: 'LaserSight',
     section: 'Guns',

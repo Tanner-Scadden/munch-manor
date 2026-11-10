@@ -226,7 +226,66 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     maybeSpentClip: Option.none(),
     sound: 'PowerDown',
   },
+  // NOTE: the old manor's two guns, only out of the display cases
+  // (src/world/feats/cases.ts), and never out of ammo. Old Thunder, the
+  // trophy room's hunting rifle, is slow and heavy and each shot runs through
+  // a line of zombies (GUN_PIERCE below). The Big Blunder from over the
+  // mantel is a wide, short spray of pellets with a big shove.
+  Rifle: {
+    name: GUN_NAMES.Rifle,
+    roundsLabel: 'rounds',
+    fireIntervalMs: 900,
+    magazine: 5,
+    reloadMs: 1800,
+    damage: 5,
+    pellets: 1,
+    spread: 0,
+    speedJitter: 0,
+    bulletSpeed: 420,
+    bulletLifetimeMs: 700,
+    knockback: 150,
+    muzzleReach: 11,
+    recoilMs: 240,
+    recoilKickPx: 3,
+    recoilSquash: 0.22,
+    shakeTrauma: 0.22,
+    flash: 'Blast',
+    casing: 'Shell',
+    maybeSpentClip: Option.none(),
+    sound: 'RifleShot',
+  },
+  Blunderbuss: {
+    name: GUN_NAMES.Blunderbuss,
+    roundsLabel: 'pellets',
+    fireIntervalMs: 850,
+    magazine: 2,
+    reloadMs: 1500,
+    damage: 1,
+    pellets: 12,
+    spread: 0.95,
+    speedJitter: 0.3,
+    bulletSpeed: 230,
+    bulletLifetimeMs: 200,
+    knockback: 320,
+    muzzleReach: 10,
+    recoilMs: 260,
+    recoilKickPx: 4,
+    recoilSquash: 0.32,
+    shakeTrauma: 0.4,
+    flash: 'Blast',
+    casing: 'Hull',
+    maybeSpentClip: Option.none(),
+    sound: 'BlunderbussBlast',
+  },
 }
+
+// NOTE: the zombies a gun's own shot runs through after the first, on top of
+// Hat Pins and a Crispy perk. Only Old Thunder pierces by itself.
+const GUN_PIERCE: Readonly<Partial<Record<WeaponKind, number>>> = {
+  Rifle: 3,
+}
+
+export const gunPierce = (kind: WeaponKind): number => GUN_PIERCE[kind] ?? 0
 
 export const SIDEARM: WeaponKind = 'Pistol'
 
@@ -403,6 +462,34 @@ export const UPGRADE_TIERS: Readonly<
     { kills: killsFor(2), boost: noBoost },
   ],
   Freeze: [],
+  Rifle: [
+    {
+      kills: killsFor(0),
+      boost: { ...noBoost, magazine: 2 },
+    },
+    {
+      kills: killsFor(1),
+      boost: { ...noBoost, fireIntervalMs: -150, reloadMs: -400 },
+    },
+    {
+      kills: killsFor(2),
+      boost: { ...noBoost, damage: 2, knockback: 30 },
+    },
+  ],
+  Blunderbuss: [
+    {
+      kills: killsFor(0),
+      boost: { ...noBoost, pellets: 3 },
+    },
+    {
+      kills: killsFor(1),
+      boost: { ...noBoost, reloadMs: -350, knockback: 60 },
+    },
+    {
+      kills: killsFor(2),
+      boost: { ...noBoost, damage: 1, magazine: 1 },
+    },
+  ],
 }
 
 export const maxTier = (kind: WeaponKind): number => UPGRADE_TIERS[kind].length
@@ -478,12 +565,18 @@ export const PERK_RULES: PerkRules = {
   heartyMagazineScale: 1.25,
 }
 
-// NOTE: the guns Rattles sells. Only these cook at the stove; the knife,
-// the Clang Pan, and the fridge's weapons do not.
+// NOTE: the guns Rattles sells. These and the display cases' two cook at
+// the stove; the knife, the Clang Pan, and the fridge's weapons do not.
 export const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
 
+const COOKABLE_GUNS: ReadonlyArray<WeaponKind> = [
+  ...SHOP_GUNS,
+  'Rifle',
+  'Blunderbuss',
+]
+
 export const isCookable = (kind: WeaponKind): boolean =>
-  Array.contains(SHOP_GUNS, kind)
+  Array.contains(COOKABLE_GUNS, kind)
 
 export const perkDamage: {
   (damage: number): (gun: CarriedGun) => number

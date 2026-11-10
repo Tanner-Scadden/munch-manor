@@ -122,8 +122,14 @@ describe('the ladder', () => {
     expect(maybeLevelProgress(gun('Freeze', 0, 50))).toEqual(Option.none())
   })
 
-  test('every gun Rattles sells has three tiers, each changing its stats', () => {
-    const GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
+  test('every gun in the shop or a case has three tiers, each changing its stats', () => {
+    const GUNS: ReadonlyArray<WeaponKind> = [
+      'Pistol',
+      'Shotgun',
+      'Smg',
+      'Rifle',
+      'Blunderbuss',
+    ]
     Array.forEach(GUNS, kind => {
       expect(maxTier(kind)).toBe(3)
       Array.forEach([0, 1, 2], tier => {
@@ -164,6 +170,32 @@ describe('kills level a gun', () => {
           ).toEqual([['Smg', 1]])
           expect(tierName('Smg', smg.tier)).toBe('Beefy Chatterbox')
         }),
+      ),
+  )
+
+  it.effect(
+    "the old manor's guns level the same way: a 40th kill makes them Beefy",
+    () =>
+      Effect.forEach(['Rifle', 'Blunderbuss'] as const, kind =>
+        Story.story(
+          APPLICATION,
+          Story.given(killShot(holdingSecond(gun(kind, 0, 39)), kind)),
+          tick(FRAME_MS),
+          Story.model(current => {
+            const leveled = smgOf(current)
+            expect([leveled.kind, leveled.tier, leveled.kills]).toEqual([
+              kind,
+              1,
+              40,
+            ])
+            expect(
+              Array.map(leveledIn(current), ({ weapon, tier }) => [
+                weapon,
+                tier,
+              ]),
+            ).toEqual([[kind, 1]])
+          }),
+        ),
       ),
   )
 

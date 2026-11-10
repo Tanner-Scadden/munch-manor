@@ -57,6 +57,8 @@ const GUN_BASE: Palette = {
   B: '#4ab8f0',
   C: '#c8f4ff',
   N: '#ff7ab8',
+  Y: '#c9962b',
+  J: '#f0cf6a',
 }
 
 const trimmed = (tier: number): Palette =>
@@ -133,6 +135,27 @@ const GUN_PIXELS: Readonly<Record<WeaponKind, ReadonlyArray<string>>> = {
     '.KBBBBBBBKKKK.',
     '..KBBBBBBK....',
     '...KKKKKK.....',
+  ],
+  // NOTE: the display cases' two: Old Thunder, a long hunting rifle with a
+  // brass band, and the Big Blunder, a brass barrel flaring to a bell.
+  Rifle: [
+    '........KKKKKKKKKKKKKKKKKKKK',
+    'VV.....KGHHHHHHHHHHHHHHHHHHK',
+    'VWW...KKGGGGGGGGGGGGGGGGGGK.',
+    'VWWWWWWWWWWWWYYWWWWWWKKKKK..',
+    'VWWWWWKMKWWWWYYWWWWWK.......',
+    '.VVWWK.K..VVVVVVVVVK........',
+    '...VVV......................',
+  ],
+  Blunderbuss: [
+    '..................KKKK',
+    '.................KYJJK',
+    'VV.......KKKKKKKKYYYJK',
+    'VWW.....KYJJJJJJJJYYJK',
+    'VWWWWWWWKYYYYYYYYYYYJK',
+    'VWWWWWKMKKKKKKKKKYYYJK',
+    '.VVWWK.K.........KYJJK',
+    '...VVV............KKKK',
   ],
 }
 

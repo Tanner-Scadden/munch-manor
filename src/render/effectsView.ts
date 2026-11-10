@@ -69,6 +69,7 @@ import type {
   BulletGlaze,
   DoorId,
   ParticleKind,
+  WeaponKind,
 } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'
 import { type Blast, Phase, type Popup } from '../world/schema/worldSchema'
@@ -120,14 +121,38 @@ const BULLET_LOOKS: Readonly<Record<BulletGlaze, BulletLook>> = {
   },
 }
 
+// NOTE: a plain shot from the display cases' two guns has its own look: Old
+// Thunder's a white-hot streak, the Big Blunder's a short gray lead shot. A
+// boost's or a perk's glaze shows over it.
+const OLD_GUN_LOOKS: Readonly<Partial<Record<WeaponKind, BulletLook>>> = {
+  Rifle: {
+    size: BULLET_SIZE,
+    color: '#fff6d0',
+    trail: 'rgba(255, 224, 140, 0.7)',
+    trailPx: BULLET_TRAIL_PX + 4,
+  },
+  Blunderbuss: {
+    size: BULLET_SIZE,
+    color: '#c9c3b0',
+    trail: 'rgba(120, 112, 100, 0.6)',
+    trailPx: BULLET_TRAIL_PX - 1,
+  },
+}
+
+const lookOf = (glaze: BulletGlaze, weapon: WeaponKind): BulletLook =>
+  glaze === 'Plain'
+    ? (OLD_GUN_LOOKS[weapon] ?? BULLET_LOOKS.Plain)
+    : BULLET_LOOKS[glaze]
+
 export const bulletShapes = ({
   x,
   y,
   velocityX,
   velocityY,
   glaze,
+  weapon,
 }: Bullet): ReadonlyArray<Canvas.Shape> => {
-  const look = BULLET_LOOKS[glaze]
+  const look = lookOf(glaze, weapon)
   const speed = Math.max(1, Math.hypot(velocityX, velocityY))
   const half = Math.floor(look.size / 2)
   return [

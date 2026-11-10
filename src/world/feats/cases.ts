@@ -53,8 +53,8 @@ export type CaseSpot = Readonly<{
 }>
 
 // NOTE: hand-picked floor tiles against a wall, clear of the doors, the
-// stall, the fridge, the pantry, and the valve: two in the parlour, one in
-// the kitchen.
+// stall, the fridge, the pantry, and the valve: three in the parlour, two
+// in the kitchen.
 export const CASE_SPOTS: Array.NonEmptyReadonlyArray<CaseSpot> = [
   { tile: { column: 8, row: 2 }, room: 'Parlour', look: 'Rack', isNear: true },
   {
@@ -67,6 +67,13 @@ export const CASE_SPOTS: Array.NonEmptyReadonlyArray<CaseSpot> = [
     tile: { column: 1, row: -5 },
     room: 'Kitchen',
     look: 'Trophy',
+    isNear: false,
+  },
+  { tile: { column: 1, row: 13 }, room: 'Parlour', look: 'Rack', isNear: true },
+  {
+    tile: { column: 18, row: -2 },
+    room: 'Kitchen',
+    look: 'Glass',
     isNear: false,
   },
 ]
@@ -184,18 +191,24 @@ const poolFor = (
     ({ feat }) => scaleFeat(feat, difficulty),
   )
 
-const PRIZES: Array.NonEmptyReadonlyArray<CasePrize> = [
+// NOTE: the prizes the near cases draw from; the one left over joins Old
+// Thunder, which only ever sits in a case further in, behind a harder feat.
+const NEAR_PRIZES: Array.NonEmptyReadonlyArray<CasePrize> = [
   'Shotgun',
   'Smg',
+  'Blunderbuss',
   'LaserSight',
 ]
+
+const FAR_PRIZES: Array.NonEmptyReadonlyArray<CasePrize> = ['Rifle']
 
 const CASES_SEED_SALT = 0xca5e5eed
 
 // NOTE: a run's cases, from its seed through their own salted generator,
-// so the roll moves no other. The prizes are shuffled over the spots; the
-// near spots take distinct feats from the near pool in turn, the far ones
-// from the far pool.
+// so the roll moves no other. The near spots take the near prizes in a
+// shuffled order and the far ones the far prizes with whatever the near
+// spots left; the near spots take distinct feats from the near pool in
+// turn, the far ones from the far pool. Each prize sits in one case.
 export const rollCases: {
   (difficulty: Difficulty): (seed: number) => ReadonlyArray<DisplayCase>
   (seed: number, difficulty: Difficulty): ReadonlyArray<DisplayCase>
@@ -203,23 +216,29 @@ export const rollCases: {
   2,
   (seed: number, difficulty: Difficulty): ReadonlyArray<DisplayCase> => {
     const start = (seed ^ CASES_SEED_SALT) >>> 0
-    const [prizeState, prizes] = shuffle(start, PRIZES)
+    const nearSpots = Array.filter(CASE_SPOTS, spot => spot.isNear)
+    const farSpots = Array.filter(CASE_SPOTS, spot => !spot.isNear)
+    const [nearPrizeState, nearPrizes] = shuffle(start, NEAR_PRIZES)
+    const [prizeState, farPrizes] = shuffle(
+      nearPrizeState,
+      Array.appendAll(FAR_PRIZES, Array.drop(nearPrizes, nearSpots.length)),
+    )
     const [nearState, near] = shuffle(
       prizeState,
       poolFor(NEAR_FEATS, difficulty),
     )
     const [, far] = shuffle(nearState, poolFor(FAR_FEATS, difficulty))
     const draws = { near, far }
-    const nearSpots = Array.filter(CASE_SPOTS, spot => spot.isNear)
     return Array.map(CASE_SPOTS, (spot, index): DisplayCase => {
       const pool = spot.isNear ? draws.near : draws.far
+      const prizes = spot.isNear ? nearPrizes : farPrizes
       const place = spot.isNear
         ? nearSpots.indexOf(spot)
-        : index - nearSpots.length
+        : farSpots.indexOf(spot)
       return {
         id: index,
         spot: index,
-        prize: Option.getOrElse(Array.get(prizes, index), () => prizes[0]),
+        prize: Option.getOrElse(Array.get(prizes, place), () => prizes[0]),
         feat: Option.getOrElse(
           Array.get(pool, place % pool.length),
           () => pool[0],

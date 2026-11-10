@@ -40,6 +40,8 @@ export type Invulnerability = typeof Invulnerability.Type
 
 // NOTE: the Cooker, the Pan, and Brain Freeze come only out of the Mystery
 // Leftovers fridge (src/world/fridge/leftovers.ts); Rattles never sells them.
+// The hunting rifle and the blunderbuss come only out of the display cases
+// (src/world/feats/cases.ts).
 export const WeaponKind = Schema.Literals([
   'Pistol',
   'Shotgun',
@@ -48,6 +50,8 @@ export const WeaponKind = Schema.Literals([
   'Cooker',
   'Pan',
   'Freeze',
+  'Rifle',
+  'Blunderbuss',
 ])
 export type WeaponKind = typeof WeaponKind.Type
 

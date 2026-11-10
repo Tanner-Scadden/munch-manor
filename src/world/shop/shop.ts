@@ -327,7 +327,12 @@ const PISTOL_LINE: GunLine = { weapon: 'Pistol', gun: 'Pistol' }
 
 // NOTE: the guns in display cases (src/world/feats/cases.ts), never sold
 // (owner, 2026-11-10): a card only once carried, as a fridge weapon's.
-const CASE_WEAPONS: ReadonlyArray<WeaponKind> = ['Shotgun', 'Smg']
+const CASE_WEAPONS: ReadonlyArray<WeaponKind> = [
+  'Shotgun',
+  'Smg',
+  'Rifle',
+  'Blunderbuss',
+]
 
 // NOTE: a fridge weapon with tiers has a card only while a player carries
 // it, with its tier and kills. Brain Freeze has no tiers, so it has none.

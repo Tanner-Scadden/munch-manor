@@ -35,6 +35,8 @@ export const GUN_NAMES: Readonly<Record<WeaponKind, string>> = {
   Cooker: 'Pressure Cooker',
   Pan: 'Clang Pan',
   Freeze: 'Brain Freeze',
+  Rifle: 'Old Thunder',
+  Blunderbuss: 'Big Blunder',
 }
 
 // NOTE: every gun's upgrade tiers share one ladder of tier words around its

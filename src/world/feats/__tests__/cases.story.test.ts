@@ -79,7 +79,7 @@ describe('the roll', () => {
           Array.map(cases, ({ prize }) => prize),
           (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0),
         ),
-      ).toEqual(['LaserSight', 'Shotgun', 'Smg'])
+      ).toEqual(['Blunderbuss', 'LaserSight', 'Rifle', 'Shotgun', 'Smg'])
       expect(
         Array.every(cases, ({ state }) => CaseState.isAnyOf(['Locked'])(state)),
       ).toBe(true)

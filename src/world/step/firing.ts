@@ -30,6 +30,7 @@ import {
   beginReload,
   canReload,
   finishReload,
+  gunPierce,
   heldGun,
   heldLoaded,
   heldWeapon,
@@ -141,7 +142,7 @@ const makeBullet = (
 
 // NOTE: a cooked gun's perk (src/world/kitchen/stove.ts) rides on its load: Spicy hits
 // harder and glows hot when no boost tints the shot, and Crispy skewers one
-// zombie more.
+// zombie more. Old Thunder's own pierce adds on top.
 const withPierce = (pierce: Pierce, extra: number): Pierce =>
   extra <= 0
     ? pierce
@@ -160,7 +161,10 @@ const loadOf = (boosts: Boosts, gun: CarriedGun): Load => {
     }),
     weapon: gun.kind,
     glaze: glaze === 'Plain' && gun.perk === 'Spicy' ? 'Spicy' : glaze,
-    pierce: withPierce(bulletPierce(boosts), perkPierce(gun)),
+    pierce: withPierce(
+      bulletPierce(boosts),
+      perkPierce(gun) + gunPierce(gun.kind),
+    ),
   }
 }
 
