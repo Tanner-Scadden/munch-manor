@@ -265,8 +265,20 @@ export const campaignMetrics: {
       ),
     ]
     if (summary.kind === 'Endless') {
+      // NOTE: each wave's mean length, for the ramp an escape plays past
+      // wave 10 (RAMP_TARGETS in targets.ts).
+      const lengths = Array.map(waves, wave =>
+        metric(
+          `${id}.length.w${wave}`,
+          `${title}: wave ${wave} length (seconds)`,
+          valueAt(summary.lengthSecondsByWave, wave),
+          'waveLength',
+          'Seconds',
+        ),
+      )
       return [
         ...common,
+        ...lengths,
         metric(
           `${id}.medianWave`,
           `${title}: median wave reached`,
