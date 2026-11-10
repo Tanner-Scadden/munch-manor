@@ -35,6 +35,7 @@ import {
 import { attempt, failWith } from './page'
 
 const PLAY_SECONDS = 12
+const INTRO_TIMEOUT_MS = 25_000
 
 // NOTE: the dev page's `#debug` readout, the fields this audit reads.
 const Debug = Schema.Struct({
@@ -43,6 +44,7 @@ const Debug = Schema.Struct({
   names: Schema.Array(Schema.String),
   slot: Schema.NullOr(Schema.Finite),
   phase: Schema.String,
+  worldPhase: Schema.NullOr(Schema.String),
   lobbyStatus: Schema.NullOr(Schema.String),
   members: Schema.Finite,
   rttMs: Schema.Finite,
@@ -209,6 +211,14 @@ const program = Effect.gen(function* () {
     pages,
     debug => debug.phase === 'Playing' && debug.tick !== null,
     DEFAULT_TIMEOUT_MS,
+  )
+  // NOTE: the room's first run opens on the whole intro
+  // (src/world/run/arrival.ts), and its slam starts the first break.
+  yield* until(
+    "the room's slam starts the first break on every page",
+    pages,
+    debug => debug.worldPhase !== null && debug.worldPhase !== 'Arriving',
+    INTRO_TIMEOUT_MS,
   )
 
   const seen = new Map<number, Map<number, Set<number>>>()

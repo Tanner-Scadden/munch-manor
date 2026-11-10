@@ -830,6 +830,10 @@ const playRoom = (
         code,
         slot: Option.getOrNull(rendered.session.slot),
         phase: rendered.session.phase._tag,
+        worldPhase: Option.match(rendered.world, {
+          onNone: () => null,
+          onSome: world => world.world.phase._tag,
+        }),
         lobbyStatus: Option.match(currentLobby, {
           onNone: () => null,
           onSome: held => held.status,
