@@ -11,6 +11,9 @@ import {
 
 // BOSS
 
+// NOTE: Uncle Chunk is the host: his party hat, a tuxedo jacket far too
+// small to close over his belly, the shirt straining at its studs, and a
+// dinner napkin tucked in as a bib, its corners checked red.
 export const BOSS_PALETTE: Palette = {
   P: '#b49ab0',
   Q: '#86708a',
@@ -18,8 +21,11 @@ export const BOSS_PALETTE: Palette = {
   S: '#b9b08c',
   Y: '#c9a83a',
   R: '#d8423a',
-  B: '#4a5a8a',
-  C: '#36426a',
+  B: '#2e2c3c',
+  C: '#1e1c28',
+  X: '#2a2836',
+  x: '#5a5672',
+  L: '#fdfbf4',
   K: '#26262e',
   E: '#ffd23f',
   M: '#2a1418',
@@ -52,18 +58,18 @@ const BOSS_UPPER: ReadonlyArray<string> = [
   '.........PPPPPPPP.........',
   '.........PMTTTTMP.........',
   '.......QPPMMMMMMPPQ.......',
-  '....QPPPPPPPPPPPPPPPPQ....',
-  '..QPPPPPWWWWWWWWWWPPPPPQ..',
-  '.QPPPPPRWWWWWWWWWWRPPPPPQ.',
-  '.PPPP.PRWWWWWWWWWWRP.PPPP.',
-  '.PPPP.WRWWWWWWWWWWRW.PPPP.',
-  '.PPPPWWRWWWWWWWWWWRWWPPPP.',
-  '.PPPPWWRWWWWWWWWWWRWWPPPP.',
-  '.PPPPWWRWWWWWWYWWWRWWPPPP.',
-  '.PPPPWWRWWWWWMWWWWRWWPPPP.',
-  '.PPPPWWRWWWWWWWWWWRWWPPPP.',
-  '.PPPPSSRSSSSSSSSSSRSSPPPP.',
-  'PPPPP.SRSSSSSSSSSSRS.PPPPP',
+  '....XXXXXXPPPPPPXXXXXX....',
+  '..QXXXXxRLRLRLRLRLxXXXXQ..',
+  '.QXXXXXxLLLLLLLLLLxXXXXXQ.',
+  '.PPPP.XxLLLLLLLLLLxX.PPPP.',
+  '.PPPP.XxWLLLLLLLLWxX.PPPP.',
+  '.PPPPXXxWWLLLLLLWWxXXPPPP.',
+  '.PPPPXXxWWWLRLRWWWxXXPPPP.',
+  '.PPPPXXxWWWWWWYWWWxXXPPPP.',
+  '.PPPPXXWWWWWWMWWWWWXXPPPP.',
+  '.PPPPX.WWWWWWWYWWWW.XPPPP.',
+  '.PPPPSSSSSSSSSSSSSSSSPPPP.',
+  'PPPPP.SSSSSSSSSSSSSS.PPPPP',
   'PPPPP.BBBBBBBBBBBBBB.PPPPP',
   '.QQQ..BBBBBBBBBBBBBB..QQQ.',
 ]
@@ -157,5 +163,5 @@ export const BOSS_ICON_PIXELS: ReadonlyArray<string> = [
   '.QPPPQ.',
   '.PEPEP.',
   '.PMTMP.',
-  'QPPPPPQ',
+  'XxLLLxX',
 ]

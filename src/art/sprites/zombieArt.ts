@@ -14,15 +14,22 @@ import {
 
 export const FRENZY_EYE = '#ff2b2b'
 
+// NOTE: the Groaner is a party guest a hundred years late to leave: a
+// tattered tailcoat over a white shirt front, a black bow tie, and a dinner
+// napkin still tucked in at the collar. The coat's tails flap behind his
+// legs as he shambles.
 export const ZOMBIE_PALETTE: Palette = {
   G: '#8ed65e',
   F: '#5fa83f',
   R: '#fff3a6',
   M: '#2a1a14',
-  T: '#7a5a8c',
-  U: '#5b4170',
+  T: '#4a4258',
+  U: '#332d40',
+  W: '#d9d4c4',
+  B: '#141018',
+  N: '#f7f2e4',
   D: '#8c1f24',
-  P: '#3b3a46',
+  P: '#2c2a36',
   K: '#f28fb0',
   J: '#c0587a',
 }
@@ -36,9 +43,9 @@ const ZOMBIE_UPPER_ARMS_HIGH: ReadonlyArray<string> = [
   '.GRGGRG...',
   '.GGMMGG...',
   '..GFGG....',
-  '.TTTTTTGGG',
-  '.TUTTDTT..',
-  '.TTTUTTGG.',
+  '.TWBBWTGGG',
+  '.TUNNDTT..',
+  '.TTNNUTGG.',
 ]
 
 const ZOMBIE_UPPER_ARMS_LOW: ReadonlyArray<string> = [
@@ -47,23 +54,23 @@ const ZOMBIE_UPPER_ARMS_LOW: ReadonlyArray<string> = [
   '.GRGGRG...',
   '.GGMMGG...',
   '..GFGG....',
-  '.TTTTTTT..',
-  '.TUTTDTGGG',
-  '.TTTUTTTGG',
+  '.TWBBWTT..',
+  '.TUNNDTGGG',
+  '.TTNNUTTGG',
 ]
 
 const ZOMBIE_LEGS_PLANTED: ReadonlyArray<string> = [
-  '..PP..PP....',
+  '.TPP..PP....',
   '..PP..PP....',
 ]
 
 const ZOMBIE_LEGS_FRONT_DRAG: ReadonlyArray<string> = [
-  '...PP.PP....',
+  '..TPP.PP....',
   '...PP..PP...',
 ]
 
 const ZOMBIE_LEGS_BACK_DRAG: ReadonlyArray<string> = [
-  '..PP.PP.....',
+  '.TPP.PP.....',
   '.PP..PP.....',
 ]
 
@@ -108,14 +115,19 @@ export const groanerWalkPixels = (stage: number): FramePixels => {
   ]
 }
 
+// NOTE: the Hotfoot was the fastest kid in school, dared to run straight
+// through the house in 1984: a red sweatband, a gold track singlet with a
+// red stripe, blue running shorts, and white tube socks to the shorts.
 export const RUNNER_PALETTE: Palette = {
   H: '#3a2418',
   S: '#dcee7a',
   W: '#ffffff',
   M: '#5a1418',
-  O: '#ff7a2e',
-  Q: '#ffe066',
+  R: '#e8452e',
+  O: '#ffcf3a',
+  Q: '#e8452e',
   B: '#2f5fb3',
+  T: '#f4f1de',
   K: '#1b1b2a',
   N: '#f28fb0',
   J: '#c0587a',
@@ -123,7 +135,7 @@ export const RUNNER_PALETTE: Palette = {
 
 const RUNNER_HEAD: ReadonlyArray<string> = [
   '...HHHH...',
-  '..HSSSSH..',
+  '..HRRRRH..',
   '...SWSW...',
   '...SSSS...',
   '....SMS...',
@@ -141,7 +153,7 @@ const runnerFramesWith = (head: ReadonlyArray<string>): FramePixels => [
     '.S.OQOO...',
     '..SOOOO...',
     '...BBBB...',
-    '...S..S...',
+    '...T..T...',
     '..KK...KK.',
   ],
   [
@@ -150,7 +162,7 @@ const runnerFramesWith = (head: ReadonlyArray<string>): FramePixels => [
     '.S.OQOO.S.',
     '...OOOO...',
     '...BBBB...',
-    '....SS....',
+    '....TT....',
     '....KK....',
   ],
   [
@@ -160,7 +172,7 @@ const runnerFramesWith = (head: ReadonlyArray<string>): FramePixels => [
     '...OQOO.S.',
     '...OOOOS..',
     '...BBBB...',
-    '...S..S...',
+    '...T..T...',
     '.KK...KK..',
   ],
   [
@@ -169,7 +181,7 @@ const runnerFramesWith = (head: ReadonlyArray<string>): FramePixels => [
     '...OQOO...',
     '...OOOO...',
     '...BBBB...',
-    '....SS....',
+    '....TT....',
     '...KK.....',
   ],
 ]
@@ -179,21 +191,26 @@ export const runnerWalkPixels = (stage: number): FramePixels =>
     applyPatches(RUNNER_HEAD, wornThrough(RUNNER_HEAD_WEAR, stage)),
   )
 
-// NOTE: the Big Lug is a scrawny zombie in junk armor: a bucket helmet with
-// eye holes, a pot lid on one shoulder, and a stop sign chained to his chest.
-// His wear stages knock the armor off one piece at a time, pot lid, stop
-// sign, then bucket, until only the bony zombie underneath is left. The
-// armor is laid over his bare frames, so each walk frame keeps its arms and
-// legs.
+// NOTE: the Big Lug is a party guest who ate everything, his waistcoat
+// burst at the buttons, still wearing the kitchen for armor: a stock pot
+// helmet with eye holes, a pot lid on one shoulder, and a cutting board
+// strapped to his chest. His wear stages knock the armor off one piece at a
+// time, pot lid, cutting board, then stock pot, until only the guest in his
+// burst waistcoat is left. The armor is laid over his bare frames, so each
+// walk frame keeps its arms and legs. The pieces keep their old part names
+// (PotLid, StopSign, Bucket) on the co-op wire.
 export const TANK_PALETTE: Palette = {
   G: '#8a9bb5',
   F: '#5f6f8a',
   S: '#2a1a14',
   E: '#ffd23f',
   M: '#5a1418',
-  O: '#8a5a2b',
+  O: '#7a2a3a',
   Y: '#f2c14e',
-  P: '#5c3a1a',
+  W: '#e8e0cc',
+  b: '#a9b6cc',
+  B: '#141018',
+  P: '#2c2a36',
   K: '#26262e',
   D: '#a8262c',
   A: '#c3ccd6',
@@ -202,9 +219,9 @@ export const TANK_PALETTE: Palette = {
   L: '#b4bcc6',
   l: '#6c7480',
   n: '#2a2a32',
-  R: '#d43c3a',
-  W: '#f4f1de',
-  C: '#9aa3ad',
+  R: '#c8955a',
+  r: '#9a6a3a',
+  C: '#5a3a22',
 }
 
 const TANK_HEAD: ReadonlyArray<string> = [
@@ -215,32 +232,32 @@ const TANK_HEAD: ReadonlyArray<string> = [
   '......GEGGEG......',
   '......GGMMGG......',
   '.......GDGG.......',
-  '.....GGGGGGGG.....',
+  '.....GGWBBWGG.....',
 ]
 
 const TANK_ARMS_LOW: ReadonlyArray<string> = [
-  '....GG.OOOO.GG....',
-  '....G..OYOO..G....',
-  '....G..OODO..G....',
-  '....G..OOOO..G....',
+  '....GG.OWWO.GG....',
+  '....G..YbbO..G....',
+  '....G..ObDb..G....',
+  '....G..YbbO..G....',
   '...FF..OOOO..FF...',
   '...FF..PPPP..FF...',
 ]
 
 const TANK_ARMS_SWING: ReadonlyArray<string> = [
-  '....GG.OOOO.GG....',
-  '....G..OYOO..G....',
-  '...FF..OODO..G....',
-  '...FF..OOOO..G....',
+  '....GG.OWWO.GG....',
+  '....G..YbbO..G....',
+  '...FF..ObDb..G....',
+  '...FF..YbbO..G....',
   '.......OOOO..FF...',
   '.......PPPP..FF...',
 ]
 
 const TANK_ARMS_SWING_BACK: ReadonlyArray<string> = [
-  '....GG.OOOO.GG....',
-  '....G..OYOO..G....',
-  '....G..OODO..FF...',
-  '....G..OOOO..FF...',
+  '....GG.OWWO.GG....',
+  '....G..YbbO..G....',
+  '....G..ObDb..FF...',
+  '....G..YbbO..FF...',
   '...FF..OOOO.......',
   '...FF..PPPP.......',
 ]
@@ -277,12 +294,12 @@ const TANK_STOP_SIGN: ReadonlyArray<string> = [
   '',
   '',
   '',
+  '....nRRRRRRRRn....',
+  '....RrRRRRRRRR....',
+  '....RRRRrrRRRR....',
+  '....RRRRRRRRrR....',
+  '....RRrRRRRRRR....',
   '....CRRRRRRRRC....',
-  '....RRRRRRRRRR....',
-  '....RWWWWWWWWR....',
-  '....RRRRRRRRRR....',
-  '....RRRRRRRRRR....',
-  '.....RRRRRRRR.....',
 ]
 
 const TANK_POT_LID: ReadonlyArray<string> = [
@@ -299,7 +316,7 @@ const TANK_POT_LID: ReadonlyArray<string> = [
 
 const TANK_BUCKET: ReadonlyArray<string> = [
   '.....aAAAAAAa.....',
-  '....aAAAAAAAAa....',
+  '...naAAAAAAAAan...',
   '....aAAAAAAAAa....',
   '....aAEaAAaEAa....',
   '...HHHHHHHHHHHH...',
@@ -348,10 +365,11 @@ export const tankWalkPixels = (stage: number): FramePixels => [
   ),
 ]
 
-// NOTE: the Kaboomer is a hunched, grinning zombie hugging a big round
-// cartoon bomb. The fuse and its sparks are drawn over the sprite each frame
-// in zombieView.ts, since they shorten as he closes in. His lit frames turn
-// the bomb red-hot for the last moments before it goes off.
+// NOTE: the Kaboomer is the kid who brought fireworks to scare everyone: a
+// grinning zombie kid in a striped tee with a backpack stuffed with rockets,
+// one of them fused. The fuse and its sparks are drawn over the sprite each
+// frame in zombieView.ts, since they shorten as he closes in. His lit frames
+// turn the backpack red-hot for the last moments before it goes off.
 export const EXPLODER_PALETTE: Palette = {
   G: '#c4f08a',
   g: '#8cc85e',
@@ -360,13 +378,13 @@ export const EXPLODER_PALETTE: Palette = {
   T: '#fff3c8',
   M: '#5a1a20',
   U: '#d26a3c',
-  u: '#9a4426',
-  K: '#22203a',
-  k: '#55508a',
-  H: '#ffffff',
-  h: '#9a96cc',
-  N: '#aaa6bc',
-  n: '#6c6884',
+  u: '#f2d45a',
+  K: '#3a4a8a',
+  k: '#24305a',
+  h: '#7a8ad0',
+  r: '#e8452e',
+  y: '#ffd23f',
+  b: '#5fd3ff',
   L: '#4a3a5a',
   F: '#2a2026',
   R: '#a8262c',
@@ -383,54 +401,55 @@ export const EXPLODER_LIT_PALETTE: Palette = {
 }
 
 const EXPLODER_BODY: ReadonlyArray<string> = [
-  '.gGGGg.......',
-  'gGGGGGg......',
-  'GWEGWEg.nn...',
-  'GTTTTMgKNNK..',
-  '.gMMMgKhHKKK.',
-  'gUUUUKhHKKKKG',
-  'GUUUUKKKKKKgG',
-  'GGGGGGGGGGKk.',
-  '.UUUUKKKKKKk.',
-  '..uuu.kkkkk..',
+  '.r...b.gGGGg.',
+  '.r...bgGGGGGg',
+  '.ryy.bGWEGWEg',
+  'kKKKKkGTTTTMg',
+  'KhhKKkUgMMMg.',
+  'KhhKKkUUUUUGg',
+  'KKKKKkuuuuuGg',
+  'KKKKKkUUUUU..',
+  'kKKKKkuuuuu..',
+  '.kkkk.UUUUU..',
 ]
 
 export const EXPLODER_WEAR: ReadonlyArray<ReadonlyArray<Patch>> = [
   [
-    patch(0, 5, TRANSPARENT, 1, 3),
-    patch(1, 5, 'R'),
-    patch(1, 7, 'U', 4),
-    patch(5, 7, 'K', 5),
-    patch(12, 5, TRANSPARENT, 1, 2),
-    patch(11, 6, 'k'),
+    patch(11, 5, TRANSPARENT, 2, 2),
+    patch(10, 5, 'R'),
+    patch(10, 6, 'R'),
+    patch(6, 8, 'R', 2),
   ],
   [
-    patch(10, 4, 'c'),
-    patch(11, 5, 'O'),
-    patch(10, 6, 'c'),
-    patch(10, 8, 'O'),
-    patch(2, 0, 'S', 3),
-    patch(1, 1, 'S', 2),
-    patch(4, 3, 'M'),
+    patch(1, 0, TRANSPARENT, 1, 3),
+    patch(5, 0, 'c', 1, 2),
+    patch(1, 4, 'c'),
+    patch(2, 5, 'O'),
+    patch(3, 6, 'c'),
+    patch(1, 7, 'O'),
+    patch(8, 0, 'S', 3),
+    patch(7, 1, 'S', 2),
+    patch(10, 3, 'M'),
   ],
 ]
 
 export const exploderWalkPixels = (stage: number): FramePixels => {
   const body = applyPatches(EXPLODER_BODY, wornThrough(EXPLODER_WEAR, stage))
   return [
-    [...swayRows(body, 0), '....LL..LL.....', '...FFF..FFF....'],
-    [...swayRows(body, 1), '.....LL..LL....', '....FFF..FFF...'],
-    [...swayRows(body, 0), '....LL..LL.....', '...FFF..FFF....'],
-    [...swayRows(body, -1), '...LL..LL......', '..FFF..FFF.....'],
+    [...swayRows(body, 0), '......LL..LL...', '.....FFF..FFF..'],
+    [...swayRows(body, 1), '.......LL..LL..', '......FFF..FFF.'],
+    [...swayRows(body, 0), '......LL..LL...', '.....FFF..FFF..'],
+    [...swayRows(body, -1), '.....LL..LL....', '....FFF..FFF...'],
   ]
 }
 
-export const EXPLODER_FUSE_BASE = { x: 8, y: 1 }
+export const EXPLODER_FUSE_BASE = { x: 2, y: 1 }
 
 // BIG LEAGUER
 
-// NOTE: the Big Leaguer is a lanky zombie pitcher in a torn pinstripe jersey
-// and a backwards cap. His long arms drag his knuckles along the floor. His
+// NOTE: the Big Leaguer is the jock who took the dare to prove a point: a
+// lanky zombie in a blue letterman jacket with cream ribbing and a big gold
+// letter, jeans, and a red cap on backwards. His long arms drag his knuckles along the floor. His
 // wind-up holds a Groaner overhead with a high leg kick, and after a throw he
 // pumps his fist.
 export const CHUCKER_PALETTE: Palette = {
@@ -441,13 +460,13 @@ export const CHUCKER_PALETTE: Palette = {
   T: '#fff3c8',
   R: '#d8463e',
   r: '#9a2a26',
-  S: '#f2ecd8',
-  s: '#c8bea4',
-  b: '#a9b8e6',
-  B: '#3a5ab0',
-  n: '#d8463e',
-  P: '#b0aca0',
-  W: '#3a5ab0',
+  S: '#2f4fa8',
+  s: '#22387a',
+  b: '#f2ecd8',
+  B: '#f2ecd8',
+  n: '#ffd23f',
+  P: '#4a5a80',
+  W: '#2a3450',
   K: '#26262e',
   D: '#a8262c',
 }
@@ -465,10 +484,10 @@ const CHUCKER_FRAMES: Array.NonEmptyReadonlyArray<ReadonlyArray<string>> = [
   [
     ...CHUCKER_HEAD,
     '..cBSSSSBc..',
-    '.cCSnnnbSCc.',
-    '.CCSbSnbSCC.',
-    '.CCSbnSbSCC.',
-    '.C.sSsSSs.C.',
+    '.cCnnSbSSCc.',
+    '.CCnnSbSSCC.',
+    '.CCSSSbSSCC.',
+    '.C.BsBsBs.C.',
     '.C..PPPP..C.',
     '.C..PPPP..C.',
     'cCc.P..P.cCc',
@@ -479,10 +498,10 @@ const CHUCKER_FRAMES: Array.NonEmptyReadonlyArray<ReadonlyArray<string>> = [
   [
     ...CHUCKER_HEAD,
     '..cBSSSSBc..',
-    '.cCSnnnbSCc.',
-    '.CCSbSnbSCC.',
-    '.CCSbnSbS.C.',
-    '.C.sSsSSs.C.',
+    '.cCnnSbSSCc.',
+    '.CCnnSbSSCC.',
+    '.CCSSSbSS.C.',
+    '.C.BsBsBs.C.',
     'cCc.PPPP..C.',
     'cCc.PPPP..C.',
     '....P..P..C.',
@@ -493,10 +512,10 @@ const CHUCKER_FRAMES: Array.NonEmptyReadonlyArray<ReadonlyArray<string>> = [
   [
     ...CHUCKER_HEAD,
     '..cBSSSSBc..',
-    '.cCSnnnbSCc.',
-    '.CCSbSnbSCC.',
-    '.CCSbnSbSCC.',
-    '.C.sSsSSs.C.',
+    '.cCnnSbSSCc.',
+    '.CCnnSbSSCC.',
+    '.CCSSSbSSCC.',
+    '.C.BsBsBs.C.',
     '.C..PPPP..C.',
     '.C..PPPP..C.',
     'cCc.P..P.cCc',
@@ -507,10 +526,10 @@ const CHUCKER_FRAMES: Array.NonEmptyReadonlyArray<ReadonlyArray<string>> = [
   [
     ...CHUCKER_HEAD,
     '..cBSSSSBc..',
-    '.cCSnnnbSCc.',
-    '.CCSbSnbSCC.',
-    '.C.SbnSbSCC.',
-    '.C.sSsSSs.C.',
+    '.cCnnSbSSCc.',
+    '.CCnnSbSSCC.',
+    '.C.SSSbSSCC.',
+    '.C.BsBsBs.C.',
     '.C..PPPP.cCc',
     '.C..PPPP.cCc',
     '.C..P..P....',
@@ -529,10 +548,10 @@ const CHUCKER_HEFT: ReadonlyArray<string> = [
   '...CCCMMMC..',
   '....cCCCc...',
   '...BSSSSB...',
-  '...SnnnbS...',
-  '...SbSnbS...',
-  '...SbnSbS...',
-  '...sSsSSsPP.',
+  '...nnSbSS...',
+  '...nnSbSS...',
+  '...SSSbSS...',
+  '...BsBsBsPP.',
   '...PPPPPPP..',
   '...PP...WK..',
   '...PP.......',
@@ -548,10 +567,10 @@ const CHUCKER_TAUNT: ReadonlyArray<string> = [
   '...CCMMMTC..',
   '....cCCCcC..',
   '..cBSSSSBC..',
-  '.cCSnnnbS...',
-  '.CCSbSnbS...',
-  '.CCSbnSbS...',
-  '.C.sSsSSs...',
+  '.cCnnSbSS...',
+  '.CCnnSbSS...',
+  '.CCSSSbSS...',
+  '.C.BsBsBs...',
   '.C..PPPP....',
   '.C..PPPP....',
   'cCc.P..P....',
@@ -725,12 +744,12 @@ export const SHAMBLER_ICON_PIXELS: ReadonlyArray<string> = [
   'GRGGGRG',
   'GGGMMGG',
   '.GFGGG.',
-  '.TTTTT.',
+  '.TWBWT.',
 ]
 
 export const RUNNER_ICON_PIXELS: ReadonlyArray<string> = [
   '.HHHHH.',
-  'HSSSSSH',
+  'HRRRRRH',
   'SWSSSWS',
   'SSSMSSS',
   '.SSSSS.',
@@ -743,16 +762,16 @@ export const TANK_ICON_PIXELS: ReadonlyArray<string> = [
   'aEaAaEa',
   'HHHHHHH',
   'lLGMMRR',
-  'LLlRWWR',
+  'LLlRrrR',
 ]
 
 export const EXPLODER_ICON_PIXELS: ReadonlyArray<string> = [
-  '.....O.',
-  '....n..',
-  '.GKKKG.',
-  'GKHKKKG',
+  '..O....',
+  '.r.c.b.',
+  '.rryyb.',
+  'kKKKKKk',
+  'KhhKKKK',
   '.KKKKK.',
-  '..KKK..',
 ]
 
 export const CHUCKER_ICON_PIXELS: ReadonlyArray<string> = [
@@ -760,8 +779,8 @@ export const CHUCKER_ICON_PIXELS: ReadonlyArray<string> = [
   'rrRRRRR',
   '.CECCE.',
   '.CCMMC.',
-  '.SbnbS.',
-  'CSbSnSC',
+  '.BnSbB.',
+  'CnSbSSC',
 ]
 
 export const CRAWLER_ICON_PIXELS: ReadonlyArray<string> = [
