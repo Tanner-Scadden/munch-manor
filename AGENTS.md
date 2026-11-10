@@ -272,7 +272,8 @@ Sprites and pixel art no one feature owns: the atlas, the PNG encoder, the font,
 | `spriteAtlasBoot.ts`                                            | The prebuilt sprite atlas, in place before the game's modules                                                                                                                  |
 | `sprites/zombieArt.ts`, `sprites/bossArt.ts`, `sprites/wear.ts` | The zombies' pixel maps, palettes, and icons; the boss's; wear patches knocked off as a zombie is hurt                                                                         |
 | `sprites/zombies.ts`, `sprites/hearts.ts`                       | Every zombie kind's walk, lit, gape, and rage frames by wear stage, the Kaboomer's fuse, and the showcase walk; the hearts                                                     |
-| `sprites/guns.ts`, `sprites/traps.ts`, `sprites/pickups.ts`     | Guns and the knife turned to aim, and their icons; the gnome, the barricade's stages, and the trap icons; the pickups                                                          |
+| `sprites/guns.ts`, `sprites/traps.ts`, `sprites/pickups.ts`     | Guns and the knife turned to aim, and their icons; the gnome, the barricade's stages, and the trap icons; the pickups and their tints                                          |
+| `sprites/auras.ts`                                              | The boosts' auras, baked frames: gears, a silver gleam, notes and sparkles, a ring of hat pins                                                                                 |
 
 #### `src/audio/`
 
