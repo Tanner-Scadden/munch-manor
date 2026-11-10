@@ -9,6 +9,7 @@ import {
 import { rollDare } from '../world/dare/dare'
 import { seatCrew, withStartingHearts } from '../world/party/party'
 import { beginArrival } from '../world/run/arrival'
+import { rigTutorialCase } from '../world/run/tutorialRules'
 import { withWorld } from '../world/schema/world'
 import type { IntroCut } from '../world/schema/worldSchema'
 import { SeatAction } from '../world/step/stepWorld'
@@ -43,11 +44,13 @@ const startRun = (model: Model, mode: RunMode): Model => {
     },
     world =>
       beginArrival(
-        withStartingHearts(
-          seatCallings(
-            seatCrew(rollDare(world), model.localPlayers + bots.length),
-            model.localPlayers,
-            Array.map(bots, ({ calling }) => calling),
+        rigTutorialCase(
+          withStartingHearts(
+            seatCallings(
+              seatCrew(rollDare(world), model.localPlayers + bots.length),
+              model.localPlayers,
+              Array.map(bots, ({ calling }) => calling),
+            ),
           ),
         ),
         introCutOf(model),

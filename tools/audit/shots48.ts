@@ -35,7 +35,7 @@ const VIEWPORTS = pickViewports([
 ])
 
 const LEARNED =
-  'learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak'
+  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey'
 const LOBBY = `${LEARNED}&rank=4000&calling=Handyman`
 
 type Scene = Readonly<{ name: string; query: string; bots?: number }>

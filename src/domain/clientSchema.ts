@@ -280,6 +280,19 @@ export const Tour = defineTaggedUnion({
 })
 export type Tour = typeof Tour.Type
 
+// NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts),
+// a Tour with one more stretch: once the key, the trap, and the case are
+// done, it points at the dare card on the HUD for a moment (`Looking`)
+// before it ticks off.
+export const QuestTour = defineTaggedUnion({
+  Waiting: {},
+  Running: {},
+  Looking: { ageMs: MillisNumber },
+  Done: { ageMs: MillisNumber },
+  Over: {},
+})
+export type QuestTour = typeof QuestTour.Type
+
 export const HintBand = Schema.Literals(['Top', 'Bottom'])
 export type HintBand = typeof HintBand.Type
 
@@ -297,11 +310,12 @@ export const freshLessons: Lessons = {
   move: Lesson.Pending(),
   fire: Lesson.Pending(),
   startWave: Lesson.Pending(),
-  shop: Lesson.Pending(),
   swap: Lesson.Pending(),
   pickup: Lesson.Pending(),
   timedBreaks: Lesson.Pending(),
   openBreak: Lesson.Pending(),
+  dareTour: Lesson.Pending(),
+  dareKey: Lesson.Pending(),
 }
 
 // NOTE: particles, shake, popups, coin bursts, trap dust, and the random

@@ -48,7 +48,7 @@ const hasTracker = (page: Page, problems: Array<string>, label: string) =>
 // NOTE: chapter 2, the kitchen tour: a new save in the break before wave 3,
 // past the first break but not the timed breaks.
 const KITCHEN_BREAK =
-  'wave=3&prep=15000&money=5&seen=all&learned=move,fire,startWave,shop,swap,pickup,openBreak'
+  'wave=3&prep=15000&money=5&seen=all&learned=move,fire,startWave,swap,pickup,openBreak'
 
 const hasFreeTag = (page: Page, problems: Array<string>, label: string) =>
   Effect.gen(function* () {

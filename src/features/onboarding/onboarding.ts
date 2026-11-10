@@ -3,7 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
 import type { HintIcon } from '../../art/hintIcons'
-import { type HintBand, Tour } from '../../domain/clientSchema'
+import { type HintBand, QuestTour, Tour } from '../../domain/clientSchema'
 import { type InputDevice, Stick } from '../../input/inputSchema'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { landscapeFrameOffset, screenOf } from '../../render/screen'
@@ -216,11 +216,12 @@ export const settleLessons = (lessons: Lessons): Lessons =>
     move: settle,
     fire: settle,
     startWave: settle,
-    shop: settle,
     swap: settle,
     pickup: settle,
     timedBreaks: settle,
     openBreak: settle,
+    dareTour: settle,
+    dareKey: settle,
   })
 
 // SKIPPING
@@ -245,8 +246,10 @@ export const skipTutorial = (model: Model): Model =>
         fire: skipped,
         openBreak: skipped,
         timedBreaks: skipped,
+        dareTour: skipped,
+        dareKey: skipped,
       }),
-    firstBreakQuest: () => Tour.Over(),
+    firstBreakQuest: () => QuestTour.Over(),
     kitchenTour: () => Tour.Over(),
   })
 
@@ -445,7 +448,7 @@ export const isStartWaveBeckoning = ({
   ((isPending(lessons.startWave) &&
     isLearned(lessons.move) &&
     isLearned(lessons.fire)) ||
-    Tour.isAnyOf(['Done'])(firstBreakQuest))
+    QuestTour.isAnyOf(['Done'])(firstBreakQuest))
 
 // NOTE: the first timed break's countdown blinks, so the player sees the
 // clock is running.

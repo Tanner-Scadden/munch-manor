@@ -7,6 +7,7 @@ import {
   DareHintCall,
   type DareHintCalling,
   KitchenCall,
+  QuestTour,
   Tour,
 } from '../../domain/clientSchema'
 import type { Difficulty } from '../../shared/playerData'
@@ -257,7 +258,7 @@ const hasList = (model: Model): boolean =>
 const isHushed = (model: Model): boolean =>
   KitchenCall.isAnyOf(['Calling'])(model.kitchenCall) ||
   Tour.isAnyOf(['Running'])(model.kitchenTour) ||
-  Tour.isAnyOf(['Running'])(model.firstBreakQuest)
+  QuestTour.isAnyOf(['Running', 'Looking'])(model.firstBreakQuest)
 
 const modifyHint = makeModifyFieldsFor<DareHint>()
 

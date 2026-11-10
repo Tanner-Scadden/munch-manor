@@ -23,10 +23,14 @@ import {
   HEART_SPRITE,
 } from '../../art/sprites/hearts'
 import { TRAP_ICONS } from '../../art/sprites/traps'
-import { dareCardShapes } from '../../features/dare/dareCard'
+import {
+  dareCardPointShapes,
+  dareCardShapes,
+} from '../../features/dare/dareCard'
 import { isOnLastShots } from '../../features/hud/ammoWarning'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
 import { roomsCounterShapes } from '../../features/kitchen/roomsFound'
+import { isQuestOnCard } from '../../features/onboarding/firstBreakQuest'
 import {
   isCountdownBeckoning,
   isOpenBreak,
@@ -874,6 +878,7 @@ const playHudShapes = (
   ...roundHudShapes(model, layout),
   ...roomsCounterShapes(model, layout.scoreRight, layout.roomsTop),
   ...dareCardShapes(model, layout),
+  ...(isQuestOnCard(model) ? dareCardPointShapes(model, layout) : []),
   ...(isRoundActive(model.phase)
     ? textShapes(
         `SCORE ${scoreOf(model.stats)}`,

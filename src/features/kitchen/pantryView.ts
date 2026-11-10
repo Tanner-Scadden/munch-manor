@@ -2,10 +2,10 @@ import { Option } from 'effect'
 
 import type { Model } from '../../app/model'
 import { KEY_SPRITE } from '../../art/font'
-import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
+import { type Sprite, placeAt } from '../../art/sprite'
 import { HEART_SPRITE } from '../../art/sprites/hearts'
 import type { Drawable } from '../../render/depth'
-import { GLINT, rect } from '../../render/drawing'
+import { GLINT, GOODIE_SHADOW } from '../../render/drawing'
 import { isKitchenShown } from '../../render/room/kitchenView'
 import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import { levelOf } from '../../world/level/arena'
@@ -31,11 +31,6 @@ const GOODIE_LOOKS: Readonly<Record<PantryGoodie, GoodieLook>> = {
   Heart: { sprite: HEART_SPRITE, dx: 0, dy: 0 },
 }
 
-const SHADOW: Sprite = bakeShapes([
-  rect(-3, 0, 7, 1, 'rgba(0, 0, 0, 0.35)'),
-  rect(-2, 1, 5, 1, 'rgba(0, 0, 0, 0.2)'),
-])
-
 // NOTE: the stash sorts with what stands around it, by the floor it sits on.
 export const pantryDrawables = (model: Model): ReadonlyArray<Drawable> =>
   isKitchenShown(model)
@@ -56,7 +51,7 @@ export const pantryDrawables = (model: Model): ReadonlyArray<Drawable> =>
                 footY: spot.y,
                 rank: 'Prop',
                 shapes: [
-                  placeAt(spot.x, spot.y, SHADOW),
+                  placeAt(spot.x, spot.y, GOODIE_SHADOW),
                   placeAt(spot.x + look.dx, top + look.dy, look.sprite),
                   ...(model.elapsedMs % GLINT_MS < GLINT_ON_MS
                     ? [placeAt(spot.x + 3, top - 3, GLINT)]

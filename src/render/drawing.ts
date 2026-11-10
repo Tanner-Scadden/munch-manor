@@ -72,6 +72,13 @@ export const GLINT: Sprite = bakeShapes([
   rect(-2, 0, 5, 1, '#fff7d0'),
 ])
 
+// NOTE: the little shadow under something lying on the floor to take: the
+// pantry's goodie, the guided first break's key.
+export const GOODIE_SHADOW: Sprite = bakeShapes([
+  rect(-3, 0, 7, 1, 'rgba(0, 0, 0, 0.35)'),
+  rect(-2, 1, 5, 1, 'rgba(0, 0, 0, 0.2)'),
+])
+
 export const centeredRect: {
   (
     y: number,

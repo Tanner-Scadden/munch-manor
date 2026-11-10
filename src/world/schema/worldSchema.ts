@@ -719,15 +719,19 @@ export const Lesson = defineTaggedUnion({
 })
 export type Lesson = typeof Lesson.Type
 
+// NOTE: `dareTour` is the guided first break of the dare
+// (src/features/onboarding/firstBreakQuest.ts) and `dareKey` its skeleton key
+// on the dining room floor (src/world/run/tutorialRules.ts).
 export const Lessons = Schema.Struct({
   move: Lesson,
   fire: Lesson,
   startWave: Lesson,
-  shop: Lesson,
   swap: Lesson,
   pickup: Lesson,
   timedBreaks: Lesson,
   openBreak: Lesson,
+  dareTour: Lesson,
+  dareKey: Lesson,
 })
 export type Lessons = typeof Lessons.Type
 

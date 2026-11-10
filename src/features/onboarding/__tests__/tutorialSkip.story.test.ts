@@ -12,8 +12,8 @@ import {
   Lesson,
   type Model,
   Phase,
+  QuestTour,
   RunMode,
-  Tour,
   type TutorialChoice,
   freshLessons,
 } from '../../../app/model'
@@ -84,8 +84,8 @@ const isGuidedFirstBreakOn = (current: Model) =>
   ).pipe(
     Effect.map(
       firstBreak =>
-        Tour.isAnyOf(['Running'])(firstBreak.firstBreakQuest) ||
-        isPending(firstBreak.lessons.openBreak),
+        QuestTour.isAnyOf(['Running'])(firstBreak.firstBreakQuest) ||
+        isPending(firstBreak.lessons.dareTour),
     ),
   )
 
@@ -182,11 +182,12 @@ describe('the first-run card', () => {
               move: 'Learned',
               fire: 'Learned',
               startWave: 'Pending',
-              shop: 'Pending',
               swap: 'Pending',
               pickup: 'Pending',
               timedBreaks: 'Learned',
               openBreak: 'Learned',
+              dareTour: 'Learned',
+              dareKey: 'Learned',
             })
           }),
           writeSave(),
@@ -232,7 +233,7 @@ describe('the first-run card', () => {
           expect(isPracticeGateHeld(later)).toBe(true)
           expect(hintIds(later)).toContain('Move')
           expect(isKitchenTourDue(later)).toBe(true)
-          expect(later.lessons.openBreak).toEqual(Lesson.Pending())
+          expect(later.lessons.dareTour).toEqual(Lesson.Pending())
         }),
       )
       const isGuided = yield* isGuidedFirstBreakOn(current)
