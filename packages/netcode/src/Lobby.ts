@@ -271,6 +271,7 @@ export const MemberRow = Schema.Struct({
   rank: Schema.Finite,
   calling: Schema.String,
   nightmare: Schema.Finite,
+  intro: Schema.Finite,
   slot: Schema.Finite,
   ready: Schema.Finite,
   ping_ms: Schema.Finite,
@@ -288,6 +289,9 @@ const encodeResult = (result: RoomResult): Effect.Effect<string> =>
 
 // NOTE: `canNightmare` is whether the player had unlocked Nightmare when the
 // room seated them, as the room read it from their own scope on the server.
+// `hasSeenIntro` is whether they had watched the whole intro (their save's
+// onboarding `intro`), as their client said when it asked for the seat: the
+// room plays the whole drive up only for a crew with a newcomer in it.
 export const LobbyMember = Schema.Struct({
   playerId: Schema.String,
   name: Schema.String,
@@ -295,6 +299,7 @@ export const LobbyMember = Schema.Struct({
   rank: Schema.Finite,
   calling: Schema.String,
   canNightmare: Schema.Boolean,
+  hasSeenIntro: Schema.Boolean,
   slot: Schema.Finite,
   ready: Schema.Boolean,
   // NOTE: the round trip the player last measured, sent with their READY
@@ -353,6 +358,7 @@ export const lobbyOfRows: {
         rank: member.rank,
         calling: member.calling,
         canNightmare: member.nightmare !== 0,
+        hasSeenIntro: member.intro !== 0,
         slot: member.slot,
         ready: member.ready !== 0,
         pingMs: member.ping_ms,
@@ -396,7 +402,7 @@ export const readLobby = (
           FROM ${context.table('room')} WHERE id = 1`
     const rooms = yield* rejectBadRows(decodeRoomRows(value))
     const value_1 =
-      yield* sql`SELECT player_id, name, look, rank, calling, nightmare, slot, ready, ping_ms, joined_ms
+      yield* sql`SELECT player_id, name, look, rank, calling, nightmare, intro, slot, ready, ping_ms, joined_ms
           FROM ${context.table('members')}`
     const members = yield* rejectBadRows(decodeMemberRows(value_1))
     return Option.map(Array.head(rooms), room => lobbyOfRows(room, members))
@@ -512,7 +518,7 @@ const picksAfter = (
 /** @stability unstable */
 export const CreatedRoom = defineMutation({
   name: 'CreatedRoom',
-  version: 5,
+  version: 6,
   args: Schema.Struct({
     code: RoomCode,
     host: Schema.String,
@@ -521,6 +527,7 @@ export const CreatedRoom = defineMutation({
     hostRank: RankInput,
     hostCalling: CallingInput,
     hostNightmare: Schema.Boolean,
+    hostIntroSeen: Schema.Boolean,
     mode: RoomMode,
     visibility: RoomVisibility,
   }),
@@ -535,6 +542,7 @@ export const CreatedRoom = defineMutation({
       hostRank,
       hostCalling,
       hostNightmare,
+      hostIntroSeen,
       mode,
       visibility,
     },
@@ -568,6 +576,7 @@ export const CreatedRoom = defineMutation({
         rank: cleanRank(hostRank),
         calling: cleanCalling(hostCalling),
         nightmare: hostNightmare ? 1 : 0,
+        intro: hostIntroSeen ? 1 : 0,
         slot: 0,
         ready: 0,
         joined_ms: context.timestampMs,
@@ -578,7 +587,7 @@ export const CreatedRoom = defineMutation({
 /** @stability unstable */
 export const JoinedRoom = defineMutation({
   name: 'JoinedRoom',
-  version: 5,
+  version: 6,
   args: Schema.Struct({
     playerId: Schema.String,
     name: NameInput,
@@ -586,10 +595,14 @@ export const JoinedRoom = defineMutation({
     rank: RankInput,
     calling: CallingInput,
     nightmare: Schema.Boolean,
+    introSeen: Schema.Boolean,
   }),
   scopes: [ROOM_SCOPE_KIND],
   writer: 'ServerOnly',
-  apply: ({ playerId, name, look, rank, calling, nightmare }, context) =>
+  apply: (
+    { playerId, name, look, rank, calling, nightmare, introSeen },
+    context,
+  ) =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient
       const lobby = yield* requireLobby(context)
@@ -612,6 +625,7 @@ export const JoinedRoom = defineMutation({
         rank: cleanRank(rank),
         calling: cleanCalling(calling),
         nightmare: nightmare ? 1 : 0,
+        intro: introSeen ? 1 : 0,
         slot,
         ready: 0,
         joined_ms: context.timestampMs,
@@ -995,6 +1009,14 @@ export const RoomScope = defineScope({
         yield* sql`ALTER TABLE ${sql(table('room'))}
           ADD COLUMN modifiers INTEGER NOT NULL DEFAULT 0`
       }),
+    // NOTE: a member seated before it reads as a newcomer, so a room open
+    // across the change still plays the whole intro on its first run.
+    '0009_intro': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('members'))}
+          ADD COLUMN intro INTEGER NOT NULL DEFAULT 0`
+      }),
   },
 })
 
@@ -1015,6 +1037,7 @@ export const JoinRequest = Schema.Struct({
   look: Schema.optionalKey(LookInput),
   rank: Schema.optionalKey(RankInput),
   calling: Schema.optionalKey(CallingInput),
+  introSeen: Schema.optionalKey(Schema.Boolean),
 })
 
 export const CreateRequest = Schema.Struct({
@@ -1022,6 +1045,7 @@ export const CreateRequest = Schema.Struct({
   look: Schema.optionalKey(LookInput),
   rank: Schema.optionalKey(RankInput),
   calling: Schema.optionalKey(CallingInput),
+  introSeen: Schema.optionalKey(Schema.Boolean),
 })
 export type CreateRequest = typeof CreateRequest.Type
 export type JoinRequest = typeof JoinRequest.Type

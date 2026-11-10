@@ -168,6 +168,7 @@ const openCoop = (maybeCode: Option.Option<string>) =>
             look: lookCodeOf(model.appearance),
             rank: rankOf(totalPointsOf(model.rank)),
             calling: startingCallingOf(model),
+            introSeen: model.introSeen === 'Seen',
             rngState: model.cosmeticRngState,
             bought: model.boughtCosmetics,
             bones: bonesBalanceOf(model.rank),

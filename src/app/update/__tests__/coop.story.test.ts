@@ -71,6 +71,7 @@ describe('co-op from home', () => {
           look: lookCodeOf(newPlayerReady.appearance),
           rank: 1,
           calling: 'You',
+          introSeen: false,
         }),
         CoopMessage.FailedRequestRoom({ problem: 'NoRoom' }),
       ),
@@ -123,6 +124,7 @@ describe('co-op from home', () => {
           look: lookCodeOf(home.appearance),
           rank: 1,
           calling: 'You',
+          introSeen: true,
         }),
         CoopMessage.FailedRequestRoom({ problem: 'NoRoom' }),
       ),
@@ -134,7 +136,7 @@ describe('co-op from home', () => {
   )
 
   it.effect(
-    'the saved display name, look, and rank go with the room request',
+    'the saved display name, look, rank, and intro seen go with the room request',
     () =>
       Story.story(
         APPLICATION,
@@ -155,6 +157,7 @@ describe('co-op from home', () => {
             look: 'Slim.Ponytail.Pink.Tan.Purple.CCBA',
             rank: 12,
             calling: 'You',
+            introSeen: true,
           }),
           CoopMessage.FailedRequestRoom({ problem: 'Offline' }),
         ),

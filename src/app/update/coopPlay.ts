@@ -230,6 +230,21 @@ const keepRankPaid = (before: Model, world: World, fresh: Model): Model =>
       })
     : fresh
 
+// NOTE: a room that opens on the whole intro counts as this player having
+// watched it, as a run alone does (src/app/runFlow.ts), so their next room
+// may skip the drive up. A short cut leaves the save as it was.
+const markIntroSeen = (model: Model, world: World): Model =>
+  Phase.matchOrElse(
+    world.phase,
+    {
+      Arriving: ({ cut }) =>
+        cut === 'Full'
+          ? modifyFields(model, { introSeen: () => 'Seen' })
+          : model,
+    },
+    () => model,
+  )
+
 // NOTE: the drawing of one frame. A run starting (or the next one after the
 // end screen) resets the client's run fields first. This frame's own
 // tracers go to the co-op Block through `requestKeepTracers`. While the
@@ -243,10 +258,13 @@ const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
         const isStart =
           !isRunUnderway(stepModel.phase) && isRunUnderway(world.phase)
         const base = isStart
-          ? keepRankPaid(stepModel, world, {
-              ...stepModel,
-              ...freshRun(stepModel),
-            })
+          ? markIntroSeen(
+              keepRankPaid(stepModel, world, {
+                ...stepModel,
+                ...freshRun(stepModel),
+              }),
+              world,
+            )
           : stepModel
         const events = heardBy(focusOf(world).player, room.frameEvents)
         const shot = traceOwnShots(base, room, world, frameMs)

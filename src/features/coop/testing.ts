@@ -39,6 +39,7 @@ export type FakeCall =
       look: string
       rank: number
       calling: Calling
+      introSeen: boolean
     }>
   | Readonly<{ _tag: 'AnswerOffer'; accept: boolean }>
   | Readonly<{ _tag: 'CancelQuickPlay' }>
@@ -62,7 +63,7 @@ export const makeFakeCoopNet = (
       layer: Layer.succeed(
         CoopNet,
         CoopNet.of({
-          requestRoom: (request, name, look, rank, calling) =>
+          requestRoom: (request, name, look, rank, calling, introSeen) =>
             Effect.andThen(
               record({
                 _tag: 'RequestRoom',
@@ -71,6 +72,7 @@ export const makeFakeCoopNet = (
                 look,
                 rank,
                 calling,
+                introSeen,
               }),
               answer(request),
             ),
@@ -149,6 +151,7 @@ export const memberOf: {
     rank,
     calling,
     canNightmare,
+    hasSeenIntro: true,
     slot,
     ready,
     pingMs: 0,

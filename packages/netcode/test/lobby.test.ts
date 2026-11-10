@@ -124,6 +124,7 @@ const seat = (server: ScopeServer, playerId: string) =>
               ? 'not a <calling>'
               : 'TrackStar',
         nightmare: playerId === CY,
+        introSeen: playerId === BO,
       },
       `joined-room-${counter}`,
     )
@@ -143,6 +144,7 @@ const createdBy = (hostNightmare: boolean) =>
         hostRank: 40,
         hostCalling: 'Handyman',
         hostNightmare,
+        hostIntroSeen: true,
         mode: 'Campaign',
         visibility: 'Private',
       },
@@ -224,6 +226,11 @@ describe('the room scope', () => {
           'You',
           'TrackStar',
         ])
+        // NOTE: whether each watched the whole intro, as they said when
+        // seated, for the room's pick of the cut.
+        expect(Array.map(lobby.members, member => member.hasSeenIntro)).toEqual(
+          [true, true, false, false],
+        )
       }),
   )
 
@@ -249,42 +256,48 @@ describe('the room scope', () => {
     ).toEqual([1, 1, 1, 7, 999, 999, 1, 1])
   })
 
-  // NOTE: a member row written before the rank and calling columns (a room
-  // already open when the migrations ran) is seated as rank 1 and YOU by the
-  // columns' defaults.
-  it.effect('a member row from before ranks reads as rank 1 and YOU', () =>
-    Effect.gen(function* () {
-      const sql = yield* openDatabase()
-      const server = yield* Effect.provideService(
-        makeScopeServer({ definition: RoomScope, scope: SCOPE }),
-        SqlClient.SqlClient,
-        sql,
-      )
-      yield* server.addMember(ANA)
-      yield* server.runServer(
-        CreatedRoom,
-        {
-          code: CODE,
-          host: ANA,
-          hostName: 'Ana',
-          hostLook: '',
-          hostRank: 9,
-          hostCalling: 'LineCook',
-          hostNightmare: false,
-          mode: 'Campaign',
-          visibility: 'Private',
-        },
-        'created-room',
-      )
-      yield* sql`INSERT INTO members (player_id, name, slot, ready, joined_ms)
+  // NOTE: a member row written before the rank, calling, and intro columns
+  // (a room already open when the migrations ran) is seated as rank 1, YOU,
+  // and a newcomer to the intro by the columns' defaults.
+  it.effect(
+    'a member row from before ranks reads as rank 1, YOU, and new',
+    () =>
+      Effect.gen(function* () {
+        const sql = yield* openDatabase()
+        const server = yield* Effect.provideService(
+          makeScopeServer({ definition: RoomScope, scope: SCOPE }),
+          SqlClient.SqlClient,
+          sql,
+        )
+        yield* server.addMember(ANA)
+        yield* server.runServer(
+          CreatedRoom,
+          {
+            code: CODE,
+            host: ANA,
+            hostName: 'Ana',
+            hostLook: '',
+            hostRank: 9,
+            hostCalling: 'LineCook',
+            hostNightmare: false,
+            hostIntroSeen: false,
+            mode: 'Campaign',
+            visibility: 'Private',
+          },
+          'created-room',
+        )
+        yield* sql`INSERT INTO members (player_id, name, slot, ready, joined_ms)
         VALUES ('old', 'Old', 1, 0, 5)`
-      const lobby = yield* lobbyOf(server)
-      expect(Array.map(lobby.members, member => member.rank)).toEqual([9, 1])
-      expect(Array.map(lobby.members, member => member.calling)).toEqual([
-        'LineCook',
-        'You',
-      ])
-    }),
+        const lobby = yield* lobbyOf(server)
+        expect(Array.map(lobby.members, member => member.rank)).toEqual([9, 1])
+        expect(Array.map(lobby.members, member => member.calling)).toEqual([
+          'LineCook',
+          'You',
+        ])
+        expect(Array.map(lobby.members, member => member.hasSeenIntro)).toEqual(
+          [false, false],
+        )
+      }),
   )
 
   it.effect('a player sets only their own READY', () =>
@@ -698,6 +711,7 @@ describe('the room scope', () => {
             hostRank: 1,
             hostCalling: 'You',
             hostNightmare: false,
+            hostIntroSeen: false,
             mode: 'Campaign',
             visibility: 'Public',
           },
@@ -771,6 +785,7 @@ describe('the room scope', () => {
           hostRank: 1,
           hostCalling: 'You',
           hostNightmare: false,
+          hostIntroSeen: false,
           mode: 'Campaign',
           visibility: 'Private',
         },

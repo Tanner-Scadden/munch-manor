@@ -152,6 +152,10 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
           onNone: () => DEFAULT_CALLING,
           onSome: body => body.calling ?? DEFAULT_CALLING,
         }),
+        Option.match(maybeBody, {
+          onNone: () => false,
+          onSome: body => body.introSeen ?? false,
+        }),
         'Private',
         continentOf(request),
       )
@@ -175,6 +179,7 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
         maybeBody.value.look ?? '',
         maybeBody.value.rank ?? 1,
         maybeBody.value.calling ?? DEFAULT_CALLING,
+        maybeBody.value.introSeen ?? false,
       )
       return answer(called.status, called.text)
     }

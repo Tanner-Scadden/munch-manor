@@ -10,13 +10,16 @@ import { HeroPickerBlock } from '../heroes/block'
 // NOTE: `name`, `look`, `rank`, and `calling` are what joining sends for
 // this player (the look as src/shared/playerData.ts writes it, the rank as
 // src/world/heroes/rank.ts works it out from their points, the calling their saved pick
-// if their rank reached it).
+// if their rank reached it). `introSeen` is whether they watched the whole
+// intro (their save's onboarding `intro`), so a crew of veterans skips the
+// drive up.
 export const Model = Schema.Struct({
   screen: Screen,
   name: Schema.String,
   look: Schema.String,
   rank: Schema.Finite,
   calling: Calling,
+  introSeen: Schema.Boolean,
   rngState: Schema.Finite,
   // NOTE: the ids of the heroes and looks this player bought, so the lobby's
   // picker offers only the heroes they own.
@@ -36,6 +39,7 @@ export const initialModel: Omit<Model, 'heroPicker'> = {
   look: '',
   rank: 1,
   calling: 'You',
+  introSeen: false,
   rngState: 0,
   bought: [],
   bones: 0,

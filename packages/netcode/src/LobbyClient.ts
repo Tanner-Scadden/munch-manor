@@ -146,7 +146,8 @@ const roomCall = <A, I>(
   )
 
 // NOTE: who asks for a room, and where. A missing look, rank, or calling
-// takes the default.
+// takes the default; a missing `introSeen` reads as a newcomer, who gets the
+// whole intro.
 export interface RoomEntry {
   readonly origin: string
   readonly token: string
@@ -154,6 +155,7 @@ export interface RoomEntry {
   readonly look?: string
   readonly rank?: number
   readonly calling?: string
+  readonly introSeen?: boolean
 }
 
 export const createRoom = ({
@@ -163,6 +165,7 @@ export const createRoom = ({
   look = '',
   rank = 1,
   calling = DEFAULT_CALLING,
+  introSeen = false,
 }: RoomEntry): Effect.Effect<RoomTicket, RoomRequestFailed> =>
   roomCall(
     new URL(ROOM_PATHS.create, origin).toString(),
@@ -173,6 +176,7 @@ export const createRoom = ({
       look: String.slice(0, MAX_LOOK_INPUT)(look),
       rank: cleanRank(rank),
       calling: cleanCalling(calling),
+      introSeen,
     }),
   )
 
@@ -184,6 +188,7 @@ export const joinRoom = ({
   look = '',
   rank = 1,
   calling = DEFAULT_CALLING,
+  introSeen = false,
 }: RoomEntry & { readonly code: string }): Effect.Effect<
   RoomTicket,
   RoomRequestFailed
@@ -198,6 +203,7 @@ export const joinRoom = ({
       look: String.slice(0, MAX_LOOK_INPUT)(look),
       rank: cleanRank(rank),
       calling: cleanCalling(calling),
+      introSeen,
     }),
   )
 
@@ -421,6 +427,7 @@ export interface QuickPlayOptions {
   readonly look?: string
   readonly rank?: number
   readonly calling?: string
+  readonly introSeen?: boolean
   readonly token: Effect.Effect<string, TokenUnavailable>
 }
 
@@ -470,6 +477,7 @@ export const startQuickPlay = (
         look: String.slice(0, MAX_LOOK_INPUT)(options.look ?? ''),
         rank: cleanRank(options.rank ?? 1),
         calling: cleanCalling(options.calling ?? DEFAULT_CALLING),
+        introSeen: options.introSeen ?? false,
       })
       yield* sendText(hello)
       yield* Stream.runForEach(socket.messages, data =>

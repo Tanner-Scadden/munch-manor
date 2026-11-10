@@ -177,11 +177,28 @@ export const roomSettingsOf: {
 )
 
 // NOTE: the intro a room plays (src/world/run/arrival.ts): the whole drive
-// up on a room's first run, the knock and the slam on every run after it
-// (RUN IT BACK), so a crew's rematch stays quick. A room does not know who
-// has watched it before, so its first run plays it whole for everyone.
-export const introForRound = (round: number): IntroCut =>
-  round <= 1 ? 'Full' : 'Short'
+// up on a room's first run when anyone in the crew has not watched it yet
+// (each lobby member's `hasSeenIntro`, from their save), else the knock and
+// the slam. Every run after the first (RUN IT BACK) is short, so a crew's
+// rematch stays quick.
+export const introForRound: {
+  (
+    crew: ReadonlyArray<Readonly<{ hasSeenIntro: boolean }>>,
+  ): (round: number) => IntroCut
+  (
+    round: number,
+    crew: ReadonlyArray<Readonly<{ hasSeenIntro: boolean }>>,
+  ): IntroCut
+} = Function.dual(
+  2,
+  (
+    round: number,
+    crew: ReadonlyArray<Readonly<{ hasSeenIntro: boolean }>>,
+  ): IntroCut =>
+    round <= 1 && Array.some(crew, member => !member.hasSeenIntro)
+      ? 'Full'
+      : 'Short',
+)
 
 // NOTE: the furthest back a shot is checked, 250 ms; the room caps each
 // player's view lag at the same (packages/netcode, World.ts), which this

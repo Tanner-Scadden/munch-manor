@@ -41,9 +41,30 @@ const pressKeyWithPicker = (code: string) =>
 const handlers = CoopComposition.makeInMessageUpdate({
   RequestedOpen: (
     model,
-    { name, maybeCode, look, rank, calling, rngState, bought, bones },
+    {
+      name,
+      maybeCode,
+      look,
+      rank,
+      calling,
+      introSeen,
+      rngState,
+      bought,
+      bones,
+    },
   ) =>
-    open(model, name, maybeCode, look, rank, calling, bought, bones, rngState),
+    open(
+      model,
+      name,
+      maybeCode,
+      look,
+      rank,
+      calling,
+      bought,
+      bones,
+      rngState,
+      introSeen,
+    ),
 
   RequestedBoughtHero: (model, { calling, bought, bones }) =>
     boughtHero({ calling, bought, bones })(model),

@@ -190,6 +190,35 @@ describe("an online co-op run's intro", () => {
         }),
       ),
   )
+
+  // NOTE: a newcomer who sits through the room's whole intro has seen it,
+  // so their next room may skip the drive up; a short cut proves nothing.
+  const newcomer = (world: RoomWorld): Model =>
+    modifyFields(inRun(world), { introSeen: () => 'Unseen' })
+
+  it.effect('the whole intro in a room marks it seen', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(newcomer(arrivingAt(0))),
+      Story.message(roomFrame(100)),
+      Story.model(current => {
+        expect(current.introSeen).toBe('Seen')
+      }),
+    ),
+  )
+
+  it.effect('the short intro in a room leaves it unseen', () => {
+    const short = startRoomWorld([0, OWN_SLOT], 7, DEFAULT_ROOM_SETTINGS)
+    return Story.story(
+      APPLICATION,
+      Story.given(newcomer(short)),
+      Story.message(roomFrame(100)),
+      Story.model(current => {
+        expect(current.phase._tag).toBe('Arriving')
+        expect(current.introSeen).toBe('Unseen')
+      }),
+    )
+  })
 })
 
 describe('an online co-op run', () => {

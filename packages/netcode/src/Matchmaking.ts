@@ -47,6 +47,7 @@ export const QuickClient = Schema.TaggedUnion({
     look: Schema.optionalKey(LookInput),
     rank: Schema.optionalKey(RankInput),
     calling: Schema.optionalKey(CallingInput),
+    introSeen: Schema.optionalKey(Schema.Boolean),
   },
   Answer: { accept: Schema.Boolean },
   Cancel: {},
@@ -84,6 +85,7 @@ export interface Queued {
   readonly look?: string
   readonly rank?: number
   readonly calling?: string
+  readonly introSeen?: boolean
   // NOTE: the continent the player connected from, as Cloudflare names it
   // (NA, EU, AS, ...); '' when unknown.
   readonly region?: string
@@ -119,6 +121,7 @@ const QueuedSchema = Schema.Struct({
   look: Schema.optionalKey(Schema.String),
   rank: Schema.optionalKey(Schema.Finite),
   calling: Schema.optionalKey(Schema.String),
+  introSeen: Schema.optionalKey(Schema.Boolean),
   region: Schema.optionalKey(Schema.String),
   queuedMs: Schema.Finite,
 })

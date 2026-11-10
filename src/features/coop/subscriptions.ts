@@ -18,6 +18,7 @@ const MaybeJoiner = Schema.Option(
     look: Schema.String,
     rank: Schema.Finite,
     calling: Calling,
+    introSeen: Schema.Boolean,
   }),
 )
 const MaybeCode = Schema.Option(Schema.String)
@@ -25,7 +26,13 @@ const MaybeCode = Schema.Option(Schema.String)
 const maybeQueueJoiner = (
   model: Model,
 ): Option.Option<
-  Readonly<{ name: string; look: string; rank: number; calling: Calling }>
+  Readonly<{
+    name: string
+    look: string
+    rank: number
+    calling: Calling
+    introSeen: boolean
+  }>
 > =>
   Screen.isAnyOf(['Queue'])(model.screen)
     ? Option.some({
@@ -33,6 +40,7 @@ const maybeQueueJoiner = (
         look: model.look,
         rank: model.rank,
         calling: model.calling,
+        introSeen: model.introSeen,
       })
     : Option.none()
 
@@ -57,9 +65,10 @@ export const subscriptions = makeSubscriptions(entry => ({
       handler: function* () {
         const net = yield* CoopNet
         return ({ maybeJoiner }) =>
-          whenSome(maybeJoiner, ({ name, look, rank, calling }) =>
-            Stream.map(net.quickPlay(name, look, rank, calling), event =>
-              Message.ReceivedQuickPlayEvent({ event }),
+          whenSome(maybeJoiner, ({ name, look, rank, calling, introSeen }) =>
+            Stream.map(
+              net.quickPlay(name, look, rank, calling, introSeen),
+              event => Message.ReceivedQuickPlayEvent({ event }),
             ),
           )
       },
