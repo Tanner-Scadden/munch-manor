@@ -14,7 +14,16 @@ import {
 import { entryById } from './catalog'
 import { BEFORE_PATH, NoteKind, type StoredNote } from './notes'
 import { numberedNotes } from './pins'
-import { ROOM_SOURCE, ROOM_TITLE, areaHeight, areaWidth } from './room'
+import {
+  areaHeight,
+  areaWidth,
+  isToggleOn,
+  roomOfTarget,
+  roomSourceOf,
+  roomTargetOf,
+  roomTitleOf,
+  roomToggleOf,
+} from './room'
 import { pickedEntry, targetIdOf } from './update'
 
 const KIND_LABELS: Readonly<Record<NoteKind, string>> = {
@@ -51,11 +60,13 @@ type Picked = Readonly<{ title: string; id: string; source: string }>
 const pickedOf = (model: Model): Option.Option<Picked> =>
   model.tab === 'Rooms'
     ? Option.some({
-        title: model.isKitchenOpen
-          ? `${ROOM_TITLE}, kitchen open`
-          : `${ROOM_TITLE}, kitchen shut`,
-        id: 'room/Manor',
-        source: ROOM_SOURCE,
+        title: Option.match(roomToggleOf(model.room), {
+          onNone: () => roomTitleOf(model.room),
+          onSome: toggle =>
+            `${roomTitleOf(model.room)}, ${String.toLowerCase(toggle.label)} ${String.toLowerCase(isToggleOn(model) ? toggle.on : toggle.off)}`,
+        }),
+        id: roomTargetOf(model.room),
+        source: roomSourceOf(model.room),
       })
     : Option.map(pickedEntry(model), entry => ({
         title: entry.title,
@@ -217,12 +228,14 @@ const notesHereView = (
 }
 
 const titleOfTarget = (targetId: string): string =>
-  targetId === 'room/Manor'
-    ? ROOM_TITLE
-    : Option.match(entryById(targetId), {
+  Option.match(roomOfTarget(targetId), {
+    onSome: roomTitleOf,
+    onNone: () =>
+      Option.match(entryById(targetId), {
         onNone: () => targetId,
         onSome: entry => entry.title,
-      })
+      }),
+  })
 
 const allNotesView = (model: Model, h: StudioViewBuilder): Html => {
   const waiting = Array.filter(
