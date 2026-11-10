@@ -16,6 +16,7 @@ import {
 import { pastFirstBreak, withKeys } from '../../test/model.fixture'
 import {
   APPLICATION,
+  BELOW_NORTH_DOOR,
   SCENE_SUBSCRIPTIONS,
   holdingSecond,
   measureSurface,
@@ -180,7 +181,7 @@ describe('A break', () => {
     'finds a Plank Pile in the crate, and the PLACE button explains it needs a doorway',
     () => {
       const placeButton = Scene.role('button', { name: 'Place a Plank Pile' })
-      const crate = crateSpotOf('Parlour')
+      const crate = crateSpotOf('Dining')
       return Scene.scene(
         APPLICATION,
         Scene.given(
@@ -304,7 +305,11 @@ describe('Place button', () => {
         }),
     }),
     {
-      player: player => modifyFields(player, { x: () => 220, y: () => 27 }),
+      player: player =>
+        modifyFields(player, {
+          x: () => BELOW_NORTH_DOOR.x,
+          y: () => BELOW_NORTH_DOOR.y,
+        }),
       trapStock: () => ({ Barricade: 1, Turret: 1 }),
     },
   )

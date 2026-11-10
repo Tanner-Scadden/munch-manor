@@ -26,7 +26,11 @@ const FRAME_MS = 50
 
 describe('a full wave', () => {
   const SECONDS_PER_RUN = 40
-  const STEP_RIGHT_TICKS = 17
+  // NOTE: from the start spot, up into the aisle below the party table,
+  // then east past the table's end, under the North door's lane, where the
+  // shots fly up it clear of the table and the chandelier.
+  const STEP_UP_TICKS = 4
+  const STEP_RIGHT_TICKS = 28
 
   // NOTE: every frame's Model of the wave, gathered in an array the Story
   // alone fills, as `recordTicks` gathers them.
@@ -41,6 +45,9 @@ describe('a full wave', () => {
         Story.given(modifyFields(readyModel, { rngState: () => seed })),
         startRunFromHome,
         release('Enter'),
+        press('KeyW'),
+        ...ticks(STEP_UP_TICKS, FRAME_MS),
+        release('KeyW'),
         press('KeyD'),
         ...ticks(STEP_RIGHT_TICKS, FRAME_MS),
         release('KeyD'),

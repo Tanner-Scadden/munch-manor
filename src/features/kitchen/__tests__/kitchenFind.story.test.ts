@@ -144,11 +144,11 @@ describe('Rattles pointing at the boards', () => {
 })
 
 describe('the rooms counter', () => {
-  test('reads 1 of 2 before the kitchen is open and 2 of 2 after', () => {
-    expect(roomsOf(levelOf(breakAt(3)))).toEqual({ found: 1, total: 2 })
+  test('reads 1 of 3 with the kitchen and the parlour shut, and 2 of 3 once the kitchen opens', () => {
+    expect(roomsOf(levelOf(breakAt(3)))).toEqual({ found: 1, total: 3 })
     expect(roomsOf(levelOf(withKitchenOpen(breakAt(3))))).toEqual({
       found: 2,
-      total: 2,
+      total: 3,
     })
   })
 

@@ -395,7 +395,7 @@ describe('a fridge weapon levels on its own kills', () => {
 describe('kills in a co-op room', () => {
   test("a kill levels the killer's own gun, not a teammate's", () => {
     const WAVE = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] })
-    const target = zombieAt(400, 220, 104, { hp: 1 })
+    const target = zombieAt(400, 220, 45, { hp: 1 })
     const started = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
     const armed = (slot: number) => (world: typeof started.world) =>
       withSeat(world, slot, seatWorld =>

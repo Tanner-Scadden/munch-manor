@@ -100,17 +100,17 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'wave',
     query:
-      'wave=3&seen=all&start=wave&gun=smg&elapsed=6000&crowd=10&tough&px=150&py=110&aim=250,90',
+      'wave=3&seen=all&start=wave&gun=smg&elapsed=6000&crowd=10&tough&px=180&py=135&aim=280,60',
   },
   {
     name: 'lowammo',
     query:
-      'wave=3&seen=all&start=wave&gun=smg&elapsed=6000&loaded=9&boosts=RapidFire,Damage,Speed,Pierce&px=60&py=110',
+      'wave=3&seen=all&start=wave&gun=smg&elapsed=6000&loaded=9&boosts=RapidFire,Damage,Speed,Pierce&px=60&py=130',
   },
   {
     name: 'break',
     query:
-      'wave=3&seen=all&gun=smg&money=120&barricades=1&turrets=1&px=60&py=100',
+      'wave=3&seen=all&gun=smg&money=120&barricades=1&turrets=1&px=60&py=130',
   },
   {
     name: 'breakright',
@@ -158,7 +158,7 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'boss',
     query:
-      'wave=8&seen=all&start=wave&elapsed=9000&boss=stomp&windMs=500&bx=200&by=80&px=150&py=120',
+      'wave=8&seen=all&start=wave&elapsed=9000&boss=stomp&windMs=500&bx=200&by=80&px=150&py=128',
   },
   {
     name: 'card',

@@ -64,7 +64,7 @@ const stepOf = (current: Model): Option.Option<QuestStep> =>
 
 // NOTE: the player stepped onto the parlour's trap crate.
 const onCrate = (current: Model): Model => {
-  const spot = crateSpotOf('Parlour')
+  const spot = crateSpotOf('Dining')
   return modifyFocus(current, {
     player: player =>
       modifyFields(player, { x: () => spot.x, y: () => spot.y }),
@@ -95,7 +95,7 @@ describe('the guided first break', () => {
             expect(current.firstBreakQuest).toEqual(Tour.Running())
             expect(stepOf(current)).toEqual(Option.some('Grab'))
             expect(maybeQuestMark(current)).toEqual(
-              Option.some(crateSpotOf('Parlour')),
+              Option.some(crateSpotOf('Dining')),
             )
           }),
         )
@@ -110,7 +110,7 @@ describe('the guided first break', () => {
         )
         const ready = offCrate(grabbed)
         expect(maybeQuestMark(ready)).not.toEqual(
-          Option.some(crateSpotOf('Parlour')),
+          Option.some(crateSpotOf('Dining')),
         )
         expect(Option.isSome(maybeQuestMark(ready))).toBe(true)
 

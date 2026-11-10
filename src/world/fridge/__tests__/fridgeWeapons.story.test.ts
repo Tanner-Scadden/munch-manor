@@ -54,7 +54,8 @@ import {
 // throw.
 
 const FRAME_MS = FIXED_STEP_MS
-const ROW_Y = 104
+// NOTE: the dining room's wide aisle north of the party table, rows 7 to 9.
+const ROW_Y = 85
 const PLAYER_X = 100
 
 const holding = (

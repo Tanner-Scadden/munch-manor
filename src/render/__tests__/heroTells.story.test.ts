@@ -20,6 +20,7 @@ import { atSeat, crewInWave, playingModel } from '../../test/model.fixture'
 import { TRAPS } from '../../world/gear/traps'
 import { CALLINGS } from '../../world/heroes/calling'
 import { playerOfCalling } from '../../world/heroes/callingPlayer'
+import { START_LEVEL } from '../../world/level/arena'
 import {
   DEFAULT_ROOM_SETTINGS,
   startRoomWorld,
@@ -186,7 +187,7 @@ describe('the signature effects', () => {
         player: player =>
           modifyFields(player, {
             x: () => 14,
-            y: () => 90,
+            y: () => START_LEVEL.doors.West.center.y,
           }),
       },
     )

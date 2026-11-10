@@ -37,11 +37,14 @@ export type CoverKind =
   | 'Pantry'
   | 'Sacks'
   | 'Fridge'
+  | 'PartyTable'
+  | 'Hutch'
+  | 'Candelabra'
 
 export const WALL_SYMBOL = '#'
-// NOTE: Rattles' spot in the parlour, where his stall stood until the shop
-// went (docs/ESCAPE_PLAN.md, layer 7): he sits there on an old trunk,
-// solid as the stall was, and hollers his hints from it.
+// NOTE: Rattles' spot in the start room (docs/ESCAPE_PLAN.md, layer 7): his
+// stall went with the shop, and he sits on an old trunk there, solid, and
+// hollers his hints from it.
 export const RATTLES_SYMBOL = '$'
 const OUTSIDE_SYMBOL = ','
 export const SOUP_SYMBOL = '~'
@@ -63,6 +66,9 @@ export const COVER_SYMBOLS: Readonly<Record<string, CoverKind>> = {
   Q: 'Pantry',
   R: 'Sacks',
   Z: 'Fridge',
+  '=': 'PartyTable',
+  H: 'Hutch',
+  i: 'Candelabra',
 }
 
 export const DOOR_SYMBOLS: Readonly<Record<DoorId, string>> = {
@@ -72,7 +78,9 @@ export const DOOR_SYMBOLS: Readonly<Record<DoorId, string>> = {
   South: 'S',
   Back: 'D',
   Window: 'Y',
-  Front: 'H',
+  WestTop: 'n',
+  WestBottom: 's',
+  Front: 'M',
 }
 
 export const DOOR_OUTWARD: Readonly<Record<DoorId, Vector>> = {
@@ -82,13 +90,16 @@ export const DOOR_OUTWARD: Readonly<Record<DoorId, Vector>> = {
   South: { x: 0, y: 1 },
   Back: { x: 0, y: -1 },
   Window: { x: -1, y: 0 },
+  WestTop: { x: 0, y: -1 },
+  WestBottom: { x: 0, y: 1 },
   Front: { x: 0, y: 1 },
 }
 
 // NOTE: every door zombies may come through. A level's own spawn doors are
 // its `doorIds`, the ones on its map that no closed exit still holds shut.
-// The parlour's four come first, so a level with the kitchen shut lists them
-// in the same order it always did. The front door is not here: it is the way
+// The start room's four come first, so a level with every exit shut lists
+// them in the same order it always did. The west slot's two (`n` and `s` on
+// a slot room's map) come last. The front door is not here: it is the way
 // out of the house, and no zombie ever spawns at it.
 export const DOOR_IDS: ReadonlyArray<DoorId> = [
   'North',
@@ -97,6 +108,8 @@ export const DOOR_IDS: ReadonlyArray<DoorId> = [
   'South',
   'Back',
   'Window',
+  'WestTop',
+  'WestBottom',
 ]
 
 export const byDoor = <A>(
@@ -108,6 +121,8 @@ export const byDoor = <A>(
   South: make('South'),
   Back: make('Back'),
   Window: make('Window'),
+  WestTop: make('WestTop'),
+  WestBottom: make('WestBottom'),
   Front: make('Front'),
 })
 
@@ -350,6 +365,7 @@ export type Level = Readonly<{
   bottom: number
   tileCount: number
   openExits: ReadonlyArray<ExitId>
+  dropped: ReadonlyArray<string>
   exits: ReadonlyArray<Exit>
   rooms: ReadonlyArray<Room>
   bounds: Box
@@ -402,8 +418,20 @@ const openExitIdsOf = (
     Array.contains(openExits, id) ? Result.succeed(id) : Result.failVoid,
   )
 
-const keyOf = (spec: LevelSpec, openExits: ReadonlyArray<ExitId>): string =>
-  `${spec.id}:${Array.join(openExits, '+')}`
+const droppedIdsOf = (
+  spec: LevelSpec,
+  dropped: ReadonlyArray<string>,
+): ReadonlyArray<string> =>
+  Array.filterMap(spec.drops, ({ id }) =>
+    Array.contains(dropped, id) ? Result.succeed(id) : Result.failVoid,
+  )
+
+const keyOf = (
+  spec: LevelSpec,
+  openExits: ReadonlyArray<ExitId>,
+  dropped: ReadonlyArray<string>,
+): string =>
+  `${spec.id}:${Array.join(openExits, '+')}:${Array.join(dropped, '+')}`
 
 // NOTE: the room covering a tile of the plan, the last listed when two
 // overlap, and its symbol there.
@@ -491,10 +519,12 @@ const roomBoxOf = ({ tiles, origin }: RoomSpec): Box => ({
 const buildLevel = (
   spec: LevelSpec,
   requestedExits: ReadonlyArray<ExitId>,
+  requestedDrops: ReadonlyArray<string>,
 ): Level => {
   const grid = gridOfSpec(spec)
   const { columns } = grid
   const openExits = openExitIdsOf(spec, requestedExits)
+  const dropped = droppedIdsOf(spec, requestedDrops)
   const exits: ReadonlyArray<Exit> = Array.map(spec.exits, exit => ({
     ...exit,
     tiles: tilesWithSymbol(grid, exit.symbol),
@@ -517,6 +547,10 @@ const buildLevel = (
     ...Array.map(heldDoors, id => DOOR_SYMBOLS[id]),
     // NOTE: the front door stays locked: nothing walks through it yet.
     DOOR_SYMBOLS.Front,
+    // NOTE: a drop lying in its spot is cover, like the furniture.
+    ...Array.filterMap(spec.drops, ({ id, symbol }) =>
+      Array.contains(dropped, id) ? Result.succeed(symbol) : Result.failVoid,
+    ),
   ])
   const rooms = Array.map(spec.rooms, (room): Room => ({
     id: room.id,
@@ -627,7 +661,7 @@ const buildLevel = (
   const height = grid.rows * TILE_SIZE
 
   return {
-    key: keyOf(spec, openExits),
+    key: keyOf(spec, openExits, dropped),
     spec,
     tiles: grid.tiles,
     columns,
@@ -641,6 +675,7 @@ const buildLevel = (
     bottom: top + height,
     tileCount: columns * grid.rows,
     openExits,
+    dropped,
     exits,
     rooms,
     bounds: unionOf(
@@ -674,22 +709,38 @@ const buildLevel = (
 
 const levelsBySpec = new WeakMap<LevelSpec, Map<string, Level>>()
 
+// NOTE: a level with these exits open and these drops lying in their spots.
 export const levelFor: {
-  (openExits?: ReadonlyArray<ExitId>): (spec: LevelSpec) => Level
-  (spec: LevelSpec, openExits?: ReadonlyArray<ExitId>): Level
+  (
+    openExits?: ReadonlyArray<ExitId>,
+    dropped?: ReadonlyArray<string>,
+  ): (spec: LevelSpec) => Level
+  (
+    spec: LevelSpec,
+    openExits?: ReadonlyArray<ExitId>,
+    dropped?: ReadonlyArray<string>,
+  ): Level
 } = Function.dual(
   // NOTE: data-first starts with the spec; data-last with the open exits or nothing.
   (args: IArguments): boolean =>
     args[0] !== undefined && !Array.isArray(args[0]),
-  (spec: LevelSpec, openExits: ReadonlyArray<ExitId> = []): Level => {
-    const key = keyOf(spec, openExitIdsOf(spec, openExits))
+  (
+    spec: LevelSpec,
+    openExits: ReadonlyArray<ExitId> = [],
+    dropped: ReadonlyArray<string> = [],
+  ): Level => {
+    const key = keyOf(
+      spec,
+      openExitIdsOf(spec, openExits),
+      droppedIdsOf(spec, dropped),
+    )
     const built = levelsBySpec.get(spec) ?? new Map<string, Level>()
     levelsBySpec.set(spec, built)
     const cached = built.get(key)
     if (cached !== undefined) {
       return cached
     }
-    const level = buildLevel(spec, openExits)
+    const level = buildLevel(spec, openExits, dropped)
     built.set(key, level)
     return level
   },
@@ -717,8 +768,10 @@ export const makeLevel: {
           },
         ],
         exits: [],
+        drops: [],
         start: middleOf(tiles),
       },
+      [],
       [],
     ),
 )
@@ -727,7 +780,11 @@ export const PARLOUR: Level = levelFor(PARLOUR_SPEC)
 
 export const MANOR: Level = levelFor(MANOR_SPEC)
 
-export const startingLevel: LevelState = { id: 'Manor', openExits: [] }
+export const startingLevel: LevelState = {
+  id: 'Manor',
+  openExits: [],
+  dropped: [],
+}
 
 // NOTE: the level every run starts on, with no exit open yet. What is baked
 // once for the start, such as Rattles' sprites, reads it.
@@ -788,7 +845,7 @@ export const levelOf = ({ level }: Readonly<{ level: LevelState }>): Level => {
   if (cached !== undefined) {
     return cached
   }
-  const found = levelFor(LEVEL_SPECS[level.id], level.openExits)
+  const found = levelFor(LEVEL_SPECS[level.id], level.openExits, level.dropped)
   levelsByState.set(level, found)
   return found
 }
@@ -813,7 +870,7 @@ export const openExit: {
   (level: Level, id: ExitId): Level
 } = Function.dual(2, (level: Level, id: ExitId): Level =>
   isClosedExit(level, id)
-    ? levelFor(level.spec, Array.append(level.openExits, id))
+    ? levelFor(level.spec, Array.append(level.openExits, id), level.dropped)
     : level,
 )
 
@@ -822,7 +879,11 @@ export const openExitIn: {
   (state: LevelState, id: ExitId): LevelState
 } = Function.dual(2, (state: LevelState, id: ExitId): LevelState =>
   isClosedExit(levelOf({ level: state }), id)
-    ? { id: state.id, openExits: Array.append(state.openExits, id) }
+    ? {
+        id: state.id,
+        openExits: Array.append(state.openExits, id),
+        dropped: state.dropped,
+      }
     : state,
 )
 

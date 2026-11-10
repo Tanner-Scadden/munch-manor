@@ -125,6 +125,14 @@ const ESCAPE_COVER_DRAWINGS: Readonly<
   Barrels: barrelsShapes,
 }
 
+// NOTE: whether a level engine cover kind is one drawn here.
+const ESCAPE_COVER_KINDS: ReadonlyArray<string> = Record.keys(
+  ESCAPE_COVER_DRAWINGS,
+)
+
+export const isEscapeCoverKind = (kind: string): kind is EscapeCoverKind =>
+  Array.contains(ESCAPE_COVER_KINDS, kind)
+
 const byFoot = Order.mapInput(
   Order.Number,
   ({ box }: Readonly<{ box: Box }>) => box.y + box.height,

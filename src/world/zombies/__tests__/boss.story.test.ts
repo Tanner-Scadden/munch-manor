@@ -18,7 +18,7 @@ import { BOSS_ICON } from '../../../art/sprites/zombies'
 import { wavePreviewShapes } from '../../../features/hud/wavePreview'
 import { cameraOf } from '../../../render/camera'
 import { PACK_WARNING_MS } from '../../../shared/constants'
-import { newPlayerReady } from '../../../test/model.fixture'
+import { newPlayerReady, withPlayerAt } from '../../../test/model.fixture'
 import {
   APPLICATION,
   FRAME_MS,
@@ -28,7 +28,7 @@ import {
   ticksFor,
   zombieOf,
 } from '../../../test/testing'
-import { DOOR_IDS, PARLOUR, doorSpawnPoint } from '../../level/arena'
+import { DOOR_IDS, START_LEVEL, doorSpawnPoint } from '../../level/arena'
 import { DIFFICULTIES } from '../../run/difficulty'
 import { hpScaleFor, rollSpawns } from '../../waves/endlessWaves'
 import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
@@ -182,7 +182,7 @@ describe('planning the boss', () => {
     const doorFor = (seed: number): DoorId => {
       const [state, spawns] = rollSpawns(seed, FINAL_WAVE)
       const [, boss] = planBoss(
-        PARLOUR.doorIds,
+        START_LEVEL.doorIds,
         state,
         FINAL_WAVE,
         spawns,
@@ -272,7 +272,7 @@ describe('the entrance', () => {
           )
           expect(boss.hp).toBe(BOSS_HP)
           expect(boss.maxHp).toBe(BOSS_HP)
-          const door = doorSpawnPoint(PARLOUR, 'West', 0)
+          const door = doorSpawnPoint(START_LEVEL, 'West', 0)
           expect(Math.hypot(boss.x - door.x, boss.y - door.y)).toBeLessThan(4)
           expect(current.boss).toEqual(
             freshFight(
@@ -527,17 +527,26 @@ describe('the door preview', () => {
 describe('determinism', () => {
   it.effect('the same seed plays the same charges, spits, and belches', () =>
     Effect.gen(function* () {
+      // NOTE: the fight in the dining room's wide aisle north of the table
+      // (rows 7 to 9), where a charge's lane has room on both sides.
+      const AISLE_Y = 85
       const start = (seed: number): Model =>
         modifyFields(
-          inWave(
-            FINAL_WAVE,
-            Array.makeBy(4, index => spawnAt(index * 900, index)),
-            fightingWith(BossMove.Stalking({ cooldownMs: 0 }), { belchMs: 0 }),
-            [
-              modifyFields(bossAt(CENTER_X + 120, CENTER_Y), {
-                speed: () => 10,
+          withPlayerAt(
+            inWave(
+              FINAL_WAVE,
+              Array.makeBy(4, index => spawnAt(index * 900, index)),
+              fightingWith(BossMove.Stalking({ cooldownMs: 0 }), {
+                belchMs: 0,
               }),
-            ],
+              [
+                modifyFields(bossAt(CENTER_X + 120, AISLE_Y), {
+                  speed: () => 10,
+                }),
+              ],
+            ),
+            CENTER_X,
+            AISLE_Y,
           ),
           { rngState: () => seed },
         )

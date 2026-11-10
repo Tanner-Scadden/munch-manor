@@ -15,7 +15,7 @@ import { FIXED_STEP_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import {
   APPLICATION,
-  PARLOUR_SPOT,
+  START_SPOT,
   ticks,
   westPlank,
   zombieOf,
@@ -65,8 +65,8 @@ const stuckInTheYard: Model = modifyFocus(
   {
     player: player =>
       modifyFields(player, {
-        x: () => PARLOUR_SPOT.x,
-        y: () => PARLOUR_SPOT.y,
+        x: () => START_SPOT.x,
+        y: () => START_SPOT.y,
         invulnerability: () =>
           Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
       }),

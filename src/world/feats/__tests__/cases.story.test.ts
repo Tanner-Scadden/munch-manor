@@ -192,8 +192,8 @@ describe('one player', () => {
       modifyFields(playingModel, {
         cases: () => [
           {
-            id: 2,
-            spot: 2,
+            id: 4,
+            spot: 4,
             prize: 'Shotgun',
             feat: ONE_KILL,
             state: CaseState.Locked(),
@@ -260,9 +260,9 @@ describe('co-op', () => {
           },
         ],
         zombies: () => [
-          zombieOf('Shambler', 900, 200, 100, { hp: 1, speed: 0 }),
+          zombieOf('Shambler', 900, 200, 45, { hp: 1, speed: 0 }),
         ],
-        bullets: () => [crewBullet(1, 1, 200, 100)],
+        bullets: () => [crewBullet(1, 1, 200, 45)],
       },
     )
     const opened = stepWorld(crew, new Map()).world

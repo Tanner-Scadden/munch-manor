@@ -82,7 +82,7 @@ const trunkIndex = (current: Model): number =>
     Option.getOrThrow(Array.last(rattlesShapes('Dozing', current.elapsedMs))),
   )
 
-const NORTH_DOOR_X = 220
+const NORTH_DOOR_X = MANOR.doors.North.center.x
 
 const lintelIndex = (current: Model): number =>
   pipe(
@@ -185,10 +185,13 @@ describe('Depth sort', () => {
       { floorY: 20, left: 40, right: 100 },
       { floorY: 20, left: 190, right: 250 },
     ])
+    // NOTE: the dining room's north door, cols 27 and 28, and the kitchen's
+    // boards and back door once it is open.
+    expect(spans(MANOR)).toEqual([{ floorY: 20, left: 250, right: 310 }])
     expect(spans(openExit(MANOR, 'Kitchen'))).toEqual([
       { floorY: -130, left: 100, right: 160 },
       { floorY: 20, left: 40, right: 100 },
-      { floorY: 20, left: 190, right: 250 },
+      { floorY: 20, left: 250, right: 310 },
     ])
   })
 

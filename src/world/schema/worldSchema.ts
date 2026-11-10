@@ -192,6 +192,8 @@ export const GameEvent = defineTaggedUnion({
   Purchased: { x: PositionNumber, y: PositionNumber },
   PurchaseRefused: { x: PositionNumber, y: PositionNumber },
   ExitOpened: { x: PositionNumber, y: PositionNumber },
+  // NOTE: the dining room's chandelier came down into the table's gap.
+  ChandelierFell: { x: PositionNumber, y: PositionNumber },
   FridgeOpened: { x: PositionNumber, y: PositionNumber, prize: FridgePrize },
   FridgeSlammed: { x: PositionNumber, y: PositionNumber },
   PrizeTaken: { x: PositionNumber, y: PositionNumber },

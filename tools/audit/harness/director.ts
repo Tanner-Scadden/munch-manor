@@ -589,7 +589,9 @@ const READY_CODE = actionCodeOf(SeatAction.Ready())
 const READY_EVERY_TICKS = 60
 const ORBIT_TICKS = 480
 const ORBIT_RADIUS = 44
-const RUG_CENTER = { x: 160, y: 100 }
+// NOTE: the middle of the dining room's hall runner, south of the start
+// spot, with open floor all round it.
+const RUG_CENTER = { x: 180, y: 158 }
 const FIRE_REACH = 72
 const KEEP_FRAMES = 12
 

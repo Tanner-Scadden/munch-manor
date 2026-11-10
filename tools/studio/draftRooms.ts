@@ -51,11 +51,11 @@ import {
 import { TILE_SIZE } from '../../src/shared/constants'
 import {
   type Level,
-  type LevelSpec,
   levelFor,
   makeLevel,
   tilesWithSymbol,
 } from '../../src/world/level/arena'
+import { type LevelSpec, middleOf } from '../../src/world/level/plan'
 
 export type DraftRoomId = 'Dining' | 'Library' | 'Cellar'
 
@@ -156,9 +156,10 @@ const CELLAR_COVER: Readonly<Record<string, EscapeCoverKind>> = {
 // NOTE: the drafted map as the game's walls and doors read it: a slot
 // room's spawn doors drawn as the parlour's North and South, the front door
 // and the secret shelves as wall (their art goes over it), and the review
-// marks as floor.
+// marks as floor. The chandelier's gap, `^`, stays: the party table finds its
+// halves by it, and it is floor while the chandelier hangs.
 const WALL_MARKS = new Set(['M', '%', '?'])
-const FLOOR_MARKS = new Set(['@', '^', '1', '2', '3', '4'])
+const FLOOR_MARKS = new Set(['@', '1', '2', '3', '4'])
 
 const engineMapOf = (map: ReadonlyArray<string>): ReadonlyArray<string> =>
   Array.map(map, line =>
@@ -186,23 +187,22 @@ const specOf = (
   exits: ReadonlyArray<readonly [string, string]>,
 ): LevelSpec => ({
   id: `Draft${id}`,
-  tiles: engineMapOf(map),
-  topRow: 0,
+  rooms: [
+    {
+      id,
+      tiles: engineMapOf(map),
+      origin: { column: 0, row: 0 },
+      maybeExit: Option.none(),
+      renames: {},
+    },
+  ],
   exits: Array.map(exits, ([exitId, symbol]) => ({
     id: exitId,
     symbol,
     doors: [],
   })),
-  rooms: [
-    {
-      id,
-      firstColumn: 0,
-      lastColumn: Option.getOrElse(Array.head(map), () => '').length - 1,
-      firstRow: 0,
-      lastRow: map.length - 1,
-      maybeExit: Option.none(),
-    },
-  ],
+  drops: [],
+  start: middleOf(map),
 })
 
 const DINING_SPEC = specOf('Dining', DINING_MAP, [
@@ -312,7 +312,7 @@ const diningShapes = (isFallen: boolean): ReadonlyArray<Canvas.Shape> => {
     ...diningFloorShapes(room),
     ...diningRugShapes(room),
     ...walls(level),
-    ...diningWallShapes(level),
+    ...diningWallShapes(level, room),
     ...diningWallDecorShapes(room),
     ...doors(level),
     ...Option.match(symbolBoxOf(DINING_MAP, 'M'), {
@@ -343,6 +343,8 @@ const libraryShapes = (isOpen: boolean): ReadonlyArray<Canvas.Shape> => {
   const eastTop = Array.findFirst(shelves, ({ column }) => column > 0)
   return [
     ...boardShapes({
+      x: 0,
+      y: 0,
       width: level.width,
       height: level.height,
       tileCount: level.tileCount,

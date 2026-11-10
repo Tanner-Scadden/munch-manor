@@ -17,8 +17,8 @@ import {
 // NOTE: the guided first break, from playtesters who wanted the game to walk
 // them through the first break, as other games do. One step at a time, each
 // taught at the spot where it happens, with a little tracker in a corner:
-// grab the Plank Pile from the parlour's trap crate (in this break it always
-// holds one, see src/world/gear/crates.ts), and place it in a doorway. Then
+// grab the Plank Pile from the dining room's trap crate (in this break it
+// always holds one, see src/world/gear/crates.ts), and place it in a doorway. Then
 // START WAVE pulses and the tracker ticks off and fades. A later layer of
 // docs/ESCAPE_PLAN.md rewrites the tutorial.
 //
@@ -100,13 +100,13 @@ export const endQuest = (model: Model): Model =>
     ? model
     : modifyFields(model, { firstBreakQuest: () => Tour.Over() })
 
-// NOTE: an arrow bobs over where the step happens: the parlour's crate to
+// NOTE: an arrow bobs over where the step happens: the dining room's crate to
 // grab from, then the nearest open doorway, the sensible spot for the Plank
 // Pile.
 export const maybeQuestMark = (model: Model): Option.Option<Vector> =>
   Option.flatMap(questStepOf(model), step =>
     step === 'Grab'
-      ? Option.some(crateSpotOf('Parlour'))
+      ? Option.some(crateSpotOf('Dining'))
       : maybeQuestDoor(model),
   )
 

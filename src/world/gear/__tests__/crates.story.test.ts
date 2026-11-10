@@ -53,8 +53,8 @@ const standingAt = (base: Model, { x, y }: Vector): Model =>
       }),
   })
 
-const parlourCrate = (trap: TrapKind): Crate => ({
-  room: 'Parlour',
+const diningCrate = (trap: TrapKind): Crate => ({
+  room: 'Dining',
   stock: CrateStock.Stocked({ trap }),
 })
 
@@ -71,7 +71,7 @@ const stockedBreak = (
       modifyFields(current, { wave: () => wave, crates: () => crates }),
   })
 
-const onCrate = (base: Model): Model => standingAt(base, crateSpotOf('Parlour'))
+const onCrate = (base: Model): Model => standingAt(base, crateSpotOf('Dining'))
 
 const stocksOf = (current: Model): ReadonlyArray<CrateStock> =>
   Array.map(current.crates.crates, ({ stock }) => stock)
@@ -82,7 +82,7 @@ describe('trap crates', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(onCrate(stockedBreak(3, [parlourCrate('Turret')]))),
+        Story.given(onCrate(stockedBreak(3, [diningCrate('Turret')]))),
         tick(FRAME_MS),
         Story.model(current => {
           expect(focusOf(current).trapStock).toEqual({
@@ -96,7 +96,7 @@ describe('trap crates', () => {
             Array.filter(current.frameEvents, GameEvent.guards.CrateTaken),
           ).toEqual([
             GameEvent.CrateTaken({
-              ...crateSpotOf('Parlour'),
+              ...crateSpotOf('Dining'),
               trap: 'Turret',
             }),
           ])
@@ -115,7 +115,7 @@ describe('trap crates', () => {
         onCrate(
           stockedBreak(
             3,
-            [parlourCrate('Barricade')],
+            [diningCrate('Barricade')],
             Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
           ),
         ),
@@ -138,7 +138,7 @@ describe('trap crates', () => {
         Story.given(
           modifyFocus(
             modifyFields(
-              onCrate(stockedBreak(3, [parlourCrate('Barricade')])),
+              onCrate(stockedBreak(3, [diningCrate('Barricade')])),
               {
                 traps: () => [
                   Trap.Barricade({
@@ -177,7 +177,7 @@ describe('trap crates', () => {
             crates: current =>
               modifyFields(current, {
                 wave: () => 3,
-                crates: () => [{ room: 'Parlour', stock: CrateStock.Taken() }],
+                crates: () => [{ room: 'Dining', stock: CrateStock.Taken() }],
               }),
           }),
         ),
@@ -190,7 +190,7 @@ describe('trap crates', () => {
               stock._tag,
             ]),
           ).toEqual([
-            ['Parlour', 'Stocked'],
+            ['Dining', 'Stocked'],
             ['Kitchen', 'Stocked'],
           ])
         }),
@@ -297,7 +297,7 @@ describe('a heart in a crate', () => {
       Story.given(
         hurt(
           onCrate(
-            stockedBreak(3, [{ room: 'Parlour', stock: CrateStock.Heart() }]),
+            stockedBreak(3, [{ room: 'Dining', stock: CrateStock.Heart() }]),
           ),
         ),
       ),
@@ -308,7 +308,7 @@ describe('a heart in a crate', () => {
         expect(
           Array.filter(current.frameEvents, GameEvent.guards.PickupGrabbed),
         ).toEqual([
-          GameEvent.PickupGrabbed({ ...crateSpotOf('Parlour'), kind: 'Heart' }),
+          GameEvent.PickupGrabbed({ ...crateSpotOf('Dining'), kind: 'Heart' }),
         ])
       }),
     ),
@@ -319,7 +319,7 @@ describe('a heart in a crate', () => {
       APPLICATION,
       Story.given(
         onCrate(
-          stockedBreak(3, [{ room: 'Parlour', stock: CrateStock.Heart() }]),
+          stockedBreak(3, [{ room: 'Dining', stock: CrateStock.Heart() }]),
         ),
       ),
       tick(FRAME_MS),
