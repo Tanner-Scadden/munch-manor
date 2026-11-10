@@ -4,7 +4,6 @@ import { modifyFields } from 'foldkit/struct'
 import { SHOP_FIRST_WAVE } from '../../shared/constants'
 import { nextRandom } from '../../shared/prng'
 import { isMissingHeart, maxHpOf } from '../heroes/calling'
-import { isKitchenOpen } from '../kitchen/kitchen'
 import { type Tile, levelOf, tileCenter } from '../level/arena'
 import {
   atSeat,
@@ -17,7 +16,7 @@ import { isPending } from '../run/lessons'
 import type { World } from '../schema/world'
 import {
   type Crate,
-  type CrateRoom,
+  CrateRoom,
   CrateStock,
   GameEvent,
   Phase,
@@ -29,8 +28,8 @@ import { distanceBetween } from '../step/geometry'
 import { ownedCount, stockTrap, trapLimitOf } from './traps'
 
 // Trap crates (docs/ESCAPE_PLAN.md, layer 6): traps are found in the house,
-// not bought. A crate stands in each open room, the parlour's from the start
-// and the kitchen's once the kitchen is open, and in a break it stands open
+// not bought. A crate stands in each open room, the dining room's from the
+// start and each other room's once its boards are open, and in a break it stands open
 // with one trap in it: a Plank Pile or a Grumpy Gnome. The first standing
 // player (in slot order) to walk onto it takes it, unless they already have
 // as many of that trap as they may (two Plank Piles placed or carried, two
@@ -50,7 +49,7 @@ import { ownedCount, stockTrap, trapLimitOf } from './traps'
 //
 // The rolls come from the crates' own generator (`crates.rngState`, salted
 // from the run's seed in freshCrates), so they move no other roll. In a new
-// player's guided first break the parlour crate always holds a Plank Pile,
+// player's guided first break the dining room's crate always holds a Plank Pile,
 // the trap the tutorial teaches (src/features/onboarding/firstBreakQuest.ts).
 
 type CrateRules = Readonly<{
@@ -73,19 +72,41 @@ const CRATE_RULES: CrateRules = {
 
 // WHERE
 
-// NOTE: the floor tile each room's crate stands on, out of the doorways'
-// way: the parlour's bottom-left corner, the kitchen's bottom-right.
-const CRATE_TILES: Readonly<Record<CrateRoom, Tile>> = {
-  Parlour: { column: 2, row: 15 },
-  Kitchen: { column: 16, row: -2 },
+// NOTE: the floor tiles each room's crate stands on, out of the doorways'
+// way: the dining room's `tt` by the South door and the parlour's by its
+// south wall (docs/ROOM_DRAFTS.md), and the kitchen's bottom-right. A crate
+// stands in the middle of its tiles.
+const CRATE_TILES: Readonly<
+  Record<CrateRoom, Array.NonEmptyReadonlyArray<Tile>>
+> = {
+  Dining: [
+    { column: 9, row: 20 },
+    { column: 10, row: 20 },
+  ],
+  Kitchen: [{ column: 16, row: -2 }],
+  Parlour: [
+    { column: -12, row: 20 },
+    { column: -11, row: 20 },
+  ],
 }
 
-export const crateSpotOf = (room: CrateRoom): Vector =>
-  tileCenter(CRATE_TILES[room])
+const CRATE_ROOMS: ReadonlyArray<CrateRoom> = CrateRoom.literals
 
-// NOTE: the rooms a crate stands in: the parlour, and the kitchen once open.
-export const crateRoomsOf = (world: World): ReadonlyArray<CrateRoom> =>
-  isKitchenOpen(levelOf(world)) ? ['Parlour', 'Kitchen'] : ['Parlour']
+export const crateSpotOf = (room: CrateRoom): Vector => {
+  const tiles = CRATE_TILES[room]
+  const first = tileCenter(Array.headNonEmpty(tiles))
+  const last = tileCenter(Array.lastNonEmpty(tiles))
+  return { x: (first.x + last.x) / 2, y: first.y }
+}
+
+// NOTE: the rooms a crate stands in: the dining room, and each other room
+// once its boards are open, in CrateRoom's order.
+export const crateRoomsOf = (world: World): ReadonlyArray<CrateRoom> => {
+  const { rooms } = levelOf(world)
+  return Array.filter(CRATE_ROOMS, room =>
+    Array.some(rooms, ({ id, isOpen }) => id === room && isOpen),
+  )
+}
 
 // NOTE: the wave of the break the crates are open in, if they are.
 const openWaveOf = (world: World): Option.Option<number> =>
@@ -123,7 +144,7 @@ const isHeartDue = (world: World): boolean =>
 // STOCKING
 
 const isTutorialPlank = (world: World, room: CrateRoom): boolean =>
-  room === 'Parlour' && !isCoop(world) && isPending(world.lessons.openBreak)
+  room === 'Dining' && !isCoop(world) && isPending(world.lessons.openBreak)
 
 const rollTrap = (state: number): readonly [CrateStock, number] => {
   const draw = nextRandom(state)

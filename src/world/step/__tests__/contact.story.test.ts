@@ -33,8 +33,10 @@ import { ZOMBIE_KINDS, bodyRadiusOf } from '../../zombies/zombies'
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50
-const PLAYER_X = 150
-const PLAYER_Y = 104
+// NOTE: on the open floor between the dining room's table and the start
+// spot, clear of the table and the candelabras on every side.
+const PLAYER_X = 180
+const PLAYER_Y = 130
 const EPSILON = 1e-6
 
 const fightingBase: Model = modifyFields(initialModel, {

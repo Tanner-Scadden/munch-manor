@@ -106,6 +106,11 @@ import {
 // LeaveCounter action codes are gone (the draws and CallMedic moved up), a
 // ZombieKilled event no `bounty`, a PackWiped no `bonus`, a WaveCleared its
 // `keys`, the pantry's goodie is a Key, and a new event, KeysFound.
+// The house as rooms on a grid, with the dining room the start: door ids
+// for the front door and the west slot's two doors (WestTop, WestBottom),
+// the level's drops (`dropped`, the dining room's chandelier lying in the
+// table's gap), a new event, ChandelierFell, and a trap crate's room may
+// be the Dining room.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

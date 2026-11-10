@@ -71,8 +71,10 @@ import {
 // display case's gun trading one gun for another.
 
 const FRAME_MS = FIXED_STEP_MS
-const ROW_Y = 104
-const PLAYER_X = 100
+// NOTE: on the open floor between the dining room's table and the start
+// spot, with room on both sides.
+const ROW_Y = 130
+const PLAYER_X = 180
 
 const fightingWith = (zombies: ReadonlyArray<Zombie>): Model =>
   modifyFocus(

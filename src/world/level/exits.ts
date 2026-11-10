@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result } from 'effect'
+import { Array, Function, Option, Record, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
@@ -21,6 +21,7 @@ import {
   openExitIn,
   tileBox,
 } from './arena'
+import { WEST_EXIT } from './plan'
 
 // THE EXIT
 
@@ -49,8 +50,13 @@ export const EXIT_RULES: ExitRules = {
   tagDropPx: 7,
 }
 
+const EXIT_NAMES: Readonly<Record<ExitId, string>> = {
+  [KITCHEN_EXIT]: 'THE KITCHEN',
+  [WEST_EXIT]: 'THE PARLOUR',
+}
+
 export const exitName = (exit: ExitId): string =>
-  exit === KITCHEN_EXIT ? 'THE KITCHEN' : exit
+  Option.getOrElse(Record.get(EXIT_NAMES, exit), () => exit)
 
 export const boxAround = (boxes: ReadonlyArray<Box>): Option.Option<Box> =>
   Array.match(boxes, {
@@ -91,16 +97,18 @@ export const isExitOfferOpenFor = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) &&
   phase.wave >= EXIT_RULES.firstWave
 
-// NOTE: the keys an exit's padlock asks, shown on the lock.
+// NOTE: the keys an exit's padlock asks, shown on the lock: the kitchen's
+// boards 3, a room one further (the parlour's) 4.
 export const exitKeysOf = (exit: ExitId): number =>
   exit === KITCHEN_EXIT ? EXIT_RULES.kitchenKeys : EXIT_RULES.kitchenKeys + 1
 
-// NOTE: the kitchen tour gives the first exit away (src/world/run/tutorialRules.ts).
+// NOTE: the kitchen tour gives the kitchen away (src/world/run/tutorialRules.ts);
+// every other room's boards keep their padlock.
 export const exitPriceFor: {
   (exit: ExitId): (model: World) => number
   (model: World, exit: ExitId): number
 } = Function.dual(2, (model: World, exit: ExitId): number =>
-  isKitchenTourOn(model) ? 0 : exitKeysOf(exit),
+  exit === KITCHEN_EXIT && isKitchenTourOn(model) ? 0 : exitKeysOf(exit),
 )
 
 // NOTE: each boarded exit for sale, as a purchasable: walk up and hold the

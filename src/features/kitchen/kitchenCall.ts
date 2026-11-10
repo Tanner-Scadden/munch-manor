@@ -55,8 +55,12 @@ const quietAt = (wave: number): KitchenCall =>
 const waveOf = (model: Model): number =>
   Phase.isAnyOf(['Preparation', 'Wave'])(model.phase) ? model.phase.wave : 0
 
+// NOTE: only the kitchen's boards coming down quiet the holler: the
+// parlour's are another exit.
 const isOpenedThisFrame = (model: Model): boolean =>
-  Array.some(model.frameEvents, GameEvent.isAnyOf(['ExitOpened']))
+  Array.some(model.frameEvents, GameEvent.isAnyOf(['ExitOpened'])) &&
+  isKitchenOpen(levelOf(model)) &&
+  !KitchenCall.isAnyOf(['Opened'])(model.kitchenCall)
 
 export const advanceKitchenCall: {
   (frameMs: number): (model: Model) => Model

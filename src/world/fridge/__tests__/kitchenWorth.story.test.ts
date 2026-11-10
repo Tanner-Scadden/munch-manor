@@ -372,7 +372,7 @@ describe('the pantry stash', () => {
 
 describe('kitchen key odds', () => {
   const KITCHEN_SPOT = { x: 35, y: -55 }
-  const PARLOUR_SPOT = { x: 60, y: 85 }
+  const START_SPOT = { x: 60, y: 85 }
 
   const shotDown = (
     at: Readonly<{ x: number; y: number }>,
@@ -404,10 +404,10 @@ describe('kitchen key odds', () => {
       ),
   )
 
-  it.effect('in the parlour a Big Lug drops exactly two', () =>
+  it.effect('in the dining room a Big Lug drops exactly two', () =>
     Story.story(
       APPLICATION,
-      Story.given(shotDown(PARLOUR_SPOT, 'Tank')),
+      Story.given(shotDown(START_SPOT, 'Tank')),
       tick(FRAME_MS),
       Story.model(current => {
         expect(current.keys.held).toBe(2)
@@ -423,8 +423,8 @@ describe('kitchen key odds', () => {
     expect(isInKitchenAt(open, KITCHEN_SPOT)).toBe(true)
     expect(isInKitchenAt(boarded, KITCHEN_SPOT)).toBe(false)
     expect(isInKitchenAt(open, { x: 250, y: -55 })).toBe(false)
-    expect(isInKitchenAt(open, PARLOUR_SPOT)).toBe(false)
+    expect(isInKitchenAt(open, START_SPOT)).toBe(false)
     expect(kitchenKeyScale(open, KITCHEN_SPOT)).toBe(KITCHEN_KEY_SCALE)
-    expect(kitchenKeyScale(open, PARLOUR_SPOT)).toBe(1)
+    expect(kitchenKeyScale(open, START_SPOT)).toBe(1)
   })
 })

@@ -30,7 +30,7 @@ import { VALVE_RULES, valveBoxOf } from '../world/kitchen/gasValve'
 import { STOVE_RULES, stoveBoxOf } from '../world/kitchen/stove'
 import {
   type Level,
-  PARLOUR,
+  START_LEVEL,
   levelFor,
   levelOf,
   openExitIn,
@@ -517,7 +517,7 @@ export const lastHeart = (base: Model): Model =>
   modifyFocus(
     modifyFields(base, {
       zombies: () => [
-        zombieOf('Runner', 100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+        zombieOf('Runner', 100, START_LEVEL.start.x + 2, START_LEVEL.start.y),
       ],
     }),
     { player: player => modifyFields(player, { hp: () => 1 }) },

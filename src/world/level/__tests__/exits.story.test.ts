@@ -13,15 +13,14 @@ import { imageColors } from '../../../test/testPng'
 import { APPLICATION, ticks } from '../../../test/testing'
 import {
   MANOR,
-  PARLOUR,
   closedExits,
-  doorSpawnPoint,
   isDoorTile,
   isWalkableTile,
   levelFor,
   levelOf,
   openExit,
   openExitIn,
+  roomAt,
   startingLevel,
   tileIndex,
 } from '../arena'
@@ -53,11 +52,13 @@ const HALL: LevelSpec = {
     },
   ],
   exits: [{ id: 'Kitchen', symbol: 'K', doors: ['South'] }],
+  drops: [],
   start: { x: 40, y: 20 },
 }
 
 const BOARDS = { column: 3, row: 5 }
 const KITCHEN_BOARDS = { column: 6, row: 1 }
+const WEST_BOARDS = { column: 0, row: 12 }
 const HALLWAY = { x: 35, y: 25 }
 const BOARD_GAP_COLOR = '#140e0b'
 
@@ -134,33 +135,41 @@ describe('opening an exit', () => {
 })
 
 describe('the manor', () => {
-  test('is where every run starts, with the way to the kitchen boarded shut', () => {
+  test('is where every run starts, with the kitchen and the parlour boarded shut', () => {
     expect(initialModel.level).toEqual(startingLevel)
     expect(levelOf(initialModel)).toBe(MANOR)
     expect(freshRun(initialModel).level).toEqual(startingLevel)
-    expect(Array.map(closedExits(MANOR), ({ id }) => id)).toEqual(['Kitchen'])
+    expect(Array.map(closedExits(MANOR), ({ id }) => id)).toEqual([
+      'Kitchen',
+      'West',
+    ])
     expect(MANOR.doorIds).toEqual(['North', 'West', 'East', 'South'])
     expect(
       isWalkableTile(MANOR, KITCHEN_BOARDS.column, KITCHEN_BOARDS.row),
     ).toBe(false)
+    expect(isWalkableTile(MANOR, WEST_BOARDS.column, WEST_BOARDS.row)).toBe(
+      false,
+    )
     expect(drawsBoards(roomShapes(MANOR))).toBe(true)
   })
 
-  test('keeps the parlour where it always was, with the kitchen above it', () => {
-    expect(PARLOUR.doorIds).toEqual(MANOR.doorIds)
-    Array.forEach(PARLOUR.doorIds, door => {
-      expect(MANOR.doors[door]).toEqual(PARLOUR.doors[door])
-      expect(doorSpawnPoint(MANOR, door, 3)).toEqual(
-        doorSpawnPoint(PARLOUR, door, 3),
-      )
-    })
-    expect(MANOR.bounds).toEqual(PARLOUR.bounds)
-    expect(MANOR.top).toBeLessThan(0)
+  test('starts in the dining room, with the kitchen above it and the parlour west of it', () => {
+    expect(MANOR.bounds).toEqual({ left: 0, top: 0, right: 360, bottom: 220 })
+    expect(roomAt(MANOR, MANOR.start).id).toBe('Dining')
+    expect(MANOR.start).toEqual({ x: 180, y: 145 })
+    expect(MANOR.top).toBe(-150)
+    expect(MANOR.left).toBe(-320)
+    expect(MANOR.doors.North.center).toEqual({ x: 280, y: 10 })
+    expect(MANOR.doors.West.center).toEqual({ x: 5, y: 30 })
+    expect(MANOR.doors.East.center).toEqual({ x: 355, y: 190 })
+    expect(MANOR.doors.South.center).toEqual({ x: 60, y: 215 })
+    expect(MANOR.doorIds).not.toContain('Front')
+    expect(isWalkableTile(MANOR, 17, 21)).toBe(false)
   })
 
   test('opens the kitchen exit into floor and adds the back door and window', () => {
     const opened = levelOf({ level: openExitIn(startingLevel, 'Kitchen') })
-    expect(closedExits(opened)).toEqual([])
+    expect(Array.map(closedExits(opened), ({ id }) => id)).toEqual(['West'])
     expect(opened.doorIds).toEqual([
       'North',
       'West',
@@ -173,6 +182,31 @@ describe('the manor', () => {
       isWalkableTile(opened, KITCHEN_BOARDS.column, KITCHEN_BOARDS.row),
     ).toBe(true)
     expect(opened.bounds.top).toBe(opened.top)
+  })
+
+  test('opens the west exit into the parlour, with its two doors', () => {
+    const opened = levelOf({ level: openExitIn(startingLevel, 'West') })
+    expect(opened.doorIds).toEqual([
+      'North',
+      'West',
+      'East',
+      'South',
+      'WestTop',
+      'WestBottom',
+    ])
+    expect(isWalkableTile(opened, WEST_BOARDS.column, WEST_BOARDS.row)).toBe(
+      true,
+    )
+    expect(isWalkableTile(opened, -1, WEST_BOARDS.row)).toBe(true)
+    expect(opened.bounds.left).toBe(opened.left)
+    expect(roomAt(opened, { x: -160, y: 130 }).id).toBe('Parlour')
+  })
+
+  test('with every exit open, no boards are left to draw', () => {
+    const opened = levelOf({
+      level: openExitIn(openExitIn(startingLevel, 'Kitchen'), 'West'),
+    })
+    expect(closedExits(opened)).toEqual([])
     expect(drawsBoards(roomShapes(opened))).toBe(false)
   })
 

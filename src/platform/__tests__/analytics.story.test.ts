@@ -37,7 +37,7 @@ import {
   writeSave,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
-import { PARLOUR } from '../../world/level/arena'
+import { START_LEVEL } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { type Modifiers, noModifiers } from '../../world/run/modifiers'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
@@ -106,7 +106,7 @@ const midRun: Model = modifyFields(home, {
 
 const lastHeart: Model = modifyFocus(
   modifyFields(midRun, {
-    zombies: () => [runnerAt(PARLOUR.width / 2 + 2, PARLOUR.height / 2)],
+    zombies: () => [runnerAt(START_LEVEL.start.x + 2, START_LEVEL.start.y)],
   }),
   { player: player => modifyFields(player, { hp: () => 1 }) },
 )

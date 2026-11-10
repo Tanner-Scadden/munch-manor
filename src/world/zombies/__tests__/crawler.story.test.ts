@@ -16,6 +16,7 @@ import {
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { FIXED_STEP_MS } from '../../../shared/constants'
+import { withPlayerAt } from '../../../test/model.fixture'
 import {
   APPLICATION,
   bulletInto,
@@ -23,14 +24,17 @@ import {
   tick,
   ticks,
 } from '../../../test/testing'
-import { PARLOUR, isSolidAt } from '../../level/arena'
+import { START_LEVEL, isSolidAt } from '../../level/arena'
 import { focusOf } from '../../party/party'
 import { doorCounts, floorCounts, rollSpawns } from '../../waves/endlessWaves'
 import { CRAWLER_RULES, drawSurfacingSpot } from '../crawler'
 
 const FRAME_MS = FIXED_STEP_MS
-const CENTER_X = PARLOUR.width / 2
-const CENTER_Y = PARLOUR.height / 2
+// NOTE: the dining room's open aisle south of the party table, rows 12 and
+// 13, a tile and a half north of the start spot: clear wall to wall. The
+// player stands there.
+const CENTER_X = START_LEVEL.start.x
+const CENTER_Y = START_LEVEL.start.y - 15
 const CRAWLER_ID = 20
 
 const framesFor = (ms: number): number => Math.ceil(ms / FRAME_MS)
@@ -56,13 +60,21 @@ const waveWith = (
   spawns: ReadonlyArray<PlannedSpawn>,
   zombies: ReadonlyArray<Zombie> = [],
 ): Model =>
-  modifyFields(initialModel, {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () =>
-      Phase.Wave({ wave: 7, elapsedMs: 0, spawns: [...spawns, DISTANT_SPAWN] }),
-    zombies: () => zombies,
-  })
+  withPlayerAt(
+    modifyFields(initialModel, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Wave({
+          wave: 7,
+          elapsedMs: 0,
+          spawns: [...spawns, DISTANT_SPAWN],
+        }),
+      zombies: () => zombies,
+    }),
+    CENTER_X,
+    CENTER_Y,
+  )
 
 const crawlerAt = (x: number, y: number, action: ZombieAction): Zombie => ({
   id: CRAWLER_ID,
@@ -157,12 +169,12 @@ describe('the Ankle Biter', () => {
           [
             { x: 40, y: 40 },
             { x: CENTER_X, y: CENTER_Y },
-            { x: 280, y: 150 },
+            { x: 300, y: 160 },
             { x: 300, y: 40 },
           ],
           player => ({
             player,
-            spot: drawSurfacingSpot(PARLOUR, seed, player, [])[1],
+            spot: drawSurfacingSpot(START_LEVEL, seed, player, [])[1],
           }),
         ),
     )
@@ -170,7 +182,7 @@ describe('the Ankle Biter', () => {
       expect(
         Math.hypot(spot.x - player.x, spot.y - player.y),
       ).toBeGreaterThanOrEqual(40)
-      expect(isSolidAt(PARLOUR, spot)).toBe(false)
+      expect(isSolidAt(START_LEVEL, spot)).toBe(false)
     })
   })
 

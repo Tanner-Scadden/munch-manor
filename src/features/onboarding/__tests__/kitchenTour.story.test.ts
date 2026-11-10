@@ -46,6 +46,7 @@ import {
   exitKeysOf,
   exitPriceFor,
 } from '../../../world/level/exits'
+import { WEST_EXIT } from '../../../world/level/plan'
 import { focusOf, modifyFocus, soloSeat } from '../../../world/party/party'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
 import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
@@ -154,6 +155,7 @@ describe('the kitchen tour', () => {
           expect(stepOf(started)).toEqual(Option.some('Boards'))
           expect(remainingOf(started)).toBe(BREAK_MS)
           expect(exitPriceFor(started, KITCHEN_EXIT)).toBe(0)
+          expect(exitPriceFor(started, WEST_EXIT)).toBe(exitKeysOf(WEST_EXIT))
         }),
         holdToBuy,
         Story.model(opened => {

@@ -44,36 +44,61 @@ import { hasDone } from './feats'
 // a trophy case. Only the drawing reads it.
 export type CaseLook = 'Rack' | 'Glass' | 'Trophy'
 
-// NOTE: `isNear` spots sit by the start and draw from the easier pool.
+// NOTE: `isNear` spots sit by the start and draw from the easier pool. A
+// spot is the run of tiles a room's map marks for it (`cc`), left to right.
 export type CaseSpot = Readonly<{
-  tile: Tile
+  tiles: Array.NonEmptyReadonlyArray<Tile>
   room: string
   look: CaseLook
   isNear: boolean
 }>
 
-// NOTE: hand-picked floor tiles against a wall, clear of the doors, the
-// stall, the fridge, the pantry, and the valve: three in the parlour, two
-// in the kitchen.
+// NOTE: floor tiles against a wall, clear of the doors, Rattles, the fridge,
+// the pantry, and the valve: the dining room's three (docs/ROOM_DRAFTS.md),
+// where every run starts, by the North door and on the west and east walls,
+// then one in each room behind boards, the parlour's south west corner (its
+// map's first `cc`, in the west slot) and the kitchen's west wall.
 export const CASE_SPOTS: Array.NonEmptyReadonlyArray<CaseSpot> = [
-  { tile: { column: 8, row: 2 }, room: 'Parlour', look: 'Rack', isNear: true },
   {
-    tile: { column: 30, row: 13 },
-    room: 'Parlour',
+    tiles: [
+      { column: 30, row: 2 },
+      { column: 31, row: 2 },
+    ],
+    room: 'Dining',
+    look: 'Rack',
+    isNear: true,
+  },
+  {
+    tiles: [
+      { column: 1, row: 15 },
+      { column: 2, row: 15 },
+    ],
+    room: 'Dining',
     look: 'Glass',
     isNear: true,
   },
   {
-    tile: { column: 1, row: -5 },
-    room: 'Kitchen',
-    look: 'Trophy',
+    tiles: [
+      { column: 33, row: 15 },
+      { column: 34, row: 15 },
+    ],
+    room: 'Dining',
+    look: 'Rack',
+    isNear: true,
+  },
+  {
+    tiles: [
+      { column: -31, row: 20 },
+      { column: -30, row: 20 },
+    ],
+    room: 'Parlour',
+    look: 'Glass',
     isNear: false,
   },
-  { tile: { column: 1, row: 13 }, room: 'Parlour', look: 'Rack', isNear: true },
   {
-    tile: { column: 18, row: -2 },
+    tiles: [{ column: 1, row: -5 }],
     room: 'Kitchen',
-    look: 'Glass',
+    look: 'Trophy',
     isNear: false,
   },
 ]
@@ -87,8 +112,12 @@ const spotOf = (displayCase: DisplayCase): CaseSpot =>
     Array.headNonEmpty(CASE_SPOTS),
   )
 
-export const caseBoxOf = (displayCase: DisplayCase): Box =>
-  tileBox(spotOf(displayCase).tile)
+export const caseBoxOf = (displayCase: DisplayCase): Box => {
+  const { tiles } = spotOf(displayCase)
+  const first = tileBox(Array.headNonEmpty(tiles))
+  const last = tileBox(Array.lastNonEmpty(tiles))
+  return { ...first, right: last.right }
+}
 
 export const caseLookOf = (displayCase: DisplayCase): CaseLook =>
   spotOf(displayCase).look

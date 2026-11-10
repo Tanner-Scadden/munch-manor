@@ -6,6 +6,7 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Bullet, Phase } from '../../app/model'
+import { cameraOf, worldToView } from '../../render/camera'
 import {
   FIXED_STEP_MS,
   STICK_FIRE_ZONE,
@@ -24,7 +25,7 @@ import {
   touchMove,
 } from '../../test/testing'
 import { WEAPONS, freshGun } from '../../world/gear/weapons'
-import { modifyFocus } from '../../world/party/party'
+import { focusOf, modifyFocus } from '../../world/party/party'
 import { MouseButton, Stick } from '../inputSchema'
 
 const LEFT_THUMB = 11
@@ -222,6 +223,13 @@ describe('mouse', () => {
         maybeSurface: () =>
           Option.some({ left: 0, top: 0, width: 640, height: 480 }),
       })
+      // NOTE: the canvas is drawn twice as big, 60 px below the top. The
+      // dining room is bigger than a screen, so the camera follows the
+      // player, and the player's row on the screen is read off it.
+      const playerView = worldToView(
+        cameraOf(letterboxedModel),
+        focusOf(letterboxedModel).player,
+      )
 
       return Story.story(
         APPLICATION,
@@ -237,7 +245,7 @@ describe('mouse', () => {
             pointerId: MOUSE_POINTER,
             device: 'Mouse',
             clientX: 640,
-            clientY: 240,
+            clientY: 60 + playerView.y * 2,
           }),
         ),
         Story.model(({ input, seats: [{ intent }] }) => {

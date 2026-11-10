@@ -15,6 +15,7 @@ import {
 import { initialModel } from '../../../app/pureApp'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import { APPLICATION, ticks, westPlank, zombieOf } from '../../../test/testing'
+import { MANOR } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import { TRAPS } from '../traps'
@@ -22,8 +23,10 @@ import { TRAPS } from '../traps'
 const FRAME_MS = 50
 const SPEED = 20
 
-const NEAR_WEST_PLANK: Vector = { x: 45, y: 90 }
-const FAR_FROM_PLANKS: Vector = { x: 95, y: 90 }
+// NOTE: in line with the dining room's West door, at its top left.
+const WEST_Y = MANOR.doors.West.center.y
+const NEAR_WEST_PLANK: Vector = { x: 45, y: WEST_Y }
+const FAR_FROM_PLANKS: Vector = { x: 95, y: WEST_Y }
 const PLAYER_AT: Vector = { x: 250, y: 90 }
 
 const fightingWith = (zombie: Zombie): Model =>
@@ -185,7 +188,7 @@ describe('planks as bait', () => {
             ),
             {
               player: player =>
-                modifyFields(player, { x: () => 70, y: () => 90 }),
+                modifyFields(player, { x: () => 70, y: () => WEST_Y }),
             },
           ),
         ),

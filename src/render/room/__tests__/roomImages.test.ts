@@ -65,6 +65,7 @@ const HOUSE: LevelSpec = {
     { id: 'Study', symbol: 'K', doors: [] },
     { id: 'Den', symbol: 'J', doors: [] },
   ],
+  drops: [],
   start: { x: 50, y: 40 },
 }
 
@@ -82,10 +83,35 @@ const imageAtX = (
   Array.findFirst(imagesOf(shapes), image => image.x === x)
 
 describe('room images', () => {
-  test('the manor is one image a room, two rooms in each state', () => {
-    expect(imagesOf(roomShapes(MANOR))).toHaveLength(2)
-    expect(imagesOf(roomShapes(openExit(MANOR, 'Kitchen')))).toHaveLength(2)
-    expect(imagesOf(everyRoomImage(MANOR_SPEC))).toHaveLength(4)
+  test('the manor is one image a room, three rooms in each state', () => {
+    expect(imagesOf(roomShapes(MANOR))).toHaveLength(3)
+    expect(imagesOf(roomShapes(openExit(MANOR, 'Kitchen')))).toHaveLength(3)
+    // NOTE: the dining room with each of its two exits open or shut, and the
+    // kitchen and the parlour each with its own.
+    expect(imagesOf(everyRoomImage(MANOR_SPEC))).toHaveLength(4 + 2 + 2)
+  })
+
+  test("in the manor, an exit far from a room never changes the room's image", () => {
+    const kitchenOpen = roomShapes(openExit(MANOR, 'Kitchen'))
+    const westOpen = roomShapes(openExit(MANOR, 'West'))
+    const shut = roomShapes(MANOR)
+    // NOTE: the parlour sits at x -320, the dining room at 0, the kitchen
+    // at 0 too but above it, so they are told apart by their y.
+    const imageAt = (
+      shapes: ReadonlyArray<Canvas.Shape>,
+      x: number,
+      y: number,
+    ): Option.Option<Canvas.Image> =>
+      Array.findFirst(imagesOf(shapes), image => image.x === x && image.y === y)
+    expect(imageAt(kitchenOpen, -320, 40)).toEqual(imageAt(shut, -320, 40))
+    expect(imageAt(westOpen, 0, -150)).toEqual(imageAt(shut, 0, -150))
+    expect(imageAt(westOpen, 0, 0)).not.toEqual(imageAt(shut, 0, 0))
+  })
+
+  test('the fallen chandelier draws on the same room images', () => {
+    const fallen = levelFor(MANOR_SPEC, [], ['Chandelier'])
+    expect(fallen).not.toBe(MANOR)
+    expect(roomShapes(fallen)).toEqual(roomShapes(MANOR))
   })
 
   test("each room's image sits on its own block, west of the start too", () => {

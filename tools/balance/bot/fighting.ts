@@ -189,7 +189,7 @@ export const kite: {
     ])
   }
   if (isInKitchen(player)) {
-    return steerToward(player, routeTo(player, ROOM_CENTER))
+    return steerToward(player, routeTo(levelOf(model), player, ROOM_CENTER))
   }
   const boss = bossOf(model)
   if (boss !== undefined && KITES) {
@@ -204,7 +204,7 @@ export const kite: {
     return steerToward(player, pickup)
   }
   return distance(player, ROOM_CENTER) > 40
-    ? steerToward(player, ROOM_CENTER)
+    ? steerToward(player, routeTo(levelOf(model), player, ROOM_CENTER))
     : { x: 0, y: 0 }
 })
 

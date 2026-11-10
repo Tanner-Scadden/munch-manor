@@ -45,7 +45,11 @@ import {
   STREAK_WINDOW_MS,
   ZOMBIE_MAX_HP,
 } from '../../shared/constants'
-import { playingModel, withZombies } from '../../test/model.fixture'
+import {
+  playingModel,
+  withPlayerAt,
+  withZombies,
+} from '../../test/model.fixture'
 import {
   APPLICATION,
   FRAME_MS,
@@ -63,7 +67,7 @@ import {
   zombieOf,
 } from '../../test/testing'
 import { keyOddsOf } from '../../world/keys/keys'
-import { PARLOUR } from '../../world/level/arena'
+import { START_LEVEL } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { scoreOf } from '../../world/run/stats'
 import type { Decal, Particle } from '../renderSchema'
@@ -76,9 +80,14 @@ describe('particles and decals', () => {
 
   const landingFrames = ticks(150, FRAME_MS)
 
+  // NOTE: the shot is fired across the front hall south of the start spot,
+  // between its candelabras, so every drop lands on open floor and leaves
+  // its decal.
+  const HALL = { x: START_LEVEL.start.x - 30, y: START_LEVEL.start.y + 20 }
+
   const shotZombieModel = (hp: number): Model =>
-    withZombies(playingModel, [
-      modifyFields(zombieAt(100, MUZZLE_X, PARLOUR.height / 2, { speed: 0 }), {
+    withZombies(withPlayerAt(playingModel, HALL.x, HALL.y), [
+      modifyFields(zombieAt(100, HALL.x + 10, HALL.y, { speed: 0 }), {
         hp: () => hp,
         maxHp: () => Math.max(hp, ZOMBIE_MAX_HP),
       }),
@@ -268,9 +277,9 @@ describe('particles and decals', () => {
         withZombies(
           modifyFields(playingModel, { cosmeticRngState: () => seed }),
           [
-            zombieAt(100, 200, PARLOUR.height / 2, { speed: 0 }),
-            zombieAt(101, 230, PARLOUR.height / 2, { speed: 0 }),
-            zombieAt(102, 260, PARLOUR.height / 2, { speed: 0 }),
+            zombieAt(100, 200, START_LEVEL.start.y, { speed: 0 }),
+            zombieAt(101, 230, START_LEVEL.start.y, { speed: 0 }),
+            zombieAt(102, 260, START_LEVEL.start.y, { speed: 0 }),
           ],
         ),
       ),
@@ -323,10 +332,11 @@ const massacreModel = (count: number): Model => {
 }
 
 const contactZombie = (id: number): Zombie =>
-  zombieAt(id, PARLOUR.width / 2 + 2, PARLOUR.height / 2, { speed: 0 })
+  zombieAt(id, START_LEVEL.start.x + 2, START_LEVEL.start.y, { speed: 0 })
 
 const BYSTANDER_ID = 401
-const BYSTANDER_X = 100
+// NOTE: west of the player on the start row, between the candelabras.
+const BYSTANDER_X = START_LEVEL.start.x - 40
 const BYSTANDER_SPEED = 20
 const STRAY_BULLET: Bullet = {
   id: 600,
@@ -347,7 +357,7 @@ const freezeVictim = doomedZombieAt(400, 250, 30)
 const freezeModel: Model = modifyFields(
   withZombies(playingModel, [
     freezeVictim,
-    zombieAt(BYSTANDER_ID, BYSTANDER_X, PARLOUR.height / 2, {
+    zombieAt(BYSTANDER_ID, BYSTANDER_X, START_LEVEL.start.y, {
       speed: BYSTANDER_SPEED,
     }),
   ]),
@@ -399,7 +409,9 @@ describe('screen shake', () => {
       yield* Story.story(
         APPLICATION,
         Story.given(
-          withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)]),
+          withZombies(playingModel, [
+            doomedZombieAt(100, MUZZLE_X, START_LEVEL.start.y),
+          ]),
         ),
         holdFire,
         tick(FRAME_MS),
@@ -655,16 +667,16 @@ describe('hit-stop', () => {
       Story.model(({ seats: [{ player, intent }], input }) => {
         expect(input.pressedKeys).toEqual(['KeyD'])
         expect(intent.move).toEqual({ x: 1, y: 0 })
-        expect(player.x).toBe(PARLOUR.width / 2)
+        expect(player.x).toBe(START_LEVEL.start.x)
       }),
       ...ticks(freezeTicks(HIT_STOP_KILL_MS) - 1, FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
-        expect(player.x).toBe(PARLOUR.width / 2)
+        expect(player.x).toBe(START_LEVEL.start.x)
       }),
       tick(FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(
-          PARLOUR.width / 2 + (PLAYER_SPEED * FRAME_MS) / 1000,
+          START_LEVEL.start.x + (PLAYER_SPEED * FRAME_MS) / 1000,
         )
       }),
     ),
@@ -723,7 +735,7 @@ describe('damage numbers', () => {
           APPLICATION,
           Story.given(
             withZombies(playingModel, [
-              zombieAt(100, MUZZLE_X, 90, { speed: 0 }),
+              zombieAt(100, MUZZLE_X, START_LEVEL.start.y, { speed: 0 }),
             ]),
           ),
           holdFire,
@@ -738,7 +750,9 @@ describe('damage numbers', () => {
         yield* Story.story(
           APPLICATION,
           Story.given(
-            withZombies(playingModel, [doomedLugAt(100, MUZZLE_X, 90)]),
+            withZombies(playingModel, [
+              doomedLugAt(100, MUZZLE_X, START_LEVEL.start.y),
+            ]),
           ),
           holdFire,
           tick(FRAME_MS),
@@ -761,7 +775,9 @@ describe('damage numbers', () => {
       return Story.story(
         APPLICATION,
         Story.given(
-          withZombies(playingModel, [doomedLugAt(100, MUZZLE_X, 90)]),
+          withZombies(playingModel, [
+            doomedLugAt(100, MUZZLE_X, START_LEVEL.start.y),
+          ]),
         ),
         holdFire,
         tick(FRAME_MS),
@@ -831,7 +847,7 @@ describe('kill streak', () => {
 
 describe('juice determinism', () => {
   const bigKillAt = (id: number, x: number): Zombie =>
-    modifyFields(zombieAt(id, x, PARLOUR.height / 2, { speed: 0 }), {
+    modifyFields(zombieAt(id, x, START_LEVEL.start.y, { speed: 0 }), {
       kind: () => 'Tank',
     })
 

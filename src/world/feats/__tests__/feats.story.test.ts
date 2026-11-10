@@ -36,7 +36,7 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { PARLOUR } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
 import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
 import { Feat, freshTally } from '../../schema/worldSchema'
 import { goalOf, progressOf } from '../feats'
@@ -89,8 +89,8 @@ describe('kill feats, one player', () => {
               zombieOf(
                 'Shambler',
                 900,
-                PARLOUR.width / 2 + 10,
-                PARLOUR.height / 2,
+                START_LEVEL.start.x + 10,
+                START_LEVEL.start.y,
                 { hp: 1, speed: 0 },
               ),
             ]),
@@ -175,9 +175,15 @@ describe('skill feats, one player', () => {
         withFeatsOf(
           caseless(
             withZombies(playingModel, [
-              zombieOf('Shambler', 900, PARLOUR.width / 2, PARLOUR.height / 2, {
-                speed: 0,
-              }),
+              zombieOf(
+                'Shambler',
+                900,
+                START_LEVEL.start.x,
+                START_LEVEL.start.y,
+                {
+                  speed: 0,
+                },
+              ),
             ]),
           ),
           tally =>
@@ -269,12 +275,9 @@ describe('feats in co-op', () => {
         {
           zombies: () => [
             zombieOf('Runner', 900, 200, 60, { hp: 1, speed: 0 }),
-            zombieOf('Shambler', 901, 200, 100, { hp: 1, speed: 0 }),
+            zombieOf('Shambler', 901, 200, 45, { hp: 1, speed: 0 }),
           ],
-          bullets: () => [
-            crewBullet(1, 1, 200, 60),
-            crewBullet(2, 1, 200, 100),
-          ],
+          bullets: () => [crewBullet(1, 1, 200, 60), crewBullet(2, 1, 200, 45)],
         },
       ),
     )

@@ -40,8 +40,7 @@ import { quietCoopNet } from '@game/features/coop/testing'
 import { quietLayer as quietInstallPrompt } from '@game/platform/install'
 import { layer as PlayerStoreLayer } from '@game/platform/store'
 import { screenOf } from '@game/render/screen'
-import { PARLOUR } from '@game/world/level/arena'
-import { RATTLES_BOX } from '@game/world/level/arena'
+import { RATTLES_BOX, START_LEVEL } from '@game/world/level/arena'
 
 import { cardShapes } from './cards'
 import { type HarnessConfig, decodeHarnessConfig } from './config'
@@ -484,7 +483,7 @@ const loadScene = (query: string) =>
 window.__loadScene = query => Effect.runPromise(loadScene(query))
 
 window.__stall = RATTLES_BOX
-window.__doors = PARLOUR.doors
+window.__doors = START_LEVEL.doors
 
 // NOTE: for scripts after a click or a key: resolves once the page has
 // rendered and every image it asked for has decoded.

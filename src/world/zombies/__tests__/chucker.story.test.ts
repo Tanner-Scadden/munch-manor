@@ -31,14 +31,16 @@ import {
   zombieById,
   zombieOf,
 } from '../../../test/testing'
-import { PARLOUR } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
 import { focusOf, modifyFocus } from '../../party/party'
 import { CHUCKER_RULES } from '../chucker'
 import { ZOMBIE_KINDS } from '../zombies'
 
 const FRAME_MS = FIXED_STEP_MS
-const CENTER_X = PARLOUR.width / 2
-const CENTER_Y = PARLOUR.height / 2
+// NOTE: the dining room's open aisle south of the party table, rows 12 and
+// 13, a tile and a half north of the start spot: clear wall to wall.
+const CENTER_X = START_LEVEL.start.x
+const CENTER_Y = START_LEVEL.start.y - 15
 const CHUCKER_ID = 10
 const GROANER_ID = 11
 

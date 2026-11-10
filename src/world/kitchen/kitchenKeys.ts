@@ -1,6 +1,7 @@
 import { Array, Function } from 'effect'
 
 import { type Level, isInYardAt } from '../level/arena'
+import { KITCHEN_ROOM_ID } from '../level/plan'
 import type { Vector } from '../schema/worldSchema'
 
 // Kitchen key odds: kill pay once paid a quarter more on a kitchen tile
@@ -10,10 +11,6 @@ import type { Vector } from '../schema/worldSchema'
 // key's sparkle reads the same rule, so they always agree.
 
 export const KITCHEN_KEY_SCALE = 1.25
-
-// NOTE: the kitchen's room id in the level spec (src/world/level/arena.ts), the name of
-// the exit that opens it.
-const KITCHEN_ROOM_ID = 'Kitchen'
 
 // NOTE: on a kitchen tile: inside the kitchen's room while its exit is
 // open, and not out in the yard beside it.

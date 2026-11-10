@@ -44,7 +44,7 @@ import {
 import { asVeteran } from '../../../test/veteran'
 import { TRAPS } from '../../gear/traps'
 import { STARTING_PISTOL } from '../../gear/weapons'
-import { PARLOUR } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
 import { focusOf, modifyFocus } from '../../party/party'
 import { DIFFICULTIES } from '../../run/difficulty'
 import { scoreOf } from '../../run/stats'
@@ -335,7 +335,7 @@ describe('campaign and endless after wave 8', () => {
           hp: ZOMBIE_MAX_HP,
         }),
       )
-      const victim = zombieAt(999, MUZZLE_X, PARLOUR.height / 2, { hp: 1 })
+      const victim = zombieAt(999, MUZZLE_X, START_LEVEL.start.y, { hp: 1 })
       const pending = (phase: Phase): Option.Option<number> =>
         Option.map(
           Option.liftPredicate(phase, Phase.guards.Wave),

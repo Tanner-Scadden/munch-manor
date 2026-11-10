@@ -18,6 +18,8 @@ const CLOCKWISE: Array.NonEmptyReadonlyArray<DoorId> = [
   'East',
   'South',
   'Front',
+  'WestBottom',
+  'WestTop',
   'West',
   'Window',
 ]
@@ -29,6 +31,8 @@ export const OPPOSITE_DOOR: Readonly<Record<DoorId, DoorId>> = {
   West: 'East',
   Back: 'South',
   Window: 'East',
+  WestTop: 'East',
+  WestBottom: 'North',
   Front: 'North',
 }
 

@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import type { DoorId, Vector } from '../../../app/model'
 import { DOOR_HALF_WIDTH_PX, TILE_SIZE } from '../../../shared/constants'
-import { PARLOUR_SPOT } from '../../../test/testing'
+import { START_SPOT } from '../../../test/testing'
 import { moveCircle, resolveCircle } from '../../step/collision'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
@@ -41,12 +41,12 @@ const CASES: ReadonlyArray<Case> = [
   {
     name: 'kitchen boarded',
     level: levelFor(MANOR_SPEC),
-    players: [PARLOUR_SPOT],
+    players: [START_SPOT],
   },
   {
     name: 'kitchen open',
     level: levelFor(MANOR_SPEC, ['Kitchen']),
-    players: [PARLOUR_SPOT, KITCHEN_SPOT, FRIDGE_SPOT],
+    players: [START_SPOT, KITCHEN_SPOT, FRIDGE_SPOT],
   },
 ]
 

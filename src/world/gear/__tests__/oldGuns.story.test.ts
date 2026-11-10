@@ -38,7 +38,8 @@ import { WEAPONS, freshGun, gunPierce, isCarrying } from '../weapons'
 
 const FRAME_MS = FIXED_STEP_MS
 const PLAYER_X = 150
-const PLAYER_Y = 104
+// NOTE: the dining room's open floor above the table, clear wall to wall.
+const PLAYER_Y = 45
 const TOUGH_HP = 40
 
 // NOTE: the player at a fixed spot facing east, holding `kind` in the

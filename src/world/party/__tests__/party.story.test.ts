@@ -88,7 +88,9 @@ import {
 const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60
 const RIGHT_X = 240
-const ROW_Y = 104
+// NOTE: the dining room's open aisle south of the party table, clear wall
+// to wall.
+const ROW_Y = 130
 
 const act = (current: Model, slot: number, action: SeatAction): Model =>
   withWorld(current, world => applySeatAction(world, slot, action))
@@ -473,13 +475,13 @@ describe('traps per player', () => {
           wave: () => 3,
           crates: () => [
             {
-              room: 'Parlour',
+              room: 'Dining',
               stock: CrateStock.Stocked({ trap: 'Barricade' }),
             },
           ],
         }),
     })
-  const crate = crateSpotOf('Parlour')
+  const crate = crateSpotOf('Dining')
 
   test('a player at their limit leaves the crate to a teammate who can carry it', () => {
     const bothOnCrate = pipeline(

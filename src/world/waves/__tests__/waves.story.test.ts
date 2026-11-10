@@ -31,7 +31,7 @@ import {
   ticks,
   zombieAt,
 } from '../../../test/testing'
-import { PARLOUR } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
 import { scoreOf } from '../../run/stats'
 import { hasBoss } from '../../zombies/boss'
@@ -123,7 +123,7 @@ describe('preparation', () => {
       ...ticks(4, FRAME_MS),
       Story.model(({ phase, seats: [{ player }], bullets }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
-        expect(player.x).toBeGreaterThan(PARLOUR.width / 2)
+        expect(player.x).toBeGreaterThan(START_LEVEL.start.x)
         expect(Array.isReadonlyArrayNonEmpty(bullets)).toBe(true)
       }),
     ),
@@ -280,7 +280,7 @@ describe('waves', () => {
                   spawns: [plannedSpawn(0)],
                 }),
               zombies: () => [
-                zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+                zombieAt(100, START_LEVEL.start.x + 2, START_LEVEL.start.y),
               ],
             }),
             { player: player => modifyFields(player, { hp: () => 1 }) },
@@ -304,7 +304,7 @@ describe('waves', () => {
             modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
               zombies: zombies => [
                 ...zombies,
-                zombieAt(102, PARLOUR.width / 2 - 2, PARLOUR.height / 2),
+                zombieAt(102, START_LEVEL.start.x - 2, START_LEVEL.start.y),
               ],
             }),
             { player: player => modifyFields(player, { hp: () => 1 }) },

@@ -1,4 +1,4 @@
-import { Array, Function, Option, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import {
@@ -11,19 +11,42 @@ import {
   spriteShapes,
 } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
+import { gapBoxOf, isChandelierDown } from '../../world/dining/chandelier'
 import {
   type Box as ArenaBox,
+  COVER_SYMBOLS,
+  DOOR_SYMBOLS,
   type Exit,
   type Level,
   type Room,
   levelFor,
+  levelOf,
+  tilesWithSymbol,
 } from '../../world/level/arena'
 import {
+  DINING_ROOM_ID,
   type LevelSpec,
   MANOR_SPEC,
   PARLOUR_ROOM_ID,
 } from '../../world/level/plan'
 import type { ExitId } from '../../world/schema/entitySchema'
+import type { World } from '../../world/schema/world'
+import type { Drawable } from '../depth'
+import {
+  CHANDELIER_SPRITES,
+  type ChandelierState,
+  diningFloorShapes,
+  diningRugShapes,
+  diningWallDecorShapes,
+  diningWallShapes,
+  frontDoorShapes,
+  umbrellaStandShapes,
+} from './diningArt'
+import {
+  type EscapeCoverKind,
+  escapeCoverShapes,
+  isEscapeCoverKind,
+} from './escapeCover'
 import {
   kitchenFloorShapes,
   kitchenWallShapes,
@@ -43,7 +66,7 @@ import {
   stallBox,
   stallMatShapes,
 } from './roomFloor'
-import { FACE_TOP, boundingBox, boxOfKind } from './roomPalette'
+import { type Box, FACE_TOP, boundingBox, boxOfKind } from './roomPalette'
 import {
   PARLOUR_WALL_DECOR,
   closedExitShapes,
@@ -89,9 +112,6 @@ const inParlour = (
     }),
   )
 
-const isParlour = (level: Level): boolean =>
-  Array.some(level.rooms, ({ id }) => id === PARLOUR_ROOM_ID)
-
 const floorDetailShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
   ...inParlour(level, rugShapes(PARLOUR_RUG)),
   ...Option.match(boxOfKind(level, 'Hearth'), {
@@ -103,9 +123,68 @@ const floorDetailShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
     onSome: stallMatShapes,
   }),
   ...inParlour(level, PARLOUR_STAINS),
-  ...(isParlour(level) && Array.contains(level.doorIds, 'South')
+  ...(Array.contains(level.doorIds, 'South')
     ? slimePrints(doorBox(level, 'South'))
     : []),
+]
+
+// DINING ROOM
+
+// NOTE: the dining room's block of the map, where its hand-placed art goes.
+const diningBoxOf = (level: Level): Option.Option<Box> =>
+  pipe(
+    level.rooms,
+    Array.findFirst(({ id }) => id === DINING_ROOM_ID),
+    Option.map(({ box }) => ({
+      x: box.left,
+      y: box.top,
+      width: box.right - box.left,
+      height: box.bottom - box.top,
+    })),
+  )
+
+const inDining = (
+  level: Level,
+  draw: (room: Box) => ReadonlyArray<Canvas.Shape>,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(diningBoxOf(level), { onNone: () => [], onSome: draw })
+
+const diningFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+  inDining(level, room => [
+    ...diningFloorShapes(room),
+    ...diningRugShapes(room),
+  ])
+
+const diningWallArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+  inDining(level, room => [
+    ...diningWallShapes(level, room),
+    ...diningWallDecorShapes(room),
+  ])
+
+const frontDoorArt = (level: Level): ReadonlyArray<Canvas.Shape> => {
+  const tiles = tilesWithSymbol(level, DOOR_SYMBOLS.Front)
+  return Array.isReadonlyArrayNonEmpty(tiles)
+    ? frontDoorShapes(boundingBox(tiles))
+    : []
+}
+
+// NOTE: the escape rooms' cover kinds and their symbols on the map, drawn by
+// escapeCover.ts in their own depth order.
+const ESCAPE_COVER_SYMBOLS: Readonly<Record<string, EscapeCoverKind>> =
+  Record.filterMap(COVER_SYMBOLS, kind =>
+    isEscapeCoverKind(kind) ? Result.succeed(kind) : Result.failVoid,
+  )
+
+const roomCobwebs = (box: Box): ReadonlyArray<Canvas.Shape> => [
+  ...cobweb(box.x + TILE_SIZE, box.y + FACE_TOP + 1, true, true),
+  ...cobweb(box.x + box.width - TILE_SIZE, box.y + FACE_TOP + 1, false, true),
+  ...cobweb(box.x + TILE_SIZE, box.y + box.height - TILE_SIZE, true, false),
+  ...cobweb(
+    box.x + box.width - TILE_SIZE,
+    box.y + box.height - TILE_SIZE,
+    false,
+    false,
+  ),
 ]
 
 const onFloor = (
@@ -116,12 +195,8 @@ const onFloor = (
     ? shapes
     : [group({ translate: { x: floor.x, y: floor.y }, shapes })]
 
-const cobwebShapes = (level: Floor): ReadonlyArray<Canvas.Shape> => [
-  ...cobweb(TILE_SIZE, FACE_TOP + 1, true, true),
-  ...cobweb(level.width - TILE_SIZE, FACE_TOP + 1, false, true),
-  ...cobweb(TILE_SIZE, level.height - TILE_SIZE, true, false),
-  ...cobweb(level.width - TILE_SIZE, level.height - TILE_SIZE, false, false),
-]
+const cobwebShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
+  roomCobwebs({ x: 0, y: 0, width: level.width, height: level.height })
 
 const openedExitArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
   Array.flatMap(
@@ -140,18 +215,24 @@ const roomArtOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
   const floor = parlourFloorOf(level)
   return [
     ...onFloor(floor, boardShapes(floor)),
+    ...diningFloorArt(level),
     ...kitchenFloorShapes(level),
     ...floorDetailShapes(level),
     ...wallShadowShapes(level),
     ...wallShapes(level),
+    ...diningWallArt(level),
     ...kitchenWallShapes(level),
     ...inParlour(level, PARLOUR_WALL_DECOR),
     ...sconceShapes(level),
     ...closedExitShapes(level),
     ...openedExitArt(level),
     ...doorwayShapes(level),
+    ...frontDoorArt(level),
     ...allCoverShapes(level),
+    ...escapeCoverShapes(level, ESCAPE_COVER_SYMBOLS),
+    ...inDining(level, umbrellaStandShapes),
     ...onFloor(floor, cobwebShapes(floor)),
+    ...inDining(level, roomCobwebs),
   ]
 }
 
@@ -362,3 +443,45 @@ export const hearthFireShapes: {
       ],
     }),
 )
+
+// THE CHANDELIER
+
+const chandelierAt = (
+  level: Level,
+  state: ChandelierState,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(gapBoxOf(level), {
+    onNone: () => [],
+    onSome: gap => [
+      placeAt(
+        (gap.left + gap.right) / 2,
+        state === 'Fallen' ? (gap.top + gap.bottom) / 2 : gap.top,
+        CHANDELIER_SPRITES[state],
+      ),
+    ],
+  })
+
+// NOTE: the dining room's chandelier hangs over the table's gap, over
+// everyone who walks under it, so the scene draws it last.
+export const hungChandelierShapes = (
+  world: World,
+): ReadonlyArray<Canvas.Shape> =>
+  isChandelierDown(world) ? [] : chandelierAt(levelOf(world), 'Hung')
+
+// NOTE: fallen, it lies in the gap as cover, in the depth sort at the gap's
+// foot.
+export const fallenChandelierDrawables = (
+  world: World,
+): ReadonlyArray<Drawable> =>
+  isChandelierDown(world)
+    ? Option.match(gapBoxOf(levelOf(world)), {
+        onNone: () => [],
+        onSome: gap => [
+          {
+            footY: gap.bottom,
+            rank: 'Prop',
+            shapes: chandelierAt(levelOf(world), 'Fallen'),
+          },
+        ],
+      })
+    : []

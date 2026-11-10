@@ -238,13 +238,13 @@ export const frenzyBerthPx = () =>
 // of each wall, a little in from the walls.
 const KITE_SPOTS: Array<Vector> = [
   { x: 40, y: 40 },
-  { x: 160, y: 36 },
-  { x: 280, y: 40 },
-  { x: 36, y: 95 },
-  { x: 284, y: 95 },
-  { x: 40, y: 150 },
-  { x: 160, y: 154 },
-  { x: 280, y: 150 },
+  { x: 180, y: 40 },
+  { x: 320, y: 40 },
+  { x: 36, y: 130 },
+  { x: 324, y: 130 },
+  { x: 40, y: 180 },
+  { x: 180, y: 185 },
+  { x: 320, y: 180 },
 ]
 
 export const kiteAway: {

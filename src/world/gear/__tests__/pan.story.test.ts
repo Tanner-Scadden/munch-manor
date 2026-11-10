@@ -66,8 +66,10 @@ import { freshGun, heldWeapon, inHandOf, maybePanOf, takePan } from '../weapons'
 // swung the way the knife is drawn and stabs.
 
 const FRAME_MS = FIXED_STEP_MS
-const ROW_Y = 104
-const PLAYER_X = 100
+// NOTE: on the open floor between the dining room's table and the start
+// spot, which runs the whole width of the room.
+const ROW_Y = 130
+const PLAYER_X = 180
 const SMG: CarriedGun = { kind: 'Smg', loaded: 30, tier: 0, kills: 0 }
 const BOTH_GUNS = holdingSecond(SMG)
 
