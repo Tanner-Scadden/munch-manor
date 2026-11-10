@@ -721,7 +721,7 @@ describe('Run stats', () => {
       Scene.given(finished(Phase.GameOver({ wave: 4 }))),
       measureSurface,
       Scene.expect(Scene.role('status')).toHaveText(
-        `Game over. Eaten on wave 4. Difficulty: Normal. ${STATS} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
+        `Game over. Eaten on wave 4. Difficulty: Double Dare. ${STATS} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
       ),
     ),
   )
@@ -732,7 +732,7 @@ describe('Run stats', () => {
       Scene.given(finished(Phase.Victory())),
       measureSurface,
       Scene.expect(Scene.role('status')).toHaveText(
-        `Victory. The house is yours. For now. Difficulty: Normal. ${STATS} ${KEEP_GOING} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
+        `Victory. The house is yours. For now. Difficulty: Double Dare. ${STATS} ${KEEP_GOING} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
       ),
     ),
   )
@@ -747,7 +747,7 @@ describe('Run stats', () => {
       Scene.given(afterRuns(FEEDBACK_RUNS, Phase.GameOver({ wave: 4 }))),
       measureSurface,
       Scene.expect(Scene.role('status')).toHaveText(
-        `Game over. Eaten on wave 4. Difficulty: Normal. ${STATS} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
+        `Game over. Eaten on wave 4. Difficulty: Double Dare. ${STATS} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
       ),
     ),
   )
@@ -763,7 +763,7 @@ describe('Run stats', () => {
           ),
           measureSurface,
           Scene.expect(Scene.role('status')).toHaveText(
-            `Game over. Eaten on wave 4. Difficulty: Normal. ${STATS} ${PLAY_AGAIN} ${BACK_HOME}`,
+            `Game over. Eaten on wave 4. Difficulty: Double Dare. ${STATS} ${PLAY_AGAIN} ${BACK_HOME}`,
           ),
         )
         yield* Scene.scene(
@@ -771,7 +771,7 @@ describe('Run stats', () => {
           Scene.given(afterRuns(FEEDBACK_RUNS + 1, Phase.Victory())),
           measureSurface,
           Scene.expect(Scene.role('status')).toHaveText(
-            `Victory. The house is yours. For now. Difficulty: Normal. ${STATS} ${KEEP_GOING} ${PLAY_AGAIN} ${BACK_HOME}`,
+            `Victory. The house is yours. For now. Difficulty: Double Dare. ${STATS} ${KEEP_GOING} ${PLAY_AGAIN} ${BACK_HOME}`,
           ),
         )
       }),

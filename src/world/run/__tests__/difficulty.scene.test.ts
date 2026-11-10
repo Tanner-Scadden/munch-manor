@@ -20,35 +20,41 @@ import {
 import { asVeteran } from '../../../test/veteran'
 
 const card = Scene.role('dialog', { name: 'How tough are you?' })
-const easy = Scene.role('button', { name: 'Easy: Just here for the vibes' })
+const easy = Scene.role('button', { name: 'Dare: Just here for the vibes' })
 const normal = Scene.role('button', {
-  name: "Normal: The way it's meant to be played",
+  name: "Double Dare: The way it's meant to be played",
 })
-const hard = Scene.role('button', { name: 'Hard: They bite back' })
+const hard = Scene.role('button', { name: 'Triple Dare: They bite back' })
 const openNightmare = Scene.role('button', {
-  name: 'Nightmare: No mercy. Bring snacks',
+  name: 'Triple Dog Dare: No backing out. Bring snacks',
 })
 
 describe('the difficulty card', () => {
-  it.effect('the first PLAY shows four choices with Nightmare locked', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(initialModel),
-      measureSurface,
-      Scene.click(playButton),
-      ...showDialogInScene(),
-      Scene.inside(
-        card,
-        Scene.expect(easy).toExist(),
-        Scene.expect(normal).toExist(),
-        Scene.expect(hard).toExist(),
-        Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.text('Beat Hard to unlock')).toBeAbsent(),
-        Scene.expect(
-          Scene.selector("[data-difficulty='Nightmare'] .difficulty-unlock"),
-        ).toExist(),
+  it.effect(
+    'the first PLAY shows the four dares by name, Triple Dog Dare locked',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(initialModel),
+        measureSurface,
+        Scene.click(playButton),
+        ...showDialogInScene(),
+        Scene.inside(
+          card,
+          Scene.expect(easy).toExist(),
+          Scene.expect(normal).toExist(),
+          Scene.expect(hard).toExist(),
+          Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
+          Scene.expect(easy).toContainText('Dare'),
+          Scene.expect(normal).toContainText('Double Dare'),
+          Scene.expect(hard).toContainText('Triple Dare'),
+          Scene.expect(lockedNightmare).toContainText('Triple Dog Dare'),
+          Scene.expect(Scene.text('Beat Triple Dare first')).toBeAbsent(),
+          Scene.expect(
+            Scene.selector("[data-difficulty='Nightmare'] .difficulty-unlock"),
+          ).toExist(),
+        ),
       ),
-    ),
   )
 
   it.effect(
@@ -113,15 +119,15 @@ describe('the difficulty in the lobby', () => {
         measureSurface,
         Scene.expect(Scene.selector('.coop-skull-pick')).toBeAbsent(),
         ...openLobbyInScene(),
-        Scene.expect(skull('Easy')).toHaveAttr('aria-pressed', 'false'),
-        Scene.expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
-        Scene.expect(skull('Hard')).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(skull('Dare:')).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(skull('Double Dare')).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(skull('Triple Dare')).toHaveAttr('aria-pressed', 'false'),
         Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
-        Scene.click(skull('Hard')),
+        Scene.expect(skull('Double Dare')).toHaveAttr('aria-pressed', 'true'),
+        Scene.click(skull('Triple Dare')),
         resolveFocusLobbyInScene(),
-        Scene.expect(skull('Hard')).toHaveAttr('aria-pressed', 'true'),
-        Scene.expect(skull('Normal')).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(skull('Triple Dare')).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(skull('Double Dare')).toHaveAttr('aria-pressed', 'false'),
       ),
   )
 
@@ -135,7 +141,10 @@ describe('the difficulty in the lobby', () => {
       ),
       measureSurface,
       ...openLobbyInScene(),
-      Scene.expect(skull('Nightmare')).not.toHaveAttr('aria-disabled', 'true'),
+      Scene.expect(skull('Triple Dog Dare')).not.toHaveAttr(
+        'aria-disabled',
+        'true',
+      ),
       Scene.expect(Scene.selector('.coop-skull-pick .new-pip')).toExist(),
     ),
   )
@@ -161,7 +170,9 @@ describe('the end screens', () => {
       ),
       measureSurface,
       shareMountSettles('Cancelled'),
-      Scene.expect(Scene.role('status')).toContainText('Difficulty: Hard.'),
+      Scene.expect(Scene.role('status')).toContainText(
+        'Difficulty: Triple Dare.',
+      ),
     ),
   )
 
@@ -180,7 +191,7 @@ describe('the end screens', () => {
       measureSurface,
       shareMountSettles('Cancelled'),
       Scene.expect(Scene.role('status')).toContainText(
-        'Difficulty: Hard. Nightmare unlocked!',
+        'Difficulty: Triple Dare. Triple Dog Dare unlocked!',
       ),
     ),
   )

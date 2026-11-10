@@ -140,7 +140,9 @@ const waveStatsLabel = (model: Model): string =>
   })
 
 const nightmareNews = (model: Model): string =>
-  model.difficulty.nightmare === 'JustUnlocked' ? ' Nightmare unlocked!' : ''
+  model.difficulty.nightmare === 'JustUnlocked'
+    ? ` ${DIFFICULTIES.Nightmare.name} unlocked!`
+    : ''
 
 const recordNews = (model: Model): string =>
   Array.isReadonlyArrayEmpty(model.runRecords) ? '' : ' A new best!'

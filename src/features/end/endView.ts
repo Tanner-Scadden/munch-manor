@@ -29,6 +29,7 @@ import { playerFootY } from '../../render/playerView'
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
 import type { Difficulty } from '../../shared/playerData'
 import { focusOf, isCoop, modifyFocus } from '../../world/party/party'
+import { DIFFICULTIES } from '../../world/run/difficulty'
 import { modifiersOn } from '../../world/run/modifiers'
 import { defeatQuip, victoryVerdict } from '../../world/run/stats'
 import { Invulnerability, type Zombie } from '../../world/schema/entitySchema'
@@ -115,8 +116,9 @@ const LABELS: Readonly<Record<string, BakedText>> = {
 const NEW_BEST = bakeText('NEW BEST!', 'Fresh')
 const NEW_BEST_LIT = bakeText('NEW BEST!', 'Victory')
 const FEEDBACK = bakeText(String.toUpperCase(FEEDBACK_LINE), 'Hint')
-const NIGHTMARE_UNLOCKED = bakeText('NIGHTMARE UNLOCKED!', 'Victory')
-const NIGHTMARE_UNLOCKED_DIM = bakeText('NIGHTMARE UNLOCKED!', 'Alert')
+const UNLOCKED_NAME = String.toUpperCase(DIFFICULTIES.Nightmare.name)
+const NIGHTMARE_UNLOCKED = bakeText(`${UNLOCKED_NAME} UNLOCKED!`, 'Victory')
+const NIGHTMARE_UNLOCKED_DIM = bakeText(`${UNLOCKED_NAME} UNLOCKED!`, 'Alert')
 
 // LAYOUT
 

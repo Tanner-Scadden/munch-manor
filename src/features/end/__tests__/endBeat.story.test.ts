@@ -476,13 +476,13 @@ describe('sharing a run', () => {
         kills: 612,
       }),
     ).toBe(
-      '🧟 I beat Munch Manor on NIGHTMARE! 612 zombies splatted. The house is mine.',
+      '🧟 I beat Munch Manor on TRIPLE DOG DARE! 612 zombies splatted. The house is mine.',
     )
   })
 
   test('a crew says how many played', () => {
     expect(shareText({ ...base, outcome: 'Won', crew: 3, kills: 900 })).toBe(
-      '🧟 Our crew of 3 beat Munch Manor on Normal! 900 zombies splatted together.',
+      '🧟 Our crew of 3 beat Munch Manor on Double Dare! 900 zombies splatted together.',
     )
     expect(shareText({ ...base, outcome: 'Munched', crew: 2 })).toBe(
       '💀 Our crew of 2 got munched on wave 4 in Munch Manor. 87 zombies splatted together. Bring snacks.',
@@ -500,7 +500,7 @@ describe('sharing a run', () => {
         maybeOwnAward: Option.some('Medic'),
       }),
     ).toBe(
-      '🧟 Our crew of 3 beat Munch Manor on Normal! 900 zombies splatted together. 👑 MVP: ANA with 412. I was the Medic 🩹.',
+      '🧟 Our crew of 3 beat Munch Manor on Double Dare! 900 zombies splatted together. 👑 MVP: ANA with 412. I was the Medic 🩹.',
     )
     expect(
       shareText({

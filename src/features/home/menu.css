@@ -2267,8 +2267,11 @@ button.help-card:focus-visible {
 
 .difficulty-name {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  text-align: center;
   color: var(--level);
   font: bold 14px var(--menu-font);
   letter-spacing: 1px;

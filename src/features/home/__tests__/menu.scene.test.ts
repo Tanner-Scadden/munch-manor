@@ -61,7 +61,7 @@ const endMenuButton = Scene.role('button', {
   name: 'Menu: back to the home screen',
 })
 const leaveQuestion = Scene.role('dialog', { name: 'Leave this run?' })
-const bests = Scene.role('button', { name: /^Your bests, Normal/ })
+const bests = Scene.role('button', { name: /^Your bests, Double Dare/ })
 
 // NOTE: Scene refuses a pointerdown that no handler on the element or its
 // ancestors would receive. That refusal is the check: a press on these
@@ -275,12 +275,11 @@ describe('Home menu', () => {
         Scene.expect(lobbyScreen).toExist(),
         Scene.expect(playButton).toBeAbsent(),
         Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-        Scene.click(Scene.role('button', { name: /^Hard:/ })),
+        Scene.click(Scene.role('button', { name: /^Triple Dare:/ })),
         resolveFocusLobbyInScene(),
-        Scene.expect(Scene.role('button', { name: /^Hard:/ })).toHaveAttr(
-          'aria-pressed',
-          'true',
-        ),
+        Scene.expect(
+          Scene.role('button', { name: /^Triple Dare:/ }),
+        ).toHaveAttr('aria-pressed', 'true'),
         Scene.expect(Scene.selector('.coop[data-screen="Solo"]')).toExist(),
         Scene.click(lobbyBackButton),
         Scene.Command.resolve(
@@ -304,10 +303,9 @@ describe('Home menu', () => {
           ...openLobbyInScene(),
           emitPressedKey('KeyX'),
           resolveFocusLobbyInScene(),
-          Scene.expect(Scene.role('button', { name: /^Hard:/ })).toHaveAttr(
-            'aria-pressed',
-            'true',
-          ),
+          Scene.expect(
+            Scene.role('button', { name: /^Triple Dare:/ }),
+          ).toHaveAttr('aria-pressed', 'true'),
           emitPressedKey('KeyE'),
           resolveFocusLobbyInScene(),
           Scene.expect(Scene.role('button', { name: 'Endless' })).toHaveAttr(
@@ -327,9 +325,9 @@ describe('Home menu', () => {
           measureSurface,
           ...openLobbyInScene(),
           Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
-          Scene.click(Scene.role('button', { name: /^Easy:/ })),
+          Scene.click(Scene.role('button', { name: /^Dare:/ })),
           resolveFocusLobbyInScene(),
-          Scene.expect(Scene.role('button', { name: /^Easy:/ })).toHaveAttr(
+          Scene.expect(Scene.role('button', { name: /^Dare:/ })).toHaveAttr(
             'aria-pressed',
             'true',
           ),

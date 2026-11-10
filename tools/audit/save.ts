@@ -57,7 +57,9 @@ runAudit(
     yield* attempt(() => page.click('.home-play'))
     yield* wait(300)
     // NOTE: a first visit asks for a difficulty before the first run.
-    yield* attempt(() => page.getByRole('button', { name: /^normal/i }).click())
+    yield* attempt(() =>
+      page.getByRole('button', { name: /^double dare/i }).click(),
+    )
     yield* attempt(() => page.keyboard.press('KeyM'))
     yield* wait(300)
     const gated = yield* status

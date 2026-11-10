@@ -42,7 +42,7 @@ type DifficultyStats = Readonly<{
 // a break waits for READY (BreakClock.Waiting, src/world/waves/waves.ts).
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
-    name: 'Easy',
+    name: 'Dare',
     blurb: 'Just here for the vibes',
     healthScale: 0.6,
     bossHealthScale: 1,
@@ -54,7 +54,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     hasBreakClock: false,
   },
   Normal: {
-    name: 'Normal',
+    name: 'Double Dare',
     blurb: "The way it's meant to be played",
     healthScale: 0.75,
     bossHealthScale: 1,
@@ -66,7 +66,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     hasBreakClock: false,
   },
   Hard: {
-    name: 'Hard',
+    name: 'Triple Dare',
     blurb: 'They bite back',
     healthScale: 1.08,
     bossHealthScale: 2.2,
@@ -78,8 +78,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     hasBreakClock: true,
   },
   Nightmare: {
-    name: 'Nightmare',
-    blurb: 'No mercy. Bring snacks',
+    name: 'Triple Dog Dare',
+    blurb: 'No backing out. Bring snacks',
     healthScale: 1.16,
     bossHealthScale: 3.2,
     bossAttackPace: 0.65,
@@ -98,7 +98,7 @@ export const DIFFICULTY_ORDER: Array.NonEmptyReadonlyArray<Difficulty> = [
   'Nightmare',
 ]
 
-export const NIGHTMARE_LOCK_NOTE = 'Beat Hard to unlock'
+export const NIGHTMARE_LOCK_NOTE = 'Beat Triple Dare first'
 
 export const isLocked: {
   (difficulty: Difficulty): (setting: DifficultySetting) => boolean

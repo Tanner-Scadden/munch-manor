@@ -95,11 +95,11 @@ export const TRAP_NAMES: Readonly<Record<TrapKind, string>> = {
 // POWER-UPS
 
 export const PICKUP_NAMES: Readonly<Record<PickupKind, string>> = {
-  RapidFire: 'HOT SAUCE',
-  Damage: 'MEAN BEANS',
-  Speed: 'ZOOMY SOCKS',
-  Pierce: 'SHISH KEBULLETS',
-  Burp: 'BIG BURP',
+  RapidFire: 'WIND-UP KEY',
+  Damage: 'FAMILY SILVER',
+  Speed: 'DANCING SHOES',
+  Pierce: 'HAT PINS',
+  Burp: 'DINNER GONG',
   Heart: 'PICKLED HEART',
 }
 

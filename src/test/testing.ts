@@ -49,10 +49,10 @@ import {
 } from '../app/mount'
 import { subscriptions, type update } from '../app/pureApp'
 import { ReadRoomLink } from '../app/update/coop'
+import { CueMusic } from '../app/update/music'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
 import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
-import { CueMusic } from '../app/update/music'
 import { Message as CoopMessage } from '../features/coop/message'
 import { ChangeLobby, FocusCoopElement } from '../features/coop/steps'
 import { endOffer } from '../features/end/endOffer'
@@ -667,7 +667,7 @@ export const lobbyBackButton = Scene.role('button', {
 export const lobbyMode = (name: string) => Scene.role('button', { name })
 
 export const lockedNightmare = Scene.role('button', {
-  name: 'Nightmare, locked. Beat Hard to unlock',
+  name: 'Triple Dog Dare, locked. Beat Triple Dare first',
 })
 
 export const playEndlessButton = Scene.selector(

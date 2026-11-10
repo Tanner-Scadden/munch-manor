@@ -347,7 +347,7 @@ const playARun = (page: Page) =>
   Effect.gen(function* () {
     yield* attempt(() => page.locator('#home-play').tap())
     yield* wait(400)
-    const normal = page.getByRole('button', { name: /^normal/i })
+    const normal = page.getByRole('button', { name: /^double dare/i })
     if ((yield* attempt(() => normal.count())) > 0) {
       yield* attempt(() => normal.tap())
     }
