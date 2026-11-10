@@ -88,7 +88,7 @@ Proposed by the owner on 2026-11-09, for discussion.
 - **The start is already right.** The parlour is boarded in on every run. The story only has to say why.
 - **Buying rooms open is already exploring.** Each boarded exit is a door you work your way through. The escape gives that a reason beyond space and loot.
 - **Rattles becomes the guide.** He already hollers about the kitchen and wrote a guide. He can hint at where the next piece is, in his few words, and sell the way out (a crowbar for the boards, a key copy for a price).
-- **Uncle Chunk becomes the gatekeeper.** The finale already comes at wave 10. Finding the last piece could be what brings him, and beating him is what opens the front door. Victory becomes "you got out".
+- **Uncle Chunk becomes the gatekeeper.** Owner, 2026-11-09: in an escape run he no longer comes at wave 10. He shows up only at the front door, once everything on the list is found, and beating him is what opens it. Victory becomes "you got out".
 - **The wave count gets a reason.** Today a run is ten waves because ten waves were tuned. An escape run ends when you get out, so its length is however long the finding takes, with the waves as pressure.
 - **Endless still fits** as staying in: the run where you never leave, or the run after you came back for more.
 - **The design doc already wants it.** "A goal beyond surviving, such as restoring the power or finding the keys to Uncle Chunk's cellar" is in the "Exploring the manor" sketch.
@@ -147,7 +147,7 @@ A proposal, built from the patterns above.
 
 The invitation says "Dinner at Munch Manor. Formal. Bring an appetite." It does not say who is eating whom.
 
-You came to a dinner party (Clue). The family (the Munches) and the other guests have already turned. Uncle Chunk is the host, still in his party hat. The house is hungry. Every run you arrive, the parlour doors are boarded behind you, and the only way out is the front door.
+You came to a dinner party (Clue). The family (the Munches) and the other guests have already turned. Uncle Chunk is the host, still in his party hat. The house is hungry. Every run you sit down at the table in the dining room, the doors are boarded behind you, and the only way out is the front door.
 
 This ties together what the game already says: the Groaner "eats the host", Uncle Chunk is "the relative nobody invited", MUNCHED!, the soup, the fridge, the party hat.
 
@@ -157,19 +157,48 @@ Every party has a coat check. Rattles ran it, and he never left: the coats of ev
 
 "Fresh meat! Er, customer." now reads as a joke about the dinner.
 
-### The three things you need to leave a party
+### You start at the table
 
-You cannot leave a party without three things. Each is a piece of the escape, and each hides in one of a few hand-picked spots in the house, rolled each run (TranZit, Last Night on Earth):
+Proposed by the owner on 2026-11-09. A run starts in the dining room, at your place setting, since you came for dinner. Today every run starts in the parlour ("Every run starts in the parlour" under "Exploring the manor" in `GAME_DESIGN.md` is decided), so this changes a decision.
 
-1. **Your coat check ticket.** Rattles will not give your coat back without it. Without your coat, the front door does not count (it is cold out).
-2. **Your car keys.** Somewhere in the house: in a sofa cushion, in the fridge, in a zombie's mouth (a marked zombie carries them and drops them on death, CoD style).
-3. **A goodbye to the host.** You have to say goodbye to Uncle Chunk before you leave. Politely. With a shotgun. He waits at the front door once you have the other two.
+The cheap way is to redress the parlour as the dining room: keep its tiles, doors, cover footprints, and stall where they are, so the waves and the balance stay as tuned, and swap the art. The seating group becomes a long dining table set for a party that never finished, the piano a sideboard, the hearth stays (dining rooms have them too), a candelabra, a chandelier. The boarded double door with the fork and knife sign already leads to the kitchen, which fits a dining room better than a parlour. A new room with its own layout is the costly way: new cover, new lanes, and the waves tuned again.
 
-Three objects, no reading needed: a ticket, a key ring, a party hat. The HUD shows three empty outlines that fill in.
+### What you need to leave changes every run
 
-### The courses
+Proposed by the owner on 2026-11-09, replacing one fixed set of three. Each run rolls its list from a pool of ordinary things a guest needs to leave a party, from its own salted seeded stream (TranZit, Last Night on Earth). The goodbye to the host is always last.
 
-The waves become courses of the dinner, named on the wave banner: Appetizers, Soup, Salad, Main Course, Dessert. Same waves, same tuning, a new word. Uncle Chunk is Dessert.
+What makes the list fun is less which object it is than how each one comes back to you, so each thing in the pool has its own way:
+
+| Thing                  | How you get it back                                                       |
+| ---------------------- | ------------------------------------------------------------------------- |
+| Your car keys          | Hidden in one of a few spots: a sofa cushion, the fridge, under the table |
+| Your coat check ticket | Rattles has it, for a price (the dead do not tip, but the living do)      |
+| Your shoes             | A marked zombie wears them: kill it and grab the drop (CoD style)         |
+| The doggy bag          | Cooked at the kitchen's stove, as a perk is                               |
+| Your phone             | It rings somewhere in the house: follow the sound                         |
+| Your umbrella          | Behind the boards of a room you have not opened yet                       |
+| A goodbye to the host  | Always last: Uncle Chunk at the front door. Politely. With a shotgun.     |
+
+Objects, no reading needed. The HUD shows this run's list as empty outlines that fill in.
+
+### Difficulty sets the list
+
+Today the four levels scale only the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`). The list is a second dial on the same curve:
+
+| Level     | Things before the goodbye | Help finding them                                      |
+| --------- | ------------------------- | ------------------------------------------------------ |
+| Easy      | 2                         | Rattles points the way; hiding spots sparkle in breaks |
+| Normal    | 3                         | Rattles hints once a break                             |
+| Hard      | 3                         | No sparkle; one is always on a marked zombie           |
+| Nightmare | 4                         | No hints; the house gets hungrier from the first find  |
+
+A longer list makes a longer run, so the balance model and bot learn the list before the counts are tuned.
+
+### The waves keep count
+
+Owner, 2026-11-09: the waves are not named after the meal. A wave's number marks how far you are, and the house keeps getting harder the longer you stay, the way Endless ramps today. The banner stays WAVE 4, and Game Over says how far you got.
+
+So an escape run has no fixed wave count. The waves ramp until the list is done, and only then does Uncle Chunk come to the front door (owner, 2026-11-09). A quick hunter meets him early against easier waves; a slow one meets him late with the house at full strength. The ten tuned waves become the start of one long ramp, as Endless is today.
 
 ### Rooms come out like dishes
 
@@ -177,11 +206,11 @@ When boards come down, the room behind them is one of a few hand-made rooms (Blu
 
 ### The house gets hungrier
 
-Once you hold the ticket and the keys, the house knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you say goodbye to Uncle Chunk at the front door. That finale is a hold-out (Left 4 Dead): the front door is unlocking, and you hold the hall until it swings open.
+Once you hold everything on the list, the house knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you say goodbye to Uncle Chunk at the front door. That finale is a hold-out (Left 4 Dead): the front door is unlocking, and you hold the hall until it swings open.
 
 ### Leaving early
 
-The back door in the kitchen (or a window) is an early exit: leave without your coat and with the car keys only, and the run ends as an escape that pays less. The full goodbye pays most. Push your luck (extraction shooters).
+The back door in the kitchen (or a window) is an early exit: leave with part of the list (the car keys, say, but no coat), and the run ends as an escape that pays less. The full goodbye pays most. Push your luck (extraction shooters).
 
 ### Between runs
 
@@ -195,9 +224,9 @@ The heroes are the other guests who never turned: the Handyman came to fix the b
 
 Ordered from cheapest to most work, so the story can land before the systems do:
 
-1. **Words only.** Courses on the wave banners, Rattles' new lines, the Munchopedia's bios nudged toward the dinner party, the invitation on the loading splash. No rule changes.
-2. **The three pieces in fixed spots.** The ticket, keys, and goodbye as a goal over the existing ten waves. Victory becomes "you got out".
-3. **Rolled spots.** The pieces move between a few hand-picked hiding spots per run, from their own seeded stream.
+1. **Words and art only.** The parlour redressed as the dining room, Rattles' new lines, the Munchopedia's bios nudged toward the dinner party, the invitation on the loading splash. No rule changes.
+2. **One fixed list in fixed spots.** The keys, the ticket, and the goodbye as a goal over the existing ten waves. Victory becomes "you got out".
+3. **Rolled spots and a rolled list.** The things move between a few hand-picked hiding spots, and the list itself rolls from the pool, sized by difficulty, from their own seeded stream.
 4. **Rolled rooms.** Needs a second room and a pool, and a change to "Not now".
 5. **Early exits and the hungrier house.** Needs balance work and the bot to learn the goal.
 
@@ -209,7 +238,8 @@ The lore choices that most change the game, roughly in order.
 2. **Who are the zombies?** The party guests and the family? Strangers the house ate? Does Uncle Chunk lead them, or is he just the biggest?
 3. **Who is Rattles?** The butler, a past guest who never got out, the house's first owner, or something the house made to keep you spending?
 4. **What locks you in?** Uncle Chunk, the house itself, a curse, or Rattles (who would lose his customers)?
-5. **What do you collect to escape?** One key split in pieces, a set of different items (a fuse for the power, a crowbar for the boards, the front door key), or something sillier (the car keys, your shoes)?
+5. **What goes in the pool?** Which things a guest needs to leave, and how each one comes back to you (see "What you need to leave changes every run").
 6. **What do the heroes and bots mean in the story?** Other guests who came for the party? The robots are Rattles' rentals?
 7. **What is a Bone?** Rattles' currency, the bones of the munched, or both?
 8. **Do rooms roll, or only what is in them?** See "What it goes against".
+9. **Is the dining room the parlour redressed, or a new room?** See "You start at the table".
