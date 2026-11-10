@@ -23,6 +23,7 @@ import {
   HEART_SPRITE,
 } from '../../art/sprites/hearts'
 import { TRAP_ICONS } from '../../art/sprites/traps'
+import { dareCardShapes } from '../../features/dare/dareCard'
 import { ammoLevelOf, isOutOfGuns } from '../../features/hud/ammoWarning'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
 import { roomsCounterShapes } from '../../features/kitchen/roomsFound'
@@ -868,6 +869,7 @@ const playHudShapes = (
   ...soupBubbleShapes(model, camera),
   ...roundHudShapes(model, layout),
   ...roomsCounterShapes(model, layout.scoreRight, layout.roomsTop),
+  ...dareCardShapes(model, layout),
   ...(isRoundActive(model.phase)
     ? textShapes(
         `SCORE ${scoreOf(model.stats)}`,

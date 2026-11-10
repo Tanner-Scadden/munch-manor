@@ -26,6 +26,7 @@ import {
   TrapNotice,
   barePantry,
   calmPacing,
+  freshDare,
   freshLoot,
   freshStats,
   freshStove,
@@ -58,6 +59,8 @@ export type RunFields = Pick<
   | 'fridge'
   | 'pantry'
   | 'stove'
+  | 'dare'
+  | 'dareThings'
   | 'gasValve'
   | 'elapsedMs'
   | 'frameEvents'
@@ -114,6 +117,8 @@ export const freshRun = (model: Model): RunFields => ({
   fridge: shutFridge,
   pantry: barePantry,
   stove: freshStove(model.rngState),
+  dare: freshDare(model.rngState),
+  dareThings: [],
   gasValve: shutValve,
   elapsedMs: 0,
   frameEvents: [],

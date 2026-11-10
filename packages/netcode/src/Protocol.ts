@@ -83,7 +83,11 @@ import {
 // a grid, with the dining room the start: a door id for the front door and
 // for the west slot's two doors (WestTop, WestBottom), the level's drops
 // (`dropped`, the dining room's chandelier lying in the table's gap), and a
-// new event, ChandelierFell.
+// new event, ChandelierFell. The World holds the run's dare (`dare`: its own
+// generator and the list) and the house's things (`dareThings`, keyed by
+// id, each hidden, marked, carried by a zombie, dropped, held, found, or
+// delivered), and five new events say what happened to them: DareFound,
+// DareTaken, DareDropped, DareListDone, and DareDelivered.
 export const PROTOCOL_VERSION = 20
 export const MIN_PROTOCOL_VERSION = 20
 

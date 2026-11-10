@@ -581,8 +581,10 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // paint operations, and 2986 on a full repaint to 687, 543, and 1120,
 // with 458 fill changes and 581 shapes painted. What is left is mostly
 // particles, decals, bars, and shadows, which change every frame.
+// The dare card on the HUD added one baked slot per thing on the list, the
+// hat too (4 on Normal), taking the room from 738 shapes to 742.
 const BUDGET: FrameCost = {
-  shapesBuilt: 740,
+  shapesBuilt: 750,
   steadyPaintOps: 590,
   steadyFillStyleChanges: 500,
   steadyShapesPainted: 630,

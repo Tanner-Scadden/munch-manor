@@ -51,6 +51,7 @@ import {
   mendCues,
   playSounds,
   playStartSoundWhen,
+  playTune,
   shotSoundCue,
 } from './sound'
 import { toModel, unchanged } from './step'
@@ -126,6 +127,8 @@ const takeRoomWorld = (
     fridge: () => world.fridge,
     pantry: () => world.pantry,
     stove: () => world.stove,
+    dare: () => world.dare,
+    dareThings: () => world.dareThings,
     gasValve: () => world.gasValve,
     party: () => world.party,
     seats: () => takeOwnSeat(focusOf(model), world.seats),
@@ -370,6 +373,7 @@ const drawTraced = ({
         ...mendCues(base, drawn),
         ...kitchenCues(base, drawn),
       ]),
+      playTune(base, drawn),
       playStartSoundWhen(isStart),
       syncShopDialog(Option.exists(maybeShopBefore, isBrowsing)),
     ])
