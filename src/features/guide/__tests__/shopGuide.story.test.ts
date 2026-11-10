@@ -219,10 +219,10 @@ describe('what the entries read', () => {
     expect(entry('House', 'Boards').price).toEqual(Option.some(88))
   })
 
-  test('a gun lists every upgrade tier as a step with its table price', () => {
+  test('a gun lists every tier as a step with the kills it takes', () => {
     const ladder = entry('Guns', 'Shotgun').ladder
-    expect(Array.map(ladder, step => step.price)).toEqual(
-      Array.map(UPGRADE_TIERS.Shotgun, tier => tier.price),
+    expect(Array.map(ladder, step => step.kills)).toEqual(
+      Array.map(UPGRADE_TIERS.Shotgun, tier => tier.kills),
     )
   })
 

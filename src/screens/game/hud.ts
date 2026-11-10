@@ -70,6 +70,7 @@ import {
   STREAK_SCALE,
   STREAK_WINDOW_MS,
 } from '../../shared/constants'
+import { maybeLevelProgress } from '../../world/gear/gunLevels'
 import { TRAP_KIND_ORDER, maybeSelectedKind } from '../../world/gear/traps'
 import {
   gunsOf,
@@ -350,7 +351,36 @@ type SlotLook = Readonly<{
   isBeckoning?: boolean
   maybeIcon?: Option.Option<Sprite>
   maybePerk?: Option.Option<GunPerk>
+  maybeLevelBar?: Option.Option<number>
 }>
+
+// NOTE: a gun's kills toward its next tier (src/world/gear/gunLevels.ts),
+// a thin bar along the slot's inner bottom edge, gone at its top tier.
+const LEVEL_BAR_COLOR = '#ffe066'
+const LEVEL_TRACK_COLOR = 'rgba(244, 241, 222, 0.18)'
+
+const levelBarShapes = (
+  x: number,
+  bottom: number,
+  width: number,
+  share: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const filled = Math.round(clamp(share, 0, 1) * width)
+  return [
+    Canvas.Rect({ x, y: bottom, width, height: 1, fill: LEVEL_TRACK_COLOR }),
+    ...(filled > 0
+      ? [
+          Canvas.Rect({
+            x,
+            y: bottom,
+            width: filled,
+            height: 1,
+            fill: LEVEL_BAR_COLOR,
+          }),
+        ]
+      : []),
+  ]
+}
 
 // NOTE: a cooked gun's perk (src/world/kitchen/stove.ts) sits on its slot's top left
 // corner like a sticker, half over the border, clear of the icon and the
@@ -562,6 +592,11 @@ const slotShapes = (
       fill: SLOT_FILL,
     }),
     ...slotContentShapes(x, top, width, isStacked, look, elapsedMs),
+    ...Option.match(look.maybeLevelBar ?? Option.none(), {
+      onNone: () => [],
+      onSome: share =>
+        levelBarShapes(x + 1, top + height - 2, width - 2, share),
+    }),
   ]
   return look.isHeld ? shapes : [group({ opacity: SLOT_DIM_OPACITY, shapes })]
 }
@@ -595,6 +630,7 @@ const gunSlotLook = (
   isHeld,
   ammoLook: ammoLook(player, isHeld, gun),
   maybePerk: Option.fromNullishOr(gun.perk),
+  maybeLevelBar: maybeLevelProgress(gun),
 })
 
 const EMPTY_SLOT: SlotLook = {
@@ -636,6 +672,7 @@ export const meleeSlotLook = (player: Player): SlotLook => ({
     onSome: pan => ({
       maybeGun: Option.some({ weapon: pan.kind, tier: pan.tier }),
       maybeMeter: Option.some(pan.loaded / magazineOf(pan.kind, pan.tier)),
+      maybeLevelBar: maybeLevelProgress(pan),
     }),
   }),
   ammo: KNIFE_ROUNDS,

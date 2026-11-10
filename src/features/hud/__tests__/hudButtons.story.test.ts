@@ -35,7 +35,8 @@ const carrying = (loaded: number): Model =>
     {
       player: player =>
         modifyFields(player, {
-          arsenal: () => holdingSecond({ kind: 'Smg', loaded, tier: 0 }),
+          arsenal: () =>
+            holdingSecond({ kind: 'Smg', loaded, tier: 0, kills: 0 }),
         }),
     },
   )

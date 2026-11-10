@@ -29,13 +29,12 @@ import {
   bulletInto,
   holdToBuy,
   holdingSecond,
-  pistolOnly,
   playedThrough,
   tick,
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { freshGun, maxTier } from '../../gear/weapons'
+import { freshGun } from '../../gear/weapons'
 import {
   KITCHEN_PAY_SCALE,
   isInKitchenAt,
@@ -56,7 +55,6 @@ import { killEvent } from '../../step/combat'
 import {
   DUD_REFUND,
   FRIDGE_RULES,
-  carriedTierFor,
   fridgePriceFor,
   prizeOddsFor,
   pullFridge,
@@ -193,7 +191,7 @@ describe('the fridge is worth a pull', () => {
   )
 })
 
-describe('a prize keeps the tier of the gun it replaces', () => {
+describe('a prize starts fresh in place of the gun it replaces', () => {
   // NOTE: the fridge's prize taken with a Chatterbox of `smgTier` in hand,
   // checked against the arsenal it should leave.
   const takeWith = (
@@ -201,7 +199,10 @@ describe('a prize keeps the tier of the gun it replaces', () => {
     prize: 'Cooker' | 'Freeze',
     expected: Arsenal,
   ) => {
-    const smg = modifyFields(freshGun('Smg'), { tier: () => smgTier })
+    const smg = modifyFields(freshGun('Smg'), {
+      tier: () => smgTier,
+      kills: () => 150,
+    })
     return Story.story(
       APPLICATION,
       Story.given(
@@ -222,30 +223,14 @@ describe('a prize keeps the tier of the gun it replaces', () => {
     )
   }
 
-  it.effect('an upgraded Chatterbox gives way to a Cooker at its tier', () =>
-    takeWith(2, 'Cooker', holdingSecond(freshGun('Cooker', 'You', 2))),
-  )
-
   it.effect(
-    "the tier stops at the prize's own top tier, and Brain Freeze has none",
-    () => {
-      const top = maxTier('Cooker')
-      const smg = modifyFields(freshGun('Smg'), { tier: () => top + 2 })
-      const player = modifyFields(focusOf(atFridge(0)).player, {
-        arsenal: () => holdingSecond(smg),
-      })
-      expect(carriedTierFor(player, 'Cooker')).toBe(top)
-      return takeWith(2, 'Freeze', holdingSecond(freshGun('Freeze')))
-    },
+    'a leveled Chatterbox gives way to a Cooker at tier 0, its kills gone with it',
+    () => takeWith(2, 'Cooker', holdingSecond(freshGun('Cooker'))),
   )
 
-  test('into an empty slot it starts at tier 0', () => {
-    const pistol = modifyFields(freshGun('Pistol'), { tier: () => 2 })
-    const player = modifyFields(focusOf(atFridge(0)).player, {
-      arsenal: () => pistolOnly(pistol),
-    })
-    expect(carriedTierFor(player, 'Cooker')).toBe(0)
-  })
+  it.effect('Brain Freeze, with no tiers, comes fresh too', () =>
+    takeWith(2, 'Freeze', holdingSecond(freshGun('Freeze'))),
+  )
 })
 
 // THE PANTRY

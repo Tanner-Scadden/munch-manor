@@ -40,7 +40,6 @@ const runWith = (
   maxAlive: 12,
   pistolTier: 0,
   spareTier: 1,
-  upgradeSpend: 80,
   minHp: 0,
   waves: [],
   shopVisits,

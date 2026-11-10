@@ -32,7 +32,7 @@ const onTouch = (base: Model): Model =>
 
 const withSmg = (loaded: number): Player =>
   modifyFields(focusOf(initialModel).player, {
-    arsenal: () => holdingSecond({ kind: 'Smg', loaded, tier: 0 }),
+    arsenal: () => holdingSecond({ kind: 'Smg', loaded, tier: 0, kills: 0 }),
   })
 
 const fightingWith = (loaded: number): Model =>

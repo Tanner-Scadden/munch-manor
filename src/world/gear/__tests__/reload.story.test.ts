@@ -77,7 +77,12 @@ const withPistolLoaded = (base: Model, pistolLoaded: number): Model =>
       withPistol(player, pistol => ({ ...pistol, loaded: pistolLoaded })),
   })
 
-const smg = (loaded: number): CarriedGun => ({ kind: 'Smg', loaded, tier: 0 })
+const smg = (loaded: number): CarriedGun => ({
+  kind: 'Smg',
+  loaded,
+  tier: 0,
+  kills: 0,
+})
 
 const reloadingMs = (reload: Reload): Option.Option<number> =>
   Reload.match(reload, {

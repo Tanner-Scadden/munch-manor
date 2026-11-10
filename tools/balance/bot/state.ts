@@ -61,7 +61,6 @@ export type BotState = {
   // The wave whose break the kitchen was bought in, or 0 when it never was.
   kitchenWave: number
   fridgeLog: FridgeLog
-  spentOnUpgrades: number
   gnomeTries: number
   gnomesPlaced: number
   // Each break it found the shop open in, and what it bought there.
@@ -83,7 +82,6 @@ export const freshState: {
   maybeAimAngle: undefined,
   kitchenWave: 0,
   fridgeLog: emptyFridgeLog(),
-  spentOnUpgrades: 0,
   gnomeTries: 0,
   gnomesPlaced: 0,
   shopVisits: [],

@@ -380,7 +380,7 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
       wallet: wallet => ({ ...wallet, balance: 1234, shown: 1234 }),
       player: player => ({
         ...player,
-        arsenal: holdingSecond({ kind: 'Smg', loaded: 30, tier }),
+        arsenal: holdingSecond({ kind: 'Smg', loaded: 30, tier, kills: 0 }),
       }),
     },
   )

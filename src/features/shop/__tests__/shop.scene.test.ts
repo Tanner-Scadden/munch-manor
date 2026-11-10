@@ -21,6 +21,7 @@ import {
   walkIntoStallInScene,
 } from '../../../test/testing'
 import { TRAPS } from '../../../world/gear/traps'
+import { maxHpOf } from '../../../world/heroes/calling'
 import { modifyFocus } from '../../../world/party/party'
 import { ShopTabsBlock } from '../shopTabs'
 
@@ -60,105 +61,96 @@ const atStall = (balance: number, arsenal: Arsenal): Model =>
     },
   )
 
-const holdingSmg = (tier: number): Arsenal =>
-  holdingSecond({ kind: 'Smg', loaded: 30, tier })
+const holdingSmg = (tier: number, kills: number = 0): Arsenal =>
+  holdingSecond({ kind: 'Smg', loaded: 30, tier, kills })
 
 const keeper = Scene.role('img', { name: /^Rattles the skeleton/ })
 const bubble = Scene.selector('.shop-greeting')
+const laserSight = Scene.selector('#shop-item-LaserSight')
+const heart = Scene.selector('#shop-item-Heart')
 
 describe('the shop at a glance', () => {
   it.effect(
     'a row the player cannot afford is dimmed, greys its tag, and shows the shortfall',
-    () => {
-      const pistolUpgrade = Scene.selector('#shop-item-PistolUpgrade')
-      return Scene.scene(
+    () =>
+      Scene.scene(
         APPLICATION,
         Scene.given(atStall(180, holdingSmg(1))),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(
-          Scene.selector('[data-stock="Short"] #shop-item-PistolUpgrade'),
+          Scene.selector('[data-stock="Short"] #shop-item-LaserSight'),
         ).toExist(),
         Scene.expect(
-          Scene.within(pistolUpgrade, Scene.selector('.shop-tag')),
+          Scene.within(laserSight, Scene.selector('.shop-tag')),
         ).toHaveClass('is-short'),
         Scene.expect(
-          Scene.within(pistolUpgrade, Scene.selector('.shop-tag')),
-        ).toHaveText('$200'),
+          Scene.within(laserSight, Scene.selector('.shop-tag')),
+        ).toHaveText('$400'),
         Scene.expect(
-          Scene.within(pistolUpgrade, Scene.selector('.shop-need')),
-        ).toHaveText('Need $20 more'),
+          Scene.within(laserSight, Scene.selector('.shop-need')),
+        ).toHaveText('Need $220 more'),
         Scene.expect(
-          Scene.within(pistolUpgrade, Scene.selector('.shop-need')),
+          Scene.within(laserSight, Scene.selector('.shop-need')),
         ).not.toHaveClass('sr-only'),
         Scene.expect(
-          Scene.selector('[data-stock="Price"] #shop-item-SmgUpgrade'),
+          Scene.selector('[data-stock="Price"] #shop-item-Shotgun'),
         ).toExist(),
         Scene.expect(
           Scene.within(
-            Scene.selector('#shop-item-SmgUpgrade'),
+            Scene.selector('#shop-item-Shotgun'),
             Scene.selector('.shop-need'),
           ),
         ).toBeAbsent(),
-      )
-    },
+      ),
   )
 
   it.effect(
     'a full row says so in one word on its tag and keeps the reason for screen readers',
-    () => {
-      const upgrade = Scene.selector('#shop-item-SmgUpgrade')
-      return Scene.scene(
+    () =>
+      Scene.scene(
         APPLICATION,
-        Scene.given(atStall(180, holdingSmg(3))),
+        Scene.given(
+          modifyFocus(atStall(180, holdingSmg(1)), {
+            player: player =>
+              modifyFields(player, { hp: () => maxHpOf(player) }),
+            shopCategory: () => 'Health',
+          }),
+        ),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(
-          Scene.selector('[data-stock="Done"] #shop-item-SmgUpgrade'),
+          Scene.selector('[data-stock="Done"] #shop-item-Heart'),
         ).toExist(),
         Scene.expect(
-          Scene.within(upgrade, Scene.selector('.shop-tag')),
-        ).toHaveText('MAX'),
+          Scene.within(heart, Scene.selector('.shop-tag')),
+        ).toHaveText('FULL'),
         Scene.expect(
-          Scene.within(upgrade, Scene.selector('.shop-item-reason')),
+          Scene.within(heart, Scene.selector('.shop-item-reason')),
         ).toHaveClass('sr-only'),
-      )
-    },
+      ),
   )
 
   it.effect(
-    'an upgrade row names the next tier, and its gun card previews what it adds',
-    () => {
-      const upgrade = Scene.selector('#shop-item-SmgUpgrade')
-      return Scene.scene(
+    "a gun card shows its tier, and the next tier's pip fills with its kills",
+    () =>
+      Scene.scene(
         APPLICATION,
-        Scene.given(atStall(180, holdingSmg(1))),
+        Scene.given(atStall(180, holdingSmg(1, 80))),
         measureSurface,
         ...walkIntoStallInScene(),
-        Scene.expect(
-          Scene.within(upgrade, Scene.selector('.shop-card-name')),
-        ).toHaveText('Chatterbox DELUXE'),
-        Scene.expect(
-          Scene.within(upgrade, Scene.selector('.shop-upgrade-arrow')),
-        ).toExist(),
         Scene.expect(Scene.role('img', { name: 'Tier 1 of 3' })).toExist(),
         Scene.expect(
-          Scene.selector('.shop-gun[data-held="true"] .shop-pip.is-next'),
-        ).toExist(),
+          Scene.selector('.shop-gun[data-held="true"] .shop-pip-fill'),
+        ).toHaveStyle('width', '50%'),
         Scene.expect(
-          Scene.selector('.shop-gun[data-held="true"] .shop-seg.is-next'),
+          Scene.selector('.shop-gun[data-held="true"] .shop-pip.is-filled'),
         ).toExist(),
-        Scene.click(upgrade),
-        Scene.expect(Scene.role('img', { name: 'Tier 2 of 3' })).toExist(),
-        Scene.expect(
-          Scene.within(upgrade, Scene.selector('.shop-card-name')),
-        ).toHaveText('Chatterbox 3000'),
-      )
-    },
+      ),
   )
 
   it.effect(
-    'Rattles greets, grins at a buy with a stamp, and is sad when the player is short',
+    'Rattles greets, is sad when the player is short, and grins at a buy with a stamp',
     () =>
       Scene.scene(
         APPLICATION,
@@ -167,36 +159,30 @@ describe('the shop at a glance', () => {
         ...walkIntoStallInScene(),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Grinning'),
         Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
-        Scene.click(Scene.selector('#shop-item-SmgUpgrade')),
-        Scene.expect(keeper).toHaveAttr('data-mood', 'Delighted'),
-        Scene.expect(
-          Scene.within(
-            Scene.selector('#shop-item-SmgUpgrade'),
-            Scene.selector('.shop-stamp'),
-          ),
-        ).toExist(),
-        Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-          'You have $170',
-        ),
-        Scene.keydown(Scene.selector('#shop-item-PistolUpgrade'), 'Enter'),
+        Scene.keydown(laserSight, 'Enter'),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Sad'),
-        Scene.expect(bubble).toHaveText('Need $30 more. No IOUs!'),
+        Scene.expect(bubble).toHaveText('Need $50 more. No IOUs!'),
         Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
         Scene.expect(
-          Scene.within(
-            Scene.selector('#shop-item-PistolUpgrade'),
-            Scene.selector('.shop-nope'),
-          ),
+          Scene.within(laserSight, Scene.selector('.shop-nope')),
         ).toExist(),
         Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-          'You have $170',
+          'You have $350',
         ),
-        Scene.click(Scene.role('tab', { name: /^Traps,/ })),
+        Scene.click(Scene.role('tab', { name: /^Health,/ })),
         Scene.Command.resolve(
           Tabs.test.FocusTab,
           ShopTabsBlock.Message.CompletedFocusTab(),
         ),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Grinning'),
+        Scene.click(heart),
+        Scene.expect(keeper).toHaveAttr('data-mood', 'Delighted'),
+        Scene.expect(
+          Scene.within(heart, Scene.selector('.shop-stamp')),
+        ).toExist(),
+        Scene.expect(Scene.selector('.shop-balance')).toHaveText(
+          'You have $325',
+        ),
       ),
   )
 

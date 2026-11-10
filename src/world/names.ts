@@ -173,15 +173,7 @@ export const GUN_PERK_NAMES: Readonly<Record<GunPerk, string>> = {
 
 type OwnShopGood = Exclude<
   FixedShopItemId,
-  | 'Pistol'
-  | 'Shotgun'
-  | 'Smg'
-  | 'ShotgunUpgrade'
-  | 'SmgUpgrade'
-  | 'PistolUpgrade'
-  | 'CookerUpgrade'
-  | 'PanUpgrade'
-  | TrapKind
+  'Pistol' | 'Shotgun' | 'Smg' | TrapKind
 >
 
 export const SHOP_GOOD_NAMES: Readonly<Record<OwnShopGood | 'Repair', string>> =

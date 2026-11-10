@@ -252,8 +252,16 @@ const noBoost: TierBoost = {
   knockback: 0,
 }
 
+// NOTE: a gun's tiers are earned, not bought (docs/ESCAPE_PLAN.md, "Gun
+// levels"): Beefy at 40 kills with that gun, DELUXE at 120, 3000 at 250,
+// the same for every gun with tiers. A fridge weapon levels the same way.
+export const TIER_KILLS: Array.NonEmptyReadonlyArray<number> = [40, 120, 250]
+
+const killsFor = (tier: number): number =>
+  Option.getOrElse(Array.get(TIER_KILLS, tier), () => Infinity)
+
 export type WeaponTier = Readonly<{
-  price: number
+  kills: number
   boost: TierBoost
 }>
 
@@ -262,7 +270,7 @@ export const UPGRADE_TIERS: Readonly<
 > = {
   Pistol: [
     {
-      price: 200,
+      kills: killsFor(0),
       boost: {
         damage: 0,
         fireIntervalMs: 0,
@@ -274,7 +282,7 @@ export const UPGRADE_TIERS: Readonly<
       },
     },
     {
-      price: 500,
+      kills: killsFor(1),
       boost: {
         damage: 0,
         fireIntervalMs: -20,
@@ -286,7 +294,7 @@ export const UPGRADE_TIERS: Readonly<
       },
     },
     {
-      price: 750,
+      kills: killsFor(2),
       boost: {
         damage: 1,
         fireIntervalMs: 0,
@@ -300,7 +308,7 @@ export const UPGRADE_TIERS: Readonly<
   ],
   Shotgun: [
     {
-      price: 40,
+      kills: killsFor(0),
       boost: {
         damage: 0,
         fireIntervalMs: 0,
@@ -312,7 +320,7 @@ export const UPGRADE_TIERS: Readonly<
       },
     },
     {
-      price: 140,
+      kills: killsFor(1),
       boost: {
         damage: 0,
         fireIntervalMs: -120,
@@ -324,7 +332,7 @@ export const UPGRADE_TIERS: Readonly<
       },
     },
     {
-      price: 320,
+      kills: killsFor(2),
       boost: {
         damage: 1,
         fireIntervalMs: 0,
@@ -338,7 +346,7 @@ export const UPGRADE_TIERS: Readonly<
   ],
   Smg: [
     {
-      price: 60,
+      kills: killsFor(0),
       boost: {
         damage: 0,
         fireIntervalMs: 0,
@@ -350,7 +358,7 @@ export const UPGRADE_TIERS: Readonly<
       },
     },
     {
-      price: 180,
+      kills: killsFor(1),
       boost: {
         damage: 0,
         fireIntervalMs: -12,
@@ -362,7 +370,7 @@ export const UPGRADE_TIERS: Readonly<
       },
     },
     {
-      price: 350,
+      kills: killsFor(2),
       boost: {
         damage: 1,
         fireIntervalMs: 0,
@@ -379,20 +387,20 @@ export const UPGRADE_TIERS: Readonly<
   // faster charge, a wider arc, the ground smash) are in
   // src/world/fridge/fridgeWeapons.ts; only their magazines grow here.
   Cooker: [
-    { price: 70, boost: noBoost },
-    { price: 160, boost: noBoost },
+    { kills: killsFor(0), boost: noBoost },
+    { kills: killsFor(1), boost: noBoost },
     {
-      price: 300,
+      kills: killsFor(2),
       boost: { ...noBoost, magazine: 2 },
     },
   ],
   Pan: [
-    { price: 60, boost: noBoost },
+    { kills: killsFor(0), boost: noBoost },
     {
-      price: 150,
+      kills: killsFor(1),
       boost: { ...noBoost, magazine: 24 },
     },
-    { price: 300, boost: noBoost },
+    { kills: killsFor(2), boost: noBoost },
   ],
   Freeze: [],
 }
@@ -526,20 +534,21 @@ export const carriedMagazine: {
     : magazineWith(calling, gun.kind, gun.tier),
 )
 
-// NOTE: a gun as it comes, at tier 0 unless it comes upgraded (a fridge
-// prize takes the tier of the gun it replaces, src/world/fridge/leftovers.ts).
+// NOTE: a gun as it comes: tier 0 and no kills. It levels on its own kills
+// (src/world/gear/gunLevels.ts).
 export const freshGun: {
-  (calling?: Calling, tier?: number): (kind: WeaponKind) => CarriedGun
-  (kind: WeaponKind, calling?: Calling, tier?: number): CarriedGun
+  (calling?: Calling): (kind: WeaponKind) => CarriedGun
+  (kind: WeaponKind, calling?: Calling): CarriedGun
 } = Function.dual(
   // NOTE: data-first starts with a weapon kind; data-last with a calling or nothing.
   (args: IArguments): boolean =>
     typeof args[0] === 'string' && args[0] in WEAPONS,
-  (
-    kind: WeaponKind,
-    calling: Calling = 'You',
-    tier: number = 0,
-  ): CarriedGun => ({ kind, loaded: magazineWith(calling, kind, tier), tier }),
+  (kind: WeaponKind, calling: Calling = 'You'): CarriedGun => ({
+    kind,
+    loaded: magazineWith(calling, kind, 0),
+    tier: 0,
+    kills: 0,
+  }),
 )
 
 export const heldGun = (arsenal: Arsenal): CarriedGun =>
@@ -651,7 +660,7 @@ export const swapWeapon = (arsenal: Arsenal): Arsenal =>
 
 // NOTE: a new gun goes in the player's hands. It fills an empty second
 // slot; with both slots full it replaces the gun the player holds (with the
-// knife out, the last gun held), upgrades and all (GAME_DESIGN.md, "The
+// knife out, the last gun held), kills and levels and all (GAME_DESIGN.md, "The
 // knife and two gun slots").
 export const takeGun: {
   (gun: CarriedGun): (arsenal: Arsenal) => Arsenal
@@ -788,7 +797,7 @@ export const mapPan: {
     }),
 )
 
-// NOTE: every gun and the Pan, mapped alike: an upgrade, a refill, or
+// NOTE: every gun and the Pan, mapped alike: a level up, a refill, or
 // Rattles banging the Pan flat finds it in whichever slot it is.
 export const mapCarried: {
   (change: (gun: CarriedGun) => CarriedGun): (player: Player) => Player
@@ -805,7 +814,7 @@ export const mapCarried: {
 // NOTE: the Pan from the fridge goes in the melee slot, in hand, and both
 // guns stay. A second Pan never comes out of the fridge (the weapon a
 // player carries is never pulled again), so a Pan already there only gets
-// banged flat, its upgrades kept.
+// banged flat, its kills and level kept.
 export const takePan: {
   (fresh: CarriedGun): (player: Player) => Player
   (player: Player, fresh: CarriedGun): Player

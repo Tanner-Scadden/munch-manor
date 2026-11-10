@@ -33,6 +33,7 @@ import {
   RELAX_TRICKLE_MAX,
   ZOMBIE_ALIVE_MAX,
 } from '../../src/shared/constants'
+import { tierForKills } from '../../src/world/gear/gunLevels'
 import { TRAPS } from '../../src/world/gear/traps'
 import { UPGRADE_TIERS, WEAPONS } from '../../src/world/gear/weapons'
 import { EXIT_RULES } from '../../src/world/level/exits'
@@ -96,7 +97,6 @@ export const ASSUMPTIONS: Assumptions = {
 
 export type Catalog = Readonly<{
   gunPrice: Readonly<Record<SpareGun, number>>
-  upgradePrices: Readonly<Record<Gun, ReadonlyArray<number>>>
   plankPrice: number
   plankLimit: number
   gnomePrice: number
@@ -106,11 +106,6 @@ export type Catalog = Readonly<{
 
 export const CATALOG: Catalog = {
   gunPrice: { Shotgun: SHOP_ITEMS.Shotgun.price, Smg: SHOP_ITEMS.Smg.price },
-  upgradePrices: {
-    Pistol: Array.map(UPGRADE_TIERS.Pistol, ({ price }) => price),
-    Shotgun: Array.map(UPGRADE_TIERS.Shotgun, ({ price }) => price),
-    Smg: Array.map(UPGRADE_TIERS.Smg, ({ price }) => price),
-  },
   plankPrice: TRAPS.Barricade.price,
   plankLimit: TRAPS.Barricade.limit,
   gnomePrice: TRAPS.Turret.price,
@@ -118,11 +113,15 @@ export const CATALOG: Catalog = {
   kitchenPrice: EXIT_RULES.price,
 }
 
-export type Spare = Readonly<{ kind: SpareGun; tier: number }>
+// NOTE: a gun's tier is earned by its kills (src/world/gear/gunLevels.ts),
+// so each gun carries its kills: the model kills every zombie of a wave
+// with the gun it holds.
+export type Spare = Readonly<{ kind: SpareGun; tier: number; kills: number }>
 
 export type Loadout = Readonly<{
   maybeSpare: Option.Option<Spare>
   pistolTier: number
+  pistolKills: number
   gnomes: number
   planks: number
   hasKitchen: boolean
@@ -131,6 +130,7 @@ export type Loadout = Readonly<{
 export const STARTING_LOADOUT: Loadout = {
   maybeSpare: Option.none(),
   pistolTier: 0,
+  pistolKills: 0,
   gnomes: 0,
   planks: 0,
   hasKitchen: false,
@@ -142,8 +142,6 @@ export type Purchase =
   | 'Plank'
   | 'Upkeep'
   | 'Gnome'
-  | 'SpareUpgrade'
-  | 'PistolUpgrade'
   | 'Kitchen'
 
 type Basket = Readonly<{
@@ -154,15 +152,9 @@ type Basket = Readonly<{
 
 const priceOf = (
   catalog: Catalog,
-  loadout: Loadout,
   purchase: Purchase,
   upkeep: number,
 ): Option.Option<number> => {
-  const spareKind = Option.map(loadout.maybeSpare, ({ kind }) => kind)
-  const spareTier = Option.match(loadout.maybeSpare, {
-    onNone: () => 0,
-    onSome: ({ tier }) => tier,
-  })
   if (purchase === 'Shotgun' || purchase === 'Smg') {
     return Option.some(catalog.gunPrice[purchase])
   } else if (purchase === 'Plank') {
@@ -171,46 +163,32 @@ const priceOf = (
     return Option.some(upkeep)
   } else if (purchase === 'Gnome') {
     return Option.some(catalog.gnomePrice)
-  } else if (purchase === 'Kitchen') {
-    return Option.some(catalog.kitchenPrice)
-  } else if (purchase === 'SpareUpgrade') {
-    return Option.flatMap(spareKind, kind =>
-      Array.get(catalog.upgradePrices[kind], spareTier),
-    )
   } else {
-    return Array.get(catalog.upgradePrices.Pistol, loadout.pistolTier)
+    return Option.some(catalog.kitchenPrice)
   }
 }
 
 const withPurchase = (loadout: Loadout, purchase: Purchase): Loadout => {
   if (purchase === 'Shotgun' || purchase === 'Smg') {
-    return { ...loadout, maybeSpare: Option.some({ kind: purchase, tier: 0 }) }
+    return {
+      ...loadout,
+      maybeSpare: Option.some({ kind: purchase, tier: 0, kills: 0 }),
+    }
   } else if (purchase === 'Plank') {
     return { ...loadout, planks: loadout.planks + 1 }
   } else if (purchase === 'Gnome') {
     return { ...loadout, gnomes: loadout.gnomes + 1 }
   } else if (purchase === 'Kitchen') {
     return { ...loadout, hasKitchen: true }
-  } else if (purchase === 'SpareUpgrade') {
-    return {
-      ...loadout,
-      maybeSpare: Option.map(loadout.maybeSpare, spare => ({
-        ...spare,
-        tier: spare.tier + 1,
-      })),
-    }
-  } else if (purchase === 'PistolUpgrade') {
-    return { ...loadout, pistolTier: loadout.pistolTier + 1 }
   } else {
     return loadout
   }
 }
 
 // NOTE: the bot's shopping list in tools/balance/bot.ts, without hearts:
-// the SMG once it can, else the shotgun; two planks;
-// upkeep for repairs; the first spare upgrade and a gnome; the kitchen;
-// then more upgrades and gnomes while a reserve stays, the spare to its top
-// tier before the pistol.
+// the SMG once it can, else the shotgun; two planks; upkeep for repairs; a
+// gnome; the kitchen; then a second gnome while a reserve stays. Tiers
+// come from kills, not the shop (withKills).
 const wantedNext = (
   catalog: Catalog,
   basket: Basket,
@@ -219,7 +197,7 @@ const wantedNext = (
 ): Option.Option<Purchase> => {
   const { loadout, money, bought } = basket
   const affords = (purchase: Purchase, keep: number) =>
-    Option.match(priceOf(catalog, loadout, purchase, upkeep), {
+    Option.match(priceOf(catalog, purchase, upkeep), {
       onNone: () => false,
       onSome: price => money - price >= keep,
     })
@@ -232,7 +210,6 @@ const wantedNext = (
           ? Option.some<Purchase>('Shotgun')
           : Option.none(),
     onSome: spare => {
-      const maxTier = catalog.upgradePrices[spare.kind].length
       const candidates: ReadonlyArray<[Purchase, boolean]> = [
         [
           'Smg',
@@ -246,7 +223,6 @@ const wantedNext = (
             loadout.planks + loadout.gnomes > 0 &&
             affords('Upkeep', 0),
         ],
-        ['SpareUpgrade', spare.tier < 1 && affords('SpareUpgrade', reserve)],
         ['Gnome', loadout.gnomes < 1 && affords('Gnome', reserve)],
         [
           'Kitchen',
@@ -256,16 +232,6 @@ const wantedNext = (
             loadout.gnomes >= 1 &&
             loadout.planks >= catalog.plankLimit &&
             affords('Kitchen', reserve),
-        ],
-        [
-          'SpareUpgrade',
-          spare.tier < maxTier && affords('SpareUpgrade', reserve),
-        ],
-        [
-          'PistolUpgrade',
-          spare.tier >= maxTier &&
-            loadout.pistolTier < catalog.upgradePrices.Pistol.length &&
-            affords('PistolUpgrade', reserve),
         ],
         [
           'Gnome',
@@ -326,10 +292,7 @@ export const shopVisit: {
           onSome: purchase => ({
             money:
               current.money -
-              Option.getOrElse(
-                priceOf(catalog, current.loadout, purchase, upkeep),
-                () => 0,
-              ),
+              Option.getOrElse(priceOf(catalog, purchase, upkeep), () => 0),
             loadout: withPurchase(current.loadout, purchase),
             bought: Array.append(current.bought, purchase),
           }),
@@ -343,6 +306,34 @@ export const shopVisit: {
       loadout: basket.loadout,
     }
   },
+)
+
+// KILLS
+
+// NOTE: a wave's kills go to the gun the model holds (heldGun), and its
+// tier follows them.
+export const withKills: {
+  (kills: number): (loadout: Loadout) => Loadout
+  (loadout: Loadout, kills: number): Loadout
+} = Function.dual(2, (loadout: Loadout, kills: number): Loadout =>
+  Option.match(loadout.maybeSpare, {
+    onNone: () => {
+      const pistolKills = loadout.pistolKills + kills
+      return {
+        ...loadout,
+        pistolKills,
+        pistolTier: tierForKills('Pistol', pistolKills),
+      }
+    },
+    onSome: spare => ({
+      ...loadout,
+      maybeSpare: Option.some({
+        ...spare,
+        kills: spare.kills + kills,
+        tier: tierForKills(spare.kind, spare.kills + kills),
+      }),
+    }),
+  }),
 )
 
 // DAMAGE
@@ -869,6 +860,10 @@ export type Economy = Readonly<{
   pays: ReadonlyArray<number>
 }>
 
+// NOTE: what a wave pays and how many it kills, the kills leveling the
+// held gun before the next visit.
+export type WaveTake = Readonly<{ pay: number; kills: number }>
+
 // NOTE: wave 1 is the tutorial and its stall is closed, so the first visit
 // buys nothing. Traps need repairs from the third visit on.
 const FIRST_VISIT: Visit = {
@@ -899,40 +894,40 @@ export const upkeepFor: {
 // and the model kills everything.
 export const economy: {
   (
-    pays: ReadonlyArray<number>,
+    takes: ReadonlyArray<WaveTake>,
     assumptions: Assumptions,
   ): (catalog: Catalog) => Economy
   (
     catalog: Catalog,
-    pays: ReadonlyArray<number>,
+    takes: ReadonlyArray<WaveTake>,
     assumptions: Assumptions,
   ): Economy
 } = Function.dual(
   3,
   (
     catalog: Catalog,
-    pays: ReadonlyArray<number>,
+    takes: ReadonlyArray<WaveTake>,
     assumptions: Assumptions,
   ): Economy => {
     const visits = Array.scan(
       Array.map(
-        Array.take(pays, Math.max(0, pays.length - 1)),
-        (pay, index) => ({
-          pay,
+        Array.take(takes, Math.max(0, takes.length - 1)),
+        (take, index) => ({
+          take,
           wave: index + 2,
         }),
       ),
       FIRST_VISIT,
-      (previous: Visit, { pay, wave }): Visit =>
+      (previous: Visit, { take, wave }): Visit =>
         shopVisit(
           catalog,
-          previous.moneyAfter + pay,
-          previous.loadout,
+          previous.moneyAfter + take.pay,
+          withKills(previous.loadout, take.kills),
           upkeepFor(wave, assumptions),
           assumptions.reserve,
         ),
     )
-    return { visits, pays }
+    return { visits, pays: Array.map(takes, ({ pay }) => pay) }
   },
 )
 
@@ -955,13 +950,37 @@ export const expectedPays: {
     ),
 )
 
+// The expected kills of each wave on a level, on the mean over the model's
+// seeds: every zombie and the boss.
+const expectedKills = (
+  assumptions: Assumptions,
+  lastWave: number,
+  difficulty: Difficulty,
+): ReadonlyArray<number> =>
+  Array.map(waveNumbers(lastWave), wave =>
+    mean(
+      Array.map(assumptions.seeds, seed => {
+        const { spawns, boss } = rolledWave(seed, wave, difficulty)
+        return spawns.length + (boss._tag === 'Waiting' ? 1 : 0)
+      }),
+    ),
+  )
+
 const modelRows = (
   difficulty: Difficulty,
   assumptions: Assumptions = ASSUMPTIONS,
   lastWave: number = FINAL_WAVE,
 ): ReadonlyArray<WaveRow> => {
   const pays = expectedPays(assumptions, lastWave)
-  const { visits } = economy(CATALOG, pays, assumptions)
+  const kills = expectedKills(assumptions, lastWave, difficulty)
+  const { visits } = economy(
+    CATALOG,
+    Array.map(pays, (pay, index) => ({
+      pay,
+      kills: Option.getOrElse(Array.get(kills, index), () => 0),
+    })),
+    assumptions,
+  )
   const rules = flowRules(assumptions)
   return Array.map(waveNumbers(lastWave), wave => {
     const visit = Option.getOrElse(
@@ -1071,14 +1090,12 @@ export type Prices = Readonly<{
   fullKit: Readonly<Record<SpareGun, number>>
 }>
 
-// The whole campaign's pay against the price of a full kit: the spare gun
-// and all its tiers, every pistol tier, two planks, two gnomes, and the
-// kitchen.
+// The whole campaign's pay against the price of a full kit: the spare gun,
+// two planks, two gnomes, and the kitchen. Tiers are earned by kills, so
+// they cost nothing.
 export const moneyAgainstPrices = (): Prices => {
   const kit = (gun: SpareGun) =>
     CATALOG.gunPrice[gun] +
-    Number.sumAll(CATALOG.upgradePrices[gun]) +
-    Number.sumAll(CATALOG.upgradePrices.Pistol) +
     CATALOG.plankLimit * CATALOG.plankPrice +
     CATALOG.gnomeLimit * CATALOG.gnomePrice +
     CATALOG.kitchenPrice

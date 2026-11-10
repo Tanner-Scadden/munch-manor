@@ -163,6 +163,7 @@ export const roomModel = (settings: SceneSettings): Model => {
                   kind: 'Smg',
                   loaded: config.loaded,
                   tier: config.tier,
+                  kills: 0,
                 },
               }),
             }
@@ -195,6 +196,7 @@ export const roomModel = (settings: SceneSettings): Model => {
                         kind: 'Shotgun',
                         loaded: 6,
                         tier: config.tier,
+                        kills: 0,
                       },
                     }),
                   }

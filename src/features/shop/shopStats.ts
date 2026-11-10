@@ -5,13 +5,11 @@ import { TRAPS, healthShare, placedCount } from '../../world/gear/traps'
 import {
   SHOP_GUNS,
   WEAPONS,
-  isCarrying,
   maxTier,
   maybeCarried,
   maybeReplacedGun,
   statsAt,
   tierName,
-  tierOf,
 } from '../../world/gear/weapons'
 import { maxHpOf } from '../../world/heroes/calling'
 import { seatStateAt } from '../../world/party/party'
@@ -21,12 +19,7 @@ import type {
   ShopItemId,
   WeaponKind,
 } from '../../world/schema/worldSchema'
-import {
-  ShopGood,
-  gunName,
-  maybeRepairTrap,
-  shopItem,
-} from '../../world/shop/shop'
+import { ShopGood, maybeRepairTrap, shopItem } from '../../world/shop/shop'
 
 // What the shop dialog shows about a gun and about what a player holds: a
 // gun's bars and the note under an item.
@@ -81,14 +74,10 @@ export const ownedNote: {
               onNone: () => 'Goes in your empty second slot',
               onSome: held =>
                 held.tier > 0
-                  ? `Replaces your ${tierName(held.kind, held.tier)}, and its upgrades are lost`
+                  ? `Replaces your ${tierName(held.kind, held.tier)}, and its kills and level go with it`
                   : `Replaces your ${tierName(held.kind, held.tier)}`,
             }),
         }),
-      Upgrade: ({ weapon }) =>
-        !isCarrying(player, weapon)
-          ? `Buy the ${gunName(model, slot, weapon)} first`
-          : `Tier ${tierOf(player, weapon)} of ${maxTier(weapon)}`,
       Heart: () => `Hearts ${player.hp} of ${maxHpOf(player)}`,
       Trap: ({ kind }) =>
         `${seatStateAt(model, slot).trapStock[kind]} ready to place, ${placedCount(model.traps, kind)} placed, up to ${TRAPS[kind].limit}`,

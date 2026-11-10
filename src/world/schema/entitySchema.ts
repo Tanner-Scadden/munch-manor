@@ -59,10 +59,14 @@ export type GunPerk = typeof GunPerk.Type
 
 // NOTE: `perk` is set only on a gun the stove cooked. A gun holds one at
 // most, and a new gun in its place comes plain, so the perk goes with it.
+// `kills` are the kills this gun made, and its `tier` rises with them
+// (src/world/gear/gunLevels.ts): a gun swapped out keeps both, a gun
+// dropped or replaced takes both with it.
 export const CarriedGun = Schema.Struct({
   kind: WeaponKind,
   loaded: Schema.Finite,
   tier: Schema.Finite,
+  kills: Schema.Finite,
   perk: Schema.optionalKey(GunPerk),
 })
 export type CarriedGun = typeof CarriedGun.Type

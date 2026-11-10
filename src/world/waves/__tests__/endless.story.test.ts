@@ -96,8 +96,8 @@ const victorious: Model = modifyFocus(
         hp: () => 3,
         arsenal: () =>
           Arsenal.HoldingSecond({
-            first: { ...STARTING_PISTOL, tier: 1 },
-            second: { kind: 'Smg', loaded: 40, tier: 2 },
+            first: { ...STARTING_PISTOL, tier: 1, kills: 40 },
+            second: { kind: 'Smg', loaded: 40, tier: 2, kills: 120 },
           }),
       }),
   },

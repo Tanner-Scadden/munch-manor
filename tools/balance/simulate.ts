@@ -575,7 +575,7 @@ const reportCampaign = (
       )
     }
     yield* Console.log(
-      `Upgrades at the end: spare tier median ${median(Array.map(results, r => r.spareTier))}, pistol tier median ${median(Array.map(results, r => r.pistolTier))}, spent median $${median(Array.map(results, r => r.upgradeSpend))}`,
+      `Gun levels at the end: spare tier median ${median(Array.map(results, r => r.spareTier))}, pistol tier median ${median(Array.map(results, r => r.pistolTier))}`,
     )
     yield* Console.log(
       `Gnomes placed per run: median ${median(Array.map(results, r => r.gnomesPlaced))}, most ${Math.max(...Array.map(results, r => r.gnomesPlaced))}`,

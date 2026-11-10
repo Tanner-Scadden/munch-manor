@@ -195,7 +195,7 @@ describe('shop categories', () => {
     expect(affordableCount(hurt, focusSlotOf(hurt), 'Health')).toBe(1)
     expect(totalAffordable(hurt, focusSlotOf(hurt))).toBe(2)
 
-    const armed = withArsenal(withMoney(firstVisit, 50), holdingSpare(20))
+    const armed = withArsenal(withMoney(firstVisit, 100), holdingSpare(20))
     expect(affordableCount(armed, focusSlotOf(armed), 'Guns')).toBe(1)
 
     expect(
@@ -223,27 +223,17 @@ describe('shop categories', () => {
       ),
   )
 
-  test('every upgrade line starts cheap and gets steeper', () => {
+  test('every gun Rattles sells levels at 40, 120, and 250 kills', () => {
     const lines: ReadonlyArray<WeaponKind> = ['Shotgun', 'Smg', 'Pistol']
     Array.forEach(lines, weapon => {
-      const prices = Array.map(UPGRADE_TIERS[weapon], ({ price }) => price)
-      const steps = Array.zipWith(
-        prices,
-        Array.drop(prices, 1),
-        (lower, higher) => higher - lower,
-      )
-      expect(Array.every(steps, step => step > 0)).toBe(true)
+      expect(Array.map(UPGRADE_TIERS[weapon], ({ kills }) => kills)).toEqual([
+        40, 120, 250,
+      ])
     })
-    expect(
-      Option.map(Array.head(UPGRADE_TIERS.Smg), ({ price }) => price),
-    ).toEqual(Option.some(60))
-    expect(
-      Option.map(Array.head(UPGRADE_TIERS.Shotgun), ({ price }) => price),
-    ).toEqual(Option.some(40))
   })
 })
 
-describe('upgrades under the gun', () => {
+describe('the gun shelves', () => {
   test('guns always go pistol, shotgun, machine gun, whether owned, in hand, or for sale', () => {
     const unarmed = browsing(withMoney(shopReady, 100))
     const weaponOrder = (current: Model): ReadonlyArray<WeaponKind> =>
@@ -255,7 +245,6 @@ describe('upgrades under the gun', () => {
 
     expect(weaponOrder(unarmed)).toEqual(PISTOL_FIRST)
     expect(itemsIn(unarmed, focusSlotOf(unarmed), 'Guns')).toEqual([
-      'PistolUpgrade',
       'Shotgun',
       'Smg',
       'LaserSight',
@@ -264,8 +253,6 @@ describe('upgrades under the gun', () => {
     const shotgunInHand = withArsenal(unarmed, holdingSpare(20))
     expect(weaponOrder(shotgunInHand)).toEqual(PISTOL_FIRST)
     expect(itemsIn(shotgunInHand, focusSlotOf(shotgunInHand), 'Guns')).toEqual([
-      'PistolUpgrade',
-      'ShotgunUpgrade',
       'Smg',
       'LaserSight',
     ])
@@ -279,9 +266,7 @@ describe('upgrades under the gun', () => {
     const smgInHand = withArsenal(unarmed, holdingSpare(60, 'Smg'))
     expect(weaponOrder(smgInHand)).toEqual(PISTOL_FIRST)
     expect(itemsIn(smgInHand, focusSlotOf(smgInHand), 'Guns')).toEqual([
-      'PistolUpgrade',
       'Shotgun',
-      'SmgUpgrade',
       'LaserSight',
     ])
 
@@ -291,7 +276,7 @@ describe('upgrades under the gun', () => {
   })
 
   it.effect(
-    'buying a gun moves focus to its upgrade, and buying the upgrade leaves focus where it is',
+    'buying a gun takes its row away, and focus moves to the first row left',
     () =>
       Story.story(
         APPLICATION,
@@ -300,31 +285,19 @@ describe('upgrades under the gun', () => {
           ShopDialogBinding,
           ShopMessage.PressedBuyKey({ item: 'Shotgun' }),
         ),
-        Story.Command.expectExact(FocusItem({ item: 'ShotgunUpgrade' })),
+        Story.Command.expectExact(FocusItem({ item: 'Smg' })),
         resolveFocusShopItem,
-        Story.model(({ seats: [{ shop }] }) => {
-          expect(shop).toEqual(
-            ShopState.Browsing({ focusedItem: 'ShotgunUpgrade' }),
-          )
-        }),
-        Story.messageIn(
-          ShopDialogBinding,
-          ShopMessage.PressedBuyKey({ item: 'ShotgunUpgrade' }),
-        ),
-        Story.Command.expectNone(),
         Story.model(({ seats: [{ shop, player }] }) => {
-          expect(shop).toEqual(
-            ShopState.Browsing({ focusedItem: 'ShotgunUpgrade' }),
-          )
+          expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Smg' }))
           expect(
             Option.map(maybeSpareGun(player.arsenal), ({ tier }) => tier),
-          ).toEqual(Option.some(1))
+          ).toEqual(Option.some(0))
         }),
       ),
   )
 
   it.effect(
-    'swapping guns moves focus from the bought row to the new gun upgrade',
+    'swapping guns moves focus from the bought row to the gun put back on the shelf',
     () =>
       Story.story(
         APPLICATION,
@@ -335,12 +308,10 @@ describe('upgrades under the gun', () => {
           ),
         ),
         buyAtCounter('Smg'),
-        Story.Command.expectExact(FocusItem({ item: 'SmgUpgrade' })),
+        Story.Command.expectExact(FocusItem({ item: 'Shotgun' })),
         resolveFocusShopItem,
         Story.model(({ seats: [{ shop, player }] }) => {
-          expect(shop).toEqual(
-            ShopState.Browsing({ focusedItem: 'SmgUpgrade' }),
-          )
+          expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Shotgun' }))
           expect(
             Option.map(maybeSpareGun(player.arsenal), ({ kind }) => kind),
           ).toEqual(Option.some('Smg'))
@@ -399,21 +370,11 @@ describe('the row the shop opens on', () => {
   )
 
   it.effect(
-    'with a spare gun, it opens on its upgrade, never on a gun that would replace it',
-    () =>
-      focusAfterWalkingUp(withSmg(200)).pipe(
-        Effect.map(focused => {
-          expect(focused).toBe('SmgUpgrade')
-        }),
-      ),
-  )
-
-  it.effect(
     'with nothing affordable, it opens on something to save up for',
     () =>
       focusAfterWalkingUp(withSmg(5)).pipe(
         Effect.map(focused => {
-          expect(focused).toBe('SmgUpgrade')
+          expect(focused).toBe('Shotgun')
         }),
       ),
   )
@@ -446,11 +407,11 @@ describe('what Rattles says', () => {
         }),
         Story.messageIn(
           ShopDialogBinding,
-          ShopMessage.PressedBuyKey({ item: 'ShotgunUpgrade' }),
+          ShopMessage.PressedBuyKey({ item: 'LaserSight' }),
         ),
         Story.model(({ shopChatter }) => {
           expect(shopChatter).toEqual(
-            ShopChatter.TooPricey({ item: 'ShotgunUpgrade' }),
+            ShopChatter.TooPricey({ item: 'LaserSight' }),
           )
         }),
         Story.messageIn(

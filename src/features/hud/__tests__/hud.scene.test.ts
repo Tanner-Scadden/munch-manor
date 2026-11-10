@@ -5,13 +5,15 @@ import { describe, expect, test } from 'vitest'
 import { BoostTimer, type Model, Phase, idleBoosts } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { cameraFor, cameraOf } from '../../../render/camera'
+import { gunSlotBox } from '../../../render/hudLayout'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
+  type Screen,
 } from '../../../render/screen'
 import { hudShapes, hudStripShapes } from '../../../screens/game/hud'
 import { VIEW_HEIGHT } from '../../../shared/constants'
-import { rectsOf } from '../../../test/testing'
+import { holdingSecond, rectsOf } from '../../../test/testing'
 import { BOOSTS } from '../../../world/gear/powerups'
 import { PARLOUR } from '../../../world/level/arena'
 import { focusOf, modifyFocus } from '../../../world/party/party'
@@ -52,6 +54,7 @@ const chipFrames = (model: Model): ReadonlyArray<Box> =>
         : Result.failVoid,
   )
 
+const LEVEL_BAR_GOLD = '#ffe066'
 const HEARTS_RIGHT = 48
 const WAVE_LABEL_LEFT = 120
 const BOSS_NAME_LEFT = 94
@@ -121,5 +124,47 @@ describe('the top HUD strip', () => {
     expect(strip?._tag === 'Rect' ? strip.width : 0).toBeLessThan(
       LANDSCAPE_SCREEN.width / 2,
     )
+  })
+})
+
+// NOTE: a gun's kills toward its next tier (src/world/gear/gunLevels.ts),
+// a one-pixel bar along its slot's inner bottom edge, in both layouts.
+describe("a gun slot's level bar", () => {
+  const withSmg = (tier: number, kills: number): Model =>
+    modifyFocus(twoBoosts, {
+      player: player =>
+        modifyFields(player, {
+          arsenal: () =>
+            holdingSecond({ kind: 'Smg', loaded: 30, tier, kills }),
+        }),
+    })
+
+  const barIn = (model: Model, screen: Screen): ReadonlyArray<Box> => {
+    const slot = gunSlotBox(screen, 1)
+    return Array.filter(
+      rectsOf(
+        hudShapes(model, screen, cameraFor(PARLOUR, focusOf(model).player)),
+        { x: 0, y: 0 },
+      ),
+      rect =>
+        rect.height === 1 &&
+        rect.fill === LEVEL_BAR_GOLD &&
+        rect.x === slot.x + 1 &&
+        rect.y === slot.y + slot.height - 2,
+    )
+  }
+
+  test('fills with the kills from the last tier toward the next', () => {
+    Array.forEach([LANDSCAPE_SCREEN, DEFAULT_PORTRAIT_SCREEN], screen => {
+      const inner = gunSlotBox(screen, 1).width - 2
+      expect(
+        Array.map(barIn(withSmg(1, 80), screen), ({ width }) => width),
+      ).toEqual([Math.round(inner / 2)])
+      expect(barIn(withSmg(0, 0), screen)).toEqual([])
+    })
+  })
+
+  test('is gone once the gun is at its top tier', () => {
+    expect(barIn(withSmg(3, 300), LANDSCAPE_SCREEN)).toEqual([])
   })
 })

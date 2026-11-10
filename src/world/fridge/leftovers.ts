@@ -5,8 +5,6 @@ import { nextRandom } from '../../shared/prng'
 import {
   freshGun,
   isCarrying,
-  maxTier,
-  maybeReplacedGun,
   putGunInHand,
   takeGun,
   takePan,
@@ -372,22 +370,9 @@ export const fridgeOffers: {
 
 // THE PULL
 
-// NOTE: a prize that replaces a gun arrives at that gun's tier, up to its
-// own top tier (owner, 2026-11-02), so taking it never throws an upgrade
-// away. Brain Freeze has no tiers; a gun into an empty slot starts at 0.
-export const carriedTierFor: {
-  (kind: WeaponKind): (player: Player) => number
-  (player: Player, kind: WeaponKind): number
-} = Function.dual(2, (player: Player, kind: WeaponKind): number =>
-  Math.min(
-    maxTier(kind),
-    Option.match(maybeReplacedGun(player.arsenal), {
-      onNone: () => 0,
-      onSome: ({ tier }) => tier,
-    }),
-  ),
-)
-
+// NOTE: a fridge weapon arrives at tier 0 with no kills of its own, and
+// levels on its own kills like any gun (src/world/gear/gunLevels.ts). The
+// gun it replaces takes its kills and tier with it.
 // NOTE: the Cooker and Brain Freeze go in a gun slot, as a bought gun
 // does. The Pan goes in the melee slot in place of the knife and both guns
 // stay; a reload of the last gun carries on, as it does with the knife out.
@@ -397,11 +382,7 @@ const giveWeapon = (player: Player, kind: WeaponKind): Player =>
         fireCooldownMs: () => 0,
       })
     : modifyFields(dropCharge(putGunInHand(player)), {
-        arsenal: arsenal =>
-          takeGun(
-            arsenal,
-            freshGun(kind, player.calling, carriedTierFor(player, kind)),
-          ),
+        arsenal: arsenal => takeGun(arsenal, freshGun(kind, player.calling)),
         wield: () => 'Gun',
         fireCooldownMs: () => 0,
       })

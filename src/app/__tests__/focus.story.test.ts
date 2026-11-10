@@ -236,6 +236,7 @@ describe('keys on a focused button', () => {
                     kind: 'Shotgun',
                     loaded: 6,
                     tier: 0,
+                    kills: 0,
                   }),
               }),
           }),

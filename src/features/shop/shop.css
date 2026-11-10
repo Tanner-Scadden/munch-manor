@@ -678,8 +678,10 @@
   background: var(--shop-gold);
 }
 
-.shop-pip.is-next {
-  border-style: dashed;
+.shop-pip-fill {
+  display: block;
+  height: 100%;
+  background: var(--shop-gold);
 }
 
 .shop-subrows {
@@ -729,35 +731,6 @@
 
 .shop-subitem .shop-need {
   grid-area: need;
-}
-
-/* The next tier's gun with a gold arrow on its shoulder. */
-.shop-upgrade-art {
-  position: relative;
-  display: block;
-}
-
-.shop-upgrade-gun {
-  --px: var(--shop-sub-art-px);
-}
-
-.shop-upgrade-arrow {
-  --px: max(1px, calc(1 * var(--shop-u)));
-  position: absolute;
-  top: calc(-4 * var(--shop-u));
-  right: calc(-4 * var(--shop-u));
-  animation: shop-rise 0.9s steps(2) infinite;
-}
-
-.shop-row[data-stock='Short'] .shop-upgrade-art,
-.shop-row[data-stock='Done'] .shop-upgrade-art {
-  filter: grayscale(0.85) brightness(0.7);
-}
-
-@keyframes shop-rise {
-  50% {
-    transform: translateY(calc(-2 * var(--shop-u)));
-  }
 }
 
 /* A placed trap's repair row: the trap, a tiny map of the room with a dot

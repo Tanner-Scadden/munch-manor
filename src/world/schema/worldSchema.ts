@@ -188,8 +188,18 @@ export const GameEvent = defineTaggedUnion({
     y: PositionNumber,
     clutch: Schema.Boolean,
   },
+  // NOTE: a gun reached a new tier on its kills (src/world/gear/gunLevels.ts),
+  // in the hands of the seat at `slot`, where that player stands.
+  GunLeveled: {
+    x: PositionNumber,
+    y: PositionNumber,
+    slot: Schema.Finite,
+    weapon: WeaponKind,
+    tier: Schema.Finite,
+  },
 })
 export type GameEvent = typeof GameEvent.Type
+export type GunLeveled = typeof GameEvent.GunLeveled.Type
 
 export const HitStop = defineTaggedUnion({
   Running: { cooldownMs: MillisNumber },
@@ -430,16 +440,11 @@ export type Blast = typeof Blast.Type
 
 export const FixedShopItemId = Schema.Literals([
   'Shotgun',
-  'ShotgunUpgrade',
   'Smg',
-  'SmgUpgrade',
-  'PistolUpgrade',
   'LaserSight',
   'Heart',
   'Barricade',
   'Turret',
-  'CookerUpgrade',
-  'PanUpgrade',
   'Pistol',
 ])
 export type FixedShopItemId = typeof FixedShopItemId.Type
@@ -756,7 +761,7 @@ export const initialPlayer: Player = {
   invulnerability: Invulnerability.Vulnerable(),
   recoilRemainingMs: 0,
   arsenal: Arsenal.OneGun({
-    first: { kind: 'Pistol', loaded: PISTOL_MAGAZINE, tier: 0 },
+    first: { kind: 'Pistol', loaded: PISTOL_MAGAZINE, tier: 0, kills: 0 },
   }),
   reload: Reload.Ready(),
   triggerRestMs: 0,

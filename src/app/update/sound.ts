@@ -204,6 +204,7 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     FriendlyFire: () => Option.some<SoundEffect>('PlayerHurt'),
     MedicCalled: () => Option.some<SoundEffect>('MedicCall'),
     TeammateSaved: () => Option.some<SoundEffect>('Rescue'),
+    GunLeveled: () => Option.some<SoundEffect>('RankUp'),
   })
 
 const maybeEventSoundCue = (event: GameEvent): Option.Option<SoundCue> =>

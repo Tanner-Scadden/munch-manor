@@ -101,6 +101,7 @@ export const gun: {
     kind,
     loaded: Math.min(loaded, magazineOf(kind, tier)),
     tier,
+    kills: 0,
   }),
 )
 

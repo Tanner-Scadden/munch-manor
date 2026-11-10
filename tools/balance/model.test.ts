@@ -13,6 +13,7 @@ import {
   flowWave,
   moneyAgainstPrices,
   shopVisit,
+  withKills,
 } from './model'
 import { type GunStats, sustainedDps, timeToKill } from './modelGuns'
 import {
@@ -33,7 +34,6 @@ const TEN_A_SECOND: GunStats = {
 
 const TOY_CATALOG: Catalog = {
   gunPrice: { Shotgun: 35, Smg: 100 },
-  upgradePrices: { Pistol: [200], Shotgun: [40, 140], Smg: [60, 180] },
   plankPrice: 20,
   plankLimit: 2,
   gnomePrice: 75,
@@ -82,22 +82,32 @@ describe('the shop', () => {
     )
   })
 
-  test('a richer visit boards up and upgrades over the reserve', () => {
+  test('a richer visit boards up and buys a gnome over the reserve', () => {
     const armed: Loadout = {
       ...STARTING_LOADOUT,
-      maybeSpare: Option.some({ kind: 'Smg', tier: 0 }),
+      maybeSpare: Option.some({ kind: 'Smg', tier: 0, kills: 0 }),
     }
     const visit = shopVisit(TOY_CATALOG, 200, armed, 10, 30)
-    expect(visit.bought).toEqual(['Plank', 'Plank', 'Upkeep', 'SpareUpgrade'])
-    expect(visit.moneyAfter).toBe(200 - 40 - 10 - 60)
+    expect(visit.bought).toEqual(['Plank', 'Plank', 'Upkeep', 'Gnome'])
+    expect(visit.moneyAfter).toBe(200 - 40 - 10 - 75)
     expect(visit.loadout.planks).toBe(2)
-    expect(Option.map(visit.loadout.maybeSpare, ({ tier }) => tier)).toEqual(
-      Option.some(1),
-    )
+  })
+
+  test("a wave's kills level the held gun, not the shop", () => {
+    const armed: Loadout = {
+      ...STARTING_LOADOUT,
+      maybeSpare: Option.some({ kind: 'Smg', tier: 0, kills: 30 }),
+    }
+    expect(
+      Option.map(withKills(armed, 15).maybeSpare, ({ tier }) => tier),
+    ).toEqual(Option.some(1))
+    expect(withKills(STARTING_LOADOUT, 39).pistolTier).toBe(0)
+    expect(withKills(STARTING_LOADOUT, 40).pistolTier).toBe(1)
   })
 
   test('the money of one wave carries to the next visit', () => {
-    const { visits } = economy(TOY_CATALOG, [40, 0, 0], {
+    const takes = Array.map([40, 0, 0], pay => ({ pay, kills: 0 }))
+    const { visits } = economy(TOY_CATALOG, takes, {
       ...ASSUMPTIONS,
       upkeepPerVisit: 0,
       heartsFromWave: 99,

@@ -6,6 +6,8 @@ import { describe, expect as expectValue, it } from '@effect/vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../../domain/coopRoom'
+import { Message as ShopMessage } from '../../features/shop/message'
+import { FocusItem } from '../../features/shop/steps'
 import { PREPARATION_MS } from '../../shared/constants'
 import { homeAfterRead } from '../../test/model.fixture'
 import {
@@ -118,7 +120,8 @@ const atStall: Model = modifyFocus(
         x: () => 270,
         y: () => 142,
         hp: () => 3,
-        arsenal: () => holdingSecond({ kind: 'Smg', loaded: 30, tier: 1 }),
+        arsenal: () =>
+          holdingSecond({ kind: 'Smg', loaded: 30, tier: 1, kills: 0 }),
       }),
     wallet: () => ({ balance: 180, earned: 180, shown: 180 }),
   },
@@ -141,9 +144,10 @@ describe('the shop dialog', () => {
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
             'You have $180',
           ),
-          Scene.click(Scene.selector('#shop-item-SmgUpgrade')),
+          Scene.click(Scene.selector('#shop-item-Shotgun')),
+          Scene.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-            'You have $0',
+            'You have $145',
           ),
         ),
       ),
@@ -166,7 +170,7 @@ const OPEN_CASES: ReadonlyArray<OpenCase> = [
         shopDialog: shop => modifyFields(shop, { dialog: opened }),
       }),
       {
-        shop: () => ShopState.Browsing({ focusedItem: 'SmgUpgrade' }),
+        shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
       },
     ),
     opensDialog: true,

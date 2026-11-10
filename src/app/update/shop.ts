@@ -162,10 +162,7 @@ export const shopFromKey = (code: string) =>
 
 // BUYING
 
-const purchaseCues = (item: ShopItemId): ReadonlyArray<SoundCue> =>
-  ShopGood.isAnyOf(['Upgrade'])(shopItem(item).good)
-    ? [uiCue('Purchase'), uiCue('PowerUp')]
-    : [uiCue('Purchase')]
+const purchaseCues = (): ReadonlyArray<SoundCue> => [uiCue('Purchase')]
 
 // NOTE: a row picked in the dialog is the lead seat's Buy. A refusal
 // shrugs, a buy rings up, and a row the buy moved focus off (a gun bought
@@ -197,7 +194,7 @@ export const buy = (item: ShopItemId) =>
               },
             ),
           ),
-          playSounds(purchaseCues(item)),
+          playSounds(purchaseCues()),
           refocusDisplacedRow,
         ])
       },
