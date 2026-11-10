@@ -6,7 +6,7 @@ import {
   PINCER_LAG_MAX_MS,
   PINCER_LAG_MIN_MS,
 } from '../../shared/constants'
-import { type Seeded, between, nextRandom } from '../../shared/prng'
+import { type Seeded, between, nextRandom, shuffle } from '../../shared/prng'
 import type {
   DoorId,
   Formation,
@@ -119,40 +119,6 @@ const DOOR_PATTERNS: Readonly<Record<DoorPattern, PatternRules>> = {
     places: doors => Array.map(doors, door => ({ door, delayMs: 0 })),
   },
 }
-
-type Keyed<A> = Readonly<{ key: number; item: A }>
-
-const byKey = <A>(): Order.Order<Keyed<A>> =>
-  Order.mapInput(Order.Number, ({ key }: Keyed<A>) => key)
-
-export const shuffle: {
-  <A>(
-    items: Array.NonEmptyReadonlyArray<A>,
-  ): (state: number) => Seeded<Array.NonEmptyReadonlyArray<A>>
-  <A>(
-    state: number,
-    items: Array.NonEmptyReadonlyArray<A>,
-  ): Seeded<Array.NonEmptyReadonlyArray<A>>
-} = Function.dual(
-  2,
-  <A>(
-    state: number,
-    items: Array.NonEmptyReadonlyArray<A>,
-  ): Seeded<Array.NonEmptyReadonlyArray<A>> => {
-    const [nextState, keyed] = Array.mapAccum(
-      items,
-      state,
-      (drawState, item): Seeded<Keyed<A>> => {
-        const draw = nextRandom(drawState)
-        return [draw.nextState, { key: draw.value, item }]
-      },
-    )
-    return [
-      nextState,
-      Array.map(Array.sort(keyed, byKey<A>()), ({ item }) => item),
-    ]
-  },
-)
 
 const groupDoors = (
   group: SpawnGroup,
