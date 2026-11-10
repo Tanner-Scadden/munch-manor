@@ -114,7 +114,7 @@ flowchart TD
 
 ## 3. Escape the manor (proposed)
 
-The direction in `LORE.md`: you came to dinner and you are the main course. You fill in your RSVP, a cutscene drives your crew up to the manor and the doors slam behind you, the run kicks off in the dining room with its exits boarded as today, and this run's list of what you need to leave is rolled from a pool, longer the harder the difficulty. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2. Nothing here is decided.
+The direction in `LORE.md`: you signed up for a private tasting by Munch Foods at the family manor. The lab under it made the zombies, and now it tests its power-ups on you. You fill in your RSVP, a cutscene drives your crew up to the manor and the doors slam behind you, the run kicks off in the dining room with its exits boarded as today, and this run's list of what you need to leave is rolled from a pool, longer the harder the difficulty. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2. Nothing here is decided.
 
 ```mermaid
 flowchart TD
@@ -122,19 +122,19 @@ flowchart TD
   seal[Stamp the wax seal: the card floats away]:::proposed --> car
 
   subgraph Intro [The intro: this feels really off. Skippable up to the slam]
-    car[The car at night: the radio drifts into static, the sign is chewed]:::proposed --> arrive2[The drive is full of guests' cars, one with its door hanging open]:::proposed
-    arrive2 --> walk[A trampled party hat on the steps. Footprints go in, none come out]:::proposed
+    car[The car at night: the radio drifts into static, the sign is chewed]:::proposed --> arrive2[The drive is full of other tasters' cars, one with its door hanging open]:::proposed
+    arrive2 --> walk[A trampled party hat and a tasting wristband on the steps. Footprints go in, none come out]:::proposed
     walk --> knock[Knock knock. Silence. One knock back]:::proposed
-    knock --> opens[The doors creak open on their own. Coats nobody came back for, a bony hand waves]:::proposed
-    opens --> hello[HELLO? Plates half eaten, chairs knocked back. Your name on a place card, on a plate]:::proposed
-    hello --> door[The doors slam and lock behind you. Never skipped: the run starts here, for everyone at once]:::proposed
+    knock --> opens[The doors creak open on their own. The check-in desk: phones and keys nobody came back for, a bony hand waves]:::proposed
+    opens --> hello[HELLO? Sample cups half eaten, chairs knocked back. Your participant number on a place card, on a plate]:::proposed
+    hello --> door[The doors slam and lock behind you: lockdown. Never skipped: the run starts here, for everyone at once]:::proposed
   end
 
   door --> arrive
   arrive([The run kicks off in the dining room, its exits boarded]):::proposed --> list
 
   list[Roll this run's list from the pool: 2 to 4 things, by difficulty]:::proposed --> letter
-  letter[Pick up the letter at your place: the host's party game, and this run's list]:::proposed --> fold
+  letter[Pick up the letter at your place: Munch Foods' check-out instructions, and this run's list]:::proposed --> fold
   fold[The letter folds into the HUD: empty outlines to fill. The first wave starts]:::proposed --> waves
   waves[Waves count up, each harder than the last: the number is how far you got]:::proposed --> explore
 
@@ -148,8 +148,8 @@ flowchart TD
   hunt{How does this thing come back to you?}:::proposed
   hunt --> hidden[Hidden in one of a few spots: car keys in a sofa]:::proposed
   hunt --> carried[A marked zombie carries it: kill it, grab the drop]:::proposed
-  hunt --> bought[Rattles has it, for a price: the coat ticket]:::proposed
-  hunt --> cooked[Made at the stove: the doggy bag]:::proposed
+  hunt --> bought[Rattles has it, for a price: your signed release]:::proposed
+  hunt --> cooked[Made at the stove: your take-home sample]:::proposed
   hunt --> heard[Follow the sound: your phone ringing]:::proposed
 
   hidden --> all
@@ -160,8 +160,8 @@ flowchart TD
   all{Everything on the list?}
 
   all -.->|Leave early with part of the list| early([Early escape: pays less]):::proposed
-  all -->|Yes| hungry[The house gets hungrier: waves press harder]:::proposed
-  hungry --> goodbye[Uncle Chunk appears at the front door, only now: say goodbye to the host]:::proposed
+  all -->|Yes| hungry[The study ramps up: worse batches, waves press harder]:::proposed
+  hungry --> goodbye[Uncle Chunk, Patient Zero, appears at the front door, only now: get past him]:::proposed
   goodbye --> holdout[Hold the hall while the front door unlocks]:::proposed
   holdout --> escaped([Escaped: the full goodbye pays most]):::proposed
 
@@ -202,10 +202,9 @@ flowchart LR
 
 The lore choices that most change these charts, from `LORE.md`:
 
-1. Why go? Proposed: everyone has heard it is haunted and nobody believes it, and the invitation promises the Munch fortune to the last guest at the table.
-2. Why are you trapped? Proposed: dinner is the host's party game, on a deal with the hungry house (see `LORE.md`).
-3. Who are the zombies? Proposed: the guests who lost the game.
-4. Who is Rattles? Proposed: the first guest who lost, kept on as staff.
-5. What goes in the pool of things to leave with, and how does each one come back to you?
-6. Is the dining room the parlour redressed, or a new room?
-7. Do rooms roll, or only what is in them?
+1. The tasting (settled in direction): a private tasting by Munch Foods at the family manor, the lab under it made the zombies, and it tests its power-ups on you. Left: what the product was, and how much haunted house stays.
+2. Who is Rattles now? Proposed: the lab's anatomy skeleton, woken by a spilled sample, running check-in and the supply cart.
+3. Who is Uncle Chunk? Proposed: Patient Zero, the founder who tasted the first batch.
+4. What goes in the pool of things to check out with, and how does each one come back to you?
+5. Is the dining room the parlour redressed, or a new room?
+6. Do rooms roll, or only what is in them?
