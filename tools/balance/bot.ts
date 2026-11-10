@@ -708,7 +708,6 @@ export const play: {
       maxAlive,
       pistolTier: pistolOf(model)?.tier ?? 0,
       spareTier: finalSpare?.tier ?? 0,
-      upgradeSpend: state.spentOnUpgrades,
       minHp,
       waves,
       shopVisits: state.shopVisits,

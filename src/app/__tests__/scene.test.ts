@@ -183,9 +183,6 @@ describe('Shop', () => {
     name: 'Buy Barn Buster for $35',
   })
   const smgButton = Scene.role('button', { name: 'Buy Chatterbox for $100' })
-  const shotgunUpgradeButton = Scene.role('button', {
-    name: 'Beefy Barn Buster, upgrade for Barn Buster, $40',
-  })
   const heartButton = Scene.role('button', {
     name: 'Buy Pickled Heart for $25',
   })
@@ -292,35 +289,19 @@ describe('Shop', () => {
         Scene.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
         Scene.keydown(shotgunButton, 'Enter'),
         Scene.Command.resolve(
-          FocusItem({ item: 'ShotgunUpgrade' }),
+          FocusItem({ item: 'Smg' }),
           ShopMessage.CompletedFocusItem(),
         ),
         Scene.expect(Scene.text('You have $35')).toExist(),
         Scene.expect(shotgunButton).toBeAbsent(),
         Scene.expect(Scene.role('heading', { name: 'Barn Buster' })).toExist(),
         Scene.expect(Scene.text('OWNED')).toExist(),
-        Scene.expect(Scene.text('6 loaded, shells never run out')).toExist(),
-        Scene.expect(Scene.role('img', { name: 'Tier 0 of 3' })).toExist(),
         Scene.expect(
-          Scene.role('list', { name: 'For your Barn Buster' }),
+          Scene.text(
+            '6 loaded, shells never run out. 0 kills, 40 more to Beefy Barn Buster',
+          ),
         ).toExist(),
-        Scene.expect(shotgunUpgradeButton).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.text('Need $5 more')).toExist(),
-        Scene.keydown(shotgunUpgradeButton, 'ArrowDown'),
-        Scene.Command.resolve(
-          FocusItem({ item: 'Smg' }),
-          ShopMessage.CompletedFocusItem(),
-        ),
-        Scene.keydown(smgButton, 'Home'),
-        Scene.Command.resolve(
-          FocusItem({ item: 'PistolUpgrade' }),
-          ShopMessage.CompletedFocusItem(),
-        ),
-        Scene.expect(
-          Scene.role('button', {
-            name: 'Beefy Pop Pistol, upgrade for Pop Pistol, $200',
-          }),
-        ).toHaveAttr('aria-disabled', 'true'),
+        Scene.expect(Scene.role('img', { name: 'Tier 0 of 3' })).toExist(),
         Scene.keydown(gunsTab, 'ArrowRight'),
         resolveFocusTab,
         Scene.expect(healthTab).toHaveAttr('aria-selected', 'true'),
@@ -335,42 +316,42 @@ describe('Shop', () => {
       ),
   )
 
-  it.effect(
-    'an upgraded gun goes by its tier name everywhere in the shop',
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFocus(atStall, {
-            player: player =>
-              modifyFields(player, {
-                arsenal: () =>
-                  Arsenal.HoldingSecond({
-                    first: { ...STARTING_PISTOL, tier: 1 },
-                    second: { kind: 'Smg', loaded: 30, tier: 1 },
-                  }),
-              }),
-          }),
-        ),
-        measureSurface,
-        ...openShop(),
-        Scene.expect(
-          Scene.role('heading', { name: 'Beefy Chatterbox' }),
-        ).toExist(),
-        Scene.expect(
-          Scene.role('list', { name: 'For your Beefy Chatterbox' }),
-        ).toExist(),
-        Scene.expect(
-          Scene.text(
-            'Two guns. A new one replaces the one in your hands, upgrades and all.',
-          ),
-        ).toExist(),
-        Scene.expect(
-          Scene.text(
-            'Replaces your Beefy Chatterbox, and its upgrades are lost',
-          ),
-        ).toExist(),
+  it.effect('a leveled gun goes by its tier name everywhere in the shop', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
+        modifyFocus(atStall, {
+          player: player =>
+            modifyFields(player, {
+              arsenal: () =>
+                Arsenal.HoldingSecond({
+                  first: { ...STARTING_PISTOL, tier: 1, kills: 40 },
+                  second: { kind: 'Smg', loaded: 30, tier: 1, kills: 60 },
+                }),
+            }),
+        }),
       ),
+      measureSurface,
+      ...openShop(),
+      Scene.expect(
+        Scene.role('heading', { name: 'Beefy Chatterbox' }),
+      ).toExist(),
+      Scene.expect(
+        Scene.text(
+          '30 loaded, rounds never run out. 60 kills, 60 more to Chatterbox DELUXE',
+        ),
+      ).toExist(),
+      Scene.expect(
+        Scene.text(
+          'Two guns. A new one replaces the one in your hands, levels and all.',
+        ),
+      ).toExist(),
+      Scene.expect(
+        Scene.text(
+          'Replaces your Beefy Chatterbox, and its kills and level go with it',
+        ),
+      ).toExist(),
+    ),
   )
 
   it.effect(
@@ -452,7 +433,7 @@ describe('Shop', () => {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
-                holdingSecond({ kind: 'Smg', loaded: 30, tier: 0 }),
+                holdingSecond({ kind: 'Smg', loaded: 30, tier: 0, kills: 0 }),
             }),
         }),
       ),

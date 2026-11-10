@@ -185,7 +185,7 @@ describe('inputs and presses', () => {
         input: {
           ...NEUTRAL_INPUT,
           action: heldAction(
-            actionCodeOf(SeatAction.Buy({ item: 'ShotgunUpgrade' })),
+            actionCodeOf(SeatAction.Buy({ item: 'Barricade' })),
             2,
           ),
         },
@@ -236,17 +236,12 @@ describe('inputs and presses', () => {
       [SeatAction.Draw({ slot: 'Second' }), 9],
       [SeatAction.CallMedic(), 10],
       [SeatAction.Buy({ item: 'Shotgun' }), 16],
-      [SeatAction.Buy({ item: 'ShotgunUpgrade' }), 17],
-      [SeatAction.Buy({ item: 'Smg' }), 18],
-      [SeatAction.Buy({ item: 'SmgUpgrade' }), 19],
-      [SeatAction.Buy({ item: 'PistolUpgrade' }), 20],
-      [SeatAction.Buy({ item: 'LaserSight' }), 21],
-      [SeatAction.Buy({ item: 'Heart' }), 22],
-      [SeatAction.Buy({ item: 'Barricade' }), 23],
-      [SeatAction.Buy({ item: 'Turret' }), 24],
-      [SeatAction.Buy({ item: 'CookerUpgrade' }), 25],
-      [SeatAction.Buy({ item: 'PanUpgrade' }), 26],
-      [SeatAction.Buy({ item: 'Pistol' }), 27],
+      [SeatAction.Buy({ item: 'Smg' }), 17],
+      [SeatAction.Buy({ item: 'LaserSight' }), 18],
+      [SeatAction.Buy({ item: 'Heart' }), 19],
+      [SeatAction.Buy({ item: 'Barricade' }), 20],
+      [SeatAction.Buy({ item: 'Turret' }), 21],
+      [SeatAction.Buy({ item: 'Pistol' }), 22],
       [SeatAction.Buy({ item: 'Repair-3' }), 67],
     ]
     Array.forEach(pinned, ([action, code]) => {

@@ -2,6 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS, ZOMBIE_HIT_PULSE_MS } from '../../shared/constants'
+import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
 import {
   type Blow,
   type Struck,
@@ -495,10 +496,15 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
     maybeShooter,
     bountyOf(levelOf(world), zombieOutcome.events),
   )
-  const credited = Option.match(maybeShooter, {
-    onNone: () => paid,
-    onSome: slot => creditKills(paid, slot, countKills(zombieOutcome.events)),
-  })
+  const credited = creditGunKills(
+    Option.match(maybeShooter, {
+      onNone: () => paid,
+      onSome: slot => creditKills(paid, slot, countKills(zombieOutcome.events)),
+    }),
+    killerSlotOf(paid, maybeShooter),
+    'Cooker',
+    countKills(zombieOutcome.events),
+  )
   return scorchPlayers(credited, maybeShooter, blast)
 }
 
@@ -695,7 +701,12 @@ const firePan = (
         ),
     }),
   })
-  return payStriker(withEvents(struck, swing.events), slot, swing.events)
+  return creditGunKills(
+    payStriker(withEvents(struck, swing.events), slot, swing.events),
+    slot,
+    'Pan',
+    countKills(swing.events),
+  )
 }
 
 // NOTE: Rattles bangs a Pan flat, free, when a break begins.
@@ -820,7 +831,12 @@ const spray = (world: World, slot: PlayerSlot): World => {
       ...stings,
     ],
   )
-  return payStriker(iced, slot, stings)
+  return creditGunKills(
+    payStriker(iced, slot, stings),
+    slot,
+    'Freeze',
+    countKills(stings),
+  )
 }
 
 const fireFreeze = (

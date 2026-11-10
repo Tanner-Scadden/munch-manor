@@ -51,7 +51,7 @@ const artView = (art: ShopArt, className: string, h: GuideViewBuilder): Html =>
 
 const barLabel = (bar: GuideBar): string =>
   `${STAT_NAMES[bar.stat]} ${bar.now} of ${BAR_SEGMENTS}${
-    bar.best > bar.now ? `, ${bar.best} fully upgraded` : ''
+    bar.best > bar.now ? `, ${bar.best} at its top tier` : ''
   }`
 
 const segmentView = (bar: GuideBar, index: number, h: GuideViewBuilder) =>
@@ -104,12 +104,14 @@ const barsView = (
 
 const priceTag = (price: number): string => `$${price}`
 
+// NOTE: a tier is earned by kills with the gun, so a step shows the kills
+// it takes.
 const stepView = (step: LadderStep, h: GuideViewBuilder): Html =>
   h.li(
     [h.Class('sg-step')],
     [
       artView(guideArtOf(step.art), 'sg-step-art', h),
-      h.span([h.Class('sg-step-price')], [priceTag(step.price)]),
+      h.span([h.Class('sg-step-price')], [`${step.kills} kills`]),
     ],
   )
 
@@ -120,7 +122,7 @@ const ladderView = (
   Array.isReadonlyArrayNonEmpty(ladder)
     ? [
         h.ol(
-          [h.Class('sg-ladder'), h.AriaLabel('Upgrades')],
+          [h.Class('sg-ladder'), h.AriaLabel('Levels')],
           Array.map(ladder, step => stepView(step, h)),
         ),
       ]

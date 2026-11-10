@@ -16,7 +16,7 @@ import { thumbAreaView } from '../input/thumbArea'
 import { bossBandShapes } from '../render/bossView'
 import { type Camera, toScreenCamera, worldCameraFor } from '../render/camera'
 import { decalShapes } from '../render/effectsView'
-import { calloutShapes } from '../render/powerupView'
+import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
 import type { Decal } from '../render/renderSchema'
 import { manorRoomImages, roomShapes } from '../render/room/room'
 import { FLOOR_COLOR } from '../render/room/roomPalette'
@@ -38,7 +38,10 @@ const calloutLayerShapes = (
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> =>
   isRoundActive(model.phase)
-    ? Array.flatMap(model.callouts, calloutShapes(camera))
+    ? [
+        ...Array.flatMap(model.callouts, calloutShapes(camera)),
+        ...Array.flatMap(model.levelCallouts, levelCalloutShapes(camera)),
+      ]
     : []
 
 const overlayLayerShapes = (

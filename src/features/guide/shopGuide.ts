@@ -127,7 +127,7 @@ const segmentsOf = (value: number, most: number): number =>
 
 // ENTRIES
 
-export type LadderStep = Readonly<{ art: GuideArt; price: number }>
+export type LadderStep = Readonly<{ art: GuideArt; kills: number }>
 
 export type GuideChip = Readonly<{ art: GuideArt; label: string }>
 
@@ -197,7 +197,7 @@ const gunBars = (weapon: WeaponKind): ReadonlyArray<GuideBar> =>
 const ladderOf = (weapon: WeaponKind): ReadonlyArray<LadderStep> =>
   Array.map(UPGRADE_TIERS[weapon], (tier, index) => ({
     art: GuideArt.Gun({ weapon, tier: index + 1 }),
-    price: tier.price,
+    kills: tier.kills,
   }))
 
 const gunEntry = (

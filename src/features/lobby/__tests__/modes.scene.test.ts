@@ -104,7 +104,7 @@ describe('Mode choice', () => {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
-                holdingSecond({ kind: 'Smg', loaded: 40, tier: 2 }),
+                holdingSecond({ kind: 'Smg', loaded: 40, tier: 2, kills: 0 }),
             }),
         },
       )
@@ -187,7 +187,7 @@ describe('Mode choice', () => {
   )
 })
 
-describe('Upgrades in the shop', () => {
+describe("A gun's level in the shop", () => {
   const atStall: Model = modifyFocus(
     modifyFields(initialModel, {
       maybeSurface: () =>
@@ -216,19 +216,17 @@ describe('Upgrades in the shop', () => {
         modifyFields(player, {
           x: () => 270,
           y: () => 142,
-          arsenal: () => holdingSecond({ kind: 'Shotgun', loaded: 6, tier: 2 }),
+          arsenal: () =>
+            holdingSecond({ kind: 'Shotgun', loaded: 6, tier: 2, kills: 200 }),
         }),
       wallet: () => ({ balance: 400, earned: 400, shown: 400 }),
     },
   )
 
   it.effect(
-    'names the next tier, says what changes, buys it, and shows MAX once done',
-    () => {
-      const nextShotgunTier = Scene.role('button', {
-        name: 'Barn Buster 3000, upgrade for Barn Buster DELUXE, $320',
-      })
-      return Scene.scene(
+    'shows the tier and the kills to the next, and sells no upgrade',
+    () =>
+      Scene.scene(
         APPLICATION,
         Scene.given(atStall),
         measureSurface,
@@ -247,50 +245,23 @@ describe('Upgrades in the shop', () => {
         Scene.expect(
           Scene.role('heading', { name: 'Barn Buster DELUXE' }),
         ).toExist(),
-        Scene.expect(
-          Scene.text(
-            'Hits for 2 instead of 1. Reloads in 0.75 s instead of 0.9.',
-          ),
-        ).toExist(),
         Scene.expect(Scene.role('img', { name: 'Tier 2 of 3' })).toExist(),
         Scene.expect(
-          Scene.role('button', {
-            name: 'Beefy Pop Pistol, upgrade for Pop Pistol, $200',
-          }),
-        ).not.toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(
-          Scene.role('button', {
-            name: 'Beefy Chatterbox, upgrade for Chatterbox, $60',
-          }),
-        ).toBeAbsent(),
-        Scene.click(nextShotgunTier),
-        Scene.expect(Scene.text('You have $80')).toExist(),
-        Scene.expect(
-          Scene.role('heading', { name: 'Barn Buster 3000' }),
+          Scene.text(
+            '6 loaded, shells never run out. 200 kills, 50 more to Barn Buster 3000',
+          ),
         ).toExist(),
-        Scene.expect(Scene.role('img', { name: 'Tier 3 of 3' })).toExist(),
-        Scene.expect(
-          Scene.role('button', { name: 'Barn Buster 3000, fully upgraded' }),
-        ).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.text('Fully upgraded')).toExist(),
-        Scene.expect(Scene.text('MAX')).toExist(),
-        Scene.expect(
-          Scene.role('button', {
-            name: 'Beefy Pop Pistol, upgrade for Pop Pistol, $200',
-          }),
-        ).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.text('Need $120 more')).toExist(),
+        Scene.expect(Scene.role('button', { name: /upgrade/ })).toBeAbsent(),
         Scene.expect(
           Scene.text(
-            'Two guns. A new one replaces the one in your hands, upgrades and all.',
+            'Two guns. A new one replaces the one in your hands, levels and all.',
           ),
         ).toExist(),
         Scene.expect(
           Scene.text(
-            'Replaces your Barn Buster 3000, and its upgrades are lost',
+            'Replaces your Barn Buster DELUXE, and its kills and level go with it',
           ),
         ).toExist(),
-      )
-    },
+      ),
   )
 })

@@ -121,13 +121,7 @@ const FLEE_PX: Readonly<Record<Zombie['kind'], number>> = {
   Boss: 56,
 }
 
-const WISHES: ReadonlyArray<ShopItemId> = [
-  'Heart',
-  'PistolUpgrade',
-  'ShotgunUpgrade',
-  'SmgUpgrade',
-  'CookerUpgrade',
-]
+const WISHES: ReadonlyArray<ShopItemId> = ['Heart']
 
 // WHAT IS IN THE ROOM
 

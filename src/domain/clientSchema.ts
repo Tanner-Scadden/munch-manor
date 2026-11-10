@@ -31,6 +31,18 @@ export const PrizeFlight = defineTaggedUnion({
 })
 export type PrizeFlight = typeof PrizeFlight.Type
 
+// NOTE: a cosmetic: the player's gun just reached a new tier on its kills
+// (src/world/gear/gunLevels.ts), its new name and what changed popping over
+// where the player stood (src/render/powerupView.ts). Never part of the World.
+export const LevelCallout = Schema.Struct({
+  weapon: WeaponKind,
+  tier: Schema.Finite,
+  x: Schema.Finite,
+  y: Schema.Finite,
+  ageMs: MillisNumber,
+})
+export type LevelCallout = typeof LevelCallout.Type
+
 export const AudioState = defineTaggedUnion({
   Locked: {},
   Unlocking: {},

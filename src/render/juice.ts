@@ -154,6 +154,7 @@ const eventTrauma = (event: GameEvent): number =>
     FriendlyFire: () => SHAKE_TRAUMA_HURT,
     MedicCalled: () => 0,
     TeammateSaved: ({ clutch }) => (clutch ? CLUTCH_TRAUMA : 0),
+    GunLeveled: () => 0,
   })
 
 const shakeAxis = (roll: number, trauma: number): number => {
@@ -363,6 +364,7 @@ const eventPopups =
           popup(clutch ? 'Clutch' : 'Saved', 0, x, y - SAVE_POPUP_LIFT_PX),
         ),
       MedicCalled: () => noPopups(state),
+      GunLeveled: () => noPopups(state),
     })
 
 const agePopups = (

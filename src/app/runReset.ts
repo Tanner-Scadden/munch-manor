@@ -71,6 +71,7 @@ export type RunFields = Pick<
   | 'cosmeticRngState'
   | 'stepCarryMs'
   | 'callouts'
+  | 'levelCallouts'
   | 'prizeFlight'
   | 'kitchenCall'
   | 'breakIdleMs'
@@ -126,6 +127,7 @@ export const freshRun = (model: Model): RunFields => ({
   cosmeticRngState: cosmeticSeedOf(model.rngState),
   stepCarryMs: 0,
   callouts: [],
+  levelCallouts: [],
   prizeFlight: PrizeFlight.Grounded(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   breakIdleMs: 0,

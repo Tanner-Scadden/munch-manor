@@ -85,6 +85,9 @@ import {
 // (Ammo), its seat action (BuyAmmo, so CallMedic's code and the shop's
 // moved), and a purchase's Tapped, the shop sells no ammo (the item codes
 // after it moved), the RanDry event is gone, and the pantry holds no lids.
+// Guns level up with kills: a carried gun carries its `kills`, the shop
+// sells no upgrades (the item codes after the first moved), and a new
+// event, GunLeveled, says whose gun reached which tier.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

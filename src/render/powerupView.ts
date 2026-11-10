@@ -4,6 +4,7 @@ import { Canvas } from 'foldkit'
 import { type BakedText, bakeText, placeBaked } from '../art/font'
 import { TOP_LEFT, group, placeAt, spriteShapes } from '../art/sprite'
 import { PICKUP_SPRITES } from '../art/sprites/pickups'
+import type { LevelCallout } from '../domain/clientSchema'
 import { SHADOW_COLOR, SHADOW_HEIGHT } from '../shared/constants'
 import {
   BOOSTS,
@@ -11,10 +12,12 @@ import {
   BOOST_WARNING_MS,
   BURP_RADIUS,
   CALLOUT_LIFETIME_MS,
+  LEVEL_CALLOUT_LIFETIME_MS,
   PICKUPS,
   PICKUP_BLINK_MS,
   PICKUP_LIFETIME_MS,
 } from '../world/gear/powerups'
+import { UPGRADE_TIERS, tierName } from '../world/gear/weapons'
 import {
   type BoostKind,
   BoostTimer,
@@ -24,6 +27,8 @@ import {
   type PickupKind,
   type Player,
 } from '../world/schema/entitySchema'
+import type { WeaponKind } from '../world/schema/worldSchema'
+import { levelUpChange } from '../world/shop/shopUpgrades'
 import { clamp } from '../world/step/geometry'
 import { type Camera, viewBoxOf, worldToView } from './camera'
 import { FULL_TURN } from './drawing'
@@ -211,12 +216,14 @@ type CalloutFrame = Readonly<{
   opacity: number | undefined
 }>
 
-const calloutFrameOf = (camera: Camera, callout: Callout): CalloutFrame => {
-  const progress = clamp(
-    callout.ageMs / CALLOUT_LIFETIME_MS[callout.look],
-    0,
-    1,
-  )
+type Placed = Readonly<{ x: number; y: number; ageMs: number }>
+
+const calloutFrameOf = (
+  camera: Camera,
+  callout: Placed,
+  lifetimeMs: number,
+): CalloutFrame => {
+  const progress = clamp(callout.ageMs / lifetimeMs, 0, 1)
   return {
     view: viewBoxOf(camera),
     anchor: worldToView(camera, callout),
@@ -296,12 +303,38 @@ const namedShapes = (
 export const calloutShapes =
   (camera: Camera) =>
   (callout: Callout): ReadonlyArray<Canvas.Shape> => {
-    const frame = calloutFrameOf(camera, callout)
+    const frame = calloutFrameOf(
+      camera,
+      callout,
+      CALLOUT_LIFETIME_MS[callout.look],
+    )
     const texts = CALLOUT_TEXTS[callout.kind]
     return callout.look === 'Named'
       ? namedShapes(frame, callout.kind, texts)
       : explainedShapes(frame, texts)
   }
+
+// NOTE: a gun's level up: its new name and what changed (src/world/shop/shopUpgrades.ts),
+// baked once for every gun and tier.
+const LEVEL_TEXTS: Readonly<Record<WeaponKind, ReadonlyArray<CalloutText>>> =
+  Record.map(UPGRADE_TIERS, (tiers, weapon) =>
+    Array.makeBy(tiers.length, index => ({
+      title: bakeText(`${tierName(weapon, index + 1)}!`, 'Victory'),
+      blurb: bakeText(levelUpChange(weapon, index + 1), 'Plain'),
+    })),
+  )
+
+export const levelCalloutShapes =
+  (camera: Camera) =>
+  (callout: LevelCallout): ReadonlyArray<Canvas.Shape> =>
+    Option.match(Array.get(LEVEL_TEXTS[callout.weapon], callout.tier - 1), {
+      onNone: () => [],
+      onSome: texts =>
+        explainedShapes(
+          calloutFrameOf(camera, callout, LEVEL_CALLOUT_LIFETIME_MS),
+          texts,
+        ),
+    })
 
 const BURP_RING_MS = 420
 const BURP_RING_COLOR = '#d6f25c'

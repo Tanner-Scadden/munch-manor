@@ -2,7 +2,7 @@
 // buying the kitchen, the fridge, planks and
 // gnomes, and the plan that picks between them.
 
-import { Array, Function, Option, Schema, String } from 'effect'
+import { Array, Function, Option, Schema } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
 
@@ -10,13 +10,12 @@ import { ShopDialogBinding } from '../../../src/app/bindings'
 import { Envelope } from '../../../src/app/pureApp'
 import { DialogBinding } from '../../../src/features/shop/bindings'
 import { Message as ShopMessage } from '../../../src/features/shop/message'
-import { isFridgeWeapon } from '../../../src/world/fridge/fridgeWeapons'
 import {
   FRIDGE_RULES,
   fridgeBoxOf,
   fridgePriceFor,
 } from '../../../src/world/fridge/leftovers'
-import { freshGun, isCarrying, maxTier } from '../../../src/world/gear/weapons'
+import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
 import { maxHpOf } from '../../../src/world/heroes/calling'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import {
@@ -40,13 +39,11 @@ import {
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
 import { KEYS, type Model, type Vector, send } from './basics'
 import {
-  type FridgeSpare,
   type Gun,
   firearmOf,
   fridgeSpareOf,
   gunValue,
   gunsOfBot,
-  panOf,
   pistolOf,
   spareOf,
   weakerGun,
@@ -64,29 +61,19 @@ export const STALL_FRONT: Vector = {
 
 // The bot shops the way a careful player would: a heart when low, the
 // first gun it can afford (the cheap shotgun right after the tutorial, the
-// SMG once it can), two Plank Piles, then upgrades and a Grumpy Gnome while
-// it keeps a small reserve for a heart. It takes the spare to its top tier
-// before it upgrades the pistol.
+// SMG once it can), two Plank Piles, then Grumpy Gnomes while it keeps a
+// small reserve for a heart. A gun's tiers are earned by its kills
+// (src/world/gear/gunLevels.ts), so it buys none.
 // NO_GNOME=1 keeps the old bot that never buys a gnome, and NO_PLANKS=1 a
 // bot that never buys a Plank Pile, to check planks help without carrying.
 const NO_GNOME = isKnobSet('NO_GNOME')
 const NO_PLANKS = isKnobSet('NO_PLANKS')
 // NOTE: GUN=shotgun plays a Barn Buster run: the bot buys the shotgun as its
-// gun, never trades it for the Chatterbox, and upgrades it as it would any gun.
+// gun and never trades it for the Chatterbox.
 const IS_SHOTGUN_RUN = knobText('GUN') === 'shotgun'
 const RESERVE = knobNumber('RESERVE', 30)
 
 type ItemId = Parameters<typeof priceFor>[2]
-type SpareKind = FridgeSpare['kind']
-
-// Each spare's upgrade on Rattles' shelves.
-const UPGRADES: Partial<Record<SpareKind, ItemId>> = {
-  Smg: 'SmgUpgrade',
-  Shotgun: 'ShotgunUpgrade',
-  Cooker: 'CookerUpgrade',
-  Pan: 'PanUpgrade',
-}
-
 // The gun a purchase would replace, if it is a gun.
 export const replacedBy: {
   (item: ItemId): (model: Model) => Gun | undefined
@@ -170,61 +157,19 @@ export const wantedPurchase: {
   if (repairs.length > 0 && repairTotal <= 25) {
     return repairs[0]
   }
+  // NOTE: NO_UPGRADES=1 once stopped the bot's upgrades. Tiers are earned
+  // by kills now, so it stops the gnomes it would buy next.
   if (state.options.noUpgrades) {
     return undefined
   }
   const turrets =
     focusOf(model).trapStock.Turret +
     Array.filter(model.traps, trap => trap._tag === 'Turret').length
-  // A fridge weapon's upgrades (Rattles' line for a carried Cooker or Pan)
-  // come after the hearts, planks, repairs, and the first gnome.
-  const spareUpgrade = UPGRADES[spare.kind]
-  const isFridgeSpare = isFridgeWeapon(spare.kind)
-  if (
-    !isFridgeSpare &&
-    spareUpgrade !== undefined &&
-    spare.tier < 1 &&
-    canSpare(spareUpgrade)
-  ) {
-    return spareUpgrade
-  }
   if (!NO_GNOME && turrets < 1 && canSpare('Turret')) {
     return 'Turret'
   }
   if (wantsKitchen(model)) {
     return undefined
-  }
-  if (
-    spareUpgrade !== undefined &&
-    spare.tier < maxTier(spare.kind) &&
-    canSpare(spareUpgrade)
-  ) {
-    return spareUpgrade
-  }
-  // With a gun and a fridge weapon, the fridge weapon's tiers come next.
-  const fridgeUpgrade =
-    fridge !== undefined && fridge !== spare ? UPGRADES[fridge.kind] : undefined
-  if (
-    spare.tier >= maxTier(spare.kind) &&
-    fridge !== undefined &&
-    fridgeUpgrade !== undefined &&
-    fridge.tier < maxTier(fridge.kind) &&
-    canSpare(fridgeUpgrade)
-  ) {
-    return fridgeUpgrade
-  }
-  // The Pan in the melee slot gets its tiers in the same place.
-  const pan = panOf(model)
-  if (
-    spare.tier >= maxTier(spare.kind) &&
-    pan !== undefined &&
-    pan.tier < maxTier(pan.kind) &&
-    canSpare('PanUpgrade')
-  ) {
-    return 'PanUpgrade'
-  }
-  if (spare.tier >= maxTier(spare.kind) && canSpare('PistolUpgrade')) {
-    return 'PistolUpgrade'
   }
   if (!NO_GNOME && turrets < 2 && spare.tier >= 2 && canSpare('Turret')) {
     return 'Turret'
@@ -408,10 +353,6 @@ export const shop: {
     return send(model, closeShopDialog())
   }
   const bought = send(model, buyAtCounter(item))
-  if (String.endsWith('Upgrade')(item)) {
-    state.spentOnUpgrades +=
-      focusOf(model).wallet.balance - focusOf(bought).wallet.balance
-  }
   const { phase } = model
   if (
     focusOf(bought).wallet.balance !== focusOf(model).wallet.balance &&

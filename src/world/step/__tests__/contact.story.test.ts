@@ -227,6 +227,7 @@ describe('point-blank shots', () => {
                   kind: 'Shotgun',
                   loaded: 6,
                   tier: 0,
+                  kills: 0,
                 }),
             }),
         })

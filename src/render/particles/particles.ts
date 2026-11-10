@@ -339,6 +339,8 @@ const eventParticles = (
         clutch ? CONFETTI_PER_CLUTCH : CONFETTI_PER_SAVE,
         confettiBit(playerGround(x, y)),
       ),
+    GunLeveled: ({ x, y }) =>
+      generateMany(state, CONFETTI_PER_CLUTCH, confettiBit(playerGround(x, y))),
   })
 
 type Spawn = Readonly<{

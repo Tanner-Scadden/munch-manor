@@ -67,7 +67,6 @@ import {
   heldGun,
   heldWeapon,
   inHandOf,
-  magazineOf,
 } from '../weapons'
 
 // The knife (src/world/gear/knife.ts) and the two gun slots (src/world/gear/weapons.ts), played
@@ -665,20 +664,6 @@ describe('two gun slots', () => {
       expect(after.wield).toBe('Gun')
       expect(after.reload._tag).toBe('Reloading')
     }),
-  )
-
-  it.effect('the pistol upgrade goes with the pistol, wherever it sits', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(browsing(armed(holdingSecond(freshGun('Smg'))), 1000)),
-      buyAtCounter('PistolUpgrade'),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(gunsOf(player.arsenal)[0]).toEqual(
-          modifyFields(STARTING_PISTOL, { tier: () => 1 }),
-        )
-        expect(magazineOf('Pistol', 1)).toBeGreaterThan(PISTOL_MAGAZINE)
-      }),
-    ),
   )
 })
 

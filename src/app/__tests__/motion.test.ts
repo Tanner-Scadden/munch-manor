@@ -91,7 +91,6 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'closet-shake-b': "an option's price or padlock, inside its option",
   // shop.css
   'shop-new-bob': "a tab's NEW badge",
-  'shop-rise': 'the upgrade arrow art',
   'shop-stamp': 'the SOLD stamp',
   'shop-coin': 'coins',
   'shop-nope': 'the refusal mark, aria-hidden',

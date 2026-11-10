@@ -141,7 +141,6 @@ export const RunResult = Schema.Struct({
   maxAlive: Schema.Finite,
   pistolTier: Schema.Finite,
   spareTier: Schema.Finite,
-  upgradeSpend: Schema.Finite,
   minHp: Schema.Finite,
   waves: Schema.Array(WaveLog),
   shopVisits: Schema.Array(ShopVisit),

@@ -22,7 +22,10 @@ import {
   STEP_EPSILON_MS,
 } from '../shared/constants'
 import { isObjectSecond } from '../shared/dualArgs'
-import { CALLOUT_LIFETIME_MS } from '../world/gear/powerups'
+import {
+  CALLOUT_LIFETIME_MS,
+  LEVEL_CALLOUT_LIFETIME_MS,
+} from '../world/gear/powerups'
 import { levelOf } from '../world/level/arena'
 import { focusOf, modifyFocus } from '../world/party/party'
 import { withWorld } from '../world/schema/world'
@@ -37,6 +40,7 @@ import {
   type Callout,
   type Difficulty,
   GameEvent,
+  type GunLeveled,
   type Intent,
   type Model,
   Phase,
@@ -194,17 +198,58 @@ const calloutFor = (model: Model, kind: PickupKind): Model => {
   })
 }
 
-// NOTE: a cosmetic, made after the step from the frame's grabs. Callouts
-// hold still while the shop is open, as the pickups do.
+// NOTE: the player's own gun reaching a new tier pops its new name and
+// what changed. A teammate's level up only sparkles and rings.
+const levelCalloutFor = (model: Model, event: GunLeveled): Model =>
+  event.slot === focusOf(model).seat.slot
+    ? modifyFields(model, {
+        levelCallouts: callouts =>
+          Array.takeRight(
+            [
+              ...callouts,
+              {
+                weapon: event.weapon,
+                tier: event.tier,
+                x: event.x,
+                y: event.y,
+                ageMs: 0,
+              },
+            ],
+            CALLOUT_MAX,
+          ),
+      })
+    : model
+
+const ageLevelCallouts = (model: Model, deltaMs: number): Model =>
+  Array.isReadonlyArrayEmpty(model.levelCallouts)
+    ? model
+    : modifyFields(model, {
+        levelCallouts: callouts =>
+          Array.filterMap(callouts, callout =>
+            callout.ageMs + deltaMs < LEVEL_CALLOUT_LIFETIME_MS
+              ? Result.succeed(
+                  modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
+                )
+              : Result.failVoid,
+          ),
+      })
+
+// NOTE: a cosmetic, made after the step from the frame's grabs and level
+// ups. Callouts hold still while the shop is open, as the pickups do.
 const advanceCallouts = (model: Model, worldMs: number): Model => {
   const called = Array.reduce(model.frameEvents, model, (current, event) =>
-    GameEvent.isAnyOf(['PickupGrabbed'])(event)
-      ? calloutFor(current, event.kind)
-      : current,
+    GameEvent.matchOrElse(
+      event,
+      {
+        PickupGrabbed: ({ kind }) => calloutFor(current, kind),
+        GunLeveled: leveled => levelCalloutFor(current, leveled),
+      },
+      () => current,
+    ),
   )
   return ShopState.isAnyOf(['Browsing'])(focusOf(called).shop)
     ? called
-    : ageCallouts(called, worldMs)
+    : ageLevelCallouts(ageCallouts(called, worldMs), worldMs)
 }
 
 // NOTE: what the frame looks like once its ticks ran: the camera lean,

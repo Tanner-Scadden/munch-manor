@@ -7,6 +7,7 @@ import {
   PLAYER_RADIUS,
   ZOMBIE_BUMP_SPEED,
 } from '../../shared/constants'
+import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
 import { TURRET_WEAPON } from '../gear/traps'
 import { kitchenBounty } from '../kitchen/kitchenPay'
 import { levelOf } from '../level/arena'
@@ -319,9 +320,13 @@ export const resolveBulletHits: {
       ],
     })
     return resolveFriendlyFire(
-      isCoop(model)
-        ? payKillers(creditLanded(struck, hits), hits, killedZombies)
-        : earnKill(struck, SOLO_SLOT, bounty),
+      creditGuns(
+        isCoop(model)
+          ? payKillers(creditLanded(struck, hits), hits, killedZombies)
+          : earnKill(struck, SOLO_SLOT, bounty),
+        hits,
+        killedZombies,
+      ),
       seconds,
       freshShots.from,
       firstFreshId,
@@ -386,6 +391,28 @@ const payKillers = (
       onSome: slot => creditKills(paid, slot, 1),
     })
   })
+
+// NOTE: each kill levels the gun whose shot landed last on it, in its
+// shooter's hands (src/world/gear/gunLevels.ts). A gnome's peas level nothing.
+const creditGuns = (
+  model: World,
+  hits: ReadonlyArray<BulletHit>,
+  killed: ReadonlyArray<Zombie>,
+): World =>
+  Array.reduce(killed, model, (current, zombie) =>
+    Option.match(Array.last(hitsOn(hits, zombie.id)), {
+      onNone: () => current,
+      onSome: ({ weapon, maybeShooter }) =>
+        weapon === TURRET_WEAPON
+          ? current
+          : creditGunKills(
+              current,
+              killerSlotOf(current, maybeShooter),
+              weapon,
+              1,
+            ),
+    }),
+  )
 
 const bumpAttacker =
   (attacker: Zombie, direction: Vector) =>

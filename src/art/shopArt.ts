@@ -247,20 +247,6 @@ const GLUE_ART = artOf(
   { K: INK, O: '#ff8a3d', W: '#f4f1de', Y: '#ffd23f', G: '#a9b2bf' },
 )
 
-export const UPGRADE_ART = artOf(
-  [
-    '....K....',
-    '...KYK...',
-    '..KYYYK..',
-    '.KYYYYYK.',
-    'KKKYYYKKK',
-    '..KYYYK..',
-    '..KYYYK..',
-    '..KKKKK..',
-  ],
-  { K: INK, Y: '#ffd23f' },
-)
-
 // NOTE: the laser sight: a grey scope with a red lens, and the red dot it
 // throws on the floor below.
 const SIGHT_ART = artOf(
@@ -283,17 +269,12 @@ const SIGHT_ART = artOf(
 
 const ITEM_ART: Readonly<Record<FixedShopItemId, ShopArt>> = {
   Shotgun: gunArt('Shotgun', 0),
-  ShotgunUpgrade: gunArt('Shotgun', 1),
   Smg: gunArt('Smg', 0),
-  SmgUpgrade: gunArt('Smg', 1),
   Pistol: gunArt('Pistol', 0),
-  PistolUpgrade: gunArt('Pistol', 1),
   LaserSight: SIGHT_ART,
   Heart: JAR_ART,
   Barricade: PLANK_ART,
   Turret: GNOME_ART,
-  CookerUpgrade: gunArt('Cooker', 1),
-  PanUpgrade: gunArt('Pan', 1),
 }
 
 export const itemArt = (id: ShopItemId): ShopArt =>

@@ -17,19 +17,18 @@ import {
   type ShopArt,
   TAB_ART,
   TRAP_ART,
-  UPGRADE_ART,
   gunArt,
   itemArt,
 } from '../../art/shopArt'
 import { TILE_SIZE } from '../../shared/constants'
 import { closeButtonView } from '../../ui/cornerButtons'
+import { maybeLevelProgress } from '../../world/gear/gunLevels'
 import { TRAPS, healthShare, ownedCount } from '../../world/gear/traps'
 import {
   maxTier,
-  maybeNextTier,
+  maybeCarried,
   maybeReplacedGun,
   tierName,
-  tierOf,
 } from '../../world/gear/weapons'
 import { maxHpOf } from '../../world/heroes/calling'
 import { levelOf } from '../../world/level/arena'
@@ -59,7 +58,6 @@ import {
   itemName,
   itemsIn,
   maybeRepairTrap,
-  nextGunName,
   shopItem,
   shopItemElementId,
   stockTag,
@@ -310,7 +308,6 @@ const metaView = (
           swapBadgeView(scene, h),
         ],
       ),
-    Upgrade: () => h.empty,
     Heart: () => heartsView(scene, h),
     Trap: ({ kind }) =>
       countDotsView(
@@ -449,14 +446,6 @@ const reasonView = (
 const shortName = (scene: ShopScene, item: ShopItemId): string =>
   ShopGood.match(shopItem(item).good, {
     Gun: () => itemName(scene, focusSlotOf(scene), item),
-    Upgrade: ({ weapon }) =>
-      Option.match(
-        maybeNextTier(weapon, tierOf(focusOf(scene).player, weapon)),
-        {
-          onNone: () => tierName(weapon, maxTier(weapon)),
-          onSome: () => nextGunName(scene, focusSlotOf(scene), weapon),
-        },
-      ),
     Heart: () => itemName(scene, focusSlotOf(scene), item),
     Trap: () => itemName(scene, focusSlotOf(scene), item),
     Repair: () => '',
@@ -475,24 +464,6 @@ const itemArtView = (
 ): Html =>
   ShopGood.match(shopItem(item).good, {
     Gun: () => artView(itemArt(item), 'shop-card-art', h),
-    Upgrade: ({ weapon }) =>
-      h.span(
-        [h.Class('shop-card-art shop-upgrade-art'), h.AriaHidden(true)],
-        [
-          artView(
-            gunArt(
-              weapon,
-              Math.min(
-                tierOf(focusOf(scene).player, weapon) + 1,
-                maxTier(weapon),
-              ),
-            ),
-            'shop-upgrade-gun',
-            h,
-          ),
-          artView(UPGRADE_ART, 'shop-upgrade-arrow', h),
-        ],
-      ),
     Heart: () => artView(itemArt(item), 'shop-card-art', h),
     Trap: () => artView(itemArt(item), 'shop-card-art', h),
     Repair: () =>
@@ -653,7 +624,10 @@ const subItemView = (
 
 // GUNS
 
+// NOTE: tiers are earned by kills, not bought, so no pip blinks as the
+// next buy. The next tier's pip fills as a bar with the gun's kills toward it.
 const tierPipsView = (
+  scene: ShopScene,
   weapon: WeaponKind,
   tier: number,
   h: ShopViewBuilder,
@@ -665,26 +639,34 @@ const tierPipsView = (
       h.AriaLabel(`Tier ${tier} of ${maxTier(weapon)}`),
     ],
     Array.makeBy(maxTier(weapon), index =>
-      h.span([
-        h.Class(
-          index < tier
-            ? 'shop-pip is-filled'
-            : index === tier
-              ? 'shop-pip is-next'
-              : 'shop-pip',
-        ),
-      ]),
+      index === tier
+        ? h.span(
+            [h.Class('shop-pip')],
+            [
+              h.span([
+                h.Class('shop-pip-fill'),
+                h.Style({ width: `${progressPercent(scene, weapon)}%` }),
+              ]),
+            ],
+          )
+        : h.span([h.Class(index < tier ? 'shop-pip is-filled' : 'shop-pip')]),
     ),
+  )
+
+const progressPercent = (scene: ShopScene, weapon: WeaponKind): number =>
+  Math.round(
+    100 *
+      Option.getOrElse(
+        Option.flatMap(
+          maybeCarried(focusOf(scene).player, weapon),
+          maybeLevelProgress,
+        ),
+        () => 0,
+      ),
   )
 
 const ownedBadge = (scene: ShopScene, weapon: WeaponKind): string =>
   isHolding(focusOf(scene).player, weapon) ? 'IN HAND' : 'OWNED'
-
-const nextBars = (weapon: WeaponKind, tier: number): GunBars =>
-  Option.match(maybeNextTier(weapon, tier), {
-    onNone: () => gunBars(weapon, tier),
-    onSome: () => gunBars(weapon, tier + 1),
-  })
 
 const isGunJustBought = (scene: ShopScene, weapon: WeaponKind): boolean =>
   ShopChatter.match(scene.shopChatter, {
@@ -692,7 +674,6 @@ const isGunJustBought = (scene: ShopScene, weapon: WeaponKind): boolean =>
     Bought: ({ item }) =>
       ShopGood.match(shopItem(item).good, {
         Gun: ({ weapon: bought }) => bought === weapon,
-        Upgrade: () => false,
         Heart: () => false,
         Trap: () => false,
         Repair: () => false,
@@ -707,8 +688,6 @@ const ownedGunView = (
   weapon: WeaponKind,
   tier: number,
   status: string,
-  items: Array.NonEmptyReadonlyArray<ShopItemId>,
-  initialFocus: Dialog.RenderInfo['initialFocus'],
   h: ShopViewBuilder,
 ): Html => {
   const name = tierName(weapon, tier)
@@ -730,7 +709,7 @@ const ownedGunView = (
             [h.Class('shop-gun-title')],
             [
               h.h3([h.Class('shop-gun-name')], [name]),
-              tierPipsView(weapon, tier, h),
+              tierPipsView(scene, weapon, tier, h),
             ],
           ),
           h.span([h.Class('shop-gun-owned')], [ownedBadge(scene, weapon)]),
@@ -738,13 +717,9 @@ const ownedGunView = (
       ),
       h.div(
         [h.Class('shop-gun-stats')],
-        [barsView(gunBars(weapon, tier), nextBars(weapon, tier), h)],
+        [barsView(gunBars(weapon, tier), gunBars(weapon, tier), h)],
       ),
       h.span([h.Class('sr-only')], [status]),
-      h.ul(
-        [h.Class('shop-subrows'), h.AriaLabel(`For your ${name}`)],
-        Array.map(items, item => subItemView(scene, item, initialFocus, h)),
-      ),
       isGunJustBought(scene, weapon) ? stampView(scene, h) : h.empty,
     ],
   )
@@ -758,8 +733,8 @@ const gunShelfView = (
 ): Html =>
   GunShelf.match(shelf, {
     ForSale: ({ item }) => itemView(scene, item, initialFocus, h),
-    Owned: ({ weapon, tier, status, items }) =>
-      ownedGunView(scene, weapon, tier, status, items, initialFocus, h),
+    Owned: ({ weapon, tier, status }) =>
+      ownedGunView(scene, weapon, tier, status, h),
   })
 
 const categoryRowsView = (

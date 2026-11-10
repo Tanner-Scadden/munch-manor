@@ -875,6 +875,7 @@ export const SHOTGUN: CarriedGun = {
   kind: 'Shotgun',
   loaded: 6,
   tier: 0,
+  kills: 0,
 }
 
 // THE ROOM

@@ -49,7 +49,6 @@ const TRAP_QUIPS: Readonly<
 type Lines = Array.NonEmptyReadonlyArray<string>
 
 const GUN_QUIPS: Lines = ['Loud end goes that way!', 'Ooh, a beauty!']
-const UPGRADE_QUIPS: Lines = ['Shiny! Hits harder!', 'Fancy!']
 const HEART_QUIPS: Lines = ['Freshly pickled!', "Don't ask whose."]
 const REPAIR_QUIPS: Lines = ['Good as new-ish!', 'Glued!']
 const SIGHT_QUIPS: Lines = ['Pew, precisely!', 'Mind the dot.']
@@ -57,7 +56,6 @@ const SIGHT_QUIPS: Lines = ['Pew, precisely!', 'Mind the dot.']
 const boughtLines = (item: ShopItemId): Lines =>
   ShopGood.match(shopItem(item).good, {
     Gun: () => GUN_QUIPS,
-    Upgrade: () => UPGRADE_QUIPS,
     Heart: () => HEART_QUIPS,
     Trap: ({ kind }) => TRAP_QUIPS[kind],
     Repair: () => REPAIR_QUIPS,

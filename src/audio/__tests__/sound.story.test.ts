@@ -260,6 +260,8 @@ describe('frame sounds', () => {
         openFloorSpot(index).y,
       ),
     )
+    // NOTE: shots from a gun the player does not carry, so the forty kills
+    // level nothing and no level-up fanfare joins the sounds.
     const killingBullets = Array.map(victims, ({ id, x, y }): Bullet => ({
       id: id + floodSize,
       x,
@@ -267,7 +269,7 @@ describe('frame sounds', () => {
       velocityX: 1,
       velocityY: 0,
       remainingMs: 900,
-      weapon: 'Pistol',
+      weapon: 'Shotgun',
       damage: 1,
       knockback: 110,
       glaze: 'Plain',

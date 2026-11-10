@@ -31,15 +31,13 @@ import {
 } from '../gear/traps'
 import {
   SIDEARM,
+  UPGRADE_TIERS,
   WEAPONS,
-  type WeaponTier,
   freshGun,
   isCarrying,
   isHolding,
-  mapCarried,
   maxTier,
   maybeCarried,
-  maybeNextTier,
   maybeReplacedGun,
   putGunInHand,
   takeGun,
@@ -75,7 +73,6 @@ import {
   type Wallet,
   WeaponKind,
 } from '../schema/worldSchema'
-import { upgradeChanges } from './shopUpgrades'
 
 // MONEY
 
@@ -109,7 +106,6 @@ export const tickShownMoney: {
 
 export const ShopGood = defineTaggedUnion({
   Gun: { weapon: WeaponKind },
-  Upgrade: { weapon: WeaponKind },
   Heart: {},
   Trap: { kind: TrapKind },
   Repair: { trapId: Schema.Finite },
@@ -117,8 +113,7 @@ export const ShopGood = defineTaggedUnion({
 })
 export type ShopGood = typeof ShopGood.Type
 
-// UPGRADES
-
+// NOTE: a gun's name as the player at `slot` reads it, with its tier word.
 export const gunName: {
   (slot: PlayerSlot, weapon: WeaponKind): (model: World) => string
   (model: World, slot: PlayerSlot, weapon: WeaponKind): string
@@ -128,22 +123,6 @@ export const gunName: {
     tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon)),
 )
 
-export const nextGunName: {
-  (slot: PlayerSlot, weapon: WeaponKind): (model: World) => string
-  (model: World, slot: PlayerSlot, weapon: WeaponKind): string
-} = Function.dual(
-  3,
-  (model: World, slot: PlayerSlot, weapon: WeaponKind): string =>
-    tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon) + 1),
-)
-
-const nextTierFor = (
-  model: World,
-  slot: PlayerSlot,
-  weapon: WeaponKind,
-): Option.Option<WeaponTier> =>
-  maybeNextTier(weapon, tierOf(seatStateAt(model, slot).player, weapon))
-
 type ShopItem = Readonly<{
   id: ShopItemId
   name: string
@@ -152,8 +131,8 @@ type ShopItem = Readonly<{
   good: ShopGood
 }>
 
-// NOTE: the sight is a luxury: it costs about as much as a gun's top
-// upgrade, so it is a late-run buy, and it is gone with the run.
+// NOTE: the sight is a luxury, so it is a late-run buy, and it is gone
+// with the run.
 export const LASER_SIGHT_PRICE = 400
 
 export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
@@ -179,27 +158,6 @@ export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
     blurb: 'Fast and a little wobbly.',
     price: 100,
     good: ShopGood.Gun({ weapon: 'Smg' }),
-  },
-  ShotgunUpgrade: {
-    id: 'ShotgunUpgrade',
-    name: `${WEAPONS.Shotgun.name} upgrade`,
-    blurb: `Bolts something louder onto your ${WEAPONS.Shotgun.name}.`,
-    price: 0,
-    good: ShopGood.Upgrade({ weapon: 'Shotgun' }),
-  },
-  SmgUpgrade: {
-    id: 'SmgUpgrade',
-    name: `${WEAPONS.Smg.name} upgrade`,
-    blurb: `Teaches your ${WEAPONS.Smg.name} some new words.`,
-    price: 0,
-    good: ShopGood.Upgrade({ weapon: 'Smg' }),
-  },
-  PistolUpgrade: {
-    id: 'PistolUpgrade',
-    name: `${WEAPONS.Pistol.name} upgrade`,
-    blurb: `Shines up your ${WEAPONS.Pistol.name}.`,
-    price: 0,
-    good: ShopGood.Upgrade({ weapon: 'Pistol' }),
   },
   LaserSight: {
     id: 'LaserSight',
@@ -229,22 +187,6 @@ export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
     blurb: TRAPS.Turret.blurb,
     price: TRAPS.Turret.price,
     good: ShopGood.Trap({ kind: 'Turret' }),
-  },
-  // NOTE: the fridge weapons are never for sale, only their upgrades, and
-  // only once a player has pulled one.
-  CookerUpgrade: {
-    id: 'CookerUpgrade',
-    name: `${WEAPONS.Cooker.name} upgrade`,
-    blurb: `Tightens the clamps on your ${WEAPONS.Cooker.name}.`,
-    price: 0,
-    good: ShopGood.Upgrade({ weapon: 'Cooker' }),
-  },
-  PanUpgrade: {
-    id: 'PanUpgrade',
-    name: `${WEAPONS.Pan.name} upgrade`,
-    blurb: `Hammers your ${WEAPONS.Pan.name} into something meaner.`,
-    price: 0,
-    good: ShopGood.Upgrade({ weapon: 'Pan' }),
   },
 }
 
@@ -281,7 +223,7 @@ export const SHOP_CATEGORIES: Readonly<Record<ShopCategory, ShopCategoryInfo>> =
     Guns: {
       label: 'Guns',
       blurb: () =>
-        'Two guns. A new one replaces the one in your hands, upgrades and all.',
+        'Two guns. A new one replaces the one in your hands, levels and all.',
     },
     Health: {
       label: 'Health',
@@ -330,7 +272,6 @@ export const maybeRepairTrap: {
 } = Function.dual(2, (model: World, id: ShopItemId): Option.Option<Trap> =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => Option.none(),
-    Upgrade: () => Option.none(),
     Heart: () => Option.none(),
     Trap: () => Option.none(),
     Repair: ({ trapId }) =>
@@ -350,72 +291,60 @@ const trapPlace = (trap: Trap): string =>
 type GunLine = Readonly<{
   weapon: WeaponKind
   gun: ShopItemId
-  items: Array.NonEmptyReadonlyArray<ShopItemId>
-  status: (gun: CarriedGun) => string
 }>
+
+// NOTE: a carried gun's line for a screen reader: its magazine, and its
+// kills toward the next tier (src/world/gear/gunLevels.ts).
+const levelStatus = (gun: CarriedGun): string =>
+  Option.match(Array.get(UPGRADE_TIERS[gun.kind], gun.tier), {
+    onNone: () => (maxTier(gun.kind) > 0 ? `${gun.kills} kills, top tier` : ''),
+    onSome: next =>
+      `${gun.kills} kills, ${next.kills - gun.kills} more to ${tierName(gun.kind, gun.tier + 1)}`,
+  })
 
 const roundsStatus = (gun: CarriedGun): string =>
   `${gun.loaded} loaded, ${WEAPONS[gun.kind].roundsLabel} never run out`
 
+const panStatus = (pan: CarriedGun): string =>
+  pan.loaded > 0
+    ? `${pan.loaded} hits before it dents`
+    : 'Dented, Rattles flattens it each break'
+
+const statusOf = (gun: CarriedGun): string =>
+  Array.join(
+    Array.filter(
+      [
+        gun.kind === 'Pan' ? panStatus(gun) : roundsStatus(gun),
+        levelStatus(gun),
+      ],
+      line => line !== '',
+    ),
+    '. ',
+  )
+
 // NOTE: the guns Rattles sells, always in this order, pistol first.
 const GUN_LINES: Array.NonEmptyReadonlyArray<GunLine> = [
-  {
-    weapon: 'Pistol',
-    gun: 'Pistol',
-    items: ['PistolUpgrade'],
-    status: roundsStatus,
-  },
-  {
-    weapon: 'Shotgun',
-    gun: 'Shotgun',
-    items: ['ShotgunUpgrade'],
-    status: roundsStatus,
-  },
-  {
-    weapon: 'Smg',
-    gun: 'Smg',
-    items: ['SmgUpgrade'],
-    status: roundsStatus,
-  },
+  { weapon: 'Pistol', gun: 'Pistol' },
+  { weapon: 'Shotgun', gun: 'Shotgun' },
+  { weapon: 'Smg', gun: 'Smg' },
 ]
 
-// NOTE: a fridge weapon has a card only while a player carries it, with
-// what Rattles sells for it. Brain Freeze has no tiers, so it has none.
-type FridgeLine = Readonly<{
-  weapon: WeaponKind
-  items: Array.NonEmptyReadonlyArray<ShopItemId>
-  status: (spare: CarriedGun) => string
-}>
+// NOTE: a fridge weapon with tiers has a card only while a player carries
+// it, with its tier and kills. Brain Freeze has no tiers, so it has none.
+const LEVELED_FRIDGE_WEAPONS: ReadonlyArray<WeaponKind> = ['Cooker', 'Pan']
 
-const FRIDGE_LINES: ReadonlyArray<FridgeLine> = [
-  {
-    weapon: 'Cooker',
-    items: ['CookerUpgrade'],
-    status: roundsStatus,
-  },
-  {
-    weapon: 'Pan',
-    items: ['PanUpgrade'],
-    status: spare =>
-      spare.loaded > 0
-        ? `${spare.loaded} hits before it dents`
-        : 'Dented, Rattles flattens it each break',
-  },
-]
+const ownedShelf = (gun: CarriedGun): GunShelf =>
+  GunShelf.Owned({
+    weapon: gun.kind,
+    tier: gun.tier,
+    status: statusOf(gun),
+  })
 
 const fridgeShelves = (player: Player): ReadonlyArray<GunShelf> =>
-  Array.filterMap(FRIDGE_LINES, line =>
-    Option.match(maybeCarried(player, line.weapon), {
+  Array.filterMap(LEVELED_FRIDGE_WEAPONS, weapon =>
+    Option.match(maybeCarried(player, weapon), {
       onNone: () => Result.failVoid,
-      onSome: spare =>
-        Result.succeed(
-          GunShelf.Owned({
-            weapon: line.weapon,
-            tier: spare.tier,
-            status: line.status(spare),
-            items: line.items,
-          }),
-        ),
+      onSome: spare => Result.succeed(ownedShelf(spare)),
     }),
   )
 
@@ -425,7 +354,6 @@ export const GunShelf = defineTaggedUnion({
     weapon: WeaponKind,
     tier: Schema.Finite,
     status: Schema.String,
-    items: Schema.NonEmptyArray(ShopItemId),
   },
 })
 export type GunShelf = typeof GunShelf.Type
@@ -433,13 +361,7 @@ export type GunShelf = typeof GunShelf.Type
 const gunShelf = (player: Player, line: GunLine): GunShelf =>
   Option.match(maybeCarried(player, line.weapon), {
     onNone: () => GunShelf.ForSale({ weapon: line.weapon, item: line.gun }),
-    onSome: gun =>
-      GunShelf.Owned({
-        weapon: line.weapon,
-        tier: gun.tier,
-        status: line.status(gun),
-        items: line.items,
-      }),
+    onSome: ownedShelf,
   })
 
 export const gunShelves: {
@@ -456,10 +378,10 @@ export const gunShelves: {
     ),
 )
 
-const shelfItems = (shelf: GunShelf): Array.NonEmptyReadonlyArray<ShopItemId> =>
+const shelfItems = (shelf: GunShelf): ReadonlyArray<ShopItemId> =>
   GunShelf.match(shelf, {
-    ForSale: ({ item }) => Array.of(item),
-    Owned: ({ items }) => items,
+    ForSale: ({ item }) => [item],
+    Owned: () => [],
   })
 
 export const itemsIn: {
@@ -495,42 +417,20 @@ export const itemsIn: {
   },
 )
 
-const maybeGunOf = (item: ShopItemId): Option.Option<WeaponKind> =>
-  ShopGood.match(shopItem(item).good, {
-    Gun: ({ weapon }) => Option.some(weapon),
-    Upgrade: ({ weapon }) => Option.some(weapon),
-    Heart: () => Option.none(),
-    Trap: () => Option.none(),
-    Repair: () => Option.none(),
-    Sight: () => Option.none(),
-  })
-
+// NOTE: a gun bought takes its row off the shelf, as its card shows it
+// owned, so focus moves to the first row left on the Guns tab.
 const replacementFor = (
   model: World,
   slot: PlayerSlot,
   item: ShopItemId,
 ): ShopItemId => {
-  const isShown = Array.contains(
-    itemsIn(model, slot, seatStateAt(model, slot).shopCategory),
-    item,
-  )
-  if (seatStateAt(model, slot).shopCategory !== 'Guns' || isShown) {
-    return item
-  }
-
-  return pipe(
-    maybeGunOf(item),
-    Option.flatMap(weapon =>
-      Array.findFirst(
-        gunShelves(model, slot),
-        shelf => shelf.weapon === weapon,
-      ),
-    ),
-    Option.match({
-      onNone: () => item,
-      onSome: shelf => Array.headNonEmpty(shelfItems(shelf)),
-    }),
-  )
+  const { shopCategory } = seatStateAt(model, slot)
+  const shown = itemsIn(model, slot, shopCategory)
+  return shopCategory !== 'Guns' ||
+    Array.contains(shown, item) ||
+    !ShopGood.isAnyOf(['Gun'])(shopItem(item).good)
+    ? item
+    : Array.headNonEmpty(shown)
 }
 
 export const maybeDisplacedFocus: {
@@ -582,11 +482,6 @@ export const priceFor: {
     const { calling } = seatStateAt(model, slot).player
     return ShopGood.match(shopItem(id).good, {
       Gun: () => shopPriceFor(calling, shopItem(id).price),
-      Upgrade: ({ weapon }) =>
-        Option.match(nextTierFor(model, slot, weapon), {
-          onNone: () => 0,
-          onSome: ({ price }) => shopPriceFor(calling, price),
-        }),
       Heart: () => shopPriceFor(calling, shopItem(id).price),
       Trap: ({ kind }) =>
         isFirstPlankFree(model, slot, kind)
@@ -613,23 +508,20 @@ export const priceFor: {
 export const itemName: {
   (slot: PlayerSlot, id: ShopItemId): (model: World) => string
   (model: World, slot: PlayerSlot, id: ShopItemId): string
-} = Function.dual(3, (model: World, slot: PlayerSlot, id: ShopItemId): string =>
-  ShopGood.match(shopItem(id).good, {
-    Gun: () => shopItem(id).name,
-    Upgrade: ({ weapon }) =>
-      Option.match(nextTierFor(model, slot, weapon), {
-        onNone: () => `${tierName(weapon, maxTier(weapon))}, fully upgraded`,
-        onSome: () => `Upgrade to ${nextGunName(model, slot, weapon)}`,
-      }),
-    Heart: () => shopItem(id).name,
-    Trap: () => shopItem(id).name,
-    Repair: () =>
-      Option.match(maybeRepairTrap(model, id), {
-        onNone: () => shopItem(id).name,
-        onSome: trap => `Repair the ${TRAPS[trap._tag].name}`,
-      }),
-    Sight: () => shopItem(id).name,
-  }),
+} = Function.dual(
+  3,
+  (model: World, _slot: PlayerSlot, id: ShopItemId): string =>
+    ShopGood.match(shopItem(id).good, {
+      Gun: () => shopItem(id).name,
+      Heart: () => shopItem(id).name,
+      Trap: () => shopItem(id).name,
+      Repair: () =>
+        Option.match(maybeRepairTrap(model, id), {
+          onNone: () => shopItem(id).name,
+          onSome: trap => `Repair the ${TRAPS[trap._tag].name}`,
+        }),
+      Sight: () => shopItem(id).name,
+    }),
 )
 
 export const itemAriaLabel: {
@@ -641,12 +533,6 @@ export const itemAriaLabel: {
     const price = `$${priceFor(model, slot, id)}`
     return ShopGood.match(shopItem(id).good, {
       Gun: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-      Upgrade: ({ weapon }) =>
-        Option.match(nextTierFor(model, slot, weapon), {
-          onNone: () => itemName(model, slot, id),
-          onSome: () =>
-            `${nextGunName(model, slot, weapon)}, upgrade for ${gunName(model, slot, weapon)}, ${price}`,
-        }),
       Heart: () => `Buy ${itemName(model, slot, id)} for ${price}`,
       Trap: () => `Buy ${itemName(model, slot, id)} for ${price}`,
       Repair: () =>
@@ -663,22 +549,16 @@ export const itemAriaLabel: {
 export const itemBlurb: {
   (slot: PlayerSlot, id: ShopItemId): (model: World) => string
   (model: World, slot: PlayerSlot, id: ShopItemId): string
-} = Function.dual(3, (model: World, slot: PlayerSlot, id: ShopItemId): string =>
-  ShopGood.match(shopItem(id).good, {
-    Gun: () => shopItem(id).blurb,
-    Upgrade: ({ weapon }) => {
-      const tier = tierOf(seatStateAt(model, slot).player, weapon)
-      return Option.match(nextTierFor(model, slot, weapon), {
-        onNone: () =>
-          `Your ${gunName(model, slot, weapon)} cannot get any fancier.`,
-        onSome: () => upgradeChanges(weapon, tier),
-      })
-    },
-    Heart: () => shopItem(id).blurb,
-    Trap: () => shopItem(id).blurb,
-    Repair: () => shopItem(id).blurb,
-    Sight: () => shopItem(id).blurb,
-  }),
+} = Function.dual(
+  3,
+  (_model: World, _slot: PlayerSlot, id: ShopItemId): string =>
+    ShopGood.match(shopItem(id).good, {
+      Gun: () => shopItem(id).blurb,
+      Heart: () => shopItem(id).blurb,
+      Trap: () => shopItem(id).blurb,
+      Repair: () => shopItem(id).blurb,
+      Sight: () => shopItem(id).blurb,
+    }),
 )
 
 export const shopItemElementId = (id: ShopItemId): string => `shop-item-${id}`
@@ -708,15 +588,6 @@ const blockedBy = (
         return block('You already carry it', 'OWNED')
       } else if (weapon === SIDEARM && isPistolBarred(player.calling)) {
         return block('Rattles will not sell you that', 'NO')
-      } else {
-        return Option.none()
-      }
-    },
-    Upgrade: ({ weapon }) => {
-      if (!isCarrying(player, weapon)) {
-        return block(`Needs the ${gunName(model, slot, weapon)}`, 'NO GUN')
-      } else if (Option.isNone(nextTierFor(model, slot, weapon))) {
-        return block('Fully upgraded', 'MAX')
       } else {
         return Option.none()
       }
@@ -846,7 +717,6 @@ const suggestionRank = (
   id: ShopItemId,
 ): number =>
   ShopGood.match(shopItem(id).good, {
-    Upgrade: ({ weapon }) => (weapon === SIDEARM ? 2 : 1),
     Gun: () =>
       Option.isNone(maybeReplacedGun(seatStateAt(model, slot).player.arsenal))
         ? 0
@@ -890,13 +760,6 @@ export { isHolding }
 
 // PURCHASE
 
-// NOTE: an upgrade finds its gun in a gun slot or, for the Pan, in the
-// melee slot.
-const upgrade = (player: Player, weapon: WeaponKind): Player =>
-  mapCarried(player, gun =>
-    gun.kind === weapon ? modifyFields(gun, { tier: tier => tier + 1 }) : gun,
-  )
-
 const equip = (
   model: World,
   slot: PlayerSlot,
@@ -913,8 +776,6 @@ const grant = (model: World, slot: PlayerSlot, good: ShopGood): World =>
           wield: () => 'Gun',
         }),
       ),
-    Upgrade: ({ weapon }) =>
-      equip(model, slot, player => upgrade(player, weapon)),
     Heart: () =>
       equip(model, slot, player =>
         modifyFields(player, { hp: hp => Math.min(maxHpOf(player), hp + 1) }),

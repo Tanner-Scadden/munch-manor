@@ -70,6 +70,7 @@ export const FIELD_CLASSES = {
   bestStreak: 'Cosmetic',
   blasts: 'Cosmetic',
   callouts: 'Cosmetic',
+  levelCallouts: 'Cosmetic',
   prizeFlight: 'Cosmetic',
   kitchenCall: 'Cosmetic',
   breakIdleMs: 'Cosmetic',

@@ -56,15 +56,8 @@ import {
   startRoomWorld,
   stepRoomWorld,
 } from '../../net/roomWorld'
-import {
-  focusOf,
-  focusSlotOf,
-  maybePlayerAt,
-  modifyFocus,
-} from '../../party/party'
-import { withWorld } from '../../schema/world'
+import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
 import { Arsenal } from '../../schema/worldSchema'
-import { purchase } from '../../shop/shop'
 import { SeatAction } from '../../step/stepWorld'
 import { freshGun, heldWeapon, inHandOf, maybePanOf, takePan } from '../weapons'
 
@@ -75,7 +68,7 @@ import { freshGun, heldWeapon, inHandOf, maybePanOf, takePan } from '../weapons'
 const FRAME_MS = FIXED_STEP_MS
 const ROW_Y = 104
 const PLAYER_X = 100
-const SMG: CarriedGun = { kind: 'Smg', loaded: 30, tier: 0 }
+const SMG: CarriedGun = { kind: 'Smg', loaded: 30, tier: 0, kills: 0 }
 const BOTH_GUNS = holdingSecond(SMG)
 
 const withPan = (pan: CarriedGun = freshGun('Pan')): Melee => Melee.Pan({ pan })
@@ -275,19 +268,6 @@ describe('the Clang Pan in the melee slot', () => {
     const pan = Option.getOrThrow(maybePanOf(retaken))
     expect(pan.tier).toBe(2)
     expect(pan.loaded).toBe(48)
-  })
-
-  test("Rattles' Pan upgrade finds it in the melee slot", () => {
-    const shopping = modifyFocus(atFridge(500), {
-      player: player => modifyFields(player, { melee: () => withPan() }),
-    })
-    const upgraded = withWorld(shopping, world =>
-      Option.getOrThrow(purchase(world, focusSlotOf(world), 'PanUpgrade')),
-    )
-    expect(Option.getOrThrow(maybePanOf(focusOf(upgraded).player)).tier).toBe(1)
-    expect(focusOf(upgraded).player.arsenal).toEqual(
-      focusOf(shopping).player.arsenal,
-    )
   })
 
   it.effect('a new run starts with the knife in the melee slot again', () => {
