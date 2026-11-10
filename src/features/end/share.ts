@@ -63,7 +63,7 @@ const AWARD_BRAGS: Readonly<Record<CrewAward, string>> = {
   Mvp: `I was the ${CREW_AWARD_NAMES.Mvp} 👑`,
   Medic: `I was the ${CREW_AWARD_NAMES.Medic} 🩹`,
   Sharpshooter: `I was the ${CREW_AWARD_NAMES.Sharpshooter} 🎯`,
-  BigSpender: `I was the ${CREW_AWARD_NAMES.BigSpender} 💰`,
+  KeyKeeper: `I was the ${CREW_AWARD_NAMES.KeyKeeper} 💰`,
   MostMunched: `I got ${CREW_AWARD_NAMES.MostMunched} 🍖`,
 }
 

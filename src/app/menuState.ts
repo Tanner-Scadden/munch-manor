@@ -6,18 +6,15 @@ import { MenuPanel } from '../features/home/homeSchema'
 import { isHeroPickerUp, isLobbyShown } from '../features/lobby/model'
 import { ProfileTab } from '../features/profile/model'
 import { tabOf } from '../features/profile/profile'
-import { isShopShown } from '../features/shop/model'
 import { RESTART_GRACE_MS } from '../shared/constants'
 import { type Model, Phase } from './model'
 
 // NOTE: what the player is looking at, derived from the Model and never
 // stored. Update's gates and the view both read it, so "is a menu open"
-// has one answer. The dialogs come first, top to bottom (the shop's
-// dialog also opens in a co-op run), then the hero picker over the single
-// player lobby, the lobby, co-op's own screens, and the phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
+// has one answer. The dialogs come first, top to bottom, then the hero
+// picker over the single player lobby, the lobby, co-op's own screens, and the phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
 // (munch/no-menu-field).
 export const MenuState = defineTaggedUnion({
-  Shop: {},
   Profile: { tab: ProfileTab },
   Panel: { panel: MenuPanel },
   Hand: {},
@@ -51,9 +48,7 @@ const phaseState = (model: Model): MenuState =>
   })
 
 export const menuState = (model: Model): MenuState => {
-  if (isShopShown(model.shopDialog)) {
-    return MenuState.Shop()
-  } else if (model.profileDialog.isOpen) {
+  if (model.profileDialog.isOpen) {
     return MenuState.Profile({ tab: tabOf(model.profile) })
   } else if (model.panelDialog.isOpen) {
     return MenuState.Panel({ panel: model.panel })
@@ -115,6 +110,3 @@ export const isAnyPanelOpen = (model: Model): boolean =>
 
 export const isHandOpen = (model: Model): boolean =>
   MenuState.isAnyOf(['Hand'])(menuState(model))
-
-export const isShopDialogOpen = (model: Model): boolean =>
-  MenuState.isAnyOf(['Shop'])(menuState(model))

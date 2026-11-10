@@ -7,7 +7,6 @@ import {
   MS_PER_SECOND,
   ROT_GIBS_PER_KILL,
   SHAKE_TRAUMA_KILL,
-  SHAMBLER_BOUNTY,
   ZOMBIE_DYING_MS,
   ZOMBIE_FOOT_OFFSET,
   ZOMBIE_MAX_HP,
@@ -90,7 +89,7 @@ type ZombieKindStats = Readonly<{
   radius: number
   bodyRadius: number
   footOffset: number
-  bounty: number
+  keys: number
   mass: number
   knockbackScale: number
   killTrauma: number
@@ -126,7 +125,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     radius: ZOMBIE_RADIUS,
     bodyRadius: ZOMBIE_RADIUS,
     footOffset: ZOMBIE_FOOT_OFFSET,
-    bounty: SHAMBLER_BOUNTY,
+    keys: 0.25,
     mass: 1,
     knockbackScale: 1,
     killTrauma: SHAKE_TRAUMA_KILL,
@@ -164,7 +163,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     radius: 3.5,
     bodyRadius: 3.5,
     footOffset: ZOMBIE_FOOT_OFFSET,
-    bounty: 3,
+    keys: 1 / 3,
     mass: 0.6,
     knockbackScale: 1.4,
     killTrauma: 0.12,
@@ -205,7 +204,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     radius: 6.5,
     bodyRadius: 6.5,
     footOffset: 7,
-    bounty: 20,
+    keys: 2,
     mass: 6,
     knockbackScale: 0.12,
     killTrauma: 0.7,
@@ -250,7 +249,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     radius: 4.5,
     bodyRadius: 5.5,
     footOffset: ZOMBIE_FOOT_OFFSET,
-    bounty: 4,
+    keys: 1,
     mass: 1.8,
     knockbackScale: 0.6,
     killTrauma: 0.15,
@@ -297,7 +296,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     radius: 4.5,
     bodyRadius: 5,
     footOffset: 6,
-    bounty: 8,
+    keys: 1,
     mass: 1.6,
     knockbackScale: 0.6,
     killTrauma: 0.3,
@@ -337,7 +336,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     radius: 5,
     bodyRadius: 3.5,
     footOffset: 5,
-    bounty: 3,
+    keys: 1,
     mass: 0.6,
     knockbackScale: 1.3,
     killTrauma: 0.12,
@@ -372,7 +371,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     radius: 8,
     bodyRadius: 12,
     footOffset: 12,
-    bounty: 150,
+    keys: 5,
     mass: 40,
     knockbackScale: 0.03,
     killTrauma: 1,

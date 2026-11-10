@@ -82,6 +82,7 @@ import {
   maybePanOf,
 } from '../../world/gear/weapons'
 import { maxHpOf } from '../../world/heroes/calling'
+import { heldKeys } from '../../world/keys/keys'
 import {
   focusOf,
   focusSlotOf,
@@ -97,6 +98,7 @@ import type {
   WeaponKind,
 } from '../../world/schema/entitySchema'
 import {
+  GameEvent,
   type GunPerk,
   Phase,
   type SeatState,
@@ -107,11 +109,7 @@ import { clamp } from '../../world/step/geometry'
 import { isRoundActive, zombiesRemaining } from '../../world/waves/waves'
 import { maybeBossBar } from '../../world/zombies/boss'
 import { waveLabel } from './overlay'
-import {
-  kitchenBubbleShapes,
-  soupBubbleShapes,
-  stallBubbleShapes,
-} from './stallBubble'
+import { kitchenBubbleShapes, soupBubbleShapes } from './stallBubble'
 
 const streakShapes = (streak: Streak): ReadonlyArray<Canvas.Shape> =>
   Streak.match(streak, {
@@ -299,16 +297,18 @@ const roundHudShapes = (
     GameOver: () => [],
   })
 
-const MONEY_Y = HUD_MARGIN + 9
+const KEYS_Y = HUD_MARGIN + 9
 
-const moneyShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
-  const { shown, balance } = focusOf(model).wallet
-  const isTicking = shown !== balance
+// NOTE: the crew's one key ring (src/world/keys/keys.ts), a skeleton key
+// and its count (the font draws `$` as the key), the same for every player
+// in co-op. It flashes and hops a pixel the frame a key comes in.
+const keyRingShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+  const isNew = Array.some(model.frameEvents, GameEvent.isAnyOf(['KeysFound']))
   return textShapes(
-    `$${shown}`,
-    isTicking ? 'Damage' : 'Coin',
+    `$${heldKeys(model)}`,
+    isNew ? 'Damage' : 'Coin',
     HUD_MARGIN,
-    isTicking ? MONEY_Y - 1 : MONEY_Y,
+    isNew ? KEYS_Y - 1 : KEYS_Y,
     'Left',
   )
 }
@@ -803,7 +803,7 @@ const trapNoticeShapes = (
   })
 
 // NOTE: players sharing the keyboard each get a row under the HUD: their
-// seat's color, their hearts, and their money (MULTIPLAYER.md, Phase 1).
+// seat's color, and their hearts (MULTIPLAYER.md, Phase 1).
 const MATE_ROW_TOP = 24
 const MATE_ROW_HEIGHT = 10
 
@@ -826,13 +826,6 @@ const mateRowShapes = (
         y + 3,
         index < mate.player.hp ? HEART_SPRITE : EMPTY_HEART_SPRITE,
       ),
-    ),
-    ...textShapes(
-      `$${mate.wallet.balance}`,
-      'Coin',
-      HUD_MARGIN + 9 + maxHpOf(mate.player) * HEART_SPACING,
-      y,
-      'Left',
     ),
   ]
 }
@@ -857,7 +850,7 @@ const playHudShapes = (
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => [
   ...heartShapes(focusOf(model).player),
-  ...moneyShapes(model),
+  ...keyRingShapes(model),
   ...mateHudShapes(model),
   ...streakShapes(model.streak),
   ...loadoutShapes(model, layout),
@@ -869,7 +862,6 @@ const playHudShapes = (
   ),
   ...trapStockShapes(model, layout),
   ...trapNoticeShapes(model, camera),
-  ...stallBubbleShapes(model, camera),
   ...kitchenBubbleShapes(model, camera),
   ...soupBubbleShapes(model, camera),
   ...roundHudShapes(model, layout),

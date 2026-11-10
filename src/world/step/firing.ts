@@ -46,7 +46,6 @@ import {
   atSeat,
   creditShots,
   firedBy,
-  forEachSeat,
   modifySeat,
   seatStateAt,
   shooterOf,
@@ -61,16 +60,13 @@ import {
   type CarriedGun,
   Charge,
   GameEvent,
-  Phase,
   Pierce,
   type PlayerSlot,
   Reload,
-  ShopState,
   type Vector,
   type WeaponKind,
   type Zombie,
 } from '../schema/worldSchema'
-import { isAtCounter } from '../shop/shop'
 import { isFree, radiusOf } from '../zombies/zombies'
 import { bulletDirection } from './combat'
 import { addVectors, scaleVector } from './geometry'
@@ -319,27 +315,10 @@ const isIdleReloadDue = (model: World, slot: PlayerSlot): boolean => {
   )
 }
 
-// NOTE: the stall shuts outside the break. A player still at the counter
-// when the wave starts (in co-op the break runs on while one shops) or the
-// run ends is sent off it, and their shop dialog follows
-// (src/features/shop/update.ts, syncShopDialog).
-export const shutStallOutsideBreak = (model: World): World =>
-  Phase.isAnyOf(['Preparation'])(model.phase)
-    ? model
-    : forEachSeat(model, (current, slot) =>
-        isAtCounter(seatStateAt(current, slot).shop)
-          ? modifySeat(current, slot, { shop: () => ShopState.Dismissed() })
-          : current,
-      )
-
-const topUp = (model: World, slot: PlayerSlot): World => {
-  const { shop, boosts } = seatStateAt(model, slot)
-  return isAtCounter(shop)
-    ? model
-    : modifySeat(model, slot, {
-        player: player => keepTopped(player, boosts),
-      })
-}
+const topUp = (model: World, slot: PlayerSlot): World =>
+  modifySeat(model, slot, {
+    player: player => keepTopped(player, seatStateAt(model, slot).boosts),
+  })
 
 const withoutCharge = (model: World, slot: PlayerSlot): World =>
   Charge.isAnyOf(['Idle'])(seatStateAt(model, slot).player.charge)
@@ -368,13 +347,10 @@ export const fire: {
     const model = Option.isSome(maybeFridgeWeapon)
       ? topped
       : withoutCharge(topped, slot)
-    const { player, intent, shop } = seatStateAt(model, slot)
+    const { player, intent } = seatStateAt(model, slot)
     const isTriggerHeld = intent.trigger === 'Held'
 
-    if (
-      isAtCounter(shop) ||
-      (isReloading(player) && !isWieldingMelee(player))
-    ) {
+    if (isReloading(player) && !isWieldingMelee(player)) {
       return coolTrigger(withoutCharge(model, slot), slot, deltaMs, false)
     } else if (Option.isSome(maybeFridgeWeapon)) {
       return fireFridgeWeapon(model, slot, maybeFridgeWeapon.value, deltaMs)
@@ -405,11 +381,7 @@ export const tickReload: {
 } = Function.dual(
   3,
   (model: World, slot: PlayerSlot, deltaMs: number): World => {
-    const { player, shop } = seatStateAt(model, slot)
-    if (isAtCounter(shop)) {
-      return model
-    }
-
+    const { player } = seatStateAt(model, slot)
     return Reload.match(player.reload, {
       Ready: () => model,
       Reloading: ({ remainingMs, durationMs }) =>

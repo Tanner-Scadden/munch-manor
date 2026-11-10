@@ -19,7 +19,7 @@ import {
   newlyDiscovered,
 } from '../../features/munchopedia/munchopedia'
 import { maybeNewestNewsDay } from '../../features/whatsNew/changelog'
-import { FOCUS_STEP_OFFSET } from '../../input/input'
+import { FOCUS_STEP_OFFSET, type FocusStep } from '../../input/input'
 import { isPortrait } from '../../render/screen'
 import { FEEDBACK_LINE } from '../../shared/constants'
 import { isObjectSecond } from '../../shared/dualArgs'
@@ -33,7 +33,6 @@ import {
   Phase,
   RunMode,
 } from '../../world/schema/worldSchema'
-import type { FocusStep } from '../../world/step/stepWorld'
 
 // BUTTONS
 

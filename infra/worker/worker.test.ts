@@ -70,7 +70,8 @@ const summary: RunSummary = {
     Boss: 0,
   },
   heartsLost: 6,
-  purchases: 4,
+  keysSpent: 7,
+  casesOpened: 2,
   powerUpsGrabbed: 2,
   trapsPlaced: 1,
   device: 'Touch',
@@ -98,7 +99,18 @@ const crewSummary: RunSummary = {
   party: { ...crewPartyV2, runKey: CREW_KEY },
 }
 
-const { modifiers: _modifiers, ...beforeModifiers } = crewSummary
+// NOTE: the shop's purchases, in a summary from a build before the keys.
+const {
+  keysSpent: _keysSpent,
+  casesOpened: _casesOpened,
+  ...withoutKeys
+} = crewSummary
+const shopFields = { ...withoutKeys, purchases: 4 }
+
+const { modifiers: _modifiers, ...beforeModifiers } = shopFields
+
+// NOTE: a summary from a build before the keys (version 4).
+const versionFourSummaryJson = toJson({ ...shopFields, version: 4 })
 
 const crewV2SummaryJson = toJson({
   ...beforeModifiers,
@@ -110,8 +122,14 @@ const crewV2SummaryJson = toJson({
 const versionThreeSummaryJson = toJson({ ...beforeModifiers, version: 3 })
 
 // NOTE: a summary from a build before co-op summaries: no party.
-const { party: _party, ...olderFields } = summary
-const olderSummaryJson = toJson({ ...olderFields, version: 1 })
+const {
+  party: _party,
+  modifiers: _soloModifiers,
+  keysSpent: _soloKeysSpent,
+  casesOpened: _soloCasesOpened,
+  ...olderFields
+} = summary
+const olderSummaryJson = toJson({ ...olderFields, purchases: 4, version: 1 })
 
 const encodeSummary = (posted: RunSummary): string =>
   Result.getOrThrow(Schema.encodeResult(RunSummaryJson)(posted))
@@ -327,7 +345,7 @@ describe('POST /api/runs', () => {
         )
         expect(value_6).toEqual([
           {
-            summary_version: 4,
+            summary_version: 5,
             difficulty: 'Hard',
             party: 'Crew',
             crew_size: 3,
@@ -352,7 +370,7 @@ describe('POST /api/runs', () => {
         setup,
         'SELECT summary_version, modifiers FROM runs',
       )
-      expect(value_7).toEqual([{ summary_version: 4, modifiers: 12 }])
+      expect(value_7).toEqual([{ summary_version: 5, modifiers: 12 }])
     }),
   )
 
@@ -370,6 +388,34 @@ describe('POST /api/runs', () => {
       const value_8 = yield* rowCount(setup)
       expect(value_8).toBe(0)
     }),
+  )
+
+  it.effect(
+    'keys spent and cases opened are stored, and a version 4 summary keeps its purchases',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        expect((yield* post(setup, summaryJson)).status).toBe(202)
+        expect((yield* post(setup, versionFourSummaryJson)).status).toBe(202)
+        const rows = yield* query(
+          setup,
+          'SELECT summary_version, purchases, keys_spent, cases_opened FROM runs ORDER BY id',
+        )
+        expect(rows).toEqual([
+          {
+            summary_version: 5,
+            purchases: 0,
+            keys_spent: 7,
+            cases_opened: 2,
+          },
+          {
+            summary_version: 4,
+            purchases: 4,
+            keys_spent: null,
+            cases_opened: null,
+          },
+        ])
+      }),
   )
 
   it.effect('a version 3 summary from a cached build stores no modifiers', () =>
@@ -435,7 +481,7 @@ describe('POST /api/runs', () => {
         )
         expect(value_12).toEqual([
           {
-            summary_version: 4,
+            summary_version: 5,
             party: 'Solo',
             crew_size: 1,
             seat_kills: null,
@@ -753,7 +799,7 @@ const crewRowJson = (
 ): string =>
   runKey === null
     ? toJson({
-        ...crewSummary,
+        ...shopFields,
         version: 2,
         outcome,
         wave,

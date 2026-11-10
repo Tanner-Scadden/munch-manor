@@ -26,6 +26,7 @@ import {
   trapBlockers,
 } from '../gear/traps'
 import { maybePanOf } from '../gear/weapons'
+import { dropKeys } from '../keys/keys'
 import { burnHearth } from '../kitchen/gasValve'
 import { advanceKitchen, soupSkid } from '../kitchen/kitchen'
 import { advancePantry } from '../kitchen/pantry'
@@ -52,30 +53,22 @@ import {
   Phase,
   type Player,
   type PlayerSlot,
-  ShopState,
   type Vector,
   type Zombie,
-  idleIntent,
 } from '../schema/worldSchema'
 import { advancePurchase } from '../shop/purchase'
-import { refreshShopPresence } from '../shop/shop'
 import { advanceIntensity } from '../waves/pacing'
 import { advanceRound, endWhenDefeated } from '../waves/waves'
 import { recoverActions } from '../zombies/actions'
 import { advanceBossMoves, puddleSlowAt } from '../zombies/boss'
 import { advanceChuckers } from '../zombies/chucker'
 import { advanceCrawlers, ankleSlowAt, ankleSlowNear } from '../zombies/crawler'
-import { advanceFrenzy, payWipedPacks } from '../zombies/frenzy'
+import { advanceFrenzy, keyWipedPacks } from '../zombies/frenzy'
 import { advanceZombies, recordFootfalls } from '../zombies/zombieMotion'
 import { wearOf } from '../zombies/zombies'
 import { moveCircle } from './collision'
 import { resolveBlasts } from './combat'
-import {
-  advanceBullets,
-  fire,
-  shutStallOutsideBreak,
-  tickReload,
-} from './firing'
+import { advanceBullets, fire, tickReload } from './firing'
 import {
   OUTWARD,
   addVectors,
@@ -93,11 +86,6 @@ import { resolveBulletHits, resolvePlayerContact } from './hits'
 
 // NOTE: the player's intent is the step's input. A player at the stall's
 // counter does nothing else, whatever they hold.
-const gateIntent = (model: World, slot: PlayerSlot): World =>
-  ShopState.isAnyOf(['Browsing'])(seatStateAt(model, slot).shop)
-    ? modifySeat(model, slot, { intent: () => idleIntent })
-    : model
-
 // PLAYER
 
 const tickInvulnerability = (
@@ -289,21 +277,18 @@ const moveSeat =
     const { seat, intent } = seatStateAt(model, slot)
     return Life.isAnyOf(['BledOut'])(seat.life)
       ? model
-      : gateIntent(
-          modifySeat(model, slot, {
-            player: player =>
-              movePlayer(
-                level,
-                player,
-                intent.move,
-                speedOf(model, slot),
-                blockers,
-                seconds,
-                deltaMs,
-              ),
-          }),
-          slot,
-        )
+      : modifySeat(model, slot, {
+          player: player =>
+            movePlayer(
+              level,
+              player,
+              intent.move,
+              speedOf(model, slot),
+              blockers,
+              seconds,
+              deltaMs,
+            ),
+        })
   }
 
 // NOTE: one tick of the seat at `slot` walking and turning from its
@@ -383,16 +368,12 @@ const armSeat =
         ? swingWhileDown(faceTowardIntent(model, slot), slot, deltaMs)
         : faceTowardIntent(model, slot)
 
-// NOTE: only a standing player shops at the stall or holds to buy.
-const visitStall =
+// NOTE: only a standing player holds to buy.
+const holdToBuy =
   (deltaMs: number) =>
   (model: World, slot: PlayerSlot): World =>
     isStanding(seatStateAt(model, slot).seat)
-      ? advancePurchase(
-          gateIntent(refreshShopPresence(model, slot), slot),
-          slot,
-          deltaMs,
-        )
+      ? advancePurchase(model, slot, deltaMs)
       : model
 
 const standingSeats = (
@@ -429,7 +410,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     }),
     moveSeat(level, blockers, seconds, deltaMs),
   )
-  const routed = forEachSeat(moved, visitStall(deltaMs))
+  const routed = forEachSeat(moved, holdToBuy(deltaMs))
 
   const armed = forEachSeat(routed, armSeat(deltaMs))
 
@@ -457,7 +438,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   )
   return pipe(
     advanceFrenzy(fought, deltaMs),
-    frenzied => payWipedPacks(model, frenzied),
+    frenzied => keyWipedPacks(model, frenzied),
     clearBrokenTraps,
     blasted => feelIntensity(model, blasted, deltaMs),
     felt => advancePowerUps(felt, advanceRound(felt, deltaMs), deltaMs),
@@ -470,9 +451,9 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     shed => resolveShatters(model, shed),
     downed => advanceParty(downed, deltaMs),
     endWhenDefeated,
+    dropKeys,
     ended => tallyFeats(model, ended),
     advanceCases,
-    shutStallOutsideBreak,
   )
 }
 

@@ -12,7 +12,6 @@ import {
   type Model,
   Phase,
   Reload,
-  ShopState,
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import {
@@ -23,11 +22,7 @@ import {
   PISTOL_RELOAD_MS,
   PREPARATION_MS,
 } from '../../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  withArsenal,
-  withShopDialogOpen,
-} from '../../../test/model.fixture'
+import { DISTANT_SPAWN, withArsenal } from '../../../test/model.fixture'
 import {
   APPLICATION,
   countdownTicks,
@@ -321,32 +316,6 @@ describe('reload pauses', () => {
       }),
     ),
   )
-
-  it.effect('a reload does not progress while the shop is open', () => {
-    const shopping = modifyFocus(
-      withShopDialogOpen(withPistolLoaded(preparing, 3)),
-      {
-        shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-        player: player =>
-          modifyFields(player, {
-            reload: () =>
-              Reload.Reloading({
-                remainingMs: 400,
-                durationMs: PISTOL_RELOAD_MS,
-              }),
-          }),
-      },
-    )
-    return Story.story(
-      APPLICATION,
-      Story.given(shopping),
-      ...ticks(PISTOL_RELOAD_TICKS, FRAME_MS),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(reloadingMs(player.reload)).toEqual(Option.some(400))
-        expect(pistolOf(player).loaded).toBe(3)
-      }),
-    )
-  })
 })
 
 describe('swapping', () => {
@@ -526,20 +495,4 @@ describe('the idle reload below Hard', () => {
       }),
     ),
   )
-
-  it.effect('nothing reloads at the counter', () => {
-    const shopping = modifyFocus(
-      withShopDialogOpen(withPistolLoaded(preparing, 3)),
-      { shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }) },
-    )
-    return Story.story(
-      APPLICATION,
-      Story.given(shopping),
-      ...ticks(IDLE_TICKS * 2, FRAME_MS),
-      Story.model(current => {
-        expect(isReloadingNow(current)).toBe(false)
-        expect(pistolOf(focusOf(current).player).loaded).toBe(3)
-      }),
-    )
-  })
 })

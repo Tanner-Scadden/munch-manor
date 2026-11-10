@@ -189,13 +189,11 @@ describe('inputs and presses', () => {
       SeatAction.Reload(),
       SeatAction.PlaceTrap(),
       SeatAction.NextTrap(),
-      SeatAction.LeaveCounter(),
       SeatAction.Ready(),
       SeatAction.Melee(),
       SeatAction.Draw({ slot: 'First' }),
       SeatAction.Draw({ slot: 'Second' }),
-      SeatAction.Buy({ item: 'LaserSight' }),
-      SeatAction.Buy({ item: 'Pistol' }),
+      SeatAction.CallMedic(),
     ]
     Array.forEach(actions, action => {
       expect(
@@ -215,16 +213,11 @@ describe('inputs and presses', () => {
       [SeatAction.Reload(), 2],
       [SeatAction.PlaceTrap(), 3],
       [SeatAction.NextTrap(), 4],
-      [SeatAction.LeaveCounter(), 5],
-      [SeatAction.Ready(), 6],
-      [SeatAction.Melee(), 7],
-      [SeatAction.Draw({ slot: 'First' }), 8],
-      [SeatAction.Draw({ slot: 'Second' }), 9],
-      [SeatAction.CallMedic(), 10],
-      [SeatAction.Buy({ item: 'Shotgun' }), 16],
-      [SeatAction.Buy({ item: 'Smg' }), 17],
-      [SeatAction.Buy({ item: 'LaserSight' }), 18],
-      [SeatAction.Buy({ item: 'Pistol' }), 19],
+      [SeatAction.Ready(), 5],
+      [SeatAction.Melee(), 6],
+      [SeatAction.Draw({ slot: 'First' }), 7],
+      [SeatAction.Draw({ slot: 'Second' }), 8],
+      [SeatAction.CallMedic(), 9],
     ]
     Array.forEach(pinned, ([action, code]) => {
       expect(actionCodeOf(action)).toBe(code)

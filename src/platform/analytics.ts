@@ -18,8 +18,10 @@ import { Difficulty } from '../shared/playerData'
 // a report counts a game once. The Worker still takes version 1 from a
 // build cached before co-op, as Solo, and version 2 with no key. Version 4
 // adds `modifiers`, the run modifiers that bit, as a mask; the Worker still
-// takes version 3 with none.
-export const RUN_SUMMARY_VERSION = 4
+// takes version 3 with none. Version 5 (docs/ESCAPE_PLAN.md, layer 7: keys
+// and no shop) has `keysSpent` and `casesOpened` in place of `purchases`;
+// the Worker still takes version 4 and older with their purchases.
+export const RUN_SUMMARY_VERSION = 5
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -155,7 +157,7 @@ export const SOLO_PARTY: SummaryParty = SoloParty.make({})
 // NOTE: nothing in a summary identifies a person. visitId is random per page
 // visit, made in a Command, and only groups one visit's runs. A co-op
 // summary names no teammate and no room: its run key is a hash.
-const runFields = {
+const baseFields = {
   visitId: VisitId,
   build: BuildId,
   mode: SummaryMode,
@@ -167,13 +169,16 @@ const runFields = {
   ),
   kills: SummaryKills,
   heartsLost: Count,
-  purchases: Count,
   powerUpsGrabbed: Count,
   trapsPlaced: Count,
   device: SummaryDevice,
   screenFit: SummaryScreenFit,
   frameTime: FrameTimeBucket,
 }
+
+// NOTE: the fields of a summary from a build with a shop (version 4 and
+// older), its purchases counted.
+const runFields = { ...baseFields, purchases: Count }
 
 // NOTE: the run modifiers that bit (src/world/run/modifiers.ts), a bit for each:
 // Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8. Repeated here so the Worker
@@ -182,13 +187,25 @@ const ModifierMask = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: 15 }),
 )
 
+// NOTE: the skeleton keys the crew spent on boards and fridge pulls
+// (src/world/keys/keys.ts), and the display cases the run opened.
 export const RunSummary = Schema.Struct({
   version: Schema.Literal(RUN_SUMMARY_VERSION),
-  ...runFields,
+  ...baseFields,
+  keysSpent: Count,
+  casesOpened: Count,
   party: SummaryParty,
   modifiers: ModifierMask,
 })
 export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before the keys, with its shop purchases.
+const RunSummaryV4 = Schema.Struct({
+  version: Schema.Literal(4),
+  ...runFields,
+  party: SummaryParty,
+  modifiers: ModifierMask,
+})
 
 // NOTE: a summary from a build before the run modifiers.
 const RunSummaryV3 = Schema.Struct({
@@ -214,9 +231,10 @@ export const RunSummaryV1 = Schema.Struct({
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
 // NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 3, 2, or 1 from a build cached before it.
+// version, or version 4, 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
+  RunSummaryV4,
   RunSummaryV3,
   RunSummaryV2,
   RunSummaryV1,

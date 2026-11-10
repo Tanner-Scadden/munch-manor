@@ -186,6 +186,8 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     PrizeLeft: () => Option.some<SoundEffect>('Thud'),
     DudBurped: () => Option.none<SoundEffect>(),
     PantryTaken: ({ goodie }) => Option.some(PANTRY_SOUNDS[goodie]),
+    // NOTE: a key's ching as it flies to the ring (src/world/keys/keys.ts).
+    KeysFound: () => Option.some<SoundEffect>('Purchase'),
     CrateTaken: () => Option.some<SoundEffect>('Swap'),
     TrapMended: () => Option.some<SoundEffect>('Tink'),
     LidLaunched: () => Option.some<SoundEffect>('Whoosh'),

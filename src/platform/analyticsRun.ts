@@ -1,4 +1,4 @@
-import { Function, Option, String } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 
 import type { Lobby } from '@munch/netcode'
 
@@ -9,7 +9,12 @@ import { isInRun } from '../domain/run'
 import type { Difficulty } from '../shared/playerData'
 import { isCoop, leadSeatOf, playersOf } from '../world/party/party'
 import { maskOfModifiers } from '../world/run/modifiers'
-import { Phase, RunMode, type RunStats } from '../world/schema/worldSchema'
+import {
+  CaseState,
+  Phase,
+  RunMode,
+  type RunStats,
+} from '../world/schema/worldSchema'
 import { roundWave } from '../world/waves/waves'
 import {
   CREW_RUN_KEY_LENGTH,
@@ -168,6 +173,12 @@ const partyOf = (run: Model, visitId: string): SummaryParty => {
 
 // NOTE: an online run plays on the room's difficulty, kept with the run
 // (maybeRoomDifficulty) so a LEAVE, which drops the room, still has it.
+// NOTE: the display cases the run's feats sprang open, taken or not.
+const casesOpenedOf = (run: Model): number =>
+  Array.filter(run.cases, ({ state }) =>
+    CaseState.isAnyOf(['Opened', 'Emptied'])(state),
+  ).length
+
 export const playedDifficultyOf = (run: Model): Difficulty =>
   Option.getOrElse(run.maybeRoomDifficulty, () => run.difficulty.chosen)
 
@@ -207,7 +218,8 @@ export const runSummaryOf: {
       runMs: Math.round(stats.runMs),
       kills: stats.kills,
       heartsLost: stats.heartsLost,
-      purchases: stats.purchases,
+      keysSpent: run.keys.spent,
+      casesOpened: casesOpenedOf(run),
       powerUpsGrabbed: stats.powerUpsGrabbed,
       trapsPlaced: stats.trapsPlaced,
       device: run.lastDevice,

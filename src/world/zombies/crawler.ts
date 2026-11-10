@@ -5,6 +5,7 @@ import { PLAYER_RADIUS } from '../../shared/constants'
 import { type Seeded, between, nextRandom } from '../../shared/prng'
 import { trapBlockers } from '../gear/traps'
 import { type Level, distanceToBox, isSolidAt } from '../level/arena'
+import { RATTLES_BOX } from '../level/arena'
 import { nearestOf, targetsOf } from '../party/party'
 import type { World } from '../schema/world'
 import {
@@ -14,7 +15,6 @@ import {
   type Zombie,
   ZombieAction,
 } from '../schema/worldSchema'
-import { STALL_BOX } from '../shop/shop'
 import { circlesOverlap, distanceBetween } from '../step/geometry'
 import { bodyRadiusOf, isFree, isWalking } from './zombies'
 
@@ -94,7 +94,7 @@ const isClearOfProps = (
   point: Vector,
   traps: ReadonlyArray<Trap>,
 ): boolean =>
-  distanceToBox(point, STALL_BOX) > CRAWLER_RULES.propClearPx &&
+  distanceToBox(point, RATTLES_BOX) > CRAWLER_RULES.propClearPx &&
   Array.every(
     trapBlockers(level, traps),
     box => distanceToBox(point, box) > CRAWLER_RULES.propClearPx,

@@ -65,10 +65,10 @@ export type Decal = typeof Decal.Type
 // the client's own, so the room's World needs nothing new for it.
 export const TellWatch = Schema.Struct({
   traps: Schema.Array(Schema.Struct({ id: Schema.Finite, hp: Schema.Finite })),
-  earned: Schema.Array(
-    Schema.Struct({ slot: Schema.Finite, earned: Schema.Finite }),
+  keysFound: Schema.Array(
+    Schema.Struct({ slot: Schema.Finite, keysFound: Schema.Finite }),
   ),
 })
 export type TellWatch = typeof TellWatch.Type
 
-export const noTellWatch: TellWatch = { traps: [], earned: [] }
+export const noTellWatch: TellWatch = { traps: [], keysFound: [] }

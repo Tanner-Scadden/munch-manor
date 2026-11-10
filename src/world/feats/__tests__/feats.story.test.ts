@@ -21,6 +21,7 @@ import {
   playingModel,
   veteranFighting,
   withFeatsOf,
+  withKeys,
   withZombies,
 } from '../../../test/model.fixture'
 import {
@@ -201,7 +202,7 @@ describe('exploring feats, one player', () => {
       APPLICATION,
       Story.given(
         modifyFocus(
-          modifyFields(pastTimedBreaks(freshRunModel()), {
+          modifyFields(withKeys(pastTimedBreaks(freshRunModel()), 5), {
             phase: () =>
               Phase.Preparation({
                 wave: 3,
@@ -211,7 +212,6 @@ describe('exploring feats, one player', () => {
               }),
           }),
           {
-            wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
             player: player =>
               modifyFields(player, {
                 x: () => BELOW_KITCHEN_DOOR.x,

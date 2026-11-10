@@ -18,7 +18,7 @@ import {
 } from '@game/features/coop/testing'
 import type { Model as HeroPickerModel } from '@game/features/heroes/model'
 import type { RoomWorld } from '@game/world/net/roomWorld'
-import { modifySeat, modifySeatRecord } from '@game/world/party/party'
+import { modifySeatRecord } from '@game/world/party/party'
 import { Session } from '@munch/netcode'
 
 import { type HarnessConfig } from './config'
@@ -72,12 +72,12 @@ const coopRoom = (
 const COOP_NAMES = ['Tanner', 'Mo', 'Pip', 'Grumbles']
 
 // NOTE: each staged player's run for the end card's crew board: kills,
-// revives, downs, shots fired and landed, money earned and left.
+// revives, downs, shots fired and landed, and keys found.
 const COOP_RUNS = [
-  [212, 1, 2, 640, 410, 2450, 180],
-  [148, 4, 1, 520, 230, 1800, 40],
-  [96, 0, 5, 300, 220, 1210, 600],
-  [171, 2, 0, 900, 380, 2900, 15],
+  [212, 1, 2, 640, 410, 14],
+  [148, 4, 1, 520, 230, 9],
+  [96, 0, 5, 300, 220, 6],
+  [171, 2, 0, 900, 380, 11],
 ]
 
 const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
@@ -85,25 +85,16 @@ const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
   world: Array.reduce(
     COOP_RUNS,
     modifyFields(room.world, { phase: () => phase }),
-    (world, [kills, revives, downs, fired, hit, earned, balance], slot) =>
-      modifySeatRecord(
-        modifySeat(world, slot, {
-          wallet: wallet => ({
-            ...wallet,
-            earned: earned ?? 0,
-            balance: balance ?? 0,
-          }),
-        }),
-        slot,
-        seat => ({
-          ...seat,
-          kills: kills ?? 0,
-          revives: revives ?? 0,
-          downs: downs ?? 0,
-          shotsFired: fired ?? 0,
-          shotsHit: hit ?? 0,
-        }),
-      ),
+    (world, [kills, revives, downs, fired, hit, keysFound], slot) =>
+      modifySeatRecord(world, slot, seat => ({
+        ...seat,
+        kills: kills ?? 0,
+        revives: revives ?? 0,
+        downs: downs ?? 0,
+        shotsFired: fired ?? 0,
+        shotsHit: hit ?? 0,
+        keysFound: keysFound ?? 0,
+      })),
   ),
 })
 

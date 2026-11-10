@@ -90,12 +90,12 @@ const midRun: Model = modifyFields(home, {
   difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
   lastDevice: () => 'Touch',
   screenFit: () => 'Installed',
+  keys: ring => modifyFields(ring, { spent: () => 3 }),
   stats: () =>
     modifyFields(freshStats, {
       kills: () =>
         modifyFields(noKills, { Shambler: () => 30, Runner: () => 4 }),
       heartsLost: () => 2,
-      purchases: () => 3,
       powerUpsGrabbed: () => 1,
       trapsPlaced: () => 2,
       activeFrames: () => 1000,
@@ -120,7 +120,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 4,
+  version: 5,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -128,12 +128,13 @@ const expectedSummary = (
   runMs: Math.round(200_000 + FRAME_MS),
   kills: modifyFields(noKills, { Shambler: () => 30, Runner: () => 4 }),
   heartsLost: 2,
-  purchases: 3,
   powerUpsGrabbed: 1,
   trapsPlaced: 2,
   device: 'Touch',
   screenFit: 'Installed',
   frameTime: 'Under17Ms',
+  keysSpent: 3,
+  casesOpened: 0,
   party: SOLO_PARTY,
   modifiers: 0,
   ...overrides,
@@ -176,7 +177,8 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 5))).toEqual(Option.none())
+    expect(decode(withField('version', 6))).toEqual(Option.none())
+    expect(decode(withField('keysSpent', -1))).toEqual(Option.none())
     expect(decode(withField('modifiers', 16))).toEqual(Option.none())
     expect(decode(withField('modifiers', -1))).toEqual(Option.none())
     expect(decode(withField('modifiers', 1.5))).toEqual(Option.none())
@@ -205,8 +207,25 @@ describe('the run summary schema', () => {
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.some(crew))
   })
 
+  // NOTE: a summary from a build with a shop counts its purchases, and has
+  // no keys or cases.
+  const {
+    keysSpent: _keysSpent,
+    casesOpened: _casesOpened,
+    ...shopless
+  } = summary
+  const withShop = { ...shopless, purchases: 3 }
+
+  test('a version 4 summary from a cached build still decodes, with its purchases', () => {
+    const json = jsonOf({ ...withShop, version: 4 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({ ...withShop, version: 4 }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
   test('a version 3 summary from a cached build still decodes, with no modifiers', () => {
-    const { modifiers: _modifiers, ...older } = summary
+    const { modifiers: _modifiers, ...older } = withShop
     const json = jsonOf({ ...older, version: 3 })
     expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
       Option.some({
@@ -218,7 +237,7 @@ describe('the run summary schema', () => {
   })
 
   test('a version 2 crew summary from a cached build still decodes, with no key', () => {
-    const { modifiers: _modifiers, ...older } = summary
+    const { modifiers: _modifiers, ...older } = withShop
     const json = jsonOf({ ...older, version: 2, party: CREW_V2 })
     expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
       Option.some({
@@ -231,7 +250,7 @@ describe('the run summary schema', () => {
   })
 
   test('a version 1 summary from a cached build still decodes, with no party', () => {
-    const { party: _party, modifiers: _modifiers, ...older } = summary
+    const { party: _party, modifiers: _modifiers, ...older } = withShop
     const json = jsonOf({ ...older, version: 1 })
     expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
       Option.some({

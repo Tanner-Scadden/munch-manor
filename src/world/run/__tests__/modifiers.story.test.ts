@@ -19,11 +19,7 @@ import { startOrResume } from '../../../app/runFlow'
 import { addBot } from '../../../domain/bots'
 import { effectiveModifiersOf } from '../../../domain/onlineRun'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
-import {
-  FIXED_STEP_MS,
-  PLAYER_MAX_HP,
-  SHAMBLER_BOUNTY,
-} from '../../../shared/constants'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
   atFridge,
@@ -64,11 +60,12 @@ import type { World } from '../../schema/world'
 import { type Lob, type PlannedSpawn } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
 import { beginPreparation } from '../../waves/waves'
+import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
   MODIFIER_ORDER,
   type Modifiers,
   bonusPercentOf,
-  brokenKillPay,
+  brokeKeyScaleOf,
   isModifierOn,
   maskOfModifiers,
   modifiersOfMask,
@@ -132,14 +129,9 @@ describe('the set and its bonus', () => {
     })
   })
 
-  test('Broke halves a kill to the nearest dollar and never to nothing', () => {
-    const broke = only({ broke: true })
-    expect(brokenKillPay(broke, 150)).toBe(75)
-    expect(brokenKillPay(broke, 4)).toBe(2)
-    expect(brokenKillPay(broke, 3)).toBe(2)
-    expect(brokenKillPay(broke, 1)).toBe(1)
-    expect(brokenKillPay(broke, 0)).toBe(0)
-    expect(brokenKillPay(noModifiers, 4)).toBe(4)
+  test('Broke halves the key odds', () => {
+    expect(brokeKeyScaleOf(only({ broke: true }))).toBe(0.5)
+    expect(brokeKeyScaleOf(noModifiers)).toBe(1)
   })
 })
 
@@ -335,8 +327,8 @@ describe('Broke', () => {
       modifyFields(pacing, { warnedPacks: () => [DISTANT_SPAWN.pack] }),
   })
 
-  const shamblerDown = (modifiers: Modifiers): Model => {
-    const victim: Zombie = zombieOf('Shambler', 100, 60, 85, { hp: 1 })
+  const bigLugDown = (modifiers: Modifiers): Model => {
+    const victim: Zombie = zombieOf('Tank', 100, 60, 85, { hp: 1 })
     return withModifiers(
       modifyFields(fighting, {
         zombies: () => [victim],
@@ -349,17 +341,16 @@ describe('Broke', () => {
   const paidFor = (modifiers: Modifiers) =>
     Story.story(
       APPLICATION,
-      Story.given(shamblerDown(modifiers)),
+      Story.given(bigLugDown(modifiers)),
       tick(FRAME_MS),
-    ).pipe(Effect.map(current => focusOf(current).wallet.balance))
+    ).pipe(Effect.map(current => current.keys.held))
 
-  it.effect('a kill pays half', () =>
+  it.effect('a Big Lug drops half its keys', () =>
     Effect.gen(function* () {
       const full = yield* paidFor(noModifiers)
       const broke = yield* paidFor(only({ broke: true }))
-      expect(full).toBe(SHAMBLER_BOUNTY)
-      expect(broke).toBe(brokenKillPay(only({ broke: true }), SHAMBLER_BOUNTY))
-      expect(broke).toBeLessThan(full)
+      expect(full).toBe(ZOMBIE_KINDS.Tank.keys)
+      expect(broke).toBe(ZOMBIE_KINDS.Tank.keys / 2)
     }),
   )
 
@@ -382,9 +373,9 @@ describe('Broke', () => {
         ...ticks(HOLD_TICKS, FRAME_MS),
         release('Enter'),
         Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(100)
+          expect(current.keys.held).toBe(100)
           expect(current.fridge.pulls).toBe(0)
-          expect(FRIDGE_RULES.price).toBeGreaterThan(0)
+          expect(FRIDGE_RULES.keys).toBeGreaterThan(0)
         }),
       )
     },
@@ -503,7 +494,7 @@ describe('Glass', () => {
           modifiers,
         )
         return Option.match(
-          pullFridge(facing, focusSlotOf(facing), FRIDGE_RULES.price),
+          pullFridge(facing, focusSlotOf(facing), FRIDGE_RULES.keys),
           {
             onNone: () => 'None',
             onSome: pulled =>

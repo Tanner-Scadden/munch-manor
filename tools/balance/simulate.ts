@@ -73,7 +73,9 @@ const tuneTables = Effect.map(
   Effect.all({
     wavePlans: Effect.promise(() => import('../../src/world/waves/wavePlans')),
     zombies: Effect.promise(() => import('../../src/world/zombies/zombies')),
-    shop: Effect.promise(() => import('../../src/world/shop/shop')),
+    keys: Effect.promise(() => import('../../src/world/keys/keys')),
+    exits: Effect.promise(() => import('../../src/world/level/exits')),
+    fridge: Effect.promise(() => import('../../src/world/fridge/leftovers')),
     weapons: Effect.promise(() => import('../../src/world/gear/weapons')),
     traps: Effect.promise(() => import('../../src/world/gear/traps')),
     powerups: Effect.promise(() => import('../../src/world/gear/powerups')),
@@ -86,7 +88,9 @@ const tuneTables = Effect.map(
   modules => ({
     WAVE_PLANS: modules.wavePlans.WAVE_PLANS,
     ZOMBIE_KINDS: modules.zombies.ZOMBIE_KINDS,
-    SHOP_ITEMS: modules.shop.SHOP_ITEMS,
+    KEY_RULES: modules.keys.KEY_RULES,
+    EXIT_RULES: modules.exits.EXIT_RULES,
+    FRIDGE_RULES: modules.fridge.FRIDGE_RULES,
     WEAPONS: modules.weapons.WEAPONS,
     UPGRADE_TIERS: modules.weapons.UPGRADE_TIERS,
     TRAPS: modules.traps.TRAPS,

@@ -424,9 +424,7 @@ describe('victory', () => {
           Story.model(current => {
             expect(
               eventsTagged(current.frameEvents, 'ZombieKilled'),
-            ).toMatchObject([
-              { kind: 'Boss', bounty: ZOMBIE_KINDS.Boss.bounty },
-            ])
+            ).toMatchObject([{ kind: 'Boss' }])
             expect(current.hitStop).toMatchObject({
               _tag: 'Slowed',
               carryMs: 0,

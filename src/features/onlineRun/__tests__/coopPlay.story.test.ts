@@ -3,25 +3,18 @@ import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
-import { DialogBlock } from '@foldkit/ui'
 
-import { CoopBinding, ShopDialogBinding } from '../../../app/bindings'
+import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, Lesson, type Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PlaySound } from '../../../app/update/sound'
 import { type SoundEffect, positionVariation } from '../../../audio/audio'
 import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
-import { withShopDialogOpen } from '../../../test/model.fixture'
-import { withSeat } from '../../../test/model.fixture'
-import {
-  APPLICATION,
-  buyAtCounter,
-  checkPendingSounds,
-  closeDialog,
-  showDialog,
-} from '../../../test/testing'
+import { withKeys } from '../../../test/model.fixture'
+import { APPLICATION, checkPendingSounds } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
+import { heldKeys } from '../../../world/keys/keys'
 import {
   DEFAULT_ROOM_SETTINGS,
   type RoomWorld,
@@ -29,34 +22,26 @@ import {
   ownWorldOf,
   startRoomWorld,
 } from '../../../world/net/roomWorld'
-import {
-  focusOf,
-  leadSeatOf,
-  maybePlayerAt,
-  modifyFocus,
-} from '../../../world/party/party'
+import { focusOf, leadSeatOf, maybePlayerAt } from '../../../world/party/party'
 import {
   type Bullet,
   GameEvent,
   Phase,
   Pierce,
   RunMode,
-  ShopState,
 } from '../../../world/schema/worldSchema'
 import { aimTracers } from '../../../world/step/firing'
 import { SeatAction } from '../../../world/step/stepWorld'
-import { beginPreparation, startWaveEarly } from '../../../world/waves/waves'
+import { startWaveEarly } from '../../../world/waves/waves'
 import { Message as CoopMessage } from '../../coop/message'
 import { freshRoom } from '../../coop/roomState'
 import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom, SendRoomFrames } from '../../coop/update'
-import { DialogBinding } from '../../shop/bindings'
 
 // An online co-op run in the root (src/app/update/coopPlay.ts): the room's World drawn
 // as the game, this player's own seat as the player, presses sent to the
-// room as seat actions, the shop opening when the room says so, and no
-// pause. The room and its network are the co-op Block's, faked here
+// room as seat actions, the crew's one key ring, and no pause. The room and its network are the co-op Block's, faked here
 // with a session already holding a World.
 
 const graduated: Model = modifyFields(asVeteran(initialModel), {
@@ -416,68 +401,15 @@ describe('an online co-op run', () => {
     ),
   )
 
-  it.effect(
-    'the room opening the stall opens the shop, and closing it tells the room',
-    () => {
-      const atStall = {
-        ...roomWorld,
-        world: withSeat(
-          beginPreparation(roomWorld.world, 2, 20_000),
-          OWN_SLOT,
-          world =>
-            modifyFocus(world, {
-              shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-            }),
-        ),
-      }
-      return Story.story(
-        APPLICATION,
-        Story.given(inRun(atStall)),
-        Story.message(roomFrame(100)),
-        showDialog(),
-        Story.model(current => {
-          expect(current.shopDialog.dialog.isOpen).toBe(true)
-        }),
-        buyAtCounter('Shotgun'),
-        Story.messageIn(
-          [ShopDialogBinding, DialogBinding],
-          DialogBlock.Message.CanceledDialog(),
-        ),
-        closeDialog(),
-        Story.model(current => {
-          expect(current.shopDialog.dialog.isOpen).toBe(false)
-          expect(Array.takeRight(queuedOf(current), 2)).toEqual([
-            actionCodeOf(SeatAction.Buy({ item: 'Shotgun' })),
-            actionCodeOf(SeatAction.LeaveCounter()),
-          ])
-        }),
-      )
-    },
-  )
-
-  it.effect(
-    'the room sending the player off the counter closes the shop',
-    () => {
-      const offCounter = {
-        ...roomWorld,
-        world: withSeat(startWaveEarly(roomWorld.world), OWN_SLOT, world =>
-          modifyFocus(world, { shop: () => ShopState.Dismissed() }),
-        ),
-      }
-      const shopping = modifyFocus(withShopDialogOpen(inRun(offCounter)), {
-        shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-      })
-      return Story.story(
-        APPLICATION,
-        Story.given(shopping),
-        Story.message(roomFrame(100)),
-        closeDialog(),
-        Story.model(current => {
-          expect(current.shopDialog.dialog.isOpen).toBe(false)
-          expect(focusOf(current).shop).toEqual(ShopState.Dismissed())
-        }),
-      )
-    },
+  it.effect("the crew's one key ring comes from the room", () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inRun({ ...roomWorld, world: withKeys(roomWorld.world, 6) })),
+      Story.message(roomFrame(100)),
+      Story.model(current => {
+        expect(heldKeys(current)).toBe(6)
+      }),
+    ),
   )
 
   it.effect('leaving the room goes home', () =>

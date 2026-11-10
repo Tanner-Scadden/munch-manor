@@ -2,7 +2,6 @@ import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
-import { playedModifiersOf } from '../domain/onlineRun'
 import {
   BLAST_FLASH_MS,
   BLAST_MAX,
@@ -12,7 +11,6 @@ import {
   KILL_POPUP_LIFT_PX,
   MS_PER_SECOND,
   PAYDAY_POPUP_LIFETIME_MS,
-  PAYDAY_POPUP_LIFT_PX,
   POPUP_DRIFT_SPEED_MAX,
   POPUP_MAX,
   SHAKE_DECAY_PER_SECOND,
@@ -26,15 +24,10 @@ import {
   STREAK_WINDOW_MS,
   TRAP_CRACK_TRAUMA,
 } from '../shared/constants'
-import type { Calling } from '../shared/playerData'
 import { type Seeded, between, generateMany, nextRandom } from '../shared/prng'
 import { TRAPS } from '../world/gear/traps'
 import { WEAPONS } from '../world/gear/weapons'
-import { killPayFor } from '../world/heroes/calling'
-import { kitchenBounty } from '../world/kitchen/kitchenPay'
-import { DOOR_OUTWARD, type Level, levelOf } from '../world/level/arena'
-import { focusOf, modifyFocus } from '../world/party/party'
-import type { Modifiers } from '../world/run/modifiers'
+import { DOOR_OUTWARD } from '../world/level/arena'
 import {
   type Blast,
   GameEvent,
@@ -44,7 +37,6 @@ import {
   Streak,
   stillShake,
 } from '../world/schema/worldSchema'
-import { tickShownMoney } from '../world/shop/shop'
 import { countWhere } from '../world/step/hitStop'
 import { ZOMBIE_KINDS } from '../world/zombies/zombies'
 
@@ -136,6 +128,7 @@ const eventTrauma = (event: GameEvent): number =>
     PrizeLeft: () => 0,
     DudBurped: () => 0,
     PantryTaken: () => 0,
+    KeysFound: () => 0,
     CrateTaken: () => 0,
     TrapMended: () => 0,
     LidLaunched: () => LID_LAUNCH_TRAUMA,
@@ -239,139 +232,110 @@ const popup =
 
 const noPopups = (state: number): Seeded<ReadonlyArray<Popup>> => [state, []]
 
-// NOTE: a kill's popup shows what the kill paid the player, so the Penny
-// Pincher's reads 15% less (src/world/heroes/calling.ts) and a kitchen kill's a quarter
-// more (src/world/kitchen/kitchenPay.ts).
-const eventPopups =
-  (calling: Calling, modifiers: Modifiers, level: Level) =>
-  (state: number, event: GameEvent): Seeded<ReadonlyArray<Popup>> =>
-    GameEvent.match(event, {
-      Fired: () => noPopups(state),
-      ZombieHit: ({ x, y, damage }) =>
-        generateMany(
-          state,
-          1,
-          popup('Damage', damage, x, y - DAMAGE_POPUP_LIFT_PX),
+// NOTE: keys found pop up as `+$1` where they came from, the `$` drawn
+// as a skeleton key (src/art/font.ts), on their way to the ring.
+const eventPopups = (
+  state: number,
+  event: GameEvent,
+): Seeded<ReadonlyArray<Popup>> =>
+  GameEvent.match(event, {
+    Fired: () => noPopups(state),
+    ZombieHit: ({ x, y, damage }) =>
+      generateMany(
+        state,
+        1,
+        popup('Damage', damage, x, y - DAMAGE_POPUP_LIFT_PX),
+      ),
+    ZombieKilled: () => noPopups(state),
+    KeysFound: ({ x, y, count }) =>
+      generateMany(state, 1, popup('Kill', count, x, y - KILL_POPUP_LIFT_PX)),
+    Exploded: ({ x, y, radius }) =>
+      generateMany(state, 1, popup('Kaboom', 0, x, y - radius * 0.6)),
+    Footfall: () => noPopups(state),
+    PlayerHurt: () => noPopups(state),
+    BulletStruck: () => noPopups(state),
+    DryFired: () => noPopups(state),
+    ReloadStarted: () => noPopups(state),
+    Reloaded: () => noPopups(state),
+    WaveCleared: () => noPopups(state),
+    PackWarned: () => noPopups(state),
+    TrapHit: () => noPopups(state),
+    TrapCracked: () => noPopups(state),
+    TrapBroken: () => noPopups(state),
+    PickupDropped: () => noPopups(state),
+    PickupGrabbed: () => noPopups(state),
+    PickupFizzled: () => noPopups(state),
+    BoostFaded: () => noPopups(state),
+    Burped: () => noPopups(state),
+    PartShed: () => noPopups(state),
+    BossRoared: () => noPopups(state),
+    BossWoundUp: () => noPopups(state),
+    BossStomped: () => noPopups(state),
+    BossBelched: () => noPopups(state),
+    BossRushed: () => noPopups(state),
+    BossRammed: () => noPopups(state),
+    BossBonked: () => noPopups(state),
+    BossSpat: () => noPopups(state),
+    GlobLanded: () => noPopups(state),
+    BossEnraged: () => noPopups(state),
+    ZombieGrabbed: () => noPopups(state),
+    ShieldRaised: () => noPopups(state),
+    ZombieThrown: () => noPopups(state),
+    ZombieLanded: () => noPopups(state),
+    CrawlerStirred: () => noPopups(state),
+    CrawlerSurfaced: () => noPopups(state),
+    AnklesGrabbed: () => noPopups(state),
+    PackFrenzied: ({ x, y, door }) =>
+      generateMany(
+        state,
+        1,
+        popup(
+          'Horde',
+          0,
+          x - DOOR_OUTWARD[door].x * HORDE_POPUP_INSET_PX,
+          y - DOOR_OUTWARD[door].y * HORDE_POPUP_INSET_PX,
         ),
-      ZombieKilled: ({ x, y, bounty }) =>
-        generateMany(
-          state,
-          1,
-          popup(
-            'Kill',
-            killPayFor(
-              calling,
-              kitchenBounty(level, { x, y }, bounty),
-              modifiers,
-            ),
-            x,
-            y - KILL_POPUP_LIFT_PX,
-          ),
-        ),
-      Exploded: ({ x, y, radius }) =>
-        generateMany(state, 1, popup('Kaboom', 0, x, y - radius * 0.6)),
-      Footfall: () => noPopups(state),
-      PlayerHurt: () => noPopups(state),
-      BulletStruck: () => noPopups(state),
-      DryFired: () => noPopups(state),
-      ReloadStarted: () => noPopups(state),
-      Reloaded: () => noPopups(state),
-      WaveCleared: ({ x, y, bonus }) =>
-        generateMany(
-          state,
-          1,
-          popup('Payday', bonus, x, y - PAYDAY_POPUP_LIFT_PX),
-        ),
-      PackWarned: () => noPopups(state),
-      TrapHit: () => noPopups(state),
-      TrapCracked: () => noPopups(state),
-      TrapBroken: () => noPopups(state),
-      PickupDropped: () => noPopups(state),
-      PickupGrabbed: () => noPopups(state),
-      PickupFizzled: () => noPopups(state),
-      BoostFaded: () => noPopups(state),
-      Burped: () => noPopups(state),
-      PartShed: () => noPopups(state),
-      BossRoared: () => noPopups(state),
-      BossWoundUp: () => noPopups(state),
-      BossStomped: () => noPopups(state),
-      BossBelched: () => noPopups(state),
-      BossRushed: () => noPopups(state),
-      BossRammed: () => noPopups(state),
-      BossBonked: () => noPopups(state),
-      BossSpat: () => noPopups(state),
-      GlobLanded: () => noPopups(state),
-      BossEnraged: () => noPopups(state),
-      ZombieGrabbed: () => noPopups(state),
-      ShieldRaised: () => noPopups(state),
-      ZombieThrown: () => noPopups(state),
-      ZombieLanded: () => noPopups(state),
-      CrawlerStirred: () => noPopups(state),
-      CrawlerSurfaced: () => noPopups(state),
-      AnklesGrabbed: () => noPopups(state),
-      PackFrenzied: ({ x, y, door }) =>
-        generateMany(
-          state,
-          1,
-          popup(
-            'Horde',
-            0,
-            x - DOOR_OUTWARD[door].x * HORDE_POPUP_INSET_PX,
-            y - DOOR_OUTWARD[door].y * HORDE_POPUP_INSET_PX,
-          ),
-        ),
-      PackWiped: ({ x, y, bonus }) =>
-        generateMany(
-          state,
-          1,
-          popup('Wipe', bonus, x, y - PAYDAY_POPUP_LIFT_PX),
-        ),
-      OvenBelched: () => noPopups(state),
-      Purchased: () => noPopups(state),
-      PurchaseRefused: () => noPopups(state),
-      ExitOpened: () => noPopups(state),
-      FridgeOpened: () => noPopups(state),
-      FridgeSlammed: () => noPopups(state),
-      PrizeTaken: () => noPopups(state),
-      CaseOpened: () => noPopups(state),
-      PrizeLeft: () => noPopups(state),
-      DudBurped: () => noPopups(state),
-      PantryTaken: ({ x, y, cash }) =>
-        cash > 0
-          ? generateMany(
-              state,
-              1,
-              popup('Payday', cash, x, y - KILL_POPUP_LIFT_PX),
-            )
-          : noPopups(state),
-      CrateTaken: () => noPopups(state),
-      TrapMended: () => noPopups(state),
-      LidLaunched: () => noPopups(state),
-      LidBlasted: () => noPopups(state),
-      CookerPopped: () => noPopups(state),
-      PanSwung: () => noPopups(state),
-      PanClanged: () => noPopups(state),
-      PanSmashed: () => noPopups(state),
-      PanFlattened: () => noPopups(state),
-      KnifeStabbed: () => noPopups(state),
-      KnifeHit: () => noPopups(state),
-      HomeRun: () => noPopups(state),
-      FreezeSprayed: () => noPopups(state),
-      ZombieFrozen: () => noPopups(state),
-      ZombieShattered: () => noPopups(state),
-      ZombieSlipped: () => noPopups(state),
-      PlayerDowned: () => noPopups(state),
-      PlayerRevived: () => noPopups(state),
-      FriendlyFire: () => noPopups(state),
-      TeammateSaved: ({ x, y, clutch }) =>
-        generateMany(
-          state,
-          1,
-          popup(clutch ? 'Clutch' : 'Saved', 0, x, y - SAVE_POPUP_LIFT_PX),
-        ),
-      MedicCalled: () => noPopups(state),
-      GunLeveled: () => noPopups(state),
-    })
+      ),
+    PackWiped: () => noPopups(state),
+    OvenBelched: () => noPopups(state),
+    Purchased: () => noPopups(state),
+    PurchaseRefused: () => noPopups(state),
+    ExitOpened: () => noPopups(state),
+    FridgeOpened: () => noPopups(state),
+    FridgeSlammed: () => noPopups(state),
+    PrizeTaken: () => noPopups(state),
+    CaseOpened: () => noPopups(state),
+    PrizeLeft: () => noPopups(state),
+    DudBurped: () => noPopups(state),
+    PantryTaken: () => noPopups(state),
+    CrateTaken: () => noPopups(state),
+    TrapMended: () => noPopups(state),
+    LidLaunched: () => noPopups(state),
+    LidBlasted: () => noPopups(state),
+    CookerPopped: () => noPopups(state),
+    PanSwung: () => noPopups(state),
+    PanClanged: () => noPopups(state),
+    PanSmashed: () => noPopups(state),
+    PanFlattened: () => noPopups(state),
+    KnifeStabbed: () => noPopups(state),
+    KnifeHit: () => noPopups(state),
+    HomeRun: () => noPopups(state),
+    FreezeSprayed: () => noPopups(state),
+    ZombieFrozen: () => noPopups(state),
+    ZombieShattered: () => noPopups(state),
+    ZombieSlipped: () => noPopups(state),
+    PlayerDowned: () => noPopups(state),
+    PlayerRevived: () => noPopups(state),
+    FriendlyFire: () => noPopups(state),
+    TeammateSaved: ({ x, y, clutch }) =>
+      generateMany(
+        state,
+        1,
+        popup(clutch ? 'Clutch' : 'Saved', 0, x, y - SAVE_POPUP_LIFT_PX),
+      ),
+    MedicCalled: () => noPopups(state),
+    GunLeveled: () => noPopups(state),
+  })
 
 const agePopups = (
   popups: ReadonlyArray<Popup>,
@@ -464,8 +428,7 @@ const blastOf = (event: GameEvent): ReadonlyArray<Blast> =>
     : []
 
 // NOTE: the juice runs once a frame, after the step, on the events of all
-// its ticks: shake, popups, blast flashes, the streak, and the money
-// count-up. `deltaMs` is the frame's real time and `worldMs` the world time
+// its ticks: shake, popups, blast flashes, and the streak. `deltaMs` is the frame's real time and `worldMs` the world time
 // its ticks ran.
 export const advanceJuice: {
   (deltaMs: number, worldMs: number): (model: Model) => Model
@@ -488,39 +451,32 @@ export const advanceJuice: {
     const [popupState, popupBatches] = Array.mapAccum(
       events,
       shakeState,
-      eventPopups(
-        focusOf(model).player.calling,
-        playedModifiersOf(model),
-        levelOf(model),
-      ),
+      eventPopups,
     )
 
-    return modifyFocus(
-      modifyFields(model, {
-        blasts: current =>
-          Array.isReadonlyArrayEmpty(current) &&
-          Array.isReadonlyArrayEmpty(newBlasts)
-            ? current
-            : ageBlasts(
-                Array.takeRight([...current, ...newBlasts], BLAST_MAX),
-                deltaMs,
-              ),
-        shake: () => shake,
-        popups: popups =>
-          keepNewestHorde(
-            Array.takeRight(
-              [
-                ...agePopups(popups, seconds, deltaMs),
-                ...Array.flatten(popupBatches),
-              ],
-              POPUP_MAX,
+    return modifyFields(model, {
+      blasts: current =>
+        Array.isReadonlyArrayEmpty(current) &&
+        Array.isReadonlyArrayEmpty(newBlasts)
+          ? current
+          : ageBlasts(
+              Array.takeRight([...current, ...newBlasts], BLAST_MAX),
+              deltaMs,
             ),
+      shake: () => shake,
+      popups: popups =>
+        keepNewestHorde(
+          Array.takeRight(
+            [
+              ...agePopups(popups, seconds, deltaMs),
+              ...Array.flatten(popupBatches),
+            ],
+            POPUP_MAX,
           ),
-        streak: () => streak,
-        bestStreak: best => Math.max(best, streakCount(streak)),
-        cosmeticRngState: () => popupState,
-      }),
-      { wallet: wallet => tickShownMoney(wallet, seconds) },
-    )
+        ),
+      streak: () => streak,
+      bestStreak: best => Math.max(best, streakCount(streak)),
+      cosmeticRngState: () => popupState,
+    })
   },
 )

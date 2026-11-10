@@ -38,6 +38,7 @@ import {
 import { type Screen, screenOf } from '../../render/screen'
 import { STICK_RADIUS_PX } from '../../shared/constants'
 import { percentOf } from '../../ui/menuParts'
+import { gunName } from '../../world/gear/gunLevels'
 import {
   PlaceVerdict,
   type Placement,
@@ -54,6 +55,7 @@ import {
   meleeNameOf,
   tierName,
 } from '../../world/gear/weapons'
+import { RATTLES_BOX } from '../../world/level/arena'
 import { MEDIC_WORD } from '../../world/names'
 import { isCallFresh } from '../../world/party/medic'
 import {
@@ -69,7 +71,6 @@ import {
   Phase,
   TrapHint,
 } from '../../world/schema/worldSchema'
-import { STALL_BOX, gunName } from '../../world/shop/shop'
 import { isRoundActive } from '../../world/waves/waves'
 import { secondsLeft } from './hud'
 
@@ -490,7 +491,7 @@ const sideStyle = (
         : '0px',
       right: isBreak
         ? percentOf(
-            cluster.x + cluster.width - (STALL_BOX.left - STALL_CLEARANCE),
+            cluster.x + cluster.width - (RATTLES_BOX.left - STALL_CLEARANCE),
             cluster.width,
           )
         : '0px',

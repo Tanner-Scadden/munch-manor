@@ -800,8 +800,8 @@ export const openedExitShapes = ({
 
 // NOTE: before the kitchen's first break a padlock hangs at the foot of the
 // boards. From then on the price tag is the purchasable's
-// (src/features/shop/purchaseView.ts).
-const PADLOCK: Sprite = spriteShapes(
+// (src/features/shop/purchaseView.ts), the same padlock with its keys.
+export const PADLOCK_SPRITE: Sprite = spriteShapes(
   [
     '...c...',
     '..kkk..',
@@ -826,7 +826,7 @@ export const padlockShapes = (model: World): ReadonlyArray<Canvas.Shape> =>
       placeAt(
         Math.round((box.left + box.right) / 2) - 3,
         box.top + LOCK_BOARD_Y,
-        PADLOCK,
+        PADLOCK_SPRITE,
       ),
     ],
   })

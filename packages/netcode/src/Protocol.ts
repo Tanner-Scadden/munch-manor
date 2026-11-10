@@ -100,6 +100,12 @@ import {
 // repairs (their item codes and the repair codes are gone, and the items
 // after them moved up), the shop has one category, and two new events:
 // CrateTaken and TrapMended.
+// Skeleton keys and no shop: a seat has no `wallet`, `shop`, or
+// `shopCategory`, the World holds the crew's one key ring (`keys`), a
+// seat's record its `keysFound`, the fridge no cheap pulls, the Buy and
+// LeaveCounter action codes are gone (the draws and CallMedic moved up), a
+// ZombieKilled event no `bounty`, a PackWiped no `bonus`, a WaveCleared its
+// `keys`, the pantry's goodie is a Key, and a new event, KeysFound.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

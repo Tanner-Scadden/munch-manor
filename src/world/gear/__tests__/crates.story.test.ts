@@ -371,7 +371,7 @@ describe('mending traps', () => {
         ...ticks(Math.ceil(FULL_MEND_TICKS / 2) + 1, FRAME_MS),
         Story.model(current => {
           expect(hpOf(current)).toBe(TRAPS.Barricade.hp)
-          expect(focusOf(current).wallet).toEqual(focusOf(readyModel).wallet)
+          expect(current.keys).toEqual(readyModel.keys)
         }),
       ),
   )

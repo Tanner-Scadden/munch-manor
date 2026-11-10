@@ -128,6 +128,8 @@ export type RunRow = Readonly<{
   run_ms: number
   hearts_lost: number
   purchases: number
+  keys_spent: number | null
+  cases_opened: number | null
   power_ups_grabbed: number
   traps_placed: number
   device: string
@@ -180,6 +182,20 @@ const partyColumnsOf = (party: SummaryParty | SummaryPartyV2): PartyColumns =>
 const summaryPartyColumns = (summary: PostedRunSummary): PartyColumns =>
   summary.version === 1 ? SOLO_COLUMNS : partyColumnsOf(summary.party)
 
+// NOTE: a version 5 summary spends keys and opens cases, with no shop to
+// buy from (its purchases are 0); an older one bought from the shop, and
+// has no keys or cases (NULL).
+const shopColumnsOf = (
+  summary: PostedRunSummary,
+): Pick<RunRow, 'purchases' | 'keys_spent' | 'cases_opened'> =>
+  summary.version === 5
+    ? {
+        purchases: 0,
+        keys_spent: summary.keysSpent,
+        cases_opened: summary.casesOpened,
+      }
+    : { purchases: summary.purchases, keys_spent: null, cases_opened: null }
+
 // NOTE: the kills go in as JSON text. They were decoded from the same
 // Schema, so the encode cannot fail; if it did, the request dies as before.
 export const rowOf: {
@@ -202,7 +218,7 @@ export const rowOf: {
         summary.outcome._tag === 'GameOver' ? summary.outcome.killedBy : null,
       run_ms: summary.runMs,
       hearts_lost: summary.heartsLost,
-      purchases: summary.purchases,
+      ...shopColumnsOf(summary),
       power_ups_grabbed: summary.powerUpsGrabbed,
       traps_placed: summary.trapsPlaced,
       device: summary.device,

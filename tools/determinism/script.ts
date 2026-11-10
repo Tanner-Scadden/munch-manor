@@ -17,7 +17,7 @@ import { Lesson, type Model, Phase } from '../../src/app/model'
 import { initialModel, update } from '../../src/app/pureApp'
 import { PLAYER_MAX_HP } from '../../src/shared/constants'
 import { asVeteran } from '../../src/test/veteran'
-import { leadOf, withLeadPlayer } from './lead'
+import { isLeadAtCounter, leadOf, withLeadPlayer } from './lead'
 import type { ScriptMode, StepPattern } from './request'
 
 export type { ScriptMode, StepPattern } from './request'
@@ -99,7 +99,7 @@ const prepareFrame = (model: Model): Model => {
     still.input.mouseButton._tag === 'Held'
       ? send(still, Message.ReleasedPointer({ pointerId: 1 }))
       : still
-  return leadOf(released).shop._tag === 'Browsing'
+  return isLeadAtCounter(released)
     ? tapKey(released, 'Escape')
     : tapKey(released, 'Enter')
 }

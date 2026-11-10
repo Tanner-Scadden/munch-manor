@@ -8,7 +8,7 @@ import { modifyFocus } from '../../world/party/party'
 import { withWorld } from '../../world/schema/world'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import { beginPreparation, isRoundActive } from '../../world/waves/waves'
-import { type Model, Phase, Purchase, RunMode, ShopState } from '../model'
+import { type Model, Phase, Purchase, RunMode } from '../model'
 import { startOrResume } from '../runFlow'
 import { playStartSoundWhen, unlockAudio } from './sound'
 import { type UpdateReturn, combine, withInput } from './step'
@@ -40,7 +40,7 @@ const keepGoing = (model: Model): Model =>
             mode: () => RunMode.Endless(),
             screenMs: () => 0,
           }),
-          { shop: () => ShopState.Away(), purchase: () => Purchase.Idle() },
+          { purchase: () => Purchase.Idle() },
         ),
         world => beginPreparation(world, FINAL_WAVE + 1, PREPARATION_MS),
       )

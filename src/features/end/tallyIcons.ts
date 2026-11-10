@@ -1,4 +1,4 @@
-import { COIN_SPRITE } from '../../art/font'
+import { KEY_SPRITE } from '../../art/font'
 import { type Sprite, spriteShapes } from '../../art/sprite'
 import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
 import type { CrewAward } from '../../world/names'
@@ -7,7 +7,7 @@ import type { CrewAward } from '../../world/names'
 // the crew board's rows and award badges (src/features/end/crewBoardView.ts). Built once
 // at module scope.
 
-export type TallyIcon = 'Wave' | 'Time' | 'Kills' | 'Streak' | 'Aim' | 'Cash'
+export type TallyIcon = 'Wave' | 'Time' | 'Kills' | 'Streak' | 'Aim' | 'Keys'
 
 const PALETTE = {
   X: '#8a5a3a',
@@ -102,17 +102,17 @@ export const TALLY_ICONS: Readonly<Record<TallyIcon, Sprite>> = {
   Streak: sprite(PIXELS.Streak),
   Aim: sprite(PIXELS.Aim),
   Kills: ZOMBIE_SPRITES.Shambler.icon,
-  Cash: COIN_SPRITE,
+  Keys: KEY_SPRITE,
 }
 
-// NOTE: the coin is drawn from its top left, the rest from their middle.
+// NOTE: the key is drawn from its top left, the rest from their middle.
 export const ICON_SHIFT: Readonly<Record<TallyIcon, number>> = {
   Wave: 0,
   Time: 0,
   Kills: 0,
   Streak: 0,
   Aim: 0,
-  Cash: 3,
+  Keys: 3,
 }
 
 export const REVIVE_ICON = sprite(PIXELS.Revive)
@@ -126,6 +126,6 @@ export const AWARD_ICONS: Readonly<Record<CrewAward, Sprite>> = {
   Mvp: CROWN,
   Medic: REVIVE_ICON,
   Sharpshooter: TALLY_ICONS.Aim,
-  BigSpender: sprite(PIXELS.Bag),
+  KeyKeeper: sprite(PIXELS.Bag),
   MostMunched: DOWN_ICON,
 }

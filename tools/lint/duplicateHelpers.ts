@@ -135,12 +135,6 @@ const ALLOWED: ReadonlyArray<
       'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches InputDevice',
   },
   {
-    file: 'src/art/font.ts',
-    name: 'coinRect',
-    reason:
-      'src/render/drawing.ts imports font.ts, so the coin, built as font.ts loads, cannot take rect from it',
-  },
-  {
     file: 'tools/sprites/manifest.ts',
     name: 'SpriteKeys',
     reason:

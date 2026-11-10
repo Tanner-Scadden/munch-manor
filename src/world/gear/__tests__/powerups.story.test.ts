@@ -21,7 +21,6 @@ import {
   type PickupKind,
   Prize,
   Reload,
-  ShopState,
   type Zombie,
   type ZombieKind,
   idleBoosts,
@@ -46,7 +45,6 @@ import {
   DISTANT_SPAWN,
   pickupAt,
   withPickups,
-  withShopDialogOpen,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -67,7 +65,6 @@ import {
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { focusOf, modifyFocus } from '../../party/party'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
   BOOSTS,
   BOOST_STACK_MAX,
@@ -677,14 +674,13 @@ describe('effects', () => {
           }),
         ),
         tick(FRAME_MS),
-        Story.model(({ zombies, seats: [{ wallet, boosts }], frameEvents }) => {
+        Story.model(({ zombies, seats: [{ boosts }], frameEvents }) => {
           const byId = (id: number) =>
             Option.getOrThrow(
               Array.findFirst(zombies, zombie => zombie.id === id),
             )
           expect(byId(near.id).hp).toBe(0)
           expect(byId(far.id).hp).toBe(far.hp)
-          expect(wallet.earned).toBe(ZOMBIE_KINDS.Shambler.bounty)
           expect(tagsOf(frameEvents)).toEqual(
             expect.arrayContaining(['PickupGrabbed', 'Burped', 'ZombieKilled']),
           )
@@ -794,16 +790,6 @@ describe('timers', () => {
           }),
       }),
     ),
-  )
-
-  it.effect(
-    'boosts, pickups, and callouts stand still while the shop is open',
-    () =>
-      expectStaysFrozen(
-        modifyFocus(withShopDialogOpen(preparing), {
-          shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-        }),
-      ),
   )
 
   it.effect('boosts, pickups, and callouts stand still during hit-stop', () =>

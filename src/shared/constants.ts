@@ -262,15 +262,7 @@ export const GLYPH_SHADOW_COLOR = '#2a1418'
 
 export const BULLET_MAX = 48
 
-export const SHAMBLER_BOUNTY = 2
-export const WAVE_BONUS_BASE = 20
-export const WAVE_BONUS_PER_WAVE = 5
-export const MONEY_TICK_PER_SECOND = 10
-
 export const SHOP_FIRST_WAVE = 2
-export const SHOP_REACH_PX = 12
-export const SHOP_LEAVE_PX = 22
-export const SHOP_NEAR_PX = 44
 export const COINS_PER_PURCHASE = 10
 export const COIN_SPEED_MIN = 25
 export const COIN_SPEED_MAX = 60
@@ -299,7 +291,6 @@ export const HULL_DECAL_COLOR = '#8e2a25'
 export const HULL_DECAL_FADED_COLOR = '#4f2624'
 
 export const PAYDAY_POPUP_LIFETIME_MS = 1300
-export const PAYDAY_POPUP_LIFT_PX = 16
 export const ALERT_GLYPH_COLOR = '#ff6b5e'
 export const COIN_GLYPH_COLOR = '#ffe066'
 

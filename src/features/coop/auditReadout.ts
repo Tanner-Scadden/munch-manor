@@ -1,8 +1,8 @@
 import { Array, Option, Schema } from 'effect'
 
 import type { WorldState } from '../../domain/coopRoom'
-import { playersOf, shopOf } from '../../world/party/party'
-import { STALL_BOX } from '../../world/shop/shop'
+import { RATTLES_BOX } from '../../world/level/arena'
+import { playersOf } from '../../world/party/party'
 import { AUDIT_PARAM, ReadoutJson } from './readout'
 
 // The room's World read out for the co-op audit (tools/audit/coop.ts), on
@@ -29,14 +29,15 @@ const readoutFields = (room: WorldState) => ({
   mode: room.world.mode._tag,
   difficulty: room.world.difficulty.chosen,
   wave: 'wave' in room.world.phase ? room.world.phase.wave : 0,
-  stall: STALL_BOX,
+  keys: room.world.keys.held,
+  rattles: RATTLES_BOX,
   zombies: Array.map(room.world.zombies, zombie => ({
     x: Math.round(zombie.x),
     y: Math.round(zombie.y),
   })),
   players: Array.map(
     playersOf(room.world),
-    ({ seat: { slot }, player, seat, wallet }) => ({
+    ({ seat: { slot }, player, seat }) => ({
       slot,
       x: Math.round(player.x * 10) / 10,
       y: Math.round(player.y * 10) / 10,
@@ -45,11 +46,6 @@ const readoutFields = (room: WorldState) => ({
       life: seat.life._tag,
       ready: seat.readiness,
       kills: seat.kills,
-      money: wallet.balance,
-      shop: Option.getOrElse(
-        Option.map(shopOf(room.world, slot), shop => shop._tag),
-        () => 'Away',
-      ),
     }),
   ),
 })

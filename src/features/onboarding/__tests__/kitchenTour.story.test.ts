@@ -11,18 +11,16 @@ import {
   type Model,
   Party,
   Phase,
-  SOLO_SLOT,
   Tour,
 } from '../../../app/model'
 import { forgetTutorial } from '../../../platform/save'
-import { cameraOf } from '../../../render/camera'
-import { maybeBubbleKind } from '../../../screens/game/stallBubble'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { nextRandom } from '../../../shared/prng'
 import {
   AT_FRIDGE,
   atFridgeOnWave,
   freshRunModel,
+  withKeys,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -40,9 +38,14 @@ import {
   pickPrize,
   prizeWeights,
 } from '../../../world/fridge/leftovers'
+import { heldKeys } from '../../../world/keys/keys'
 import { isKitchenOpen } from '../../../world/kitchen/kitchen'
 import { levelOf } from '../../../world/level/arena'
-import { EXIT_RULES, exitPriceFor } from '../../../world/level/exits'
+import {
+  KITCHEN_EXIT,
+  exitKeysOf,
+  exitPriceFor,
+} from '../../../world/level/exits'
 import { focusOf, modifyFocus, soloSeat } from '../../../world/party/party'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
 import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
@@ -66,8 +69,9 @@ const remainingOf = (current: Model): number =>
     GameOver: () => 0,
   })
 
+// NOTE: one key on the ring, short of the boards and a pull.
 const timedBreak = (current: Model): Model =>
-  modifyFocus(
+  withKeys(
     modifyFields(current, {
       phase: () =>
         Phase.Preparation({
@@ -77,7 +81,7 @@ const timedBreak = (current: Model): Model =>
           spawns: [],
         }),
     }),
-    { wallet: () => ({ balance: 5, earned: 5, shown: 5 }) },
+    1,
   )
 
 // NOTE: a new save in the break before wave 3, at the kitchen's boards.
@@ -149,12 +153,12 @@ describe('the kitchen tour', () => {
           expect(isTourRunning(started)).toBe(true)
           expect(stepOf(started)).toEqual(Option.some('Boards'))
           expect(remainingOf(started)).toBe(BREAK_MS)
-          expect(exitPriceFor(started)).toBe(0)
+          expect(exitPriceFor(started, KITCHEN_EXIT)).toBe(0)
         }),
         holdToBuy,
         Story.model(opened => {
           expect(isKitchenOpen(levelOf(opened))).toBe(true)
-          expect(focusOf(opened).wallet.balance).toBe(5)
+          expect(heldKeys(opened)).toBe(1)
           expect(stepOf(opened)).toEqual(Option.some('Fridge'))
         }),
         frames(10),
@@ -169,13 +173,13 @@ describe('the kitchen tour', () => {
     prize =>
       Effect.gen(function* () {
         const start = yield* after(atOpenFridge(prize), frames(1))
-        expect(fridgePriceFor(start, SOLO_SLOT)).toBe(0)
+        expect(fridgePriceFor(start)).toBe(0)
         return yield* Story.story(
           APPLICATION,
           Story.given(start),
           holdToBuy,
           Story.model(pulled => {
-            expect(focusOf(pulled).wallet.balance).toBe(5)
+            expect(heldKeys(pulled)).toBe(1)
             expect(pulled.fridge.pulls).toBe(1)
             const door = pulled.fridge.door
             const pulledPrize = FridgeDoor.isAnyOf(['Open', 'Offering'])(door)
@@ -286,22 +290,6 @@ describe('the kitchen tour', () => {
       }),
   )
 
-  it.effect(
-    "Rattles' trap bubble steps aside while the kitchen tour runs",
-    () =>
-      Story.story(
-        APPLICATION,
-        Story.given(atBoards()),
-        frames(2),
-        Story.model(running => {
-          expect(isTourRunning(running)).toBe(true)
-          expect(maybeBubbleKind(running, cameraOf(running))).toEqual(
-            Option.none(),
-          )
-        }),
-      ),
-  )
-
   it.effect('the skip button ends it: the clock runs and prices are back', () =>
     Story.story(
       APPLICATION,
@@ -310,7 +298,9 @@ describe('the kitchen tour', () => {
       Story.message(Message.ClickedSkipKitchenTourButton()),
       Story.model(skipped => {
         expect(skipped.kitchenTour).toEqual(Tour.Over())
-        expect(exitPriceFor(skipped)).toBe(EXIT_RULES.price)
+        expect(exitPriceFor(skipped, KITCHEN_EXIT)).toBe(
+          exitKeysOf(KITCHEN_EXIT),
+        )
       }),
       frames(10),
       Story.model(later => {
@@ -323,7 +313,7 @@ describe('the kitchen tour', () => {
     Effect.gen(function* () {
       const done = asTutorialDone(atBoards())
       expect(isKitchenTourOn(done)).toBe(false)
-      expect(exitPriceFor(done)).toBe(EXIT_RULES.price)
+      expect(exitPriceFor(done, KITCHEN_EXIT)).toBe(exitKeysOf(KITCHEN_EXIT))
       yield* Story.story(
         APPLICATION,
         Story.given(done),
@@ -354,8 +344,8 @@ describe('the kitchen tour', () => {
         party: () => Party.Crew(),
       })
       expect(isKitchenTourOn(crew)).toBe(false)
-      expect(exitPriceFor(crew)).toBe(EXIT_RULES.price)
-      expect(fridgePriceFor(crew, SOLO_SLOT)).toBe(FRIDGE_RULES.firstPrice)
+      expect(exitPriceFor(crew, KITCHEN_EXIT)).toBe(exitKeysOf(KITCHEN_EXIT))
+      expect(fridgePriceFor(crew)).toBe(FRIDGE_RULES.keys)
       return Story.story(
         APPLICATION,
         Story.given(crew),

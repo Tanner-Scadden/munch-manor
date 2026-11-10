@@ -10,9 +10,7 @@
 
 import { Effect, Function } from 'effect'
 import { Story } from 'foldkit'
-import { toParentMessageFor } from 'foldkit/test'
 
-import { ShopDialogBinding } from './bindings'
 import { layer } from './block'
 import { ApplicationBlock } from './definition'
 import type { Model } from './model'
@@ -30,18 +28,3 @@ export const { update, subscriptions } = application
 // NOTE: the whole Model a fresh game starts with, every child's field
 // included. src/app/model.ts's `initialModel` holds only the root's own fields.
 export const initialModel: Model = application.init().model
-
-// NOTE: for the tools that play the game without a Story (the balance bot
-// buys at Rattles' counter and closes his dialog): `inRoot` makes a child's
-// Message the root's generated envelope,
-// `Envelope.inRoot(ShopDialogBinding, message)`, and `inShop` one of the
-// shop dialog's own children's the shop's,
-// `Envelope.inShop(DialogBinding, message)`. A record, since the mappers
-// are generic and cannot be made dual. Tests never build an envelope: a
-// Story delivers a child's Message with `Story.messageIn(Binding, ...)`, a
-// grandchild's by its Binding path (AGENTS.md "Tests drive the root
-// through Block-aware Stories and Scenes").
-export const Envelope = {
-  inRoot: toParentMessageFor(application),
-  inShop: toParentMessageFor(application, ShopDialogBinding),
-}

@@ -1,5 +1,5 @@
 import { Array, Option, Result, pipe } from 'effect'
-import { type Document, type Html, createKeyedLazy } from 'foldkit/html'
+import type { Document, Html } from 'foldkit/html'
 
 import { joinName } from '../domain/playerName'
 import { hasUnseenCalling, hasUnseenLook } from '../domain/unlocks'
@@ -12,7 +12,6 @@ import { isOpenBreak } from '../features/onboarding/onboarding'
 import { questTrackerView } from '../features/onboarding/questView'
 import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
 import { tabOf } from '../features/profile/profile'
-import { isShopShut } from '../features/shop/model'
 import { purchaseAnnouncementView } from '../features/shop/purchaseHud'
 import { victorySupportView } from '../features/support/supportView'
 import type { PointerDevice } from '../input/inputSchema'
@@ -50,6 +49,7 @@ import {
   tierName,
 } from '../world/gear/weapons'
 import { bonesBalanceOf, rankOf, totalPointsOf } from '../world/heroes/rank'
+import { heldKeys } from '../world/keys/keys'
 import { CREW_AWARD_NAMES } from '../world/names'
 import { focusOf } from '../world/party/party'
 import { DIFFICULTIES } from '../world/run/difficulty'
@@ -61,7 +61,6 @@ import {
   totalKills,
   victoryVerdict,
 } from '../world/run/stats'
-import { isShopOpenFor } from '../world/shop/shop'
 import { FINAL_WAVE } from '../world/waves/wavePlans'
 import { isRoundActive, roundWave } from '../world/waves/waves'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
@@ -70,7 +69,6 @@ import {
   LobbyBinding,
   ProfileBinding,
   ProfileDialogBinding,
-  ShopDialogBinding,
 } from './bindings'
 import {
   type ApplicationAttribute,
@@ -96,10 +94,10 @@ const statusWave = (model: Model, wave: number): string =>
     Endless: () => `endless wave ${wave}`,
   })
 
-const shopHint = (model: Model): string =>
-  isShopOpenFor(model.phase)
-    ? ' The shop stall in the bottom right corner is open. Walk up to it from any side to browse.'
-    : ''
+// NOTE: the crew's keys, read out in a break, since the key ring on the
+// HUD is a picture.
+const keysHint = (model: Model): string =>
+  ` Keys on the ring: ${heldKeys(model)}.`
 
 const PLAY_AGAIN =
   'Press Enter or choose Retry to play again, or E for an endless run. Press X or choose Share to post your run on X.'
@@ -112,7 +110,7 @@ const LOBBY_MENU =
 
 const BACK_HOME = 'Press H or choose Menu to go back to the main menu.'
 
-const KEEP_GOING = `Press K or choose Keep going to carry on into endless from wave ${FINAL_WAVE + 1} with your money, guns, and traps.`
+const KEEP_GOING = `Press K or choose Keep going to carry on into endless from wave ${FINAL_WAVE + 1} with your keys, guns, and traps.`
 
 const killLabel = (stats: RunStats): string =>
   pipe(
@@ -153,7 +151,7 @@ const crewLabel = (model: Model): string => {
             awardsOf(crew, member.slot),
             award => CREW_AWARD_NAMES[award],
           )
-          return `${member.name}: ${member.kills} kills, ${member.revives} revives, ${member.downs} downs, ${member.aim} percent aim, $${member.earned} earned${Array.isReadonlyArrayEmpty(awards) ? '' : `, ${Array.join(awards, ', ')}`}.`
+          return `${member.name}: ${member.kills} kills, ${member.revives} revives, ${member.downs} downs, ${member.aim} percent aim, ${member.keysFound} keys found${Array.isReadonlyArrayEmpty(awards) ? '' : `, ${Array.join(awards, ', ')}`}.`
         }),
         ' ',
       )}`
@@ -161,7 +159,7 @@ const crewLabel = (model: Model): string => {
 
 const statsLabel = (model: Model): string => {
   const { stats } = model
-  return `Difficulty: ${DIFFICULTIES[model.difficulty.chosen].name}.${nightmareNews(model)} ${waveStatsLabel(model)}${recordNews(model)} Zombies splatted: ${totalKills(stats)} (${killLabel(stats)}). Best streak ${model.bestStreak}. Run time ${runTimeLabel(stats)}. Accuracy ${accuracyPercent(stats)} percent. Money earned $${focusOf(model).wallet.earned}.${crewLabel(model)}`
+  return `Difficulty: ${DIFFICULTIES[model.difficulty.chosen].name}.${nightmareNews(model)} ${waveStatsLabel(model)}${recordNews(model)} Zombies splatted: ${totalKills(stats)} (${killLabel(stats)}). Best streak ${model.bestStreak}. Run time ${runTimeLabel(stats)}. Accuracy ${accuracyPercent(stats)} percent. Keys found ${model.keys.found}.${crewLabel(model)}`
 }
 
 const debutCardStatus = (model: Model): Option.Option<string> =>
@@ -183,7 +181,7 @@ const statusText = (model: Model): string =>
     Ready: () =>
       `${GAME_TITLE}, an early alpha. ${isLobbyUp(model) ? LOBBY_MENU : HOME_MENU}`,
     Preparation: ({ wave }) =>
-      `Get ready for ${statusWave(model, wave)}. ${isOpenBreak(model) ? 'There is no timer this break. ' : ''}Press Enter, or use the Start wave button, to start it now.${practiceGateNote(model)}${shopHint(model)}`,
+      `Get ready for ${statusWave(model, wave)}. ${isOpenBreak(model) ? 'There is no timer this break. ' : ''}Press Enter, or use the Start wave button, to start it now.${practiceGateNote(model)}${keysHint(model)}`,
     Wave: ({ wave }) =>
       Option.getOrElse(
         debutCardStatus(model),
@@ -236,7 +234,7 @@ const loadoutView = (model: Model, h: ApplicationViewBuilder): Html =>
     ? h.p(
         [h.Class('sr-only')],
         [
-          `You have $${focusOf(model).wallet.balance}. ${gunLabel(model)}${trapLabel(model)}${boostLabel(model)}`,
+          `Keys on the ring: ${heldKeys(model)}. ${gunLabel(model)}${trapLabel(model)}${boostLabel(model)}`,
         ],
       )
     : h.empty
@@ -303,35 +301,6 @@ const profileInputs = (model: Model): ProfileViewInputs => ({
     orientationLock: model.orientationLock,
   },
 })
-
-// NOTE: Rattles' shop dialog draws the World as the root holds it, handed
-// over as a function so it is read only while the dialog shows. Shut, it
-// shows nothing, so it comes from a lazy slot and redraws only when the
-// shop's Model changes, as the menu dialogs do (`dialogShell`).
-const shopEmbed = (
-  shop: Model['shopDialog'],
-  scene: () => Option.Option<Model>,
-  h: ApplicationViewBuilder,
-): Html =>
-  h.block(
-    ShopDialogBinding.embedView({
-      slotId: 'shop-dialog',
-      model: shop,
-      viewInputs: { scene },
-    }),
-  )
-
-const NO_SCENE = () => Option.none<Model>()
-
-const shutShopView = (shop: Model['shopDialog'], h: ApplicationViewBuilder) =>
-  shopEmbed(shop, NO_SCENE, h)
-
-const lazyShutShop = createKeyedLazy()
-
-const shopDialogView = (model: Model, h: ApplicationViewBuilder): Html =>
-  isShopShut(model.shopDialog)
-    ? lazyShutShop('shop-dialog', shutShopView, [model.shopDialog, h])
-    : shopEmbed(model.shopDialog, () => Option.some(model), h)
 
 // NOTE: the Profile's Dialog is the root's (menuState reads it); the Profile
 // Block draws the tabs and pages inside it, and the root the rank plate.
@@ -471,7 +440,6 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         keyGrabToastView(model, h),
         homeScreenGuideView(model, h),
         updateGreetingView(model, h),
-        shopDialogView(model, h),
         manorHandView(model, h),
         menuPanelView(model, h),
         profileDialogView(model, h),

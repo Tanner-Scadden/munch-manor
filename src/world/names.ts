@@ -14,7 +14,6 @@ import type {
   FridgePrize,
   GunPerk,
   PickupKind,
-  ShopItemId,
   TrapKind,
   WeaponKind,
   ZombieKind,
@@ -178,16 +177,10 @@ export const GUN_PERK_NAMES: Readonly<Record<GunPerk, string>> = {
   Hearty: 'Hearty',
 }
 
-// SHOP GOODS
+// THE LASER SIGHT
 
-type OwnShopGood = Exclude<
-  ShopItemId,
-  'Pistol' | 'Shotgun' | 'Smg'
->
-
-export const SHOP_GOOD_NAMES: Readonly<Record<OwnShopGood, string>> = {
-  LaserSight: 'Laser Sight',
-}
+// NOTE: a display case prize (src/world/feats/cases.ts) kept for the run.
+export const LASER_SIGHT_NAME = 'Laser Sight'
 
 // THE CREW BOARD
 
@@ -198,14 +191,14 @@ export type CrewAward =
   | 'Mvp'
   | 'Medic'
   | 'Sharpshooter'
-  | 'BigSpender'
+  | 'KeyKeeper'
   | 'MostMunched'
 
 export const CREW_AWARD_NAMES: Readonly<Record<CrewAward, string>> = {
   Mvp: 'MVP',
   Medic: 'Medic',
   Sharpshooter: 'Sharpshooter',
-  BigSpender: 'Big Spender',
+  KeyKeeper: 'Key Keeper',
   MostMunched: 'Most Munched',
 }
 
@@ -298,8 +291,7 @@ export const SPECIAL_LINES = {
   maxHearts: (hearts: number): string => `${hearts} max hearts`,
   fasterRuns: (percent: number): string => `Runs ${percent}% faster`,
   smallerMagazines: (percent: number): string => `Mags ${percent}% smaller`,
-  shopOff: (percent: number): string => `Rattles ${percent}% off`,
-  lessKillPay: (percent: number): string => `Kills pay ${percent}% less`,
+  moreKeys: (percent: number): string => `Kills drop ${percent}% more keys`,
   startsWithCooker: `Starts with ${GUN_NAMES.Cooker}`,
   stoveFewerKills: (percent: number): string =>
     `Stove at ${percent}% fewer kills`,
@@ -309,8 +301,9 @@ export const SPECIAL_LINES = {
 
 // THE SHOP GUIDE
 
-// NOTE: the Munchopedia's Shop page and the ? in Rattles' shop (src/features/guide/shopGuide.ts).
-export const SHOP_GUIDE_NAME = 'Shop'
+// NOTE: the Munchopedia's guide page to the house's finds (src/features/guide/shopGuide.ts):
+// the guns in the cases, the traps in the crates, the fridge, and the rest.
+export const SHOP_GUIDE_NAME = 'Finds'
 
 export const SHOP_GUIDE_SECTION_NAMES: Readonly<
   Record<ShopGuideSection, string>
@@ -323,7 +316,7 @@ export const SHOP_GUIDE_SECTION_NAMES: Readonly<
 }
 
 export const HOUSE_NAMES: Readonly<Record<HouseSpot, string>> = {
-  Stall: "Rattles' Stall",
+  Rattles: 'Rattles',
   Boards: 'Boarded Doors',
   Fridge: FRIDGE_NAME,
   Stove: STOVE_NAME,

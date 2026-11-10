@@ -33,13 +33,8 @@ import { type Box, type Level, boxCenter, levelOf } from '../world/level/arena'
 import { focusOf, focusSlotOf } from '../world/party/party'
 import type { DoorId, Vector } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'
-import {
-  Phase,
-  ShopState,
-  Trap,
-  type Turret,
-  TurretGun,
-} from '../world/schema/worldSchema'
+import { Trap, type Turret, TurretGun } from '../world/schema/worldSchema'
+import { isBreak } from '../world/waves/waves'
 import {
   AIMING_UP,
   FULL_TURN,
@@ -318,12 +313,8 @@ const openDoorwayHints = (model: World): ReadonlyArray<Canvas.Shape> => {
     : []
 }
 
-const isPlacingNow = (model: World): boolean =>
-  Phase.isAnyOf(['Preparation'])(model.phase) &&
-  !ShopState.isAnyOf(['Browsing'])(focusOf(model).shop)
-
 export const ghostShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
-  if (!isPlacingNow(model)) {
+  if (!isBreak(model)) {
     return []
   }
 

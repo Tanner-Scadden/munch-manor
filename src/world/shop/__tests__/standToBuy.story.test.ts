@@ -2,15 +2,9 @@ import { Effect } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { describe, expect, it, test } from '@effect/vitest'
+import { describe, expect, it } from '@effect/vitest'
 
-import {
-  FridgeDoor,
-  type Model,
-  Phase,
-  Purchase,
-  ShopState,
-} from '../../../app/model'
+import { FridgeDoor, type Model, Phase, Purchase } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -18,6 +12,7 @@ import {
   freshRunModel,
   fridgeSeededFor,
   pastTimedBreaks,
+  withKeys,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -33,8 +28,8 @@ import {
 import { FRIDGE_RULES } from '../../fridge/leftovers'
 import { isCarrying } from '../../gear/weapons'
 import { EXIT_RULES } from '../../level/exits'
-import { focusOf, focusSlotOf, modifyFocus } from '../../party/party'
-import { PURCHASE_RULES, holdProgress, isStandingToBuy } from '../purchase'
+import { focusOf, modifyFocus } from '../../party/party'
+import { PURCHASE_RULES, holdProgress } from '../purchase'
 
 // Standing still to buy (src/world/shop/purchase.ts): at a purchasable, a player who
 // stands still for a second buys it, as a teammate revives by standing
@@ -42,9 +37,9 @@ import { PURCHASE_RULES, holdProgress, isStandingToBuy } from '../purchase'
 // or moving resets the ring, and one buy never chains into the next.
 
 const FRAME_MS = FIXED_STEP_MS
-const atBoards = (balance: number): Model =>
+const atBoards = (keys: number): Model =>
   modifyFocus(
-    modifyFields(pastTimedBreaks(freshRunModel()), {
+    modifyFields(withKeys(pastTimedBreaks(freshRunModel()), keys), {
       phase: () =>
         Phase.Preparation({
           wave: 3,
@@ -54,7 +49,6 @@ const atBoards = (balance: number): Model =>
         }),
     }),
     {
-      wallet: () => ({ balance, earned: balance, shown: balance }),
       player: player =>
         modifyFields(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
@@ -69,7 +63,7 @@ describe('standing still to buy', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(atBoards(85)),
+        Story.given(atBoards(5)),
         ...ticks(Math.floor(STAND_TICKS / 2), FRAME_MS),
         Story.model(current => {
           expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
@@ -82,7 +76,7 @@ describe('standing still to buy', () => {
         ...ticks(STAND_TICKS - Math.floor(STAND_TICKS / 2), FRAME_MS),
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(true)
-          expect(focusOf(current).wallet.balance).toBe(85 - EXIT_RULES.price)
+          expect(current.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
         }),
       ),
   )
@@ -93,7 +87,7 @@ describe('standing still to buy', () => {
       Effect.gen(function* () {
         yield* Story.story(
           APPLICATION,
-          Story.given(atBoards(85)),
+          Story.given(atBoards(5)),
           ...ticks(HOLD_TICKS, FRAME_MS),
           Story.model(current => {
             expect(isKitchenOpen(current)).toBe(false)
@@ -101,7 +95,7 @@ describe('standing still to buy', () => {
         )
         yield* Story.story(
           APPLICATION,
-          Story.given(atBoards(85)),
+          Story.given(atBoards(5)),
           press('Enter'),
           ...ticks(HOLD_TICKS, FRAME_MS),
           Story.model(current => {
@@ -114,7 +108,7 @@ describe('standing still to buy', () => {
   it.effect('moving resets the ring, and the next stand starts over', () =>
     Story.story(
       APPLICATION,
-      Story.given(atBoards(85)),
+      Story.given(atBoards(5)),
       ...ticks(STAND_TICKS - 10, FRAME_MS),
       press('KeyD'),
       ...ticks(1, FRAME_MS),
@@ -128,7 +122,7 @@ describe('standing still to buy', () => {
       ...ticks(STAND_TICKS - 10, FRAME_MS),
       Story.model(current => {
         expect(isKitchenOpen(current)).toBe(false)
-        expect(focusOf(current).wallet.balance).toBe(85)
+        expect(current.keys.held).toBe(5)
       }),
     ),
   )
@@ -138,7 +132,7 @@ describe('standing still to buy', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(atBoards(85)),
+        Story.given(atBoards(5)),
         ...ticks(STAND_TICKS - 10, FRAME_MS),
         holdFire,
         ...ticks(1, FRAME_MS),
@@ -148,7 +142,7 @@ describe('standing still to buy', () => {
         ...ticks(STAND_TICKS * 3, FRAME_MS),
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(false)
-          expect(focusOf(current).wallet.balance).toBe(85)
+          expect(current.keys.held).toBe(5)
         }),
       ),
   )
@@ -156,7 +150,7 @@ describe('standing still to buy', () => {
   it.effect('stabbing resets the ring too', () =>
     Story.story(
       APPLICATION,
-      Story.given(atBoards(85)),
+      Story.given(atBoards(5)),
       ...ticks(STAND_TICKS - 10, FRAME_MS),
       press('KeyF'),
       holdFire,
@@ -174,7 +168,7 @@ describe('standing still to buy', () => {
   it.effect('standing short of the price does nothing: no shake, no buy', () =>
     Story.story(
       APPLICATION,
-      Story.given(atBoards(EXIT_RULES.price - 5)),
+      Story.given(atBoards(EXIT_RULES.kitchenKeys - 1)),
       ...ticks(STAND_TICKS * 2, FRAME_MS),
       Story.model(current => {
         expect(focusOf(current).purchase).toEqual(Purchase.Idle())
@@ -184,7 +178,7 @@ describe('standing still to buy', () => {
   )
 
   it.effect('not in the first moments of a wave', () => {
-    const waveStart = modifyFields(atBoards(85), {
+    const waveStart = modifyFields(atBoards(5), {
       phase: () =>
         Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     })
@@ -204,23 +198,6 @@ describe('standing still to buy', () => {
       }),
     )
   })
-
-  test('not while the shop is open', () => {
-    const standing = atBoards(85)
-    expect(isStandingToBuy(standing, focusSlotOf(standing))).toBe(true)
-    expect(
-      isStandingToBuy(
-        modifyFocus(standing, {
-          shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-        }),
-        focusSlotOf(
-          modifyFocus(standing, {
-            shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-          }),
-        ),
-      ),
-    ).toBe(false)
-  })
 })
 
 describe('one buy never chains into the next', () => {
@@ -229,11 +206,11 @@ describe('one buy never chains into the next', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(fridgeSeededFor(atFridge(400), 'Cooker')),
+        Story.given(fridgeSeededFor(atFridge(20), 'Cooker')),
         ...ticks(STAND_TICKS, FRAME_MS),
         Story.model(current => {
           expect(FridgeDoor.isAnyOf(['Open'])(current.fridge.door)).toBe(true)
-          expect(current.stats.purchases).toBe(1)
+          expect(current.keys.spent).toBe(FRIDGE_RULES.keys)
         }),
         ...ticks(
           Math.ceil(FRIDGE_RULES.openMs / FRAME_MS) + STAND_TICKS * 2,
@@ -244,7 +221,7 @@ describe('one buy never chains into the next', () => {
             true,
           )
           expect(focusOf(current).purchase).toEqual(Purchase.Spent())
-          expect(current.stats.purchases).toBe(1)
+          expect(current.keys.spent).toBe(FRIDGE_RULES.keys)
         }),
         press('KeyD'),
         ...ticks(1, FRAME_MS),
@@ -262,7 +239,7 @@ describe('one buy never chains into the next', () => {
   it.effect('the key still takes the prize at once after a standing pull', () =>
     Story.story(
       APPLICATION,
-      Story.given(fridgeSeededFor(atFridge(400), 'Cooker')),
+      Story.given(fridgeSeededFor(atFridge(20), 'Cooker')),
       ...ticks(STAND_TICKS, FRAME_MS),
       ...ticks(Math.ceil(FRIDGE_RULES.openMs / FRAME_MS) + 2, FRAME_MS),
       Story.model(current => {

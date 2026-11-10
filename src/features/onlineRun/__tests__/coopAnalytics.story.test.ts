@@ -149,7 +149,7 @@ const crewOfThree = {
 const crewSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 4,
+  version: 5,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -157,7 +157,8 @@ const crewSummary = (
   runMs: 100,
   kills: noKills,
   heartsLost: 0,
-  purchases: 0,
+  keysSpent: 0,
+  casesOpened: 0,
   powerUpsGrabbed: 0,
   trapsPlaced: 0,
   device: 'KeyboardMouse',

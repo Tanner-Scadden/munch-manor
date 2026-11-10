@@ -22,8 +22,9 @@ import {
   ticks,
   zombieAt,
 } from '../../../test/testing'
+import { KEY_RULES } from '../../keys/keys'
 import { PARLOUR } from '../../level/arena'
-import { focusOf, modifyFocus } from '../../party/party'
+import { modifyFocus } from '../../party/party'
 import { rollSpawns } from '../../waves/endlessWaves'
 import { FRENZY_RULES, frenzyPace, frenzyPacksOf } from '../frenzy'
 
@@ -87,9 +88,7 @@ describe('horde frenzy', () => {
   it.effect('a pack of four or more frenzies, a pack of three does not', () => {
     const four = packOf(1, 4)
     const three = packOf(2, 3, 2000)
-    expect(frenzyPacksOf([...four, ...three])).toEqual([
-      { pack: 1, left: 4, bonus: 4 * FRENZY_RULES.bonusPerZombie },
-    ])
+    expect(frenzyPacksOf([...four, ...three])).toEqual([{ pack: 1, left: 4 }])
 
     return Story.story(
       APPLICATION,
@@ -159,7 +158,7 @@ describe('horde frenzy', () => {
       const start = modifyFocus(
         modifyFields(sturdyIn([]), {
           zombies: () => [...together, straggler],
-          frenzyPacks: () => [{ pack: 7, left: 4, bonus: 4 }],
+          frenzyPacks: () => [{ pack: 7, left: 4 }],
         }),
         {
           player: player =>
@@ -195,7 +194,7 @@ describe('horde frenzy', () => {
     },
   )
 
-  it.effect('wiping out the whole pack pays its bonus once', () =>
+  it.effect('wiping out the whole pack adds a key once', () =>
     Effect.gen(function* () {
       const pack = Frenzy.Frenzied({ pack: 3, apartMs: 0 })
       const first = zombieAt(1, 60, 85, { frenzy: pack, hp: 1, maxHp: 3 })
@@ -206,7 +205,7 @@ describe('horde frenzy', () => {
       })
       const start = modifyFields(sturdyIn([]), {
         zombies: () => [first, second],
-        frenzyPacks: () => [{ pack: 3, left: 2, bonus: 9 }],
+        frenzyPacks: () => [{ pack: 3, left: 2 }],
       })
 
       yield* Story.story(
@@ -220,7 +219,7 @@ describe('horde frenzy', () => {
         ),
         tick(FRAME_MS),
         Story.model(current => {
-          expect(current.frenzyPacks).toEqual([{ pack: 3, left: 1, bonus: 9 }])
+          expect(current.frenzyPacks).toEqual([{ pack: 3, left: 1 }])
           expect(
             Array.some(current.frameEvents, GameEvent.isAnyOf(['PackWiped'])),
           ).toBe(false)
@@ -244,11 +243,10 @@ describe('horde frenzy', () => {
             GameEvent.isAnyOf(['PackWiped']),
           )
           expect(wiped).toHaveLength(1)
-          expect(Array.map(wiped, ({ bonus }) => bonus)).toEqual([9])
           expect(current.frenzyPacks).toEqual([])
-          expect(
-            focusOf(current).wallet.earned - focusOf(start).wallet.earned,
-          ).toBe(9 + 2 * 2)
+          const found = current.keys.found - start.keys.found
+          expect(found).toBeGreaterThanOrEqual(KEY_RULES.perPackWiped)
+          expect(found).toBeLessThanOrEqual(KEY_RULES.perPackWiped + 2)
         }),
         ...ticks(3, FRAME_MS),
         Story.model(current => {

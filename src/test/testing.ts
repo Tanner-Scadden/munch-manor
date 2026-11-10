@@ -9,7 +9,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
-import { LobbyBinding, ShopDialogBinding } from '../app/bindings'
+import { LobbyBinding } from '../app/bindings'
 import { layer } from '../app/block'
 import {
   AwaitFirstFrame,
@@ -70,7 +70,6 @@ import {
   shownHints,
 } from '../features/onboarding/onboarding'
 import { PartRadioGroupBlock } from '../features/profile/blocks/look/lookRadios'
-import { Message as ShopMessage } from '../features/shop/message'
 import {
   FIXED_STEP_MS,
   RESTART_GRACE_MS,
@@ -94,7 +93,6 @@ import {
   Arsenal,
   type CarriedGun,
   type Player,
-  type ShopItemId,
   Trap,
 } from '../world/schema/worldSchema'
 import { PURCHASE_RULES } from '../world/shop/purchase'
@@ -197,7 +195,7 @@ export const SCENE_SUBSCRIPTIONS = subscriptions
 // NOTE: the root as a Block-aware Story and Scene take it:
 // `Story.story(APPLICATION, Story.given(model), ...)`. A child's Message
 // goes in by its Binding, or a grandchild's by its Binding path
-// (`Story.messageIn([ShopDialogBinding, DialogBinding], ...)`).
+// (`Story.messageIn([LobbyBinding, HeroPickerBinding], ...)`).
 export const APPLICATION = { block: ApplicationBlock, layer }
 
 // NOTE: a group of root Story steps (`Story.steps(...)`) held as a value
@@ -208,10 +206,6 @@ export type RootSteps = Story.StoryStepsStep<
   Parameters<typeof update>[1],
   never
 >
-
-// NOTE: a row picked in Rattles' shop dialog, by tap or click.
-export const buyAtCounter = (item: ShopItemId) =>
-  Story.messageIn(ShopDialogBinding, ShopMessage.ClickedBuyButton({ item }))
 
 // NOTE: a hero's card tapped in the single player lobby's hero picker.
 export const tapLobbyHero = (calling: Calling) =>
@@ -231,7 +225,7 @@ export const resolveFocusCoop = () =>
 export const resolveChangeLobby = () =>
   Story.Command.resolve(ChangeLobby, CoopMessage.CompletedChangeLobby())
 
-// NOTE: the shop guide's focus Command, in either parent.
+// NOTE: the guide's focus Command, on the Munchopedia's Finds page.
 export const resolveGuideFocus = Story.Command.resolve(
   FocusGuideControl,
   GuideMessage.CompletedFocusControl(),
@@ -298,16 +292,9 @@ export const startRunInScene = () => [
   Scene.click(Scene.role('button', { name: 'Start' })),
 ]
 
-// NOTE: a frame walks the player into the stall, which opens the shop.
-export const walkIntoStallInScene = () => [
-  Scene.Subscription.emit(
-    SCENE_SUBSCRIPTIONS.frame,
-    Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-  ),
-  ...showDialogInScene(),
-]
-
 export const manorButton = Scene.role('button', { name: /^More:/ })
+
+export const munchopediaDialog = Scene.role('dialog', { name: 'Munchopedia' })
 
 // NOTE: deals the MANOR hand on the home menu.
 export const openHandInScene = () => [
@@ -676,7 +663,7 @@ export const playEndlessButton = Scene.selector(
 )
 
 export const keepGoingButton = Scene.role('button', {
-  name: 'Keep going: carry on into endless from wave 11 with your money, guns, and traps',
+  name: 'Keep going: carry on into endless from wave 11 with your keys, guns, and traps',
 })
 
 export const retryButton = Scene.role('button', {

@@ -125,15 +125,8 @@ const MAGAZINE_ICON = icon([
   '.MMM.',
 ])
 
-const COIN_ICON = icon([
-  '..YYY..',
-  '.YXXYY.',
-  'YXYYYYy',
-  'YXYYYYy',
-  'YYYYYyy',
-  '.YyyyY.',
-  '..YYY..',
-])
+// NOTE: a skeleton key, the crew's currency (src/world/keys/keys.ts).
+const KEY_ICON = icon(['.YYY...', 'YXXY...', 'YX.YYYY', 'YYYY.Yy', '.yy..y.'])
 
 const TAG_ICON = icon([
   '.XXXXXX.',
@@ -183,7 +176,7 @@ export const QUIRK_ICONS = {
   Shoe: SHOE_ICON,
   Magazine: MAGAZINE_ICON,
   Tag: TAG_ICON,
-  Coin: COIN_ICON,
+  Key: KEY_ICON,
   Pot: POT_ICON,
   NoPistol: NO_PISTOL_ICON,
 } as const

@@ -128,7 +128,7 @@ describe('cached VNodes', () => {
       )
       expect(unkeyed).toEqual([])
       expect(keys).toEqual(
-        expect.arrayContaining(['room-layer', 'sprite-warm-up', 'shop']),
+        expect.arrayContaining(['room-layer', 'sprite-warm-up']),
       )
     }),
   )

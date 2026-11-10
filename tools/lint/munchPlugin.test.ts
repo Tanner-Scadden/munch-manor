@@ -182,15 +182,15 @@ tester.run('seat-action-once', ruleOf('seat-action-once'), {
   valid: [
     "import { actAsLead } from './action'",
     'const next = modifyFields(model, { hitStop: () => 0 })',
-    "const next = modifyFocus(model, { shopCategory: () => 'Guns' })",
+    "const next = modifyFocus(model, { laserSight: () => 'Fitted' })",
   ],
   invalid: [
     one("import { beginReload } from '../weapons'"),
-    one('const next = modifyFields(model, { wallet: () => wallet })'),
+    one('const next = modifyFields(model, { traps: () => traps })'),
     one('const next = modifyFocus(model, { player: player => player })'),
     one('const next = modifySeat(world, 1, { trapStock: () => stock })'),
     one(
-      'const next = modifyFields(model, { seats: atSeat(1, { wallet: () => wallet }) })',
+      'const next = modifyFields(model, { seats: atSeat(1, { selectedTrap: () => kind }) })',
     ),
   ],
 })
@@ -209,7 +209,7 @@ tester.run('no-binding-field-write', ruleOf('no-binding-field-write'), {
     one(
       'const next = modifyFields(model, { coop: coop => keepTracers(coop) })',
     ),
-    one('const next = modifyFields(model, { shopDialog: () => closed })'),
+    one('const next = modifyFields(model, { profileDialog: () => closed })'),
     one('const next = modifyFields(shop, { dialog: () => closed })'),
   ],
 })

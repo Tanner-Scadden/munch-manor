@@ -145,7 +145,7 @@ const shopTileView = (h: MunchopediaViewBuilder): Html =>
           h.Id(GUIDE_FOCUS_IDS.Munchopedia.opener),
           h.Class('munch-tile munch-tile-shop'),
           h.DataAttribute('known', 'Known'),
-          h.AriaLabel(`${SHOP_GUIDE_NAME}, what Rattles sells`),
+          h.AriaLabel(`${SHOP_GUIDE_NAME}, what the house holds`),
           h.OnClick(Message.ClickedShopButton(), {
             propagation: 'Stop',
           }),

@@ -5,7 +5,7 @@ import { type Palette, mirrorRows } from '../../art/sprite'
 import { SHAKE_MAX_PX, TILE_SIZE } from '../../shared/constants'
 import {
   type Level,
-  SHOP_STALL_SYMBOL,
+  RATTLES_SYMBOL,
   tilesWithSymbol,
 } from '../../world/level/arena'
 import { pixelArt, rect } from '../drawing'
@@ -319,7 +319,7 @@ export const stallMatShapes = (stall: Box): ReadonlyArray<Canvas.Shape> => {
 
 export const stallBox = (level: Level): Option.Option<Box> =>
   pipe(
-    tilesWithSymbol(level, SHOP_STALL_SYMBOL),
+    tilesWithSymbol(level, RATTLES_SYMBOL),
     Option.liftPredicate(Array.isReadonlyArrayNonEmpty),
     Option.map(boundingBox),
   )

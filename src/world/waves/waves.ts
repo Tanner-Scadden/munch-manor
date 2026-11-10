@@ -6,17 +6,15 @@ import {
   OPEN_BREAK_WAVE,
   PACK_WARNING_MS,
   PREPARATION_MS,
-  WAVE_BONUS_BASE,
-  WAVE_BONUS_PER_WAVE,
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
+import { KEY_RULES, grantKeys } from '../keys/keys'
 import { doorSpawnPoint, levelOf } from '../level/arena'
 import {
   focusOf,
   isCoop,
   isStanding,
-  payShared,
   playerCountOf,
   playersOf,
   targetsOf,
@@ -41,7 +39,6 @@ import {
   type PlannedSpawn,
   type Round,
   RunMode,
-  ShopState,
   type Vector,
   ZombieAction,
 } from '../schema/worldSchema'
@@ -80,9 +77,6 @@ import {
 } from './pacing'
 import { GROUP_ID_STRIDE, PACK_ID_STRIDE, bySpawnTime } from './wavePacks'
 import { FINAL_WAVE, planFor } from './wavePlans'
-
-export const waveBonus = (wave: number): number =>
-  WAVE_BONUS_BASE + WAVE_BONUS_PER_WAVE * wave
 
 // JOINING DOORS
 
@@ -412,24 +406,22 @@ const isWaveCleared = (
   !isBossOutside(model.boss) &&
   !Array.some(model.zombies, zombie => isAlive(zombie) || isBoss(zombie))
 
-const payWaveBonus = (model: World, wave: number): World => {
-  const bonus = waveBonus(wave)
-  return payShared(
+// NOTE: a cleared wave adds a key to the crew's ring (src/world/keys/keys.ts).
+const keyForClear = (model: World): World => {
+  const at = { x: focusOf(model).player.x, y: focusOf(model).player.y }
+  return grantKeys(
     modifyFields(model, {
       frameEvents: Array.append(
-        GameEvent.WaveCleared({
-          x: focusOf(model).player.x,
-          y: focusOf(model).player.y,
-          bonus,
-        }),
+        GameEvent.WaveCleared({ ...at, keys: KEY_RULES.perWaveCleared }),
       ),
     }),
-    bonus,
+    KEY_RULES.perWaveCleared,
+    at,
   )
 }
 
 const clearWave = (model: World, wave: number): World => {
-  const paid = payWaveBonus(model, wave)
+  const paid = keyForClear(model)
   if (wave >= FINAL_WAVE && !isEndless(model)) {
     return modifyFields(paid, { phase: () => Phase.Victory() })
   } else {
@@ -592,9 +584,7 @@ export const advanceRound: {
           ? startWaveEarly(model)
           : countDownBreak(model, preparation, worldMs)
       }
-      return ShopState.isAnyOf(['Browsing'])(focusOf(model).shop) ||
-        isPracticeGateHeld(model) ||
-        isKitchenTourOn(model)
+      return isPracticeGateHeld(model) || isKitchenTourOn(model)
         ? model
         : countDownBreak(model, preparation, worldMs)
     },

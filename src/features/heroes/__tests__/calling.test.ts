@@ -15,11 +15,10 @@ import {
   callingsOpenedBy,
   isCallingUnlocked,
   isPistolBarred,
-  killPayFor,
+  keyScaleOf,
   magazineFor,
   maxHpOf,
   mendSpeedScaleOf,
-  shopPriceFor,
   speedScaleOf,
   startingGunKind,
   startsWithCooker,
@@ -105,21 +104,10 @@ describe('the Track Star', () => {
 })
 
 describe('the Penny Pincher', () => {
-  test('is charged 15 percent less, but never for nothing', () => {
-    expect(shopPriceFor('PennyPincher', 100)).toBe(85)
-    expect(shopPriceFor('PennyPincher', 35)).toBe(30)
-    expect(shopPriceFor('PennyPincher', 1)).toBe(1)
-    expect(shopPriceFor('PennyPincher', 0)).toBe(0)
-    expect(shopPriceFor('You', 35)).toBe(35)
-  })
-
-  test('is paid 20 percent less a kill, to the nearest dollar, at least 1', () => {
-    expect(killPayFor('PennyPincher', 20)).toBe(16)
-    expect(killPayFor('PennyPincher', 3)).toBe(2)
-    expect(killPayFor('PennyPincher', 2)).toBe(2)
-    expect(killPayFor('PennyPincher', 1)).toBe(1)
-    expect(killPayFor('PennyPincher', 0)).toBe(0)
-    expect(killPayFor('You', 20)).toBe(20)
+  test('her kills drop half again as many keys, for one fewer heart', () => {
+    expect(keyScaleOf({ calling: 'PennyPincher' })).toBe(1.5)
+    expect(keyScaleOf({ calling: 'You' })).toBe(1)
+    expect(maxHpOf({ calling: 'PennyPincher' })).toBe(PLAYER_MAX_HP - 1)
   })
 })
 
@@ -185,8 +173,8 @@ describe('the specials as short lines', () => {
       'Mags 5% smaller',
     ])
     expect(Array.map(specialsOf('PennyPincher'), ({ line }) => line)).toEqual([
-      'Rattles 15% off',
-      'Kills pay 20% less',
+      'Kills drop 50% more keys',
+      `${PLAYER_MAX_HP - 1} max hearts`,
     ])
   })
 

@@ -17,7 +17,6 @@ import {
   Pierce,
   type PlannedSpawn,
   Reload,
-  ShopState,
   Trap,
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
@@ -33,6 +32,7 @@ import {
   home,
   pipeline,
   placeSeat,
+  withKeys,
   withSeatLife,
 } from '../../../test/model.fixture'
 import {
@@ -45,6 +45,7 @@ import {
 import { crateSpotOf } from '../../gear/crates'
 import { TRAPS, stockTrap } from '../../gear/traps'
 import { WEAPONS } from '../../gear/weapons'
+import { KEY_RULES } from '../../keys/keys'
 import { MANOR, levelOf } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
 import { flowFieldsToward } from '../../level/pathing'
@@ -68,7 +69,7 @@ import {
   stepWorld,
 } from '../../step/stepWorld'
 import { rollSpawns } from '../../waves/endlessWaves'
-import { beginPreparation, waveBonus } from '../../waves/waves'
+import { beginPreparation } from '../../waves/waves'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
   COOP_RULES,
@@ -88,15 +89,6 @@ const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60
 const RIGHT_X = 240
 const ROW_Y = 104
-
-const withMoney =
-  (slot: number, balance: number) =>
-  (current: Model): Model =>
-    atSeat(current, slot, world =>
-      modifyFocus(world, {
-        wallet: wallet => modifyFields(wallet, { balance: () => balance }),
-      }),
-    )
 
 const act = (current: Model, slot: number, action: SeatAction): Model =>
   withWorld(current, world => applySeatAction(world, slot, action))
@@ -291,31 +283,21 @@ describe('downed, revived, and bled out', () => {
   )
 })
 
-describe('money', () => {
-  it.effect(
-    'the wave clear bonus is split evenly, the odd dollars to the first seats',
-    () => {
-      const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
-      const bonus = waveBonus(3)
-      return Story.story(
-        APPLICATION,
-        Story.given(crewInWave(4, clearing)),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
-          const paid = Array.map(
-            playersOf(current),
-            ({ wallet }) => wallet.balance,
-          )
-          expect(Array.reduce(paid, 0, (sum, each) => sum + each)).toBe(bonus)
-          expect(Math.max(...paid) - Math.min(...paid)).toBeLessThanOrEqual(1)
-          expect(paid[0]).toBe(Math.ceil(bonus / 4))
-        }),
-      )
-    },
-  )
+describe("the crew's key ring", () => {
+  it.effect('a cleared wave adds a key to the one ring the crew shares', () => {
+    const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
+    return Story.story(
+      APPLICATION,
+      Story.given(crewInWave(4, clearing)),
+      ...ticks(1, TICK_MS),
+      Story.model(current => {
+        expect(current.keys.held).toBe(KEY_RULES.perWaveCleared)
+      }),
+    )
+  })
 
-  it.effect('a kill pays the player whose shot landed', () => {
-    const bounty = ZOMBIE_KINDS.Shambler.bounty
+  it.effect('a kill credits the player whose shot landed, keys and all', () => {
+    const keys = ZOMBIE_KINDS.Tank.keys
     return Story.story(
       APPLICATION,
       Story.given(
@@ -324,16 +306,17 @@ describe('money', () => {
           placeSeat(1, RIGHT_X, ROW_Y + 40),
           current =>
             modifyFields(current, {
-              zombies: () => [zombieOf('Shambler', 900, 150, ROW_Y, { hp: 1 })],
+              zombies: () => [zombieOf('Tank', 900, 150, ROW_Y, { hp: 1 })],
               bullets: () => [bulletAt(800, 140, ROW_Y, 300, 1)],
             }),
         )(crewInWave(2)),
       ),
       ...ticks(2, TICK_MS),
       Story.model(current => {
-        expect(seatedAt(current, 1).wallet.balance).toBe(bounty)
+        expect(current.keys.held).toBe(keys)
         expect(seatOf(current, 1).kills).toBe(1)
-        expect(seatedAt(current, 0).wallet.balance).toBe(0)
+        expect(seatOf(current, 1).keysFound).toBe(keys)
+        expect(seatOf(current, 0).keysFound).toBe(0)
       }),
     )
   })
@@ -382,8 +365,7 @@ describe('money', () => {
       spawns: [],
     })
     const atDoor = pipeline(
-      withMoney(0, 100),
-      withMoney(1, 100),
+      withKeys(5),
       placeSeat(0, DOOR_X - 8, DOOR_Y),
       placeSeat(1, DOOR_X + 8, DOOR_Y),
     )(crewInWave(2, preparation))
@@ -396,8 +378,7 @@ describe('money', () => {
       Purchase.isAnyOf(['Idle'])(focusOf(seatWorldOf(halfway, 0)).purchase),
     ).toBe(true)
     const bought = holdFor(atDoor, [1], HOLD_TICKS, [0])
-    expect(seatedAt(bought, 1).wallet.balance).toBe(100 - EXIT_RULES.price)
-    expect(seatedAt(bought, 0).wallet.balance).toBe(100)
+    expect(bought.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
     expect(levelOf(bought).key).not.toBe(levelOf(atDoor).key)
   })
 
@@ -409,8 +390,7 @@ describe('money', () => {
       spawns: [],
     })
     const atDoor = pipeline(
-      withMoney(0, 100),
-      withMoney(1, 100),
+      withKeys(5),
       placeSeat(0, DOOR_X - 8, DOOR_Y),
       placeSeat(1, DOOR_X + 8, DOOR_Y),
     )(crewInWave(2, preparation))
@@ -423,12 +403,11 @@ describe('money', () => {
       Purchase.isAnyOf(['Idle'])(focusOf(seatWorldOf(halfway, 0)).purchase),
     ).toBe(true)
     const bought = holdFor(atDoor, [], standTicks, [0])
-    expect(seatedAt(bought, 1).wallet.balance).toBe(100 - EXIT_RULES.price)
-    expect(seatedAt(bought, 0).wallet.balance).toBe(100)
+    expect(bought.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
     expect(levelOf(bought).key).not.toBe(levelOf(atDoor).key)
   })
 
-  test('a teammate short of the price is refused while the one who can pay buys', () => {
+  test('a ring short of the price refuses every player who holds', () => {
     const preparation = Phase.Preparation({
       wave: 3,
       remainingMs: 30_000,
@@ -436,35 +415,34 @@ describe('money', () => {
       spawns: [],
     })
     const atDoor = pipeline(
-      withMoney(0, 10),
-      withMoney(1, 100),
+      withKeys(EXIT_RULES.kitchenKeys - 1),
       placeSeat(0, DOOR_X - 8, DOOR_Y),
       placeSeat(1, DOOR_X + 8, DOOR_Y),
     )(crewInWave(2, preparation))
     const pressed = holdFor(atDoor, [0, 1], 1)
-    expect(focusOf(seatWorldOf(pressed, 0)).purchase).toEqual(
-      Purchase.Refused({
-        target: Purchasable.Exit({ exit: KITCHEN_EXIT }),
-        shortBy: EXIT_RULES.price - 10,
-        sinceMs: 0,
-      }),
-    )
-    const bought = holdFor(atDoor, [0, 1], HOLD_TICKS)
-    expect(seatedAt(bought, 0).wallet.balance).toBe(10)
-    expect(seatedAt(bought, 1).wallet.balance).toBe(100 - EXIT_RULES.price)
+    Array.forEach([0, 1], slot => {
+      expect(focusOf(seatWorldOf(pressed, slot)).purchase).toEqual(
+        Purchase.Refused({
+          target: Purchasable.Exit({ exit: KITCHEN_EXIT }),
+          shortBy: 1,
+          sinceMs: 0,
+        }),
+      )
+    })
+    const held = holdFor(atDoor, [0, 1], HOLD_TICKS)
+    expect(held.keys.held).toBe(EXIT_RULES.kitchenKeys - 1)
+    expect(levelOf(held).key).toBe(levelOf(atDoor).key)
   })
 
   test('mid-wave, one player holds the manor door open and its doors join the wave', () => {
     const [, spawns] = rollSpawns(41, 4)
     const fighting = Phase.Wave({ wave: 4, elapsedMs: 0, spawns })
     const atDoor = pipeline(
-      withMoney(0, 100),
-      withMoney(1, 100),
+      withKeys(5),
       placeSeat(1, DOOR_X, DOOR_Y),
     )(crewInWave(2, fighting))
     const bought = holdFor(atDoor, [1], HOLD_TICKS, [0])
-    expect(seatedAt(bought, 1).wallet.balance).toBe(100 - EXIT_RULES.price)
-    expect(seatedAt(bought, 0).wallet.balance).toBe(100)
+    expect(bought.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
     expect(levelOf(bought).key).not.toBe(levelOf(atDoor).key)
     const doors = Phase.isAnyOf(['Wave'])(bought.phase)
       ? Array.map(bought.phase.spawns, ({ door }) => door)
@@ -554,11 +532,7 @@ describe('traps per player', () => {
         }),
       placeSeat(1, (east.left + east.right) / 2, (east.top + east.bottom) / 2),
     )(withFound(1, 'Barricade')(inBreak))
-    const tried = act(
-      act(twoBoarded, 1, SeatAction.LeaveCounter()),
-      1,
-      SeatAction.PlaceTrap(),
-    )
+    const tried = act(twoBoarded, 1, SeatAction.PlaceTrap())
     expect(levelOf(tried).doorIds).toHaveLength(4)
     expect(tried.traps).toHaveLength(2)
     expect(seatOf(tried, 1).trapIds).toEqual([])
@@ -567,7 +541,7 @@ describe('traps per player', () => {
   test('the trap a player places is theirs', () => {
     const stocked = withFound(1, 'Turret')(inBreak)
     const placedTrap = act(
-      act(placeSeat(1, 160, 120)(stocked), 1, SeatAction.LeaveCounter()),
+      placeSeat(1, 160, 120)(stocked),
       1,
       SeatAction.PlaceTrap(),
     )
@@ -742,19 +716,6 @@ describe('the world never pauses in co-op', () => {
       durationMs: 30_000,
       spawns: [],
     })
-
-  const remainingOf = (world: World): number =>
-    world.phase._tag === 'Preparation' ? world.phase.remainingMs : -1
-
-  test('a player at the stall does not hold the break clock', () => {
-    const browsing = atSeat(crewInWave(2, breakOf(3)), 0, world =>
-      modifyFocus(world, {
-        shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-      }),
-    )
-    const stepped = stepWorld(browsing, soloInputs(idleIntent)).world
-    expect(remainingOf(stepped)).toBeLessThan(30_000)
-  })
 
   test('the break ends once everyone has pressed READY', () => {
     const waiting = crewInWave(2, breakOf(3))

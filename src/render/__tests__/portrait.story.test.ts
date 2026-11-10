@@ -15,7 +15,7 @@ import {
   FIXED_STEP_MS,
   STICK_RADIUS_PX,
 } from '../../shared/constants'
-import { DISTANT_SPAWN } from '../../test/model.fixture'
+import { DISTANT_SPAWN, withKeys } from '../../test/model.fixture'
 import {
   APPLICATION,
   PHONE_LANDSCAPE,
@@ -477,13 +477,13 @@ describe('the hint band on a zoomed phone', () => {
 
 describe('turning the phone', () => {
   it.effect(
-    'mid-wave, the run, the money, and both thumbs carry over, with no pause',
+    'mid-wave, the run, the keys, and both thumbs carry over, with no pause',
     () => {
-      const rich = modifyFocus(
+      const rich = withKeys(
         modifyFields(standingAt(fightingInLandscape, 120, 90), {
           stats: scoring(340),
         }),
-        { wallet: () => ({ balance: 75, earned: 120, shown: 75 }) },
+        7,
       )
       return Story.story(
         APPLICATION,
@@ -496,7 +496,7 @@ describe('turning the phone', () => {
           expect(isPortrait(current)).toBe(true)
           expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
           expect(scoreOf(current.stats)).toBe(340)
-          expect(focusOf(current).wallet.balance).toBe(75)
+          expect(current.keys.held).toBe(7)
           expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
           expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
           expect(focusOf(current).intent.trigger).toBe('Held')

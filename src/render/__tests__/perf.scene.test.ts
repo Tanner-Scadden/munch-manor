@@ -381,11 +381,11 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
       ],
       streak: () => Streak.Hot({ count: 12, remainingMs: 900 }),
       stats: scoring(98_760),
+      keys: ring => ({ ...ring, held: 99 }),
     }),
     {
       boosts: () => ALL_BOOSTED,
       trapStock: () => ({ Barricade: 2, Turret: 1 }),
-      wallet: wallet => ({ ...wallet, balance: 1234, shown: 1234 }),
       player: player => ({
         ...player,
         arsenal: holdingSecond({ kind: 'Smg', loaded: 30, tier, kills: 0 }),

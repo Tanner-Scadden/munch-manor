@@ -18,7 +18,6 @@ import {
 import { PICKUP_NAMES } from '../names'
 import {
   atSeat,
-  earnKill,
   focusOf,
   forEachSeat,
   isCoop,
@@ -49,13 +48,7 @@ import {
   type WeaponKind,
   type ZombieKind,
 } from '../schema/worldSchema'
-import { isAtCounter } from '../shop/shop'
-import {
-  type BlastSpec,
-  ZOMBIE_BLAST_TARGET,
-  blastAll,
-  bountyOf,
-} from '../step/combat'
+import { type BlastSpec, ZOMBIE_BLAST_TARGET, blastAll } from '../step/combat'
 import { trapBlockers } from './traps'
 import {
   type WeaponStats,
@@ -433,7 +426,7 @@ const isWithinGrab =
   (pickup: Pickup): boolean =>
     Math.hypot(pickup.x - player.x, pickup.y - player.y) <= PICKUP_GRAB_PX
 
-const burpAt = (model: World, slot: PlayerSlot, at: Vector): World => {
+const burpAt = (model: World, at: Vector): World => {
   const blast: BlastSpec = {
     x: at.x,
     y: at.y,
@@ -444,17 +437,14 @@ const burpAt = (model: World, slot: PlayerSlot, at: Vector): World => {
     knockback: BURP_KNOCKBACK,
   }
   const outcome = blastAll(blast, model.zombies, ZOMBIE_BLAST_TARGET)
-  return modifyFields(
-    earnKill(model, slot, bountyOf(levelOf(model), outcome.events)),
-    {
-      zombies: () => outcome.targets,
-      frameEvents: frameEvents => [
-        ...frameEvents,
-        GameEvent.Burped({ x: at.x, y: at.y, radius: BURP_RADIUS }),
-        ...outcome.events,
-      ],
-    },
-  )
+  return modifyFields(model, {
+    zombies: () => outcome.targets,
+    frameEvents: frameEvents => [
+      ...frameEvents,
+      GameEvent.Burped({ x: at.x, y: at.y, radius: BURP_RADIUS }),
+      ...outcome.events,
+    ],
+  })
 }
 
 const applyEffect = (
@@ -476,7 +466,7 @@ const applyEffect = (
         }),
       })
     },
-    Burp: () => burpAt(model, slot, seatStateAt(model, slot).player),
+    Burp: () => burpAt(model, seatStateAt(model, slot).player),
     Heal: ({ hearts }) =>
       modifyFields(model, {
         seats: atSeat(slot, {
@@ -767,29 +757,21 @@ export const advancePowerUps: {
   (before: World, model: World, worldMs: number): World
 } = Function.dual(3, (before: World, model: World, worldMs: number): World => {
   if (!isCoop(model)) {
-    return isAtCounter(focusOf(model).shop)
-      ? model
-      : pipe(
-          tickBoosts(model, SOLO_SLOT, worldMs),
-          ticked => agePickups(ticked, worldMs),
-          grabbed => grabPickups(grabbed, SOLO_SLOT),
-          grabbed => dropLoot(before, grabbed, worldMs),
-        )
+    return pipe(
+      tickBoosts(model, SOLO_SLOT, worldMs),
+      ticked => agePickups(ticked, worldMs),
+      grabbed => grabPickups(grabbed, SOLO_SLOT),
+      grabbed => dropLoot(before, grabbed, worldMs),
+    )
   }
 
   return pipe(
-    forEachSeat(model, (current, slot) =>
-      isAtCounter(seatStateAt(current, slot).shop)
-        ? current
-        : tickBoosts(current, slot, worldMs),
-    ),
+    forEachSeat(model, (current, slot) => tickBoosts(current, slot, worldMs)),
     ticked => agePickups(ticked, worldMs),
     aged =>
       forEachSeat(aged, (current, slot) => {
-        const { shop, seat } = seatStateAt(current, slot)
-        return isAtCounter(shop) || !isStanding(seat)
-          ? current
-          : grabPickups(current, slot)
+        const { seat } = seatStateAt(current, slot)
+        return isStanding(seat) ? grabPickups(current, slot) : current
       }),
     grabbed => dropLoot(before, grabbed, worldMs),
   )

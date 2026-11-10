@@ -22,12 +22,11 @@ import { maybeQuestMark } from '../../features/onboarding/firstBreakQuest'
 import { isGoodieBeckoning } from '../../features/onboarding/onboarding'
 import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
 import {
-  STALL_FOOT_Y,
-  type StallLook,
-  stallGroundShapes,
-  stallPromptShapes,
-  stallShapes,
-} from '../../features/shop/stall'
+  RATTLES_FOOT_Y,
+  RATTLES_GROUND_SHAPES,
+  type RattlesLook,
+  rattlesShapes,
+} from '../../features/rattles/rattlesSpot'
 import { bossGroundShapes, bossOverheadShapes } from '../../render/bossView'
 import { type Camera, sceneOffset } from '../../render/camera'
 import { type Drawable, depthSortedShapes } from '../../render/depth'
@@ -90,10 +89,9 @@ import {
   zombieShapes,
 } from '../../render/zombieView'
 import { type Level, isInsideRoomAt, levelOf } from '../../world/level/arena'
-import { focusOf, focusSlotOf } from '../../world/party/party'
+import { focusOf } from '../../world/party/party'
 import { type Vector, type Zombie } from '../../world/schema/entitySchema'
-import { Phase, ShopState } from '../../world/schema/worldSchema'
-import { isShopOpenFor, stallPrompt } from '../../world/shop/shop'
+import { Phase } from '../../world/schema/worldSchema'
 import { ZERO_VECTOR } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
 
@@ -111,17 +109,11 @@ export const worldOffset: {
   sceneOffset(camera, shakeOffset(model)),
 )
 
-// STALL
+// RATTLES
 
-const stallLook = (model: Model): StallLook => {
-  if (!isShopOpenFor(model.phase)) {
-    return 'Closed'
-  } else if (ShopState.isAnyOf(['Away'])(focusOf(model).shop)) {
-    return 'Beckoning'
-  } else {
-    return 'Open'
-  }
-}
+// NOTE: Rattles is up for the breaks and dozes through a wave.
+const rattlesLook = (model: Model): RattlesLook =>
+  Phase.isAnyOf(['Preparation'])(model.phase) ? 'Awake' : 'Dozing'
 
 // CULLING
 
@@ -152,7 +144,6 @@ const shownZombies = (model: Model, camera: Camera): ReadonlyArray<Zombie> => {
 
 const groundShapes = (
   model: Model,
-  look: StallLook,
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
@@ -160,7 +151,7 @@ const groundShapes = (
   ...kitchenLeakShapes(model),
   ...ovenGlowShapes(model),
   ...kitchenGearGroundShapes(model),
-  ...stallGroundShapes(look, model.elapsedMs),
+  ...RATTLES_GROUND_SHAPES,
   ...reviveRingGroundShapes(model),
   playerShadow(focusOf(model).player),
   ...mateShadowShapes(mates),
@@ -181,7 +172,7 @@ const groundShapes = (
 
 const standingDrawables = (
   model: Model,
-  look: StallLook,
+  look: RattlesLook,
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Drawable> => {
@@ -200,9 +191,9 @@ const standingDrawables = (
       shapes,
     })),
     {
-      footY: STALL_FOOT_Y,
+      footY: RATTLES_FOOT_Y,
       rank: 'Prop',
-      shapes: stallShapes(look, model.elapsedMs),
+      shapes: rattlesShapes(look, model.elapsedMs),
     },
     ...Array.map(model.traps, (trap): Drawable => ({
       footY: trapFootY(level, trap),
@@ -287,7 +278,6 @@ const overheadShapes = (
   ...fridgeOverheadShapes(model),
   ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),
-  ...stallPromptShapes(stallPrompt(model, focusSlotOf(model))),
   ...padlockShapes(model),
 ]
 
@@ -295,19 +285,19 @@ const overheadShapes = (
 
 const titleWorldShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
   ...hearthFireShapes(levelOf(model), model.screenMs),
-  ...stallGroundShapes('Closed', model.screenMs),
-  ...stallShapes('Closed', model.screenMs),
+  ...RATTLES_GROUND_SHAPES,
+  ...rattlesShapes('Dozing', model.screenMs),
 ]
 
 const playWorldShapes = (
   model: Model,
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => {
-  const look = stallLook(model)
+  const look = rattlesLook(model)
   const zombies = shownZombies(model, camera)
   const mates = mateModelsOf(model)
   return [
-    ...groundShapes(model, look, zombies, mates),
+    ...groundShapes(model, zombies, mates),
     ...depthSortedShapes(standingDrawables(model, look, zombies, mates)),
     ...overheadShapes(model, camera, zombies, mates),
   ]

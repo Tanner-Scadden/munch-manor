@@ -24,7 +24,6 @@ import { WEAPONS } from '../../../world/gear/weapons'
 import {
   COOP_RULES,
   maybePlayerAt,
-  modifyFocus,
   playersOf,
 } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
@@ -198,8 +197,7 @@ const member = (
   kills: 0,
   revives: 0,
   downs: 0,
-  earned: 0,
-  spent: 0,
+  keysFound: 0,
   shotsFired: 0,
   aim: 0,
   ...fields,
@@ -207,14 +205,14 @@ const member = (
 
 describe('the awards', () => {
   const crew = [
-    member(0, { kills: 40, spent: 300, downs: 1 }),
+    member(0, { kills: 40, keysFound: 7, downs: 1 }),
     member(1, { kills: 55, revives: 3, shotsFired: 90, aim: 40 }),
     member(2, { kills: 55, downs: 4, shotsFired: 60, aim: 70 }),
   ]
 
   test('each goes to the best score, a tie to the lower seat', () => {
     expect(mvpOf(crew)).toEqual(Option.some(1))
-    expect(awardsOf(crew, 0)).toEqual(['BigSpender'])
+    expect(awardsOf(crew, 0)).toEqual(['KeyKeeper'])
     expect(awardsOf(crew, 1)).toEqual(['Mvp', 'Medic'])
     expect(awardsOf(crew, 2)).toEqual(['Sharpshooter', 'MostMunched'])
   })
@@ -237,29 +235,20 @@ describe('the awards', () => {
 // THE CARD
 
 const seatRun =
-  (slot: number, change: (seat: Seat) => Seat, earned = 0, balance = 0) =>
+  (slot: number, change: (seat: Seat) => Seat) =>
   (current: Model): Model =>
-    atSeat(current, slot, world =>
-      modifyLeadSeat(
-        modifyFocus(world, {
-          wallet: wallet =>
-            modifyFields(wallet, {
-              earned: () => earned,
-              balance: () => balance,
-            }),
-        }),
-        change,
-      ),
-    )
+    atSeat(current, slot, world => modifyLeadSeat(world, change))
 
 const crewCard = pipeline(
-  seatRun(0, seat => ({ ...seat, kills: 12, downs: 2 }), 400, 100),
-  seatRun(
-    1,
-    seat => ({ ...seat, kills: 30, revives: 2, shotsFired: 50, shotsHit: 30 }),
-    900,
-    850,
-  ),
+  seatRun(0, seat => ({ ...seat, kills: 12, downs: 2, keysFound: 9 })),
+  seatRun(1, seat => ({
+    ...seat,
+    kills: 30,
+    revives: 2,
+    shotsFired: 50,
+    shotsHit: 30,
+    keysFound: 4,
+  })),
   current =>
     modifyFields(current, {
       phase: () => Phase.GameOver({ wave: 5 }),
@@ -414,12 +403,11 @@ describe('the crew card upright', () => {
 describe("the crew's card", () => {
   test('reads every seat off the World', () => {
     expect(crewOf(crewCard)).toEqual([
-      member(0, { kills: 12, downs: 2, earned: 400, spent: 300 }),
+      member(0, { kills: 12, downs: 2, keysFound: 9 }),
       member(1, {
         kills: 30,
         revives: 2,
-        earned: 900,
-        spent: 50,
+        keysFound: 4,
         shotsFired: 50,
         aim: 60,
       }),
@@ -446,10 +434,15 @@ describe("the crew's card", () => {
     expect(beatSounds(crewCard, atMs - 20, atMs - 1)).not.toContain('PowerUp')
   })
 
+  test('the Key Keeper is the seat whose kills found the most keys', () => {
+    expect(awardsOf(crewOf(crewCard), 0)).toContain('KeyKeeper')
+    expect(awardsOf(crewOf(crewCard), 1)).not.toContain('KeyKeeper')
+  })
+
   test('its post crowns the MVP and brags about your own award', () => {
     const run = sharedRunOf(crewCard)
     expect(run.crew).toBe(2)
     expect(run.maybeMvp).toEqual(Option.some({ name: 'P2', kills: 30 }))
-    expect(run.maybeOwnAward).toEqual(Option.some('BigSpender'))
+    expect(run.maybeOwnAward).toEqual(Option.some('KeyKeeper'))
   })
 })

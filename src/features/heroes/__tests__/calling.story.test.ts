@@ -1,4 +1,4 @@
-import { Array, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -10,7 +10,6 @@ import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
 import { WriteSave } from '../../../app/update/save'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
-import { advanceJuice } from '../../../render/juice'
 import { PLAYER_MAX_HP, PLAYER_SPEED } from '../../../shared/constants'
 import type { Calling } from '../../../shared/playerData'
 import { heroesBoughtBy, readyAfterRead } from '../../../test/model.fixture'
@@ -28,26 +27,15 @@ import { playerSpeed } from '../../../world/gear/powerups'
 import { heldGun, maybeCarried } from '../../../world/gear/weapons'
 import { playerOfCalling } from '../../../world/heroes/callingPlayer'
 import { pointsForRank } from '../../../world/heroes/rank'
-import {
-  earnKill,
-  focusOf,
-  focusSlotOf,
-  modifyFocus,
-} from '../../../world/party/party'
+import { dropKeys } from '../../../world/keys/keys'
+import { focusOf, modifyFocus } from '../../../world/party/party'
 import {
   GameEvent,
   Invulnerability,
   idleBoosts,
 } from '../../../world/schema/worldSchema'
-import { priceFor, verdictFor } from '../../../world/shop/shop'
 import { woundPlayer } from '../../../world/step/combat'
 import { isHeroPickerUp } from '../../lobby/model'
-import {
-  besideStall,
-  preparing,
-  shopReady,
-  withMoney,
-} from '../../shop/__tests__/shop.fixture'
 
 // Callings (src/world/heroes/calling.ts): the pick on the home menu, a run starting with
 // it, and each quirk playing out in the World.
@@ -197,92 +185,37 @@ describe('the quirks in play', () => {
     modifyFocus(model, {
       player: player => modifyFields(player, { calling: () => calling }),
     })
-  const shopping = (calling: Calling): Model =>
-    asCalling(withMoney(besideStall(preparing(3)), 500), calling)
 
   test('the Track Star runs faster and fills a smaller magazine', () => {
-    const star = focusOf(shopping('TrackStar')).player
+    const star = focusOf(asCalling(readyAfterRead, 'TrackStar')).player
     expect(playerSpeed(idleBoosts, star)).toBeCloseTo(PLAYER_SPEED * 1.2)
     const gun = Option.getOrThrow(maybeCarried(giveWeapon(star, 'Smg'), 'Smg'))
     expect(gun.loaded).toBe(29)
   })
 
-  test('Rattles charges the Penny Pincher 15 percent less', () => {
-    expect(
-      priceFor(shopping('You'), focusSlotOf(shopping('You')), 'Shotgun'),
-    ).toBe(35)
-    expect(
-      priceFor(
-        shopping('PennyPincher'),
-        focusSlotOf(shopping('PennyPincher')),
-        'Shotgun',
-      ),
-    ).toBe(30)
-  })
-
-  test('a kill pays the Penny Pincher less', () => {
-    const paid = (calling: Calling) => {
-      const model = asCalling(shopReady, calling)
-      return focusOf(earnKill(model, focusSlotOf(model), 20)).wallet.balance
-    }
-    expect(paid('You')).toBe(20)
-    expect(paid('PennyPincher')).toBe(16)
-  })
-
-  it.effect('Rattles never sells the Line Cook the pistol', () =>
-    Effect.gen(function* () {
-      const cook = shopping('LineCook')
-      expect(verdictFor(cook, focusSlotOf(cook), 'Pistol')._tag).toBe('Refused')
-      expect(
-        verdictFor(shopping('You'), focusSlotOf(shopping('You')), 'Pistol')
-          ._tag,
-      ).toBe('Refused')
-      const cookRun = yield* startedAs(15, 'LineCook')
-      const withoutPistol = modifyFocus(shopping('You'), {
-        player: player =>
-          modifyFields(player, {
-            arsenal: () => focusOf(cookRun).player.arsenal,
-          }),
-      })
-      expect(
-        verdictFor(withoutPistol, focusSlotOf(withoutPistol), 'Pistol')._tag,
-      ).toBe('Available')
-    }),
-  )
-})
-
-describe('what the player sees of a calling', () => {
-  const killed = (calling: Calling): Model =>
-    advanceJuice(
-      modifyFocus(
-        modifyFields(readyAfterRead, {
+  // NOTE: a Big Lug drops two keys whole, so no roll comes into it.
+  test("the Penny Pincher's kills drop half again as many keys", () => {
+    const keysFrom = (calling: Calling): number =>
+      dropKeys(
+        modifyFields(asCalling(readyAfterRead, calling), {
           frameEvents: () => [
             GameEvent.ZombieKilled({
               x: 100,
               y: 100,
               direction: { x: 1, y: 0 },
-              bounty: 20,
               kind: 'Tank',
               maybeKiller: Option.none(),
               source: 'Other',
             }),
           ],
         }),
-        {
-          player: player => modifyFields(player, { calling: () => calling }),
-        },
-      ),
-      16,
-      16,
-    )
-
-  test('a kill popup shows what the kill paid', () => {
-    expect(Array.map(killed('You').popups, ({ value }) => value)).toEqual([20])
-    expect(
-      Array.map(killed('PennyPincher').popups, ({ value }) => value),
-    ).toEqual([16])
+      ).keys.held
+    expect(keysFrom('You')).toBe(2)
+    expect(keysFrom('PennyPincher')).toBe(3)
   })
+})
 
+describe('what the player sees of a calling', () => {
   test('a bite leaves the Handyman 50 percent longer to get clear', () => {
     const grace = (calling: Calling): number =>
       Invulnerability.match(

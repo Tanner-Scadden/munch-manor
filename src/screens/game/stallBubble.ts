@@ -2,7 +2,7 @@ import { Array, Function, Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
-import { COIN_SPRITE, COIN_WIDTH, bakeText } from '../../art/font'
+import { bakeText } from '../../art/font'
 import {
   type Palette,
   type Sprite,
@@ -11,7 +11,6 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
-import { KitchenCall, Tour } from '../../domain/clientSchema'
 import {
   CALL_LINES,
   callLineIndex,
@@ -21,32 +20,23 @@ import {
   kitchenStepOf,
   maybeKitchenMark,
 } from '../../features/onboarding/kitchenTour'
-import { isLearned } from '../../features/onboarding/onboarding'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { levelOf } from '../../world/level/arena'
-import { focusOf } from '../../world/party/party'
 import type { Vector } from '../../world/schema/worldSchema'
-import { STALL_BOX, isBrowsing, isShopOpenFor } from '../../world/shop/shop'
 
-// NOTE: Rattles calls from his stall with a speech bubble of pictures: a
-// coin and what he sells that the player needs now. A bare coin, between waves, when the stall is out of the
-// window and the shop has never been opened. The bubble hangs beside the
-// stall, and when the stall is out of view it waits at the window's edge
-// with an arrow toward it. It never points at a zombie.
+// NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
+// from the spot it is about, and when that spot is out of view it waits at
+// the window's edge with an arrow toward it. It never points at a zombie.
+// His stall and its bubble of goods went with the shop
+// (docs/ESCAPE_PLAN.md, layer 7).
 //
 // The kitchen tour (src/features/onboarding/kitchenTour.ts) hangs the same bubble from its
 // spots: a gift over the boards and the fridge it gives away, and, under
 // the prize's TAKE tag and its ring (which teach taking), footprints and a
 // cross for leaving it by walking away.
-export type BubbleKind =
-  | 'Shop'
-  | 'Gift'
-  | 'Leave'
-  | 'Soup0'
-  | 'Soup1'
-  | 'Soup2'
+type BubbleKind = 'Gift' | 'Leave' | 'Soup0' | 'Soup1' | 'Soup2'
 
 type Good = Readonly<{ sprite: Sprite; isCentered: boolean; width: number }>
 
@@ -134,8 +124,6 @@ const SOUP_GOODS: ReadonlyArray<ReadonlyArray<Good>> = Array.map(
 const soupGoods = (index: number): ReadonlyArray<Good> =>
   Option.getOrElse(Array.get(SOUP_GOODS, index), () => [])
 
-const COIN: Good = { sprite: COIN_SPRITE, isCentered: false, width: COIN_WIDTH }
-
 const ICON_SIZE = 7
 const ICON_GAP = 2
 const PAD = 3
@@ -143,7 +131,6 @@ const BUBBLE_HEIGHT = ICON_SIZE + PAD * 2
 const TAIL = 3
 
 const GOODS: Readonly<Record<BubbleKind, ReadonlyArray<Good>>> = {
-  Shop: [COIN],
   Gift: [GIFT],
   Leave: [FOOTSTEPS, CROSS],
   Soup0: soupGoods(0),
@@ -204,49 +191,12 @@ const frameRects = (
 ]
 
 const FRAMES: Readonly<Record<BubbleKind, Sprite>> = {
-  Shop: bakeShapes(frameRects(bubbleWidth('Shop'), BUBBLE_INK)),
   Gift: bakeShapes(frameRects(bubbleWidth('Gift'), BUBBLE_INK)),
   Leave: bakeShapes(frameRects(bubbleWidth('Leave'), BUBBLE_INK)),
   Soup0: bakeShapes(frameRects(bubbleWidth('Soup0'), BUBBLE_INK)),
   Soup1: bakeShapes(frameRects(bubbleWidth('Soup1'), BUBBLE_INK)),
   Soup2: bakeShapes(frameRects(bubbleWidth('Soup2'), BUBBLE_INK)),
 }
-
-const isStallInView = (camera: Camera): boolean => {
-  const view = viewBoxOf(camera)
-  const near = worldToView(camera, { x: STALL_BOX.left, y: STALL_BOX.top })
-  const far = worldToView(camera, { x: STALL_BOX.right, y: STALL_BOX.bottom })
-  return (
-    near.x >= view.x &&
-    far.x <= view.x + view.width &&
-    near.y >= view.y &&
-    far.y <= view.y + view.height
-  )
-}
-
-const isBreakWithShop = (model: Model): boolean =>
-  isShopOpenFor(model.phase) && !isBrowsing(focusOf(model).shop)
-
-export const maybeBubbleKind: {
-  (camera: Camera): (model: Model) => Option.Option<BubbleKind>
-  (model: Model, camera: Camera): Option.Option<BubbleKind>
-} = Function.dual(
-  2,
-  (model: Model, camera: Camera): Option.Option<BubbleKind> => {
-    if (
-      !isBreakWithShop(model) ||
-      Tour.isAnyOf(['Running'])(model.firstBreakQuest) ||
-      Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour) ||
-      KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
-    ) {
-      return Option.none()
-    } else if (!isLearned(model.lessons.shop) && !isStallInView(camera)) {
-      return Option.some('Shop')
-    } else {
-      return Option.none()
-    }
-  },
-)
 
 // PLACING
 
@@ -256,10 +206,6 @@ const EDGE_MARGIN = 4
 const HUD_CLEARANCE = 22
 const ARROW_LENGTH = 4
 const BOB_MS = 900
-
-// NOTE: the bubble's tail tip in the world: just left of the awning, by
-// Rattles' head.
-const TIP = { x: STALL_BOX.left + 1, y: STALL_BOX.top + 1 }
 
 const sideOf = (
   tip: { x: number; y: number },
@@ -347,18 +293,6 @@ const goodsShapes = (
     }),
   ).shapes
 
-export const stallBubbleShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
-} = Function.dual(
-  2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
-    Option.match(maybeBubbleKind(model, camera), {
-      onNone: () => [],
-      onSome: kind => bubbleShapes(kind, TIP, model, camera),
-    }),
-)
-
 // NOTE: a bubble whose tail tip points at a spot in the world, pinned to
 // the window's edge with an arrow when the spot is out of view.
 const bubbleShapes = (
@@ -426,8 +360,7 @@ export const kitchenBubbleShapes: {
 const SOUP_KINDS: ReadonlyArray<BubbleKind> = ['Soup0', 'Soup1', 'Soup2']
 
 // NOTE: Rattles' holler about the kitchen's boards, pinned to the window's
-// edge with an arrow toward them when they are out of view. While it calls,
-// the stall's own bubble waits (maybeBubbleKind), so two never stack.
+// edge with an arrow toward them when they are out of view.
 export const soupBubbleShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>

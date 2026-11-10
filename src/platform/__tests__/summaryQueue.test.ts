@@ -40,15 +40,24 @@ const summary: RunSummary = {
     Boss: 1,
   },
   heartsLost: 2,
-  purchases: 3,
   powerUpsGrabbed: 1,
   trapsPlaced: 2,
   device: 'Touch',
   screenFit: 'Installed',
   frameTime: 'Under17Ms',
+  keysSpent: 3,
+  casesOpened: 1,
   party: SOLO_PARTY,
   modifiers: 0,
 }
+
+// NOTE: the same run as a build with a shop sent it, with its purchases.
+const {
+  keysSpent: _keysSpent,
+  casesOpened: _casesOpened,
+  ...shopless
+} = summary
+const withShop = { ...shopless, purchases: 3 }
 
 const bodyOf = (wave: number): string =>
   Option.getOrThrow(Schema.encodeOption(RunSummaryJson)({ ...summary, wave }))
@@ -221,7 +230,7 @@ describe('run summaries sent or queued', () => {
     () =>
       Effect.gen(function* () {
         const sendBeacon = stubNavigator(true)
-        const { party: _party, ...older } = summary
+        const { party: _party, modifiers: _modifiers, ...older } = withShop
         const olderBody = yield* Schema.encodeEffect(
           Schema.fromJsonString(RunSummaryV1),
         )({ ...older, version: 1 })
@@ -251,7 +260,7 @@ describe('run summaries sent or queued', () => {
         const olderBody = yield* Schema.encodeEffect(
           Schema.fromJsonString(RunSummaryV2),
         )({
-          ...summary,
+          ...withShop,
           version: 2,
           party: {
             _tag: 'Crew',

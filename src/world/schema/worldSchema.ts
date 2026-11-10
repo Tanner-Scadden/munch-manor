@@ -31,6 +31,7 @@ import {
   Glob,
   Intent,
   Invulnerability,
+  KeyRing,
   LevelState,
   Lob,
   Loot,
@@ -120,7 +121,6 @@ export const GameEvent = defineTaggedUnion({
     x: PositionNumber,
     y: PositionNumber,
     direction: Heading,
-    bounty: Schema.Finite,
     kind: ZombieKind,
     maybeKiller: Schema.Option(Schema.Finite),
     source: KillSource,
@@ -147,7 +147,7 @@ export const GameEvent = defineTaggedUnion({
     weapon: WeaponKind,
   },
   Reloaded: { x: PositionNumber, y: PositionNumber, weapon: WeaponKind },
-  WaveCleared: { x: PositionNumber, y: PositionNumber, bonus: Schema.Finite },
+  WaveCleared: { x: PositionNumber, y: PositionNumber, keys: Schema.Finite },
   PackWarned: {
     x: PositionNumber,
     y: PositionNumber,
@@ -187,7 +187,7 @@ export const GameEvent = defineTaggedUnion({
   CrawlerSurfaced: { x: PositionNumber, y: PositionNumber },
   AnklesGrabbed: { x: PositionNumber, y: PositionNumber },
   PackFrenzied: { x: PositionNumber, y: PositionNumber, door: DoorId },
-  PackWiped: { x: PositionNumber, y: PositionNumber, bonus: Schema.Finite },
+  PackWiped: { x: PositionNumber, y: PositionNumber },
   OvenBelched: { x: PositionNumber, y: PositionNumber },
   Purchased: { x: PositionNumber, y: PositionNumber },
   PurchaseRefused: { x: PositionNumber, y: PositionNumber },
@@ -201,8 +201,11 @@ export const GameEvent = defineTaggedUnion({
     x: PositionNumber,
     y: PositionNumber,
     goodie: PantryGoodie,
-    cash: Schema.Finite,
   },
+  // NOTE: skeleton keys added to the crew's ring (src/world/keys/keys.ts),
+  // dropped by a kill, a cleared wave, the pantry, or the fridge's Dud, at
+  // where they came from: they fly to the ring on the HUD.
+  KeysFound: { x: PositionNumber, y: PositionNumber, count: Schema.Finite },
   // NOTE: a found trap taken from a trap crate (src/world/gear/crates.ts),
   // and a trap mended back to full by standing at it in a break.
   CrateTaken: { x: PositionNumber, y: PositionNumber, trap: TrapKind },
@@ -507,7 +510,6 @@ export type Boss = typeof Boss.Type
 export const FrenzyPack = Schema.Struct({
   pack: Schema.Finite,
   left: Schema.Finite,
-  bonus: Schema.Finite,
 })
 export type FrenzyPack = typeof FrenzyPack.Type
 
@@ -572,31 +574,11 @@ export const Blast = Schema.Struct({
 })
 export type Blast = typeof Blast.Type
 
-// NOTE: what Rattles sells. Traps and spare hearts are found in the house
-// instead (src/world/gear/crates.ts), and traps mend for free in a break.
-export const ShopItemId = Schema.Literals([
-  'Shotgun',
-  'Smg',
-  'LaserSight',
-  'Pistol',
-])
-export type ShopItemId = typeof ShopItemId.Type
-
-// NOTE: the laser sight is bought in the shop for one run: a line or a
-// spread fan on the floor showing where the held gun's shot goes.
+// NOTE: the laser sight, a display case prize (src/world/feats/cases.ts) kept
+// for the run: a line or a spread fan on the floor showing where the held
+// gun's shot goes.
 const LaserSight = Schema.Literals(['None', 'Fitted'])
 type LaserSight = typeof LaserSight.Type
-
-// NOTE: one shelf of guns now that traps and hearts come from the house.
-export const ShopCategory = Schema.Literals(['Guns'])
-export type ShopCategory = typeof ShopCategory.Type
-
-export const ShopState = defineTaggedUnion({
-  Away: {},
-  Browsing: { focusedItem: ShopItemId },
-  Dismissed: {},
-})
-export type ShopState = typeof ShopState.Type
 
 // NOTE: something in the world bought by standing still or holding the
 // interact key beside it, the way a wall buy works (src/world/shop/purchase.ts): a
@@ -615,7 +597,7 @@ export type Purchasable = typeof Purchasable.Type
 
 // NOTE: one player's hold at a purchasable. Holding fills toward the buy,
 // from the key held or the player standing still (src/world/shop/purchase.ts);
-// Refused is a press the wallet could not cover, shaking for a moment;
+// Refused is a press the key ring could not cover, shaking for a moment;
 // Done waits for the key to be let go after a buy, so one hold buys once;
 // Spent waits for a player who bought and stands still to move before
 // standing buys again, so one buy never chains into the next.
@@ -632,14 +614,6 @@ export const Purchase = defineTaggedUnion({
 })
 export type Purchase = typeof Purchase.Type
 
-export const ShopChatter = defineTaggedUnion({
-  Greeting: {},
-  Bought: { item: ShopItemId },
-  TooPricey: { item: ShopItemId },
-  Refused: { item: ShopItemId },
-})
-export type ShopChatter = typeof ShopChatter.Type
-
 // NOTE: a kitchen oven belches fire when it is shot while Ready, then cools
 // off before it can again. The Model keeps one per oven on the map, in the
 // order the map lists them.
@@ -649,13 +623,6 @@ export const Oven = defineTaggedUnion({
   Cooling: { remainingMs: MillisNumber },
 })
 export type Oven = typeof Oven.Type
-
-export const Wallet = Schema.Struct({
-  balance: Schema.Finite,
-  earned: Schema.Finite,
-  shown: Schema.Finite,
-})
-export type Wallet = typeof Wallet.Type
 
 export const TurretGun = defineTaggedUnion({
   Armed: {},
@@ -744,7 +711,6 @@ export const RunStats = Schema.Struct({
   shotsHit: Schema.Finite,
   heartsLost: Schema.Finite,
   trapsPlaced: Schema.Finite,
-  purchases: Schema.Finite,
   powerUpsGrabbed: Schema.Finite,
   maybeLastHurtBy: Schema.Option(ZombieKind),
   activeFrames: Schema.Finite,
@@ -809,6 +775,7 @@ export const Seat = Schema.Struct({
   downs: Schema.Finite,
   shotsFired: Schema.Finite,
   shotsHit: Schema.Finite,
+  keysFound: Schema.Finite,
   graceMs: MillisNumber,
   touchedMs: MillisNumber,
 })
@@ -821,12 +788,9 @@ export const SeatState = Schema.Struct({
   seat: Seat,
   player: Player,
   intent: Intent,
-  wallet: Wallet,
   boosts: Boosts,
   trapStock: TrapCounts,
   selectedTrap: TrapKind,
-  shop: ShopState,
-  shopCategory: ShopCategory,
   laserSight: LaserSight,
   purchase: Purchase,
   cooking: Cooking,
@@ -872,6 +836,7 @@ export const World = Schema.Struct({
   fridge: Fridge,
   pantry: Pantry,
   crates: TrapCrates,
+  keys: KeyRing,
   stove: Stove,
   gasValve: GasValve,
   cases: Schema.Array(DisplayCase),
@@ -906,10 +871,6 @@ export const initialPlayer: Player = {
   wield: 'Gun',
   calling: 'You',
 }
-
-export const emptyWallet: Wallet = { balance: 0, earned: 0, shown: 0 }
-
-export const FIRST_SHOP_CATEGORY: ShopCategory = 'Guns'
 
 export const idleIntent: Intent = {
   move: { x: 0, y: 0 },
@@ -972,7 +933,6 @@ export const freshStats: RunStats = {
   shotsHit: 0,
   heartsLost: 0,
   trapsPlaced: 0,
-  purchases: 0,
   powerUpsGrabbed: 0,
   maybeLastHurtBy: Option.none(),
   activeFrames: 0,
@@ -1022,8 +982,6 @@ export const shutFridge: Fridge = {
   door: FridgeDoor.Shut(),
   pulls: 0,
   luck: 0,
-  cheapRound: 0,
-  cheapSlots: [],
 }
 
 export const barePantry: Pantry = Pantry.Bare({ round: 0 })
@@ -1032,6 +990,17 @@ const CRATE_SEED_SALT = 0x0c7a7e5b
 
 // NOTE: the trap crates' own generator, apart from the run's, so a roll
 // moves no other; no crate stands until the first break with traps.
+const KEY_SEED_SALT = 0x6b3e75c1
+
+// NOTE: an empty key ring with its drops' own generator, apart from the
+// run's, so a drop moves no other roll.
+export const freshKeys = (seed: number): KeyRing => ({
+  held: 0,
+  found: 0,
+  spent: 0,
+  rngState: (seed ^ KEY_SEED_SALT) >>> 0,
+})
+
 export const freshCrates = (seed: number): TrapCrates => ({
   rngState: (seed ^ CRATE_SEED_SALT) >>> 0,
   wave: 0,

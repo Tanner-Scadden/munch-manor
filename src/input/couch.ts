@@ -1,31 +1,23 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
 import type { Model } from '../app/model'
-import { focusSeat, leadSeatOf, playersOf, shopOf } from '../world/party/party'
+import { focusSeat, leadSeatOf, playersOf } from '../world/party/party'
 import { withWorld } from '../world/schema/world'
 import {
   type Intent,
   type PlayerSlot,
-  ShopState,
   type Vector,
-  idleIntent,
 } from '../world/schema/worldSchema'
 import { ZERO_VECTOR, normalize } from '../world/step/geometry'
-import {
-  type InputsByPlayer,
-  SeatAction,
-  applySeatAction,
-  stepShopFocus,
-} from '../world/step/stepWorld'
+import { type InputsByPlayer, applySeatAction } from '../world/step/stepWorld'
 import { isRoundActive } from '../world/waves/waves'
 import { type ActionKeys, keyActionOf } from './keyActions'
 
 // Local co-op for testing (MULTIPLAYER.md, Phase 1): with a dev-only
 // `?local=N` link, players 2 to 4 share the keyboard with player 1, who
 // keeps WASD, the mouse, and every usual key. Each other player has a
-// block of keys of their own; they aim where they walk. At the stall the
-// move keys step through the rows, fire buys, and swap walks away. Their
-// READY key is their interact key too: held at a purchasable, it buys.
+// block of keys of their own; they aim where they walk. Their READY key is
+// their interact key too: held at a purchasable, it buys.
 
 type CouchKeys = ActionKeys &
   Readonly<{
@@ -116,19 +108,14 @@ const moveOf = (keys: ReadonlyArray<string>, couch: CouchKeys): Vector =>
     Option.getOrElse(() => ZERO_VECTOR),
   )
 
-const isAtCounter = (model: Model, slot: PlayerSlot): boolean =>
-  Option.exists(shopOf(model, slot), ShopState.isAnyOf(['Browsing']))
-
-const intentOf = (model: Model, slot: PlayerSlot, couch: CouchKeys): Intent => {
+const intentOf = (model: Model, couch: CouchKeys): Intent => {
   const keys = model.input.pressedKeys
-  return isAtCounter(model, slot)
-    ? idleIntent
-    : {
-        move: moveOf(keys, couch),
-        maybeAim: Option.none(),
-        trigger: Array.contains(keys, couch.fire) ? 'Held' : 'Released',
-        interact: Array.contains(keys, couch.ready) ? 'Held' : 'Released',
-      }
+  return {
+    move: moveOf(keys, couch),
+    maybeAim: Option.none(),
+    trigger: Array.contains(keys, couch.fire) ? 'Held' : 'Released',
+    interact: Array.contains(keys, couch.ready) ? 'Held' : 'Released',
+  }
 }
 
 // NOTE: every player's intent for a tick: player 1's from the client's own
@@ -145,7 +132,7 @@ export const couchInputs: {
         Option.match(Option.fromNullishOr(COUCH_KEYS.get(slot)), {
           onNone: () => Result.failVoid,
           onSome: couch =>
-            Result.succeed([slot, intentOf(model, slot, couch)] as const),
+            Result.succeed([slot, intentOf(model, couch)] as const),
         }),
       ),
     ]),
@@ -182,36 +169,6 @@ export const isCouchKey: {
     Option.isSome(maybePressOf(model, code)),
 )
 
-const atCounterPress = (
-  model: Model,
-  { slot, couch }: CouchPress,
-  code: string,
-): Model =>
-  withWorld(model, world => {
-    if (code === couch.up) {
-      return stepShopFocus(world, slot, 'Previous')
-    } else if (code === couch.down) {
-      return stepShopFocus(world, slot, 'Next')
-    } else if (code === couch.swap) {
-      return applySeatAction(world, slot, SeatAction.LeaveCounter())
-    } else if (code === couch.fire) {
-      return applySeatAction(world, slot, buyActionOf(model, slot))
-    } else {
-      return world
-    }
-  })
-
-const buyActionOf = (model: Model, slot: PlayerSlot): SeatAction =>
-  Option.match(shopOf(model, slot), {
-    onNone: () => SeatAction.LeaveCounter(),
-    onSome: shop =>
-      ShopState.match(shop, {
-        Away: () => SeatAction.LeaveCounter(),
-        Browsing: ({ focusedItem }) => SeatAction.Buy({ item: focusedItem }),
-        Dismissed: () => SeatAction.LeaveCounter(),
-      }),
-  })
-
 const fieldPress = (
   model: Model,
   { slot, couch }: CouchPress,
@@ -231,10 +188,7 @@ export const pressCouchKey: {
 } = Function.dual(2, (model: Model, code: string): Model =>
   Option.match(maybePressOf(model, code), {
     onNone: () => model,
-    onSome: press =>
-      isAtCounter(model, press.slot)
-        ? atCounterPress(model, press, code)
-        : fieldPress(model, press, code),
+    onSome: press => fieldPress(model, press, code),
   }),
 )
 

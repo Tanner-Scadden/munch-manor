@@ -46,6 +46,7 @@ export const FIELD_CLASSES = {
   fridge: 'World',
   pantry: 'World',
   crates: 'World',
+  keys: 'World',
   stove: 'World',
   gasValve: 'World',
   cases: 'World',
@@ -79,7 +80,6 @@ export const FIELD_CLASSES = {
   cosmeticRngState: 'Cosmetic',
 
   difficultyCard: 'Client',
-  shopDialog: 'Client',
   trapHint: 'Client',
   firstBreakQuest: 'Client',
   kitchenTour: 'Client',
@@ -144,7 +144,6 @@ export const FIELD_CLASSES = {
   munchopedia: 'Client',
   profileDialog: 'Client',
   rotationSetting: 'Client',
-  shopChatter: 'Client',
   localPlayers: 'Client',
   crewBots: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>
@@ -167,9 +166,10 @@ const LEGACY_SEAT_FIELDS = [
 
 // NOTE: client fields at the root of a Model before their feature became a
 // Block: the Profile's (src/features/profile/), now inside `profile`, and
-// the shop dialog's tabs and guide (src/features/shop/), now inside
-// `shopDialog`. A run before that change hashes them as the client fields
-// they are, so it and a run after it hash alike.
+// the shop dialog's tabs and guide (src/features/shop/), inside
+// `shopDialog` until the shop went (docs/ESCAPE_PLAN.md, layer 7), which
+// hashes as a client field too. A run before those changes hashes them as
+// the client fields they are, so it and a run after it hash alike.
 const LEGACY_CLIENT_FIELDS = [
   'character',
   'profileTabs',
@@ -177,6 +177,8 @@ const LEGACY_CLIENT_FIELDS = [
   'tutorialReset',
   'shopTabs',
   'shopGuide',
+  'shopDialog',
+  'shopChatter',
 ] as const
 
 const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([

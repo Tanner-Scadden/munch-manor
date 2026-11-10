@@ -3,10 +3,7 @@ import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
-import { DialogBlock } from '@foldkit/ui'
 
-import { DialogBinding } from '../../../features/shop/bindings'
-import { withShopDialogOpen } from '../../../test/model.fixture'
 import {
   DISTANT_SPAWN,
   crewInWave,
@@ -21,8 +18,6 @@ import {
   type RootSteps,
   SHOTGUN,
   WORLD_KEYS,
-  buyAtCounter,
-  closeDialog,
   holdingFirst,
   withPistol,
 } from '../../../test/testing'
@@ -36,16 +31,8 @@ import { COOP_RULES, leadSeatOf, modifyFocus } from '../../../world/party/party'
 import type { World } from '../../../world/schema/world'
 import { idleIntent } from '../../../world/schema/worldSchema'
 import { SeatAction, applySeatAction } from '../../../world/step/stepWorld'
-import { ShopDialogBinding } from '../../bindings'
 import { Message } from '../../message'
-import {
-  Arsenal,
-  BreakClock,
-  Life,
-  type Model,
-  Phase,
-  ShopState,
-} from '../../model'
+import { BreakClock, Life, type Model, Phase } from '../../model'
 
 // One rule set for player actions (AGENTS.md "Code shape"): every seat
 // action, pressed through single player's own Messages, leaves the World
@@ -97,25 +84,15 @@ const withTraps = (base: Model, barricades: number, turrets: number): Model =>
       }),
   })
 
-const inBreak = modifyFocus(
-  modifyFields(readyModel, {
-    phase: () =>
-      Phase.Preparation({
-        wave: 2,
-        remainingMs: 20_000,
-        durationMs: 20_000,
-        clock: BreakClock.Counting(),
-        spawns: [DISTANT_SPAWN],
-      }),
-  }),
-  { wallet: () => ({ balance: 500, earned: 500, shown: 500 }) },
-)
-
-// NOTE: at the counter with the dialog up and a heart down. Rattles' focus
-// stays on the Laser Sight's row, so a buy moves no focus.
-const atCounter = modifyFocus(withShopDialogOpen(inBreak), {
-  shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-  player: player => modifyFields(player, { hp: hp => hp - 1 }),
+const inBreak = modifyFields(readyModel, {
+  phase: () =>
+    Phase.Preparation({
+      wave: 2,
+      remainingMs: 20_000,
+      durationMs: 20_000,
+      clock: BreakClock.Counting(),
+      spawns: [DISTANT_SPAWN],
+    }),
 })
 
 // NOTE: a crew in a fight with the lead down, their last shout cooled.
@@ -167,33 +144,6 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
     from: withTraps(inWave, 1, 1),
     action: SeatAction.NextTrap(),
     presses: Story.steps(Story.message(Message.ClickedNextTrapButton())),
-  },
-  // NOTE: the one thing Rattles still hands over: the Pop Pistol back, to a
-  // player who traded it away.
-  Buy: {
-    from: modifyFocus(atCounter, {
-      player: player =>
-        modifyFields(player, {
-          arsenal: () =>
-            Arsenal.OneGun({
-              first: { kind: 'Smg', loaded: 30, tier: 0, kills: 0 },
-            }),
-        }),
-    }),
-    action: SeatAction.Buy({ item: 'Pistol' }),
-    presses: Story.steps(buyAtCounter('Pistol')),
-  },
-  // NOTE: the shop dialog closed: its close, then the Command's result.
-  LeaveCounter: {
-    from: atCounter,
-    action: SeatAction.LeaveCounter(),
-    presses: Story.steps(
-      Story.messageIn(
-        [ShopDialogBinding, DialogBinding],
-        DialogBlock.Message.CanceledDialog(),
-      ),
-      closeDialog(),
-    ),
   },
   Ready: {
     from: inBreak,

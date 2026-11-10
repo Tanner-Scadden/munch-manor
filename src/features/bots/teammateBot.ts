@@ -1,10 +1,6 @@
 import { Array, Function, Option, Order, Result, pipe } from 'effect'
 
-import {
-  PLAYER_RADIUS,
-  PLAYER_SPEED,
-  SHOP_NEAR_PX,
-} from '../../shared/constants'
+import { PLAYER_RADIUS, PLAYER_SPEED } from '../../shared/constants'
 import { PAN_RULES } from '../../world/fridge/fridgeWeapons'
 import { KNIFE_RULES } from '../../world/gear/knife'
 import { PICKUP_LIFETIME_MS } from '../../world/gear/powerups'
@@ -31,15 +27,11 @@ import { flowFieldToward, steerToward } from '../../world/level/pathing'
 import { isCallFresh } from '../../world/party/medic'
 import {
   COOP_RULES,
-  focusOf,
-  focusSeat,
-  focusSlotOf,
   isDowned,
   isFriendlyFireOn,
   isStanding,
   leadSeatOf,
   playersOf,
-  shopOf,
 } from '../../world/party/party'
 import type { World } from '../../world/schema/world'
 import {
@@ -49,18 +41,10 @@ import {
   type Pickup,
   type PlayerSlot,
   type SeatState,
-  type ShopItemId,
-  ShopState,
   type Vector,
   type Zombie,
   idleIntent,
 } from '../../world/schema/worldSchema'
-import {
-  STALL_BOX,
-  Verdict,
-  isShopOpenFor,
-  verdictFor,
-} from '../../world/shop/shop'
 import {
   ZERO_VECTOR,
   closestPointOnSegment,
@@ -82,9 +66,9 @@ import { type Threat, escapeHeading } from './escape'
 // door (a different one for each seat, moving on now and then), hunts the
 // zombies it hears but cannot see, shoots the nearest one it can, keeps
 // some distance from it and some room from its teammates, revives anyone who
-// is down (a fresh MEDIC! call first, over any power-up), grabs the power-ups nobody nearer wants, buys hearts and upgrades at the stall in a break (never while the
-// human is at it), and presses READY when the human does or after a short
-// wait. It
+// is down (a fresh MEDIC! call first, over any power-up), grabs the power-ups nobody nearer wants, and presses READY when the human
+// does or after a short wait. There is no shop to visit: keys are the
+// crew's, and the human spends them. It
 // carries nothing between ticks and rolls no dice, so the same World gives
 // the same intent, and a replay holds.
 
@@ -100,9 +84,6 @@ const STRAFE_MS = 1300
 const RELOAD_QUIET_PX = 90
 const REVIVE_STOP_PX = PLAYER_RADIUS + COOP_RULES.reviveReachPx - 4
 const READY_DELAY_MS = 4000
-const READY_LIMIT_MS = 10_000
-const STALL_YIELD_PX = SHOP_NEAR_PX
-const STALL_SPOT_PX = 8
 const THREAT_SLACK_PX = 40
 const PICKUP_SEEK_PX = 110
 const HEART_SEEK_PX = 170
@@ -120,10 +101,6 @@ const FLEE_PX: Readonly<Record<Zombie['kind'], number>> = {
   Crawler: 20,
   Boss: 56,
 }
-
-// NOTE: the shop sells nothing a bot wishes for any more: ammo is endless,
-// guns level by kills, and hearts and traps are found in the house.
-const WISHES: ReadonlyArray<ShopItemId> = []
 
 // WHAT IS IN THE ROOM
 
@@ -509,48 +486,11 @@ const fightIntent = (world: World, me: SeatState): Intent => {
 
 // THE BREAK
 
-const stallSpot: Vector = {
-  x: STALL_BOX.left - STALL_SPOT_PX,
-  y: (STALL_BOX.top + STALL_BOX.bottom) / 2,
-}
-
-const distanceToStall = ({ x, y }: Vector): number =>
-  Math.hypot(
-    Math.max(STALL_BOX.left - x, 0, x - STALL_BOX.right),
-    Math.max(STALL_BOX.top - y, 0, y - STALL_BOX.bottom),
-  )
-
-// NOTE: the first thing on the bot's list that it can buy right now, from
-// its own wallet and guns (the seat in the World's fields).
-const maybeWishOf = (seatWorld: World): Option.Option<ShopItemId> =>
-  Array.findFirst(WISHES, item =>
-    Verdict.isAnyOf(['Available'])(
-      verdictFor(seatWorld, focusSlotOf(seatWorld), item),
-    ),
-  )
-
-const isShopOpen = (world: World): boolean => isShopOpenFor(world.phase)
-
-const isHumanBusyAtStall = (world: World, human: SeatState): boolean =>
-  distanceToStall(human.player) < STALL_YIELD_PX ||
-  Option.exists(shopOf(world, human.seat.slot), shop =>
-    ShopState.isAnyOf(['Browsing'])(shop),
-  )
-
 const humanReady = (world: World): boolean =>
   leadSeatOf(world).readiness === 'Ready'
 
-const humanOf = (world: World): Option.Option<SeatState> =>
-  Array.findFirst(
-    playersOf(world),
-    ({ seat }) => seat.slot === leadSeatOf(world).slot,
-  )
-
 const breakIntent = (world: World, me: SeatState): Intent => {
-  const maybeHuman = humanOf(world)
-  const seatWorld = focusSeat(world, me.seat.slot)
-  const isAtCounter = ShopState.isAnyOf(['Browsing'])(focusOf(seatWorld).shop)
-  if (!isStanding(me.seat) || isAtCounter) {
+  if (!isStanding(me.seat)) {
     return idleIntent
   }
   const maybeToPickup = toPickup(world, me)
@@ -559,19 +499,6 @@ const breakIntent = (world: World, me: SeatState): Intent => {
   }
   if (me.seat.readiness === 'Ready') {
     return idleIntent
-  }
-  const wantsShop = isShopOpen(world) && Option.isSome(maybeWishOf(seatWorld))
-  const stallIsFree = Option.match(maybeHuman, {
-    onNone: () => true,
-    onSome: human =>
-      human.seat.slot === me.seat.slot || !isHumanBusyAtStall(world, human),
-  })
-  if (
-    wantsShop &&
-    stallIsFree &&
-    !ShopState.isAnyOf(['Dismissed'])(focusOf(seatWorld).shop)
-  ) {
-    return { ...idleIntent, move: walkToward(world, me.player, stallSpot) }
   }
   return { ...idleIntent, move: withElbowRoom(world, me, toPost(world, me)) }
 }
@@ -652,25 +579,10 @@ const fightPress = (world: World, me: SeatState): Option.Option<SeatAction> =>
     : Option.none()
 
 const breakPress = (world: World, me: SeatState): Option.Option<SeatAction> => {
-  const seatWorld = focusSeat(world, me.seat.slot)
-  const maybeWish = maybeWishOf(seatWorld)
-  if (ShopState.isAnyOf(['Browsing'])(focusOf(seatWorld).shop)) {
-    return Option.some(
-      Option.match(maybeWish, {
-        onNone: () => SeatAction.LeaveCounter(),
-        onSome: item => SeatAction.Buy({ item }),
-      }),
-    )
-  }
   const waitedMs = readyTimeOf(world)
-  const isDone =
-    !isShopOpen(world) ||
-    Option.isNone(maybeWish) ||
-    ShopState.isAnyOf(['Dismissed'])(focusOf(seatWorld).shop)
   const isReadyNow =
     me.seat.readiness === 'Waiting' &&
-    ((isDone && (humanReady(world) || waitedMs >= READY_DELAY_MS)) ||
-      waitedMs >= READY_LIMIT_MS)
+    (humanReady(world) || waitedMs >= READY_DELAY_MS)
   return isReadyNow ? Option.some(SeatAction.Ready()) : Option.none()
 }
 
@@ -692,8 +604,7 @@ const pressFor = (world: World, slot: PlayerSlot): Option.Option<SeatAction> =>
     },
   )
 
-// NOTE: the bots' presses for the tick (reload in a lull, buy and leave the
-// counter, READY), applied to their seats before the step, through the same
+// NOTE: the bots' presses for the tick (reload in a lull, READY), applied to their seats before the step, through the same
 // seat actions a player's presses are.
 export const applyBotPresses: {
   (slots: ReadonlyArray<PlayerSlot>): (world: World) => World

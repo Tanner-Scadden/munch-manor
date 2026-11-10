@@ -170,15 +170,14 @@ describe('cooking a gun', () => {
         ...ticks(HOLD_TICKS, FRAME_MS),
         Story.model(current => {
           expect(Option.isNone(heldPerk(current))).toBe(true)
-          expect(focusOf(current).wallet.balance).toBe(500)
+          expect(current.keys.held).toBe(500)
         }),
         ...ticks(COOK_TICKS - HOLD_TICKS, FRAME_MS),
         release('Enter'),
         Story.model(current => {
           expect(heldPerk(current)).toEqual(Option.some('Crispy'))
-          expect(focusOf(current).wallet.balance).toBe(500)
+          expect(current.keys.held).toBe(500)
           expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
-          expect(current.stats.purchases).toBe(1)
         }),
       ),
   )
@@ -309,7 +308,7 @@ describe('what the stove will not cook', () => {
         ...ticks(COOK_TICKS, FRAME_MS),
         release('Enter'),
         Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(500)
+          expect(current.keys.held).toBe(500)
           expect(focusOf(current).cooking.cooks).toBe(0)
           expect(Option.isNone(heldPerk(current))).toBe(true)
         }),

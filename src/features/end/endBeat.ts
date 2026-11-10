@@ -13,7 +13,7 @@ import { isObjectFirst, isObjectSecond } from '../../shared/dualArgs'
 import { Calling, CosmeticKind, type Difficulty } from '../../shared/playerData'
 import { callingsOpenedBy } from '../../world/heroes/calling'
 import { isRankUp, rankOf } from '../../world/heroes/rank'
-import { focusOf, isCoop, leadSeatOf } from '../../world/party/party'
+import { isCoop, leadSeatOf } from '../../world/party/party'
 import { accuracyPercent, totalKills } from '../../world/run/stats'
 import {
   type DifficultyBests,
@@ -169,9 +169,9 @@ export const tallyRowsOf = (model: Model): ReadonlyArray<TallyRow> =>
         isBest: false,
       },
       {
-        icon: 'Cash',
-        label: 'CASH',
-        value: focusOf(model).wallet.earned,
+        icon: 'Keys',
+        label: 'KEYS',
+        value: model.keys.found,
         format: shown => `$${shown}`,
         isBest: false,
       },

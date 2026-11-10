@@ -74,6 +74,19 @@ const fighting = (wave: number, audio: AudioState): Model =>
 const resolveCue = (mood: MusicMood) =>
   Story.Command.resolve(CueMusic, Message.CompletedCueMusic({ mood }))
 
+// NOTE: a cleared wave's payday, and the ching of the key it adds to the
+// ring (src/world/keys/keys.ts), sound in the same frame.
+const resolvePaydayAndKey = Story.Command.resolveAll(
+  [
+    PlaySound,
+    Message.CompletedPlaySound({ sound: 'Payday', outcome: 'Played' }),
+  ],
+  [
+    PlaySound,
+    Message.CompletedPlaySound({ sound: 'Purchase', outcome: 'Played' }),
+  ],
+)
+
 describe('music follows the phase', () => {
   it.effect(
     'the title and Preparation share the creep loop, cued once audio is ready',
@@ -147,7 +160,7 @@ describe('music follows the phase', () => {
           CueMusic({ mood: 'Creep', level: 'Full', stinger: 'Cleared' }),
         ),
         resolveCue('Creep'),
-        resolvePlayed('Payday'),
+        resolvePaydayAndKey,
       ),
   )
 
@@ -168,7 +181,7 @@ describe('music follows the phase', () => {
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Victory' }),
       ),
       resolveCue('Silence'),
-      resolvePlayed('Payday'),
+      resolvePaydayAndKey,
     ),
   )
 

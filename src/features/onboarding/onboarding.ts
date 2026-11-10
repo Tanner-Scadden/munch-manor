@@ -188,14 +188,6 @@ export const skipDebutCard = (model: Model): Model =>
       ageMs < DEBUT_CARD_MIN_MS ? model : finishDebutCard(model, kind),
   })
 
-export const learnShop = (model: Model): Model =>
-  modifyFields(model, {
-    lessons: lessons =>
-      modifyFields(lessons, {
-        shop: lesson => learn(lesson, model.elapsedMs),
-      }),
-  })
-
 export const learnSwap = (model: Model): Model =>
   modifyFields(model, {
     lessons: lessons =>

@@ -109,6 +109,14 @@ export const DEVICES = `
   SELECT device, screen_fit, count(*) AS runs FROM runs
   GROUP BY device, screen_fit ORDER BY runs DESC`
 
+// NOTE: per player, from version 5 on (the skeleton keys and display
+// cases, docs/ESCAPE_PLAN.md layer 7): keys spent and cases opened a run.
+export const KEYS = `
+  SELECT mode, count(*) AS runs, avg(keys_spent) AS keys_spent,
+    avg(cases_opened) AS cases_opened FROM runs
+  WHERE summary_version >= 5
+  GROUP BY mode ORDER BY mode`
+
 // NOTE: per game, so a co-op game counts once.
 export const RUNS_PER_DAY = `
   WITH ${CREW_GAMES}, ${GAMES}

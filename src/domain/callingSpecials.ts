@@ -4,11 +4,10 @@ import { QUIRK_ICONS } from '../art/callingArt'
 import type { Calling } from '../shared/playerData'
 import {
   isPistolBarred,
-  killPayFor,
+  keyScaleOf,
   magazineFor,
   maxHpOf,
   mendSpeedScaleOf,
-  shopPriceFor,
   speedScaleOf,
   startsWithCooker,
   stoveKillsFor,
@@ -85,12 +84,14 @@ const SPECIALS: Readonly<Record<Calling, ReadonlyArray<Special>>> = {
   ],
   PennyPincher: [
     perk(
-      QUIRK_ICONS.Tag,
-      SPECIAL_LINES.shopOff(percentLess(shopPriceFor('PennyPincher', 100))),
+      QUIRK_ICONS.Key,
+      SPECIAL_LINES.moreKeys(
+        percentMore(Math.round(keyScaleOf(wearer('PennyPincher')) * 100)),
+      ),
     ),
     drawback(
-      QUIRK_ICONS.Coin,
-      SPECIAL_LINES.lessKillPay(percentLess(killPayFor('PennyPincher', 100))),
+      QUIRK_ICONS.Heart,
+      SPECIAL_LINES.maxHearts(maxHpOf(wearer('PennyPincher'))),
     ),
   ],
   LineCook: [

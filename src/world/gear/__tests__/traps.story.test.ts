@@ -882,7 +882,7 @@ describe('turrets', () => {
     }),
   )
 
-  it.effect('its peas kill zombies and pay their bounty', () =>
+  it.effect('its peas kill zombies', () =>
     Story.story(
       APPLICATION,
       Story.given(
@@ -893,8 +893,7 @@ describe('turrets', () => {
         ),
       ),
       ...ticks(Math.ceil((2 * PEA_INTERVAL_MS + 500) / FRAME_MS), FRAME_MS),
-      Story.model(({ seats: [{ wallet }], zombies }) => {
-        expect(wallet.balance).toBe(ZOMBIE_KINDS.Runner.bounty)
+      Story.model(({ zombies }) => {
         expect(
           Array.every(
             Array.filter(zombies, ({ id }) => id === 75),

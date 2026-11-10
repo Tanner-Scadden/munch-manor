@@ -50,7 +50,7 @@ export const runDifficultyOf = (model: Model): Difficulty =>
 // NOTE: the modifiers a run plays with: the room's, kept with the run
 // (maybeRoomModifiers) so a LEAVE, which drops the room, still has them,
 // else the player's own pick.
-export const playedModifiersOf = (run: Model): Modifiers =>
+const playedModifiersOf = (run: Model): Modifiers =>
   Option.getOrElse(run.maybeRoomModifiers, () => run.modifiers)
 
 // NOTE: the modifiers that bite in a run. Friendly Fire needs a teammate to

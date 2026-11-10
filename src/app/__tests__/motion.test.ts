@@ -6,7 +6,6 @@ import callingCss from '../../features/heroes/calling.css?raw'
 import menuCss from '../../features/home/menu.css?raw'
 import closetCss from '../../features/profile/blocks/look/closet.css?raw'
 import profileCss from '../../features/profile/profile.css?raw'
-import shopCss from '../../features/shop/shop.css?raw'
 import stylesCss from '../styles.css?raw'
 
 // NOTE: a press lands where a button is when the finger goes down and
@@ -28,7 +27,6 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/features/profile/profile.css', profileCss],
   ['src/features/heroes/calling.css', callingCss],
   ['src/features/profile/blocks/look/closet.css', closetCss],
-  ['src/features/shop/shop.css', shopCss],
   ['src/features/coop/coop.css', coopCss],
 ]
 
@@ -89,16 +87,6 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'closet-hop-b': "a bought look's face, inside its option",
   'closet-shake-a': "an option's price or padlock, inside its option",
   'closet-shake-b': "an option's price or padlock, inside its option",
-  // shop.css
-  'shop-new-bob': "a tab's NEW badge",
-  'shop-stamp': 'the SOLD stamp',
-  'shop-coin': 'coins',
-  'shop-nope': 'the refusal mark, aria-hidden',
-  'shop-bump': 'the wallet text',
-  'shop-bob': "Rattles' face",
-  'shop-hop': "Rattles' face",
-  'shop-droop': "Rattles' face",
-  'shop-tilt': "Rattles' face",
   // coop/coop.css
   'coop-wobble': 'the co-op problem line, text and an icon',
   'coop-bob': "players' heads and icons",

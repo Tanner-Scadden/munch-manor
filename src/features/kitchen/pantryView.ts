@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 
 import type { Model } from '../../app/model'
-import { COIN_SPRITE } from '../../art/font'
+import { KEY_SPRITE } from '../../art/font'
 import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
 import { HEART_SPRITE } from '../../art/sprites/hearts'
 import type { Drawable } from '../../render/depth'
@@ -22,12 +22,12 @@ const LIFT_PX = 4
 const GLINT_MS = 1400
 const GLINT_ON_MS = 160
 
-// NOTE: the coin is drawn from its top left corner, the rest from their
+// NOTE: the key is drawn from its top left corner, the rest from their
 // middles, so each sits by its own offset.
 type GoodieLook = Readonly<{ sprite: Sprite; dx: number; dy: number }>
 
 const GOODIE_LOOKS: Readonly<Record<PantryGoodie, GoodieLook>> = {
-  Cash: { sprite: COIN_SPRITE, dx: -3, dy: -3 },
+  Key: { sprite: KEY_SPRITE, dx: -3, dy: -3 },
   Heart: { sprite: HEART_SPRITE, dx: 0, dy: 0 },
 }
 

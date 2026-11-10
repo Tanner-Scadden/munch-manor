@@ -210,7 +210,7 @@ const shootNearest = (
 
 const anyZombie = () => true
 
-type Role = 'Fight' | 'Feed' | 'Guard' | 'Revive' | 'Shop' | 'Idle'
+type Role = 'Fight' | 'Feed' | 'Guard' | 'Revive' | 'Idle'
 
 const distance = (from: Point, to: Point) =>
   Math.hypot(to.x - from.x, to.y - from.y)
@@ -292,20 +292,6 @@ const drive = (page: Page, held: Held, role: Role, partner: number) =>
           : routeKeys(own, mate, 3),
       )
       return yield* shootNearest(page, held, readout, own, anyZombie)
-    }
-    if (role === 'Shop') {
-      yield* release(page, held)
-      // NOTE: the counter opens within SHOP_REACH_PX (12) of the stall, so a
-      // spot 6 px left of its middle is in reach.
-      const beside = {
-        x: readout.stall.left - 6,
-        y: (readout.stall.top + readout.stall.bottom) / 2,
-      }
-      return yield* holdKeys(
-        page,
-        held,
-        own.shop === 'Browsing' ? new Set() : routeKeys(own, beside, 1),
-      )
     }
     const nowMs = yield* Clock.currentTimeMillis
     const leg = Math.floor(nowMs / 900 + slot) % 4

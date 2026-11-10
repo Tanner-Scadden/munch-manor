@@ -56,6 +56,7 @@ import {
 } from '../../shared/constants'
 import type { Appearance, Calling } from '../../shared/playerData'
 import { heldGun } from '../../world/gear/weapons'
+import { KEY_RULES } from '../../world/keys/keys'
 import { focusOf, isCoop } from '../../world/party/party'
 import type { ZombieKind } from '../../world/schema/entitySchema'
 import {
@@ -68,7 +69,6 @@ import {
 import { clamp } from '../../world/step/geometry'
 import { endlessDepth, hpScaleFor } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE, debutKinds } from '../../world/waves/wavePlans'
-import { waveBonus } from '../../world/waves/waves'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 
 // SHARED
@@ -293,9 +293,11 @@ const WAVE_TITLES: ReadonlyArray<BakedText> = Array.makeBy(
   wave => bakeText(`WAVE ${wave}`, 'Defeat'),
 )
 
-const CLEARED_SUBTITLES: ReadonlyArray<BakedText> = Array.makeBy(
-  BAKED_WAVES + 1,
-  wave => bakeText(`+$${waveBonus(wave)} BONUS. THE SHOP IS OPEN`, 'Prompt'),
+// NOTE: a cleared wave adds a key to the ring (src/world/keys/keys.ts),
+// the `$` drawn as a skeleton key.
+const CLEARED_SUBTITLE: BakedText = bakeText(
+  `+$${KEY_RULES.perWaveCleared}`,
+  'Prompt',
 )
 
 const BEEFIER = bakeText('THEY GOT BEEFIER', 'Fresh')
@@ -462,15 +464,7 @@ const preparationBanner = (
   if (wave === 1) {
     return bannerAt(model.hintBand, GET_READY, Option.none())
   } else if (msIntoPreparation < WAVE_CLEARED_BANNER_MS) {
-    return bannerAt(
-      model.hintBand,
-      WAVE_CLEARED,
-      Option.some(
-        bakedFor(CLEARED_SUBTITLES, wave - 1, () =>
-          bakeText(`+$${waveBonus(wave - 1)} BONUS`, 'Prompt'),
-        ),
-      ),
-    )
+    return bannerAt(model.hintBand, WAVE_CLEARED, Option.some(CLEARED_SUBTITLE))
   } else {
     return debutBanner(
       model.hintBand,

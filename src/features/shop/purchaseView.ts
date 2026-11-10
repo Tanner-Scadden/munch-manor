@@ -26,11 +26,11 @@ import {
   PERK_ICONS,
   PERK_ICON_SIZE,
 } from '../../render/kitchenGearView'
+import { PADLOCK_SPRITE } from '../../render/room/kitchenView'
 import { FRIDGE_RULES } from '../../world/fridge/leftovers'
 import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
 import { maybeValveLock } from '../../world/kitchen/gasValve'
 import { maybeStoveLock, maybeStovePerk } from '../../world/kitchen/stove'
-import { EXIT_RULES } from '../../world/level/exits'
 import { focusOf, focusSlotOf } from '../../world/party/party'
 import {
   FridgeDoor,
@@ -156,12 +156,30 @@ const bakeTag = (
   }
 }
 
-const EXIT_TAG = bakePriceTag(EXIT_RULES.price)
+// NOTE: a boarded exit wears a padlock with the keys it asks
+// (src/world/level/exits.ts): 3 to 5, by how deep its room is, each baked
+// once here.
+const PADLOCK_WIDTH = 7
+const FEWEST_EXIT_KEYS = 3
 
-const FRIDGE_TAG = bakePriceTag(FRIDGE_RULES.price)
+const padlockTag = (keys: number): PriceTag =>
+  bakeTag(
+    bakeText(`$${keys}`, 'Coin'),
+    Option.some({ sprite: PADLOCK_SPRITE, width: PADLOCK_WIDTH }),
+  )
 
-// NOTE: each seat's first pull of a round is cheaper (src/world/fridge/leftovers.ts).
-const FRIDGE_FIRST_TAG = bakePriceTag(FRIDGE_RULES.firstPrice)
+const EXIT_TAGS: Array.NonEmptyReadonlyArray<PriceTag> = [
+  padlockTag(FEWEST_EXIT_KEYS),
+  padlockTag(FEWEST_EXIT_KEYS + 1),
+  padlockTag(FEWEST_EXIT_KEYS + 2),
+]
+
+const exitTagOf = (keys: number): PriceTag =>
+  Option.getOrElse(Array.get(EXIT_TAGS, keys - FEWEST_EXIT_KEYS), () =>
+    Array.lastNonEmpty(EXIT_TAGS),
+  )
+
+const FRIDGE_TAG = bakePriceTag(FRIDGE_RULES.keys)
 
 const TAKE_TAG = bakeTag(bakeText('TAKE', 'Prompt'))
 
@@ -191,13 +209,8 @@ const VALVE_TAG = goTag(FLAME_ICON)
 
 const tagOf = (model: Model, offer: Offer): PriceTag =>
   Purchasable.match(offer.target, {
-    Exit: () => (offer.price === 0 ? FREE_TAG : EXIT_TAG),
-    Fridge: () =>
-      offer.price === 0
-        ? FREE_TAG
-        : offer.price === FRIDGE_RULES.firstPrice
-          ? FRIDGE_FIRST_TAG
-          : FRIDGE_TAG,
+    Exit: () => (offer.price === 0 ? FREE_TAG : exitTagOf(offer.price)),
+    Fridge: () => (offer.price === 0 ? FREE_TAG : FRIDGE_TAG),
     Prize: () => TAKE_TAG,
     Stove: () => stoveTagOf(model),
     Valve: () => VALVE_TAG,

@@ -11,7 +11,11 @@ import { purchaseOverlayShapes } from '../../../features/shop/purchaseView'
 import type { InputDevice } from '../../../input/inputSchema'
 import { cameraOf, screenCameraOf } from '../../../render/camera'
 import { FIXED_STEP_MS } from '../../../shared/constants'
-import { inPortrait, pastTimedBreaks } from '../../../test/model.fixture'
+import {
+  inPortrait,
+  pastTimedBreaks,
+  withKeys,
+} from '../../../test/model.fixture'
 import {
   APPLICATION,
   HOLD_TICKS,
@@ -24,9 +28,9 @@ import { levelOf, openExitIn } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
 import { modifyFocus } from '../../party/party'
 
-const atBoards = (device: InputDevice, balance: number): Model =>
+const atBoards = (device: InputDevice, keys: number): Model =>
   modifyFocus(
-    modifyFields(pastTimedBreaks(asVeteran(initialModel)), {
+    modifyFields(withKeys(pastTimedBreaks(asVeteran(initialModel)), keys), {
       lastDevice: () => device,
       phase: () =>
         Phase.Preparation({
@@ -37,13 +41,12 @@ const atBoards = (device: InputDevice, balance: number): Model =>
         }),
     }),
     {
-      wallet: () => ({ balance, earned: balance, shown: balance }),
       player: player => modifyFields(player, { x: () => 70, y: () => 26 }),
     },
   )
 
 const holdButton = Scene.role('button', {
-  name: `Hold to open the kitchen for ${EXIT_RULES.price} dollars`,
+  name: `Hold to open the kitchen for ${EXIT_RULES.kitchenKeys} keys`,
 })
 
 const frames = (count: number) =>
@@ -60,7 +63,7 @@ describe('holding to buy on touch', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atBoards('Touch', 85)),
+        Scene.given(atBoards('Touch', 5)),
         measureSurface,
         Scene.expect(holdButton).toExist(),
         Scene.expect(holdButton).toHaveAttr('data-short', 'false'),
@@ -81,7 +84,7 @@ describe('holding to buy on touch', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atBoards('Touch', EXIT_RULES.price - 5)),
+        Scene.given(atBoards('Touch', EXIT_RULES.kitchenKeys - 1)),
         measureSurface,
         Scene.expect(holdButton).toHaveAttr('data-short', 'true'),
         Scene.expect(holdButton).toHaveAttr('aria-disabled', 'true'),
@@ -104,12 +107,12 @@ describe('holding to buy on a keyboard', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atBoards('KeyboardMouse', 85)),
+        Scene.given(atBoards('KeyboardMouse', 5)),
         measureSurface,
         Scene.expect(holdButton).toBeAbsent(),
         Scene.expect(
           Scene.text(
-            `the kitchen, ${EXIT_RULES.price} dollars. Stand still or hold Enter to buy.`,
+            `the kitchen, ${EXIT_RULES.kitchenKeys} keys. Stand still or hold Enter to buy.`,
           ),
         ).toExist(),
       ),
@@ -173,7 +176,7 @@ describe('the price tag in a zoomed phone window', () => {
     purchaseOverlayShapes(model, screenCameraOf(model))
   const upright = (y: number): Model =>
     inPortrait(
-      modifyFocus(atBoards('Touch', 85), {
+      modifyFocus(atBoards('Touch', 5), {
         player: player => modifyFields(player, { y: () => y }),
       }),
     )

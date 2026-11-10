@@ -23,7 +23,7 @@ import {
   ZOMBIE_DYING_MS,
   ZOMBIE_MAX_HP,
 } from '../../../shared/constants'
-import { plannedSpawn } from '../../../test/model.fixture'
+import { plannedSpawn, withKeys } from '../../../test/model.fixture'
 import {
   APPLICATION,
   MUZZLE_X,
@@ -85,13 +85,12 @@ const PLANK_PILE: Trap = Trap.Barricade({
 })
 
 const victorious: Model = modifyFocus(
-  modifyFields(readyModel, {
+  modifyFields(withKeys(readyModel, 4), {
     phase: () => Phase.Victory(),
     traps: () => [PLANK_PILE],
     stats: scoring(4200),
   }),
   {
-    wallet: () => ({ balance: 412, earned: 1900, shown: 412 }),
     trapStock: () => ({ Barricade: 1, Turret: 1 }),
     player: player =>
       modifyFields(player, {
@@ -173,12 +172,9 @@ describe('choosing a mode', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFocus(
-            modifyFields(readyModel, {
-              phase: () => Phase.GameOver({ wave: 6 }),
-            }),
-            { wallet: () => ({ balance: 300, earned: 900, shown: 300 }) },
-          ),
+          modifyFields(withKeys(readyModel, 3), {
+            phase: () => Phase.GameOver({ wave: 6 }),
+          }),
         ),
         press('KeyE'),
         Story.model(({ phase }) => {
@@ -186,10 +182,10 @@ describe('choosing a mode', () => {
         }),
         ...waitOutGrace(),
         press('KeyE'),
-        Story.model(({ mode, phase, seats: [{ wallet }] }) => {
+        Story.model(({ mode, phase, keys }) => {
           expect(mode).toEqual(RunMode.Endless())
           expect(preparationWave(phase)).toEqual(Option.some(1))
-          expect(wallet.balance).toBe(0)
+          expect(keys.held).toBe(0)
         }),
       ),
   )
@@ -409,13 +405,14 @@ describe('keep going from Victory', () => {
           ({
             mode,
             phase,
-            seats: [{ wallet, player, trapStock }],
+            seats: [{ player, trapStock }],
+            keys,
             traps,
             stats,
           }) => {
             expect(mode).toEqual(RunMode.Endless())
             expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
-            expect(wallet).toEqual(focusOf(victorious).wallet)
+            expect(keys).toEqual(victorious.keys)
             expect(player.arsenal).toEqual(focusOf(victorious).player.arsenal)
             expect(pistolOf(player).tier).toBe(1)
             expect(player.hp).toBe(3)
@@ -433,10 +430,10 @@ describe('keep going from Victory', () => {
       Story.given(victorious),
       ...waitOutGrace(),
       Story.message(Message.ClickedKeepGoingButton()),
-      Story.model(({ mode, phase, seats: [{ wallet }], traps }) => {
+      Story.model(({ mode, phase, keys, traps }) => {
         expect(mode).toEqual(RunMode.Endless())
         expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
-        expect(wallet.balance).toBe(412)
+        expect(keys.held).toBe(4)
         expect(traps).toEqual([PLANK_PILE])
       }),
     ),
@@ -469,10 +466,10 @@ describe('keep going from Victory', () => {
       Story.given(victorious),
       ...waitOutGrace(),
       press('Enter'),
-      Story.model(({ mode, phase, seats: [{ wallet }], traps }) => {
+      Story.model(({ mode, phase, keys, traps }) => {
         expect(mode).toEqual(RunMode.Campaign())
         expect(preparationWave(phase)).toEqual(Option.some(1))
-        expect(wallet.balance).toBe(0)
+        expect(keys.held).toBe(0)
         expect(traps).toEqual([])
       }),
     ),
@@ -505,9 +502,9 @@ describe('keep going from Victory', () => {
         Story.message(Message.ReleasedPointer({ pointerId: 1 })),
         press('KeyW'),
         press('KeyQ'),
-        Story.model(({ phase, seats: [{ wallet }], traps }) => {
+        Story.model(({ phase, keys, traps }) => {
           expect(phase).toEqual(Phase.Victory())
-          expect(wallet).toEqual(focusOf(victorious).wallet)
+          expect(keys).toEqual(victorious.keys)
           expect(traps).toEqual([PLANK_PILE])
         }),
         press('KeyK'),

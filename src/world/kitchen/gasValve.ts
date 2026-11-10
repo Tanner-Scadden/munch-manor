@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { type FeatLock, hasDone } from '../feats/feats'
 import { countKills } from '../gear/melee'
+import { heldKeys, spendKeys } from '../keys/keys'
 import {
   type Box,
   COVER_SYMBOLS,
@@ -13,8 +14,8 @@ import {
   tileBox,
   tilesWithSymbol,
 } from '../level/arena'
-import { boxAround, spendOn } from '../level/exits'
-import { creditKills, payTo, seatStateAt } from '../party/party'
+import { boxAround } from '../level/exits'
+import { creditKills } from '../party/party'
 import type { World } from '../schema/world'
 import {
   Feat,
@@ -26,7 +27,7 @@ import {
   type Zombie,
 } from '../schema/worldSchema'
 import type { Offer } from '../shop/purchase'
-import { ZOMBIE_BLAST_TARGET, bountyOf, creditKillEvents } from '../step/combat'
+import { ZOMBIE_BLAST_TARGET, creditKillEvents } from '../step/combat'
 import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
 import { SCORCH_DIRECTION, isKitchenOpen } from './kitchen'
 
@@ -137,9 +138,9 @@ export const buyValve: {
   (world: World, slot: PlayerSlot, price: number): Option.Option<World> =>
     isValveOpenTo(world, slot) &&
     Option.isSome(valveBoxOf(levelOf(world))) &&
-    seatStateAt(world, slot).wallet.balance >= price
+    heldKeys(world) >= price
       ? Option.some(
-          modifyFields(spendOn(world, slot, price), {
+          modifyFields(spendKeys(world, price), {
             gasValve: () =>
               GasValve.Lit({
                 owner: slot,
@@ -208,11 +209,7 @@ const burn = (world: World, owner: PlayerSlot, zone: Box): World => {
     zombies: () => Array.map(outcomes, ({ target }) => target),
     frameEvents: frameEvents => [...frameEvents, ...events],
   })
-  return creditKills(
-    payTo(burned, Option.some(owner), bountyOf(levelOf(world), events)),
-    owner,
-    countKills(events),
-  )
+  return creditKills(burned, owner, countKills(events))
 }
 
 // NOTE: once lit, the fire burns every 0.3 s whatever the phase; in a

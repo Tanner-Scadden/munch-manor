@@ -6,7 +6,7 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { localPlayersIn } from '../../app/boot'
 import { Message } from '../../app/message'
-import { type Model, Phase, ShopState } from '../../app/model'
+import { type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { cameraFocus } from '../../render/camera'
 import { FIXED_STEP_MS } from '../../shared/constants'
@@ -150,35 +150,6 @@ describe('player 2 on IJKL', () => {
         ...ticks(1, TICK_MS),
         Story.model(current => {
           expect(current.phase._tag).toBe('Wave')
-        }),
-      )
-    }),
-  )
-
-  it.effect('presses buy at the stall with U and walks off with O', () =>
-    Effect.gen(function* () {
-      const run = yield* started(2)
-      const shopping = atSeat(inBreak(run), 1, world =>
-        modifyFocus(world, {
-          wallet: wallet => modifyFields(wallet, { balance: () => 200 }),
-          shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-        }),
-      )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(shopping),
-        press('KeyU'),
-        release('KeyU'),
-        // NOTE: the Laser Sight sits in a display case, so Rattles refuses
-        // it: the press reached seat 1's counter and spent nothing.
-        Story.model(current => {
-          expect(mateAt(current, 1).wallet.balance).toBe(200)
-          expect(focusOf(current).wallet.balance).toBe(0)
-        }),
-        press('KeyO'),
-        release('KeyO'),
-        Story.model(current => {
-          expect(current.seats[1]?.shop._tag).toBe('Dismissed')
         }),
       )
     }),

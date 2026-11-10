@@ -30,8 +30,7 @@ import {
 } from '../../shared/constants'
 import { type Seeded, generateMany } from '../../shared/prng'
 import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
-import { isInKitchenAt } from '../../world/kitchen/kitchenPay'
-import { type Level, levelOf } from '../../world/level/arena'
+import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
 import { GameEvent } from '../../world/schema/worldSchema'
 import { ZERO_VECTOR, vectorLength } from '../../world/step/geometry'
@@ -110,27 +109,16 @@ import {
 } from './particleBursts'
 import { stepParticle } from './particlePhysics'
 
-// NOTE: a kitchen kill pays a quarter more (src/world/kitchen/kitchenPay.ts), and a few
-// coins and a glint jump off it to say so.
-const KITCHEN_KILL_COINS = 3
-const KITCHEN_KILL_SPARKS = 2
+// NOTE: keys found (src/world/keys/keys.ts) throw a few gold glints and
+// sparks where they came from, on their way to the ring.
+const KEY_GLINTS = 3
+const KEY_SPARKS = 2
 
 // NOTE: a display case springing open: a burst of sparks and glints.
 const CASE_SPARKS = 10
 const CASE_GLINTS = 4
 
-const kitchenKillParticles = (
-  state: number,
-  killed: Parameters<typeof killParticles>[1],
-): Seeded<ReadonlyArray<Particle>> =>
-  chain(state, [
-    drawState => killParticles(drawState, killed),
-    drawState => generateMany(drawState, KITCHEN_KILL_COINS, coin(killed)),
-    sparks(killed, KITCHEN_KILL_SPARKS),
-  ])
-
 const eventParticles = (
-  level: Level,
   state: number,
   event: GameEvent,
 ): Seeded<ReadonlyArray<Particle>> =>
@@ -153,10 +141,12 @@ const eventParticles = (
           BLOOD_SPEED,
         ),
       ),
-    ZombieKilled: killed =>
-      isInKitchenAt(level, killed)
-        ? kitchenKillParticles(state, killed)
-        : killParticles(state, killed),
+    ZombieKilled: killed => killParticles(state, killed),
+    KeysFound: ({ x, y }) =>
+      chain(state, [
+        drawState => generateMany(drawState, KEY_GLINTS, coin({ x, y })),
+        sparks({ x, y }, KEY_SPARKS),
+      ]),
     Exploded: exploded => blastParticles(state, exploded),
     Footfall: footfall => footfallDust(state, footfall),
     PlayerHurt: ({ x, y }) =>
@@ -277,7 +267,7 @@ const eventParticles = (
       generateMany(state, DUD_FOG, fogPuff({ x, y: y + 14 })),
     DudBurped: () => noParticles(state),
     PantryTaken: ({ x, y, goodie }) =>
-      goodie === 'Cash'
+      goodie === 'Key'
         ? generateMany(state, COINS_PER_PURCHASE, coin(playerGround(x, y)))
         : sparks({ x, y }, LID_SPARKS)(state),
     CrateTaken: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
@@ -443,7 +433,7 @@ export const advanceParticles: {
     const [eventState, eventBatches] = Array.mapAccum(
       model.frameEvents,
       model.cosmeticRngState,
-      (drawState, event) => eventParticles(levelOf(model), drawState, event),
+      (drawState, event) => eventParticles(drawState, event),
     )
     const dust = walkingDust(model, deltaMs, eventState)
 
@@ -462,21 +452,6 @@ export const advanceParticles: {
     })
   },
 )
-
-export const burstCoins: {
-  (x: number, y: number): (model: Model) => Model
-  (model: Model, x: number, y: number): Model
-} = Function.dual(3, (model: Model, x: number, y: number): Model => {
-  const [rngState, coins] = generateMany(
-    model.cosmeticRngState,
-    COINS_PER_PURCHASE,
-    coin(playerGround(x, y)),
-  )
-  return modifyFields(model, {
-    particles: particles => keepNewest([...particles, ...coins], PARTICLE_MAX),
-    cosmeticRngState: () => rngState,
-  })
-})
 
 // NOTE: the boards over an exit the player buys open burst into splinters
 // and planks with a cloud of dust.

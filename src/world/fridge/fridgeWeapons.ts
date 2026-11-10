@@ -8,9 +8,9 @@ import {
   type Struck,
   type Swing,
   countKills,
+  creditStriker,
   isInArc,
   isSmallKind,
-  payStriker,
   strikeInMelee,
   swingAt,
 } from '../gear/melee'
@@ -32,8 +32,6 @@ import {
   creditKills,
   isFriendlyFireOn,
   modifySeat,
-  payKillShared,
-  payTo,
   seatStateAt,
   shooterOf,
 } from '../party/party'
@@ -57,7 +55,6 @@ import {
   ZOMBIE_BLAST_TARGET,
   blastAll,
   blastTeammates,
-  bountyOf,
   creditKillEvents,
   hitEvent,
   isIcedSolid,
@@ -497,17 +494,12 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
       ...zombieEvents,
     ],
   })
-  const paid = payTo(
-    struck,
-    maybeShooter,
-    bountyOf(levelOf(world), zombieEvents),
-  )
   const credited = creditGunKills(
     Option.match(maybeShooter, {
-      onNone: () => paid,
-      onSome: slot => creditKills(paid, slot, countKills(zombieEvents)),
+      onNone: () => struck,
+      onSome: slot => creditKills(struck, slot, countKills(zombieEvents)),
     }),
-    killerSlotOf(paid, maybeShooter),
+    killerSlotOf(struck, maybeShooter),
     'Cooker',
     countKills(zombieEvents),
   )
@@ -709,7 +701,7 @@ const firePan = (
   })
   const events = creditKillEvents(swing.events, Option.some(slot), 'Pan')
   return creditGunKills(
-    payStriker(withEvents(struck, events), slot, events),
+    creditStriker(withEvents(struck, events), slot, events),
     slot,
     'Pan',
     countKills(events),
@@ -843,7 +835,7 @@ const spray = (world: World, slot: PlayerSlot): World => {
     ],
   )
   return creditGunKills(
-    payStriker(iced, slot, stings),
+    creditStriker(iced, slot, stings),
     slot,
     'Freeze',
     countKills(stings),
@@ -1016,10 +1008,8 @@ export const resolveShatters: {
         kind: zombie.kind,
       }),
   )
-  const bounty = bountyOf(levelOf(after), splashed.events)
-  const shards = withEvents(
-    modifyFields(after, { zombies: () => splashed.zombies }),
-    [...cracks, ...splashed.events],
-  )
-  return bounty > 0 ? payKillShared(shards, bounty) : shards
+  return withEvents(modifyFields(after, { zombies: () => splashed.zombies }), [
+    ...cracks,
+    ...splashed.events,
+  ])
 })

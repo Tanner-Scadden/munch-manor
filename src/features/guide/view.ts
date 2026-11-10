@@ -102,7 +102,9 @@ const barsView = (
 
 // LADDER AND CHIPS
 
-const priceTag = (price: number): string => `$${price}`
+// NOTE: a price is in skeleton keys (src/world/keys/keys.ts).
+const priceTag = (price: number): string =>
+  `${price} ${price === 1 ? 'key' : 'keys'}`
 
 // NOTE: a tier is earned by kills with the gun, so a step shows the kills
 // it takes.

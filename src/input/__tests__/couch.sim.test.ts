@@ -126,11 +126,10 @@ const holdFor = (current: Model, frame: number): ReadonlyArray<Message> => {
   ]
 }
 
-// NOTE: a frame of a break, from its first Model: walk, step off the stall,
-// press both players' READY and the lead's, then the frame.
+// NOTE: a frame of a break, from its first Model: walk, press both
+// players' READY and the lead's, then the frame.
 const breakFrame = (current: Model, frame: number): ReadonlyArray<Message> => [
   ...holdFor(current, frame),
-  ...(focusOf(current).shop._tag === 'Browsing' ? tap('Escape') : []),
   ...tap('KeyO'),
   ...tap('KeyY'),
   ...tap('Enter'),
@@ -271,9 +270,8 @@ describe('two keyboards on one desktop', () => {
         expect(playersOf(started)).toHaveLength(2)
         const { end, frames } = yield* playFrom({ end: started, frames: 0 })
         expect(end.phase._tag).toBe('Victory')
-        const [lead, mate] = playersOf(end)
-        expect(lead?.wallet.earned).toBeGreaterThan(0)
-        expect(mate?.wallet.earned).toBeGreaterThan(0)
+        const [, mate] = playersOf(end)
+        expect(end.keys.found).toBeGreaterThan(0)
         expect(mate?.seat.kills).toBeGreaterThan(0)
         expect(frames).toBeLessThan(MAX_FRAMES)
       }),
