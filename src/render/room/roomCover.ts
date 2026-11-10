@@ -84,7 +84,7 @@ const coverShadow = ({ x, y, width, height }: Box): Canvas.Shape =>
   rect(x + 2, y + height, width - 2, 2, COVER_SHADOW_COLOR)
 
 const isWestHalf = ({ x, width }: Box, level: Level): boolean =>
-  x + width / 2 < level.width / 2
+  x + width / 2 < level.left + level.width / 2
 
 // NOTE: an upright piano against the wall, its back rising up the wallpaper,
 // with a candelabra on top and one key bitten off.

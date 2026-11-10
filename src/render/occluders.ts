@@ -13,11 +13,11 @@ import {
 import { roomShapes } from './room/room'
 import { FACE_TOP } from './room/roomPalette'
 
-// NOTE: the room is one image on the floor canvas, under everything, but the
-// wall face over a doorway in a top wall stands up off the floor. Something
-// still in that doorway is behind the face, so its lintel and the wall
-// beside it must cover it. Each such doorway gets an occluder: pieces of the
-// same room image around the opening, drawn in the depth sort at the floor
+// NOTE: the room is an image a room on the floor canvas, under everything,
+// but the wall face over a doorway in a top wall stands up off the floor.
+// Something still in that doorway is behind the face, so its lintel and the
+// wall beside it must cover it. Each such doorway gets an occluder: pieces of
+// the same room images around the opening, drawn in the depth sort at the floor
 // line, so anything whose feet are above the line draws first and is
 // covered, and anything in the room draws over it. The opening below the
 // lintel is left out, so what stands in the doorway shows through it.
@@ -66,7 +66,7 @@ const openingsOf = (level: Level): ReadonlyArray<Opening> =>
     Array.makeBy(level.rows, index => index + level.topRow),
     row =>
       Array.reduce(
-        Array.makeBy(level.columns, column => column),
+        Array.makeBy(level.columns, column => column + level.leftColumn),
         NO_OPENINGS,
         (openings, column) => {
           if (!isOpeningTile(level, column, row)) {
@@ -91,6 +91,23 @@ const openingsOf = (level: Level): ReadonlyArray<Opening> =>
 
 type Piece = Readonly<{ x: number; y: number; width: number; height: number }>
 
+// NOTE: the part of a piece one room image covers. The room images do not
+// overlap, so a piece's crops from every image paint it once.
+const overlapOf = (room: Canvas.Image, piece: Piece): Option.Option<Piece> => {
+  const left = Math.max(room.x, piece.x)
+  const top = Math.max(room.y, piece.y)
+  const right = Math.min(room.x + room.width, piece.x + piece.width)
+  const bottom = Math.min(room.y + room.height, piece.y + piece.height)
+  return right > left && bottom > top
+    ? Option.some({
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
+      })
+    : Option.none()
+}
+
 const cropOf = (room: Canvas.Image, piece: Piece): Canvas.Shape =>
   Canvas.Image({
     src: room.src,
@@ -108,14 +125,14 @@ const cropOf = (room: Canvas.Image, piece: Piece): Canvas.Shape =>
   })
 
 const occluderOf =
-  (level: Level, room: Canvas.Image) =>
+  (level: Level, rooms: ReadonlyArray<Canvas.Image>) =>
   ({ row, first, last }: Opening): Occluder => {
     const floorY = (row + 1) * TILE_SIZE
     const top = Math.max(level.top, floorY - FACE_HEIGHT)
     const openingLeft = first * TILE_SIZE
     const openingRight = (last + 1) * TILE_SIZE
-    const left = Math.max(0, openingLeft - BESIDE_PX)
-    const right = Math.min(level.width, openingRight + BESIDE_PX)
+    const left = Math.max(level.left, openingLeft - BESIDE_PX)
+    const right = Math.min(level.left + level.width, openingRight + BESIDE_PX)
     const pieces: ReadonlyArray<Piece> = [
       { x: left, y: top, width: openingLeft - left, height: floorY - top },
       {
@@ -135,10 +152,13 @@ const occluderOf =
       floorY,
       left,
       right,
-      shapes: Array.filterMap(pieces, piece =>
-        piece.width > 0 && piece.height > 0
-          ? Result.succeed(cropOf(room, piece))
-          : Result.failVoid,
+      shapes: Array.flatMap(pieces, piece =>
+        Array.filterMap(rooms, room =>
+          Option.match(overlapOf(room, piece), {
+            onNone: () => Result.failVoid,
+            onSome: part => Result.succeed(cropOf(room, part)),
+          }),
+        ),
       ),
     }
   }
@@ -152,10 +172,12 @@ export const occludersOf = (level: Level): ReadonlyArray<Occluder> => {
     return cached
   }
   const room = roomShapes(level)
-  const only = room.length === 1 ? room[0] : undefined
+  const images = Array.filterMap(room, shape =>
+    shape._tag === 'Image' ? Result.succeed(shape) : Result.failVoid,
+  )
   const occluders =
-    only?._tag === 'Image'
-      ? Array.map(openingsOf(level), occluderOf(level, only))
+    images.length === room.length
+      ? Array.map(openingsOf(level), occluderOf(level, images))
       : []
   builtOccluders.set(level, occluders)
   return occluders

@@ -6,64 +6,17 @@ import {
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
 } from '../../shared/constants'
-import type {
-  DoorId,
-  ExitId,
-  LevelId,
-  LevelState,
-  Vector,
-} from '../schema/entitySchema'
+import type { DoorId, ExitId, LevelState, Vector } from '../schema/entitySchema'
 import { addVectors, clamp, scaleVector } from '../step/geometry'
-
-// MAP
-
-export const ROOM_MAP: ReadonlyArray<string> = [
-  '######KK#############NN#########',
-  '######KK#############NN#########',
-  '#PPP..........FFFF........BBBBB#',
-  '#PPP...........................#',
-  '#..........A........A..........#',
-  '#...TT.....A........A......TT..#',
-  '#...TT.....................TT..#',
-  '#..............................#',
-  'W..............................E',
-  'W..............................E',
-  '#..............................#',
-  '#...O......................VV..#',
-  '#...O........CCCCCC........VV..#',
-  '#..............................#',
-  '#.........UU...................#',
-  '#.........................$$...#',
-  '#...................XX....$$...#',
-  '########SS######################',
-]
-
-// NOTE: the kitchen stands north of the parlour, through the boarded double
-// door at the K tiles. Its rows sit above the parlour's, so they are world
-// rows -15 to -1. The yard east of it, the commas, is outside the house: the
-// way to the parlour's north door. Zombies walk the yard, the player never
-// does, and nothing out there is drawn.
-const KITCHEN_MAP: ReadonlyArray<string> = [
-  '############DD######,,,,,,,,,,,,',
-  '############DD######,,,,,,,,,,,,',
-  '#QQQ..GG..GG..IIIZZ#,,,,,,,,,,,,',
-  '#QQQ..GG..GG..IIIZZ#,,,,,,,,,,,,',
-  '#..................#,,,,,,,,,,,,',
-  '#...~~.............#,,,,,,,,,,,,',
-  'Y...~~~..........RR#,,,,,,,,,,,,',
-  'Y......LLLLLL......#,,,,,,,,,,,,',
-  '#......LLLLLL.~~...#,,,,,,,,,,,,',
-  '#.............~~~..#,,,,,,,,,,,,',
-  '#..................#,,,,,,,,,,,,',
-  '#RR...~~...........#,,,,,,,,,,,,',
-  '#....~~~...........#,,,,,,,,,,,,',
-  '#..................#,,,,,,,,,,,,',
-  '#..................#,,,,,,,,,,,,',
-]
-
-export const KITCHEN_TOP_ROW = -KITCHEN_MAP.length
-
-const MANOR_MAP: ReadonlyArray<string> = [...KITCHEN_MAP, ...ROOM_MAP]
+import {
+  LEVEL_SPECS,
+  type LevelSpec,
+  MANOR_SPEC,
+  PARLOUR_SPEC,
+  type RoomSpec,
+  middleOf,
+  widthOf,
+} from './plan'
 
 // SYMBOLS
 
@@ -119,6 +72,7 @@ export const DOOR_SYMBOLS: Readonly<Record<DoorId, string>> = {
   South: 'S',
   Back: 'D',
   Window: 'Y',
+  Front: 'H',
 }
 
 export const DOOR_OUTWARD: Readonly<Record<DoorId, Vector>> = {
@@ -128,12 +82,14 @@ export const DOOR_OUTWARD: Readonly<Record<DoorId, Vector>> = {
   South: { x: 0, y: 1 },
   Back: { x: 0, y: -1 },
   Window: { x: -1, y: 0 },
+  Front: { x: 0, y: 1 },
 }
 
-// NOTE: every door a map can name. A level's own spawn doors are its
-// `doorIds`, the ones on its map that no closed exit still holds shut. The
-// parlour's four come first, so a level with the kitchen shut lists them in
-// the same order it always did.
+// NOTE: every door zombies may come through. A level's own spawn doors are
+// its `doorIds`, the ones on its map that no closed exit still holds shut.
+// The parlour's four come first, so a level with the kitchen shut lists them
+// in the same order it always did. The front door is not here: it is the way
+// out of the house, and no zombie ever spawns at it.
 export const DOOR_IDS: ReadonlyArray<DoorId> = [
   'North',
   'West',
@@ -152,96 +108,24 @@ export const byDoor = <A>(
   South: make('South'),
   Back: make('Back'),
   Window: make('Window'),
+  Front: make('Front'),
 })
-
-// SPECS
-
-// NOTE: an exit is a boarded doorway drawn on the map with its own symbol.
-// While it is closed its tiles are solid and the doors behind it stay shut.
-// Opening it makes its tiles floor and adds its doors to the spawn doors.
-type ExitSpec = Readonly<{
-  id: ExitId
-  symbol: string
-  doors: ReadonlyArray<DoorId>
-}>
-
-// NOTE: a room is a block of whole tiles the camera may show. One behind an
-// exit counts only once that exit is open, so the camera never scrolls onto
-// a room the player cannot reach.
-type RoomSpec = Readonly<{
-  id: string
-  firstColumn: number
-  lastColumn: number
-  firstRow: number
-  lastRow: number
-  maybeExit: Option.Option<ExitId>
-}>
-
-export type LevelSpec = Readonly<{
-  id: string
-  tiles: ReadonlyArray<string>
-  topRow: number
-  exits: ReadonlyArray<ExitSpec>
-  rooms: Array.NonEmptyReadonlyArray<RoomSpec>
-}>
-
-const PARLOUR_ROOM: RoomSpec = {
-  id: 'Parlour',
-  firstColumn: 0,
-  lastColumn: 31,
-  firstRow: 0,
-  lastRow: ROOM_MAP.length - 1,
-  maybeExit: Option.none(),
-}
-
-const KITCHEN_ROOM: RoomSpec = {
-  id: 'Kitchen',
-  firstColumn: 0,
-  lastColumn: 31,
-  firstRow: KITCHEN_TOP_ROW,
-  lastRow: -1,
-  maybeExit: Option.some('Kitchen'),
-}
-
-// NOTE: the parlour on its own, the way every run saw it before the kitchen
-// was built. Tests and tools that only need the parlour's shape use it. Its
-// boarded double door holds no door shut, since no room stands behind it.
-export const PARLOUR_SPEC: LevelSpec = {
-  id: 'Parlour',
-  tiles: ROOM_MAP,
-  topRow: 0,
-  exits: [{ id: 'Kitchen', symbol: 'K', doors: [] }],
-  rooms: [PARLOUR_ROOM],
-}
-
-// NOTE: the manor is the level a run plays: the parlour, and the kitchen
-// behind its boarded double door. The kitchen's back door and broken window
-// stay shut until the player buys the exit open.
-export const MANOR_SPEC: LevelSpec = {
-  id: 'Manor',
-  tiles: MANOR_MAP,
-  topRow: KITCHEN_TOP_ROW,
-  exits: [{ id: 'Kitchen', symbol: 'K', doors: ['Back', 'Window'] }],
-  rooms: [PARLOUR_ROOM, KITCHEN_ROOM],
-}
-
-export const LEVEL_SPECS: Readonly<Record<LevelId, LevelSpec>> = {
-  Parlour: PARLOUR_SPEC,
-  Manor: MANOR_SPEC,
-}
 
 // GRID
 
 export type Tile = Readonly<{ column: number; row: number }>
 
-// NOTE: tile rows are world rows. A map whose first row sits above the
-// parlour's top wall, like the manor's kitchen, has a negative topRow, so
-// the parlour keeps the same world coordinates in every level it is part of.
+// NOTE: tile columns and rows are world columns and rows. A level's map is
+// the block of the plan its rooms cover, so a room above the parlour, like
+// the manor's kitchen, gives it a negative topRow, and one west of it a
+// negative leftColumn. The parlour keeps the same world coordinates in every
+// level it is part of.
 type Grid = Readonly<{
   tiles: ReadonlyArray<string>
   columns: number
   rows: number
   topRow: number
+  leftColumn: number
 }>
 
 export const symbolAt: {
@@ -250,11 +134,13 @@ export const symbolAt: {
 } = Function.dual(
   3,
   (grid: Grid, column: number, row: number): Option.Option<string> =>
-    pipe(
-      grid.tiles,
-      Array.get(row - grid.topRow),
-      Option.flatMap(line => String.at(line, column)),
-    ),
+    column < grid.leftColumn
+      ? Option.none()
+      : pipe(
+          grid.tiles,
+          Array.get(row - grid.topRow),
+          Option.flatMap(line => String.at(line, column - grid.leftColumn)),
+        ),
 )
 
 export const tileIndex: {
@@ -263,14 +149,14 @@ export const tileIndex: {
 } = Function.dual(
   3,
   (grid: Grid, column: number, row: number): number =>
-    (row - grid.topRow) * grid.columns + column,
+    (row - grid.topRow) * grid.columns + column - grid.leftColumn,
 )
 
 export const tileOfIndex: {
   (index: number): (grid: Grid) => Tile
   (grid: Grid, index: number): Tile
 } = Function.dual(2, (grid: Grid, index: number): Tile => ({
-  column: index % grid.columns,
+  column: (index % grid.columns) + grid.leftColumn,
   row: Math.floor(index / grid.columns) + grid.topRow,
 }))
 
@@ -280,8 +166,8 @@ export const isInsideRoom: {
 } = Function.dual(
   3,
   (grid: Grid, column: number, row: number): boolean =>
-    column >= 0 &&
-    column < grid.columns &&
+    column >= grid.leftColumn &&
+    column < grid.leftColumn + grid.columns &&
     row >= grid.topRow &&
     row < grid.topRow + grid.rows,
 )
@@ -293,7 +179,10 @@ export const tilesWithSymbol: {
   Array.flatMap(grid.tiles, (line, index) =>
     Array.filterMap(String.split(line, ''), (lineSymbol, column) =>
       lineSymbol === symbol
-        ? Result.succeed({ column, row: index + grid.topRow })
+        ? Result.succeed({
+            column: column + grid.leftColumn,
+            row: index + grid.topRow,
+          })
         : Result.failVoid,
     ),
   ),
@@ -441,8 +330,8 @@ export type Room = Readonly<{ id: string; box: Box; isOpen: boolean }>
 // NOTE: a level is built once for each set of open exits and kept, so every
 // lookup a frame makes is a plain read. `key` names the spec and its open
 // exits, and the flow field and the floor canvases rebuild when it changes.
-// top is the world y of the first tile row, which is above 0 when the map
-// starts above the parlour. bounds is the part the camera and the player may
+// left and top are the world x and y of the map's first column and row,
+// below 0 when a room sits west of or above the parlour. bounds is the part the camera and the player may
 // reach: the rooms whose exits are open. outsideTiles are the yard, walkable
 // for zombies on their way to a door and solid for the player, who also
 // treats every solid tile as solid (playerSolidTiles).
@@ -453,7 +342,9 @@ export type Level = Readonly<{
   columns: number
   rows: number
   topRow: number
+  leftColumn: number
   top: number
+  left: number
   width: number
   height: number
   bottom: number
@@ -468,6 +359,7 @@ export type Level = Readonly<{
   doorTileIndices: Readonly<Record<DoorId, ReadonlyArray<number>>>
   tileFlags: Uint8Array
   hasSoup: boolean
+  start: Vector
 }>
 
 // NOTE: what a tile is, as bits of one byte per tile in `Level.tileFlags`,
@@ -513,20 +405,95 @@ const openExitIdsOf = (
 const keyOf = (spec: LevelSpec, openExits: ReadonlyArray<ExitId>): string =>
   `${spec.id}:${Array.join(openExits, '+')}`
 
+// NOTE: the room covering a tile of the plan, the last listed when two
+// overlap, and its symbol there.
+const roomSymbolAt = (
+  rooms: ReadonlyArray<RoomSpec>,
+  column: number,
+  row: number,
+): Option.Option<string> =>
+  pipe(
+    Array.findLast(
+      rooms,
+      ({ tiles, origin }) =>
+        column >= origin.column &&
+        column < origin.column + widthOf(tiles) &&
+        row >= origin.row &&
+        row < origin.row + tiles.length,
+    ),
+    Option.flatMap(({ tiles, origin, renames }) =>
+      pipe(
+        Array.get(tiles, row - origin.row),
+        Option.flatMap(line => String.at(line, column - origin.column)),
+        Option.map(symbol =>
+          Option.getOrElse(Record.get(renames, symbol), () => symbol),
+        ),
+      ),
+    ),
+  )
+
+// NOTE: the rooms laid on the plan as one map: the block they cover, with
+// any gap between them left as ground outside the house.
+const gridOf = (rooms: Array.NonEmptyReadonlyArray<RoomSpec>): Grid => {
+  const leftColumn = Math.min(
+    ...Array.map(rooms, ({ origin }) => origin.column),
+  )
+  const topRow = Math.min(...Array.map(rooms, ({ origin }) => origin.row))
+  const columns =
+    Math.max(
+      ...Array.map(
+        rooms,
+        ({ origin, tiles }) => origin.column + widthOf(tiles),
+      ),
+    ) - leftColumn
+  const rows =
+    Math.max(
+      ...Array.map(rooms, ({ origin, tiles }) => origin.row + tiles.length),
+    ) - topRow
+  return {
+    tiles: Array.makeBy(rows, index =>
+      Array.join(
+        Array.makeBy(columns, column =>
+          Option.getOrElse(
+            roomSymbolAt(rooms, column + leftColumn, index + topRow),
+            () => OUTSIDE_SYMBOL,
+          ),
+        ),
+        '',
+      ),
+    ),
+    columns,
+    rows,
+    topRow,
+    leftColumn,
+  }
+}
+
+const builtGrids = new WeakMap<LevelSpec, Grid>()
+
+const gridOfSpec = (spec: LevelSpec): Grid => {
+  const cached = builtGrids.get(spec)
+  if (cached !== undefined) {
+    return cached
+  }
+  const grid = gridOf(spec.rooms)
+  builtGrids.set(spec, grid)
+  return grid
+}
+
+const roomBoxOf = ({ tiles, origin }: RoomSpec): Box => ({
+  left: origin.column * TILE_SIZE,
+  top: origin.row * TILE_SIZE,
+  right: (origin.column + widthOf(tiles)) * TILE_SIZE,
+  bottom: (origin.row + tiles.length) * TILE_SIZE,
+})
+
 const buildLevel = (
   spec: LevelSpec,
   requestedExits: ReadonlyArray<ExitId>,
 ): Level => {
-  const columns = pipe(
-    Array.head(spec.tiles),
-    Option.match({ onNone: () => 0, onSome: String.length }),
-  )
-  const grid: Grid = {
-    tiles: spec.tiles,
-    columns,
-    rows: spec.tiles.length,
-    topRow: spec.topRow,
-  }
+  const grid = gridOfSpec(spec)
+  const { columns } = grid
   const openExits = openExitIdsOf(spec, requestedExits)
   const exits: ReadonlyArray<Exit> = Array.map(spec.exits, exit => ({
     ...exit,
@@ -548,15 +515,12 @@ const buildLevel = (
     ...Record.keys(COVER_SYMBOLS),
     ...Array.map(closed, ({ symbol }) => symbol),
     ...Array.map(heldDoors, id => DOOR_SYMBOLS[id]),
+    // NOTE: the front door stays locked: nothing walks through it yet.
+    DOOR_SYMBOLS.Front,
   ])
   const rooms = Array.map(spec.rooms, (room): Room => ({
     id: room.id,
-    box: {
-      left: room.firstColumn * TILE_SIZE,
-      top: room.firstRow * TILE_SIZE,
-      right: (room.lastColumn + 1) * TILE_SIZE,
-      bottom: (room.lastRow + 1) * TILE_SIZE,
-    },
+    box: roomBoxOf(room),
     isOpen: Option.match(room.maybeExit, {
       onNone: () => true,
       onSome: exit => Array.contains(openExits, exit),
@@ -658,17 +622,20 @@ const buildLevel = (
     ),
   )
 
-  const top = spec.topRow * TILE_SIZE
+  const top = grid.topRow * TILE_SIZE
+  const left = grid.leftColumn * TILE_SIZE
   const height = grid.rows * TILE_SIZE
 
   return {
     key: keyOf(spec, openExits),
     spec,
-    tiles: spec.tiles,
+    tiles: grid.tiles,
     columns,
     rows: grid.rows,
-    topRow: spec.topRow,
+    topRow: grid.topRow,
+    leftColumn: grid.leftColumn,
     top,
+    left,
     width: columns * TILE_SIZE,
     height,
     bottom: top + height,
@@ -682,9 +649,9 @@ const buildLevel = (
         ({ box }) => box,
       ),
       {
-        left: 0,
+        left,
         top,
-        right: columns * TILE_SIZE,
+        right: left + columns * TILE_SIZE,
         bottom: top + height,
       },
     ),
@@ -701,6 +668,7 @@ const buildLevel = (
       [doorTiles, TILE_DOOR],
     ]),
     hasSoup: soupTiles.size > 0,
+    start: spec.start,
   }
 }
 
@@ -739,25 +707,17 @@ export const makeLevel: {
     buildLevel(
       {
         id,
-        tiles,
-        topRow: 0,
-        exits: [],
         rooms: [
           {
             id,
-            firstColumn: 0,
-            lastColumn: Math.max(
-              0,
-              Option.match(Array.head(tiles), {
-                onNone: () => 0,
-                onSome: String.length,
-              }) - 1,
-            ),
-            firstRow: 0,
-            lastRow: Math.max(0, tiles.length - 1),
+            tiles,
+            origin: { column: 0, row: 0 },
             maybeExit: Option.none(),
+            renames: {},
           },
         ],
+        exits: [],
+        start: middleOf(tiles),
       },
       [],
     ),
@@ -767,10 +727,20 @@ export const PARLOUR: Level = levelFor(PARLOUR_SPEC)
 
 export const MANOR: Level = levelFor(MANOR_SPEC)
 
-// NOTE: Rattles' trunk in the parlour, where every run starts; his
-// sprites are baked once for that spot.
+export const startingLevel: LevelState = { id: 'Manor', openExits: [] }
+
+// NOTE: the level every run starts on, with no exit open yet. What is baked
+// once for the start, such as Rattles' sprites, reads it.
+export const START_LEVEL: Level = levelFor(
+  LEVEL_SPECS[startingLevel.id],
+  startingLevel.openExits,
+)
+
+// NOTE: Rattles' trunk where the level a run starts on marks it; his
+// sprites are baked once for that spot. Opening an exit adds rooms around
+// it without moving it.
 const rattlesBox = (): Box => {
-  const tiles = tilesWithSymbol(PARLOUR, RATTLES_SYMBOL)
+  const tiles = tilesWithSymbol(START_LEVEL, RATTLES_SYMBOL)
   const columns = Array.map(tiles, ({ column }) => column)
   const rows = Array.map(tiles, ({ row }) => row)
   return {
@@ -782,8 +752,6 @@ const rattlesBox = (): Box => {
 }
 
 export const RATTLES_BOX: Box = rattlesBox()
-
-export const startingLevel: LevelState = { id: 'Manor', openExits: [] }
 
 // NOTE: the open room a point stands in, or the first room when it stands in
 // none, such as in a doorway.
@@ -936,7 +904,11 @@ export const tileIndexAt: {
 } = Function.dual(2, (level: Level, { x, y }: Vector): number =>
   tileIndex(
     level,
-    clamp(tileCoordinate(x), 0, level.columns - 1),
+    clamp(
+      tileCoordinate(x),
+      level.leftColumn,
+      level.leftColumn + level.columns - 1,
+    ),
     clamp(tileCoordinate(y), level.topRow, level.topRow + level.rows - 1),
   ),
 )

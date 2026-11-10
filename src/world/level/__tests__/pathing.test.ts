@@ -7,9 +7,7 @@ import { PARLOUR_SPOT } from '../../../test/testing'
 import { moveCircle, resolveCircle } from '../../step/collision'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
-  KITCHEN_TOP_ROW,
   type Level,
-  MANOR_SPEC,
   type Tile,
   doorSpawnPoint,
   isInsideRoomAt,
@@ -25,6 +23,7 @@ import {
   playerDistancePx,
   steerToward,
 } from '../pathing'
+import { KITCHEN_TOP_ROW, MANOR_SPEC } from '../plan'
 
 // NOTE: the manor in both states a run sees it, boarded and open, with the
 // spots the player can stand in each: the parlour always, the kitchen once
@@ -55,10 +54,13 @@ const CLEARANCES: ReadonlyArray<Clearance> = ['Narrow', 'Wide']
 
 const everyTile = (level: Level): ReadonlyArray<Tile> =>
   Array.flatMap(Array.range(level.topRow, level.topRow + level.rows - 1), row =>
-    Array.map(Array.range(0, level.columns - 1), column => ({
-      column,
-      row,
-    })),
+    Array.map(
+      Array.range(level.leftColumn, level.leftColumn + level.columns - 1),
+      column => ({
+        column,
+        row,
+      }),
+    ),
   )
 
 // NOTE: where a zombie of each clearance can stand: any walkable tile for a

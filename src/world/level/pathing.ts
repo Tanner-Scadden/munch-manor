@@ -334,7 +334,7 @@ const downhillTile = (
   clearance: Clearance,
 ): number => {
   const index = tileIndexAt(level, position)
-  const column = index % level.columns
+  const column = (index % level.columns) + level.leftColumn
   const row = Math.floor(index / level.columns) + level.topRow
   let best = -1
   let bestDistance = distanceAt(flowField.distances, index)

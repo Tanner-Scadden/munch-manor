@@ -26,7 +26,8 @@ import {
 // PACKS
 
 // NOTE: the parlour's pairs come first and in their old order, so a run that
-// never opens the kitchen draws the same pairs it always did.
+// never opens the kitchen draws the same pairs it always did. No pair names
+// the front door, which is never a spawn door.
 const DOOR_PAIRS: Array.NonEmptyReadonlyArray<
   Array.NonEmptyReadonlyArray<DoorId>
 > = [
