@@ -2,6 +2,30 @@
 
 How the Munch Manor dare gets built, layer by layer, as one stack of pull requests that lands in one big update. The story is in [`LORE.md`](../LORE.md), the rules in "Escape the manor" in [`GAME_DESIGN.md`](../GAME_DESIGN.md), and the flow in [`FLOW.md`](../FLOW.md). This file is the order of work, what each layer touches, and how each is checked. Written with the owner on 2026-11-10 from a Q&A and a survey of the code.
 
+## Status
+
+Every layer is built, as one stack of pull requests on `escape/01-names` to `escape/18-release-docs` (2026-11-10), not merged yet:
+
+| Layer             | Pull request | Layer                   | Pull request |
+| ----------------- | ------------ | ----------------------- | ------------ |
+| 1. Names          | #159         | 9. The dining room      | #175         |
+| 2. Endless ammo   | #162         | 10. Library and cellar  | #178         |
+| 3. Gun levels     | #168         | 11. Rolled rooms        | #182         |
+| 4. Display cases  | #164         | 12. The dare            | #183         |
+| 5. Two new guns   | #170         | 13. The intro           | #166         |
+| 6. Found traps    | #172         | 14. The dare card lobby | #160         |
+| 6b. Crate hearts  | #176         | 15. The art             | #161         |
+| 7. Keys, no shop  | #181         | 16. The tutorial        | #184         |
+| 8. The house grid | #163         | 16b. Visual fixes       | #185         |
+| 17. Balance       | to come      | 18. Release docs        | #180         |
+
+Open for the owner:
+
+- **Land it.** The release audits on the top layer's preview (layer 18's list), then `gh stack merge`.
+- **Balance follow-ups** ("How balance is checked" in `GAME_DESIGN.md`): portrait escapes about 20 points under landscape; the finale barely bites while waves 5 to 7 kill most runs; the house is hungrier for about four waves before Uncle Chunk on Double Dare; keys are plentiful (about 290 a campaign against 16 for every room); gun levels, case feats, the two new guns, the heroes' new perks, and Broke not measured on their own; the bot rarely pulls the fridge on the timed breaks; `SWAP=1` now plays as the default bot.
+- **Defaults to review** below: none was signed off one by one, and the numbers marked untuned in `GAME_DESIGN.md` stand as built.
+- **Still proposed:** leaving early, your friends remembering the last run, paying off the intro's details, and the heroes' reasons (`LORE.md`). Rattles' lines and look are drafts for review.
+
 ## How it ships
 
 - **One stack, one merge.** The work is a stack of pull requests made with GitHub's `gh stack` extension (`gh extension install github/gh-stack`), one branch per layer, each based on the one below, all in one worktree. Each layer passes `typecheck`, `lint`, `test`, and `build` on its own, and `test:full` when it touches gameplay. Nothing merges to `main` until the whole stack is done and reviewed; then `gh stack merge` lands it, and production gets everything in one deploy.

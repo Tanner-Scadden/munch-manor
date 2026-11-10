@@ -1,6 +1,6 @@
 # Lore
 
-The story of Munch Manor: what the game already says, what it hints at, and where it could go. Nothing here is decided until it moves into "Decided" in `GAME_DESIGN.md`. The first two sections only collect what is already in the game, quoted from its own copy, so a direction can be picked knowing what it has to fit.
+The story of Munch Manor: what the game already says, what it hints at, and where it could go. Nothing here is decided until it moves into "Decided" in `GAME_DESIGN.md`. The first two sections only collect what was in the game before the escape the manor update, quoted from its own copy, so a direction could be picked knowing what it had to fit; they are kept as that record. The Munch Manor dare below was chosen on 2026-11-10 and built the same week (see "Escape the manor" in `GAME_DESIGN.md`): each part is marked Built or Proposed.
 
 The game's rule for words holds here too: show, don't explain. Lore lands as props, art, sounds, and one-line jokes, never as a wall of text. A player who reads nothing should still feel it.
 
@@ -79,7 +79,7 @@ None of this is written down in the game, but the copy keeps pointing the same w
 
 ## A direction: escape the manor
 
-Proposed by the owner on 2026-11-09, for discussion.
+Proposed by the owner on 2026-11-09, for discussion. The first pitch, kept as history: "The Munch Manor twist" below is what was chosen and built.
 
 **The pitch.** You wake up in the parlour. The front door is locked. The goal is no longer only to survive the waves but to get out: find what opens the way (keys, a fuse, a crowbar, whatever the manor hides), room by room, while the house keeps sending its guests at you. Where those things turn up is rolled per run, and the rooms can vary too, so no two escapes play the same.
 
@@ -141,7 +141,7 @@ Games that already proved parts of this idea. We borrow the shape of what worked
 
 ## The Munch Manor twist
 
-The direction the owner chose on 2026-11-10, built from the patterns above: the Munch Manor dare.
+The direction the owner chose on 2026-11-10, built from the patterns above: the Munch Manor dare. Built on 2026-11-10 but where a part says Proposed.
 
 ### The premise: the Munch Manor dare
 
@@ -167,7 +167,7 @@ A dare needs proof, so the things you must bring out are the dare's terms, and t
 
 ### The zombies: the guests, and every daredevil who failed
 
-Two kinds of zombie live in the house, and that is a styling gift (owner, 2026-11-09: the story styles the zombies):
+Built on 2026-11-10 (the Kaboomer carries a backpack of rockets). Two kinds of zombie live in the house, and that is a styling gift (owner, 2026-11-09: the story styles the zombies):
 
 - **The party guests.** A hundred years in formal wear: tailcoats, gowns, pearls, monocles, all gone to rot.
 - **The daredevils.** Every kid who took the dare and never came out, from every decade: a letterman jacket, an 80s headband, a 90s windbreaker, a phone still held up for the video.
@@ -186,7 +186,7 @@ Two kinds of zombie live in the house, and that is a styling gift (owner, 2026-1
 
 ### Power-ups are what the house hides
 
-The owner, 2026-11-10: the power-ups should be things you would find in an old manor, and each one's look on you matches what it is (hot sauce gives you a fiery border, and so on). The rules stay as they are (`src/world/gear/powerups.ts`); the names, art, sounds, and auras change. Approved on 2026-11-10:
+Built on 2026-11-10. The owner, 2026-11-10: the power-ups should be things you would find in an old manor, and each one's look on you matches what it is (hot sauce gives you a fiery border, and so on). The rules stay as they are (`src/world/gear/powerups.ts`); the names, art, sounds, and auras change. Approved on 2026-11-10:
 
 | Today           | What it does                      | In the manor  | How it looks on you                                                                |
 | --------------- | --------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
@@ -201,7 +201,7 @@ The rule holds for every boost: the aura says what you grabbed, with no words. E
 
 ### No shop: feats, finds, and skeleton keys
 
-The owner, 2026-11-10: there is no shopkeeper and no shop. You get stronger from the house itself.
+Built on 2026-11-10. The owner, 2026-11-10: there is no shopkeeper and no shop. You get stronger from the house itself. The cases are a gun rack, a glass display case, and a trophy cabinet, and the prizes are the Barn Buster, the Chatterbox, the Laser Sight, and two old-manor guns: Old Thunder, the trophy room's hunting rifle, and the Big Blunder, the blunderbuss over the mantel. Traps come from a crate that restocks each break.
 
 - **Guns are in display cases.** A glass case in the study, a gun rack in the cellar, a trophy case: each holds a gun, and each lock shows a feat as an icon and a ring that fills as you go. Do it this run and the case springs open. Which gun sits behind which feat can roll each run.
 - **Feats of every kind** (owner, 2026-11-10): kill counts (25 kills, 10 knife kills, 5 Big Lugs), skill (a wave without a hit, a 20 kill streak, a Kaboomer caught in its own blast), exploring (a key off a marked zombie, a room opened, the fireplace lit), and the house's things.
@@ -215,11 +215,11 @@ What this changes is in "Escape the manor" in `GAME_DESIGN.md`: the shop, Rattle
 
 ### Rattles
 
-With no shop, Rattles has no stall. He stays as a character (owner, 2026-11-10): the first daredevil, from 1924, who never got out and hollers hints in his bubble. What he says, and whether his look changes, Demi is reinventing.
+Built on 2026-11-10. With no shop, Rattles has no stall. He stays as a character (owner, 2026-11-10): the first daredevil, from 1924, who never got out and hollers hints in his bubble, pointing at the thing he means: "SPOON'S OVER THERE. PROBABLY.", "I LOST THAT SPOON IN 1924.", "SOMEBODY'S WEARING IT. RUDE.", "LAST THING: HIS HAT.", "NO HINTS. TRIPLE DOG DARE." His lines are drafts for review, and whether his look changes, Demi is reinventing.
 
 ### PLAY is the dare, the lobby is the dare card
 
-The home menu's PLAY is a dare card your friends hand you, scrawled on a napkin. Opening it opens the lobby, which is the card you fill in. Every pick the lobby has today becomes a line on it, so the rules and the Block stay as they are and only the dress changes:
+Built on 2026-11-10, as a napkin reading GOING IN, COMING AS, DRAG ALONG, OUT OR STAY, STAKES, EXTRA DARES, and WHICH HOUSE, with SHAKE ON IT and CHICKEN OUT; co-op's lobby keeps its own look, so the side by side cards are still proposed. The home menu's PLAY is a dare card your friends hand you, scrawled on a napkin. Opening it opens the lobby, which is the card you fill in. Every pick the lobby has today becomes a line on it, so the rules and the Block stay as they are and only the dress changes:
 
 | Today's pick      | On the dare card                                                          |
 | ----------------- | ------------------------------------------------------------------------- |
@@ -241,13 +241,13 @@ In co-op the room code arrives as a dare: "I dare you." Each player's own card s
 
 ### You start at the table
 
-Proposed by the owner on 2026-11-09. A run starts in the dining room, at the table where the party never ended. Today every run starts in the parlour ("Every run starts in the parlour" under "Exploring the manor" in `GAME_DESIGN.md` is decided), so this changes a decision.
+Proposed by the owner on 2026-11-09 and built on 2026-11-10. A run starts in the dining room, at the table where the party never ended. Until then every run started in the parlour, so this changed a decision. Its twist is the chandelier: shoot it and it drops onto the zombies under it.
 
 **A brand-new room (owner, 2026-11-10).** The dining room is its own hand-made room, not the parlour redrawn: a long table set for a party a hundred years old as its centerpiece and cover, a sideboard, a chandelier, candelabras, and its own doors and lanes. That is more work than a redraw: new cover, new lanes, the kitchen's door moved to it, and the waves and balance tuned again for the new start. The parlour stays in the house as a room you buy your way into. Its other ways out are boarded, as the parlour's are today, and bought open the same way.
 
 ### The intro: this feels really off
 
-Proposed by the owner on 2026-11-09. A short cutscene between the dare card and the run, with one feeling: this feels really off. It stays focused: a handful of beats, each with one wrong detail and nothing else on screen, and every wrong detail is a piece of the lore the run pays off later.
+Proposed by the owner on 2026-11-09 and built on 2026-11-10 (15.4 s in full, 3.8 s after; a co-op room plays the full one while anyone in it has not seen it). A short cutscene between the dare card and the run, with one feeling: this feels really off. It stays focused: a handful of beats, each with one wrong detail and nothing else on screen, and every wrong detail is a piece of the lore the run pays off later.
 
 | Beat                                                          | What is off                                                                                            | What it sets up                                                      |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
@@ -264,21 +264,21 @@ The tone stays the game's: goofy first, scary second (Luigi's Mansion, not a hor
 
 Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubble. Any key or tap skips to the slam. The slam itself is never skipped (owner, 2026-11-09): it is the moment the run starts, every time. The cutscene plays in full the first time, and shorter after that (the knock and the slam), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the cutscene is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same. In co-op every player sees their own crew in the car, and the run starts on the slam for everyone at once (owner, 2026-11-09): the room sets when the doors slam, a player who skips jumps to the knock at the door and waits there, and every screen slams together.
 
-**Paying it off.** Each detail comes back: the party hat is Uncle Chunk's, the coats are a hundred years of daredevils', the cars in the drive belong to the zombies you fight, and the place card is the house's joke. A Munchopedia entry can unlock for each one once the player finds it in a run.
+**Paying it off** (proposed). Each detail comes back: the party hat is Uncle Chunk's, the coats are a hundred years of daredevils', the cars in the drive belong to the zombies you fight, and the place card is the house's joke. A Munchopedia entry can unlock for each one once the player finds it in a run.
 
 ### The dare card in your pocket
 
-Proposed by the owner on 2026-11-09. Once the doors slam, the first thing in the run is the dare card: you pull it from your pocket (or it waits on the table at your place, beside the place card). It opens to your friends' scrawl, which is this run's list, mostly pictures:
+Proposed by the owner on 2026-11-09 and built on 2026-11-10: the card rises from your pocket after the slam, writes on the list, and folds into the HUD's outlines at 4.5 s (or at a tap). Once the doors slam, the first thing in the run is the dare card: you pull it from your pocket (or it waits on the table at your place, beside the place card). It opens to your friends' scrawl, which is this run's list, mostly pictures:
 
 > I DARE YOU to bring back: (the icons of this run's things)
 > AND Uncle Chunk's hat!!
 > (a doodle of a chicken) no chickening out
 
-Then the card folds itself into the HUD, and its icons become the empty outlines that fill in as you find things. It is how a new player learns the goal without being told. In co-op every player holds a card with the crew's shared list. The first wave starts once the card is read (or after a few seconds), the way READY starts a wave today.
+Then the card folds itself into the HUD, and its icons become the empty outlines that fill in as you find things. It is how a new player learns the goal without being told. In co-op every player holds a card with the crew's shared list. Alone, the first break waits while the card is read; in co-op the room never waits.
 
 ### What the dare asks for changes every run
 
-Each run rolls its list from a pool of things in the house, from its own salted seeded stream (TranZit, Last Night on Earth). Uncle Chunk's party hat is always last. What makes the list fun is less which object it is than how each one comes back to you, so each thing in the pool has its own way:
+Built on 2026-11-10, every way in the table. Each run rolls its list from a pool of things in the house, from its own salted seeded stream (TranZit, Last Night on Earth). Uncle Chunk's party hat is always last. What makes the list fun is less which object it is than how each one comes back to you, so each thing in the pool has its own way:
 
 | Thing                    | How you get it                                                                    |
 | ------------------------ | --------------------------------------------------------------------------------- |
@@ -294,7 +294,7 @@ Objects, no reading needed. The HUD shows this run's list as empty outlines that
 
 ### Difficulty sets the list
 
-Today the four levels scale only the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`). The list is a second dial on the same curve:
+Built on 2026-11-10 with the help as Rattles' hints: Dare points every break and sparkles every hidden thing, Double Dare one hint a break, Triple Dare always lists the portrait and hints only when its carrier walks in, and Triple Dog Dare heckles. On Triple Dog Dare the house gets hungrier from the first find; on the other levels, once the list is done. The four levels scale the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`), and the list is a second dial on the same curve:
 
 | Level     | Things before the hat | Help finding them                                     |
 | --------- | --------------------- | ----------------------------------------------------- |
@@ -307,23 +307,25 @@ A longer list makes a longer run, so the balance model and bot learn the list be
 
 ### The waves keep count
 
-Owner, 2026-11-09: the waves are not named after the meal. A wave's number marks how far you are, and the house keeps getting harder the longer you stay, the way Endless ramps today. The banner stays WAVE 4, and Game Over says how far you got.
+Built on 2026-11-10. Owner, 2026-11-09: the waves are not named after the meal. A wave's number marks how far you are, and the house keeps getting harder the longer you stay, the way Endless ramps today. The banner stays WAVE 4, and Game Over says how far you got.
 
 So an escape run has no fixed wave count. The waves ramp until the list is done, and only then does Uncle Chunk come to the front door (owner, 2026-11-09). A quick hunter meets him early against easier waves; a slow one meets him late with the house at full strength. The ten tuned waves become the start of one long ramp, as Endless is today.
 
 ### Rooms come out like dishes
 
-When boards come down, the room behind them is one of a few hand-made rooms (Blue Prince, Betrayal). A cloche over the doorway lifts to show which: a reveal like the fridge's. The kitchen stays fixed as the first room; the rooms after it roll. The house plan is the same shape every run, only which room is where changes.
+Built on 2026-11-10: the parlour, the library (a secret bookshelf), and the cellar (dark but near you) roll into three slots. When boards come down, the room behind them is one of a few hand-made rooms (Blue Prince, Betrayal). A cloche over the doorway lifts to show which: a reveal like the fridge's. The kitchen stays fixed as the first room; the rooms after it roll. The house plan is the same shape every run, only which room is where changes.
 
 ### The house gets hungrier
 
-Once you hold everything on the list, the house knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you take Uncle Chunk's hat at the front door. That finale is a hold-out (Left 4 Dead): the front door is unlocking, and you hold the hall until it swings open.
+Built on 2026-11-10: 1.25 times the zombies, Uncle Chunk at the wave after the list is done but never before wave 6, 8, 9, or 9 by difficulty, a 45 s unlock that counts during waves, a marker at the screen's edge pointing to the door while it is out of view, and the run ends once every standing player has walked out. Once you hold everything on the list, the house knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you take Uncle Chunk's hat at the front door. That finale is a hold-out (Left 4 Dead): the front door is unlocking, and you hold the hall until it swings open.
 
 ### Leaving early
 
-The back door in the kitchen (or a window) is an early exit: leave with part of the dare, and the run ends as an escape that pays less, and your friends call you chicken. The whole dare, hat and all, pays most. Push your luck (extraction shooters).
+Proposed. The back door in the kitchen (or a window) is an early exit: leave with part of the dare, and the run ends as an escape that pays less, and your friends call you chicken. The whole dare, hat and all, pays most. Push your luck (extraction shooters).
 
 ### Made to be talked about
+
+Built on 2026-11-10.
 
 - **SHARE is your proof.** The end card becomes the photo you show your friends: "I got Uncle Chunk's hat", or "I made it to wave 7 and took the silver spoon".
 - **Co-op is daring a friend.** A room link is "I dare you".
@@ -331,15 +333,15 @@ The back door in the kitchen (or a window) is an early exit: leave with part of 
 
 ### Between runs
 
-Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
+Proposed. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
 
 ### Heroes and bots
 
-The heroes are daredevils with their own reasons: the Handyman was paid by the town to board the place up, the Track Star is the fastest kid in school and was dared to run straight through, the Penny Pincher heard about the Munch silver, and the Line Cook wants Grandma Munch's recipe. The bots are wind-up tin robots from the nursery. Heroes whose perks read prices (the Penny Pincher, the Handyman's cheap planks) need new perks with no shop.
+The bots as wind-up tin robots are in the dare card's DRAG ALONG line, and the heroes' perks with no prices are built (the Penny Pincher's kills drop more keys, the Handyman's traps are sturdier and he mends faster); the heroes' reasons are still proposed. The heroes are daredevils with their own reasons: the Handyman was paid by the town to board the place up, the Track Star is the fastest kid in school and was dared to run straight through, the Penny Pincher heard about the Munch silver, and the Line Cook wants Grandma Munch's recipe. The bots are wind-up tin robots from the nursery.
 
 ### What would change in the game
 
-Ordered from cheapest to most work, so the story can land before the systems do:
+Ordered from cheapest to most work, so the story could land before the systems did. Steps 1 to 5 landed together on 2026-11-10, with the hungrier house from step 6; early exits are left:
 
 1. **Words and art only.** The difficulty names, the power-ups renamed and restyled as the house's things, the zombies restyled as guests and daredevils, the Munchopedia's bios, the dare card as art (the home menu, the icon, the share card). No rule changes.
 2. **No shop.** Display cases opened by feats, guns that level up with use, endless ammo with reloads kept, found hearts and traps, and skeleton keys for rooms and the fridge. A large rules change: balance, the bot, heroes, modifiers, and co-op all move.
@@ -350,11 +352,10 @@ Ordered from cheapest to most work, so the story can land before the systems do:
 
 ## Open questions
 
-The lore choices that most change the game, roughly in order.
+The lore choices still open, roughly in order. Settled and built on 2026-11-10: the dare, your friends writing the card, Rattles as the 1924 daredevil who hints, and rooms that roll.
 
-1. **The dare.** The direction, chosen 2026-11-10. Your friends write the dare card (owner, 2026-11-10). Left: exactly what you bring back for it.
-2. **What goes in the pool?** Which things the dare asks for, and how each one comes back to you (see "What the dare asks for changes every run").
-3. **Rattles.** He stays as the 1924 daredevil who gives hints (owner, 2026-11-10). Left: what he says, and his look.
-4. **Which feats open which cases,** and how many skeleton keys a room and a fridge pull cost.
-5. **What is a Bone?** What you earn across runs, now that the run's own currency is skeleton keys.
-6. **Do rooms roll, or only what is in them?** See "What it goes against".
+1. **What goes in the pool?** Six things are defined and all six roll (see "What the dare asks for changes every run"); which come next is open.
+2. **Rattles.** His lines are drafts for review, and his look is open.
+3. **Which feats open which cases,** and how many skeleton keys a room and a fridge pull cost: starting numbers, tuned in the balance pass.
+4. **What is a Bone?** What you earn across runs, now that the run's own currency is skeleton keys.
+5. **Leaving early** and **between runs**: both still proposed.
