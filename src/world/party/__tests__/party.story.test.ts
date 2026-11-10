@@ -42,18 +42,21 @@ import {
   withPistol,
   zombieOf,
 } from '../../../test/testing'
-import { TRAPS } from '../../gear/traps'
+import { crateSpotOf } from '../../gear/crates'
+import { TRAPS, stockTrap } from '../../gear/traps'
 import { WEAPONS } from '../../gear/weapons'
 import { MANOR, levelOf } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
 import { flowFieldsToward } from '../../level/pathing'
 import { type World, withWorld } from '../../schema/world'
 import {
+  CrateStock,
   type Intent,
   Purchasable,
   Purchase,
   type Seat,
   type SeatState,
+  type TrapKind,
   idleIntent,
 } from '../../schema/worldSchema'
 import { PURCHASE_RULES } from '../../shop/purchase'
@@ -480,32 +483,54 @@ describe('traps per player', () => {
     durationMs: 30_000,
     spawns: [],
   })
-  const shopping = pipeline(withMoney(0, 500), withMoney(1, 500), current =>
-    atSeat(current, 1, world =>
-      modifyFocus(world, {
-        shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
-      }),
-    ),
-  )(crewInWave(2, preparation))
+  const inBreak = crewInWave(2, preparation)
+  const withFound =
+    (slot: number, kind: TrapKind) =>
+    (current: Model): Model =>
+      withWorld(current, world => stockTrap(world, slot, kind))
+  const plankInCrate = (current: Model): Model =>
+    modifyFields(current, {
+      crates: crates =>
+        modifyFields(crates, {
+          wave: () => 3,
+          crates: () => [
+            {
+              room: 'Parlour',
+              stock: CrateStock.Stocked({ trap: 'Barricade' }),
+            },
+          ],
+        }),
+    })
+  const crate = crateSpotOf('Parlour')
 
-  test('each player can hold one Plank Pile, and a teammate still can', () => {
-    const once = act(shopping, 1, SeatAction.Buy({ item: 'Barricade' }))
-    const twice = act(once, 1, SeatAction.Buy({ item: 'Barricade' }))
-    expect(seatedAt(once, 1).wallet.balance).toBeLessThan(500)
-    expect(seatedAt(twice, 1).wallet.balance).toBe(
-      seatedAt(once, 1).wallet.balance,
-    )
-    const lead = atSeat(twice, 0, world =>
-      modifyFocus(world, {
-        shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
-      }),
-    )
-    const leadBought = act(lead, 0, SeatAction.Buy({ item: 'Barricade' }))
-    expect(seatedAt(leadBought, 0).wallet.balance).toBeLessThan(500)
+  test('a player at their limit leaves the crate to a teammate who can carry it', () => {
+    const bothOnCrate = pipeline(
+      plankInCrate,
+      withFound(0, 'Barricade'),
+      placeSeat(0, crate.x, crate.y),
+      placeSeat(1, crate.x, crate.y),
+    )(inBreak)
+    const stepped = stepWorld(bothOnCrate, soloInputs(idleIntent)).world
+    expect(seatedAt(stepped, 0).trapStock.Barricade).toBe(1)
+    expect(seatedAt(stepped, 1).trapStock.Barricade).toBe(1)
+    expect(Array.map(stepped.crates.crates, ({ stock }) => stock)).toEqual([
+      CrateStock.Taken(),
+    ])
+  })
+
+  test('the first player on a crate in slot order takes it, one each', () => {
+    const bothOnCrate = pipeline(
+      plankInCrate,
+      placeSeat(0, crate.x, crate.y),
+      placeSeat(1, crate.x, crate.y),
+    )(inBreak)
+    const stepped = stepWorld(bothOnCrate, soloInputs(idleIntent)).world
+    expect(seatedAt(stepped, 0).trapStock.Barricade).toBe(1)
+    expect(seatedAt(stepped, 1).trapStock.Barricade).toBe(0)
   })
 
   test('planks board at most half the open doors, however many players', () => {
-    const { thresholds } = levelOf(shopping)
+    const { thresholds } = levelOf(inBreak)
     const east = thresholds.East.box
     const twoBoarded = pipeline(
       current =>
@@ -515,18 +540,20 @@ describe('traps per player', () => {
               id: 1,
               door: 'North',
               hp: TRAPS.Barricade.hp,
+              maxHp: TRAPS.Barricade.hp,
               hitRemainingMs: 0,
             }),
             Trap.Barricade({
               id: 2,
               door: 'West',
               hp: TRAPS.Barricade.hp,
+              maxHp: TRAPS.Barricade.hp,
               hitRemainingMs: 0,
             }),
           ],
         }),
       placeSeat(1, (east.left + east.right) / 2, (east.top + east.bottom) / 2),
-    )(act(shopping, 1, SeatAction.Buy({ item: 'Barricade' })))
+    )(withFound(1, 'Barricade')(inBreak))
     const tried = act(
       act(twoBoarded, 1, SeatAction.LeaveCounter()),
       1,
@@ -538,7 +565,7 @@ describe('traps per player', () => {
   })
 
   test('the trap a player places is theirs', () => {
-    const stocked = act(shopping, 1, SeatAction.Buy({ item: 'Turret' }))
+    const stocked = withFound(1, 'Turret')(inBreak)
     const placedTrap = act(
       act(placeSeat(1, 160, 120)(stocked), 1, SeatAction.LeaveCounter()),
       1,
@@ -722,7 +749,7 @@ describe('the world never pauses in co-op', () => {
   test('a player at the stall does not hold the break clock', () => {
     const browsing = atSeat(crewInWave(2, breakOf(3)), 0, world =>
       modifyFocus(world, {
-        shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+        shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
       }),
     )
     const stepped = stepWorld(browsing, soloInputs(idleIntent)).world

@@ -61,6 +61,7 @@ import {
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { DROP_RULES } from '../../world/gear/powerups'
+import { TRAPS as TRAP_STATS } from '../../world/gear/traps'
 import { freshGun } from '../../world/gear/weapons'
 import { DOOR_IDS, openExitIn } from '../../world/level/arena'
 import { KITCHEN_EXIT } from '../../world/level/exits'
@@ -272,13 +273,20 @@ const popupAt = (index: number): Popup => ({
 
 const TRAPS: ReadonlyArray<Trap> = [
   ...Array.map(Array.take(DOOR_IDS, 2), (door, index) =>
-    Trap.Barricade({ id: 9000 + index, door, hp: 4, hitRemainingMs: 0 }),
+    Trap.Barricade({
+      id: 9000 + index,
+      door,
+      hp: 4,
+      maxHp: TRAP_STATS.Barricade.hp,
+      hitRemainingMs: 0,
+    }),
   ),
   Trap.Turret({
     id: 9100,
     column: 12,
     row: 6,
     hp: 5,
+    maxHp: TRAP_STATS.Turret.hp,
     hitRemainingMs: 0,
     facing: { x: 1, y: 0 },
     gun: TurretGun.Armed(),

@@ -1,5 +1,5 @@
 // The shop tests' shared setup: a break beside the stall, the shop open on
-// a row, money, hearts, and guns. src/features/shop/__tests__/shop.story.test.ts and
+// a row, money, and guns. src/features/shop/__tests__/shop.story.test.ts and
 // src/features/shop/__tests__/shopDialog.story.test.ts start from it.
 
 import { Function, Option } from 'effect'
@@ -9,13 +9,12 @@ import {
   type Arsenal,
   type CarriedGun,
   type Model,
-  Phase,
+  type Phase,
   ShopState,
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
-import { PREPARATION_MS } from '../../../shared/constants'
 import {
-  DISTANT_SPAWN,
+  breakBefore,
   pastFirstBreak,
   withPlayerAt,
 } from '../../../test/model.fixture'
@@ -38,13 +37,7 @@ export const shopReady: Model = modifyFields(
 export const GRACE_TICK_MS = 50
 export const resolveShowShop = showDialog()
 
-export const preparing = (wave: number): Phase =>
-  Phase.Preparation({
-    wave,
-    remainingMs: 15_000,
-    durationMs: PREPARATION_MS,
-    spawns: [DISTANT_SPAWN],
-  })
+export const preparing = breakBefore
 
 export const besideStall = (phase: Phase): Model =>
   modifyFields(withPlayerAt(shopReady, BESIDE_STALL.x, BESIDE_STALL.y), {
@@ -64,15 +57,6 @@ export const browsing = (base: Model): Model =>
   modifyFocus(modifyFields(base, { phase: () => preparing(2) }), {
     shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
   })
-
-export const withHp: {
-  (hp: number): (base: Model) => Model
-  (base: Model, hp: number): Model
-} = Function.dual(2, (base: Model, hp: number): Model =>
-  modifyFocus(base, {
-    player: player => modifyFields(player, { hp: () => hp }),
-  }),
-)
 
 // NOTE: a gun with `loaded` in its magazine, at most a full one.
 // NOTE: data first when the kind leads: a kind is a string, a count is not.

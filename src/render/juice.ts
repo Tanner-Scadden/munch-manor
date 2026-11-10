@@ -136,6 +136,8 @@ const eventTrauma = (event: GameEvent): number =>
     PrizeLeft: () => 0,
     DudBurped: () => 0,
     PantryTaken: () => 0,
+    CrateTaken: () => 0,
+    TrapMended: () => 0,
     LidLaunched: () => LID_LAUNCH_TRAUMA,
     LidBlasted: () => LID_BLAST_TRAUMA,
     CookerPopped: () => COOKER_POP_TRAUMA,
@@ -342,6 +344,8 @@ const eventPopups =
               popup('Payday', cash, x, y - KILL_POPUP_LIFT_PX),
             )
           : noPopups(state),
+      CrateTaken: () => noPopups(state),
+      TrapMended: () => noPopups(state),
       LidLaunched: () => noPopups(state),
       LidBlasted: () => noPopups(state),
       CookerPopped: () => noPopups(state),

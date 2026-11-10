@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
 import { BAR_SEGMENTS } from '../../art/shopArt'
-import { TRAP_REPAIR_SHARE, TURRET_RANGE_PX } from '../../shared/constants'
+import { TURRET_RANGE_PX } from '../../shared/constants'
 import { HouseSpot, type ShopGuideSection } from '../../shared/nameKeys'
 import {
   COOKER_RULES,
@@ -17,7 +17,7 @@ import {
   PRIZE_ORDER,
   PRIZE_WEIGHTS,
 } from '../../world/fridge/leftovers'
-import { TRAPS, TRAP_KIND_ORDER } from '../../world/gear/traps'
+import { MEND_RULES, TRAPS, TRAP_KIND_ORDER } from '../../world/gear/traps'
 import {
   SHOP_GUNS,
   UPGRADE_TIERS,
@@ -29,20 +29,20 @@ import { VALVE_RULES } from '../../world/kitchen/gasValve'
 import { STOVE_RULES } from '../../world/kitchen/stove'
 import { EXIT_RULES, KITCHEN_EXIT, exitName } from '../../world/level/exits'
 import {
+  FOUND_NAMES,
   HOUSE_NAMES,
+  PICKUP_NAMES,
   PRIZE_NAMES,
-  SHOP_GOOD_NAMES,
   SHOP_GUIDE_SECTION_NAMES,
 } from '../../world/names'
 import {
-  type FixedShopItemId,
   FridgeDoor,
   FridgePrize,
   ShopItemId,
-  type TrapKind,
+  TrapKind,
   WeaponKind,
 } from '../../world/schema/worldSchema'
-import { SHOP_ITEMS, repairItemId } from '../../world/shop/shop'
+import { SHOP_ITEMS } from '../../world/shop/shop'
 import { SHATTER_SCALE } from '../../world/step/combat'
 
 // THE SHOP GUIDE
@@ -72,6 +72,8 @@ export const sectionName = (section: ShopGuideSection): string =>
 export const GuideArt = defineTaggedUnion({
   Gun: { weapon: WeaponKind, tier: Schema.Finite },
   Item: { id: ShopItemId },
+  Trap: { kind: TrapKind },
+  Jar: {},
   Prize: { prize: FridgePrize },
   House: { spot: HouseSpot },
   Heart: {},
@@ -205,7 +207,7 @@ const ladderOf = (weapon: WeaponKind): ReadonlyArray<LadderStep> =>
 
 const gunEntry = (
   weapon: WeaponKind,
-  item: FixedShopItemId,
+  item: ShopItemId,
   line: string,
 ): GuideEntry => ({
   ...caseGunEntry(weapon, line),
@@ -252,14 +254,16 @@ const gunEntries = (): ReadonlyArray<GuideEntry> => [
 
 // HEALTH
 
+// NOTE: Rattles sells no hearts: a Pickled Heart drops from zombies, and
+// the pantry and the fridge's Sandwich hold one too.
 const healthEntries = (): ReadonlyArray<GuideEntry> => [
   {
     id: 'Heart',
     section: 'Health',
-    name: SHOP_ITEMS.Heart.name,
-    line: 'One spare heart.',
-    art: GuideArt.Item({ id: 'Heart' }),
-    price: Option.some(SHOP_ITEMS.Heart.price),
+    name: PICKUP_NAMES.Heart,
+    line: 'Dropped by zombies. The pantry and fridge too.',
+    art: GuideArt.Jar(),
+    price: Option.none(),
     bars: [],
     ladder: [],
     chips: [{ art: GuideArt.Heart(), label: '+1' }],
@@ -287,17 +291,15 @@ const trapBars = (kind: TrapKind): ReadonlyArray<GuideBar> => {
   ]
 }
 
-const trapEntry = (
-  kind: TrapKind,
-  item: FixedShopItemId,
-  line: string,
-): GuideEntry => ({
+// NOTE: traps are found in the trap crates (src/world/gear/crates.ts), so
+// they wear no price.
+const trapEntry = (kind: TrapKind, line: string): GuideEntry => ({
   id: kind,
   section: 'Traps',
   name: TRAPS[kind].name,
   line,
-  art: GuideArt.Item({ id: item }),
-  price: Option.some(TRAPS[kind].price),
+  art: GuideArt.Trap({ kind }),
+  price: Option.none(),
   bars: trapBars(kind),
   ladder: [],
   chips: [],
@@ -305,21 +307,21 @@ const trapEntry = (
 })
 
 const trapEntries = (): ReadonlyArray<GuideEntry> => [
-  trapEntry('Barricade', 'Barricade', 'Slow zombies stop to chew it.'),
-  trapEntry('Turret', 'Turret', 'Shoots whatever gets close.'),
+  trapEntry('Barricade', 'In a crate. Zombies chew it.'),
+  trapEntry('Turret', 'In a crate. Shoots what gets close.'),
   {
-    id: 'Repair',
+    id: 'Mend',
     section: 'Traps',
-    name: SHOP_GOOD_NAMES.Repair,
-    line: 'Fixes damage. Half price.',
-    art: GuideArt.Item({ id: repairItemId(0) }),
+    name: FOUND_NAMES.Mend,
+    line: 'Stand by it in a break. Free.',
+    art: GuideArt.Trap({ kind: 'Barricade' }),
     price: Option.none(),
     bars: [],
     ladder: [],
     chips: [
       {
-        art: GuideArt.Item({ id: repairItemId(0) }),
-        label: `${Math.round(TRAP_REPAIR_SHARE * 100)}%`,
+        art: GuideArt.Trap({ kind: 'Barricade' }),
+        label: `${MEND_RULES.fullMs / 1000}s`,
       },
     ],
     prize: Option.none(),

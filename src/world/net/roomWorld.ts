@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result, String, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type {
@@ -48,7 +48,6 @@ import {
   type Bullet,
   DebutCard,
   type Difficulty,
-  FixedShopItemId,
   type GameEvent,
   GunSlot,
   type Intent,
@@ -59,10 +58,11 @@ import {
   Purchase,
   RunMode,
   type Seat,
+  ShopItemId,
   ShopState,
-  type Trap,
   barePantry,
   calmPacing,
+  freshCrates,
   freshLoot,
   freshStats,
   freshStove,
@@ -242,15 +242,11 @@ export const intentOfInput = (input: PlayerInput): Intent => ({
 // NOTE: a press rides in the input's 16-bit `action` as a held value, so it
 // survives the room's one-input-per-tick rule: 12 bits name the action and
 // 4 bits count presses, so the same press twice in a row is still a change.
-// The room applies an action on the tick its value changes. A repair names
-// its trap by id modulo REPAIR_SPAN; a room holds a handful of traps.
+// The room applies an action on the tick its value changes.
 const ACTION_BITS = 12
 const ACTION_SPAN = 2 ** ACTION_BITS
 const PRESS_COUNTS = 15
 const BUY_BASE = 16
-const REPAIR_BASE = 64
-const REPAIR_SPAN = ACTION_SPAN - REPAIR_BASE
-const REPAIR_PREFIX = 'Repair-'
 
 // NOTE: the actions with no fields, in their wire codes' order (1 up).
 const SIMPLE_ACTIONS: ReadonlyArray<SeatAction> = [
@@ -274,7 +270,7 @@ const drawCode = (slot: GunSlot): number =>
 // draws, where the ammo window's tap was until protocol version 20.
 const MEDIC_CODE = DRAW_BASE + DRAW_SLOTS.length
 
-const FIXED_ITEMS = FixedShopItemId.literals
+const SHOP_ITEMS = ShopItemId.literals
 
 const simpleCode = (tag: SeatAction['_tag']): number =>
   Option.getOrElse(
@@ -282,15 +278,11 @@ const simpleCode = (tag: SeatAction['_tag']): number =>
     () => -1,
   ) + 1
 
-const itemCode = (item: string): number =>
-  Option.match(
-    Array.findFirstIndex(FIXED_ITEMS, fixed => fixed === item),
-    {
-      onSome: index => BUY_BASE + index,
-      onNone: () =>
-        REPAIR_BASE +
-        (Number(String.slice(REPAIR_PREFIX.length)(item)) % REPAIR_SPAN),
-    },
+const itemCode = (item: ShopItemId): number =>
+  BUY_BASE +
+  Option.getOrElse(
+    Array.findFirstIndex(SHOP_ITEMS, listed => listed === item),
+    () => 0,
   )
 
 export const actionCodeOf = (action: SeatAction): number =>
@@ -317,27 +309,15 @@ export const heldAction: {
     ((press % PRESS_COUNTS) + 1) * ACTION_SPAN + code,
 )
 
-const trapId = (trap: Trap): number => trap.id
-
 export const seatActionOf: {
   (held: number): (world: World) => Option.Option<SeatAction>
   (world: World, held: number): Option.Option<SeatAction>
 } = Function.dual(
   2,
-  (world: World, held: number): Option.Option<SeatAction> => {
+  (_world: World, held: number): Option.Option<SeatAction> => {
     const code = held % ACTION_SPAN
-    if (code >= REPAIR_BASE) {
-      return pipe(
-        Array.findFirst(
-          world.traps,
-          trap => trapId(trap) % REPAIR_SPAN === code - REPAIR_BASE,
-        ),
-        Option.map(trap =>
-          SeatAction.Buy({ item: `${REPAIR_PREFIX}${trapId(trap)}` }),
-        ),
-      )
-    } else if (code >= BUY_BASE) {
-      return Option.map(Array.get(FIXED_ITEMS, code - BUY_BASE), item =>
+    if (code >= BUY_BASE) {
+      return Option.map(Array.get(SHOP_ITEMS, code - BUY_BASE), item =>
         SeatAction.Buy({ item }),
       )
     } else if (code === MEDIC_CODE) {
@@ -380,6 +360,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   fridge: shutFridge,
   pantry: barePantry,
   stove: freshStove(seed),
+  crates: freshCrates(seed),
   gasValve: shutValve,
   cases: rollCases(seed, settings.difficulty),
   hitStop: initialHitStop,

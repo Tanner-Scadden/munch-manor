@@ -5,6 +5,7 @@ import type { Model } from '../../app/model'
 import { group } from '../../art/sprite'
 import { hatRiseOf } from '../../art/sprites/hatArt'
 import { caseDrawables } from '../../features/cases/caseView'
+import { crateDrawables, mendRingsOf } from '../../features/crates/crateView'
 import {
   chompShapes,
   fallenOf,
@@ -17,7 +18,7 @@ import {
   lidShadowShapes,
 } from '../../features/fridge/fridgeView'
 import { pantryDrawables } from '../../features/kitchen/pantryView'
-import { maybeQuestDoor } from '../../features/onboarding/firstBreakQuest'
+import { maybeQuestMark } from '../../features/onboarding/firstBreakQuest'
 import { isGoodieBeckoning } from '../../features/onboarding/onboarding'
 import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
 import {
@@ -238,6 +239,7 @@ const standingDrawables = (
     ...fridgeDrawables(model),
     ...pantryDrawables(model),
     ...caseDrawables(model),
+    ...crateDrawables(model),
   ]
 }
 
@@ -273,7 +275,8 @@ const overheadShapes = (
   ...(isGoodieBeckoning(model)
     ? Array.flatMap(model.pickups, goodieArrowShapes)
     : []),
-  ...Option.match(maybeQuestDoor(model), {
+  ...mendRingsOf(model),
+  ...Option.match(maybeQuestMark(model), {
     onNone: () => [],
     onSome: door => doorArrowShapes(door, model.elapsedMs),
   }),

@@ -11,9 +11,9 @@ import {
   playRoom,
   scriptedTicks,
 } from '../../../test/roomTesting'
-import { zombieAt } from '../../../test/testing'
+import { holdingSecond, zombieAt } from '../../../test/testing'
 import { maybePlayerAt, modifyFocus } from '../../party/party'
-import { Phase, ShopState, idleIntent } from '../../schema/worldSchema'
+import { Phase, idleIntent } from '../../schema/worldSchema'
 import { SeatAction } from '../../step/stepWorld'
 import { FINAL_WAVE } from '../../waves/wavePlans'
 import { beginPreparation } from '../../waves/waves'
@@ -129,75 +129,58 @@ describe('the room World on the wire', () => {
 
 describe('inputs and presses', () => {
   test('a press applies once however long it is held', () => {
-    const atStall = {
+    const armed = {
       ...TWO_SEAT_ROOM,
       world: withSeat(
         beginPreparation(TWO_SEAT_ROOM.world, 2, 20_000),
         1,
         world =>
           modifyFocus(world, {
-            wallet: wallet => modifyFields(wallet, { balance: () => 1000 }),
-            shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+            player: player =>
+              modifyFields(player, {
+                arsenal: () =>
+                  holdingSecond({ kind: 'Smg', loaded: 30, tier: 0, kills: 0 }),
+              }),
           }),
       ),
     }
-    const buy = heldAction(
-      actionCodeOf(SeatAction.Buy({ item: 'Barricade' })),
-      1,
-    )
-    const holdFor = (ticks: number) =>
-      Array.reduce(
-        Array.makeBy(ticks, () => 0),
-        atStall,
-        room =>
-          stepRoomWorld(room, [
-            {
-              slot: 0,
-              input: NEUTRAL_INPUT,
-              presence: 'Here',
-              viewLagTicks: 0,
-              rttMs: 0,
-            },
-            {
-              slot: 1,
-              input: { ...NEUTRAL_INPUT, action: buy },
-              presence: 'Here',
-              viewLagTicks: 0,
-              rttMs: 0,
-            },
-          ]),
-      )
-    const balanceOf = (room: RoomWorld) =>
-      Option.match(maybePlayerAt(room.world, 1), {
-        onNone: () => 0,
-        onSome: ({ wallet }) => wallet.balance,
-      })
-    const bought = holdFor(10)
-    expect(balanceOf(holdFor(1))).toBeLessThan(1000)
-    expect(balanceOf(bought)).toBe(balanceOf(holdFor(1)))
-    const again = stepRoomWorld(bought, [
+    const inputsWith = (action: number) => [
       {
         slot: 0,
         input: NEUTRAL_INPUT,
-        presence: 'Here',
+        presence: 'Here' as const,
         viewLagTicks: 0,
         rttMs: 0,
       },
       {
         slot: 1,
-        input: {
-          ...NEUTRAL_INPUT,
-          action: heldAction(
-            actionCodeOf(SeatAction.Buy({ item: 'Turret' })),
-            2,
-          ),
-        },
-        presence: 'Here',
+        input: { ...NEUTRAL_INPUT, action },
+        presence: 'Here' as const,
         viewLagTicks: 0,
         rttMs: 0,
       },
-    ])
-    expect(balanceOf(again)).toBeLessThan(balanceOf(bought))
+    ]
+    const swap = heldAction(actionCodeOf(SeatAction.Swap()), 1)
+    const holdFor = (ticks: number) =>
+      Array.reduce(
+        Array.makeBy(ticks, () => 0),
+        armed,
+        room => stepRoomWorld(room, inputsWith(swap)),
+      )
+    const handOf = (room: RoomWorld) =>
+      Option.match(maybePlayerAt(room.world, 1), {
+        onNone: () => 'Gone',
+        onSome: ({ player }) => player.arsenal._tag,
+      })
+    const swapped = holdFor(10)
+    expect(handOf(armed)).toBe('HoldingSecond')
+    expect(handOf(holdFor(1))).toBe('HoldingFirst')
+    expect(handOf(swapped)).toBe('HoldingFirst')
+    const again = stepRoomWorld(
+      swapped,
+      inputsWith(heldAction(actionCodeOf(SeatAction.Swap()), 2)),
+    )
+    expect(handOf(again)).toBe('HoldingSecond')
   })
 
   test('every action reads back from its code', () => {
@@ -212,7 +195,7 @@ describe('inputs and presses', () => {
       SeatAction.Draw({ slot: 'First' }),
       SeatAction.Draw({ slot: 'Second' }),
       SeatAction.Buy({ item: 'LaserSight' }),
-      SeatAction.Buy({ item: 'Turret' }),
+      SeatAction.Buy({ item: 'Pistol' }),
     ]
     Array.forEach(actions, action => {
       expect(
@@ -241,11 +224,7 @@ describe('inputs and presses', () => {
       [SeatAction.Buy({ item: 'Shotgun' }), 16],
       [SeatAction.Buy({ item: 'Smg' }), 17],
       [SeatAction.Buy({ item: 'LaserSight' }), 18],
-      [SeatAction.Buy({ item: 'Heart' }), 19],
-      [SeatAction.Buy({ item: 'Barricade' }), 20],
-      [SeatAction.Buy({ item: 'Turret' }), 21],
-      [SeatAction.Buy({ item: 'Pistol' }), 22],
-      [SeatAction.Buy({ item: 'Repair-3' }), 67],
+      [SeatAction.Buy({ item: 'Pistol' }), 19],
     ]
     Array.forEach(pinned, ([action, code]) => {
       expect(actionCodeOf(action)).toBe(code)

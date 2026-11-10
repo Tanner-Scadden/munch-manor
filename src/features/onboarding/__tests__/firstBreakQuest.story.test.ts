@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -7,12 +7,12 @@ import { describe, expect, it } from '@effect/vitest'
 import { Message } from '../../../app/message'
 import {
   BreakClock,
+  CrateStock,
   Invulnerability,
   Lesson,
   type Model,
   Party,
   Phase,
-  ShopState,
   Tour,
   TrapHint,
 } from '../../../app/model'
@@ -20,21 +20,15 @@ import { initialModel } from '../../../app/pureApp'
 import { forgetTutorial } from '../../../platform/save'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import {
-  APPLICATION,
-  BELOW_NORTH_DOOR,
-  buyAtCounter,
-  press,
-} from '../../../test/testing'
+import { APPLICATION, BELOW_NORTH_DOOR, press } from '../../../test/testing'
 import { asTutorialDone, asVeteran } from '../../../test/veteran'
-import { TRAPS } from '../../../world/gear/traps'
-import { focusOf, focusSlotOf, modifyFocus } from '../../../world/party/party'
-import { isFirstPlankFree, priceFor } from '../../../world/shop/shop'
-import { type QuestStep, maybeQuestDoor, questStepOf } from '../firstBreakQuest'
+import { crateSpotOf } from '../../../world/gear/crates'
+import { focusOf, modifyFocus } from '../../../world/party/party'
+import { type QuestStep, maybeQuestMark, questStepOf } from '../firstBreakQuest'
 import { isStartWaveBeckoning } from '../onboarding'
 
-// NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts): walk to Rattles,
-// buy a Plank Pile (free this once), place it, then START WAVE.
+// NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts): grab the Plank
+// Pile from the parlour's trap crate, place it, then START WAVE.
 
 const FRAME_MS = FIXED_STEP_MS
 
@@ -70,23 +64,29 @@ const firstBreak = (base: Model = asVeteran(initialModel)): Model =>
 const stepOf = (current: Model): Option.Option<QuestStep> =>
   questStepOf(current)
 
-const browsing = (current: Model): Model =>
-  modifyFocus(current, {
-    shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
-    shopCategory: () => 'Traps',
+// NOTE: the player stepped onto the parlour's trap crate.
+const onCrate = (current: Model): Model => {
+  const spot = crateSpotOf('Parlour')
+  return modifyFocus(current, {
+    player: player =>
+      modifyFields(player, { x: () => spot.x, y: () => spot.y }),
   })
+}
 
-// NOTE: the Plank Pile's row picked in Rattles' shop dialog.
-const buyPlanks = buyAtCounter('Barricade')
+const offCrate = (current: Model): Model =>
+  modifyFocus(current, {
+    player: player =>
+      modifyFields(player, {
+        x: () => BELOW_NORTH_DOOR.x,
+        y: () => BELOW_NORTH_DOOR.y,
+      }),
+  })
 
 const frame = Story.message(Message.TickedFrame({ deltaTime: FRAME_MS }))
 
-const away = (current: Model): Model =>
-  modifyFocus(current, { shop: () => ShopState.Dismissed() })
-
 describe('the guided first break', () => {
   it.effect(
-    'walks a new player from the stall to buying to placing, then START WAVE',
+    'walks a new player from the crate to placing, then START WAVE',
     () =>
       Effect.gen(function* () {
         const started = yield* Story.story(
@@ -95,26 +95,30 @@ describe('the guided first break', () => {
           frame,
           Story.model(current => {
             expect(current.firstBreakQuest).toEqual(Tour.Running())
-            expect(stepOf(current)).toEqual(Option.some('Shop'))
+            expect(stepOf(current)).toEqual(Option.some('Grab'))
+            expect(maybeQuestMark(current)).toEqual(
+              Option.some(crateSpotOf('Parlour')),
+            )
           }),
         )
-        const bought = yield* Story.story(
+        const grabbed = yield* Story.story(
           APPLICATION,
-          Story.given(browsing(started)),
-          Story.model(current => {
-            expect(stepOf(current)).toEqual(Option.some('Buy'))
-          }),
-          buyPlanks,
+          Story.given(onCrate(started)),
+          frame,
           Story.model(current => {
             expect(focusOf(current).trapStock.Barricade).toBe(1)
+            expect(stepOf(current)).toEqual(Option.some('Place'))
           }),
         )
-        expect(stepOf(away(bought))).toEqual(Option.some('Place'))
-        expect(Option.isSome(maybeQuestDoor(away(bought)))).toBe(true)
+        const ready = offCrate(grabbed)
+        expect(maybeQuestMark(ready)).not.toEqual(
+          Option.some(crateSpotOf('Parlour')),
+        )
+        expect(Option.isSome(maybeQuestMark(ready))).toBe(true)
 
         yield* Story.story(
           APPLICATION,
-          Story.given(away(bought)),
+          Story.given(ready),
           press('KeyT'),
           Story.model(current => {
             expect(current.trapHint).toEqual(TrapHint.Seen())
@@ -130,32 +134,26 @@ describe('the guided first break', () => {
       }),
   )
 
-  it.effect('with no money for it, the first Plank Pile is free', () =>
-    Effect.gen(function* () {
-      const started = yield* Story.story(
+  // NOTE: the tutorial teaches the Plank Pile, so a new player's parlour
+  // crate holds one whatever the run's seed.
+  it.effect('the parlour crate holds a Plank Pile in the first break', () =>
+    Effect.forEach([1, 2, 3, 4, 5, 6], seed =>
+      Story.story(
         APPLICATION,
-        Story.given(firstBreak()),
+        Story.given(
+          modifyFields(firstBreak(), {
+            crates: crates =>
+              modifyFields(crates, { rngState: () => seed * 7919 }),
+          }),
+        ),
         frame,
-      )
-      expect(focusOf(started).wallet.balance).toBeLessThan(
-        TRAPS.Barricade.price,
-      )
-      expect(priceFor(started, focusSlotOf(started), 'Barricade')).toBe(0)
-      yield* Story.story(
-        APPLICATION,
-        Story.given(browsing(started)),
-        buyPlanks,
-        Story.model(bought => {
-          expect(focusOf(bought).trapStock.Barricade).toBe(1)
-          expect(focusOf(bought).wallet.balance).toBe(
-            focusOf(started).wallet.balance,
-          )
-          expect(priceFor(bought, focusSlotOf(bought), 'Barricade')).toBe(
-            TRAPS.Barricade.price,
-          )
+        Story.model(current => {
+          expect(
+            Array.map(current.crates.crates, ({ stock }) => stock),
+          ).toEqual([CrateStock.Stocked({ trap: 'Barricade' })])
         }),
-      )
-    }),
+      ),
+    ),
   )
 
   it.effect('the skip button ends it at any step', () =>
@@ -205,7 +203,6 @@ describe('the guided first break', () => {
         }),
       )
       const done = firstBreak(asTutorialDone(asVeteran(initialModel)))
-      expect(isFirstPlankFree(done, focusSlotOf(done), 'Barricade')).toBe(false)
       return Effect.gen(function* () {
         yield* Story.story(
           APPLICATION,
@@ -250,11 +247,10 @@ describe('the guided first break', () => {
     ),
   )
 
-  it.effect('in co-op it never runs and planks cost full price', () => {
+  it.effect('in co-op it never runs', () => {
     const crew = modifyFields(firstBreak(), {
       party: () => Party.Crew(),
     })
-    expect(isFirstPlankFree(crew, focusSlotOf(crew), 'Barricade')).toBe(false)
     return Story.story(
       APPLICATION,
       Story.given(crew),

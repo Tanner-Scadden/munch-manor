@@ -6,7 +6,6 @@ import {
   Phase,
   ShopChatter,
   type ShopItemId,
-  type TrapKind,
 } from '../../world/schema/worldSchema'
 import {
   ShopGood,
@@ -39,26 +38,14 @@ const BROKE_GREETINGS: Array.NonEmptyReadonlyArray<string> = [
   'Just looking? I see.',
 ]
 
-const TRAP_QUIPS: Readonly<
-  Record<TrapKind, Array.NonEmptyReadonlyArray<string>>
-> = {
-  Barricade: ['Board it up!', 'Splinters for them!'],
-  Turret: ['He bites. Lovingly.', 'Grumpy and loyal!'],
-}
-
 type Lines = Array.NonEmptyReadonlyArray<string>
 
 const GUN_QUIPS: Lines = ['Loud end goes that way!', 'Ooh, a beauty!']
-const HEART_QUIPS: Lines = ['Freshly pickled!', "Don't ask whose."]
-const REPAIR_QUIPS: Lines = ['Good as new-ish!', 'Glued!']
 const SIGHT_QUIPS: Lines = ['Pew, precisely!', 'Mind the dot.']
 
 const boughtLines = (item: ShopItemId): Lines =>
   ShopGood.match(shopItem(item).good, {
     Gun: () => GUN_QUIPS,
-    Heart: () => HEART_QUIPS,
-    Trap: ({ kind }) => TRAP_QUIPS[kind],
-    Repair: () => REPAIR_QUIPS,
     Sight: () => SIGHT_QUIPS,
   })
 

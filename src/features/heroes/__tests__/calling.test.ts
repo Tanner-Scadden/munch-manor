@@ -15,16 +15,16 @@ import {
   callingsOpenedBy,
   isCallingUnlocked,
   isPistolBarred,
-  isRepairFree,
   killPayFor,
   magazineFor,
   maxHpOf,
-  plankPriceFor,
+  mendSpeedScaleOf,
   shopPriceFor,
   speedScaleOf,
   startingGunKind,
   startsWithCooker,
   stoveKillsFor,
+  trapHealthScaleOf,
   woundGraceScaleOf,
 } from '../../../world/heroes/calling'
 import { playerOfCalling } from '../../../world/heroes/callingPlayer'
@@ -77,15 +77,15 @@ describe('unlocking', () => {
 })
 
 describe('the Handyman', () => {
-  test('has one fewer heart, a longer grace after a bite, pays half for a Plank Pile, and mends for free', () => {
+  test('has one fewer heart, a longer grace after a bite, sturdier traps, and mends twice as fast', () => {
     expect(woundGraceScaleOf({ calling: 'Handyman' })).toBe(2)
     expect(woundGraceScaleOf({ calling: 'You' })).toBe(1)
-    expect(isRepairFree('Handyman')).toBe(true)
-    expect(isRepairFree('You')).toBe(false)
     expect(maxHpOf({ calling: 'Handyman' })).toBe(PLAYER_MAX_HP - 1)
     expect(maxHpOf({ calling: 'You' })).toBe(PLAYER_MAX_HP)
-    expect(plankPriceFor('Handyman', 40)).toBe(20)
-    expect(plankPriceFor('You', 40)).toBe(40)
+    expect(trapHealthScaleOf({ calling: 'Handyman' })).toBe(1.5)
+    expect(trapHealthScaleOf({ calling: 'You' })).toBe(1)
+    expect(mendSpeedScaleOf({ calling: 'Handyman' })).toBe(2)
+    expect(mendSpeedScaleOf({ calling: 'You' })).toBe(1)
   })
 })
 
@@ -172,8 +172,8 @@ describe('the specials as short lines', () => {
     expect(
       Array.map(specialsOf('Handyman'), ({ isPerk, line }) => [isPerk, line]),
     ).toEqual([
-      [true, 'Planks 50% off'],
-      [true, 'Free repairs'],
+      [true, 'Traps 50% sturdier'],
+      [true, 'Mends 2x faster'],
       [true, 'Bite blink 100% longer'],
       [false, `${PLAYER_MAX_HP - 1} max hearts`],
     ])

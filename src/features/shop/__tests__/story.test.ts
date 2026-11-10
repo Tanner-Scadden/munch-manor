@@ -184,8 +184,8 @@ describe('the shop dialog Block', () => {
       opened,
       Story.message(Message.ClickedBuyButton({ item: 'Shotgun' })),
       Story.expectOutMessage(OutMessage.PickedItem({ item: 'Shotgun' })),
-      Story.message(Message.PressedBuyKey({ item: 'Heart' })),
-      Story.expectOutMessage(OutMessage.PickedItem({ item: 'Heart' })),
+      Story.message(Message.PressedBuyKey({ item: 'LaserSight' })),
+      Story.expectOutMessage(OutMessage.PickedItem({ item: 'LaserSight' })),
       Story.Command.expectNone(),
     ),
   )
@@ -222,16 +222,16 @@ describe('the shop dialog Block', () => {
       Story.init(),
       Story.messageIn(
         TabsBinding,
-        ShopTabsBlock.Message.SelectedTab({ index: 2, value: 'Traps' }),
+        ShopTabsBlock.Message.SelectedTab({ index: 0, value: 'Guns' }),
       ),
       Story.Command.expectNone(),
       Story.expectNoOutMessage(),
       opened,
       Story.messageIn(
         TabsBinding,
-        ShopTabsBlock.Message.SelectedTab({ index: 2, value: 'Traps' }),
+        ShopTabsBlock.Message.SelectedTab({ index: 0, value: 'Guns' }),
       ),
-      Story.expectOutMessage(OutMessage.ChoseCategory({ category: 'Traps' })),
+      Story.expectOutMessage(OutMessage.ChoseCategory({ category: 'Guns' })),
       Story.Command.resolve(
         Tabs.test.FocusTab,
         ShopTabsBlock.Message.CompletedFocusTab(),
@@ -301,26 +301,6 @@ describe('the shop dialog in the root', () => {
         expect(isShopShown(shopDialog)).toBe(true)
         expect(isShopGuideOpen(shopDialog)).toBe(false)
         expect(ShopState.guards.Browsing(shop)).toBe(true)
-      }),
-    ),
-  )
-
-  it.effect('a tab chosen moves the seat to it in the World', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(besideStall(preparing(2))),
-      atTheCounter,
-      Story.messageIn(
-        [ShopDialogBinding, TabsBinding],
-        ShopTabsBlock.Message.SelectedTab({ index: 2, value: 'Traps' }),
-      ),
-      Story.Command.resolve(
-        Tabs.test.FocusTab,
-        ShopTabsBlock.Message.CompletedFocusTab(),
-      ),
-      Story.model(({ seats: [{ shop, shopCategory }] }) => {
-        expect(shopCategory).toBe('Traps')
-        expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Barricade' }))
       }),
     ),
   )

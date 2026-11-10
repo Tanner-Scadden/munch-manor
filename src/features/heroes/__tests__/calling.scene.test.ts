@@ -78,7 +78,9 @@ describe('the picker', () => {
           Scene.selector(".calling-card[data-lock='Owned']"),
         ).toExist(),
         Scene.expect(
-          Scene.role('button', { name: /^Handyman\. Plus: Planks 50% off/ }),
+          Scene.role('button', {
+            name: /^Handyman\. Plus: Traps 50% sturdier/,
+          }),
         ).toExist(),
         Scene.expect(
           Scene.role('button', {
@@ -108,7 +110,7 @@ describe('the picker', () => {
           Scene.selector(
             ".calling-card[data-calling='Handyman'] [data-sign='Perk'] .calling-special-line",
           ),
-        ).toHaveText('Planks 50% off'),
+        ).toHaveText('Traps 50% sturdier'),
         Scene.expect(
           Scene.selector(
             ".calling-card[data-calling='Handyman'] [data-sign='Drawback'] .calling-special-line",

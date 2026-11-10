@@ -3,12 +3,11 @@ import { Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
-import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
+import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import indexHtml from '../../../index.html?raw'
 import { FEEDBACK_RUNS } from '../../domain/run'
 import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
-import { ShopTabsBlock } from '../../features/shop/shopTabs'
 import {
   FIXED_STEP_MS,
   GAME_TITLE,
@@ -25,6 +24,7 @@ import {
   withPistol,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
+import { crateSpotOf } from '../../world/gear/crates'
 import { STARTING_PISTOL } from '../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { Arsenal } from '../../world/schema/worldSchema'
@@ -183,17 +183,8 @@ describe('Shop', () => {
     name: 'Buy Barn Buster for $35',
   })
   const smgButton = Scene.role('button', { name: 'Buy Chatterbox for $100' })
-  const heartButton = Scene.role('button', {
-    name: 'Buy Pickled Heart for $25',
-  })
   const swapButton = Scene.role('button', { name: 'Switch to the Pop Pistol' })
   const gunsTab = Scene.role('tab', { name: /^Guns,/ })
-  const healthTab = Scene.role('tab', { name: /^Health,/ })
-  const trapsTab = Scene.role('tab', { name: /^Traps,/ })
-  const resolveFocusTab = Scene.Command.resolve(
-    Tabs.test.FocusTab,
-    ShopTabsBlock.Message.CompletedFocusTab(),
-  )
   const openShop = () => [
     Scene.Subscription.emit(
       SCENE_SUBSCRIPTIONS.frame,
@@ -225,56 +216,28 @@ describe('Shop', () => {
         }),
     })
 
-  it.effect(
-    'prices and the balance show a coin and read as plain dollars',
-    () => {
-      const heartPrice = Scene.within(
-        heartButton,
-        Scene.selector('.shop-item-price'),
-      )
-      const plankReason = Scene.within(
-        Scene.role('button', { name: 'Buy Plank Pile for $95' }),
-        Scene.selector('.shop-item-reason'),
-      )
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFocus(atStall, {
-            wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
-          }),
+  it.effect('the balance shows a coin and reads as plain dollars', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
+        modifyFocus(atStall, {
+          wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
+        }),
+      ),
+      measureSurface,
+      ...openShop(),
+      Scene.expect(Scene.selector('.shop-balance')).toHaveText('You have $70'),
+      Scene.expect(
+        Scene.within(
+          Scene.selector('.shop-balance'),
+          Scene.selector('.coin-icon'),
         ),
-        measureSurface,
-        ...openShop(),
-        Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-          'You have $70',
-        ),
-        Scene.expect(
-          Scene.within(
-            Scene.selector('.shop-balance'),
-            Scene.selector('.coin-icon'),
-          ),
-        ).toHaveAttr('aria-hidden', 'true'),
-        Scene.keydown(gunsTab, 'ArrowRight'),
-        resolveFocusTab,
-        Scene.expect(heartPrice).toHaveText('$25'),
-        Scene.expect(
-          Scene.within(heartPrice, Scene.selector('.coin-icon')),
-        ).toHaveAttr('aria-hidden', 'true'),
-        Scene.expect(
-          Scene.within(heartPrice, Scene.selector('.sr-only')),
-        ).toHaveText('$'),
-        Scene.click(trapsTab),
-        resolveFocusTab,
-        Scene.expect(plankReason).toHaveText('Need $25 more'),
-        Scene.expect(
-          Scene.within(plankReason, Scene.selector('.coin-icon')),
-        ).toExist(),
-      )
-    },
+      ).toHaveAttr('aria-hidden', 'true'),
+    ),
   )
 
   it.effect(
-    'opens on the Guns tab with no gun for sale, buys a heart, switches tabs, and closes',
+    'opens on the Guns tab with nothing for sale, and closes',
     () =>
       Scene.scene(
         APPLICATION,
@@ -307,12 +270,6 @@ describe('Shop', () => {
         Scene.expect(
           Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
         ).toExist(),
-        Scene.keydown(gunsTab, 'ArrowRight'),
-        resolveFocusTab,
-        Scene.expect(healthTab).toHaveAttr('aria-selected', 'true'),
-        Scene.click(heartButton),
-        Scene.expect(Scene.text('You have $45')).toExist(),
-        Scene.expect(Scene.text('Hearts 4 of 5')).toExist(),
         ...leaveShop(),
         Scene.expect(
           Scene.role('heading', { name: "Rattles' Bone Bazaar" }),
@@ -360,29 +317,24 @@ describe('Shop', () => {
   )
 
   it.effect(
-    'buys a Plank Pile, and the PLACE button explains it needs a doorway',
+    'finds a Plank Pile in the crate, and the PLACE button explains it needs a doorway',
     () => {
       const placeButton = Scene.role('button', { name: 'Place a Plank Pile' })
+      const crate = crateSpotOf('Parlour')
       return Scene.scene(
         APPLICATION,
-        Scene.given(atStall),
+        Scene.given(
+          modifyFocus(atStall, {
+            player: player =>
+              modifyFields(player, { x: () => crate.x, y: () => crate.y }),
+          }),
+        ),
         measureSurface,
         Scene.expect(placeButton).toBeAbsent(),
-        ...openShop(),
-        Scene.click(trapsTab),
-        resolveFocusTab,
-        Scene.expect(
-          Scene.text('0 ready to place, 0 placed, up to 2'),
-        ).toExist(),
-        Scene.click(Scene.role('button', { name: 'Buy Plank Pile for $95' })),
-        Scene.expect(Scene.text('You have $5')).toExist(),
-        Scene.expect(
-          Scene.text('1 ready to place, 0 placed, up to 2'),
-        ).toExist(),
-        Scene.expect(
-          Scene.role('button', { name: /^Repair the/ }),
-        ).toBeAbsent(),
-        ...leaveShop(),
+        Scene.Subscription.emit(
+          SCENE_SUBSCRIPTIONS.frame,
+          Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
+        ),
         Scene.expect(placeButton).toHaveAttr('aria-disabled', 'true'),
         Scene.expect(placeButton).toHaveAttr('aria-keyshortcuts', 'T'),
         Scene.expect(Scene.text('Stand in a doorway to board it up')).toExist(),
@@ -406,20 +358,7 @@ describe('Shop', () => {
           Scene.role('tab', { name: 'Guns, nothing you can buy' }),
         ).toExist(),
         Scene.expect(
-          Scene.role('tab', { name: 'Health, 1 you can buy' }),
-        ).toExist(),
-        Scene.expect(
-          Scene.role('tab', { name: 'Traps, nothing you can buy' }),
-        ).toExist(),
-        Scene.expect(Scene.text('1 thing you can buy now')).toExist(),
-        Scene.expect(
           Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
-        ).toExist(),
-        Scene.keydown(gunsTab, 'ArrowRight'),
-        resolveFocusTab,
-        Scene.click(heartButton),
-        Scene.expect(
-          Scene.role('tab', { name: 'Health, nothing you can buy' }),
         ).toExist(),
         Scene.expect(Scene.text('Nothing you can buy right now')).toExist(),
       ),

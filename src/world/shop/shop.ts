@@ -5,7 +5,6 @@ import {
   Order,
   Result,
   Schema,
-  String,
   pipe,
 } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -19,16 +18,6 @@ import {
   SHOP_REACH_PX,
   TILE_SIZE,
 } from '../../shared/constants'
-import {
-  TRAPS,
-  TRAP_KIND_ORDER,
-  isDamaged,
-  ownedCount,
-  repairPrice,
-  repairTrap,
-  stockTrap,
-  trapLimitOf,
-} from '../gear/traps'
 import {
   SIDEARM,
   UPGRADE_TIERS,
@@ -44,31 +33,21 @@ import {
   tierName,
   tierOf,
 } from '../gear/weapons'
-import {
-  isPistolBarred,
-  isRepairFree,
-  maxHpOf,
-  plankPriceFor,
-  shopPriceFor,
-} from '../heroes/calling'
+import { isPistolBarred, shopPriceFor } from '../heroes/calling'
 import { PARLOUR, SHOP_STALL_SYMBOL, tilesWithSymbol } from '../level/arena'
 import { SHOP_GOOD_NAMES } from '../names'
-import { atSeat, isCoop, modifySeat, seatStateAt } from '../party/party'
+import { atSeat, modifySeat, seatStateAt } from '../party/party'
 import { countPurchase } from '../run/stats'
 import type { World } from '../schema/world'
 import {
   type CarriedGun,
-  type FixedShopItemId,
   Lesson,
   Phase,
   type Player,
   type PlayerSlot,
-  type RepairItemId,
   type ShopCategory,
   ShopItemId,
   ShopState,
-  Trap,
-  TrapKind,
   type Vector,
   type Wallet,
   WeaponKind,
@@ -106,9 +85,6 @@ export const tickShownMoney: {
 
 export const ShopGood = defineTaggedUnion({
   Gun: { weapon: WeaponKind },
-  Heart: {},
-  Trap: { kind: TrapKind },
-  Repair: { trapId: Schema.Finite },
   Sight: {},
 })
 export type ShopGood = typeof ShopGood.Type
@@ -135,7 +111,7 @@ type ShopItem = Readonly<{
 // with the run.
 export const LASER_SIGHT_PRICE = 400
 
-export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
+export const SHOP_ITEMS: Readonly<Record<ShopItemId, ShopItem>> = {
   // NOTE: Rattles always sells the pistol back for nothing, so a player
   // who traded it away always has it to come back to.
   Pistol: {
@@ -167,49 +143,9 @@ export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
     price: LASER_SIGHT_PRICE,
     good: ShopGood.Sight(),
   },
-  Heart: {
-    id: 'Heart',
-    name: SHOP_GOOD_NAMES.Heart,
-    blurb: 'One spare heart, fresh from the jar.',
-    price: 25,
-    good: ShopGood.Heart(),
-  },
-  Barricade: {
-    id: 'Barricade',
-    name: TRAPS.Barricade.name,
-    blurb: TRAPS.Barricade.blurb,
-    price: TRAPS.Barricade.price,
-    good: ShopGood.Trap({ kind: 'Barricade' }),
-  },
-  Turret: {
-    id: 'Turret',
-    name: TRAPS.Turret.name,
-    blurb: TRAPS.Turret.blurb,
-    price: TRAPS.Turret.price,
-    good: ShopGood.Trap({ kind: 'Turret' }),
-  },
 }
 
-const REPAIR_PREFIX = 'Repair-'
-
-export const repairItemId = (trapId: number): RepairItemId =>
-  `${REPAIR_PREFIX}${trapId}`
-
-const isRepairItem = (id: ShopItemId): id is RepairItemId =>
-  String.startsWith(REPAIR_PREFIX)(id)
-
-export const shopItem = (id: ShopItemId): ShopItem =>
-  isRepairItem(id)
-    ? {
-        id,
-        name: SHOP_GOOD_NAMES.Repair,
-        blurb: 'Fixes this trap. Costs more the worse it looks.',
-        price: 0,
-        good: ShopGood.Repair({
-          trapId: Number(String.slice(REPAIR_PREFIX.length)(id)),
-        }),
-      }
-    : SHOP_ITEMS[id]
+export const shopItem = (id: ShopItemId): ShopItem => SHOP_ITEMS[id]
 
 // CATEGORIES
 
@@ -225,66 +161,11 @@ export const SHOP_CATEGORIES: Readonly<Record<ShopCategory, ShopCategoryInfo>> =
       blurb: () =>
         'Two guns. A new one replaces the one in your hands, levels and all.',
     },
-    Health: {
-      label: 'Health',
-      blurb: model =>
-        model.modifiers.glass
-          ? 'Glass: one heart, no more.'
-          : 'One heart at a time.',
-    },
-    Traps: {
-      label: 'Traps',
-      blurb: () =>
-        'Set them down between waves. Damage stays until you fix it.',
-    },
   }
 
 export const SHOP_CATEGORY_ORDER: Array.NonEmptyReadonlyArray<ShopCategory> = [
   'Guns',
-  'Health',
-  'Traps',
 ]
-
-// TRAPS
-
-export type TrapShelf = Readonly<{
-  kind: TrapKind
-  item: FixedShopItemId
-  repairs: ReadonlyArray<ShopItemId>
-}>
-
-export const trapShelves = (
-  model: World,
-): Array.NonEmptyReadonlyArray<TrapShelf> =>
-  Array.map(TRAP_KIND_ORDER, kind => ({
-    kind,
-    item: kind,
-    repairs: pipe(
-      model.traps,
-      Array.filter(trap => trap._tag === kind),
-      Array.map(trap => repairItemId(trap.id)),
-    ),
-  }))
-
-export const maybeRepairTrap: {
-  (id: ShopItemId): (model: World) => Option.Option<Trap>
-  (model: World, id: ShopItemId): Option.Option<Trap>
-} = Function.dual(2, (model: World, id: ShopItemId): Option.Option<Trap> =>
-  ShopGood.match(shopItem(id).good, {
-    Gun: () => Option.none(),
-    Heart: () => Option.none(),
-    Trap: () => Option.none(),
-    Repair: ({ trapId }) =>
-      Array.findFirst(model.traps, trap => trap.id === trapId),
-    Sight: () => Option.none(),
-  }),
-)
-
-const trapPlace = (trap: Trap): string =>
-  Trap.match(trap, {
-    Barricade: ({ door }) => `at the ${door} door`,
-    Turret: ({ column, row }) => `at column ${column}, row ${row}`,
-  })
 
 // GUNS
 
@@ -408,24 +289,14 @@ export const itemsIn: {
   (
     model: World,
     slot: PlayerSlot,
-    category: ShopCategory,
-  ): Array.NonEmptyReadonlyArray<ShopItemId> => {
+    _category: ShopCategory,
+  ): Array.NonEmptyReadonlyArray<ShopItemId> =>
     // NOTE: the Laser Sight's row stays, refused while it sits in a case,
     // so the Guns tab always has a row to focus once the pistol is carried.
-    if (category === 'Guns') {
-      return Array.append(
-        Array.flatMap(gunShelves(model, slot), shelfItems),
-        'LaserSight' as const,
-      )
-    } else if (category === 'Health') {
-      return ['Heart']
-    } else {
-      return Array.flatMap(trapShelves(model), shelf => [
-        shelf.item,
-        ...shelf.repairs,
-      ])
-    }
-  },
+    Array.append(
+      Array.flatMap(gunShelves(model, slot), shelfItems),
+      'LaserSight' as const,
+    ),
 )
 
 // NOTE: a gun bought takes its row off the shelf, as its card shows it
@@ -435,10 +306,8 @@ const replacementFor = (
   slot: PlayerSlot,
   item: ShopItemId,
 ): ShopItemId => {
-  const { shopCategory } = seatStateAt(model, slot)
-  const shown = itemsIn(model, slot, shopCategory)
-  return shopCategory !== 'Guns' ||
-    Array.contains(shown, item) ||
+  const shown = itemsIn(model, slot, seatStateAt(model, slot).shopCategory)
+  return Array.contains(shown, item) ||
     !ShopGood.isAnyOf(['Gun'])(shopItem(item).good)
     ? item
     : Array.headNonEmpty(shown)
@@ -461,29 +330,9 @@ export const maybeDisplacedFocus: {
     }),
 )
 
-// NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts) has a new player
-// buy a Plank Pile and place it, so a lesson never dead-ends on an empty
-// wallet: in a new save's first break (no timer, before any wave 2), with no
-// Plank Pile owned yet, the first one is free. Only a player alone; a
-// co-op room has its lessons learned. A save past the tutorial never sees it.
-export const isFirstPlankFree: {
-  (slot: PlayerSlot, kind: TrapKind): (model: World) => boolean
-  (model: World, slot: PlayerSlot, kind: TrapKind): boolean
-} = Function.dual(
-  3,
-  (model: World, slot: PlayerSlot, kind: TrapKind): boolean =>
-    kind === 'Barricade' &&
-    !isCoop(model) &&
-    Lesson.isAnyOf(['Pending'])(model.lessons.openBreak) &&
-    Phase.isAnyOf(['Preparation'])(model.phase) &&
-    model.phase.wave === SHOP_FIRST_WAVE &&
-    ownedCount(model, slot, 'Barricade') === 0,
-)
-
 // NOTE: what Rattles charges the acting player: the list price as the
-// calling changes it (the Handyman's Plank Piles, the Penny Pincher's
-// discount). The first plank of the guided break stays free, and a price
-// of nothing stays nothing.
+// calling changes it (the Penny Pincher's discount). A price of nothing
+// stays nothing.
 export const priceFor: {
   (slot: PlayerSlot, id: ShopItemId): (model: World) => number
   (model: World, slot: PlayerSlot, id: ShopItemId): number
@@ -493,24 +342,6 @@ export const priceFor: {
     const { calling } = seatStateAt(model, slot).player
     return ShopGood.match(shopItem(id).good, {
       Gun: () => shopPriceFor(calling, shopItem(id).price),
-      Heart: () => shopPriceFor(calling, shopItem(id).price),
-      Trap: ({ kind }) =>
-        isFirstPlankFree(model, slot, kind)
-          ? 0
-          : shopPriceFor(
-              calling,
-              kind === 'Barricade'
-                ? plankPriceFor(calling, shopItem(id).price)
-                : shopItem(id).price,
-            ),
-      Repair: () =>
-        Option.match(maybeRepairTrap(model, id), {
-          onNone: () => 0,
-          onSome: trap =>
-            isRepairFree(calling)
-              ? 0
-              : shopPriceFor(calling, repairPrice([trap])),
-        }),
       Sight: () => shopPriceFor(calling, shopItem(id).price),
     })
   },
@@ -521,16 +352,9 @@ export const itemName: {
   (model: World, slot: PlayerSlot, id: ShopItemId): string
 } = Function.dual(
   3,
-  (model: World, _slot: PlayerSlot, id: ShopItemId): string =>
+  (_model: World, _slot: PlayerSlot, id: ShopItemId): string =>
     ShopGood.match(shopItem(id).good, {
       Gun: () => shopItem(id).name,
-      Heart: () => shopItem(id).name,
-      Trap: () => shopItem(id).name,
-      Repair: () =>
-        Option.match(maybeRepairTrap(model, id), {
-          onNone: () => shopItem(id).name,
-          onSome: trap => `Repair the ${TRAPS[trap._tag].name}`,
-        }),
       Sight: () => shopItem(id).name,
     }),
 )
@@ -544,14 +368,6 @@ export const itemAriaLabel: {
     const price = `$${priceFor(model, slot, id)}`
     return ShopGood.match(shopItem(id).good, {
       Gun: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-      Heart: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-      Trap: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-      Repair: () =>
-        Option.match(maybeRepairTrap(model, id), {
-          onNone: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-          onSome: trap =>
-            `Repair the ${TRAPS[trap._tag].name} ${trapPlace(trap)}, ${price}`,
-        }),
       Sight: () => `Buy ${itemName(model, slot, id)} for ${price}`,
     })
   },
@@ -565,9 +381,6 @@ export const itemBlurb: {
   (_model: World, _slot: PlayerSlot, id: ShopItemId): string =>
     ShopGood.match(shopItem(id).good, {
       Gun: () => shopItem(id).blurb,
-      Heart: () => shopItem(id).blurb,
-      Trap: () => shopItem(id).blurb,
-      Repair: () => shopItem(id).blurb,
       Sight: () => shopItem(id).blurb,
     }),
 )
@@ -605,30 +418,6 @@ const blockedBy = (
         return Option.none()
       }
     },
-    // NOTE: a Glass run (src/world/run/modifiers.ts) sells no spare hearts: one heart
-    // means one. The item stays on the shelf, marked done like a full jar.
-    Heart: () => {
-      if (model.modifiers.glass) {
-        return block('Glass: no spare hearts', 'GLASS')
-      } else if (player.hp >= maxHpOf(player)) {
-        return block('Your hearts are full', 'FULL')
-      } else {
-        return Option.none()
-      }
-    },
-    Trap: ({ kind }) =>
-      ownedCount(model, slot, kind) >= trapLimitOf(model, kind)
-        ? block(TRAPS[kind].buyLimitNote, 'MAX')
-        : Option.none(),
-    Repair: ({ trapId }) =>
-      Option.match(
-        Array.findFirst(model.traps, trap => trap.id === trapId),
-        {
-          onNone: () => block('That trap is gone', 'GONE'),
-          onSome: trap =>
-            isDamaged(trap) ? Option.none() : block('Good as new', 'FULL'),
-        },
-      ),
     Sight: () =>
       seatStateAt(model, slot).laserSight === 'Fitted'
         ? block('Already fitted', 'OWNED')
@@ -734,9 +523,6 @@ const suggestionRank = (
       Option.isNone(maybeReplacedGun(seatStateAt(model, slot).player.arsenal))
         ? 0
         : 4,
-    Heart: () => 0,
-    Repair: () => 0,
-    Trap: () => 1,
     Sight: () => 4,
   })
 
@@ -789,13 +575,6 @@ const grant = (model: World, slot: PlayerSlot, good: ShopGood): World =>
           wield: () => 'Gun',
         }),
       ),
-    Heart: () =>
-      equip(model, slot, player =>
-        modifyFields(player, { hp: hp => Math.min(maxHpOf(player), hp + 1) }),
-      ),
-    Trap: ({ kind }) => stockTrap(model, slot, kind),
-    Repair: ({ trapId }) =>
-      modifyFields(model, { traps: traps => repairTrap(traps, trapId) }),
     Sight: () => modifySeat(model, slot, { laserSight: () => 'Fitted' }),
   })
 

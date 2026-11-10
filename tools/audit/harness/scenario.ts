@@ -27,6 +27,7 @@ import {
   SyncState,
 } from '@game/platform/playerSync'
 import { heroIdOf } from '@game/shared/playerData'
+import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
 import { modifyFocus } from '@game/world/party/party'
@@ -399,6 +400,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
             id: 9000 + index,
             door,
             hp: config.plankhp,
+            maxHp: TRAPS.Barricade.hp,
             hitRemainingMs: 0,
           }),
         ),

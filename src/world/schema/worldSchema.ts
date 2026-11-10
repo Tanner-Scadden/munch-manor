@@ -43,6 +43,7 @@ import {
   Prize,
   Reload,
   Stove,
+  TrapCrates,
   TrapKind,
   Vector,
   WeaponKind,
@@ -202,6 +203,10 @@ export const GameEvent = defineTaggedUnion({
     goodie: PantryGoodie,
     cash: Schema.Finite,
   },
+  // NOTE: a found trap taken from a trap crate (src/world/gear/crates.ts),
+  // and a trap mended back to full by standing at it in a break.
+  CrateTaken: { x: PositionNumber, y: PositionNumber, trap: TrapKind },
+  TrapMended: { x: PositionNumber, y: PositionNumber, kind: TrapKind },
   LidLaunched: { x: PositionNumber, y: PositionNumber, direction: Heading },
   LidBlasted: { x: PositionNumber, y: PositionNumber, radius: Schema.Finite },
   CookerPopped: { x: PositionNumber, y: PositionNumber, direction: Heading },
@@ -567,23 +572,14 @@ export const Blast = Schema.Struct({
 })
 export type Blast = typeof Blast.Type
 
-export const FixedShopItemId = Schema.Literals([
+// NOTE: what Rattles sells. Traps and spare hearts are found in the house
+// instead (src/world/gear/crates.ts), and traps mend for free in a break.
+export const ShopItemId = Schema.Literals([
   'Shotgun',
   'Smg',
   'LaserSight',
-  'Heart',
-  'Barricade',
-  'Turret',
   'Pistol',
 ])
-export type FixedShopItemId = typeof FixedShopItemId.Type
-
-// NOTE: a placed trap is repaired on its own, so its repair row is named by
-// the trap's id.
-export const RepairItemId = Schema.TemplateLiteral(['Repair-', Schema.Finite])
-export type RepairItemId = typeof RepairItemId.Type
-
-export const ShopItemId = Schema.Union([FixedShopItemId, RepairItemId])
 export type ShopItemId = typeof ShopItemId.Type
 
 // NOTE: the laser sight is bought in the shop for one run: a line or a
@@ -591,7 +587,8 @@ export type ShopItemId = typeof ShopItemId.Type
 const LaserSight = Schema.Literals(['None', 'Fitted'])
 type LaserSight = typeof LaserSight.Type
 
-export const ShopCategory = Schema.Literals(['Guns', 'Health', 'Traps'])
+// NOTE: one shelf of guns now that traps and hearts come from the house.
+export const ShopCategory = Schema.Literals(['Guns'])
 export type ShopCategory = typeof ShopCategory.Type
 
 export const ShopState = defineTaggedUnion({
@@ -666,11 +663,15 @@ export const TurretGun = defineTaggedUnion({
 })
 export type TurretGun = typeof TurretGun.Type
 
+// NOTE: `maxHp` is the health a trap was placed with: its kind's, or half
+// again for the Handyman's (src/world/heroes/calling.ts), so a mend fills it
+// back to that.
 export const Trap = defineTaggedUnion({
   Barricade: {
     id: Schema.Finite,
     door: DoorId,
     hp: Schema.Finite,
+    maxHp: Schema.Finite,
     hitRemainingMs: MillisNumber,
   },
   Turret: {
@@ -678,6 +679,7 @@ export const Trap = defineTaggedUnion({
     column: Schema.Finite,
     row: Schema.Finite,
     hp: Schema.Finite,
+    maxHp: Schema.Finite,
     hitRemainingMs: MillisNumber,
     facing: Heading,
     gun: TurretGun,
@@ -869,6 +871,7 @@ export const World = Schema.Struct({
   ovens: Schema.Array(Oven),
   fridge: Fridge,
   pantry: Pantry,
+  crates: TrapCrates,
   stove: Stove,
   gasValve: GasValve,
   cases: Schema.Array(DisplayCase),
@@ -1024,6 +1027,16 @@ export const shutFridge: Fridge = {
 }
 
 export const barePantry: Pantry = Pantry.Bare({ round: 0 })
+
+const CRATE_SEED_SALT = 0x0c7a7e5b
+
+// NOTE: the trap crates' own generator, apart from the run's, so a roll
+// moves no other; no crate stands until the first break with traps.
+export const freshCrates = (seed: number): TrapCrates => ({
+  rngState: (seed ^ CRATE_SEED_SALT) >>> 0,
+  wave: 0,
+  crates: [],
+})
 
 export const initialHitStop: HitStop = HitStop.Running({ cooldownMs: 0 })
 

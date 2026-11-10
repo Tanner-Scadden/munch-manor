@@ -11,7 +11,6 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
-import { TRAP_ICONS } from '../../art/sprites/traps'
 import { KitchenCall, Tour } from '../../domain/clientSchema'
 import {
   CALL_LINES,
@@ -28,13 +27,11 @@ import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
-import { TrapHint, type Vector } from '../../world/schema/worldSchema'
+import type { Vector } from '../../world/schema/worldSchema'
 import { STALL_BOX, isBrowsing, isShopOpenFor } from '../../world/shop/shop'
 
 // NOTE: Rattles calls from his stall with a speech bubble of pictures: a
-// coin and what he sells that the player needs now. Traps, in the breaks
-// until the first one is bought, since a playtester took the trap hint for
-// a button that builds them. A bare coin, between waves, when the stall is out of the
+// coin and what he sells that the player needs now. A bare coin, between waves, when the stall is out of the
 // window and the shop has never been opened. The bubble hangs beside the
 // stall, and when the stall is out of view it waits at the window's edge
 // with an arrow toward it. It never points at a zombie.
@@ -44,7 +41,6 @@ import { STALL_BOX, isBrowsing, isShopOpenFor } from '../../world/shop/shop'
 // the prize's TAKE tag and its ring (which teach taking), footprints and a
 // cross for leaving it by walking away.
 export type BubbleKind =
-  | 'Traps'
   | 'Shop'
   | 'Gift'
   | 'Leave'
@@ -147,11 +143,6 @@ const BUBBLE_HEIGHT = ICON_SIZE + PAD * 2
 const TAIL = 3
 
 const GOODS: Readonly<Record<BubbleKind, ReadonlyArray<Good>>> = {
-  Traps: [
-    COIN,
-    { sprite: TRAP_ICONS.Barricade, isCentered: true, width: ICON_SIZE },
-    { sprite: TRAP_ICONS.Turret, isCentered: true, width: ICON_SIZE },
-  ],
   Shop: [COIN],
   Gift: [GIFT],
   Leave: [FOOTSTEPS, CROSS],
@@ -213,7 +204,6 @@ const frameRects = (
 ]
 
 const FRAMES: Readonly<Record<BubbleKind, Sprite>> = {
-  Traps: bakeShapes(frameRects(bubbleWidth('Traps'), BUBBLE_INK)),
   Shop: bakeShapes(frameRects(bubbleWidth('Shop'), BUBBLE_INK)),
   Gift: bakeShapes(frameRects(bubbleWidth('Gift'), BUBBLE_INK)),
   Leave: bakeShapes(frameRects(bubbleWidth('Leave'), BUBBLE_INK)),
@@ -245,16 +235,11 @@ export const maybeBubbleKind: {
   (model: Model, camera: Camera): Option.Option<BubbleKind> => {
     if (
       !isBreakWithShop(model) ||
+      Tour.isAnyOf(['Running'])(model.firstBreakQuest) ||
       Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour) ||
       KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
     ) {
       return Option.none()
-    } else if (
-      TrapHint.isAnyOf(['Unseen'])(model.trapHint) &&
-      (isStallInView(camera) ||
-        Tour.isAnyOf(['Running'])(model.firstBreakQuest))
-    ) {
-      return Option.some('Traps')
     } else if (!isLearned(model.lessons.shop) && !isStallInView(camera)) {
       return Option.some('Shop')
     } else {

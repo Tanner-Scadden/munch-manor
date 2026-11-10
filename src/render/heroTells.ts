@@ -10,7 +10,7 @@ import {
 } from '../shared/constants'
 import type { Calling } from '../shared/playerData'
 import { type Seeded, generateMany, nextRandom } from '../shared/prng'
-import { trapCenter } from '../world/gear/traps'
+import { maybeMendingTrap, trapCenter } from '../world/gear/traps'
 import { heldWeapon } from '../world/gear/weapons'
 import { levelOf } from '../world/level/arena'
 import { focusOf, isCoop, isStanding, playersOf } from '../world/party/party'
@@ -19,7 +19,6 @@ import {
   type SeatState,
   type Vector,
 } from '../world/schema/worldSchema'
-import { isNearStall } from '../world/shop/shop'
 import { vectorLength } from '../world/step/geometry'
 import {
   angleOf,
@@ -36,8 +35,8 @@ import type { Particle, TellWatch } from './renderSchema'
 
 // What each hero shows the whole crew while it plays (decided with the owner
 // on 2026-11-01, see "Heroes" in GAME_DESIGN.md): the Track Star kicks up
-// dust as he runs, the Handyman throws sparks off a trap he mends (with a
-// tink), the Line Cook lets off steam while he holds the Pressure Cooker, and
+// dust as he runs, the Handyman throws sparks off a trap as he mends it
+// (with a tink), the Line Cook lets off steam while he holds the Pressure Cooker, and
 // the Penny Pincher glints a coin when a kill pays him. YOU shows nothing.
 //
 // All of it is cosmetic. It reads the World each seat already has (position
@@ -119,34 +118,35 @@ const glint =
 
 // WHAT CHANGED
 
-// NOTE: where traps were mended since the last frame, if a Handyman stood at
-// the counter to do it (he mends for free; the room says nothing about who
-// bought, so a crew with a Handyman at the stall takes the credit).
+const MEND_MARKS = 3
+
+const markOf = (hp: number, maxHp: number): number =>
+  Math.floor((MEND_MARKS * hp) / maxHp)
+
+// NOTE: where a trap a Handyman is mending (src/world/gear/traps.ts) passed
+// a third of its health since the last frame. Anyone's mend ends with the
+// World's own TrapMended sparks; the Handyman's throws some on the way.
 export const mendedSpots: {
   (watch: TellWatch): (model: Model) => ReadonlyArray<Vector>
   (model: Model, watch: TellWatch): ReadonlyArray<Vector>
 } = Function.dual(
   2,
   (model: Model, watch: TellWatch): ReadonlyArray<Vector> => {
-    const isHandymanAtStall = Array.some(
-      playersOf(model),
-      ({ player, seat }) =>
-        player.calling === 'Handyman' &&
-        isStanding(seat) &&
-        isNearStall(player),
-    )
-    if (!isHandymanAtStall) {
-      return []
-    }
     const level = levelOf(model)
     return pipe(
-      model.traps,
+      playersOf(model),
+      Array.filter(({ player }) => player.calling === 'Handyman'),
+      Array.map(({ seat }) => maybeMendingTrap(model, seat.slot)),
+      Array.getSomes,
       Array.filter(trap =>
         Array.some(
           watch.traps,
-          seen => seen.id === trap.id && seen.hp < trap.hp,
+          seen =>
+            seen.id === trap.id &&
+            markOf(seen.hp, trap.maxHp) < markOf(trap.hp, trap.maxHp),
         ),
       ),
+      Array.dedupeWith((first, second) => first.id === second.id),
       Array.map(trap => trapCenter(level, trap)),
     )
   },

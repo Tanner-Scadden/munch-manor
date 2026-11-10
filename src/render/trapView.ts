@@ -18,9 +18,9 @@ import {
 } from '../shared/constants'
 import {
   PlaceVerdict,
-  TRAPS,
   TURRET_WEAPON,
   TrapSpot,
+  type TrapStage,
   barricadedDoors,
   maybePlacement,
   spotBox,
@@ -76,8 +76,8 @@ const trapJolt = (hitRemainingMs: number): number => {
   }
 }
 
-const barricadeSprite = (door: DoorId, hp: number, tone: Tone): Sprite =>
-  BARRICADE_SPRITES[LAYS[door]][stageOf('Barricade', hp)][tone]
+const barricadeSprite = (door: DoorId, stage: TrapStage, tone: Tone): Sprite =>
+  BARRICADE_SPRITES[LAYS[door]][stage][tone]
 
 const TURRET_FOOT_DROP = 4
 const TURRET_IDLE_SWAY = 0.35
@@ -116,8 +116,9 @@ const turretAngle = (
 const turretHealthBar = (
   center: Vector,
   hp: number,
+  maxHp: number,
 ): ReadonlyArray<Canvas.Shape> => {
-  if (hp >= TRAPS.Turret.hp) {
+  if (hp >= maxHp) {
     return []
   }
 
@@ -135,10 +136,7 @@ const turretHealthBar = (
     Canvas.Rect({
       x: left,
       y: top,
-      width: Math.max(
-        1,
-        Math.round((TURRET_HEALTH_BAR_WIDTH * hp) / TRAPS.Turret.hp),
-      ),
+      width: Math.max(1, Math.round((TURRET_HEALTH_BAR_WIDTH * hp) / maxHp)),
       height: 1,
       fill: TURRET_HEALTH_COLOR,
     }),
@@ -197,7 +195,7 @@ const turretOverheadShapes = (
           )
         : [],
   })
-  return [...flash, ...turretHealthBar(center, turret.hp)]
+  return [...flash, ...turretHealthBar(center, turret.hp, turret.maxHp)]
 }
 
 export const trapOverheadShapes: {
@@ -219,13 +217,13 @@ export const trapShapes: {
   3,
   (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
     Trap.match(trap, {
-      Barricade: ({ door, hp, hitRemainingMs }) => {
+      Barricade: ({ door, hitRemainingMs }) => {
         const center = trapCenter(level, trap)
         return [
           placeSprite(
             center.x + trapJolt(hitRemainingMs),
             center.y,
-            barricadeSprite(door, hp, trapTone(hitRemainingMs)),
+            barricadeSprite(door, stageOf(trap), trapTone(hitRemainingMs)),
           ),
         ]
       },
@@ -278,7 +276,7 @@ const ghostSprite = (
         placeSprite(
           center.x,
           center.y,
-          barricadeSprite(door, TRAPS.Barricade.hp, 'Normal'),
+          barricadeSprite(door, 'Sturdy', 'Normal'),
         ),
       ]
     },

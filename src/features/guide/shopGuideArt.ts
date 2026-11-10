@@ -1,7 +1,9 @@
 import {
   HEART_FULL,
+  JAR_ART,
   RATTLES_ART,
   type ShopArt,
+  TRAP_ART,
   artOf,
   gunArt,
   itemArt,
@@ -158,6 +160,8 @@ export const guideArtOf = (art: GuideArt): ShopArt =>
   GuideArt.match(art, {
     Gun: ({ weapon, tier }) => gunArt(weapon, tier),
     Item: ({ id }) => itemArt(id),
+    Trap: ({ kind }) => TRAP_ART[kind],
+    Jar: () => JAR_ART,
     Prize: ({ prize }) => PRIZE_ART[prize],
     House: ({ spot }) => HOUSE_ART[spot],
     Heart: () => HEART_FULL,
@@ -166,7 +170,7 @@ export const guideArtOf = (art: GuideArt): ShopArt =>
 const SECTION_ART: Readonly<Record<ShopGuideSection, ShopArt>> = {
   Guns: gunArt('Pistol', 0),
   Health: HEART_FULL,
-  Traps: itemArt('Turret'),
+  Traps: TRAP_ART.Turret,
   Fridge: FRIDGE_ART,
   House: BOARDS_ART,
 }

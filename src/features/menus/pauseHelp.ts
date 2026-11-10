@@ -124,11 +124,11 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     id: 'Traps',
     action: 'Traps',
     keyboard: input(
-      'Buy them from Rattles, then press T in a doorway.',
+      'Grab them from a crate, then press T in a doorway.',
       HINT_ICON_SPRITES.PlankDoor,
     ),
     touch: input(
-      'Buy them from Rattles, then tap the trap button in a doorway.',
+      'Grab them from a crate, then tap the trap button in a doorway.',
       HINT_ICON_SPRITES.PlankDoor,
     ),
   },

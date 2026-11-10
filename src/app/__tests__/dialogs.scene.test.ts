@@ -3,10 +3,9 @@ import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect as expectValue, it } from '@effect/vitest'
-import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
+import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../../domain/coopRoom'
-import { ShopTabsBlock } from '../../features/shop/shopTabs'
 import { PREPARATION_MS } from '../../shared/constants'
 import { homeAfterRead } from '../../test/model.fixture'
 import {
@@ -128,7 +127,7 @@ const atStall: Model = modifyFocus(
 
 describe('the shop dialog', () => {
   it.effect(
-    'walking into the stall opens one shop, keyed on its id, and its buy buttons buy',
+    'walking into the stall opens one shop, keyed on its id, with its case rows shut',
     () =>
       Scene.scene(
         APPLICATION,
@@ -143,14 +142,11 @@ describe('the shop dialog', () => {
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
             'You have $180',
           ),
-          Scene.click(Scene.role('tab', { name: /^Health,/ })),
-          Scene.Command.resolve(
-            Tabs.test.FocusTab,
-            ShopTabsBlock.Message.CompletedFocusTab(),
-          ),
-          Scene.click(Scene.selector('#shop-item-Heart')),
+          Scene.expect(
+            Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
+          ).toExist(),
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-            'You have $155',
+            'You have $180',
           ),
         ),
       ),

@@ -484,7 +484,7 @@ describe('the knife', () => {
         APPLICATION,
         Story.given(
           modifyFocus(drawn, {
-            shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+            shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
           }),
         ),
         holdFire,

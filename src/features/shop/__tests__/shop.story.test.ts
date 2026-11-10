@@ -16,13 +16,12 @@ import {
   Phase,
   Pierce,
   Reload,
+  type ShopItemId,
   ShopState,
 } from '../../../app/model'
 import {
   BULLET_MAX,
-  COINS_PER_PURCHASE,
   FIXED_STEP_MS,
-  PLAYER_MAX_HP,
   SHAMBLER_BOUNTY,
   WAVE_BONUS_BASE,
   WAVE_BONUS_PER_WAVE,
@@ -53,9 +52,7 @@ import {
 } from '../../../test/testing'
 import { WEAPONS, heldGun } from '../../../world/gear/weapons'
 import { focusOf, focusSlotOf, modifyFocus } from '../../../world/party/party'
-import { noModifiers } from '../../../world/run/modifiers'
 import {
-  SHOP_ITEMS,
   StockTag,
   itemsIn,
   stallPrompt,
@@ -75,7 +72,6 @@ import {
   preparing,
   resolveShowShop,
   shopReady,
-  withHp,
   withMoney,
 } from './shop.fixture'
 // NOTE: one 60 Hz tick.
@@ -426,63 +422,9 @@ describe('buying', () => {
       ),
   )
 
-  it.effect(
-    'a heart heals one with a burst of coins, and is refused at full hearts',
-    () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          withHp(browsing(withMoney(shopReady, 60)), PLAYER_MAX_HP - 1),
-        ),
-        buyAtCounter('Heart'),
-        Story.model(({ seats: [{ player, wallet }], particles }) => {
-          expect(player.hp).toBe(PLAYER_MAX_HP)
-          expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
-          expect(
-            Array.filter(particles, ({ kind }) => kind === 'Coin'),
-          ).toHaveLength(COINS_PER_PURCHASE)
-        }),
-        buyAtCounter('Heart'),
-        Story.model(({ seats: [{ player, wallet }] }) => {
-          expect(player.hp).toBe(PLAYER_MAX_HP)
-          expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
-        }),
-      ),
-  )
-
-  it.effect(
-    'a Glass run sells no heart: the shelf marks it done and the buy is refused',
-    () =>
-      Effect.gen(function* () {
-        const glass = modifyFields(
-          withHp(browsing(withMoney(shopReady, 200)), 1),
-          {
-            modifiers: () => ({ ...noModifiers, glass: true }),
-          },
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(glass),
-          Story.model(current => {
-            expect(stockTag(current, focusSlotOf(current), 'Heart')).toEqual(
-              StockTag.Done({ label: 'GLASS' }),
-            )
-          }),
-          buyAtCounter('Heart'),
-          Story.model(current => {
-            expect(focusOf(current).player.hp).toBe(1)
-            expect(focusOf(current).wallet.balance).toBe(200)
-            expect(current.particles).toEqual([])
-          }),
-        )
-        const plain = withHp(browsing(withMoney(shopReady, 200)), 1)
-        expect(stockTag(plain, focusSlotOf(plain), 'Heart')._tag).toBe('Price')
-      }),
-  )
-
   it.effect('purchases are refused when broke or already owned', () =>
     Effect.gen(function* () {
-      const refused = (start: Model, item: typeof SHOP_ITEMS.Heart.id) =>
+      const refused = (start: Model, item: ShopItemId) =>
         Story.story(
           APPLICATION,
           Story.given(start),
@@ -494,7 +436,7 @@ describe('buying', () => {
           }),
         )
 
-      yield* refused(withHp(browsing(withMoney(shopReady, 24)), 2), 'Heart')
+      yield* refused(browsing(withMoney(shopReady, 24)), 'LaserSight')
       yield* refused(
         withArsenal(browsing(withMoney(shopReady, 500)), holdingSpare(5)),
         'Shotgun',

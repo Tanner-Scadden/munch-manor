@@ -355,7 +355,6 @@ export const TRAP_BLAST_RADIUS = 6
 export const TRAP_HIT_PULSE_MS = 140
 export const TRAP_HIT_FLASH_MS = 60
 export const TRAP_NOTICE_MS = 1800
-export const TRAP_REPAIR_SHARE = 0.5
 export const TRAP_PLACE_TRAUMA = 0.35
 export const DUST_PER_PLACEMENT = 8
 

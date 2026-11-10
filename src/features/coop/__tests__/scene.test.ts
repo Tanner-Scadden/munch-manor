@@ -610,7 +610,7 @@ describe('the lobby', () => {
       Scene.expect(Scene.selector('.coop-calling-picker')).toExist(),
       Scene.expect(
         Scene.selector('[data-calling="Handyman"] .calling-special'),
-      ).toHaveText('+Planks 50% off'),
+      ).toHaveText('+Traps 50% sturdier'),
       Scene.expect(
         Scene.selector('[data-calling="Handyman"][data-lock="Owned"]'),
       ).toExist(),
@@ -635,7 +635,7 @@ describe('the lobby', () => {
       ).toHaveText('15'),
       Scene.click(
         Scene.role('button', {
-          name: /^Handyman\. Plus: Planks 50% off/,
+          name: /^Handyman\. Plus: Traps 50% sturdier/,
         }),
       ),
       Scene.Command.resolve(

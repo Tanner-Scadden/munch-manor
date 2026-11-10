@@ -77,7 +77,6 @@ export type Assumptions = Readonly<{
   peakWindowMs: number
   maxWaveMs: number
   upkeepPerVisit: number
-  heartsFromWave: number
   reserve: number
 }>
 
@@ -88,8 +87,7 @@ export const ASSUMPTIONS: Assumptions = {
   stepMs: 100,
   peakWindowMs: 5000,
   maxWaveMs: 300_000,
-  upkeepPerVisit: 15,
-  heartsFromWave: 5,
+  upkeepPerVisit: 0,
   reserve: 30,
 }
 
@@ -106,9 +104,12 @@ export type Catalog = Readonly<{
 
 export const CATALOG: Catalog = {
   gunPrice: { Shotgun: SHOP_ITEMS.Shotgun.price, Smg: SHOP_ITEMS.Smg.price },
-  plankPrice: TRAPS.Barricade.price,
+  // NOTE: traps are found in the trap crates (src/world/gear/crates.ts),
+  // not bought, so the model gets them for nothing. It still picks them up
+  // in its own order, one a visit, about as a crate gives one a break.
+  plankPrice: 0,
   plankLimit: TRAPS.Barricade.limit,
-  gnomePrice: TRAPS.Turret.price,
+  gnomePrice: 0,
   gnomeLimit: TRAPS.Turret.limit,
   kitchenPrice: EXIT_RULES.price,
 }
@@ -877,16 +878,14 @@ const FIRST_VISIT: Visit = {
 const FIRST_UPKEEP_WAVE = 3
 
 // NOTE: upkeep is the money a visit spends on staying alive rather than on
-// getting stronger: glue for the traps from the third visit, and a heart a
-// visit once the waves start to bite.
+// getting stronger. Traps mend for free and hearts are found, not bought
+// (docs/ESCAPE_PLAN.md, layer 6), so the model's upkeep is nothing; the
+// knob stays for trying a cost again.
 export const upkeepFor: {
   (assumptions: Assumptions): (wave: number) => number
   (wave: number, assumptions: Assumptions): number
-} = Function.dual(
-  2,
-  (wave: number, assumptions: Assumptions): number =>
-    (wave >= FIRST_UPKEEP_WAVE ? assumptions.upkeepPerVisit : 0) +
-    (wave >= assumptions.heartsFromWave ? SHOP_ITEMS.Heart.price : 0),
+} = Function.dual(2, (wave: number, assumptions: Assumptions): number =>
+  wave >= FIRST_UPKEEP_WAVE ? assumptions.upkeepPerVisit : 0,
 )
 
 // The visit before each wave, index 0 for wave 1. Money does not depend on

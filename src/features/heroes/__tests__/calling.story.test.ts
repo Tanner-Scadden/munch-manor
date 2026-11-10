@@ -200,30 +200,6 @@ describe('the quirks in play', () => {
   const shopping = (calling: Calling): Model =>
     asCalling(withMoney(besideStall(preparing(3)), 500), calling)
 
-  test('the Handyman pays half for a Plank Pile', () => {
-    expect(
-      priceFor(shopping('You'), focusSlotOf(shopping('You')), 'Barricade'),
-    ).toBe(95)
-    expect(
-      priceFor(
-        shopping('Handyman'),
-        focusSlotOf(shopping('Handyman')),
-        'Barricade',
-      ),
-    ).toBe(48)
-  })
-
-  test('the Handyman cannot heal past 4 hearts', () => {
-    const full = modifyFocus(shopping('Handyman'), {
-      player: player => modifyFields(player, { hp: () => 4 }),
-    })
-    expect(verdictFor(full, focusSlotOf(full), 'Heart')._tag).toBe('Refused')
-    const you = modifyFocus(shopping('You'), {
-      player: player => modifyFields(player, { hp: () => 4 }),
-    })
-    expect(verdictFor(you, focusSlotOf(you), 'Heart')._tag).toBe('Available')
-  })
-
   test('the Track Star runs faster and fills a smaller magazine', () => {
     const star = focusOf(shopping('TrackStar')).player
     expect(playerSpeed(idleBoosts, star)).toBeCloseTo(PLAYER_SPEED * 1.2)
@@ -242,13 +218,6 @@ describe('the quirks in play', () => {
         'Shotgun',
       ),
     ).toBe(30)
-    expect(
-      priceFor(
-        shopping('PennyPincher'),
-        focusSlotOf(shopping('PennyPincher')),
-        'Barricade',
-      ),
-    ).toBe(81)
   })
 
   test('a kill pays the Penny Pincher less', () => {

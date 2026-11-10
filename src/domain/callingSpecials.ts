@@ -4,15 +4,15 @@ import { QUIRK_ICONS } from '../art/callingArt'
 import type { Calling } from '../shared/playerData'
 import {
   isPistolBarred,
-  isRepairFree,
   killPayFor,
   magazineFor,
   maxHpOf,
-  plankPriceFor,
+  mendSpeedScaleOf,
   shopPriceFor,
   speedScaleOf,
   startsWithCooker,
   stoveKillsFor,
+  trapHealthScaleOf,
   woundGraceScaleOf,
 } from '../world/heroes/calling'
 import { SPECIAL_LINES } from '../world/names'
@@ -50,11 +50,14 @@ const SPECIALS: Readonly<Record<Calling, ReadonlyArray<Special>>> = {
   Handyman: [
     perk(
       QUIRK_ICONS.Plank,
-      SPECIAL_LINES.planksOff(percentLess(plankPriceFor('Handyman', 100))),
+      SPECIAL_LINES.sturdierTraps(
+        percentMore(Math.round(trapHealthScaleOf(wearer('Handyman')) * 100)),
+      ),
     ),
-    ...(isRepairFree('Handyman')
-      ? [perk(QUIRK_ICONS.Plank, SPECIAL_LINES.freeRepairs)]
-      : []),
+    perk(
+      QUIRK_ICONS.Plank,
+      SPECIAL_LINES.fasterMends(mendSpeedScaleOf(wearer('Handyman'))),
+    ),
     perk(
       QUIRK_ICONS.Shield,
       SPECIAL_LINES.longerBlink(

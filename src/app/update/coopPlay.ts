@@ -125,6 +125,7 @@ const takeRoomWorld = (
     ovens: () => world.ovens,
     fridge: () => world.fridge,
     pantry: () => world.pantry,
+    crates: () => world.crates,
     stove: () => world.stove,
     gasValve: () => world.gasValve,
     party: () => world.party,

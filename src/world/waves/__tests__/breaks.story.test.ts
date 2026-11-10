@@ -91,7 +91,7 @@ describe('the first break waits', () => {
           expect(isBreak(current)).toBe(true)
           expect(shownHints(current)).toEqual([])
           expect(isCountdownBeckoning(current)).toBe(false)
-          expect(bubble(current)).toEqual(Option.some('Traps'))
+          expect(bubble(current)).toEqual(Option.none())
         }),
         tap('Enter'),
         Story.model(current => {

@@ -13,7 +13,6 @@ import {
   type Model,
   Phase,
   RunMode,
-  SOLO_SLOT,
   Tour,
   type TutorialChoice,
   freshLessons,
@@ -39,9 +38,8 @@ import {
   tick,
   writeSave,
 } from '../../../test/testing'
-import { isPracticeGateHeld } from '../../../world/run/lessons'
+import { isPending, isPracticeGateHeld } from '../../../world/run/lessons'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
-import { isFirstPlankFree } from '../../../world/shop/shop'
 import { Message as ProfileMessage } from '../../profile/message'
 import { FocusTutorialReset } from '../../profile/update'
 import { isLearned } from '../onboarding'
@@ -86,7 +84,7 @@ const isGuidedFirstBreakOn = (current: Model) =>
     Effect.map(
       firstBreak =>
         Tour.isAnyOf(['Running'])(firstBreak.firstBreakQuest) ||
-        isFirstPlankFree(firstBreak, SOLO_SLOT, 'Barricade'),
+        isPending(firstBreak.lessons.openBreak),
     ),
   )
 

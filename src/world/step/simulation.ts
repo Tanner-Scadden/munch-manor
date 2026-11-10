@@ -16,9 +16,15 @@ import {
   resolveShatters,
 } from '../fridge/fridgeWeapons'
 import { advanceFridge } from '../fridge/leftovers'
+import { advanceCrates } from '../gear/crates'
 import { stabWithKnife } from '../gear/knife'
 import { advancePowerUps, playerSpeed } from '../gear/powerups'
-import { advanceTraps, clearBrokenTraps, trapBlockers } from '../gear/traps'
+import {
+  advanceMending,
+  advanceTraps,
+  clearBrokenTraps,
+  trapBlockers,
+} from '../gear/traps'
 import { maybePanOf } from '../gear/weapons'
 import { burnHearth } from '../kitchen/gasValve'
 import { advanceKitchen, soupSkid } from '../kitchen/kitchen'
@@ -457,6 +463,8 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     felt => advancePowerUps(felt, advanceRound(felt, deltaMs), deltaMs),
     rounded => flattenAtBreak(model, rounded),
     advancePantry,
+    advanceCrates,
+    crated => advanceMending(crated, deltaMs),
     rollStove,
     rounded => shedParts(model, rounded),
     shed => resolveShatters(model, shed),

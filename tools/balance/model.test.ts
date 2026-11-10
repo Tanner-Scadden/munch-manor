@@ -110,7 +110,6 @@ describe('the shop', () => {
     const { visits } = economy(TOY_CATALOG, takes, {
       ...ASSUMPTIONS,
       upkeepPerVisit: 0,
-      heartsFromWave: 99,
     })
     expect(Array.map(visits, ({ bought }) => bought)).toEqual([
       [],
@@ -246,10 +245,14 @@ const guardrail = (
 const inPeakRange = (ratio: number) =>
   ratio >= PEAK_RATIO_TARGET.min && ratio <= PEAK_RATIO_TARGET.max
 
+// NOTE: waves 5 and 7 were Met until traps became found, not bought
+// (docs/ESCAPE_PLAN.md, layer 6): the model spends the planks' and gnomes'
+// money on guns, so its dps outgrows those waves (1.38 and 0.91). The
+// escape stack's balance pass (layer 17) retunes the waves.
 const PEAK_STANDING: Readonly<Record<number, Standing>> = {
-  5: 'Met',
+  5: 'NotYet',
   6: 'Met',
-  7: 'Met',
+  7: 'NotYet',
   // NOTE: wave 10 was Met until the 2026-11-01 boss change (Hard boss health
   // x2.2, attacks x0.8 apart): the model counts his health as incoming, so the
   // ratio rose past 2.5. Deliberate; the snapshots hold the real fight.
