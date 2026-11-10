@@ -52,7 +52,7 @@ const spawnAt = (
 const DISTANT_SPAWN = spawnAt('North', 999, 1e9)
 
 const plank = (id: number, door: DoorId, hp = TRAPS.Barricade.hp): Trap =>
-  Trap.Barricade({ id, door, hp, hitRemainingMs: 0 })
+  Trap.Barricade({ id, door, hp, maxHp: TRAPS.Barricade.hp, hitRemainingMs: 0 })
 
 const base: Model = modifyFocus(
   modifyFields(initialModel, {

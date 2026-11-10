@@ -10,11 +10,9 @@ import { burstCoins } from '../../render/particles/particles'
 import { stepWhen } from '../../shared/stepWhen'
 import { focusOf, focusSlotOf, modifyFocus } from '../../world/party/party'
 import {
-  ShopGood,
   StockTag,
   isBrowsing,
   maybeDisplacedFocus,
-  shopItem,
   stockTag,
   suggestedItem,
 } from '../../world/shop/shop'
@@ -29,7 +27,6 @@ import {
   ShopChatter,
   type ShopItemId,
   ShopState,
-  TrapHint,
 } from '../model'
 import { tryAsLead } from './action'
 import { type SoundCue, playSounds, uiCue } from './sound'
@@ -179,9 +176,8 @@ export const buy = (item: ShopItemId) =>
               playSounds([uiCue('Denied')]),
             ]),
         }),
-      onSuccess: world => {
-        const bought = withHint(item, world)
-        return Update.combineSteps([
+      onSuccess: bought =>
+        Update.combineSteps([
           toModel(
             modifyFields(
               burstCoins(
@@ -196,24 +192,9 @@ export const buy = (item: ShopItemId) =>
           ),
           playSounds(purchaseCues()),
           refocusDisplacedRow,
-        ])
-      },
+        ]),
     }),
   )
-
-// NOTE: the first trap a player stocks brings up the hint for placing it.
-const showTrapHint = (model: Model): Model =>
-  modifyFields(model, {
-    trapHint: hint =>
-      TrapHint.match(hint, {
-        Unseen: () => TrapHint.Showing(),
-        Showing: () => hint,
-        Seen: () => hint,
-      }),
-  })
-
-const withHint = (item: ShopItemId, model: Model): Model =>
-  ShopGood.isAnyOf(['Trap'])(shopItem(item).good) ? showTrapHint(model) : model
 
 const refusedChatter = (model: Model, item: ShopItemId): Model =>
   modifyFields(model, {

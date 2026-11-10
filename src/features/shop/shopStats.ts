@@ -1,7 +1,6 @@
 import { Array, Function, Option } from 'effect'
 
 import { BAR_SEGMENTS } from '../../art/shopArt'
-import { TRAPS, healthShare, placedCount } from '../../world/gear/traps'
 import {
   SHOP_GUNS,
   WEAPONS,
@@ -11,7 +10,6 @@ import {
   statsAt,
   tierName,
 } from '../../world/gear/weapons'
-import { maxHpOf } from '../../world/heroes/calling'
 import { seatStateAt } from '../../world/party/party'
 import type { World } from '../../world/schema/world'
 import type {
@@ -19,7 +17,7 @@ import type {
   ShopItemId,
   WeaponKind,
 } from '../../world/schema/worldSchema'
-import { ShopGood, maybeRepairTrap, shopItem } from '../../world/shop/shop'
+import { ShopGood, shopItem } from '../../world/shop/shop'
 
 // What the shop dialog shows about a gun and about what a player holds: a
 // gun's bars and the note under an item.
@@ -77,15 +75,6 @@ export const ownedNote: {
                   ? `Replaces your ${tierName(held.kind, held.tier)}, and its kills and level go with it`
                   : `Replaces your ${tierName(held.kind, held.tier)}`,
             }),
-        }),
-      Heart: () => `Hearts ${player.hp} of ${maxHpOf(player)}`,
-      Trap: ({ kind }) =>
-        `${seatStateAt(model, slot).trapStock[kind]} ready to place, ${placedCount(model.traps, kind)} placed, up to ${TRAPS[kind].limit}`,
-      Repair: () =>
-        Option.match(maybeRepairTrap(model, id), {
-          onNone: () => 'Gone',
-          onSome: trap =>
-            `Health ${Math.round(healthShare(trap) * 100)} percent`,
         }),
       Sight: () =>
         seatStateAt(model, slot).laserSight === 'Fitted'

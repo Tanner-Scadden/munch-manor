@@ -19,6 +19,7 @@ import {
 import { TRAPS } from '../../../world/gear/traps'
 import { UPGRADE_TIERS, WEAPONS } from '../../../world/gear/weapons'
 import { EXIT_RULES } from '../../../world/level/exits'
+import { PICKUP_NAMES } from '../../../world/names'
 import { modifyFocus } from '../../../world/party/party'
 import { SHOP_ITEMS } from '../../../world/shop/shop'
 import { GuideBinding as MunchopediaGuideBinding } from '../../munchopedia/bindings'
@@ -59,7 +60,7 @@ const atCounter = Story.steps(
 )
 
 const closedShop = () =>
-  modifyFocus(besideStall(preparing(3)), { shopCategory: () => 'Traps' })
+  modifyFocus(besideStall(preparing(3)), { shopCategory: () => 'Guns' })
 
 describe('the ? in Rattles shop', () => {
   it.effect(
@@ -181,14 +182,12 @@ describe('what the entries read', () => {
   const originals = {
     smgMagazine: WEAPONS.Smg.magazine,
     turretHp: TRAPS.Turret.hp,
-    heartPrice: SHOP_ITEMS.Heart.price,
     exitPrice: EXIT_RULES.price,
   }
 
   afterEach(() => {
     Object.assign(WEAPONS.Smg, { magazine: originals.smgMagazine })
     Object.assign(TRAPS.Turret, { hp: originals.turretHp })
-    Object.assign(SHOP_ITEMS.Heart, { price: originals.heartPrice })
     Object.assign(EXIT_RULES, { price: originals.exitPrice })
   })
 
@@ -212,11 +211,11 @@ describe('what the entries read', () => {
     expect(barOf(entry('Traps', 'Barricade'), 'Tough').now).toBe(1)
   })
 
-  test('a price tag is the table price', () => {
-    Object.assign(SHOP_ITEMS.Heart, { price: 77 })
+  test('a price tag is the table price, and found things wear none', () => {
     Object.assign(EXIT_RULES, { price: 88 })
-    expect(entry('Health', 'Heart').price).toEqual(Option.some(77))
     expect(entry('House', 'Boards').price).toEqual(Option.some(88))
+    expect(entry('Health', 'Heart').price).toEqual(Option.none())
+    expect(entry('Traps', 'Barricade').price).toEqual(Option.none())
   })
 
   test('a gun lists every tier as a step with the kills it takes', () => {
@@ -236,7 +235,7 @@ describe('what the entries read', () => {
       WEAPONS.Shotgun.name,
       WEAPONS.Smg.name,
       SHOP_ITEMS.LaserSight.name,
-      SHOP_ITEMS.Heart.name,
+      PICKUP_NAMES.Heart,
       TRAPS.Barricade.name,
       TRAPS.Turret.name,
     ]) {

@@ -154,3 +154,50 @@ export const TRAP_ICONS: Readonly<Record<TrapKind, Sprite>> = Record.map(
   TRAP_ICON_PIXELS,
   ({ pixels, palette }) => spriteShapes(pixels, palette),
 )
+
+// TRAP CRATES
+
+// NOTE: the trap crate (src/world/gear/crates.ts), baked once: Shut through
+// a wave and before traps are found, Open in a break, its lid leaned up
+// behind and the dark inside showing (the find peeks out of it). Both are
+// drawn from their bottom middle, where the crate stands.
+export type CrateLook = 'Shut' | 'Open'
+
+const CRATE_PIXELS: Readonly<Record<CrateLook, ReadonlyArray<string>>> = {
+  Shut: [
+    'DDDDDDDDDDDD',
+    'DPPPPPPPPPPD',
+    'DDDDDDDDDDDD',
+    'DLPLLLLLLPLD',
+    'DLPLLNLLLPLD',
+    'DDDDDDDDDDDD',
+    'DLPLLLLLLPLD',
+    'DLPLLLLNLPLD',
+    'DDDDDDDDDDDD',
+  ],
+  Open: [
+    '.DDDDDDDDDD.',
+    '.DPPPPPPPPD.',
+    '.DDDDDDDDDD.',
+    'DDDDDDDDDDDD',
+    'DCCCCCCCCCCD',
+    'DDDDDDDDDDDD',
+    'DLPLLLLLLPLD',
+    'DLPLLLLNLPLD',
+    'DDDDDDDDDDDD',
+  ],
+}
+
+const CRATE_WIDTH = 12
+
+export const CRATE_SPRITES: Readonly<Record<CrateLook, Sprite>> = Record.map(
+  CRATE_PIXELS,
+  pixels =>
+    spriteShapes(pixels, PLANK_PALETTE, {
+      x: CRATE_WIDTH / 2,
+      y: pixels.length,
+    }),
+)
+
+// NOTE: how far into the crate the find's icon sits, from its floor up.
+export const CRATE_FIND_RISE = 9

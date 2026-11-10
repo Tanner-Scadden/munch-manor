@@ -143,7 +143,8 @@ const HANDYMAN_HEARTS_LESS = 1
 
 // NOTE: the hard hat: a bite leaves the Handyman twice as long to get clear.
 // It pays back part of his fewer heart, which cost 8 points of wins to YOU
-// on the balance bot with only cheap planks and free repairs to show for it.
+// on the balance bot with only cheap planks and free repairs to show for it
+// (before traps were found in the house, docs/ESCAPE_PLAN.md layer 6).
 const HANDYMAN_GRACE_SCALE = 2
 
 export const woundGraceScaleOf = ({ calling }: Wearer): number =>
@@ -151,6 +152,22 @@ export const woundGraceScaleOf = ({ calling }: Wearer): number =>
 
 export const maxHpOf = ({ calling }: Wearer): number =>
   calling === 'Handyman' ? PLAYER_MAX_HP - HANDYMAN_HEARTS_LESS : PLAYER_MAX_HP
+
+// TRAPS
+
+// NOTE: traps are found, not bought, and mend for free (src/world/gear/
+// crates.ts, src/world/gear/traps.ts), so the Handyman's half-price planks
+// and free repairs became this: a trap he sets down has half again the
+// health, and he mends traps twice as fast. Not yet retuned on the balance
+// bot (docs/ESCAPE_PLAN.md, layer 17).
+const HANDYMAN_TRAP_HEALTH_SCALE = 1.5
+const HANDYMAN_MEND_SPEED = 2
+
+export const trapHealthScaleOf = ({ calling }: Wearer): number =>
+  calling === 'Handyman' ? HANDYMAN_TRAP_HEALTH_SCALE : 1
+
+export const mendSpeedScaleOf = ({ calling }: Wearer): number =>
+  calling === 'Handyman' ? HANDYMAN_MEND_SPEED : 1
 
 // SPEED
 
@@ -190,20 +207,6 @@ export const shopPriceFor: {
   calling === 'PennyPincher' && price > 0
     ? Math.max(1, Math.round((price * PENNY_PRICE_PERCENT) / 100))
     : price,
-)
-
-// NOTE: a Plank Pile costs the Handyman half, and he mends boards for
-// nothing: the Handyman's one fewer heart cost 12 points of wins to YOU on
-// the balance bot, which half price planks alone did not pay back.
-export const isRepairFree = (calling: Calling): boolean =>
-  calling === 'Handyman'
-
-// NOTE: a Plank Pile costs the Handyman half.
-export const plankPriceFor: {
-  (price: number): (calling: Calling) => number
-  (calling: Calling, price: number): number
-} = Function.dual(2, (calling: Calling, price: number): number =>
-  calling === 'Handyman' ? Math.round(price / 2) : price,
 )
 
 // NOTE: the stove (src/world/kitchen/stove.ts) lights for the Line Cook

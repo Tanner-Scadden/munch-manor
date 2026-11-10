@@ -915,8 +915,8 @@ export const HOME_SCREEN_APP_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: the guided first break's tracker (src/features/onboarding/questView.ts): Rattles' stall,
-// a coin above a Plank Pile to buy, and planks across a doorway to place.
+// NOTE: the guided first break's tracker (src/features/onboarding/questView.ts): a trap crate
+// with planks in it to grab, and planks across a doorway to place.
 const QUEST_PALETTE: Palette = {
   o: SHADE,
   r: '#ff4a4f',
@@ -930,34 +930,18 @@ const QUEST_PALETTE: Palette = {
   L: '#8a5a2b',
 }
 
-export const QUEST_SHOP_ICON = pixelIconUrl(
+// NOTE: the first break's GRAB step: a trap crate with planks poking out.
+export const QUEST_GRAB_ICON = pixelIconUrl(
   [
-    'rwrwrwrwrwr',
-    'rwrwrwrwrwr',
-    '.R.R.R.R.R.',
-    '.f..yyy..f.',
-    '.f.yyYyy.f.',
-    '.f.yyYyy.f.',
-    '.f..yyy..f.',
+    '..PL...PL..',
+    '..PL...PL..',
     'fffffffffff',
-    'fYYYYYYYYYf',
+    'fPPPPPPPPPf',
+    'fPLLPPPLLPf',
     'fffffffffff',
-  ],
-  QUEST_PALETTE,
-)
-
-export const QUEST_BUY_ICON = pixelIconUrl(
-  [
-    '....yyy....',
-    '...yyYyy...',
-    '...yyYyy...',
-    '....yyy....',
-    '...........',
-    'ooooooooooo',
-    'oPPPPLPPPPo',
-    'ooooooooooo',
-    'oPPPPLPPPPo',
-    'ooooooooooo',
+    'fPPPPPPPPPf',
+    'fPLLPPPLLPf',
+    'fffffffffff',
   ],
   QUEST_PALETTE,
 )

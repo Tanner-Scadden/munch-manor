@@ -203,13 +203,29 @@ export const quietWave = (wave: number): Model =>
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   })
 
-// NOTE: past the first break's lesson, so a Plank Pile has its price (a
-// new save's first one is free, see isFirstPlankFree in src/world/shop/shop.ts).
+// NOTE: past the first break's lesson, so the parlour's trap crate rolls
+// its find (a new save's first break always holds a Plank Pile, see
+// src/world/gear/crates.ts).
 export const pastFirstBreak = (model: Model): Model =>
   modifyFields(model, {
     lessons: lessons =>
       modifyFields(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
   })
+
+// NOTE: a break before `wave` with nothing coming in for a long while.
+export const breakBefore = (wave: number): Phase =>
+  Phase.Preparation({
+    wave,
+    remainingMs: 15_000,
+    durationMs: PREPARATION_MS,
+    spawns: [DISTANT_SPAWN],
+  })
+
+// NOTE: a returning player's start Model on a measured surface, past the
+// first break: where the trap tests start.
+export const trapReady: Model = modifyFields(pastFirstBreak(initialModel), {
+  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+})
 
 // NOTE: past the kitchen tour's break, so the break before wave 3 counts
 // down and the kitchen and the fridge have their prices (the tour holds the

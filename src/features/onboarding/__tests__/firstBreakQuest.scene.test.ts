@@ -31,10 +31,10 @@ describe('the first break tracker', () => {
       measureSurface,
       Scene.expect(tracker).toExist(),
       Scene.expect(
-        Scene.role('listitem', { name: "Walk to Rattles' stall, now" }),
+        Scene.role('listitem', { name: 'Grab the Plank Pile, now' }),
       ).toExist(),
       Scene.expect(
-        Scene.role('listitem', { name: 'Buy a Plank Pile' }),
+        Scene.role('listitem', { name: 'Put it in a doorway' }),
       ).toExist(),
       Scene.click(Scene.role('button', { name: 'Skip the first break tour' })),
       Scene.expect(tracker).toBeAbsent(),

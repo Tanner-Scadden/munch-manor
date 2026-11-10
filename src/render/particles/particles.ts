@@ -280,6 +280,8 @@ const eventParticles = (
       goodie === 'Cash'
         ? generateMany(state, COINS_PER_PURCHASE, coin(playerGround(x, y)))
         : sparks({ x, y }, LID_SPARKS)(state),
+    CrateTaken: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
+    TrapMended: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     LidLaunched: ({ x, y }) =>
       generateMany(state, LAUNCH_STEAM, smokePuff(playerGround(x, y))),
     LidBlasted: ({ x, y }) =>

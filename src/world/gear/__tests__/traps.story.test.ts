@@ -11,7 +11,6 @@ import {
   type Model,
   Phase,
   type PlannedSpawn,
-  ShopState,
   Trap,
   TrapHint,
   TrapNotice,
@@ -21,7 +20,6 @@ import {
   type ZombieKind,
   ZombieState,
 } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
@@ -33,12 +31,11 @@ import {
 import {
   DISTANT_SPAWN,
   WAVE_2_FIGHT,
-  pastFirstBreak,
+  trapReady,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
   BELOW_NORTH_DOOR,
-  buyAtCounter,
   countdownTicks,
   holdFire,
   holdFireToward,
@@ -56,19 +53,10 @@ import {
   isInsideRoomAt,
 } from '../../level/arena'
 import { distanceAt, flowFieldToward } from '../../level/pathing'
-import { focusOf, focusSlotOf, modifyFocus } from '../../party/party'
+import { focusOf, modifyFocus } from '../../party/party'
 import { scoreOf } from '../../run/stats'
-import {
-  StockTag,
-  Verdict,
-  itemsIn,
-  priceFor,
-  repairItemId,
-  stockTag,
-  verdictFor,
-} from '../../shop/shop'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../../zombies/zombies'
-import { TRAPS, repairPrice, stageOf, tollsOf } from '../traps'
+import { TRAPS, stageOf, tollsOf } from '../traps'
 import { WEAPONS } from '../weapons'
 
 const FRAME_MS = FIXED_STEP_MS
@@ -83,9 +71,7 @@ const PLANNED_SPAWNS: ReadonlyArray<PlannedSpawn> = [
 
 const ROOM_MIDDLE: Vector = { x: 160, y: 95 }
 
-const readyModel: Model = modifyFields(pastFirstBreak(initialModel), {
-  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-})
+const readyModel: Model = trapReady
 
 const preparing = (spawns: ReadonlyArray<PlannedSpawn> = [DISTANT_SPAWN]) =>
   Phase.Preparation({
@@ -132,7 +118,8 @@ const barricade = (
   id: number,
   door: 'North' | 'West' | 'East' | 'South',
   hp = TRAPS.Barricade.hp,
-): Trap => Trap.Barricade({ id, door, hp, hitRemainingMs: 0 })
+): Trap =>
+  Trap.Barricade({ id, door, hp, maxHp: TRAPS.Barricade.hp, hitRemainingMs: 0 })
 
 const turret = (
   id: number,
@@ -145,6 +132,7 @@ const turret = (
     column,
     row,
     hp,
+    maxHp: TRAPS.Turret.hp,
     hitRemainingMs: 0,
     facing: { x: 1, y: 0 },
     gun: TurretGun.Armed(),
@@ -178,91 +166,6 @@ const firedPeas = (current: Model): ReadonlyArray<GameEvent> =>
     current.frameEvents,
     event => GameEvent.guards.Fired(event) && event.weapon === 'Peashooter',
   )
-
-describe('buying traps', () => {
-  it.effect(
-    'a Plank Pile goes into the trap pack and turns on the first-time hint',
-    () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(modifyFields(readyModel, { phase: () => preparing() }), {
-            shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
-            wallet: () => ({ balance: 300, earned: 150, shown: 150 }),
-          }),
-        ),
-        buyAtCounter('Barricade'),
-        Story.model(
-          ({ seats: [{ wallet, trapStock, selectedTrap }], trapHint }) => {
-            expect(wallet.balance).toBe(300 - TRAPS.Barricade.price)
-            expect(trapStock).toEqual({ Barricade: 1, Turret: 0 })
-            expect(selectedTrap).toBe('Barricade')
-            expect(trapHint).toEqual(TrapHint.Showing())
-          },
-        ),
-        buyAtCounter('Turret'),
-        Story.model(({ seats: [{ wallet, trapStock }] }) => {
-          expect(wallet.balance).toBe(
-            300 - TRAPS.Barricade.price - TRAPS.Turret.price,
-          )
-          expect(trapStock).toEqual({ Barricade: 1, Turret: 1 })
-        }),
-      ),
-  )
-
-  it.effect('the shop refuses a trap past its limit', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFocus(
-          modifyFields(readyModel, {
-            phase: () => preparing(),
-            traps: () => [turret(1, 5, 5)],
-          }),
-          {
-            shop: () => ShopState.Browsing({ focusedItem: 'Turret' }),
-            wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
-            trapStock: () => ({ Barricade: 0, Turret: 1 }),
-          },
-        ),
-      ),
-      buyAtCounter('Turret'),
-      Story.model(({ seats: [{ wallet, trapStock }] }) => {
-        expect(wallet.balance).toBe(500)
-        expect(trapStock.Turret).toBe(1)
-      }),
-    ),
-  )
-
-  it.effect('the shop stops at two Plank Piles, placed or in the pack', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFocus(
-          modifyFields(readyModel, {
-            phase: () => preparing(),
-            traps: () => [barricade(1, 'West')],
-          }),
-          {
-            shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
-            wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
-            trapStock: () => ({ Barricade: 1, Turret: 0 }),
-          },
-        ),
-      ),
-      Story.model(current => {
-        expect(verdictFor(current, focusSlotOf(current), 'Barricade')).toEqual(
-          Verdict.Refused({ reason: 'Two Plank Piles max' }),
-        )
-      }),
-      buyAtCounter('Barricade'),
-      Story.model(({ seats: [{ wallet, trapStock }] }) => {
-        expect(wallet.balance).toBe(500)
-        expect(trapStock.Barricade).toBe(1)
-      }),
-    ),
-  )
-})
 
 describe('placing a barricade', () => {
   it.effect(
@@ -727,7 +630,9 @@ describe('barricade damage', () => {
           ),
         ).toBe(true)
         expect(
-          Array.dedupe(Array.map(hps, hp => stageOf('Barricade', hp))),
+          Array.dedupe(
+            Array.map(hps, hp => stageOf(barricade(1, 'North', hp))),
+          ),
         ).toEqual(['Sturdy', 'Cracked', 'Splintered'])
         expect(eventsOf(frames, GameEvent.guards.TrapCracked)).toHaveLength(2)
         expect(
@@ -1051,69 +956,6 @@ describe('between waves', () => {
           ])
         }),
       ),
-  )
-
-  it.effect(
-    'each placed trap repairs on its own, priced by its own missing health',
-    () => {
-      const plankPrice = Math.ceil(0.5 * TRAPS.Barricade.price * 0.5)
-      const gnomePrice = Math.ceil(0.5 * TRAPS.Turret.price * 0.5)
-      const shopping = modifyFocus(
-        modifyFields(readyModel, {
-          phase: () => preparing(),
-          traps: () => damagedTraps,
-        }),
-        {
-          shop: () => ShopState.Browsing({ focusedItem: repairItemId(1) }),
-          wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
-        },
-      )
-      expect(plankPrice).toBe(24)
-      expect(priceFor(shopping, focusSlotOf(shopping), repairItemId(1))).toBe(
-        plankPrice,
-      )
-      expect(priceFor(shopping, focusSlotOf(shopping), repairItemId(2))).toBe(
-        gnomePrice,
-      )
-      expect(repairPrice([damagedTraps[0]!])).toBe(plankPrice)
-      expect(itemsIn(shopping, focusSlotOf(shopping), 'Traps')).toEqual([
-        'Barricade',
-        repairItemId(1),
-        'Turret',
-        repairItemId(2),
-      ])
-
-      return Story.story(
-        APPLICATION,
-        Story.given(shopping),
-        buyAtCounter(repairItemId(1)),
-        Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(100 - plankPrice)
-          expect(Array.map(current.traps, ({ hp }) => hp)).toEqual([
-            TRAPS.Barricade.hp,
-            TRAPS.Turret.hp / 2,
-          ])
-          expect(
-            stockTag(current, focusSlotOf(current), repairItemId(1)),
-          ).toEqual(StockTag.Done({ label: 'FULL' }))
-          expect(
-            stockTag(current, focusSlotOf(current), repairItemId(2)),
-          ).toEqual(StockTag.Price({ price: gnomePrice }))
-        }),
-        buyAtCounter(repairItemId(1)),
-        Story.model(({ seats: [{ wallet }] }) => {
-          expect(wallet.balance).toBe(100 - plankPrice)
-        }),
-        buyAtCounter(repairItemId(2)),
-        Story.model(({ seats: [{ wallet }], traps }) => {
-          expect(wallet.balance).toBe(100 - plankPrice - gnomePrice)
-          expect(Array.map(traps, ({ hp }) => hp)).toEqual([
-            TRAPS.Barricade.hp,
-            TRAPS.Turret.hp,
-          ])
-        }),
-      )
-    },
   )
 
   it.effect('a new run clears every trap and the trap pack', () =>

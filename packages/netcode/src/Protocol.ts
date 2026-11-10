@@ -94,6 +94,11 @@ import {
 // ZombieKilled event names its killer and what made the kill
 // (`maybeKiller`, `source`), and a new event, CaseOpened, says which seat
 // a case opened for and what it held.
+// Traps are found in trap crates (`crates`, a new World field) and mended
+// for free in a break, so a trap carries its `maxHp`, Rattles no longer
+// sells traps, hearts, or repairs (their item codes and the repair codes
+// are gone, and the items after them moved up), the shop has one
+// category, and two new events: CrateTaken and TrapMended.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

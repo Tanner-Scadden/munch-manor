@@ -42,6 +42,7 @@ import {
   zombieAt,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
+import { TRAPS } from '../../gear/traps'
 import { STARTING_PISTOL } from '../../gear/weapons'
 import { PARLOUR } from '../../level/arena'
 import { focusOf, modifyFocus } from '../../party/party'
@@ -79,6 +80,7 @@ const PLANK_PILE: Trap = Trap.Barricade({
   id: 900,
   door: 'West',
   hp: 21,
+  maxHp: TRAPS.Barricade.hp,
   hitRemainingMs: 0,
 })
 

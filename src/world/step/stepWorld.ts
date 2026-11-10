@@ -38,7 +38,6 @@ import {
   idleIntent,
 } from '../schema/worldSchema'
 import {
-  SHOP_CATEGORY_ORDER,
   isShopOpenFor,
   itemsIn,
   suggestedItem,
@@ -294,26 +293,12 @@ export const gunSlotAction: {
 export const FocusStep = Schema.Literals(['Previous', 'Next'])
 export type FocusStep = typeof FocusStep.Type
 
+// NOTE: the shop has one category now that traps and hearts are found in
+// the house (docs/ESCAPE_PLAN.md, layer 6), so the next one is itself.
 const categoryAfter = (
   shopCategory: ShopCategory,
-  step: FocusStep,
-): ShopCategory => {
-  const index = Option.getOrElse(
-    Array.findFirstIndex(
-      SHOP_CATEGORY_ORDER,
-      category => category === shopCategory,
-    ),
-    () => 0,
-  )
-  const count = SHOP_CATEGORY_ORDER.length
-  return Option.getOrElse(
-    Array.get(
-      SHOP_CATEGORY_ORDER,
-      (index + (step === 'Next' ? 1 : count - 1)) % count,
-    ),
-    () => shopCategory,
-  )
-}
+  _step: FocusStep,
+): ShopCategory => shopCategory
 
 const stepFocus = (world: World, slot: PlayerSlot, step: FocusStep): World => {
   const { shop, shopCategory } = seatStateAt(world, slot)

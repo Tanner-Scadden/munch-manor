@@ -2,7 +2,13 @@ import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { GameEvent, type Model, Trap, defaultAppearance } from '../../app/model'
+import {
+  GameEvent,
+  type Model,
+  Phase,
+  Trap,
+  defaultAppearance,
+} from '../../app/model'
 import { mendCues } from '../../app/update/sound'
 import { BODIES, OUTFITS, playerPixels } from '../../art/appearance'
 import { HAT_ART } from '../../art/sprites/hatArt'
@@ -16,12 +22,8 @@ import {
 } from '../../features/coop/testing'
 import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
 import type { Appearance, Calling } from '../../shared/playerData'
-import {
-  FIGHTING_PHASE,
-  atSeat,
-  crewInWave,
-  playingModel,
-} from '../../test/model.fixture'
+import { atSeat, crewInWave, playingModel } from '../../test/model.fixture'
+import { TRAPS } from '../../world/gear/traps'
 import { CALLINGS } from '../../world/heroes/calling'
 import { playerOfCalling } from '../../world/heroes/callingPlayer'
 import {
@@ -29,7 +31,6 @@ import {
   startRoomWorld,
 } from '../../world/net/roomWorld'
 import { modifyFocus } from '../../world/party/party'
-import { STALL_BOX } from '../../world/shop/shop'
 import { advanceTells, mendedSpots } from '../heroTells'
 
 // The heroes' tells (src/render/heroTells.ts, src/art/appearance.ts, and the name tags):
@@ -170,26 +171,40 @@ describe('the signature effects', () => {
     expect(kindsOf(advanceTells(paid('You', true), FRAME_MS))).toEqual([])
   })
 
-  const atTheStall = (calling: Calling): Model =>
+  // NOTE: standing still at a Plank Pile in a break, mending it past a
+  // third of its health since the last frame.
+  const atTheTrap = (calling: Calling): Model =>
     modifyFocus(
       modifyFields(withCalling(calling)(playingModel), {
-        phase: () => FIGHTING_PHASE,
+        phase: () =>
+          Phase.Preparation({
+            wave: 3,
+            remainingMs: 15_000,
+            durationMs: 15_000,
+            spawns: [],
+          }),
         traps: () => [
-          Trap.Barricade({ id: 5, door: 'West', hp: 30, hitRemainingMs: 0 }),
+          Trap.Barricade({
+            id: 5,
+            door: 'West',
+            hp: 30,
+            maxHp: TRAPS.Barricade.hp,
+            hitRemainingMs: 0,
+          }),
         ],
         tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], earned: [] }),
       }),
       {
         player: player =>
           modifyFields(player, {
-            x: () => (STALL_BOX.left + STALL_BOX.right) / 2,
-            y: () => STALL_BOX.bottom + 6,
+            x: () => 14,
+            y: () => 90,
           }),
       },
     )
 
-  test('a trap mended with a Handyman at the stall throws sparks and tinks once', () => {
-    const mended = atTheStall('Handyman')
+  test('a trap a Handyman mends throws sparks and tinks as it passes a third', () => {
+    const mended = atTheTrap('Handyman')
     expect(mendedSpots(mended, mended.tellWatch)).toHaveLength(1)
     const after = advanceTells(mended, FRAME_MS)
     expect(
@@ -205,8 +220,8 @@ describe('the signature effects', () => {
     )
   })
 
-  test('a repair with no Handyman at the stall shows nothing', () => {
-    const other = atTheStall('You')
+  test('a mend by anyone else shows no tell', () => {
+    const other = atTheTrap('You')
     expect(kindsOf(advanceTells(other, FRAME_MS))).toEqual([])
     expect(mendCues(other, advanceTells(other, FRAME_MS))).toEqual([])
   })

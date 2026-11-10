@@ -11,10 +11,10 @@ import type {
 import { type Calling, type CosmeticKind, Hat } from '../shared/playerData'
 import type { Modifier } from './run/modifiers'
 import type {
-  FixedShopItemId,
   FridgePrize,
   GunPerk,
   PickupKind,
+  ShopItemId,
   TrapKind,
   WeaponKind,
   ZombieKind,
@@ -161,6 +161,13 @@ export const PRIZE_NAMES: Readonly<Record<FridgePrize, string>> = {
 
 // NOTE: the kitchen's stove bench (src/world/kitchen/stove.ts) and the perks it cooks
 // into a gun, and the gas valve that lights the fireplace (src/world/kitchen/gasValve.ts).
+// NOTE: what the house holds for traps (src/world/gear/crates.ts), and
+// mending one for free in a break (src/world/gear/traps.ts).
+export const FOUND_NAMES = {
+  Crate: 'Trap Crate',
+  Mend: 'Mending',
+} as const
+
 export const STOVE_NAME = 'The Stove'
 
 export const VALVE_NAME = 'Gas Valve'
@@ -174,16 +181,13 @@ export const GUN_PERK_NAMES: Readonly<Record<GunPerk, string>> = {
 // SHOP GOODS
 
 type OwnShopGood = Exclude<
-  FixedShopItemId,
-  'Pistol' | 'Shotgun' | 'Smg' | TrapKind
+  ShopItemId,
+  'Pistol' | 'Shotgun' | 'Smg'
 >
 
-export const SHOP_GOOD_NAMES: Readonly<Record<OwnShopGood | 'Repair', string>> =
-  {
-    LaserSight: 'Laser Sight',
-    Heart: 'Pickled Heart',
-    Repair: 'Glue and Nails',
-  }
+export const SHOP_GOOD_NAMES: Readonly<Record<OwnShopGood, string>> = {
+  LaserSight: 'Laser Sight',
+}
 
 // THE CREW BOARD
 
@@ -288,8 +292,8 @@ export const giftName: {
 // src/domain/callingSpecials.ts with the numbers the rules hold (src/world/heroes/calling.ts), so
 // a balance change moves the words too. About 24 characters each.
 export const SPECIAL_LINES = {
-  planksOff: (percent: number): string => `Planks ${percent}% off`,
-  freeRepairs: 'Free repairs',
+  sturdierTraps: (percent: number): string => `Traps ${percent}% sturdier`,
+  fasterMends: (times: number): string => `Mends ${times}x faster`,
   longerBlink: (percent: number): string => `Bite blink ${percent}% longer`,
   maxHearts: (hearts: number): string => `${hearts} max hearts`,
   fasterRuns: (percent: number): string => `Runs ${percent}% faster`,

@@ -120,8 +120,9 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - A trap crate per room (`src/world/gear/traps.ts`, a new crate entity), opened when the room is; free repairs by standing at a trap in a break.
 - Hearts only from drops, the pantry, and the fridge. Glass's rules carry over.
 - The Handyman's new perk (sturdier found traps, free repairs) in `src/world/heroes/calling.ts` and `src/domain/callingSpecials.ts`.
+- As built: a crate stands in the parlour and, once open, the kitchen (`src/world/gear/crates.ts`), open in breaks from wave 2. Each break every crate rolls a fresh find (a Plank Pile three times in five), taken or not, so a find nobody may carry never sticks; walking on takes it within the trap caps. Standing still at a damaged trap in a break mends it, broken to whole in 1.5 s. The Handyman's traps have half again the health, and he mends twice as fast. Rattles keeps guns, ammo, upgrades, and the sight until layer 7.
 
-**Checks.** Trap stories (`traps.story`), the Handyman's card, Glass's sweep.
+**Checks.** Trap stories (`traps.story`, `crates.story`), the Handyman's card, Glass's sweep.
 
 ### 7. Skeleton keys, and no shop
 

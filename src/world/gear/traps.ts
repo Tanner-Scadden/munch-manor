@@ -8,11 +8,11 @@ import {
   TRAP_BLAST_RADIUS,
   TRAP_HIT_PULSE_MS,
   TRAP_REACH_PX,
-  TRAP_REPAIR_SHARE,
   TURRET_PLACE_REACH_PX,
   TURRET_RANGE_PX,
 } from '../../shared/constants'
 import type { SoundEffect } from '../../shared/soundEffect'
+import { mendSpeedScaleOf, trapHealthScaleOf } from '../heroes/calling'
 import {
   type Box,
   DOOR_OUTWARD,
@@ -36,7 +36,9 @@ import {
   COOP_RULES,
   atSeat,
   firedBy,
+  forEachSeat,
   isCoop,
+  isStanding,
   modifySeat,
   seatStateAt,
   trapOwnerOf,
@@ -84,11 +86,9 @@ import { WEAPONS } from './weapons'
 type TrapStats = Readonly<{
   name: string
   blurb: string
-  price: number
   hp: number
   limit: number
   placeLimitNote: string
-  buyLimitNote: string
   pathCost: number
   breakTrauma: number
   crackSound: SoundEffect
@@ -100,11 +100,9 @@ export const TRAPS: Readonly<Record<TrapKind, TrapStats>> = {
     name: TRAP_NAMES.Barricade,
     blurb:
       'Nail it across a doorway, two at most. Slow zombies stop to chew it. Your bullets fly through.',
-    price: 95,
     hp: 50,
     limit: 2,
     placeLimitNote: `Two ${TRAP_NAMES.Barricade}s max`,
-    buyLimitNote: `Two ${TRAP_NAMES.Barricade}s max`,
     pathCost: 25,
     breakTrauma: 0.6,
     crackSound: 'Crack',
@@ -114,11 +112,9 @@ export const TRAPS: Readonly<Record<TrapKind, TrapStats>> = {
     name: TRAP_NAMES.Turret,
     blurb:
       'A garden gnome with a pea shooter. Set him down and he shoots anything that gets close.',
-    price: 150,
     hp: 20,
     limit: 2,
     placeLimitNote: `All 2 ${TRAP_NAMES.Turret}s are out`,
-    buyLimitNote: 'You can only own 2',
     pathCost: 6,
     breakTrauma: 0.5,
     crackSound: 'Crack',
@@ -207,11 +203,9 @@ export const trapBlockers: {
 
 export type TrapStage = 'Sturdy' | 'Cracked' | 'Splintered'
 
-export const stageOf: {
-  (hp: number): (kind: TrapKind) => TrapStage
-  (kind: TrapKind, hp: number): TrapStage
-} = Function.dual(2, (kind: TrapKind, hp: number): TrapStage => {
-  const share = hp / TRAPS[kind].hp
+// NOTE: how worn a trap looks, by the share of its own health left.
+const stageAt = (hp: number, maxHp: number): TrapStage => {
+  const share = hp / maxHp
   if (share > 2 / 3) {
     return 'Sturdy'
   } else if (share > 1 / 3) {
@@ -219,7 +213,9 @@ export const stageOf: {
   } else {
     return 'Splintered'
   }
-})
+}
+
+export const stageOf = (trap: Trap): TrapStage => stageAt(trap.hp, trap.maxHp)
 
 const setHealth = (trap: Trap, hp: number, hitRemainingMs: number): Trap =>
   Trap.match(trap, {
@@ -247,7 +243,8 @@ const damageTrap = (
   const hp = Math.max(0, trap.hp - damage)
   const { x, y } = trapCenter(level, trap)
   const isHit = isHeavy || Math.floor(hp) < Math.floor(trap.hp)
-  const isCracked = hp > 0 && stageOf(kind, hp) !== stageOf(kind, trap.hp)
+  const isCracked =
+    hp > 0 && stageAt(hp, trap.maxHp) !== stageAt(trap.hp, trap.maxHp)
   return {
     target: setHealth(
       trap,
@@ -892,13 +889,19 @@ export const maybePlacement: {
     }),
 )
 
+// NOTE: a trap's health as its placer sets it down: the Handyman's are
+// sturdier.
+const placedHp = (kind: TrapKind, player: Player): number =>
+  TRAPS[kind].hp * trapHealthScaleOf(player)
+
 const newTrap = (id: number, spot: TrapSpot, player: Player): Trap =>
   TrapSpot.match(spot, {
     Doorway: ({ door }) =>
       Trap.Barricade({
         id,
         door,
-        hp: TRAPS.Barricade.hp,
+        hp: placedHp('Barricade', player),
+        maxHp: placedHp('Barricade', player),
         hitRemainingMs: 0,
       }),
     Floor: ({ column, row }) =>
@@ -906,7 +909,8 @@ const newTrap = (id: number, spot: TrapSpot, player: Player): Trap =>
         id,
         column,
         row,
-        hp: TRAPS.Turret.hp,
+        hp: placedHp('Turret', player),
+        maxHp: placedHp('Turret', player),
         hitRemainingMs: 0,
         facing: player.facing,
         gun: TurretGun.Armed(),
@@ -992,35 +996,106 @@ export const placeTrapIn: {
     }),
 )
 
-// REPAIR
+// MENDING
 
 const missingShare = (trap: Trap): number =>
-  Math.max(0, 1 - trap.hp / TRAPS[trap._tag].hp)
+  Math.max(0, 1 - trap.hp / trap.maxHp)
 
 export const isDamaged = (trap: Trap): boolean => missingShare(trap) > 0
 
-export const repairPrice = (traps: ReadonlyArray<Trap>): number =>
-  Math.ceil(
-    Array.reduce(
-      traps,
-      0,
-      (sum, trap) =>
-        sum + missingShare(trap) * TRAPS[trap._tag].price * TRAP_REPAIR_SHARE,
-    ),
-  )
-
-export const repairTraps = (traps: ReadonlyArray<Trap>): ReadonlyArray<Trap> =>
-  Array.map(traps, trap => setHealth(trap, TRAPS[trap._tag].hp, 0))
-
-export const repairTrap: {
-  (trapId: number): (traps: ReadonlyArray<Trap>) => ReadonlyArray<Trap>
-  (traps: ReadonlyArray<Trap>, trapId: number): ReadonlyArray<Trap>
-} = Function.dual(
-  2,
-  (traps: ReadonlyArray<Trap>, trapId: number): ReadonlyArray<Trap> =>
-    Array.map(traps, trap =>
-      trap.id === trapId ? setHealth(trap, TRAPS[trap._tag].hp, 0) : trap,
-    ),
-)
-
 export const healthShare = (trap: Trap): number => 1 - missingShare(trap)
+
+// Mending (docs/ESCAPE_PLAN.md, layer 6): in a break, a player who stands
+// still beside a damaged trap mends it for free, from broken to whole in
+// `fullMs`, so a lightly chewed trap mends in a moment. The Handyman mends
+// twice as fast. Standing is the hold to buy's standing (no move, no
+// trigger), so mending never needs a key. A player mends the nearest
+// damaged trap in reach, and two players at one trap mend it together.
+type MendRules = Readonly<{ fullMs: number; reachPx: number }>
+
+export const MEND_RULES: MendRules = {
+  fullMs: 1500,
+  reachPx: 8,
+}
+
+const mendReachOf = (level: Level, player: Player, trap: Trap): number =>
+  distanceToBox(player, trapBox(level, trap))
+
+const isStandingStill = (world: World, slot: PlayerSlot): boolean => {
+  const { intent, seat } = seatStateAt(world, slot)
+  return (
+    isStanding(seat) &&
+    intent.move.x === 0 &&
+    intent.move.y === 0 &&
+    intent.trigger === 'Released'
+  )
+}
+
+// NOTE: the damaged trap the player at `slot` is mending this tick, if any.
+export const maybeMendingTrap: {
+  (slot: PlayerSlot): (world: World) => Option.Option<Trap>
+  (world: World, slot: PlayerSlot): Option.Option<Trap>
+} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<Trap> => {
+  if (
+    !Phase.isAnyOf(['Preparation'])(world.phase) ||
+    !isStandingStill(world, slot)
+  ) {
+    return Option.none()
+  }
+  const level = levelOf(world)
+  const { player } = seatStateAt(world, slot)
+  return pipe(
+    world.traps,
+    Array.filter(
+      trap =>
+        isDamaged(trap) &&
+        mendReachOf(level, player, trap) <= MEND_RULES.reachPx,
+    ),
+    Array.sort(
+      Order.mapInput(Order.Number, (trap: Trap) =>
+        mendReachOf(level, player, trap),
+      ),
+    ),
+    Array.head,
+  )
+})
+
+const mendFor =
+  (deltaMs: number) =>
+  (world: World, slot: PlayerSlot): World =>
+    Option.match(maybeMendingTrap(world, slot), {
+      onNone: () => world,
+      onSome: target => {
+        const gain =
+          (target.maxHp *
+            deltaMs *
+            mendSpeedScaleOf(seatStateAt(world, slot).player)) /
+          MEND_RULES.fullMs
+        const hp = Math.min(target.maxHp, target.hp + gain)
+        const { x, y } = trapCenter(levelOf(world), target)
+        return modifyFields(world, {
+          traps: Array.map(trap =>
+            trap.id === target.id
+              ? setHealth(trap, hp, trap.hitRemainingMs)
+              : trap,
+          ),
+          frameEvents: frameEvents =>
+            hp >= target.maxHp
+              ? [
+                  ...frameEvents,
+                  GameEvent.TrapMended({ x, y, kind: target._tag }),
+                ]
+              : frameEvents,
+        })
+      },
+    })
+
+// NOTE: one tick of mending, every seat in slot order.
+export const advanceMending: {
+  (deltaMs: number): (world: World) => World
+  (world: World, deltaMs: number): World
+} = Function.dual(2, (world: World, deltaMs: number): World =>
+  Phase.isAnyOf(['Preparation'])(world.phase)
+    ? forEachSeat(world, mendFor(deltaMs))
+    : world,
+)

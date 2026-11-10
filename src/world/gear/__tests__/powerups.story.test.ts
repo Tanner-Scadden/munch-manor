@@ -801,7 +801,7 @@ describe('timers', () => {
     () =>
       expectStaysFrozen(
         modifyFocus(withShopDialogOpen(preparing), {
-          shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+          shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
         }),
       ),
   )

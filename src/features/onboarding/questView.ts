@@ -4,9 +4,8 @@ import type { Html } from 'foldkit/html'
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
 import {
-  QUEST_BUY_ICON,
+  QUEST_GRAB_ICON,
   QUEST_PLACE_ICON,
-  QUEST_SHOP_ICON,
   TOUR_BOARDS_ICON,
   TOUR_FRIDGE_ICON,
   TOUR_PAUSED_ICON,
@@ -17,11 +16,10 @@ import { cameraOf, viewBoxOf, worldToView } from '../../render/camera'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { levelOf } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/worldSchema'
-import { STALL_BOX } from '../../world/shop/shop'
 import {
   QUEST_STEPS,
   isQuestDone,
-  maybeQuestDoor,
+  maybeQuestMark,
   questStepOf,
 } from './firstBreakQuest'
 import {
@@ -51,8 +49,7 @@ type Chapter = Readonly<{
 }>
 
 const FIRST_BREAK_STEPS: Array.NonEmptyReadonlyArray<StepLook> = [
-  { icon: QUEST_SHOP_ICON, word: 'GO', spoken: "Walk to Rattles' stall" },
-  { icon: QUEST_BUY_ICON, word: 'BUY', spoken: 'Buy a Plank Pile' },
+  { icon: QUEST_GRAB_ICON, word: 'GRAB', spoken: 'Grab the Plank Pile' },
   { icon: QUEST_PLACE_ICON, word: 'PLACE', spoken: 'Put it in a doorway' },
 ]
 
@@ -107,15 +104,9 @@ const kitchenChapter = (model: Model): Option.Option<Chapter> => {
 // portrait it sits in the band above the world (CSS), off the world itself.
 type Side = 'Left' | 'Right'
 
-const maybeTargetOf = (model: Model): Option.Option<Vector> => {
-  if (Option.contains(questStepOf(model), 'Shop')) {
-    return Option.some({
-      x: (STALL_BOX.left + STALL_BOX.right) / 2,
-      y: STALL_BOX.top,
-    })
-  }
-  return pipe(
-    maybeQuestDoor(model),
+const maybeTargetOf = (model: Model): Option.Option<Vector> =>
+  pipe(
+    maybeQuestMark(model),
     Option.orElse(() => maybeKitchenMark(model)),
     Option.orElse(() =>
       Option.contains(kitchenStepOf(model), 'Choose')
@@ -125,7 +116,6 @@ const maybeTargetOf = (model: Model): Option.Option<Vector> => {
         : Option.none(),
     ),
   )
-}
 
 const sideOf = (model: Model): Side =>
   Option.match(maybeTargetOf(model), {

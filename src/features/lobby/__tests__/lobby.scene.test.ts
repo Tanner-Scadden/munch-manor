@@ -71,7 +71,7 @@ describe('the lobby', () => {
         ),
         Scene.expect(
           Scene.role('button', {
-            name: /^Hero: Handyman\. Plus: Planks 50% off/,
+            name: /^Hero: Handyman\. Plus: Traps 50% sturdier/,
           }),
         ).toHaveAttr('aria-keyshortcuts', 'Y'),
         Scene.expectAll(Scene.all.selector('.lobby-special')).toHaveCount(

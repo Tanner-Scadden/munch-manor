@@ -1,6 +1,6 @@
 // What the balance bot does in a break: shopping at Rattles' stall,
-// buying the kitchen, the fridge, planks and
-// gnomes, and the plan that picks between them.
+// buying the kitchen, the fridge, taking planks and gnomes from the trap
+// crates, placing and mending them, and the plan that picks between them.
 
 import { Array, Function, Option, Schema } from 'effect'
 
@@ -15,8 +15,15 @@ import {
   fridgeBoxOf,
   fridgePriceFor,
 } from '../../../src/world/fridge/leftovers'
+import { crateSpotOf, maybeFindIn } from '../../../src/world/gear/crates'
+import {
+  MEND_RULES,
+  isDamaged,
+  ownedCount,
+  trapBox,
+  trapLimitOf,
+} from '../../../src/world/gear/traps'
 import { freshGun, isCarrying, maxTier } from '../../../src/world/gear/weapons'
-import { maxHpOf } from '../../../src/world/heroes/calling'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import {
   EXIT_RULES,
@@ -28,13 +35,12 @@ import {
   focusSlotOf,
   leadSeatOf,
 } from '../../../src/world/party/party'
+import type { TrapKind } from '../../../src/world/schema/worldSchema'
 import { maybeOfferInReach } from '../../../src/world/shop/purchase'
 import {
   STALL_BOX,
   isShopOpenFor,
   priceFor,
-  repairItemId,
-  verdictFor,
 } from '../../../src/world/shop/shop'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
 import { KEYS, type Model, type Vector, send } from './basics'
@@ -44,7 +50,6 @@ import {
   gunValue,
   gunsOfBot,
   pistolOf,
-  spareOf,
   weakerGun,
 } from './guns'
 import { isKnobSet, knobNumber, knobText } from './knobs'
@@ -58,13 +63,13 @@ export const STALL_FRONT: Vector = {
   y: STALL_BOX.top - 3,
 }
 
-// The bot shops the way a careful player would: a heart when low, two
-// Plank Piles, then Grumpy Gnomes while it keeps a small reserve for a
-// heart. Guns sit in display cases (src/world/feats/cases.ts), which the
-// bot leaves alone, and a gun's tiers are earned by its kills
-// (src/world/gear/gunLevels.ts), so it buys neither.
-// NO_GNOME=1 keeps the old bot that never buys a gnome, and NO_PLANKS=1 a
-// bot that never buys a Plank Pile, to check planks help without carrying.
+// The bot shops the way a careful player would, and Rattles has nothing
+// left it wants: guns sit in display cases (src/world/feats/cases.ts),
+// which the bot leaves alone, a gun's tiers are earned by its kills
+// (src/world/gear/gunLevels.ts), traps come from the trap crates (THE
+// CRATES below), and hearts only drop. NO_GNOME=1 is the bot that never
+// takes a gnome, and NO_PLANKS=1 one that never takes a Plank Pile, to
+// check planks help without carrying.
 const NO_GNOME = isKnobSet('NO_GNOME')
 const NO_PLANKS = isKnobSet('NO_PLANKS')
 const RESERVE = knobNumber('RESERVE', 30)
@@ -95,67 +100,15 @@ export const replacedBy: {
 export const wantedPurchase: {
   (model: Model): (state: BotState) => ItemId | undefined
   (state: BotState, model: Model): ItemId | undefined
-} = Function.dual(2, (state: BotState, model: Model): ItemId | undefined => {
-  // NOTE: guns sit in display cases now (src/world/feats/cases.ts), which
-  // the bot leaves alone, so with no gun of its own the pistol is its gun.
-  const spare = spareOf(model) ?? pistolOf(model)
-  const isAvailable = (item: ItemId) =>
-    verdictFor(model, focusSlotOf(model), item)._tag === 'Available'
-  const canSpare = (item: ItemId) =>
-    isAvailable(item) &&
-    focusOf(model).wallet.balance - priceFor(model, focusSlotOf(model), item) >=
-      RESERVE
-  if (focusOf(model).player.hp <= 3 && isAvailable('Heart')) {
-    return 'Heart'
-  }
-  if (spare === undefined) {
-    return undefined
-  }
-  const barricades =
-    focusOf(model).trapStock.Barricade +
-    Array.filter(model.traps, trap => trap._tag === 'Barricade').length
-  if (!NO_PLANKS && barricades < 2 && isAvailable('Barricade')) {
-    return 'Barricade'
-  }
-  if (focusOf(model).player.hp <= 4 && isAvailable('Heart')) {
-    return 'Heart'
-  }
-  const repairs = Array.filter(
-    Array.map(model.traps, trap => repairItemId(trap.id)),
-    item => isAvailable(item),
-  )
-  const repairTotal = Array.reduce(
-    repairs,
-    0,
-    (total, item) => total + priceFor(model, focusSlotOf(model), item),
-  )
-  if (repairs.length > 0 && repairTotal <= 25) {
-    return repairs[0]
-  }
-  // NOTE: NO_UPGRADES=1 once stopped the bot's upgrades. Tiers are earned
-  // by kills now, so it stops the gnomes it would buy next.
-  if (state.options.noUpgrades) {
-    return undefined
-  }
-  const turrets =
-    focusOf(model).trapStock.Turret +
-    Array.filter(model.traps, trap => trap._tag === 'Turret').length
-  if (!NO_GNOME && turrets < 1 && canSpare('Turret')) {
-    return 'Turret'
-  }
-  if (wantsKitchen(model)) {
-    return undefined
-  }
-  if (!NO_GNOME && turrets < 2 && spare.tier >= 2 && canSpare('Turret')) {
-    return 'Turret'
-  }
-  return undefined
-})
+} = Function.dual(
+  2,
+  (_state: BotState, _model: Model): ItemId | undefined => undefined,
+)
 
 // THE KITCHEN
 
 // The bot buys the kitchen open the way the analytical model does: once it
-// holds the SMG at its second upgrade, both Plank Piles, and a Grumpy Gnome,
+// holds a gun at its second tier (earned by kills),
 // while it keeps its reserve. It walks to the boarded door and holds the interact key. KITCHEN=0 is the bot
 // that never opens it, to see what the kitchen does to a run.
 const NO_KITCHEN = knobText('KITCHEN') === '0'
@@ -163,14 +116,6 @@ export const KITCHEN_DOOR_PUSH: Vector = { x: 70, y: 16 }
 
 export const isKitchenOpen = (model: Model) =>
   levelOf(model).openExits.includes(KITCHEN_EXIT)
-
-const turretCount = (model: Model) =>
-  focusOf(model).trapStock.Turret +
-  Array.filter(model.traps, trap => trap._tag === 'Turret').length
-
-const plankCount = (model: Model) =>
-  focusOf(model).trapStock.Barricade +
-  Array.filter(model.traps, trap => trap._tag === 'Barricade').length
 
 const wantsKitchen = (model: Model): boolean => {
   const spare = firearmOf(model) ?? pistolOf(model)
@@ -180,8 +125,6 @@ const wantsKitchen = (model: Model): boolean => {
     isExitOfferOpenFor(model.phase) &&
     spare !== undefined &&
     spare.tier >= Math.min(2, maxTier(spare.kind)) &&
-    (NO_GNOME || turretCount(model) >= 1) &&
-    (NO_PLANKS || plankCount(model) >= 2) &&
     focusOf(model).wallet.balance - EXIT_RULES.price >= RESERVE
   )
 }
@@ -272,15 +215,9 @@ export const isOfferedToBot = (model: Model): boolean =>
   model.fridge.door.slot === leadSeatOf(model).slot
 
 const fridgeReserve = (state: BotState, model: Model): number => {
-  const heart =
-    focusOf(model).player.hp <= 4 &&
-    focusOf(model).player.hp < maxHpOf(focusOf(model).player)
-      ? priceFor(model, focusSlotOf(model), 'Heart')
-      : 0
   const want = wantedPurchase(state, model)
   return (
     RESERVE +
-    heart +
     (want === undefined ? 0 : priceFor(model, focusSlotOf(model), want))
   )
 }
@@ -374,11 +311,68 @@ export const busiestDoor = (model: Model) => {
   ).sort((a, b) => b.count - a.count)[0]?.door
 }
 
+// THE CRATES
+
+// A crate's find is taken by walking onto it, so the bot walks to the
+// first crate whose trap it wants and may carry. A damaged trap mends while
+// the bot stands still beside it, so it walks up to the most worn one and
+// waits there with no keys down.
+const wantsFind = (trap: TrapKind): boolean =>
+  trap === 'Barricade' ? !NO_PLANKS : !NO_GNOME
+
+export const crateTarget = (model: Model): Vector | undefined =>
+  Option.getOrUndefined(
+    Array.findFirst(model.crates.crates, crate =>
+      Option.exists(
+        maybeFindIn(model, crate),
+        trap =>
+          wantsFind(trap) &&
+          ownedCount(model, focusSlotOf(model), trap) <
+            trapLimitOf(model, trap),
+      ),
+    ).pipe(Option.map(crate => crateSpotOf(crate.room))),
+  )
+
+const MEND_BELOW = 0.75
+
+const wornTrap = (model: Model) =>
+  Option.getOrUndefined(
+    Array.findFirst(
+      Array.filter(model.traps, isDamaged),
+      trap => trap.hp / trap.maxHp < MEND_BELOW,
+    ),
+  )
+
+export const mendTarget = (model: Model): Vector | undefined => {
+  const trap = wornTrap(model)
+  if (trap === undefined) {
+    return undefined
+  }
+  const box = trapBox(levelOf(model), trap)
+  return {
+    x: Math.min(Math.max(focusOf(model).player.x, box.left), box.right),
+    y: Math.min(Math.max(focusOf(model).player.y, box.top), box.bottom),
+  }
+}
+
+// NOTE: close enough to mend: within reach of the trap's box, with a pixel
+// to spare, so the bot stops walking (standing still is what mends).
+export const isAtMend = (model: Model): boolean => {
+  const trap = wornTrap(model)
+  return (
+    trap !== undefined &&
+    distanceToBox(focusOf(model).player, trapBox(levelOf(model), trap)) <=
+      MEND_RULES.reachPx - 1
+  )
+}
+
 type PrepPlan =
   | 'Shop'
   | 'Kitchen'
+  | 'Crate'
   | 'Barricade'
   | 'Gnome'
+  | 'Mend'
   | 'Fridge'
   | 'Return'
   | 'Go'
@@ -413,6 +407,9 @@ export const prepPlan: {
     if (wantsKitchen(model)) {
       return 'Kitchen'
     }
+    if (crateTarget(model) !== undefined) {
+      return 'Crate'
+    }
     if (
       focusOf(model).trapStock.Barricade > 0 &&
       busiestDoor(model) !== undefined
@@ -421,6 +418,9 @@ export const prepPlan: {
     }
     if (focusOf(model).trapStock.Turret > 0 && state.gnomeTries < 90) {
       return 'Gnome'
+    }
+    if (mendTarget(model) !== undefined) {
+      return 'Mend'
     }
     if (wantsFridge(state, model)) {
       return 'Fridge'

@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
 import { Tour } from '../../domain/clientSchema'
+import { crateSpotOf } from '../../world/gear/crates'
 import { barricadedDoors } from '../../world/gear/traps'
 import { levelOf } from '../../world/level/arena'
 import { focusOf, isCoop } from '../../world/party/party'
@@ -12,14 +13,15 @@ import {
   TrapHint,
   type Vector,
 } from '../../world/schema/worldSchema'
-import { isBrowsing, isShopOpenFor } from '../../world/shop/shop'
+import { isShopOpenFor } from '../../world/shop/shop'
 
 // NOTE: the guided first break, from playtesters who wanted the game to walk
-// them to the shop after the first wave, as other games do. One step at a
-// time, each taught at the spot where it happens, with a little tracker in
-// a corner: walk to Rattles' stall, buy a Plank Pile (free this once, see
-// isFirstPlankFree in src/world/shop/shop.ts), and place it in a doorway. Then START
-// WAVE pulses and the tracker ticks off and fades.
+// them through the first break, as other games do. One step at a time, each
+// taught at the spot where it happens, with a little tracker in a corner:
+// grab the Plank Pile from the parlour's trap crate (in this break it always
+// holds one, see src/world/gear/crates.ts), and place it in a doorway. Then
+// START WAVE pulses and the tracker ticks off and fades. A later layer of
+// docs/ESCAPE_PLAN.md rewrites the tutorial.
 //
 // It runs once per save: it starts only in a break where the shop is open
 // while the shop and open break lessons are still pending and no trap was
@@ -27,11 +29,10 @@ import { isBrowsing, isShopOpenFor } from '../../world/shop/shop'
 // skipped the tutorial on the first-run card, never sees it and a tutorial
 // reset brings it back. Never in co-op. It is skippable: the
 // tracker's skip button, or starting the wave, ends it.
-export type QuestStep = 'Shop' | 'Buy' | 'Place'
+export type QuestStep = 'Grab' | 'Place'
 
 export const QUEST_STEPS: Array.NonEmptyReadonlyArray<QuestStep> = [
-  'Shop',
-  'Buy',
+  'Grab',
   'Place',
 ]
 
@@ -51,10 +52,8 @@ export const questStepOf = (model: Model): Option.Option<QuestStep> => {
     return Option.none()
   } else if (TrapHint.isAnyOf(['Showing'])(model.trapHint)) {
     return Option.some('Place')
-  } else if (isBrowsing(focusOf(model).shop)) {
-    return Option.some('Buy')
   } else {
-    return Option.some('Shop')
+    return Option.some('Grab')
   }
 }
 
@@ -102,12 +101,17 @@ export const endQuest = (model: Model): Model =>
     ? model
     : modifyFields(model, { firstBreakQuest: () => Tour.Over() })
 
-// NOTE: in the Place step an arrow bobs over the nearest open doorway, the
-// sensible spot for the Plank Pile.
-export const maybeQuestDoor = (model: Model): Option.Option<Vector> => {
-  if (!Option.contains(questStepOf(model), 'Place')) {
-    return Option.none()
-  }
+// NOTE: an arrow bobs over where the step happens: the parlour's crate to
+// grab from, then the nearest open doorway, the sensible spot for the Plank
+// Pile.
+export const maybeQuestMark = (model: Model): Option.Option<Vector> =>
+  Option.flatMap(questStepOf(model), step =>
+    step === 'Grab'
+      ? Option.some(crateSpotOf('Parlour'))
+      : maybeQuestDoor(model),
+  )
+
+const maybeQuestDoor = (model: Model): Option.Option<Vector> => {
   const level = levelOf(model)
   const boarded = barricadedDoors(model.traps)
   return pipe(

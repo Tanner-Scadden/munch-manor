@@ -900,6 +900,7 @@ export const westPlank = Trap.Barricade({
   id: 1,
   door: 'West',
   hp: TRAPS.Barricade.hp,
+  maxHp: TRAPS.Barricade.hp,
   hitRemainingMs: 0,
 })
 

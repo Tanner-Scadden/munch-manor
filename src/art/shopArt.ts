@@ -1,11 +1,7 @@
-import { Array, Function, Record, Schema } from 'effect'
+import { Array, Function, Record } from 'effect'
 
 import type { TrapKind, WeaponKind } from '../world/schema/entitySchema'
-import {
-  FixedShopItemId,
-  type ShopCategory,
-  type ShopItemId,
-} from '../world/schema/worldSchema'
+import type { ShopCategory, ShopItemId } from '../world/schema/worldSchema'
 import { pixelIconUrl } from './icons'
 import {
   MOOD_FACES,
@@ -183,7 +179,8 @@ export const gunArt: {
 
 // GOODS
 
-const JAR_ART = artOf(
+// NOTE: the Pickled Heart's jar, the shop guide's picture of a found heart.
+export const JAR_ART = artOf(
   [
     '..KKKKKKKK..',
     '..KLLLLLLK..',
@@ -254,22 +251,6 @@ const GNOME_ART = artOf(
   },
 )
 
-const GLUE_ART = artOf(
-  [
-    '....KK.........',
-    '...KOOK........',
-    '...KOOK........',
-    '..KKKKKK.......',
-    '..KWWWWK.KKK...',
-    '..KWYYWK..G....',
-    '..KWYYWK..G.KKK',
-    '..KWWWWK..G..G.',
-    '..KWWWWK..G..G.',
-    '..KKKKKK.....G.',
-  ],
-  { K: INK, O: '#ff8a3d', W: '#f4f1de', Y: '#ffd23f', G: '#a9b2bf' },
-)
-
 // NOTE: the laser sight: a grey scope with a red lens, and the red dot it
 // throws on the floor below.
 const SIGHT_ART = artOf(
@@ -290,18 +271,14 @@ const SIGHT_ART = artOf(
   { K: INK, M: '#4a4f5a', R: '#ff3a3f', L: '#ffb3b6' },
 )
 
-const ITEM_ART: Readonly<Record<FixedShopItemId, ShopArt>> = {
+const ITEM_ART: Readonly<Record<ShopItemId, ShopArt>> = {
   Shotgun: gunArt('Shotgun', 0),
   Smg: gunArt('Smg', 0),
   Pistol: gunArt('Pistol', 0),
   LaserSight: SIGHT_ART,
-  Heart: JAR_ART,
-  Barricade: PLANK_ART,
-  Turret: GNOME_ART,
 }
 
-export const itemArt = (id: ShopItemId): ShopArt =>
-  Schema.is(FixedShopItemId)(id) ? ITEM_ART[id] : GLUE_ART
+export const itemArt = (id: ShopItemId): ShopArt => ITEM_ART[id]
 
 export const TRAP_ART: Readonly<Record<TrapKind, ShopArt>> = {
   Barricade: PLANK_ART,
@@ -341,14 +318,11 @@ export const SWAP_ICON = artOf(
 )
 
 export const HEART_FULL = artOf(HEART_PIXELS, { R: '#e8333a', W: '#ff8a8f' })
-export const HEART_EMPTY = artOf(HEART_PIXELS, { R: '#4a2a33', W: '#4a2a33' })
 
 // TABS
 
 export const TAB_ART: Readonly<Record<ShopCategory, ShopArt>> = {
   Guns: gunArt('Pistol', 0),
-  Health: HEART_FULL,
-  Traps: GNOME_ART,
 }
 
 // RATTLES

@@ -84,13 +84,16 @@ import {
   KITCHEN_DOOR_PUSH,
   STALL_FRONT,
   busiestDoor,
+  crateTarget,
   fridgeKeys,
   fridgeStand,
   gnomeSpot,
   holdingAtKitchen,
+  isAtMend,
   isFridgeInReach,
   isKitchenOpen,
   isOfferedToBot,
+  mendTarget,
   offeredWeapon,
   prepPlan,
   replacedBy,
@@ -311,16 +314,21 @@ export const play: {
             ? STALL_FRONT
             : plan === 'Kitchen'
               ? KITCHEN_DOOR_PUSH
-              : plan === 'Gnome'
-                ? gnomeSpot(model)
-                : plan === 'Fridge'
-                  ? (fridgeStand(model) ?? ROOM_CENTER)
-                  : plan === 'Return'
-                    ? ROOM_CENTER
-                    : boxCenter(
-                        levelOf(model).thresholds[busiestDoor(model) ?? 'North']
-                          .box,
-                      )
+              : plan === 'Crate'
+                ? (crateTarget(model) ?? ROOM_CENTER)
+                : plan === 'Mend'
+                  ? (mendTarget(model) ?? ROOM_CENTER)
+                  : plan === 'Gnome'
+                    ? gnomeSpot(model)
+                    : plan === 'Fridge'
+                      ? (fridgeStand(model) ?? ROOM_CENTER)
+                      : plan === 'Return'
+                        ? ROOM_CENTER
+                        : boxCenter(
+                            levelOf(model).thresholds[
+                              busiestDoor(model) ?? 'North'
+                            ].box,
+                          )
         if (plan === 'Shop') {
           const item = wantedPurchase(state, model)
           model = holdToReplace(
@@ -338,6 +346,8 @@ export const play: {
         }
         if (plan === 'Fridge' && isFridgeInReach(model)) {
           model = pressKeys(model, fridgeKeys(model))
+        } else if (plan === 'Mend' && isAtMend(model)) {
+          model = pressKeys(model, new Set())
         } else if (
           plan === 'Gnome' &&
           distance(focusOf(model).player, target) < 6

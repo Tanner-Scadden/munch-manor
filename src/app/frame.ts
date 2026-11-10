@@ -26,6 +26,7 @@ import {
   CALLOUT_LIFETIME_MS,
   LEVEL_CALLOUT_LIFETIME_MS,
 } from '../world/gear/powerups'
+import { TRAP_KIND_ORDER } from '../world/gear/traps'
 import { levelOf } from '../world/level/arena'
 import { focusOf, modifyFocus } from '../world/party/party'
 import { withWorld } from '../world/schema/world'
@@ -46,6 +47,7 @@ import {
   Phase,
   type PickupKind,
   ShopState,
+  TrapHint,
   TrapNotice,
   idleIntent,
 } from './model'
@@ -283,11 +285,21 @@ const advanceFlourishes = (
     frameMs,
   )
 
+// NOTE: the first trap a player finds in a crate brings up the hint for
+// placing it.
+const noticeFoundTrap = (model: Model): Model =>
+  TrapHint.isAnyOf(['Unseen'])(model.trapHint) &&
+  Array.some(TRAP_KIND_ORDER, kind => focusOf(model).trapStock[kind] > 0)
+    ? modifyFields(model, { trapHint: () => TrapHint.Showing() })
+    : model
+
 export const advanceCosmetics: {
   (frameMs: number, worldMs: number): (model: Model) => Model
   (model: Model, frameMs: number, worldMs: number): Model
 } = Function.dual(3, (model: Model, frameMs: number, worldMs: number): Model =>
-  advanceBreakIdle(advanceFlourishes(model, frameMs, worldMs), worldMs),
+  noticeFoundTrap(
+    advanceBreakIdle(advanceFlourishes(model, frameMs, worldMs), worldMs),
+  ),
 )
 
 // NOTE: the camera leans toward the aim on the display's own time.

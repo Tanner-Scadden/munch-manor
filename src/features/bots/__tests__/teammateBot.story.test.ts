@@ -327,14 +327,15 @@ describe('in a break', () => {
       }),
     )
 
-  it.effect('buys a heart at the stall when the human is elsewhere', () =>
+  // NOTE: Rattles sells no hearts (docs/ESCAPE_PLAN.md, layer 6), so a
+  // wounded bot stays hurt until a Pickled Heart drops.
+  it.effect('buys no heart at the stall, since none are sold', () =>
     Story.story(
       APPLICATION,
       Story.given(placeSeat(0, 40, 40)(wounded(inBreak))),
       ...ticks(900, TICK_MS),
       Story.model(current => {
-        expect(seatOf(current, 1).player.hp).toBeGreaterThan(3)
-        expect(seatOf(current, 1).wallet.balance).toBeLessThan(200)
+        expect(seatOf(current, 1).player.hp).toBe(3)
       }),
     ),
   )
@@ -350,7 +351,7 @@ describe('in a break', () => {
       Story.given(
         atSeat(humanAtStall, 0, world =>
           modifyFocus(world, {
-            shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+            shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
           }),
         ),
       ),

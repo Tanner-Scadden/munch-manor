@@ -326,7 +326,7 @@ describe('reload pauses', () => {
     const shopping = modifyFocus(
       withShopDialogOpen(withPistolLoaded(preparing, 3)),
       {
-        shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+        shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
         player: player =>
           modifyFields(player, {
             reload: () =>
@@ -530,7 +530,7 @@ describe('the idle reload below Hard', () => {
   it.effect('nothing reloads at the counter', () => {
     const shopping = modifyFocus(
       withShopDialogOpen(withPistolLoaded(preparing, 3)),
-      { shop: () => ShopState.Browsing({ focusedItem: 'Heart' }) },
+      { shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }) },
     )
     return Story.story(
       APPLICATION,

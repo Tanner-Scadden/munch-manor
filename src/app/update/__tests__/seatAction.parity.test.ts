@@ -38,7 +38,14 @@ import { idleIntent } from '../../../world/schema/worldSchema'
 import { SeatAction, applySeatAction } from '../../../world/step/stepWorld'
 import { ShopDialogBinding } from '../../bindings'
 import { Message } from '../../message'
-import { BreakClock, Life, type Model, Phase, ShopState } from '../../model'
+import {
+  Arsenal,
+  BreakClock,
+  Life,
+  type Model,
+  Phase,
+  ShopState,
+} from '../../model'
 
 // One rule set for player actions (AGENTS.md "Code shape"): every seat
 // action, pressed through single player's own Messages, leaves the World
@@ -161,10 +168,20 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
     action: SeatAction.NextTrap(),
     presses: Story.steps(Story.message(Message.ClickedNextTrapButton())),
   },
+  // NOTE: the one thing Rattles still hands over: the Pop Pistol back, to a
+  // player who traded it away.
   Buy: {
-    from: atCounter,
-    action: SeatAction.Buy({ item: 'Heart' }),
-    presses: Story.steps(buyAtCounter('Heart')),
+    from: modifyFocus(atCounter, {
+      player: player =>
+        modifyFields(player, {
+          arsenal: () =>
+            Arsenal.OneGun({
+              first: { kind: 'Smg', loaded: 30, tier: 0, kills: 0 },
+            }),
+        }),
+    }),
+    action: SeatAction.Buy({ item: 'Pistol' }),
+    presses: Story.steps(buyAtCounter('Pistol')),
   },
   // NOTE: the shop dialog closed: its close, then the Command's result.
   LeaveCounter: {

@@ -186,6 +186,8 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     PrizeLeft: () => Option.some<SoundEffect>('Thud'),
     DudBurped: () => Option.none<SoundEffect>(),
     PantryTaken: ({ goodie }) => Option.some(PANTRY_SOUNDS[goodie]),
+    CrateTaken: () => Option.some<SoundEffect>('Swap'),
+    TrapMended: () => Option.some<SoundEffect>('Tink'),
     LidLaunched: () => Option.some<SoundEffect>('Whoosh'),
     LidBlasted: () => Option.some<SoundEffect>('Boom'),
     CookerPopped: () => Option.some<SoundEffect>('Pop'),

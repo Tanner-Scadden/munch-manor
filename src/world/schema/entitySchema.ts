@@ -507,6 +507,33 @@ export const Pantry = defineTaggedUnion({
 export type Pantry = typeof Pantry.Type
 export type PantryStash = typeof Pantry.Stocked.Type
 
+// TRAP CRATES
+
+// NOTE: a trap crate stands in each room (src/world/gear/crates.ts): the
+// parlour's from the start, the kitchen's once the kitchen is open. Each
+// holds one found trap until someone walks onto it, and a taken crate
+// restocks at the next break.
+export const CrateRoom = Schema.Literals(['Parlour', 'Kitchen'])
+export type CrateRoom = typeof CrateRoom.Type
+
+export const CrateStock = defineTaggedUnion({
+  Stocked: { trap: TrapKind },
+  Taken: {},
+})
+export type CrateStock = typeof CrateStock.Type
+
+export const Crate = Schema.Struct({ room: CrateRoom, stock: CrateStock })
+export type Crate = typeof Crate.Type
+
+// NOTE: the crates' own generator, apart from the run's, so a roll moves no
+// other; `wave` is the break they last restocked for, 0 before any.
+export const TrapCrates = Schema.Struct({
+  rngState: Schema.Finite,
+  wave: Schema.Finite,
+  crates: Schema.Array(Crate),
+})
+export type TrapCrates = typeof TrapCrates.Type
+
 // NOTE: a Pressure Cooker lid in flight, from where it was thrown to where
 // it lands; `charge` (0 to 1) and `tier` size its blast. It names the seat
 // that threw it, as a bullet does, only in co-op.

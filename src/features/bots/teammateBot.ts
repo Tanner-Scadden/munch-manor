@@ -121,7 +121,9 @@ const FLEE_PX: Readonly<Record<Zombie['kind'], number>> = {
   Boss: 56,
 }
 
-const WISHES: ReadonlyArray<ShopItemId> = ['Heart']
+// NOTE: the shop sells nothing a bot wishes for any more: ammo is endless,
+// guns level by kills, and hearts and traps are found in the house.
+const WISHES: ReadonlyArray<ShopItemId> = []
 
 // WHAT IS IN THE ROOM
 
