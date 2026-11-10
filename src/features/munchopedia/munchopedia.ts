@@ -21,44 +21,44 @@ export type MunchopediaEntry = Readonly<{
 export const MUNCHOPEDIA: Array.NonEmptyReadonlyArray<MunchopediaEntry> = [
   {
     kind: 'Shambler',
-    bio: 'Shows up to every party. Brings nothing. Eats the host.',
+    bio: 'Came for dinner in 1925. Still waiting on dessert.',
     behavior: 'Shuffles straight at you, groaning about it the whole way.',
     howToBeat: 'He is slow. Back up and keep shooting.',
   },
   {
     kind: 'Runner',
-    bio: 'Never skipped leg day. Skipped every other day.',
+    bio: 'Fastest kid in school. Dared to run straight through.',
     behavior: 'Zooms right at you the second the door opens.',
     howToBeat: 'Flimsy. One good shot drops it, so aim first.',
   },
   {
     kind: 'Tank',
-    bio: 'Wearing a whole kitchen. Pot lid, stop sign, the works.',
+    bio: 'Ate everything. Now he wears the kitchen too.',
     behavior: 'Plods in slow, soaks up lead, and loves a snack of planks.',
     howToBeat: 'Knock the junk off one clang at a time. Keep your distance.',
   },
   {
     kind: 'Exploder',
-    bio: 'Brought a bomb to share. Nobody asked.',
+    bio: 'Brought fireworks to scare everyone. It worked once.',
     behavior: 'Waddles up for a hug, then goes boom.',
     howToBeat: 'Pop him from far away. His boom splats his buddies too.',
   },
   {
     kind: 'Thrower',
-    bio: 'Got cut from the big leagues. Still bitter.',
+    bio: 'Took the dare to prove a point. Still proving it.',
     behavior: `Hangs back and pitches ${ZOMBIE_NAMES.Shambler}s at your head.`,
     howToBeat: 'Get close. He hides behind a buddy, so shoot around it.',
   },
   {
     kind: 'Crawler',
-    bio: 'Lives under the floorboards. Pays no rent.',
+    bio: "The house's pet. Lives under the floorboards, pays no rent.",
     behavior:
       'A zombie spider. Skitters up through the floor and grabs your ankles.',
     howToBeat: 'Watch for cracks in the floor. Two shots and it is done.',
   },
   {
     kind: 'Boss',
-    bio: 'The relative nobody invited. He came anyway.',
+    bio: 'The host. The party ends when he says so.',
     behavior: 'Stomps up close. Run far and he charges and spits.',
     howToBeat: 'Stay close, step out of the red, and never stop shooting.',
   },

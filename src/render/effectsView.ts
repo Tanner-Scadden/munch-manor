@@ -252,9 +252,9 @@ const PART_LOOKS: Readonly<
     hasStump: false,
   },
   BombShard: {
-    particle: '#1d1b26',
-    decal: '#2c2a36',
-    faded: '#3a3640',
+    particle: '#3a4a8a',
+    decal: '#2c3a6a',
+    faded: '#363a4a',
     hasStump: false,
   },
   RedCap: {
@@ -288,9 +288,9 @@ const PART_LOOKS: Readonly<
     hasStump: false,
   },
   StopSign: {
-    particle: '#d43c3a',
-    decal: '#b83432',
-    faded: '#5e2a28',
+    particle: '#c8955a',
+    decal: '#a87a48',
+    faded: '#5e4a34',
     hasStump: false,
   },
   Bucket: {
