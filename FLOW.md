@@ -57,7 +57,7 @@ flowchart TD
   escaped -.-> reward
 
   reward --> spend[Spend Bones: heroes, looks, hats, gun skins]:::built
-  reward --> rattlesMemory[Rattles remembers how the last run ended]:::proposed
+  reward --> rattlesMemory[Your friends in the car remember how the last run ended]:::proposed
   spend --> home
   rattlesMemory -.-> home
   reward -->|RETRY| picks
@@ -138,7 +138,7 @@ flowchart TD
   fold[The card folds into the HUD: empty outlines to fill. The first wave starts]:::proposed --> waves
   waves[Waves count up, each harder than the last: the number is how far you got]:::proposed --> explore
 
-  explore[Buy boards open, room by room]:::built --> roomRoll{Which room is behind the boards?}
+  explore[Spend skeleton keys on the padlocked boards, room by room]:::proposed --> roomRoll{Which room is behind the boards?}
   roomRoll -->|Today| fixedRoom[The kitchen, always]:::built
   roomRoll -.->|Rolled rooms| dish[A cloche lifts: one of a few hand-made rooms]:::proposed
 
@@ -148,7 +148,7 @@ flowchart TD
   hunt{How does this thing come to you?}:::proposed
   hunt --> hidden[Hidden in one of a few spots: the silver spoon in a sofa]:::proposed
   hunt --> carried[A daredevil zombie carries it: drop him, grab the portrait]:::proposed
-  hunt --> bought[Rattles has it, for a price: a page of the guest book]:::proposed
+  hunt --> bought[Locked in a display case, opened by a feat: a page of the guest book]:::proposed
   hunt --> cooked[Made at the stove: Grandma Munch's recipe]:::proposed
   hunt --> heard[Follow the sound: the music box playing]:::proposed
 
@@ -165,9 +165,27 @@ flowchart TD
   goodbye --> holdout[Take his hat, then hold the hall while the front door unlocks]:::proposed
   holdout --> escaped([Escaped with the whole dare: pays most, and the proof to share]):::proposed
 
-  hungry -->|Munched| lost([Game Over: you join the party. Rattles remembers]):::built
+  hungry -->|Munched| lost([Game Over: you join the party. Your friends remember]):::built
 
   classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
+  classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
+```
+
+### No shop: how you get stronger
+
+There is no shopkeeper. You get stronger from the house itself, and zombies drop skeleton keys, the one thing you count.
+
+```mermaid
+flowchart LR
+  kill[Drop zombies]:::proposed --> keys[Skeleton keys]:::proposed
+  keys --> boards[Padlocked boards: spend the number on the lock, a room opens]:::proposed
+  keys --> fridge[The fridge's padlock: spend keys for a pull]:::proposed
+  kill --> feats[Feats this run: kill counts, skill, exploring]:::proposed
+  feats --> cases[Display cases spring open: a gun]:::proposed
+  find[Things the dare did not ask for]:::proposed --> cases
+  kill --> use[Kills with a gun level it up: Beefy, DELUXE, 3000]:::proposed
+  rooms[Rooms and drops]:::proposed --> found[Ammo, hearts, traps found where they lie]:::proposed
+
   classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
 ```
 
@@ -190,7 +208,7 @@ Today the four levels scale only the zombies (health, speed, bites) and the brea
 
 ```mermaid
 flowchart LR
-  easy[Dare: 2 things. Rattles points the way, spots sparkle in breaks]:::proposed --> normal[Double Dare: 3 things. Rattles hints once per break]:::proposed
+  easy[Dare: 2 things. The card's doodles point the way, spots sparkle]:::proposed --> normal[Double Dare: 3 things. One doodled hint a break]:::proposed
   normal --> hard[Triple Dare: 3 things. No sparkle, one is always on a marked zombie]:::proposed
   hard --> nightmare[Triple Dog Dare: 4 things. The house gets hungrier from the first find, no hints]:::proposed
 
@@ -203,7 +221,8 @@ From `LORE.md`, cheapest first, so the story lands before the systems do.
 
 ```mermaid
 flowchart LR
-  words[1. Words and art: the dining room, the power-ups and zombies restyled, Rattles' lines, the dare card art]:::proposed --> fixed[2. One fixed dare in fixed spots]:::proposed
+  words[1. Words and art: the dining room, the power-ups and zombies restyled, the dare card art]:::proposed --> noShop[No shop: feats, finds, and skeleton keys]:::proposed
+  noShop --> fixed[2. One fixed dare in fixed spots]:::proposed
   fixed --> spots[3. Rolled spots and a rolled list, sized by difficulty]:::proposed
   spots --> rooms[4. Rolled rooms: needs a second room and a change to Not now]:::proposed
   rooms --> leave[5. Early exits and the hungrier house: balance work]:::proposed
@@ -216,7 +235,8 @@ flowchart LR
 The lore choices that most change these charts, from `LORE.md`:
 
 1. What goes in the pool of things the dare asks for, and how does each one come to you?
-2. Who is the shopkeeper now, and what do you pay with? (Rattles is being reinvented, and the coins may go.)
-3. Do rooms roll, or only what is in them?
+2. Rattles has no shop now: does he stay as a character, or go?
+3. Which feats open which display cases, and how many skeleton keys a room and a fridge pull cost?
+4. Do rooms roll, or only what is in them?
 
-Settled on 2026-11-10: your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.
+Settled on 2026-11-10: no shop (feats open display cases, guns level up with use, zombies drop skeleton keys for rooms and the fridge); your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.

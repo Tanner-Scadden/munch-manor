@@ -159,7 +159,7 @@ The Munches made a deal with the house long ago: it gets fed, and the family get
 
 - **Why it gets harder the longer you stay.** The night goes on, the house wakes more guests, and they get hungrier.
 - **Why Uncle Chunk waits at the front door.** A good host always sees his guests out. He just does not want you to go.
-- **What happens when you are munched.** You join the party. Next time, someone new takes the dare (you again, Rattles notes, which is odd).
+- **What happens when you are munched.** You join the party. Next time, someone new takes the dare (you again, which is odd).
 
 ### The dare's terms are the list
 
@@ -182,7 +182,7 @@ Two kinds of zombie live in the house, and that is a styling gift (owner, 2026-1
 | Ankle Biter | The house's own pet. Lives under the floorboards.        | Unchanged: a zombie spider                               |
 | Uncle Chunk | The host                                                 | The party hat, a tuxedo far too small, a napkin bib      |
 
-**Why zombies drop power-ups.** The daredevils were grabbing proof when they were caught. Drop one and out falls whatever they pocketed from the house.
+**Why zombies drop power-ups and keys.** The daredevils were grabbing proof and hunting skeleton keys when they were caught. Drop one and out falls whatever they pocketed from the house.
 
 ### Power-ups are what the house hides
 
@@ -199,11 +199,22 @@ The owner, 2026-11-10: the power-ups should be things you would find in an old m
 
 The rule holds for every boost: the aura says what you grabbed, with no words. Each aura is baked sprites, as today's are, so the frame stays cheap. The guns and the kitchen's prizes (the Pressure Cooker, the Clang Pan, Brain Freeze) already fit a house's kitchen, and the fridge is the manor's old icebox. The owner approved the renames on 2026-11-10: a change to `src/world/names.ts`, the art, the sounds, and the Munchopedia.
 
-### Rattles took the dare in 1924
+### No shop: feats, finds, and skeleton keys
 
-Rattles was the first kid who ever took the dare, and the first who never came out. The house kept him as staff instead of a guest (too bony), and he has run the coat check ever since: the coats behind his stall belong to a hundred years of daredevils. He sells what he has scavenged from the house to anyone still breathing, because he wants somebody, finally, to win the dare he lost. Also, the dead do not tip.
+The owner, 2026-11-10: there is no shopkeeper and no shop. You get stronger from the house itself.
 
-His look stays (the skeleton in a purple top hat, navy suit, and red bow tie: his 1924 best, for the party). His lines already fit: "Fresh meat! Er, customer." "Everything is a bit haunted." "Bones half off. Not mine."
+- **Guns are in display cases.** A glass case in the study, a gun rack in the cellar, a trophy case: each holds a gun, and each lock shows a feat as an icon and a ring that fills as you go. Do it this run and the case springs open. Which gun sits behind which feat can roll each run.
+- **Feats of every kind** (owner, 2026-11-10): kill counts (25 kills, 10 knife kills, 5 Big Lugs), skill (a wave without a hit, a 20 kill streak, a Kaboomer caught in its own blast), exploring (a key off a marked zombie, a room opened, the fireplace lit), and the house's things.
+- **Things the dare did not ask for open cases too** (owner, 2026-11-10). The pool holds more things than any one dare asks for, so opening a room and finding something off your list is never a letdown: carry it to a display case and it opens.
+- **Guns level up with use.** The tiers stay (Beefy, DELUXE, 3000), earned by kills with that gun instead of bought.
+- **Ammo, hearts, and traps are found.** Ammo from drops and crates in rooms, hearts from the Pickled Heart and the pantry, traps where they stand in the house (a gnome on a mantel, a plank pile in the hall).
+- **Skeleton keys open rooms and the fridge** (owner, 2026-11-10). Zombies drop skeleton keys: the daredevils were collecting them, trying to find the way out. Each set of boards wears a padlock with a number on it; spend that many keys and the boards drop. The fridge's padlock takes keys for a pull. Keys are the one thing you count, so every key is still a choice: a room now, or the fridge.
+
+What this changes is in "Escape the manor" in `GAME_DESIGN.md`: the shop, Rattles' stall and dialog, money, the heroes and modifiers that read prices, co-op's money split, and the balance bot all move.
+
+### Rattles
+
+With no shop, Rattles has no stall. Whether he stays as a character (the first daredevil, from 1924, who gives hints) or leaves the game is open, with Demi reinventing him.
 
 ### PLAY is the dare, the lobby is the dare card
 
@@ -213,7 +224,7 @@ The home menu's PLAY is a dare card your friends hand you, scrawled on a napkin.
 | ----------------- | ------------------------------------------------------------------------- |
 | Your name         | Who is going in                                                           |
 | Hero              | Coming as: the Handyman, the Track Star, the Penny Pincher, the Line Cook |
-| + BOT seats       | Who you drag along: Rattles' wind-up tin robots from the nursery          |
+| + BOT seats       | Who you drag along: wind-up tin robots from the nursery                   |
 | Difficulty        | The stakes (see below)                                                    |
 | Modifiers         | Extra dares: tick boxes, each with its bonus in gold                      |
 | Campaign, Endless | Get out, or stay the night                                                |
@@ -252,7 +263,7 @@ The tone stays the game's: goofy first, scary second (Luigi's Mansion, not a hor
 
 Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubble. Any key or tap skips to the slam. The slam itself is never skipped (owner, 2026-11-09): it is the moment the run starts, every time. The cutscene plays in full the first time, and shorter after that (the knock and the slam), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the cutscene is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same. In co-op every player sees their own crew in the car, and the run starts on the slam for everyone at once (owner, 2026-11-09): the room sets when the doors slam, a player who skips jumps to the knock at the door and waits there, and every screen slams together.
 
-**Paying it off.** Each detail comes back: the party hat is Uncle Chunk's, the coats are Rattles' coat check, the cars in the drive belong to the zombies you fight, and the place card is the house's joke. A Munchopedia entry can unlock for each one once the player finds it in a run.
+**Paying it off.** Each detail comes back: the party hat is Uncle Chunk's, the coats are a hundred years of daredevils', the cars in the drive belong to the zombies you fight, and the place card is the house's joke. A Munchopedia entry can unlock for each one once the player finds it in a run.
 
 ### The dare card in your pocket
 
@@ -272,7 +283,7 @@ Each run rolls its list from a pool of things in the house, from its own salted 
 | ------------------------ | --------------------------------------------------------------------------------- |
 | The silver spoon         | Hidden in one of a few spots: a sofa cushion, the sideboard, under the table      |
 | The family portrait      | A marked zombie, a daredevil who tried to steal it, carries it: drop him, grab it |
-| A page of the guest book | Rattles has the book, and sells you the page, for a price                         |
+| A page of the guest book | Locked in a display case: open it with a feat                                     |
 | Grandma Munch's recipe   | Cooked at the kitchen's stove, as a perk is                                       |
 | The music box            | It plays somewhere in the house: follow the tune                                  |
 | The butler's bell        | Behind the boards of a room you have not opened yet                               |
@@ -284,12 +295,12 @@ Objects, no reading needed. The HUD shows this run's list as empty outlines that
 
 Today the four levels scale only the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`). The list is a second dial on the same curve:
 
-| Level     | Things before the hat | Help finding them                                      |
-| --------- | --------------------- | ------------------------------------------------------ |
-| Easy      | 2                     | Rattles points the way; hiding spots sparkle in breaks |
-| Normal    | 3                     | Rattles hints once a break                             |
-| Hard      | 3                     | No sparkle; one is always on a marked zombie           |
-| Nightmare | 4                     | No hints; the house gets hungrier from the first find  |
+| Level     | Things before the hat | Help finding them                                     |
+| --------- | --------------------- | ----------------------------------------------------- |
+| Easy      | 2                     | The dare card's doodles point the way; spots sparkle  |
+| Normal    | 3                     | One doodled hint a break                              |
+| Hard      | 3                     | No sparkle; one is always on a marked zombie          |
+| Nightmare | 4                     | No hints; the house gets hungrier from the first find |
 
 A longer list makes a longer run, so the balance model and bot learn the list before the counts are tuned.
 
@@ -319,21 +330,22 @@ The back door in the kitchen (or a window) is an early exit: leave with part of 
 
 ### Between runs
 
-Rattles remembers. A few lines that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
+Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
 
 ### Heroes and bots
 
-The heroes are daredevils with their own reasons: the Handyman was paid by the town to board the place up, the Track Star is the fastest kid in school and was dared to run straight through, the Penny Pincher heard about the Munch silver, and the Line Cook wants Grandma Munch's recipe. The bots are Rattles' wind-up tin robots from the nursery.
+The heroes are daredevils with their own reasons: the Handyman was paid by the town to board the place up, the Track Star is the fastest kid in school and was dared to run straight through, the Penny Pincher heard about the Munch silver, and the Line Cook wants Grandma Munch's recipe. The bots are wind-up tin robots from the nursery. Heroes whose perks read prices (the Penny Pincher, the Handyman's cheap planks) need new perks with no shop.
 
 ### What would change in the game
 
 Ordered from cheapest to most work, so the story can land before the systems do:
 
-1. **Words and art only.** The difficulty names, the power-ups renamed and restyled as the house's things, the zombies restyled as guests and daredevils, Rattles' new lines, the Munchopedia's bios, the dare card as art (the home menu, the icon, the share card). No rule changes.
-2. **One fixed list in fixed spots.** The dare as a goal over the existing ten waves. Victory becomes "you got out".
-3. **Rolled spots and a rolled list.** The things move between a few hand-picked hiding spots, and the list itself rolls from the pool, sized by difficulty, from their own seeded stream.
-4. **Rolled rooms.** Needs a second room and a pool, and a change to "Not now".
-5. **Early exits and the hungrier house.** Needs balance work and the bot to learn the goal.
+1. **Words and art only.** The difficulty names, the power-ups renamed and restyled as the house's things, the zombies restyled as guests and daredevils, the Munchopedia's bios, the dare card as art (the home menu, the icon, the share card). No rule changes.
+2. **No shop.** Display cases opened by feats, guns that level up with use, found ammo, hearts, and traps, and skeleton keys for rooms and the fridge. A large rules change: balance, the bot, heroes, modifiers, and co-op all move.
+3. **One fixed list in fixed spots.** The dare as a goal over the existing ten waves. Victory becomes "you got out".
+4. **Rolled spots and a rolled list.** The things move between a few hand-picked hiding spots, and the list itself rolls from the pool, sized by difficulty, from their own seeded stream.
+5. **Rolled rooms.** Needs a second room and a pool, and a change to "Not now".
+6. **Early exits and the hungrier house.** Needs balance work and the bot to learn the goal.
 
 ## Open questions
 
@@ -341,6 +353,7 @@ The lore choices that most change the game, roughly in order.
 
 1. **The dare.** The direction, chosen 2026-11-10. Your friends write the dare card (owner, 2026-11-10). Left: exactly what you bring back for it.
 2. **What goes in the pool?** Which things the dare asks for, and how each one comes back to you (see "What the dare asks for changes every run").
-3. **The shopkeeper and what you pay with.** Rattles is being reinvented (see "Rattles took the dare in 1924", under review), and the coins may change too.
-4. **What is a Bone?** Rattles' currency, scavenged from a hundred years of daredevils, or the house's own.
-5. **Do rooms roll, or only what is in them?** See "What it goes against".
+3. **Rattles.** No shop, so no shopkeeper: does he stay as a character, or go? (Demi is reinventing him.)
+4. **Which feats open which cases,** and how many skeleton keys a room and a fridge pull cost.
+5. **What is a Bone?** What you earn across runs, now that the run's own currency is skeleton keys.
+6. **Do rooms roll, or only what is in them?** See "What it goes against".
