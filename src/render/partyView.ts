@@ -25,6 +25,7 @@ import {
   isBledOut,
   isCoop,
   isDowned,
+  isOut,
   isStanding,
   leadSeatOf,
   playersOf,
@@ -70,11 +71,17 @@ const maybeLyingOf = (seat: Seat): Option.Option<Lying> => {
 const maybeLeadLyingOf = (model: Model): Option.Option<Lying> =>
   isCoop(model) ? maybeLyingOf(leadSeatOf(model)) : Option.none()
 
+// NOTE: a player who stepped out through the front door is gone from the
+// house: no body, shadow, or marks, only the tag waiting at the door
+// (src/features/onlineRun/coopMarksView.ts).
+export const isLeadInHouse = (model: Model): boolean =>
+  !isOut(leadSeatOf(model))
+
 // NOTE: whether the lead holds a gun up: always in single player, and in
 // co-op while standing. Their muzzle flash, reload bar, and laser sight
 // show only then.
 export const isLeadArmed = (model: Model): boolean =>
-  Option.isNone(maybeLeadLyingOf(model))
+  isLeadInHouse(model) && Option.isNone(maybeLeadLyingOf(model))
 
 // NOTE: the lead's body: on its feet as `standing` draws it, or lying.
 export const leadBodyShapes: {
@@ -91,10 +98,12 @@ export const leadBodyShapes: {
     model: Model,
     standing: () => ReadonlyArray<Canvas.Shape>,
   ): ReadonlyArray<Canvas.Shape> =>
-    Option.match(maybeLeadLyingOf(model), {
-      onNone: standing,
-      onSome: lying => lyingShapes(model, lying),
-    }),
+    isLeadInHouse(model)
+      ? Option.match(maybeLeadLyingOf(model), {
+          onNone: standing,
+          onSome: lying => lyingShapes(model, lying),
+        })
+      : [],
 )
 
 // TEAMMATES
@@ -104,14 +113,15 @@ export type MateModel = Readonly<{ model: Model; seat: Seat }>
 // NOTE: the client Model as each teammate's seat would show it, so the
 // player's own views draw them. Only co-op pays for it, and a frame builds
 // them once for the views that need them. Online, each teammate wears their
-// own look from the lobby (src/art/seatLooks.ts).
+// own look from the lobby (src/art/seatLooks.ts). One who stepped out is
+// not in the house to draw.
 export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
   if (!isCoop(model)) {
     return []
   }
   const lead = leadSeatOf(model).slot
   return Array.filterMap(playersOf(model), ({ seat: { slot }, seat }) =>
-    slot === lead
+    slot === lead || isOut(seat)
       ? Result.failVoid
       : Result.succeed({
           seat,

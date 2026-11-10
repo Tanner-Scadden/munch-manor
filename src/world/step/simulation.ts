@@ -7,11 +7,11 @@ import {
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
 } from '../../shared/constants'
-import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
 import { advanceDare } from '../dare/dare'
 import { advanceCases } from '../feats/cases'
 import { tallyFeats } from '../feats/feats'
 import { advanceFinale } from '../dare/finale'
+import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
 import {
   advanceLobs,
   fireFridgeWeapon,
@@ -42,6 +42,7 @@ import {
   focusOf,
   forEachSeat,
   isCoop,
+  isOut,
   isStanding,
   maybePlayerAt,
   modifySeat,
@@ -279,7 +280,7 @@ const moveSeat =
   ) =>
   (model: World, slot: PlayerSlot): World => {
     const { seat, intent } = seatStateAt(model, slot)
-    return Life.isAnyOf(['BledOut'])(seat.life)
+    return Life.isAnyOf(['BledOut', 'Out'])(seat.life)
       ? model
       : modifySeat(model, slot, {
           player: player =>
@@ -368,7 +369,7 @@ const armSeat =
           slot,
           deltaMs,
         )
-      : isCoop(model)
+      : isCoop(model) && !isOut(seatStateAt(model, slot).seat)
         ? swingWhileDown(faceTowardIntent(model, slot), slot, deltaMs)
         : faceTowardIntent(model, slot)
 

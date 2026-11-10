@@ -32,6 +32,7 @@ import {
   isDowned,
   isFriendlyFireOn,
   isHere,
+  isOut,
   isStanding,
   maybeShooterOf,
   modifySeatRecord,
@@ -160,6 +161,7 @@ const advanceSeat =
           deltaMs,
         ),
       BledOut: () => world,
+      Out: () => world,
     })
   }
 
@@ -181,14 +183,15 @@ export const advanceParty: {
 
 // NOTE: downed and bled-out players come back free at the next break
 // (decided row 4), with the revive's hearts, and every player's READY
-// clears for it.
+// clears for it. One who stepped out stays out.
 export const returnFallen = (world: World): World =>
   isCoop(world)
     ? forEachSeat(world, (current, slot) => {
         const waiting = modifySeatRecord(current, slot, seat =>
           modifyFields(seat, { readiness: () => 'Waiting' }),
         )
-        return isStanding(seatStateAt(waiting, slot).seat)
+        const { seat } = seatStateAt(waiting, slot)
+        return isStanding(seat) || isOut(seat)
           ? waiting
           : standUp(waiting, slot, reviveHeartsOf(waiting))
       })
@@ -196,7 +199,7 @@ export const returnFallen = (world: World): World =>
 
 // NOTE: READY from one player (decided 7, row 12): the break ends once
 // everyone who is here and standing has pressed it, or when its clock runs
-// out. An away player never holds it up.
+// out. An away player, or one who stepped out, never holds it up.
 export const markReady: {
   (slot: PlayerSlot): (world: World) => World
   (world: World, slot: PlayerSlot): World
@@ -209,7 +212,10 @@ export const markReady: {
 )
 
 const isHoldingBreak = (seat: Seat): boolean =>
-  isHere(seat) && !isDowned(seat) && seat.readiness === 'Waiting'
+  isHere(seat) &&
+  !isDowned(seat) &&
+  !isOut(seat) &&
+  seat.readiness === 'Waiting'
 
 export const isEveryoneReady = (world: World): boolean =>
   isCoop(world) &&
