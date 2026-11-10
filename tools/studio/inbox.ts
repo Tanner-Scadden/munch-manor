@@ -14,7 +14,13 @@ import {
   eventsOf,
   notesOf,
 } from './notes'
-import { areaHeight, areaWidth, mapRowsOf } from './room'
+import {
+  type StudioRoom,
+  areaHeight,
+  areaWidth,
+  mapRowsOf,
+  roomOfTarget,
+} from './room'
 
 const KIND_WORDS: Readonly<Record<StoredNote['kind'], string>> = {
   Change: 'CHANGE',
@@ -34,7 +40,15 @@ const where = (note: StoredNote): ReadonlyArray<string> => [
     onNone: () => [],
     onSome: area => [
       `   tiles: columns ${area.left} to ${area.right}, rows ${area.top} to ${area.bottom} (${areaWidth(area)} x ${areaHeight(area)}), the map there:`,
-      ...Array.map(mapRowsOf(area), row => `     |${row}|`),
+      ...Array.map(
+        mapRowsOf(
+          Option.getOrElse(
+            roomOfTarget(note.targetId),
+            (): StudioRoom => 'Manor',
+          ),
+        )(area),
+        row => `     |${row}|`,
+      ),
     ],
   }),
 ]

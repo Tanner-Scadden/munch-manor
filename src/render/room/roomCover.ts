@@ -1,4 +1,4 @@
-import { Array, Option, Record, Result, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Palette, mirrorRows } from '../../art/sprite'
@@ -80,7 +80,7 @@ const blockAt = (level: Level, symbol: string, { column, row }: Tile): Box => ({
   height: runLength(level, symbol, column, row, 0, 1) * TILE_SIZE,
 })
 
-const coverShadow = ({ x, y, width, height }: Box): Canvas.Shape =>
+export const coverShadow = ({ x, y, width, height }: Box): Canvas.Shape =>
   rect(x + 2, y + height, width - 2, 2, COVER_SHADOW_COLOR)
 
 const isWestHalf = ({ x, width }: Box, level: Level): boolean =>
@@ -225,7 +225,7 @@ const hearthShapes = ({
   ]
 }
 
-const BOOK_COLORS: Array.NonEmptyReadonlyArray<string> = [
+export const BOOK_COLORS: Array.NonEmptyReadonlyArray<string> = [
   '#7a2338',
   '#2f5d50',
   '#5b3f8c',
@@ -235,9 +235,9 @@ const BOOK_COLORS: Array.NonEmptyReadonlyArray<string> = [
   '#4a6a3a',
 ]
 
-const SHELF_BACK_COLOR = '#22150c'
-const SHELF_WOOD_COLOR = '#3e2716'
-const SHELF_EDGE_COLOR = '#5a3a22'
+export const SHELF_BACK_COLOR = '#22150c'
+export const SHELF_WOOD_COLOR = '#3e2716'
+export const SHELF_EDGE_COLOR = '#5a3a22'
 
 const booksOnShelf = (
   left: number,
@@ -585,19 +585,28 @@ const COVER_DRAWINGS: Readonly<
   Fridge: fridgeShapes,
 }
 
+// NOTE: every block of a cover symbol on the map, each the box from its top
+// left corner across and down the symbol's run.
+export const coverBlocks: {
+  (symbol: string): (level: Level) => ReadonlyArray<Box>
+  (level: Level, symbol: string): ReadonlyArray<Box>
+} = Function.dual(2, (level: Level, symbol: string): ReadonlyArray<Box> =>
+  pipe(
+    tilesWithSymbol(level, symbol),
+    Array.filter(tile => isBlockCorner(level, symbol, tile)),
+    Array.map(tile => blockAt(level, symbol, tile)),
+  ),
+)
+
 const coverShapes = (
   level: Level,
   symbol: string,
   kind: CoverKind,
 ): ReadonlyArray<Canvas.Shape> =>
-  pipe(
-    tilesWithSymbol(level, symbol),
-    Array.filter(tile => isBlockCorner(level, symbol, tile)),
-    Array.flatMap(tile => {
-      const box = blockAt(level, symbol, tile)
-      return [coverShadow(box), ...COVER_DRAWINGS[kind](box, level)]
-    }),
-  )
+  Array.flatMap(coverBlocks(level, symbol), box => [
+    coverShadow(box),
+    ...COVER_DRAWINGS[kind](box, level),
+  ])
 
 export const allCoverShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
   Array.flatMap(Record.toEntries(COVER_SYMBOLS), ([symbol, kind]) =>

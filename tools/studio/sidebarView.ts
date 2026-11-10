@@ -1,7 +1,7 @@
 // The studio's left side: the library's tabs, each with an icon from the
 // game's own art, and the display settings as segmented controls, swatches,
 // and switches. It redraws only when one of them changes.
-import { Array, Function, String } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 import { Canvas } from 'foldkit'
 import { type Html, createLazy } from 'foldkit/html'
 
@@ -21,9 +21,22 @@ import {
   spritesBounds,
   zoomed,
 } from './drawing'
-import { ROOM_TARGET } from './room'
+import {
+  type RoomView,
+  StudioRoom,
+  isRoomTarget,
+  isToggleOn,
+  roomToggleOf,
+} from './room'
 
 const ICON_BOX = 22
+
+const ROOM_LABELS: Readonly<Record<StudioRoom, string>> = {
+  Manor: 'Manor',
+  Dining: 'Dining',
+  Library: 'Library',
+  Cellar: 'Cellar',
+}
 
 const TONE_LABELS: Readonly<Record<Tone, string>> = {
   Normal: 'Normal',
@@ -161,7 +174,7 @@ const sidebarBody = (
   facing: Facing,
   tone: Tone,
   isPlaying: boolean,
-  isKitchenOpen: boolean,
+  roomView: RoomView,
   isGridOn: boolean,
   freshTabs: string,
   h: StudioViewBuilder,
@@ -201,24 +214,41 @@ const sidebarBody = (
       ...(tab === 'Rooms'
         ? [
             field(
-              'Kitchen',
+              'Room',
               segmented(
-                [
-                  {
-                    label: 'Boarded',
-                    isOn: !isKitchenOpen,
-                    message: Message.ClickedKitchen(),
-                  },
-                  {
-                    label: 'Open',
-                    isOn: isKitchenOpen,
-                    message: Message.ClickedKitchen(),
-                  },
-                ],
+                Array.map(StudioRoom.literals, room => ({
+                  label: ROOM_LABELS[room],
+                  isOn: room === roomView.room,
+                  message: Message.ClickedRoom({ room }),
+                })),
                 h,
               ),
               h,
             ),
+            ...Option.match(roomToggleOf(roomView.room), {
+              onNone: () => [],
+              onSome: toggle => [
+                field(
+                  toggle.label,
+                  segmented(
+                    [
+                      {
+                        label: toggle.off,
+                        isOn: !isToggleOn(roomView),
+                        message: Message.ClickedRoomToggle(),
+                      },
+                      {
+                        label: toggle.on,
+                        isOn: isToggleOn(roomView),
+                        message: Message.ClickedRoomToggle(),
+                      },
+                    ],
+                    h,
+                  ),
+                  h,
+                ),
+              ],
+            }),
             switchRow('Tile grid', isGridOn, Message.ClickedGrid(), h),
           ]
         : [
@@ -279,7 +309,7 @@ const freshTabsOf = (model: Model): string =>
           note.status === 'Done' &&
           !Array.contains(model.seenDone, note.noteId) &&
           (tab === 'Rooms'
-            ? note.targetId === ROOM_TARGET
+            ? isRoomTarget(note.targetId)
             : Array.some(sectionsOf(tab), section =>
                 Array.some(
                   section.entries,
@@ -290,6 +320,25 @@ const freshTabsOf = (model: Model): string =>
     ),
     ',',
   )
+
+// NOTE: one value the lazy sidebar can compare, rebuilt only when the room
+// or its toggles change.
+const roomViews = new Map<string, RoomView>()
+
+const roomViewOf = (model: Model): RoomView => {
+  const key = `${model.room}:${model.isKitchenOpen}:${model.isTwistOn}`
+  const kept = roomViews.get(key)
+  if (kept !== undefined) {
+    return kept
+  }
+  const view: RoomView = {
+    room: model.room,
+    isKitchenOpen: model.isKitchenOpen,
+    isTwistOn: model.isTwistOn,
+  }
+  roomViews.set(key, view)
+  return view
+}
 
 const lazySidebar = createLazy()
 
@@ -306,7 +355,7 @@ export const sidebarView: {
       model.facing,
       model.tone,
       model.isPlaying,
-      model.isKitchenOpen,
+      roomViewOf(model),
       model.isGridOn,
       freshTabsOf(model),
       h,

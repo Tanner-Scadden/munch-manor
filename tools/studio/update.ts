@@ -17,13 +17,15 @@ import { type Entry, entryById, tabOfEntry } from './catalog'
 import { type Capture, SaveSeen, SaveView, SendNote } from './commands'
 import type { NoteDraft, StoredNote } from './notes'
 import {
-  ROOM_SOURCE,
-  ROOM_TARGET,
-  ROOM_TITLE,
   areaBetween,
   areaOfTile,
   cropAround,
+  isRoomTarget,
   roomFrameOf,
+  roomOfTarget,
+  roomSourceOf,
+  roomTargetOf,
+  roomTitleOf,
 } from './room'
 
 export const init = StudioComposition.makeInit((startFlags: Flags) => ({
@@ -53,7 +55,9 @@ const savedViewOf = (model: Model): SavedView => ({
   facing: model.facing,
   tone: model.tone,
   maybeSelectedId: model.maybeSelectedId,
+  room: model.room,
   isKitchenOpen: model.isKitchenOpen,
+  isTwistOn: model.isTwistOn,
   isGridOn: model.isGridOn,
   isOnion: model.isOnion,
   isCrew: model.isCrew,
@@ -66,10 +70,12 @@ const saved = (model: Model) => ({
   commands: [SaveView({ view: savedViewOf(model) })],
 })
 
-// NOTE: what a note is about: the picked sprite, or the manor on the Rooms
+// NOTE: what a note is about: the picked sprite, or the room on the Rooms
 // tab.
 export const targetIdOf = (model: Model): Option.Option<string> =>
-  model.tab === 'Rooms' ? Option.some(ROOM_TARGET) : model.maybeSelectedId
+  model.tab === 'Rooms'
+    ? Option.some(roomTargetOf(model.room))
+    : model.maybeSelectedId
 
 export const pickedEntry = (model: Model): Option.Option<Entry> =>
   model.tab === 'Rooms'
@@ -101,19 +107,19 @@ const picking = (model: Model, targetId: string) => {
 
 const draftOf = (model: Model, targetId: string): NoteDraft => {
   const maybePin = model.maybeDraftPin
-  const isRoom = targetId === ROOM_TARGET
+  const isRoom = isRoomTarget(targetId)
   const maybeEntry = entryById(targetId)
   return {
     tab: model.tab,
     targetId,
     title: isRoom
-      ? ROOM_TITLE
+      ? roomTitleOf(model.room)
       : Option.match(maybeEntry, {
           onNone: () => targetId,
           onSome: entry => entry.title,
         }),
     source: isRoom
-      ? ROOM_SOURCE
+      ? roomSourceOf(model.room)
       : Option.match(maybeEntry, {
           onNone: () => '',
           onSome: entry => entry.source,
@@ -135,7 +141,7 @@ const captureOf = (model: Model): Capture =>
         crop: Option.getOrNull(
           Option.map(model.maybeDraftArea, area =>
             cropAround({
-              bounds: roomFrameOf(model.isKitchenOpen).bounds,
+              bounds: roomFrameOf(model).bounds,
               zoom: model.zoom,
             })(area),
           ),
@@ -197,10 +203,21 @@ export const update = StudioComposition.makeUpdate({
   ClickedOnion: model => saved(modifyFields(model, { isOnion: isOn => !isOn })),
   ClickedCrew: model => saved(modifyFields(model, { isCrew: isOn => !isOn })),
   ClickedGrid: model => saved(modifyFields(model, { isGridOn: isOn => !isOn })),
-  ClickedKitchen: model =>
+  ClickedRoom: (model, { room }) =>
+    picking(
+      modifyFields(model, {
+        room: () => room,
+        maybeDraftPin: () => Option.none(),
+        maybeDraftArea: () => Option.none(),
+        maybeHoverTile: () => Option.none(),
+      }),
+      roomTargetOf(room),
+    ),
+  ClickedRoomToggle: model =>
     saved(
       modifyFields(model, {
-        isKitchenOpen: isOpen => !isOpen,
+        isKitchenOpen: isOpen => (model.room === 'Manor' ? !isOpen : isOpen),
+        isTwistOn: isOn => (model.room === 'Manor' ? isOn : !isOn),
         maybeDraftPin: () => Option.none(),
         maybeDraftArea: () => Option.none(),
       }),
@@ -225,11 +242,12 @@ export const update = StudioComposition.makeUpdate({
     picking(
       modifyFields(model, {
         tab: () =>
-          targetId === ROOM_TARGET
+          isRoomTarget(targetId)
             ? 'Rooms'
             : Option.getOrElse(tabOfEntry(targetId), () => tab),
+        room: room => Option.getOrElse(roomOfTarget(targetId), () => room),
         maybeSelectedId: () =>
-          targetId === ROOM_TARGET ? Option.none() : Option.some(targetId),
+          isRoomTarget(targetId) ? Option.none() : Option.some(targetId),
         maybeDraftPin: () => Option.none(),
       }),
       targetId,
