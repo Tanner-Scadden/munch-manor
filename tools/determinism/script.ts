@@ -163,6 +163,7 @@ const pastTutorial = (model: Model): Model =>
         dareTour: () => Lesson.Learned({ atMs: 0 }),
         dareKey: () => Lesson.Learned({ atMs: 0 }),
         rattles: () => Lesson.Learned({ atMs: 0 }),
+        displayCase: () => Lesson.Learned({ atMs: 0 }),
       }),
   })
 

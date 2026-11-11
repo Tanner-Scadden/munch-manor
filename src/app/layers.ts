@@ -14,6 +14,7 @@ import {
 } from '../features/fridge/fridgeRevealView'
 import { wavePreviewShapes } from '../features/hud/wavePreview'
 import { introShapes } from '../features/intro/introView'
+import { caseCardShapes } from '../features/onboarding/caseCardView'
 import { coopEdgeShapes } from '../features/onlineRun/coopMarksView'
 import { purchaseOverlayShapes } from '../features/shop/purchaseView'
 import { thumbAreaView } from '../input/thumbArea'
@@ -76,6 +77,7 @@ const roundOverlayShapes = (
     ? inLandscapeFrame(screen, bossBandShapes(model))
     : []),
   ...pocketCardShapes(model, screen),
+  ...inLandscapeFrame(screen, caseCardShapes(model)),
 ]
 
 // NOTE: the intro covers the whole screen while the crew arrives, the HUD

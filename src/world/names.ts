@@ -182,6 +182,10 @@ export const GUN_PERK_NAMES: Readonly<Record<GunPerk, string>> = {
 // NOTE: a display case prize (src/world/feats/cases.ts) kept for the run.
 export const LASER_SIGHT_NAME = 'Laser Sight'
 
+// NOTE: what the display cases are called, on the card a case raises the
+// first time a player walks up to one (src/features/onboarding/caseCard.ts).
+export const DISPLAY_CASE_NAME = 'Display Case'
+
 // THE CREW BOARD
 
 // NOTE: the awards a co-op end card hands out (src/features/end/crewAwards.ts), each a

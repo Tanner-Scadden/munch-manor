@@ -2,6 +2,7 @@ import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
+  CaseCard,
   ClocheLift,
   KitchenCall,
   PocketCard,
@@ -95,6 +96,7 @@ export type RunFields = Pick<
   | 'level'
   | 'introSkip'
   | 'pocketCard'
+  | 'caseCard'
   | 'ovens'
   | 'debutCard'
   | 'rattlesIntro'
@@ -161,6 +163,7 @@ export const freshRun = (model: Model): RunFields => ({
   level: freshLevel(model.rngState),
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),
+  caseCard: CaseCard.Hidden(),
   ovens: freshOvens(START_LEVEL),
   debutCard: DebutCard.Hidden(),
   rattlesIntro: RattlesIntro.Waiting(),

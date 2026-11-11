@@ -10,6 +10,12 @@ import {
   isPocketCardBlocking,
 } from '../../features/dare/pocketCard'
 import { skipBeat } from '../../features/end/endBeat'
+import {
+  advanceCaseCard,
+  ageCaseCard,
+  isCaseCardBlocking,
+  skipCaseCard,
+} from '../../features/onboarding/caseCard'
 import { advanceQuest } from '../../features/onboarding/firstBreakQuest'
 import { advanceKitchenTour } from '../../features/onboarding/kitchenTour'
 import {
@@ -159,12 +165,13 @@ const preparationFromKey = (model: Model, code: string): Model => {
 const resumeFromKey = (model: Model, code: string): Model =>
   isPauseKey(code) ? startWhenAllowed(model, model.mode) : model
 
-// NOTE: a press of the hand, unless the new zombie card holds the game.
-// The rule is the seat action's (src/world/step/stepWorld.ts).
+// NOTE: a press of the hand, unless a card holds the game: the new zombie
+// card or the display case's (src/features/onboarding/caseCard.ts). The
+// rule is the seat action's (src/world/step/stepWorld.ts).
 const actInHand =
   (action: SeatAction) =>
   (model: Model): Model =>
-    isDebutCardBlocking(model) ? model : actAsLead(model, action)
+    isCardHolding(model) ? model : actAsLead(model, action)
 
 // NOTE: Q switches guns, or with the knife out goes back to the last gun.
 const swapGun = actInHand(SeatAction.Swap())
@@ -195,6 +202,24 @@ export const isDebutCardBlocking = (model: Model): boolean =>
 
 export const skipDebutCardWhenUp = (model: Model): Model =>
   isDebutCardBlocking(model) ? skipDebutCard(model) : model
+
+// NOTE: a card that holds the round's buttons: the new zombie card in a
+// wave, or the display case's in a break.
+const isCardHolding = (model: Model): boolean =>
+  isDebutCardBlocking(model) || isCaseCardBlocking(model)
+
+export const skipCaseCardWhenUp = (model: Model): Model =>
+  isCaseCardBlocking(model) ? skipCaseCard(model) : model
+
+const caseCardFromKey = (model: Model, code: string): Model => {
+  if (isStartKey(code)) {
+    return skipCaseCard(model)
+  } else if (isPauseKey(code)) {
+    return pause(model)
+  } else {
+    return model
+  }
+}
 
 const debutCardFromKey = (model: Model, code: string): Model => {
   if (isStartKey(code)) {
@@ -294,26 +319,30 @@ export const tickFrame = (deltaTime: number) =>
       return toModel(ageDebutCard(model, clampFrameDelta(deltaTime)))
     } else if (isPocketCardBlocking(model)) {
       return toModel(agePocketCard(model, clampFrameDelta(deltaTime)))
+    } else if (isCaseCardBlocking(model)) {
+      return toModel(ageCaseCard(model, clampFrameDelta(deltaTime)))
     } else if (isArriving(model.phase)) {
       return advanceIntro(deltaTime)
     } else if (isRoundActive(model.phase)) {
       const framed = moveHintBand(
-        advanceKitchenTour(
-          advanceQuest(
-            advanceRattlesIntro(
-              learnFromFrame(
-                model,
-                tallyFrame(
+        advanceCaseCard(
+          advanceKitchenTour(
+            advanceQuest(
+              advanceRattlesIntro(
+                learnFromFrame(
                   model,
-                  advanceGame(model, deltaTime),
-                  clampFrameDelta(deltaTime),
+                  tallyFrame(
+                    model,
+                    advanceGame(model, deltaTime),
+                    clampFrameDelta(deltaTime),
+                  ),
                 ),
+                clampFrameDelta(deltaTime),
               ),
               clampFrameDelta(deltaTime),
             ),
             clampFrameDelta(deltaTime),
           ),
-          clampFrameDelta(deltaTime),
         ),
       )
       const advanced = agePocketCard(
@@ -383,6 +412,18 @@ export const pressedKey = (code: string) =>
         toModel(
           withInput(
             toggleAudioFromKey(debutCardFromKey(keyed, code), code),
+            input => pressKey(input, code),
+          ),
+        ),
+        unlockAudio,
+      ])
+    }
+
+    if (isCaseCardBlocking(keyed)) {
+      return Update.combineSteps([
+        toModel(
+          withInput(
+            toggleAudioFromKey(caseCardFromKey(keyed, code), code),
             input => pressKey(input, code),
           ),
         ),
@@ -468,7 +509,7 @@ export const swapFromButton: UpdateStep = drawFromButton(swapGun)
 // with the knife out, it puts that gun in hand.
 export const pressGunSlot = (slot: GunSlot): UpdateStep =>
   stepWhen(
-    model => !isDebutCardBlocking(model),
+    model => !isCardHolding(model),
     model => {
       const action = gunSlotAction(focusOf(model).player, slot)
       return SeatAction.isAnyOf(['Reload'])(action)
@@ -480,7 +521,7 @@ export const pressGunSlot = (slot: GunSlot): UpdateStep =>
 // NOTE: the touch HUD's reload button: R's reload, so with the knife out
 // it puts the last gun back in hand and reloads that.
 export const reloadFromButton: UpdateStep = stepWhen(
-  model => !isDebutCardBlocking(model),
+  model => !isCardHolding(model),
   model => combine(model, [unlockAudio, reloadHeldGun]),
 )
 
@@ -512,20 +553,19 @@ export const isSlotClickPassingThrough = (model: Model): boolean =>
 // NOTE: a tap on the knife slot draws the knife; on the knife in hand it
 // does nothing.
 export const pressMeleeSlot: UpdateStep = stepWhen(
-  model =>
-    !isDebutCardBlocking(model) && !isWieldingMelee(focusOf(model).player),
+  model => !isCardHolding(model) && !isWieldingMelee(focusOf(model).player),
   drawFromButton(equipMelee),
 )
 
-// NOTE: the new zombie card holds the round's buttons.
-const isTrapButtonHeld = (model: Model): boolean => isDebutCardBlocking(model)
+// NOTE: the new zombie card and the display case's hold the round's buttons.
+const isTrapButtonHeld = (model: Model): boolean => isCardHolding(model)
 
 const startWaveFromButton: UpdateStep = model => ({
   model: learnStartWaveWhen(model, startWave(model)),
 })
 
-// NOTE: START WAVE and the trap buttons wait while the new zombie card
-// holds the round's buttons.
+// NOTE: START WAVE and the trap buttons wait while a card holds the
+// round's buttons.
 export const clickStartWave = makeStep(model =>
   isTrapButtonHeld(model)
     ? unchanged

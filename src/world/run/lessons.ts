@@ -34,6 +34,7 @@ export const settledLessons: Lessons = {
   dareTour: learned,
   dareKey: learned,
   rattles: learned,
+  displayCase: learned,
 }
 
 export const isPending = (lesson: Lesson): boolean =>

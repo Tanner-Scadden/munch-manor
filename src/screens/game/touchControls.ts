@@ -13,6 +13,7 @@ import type { SoundMessage } from '../../audio/message'
 import { isPocketCardReading } from '../../features/dare/pocketCard'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
 import { wavePreviewView } from '../../features/hud/wavePreview'
+import { isCaseCardUp } from '../../features/onboarding/caseCard'
 import {
   type GhostStick,
   isDebutCardUp,
@@ -140,6 +141,7 @@ const isOnTouch = (model: Model): boolean => model.lastDevice === 'Touch'
 const isClusterUp = (model: Model): boolean =>
   isRoundActive(model.phase) &&
   !isDebutCardUp(model) &&
+  !isCaseCardUp(model) &&
   !isPocketCardReading(model)
 
 const keyBadgeView = (

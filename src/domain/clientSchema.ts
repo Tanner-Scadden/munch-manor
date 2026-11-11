@@ -214,6 +214,15 @@ export const PocketCard = defineTaggedUnion({
 })
 export type PocketCard = typeof PocketCard.Type
 
+// NOTE: the card a display case raises the first time a player walks up to
+// one in a break (src/features/onboarding/caseCard.ts): put away, or up
+// over the case with the id `caseId`.
+export const CaseCard = defineTaggedUnion({
+  Hidden: {},
+  Showing: { caseId: Schema.Finite, ageMs: Schema.Finite },
+})
+export type CaseCard = typeof CaseCard.Type
+
 // NOTE: the intro's skip in this run (src/features/intro/introBeat.ts): in
 // co-op only the client's drawing skips, to the knock, and waits there for
 // the room's slam.
@@ -328,6 +337,7 @@ export const freshLessons: Lessons = {
   dareTour: Lesson.Pending(),
   dareKey: Lesson.Pending(),
   rattles: Lesson.Pending(),
+  displayCase: Lesson.Pending(),
 }
 
 // NOTE: particles, shake, popups, coin bursts, trap dust, and the random

@@ -19,7 +19,9 @@ import { rect, ringPixels } from './drawing'
 // A feat's lock (src/world/feats/feats.ts), hung over what it opens: a
 // display case, the stove, or the gas valve. The feat's icon sits in a dark
 // disc with a ring round it that fills gold with the player's own progress,
-// and, once they walk up to it, the count beside it. No words: the icon says
+// and the count beside it: always over a display case, so what opens it
+// reads from across the room (owner's playtest, 2026-11-10), and over the
+// stove and the valve once the player walks up. No words: the icon says
 // what to do and the numbers how far there is to go.
 
 const RING_RADIUS = 7
@@ -79,9 +81,15 @@ const ringOf = (progress: number, goal: number): Sprite =>
     () => RINGS[0],
   )
 
-// NOTE: where a lock hangs, and the side its count goes: toward the middle
-// of the house, so a lock by an east wall keeps its count on the screen.
-type LockSpot = Readonly<{ x: number; y: number; countSide: 'Left' | 'Right' }>
+// NOTE: where a lock hangs, the side its count goes (toward the middle of
+// the house, so a lock by an east wall keeps its count on the screen), and
+// whether the count shows always or only to a player near it.
+type LockSpot = Readonly<{
+  x: number
+  y: number
+  countSide: 'Left' | 'Right'
+  countShows: 'Always' | 'Near'
+}>
 
 export const lockSpotIn: {
   (at: Vector): (level: Level) => LockSpot
@@ -91,7 +99,20 @@ export const lockSpotIn: {
   y: at.y,
   countSide:
     at.x > (level.bounds.left + level.bounds.right) / 2 ? 'Left' : 'Right',
+  countShows: 'Near',
 }))
+
+// NOTE: how far a player has gone toward a feat, as its lock's count reads
+// (`4/10`); a feat done once shows no count, only its ring.
+export const featCountOf: {
+  (tally: FeatTally): (feat: Feat) => Option.Option<string>
+  (feat: Feat, tally: FeatTally): Option.Option<string>
+} = Function.dual(2, (feat: Feat, tally: FeatTally): Option.Option<string> => {
+  const goal = goalOf(feat)
+  return goal > 1
+    ? Option.some(`${progressOf(tally, feat)}/${goal}`)
+    : Option.none()
+})
 
 // NOTE: a lock centred on `at`, filled to the player's own tally.
 export const featLockShapes: {
@@ -102,22 +123,27 @@ export const featLockShapes: {
   (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Canvas.Shape> => {
     const goal = goalOf(feat)
     const progress = progressOf(viewer.feats, feat)
-    const isNear =
+    const isShown =
+      at.countShows === 'Always' ||
       Math.hypot(viewer.player.x - at.x, viewer.player.y - at.y) <=
-      COUNT_NEAR_PX
+        COUNT_NEAR_PX
     return [
       placeAt(at.x, at.y, ringOf(progress, goal)),
       placeAt(at.x, at.y, featIconOf(feat)),
-      ...(goal > 1 && isNear
-        ? textShapes(
-            `${progress}/${goal}`,
-            progress >= goal ? 'Fresh' : 'Plain',
-            at.countSide === 'Right'
-              ? at.x + RING_RADIUS + COUNT_GAP_PX
-              : at.x - RING_RADIUS - COUNT_GAP_PX,
-            at.y - 3,
-            at.countSide === 'Right' ? 'Left' : 'Right',
-          )
+      ...(isShown
+        ? Option.match(featCountOf(feat, viewer.feats), {
+            onNone: () => [],
+            onSome: count =>
+              textShapes(
+                count,
+                progress >= goal ? 'Fresh' : 'Plain',
+                at.countSide === 'Right'
+                  ? at.x + RING_RADIUS + COUNT_GAP_PX
+                  : at.x - RING_RADIUS - COUNT_GAP_PX,
+                at.y - 3,
+                at.countSide === 'Right' ? 'Left' : 'Right',
+              ),
+          })
         : []),
     ]
   },
