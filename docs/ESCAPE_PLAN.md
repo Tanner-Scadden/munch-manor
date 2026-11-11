@@ -4,7 +4,7 @@ How the Munch Manor dare gets built, layer by layer, as one stack of pull reques
 
 ## Status
 
-Every layer is built, as one stack of pull requests on `escape/01-names` to `escape/18-release-docs` (2026-11-10), not merged yet:
+Layers 1 to 18 are built, as one stack of pull requests on `escape/01-names` to `escape/18-release-docs` (2026-11-10), not merged yet. Layers 19 to 21, the rooms rework ([`ROOM_RESEARCH.md`](./ROOM_RESEARCH.md), "Decided (2026-11-10)"), build on top:
 
 | Layer             | Pull request | Layer                   | Pull request |
 | ----------------- | ------------ | ----------------------- | ------------ |
@@ -19,6 +19,8 @@ Every layer is built, as one stack of pull requests on `escape/01-names` to `esc
 | 8. The house grid | #163         | 16b. Visual fixes       | #185         |
 | 17. Balance       | to come      | 18. Release docs        | #180         |
 | 19q. Find things  | to come      |                         |              |
+| 19. Room shapes   | to come      | 20. Room tools          | to come      |
+| 21. Finds, wakes  | to come      |                         |              |
 
 Open for the owner:
 
@@ -309,6 +311,35 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - Client cosmetics only: the World and the co-op wire are unchanged.
 
 **Checks.** Stories in `src/features/dare/__tests__/rattlesHint.story.test.ts`; `tools/audit/shotsDare.ts` on desktop, a phone on its side, and upright.
+
+### 19. Room shapes and set-up (rooms rework, part 1)
+
+**Goal.** Each room plays its own shape, and one shared rule sets up every room tool. From the owner's room decisions of 2026-11-10 ([`ROOM_RESEARCH.md`](./ROOM_RESEARCH.md), "Decided").
+
+- The shapes, inside the 32 by 18 slot with the edges and ports kept (`src/world/level/plan.ts`): the parlour's dance floor ringed by its furniture with four gaps, the library broken into the stacks (2 tile aisles) and the nook, the cellar's lanes made to differ (two long, one short dead end at the coal heap) round a lopsided barrel block, the dining room's south foothold firmed up, the kitchen kept. Each room keeps a loop, a chokepoint, and its hiding spots; the tiles part 2's tools will stand on are marked.
+- The work station (`src/world/stations/`): stand next to it, (nearly) still, and your character works it and cannot shoot; the work fills over its set-up time and runs down when nobody works it; full, the tool acts and goes on its own cooldown. Each player working it adds their own share. A World list, `stations`, on the wire under protocol 20.
+- The first station: the dining room's chandelier cleat on its west wall. 3 s of work in a wave, with the chandelier down, winches it back up so a shot can drop it again; 20 s cooldown.
+- The client: the cleat, its rope, the work ring and the cooldown on the station, and footprints on the spot until a station is first worked in the run.
+
+**Checks.** Station Stories (works, cannot fire, runs down, cooldown, co-op), reachability from every door in every slot, the loops, Studio's Rooms tab, screenshots, `balance:model` and one `--wave all` batch.
+
+### 20. Room tools (rooms rework, part 2)
+
+**Goal.** Each room has a tool to use mid-wave, every one a work station on its own cooldown.
+
+- The parlour's gramophone (Groaners waltz to it), the library's leaning stacks (topple down an aisle) and the revolving shelf (once open, it also spins), the cellar's barrels (roll down a lane) and the bulb's chain (light for a while; zombies a little faster in the dark), and the kitchen's soup pot (a fresh puddle).
+
+**Checks.** A Story per tool, `test:full`, a balance pass per room, `perf:check` for each drop that changes solid tiles.
+
+### 21. Finds, wake-ups, and hub touches (rooms rework, part 3)
+
+**Goal.** Each room finds its thing its own way, wakes when opened, and leaves a touch in the hub.
+
+- The finds: the parlour's piano or coffin rummage, the library's hollow book, the cellar's glint only in light, the kitchen's dumbwaiter (replaces "walking onto a thing finds it").
+- The wake-up: a rush from the opened room's own doors for about 10 s.
+- The hub touches: small, per room (the parlour's music in the dining room, the dumbwaiter's other end); no house-wide tool, so no fuse box.
+
+**Checks.** Stories for each find and wake-up, co-op, `test:full`, the nightly balance.
 
 ## Risks
 
