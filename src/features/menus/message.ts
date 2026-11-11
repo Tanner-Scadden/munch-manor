@@ -7,14 +7,14 @@ import { defineMessageUnion } from 'foldkit/message'
 export const HelpCard = Schema.Literals([
   'Move',
   'Aim',
-  'Reload',
   'Swap',
   'Knife',
-  'Shop',
   'Traps',
-  'Goodies',
-  'Leftovers',
-  'Charge',
+  'Keys',
+  'Rooms',
+  'Cases',
+  'List',
+  'Exit',
 ])
 export type HelpCard = typeof HelpCard.Type
 

@@ -10,11 +10,10 @@ import {
   HELP_DEMO_SPRITES,
   HINT_ICON_SPRITES,
   type HintIconSprites,
-  keyIcon,
 } from '../../art/hintIcons'
 import { standaloneSource } from '../../art/sprite'
 import type { InputDevice } from '../../input/inputSchema'
-import { GUN_NAMES, KNIFE_NAME } from '../../world/names'
+import { KNIFE_NAME } from '../../world/names'
 import { Phase } from '../../world/schema/worldSchema'
 import { type HelpCard, HelpMessage } from './message'
 import { pauseProgressView } from './pauseProgress'
@@ -25,9 +24,11 @@ import { pauseProgressView } from './pauseProgress'
 // TO PLAY and the pause screen both draw it as a grid of small cards: a
 // moving picture for the last device used and a word or two. Each card also
 // has one line of how to do it, from a playtester who found a picture and a
-// word ("Leftovers", "Charge") taught nothing. On the home menu a card is a
+// word taught nothing. On the home menu a card is a
 // button that shows its line when focused, tapped, or hovered; on the pause
-// screen, where a tap resumes, the line shows on hover and is read out.
+// screen, where a tap resumes, the line shows on hover and is read out. The
+// top row is the controls and the bottom row the dare: keys, rooms, cases,
+// the list, and the way out (the escape the manor update, 2026-11-10).
 type Input = Readonly<{ line: string; sprites: HintIconSprites }>
 
 type ControlCard = Readonly<{
@@ -49,8 +50,6 @@ const onBoth = (
   keyboard: input(line, sprites),
   touch: input(line, sprites),
 })
-
-const KEY_R = keyIcon('R')
 
 export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
   {
@@ -78,26 +77,14 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     ),
   },
   {
-    id: 'Reload',
-    action: 'Reload',
-    keyboard: input(
-      'Press R for a fresh magazine. An empty gun gets one by itself.',
-      KEY_R,
-    ),
-    touch: input(
-      'Tap the gun you hold for a fresh magazine.',
-      HINT_ICON_SPRITES.Tap,
-    ),
-  },
-  {
     id: 'Swap',
     action: 'Swap',
     keyboard: input(
-      'Q switches guns. Ammo never runs out.',
+      'Q switches guns, R reloads. Ammo never runs out.',
       HINT_ICON_SPRITES.KeyQ,
     ),
     touch: input(
-      'Tap your other gun. Ammo never runs out.',
+      'Tap your other gun. Tap the one in hand to reload.',
       HINT_ICON_SPRITES.Guns,
     ),
   },
@@ -105,20 +92,12 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     id: 'Knife',
     action: KNIFE_NAME,
     keyboard: input(
-      'Press F to draw it, then fire to stab. No ammo needed.',
+      'Press F to draw it, then fire to stab.',
       HELP_DEMO_SPRITES.Knife,
     ),
     touch: input(
-      'Tap its slot by your guns, then fire to stab. No ammo needed.',
+      'Tap its slot by your guns, then fire to stab.',
       HELP_DEMO_SPRITES.Knife,
-    ),
-  },
-  {
-    id: 'Shop',
-    action: 'Shop',
-    ...onBoth(
-      "Between waves, walk into Rattles' stall for guns and hearts.",
-      HINT_ICON_SPRITES.Stall,
     ),
   },
   {
@@ -134,35 +113,47 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     ),
   },
   {
-    id: 'Goodies',
-    action: 'Goodies',
+    id: 'Keys',
+    action: 'Keys',
     ...onBoth(
-      'Zombies drop hearts and boosts. Walk over them before they fade.',
-      HINT_ICON_SPRITES.Goodie,
+      'Zombies drop them. Walk over them to fill your ring.',
+      HELP_DEMO_SPRITES.Keys,
     ),
   },
   {
-    id: 'Leftovers',
-    action: 'Leftovers',
+    id: 'Rooms',
+    action: 'Rooms',
     keyboard: input(
-      'Hold Enter at the kitchen fridge to pay for a surprise weapon.',
-      HELP_DEMO_SPRITES.Fridge,
+      'Hold Enter at a padlock to spend keys. Each hides a thing.',
+      HELP_DEMO_SPRITES.Rooms,
     ),
     touch: input(
-      'Hold the fridge button in the kitchen to pay for a surprise weapon.',
-      HELP_DEMO_SPRITES.Fridge,
+      'Hold the button at a padlock to spend keys. Each hides a thing.',
+      HELP_DEMO_SPRITES.Rooms,
     ),
   },
   {
-    id: 'Charge',
-    action: 'Charge',
-    keyboard: input(
-      `${GUN_NAMES.Cooker}: hold click to build pressure, let go to throw.`,
-      HELP_DEMO_SPRITES.Charge,
+    id: 'Cases',
+    action: 'Cases',
+    ...onBoth(
+      'Do the deed on the lock. What is inside is yours.',
+      HELP_DEMO_SPRITES.Case,
     ),
-    touch: input(
-      `${GUN_NAMES.Cooker}: hold your aim thumb, lift it to throw.`,
-      HELP_DEMO_SPRITES.Charge,
+  },
+  {
+    id: 'List',
+    action: 'Your list',
+    ...onBoth(
+      'Up top: what the dare asks for. Find every thing.',
+      HELP_DEMO_SPRITES.List,
+    ),
+  },
+  {
+    id: 'Exit',
+    action: 'Get out',
+    ...onBoth(
+      "All found? Grab Uncle Chunk's hat and leave by the front door.",
+      HELP_DEMO_SPRITES.Exit,
     ),
   },
 ]
@@ -172,6 +163,7 @@ type ExtraKey = Readonly<{ key: string; action: string }>
 // NOTE: the rest of the keyboard's keys, one short line under the cards, so
 // every key still has a home on the screen that teaches the controls.
 const EXTRA_KEYS: Array.NonEmptyReadonlyArray<ExtraKey> = [
+  { key: 'R', action: 'reload' },
   { key: 'G', action: 'next trap' },
   { key: 'Enter', action: 'start' },
   { key: 'Esc', action: 'pause' },
