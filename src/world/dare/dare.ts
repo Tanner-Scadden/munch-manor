@@ -2,6 +2,7 @@ import { Array, Function, Option } from 'effect'
 
 import { type Difficulty } from '../../shared/playerData'
 import { type Seeded, nextRandom, shuffle } from '../../shared/prng'
+import { isHiddenInDark } from '../cellar/bulb'
 import { type Level, type Room, levelOf, tileCenter } from '../level/arena'
 import { type LevelSpec, type RoomSpots, roomSpotsOf } from '../level/plan'
 import { focusOf, forEachSeat, isStanding, seatStateAt } from '../party/party'
@@ -312,7 +313,8 @@ const maybeWalkOnto = (thing: DareThing, level: Level): Option.Option<Vector> =>
   )
 
 // NOTE: the first standing player in slot order on a thing found by
-// walking finds it for the crew.
+// walking finds it for the crew. The cellar's thing is found only while
+// the bulb lights the cellar (src/world/cellar/bulb.ts).
 const takeFor = (world: World, slot: PlayerSlot): World => {
   const { seat, player } = seatStateAt(world, slot)
   if (!isStanding(seat)) {
@@ -323,7 +325,8 @@ const takeFor = (world: World, slot: PlayerSlot): World => {
     Option.match(maybeWalkOnto(thing, level), {
       onNone: () => current,
       onSome: spot =>
-        distanceBetween(player, spot) <= DARE_RULES.reachPx
+        distanceBetween(player, spot) <= DARE_RULES.reachPx &&
+        !isHiddenInDark(current, spot)
           ? modifyWorldFields(current, {
               dareThings: things =>
                 setThing(things, thing.id, DareThingState.Found({ slot })),

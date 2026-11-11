@@ -7,13 +7,15 @@ import { quietWave, withPlayerAt } from '../../test/model.fixture'
 import { CELLAR_SPOT, zombieAt } from '../../test/testing'
 import { openExitIn } from '../../world/level/arena'
 import { EAST_EXIT, FAR_EXIT } from '../../world/level/plan'
-import { modifyFocus } from '../../world/party/party'
+import { TOOL_RULES } from '../../world/stations/toolRules'
 import type { Camera } from '../camera'
 import { cellarDarkOf } from '../cellarDark'
 
 // The cellar's dark (src/render/cellarDark.ts): a mask over the part of
-// the cellar on the camera, lit round each player, each shot, and the bulb,
-// and a zombie out in the dark drawn only as its eyes.
+// the cellar on the camera, lit round each player, each shot, and the bulb.
+// A zombie in it is not drawn at all (no eyes, bar, or shadow) unless it is
+// close to the viewing player, fading in over the last tile; a lit cellar
+// draws every zombie.
 
 const CELLAR_CAMERA: Camera = {
   x: 680,
@@ -62,30 +64,41 @@ describe('the cellar dark', () => {
     ).toBeGreaterThan(0)
   })
 
-  test('hides a zombie out in the dark, and shows its eyes, but not one in the light', () => {
+  test('draws nothing of a zombie far in the dark, and all of a near one', () => {
     const dark = Option.getOrThrow(
       darkOf(inCellar(quietWave(4)), CELLAR_CAMERA),
     )
-    expect(dark.isHidden(NEAR)).toBe(false)
-    expect(dark.isHidden(FAR_OFF)).toBe(true)
-    expect(dark.eyesShapes([NEAR, FAR_OFF])).toHaveLength(1)
+    expect(dark.fadeOf(NEAR)).toBe(1)
+    expect(dark.fadeOf(FAR_OFF)).toBe(0)
   })
 
-  test('a shot widens the light', () => {
-    const edge = zombieAt(3, CELLAR_SPOT.x + 52, CELLAR_SPOT.y)
-    const still = Option.getOrThrow(
+  test('fades a zombie in over the last tile, by the viewing player', () => {
+    const fading = zombieAt(3, CELLAR_SPOT.x + 25, CELLAR_SPOT.y)
+    const dark = Option.getOrThrow(
       darkOf(inCellar(quietWave(4)), CELLAR_CAMERA),
     )
-    const firing = Option.getOrThrow(
-      darkOf(
-        modifyFocus(inCellar(quietWave(4)), {
-          player: player =>
-            modifyFields(player, { recoilRemainingMs: () => 40 }),
-        }),
-        CELLAR_CAMERA,
-      ),
+    expect(dark.fadeOf(fading)).toBeGreaterThan(0)
+    expect(dark.fadeOf(fading)).toBeLessThan(1)
+  })
+
+  test('draws a zombie outside the cellar as usual', () => {
+    const dark = Option.getOrThrow(
+      darkOf(inCellar(quietWave(4)), CELLAR_CAMERA),
     )
-    expect(still.isHidden(edge)).toBe(true)
-    expect(firing.isHidden(edge)).toBe(false)
+    expect(dark.fadeOf(zombieAt(4, 40, 60))).toBe(1)
+  })
+
+  test('a lit cellar has no dark, so it draws both', () => {
+    const lit = modifyFields(inCellar(quietWave(4)), {
+      stations: stations => ({
+        ...stations,
+        Bulb: {
+          workedMs: 0,
+          cooldownMs: TOOL_RULES.Bulb.cooldownMs - 1,
+          timesWorked: 1,
+        },
+      }),
+    })
+    expect(Option.isNone(darkOf(lit, CELLAR_CAMERA))).toBe(true)
   })
 })

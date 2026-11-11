@@ -168,6 +168,7 @@ const shownZombies = (model: Model, camera: Camera): ReadonlyArray<Zombie> => {
 
 const groundShapes = (
   model: Model,
+  camera: Camera,
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
@@ -190,18 +191,35 @@ const groundShapes = (
   ...(isLeadArmed(model) ? aimSightShapes(model) : []),
   ...Array.flatMap(model.bullets, bulletShapes),
   ...lidShadowShapes(model),
-  ...stationGroundShapes(model),
+  ...stationGroundShapes(model, isOnCamera(camera)),
   ...hubTouchShapes(model),
 ]
 
 // STANDING
+
+// NOTE: how much of a zombie shows: all of it, but in the cellar's dark.
+const WHOLE = (_zombie: Zombie): number => 1
+
+// NOTE: a zombie's shapes at its share of the dark's fade, as one group
+// only while it fades.
+const fadedBy =
+  (fadeOf: (zombie: Zombie) => number) =>
+  (
+    zombie: Zombie,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape> => {
+    const opacity = fadeOf(zombie)
+    return opacity >= 1 ? shapes : [group({ shapes, opacity })]
+  }
 
 const standingDrawables = (
   model: Model,
   look: RattlesLook,
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
+  fadeOf: (zombie: Zombie) => number = WHOLE,
 ): ReadonlyArray<Drawable> => {
+  const fade = fadedBy(fadeOf)
   const drawZombie = zombieShapes(
     focusOf(model).player,
     model.elapsedMs,
@@ -235,9 +253,12 @@ const standingDrawables = (
     ...Array.map(zombies, (zombie): Drawable => ({
       footY: zombieFootY(zombie),
       rank: 'Zombie',
-      shapes: isChomp
-        ? chompShapes(model, zombie, drawZombie(zombie))
-        : drawZombie(zombie),
+      shapes: fade(
+        zombie,
+        isChomp
+          ? chompShapes(model, zombie, drawZombie(zombie))
+          : drawZombie(zombie),
+      ),
     })),
     {
       footY: playerFootY(focusOf(model).player),
@@ -299,7 +320,7 @@ const overheadShapes = (
     ? Array.flatMap(model.pickups, goodieArrowShapes)
     : []),
   ...mendRingsOf(model),
-  ...stationOverheadShapes(model),
+  ...stationOverheadShapes(model, isOnCamera(camera)),
   ...Option.match(maybeQuestMark(model), {
     onNone: () => [],
     onSome: door => doorArrowShapes(door, model.elapsedMs),
@@ -334,21 +355,37 @@ const playWorldShapes = (
   const look = rattlesLook(model)
   const onCamera = shownZombies(model, camera)
   const mates = mateModelsOf(model)
-  // NOTE: in the cellar's dark a zombie is only its eyes, over the mask.
+  // NOTE: in the cellar's dark a zombie shows only close to the viewing
+  // player, fading in over the last tile, with its shadow and bar
+  // (src/render/cellarDark.ts).
   return Option.match(cellarDarkOf(model, camera), {
     onNone: () => [
-      ...groundShapes(model, onCamera, mates),
+      ...groundShapes(model, camera, onCamera, mates),
       ...depthSortedShapes(standingDrawables(model, look, onCamera, mates)),
       ...overheadShapes(model, camera, onCamera, mates),
     ],
     onSome: dark => {
-      const zombies = Array.filter(onCamera, zombie => !dark.isHidden(zombie))
+      const seen = Array.filter(onCamera, zombie => dark.fadeOf(zombie) > 0)
+      const whole = Array.filter(seen, zombie => dark.fadeOf(zombie) >= 1)
+      const fading = Array.filter(seen, zombie => dark.fadeOf(zombie) < 1)
+      const fade = fadedBy(dark.fadeOf)
       return [
-        ...groundShapes(model, zombies, mates),
-        ...depthSortedShapes(standingDrawables(model, look, zombies, mates)),
+        ...groundShapes(model, camera, whole, mates),
+        ...Array.flatMap(fading, zombie =>
+          fade(zombie, [
+            ...zombieGroundShapes([zombie], model.elapsedMs),
+            ...Array.filterMap([zombie], zombieShadow),
+          ]),
+        ),
+        ...depthSortedShapes(
+          standingDrawables(model, look, seen, mates, dark.fadeOf),
+        ),
         ...dark.maskShapes,
-        ...dark.eyesShapes(onCamera),
-        ...overheadShapes(model, camera, zombies, mates),
+        ...overheadShapes(model, camera, whole, mates),
+        ...Array.flatMap(
+          Array.filter(fading, zombie => isInView(levelOf(model))(zombie)),
+          (zombie: Zombie) => fade(zombie, zombieHealthBarShapes(zombie)),
+        ),
       ]
     },
   })

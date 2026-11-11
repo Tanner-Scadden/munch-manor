@@ -7,6 +7,7 @@ import {
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
 } from '../../shared/constants'
+import { rollBarrel } from '../cellar/barrels'
 import { advanceDare, isWorkingFind } from '../dare/dare'
 import { advanceFinale } from '../dare/finale'
 import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
@@ -36,6 +37,7 @@ import { advancePantry } from '../kitchen/pantry'
 import { rollStove } from '../kitchen/stove'
 import { type Box, type Level, levelOf } from '../level/arena'
 import { swingShelf } from '../library/secretShelf'
+import { shelveHeaps } from '../library/stacks'
 import {
   COOP_RULES,
   facingNearest,
@@ -438,6 +440,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     footed => resolveBulletHits(footed, seconds, routed.nextEntityId),
     dropChandelier,
     swingShelf,
+    shelved => rollBarrel(shelveHeaps(shelved), deltaMs),
     struck => advanceLobs(struck, deltaMs),
     trapped => advanceTraps(trapped, seconds, deltaMs),
     trapped => advanceKitchen(armed, trapped, deltaMs),

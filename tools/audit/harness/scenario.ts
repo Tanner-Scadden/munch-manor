@@ -47,7 +47,7 @@ import { wakeRoom } from '@game/world/level/wakeUp'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
 import { withWorld } from '@game/world/schema/world'
-import { STATION_RULES } from '@game/world/stations/stations'
+import { TOOL_RULES } from '@game/world/stations/toolRules'
 
 import { withCoop } from './coopStage'
 import { CALM, ROAMING, roomModel } from './room'
@@ -618,7 +618,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         ...stations,
         Cleat: {
           ...stations.Cleat,
-          workedMs: config.cleat * STATION_RULES.Cleat.setUpMs,
+          workedMs: config.cleat * TOOL_RULES.Cleat.setUpMs,
         },
       }),
     })

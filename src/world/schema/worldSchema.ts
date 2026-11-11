@@ -1082,7 +1082,16 @@ const idleStation: StationState = {
   timesWorked: 0,
 }
 
-export const idleStations: Stations = { Cleat: idleStation }
+export const idleStations: Stations = {
+  Cleat: idleStation,
+  Gramophone: idleStation,
+  NorthStack: idleStation,
+  SouthStack: idleStation,
+  Shelf: idleStation,
+  Barrels: idleStation,
+  Bulb: idleStation,
+  SoupPot: idleStation,
+}
 
 export const shutFridge: Fridge = {
   door: FridgeDoor.Shut(),

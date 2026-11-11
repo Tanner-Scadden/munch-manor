@@ -44,8 +44,8 @@ export const ROOM_MAP: ReadonlyArray<string> = [
 // yard, the player never does, and nothing out there is drawn. `c` on the
 // west wall and `t` by the east wall mark its display case and trap crate,
 // and `1` to `4` its hiding spots: by the stove, by the sacks, under the
-// prep table, and by the pantry. `*`, below the ovens, is kept for the soup
-// pot (part 2 of the rooms rework).
+// prep table, and by the pantry. `*`, below the ovens, is the soup pot
+// (a room tool, src/world/kitchen/soupPot.ts).
 const KITCHEN_MAP: ReadonlyArray<string> = [
   '############DD######,,,,,,,,,,,,',
   '############DD######,,,,,,,,,,,,',
@@ -109,7 +109,7 @@ export const DINING_MAP: ReadonlyArray<string> = [
 // armchairs, ferns, the coffin, a trunk) with a two tile gap on each side,
 // so the loop is round the ring and the gaps are the chokepoints. A fern in
 // the east lane pinches it. `*` is the gramophone's spot, inside the ring by
-// the north-west tea table (part 2). The side doors are the slot's ports,
+// the north-west tea table (a room tool, src/world/parlour/gramophone.ts). The side doors are the slot's ports,
 // `(` and `)`; `n` and `s` are the slot's two spawn doors; rows 13 and 14
 // of the side walls are `?`, for a library next door. The piano, the hearth
 // (for the gas valve), and the bookshelf stay on the walls.
@@ -140,22 +140,25 @@ export const PARLOUR_SLOT_MAP: ReadonlyArray<string> = [
 // wall as bays with a case and the trap crate at their backs; the nook to
 // the east, open floor round the reading desk `d` (its loop) and the globe
 // `g`, a breather. The north door opens on a wide aisle between the stacks.
-// `*` marks the ends of the two stacks that will lean and topple (part 2).
-// `%` in rows 13 and 14 of each side wall is the secret shelf; only the one
+// `*` marks where each of the two leaning stacks is pushed over (room
+// tools, src/world/library/stacks.ts): the free-standing stack north of the
+// corridor topples west across the north door's aisle onto `k`, and the
+// stack south of it topples north across the corridor onto `m`; each heap
+// is a drop, floor until it falls. `%` in rows 13 and 14 of each side wall is the secret shelf; only the one
 // facing the room it is entered from swings.
 export const LIBRARY_MAP: ReadonlyArray<string> = [
   '##############nn################',
   '##############nn################',
   '#..............................#',
   '#..BB..BB..BB....BB............#',
-  '#..BB..BB..BB....BB.........g..#',
-  '#..BB..BB..BB....BB.........1..#',
+  '#..BB..BB..BBkkkkBB.........g..#',
+  '#..BB..BB..BBkkkkBB.........1..#',
   '#..BB2.BB..BB....*.............#',
   '#..BB..BB..BB..................#',
-  '(..............................)',
-  '(..............................)',
-  '#..........*...................#',
-  '#..BB..BB..BB......dddddddd....#',
+  '(..........mm..................)',
+  '(..........mm..................)',
+  '#..........mm..................#',
+  '#..BB..BB..BB*.....dddddddd....#',
   '#..BB..BB..BB.....3dddddddd....#',
   '%..BB..BB..BB..................%',
   '%..BB..BB..BB..................%',
@@ -169,8 +172,9 @@ export const LIBRARY_MAP: ReadonlyArray<string> = [
 // (rows 5 and 6, rows 12 and 13), a short dead end at the coal heap under
 // the chute, shut by crates `X`, and wine racks `]` round a block of
 // barrels `o` east of the middle, so the ring round it is lopsided: a wide
-// west side and a two tile east one. `*` is under the bare bulb, where its
-// chain will hang (part 2). `n` is the coal chute, `s` the storm doors.
+// west side and a two tile east one. The first `*` is under the bare bulb,
+// where its chain hangs, the second at the barrels' west face, where one is
+// sent rolling down the corridor (room tools, src/world/cellar/). `n` is the coal chute, `s` the storm doors.
 export const CELLAR_MAP: ReadonlyArray<string> = [
   '#####nn#########################',
   '#####nn#########################',
@@ -181,7 +185,7 @@ export const CELLAR_MAP: ReadonlyArray<string> = [
   '#...............*..............#',
   '#..]]]]]]]].............]]]]]..#',
   '(.................oooo.........)',
-  '(.................oooo1........)',
+  '(................*oooo1........)',
   '#..]]]]]]]].......oooo..]]]]]..#',
   '#.................oooo.........#',
   '#..............................#',
@@ -195,8 +199,8 @@ export const CELLAR_MAP: ReadonlyArray<string> = [
 // NOTE: the review marks every drafted map shares: the hidden-item spots,
 // the display case and trap crate spots (`c` and `t`, where the World's
 // cases and crates stand, src/world/feats/cases.ts and
-// src/world/gear/crates.ts), the start spot, and a room tool's spot kept
-// for part 2 of the rooms rework (`*`) are floor; a work station in a wall
+// src/world/gear/crates.ts), the start spot, and a room tool's floor spot
+// (`*`, src/world/stations/stationSpots.ts) are floor; a work station in a wall
 // (`j`, the chandelier's cleat, src/world/stations/stations.ts) is wall, and
 // a secret shelf's wall is wall unless the house swings it (secretShelfOf
 // below).
@@ -224,6 +228,13 @@ export const CHANDELIER_SYMBOL = '^'
 // NOTE: the dining room's own drop, its chandelier: the id the level state
 // lists while it lies in the gap (src/world/dining/chandelier.ts).
 export const CHANDELIER_DROP = 'Chandelier'
+
+// NOTE: the library's two heaps of books, where its leaning stacks land
+// when pushed over (src/world/library/stacks.ts): their ids and symbols.
+export const STACK_DROPS = {
+  NorthStack: { id: 'NorthStack', symbol: 'k' },
+  SouthStack: { id: 'SouthStack', symbol: 'm' },
+} as const
 
 // NOTE: a drafted map's secret shelf, `%`, and the plain wall a library
 // next door can swing open, `?`. The one that swings is rewritten to
@@ -602,7 +613,11 @@ const buildManorSpec = (arrangement: Arrangement): LevelSpec => {
         onSome: shelf => [shelfExitOf(shelf)],
       }),
     ],
-    drops: [{ id: CHANDELIER_DROP, symbol: CHANDELIER_SYMBOL }],
+    drops: [
+      { id: CHANDELIER_DROP, symbol: CHANDELIER_SYMBOL },
+      STACK_DROPS.NorthStack,
+      STACK_DROPS.SouthStack,
+    ],
     start: spotOf(dining, START_SYMBOL),
   }
 }
@@ -672,8 +687,9 @@ export const specOfState = (state: LevelState): LevelSpec =>
 // (layers 12 and on of docs/ESCAPE_PLAN.md) to read: each room's hidden-item
 // spots (`1` to `4`, stand there to search what is beside you), its display
 // cases (`c`, two tiles against a wall), its trap crate (`t`), and its
-// work stations' tiles (`j`, the chandelier's cleat in a wall,
-// src/world/stations/stations.ts), in world tiles. The marks are read off
+// work stations' tiles (`j`, the chandelier's cleat in a wall, and `*`, each
+// other room tool's floor tile in reading order,
+// src/world/stations/stationSpots.ts), in world tiles. The marks are read off
 // the room's own map, before its renames.
 export type SpotTile = Readonly<{ column: number; row: number }>
 
@@ -683,12 +699,14 @@ export type RoomSpots = Readonly<{
   cases: ReadonlyArray<ReadonlyArray<SpotTile>>
   trapCrates: ReadonlyArray<ReadonlyArray<SpotTile>>
   cleats: ReadonlyArray<SpotTile>
+  tools: ReadonlyArray<SpotTile>
 }>
 
 const HIDING_MARKS: ReadonlyArray<string> = ['1', '2', '3', '4']
 const CASE_MARK = 'c'
 const TRAP_CRATE_MARK = 't'
 const CLEAT_MARK = 'j'
+const TOOL_MARK = '*'
 
 const marksOf = (
   room: RoomSpec,
@@ -742,6 +760,10 @@ export const roomSpotsOf = (spec: LevelSpec): ReadonlyArray<RoomSpots> =>
     trapCrates: piecesOf(room, TRAP_CRATE_MARK),
     cleats: Array.map(
       marksOf(room, mark => mark === CLEAT_MARK),
+      ({ tile }) => tile,
+    ),
+    tools: Array.map(
+      marksOf(room, mark => mark === TOOL_MARK),
       ({ tile }) => tile,
     ),
   }))

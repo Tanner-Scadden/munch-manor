@@ -265,17 +265,18 @@ const readDareCard = Story.steps(
   whileCardReads(Message.PressedKey({ code: 'Escape' })),
 )
 
+// NOTE: a touch thumb's tap on the surface.
+const TOUCH_DOWN = Message.PressedPointer({
+  pointerId: 9,
+  device: 'Touch',
+  clientX: 0,
+  clientY: 0,
+})
+
 // NOTE: the same by a tap, so a touch player stays on touch.
 const readDareCardByTap = Story.steps(
   ...cardOpenFrames(),
-  whileCardReads(
-    Message.PressedPointer({
-      pointerId: 9,
-      device: 'Touch',
-      clientX: 0,
-      clientY: 0,
-    }),
-  ),
+  whileCardReads(TOUCH_DOWN),
   Story.message(Message.ReleasedPointer({ pointerId: 9 })),
 )
 
@@ -287,21 +288,14 @@ export const throughIntro = Story.steps(
 
 // NOTE: the same by a tap, so a touch player stays on touch.
 export const throughIntroByTap = Story.steps(
-  Story.message(
-    Message.PressedPointer({
-      pointerId: 9,
-      device: 'Touch',
-      clientX: 0,
-      clientY: 0,
-    }),
-  ),
+  Story.message(TOUCH_DOWN),
   Story.message(Message.ReleasedPointer({ pointerId: 9 })),
   ...ticks(SLAM_FRAMES, MAX_FRAME_DELTA_MS),
   readDareCardByTap,
 )
 
-const slamFramesInScene = () =>
-  Array.makeBy(SLAM_FRAMES, () =>
+const framesInScene = (count: number) =>
+  Array.makeBy(count, () =>
     Scene.Subscription.emit(
       SCENE_SUBSCRIPTIONS.frame,
       Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS }),
@@ -310,26 +304,18 @@ const slamFramesInScene = () =>
 
 export const throughIntroInScene = () => [
   emitPressedKey('Escape'),
-  ...slamFramesInScene(),
+  ...framesInScene(SLAM_FRAMES),
 ]
-
-const cardOpenFramesInScene = () =>
-  Array.makeBy(GATE_FRAMES, () =>
-    Scene.Subscription.emit(
-      SCENE_SUBSCRIPTIONS.frame,
-      Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS }),
-    ),
-  )
 
 // NOTE: the dare card read in a Scene, by its frames and a key. A Scene
 // cannot look first, so only a run with a list (not Endless) takes it.
 export const readDareCardInScene = () => [
-  ...cardOpenFramesInScene(),
+  ...framesInScene(GATE_FRAMES),
   emitPressedKey('Escape'),
 ]
 
 export const readDareCardByTapInScene = () => [
-  ...cardOpenFramesInScene(),
+  ...framesInScene(GATE_FRAMES),
   Scene.pointerDown(Scene.role('application', { name: 'Game surface' }), {
     pointerType: 'touch',
     pointerId: 9,
@@ -345,7 +331,7 @@ export const throughIntroByTapInScene = () => [
     clientX: 100,
     clientY: 100,
   }),
-  ...slamFramesInScene(),
+  ...framesInScene(SLAM_FRAMES),
 ]
 
 // NOTE: the root's two Mounts: the surface's size, and the touch tap
