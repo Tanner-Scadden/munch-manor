@@ -12,12 +12,8 @@ import { standInKeyOf } from '../../src/art/spriteAtlas'
 import { occludersOf } from '../../src/render/occluders'
 import { roomShapes } from '../../src/render/room/room'
 import { fighting, withActors } from '../../src/test/model.fixture'
-import {
-  SURFACE,
-  imagesIn,
-  openFloorSpot,
-  zombieOf,
-} from '../../src/test/testing'
+import { SURFACE, openFloorSpot, zombieOf } from '../../src/test/testing'
+import { imagesIn } from '../../src/test/viewReading'
 import { levelOf } from '../../src/world/level/arena'
 import {
   ZOMBIE_KINDS,

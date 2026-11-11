@@ -19,9 +19,9 @@ import {
   PHONE_PORTRAIT,
   measureSurfaceAs,
   modelAfterMessages,
-  rectsOf,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
+import { rectsOf } from '../../test/viewReading'
 import { modifyFocus } from '../../world/party/party'
 import { screenCameraOf } from '../camera'
 import { MELEE_SLOT_INDEX, gunSlotBox, reloadFaceOf } from '../hudLayout'

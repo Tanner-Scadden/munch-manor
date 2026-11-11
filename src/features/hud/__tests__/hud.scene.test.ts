@@ -15,7 +15,7 @@ import {
 import { hudShapes, hudStripShapes } from '../../../screens/game/hud'
 import { VIEW_HEIGHT } from '../../../shared/constants'
 import { holdingSecond } from '../../../test/arsenals'
-import { rectsOf } from '../../../test/testing'
+import { rectsOf } from '../../../test/viewReading'
 import { PARLOUR } from '../../../world/level/arena'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 

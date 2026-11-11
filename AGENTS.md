@@ -415,14 +415,15 @@ Small pure helpers and names any layer reads, the World too.
 
 The shared test homes, for tests in every folder and the tools that play the game. A fixture only one folder's tests use sits in that folder's `__tests__/`.
 
-| File                                           | What it holds                                                                                                                              |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `veteran.ts`, `testing.ts`, `model.fixture.ts` | A returning player's Model for tests and the balance bot; the shared test steps, locators, and builders; the named Models tests start from |
-| `store.fixture.ts`                             | What the store tests start from: a save, a fake localStorage, one device's database, and an in-process server for linking devices          |
-| `vitest-setup.ts`, `atlasHtml.setup.ts`        | Every test's setup: stand-in sprites in place of PNGs; the atlas HTML test's own stand-in atlas                                            |
-| `testPng.ts`                                   | PNG data URLs read back into pixels for tests                                                                                              |
-| `arsenals.ts`                                  | The arsenals tests build: the pistol alone or beside another gun, held either way, a change to the carried pistol, and the shotgun         |
-| `roomTesting.ts`                               | Test helpers for a co-op room: scripted players, the room stepped tick by tick, clients over a fake network                                |
+| File                                           | What it holds                                                                                                                                |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `veteran.ts`, `testing.ts`, `model.fixture.ts` | A returning player's Model for tests and the balance bot; the shared test steps, locators, and builders; the named Models tests start from   |
+| `store.fixture.ts`                             | What the store tests start from: a save, a fake localStorage, one device's database, and an in-process server for linking devices            |
+| `vitest-setup.ts`, `atlasHtml.setup.ts`        | Every test's setup: stand-in sprites in place of PNGs; the atlas HTML test's own stand-in atlas                                              |
+| `testPng.ts`                                   | PNG data URLs read back into pixels for tests                                                                                                |
+| `viewReading.ts`                               | Reading what a view draws in tests: a canvas shape tree's Rects (`rectsOf`) and Images (`imagesIn`), a rendered VNode's elements (`nodesOf`) |
+| `arsenals.ts`                                  | The arsenals tests build: the pistol alone or beside another gun, held either way, a change to the carried pistol, and the shotgun           |
+| `roomTesting.ts`                               | Test helpers for a co-op room: scripted players, the room stepped tick by tick, clients over a fake network                                  |
 
 ### Elsewhere
 
