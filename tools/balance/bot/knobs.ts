@@ -16,7 +16,6 @@ const KNOBS = Effect.runSync(
     BOSS_TRACE: knob('BOSS_TRACE'),
     CRACK_BERTH: knob('CRACK_BERTH'),
     DEBUG: knob('DEBUG'),
-    DODGE_MARGIN: knob('DODGE_MARGIN'),
     ENGAGE: knob('ENGAGE'),
     ENGAGE_PX: knob('ENGAGE_PX'),
     FLEE_PX: knob('FLEE_PX'),
@@ -46,6 +45,7 @@ const KNOBS = Effect.runSync(
     SETTLE_FRAMES: knob('SETTLE_FRAMES'),
     SWITCH_RATIO: knob('SWITCH_RATIO'),
     VIEW: knob('VIEW'),
+    WATCHED: knob('WATCHED'),
   }),
 )
 

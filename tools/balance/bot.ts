@@ -80,7 +80,6 @@ import {
   PRESSURE_PX,
   type WaveLog,
   type WaveTimeline,
-  emptyBossBlame,
   emptyHurt,
   emptyNewKinds,
   emptyTimeline,
@@ -91,6 +90,7 @@ import {
 } from './bot/logs'
 import type { BossBlame, RunResult } from './bot/results'
 import { routeTo } from './bot/route'
+import { emptyBossFight, runEndOf, traceChunk } from './bot/runEnd'
 import {
   type PrepPlan,
   busiestDoor,
@@ -635,29 +635,7 @@ export const play: {
           Array.findFirst(bossLog, fight => fight.wave === wave),
         )
         const fight =
-          known ??
-          (hasBoss
-            ? pushed(bossLog, {
-                wave,
-                arrived: false,
-                felled: false,
-                fightMs: 0,
-                diedToIt: false,
-                stomps: 0,
-                stompHits: 0,
-                belches: 0,
-                charges: 0,
-                chargeHits: 0,
-                bonks: 0,
-                spits: 0,
-                spitHits: 0,
-                enraged: false,
-                heartsLost: 0,
-                heartsByAttack: emptyBossBlame(),
-                damageTaken: 0,
-                aimedMs: 0,
-              })
-            : undefined)
+          known ?? (hasBoss ? pushed(bossLog, emptyBossFight(wave)) : undefined)
         if (fight !== undefined) {
           if (model.boss._tag === 'Fighting') {
             fight.arrived = true
@@ -703,6 +681,7 @@ export const play: {
             fight.aimedMs += FRAME_MS
           }
           const lost = focusOf(before).player.hp - focusOf(model).player.hp
+          let isByBoss = false
           if (lost > 0 && model.boss._tag === 'Fighting') {
             fight.heartsLost += lost
             const cause = bossBlameOf(model)
@@ -712,13 +691,24 @@ export const play: {
                 distance(focusOf(before).player, b),
             )[0]
             if (cause !== undefined) {
+              isByBoss = true
               fight.heartsByAttack[cause] += lost
               if (cause === 'Glob') {
                 fight.spitHits += 1
               }
             } else if (nearest?.kind === 'Boss') {
+              isByBoss = true
               fight.heartsByAttack.Bite += lost
             }
+          }
+          if (model.boss._tag === 'Fighting') {
+            traceChunk({
+              fight,
+              model,
+              lost: Math.max(0, lost),
+              blamed,
+              byBoss: isByBoss,
+            })
           }
           if (
             Array.some(
@@ -856,6 +846,7 @@ export const play: {
         keyWave: escapeLog.keyWave,
         chunkFightMs: escapeLog.chunkFightMs,
       },
+      end: runEndOf(model, maxRunMs(options)),
     }
   },
 )

@@ -65,7 +65,7 @@ import {
   pantryErrand,
   searchSpot,
 } from './dareSearch'
-import { type Threat, escapeHeading } from './escape'
+import { CHUNK_KEEP_PX, type Threat, chunkDodge, escapeHeading } from './escape'
 
 // A teammate bot's brain (GAME_DESIGN.md, "Teammate bots"): the seat's
 // intent and its presses for a tick, read from the World alone. It plays
@@ -110,7 +110,7 @@ const FLEE_PX: Readonly<Record<Zombie['kind'], number>> = {
   Exploder: 40,
   Thrower: 26,
   Crawler: 20,
-  Boss: 56,
+  Boss: CHUNK_KEEP_PX,
 }
 
 // WHAT IS IN THE ROOM
@@ -425,6 +425,12 @@ const fightMove = (
     maybeDowned,
     downed => distanceBetween(me.player, downed.player) <= REVIVE_STOP_PX,
   )
+  // NOTE: Uncle Chunk's tells come first: a stomp's ring, a charge's lane,
+  // a glob's mark (src/features/bots/escape.ts).
+  const dodge = chunkDodge(world, me.player)
+  if (dodge !== undefined) {
+    return dodge
+  }
   if (Option.isSome(maybeDanger)) {
     return escapeHeading(levelOf(world), me.player, threatsNear(world, me))
   }

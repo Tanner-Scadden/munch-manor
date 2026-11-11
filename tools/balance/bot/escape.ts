@@ -17,9 +17,9 @@ import {
   besideBox,
   isSafeToSearch,
   isWorkingSearch,
+  maybeNextPadlock,
   searchSpot,
 } from '../../../src/features/bots/dareSearch'
-import { maybeThingRoom } from '../../../src/world/dare/dare'
 import {
   frontDoorSillOf,
   isFrontDoorOpen,
@@ -27,16 +27,11 @@ import {
 import { caseOffers } from '../../../src/world/feats/cases'
 import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
 import { heldKeys } from '../../../src/world/keys/keys'
-import {
-  type Level,
-  distanceToBox,
-  levelOf,
-} from '../../../src/world/level/arena'
+import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import { exitOffers } from '../../../src/world/level/exits'
 import { focusOf, focusSlotOf } from '../../../src/world/party/party'
 import {
   type CasePrize,
-  type ExitId,
   Purchasable,
 } from '../../../src/world/schema/worldSchema'
 import type { Offer } from '../../../src/world/shop/purchase'
@@ -71,62 +66,23 @@ export const isWorkingForEscape = (model: Model): boolean =>
 
 // THE BOARDS
 
-const roomExitOf = (level: Level, roomId: string): Option.Option<ExitId> =>
-  Option.flatMap(
-    Array.findFirst(level.spec.rooms, room => room.id === roomId),
-    room => room.maybeExit,
-  )
-
-// NOTE: an exit and every shut exit its boards wait on, the nearest first.
-const withRequired = (level: Level, exit: ExitId): ReadonlyArray<ExitId> =>
-  Option.match(
-    Array.findFirst(level.exits, ({ id }) => id === exit),
-    {
-      onNone: () => [exit],
-      onSome: ({ requires }) => [
-        ...Array.flatMap(
-          Array.filter(
-            requires,
-            (required: ExitId) => !Array.contains(level.openExits, required),
-          ),
-          (required: ExitId) => withRequired(level, required),
-        ),
-        exit,
-      ],
-    },
-  )
-
-// NOTE: the exits shut on a thing on the list behind their boards.
-const exitsOnTheList = (model: Model): ReadonlyArray<ExitId> => {
-  const level = levelOf(model)
-  return Array.dedupe(
-    Array.flatMap(
-      Array.flatMap(model.dareThings, (thing): ReadonlyArray<ExitId> =>
-        Option.toArray(
-          Option.flatMap(
-            Option.filter(
-              maybeThingRoom(thing, level),
-              ({ isOpen }) => !isOpen,
-            ),
-            ({ id }) => roomExitOf(level, id),
-          ),
-        ),
-      ),
-      (exit: ExitId) => withRequired(level, exit),
-    ),
-  )
-}
-
 // NOTE: the boards to buy open, in a break, for a thing on the list behind
-// them, with the price in hand. The hunt comes before the other rooms.
+// them, with the price in hand: the padlock the hunt's plan
+// (src/features/bots/dareSearch.ts) opens next. The hunt comes before the
+// other rooms.
 export const wantedBoards = (model: Model): Offer | undefined => {
-  const wanted = exitsOnTheList(model)
-  return model.phase._tag === 'Preparation' && wanted.length > 0
+  const maybeNext = maybeNextPadlock(model)
+  return model.phase._tag === 'Preparation'
     ? Array.findFirst(
         exitOffers(model),
         offer =>
           Purchasable.isAnyOf(['Exit'])(offer.target) &&
-          Array.contains(wanted, offer.target.exit) &&
+          Option.exists(
+            maybeNext,
+            ({ exit }) =>
+              Purchasable.isAnyOf(['Exit'])(offer.target) &&
+              offer.target.exit === exit,
+          ) &&
           heldKeys(model) >= offer.price,
       ).pipe(Option.getOrUndefined)
     : undefined

@@ -1,9 +1,15 @@
-import { Array, Function, Option } from 'effect'
+import { Array, Function, Option, Schema } from 'effect'
+import { defineTaggedUnion } from 'foldkit/schema'
 
 import { isHiddenInDark } from '../../world/cellar/bulb'
-import { findStyleOf, maybeLyingAt } from '../../world/dare/dare'
+import {
+  findStyleOf,
+  maybeLyingAt,
+  maybeThingRoom,
+} from '../../world/dare/dare'
 import { isFrontDoorOpen } from '../../world/dare/finale'
 import { FIND_RULES } from '../../world/dare/finds'
+import { heldKeys } from '../../world/keys/keys'
 import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import {
   type Box,
@@ -17,8 +23,9 @@ import {
   tileIndexAt,
   tileOfIndex,
 } from '../../world/level/arena'
+import { exitPriceFor } from '../../world/level/exits'
 import type { World } from '../../world/schema/world'
-import type { Vector } from '../../world/schema/worldSchema'
+import { ExitId, type Vector } from '../../world/schema/worldSchema'
 import { stationBoxOf } from '../../world/stations/stationSpots'
 import { isInWave } from '../../world/stations/stations'
 import { TOOL_RULES } from '../../world/stations/toolRules'
@@ -215,3 +222,112 @@ export const pantryErrand = (world: World): Vector | undefined =>
   Option.getOrUndefined(
     Option.flatMap(maybeStash(world), () => pantrySpotOf(levelOf(world))),
   )
+
+// THE PLAN
+
+// The hunt planned backward from the list, as a player plans it: with the
+// front door open, out; with a thing lying lit in an open room, fetch it;
+// with only the cellar's left in the dark, light it in a wave; otherwise
+// the next thing behind boards, the padlock in its way (the nearest shut
+// boards on the way to its room), and the keys that padlock asks: open it
+// with them in hand, or save up the keys it is short. With nothing left on
+// the list, the list is done and Uncle Chunk comes.
+export const HuntStep = defineTaggedUnion({
+  Leave: {},
+  Fetch: {},
+  Light: {},
+  Open: { exit: ExitId, price: Schema.Finite },
+  Save: { exit: ExitId, short: Schema.Finite },
+  Done: {},
+})
+export type HuntStep = typeof HuntStep.Type
+
+const roomExitOf = (level: Level, roomId: string): Option.Option<ExitId> =>
+  Option.flatMap(
+    Array.findFirst(level.spec.rooms, room => room.id === roomId),
+    room => room.maybeExit,
+  )
+
+// NOTE: an exit and every shut exit its boards wait on, the nearest first.
+const withRequired = (level: Level, exit: ExitId): ReadonlyArray<ExitId> =>
+  Option.match(
+    Array.findFirst(level.exits, ({ id }) => id === exit),
+    {
+      onNone: () => [exit],
+      onSome: ({ requires }) => [
+        ...Array.flatMap(
+          Array.filter(
+            requires,
+            (required: ExitId) => !Array.contains(level.openExits, required),
+          ),
+          (required: ExitId) => withRequired(level, required),
+        ),
+        exit,
+      ],
+    },
+  )
+
+// NOTE: for each thing still behind boards, the shut exits on the way to
+// its room, the nearest first.
+const shutWays = (world: World): ReadonlyArray<ReadonlyArray<ExitId>> => {
+  const level = levelOf(world)
+  return Array.flatMap(world.dareThings, thing =>
+    Option.toArray(
+      Option.map(
+        Option.flatMap(
+          Option.filter(maybeThingRoom(thing, level), ({ isOpen }) => !isOpen),
+          ({ id }) => roomExitOf(level, id),
+        ),
+        exit => withRequired(level, exit),
+      ),
+    ),
+  )
+}
+
+// NOTE: every shut exit on the way to a thing on the list.
+export const shutExitsOnTheList = (world: World): ReadonlyArray<ExitId> =>
+  Array.dedupe(Array.flatten(shutWays(world)))
+
+// NOTE: the padlock first in the way of a thing on the list, the one
+// asking fewest keys, with its price.
+export const maybeNextPadlock = (
+  world: World,
+): Option.Option<Readonly<{ exit: ExitId; price: number }>> =>
+  Array.reduce(
+    shutWays(world),
+    Option.none<Readonly<{ exit: ExitId; price: number }>>(),
+    (best, way) =>
+      Option.match(Array.head(way), {
+        onNone: () => best,
+        onSome: exit => {
+          const price = exitPriceFor(world, exit)
+          return Option.isNone(best) || price < best.value.price
+            ? Option.some({ exit, price })
+            : best
+        },
+      }),
+  )
+
+export const huntPlan: {
+  (from: Vector): (world: World) => HuntStep
+  (world: World, from: Vector): HuntStep
+} = Function.dual(2, (world: World, from: Vector): HuntStep => {
+  if (isFrontDoorOpen(world)) {
+    return HuntStep.Leave()
+  }
+  const things = lyingThings(world)
+  if (nearestLit(from, things) !== undefined) {
+    return HuntStep.Fetch()
+  }
+  if (isDarkThingLeft(things)) {
+    return HuntStep.Light()
+  }
+  const maybeNext = maybeNextPadlock(world)
+  return Option.match(maybeNext, {
+    onNone: () => HuntStep.Done(),
+    onSome: ({ exit, price }) =>
+      heldKeys(world) >= price
+        ? HuntStep.Open({ exit, price })
+        : HuntStep.Save({ exit, short: price - heldKeys(world) }),
+  })
+})

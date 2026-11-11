@@ -3,9 +3,8 @@
 
 import { Array, Function, Option } from 'effect'
 
+import { chunkDodge } from '../../../src/features/bots/escape'
 import { focusOf } from '../../../src/world/party/party'
-import { BossMove } from '../../../src/world/schema/worldSchema'
-import { BOSS_RULES } from '../../../src/world/zombies/bossRules'
 import { CHUCKER_RULES } from '../../../src/world/zombies/chucker'
 import { CRAWLER_RULES } from '../../../src/world/zombies/crawler'
 import { FRENZY_RULES } from '../../../src/world/zombies/frenzy'
@@ -51,10 +50,8 @@ export const safePickup = (model: Model): Vector | undefined => {
 // marker or a puddle. It keeps a wider berth from the boss than from the
 // horde, since the boss is wider. KITE=1 is the player who never learns the
 // tells: it only runs to the far side of the room from the boss and shoots.
-const DODGE_MARGIN_PX = knobNumber('DODGE_MARGIN', 10)
 const NO_DODGE = isKnobSet('NO_DODGE')
 export const KITES = isKnobSet('KITE')
-const BOSS_BODY_PX = 12
 const PLAYER_BODY_PX = 4
 
 export const bossOf = (model: Model) => {
@@ -65,44 +62,6 @@ export const bossOf = (model: Model) => {
       )
     : undefined
 }
-
-const awayFromLine = (from: Vector, direction: Vector, point: Vector) => {
-  const side =
-    direction.x * (point.y - from.y) - direction.y * (point.x - from.x) >= 0
-      ? 1
-      : -1
-  return { x: -direction.y * side, y: direction.x * side }
-}
-
-const distanceToLane = (
-  point: Vector,
-  from: Vector,
-  direction: Vector,
-  length: number,
-) => {
-  const along = Math.max(
-    0,
-    Math.min(
-      length,
-      (point.x - from.x) * direction.x + (point.y - from.y) * direction.y,
-    ),
-  )
-  return distance(point, {
-    x: from.x + direction.x * along,
-    y: from.y + direction.y * along,
-  })
-}
-
-const laneDodge = (
-  model: Model,
-  from: Vector,
-  direction: Vector,
-  length: number,
-): Vector | undefined =>
-  distanceToLane(focusOf(model).player, from, direction, length) <
-  BOSS_BODY_PX + PLAYER_BODY_PX + DODGE_MARGIN_PX
-    ? awayFromLine(from, direction, focusOf(model).player)
-    : undefined
 
 // Standing on a glob's mark, it steps across the boss's line of fire, to the
 // side with more room from the nearest other zombie.
@@ -174,60 +133,16 @@ const crackDodge = (model: Model): Vector | undefined => {
 const floorDodge = (model: Model): Vector | undefined =>
   NO_DODGE ? undefined : (landingDodge(model) ?? crackDodge(model))
 
+// NOTE: his own tells are read the way the teammate bots read them
+// (src/features/bots/escape.ts).
 export const telegraphDodge = (model: Model): Vector | undefined => {
   const floor = floorDodge(model)
   if (floor !== undefined) {
     return floor
   }
-  if (NO_DODGE || KITES || model.boss._tag !== 'Fighting') {
-    return undefined
-  }
-  const boss = bossOf(model)
-  const marker = Option.getOrUndefined(
-    Array.findFirst(
-      model.boss.globs,
-      glob =>
-        (glob._tag === 'Flying' &&
-          distance(focusOf(model).player, glob.to) <
-            BOSS_RULES.spitRadius + PLAYER_BODY_PX + DODGE_MARGIN_PX) ||
-        (glob._tag === 'Pooled' &&
-          distance(focusOf(model).player, glob.at) <
-            BOSS_RULES.puddleRadius + 2),
-    ),
-  )
-  if (marker !== undefined) {
-    const center = marker._tag === 'Flying' ? marker.to : marker.at
-    return distance(focusOf(model).player, center) < 3
-      ? clearSide(model, boss ?? { x: center.x, y: center.y - 1 })
-      : steerToward(center, focusOf(model).player)
-  }
-  if (boss === undefined) {
-    return undefined
-  }
-  return BossMove.matchOrElse<Vector | undefined>(
-    model.boss.move,
-    {
-      WindingUp: move =>
-        move.attack !== 'Stomp' && move.attack !== 'Slam'
-          ? undefined
-          : distance(focusOf(model).player, boss) <
-              (move.attack === 'Slam'
-                ? BOSS_RULES.slamRadius
-                : BOSS_RULES.stompRadius) +
-                DODGE_MARGIN_PX
-            ? steerToward(boss, focusOf(model).player)
-            : { x: 0, y: 0 },
-      Bracing: move =>
-        laneDodge(
-          model,
-          boss,
-          steerToward(boss, move.target),
-          distance(boss, move.target) + BOSS_RULES.chargeOvershootPx,
-        ),
-      Rushing: move => laneDodge(model, boss, move.direction, move.remainingPx),
-    },
-    () => undefined,
-  )
+  return NO_DODGE || KITES
+    ? undefined
+    : chunkDodge(model, focusOf(model).player)
 }
 
 export const BOSS_BERTH_PX = knobNumber('BOSS_BERTH', 16)

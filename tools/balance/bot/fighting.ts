@@ -145,6 +145,15 @@ export const handleKnife: {
     : model
 })
 
+// NOTE: how many of the nearest zombies it has noticed the bot runs from at
+// once: a person keeps an eye on the one closing in and the one behind it.
+// In Uncle Chunk's fight it watches only the nearest: watching two there let
+// him close in (his bites took 50 hearts in 100 Normal runs, against 35,
+// and he fell in 6 fights of 53, 2026-11-11), while outside it two cut the
+// deaths on the hunt from 48 to 44. WATCHED=1 is the bot that watches only
+// the nearest everywhere.
+const WATCHED = knobNumber('WATCHED', 2)
+
 export const kite: {
   (model: Model): (state: BotState) => Vector
   (state: BotState, model: Model): Vector
@@ -174,19 +183,23 @@ export const kite: {
     ),
     zombie => isNoticed(state, model, zombie),
   ).sort((a, b) => reach(a) - reach(b))
-  const nearest = fled[0]
-  if (nearest !== undefined && reach(nearest) < FLEE_PX) {
-    // It runs the way a person does: away from the zombie it is watching,
-    // along a wall and out of corners (src/features/bots/escape.ts), but blind to the rest
-    // of the crowd. Weaving through every gap, as the teammate bots do, won
-    // Normal 40% and Hard 49% on 2026-11-03, far past what people manage.
-    return escapeHeading(levelOf(model), player, [
-      {
-        at: nearest,
-        radius:
-          bodyRadiusOf(nearest) + distance(player, nearest) - reach(nearest),
-      },
-    ])
+  // It runs the way a person does: away from the zombies it is watching,
+  // along a wall and out of corners (src/features/bots/escape.ts), but blind to the rest
+  // of the crowd. It watches the WATCHED nearest it has noticed: weaving
+  // through every gap, as the teammate bots do, won Normal 40% and Hard 49%
+  // on 2026-11-03, far past what people manage.
+  const watched = Array.map(
+    Array.filter(
+      Array.take(fled, model.boss._tag === 'Fighting' ? 1 : WATCHED),
+      zombie => reach(zombie) < FLEE_PX,
+    ),
+    zombie => ({
+      at: zombie,
+      radius: bodyRadiusOf(zombie) + distance(player, zombie) - reach(zombie),
+    }),
+  )
+  if (watched.length > 0) {
+    return escapeHeading(levelOf(model), player, watched)
   }
   if (isInKitchen(player)) {
     return steerToward(player, routeTo(levelOf(model), player, ROOM_CENTER))

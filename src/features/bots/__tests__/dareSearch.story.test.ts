@@ -9,18 +9,24 @@ import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
   crewInWave,
+  exitsToRoom,
   hidingSpotIn,
   placeSeat,
   roomOpenIn,
   withDareThings,
+  withKeys,
   withZombies,
 } from '../../../test/model.fixture'
 import { APPLICATION, ticks, zombieOf } from '../../../test/testing'
 import { DareThingState } from '../../../world/dare/dareSchema'
 import { heldKeys } from '../../../world/keys/keys'
 import { maybeStash, pantrySpotOf } from '../../../world/kitchen/pantry'
-import { levelOf, openExitIn } from '../../../world/level/arena'
-import { KITCHEN_EXIT } from '../../../world/level/exits'
+import {
+  levelOf,
+  openExitIn,
+  startingLevelFor,
+} from '../../../world/level/arena'
+import { KITCHEN_EXIT, exitPriceFor } from '../../../world/level/exits'
 import {
   CELLAR_ROOM_ID,
   DEFAULT_ARRANGEMENT,
@@ -29,6 +35,7 @@ import {
 } from '../../../world/level/plan'
 import { maybePlayerAt } from '../../../world/party/party'
 import { Pantry, type SlotRoomId } from '../../../world/schema/worldSchema'
+import { HuntStep, huntPlan } from '../dareSearch'
 import { botInputs } from '../teammateBot'
 import { BOT, BREAK } from './bots.fixture'
 
@@ -181,5 +188,73 @@ describe('a bot runs its errands', () => {
         expect(heldKeys(current)).toBe(heldKeys(found) + 1)
       }),
     )
+  })
+})
+
+// The hunt planned backward from the list: the thing, its room, the
+// padlock in the way, and the keys it asks.
+describe('the hunt plan', () => {
+  const ROOMS: ReadonlyArray<SlotRoomId> = ['Parlour', 'Library', 'Cellar']
+
+  // NOTE: a break with every slot room boarded and one thing hidden in
+  // `room`, `keys` on the crew's ring.
+  const boardedOn = (room: SlotRoomId, keys: number): Model => {
+    const shut = modifyFields(crewInWave(2), {
+      phase: () => BREAK,
+      level: () => startingLevelFor(DEFAULT_ARRANGEMENT),
+    })
+    const spot = hidingSpotIn(levelOf(shut), room)
+    return withKeys(
+      withDareThings(shut, [
+        {
+          id: 0,
+          kind: 'ButlersBell',
+          state: DareThingState.Hidden({ ...spot, workedMs: 0 }),
+        },
+      ]),
+      keys,
+    )
+  }
+
+  const FROM = { x: 40, y: 140 }
+
+  // NOTE: the slot room behind two sets of boards, the far slot's.
+  const farRoom = Option.getOrThrow(
+    Array.findFirst(
+      ROOMS,
+      room => exitsToRoom(DEFAULT_ARRANGEMENT, room).length === 2,
+    ),
+  )
+
+  test('with a thing lying in an open room, it fetches it', () => {
+    const { model } = searching(BREAK, 'Library', LIBRARY_ROOM_ID)
+    expect(huntPlan(model, FROM)).toEqual(HuntStep.Fetch())
+  })
+
+  test('short of the padlock on the way, it saves up what it is short', () => {
+    const model = boardedOn(farRoom, 10)
+    const [first] = exitsToRoom(DEFAULT_ARRANGEMENT, farRoom)
+    expect(huntPlan(model, FROM)).toEqual(
+      HuntStep.Save({
+        exit: first ?? '',
+        short: exitPriceFor(model, first ?? '') - 10,
+      }),
+    )
+  })
+
+  test('with the keys in hand, it opens the nearest boards on the way first', () => {
+    const model = boardedOn(farRoom, 200)
+    const [first] = exitsToRoom(DEFAULT_ARRANGEMENT, farRoom)
+    expect(huntPlan(model, FROM)).toEqual(
+      HuntStep.Open({
+        exit: first ?? '',
+        price: exitPriceFor(model, first ?? ''),
+      }),
+    )
+  })
+
+  test('with the list found, the hunt is done', () => {
+    const model = withDareThings(boardedOn(farRoom, 0), [])
+    expect(huntPlan(model, FROM)).toEqual(HuntStep.Done())
   })
 })

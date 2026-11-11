@@ -9,13 +9,19 @@ import {
   tileCoordinate,
   tileIndex,
 } from '../../world/level/arena'
-import type { Vector } from '../../world/schema/worldSchema'
+import type { World } from '../../world/schema/world'
+import {
+  BossMove,
+  type Vector,
+  type Zombie,
+} from '../../world/schema/worldSchema'
 import {
   ZERO_VECTOR,
   closestPointOnSegment,
   directionBetween,
   distanceBetween,
 } from '../../world/step/geometry'
+import { BOSS_RULES } from '../../world/zombies/bossRules'
 
 // Where a bot runs when zombies come close: the way a smart player would,
 // not straight back into a wall. It tries headings all round and scores
@@ -201,3 +207,126 @@ export const escapeHeading: {
     return best
   },
 )
+
+// UNCLE CHUNK
+
+// How a bot reads Uncle Chunk's tells the way a player who has learned
+// them does: out of a stomp's or slam's ring once he winds up, still just
+// outside it, sideways off a charge's lane, off a glob's mark and out of a
+// puddle. Shared by the teammate bots and the balance bot
+// (tools/balance/bot/dodging.ts).
+
+// NOTE: how far a teammate bot keeps from him: inside his far range
+// (farPx), past which he spits volleys and charges, and as far out as
+// that allows, so his slam's wind-up is a step from clear. Keeping 80 px
+// off cost the balance bot escapes (Normal 12 of 100 to 8, 2026-11-11: his
+// bites fell from 35 hearts to 3, his globs rose from 8 to 28 and his
+// charges from 2 to 11), and 62 px still did (9 of 100), so the balance
+// bot keeps its own 52 px.
+export const CHUNK_KEEP_PX = BOSS_RULES.farPx - 8
+const DODGE_MARGIN_PX = 10
+const CHUNK_BODY_PX = 12
+
+// NOTE: Uncle Chunk on his feet, while his fight is on.
+const maybeChunk = (world: World): Option.Option<Zombie> => {
+  const { boss } = world
+  return boss._tag === 'Fighting'
+    ? Array.findFirst(
+        world.zombies,
+        zombie => zombie.id === boss.id && zombie.state._tag === 'Walking',
+      )
+    : Option.none()
+}
+
+const awayFrom = (from: Vector, at: Vector): Vector =>
+  Option.getOrElse(directionBetween(from, at), () => unitAt(0, 1))
+
+// NOTE: square to a line from `from` along `direction`, on `at`'s side.
+const offLine = (from: Vector, direction: Vector, at: Vector): Vector => {
+  const side =
+    direction.x * (at.y - from.y) - direction.y * (at.x - from.x) >= 0 ? 1 : -1
+  return { x: -direction.y * side, y: direction.x * side }
+}
+
+const laneDodge = (
+  at: Vector,
+  from: Vector,
+  direction: Vector,
+  length: number,
+): Vector | undefined => {
+  const end = {
+    x: from.x + direction.x * length,
+    y: from.y + direction.y * length,
+  }
+  return distanceBetween(at, closestPointOnSegment(at, from, end)) <
+    CHUNK_BODY_PX + PLAYER_RADIUS + DODGE_MARGIN_PX
+    ? offLine(from, direction, at)
+    : undefined
+}
+
+const globMarkAt = (world: World, at: Vector): Vector | undefined => {
+  if (world.boss._tag !== 'Fighting') {
+    return undefined
+  }
+  const mark = Array.findFirst(world.boss.globs, glob =>
+    glob._tag === 'Flying'
+      ? distanceBetween(at, glob.to) <
+        BOSS_RULES.spitRadius + PLAYER_RADIUS + DODGE_MARGIN_PX
+      : distanceBetween(at, glob.at) < BOSS_RULES.puddleRadius + 2,
+  )
+  return Option.getOrUndefined(
+    Option.map(mark, glob => (glob._tag === 'Flying' ? glob.to : glob.at)),
+  )
+}
+
+// NOTE: the step a bot at `at` takes off one of his tells, or none with
+// no tell on it. Standing still is a step: outside a winding ring it waits
+// there rather than walk in.
+export const chunkDodge: {
+  (at: Vector): (world: World) => Vector | undefined
+  (world: World, at: Vector): Vector | undefined
+} = Function.dual(2, (world: World, at: Vector): Vector | undefined => {
+  if (world.boss._tag !== 'Fighting') {
+    return undefined
+  }
+  const maybeBody = maybeChunk(world)
+  const mark = globMarkAt(world, at)
+  if (mark !== undefined) {
+    return distanceBetween(at, mark) < 3
+      ? Option.match(maybeBody, {
+          onNone: () => unitAt(0, 1),
+          onSome: chunk => offLine(chunk, awayFrom(chunk, at), at),
+        })
+      : awayFrom(mark, at)
+  }
+  if (Option.isNone(maybeBody)) {
+    return undefined
+  }
+  const chunk = maybeBody.value
+  return BossMove.matchOrElse<Vector | undefined>(
+    world.boss.move,
+    {
+      // NOTE: only a stomp or a slam is a ring on the floor. Through a
+      // belch's or a spit's wind-up the bot keeps fighting.
+      WindingUp: move =>
+        move.attack === 'Stomp' || move.attack === 'Slam'
+          ? distanceBetween(at, chunk) <
+            (move.attack === 'Slam'
+              ? BOSS_RULES.slamRadius
+              : BOSS_RULES.stompRadius) +
+              DODGE_MARGIN_PX
+            ? awayFrom(chunk, at)
+            : ZERO_VECTOR
+          : undefined,
+      Bracing: move =>
+        laneDodge(
+          at,
+          chunk,
+          awayFrom(chunk, move.target),
+          distanceBetween(chunk, move.target) + BOSS_RULES.chargeOvershootPx,
+        ),
+      Rushing: move => laneDodge(at, chunk, move.direction, move.remainingPx),
+    },
+    () => undefined,
+  )
+})
