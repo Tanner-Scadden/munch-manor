@@ -244,7 +244,7 @@ These guide tuning. The code does not enforce them.
 - **Sawtooth intensity.** During a peak, incoming zombie health a second briefly reaches 1.5 to 2.5 times the player's damage a second; during a relax it is near zero.
 - **Telegraph every threat.** Surprise comes from what a warning means, never from a zombie with no warning.
 - **Invisible mercy.** Small hidden help at the edge of death makes close calls more common than deaths.
-- **No rubber banding.** What comes, and from where, is fixed by the seed when Preparation begins.
+- **No rubber banding.** What comes, and from where, is fixed by the seed when Preparation begins. One bend, by the owner's choice (2026-11-10, after the pacing report): the roll weights the spawn doors 2:1 toward the players, so a door in a room a standing player is in, or in an open room beside it, comes up twice as often as one farther off (`src/world/waves/doorWeights.ts`). The weights are read once, as Preparation begins, and fixed for the wave, so a run still replays the same from its seed; they follow where the players stand, never how the run is going.
 - **Measure with the bot, then playtest.** The targets are for the bot, not for people. Since 2026-10-31 the default bot plays like a person (late reactions, trailing aim, a narrow eye) for Easy and Normal, and the old sharp bot (`AIM=sharp`) stands in for a skilled player on Hard and Nightmare.
 
 #### How balance is checked
