@@ -80,7 +80,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     id: 'Swap',
     action: 'Swap',
     keyboard: input(
-      'Q switches guns, R reloads. Ammo never runs out.',
+      'Q switches guns, 1 and 2 pick one, R reloads. Ammo never runs out.',
       HINT_ICON_SPRITES.KeyQ,
     ),
     touch: input(
@@ -92,7 +92,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     id: 'Knife',
     action: KNIFE_NAME,
     keyboard: input(
-      'Press F to draw it, then fire to stab.',
+      'Press F or 3 to draw it, then fire to stab.',
       HELP_DEMO_SPRITES.Knife,
     ),
     touch: input(
@@ -164,6 +164,7 @@ type ExtraKey = Readonly<{ key: string; action: string }>
 // every key still has a home on the screen that teaches the controls.
 const EXTRA_KEYS: Array.NonEmptyReadonlyArray<ExtraKey> = [
   { key: 'R', action: 'reload' },
+  { key: '1 2 3', action: 'pick a slot' },
   { key: 'G', action: 'next trap' },
   { key: 'Enter', action: 'start' },
   { key: 'Esc', action: 'pause' },

@@ -133,6 +133,29 @@ describe('player 2 on IJKL', () => {
     }),
   )
 
+  // NOTE: player 3's block holds the numpad's 1 to 3, so they stay theirs
+  // and never draw player 1's guns; the top row's 1 to 3 are player 1's.
+  it.effect("player 3's numpad 3 draws their knife, not player 1's", () =>
+    Effect.gen(function* () {
+      const before = yield* fighting(3)
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(before),
+        press('Numpad3'),
+        release('Numpad3'),
+        Story.model(current => {
+          expect(mateAt(current, 2).player.wield).toBe('Melee')
+          expect(focusOf(current).player.wield).toBe('Gun')
+        }),
+        press('Digit3'),
+        release('Digit3'),
+        Story.model(current => {
+          expect(focusOf(current).player.wield).toBe('Melee')
+        }),
+      )
+    }),
+  )
+
   it.effect('the break ends once both players press READY', () =>
     Effect.gen(function* () {
       const run = yield* started(2)

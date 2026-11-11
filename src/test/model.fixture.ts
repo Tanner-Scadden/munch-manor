@@ -358,6 +358,12 @@ export const withPlayerAt: {
   }),
 )
 
+// NOTE: the melee slot in hand, the knife or the Pan, with the guns kept.
+export const withKnifeOut = (base: Model): Model =>
+  modifyFocus(base, {
+    player: player => modifyFields(player, { wield: () => 'Melee' }),
+  })
+
 export const withArsenal: {
   (arsenal: Arsenal): (base: Model) => Model
   (base: Model, arsenal: Arsenal): Model

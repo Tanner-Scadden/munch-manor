@@ -42,6 +42,24 @@ const ACTIONS: ReadonlyArray<readonly [keyof ActionKeys, SeatAction]> = [
   ['ready', SeatAction.Ready()],
 ]
 
+// NOTE: the number keys pick a slot outright: 1 and 2 a gun, 3 the melee
+// slot, as F does. Player 1's alone: a couch player's own block takes the
+// numpad's in couch play, ahead of these (src/app/update/play.ts).
+const SLOT_KEYS: ReadonlyArray<readonly [string, SeatAction]> = [
+  ['Digit1', SeatAction.Draw({ slot: 'First' })],
+  ['Numpad1', SeatAction.Draw({ slot: 'First' })],
+  ['Digit2', SeatAction.Draw({ slot: 'Second' })],
+  ['Numpad2', SeatAction.Draw({ slot: 'Second' })],
+  ['Digit3', SeatAction.Melee()],
+  ['Numpad3', SeatAction.Melee()],
+]
+
+const slotKeyAction = (code: string): Option.Option<SeatAction> =>
+  Option.map(
+    Array.findFirst(SLOT_KEYS, ([key]) => key === code),
+    ([, action]) => action,
+  )
+
 // NOTE: at a purchasable the interact key is held to buy (src/world/shop/purchase.ts),
 // so READY's key, the same key, starts nothing there. While downed it
 // shouts MEDIC! and nothing else, even while the last shout cools down. `seat` is the World as the
@@ -72,10 +90,13 @@ export const keyActionOf: {
     ),
 )
 
-// NOTE: single player's and co-op's own seat: the usual keys.
+// NOTE: single player's and co-op's own seat: the usual keys and the
+// number keys.
 export const playerKeyAction: {
   (code: string): (model: World) => Option.Option<SeatAction>
   (model: World, code: string): Option.Option<SeatAction>
 } = Function.dual(2, (model: World, code: string): Option.Option<SeatAction> =>
-  keyActionOf(model, PLAYER_ACTION_KEYS, code),
+  Option.orElse(keyActionOf(model, PLAYER_ACTION_KEYS, code), () =>
+    slotKeyAction(code),
+  ),
 )

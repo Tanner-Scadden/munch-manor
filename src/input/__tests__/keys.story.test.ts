@@ -96,16 +96,14 @@ describe('one key per action: removed keys do nothing', () => {
     ),
   )
 
-  it.effect('E, 1, and 2 do not swap or pick a gun', () =>
-    Effect.forEach(['KeyE', 'Digit1', 'Digit2'], code =>
-      Story.story(
-        APPLICATION,
-        Story.given(fighting),
-        tap(code),
-        Story.model(({ seats: [{ player }] }) => {
-          expect(player.arsenal).toEqual(focusOf(fighting).player.arsenal)
-        }),
-      ),
+  it.effect('E does not swap a gun', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
+      tap('KeyE'),
+      Story.model(({ seats: [{ player }] }) => {
+        expect(player.arsenal).toEqual(focusOf(fighting).player.arsenal)
+      }),
     ),
   )
 

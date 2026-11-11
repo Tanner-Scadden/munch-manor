@@ -252,10 +252,10 @@ describe('Touch gun slots', () => {
         measureSurface,
         Scene.expect(
           Scene.role('button', { name: `Reload the ${pistolName}` }),
-        ).toHaveAttr('aria-keyshortcuts', 'R'),
+        ).toHaveAttr('aria-keyshortcuts', 'R 1'),
         Scene.expect(
           Scene.role('button', { name: `Switch to the ${shotgunName}` }),
-        ).toHaveAttr('aria-keyshortcuts', 'Q'),
+        ).toHaveAttr('aria-keyshortcuts', 'Q 2'),
         Scene.expect(Scene.role('button', { name: /^Swap to/ })).toBeAbsent(),
         Scene.click(
           Scene.role('button', { name: `Switch to the ${shotgunName}` }),
