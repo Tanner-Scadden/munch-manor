@@ -269,11 +269,13 @@ Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubb
 
 Proposed by the owner on 2026-11-09 and built on 2026-11-10: the card rises from your pocket after the slam, writes on the list, and folds into the HUD's outlines at 4.5 s (or at a tap). Once the doors slam, the first thing in the run is the dare card: you pull it from your pocket (or it waits on the table at your place, beside the place card). It opens to your friends' scrawl, which is this run's list, mostly pictures:
 
-> I DARE YOU to bring back: (the icons of this run's things)
-> AND Uncle Chunk's hat!!
+> I DARE YOU TO FIND: (the icons of this run's room things, each in a pencil box with a ?)
+> THEN GET OUT! (a doodle of the front door)
 > (a doodle of a chicken) no chickening out
 
-Then the card folds itself into the HUD, and its icons become the empty outlines that fill in as you find things. It is how a new player learns the goal without being told. In co-op every player holds a card with the crew's shared list. Alone, the first break waits while the card is read; in co-op the room never waits.
+The owner's playtest on 2026-11-10 found the first card did not say what to do, so it now says the goal outright: find these, then get out. Each thing pops on in its box one at a time with a pencil scratch, the ? marking it as still to find. The card names only the room things: Uncle Chunk is the final boss, not a line on the dare (owner, 2026-11-10).
+
+Then the card folds itself into the HUD: the list opens in the corner and each icon flies into its own empty outline, which fills in as you find things. It is how a new player learns the goal without being told. The first time alone (the `dareCard` lesson, saved), the card waits for a key or a tap, taken only after 1.5 s so a key mashed through the intro does not throw it away unread, and a pulsing ANY KEY or TAP shows once the list is written; after that it folds on its own. In co-op every player holds a card with the crew's shared list, always on its clock. Alone, the first break waits while the card is read; in co-op the room never waits.
 
 ### What the dare asks for changes every run
 

@@ -15,6 +15,7 @@ import {
   resumeAudio,
 } from '../../audio/audio'
 import { maybeTuneCue } from '../../features/dare/musicBox'
+import { scratchesBetween } from '../../features/dare/pocketCard'
 import {
   maybeLandedBetween,
   prizeSpotOf,
@@ -308,6 +309,17 @@ export const mendCues: {
       variation: positionVariation(spot.x, spot.y),
     })),
   ),
+)
+
+// NOTE: the dare card from the pocket scratches each thing on in pencil
+// (src/features/dare/pocketCard.ts), read from its age.
+export const pocketScratchCues: {
+  (after: Model): (before: Model) => ReadonlyArray<SoundCue>
+  (before: Model, after: Model): ReadonlyArray<SoundCue>
+} = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
+  scratchesBetween(before, after) > 0
+    ? [{ sound: 'Scribble' as const, variation: 0 }]
+    : [],
 )
 
 // NOTE: the kitchen behind its boards rattles or simmers now and then when

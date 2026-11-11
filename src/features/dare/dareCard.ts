@@ -111,16 +111,37 @@ export const pocketHeaderOf: {
   return { x: box.right - POCKET_PAD, y: box.top + POCKET_PAD + 2 }
 })
 
-// NOTE: the card in your pocket folds into the shut chip's card
-// (src/features/dare/pocketCardView.ts): each picture flies there, one spot
-// for all of them, and fades as it lands.
-export const pocketCardSpotOf: {
-  (layout: HudLayout): (model: Model) => Vector
-  (model: Model, layout: HudLayout): Vector
-} = Function.dual(2, (model: Model, layout: HudLayout): Vector => {
-  const box = boxOf(dareCardOf(model), layout, 'Shut')
-  return { x: box.left + POCKET_PAD, y: box.top + POCKET_PAD }
-})
+// NOTE: where each picture of the card in your pocket lands as it folds
+// (src/features/dare/pocketCardView.ts), the hat last: inside its own slot
+// on the open list, at the slot's size, so the player sees the card become
+// the list; or, with the pocket shut (a banner over the list), all on the
+// shut chip's card.
+export const pocketSlotSpotsOf: {
+  (
+    layout: HudLayout,
+    pocket: DarePocket,
+  ): (model: Model) => ReadonlyArray<Vector>
+  (model: Model, layout: HudLayout, pocket: DarePocket): ReadonlyArray<Vector>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    layout: HudLayout,
+    pocket: DarePocket,
+  ): ReadonlyArray<Vector> => {
+    const card = dareCardOf(model)
+    const box = boxOf(card, layout, pocket)
+    return pocket === 'Shut'
+      ? Array.map(card, () => ({
+          x: box.left + POCKET_PAD,
+          y: box.top + POCKET_PAD,
+        }))
+      : Array.map(card, (_, index) => ({
+          x: box.left + POCKET_PAD + index * SLOT_STRIDE + 1,
+          y: box.top + POCKET_PAD + DARE_CARD_HEIGHT + HEADER_GAP + 1,
+        }))
+  },
+)
 
 // A rim one pixel wide with its corners cut, round a dark fill.
 const frameShapes = (

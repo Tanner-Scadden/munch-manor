@@ -86,6 +86,7 @@ import {
   playStartSoundWhen,
   playSwapSoundWhen,
   playTune,
+  pocketScratchCues,
   toggleAudioFromKey,
   unlockAudio,
 } from './sound'
@@ -318,7 +319,11 @@ export const tickFrame = (deltaTime: number) =>
     if (isDebutCardBlocking(model)) {
       return toModel(ageDebutCard(model, clampFrameDelta(deltaTime)))
     } else if (isPocketCardBlocking(model)) {
-      return toModel(agePocketCard(model, clampFrameDelta(deltaTime)))
+      const aged = agePocketCard(model, clampFrameDelta(deltaTime))
+      return Update.combineSteps([
+        toModel(aged),
+        playSounds(pocketScratchCues(model, aged)),
+      ])
     } else if (isCaseCardBlocking(model)) {
       return toModel(ageCaseCard(model, clampFrameDelta(deltaTime)))
     } else if (isArriving(model.phase)) {
@@ -359,6 +364,7 @@ export const tickFrame = (deltaTime: number) =>
           ...fridgeLandCues(model, advanced),
           ...mendCues(model, advanced),
           ...kitchenCues(model, advanced),
+          ...pocketScratchCues(model, advanced),
         ]),
         playTune(model, advanced),
       ])

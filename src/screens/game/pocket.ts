@@ -21,12 +21,17 @@ import { maybeBannerBand } from './overlay'
 // search, once the card from the slam is put away (it folds into the shut
 // chip), and only while no banner (WAVE CLEARED, GET READY, a new zombie)
 // is in the rows the open list would cover. Through a wave it stays shut.
+// It opens as the card folds, a banner or not, so each picture flies into
+// its own slot, and then shuts again if a banner is there.
 export const pocketOf = (model: Model): DarePocket => {
   if (
     !Phase.isAnyOf(['Preparation'])(model.phase) ||
-    !PocketCard.isAnyOf(['Pocketed'])(model.pocketCard)
+    PocketCard.isAnyOf(['Reading'])(model.pocketCard)
   ) {
     return 'Shut'
+  }
+  if (PocketCard.isAnyOf(['Folding'])(model.pocketCard)) {
+    return 'Open'
   }
   const screen = screenOf(model)
   const open = pocketBoxOf(model, hudLayoutFor(screen), 'Open')

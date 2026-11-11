@@ -18,6 +18,7 @@ export const learnedSave: PlayerSave = {
       dareKey: 'Learned',
       rattles: 'Learned',
       displayCase: 'Learned',
+      dareCard: 'Learned',
     },
     trapHint: 'Seen',
     introducedKinds: ZOMBIE_KIND_ORDER,

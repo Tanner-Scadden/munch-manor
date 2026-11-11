@@ -1151,4 +1151,16 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
+  // NOTE: a pencil scratching a thing onto the dare card: two quick strokes
+  // of high, papery noise, the second a little lower.
+  Scribble: {
+    variationCents: 180,
+    tones: [],
+    noises: Array.map([0, 0.07], (start, index) => ({
+      filter: 'bandpass' as const,
+      quality: 2,
+      cutoff: [at(0, 5200 - index * 900), at(0.05, 3400 - index * 600)],
+      envelope: delayedEnvelope(0.16, 0.004, 0.05, start),
+    })),
+  },
 }

@@ -180,12 +180,19 @@ describe("an online co-op run's intro", () => {
       ),
   )
 
+  // NOTE: a first-timer's card too: alone it would wait past a gate for a
+  // key, but the room never waits, so a key folds it once it has opened.
   it.effect(
     "the dare card comes out on the room's slam, and the room never waits for it",
     () =>
       Story.story(
         APPLICATION,
-        Story.given(inRun(arrivingAt(slamAtMs('Full') + 20))),
+        Story.given(
+          modifyFields(inRun(arrivingAt(slamAtMs('Full') + 20)), {
+            lessons: lessons =>
+              modifyFields(lessons, { dareCard: () => Lesson.Pending() }),
+          }),
+        ),
         Story.message(roomFrame(100)),
         changeModel(current => showing(current, pastArrival(fresh))),
         Story.message(roomFrame(200)),

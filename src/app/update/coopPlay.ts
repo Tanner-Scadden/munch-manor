@@ -54,6 +54,7 @@ import {
   playSounds,
   playStartSoundWhen,
   playTune,
+  pocketScratchCues,
   shotSoundCue,
 } from './sound'
 import { toModel, unchanged } from './step'
@@ -354,6 +355,7 @@ const drawTraced = ({
         ...fridgeLandCues(base, drawn),
         ...mendCues(base, drawn),
         ...kitchenCues(base, drawn),
+        ...pocketScratchCues(base, drawn),
       ]),
       playTune(base, drawn),
       playIntroSounds(base),

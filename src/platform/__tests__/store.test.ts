@@ -931,6 +931,7 @@ const migratedLiveSave: PlayerSave = {
       dareKey: 'Pending',
       rattles: 'Pending',
       displayCase: 'Pending',
+      dareCard: 'Pending',
     },
     trapHint: 'Seen',
     introducedKinds: ['Shambler', 'Runner', 'Tank'],
