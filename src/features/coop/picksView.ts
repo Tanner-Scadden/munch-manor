@@ -16,7 +16,7 @@ import {
 import { callingOfMember } from '../../art/seatLooks'
 import { specialsNoteOf } from '../../domain/callingSpecials'
 import type { NudgeReason, Room } from '../../domain/coopRoom'
-import { iconView } from '../../ui/menuParts'
+import { iconView, skullFaceViews } from '../../ui/menuParts'
 import {
   bonusChipView,
   modifierFaceView,
@@ -138,17 +138,14 @@ const skullPickView = (
         h,
       ),
     ],
-    [
-      iconView(
-        'coop-pick-icon',
-        isLocked
-          ? PADLOCK_ICON
-          : isLit
-            ? SKULL_ICONS[lobby.difficulty]
-            : SKULL_OFF_ICON,
-        h,
-      ),
-    ],
+    skullFaceViews(
+      {
+        className: 'coop-pick-icon',
+        icon: isLit ? SKULL_ICONS[lobby.difficulty] : SKULL_OFF_ICON,
+        isLocked,
+      },
+      h,
+    ),
   )
 }
 

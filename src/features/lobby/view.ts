@@ -15,7 +15,6 @@ import {
   CLOSE_ICON,
   ENDLESS_ICON,
   MANOR_ICON,
-  PADLOCK_ICON,
   SKULL_ICONS,
   SKULL_OFF_ICON,
 } from '../../art/icons'
@@ -32,6 +31,7 @@ import {
   iconView,
   newPipView,
   rankTagView,
+  skullFaceViews,
 } from '../../ui/menuParts'
 import {
   bonusChipView,
@@ -437,8 +437,8 @@ const skullIndexOf = (difficulty: Difficulty): number =>
   )
 
 // NOTE: as many skulls lit as the level, as on the home menu used to show
-// it. Nightmare is a padlock until a Hard campaign win, and says so, with
-// its NEW pip on the run it opens.
+// it. Nightmare is a dim skull with a padlock badge until a Hard campaign
+// win, and says so, with its NEW pip on the run it opens.
 const skullPickView = (
   picks: LobbyPicks,
   difficulty: Difficulty,
@@ -470,13 +470,12 @@ const skullPickView = (
       h.OnClick(Message.ClickedDifficultyButton({ difficulty })),
     ],
     [
-      iconView(
-        'coop-pick-icon',
-        isLockedOut
-          ? PADLOCK_ICON
-          : isLit
-            ? SKULL_ICONS[chosen]
-            : SKULL_OFF_ICON,
+      ...skullFaceViews(
+        {
+          className: 'coop-pick-icon',
+          icon: isLit ? SKULL_ICONS[chosen] : SKULL_OFF_ICON,
+          isLocked: isLockedOut,
+        },
         h,
       ),
       ...(isFresh ? [newPipView(h)] : []),

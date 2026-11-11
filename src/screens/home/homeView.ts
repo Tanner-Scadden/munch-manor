@@ -19,7 +19,6 @@ import {
   KILLS_ICON,
   MUNCHOPEDIA_ICON,
   NEWS_ICON,
-  PADLOCK_ICON,
   PLAY_ICON,
   SETTINGS_ICON,
   SKIP_ICON,
@@ -54,7 +53,12 @@ import { DeviceMessage } from '../../platform/message'
 import type { TutorialChoice } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
 import { closeButtonView } from '../../ui/cornerButtons'
-import { iconView, isKeyboard, keyCapView } from '../../ui/menuParts'
+import {
+  iconView,
+  isKeyboard,
+  keyCapView,
+  skullFaceViews,
+} from '../../ui/menuParts'
 import { rankChipView } from '../../ui/rankBadgeView'
 import { rankOf, totalPointsOf } from '../../world/heroes/rank'
 import { MULTIPLAYER_NAME, TUTORIAL_CHOICE_NAMES } from '../../world/names'
@@ -137,8 +141,8 @@ const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   )
 
 // NOTE: a difficulty reads as a row of four skulls: as many lit as the
-// level, each in that level's color and face, and the fourth padlocked
-// while Nightmare is locked.
+// level, each in that level's color and face, and the fourth dim with a
+// padlock badge while Nightmare is locked.
 const skullMeterView = (
   model: Model,
   difficulty: Difficulty,
@@ -153,7 +157,13 @@ const skullMeterView = (
     [h.Class('skull-meter'), h.AriaHidden(true)],
     Array.map(DIFFICULTY_ORDER, (level, index) =>
       level === 'Nightmare' && isLocked(model.difficulty, 'Nightmare')
-        ? iconView('skull skull-locked', PADLOCK_ICON, h)
+        ? h.span(
+            [h.Class('skull-slot')],
+            skullFaceViews(
+              { className: 'skull', icon: SKULL_OFF_ICON, isLocked: true },
+              h,
+            ),
+          )
         : iconView(
             index < litCount ? 'skull skull-lit' : 'skull',
             index < litCount ? SKULL_ICONS[difficulty] : SKULL_OFF_ICON,

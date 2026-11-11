@@ -3,6 +3,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import type { Model } from '../app/model'
 import { PROP_ICONS } from '../art/callingArt'
+import { PADLOCK_ICON, SKULL_OFF_ICON } from '../art/icons'
 import { badgeImage } from '../art/rankArt'
 import type { Calling } from '../shared/playerData'
 import { badgeTierOf } from '../world/heroes/rank'
@@ -26,6 +27,44 @@ export const iconView: {
       h.AriaHidden(true),
       h.Style({ backgroundImage: icon }),
     ]),
+)
+
+// NOTE: one level's skull in a row of difficulty skulls. A locked level
+// stays a skull, dim, with a padlock pinned to its corner, so the row still
+// reads as four rising levels. The badge is the skull's sibling, so the
+// skull's own dimming never greys it.
+export const skullFaceViews: {
+  <Message>(
+    h: HtmlBuilder<Message>,
+  ): (face: {
+    readonly className: string
+    readonly icon: string
+    readonly isLocked: boolean
+  }) => ReadonlyArray<Html>
+  <Message>(
+    face: {
+      readonly className: string
+      readonly icon: string
+      readonly isLocked: boolean
+    },
+    h: HtmlBuilder<Message>,
+  ): ReadonlyArray<Html>
+} = Function.dual(
+  2,
+  <Message>(
+    face: {
+      readonly className: string
+      readonly icon: string
+      readonly isLocked: boolean
+    },
+    h: HtmlBuilder<Message>,
+  ): ReadonlyArray<Html> =>
+    face.isLocked
+      ? [
+          iconView(face.className, SKULL_OFF_ICON, h),
+          iconView('lock-badge', PADLOCK_ICON, h),
+        ]
+      : [iconView(face.className, face.icon, h)],
 )
 
 // CALLING PROPS
