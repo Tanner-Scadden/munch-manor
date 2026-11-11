@@ -15,6 +15,7 @@ import {
   DifficultyCard,
   type PlayerBests,
   QuestTour,
+  RattlesIntro,
   Tour,
   freshLessons,
 } from '../domain/clientSchema'
@@ -812,6 +813,7 @@ export const saveOf = (model: Model): PlayerSave => ({
       openBreak: savedLesson(model.lessons.openBreak),
       dareTour: savedLesson(model.lessons.dareTour),
       dareKey: savedLesson(model.lessons.dareKey),
+      rattles: savedLesson(model.lessons.rattles),
     },
     trapHint: savedTrapHint(model.trapHint),
     introducedKinds: model.introducedKinds,
@@ -867,6 +869,7 @@ const restoreLessons = (lessons: Lessons, saved: SavedLessons): Lessons =>
     openBreak: restoreLesson(saved.openBreak),
     dareTour: restoreLesson(saved.dareTour),
     dareKey: restoreLesson(saved.dareKey),
+    rattles: restoreLesson(saved.rattles),
   })
 
 const isZombieKind = Schema.is(ZombieKind)
@@ -1024,6 +1027,7 @@ export const forgetTutorial = (model: Model): Model =>
     trapHint: () => TrapHint.Unseen(),
     introSeen: () => 'Unseen',
     firstBreakQuest: () => QuestTour.Waiting(),
+    rattlesIntro: () => RattlesIntro.Waiting(),
     kitchenTour: () => Tour.Waiting(),
     introducedKinds: () => [],
     debutCard: () => DebutCard.Hidden(),

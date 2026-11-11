@@ -281,17 +281,28 @@ export const Tour = defineTaggedUnion({
 export type Tour = typeof Tour.Type
 
 // NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts),
-// a Tour with one more stretch: once the key, the trap, and the case are
+// a Tour with one more stretch: once the key, the padlock, and the case are
 // done, it points at the dare card on the HUD for a moment (`Looking`)
-// before it ticks off.
+// before it ticks off. `isLockSeen` keeps the padlock step done once the
+// player has walked up to it, wherever they go after.
 export const QuestTour = defineTaggedUnion({
   Waiting: {},
-  Running: {},
+  Running: { isLockSeen: Schema.Boolean },
   Looking: { ageMs: MillisNumber },
   Done: { ageMs: MillisNumber },
   Over: {},
 })
 export type QuestTour = typeof QuestTour.Type
+
+// NOTE: Rattles' hello (src/features/onboarding/rattlesIntro.ts): waiting
+// for the break he meets a player in, talking through his few lines from
+// his trunk by the front door, or over for this run.
+export const RattlesIntro = defineTaggedUnion({
+  Waiting: {},
+  Talking: { ageMs: MillisNumber },
+  Over: {},
+})
+export type RattlesIntro = typeof RattlesIntro.Type
 
 export const HintBand = Schema.Literals(['Top', 'Bottom'])
 export type HintBand = typeof HintBand.Type
@@ -316,6 +327,7 @@ export const freshLessons: Lessons = {
   openBreak: Lesson.Pending(),
   dareTour: Lesson.Pending(),
   dareKey: Lesson.Pending(),
+  rattles: Lesson.Pending(),
 }
 
 // NOTE: particles, shake, popups, coin bursts, trap dust, and the random

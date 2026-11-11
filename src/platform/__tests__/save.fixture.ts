@@ -16,6 +16,7 @@ export const learnedSave: PlayerSave = {
       openBreak: 'Learned',
       dareTour: 'Learned',
       dareKey: 'Learned',
+      rattles: 'Learned',
     },
     trapHint: 'Seen',
     introducedKinds: ZOMBIE_KIND_ORDER,

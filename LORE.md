@@ -215,7 +215,7 @@ What this changes is in "Escape the manor" in `GAME_DESIGN.md`: the shop, Rattle
 
 ### Rattles
 
-Built on 2026-11-10. With no shop, Rattles has no stall. He stays as a character (owner, 2026-11-10): the first daredevil, from 1924, who never got out and hollers hints in his bubble, pointing at the thing he means: "SPOON'S OVER THERE. PROBABLY.", "I LOST THAT SPOON IN 1924.", "SOMEBODY'S WEARING IT. RUDE.", "LAST THING: HIS HAT.", "NO HINTS. TRIPLE DOG DARE." His lines are drafts for review, and whether his look changes, Demi is reinventing.
+Built on 2026-11-10. With no shop, Rattles has no stall. He stays as a character (owner, 2026-11-10): the first daredevil, from 1924, who never got out and hollers hints in his bubble, pointing at the thing he means: "SPOON'S OVER THERE. PROBABLY.", "I LOST THAT SPOON IN 1924.", "SOMEBODY'S WEARING IT. RUDE.", "LAST THING: HIS HAT.", "NO HINTS. TRIPLE DOG DARE." His lines are drafts for review, and whether his look changes, Demi is reinventing. He sits on a trunk by the front door he never got out of, and the first break after the practice wave he says hello: "PSST! OVER HERE, BY THE DOOR!", "NAME'S RATTLES. DARED IN 1924.", "NEVER GOT OUT. HEH. GOOD LUCK!" (owner, 2026-11-10: he felt random where he sat).
 
 ### PLAY is the dare, the lobby is the dare card
 

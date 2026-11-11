@@ -852,6 +852,7 @@ export const SavedLessons = Schema.Struct({
   openBreak: SavedLesson,
   dareTour: LaterLesson,
   dareKey: LaterLesson,
+  rattles: LaterLesson,
 })
 export type SavedLessons = typeof SavedLessons.Type
 

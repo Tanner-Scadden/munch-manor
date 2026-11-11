@@ -1,4 +1,4 @@
-import { Array, Function, Option, Record, Result } from 'effect'
+import { Array, Function, Option, Order, Record, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
@@ -10,8 +10,10 @@ import {
   GameEvent,
   Phase,
   Purchasable,
+  type Vector,
 } from '../schema/worldSchema'
 import type { Offer } from '../shop/purchase'
+import { distanceBetween } from '../step/geometry'
 import { joinNewDoors } from '../waves/waves'
 import {
   type Box,
@@ -159,6 +161,64 @@ export const exitOffers = (model: World): ReadonlyArray<Offer> =>
         },
       }))
     : []
+
+// THE PADLOCKS THE TUTORIAL POINTS AT
+
+export type Padlock = Readonly<{
+  exit: ExitId
+  price: number
+  box: Box
+}>
+
+// NOTE: the boarded exits a player could open, sale or not, each with what
+// its padlock asks now (exitPriceFor, so a retune of the prices flows
+// through).
+const padlocksOf = (model: World): ReadonlyArray<Padlock> =>
+  Array.map(closedExitBoxes(levelOf(model)), ({ exit, box }) => ({
+    exit,
+    price: exitPriceFor(model, exit),
+    box,
+  }))
+
+const boxCenterOf = (box: Box): Vector => ({
+  x: (box.left + box.right) / 2,
+  y: (box.top + box.bottom) / 2,
+})
+
+// NOTE: the padlock asking the fewest keys, the nearest to `from` among
+// those asking as few: the one the tutorial points a new player at.
+export const maybeCheapestPadlock: {
+  (from: Vector): (model: World) => Option.Option<Padlock>
+  (model: World, from: Vector): Option.Option<Padlock>
+} = Function.dual(2, (model: World, from: Vector): Option.Option<Padlock> =>
+  pipe(
+    padlocksOf(model),
+    Array.sort(
+      Order.combine(
+        Order.mapInput(Order.Number, ({ price }: Padlock) => price),
+        Order.mapInput(Order.Number, ({ box }: Padlock) =>
+          distanceBetween(boxCenterOf(box), from),
+        ),
+      ),
+    ),
+    Array.head,
+  ),
+)
+
+// NOTE: whether any boarded exit has been opened this run, by keys or by
+// the kitchen tour's free boards. A secret shelf is not boards.
+export const hasOpenedBoards = (model: World): boolean =>
+  Array.some(
+    levelOf(model).exits,
+    ({ isOpen, opener }) => isOpen && opener === 'Boards',
+  )
+
+// NOTE: where the tutorial's arrow bobs for a padlock: over the middle of
+// its boards' top.
+export const padlockMarkOf = ({ box }: Padlock): Vector => ({
+  x: Math.round((box.left + box.right) / 2),
+  y: box.top,
+})
 
 // NOTE: in the breaks before the kitchen's first, a padlock hangs on the
 // boards. From then on the price tag is the purchasable's (src/world/shop/purchase.ts),

@@ -118,6 +118,7 @@ import { waveLabel } from './overlay'
 import {
   dareHintShapes,
   kitchenBubbleShapes,
+  rattlesIntroShapes,
   soupBubbleShapes,
 } from './stallBubble'
 
@@ -891,6 +892,7 @@ const playHudShapes = (
   ...kitchenBubbleShapes(model, camera),
   ...soupBubbleShapes(model, camera),
   ...dareHintShapes(model, camera),
+  ...rattlesIntroShapes(model, camera),
   ...roundHudShapes(model, layout),
   ...roomsCounterShapes(model, layout.scoreRight, layout.roomsTop),
   ...dareCardShapes(model, layout),

@@ -721,7 +721,9 @@ export type Lesson = typeof Lesson.Type
 
 // NOTE: `dareTour` is the guided first break of the dare
 // (src/features/onboarding/firstBreakQuest.ts) and `dareKey` its skeleton key
-// on the dining room floor (src/world/run/tutorialRules.ts).
+// on the dining room floor (src/world/run/tutorialRules.ts). `rattles` is
+// meeting Rattles by the front door, his hello in the first break after the
+// practice wave (src/features/onboarding/rattlesIntro.ts).
 export const Lessons = Schema.Struct({
   move: Lesson,
   fire: Lesson,
@@ -732,6 +734,7 @@ export const Lessons = Schema.Struct({
   openBreak: Lesson,
   dareTour: Lesson,
   dareKey: Lesson,
+  rattles: Lesson,
 })
 export type Lessons = typeof Lessons.Type
 

@@ -6,6 +6,7 @@ import {
   KitchenCall,
   PocketCard,
   PrizeFlight,
+  RattlesIntro,
   RunTally,
   cosmeticSeedOf,
   noRankPaid,
@@ -96,6 +97,7 @@ export type RunFields = Pick<
   | 'pocketCard'
   | 'ovens'
   | 'debutCard'
+  | 'rattlesIntro'
   | 'hintBand'
   | 'stats'
   | 'runTally'
@@ -161,6 +163,7 @@ export const freshRun = (model: Model): RunFields => ({
   pocketCard: PocketCard.Pocketed(),
   ovens: freshOvens(START_LEVEL),
   debutCard: DebutCard.Hidden(),
+  rattlesIntro: RattlesIntro.Waiting(),
   hintBand: 'Top',
   stats: freshStats,
   runTally: RunTally.Uncounted(),

@@ -65,6 +65,8 @@ const pickNormal = Story.message(
 // NOTE: whether the same player, at the break before the shop's first wave,
 // a frame in so the guided first break has had its chance to start, is
 // guided through it.
+// NOTE: Rattles' hello comes before the guided break; this asks only
+// about the break, so he has been met.
 const isGuidedFirstBreakOn = (current: Model) =>
   Story.story(
     APPLICATION,
@@ -77,6 +79,10 @@ const isGuidedFirstBreakOn = (current: Model) =>
             durationMs: 20_000,
             spawns: [DISTANT_SPAWN],
             clock: BreakClock.Waiting({ elapsedMs: 0 }),
+          }),
+        lessons: lessons =>
+          modifyFields(lessons, {
+            rattles: () => Lesson.Learned({ atMs: 0 }),
           }),
       }),
     ),
@@ -188,6 +194,7 @@ describe('the first-run card', () => {
               openBreak: 'Learned',
               dareTour: 'Learned',
               dareKey: 'Learned',
+              rattles: 'Pending',
             })
           }),
           writeSave(),

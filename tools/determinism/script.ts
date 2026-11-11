@@ -162,6 +162,7 @@ const pastTutorial = (model: Model): Model =>
         openBreak: () => Lesson.Learned({ atMs: 0 }),
         dareTour: () => Lesson.Learned({ atMs: 0 }),
         dareKey: () => Lesson.Learned({ atMs: 0 }),
+        rattles: () => Lesson.Learned({ atMs: 0 }),
       }),
   })
 

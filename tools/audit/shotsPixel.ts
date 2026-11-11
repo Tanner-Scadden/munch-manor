@@ -37,7 +37,7 @@ import {
 import { attempt, evaluateAs } from './page'
 
 const LEARNED =
-  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey'
+  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
 const LOBBY_PICK = `${LEARNED}&rank=4200&calling=Handyman&newsseen`
 const FOUND =
   'bests&kills=Shambler:1203,Runner:140,Tank:12,Exploder:9,Thrower:3,Boss:2&opened=Shambler,Tank'

@@ -37,7 +37,7 @@ import {
 import { attempt, evaluateAs } from './page'
 
 const LEARNED =
-  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey'
+  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
 const BUTTONS = ['#end-retry-button', '#end-menu-button', '#end-share-button']
 
 type Scene = Readonly<{

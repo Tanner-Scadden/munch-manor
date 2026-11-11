@@ -10,6 +10,7 @@ import {
   CaseState,
   CrateStock,
   Feat,
+  Lesson,
   type Model,
   Party,
   Phase,
@@ -39,9 +40,13 @@ import {
 } from '../../../test/testing'
 import { asTutorialDone, asVeteran } from '../../../test/veteran'
 import { caseBoxOf } from '../../../world/feats/caseSpots'
-import { crateSpotOf } from '../../../world/gear/crates'
 import { heldKeys } from '../../../world/keys/keys'
 import { levelOf } from '../../../world/level/arena'
+import {
+  exitPriceFor,
+  maybeCheapestPadlock,
+  padlockMarkOf,
+} from '../../../world/level/exits'
 import {
   focusOf,
   modifyFocus,
@@ -58,15 +63,20 @@ import { ZOMBIE_KIND_ORDER } from '../../../world/zombies/zombies'
 import {
   type QuestStep,
   isQuestOnCard,
+  maybeLockProgress,
+  maybePadlockNudge,
   maybeQuestMark,
+  maybeQuestPadlock,
   questStepOf,
 } from '../firstBreakQuest'
 import { isStartWaveBeckoning } from '../onboarding'
 
 // NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts):
-// a new player learns the dare by doing it. Grab the key on the floor, take
-// the trap from the dining room's crate, take the prize from the case that
-// opened in the practice wave, and look at the dare card.
+// a new player learns the dare by doing it. Grab the key on the floor, walk
+// up to the cheapest padlock, take the prize from the case that opened in
+// the practice wave, and look at the dare card. Rattles' hello, which comes
+// first in a new save, has its own tests (rattlesIntro.story.test.ts), so
+// these saves have met him.
 
 const FRAME_MS = FIXED_STEP_MS
 const TICK_MS = 50
@@ -78,6 +88,8 @@ const frame = tick(FRAME_MS)
 // zombie card holds the practice wave.
 const newSave: Model = modifyFields(newPlayerCardSeen, {
   introducedKinds: () => ZOMBIE_KIND_ORDER,
+  lessons: lessons =>
+    modifyFields(lessons, { rattles: () => Lesson.Learned({ atMs: 0 }) }),
 })
 
 const standAt =
@@ -87,6 +99,13 @@ const standAt =
       player: player =>
         modifyFields(player, { x: () => spot.x, y: () => spot.y }),
     })
+
+// NOTE: where a player stands at the cheapest padlock: just below its
+// boards.
+const belowPadlock = (current: Model): Vector => {
+  const { box } = Option.getOrThrow(maybeQuestPadlock(current))
+  return { x: (box.left + box.right) / 2, y: box.bottom + 6 }
+}
 
 // NOTE: where a player stands to take the tour's case: just below its box.
 const belowTutorialCase = (current: Model): Vector => {
@@ -153,7 +172,7 @@ const tourBreak = (base: Model): Model =>
 
 describe('the guided first break', () => {
   it.effect(
-    'walks a new save from the intro and the practice wave through the key, the trap, the case, and the dare card',
+    'walks a new save from the intro and the practice wave through the key, the padlock, the case, and the dare card',
     () =>
       Story.story(
         APPLICATION,
@@ -184,7 +203,9 @@ describe('the guided first break', () => {
           expect(
             Option.map(maybeTutorialCase(current), ({ state }) => state),
           ).toEqual(Option.some(CaseState.Opened({ by: 0 })))
-          expect(current.firstBreakQuest).toEqual(QuestTour.Running())
+          expect(current.firstBreakQuest).toEqual(
+            QuestTour.Running({ isLockSeen: false }),
+          )
           expect(stepOf(current)).toEqual(Option.some('Key'))
           expect(maybeQuestMark(current)).toEqual(
             Option.some(tutorialKeySpotOf(current)),
@@ -197,17 +218,34 @@ describe('the guided first break', () => {
           expect(
             Array.some(current.frameEvents, ({ _tag }) => _tag === 'KeysFound'),
           ).toBe(true)
-          expect(stepOf(current)).toEqual(Option.some('Trap'))
+          expect(stepOf(current)).toEqual(Option.some('Lock'))
+          const padlock = Option.getOrThrow(
+            maybeCheapestPadlock(current, focusOf(current).player),
+          )
           expect(maybeQuestMark(current)).toEqual(
-            Option.some(crateSpotOf(levelOf(current), 'Dining')),
+            Option.some(padlockMarkOf(padlock)),
+          )
+          expect(padlock.price).toBe(exitPriceFor(current, padlock.exit))
+          expect(maybeLockProgress(current)).toEqual(
+            Option.some({
+              box: padlock.box,
+              held: heldKeys(current),
+              price: padlock.price,
+            }),
           )
         }),
-        changeModel(current =>
-          standAt(crateSpotOf(levelOf(current), 'Dining'))(current),
-        ),
+        changeModel(current => standAt(belowPadlock(current))(current)),
         frame,
         Story.model(current => {
-          expect(focusOf(current).trapStock.Barricade).toBe(1)
+          expect(current.firstBreakQuest).toEqual(
+            QuestTour.Running({ isLockSeen: true }),
+          )
+          expect(stepOf(current)).toEqual(Option.some('Case'))
+          expect(maybeLockProgress(current)).toEqual(Option.none())
+        }),
+        changeModel(current => standAt(tutorialKeySpotOf(current))(current)),
+        frame,
+        Story.model(current => {
           expect(stepOf(current)).toEqual(Option.some('Case'))
         }),
         changeModel(current => standAt(belowTutorialCase(current))(current)),
@@ -254,7 +292,7 @@ describe('the guided first break', () => {
         frame,
         Story.model(current => {
           expect(heldKeys(current)).toBe(keys)
-          expect(stepOf(current)).toEqual(Option.some('Trap'))
+          expect(stepOf(current)).toEqual(Option.some('Lock'))
         }),
       )
     }),
@@ -352,10 +390,21 @@ describe('the guided first break', () => {
   it.effect('a tutorial reset plays it again', () =>
     Story.story(
       APPLICATION,
-      Story.given(tourBreak(forgetTutorial(asTutorialDone(newSave)))),
+      Story.given(
+        tourBreak(
+          modifyFields(forgetTutorial(asTutorialDone(newSave)), {
+            lessons: lessons =>
+              modifyFields(lessons, {
+                rattles: () => Lesson.Learned({ atMs: 0 }),
+              }),
+          }),
+        ),
+      ),
       frame,
       Story.model(current => {
-        expect(current.firstBreakQuest).toEqual(QuestTour.Running())
+        expect(current.firstBreakQuest).toEqual(
+          QuestTour.Running({ isLockSeen: false }),
+        )
       }),
     ),
   )
@@ -372,5 +421,79 @@ describe('the guided first break', () => {
         expect(seatStateAt(current, 0).trapStock.Barricade).toBe(0)
       }),
     ),
+  )
+})
+
+// NOTE: outside the tour, a player who holds the keys for the cheapest
+// padlock and has opened no boards this run sees an arrow pulse over it.
+describe('the padlock nudge', () => {
+  const laterBreak = (keys: number): Model =>
+    modifyFields(asTutorialDone(asVeteran(newSave)), {
+      keys: ring => modifyFields(ring, { held: () => keys }),
+      phase: () =>
+        Phase.Preparation({
+          wave: 4,
+          remainingMs: PREPARATION_MS,
+          durationMs: PREPARATION_MS,
+          spawns: [DISTANT_SPAWN],
+          clock: BreakClock.Counting(),
+        }),
+    })
+
+  const cheapestPrice = (model: Model): number =>
+    Option.getOrThrow(maybeQuestPadlock(model)).price
+
+  it.effect('pulses over the cheapest padlock once the keys are there', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(laterBreak(0)),
+      Story.model(short => {
+        const price = cheapestPrice(short)
+        expect(maybePadlockNudge(short)).toEqual(Option.none())
+        expect(maybePadlockNudge(laterBreak(price - 1))).toEqual(Option.none())
+        expect(maybePadlockNudge(laterBreak(price))).toEqual(
+          Option.map(maybeQuestPadlock(short), padlockMarkOf),
+        )
+      }),
+    ),
+  )
+
+  it.effect('goes once boards open, in a wave, and in the tour break', () =>
+    Effect.gen(function* () {
+      const flush = laterBreak(9)
+      const opened = yield* Story.story(
+        APPLICATION,
+        Story.given(flush),
+        changeModel(current => standAt(belowPadlock(current))(current)),
+        ...holdEnter(HOLD_TICKS + 2),
+        Story.Command.resolveAll(),
+      )
+      expect(heldKeys(opened)).toBeLessThan(9)
+      expect(maybePadlockNudge(opened)).toEqual(Option.none())
+      expect(
+        maybePadlockNudge(
+          modifyFields(flush, {
+            phase: () =>
+              Phase.Wave({
+                wave: 4,
+                spawns: [DISTANT_SPAWN],
+                elapsedMs: 0,
+              }),
+          }),
+        ),
+      ).toEqual(Option.none())
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(tourBreak(newSave), {
+            keys: ring => modifyFields(ring, { held: () => 9 }),
+          }),
+        ),
+        frame,
+        Story.model(current => {
+          expect(maybePadlockNudge(current)).toEqual(Option.none())
+        }),
+      )
+    }),
   )
 })

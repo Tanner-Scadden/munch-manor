@@ -23,6 +23,7 @@ import { pantryDrawables } from '../../features/kitchen/pantryView'
 import { maybeQuestMark } from '../../features/onboarding/firstBreakQuest'
 import { isGoodieBeckoning } from '../../features/onboarding/onboarding'
 import { questKeyDrawables } from '../../features/onboarding/questKeyView'
+import { questLockShapes } from '../../features/onboarding/questLockView'
 import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
 import {
   RATTLES_FOOT_Y,
@@ -284,6 +285,7 @@ const overheadShapes = (
     onNone: () => [],
     onSome: door => doorArrowShapes(door, model.elapsedMs),
   }),
+  ...questLockShapes(model),
   ...Array.map(model.popups, popupShape(camera)),
   ...(isLeadArmed(model)
     ? reloadBarShapes(focusOf(model).player, hatRiseOf(model.appearance))

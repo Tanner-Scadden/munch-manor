@@ -61,6 +61,7 @@ export const legacySave: PlayerSave = {
       openBreak: 'Pending',
       dareTour: 'Pending',
       dareKey: 'Pending',
+      rattles: 'Pending',
     },
     trapHint: 'Seen',
     introducedKinds: ['Shambler'],

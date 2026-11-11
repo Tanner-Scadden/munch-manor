@@ -26,6 +26,7 @@ import {
   PLAYER_RADIUS,
   PREPARATION_MS,
   RESTART_GRACE_MS,
+  TILE_SIZE,
   TURRET_RANGE_PX,
 } from '../../../shared/constants'
 import {
@@ -47,7 +48,12 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { MANOR, doorSpawnPoint, isInsideRoomAt } from '../../level/arena'
+import {
+  MANOR,
+  RATTLES_BOX,
+  doorSpawnPoint,
+  isInsideRoomAt,
+} from '../../level/arena'
 import { distanceAt, flowFieldToward } from '../../level/pathing'
 import { focusOf, modifyFocus } from '../../party/party'
 import { scoreOf } from '../../run/stats'
@@ -383,14 +389,23 @@ describe('placing a turret', () => {
             traps: () => [turret(1, 17, 9)],
           }),
         )
+        // NOTE: standing over Rattles' trunk, facing it: the tiles just in
+        // front of him stay clear.
         const besideStall = yield* placedTile(
-          stocked(0, 1, { x: 275, y: 135 }, { x: 0, y: 1 }),
+          stocked(
+            0,
+            1,
+            { x: RATTLES_BOX.left + 5, y: RATTLES_BOX.top - 15 },
+            { x: 0, y: 1 },
+          ),
         )
+        const stallRow = RATTLES_BOX.top / TILE_SIZE - 1
+        const stallColumn = RATTLES_BOX.left / TILE_SIZE
         expect(ahead).toEqual([[18, 9]])
         expect(nearest).toEqual([[16, 8]])
         expect(besideStall).toHaveLength(1)
-        expect(besideStall).not.toContainEqual([27, 14])
-        expect(besideStall).not.toContainEqual([26, 14])
+        expect(besideStall).not.toContainEqual([stallColumn, stallRow])
+        expect(besideStall).not.toContainEqual([stallColumn + 1, stallRow])
       }),
   )
 

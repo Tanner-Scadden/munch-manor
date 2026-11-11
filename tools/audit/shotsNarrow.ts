@@ -36,7 +36,7 @@ const VIEWPORTS = pickViewports([
 ])
 
 const LEARNED =
-  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey'
+  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
 const SHOP = 'wave=5&money=180&gun=smg&tier=1&px=270&py=142'
 const MIN_LOOK_TAP = 44
 
