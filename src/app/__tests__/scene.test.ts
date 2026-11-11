@@ -249,7 +249,7 @@ describe('Reload button', () => {
         APPLICATION,
         Scene.given(modifyFields(fighting, { lastDevice: () => 'Touch' })),
         measureSurface,
-        Scene.expect(reloadButton).toHaveAttr('aria-keyshortcuts', 'R'),
+        Scene.expect(reloadButton).toHaveAttr('aria-keyshortcuts', 'R 1'),
         Scene.click(reloadButton),
         Scene.expect(reloadButton).toExist(),
       )

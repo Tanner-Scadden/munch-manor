@@ -155,6 +155,20 @@ const keyBadgeView = (
     ? h.empty
     : h.span([h.Class('key-badge'), h.AriaHidden(true)], [key])
 
+// NOTE: the number key that picks a slot, a small cap in the slot's
+// corner on a keyboard only (src/input/keyActions.ts).
+const slotNumberView = (
+  model: Model,
+  number: string,
+  h: ApplicationViewBuilder,
+): Html =>
+  isOnTouch(model)
+    ? h.empty
+    : h.span([h.Class('slot-number'), h.AriaHidden(true)], [number])
+
+const keyShortcuts = (keys: ReadonlyArray<string>, h: ApplicationViewBuilder) =>
+  h.AriaKeyshortcuts(Array.join(keys, ' '))
+
 // GUN SLOTS
 
 type SlotGun = Readonly<{ slot: GunSlot; name: string }>
@@ -172,6 +186,13 @@ const slotGuns = (model: Model): ReadonlyArray<SlotGun> =>
   )
 
 const SLOT_INDEX: Readonly<Record<GunSlot, number>> = { First: 0, Second: 1 }
+
+const SLOT_NUMBER: Readonly<Record<GunSlot, string>> = {
+  First: '1',
+  Second: '2',
+}
+
+const MELEE_NUMBER = '3'
 
 const PRIMARY_MOUSE_BUTTON = 0
 
@@ -240,10 +261,7 @@ const gunSlotButtonView = (
       h.DataAttribute('slot', slot),
       h.DataAttribute('held', isHeld ? 'true' : 'false'),
       h.AriaLabel(isHeld ? `Reload the ${name}` : `Switch to the ${name}`),
-      ...Option.match(maybeKey, {
-        onNone: () => [],
-        onSome: key => [h.AriaKeyshortcuts(key)],
-      }),
+      keyShortcuts([...Option.toArray(maybeKey), SLOT_NUMBER[slot]], h),
       ...(isHeld && !canReload(focusOf(model).player)
         ? [h.AriaDisabled(true)]
         : []),
@@ -258,6 +276,7 @@ const gunSlotButtonView = (
         onNone: () => h.empty,
         onSome: key => keyBadgeView(model, key, h),
       }),
+      slotNumberView(model, SLOT_NUMBER[slot], h),
     ],
   )
 }
@@ -279,7 +298,7 @@ const meleeSlotButtonView = (
       h.DataAttribute('slot', 'Melee'),
       h.DataAttribute('held', isHeld ? 'true' : 'false'),
       h.AriaLabel(isHeld ? `The ${name} is in hand` : `Switch to the ${name}`),
-      h.AriaKeyshortcuts('F'),
+      keyShortcuts(['F', MELEE_NUMBER], h),
       ...(isHeld ? [h.AriaDisabled(true)] : []),
       h.Style(slotSpan(screen, MELEE_SLOT_INDEX)),
       h.OnPointerDown(toPressedHudSlot),
@@ -287,7 +306,10 @@ const meleeSlotButtonView = (
         focusSelector: '.game-surface',
       }),
     ],
-    [isHeld ? h.empty : keyBadgeView(model, 'F', h)],
+    [
+      isHeld ? h.empty : keyBadgeView(model, 'F', h),
+      slotNumberView(model, MELEE_NUMBER, h),
+    ],
   )
 }
 

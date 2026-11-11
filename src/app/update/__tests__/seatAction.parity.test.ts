@@ -11,6 +11,7 @@ import {
   quietWave,
   readyModel,
   withArsenal,
+  withKnifeOut,
   withSeatLife,
 } from '../../../test/model.fixture'
 import {
@@ -64,11 +65,6 @@ type Row = Readonly<{
 }>
 
 const inWave = quietWave(3)
-
-const withKnifeOut = (base: Model): Model =>
-  modifyFocus(base, {
-    player: player => modifyFields(player, { wield: () => 'Melee' }),
-  })
 
 // NOTE: by the north door, where a Plank Pile goes.
 const withTraps = (base: Model, barricades: number, turrets: number): Model =>
@@ -157,6 +153,41 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
 
 const TAGS = Struct.keys(ROWS)
 
+// NOTE: the number keys press the same actions as the HUD's slots
+// (src/input/keyActions.ts).
+const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
+  [
+    'Digit2',
+    {
+      from: withArsenal(inWave, holdingFirst(SHOTGUN)),
+      action: SeatAction.Draw({ slot: 'Second' }),
+      presses: Story.steps(
+        Story.message(Message.PressedKey({ code: 'Digit2' })),
+      ),
+    },
+  ],
+  [
+    'Digit1',
+    {
+      from: withKnifeOut(withArsenal(inWave, holdingFirst(SHOTGUN))),
+      action: SeatAction.Draw({ slot: 'First' }),
+      presses: Story.steps(
+        Story.message(Message.PressedKey({ code: 'Digit1' })),
+      ),
+    },
+  ],
+  [
+    'Digit3',
+    {
+      from: inWave,
+      action: SeatAction.Melee(),
+      presses: Story.steps(
+        Story.message(Message.PressedKey({ code: 'Digit3' })),
+      ),
+    },
+  ],
+]
+
 // NOTE: single player's side: its presses through the root's update.
 const inSinglePlayer = (from: Model, presses: RootSteps) =>
   Story.story(APPLICATION, Story.given(from), presses)
@@ -194,5 +225,16 @@ describe('one rule set for player actions', () => {
       const played = yield* inSinglePlayer(from, presses)
       expect(ruleFieldsOf(played)).toEqual(ruleFieldsOf(roomWorld))
     }),
+  )
+
+  it.effect.each(KEY_ROWS)(
+    '%s through single player matches the room',
+    ([, row]) =>
+      Effect.gen(function* () {
+        const roomWorld = inRoom(row.from, row.action)
+        expect(ruleFieldsOf(roomWorld)).not.toEqual(ruleFieldsOf(row.from))
+        const played = yield* inSinglePlayer(row.from, row.presses)
+        expect(ruleFieldsOf(played)).toEqual(ruleFieldsOf(roomWorld))
+      }),
   )
 })

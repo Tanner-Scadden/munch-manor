@@ -181,15 +181,21 @@ const swapGun = actInHand(SeatAction.Swap())
 // "The knife and two gun slots").
 const equipMelee = actInHand(SeatAction.Melee())
 
-const swapFromKey = (model: Model, code: string): Model => {
-  if (isKeyFor(model, code, ['Swap'])) {
-    return swapGun(model)
-  } else if (isKeyFor(model, code, ['Melee'])) {
-    return equipMelee(model)
-  } else {
-    return model
-  }
-}
+// NOTE: Q, F, and the number keys: 1 and 2 draw that gun, 3 the melee slot.
+const swapFromKey = (model: Model, code: string): Model =>
+  Option.match(playerKeyAction(model, code), {
+    onNone: () => model,
+    onSome: action =>
+      SeatAction.matchOrElse(
+        action,
+        {
+          Swap: () => swapGun(model),
+          Melee: () => equipMelee(model),
+          Draw: () => actInHand(action)(model),
+        },
+        () => model,
+      ),
+  })
 
 const changedWeapon = (before: Model, after: Model): boolean =>
   inHandOf(focusOf(before).player) !== inHandOf(focusOf(after).player)

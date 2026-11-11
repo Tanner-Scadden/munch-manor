@@ -1,9 +1,10 @@
 // The in-run HUD pass: the pocket shut mid-wave (hearts, the key count, the
 // wave, and the dare chip with how many are found), the boss's wave, a break
 // with the pocket open on the full list, a break under the WAVE CLEARED
-// banner, the guided first break's look at the card, and a mid-wave with
-// boosts up, on a 1280x720 desktop, an 844x390 phone on its side, and a
-// 390x844 phone held upright, as `hud-<TAG>-<viewport>-<scene>.png`.
+// banner, the guided first break's look at the card, a mid-wave with
+// boosts up, and both guns with their number keys, on a 1280x720 desktop,
+// an 844x390 phone on its side, and a 390x844 phone held upright, as
+// `hud-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsHud.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
@@ -31,6 +32,11 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'wave',
     query: `${LEARNED}&${FOUND}&wave=4&start=wave&elapsed=6000&crowd=8&god`,
+  },
+  // NOTE: both guns, so the slots show their number caps, 1, 2, and 3.
+  {
+    name: 'guns',
+    query: `${LEARNED}&${FOUND}&wave=4&start=wave&elapsed=6000&crowd=8&god&gun=shotgun`,
   },
   {
     name: 'boost',

@@ -530,6 +530,24 @@ describe('an online co-op run', () => {
     ),
   )
 
+  it.effect('the number keys go to the room as draws', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inRun(roomWorld)),
+      Story.message(roomFrame(100)),
+      Story.message(Message.PressedKey({ code: 'Digit2' })),
+      Story.message(Message.PressedKey({ code: 'Digit1' })),
+      Story.message(Message.PressedKey({ code: 'Digit3' })),
+      Story.model(current => {
+        expect(queuedOf(current)).toEqual([
+          actionCodeOf(SeatAction.Draw({ slot: 'Second' })),
+          actionCodeOf(SeatAction.Draw({ slot: 'First' })),
+          actionCodeOf(SeatAction.Melee()),
+        ])
+      }),
+    ),
+  )
+
   it.effect("the crew's one key ring comes from the room", () =>
     Story.story(
       APPLICATION,

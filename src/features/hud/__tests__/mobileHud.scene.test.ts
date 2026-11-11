@@ -211,6 +211,7 @@ describe('the gun cluster', () => {
       Scene.expect(knifeSlot).toHaveStyle('left', '76.78571428571429%'),
       Scene.expect(knifeSlot).toHaveStyle('width', '23.214285714285715%'),
       Scene.expect(Scene.selector('.key-badge')).toBeAbsent(),
+      Scene.expect(Scene.selector('.slot-number')).toBeAbsent(),
     ),
   )
 
@@ -280,6 +281,15 @@ describe('the gun cluster', () => {
         Scene.expect(
           Scene.within(pistolSlot, Scene.selector('.key-badge')),
         ).toHaveText('Q'),
+        Scene.expect(
+          Scene.within(pistolSlot, Scene.selector('.slot-number')),
+        ).toHaveText('1'),
+        Scene.expect(
+          Scene.within(smgSlot, Scene.selector('.slot-number')),
+        ).toHaveText('2'),
+        Scene.expect(
+          Scene.within(knifeSlot, Scene.selector('.slot-number')),
+        ).toHaveText('3'),
         Scene.expect(reloadButton).toBeAbsent(),
         Scene.Subscription.emit(
           SCENE_SUBSCRIPTIONS.keyboard,

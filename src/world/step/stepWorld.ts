@@ -25,6 +25,7 @@ import {
 import { markReady } from '../party/revive'
 import type { World } from '../schema/world'
 import {
+  Arsenal,
   type GameEvent,
   GunSlot,
   type Intent,
@@ -163,8 +164,16 @@ const swap = inHand(swapInHand)
 
 const melee = inHand(drawMelee)
 
+// NOTE: a slot with no gun, or the gun already in hand, draws nothing: 1
+// and 2 on the keyboard press it whatever the arsenal holds.
+const canDraw = (player: Player, gun: GunSlot): boolean =>
+  (gun === 'First' || !Arsenal.isAnyOf(['OneGun'])(player.arsenal)) &&
+  (isWieldingMelee(player) || heldSlotOf(player.arsenal) !== gun)
+
 const draw = (world: World, slot: PlayerSlot, gun: GunSlot): ActionResult =>
-  inHand(player => drawSlot(player, gun))(world, slot)
+  canDraw(seatStateAt(world, slot).player, gun)
+    ? inHand(player => drawSlot(player, gun))(world, slot)
+    : notNow
 
 // NOTE: with the knife out, a reload puts the last gun back in hand first,
 // even when that gun cannot reload.

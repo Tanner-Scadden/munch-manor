@@ -529,6 +529,24 @@ body {
   color: var(--menu-gold);
 }
 
+/* The number key that picks a slot: a quiet cap in its top left corner. */
+.slot-number {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  padding: 0 2px;
+  border: 1px solid rgba(244, 241, 222, 0.35);
+  border-radius: 2px;
+  color: rgba(244, 241, 222, 0.75);
+  font: bold 8px/9px monospace;
+  pointer-events: none;
+}
+
+.gun-slot-button[data-held='true'] .slot-number {
+  border-color: var(--menu-gold);
+  color: var(--menu-gold);
+}
+
 .start-wave-button .key-badge {
   color: var(--menu-gold);
   border-color: currentColor;

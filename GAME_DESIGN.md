@@ -426,6 +426,8 @@ Proposed, not decided. The rules are in `src/app/main.ts` and `src/app/update/ho
   | Fire                              | Click                      |
   | Reload                            | R                          |
   | Swap guns                         | Q                          |
+  | Pick a gun slot, the melee slot   | 1, 2, 3                    |
+  | Draw the knife or the Pan         | F                          |
   | Place a trap                      | T                          |
   | Next trap                         | G                          |
   | Start the wave, skip a card       | Enter                      |
@@ -443,7 +445,7 @@ Proposed, not decided. The rules are in `src/app/main.ts` and `src/app/update/ho
   | Move between menu buttons         | Arrows or Tab              |
   | Close a panel or dialog           | Esc                        |
 
-  Removed for good: the arrow keys for movement, Space as fire or start, E as swap, 1 and 2 to pick a gun, and P as pause. The shop dialog keeps its own list keys. Aiming with the arrow keys and firing with Space was tried on 2026-10-29 and dropped the same day: it did not play well.
+  Removed for good: the arrow keys for movement, Space as fire or start, E as swap, and P as pause. 1 and 2 to pick a gun were removed on 2026-10-28 and came back on 2026-11-10 at the owner's request, with 3 for the melee slot: 1 and 2 draw that gun slot (nothing when the slot is empty or already in hand), 3 draws the knife or the Pan as F does, and the numpad's 1 to 3 do the same. They press the same `Draw` and `Melee` seat actions as a tap on a HUD slot (`src/input/keyActions.ts`), so a draw cancels a reload and keeps each magazine, and a gun's reload carries on while the knife is out. On a keyboard the HUD's slots show small 1, 2, and 3 caps beside the Q, R, and F badges. In couch play (`?local=N`) the numpad's 1 to 3 stay player 3's. The shop dialog keeps its own list keys. Aiming with the arrow keys and firing with Space was tried on 2026-10-29 and dropped the same day: it did not play well.
 
   The Laser Sight (from a display case since 2026-11-10) draws where the shot goes on the floor (`src/render/sightView.ts`): a laser line for a gun that shoots straight, a fan as wide as the spread for one that scatters, both as long as a shot flies and stopped by the first wall or doorway.
 
