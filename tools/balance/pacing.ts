@@ -425,6 +425,8 @@ const playSlice = (runCount: number, from: number) =>
       })
       return record.finish(seed, result.escaped)
     })
+    const fs = yield* FileSystem.FileSystem
+    yield* fs.makeDirectory(REPORTS, { recursive: true })
     yield* writeJsonFile(
       PacingFile,
       `${REPORTS}/pacing-${difficulty}-${from}.json`,
