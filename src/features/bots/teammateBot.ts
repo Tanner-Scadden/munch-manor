@@ -60,6 +60,7 @@ import {
 } from '../../world/step/stepWorld'
 import { bodyRadiusOf } from '../../world/zombies/zombies'
 import {
+  chandelierShot,
   isSafeToSearch,
   isWorkingSearch,
   pantryErrand,
@@ -509,6 +510,21 @@ const fightIntent = (world: World, me: SeatState): Intent => {
   const maybeNearest = nearestShootable(world, me.player)
   const maybeTarget = maybeTargetFor(world, me)
   const window = Math.floor(clockMsOf(world) / HAND_WINDOW_MS)
+  // NOTE: a crowd under the hung chandelier: it shoots it down on them
+  // (./dareSearch.ts, THE ROOM TOOLS).
+  const maybeDrop = canShoot(me)
+    ? Option.flatMap(chandelierShot(world, me.player), point =>
+        directionBetween(me.player, point),
+      )
+    : Option.none()
+  if (Option.isSome(maybeDrop)) {
+    return {
+      move: fightMove(world, me, maybeNearest, maybeTarget),
+      maybeAim: maybeDrop,
+      trigger: 'Held',
+      interact: 'Released',
+    }
+  }
   return {
     move: fightMove(world, me, maybeNearest, maybeTarget),
     maybeAim: Option.flatMap(maybeTarget, zombie =>

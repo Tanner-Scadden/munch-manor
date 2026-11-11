@@ -187,8 +187,50 @@ export const RunEnd = Schema.Struct({
   keysHeld: Schema.Finite,
   casesWaiting: Schema.Finite,
   casesLocked: Schema.Finite,
+  // NOTE: the prizes waiting in cases opened for it, and its guns as
+  // kind and tier, to read why it left them.
+  waitingPrizes: Schema.Array(Schema.String),
+  guns: Schema.Array(Schema.String),
 })
 export type RunEnd = typeof RunEnd.Type
+
+// What the bot was doing on a frame of a wave (bot/ledger.ts).
+export const Doing = Schema.Literals([
+  'Fighting',
+  'Reloading',
+  'Fetching',
+  'Working',
+])
+export type Doing = typeof Doing.Type
+
+// A heart the crowd took outside Uncle Chunk's fight: the wave, the kind
+// blamed, what the bot was doing, and the zombies within 48 px of it.
+export const CrowdHurt = Schema.Struct({
+  wave: Schema.Finite,
+  kind: Schema.String,
+  doing: Doing,
+  hearts: Schema.Finite,
+  crowd: Schema.Finite,
+})
+export type CrowdHurt = typeof CrowdHurt.Type
+
+// Where a run's keys came from and went (bot/ledger.ts), the ring held
+// and found in all as each break began, each heart the crowd took, and
+// each wave's time at what the bot was doing.
+const KeyLedger = Schema.Struct({
+  kills: Schema.Finite,
+  clears: Schema.Finite,
+  wipes: Schema.Finite,
+  pantry: Schema.Finite,
+  dud: Schema.Finite,
+  boards: Schema.Finite,
+  fridge: Schema.Finite,
+  chandelierDrops: Schema.Finite,
+  heldAtBreak: Schema.Array(Schema.Finite),
+  foundAtBreak: Schema.Array(Schema.Finite),
+  hurts: Schema.Array(CrowdHurt),
+  doingMs: Schema.Array(Schema.Struct({ wave: Schema.Finite, doing: Counts })),
+})
 
 export const RunResult = Schema.Struct({
   seed: Schema.Finite,
@@ -217,6 +259,7 @@ export const RunResult = Schema.Struct({
   fridge: FridgeLog,
   escape: EscapeLog,
   end: RunEnd,
+  ledger: KeyLedger,
 })
 export type RunResult = typeof RunResult.Type
 

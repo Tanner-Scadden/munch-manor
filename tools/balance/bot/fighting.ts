@@ -4,6 +4,7 @@
 import { Array, Function, Option } from 'effect'
 
 import { Message } from '../../../src/app/message'
+import { chandelierShot } from '../../../src/features/bots/dareSearch'
 import { escapeHeading } from '../../../src/features/bots/escape'
 import { assistAim } from '../../../src/input/aimAssist'
 import {
@@ -12,10 +13,14 @@ import {
   worldToView,
 } from '../../../src/render/camera'
 import { PLAYER_RADIUS } from '../../../src/shared/constants'
-import { isSmallKind } from '../../../src/world/fridge/fridgeWeapons'
+import {
+  isFridgeWeapon,
+  isSmallKind,
+} from '../../../src/world/fridge/fridgeWeapons'
 import { KNIFE_RULES } from '../../../src/world/gear/knife'
 import {
   canReload,
+  heldGun,
   heldLoaded,
   heldStats,
   isReloading,
@@ -407,6 +412,33 @@ export const holdFire = (model: Model): Model =>
   model.input.mouseButton._tag === 'Held'
     ? send(model, Message.ReleasedPointer({ pointerId: 1 }))
     : model
+
+// THE ROOM TOOLS
+
+// With a crowd in the dining table's gap under the hung chandelier, it
+// shoots the chandelier down on them (THE ROOM TOOLS in
+// src/features/bots/dareSearch.ts), with a gun in hand that can shoot.
+// Undefined when there is no such shot.
+export const shootChandelier: {
+  (model: Model): (state: BotState) => Model | undefined
+  (state: BotState, model: Model): Model | undefined
+} = Function.dual(2, (state: BotState, model: Model): Model | undefined => {
+  const { player } = focusOf(model)
+  if (
+    isWieldingMelee(player) ||
+    isGunIdle(model) ||
+    isFridgeWeapon(heldGun(player.arsenal).kind)
+  ) {
+    return undefined
+  }
+  return Option.match(chandelierShot(model, player), {
+    onNone: () => undefined,
+    onSome: point => {
+      const aimed = aimAt(state, model, point, undefined)
+      return pressFire(aimed.model, aimed.point)
+    },
+  })
+})
 
 // maybeTarget is the zombie to shoot; undefined picks the nearest in view.
 export const aimAndFire: {

@@ -14,6 +14,7 @@ import { modifyFields } from 'foldkit/struct'
 import { Message } from '../../src/app/message'
 import { initialModel } from '../../src/app/pureApp'
 import { isPocketCardReading } from '../../src/features/dare/pocketCard'
+import { PLAYER_RADIUS } from '../../src/shared/constants'
 import { heroIdOf } from '../../src/shared/playerData'
 import { asTutorialDone, asVeteran } from '../../src/test/veteran'
 import { heldGun, maybeOtherGun } from '../../src/world/gear/weapons'
@@ -57,6 +58,7 @@ import {
   holdFire,
   kite,
   nearestVisible,
+  shootChandelier,
   topOff,
 } from './bot/fighting'
 import {
@@ -74,6 +76,13 @@ import {
   weakerGun,
 } from './bot/guns'
 import { isKnobSet, traceLine } from './bot/knobs'
+import {
+  doingOf,
+  emptyLedger,
+  recordBreak,
+  recordCrowd,
+  recordKeys,
+} from './bot/ledger'
 import {
   type BossLog,
   PRESSURE_CROWD,
@@ -154,7 +163,19 @@ const blamedKind = (before: Model, after: Model): Kind | undefined => {
   if (burst) {
     return 'Exploder'
   }
-  if (Array.some(after.frameEvents, event => event._tag === 'ZombieLanded')) {
+  // NOTE: only a landing on the player, not one anywhere in the house.
+  if (
+    Array.some(
+      after.frameEvents,
+      event =>
+        event._tag === 'ZombieLanded' &&
+        Math.hypot(
+          event.x - focusOf(after).player.x,
+          event.y - focusOf(after).player.y,
+        ) <
+          event.radius + PLAYER_RADIUS + 2,
+    )
+  ) {
     return 'Thrower'
   }
   if (bossBlameOf(after) !== undefined) {
@@ -326,6 +347,7 @@ export const play: {
       chunkFightMs: 0,
       chunkFromMs: 0,
     }
+    const ledger = emptyLedger()
     while (
       (model.phase._tag === 'Preparation' || model.phase._tag === 'Wave') &&
       model.stats.runMs < maxRunMs(options) &&
@@ -339,6 +361,7 @@ export const play: {
       if (model.phase._tag === 'Preparation' && preparedWave !== wave) {
         preparedWave = wave
         state.breakFrames = 0
+        recordBreak(ledger, model)
         onPreparation(wave, model)
         if (stop._tag === 'WaveStart' && wave >= stop.wave) {
           break
@@ -498,7 +521,13 @@ export const play: {
           state.panPlanNow = panPlan(model)
         }
         const fridgeSpare = fridgeSpareOf(model)
-        if (state.panPlanNow.useSpare) {
+        const atChandelier =
+          frame % AIM_EVERY_FRAMES === 0
+            ? shootChandelier(state, model)
+            : undefined
+        if (atChandelier !== undefined) {
+          model = atChandelier
+        } else if (state.panPlanNow.useSpare) {
           model = swingPan(state, model, frame)
         } else if (fridgeSpare === undefined) {
           state.fridgePlan = GUN_PLAN
@@ -509,6 +538,12 @@ export const play: {
       }
       lastPosition = focusOf(model).player
       frame += 1
+      const isWorking = isWorkingForEscape(model)
+      const doing = doingOf({
+        model,
+        isWorking,
+        isFetching: !isWorking && escapeTargetInWave(model) !== undefined,
+      })
       const before = model
       model = send(model, Message.TickedFrame({ deltaTime: FRAME_MS }))
       options.onFrame?.(before, model)
@@ -516,6 +551,10 @@ export const play: {
         state.kitchenWave = wave
       }
       const blamed = blame(before, model, hurtBy)
+      recordKeys(ledger, before, model)
+      if (before.phase._tag === 'Wave' && model.boss._tag !== 'Fighting') {
+        recordCrowd({ ledger, before, after: model, wave, doing, blamed })
+      }
       if (focusOf(model).player.hp <= 0 && focusOf(before).player.hp > 0) {
         killedBy = blamed
       }
@@ -847,6 +886,7 @@ export const play: {
         chunkFightMs: escapeLog.chunkFightMs,
       },
       end: runEndOf(model, maxRunMs(options)),
+      ledger,
     }
   },
 )
