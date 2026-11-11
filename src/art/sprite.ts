@@ -257,6 +257,26 @@ export const standaloneSource = (image: Canvas.Image): string => {
     : Option.getOrElse(recipe(), () => image.src)
 }
 
+// NOTE: a one image sprite as an image for HTML, which cannot crop the
+// atlas: a badge, or the prize on the touch hold button.
+export type ArtImage = Readonly<{ src: string; width: number; height: number }>
+
+export const spriteImage = (
+  sprite: ReadonlyArray<Canvas.Shape>,
+): Option.Option<ArtImage> =>
+  pipe(
+    Array.head(sprite),
+    Option.flatMap((shape: Canvas.Shape) =>
+      shape._tag === 'Image'
+        ? Option.some({
+            src: standaloneSource(shape),
+            width: shape.width,
+            height: shape.height,
+          })
+        : Option.none(),
+    ),
+  )
+
 // NOTE: a prebuilt sprite is a cropped region of one of the atlas's files.
 const atlasImageAt = (
   hit: AtlasHit,
@@ -395,6 +415,65 @@ export type Box = Readonly<{
   right: number
   bottom: number
 }>
+
+// BOUNDS
+
+const EMPTY_BOUNDS: Box = {
+  left: Infinity,
+  top: Infinity,
+  right: -Infinity,
+  bottom: -Infinity,
+}
+
+const joinBounds = (a: Box, b: Box): Box => ({
+  left: Math.min(a.left, b.left),
+  top: Math.min(a.top, b.top),
+  right: Math.max(a.right, b.right),
+  bottom: Math.max(a.bottom, b.bottom),
+})
+
+const boxBounds = (
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): Box => ({
+  left: x,
+  top: y,
+  right: x + width,
+  bottom: y + height,
+})
+
+const shiftBounds = (bounds: Box, x: number, y: number): Box => ({
+  left: bounds.left + x,
+  top: bounds.top + y,
+  right: bounds.right + x,
+  bottom: bounds.bottom + y,
+})
+
+// NOTE: the box a list of shapes covers, in their own coordinates, for
+// laying sprites side by side (a take's tag) and the art studio's frames.
+// Paths and text are left out: no sprite is made of them.
+export const boundsOf = (shapes: ReadonlyArray<Canvas.Shape>): Box =>
+  Array.reduce(shapes, EMPTY_BOUNDS, (bounds: Box, shape): Box =>
+    joinBounds(
+      bounds,
+      Match.valueTags(shape, {
+        Rect: ({ x, y, width, height }) => boxBounds(x, y, width, height),
+        Image: ({ x, y, width, height }) => boxBounds(x, y, width, height),
+        Circle: ({ x, y, radius }) =>
+          boxBounds(x - radius, y - radius, radius * 2, radius * 2),
+        Group: group =>
+          shiftBounds(
+            boundsOf(group.shapes),
+            group.translate?.x ?? 0,
+            group.translate?.y ?? 0,
+          ),
+        Path: () => EMPTY_BOUNDS,
+        Text: () => EMPTY_BOUNDS,
+      }),
+    ),
+  )
 
 const isWhole = (value: number | undefined): boolean =>
   value === undefined || Number.isInteger(value)

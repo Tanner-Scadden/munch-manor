@@ -3,6 +3,7 @@ import { Array, Function, Record, pipe } from 'effect'
 import type { Difficulty } from '../shared/playerData'
 import type { Modifier } from '../world/run/modifiers'
 import type { TrapKind } from '../world/schema/entitySchema'
+import { GRAB_PALETTE, GRAB_PIXELS } from './prizeArt'
 import { type Palette, pixelRuns } from './sprite'
 import { TRAP_ICON_PIXELS } from './sprites/traps'
 
@@ -1097,3 +1098,9 @@ export const MODIFIER_ICONS: Readonly<Record<Modifier, string>> = Record.map(
   MODIFIER_PIXELS,
   pixels => pixelIconUrl(pixels, MODIFIER_PALETTE),
 )
+
+// THE GRAB
+
+// NOTE: the open hand of a take, on the touch hold button beside the
+// prize's own picture (src/features/shop/purchaseHud.ts).
+export const GRAB_ICON = pixelIconUrl(GRAB_PIXELS, GRAB_PALETTE)

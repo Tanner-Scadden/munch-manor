@@ -2,6 +2,7 @@ import { Array, Option, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
+import { prizeSprite } from '../../art/prizeArt'
 import {
   type Sprite,
   bakeShapes,
@@ -34,7 +35,6 @@ import {
   type Player,
 } from '../../world/schema/entitySchema'
 import { type Rarity, revealOf } from './fridgeReveal'
-import { prizeSprite } from './fridgeRevealView'
 
 // The Mystery Leftovers fridge in motion (src/world/fridge/leftovers.ts) and the fridge
 // weapons' own pictures (src/world/fridge/fridgeWeapons.ts): the door swinging open on a

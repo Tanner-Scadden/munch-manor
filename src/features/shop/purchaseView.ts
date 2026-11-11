@@ -1,7 +1,8 @@
-import { Array, Function, Option } from 'effect'
+import { Array, Function, Option, Record } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
+import { CASE_HEIGHT, PRIZE_SPRITES } from '../../art/caseArt'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -9,10 +10,12 @@ import {
   placeBaked,
   textShapes,
 } from '../../art/font'
+import { GRAB_HAND, prizeSprite } from '../../art/prizeArt'
 import {
   type Sprite,
   TOP_LEFT,
   bakeShapes,
+  boundsOf,
   group,
   placeAt,
   spriteShapes,
@@ -34,7 +37,9 @@ import { maybeStoveLock, maybeStovePerk } from '../../world/kitchen/stove'
 import { levelOf } from '../../world/level/arena'
 import { EXIT_RULES } from '../../world/level/exits'
 import { focusOf, focusSlotOf } from '../../world/party/party'
+import type { FridgePrize } from '../../world/schema/entitySchema'
 import {
+  type CasePrize,
   FridgeDoor,
   type GunPerk,
   Purchasable,
@@ -92,31 +97,20 @@ type TagIcon = Readonly<{ sprite: Sprite; width: number }>
 const ICON_GAP = 2
 
 const tagSprite = (
-  text: BakedText,
-  maybeIcon: Option.Option<TagIcon>,
+  content: Sprite,
   width: number,
   height: number,
   look: TagLook,
-): Sprite => {
-  const textLeft = Option.match(maybeIcon, {
-    onNone: () => TAG_PAD,
-    onSome: icon => TAG_PAD + icon.width + ICON_GAP,
-  })
-  return [
-    ...bakeShapes([
-      rect(Math.floor(width / 2), -4, 1, 4, '#c9c3b0'),
-      rect(Math.floor(width / 2) - 1, -5, 3, 1, '#8a8a96'),
-      rect(-1, -1, width + 2, height + 2, look.edge),
-      rect(0, 0, width, height, look.face),
-      rect(0, 0, width, 1, look.trim),
-    ]),
-    ...Option.match(maybeIcon, {
-      onNone: () => [],
-      onSome: icon => [placeAt(TAG_PAD, TAG_PAD - 1, icon.sprite)],
-    }),
-    placeBaked(text, { x: textLeft, y: TAG_PAD, align: 'Left' }),
-  ]
-}
+): Sprite => [
+  ...bakeShapes([
+    rect(Math.floor(width / 2), -4, 1, 4, '#c9c3b0'),
+    rect(Math.floor(width / 2) - 1, -5, 3, 1, '#8a8a96'),
+    rect(-1, -1, width + 2, height + 2, look.edge),
+    rect(0, 0, width, height, look.face),
+    rect(0, 0, width, 1, look.trim),
+  ]),
+  ...content,
+]
 
 const ringSprite = (pixels: ReadonlyArray<RingPixel>, filled: number): Sprite =>
   bakeShapes(
@@ -125,30 +119,16 @@ const ringSprite = (pixels: ReadonlyArray<RingPixel>, filled: number): Sprite =>
     ),
   )
 
-// NOTE: built once per price, as the module loads, so every tag is an
-// image from the atlas.
-const bakePriceTag = (price: number): PriceTag =>
-  bakeTag(bakeText(`$${price}`, 'Coin'))
-
-// NOTE: a weapon the fridge offers is already paid for, so its tag says
-// TAKE in place of a price.
-const bakeTag = (
-  text: BakedText,
-  maybeIcon: Option.Option<TagIcon> = Option.none(),
-): PriceTag => {
-  const iconWidth = Option.match(maybeIcon, {
-    onNone: () => 0,
-    onSome: icon => icon.width + ICON_GAP,
-  })
-  const width = text.width + iconWidth + TAG_PAD * 2 + 1
-  const height = GLYPH_HEIGHT + TAG_PAD * 2
+// NOTE: built once per tag, as the module loads, so every tag is an image
+// from the atlas.
+const makeTag = (content: Sprite, width: number, height: number): PriceTag => {
   const pixels = ringPixels(Math.ceil(width / 2) + RING_GAP)
   return {
     width,
     height,
-    plain: tagSprite(text, maybeIcon, width, height, PLAIN_LOOK),
-    lit: tagSprite(text, maybeIcon, width, height, LIT_LOOK),
-    short: tagSprite(text, maybeIcon, width, height, SHORT_LOOK),
+    plain: tagSprite(content, width, height, PLAIN_LOOK),
+    lit: tagSprite(content, width, height, LIT_LOOK),
+    short: tagSprite(content, width, height, SHORT_LOOK),
     rings: [
       ringSprite(pixels, 0),
       ...Array.makeBy(RING_STEPS, step =>
@@ -157,6 +137,131 @@ const bakeTag = (
     ],
   }
 }
+
+const bakePriceTag = (price: number): PriceTag =>
+  bakeTag(bakeText(`$${price}`, 'Coin'))
+
+const bakeTag = (
+  text: BakedText,
+  maybeIcon: Option.Option<TagIcon> = Option.none(),
+): PriceTag => {
+  const iconWidth = Option.match(maybeIcon, {
+    onNone: () => 0,
+    onSome: icon => icon.width + ICON_GAP,
+  })
+  return makeTag(
+    [
+      ...Option.match(maybeIcon, {
+        onNone: () => [],
+        onSome: icon => [placeAt(TAG_PAD, TAG_PAD - 1, icon.sprite)],
+      }),
+      placeBaked(text, { x: TAG_PAD + iconWidth, y: TAG_PAD, align: 'Left' }),
+    ],
+    text.width + iconWidth + TAG_PAD * 2 + 1,
+    GLYPH_HEIGHT + TAG_PAD * 2,
+  )
+}
+
+// NOTE: a prize already paid for (the fridge's weapon on offer, or a
+// display case opened for the player) says what it gives with no word: an
+// open hand beside the prize's own icon, small, so the tag never hides the
+// prize itself (the owner, 2026-11-10: "I can't even tell what item I am
+// getting").
+const TAKE_PAD = 2
+
+const takeTag = (item: Sprite): PriceTag => {
+  const parts: ReadonlyArray<Sprite> = [GRAB_HAND, item]
+  const boxes = Array.map(parts, sprite => boundsOf(sprite))
+  const inner = Array.reduce(boxes, 0, (tallest, box) =>
+    Math.max(tallest, box.bottom - box.top),
+  )
+  const placed = Array.reduce(
+    Array.zip(parts, boxes),
+    { left: TAKE_PAD, shapes: Array.empty<Canvas.Shape>() },
+    ({ left, shapes }, [sprite, box]) => ({
+      left: left + box.right - box.left + ICON_GAP,
+      shapes: [
+        ...shapes,
+        placeAt(
+          left - box.left,
+          TAKE_PAD + Math.floor((inner - (box.bottom - box.top)) / 2) - box.top,
+          sprite,
+        ),
+      ],
+    }),
+  )
+  return makeTag(
+    placed.shapes,
+    placed.left - ICON_GAP + TAKE_PAD,
+    inner + TAKE_PAD * 2,
+  )
+}
+
+const FRIDGE_TAKE_TAGS: Readonly<Record<FridgePrize, PriceTag>> = {
+  Cooker: takeTag(prizeSprite('Cooker')),
+  Pan: takeTag(prizeSprite('Pan')),
+  Freeze: takeTag(prizeSprite('Freeze')),
+  Sandwich: takeTag(prizeSprite('Sandwich')),
+  Dud: takeTag(prizeSprite('Dud')),
+}
+
+const CASE_TAKE_TAGS: Readonly<Record<CasePrize, PriceTag>> = Record.map(
+  PRIZE_SPRITES,
+  item => takeTag(item),
+)
+
+// NOTE: what a take gives: the fridge's weapon on offer, or the prize in
+// the opened case. The tag here and the touch hold button both show it.
+type TakenPrize =
+  | Readonly<{ _tag: 'FromFridge'; prize: FridgePrize }>
+  | Readonly<{ _tag: 'FromCase'; prize: CasePrize }>
+
+const noTake = (): Option.Option<TakenPrize> => Option.none()
+
+const maybeTakenPrize = (
+  model: Model,
+  target: Purchasable,
+): Option.Option<TakenPrize> =>
+  Purchasable.match(target, {
+    Exit: noTake,
+    Fridge: noTake,
+    Stove: noTake,
+    Valve: noTake,
+    Prize: () => {
+      const { door } = model.fridge
+      return FridgeDoor.isAnyOf(['Offering'])(door)
+        ? Option.some<TakenPrize>({ _tag: 'FromFridge', prize: door.prize })
+        : Option.none()
+    },
+    Case: ({ id }) =>
+      Option.map(
+        Array.findFirst(model.cases, displayCase => displayCase.id === id),
+        ({ prize }): TakenPrize => ({ _tag: 'FromCase', prize }),
+      ),
+  })
+
+// NOTE: the icon of what a take at `target` gives, if it is one.
+export const maybeTakenIcon: {
+  (target: Purchasable): (model: Model) => Option.Option<Sprite>
+  (model: Model, target: Purchasable): Option.Option<Sprite>
+} = Function.dual(
+  2,
+  (model: Model, target: Purchasable): Option.Option<Sprite> =>
+    Option.map(maybeTakenPrize(model, target), taken =>
+      taken._tag === 'FromFridge'
+        ? prizeSprite(taken.prize)
+        : PRIZE_SPRITES[taken.prize],
+    ),
+)
+
+const takeTagAt = (model: Model, target: Purchasable): PriceTag =>
+  Option.match(maybeTakenPrize(model, target), {
+    onNone: () => FRIDGE_TAKE_TAGS.Cooker,
+    onSome: taken =>
+      taken._tag === 'FromFridge'
+        ? FRIDGE_TAKE_TAGS[taken.prize]
+        : CASE_TAKE_TAGS[taken.prize],
+  })
 
 // NOTE: a boarded exit wears a padlock with the keys it asks
 // (src/world/level/exits.ts): one price each for the kitchen, a room off
@@ -191,8 +296,6 @@ const exitTagOf = (keys: number): PriceTag =>
 
 const FRIDGE_TAG = bakePriceTag(FRIDGE_RULES.keys)
 
-const TAKE_TAG = bakeTag(bakeText('TAKE', 'Prompt'))
-
 // NOTE: the kitchen tour gives the boards and the first pull away
 // (src/world/run/tutorialRules.ts), so their tags say FREE.
 const FREE_TAG = bakeTag(bakeText('FREE', 'Title'))
@@ -221,10 +324,10 @@ const tagOf = (model: Model, offer: Offer): PriceTag =>
   Purchasable.match(offer.target, {
     Exit: () => (offer.price === 0 ? FREE_TAG : exitTagOf(offer.price)),
     Fridge: () => (offer.price === 0 ? FREE_TAG : FRIDGE_TAG),
-    Prize: () => TAKE_TAG,
+    Prize: () => takeTagAt(model, offer.target),
     Stove: () => stoveTagOf(model),
     Valve: () => VALVE_TAG,
-    Case: () => TAKE_TAG,
+    Case: () => takeTagAt(model, offer.target),
   })
 
 // THE PROMPT
@@ -357,8 +460,13 @@ const uncookedShapes = (
 ]
 
 // NOTE: a weapon on offer fills the fridge's door (src/features/fridge/fridgeRevealView.ts),
-// so its TAKE tag hangs beside the fridge instead of over it.
+// so its take tag hangs beside the fridge instead of over it.
 const PRIZE_TAG_GAP = 4
+
+// NOTE: a display case's prize floats up out of the case once it opens
+// (src/features/cases/caseView.ts), so its tag hangs over the case's top,
+// clear of the prize.
+const CASE_TAG_GAP = 3
 
 // NOTE: boards in a side wall stand in a narrow doorway with a display
 // case's feat lock close by (the dining room's west case, 2026-11-10
@@ -393,7 +501,13 @@ const placedOffer = (model: Model, offer: Offer, tag: PriceTag): Offer =>
     Fridge: () => offer,
     Stove: () => offer,
     Valve: () => offer,
-    Case: () => offer,
+    Case: () => ({
+      ...offer,
+      spot: {
+        x: offer.spot.x,
+        y: offer.box.bottom - CASE_HEIGHT - CASE_TAG_GAP - tag.height,
+      },
+    }),
     Prize: () => ({
       ...offer,
       spot: {
@@ -403,7 +517,7 @@ const placedOffer = (model: Model, offer: Offer, tag: PriceTag): Offer =>
     }),
   })
 
-// NOTE: what taking a prize gives up hangs under the TAKE tag, crossed
+// NOTE: what taking a prize gives up hangs under the take tag, crossed
 // out: for the Clang Pan the knife, whose slot it takes; for a gun-slot
 // prize with both gun slots full, the gun in the player's hands.
 const CROSS: Sprite = spriteShapes(

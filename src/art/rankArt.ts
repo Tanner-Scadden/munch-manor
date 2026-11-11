@@ -1,12 +1,13 @@
-import { Array, Function, Option, Record, String, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
+import { Array, Function, Record, String, pipe } from 'effect'
+import type { Option } from 'effect'
 
 import type { BadgeTier } from '../world/heroes/rank'
 import {
+  type ArtImage,
   type Palette,
   type Sprite,
+  spriteImage,
   spriteShapes,
-  standaloneSource,
 } from './sprite'
 
 // The rank badge and the Bone as pixel art, original to the game (the
@@ -224,25 +225,9 @@ export const shineSprite: {
     SHINES[tier][frame] ?? BADGES[tier],
 )
 
-type ArtImage = Readonly<{ src: string; width: number; height: number }>
-
-const imageOf = (sprite: Sprite): Option.Option<ArtImage> =>
-  pipe(
-    Array.head(sprite),
-    Option.flatMap((shape: Canvas.Shape) =>
-      shape._tag === 'Image'
-        ? Option.some({
-            src: standaloneSource(shape),
-            width: shape.width,
-            height: shape.height,
-          })
-        : Option.none(),
-    ),
-  )
-
 // NOTE: the badge as an image for HTML, which cannot crop the atlas.
 export const badgeImage = (tier: BadgeTier): Option.Option<ArtImage> =>
-  imageOf(BADGES[tier])
+  spriteImage(BADGES[tier])
 
 export const BONE_SIZE = { width: 11, height: 6 }
 
@@ -258,4 +243,4 @@ export const BONE: Sprite = spriteShapes(
   { O: '#2a1408', L: '#ffffff', W: '#f4f1de', D: '#b8ad8c' },
 )
 
-export const BONE_IMAGE = imageOf(BONE)
+export const BONE_IMAGE = spriteImage(BONE)

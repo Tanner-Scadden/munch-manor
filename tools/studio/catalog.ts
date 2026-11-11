@@ -11,7 +11,6 @@ import {
   String,
   pipe,
 } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { playerSprites } from '../../src/art/appearance'
 import {
@@ -22,6 +21,7 @@ import {
 } from '../../src/art/rattlesArt'
 import { SEAT_LOOKS } from '../../src/art/seatLooks'
 import {
+  type Box,
   type Facing,
   type Sprite,
   type SpriteFrames,
@@ -448,63 +448,8 @@ export const tabOfEntry = (id: string): Option.Option<Tab> =>
 
 // BOUNDS
 
-export type Bounds = Readonly<{
-  left: number
-  top: number
-  right: number
-  bottom: number
-}>
-
-const EMPTY_BOUNDS: Bounds = {
-  left: Infinity,
-  top: Infinity,
-  right: -Infinity,
-  bottom: -Infinity,
-}
-
-const joinBounds = (a: Bounds, b: Bounds): Bounds => ({
-  left: Math.min(a.left, b.left),
-  top: Math.min(a.top, b.top),
-  right: Math.max(a.right, b.right),
-  bottom: Math.max(a.bottom, b.bottom),
-})
-
-const boxBounds = (
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-): Bounds => ({ left: x, top: y, right: x + width, bottom: y + height })
-
-const shiftBounds = (bounds: Bounds, x: number, y: number): Bounds => ({
-  left: bounds.left + x,
-  top: bounds.top + y,
-  right: bounds.right + x,
-  bottom: bounds.bottom + y,
-})
-
-// NOTE: the box a list of shapes covers, in their own coordinates. Paths
-// and text are left out: no sprite is made of them.
-export const boundsOf = (shapes: ReadonlyArray<Canvas.Shape>): Bounds =>
-  Array.reduce(shapes, EMPTY_BOUNDS, (bounds: Bounds, shape): Bounds =>
-    joinBounds(
-      bounds,
-      Match.valueTags(shape, {
-        Rect: ({ x, y, width, height }) => boxBounds(x, y, width, height),
-        Image: ({ x, y, width, height }) => boxBounds(x, y, width, height),
-        Circle: ({ x, y, radius }) =>
-          boxBounds(x - radius, y - radius, radius * 2, radius * 2),
-        Group: group =>
-          shiftBounds(
-            boundsOf(group.shapes),
-            group.translate?.x ?? 0,
-            group.translate?.y ?? 0,
-          ),
-        Path: () => EMPTY_BOUNDS,
-        Text: () => EMPTY_BOUNDS,
-      }),
-    ),
-  )
+// NOTE: the box a sprite covers, measured by `boundsOf` in src/art/sprite.ts.
+export type Bounds = Box
 
 // THE CREW
 

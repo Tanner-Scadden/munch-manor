@@ -3,6 +3,7 @@ import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type BakedText, bakeText, placeBaked } from '../../art/font'
+import { prizeSprite } from '../../art/prizeArt'
 import {
   type Sprite,
   bakeShapes,
@@ -43,25 +44,6 @@ import {
 // color, the big icon popping with squash and stretch, its punch word, the
 // countdown ring while a weapon waits, and the icon flying into its HUD
 // slot once taken.
-
-// THE PRIZES
-
-const SANDWICH: Sprite = spriteShapes(
-  ['.kkkkkk.', 'kyyyyyyk', 'kgGrgGgk', 'kyyyyyyk', '.kkkkkk.'],
-  { k: '#140c10', y: '#e0c070', g: '#7aa04a', G: '#4e6a2a', r: '#c8343c' },
-)
-
-const FISH_BONES: Sprite = spriteShapes(
-  ['k.......kk.', 'kk.w.w.kwwk', '.wwwwwwwwkw', 'kk.w.w.kwwk', 'k.......kk.'],
-  { k: '#140c10', w: '#e8e2cc' },
-)
-
-export const prizeSprite = (prize: FridgePrize): Sprite =>
-  prize === 'Sandwich'
-    ? SANDWICH
-    : prize === 'Dud'
-      ? FISH_BONES
-      : gunIcon(prize, 0)
 
 // THE COLORS
 

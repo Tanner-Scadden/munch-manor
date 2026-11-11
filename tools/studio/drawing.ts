@@ -3,9 +3,9 @@
 import { Array, Function, Option, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import { type Sprite, group } from '../../src/art/sprite'
+import { type Sprite, boundsOf, group } from '../../src/art/sprite'
 import type { Backdrop, Model } from './block'
-import { type Bounds, type Entry, type Look, boundsOf } from './catalog'
+import type { Bounds, Entry, Look } from './catalog'
 
 export const BACKDROP_COLORS: Readonly<Record<Backdrop, string>> = {
   Floor: '#4a3426',
