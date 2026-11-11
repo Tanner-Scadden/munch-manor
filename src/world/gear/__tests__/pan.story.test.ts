@@ -137,7 +137,7 @@ describe('the Clang Pan in the melee slot', () => {
   )
 
   test('the melee slot shows the Pan, its tier, and its dent meter, not the knife', () => {
-    const knifeLook = meleeSlotLook(focusOf(initialModel).player)
+    const knifeLook = meleeSlotLook(initialModel, focusOf(initialModel).player)
     expect(Option.isSome(knifeLook.maybeIcon ?? Option.none())).toBe(true)
     expect(knifeLook.maybeGun).toEqual(Option.none())
     const dented = modifyFields(freshGun('Pan'), {
@@ -145,6 +145,7 @@ describe('the Clang Pan in the melee slot', () => {
       tier: () => 1,
     })
     const panLook = meleeSlotLook(
+      initialModel,
       modifyFields(focusOf(initialModel).player, {
         melee: () => withPan(dented),
       }),

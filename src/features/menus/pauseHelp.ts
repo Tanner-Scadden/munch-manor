@@ -28,7 +28,9 @@ import { pauseProgressView } from './pauseProgress'
 // button that shows its line when focused, tapped, or hovered; on the pause
 // screen, where a tap resumes, the line shows on hover and is read out. The
 // top row is the controls and the bottom row the dare: keys, rooms, cases,
-// the list, and the way out (the escape the manor update, 2026-11-10).
+// the list, and the way out (the escape the manor update, 2026-11-10), with
+// gun levels and the stove beside the cases (owner, 2026-11-10: "I am also
+// very confused on how I do the upgrades for the weapon now.").
 type Input = Readonly<{ line: string; sprites: HintIconSprites }>
 
 type ControlCard = Readonly<{
@@ -138,6 +140,22 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     ...onBoth(
       'Do the deed on the lock. What is inside is yours.',
       HELP_DEMO_SPRITES.Case,
+    ),
+  },
+  {
+    id: 'Guns',
+    action: 'Guns',
+    ...onBoth(
+      'Kills level up the gun that made them. Its bar fills under it.',
+      HINT_ICON_SPRITES.GunLevel,
+    ),
+  },
+  {
+    id: 'Stove',
+    action: 'Stove',
+    ...onBoth(
+      'In the kitchen, cook a perk onto the gun in your hand.',
+      HELP_DEMO_SPRITES.Stove,
     ),
   },
   {

@@ -7,7 +7,9 @@ import { type HintBand, QuestTour, Tour } from '../../domain/clientSchema'
 import { type InputDevice, Stick } from '../../input/inputSchema'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { landscapeFrameOffset, screenOf } from '../../render/screen'
+import { maybeLevelProgress } from '../../world/gear/gunLevels'
 import { TURRET_WEAPON, maybeSelectedKind } from '../../world/gear/traps'
+import { heldGun, isWieldingMelee } from '../../world/gear/weapons'
 import { focusOf, focusSlotOf, isCoop } from '../../world/party/party'
 import { isPending, isTimedBreak, learn } from '../../world/run/lessons'
 import { isKitchenTourOn } from '../../world/run/tutorialRules'
@@ -60,6 +62,16 @@ const hasFiredWhileAiming = (model: Model): boolean =>
 const hasGrabbedPickup = (events: ReadonlyArray<GameEvent>): boolean =>
   Array.some(events, GameEvent.isAnyOf(['PickupGrabbed']))
 
+// NOTE: the player's own gun reached a new level this frame, which learns
+// the gun level hint.
+const hasOwnGunLeveled = (model: Model): boolean =>
+  Array.some(
+    model.frameEvents,
+    event =>
+      GameEvent.isAnyOf(['GunLeveled'])(event) &&
+      event.slot === focusSlotOf(model),
+  )
+
 const practise = (before: Model, after: Model): Practice => ({
   movedPx: after.practice.movedPx + distanceWalked(before, after),
   aimedShots: after.practice.aimedShots + (hasFiredWhileAiming(after) ? 1 : 0),
@@ -85,11 +97,16 @@ const learnFromPractice = (
     hasGrabbedPickup(after.frameEvents),
     after.elapsedMs,
   )(lessons.pickup)
+  const gunLevel = learnWhen(
+    hasOwnGunLeveled(after),
+    after.elapsedMs,
+  )(lessons.gunLevel)
   return move === lessons.move &&
     fire === lessons.fire &&
-    pickup === lessons.pickup
+    pickup === lessons.pickup &&
+    gunLevel === lessons.gunLevel
     ? lessons
-    : { ...lessons, move, fire, pickup }
+    : { ...lessons, move, fire, pickup, gunLevel }
 }
 
 export const learnFromFrame: {
@@ -225,6 +242,7 @@ export const settleLessons = (lessons: Lessons): Lessons =>
     rattles: settle,
     displayCase: settle,
     dareCard: settle,
+    gunLevel: settle,
   })
 
 // SKIPPING
@@ -293,7 +311,13 @@ export const moveHintBand = (model: Model): Model =>
 // stall waves and calls with a bubble (src/screens/game/stallBubble.ts), START WAVE and
 // the other gun pulse (src/screens/game/touchControls.ts, src/screens/game/hud.ts), a goodie wears a
 // bouncing arrow (src/render/powerupView.ts), and the break's countdown blinks.
-export const HintId = Schema.Literals(['Move', 'Fire', 'Barricade', 'Turret'])
+export const HintId = Schema.Literals([
+  'Move',
+  'Fire',
+  'Barricade',
+  'Turret',
+  'GunLevel',
+])
 export type HintId = typeof HintId.Type
 
 export type HintPart = Readonly<{ icon: HintIcon; words: string }>
@@ -320,6 +344,10 @@ export const HINT_PARTS: Readonly<
   Turret: {
     KeyboardMouse: [part('KeyT'), part('Gnome', 'PLONK IT')],
     Touch: [part('Tap'), part('Gnome', 'PLONK IT')],
+  },
+  GunLevel: {
+    KeyboardMouse: [part('GunLevel', 'LEVELS UP')],
+    Touch: [part('GunLevel', 'LEVELS UP')],
   },
 }
 
@@ -412,6 +440,31 @@ const isTrapHintFor = (model: Model, kind: 'Barricade' | 'Turret'): boolean =>
 const isFirstWaveOnKeyboard = (model: Model): boolean =>
   isFirstWave(model.phase) && model.lastDevice === 'KeyboardMouse'
 
+// NOTE: the first time a gun in the player's hands gets halfway to its
+// first level, a hint shows that its kills level it up (owner, 2026-11-10:
+// "I am also very confused on how I do the upgrades for the weapon now."),
+// with its bar filling under its slot, until that first level up learns it.
+// Saved, so a player sees it once. Mid-wave or in a break alike.
+const GUN_LEVEL_HINT_SHARE = 0.5
+
+const isGunLevelNear = (model: Model): boolean => {
+  const { player } = focusOf(model)
+  const gun = heldGun(player.arsenal)
+  return (
+    !isWieldingMelee(player) &&
+    gun.tier === 0 &&
+    Option.exists(
+      maybeLevelProgress(gun),
+      share => share >= GUN_LEVEL_HINT_SHARE,
+    )
+  )
+}
+
+const isGunLevelHintDue = (model: Model): boolean =>
+  isPending(model.lessons.gunLevel) &&
+  Phase.isAnyOf(['Wave', 'Preparation'])(model.phase) &&
+  isGunLevelNear(model)
+
 const HINT_RULES: ReadonlyArray<HintRule> = [
   {
     id: 'Move',
@@ -438,6 +491,10 @@ const HINT_RULES: ReadonlyArray<HintRule> = [
     id: 'Turret',
     maybeAgeMs: model =>
       ageWhen(isTrapHintFor(model, 'Turret'), msIntoPhase(model.phase)),
+  },
+  {
+    id: 'GunLevel',
+    maybeAgeMs: model => ageWhen(isGunLevelHintDue(model), model.elapsedMs),
   },
 ]
 

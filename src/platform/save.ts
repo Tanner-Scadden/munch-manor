@@ -817,6 +817,7 @@ export const saveOf = (model: Model): PlayerSave => ({
       rattles: savedLesson(model.lessons.rattles),
       displayCase: savedLesson(model.lessons.displayCase),
       dareCard: savedLesson(model.lessons.dareCard),
+      gunLevel: savedLesson(model.lessons.gunLevel),
     },
     trapHint: savedTrapHint(model.trapHint),
     introducedKinds: model.introducedKinds,
@@ -875,6 +876,7 @@ const restoreLessons = (lessons: Lessons, saved: SavedLessons): Lessons =>
     rattles: restoreLesson(saved.rattles),
     displayCase: restoreLesson(saved.displayCase),
     dareCard: restoreLesson(saved.dareCard),
+    gunLevel: restoreLesson(saved.gunLevel),
   })
 
 const isZombieKind = Schema.is(ZombieKind)

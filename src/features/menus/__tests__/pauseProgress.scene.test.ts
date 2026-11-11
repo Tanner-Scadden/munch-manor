@@ -4,8 +4,9 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
+import { Arsenal, type Model } from '../../../app/model'
 import { roomsOf } from '../../../domain/run'
+import { gunAt } from '../../../test/arsenals'
 import { fighting, withDareThings, withKeys } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -15,6 +16,7 @@ import {
 import { DareThingState } from '../../../world/dare/dareSchema'
 import { levelOf, openExitIn } from '../../../world/level/arena'
 import { KITCHEN_EXIT } from '../../../world/level/exits'
+import { modifyFocus } from '../../../world/party/party'
 import { pause } from '../../../world/waves/waves'
 
 // The pause screen's progress (src/features/menus/pauseProgress.ts): the
@@ -118,6 +120,39 @@ describe('the pause screen shows the run so far', () => {
         Scene.expect(Scene.role('list', { name: 'The dare' })).toBeAbsent(),
         Scene.expect(thing('1 skeleton key')).toExist(),
         Scene.expectAll(Scene.all.selector('.pause-tally')).toHaveCount(2),
+      ),
+  )
+
+  it.effect(
+    'each gun carried shows its name, tier, and kills toward the next level',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
+          pause(
+            modifyFocus(fighting, {
+              player: player =>
+                modifyFields(player, {
+                  arsenal: () =>
+                    Arsenal.HoldingSecond({
+                      first: gunAt('Pistol', 3, 260),
+                      second: gunAt('Smg', 1, 70),
+                    }),
+                }),
+            }),
+          ),
+        ),
+        measureSurface,
+        Scene.inside(
+          Scene.role('list', { name: 'Your guns' }),
+          Scene.expectAll(Scene.all.role('listitem')).toHaveCount(2),
+          Scene.expect(
+            thing('Beefy Chatterbox: 70 of 120 kills to the next level'),
+          ).toExist(),
+          Scene.expect(
+            Scene.selector('[data-maxed="true"] .pause-gun-fill'),
+          ).toExist(),
+        ),
       ),
   )
 })

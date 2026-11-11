@@ -199,6 +199,18 @@ describe('the schema', () => {
     ).toEqual(Option.some({ ...lessons, dareCard: 'Pending' }))
   })
 
+  // NOTE: likewise a save from before the gun level hint.
+  test('a save from before the gun level hint reads with the hint to come', () => {
+    const { gunLevel: _gunLevel, ...lessons } = learnedSave.onboarding.lessons
+    const older = jsonOf({
+      ...learnedSave,
+      onboarding: { ...learnedSave.onboarding, lessons },
+    })
+    expect(
+      Option.map(decodeSave(older), save => save.onboarding.lessons),
+    ).toEqual(Option.some({ ...lessons, gunLevel: 'Pending' }))
+  })
+
   test('the difficulty round trips through the model', () => {
     expect(saveOf(restoreSave(initialModel, learnedSave)).difficulty).toEqual(
       learnedSave.difficulty,

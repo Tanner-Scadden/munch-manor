@@ -11,6 +11,7 @@ import {
   type Boss,
   type BossMove,
   BreakClock,
+  type CarriedGun,
   type Glob,
   Melee,
   type Model,
@@ -32,7 +33,15 @@ import { cameraOf, worldToView } from '@game/render/camera'
 import { advanceParticles } from '@game/render/particles/particles'
 import type { Decal, DecalKind } from '@game/render/renderSchema'
 import { DECAL_MAX } from '@game/shared/constants'
-import { STARTING_PISTOL, freshGun, mapGuns } from '@game/world/gear/weapons'
+import { tierForKills } from '@game/world/gear/gunLevels'
+import {
+  STARTING_PISTOL,
+  freshGun,
+  heldSlotOf,
+  heldWeapon,
+  mapGuns,
+  maxTier,
+} from '@game/world/gear/weapons'
 import { levelOf, openExitIn } from '@game/world/level/arena'
 import { KITCHEN_EXIT } from '@game/world/level/exits'
 import {
@@ -803,6 +812,63 @@ export const roomModel = (settings: SceneSettings): Model => {
         })
         return next
       },
+    })
+  }
+  const gunKills = config.gunkills
+  if (gunKills !== undefined) {
+    const withKills = (carried: CarriedGun, index: number): CarriedGun => {
+      const kills = gunKills[index] ?? carried.kills
+      return {
+        ...carried,
+        kills,
+        tier: Math.min(
+          maxTier(carried.kind),
+          tierForKills(carried.kind, kills),
+        ),
+      }
+    }
+    model = modifyFocus(model, {
+      player: p => ({
+        ...p,
+        arsenal:
+          'second' in p.arsenal
+            ? {
+                ...p.arsenal,
+                first: withKills(p.arsenal.first, 0),
+                second: withKills(p.arsenal.second, 1),
+              }
+            : { ...p.arsenal, first: withKills(p.arsenal.first, 0) },
+      }),
+    })
+  }
+  const perk = config.perk
+  if (perk !== undefined) {
+    model = modifyFocus(model, {
+      player: p => {
+        const held = heldSlotOf(p.arsenal)
+        return {
+          ...p,
+          arsenal:
+            held === 'Second' && 'second' in p.arsenal
+              ? { ...p.arsenal, second: { ...p.arsenal.second, perk } }
+              : { ...p.arsenal, first: { ...p.arsenal.first, perk } },
+        }
+      },
+    })
+  }
+  const levelup = config.levelup
+  if (levelup !== undefined) {
+    const { player } = focusOf(model)
+    model = modifyFields(model, {
+      levelCallouts: () => [
+        {
+          weapon: heldWeapon(player.arsenal),
+          tier: levelup,
+          x: player.x,
+          y: player.y,
+          ageMs: config.calloutAge,
+        },
+      ],
     })
   }
   const calloutKind = config.callout

@@ -64,6 +64,7 @@ export const legacySave: PlayerSave = {
       rattles: 'Pending',
       displayCase: 'Pending',
       dareCard: 'Pending',
+      gunLevel: 'Pending',
     },
     trapHint: 'Seen',
     introducedKinds: ['Shambler'],

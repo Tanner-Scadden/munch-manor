@@ -26,6 +26,7 @@ export const HintIcon = Schema.Literals([
   'PlankDoor',
   'Gnome',
   'Guns',
+  'GunLevel',
 ])
 export type HintIcon = typeof HintIcon.Type
 
@@ -365,6 +366,70 @@ const gunsFrame = (isFirstHeld: boolean): ReadonlyArray<Layer> => [
 
 const GUNS = iconOf(23, 8, 500, [gunsFrame(true), gunsFrame(false)])
 
+// NOTE: guns level up on their own kills (src/world/gear/gunLevels.ts): a
+// skull, then the gun lighting gold under a rising arrow. The first time
+// hint and How to play's Guns card draw it.
+const SKULL: Pixels = [
+  '.wwwww.',
+  'wwwwwww',
+  'woowoow',
+  'woowoow',
+  'wwwowww',
+  '.wwwww.',
+  '.w.w.w.',
+]
+
+const LEADS_TO: Pixels = ['y..', 'yy.', 'yyy', 'yy.', 'y..']
+const LEADS_TO_DIM: Pixels = ['s..', 'ss.', 'sss', 'ss.', 's..']
+const PISTOL_GOLD: Pixels = ['.yyyyyy', '.yYyyyy', '.YY....', 'YY.....']
+const UP_ARROW: Pixels = ['..b..', '.bbb.', 'bbbbb', '..b..', '..b..']
+const SPARKLE_SMALL: Pixels = ['.w.', 'wyw', '.w.']
+
+const gunLevelFrame = (
+  step: 'Skull' | 'Leads' | 'Gold' | 'Up',
+): ReadonlyArray<Layer> => [
+  layer(SKULL, 0, 2),
+  layer(step === 'Skull' ? LEADS_TO_DIM : LEADS_TO, 9, 3),
+  layer(step === 'Gold' || step === 'Up' ? PISTOL_GOLD : PISTOL, 13, 4),
+  ...(step === 'Gold' ? [layer(UP_ARROW, 21, 3)] : []),
+  ...(step === 'Up'
+    ? [layer(UP_ARROW, 21, 0), layer(SPARKLE_SMALL, 14, 0)]
+    : []),
+]
+
+const GUN_LEVEL = iconOf(26, 9, 320, [
+  gunLevelFrame('Skull'),
+  gunLevelFrame('Leads'),
+  gunLevelFrame('Gold'),
+  gunLevelFrame('Up'),
+])
+
+// NOTE: the kitchen's stove cooks a perk onto the gun in hand
+// (src/world/kitchen/stove.ts): the gun over the flames, then wearing its
+// chili sticker, as its HUD slot does.
+const CHILI: Pixels = ['..v', '.vr', 'rrR', 'rR.', 'R..']
+const CHILI_PALETTE: Palette = { ...ICON_PALETTE, v: '#6fae4a' }
+const FLAMES: Pixels = ['.r..r..r.', 'ryr.ryr.r', 'ryyryyrry']
+const FLAMES_FLICKER: Pixels = ['..r..r..r', '.ryr.ryr.', 'ryyryyryy']
+const STOVE_TOP: Pixels = ['MMMMMMMMMMM']
+
+const STOVE_DEMO = iconOf(13, 13, 300, [
+  [layer(PISTOL, 3, 2), layer(STOVE_TOP, 1, 12)],
+  [layer(PISTOL, 3, 5), layer(FLAMES, 2, 9), layer(STOVE_TOP, 1, 12)],
+  [layer(PISTOL, 3, 5), layer(FLAMES_FLICKER, 2, 9), layer(STOVE_TOP, 1, 12)],
+  [
+    layer(PISTOL, 3, 2),
+    layer(CHILI, 0, 0, CHILI_PALETTE),
+    layer(STOVE_TOP, 1, 12),
+  ],
+  [
+    layer(PISTOL, 3, 2),
+    layer(CHILI, 0, 0, CHILI_PALETTE),
+    layer(SPARKLE_SMALL, 9, 0),
+    layer(STOVE_TOP, 1, 12),
+  ],
+])
+
 // HOW TO PLAY DEMOS
 
 // NOTE: tiny looping demos for the How to play cards whose action a still
@@ -571,7 +636,14 @@ const EXIT_DEMO = iconOf(18, 12, 260, [
   [layer(FRONT_DOOR, 11, 1, EXIT_PALETTE), layer(SPARKLE, 12, 3)],
 ])
 
-export type HelpDemo = 'Knife' | 'Keys' | 'Rooms' | 'Case' | 'List' | 'Exit'
+export type HelpDemo =
+  | 'Knife'
+  | 'Keys'
+  | 'Rooms'
+  | 'Case'
+  | 'List'
+  | 'Exit'
+  | 'Stove'
 
 export const HELP_DEMO_SPRITES: Readonly<Record<HelpDemo, HintIconSprites>> = {
   Knife: KNIFE_DEMO,
@@ -580,6 +652,7 @@ export const HELP_DEMO_SPRITES: Readonly<Record<HelpDemo, HintIconSprites>> = {
   Case: CASE_DEMO,
   List: LIST_DEMO,
   Exit: EXIT_DEMO,
+  Stove: STOVE_DEMO,
 }
 
 export const HINT_ICON_SPRITES: Readonly<Record<HintIcon, HintIconSprites>> = {
@@ -593,4 +666,5 @@ export const HINT_ICON_SPRITES: Readonly<Record<HintIcon, HintIconSprites>> = {
   PlankDoor: PLANK_DOOR,
   Gnome: GNOME,
   Guns: GUNS,
+  GunLevel: GUN_LEVEL,
 }

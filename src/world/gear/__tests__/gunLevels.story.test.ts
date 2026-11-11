@@ -8,7 +8,6 @@ import { NEUTRAL_INPUT } from '@munch/netcode'
 import {
   Arsenal,
   type Bullet,
-  type CarriedGun,
   GameEvent,
   Melee,
   type Model,
@@ -18,6 +17,7 @@ import {
 } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
+  gunAt,
   holdingSecond,
   maybeSpareGun,
   pistolOf,
@@ -26,8 +26,10 @@ import {
 import {
   DISTANT_SPAWN,
   atOpenedCase,
+  killShot,
   newPlayerReady,
   quietWave,
+  spareGunOf,
   withSeat,
 } from '../../../test/model.fixture'
 import {
@@ -72,13 +74,6 @@ import {
 const FRAME_MS = FIXED_STEP_MS
 const GRACE_TICK_MS = 50
 
-const gun = (kind: WeaponKind, tier: number, kills: number): CarriedGun => ({
-  ...freshGun(kind),
-  loaded: magazineOf(kind, tier),
-  tier,
-  kills,
-})
-
 // NOTE: a shot from `weapon` about to land on a one-health zombie in front
 // of the player, fired by `shooter` in a co-op room.
 const shotWith = (
@@ -90,18 +85,6 @@ const shotWith = (
   weapon,
   ...(shooter === undefined ? {} : { shooter }),
 })
-
-const killShot = (arsenal: Arsenal, weapon: WeaponKind): Model =>
-  modifyFocus(
-    modifyFields(quietWave(3), {
-      zombies: () => [doomed],
-      bullets: () => [shotWith(weapon)],
-    }),
-    { player: player => modifyFields(player, { arsenal: () => arsenal }) },
-  )
-
-const smgOf = (current: Model): CarriedGun =>
-  Option.getOrThrow(maybeSpareGun(focusOf(current).player.arsenal))
 
 const leveledIn = (current: Model) =>
   Array.filter(current.frameEvents, GameEvent.isAnyOf(['GunLeveled']))
@@ -118,10 +101,10 @@ describe('the ladder', () => {
   })
 
   test("the HUD's bar runs from the last tier's kills to the next", () => {
-    expect(maybeLevelProgress(gun('Smg', 0, 20))).toEqual(Option.some(0.5))
-    expect(maybeLevelProgress(gun('Smg', 1, 80))).toEqual(Option.some(0.5))
-    expect(maybeLevelProgress(gun('Smg', 3, 300))).toEqual(Option.none())
-    expect(maybeLevelProgress(gun('Freeze', 0, 50))).toEqual(Option.none())
+    expect(maybeLevelProgress(gunAt('Smg', 0, 20))).toEqual(Option.some(0.5))
+    expect(maybeLevelProgress(gunAt('Smg', 1, 80))).toEqual(Option.some(0.5))
+    expect(maybeLevelProgress(gunAt('Smg', 3, 300))).toEqual(Option.none())
+    expect(maybeLevelProgress(gunAt('Freeze', 0, 50))).toEqual(Option.none())
   })
 
   test('every gun in the shop or a case has three tiers, each changing its stats', () => {
@@ -155,10 +138,10 @@ describe('kills level a gun', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(killShot(holdingSecond(gun('Smg', 0, 39)), 'Smg')),
+        Story.given(killShot(holdingSecond(gunAt('Smg', 0, 39)), 'Smg')),
         tick(FRAME_MS),
         Story.model(current => {
-          const smg = smgOf(current)
+          const smg = spareGunOf(current)
           expect([smg.tier, smg.kills]).toEqual([1, 40])
           expect(smg.loaded).toBe(magazineOf('Smg', 1))
           expect(
@@ -181,10 +164,10 @@ describe('kills level a gun', () => {
       Effect.forEach(['Rifle', 'Blunderbuss'] as const, kind =>
         Story.story(
           APPLICATION,
-          Story.given(killShot(holdingSecond(gun(kind, 0, 39)), kind)),
+          Story.given(killShot(holdingSecond(gunAt(kind, 0, 39)), kind)),
           tick(FRAME_MS),
           Story.model(current => {
-            const leveled = smgOf(current)
+            const leveled = spareGunOf(current)
             expect([leveled.kind, leveled.tier, leveled.kills]).toEqual([
               kind,
               1,
@@ -204,10 +187,12 @@ describe('kills level a gun', () => {
   it.effect('a kill short of the next tier only counts', () =>
     Story.story(
       APPLICATION,
-      Story.given(killShot(holdingSecond(gun('Smg', 1, 118)), 'Smg')),
+      Story.given(killShot(holdingSecond(gunAt('Smg', 1, 118)), 'Smg')),
       tick(FRAME_MS),
       Story.model(current => {
-        expect([smgOf(current).tier, smgOf(current).kills]).toEqual([1, 119])
+        expect([spareGunOf(current).tier, spareGunOf(current).kills]).toEqual([
+          1, 119,
+        ])
         expect(leveledIn(current)).toEqual([])
         expect(current.levelCallouts).toEqual([])
       }),
@@ -217,12 +202,12 @@ describe('kills level a gun', () => {
   it.effect('the 250th kill makes it 3000, and it climbs no further', () =>
     Story.story(
       APPLICATION,
-      Story.given(killShot(holdingSecond(gun('Smg', 2, 249)), 'Smg')),
+      Story.given(killShot(holdingSecond(gunAt('Smg', 2, 249)), 'Smg')),
       tick(FRAME_MS),
       Story.model(current => {
-        expect(smgOf(current).tier).toBe(3)
-        expect(smgOf(current).kills).toBe(250)
-        expect(maybeLevelProgress(smgOf(current))).toEqual(Option.none())
+        expect(spareGunOf(current).tier).toBe(3)
+        expect(spareGunOf(current).kills).toBe(250)
+        expect(maybeLevelProgress(spareGunOf(current))).toEqual(Option.none())
       }),
     ),
   )
@@ -234,7 +219,7 @@ describe('kills level a gun', () => {
         killShot(
           Arsenal.HoldingFirst({
             first: { ...STARTING_PISTOL, kills: 39 },
-            second: gun('Smg', 0, 10),
+            second: gunAt('Smg', 0, 10),
           }),
           'Pistol',
         ),
@@ -256,19 +241,19 @@ describe('a gun keeps its level while carried', () => {
   it.effect('a swapped-out gun keeps its kills and tier', () =>
     Story.story(
       APPLICATION,
-      Story.given(killShot(holdingSecond(gun('Smg', 1, 50)), 'Pistol')),
+      Story.given(killShot(holdingSecond(gunAt('Smg', 1, 50)), 'Pistol')),
       press('KeyQ'),
       tick(FRAME_MS),
       Story.model(current => {
         const { player } = focusOf(current)
         expect(pistolOf(player).kills).toBe(1)
-        expect(smgOf(current)).toEqual(gun('Smg', 1, 50))
+        expect(spareGunOf(current)).toEqual(gunAt('Smg', 1, 50))
       }),
       press('KeyQ'),
       tick(FRAME_MS),
       Story.model(current => {
-        expect(smgOf(current).tier).toBe(1)
-        expect(smgOf(current).kills).toBe(50)
+        expect(spareGunOf(current).tier).toBe(1)
+        expect(spareGunOf(current).kills).toBe(50)
       }),
     ),
   )
@@ -287,7 +272,7 @@ describe('a gun keeps its level while carried', () => {
               {
                 player: player =>
                   modifyFields(player, {
-                    arsenal: () => holdingSecond(gun('Smg', 2, 130)),
+                    arsenal: () => holdingSecond(gunAt('Smg', 2, 130)),
                   }),
               },
             ),
@@ -318,7 +303,7 @@ describe('a gun keeps its level while carried', () => {
                 arsenal: () =>
                   Arsenal.HoldingSecond({
                     first: { ...STARTING_PISTOL, tier: 3, kills: 260 },
-                    second: gun('Smg', 2, 150),
+                    second: gunAt('Smg', 2, 150),
                   }),
               }),
           },
@@ -353,7 +338,7 @@ describe('a gun keeps its level while carried', () => {
       )
       yield* Story.story(
         APPLICATION,
-        Story.given(firing(holdingSecond(gun('Shotgun', 1, 40)))),
+        Story.given(firing(holdingSecond(gunAt('Shotgun', 1, 40)))),
         holdFire,
         tick(FRAME_MS),
         Story.model(({ bullets }) => {
@@ -374,7 +359,7 @@ describe('a fridge weapon levels on its own kills', () => {
         player: player =>
           modifyFields(player, {
             facing: () => ({ x: 1, y: 0 }),
-            melee: () => Melee.Pan({ pan: gun('Pan', 0, 39) }),
+            melee: () => Melee.Pan({ pan: gunAt('Pan', 0, 39) }),
             wield: () => 'Melee',
           }),
       },
@@ -406,7 +391,7 @@ describe('kills in a co-op room', () => {
         modifyFocus(seatWorld, {
           player: player =>
             modifyFields(player, {
-              arsenal: () => holdingSecond(gun('Smg', 0, 39)),
+              arsenal: () => holdingSecond(gunAt('Smg', 0, 39)),
             }),
         }),
       )

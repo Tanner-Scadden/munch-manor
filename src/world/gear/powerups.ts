@@ -203,9 +203,9 @@ export const CALLOUT_LIFETIME_MS: Readonly<Record<CalloutLook, number>> = {
   Named: 1000,
 }
 
-// NOTE: a gun's level up (src/world/gear/gunLevels.ts) stays up a little
-// longer than a grab, so its change line can be read.
-export const LEVEL_CALLOUT_LIFETIME_MS = 2000
+// NOTE: a gun's level up (src/world/gear/gunLevels.ts) pops big and short,
+// as long as a first grab, so its name and change line can be read.
+export const LEVEL_CALLOUT_LIFETIME_MS = 1600
 
 export const BURP_RADIUS = 110
 export const BURP_DAMAGE = 5

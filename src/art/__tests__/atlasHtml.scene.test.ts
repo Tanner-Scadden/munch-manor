@@ -72,10 +72,10 @@ const pausedOn = (device: Model['lastDevice']): Model =>
 
 const HELP_FRAMES = '.help-card-frame'
 
-// NOTE: every frame of the ten control cards' moving pictures.
+// NOTE: every frame of the twelve control cards' moving pictures.
 const FRAMES_BY_DEVICE: Readonly<Record<Model['lastDevice'], number>> = {
-  KeyboardMouse: 41,
-  Touch: 40,
+  KeyboardMouse: 50,
+  Touch: 49,
 }
 
 describe('sprites in HTML', () => {

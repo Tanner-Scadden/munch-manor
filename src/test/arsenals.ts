@@ -3,7 +3,9 @@ import { modifyFields } from 'foldkit/struct'
 
 import {
   STARTING_PISTOL,
+  freshGun,
   gunsOf,
+  magazineOf,
   mapGuns,
   maybeCarried,
 } from '../world/gear/weapons'
@@ -11,6 +13,7 @@ import {
   Arsenal,
   type CarriedGun,
   type Player,
+  type WeaponKind,
 } from '../world/schema/worldSchema'
 
 // The arsenals tests build, apart from src/test/testing.ts.
@@ -55,3 +58,17 @@ export const SHOTGUN: CarriedGun = {
   tier: 0,
   kills: 0,
 }
+
+// NOTE: a gun at `tier` with `kills` of its own, its magazine full.
+export const gunAt: {
+  (tier: number, kills: number): (kind: WeaponKind) => CarriedGun
+  (kind: WeaponKind, tier: number, kills: number): CarriedGun
+} = Function.dual(
+  3,
+  (kind: WeaponKind, tier: number, kills: number): CarriedGun => ({
+    ...freshGun(kind),
+    loaded: magazineOf(kind, tier),
+    tier,
+    kills,
+  }),
+)

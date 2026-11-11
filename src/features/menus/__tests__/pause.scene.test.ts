@@ -59,7 +59,7 @@ describe('Pause screen controls', () => {
               card(action, helpLineOf(id, 'KeyboardMouse')),
             ).toExist(),
           ),
-          Scene.expectAll(Scene.all.role('listitem')).toHaveCount(10),
+          Scene.expectAll(Scene.all.role('listitem')).toHaveCount(12),
         ),
         Scene.inside(
           Scene.role('list', { name: 'More keys' }),
@@ -97,7 +97,7 @@ describe('Pause screen controls', () => {
         ...Array.map(CONTROL_CARDS, ({ id, action }) =>
           Scene.expect(card(action, helpLineOf(id, 'Touch'))).toExist(),
         ),
-        Scene.expectAll(Scene.all.role('listitem')).toHaveCount(10),
+        Scene.expectAll(Scene.all.role('listitem')).toHaveCount(12),
       ),
     ),
   )

@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import {
@@ -73,6 +73,62 @@ export const PERK_ICONS: Readonly<Record<GunPerk, Sprite>> = {
   Spicy: spriteShapes(PERK_PIXELS.Spicy, PERK_PALETTE, TOP_LEFT),
   Crispy: spriteShapes(PERK_PIXELS.Crispy, PERK_PALETTE, TOP_LEFT),
   Hearty: spriteShapes(PERK_PIXELS.Hearty, PERK_PALETTE, TOP_LEFT),
+}
+
+// NOTE: the stove's tag shows what cooking does in a picture: a gun wearing
+// the perk as a sticker on its grip, just as a cooked gun's HUD slot wears
+// it (src/screens/game/hud.ts).
+const COOKED_GUN_PIXELS: ReadonlyArray<string> = [
+  '..............',
+  '..............',
+  '.....KKKKKKKKK',
+  '.....KGHHHHHHG',
+  '.....KGGGGGKKK',
+  '.....KGGK.....',
+  '.....KKK......',
+]
+
+const COOKED_GUN_PALETTE: Palette = {
+  ...PERK_PALETTE,
+  K: INK,
+  G: '#5d6672',
+  H: '#b8c0cc',
+}
+
+const withSticker = (perk: ReadonlyArray<string>): ReadonlyArray<string> =>
+  Array.map(COOKED_GUN_PIXELS, (row, y) =>
+    pipe(
+      String.split(row, ''),
+      Array.map((pixel, x) =>
+        pipe(
+          Array.get(perk, y),
+          Option.flatMap(perkRow => String.at(perkRow, x)),
+          Option.filter(perkPixel => perkPixel !== '.'),
+          Option.getOrElse(() => pixel),
+        ),
+      ),
+      Array.join(''),
+    ),
+  )
+
+export const COOKED_GUN_ICON_WIDTH = 14
+
+export const COOKED_GUN_ICONS: Readonly<Record<GunPerk, Sprite>> = {
+  Spicy: spriteShapes(
+    withSticker(PERK_PIXELS.Spicy),
+    COOKED_GUN_PALETTE,
+    TOP_LEFT,
+  ),
+  Crispy: spriteShapes(
+    withSticker(PERK_PIXELS.Crispy),
+    COOKED_GUN_PALETTE,
+    TOP_LEFT,
+  ),
+  Hearty: spriteShapes(
+    withSticker(PERK_PIXELS.Hearty),
+    COOKED_GUN_PALETTE,
+    TOP_LEFT,
+  ),
 }
 
 const FIRE_PALETTE: Palette = {
