@@ -75,12 +75,12 @@ export const libraryFloorShadeShapes = (
   rect(room.x, room.y, room.width, room.height, FLOOR_SHADE_COLOR),
 ]
 
-// NOTE: the long green rug under the reading desk, placed by hand on the
-// drafted map.
+// NOTE: the long green rug under the reading desk in the nook, placed by
+// hand on the map.
 export const libraryRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
-  const x = room.x + 102
-  const y = room.y + 92
-  const width = 116
+  const x = room.x + 176
+  const y = room.y + 102
+  const width = 108
   const height = 36
   return [
     rect(x, y, width, height, RUG_EDGE_COLOR),
@@ -301,11 +301,11 @@ export const stackShapes = ({
 }
 
 // NOTE: the rolling ladder, hooked on a stack's end and standing in the
-// aisle under it, placed by hand on the drafted map.
+// aisle beside it (the stack nearest the nook), placed by hand on the map.
 export const ladderShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
-  const x = room.x + 193
-  const top = room.y + 36
-  const bottom = room.y + 77
+  const x = room.x + 173
+  const top = room.y + 46
+  const bottom = room.y + 87
   const rungs = Math.floor((bottom - top - 2) / 4)
   return [
     rect(x + 1, bottom, 9, 1, 'rgba(0, 0, 0, 0.35)'),

@@ -44,13 +44,14 @@ export const ROOM_MAP: ReadonlyArray<string> = [
 // yard, the player never does, and nothing out there is drawn. `c` on the
 // west wall and `t` by the east wall mark its display case and trap crate,
 // and `1` to `4` its hiding spots: by the stove, by the sacks, under the
-// prep table, and by the pantry.
+// prep table, and by the pantry. `*`, below the ovens, is kept for the soup
+// pot (part 2 of the rooms rework).
 const KITCHEN_MAP: ReadonlyArray<string> = [
   '############DD######,,,,,,,,,,,,',
   '############DD######,,,,,,,,,,,,',
   '#QQQ..GG..GG..IIIZZ#,,,,,,,,,,,,',
   '#QQQ..GG..GG..IIIZZ#,,,,,,,,,,,,',
-  '#....1.............#,,,,,,,,,,,,',
+  '#....1.*...........#,,,,,,,,,,,,',
   '#...~~...........2.#,,,,,,,,,,,,',
   'Y...~~~..........RR#,,,,,,,,,,,,',
   'Y......LLLLLL......#,,,,,,,,,,,,',
@@ -67,14 +68,17 @@ export const KITCHEN_TOP_ROW = -KITCHEN_MAP.length
 
 // NOTE: the dining room, where every run starts (docs/ROOM_DRAFTS.md): the
 // Munches' party table in two halves with the chandelier's gap between
-// them, the sideboard, china cabinets, and candelabras, the chained front
+// them, the loop round it, the sideboard, china cabinets, and candelabras,
+// two potted ferns that give the south hall a foothold (rooms rework,
+// docs/ROOM_RESEARCH.md), the chandelier's rope cleat `j` in the west wall
+// (a work station, src/world/stations/stations.ts), the chained front
 // door in the south wall, and Rattles on his trunk (`$`) just east of it,
 // waiting by the door since 1924, a tile clear of the doorway. Its four spawn
 // doors keep the parlour's names, North top right through the yard, West
 // top left, East bottom right, and South bottom left, so the wave tables
 // draw what they always drew. The map is the draft's, review marks and all:
 // the room's renames below turn them into the engine's letters.
-const DINING_MAP: ReadonlyArray<string> = [
+export const DINING_MAP: ReadonlyArray<string> = [
   '######KK###################NN#######',
   '######KK###################NN#######',
   'W............HHHHHHHHHH.......cc...#',
@@ -84,104 +88,118 @@ const DINING_MAP: ReadonlyArray<string> = [
   '#HHH.......i............i.......HHH#',
   '#HHH1...........................HHH#',
   '#..................................>',
-  '#..........................3.......>',
+  'j..........................3.......>',
   '#.......=========^^=========.......#',
   '#.......=========^^=========.......#',
   '<..................................#',
   '<..................................?',
   '#..........i.....@@.....i..........?',
   '#cc..............................cc#',
-  '#..................................#',
-  '?..................................#',
+  '#.......VV................VV.......#',
+  '?.......VV................VV.......#',
   '?............i........i............E',
   '#HH..................$$...........4E',
   '#HH......tt..........$$..........HH#',
   '#####SS#########MMMM################',
 ]
 
-// NOTE: the parlour fitted to a slot of the house (docs/ROOM_DRAFTS.md):
-// ROOM_MAP changed only at its edges. The kitchen hangs off the dining room
-// now, so its boards are wall; the side doors are the slot's ports, `(` and
-// `)`; `n` and `s` are the slot's two spawn doors; the stall and its crates
-// became display case and trap crate spots; rows 13 and 14 of the side walls
-// are `?`, for a library next door. The hearth stays, for the gas valve.
-const PARLOUR_SLOT_MAP: ReadonlyArray<string> = [
+// NOTE: the parlour fitted to a slot of the house (docs/ROOM_DRAFTS.md),
+// reshaped as the party's dance floor (docs/ROOM_RESEARCH.md, "Decided"): an
+// open floor in the middle, ringed by its furniture (tea tables, sofas,
+// armchairs, ferns, the coffin, a trunk) with a two tile gap on each side,
+// so the loop is round the ring and the gaps are the chokepoints. A fern in
+// the east lane pinches it. `*` is the gramophone's spot, inside the ring by
+// the north-west tea table (part 2). The side doors are the slot's ports,
+// `(` and `)`; `n` and `s` are the slot's two spawn doors; rows 13 and 14
+// of the side walls are `?`, for a library next door. The piano, the hearth
+// (for the gas valve), and the bookshelf stay on the walls.
+export const PARLOUR_SLOT_MAP: ReadonlyArray<string> = [
   '#####################nn#########',
   '#####################nn#########',
   '#PPP..........FFFF........BBBBB#',
   '#PPP1.......................2..#',
-  '#..........A........A..........#',
-  '#...TT.....A........A......TT..#',
-  '#...TT.....................TT..#',
-  '#..............................#',
+  '#......TTCCCCCC..CCCCCCVV......#',
+  '#......TT.*............VV......#',
+  '#.....A..................A.....#',
+  '#.....A..................A.....#',
   '(..............................)',
   '(..............................)',
-  '#..............................#',
-  '#...O3.....................VV..#',
-  '#...O........CCCCCC........VV..#',
-  '?..............................?',
-  '?.........UU4..................?',
+  '#.....O..................A.....#',
+  '#....3O..................A..VV.#',
+  '#......VV..............TT...VV.#',
+  '?......VVUUCCCC..CCCCCCTT......?',
+  '?........4.....................?',
   '#..............................#',
   '#cc.................tt.....cc..#',
   '########ss######################',
 ]
 
-// NOTE: the library (docs/ROOM_DRAFTS.md): stacks of double-sided shelves,
-// `B` drawn as the stacks here, with two tile aisles, above and below the
-// reading desk `d` on the cross aisle, and the globe `g`. The lower stacks
-// run into the south wall as bays, with the cases and the trap crate at
-// their backs. `%` in rows 13 and 14 of each side wall is the secret shelf;
-// only the one facing the room it is entered from swings.
+// NOTE: the library (docs/ROOM_DRAFTS.md), no longer a mirror
+// (docs/ROOM_RESEARCH.md, "Decided"): the stacks to the west, double-sided
+// shelves `B` with two tile aisles, the lower ones running into the south
+// wall as bays with a case and the trap crate at their backs; the nook to
+// the east, open floor round the reading desk `d` (its loop) and the globe
+// `g`, a breather. The north door opens on a wide aisle between the stacks.
+// `*` marks the ends of the two stacks that will lean and topple (part 2).
+// `%` in rows 13 and 14 of each side wall is the secret shelf; only the one
+// facing the room it is entered from swings.
 export const LIBRARY_MAP: ReadonlyArray<string> = [
   '##############nn################',
   '##############nn################',
   '#..............................#',
-  '#..............................#',
-  '#..BB..BB..BB......BB..BB..BB..#',
-  '#..BB..BB..BB...g..BB..BB..BB..#',
-  '#..BB..BB..BB..1...BB..BB..BB2.#',
-  '#..............................#',
+  '#..BB..BB..BB....BB............#',
+  '#..BB..BB..BB....BB.........g..#',
+  '#..BB..BB..BB....BB.........1..#',
+  '#..BB2.BB..BB....*.............#',
+  '#..BB..BB..BB..................#',
   '(..............................)',
   '(..............................)',
-  '#...........dddddddd...........#',
-  '#..........3dddddddd...........#',
-  '#..............................#',
-  '%..............................%',
-  '%..BB..BB..BB......BB..BB..BB..%',
-  '#..BB..BB..BB......BB..BB..BB..#',
-  '#..BBccBBttBB......BB4.BBccBB..#',
+  '#..........*...................#',
+  '#..BB..BB..BB......dddddddd....#',
+  '#..BB..BB..BB.....3dddddddd....#',
+  '%..BB..BB..BB..................%',
+  '%..BB..BB..BB..................%',
+  '#..BB..BB4.BB..................#',
+  '#..BBccBBttBB..............cc..#',
   '################ss##############',
 ]
 
-// NOTE: the cellar (docs/ROOM_DRAFTS.md): long wine racks `]` in rows,
-// broken by gaps, round a block of barrels `o` with the trap crate on top.
-// `n` is the coal chute, `s` the storm doors.
+// NOTE: the cellar (docs/ROOM_DRAFTS.md), its lanes made to differ
+// (docs/ROOM_RESEARCH.md, "Decided"): two long lanes that run the whole room
+// (rows 5 and 6, rows 12 and 13), a short dead end at the coal heap under
+// the chute, shut by crates `X`, and wine racks `]` round a block of
+// barrels `o` east of the middle, so the ring round it is lopsided: a wide
+// west side and a two tile east one. `*` is under the bare bulb, where its
+// chain will hang (part 2). `n` is the coal chute, `s` the storm doors.
 export const CELLAR_MAP: ReadonlyArray<string> = [
   '#####nn#########################',
   '#####nn#########################',
-  '#.....4........................#',
-  '#..............................#',
-  '#..]]]]]]]]..]]]]]]..]]]]]]]]..#',
+  '#.....4...XX...................#',
+  '#.........XX...................#',
+  '#..]]]]]]]...]]]]]]]]..]]]]]]].#',
   '#...........................2..#',
-  '#..............................#',
-  '#..]]]]]]]]....tt....]]]]]]]]..#',
-  '(.............oooo.............)',
-  '(.............oooo1............)',
-  '#..]]]]]]]]...oooo...]]]]]]]]..#',
-  '#.............oooo.............#',
+  '#...............*..............#',
+  '#..]]]]]]]].............]]]]]..#',
+  '(.................oooo.........)',
+  '(.................oooo1........)',
+  '#..]]]]]]]].......oooo..]]]]]..#',
+  '#.................oooo.........#',
   '#..............................#',
   '?..............................?',
   '?..]]]]]]]]..]]]]]]..]]]]]]]]..?',
   '#..........................3...#',
-  '#cc..........................cc#',
+  '#cc.........tt...............cc#',
   '#######################ss#######',
 ]
 
 // NOTE: the review marks every drafted map shares: the hidden-item spots,
 // the display case and trap crate spots (`c` and `t`, where the World's
 // cases and crates stand, src/world/feats/cases.ts and
-// src/world/gear/crates.ts), and the start spot are floor, and a secret
-// shelf's wall is wall unless the house swings it (secretShelfOf below).
+// src/world/gear/crates.ts), the start spot, and a room tool's spot kept
+// for part 2 of the rooms rework (`*`) are floor; a work station in a wall
+// (`j`, the chandelier's cleat, src/world/stations/stations.ts) is wall, and
+// a secret shelf's wall is wall unless the house swings it (secretShelfOf
+// below).
 const REVIEW_MARKS: Readonly<Record<string, string>> = {
   c: '.',
   t: '.',
@@ -190,6 +208,8 @@ const REVIEW_MARKS: Readonly<Record<string, string>> = {
   '3': '.',
   '4': '.',
   '@': '.',
+  '*': '.',
+  j: '#',
   '?': '#',
   '%': '#',
 }

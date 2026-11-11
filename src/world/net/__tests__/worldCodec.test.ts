@@ -332,8 +332,9 @@ describe("the boss's charge on the wire", () => {
 // eased health and speed (2026-10-31) did, and the escape's balance pass
 // (Normal's health x0.68, 2026-11-10) did again, and the crates, the
 // pantry, the stove, and mending working mid-wave (2026-11-10) did too, and
-// the last zombie's hurry (2026-11-10) as well.
-const GOLDEN_DIGEST = '65984:2aa3fa9a97d53b00'
+// the last zombie's hurry (2026-11-10) as well, and the rooms' new shapes
+// (the rooms rework, 2026-11-10) once more.
+const GOLDEN_DIGEST = '66287:76268be21cdc31bc'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {
