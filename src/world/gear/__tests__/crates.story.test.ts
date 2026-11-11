@@ -233,6 +233,65 @@ describe('trap crates', () => {
   )
 })
 
+// NOTE: a roll of the dining room's crate for the break before wave 4, from
+// a crate stocked for wave 3 and the crates' stream at `seed`.
+const restockedFrom = (
+  seed: number,
+  last: CrateStock,
+  change: (base: Model) => Model = base => base,
+) =>
+  Story.story(
+    APPLICATION,
+    Story.given(
+      change(
+        modifyFields(readyModel, {
+          phase: () => breakBefore(4),
+          crates: current =>
+            modifyFields(current, {
+              wave: () => 3,
+              rngState: () => seed * 104_729,
+              crates: () => [{ room: 'Dining', stock: last }],
+            }),
+        }),
+      ),
+    ),
+    tick(FRAME_MS),
+  ).pipe(Effect.map(stocksOf))
+
+const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
+
+describe('what a crate rolls', () => {
+  it.effect('a crate still holding a gnome from last break rolls planks', () =>
+    Effect.forEach(SEEDS, seed =>
+      restockedFrom(seed, CrateStock.Stocked({ trap: 'Turret' })),
+    ).pipe(
+      Effect.map(rolls => {
+        expect(Array.dedupe(Array.flatten(rolls))).toEqual([
+          CrateStock.Stocked({ trap: 'Barricade' }),
+        ])
+      }),
+    ),
+  )
+
+  it.effect(
+    'with both Plank Piles out, a crate rolls a gnome, even one that held a gnome last break',
+    () =>
+      Effect.forEach(SEEDS, seed =>
+        restockedFrom(seed, CrateStock.Stocked({ trap: 'Turret' }), base =>
+          modifyFocus(base, {
+            trapStock: () => ({ Barricade: TRAPS.Barricade.limit, Turret: 0 }),
+          }),
+        ),
+      ).pipe(
+        Effect.map(rolls => {
+          expect(Array.dedupe(Array.flatten(rolls))).toEqual([
+            CrateStock.Stocked({ trap: 'Turret' }),
+          ])
+        }),
+      ),
+  )
+})
+
 describe('a heart in a crate', () => {
   const hurt = (base: Model): Model =>
     modifyFocus(base, {
@@ -260,8 +319,6 @@ describe('a heart in a crate', () => {
         tick(FRAME_MS),
       ).pipe(Effect.map(current => stocksOf(current))),
     )
-
-  const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
 
   it.effect(
     'a crate holds a heart in most breaks while someone is hurt, and never when nobody is',

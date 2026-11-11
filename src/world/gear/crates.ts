@@ -39,8 +39,13 @@ import { ownedCount, stockTrap, trapLimitOf } from './traps'
 // Restocking: at the start of each break every crate holds a fresh roll,
 // taken or not. A crate whose find nobody could take (two Plank Piles out
 // and another Plank Pile in the crate) would otherwise hold it for the
-// rest of the run, so it rolls again too. Crates open from the first
-// break that sold traps before (SHOP_FIRST_WAVE), and stay shut in a wave.
+// rest of the run, so it rolls again too. The roll leans to the gnome, skips
+// a trap nobody in the crew may take more of (planks still nailed up from
+// the last wave), and never puts back the trap a crate still holds from the
+// last break, so the crates stop handing out boards every break (a
+// playtest's "it keeps spawning the wall boards"). Crates open from the
+// first break that sold traps before (SHOP_FIRST_WAVE), and stay shut in a
+// wave.
 //
 // Hearts: with no heart to buy, the crates are the house's mercy. While
 // someone in the crew is missing a heart when a crate rolls, it may hold a
@@ -62,12 +67,14 @@ type CrateRules = Readonly<{
   heartChance: number
 }>
 
-// NOTE: a Plank Pile comes up three times in five: planks are the trap a
-// player wants two of, and a gnome is the stronger find.
+// NOTE: a Plank Pile comes up one time in three: planks stay nailed up
+// from break to break, so a crew soon has the boards it wants, and a gnome
+// is the stronger find. At three in five, with the tutorial's plank first,
+// a playtest saw boards in the crate nearly every break.
 const CRATE_RULES: CrateRules = {
   reachPx: 8,
   firstWave: SHOP_FIRST_WAVE,
-  plankWeight: 3,
+  plankWeight: 1,
   gnomeWeight: 2,
   heartChance: 1,
 }
@@ -169,13 +176,48 @@ const isHeartDue = (world: World): boolean =>
 const isTutorialPlank = (world: World, room: CrateRoom): boolean =>
   room === 'Dining' && !isCoop(world) && isPending(world.lessons.dareTour)
 
-const rollTrap = (state: number): readonly [CrateStock, number] => {
+const TRAP_WEIGHTS: ReadonlyArray<readonly [TrapKind, number]> = [
+  ['Barricade', CRATE_RULES.plankWeight],
+  ['Turret', CRATE_RULES.gnomeWeight],
+]
+
+// NOTE: the traps a crate may roll: those someone in the crew may take more
+// of and the crate did not hold last break. When that leaves none, those
+// someone may take; when none of those, either.
+const trapChoices = (
+  takeable: ReadonlyArray<TrapKind>,
+  last: Option.Option<TrapKind>,
+): ReadonlyArray<readonly [TrapKind, number]> => {
+  const open = Array.filter(TRAP_WEIGHTS, ([trap]) =>
+    Array.contains(takeable, trap),
+  )
+  const fresh = Array.filter(open, ([trap]) => !Option.contains(last, trap))
+  if (Array.isReadonlyArrayNonEmpty(fresh)) {
+    return fresh
+  }
+  return Array.isReadonlyArrayNonEmpty(open) ? open : TRAP_WEIGHTS
+}
+
+// NOTE: one draw whatever the choices, so the stream moves the same.
+const rollTrap = (
+  state: number,
+  takeable: ReadonlyArray<TrapKind>,
+  last: Option.Option<TrapKind>,
+): readonly [CrateStock, number] => {
   const draw = nextRandom(state)
-  const total = CRATE_RULES.plankWeight + CRATE_RULES.gnomeWeight
+  const choices = trapChoices(takeable, last)
+  const total = Array.reduce(choices, 0, (sum, [, weight]) => sum + weight)
+  const picked = Array.reduce(
+    choices,
+    { trap: Option.none<TrapKind>(), left: draw.value * total },
+    (pick, [trap, weight]) =>
+      Option.isNone(pick.trap) && pick.left < weight
+        ? { trap: Option.some(trap), left: pick.left }
+        : { trap: pick.trap, left: pick.left - weight },
+  )
   return [
     CrateStock.Stocked({
-      trap:
-        draw.value * total < CRATE_RULES.plankWeight ? 'Barricade' : 'Turret',
+      trap: Option.getOrElse(picked.trap, (): TrapKind => 'Turret'),
     }),
     draw.nextState,
   ]
@@ -185,15 +227,38 @@ const rollTrap = (state: number): readonly [CrateStock, number] => {
 const rollStock = (
   state: number,
   isHeartRolled: boolean,
+  takeable: ReadonlyArray<TrapKind>,
+  last: Option.Option<TrapKind>,
 ): readonly [CrateStock, number] => {
   if (!isHeartRolled) {
-    return rollTrap(state)
+    return rollTrap(state, takeable, last)
   }
   const draw = nextRandom(state)
   return draw.value < CRATE_RULES.heartChance
     ? [CrateStock.Heart(), draw.nextState]
-    : rollTrap(draw.nextState)
+    : rollTrap(draw.nextState, takeable, last)
 }
+
+// NOTE: the traps some seat may take one more of.
+const takeableTraps = (world: World): ReadonlyArray<TrapKind> =>
+  Array.filter(
+    Array.map(TRAP_WEIGHTS, ([trap]) => trap),
+    trap =>
+      Array.some(world.seats, (_, slot) => canTakeFind(world, slot, trap)),
+  )
+
+// NOTE: the trap a room's crate still holds from the last break, untaken.
+const lastTrapIn = (world: World, room: CrateRoom): Option.Option<TrapKind> =>
+  pipe(
+    Array.findFirst(world.crates.crates, crate => crate.room === room),
+    Option.flatMap(({ stock }) =>
+      CrateStock.match(stock, {
+        Stocked: ({ trap }) => Option.some(trap),
+        Heart: () => Option.none(),
+        Taken: () => Option.none(),
+      }),
+    ),
+  )
 
 type Rolled = Readonly<{
   crates: ReadonlyArray<Crate>
@@ -209,9 +274,10 @@ const rollFor = (world: World, rooms: ReadonlyArray<CrateRoom>): Rolled => {
     rngState: world.crates.rngState,
     isHeartDue: isHeartDue(world),
   }
+  const takeable = takeableTraps(world)
   return Array.reduce(rooms, start, (rolled, room): Rolled => {
     if (isTutorialPlank(world, room)) {
-      const [, rngState] = rollTrap(rolled.rngState)
+      const [, rngState] = rollTrap(rolled.rngState, takeable, Option.none())
       const crate: Crate = {
         room,
         stock: CrateStock.Stocked({ trap: 'Barricade' }),
@@ -221,7 +287,12 @@ const rollFor = (world: World, rooms: ReadonlyArray<CrateRoom>): Rolled => {
         rngState: () => rngState,
       })
     }
-    const [stock, rngState] = rollStock(rolled.rngState, rolled.isHeartDue)
+    const [stock, rngState] = rollStock(
+      rolled.rngState,
+      rolled.isHeartDue,
+      takeable,
+      lastTrapIn(world, room),
+    )
     return {
       crates: Array.append(rolled.crates, { room, stock }),
       rngState,
