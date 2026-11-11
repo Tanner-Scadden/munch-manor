@@ -18,7 +18,13 @@ import {
 
 const measure = (element: Element): MeasuredGameSurface => {
   const { left, top, width, height } = element.getBoundingClientRect()
-  return Message.MeasuredGameSurface({ left, top, width, height })
+  return Message.MeasuredGameSurface({
+    left,
+    top,
+    width,
+    height,
+    pixelRatio: window.devicePixelRatio,
+  })
 }
 
 // NOTE: the game surface's place on the page, measured when it mounts and

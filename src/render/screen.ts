@@ -186,11 +186,55 @@ export const LANDSCAPE_SIZE: ScreenSize = {
   height: VIEW_HEIGHT,
 }
 
-const viewScale = (
-  surface: SurfaceRectangle,
-  screen: ScreenSize = LANDSCAPE_SIZE,
-): number =>
-  Math.min(surface.width / screen.width, surface.height / screen.height)
+// NOTE: a pixel-art canvas stretched by a fraction of a device pixel draws
+// its lines 4 or 5 device pixels wide by turns (a 390 wide phone at 3x fits
+// one screen pixel in 6.5). So the stage shrinks to the largest whole number
+// of device pixels per screen pixel, and a thin border takes the rest, as
+// long as that loses at most this share of its size. A larger loss (a small
+// desktop window at 1x, 3.65 down to 3) keeps the fractional fit.
+const MAX_SNAP_LOSS = 0.15
+
+// NOTE: where the stage sits on the surface, in CSS pixels: its scale (CSS
+// pixels per screen pixel) and its left and top edges. When the surface says
+// its devicePixelRatio, the scale is snapped as above and the centered edges
+// are rounded to whole device pixels, so the canvas's pixels meet the
+// device's (a 2.625x phone would center it on a half pixel). The root view
+// places the stage here and hands the scale to CSS as `--pixel`, so the
+// canvases, the HTML over them, and the pointer agree.
+export type StagePlacement = Readonly<{
+  scale: number
+  left: number
+  top: number
+}>
+
+const toDevicePixel = (value: number, ratio: number): number =>
+  ratio > 0 ? Math.round(value * ratio) / ratio : value
+
+export const stagePlacement: {
+  (screen: ScreenSize): (surface: SurfaceRectangle) => StagePlacement
+  (surface: SurfaceRectangle, screen: ScreenSize): StagePlacement
+} = Function.dual(
+  2,
+  (surface: SurfaceRectangle, screen: ScreenSize): StagePlacement => {
+    const fit = Math.min(
+      surface.width / screen.width,
+      surface.height / screen.height,
+    )
+    const ratio = surface.pixelRatio ?? 0
+    const devicePixels = fit * ratio
+    // NOTE: the small nudge keeps an exact fit (4 at 1x) from flooring to 3.
+    const whole = Math.floor(devicePixels + 1e-6)
+    const isSnapped = whole >= 1 && 1 - whole / devicePixels <= MAX_SNAP_LOSS
+    const scale = isSnapped ? whole / ratio : fit
+    const align = (value: number): number =>
+      isSnapped ? toDevicePixel(value, ratio) : value
+    return {
+      scale,
+      left: align((surface.width - screen.width * scale) / 2),
+      top: align((surface.height - screen.height * scale) / 2),
+    }
+  },
+)
 
 export const clientToView: {
   (
@@ -211,16 +255,14 @@ export const clientToView: {
     client: Vector,
     screen: ScreenSize = LANDSCAPE_SIZE,
   ): Option.Option<Vector> => {
-    const scale = viewScale(surface, screen)
+    const { scale, left, top } = stagePlacement(surface, screen)
     if (scale <= 0) {
       return Option.none()
     }
 
-    const viewLeft = surface.left + (surface.width - screen.width * scale) / 2
-    const viewTop = surface.top + (surface.height - screen.height * scale) / 2
     return Option.some({
-      x: (client.x - viewLeft) / scale,
-      y: (client.y - viewTop) / scale,
+      x: (client.x - surface.left - left) / scale,
+      y: (client.y - surface.top - top) / scale,
     })
   },
 )

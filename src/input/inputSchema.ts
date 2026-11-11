@@ -11,6 +11,10 @@ export const SurfaceRectangle = Schema.Struct({
   top: Schema.Finite,
   width: Schema.Finite,
   height: Schema.Finite,
+  // NOTE: the page's devicePixelRatio when measured, so the stage can snap
+  // one screen pixel to a whole number of device pixels (src/render/screen.ts).
+  // Left out, the stage fits the surface as it always did.
+  pixelRatio: Schema.optionalKey(Schema.Finite),
 })
 export type SurfaceRectangle = typeof SurfaceRectangle.Type
 

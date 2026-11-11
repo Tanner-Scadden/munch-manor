@@ -86,7 +86,10 @@
 }
 
 .home-stage {
-  --arena-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  --arena-px: var(
+    --pixel,
+    min(100cqw / var(--screen-w), 100cqh / var(--screen-h))
+  );
   --a: var(--arena-px);
   --pick-h: max(var(--menu-tap), 12 * var(--a));
   --cluster-h: calc(2 * var(--pick-h) + var(--menu-gap-sm));
@@ -521,7 +524,7 @@
   color: var(--menu-ink);
   font-family: var(--menu-font);
   pointer-events: none;
-  --a: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  --a: var(--pixel, min(100cqw / var(--screen-w), 100cqh / var(--screen-h)));
   --stage-x: calc((100cqw - var(--screen-w) * var(--a)) / 2);
   --stage-y: calc((100cqh - var(--screen-h) * var(--a)) / 2);
   --pick-h: max(var(--menu-tap), 14 * var(--a));

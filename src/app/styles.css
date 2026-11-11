@@ -370,12 +370,15 @@ body {
 
 .hud-tap-stage {
   /* One HUD pixel in CSS, so HTML drawn over the canvas HUD matches it. */
-  --hud-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  --hud-px: var(
+    --pixel,
+    min(100cqw / var(--screen-w), 100cqh / var(--screen-h))
+  );
   position: absolute;
   inset: 0;
   margin: auto;
-  width: min(100cqw, 100cqh * var(--screen-w) / var(--screen-h));
-  height: min(100cqh, 100cqw * var(--screen-h) / var(--screen-w));
+  width: calc(var(--screen-w) * var(--hud-px));
+  height: calc(var(--screen-h) * var(--hud-px));
   pointer-events: none;
 }
 
@@ -866,7 +869,10 @@ body {
 }
 
 .pause-help {
-  --arena-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  --arena-px: var(
+    --pixel,
+    min(100cqw / var(--screen-w), 100cqh / var(--screen-h))
+  );
   position: absolute;
   left: 50%;
   top: calc(
@@ -1064,7 +1070,10 @@ body {
 }
 
 .quest-tracker {
-  --arena-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  --arena-px: var(
+    --pixel,
+    min(100cqw / var(--screen-w), 100cqh / var(--screen-h))
+  );
   position: absolute;
   left: calc(
     (100cqw - var(--screen-w) * var(--arena-px)) / 2 + 4 * var(--arena-px)
