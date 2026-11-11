@@ -9,6 +9,8 @@ runs=${1:-8}
 workers=${WORKERS:-4}
 slice=${SLICE_RUNS:-2}
 from=${FROM:-0}
+pids=""
+failed=0
 end=$(( from + runs ))
 while [ "$from" -lt "$end" ]; do
   started=0
@@ -16,11 +18,16 @@ while [ "$from" -lt "$end" ]; do
     count=$slice
     if [ $(( from + count )) -gt "$end" ]; then count=$(( end - from )); fi
     bun tools/balance/pacing.ts run "$count" "$from" &
+    pids="$pids $!"
     from=$(( from + count ))
     started=$(( started + 1 ))
   done
-  wait
+  for pid in $pids; do
+    wait "$pid" || failed=1
+  done
+  pids=""
   if [ "$from" -lt "$end" ]; then
     workers=$(bun tools/balance/pacing.ts yield "$workers")
   fi
 done
+exit $failed
