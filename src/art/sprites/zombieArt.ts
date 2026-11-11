@@ -366,10 +366,11 @@ export const tankWalkPixels = (stage: number): FramePixels => [
 ]
 
 // NOTE: the Kaboomer is the kid who brought fireworks to scare everyone: a
-// grinning zombie kid in a striped tee with a backpack stuffed with rockets,
-// one of them fused. The fuse and its sparks are drawn over the sprite each
-// frame in zombieView.ts, since they shorten as he closes in. His lit frames
-// turn the backpack red-hot for the last moments before it goes off.
+// grinning zombie kid in a striped tee with a big round firework shell
+// strapped on his back like a backpack, its fuse in the cap on top. The fuse
+// and its sparks are drawn over the sprite each frame in zombieView.ts, since
+// they shorten as he closes in. His lit frames turn the shell red-hot for the
+// last moments before it goes off.
 export const EXPLODER_PALETTE: Palette = {
   G: '#c4f08a',
   g: '#8cc85e',
@@ -379,16 +380,14 @@ export const EXPLODER_PALETTE: Palette = {
   M: '#5a1a20',
   U: '#d26a3c',
   u: '#f2d45a',
-  K: '#3a4a8a',
-  k: '#24305a',
-  h: '#7a8ad0',
-  r: '#e8452e',
+  K: '#3e3c56',
+  k: '#1e1c2a',
+  h: '#b4b2d4',
   y: '#ffd23f',
-  b: '#5fd3ff',
   L: '#4a3a5a',
   F: '#2a2026',
   R: '#a8262c',
-  c: '#6e6a84',
+  c: '#8a8698',
   O: '#ff9d2e',
   S: '#3a3430',
 }
@@ -401,35 +400,32 @@ export const EXPLODER_LIT_PALETTE: Palette = {
 }
 
 const EXPLODER_BODY: ReadonlyArray<string> = [
-  '.r...b.gGGGg.',
-  '.r...bgGGGGGg',
-  '.ryy.bGWEGWEg',
-  'kKKKKkGTTTTMg',
-  'KhhKKkUgMMMg.',
-  'KhhKKkUUUUUGg',
-  'KKKKKkuuuuuGg',
-  'KKKKKkUUUUU..',
-  'kKKKKkuuuuu..',
-  '.kkkk.UUUUU..',
+  '.......gGGGg.',
+  '......gGGGGGg',
+  '..cc..gWEGWEg',
+  '.kKKk.gWEGWEg',
+  'kKhKKkgGGGGGg',
+  'khKKKkgGMTMGg',
+  'kKKKKk.gMMMg.',
+  'kKKKKkUUUUUGg',
+  '.kKKk.uuuuuGg',
+  '......UUUUU..',
 ]
 
 export const EXPLODER_WEAR: ReadonlyArray<ReadonlyArray<Patch>> = [
   [
-    patch(11, 5, TRANSPARENT, 2, 2),
-    patch(10, 5, 'R'),
-    patch(10, 6, 'R'),
-    patch(6, 8, 'R', 2),
+    patch(11, 7, TRANSPARENT, 2, 2),
+    patch(10, 7, 'R'),
+    patch(10, 8, 'R'),
+    patch(6, 9, 'R', 2),
   ],
   [
-    patch(1, 0, TRANSPARENT, 1, 3),
-    patch(5, 0, 'c', 1, 2),
-    patch(1, 4, 'c'),
+    patch(3, 4, 'c'),
     patch(2, 5, 'O'),
     patch(3, 6, 'c'),
-    patch(1, 7, 'O'),
     patch(8, 0, 'S', 3),
     patch(7, 1, 'S', 2),
-    patch(10, 3, 'M'),
+    patch(11, 5, 'M'),
   ],
 ]
 
@@ -766,12 +762,12 @@ export const TANK_ICON_PIXELS: ReadonlyArray<string> = [
 ]
 
 export const EXPLODER_ICON_PIXELS: ReadonlyArray<string> = [
-  '..O....',
-  '.r.c.b.',
-  '.rryyb.',
+  '....TyO',
+  '..ccT..',
+  '.kKKKk.',
+  'kKhKKKk',
   'kKKKKKk',
-  'KhhKKKK',
-  '.KKKKK.',
+  '.kKKKk.',
 ]
 
 export const CHUCKER_ICON_PIXELS: ReadonlyArray<string> = [
