@@ -27,7 +27,7 @@ import { questStepOf } from './firstBreakQuest'
 // own Case step, as the player walks up to the case it points at.
 
 export const CASE_CARD_MIN_MS = 700
-export const CASE_CARD_MS = 9000
+export const CASE_CARD_MS = 6000
 const CASE_CARD_NEAR_PX = 26
 
 const isQuestQuiet = (model: Model): boolean =>
