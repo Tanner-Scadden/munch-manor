@@ -37,9 +37,16 @@ import { FINAL_WAVE } from '../../world/waves/wavePlans'
 // door, which fixed patterns never hunt for), so the check stops at the
 // break after the tenth.
 // NOTE: the bots walk fixed patterns, so on some seeds they fall into a
-// loop with a zombie neither ever hits: of seeds 1 to 7, 1 and 4 did before
-// zombies came in promptly after their warning, and 2, 3, 5, and 7 did
-// after. The seed is one whose run plays through; a change that moves the
+// loop with zombies neither ever hits: player 2's square outwalks the pack,
+// which trails round inside it while player 2 fires along the square, and
+// player 1 cannot reach it. Of seeds 1 to 7, 1 and 4 did before zombies came
+// in promptly after their warning, and 2, 3, 5, and 7 did after. Since the
+// dining room's ferns and cleat (November 2026), player 1's shot at the
+// nearest zombie through the table's gap drops the chandelier on some
+// seeds, and the table then walls player 1's square, north of it, off from
+// the pack south of it for the rest of the wave: seeds 2, 6, 7, 8, and 9
+// stall that way, and 5 in the loop alone, while 1, 3, 4, 10, and 11 play
+// through. The seed is one whose run plays through; a change that moves the
 // run may need another.
 // NOTE: the run is played as Block-aware Stories: a break one frame to a
 // Story, since the players act on the frame's first Model, and a wave in
@@ -265,8 +272,10 @@ describe('two keyboards on one desktop', () => {
             // then on its wave 2 ended in four zombies circling the two
             // players' walking pattern out of both guns' reach, forever.
             // Seed 5 stalled the same way once the cases and crates moved
-            // with the rooms, and seed 6 once Normal's health went to x0.68.
-            rngState: () => 7,
+            // with the rooms, seed 6 once Normal's health went to x0.68, and
+            // seed 7 once the dining room's ferns and cleat came in, with the
+            // chandelier shot down (see the NOTE at the top).
+            rngState: () => 1,
             localPlayers: () => 2,
             difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),
           }),
