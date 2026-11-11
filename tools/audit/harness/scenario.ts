@@ -41,6 +41,7 @@ import { levelOf, tileCenter } from '@game/world/level/arena'
 import {
   ARRANGEMENTS,
   CHANDELIER_DROP,
+  STACK_DROPS,
   roomSpotsOf,
 } from '@game/world/level/plan'
 import { wakeRoom } from '@game/world/level/wakeUp'
@@ -621,6 +622,32 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
           workedMs: config.cleat * TOOL_RULES.Cleat.setUpMs,
         },
       }),
+    })
+  }
+  const tool = config.tool
+  if (tool !== undefined) {
+    const rules = TOOL_RULES[tool]
+    const firedms = config.firedms
+    model = modifyFields(model, {
+      stations: stations => ({
+        ...stations,
+        [tool]:
+          firedms === undefined
+            ? {
+                ...stations[tool],
+                workedMs: config.worked * rules.setUpMs,
+              }
+            : {
+                workedMs: 0,
+                cooldownMs: rules.cooldownMs - firedms,
+                timesWorked: 1,
+              },
+      }),
+      level: level =>
+        firedms !== undefined &&
+        (tool === 'NorthStack' || tool === 'SouthStack')
+          ? { ...level, dropped: [...level.dropped, STACK_DROPS[tool].id] }
+          : level,
     })
   }
   const openexits = config.openexits
