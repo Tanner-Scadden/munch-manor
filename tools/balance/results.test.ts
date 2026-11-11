@@ -79,7 +79,7 @@ const runWith = (
   },
   escape: {
     casesOpened: 1,
-    delivered: 0,
+    openedWaves: [3],
     found: 1,
     listDoneWave: 0,
     hatWave: 0,

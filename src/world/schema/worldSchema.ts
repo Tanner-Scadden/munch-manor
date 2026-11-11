@@ -236,20 +236,12 @@ export const GameEvent = defineTaggedUnion({
   FriendlyFire: { x: PositionNumber, y: PositionNumber, direction: Heading },
   // NOTE: a downed player shouts MEDIC! (src/world/party/medic.ts), where they lie.
   MedicCalled: { x: PositionNumber, y: PositionNumber },
-  // NOTE: the dare's things (src/world/dare/dare.ts): one the dare asked
-  // for found by a walk onto it, one it did not taken in hand, the family
-  // portrait's carrier going down with it, the last thing on the list
-  // found (the finale's cue), and a thing in hand delivered to a point.
+  // NOTE: the dare's things (src/world/dare/dare.ts): one found by a walk
+  // onto it, Uncle Chunk's hat dropped where he fell, and the last thing on
+  // the list found (the finale's cue).
   DareFound: { x: PositionNumber, y: PositionNumber, kind: DareKind },
-  DareTaken: { x: PositionNumber, y: PositionNumber, kind: DareKind },
   DareDropped: { x: PositionNumber, y: PositionNumber, kind: DareKind },
   DareListDone: { x: PositionNumber, y: PositionNumber },
-  DareDelivered: {
-    x: PositionNumber,
-    y: PositionNumber,
-    kind: DareKind,
-    slot: Schema.Finite,
-  },
   // NOTE: the finale (src/world/dare/finale.ts): Uncle Chunk's hat taken
   // starts the front door unlocking, the door swings open, and a player
   // steps out through it, each at the door.
@@ -386,7 +378,7 @@ type ArmamentCounts = typeof ArmamentCounts.Type
 // case, the stove, or the gas valve (src/world/feats/feats.ts). Kill counts,
 // skill (a wave with no hit taken, a streak of kills with no hit between,
 // zombies a Kaboomer's blast takes with it), exploring (rooms opened, the
-// fireplace lit, keys from marked zombies), and a thing delivered to a case.
+// fireplace lit, keys from marked zombies).
 // KitchenKills counts since the last wave began, the rest the whole run.
 export const Feat = defineTaggedUnion({
   Kills: { count: Schema.Finite },
@@ -398,7 +390,6 @@ export const Feat = defineTaggedUnion({
   OpenedRoom: { count: Schema.Finite },
   LitFire: {},
   KeyFromMarked: { count: Schema.Finite },
-  Delivered: { count: Schema.Finite },
   KitchenKills: { count: Schema.Finite },
   KitchenStandKills: { count: Schema.Finite },
 })
@@ -418,7 +409,6 @@ export const FeatTally = Schema.Struct({
   roomsOpened: Schema.Finite,
   firesLit: Schema.Finite,
   markedKeys: Schema.Finite,
-  delivered: Schema.Finite,
   kitchenKills: Schema.Finite,
   kitchenStandKills: Schema.Finite,
   hurtThisWave: Schema.Boolean,
@@ -976,7 +966,6 @@ export const freshTally: FeatTally = {
   roomsOpened: 0,
   firesLit: 0,
   markedKeys: 0,
-  delivered: 0,
   kitchenKills: 0,
   kitchenStandKills: 0,
   hurtThisWave: false,

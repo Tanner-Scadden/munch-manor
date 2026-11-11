@@ -8,7 +8,6 @@ import {
   PLAYER_RADIUS,
 } from '../../shared/constants'
 import { advanceDare } from '../dare/dare'
-import { advanceDareCases } from '../dare/dareCases'
 import { advanceFinale } from '../dare/finale'
 import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
 import { advanceCases } from '../feats/cases'
@@ -466,7 +465,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     downed => advanceParty(downed, deltaMs),
     endWhenDefeated,
     dropKeys,
-    ended => advanceDareCases(advanceCases(tallyFeats(model, ended))),
+    ended => advanceCases(tallyFeats(model, ended)),
   )
 }
 

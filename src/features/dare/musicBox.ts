@@ -6,11 +6,12 @@ import { focusOf } from '../../world/party/party'
 import { clamp, distanceBetween } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
 
-// The music box (src/world/dare/dare.ts) plays its tune from its spot until
-// someone picks it up: a client cue read off the World, never fed back, so
-// every player hears it from where their own player stands. It plays on a
-// beat, louder the nearer the player is and panned to its side, and is not
-// heard past its reach, so the way to it is to follow the tune.
+// The music box (src/world/dare/dare.ts) plays its tune from its spot in
+// the parlour until someone picks it up, as flavor: like every thing on the
+// list it is found by opening its room. A client cue read off the World,
+// never fed back, so every player hears it from where their own player
+// stands, on a beat, louder the nearer the player is and panned to its
+// side, and not past its reach.
 
 const TUNE_BEAT_MS = 2400
 const TUNE_REACH_PX = 200

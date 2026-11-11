@@ -125,7 +125,7 @@ flowchart TD
   door --> arrive
   arrive([The run kicks off at the dining room's table, its exits padlocked]):::built --> list
 
-  list[Roll this run's dare from the pool: 2 to 4 things, by difficulty]:::built --> pocket
+  list[Roll this run's dare: 2 to 4 rooms behind boards, one thing in each, by difficulty]:::built --> pocket
   pocket[The dare card opens from your pocket: your friends' scrawl]:::built --> fold
   fold[The dare card on the HUD: empty outlines to fill]:::built --> waves
   waves[Waves count up, each harder than the last: the number is how far you got]:::built --> explore
@@ -137,20 +137,16 @@ flowchart TD
   fixedRoom --> hunt
   dish --> hunt
 
-  hunt{How does this thing come to you?}:::built
-  hunt --> hidden[Hidden in one of a few spots: the silver spoon]:::built
-  hunt --> carried[A marked zombie wears it: drop him, grab the portrait]:::built
-  hunt --> heard[Follow the sound: the music box playing]:::built
-  hunt --> behind[Behind the boards of a room: the butler's bell]:::built
-  hunt --> bought[Locked in a display case: a page of the guest book]:::built
-  hunt --> cooked[Made at the stove: Grandma Munch's recipe]:::built
+  hunt[Each room holds one thing: find it in the room you opened]:::built
+  hunt --> kitchenThing[The kitchen: Grandma Munch's recipe, the silver spoon, or the butler's bell]:::built
+  hunt --> parlourThing[The parlour: the music box or the family portrait]:::built
+  hunt --> libraryThing[The library: a page of the guest book or the family portrait]:::built
+  hunt --> cellarThing[The cellar: the butler's bell or the silver spoon]:::built
 
-  hidden --> all
-  carried --> all
-  heard --> all
-  behind --> all
-  bought --> all
-  cooked --> all
+  kitchenThing --> all
+  parlourThing --> all
+  libraryThing --> all
+  cellarThing --> all
   all{Everything but the hat?}
 
   all -.->|Leave early with part of the dare| early([Early escape: pays less, and you are a chicken]):::proposed
@@ -178,7 +174,6 @@ flowchart LR
   kill --> feats[Feats this run: kill counts, skill, exploring]:::built
   feats --> cases[Display cases spring open: a gun or the Laser Sight]:::built
   feats --> stove[The stove and the gas valve]:::built
-  find[Things the dare did not ask for]:::built --> cases
   kill --> use[Kills with a gun level it up: Beefy, DELUXE, 3000]:::built
   crates[Trap crates each break]:::built --> found[Traps, and a heart when someone is hurt]:::built
   ammo2[Ammo never runs out. Reloads stay]:::built
@@ -205,9 +200,9 @@ The four levels scale the zombies (health, speed, bites) and the break clock, an
 
 ```mermaid
 flowchart LR
-  easy[Dare: 2 things. Rattles points every break, hidden things sparkle]:::built --> normal[Double Dare: 3 things. One hint a break]:::built
-  normal --> hard[Triple Dare: 3 things. No sparkle, the portrait is always on a marked zombie]:::built
-  hard --> nightmare[Triple Dog Dare: 4 things. No hints, Rattles heckles]:::built
+  easy[Dare: 2 things. Rattles names the room every break, hidden things sparkle]:::built --> normal[Double Dare: 3 things. One hint a break]:::built
+  normal --> hard[Triple Dare: 3 things. No sparkle, no hints]:::built
+  hard --> nightmare[Triple Dog Dare: 4 things, one in every room behind boards. No hints, Rattles heckles]:::built
   nightmare --> hungrier[The house hungrier from the first find]:::built
 
   classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
@@ -233,7 +228,7 @@ flowchart LR
 
 The lore choices still open, from `LORE.md`:
 
-1. Which more things join the dare's pool, and whether the guest book page (a case) and Grandma Munch's recipe (the stove) roll.
+1. Which more things join the rooms, and which room each fits.
 2. Rattles' lines and his 1924 look.
 3. The feat pools per difficulty and the key costs, tuned in the balance pass.
 4. Leaving early, and what your friends in the car say between runs.

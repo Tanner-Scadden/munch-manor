@@ -297,16 +297,6 @@ const KEY = icon([
   '.......',
 ])
 
-const CRATE = icon([
-  'BBBBBBB',
-  'BDwwwDB',
-  'BwDwDwB',
-  'BwwDwwB',
-  'BwDwDwB',
-  'BDwwwDB',
-  'BBBBBBB',
-])
-
 const POT = icon([
   '..lll..',
   '.lllll.',
@@ -329,7 +319,6 @@ export const FEAT_ICONS: Readonly<Record<Feat['_tag'], Sprite>> = {
   OpenedRoom: DOOR,
   LitFire: FLAME,
   KeyFromMarked: KEY,
-  Delivered: CRATE,
   KitchenKills: POT,
   KitchenStandKills: POT,
 }

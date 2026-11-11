@@ -43,10 +43,8 @@ import { bossOf } from './bot/dodging'
 import {
   caseTakePrize,
   caseTarget,
-  deliveryTarget,
   escapeTarget,
   escapeTargetInWave,
-  holdPoint,
   isAtCase,
 } from './bot/escape'
 import {
@@ -285,9 +283,10 @@ export const play: {
     const timelines: Array<WaveTimeline> = []
     const bossLog: BossLog = []
     const newKinds = emptyNewKinds()
+    const openedWaves: Array<number> = []
     const escapeLog = {
       casesOpened: 0,
-      delivered: 0,
+      openedWaves,
       found: 0,
       listDoneWave: 0,
       hatWave: 0,
@@ -350,23 +349,21 @@ export const play: {
               ? (roomTarget(model) ?? ROOM_CENTER)
               : plan === 'Case'
                 ? (caseTarget(model) ?? ROOM_CENTER)
-                : plan === 'Deliver'
-                  ? (deliveryTarget(model) ?? ROOM_CENTER)
-                  : plan === 'Crate'
-                    ? (crateTarget(model) ?? ROOM_CENTER)
-                    : plan === 'Mend'
-                      ? (mendTarget(model) ?? ROOM_CENTER)
-                      : plan === 'Gnome'
-                        ? gnomeSpot(model)
-                        : plan === 'Fridge'
-                          ? (fridgeStand(model) ?? ROOM_CENTER)
-                          : plan === 'Return'
-                            ? holdPoint(model)
-                            : boxCenter(
-                                levelOf(model).thresholds[
-                                  busiestDoor(model) ?? 'North'
-                                ].box,
-                              )
+                : plan === 'Crate'
+                  ? (crateTarget(model) ?? ROOM_CENTER)
+                  : plan === 'Mend'
+                    ? (mendTarget(model) ?? ROOM_CENTER)
+                    : plan === 'Gnome'
+                      ? gnomeSpot(model)
+                      : plan === 'Fridge'
+                        ? (fridgeStand(model) ?? ROOM_CENTER)
+                        : plan === 'Return'
+                          ? ROOM_CENTER
+                          : boxCenter(
+                              levelOf(model).thresholds[
+                                busiestDoor(model) ?? 'North'
+                              ].box,
+                            )
         if (
           plan === 'Fridge' &&
           isOfferedToBot(model) &&
@@ -514,8 +511,8 @@ export const play: {
         if (event._tag === 'CaseOpened') {
           escapeLog.casesOpened += 1
         }
-        if (event._tag === 'DareDelivered') {
-          escapeLog.delivered += 1
+        if (event._tag === 'ExitOpened') {
+          escapeLog.openedWaves.push(wave)
         }
         if (event._tag === 'DareFound') {
           escapeLog.found += 1

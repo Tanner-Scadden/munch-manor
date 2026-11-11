@@ -347,11 +347,9 @@ const eventParticles = (
       generateMany(state, CONFETTI_PER_CLUTCH, confettiBit(playerGround(x, y))),
     DareFound: ({ x, y }) =>
       generateMany(state, CONFETTI_PER_SAVE, confettiBit({ x, y })),
-    DareTaken: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     DareDropped: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     DareListDone: ({ x, y }) =>
       generateMany(state, CONFETTI_PER_CLUTCH, confettiBit(playerGround(x, y))),
-    DareDelivered: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     FrontDoorUnlocking: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     FrontDoorOpened: ({ x, y }) => smashParticles(state, { x, y }),
     SteppedOut: ({ x, y }) =>

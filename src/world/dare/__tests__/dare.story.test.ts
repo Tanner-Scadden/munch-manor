@@ -1,4 +1,4 @@
-import { Array, Effect, Option, Result } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -15,45 +15,45 @@ import { PlayTune } from '../../../app/update/sound'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
+  hidingSpotIn,
   quietWave,
   readyModel,
-  withActors,
   withDareThings,
   withPlayerAt,
   withSeat,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
-  bulletInto,
   checkPendingArgs,
   settleRunCommands,
   startRunFromHome,
   tagsOf,
   tick,
-  ticks,
-  zombieOf,
 } from '../../../test/testing'
 import { levelOf, openExitIn } from '../../level/arena'
 import { KITCHEN_EXIT } from '../../level/exits'
+import {
+  CELLAR_ROOM_ID,
+  DINING_ROOM_ID,
+  KITCHEN_ROOM_ID,
+  LIBRARY_ROOM_ID,
+  PARLOUR_ROOM_ID,
+} from '../../level/plan'
 import { focusOf, modifyFocus, seatCrew } from '../../party/party'
 import { withWorld } from '../../schema/world'
 import {
-  DARE_WAYS,
   LAST_THING,
   LIST_LENGTHS,
   dareCardOf,
-  deliverHeld,
-  heldBy,
   isDareListDone,
-  isInOpenRoom,
   maybeLyingAt,
-  spotsOf,
+  maybeThingRoom,
 } from '../dare'
 import { type DareKind, type DareThing, DareThingState } from '../dareSchema'
 
 // The dare's list and its things (src/world/dare/dare.ts): the roll at a
-// run's start, each way a thing comes back, the crew's one list, and none in
-// Endless.
+// run's start, one thing to a room behind boards, found by opening the room
+// and walking onto it, the crew's one list, and none in Endless.
 
 const FRAME_MS = FIXED_STEP_MS
 
@@ -78,29 +78,26 @@ const startedOn = (difficulty: Difficulty, seed: number) =>
     settleRunCommands,
   )
 
-const START_ROOM_SPOT = Option.getOrThrow(
-  Array.findFirst(
-    spotsOf(levelOf(quietWave(2))),
-    ({ isBehindBoards }) => !isBehindBoards,
-  ),
-).point
+const START_ROOM_SPOT = hidingSpotIn(levelOf(quietWave(2)), DINING_ROOM_ID)
 
-const KITCHEN_SPOT = Option.getOrThrow(
-  Array.findFirst(
-    spotsOf(levelOf(quietWave(2))),
-    ({ isBehindBoards }) => isBehindBoards,
-  ),
-).point
+const KITCHEN_SPOT = hidingSpotIn(levelOf(quietWave(2)), KITCHEN_ROOM_ID)
+
+// NOTE: the things each room may hold (ROOM_THINGS in ../dare.ts), as the
+// owner picked them: the test reads them back as a player would.
+const ROOM_FITS: Readonly<Record<string, ReadonlyArray<DareKind>>> = {
+  [KITCHEN_ROOM_ID]: ['GrandmasRecipe', 'SilverSpoon', 'ButlersBell'],
+  [PARLOUR_ROOM_ID]: ['MusicBox', 'FamilyPortrait'],
+  [LIBRARY_ROOM_ID]: ['GuestBookPage', 'FamilyPortrait'],
+  [CELLAR_ROOM_ID]: ['ButlersBell', 'SilverSpoon'],
+}
 
 const hiddenAt = (
   id: number,
   kind: DareKind,
   point: Readonly<{ x: number; y: number }>,
-  isAsked = true,
 ): DareThing => ({
   id,
   kind,
-  isAsked,
   state: DareThingState.Hidden(point),
 })
 
@@ -115,15 +112,8 @@ describe('the list', () => {
             Option.some({ kind: LAST_THING, isFound: false }),
           )
           expect(card).toHaveLength(LIST_LENGTHS[difficulty] + 1)
-          const asked = Array.filter(
-            started.dareThings,
-            ({ isAsked }) => isAsked,
-          )
-          expect(Array.map(asked, ({ kind }) => kind)).toEqual(
+          expect(Array.map(started.dareThings, ({ kind }) => kind)).toEqual(
             started.dare.list,
-          )
-          expect(started.dareThings.length - asked.length).toBe(
-            Math.min(2, 6 - LIST_LENGTHS[difficulty]),
           )
         }),
       ),
@@ -149,63 +139,31 @@ describe('the list', () => {
   )
 
   it.effect(
-    'only rollable things roll, none twice, the hidden ones on spots of their own, the bell behind the boards',
+    'each room behind boards holds one thing of its own, none twice, on its spots, the dining room none',
     () =>
       Effect.forEach(Array.range(0, 9), seed =>
         startedOn('Nightmare', seed * 104_729).pipe(
           Effect.map(started => {
+            const level = levelOf(started)
             const kinds = Array.map(started.dareThings, ({ kind }) => kind)
             expect(Array.dedupe(kinds)).toHaveLength(kinds.length)
-            Array.forEach(kinds, kind => {
-              expect([
-                'Hidden',
-                'Marked',
-                'BehindBoards',
-                'Heard',
-                'InCase',
-                'Cooked',
-              ]).toContain(DARE_WAYS[kind])
-            })
-            const points = Array.filterMap(started.dareThings, ({ state }) =>
-              DareThingState.isAnyOf(['Hidden'])(state)
-                ? Result.succeed(`${state.x},${state.y}`)
-                : Result.failVoid,
+            const rooms = Array.map(started.dareThings, thing =>
+              Option.getOrThrow(maybeThingRoom(thing, level)),
             )
-            expect(Array.dedupe(points)).toHaveLength(points.length)
-            const bells = Array.filter(
-              started.dareThings,
-              ({ kind }) => kind === 'ButlersBell',
+            expect(Array.dedupe(Array.map(rooms, ({ id }) => id))).toHaveLength(
+              4,
             )
-            expect(
-              Array.every(
-                bells,
-                ({ state }) =>
-                  DareThingState.isAnyOf(['Hidden'])(state) &&
-                  !isInOpenRoom(levelOf(started), state),
-              ),
-            ).toBe(true)
-            expect(
-              Array.every(
-                Array.filter(
-                  started.dareThings,
-                  ({ kind }) => kind === 'FamilyPortrait',
-                ),
-                ({ state }) => DareThingState.isAnyOf(['Marked'])(state),
-              ),
-            ).toBe(true)
+            Array.forEach(
+              Array.zip(started.dareThings, rooms),
+              ([thing, room]) => {
+                expect(room.isOpen).toBe(false)
+                expect(ROOM_FITS[room.id]).toContain(thing.kind)
+                expect(Option.isNone(maybeLyingAt(thing, level))).toBe(true)
+              },
+            )
           }),
         ),
       ),
-  )
-
-  it.effect('on Triple Dare one thing is always on a marked zombie', () =>
-    Effect.forEach(Array.range(0, 9), seed =>
-      startedOn('Hard', seed * 31).pipe(
-        Effect.map(started => {
-          expect(started.dare.list).toContain('FamilyPortrait')
-        }),
-      ),
-    ),
   )
 
   it.effect('Endless, stay the night, has no list and no card', () =>
@@ -229,7 +187,7 @@ describe('the list', () => {
   )
 })
 
-describe('each way to get a thing', () => {
+describe('finding a thing', () => {
   it.effect(
     'hidden in a spot: a walk onto it finds it, and the last one ends the list',
     () => {
@@ -279,97 +237,6 @@ describe('each way to get a thing', () => {
         ),
       )
     },
-  )
-
-  it.effect(
-    'carried by a marked zombie: he wears it from wave 2 and drops it where he falls',
-    () =>
-      Effect.gen(function* () {
-        const carrier = zombieOf('Shambler', 7, 60, 74)
-        const marked = yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withActors(
-              withDareThings(quietWave(2), [
-                {
-                  id: 0,
-                  kind: 'FamilyPortrait',
-                  isAsked: true,
-                  state: DareThingState.Marked(),
-                },
-              ]),
-              [carrier],
-            ),
-          ),
-          tick(FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(current.dareThings[0]?.state).toEqual(
-              DareThingState.Carried({ zombieId: 7 }),
-            )
-          }),
-        )
-        const walking = Option.getOrThrow(
-          Array.findFirst(marked.zombies, ({ id }) => id === 7),
-        )
-        const dropped = yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withActors(marked, marked.zombies, [
-              bulletInto(90, walking, { damage: 999 }),
-            ]),
-          ),
-          tick(FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            const [thing] = current.dareThings
-            expect(thing?.state._tag).toBe('Dropped')
-            expect(tagsOf(current.frameEvents)).toContain('DareDropped')
-          }),
-        )
-        const spot = Option.getOrThrow(
-          Option.flatMap(Array.head(dropped.dareThings), thing =>
-            maybeLyingAt(thing, levelOf(dropped)),
-          ),
-        )
-        // NOTE: the kill's hit-stop holds the World a few frames first.
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withPlayerAt(dropped, spot.x, spot.y)),
-          ...ticks(12, FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(current.dareThings[0]?.state).toEqual(
-              DareThingState.Found({ slot: 0 }),
-            )
-            expect(isDareListDone(current)).toBe(true)
-          }),
-        )
-      }),
-  )
-
-  it.effect('no zombie wears the mark in wave 1', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withActors(
-          withDareThings(quietWave(1), [
-            {
-              id: 0,
-              kind: 'FamilyPortrait',
-              isAsked: true,
-              state: DareThingState.Marked(),
-            },
-          ]),
-          [zombieOf('Shambler', 7, 60, 74)],
-        ),
-      ),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(current.dareThings[0]?.state).toEqual(DareThingState.Marked())
-      }),
-    ),
   )
 
   it.effect(
@@ -511,47 +378,6 @@ describe('the crew', () => {
         }),
       )
     },
-  )
-
-  it.effect(
-    'a thing off the list goes in the hand of who took it, to be delivered',
-    () =>
-      Effect.gen(function* () {
-        const taken = yield* Story.story(
-          APPLICATION,
-          Story.given(
-            withPlayerAt(
-              withDareThings(quietWave(3), [
-                hiddenAt(0, 'SilverSpoon', { x: 40, y: 40 }),
-                hiddenAt(1, 'MusicBox', START_ROOM_SPOT, false),
-              ]),
-              START_ROOM_SPOT.x,
-              START_ROOM_SPOT.y,
-            ),
-          ),
-          tick(FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(tagsOf(current.frameEvents)).toContain('DareTaken')
-            expect(Array.map(heldBy(current, 0), ({ kind }) => kind)).toEqual([
-              'MusicBox',
-            ])
-            expect(isDareListDone(current)).toBe(false)
-          }),
-        )
-        const farPoint = { x: START_ROOM_SPOT.x + 60, y: START_ROOM_SPOT.y }
-        expect(
-          withWorld(taken, world => deliverHeld(world, 0, farPoint)).dareThings,
-        ).toBe(taken.dareThings)
-        const delivered = withWorld(taken, world =>
-          deliverHeld(world, 0, START_ROOM_SPOT),
-        )
-        expect(delivered.dareThings[1]?.state).toEqual(
-          DareThingState.Delivered({ slot: 0 }),
-        )
-        expect(tagsOf(delivered.frameEvents)).toContain('DareDelivered')
-        expect(heldBy(delivered, 0)).toEqual([])
-      }),
   )
 })
 

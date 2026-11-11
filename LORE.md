@@ -205,7 +205,6 @@ Built on 2026-11-10. The owner, 2026-11-10: there is no shopkeeper and no shop. 
 
 - **Guns are in display cases.** A glass case in the study, a gun rack in the cellar, a trophy case: each holds a gun, and each lock shows a feat as an icon and a ring that fills as you go. Do it this run and the case springs open. Which gun sits behind which feat can roll each run.
 - **Feats of every kind** (owner, 2026-11-10): kill counts (25 kills, 10 knife kills, 5 Big Lugs), skill (a wave without a hit, a 20 kill streak, a Kaboomer caught in its own blast), exploring (a key off a marked zombie, a room opened, the fireplace lit), and the house's things.
-- **Things the dare did not ask for open cases too** (owner, 2026-11-10). The pool holds more things than any one dare asks for, so opening a room and finding something off your list is never a letdown: carry it to a display case and it opens.
 - **Guns level up with use.** The tiers stay (Beefy, DELUXE, 3000), earned by kills with that gun instead of bought.
 - **Ammo never runs out** (owner, 2026-11-10). Every gun has endless ammo, but magazines and reloads stay: a reload is still the moment a horde gets scary, and a bigger magazine or a faster reload is still worth earning.
 - **Hearts and traps are found.** Hearts from the Pickled Heart and the pantry, traps where they stand in the house (a gnome on a mantel, a plank pile in the hall).
@@ -278,29 +277,29 @@ Then the card folds itself into the HUD, and its icons become the empty outlines
 
 ### What the dare asks for changes every run
 
-Built on 2026-11-10, every way in the table. Each run rolls its list from a pool of things in the house, from its own salted seeded stream (TranZit, Last Night on Earth). Uncle Chunk's party hat is always last. What makes the list fun is less which object it is than how each one comes back to you, so each thing in the pool has its own way:
+Built on 2026-11-10. One rule: each room holds one thing (owner, 2026-11-10). Each run gives every room behind boards one thing on the list, fit to the room, on one of its hiding spots, from its own salted seeded stream (TranZit, Last Night on Earth). Open a room and its thing is in there. Uncle Chunk's party hat is always last.
 
-| Thing                    | How you get it                                                                    |
-| ------------------------ | --------------------------------------------------------------------------------- |
-| The silver spoon         | Hidden in one of a few spots: a sofa cushion, the sideboard, under the table      |
-| The family portrait      | A marked zombie, a daredevil who tried to steal it, carries it: drop him, grab it |
-| A page of the guest book | Locked in a display case: open it with a feat                                     |
-| Grandma Munch's recipe   | Cooked at the kitchen's stove, as a perk is                                       |
-| The music box            | It plays somewhere in the house: follow the tune                                  |
-| The butler's bell        | Behind the boards of a room you have not opened yet                               |
-| Uncle Chunk's party hat  | Always last: he is wearing it at the front door                                   |
+| Room        | What it may hold                                                 |
+| ----------- | ---------------------------------------------------------------- |
+| The kitchen | Grandma Munch's recipe, the silver spoon, or the butler's bell   |
+| The parlour | The music box (its tune plays, as flavor) or the family portrait |
+| The library | A page of the guest book or the family portrait                  |
+| The cellar  | The butler's bell or the silver spoon                            |
+| The front   | Uncle Chunk's party hat, always last, at the front door          |
+
+No thing is carried by a marked zombie, locked in a case, or cooked at the stove any more: the display cases and the stove keep their own prizes. Rattles may name the room a thing is in; the HUD never does.
 
 Objects, no reading needed. The HUD shows this run's list as empty outlines that fill in.
 
 ### Difficulty sets the list
 
-Built on 2026-11-10 with the help as Rattles' hints: Dare points every break and sparkles every hidden thing, Double Dare one hint a break, Triple Dare always lists the portrait and hints only when its carrier walks in, and Triple Dog Dare heckles. On Triple Dog Dare the house gets hungrier from the first find; on the other levels, once the list is done. The four levels scale the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`), and the list is a second dial on the same curve:
+Built on 2026-11-10 with the help as Rattles' hints: Dare names the room every break and sparkles every hidden thing, Double Dare one hint a break, Triple Dare gives no hints, and Triple Dog Dare heckles. On Triple Dog Dare the house gets hungrier from the first find; on the other levels, once the list is done. The four levels scale the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`), and the list is a second dial on the same curve:
 
 | Level     | Things before the hat | Help finding them                                     |
 | --------- | --------------------- | ----------------------------------------------------- |
 | Easy      | 2                     | The dare card's doodles point the way; spots sparkle  |
 | Normal    | 3                     | One doodled hint a break                              |
-| Hard      | 3                     | No sparkle; one is always on a marked zombie          |
+| Hard      | 3                     | No sparkle, no hints                                  |
 | Nightmare | 4                     | No hints; the house gets hungrier from the first find |
 
 A longer list makes a longer run, so the balance model and bot learn the list before the counts are tuned.
@@ -354,7 +353,7 @@ Ordered from cheapest to most work, so the story could land before the systems d
 
 The lore choices still open, roughly in order. Settled and built on 2026-11-10: the dare, your friends writing the card, Rattles as the 1924 daredevil who hints, and rooms that roll.
 
-1. **What goes in the pool?** Six things are defined and all six roll (see "What the dare asks for changes every run"); which come next is open.
+1. **What goes in the rooms?** Six things are defined, each fit to a room or two (see "What the dare asks for changes every run"); which come next is open.
 2. **Rattles.** His lines are drafts for review, and his look is open.
 3. **Which feats open which cases,** and how many skeleton keys a room and a fridge pull cost: starting numbers, tuned in the balance pass.
 4. **What is a Bone?** What you earn across runs, now that the run's own currency is skeleton keys.

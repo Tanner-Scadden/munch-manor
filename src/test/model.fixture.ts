@@ -38,9 +38,15 @@ import {
   openExitIn,
   startingLevel,
   startingLevelFor,
+  tileCenter,
 } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
-import { EVERY_LEVEL_SPEC, SLOTS, SLOT_IDS } from '../world/level/plan'
+import {
+  EVERY_LEVEL_SPEC,
+  SLOTS,
+  SLOT_IDS,
+  roomSpotsOf,
+} from '../world/level/plan'
 import {
   atSeatBy,
   focusOf,
@@ -68,6 +74,7 @@ import {
   type Seat,
   type SeatState,
   type SlotRoomId,
+  type Vector,
 } from '../world/schema/worldSchema'
 import { PHONE_PORTRAIT, SURFACE, zombieOf } from './testing'
 import { asVeteran } from './veteran'
@@ -216,15 +223,29 @@ export const withDareThings: {
       modifyFields(dare, {
         list: () =>
           Array.map(
-            Array.filter(
-              things,
-              ({ isAsked, kind }) => isAsked && kind !== 'PartyHat',
-            ),
+            Array.filter(things, ({ kind }) => kind !== 'PartyHat'),
             ({ kind }) => kind,
           ),
       }),
     dareThings: () => things,
   }),
+)
+
+// NOTE: the first hiding spot of a room of the level, by the room's id, in
+// world pixels: where the dare lays that room's thing.
+export const hidingSpotIn: {
+  (room: string): (level: Level) => Vector
+  (level: Level, room: string): Vector
+} = Function.dual(2, (level: Level, room: string): Vector =>
+  Option.getOrThrow(
+    Option.map(
+      Option.flatMap(
+        Array.findFirst(roomSpotsOf(level.spec), spots => spots.room === room),
+        ({ hiding }) => Array.head(hiding),
+      ),
+      ({ tile }) => tileCenter(tile),
+    ),
+  ),
 )
 
 // THE FINALE

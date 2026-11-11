@@ -51,14 +51,12 @@ const FRAME_MS = 1000 / 60
 const found = (id: number, kind: DareThing['kind']): DareThing => ({
   id,
   kind,
-  isAsked: true,
   state: DareThingState.Found({ slot: 0 }),
 })
 
 const hidden = (id: number, kind: DareThing['kind']): DareThing => ({
   id,
   kind,
-  isAsked: true,
   state: DareThingState.Hidden({ x: 5000, y: 5000 }),
 })
 

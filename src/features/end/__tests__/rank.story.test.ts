@@ -61,15 +61,14 @@ const diesOnWave7 = lastHeart(runAt(wave(7), 6))
 
 // NOTE: the dare's three things found, and Uncle Chunk's hat taken.
 const FOUND_THINGS: ReadonlyArray<DareThing> = [
-  { id: 0, kind: 'SilverSpoon', isAsked: true, state: foundBy0 },
-  { id: 1, kind: 'MusicBox', isAsked: true, state: foundBy0 },
-  { id: 2, kind: 'FamilyPortrait', isAsked: true, state: foundBy0 },
+  { id: 0, kind: 'SilverSpoon', state: foundBy0 },
+  { id: 1, kind: 'MusicBox', state: foundBy0 },
+  { id: 2, kind: 'FamilyPortrait', state: foundBy0 },
 ]
 
 const HAT: DareThing = {
   id: 3,
   kind: 'PartyHat',
-  isAsked: true,
   state: foundBy0,
 }
 

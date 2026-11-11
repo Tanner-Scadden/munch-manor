@@ -411,20 +411,12 @@ describe('sending at the end of a run', () => {
           {
             id: 0,
             kind: 'SilverSpoon',
-            isAsked: true,
             state: DareThingState.Found({ slot: 0 }),
           },
           {
             id: 1,
             kind: 'MusicBox',
-            isAsked: true,
             state: DareThingState.Found({ slot: 0 }),
-          },
-          {
-            id: 2,
-            kind: 'ButlersBell',
-            isAsked: false,
-            state: DareThingState.Held({ slot: 0 }),
           },
         ]),
       ),
