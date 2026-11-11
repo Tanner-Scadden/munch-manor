@@ -1,8 +1,9 @@
-import { Function } from 'effect'
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
 import { isObjectFirst } from '../shared/dualArgs'
+import type { Level } from '../world/level/arena'
 import {
   type Difficulty,
   type DifficultyBests,
@@ -10,7 +11,8 @@ import {
 } from '../world/schema/worldSchema'
 
 // What several features read of where a run stands: home, in a run, or on
-// an end screen; the bests a run writes; and the feedback ask.
+// an end screen; the rooms opened; the bests a run writes; and the feedback
+// ask.
 
 // PHASES
 
@@ -19,6 +21,20 @@ export const isOnHome = Phase.isAnyOf(['Ready'])
 export const isInRun = Phase.isAnyOf(['Preparation', 'Wave', 'Paused'])
 
 export const isEndScreen = Phase.isAnyOf(['Escaped', 'GameOver'])
+
+// ROOMS
+
+// NOTE: the rooms opened out of the rooms on the map, read from the level's
+// boarded exits (the start room plus one for each). The library's secret
+// shelf is a way between two rooms, not a room. The break's rooms counter
+// and the pause screen read it.
+export const roomsOf = (level: Level): { found: number; total: number } => {
+  const boarded = Array.filter(level.exits, ({ opener }) => opener === 'Boards')
+  return {
+    found: 1 + Array.length(Array.filter(boarded, ({ isOpen }) => isOpen)),
+    total: 1 + boarded.length,
+  }
+}
 
 // BESTS
 

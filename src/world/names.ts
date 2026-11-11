@@ -9,6 +9,7 @@ import type {
   TutorialChoice,
 } from '../shared/nameKeys'
 import { type Calling, type CosmeticKind, Hat } from '../shared/playerData'
+import type { DareKind } from './dare/dareSchema'
 import type { Modifier } from './run/modifiers'
 import type {
   FridgePrize,
@@ -337,3 +338,15 @@ export const SAVE_WORDS = {
   Saved: 'SAVED!',
   Clutch: 'CLUTCH!',
 } as const
+
+// NOTE: the dare's things, read aloud on the pause screen's list
+// (src/features/menus/pauseProgress.ts), the hat Uncle Chunk's own.
+export const DARE_NAMES: Readonly<Record<DareKind, string>> = {
+  SilverSpoon: 'Silver Spoon',
+  FamilyPortrait: 'Family Portrait',
+  GuestBookPage: 'Guest Book Page',
+  GrandmasRecipe: "Grandma's Recipe",
+  MusicBox: 'Music Box',
+  ButlersBell: "Butler's Bell",
+  PartyHat: "Uncle Chunk's Party Hat",
+}

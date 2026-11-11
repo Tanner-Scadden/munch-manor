@@ -1,6 +1,7 @@
 import { Array, Record, String } from 'effect'
 
 import type { DareKind } from '../world/dare/dareSchema'
+import { pixelIconUrl } from './icons'
 import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
 
 // The dare's things as 7 by 7 pixel icons, for the dare card on the HUD and
@@ -122,6 +123,17 @@ export const DARE_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
   DARE_PIXELS,
   pixels => spriteShapes(pixels, DARE_PALETTE, TOP_LEFT),
 )
+
+// NOTE: the things as SVG for HTML, crisp at any size: in color, and as
+// the silhouette for one not found yet (the pause screen's list,
+// src/features/menus/pauseProgress.ts).
+export const DARE_ICON_URLS: Readonly<Record<DareKind, string>> = Record.map(
+  DARE_PIXELS,
+  pixels => pixelIconUrl(pixels, DARE_PALETTE),
+)
+
+export const DARE_SILHOUETTE_URLS: Readonly<Record<DareKind, string>> =
+  Record.map(DARE_PIXELS, pixels => pixelIconUrl(pixels, SILHOUETTE_PALETTE))
 
 // NOTE: a dare slot on the HUD's pocket, one sprite: the thing at twice its
 // size, so a spoon reads as a spoon on a phone, on a dark fill inside a rim
