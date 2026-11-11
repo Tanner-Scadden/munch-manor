@@ -908,7 +908,7 @@ describe('the room', () => {
     () =>
       Effect.gen(function* () {
         const played = playRoom(stagedWorld([0, 1], []), 600)
-        const later = playRoom(played, 30)
+        const later = playRoom(played, 60)
         const diff = makeWriter()
         coopWorld.diff(diff, played, later)
         const start = makeWriter()
