@@ -47,6 +47,7 @@ import {
   escapeTarget,
   escapeTargetInWave,
   isAtCase,
+  isWorkingForEscape,
 } from './bot/escape'
 import {
   AIM_EVERY_FRAMES,
@@ -395,6 +396,9 @@ export const play: {
           )
         } else if (plan === 'Fridge' && isFridgeInReach(model)) {
           model = pressKeys(model, fridgeKeys(model))
+        } else if (plan === 'Go' && isWorkingForEscape(model)) {
+          // NOTE: a room's find is worked by keeping still in reach.
+          model = pressKeys(model, new Set())
         } else if (plan === 'Mend' && isAtMend(model)) {
           model = pressKeys(model, new Set())
         } else if (
@@ -454,12 +458,18 @@ export const play: {
               model,
               escapeTo === undefined
                 ? holdingAtBoards(model, desiredKeys(kite(state, model)))
-                : desiredKeys(
-                    steerToward(
-                      focusOf(model).player,
-                      routeTo(levelOf(model), focusOf(model).player, escapeTo),
+                : isWorkingForEscape(model)
+                  ? new Set()
+                  : desiredKeys(
+                      steerToward(
+                        focusOf(model).player,
+                        routeTo(
+                          levelOf(model),
+                          focusOf(model).player,
+                          escapeTo,
+                        ),
+                      ),
                     ),
-                  ),
             ),
           )
         }
