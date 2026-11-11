@@ -7,11 +7,13 @@
 //
 // Run it through the guard, one difficulty a job, as `bun run heavy -- --cpu
 // sh tools/balance/pacing.sh <runs>` with DIFFICULTY= and AIM= as for the
-// bot: it plays `run <count> <from>` slices in WORKERS processes, each
-// writing tools/balance/reports/pacing-<difficulty>-<from>.json
+// bot: it plays `run <count> <from>` slices in rounds of WORKERS processes,
+// each writing tools/balance/reports/pacing-<difficulty>-<from>.json
 // (gitignored), and `bun tools/balance/pacing.ts report` prints the tables.
-// A run takes about a minute, so keep a job under the guard's 10 minute
-// lease: about 8 runs a worker.
+// A run takes about a minute, so a round of 2 run slices is a couple of
+// minutes, and between rounds the script calls `yield <workers>`, which
+// yields the guard's turn (yieldTurn) and prints the WORKERS for the next
+// round. Clear the old slices before a new measurement.
 
 import {
   Array,
@@ -29,6 +31,7 @@ import { Window } from 'happy-dom'
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
+import { yieldTurn } from '../heavy/turn'
 import { readJsonFile, writeJsonFile } from '../json'
 import type { Model } from './bot/basics'
 
@@ -455,6 +458,14 @@ const printReport = Effect.gen(function* () {
   })
 })
 
+// NOTE: the boundary between rounds of slices: prints the WORKERS the guard
+// grants for the next round, or the ones it had outside the guard.
+const yieldBetweenRounds = (workers: number) =>
+  yieldTurn('the next round of pacing slices').pipe(
+    Effect.map(Option.getOrElse(() => workers)),
+    Effect.flatMap(next => Console.log(`${next}`)),
+  )
+
 const program = Effect.gen(function* () {
   const [mode, runs, from] = process.argv.slice(2)
   yield* mode === 'run'
@@ -462,7 +473,9 @@ const program = Effect.gen(function* () {
         globalThis.Number.parseInt(runs ?? '1', 10),
         globalThis.Number.parseInt(from ?? '0', 10),
       )
-    : printReport
+    : mode === 'yield'
+      ? yieldBetweenRounds(globalThis.Number.parseInt(runs ?? '1', 10))
+      : printReport
 })
 
 program.pipe(Effect.provide(NodeServices.layer), NodeRuntime.runMain)
