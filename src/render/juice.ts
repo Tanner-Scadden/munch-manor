@@ -88,6 +88,7 @@ const eventTrauma = (event: GameEvent): number =>
     ReloadStarted: () => 0,
     Reloaded: () => 0,
     WaveCleared: () => 0,
+    RushedIn: () => 0,
     PackWarned: () => 0,
     TrapHit: () => 0,
     TrapCracked: () => TRAP_CRACK_TRAUMA,
@@ -219,6 +220,7 @@ export const POPUP_LIFETIME_MS: Readonly<Record<PopupKind, number>> = {
   Saved: SAVE_POPUP_LIFETIME_MS,
   Clutch: SAVE_POPUP_LIFETIME_MS,
   Opened: OPENED_POPUP_LIFETIME_MS,
+  Rushed: OPENED_POPUP_LIFETIME_MS,
 }
 
 const popup =
@@ -270,6 +272,12 @@ const eventPopups = (
     ReloadStarted: () => noPopups(state),
     Reloaded: () => noPopups(state),
     WaveCleared: () => noPopups(state),
+    RushedIn: ({ x, y, points }) =>
+      generateMany(
+        state,
+        1,
+        popup('Rushed', points, x, y - OPENED_POPUP_LIFT_PX),
+      ),
     PackWarned: () => noPopups(state),
     TrapHit: () => noPopups(state),
     TrapCracked: () => noPopups(state),

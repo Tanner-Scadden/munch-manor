@@ -184,6 +184,7 @@ const eventParticles = (
       withState(state, clipParticles(x, y, direction, weapon)),
     Reloaded: () => noParticles(state),
     WaveCleared: () => noParticles(state),
+    RushedIn: () => noParticles(state),
     PackWarned: ({ x, y }) =>
       dustRing({ x, y }, RATTLE_DUST_PER_WARNING)(state),
     TrapHit: ({ x, y }) =>
