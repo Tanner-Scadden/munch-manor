@@ -7,6 +7,8 @@ import { Array, Equivalence, Function, Result } from 'effect'
 import type { Toll } from '../../schema/worldSchema'
 import {
   type Level,
+  TILE_OUTSIDE,
+  hasTileFlag,
   isOpenBlock,
   isWalkableTile,
   tileCenter,
@@ -22,7 +24,9 @@ import {
 } from '../pathing'
 
 // NOTE: the search the flat one replaced, kept as the oracle: neighbors in
-// arrays of arrays, buckets in a Map, one ring settled after another.
+// arrays of arrays, buckets in a Map, one ring settled after another. The
+// yard is one way, as in pathing.ts: a yard tile never hands its distance
+// to a house tile, since no zombie steps from the house out into the yard.
 const STRAIGHT = [
   [1, 0],
   [-1, 0],
@@ -62,7 +66,13 @@ const neighborsOf = (
   return Array.filterMap(STRAIGHT, step =>
     isFieldTile(level, column, row) &&
     isFieldTile(level, column + step[0], row + step[1]) &&
-    isOpen(level, clearance, column, row, step)
+    isOpen(level, clearance, column, row, step) &&
+    (!hasTileFlag(level, index, TILE_OUTSIDE) ||
+      hasTileFlag(
+        level,
+        tileIndex(level, column + step[0], row + step[1]),
+        TILE_OUTSIDE,
+      ))
       ? Result.succeed(tileIndex(level, column + step[0], row + step[1]))
       : Result.failVoid,
   )

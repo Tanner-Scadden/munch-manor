@@ -138,10 +138,24 @@ const isClearanceStepOpen = (
 // The whole house is 132 by 37 tiles, so a field over all of its yard with
 // only the dining room open cost twice what it did.
 //
+// The yard is one way: a step from the house into the yard is left out, so
+// a zombie in the house never walks back out a door to take the yard round
+// to another, and the field reaches no house tile by way of the yard.
+// Without it a zombie that came in at the kitchen window walked straight
+// back out, round the yard, and in at the dining room's west door, out of
+// sight, nearer the player.
+//
 // A level's walks are fixed, so each is laid out once with the level, in
 // compressed rows: the tiles one step from a tile are
-// adjacent[start[tile]] up to adjacent[start[tile + 1]].
+// adjacent[start[tile]] up to adjacent[start[tile + 1]]. The search spreads
+// from a tile to those, so each is a tile a zombie walks from onto it.
 type WalkGraph = Readonly<{ start: Int32Array; adjacent: Int32Array }>
+
+// NOTE: whether a zombie may step from tile `from` to tile `to`, by the
+// yard's one way rule: never from the house out into the yard.
+const isStepIntoTheHouse = (level: Level, from: number, to: number): boolean =>
+  hasTileFlag(level, from, TILE_OUTSIDE) ||
+  !hasTileFlag(level, to, TILE_OUTSIDE)
 
 // NOTE: past the loop's line round the open house (ZOMBIE_SPAWN_MARGIN out),
 // with a tile to spare.
@@ -184,7 +198,12 @@ const walkGraphFor = (level: Level, clearance: Clearance): WalkGraph => {
           stepColumn,
           stepRow,
         ) &&
-        isFieldTile(level, column + stepColumn, row + stepRow)
+        isFieldTile(level, column + stepColumn, row + stepRow) &&
+        isStepIntoTheHouse(
+          level,
+          tileIndex(level, column + stepColumn, row + stepRow),
+          index,
+        )
       ) {
         adjacent.push(tileIndex(level, column + stepColumn, row + stepRow))
       }
@@ -383,6 +402,7 @@ const downhillTile = (
     const distance = distanceAt(flowField.distances, neighbor)
     if (
       distance < bestDistance &&
+      isStepIntoTheHouse(level, index, neighbor) &&
       (isClearanceStepOpen(
         level,
         clearance,
@@ -715,12 +735,26 @@ const nextWaypoint = (
   )
 }
 
+type DoorOffset = Readonly<{ outwardness: number; sideways: number }>
+
+// NOTE: where `position` stands from `from` (a point on a door's line): how
+// far out the way the door faces, and how far to its side.
+const doorOffset = (
+  outward: Vector,
+  from: Vector,
+  position: Vector,
+): DoorOffset => {
+  const offsetX = position.x - from.x
+  const offsetY = position.y - from.y
+  return {
+    outwardness: offsetX * outward.x + offsetY * outward.y,
+    sideways: Math.abs(offsetX * outward.y - offsetY * outward.x),
+  }
+}
+
 const isAtDoor = (level: Level, position: Vector, id: DoorId): boolean => {
   const { center, outward } = level.doors[id]
-  const offsetX = position.x - center.x
-  const offsetY = position.y - center.y
-  const outwardness = offsetX * outward.x + offsetY * outward.y
-  const sideways = Math.abs(offsetX * outward.y - offsetY * outward.x)
+  const { outwardness, sideways } = doorOffset(outward, center, position)
   return outwardness > 0 && sideways <= DOOR_HALF_WIDTH_PX
 }
 
@@ -885,6 +919,44 @@ const takesTheYard = (
     isByOpenYardDoor(level, position, barricaded) ||
     Array.contains(yardDoorsOf(level), bestEntry(level, flowField, position)))
 
+// NOTE: a zombie in the yard right outside a door that is not boarded, in
+// the doorway's lane no farther out than where it spawns (ZOMBIE_SPAWN_MARGIN
+// past the door's outer face, and a tile of give for a shove), walks straight
+// in through that door. The flow field alone once walked it around the house
+// in the yard, out of sight, whenever the way through its own door cost more
+// (a turret's toll by the door, a teammate nearer another door), so it came
+// in through a door nearer the player than the one it was due at.
+const DOORWAY_LANE_OUT_PX = ZOMBIE_SPAWN_MARGIN + TILE_SIZE
+const DOORWAY_LANE_HALF_WIDTH_PX = DOOR_HALF_WIDTH_PX + TILE_SIZE / 2
+
+const isInDoorwayLane = (
+  level: Level,
+  position: Vector,
+  id: DoorId,
+): boolean => {
+  const { edge, outward } = level.doors[id]
+  const { outwardness, sideways } = doorOffset(outward, edge, position)
+  return (
+    outwardness > 0 &&
+    outwardness <= DOORWAY_LANE_OUT_PX &&
+    sideways <= DOORWAY_LANE_HALF_WIDTH_PX
+  )
+}
+
+const maybeDoorwayLane = (
+  level: Level,
+  position: Vector,
+  barricaded: ReadonlyArray<DoorId>,
+): Option.Option<DoorId> =>
+  isInYardAt(level, position)
+    ? Array.findFirst(
+        level.doorIds,
+        id =>
+          !Array.contains(barricaded, id) &&
+          isInDoorwayLane(level, position, id),
+      )
+    : Option.none()
+
 export const steerToward: {
   (
     flowField: FlowField,
@@ -914,10 +986,7 @@ export const steerToward: {
     clearance: Clearance,
     barricaded: ReadonlyArray<DoorId>,
   ): Vector => {
-    if (
-      isInsideRoomAt(level, position) ||
-      takesTheYard(level, flowField, position, barricaded)
-    ) {
+    if (isInsideRoomAt(level, position)) {
       return insideSteering(
         level,
         flowField,
@@ -926,8 +995,20 @@ export const steerToward: {
         halfWidth,
         clearance,
       )
-    } else {
-      return outsideSteering(level, flowField, position, barricaded)
     }
+    return Option.match(maybeDoorwayLane(level, position, barricaded), {
+      onSome: door => towardDoor(level, position, door),
+      onNone: () =>
+        takesTheYard(level, flowField, position, barricaded)
+          ? insideSteering(
+              level,
+              flowField,
+              position,
+              target,
+              halfWidth,
+              clearance,
+            )
+          : outsideSteering(level, flowField, position, barricaded),
+    })
   },
 )
