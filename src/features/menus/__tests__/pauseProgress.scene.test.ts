@@ -28,13 +28,11 @@ const onTheHunt = (device: Model['lastDevice']): Model =>
         {
           id: 0,
           kind: 'SilverSpoon',
-          isAsked: true,
           state: DareThingState.Found({ slot: 0 }),
         },
         {
           id: 1,
           kind: 'MusicBox',
-          isAsked: true,
           state: DareThingState.Hidden({ x: 40, y: 40 }),
         },
       ]),
