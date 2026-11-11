@@ -35,7 +35,7 @@ export const MUNCHOPEDIA: Array.NonEmptyReadonlyArray<MunchopediaEntry> = [
     kind: 'Tank',
     bio: 'Ate everything. Now he wears the kitchen too.',
     behavior: 'Plods in slow, soaks up lead, and loves a snack of planks.',
-    howToBeat: 'Knock the junk off one clang at a time. Keep your distance.',
+    howToBeat: 'Clang off the pan, then the pot. Keep your distance.',
   },
   {
     kind: 'Exploder',

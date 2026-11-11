@@ -155,9 +155,8 @@ const PHYSICS: Readonly<Record<ParticleKind, ParticlePhysics>> = {
   TealLimb: partPhysics('TealLimb'),
   TealScalp: partPhysics('TealScalp'),
   PaleScalp: partPhysics('PaleScalp'),
-  PotLid: partPhysics('PotLid'),
-  StopSign: partPhysics('StopSign'),
-  Bucket: partPhysics('Bucket'),
+  FryingPan: partPhysics('FryingPan'),
+  StockPot: partPhysics('StockPot'),
   Smoke: {
     gravity: -SMOKE_RISE,
     dragPerSecond: DUST_DRAG_PER_SECOND,
@@ -221,9 +220,8 @@ export const LAUNCH_SIZE: Readonly<Record<ParticleKind, number>> = {
   TealLimb: 6,
   TealScalp: 3,
   PaleScalp: 3,
-  PotLid: 6,
-  StopSign: 6,
-  Bucket: 5,
+  FryingPan: 6,
+  StockPot: 5,
   Smoke: 3,
   Frost: 1,
   IceGib: 2,
@@ -256,9 +254,8 @@ const DECAL_HEIGHT: Readonly<Record<DecalKind, (size: number) => number>> = {
   TealLimb: () => 2,
   TealScalp: () => 2,
   PaleScalp: () => 2,
-  PotLid: () => 3,
-  StopSign: () => 5,
-  Bucket: () => 4,
+  FryingPan: () => 3,
+  StockPot: () => 4,
 }
 
 type ParticleStep = Result.Result<Particle, Option.Option<Decal>>

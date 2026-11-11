@@ -44,9 +44,8 @@ export const DecalKind = Schema.Literals([
   'TealLimb',
   'TealScalp',
   'PaleScalp',
-  'PotLid',
-  'StopSign',
-  'Bucket',
+  'FryingPan',
+  'StockPot',
 ])
 export type DecalKind = typeof DecalKind.Type
 
