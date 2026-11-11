@@ -14,7 +14,7 @@ import { InMessage } from '../inMessage'
 import { LobbyLayer } from '../layer'
 import { Message, OutMessage } from '../message'
 import { type LobbyPicks, isHeroPickerUp } from '../model'
-import { FocusLobbyControl } from '../steps'
+import { FocusLobbyControl, FoldLobby } from '../steps'
 
 // The single player lobby Block on its own: it opens on START, says each
 // pick for the root to make, opens the hero picker in its Dialog, and plays
@@ -154,20 +154,31 @@ describe('the lobby Block', () => {
     ),
   )
 
-  it.effect('Enter starts and Esc goes back, each closing the lobby', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      opened,
-      pressed('Enter'),
-      Story.expectOutMessage(OutMessage.Started()),
-      Story.model(model => {
-        expect(model.status).toBe('Closed')
-      }),
-      opened,
-      pressed('Escape'),
-      Story.expectOutMessage(OutMessage.Left()),
-    ),
+  it.effect(
+    'Enter starts, closing the lobby at once, and Esc goes back, folding it away first',
+    () =>
+      Story.story(
+        LOBBY,
+        Story.init(),
+        opened,
+        pressed('Enter'),
+        Story.expectOutMessage(OutMessage.Started()),
+        Story.model(model => {
+          expect(model.status).toBe('Closed')
+        }),
+        opened,
+        pressed('Escape'),
+        Story.expectOutMessage(OutMessage.Left()),
+        Story.model(model => {
+          expect(model.status).toBe('Folding')
+        }),
+        pressed('Enter'),
+        Story.expectNoOutMessage(),
+        Story.Command.resolve(FoldLobby(), Message.CompletedFold()),
+        Story.model(model => {
+          expect(model.status).toBe('Closed')
+        }),
+      ),
   )
 
   it.effect(

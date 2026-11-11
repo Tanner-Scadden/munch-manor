@@ -6,7 +6,7 @@ import { Bot, HomeMode } from '../../domain/clientSchema'
 import { Modifiers } from '../../world/run/modifiers'
 import { DifficultySetting } from '../../world/schema/worldSchema'
 import { HeroPickerBlock } from '../heroes/block'
-import { OpenStatus, isPickerOpen } from '../heroes/model'
+import { isPickerOpen } from '../heroes/model'
 
 // NOTE: every control the lobby's arrow keys walk, in order: BACK, the hero
 // card, each crew seat (a + BOT tile, or a bot's hero card with its x), the
@@ -49,13 +49,20 @@ export const LobbyPicks = Schema.Struct({
 })
 export type LobbyPicks = typeof LobbyPicks.Type
 
-// NOTE: the lobby's own state: up or not (a screen of the home menu, so a
-// run that starts or a way home leaves it Closed), the control in focus (where the
-// arrow keys step from), and the bot whose hero the open picker chooses (an
-// index into the picks' bots). The hero picker and the Dialog it stands in
-// are its children, on `heroPicker` and `heroDialog`.
+// NOTE: where the dare card stands. It unfolds out of PLAY as it opens
+// (Open), and CHICKEN OUT folds it back into PLAY: Folding while the fold
+// plays, with the card drawn but dead to taps and keys and the home menu
+// already back in charge, then Closed. A run that starts or a way home
+// leaves it Closed at once.
+export const LobbyStatus = Schema.Literals(['Closed', 'Open', 'Folding'])
+export type LobbyStatus = typeof LobbyStatus.Type
+
+// NOTE: the lobby's own state: where the card stands, the control in focus
+// (where the arrow keys step from), and the bot whose hero the open picker
+// chooses (an index into the picks' bots). The hero picker and the Dialog
+// it stands in are its children, on `heroPicker` and `heroDialog`.
 export const Model = Schema.Struct({
-  status: OpenStatus,
+  status: LobbyStatus,
   maybeFocus: Schema.Option(LobbyControl),
   maybePickingBot: Schema.Option(Schema.Finite),
   heroPicker: HeroPickerBlock.Model,
@@ -71,9 +78,11 @@ export const initialModel: Omit<Model, 'heroPicker' | 'heroDialog'> = {
 }
 
 // NOTE: reads for the root, so it never reads the lobby's fields: whether
-// the lobby is on screen (whatever is over it), and whether its hero
-// picker is up.
+// the lobby is up (whatever is over it), whether it is drawn at all (up, or
+// folding back into PLAY), and whether its hero picker is up.
 export const isLobbyShown = (model: Model): boolean => model.status === 'Open'
+
+export const isLobbyDrawn = (model: Model): boolean => model.status !== 'Closed'
 
 export const isHeroPickerUp = (model: Model): boolean =>
   isLobbyShown(model) &&

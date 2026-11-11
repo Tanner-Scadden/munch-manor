@@ -16,6 +16,7 @@ import {
   APPLICATION,
   SCENE_SUBSCRIPTIONS,
   closeDialog,
+  homeUnderLobby,
   measureSurface,
   pauseButton,
   resolveFocusLobbyInScene,
@@ -554,7 +555,8 @@ describe('the install tile', () => {
         Scene.expect(fullscreenButton).toBeAbsent(),
         Scene.click(Scene.role('button', { name: 'Play' })),
         resolveFocusLobbyInScene(),
-        Scene.expect(homeScreenTip).toBeAbsent(),
+        Scene.expect(homeUnderLobby).toHaveAttr('inert'),
+        Scene.expect(homeScreenTip).toHaveAttr('data-tip', 'Unseen'),
       )
       yield* Scene.scene(
         APPLICATION,

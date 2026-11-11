@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest'
 import coopCss from '../../features/coop/coop.css?raw'
 import callingCss from '../../features/heroes/calling.css?raw'
 import menuCss from '../../features/home/menu.css?raw'
+import lobbyCss from '../../features/lobby/lobby.css?raw'
 import closetCss from '../../features/profile/blocks/look/closet.css?raw'
 import profileCss from '../../features/profile/profile.css?raw'
 import stylesCss from '../styles.css?raw'
@@ -12,7 +13,7 @@ import stylesCss from '../styles.css?raw'
 // comes up. A button that slides, grows, or spins into place while a player
 // taps it is somewhere else by then, so the press missed or hit what was
 // behind it. So an animation that moves an element (transform, translate,
-// scale, or rotate) may only run on art: an icon or a face inside a
+// scale, rotate, or its insets) may only run on art: an icon or a face inside a
 // button, a badge, a particle, a sprite. A button, and anything holding
 // one, comes in by fading, glowing, or flashing, with its box in place
 // from the first frame.
@@ -28,6 +29,7 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/features/heroes/calling.css', callingCss],
   ['src/features/profile/blocks/look/closet.css', closetCss],
   ['src/features/coop/coop.css', coopCss],
+  ['src/features/lobby/lobby.css', lobbyCss],
 ]
 
 const MOVING_ART: Readonly<Record<string, string>> = {
@@ -50,6 +52,7 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'gift-rattle': "the gift's art, inside its button",
   'gift-twinkle': 'sparkles',
   'gift-lid-fly': "the gift's lid art",
+  'gift-zombie-pop': 'the zombie art rising out of the gift, inside its button',
   'gift-burst': 'sparkles',
   'gift-tag-swing': "the gift's tag art",
   'gift-tag-wave': "the gift's tag art",
@@ -107,9 +110,17 @@ const MOVING_ART: Readonly<Record<string, string>> = {
     "the room code's symbols, aria-hidden art inside the code button",
   'coop-poof': 'a dust puff in a lobby seat, aria-hidden art',
   'coop-poof-out': 'a dust puff in a lobby seat, aria-hidden art',
+  // lobby/lobby.css
+  'dare-unfold':
+    "the dare card's fold, aria-hidden paper over the card: the card and its buttons stay put and fade in once it is open",
+  'dare-fold-back':
+    "the dare card's fold back into PLAY, aria-hidden paper, the card already gone and inert",
+  'dare-flap-open': "the fold's bottom half, aria-hidden paper",
+  'dare-flap-close': "the fold's bottom half, aria-hidden paper",
 }
 
-const MOVES = /(^|[\s;{])(transform|translate|scale|rotate)\s*:/
+const MOVES =
+  /(^|[\s;{])(transform|translate|scale|rotate|top|right|bottom|left|inset)\s*:/
 
 const movingKeyframes = (css: string): ReadonlyArray<string> =>
   Array.map(

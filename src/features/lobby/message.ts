@@ -10,6 +10,7 @@ import { LobbyControl } from './model'
 // (inMessage.ts).
 export const Message = defineMessageUnion({
   ClickedBackButton: {},
+  ClickedBackdrop: {},
   ClickedStartButton: {},
   ClickedHeroButton: {},
   ClickedAddBotButton: {},
@@ -21,6 +22,7 @@ export const Message = defineMessageUnion({
   FocusedControl: { control: LobbyControl },
   BlurredControl: {},
   CompletedFocusControl: {},
+  CompletedFold: {},
 })
 export type Message = typeof Message.Type
 
@@ -28,7 +30,8 @@ export type Message = typeof Message.Type
 // root's (it saves the difficulty, and a run reads them all), so each pick
 // goes up for the root to make and to tap: the mode, the difficulty, a
 // modifier, + BOT (the root's seeded generator rolls the bot), and a bot
-// sent home. START and BACK close the lobby. The picker opening plays the
+// sent home. START closes the lobby, and BACK (or a tap
+// outside the card) folds it back into PLAY. The picker opening plays the
 // root's tap and marks the heroes seen. A hero card and BUY ask the root,
 // which owns the rank, the heroes bought, and the Bones
 // (`InformedOfHeroOutcome` answers); a card chosen for a bot says which.

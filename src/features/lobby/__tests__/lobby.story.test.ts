@@ -12,6 +12,7 @@ import { initialModel } from '../../../app/pureApp'
 import { FocusHomeButton } from '../../../app/update/home'
 import { Message as HeroPickerMessage } from '../../../features/heroes/message'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
+import { FoldLobby } from '../../../features/lobby/steps'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   heroesBoughtBy,
@@ -35,6 +36,12 @@ import { FocusLobbyControl } from '../steps'
 
 // The single player lobby (src/features/lobby/lobby.ts, src/features/lobby/update.ts): PLAY opens
 // it, START plays what it holds, and BACK and Esc go home.
+
+// NOTE: CHICKEN OUT folds the card back into PLAY, then it is gone.
+const foldLobby = Story.Command.resolve(
+  FoldLobby(),
+  LobbyMessage.CompletedFold(),
+)
 
 describe('PLAY opens the lobby', () => {
   it.effect('a tap on PLAY opens it, focuses START, and starts no run', () =>
@@ -206,20 +213,63 @@ describe('the hero card', () => {
 })
 
 describe('BACK and Esc', () => {
-  it.effect('the BACK button closes the lobby and focuses PLAY', () =>
+  it.effect(
+    'the BACK button folds the card back into PLAY, focuses PLAY, and then it is gone',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        openLobbyByKey,
+        Story.messageIn(LobbyBinding, LobbyMessage.ClickedBackButton()),
+        Story.Command.resolve(
+          FocusHomeButton({ button: 'Play' }),
+          Message.CompletedFocusHomeButton(),
+        ),
+        Story.model(current => {
+          expect(current.lobby.status).toBe('Folding')
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+          expect(menuState(current)._tag).toBe('Home')
+        }),
+        foldLobby,
+        Story.model(current => {
+          expect(current.lobby.status).toBe('Closed')
+        }),
+      ),
+  )
+
+  it.effect('a tap outside the card folds it back as BACK does', () =>
     Story.story(
       APPLICATION,
       Story.given(readyModel),
       openLobbyByKey,
-      Story.messageIn(LobbyBinding, LobbyMessage.ClickedBackButton()),
+      Story.messageIn(LobbyBinding, LobbyMessage.ClickedBackdrop()),
       Story.Command.resolve(
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
       Story.model(current => {
-        expect(current.lobby.status).toBe('Closed')
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
+        expect(current.lobby.status).toBe('Folding')
         expect(menuState(current)._tag).toBe('Home')
+      }),
+      foldLobby,
+    ),
+  )
+
+  it.effect('PLAY while the card folds away opens it again, and it stays', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
+      openLobbyByKey,
+      press('Escape'),
+      Story.Command.resolve(
+        FocusHomeButton({ button: 'Play' }),
+        Message.CompletedFocusHomeButton(),
+      ),
+      openLobbyByKey,
+      foldLobby,
+      Story.model(current => {
+        expect(current.lobby.status).toBe('Open')
+        expect(menuState(current)._tag).toBe('Lobby')
       }),
     ),
   )
@@ -239,6 +289,7 @@ describe('BACK and Esc', () => {
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
+      foldLobby,
       Story.model(current => {
         expect(menuState(current)._tag).toBe('Home')
         expect(current.home.mode).toBe('Endless')

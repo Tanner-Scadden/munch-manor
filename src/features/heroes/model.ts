@@ -2,11 +2,10 @@ import { Option, Schema } from 'effect'
 
 import { Calling } from '../../shared/playerData'
 
-// NOTE: whether a screen is up: the hero picker (a parent shows it in its
-// own frame, the solo lobby's Dialog or co-op's lobby overlay), and the solo
-// lobby that holds it.
-export const OpenStatus = Schema.Literals(['Closed', 'Open'])
-export type OpenStatus = typeof OpenStatus.Type
+// NOTE: whether the hero picker is up (a parent shows it in its own frame,
+// the solo lobby's Dialog or co-op's lobby overlay).
+const OpenStatus = Schema.Literals(['Closed', 'Open'])
+type OpenStatus = typeof OpenStatus.Type
 
 // NOTE: the picker's own state: up or not, and the hero for sale being tried
 // on (its BUY pill buys it), never saved. Which hero is worn, who owns what,

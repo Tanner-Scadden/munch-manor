@@ -7,7 +7,7 @@ import { LobbyBlock } from './block'
 import { LobbyComposition } from './composition'
 import { inMessageUpdate } from './inMessageUpdate'
 import { initialModel } from './model'
-import { FocusLobbyControl } from './steps'
+import { FocusLobbyControl, FoldLobby } from './steps'
 import { update } from './update'
 import { lobbyImplementation } from './view'
 
@@ -20,5 +20,5 @@ export const LobbyLayer = LobbyBlock.makeLayer({
   update,
   inMessageUpdate,
   view: lobbyImplementation.view,
-  EffectsLayer: FocusLobbyControl.layer,
+  EffectsLayer: Layer.mergeAll(FocusLobbyControl.layer, FoldLobby.layer),
 }).pipe(Layer.provide(Layer.mergeAll(Dialog.layer, HeroPickerLayer)))

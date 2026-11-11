@@ -86,7 +86,7 @@ import { manorHandView, menuPanelView } from './dialogs'
 import { homeScreenGuideView } from './dialogs'
 import { updateGreetingView } from './dialogs'
 import { gameStageView } from './layers'
-import { isLobbyUp, isProfileOpen } from './menuState'
+import { isLobbyDrawn, isLobbyUp, isProfileOpen } from './menuState'
 import { Message, type PressedPointer } from './message'
 import { DebutCard, type Model, Phase, RunMode, type RunStats } from './model'
 import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
@@ -374,10 +374,10 @@ const lobbyInputs = (model: Model): LobbyViewInputs => {
   }
 }
 
-// NOTE: the lobby is drawn only while it is up, so a closed one costs the
-// frame nothing.
+// NOTE: the lobby is drawn only while it is up or folding back into PLAY,
+// so a closed one costs the frame nothing.
 const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
-  isLobbyUp(model)
+  isLobbyDrawn(model)
     ? h.block(
         LobbyBinding.embedView({
           slotId: 'lobby',
@@ -386,6 +386,20 @@ const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
         }),
       )
     : h.empty
+
+// NOTE: the home menu stays in sight, dimmed, around the dare card, since
+// the card unfolds out of its PLAY (src/features/lobby/lobby.css), but it is
+// inert while the card is up: no tap, Tab, or screen reader reaches it. The
+// wrapper takes no room and is always there, so the menu is never drawn
+// afresh (its deal-in art would play again) when the card opens or closes.
+const homeUnderLobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
+  h.div(
+    [
+      h.Class('home-under-lobby'),
+      ...(isLobbyUp(model) ? [h.Inert(true), h.AriaHidden(true)] : []),
+    ],
+    [homeMenuView(model, h)],
+  )
 
 // VIEW
 
@@ -443,9 +457,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         ),
         loadoutView(model, h),
         pauseHelpView(model, h.OnPointerDown(toPressedPointer), h),
-        isCoopOpen(model) || isLobbyUp(model)
-          ? h.empty
-          : homeMenuView(model, h),
+        isCoopOpen(model) ? h.empty : homeUnderLobbyView(model, h),
         preparationControlsView(model, h),
         gunClusterView(model, h),
         debutCardView(model, h),
