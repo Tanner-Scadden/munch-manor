@@ -9,6 +9,7 @@ import type { HintBand } from '../domain/clientSchema'
 import { VIEW_WIDTH } from '../shared/constants'
 import { type Level, findStrike, levelOf } from '../world/level/arena'
 import {
+  type BossAttack,
   BossMove,
   Glob,
   type Vector,
@@ -16,17 +17,14 @@ import {
 } from '../world/schema/entitySchema'
 import { Boss } from '../world/schema/worldSchema'
 import { clamp } from '../world/step/geometry'
-import {
-  BOSS_RULES,
-  type BossBar,
-  isEnraged,
-  maybeStandingBoss,
-} from '../world/zombies/boss'
+import { type BossBar, maybeStandingBoss } from '../world/zombies/boss'
+import { isEnraged } from '../world/zombies/bossFight'
+import { BOSS_RULES } from '../world/zombies/bossRules'
 import { ZOMBIE_KINDS } from '../world/zombies/zombies'
 import { FULL_TURN, tellAlpha } from './drawing'
 import { barWidthOf, healthBarShapes } from './healthBarView'
 
-// STOMP RING
+// STOMP AND SLAM RINGS
 
 const RING_FILL_FAINT = 0.12
 const RING_FILL_STRONG = 0.34
@@ -39,8 +37,11 @@ const ringFill = (progress: number): string =>
 const progressOf = (remainingMs: number, durationMs: number): number =>
   clamp(1 - remainingMs / Math.max(1, durationMs), 0, 1)
 
-const stompRingShapes = (
+// NOTE: a planted attack's ring on the floor, filling as it winds up: the
+// stomp's, and the wider slam's in his second phase.
+const ringShapes = (
   boss: Zombie,
+  ringRadius: number,
   progress: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const x = Math.round(boss.x)
@@ -49,20 +50,20 @@ const stompRingShapes = (
     Canvas.Circle({
       x,
       y,
-      radius: BOSS_RULES.stompRadius,
+      radius: ringRadius,
       fill: ringFill(progress),
     }),
     Canvas.Circle({
       x,
       y,
-      radius: BOSS_RULES.stompRadius,
+      radius: ringRadius,
       stroke: RING_EDGE_COLOR,
       lineWidth: 1,
     }),
     Canvas.Circle({
       x,
       y,
-      radius: Math.max(1, Math.round(BOSS_RULES.stompRadius * progress)),
+      radius: Math.max(1, Math.round(ringRadius * progress)),
       stroke: RING_SWEEP_COLOR,
       lineWidth: 2,
     }),
@@ -284,6 +285,14 @@ const flyingGlobShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> => {
 
 // GROUND
 
+const RING_RADII: Readonly<Partial<Record<BossAttack, number>>> = {
+  Stomp: BOSS_RULES.stompRadius,
+  Slam: BOSS_RULES.slamRadius,
+}
+
+const maybeRingRadius = (attack: BossAttack): Option.Option<number> =>
+  Option.fromUndefinedOr(RING_RADII[attack])
+
 const moveGroundShapes = (
   level: Level,
   move: BossMove,
@@ -294,9 +303,11 @@ const moveGroundShapes = (
     Recovering: () => [],
     Dazed: () => [],
     WindingUp: ({ attack, remainingMs, durationMs }) =>
-      attack === 'Stomp'
-        ? stompRingShapes(boss, progressOf(remainingMs, durationMs))
-        : [],
+      Option.match(maybeRingRadius(attack), {
+        onNone: () => [],
+        onSome: ringRadius =>
+          ringShapes(boss, ringRadius, progressOf(remainingMs, durationMs)),
+      }),
     Bracing: ({ target, remainingMs, durationMs }) =>
       chargeLaneShapes(
         bracingLane(level, boss, target),

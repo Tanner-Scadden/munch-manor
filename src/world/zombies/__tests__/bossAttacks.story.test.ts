@@ -30,7 +30,8 @@ import {
 import { focusOf, modifyFocus } from '../../party/party'
 import { DIFFICULTIES } from '../../run/difficulty'
 import { FINAL_WAVE } from '../../waves/wavePlans'
-import { BOSS_RULES, maybeBossBar } from '../boss'
+import { maybeBossBar } from '../boss'
+import { BOSS_RULES } from '../bossRules'
 import { ZOMBIE_KINDS, scaledHp } from '../zombies'
 import {
   BOSS_HP,
@@ -41,15 +42,13 @@ import {
   bossAt,
   bossWithHpAt,
   eventsTagged,
+  fightOf,
   fightingBoss,
   fightingWith,
   inWave,
   spawnAt,
   sturdy,
 } from './boss.fixture'
-
-const fightOf = (current: Model) =>
-  Option.getOrThrow(Option.liftPredicate(current.boss, Boss.guards.Fighting))
 
 const bossIn = (current: Model): Zombie =>
   Option.getOrThrow(
@@ -766,12 +765,12 @@ describe('far attacks', () => {
 })
 
 describe('enrage', () => {
-  const third = BOSS_HP / 3
+  const half = BOSS_HP * BOSS_RULES.enrageShare
 
-  it.effect('he enrages once his health falls to a third, roaring once', () =>
+  it.effect('he enrages once his health falls to half, roaring once', () =>
     Effect.gen(function* () {
-      const calm = bossWithHpAt(Math.floor(third) + 1, CENTER_X + 60, CENTER_Y)
-      const angry = bossWithHpAt(Math.floor(third), CENTER_X + 60, CENTER_Y)
+      const calm = bossWithHpAt(Math.floor(half) + 1, CENTER_X + 60, CENTER_Y)
+      const angry = bossWithHpAt(Math.floor(half), CENTER_X + 60, CENTER_Y)
       const quiet = BossMove.Stalking({ cooldownMs: 60_000 })
       yield* Story.story(
         APPLICATION,
@@ -798,7 +797,7 @@ describe('enrage', () => {
           expect(maybeBossBar(current)).toEqual(
             Option.some({
               name: 'Uncle Chunk',
-              hp: Math.floor(third),
+              hp: Math.floor(half),
               maxHp: BOSS_HP,
               isEnraged: true,
             }),
@@ -1000,6 +999,7 @@ describe('attack pace by difficulty', () => {
       expect(DIFFICULTIES.Normal.bossAttackPace).toBe(1)
       expect(BOSS_RULES.cooldownMs).toEqual({
         Stomp: 1600,
+        Slam: 2000,
         Belch: 1200,
         Spit: 4500,
         Charge: 3000,
@@ -1029,6 +1029,7 @@ describe('attack pace by difficulty', () => {
   test('a faster pace leaves the tells alone', () => {
     expect(BOSS_RULES.windUpMs).toEqual({
       Stomp: 1000,
+      Slam: 1200,
       Belch: 800,
       Spit: 500,
       Charge: 800,

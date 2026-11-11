@@ -348,10 +348,16 @@ const eventParticles = (
       generateMany(state, CONFETTI_PER_CLUTCH, confettiBit(playerGround(x, y))),
     DareFound: ({ x, y }) =>
       generateMany(state, CONFETTI_PER_SAVE, confettiBit({ x, y })),
-    DareDropped: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     DareListDone: ({ x, y }) =>
       generateMany(state, CONFETTI_PER_CLUTCH, confettiBit(playerGround(x, y))),
-    FrontDoorUnlocking: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
+    // NOTE: Uncle Chunk's big key bursts out of him in a shower of coins
+    // and confetti.
+    BigKeyBurst: ({ x, y }) =>
+      chain(state, [
+        drawState => generateMany(drawState, WIPE_COINS, coin({ x, y })),
+        drawState =>
+          generateMany(drawState, CONFETTI_PER_CLUTCH, confettiBit({ x, y })),
+      ]),
     FrontDoorOpened: ({ x, y }) => smashParticles(state, { x, y }),
     SteppedOut: ({ x, y }) =>
       generateMany(state, CONFETTI_PER_SAVE, confettiBit(playerGround(x, y))),

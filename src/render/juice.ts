@@ -155,9 +155,8 @@ const eventTrauma = (event: GameEvent): number =>
     TeammateSaved: ({ clutch }) => (clutch ? CLUTCH_TRAUMA : 0),
     GunLeveled: () => 0,
     DareFound: () => SHAKE_TRAUMA_GRAB,
-    DareDropped: () => 0,
     DareListDone: () => SHAKE_TRAUMA_GRAB,
-    FrontDoorUnlocking: () => SHAKE_TRAUMA_GRAB,
+    BigKeyBurst: () => EXIT_SMASH_TRAUMA,
     FrontDoorOpened: () => EXIT_SMASH_TRAUMA,
     SteppedOut: () => 0,
   })
@@ -353,9 +352,8 @@ const eventPopups = (
     MedicCalled: () => noPopups(state),
     GunLeveled: () => noPopups(state),
     DareFound: () => noPopups(state),
-    DareDropped: () => noPopups(state),
     DareListDone: () => noPopups(state),
-    FrontDoorUnlocking: () => noPopups(state),
+    BigKeyBurst: () => noPopups(state),
     FrontDoorOpened: () => noPopups(state),
     SteppedOut: () => noPopups(state),
   })

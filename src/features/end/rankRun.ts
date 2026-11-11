@@ -6,7 +6,7 @@ import { isBotCrew } from '../../domain/bots'
 import { effectiveModifiersOf } from '../../domain/onlineRun'
 import { isEndScreen, isInRun, isOnHome } from '../../domain/run'
 import { playedDifficultyOf } from '../../platform/analyticsRun'
-import { dareItemsFoundOf, isHatFound } from '../../world/dare/dare'
+import { dareItemsFoundOf } from '../../world/dare/dare'
 import {
   type RunPayInput,
   bonesForPoints,
@@ -54,7 +54,6 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
     wavesCleared: Math.max(0, run.stats.wavesCleared - run.rankPaid.wavesPaid),
     bossesFelled: Math.max(0, run.stats.kills.Boss - run.rankPaid.bossesPaid),
     dareItems: dareItemsFoundOf(run),
-    isHatTaken: isHatFound(run),
     isEscape: Phase.isAnyOf(['Escaped'])(run.phase),
     awards: Math.max(0, awards - run.rankPaid.awardsPaid),
     revives: isHumanCrew(run)

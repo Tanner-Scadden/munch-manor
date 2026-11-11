@@ -21,6 +21,7 @@ import { noRank } from '../../src/world/heroes/rank'
 import { KEY_RULES } from '../../src/world/keys/keys'
 import { boxCenter, levelOf } from '../../src/world/level/arena'
 import { focusOf } from '../../src/world/party/party'
+import { BOSS_RULES } from '../../src/world/zombies/bossRules'
 import { SURFACE } from '../determinism/script'
 import {
   type BotOptions,
@@ -122,8 +123,11 @@ const bossBlameOf = (after: Model): BossBlame | undefined => {
   if (tags.has('BossRammed')) {
     return 'Charge'
   }
-  if (tags.has('BossStomped')) {
-    return 'Stomp'
+  const maybeStompRadius = Array.findFirst(after.frameEvents, event =>
+    event._tag === 'BossStomped' ? Option.some(event.radius) : Option.none(),
+  )
+  if (Option.isSome(maybeStompRadius)) {
+    return maybeStompRadius.value === BOSS_RULES.slamRadius ? 'Slam' : 'Stomp'
   }
   if (tags.has('GlobLanded')) {
     return 'Glob'
@@ -289,7 +293,10 @@ export const play: {
       openedWaves,
       found: 0,
       listDoneWave: 0,
-      hatWave: 0,
+      chunkWave: 0,
+      keyWave: 0,
+      chunkFightMs: 0,
+      chunkFromMs: 0,
     }
     while (
       (model.phase._tag === 'Preparation' || model.phase._tag === 'Wave') &&
@@ -516,9 +523,18 @@ export const play: {
         }
         if (event._tag === 'DareFound') {
           escapeLog.found += 1
-          if (event.kind === 'PartyHat') {
-            escapeLog.hatWave ||= wave
-          }
+        }
+        if (
+          event._tag === 'BossRoared' &&
+          event.door === 'Front' &&
+          escapeLog.chunkWave === 0
+        ) {
+          escapeLog.chunkWave = wave
+          escapeLog.chunkFromMs = model.stats.runMs
+        }
+        if (event._tag === 'BigKeyBurst' && escapeLog.keyWave === 0) {
+          escapeLog.keyWave = wave
+          escapeLog.chunkFightMs = model.stats.runMs - escapeLog.chunkFromMs
         }
         if (event._tag === 'DareListDone') {
           escapeLog.listDoneWave ||= wave
@@ -801,7 +817,15 @@ export const play: {
         ...state.fridgeLog,
         endedWith: finalFridge?.kind ?? 'None',
       },
-      escape: escapeLog,
+      escape: {
+        casesOpened: escapeLog.casesOpened,
+        openedWaves: escapeLog.openedWaves,
+        found: escapeLog.found,
+        listDoneWave: escapeLog.listDoneWave,
+        chunkWave: escapeLog.chunkWave,
+        keyWave: escapeLog.keyWave,
+        chunkFightMs: escapeLog.chunkFightMs,
+      },
     }
   },
 )

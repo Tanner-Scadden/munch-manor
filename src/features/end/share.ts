@@ -56,7 +56,7 @@ const where = ({ isEndless, wave }: SharedRun): string =>
 
 const soloText = (run: SharedRun): string =>
   run.outcome === 'Won'
-    ? `🎩 I escaped Munch Manor on ${SHOUTED[run.difficulty]} with Uncle Chunk's hat! Out on wave ${run.wave}, ${splatted(run.kills)}.`
+    ? `🗝️ I beat Uncle Chunk and escaped Munch Manor on ${SHOUTED[run.difficulty]}! Out on wave ${run.wave}, ${splatted(run.kills)}.`
     : `💀 Got munched on ${where(run)} in Munch Manor. ${splatted(run.kills)} first. Your turn!`
 
 const AWARD_BRAGS: Readonly<Record<CrewAward, string>> = {
@@ -89,7 +89,7 @@ const crewBrags = (run: SharedRun): string =>
 
 const crewText = (run: SharedRun): string =>
   run.outcome === 'Won'
-    ? `🎩 Our crew of ${run.crew} escaped Munch Manor on ${SHOUTED[run.difficulty]} with Uncle Chunk's hat! Out on wave ${run.wave}, ${splatted(run.kills)} together.${crewBrags(run)}`
+    ? `🗝️ Our crew of ${run.crew} beat Uncle Chunk and escaped Munch Manor on ${SHOUTED[run.difficulty]}! Out on wave ${run.wave}, ${splatted(run.kills)} together.${crewBrags(run)}`
     : `💀 Our crew of ${run.crew} got munched on ${where(run)} in Munch Manor. ${splatted(run.kills)} together.${crewBrags(run)} Bring snacks.`
 
 export const shareText = (run: SharedRun): string =>

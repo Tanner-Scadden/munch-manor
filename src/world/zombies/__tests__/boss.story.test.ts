@@ -33,13 +33,13 @@ import { DIFFICULTIES } from '../../run/difficulty'
 import { hpScaleFor, rollSpawns } from '../../waves/endlessWaves'
 import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
 import {
-  BOSS_RULES,
   freshFight,
   hasBoss,
   maybeBossBar,
   maybeBossDoor,
   planBoss,
 } from '../boss'
+import { BOSS_RULES } from '../bossRules'
 import { ZOMBIE_KINDS, scaledHp } from '../zombies'
 import {
   BOSS_HP,
@@ -218,7 +218,7 @@ describe('planning the boss', () => {
 
 describe('the entrance', () => {
   const waitingAt = (door: DoorId, waitBelow: number): Boss =>
-    Boss.Waiting({ door, waitBelow, hp: BOSS_HP })
+    Boss.Waiting({ door, waitBelow, hp: BOSS_HP, guestHpScale: 1 })
 
   it.effect(
     'it stays outside until only its share of spawns is left, then roars at its door',
@@ -270,6 +270,7 @@ describe('the entrance', () => {
             Boss.Arriving({
               door: 'West',
               hp: BOSS_HP,
+              guestHpScale: 1,
               remainingMs: 40,
               durationMs: BOSS_RULES.entranceMs,
             }),
@@ -293,6 +294,7 @@ describe('the entrance', () => {
             freshFight(
               boss.id,
               BossMove.Stalking({ cooldownMs: BOSS_RULES.firstAttackMs }),
+              1,
             ),
           )
         }),
@@ -310,6 +312,7 @@ describe('the boss has the floor', () => {
       const arriving = Boss.Arriving({
         door: 'West',
         hp: BOSS_HP,
+        guestHpScale: 1,
         remainingMs: 1000,
         durationMs: BOSS_RULES.entranceMs,
       })
@@ -402,6 +405,7 @@ describe('a boss wave', () => {
           door: 'North',
           waitBelow: 0,
           hp: BOSS_HP,
+          guestHpScale: 1,
         })
         yield* Story.story(
           APPLICATION,
@@ -524,7 +528,12 @@ describe('the door preview', () => {
   test('marks the boss at its door on the last wave and nowhere else', () => {
     const withBoss = preparing(
       FINAL_WAVE,
-      Boss.Waiting({ door: 'South', waitBelow: 20, hp: BOSS_HP }),
+      Boss.Waiting({
+        door: 'South',
+        waitBelow: 20,
+        hp: BOSS_HP,
+        guestHpScale: 1,
+      }),
     )
     const without = preparing(7, Boss.Absent())
     expect(
@@ -597,7 +606,12 @@ describe('determinism', () => {
           inWave(
             FINAL_WAVE,
             Array.makeBy(6, index => spawnAt(index * 300, index)),
-            Boss.Waiting({ door: 'East', waitBelow: 4, hp: BOSS_HP }),
+            Boss.Waiting({
+              door: 'East',
+              waitBelow: 4,
+              hp: BOSS_HP,
+              guestHpScale: 1,
+            }),
           ),
           {
             rngState: () => seed,

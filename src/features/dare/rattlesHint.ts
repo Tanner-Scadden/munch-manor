@@ -15,7 +15,6 @@ import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Difficulty } from '../../shared/playerData'
 import { type Seeded, nextRandom } from '../../shared/prng'
 import {
-  LAST_THING,
   isDareListDone,
   isInOpenRoom,
   maybeThingRoom,
@@ -56,8 +55,9 @@ import { isPocketCardOut } from './pocketCard'
 //
 // Each room holds one thing (src/world/dare/dare.ts), so while its room is
 // still boarded he names the room ("BELL? TRY THE CELLAR."), and once it is
-// open, the thing. With the list done he hollers about the hat and the front
-// door, the moment the last thing is found and in each break after. A hint
+// open, the thing. With the list done he hollers about Uncle Chunk's big
+// key and the front door, the moment the last thing is found and in each
+// break after. A hint
 // about a thing in the house may point off screen in a break, as the kitchen
 // holler does; nothing ever points at a zombie ("No off-screen hints",
 // GAME_DESIGN.md). The HUD's list never says where a thing is: only he does.
@@ -78,8 +78,11 @@ const THING_LINES: Readonly<Record<DareKind, Lines>> = {
   GrandmasRecipe: ["GRANDMA'S RECIPE! SNIFF!", 'SECRET RECIPE! GRAB IT!'],
   MusicBox: ['MUSIC BOX! HEAR THAT?', 'LA LA LAAA! MUSIC BOX!'],
   ButlersBell: ["BUTLER'S BELL! DING DING!", 'THE BELL! RIGHT THERE!'],
-  PartyHat: ['LAST THING: HIS HAT.', 'FRONT DOOR! MIND THE HAT!'],
 }
+
+// NOTE: with the list done: Uncle Chunk is coming, and his key is the way
+// out.
+const FINALE_LINES: Lines = ["CHUNK'S GOT THE BIG KEY.", 'BEAT HIM. THEN RUN!']
 
 // NOTE: each thing and room in his words, for the line that names the room
 // a thing lies in while its boards still stand.
@@ -90,7 +93,6 @@ const THING_WORDS: Readonly<Record<DareKind, string>> = {
   GrandmasRecipe: 'RECIPE',
   MusicBox: 'MUSIC BOX',
   ButlersBell: 'BELL',
-  PartyHat: 'HAT',
 }
 
 const ROOM_WORDS: Readonly<Record<string, string>> = {
@@ -140,24 +142,22 @@ export const HINT_LINES: ReadonlyArray<
       maybeIcon: Option.some(kind),
     })),
   ),
-  ...Array.flatMap(
-    Array.filter(DareKind.literals, kind => kind !== LAST_THING),
-    (kind: DareKind) =>
-      Array.flatMap(ROOM_IDS, room =>
-        Array.map(roomLinesOf(kind, room), line => ({
-          line,
-          maybeIcon: Option.some(kind),
-        })),
-      ),
+  ...Array.flatMap(DareKind.literals, (kind: DareKind) =>
+    Array.flatMap(ROOM_IDS, room =>
+      Array.map(roomLinesOf(kind, room), line => ({
+        line,
+        maybeIcon: Option.some(kind),
+      })),
+    ),
   ),
-  ...Array.map(
-    Array.filter(DareKind.literals, kind => kind !== LAST_THING),
-    (kind: DareKind) => ({
-      line: revealLineOf(kind),
-      maybeIcon: Option.some(kind),
-    }),
-  ),
-  ...Array.map(HECKLES, line => ({ line, maybeIcon: Option.none() })),
+  ...Array.map(DareKind.literals, (kind: DareKind) => ({
+    line: revealLineOf(kind),
+    maybeIcon: Option.some(kind),
+  })),
+  ...Array.map([...HECKLES, ...FINALE_LINES], line => ({
+    line,
+    maybeIcon: Option.none(),
+  })),
 ]
 
 // PICKING
@@ -165,7 +165,7 @@ export const HINT_LINES: ReadonlyArray<
 type Hint = Readonly<{ lines: Lines; maybeThingId: Option.Option<number> }>
 
 const FINALE: Hint = {
-  lines: THING_LINES[LAST_THING],
+  lines: FINALE_LINES,
   maybeThingId: Option.none(),
 }
 
@@ -195,14 +195,12 @@ export const pickLine: {
 )
 
 // NOTE: where a thing on the list lies for the bubble to point at: its spot
-// while hidden (behind the boards too, as the kitchen holler points there),
-// or where Uncle Chunk dropped his hat.
+// while hidden (behind the boards too, as the kitchen holler points there).
 const targetOf = (thing: DareThing): Option.Option<Vector> =>
   DareThingState.matchOrElse(
     thing.state,
     {
       Hidden: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
-      Dropped: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
     },
     (): Option.Option<Vector> => Option.none(),
   )

@@ -6,7 +6,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 Your friends dared you to go in. Heads up: a co-op run going when the update lands ends, so start a fresh one.
 
-- 🎩 Your friends dared you into Munch Manor: find what's on the dare card (every room you unboard hides one), snatch Uncle Chunk's party hat, hold the hall while the front door unlocks, then walk out together. ESCAPED! New here? Your first break walks you through it, and PLAY TUTORIAL on How to play replays it.
+- 🎩 Your friends dared you into Munch Manor: find what's on the dare card (every room you unboard hides one), beat Uncle Chunk at the front door (he fights dirty, and his big gold key flies into the lock), then walk out together. ESCAPED! New here? Your first break walks you through it, and PLAY TUTORIAL on How to play replays it.
 - 🗝️ Rattles closed his shop: zombies drop skeleton keys for padlocked boards and the fridge, guns wait in display cases you crack open with feats, guns level up as you splat (watch the bar under each one fill, then BEEFY!), the kitchen stove cooks a perk onto the gun in your hand, ammo never runs out (reloads still do), and 1, 2, and 3 grab a gun or your knife on a keyboard.
 - 🕯️ Runs start at the dining room's table: shoot the chandelier onto the crowd, then find the parlour, a library with a secret shelf, and a pitch-black cellar, shuffled into new spots every run. Rummage trunks, yank hollow books, and haul up the dumbwaiter, but opening a room wakes its guests.
 - 🚗 A spooky intro opens every run: the drive up the hill, a knock, a knock back, and SLAM. Tap to skip, but never the slam. Then the dare card pops out of your pocket: find these, then get out!

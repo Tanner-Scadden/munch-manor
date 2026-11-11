@@ -141,12 +141,12 @@ flowchart TD
   hunt --> anyThing[Any thing in any room, rolled each run: the recipe, the spoon, the bell, the music box, the portrait, or a guest book page]:::built
 
   anyThing --> all
-  all{Everything but the hat?}
+  all{Everything on the list?}
 
   all -.->|Leave early with part of the dare| early([Early escape: pays less, and you are a chicken]):::proposed
   all -->|Yes| hungry[The house gets hungrier: more zombies]:::built
-  hungry --> goodbye[Uncle Chunk comes through the front door, in his party hat, at the next wave: never before wave 6 to 9 by difficulty]:::built
-  goodbye --> holdout[Take his hat, then hold the hall while the front door unlocks]:::built
+  hungry --> goodbye[Uncle Chunk, the final boss, comes through the front door at the next wave]:::built
+  goodbye --> holdout[Fell him: his big gold key bursts out and flies into the front door's padlock, which opens at once]:::built
   holdout --> doorMark[A door out of view gets a marker at the screen's edge]:::built
   doorMark --> escaped([Walk out together: Escaped, and the proof to share]):::built
 
@@ -190,7 +190,7 @@ Built on 2026-11-10. Each power-up is something you would find in an old manor, 
 
 ### Difficulty sets the list
 
-The four levels scale the zombies (health, speed, bites) and the break clock, and since 2026-11-10 they also set how much you have to find and how much Rattles helps. Uncle Chunk's party hat is always the last thing on every list: he comes through the front door wearing it only once the rest is found, at the next wave, but never before wave 6 on Dare, 8 on Double Dare, or 9 on Triple Dare and Triple Dog Dare.
+The four levels scale the zombies (health, speed, bites) and the break clock, and since 2026-11-10 they also set how much you have to find and how much Rattles helps. Uncle Chunk is not on the list: he is the final boss, and he comes through the front door only once every thing is found, at the start of the next wave, on every difficulty.
 
 ```mermaid
 flowchart LR

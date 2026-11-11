@@ -436,7 +436,7 @@ const STOVE_DEMO = iconOf(13, 13, 300, [
 // picture cannot show: stabbing with the knife, and the dare's loop: a
 // skeleton key dropping, a padlock opening the boards on a room's thing, a
 // display case's lock ticking open, the dare card filling up, and walking
-// out the front door in Uncle Chunk's party hat.
+// out the front door holding Uncle Chunk's big key.
 
 const KNIFE_PALETTE: Palette = { X: '#e9e3cf', R: '#a8302a' }
 
@@ -619,13 +619,13 @@ const FRONT_DOOR: Pixels = [
   'fnnnnnf',
 ]
 
-const PARTY_HAT: Pixels = ['..y..', '.PPP.', 'PPyPP']
+const BIG_KEY: Pixels = ['yy.', 'yy.', '.y.']
 const WALKER: Pixels = ['.hh.', '.hh.', 'BBBB', '.BB.', '.d.d']
 const WALKER_STEP: Pixels = ['.hh.', '.hh.', 'BBBB', '.BB.', 'd..d']
 
 const walking = (x: number, isStepping: boolean): ReadonlyArray<Layer> => [
   layer(isStepping ? WALKER_STEP : WALKER, x, 6, EXIT_PALETTE),
-  layer(PARTY_HAT, x - 1, 3, EXIT_PALETTE),
+  layer(BIG_KEY, x + 3, 3, EXIT_PALETTE),
 ]
 
 const EXIT_DEMO = iconOf(18, 12, 260, [

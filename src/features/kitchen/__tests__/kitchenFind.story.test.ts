@@ -237,7 +237,13 @@ describe('the smell of soup', () => {
   test('is silent in a boss fight', () => {
     const bossed = (current: Model): Model =>
       modifyFields(current, {
-        boss: () => Boss.Waiting({ door: 'South', waitBelow: 0, hp: 100 }),
+        boss: () =>
+          Boss.Waiting({
+            door: 'South',
+            waitBelow: 0,
+            hp: 100,
+            guestHpScale: 1,
+          }),
       })
     const before = bossed(near(beat(breakAt(3), 6900)))
     const after = bossed(near(beat(breakAt(3), 7100)))

@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { KITCHEN_EXIT, exitKeysOf } from '../../src/world/level/exits'
 import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from '../../src/world/level/plan'
 import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
+import { chunkRows } from './chunkModel'
 import {
   ASSUMPTIONS,
   CATALOG,
@@ -455,4 +456,50 @@ describe('guardrails from GAME_DESIGN.md', () => {
         Option.isSome(row.loadout.maybeSpare),
       ),
   )
+})
+
+// UNCLE CHUNK
+
+describe('Uncle Chunk at the front door', () => {
+  const rows = chunkRows(balanceModel())
+  const secondsOf = (difficulty: string, crew: number): number =>
+    Option.getOrElse(
+      Option.map(
+        Array.findFirst(
+          rows,
+          row => row.difficulty === difficulty && row.crew === crew,
+        ),
+        ({ seconds }) => seconds,
+      ),
+      () => 0,
+    )
+
+  // NOTE: the bot's real fight runs about three times the model's perfect
+  // aim (44 s against 14 s on Normal, 50 runs, 2026-11-10): it dodges his
+  // tells and shoots the crowd half the time.
+  test('on Normal, a lone player needs ten seconds or more of perfect aim', () => {
+    expect(secondsOf('Normal', 1)).toBeGreaterThanOrEqual(10)
+    expect(secondsOf('Normal', 1)).toBeLessThanOrEqual(40)
+  })
+
+  test('each difficulty is a longer fight than the one below', () => {
+    Array.forEach(DIFFICULTY_ORDER, (difficulty, index) =>
+      Option.match(Array.get(DIFFICULTY_ORDER, index + 1), {
+        onNone: () => undefined,
+        onSome: harder =>
+          expect(secondsOf(harder, 1)).toBeGreaterThan(
+            secondsOf(difficulty, 1),
+          ),
+      }),
+    )
+  })
+
+  test('a bigger crew fells him sooner, but never in a blink', () => {
+    Array.forEach(DIFFICULTY_ORDER, difficulty => {
+      expect(secondsOf(difficulty, 4)).toBeLessThan(secondsOf(difficulty, 1))
+      expect(secondsOf(difficulty, 4)).toBeGreaterThan(
+        secondsOf(difficulty, 1) / 2,
+      )
+    })
+  })
 })

@@ -1,10 +1,10 @@
-// The balance bot's escape: the dare's list on the floor, Uncle Chunk's hat,
-// and the open front door (src/world/dare/finale.ts). Each room behind
+// The balance bot's escape: the dare's list on the floor, Uncle Chunk at
+// the front door, and the door his big key opens (src/world/dare/finale.ts). Each room behind
 // boards holds one thing on the list (src/world/dare/dare.ts): the bot buys
 // a room with a thing in it open with the crew's keys, the rooms on the way
 // first, once the ring holds the padlock's price, and walks onto every thing
-// it can reach, then the hat, and once the front door is open, out through
-// it. In a break it takes what a display case opened for it holds, when it
+// it can reach, fights Uncle Chunk, and once his key opens the front door,
+// out through it. In a break it takes what a display case opened for it holds, when it
 // beats a gun it carries.
 
 import { Array, Option } from 'effect'

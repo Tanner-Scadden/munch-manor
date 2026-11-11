@@ -1,20 +1,26 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Option, Result, String } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
+import { DARE_BIG_ICONS, DARE_BIG_ICON_SIZE } from '../../art/dareArt'
 import {
-  DARE_BIG_ICONS,
-  DARE_BIG_ICON_SIZE,
-  DARE_ICONS,
-  DARE_ICON_SIZE,
-} from '../../art/dareArt'
-import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
+  type Sprite,
+  TOP_LEFT,
+  bakeShapes,
+  placeAt,
+  spriteShapes,
+} from '../../art/sprite'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Drawable } from '../../render/depth'
 import { FULL_TURN, rect } from '../../render/drawing'
 import type { Difficulty } from '../../shared/playerData'
 import { findStyleOf, isInOpenRoom, maybeLyingAt } from '../../world/dare/dare'
-import { type DareThing, DareThingState } from '../../world/dare/dareSchema'
+import {
+  type DareThing,
+  DareThingState,
+  Finale,
+} from '../../world/dare/dareSchema'
+import { keyFlightShareOf } from '../../world/dare/finale'
 import { isWorkedFind } from '../../world/dare/finds'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
@@ -22,8 +28,9 @@ import { Phase, type Vector } from '../../world/schema/worldSchema'
 import { distanceBetween } from '../../world/step/geometry'
 
 // NOTE: the dare's things in the house (src/world/dare/dare.ts), one in each
-// room that holds one. Uncle Chunk's dropped hat bobs on the floor over a
-// shadow. Help by difficulty:
+// room that holds one, and Uncle Chunk's big key flying from where he fell
+// into the front door's lock (src/world/dare/finale.ts). Help by
+// difficulty:
 //
 // - Dare (Easy) and Double Dare (Normal): a thing in its open room is always
 //   drawn on its spot, twice its size in a dark outline, bobbing over a
@@ -39,8 +46,6 @@ import { distanceBetween } from '../../world/step/geometry'
 
 const BOB_MS = 300
 const BOB_PX = 1
-const LIFT_PX = 5
-const HALF_ICON = Math.floor(DARE_ICON_SIZE / 2)
 const HALF_BIG_ICON = Math.floor(DARE_BIG_ICON_SIZE / 2)
 const BIG_LIFT_PX = HALF_BIG_ICON + 2
 const NEAR_GLINT_PX = 34
@@ -88,9 +93,6 @@ const SPARKLE: Sprite = bakeShapes([
 const bobOf = (elapsedMs: number): number =>
   Math.floor(elapsedMs / BOB_MS) % 2 === 0 ? 0 : BOB_PX
 
-const iconAt = (kind: DareThing['kind'], center: Vector): Canvas.Shape =>
-  placeAt(center.x - HALF_ICON, center.y - HALF_ICON, DARE_ICONS[kind])
-
 // NOTE: the difficulties whose things lie in plain sight in an open room.
 const SHOWS_THINGS: Readonly<Record<Difficulty, boolean>> = {
   Easy: true,
@@ -120,25 +122,6 @@ const shownThingSpots = (
       : Result.failVoid,
   )
 }
-
-// NOTE: a dropped thing sorts with what stands around it, by its floor.
-const droppedDrawable = (
-  model: Model,
-  thing: DareThing,
-): Option.Option<Drawable> =>
-  DareThingState.isAnyOf(['Dropped'])(thing.state)
-    ? Option.some({
-        footY: thing.state.y,
-        rank: 'Pickup',
-        shapes: [
-          placeAt(thing.state.x, thing.state.y, SHADOW),
-          iconAt(thing.kind, {
-            x: thing.state.x,
-            y: thing.state.y - LIFT_PX - bobOf(model.elapsedMs),
-          }),
-        ],
-      })
-    : Option.none()
 
 const glowRadiusOf = (elapsedMs: number): number =>
   Math.round(
@@ -180,10 +163,76 @@ const shownDrawable = (
   }
 }
 
+// THE BIG KEY
+
+// NOTE: Uncle Chunk's big skeleton key, twice a house key's size, gold with
+// a dark outline, glinting as it turns in the air.
+const BIG_KEY_PALETTE = {
+  k: '#140c10',
+  Y: '#ffd23f',
+  y: '#c9971c',
+  W: '#fff7d0',
+}
+
+const BIG_KEY_PIXELS = [
+  '.kkkk..........',
+  'kYWYYk.........',
+  'kYkkYkkkkkkkkk.',
+  'kYkkYYYYYYYYYYk',
+  'kyyyykkkkykkyyk',
+  '.kkkk....kk.kkk',
+]
+
+const BIG_KEY: Sprite = spriteShapes(BIG_KEY_PIXELS, BIG_KEY_PALETTE, TOP_LEFT)
+const BIG_KEY_GLINT: Sprite = spriteShapes(
+  Array.map(BIG_KEY_PIXELS, row => String.replaceAll('Y', 'W')(row)),
+  BIG_KEY_PALETTE,
+  TOP_LEFT,
+)
+const BIG_KEY_HALF_WIDTH = 7
+const BIG_KEY_HALF_HEIGHT = 3
+const KEY_ARC_PX = 26
+const KEY_GLINT_MS = 120
+const LOCK_DROP_PX = 4
+
+// NOTE: the key's flight sorts with what stands around it by the floor
+// under it, rising in an arc from where he fell to the lock.
+const keyDrawable = (model: Model): Option.Option<Drawable> =>
+  Finale.matchOrElse(
+    model.dare.finale,
+    {
+      KeyFlying: ({ from }): Option.Option<Drawable> => {
+        const { box } = levelOf(model).thresholds.Front
+        const lock = {
+          x: (box.left + box.right) / 2,
+          y: box.top + LOCK_DROP_PX,
+        }
+        const share = keyFlightShareOf(model)
+        const floor = {
+          x: from.x + (lock.x - from.x) * share,
+          y: from.y + (lock.y - from.y) * share,
+        }
+        const lift = 4 * KEY_ARC_PX * share * (1 - share)
+        const isGlint = Math.floor(model.elapsedMs / KEY_GLINT_MS) % 2 === 0
+        return Option.some({
+          footY: floor.y,
+          rank: 'Pickup',
+          shapes: [
+            placeAt(Math.round(floor.x), Math.round(floor.y), SHADOW),
+            placeAt(
+              Math.round(floor.x - BIG_KEY_HALF_WIDTH),
+              Math.round(floor.y - lift - BIG_KEY_HALF_HEIGHT * 2),
+              isGlint ? BIG_KEY_GLINT : BIG_KEY,
+            ),
+          ],
+        })
+      },
+    },
+    (): Option.Option<Drawable> => Option.none(),
+  )
+
 export const dareDrawables = (model: Model): ReadonlyArray<Drawable> => [
-  ...Array.getSomes(
-    Array.map(model.dareThings, thing => droppedDrawable(model, thing)),
-  ),
+  ...Array.getSomes([keyDrawable(model)]),
   ...Array.map(shownThingSpots(model), ({ thing, spot }) =>
     shownDrawable(model, thing, spot),
   ),

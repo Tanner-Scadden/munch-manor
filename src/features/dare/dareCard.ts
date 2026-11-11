@@ -17,8 +17,6 @@ import { TOP_LEFT, group, spriteShapes } from '../../art/sprite'
 import { placeSprite, rect } from '../../render/drawing'
 import { type HudLayout, POCKET_CHIP_HEIGHT } from '../../render/hudLayout'
 import { dareCardOf } from '../../world/dare/dare'
-import { Finale } from '../../world/dare/dareSchema'
-import { unlockShareOf } from '../../world/dare/finale'
 import type { Vector } from '../../world/schema/worldSchema'
 
 // The dare card on the HUD (LORE.md, "The dare card in your pocket"), as a
@@ -26,8 +24,9 @@ import type { Vector } from '../../world/schema/worldSchema'
 // are found ("2/5"), so nothing covers the room while zombies come. In a
 // break, when the house is there to search, it opens into the whole list:
 // each thing at twice its size in a slot, a light silhouette until found,
-// then in color with a green check. Uncle Chunk's party hat is always the
-// last slot. Show, don't explain: no words, only the things. The screen
+// then in color with a green check. Only the rooms' things: Uncle Chunk is
+// the fight once they are found, never a slot. Show, don't explain: no
+// words, only the things. The screen
 // decides which (src/screens/game/pocket.ts), since a banner in the open
 // list's rows keeps it shut.
 
@@ -112,7 +111,7 @@ export const pocketHeaderOf: {
 })
 
 // NOTE: where each picture of the card in your pocket lands as it folds
-// (src/features/dare/pocketCardView.ts), the hat last: inside its own slot
+// (src/features/dare/pocketCardView.ts): inside its own slot
 // on the open list, at the slot's size, so the player sees the card become
 // the list; or, with the pocket shut (a banner over the list), all on the
 // shut chip's card.
@@ -216,7 +215,7 @@ const openShapes = (
   ]
 }
 
-// NOTE: laid out from the layout's right edge, the hat last. Endless has
+// NOTE: laid out from the layout's right edge. Endless has
 // no list, so no pocket.
 export const dareCardShapes: {
   (
@@ -240,39 +239,9 @@ export const dareCardShapes: {
       return []
     }
     const box = boxOf(card, layout, pocket)
-    return [
-      ...(pocket === 'Shut' ? chipShapes(card, box) : openShapes(card, box)),
-      ...unlockBarShapes(model, box),
-    ]
+    return pocket === 'Shut' ? chipShapes(card, box) : openShapes(card, box)
   },
 )
-
-// NOTE: under the pocket, once the hat is taken, the front door's unlock as
-// a bar that fills gold, full once the door is open.
-const UNLOCK_BAR_HEIGHT = 2
-const UNLOCK_BAR_GAP = 1
-
-export const UNLOCK_BAR_ROWS = UNLOCK_BAR_GAP + UNLOCK_BAR_HEIGHT
-
-const unlockBarShapes = (
-  model: Model,
-  box: PocketBox,
-): ReadonlyArray<Canvas.Shape> => {
-  const top = box.bottom + UNLOCK_BAR_GAP
-  const width = box.right - box.left
-  return Finale.isAnyOf(['Unlocking', 'Open'])(model.dare.finale)
-    ? [
-        rect(box.left, top, width, UNLOCK_BAR_HEIGHT, 'rgba(10, 8, 14, 0.8)'),
-        rect(
-          box.left,
-          top,
-          Math.round(width * unlockShareOf(model)),
-          UNLOCK_BAR_HEIGHT,
-          '#ffd23f',
-        ),
-      ]
-    : []
-}
 
 // POINTED AT
 
@@ -333,10 +302,7 @@ export const dareCardPointShapes: {
     const box = boxOf(card, layout, pocket)
     const centerX = Math.round((box.left + box.right) / 2)
     const arrowTop =
-      box.bottom +
-      UNLOCK_BAR_ROWS +
-      POINT_GAP +
-      (Math.floor(model.elapsedMs / POINT_BOB_MS) % 2)
+      box.bottom + POINT_GAP + (Math.floor(model.elapsedMs / POINT_BOB_MS) % 2)
     const isLit = Math.floor(model.elapsedMs / POINT_BLINK_MS) % 2 === 0
     return [
       ...rimShapes(box, isLit ? RIM_LIT : RIM_DIM),

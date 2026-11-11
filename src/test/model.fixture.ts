@@ -222,7 +222,7 @@ export const veteranFighting: Model = modifyFields(home, {
 // THE DARE
 
 // NOTE: a run with these things in the house (src/world/dare/dare.ts), the
-// asked ones its list, Uncle Chunk's hat aside.
+// asked ones its list.
 export const withDareThings: {
   (things: ReadonlyArray<DareThing>): (model: Model) => Model
   (model: Model, things: ReadonlyArray<DareThing>): Model
@@ -230,11 +230,7 @@ export const withDareThings: {
   modifyFields(model, {
     dare: dare =>
       modifyFields(dare, {
-        list: () =>
-          Array.map(
-            Array.filter(things, ({ kind }) => kind !== 'PartyHat'),
-            ({ kind }) => kind,
-          ),
+        list: () => Array.map(things, ({ kind }) => kind),
       }),
     dareThings: () => things,
   }),

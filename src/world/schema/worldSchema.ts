@@ -247,15 +247,13 @@ export const GameEvent = defineTaggedUnion({
   // NOTE: a downed player shouts MEDIC! (src/world/party/medic.ts), where they lie.
   MedicCalled: { x: PositionNumber, y: PositionNumber },
   // NOTE: the dare's things (src/world/dare/dare.ts): one found by a walk
-  // onto it, Uncle Chunk's hat dropped where he fell, and the last thing on
-  // the list found (the finale's cue).
+  // onto it, and the last thing on the list found (the finale's cue).
   DareFound: { x: PositionNumber, y: PositionNumber, kind: DareKind },
-  DareDropped: { x: PositionNumber, y: PositionNumber, kind: DareKind },
   DareListDone: { x: PositionNumber, y: PositionNumber },
-  // NOTE: the finale (src/world/dare/finale.ts): Uncle Chunk's hat taken
-  // starts the front door unlocking, the door swings open, and a player
-  // steps out through it, each at the door.
-  FrontDoorUnlocking: { x: PositionNumber, y: PositionNumber },
+  // NOTE: the finale (src/world/dare/finale.ts): Uncle Chunk's big key
+  // bursts out of him where he falls, the front door swings open as it
+  // lands in the lock, and a player steps out through it, each at the door.
+  BigKeyBurst: { x: PositionNumber, y: PositionNumber },
   FrontDoorOpened: { x: PositionNumber, y: PositionNumber },
   SteppedOut: { x: PositionNumber, y: PositionNumber, slot: Schema.Finite },
   // NOTE: a teammate got a downed player up, at the reviver; a clutch save
@@ -527,17 +525,26 @@ export const roundWaveOf = (phase: Phase): number =>
 // spawns are left, then rattles its door for the entrance before it walks in.
 // While it arrives and for its first seconds in the room, the wave clock
 // waits, so the rest of the wave comes after the boss has had the floor.
+// guestHpScale is the wave's health scale, which the guests he belches and
+// calls in take (src/world/zombies/boss.ts), apart from his own health.
 export const Boss = defineTaggedUnion({
   Absent: {},
-  Waiting: { door: DoorId, waitBelow: Schema.Finite, hp: Schema.Finite },
+  Waiting: {
+    door: DoorId,
+    waitBelow: Schema.Finite,
+    hp: Schema.Finite,
+    guestHpScale: Schema.Finite,
+  },
   Arriving: {
     door: DoorId,
     hp: Schema.Finite,
+    guestHpScale: Schema.Finite,
     remainingMs: MillisNumber,
     durationMs: MillisNumber,
   },
   Fighting: {
     id: Schema.Finite,
+    guestHpScale: Schema.Finite,
     move: BossMove,
     standingMs: MillisNumber,
     mood: BossMood,

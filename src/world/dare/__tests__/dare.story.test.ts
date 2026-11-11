@@ -36,7 +36,6 @@ import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '../../level/plan'
 import { focusOf, modifyFocus, seatCrew } from '../../party/party'
 import { withWorld } from '../../schema/world'
 import {
-  LAST_THING,
   LIST_LENGTHS,
   dareCardOf,
   isDareListDone,
@@ -88,22 +87,24 @@ const hiddenAt = (
 })
 
 describe('the list', () => {
-  it.effect('rolls at a run start, sized by difficulty, the hat last', () =>
-    Effect.forEach(DIFFICULTIES, difficulty =>
-      startedOn(difficulty, 11).pipe(
-        Effect.map(started => {
-          expect(started.dare.list).toHaveLength(LIST_LENGTHS[difficulty])
-          const card = dareCardOf(started)
-          expect(Array.last(card)).toEqual(
-            Option.some({ kind: LAST_THING, isFound: false }),
-          )
-          expect(card).toHaveLength(LIST_LENGTHS[difficulty] + 1)
-          expect(Array.map(started.dareThings, ({ kind }) => kind)).toEqual(
-            started.dare.list,
-          )
-        }),
+  it.effect(
+    "rolls at a run start, sized by difficulty, only the rooms' things",
+    () =>
+      Effect.forEach(DIFFICULTIES, difficulty =>
+        startedOn(difficulty, 11).pipe(
+          Effect.map(started => {
+            expect(started.dare.list).toHaveLength(LIST_LENGTHS[difficulty])
+            const card = dareCardOf(started)
+            expect(Array.map(card, ({ kind }) => kind)).toEqual(
+              started.dare.list,
+            )
+            expect(card).toHaveLength(LIST_LENGTHS[difficulty])
+            expect(Array.map(started.dareThings, ({ kind }) => kind)).toEqual(
+              started.dare.list,
+            )
+          }),
+        ),
       ),
-    ),
   )
 
   it.effect(
@@ -143,7 +144,6 @@ describe('the list', () => {
               Array.zip(started.dareThings, rooms),
               ([thing, room]) => {
                 expect(room.isOpen).toBe(false)
-                expect(thing.kind).not.toBe(LAST_THING)
                 expect(Option.isNone(maybeLyingAt(thing, level))).toBe(true)
               },
             )
@@ -240,7 +240,6 @@ describe('finding a thing', () => {
               expect(isDareListDone(current)).toBe(true)
               expect(dareCardOf(current)).toEqual([
                 { kind: 'SilverSpoon', isFound: true },
-                { kind: LAST_THING, isFound: false },
               ])
             }),
             tick(FRAME_MS),

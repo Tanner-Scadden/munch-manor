@@ -75,12 +75,9 @@ const fighting = (wave: number, audio: AudioState): Model =>
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [FAR_AWAY_SPAWN] }),
   })
 
-// NOTE: the hold-out: the list done and the front door unlocking.
+// NOTE: the walk out: the list done and the front door open.
 const holdingOut = (audio: AudioState): Model =>
-  withFinale(
-    fighting(4, audio),
-    Finale.Unlocking({ remainingMs: 30_000, durationMs: 45_000 }),
-  )
+  withFinale(fighting(4, audio), Finale.Open())
 
 const resolveCue = (mood: MusicMood) =>
   Story.Command.resolve(CueMusic, Message.CompletedCueMusic({ mood }))

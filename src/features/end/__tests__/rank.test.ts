@@ -21,7 +21,6 @@ const run = (change: Partial<RunPayInput>): RunPayInput => ({
   wavesCleared: 0,
   bossesFelled: 0,
   dareItems: 0,
-  isHatTaken: false,
   isEscape: false,
   awards: 0,
   revives: 0,
@@ -43,7 +42,6 @@ describe('points for a run', () => {
         wavesCleared: 7,
         bossesFelled: 1,
         dareItems: 3,
-        isHatTaken: true,
         isEscape: true,
       }),
     )
@@ -58,8 +56,8 @@ describe('points for a run', () => {
     ).toBe(135)
   })
 
-  it('pays Uncle Chunk once, his hat or his fall', () => {
-    expect(pointsForRun(run({ bossesFelled: 1, isHatTaken: true }))).toBe(50)
+  it('pays Uncle Chunk once, however many times he falls', () => {
+    expect(pointsForRun(run({ bossesFelled: 2 }))).toBe(50)
     expect(pointsForRun(run({ bossesFelled: 1 }))).toBe(50)
   })
 

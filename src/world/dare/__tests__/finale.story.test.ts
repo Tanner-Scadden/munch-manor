@@ -16,7 +16,6 @@ import {
   quietWave,
   withDareThings,
   withFinale,
-  withPlayerAt,
   withSeatLife,
   withZombies,
 } from '../../../test/model.fixture'
@@ -36,15 +35,16 @@ import { Boss, BreakClock, Life, ZombieState } from '../../schema/worldSchema'
 import { hpScaleFor } from '../../waves/endlessWaves'
 import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
 import { beginPreparation } from '../../waves/waves'
-import { BOSS_RULES } from '../../zombies/boss'
+import { BOSS_RULES } from '../../zombies/bossRules'
 import { ZOMBIE_KINDS, scaledHp } from '../../zombies/zombies'
-import { dareCardOf, isHatFound, maybeLyingAt } from '../dare'
-import { type DareThing, DareThingState, Finale } from '../dareSchema'
+import { dareCardOf } from '../dare'
+import { DareKind, type DareThing, DareThingState, Finale } from '../dareSchema'
 import { FINALE_RULES, isAtFrontDoor, isHouseHungry } from '../finale'
 
 // The finale (src/world/dare/finale.ts): the list done, Uncle Chunk at the
-// front door at the next wave with that wave's health, his hat on the card
-// and the door unlocking while the waves press, then out through it.
+// front door at the next wave with the finale's health, his big key bursting
+// out of him as he falls and flying into the lock, the door open at once,
+// then out through it.
 
 const FRAME_MS = 1000 / 60
 
@@ -78,8 +78,9 @@ const maybeWaiting = (model: Model) =>
 const spawnsOf = (model: Model) =>
   Phase.isAnyOf(['Wave', 'Preparation'])(model.phase) ? model.phase.spawns : []
 
-// NOTE: the first wave Uncle Chunk may come on, on Double Dare.
-const CHUNK_WAVE = FINALE_RULES.chunkFromWave.Normal
+// NOTE: a wave early in the run: with no wave floor, he comes the wave
+// after the list is done, however early that is.
+const EARLY_WAVE = 4
 
 describe('Uncle Chunk at the front door', () => {
   it.effect('never comes while the list is still being hunted', () =>
@@ -98,41 +99,53 @@ describe('Uncle Chunk at the front door', () => {
   )
 
   it.effect(
-    'with the list done early he waits for his wave, the house hungrier meanwhile',
+    'a list done mid-wave on Triple Dare brings him at the next wave, never during it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(breakBefore(3, LIST_DONE)),
-        tick(FRAME_MS),
-        startWave,
-        Story.model(current => {
-          expect(current.dare.finale).toEqual(Finale.Summoned())
-          expect(current.boss).toEqual(Boss.Absent())
-          expect(isHouseHungry(current)).toBe(true)
-        }),
-      ),
+      Effect.gen(function* () {
+        const doneInWave = yield* Story.story(
+          APPLICATION,
+          Story.given(
+            onHard(withDareThings(asVeteran(quietWave(3)), LIST_DONE)),
+          ),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(current.dare.finale).toEqual(Finale.Summoned())
+            expect(current.boss).toEqual(Boss.Absent())
+            expect(isHouseHungry(current)).toBe(true)
+          }),
+          ...ticks(30, FRAME_MS),
+          Story.model(current => {
+            expect(current.boss).toEqual(Boss.Absent())
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            withWorld(doneInWave, world =>
+              beginPreparation(world, 4, PREPARATION_MS),
+            ),
+          ),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(current.boss).toEqual(Boss.Absent())
+          }),
+          startWave,
+          Story.model(current => {
+            expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+            expect(
+              Option.map(maybeWaiting(current), ({ door }) => door),
+            ).toEqual(Option.some('Front'))
+          }),
+        )
+      }),
   )
 
-  it.effect('Triple Dare and Triple Dog Dare hold him back longer', () => {
-    expect(FINALE_RULES.chunkFromWave.Hard).toBeGreaterThan(CHUNK_WAVE)
-    expect(FINALE_RULES.chunkFromWave.Nightmare).toBeGreaterThan(CHUNK_WAVE)
-    return Story.story(
-      APPLICATION,
-      Story.given(onHard(breakBefore(CHUNK_WAVE, LIST_DONE))),
-      tick(FRAME_MS),
-      startWave,
-      Story.model(current => {
-        expect(current.boss).toEqual(Boss.Absent())
-      }),
-    )
-  })
-
   it.effect(
-    'with the list done he comes at the next wave from his, through the front door only',
+    'with the list done in a break he comes as its wave starts, through the front door only',
     () =>
       Story.story(
         APPLICATION,
-        Story.given(breakBefore(CHUNK_WAVE, LIST_DONE)),
+        Story.given(breakBefore(EARLY_WAVE, LIST_DONE)),
         tick(FRAME_MS),
         Story.model(current => {
           expect(current.dare.finale).toEqual(Finale.Summoned())
@@ -164,7 +177,7 @@ describe('Uncle Chunk at the front door', () => {
   )
 
   it.effect(
-    'his health is the wave he comes on, from wave 10 along the Endless curve',
+    'his health is the wave he comes on times the finale scale, from wave 10 along the Endless curve',
     () =>
       Effect.gen(function* () {
         const hpOn = (wave: number) =>
@@ -176,19 +189,24 @@ describe('Uncle Chunk at the front door', () => {
           ).pipe(
             Effect.map(current => Option.getOrThrow(maybeWaiting(current)).hp),
           )
-        const early = yield* hpOn(CHUNK_WAVE)
+        const early = yield* hpOn(EARLY_WAVE)
         const late = yield* hpOn(FINAL_WAVE + 4)
         const { healthScale } = DIFFICULTIES.Normal
+        const finaleScale = FINALE_RULES.chunkHealthScale.Normal
         expect(early).toBe(
-          scaledHp(
-            ZOMBIE_KINDS.Boss.hp,
-            (WAVE_PLANS[CHUNK_WAVE - 1]?.hpScale ?? 1) * healthScale,
+          Math.round(
+            scaledHp(
+              ZOMBIE_KINDS.Boss.hp,
+              (WAVE_PLANS[EARLY_WAVE - 1]?.hpScale ?? 1) * healthScale,
+            ) * finaleScale,
           ),
         )
         expect(late).toBe(
-          scaledHp(
-            ZOMBIE_KINDS.Boss.hp,
-            hpScaleFor(FINAL_WAVE + 4) * healthScale,
+          Math.round(
+            scaledHp(
+              ZOMBIE_KINDS.Boss.hp,
+              hpScaleFor(FINAL_WAVE + 4) * healthScale,
+            ) * finaleScale,
           ),
         )
         expect(late).toBeGreaterThan(early)
@@ -234,7 +252,7 @@ describe('Uncle Chunk at the front door', () => {
   )
 })
 
-describe('his hat', () => {
+describe('his big key', () => {
   const chunkFalling = (model: Model): Model =>
     modifyFields(model, {
       zombies: () => [
@@ -250,107 +268,82 @@ describe('his hat', () => {
     Finale.Summoned(),
   )
 
-  it.effect('falls where he does, on the card still to fill', () =>
+  const tagsOf = (model: Model): ReadonlyArray<string> =>
+    Array.map(model.frameEvents, ({ _tag }) => _tag)
+
+  it.effect('bursts out of him as he falls and flies for the lock', () =>
     Story.story(
       APPLICATION,
       Story.given(chunkFalling(summoned)),
       tick(FRAME_MS),
       Story.model(current => {
-        const hat = Option.getOrThrow(
-          Array.findFirst(
-            current.dareThings,
-            ({ kind }) => kind === 'PartyHat',
-          ),
+        const chunk = Option.getOrThrow(
+          Array.findFirst(current.zombies, ({ id }) => id === 900),
         )
-        expect(Option.isSome(maybeLyingAt(hat, levelOf(current)))).toBe(true)
-        expect(isHatFound(current)).toBe(false)
-        expect(Array.last(dareCardOf(current))).toEqual(
-          Option.some({ kind: 'PartyHat', isFound: false }),
+        expect(current.dare.finale).toEqual(
+          Finale.KeyFlying({
+            from: { x: chunk.x, y: chunk.y },
+            remainingMs: FINALE_RULES.keyFlightMs,
+            durationMs: FINALE_RULES.keyFlightMs,
+          }),
         )
+        expect(tagsOf(current)).toContain('BigKeyBurst')
+        expect(current.dareThings).toEqual(LIST_DONE)
+        expect(dareCardOf(current)).toHaveLength(LIST_DONE.length)
       }),
     ),
   )
 
-  it.effect('taken, it fills the card and starts the door unlocking', () =>
+  it.effect(
+    'the door swings open as it lands, under a second after he falls, with nothing to pick up',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(chunkFalling(summoned)),
+        tick(FRAME_MS),
+        ...ticks(Math.ceil(FINALE_RULES.keyFlightMs / FRAME_MS) + 1, FRAME_MS),
+        Story.model(current => {
+          expect(FINALE_RULES.keyFlightMs).toBeLessThan(1000)
+          expect(current.dare.finale).toEqual(Finale.Open())
+          expect(Phase.guards.Wave(current.phase)).toBe(true)
+        }),
+      ),
+  )
+
+  it.effect('it flies in a break too', () =>
     Story.story(
       APPLICATION,
-      Story.given(withPlayerAt(chunkFalling(summoned), 150, 120)),
-      tick(FRAME_MS),
+      Story.given(
+        withFinale(
+          modifyFields(withDareThings(quietWave(6), LIST_DONE), {
+            phase: () =>
+              Phase.Preparation({
+                wave: 7,
+                remainingMs: PREPARATION_MS,
+                durationMs: PREPARATION_MS,
+                spawns: [DISTANT_SPAWN],
+                clock: BreakClock.Waiting({ elapsedMs: 0 }),
+              }),
+          }),
+          Finale.KeyFlying({
+            from: { x: 150, y: 120 },
+            remainingMs: FRAME_MS / 2,
+            durationMs: FINALE_RULES.keyFlightMs,
+          }),
+        ),
+      ),
       tick(FRAME_MS),
       Story.model(current => {
-        expect(isHatFound(current)).toBe(true)
-        expect(Array.last(dareCardOf(current))).toEqual(
-          Option.some({ kind: 'PartyHat', isFound: true }),
-        )
-        expect(current.dare.finale).toMatchObject({
-          _tag: 'Unlocking',
-          durationMs: FINALE_RULES.unlockMs,
-        })
-        expect(
-          Array.some(
-            current.frameEvents,
-            ({ _tag }) => _tag === 'FrontDoorUnlocking',
-          ),
-        ).toBe(true)
+        expect(current.dare.finale).toEqual(Finale.Open())
+        expect(tagsOf(current)).toContain('FrontDoorOpened')
       }),
     ),
   )
 
-  it.effect('the door unlocks only while a wave is on, then swings open', () =>
-    Effect.gen(function* () {
-      const unlocking = (phase: Phase, remainingMs: number): Model =>
-        withFinale(
-          modifyFields(withDareThings(quietWave(6), LIST_DONE), {
-            phase: () => phase,
-          }),
-          Finale.Unlocking({
-            remainingMs,
-            durationMs: FINALE_RULES.unlockMs,
-          }),
-        )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          unlocking(
-            Phase.Preparation({
-              wave: 7,
-              remainingMs: PREPARATION_MS,
-              durationMs: PREPARATION_MS,
-              spawns: [DISTANT_SPAWN],
-              clock: BreakClock.Waiting({ elapsedMs: 0 }),
-            }),
-            10_000,
-          ),
-        ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.dare.finale).toEqual(
-            Finale.Unlocking({
-              remainingMs: 10_000,
-              durationMs: FINALE_RULES.unlockMs,
-            }),
-          )
-        }),
-      )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          unlocking(
-            Phase.Wave({ wave: 7, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-            FRAME_MS / 2,
-          ),
-        ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(current.dare.finale).toEqual(Finale.Open())
-          expect(
-            Array.some(
-              current.frameEvents,
-              ({ _tag }) => _tag === 'FrontDoorOpened',
-            ),
-          ).toBe(true)
-        }),
-      )
+  it.effect('no hat anywhere: not a thing, not on the card', () =>
+    Effect.sync(() => {
+      expect(DareKind.literals).not.toContain('PartyHat')
+      expect(DareKind.literals).toHaveLength(6)
     }),
   )
 })
@@ -389,10 +382,7 @@ describe('walking out', () => {
       Story.given(
         withFinale(
           escaping(withDareThings(quietWave(8), LIST_DONE)),
-          Finale.Unlocking({
-            remainingMs: 30_000,
-            durationMs: FINALE_RULES.unlockMs,
-          }),
+          Finale.Summoned(),
         ),
       ),
       tick(FRAME_MS),

@@ -27,7 +27,7 @@ import { type DarePocket, dareCardShapes, pocketBoxOf } from '../dareCard'
 
 // The dare pocket on the HUD (src/features/dare/dareCard.ts): shut through a
 // wave, a chip of the card and the count found; open in a break, one slot
-// per thing on the list and the hat last, a silhouette until found, then in
+// per thing on the list, a silhouette until found, then in
 // color with a check.
 
 const LIST: ReadonlyArray<DareKind> = [
@@ -84,7 +84,7 @@ const isSlotIn =
   ({ src }: Placed): boolean =>
     src === srcOf(sprites[kind])
 
-const ANY_KIND: ReadonlyArray<DareKind> = [...LIST, 'PartyHat']
+const ANY_KIND: ReadonlyArray<DareKind> = LIST
 
 const isAnySlot = (placed: Placed): boolean =>
   Array.some(
@@ -107,13 +107,13 @@ const slotsOf = (
 const NOWHERE: Placed = { x: 0, y: 0, src: '' }
 
 describe('the dare pocket', () => {
-  test('opens on each thing on the list as a silhouette, the hat last', () => {
+  test('opens on each thing on the list as a silhouette, and nothing more', () => {
     expect(srcOf(DARE_EMPTY_SLOTS.SilverSpoon)).not.toBe('')
     expect(srcOf(DARE_EMPTY_SLOTS.SilverSpoon)).not.toBe(
       srcOf(DARE_FOUND_SLOTS.SilverSpoon),
     )
     const slots = slotsOf(onTheHunt([]), LANDSCAPE_SCREEN, 'Open')
-    expect(slots).toHaveLength(LIST.length + 1)
+    expect(slots).toHaveLength(LIST.length)
     Array.forEach(ANY_KIND, (kind, index) => {
       expect(isSlotIn(DARE_EMPTY_SLOTS)(kind)(slots[index] ?? NOWHERE)).toBe(
         true,
@@ -205,9 +205,7 @@ describe('the dare pocket', () => {
     const hud = placedImages(
       hudShapes(model, LANDSCAPE_SCREEN, cameraOf(model)),
     )
-    expect(
-      Array.filter(hud, isSlotIn(DARE_EMPTY_SLOTS)('PartyHat')),
-    ).toHaveLength(1)
+    expect(Array.filter(hud, isAnySlot)).toHaveLength(LIST.length)
     const endless = modifyFields(model, {
       dare: dare => modifyFields(dare, { list: () => [] }),
       dareThings: () => [],

@@ -35,8 +35,8 @@ const MULTIPLIERS: Readonly<Record<Difficulty, Fraction>> = {
 
 // NOTE: what one finished run pays for. `wavesCleared` and `bossesFelled`
 // are only the ones not paid yet, so nothing is paid twice. `dareItems` is
-// the things on the list found, the hat aside; `isHatTaken` and `isEscape`
-// the finale's. `awards` and `revives` are the player's own seat in co-op,
+// the things on the list found; `isEscape` the finale's (felling Uncle
+// Chunk counts in `bossesFelled`). `awards` and `revives` are the player's own seat in co-op,
 // 0 alone.
 // A guided run (the player never got past the practice gate) pays nothing.
 export type RunPayInput = Readonly<{
@@ -44,7 +44,6 @@ export type RunPayInput = Readonly<{
   wavesCleared: number
   bossesFelled: number
   dareItems: number
-  isHatTaken: boolean
   isEscape: boolean
   awards: number
   revives: number
@@ -62,7 +61,7 @@ export const pointsForRun = (input: RunPayInput): number => {
   const base =
     Math.max(0, input.wavesCleared) * POINTS_PER_WAVE +
     Math.max(0, input.dareItems) * POINTS_PER_DARE_ITEM +
-    (input.bossesFelled > 0 || input.isHatTaken ? BOSS_POINTS : 0) +
+    (input.bossesFelled > 0 ? BOSS_POINTS : 0) +
     (input.isEscape ? ESCAPE_POINTS : 0)
   const total =
     Math.floor((base * multiplier.top) / multiplier.bottom) +

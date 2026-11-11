@@ -48,7 +48,7 @@ import {
   scaleVector,
 } from '../step/geometry'
 import { queryAround, queryBuffer } from '../step/grid'
-import { isRooted, paceOf } from './boss'
+import { isRooted, paceOf } from './bossFight'
 import { maybeChuckerHeading } from './chucker'
 import { frenzyPace, isFrenzied } from './frenzy'
 import { isLastZombie, lastZombieSpeed } from './lastZombie'

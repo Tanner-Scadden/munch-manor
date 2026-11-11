@@ -1,10 +1,10 @@
-import { Array, Function, Result } from 'effect'
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
 import { PocketCard } from '../../domain/clientSchema'
 import { isRunOn } from '../../domain/onlineRun'
-import { LAST_THING, dareCardOf } from '../../world/dare/dare'
+import { dareCardOf } from '../../world/dare/dare'
 import type { DareKind } from '../../world/dare/dareSchema'
 import { isPending, learn } from '../../world/run/lessons'
 import { Phase } from '../../world/schema/worldSchema'
@@ -34,12 +34,9 @@ export const GATE_MS = 1_500
 // THE SCRAWL'S CLOCK
 
 // NOTE: the things the card asks you to find: the room things on this
-// run's list, in the HUD's order. The card names no one else: whatever
-// closes the list (`LAST_THING`) is not on it.
+// run's list, in the HUD's order. Uncle Chunk and his key are not on it.
 export const cardThingsOf = (model: Model): ReadonlyArray<DareKind> =>
-  Array.filterMap(dareCardOf(model), ({ kind }) =>
-    kind === LAST_THING ? Result.failVoid : Result.succeed(kind),
-  )
+  Array.map(dareCardOf(model), ({ kind }) => kind)
 
 // NOTE: the scrawl writes itself on while you read: the dare as it opens
 // (UNFOLD_MS), then TO FIND:, then each thing with a pencil scratch, then

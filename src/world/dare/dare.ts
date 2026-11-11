@@ -14,7 +14,7 @@ import {
   type Vector,
 } from '../schema/worldSchema'
 import { DRAIN_SCALE, isStill } from '../stations/work'
-import { clamp, distanceBetween } from '../step/geometry'
+import { distanceBetween } from '../step/geometry'
 import {
   type Dare,
   DareKind,
@@ -33,17 +33,16 @@ import { FIND_RULES, type FindStyle, findStyleOfRoom } from './finds'
 // (owner, 2026-11-10: "fully random"), on one of the room's hand-picked
 // spots (roomSpotsOf in src/world/level/plan.ts).
 // So the loop is the same for every thing: survive the waves, earn keys,
-// open a room, find its thing in it. Uncle Chunk's party hat always closes
-// the list, from the finale (src/world/dare/finale.ts).
+// open a room, find its thing in it. The list is only the rooms' things:
+// Uncle Chunk is no slot on it, just the fight once it is done
+// (src/world/dare/finale.ts).
 //
 // Each room finds its thing its own way (src/world/dare/finds.ts): a walk
 // onto it, or work at it, a rummage, a hollow book, the dumbwaiter. Either
 // way it is found for the whole crew; the seat only says who. The finale
 // waits on `isDareListDone` and the DareListDone event.
 
-export const LAST_THING: DareKind = 'PartyHat'
-
-// NOTE: how many things a list asks for before the hat, by difficulty
+// NOTE: how many things a list asks for, by difficulty
 // (Dare, Double Dare, Triple Dare, Triple Dog Dare). The house has four
 // rooms behind boards (the kitchen and the three slot rooms), so even
 // Triple Dog Dare's list has a room of its own for each thing, and the
@@ -57,24 +56,18 @@ export const LIST_LENGTHS: Readonly<Record<Difficulty, number>> = {
   Nightmare: 4,
 }
 
-type DareRules = Readonly<{ reachPx: number; dropInsetPx: number }>
+type DareRules = Readonly<{ reachPx: number }>
 
-const DARE_RULES: DareRules = { reachPx: 10, dropInsetPx: 8 }
+const DARE_RULES: DareRules = { reachPx: 10 }
 
 // THE ROOMS' THINGS
 
-// NOTE: every thing a room can hold, in the Schema's order, the hat aside.
-// Any of them may lie in any room (owner, 2026-11-10: "fully random"), so
-// a room draws from all of them but those the list already holds, and a
-// run's things never repeat.
-const ROLLABLE_KINDS: ReadonlyArray<DareKind> = Array.filter(
-  DareKind.literals,
-  kind => kind !== LAST_THING,
-)
-
-// NOTE: the things a room may still hold: any but those `taken`.
+// NOTE: the things a room may still hold, in the Schema's order: any but
+// those `taken`. Any of them may lie in any room (owner, 2026-11-10: "fully
+// random"), so a room draws from all of them but those the list already
+// holds, and a run's things never repeat.
 const thingsLeft = (taken: ReadonlyArray<DareKind>): ReadonlyArray<DareKind> =>
-  Array.filter(ROLLABLE_KINDS, kind => !Array.contains(taken, kind))
+  Array.filter(DareKind.literals, kind => !Array.contains(taken, kind))
 
 // NOTE: a draw from the dare's stream as one of `items`.
 const drawOne = <A>(
@@ -209,47 +202,28 @@ const isFound = (thing: DareThing): boolean =>
 const hasDare = (world: World): boolean =>
   Array.isReadonlyArrayNonEmpty(world.dare.list)
 
-// NOTE: the list's things, the hat aside: the hat is in the house only
-// once Uncle Chunk drops it (src/world/dare/finale.ts).
-const listThings = (world: World): ReadonlyArray<DareThing> =>
-  Array.filter(world.dareThings, ({ kind }) => kind !== LAST_THING)
-
-const maybeHat = (world: World): Option.Option<DareThing> =>
-  Array.findFirst(world.dareThings, ({ kind }) => kind === LAST_THING)
-
-// NOTE: every thing on the list found, the hat aside: the finale's cue.
+// NOTE: every thing on the list found: the finale's cue.
 export const isDareListDone = (world: World): boolean =>
-  hasDare(world) && Array.every(listThings(world), isFound)
+  hasDare(world) && Array.every(world.dareThings, isFound)
 
-// NOTE: how many things on the list the crew has found, the hat aside:
-// each pays rank (src/world/heroes/rank.ts) and rides the run's summary.
+// NOTE: how many things on the list the crew has found: each pays rank
+// (src/world/heroes/rank.ts) and rides the run's summary.
 export const dareItemsFoundOf = (world: World): number =>
-  Array.filter(listThings(world), isFound).length
+  Array.filter(world.dareThings, isFound).length
 
-// NOTE: whether Uncle Chunk has dropped his hat yet, and whether a player
-// has taken it.
-export const isHatDropped = (world: World): boolean =>
-  Option.isSome(maybeHat(world))
-
-export const isHatFound = (world: World): boolean =>
-  Option.exists(maybeHat(world), isFound)
-
-// NOTE: the list in order with whether each is found yet, the hat last,
-// found once a player takes it from Uncle Chunk. What the dare card draws.
+// NOTE: the list in order with whether each is found yet: what the dare
+// card draws, only the rooms' things.
 export const dareCardOf = (
   world: World,
 ): ReadonlyArray<Readonly<{ kind: DareKind; isFound: boolean }>> =>
   hasDare(world)
-    ? [
-        ...Array.map(world.dare.list, kind => ({
-          kind,
-          isFound: Array.some(
-            listThings(world),
-            thing => thing.kind === kind && isFound(thing),
-          ),
-        })),
-        { kind: LAST_THING, isFound: isHatFound(world) },
-      ]
+    ? Array.map(world.dare.list, kind => ({
+        kind,
+        isFound: Array.some(
+          world.dareThings,
+          thing => thing.kind === kind && isFound(thing),
+        ),
+      }))
     : []
 
 const isInBox = (point: Vector, { box }: Room): boolean =>
@@ -285,7 +259,7 @@ export const maybeThingRoom: {
 )
 
 // NOTE: where a thing lies on the floor to be walked onto: a hidden one's
-// spot in an open room, or where Uncle Chunk dropped his hat.
+// spot in an open room.
 export const maybeLyingAt: {
   (level: Level): (thing: DareThing) => Option.Option<Vector>
   (thing: DareThing, level: Level): Option.Option<Vector>
@@ -295,7 +269,6 @@ export const maybeLyingAt: {
     {
       Hidden: ({ x, y }): Option.Option<Vector> =>
         isInOpenRoom(level, { x, y }) ? Option.some({ x, y }) : Option.none(),
-      Dropped: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
     },
     (): Option.Option<Vector> => Option.none(),
   ),
@@ -319,45 +292,7 @@ const setThing = (
 ): ReadonlyArray<DareThing> =>
   Array.map(things, thing => (thing.id === id ? { ...thing, state } : thing))
 
-const insideBounds = (level: Level, point: Vector): Vector => ({
-  x: clamp(
-    point.x,
-    level.bounds.left + DARE_RULES.dropInsetPx,
-    level.bounds.right - DARE_RULES.dropInsetPx,
-  ),
-  y: clamp(
-    point.y,
-    level.bounds.top + DARE_RULES.dropInsetPx,
-    level.bounds.bottom - DARE_RULES.dropInsetPx,
-  ),
-})
-
-// NOTE: Uncle Chunk's party hat falls where he does, on the list, for the
-// first standing player to walk onto it. Its id follows the house's things.
-export const dropHat: {
-  (at: Vector): (world: World) => World
-  (world: World, at: Vector): World
-} = Function.dual(2, (world: World, at: Vector): World => {
-  const spot = insideBounds(levelOf(world), at)
-  const hat: DareThing = {
-    id:
-      Array.reduce(world.dareThings, -1, (largest, { id }) =>
-        Math.max(largest, id),
-      ) + 1,
-    kind: LAST_THING,
-    state: DareThingState.Dropped(spot),
-  }
-  return modifyWorldFields(world, {
-    dareThings: Array.append(hat),
-    frameEvents: events => [
-      ...events,
-      GameEvent.DareDropped({ ...spot, kind: hat.kind }),
-    ],
-  })
-})
-
-// NOTE: the find style of the room a thing lies in: the hat, dropped
-// where Uncle Chunk fell, is walked onto anywhere.
+// NOTE: the find style of the room a thing lies in.
 export const findStyleOf: {
   (level: Level): (thing: DareThing) => FindStyle
   (thing: DareThing, level: Level): FindStyle
@@ -368,8 +303,8 @@ export const findStyleOf: {
   }),
 )
 
-// NOTE: a lying thing found by walking onto it: the hat, or a hidden one
-// in an open room that finds its thing that way.
+// NOTE: a lying thing found by walking onto it: a hidden one in an open
+// room that finds its thing that way.
 const maybeWalkOnto = (thing: DareThing, level: Level): Option.Option<Vector> =>
   Option.filter(
     maybeLyingAt(thing, level),

@@ -112,7 +112,7 @@ Games that already proved parts of this idea. We borrow the shape of what worked
 | **Resident Evil** (Capcom, 1996)               | The mansion as a lock puzzle: crest keys, each opening one kind of door, a safe room with a box and a typewriter. Backtracking feels like progress because the map opens up.                                                                                                                                            | A few key kinds, each opening one kind of door. Rattles' stall as the safe room.                                                                                                                      |
 | **Luigi's Mansion** (Nintendo, 2001)           | Goofy haunted house. The hook: Luigi "won" a mansion in a contest he never entered. Rooms go from dark to lit as you clear them.                                                                                                                                                                                        | A silly reason you are here (see the twist). Rooms that change once cleared or once the power is on.                                                                                                  |
 | **Hades** (Supergiant, 2020)                   | A run is an escape from your family's house. Dying sends you home, and the story moves forward between deaths: the cast remembers how you died.                                                                                                                                                                         | Dying is part of the story. Rattles reacts to how the last run ended and how far you got.                                                                                                             |
-| **Left 4 Dead** (Valve, 2008)                  | The finale: call for rescue, then hold out against the biggest horde until it arrives. Safe rooms between stretches.                                                                                                                                                                                                    | The last step of an escape is a hold-out at the front door, the existing wave game at its loudest.                                                                                                    |
+| **Left 4 Dead** (Valve, 2008)                  | The finale: call for rescue, then hold out against the biggest horde until it arrives. Safe rooms between stretches.                                                                                                                                                                                                    | The hold-out was dropped: the last step of an escape is Uncle Chunk's fight at the front door, and his key bursts out and opens the door at once.                                                     |
 | **Dead by Daylight** (Behaviour, 2016)         | Do objectives around the map to power the exit gates, then a collapse timer pushes everyone out.                                                                                                                                                                                                                        | Finding the pieces "arms" the way out. Once it is open, the house gets angrier until you leave.                                                                                                       |
 | **Escape from Tarkov** and extraction shooters | Leaving is a choice: get out now with what you have, or stay for more and risk losing it.                                                                                                                                                                                                                               | An early exit that pays less, and the full escape that pays most.                                                                                                                                     |
 | **Maniac Mansion** (Lucasfilm, 1987)           | Kids break into a weird family's mansion, each kid has different skills, and different picks open different endings. Goofy, not grim.                                                                                                                                                                                   | Heroes each open a different shortcut (the Handyman pries boards, the Line Cook opens the kitchen's back way).                                                                                        |
@@ -126,7 +126,7 @@ Games that already proved parts of this idea. We borrow the shape of what worked
 | **Clue** (1949)                                       | A dinner party at a mansion, a room-by-room hunt, weapons that are household things, secret passages between corners.                                                                               | The dinner party framing. Secret passages as a room's twist. We already fight with pans and pot lids. |
 | **Last Night on Earth** (Flying Frog, 2007)           | B-movie zombie scenarios with goals. "Escape in the Truck": find the keys and the gas, then reach the truck.                                                                                        | An escape built from two or three ordinary things you need to leave.                                  |
 | **Room 25** (Matagot, 2013)                           | A grid of hidden rooms that slide around. Find the exit room and get out before time runs out.                                                                                                      | The house that shifts. Maybe a room that moves between runs.                                          |
-| **Escape: The Curse of the Temple** (Queen, 2012)     | Ten minutes of real time to explore a temple and get out together. Anyone left inside when it collapses loses.                                                                                      | The hold-out at the end as a co-op "everyone to the door".                                            |
+| **Escape: The Curse of the Temple** (Queen, 2012)     | Ten minutes of real time to explore a temple and get out together. Anyone left inside when it collapses loses.                                                                                      | The run at the end as a co-op "everyone to the door".                                                 |
 | **Horrified** (Ravensburger, 2019)                    | Gather particular items around the map to beat each monster.                                                                                                                                        | Uncle Chunk is beaten with what you found, not only with damage.                                      |
 | **EXIT** and **Unlock!** escape room games            | Combine two found things into one that opens something.                                                                                                                                             | Kept small: at most one combine (a fuse plus the fuse box).                                           |
 
@@ -135,7 +135,7 @@ Games that already proved parts of this idea. We borrow the shape of what worked
 1. **The goal is simple and the path is random.** "Get out" never changes; where the pieces are and which rooms you get does.
 2. **Random within hand-made pieces.** Blue Prince, Betrayal, and TranZit roll hand-made rooms or hand-picked spots, never fully generated maps. This fits our "Not now" rule's spirit.
 3. **The house changes as you go.** Power on, rooms opened, a haunt. Progress is something you see.
-4. **The ending is a fight you choose to start.** The hold-out, the gates, the plane: players decide when they are ready.
+4. **The ending is a fight you choose to start.** Uncle Chunk at the front door, the gates, the plane: players decide when they are ready.
 5. **Death moves something forward.** Hades and Blue Prince make a failed run still teach or tell something.
 6. **Ordinary things are the keys.** Truck keys, gas, a fuse. The sillier and more everyday, the better the joke.
 
@@ -163,7 +163,7 @@ The Munches made a deal with the house long ago: it gets fed, and the family get
 
 ### The dare's terms are the list
 
-A dare needs proof, so the things you must bring out are the dare's terms, and they change every time, because every dare is new. Your friends wrote them on a card: "Bring back the silver spoon, the family portrait, and Uncle Chunk's party hat." The party hat is always last, and he is wearing it at the front door.
+A dare needs proof, so the things you must bring out are the dare's terms, and they change every time, because every dare is new. Your friends wrote them on a card: "Bring back the silver spoon, the family portrait, and the music box." Uncle Chunk is not on the card: he is the host, and he comes to the front door once you have them all. When he falls, a big gold key bursts out of him and opens the door.
 
 ### The zombies: the guests, and every daredevil who failed
 
@@ -214,7 +214,7 @@ What this changes is in "Escape the manor" in `GAME_DESIGN.md`: the shop, Rattle
 
 ### Rattles
 
-Built on 2026-11-10. With no shop, Rattles has no stall. He stays as a character (owner, 2026-11-10): the first daredevil, from 1924, who never got out and hollers hints in his bubble, pointing at the thing he means: "SPOON'S OVER THERE. PROBABLY.", "I LOST THAT SPOON IN 1924.", "SOMEBODY'S WEARING IT. RUDE.", "LAST THING: HIS HAT.", "NO HINTS. TRIPLE DOG DARE." His lines are drafts for review, and whether his look changes, Demi is reinventing. He sits on a trunk by the front door he never got out of, and the first break after the practice wave he says hello: "PSST! OVER HERE, BY THE DOOR!", "NAME'S RATTLES. DARED IN 1924.", "NEVER GOT OUT. HEH. GOOD LUCK!" (owner, 2026-11-10: he felt random where he sat).
+Built on 2026-11-10. With no shop, Rattles has no stall. He stays as a character (owner, 2026-11-10): the first daredevil, from 1924, who never got out and hollers hints in his bubble, pointing at the thing he means: "SPOON'S OVER THERE. PROBABLY.", "I LOST THAT SPOON IN 1924.", "CHUNK'S GOT THE BIG KEY.", "NO HINTS. TRIPLE DOG DARE." His lines are drafts for review, and whether his look changes, Demi is reinventing. He sits on a trunk by the front door he never got out of, and the first break after the practice wave he says hello: "PSST! OVER HERE, BY THE DOOR!", "NAME'S RATTLES. DARED IN 1924.", "NEVER GOT OUT. HEH. GOOD LUCK!" (owner, 2026-11-10: he felt random where he sat).
 
 ### PLAY is the dare, the lobby is the dare card
 
@@ -279,7 +279,7 @@ Then the card folds itself into the HUD: the list opens in the corner and each i
 
 ### What the dare asks for changes every run
 
-Built on 2026-11-10. One rule: each room holds one thing (owner, 2026-11-10). Each run gives every room behind boards one thing on the list, on one of its hiding spots, from its own salted seeded stream (TranZit, Last Night on Earth). Which thing lands in which room is fully random (owner, 2026-11-10): the music box may be in the cellar one run and the kitchen the next, never one thing twice. Open a room and its thing is in there. Uncle Chunk's party hat is always last, at the front door.
+Built on 2026-11-10. One rule: each room holds one thing (owner, 2026-11-10). Each run gives every room behind boards one thing on the list, on one of its hiding spots, from its own salted seeded stream (TranZit, Last Night on Earth). Which thing lands in which room is fully random (owner, 2026-11-10): the music box may be in the cellar one run and the kitchen the next, never one thing twice. Open a room and its thing is in there. The card ends with the things; Uncle Chunk is the final boss at the front door and is not on it.
 
 The things: Grandma Munch's recipe, the silver spoon, the butler's bell, the music box (its tune plays, as flavor), the family portrait, and a page of the guest book.
 
@@ -291,12 +291,12 @@ Objects, no reading needed. The HUD shows this run's list as empty outlines that
 
 Built on 2026-11-10 with the help as Rattles' hints: Dare names the room every break, Double Dare one hint a break, Triple Dare gives no hints, and Triple Dog Dare heckles. After the owner's playtest the same day ("I bought all the rooms, but can't find anything"), a thing on Dare and Double Dare lies in plain sight once its room is open, big and glowing, a gold arrow shows the way while a hint is up (on Dare all break long), and opening a room shows its thing. Triple Dare and Triple Dog Dare still hide it until you are close. On Triple Dog Dare the house gets hungrier from the first find; on the other levels, once the list is done. The four levels scale the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`), and the list is a second dial on the same curve:
 
-| Level     | Things before the hat | Help finding them                                     |
-| --------- | --------------------- | ----------------------------------------------------- |
-| Easy      | 2                     | Things in sight, sparkling; a gold arrow all break    |
-| Normal    | 3                     | Things in sight; one hint a break, with the arrow     |
-| Hard      | 3                     | Hidden until close; no sparkle, no hints              |
-| Nightmare | 4                     | No hints; the house gets hungrier from the first find |
+| Level     | Things on the card | Help finding them                                     |
+| --------- | ------------------ | ----------------------------------------------------- |
+| Easy      | 2                  | Things in sight, sparkling; a gold arrow all break    |
+| Normal    | 3                  | Things in sight; one hint a break, with the arrow     |
+| Hard      | 3                  | Hidden until close; no sparkle, no hints              |
+| Nightmare | 4                  | No hints; the house gets hungrier from the first find |
 
 A longer list makes a longer run, so the balance model and bot learn the list before the counts are tuned.
 
@@ -312,7 +312,7 @@ Built on 2026-11-10: the parlour, the library (a secret bookshelf), and the cell
 
 ### The house gets hungrier
 
-Built on 2026-11-10: 1.25 times the zombies, Uncle Chunk at the wave after the list is done but never before wave 6, 8, 9, or 9 by difficulty, a 45 s unlock that counts during waves, a marker at the screen's edge pointing to the door while it is out of view, and the run ends once every standing player has walked out. Once you hold everything on the list, the house knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you take Uncle Chunk's hat at the front door. That finale is a hold-out (Left 4 Dead): the front door is unlocking, and you hold the hall until it swings open.
+Built on 2026-11-10: 1.25 times the zombies, Uncle Chunk at the start of the wave after the list is done, a big gold key that bursts out of him when he falls and flies into the front door's padlock, a marker at the screen's edge pointing to the door while it is out of view, and the run ends once every standing player has walked out. Once you hold everything on the list, the house knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you fell Uncle Chunk at the front door. The Left 4 Dead hold-out was dropped (owner, 2026-11-10): his key bursts out and opens the door at once, and you run for it.
 
 ### Leaving early
 
@@ -322,7 +322,7 @@ Proposed. The back door in the kitchen (or a window) is an early exit: leave wit
 
 Built on 2026-11-10.
 
-- **SHARE is your proof.** The end card becomes the photo you show your friends: "I got Uncle Chunk's hat", or "I made it to wave 7 and took the silver spoon".
+- **SHARE is your proof.** The end card becomes the photo you show your friends: "I felled Uncle Chunk", or "I made it to wave 7 and took the silver spoon".
 - **Co-op is daring a friend.** A room link is "I dare you".
 - **Every escape is different.** The list, the hiding spots, and the rooms roll, so there is always a new story to compare.
 

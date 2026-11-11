@@ -7,7 +7,7 @@ import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
 // The dare's things as 7 by 7 pixel icons, for the dare card on the HUD and
 // for the things themselves in the house: the silver spoon, the family
 // portrait, a page of the guest book, Grandma Munch's recipe, the music box,
-// the butler's bell, and Uncle Chunk's party hat. Each has a light
+// and the butler's bell. Each has a light
 // silhouette too, for a slot on the HUD's pocket still empty.
 
 export const DARE_ICON_SIZE = 7
@@ -67,15 +67,6 @@ const DARE_PIXELS: Readonly<Record<DareKind, ReadonlyArray<string>>> = {
     'ddddddd',
     '.......',
   ],
-  PartyHat: [
-    '...W...',
-    '...M...',
-    '..MYM..',
-    '..YMY..',
-    '.MYMYM.',
-    '.YMYMY.',
-    'MMMMMMM',
-  ],
 }
 
 const DARE_PALETTE: Palette = {
@@ -93,7 +84,6 @@ const DARE_PALETTE: Palette = {
   N: '#f4f1de',
   y: '#e0b232',
   Y: '#fff1a8',
-  M: '#d84ab0',
 }
 
 // NOTE: a thing still to find is a light silhouette that keeps its inner
@@ -116,7 +106,6 @@ const SILHOUETTE_PALETTE: Palette = {
   N: '#e2dbec',
   y: '#b8acca',
   Y: '#ddd5e8',
-  M: '#9a8eb0',
 }
 
 export const DARE_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
@@ -137,9 +126,8 @@ export const DARE_SILHOUETTE_URLS: Readonly<Record<DareKind, string>> =
 
 // NOTE: a dare slot on the HUD's pocket, one sprite: the thing at twice its
 // size, so a spoon reads as a spoon on a phone, on a dark fill inside a rim
-// one pixel wide. An empty slot has a dim rim and the silhouette, the hat's
-// a party pink one, since it closes the list; a found one a gold rim and
-// the thing in color, with a green check (DARE_CHECK) on its corner.
+// one pixel wide. An empty slot has a dim rim and the silhouette; a found
+// one a gold rim and the thing in color, with a green check (DARE_CHECK) on its corner.
 const SLOT_SCALE = 2
 export const DARE_SLOT_SIZE = DARE_ICON_SIZE * SLOT_SCALE + 2
 
@@ -172,7 +160,6 @@ const slotPixels = (pixels: ReadonlyArray<string>): ReadonlyArray<string> => {
 const EMPTY_FILL = '#120d16'
 const FOUND_FILL = '#2b2131'
 const EMPTY_RIM = '#6f6580'
-const HAT_RIM = '#9a4a86'
 const FOUND_RIM = '#ffe066'
 
 const slotSprites = (
@@ -191,7 +178,7 @@ const slotSprites = (
 export const DARE_EMPTY_SLOTS: Readonly<Record<DareKind, Sprite>> = slotSprites(
   SILHOUETTE_PALETTE,
   EMPTY_FILL,
-  kind => (kind === 'PartyHat' ? HAT_RIM : EMPTY_RIM),
+  () => EMPTY_RIM,
 )
 
 export const DARE_FOUND_SLOTS: Readonly<Record<DareKind, Sprite>> = slotSprites(

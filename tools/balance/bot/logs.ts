@@ -56,6 +56,7 @@ export const emptyNewKinds = (): NewKindLog => ({
 
 export const emptyBossBlame = (): Record<BossBlame, number> => ({
   Stomp: 0,
+  Slam: 0,
   Charge: 0,
   Glob: 0,
   Bite: 0,

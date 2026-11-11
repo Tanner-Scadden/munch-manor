@@ -5,7 +5,7 @@ import { Array, Function, Option } from 'effect'
 
 import { focusOf } from '../../../src/world/party/party'
 import { BossMove } from '../../../src/world/schema/worldSchema'
-import { BOSS_RULES } from '../../../src/world/zombies/boss'
+import { BOSS_RULES } from '../../../src/world/zombies/bossRules'
 import { CHUCKER_RULES } from '../../../src/world/zombies/chucker'
 import { CRAWLER_RULES } from '../../../src/world/zombies/crawler'
 import { FRENZY_RULES } from '../../../src/world/zombies/frenzy'
@@ -47,7 +47,7 @@ export const safePickup = (model: Model): Vector | undefined => {
 }
 
 // It dodges the boss the way a player who has seen his tells does: out of a
-// stomp ring once it winds up, sideways off a charge lane, and out of a glob
+// stomp or slam ring once it winds up, sideways off a charge lane, and out of a glob
 // marker or a puddle. It keeps a wider berth from the boss than from the
 // horde, since the boss is wider. KITE=1 is the player who never learns the
 // tells: it only runs to the far side of the room from the boss and shoots.
@@ -208,10 +208,13 @@ export const telegraphDodge = (model: Model): Vector | undefined => {
     model.boss.move,
     {
       WindingUp: move =>
-        move.attack !== 'Stomp'
+        move.attack !== 'Stomp' && move.attack !== 'Slam'
           ? undefined
           : distance(focusOf(model).player, boss) <
-              BOSS_RULES.stompRadius + DODGE_MARGIN_PX
+              (move.attack === 'Slam'
+                ? BOSS_RULES.slamRadius
+                : BOSS_RULES.stompRadius) +
+                DODGE_MARGIN_PX
             ? steerToward(boss, focusOf(model).player)
             : { x: 0, y: 0 },
       Bracing: move =>

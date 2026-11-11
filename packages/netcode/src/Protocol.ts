@@ -119,11 +119,11 @@ import {
 // library, and cellar the run's seed rolled into each slot.
 // The dare: the World holds the run's dare (`dare`: its own generator and
 // the list) and the house's things (`dareThings`, keyed by id, each hidden
-// in its room, dropped, or found), and three new events say what happened
-// to them: DareFound, DareDropped, and DareListDone.
+// in its room or found), and two new events say what happened to them:
+// DareFound and DareListDone.
 // The finale: the dare holds its `finale` (hunting, Uncle Chunk summoned,
-// the front door unlocking, or open), a seat that stepped out through it
-// is Out (a new Life), with three events, FrontDoorUnlocking,
+// his big key flying for the lock, or open), a seat that stepped out
+// through it is Out (a new Life), with three events, BigKeyBurst,
 // FrontDoorOpened, and SteppedOut, and a won run ends
 // in an Escaped phase, with its wave, in place of Victory.
 // The intro: a run starts Arriving, a new phase that holds the intro's
@@ -137,6 +137,11 @@ import {
 // Room finds: a hidden dare thing carries the work put into finding it
 // (Hidden's `workedMs`), as each room finds its thing its own way. A room's
 // wake-up rush rides the round's planned spawns, so it adds nothing more.
+// Uncle Chunk's last fight: the boss carries his guests' health scale
+// (`guestHpScale`) from Waiting through Fighting and has a fifth attack
+// (Slam), the finale's Unlocking is KeyFlying (his big key in the air, from
+// where he fell, with a BigKeyBurst event), and the party hat, the Dropped
+// thing, DareDropped, and FrontDoorUnlocking are gone.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

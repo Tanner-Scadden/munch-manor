@@ -21,7 +21,7 @@ import type { CarriedGun } from '../../world/schema/entitySchema'
 
 // The pause screen's progress (owner, 2026-11-10: "The pause menu should
 // show my progress as well!"): the dare's things, each in color with a
-// check once found and a silhouette until then, the hat last; then the
+// check once found and a silhouette until then; then the
 // crew's skeleton keys and the rooms opened of the rooms on the map. The
 // wave is the canvas's line under PAUSED. Never where a thing is. Its own
 // view, apart from the HUD's dare card, with the same pixel art drawn big.
