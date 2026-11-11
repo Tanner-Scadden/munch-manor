@@ -6,7 +6,9 @@ import { initialModel } from '../../src/app/pureApp'
 import { PREPARATION_MS } from '../../src/shared/constants'
 import {
   atCase,
+  atFridge,
   atOpenedCase,
+  atStove,
   hidingSpotIn,
   roomOpenIn,
   withDareThings,
@@ -15,6 +17,8 @@ import {
 } from '../../src/test/model.fixture'
 import { asVeteran } from '../../src/test/veteran'
 import { DareThingState } from '../../src/world/dare/dareSchema'
+import { freshGun } from '../../src/world/gear/weapons'
+import { rollStove } from '../../src/world/kitchen/stove'
 import { levelOf, openExitIn } from '../../src/world/level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../src/world/level/exits'
 import {
@@ -22,9 +26,11 @@ import {
   DEFAULT_ARRANGEMENT,
   DINING_ROOM_ID,
   KITCHEN_ROOM_ID,
+  PARLOUR_ROOM_ID,
 } from '../../src/world/level/plan'
 import {
   CaseState,
+  Pantry,
   Phase,
   Purchasable,
 } from '../../src/world/schema/worldSchema'
@@ -34,10 +40,14 @@ import {
   isWorkingForEscape,
   wantedBoards,
 } from './bot/escape'
+import { gunValue } from './bot/guns'
+import { pantryTarget, roomTarget, stoveTarget } from './bot/shopping'
 
 // The balance bot's hunt (tools/balance/bot/escape.ts): the room holding a
 // thing on the list gets bought open in a break, once the crew's ring holds
-// the padlock's keys.
+// the padlock's keys. Its keys and errands (tools/balance/bot/shopping.ts):
+// keys go to the rooms that hold a thing on the list, and the pantry and
+// the stove are taken when they are there.
 
 const IN_KITCHEN = hidingSpotIn(levelOf(initialModel), KITCHEN_ROOM_ID)
 const IN_DINING_ROOM = hidingSpotIn(levelOf(initialModel), DINING_ROOM_ID)
@@ -149,5 +159,59 @@ describe("the bot works a room's find", () => {
       { level: () => roomOpenIn(DEFAULT_ARRANGEMENT, 'Cellar') },
     )
     expect(escapeTarget(cellarBreak)).toBeUndefined()
+  })
+})
+
+// NOTE: a break with the kitchen open, the ring full, and the list's one
+// thing hidden in `room`.
+const kitchenOpenWithThingIn = (room: string): Model =>
+  withKeys(
+    withDareThings(
+      modifyFields(asVeteran(initialModel), {
+        phase: () => WAVE_4_BREAK,
+        level: level => openExitIn(level, KITCHEN_EXIT),
+      }),
+      [
+        {
+          id: 0,
+          kind: 'ButlersBell',
+          state: DareThingState.Hidden({
+            ...hidingSpotIn(levelOf(initialModel), room),
+            workedMs: 0,
+          }),
+        },
+      ],
+    ),
+    200,
+  )
+
+describe('the bot spends keys on the hunt', () => {
+  test('opens the room holding a thing on the list', () => {
+    expect(roomTarget(kitchenOpenWithThingIn(PARLOUR_ROOM_ID))).toBeDefined()
+  })
+
+  test('leaves a room with nothing on the list shut', () => {
+    expect(roomTarget(kitchenOpenWithThingIn(KITCHEN_ROOM_ID))).toBeUndefined()
+  })
+})
+
+describe('the bot runs its errands', () => {
+  test("takes the pantry's goodie while it is stocked", () => {
+    const stocked = modifyFields(atFridge(0), {
+      pantry: () => Pantry.Stocked({ round: 5, goodie: 'Key' }),
+    })
+    expect(pantryTarget(stocked)).toBeDefined()
+    expect(pantryTarget(atFridge(0))).toBeUndefined()
+  })
+
+  test('cooks at the stove once its feat is done', () => {
+    expect(stoveTarget(rollStove(atStove(0)))).toBeDefined()
+    expect(stoveTarget(rollStove(atFridge(0)))).toBeUndefined()
+  })
+
+  test('values a cooked gun over a plain one', () => {
+    expect(gunValue({ ...freshGun('Shotgun'), perk: 'Spicy' })).toBeGreaterThan(
+      gunValue(freshGun('Shotgun')),
+    )
   })
 })

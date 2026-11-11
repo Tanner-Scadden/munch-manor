@@ -8,7 +8,8 @@
 // hollow book, the dumbwaiter) with no zombie close, and for the dark
 // cellar's waits for a wave to yank the bulb's chain first. It fights Uncle
 // Chunk, and once his key opens the front door, goes out through it. In a break it takes what a display case opened for it holds, when it
-// beats a gun it carries.
+// beats a gun it carries. It spends keys on the rooms that hold a thing on
+// the list (and the kitchen), never on a room with nothing on the list.
 
 import { Array, Option } from 'effect'
 

@@ -17,7 +17,10 @@ import {
 } from '../../../test/model.fixture'
 import { APPLICATION, ticks, zombieOf } from '../../../test/testing'
 import { DareThingState } from '../../../world/dare/dareSchema'
-import { levelOf } from '../../../world/level/arena'
+import { heldKeys } from '../../../world/keys/keys'
+import { maybeStash, pantrySpotOf } from '../../../world/kitchen/pantry'
+import { levelOf, openExitIn } from '../../../world/level/arena'
+import { KITCHEN_EXIT } from '../../../world/level/exits'
 import {
   CELLAR_ROOM_ID,
   DEFAULT_ARRANGEMENT,
@@ -25,7 +28,7 @@ import {
   LIBRARY_ROOM_ID,
 } from '../../../world/level/plan'
 import { maybePlayerAt } from '../../../world/party/party'
-import type { SlotRoomId } from '../../../world/schema/worldSchema'
+import { Pantry, type SlotRoomId } from '../../../world/schema/worldSchema'
 import { botInputs } from '../teammateBot'
 import { BOT, BREAK } from './bots.fixture'
 
@@ -151,6 +154,31 @@ describe('a bot searches for the list', () => {
         expect(
           Option.getOrThrow(maybePlayerAt(current, 1)).seat.shotsFired,
         ).toBeGreaterThan(0)
+      }),
+    )
+  })
+})
+
+// NOTE: the pantry's goodie (src/world/kitchen/pantry.ts) is free for the
+// walk, so a bot with nothing on the list to fetch takes it in a break.
+describe('a bot runs its errands', () => {
+  it.effect("in a break it takes the pantry's goodie", () => {
+    const found = modifyFields(crewInWave(2), {
+      crewBots: () => [BOT],
+      phase: () => BREAK,
+      level: level => openExitIn(level, KITCHEN_EXIT),
+      pantry: () => Pantry.Stocked({ round: BREAK.wave, goodie: 'Key' }),
+    })
+    const spot = Option.getOrThrow(pantrySpotOf(levelOf(found)))
+    return Story.story(
+      APPLICATION,
+      Story.given(
+        placeSeat(1, spot.x + 30, spot.y + 20)(placeSeat(0, 40, 140)(found)),
+      ),
+      ...ticks(120, FIXED_STEP_MS),
+      Story.model(current => {
+        expect(Option.isNone(maybeStash(current))).toBe(true)
+        expect(heldKeys(current)).toBe(heldKeys(found) + 1)
       }),
     )
   })

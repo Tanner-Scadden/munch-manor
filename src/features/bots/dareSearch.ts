@@ -4,6 +4,7 @@ import { isHiddenInDark } from '../../world/cellar/bulb'
 import { findStyleOf, maybeLyingAt } from '../../world/dare/dare'
 import { isFrontDoorOpen } from '../../world/dare/finale'
 import { FIND_RULES } from '../../world/dare/finds'
+import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import {
   type Box,
   type Level,
@@ -33,7 +34,9 @@ import { distanceBetween } from '../../world/step/geometry'
 // close. The cellar's thing hides in the dark until the bulb's chain is
 // yanked (src/world/cellar/bulb.ts), which only a wave allows, so in a
 // break the bot leaves it, and in a wave it goes to the chain first. It
-// spends no keys: a thing behind boards waits for the player.
+// spends no keys: a thing behind boards waits for the player. Besides the
+// list, a bot takes the pantry's goodie each round (src/world/kitchen/
+// pantry.ts), free for the walk.
 
 // NOTE: how close a zombie may be before a bot leaves a thing for the
 // fight, in a wave.
@@ -203,3 +206,12 @@ export const isWorkingSearch: {
       ))
   )
 })
+
+// THE PANTRY
+
+// NOTE: where the pantry's goodie waits this round, for a bot to walk onto:
+// a key for the crew's ring, or a heart for a hurt taker.
+export const pantryErrand = (world: World): Vector | undefined =>
+  Option.getOrUndefined(
+    Option.flatMap(maybeStash(world), () => pantrySpotOf(levelOf(world))),
+  )

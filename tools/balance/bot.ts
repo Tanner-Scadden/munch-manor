@@ -92,21 +92,26 @@ import {
 import type { BossBlame, RunResult } from './bot/results'
 import { routeTo } from './bot/route'
 import {
+  type PrepPlan,
   busiestDoor,
   crateTarget,
   fridgeKeys,
   fridgeStand,
   gnomeSpot,
+  gunToCook,
   holdingAtBoards,
   isAtMend,
+  isAtStove,
   isBreakOverdue,
   isFridgeInReach,
   isKitchenOpen,
   isOfferedToBot,
   mendTarget,
   offeredWeapon,
+  pantryTarget,
   prepPlan,
   roomTarget,
+  stoveTarget,
   wouldTake,
 } from './bot/shopping'
 import { GUN_PLAN, freshState } from './bot/state'
@@ -241,6 +246,28 @@ type Stop =
 // before the bot shops, which is where a wave snapshot is taken.
 type OnPreparation = (wave: number, model: Model) => void
 
+// NOTE: where each step of the break plan walks the bot.
+const PREP_TARGETS: {
+  readonly [Plan in PrepPlan]: (
+    model: Model,
+    escapeTo: Vector | undefined,
+  ) => Vector
+} = {
+  Go: (_, escapeTo) => escapeTo ?? ROOM_CENTER,
+  Fetch: (_, escapeTo) => escapeTo ?? ROOM_CENTER,
+  Pantry: model => pantryTarget(model) ?? ROOM_CENTER,
+  Stove: model => stoveTarget(model) ?? ROOM_CENTER,
+  Room: model => roomTarget(model) ?? ROOM_CENTER,
+  Case: model => caseTarget(model) ?? ROOM_CENTER,
+  Crate: model => crateTarget(model) ?? ROOM_CENTER,
+  Mend: model => mendTarget(model) ?? ROOM_CENTER,
+  Gnome: model => gnomeSpot(model),
+  Fridge: model => fridgeStand(model) ?? ROOM_CENTER,
+  Return: () => ROOM_CENTER,
+  Barricade: model =>
+    boxCenter(levelOf(model).thresholds[busiestDoor(model) ?? 'North'].box),
+}
+
 export const play: {
   (
     seed: number,
@@ -350,28 +377,7 @@ export const play: {
           model = send(model, Message.TickedFrame({ deltaTime: FRAME_MS }))
           continue
         }
-        const target =
-          plan === 'Go'
-            ? (escapeTo ?? ROOM_CENTER)
-            : plan === 'Room'
-              ? (roomTarget(model) ?? ROOM_CENTER)
-              : plan === 'Case'
-                ? (caseTarget(model) ?? ROOM_CENTER)
-                : plan === 'Crate'
-                  ? (crateTarget(model) ?? ROOM_CENTER)
-                  : plan === 'Mend'
-                    ? (mendTarget(model) ?? ROOM_CENTER)
-                    : plan === 'Gnome'
-                      ? gnomeSpot(model)
-                      : plan === 'Fridge'
-                        ? (fridgeStand(model) ?? ROOM_CENTER)
-                        : plan === 'Return'
-                          ? ROOM_CENTER
-                          : boxCenter(
-                              levelOf(model).thresholds[
-                                busiestDoor(model) ?? 'North'
-                              ].box,
-                            )
+        const target = PREP_TARGETS[plan](model, escapeTo)
         if (
           plan === 'Fridge' &&
           isOfferedToBot(model) &&
@@ -394,9 +400,22 @@ export const play: {
               ? new Set()
               : new Set([KEYS.interact]),
           )
+        } else if (plan === 'Stove' && isAtStove(model)) {
+          // NOTE: the stronger gun in hand, then the interact key held as
+          // at the boards, let go once the cook is done.
+          const ready = holdToReplace(model, gunToCook(model))
+          model = pressKeys(
+            ready,
+            focusOf(ready).purchase._tag === 'Done'
+              ? new Set()
+              : new Set([KEYS.interact]),
+          )
         } else if (plan === 'Fridge' && isFridgeInReach(model)) {
           model = pressKeys(model, fridgeKeys(model))
-        } else if (plan === 'Go' && isWorkingForEscape(model)) {
+        } else if (
+          (plan === 'Go' || plan === 'Fetch') &&
+          isWorkingForEscape(model)
+        ) {
           // NOTE: a room's find is worked by keeping still in reach.
           model = pressKeys(model, new Set())
         } else if (plan === 'Mend' && isAtMend(model)) {

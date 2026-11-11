@@ -4,6 +4,7 @@
 
 import { Array, Function, Option, Schema } from 'effect'
 
+import { besideBox, pantryErrand } from '../../../src/features/bots/dareSearch'
 import {
   FRIDGE_RULES,
   fridgeBoxOf,
@@ -16,9 +17,14 @@ import {
   maybeFindIn,
 } from '../../../src/world/gear/crates'
 import { MEND_RULES, isDamaged, trapBox } from '../../../src/world/gear/traps'
-import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
+import {
+  freshGun,
+  isCarrying,
+  isCookable,
+} from '../../../src/world/gear/weapons'
 import { maxHpOf } from '../../../src/world/heroes/calling'
 import { heldKeys } from '../../../src/world/keys/keys'
+import { STOVE_RULES, stoveOffers } from '../../../src/world/kitchen/stove'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import { KITCHEN_EXIT, exitOffers } from '../../../src/world/level/exits'
 import {
@@ -37,7 +43,7 @@ import {
   distance,
 } from './basics'
 import { caseTarget, escapeTarget, wantedBoards } from './escape'
-import { type Gun, gunValue, weakerGun } from './guns'
+import { type Gun, gunValue, gunsOfBot, weakerGun } from './guns'
 import { isKnobSet, knobNumber, knobText } from './knobs'
 import { type BotState } from './state'
 
@@ -45,13 +51,12 @@ import { type BotState } from './state'
 
 // The bot has no shop to visit (docs/ESCAPE_PLAN.md, layer 7): zombies drop
 // skeleton keys onto the crew's ring (src/world/keys/keys.ts), and the bot
-// spends them as a stub until the real bot (layer 17): it opens the kitchen
-// once it holds the keys, then each room on sale it can pay for, and pulls
-// the fridge with what it has left. Guns
-// sit in display cases (src/world/feats/cases.ts), which the bot leaves
-// alone, and traps come from the trap crates (THE CRATES below).
-// NO_GNOME=1 is the bot that never takes a gnome, and NO_PLANKS=1 one that
-// never takes a Plank Pile, to check planks help without carrying.
+// spends them on the kitchen and the rooms that hold a thing on the list
+// (THE ROOMS below), and pulls the fridge with the rest. It takes a case's
+// prize once its feat opens the case (./escape.ts), the pantry's goodie,
+// and the stove's perk, and traps come from the trap crates (THE CRATES
+// below). NO_GNOME=1 is the bot that never takes a gnome, and NO_PLANKS=1
+// one that never takes a Plank Pile, to check planks help without carrying.
 const NO_GNOME = isKnobSet('NO_GNOME')
 const NO_PLANKS = isKnobSet('NO_PLANKS')
 // NOTE: keys the bot keeps back from the fridge, 0 by default.
@@ -60,12 +65,11 @@ const RESERVE = knobNumber('RESERVE', 0)
 // THE ROOMS
 
 // The bot opens the kitchen once the ring holds its padlock's keys, from
-// the break its boards go on sale, and once the kitchen is open, each other
-// room on sale (the parlour, the library, then the cellar beyond it) as soon
-// as the ring holds its padlock's keys. It walks to the boards and holds the
-// interact key. KITCHEN=0 is the bot that never opens the kitchen, to see
-// what the kitchen does to a run, and ROOMS=0 the bot that opens no room
-// past it.
+// the break its boards go on sale, and each room holding a thing on the
+// list (and any room on the way to it) as soon as the ring holds its
+// padlock's keys. It walks to the boards and holds the interact key.
+// KITCHEN=0 is the bot that never opens the kitchen, to see what the
+// kitchen does to a run, and ROOMS=0 the bot that opens no room past it.
 const NO_KITCHEN = knobText('KITCHEN') === '0'
 const NO_ROOMS = knobText('ROOMS') === '0'
 
@@ -76,20 +80,25 @@ const isKitchenOffer = ({ target }: Offer): boolean =>
   target._tag === 'Exit' && target.exit === KITCHEN_EXIT
 
 // NOTE: the boards the bot wants open next: a room's with a thing on the
-// dare's list behind them first (wantedBoards in ./escape.ts), then the
-// kitchen's, then the rest in the house's order, the first the ring can
-// pay for.
+// dare's list behind them (wantedBoards in ./escape.ts, the rooms on the
+// way first), else the kitchen's, for its fridge, stove, and pantry. A room
+// with nothing on the list waits, so its keys go to the next room that
+// holds one. Rooms are bought in a break only: one opened mid-wave wakes a
+// rush on the crew.
 const maybeWantedRoom = (model: Model): Option.Option<Offer> =>
-  Option.orElse(Option.fromUndefinedOr(wantedBoards(model)), () =>
-    Array.findFirst(
-      exitOffers(model),
-      offer =>
-        (isKitchenOffer(offer)
-          ? !NO_KITCHEN
-          : !NO_ROOMS && (NO_KITCHEN || isKitchenOpen(model))) &&
-        heldKeys(model) >= offer.price,
-    ),
-  )
+  model.phase._tag !== 'Preparation'
+    ? Option.none()
+    : Option.orElse(
+        NO_ROOMS ? Option.none() : Option.fromUndefinedOr(wantedBoards(model)),
+        () =>
+          Array.findFirst(
+            exitOffers(model),
+            offer =>
+              isKitchenOffer(offer) &&
+              !NO_KITCHEN &&
+              heldKeys(model) >= offer.price,
+          ),
+      )
 
 const wantsRoom = (model: Model): boolean =>
   Option.isSome(maybeWantedRoom(model))
@@ -134,10 +143,12 @@ export const holdingAtBoards: {
 // THE FRIDGE
 
 // The bot pulls from Mystery Leftovers in a break once the kitchen is open,
-// after it has shopped, placed its traps, and kept its reserve: the balance
-// after the pull must still cover RESERVE, a heart while it is down to 4
-// hearts or fewer, and whatever its shopping list still wants. It never
-// pulls while the door is open or slammed. A weapon is offered, not given:
+// after its other errands, while the ring covers RESERVE after the pull: a
+// pull is 2 keys against a padlock's 40 to 90, and its weapons win runs
+// (holding back the next padlock's keys cut pulls from 85% of Normal runs
+// to 10% and escapes on Easy from 38% to 24%, 2026-11-11). Two hearts down
+// it pulls for the Sandwich too. It never pulls while the door is open or
+// slammed. A weapon is offered, not given:
 // see wouldTake.
 // FRIDGE=0 is the bot that never pulls.
 const NO_FRIDGE = knobText('FRIDGE') === '0'
@@ -311,8 +322,50 @@ export const isAtMend = (model: Model): boolean => {
   )
 }
 
-type PrepPlan =
+// THE PANTRY AND THE STOVE
+
+// The pantry's goodie (a key, or a heart for a hurt player) is free for
+// the walk, so the bot takes it each round (src/features/bots/dareSearch.ts,
+// shared with the teammate bots). Once the kitchen kills light the stove
+// for it (src/world/kitchen/stove.ts), it cooks its stronger gun there,
+// holding the interact key as at the boards.
+export const pantryTarget = (model: Model): Vector | undefined =>
+  pantryErrand(model)
+
+const maybeStoveOffer = (model: Model): Option.Option<Offer> =>
+  Array.head(stoveOffers(model, focusSlotOf(model)))
+
+// NOTE: the gun the bot cooks: the stronger of the two it carries that the
+// stove takes (never a fridge weapon).
+export const gunToCook = (model: Model): Gun | undefined =>
+  Array.reduce(gunsOfBot(model), undefined, (best: Gun | undefined, gun) =>
+    isCookable(gun.kind) &&
+    (best === undefined || gunValue(gun) > gunValue(best))
+      ? gun
+      : best,
+  )
+
+export const stoveTarget = (model: Model): Vector | undefined =>
+  gunToCook(model) === undefined
+    ? undefined
+    : Option.getOrUndefined(
+        Option.map(maybeStoveOffer(model), ({ box }) =>
+          besideBox(levelOf(model), box),
+        ),
+      )
+
+export const isAtStove = (model: Model): boolean =>
+  Option.exists(
+    maybeStoveOffer(model),
+    ({ box }) =>
+      distanceToBox(focusOf(model).player, box) <= STOVE_RULES.reachPx - 2,
+  )
+
+export type PrepPlan =
   | 'Room'
+  | 'Fetch'
+  | 'Pantry'
+  | 'Stove'
   | 'Case'
   | 'Crate'
   | 'Barricade'
@@ -368,6 +421,15 @@ export const prepPlan: {
   if (wantsRoom(model)) {
     return 'Room'
   }
+  // NOTE: a thing on the list in an open room (or the open front door)
+  // comes before the other errands, as a player grabs what the room was
+  // opened for.
+  if (escapeTarget(model) !== undefined) {
+    return 'Fetch'
+  }
+  if (stoveTarget(model) !== undefined) {
+    return 'Stove'
+  }
   if (caseTarget(model) !== undefined) {
     return 'Case'
   }
@@ -389,7 +451,13 @@ export const prepPlan: {
   if (wantsFridge(model)) {
     return 'Fridge'
   }
-  if (isAwayFromHold(model) && escapeTarget(model) === undefined) {
+  // NOTE: the pantry's one key comes last: in a 20 s break (Triple Dare and
+  // up) walking to it first squeezed out the fridge, whose weapons win runs
+  // (pulls in 54% of Hard runs fell to 17%, 2026-11-11).
+  if (pantryTarget(model) !== undefined) {
+    return 'Pantry'
+  }
+  if (isAwayFromHold(model)) {
     return 'Return'
   }
   return 'Go'
