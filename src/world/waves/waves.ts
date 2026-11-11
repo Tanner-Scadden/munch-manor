@@ -222,8 +222,9 @@ export const joinNewDoors: {
 
 // PHASES
 
-export const isRoundActive = (phase: Phase): boolean =>
-  Phase.isAnyOf(['Preparation', 'Wave'])(phase)
+// NOTE: held beside the Phase in src/world/schema/worldSchema.ts, so the
+// rules waves.ts reads (the traps' mending) can read it too.
+export { isRoundActive } from '../schema/worldSchema'
 
 export const isBreak = (model: World): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase)

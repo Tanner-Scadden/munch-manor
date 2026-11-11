@@ -201,7 +201,7 @@ The rule holds for every boost: the aura says what you grabbed, with no words. E
 
 ### No shop: feats, finds, and skeleton keys
 
-Built on 2026-11-10. The owner, 2026-11-10: there is no shopkeeper and no shop. You get stronger from the house itself. The cases are a gun rack, a glass display case, and a trophy cabinet, and the prizes are the Barn Buster, the Chatterbox, the Laser Sight, and two old-manor guns: Old Thunder, the trophy room's hunting rifle, and the Big Blunder, the blunderbuss over the mantel. Traps come from a crate that restocks each break.
+Built on 2026-11-10. The owner, 2026-11-10: there is no shopkeeper and no shop. You get stronger from the house itself. The cases are a gun rack, a glass display case, and a trophy cabinet, and the prizes are the Barn Buster, the Chatterbox, the Laser Sight, and two old-manor guns: Old Thunder, the trophy room's hunting rifle, and the Big Blunder, the blunderbuss over the mantel. Traps come from a crate that restocks each round, its break and its wave; the break is for catching your breath.
 
 - **Guns are in display cases.** A glass case in the study, a gun rack in the cellar, a trophy case: each holds a gun, and each lock shows a feat as an icon and a ring that fills as you go. Do it this run and the case springs open. Which gun sits behind which feat can roll each run.
 - **Feats of every kind** (owner, 2026-11-10): kill counts (25 kills, 10 knife kills, 5 Big Lugs), skill (a wave without a hit, a 20 kill streak, a Kaboomer caught in its own blast), exploring (a key off a marked zombie, a room opened, the fireplace lit), and the house's things.

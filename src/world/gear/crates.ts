@@ -36,7 +36,8 @@ import { ownedCount, stockTrap, trapLimitOf } from './traps'
 // as many of that trap as they may (two Plank Piles placed or carried, two
 // Grumpy Gnomes), and then it waits for someone who can.
 //
-// Restocking: at the start of each break every crate holds a fresh roll,
+// Restocking: at the start of each round (its break, or its wave when the
+// round starts without one) every crate holds a fresh roll,
 // taken or not. A crate whose find nobody could take (two Plank Piles out
 // and another Plank Pile in the crate) would otherwise hold it for the
 // rest of the run, so it rolls again too. The roll leans to the gnome, skips
@@ -44,8 +45,10 @@ import { ownedCount, stockTrap, trapLimitOf } from './traps'
 // the last wave), and never puts back the trap a crate still holds from the
 // last break, so the crates stop handing out boards every break (a
 // playtest's "it keeps spawning the wall boards"). Crates open from the
-// first break that sold traps before (SHOP_FIRST_WAVE), and stay shut in a
-// wave.
+// first break that sold traps before (SHOP_FIRST_WAVE). Since 2026-11-10
+// (owner: "the break between waves is to let you catch a breath") they stay
+// open in the wave too: a find not taken in the break waits there, and
+// crossing the room to it in a fight is the gamble.
 //
 // Hearts: with no heart to buy, the crates are the house's mercy. While
 // someone in the crew is missing a heart when a crate rolls, it may hold a
@@ -138,9 +141,11 @@ export const crateRoomsOf = (world: World): ReadonlyArray<CrateRoom> => {
   )
 }
 
-// NOTE: the wave of the break the crates are open in, if they are.
+// NOTE: the round the crates are open in, if they are: a break and the wave
+// after it are one round, keyed by its wave number, so a find left in the
+// break waits in the fight.
 const openWaveOf = (world: World): Option.Option<number> =>
-  Phase.isAnyOf(['Preparation'])(world.phase) &&
+  Phase.isAnyOf(['Preparation', 'Wave'])(world.phase) &&
   world.phase.wave >= CRATE_RULES.firstWave
     ? Option.some(world.phase.wave)
     : Option.none()
@@ -151,7 +156,7 @@ export const areCratesOpen = (world: World): boolean =>
 // NOTE: what a crate can hold: a trap, or a Pickled Heart.
 export type CrateFind = TrapKind | 'Heart'
 
-// NOTE: what a crate holds right now: only in a break, only stocked.
+// NOTE: what a crate holds right now: only in a round, only stocked.
 export const maybeFindIn: {
   (crate: Crate): (world: World) => Option.Option<CrateFind>
   (world: World, crate: Crate): Option.Option<CrateFind>
@@ -309,7 +314,7 @@ const restock = (world: World, wave: number): World => {
   })
 }
 
-// NOTE: a room opened mid-break (the kitchen) gets its crate at once.
+// NOTE: a room opened mid-round (the kitchen) gets its crate at once.
 const addOpenedRooms = (world: World): World => {
   const missing = Array.filter(
     crateRoomsOf(world),
@@ -415,7 +420,7 @@ const takeFor = (world: World, slot: PlayerSlot): World =>
       )
     : world
 
-// NOTE: one tick of the crates: a new break restocks them, a room opened in
+// NOTE: one tick of the crates: a new round restocks them, a room opened in
 // it gets its crate, then standing players in slot order take what they
 // walk onto.
 export const advanceCrates = (world: World): World =>

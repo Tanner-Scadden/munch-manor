@@ -66,6 +66,7 @@ import {
   type WeaponKind,
   type Zombie,
   ZombieState,
+  isRoundActive,
 } from '../schema/worldSchema'
 import type { BlastTarget } from '../step/combat'
 import {
@@ -1012,18 +1013,29 @@ export const isDamaged = (trap: Trap): boolean => missingShare(trap) > 0
 
 export const healthShare = (trap: Trap): number => 1 - missingShare(trap)
 
-// Mending (docs/ESCAPE_PLAN.md, layer 6): in a break, a player who stands
-// still beside a damaged trap mends it for free, from broken to whole in
-// `fullMs`, so a lightly chewed trap mends in a moment. The Handyman mends
+// Mending (docs/ESCAPE_PLAN.md, layer 6): a player who stands still beside
+// a damaged trap mends it for free, from broken to whole in `fullMs` in a
+// break, so a lightly chewed trap mends in a moment. Since 2026-11-10 it
+// mends in a wave too, at `waveScale` of the speed (3 s from broken to
+// whole), so the break stays the safe time to mend. The Handyman mends
 // twice as fast. Standing is the hold to buy's standing (no move, no
 // trigger), so mending never needs a key. A player mends the nearest
 // damaged trap in reach, and two players at one trap mend it together.
-type MendRules = Readonly<{ fullMs: number; reachPx: number }>
+type MendRules = Readonly<{
+  fullMs: number
+  reachPx: number
+  waveScale: number
+}>
 
 export const MEND_RULES: MendRules = {
   fullMs: 1500,
   reachPx: 8,
+  waveScale: 0.5,
 }
+
+// NOTE: the share of a break's mending speed the phase mends at.
+const mendPhaseScaleOf = (phase: Phase): number =>
+  Phase.isAnyOf(['Wave'])(phase) ? MEND_RULES.waveScale : 1
 
 const mendReachOf = (level: Level, player: Player, trap: Trap): number =>
   distanceToBox(player, trapBox(level, trap))
@@ -1043,10 +1055,7 @@ export const maybeMendingTrap: {
   (slot: PlayerSlot): (world: World) => Option.Option<Trap>
   (world: World, slot: PlayerSlot): Option.Option<Trap>
 } = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<Trap> => {
-  if (
-    !Phase.isAnyOf(['Preparation'])(world.phase) ||
-    !isStandingStill(world, slot)
-  ) {
+  if (!isRoundActive(world.phase) || !isStandingStill(world, slot)) {
     return Option.none()
   }
   const level = levelOf(world)
@@ -1076,7 +1085,8 @@ const mendFor =
         const gain =
           (target.maxHp *
             deltaMs *
-            mendSpeedScaleOf(seatStateAt(world, slot).player)) /
+            mendSpeedScaleOf(seatStateAt(world, slot).player) *
+            mendPhaseScaleOf(world.phase)) /
           MEND_RULES.fullMs
         const hp = Math.min(target.maxHp, target.hp + gain)
         const { x, y } = trapCenter(levelOf(world), target)
@@ -1102,7 +1112,7 @@ export const advanceMending: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World
 } = Function.dual(2, (world: World, deltaMs: number): World =>
-  Phase.isAnyOf(['Preparation'])(world.phase)
+  isRoundActive(world.phase)
     ? forEachSeat(world, mendFor(deltaMs))
     : world,
 )
