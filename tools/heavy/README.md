@@ -85,6 +85,7 @@ Who yields where:
 | `balance/nightly.ts`  | Between its jobs, as well as inside each job                                                                                           |
 | `audit/splash.ts`     | Between profiles (fast, slow4g, slow3g)                                                                                                |
 | `audit/perf-check.ts` | Between scenarios                                                                                                                      |
+| `balance/pacing.sh`   | Between rounds of slices, one slice of 2 runs a worker (`SLICE_RUNS`), through `pacing.ts yield`                                       |
 
 `HEAVY_CHUNK_RUNS=n` sets the chunk, and `HEAVY_CHUNK_RUNS=0` plays a batch whole. The chunks never change the results: run `i` is always seed `seedAt(firstSeed, i)`, campaign chunks are merged in seed order, and wave runs are sorted by wave and run. A 50 run batch chunked and unchunked prints the same report.
 
