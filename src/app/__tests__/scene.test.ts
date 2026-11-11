@@ -396,6 +396,7 @@ describe('Run stats', () => {
             Boss: 0,
           },
           wavesCleared: 3,
+          readyPoints: 0,
           shotsFired: 1240,
           shotsHit: 532,
           heartsLost: 7,

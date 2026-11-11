@@ -11,8 +11,8 @@ import type { Difficulty, SavedRank } from '../../shared/playerData'
 // POINTS FOR A RUN
 
 // NOTE: the escape's pay (docs/ESCAPE_PLAN.md, "Rewards"): 10 a wave, 25
-// for each thing on the dare's list found, 50 for Uncle Chunk (his hat in
-// an escape, his fall in Endless), 100 for walking out, all times the
+// for each thing on the dare's list found, 50 for felling Uncle Chunk,
+// 100 for walking out, all times the
 // difficulty. A run that ends short still pays for what it found.
 const POINTS_PER_WAVE = 10
 const POINTS_PER_DARE_ITEM = 25
@@ -21,6 +21,16 @@ const ESCAPE_POINTS = 100
 const AWARD_POINTS = 10
 const REVIVE_POINTS = 5
 const POINTS_PER_BONE = 10
+
+// NOTE: READY before the break's clock runs out pays a rank point for
+// every READY_MS_PER_POINT left on it (owner, 2026-11-10, the pacing
+// report's pick 4c): 6 on a full 30 s break. Points only, never keys, so
+// it leaves the balance alone. The World counts them into its stats
+// (src/world/waves/waves.ts, startWaveEarly).
+const READY_MS_PER_POINT = 5000
+
+export const readyPointsFor = (remainingMs: number): number =>
+  Math.max(0, Math.floor(remainingMs / READY_MS_PER_POINT))
 
 // NOTE: the difficulty's multiplier as a fraction, so the rounding down is
 // exact integer math: Easy 3/4, Normal 1, Hard 3/2, Nightmare 2.
@@ -33,16 +43,17 @@ const MULTIPLIERS: Readonly<Record<Difficulty, Fraction>> = {
   Nightmare: { top: 2, bottom: 1 },
 }
 
-// NOTE: what one finished run pays for. `wavesCleared` and `bossesFelled`
-// are only the ones not paid yet, so nothing is paid twice. `dareItems` is
-// the things on the list found; `isEscape` the finale's (felling Uncle
-// Chunk counts in `bossesFelled`). `awards` and `revives` are the player's own seat in co-op,
-// 0 alone.
+// NOTE: what one finished run pays for. `wavesCleared`, `bossesFelled`,
+// and `readyPoints` are only the ones not paid yet, so nothing is paid
+// twice. `dareItems` is the things on the list found; `isEscape` the
+// finale's (felling Uncle Chunk counts in `bossesFelled`). `awards` and
+// `revives` are the player's own seat in co-op, 0 alone.
 // A guided run (the player never got past the practice gate) pays nothing.
 export type RunPayInput = Readonly<{
   difficulty: Difficulty
   wavesCleared: number
   bossesFelled: number
+  readyPoints: number
   dareItems: number
   isEscape: boolean
   awards: number
@@ -60,6 +71,7 @@ export const pointsForRun = (input: RunPayInput): number => {
   const multiplier = MULTIPLIERS[input.difficulty]
   const base =
     Math.max(0, input.wavesCleared) * POINTS_PER_WAVE +
+    Math.max(0, input.readyPoints) +
     Math.max(0, input.dareItems) * POINTS_PER_DARE_ITEM +
     (input.bossesFelled > 0 ? BOSS_POINTS : 0) +
     (input.isEscape ? ESCAPE_POINTS : 0)

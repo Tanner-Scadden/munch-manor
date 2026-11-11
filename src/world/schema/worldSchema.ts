@@ -154,6 +154,7 @@ export const GameEvent = defineTaggedUnion({
   },
   Reloaded: { x: PositionNumber, y: PositionNumber, weapon: WeaponKind },
   WaveCleared: { x: PositionNumber, y: PositionNumber, keys: Schema.Finite },
+  RushedIn: { x: PositionNumber, y: PositionNumber, points: Schema.Finite },
   PackWarned: {
     x: PositionNumber,
     y: PositionNumber,
@@ -304,6 +305,7 @@ export const PopupKind = Schema.Literals([
   'Saved',
   'Clutch',
   'Opened',
+  'Rushed',
 ])
 export type PopupKind = typeof PopupKind.Type
 
@@ -778,6 +780,7 @@ export type DebutCard = typeof DebutCard.Type
 export const RunStats = Schema.Struct({
   kills: KillCounts,
   wavesCleared: Schema.Finite,
+  readyPoints: Schema.Finite,
   shotsFired: Schema.Finite,
   shotsHit: Schema.Finite,
   heartsLost: Schema.Finite,
@@ -1006,6 +1009,7 @@ export const freshTally: FeatTally = {
 export const freshStats: RunStats = {
   kills: noKills,
   wavesCleared: 0,
+  readyPoints: 0,
   shotsFired: 0,
   shotsHit: 0,
   heartsLost: 0,

@@ -20,6 +20,7 @@ const run = (change: Partial<RunPayInput>): RunPayInput => ({
   difficulty: 'Normal',
   wavesCleared: 0,
   bossesFelled: 0,
+  readyPoints: 0,
   dareItems: 0,
   isEscape: false,
   awards: 0,
@@ -47,6 +48,15 @@ describe('points for a run', () => {
     )
     expect(points).toBe(70 + 75 + 50 + 100)
     expect(bonesForPoints(points)).toBe(29)
+  })
+
+  it('adds READY points before the difficulty multiplier', () => {
+    expect(pointsForRun(run({ wavesCleared: 2, readyPoints: 6 }))).toBe(26)
+    expect(
+      pointsForRun(
+        run({ wavesCleared: 2, readyPoints: 6, difficulty: 'Hard' }),
+      ),
+    ).toBe(39)
   })
 
   it('pays 25 a thing found even when the run ends short', () => {

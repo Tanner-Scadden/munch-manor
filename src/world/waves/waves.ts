@@ -10,6 +10,7 @@ import {
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
 import { hungrierSpawns, isCrewOut, summonAtFrontDoor } from '../dare/finale'
+import { readyPointsFor } from '../heroes/rank'
 import { KEY_RULES, grantKeys } from '../keys/keys'
 import { doorSpawnPoint, levelOf } from '../level/arena'
 import {
@@ -336,15 +337,40 @@ const learnFromBreak = (model: World, wave: number, clock: BreakClock) =>
       isTimedBreak(wave, clock) ? learnTimedBreaks(model) : model,
   })
 
+// NOTE: READY with time left on a counting break pays rank points
+// (src/world/heroes/rank.ts, readyPointsFor), shown as a RushedIn pop over
+// the player. The open break has no clock to beat, and the kitchen tour
+// holds its clock, so neither pays.
+const payReadyEarly = (
+  model: World,
+  clock: BreakClock,
+  remainingMs: number,
+): World => {
+  const points =
+    BreakClock.isAnyOf(['Counting'])(clock) && !isKitchenTourOn(model)
+      ? readyPointsFor(remainingMs)
+      : 0
+  if (points <= 0) {
+    return model
+  }
+  const { x, y } = focusOf(model).player
+  return modifyFields(model, {
+    stats: stats =>
+      modifyFields(stats, { readyPoints: earned => earned + points }),
+    frameEvents: Array.append(GameEvent.RushedIn({ x, y, points })),
+  })
+}
+
 export const startWaveEarly = (model: World): World =>
   Phase.match(model.phase, {
     Ready: () => model,
     Arriving: () => model,
-    Preparation: ({ wave, spawns, clock }) =>
+    Preparation: ({ wave, spawns, clock, remainingMs }) =>
       summonAtFrontDoor(
-        modifyFields(learnFromBreak(model, wave, clock), {
-          phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
-        }),
+        modifyFields(
+          payReadyEarly(learnFromBreak(model, wave, clock), clock, remainingMs),
+          { phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }) },
+        ),
         spawns,
       ),
     Wave: () => model,

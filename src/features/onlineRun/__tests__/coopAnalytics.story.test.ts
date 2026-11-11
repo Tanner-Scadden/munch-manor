@@ -413,6 +413,7 @@ describe("an online co-op run's rank", () => {
       expect(fresh.rankPaid).toEqual({
         wavesPaid: 0,
         bossesPaid: 0,
+        readyPaid: 0,
         awardsPaid: 0,
         revivesPaid: 0,
       })

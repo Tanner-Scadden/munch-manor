@@ -53,6 +53,7 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
     difficulty: playedDifficultyOf(run),
     wavesCleared: Math.max(0, run.stats.wavesCleared - run.rankPaid.wavesPaid),
     bossesFelled: Math.max(0, run.stats.kills.Boss - run.rankPaid.bossesPaid),
+    readyPoints: Math.max(0, run.stats.readyPoints - run.rankPaid.readyPaid),
     dareItems: dareItemsFoundOf(run),
     isEscape: Phase.isAnyOf(['Escaped'])(run.phase),
     awards: Math.max(0, awards - run.rankPaid.awardsPaid),
@@ -68,6 +69,7 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
 const paidBy = (run: Model, isEnded: boolean): Model['rankPaid'] => ({
   wavesPaid: run.stats.wavesCleared,
   bossesPaid: run.stats.kills.Boss,
+  readyPaid: run.stats.readyPoints,
   awardsPaid:
     isEnded && isHumanCrew(run)
       ? awardsOf(crewOf(run), leadSeatOf(run).slot).length
