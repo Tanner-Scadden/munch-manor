@@ -59,6 +59,7 @@ import {
   applySeatAction,
 } from '../../world/step/stepWorld'
 import { bodyRadiusOf } from '../../world/zombies/zombies'
+import { isSafeToSearch, isWorkingSearch, searchSpot } from './dareSearch'
 import { type Threat, escapeHeading } from './escape'
 
 // A teammate bot's brain (GAME_DESIGN.md, "Teammate bots"): the seat's
@@ -66,10 +67,14 @@ import { type Threat, escapeHeading } from './escape'
 // like a competent casual with a mind of its own: it holds its own post by a
 // door (a different one for each seat, moving on now and then), hunts the
 // zombies it hears but cannot see, shoots the nearest one it can, keeps
-// some distance from it and some room from its teammates, revives anyone who
-// is down (a fresh MEDIC! call first, over any power-up), grabs the power-ups nobody nearer wants, and presses READY when the human
-// does or after a short wait. There is no shop to visit: keys are the
-// crew's, and the human spends them. It
+// some distance from it and some room from its teammates, revives anyone
+// who is down (a fresh MEDIC! call first, over any power-up), grabs the
+// power-ups nobody nearer wants, searches for the dare's list the way the
+// balance bot does (src/features/bots/dareSearch.ts: in a break, and in a
+// wave with nothing to shoot and no zombie close), and presses READY when
+// the human does or after a short wait. There is no shop to visit: keys
+// are the crew's, and the human spends them, so a thing behind boards
+// waits for them. It
 // carries nothing between ticks and rolls no dice, so the same World gives
 // the same intent, and a replay holds.
 
@@ -385,6 +390,21 @@ const toPickup = (world: World, me: SeatState): Option.Option<Vector> =>
     walkToward(world, me.player, pickup),
   )
 
+// THE SEARCH
+
+// NOTE: the bot's step toward the dare's list, or none while it keeps
+// still to work a find or the bulb's chain (two at a find work it twice as
+// fast, so it may join the human there). Nothing with no thing to fetch.
+const searchMove = (world: World, me: SeatState): Option.Option<Vector> => {
+  if (isWorkingSearch(world, me.player)) {
+    return Option.some(ZERO_VECTOR)
+  }
+  const spot = searchSpot(world, me.player)
+  return spot === undefined
+    ? Option.none()
+    : Option.some(walkToward(world, me.player, spot))
+}
+
 const fightMove = (
   world: World,
   me: SeatState,
@@ -411,6 +431,15 @@ const fightMove = (
   const maybeToPickup = toPickup(world, me)
   if (Option.isSome(maybeToPickup)) {
     return maybeToPickup.value
+  }
+  // NOTE: the fight comes first: the bot searches only with nothing to
+  // shoot and no zombie close.
+  const maybeSearch =
+    Option.isNone(maybeTarget) && isSafeToSearch(world, me.player)
+      ? searchMove(world, me)
+      : Option.none()
+  if (Option.isSome(maybeSearch)) {
+    return maybeSearch.value
   }
   return withElbowRoom(
     world,
@@ -498,6 +527,10 @@ const breakIntent = (world: World, me: SeatState): Intent => {
   const maybeToPickup = toPickup(world, me)
   if (Option.isSome(maybeToPickup)) {
     return { ...idleIntent, move: maybeToPickup.value }
+  }
+  const maybeSearch = searchMove(world, me)
+  if (Option.isSome(maybeSearch)) {
+    return { ...idleIntent, move: maybeSearch.value }
   }
   if (me.seat.readiness === 'Ready') {
     return idleIntent

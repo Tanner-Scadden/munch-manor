@@ -4,13 +4,12 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Bot, type Model, Phase } from '../../../app/model'
+import type { Model } from '../../../app/model'
 import { crewBotSlots } from '../../../domain/bots'
 import { isLeftFromRoom } from '../../../domain/onlineRun'
 import { cameraFocus } from '../../../render/camera'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
-  DISTANT_SPAWN,
   crewInWave,
   pickupAt,
   placeSeat,
@@ -29,29 +28,17 @@ import { maybePlayerAt, playersOf } from '../../../world/party/party'
 import { Life } from '../../../world/schema/worldSchema'
 import { coopNameShapes } from '../../onlineRun/coopMarksView'
 import { botInputs } from '../teammateBot'
+import { BOT, BREAK } from './bots.fixture'
 
 // A teammate bot (src/features/bots/teammateBot.ts) plays its seat from the World: it
 // shoots, revives, and presses READY. Each test seats one bot in a crew of two.
 
 const TICK_MS = FIXED_STEP_MS
 
-const BOT: Bot = {
-  name: 'Gizmo',
-  calling: 'You',
-  look: crewInWave(1).appearance,
-}
-
 const withBot = (base: Model): Model =>
   modifyFields(base, { crewBots: () => [BOT] })
 
 const crew = (): Model => withBot(crewInWave(2))
-
-const BREAK = Phase.Preparation({
-  wave: 3,
-  remainingMs: 60_000,
-  durationMs: 60_000,
-  spawns: [DISTANT_SPAWN],
-})
 
 const seatOf = (current: Model, slot: number) =>
   Option.getOrThrow(maybePlayerAt(current, slot))

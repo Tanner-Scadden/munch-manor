@@ -1,12 +1,10 @@
 import { Array, Function, Option } from 'effect'
 
+import { isStandableTile } from '../../../src/features/bots/dareSearch'
 import { PLAYER_RADIUS } from '../../../src/shared/constants'
 import {
   type Level,
-  TILE_PLAYER_SOLID,
   hasClearPath,
-  hasTileFlag,
-  isInsideRoom,
   tileCenter,
   tileIndex,
   tileIndexAt,
@@ -29,19 +27,6 @@ const KEPT_SEARCHES = 64
 
 const searches = new Map<string, Int32Array>()
 
-const isStandable = (level: Level, column: number, row: number): boolean =>
-  isInsideRoom(level, column, row) &&
-  !hasTileFlag(level, tileIndex(level, column, row), TILE_PLAYER_SOLID)
-
-// NOTE: whether a player could stand on the tile under a point.
-export const isStandableAt: {
-  (point: Vector): (level: Level) => boolean
-  (level: Level, point: Vector): boolean
-} = Function.dual(2, (level: Level, point: Vector): boolean => {
-  const { column, row } = tileOfIndex(level, tileIndexAt(level, point))
-  return isStandable(level, column, row)
-})
-
 const STEPS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
   [-1, 0],
@@ -62,11 +47,11 @@ const canStep = (
   stepColumn: number,
   stepRow: number,
 ): boolean =>
-  isStandable(level, column + stepColumn, row + stepRow) &&
+  isStandableTile(level, column + stepColumn, row + stepRow) &&
   (stepColumn === 0 ||
     stepRow === 0 ||
-    (isStandable(level, column + stepColumn, row) &&
-      isStandable(level, column, row + stepRow)))
+    (isStandableTile(level, column + stepColumn, row) &&
+      isStandableTile(level, column, row + stepRow)))
 
 const searchFrom = (level: Level, goalIndex: number): Int32Array => {
   const key = `${level.key}:${goalIndex}`

@@ -12,22 +12,21 @@
 
 import { Array, Option } from 'effect'
 
-import { isHiddenInDark } from '../../../src/world/cellar/bulb'
 import {
-  findStyleOf,
-  maybeLyingAt,
-  maybeThingRoom,
-} from '../../../src/world/dare/dare'
+  besideBox,
+  isSafeToSearch,
+  isWorkingSearch,
+  searchSpot,
+} from '../../../src/features/bots/dareSearch'
+import { maybeThingRoom } from '../../../src/world/dare/dare'
 import {
   frontDoorSillOf,
   isFrontDoorOpen,
 } from '../../../src/world/dare/finale'
-import { FIND_RULES } from '../../../src/world/dare/finds'
 import { caseOffers } from '../../../src/world/feats/cases'
 import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
 import { heldKeys } from '../../../src/world/keys/keys'
 import {
-  type Box,
   type Level,
   distanceToBox,
   levelOf,
@@ -40,131 +39,34 @@ import {
   Purchasable,
 } from '../../../src/world/schema/worldSchema'
 import type { Offer } from '../../../src/world/shop/purchase'
-import { stationBoxOf } from '../../../src/world/stations/stationSpots'
-import { TOOL_RULES } from '../../../src/world/stations/toolRules'
-import { type Model, type Vector, distance } from './basics'
+import { type Model, type Vector } from './basics'
 import { gunValue, weakerGun } from './guns'
-import { isStandableAt } from './route'
-
-// NOTE: how close a zombie may be before the bot leaves a thing on the
-// floor for the fight, in a wave.
-const SAFE_PX = 45
 
 const frontDoorSill = (model: Model): Vector => frontDoorSillOf(levelOf(model))
 
-// NOTE: where the dare's things lie for the bot to fetch, each with how
-// its room finds it (src/world/dare/finds.ts): walked onto, or worked by
-// keeping still in reach. The cellar's thing is found only in the bulb's
-// light (src/world/cellar/bulb.ts).
-type Lying = Readonly<{
-  spot: Vector
-  reachPx: number
-  isWorked: boolean
-  isDark: boolean
-}>
-
-const lyingThings = (model: Model): ReadonlyArray<Lying> => {
-  const level = levelOf(model)
-  return Array.flatMap(model.dareThings, thing =>
-    Option.toArray(
-      Option.map(maybeLyingAt(thing, level), (spot): Lying => {
-        const { reachPx, workMs } = FIND_RULES[findStyleOf(thing, level)]
-        return {
-          spot,
-          reachPx,
-          isWorked: workMs > 0,
-          isDark: isHiddenInDark(model, spot),
-        }
-      }),
-    ),
-  )
-}
-
-const nearestLying = (
-  from: Vector,
-  things: ReadonlyArray<Lying>,
-): Lying | undefined =>
-  Array.reduce(things, undefined, (nearest: Lying | undefined, thing) =>
-    nearest === undefined ||
-    distance(from, thing.spot) < distance(from, nearest.spot)
-      ? thing
-      : nearest,
-  )
-
-// NOTE: the cellar bulb's station, while it could be worked now (off its
-// cooldown; the game also asks for a wave).
-const maybeBulbBox = (model: Model): Option.Option<Box> =>
-  model.stations.Bulb.cooldownMs > 0
-    ? Option.none()
-    : stationBoxOf(levelOf(model), 'Bulb')
-
-// NOTE: where the bot yanks the bulb's chain: beside its station.
-const bulbStand = (model: Model): Vector | undefined =>
-  Option.getOrUndefined(
-    Option.map(maybeBulbBox(model), box => besideBox(levelOf(model), box)),
-  )
-
-// NOTE: the nearest thing on the list the bot can fetch now. In a break the
-// cellar's dark thing waits for the wave, when the bulb can be lit; in a
-// wave the bot goes to the bulb's chain for it.
-const nearestAsked = (model: Model, isWave: boolean): Vector | undefined => {
-  const { player } = focusOf(model)
-  const things = lyingThings(model)
-  const lit = nearestLying(
-    player,
-    Array.filter(things, ({ isDark }) => !isDark),
-  )
-  if (lit !== undefined) {
-    return lit.spot
-  }
-  return isWave && Array.some(things, ({ isDark }) => isDark)
-    ? bulbStand(model)
-    : undefined
-}
-
 // NOTE: where the escape wants the bot: the open front door first, then
-// the nearest thing on the list.
+// the nearest thing on the list (src/features/bots/dareSearch.ts, the
+// search the teammate bots share). Read in a break, where the cellar's
+// dark thing waits for the wave.
 export const escapeTarget = (model: Model): Vector | undefined =>
-  isFrontDoorOpen(model) ? frontDoorSill(model) : nearestAsked(model, false)
+  isFrontDoorOpen(model)
+    ? frontDoorSill(model)
+    : searchSpot(model, focusOf(model).player)
 
 // NOTE: in a wave the bot goes for the door whenever it is open, and for a
-// thing only with no zombie close.
+// thing (or the bulb's chain) only with no zombie close.
 export const escapeTargetInWave = (model: Model): Vector | undefined => {
   if (isFrontDoorOpen(model)) {
     return frontDoorSill(model)
   }
   const { player } = focusOf(model)
-  return Array.some(
-    model.zombies,
-    zombie => zombie.hp > 0 && distance(player, zombie) < SAFE_PX,
-  )
-    ? undefined
-    : nearestAsked(model, model.phase._tag === 'Wave')
+  return isSafeToSearch(model, player) ? searchSpot(model, player) : undefined
 }
 
 // NOTE: whether the bot should keep still where it stands to work a find
-// or the bulb's chain: in reach of a lit thing its room finds by work, or
-// beside the bulb with the cellar's thing still in the dark.
-export const isWorkingForEscape = (model: Model): boolean => {
-  if (isFrontDoorOpen(model)) {
-    return false
-  }
-  const { player } = focusOf(model)
-  const things = lyingThings(model)
-  const atFind = Array.some(
-    things,
-    ({ spot, reachPx, isWorked, isDark }) =>
-      isWorked && !isDark && distance(player, spot) <= reachPx - 2,
-  )
-  const atBulb =
-    model.phase._tag === 'Wave' &&
-    Array.some(things, ({ isDark }) => isDark) &&
-    Option.exists(
-      maybeBulbBox(model),
-      box => distanceToBox(player, box) <= TOOL_RULES.Bulb.reachPx - 2,
-    )
-  return atFind || atBulb
-}
+// or the bulb's chain.
+export const isWorkingForEscape = (model: Model): boolean =>
+  isWorkingSearch(model, focusOf(model).player)
 
 // THE BOARDS
 
@@ -227,30 +129,6 @@ export const wantedBoards = (model: Model): Offer | undefined => {
           heldKeys(model) >= offer.price,
       ).pipe(Option.getOrUndefined)
     : undefined
-}
-
-// NEXT TO A BOX
-
-// NOTE: how far outside a box the bot stands to reach it.
-const BESIDE_PX = 5
-
-// NOTE: a floor point beside a box, below it first, then its sides, then
-// above, so the bot never pushes into the wall a case hangs on.
-const besideBox = (level: Level, box: Box): Vector => {
-  const middle = {
-    x: (box.left + box.right) / 2,
-    y: (box.top + box.bottom) / 2,
-  }
-  const candidates: ReadonlyArray<Vector> = [
-    { x: middle.x, y: box.bottom + BESIDE_PX },
-    { x: box.right + BESIDE_PX, y: middle.y },
-    { x: box.left - BESIDE_PX, y: middle.y },
-    { x: middle.x, y: box.top - BESIDE_PX },
-  ]
-  return Option.getOrElse(
-    Array.findFirst(candidates, point => isStandableAt(level, point)),
-    () => middle,
-  )
 }
 
 // THE CASES
