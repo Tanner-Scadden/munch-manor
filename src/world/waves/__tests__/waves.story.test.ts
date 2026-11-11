@@ -39,7 +39,7 @@ import { frenzyPacksOf, isFrenzyPack } from '../../zombies/frenzy'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import { doorCounts, rollSpawns } from '../endlessWaves'
 import { CHUCKER_ESCORT_SIZE } from '../wavePacks'
-import { FINAL_WAVE, type SpawnGroup, WAVE_PLANS } from '../wavePlans'
+import { FINAL_WAVE, HEAT, type SpawnGroup, WAVE_PLANS } from '../wavePlans'
 import { roundWave } from '../waves'
 
 const FRAME_MS = 50
@@ -455,6 +455,21 @@ describe('wave plans', () => {
     ).toBeLessThanOrEqual(11_000)
     const second = Option.getOrThrow(Array.get(WAVE_PLANS, 1))
     expect(Array.map(second.holds, ({ atMs }) => atMs)).toEqual([12_000])
+  })
+
+  // NOTE: hotter waves (owner, 2026-11-10): from wave 3 the same zombies
+  // come at HEAT times their written times. Wave 4 was written with 66
+  // zombies, its first group at 0.6 s, and its fade at 25 s.
+  test('from wave 3 the same zombies come packed tighter', () => {
+    expect(HEAT).toBeLessThan(1)
+    expect(totalOf(4)).toBe(66)
+    const four = Option.getOrThrow(Array.get(WAVE_PLANS, 3))
+    expect(Array.map(four.holds, ({ atMs }) => atMs)).toEqual([25_000 * HEAT])
+    expect(Array.map(four.groups, ({ startMs }) => startMs)).toContain(
+      600 * HEAT,
+    )
+    const two = Option.getOrThrow(Array.get(WAVE_PLANS, 1))
+    expect(Array.map(two.holds, ({ atMs }) => atMs)).toEqual([12_000])
   })
 
   test('every Big Leaguer walks in with three Groaners of his own, who never frenzy', () => {
