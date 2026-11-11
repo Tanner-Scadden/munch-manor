@@ -51,6 +51,7 @@ import { queryAround, queryBuffer } from '../step/grid'
 import { isRooted, paceOf } from './boss'
 import { maybeChuckerHeading } from './chucker'
 import { frenzyPace, isFrenzied } from './frenzy'
+import { isLastZombie, lastZombieSpeed } from './lastZombie'
 import { MAX_BODY_RADIUS_PX, groundedColumns } from './zombieGrid'
 import {
   bodyRadiusOf,
@@ -136,6 +137,7 @@ type Obstacles = Readonly<{
   barricaded: ReadonlyArray<DoorId>
   boss: Boss
   zombies: ReadonlyArray<Zombie>
+  loneMs: number
 }>
 
 const flowHeading = (
@@ -156,13 +158,15 @@ const flowHeading = (
   )
 }
 
+// NOTE: a Big Leaguer keeps his distance to throw his Groaners. Left last,
+// with none to throw, he comes straight in like the rest.
 const chaseHeading = (
   zombie: Zombie,
   flowFields: FlowFields,
   target: Vector,
   obstacles: Obstacles,
 ): Vector =>
-  zombie.kind === 'Thrower'
+  zombie.kind === 'Thrower' && !isLastZombie(zombie, obstacles.loneMs)
     ? Option.getOrElse(
         maybeChuckerHeading(obstacles.level, zombie, obstacles.zombies, target),
         () => flowHeading(zombie, flowFields, target, obstacles),
@@ -233,9 +237,19 @@ const heading = (
 // NOTE: a zombie still outside the room is not drawn, so it walks at least
 // ZOMBIE_ENTRY_SPEED until it reaches its doorway: it shows up a beat after
 // its door's warning ends, whatever its own pace. In the room it walks at
-// its own.
-const walkingSpeed = (zombie: Zombie, level: Level, pace: number): number => {
-  const speed = zombie.speed * pace * frenzyPace(zombie) * chillPace(zombie)
+// its own. The wave's last zombie hurries up to the players' walk
+// (src/world/zombies/lastZombie.ts) before the boss's pace and a chill.
+const walkingSpeed = (
+  zombie: Zombie,
+  obstacles: Obstacles,
+  pace: number,
+): number => {
+  const { level } = obstacles
+  const own = zombie.speed * frenzyPace(zombie)
+  const hurried = isLastZombie(zombie, obstacles.loneMs)
+    ? lastZombieSpeed(own, obstacles.loneMs)
+    : own
+  const speed = hurried * pace * chillPace(zombie)
   return isInsideRoomAt(level, zombie)
     ? speed
     : Math.max(speed, ZOMBIE_ENTRY_SPEED)
@@ -255,7 +269,7 @@ const steeringVelocity = (
         ? ZERO_VECTOR
         : scaleVector(
             heading(zombie, flowFields, target, obstacles),
-            walkingSpeed(zombie, obstacles.level, pace),
+            walkingSpeed(zombie, obstacles, pace),
           ),
     Fusing: () => ZERO_VECTOR,
     Dying: () => ZERO_VECTOR,
@@ -363,6 +377,7 @@ export const advanceZombies: {
       barricaded: barricadedDoors(model.traps),
       boss: model.boss,
       zombies: model.zombies,
+      loneMs: model.pacing.loneMs,
     }
     const targets = targetsOf(model)
     const flowFields = flowFieldsToward(

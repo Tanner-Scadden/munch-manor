@@ -298,6 +298,7 @@ export const beginPreparation: {
         packDoors: [],
         alarm: Alarm.Quiet(),
         quietMs: 0,
+        loneMs: 0,
       }),
       rngState: () => rngState,
     })

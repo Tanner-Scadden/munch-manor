@@ -584,6 +584,8 @@ export const PackDoor = Schema.Struct({
 })
 export type PackDoor = typeof PackDoor.Type
 
+// NOTE: loneMs is how long the wave's last zombie has been hurrying
+// (src/world/zombies/lastZombie.ts), 0 while it is not the last.
 export const Pacing = Schema.Struct({
   holds: Schema.Array(Hold),
   beat: Beat,
@@ -591,6 +593,7 @@ export const Pacing = Schema.Struct({
   packDoors: Schema.Array(PackDoor),
   alarm: Alarm,
   quietMs: MillisNumber,
+  loneMs: MillisNumber,
 })
 export type Pacing = typeof Pacing.Type
 
@@ -1002,6 +1005,7 @@ export const calmPacing: Pacing = {
   packDoors: [],
   alarm: Alarm.Quiet(),
   quietMs: 0,
+  loneMs: 0,
 }
 
 export const idleBoosts: Boosts = {

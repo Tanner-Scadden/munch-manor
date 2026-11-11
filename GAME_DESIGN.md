@@ -751,6 +751,15 @@ Redrawn on 2026-10-29 at the owner's request ("should look like an ARMORED zombi
 - **The speed.** 15% faster while frenzied. A frenzied zombie with no packmate within 40 px for 0.9 s fades back to normal for good.
 - **The bonus.** Killing a whole frenzy pack pays $1 a zombie on top, with a chime.
 
+#### The last zombie
+
+Added on 2026-11-10 at the owner's request ("when there's only one zombie left, they ramp up to move at the same speed that the characters move"), so a straggler ends the round instead of dragging it out. The code is in `src/world/zombies/lastZombie.ts`.
+
+- **When.** A wave has nothing left to send (no planned spawn, no pack at a door, none held behind the alive cap) and exactly one zombie still stands. Never Uncle Chunk, never while he is waiting, arriving, or fighting, and never once the finale is under way.
+- **The speed.** Over 2 s its pace climbs from its own to the players' walk (72). One already faster never slows. It still chases down the flow field, and a chill still slows it.
+- **Odd kinds.** A Big Leaguer left last stops hanging back and walks straight in. An Ankle Biter under the floor hurries once it is up. A Kaboomer hurries too, fuse and all.
+- **The look.** It wears the frenzy's rage face, read off the World, with nothing new on the wire but the ramp's clock (`pacing.loneMs`).
+
 #### The Big Leaguer
 
 The kind id stays `Thrower`. A lanky mint pitcher in a torn pinstripe jersey and a backwards cap, knuckles dragging.

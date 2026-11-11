@@ -69,6 +69,7 @@ const zombieIndex = (current: Model, zombie: Zombie): number =>
           focusOf(current).player,
           current.elapsedMs,
           current.boss,
+          current.pacing.loneMs,
         )(zombie),
       ),
     ),

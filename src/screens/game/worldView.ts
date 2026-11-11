@@ -190,6 +190,7 @@ const standingDrawables = (
     focusOf(model).player,
     model.elapsedMs,
     model.boss,
+    model.pacing.loneMs,
   )
   const isChomp = isChomping(model.phase)
   const level = levelOf(model)

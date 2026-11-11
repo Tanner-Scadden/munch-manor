@@ -71,6 +71,7 @@ import { advanceBossMoves, puddleSlowAt } from '../zombies/boss'
 import { advanceChuckers } from '../zombies/chucker'
 import { advanceCrawlers, ankleSlowAt, ankleSlowNear } from '../zombies/crawler'
 import { advanceFrenzy, keyWipedPacks } from '../zombies/frenzy'
+import { advanceLastZombie } from '../zombies/lastZombie'
 import { advanceZombies, recordFootfalls } from '../zombies/zombieMotion'
 import { wearOf } from '../zombies/zombies'
 import { moveCircle } from './collision'
@@ -447,7 +448,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   )
   return pipe(
     advanceFrenzy(fought, deltaMs),
-    frenzied => keyWipedPacks(model, frenzied),
+    frenzied => advanceLastZombie(keyWipedPacks(model, frenzied), deltaMs),
     clearBrokenTraps,
     blasted => feelIntensity(model, blasted, deltaMs),
     felt => advancePowerUps(felt, advanceRound(felt, deltaMs), deltaMs),
