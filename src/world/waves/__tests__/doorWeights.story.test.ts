@@ -7,6 +7,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Life, type Model, Phase } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
+  breakSpawns,
   home,
   pastTimedBreaks,
   placeSeat,
@@ -44,9 +45,6 @@ const atDoors =
   (doors: ReadonlyArray<DoorId>) =>
   (spawns: ReadonlyArray<PlannedSpawn>): number =>
     Array.filter(spawns, ({ door }) => Array.contains(doors, door)).length
-
-const breakSpawns = (model: Model): ReadonlyArray<PlannedSpawn> =>
-  Phase.isAnyOf(['Preparation'])(model.phase) ? model.phase.spawns : []
 
 describe('spawn doors weighted toward the players', () => {
   it('near doors are those of the players room and the open rooms beside it', () => {

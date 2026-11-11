@@ -121,6 +121,10 @@ export const plannedSpawn = (atMs: number): PlannedSpawn => ({
 // it stays in progress with only the zombies a test puts in the room.
 export const DISTANT_SPAWN: PlannedSpawn = plannedSpawn(1e9)
 
+// NOTE: the spawns a break has rolled for the wave ahead, none outside one.
+export const breakSpawns = (model: Model): ReadonlyArray<PlannedSpawn> =>
+  Phase.isAnyOf(['Preparation'])(model.phase) ? model.phase.spawns : []
+
 // PHASES
 
 // NOTE: wave 2 under way, and the break before it, each holding a spawn
