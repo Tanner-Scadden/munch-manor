@@ -79,6 +79,32 @@ const pincerPairs = (
   })
 }
 
+// NOTE: the doors a wave weights 2:1 (src/world/waves/doorWeights.ts): those
+// in a standing player's room or a room beside it, fixed when the wave is
+// rolled at its break. Every draw lists a near door twice, so a near door is
+// twice as likely as a far one. Only a proper part of the candidates is
+// weighted: with none near, or all of them, the list and its draws are the
+// same as with no weights at all.
+export type SpawnDoors = Readonly<{
+  all: Array.NonEmptyReadonlyArray<DoorId>
+  near: ReadonlyArray<DoorId>
+}>
+
+const weighted = <A>(
+  items: Array.NonEmptyReadonlyArray<A>,
+  isNear: (item: A) => boolean,
+): Array.NonEmptyReadonlyArray<A> => {
+  const near = Array.filter(items, isNear)
+  return near.length > 0 && near.length < items.length
+    ? Array.appendAll(items, near)
+    : items
+}
+
+const isNearDoor =
+  (near: ReadonlyArray<DoorId>) =>
+  (door: DoorId): boolean =>
+    Array.contains(near, door)
+
 type PackPlace = Readonly<{ door: DoorId; delayMs: number }>
 
 type VolleyRolls = Readonly<{ door: number; order: number; lag: number }>
@@ -88,6 +114,7 @@ type PatternRules = Readonly<{
   packsPerVolley: (doors: ReadonlyArray<DoorId>) => number
   places: (
     doors: Array.NonEmptyReadonlyArray<DoorId>,
+    near: ReadonlyArray<DoorId>,
     rolls: VolleyRolls,
   ) => ReadonlyArray<PackPlace>
 }>
@@ -96,15 +123,23 @@ const DOOR_PATTERNS: Readonly<Record<DoorPattern, PatternRules>> = {
   One: {
     formation: size => (size > 1 ? 'Squad' : 'Trickle'),
     packsPerVolley: () => 1,
-    places: (doors, rolls) => [
-      { door: pickOne(doors, rolls.door), delayMs: 0 },
+    places: (doors, near, rolls) => [
+      {
+        door: pickOne(weighted(doors, isNearDoor(near)), rolls.door),
+        delayMs: 0,
+      },
     ],
   },
   Pincer: {
     formation: () => 'Pincer',
     packsPerVolley: () => 2,
-    places: (doors, rolls) => {
-      const pair = pickOne(pincerPairs(doors), rolls.door)
+    places: (doors, near, rolls) => {
+      const pair = pickOne(
+        weighted(pincerPairs(doors), candidate =>
+          Array.some(candidate, isNearDoor(near)),
+        ),
+        rolls.door,
+      )
       const ordered = rolls.order < 0.5 ? pair : Array.reverse(pair)
       const lagMs = between(rolls.lag, PINCER_LAG_MIN_MS, PINCER_LAG_MAX_MS)
       return Array.map(ordered, (door, index) => ({
@@ -131,23 +166,31 @@ const groupDoors = (
         { onEmpty: () => levelDoors, onNonEmpty: doors => doors },
       )
 
+// NOTE: a near door listed twice is drawn first more often; the dedupe keeps
+// each door once, in its first place.
 const drawDoors = (
   state: number,
   group: SpawnGroup,
-  levelDoors: Array.NonEmptyReadonlyArray<DoorId>,
+  { all, near }: SpawnDoors,
 ): Seeded<Array.NonEmptyReadonlyArray<DoorId>> => {
-  const candidates = groupDoors(group, levelDoors)
+  const candidates = groupDoors(group, all)
   if (group.doorDraw >= candidates.length) {
     return [state, candidates]
   }
 
-  const [nextState, shuffled] = shuffle(state, candidates)
+  const [nextState, shuffled] = shuffle(
+    state,
+    weighted(candidates, isNearDoor(near)),
+  )
   return [
     nextState,
-    Array.match(Array.take(shuffled, Math.max(1, group.doorDraw)), {
-      onEmpty: () => candidates,
-      onNonEmpty: doors => doors,
-    }),
+    Array.match(
+      Array.take(Array.dedupe(shuffled), Math.max(1, group.doorDraw)),
+      {
+        onEmpty: () => candidates,
+        onNonEmpty: doors => doors,
+      },
+    ),
   ]
 }
 
@@ -195,6 +238,7 @@ const rollVolley =
     group: SpawnGroup,
     groupIndex: number,
     doors: Array.NonEmptyReadonlyArray<DoorId>,
+    near: ReadonlyArray<DoorId>,
   ) =>
   (
     state: number,
@@ -205,7 +249,7 @@ const rollVolley =
     const orderDraw = nextRandom(doorDraw.nextState)
     const lagDraw = nextRandom(orderDraw.nextState)
     const jitterDraw = nextRandom(lagDraw.nextState)
-    const places = DOOR_PATTERNS[group.pattern].places(doors, {
+    const places = DOOR_PATTERNS[group.pattern].places(doors, near, {
       door: doorDraw.value,
       order: orderDraw.value,
       lag: lagDraw.value,
@@ -236,7 +280,7 @@ const rollVolley =
 
 export const rollGroup: {
   (
-    levelDoors: Array.NonEmptyReadonlyArray<DoorId>,
+    spawnDoors: SpawnDoors,
   ): (
     plan: WavePlan,
   ) => (
@@ -246,7 +290,7 @@ export const rollGroup: {
   ) => Seeded<ReadonlyArray<PlannedSpawn>>
   (
     plan: WavePlan,
-    levelDoors: Array.NonEmptyReadonlyArray<DoorId>,
+    spawnDoors: SpawnDoors,
   ): (
     state: number,
     group: SpawnGroup,
@@ -254,13 +298,13 @@ export const rollGroup: {
   ) => Seeded<ReadonlyArray<PlannedSpawn>>
 } = Function.dual(
   2,
-  (plan: WavePlan, levelDoors: Array.NonEmptyReadonlyArray<DoorId>) =>
+  (plan: WavePlan, spawnDoors: SpawnDoors) =>
     (
       state: number,
       group: SpawnGroup,
       groupIndex: number,
     ): Seeded<ReadonlyArray<PlannedSpawn>> => {
-      const [doorState, doors] = drawDoors(state, group, levelDoors)
+      const [doorState, doors] = drawDoors(state, group, spawnDoors)
       const [sizeState, sizes] = shuffle(doorState, group.packs)
       const volleySizes = Array.chunksOf(
         sizes,
@@ -269,7 +313,7 @@ export const rollGroup: {
       const [volleyState, volleys] = Array.mapAccum(
         volleySizes,
         sizeState,
-        rollVolley(group, groupIndex, doors),
+        rollVolley(group, groupIndex, doors, spawnDoors.near),
       )
       const [packState, packs] = Array.mapAccum(
         Array.flatten(volleys),

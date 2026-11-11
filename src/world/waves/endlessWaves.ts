@@ -330,16 +330,20 @@ export type RolledWave = Readonly<{
 }>
 
 // NOTE: doors are the level's spawn doors as the wave is rolled. They are
-// the parlour's four until the kitchen is open.
+// the parlour's four until the kitchen is open. near are the ones weighted
+// 2:1 toward the players (src/world/waves/doorWeights.ts), none for a roll
+// that knows no players.
 export const rollWave: {
   (
     wave: number,
     doors?: ReadonlyArray<DoorId>,
+    near?: ReadonlyArray<DoorId>,
   ): (state: number) => Seeded<RolledWave>
   (
     state: number,
     wave: number,
     doors?: ReadonlyArray<DoorId>,
+    near?: ReadonlyArray<DoorId>,
   ): Seeded<RolledWave>
 } = Function.dual(
   // NOTE: data-first has the wave second; data-last has the doors there or nothing.
@@ -348,6 +352,7 @@ export const rollWave: {
     state: number,
     wave: number,
     doors: ReadonlyArray<DoorId> = START_DOORS,
+    near: ReadonlyArray<DoorId> = [],
   ): Seeded<RolledWave> => {
     const levelDoors = Array.match(doors, {
       onEmpty: () => START_DOORS,
@@ -357,7 +362,7 @@ export const rollWave: {
     const [nextState, groups] = Array.mapAccum(
       plan.groups,
       planState,
-      rollGroup(plan, levelDoors),
+      rollGroup(plan, { all: levelDoors, near }),
     )
     return [
       nextState,

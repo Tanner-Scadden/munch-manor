@@ -64,6 +64,7 @@ import {
   scaledHp,
 } from '../zombies/zombies'
 import { routeSpawns } from './doorRoute'
+import { nearDoorsOf } from './doorWeights'
 import { rollWave } from './endlessWaves'
 import {
   aliveCount,
@@ -259,6 +260,7 @@ export const beginPreparation: {
       model.rngState,
       wave,
       levelOf(model).doorIds,
+      nearDoorsOf(model),
     )
     const { holds } = rolled
     const spawns = hungrierSpawns(
