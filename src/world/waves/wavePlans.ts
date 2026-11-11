@@ -221,7 +221,9 @@ const WAVE_7_MIX = mixOf(3, 2, 0.75)
 // (docs/PACING_REPORT.md, owner's pick 3b): wave 1 is 8 Groaners in two
 // quick squads through one door, done in about 15 s (6 over 23 s before),
 // and wave 2 sends its Groaners faster and fades at 12 s (17.5 before).
-export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
+// The times written for waves 3 on are their old ones: HEAT packs them
+// tighter (see `hotter` below the table).
+const WAVE_TABLE: Array.NonEmptyReadonlyArray<WavePlan> = [
   {
     speedScale: 1.0,
     hpScale: 1,
@@ -638,6 +640,33 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
     holds: [fadeThenRelax(18500, 2500), fadeThenRelax(38500, 3000)],
   },
 ]
+
+// HEAT
+
+// NOTE: hotter, shorter waves (owner, 2026-11-10, the pacing report's pick
+// 2b): from wave 3 on every group's start and every pack's interval, and
+// every hold, comes at HEAT times its written time, so the same zombies
+// arrive in harder peaks and the wave is over sooner. The holds keep their
+// thresholds and rests, so each peak still fades before the next builds.
+export const HEAT = 0.75
+const FIRST_HOT_WAVE = 3
+
+const heated = (ms: number): number => Math.round(ms * HEAT)
+
+const hotter = (plan: WavePlan): WavePlan => ({
+  ...plan,
+  groups: Array.map(plan.groups, group => ({
+    ...group,
+    startMs: heated(group.startMs),
+    intervalMs: heated(group.intervalMs),
+  })),
+  holds: Array.map(plan.holds, hold => ({ ...hold, atMs: heated(hold.atMs) })),
+})
+
+export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = Array.map(
+  WAVE_TABLE,
+  (plan, index) => (index + 1 >= FIRST_HOT_WAVE ? hotter(plan) : plan),
+)
 
 export const FINAL_WAVE = WAVE_PLANS.length
 
