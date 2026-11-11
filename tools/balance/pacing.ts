@@ -96,7 +96,7 @@ const RunStat = Schema.Struct({
   listDoneMs: Schema.Finite,
   listDoneWave: Schema.Finite,
   chunkWave: Schema.Finite,
-  hatMs: Schema.Finite,
+  keyMs: Schema.Finite,
   waves: Schema.Array(WaveStat),
   breaks: Schema.Array(BreakStat),
 })
@@ -150,7 +150,7 @@ const recorder = () => {
     listDoneMs: 0,
     listDoneWave: 0,
     chunkWave: 0,
-    hatMs: 0,
+    keyMs: 0,
     stragglerFromMs: -1,
   }
   const onFrame = (before: Model, after: Model): void => {
@@ -265,12 +265,8 @@ const recorder = () => {
         state.listDoneMs = state.totalMs
         state.listDoneWave = phase.wave
       }
-      if (
-        event._tag === 'DareFound' &&
-        event.kind === 'PartyHat' &&
-        state.hatMs === 0
-      ) {
-        state.hatMs = state.totalMs
+      if (event._tag === 'BigKeyBurst' && state.keyMs === 0) {
+        state.keyMs = state.totalMs
       }
     })
   }
@@ -285,7 +281,7 @@ const recorder = () => {
     listDoneMs: state.listDoneMs,
     listDoneWave: state.listDoneWave,
     chunkWave: state.chunkWave,
-    hatMs: state.hatMs,
+    keyMs: state.keyMs,
     waves,
     breaks,
   })
