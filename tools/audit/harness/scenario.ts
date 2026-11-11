@@ -30,11 +30,12 @@ import {
   SyncState,
 } from '@game/platform/playerSync'
 import { heroIdOf } from '@game/shared/playerData'
-import { dareCardOf } from '@game/world/dare/dare'
+import { dareCardOf, maybeLyingAt } from '@game/world/dare/dare'
 import { DareThingState } from '@game/world/dare/dareSchema'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
+import { levelOf } from '@game/world/level/arena'
 import { ARRANGEMENTS } from '@game/world/level/plan'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
@@ -197,6 +198,22 @@ const withDareFound = (model: Model, count: number): Model => {
       ),
   })
 }
+
+// NOTE: the player `gap` px south of the first thing still lying in an
+// open room, so a shot shows it in sight.
+const nearDareThing = (model: Model, gap: number): Model =>
+  Option.match(
+    Array.findFirst(model.dareThings, thing =>
+      maybeLyingAt(thing, levelOf(model)),
+    ),
+    {
+      onNone: () => model,
+      onSome: spot =>
+        modifyFocus(model, {
+          player: player => ({ ...player, x: spot.x, y: spot.y + gap }),
+        }),
+    },
+  )
 
 export const scenarioModel = (settings: SceneSettings): Model =>
   withCoop(settings.config, scenarioModelOf(settings))
@@ -614,6 +631,10 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         gunSkin: a.gunSkin,
       }),
     })
+  }
+  const darenear = config.darenear
+  if (darenear !== undefined) {
+    model = nearDareThing(model, darenear)
   }
   return model
 }

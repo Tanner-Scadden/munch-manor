@@ -182,6 +182,9 @@ export const HarnessConfig = Schema.Struct({
   // (src/features/dare/pocketCard.ts); `pocketfold=N` has it folding for N ms.
   pocket: MaybeNum,
   pocketfold: MaybeNum,
+  // NOTE: `darenear=N` stands the player N px south of the first thing of
+  // the dare's list still lying in an open room, so it is in sight.
+  darenear: MaybeNum,
   // The player and the guns
   px: MaybeNum,
   py: MaybeNum,

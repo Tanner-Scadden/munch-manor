@@ -1,4 +1,4 @@
-import { Array, Function, Option } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
@@ -11,6 +11,7 @@ import {
   RattlesIntro,
   Tour,
 } from '../../domain/clientSchema'
+import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Difficulty } from '../../shared/playerData'
 import { type Seeded, nextRandom } from '../../shared/prng'
 import {
@@ -38,6 +39,7 @@ import {
   type Vector,
   roundWaveOf,
 } from '../../world/schema/worldSchema'
+import { isThingShownOn } from './dareView'
 import { isPocketCardOut } from './pocketCard'
 
 // Rattles, the first daredevil (1924), who never got out, hollers about the
@@ -67,17 +69,15 @@ type Lines = Array.NonEmptyReadonlyArray<string>
 
 // NOTE: his lines, a few words each, by the thing they are about. A group
 // has two lines at least, so the one just seen can always be skipped.
+// Every line names the thing, beside its icon in the bubble, and the gold
+// arrow (./darePointer.ts) shows where: never a bare "THAT WAY".
 const THING_LINES: Readonly<Record<DareKind, Lines>> = {
-  SilverSpoon: [
-    "SPOON'S OVER THERE. PROBABLY.",
-    'SHINY SPOON! THAT WAY!',
-    'I LOST THAT SPOON IN 1924.',
-  ],
-  FamilyPortrait: ['YOUR PORTRAIT! GRAB IT!', 'NICE FRAME. YOURS NOW.'],
-  GuestBookPage: ['A PAGE! SIGN ME IN!', 'GUEST BOOK PAGE! THERE!'],
-  GrandmasRecipe: ["GRANDMA'S RECIPE! SNIFF!", 'SECRET SAUCE! THAT WAY!'],
-  MusicBox: ['HEAR THAT TUNE? FOLLOW IT.', 'LA LA LAAA! THAT WAY!'],
-  ButlersBell: ['DING DING! RIGHT THERE!', "BUTLER'S BELL! IN THERE!"],
+  SilverSpoon: ['SILVER SPOON! GRAB IT!', 'I LOST THAT SPOON IN 1924.'],
+  FamilyPortrait: ['YOUR PORTRAIT! GRAB IT!', 'THE PORTRAIT! NICE FRAME.'],
+  GuestBookPage: ['A PAGE! SIGN ME IN!', 'GUEST BOOK PAGE! GET IT!'],
+  GrandmasRecipe: ["GRANDMA'S RECIPE! SNIFF!", 'SECRET RECIPE! GRAB IT!'],
+  MusicBox: ['MUSIC BOX! HEAR THAT?', 'LA LA LAAA! MUSIC BOX!'],
+  ButlersBell: ["BUTLER'S BELL! DING DING!", 'THE BELL! RIGHT THERE!'],
   PartyHat: ['LAST THING: HIS HAT.', 'FRONT DOOR! MIND THE HAT!'],
 }
 
@@ -109,6 +109,11 @@ const roomLinesOf = (kind: DareKind, room: string): Lines => {
     `THE ${where}! ${THING_WORDS[kind]}'S IN THERE.`,
   ]
 }
+
+// NOTE: the line for a room the moment its boards come down, with the
+// thing inside: one each, as nothing came before it.
+const revealLineOf = (kind: DareKind): string =>
+  `${THING_WORDS[kind]}! IN HERE!`
 
 const ROOM_IDS: ReadonlyArray<string> = [
   KITCHEN_ROOM_ID,
@@ -144,6 +149,13 @@ export const HINT_LINES: ReadonlyArray<
           maybeIcon: Option.some(kind),
         })),
       ),
+  ),
+  ...Array.map(
+    Array.filter(DareKind.literals, kind => kind !== LAST_THING),
+    (kind: DareKind) => ({
+      line: revealLineOf(kind),
+      maybeIcon: Option.some(kind),
+    }),
   ),
   ...Array.map(HECKLES, line => ({ line, maybeIcon: Option.none() })),
 ]
@@ -242,7 +254,7 @@ const BREAK_HINTS: Readonly<
 const breakHint = (model: Model, state: number): Seeded<Option.Option<Hint>> =>
   isDareListDone(model)
     ? [state, Option.some(FINALE)]
-    : BREAK_HINTS[model.difficulty.chosen](model, state)
+    : BREAK_HINTS[runDifficultyOf(model)](model, state)
 
 // THE CALL
 
@@ -328,7 +340,7 @@ const callInBreak = (model: Model, wave: number, frameMs: number): Model => {
   const hint = model.dareHint
   const isFirst = hint.calledWave < wave
   const isAgain =
-    !isFirst && model.difficulty.chosen === 'Easy' && hint.restMs - frameMs <= 0
+    !isFirst && runDifficultyOf(model) === 'Easy' && hint.restMs - frameMs <= 0
   if (!isFirst && !isAgain) {
     return withHint(model, {
       restMs: restMs => Math.max(0, restMs - frameMs),
@@ -349,6 +361,83 @@ const callInBreak = (model: Model, wave: number, frameMs: number): Model => {
           calledWave: () => wave,
         },
       ),
+  })
+}
+
+// A ROOM OPENED
+
+// NOTE: on Dare and Double Dare, the moment a room's boards come down
+// Rattles shows what is inside: the thing's icon and its name in his
+// bubble over it, and the gold arrow over it (./darePointer.ts). Read off
+// the level's open rooms against the ones seen last frame, so a co-op
+// teammate's boards show it for the whole crew; a run's first frame (or a
+// teammate joining mid-run) only takes the rooms already open. Only where
+// things lie in plain sight (./dareView.ts).
+const openRoomIds = (model: Model): ReadonlyArray<string> =>
+  Array.filterMap(levelOf(model).rooms, ({ id, isOpen }) =>
+    isOpen ? Result.succeed(id) : Result.failVoid,
+  )
+
+const revealOf = (thing: DareThing): Hint => ({
+  lines: [revealLineOf(thing.kind)],
+  maybeThingId: Option.some(thing.id),
+})
+
+const maybeRevealIn = (
+  model: Model,
+  fresh: ReadonlyArray<string>,
+): Option.Option<Hint> => {
+  if (
+    !isThingShownOn(runDifficultyOf(model)) ||
+    isHushed(model) ||
+    !Phase.isAnyOf(['Preparation', 'Wave'])(model.phase)
+  ) {
+    return Option.none()
+  }
+  const level = levelOf(model)
+  return Option.map(
+    Array.findFirst(
+      model.dareThings,
+      thing =>
+        DareThingState.isAnyOf(['Hidden'])(thing.state) &&
+        Option.exists(maybeThingRoom(thing, level), ({ id }) =>
+          Array.contains(fresh, id),
+        ),
+    ),
+    revealOf,
+  )
+}
+
+type Noticed = Readonly<{ model: Model; isRevealed: boolean }>
+
+const noticeOpenedRooms = (model: Model): Noticed => {
+  const open = openRoomIds(model)
+  return Option.match(model.dareHint.maybeOpenRooms, {
+    onNone: () => ({
+      model: withHint(model, { maybeOpenRooms: () => Option.some(open) }),
+      isRevealed: false,
+    }),
+    onSome: (seen): Noticed => {
+      if (open.length === seen.length) {
+        return { model, isRevealed: false }
+      }
+      const synced = withHint(model, {
+        maybeOpenRooms: () => Option.some(open),
+      })
+      return Option.match(
+        maybeRevealIn(
+          synced,
+          Array.filter(open, id => !Array.contains(seen, id)),
+        ),
+        {
+          onNone: () => ({ model: synced, isRevealed: false }),
+          onSome: reveal => ({
+            model: startCall(synced, reveal, {}),
+            isRevealed: true,
+          }),
+        },
+      )
+    },
   })
 }
 
@@ -379,12 +468,16 @@ export const advanceDareHint: {
         isBreak(model.phase) ? roundWaveOf(model.phase) : calledWave,
     })
   }
-  return DareHintCall.match(model.dareHint.call, {
-    Calling: call => advanceCalling(model, call, frameMs),
+  const noticed = noticeOpenedRooms(model)
+  if (noticed.isRevealed) {
+    return noticed.model
+  }
+  return DareHintCall.match(noticed.model.dareHint.call, {
+    Calling: call => advanceCalling(noticed.model, call, frameMs),
     Quiet: () =>
-      Phase.isAnyOf(['Preparation', 'Wave'])(model.phase)
-        ? advanceQuiet(model, frameMs)
-        : model,
+      Phase.isAnyOf(['Preparation', 'Wave'])(noticed.model.phase)
+        ? advanceQuiet(noticed.model, frameMs)
+        : noticed.model,
   })
 })
 

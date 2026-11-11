@@ -245,7 +245,9 @@ export type KitchenCall = typeof KitchenCall.Type
 // line in his bubble for a few seconds, pointing at a thing on the list by
 // its id or hanging from his spot. `calledWave` is the last break he called
 // in, `restMs` Easy's wait before the next call in the same break, and
-// `lastLine` what the player saw last, so it never comes twice in a row. Never saved.
+// `lastLine` what the player saw last, so it never comes twice in a row,
+// and `maybeOpenRooms` the rooms seen open last frame, so a room's boards
+// coming down show its thing (none until the run's first frame). Never saved.
 export const DareHintCall = defineTaggedUnion({
   Quiet: {},
   Calling: {
@@ -264,6 +266,7 @@ export const DareHint = Schema.Struct({
   restMs: MillisNumber,
   lastLine: Schema.String,
   call: DareHintCall,
+  maybeOpenRooms: Schema.Option(Schema.Array(Schema.String)),
 })
 export type DareHint = typeof DareHint.Type
 
@@ -272,6 +275,7 @@ export const quietDareHint: DareHint = {
   restMs: 0,
   lastLine: '',
   call: DareHintCall.Quiet(),
+  maybeOpenRooms: Option.none(),
 }
 
 // NOTE: a chapter of the guided tutorial (src/features/onboarding/firstBreakQuest.ts, the

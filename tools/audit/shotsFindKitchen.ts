@@ -9,16 +9,13 @@ import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
 import {
-  DESKTOP_1280,
-  PHONE_844,
-  UPRIGHT_390,
   auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
+  longNamedViewports,
   openBrowser,
-  pickViewports,
   scenePages,
   settleAnimations,
   shot,
@@ -26,11 +23,7 @@ import {
 } from './lib'
 import { attempt } from './page'
 
-const VIEWPORTS = pickViewports([
-  { ...DESKTOP_1280, name: 'desktop' },
-  { ...PHONE_844, name: 'phone-landscape' },
-  { ...UPRIGHT_390, name: 'phone-portrait' },
-])
+const VIEWPORTS = longNamedViewports
 
 const LEARNED =
   'seen=all&learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
