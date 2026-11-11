@@ -87,16 +87,14 @@ describe('wear stages', () => {
     },
   )
 
-  test('a Big Lug sheds at three quarters, half, and a quarter', () => {
+  test('a Big Lug drops his pan at two thirds and his pot at a third', () => {
     const maxHp = 36
     expect(wearAt('Tank', 36, maxHp)).toBe(0)
-    expect(wearAt('Tank', 28, maxHp)).toBe(0)
-    expect(wearAt('Tank', 27, maxHp)).toBe(1)
-    expect(wearAt('Tank', 19, maxHp)).toBe(1)
-    expect(wearAt('Tank', 18, maxHp)).toBe(2)
-    expect(wearAt('Tank', 10, maxHp)).toBe(2)
-    expect(wearAt('Tank', 9, maxHp)).toBe(3)
-    expect(wearAt('Tank', 1, maxHp)).toBe(3)
+    expect(wearAt('Tank', 25, maxHp)).toBe(0)
+    expect(wearAt('Tank', 24, maxHp)).toBe(1)
+    expect(wearAt('Tank', 13, maxHp)).toBe(1)
+    expect(wearAt('Tank', 12, maxHp)).toBe(2)
+    expect(wearAt('Tank', 1, maxHp)).toBe(2)
   })
 
   test('the boss sheds a part every fifth of its health', () => {
@@ -182,10 +180,10 @@ describe('parts coming off', () => {
     const lug = zombieOf('Tank', 100, FAR_X, ROW_Y, { hp: 36 })
     return Story.story(
       APPLICATION,
-      Story.given(withScene([lug], [bulletInto(500, lug, { damage: 19 })])),
+      Story.given(withScene([lug], [bulletInto(500, lug, { damage: 25 })])),
       tick(FRAME_MS),
       Story.model(({ frameEvents, zombies }) => {
-        expect(zombies[0]?.hp).toBe(17)
+        expect(zombies[0]?.hp).toBe(11)
         expect(shedIn(frameEvents)).toEqual([
           { kind: 'Tank', stage: 0 },
           { kind: 'Tank', stage: 1 },
@@ -268,7 +266,7 @@ describe('caps', () => {
           reload(
             current,
             Array.map(current.zombies, (zombie, index) =>
-              bulletInto(900 + index, zombie, { damage: 9 }),
+              bulletInto(900 + index, zombie, { damage: 13 }),
             ),
           )
         const shedCounts: Array<number> = []
@@ -286,7 +284,7 @@ describe('caps', () => {
             expect(current.particles.length).toBeLessThanOrEqual(PARTICLE_MAX)
             expect(current.decals.length).toBe(DECAL_MAX)
             expect(
-              Array.some(current.decals, ({ kind }) => kind === 'PotLid'),
+              Array.some(current.decals, ({ kind }) => kind === 'FryingPan'),
             ).toBe(true)
           }),
         )
@@ -299,9 +297,8 @@ describe('the Big Lug armor', () => {
   const ARMOR: ReadonlyArray<
     Readonly<{ stage: number; hp: number; part: ParticleKind }>
   > = [
-    { stage: 0, hp: 36, part: 'PotLid' },
-    { stage: 1, hp: 27, part: 'StopSign' },
-    { stage: 2, hp: 18, part: 'Bucket' },
+    { stage: 0, hp: 30, part: 'FryingPan' },
+    { stage: 1, hp: 18, part: 'StockPot' },
   ]
 
   const lugAt = (hp: number): Zombie =>
@@ -389,7 +386,7 @@ describe('the Big Lug armor', () => {
     expect(stages).toHaveLength(ZOMBIE_KINDS.Tank.wear.length + 1)
     const lookAt = (stage: number) =>
       Option.map(Array.get(stages, stage), ({ walk }) => frameAt(walk, 0))
-    expect(lookAt(3)).not.toEqual(lookAt(0))
+    expect(lookAt(ZOMBIE_KINDS.Tank.wear.length)).not.toEqual(lookAt(0))
     expect(
       Array.every(ZOMBIE_KINDS.Tank.wear, ({ part }) => isArmorPart(part)),
     ).toBe(true)
@@ -398,7 +395,8 @@ describe('the Big Lug armor', () => {
   test('a Groaner part is not armor, and every Big Lug stage is', () => {
     expect(isArmorShedAt('Shambler', 0)).toBe(false)
     expect(isArmorShedAt('Tank', 0)).toBe(true)
-    expect(isArmorShedAt('Tank', 2)).toBe(true)
+    expect(isArmorShedAt('Tank', 1)).toBe(true)
+    expect(isArmorShedAt('Tank', 2)).toBe(false)
   })
 })
 

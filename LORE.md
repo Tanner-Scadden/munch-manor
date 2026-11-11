@@ -44,7 +44,7 @@ From the Munchopedia (`src/features/munchopedia/munchopedia.ts`):
 | ----------- | ------------------------------------------------------------ |
 | Groaner     | Shows up to every party. Brings nothing. Eats the host.      |
 | Hotfoot     | Never skipped leg day. Skipped every other day.              |
-| Big Lug     | Wearing a whole kitchen. Pot lid, stop sign, the works.      |
+| Big Lug     | Ate everything. Now he wears the kitchen too.                |
 | Kaboomer    | Brought a bomb to share. Nobody asked.                       |
 | Big Leaguer | Got cut from the big leagues. Still bitter.                  |
 | Ankle Biter | Lives under the floorboards. Pays no rent. (a zombie spider) |

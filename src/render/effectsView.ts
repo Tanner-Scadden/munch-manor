@@ -201,9 +201,8 @@ const PART_LOOKS: Readonly<
     | 'TealLimb'
     | 'TealScalp'
     | 'PaleScalp'
-    | 'PotLid'
-    | 'StopSign'
-    | 'Bucket',
+    | 'FryingPan'
+    | 'StockPot',
     PartLook
   >
 > = {
@@ -285,21 +284,15 @@ const PART_LOOKS: Readonly<
     faded: '#5e3240',
     hasStump: false,
   },
-  PotLid: {
-    particle: '#b4bcc6',
-    decal: '#9aa3ad',
-    faded: '#5a6068',
+  FryingPan: {
+    particle: '#3a3a44',
+    decal: '#2e2e36',
+    faded: '#26262c',
     hasStump: false,
   },
-  StopSign: {
-    particle: '#c8955a',
-    decal: '#a87a48',
-    faded: '#5e4a34',
-    hasStump: false,
-  },
-  Bucket: {
-    particle: '#c3ccd6',
-    decal: '#a2abb6',
+  StockPot: {
+    particle: '#a9b3bf',
+    decal: '#8e98a4',
     faded: '#5c626b',
     hasStump: false,
   },
@@ -337,9 +330,8 @@ const DECAL_COLORS: Readonly<Record<DecalKind, string>> = {
   TealLimb: PART_LOOKS.TealLimb.decal,
   TealScalp: PART_LOOKS.TealScalp.decal,
   PaleScalp: PART_LOOKS.PaleScalp.decal,
-  PotLid: PART_LOOKS.PotLid.decal,
-  StopSign: PART_LOOKS.StopSign.decal,
-  Bucket: PART_LOOKS.Bucket.decal,
+  FryingPan: PART_LOOKS.FryingPan.decal,
+  StockPot: PART_LOOKS.StockPot.decal,
 }
 
 const FADED_DECAL_COLORS: Readonly<Record<DecalKind, string>> = {
@@ -367,9 +359,8 @@ const FADED_DECAL_COLORS: Readonly<Record<DecalKind, string>> = {
   TealLimb: PART_LOOKS.TealLimb.faded,
   TealScalp: PART_LOOKS.TealScalp.faded,
   PaleScalp: PART_LOOKS.PaleScalp.faded,
-  PotLid: PART_LOOKS.PotLid.faded,
-  StopSign: PART_LOOKS.StopSign.faded,
-  Bucket: PART_LOOKS.Bucket.faded,
+  FryingPan: PART_LOOKS.FryingPan.faded,
+  StockPot: PART_LOOKS.StockPot.faded,
 }
 
 const PARTICLE_COLORS: Readonly<Record<ParticleKind, string>> = {
@@ -402,9 +393,8 @@ const PARTICLE_COLORS: Readonly<Record<ParticleKind, string>> = {
   TealLimb: PART_LOOKS.TealLimb.particle,
   TealScalp: PART_LOOKS.TealScalp.particle,
   PaleScalp: PART_LOOKS.PaleScalp.particle,
-  PotLid: PART_LOOKS.PotLid.particle,
-  StopSign: PART_LOOKS.StopSign.particle,
-  Bucket: PART_LOOKS.Bucket.particle,
+  FryingPan: PART_LOOKS.FryingPan.particle,
+  StockPot: PART_LOOKS.StockPot.particle,
   Smoke: SMOKE_COLOR,
   Frost: '#c8f0ff',
   IceGib: '#9fd8f0',
@@ -434,9 +424,8 @@ const PARTS: ReadonlyArray<ParticleKind> = [
   'PinkChunk',
   'TealScalp',
   'PaleScalp',
-  'PotLid',
-  'StopSign',
-  'Bucket',
+  'FryingPan',
+  'StockPot',
 ]
 
 const CASINGS: ReadonlyArray<ParticleKind> = [

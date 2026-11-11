@@ -230,9 +230,8 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
       maybeSound: Option.some('Stomp'),
     }),
     wear: [
-      { below: 3 / 4, part: 'PotLid', heightPx: 12 },
-      { below: 1 / 2, part: 'StopSign', heightPx: 9 },
-      { below: 1 / 4, part: 'Bucket', heightPx: 16 },
+      { below: 2 / 3, part: 'FryingPan', heightPx: 10 },
+      { below: 1 / 3, part: 'StockPot', heightPx: 16 },
     ],
     arrival: 'Door',
     bait: 'Drawn',
@@ -507,11 +506,7 @@ export const wearAt: {
   return worn
 })
 
-const ARMOR_PARTS: ReadonlyArray<ParticleKind> = [
-  'PotLid',
-  'StopSign',
-  'Bucket',
-]
+const ARMOR_PARTS: ReadonlyArray<ParticleKind> = ['FryingPan', 'StockPot']
 
 export const isArmorPart = (part: ParticleKind): boolean =>
   Array.contains(ARMOR_PARTS, part)

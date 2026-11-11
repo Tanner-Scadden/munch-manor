@@ -191,102 +191,113 @@ export const runnerWalkPixels = (stage: number): FramePixels =>
     applyPatches(RUNNER_HEAD, wornThrough(RUNNER_HEAD_WEAR, stage)),
   )
 
-// NOTE: the Big Lug is a party guest who ate everything, his waistcoat
-// burst at the buttons, still wearing the kitchen for armor: a stock pot
-// helmet with eye holes, a pot lid on one shoulder, and a cutting board
-// strapped to his chest. His wear stages knock the armor off one piece at a
-// time, pot lid, cutting board, then stock pot, until only the guest in his
-// burst waistcoat is left. The armor is laid over his bare frames, so each
-// walk frame keeps its arms and legs. The pieces keep their old part names
-// (PotLid, StopSign, Bucket) on the co-op wire.
+// NOTE: the Big Lug is the Glutton, a party guest who ate everything: a big
+// round green belly bursting out of a red waistcoat, a napkin bib tucked in
+// at the collar, and the kitchen worn for armor, a stock pot on his head
+// with its handles and knob and a frying pan held up as a shield. His green
+// skin sits apart from the grey metal so the armor reads off him. His wear
+// stages knock the armor off one piece at a time, the pan, then the pot,
+// until only the bald guest in his waistcoat and bib is left. The armor is
+// laid over his bare frames, so each walk frame keeps its arms and legs.
 export const TANK_PALETTE: Palette = {
-  G: '#8a9bb5',
-  F: '#5f6f8a',
-  S: '#2a1a14',
+  s: '#9fbf6a',
+  f: '#6e8f45',
   E: '#ffd23f',
-  M: '#5a1418',
-  O: '#7a2a3a',
-  Y: '#f2c14e',
-  W: '#e8e0cc',
-  b: '#a9b6cc',
   B: '#141018',
+  M: '#5a1418',
+  W: '#f2ecd8',
+  w: '#c9c1a8',
+  R: '#a8262c',
+  r: '#7a1a20',
+  Y: '#f2c14e',
   P: '#2c2a36',
-  K: '#26262e',
-  D: '#a8262c',
-  A: '#c3ccd6',
+  k: '#1c1a22',
+  K: '#4a525e',
+  A: '#a9b3bf',
   a: '#7e8895',
-  H: '#59616c',
-  L: '#b4bcc6',
-  l: '#6c7480',
-  n: '#2a2a32',
-  R: '#c8955a',
-  r: '#9a6a3a',
-  C: '#5a3a22',
+  L: '#2e2e36',
+  h: '#6a6a78',
+  n: '#8a5a32',
 }
 
 const TANK_HEAD: ReadonlyArray<string> = [
   '..................',
   '..................',
-  '.......GGGG.......',
-  '......GSGGSG......',
-  '......GEGGEG......',
-  '......GGMMGG......',
-  '.......GDGG.......',
-  '.....GGWBBWGG.....',
+  '.......ssss.......',
+  '......ssssss......',
+  '.....fssssssf.....',
+  '.....ssEssEss.....',
+  '.....ssBMMBss.....',
 ]
 
-const TANK_ARMS_LOW: ReadonlyArray<string> = [
-  '....GG.OWWO.GG....',
-  '....G..YbbO..G....',
-  '....G..ObDb..G....',
-  '....G..YbbO..G....',
-  '...FF..OOOO..FF...',
-  '...FF..PPPP..FF...',
+const TANK_BELLY: ReadonlyArray<string> = [
+  '...sssWWWWWWsss...',
+  '..sfRRWWWWWWRRfs..',
+  '.sfRRRRwWWwRRRRfs.',
+  '.sfRRRssssssRRRfs.',
+  '.sfRYssssssssYRfs.',
+  '...RfssssfsssfR...',
+  '...RfssssssssfR...',
+  '...RRfssssssfRR...',
 ]
 
-const TANK_ARMS_SWING: ReadonlyArray<string> = [
-  '....GG.OWWO.GG....',
-  '....G..YbbO..G....',
-  '...FF..ObDb..G....',
-  '...FF..YbbO..G....',
-  '.......OOOO..FF...',
-  '.......PPPP..FF...',
+// NOTE: the forearms are laid over the belly; one swung forward is drawn
+// short, its hand up at the waist.
+const TANK_FOREARMS_LOW: ReadonlyArray<string> = [
+  '',
+  '',
+  '',
+  '',
+  '',
+  '.sf............fs.',
+  '.ss............ss.',
+  '.ss............ss.',
 ]
 
-const TANK_ARMS_SWING_BACK: ReadonlyArray<string> = [
-  '....GG.OWWO.GG....',
-  '....G..YbbO..G....',
-  '....G..ObDb..FF...',
-  '....G..YbbO..FF...',
-  '...FF..OOOO.......',
-  '...FF..PPPP.......',
+const TANK_FOREARMS_LEFT_UP: ReadonlyArray<string> = [
+  '',
+  '',
+  '',
+  '',
+  '',
+  '..ss...........fs.',
+  '..ss...........ss.',
+  '...............ss.',
+]
+
+const TANK_FOREARMS_RIGHT_UP: ReadonlyArray<string> = [
+  '',
+  '',
+  '',
+  '',
+  '',
+  '.sf...........ss..',
+  '.ss...........ss..',
+  '.ss...............',
 ]
 
 const TANK_LEGS_PLANTED: ReadonlyArray<string> = [
-  '.......PPPP.......',
-  '......PP..PP......',
-  '......PP..PP......',
-  '......PP..PP......',
-  '.....KKK..KKK.....',
+  '...PPPPPPPPPPPP...',
+  '...PPPPP..PPPPP...',
+  '....PPPP..PPPP....',
+  '...kkkkk..kkkkk...',
 ]
 
 const TANK_LEGS_LEFT_UP: ReadonlyArray<string> = [
-  '.......PPPP.......',
-  '......PP..PP......',
-  '......PP..PP......',
-  '.....KKK..PP......',
-  '..........KKK.....',
+  '...PPPPPPPPPPPP...',
+  '...PPPPP..PPPPP...',
+  '...kkkkk..PPPP....',
+  '..........kkkkk...',
 ]
 
 const TANK_LEGS_RIGHT_UP: ReadonlyArray<string> = [
-  '.......PPPP.......',
-  '......PP..PP......',
-  '......PP..PP......',
-  '......PP..KKK.....',
-  '.....KKK..........',
+  '...PPPPPPPPPPPP...',
+  '...PPPPP..PPPPP...',
+  '....PPPP..kkkkk...',
+  '...kkkkk..........',
 ]
 
-const TANK_STOP_SIGN: ReadonlyArray<string> = [
+const TANK_FRYING_PAN: ReadonlyArray<string> = [
   '',
   '',
   '',
@@ -294,38 +305,27 @@ const TANK_STOP_SIGN: ReadonlyArray<string> = [
   '',
   '',
   '',
-  '....nRRRRRRRRn....',
-  '....RrRRRRRRRR....',
-  '....RRRRrrRRRR....',
-  '....RRRRRRRRrR....',
-  '....RRrRRRRRRR....',
-  '....CRRRRRRRRC....',
+  '',
+  '.hhhh.',
+  'hhLLLL',
+  'hLLLLL',
+  'hLLLLL',
+  '.LLLL.',
+  '..n',
+  '..ns',
 ]
 
-const TANK_POT_LID: ReadonlyArray<string> = [
-  '',
-  '',
-  '',
-  '',
-  '',
-  '...n..............',
-  '.lLLLLl...........',
-  'lLLLLLLLl.........',
-  '.lllllll..........',
-]
-
-const TANK_BUCKET: ReadonlyArray<string> = [
+const TANK_STOCK_POT: ReadonlyArray<string> = [
+  '........KK........',
   '.....aAAAAAAa.....',
-  '...naAAAAAAAAan...',
   '....aAAAAAAAAa....',
-  '....aAEaAAaEAa....',
-  '...HHHHHHHHHHHH...',
+  '...KAAAAAAAAAAK...',
+  '....aaaaaaaaaa....',
 ]
 
 export const TANK_ARMOR: ReadonlyArray<ReadonlyArray<string>> = [
-  TANK_POT_LID,
-  TANK_STOP_SIGN,
-  TANK_BUCKET,
+  TANK_FRYING_PAN,
+  TANK_STOCK_POT,
 ]
 
 const overlayRows = (
@@ -355,14 +355,20 @@ const armored = (
 ): ReadonlyArray<string> =>
   Array.reduce(Array.reverse(Array.drop(TANK_ARMOR, stage)), rows, overlayRows)
 
+const tankFrame = (
+  forearms: ReadonlyArray<string>,
+  legs: ReadonlyArray<string>,
+): ReadonlyArray<string> => [
+  ...TANK_HEAD,
+  ...overlayRows(TANK_BELLY, forearms),
+  ...legs,
+]
+
 export const tankWalkPixels = (stage: number): FramePixels => [
-  armored([...TANK_HEAD, ...TANK_ARMS_LOW, ...TANK_LEGS_PLANTED], stage),
-  armored([...TANK_HEAD, ...TANK_ARMS_SWING, ...TANK_LEGS_LEFT_UP], stage),
-  armored([...TANK_HEAD, ...TANK_ARMS_LOW, ...TANK_LEGS_PLANTED], stage),
-  armored(
-    [...TANK_HEAD, ...TANK_ARMS_SWING_BACK, ...TANK_LEGS_RIGHT_UP],
-    stage,
-  ),
+  armored(tankFrame(TANK_FOREARMS_LOW, TANK_LEGS_PLANTED), stage),
+  armored(tankFrame(TANK_FOREARMS_LEFT_UP, TANK_LEGS_LEFT_UP), stage),
+  armored(tankFrame(TANK_FOREARMS_LOW, TANK_LEGS_PLANTED), stage),
+  armored(tankFrame(TANK_FOREARMS_RIGHT_UP, TANK_LEGS_RIGHT_UP), stage),
 ]
 
 // NOTE: the Kaboomer is the kid who brought fireworks to scare everyone: a
@@ -754,11 +760,11 @@ export const RUNNER_ICON_PIXELS: ReadonlyArray<string> = [
 
 export const TANK_ICON_PIXELS: ReadonlyArray<string> = [
   '.aAAAa.',
-  'aAAAAAa',
-  'aEaAaEa',
-  'HHHHHHH',
-  'lLGMMRR',
-  'LLlRrrR',
+  'KAAAAAK',
+  '.aaaaa.',
+  'sEsMsEs',
+  'RRWWWRR',
+  'RssssfR',
 ]
 
 export const EXPLODER_ICON_PIXELS: ReadonlyArray<string> = [

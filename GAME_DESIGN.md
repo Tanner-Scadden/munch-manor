@@ -605,7 +605,7 @@ Each kind lists its wear stages in `ZOMBIE_KINDS`. A stage comes off when health
 | ----------- | ------------------ | --------------------------------------------------------------------------------------- |
 | Groaner     | 2/3, 1/3           | A reaching arm, then the top of its skull                                               |
 | Hotfoot     | 1/2                | Its hair and scalp                                                                      |
-| Big Lug     | 3/4, 1/2, 1/4      | His junk armor with a clang: the pot lid, the stop sign, then the bucket helmet         |
+| Big Lug     | 2/3, 1/3           | His kitchen armor with a clang: the frying pan, then the stock pot helmet               |
 | Kaboomer    | 2/3, 1/3           | His hugging arm, then the bomb casing cracks with a hot glow                            |
 | Big Leaguer | 2/3, 1/3           | His cap, then his throwing arm hangs limp and his wind-up takes 1.35 s instead of 0.9 s |
 | Ankle Biter | 1/2                | The skull on its back cracks pink                                                       |
@@ -737,9 +737,9 @@ Added on 2026-10-28 and reworked on 2026-10-29 from owner feedback, all approved
 
 The kind id stays `Exploder`. A hunched lime zombie with googly eyes hugging a round black cartoon bomb with a lit fuse, never a vest. Shrunk on 2026-10-29 to 13 by 12 pixels so he does not tower over the others. The fuse shortens and sparks faster as he nears the player or wears. A red floor ring fills before he blows. Bullets on the bomb clonk. The pop is a cartoon KABOOM with a fireball, a shockwave ring, and smoke. Since 2026-10-29 he is slower and tougher (speed 14 to 17, health 6) and shows a health bar once hurt.
 
-#### The Big Lug's junk armor
+#### The Big Lug's kitchen armor
 
-Redrawn on 2026-10-29 at the owner's request ("should look like an ARMORED zombie whose armor falls off as he is hit"): 18 by 19 pixels, a scrawny blue-grey zombie in a bucket helmet, a pot lid on his shoulder, and a stop sign chained to his chest, each knocked off by his wear. Visual only; his stats and radius did not change.
+Redrawn on 2026-10-29 at the owner's request ("should look like an ARMORED zombie whose armor falls off as he is hit"), and again on 2026-11-10 after playtesters found him ugly and hard to read. He is the Glutton: 18 by 19 pixels, a big round green belly bursting out of a red waistcoat, a napkin bib, a grey stock pot helmet with handles and a knob, and a dark frying pan held up as a shield. His green skin sits apart from the grey metal so the armor reads off him, and his arms are 2 pixels wide. Two pieces come off with his wear: the pan at two thirds, then the pot at a third, which leaves a bald guest in his waistcoat and bib. Each lands on the floor as a pan or a pot. Visual only; his stats and radius did not change, and the co-op wire did not either (a wear stage is read from health).
 
 #### Horde frenzy
 
