@@ -50,7 +50,6 @@ export const goalOf = (feat: Feat): number =>
     OpenedRoom: ({ count }) => count,
     LitFire: () => 1,
     KeyFromMarked: ({ count }) => count,
-    Delivered: ({ count }) => count,
     KitchenKills: ({ count }) => count,
     KitchenStandKills: ({ count }) => count,
   })
@@ -72,7 +71,6 @@ export const progressOf: {
       OpenedRoom: () => tally.roomsOpened,
       LitFire: () => tally.firesLit,
       KeyFromMarked: () => tally.markedKeys,
-      Delivered: () => tally.delivered,
       KitchenKills: () => tally.kitchenKills,
       KitchenStandKills: () => tally.kitchenStandKills,
     }),

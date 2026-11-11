@@ -21,7 +21,7 @@ The default bot plays like a person (`bot/hand.ts`, decided 2026-10-31: real pla
 
 ## The escape
 
-A win is an escape (`docs/ESCAPE_PLAN.md`, layer 17). The bot plays the dare (`bot/escape.ts`): in a break it buys open the boards toward a thing on the list (hidden in a room, or locked in that room's display case, the rooms on the way first), takes what a case opened for it holds when it beats the weaker of its two guns (or is the Laser Sight), picks up a thing off the list and carries it to a locked case (the one with a thing on the list inside first, else one whose prize it wants), and walks onto every thing on the list it can reach. With Grandma's recipe in the stove it fights the wave in the kitchen while it has 3 hearts or more, for the stove's feat. It fights Uncle Chunk where he comes in, takes his hat, holds out while the front door unlocks, and walks out. Before READY it walks back to where it holds; a break past a minute sends it back, past a minute and a half it goes from wherever it stands. Two hearts down it pulls the fridge for the Sandwich too. The campaign report adds two Escape lines (when the list was done, the hat taken, the wave escaped on, things found, cases opened, deliveries), and its tables run to wave 14 for the ramp.
+A win is an escape (`docs/ESCAPE_PLAN.md`, layer 17). The bot plays the dare (`bot/escape.ts`): in a break it buys open the boards toward a thing on the list (each room behind boards holds one thing, so it opens the rooms that hold one, the rooms on the way first), takes what a case opened for it holds when it beats the weaker of its two guns (or is the Laser Sight), and walks onto every thing on the list it can reach. It fights Uncle Chunk where he comes in, takes his hat, holds out while the front door unlocks, and walks out. Before READY it walks back to where it holds; a break past a minute sends it back, past a minute and a half it goes from wherever it stands. Two hearts down it pulls the fridge for the Sandwich too. The campaign report adds two Escape lines (when the list was done, the hat taken, the wave escaped on, things found, cases opened), a line of the median wave each room opened on, and its tables run to wave 14 for the ramp.
 
 ## Callings
 
@@ -67,7 +67,7 @@ The baseline is written when it is missing or with `--update-baseline`. `--exten
 | `bot/hand.ts`           | The human hand: reaction time, aim that trails and overshoots, sticky targets, what it notices; `AIM=sharp` skips it    |
 | `bot/dodging.ts`        | Pickups, the floor's and the boss's tells, kiting and engaging                                                          |
 | `bot/route.ts`          | The way between the rooms, and whether a point is floor a player stands on                                              |
-| `bot/escape.ts`         | The escape: the list, the boards toward it, the display cases, deliveries, the stove's recipe, the front door           |
+| `bot/escape.ts`         | The escape: the list, the rooms that hold it, the display cases, the front door                                         |
 | `bot/guns.ts`           | The guns it carries and which one a new gun replaces                                                                    |
 | `bot/fighting.ts`       | The Pan's stance, the knife, where it walks in a wave, aiming and firing                                                |
 | `bot/fridgeFighting.ts` | The fridge weapons' plans: the Cooker, the Pan, and Brain Freeze                                                        |

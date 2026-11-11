@@ -239,11 +239,11 @@ describe('exploring feats, one player', () => {
   test('every feat reads its own count, never past its goal', () => {
     const tally = modifyFields(freshTally, {
       markedKeys: () => 9,
-      delivered: () => 1,
+      kitchenKills: () => 1,
       firesLit: () => 1,
     })
     expect(progressOf(tally, Feat.KeyFromMarked({ count: 3 }))).toBe(3)
-    expect(progressOf(tally, Feat.Delivered({ count: 2 }))).toBe(1)
+    expect(progressOf(tally, Feat.KitchenKills({ count: 2 }))).toBe(1)
     expect(progressOf(tally, Feat.LitFire())).toBe(1)
     expect(goalOf(Feat.LitFire())).toBe(1)
   })

@@ -1,4 +1,4 @@
-import { Array, Effect, Option } from 'effect'
+import { Array, Effect, Option, String } from 'effect'
 import type { Canvas } from 'foldkit'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -12,6 +12,7 @@ import {
   type Model,
   Phase,
   Tour,
+  type Vector,
 } from '../../../app/model'
 import { cameraOf, viewBoxOf, worldToView } from '../../../render/camera'
 import { dareHintShapes, rattlesSpot } from '../../../screens/game/stallBubble'
@@ -20,22 +21,21 @@ import {
   DISTANT_SPAWN,
   freshRunModel,
   pastTimedBreaks,
-  withActors,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
   settleRunCommands,
   tick,
   ticks,
-  zombieOf,
 } from '../../../test/testing'
-import { spotsOf } from '../../../world/dare/dare'
+import { maybeThingRoom } from '../../../world/dare/dare'
 import {
   type DareKind,
   type DareThing,
   DareThingState,
 } from '../../../world/dare/dareSchema'
-import { levelOf } from '../../../world/level/arena'
+import { levelOf, tileCenter } from '../../../world/level/arena'
+import { DINING_ROOM_ID, roomSpotsOf } from '../../../world/level/plan'
 import { focusOf } from '../../../world/party/party'
 import {
   EASY_REST_MS,
@@ -69,12 +69,18 @@ const isInView = (model: Model, point: { x: number; y: number }): boolean => {
 
 const base = freshRunModel()
 
-const FAR_SPOT = Option.getOrThrow(
-  Array.findFirst(
-    spotsOf(levelOf(base)),
-    ({ point, isBehindBoards }) => isBehindBoards && !isInView(base, point),
-  ),
-).point
+// NOTE: a hiding spot in a room behind boards, out of the window.
+const BOARDED_SPOTS: ReadonlyArray<Vector> = Array.flatMap(
+  roomSpotsOf(levelOf(base).spec),
+  ({ room, hiding }): ReadonlyArray<Vector> =>
+    room === DINING_ROOM_ID
+      ? []
+      : Array.map(hiding, ({ tile }) => tileCenter(tile)),
+)
+
+const FAR_SPOT: Vector = Option.getOrThrow(
+  Array.findFirst(BOARDED_SPOTS, point => !isInView(base, point)),
+)
 
 // NOTE: a spot in view a few steps from the player, out of reach.
 const NEAR_SPOT = {
@@ -89,7 +95,6 @@ const hidden = (
 ): DareThing => ({
   id,
   kind,
-  isAsked: true,
   state: DareThingState.Hidden(at),
 })
 
@@ -100,8 +105,16 @@ const withList = (model: Model, things: ReadonlyArray<DareThing>): Model =>
     dareThings: () => things,
   })
 
-// NOTE: the butler's bell behind the kitchen's boards, out of the window.
-const BELL_FAR = [hidden(0, 'ButlersBell', FAR_SPOT)]
+// NOTE: the butler's bell in a room behind boards, out of the window.
+const BELL = hidden(0, 'ButlersBell', FAR_SPOT)
+const BELL_FAR = [BELL]
+
+// NOTE: the room the bell lies in, in Rattles' words.
+const BELL_ROOM_WORD = Option.getOrThrow(
+  Option.map(maybeThingRoom(BELL, levelOf(base)), ({ id }) =>
+    String.toUpperCase(id),
+  ),
+)
 
 const onDifficulty = (model: Model, difficulty: Difficulty): Model =>
   modifyFields(model, {
@@ -174,6 +187,11 @@ describe("Rattles' hints, by the difficulty dial", () => {
             Option.some('ButlersBell'),
           )
           expect(
+            Option.exists(lineOf(current), line =>
+              String.includes(BELL_ROOM_WORD)(line),
+            ),
+          ).toBe(true)
+          expect(
             Option.flatMap(maybeHintCall(current), call => call.maybeTarget),
           ).toEqual(Option.some(FAR_SPOT))
         }),
@@ -195,8 +213,11 @@ describe("Rattles' hints, by the difficulty dial", () => {
   it.effect('Dare: hollers again after a rest, with a new line', () => {
     const seen = Option.getOrThrow(
       Option.flatMap(
-        Array.findFirst(HINT_LINES, ({ maybeIcon }) =>
-          Option.contains(maybeIcon, 'ButlersBell'),
+        Array.findFirst(
+          HINT_LINES,
+          ({ line, maybeIcon }) =>
+            Option.contains(maybeIcon, 'ButlersBell') &&
+            String.includes(BELL_ROOM_WORD)(line),
         ),
         ({ line }) => Option.some(line),
       ),
@@ -246,56 +267,23 @@ describe("Rattles' hints, by the difficulty dial", () => {
     ),
   )
 
-  it.effect(
-    'Triple Dare: a marked zombie walking in gets one holler, pointing nowhere',
-    () => {
-      const portrait: DareThing = {
-        id: 0,
-        kind: 'FamilyPortrait',
-        isAsked: true,
-        state: DareThingState.Carried({ zombieId: 7 }),
-      }
-      const fight = withActors(
-        modifyFields(breakOn('Hard', [portrait]), {
-          phase: () =>
-            Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-        }),
-        [zombieOf('Shambler', 7, 60, 74)],
-      )
-      return Effect.gen(function* () {
-        const called = yield* Story.story(
-          APPLICATION,
-          Story.given(fight),
-          tick(FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(isCalling(current)).toBe(true)
-            expect(current.dareHint.carrierId).toBe(7)
-            expect(
-              Option.flatMap(maybeHintCall(current), call => call.maybeTarget),
-            ).toEqual(Option.none())
-            expect(drawn(current).length).toBeGreaterThan(0)
-            expect(arrowsOf(drawn(current))).toBe(0)
-          }),
-        )
-        return yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(called, {
-              dareHint: hint =>
-                modifyFields(hint, {
-                  call: () => DareHintCall.Quiet(),
-                }),
-            }),
+  it.effect('names the thing once its room is open', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)])),
+      tick(FRAME_MS),
+      settleRunCommands,
+      Story.model(current => {
+        expect(
+          Option.exists(lineOf(current), line =>
+            String.includes('TRY THE')(line),
           ),
-          ...ticks(5, FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(isCalling(current)).toBe(false)
-          }),
+        ).toBe(false)
+        expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
+          Option.some('SilverSpoon'),
         )
-      })
-    },
+      }),
+    ),
   )
 
   it.effect('Triple Dog Dare: a heckle, never a hint', () =>
@@ -363,7 +351,6 @@ describe('the list done', () => {
           {
             id: 0,
             kind: 'SilverSpoon',
-            isAsked: true,
             state: DareThingState.Found({ slot: 0 }),
           },
         ]),

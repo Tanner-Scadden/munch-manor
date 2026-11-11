@@ -244,9 +244,8 @@ export type KitchenCall = typeof KitchenCall.Type
 // NOTE: Rattles' hints about the dare (src/features/dare/rattlesHint.ts): a
 // line in his bubble for a few seconds, pointing at a thing on the list by
 // its id or hanging from his spot. `calledWave` is the last break he called
-// in, `restMs` Easy's wait before the next call in the same break,
-// `carrierId` the last marked zombie he hollered about, and `lastLine` what
-// the player saw last, so it never comes twice in a row. Never saved.
+// in, `restMs` Easy's wait before the next call in the same break, and
+// `lastLine` what the player saw last, so it never comes twice in a row. Never saved.
 export const DareHintCall = defineTaggedUnion({
   Quiet: {},
   Calling: {
@@ -263,7 +262,6 @@ export type DareHintCalling = typeof DareHintCall.Calling.Type
 export const DareHint = Schema.Struct({
   calledWave: Schema.Finite,
   restMs: MillisNumber,
-  carrierId: Schema.Finite,
   lastLine: Schema.String,
   call: DareHintCall,
 })
@@ -272,7 +270,6 @@ export type DareHint = typeof DareHint.Type
 export const quietDareHint: DareHint = {
   calledWave: 0,
   restMs: 0,
-  carrierId: -1,
   lastLine: '',
   call: DareHintCall.Quiet(),
 }

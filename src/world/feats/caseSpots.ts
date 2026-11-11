@@ -102,16 +102,6 @@ const spotOf = (level: Level, displayCase: DisplayCase): CaseSpot =>
     () => NO_SPOT,
   )
 
-// NOTE: the id of the room a case stands in.
-export const caseRoomOf: {
-  (displayCase: DisplayCase): (level: Level) => string
-  (level: Level, displayCase: DisplayCase): string
-} = Function.dual(
-  2,
-  (level: Level, displayCase: DisplayCase): string =>
-    spotOf(level, displayCase).room,
-)
-
 export const caseBoxOf: {
   (displayCase: DisplayCase): (level: Level) => Box
   (level: Level, displayCase: DisplayCase): Box

@@ -590,7 +590,18 @@ const reportCampaign = (
         `Escape: list done in ${listDone.length} runs (median wave ${listDone.length > 0 ? median(listDone) : '-'}), hat taken in ${hats.length} (median wave ${hats.length > 0 ? median(hats) : '-'}), escaped on wave ${wins.length > 0 ? median(Array.map(wins, r => r.cleared + 1)) : '-'} (median)`,
       )
       yield* Console.log(
-        `Escape: things found a run median ${median(Array.map(results, r => r.escape.found))}, cases opened median ${median(Array.map(results, r => r.escape.casesOpened))}, delivered ${Array.reduce(results, 0, (sum, r) => sum + r.escape.delivered)} in all`,
+        `Escape: things found a run median ${median(Array.map(results, r => r.escape.found))}, cases opened median ${median(Array.map(results, r => r.escape.casesOpened))}`,
+      )
+      // NOTE: the wave the bot bought its first room open in, its second,
+      // and so on, the median over the runs that opened that many.
+      const roomWaves = Array.map(Array.range(0, 3), index => {
+        const waves = Array.getSomes(
+          Array.map(results, r => Array.get(r.escape.openedWaves, index)),
+        )
+        return `room ${index + 1}: ${waves.length > 0 ? median(waves) : '-'} (${waves.length} runs)`
+      })
+      yield* Console.log(
+        `Escape: rooms opened by wave (median), ${Array.join(roomWaves, ', ')}`,
       )
     }
     if (setup.isEndless) {

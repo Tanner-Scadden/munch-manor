@@ -13,20 +13,29 @@ import {
 } from '../../domain/clientSchema'
 import type { Difficulty } from '../../shared/playerData'
 import { type Seeded, nextRandom } from '../../shared/prng'
-import { LAST_THING, isDareListDone } from '../../world/dare/dare'
+import {
+  LAST_THING,
+  isDareListDone,
+  isInOpenRoom,
+  maybeThingRoom,
+} from '../../world/dare/dare'
 import {
   DareKind,
   type DareThing,
   DareThingState,
 } from '../../world/dare/dareSchema'
-import { caseFootOf } from '../../world/feats/caseSpots'
-import { stoveBoxOf } from '../../world/kitchen/stove'
 import { levelOf } from '../../world/level/arena'
+import {
+  CELLAR_ROOM_ID,
+  DINING_ROOM_ID,
+  KITCHEN_ROOM_ID,
+  LIBRARY_ROOM_ID,
+  PARLOUR_ROOM_ID,
+} from '../../world/level/plan'
 import {
   GameEvent,
   Phase,
   type Vector,
-  ZombieState,
   roundWaveOf,
 } from '../../world/schema/worldSchema'
 import { isPocketCardOut } from './pocketCard'
@@ -40,14 +49,16 @@ import { isPocketCardOut } from './pocketCard'
 // - Dare (Easy): a hint at a thing on the list each break, and again after a
 //   rest, pointing at it.
 // - Double Dare (Normal): one hint a break, pointing.
-// - Triple Dare (Hard): none in the breaks. Once a marked zombie wearing a
-//   thing on the list walks in, he says it is out there, pointing nowhere.
+// - Triple Dare (Hard): none.
 // - Triple Dog Dare (Nightmare): no hints; he heckles once a break.
 //
-// With the list done he hollers about the hat and the front door, the moment
-// the last thing is found and in each break after. A hint about a thing in
-// the house may point off screen in a break, as the kitchen holler does;
-// nothing ever points at a zombie ("No off-screen hints", GAME_DESIGN.md).
+// Each room holds one thing (src/world/dare/dare.ts), so while its room is
+// still boarded he names the room ("BELL? TRY THE CELLAR."), and once it is
+// open, the thing. With the list done he hollers about the hat and the front
+// door, the moment the last thing is found and in each break after. A hint
+// about a thing in the house may point off screen in a break, as the kitchen
+// holler does; nothing ever points at a zombie ("No off-screen hints",
+// GAME_DESIGN.md). The HUD's list never says where a thing is: only he does.
 
 export const HINT_MS = 5000
 export const EASY_REST_MS = 15_000
@@ -66,20 +77,45 @@ const THING_LINES: Readonly<Record<DareKind, Lines>> = {
   GuestBookPage: ['A PAGE! SIGN ME IN!', 'GUEST BOOK PAGE! THERE!'],
   GrandmasRecipe: ["GRANDMA'S RECIPE! SNIFF!", 'SECRET SAUCE! THAT WAY!'],
   MusicBox: ['HEAR THAT TUNE? FOLLOW IT.', 'LA LA LAAA! THAT WAY!'],
-  ButlersBell: ['DING DING! BEHIND THE BOARDS!', "BUTLER'S BELL! IN THERE!"],
+  ButlersBell: ['DING DING! RIGHT THERE!', "BUTLER'S BELL! IN THERE!"],
   PartyHat: ['LAST THING: HIS HAT.', 'FRONT DOOR! MIND THE HAT!'],
 }
 
-// NOTE: the thing a zombie wears, said in a break with none on the field.
-const MARKED_LINES: Lines = [
-  'A GUEST TOOK YOUR PORTRAIT!',
-  "SOMEBODY'S WEARING IT. RUDE.",
-]
+// NOTE: each thing and room in his words, for the line that names the room
+// a thing lies in while its boards still stand.
+const THING_WORDS: Readonly<Record<DareKind, string>> = {
+  SilverSpoon: 'SPOON',
+  FamilyPortrait: 'PORTRAIT',
+  GuestBookPage: 'PAGE',
+  GrandmasRecipe: 'RECIPE',
+  MusicBox: 'MUSIC BOX',
+  ButlersBell: 'BELL',
+  PartyHat: 'HAT',
+}
 
-// NOTE: said once a zombie wearing it walks in, on Triple Dare.
-const CARRIER_LINES: Lines = [
-  "THAT ONE'S WEARING YOUR PORTRAIT!",
-  "HE'S GOT YOUR STUFF! POP HIM!",
+const ROOM_WORDS: Readonly<Record<string, string>> = {
+  [KITCHEN_ROOM_ID]: 'KITCHEN',
+  [PARLOUR_ROOM_ID]: 'PARLOUR',
+  [LIBRARY_ROOM_ID]: 'LIBRARY',
+  [CELLAR_ROOM_ID]: 'CELLAR',
+  [DINING_ROOM_ID]: 'DINING ROOM',
+}
+
+// NOTE: two lines a room, so the one just seen can be skipped.
+const roomLinesOf = (kind: DareKind, room: string): Lines => {
+  const where = ROOM_WORDS[room] ?? 'BOARDS'
+  return [
+    `${THING_WORDS[kind]}? TRY THE ${where}.`,
+    `THE ${where}! ${THING_WORDS[kind]}'S IN THERE.`,
+  ]
+}
+
+const ROOM_IDS: ReadonlyArray<string> = [
+  KITCHEN_ROOM_ID,
+  PARLOUR_ROOM_ID,
+  LIBRARY_ROOM_ID,
+  CELLAR_ROOM_ID,
+  DINING_ROOM_ID,
 ]
 
 const HECKLES: Lines = [
@@ -99,10 +135,16 @@ export const HINT_LINES: ReadonlyArray<
       maybeIcon: Option.some(kind),
     })),
   ),
-  ...Array.map([...MARKED_LINES, ...CARRIER_LINES], line => ({
-    line,
-    maybeIcon: Option.some<DareKind>('FamilyPortrait'),
-  })),
+  ...Array.flatMap(
+    Array.filter(DareKind.literals, kind => kind !== LAST_THING),
+    (kind: DareKind) =>
+      Array.flatMap(ROOM_IDS, room =>
+        Array.map(roomLinesOf(kind, room), line => ({
+          line,
+          maybeIcon: Option.some(kind),
+        })),
+      ),
+  ),
   ...Array.map(HECKLES, line => ({ line, maybeIcon: Option.none() })),
 ]
 
@@ -142,70 +184,42 @@ export const pickLine: {
 
 // NOTE: where a thing on the list lies for the bubble to point at: its spot
 // while hidden (behind the boards too, as the kitchen holler points there),
-// where its carrier fell, the case it is locked in, or the stove.
-const targetOf =
-  (model: Model) =>
-  (thing: DareThing): Option.Option<Vector> =>
-    DareThingState.matchOrElse(
-      thing.state,
-      {
-        Hidden: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
-        Dropped: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
-        InCase: ({ caseId }): Option.Option<Vector> =>
-          Option.map(
-            Array.findFirst(model.cases, ({ id }) => id === caseId),
-            displayCase => caseFootOf(levelOf(model), displayCase),
-          ),
-        InStove: (): Option.Option<Vector> =>
-          Option.map(stoveBoxOf(model), box => ({
-            x: (box.left + box.right) / 2,
-            y: box.bottom,
-          })),
-      },
-      (): Option.Option<Vector> => Option.none(),
-    )
-
-const thingHint = (thing: DareThing): Option.Option<Hint> =>
+// or where Uncle Chunk dropped his hat.
+const targetOf = (thing: DareThing): Option.Option<Vector> =>
   DareThingState.matchOrElse(
     thing.state,
     {
-      Hidden: (): Option.Option<Hint> =>
-        Option.some({
-          lines: THING_LINES[thing.kind],
-          maybeThingId: Option.some(thing.id),
-        }),
-      Dropped: (): Option.Option<Hint> =>
-        Option.some({
-          lines: THING_LINES[thing.kind],
-          maybeThingId: Option.some(thing.id),
-        }),
-      InCase: (): Option.Option<Hint> =>
-        Option.some({
-          lines: THING_LINES[thing.kind],
-          maybeThingId: Option.some(thing.id),
-        }),
-      InStove: (): Option.Option<Hint> =>
-        Option.some({
-          lines: THING_LINES[thing.kind],
-          maybeThingId: Option.some(thing.id),
-        }),
-      Marked: (): Option.Option<Hint> =>
-        Option.some({ lines: MARKED_LINES, maybeThingId: Option.none() }),
-      Carried: (): Option.Option<Hint> =>
-        Option.some({ lines: MARKED_LINES, maybeThingId: Option.none() }),
+      Hidden: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
+      Dropped: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
     },
-    (): Option.Option<Hint> => Option.none(),
+    (): Option.Option<Vector> => Option.none(),
   )
+
+// NOTE: a thing still hidden: its room while the boards stand, else the
+// thing itself.
+const thingHint =
+  (model: Model) =>
+  (thing: DareThing): Option.Option<Hint> => {
+    if (!DareThingState.isAnyOf(['Hidden'])(thing.state)) {
+      return Option.none()
+    }
+    const level = levelOf(model)
+    const roomLines = Option.match(maybeThingRoom(thing, level), {
+      onNone: (): Lines => THING_LINES[thing.kind],
+      onSome: ({ id }): Lines => roomLinesOf(thing.kind, id),
+    })
+    return Option.some({
+      lines: isInOpenRoom(level, thing.state)
+        ? THING_LINES[thing.kind]
+        : roomLines,
+      maybeThingId: Option.some(thing.id),
+    })
+  }
 
 // NOTE: a hint at one of the list's things still out there, drawn from the
 // cosmetic stream.
 const listHint = (model: Model, state: number): Seeded<Option.Option<Hint>> => {
-  const hints = Array.getSomes(
-    Array.map(
-      Array.filter(model.dareThings, ({ isAsked }) => isAsked),
-      thingHint,
-    ),
-  )
+  const hints = Array.getSomes(Array.map(model.dareThings, thingHint(model)))
   if (!Array.isReadonlyArrayNonEmpty(hints)) {
     return [state, Option.none()]
   }
@@ -229,25 +243,6 @@ const breakHint = (model: Model, state: number): Seeded<Option.Option<Hint>> =>
   isDareListDone(model)
     ? [state, Option.some(FINALE)]
     : BREAK_HINTS[model.difficulty.chosen](model, state)
-
-// NOTE: on Triple Dare, a marked zombie wearing a thing on the list, walking
-// on the field, that Rattles has not hollered about yet.
-const maybeFreshCarrier = (model: Model): Option.Option<number> =>
-  model.difficulty.chosen === 'Hard' && !isDareListDone(model)
-    ? Array.findFirst(model.dareThings, ({ isAsked, state }) =>
-        isAsked &&
-        DareThingState.isAnyOf(['Carried'])(state) &&
-        state.zombieId !== model.dareHint.carrierId &&
-        Array.some(
-          model.zombies,
-          zombie =>
-            zombie.id === state.zombieId &&
-            ZombieState.isAnyOf(['Walking'])(zombie.state),
-        )
-          ? Option.some(state.zombieId)
-          : Option.none(),
-      )
-    : Option.none()
 
 // THE CALL
 
@@ -301,7 +296,7 @@ const isThingGone = (model: Model, maybeThingId: Option.Option<number>) =>
       Option.isNone(
         Option.flatMap(
           Array.findFirst(model.dareThings, thing => thing.id === id),
-          targetOf(model),
+          targetOf,
         ),
       ),
   })
@@ -357,17 +352,6 @@ const callInBreak = (model: Model, wave: number, frameMs: number): Model => {
   })
 }
 
-const callInWave = (model: Model): Model =>
-  Option.match(maybeFreshCarrier(model), {
-    onNone: () => model,
-    onSome: carrierId =>
-      startCall(
-        model,
-        { lines: CARRIER_LINES, maybeThingId: Option.none() },
-        { carrierId: () => carrierId },
-      ),
-  })
-
 const isListDoneThisFrame = (model: Model): boolean =>
   Array.some(model.frameEvents, GameEvent.isAnyOf(['DareListDone']))
 
@@ -377,7 +361,7 @@ const advanceQuiet = (model: Model, frameMs: number): Model => {
   }
   return Phase.isAnyOf(['Preparation'])(model.phase)
     ? callInBreak(model, model.phase.wave, frameMs)
-    : callInWave(model)
+    : model
 }
 
 // NOTE: one frame of Rattles' hints, after the kitchen holler's, so the
@@ -423,7 +407,7 @@ export const maybeHintCall = (model: Model): Option.Option<HintCall> =>
           maybeTarget: Option.flatMap(maybeThingId, id =>
             Option.flatMap(
               Array.findFirst(model.dareThings, thing => thing.id === id),
-              targetOf(model),
+              targetOf,
             ),
           ),
         }),

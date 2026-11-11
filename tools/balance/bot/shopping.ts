@@ -28,15 +28,15 @@ import {
 } from '../../../src/world/party/party'
 import { type Offer, maybeOfferInReach } from '../../../src/world/shop/purchase'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
-import { FRAME_MS, KEYS, type Model, type Vector, distance } from './basics'
 import {
-  caseTarget,
-  deliveryTarget,
-  escapeTarget,
-  holdPoint,
-  wantedBoards,
-  wantsStoveFeat,
-} from './escape'
+  FRAME_MS,
+  KEYS,
+  type Model,
+  ROOM_CENTER,
+  type Vector,
+  distance,
+} from './basics'
+import { caseTarget, escapeTarget, wantedBoards } from './escape'
 import { type Gun, gunValue, weakerGun } from './guns'
 import { isKnobSet, knobNumber, knobText } from './knobs'
 import { type BotState } from './state'
@@ -314,7 +314,6 @@ export const isAtMend = (model: Model): boolean => {
 type PrepPlan =
   | 'Room'
   | 'Case'
-  | 'Deliver'
   | 'Crate'
   | 'Barricade'
   | 'Gnome'
@@ -346,19 +345,15 @@ export const gnomeSpot = (model: Model): Vector =>
 const BREAK_FRAMES = 90_000 / FRAME_MS
 const LATE_FRAMES = 60_000 / FRAME_MS
 
-// NOTE: how near its hold point the bot starts a wave: the kitchen's while
-// it chases the stove's feat, within a few steps of the dining room's aisle
-// otherwise, so a case or a thing in a far room never leaves it starting
-// the wave there.
-const STATION_PX = 20
+// NOTE: how near the dining room's aisle the bot starts a wave, so a case
+// or a thing in a far room never leaves it starting the wave there.
 const RETURN_PX = 60
 
 export const isBreakOverdue = (state: BotState): boolean =>
   state.breakFrames > BREAK_FRAMES
 
 const isAwayFromHold = (model: Model): boolean =>
-  distance(focusOf(model).player, holdPoint(model)) >
-  (wantsStoveFeat(model) ? STATION_PX : RETURN_PX)
+  distance(focusOf(model).player, ROOM_CENTER) > RETURN_PX
 
 export const prepPlan: {
   (model: Model): (state: BotState) => PrepPlan
@@ -375,9 +370,6 @@ export const prepPlan: {
   }
   if (caseTarget(model) !== undefined) {
     return 'Case'
-  }
-  if (deliveryTarget(model) !== undefined) {
-    return 'Deliver'
   }
   if (crateTarget(model) !== undefined) {
     return 'Crate'

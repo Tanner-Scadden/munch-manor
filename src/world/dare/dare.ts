@@ -1,21 +1,26 @@
-import { Array, Function, Option, Result, pipe } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import { type Difficulty } from '../../shared/playerData'
 import { type Seeded, nextRandom, shuffle } from '../../shared/prng'
-import { caseRoomOf } from '../feats/caseSpots'
-import { type Level, levelOf, tileCenter } from '../level/arena'
-import { type LevelSpec, roomSpotsOf } from '../level/plan'
+import { type Level, type Room, levelOf, tileCenter } from '../level/arena'
+import {
+  CELLAR_ROOM_ID,
+  DINING_ROOM_ID,
+  KITCHEN_ROOM_ID,
+  LIBRARY_ROOM_ID,
+  type LevelSpec,
+  PARLOUR_ROOM_ID,
+  type RoomSpots,
+  roomSpotsOf,
+} from '../level/plan'
 import { focusOf, forEachSeat, isStanding, seatStateAt } from '../party/party'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
-  type ExitId,
   GameEvent,
   Phase,
   type PlayerSlot,
   RunMode,
   type Vector,
-  type Zombie,
-  ZombieState,
 } from '../schema/worldSchema'
 import { clamp, distanceBetween } from '../step/geometry'
 import {
@@ -27,69 +32,30 @@ import {
 } from './dareSchema'
 
 // The dare (LORE.md, "What the dare asks for changes every run"): your
-// friends' card asks you to bring things out of the house, and each thing in
-// the pool comes back to you its own way. The list rolls as a campaign run
-// starts, from the dare's own salted generator (`freshDare`), sized by the
-// difficulty, and Uncle Chunk's party hat always closes it. A couple of the
-// pool's other things are in the house too, off the list: a player can pick
-// one up and carry it, for the display cases to take.
+// friends' card asks you to bring things out of the house. One rule finds
+// them all (owner, 2026-11-10): each room holds one thing. The list rolls
+// as a campaign run starts, from the dare's own salted generator
+// (`freshDare`): which rooms behind boards hold a thing, as many as the
+// difficulty asks for, and which of the room's own things lies there (the
+// recipe in the kitchen, the guest book's page in the library), on one of
+// the room's hand-picked spots (roomSpotsOf in src/world/level/plan.ts).
+// So the loop is the same for every thing: survive the waves, earn keys,
+// open a room, find its thing in it. Uncle Chunk's party hat always closes
+// the list, from the finale (src/world/dare/finale.ts).
 //
-// Walking onto a thing the dare asked for finds it for the whole crew; the
-// seat that touched it only says who. The finale (Uncle Chunk at the front
-// door) waits on `isDareListDone` and the DareListDone event.
-
-// WAYS
-
-// NOTE: how each thing comes back to you. Hidden things sit in one of a
-// few hand-picked spots; the marked zombie carries his and drops it when he
-// goes down; behind the boards is a spot in a room not open yet; the music
-// box sits in a spot and plays its tune. The guest book's page is locked in
-// a display case further in, and falls out in front of it when the case
-// opens (by its feat, or a thing off the list delivered to it); Grandma's
-// recipe cooks at the stove the first time a player earns the stove's feat
-// (src/world/dare/dareCases.ts). The hat comes with the finale.
-export type DareWay =
-  | 'Hidden'
-  | 'Marked'
-  | 'BehindBoards'
-  | 'Heard'
-  | 'InCase'
-  | 'Cooked'
-  | 'Finale'
-
-export const DARE_WAYS: Readonly<Record<DareKind, DareWay>> = {
-  SilverSpoon: 'Hidden',
-  FamilyPortrait: 'Marked',
-  GuestBookPage: 'InCase',
-  GrandmasRecipe: 'Cooked',
-  MusicBox: 'Heard',
-  ButlersBell: 'BehindBoards',
-  PartyHat: 'Finale',
-}
-
-const ROLLABLE_WAYS: ReadonlyArray<DareWay> = [
-  'Hidden',
-  'Marked',
-  'BehindBoards',
-  'Heard',
-  'InCase',
-  'Cooked',
-]
-
-const isRollable = (kind: DareKind): boolean =>
-  Array.contains(ROLLABLE_WAYS, DARE_WAYS[kind])
-
-// NOTE: the pool a list rolls from, in the Schema's order so a seed always
-// rolls the same list.
-const ROLLABLE_KINDS: ReadonlyArray<DareKind> = Array.filter(
-  DareKind.literals,
-  isRollable,
-)
+// Walking onto a thing finds it for the whole crew; the seat that touched
+// it only says who. The finale waits on `isDareListDone` and the
+// DareListDone event.
 
 export const LAST_THING: DareKind = 'PartyHat'
 
 // NOTE: how many things a list asks for before the hat, by difficulty
-// (Dare, Double Dare, Triple Dare, Triple Dog Dare).
+// (Dare, Double Dare, Triple Dare, Triple Dog Dare). The house has four
+// rooms behind boards (the kitchen and the three slot rooms), so even
+// Triple Dog Dare's list has a room of its own for each thing, and the
+// dining room, where the run starts, holds none: a thing there would be
+// found before the first wave. A list longer than the rooms behind boards
+// (a test's level) spills into the rooms with none.
 export const LIST_LENGTHS: Readonly<Record<Difficulty, number>> = {
   Easy: 2,
   Normal: 3,
@@ -97,254 +63,104 @@ export const LIST_LENGTHS: Readonly<Record<Difficulty, number>> = {
   Nightmare: 4,
 }
 
-type DareRules = Readonly<{
-  reachPx: number
-  offListCount: number
-  markFromWave: number
-  dropInsetPx: number
-}>
+type DareRules = Readonly<{ reachPx: number; dropInsetPx: number }>
 
-// NOTE: how close to a display case's foot a thing in hand is delivered.
-export const DELIVER_REACH_PX = 14
+const DARE_RULES: DareRules = { reachPx: 10, dropInsetPx: 8 }
 
-const DARE_RULES: DareRules = {
-  reachPx: 10,
-  offListCount: 2,
-  markFromWave: 2,
-  dropInsetPx: 8,
+// THE ROOMS' THINGS
+
+// NOTE: the things each room may hold, the likeliest fit first: Grandma's
+// recipe, the silver spoon, or the butler's bell in the kitchen, the music
+// box or the family portrait in the parlour, the guest book's page or the
+// portrait in the library, the bell or the spoon in the cellar. Every pair
+// of rooms keeps a thing of its own, so a run's things never repeat.
+const ROOM_THINGS: Readonly<Record<string, ReadonlyArray<DareKind>>> = {
+  [KITCHEN_ROOM_ID]: ['GrandmasRecipe', 'SilverSpoon', 'ButlersBell'],
+  [PARLOUR_ROOM_ID]: ['MusicBox', 'FamilyPortrait'],
+  [LIBRARY_ROOM_ID]: ['GuestBookPage', 'FamilyPortrait'],
+  [CELLAR_ROOM_ID]: ['ButlersBell', 'SilverSpoon'],
+  [DINING_ROOM_ID]: ['SilverSpoon', 'FamilyPortrait'],
 }
 
-// SPOTS
-
-// NOTE: how deep a room is: 0 for one with no boards (the dining room), 1
-// behind one set (the kitchen, the west and east slots), 2 behind two (the
-// far slot, past the east room). A thing rolls into a spot or a case by
-// these weights, so most of the hunt is behind boards and the deepest rooms
-// the most likely: a run has to spend its keys to finish the list. Tuned
-// against the balance bot (most Double Dare escapes came at wave 3 with
-// every spot alike).
-const DEPTH_WEIGHTS: Array.NonEmptyReadonlyArray<number> = [1, 3, 6]
-
-const weightOf = (depth: number): number =>
-  Option.getOrElse(Array.get(DEPTH_WEIGHTS, depth), () =>
-    Array.lastNonEmpty(DEPTH_WEIGHTS),
-  )
-
-type Spot = Readonly<{
-  point: Vector
-  depth: number
-  isBehindBoards: boolean
-}>
-
-const exitDepthOf = (spec: LevelSpec, exit: ExitId): number =>
-  Option.match(
-    Array.findFirst(spec.exits, ({ id }) => id === exit),
-    {
-      onNone: () => 1,
-      onSome: ({ requires }) =>
-        1 +
-        Array.reduce(requires, 0, (deepest, required) =>
-          Math.max(deepest, exitDepthOf(spec, required)),
-        ),
-    },
-  )
-
-// NOTE: a room's depth by its id, from the boards on the way to it.
-export const roomDepthOf: {
-  (room: string): (spec: LevelSpec) => number
-  (spec: LevelSpec, room: string): number
-} = Function.dual(2, (spec: LevelSpec, room: string): number =>
-  Option.match(
-    Array.findFirst(spec.rooms, ({ id }) => id === room),
-    {
-      onNone: () => 0,
-      onSome: ({ maybeExit }) =>
-        Option.match(maybeExit, {
-          onNone: () => 0,
-          onSome: exit => exitDepthOf(spec, exit),
-        }),
-    },
-  ),
+// NOTE: every thing a room can hold, in the Schema's order, the hat aside:
+// a room's own fall back on these once its own are taken.
+const ROLLABLE_KINDS: ReadonlyArray<DareKind> = Array.filter(
+  DareKind.literals,
+  kind => kind !== LAST_THING,
 )
 
-const spotsByLevel = new WeakMap<Level, ReadonlyArray<Spot>>()
-
-// NOTE: every hiding spot of the level's rooms in world pixels, read off
-// each room's drafted marks (`1` to `4`, roomSpotsOf in
-// src/world/level/plan.ts), so a spot follows its room into whichever slot
-// the run rolled, with its room's depth.
-export const spotsOf = (level: Level): ReadonlyArray<Spot> => {
-  const cached = spotsByLevel.get(level)
-  if (cached !== undefined) {
-    return cached
-  }
-  const spots = Array.flatMap(roomSpotsOf(level.spec), ({ room, hiding }) => {
-    const depth = roomDepthOf(level.spec, room)
-    return Array.map(hiding, ({ tile }): Spot => ({
-      point: tileCenter(tile),
-      depth,
-      isBehindBoards: depth > 0,
-    }))
-  })
-  spotsByLevel.set(level, spots)
-  return spots
+// NOTE: a room's things, its own first, then any other, none of `taken`.
+const thingsFor = (
+  room: string,
+  taken: ReadonlyArray<DareKind>,
+): ReadonlyArray<DareKind> => {
+  const own = Array.filter(
+    ROOM_THINGS[room] ?? [],
+    kind => !Array.contains(taken, kind),
+  )
+  return Array.isReadonlyArrayNonEmpty(own)
+    ? own
+    : Array.filter(ROLLABLE_KINDS, kind => !Array.contains(taken, kind))
 }
 
-// NOTE: a point in a room the crew can walk in: one with no exit, or one
-// whose exit is open.
-export const isInOpenRoom: {
-  (point: Vector): (level: Level) => boolean
-  (level: Level, point: Vector): boolean
-} = Function.dual(2, (level: Level, point: Vector): boolean =>
-  Array.some(
-    level.rooms,
-    ({ box, isOpen }) =>
-      isOpen &&
-      point.x >= box.left &&
-      point.x < box.right &&
-      point.y >= box.top &&
-      point.y < box.bottom,
-  ),
-)
-
-// ROLLING
-
-type Placing = Readonly<{
-  state: number
-  free: ReadonlyArray<Spot>
-}>
-
-// NOTE: one of `items` drawn by weight, with the draw's next state.
-const drawWeighted = <A>(
+// NOTE: a draw from the dare's stream as one of `items`.
+const drawOne = <A>(
   state: number,
   items: ReadonlyArray<A>,
-  weight: (item: A) => number,
 ): Seeded<Option.Option<A>> => {
   const draw = nextRandom(state)
-  const total = Array.reduce(items, 0, (sum, item) => sum + weight(item))
-  const target = draw.value * total
-  const [, picked] = Array.reduce(
-    items,
-    [0, Option.none<A>()] as const,
-    ([below, found], item): readonly [number, Option.Option<A>] => {
-      const above = below + weight(item)
-      return [
-        above,
-        Option.isNone(found) && target < above ? Option.some(item) : found,
-      ]
-    },
-  )
-  return [draw.nextState, Option.orElse(picked, () => Array.last(items))]
-}
-
-const drawSpot = (
-  placing: Placing,
-  wantsBoards: boolean,
-  start: Vector,
-): Seeded<Readonly<{ free: ReadonlyArray<Spot>; point: Vector }>> => {
-  const fitting = Array.filter(
-    placing.free,
-    ({ isBehindBoards }) => !wantsBoards || isBehindBoards,
-  )
-  const pool = Array.isReadonlyArrayNonEmpty(fitting) ? fitting : placing.free
-  const [nextState, picked] = drawWeighted(placing.state, pool, ({ depth }) =>
-    weightOf(depth),
-  )
-  return Option.match(picked, {
-    onNone: () => [nextState, { free: placing.free, point: start }],
-    onSome: spot => [
-      nextState,
-      {
-        free: Array.filter(placing.free, other => other !== spot),
-        point: spot.point,
-      },
-    ],
-  })
-}
-
-// NOTE: the case the guest book's page is locked in: one in a room behind
-// boards, by the rooms' depth weights, or the first case if none is.
-const drawCase = (
-  state: number,
-  world: World,
-  level: Level,
-): Seeded<number> => {
-  const deep = Array.filter(
-    world.cases,
-    displayCase => roomDepthOf(level.spec, caseRoomOf(level, displayCase)) > 0,
-  )
-  const [nextState, picked] = drawWeighted(state, deep, displayCase =>
-    weightOf(roomDepthOf(level.spec, caseRoomOf(level, displayCase))),
-  )
   return [
-    nextState,
-    Option.getOrElse(
-      Option.map(
-        Option.orElse(picked, () => Array.head(world.cases)),
-        ({ id }) => id,
-      ),
-      () => 0,
-    ),
+    draw.nextState,
+    Array.get(items, Math.floor(draw.value * items.length)),
   ]
 }
 
-const placeThing = (
-  placing: Placing,
-  kind: DareKind,
-  world: World,
-  level: Level,
-): Seeded<Readonly<{ free: ReadonlyArray<Spot>; state: DareThingState }>> => {
-  const way = DARE_WAYS[kind]
-  if (way === 'Marked') {
-    return [
-      placing.state,
-      { free: placing.free, state: DareThingState.Marked() },
-    ]
-  }
-  if (way === 'Cooked') {
-    return [
-      placing.state,
-      { free: placing.free, state: DareThingState.InStove() },
-    ]
-  }
-  if (way === 'InCase') {
-    const [state, caseId] = drawCase(placing.state, world, level)
-    return [
-      state,
-      { free: placing.free, state: DareThingState.InCase({ caseId }) },
-    ]
-  }
-  const [state, { free, point }] = drawSpot(
-    placing,
-    way === 'BehindBoards',
-    level.start,
+const hasExit = (spec: LevelSpec, room: string): boolean =>
+  Array.some(
+    spec.rooms,
+    ({ id, maybeExit }) => id === room && Option.isSome(maybeExit),
   )
-  return [state, { free, state: DareThingState.Hidden(point) }]
+
+// NOTE: the rooms a list may fill, in the order it fills them: the rooms
+// behind boards shuffled, then those with none in the level's order, each
+// with a hiding spot at least.
+const roomOrder = (
+  state: number,
+  level: Level,
+): Seeded<ReadonlyArray<RoomSpots>> => {
+  const rooms = Array.filter(roomSpotsOf(level.spec), ({ hiding }) =>
+    Array.isReadonlyArrayNonEmpty(hiding),
+  )
+  const boarded = Array.filter(rooms, ({ room }) => hasExit(level.spec, room))
+  const open = Array.filter(rooms, ({ room }) => !hasExit(level.spec, room))
+  const [nextState, shuffled] = Array.match(boarded, {
+    onEmpty: (): Seeded<ReadonlyArray<RoomSpots>> => [state, []],
+    onNonEmpty: nonEmpty => shuffle(state, nonEmpty),
+  })
+  return [nextState, [...shuffled, ...open]]
 }
 
-// NOTE: the list before the hat: the pool shuffled, the first `length` of
-// it, and on Triple Dare the marked zombie's thing always among them.
-const rollList = (
-  state: number,
-  difficulty: Difficulty,
-): Seeded<
-  Readonly<{ asked: ReadonlyArray<DareKind>; rest: ReadonlyArray<DareKind> }>
-> => {
-  const [nextState, order] = Array.match(ROLLABLE_KINDS, {
-    onEmpty: (): Seeded<ReadonlyArray<DareKind>> => [state, []],
-    onNonEmpty: kinds => shuffle(state, kinds),
-  })
-  const length = LIST_LENGTHS[difficulty]
-  const ordered =
-    difficulty === 'Hard'
-      ? Array.prepend(
-          Array.filter(order, kind => DARE_WAYS[kind] !== 'Marked'),
-          'FamilyPortrait' as const,
-        )
-      : order
+type Placing = Readonly<{
+  state: number
+  taken: ReadonlyArray<DareKind>
+}>
+
+// NOTE: a room's thing, drawn from its own, on one of its hiding spots.
+const placeIn = (
+  placing: Placing,
+  { room, hiding }: RoomSpots,
+): Seeded<Option.Option<Readonly<{ kind: DareKind; point: Vector }>>> => {
+  const [kindState, maybeKind] = drawOne(
+    placing.state,
+    thingsFor(room, placing.taken),
+  )
+  const [spotState, maybeSpot] = drawOne(kindState, hiding)
   return [
-    nextState,
-    { asked: Array.take(ordered, length), rest: Array.drop(ordered, length) },
+    spotState,
+    Option.zipWith(maybeKind, maybeSpot, (kind, { tile }) => ({
+      kind,
+      point: tileCenter(tile),
+    })),
   ]
 }
 
@@ -352,37 +168,50 @@ const rolledThings = (
   world: World,
 ): Readonly<{ dare: Dare; things: ReadonlyArray<DareThing> }> => {
   const level = levelOf(world)
-  const [listState, { asked, rest }] = rollList(
-    world.dare.rngState,
-    world.difficulty.chosen,
-  )
-  const offList = Array.take(rest, DARE_RULES.offListCount)
-  const wanted = [
-    ...Array.map(asked, kind => ({ kind, isAsked: true })),
-    ...Array.map(offList, kind => ({ kind, isAsked: false })),
-  ]
-  const [placing, things] = Array.mapAccum(
-    wanted,
-    { state: listState, free: spotsOf(level) },
+  const [orderState, rooms] = roomOrder(world.dare.rngState, level)
+  const chosen = Array.take(rooms, LIST_LENGTHS[world.difficulty.chosen])
+  const [placing, placed] = Array.mapAccum(
+    chosen,
+    { state: orderState, taken: [] },
     (
       current: Placing,
-      { kind, isAsked },
-      index,
-    ): readonly [Placing, DareThing] => {
-      const [state, placed] = placeThing(current, kind, world, level)
+      room,
+    ): readonly [
+      Placing,
+      Option.Option<Readonly<{ kind: DareKind; point: Vector }>>,
+    ] => {
+      const [state, maybePlaced] = placeIn(current, room)
       return [
-        { state, free: placed.free },
-        { id: index, kind, isAsked, state: placed.state },
+        {
+          state,
+          taken: Option.match(maybePlaced, {
+            onNone: () => current.taken,
+            onSome: ({ kind }) => [...current.taken, kind],
+          }),
+        },
+        maybePlaced,
       ]
     },
   )
+  const things = Array.map(
+    Array.getSomes(placed),
+    ({ kind, point }, id): DareThing => ({
+      id,
+      kind,
+      state: DareThingState.Hidden(point),
+    }),
+  )
   return {
-    dare: { rngState: placing.state, list: asked, finale: Finale.Hunting() },
+    dare: {
+      rngState: placing.state,
+      list: Array.map(things, ({ kind }) => kind),
+      finale: Finale.Hunting(),
+    },
     things,
   }
 }
 
-// NOTE: rolls the run's list and puts its things in the house, as a run
+// NOTE: rolls the run's list and lays each thing in its room, as a run
 // starts. Endless ("stay the night") has no list.
 export const rollDare = <M extends World>(world: M): M => {
   if (!RunMode.isAnyOf(['Campaign'])(world.mode)) {
@@ -407,25 +236,22 @@ const isFound = (thing: DareThing): boolean =>
 const hasDare = (world: World): boolean =>
   Array.isReadonlyArrayNonEmpty(world.dare.list)
 
-// NOTE: the things the list asked for, the hat aside: the hat is in the
-// house only once Uncle Chunk drops it (src/world/dare/finale.ts).
-const askedThings = (world: World): ReadonlyArray<DareThing> =>
-  Array.filter(
-    world.dareThings,
-    ({ isAsked, kind }) => isAsked && kind !== LAST_THING,
-  )
+// NOTE: the list's things, the hat aside: the hat is in the house only
+// once Uncle Chunk drops it (src/world/dare/finale.ts).
+const listThings = (world: World): ReadonlyArray<DareThing> =>
+  Array.filter(world.dareThings, ({ kind }) => kind !== LAST_THING)
 
 const maybeHat = (world: World): Option.Option<DareThing> =>
   Array.findFirst(world.dareThings, ({ kind }) => kind === LAST_THING)
 
 // NOTE: every thing on the list found, the hat aside: the finale's cue.
 export const isDareListDone = (world: World): boolean =>
-  hasDare(world) && Array.every(askedThings(world), isFound)
+  hasDare(world) && Array.every(listThings(world), isFound)
 
 // NOTE: how many things on the list the crew has found, the hat aside:
 // each pays rank (src/world/heroes/rank.ts) and rides the run's summary.
 export const dareItemsFoundOf = (world: World): number =>
-  Array.filter(askedThings(world), isFound).length
+  Array.filter(listThings(world), isFound).length
 
 // NOTE: whether Uncle Chunk has dropped his hat yet, and whether a player
 // has taken it.
@@ -445,7 +271,7 @@ export const dareCardOf = (
         ...Array.map(world.dare.list, kind => ({
           kind,
           isFound: Array.some(
-            askedThings(world),
+            listThings(world),
             thing => thing.kind === kind && isFound(thing),
           ),
         })),
@@ -453,22 +279,40 @@ export const dareCardOf = (
       ]
     : []
 
-// NOTE: the things a seat has in hand, off the list.
-export const heldBy: {
-  (slot: PlayerSlot): (world: World) => ReadonlyArray<DareThing>
-  (world: World, slot: PlayerSlot): ReadonlyArray<DareThing>
-} = Function.dual(
-  2,
-  (world: World, slot: PlayerSlot): ReadonlyArray<DareThing> =>
-    Array.filter(
-      world.dareThings,
-      ({ state }) =>
-        DareThingState.isAnyOf(['Held'])(state) && state.slot === slot,
-    ),
+const isInBox = (point: Vector, { box }: Room): boolean =>
+  point.x >= box.left &&
+  point.x < box.right &&
+  point.y >= box.top &&
+  point.y < box.bottom
+
+// NOTE: a point in a room the crew can walk in: one with no exit, or one
+// whose exit is open.
+export const isInOpenRoom: {
+  (point: Vector): (level: Level) => boolean
+  (level: Level, point: Vector): boolean
+} = Function.dual(2, (level: Level, point: Vector): boolean =>
+  Array.some(level.rooms, room => room.isOpen && isInBox(point, room)),
+)
+
+// NOTE: the room a thing lies in, open or shut, by its id: what Rattles
+// names in a hint (src/features/dare/rattlesHint.ts) and the boards the
+// balance bot buys.
+export const maybeThingRoom: {
+  (level: Level): (thing: DareThing) => Option.Option<Room>
+  (thing: DareThing, level: Level): Option.Option<Room>
+} = Function.dual(2, (thing: DareThing, level: Level): Option.Option<Room> =>
+  DareThingState.matchOrElse(
+    thing.state,
+    {
+      Hidden: (point): Option.Option<Room> =>
+        Array.findFirst(level.rooms, room => isInBox(point, room)),
+    },
+    (): Option.Option<Room> => Option.none(),
+  ),
 )
 
 // NOTE: where a thing lies on the floor to be walked onto: a hidden one's
-// spot in an open room, or where its carrier fell.
+// spot in an open room, or where Uncle Chunk dropped his hat.
 export const maybeLyingAt: {
   (level: Level): (thing: DareThing) => Option.Option<Vector>
   (thing: DareThing, level: Level): Option.Option<Vector>
@@ -484,28 +328,13 @@ export const maybeLyingAt: {
   ),
 )
 
-// NOTE: the music box's spot while it still sits there, for its tune.
+// NOTE: the music box's spot while it still lies there, for its tune: pure
+// flavor now, as each room's thing is found by opening the room.
 export const maybeTuneSpot = (world: World): Option.Option<Vector> =>
-  pipe(
-    world.dareThings,
-    Array.findFirst(
-      ({ kind, state }) =>
-        DARE_WAYS[kind] === 'Heard' &&
-        DareThingState.isAnyOf(['Hidden'])(state),
-    ),
-    Option.flatMap(({ state }) =>
-      DareThingState.isAnyOf(['Hidden'])(state)
-        ? Option.some({ x: state.x, y: state.y })
-        : Option.none(),
-    ),
-  )
-
-// NOTE: the zombie wearing the mark, by id, if one wears it now.
-const markedZombieIds = (world: World): ReadonlyArray<number> =>
-  Array.filterMap(world.dareThings, ({ state }) =>
-    DareThingState.isAnyOf(['Carried'])(state)
-      ? Result.succeed(state.zombieId)
-      : Result.failVoid,
+  Array.findFirst(world.dareThings, ({ kind, state }) =>
+    kind === 'MusicBox' && DareThingState.isAnyOf(['Hidden'])(state)
+      ? Option.some({ x: state.x, y: state.y })
+      : Option.none(),
   )
 
 // THE STEP
@@ -516,24 +345,6 @@ const setThing = (
   state: DareThingState,
 ): ReadonlyArray<DareThing> =>
   Array.map(things, thing => (thing.id === id ? { ...thing, state } : thing))
-
-const CARRIER_KINDS: ReadonlyArray<Zombie['kind']> = [
-  'Shambler',
-  'Runner',
-  'Tank',
-]
-
-const isCarrierFor =
-  (level: Level, taken: ReadonlyArray<number>): ((zombie: Zombie) => boolean) =>
-  zombie =>
-    Array.contains(CARRIER_KINDS, zombie.kind) &&
-    ZombieState.isAnyOf(['Walking'])(zombie.state) &&
-    !Array.contains(taken, zombie.id) &&
-    isInOpenRoom(level, zombie)
-
-const markFromWave = (world: World): boolean =>
-  Phase.isAnyOf(['Wave'])(world.phase) &&
-  world.phase.wave >= DARE_RULES.markFromWave
 
 const insideBounds = (level: Level, point: Vector): Vector => ({
   x: clamp(
@@ -548,98 +359,32 @@ const insideBounds = (level: Level, point: Vector): Vector => ({
   ),
 })
 
-// NOTE: a thing falls to the floor at `spot`, for the first standing
-// player to walk onto it: where its carrier fell, or in front of the case
-// or the stove that held it (src/world/dare/dareCases.ts).
-export const dropAt: {
-  (thing: DareThing, spot: Vector): (world: World) => World
-  (world: World, thing: DareThing, spot: Vector): World
-} = Function.dual(3, (world: World, thing: DareThing, spot: Vector): World =>
-  modifyWorldFields(world, {
-    dareThings: things =>
-      setThing(things, thing.id, DareThingState.Dropped(spot)),
-    frameEvents: events => [
-      ...events,
-      GameEvent.DareDropped({ ...spot, kind: thing.kind }),
-    ],
-  }),
-)
-
 // NOTE: Uncle Chunk's party hat falls where he does, on the list, for the
 // first standing player to walk onto it. Its id follows the house's things.
 export const dropHat: {
   (at: Vector): (world: World) => World
   (world: World, at: Vector): World
 } = Function.dual(2, (world: World, at: Vector): World => {
+  const spot = insideBounds(levelOf(world), at)
   const hat: DareThing = {
     id:
       Array.reduce(world.dareThings, -1, (largest, { id }) =>
         Math.max(largest, id),
       ) + 1,
     kind: LAST_THING,
-    isAsked: true,
-    state: DareThingState.Marked(),
+    state: DareThingState.Dropped(spot),
   }
-  return dropAt(
-    modifyWorldFields(world, { dareThings: Array.append(hat) }),
-    hat,
-    insideBounds(levelOf(world), at),
-  )
+  return modifyWorldFields(world, {
+    dareThings: Array.append(hat),
+    frameEvents: events => [
+      ...events,
+      GameEvent.DareDropped({ ...spot, kind: hat.kind }),
+    ],
+  })
 })
 
-// NOTE: the marked thing finds a carrier once a wave from the second is on
-// and a zombie that can wear it walks in a room; he drops it where he falls,
-// and a carrier gone with no fall leaves it marked for the next.
-const carryMarked = (world: World): World => {
-  const level = levelOf(world)
-  return Array.reduce(world.dareThings, world, (current, thing) =>
-    DareThingState.matchOrElse(
-      thing.state,
-      {
-        Marked: (): World =>
-          markFromWave(current)
-            ? Option.match(
-                Array.findFirst(
-                  current.zombies,
-                  isCarrierFor(level, markedZombieIds(current)),
-                ),
-                {
-                  onNone: () => current,
-                  onSome: zombie =>
-                    modifyWorldFields(current, {
-                      dareThings: things =>
-                        setThing(
-                          things,
-                          thing.id,
-                          DareThingState.Carried({ zombieId: zombie.id }),
-                        ),
-                    }),
-                },
-              )
-            : current,
-        Carried: ({ zombieId }): World =>
-          Option.match(
-            Array.findFirst(current.zombies, ({ id }) => id === zombieId),
-            {
-              onNone: () =>
-                modifyWorldFields(current, {
-                  dareThings: things =>
-                    setThing(things, thing.id, DareThingState.Marked()),
-                }),
-              onSome: zombie =>
-                ZombieState.isAnyOf(['Dying'])(zombie.state)
-                  ? dropAt(current, thing, insideBounds(level, zombie))
-                  : current,
-            },
-          ),
-      },
-      (): World => current,
-    ),
-  )
-}
-
-// NOTE: the first standing player in slot order on a lying thing takes it:
-// one on the list is found for the crew, one off it goes in that seat's hand.
+// NOTE: the first standing player in slot order on a lying thing finds it
+// for the crew.
 const takeFor = (world: World, slot: PlayerSlot): World => {
   const { seat, player } = seatStateAt(world, slot)
   if (!isStanding(seat)) {
@@ -653,18 +398,10 @@ const takeFor = (world: World, slot: PlayerSlot): World => {
         distanceBetween(player, spot) <= DARE_RULES.reachPx
           ? modifyWorldFields(current, {
               dareThings: things =>
-                setThing(
-                  things,
-                  thing.id,
-                  thing.isAsked
-                    ? DareThingState.Found({ slot })
-                    : DareThingState.Held({ slot }),
-                ),
+                setThing(things, thing.id, DareThingState.Found({ slot })),
               frameEvents: events => [
                 ...events,
-                thing.isAsked
-                  ? GameEvent.DareFound({ ...spot, kind: thing.kind })
-                  : GameEvent.DareTaken({ ...spot, kind: thing.kind }),
+                GameEvent.DareFound({ ...spot, kind: thing.kind }),
               ],
             })
           : current,
@@ -687,42 +424,9 @@ const finishList = (before: World, after: World): World =>
 
 const isHunting = Phase.isAnyOf(['Preparation', 'Wave'])
 
-// NOTE: one tick of the dare: the marked thing's carrier, then every
-// standing player's walk onto a lying thing, then the list's end.
+// NOTE: one tick of the dare: every standing player's walk onto a lying
+// thing, then the list's end.
 export const advanceDare = (world: World): World =>
   Array.isReadonlyArrayNonEmpty(world.dareThings) && isHunting(world.phase)
-    ? finishList(world, forEachSeat(carryMarked(world), takeFor))
+    ? finishList(world, forEachSeat(world, takeFor))
     : world
-
-// DELIVERING
-
-// NOTE: the display cases' hook (src/world/dare/dareCases.ts): a seat
-// standing within reach of `point` with a thing off the list in hand
-// delivers it there (the first it took),
-// and the DareDelivered event says what and by whom. Out of reach, or with
-// nothing in hand, nothing changes.
-export const deliverHeld: {
-  (slot: PlayerSlot, point: Vector): (world: World) => World
-  (world: World, slot: PlayerSlot, point: Vector): World
-} = Function.dual(3, (world: World, slot: PlayerSlot, point: Vector): World => {
-  const { seat, player } = seatStateAt(world, slot)
-  return isStanding(seat) && distanceBetween(player, point) <= DELIVER_REACH_PX
-    ? Option.match(Array.head(heldBy(world, slot)), {
-        onNone: () => world,
-        onSome: thing =>
-          modifyWorldFields(world, {
-            dareThings: things =>
-              setThing(things, thing.id, DareThingState.Delivered({ slot })),
-            frameEvents: events => [
-              ...events,
-              GameEvent.DareDelivered({
-                x: point.x,
-                y: point.y,
-                kind: thing.kind,
-                slot,
-              }),
-            ],
-          }),
-      })
-    : world
-})

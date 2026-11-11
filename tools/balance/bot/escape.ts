@@ -1,33 +1,19 @@
 // The balance bot's escape: the dare's list on the floor, Uncle Chunk's hat,
-// and the open front door (src/world/dare/finale.ts). The bot walks to a
-// thing on the list it can reach (a hidden one in an open room, one a
-// zombie dropped, the hat), and once the front door is open, out through
-// it. A thing on the list behind boards (hidden in a room, or locked in a
-// case there) gets its room bought open with the crew's keys, the rooms on
-// the way first, once the ring holds the padlock's price. In a break it
-// takes what a display case opened for it holds, when it beats a gun it
-// carries, and carries a thing off the list to a locked case, the one with
-// a thing on the list inside first. With Grandma's recipe in the stove it
-// fights the wave in the kitchen, for the stove's feat.
+// and the open front door (src/world/dare/finale.ts). Each room behind
+// boards holds one thing on the list (src/world/dare/dare.ts): the bot buys
+// a room with a thing in it open with the crew's keys, the rooms on the way
+// first, once the ring holds the padlock's price, and walks onto every thing
+// it can reach, then the hat, and once the front door is open, out through
+// it. In a break it takes what a display case opened for it holds, when it
+// beats a gun it carries.
 
 import { Array, Option } from 'effect'
 
-import { TILE_SIZE } from '../../../src/shared/constants'
-import {
-  heldBy,
-  isInOpenRoom,
-  maybeLyingAt,
-} from '../../../src/world/dare/dare'
-import { DareThingState } from '../../../src/world/dare/dareSchema'
+import { maybeLyingAt, maybeThingRoom } from '../../../src/world/dare/dare'
 import {
   frontDoorSillOf,
   isFrontDoorOpen,
 } from '../../../src/world/dare/finale'
-import {
-  caseFootOf,
-  caseRoomOf,
-  isCaseShown,
-} from '../../../src/world/feats/caseSpots'
 import { caseOffers } from '../../../src/world/feats/cases'
 import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
 import { heldKeys } from '../../../src/world/keys/keys'
@@ -38,17 +24,14 @@ import {
   levelOf,
 } from '../../../src/world/level/arena'
 import { exitOffers } from '../../../src/world/level/exits'
-import { KITCHEN_ROOM_ID } from '../../../src/world/level/plan'
 import { focusOf, focusSlotOf } from '../../../src/world/party/party'
 import {
   type CasePrize,
-  CaseState,
-  type DisplayCase,
   type ExitId,
   Purchasable,
 } from '../../../src/world/schema/worldSchema'
 import type { Offer } from '../../../src/world/shop/purchase'
-import { type Model, ROOM_CENTER, type Vector, distance } from './basics'
+import { type Model, type Vector, distance } from './basics'
 import { gunValue, weakerGun } from './guns'
 import { isStandableAt } from './route'
 
@@ -68,18 +51,17 @@ const nearestOf = (
       : nearest,
   )
 
-// NOTE: where the dare's things lie for the bot to walk onto, on the list
-// or off it.
-const lyingSpots = (model: Model, isAsked: boolean): ReadonlyArray<Vector> => {
+// NOTE: where the dare's things lie for the bot to walk onto.
+const lyingSpots = (model: Model): ReadonlyArray<Vector> => {
   const level = levelOf(model)
   return Array.flatMap(model.dareThings, thing =>
-    thing.isAsked === isAsked ? Option.toArray(maybeLyingAt(thing, level)) : [],
+    Option.toArray(maybeLyingAt(thing, level)),
   )
 }
 
 // NOTE: the nearest thing on the list lying where the bot can walk onto it.
 const nearestAsked = (model: Model): Vector | undefined =>
-  nearestOf(focusOf(model).player, lyingSpots(model, true))
+  nearestOf(focusOf(model).player, lyingSpots(model))
 
 // NOTE: where the escape wants the bot: the open front door first, then
 // the nearest thing on the list.
@@ -109,30 +91,6 @@ const roomExitOf = (level: Level, roomId: string): Option.Option<ExitId> =>
     room => room.maybeExit,
   )
 
-// NOTE: the boarded exit whose room holds a point, while it is shut.
-const maybeBoardedExitAt = (
-  level: Level,
-  point: Vector,
-): Option.Option<ExitId> =>
-  isInOpenRoom(level, point)
-    ? Option.none()
-    : Option.flatMap(
-        Array.findFirst(
-          level.rooms,
-          ({ box }) => distanceToBox(point, box) === 0,
-        ),
-        ({ id }) => roomExitOf(level, id),
-      )
-
-// NOTE: the boarded exit of the room a case stands in, while it is shut.
-const maybeBoardedExitOfCase = (
-  level: Level,
-  displayCase: DisplayCase,
-): Option.Option<ExitId> =>
-  isCaseShown(level, displayCase)
-    ? Option.none()
-    : roomExitOf(level, caseRoomOf(level, displayCase))
-
 // NOTE: an exit and every shut exit its boards wait on, the nearest first.
 const withRequired = (level: Level, exit: ExitId): ReadonlyArray<ExitId> =>
   Option.match(
@@ -152,30 +110,21 @@ const withRequired = (level: Level, exit: ExitId): ReadonlyArray<ExitId> =>
     },
   )
 
-// NOTE: the exits shut on a thing on the list behind their boards: hidden
-// in the room, or locked in the room's case.
+// NOTE: the exits shut on a thing on the list behind their boards.
 const exitsOnTheList = (model: Model): ReadonlyArray<ExitId> => {
   const level = levelOf(model)
   return Array.dedupe(
     Array.flatMap(
       Array.flatMap(model.dareThings, (thing): ReadonlyArray<ExitId> =>
-        thing.isAsked
-          ? DareThingState.matchOrElse(
-              thing.state,
-              {
-                Hidden: (spot): ReadonlyArray<ExitId> =>
-                  Option.toArray(maybeBoardedExitAt(level, spot)),
-                InCase: ({ caseId }): ReadonlyArray<ExitId> =>
-                  Option.toArray(
-                    Option.flatMap(
-                      Array.findFirst(model.cases, ({ id }) => id === caseId),
-                      displayCase => maybeBoardedExitOfCase(level, displayCase),
-                    ),
-                  ),
-              },
-              (): ReadonlyArray<ExitId> => [],
-            )
-          : [],
+        Option.toArray(
+          Option.flatMap(
+            Option.filter(
+              maybeThingRoom(thing, level),
+              ({ isOpen }) => !isOpen,
+            ),
+            ({ id }) => roomExitOf(level, id),
+          ),
+        ),
       ),
       (exit: ExitId) => withRequired(level, exit),
     ),
@@ -289,99 +238,3 @@ export const isAtCase = (model: Model): boolean => {
     distanceToBox(focusOf(model).player, offer.box) <= offer.reachPx - 2
   )
 }
-
-// DELIVERING
-
-const isLockedShown = (level: Level, displayCase: DisplayCase): boolean =>
-  CaseState.isAnyOf(['Locked'])(displayCase.state) &&
-  isCaseShown(level, displayCase)
-
-const holdsAsked = (model: Model, displayCase: DisplayCase): boolean =>
-  Array.some(
-    model.dareThings,
-    ({ isAsked, state }) =>
-      isAsked &&
-      DareThingState.isAnyOf(['InCase'])(state) &&
-      state.caseId === displayCase.id,
-  )
-
-// NOTE: how much the bot wants a locked case opened: a thing on the list
-// inside most, then a prize it wants, then any.
-const caseWorth = (model: Model, displayCase: DisplayCase): number =>
-  (holdsAsked(model, displayCase) ? 4 : 0) +
-  (wantsPrize(model, displayCase.prize) ? 2 : 0) +
-  1
-
-// NOTE: the locked case in an open room a thing off the list goes to.
-const deliveryCase = (model: Model): DisplayCase | undefined => {
-  const level = levelOf(model)
-  const { player } = focusOf(model)
-  return Array.reduce(
-    Array.filter(model.cases, displayCase => isLockedShown(level, displayCase)),
-    undefined,
-    (best: DisplayCase | undefined, displayCase) =>
-      best === undefined ||
-      caseWorth(model, displayCase) > caseWorth(model, best) ||
-      (caseWorth(model, displayCase) === caseWorth(model, best) &&
-        distance(player, caseFootOf(level, displayCase)) <
-          distance(player, caseFootOf(level, best)))
-        ? displayCase
-        : best,
-  )
-}
-
-// NOTE: in a break, with a locked case to open: the case's foot while the
-// bot holds a thing off the list, else the nearest such thing lying about.
-export const deliveryTarget = (model: Model): Vector | undefined => {
-  const displayCase = deliveryCase(model)
-  if (displayCase === undefined) {
-    return undefined
-  }
-  const level = levelOf(model)
-  if (Array.isReadonlyArrayNonEmpty(heldBy(model, focusSlotOf(model)))) {
-    const foot = caseFootOf(level, displayCase)
-    const below = { x: foot.x, y: foot.y + BESIDE_PX }
-    return isStandableAt(level, below) ? below : foot
-  }
-  return nearestOf(focusOf(model).player, lyingSpots(model, false))
-}
-
-// THE STOVE
-
-// NOTE: Grandma's recipe on the list, still in the stove, with the kitchen
-// open: the bot fights the wave in the kitchen for the stove's feat, while
-// it has hearts to spare.
-const STOVE_MIN_HP = 3
-
-export const wantsStoveFeat = (model: Model): boolean =>
-  focusOf(model).player.hp >= STOVE_MIN_HP &&
-  Array.some(
-    model.dareThings,
-    ({ isAsked, state }) =>
-      isAsked && DareThingState.isAnyOf(['InStove'])(state),
-  ) &&
-  Array.some(
-    levelOf(model).rooms,
-    ({ id, isOpen }) => id === KITCHEN_ROOM_ID && isOpen,
-  )
-
-// NOTE: the kitchen's open floor below the prep table, ten and a half
-// tiles in from its top left on the kitchen's map.
-const KITCHEN_STAND_TILES = 10.5
-
-const kitchenStand = (level: Level): Vector =>
-  Option.getOrElse(
-    Option.map(
-      Array.findFirst(level.rooms, ({ id }) => id === KITCHEN_ROOM_ID),
-      ({ box }) => ({
-        x: box.left + KITCHEN_STAND_TILES * TILE_SIZE,
-        y: box.top + KITCHEN_STAND_TILES * TILE_SIZE,
-      }),
-    ),
-    () => ROOM_CENTER,
-  )
-
-// NOTE: where the bot holds in a wave: the kitchen for the stove's feat,
-// else the dining room's aisle.
-export const holdPoint = (model: Model): Vector =>
-  wantsStoveFeat(model) ? kitchenStand(levelOf(model)) : ROOM_CENTER

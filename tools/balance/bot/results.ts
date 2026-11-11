@@ -36,12 +36,12 @@ export const FridgeLog = Schema.Struct({
 })
 export type FridgeLog = typeof FridgeLog.Type
 
-// How the run's escape went: display cases opened for the bot and things
-// delivered to them, things on the list found, and the waves the list was
-// done in and Uncle Chunk's hat taken in (0 when never).
+// How the run's escape went: display cases opened for the bot, the wave
+// each room was bought open in, in order, things on the list found, and the
+// waves the list was done in and Uncle Chunk's hat taken in (0 when never).
 const EscapeLog = Schema.Struct({
   casesOpened: Schema.Finite,
-  delivered: Schema.Finite,
+  openedWaves: Schema.Array(Schema.Finite),
   found: Schema.Finite,
   listDoneWave: Schema.Finite,
   hatWave: Schema.Finite,

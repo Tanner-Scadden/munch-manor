@@ -92,7 +92,6 @@ const scaleFeat = (feat: Feat, difficulty: Difficulty): Feat =>
     OpenedRoom: () => feat,
     LitFire: () => feat,
     KeyFromMarked: () => feat,
-    Delivered: () => feat,
     KitchenKills: () => feat,
     KitchenStandKills: () => feat,
   })
@@ -182,9 +181,8 @@ export const rollCases: {
 
 // OPENING
 
-// NOTE: a case springs open for the seat at `slot`: by its feat, or for a
-// thing off the dare's list delivered to it (src/world/dare/dareCases.ts).
-export const openCaseFor: {
+// NOTE: a case springs open for the seat at `slot` once its feat is done.
+const openCaseFor: {
   (displayCase: DisplayCase, slot: PlayerSlot): (world: World) => World
   (world: World, displayCase: DisplayCase, slot: PlayerSlot): World
 } = Function.dual(

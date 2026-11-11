@@ -20,32 +20,21 @@ export const DareKind = Schema.Literals([
 ])
 export type DareKind = typeof DareKind.Type
 
-// NOTE: where one thing is. Hidden sits at a spot, unseen (or behind the
-// boards of a room not open yet); Marked waits for a zombie of a wave to wear
-// its mark; Carried rides that zombie by id; Dropped lies where he fell. A
-// thing the dare asked for is Found the moment a standing player walks onto
-// it, by that seat's slot, for the whole crew. One it did not ask for is Held
-// by the seat that took it until it is Delivered to a display case. InCase
-// is locked in a display case by its id until the case opens; InStove waits
-// in the kitchen's stove until a player earns the stove's feat. Either then
-// lies Dropped in front of it (src/world/dare/dareCases.ts).
+// NOTE: where one thing is. Hidden lies at a spot in the room that holds
+// it, unseen until a player walks close, and out of reach while the room's
+// boards stand; Dropped lies where Uncle Chunk fell (his hat). A thing is
+// Found the moment a standing player walks onto it, by that seat's slot,
+// for the whole crew.
 export const DareThingState = defineTaggedUnion({
   Hidden: { x: PositionNumber, y: PositionNumber },
-  Marked: {},
-  InCase: { caseId: Schema.Finite },
-  InStove: {},
-  Carried: { zombieId: Schema.Finite },
   Dropped: { x: PositionNumber, y: PositionNumber },
-  Held: { slot: Schema.Finite },
   Found: { slot: Schema.Finite },
-  Delivered: { slot: Schema.Finite },
 })
 export type DareThingState = typeof DareThingState.Type
 
 export const DareThing = Schema.Struct({
   id: Schema.Finite,
   kind: DareKind,
-  isAsked: Schema.Boolean,
   state: DareThingState,
 })
 export type DareThing = typeof DareThing.Type
