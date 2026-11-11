@@ -208,3 +208,39 @@ export const gunClusterBox = (screen: Screen): Box => {
 }
 
 export const HUD_STRIP_HEIGHT = 20
+
+// NOTE: where the window shows the world clear of the HUD, in screen
+// pixels, `gap` in from each edge: the top HUD rows cover a landscape
+// window's top, and the gun slots and their key caps its bottom. A marker
+// pinned to the edge for something out of sight keeps inside it (the front
+// door in the finale, the guided first break's next spot).
+const TOP_HUD_CLEARANCE = 22
+const KEY_CAP_CLEARANCE = 4
+
+export type ClearWindow = Readonly<{
+  left: number
+  top: number
+  right: number
+  bottom: number
+}>
+
+export const clearWindowOf: {
+  (gap: number): (screen: Screen) => ClearWindow
+  (screen: Screen, gap: number): ClearWindow
+} = Function.dual(2, (screen: Screen, gap: number): ClearWindow => {
+  const window = screen.world
+  const top =
+    screen.layout === 'Landscape'
+      ? window.y + TOP_HUD_CLEARANCE
+      : window.y + gap
+  return {
+    left: window.x + gap,
+    top,
+    right: window.x + window.width - gap,
+    bottom:
+      Math.min(
+        window.y + window.height,
+        hudLayoutFor(screen).slotTop - KEY_CAP_CLEARANCE,
+      ) - gap,
+  }
+})

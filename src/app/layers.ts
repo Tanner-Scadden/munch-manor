@@ -15,6 +15,7 @@ import {
 import { wavePreviewShapes } from '../features/hud/wavePreview'
 import { introShapes } from '../features/intro/introView'
 import { caseCardShapes } from '../features/onboarding/caseCardView'
+import { questEdgeShapes } from '../features/onboarding/questEdgeView'
 import { coopEdgeShapes } from '../features/onlineRun/coopMarksView'
 import { purchaseOverlayShapes } from '../features/shop/purchaseView'
 import { thumbAreaView } from '../input/thumbArea'
@@ -64,6 +65,7 @@ const roundOverlayShapes = (
         ...clocheShapes(model, camera),
         ...purchaseOverlayShapes(model, camera),
         ...frontDoorMarkerShapes(model, screen, camera),
+        ...questEdgeShapes(model, screen, camera),
       ]
     : []),
   ...hudShapes(model, screen, camera),
