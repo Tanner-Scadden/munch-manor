@@ -44,8 +44,8 @@ import { heldKeys } from '../../../world/keys/keys'
 import { isKitchenOpen } from '../../../world/kitchen/kitchen'
 import { levelOf } from '../../../world/level/arena'
 import {
-  KITCHEN_EXIT,
   EXIT_RULES,
+  KITCHEN_EXIT,
   exitPriceFor,
 } from '../../../world/level/exits'
 import { WEST_EXIT } from '../../../world/level/plan'
