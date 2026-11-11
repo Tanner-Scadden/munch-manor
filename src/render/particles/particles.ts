@@ -274,6 +274,7 @@ const eventParticles = (
         : sparks({ x, y }, LID_SPARKS)(state),
     CrateTaken: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     TrapMended: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
+    StationWorked: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
     LidLaunched: ({ x, y }) =>
       generateMany(state, LAUNCH_STEAM, smokePuff(playerGround(x, y))),
     LidBlasted: ({ x, y }) =>

@@ -222,6 +222,7 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     KeysFound: () => Option.some<SoundEffect>('Purchase'),
     CrateTaken: () => Option.some<SoundEffect>('Swap'),
     TrapMended: () => Option.some<SoundEffect>('Tink'),
+    StationWorked: () => Option.some<SoundEffect>('Yank'),
     LidLaunched: () => Option.some<SoundEffect>('Whoosh'),
     LidBlasted: () => Option.some<SoundEffect>('Boom'),
     CookerPopped: () => Option.some<SoundEffect>('Pop'),

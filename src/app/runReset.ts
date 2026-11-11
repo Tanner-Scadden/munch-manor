@@ -38,6 +38,7 @@ import {
   freshLoot,
   freshStats,
   freshStove,
+  idleStations,
   initialHitStop,
   initialPlayer,
   shutFridge,
@@ -72,6 +73,7 @@ export type RunFields = Pick<
   | 'dare'
   | 'dareThings'
   | 'gasValve'
+  | 'stations'
   | 'cases'
   | 'elapsedMs'
   | 'frameEvents'
@@ -139,6 +141,7 @@ export const freshRun = (model: Model): RunFields => ({
   dare: freshDare(model.rngState),
   dareThings: [],
   gasValve: shutValve,
+  stations: idleStations,
   cases: rollCases(model.rngState, model.difficulty.chosen),
   elapsedMs: 0,
   frameEvents: [],

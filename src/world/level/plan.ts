@@ -671,8 +671,10 @@ export const specOfState = (state: LevelState): LevelSpec =>
 // NOTE: the drafted maps' review marks as data, for the cases and the dare
 // (layers 12 and on of docs/ESCAPE_PLAN.md) to read: each room's hidden-item
 // spots (`1` to `4`, stand there to search what is beside you), its display
-// cases (`c`, two tiles against a wall), and its trap crate (`t`), in world
-// tiles. The marks are read off the room's own map, before its renames.
+// cases (`c`, two tiles against a wall), its trap crate (`t`), and its
+// work stations' tiles (`j`, the chandelier's cleat in a wall,
+// src/world/stations/stations.ts), in world tiles. The marks are read off
+// the room's own map, before its renames.
 export type SpotTile = Readonly<{ column: number; row: number }>
 
 export type RoomSpots = Readonly<{
@@ -680,11 +682,13 @@ export type RoomSpots = Readonly<{
   hiding: ReadonlyArray<Readonly<{ mark: string; tile: SpotTile }>>
   cases: ReadonlyArray<ReadonlyArray<SpotTile>>
   trapCrates: ReadonlyArray<ReadonlyArray<SpotTile>>
+  cleats: ReadonlyArray<SpotTile>
 }>
 
 const HIDING_MARKS: ReadonlyArray<string> = ['1', '2', '3', '4']
 const CASE_MARK = 'c'
 const TRAP_CRATE_MARK = 't'
+const CLEAT_MARK = 'j'
 
 const marksOf = (
   room: RoomSpec,
@@ -736,4 +740,8 @@ export const roomSpotsOf = (spec: LevelSpec): ReadonlyArray<RoomSpots> =>
     hiding: marksOf(room, mark => Array.contains(HIDING_MARKS, mark)),
     cases: piecesOf(room, CASE_MARK),
     trapCrates: piecesOf(room, TRAP_CRATE_MARK),
+    cleats: Array.map(
+      marksOf(room, mark => mark === CLEAT_MARK),
+      ({ tile }) => tile,
+    ),
   }))

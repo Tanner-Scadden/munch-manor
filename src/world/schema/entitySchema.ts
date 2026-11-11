@@ -618,6 +618,25 @@ export const GasValve = defineTaggedUnion({
 })
 export type GasValve = typeof GasValve.Type
 
+// NOTE: the room tools a player sets up by working at them
+// (src/world/stations/stations.ts), by name: the dining room's chandelier
+// cleat first, the other rooms' tools to come.
+export const StationId = Schema.Literals(['Cleat'])
+export type StationId = typeof StationId.Type
+
+// NOTE: one work station's state: `workedMs` of its set-up time done (it
+// fills while players work it and drains while nobody does), `cooldownMs`
+// left before it can be worked again, and how often it has fired this run.
+export const StationState = Schema.Struct({
+  workedMs: MillisNumber,
+  cooldownMs: MillisNumber,
+  timesWorked: Schema.Finite,
+})
+export type StationState = typeof StationState.Type
+
+export const Stations = Schema.Struct({ Cleat: StationState })
+export type Stations = typeof Stations.Type
+
 export const Callout = Schema.Struct({
   kind: PickupKind,
   look: CalloutLook,

@@ -46,6 +46,9 @@ import {
   Player,
   Prize,
   Reload,
+  StationId,
+  type StationState,
+  Stations,
   Stove,
   TrapCrates,
   TrapKind,
@@ -217,6 +220,13 @@ export const GameEvent = defineTaggedUnion({
   // and a trap mended back to full by standing at it in a break.
   CrateTaken: { x: PositionNumber, y: PositionNumber, trap: TrapKind },
   TrapMended: { x: PositionNumber, y: PositionNumber, kind: TrapKind },
+  // NOTE: a work station's set-up done, its effect fired
+  // (src/world/stations/stations.ts).
+  StationWorked: {
+    x: PositionNumber,
+    y: PositionNumber,
+    station: StationId,
+  },
   LidLaunched: { x: PositionNumber, y: PositionNumber, direction: Heading },
   LidBlasted: { x: PositionNumber, y: PositionNumber, radius: Schema.Finite },
   CookerPopped: { x: PositionNumber, y: PositionNumber, direction: Heading },
@@ -897,6 +907,7 @@ export const World = Schema.Struct({
   dare: Dare,
   dareThings: Schema.Array(DareThing),
   gasValve: GasValve,
+  stations: Stations,
   cases: Schema.Array(DisplayCase),
   rngState: Schema.Finite,
   hitStop: HitStop,
@@ -1057,6 +1068,14 @@ export const freshDare = (seed: number): Dare => ({
 })
 
 export const shutValve: GasValve = GasValve.Shut()
+
+const idleStation: StationState = {
+  workedMs: 0,
+  cooldownMs: 0,
+  timesWorked: 0,
+}
+
+export const idleStations: Stations = { Cleat: idleStation }
 
 export const shutFridge: Fridge = {
   door: FridgeDoor.Shut(),

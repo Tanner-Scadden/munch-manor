@@ -136,7 +136,7 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 201, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 203, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
         count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
@@ -146,7 +146,7 @@ describe('the wire packs numbers by their Schema', () => {
         names: ['hpScale', 'intensity', 'speedScale', 'x', 'y'],
       },
       Millis: {
-        count: 103,
+        count: 105,
         names: [
           'ageMs',
           'apartMs',
@@ -175,6 +175,7 @@ describe('the wire packs numbers by their Schema', () => {
           'touchedMs',
           'triggerRestMs',
           'waitedMs',
+          'workedMs',
         ],
       },
     })
@@ -333,8 +334,8 @@ describe("the boss's charge on the wire", () => {
 // (Normal's health x0.68, 2026-11-10) did again, and the crates, the
 // pantry, the stove, and mending working mid-wave (2026-11-10) did too, and
 // the last zombie's hurry (2026-11-10) as well, and the rooms' new shapes
-// (the rooms rework, 2026-11-10) once more.
-const GOLDEN_DIGEST = '66287:76268be21cdc31bc'
+// (the rooms rework, 2026-11-10) once more, and the work stations (2026-11-10).
+const GOLDEN_DIGEST = '66311:392df6967ebe4ae0'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {
