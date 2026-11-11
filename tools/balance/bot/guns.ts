@@ -45,8 +45,12 @@ export const spareOf = (model: Model): Gun | undefined =>
   firearmOf(model) ?? fridgeSpareOf(model)
 
 // How much the bot values a gun in a slot, to choose which one a new gun
-// replaces: the pistol little, and an upgraded Chatterbox the most.
-export const gunValue = (gun: Gun): number => {
+// replaces: the pistol little, and an upgraded Chatterbox the most. A perk
+// the stove cooked onto it adds 1.
+export const gunValue = (gun: Gun): number =>
+  baseGunValue(gun) + (gun.perk === undefined ? 0 : 1)
+
+const baseGunValue = (gun: Gun): number => {
   if (gun.kind === 'Pistol') {
     return 1 + gun.tier
   }

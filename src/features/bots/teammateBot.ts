@@ -59,7 +59,12 @@ import {
   applySeatAction,
 } from '../../world/step/stepWorld'
 import { bodyRadiusOf } from '../../world/zombies/zombies'
-import { isSafeToSearch, isWorkingSearch, searchSpot } from './dareSearch'
+import {
+  isSafeToSearch,
+  isWorkingSearch,
+  pantryErrand,
+  searchSpot,
+} from './dareSearch'
 import { type Threat, escapeHeading } from './escape'
 
 // A teammate bot's brain (GAME_DESIGN.md, "Teammate bots"): the seat's
@@ -531,6 +536,10 @@ const breakIntent = (world: World, me: SeatState): Intent => {
   const maybeSearch = searchMove(world, me)
   if (Option.isSome(maybeSearch)) {
     return { ...idleIntent, move: maybeSearch.value }
+  }
+  const pantry = pantryErrand(world)
+  if (pantry !== undefined) {
+    return { ...idleIntent, move: walkToward(world, me.player, pantry) }
   }
   if (me.seat.readiness === 'Ready') {
     return idleIntent
