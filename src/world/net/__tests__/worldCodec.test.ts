@@ -339,8 +339,8 @@ describe("the boss's charge on the wire", () => {
 // the last zombie's hurry (2026-11-10) as well, and the rooms' new shapes
 // (the rooms rework, 2026-11-10) once more, and the work stations (2026-11-10),
 // and the rooms' finds (a hidden thing's `workedMs`) and wake-ups
-// (2026-11-11), and Uncle Chunk's last fight (2026-11-11), and every room tool a station of its own (2026-11-11).
-const GOLDEN_DIGEST = '66505:28d2a1967c0bfc20'
+// (2026-11-11), and Uncle Chunk's last fight (2026-11-11), and every room tool a station of its own (2026-11-11), and the tighter opening waves (2026-11-11).
+const GOLDEN_DIGEST = '66579:e9d44fa6f9e57b70'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

@@ -217,24 +217,28 @@ const WAVE_7_MIX = mixOf(3, 2, 0.75)
 // alive, then rests for its relax time, so the times of every later group
 // are on that paused clock. A kind's first wave brings it in a group of only
 // that kind, so the NEW card never promises a zombie the roll left out.
+// NOTE: waves 1 and 2 were tightened on 2026-11-10 after the pacing report
+// (docs/PACING_REPORT.md, owner's pick 3b): wave 1 is 8 Groaners in two
+// quick squads through one door, done in about 15 s (6 over 23 s before),
+// and wave 2 sends its Groaners faster and fades at 12 s (17.5 before).
 export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
   {
     speedScale: 1.0,
     hpScale: 1,
     groups: [
-      trickle({
-        count: 4,
+      squads({
+        packs: [1, 2, 1],
         mix: only('Shambler'),
         from: through('North'),
-        startMs: 1500,
-        everyMs: 3000,
+        startMs: 1200,
+        everyMs: 1800,
       }),
       squads({
-        packs: [2],
+        packs: [2, 2],
         mix: only('Shambler'),
         from: through('North'),
-        startMs: 14500,
-        everyMs: 0,
+        startMs: 7500,
+        everyMs: 2200,
       }),
     ],
     holds: [],
@@ -248,24 +252,24 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
         mix: only('Shambler'),
         from: anyDoors(2),
         startMs: 1200,
-        everyMs: 2800,
+        everyMs: 1900,
       }),
       squads({
         packs: [2, 1, 2, 2, 1],
         mix: only('Runner'),
         from: anyDoors(1),
-        startMs: 18700,
+        startMs: 13200,
         everyMs: 2600,
       }),
       squads({
         packs: [3, 2, 3],
         mix: mixOf(3, 1, 0),
         from: anyDoors(2),
-        startMs: 21000,
+        startMs: 15500,
         everyMs: 4000,
       }),
     ],
-    holds: [fadeThenRelax(17500, 2000)],
+    holds: [fadeThenRelax(12000, 2000)],
   },
   {
     speedScale: 1.14,

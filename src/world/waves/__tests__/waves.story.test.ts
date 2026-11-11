@@ -443,6 +443,20 @@ describe('wave plans', () => {
     ).toBe(true)
   })
 
+  // NOTE: the tighter opening (owner, 2026-11-10, after the pacing
+  // report): wave 1 is 8 Groaners all in by about 11 s, and wave 2 fades
+  // at 12 s.
+  test('wave 1 sends 8 Groaners in two quick squads, and wave 2 fades sooner', () => {
+    const [, first] = rollSpawns(1234, 1)
+    expect(first).toHaveLength(8)
+    expect(Array.every(first, ({ kind }) => kind === 'Shambler')).toBe(true)
+    expect(
+      Array.reduce(first, 0, (latest, { atMs }) => Math.max(latest, atMs)),
+    ).toBeLessThanOrEqual(11_000)
+    const second = Option.getOrThrow(Array.get(WAVE_PLANS, 1))
+    expect(Array.map(second.holds, ({ atMs }) => atMs)).toEqual([12_000])
+  })
+
   test('every Big Leaguer walks in with three Groaners of his own, who never frenzy', () => {
     const [, spawns] = rollSpawns(1234, 6)
     const leaguers = Array.filter(spawns, ({ kind }) => kind === 'Thrower')
