@@ -331,11 +331,34 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 
 **Checks.** A Story per tool, `test:full`, a balance pass per room, `perf:check` for each drop that changes solid tiles.
 
+**Built (2026-11-11).** Every tool is a work station (`src/world/stations/`), its numbers in one table, `TOOL_RULES` in `src/world/stations/toolRules.ts`, untuned: no balance pass until the rooms rework and the pacing are both in (owner, 2026-11-10). Each station sits on a `*` mark on its room's map, read in order, and works only in a wave, in an open room.
+
+| Tool                             | Set-up | Cooldown  | On for  | What it does                                                                                                                                     |
+| -------------------------------- | ------ | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cleat (dining)                   | 3 s    | 20 s      | at once | Winches the fallen chandelier back up                                                                                                            |
+| Gramophone (parlour)             | 2 s    | 30 s      | 10 s    | Groaners and Kaboomers in the parlour waltz in slow circles at 0.35x pace, drifting to the dance floor, instead of chasing                       |
+| North and south stacks (library) | 2 s    | 40 s each | 15 s    | Topple: 60 damage (the chandelier's crush) to every zombie under the heap, which lies across the aisle as a wall                                 |
+| Revolving shelf (library)        | 1 s    | 12 s      | 0.6 s   | Once the secret shelf is open: its workers come out on the other side of the wall, and zombies within 36 px are flung (220 px/s) and dazed 0.8 s |
+| Barrels (cellar)                 | 1.5 s  | 15 s      | 2.5 s   | A barrel rolls west down the corridor at 180 px/s: 4 damage, knocked along, dazed 1 s, then it bursts on the far wall                            |
+| Bulb chain (cellar)              | 1 s    | 25 s      | 12 s    | Lights the cellar: in the dark, cellar zombies walk 1.15x and the cellar's dare thing cannot be found                                            |
+| Soup pot (kitchen)               | 2 s    | 22 s      | 10 s    | A puddle 20 px across in front of the pot: zombies stepping in from dry floor slip as on the old soup                                            |
+
+The choices:
+
+- **A tool's effect is read off its station's clock**: it is on for the first `activeMs` of the cooldown. So the wire carries only the seven new stations, and a stack's heap is a level drop (`NorthStack`, `SouthStack`), as the chandelier is.
+- **The gramophone lures, it does not shield**: a waltzing zombie still bites a player who walks into it, and Hotfoots, Big Lugs, Ankle Biters, the Big Leaguer, and Uncle Chunk ignore the music. Zombies do not knock it over (simpler for now).
+- **The stacks are the strongest tool**, so the longest cooldown; each stack has its own clock. A heap pushes zombies and players out across its short way when it falls, and is shelved again when its time is up.
+- **The shelf is small and quick**: a way out of a crowd at the shelf, and a shove for whoever stays.
+- **The barrel rolls through players** without a bump, and bowls only zombies on their feet; Uncle Chunk is never bowled.
+- **The soup puddle slips zombies only**, never players, so it never punishes the cook.
+- **The dark matters both ways**: the bulb is the light, zombies are faster without it, and the cellar's dare thing is found only while it is lit (this is the cellar's find from layer 21, built here). The dare pointer still shows the way to it. Drawing only (owner, 2026-11-11): while the cellar is dark, a zombie in it is not drawn at all (no eyes, bar, or shadow) unless it is within about 3 tiles of the viewing player, fading in over the last tile; footsteps still play. Lit, it draws as usual.
+- **Show, don't explain**: each tool is its own art, the gold ring fills as it is worked and a grey ring as it cools, the first time each waits in a run its ring pulses, and a bobbing arrow points at the nearest such tool. Each fires with its own sound (a waltz, a crash, a whoosh, a rumble, a yank, a splosh).
+
 ### 21. Finds, wake-ups, and hub touches (rooms rework, part 3)
 
 **Goal.** Each room finds its thing its own way, wakes when opened, and leaves a touch in the hub.
 
-- The finds: the parlour's piano or coffin rummage, the library's hollow book, the cellar's glint only in light, the kitchen's dumbwaiter (replaces "walking onto a thing finds it").
+- The finds: the parlour's piano or coffin rummage, the library's hollow book, the kitchen's dumbwaiter (replaces "walking onto a thing finds it"). The cellar's glint only in light came in with layer 20.
 - The wake-up: a rush from the opened room's own doors for about 10 s.
 - The hub touches: small, per room (the parlour's music in the dining room, the dumbwaiter's other end); no house-wide tool, so no fuse box.
 
