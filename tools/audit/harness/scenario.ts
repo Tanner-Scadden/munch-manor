@@ -198,7 +198,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
             firstBreakQuest: () =>
               quest === 'done'
                 ? QuestTour.Done({ ageMs: 0 })
-                : QuestTour.Running(),
+                : QuestTour.Running({ isLockSeen: false }),
           })
   }
   const newer = config.newer

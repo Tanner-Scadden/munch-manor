@@ -8,6 +8,7 @@ import {
   type DareHintCalling,
   KitchenCall,
   QuestTour,
+  RattlesIntro,
   Tour,
 } from '../../domain/clientSchema'
 import type { Difficulty } from '../../shared/playerData'
@@ -255,10 +256,11 @@ const isBreak = Phase.isAnyOf(['Preparation'])
 const hasList = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(model.dare.list)
 
-// NOTE: he keeps quiet while the kitchen holler or a tour has the bubble,
-// and while the dare card in your pocket is out.
+// NOTE: he keeps quiet while the kitchen holler, his own hello, or a tour
+// has the bubble, and while the dare card in your pocket is out.
 const isHushed = (model: Model): boolean =>
   isPocketCardOut(model) ||
+  RattlesIntro.isAnyOf(['Talking'])(model.rattlesIntro) ||
   KitchenCall.isAnyOf(['Calling'])(model.kitchenCall) ||
   Tour.isAnyOf(['Running'])(model.kitchenTour) ||
   QuestTour.isAnyOf(['Running', 'Looking'])(model.firstBreakQuest)

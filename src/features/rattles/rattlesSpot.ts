@@ -19,11 +19,11 @@ import {
 } from '../../art/sprite'
 import { RATTLES_BOX } from '../../world/level/arena'
 
-// Rattles' spot in the parlour (docs/ESCAPE_PLAN.md, layer 7): his stall
-// went with the shop, and the first daredevil, from 1924, sits where it
-// stood on an old steamer trunk, awake and swaying in a break, dozing
-// through a wave. His speech bubble of hints hangs over him
-// (src/screens/game/stallBubble.ts).
+// Rattles' spot in the dining room (docs/ESCAPE_PLAN.md, layer 7): the
+// first daredevil, from 1924, sits on an old steamer trunk just east of the
+// front door he never got out of, awake and swaying in a break, dozing
+// through a wave. He says hello once (src/features/onboarding/rattlesIntro.ts),
+// and his speech bubble of hints hangs over him (src/screens/game/stallBubble.ts).
 
 // PALETTE
 

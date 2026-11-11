@@ -163,6 +163,7 @@ export const HarnessConfig = Schema.Struct({
         'openBreak',
         'dareTour',
         'dareKey',
+        'rattles',
       ]),
     ),
   ),

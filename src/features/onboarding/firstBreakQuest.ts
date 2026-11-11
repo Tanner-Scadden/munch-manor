@@ -4,46 +4,58 @@ import { modifyFields } from 'foldkit/struct'
 import type { Model } from '../../app/model'
 import { QuestTour } from '../../domain/clientSchema'
 import { caseBoxOf } from '../../world/feats/caseSpots'
-import { crateSpotOf } from '../../world/gear/crates'
-import { levelOf } from '../../world/level/arena'
-import { isCoop } from '../../world/party/party'
+import { heldKeys } from '../../world/keys/keys'
+import { distanceToBox, levelOf } from '../../world/level/arena'
+import {
+  type Padlock,
+  hasOpenedBoards,
+  isExitOfferOpenFor,
+  maybeCheapestPadlock,
+  padlockMarkOf,
+} from '../../world/level/exits'
+import { focusOf, isCoop } from '../../world/party/party'
 import { isPending, learn } from '../../world/run/lessons'
 import {
   isDareTourBreak,
   maybeTutorialCase,
   tutorialKeySpotOf,
 } from '../../world/run/tutorialRules'
-import {
-  CaseState,
-  CrateStock,
-  Phase,
-  type Vector,
-} from '../../world/schema/worldSchema'
+import { CaseState, Phase, type Vector } from '../../world/schema/worldSchema'
+import { kitchenStepOf } from './kitchenTour'
+import { isRattlesTalking } from './rattlesIntro'
 
 // NOTE: the guided first break (docs/ESCAPE_PLAN.md, layer 16): a new
 // player learns the dare by doing it, one step at a time, each taught at
 // the spot where it happens, with a little tracker in a corner and an arrow
 // bobbing over the spot. Grab the skeleton key lying in the middle of the
-// dining room, take the Plank Pile from the dining room's crate (in this
-// break it always holds one, src/world/gear/crates.ts), take the prize from
-// the nearest display case (its feat was rigged to a few kills, so it sprang
-// open in the practice wave, src/world/run/tutorialRules.ts), and look at
-// the dare card on the HUD, which glows with an arrow and its one word.
-// Then START WAVE pulses and the tracker ticks off and fades.
+// dining room, walk up to the padlock that asks the fewest keys, where the
+// keys held and the keys it asks show beside it (the owner's playtest,
+// 2026-11-10: "guide me to the key"; the boards are not for sale until a
+// later break, so the step is seeing what keys are for, not opening it),
+// take the prize from the nearest display case (its feat was rigged to a
+// few kills, so it sprang open in the practice wave,
+// src/world/run/tutorialRules.ts), and look at the dare card on the HUD,
+// which glows with an arrow and its one word. Then START WAVE pulses and the
+// tracker ticks off and fades. The dining room crate still holds a Plank
+// Pile in this break (src/world/gear/crates.ts), found without a step.
 //
 // It runs once per save: it starts in the open break before wave 2 while
-// the dare tour lesson is pending, and ending it in any way (done, the
+// the dare tour lesson is pending, once Rattles has said hello
+// (src/features/onboarding/rattlesIntro.ts), and ending it in any way (done, the
 // tracker's skip button, or starting the wave) learns the lesson, saved.
 // SKIP IT on the first-run card learns it too, and a tutorial reset brings
 // it back. Never in co-op.
-export type QuestStep = 'Key' | 'Trap' | 'Case' | 'Card'
+export type QuestStep = 'Key' | 'Lock' | 'Case' | 'Card'
 
 export const QUEST_STEPS: Array.NonEmptyReadonlyArray<QuestStep> = [
   'Key',
-  'Trap',
+  'Lock',
   'Case',
   'Card',
 ]
+
+// NOTE: how close to a padlock's boards counts as having walked up to it.
+const LOCK_SEEN_PX = 24
 
 const QUEST_LOOK_MS = 2600
 const QUEST_DONE_MS = 2600
@@ -53,12 +65,27 @@ const isQuestBreak = (model: Model): boolean =>
 
 const isKeyTaken = (model: Model): boolean => !isPending(model.lessons.dareKey)
 
-const isTrapTaken = (model: Model): boolean =>
-  Array.some(
-    model.crates.crates,
-    ({ room, stock }) =>
-      room === 'Dining' && CrateStock.isAnyOf(['Taken'])(stock),
+// NOTE: the padlock the step points at, the cheapest from where the player
+// stands.
+export const maybeQuestPadlock = (model: Model): Option.Option<Padlock> =>
+  maybeCheapestPadlock(model, focusOf(model).player)
+
+const isNearPadlock = (model: Model): boolean =>
+  Option.exists(
+    maybeQuestPadlock(model),
+    ({ box }) => distanceToBox(focusOf(model).player, box) <= LOCK_SEEN_PX,
   )
+
+// NOTE: walked up to once, or any boards already open, the step stays done.
+// With no padlock left to point at, it counts as done too.
+const isLockSeen = (model: Model): boolean =>
+  QuestTour.matchOrElse(
+    model.firstBreakQuest,
+    { Running: running => running.isLockSeen },
+    () => false,
+  ) ||
+  hasOpenedBoards(model) ||
+  Option.isNone(maybeQuestPadlock(model))
 
 // NOTE: with no case to open (a house with none), the step counts as done.
 const isCaseTaken = (model: Model): boolean =>
@@ -71,7 +98,7 @@ const STEP_CHECKS: ReadonlyArray<
   readonly [QuestStep, (model: Model) => boolean]
 > = [
   ['Key', isKeyTaken],
-  ['Trap', isTrapTaken],
+  ['Lock', isLockSeen],
   ['Case', isCaseTaken],
 ]
 
@@ -108,28 +135,39 @@ const learnDareTour = (model: Model): Model =>
       }),
   })
 
-// NOTE: one frame of the quest: it starts once its break comes, points at
-// the card once the key, the trap, and the case are done, ticks off after a
-// moment on the card, ends if the wave starts first, and its tick fades.
+// NOTE: the padlock step remembers the player walked up to it.
+const noteLockSeen = (model: Model): Model =>
+  Option.contains(maybeOpenStep(model), 'Lock') && isNearPadlock(model)
+    ? modifyFields(model, {
+        firstBreakQuest: () => QuestTour.Running({ isLockSeen: true }),
+      })
+    : model
+
+// NOTE: one frame of the quest: it starts once its break comes and Rattles
+// has said hello, points at the card once the key, the padlock, and the case
+// are done, ticks off after a moment on the card, ends if the wave starts
+// first, and its tick fades.
 export const advanceQuest: {
   (deltaMs: number): (model: Model) => Model
   (model: Model, deltaMs: number): Model
 } = Function.dual(2, (model: Model, deltaMs: number): Model =>
   QuestTour.match(model.firstBreakQuest, {
     Waiting: () =>
-      isDareTourBreak(model)
-        ? modifyFields(model, { firstBreakQuest: () => QuestTour.Running() })
+      isDareTourBreak(model) && !isRattlesTalking(model)
+        ? modifyFields(model, {
+            firstBreakQuest: () => QuestTour.Running({ isLockSeen: false }),
+          })
         : model,
     Running: () => {
       if (!isQuestBreak(model)) {
         return endQuest(model)
-      } else if (Option.isNone(maybeOpenStep(model))) {
-        return modifyFields(model, {
-          firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
-        })
-      } else {
-        return model
       }
+      const noted = noteLockSeen(model)
+      return Option.isNone(maybeOpenStep(noted))
+        ? modifyFields(noted, {
+            firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
+          })
+        : noted
     },
     Looking: ({ ageMs }) => {
       if (!isQuestBreak(model)) {
@@ -165,15 +203,15 @@ export const endQuest = (model: Model): Model =>
       })
 
 // NOTE: an arrow bobs over where the step happens: the key on the floor,
-// the dining room's crate, and the case's top. The card's arrow is the
-// HUD's (src/features/dare/dareCard.ts).
+// the padlock's boards, and the case's top. The card's arrow is the HUD's
+// (src/features/dare/dareCard.ts).
 export const maybeQuestMark = (model: Model): Option.Option<Vector> =>
   Option.flatMap(questStepOf(model), step => {
     const level = levelOf(model)
     if (step === 'Key') {
       return Option.some(tutorialKeySpotOf(model))
-    } else if (step === 'Trap') {
-      return Option.some(crateSpotOf(level, 'Dining'))
+    } else if (step === 'Lock') {
+      return Option.map(maybeQuestPadlock(model), padlockMarkOf)
     } else if (step === 'Case') {
       return Option.map(maybeTutorialCase(model), displayCase => {
         const box = caseBoxOf(level, displayCase)
@@ -183,3 +221,39 @@ export const maybeQuestMark = (model: Model): Option.Option<Vector> =>
       return Option.none()
     }
   })
+
+export type LockProgress = Readonly<{
+  box: Padlock['box']
+  held: number
+  price: number
+}>
+
+// NOTE: on the padlock step, the keys on the ring and the keys the padlock
+// asks, shown beside it, so a player short of keys sees how far to go.
+export const maybeLockProgress = (model: Model): Option.Option<LockProgress> =>
+  Option.contains(questStepOf(model), 'Lock')
+    ? Option.map(maybeQuestPadlock(model), ({ box, price }) => ({
+        box,
+        held: heldKeys(model),
+        price,
+      }))
+    : Option.none()
+
+// THE PADLOCK NUDGE
+
+// NOTE: outside the tour, for a player who skipped it or came back from
+// before the escape: in a break when the boards are for sale, while no
+// boards have opened this run, and the ring holds the keys the cheapest
+// padlock asks, an arrow pulses gently over it. No words.
+export const maybePadlockNudge = (model: Model): Option.Option<Vector> =>
+  Phase.isAnyOf(['Preparation'])(model.phase) &&
+  isExitOfferOpenFor(model.phase) &&
+  Option.isNone(questStepOf(model)) &&
+  Option.isNone(kitchenStepOf(model)) &&
+  !hasOpenedBoards(model)
+    ? pipe(
+        maybeQuestPadlock(model),
+        Option.filter(({ price }) => price > 0 && price <= heldKeys(model)),
+        Option.map(padlockMarkOf),
+      )
+    : Option.none()

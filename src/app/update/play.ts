@@ -21,6 +21,7 @@ import {
   moveHintBand,
   skipDebutCard,
 } from '../../features/onboarding/onboarding'
+import { advanceRattlesIntro } from '../../features/onboarding/rattlesIntro'
 import { isCouchKey, pressCouchKey } from '../../input/couch'
 import {
   type PointerPress,
@@ -299,13 +300,16 @@ export const tickFrame = (deltaTime: number) =>
       const framed = moveHintBand(
         advanceKitchenTour(
           advanceQuest(
-            learnFromFrame(
-              model,
-              tallyFrame(
+            advanceRattlesIntro(
+              learnFromFrame(
                 model,
-                advanceGame(model, deltaTime),
-                clampFrameDelta(deltaTime),
+                tallyFrame(
+                  model,
+                  advanceGame(model, deltaTime),
+                  clampFrameDelta(deltaTime),
+                ),
               ),
+              clampFrameDelta(deltaTime),
             ),
             clampFrameDelta(deltaTime),
           ),

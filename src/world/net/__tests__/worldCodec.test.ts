@@ -325,8 +325,10 @@ describe("the boss's charge on the wire", () => {
 // change to how the room plays moves the bytes with no change to the wire,
 // as zombies coming in promptly after their warning did, and Normal's
 // eased health and speed (2026-10-31) did, and the escape's balance pass
-// (Normal's health x0.68, 2026-11-10) did again.
-const GOLDEN_DIGEST = '63892:500632c4b655ad42'
+// (Normal's health x0.68, 2026-11-10) did again. Rattles' trunk moving
+// beside the front door and the `rattles` lesson (his hello) moved them
+// once more, on protocol 20.
+const GOLDEN_DIGEST = '65940:d95eb061a1a53c9f'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

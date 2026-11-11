@@ -24,6 +24,10 @@ import {
   kitchenStepOf,
   maybeKitchenMark,
 } from '../../features/onboarding/kitchenTour'
+import {
+  RATTLES_INTRO_LINES,
+  maybeRattlesLine,
+} from '../../features/onboarding/rattlesIntro'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { hudLayoutFor } from '../../render/hudLayout'
@@ -221,7 +225,7 @@ const HINT_LIFT = 4
 const RATTLES_HEAD_LIFT = 6
 
 // NOTE: Rattles' spot, where his bubble's tail tip hangs when it points at
-// nothing else: by his head, over his trunk in the dining room
+// nothing else: by his head, over his trunk by the front door
 // (src/features/rattles/rattlesSpot.ts).
 const RATTLES_TIP: Vector = {
   x: RATTLES_BOX.left + 1,
@@ -555,6 +559,41 @@ export const dareHintShapes: {
                   ),
               }),
           }),
+      },
+    ),
+)
+
+// RATTLES' HELLO
+
+// NOTE: each line of his hello (src/features/onboarding/rattlesIntro.ts)
+// baked once.
+const INTRO_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
+  Array.map(RATTLES_INTRO_LINES, (line): readonly [string, Bubble] => {
+    const goods = [lineGood(line)]
+    const width = goodsWidth(goods)
+    return [
+      line,
+      { goods, frame: bakeShapes(frameRects(width, BUBBLE_INK)), width },
+    ]
+  }),
+)
+
+// NOTE: his hello hangs from his own spot and points at it, so with him off
+// screen the bubble waits at the window's edge with an arrow toward him.
+export const rattlesIntroShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Option.match(
+      Option.flatMap(maybeRattlesLine(model), line =>
+        Option.fromNullishOr(INTRO_BUBBLES.get(line)),
+      ),
+      {
+        onNone: () => [],
+        onSome: bubble =>
+          placedBubble(bubble, rattlesSpot(), true, model, camera),
       },
     ),
 )

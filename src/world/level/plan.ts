@@ -67,8 +67,9 @@ export const KITCHEN_TOP_ROW = -KITCHEN_MAP.length
 
 // NOTE: the dining room, where every run starts (docs/ROOM_DRAFTS.md): the
 // Munches' party table in two halves with the chandelier's gap between
-// them, the sideboard, china cabinets, and candelabras, Rattles on his
-// trunk in the south east (`$`), and the chained front door in the south wall. Its four spawn
+// them, the sideboard, china cabinets, and candelabras, the chained front
+// door in the south wall, and Rattles on his trunk (`$`) just east of it,
+// waiting by the door since 1924, a tile clear of the doorway. Its four spawn
 // doors keep the parlour's names, North top right through the yard, West
 // top left, East bottom right, and South bottom left, so the wave tables
 // draw what they always drew. The map is the draft's, review marks and all:
@@ -89,12 +90,12 @@ const DINING_MAP: ReadonlyArray<string> = [
   '<..................................#',
   '<..................................?',
   '#..........i.....@@.....i..........?',
-  '#cc.......................$$.....cc#',
-  '#.........................$$.......#',
+  '#cc..............................cc#',
+  '#..................................#',
   '?..................................#',
   '?............i........i............E',
-  '#HH...............................4E',
-  '#HH......tt......................HH#',
+  '#HH..................$$...........4E',
+  '#HH......tt..........$$..........HH#',
   '#####SS#########MMMM################',
 ]
 

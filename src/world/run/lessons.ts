@@ -33,6 +33,7 @@ export const settledLessons: Lessons = {
   openBreak: learned,
   dareTour: learned,
   dareKey: learned,
+  rattles: learned,
 }
 
 export const isPending = (lesson: Lesson): boolean =>

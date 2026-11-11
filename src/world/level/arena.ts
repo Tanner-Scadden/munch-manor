@@ -57,8 +57,8 @@ export type CoverKind =
 
 export const WALL_SYMBOL = '#'
 // NOTE: Rattles' spot in the start room (docs/ESCAPE_PLAN.md, layer 7): his
-// stall went with the shop, and he sits on an old trunk there, solid, and
-// hollers his hints from it.
+// stall went with the shop, and he sits on an old trunk by the front door,
+// solid, and hollers his hints from it.
 export const RATTLES_SYMBOL = '$'
 const OUTSIDE_SYMBOL = ','
 export const SOUP_SYMBOL = '~'

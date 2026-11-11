@@ -150,6 +150,7 @@ describe('the schema', () => {
     const {
       dareTour: _dareTour,
       dareKey: _dareKey,
+      rattles: _rattles,
       ...lessons
     } = learnedSave.onboarding.lessons
     const older = jsonOf({
@@ -162,7 +163,12 @@ describe('the schema', () => {
     expect(
       Option.map(decodeSave(older), save => save.onboarding.lessons),
     ).toEqual(
-      Option.some({ ...lessons, dareTour: 'Pending', dareKey: 'Pending' }),
+      Option.some({
+        ...lessons,
+        dareTour: 'Pending',
+        dareKey: 'Pending',
+        rattles: 'Pending',
+      }),
     )
   })
 

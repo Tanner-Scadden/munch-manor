@@ -56,7 +56,6 @@ import {
   meleeNameOf,
   tierName,
 } from '../../world/gear/weapons'
-import { RATTLES_BOX } from '../../world/level/arena'
 import { MEDIC_WORD } from '../../world/names'
 import { isCallFresh } from '../../world/party/medic'
 import {
@@ -474,11 +473,11 @@ const trapIconsView = (
 // NOTE: the hold-to-buy and trap buttons sit over the row, right-aligned,
 // and wrap upward, so they never cover a slot, the reload button, or the
 // start wave button centered over the guns. Mid-wave (only hold-to-buy) they
-// end over the melee slot. In a landscape break they run from the start wave button to short
-// of the stall. In portrait they end over the reload button, and in a break,
+// end over the melee slot. In a landscape break they run from the start wave
+// button to a fixed right edge, where the stall's left side once stood. In portrait they end over the reload button, and in a break,
 // when the start wave button takes the band over the row, one band higher.
 const START_WAVE_HALF_PX = 64
-const STALL_CLEARANCE = 10
+const SIDE_RIGHT_EDGE_PX = 250
 
 const sideStyle = (
   model: Model,
@@ -494,7 +493,7 @@ const sideStyle = (
         : '0px',
       right: isBreak
         ? percentOf(
-            cluster.x + cluster.width - (RATTLES_BOX.left - STALL_CLEARANCE),
+            cluster.x + cluster.width - SIDE_RIGHT_EDGE_PX,
             cluster.width,
           )
         : '0px',

@@ -138,7 +138,12 @@ describe('Depth sort', () => {
   })
 
   test("the player and a zombie behind Rattles' trunk draw under it", () => {
-    const behindTrunk = zombieOf('Shambler', 1, RATTLES_BOX.left + 6, 140)
+    const behindTrunk = zombieOf(
+      'Shambler',
+      1,
+      RATTLES_BOX.left + 6,
+      RATTLES_BOX.top - 10,
+    )
     const current = fightingModel(
       { x: RATTLES_BOX.right - 4, y: RATTLES_BOX.top - 8 },
       [behindTrunk],

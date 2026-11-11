@@ -222,6 +222,7 @@ export const settleLessons = (lessons: Lessons): Lessons =>
     openBreak: settle,
     dareTour: settle,
     dareKey: settle,
+    rattles: settle,
   })
 
 // SKIPPING

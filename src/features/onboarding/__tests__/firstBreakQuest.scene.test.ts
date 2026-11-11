@@ -30,7 +30,7 @@ const questBreak: Model = modifyFields(asVeteran(initialModel), {
       dareTour: () => Lesson.Pending(),
       dareKey: () => Lesson.Pending(),
     }),
-  firstBreakQuest: () => QuestTour.Running(),
+  firstBreakQuest: () => QuestTour.Running({ isLockSeen: false }),
 })
 
 const tracker = Scene.role('region', { name: 'First break' })
@@ -45,7 +45,9 @@ describe('the first break tracker', () => {
       Scene.expect(
         Scene.role('listitem', { name: 'Grab the key, now' }),
       ).toExist(),
-      Scene.expect(Scene.role('listitem', { name: 'Take the trap' })).toExist(),
+      Scene.expect(
+        Scene.role('listitem', { name: 'Find a padlock for keys' }),
+      ).toExist(),
       Scene.expect(Scene.role('listitem', { name: 'Open the case' })).toExist(),
       Scene.expect(
         Scene.role('listitem', { name: 'Look at the dare card' }),

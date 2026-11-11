@@ -30,7 +30,7 @@ import {
 import { attempt } from './page'
 
 const LEARNED =
-  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey'
+  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
 const LOBBY = `${LEARNED}&rank=4200&calling=Handyman`
 
 // NOTE: the lobby's mask: Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8.

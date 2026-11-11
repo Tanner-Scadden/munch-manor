@@ -7,7 +7,7 @@ import {
   QUEST_CARD_ICON,
   QUEST_CASE_ICON,
   QUEST_KEY_ICON,
-  QUEST_TRAP_ICON,
+  QUEST_LOCK_ICON,
   TOUR_BOARDS_ICON,
   TOUR_FRIDGE_ICON,
   TOUR_PAUSED_ICON,
@@ -34,8 +34,8 @@ import { OnboardingMessage } from './message'
 // NOTE: the guided tutorial's tracker, in the corner under the hearts: a
 // chapter's steps as icons, the current one lit with its one word, the done
 // ones ticked, and a skip button. Done, every step ticks, a little confetti
-// pops, and it fades. Chapter 1 is the first break: the key, the trap, the
-// case, and the dare card (src/features/onboarding/firstBreakQuest.ts),
+// pops, and it fades. Chapter 1 is the first break: the key, the padlock,
+// the case, and the dare card (src/features/onboarding/firstBreakQuest.ts),
 // chapter 2 the kitchen and the fridge (src/features/onboarding/kitchenTour.ts), which also
 // shows the break clock held.
 
@@ -53,7 +53,7 @@ type Chapter = Readonly<{
 
 const FIRST_BREAK_STEPS: Array.NonEmptyReadonlyArray<StepLook> = [
   { icon: QUEST_KEY_ICON, word: 'KEY', spoken: 'Grab the key' },
-  { icon: QUEST_TRAP_ICON, word: 'TRAP', spoken: 'Take the trap' },
+  { icon: QUEST_LOCK_ICON, word: 'LOCK', spoken: 'Find a padlock for keys' },
   { icon: QUEST_CASE_ICON, word: 'CASE', spoken: 'Open the case' },
   { icon: QUEST_CARD_ICON, word: 'DARE', spoken: 'Look at the dare card' },
 ]
