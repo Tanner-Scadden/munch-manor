@@ -11,16 +11,25 @@ import {
   CASE_WIDTH,
   PRIZE_SPRITES,
 } from '../../art/caseArt'
-import { type BakedText, bakeText, placeBaked } from '../../art/font'
+import {
+  type BakedText,
+  bakeText,
+  placeBaked,
+  textShapes,
+} from '../../art/font'
 import { group, placeAt } from '../../art/sprite'
 import { CaseCard } from '../../domain/clientSchema'
 import { featLockShapes } from '../../render/featLockView'
 import { LANDSCAPE_SIZE } from '../../render/screen'
 import { caseLookOf } from '../../world/feats/caseSpots'
 import { levelOf } from '../../world/level/arena'
-import { DISPLAY_CASE_NAME } from '../../world/names'
+import { DISPLAY_CASE_NAME, GUN_NAMES } from '../../world/names'
 import { focusOf } from '../../world/party/party'
-import type { DisplayCase } from '../../world/schema/worldSchema'
+import {
+  type Armament,
+  type DisplayCase,
+  Feat,
+} from '../../world/schema/worldSchema'
 import { clamp } from '../../world/step/geometry'
 import { CASE_CARD_MS, canSkipCaseCard, maybeCardCase } from './caseCard'
 import { OnboardingMessage } from './message'
@@ -45,6 +54,7 @@ const ARROW_X = CENTER_X + 18
 const CASE_LEFT = CENTER_X + 34
 const TITLE_Y = CARD_TOP + 6
 const LINE_Y = 115
+const FEAT_LABEL_Y = 100
 const TIMER_Y = 128
 const TIMER_WIDTH = 96
 const TIMER_BACK = 'rgba(255, 138, 61, 0.25)'
@@ -55,6 +65,39 @@ const TITLE: BakedText = bakeText(
   'Title',
 )
 const LINE: BakedText = bakeText("DO THE DEED. WIN WHAT'S INSIDE.", 'Plain')
+
+// NOTE: the feat in a few words under its lock, so a lock with no count
+// (open a room, light the fire) still says what to do, and every icon gets
+// its words once, on the card, while the lock in the room stays wordless.
+const plural = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many}`
+
+const armamentWords = (armament: Armament): string => {
+  if (armament === 'Knife') {
+    return 'KNIFE'
+  } else if (armament === 'Fire') {
+    return 'FIRE'
+  } else {
+    return String.toUpperCase(GUN_NAMES[armament])
+  }
+}
+
+export const featLabelOf = (feat: Feat): string =>
+  Feat.match(feat, {
+    Kills: ({ count }) => plural(count, 'KILL', 'KILLS'),
+    KillsWith: ({ armament, count }) =>
+      `${plural(count, 'KILL', 'KILLS')} WITH ${armamentWords(armament)}`,
+    KillsOf: ({ count }) => `KILL ${count} OF THESE`,
+    NoHitWave: ({ count }) => `${plural(count, 'WAVE', 'WAVES')} NO HITS`,
+    Streak: ({ count }) => `${count} KILLS NO HITS`,
+    OwnBlast: ({ count }) => `${plural(count, 'BLAST KILL', 'BLAST KILLS')}`,
+    OpenedRoom: ({ count }) => `OPEN ${plural(count, 'ROOM', 'ROOMS')}`,
+    LitFire: () => 'LIGHT THE FIRE',
+    KeyFromMarked: ({ count }) =>
+      `${plural(count, 'MARKED KEY', 'MARKED KEYS')}`,
+    KitchenKills: ({ count }) => `${count} KITCHEN KILLS`,
+    KitchenStandKills: ({ count }) => `${count} KILLS IN THE KITCHEN`,
+  })
 
 const centered = (baked: BakedText, y: number, scale = 1): Canvas.Shape =>
   placeBaked(baked, { x: CENTER_X, y, align: 'Center', scale })
@@ -148,6 +191,13 @@ const cardShapes = (
       countShows: 'Always',
     }),
   }),
+  ...textShapes(
+    featLabelOf(displayCase.feat),
+    'Coin',
+    LOCK_X,
+    FEAT_LABEL_Y,
+    'Center',
+  ),
   group({
     translate: { x: ARROW_X, y: ART_MIDDLE_Y },
     scale: { x: ART_SCALE, y: ART_SCALE },
