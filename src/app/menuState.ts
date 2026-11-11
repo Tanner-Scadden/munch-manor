@@ -3,7 +3,11 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { isOpen as isCoopScreenOpen } from '../features/coop/update'
 import { MenuPanel } from '../features/home/homeSchema'
-import { isHeroPickerUp, isLobbyShown } from '../features/lobby/model'
+import {
+  isHeroPickerUp,
+  isLobbyDrawn as isLobbyDrawnIn,
+  isLobbyShown,
+} from '../features/lobby/model'
 import { ProfileTab } from '../features/profile/model'
 import { tabOf } from '../features/profile/profile'
 import { RESTART_GRACE_MS } from '../shared/constants'
@@ -77,6 +81,11 @@ export const isOnHomeMenu = (model: Model): boolean =>
 
 // NOTE: the lobby is on screen, whatever dialog is over it (the hero picker).
 export const isLobbyUp = (model: Model): boolean => isLobbyShown(model.lobby)
+
+// NOTE: the dare card is drawn: up, or folding back into PLAY after CHICKEN
+// OUT, when the home menu is already in charge again.
+export const isLobbyDrawn = (model: Model): boolean =>
+  isLobbyDrawnIn(model.lobby)
 
 export const isLobbyOpen = (model: Model): boolean =>
   MenuState.isAnyOf(['Lobby'])(menuState(model))

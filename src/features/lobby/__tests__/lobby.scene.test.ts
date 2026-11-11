@@ -10,6 +10,9 @@ import { specialsOf } from '../../../domain/callingSpecials'
 import { heroesBoughtBy, home } from '../../../test/model.fixture'
 import {
   APPLICATION,
+  emitPressedKey,
+  foldLobbyInScene,
+  homeUnderLobby,
   lobbyBackButton,
   lobbyScreen,
   lobbyStartButton,
@@ -36,16 +39,28 @@ const handyman = modifyFields(home, {
 
 describe('the lobby', () => {
   it.effect(
-    'replaces the home menu, with BACK and START and nothing else to press',
+    'unfolds from PLAY as a card over the home menu, which stays in sight but takes nothing',
     () =>
       Scene.scene(
         APPLICATION,
         Scene.given(home),
         measureSurface,
         Scene.expect(lobbyScreen).toBeAbsent(),
+        Scene.expect(homeUnderLobby).not.toHaveAttr('inert'),
         ...openLobbyInScene(),
         Scene.expect(lobbyScreen).toExist(),
-        Scene.expect(playButton).toBeAbsent(),
+        Scene.expect(lobbyScreen).toHaveAttr('data-state', 'Open'),
+        Scene.inside(
+          lobbyScreen,
+          Scene.expect(Scene.selector('.dare-card')).toExist(),
+        ),
+        Scene.expect(Scene.selector('.dare-fold')).toHaveAttr(
+          'aria-hidden',
+          'true',
+        ),
+        Scene.expect(playButton).toExist(),
+        Scene.expect(homeUnderLobby).toHaveAttr('inert'),
+        Scene.expect(homeUnderLobby).toHaveAttr('aria-hidden', 'true'),
         Scene.expect(lobbyStartButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
         Scene.expect(lobbyBackButton).toHaveAttr('aria-keyshortcuts', 'Escape'),
       ),
@@ -76,19 +91,60 @@ describe('the lobby', () => {
       ),
   )
 
-  it.effect('CHICKEN OUT by a tap goes home to PLAY', () =>
+  it.effect(
+    'CHICKEN OUT by a tap folds the card back into PLAY and focuses PLAY',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...openLobbyInScene(),
+        Scene.click(lobbyBackButton),
+        Scene.Command.resolve(
+          FocusHomeButton({ button: 'Play' }),
+          Message.CompletedFocusHomeButton(),
+        ),
+        Scene.expect(lobbyScreen).toBeAbsent(),
+        Scene.expect(Scene.selector('.lobby[data-state="Folding"]')).toHaveAttr(
+          'inert',
+        ),
+        Scene.expect(homeUnderLobby).not.toHaveAttr('inert'),
+        foldLobbyInScene(),
+        Scene.expect(Scene.selector('.lobby')).toBeAbsent(),
+        Scene.expect(playButton).toExist(),
+      ),
+  )
+
+  it.effect('Escape folds the card back into PLAY and focuses PLAY', () =>
     Scene.scene(
       APPLICATION,
       Scene.given(home),
       measureSurface,
       ...openLobbyInScene(),
-      Scene.click(lobbyBackButton),
+      emitPressedKey('Escape'),
       Scene.Command.resolve(
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
       Scene.expect(lobbyScreen).toBeAbsent(),
-      Scene.expect(playButton).toExist(),
+      foldLobbyInScene(),
+      Scene.expect(Scene.selector('.lobby')).toBeAbsent(),
+    ),
+  )
+
+  it.effect('a tap on the dim around the card folds it back', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(home),
+      measureSurface,
+      ...openLobbyInScene(),
+      Scene.click(Scene.selector('.lobby-backdrop')),
+      Scene.Command.resolve(
+        FocusHomeButton({ button: 'Play' }),
+        Message.CompletedFocusHomeButton(),
+      ),
+      Scene.expect(lobbyScreen).toBeAbsent(),
+      foldLobbyInScene(),
     ),
   )
 
@@ -234,14 +290,20 @@ describe('the lobby', () => {
         Scene.given(home),
         measureSurface,
         ...openLobbyInScene(),
-        Scene.expectAll(Scene.all.selector('.home-key')).toHaveCount(6),
+        Scene.inside(
+          lobbyScreen,
+          Scene.expectAll(Scene.all.selector('.home-key')).toHaveCount(6),
+        ),
       )
       yield* Scene.scene(
         APPLICATION,
         Scene.given(modifyFields(home, { lastDevice: () => 'Touch' })),
         measureSurface,
         ...openLobbyInScene(),
-        Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
+        Scene.inside(
+          lobbyScreen,
+          Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
+        ),
       )
     }),
   )

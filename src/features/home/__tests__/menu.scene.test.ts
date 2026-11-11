@@ -18,6 +18,8 @@ import {
   closeButton,
   closeDialogInScene,
   emitPressedKey,
+  foldLobbyInScene,
+  homeUnderLobby,
   lobbyBackButton,
   lobbyScreen,
   lockedNightmare,
@@ -275,7 +277,7 @@ describe('Home menu', () => {
         measureSurface,
         ...openLobbyInScene(),
         Scene.expect(lobbyScreen).toExist(),
-        Scene.expect(playButton).toBeAbsent(),
+        Scene.expect(homeUnderLobby).toHaveAttr('inert'),
         Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
         Scene.click(Scene.role('button', { name: /^Triple Dare:/ })),
         resolveFocusLobbyInScene(),
@@ -289,8 +291,10 @@ describe('Home menu', () => {
           Message.CompletedFocusHomeButton(),
         ),
         Scene.expect(lobbyScreen).toBeAbsent(),
+        foldLobbyInScene(),
         Scene.expect(playButton).toExist(),
         Scene.expect(manorButton).toExist(),
+        Scene.expect(homeUnderLobby).not.toHaveAttr('inert'),
       ),
   )
 
@@ -320,6 +324,7 @@ describe('Home menu', () => {
             Message.CompletedFocusHomeButton(),
           ),
           Scene.expect(lobbyScreen).toBeAbsent(),
+          foldLobbyInScene(),
         )
         yield* Scene.scene(
           APPLICATION,
@@ -436,7 +441,7 @@ describe('Home menu', () => {
           emitPressedKey('Enter'),
           resolveFocusLobbyInScene(),
           Scene.expect(lobbyScreen).toExist(),
-          Scene.expect(manorButton).toBeAbsent(),
+          Scene.expect(homeUnderLobby).toHaveAttr('inert'),
           emitPressedKey('Enter'),
           ...throughIntroInScene(),
           ...readDareCardInScene(),

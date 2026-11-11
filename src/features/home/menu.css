@@ -75,6 +75,13 @@
 
 /* HOME FRAME */
 
+/* NOTE: the home menu's holder, there so the menu can go inert under the
+   dare card (src/app/view.ts) without being drawn afresh. It takes no
+   room. */
+.home-under-lobby {
+  display: contents;
+}
+
 .home-frame {
   position: fixed;
   top: env(safe-area-inset-top, 0px);
@@ -172,8 +179,10 @@
    folded napkin card with a dog-eared corner, I DARE YOU scrawled in red
    over the play mark (LORE.md, "PLAY is the dare"). The button's box never
    moves, so a tap near an edge still lands; only its face sinks when
-   pressed. */
+   pressed. It is the anchor the lobby's dare card unfolds out of
+   (src/features/lobby/lobby.css). */
 .home-stage .home-play {
+  anchor-name: --home-play;
   width: max(112px, 54 * var(--a));
   padding: 0;
   border: 0;

@@ -7,6 +7,7 @@ import {
   blurredControl,
   botHeroOpenedFrom,
   dropBot,
+  finishFold,
   focusedControl,
   heroOpenedFrom,
   leave,
@@ -22,6 +23,7 @@ import {
 // as context. Each tap is a Step in steps.ts that its keys share.
 export const update = LobbyComposition.makeUpdate.withContext(picks => ({
   ClickedBackButton: leave,
+  ClickedBackdrop: leave,
   ClickedStartButton: start,
   ClickedHeroButton: model =>
     pipe(openHero(model), Update.withOutMessage(heroOpenedFrom(model))),
@@ -42,4 +44,5 @@ export const update = LobbyComposition.makeUpdate.withContext(picks => ({
   }),
   BlurredControl: model => ({ model: blurredControl(model) }),
   CompletedFocusControl: model => ({ model }),
+  CompletedFold: model => ({ model: finishFold(model) }),
 }))

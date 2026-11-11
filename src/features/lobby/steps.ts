@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect'
+import { Duration, Effect, Option } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -22,6 +22,7 @@ import { Message, OutMessage } from './message'
 import {
   LobbyControl,
   type LobbyPicks,
+  type LobbyStatus,
   type Model,
   isLobbyShown,
 } from './model'
@@ -86,21 +87,46 @@ export const open = (model: Model) =>
 
 // LEAVING
 
-const closed = (model: Model): Model =>
+// NOTE: how long the card takes to fold back into PLAY (lobby.css,
+// `dare-fold-back`), after which it is gone. A player who opens it again
+// before then gets it Open, and the late CompletedFold changes nothing.
+const FOLD_MS = 300
+
+export const FoldLobby = LobbyBlock.makeCommand('FoldLobby', {
+  messages: [Message.CompletedFold],
+  handler: function* () {
+    return () =>
+      Effect.sleep(Duration.millis(FOLD_MS)).pipe(
+        Effect.as(Message.CompletedFold()),
+      )
+  },
+})
+
+const withStatus = (model: Model, status: LobbyStatus): Model =>
   modifyFields(model, {
-    status: () => 'Closed',
+    status: () => status,
     maybeFocus: () => Option.none(),
   })
 
+// NOTE: SHAKE ON IT: the run starts, so the card goes at once.
 export const start = (model: Model) =>
   isActive(model)
-    ? { model: closed(model), outMessage: OutMessage.Started() }
+    ? { model: withStatus(model, 'Closed'), outMessage: OutMessage.Started() }
     : { model }
 
+// NOTE: CHICKEN OUT, Escape, or a tap outside the card: it folds back into
+// PLAY, and the root puts focus back on PLAY.
 export const leave = (model: Model) =>
   isActive(model)
-    ? { model: closed(model), outMessage: OutMessage.Left() }
+    ? {
+        model: withStatus(model, 'Folding'),
+        commands: [FoldLobby()],
+        outMessage: OutMessage.Left(),
+      }
     : { model }
+
+export const finishFold = (model: Model): Model =>
+  model.status === 'Folding' ? withStatus(model, 'Closed') : model
 
 // PICKS
 

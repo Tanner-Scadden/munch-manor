@@ -67,7 +67,7 @@ import { Message as HeroPickerMessage } from '../features/heroes/message'
 import { HeroPickerBinding } from '../features/lobby/bindings'
 import { Message as LobbyMessage } from '../features/lobby/message'
 import type { LobbyControl } from '../features/lobby/model'
-import { FocusLobbyControl } from '../features/lobby/steps'
+import { FocusLobbyControl, FoldLobby } from '../features/lobby/steps'
 import {
   type HintId,
   LESSON_MIN_SHOWN_MS,
@@ -392,6 +392,9 @@ export const resolveFocusLobbyInScene = (control: LobbyControl = 'Start') =>
     FocusLobbyControl({ control }),
     LobbyMessage.CompletedFocusControl(),
   )
+
+export const foldLobbyInScene = () =>
+  Scene.Command.resolve(FoldLobby(), LobbyMessage.CompletedFold())
 
 export const openLobbyInScene = () => [
   Scene.click(Scene.role('button', { name: 'Play' })),
@@ -771,6 +774,8 @@ export const settingsButton = Scene.role('button', { name: 'Settings' })
 export const profileDialog = Scene.role('dialog', { name: 'Profile' })
 
 export const lobbyScreen = Scene.role('region', { name: 'Lobby' })
+
+export const homeUnderLobby = Scene.selector('.home-under-lobby')
 
 export const lobbyStartButton = Scene.role('button', { name: 'Shake on it' })
 

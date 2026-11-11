@@ -67,6 +67,7 @@ import {
   type LobbyControl,
   type LobbyPicks,
   type Model,
+  isLobbyDrawn,
   isLobbyShown,
 } from './model'
 
@@ -706,13 +707,33 @@ const heroDialogView = (
     }),
   )
 
+// THE FOLD
+
+// NOTE: the paper the card unfolds from: a copy of the napkin, folded in
+// half, that grows out of PLAY, opens, and gives way to the card
+// (lobby.css, `dare-unfold`), and on CHICKEN OUT folds back into PLAY
+// (`dare-fold-back`). It is art alone, aria-hidden and taking no taps: the
+// card and its buttons never move, they fade in once it is open.
+const foldView = (h: LobbyViewBuilder): Html =>
+  h.div(
+    [h.Class('dare-fold'), h.AriaHidden(true)],
+    [
+      h.span([h.Class('dare-fold-half'), h.DataAttribute('half', 'Top')]),
+      h.span([h.Class('dare-fold-half'), h.DataAttribute('half', 'Bottom')]),
+    ],
+  )
+
 // VIEW
 
-// NOTE: the lobby screen and the hero picker's Dialog over it. The root
-// draws the lobby only while it is up.
+// NOTE: the dare card over the home menu, sized to what it holds, with the
+// menu dimmed around it; a tap on the dim closes it as CHICKEN OUT does.
+// While it folds back into PLAY it is still drawn, so the fold has its
+// size, but inert and hidden: the home menu has the keys again. The hero
+// picker's Dialog opens over it.
 const view = LobbyComposition.makeView.withInputs<ViewInputs>(
-  (model, inputs, h) =>
-    isLobbyShown(model)
+  (model, inputs, h) => {
+    const isOpen = isLobbyShown(model)
+    return isLobbyDrawn(model)
       ? h.div(
           [h.Class('lobby-layer')],
           [
@@ -720,9 +741,16 @@ const view = LobbyComposition.makeView.withInputs<ViewInputs>(
               [
                 h.Class('coop lobby'),
                 h.DataAttribute('screen', 'Solo'),
-                h.AriaLabel('Lobby'),
+                h.DataAttribute('state', isOpen ? 'Open' : 'Folding'),
+                ...(isOpen
+                  ? [h.AriaLabel('Lobby')]
+                  : [h.Inert(true), h.AriaHidden(true)]),
               ],
               [
+                h.div([
+                  h.Class('lobby-backdrop'),
+                  h.OnClick(Message.ClickedBackdrop()),
+                ]),
                 h.h2([h.Class('sr-only')], ['Lobby']),
                 h.div(
                   [h.Class('coop-lobby dare-card')],
@@ -735,10 +763,12 @@ const view = LobbyComposition.makeView.withInputs<ViewInputs>(
                 ),
               ],
             ),
+            foldView(h),
             heroDialogView(model, inputs, h),
           ],
         )
-      : h.empty,
+      : h.empty
+  },
 )
 
 // NOTE: the lobby's view, gathered here so it is not exported alone: a view
