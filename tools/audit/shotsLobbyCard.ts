@@ -4,12 +4,15 @@
 // mid-unfold, and a frame mid-fold back into PLAY, as
 // `lobby-card-<TAG>-<viewport>-<frame>.png`. It exits with 1 when the card
 // runs past the screen, SHAKE ON IT cannot be scrolled to, the fold does
-// not start on PLAY or end on the card, or focus is not on START once it is
-// open and on PLAY once it is gone.
+// not start on PLAY or end on the card, any hero's name does not fit on
+// the hero card (each name is tried in every card, yours and a bot's), or
+// focus is not on START once it is open and on PLAY once it is gone.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsLobbyCard.ts
 // VIEWPORTS picks screens.
-import { Effect, Schema } from 'effect'
+import { Effect, Record, Schema } from 'effect'
 import type { Page } from 'playwright-core'
+
+import { CALLING_NAMES } from '@game/world/names'
 
 import { runHarnessAudit } from './harnessServer'
 import {
@@ -28,7 +31,7 @@ import {
   shot,
   wait,
 } from './lib'
-import { attempt, evaluateAs } from './page'
+import { attempt, decodedFrom, evaluateAs } from './page'
 
 // NOTE: d1280, p844 (a phone on its side), and u390 (one held upright).
 const VIEWPORTS = pickViewports([DESKTOP_1280, PHONE_844, UPRIGHT_390])
@@ -102,6 +105,34 @@ const releaseAnimations = (page: Page) =>
     }),
   )
 
+const Clipped = Schema.Array(
+  Schema.Struct({ name: Schema.String, needs: Schema.Finite, has: Schema.Finite }),
+)
+
+// NOTE: each hero's name tried in every hero card on the card, put back as
+// it was: the ones that do not fit, with the room each needs and has.
+const clippedNames = (page: Page) =>
+  decodedFrom(Clipped, () =>
+    page.evaluate(names => {
+      const clipped: Array<{ name: string; needs: number; has: number }> = []
+      for (const label of document.querySelectorAll('.lobby-hero-name')) {
+        const was = label.textContent
+        for (const name of names) {
+          label.textContent = name
+          if (label.scrollWidth > label.clientWidth) {
+            clipped.push({
+              name,
+              needs: label.scrollWidth,
+              has: label.clientWidth,
+            })
+          }
+        }
+        label.textContent = was
+      }
+      return clipped
+    }, Record.values(CALLING_NAMES)),
+  )
+
 const stillShot = (page: Page, name: string) =>
   attempt(() => page.screenshot({ path: `${SHOTS_DIR}/${name}.png` }))
 
@@ -172,6 +203,20 @@ runHarnessAudit(
         `${where}: card ${Math.round(open.card.right - open.card.left)}x${Math.round(open.card.bottom - open.card.top)} at ${Math.round(open.card.left)},${Math.round(open.card.top)}`,
       )
 
+      // NOTE: every hero's name fits, on your hero card and on a bot's.
+      yield* attempt(() => page.locator('.lobby-add-bot').first().click())
+      yield* attempt(() =>
+        page.locator('.lobby-hero-bot').waitFor({ state: 'attached' }),
+      )
+      yield* settleAnimations(page)
+      yield* shot(page, name('bot'))
+      const withBot = yield* measure(page)
+      for (const { name: hero, needs, has } of yield* clippedNames(page)) {
+        problems.push(
+          `${where}: "${hero}" is cut off on a hero card (${needs}px in ${has}px)`,
+        )
+      }
+
       // NOTE: the fold back: Escape on a desktop, a tap on CHICKEN OUT on a
       // phone (a key there makes the last device the keyboard, and the
       // layout turns), then a frame halfway into PLAY.
@@ -185,9 +230,9 @@ runHarnessAudit(
       )
       yield* holdAt(page, 0)
       const folding = yield* measure(page)
-      if (!isNear(folding.fold, open.card)) {
+      if (!isNear(folding.fold, withBot.card)) {
         problems.push(
-          `${where}: the fold back does not start on the card (${boxText(folding.fold)} against ${boxText(open.card)})`,
+          `${where}: the fold back does not start on the card (${boxText(folding.fold)} against ${boxText(withBot.card)})`,
         )
       }
       yield* holdAt(page, 200)
