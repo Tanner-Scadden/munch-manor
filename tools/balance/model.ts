@@ -37,7 +37,7 @@ import { tierForKills } from '../../src/world/gear/gunLevels'
 import { TRAPS } from '../../src/world/gear/traps'
 import { UPGRADE_TIERS, WEAPONS } from '../../src/world/gear/weapons'
 import { KEY_RULES, keyOddsOf } from '../../src/world/keys/keys'
-import { KITCHEN_EXIT, exitKeysOf } from '../../src/world/level/exits'
+import { EXIT_RULES } from '../../src/world/level/exits'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
@@ -122,7 +122,7 @@ export const CATALOG: Catalog = {
   plankLimit: TRAPS.Barricade.limit,
   gnomePrice: 0,
   gnomeLimit: TRAPS.Turret.limit,
-  kitchenPrice: exitKeysOf(KITCHEN_EXIT),
+  kitchenPrice: EXIT_RULES.kitchenKeys,
 }
 
 // NOTE: a gun's tier is earned by its kills (src/world/gear/gunLevels.ts),

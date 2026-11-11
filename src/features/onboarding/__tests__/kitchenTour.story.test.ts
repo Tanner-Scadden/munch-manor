@@ -45,7 +45,7 @@ import { isKitchenOpen } from '../../../world/kitchen/kitchen'
 import { levelOf } from '../../../world/level/arena'
 import {
   KITCHEN_EXIT,
-  exitKeysOf,
+  EXIT_RULES,
   exitPriceFor,
 } from '../../../world/level/exits'
 import { WEST_EXIT } from '../../../world/level/plan'
@@ -159,7 +159,7 @@ describe('the kitchen tour', () => {
           expect(stepOf(started)).toEqual(Option.some('Boards'))
           expect(remainingOf(started)).toBe(BREAK_MS)
           expect(exitPriceFor(started, KITCHEN_EXIT)).toBe(0)
-          expect(exitPriceFor(started, WEST_EXIT)).toBe(exitKeysOf(WEST_EXIT))
+          expect(exitPriceFor(started, WEST_EXIT)).toBe(EXIT_RULES.roomKeys[0])
         }),
         holdToBuy,
         Story.model(opened => {
@@ -304,9 +304,7 @@ describe('the kitchen tour', () => {
       Story.message(Message.ClickedSkipKitchenTourButton()),
       Story.model(skipped => {
         expect(skipped.kitchenTour).toEqual(Tour.Over())
-        expect(exitPriceFor(skipped, KITCHEN_EXIT)).toBe(
-          exitKeysOf(KITCHEN_EXIT),
-        )
+        expect(exitPriceFor(skipped, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
       }),
       frames(10),
       Story.model(later => {
@@ -355,7 +353,7 @@ describe('the kitchen tour', () => {
     Effect.gen(function* () {
       const done = asTutorialDone(atBoards())
       expect(isKitchenTourOn(done)).toBe(false)
-      expect(exitPriceFor(done, KITCHEN_EXIT)).toBe(exitKeysOf(KITCHEN_EXIT))
+      expect(exitPriceFor(done, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
       yield* Story.story(
         APPLICATION,
         Story.given(done),
@@ -386,7 +384,7 @@ describe('the kitchen tour', () => {
         party: () => Party.Crew(),
       })
       expect(isKitchenTourOn(crew)).toBe(false)
-      expect(exitPriceFor(crew, KITCHEN_EXIT)).toBe(exitKeysOf(KITCHEN_EXIT))
+      expect(exitPriceFor(crew, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
       expect(fridgePriceFor(crew)).toBe(FRIDGE_RULES.keys)
       return Story.story(
         APPLICATION,

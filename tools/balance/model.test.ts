@@ -1,8 +1,7 @@
 import { Array, Number, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { KITCHEN_EXIT, exitKeysOf } from '../../src/world/level/exits'
-import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from '../../src/world/level/plan'
+import { EXIT_RULES } from '../../src/world/level/exits'
 import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
 import { chunkRows } from './chunkModel'
 import {
@@ -419,14 +418,11 @@ describe('guardrails from GAME_DESIGN.md', () => {
   // rooms' padlocks and the fridge, and guns come from display cases. Each
   // room holds one thing on the dare's list, so the padlocks pace the hunt:
   // the first two waves' keys open the kitchen, and every room takes the
-  // keys of seven or eight waves, so the last room opens about wave 9.
+  // keys of seven or eight waves, so the last room opens about wave 8
+  // (8, 40, 75, and 90 since the pacing report, 2026-11-10).
   const keysBy = (wave: number) => sumOf(expectedPays(ASSUMPTIONS, wave))
-  const kitchen = exitKeysOf(KITCHEN_EXIT)
-  const everyRoom = sumOf(
-    Array.map([KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT], exit =>
-      exitKeysOf(exit),
-    ),
-  )
+  const kitchen = EXIT_RULES.kitchenKeys
+  const everyRoom = kitchen + sumOf(EXIT_RULES.roomKeys) + EXIT_RULES.farKeys
   guardrail(
     'the keys of waves 1 and 2 open the kitchen, and of wave 1 do not',
     'Met',
