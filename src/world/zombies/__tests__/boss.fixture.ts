@@ -99,7 +99,13 @@ export const bossWithHpAt: {
   modifyFields(bossAt(x, y), { hp: () => hp }),
 )
 
-export const fightingBoss = (move: BossMove): Boss => freshFight(BOSS_ID, move)
+// NOTE: the fight a Model's boss stands in, failing the test when he is
+// not fighting.
+export const fightOf = (current: Model): typeof Boss.Fighting.Type =>
+  Option.getOrThrow(Option.liftPredicate(current.boss, Boss.guards.Fighting))
+
+export const fightingBoss = (move: BossMove): Boss =>
+  freshFight(BOSS_ID, move, 1)
 
 export const fightingWith: {
   (

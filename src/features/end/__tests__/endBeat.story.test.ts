@@ -470,7 +470,7 @@ describe('sharing a run', () => {
     )
   })
 
-  test('an escape says the difficulty, the hat, and the wave', () => {
+  test('an escape says Uncle Chunk, the difficulty, and the wave', () => {
     expect(
       shareText({
         ...base,
@@ -479,13 +479,13 @@ describe('sharing a run', () => {
         kills: 612,
       }),
     ).toBe(
-      "🎩 I escaped Munch Manor on TRIPLE DOG DARE with Uncle Chunk's hat! Out on wave 4, 612 zombies splatted.",
+      '🗝️ I beat Uncle Chunk and escaped Munch Manor on TRIPLE DOG DARE! Out on wave 4, 612 zombies splatted.',
     )
   })
 
   test('a crew says how many played', () => {
     expect(shareText({ ...base, outcome: 'Won', crew: 3, kills: 900 })).toBe(
-      "🎩 Our crew of 3 escaped Munch Manor on Double Dare with Uncle Chunk's hat! Out on wave 4, 900 zombies splatted together.",
+      '🗝️ Our crew of 3 beat Uncle Chunk and escaped Munch Manor on Double Dare! Out on wave 4, 900 zombies splatted together.',
     )
     expect(shareText({ ...base, outcome: 'Munched', crew: 2 })).toBe(
       '💀 Our crew of 2 got munched on wave 4 in Munch Manor. 87 zombies splatted together. Bring snacks.',
@@ -503,7 +503,7 @@ describe('sharing a run', () => {
         maybeOwnAward: Option.some('Medic'),
       }),
     ).toBe(
-      "🎩 Our crew of 3 escaped Munch Manor on Double Dare with Uncle Chunk's hat! Out on wave 4, 900 zombies splatted together. 👑 MVP: ANA with 412. I was the Medic 🩹.",
+      '🗝️ Our crew of 3 beat Uncle Chunk and escaped Munch Manor on Double Dare! Out on wave 4, 900 zombies splatted together. 👑 MVP: ANA with 412. I was the Medic 🩹.',
     )
     expect(
       shareText({

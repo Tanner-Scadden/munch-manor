@@ -352,7 +352,7 @@ export const SAVE_WORDS = {
 } as const
 
 // NOTE: the dare's things, read aloud on the pause screen's list
-// (src/features/menus/pauseProgress.ts), the hat Uncle Chunk's own.
+// (src/features/menus/pauseProgress.ts).
 export const DARE_NAMES: Readonly<Record<DareKind, string>> = {
   SilverSpoon: 'Silver Spoon',
   FamilyPortrait: 'Family Portrait',
@@ -360,5 +360,4 @@ export const DARE_NAMES: Readonly<Record<DareKind, string>> = {
   GrandmasRecipe: "Grandma's Recipe",
   MusicBox: 'Music Box',
   ButlersBell: "Butler's Bell",
-  PartyHat: "Uncle Chunk's Party Hat",
 }

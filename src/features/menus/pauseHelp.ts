@@ -170,7 +170,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     id: 'Exit',
     action: 'Get out',
     ...onBoth(
-      "All found? Grab Uncle Chunk's hat and leave by the front door.",
+      'All found? Beat Uncle Chunk. His key opens the front door.',
       HELP_DEMO_SPRITES.Exit,
     ),
   },

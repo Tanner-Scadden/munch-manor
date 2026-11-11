@@ -136,7 +136,7 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 203, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 201, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
         count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
@@ -249,7 +249,7 @@ const RUSHING = BossMove.Rushing({
 
 const withBossMove = (move: BossMove): World => ({
   ...TWO_SEAT_ROOM.world,
-  boss: freshFight(BOSS_ID, move),
+  boss: freshFight(BOSS_ID, move, 1),
 })
 
 const readBackMove = (move: BossMove): BossMove => {
@@ -319,14 +319,17 @@ describe("the boss's charge on the wire", () => {
 // and the cellar), then the level's rolled `arrangement`, which room
 // stands in each slot (rolled rooms), then the run's `dare` and its
 // `dareThings` and the dare's events (the dare), then the dare's `finale`,
-// FrontDoorUnlocking, FrontDoorOpened, SteppedOut, and the Escaped phase
+// FrontDoorOpened, SteppedOut, and the Escaped phase
 // (the finale), then a dare thing's InCase and InStove (the case's page
 // and the stove's recipe), then the Arriving phase, the intro's clock
 // and cut, before the first break, with the first wave rolled on the slam
 // (the intro), then one thing to each room, with a dare thing's Marked,
 // InCase, InStove, Carried, Held, and Delivered states, its `isAsked`,
 // the DareTaken and DareDelivered events, and the Delivered feat and its
-// tally gone (protocol still 20 within the escape stack). The wire must
+// tally gone, then the boss's `guestHpScale` and his Slam, with the party
+// hat, the Dropped thing, Unlocking, DareDropped, and FrontDoorUnlocking
+// swapped for KeyFlying and BigKeyBurst (Uncle Chunk's last fight), all
+// under protocol 20 within the escape stack. The wire must
 // not change without a protocol bump. A
 // change to how the room plays moves the bytes with no change to the wire,
 // as zombies coming in promptly after their warning did, and Normal's
@@ -336,8 +339,8 @@ describe("the boss's charge on the wire", () => {
 // the last zombie's hurry (2026-11-10) as well, and the rooms' new shapes
 // (the rooms rework, 2026-11-10) once more, and the work stations (2026-11-10),
 // and the rooms' finds (a hidden thing's `workedMs`) and wake-ups
-// (2026-11-11).
-const GOLDEN_DIGEST = '66335:0a91fe6a1b0f4814'
+// (2026-11-11), and Uncle Chunk's last fight (2026-11-11).
+const GOLDEN_DIGEST = '66337:5b67aa6a1f85a11c'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

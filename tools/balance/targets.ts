@@ -154,9 +154,9 @@ const WIN_TARGETS: ReadonlyArray<Target> = [
 // NOTE: how long an escape takes, the median escaped run in minutes and the
 // wave it walks out on: long enough that the hunt and the ramp both bite,
 // short enough for one sitting. Hard's breaks run on a clock, so its
-// escape a wave later than Normal's takes about as long. Uncle Chunk's
-// earliest wave
-// (FINALE_RULES.chunkFromWave in src/world/dare/finale.ts) sets most of it.
+// escape a wave later than Normal's takes about as long. Uncle Chunk
+// comes the wave after the list is done (src/world/dare/finale.ts), so how
+// fast the hunt goes sets most of it.
 const ESCAPE_LENGTH_TARGETS: ReadonlyArray<Target> = [
   between(
     'easy.medianWin',

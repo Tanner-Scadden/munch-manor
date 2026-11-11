@@ -37,7 +37,7 @@ import {
   type Zombie,
   ZombieState,
 } from '../schema/worldSchema'
-import { woundScaleOf } from '../zombies/boss'
+import { woundScaleOf } from '../zombies/bossFight'
 import { maybeShieldFor } from '../zombies/chucker'
 import { MAX_BODY_RADIUS_PX, groundedGrid } from '../zombies/zombieGrid'
 import { Behavior, bodyRadiusOf, isFree, statsOf } from '../zombies/zombies'

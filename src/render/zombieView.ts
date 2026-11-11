@@ -49,7 +49,7 @@ import {
 } from '../world/schema/entitySchema'
 import { Boss } from '../world/schema/worldSchema'
 import { clamp } from '../world/step/geometry'
-import { isEnraged } from '../world/zombies/boss'
+import { isEnraged } from '../world/zombies/bossFight'
 import {
   CHUCKER_RULES,
   THROWER_KIND,

@@ -244,9 +244,9 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     TeammateSaved: () => Option.some<SoundEffect>('Rescue'),
     GunLeveled: () => Option.some<SoundEffect>('RankUp'),
     DareFound: () => Option.some<SoundEffect>('PrizeJackpot'),
-    DareDropped: () => Option.some<SoundEffect>('LootPop'),
     DareListDone: () => Option.some<SoundEffect>('RankUp'),
-    FrontDoorUnlocking: () => Option.some<SoundEffect>('Purchase'),
+    // NOTE: Uncle Chunk's big key bursts out of him: the jackpot's chime.
+    BigKeyBurst: () => Option.some<SoundEffect>('PrizeJackpot'),
     FrontDoorOpened: () => Option.some<SoundEffect>('Crash'),
     SteppedOut: () => Option.some<SoundEffect>('RankUp'),
   })

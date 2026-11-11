@@ -46,7 +46,8 @@ import {
 import { rollWave } from '../../src/world/waves/endlessWaves'
 import { STRAGGLER_KINDS } from '../../src/world/waves/pacing'
 import { FINAL_WAVE } from '../../src/world/waves/wavePlans'
-import { BOSS_RULES, bossHp, hasBoss } from '../../src/world/zombies/boss'
+import { bossHp, hasBoss } from '../../src/world/zombies/boss'
+import { BOSS_RULES } from '../../src/world/zombies/bossRules'
 import { frenzyPacksOf } from '../../src/world/zombies/frenzy'
 import {
   ZOMBIE_KINDS,

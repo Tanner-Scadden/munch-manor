@@ -8,19 +8,18 @@ import { rect } from '../../render/drawing'
 import { clearWindowOf } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
 import { Finale } from '../../world/dare/dareSchema'
-import { isFrontDoorOpen, unlockShareOf } from '../../world/dare/finale'
+import { isFrontDoorOpen } from '../../world/dare/finale'
 import { levelOf } from '../../world/level/arena'
 import { clamp } from '../../world/step/geometry'
 
 // The front door in the finale (src/world/dare/finale.ts), over its baked
-// art (src/render/room/diningArt.ts): while it unlocks, a bar over the
-// lintel fills gold and the padlock blinks; once it is open, the leaves are
-// gone and the night outside shows through, with a warm spill on the sill.
+// art (src/render/room/diningArt.ts): while Uncle Chunk's big key flies at
+// it the padlock blinks gold; once the key lands it is open, the leaves
+// gone and the night outside showing through, with a warm spill on the
+// sill.
 
-const BAR_HEIGHT = 2
-const BAR_RISE = 7
-const BLINK_MS = 400
-const TRACK_COLOR = 'rgba(10, 8, 14, 0.8)'
+const BLINK_MS = 120
+const LOCK_RISE = 7
 const FILL_COLOR = '#ffd23f'
 const GLINT_COLOR = '#fff7d0'
 const NIGHT_COLOR = '#0b0a1a'
@@ -43,26 +42,24 @@ export const frontDoorShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   }
   const middle = box.left + Math.floor(width / 2)
   return [
-    rect(box.left, box.top - BAR_RISE, width, BAR_HEIGHT, TRACK_COLOR),
     rect(
-      box.left,
-      box.top - BAR_RISE,
-      Math.round(width * unlockShareOf(model)),
-      BAR_HEIGHT,
-      FILL_COLOR,
+      middle - 1,
+      box.top + 3,
+      3,
+      3,
+      Math.floor(model.elapsedMs / BLINK_MS) % 2 === 0
+        ? GLINT_COLOR
+        : FILL_COLOR,
     ),
-    ...(Math.floor(model.elapsedMs / BLINK_MS) % 2 === 0
-      ? [rect(middle - 1, box.top + 3, 3, 3, GLINT_COLOR)]
-      : []),
   ]
 }
 
 // THE DOOR'S MARKER
 
-// NOTE: while the door unlocks and once it is open, a door out of sight
-// (in another room, past the window's edge, or under the gun slots) gets a
-// marker pinned to the window's edge toward it: the door with its padlock,
-// or open on the night, its bar under it, and an arrow at the door. It
+// NOTE: from the moment Uncle Chunk falls, a door out of sight (in another
+// room, past the window's edge, or under the gun slots) gets a marker
+// pinned to the window's edge toward it: the door with its padlock, or
+// open on the night, and an arrow at the door. It
 // points at the way out, never at a zombie (GAME_DESIGN.md, "No off-screen
 // hints").
 
@@ -127,18 +124,17 @@ const ARROW_SIDE_WIDTH = 3
 const ARROW_DOWN_WIDTH = 5
 const MARKER_PAD = 2
 const MARKER_WIDTH = ICON_SIZE + MARKER_PAD * 2
-const MARKER_HEIGHT = ICON_SIZE + BAR_HEIGHT + 1 + MARKER_PAD * 2
+const MARKER_HEIGHT = ICON_SIZE + MARKER_PAD * 2
 const MARKER_EDGE_GAP = 2
 const ARROW_GAP = 1
 const MARKER_BACK_COLOR = 'rgba(14, 8, 12, 0.86)'
-// NOTE: the door is in sight while its padlock and the bar over it are:
-// the rows from the bar down to the padlock's foot, either side of its
-// middle.
+// NOTE: the door is in sight while its padlock is: the rows from just
+// over the lintel down to the padlock's foot, either side of its middle.
 const PADLOCK_ROWS = 6
 const PADLOCK_HALF_WIDTH = 4
 
 const isFinaleAtDoor = (model: Model): boolean =>
-  Finale.isAnyOf(['Unlocking', 'Open'])(model.dare.finale)
+  Finale.isAnyOf(['KeyFlying', 'Open'])(model.dare.finale)
 
 export const frontDoorMarkerShapes: {
   (
@@ -157,7 +153,7 @@ export const frontDoorMarkerShapes: {
       return []
     }
     const { box } = levelOf(model).thresholds.Front
-    const topLeft = worldToView(camera, { x: box.left, y: box.top - BAR_RISE })
+    const topLeft = worldToView(camera, { x: box.left, y: box.top - LOCK_RISE })
     const bottomRight = worldToView(camera, {
       x: box.right,
       y: box.top + PADLOCK_ROWS,
@@ -202,21 +198,12 @@ export const frontDoorMarkerShapes: {
         y: top + Math.floor((MARKER_HEIGHT - ARROW_PIXELS.Right.length) / 2),
       },
     }[pointing]
-    const barTop = top + MARKER_PAD + ICON_SIZE + 1
     return [
       rect(left, top, MARKER_WIDTH, MARKER_HEIGHT, MARKER_BACK_COLOR),
       placeAt(
         left + MARKER_PAD,
         top + MARKER_PAD,
         isFrontDoorOpen(model) ? OPEN_DOOR_ICON : LOCKED_DOOR_ICON,
-      ),
-      rect(left + MARKER_PAD, barTop, ICON_SIZE, BAR_HEIGHT, TRACK_COLOR),
-      rect(
-        left + MARKER_PAD,
-        barTop,
-        Math.round(ICON_SIZE * unlockShareOf(model)),
-        BAR_HEIGHT,
-        FILL_COLOR,
       ),
       placeAt(arrowAt.x, arrowAt.y, ARROWS[pointing]),
     ]

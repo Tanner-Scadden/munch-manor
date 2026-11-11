@@ -82,7 +82,9 @@ const runWith = (
     openedWaves: [3],
     found: 1,
     listDoneWave: 0,
-    hatWave: 0,
+    chunkWave: 0,
+    keyWave: 0,
+    chunkFightMs: 0,
   },
 })
 

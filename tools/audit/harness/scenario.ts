@@ -32,7 +32,7 @@ import {
 } from '@game/platform/playerSync'
 import { heroIdOf } from '@game/shared/playerData'
 import { dareCardOf, maybeLyingAt } from '@game/world/dare/dare'
-import { DareThingState } from '@game/world/dare/dareSchema'
+import { DareThingState, Finale } from '@game/world/dare/dareSchema'
 import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
@@ -313,6 +313,15 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (pocketfold !== undefined) {
     model = modifyFields(model, {
       pocketCard: () => PocketCard.Folding({ ageMs: pocketfold }),
+    })
+  }
+  const finale = config.finale
+  if (finale !== undefined) {
+    model = modifyFields(withDareFound(model, dareCardOf(model).length), {
+      dare: dare =>
+        modifyFields(dare, {
+          finale: () => (finale === 'open' ? Finale.Open() : Finale.Summoned()),
+        }),
     })
   }
   const newer = config.newer

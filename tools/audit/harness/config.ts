@@ -175,8 +175,7 @@ export const HarnessConfig = Schema.Struct({
   // `kitchendone` the kitchen tour just done.
   // `card` stages its last step, looking at the dare card.
   quest: Choice(['running', 'card', 'start', 'done', 'kitchendone']),
-  // NOTE: `darefound=N` marks the first N things of the dare card found,
-  // the hat last.
+  // NOTE: `darefound=N` marks the first N things of the dare card found.
   darefound: Num(0),
   // NOTE: `pocket=N` holds the dare card from the pocket out, read for N ms
   // (src/features/dare/pocketCard.ts); `pocketfold=N` has it folding for N ms.
@@ -185,6 +184,10 @@ export const HarnessConfig = Schema.Struct({
   // NOTE: `darenear=N` stands the player N px south of the first thing of
   // the dare's list still lying in an open room, so it is in sight.
   darenear: MaybeNum,
+  // NOTE: `finale=summoned` finds the whole list and has Uncle Chunk due
+  // (stage him with `boss`), so felling him bursts his key; `finale=open`
+  // finds the list with the front door already open.
+  finale: Choice(['summoned', 'open']),
   // The player and the guns
   px: MaybeNum,
   py: MaybeNum,
@@ -253,6 +256,7 @@ export const HarnessConfig = Schema.Struct({
   boss: Choice([
     'arriving',
     'stomp',
+    'slam',
     'belch',
     'charge',
     'rush',

@@ -6,7 +6,6 @@ import { PocketCard } from '../../domain/clientSchema'
 import {
   type DarePocket,
   type PocketBox,
-  UNLOCK_BAR_ROWS,
   pocketBoxOf,
 } from '../../features/dare/dareCard'
 import { hudLayoutFor } from '../../render/hudLayout'
@@ -44,14 +43,15 @@ export const pocketOf = (model: Model): DarePocket => {
   return isUnderBanner ? 'Shut' : 'Open'
 }
 
-// NOTE: what the pocket covers as it is drawn, with the unlock bar under
-// it, for Rattles' bubbles to keep out of. Endless has no pocket.
+// NOTE: what the pocket covers as it is drawn, for Rattles' bubbles to keep
+// out of. Endless has no pocket.
 export const maybePocketKeepout = (model: Model): Option.Option<PocketBox> => {
   if (dareCardOf(model).length === 0) {
     return Option.none()
   }
-  const box = pocketBoxOf(model, hudLayoutFor(screenOf(model)), pocketOf(model))
-  return Option.some({ ...box, bottom: box.bottom + UNLOCK_BAR_ROWS })
+  return Option.some(
+    pocketBoxOf(model, hudLayoutFor(screenOf(model)), pocketOf(model)),
+  )
 }
 
 // NOTE: the crew's key ring under the hearts (src/screens/game/hud.ts), a

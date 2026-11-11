@@ -81,7 +81,7 @@ const tuneTables = Effect.map(
     weapons: Effect.promise(() => import('../../src/world/gear/weapons')),
     traps: Effect.promise(() => import('../../src/world/gear/traps')),
     powerups: Effect.promise(() => import('../../src/world/gear/powerups')),
-    boss: Effect.promise(() => import('../../src/world/zombies/boss')),
+    boss: Effect.promise(() => import('../../src/world/zombies/bossRules')),
     chucker: Effect.promise(() => import('../../src/world/zombies/chucker')),
     crawler: Effect.promise(() => import('../../src/world/zombies/crawler')),
     frenzy: Effect.promise(() => import('../../src/world/zombies/frenzy')),
@@ -582,12 +582,26 @@ const reportCampaign = (
         Array.map(results, r => r.escape.listDoneWave),
         wave => wave > 0,
       )
-      const hats = Array.filter(
-        Array.map(results, r => r.escape.hatWave),
+      const keys = Array.filter(
+        Array.map(results, r => r.escape.keyWave),
         wave => wave > 0,
       )
+      // NOTE: the finale: runs Uncle Chunk came in, those he ended (the run
+      // over with him still standing), and his fight's length.
+      const met = Array.filter(results, r => r.escape.chunkWave > 0)
+      const killedByChunk = Array.filter(
+        met,
+        r => !r.escaped && r.escape.keyWave === 0,
+      )
+      const fights = Array.filter(
+        Array.map(results, r => r.escape.chunkFightMs / 1000),
+        seconds => seconds > 0,
+      )
       yield* Console.log(
-        `Escape: list done in ${listDone.length} runs (median wave ${listDone.length > 0 ? median(listDone) : '-'}), hat taken in ${hats.length} (median wave ${hats.length > 0 ? median(hats) : '-'}), escaped on wave ${wins.length > 0 ? median(Array.map(wins, r => r.cleared + 1)) : '-'} (median)`,
+        `Escape: list done in ${listDone.length} runs (median wave ${listDone.length > 0 ? median(listDone) : '-'}), Chunk felled in ${keys.length} (median wave ${keys.length > 0 ? median(keys) : '-'}), escaped on wave ${wins.length > 0 ? median(Array.map(wins, r => r.cleared + 1)) : '-'} (median)`,
+      )
+      yield* Console.log(
+        `Finale: Chunk came in ${met.length} runs and ended ${killedByChunk.length} (${met.length > 0 ? Math.round((100 * killedByChunk.length) / met.length) : 0}%), his fight ${fights.length > 0 ? median(fights).toFixed(0) : '-'} s (median, felled)`,
       )
       yield* Console.log(
         `Escape: things found a run median ${median(Array.map(results, r => r.escape.found))}, cases opened median ${median(Array.map(results, r => r.escape.casesOpened))}`,
@@ -839,7 +853,7 @@ const reportCampaign = (
         )} of the fight`,
       )
       yield* Console.log(
-        `    hearts lost while he stood ${lostToBoss} (${share(lostToBoss, waveHearts)} of the wave's ${waveHearts}): stomp ${sum(fight => fight.heartsByAttack.Stomp)}, charge ${sum(fight => fight.heartsByAttack.Charge)}, glob ${sum(fight => fight.heartsByAttack.Glob)}, his bite ${sum(fight => fight.heartsByAttack.Bite)}, the rest to the crowd`,
+        `    hearts lost while he stood ${lostToBoss} (${share(lostToBoss, waveHearts)} of the wave's ${waveHearts}): stomp ${sum(fight => fight.heartsByAttack.Stomp)}, slam ${sum(fight => fight.heartsByAttack.Slam)}, charge ${sum(fight => fight.heartsByAttack.Charge)}, glob ${sum(fight => fight.heartsByAttack.Glob)}, his bite ${sum(fight => fight.heartsByAttack.Bite)}, the rest to the crowd`,
       )
     }
 

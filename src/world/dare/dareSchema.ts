@@ -5,10 +5,10 @@
 import { Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import { MillisNumber, PositionNumber } from '../schema/wireNumber'
+import { MillisNumber, Point, PositionNumber } from '../schema/wireNumber'
 
-// NOTE: every thing in the house's pool, Uncle Chunk's party hat too, which
-// is never rolled: it closes every list.
+// NOTE: every thing in the house's pool. The list is only these: Uncle
+// Chunk is no thing on it, just the fight once it is done.
 export const DareKind = Schema.Literals([
   'SilverSpoon',
   'FamilyPortrait',
@@ -16,7 +16,6 @@ export const DareKind = Schema.Literals([
   'GrandmasRecipe',
   'MusicBox',
   'ButlersBell',
-  'PartyHat',
 ])
 export type DareKind = typeof DareKind.Type
 
@@ -24,11 +23,10 @@ export type DareKind = typeof DareKind.Type
 // it, out of reach while the room's boards stand, with the work the crew
 // has put into finding it (src/world/dare/finds.ts: each room finds its
 // thing its own way, a rummage, a hollow book, the dumbwaiter, or a walk
-// onto it); Dropped lies where Uncle Chunk fell (his hat). A thing is
-// Found, by the seat's slot that found it, for the whole crew.
+// onto it). A thing is Found, by the seat's slot that found it, for the
+// whole crew.
 export const DareThingState = defineTaggedUnion({
   Hidden: { x: PositionNumber, y: PositionNumber, workedMs: MillisNumber },
-  Dropped: { x: PositionNumber, y: PositionNumber },
   Found: { slot: Schema.Finite },
 })
 export type DareThingState = typeof DareThingState.Type
@@ -42,22 +40,25 @@ export type DareThing = typeof DareThing.Type
 
 // NOTE: where the finale stands (src/world/dare/finale.ts). Hunting while
 // the list is not done (and always in Endless); Summoned once it is, while
-// Uncle Chunk comes to the front door, fights, and leaves his hat on the
-// floor; Unlocking once a player takes the hat, the front door's clock
-// running down in each wave; Open once it swings open. Who has stepped out
+// Uncle Chunk comes to the front door and fights; KeyFlying the moment he
+// falls, his big key in the air from where he fell to the front door's
+// lock; Open once it lands and the door swings open. Who has stepped out
 // through it is each seat's own Life.Out.
 export const Finale = defineTaggedUnion({
   Hunting: {},
   Summoned: {},
-  Unlocking: { remainingMs: MillisNumber, durationMs: MillisNumber },
+  KeyFlying: {
+    from: Point,
+    remainingMs: MillisNumber,
+    durationMs: MillisNumber,
+  },
   Open: {},
 })
 export type Finale = typeof Finale.Type
 
 // NOTE: the run's dare: its own generator, salted apart from the run's so
 // rolling the list moves nothing else, the list in the order it was
-// rolled, without the hat, which always closes it (empty in Endless), and
-// where the finale stands.
+// rolled (empty in Endless), and where the finale stands.
 export const Dare = Schema.Struct({
   rngState: Schema.Finite,
   list: Schema.Array(DareKind),

@@ -58,7 +58,8 @@ import { SeatAction, applySeatAction } from '@game/world/step/stepWorld'
 import { rollSpawns } from '@game/world/waves/endlessWaves'
 import { planFor } from '@game/world/waves/wavePlans'
 import { pause } from '@game/world/waves/waves'
-import { BOSS_RULES, hasBoss, planBoss } from '@game/world/zombies/boss'
+import { hasBoss, planBoss } from '@game/world/zombies/boss'
+import { BOSS_RULES } from '@game/world/zombies/bossRules'
 import {
   ZOMBIE_KINDS,
   ZOMBIE_KIND_ORDER,
@@ -406,6 +407,12 @@ export const roomModel = (settings: SceneSettings): Model => {
         remainingMs: windMs,
         durationMs: 1000,
       }),
+      slam: () => ({
+        _tag: 'WindingUp',
+        attack: 'Slam',
+        remainingMs: windMs,
+        durationMs: BOSS_RULES.windUpMs.Slam,
+      }),
       belch: () => ({
         _tag: 'WindingUp',
         attack: 'Belch',
@@ -442,10 +449,12 @@ export const roomModel = (settings: SceneSettings): Model => {
             hp: bossMaxHp,
             remainingMs: config.arriveMs,
             durationMs: 2600,
+            guestHpScale: 1,
           }
         : {
             _tag: 'Fighting',
             id: 1500,
+            guestHpScale: 1,
             standingMs: 4000,
             move: moveFor(),
             mood: config.enraged ? 'Enraged' : 'Calm',

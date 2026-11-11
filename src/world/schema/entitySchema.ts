@@ -229,10 +229,16 @@ export const Zombie = Schema.Struct({
 })
 export type Zombie = typeof Zombie.Type
 
-export const BossAttack = Schema.Literals(['Stomp', 'Belch', 'Spit', 'Charge'])
+export const BossAttack = Schema.Literals([
+  'Stomp',
+  'Slam',
+  'Belch',
+  'Spit',
+  'Charge',
+])
 export type BossAttack = typeof BossAttack.Type
 
-export const PlantedAttack = Schema.Literals(['Stomp', 'Belch', 'Spit'])
+export const PlantedAttack = Schema.Literals(['Stomp', 'Slam', 'Belch', 'Spit'])
 export type PlantedAttack = typeof PlantedAttack.Type
 
 // NOTE: a charge locks its target when the brace starts, so the line on the

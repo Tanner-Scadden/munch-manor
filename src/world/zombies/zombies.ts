@@ -361,7 +361,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
   Boss: {
     name: ZOMBIE_NAMES.Boss,
     tagline: 'STAY CLOSE. STEP OUT OF THE RED',
-    pitch: 'HE STOMPS UP CLOSE. RUN FAR AND HE CHARGES AND SPITS.',
+    pitch: 'HE STOMPS UP CLOSE, CHARGES FAR. HALF DOWN, HE GOES WILD.',
     speedMin: 10,
     speedMax: 11,
     hp: 90,

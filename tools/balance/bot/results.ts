@@ -37,14 +37,17 @@ export const FridgeLog = Schema.Struct({
 export type FridgeLog = typeof FridgeLog.Type
 
 // How the run's escape went: display cases opened for the bot, the wave
-// each room was bought open in, in order, things on the list found, and the
-// waves the list was done in and Uncle Chunk's hat taken in (0 when never).
+// each room was bought open in, in order, things on the list found, the
+// waves the list was done in, Uncle Chunk came in, and he fell (his big key
+// out) in (0 when never), and how long his fight ran (0 when he never fell).
 const EscapeLog = Schema.Struct({
   casesOpened: Schema.Finite,
   openedWaves: Schema.Array(Schema.Finite),
   found: Schema.Finite,
   listDoneWave: Schema.Finite,
-  hatWave: Schema.Finite,
+  chunkWave: Schema.Finite,
+  keyWave: Schema.Finite,
+  chunkFightMs: Schema.Finite,
 })
 
 // What the Big Leaguer, the Ankle Biter, and frenzied packs did in a run.
@@ -61,7 +64,13 @@ export const NewKindLog = Schema.Struct({
 })
 export type NewKindLog = typeof NewKindLog.Type
 
-export const BossBlame = Schema.Literals(['Stomp', 'Charge', 'Glob', 'Bite'])
+export const BossBlame = Schema.Literals([
+  'Stomp',
+  'Slam',
+  'Charge',
+  'Glob',
+  'Bite',
+])
 export type BossBlame = typeof BossBlame.Type
 
 // Each boss wave the run reached: whether the boss walked in, whether it

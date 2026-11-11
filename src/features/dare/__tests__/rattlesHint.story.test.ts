@@ -57,8 +57,8 @@ import {
 
 // Rattles' hints about the dare (src/features/dare/rattlesHint.ts), drawn
 // in his bubble (src/screens/game/stallBubble.ts): how often each step of
-// the difficulty dial hollers, a line never twice in a row, the hat and the
-// door once the list is done, and the arrow toward a thing out of view.
+// the difficulty dial hollers, a line never twice in a row, Uncle Chunk's
+// big key and the door once the list is done, and the arrow toward a thing out of view.
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50
@@ -165,6 +165,11 @@ const iconOf = (line: string): Option.Option<DareKind> =>
     Array.findFirst(HINT_LINES, entry => entry.line === line),
     ({ maybeIcon }) => maybeIcon,
   )
+
+const FINALE_LINES = ["CHUNK'S GOT THE BIG KEY.", 'BEAT HIM. THEN RUN!']
+
+const isFinaleLine = (line: string): boolean =>
+  Array.contains(FINALE_LINES, line)
 
 const arrowsOf = (shapes: ReadonlyArray<Canvas.Shape>): number =>
   Array.filter(shapes, shape => shape._tag === 'Rect').length
@@ -331,7 +336,7 @@ describe("Rattles' hints, by the difficulty dial", () => {
 })
 
 describe('the list done', () => {
-  it.effect('the last find gets the hat and the door, mid-wave too', () => {
+  it.effect('the last find gets the big key and the door, mid-wave too', () => {
     const fight = modifyFields(
       breakOn('Hard', [hidden(0, 'SilverSpoon', focusOf(base).player)]),
       {
@@ -346,14 +351,12 @@ describe('the list done', () => {
       settleRunCommands,
       Story.model(current => {
         expect(isCalling(current)).toBe(true)
-        expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
-          Option.some('PartyHat'),
-        )
+        expect(Option.exists(lineOf(current), isFinaleLine)).toBe(true)
       }),
     )
   })
 
-  it.effect('in a break after, even Triple Dog Dare hears of the hat', () =>
+  it.effect('in a break after, even Triple Dog Dare hears of the big key', () =>
     Story.story(
       APPLICATION,
       Story.given(
@@ -368,9 +371,7 @@ describe('the list done', () => {
       tick(FRAME_MS),
       settleRunCommands,
       Story.model(current => {
-        expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
-          Option.some('PartyHat'),
-        )
+        expect(Option.exists(lineOf(current), isFinaleLine)).toBe(true)
       }),
     ),
   )

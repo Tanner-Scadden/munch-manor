@@ -79,7 +79,7 @@ import {
 import { modifyFocus } from '../../world/party/party'
 import { rollSpawns } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
-import { BOSS_RULES } from '../../world/zombies/boss'
+import { BOSS_RULES } from '../../world/zombies/bossRules'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 import { type Decal, DecalKind, type Particle } from '../renderSchema'
 
@@ -368,6 +368,7 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
       ],
       boss: () =>
         Boss.Fighting({
+          guestHpScale: 1,
           id: BOSS_ID,
           move: BossMove.Bracing({
             target: { x: 60, y: 140 },
@@ -614,7 +615,7 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // operations there, so that budget went from 590 to 600, and 603 with the
 // rolled house's cloche, so 610 (and its shapes painted 638, so 640).
 // The dare card on the HUD added one baked slot per thing on the list, the
-// hat too (4 on Normal), and the house's dare things a few shapes more.
+// 3 on Normal, and the house's dare things a few shapes more.
 // A display case's count shows always (owner's playtest, 2026-11-10: what
 // opens a case reads from across the room), a glyph image each, and its
 // padlock's gold notch is one image more: the dark cellar went to 772 shapes,
@@ -627,11 +628,16 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // the books, one drifting note, the cobweb, one puff of dust). With every
 // room open the dark cellar went to 778 shapes and 664 painted, and the
 // rolled house to 631 steady paint operations, so 785, 635, and 670.
+// Uncle Chunk's second phase throws three plates at a time, so the plates
+// he keeps on the floor went from 5 to 9 (`globMax`, 2026-11-11): every
+// puddle in this room now draws: the dark cellar went to 794 shapes and
+// 680 painted, and the rolled house to 647 steady paint operations, so
+// 800, 650, and 685.
 const BUDGET: FrameCost = {
-  shapesBuilt: 785,
-  steadyPaintOps: 635,
+  shapesBuilt: 800,
+  steadyPaintOps: 650,
   steadyFillStyleChanges: 500,
-  steadyShapesPainted: 670,
+  steadyShapesPainted: 685,
   fullRepaintPaintOps: 1200,
 }
 

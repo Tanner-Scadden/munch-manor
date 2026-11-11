@@ -36,7 +36,7 @@ import { noKills } from '../../../world/schema/worldSchema'
 // Bones into the saved rank when it ends or is left, and sets what the end
 // card's strip shows. The numbers are the design's: a Normal run that dies
 // on wave 7 pays 60 points and 6 Bones; a Normal escape on wave 10 with its
-// three things and the hat 315 and 31.
+// three things and Uncle Chunk felled 315 and 31.
 
 const frame = tick(FIXED_STEP_MS)
 
@@ -59,29 +59,31 @@ const wave = (number: number): Phase =>
 
 const diesOnWave7 = lastHeart(runAt(wave(7), 6))
 
-// NOTE: the dare's three things found, and Uncle Chunk's hat taken.
+// NOTE: the dare's three things found.
 const FOUND_THINGS: ReadonlyArray<DareThing> = [
   { id: 0, kind: 'SilverSpoon', state: foundBy0 },
   { id: 1, kind: 'MusicBox', state: foundBy0 },
   { id: 2, kind: 'FamilyPortrait', state: foundBy0 },
 ]
 
-const HAT: DareThing = {
-  id: 3,
-  kind: 'PartyHat',
-  state: foundBy0,
-}
-
-// NOTE: wave 10 with the list done, the hat taken, the front door open,
-// and the player on its sill: the next tick walks out.
+// NOTE: wave 10 with the list done, Uncle Chunk felled, the front door
+// open, and the player on its sill: the next tick walks out.
 const lastWave = escaping(
   withDareThings(
-    runAt(
-      Phase.Wave({ wave: 10, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
-      9,
-      1,
+    modifyFields(
+      runAt(
+        Phase.Wave({ wave: 10, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
+        9,
+        1,
+      ),
+      {
+        stats: stats =>
+          modifyFields(stats, {
+            kills: kills => modifyFields(kills, { Boss: () => 1 }),
+          }),
+      },
     ),
-    [...FOUND_THINGS, HAT],
+    FOUND_THINGS,
   ),
 )
 
@@ -276,20 +278,22 @@ describe('a death', () => {
 })
 
 describe('an escape', () => {
-  it.effect('pays the waves, each thing found, the hat, and the walk out', () =>
-    Effect.gen(function* () {
-      const won = yield* ended(lastWave)
-      expect(won.phase._tag).toBe('Escaped')
-      expect(won.rank).toMatchObject({ earnedPoints: 315, earnedBones: 31 })
-      expect(won.maybeRankGain).toEqual(
-        Option.some({
-          pointsBefore: 0,
-          gained: 315,
-          bonesGained: 31,
-          bonusPercent: 0,
-        }),
-      )
-    }),
+  it.effect(
+    'pays the waves, each thing found, Uncle Chunk, and the walk out',
+    () =>
+      Effect.gen(function* () {
+        const won = yield* ended(lastWave)
+        expect(won.phase._tag).toBe('Escaped')
+        expect(won.rank).toMatchObject({ earnedPoints: 315, earnedBones: 31 })
+        expect(won.maybeRankGain).toEqual(
+          Option.some({
+            pointsBefore: 0,
+            gained: 315,
+            bonesGained: 31,
+            bonusPercent: 0,
+          }),
+        )
+      }),
   )
 
   it.effect('a death still pays for the things it found', () =>
