@@ -48,7 +48,7 @@ import {
   maybeOfferInReach,
   offersOf,
 } from '../../world/shop/purchase'
-import { ZERO_VECTOR } from '../../world/step/geometry'
+import { ZERO_VECTOR, clamp } from '../../world/step/geometry'
 
 // NOTE: a purchasable says what it costs without a word: a dark tag with
 // the coin and the price hangs off a nail. Walk up and it brightens, with a
@@ -360,9 +360,36 @@ const uncookedShapes = (
 // so its TAKE tag hangs beside the fridge instead of over it.
 const PRIZE_TAG_GAP = 4
 
-const placedOffer = (offer: Offer, tag: PriceTag): Offer =>
+// NOTE: boards in a side wall stand in a narrow doorway with a display
+// case's feat lock close by (the dining room's west case, 2026-11-10
+// playtest), so their tag hangs just above the boards, tucked in from the
+// wall so it stays on the screen, and never over the lock.
+const SIDE_TAG_GAP = 1
+
+const isSideBoards = ({ box }: Offer): boolean =>
+  box.right - box.left < box.bottom - box.top
+
+const sideBoardsSpot = (
+  offer: Offer,
+  tag: PriceTag,
+  bounds: Readonly<{ left: number; right: number }>,
+): Offer => {
+  const half = Math.ceil(tag.width / 2)
+  return {
+    ...offer,
+    spot: {
+      x: clamp(offer.spot.x, bounds.left + half, bounds.right - half),
+      y: offer.box.top - tag.height - SIDE_TAG_GAP,
+    },
+  }
+}
+
+const placedOffer = (model: Model, offer: Offer, tag: PriceTag): Offer =>
   Purchasable.match(offer.target, {
-    Exit: () => offer,
+    Exit: () =>
+      isSideBoards(offer)
+        ? sideBoardsSpot(offer, tag, levelOf(model).bounds)
+        : offer,
     Fridge: () => offer,
     Stove: () => offer,
     Valve: () => offer,
@@ -447,7 +474,7 @@ const offerShapes =
   (model: Model, maybeInReach: Option.Option<Offer>) =>
   (unplaced: Offer): ReadonlyArray<Canvas.Shape> => {
     const tag = tagOf(model, unplaced)
-    const offer = placedOffer(unplaced, tag)
+    const offer = placedOffer(model, unplaced, tag)
     const replaced = replacedShapes(model, offer, tag)
     const isMine = (target: Purchasable) =>
       isSamePurchasable(target, offer.target)
