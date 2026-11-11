@@ -1,7 +1,7 @@
 // The new player pass: what a first-timer sees at each step of a first
 // run, from the dare card lobby to the pause screen: the guided first
 // break's tracker on each of its steps (the key, the padlock, the case, the
-// dare card), a display case's first-time card, the dining room's west case
+// dare card, START WAVE), a display case's first-time card, the dining room's west case
 // beside the boards' padlock, a later break, a later break with the keys
 // for the kitchen and the edge arrow to its padlock, and the pause screen's How to
 // play, on a 1280x720 desktop, an 844x390 phone on its side, and a 390x844
@@ -39,6 +39,7 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${NEW},dareKey&${FIRST_BREAK}&openexits=Kitchen`,
   },
   { name: 'qcard', query: `${NEW},dareKey&${FIRST_BREAK}&quest=card` },
+  { name: 'qstart', query: `${NEW},dareKey&${FIRST_BREAK}&quest=start` },
   { name: 'casecard', query: `${SEEN}&${LATER_BREAK}&px=40&py=150` },
   {
     name: 'glass',

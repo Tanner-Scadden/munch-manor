@@ -35,6 +35,7 @@ const isQuestQuiet = (model: Model): boolean =>
     Waiting: () => true,
     Running: () => Option.contains(questStepOf(model), 'Case'),
     Looking: () => false,
+    Starting: () => false,
     Done: () => true,
     Over: () => true,
   })

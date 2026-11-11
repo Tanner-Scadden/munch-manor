@@ -9,11 +9,13 @@ import {
   RELOAD_ICON,
   TRAP_BUTTON_ICONS,
 } from '../../art/icons'
+import { QUEST_START_ARROW_ICON } from '../../art/questIcons'
 import type { SoundMessage } from '../../audio/message'
 import { isPocketCardReading } from '../../features/dare/pocketCard'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
 import { wavePreviewView } from '../../features/hud/wavePreview'
 import { isCaseCardUp } from '../../features/onboarding/caseCard'
+import { isQuestOnStart } from '../../features/onboarding/firstBreakQuest'
 import {
   type GhostStick,
   isDebutCardUp,
@@ -39,7 +41,7 @@ import {
 } from '../../render/hudLayout'
 import { type Screen, screenOf } from '../../render/screen'
 import { STICK_RADIUS_PX } from '../../shared/constants'
-import { percentOf } from '../../ui/menuParts'
+import { isKeyboard, percentOf } from '../../ui/menuParts'
 import { gunName } from '../../world/gear/gunLevels'
 import {
   PlaceVerdict,
@@ -577,6 +579,25 @@ const startWaveLabel = (model: Model, wave: number): string => {
     : `Ready for wave ${wave}`
 }
 
+// NOTE: the first break tour's last step (src/features/onboarding/firstBreakQuest.ts):
+// a big gold arrow bobs over START WAVE, wherever the layout puts it, with
+// the key's cap beside it for a keyboard player. No words.
+const startWavePointView = (model: Model, h: ApplicationViewBuilder): Html =>
+  isQuestOnStart(model)
+    ? h.div(
+        [h.Class('start-wave-point'), h.AriaHidden(true)],
+        [
+          h.span([
+            h.Class('start-wave-point-arrow'),
+            h.Style({ backgroundImage: QUEST_START_ARROW_ICON }),
+          ]),
+          isKeyboard(model)
+            ? h.span([h.Class('start-wave-point-key')], ['ENTER'])
+            : h.empty,
+        ],
+      )
+    : h.empty
+
 const startWaveButtonView = (
   model: Model,
   screen: Screen,
@@ -613,6 +634,7 @@ const startWaveButtonView = (
                 'nudge',
                 isWaitingOnYou(model) ? 'true' : 'false',
               ),
+              h.DataAttribute('tour', isQuestOnStart(model) ? 'true' : 'false'),
               h.AriaKeyshortcuts('Enter'),
               h.OnClick(RunButtonMessage.ClickedStartWaveButton(), {
                 focusSelector: '.game-surface',
@@ -620,6 +642,7 @@ const startWaveButtonView = (
             ],
             [startWaveWord(model), keyBadgeView(model, 'ENTER', h)],
           ),
+          startWavePointView(model, h),
         ],
       ),
     Wave: () => h.empty,

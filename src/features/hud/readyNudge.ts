@@ -77,7 +77,7 @@ export const isWaitingOnYou = (model: Model): boolean => {
     !isWaitingOnClock(model) ||
     isPracticeGateHeld(model) ||
     isKitchenTourOn(model) ||
-    QuestTour.isAnyOf(['Running', 'Looking'])(model.firstBreakQuest)
+    QuestTour.isAnyOf(['Running', 'Looking', 'Starting'])(model.firstBreakQuest)
   ) {
     return false
   }

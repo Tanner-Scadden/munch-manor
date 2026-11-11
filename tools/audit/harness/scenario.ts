@@ -162,10 +162,11 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
 };
 
 const QUEST_STAGES: {
-  readonly [Stage in "running" | "card" | "done"]: QuestTour;
+  readonly [Stage in "running" | "card" | "start" | "done"]: QuestTour;
 } = {
   running: QuestTour.Running({ isLockSeen: false }),
   card: QuestTour.Looking({ ageMs: 0 }),
+  start: QuestTour.Starting(),
   done: QuestTour.Done({ ageMs: 0 }),
 };
 

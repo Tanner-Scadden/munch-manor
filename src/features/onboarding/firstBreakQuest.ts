@@ -35,8 +35,12 @@ import { isRattlesTalking } from './rattlesIntro'
 // take the prize from the nearest display case (its feat was rigged to a
 // few kills, so it sprang open in the practice wave,
 // src/world/run/tutorialRules.ts), and look at the dare card on the HUD,
-// which glows with an arrow and its one word. Then START WAVE pulses and the
-// tracker ticks off and fades. The dining room crate still holds a Plank
+// which glows with an arrow and its one word. Last, START WAVE glows with
+// an arrow bobbing over it (and the key's cap on a keyboard), until the
+// player starts the wave (owner's playtest, 2026-11-10: "guide you to start
+// the wave, where to click for it"); then every step ticks and the tracker
+// fades as the wave begins. The open break has no clock, so nothing rushes
+// a player at any step. The dining room crate still holds a Plank
 // Pile in this break (src/world/gear/crates.ts), found without a step.
 //
 // It runs once per save: it starts in the open break before wave 2 while
@@ -45,13 +49,14 @@ import { isRattlesTalking } from './rattlesIntro'
 // tracker's skip button, or starting the wave) learns the lesson, saved.
 // SKIP IT on the first-run card learns it too, and a tutorial reset brings
 // it back. Never in co-op.
-export type QuestStep = 'Key' | 'Lock' | 'Case' | 'Card'
+export type QuestStep = 'Key' | 'Lock' | 'Case' | 'Card' | 'Start'
 
 export const QUEST_STEPS: Array.NonEmptyReadonlyArray<QuestStep> = [
   'Key',
   'Lock',
   'Case',
   'Card',
+  'Start',
 ]
 
 // NOTE: how close to a padlock's boards counts as having walked up to it.
@@ -116,6 +121,7 @@ export const questStepOf = (model: Model): Option.Option<QuestStep> =>
     Running: () =>
       Option.orElse(maybeOpenStep(model), () => Option.some<QuestStep>('Card')),
     Looking: () => Option.some<QuestStep>('Card'),
+    Starting: () => Option.some<QuestStep>('Start'),
     Done: () => Option.none(),
     Over: () => Option.none(),
   })
@@ -126,6 +132,10 @@ export const isQuestDone = (model: Model): boolean =>
 // NOTE: the last step points at the HUD's dare card.
 export const isQuestOnCard = (model: Model): boolean =>
   Option.contains(questStepOf(model), 'Card')
+
+// NOTE: the step after the card points at START WAVE.
+export const isQuestOnStart = (model: Model): boolean =>
+  Option.contains(questStepOf(model), 'Start')
 
 const learnDareTour = (model: Model): Model =>
   modifyFields(model, {
@@ -145,8 +155,9 @@ const noteLockSeen = (model: Model): Model =>
 
 // NOTE: one frame of the quest: it starts once its break comes and Rattles
 // has said hello, points at the card once the key, the padlock, and the case
-// are done, ticks off after a moment on the card, ends if the wave starts
-// first, and its tick fades.
+// are done, then at START WAVE after a moment on the card, ticks off when
+// the wave starts (or ends unticked if the wave starts before the last
+// step), and its tick fades. Starting the wave learns the lesson either way.
 export const advanceQuest: {
   (deltaMs: number): (model: Model) => Model
   (model: Model, deltaMs: number): Model
@@ -173,8 +184,8 @@ export const advanceQuest: {
       if (!isQuestBreak(model)) {
         return endQuest(model)
       } else if (ageMs + deltaMs >= QUEST_LOOK_MS) {
-        return modifyFields(learnDareTour(model), {
-          firstBreakQuest: () => QuestTour.Done({ ageMs: 0 }),
+        return modifyFields(model, {
+          firstBreakQuest: () => QuestTour.Starting(),
         })
       } else {
         return modifyFields(model, {
@@ -182,6 +193,12 @@ export const advanceQuest: {
         })
       }
     },
+    Starting: () =>
+      isQuestBreak(model)
+        ? model
+        : modifyFields(learnDareTour(model), {
+            firstBreakQuest: () => QuestTour.Done({ ageMs: 0 }),
+          }),
     Done: ({ ageMs }) =>
       modifyFields(model, {
         firstBreakQuest: () =>
@@ -204,7 +221,8 @@ export const endQuest = (model: Model): Model =>
 
 // NOTE: an arrow bobs over where the step happens: the key on the floor,
 // the padlock's boards, and the case's top. The card's arrow is the HUD's
-// (src/features/dare/dareCard.ts).
+// (src/features/dare/dareCard.ts), and START WAVE's sits on the button
+// (src/screens/game/touchControls.ts).
 export const maybeQuestMark = (model: Model): Option.Option<Vector> =>
   Option.flatMap(questStepOf(model), step => {
     const level = levelOf(model)
