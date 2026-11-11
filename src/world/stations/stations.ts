@@ -54,7 +54,10 @@ type StationRules = Readonly<{
   fire: (world: World) => World
 }>
 
-const isInWave = (world: World): boolean => Phase.isAnyOf(['Wave'])(world.phase)
+// NOTE: the phase a room tool works in; a bot reads it to know when the
+// cellar bulb's chain can be yanked.
+export const isInWave = (world: World): boolean =>
+  Phase.isAnyOf(['Wave'])(world.phase)
 
 // NOTE: a tool is ready in a wave with its room open; one with nothing
 // more to do needs nothing else.
