@@ -36,6 +36,7 @@ import {
 } from '../../../test/testing'
 import { STARTING_PISTOL } from '../../gear/weapons'
 import { focusOf, modifyFocus } from '../../party/party'
+import { breakMsOf } from '../../run/difficulty'
 import { Arsenal } from '../../schema/worldSchema'
 
 const TICK_MS = 50
@@ -62,6 +63,22 @@ const breakClock = (current: Model): Option.Option<BreakClock> =>
     Paused: () => Option.none(),
     Escaped: () => Option.none(),
     GameOver: () => Option.none(),
+  })
+
+const breakDurationMs = (current: Model): Option.Option<number> =>
+  Phase.match(current.phase, {
+    Ready: () => Option.none(),
+    Arriving: () => Option.none(),
+    Preparation: ({ durationMs }) => Option.some(durationMs),
+    Wave: () => Option.none(),
+    Paused: () => Option.none(),
+    Escaped: () => Option.none(),
+    GameOver: () => Option.none(),
+  })
+
+const clearingLaterWave = (difficulty: Difficulty): Model =>
+  modifyFields(pastTimedBreaks(clearingWave(4)), {
+    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
   })
 
 const BREAK_TICKS = Math.ceil(PREPARATION_MS / TICK_MS) + 10
@@ -156,29 +173,29 @@ describe('the first break waits', () => {
   )
 })
 
-// NOTE: owner, 2026-11-01: "don't want wave timers on easy/medium. Too much."
+// NOTE: owner, 2026-11-10: with the shop gone every break counts down,
+// Easy and Normal too (2026-11-01 had none below Hard). READY still starts
+// the wave early. Running out is the same countdown on every difficulty, so
+// only the 20 s ones are played through.
 describe('the break clock by difficulty', () => {
-  const clearingLaterWave = (difficulty: Difficulty): Model =>
-    modifyFields(pastTimedBreaks(clearingWave(4)), {
-      difficulty: setting =>
-        modifyFields(setting, { chosen: () => difficulty }),
-    })
-
-  it.effect.each(['Easy', 'Normal'] as const)(
-    '%s has no countdown, and the wave waits for READY',
-    difficulty =>
+  it.effect.each([
+    { difficulty: 'Easy', breakMs: 30_000 },
+    { difficulty: 'Normal', breakMs: 30_000 },
+    { difficulty: 'Hard', breakMs: PREPARATION_MS },
+    { difficulty: 'Nightmare', breakMs: PREPARATION_MS },
+  ] as const)(
+    '$difficulty counts down $breakMs ms, and READY starts it early',
+    ({ difficulty, breakMs }) =>
       Story.story(
         APPLICATION,
         Story.given(clearingLaterWave(difficulty)),
         tick(FIXED_STEP_MS),
         Story.model(current => {
           expect(breakClock(current)).toEqual(
-            Option.some(BreakClock.Waiting({ elapsedMs: 0 })),
+            Option.some(BreakClock.Counting()),
           )
-        }),
-        ...ticks(BREAK_TICKS * 3, TICK_MS),
-        Story.model(current => {
-          expect(isBreak(current)).toBe(true)
+          expect(breakMsOf(difficulty)).toBe(breakMs)
+          expect(breakDurationMs(current)).toEqual(Option.some(breakMs))
         }),
         tap('Enter'),
         Story.model(current => {
@@ -188,17 +205,12 @@ describe('the break clock by difficulty', () => {
   )
 
   it.effect.each(['Hard', 'Nightmare'] as const)(
-    '%s keeps the countdown, which starts the wave on its own',
+    '%s starts the wave on its own when the clock runs out',
     difficulty =>
       Story.story(
         APPLICATION,
         Story.given(clearingLaterWave(difficulty)),
         tick(FIXED_STEP_MS),
-        Story.model(current => {
-          expect(breakClock(current)).toEqual(
-            Option.some(BreakClock.Counting()),
-          )
-        }),
         ...ticks(BREAK_TICKS, TICK_MS),
         Story.model(current => {
           expect(isFighting(current)).toBe(true)

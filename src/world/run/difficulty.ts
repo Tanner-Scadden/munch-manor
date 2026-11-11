@@ -1,6 +1,7 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { PREPARATION_MS } from '../../shared/constants'
 import { isObjectSecond } from '../../shared/dualArgs'
 import { COOP_RULES } from '../party/party'
 import { type World, modifyWorldFields } from '../schema/world'
@@ -24,7 +25,7 @@ type DifficultyStats = Readonly<{
   biteScale: number
   biteGraceScale: number
   reloadsWhenIdle: boolean
-  hasBreakClock: boolean
+  breakMs: number
 }>
 
 // NOTE: the scales multiply every zombie's base health and speed, the boss
@@ -37,9 +38,11 @@ type DifficultyStats = Readonly<{
 // crowd's bites come further apart below Hard. bossHealthScale is Uncle
 // Chunk's own, on top of healthScale (src/world/zombies/boss.ts): a finale on Hard and
 // Nightmare, where a late loadout melted him, without a tougher crowd.
-// hasBreakClock is whether the break between waves counts down (owner,
-// 2026-11-01: "don't want wave timers on easy/medium. Too much."): below Hard
-// a break waits for READY (BreakClock.Waiting, src/world/waves/waves.ts).
+// breakMs is how long the break between waves counts down, READY or the
+// crew's READY starting the wave sooner. Every difficulty has one since the
+// shop went (owner, 2026-11-10, reversing 2026-11-01's "no wave timers on
+// easy/medium"): 30 s on Dare and Double Dare, 20 s on the two above. The
+// open break before wave 2 still waits for READY (src/world/waves/waves.ts).
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Dare',
@@ -51,7 +54,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 0.5,
     biteGraceScale: 2,
     reloadsWhenIdle: true,
-    hasBreakClock: false,
+    breakMs: 30_000,
   },
   Normal: {
     name: 'Double Dare',
@@ -63,7 +66,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 1,
     biteGraceScale: 1.5,
     reloadsWhenIdle: true,
-    hasBreakClock: false,
+    breakMs: 30_000,
   },
   Hard: {
     name: 'Triple Dare',
@@ -75,7 +78,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 1,
     biteGraceScale: 1,
     reloadsWhenIdle: false,
-    hasBreakClock: true,
+    breakMs: PREPARATION_MS,
   },
   Nightmare: {
     name: 'Triple Dog Dare',
@@ -87,7 +90,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 1.25,
     biteGraceScale: 1,
     reloadsWhenIdle: false,
-    hasBreakClock: true,
+    breakMs: PREPARATION_MS,
   },
 }
 
@@ -214,8 +217,8 @@ export const spreadSpawns = ({
 export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
   DIFFICULTIES[difficulty].reloadsWhenIdle
 
-export const hasBreakClock = (difficulty: Difficulty): boolean =>
-  DIFFICULTIES[difficulty].hasBreakClock
+export const breakMsOf = (difficulty: Difficulty): number =>
+  DIFFICULTIES[difficulty].breakMs
 
 export const difficultySpeedScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].speedScale

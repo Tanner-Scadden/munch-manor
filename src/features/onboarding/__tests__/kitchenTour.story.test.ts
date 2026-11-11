@@ -315,8 +315,9 @@ describe('the kitchen tour', () => {
     ),
   )
 
-  // NOTE: below Hard the break before wave 3 waits for READY, with no
-  // clock to run out, so the wave started is what ends the tour for good.
+  // NOTE: a run saved before every break counted (2026-11-10) may hold the
+  // break before wave 3 waiting for READY, with no clock to run out, so the
+  // wave started is what ends the tour for good.
   it.effect(
     'in a break that waits, starting the wave learns it for the next run',
     () => {

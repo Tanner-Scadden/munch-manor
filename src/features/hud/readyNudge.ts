@@ -16,10 +16,11 @@ import { isKitchenTourOn } from '../../world/run/tutorialRules'
 import { Phase } from '../../world/schema/worldSchema'
 
 // The nudge for a break that waits on the player (owner, 2026-11-01: "nudge
-// players when they need to ready up"). A break with no clock, or a crew's
-// break, ends when this player presses READY, so after a quiet moment READY
-// pulses and the HUD says WAITING ON YOU. It is a cosmetic of the client: the
-// World never reads it.
+// players when they need to ready up"). The open break before wave 2, which
+// has no clock, or a crew's break, ends when this player presses READY, so
+// after a quiet moment READY pulses and the HUD says WAITING ON YOU. A solo
+// break with a clock (every later one since 2026-11-10) gets no nudge. It is
+// a cosmetic of the client: the World never reads it.
 
 // NOTE: how long the player has done nothing in the break. In a crew the
 // wait is short when everyone else is READY and longer when they are not.

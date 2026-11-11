@@ -83,8 +83,7 @@ flowchart TD
     ready{READY?}
   end
 
-  ready -->|Dare, Double Dare: waits for READY| wave
-  ready -->|Triple Dare, Triple Dog Dare: clock runs out| wave
+  ready -->|READY, or the clock runs out: 30 s on Dare and Double Dare, 20 s above| wave
 
   subgraph Fight [The wave]
     wave[Zombies through the doors and up through the floor]:::built --> fight[Shoot, stab, swap guns, grab drops and skeleton keys]:::built

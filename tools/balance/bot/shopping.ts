@@ -337,12 +337,12 @@ export const gnomeSpot = (model: Model): Vector =>
     )
   ] ?? focusOf(model).player
 
-// NOTE: a break waits for READY below Hard, and the bot steers straight at
-// what it wants, so cover in the way (the trunk, the couch, a tea table)
-// could hold it there for good. After a minute it walks back to where it
-// holds, and after a minute and a half it goes wherever it stands, by
-// READY's button where the key is taken (at a purchasable), as a player
-// would.
+// NOTE: the open break before wave 2 waits for READY, and the bot steers
+// straight at what it wants, so cover in the way (the trunk, the couch, a
+// tea table) could hold it there for good. After a minute it walks back to
+// where it holds, and after a minute and a half it goes wherever it stands,
+// by READY's button where the key is taken (at a purchasable), as a player
+// would. Every later break's clock (20 to 30 s) ends it sooner.
 const BREAK_FRAMES = 90_000 / FRAME_MS
 const LATE_FRAMES = 60_000 / FRAME_MS
 

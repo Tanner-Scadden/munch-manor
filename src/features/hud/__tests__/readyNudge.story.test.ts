@@ -4,13 +4,9 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Model, Phase, Tour } from '../../../app/model'
-import {
-  crewInWave,
-  home,
-  onHard,
-  pastTimedBreaks,
-} from '../../../test/model.fixture'
+import { type Difficulty, type Model, Phase, Tour } from '../../../app/model'
+import { OPEN_BREAK_WAVE } from '../../../shared/constants'
+import { crewInWave, home, pastTimedBreaks } from '../../../test/model.fixture'
 import { APPLICATION, press, tap, tick, ticks } from '../../../test/testing'
 import { modifyFocus } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
@@ -31,16 +27,26 @@ import {
   isWaitingOnYou,
 } from '../readyNudge'
 
-// Breaks that wait on a player (owner, 2026-11-01): a break with no clock
-// waits for READY, and after a quiet moment READY pulses and the HUD says
-// WAITING ON YOU.
+// Breaks that wait on a player (owner, 2026-11-01): the open break before
+// wave 2 waits for READY, a crew's break waits for everyone's READY or its
+// clock, and after a quiet moment READY pulses and the HUD says WAITING ON
+// YOU. Every later solo break counts down (owner, 2026-11-10), so its clock
+// does the nudging.
 
 const FRAME_MS = 100
 
-// NOTE: past the guided first break, whose tracker is its own nudge.
-const soloBreak = (wave = 4): Model =>
+// NOTE: past the guided first break, whose tracker is its own nudge, in
+// the open break that waits for READY.
+const soloBreak = (
+  wave: number = OPEN_BREAK_WAVE,
+  difficulty: Difficulty = 'Normal',
+): Model =>
   withWorld(
-    modifyFields(pastTimedBreaks(home), { firstBreakQuest: () => Tour.Over() }),
+    modifyFields(pastTimedBreaks(home), {
+      firstBreakQuest: () => Tour.Over(),
+      difficulty: setting =>
+        modifyFields(setting, { chosen: () => difficulty }),
+    }),
     world => beginPreparation(world, wave, 20_000),
   )
 
@@ -52,14 +58,14 @@ const idleFor = (start: Model, ms: number): Model => advanceBreakIdle(start, ms)
 const crewReadied = (start: Model, slot: number): Model =>
   withWorld(start, world => applySeatAction(world, slot, SeatAction.Ready()))
 
-describe('a break with no clock', () => {
-  test('a crew break on Normal waits for everyone to press READY', () => {
+describe('who a break waits on', () => {
+  test('a crew break on Normal counts down, and everyone READY starts it sooner', () => {
     const waiting = crewBreak()
     expect(
       waiting.phase._tag === 'Preparation' && waiting.phase.clock._tag,
-    ).toBe('Waiting')
+    ).toBe('Counting')
     const stepped = Array.reduce(
-      globalThis.Array.from({ length: 3000 }),
+      globalThis.Array.from({ length: 600 }),
       waiting,
       current =>
         withWorld(
@@ -81,7 +87,7 @@ describe('a break with no clock', () => {
   })
 
   it.effect(
-    'a solo break on Normal waits for Enter, however long the player takes',
+    'the open break waits for Enter, however long the player takes',
     () =>
       Story.story(
         APPLICATION,
@@ -97,14 +103,15 @@ describe('a break with no clock', () => {
       ),
   )
 
-  test('Hard keeps its clock', () => {
-    const hard = withWorld(onHard(pastTimedBreaks(home)), world =>
-      beginPreparation(world, 4, 20_000),
-    )
-    expect(hard.phase._tag === 'Preparation' && hard.phase.clock._tag).toBe(
-      'Counting',
-    )
-  })
+  test.each(['Normal', 'Hard'] as const)(
+    'a later break on %s keeps its clock',
+    difficulty => {
+      const later = soloBreak(4, difficulty)
+      expect(later.phase._tag === 'Preparation' && later.phase.clock._tag).toBe(
+        'Counting',
+      )
+    },
+  )
 })
 
 describe('the nudge', () => {
@@ -127,11 +134,8 @@ describe('the nudge', () => {
     expect(isWaitingOnYou(moving)).toBe(false)
   })
 
-  test('a timed break on Hard has the clock to nudge, so no nudge', () => {
-    const hard = withWorld(onHard(pastTimedBreaks(home)), world =>
-      beginPreparation(world, 4, 20_000),
-    )
-    expect(isWaitingOnYou(idleFor(hard, SOLO_NUDGE_MS * 2))).toBe(false)
+  test('a solo timed break has the clock to nudge, so no nudge', () => {
+    expect(isWaitingOnYou(idleFor(soloBreak(4), SOLO_NUDGE_MS * 2))).toBe(false)
   })
 
   it.effect(
