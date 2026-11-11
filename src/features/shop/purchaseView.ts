@@ -277,7 +277,7 @@ const padlockTag = (keys: number): PriceTag =>
 
 const EXIT_PRICES: Array.NonEmptyReadonlyArray<number> = [
   EXIT_RULES.kitchenKeys,
-  EXIT_RULES.roomKeys,
+  ...EXIT_RULES.roomKeys,
   EXIT_RULES.farKeys,
 ]
 

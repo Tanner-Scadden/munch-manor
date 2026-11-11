@@ -13,7 +13,7 @@ import {
 import { asVeteran } from '../../src/test/veteran'
 import { DareThingState } from '../../src/world/dare/dareSchema'
 import { levelOf } from '../../src/world/level/arena'
-import { KITCHEN_EXIT, exitKeysOf } from '../../src/world/level/exits'
+import { EXIT_RULES } from '../../src/world/level/exits'
 import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '../../src/world/level/plan'
 import {
   CaseState,
@@ -37,7 +37,7 @@ const WAVE_4_BREAK = Phase.Preparation({
   spawns: [],
 })
 
-const PRICE = exitKeysOf(KITCHEN_EXIT)
+const PRICE = EXIT_RULES.kitchenKeys
 
 const breakWith = (keys: number, at = IN_KITCHEN) =>
   withKeys(

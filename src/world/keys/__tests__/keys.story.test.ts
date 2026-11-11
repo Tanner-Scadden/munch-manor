@@ -35,7 +35,7 @@ import {
 } from '../../../test/testing'
 import { FRIDGE_RULES } from '../../fridge/leftovers'
 import { PANTRY_RULES, pantrySpotOf } from '../../kitchen/pantry'
-import { levelOf } from '../../level/arena'
+import { MANOR, levelOf } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT, exitKeysOf } from '../../level/exits'
 import { maybePlayerAt, modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
@@ -178,7 +178,7 @@ describe('spending keys', () => {
     'the kitchen padlock asks its price: one short is refused, the price opens it',
     () =>
       Effect.gen(function* () {
-        expect(exitKeysOf(KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
+        expect(exitKeysOf(MANOR, KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
         yield* Story.story(
           APPLICATION,
           Story.given(atBoards(EXIT_RULES.kitchenKeys - 1)),

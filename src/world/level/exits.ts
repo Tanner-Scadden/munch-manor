@@ -30,17 +30,19 @@ import { wakeRoom } from './wakeUp'
 
 // NOTE: a boarded exit is padlocked, and opens for skeleton keys off the
 // crew's ring (src/world/keys/keys.ts), by how deep its room is: the
-// kitchen 8, a room off the dining room 55 (the west and east slots), and
-// the far slot, beyond the east room, 90 (docs/ESCAPE_PLAN.md, "Key costs
-// and drops"). Each room holds one thing on the dare's list, so the prices
-// pace the hunt: on Double Dare the kitchen opens about wave 3 and the last
-// room about wave 9 (tuned on the balance bot, 2026-11-10). The kitchen
-// opens from the wave 3 break on.
+// kitchen 8, the rooms off the dining room (the west and east slots) 40
+// for the first one opened and 75 for the second, and the far slot, beyond
+// the east room, 90 (docs/ESCAPE_PLAN.md, "Key costs and drops"). Each
+// room holds one thing on the dare's list, so the prices pace the hunt.
+// They were 8, 55, 55, 90 until the pacing report (docs/PACING_REPORT.md,
+// owner's pick 5b, 2026-11-10) moved the rooms closer: on Double Dare
+// about waves 3, 4, 6, and 8 instead of 3, 5, 7, and 9. The kitchen opens
+// from the wave 3 break on.
 export const KITCHEN_EXIT: ExitId = 'Kitchen'
 
 type ExitRules = Readonly<{
   kitchenKeys: number
-  roomKeys: number
+  roomKeys: Array.NonEmptyReadonlyArray<number>
   farKeys: number
   firstWave: number
   reachPx: number
@@ -52,7 +54,7 @@ type ExitRules = Readonly<{
 // hidden behind it.
 export const EXIT_RULES: ExitRules = {
   kitchenKeys: 8,
-  roomKeys: 55,
+  roomKeys: [40, 75],
   farKeys: 90,
   firstWave: KITCHEN_FIRST_WAVE,
   reachPx: 14,
@@ -123,20 +125,30 @@ export const isExitOfferOpenFor = (phase: Phase): boolean =>
   phase.wave >= EXIT_RULES.firstWave
 
 // NOTE: the keys an exit's padlock asks, shown on the lock, by how deep
-// its room is.
-type ExitDepth = 'kitchenKeys' | 'roomKeys' | 'farKeys'
+// its room is, and for a room off the dining room by how many of those
+// are open already.
+const ROOM_EXITS: ReadonlyArray<ExitId> = [WEST_EXIT, EAST_EXIT]
 
-const EXIT_DEPTHS: Readonly<Record<ExitId, ExitDepth>> = {
-  [KITCHEN_EXIT]: 'kitchenKeys',
-  [WEST_EXIT]: 'roomKeys',
-  [EAST_EXIT]: 'roomKeys',
-  [FAR_EXIT]: 'farKeys',
-}
+const roomKeysAfter = (opened: number): number =>
+  Option.getOrElse(Array.get(EXIT_RULES.roomKeys, opened), () =>
+    Array.lastNonEmpty(EXIT_RULES.roomKeys),
+  )
 
-export const exitKeysOf = (exit: ExitId): number =>
-  EXIT_RULES[
-    Option.getOrElse(Record.get(EXIT_DEPTHS, exit), (): ExitDepth => 'roomKeys')
-  ]
+export const exitKeysOf: {
+  (exit: ExitId): (level: Level) => number
+  (level: Level, exit: ExitId): number
+} = Function.dual(2, (level: Level, exit: ExitId): number => {
+  if (exit === KITCHEN_EXIT) {
+    return EXIT_RULES.kitchenKeys
+  }
+  if (exit === FAR_EXIT) {
+    return EXIT_RULES.farKeys
+  }
+  return roomKeysAfter(
+    Array.filter(ROOM_EXITS, room => Array.contains(level.openExits, room))
+      .length,
+  )
+})
 
 // NOTE: the kitchen tour gives the kitchen away (src/world/run/tutorialRules.ts);
 // every other room's boards keep their padlock.
@@ -144,7 +156,9 @@ export const exitPriceFor: {
   (exit: ExitId): (model: World) => number
   (model: World, exit: ExitId): number
 } = Function.dual(2, (model: World, exit: ExitId): number =>
-  exit === KITCHEN_EXIT && isKitchenTourOn(model) ? 0 : exitKeysOf(exit),
+  exit === KITCHEN_EXIT && isKitchenTourOn(model)
+    ? 0
+    : exitKeysOf(levelOf(model), exit),
 )
 
 // NOTE: each boarded exit for sale, as a purchasable: walk up and hold the

@@ -27,12 +27,7 @@ import {
 } from '../../world/gear/weapons'
 import { VALVE_RULES } from '../../world/kitchen/gasValve'
 import { STOVE_RULES } from '../../world/kitchen/stove'
-import {
-  EXIT_RULES,
-  KITCHEN_EXIT,
-  exitKeysOf,
-  exitName,
-} from '../../world/level/exits'
+import { EXIT_RULES, KITCHEN_EXIT, exitName } from '../../world/level/exits'
 import {
   FOUND_NAMES,
   HOUSE_NAMES,
@@ -438,7 +433,7 @@ const houseEntries = (): ReadonlyArray<GuideEntry> => [
   houseEntry(
     'Boards',
     `From wave ${EXIT_RULES.firstWave}. Hold to open ${exitName(KITCHEN_EXIT)}.`,
-    Option.some(exitKeysOf(KITCHEN_EXIT)),
+    Option.some(EXIT_RULES.kitchenKeys),
   ),
   houseEntry(
     'Fridge',

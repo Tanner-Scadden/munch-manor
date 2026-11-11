@@ -24,6 +24,7 @@ import {
   startingLevel,
   tileIndex,
 } from '../arena'
+import { exitKeysOf } from '../exits'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
 import { type LevelSpec } from '../plan'
 
@@ -219,6 +220,22 @@ describe('the manor', () => {
     expect(isWalkableTile(opened, -1, WEST_BOARDS.row)).toBe(true)
     expect(opened.bounds.left).toBe(opened.left)
     expect(roomAt(opened, { x: -160, y: 130 }).id).toBe('Parlour')
+  })
+
+  // NOTE: the padlocks (owner, 2026-11-10, after the pacing report): the
+  // kitchen 8, the first room off the dining room 40, the second 75, and
+  // the far room 90.
+  test('prices its padlocks 8, then 40 and 75 by rooms opened, then 90', () => {
+    const shut = levelOf({ level: startingLevel })
+    expect(exitKeysOf(shut, 'Kitchen')).toBe(8)
+    expect(exitKeysOf(shut, 'West')).toBe(40)
+    expect(exitKeysOf(shut, 'East')).toBe(40)
+    expect(exitKeysOf(shut, 'Far')).toBe(90)
+    const westOpen = levelOf({ level: openExitIn(startingLevel, 'West') })
+    expect(exitKeysOf(westOpen, 'East')).toBe(75)
+    const eastOpen = levelOf({ level: openExitIn(startingLevel, 'East') })
+    expect(exitKeysOf(eastOpen, 'West')).toBe(75)
+    expect(exitKeysOf(eastOpen, 'Far')).toBe(90)
   })
 
   test('with every exit open, no boards are left to draw', () => {
