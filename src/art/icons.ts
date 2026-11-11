@@ -632,6 +632,43 @@ export const RETRY_ICON = pixelIconUrl(
   { X: SHADE },
 )
 
+// NOTE: the little house of the rooms opened: the break's rooms counter on
+// the canvas (src/features/kitchen/roomsFound.ts) and the pause screen's.
+export const HOUSE_PIXELS: ReadonlyArray<string> = [
+  '...o...',
+  '..oRo..',
+  '.oRRRo.',
+  'orrrrro',
+  '.owywo.',
+  '.owdwo.',
+  '.owdwo.',
+]
+
+export const HOUSE_PALETTE: Palette = {
+  o: SHADE,
+  r: '#c8483c',
+  R: '#e8685a',
+  w: LIGHT,
+  d: '#8a5a32',
+  y: '#ffe066',
+}
+
+export const ROOMS_ICON = pixelIconUrl(HOUSE_PIXELS, HOUSE_PALETTE)
+
+// NOTE: a green check on a thing found, on the pause screen's list.
+export const FOUND_CHECK_ICON = pixelIconUrl(
+  [
+    '......OO',
+    '.....OgO',
+    'OO..OggO',
+    'OgOOggO.',
+    'OggggO..',
+    '.OggO...',
+    '..OO....',
+  ],
+  { O: SHADE, g: '#9be36a' },
+)
+
 export const HOME_ICON = icon([
   '....X....',
   '...XXX...',

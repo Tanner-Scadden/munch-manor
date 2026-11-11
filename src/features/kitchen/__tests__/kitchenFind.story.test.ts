@@ -5,6 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Boss, KitchenCall, type Model, Phase } from '../../../app/model'
+import { roomsOf } from '../../../domain/run'
 import { cameraOf } from '../../../render/camera'
 import { kitchenLeakShapes } from '../../../render/room/kitchenLeak'
 import { soupBubbleShapes } from '../../../screens/game/stallBubble'
@@ -23,7 +24,7 @@ import { levelFor, levelOf, openExitIn } from '../../../world/level/arena'
 import { MANOR_SPEC } from '../../../world/level/plan'
 import { modifyFocus } from '../../../world/party/party'
 import { CALL_MS, maybeKitchenSound } from '../kitchenCall'
-import { roomsCounterShapes, roomsOf } from '../roomsFound'
+import { roomsCounterShapes } from '../roomsFound'
 
 // NOTE: finding the kitchen (src/features/kitchen/kitchenCall.ts, src/render/room/kitchenLeak.ts,
 // src/features/kitchen/roomsFound.ts): Rattles hollers about the boards once in each break

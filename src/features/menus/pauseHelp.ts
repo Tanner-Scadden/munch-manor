@@ -17,6 +17,7 @@ import type { InputDevice } from '../../input/inputSchema'
 import { GUN_NAMES, KNIFE_NAME } from '../../world/names'
 import { Phase } from '../../world/schema/worldSchema'
 import { type HelpCard, HelpMessage } from './message'
+import { pauseProgressView } from './pauseProgress'
 
 // CONTROLS
 
@@ -434,6 +435,7 @@ export const pauseHelpView: {
             pressSurface,
           ],
           [
+            pauseProgressView(model, h),
             h.h2(
               [h.Id(HELP_TITLE_ID), h.Class('pause-help-title')],
               [

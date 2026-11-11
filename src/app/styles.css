@@ -902,6 +902,76 @@ body {
   text-transform: uppercase;
 }
 
+/* NOTE: the run's progress over the controls (src/features/menus/pauseProgress.ts):
+   the dare's things big, each pixel a whole number of screen pixels, then
+   the keys and the rooms. */
+.pause-progress {
+  --thing-px: max(2px, round(down, 1.6 * var(--arena-px), 1px));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4em 1.4em;
+  flex-shrink: 0;
+}
+
+.pause-things,
+.pause-tallies {
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--thing-px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pause-thing {
+  position: relative;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: calc(9 * var(--thing-px));
+  height: calc(9 * var(--thing-px));
+  border: var(--thing-px) solid #8d8496;
+  background: rgba(8, 10, 12, 0.7);
+}
+
+.pause-thing[data-found='true'] {
+  border-color: var(--menu-gold);
+}
+
+.pause-thing-icon,
+.pause-tally-icon {
+  display: block;
+  width: calc(7 * var(--thing-px));
+  height: calc(7 * var(--thing-px));
+  background: center / 100% 100% no-repeat;
+}
+
+.pause-thing-check {
+  position: absolute;
+  right: calc(-3 * var(--thing-px));
+  bottom: calc(-3 * var(--thing-px));
+  width: calc(8 * var(--thing-px));
+  height: calc(7 * var(--thing-px));
+  background: center / 100% 100% no-repeat;
+}
+
+.pause-tally {
+  display: flex;
+  align-items: center;
+  gap: var(--thing-px);
+  color: var(--menu-ink);
+  font-weight: bold;
+  font-size: calc(7 * var(--thing-px));
+  line-height: 1;
+}
+
+.pause-tally:first-child .pause-tally-icon {
+  width: calc(11 * var(--thing-px));
+  height: calc(6 * var(--thing-px));
+}
+
 .preparation-controls[data-device='Touch'] {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
 }

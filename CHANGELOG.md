@@ -11,6 +11,7 @@ Your friends dared you to go in. Heads up: a co-op run going when the update lan
 - 🕯️ Runs start at the dining room's table: shoot the chandelier onto the crowd, then find the parlour, a library with a secret shelf, and a pitch-black cellar, shuffled into new spots every run.
 - 🚗 A spooky intro opens every run: the drive up the hill, a knock, a knock back, and SLAM. Tap to skip, but never the slam. Then the dare card pops out of your pocket.
 - 🧟 The house got dressed up: zombies are party guests and old daredevils, power-ups are the Wind-Up Key, Family Silver, Dancing Shoes, Hat Pins, and Dinner Gong, and the stakes are Dare, Double Dare, Triple Dare, and Triple Dog Dare.
+- ⏱️ Breaks count down on every difficulty now (30 s on Dare and Double Dare, READY goes sooner), and the pause menu shows your dare list, keys, and rooms.
 
 ## November 8, 2026: Fat fingers welcome
 

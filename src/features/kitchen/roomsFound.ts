@@ -3,44 +3,24 @@ import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { textShapes, textWidth } from '../../art/font'
-import { type Palette, TOP_LEFT, spriteShapes } from '../../art/sprite'
+import { HOUSE_PALETTE, HOUSE_PIXELS } from '../../art/icons'
+import { TOP_LEFT, spriteShapes } from '../../art/sprite'
 import { KitchenCall } from '../../domain/clientSchema'
+import { roomsOf } from '../../domain/run'
 import { placeSprite, rect } from '../../render/drawing'
-import { type Level, levelOf } from '../../world/level/arena'
+import { levelOf } from '../../world/level/arena'
 import { Phase } from '../../world/schema/worldSchema'
 
 // NOTE: from the owner (2026-11-01), players were not finding the kitchen.
 // In a break, a small house and "1/5" says there is more to the map: the
-// rooms opened out of the rooms on it, read from the level's boarded exits
-// (the start room plus one for each). The library's secret shelf is a way
-// between two rooms, not a room. It turns gold with a sparkle when the last
-// one opens. It is only a readout, never a button.
-export const roomsOf = (level: Level): { found: number; total: number } => {
-  const boarded = Array.filter(level.exits, ({ opener }) => opener === 'Boards')
-  return {
-    found: 1 + Array.length(Array.filter(boarded, ({ isOpen }) => isOpen)),
-    total: 1 + boarded.length,
-  }
-}
-
+// rooms opened out of the rooms on it (roomsOf, src/domain/run.ts). It
+// turns gold with a sparkle when the last one opens. It is only a readout,
+// never a button.
 const isRoomsCounterShown = (model: Model): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&
   roomsOf(levelOf(model)).total > 1
 
-const HOUSE_PALETTE: Palette = {
-  o: '#140c10',
-  r: '#c8483c',
-  R: '#e8685a',
-  w: '#f4f1de',
-  d: '#8a5a32',
-  y: '#ffe066',
-}
-
-const HOUSE = spriteShapes(
-  ['...o...', '..oRo..', '.oRRRo.', 'orrrrro', '.owywo.', '.owdwo.', '.owdwo.'],
-  HOUSE_PALETTE,
-  TOP_LEFT,
-)
+const HOUSE = spriteShapes(HOUSE_PIXELS, HOUSE_PALETTE, TOP_LEFT)
 
 const HOUSE_SIZE = 7
 const ICON_GAP = 2
