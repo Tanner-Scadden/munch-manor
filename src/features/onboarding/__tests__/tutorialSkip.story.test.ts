@@ -34,21 +34,26 @@ import {
   APPLICATION,
   closeDialog,
   hintIds,
+  settleRunCommands,
   showDialog,
   throughIntro,
   tick,
   writeSave,
 } from '../../../test/testing'
 import { isPending, isPracticeGateHeld } from '../../../world/run/lessons'
-import { isKitchenTourOn } from '../../../world/run/tutorialRules'
+import {
+  DARE_TOUR_WAVE,
+  isKitchenTourOn,
+} from '../../../world/run/tutorialRules'
 import { Message as ProfileMessage } from '../../profile/message'
 import { FocusTutorialReset } from '../../profile/update'
 import { isLearned } from '../onboarding'
+import { isRattlesTalking } from '../rattlesIntro'
 
 // NOTE: the first-run card's TUTORIAL or SKIP IT (owner, 2026-11-07). SKIP
 // IT starts the run as a returning player's: no practice gate, no move or
-// aim hints, no guided first break, no kitchen tour, kept in the save. The
-// default still plays the tutorial, and Settings' Reset tutorial brings it
+// aim hints, no guided first break, no kitchen tour, no hello from Rattles
+// (owner, 2026-11-10), kept in the save. The default still plays the tutorial, and Settings' Reset tutorial brings it
 // back.
 
 const firstVisit: Model = modifyFields(newPlayerReady, {
@@ -94,6 +99,27 @@ const isGuidedFirstBreakOn = (current: Model) =>
         isPending(firstBreak.lessons.dareTour),
     ),
   )
+
+// NOTE: whether the same player, at the break where Rattles says hello, a
+// frame in, hears it.
+const isRattlesHelloOn = (current: Model) =>
+  Story.story(
+    APPLICATION,
+    Story.given(
+      modifyFields(current, {
+        phase: () =>
+          Phase.Preparation({
+            wave: DARE_TOUR_WAVE,
+            remainingMs: 20_000,
+            durationMs: 20_000,
+            spawns: [DISTANT_SPAWN],
+            clock: BreakClock.Waiting({ elapsedMs: 0 }),
+          }),
+      }),
+    ),
+    tick(FIXED_STEP_MS),
+    settleRunCommands,
+  ).pipe(Effect.map(isRattlesTalking))
 
 const isKitchenTourDue = (current: Model): boolean =>
   isKitchenTourOn(
@@ -171,7 +197,7 @@ describe('the first-run card', () => {
   )
 
   it.effect(
-    'SKIP IT and a difficulty start a run with no practice gate, no hints, no guided first break, and no kitchen tour, kept in the save',
+    'SKIP IT and a difficulty start a run with no practice gate, no hints, no guided first break, no kitchen tour, and no hello from Rattles, kept in the save',
     () =>
       Effect.gen(function* () {
         const current = yield* Story.story(
@@ -194,7 +220,7 @@ describe('the first-run card', () => {
               openBreak: 'Learned',
               dareTour: 'Learned',
               dareKey: 'Learned',
-              rattles: 'Pending',
+              rattles: 'Learned',
               displayCase: 'Pending',
             })
           }),
@@ -212,6 +238,8 @@ describe('the first-run card', () => {
         )
         const isGuided = yield* isGuidedFirstBreakOn(current)
         expect(isGuided).toBe(false)
+        const isHelloOn = yield* isRattlesHelloOn(current)
+        expect(isHelloOn).toBe(false)
 
         const nextVisit = reloaded(current)
         expect(isLearned(nextVisit.lessons.move)).toBe(true)
@@ -220,6 +248,8 @@ describe('the first-run card', () => {
         expect(nextVisit.introducedKinds).toEqual([])
         const isGuidedNextVisit = yield* isGuidedFirstBreakOn(nextVisit)
         expect(isGuidedNextVisit).toBe(false)
+        const isHelloOnNextVisit = yield* isRattlesHelloOn(nextVisit)
+        expect(isHelloOnNextVisit).toBe(false)
       }),
   )
 
@@ -246,6 +276,8 @@ describe('the first-run card', () => {
       )
       const isGuided = yield* isGuidedFirstBreakOn(current)
       expect(isGuided).toBe(true)
+      const isHelloOn = yield* isRattlesHelloOn(current)
+      expect(isHelloOn).toBe(true)
     }),
   )
 

@@ -235,11 +235,11 @@ const skipped = (lesson: Lesson): Lesson => learn(lesson, 0)
 // the lessons that hold the guided chapters: move and fire (their hints, the
 // touch ghost sticks, and the practice gate), the open break (the free Plank
 // Pile, NO TIMER, and the guided first break), and the timed breaks (the
-// kitchen tour's held clock and free boards and pull). All are saved, so
-// the run starts as a returning player's and stays so. What is taught at the
-// thing itself stays (GAME_DESIGN.md, "Teach where the player acts"):
-// Rattles at the stall, START WAVE, the swap and goodie pulses, the trap
-// hint, and the new zombie cards.
+// kitchen tour's held clock and free boards and pull), and Rattles' hello
+// by the front door (owner, 2026-11-10). All are saved, so the run starts
+// as a returning player's and stays so. What is taught at the thing itself
+// stays (GAME_DESIGN.md, "Teach where the player acts"): START WAVE, the
+// swap and goodie pulses, the trap hint, and the new zombie cards.
 export const skipTutorial = (model: Model): Model =>
   modifyFields(model, {
     lessons: lessons =>
@@ -250,6 +250,7 @@ export const skipTutorial = (model: Model): Model =>
         timedBreaks: skipped,
         dareTour: skipped,
         dareKey: skipped,
+        rattles: skipped,
       }),
     firstBreakQuest: () => QuestTour.Over(),
     kitchenTour: () => Tour.Over(),

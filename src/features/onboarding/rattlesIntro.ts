@@ -17,8 +17,9 @@ import { Phase } from '../../world/schema/worldSchema'
 // hints after it (src/features/dare/rattlesHint.ts).
 //
 // It plays once per save: starting it learns the `rattles` lesson, saved,
-// so a returning player from before the escape meets him once too, and a
-// tutorial reset brings it back. Never in co-op, a run with bots too, where
+// so a returning player from before the escape meets him once too, SKIP IT
+// on the first-run card learns it (`skipTutorial`), and a tutorial reset
+// brings it back. Never in co-op, a run with bots too, where
 // nothing is learned, so he waits for a solo run. Nothing holds the game:
 // the break before wave 2 has no clock.
 
