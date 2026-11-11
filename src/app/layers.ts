@@ -13,6 +13,7 @@ import {
   fridgeRevealShapes,
   prizeFlightShapes,
 } from '../features/fridge/fridgeRevealView'
+import { stragglerEdgeShapes } from '../features/hud/stragglerEdge'
 import { wavePreviewShapes } from '../features/hud/wavePreview'
 import { introShapes } from '../features/intro/introView'
 import { caseCardShapes } from '../features/onboarding/caseCardView'
@@ -87,6 +88,7 @@ const roundOverlayShapes = (
         ...purchaseOverlayShapes(model, camera),
         ...frontDoorMarkerShapes(model, screen, camera),
         ...pointerShapes(model, screen, camera),
+        ...stragglerEdgeShapes(model, screen, camera),
       ]
     : []),
   ...hudShapes(model, screen, camera),

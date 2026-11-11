@@ -59,6 +59,7 @@ Decided with the owner on 2026-10-29. This replaces the first playable's one-roo
 - **The kitchen first.** The first room after the parlour is the kitchen: ovens to trip and slippery soup. Since 2026-11-10 the kitchen hangs off the dining room's north wall. The level is already data in the Model, so a room is an exit in a `LevelSpec` (see "Technical notes").
 - **No off-screen hints.** Nothing on screen ever points at zombies. Door preview arrows may point at doors outside the view during breaks only, never during a wave (owner decision 2026-10-29). In a wave the door rattles and groans carry the warning.
   - **Teammates are the exception.** Decided on 2026-10-29 with co-op: an off-screen teammate shows as a small avatar at the screen edge. Zombies and doors still get nothing.
+  - **So are the last zombies once they hurry.** Owner, 2026-11-10, after the pacing report: once a wave's last 3 hurry (see "The last zombies"), one out of the window gets a red badge at its edge, so the end of a wave is a chase, not a search.
 - **Still a sketch.** Since 2026-11-10 the library (a secret bookshelf), the cellar (dark), and the escape goal are built (see "Escape the manor"); the ballroom, the graveyard, and the attic are still ideas. Rooms with one signature twist each: library (bookshelf passages, a rare-gun stash), ballroom (open floor for hordes, a chandelier to shoot down), cellar (dark, lit only near the player), a graveyard outside (floor spawns, Uncle Chunk's arena), attic (one entrance, a risky stash). A goal beyond surviving, such as restoring the power or finding the keys to Uncle Chunk's cellar. Interactive pieces such as a fireplace trap or a dumbwaiter. The mystery box is named: **Mystery Leftovers**, a grimy fridge in the kitchen; pay in-game money, open it, and grab whatever gun is growing inside (decided with the owner on 2026-10-30). Its prizes, decided the same day, are fridge-only weapons that Rattles never sells: the **Pressure Cooker** (hold to build pressure, release to launch a lid that explodes; more charge, bigger blast; holding past full pops it in your hands; 4 lids a load, any charge costs one), the **Clang Pan** (melee with huge knockback that dazes small zombies and home-runs thrown ones; no ammo, a dent meter slows it until Rattles bangs it flat for free each break), and **Brain Freeze** (freezes small zombies so any hit shatters them; charges only, no refills). Once a player has one, Rattles sells its upgrades on the shared tier ladder and its ammo (a Lid Stack for the Cooker). Each pull costs about $75 of in-game money, works through the same hold-to-buy prompt as the doors, and draws from its own seeded stream so it never changes which zombies come. Built on 2026-10-30: see "Mystery Leftovers" below. The layout stays hand-made, while secrets and loot spots shift with the seed.
 
 ### Escape the manor
@@ -756,14 +757,14 @@ Redrawn on 2026-10-29 at the owner's request ("should look like an ARMORED zombi
 - **The speed.** 15% faster while frenzied. A frenzied zombie with no packmate within 40 px for 0.9 s fades back to normal for good.
 - **The bonus.** Killing a whole frenzy pack pays $1 a zombie on top, with a chime.
 
-#### The last zombie
+#### The last zombies
 
-Added on 2026-11-10 at the owner's request ("when there's only one zombie left, they ramp up to move at the same speed that the characters move"), so a straggler ends the round instead of dragging it out. The code is in `src/world/zombies/lastZombie.ts`.
+Added on 2026-11-10 at the owner's request ("when there's only one zombie left, they ramp up to move at the same speed that the characters move"), so a straggler ends the round instead of dragging it out. Widened the same day to the last three, after `docs/PACING_REPORT.md` found every wave ending on a 13 s fall (owner's pick 1b). The code is in `src/world/zombies/lastZombie.ts`.
 
-- **When.** A wave has nothing left to send (no planned spawn, no pack at a door, none held behind the alive cap) and exactly one zombie still stands. Never Uncle Chunk, never while he is waiting, arriving, or fighting, and never once the finale is under way.
-- **The speed.** Over 2 s its pace climbs from its own to the players' walk (72). One already faster never slows. It still chases down the flow field, and a chill still slows it.
-- **Odd kinds.** A Big Leaguer left last stops hanging back and walks straight in. An Ankle Biter under the floor hurries once it is up. A Kaboomer hurries too, fuse and all.
-- **The look.** It wears the frenzy's rage face, read off the World, with nothing new on the wire but the ramp's clock (`pacing.loneMs`).
+- **When.** A wave has nothing left to send (no planned spawn, no pack at a door, none held behind the alive cap) and 3 or fewer zombies still stand, for 3 s. Never Uncle Chunk, never while he is waiting, arriving, or fighting, and never once the finale is under way.
+- **The speed.** Over the next 2 s their pace climbs from their own to the players' walk (72). One already faster never slows. They still chase down the flow field, and a chill still slows them.
+- **Odd kinds.** A Big Leaguer among them stops hanging back and walks straight in. An Ankle Biter under the floor hurries once it is up. A Kaboomer hurries too, fuse and all.
+- **The look.** They wear the frenzy's rage face, and one out of the window gets a blinking red badge at the window's edge toward it, the co-op teammate's badge (`src/features/hud/stragglerEdge.ts`). Both are read off the World, with nothing new on the wire but the clock (`pacing.loneMs`).
 
 #### The Big Leaguer
 
