@@ -98,6 +98,24 @@ const runWith = (
     keysHeld: 2,
     casesWaiting: 0,
     casesLocked: 2,
+    waitingPrizes: ['Smg'],
+    guns: ['Pistol:2', 'Shotgun:1'],
+  },
+  ledger: {
+    kills: 30,
+    clears: 3,
+    wipes: 1,
+    pantry: 0,
+    dud: 1,
+    boards: 8,
+    fridge: 4,
+    chandelierDrops: 1,
+    heldAtBreak: [0, 6, 14],
+    foundAtBreak: [0, 6, 20],
+    hurts: [
+      { wave: 3, kind: 'Runner', doing: 'Reloading', hearts: 1, crowd: 2 },
+    ],
+    doingMs: [{ wave: 3, doing: { Fighting: 30000, Reloading: 4000 } }],
   },
 })
 

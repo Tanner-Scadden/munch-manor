@@ -9,13 +9,20 @@ import {
 } from '../../world/dare/dare'
 import { isFrontDoorOpen } from '../../world/dare/finale'
 import { FIND_RULES } from '../../world/dare/finds'
+import {
+  chandelierHitBox,
+  gapBoxOf,
+  isChandelierDown,
+} from '../../world/dining/chandelier'
 import { heldKeys } from '../../world/keys/keys'
 import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import {
   type Box,
   type Level,
   TILE_PLAYER_SOLID,
+  circleTouchesBox,
   distanceToBox,
+  hasLineOfSight,
   hasTileFlag,
   isInsideRoom,
   levelOf,
@@ -25,11 +32,12 @@ import {
 } from '../../world/level/arena'
 import { exitPriceFor } from '../../world/level/exits'
 import type { World } from '../../world/schema/world'
-import { ExitId, type Vector } from '../../world/schema/worldSchema'
+import { ExitId, Phase, type Vector } from '../../world/schema/worldSchema'
 import { stationBoxOf } from '../../world/stations/stationSpots'
 import { isInWave } from '../../world/stations/stations'
 import { TOOL_RULES } from '../../world/stations/toolRules'
 import { distanceBetween } from '../../world/step/geometry'
+import { bodyRadiusOf, isGrounded } from '../../world/zombies/zombies'
 
 // How a bot searches for the dare's list (src/world/dare/dare.ts), read off
 // the World alone and shared by the teammate bots
@@ -222,6 +230,43 @@ export const pantryErrand = (world: World): Vector | undefined =>
   Option.getOrUndefined(
     Option.flatMap(maybeStash(world), () => pantrySpotOf(levelOf(world))),
   )
+
+// THE ROOM TOOLS
+
+// Each room tool a bot uses as a person does, one skill each.
+
+// NOTE: the zombies in the table's gap under the hung chandelier that make
+// it worth a shot (src/world/dining/chandelier.ts): it crushes them all.
+export const CHANDELIER_CROWD = 3
+
+// NOTE: where a bot at `at` shoots to drop the chandelier: in a wave, while
+// it hangs with a crowd under it, and in its sight.
+export const chandelierShot: {
+  (at: Vector): (world: World) => Option.Option<Vector>
+  (world: World, at: Vector): Option.Option<Vector>
+} = Function.dual(2, (world: World, at: Vector): Option.Option<Vector> => {
+  if (!Phase.isAnyOf(['Wave'])(world.phase) || isChandelierDown(world)) {
+    return Option.none()
+  }
+  const level = levelOf(world)
+  return Option.flatMap(gapBoxOf(level), gap => {
+    const under = Array.filter(
+      world.zombies,
+      zombie =>
+        zombie.state._tag === 'Walking' &&
+        isGrounded(zombie) &&
+        circleTouchesBox(zombie, bodyRadiusOf(zombie), gap),
+    ).length
+    const hit = chandelierHitBox(gap)
+    const aim = {
+      x: (hit.left + hit.right) / 2,
+      y: (hit.top + hit.bottom) / 2,
+    }
+    return under >= CHANDELIER_CROWD && hasLineOfSight(level, at, aim)
+      ? Option.some(aim)
+      : Option.none()
+  })
+})
 
 // THE PLAN
 

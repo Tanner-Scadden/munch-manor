@@ -13,6 +13,7 @@ import {
 } from '../../../src/features/bots/dareSearch'
 import { maybeThingRoom } from '../../../src/world/dare/dare'
 import { DareThingState } from '../../../src/world/dare/dareSchema'
+import { gunsOf } from '../../../src/world/gear/weapons'
 import { heldKeys } from '../../../src/world/keys/keys'
 import { levelOf } from '../../../src/world/level/arena'
 import { focusOf, focusSlotOf } from '../../../src/world/party/party'
@@ -125,6 +126,10 @@ export const runEndOf: {
       ? model.phase.wave
       : model.stats.wavesCleared + 1
   const slot = focusSlotOf(model)
+  const waiting = Array.filter(
+    model.cases,
+    ({ state }) => CaseState.isAnyOf(['Opened'])(state) && state.by === slot,
+  )
   return {
     stop:
       model.phase._tag === 'Escaped'
@@ -151,10 +156,12 @@ export const runEndOf: {
     hiddenInOpen: rooms.length - behindBoards,
     shutBoards: shutExitsOnTheList(model).length,
     keysHeld: heldKeys(model),
-    casesWaiting: Array.filter(
-      model.cases,
-      ({ state }) => CaseState.isAnyOf(['Opened'])(state) && state.by === slot,
-    ).length,
+    casesWaiting: waiting.length,
+    waitingPrizes: Array.map(waiting, ({ prize }) => prize),
+    guns: Array.map(
+      gunsOf(focusOf(model).player.arsenal),
+      gun => `${gun.kind}:${gun.tier}`,
+    ),
     casesLocked: Array.filter(model.cases, ({ state }) =>
       CaseState.isAnyOf(['Locked'])(state),
     ).length,
