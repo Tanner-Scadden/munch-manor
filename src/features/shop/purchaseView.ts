@@ -32,6 +32,7 @@ import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
 import { maybeValveLock } from '../../world/kitchen/gasValve'
 import { maybeStoveLock, maybeStovePerk } from '../../world/kitchen/stove'
 import { levelOf } from '../../world/level/arena'
+import { EXIT_RULES } from '../../world/level/exits'
 import { focusOf, focusSlotOf } from '../../world/party/party'
 import {
   FridgeDoor,
@@ -158,10 +159,9 @@ const bakeTag = (
 }
 
 // NOTE: a boarded exit wears a padlock with the keys it asks
-// (src/world/level/exits.ts): 3 to 5, by how deep its room is, each baked
-// once here.
+// (src/world/level/exits.ts): one price each for the kitchen, a room off
+// the dining room, and the far room, each baked once here.
 const PADLOCK_WIDTH = 7
-const FEWEST_EXIT_KEYS = 3
 
 const padlockTag = (keys: number): PriceTag =>
   bakeTag(
@@ -169,15 +169,24 @@ const padlockTag = (keys: number): PriceTag =>
     Option.some({ sprite: PADLOCK_SPRITE, width: PADLOCK_WIDTH }),
   )
 
-const EXIT_TAGS: Array.NonEmptyReadonlyArray<PriceTag> = [
-  padlockTag(FEWEST_EXIT_KEYS),
-  padlockTag(FEWEST_EXIT_KEYS + 1),
-  padlockTag(FEWEST_EXIT_KEYS + 2),
+const EXIT_PRICES: Array.NonEmptyReadonlyArray<number> = [
+  EXIT_RULES.kitchenKeys,
+  EXIT_RULES.roomKeys,
+  EXIT_RULES.farKeys,
 ]
 
+const EXIT_TAGS = Array.map(EXIT_PRICES, keys => ({
+  keys,
+  tag: padlockTag(keys),
+}))
+
 const exitTagOf = (keys: number): PriceTag =>
-  Option.getOrElse(Array.get(EXIT_TAGS, keys - FEWEST_EXIT_KEYS), () =>
-    Array.lastNonEmpty(EXIT_TAGS),
+  Option.getOrElse(
+    Option.map(
+      Array.findFirst(EXIT_TAGS, entry => entry.keys === keys),
+      ({ tag }) => tag,
+    ),
+    () => Array.lastNonEmpty(EXIT_TAGS).tag,
   )
 
 const FRIDGE_TAG = bakePriceTag(FRIDGE_RULES.keys)

@@ -28,12 +28,13 @@ import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from './plan'
 // THE EXIT
 
 // NOTE: a boarded exit is padlocked, and opens for skeleton keys off the
-// crew's ring (src/world/keys/keys.ts), 3 to 5 by how deep its room is: the
-// kitchen 3, a room off the dining room 4 (the west and east slots), and
-// the far slot, beyond the east room, 5 (docs/ESCAPE_PLAN.md, "Key costs
-// and drops"). The
-// kitchen opens from the wave 3 break on. Starting points, not yet tuned
-// on the balance bot (layer 17).
+// crew's ring (src/world/keys/keys.ts), by how deep its room is: the
+// kitchen 8, a room off the dining room 55 (the west and east slots), and
+// the far slot, beyond the east room, 90 (docs/ESCAPE_PLAN.md, "Key costs
+// and drops"). Each room holds one thing on the dare's list, so the prices
+// pace the hunt: on Double Dare the kitchen opens about wave 3 and the last
+// room about wave 9 (tuned on the balance bot, 2026-11-10). The kitchen
+// opens from the wave 3 break on.
 export const KITCHEN_EXIT: ExitId = 'Kitchen'
 
 type ExitRules = Readonly<{
@@ -49,9 +50,9 @@ type ExitRules = Readonly<{
 // hangs: on the boards themselves, so a player standing at them is never
 // hidden behind it.
 export const EXIT_RULES: ExitRules = {
-  kitchenKeys: 3,
-  roomKeys: 4,
-  farKeys: 5,
+  kitchenKeys: 8,
+  roomKeys: 55,
+  farKeys: 90,
   firstWave: KITCHEN_FIRST_WAVE,
   reachPx: 14,
   tagDropPx: 7,

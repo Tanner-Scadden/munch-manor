@@ -82,6 +82,9 @@ import {
   targetsOf,
 } from '../party'
 
+// NOTE: enough keys for the kitchen's padlock, with two to spare.
+const KEYS = EXIT_RULES.kitchenKeys + 2
+
 // Co-op's World rules (MULTIPLAYER.md, Phase 1), played through the root's Story
 // with two and four players in one World.
 
@@ -367,7 +370,7 @@ describe("the crew's key ring", () => {
       spawns: [],
     })
     const atDoor = pipeline(
-      withKeys(5),
+      withKeys(KEYS),
       placeSeat(0, DOOR_X - 8, DOOR_Y),
       placeSeat(1, DOOR_X + 8, DOOR_Y),
     )(crewInWave(2, preparation))
@@ -380,7 +383,7 @@ describe("the crew's key ring", () => {
       Purchase.isAnyOf(['Idle'])(focusOf(seatWorldOf(halfway, 0)).purchase),
     ).toBe(true)
     const bought = holdFor(atDoor, [1], HOLD_TICKS, [0])
-    expect(bought.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
+    expect(bought.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
     expect(levelOf(bought).key).not.toBe(levelOf(atDoor).key)
   })
 
@@ -392,7 +395,7 @@ describe("the crew's key ring", () => {
       spawns: [],
     })
     const atDoor = pipeline(
-      withKeys(5),
+      withKeys(KEYS),
       placeSeat(0, DOOR_X - 8, DOOR_Y),
       placeSeat(1, DOOR_X + 8, DOOR_Y),
     )(crewInWave(2, preparation))
@@ -405,7 +408,7 @@ describe("the crew's key ring", () => {
       Purchase.isAnyOf(['Idle'])(focusOf(seatWorldOf(halfway, 0)).purchase),
     ).toBe(true)
     const bought = holdFor(atDoor, [], standTicks, [0])
-    expect(bought.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
+    expect(bought.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
     expect(levelOf(bought).key).not.toBe(levelOf(atDoor).key)
   })
 
@@ -440,11 +443,11 @@ describe("the crew's key ring", () => {
     const [, spawns] = rollSpawns(41, 4)
     const fighting = Phase.Wave({ wave: 4, elapsedMs: 0, spawns })
     const atDoor = pipeline(
-      withKeys(5),
+      withKeys(KEYS),
       placeSeat(1, DOOR_X, DOOR_Y),
     )(crewInWave(2, fighting))
     const bought = holdFor(atDoor, [1], HOLD_TICKS, [0])
-    expect(bought.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
+    expect(bought.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
     expect(levelOf(bought).key).not.toBe(levelOf(atDoor).key)
     const doors = Phase.isAnyOf(['Wave'])(bought.phase)
       ? Array.map(bought.phase.spawns, ({ door }) => door)

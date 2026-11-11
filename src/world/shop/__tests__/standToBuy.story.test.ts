@@ -31,6 +31,9 @@ import { EXIT_RULES } from '../../level/exits'
 import { focusOf, modifyFocus } from '../../party/party'
 import { PURCHASE_RULES, holdProgress } from '../purchase'
 
+// NOTE: enough keys for the kitchen's padlock, with two to spare.
+const KEYS = EXIT_RULES.kitchenKeys + 2
+
 // Standing still to buy (src/world/shop/purchase.ts): at a purchasable, a player who
 // stands still for a second buys it, as a teammate revives by standing
 // still; the interact key still buys in half a second. Firing, stabbing,
@@ -63,7 +66,7 @@ describe('standing still to buy', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(atBoards(5)),
+        Story.given(atBoards(KEYS)),
         ...ticks(Math.floor(STAND_TICKS / 2), FRAME_MS),
         Story.model(current => {
           expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
@@ -76,7 +79,7 @@ describe('standing still to buy', () => {
         ...ticks(STAND_TICKS - Math.floor(STAND_TICKS / 2), FRAME_MS),
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(true)
-          expect(current.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
+          expect(current.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
         }),
       ),
   )
@@ -87,7 +90,7 @@ describe('standing still to buy', () => {
       Effect.gen(function* () {
         yield* Story.story(
           APPLICATION,
-          Story.given(atBoards(5)),
+          Story.given(atBoards(KEYS)),
           ...ticks(HOLD_TICKS, FRAME_MS),
           Story.model(current => {
             expect(isKitchenOpen(current)).toBe(false)
@@ -95,7 +98,7 @@ describe('standing still to buy', () => {
         )
         yield* Story.story(
           APPLICATION,
-          Story.given(atBoards(5)),
+          Story.given(atBoards(KEYS)),
           press('Enter'),
           ...ticks(HOLD_TICKS, FRAME_MS),
           Story.model(current => {
@@ -108,7 +111,7 @@ describe('standing still to buy', () => {
   it.effect('moving resets the ring, and the next stand starts over', () =>
     Story.story(
       APPLICATION,
-      Story.given(atBoards(5)),
+      Story.given(atBoards(KEYS)),
       ...ticks(STAND_TICKS - 10, FRAME_MS),
       press('KeyD'),
       ...ticks(1, FRAME_MS),
@@ -122,7 +125,7 @@ describe('standing still to buy', () => {
       ...ticks(STAND_TICKS - 10, FRAME_MS),
       Story.model(current => {
         expect(isKitchenOpen(current)).toBe(false)
-        expect(current.keys.held).toBe(5)
+        expect(current.keys.held).toBe(KEYS)
       }),
     ),
   )
@@ -132,7 +135,7 @@ describe('standing still to buy', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(atBoards(5)),
+        Story.given(atBoards(KEYS)),
         ...ticks(STAND_TICKS - 10, FRAME_MS),
         holdFire,
         ...ticks(1, FRAME_MS),
@@ -142,7 +145,7 @@ describe('standing still to buy', () => {
         ...ticks(STAND_TICKS * 3, FRAME_MS),
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(false)
-          expect(current.keys.held).toBe(5)
+          expect(current.keys.held).toBe(KEYS)
         }),
       ),
   )
@@ -150,7 +153,7 @@ describe('standing still to buy', () => {
   it.effect('stabbing resets the ring too', () =>
     Story.story(
       APPLICATION,
-      Story.given(atBoards(5)),
+      Story.given(atBoards(KEYS)),
       ...ticks(STAND_TICKS - 10, FRAME_MS),
       press('KeyF'),
       holdFire,
@@ -178,7 +181,7 @@ describe('standing still to buy', () => {
   )
 
   it.effect('not in the first moments of a wave', () => {
-    const waveStart = modifyFields(atBoards(5), {
+    const waveStart = modifyFields(atBoards(KEYS), {
       phase: () =>
         Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     })

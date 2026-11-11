@@ -64,7 +64,7 @@ describe('holding to buy on touch', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atBoards('Touch', 5)),
+        Scene.given(atBoards('Touch', EXIT_RULES.kitchenKeys + 2)),
         measureSurface,
         Scene.expect(holdButton).toExist(),
         Scene.expect(holdButton).toHaveAttr('data-short', 'false'),
@@ -108,7 +108,7 @@ describe('holding to buy on a keyboard', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atBoards('KeyboardMouse', 5)),
+        Scene.given(atBoards('KeyboardMouse', EXIT_RULES.kitchenKeys + 2)),
         measureSurface,
         Scene.expect(holdButton).toBeAbsent(),
         Scene.expect(
@@ -180,7 +180,7 @@ describe('the price tag in a zoomed phone window', () => {
   const upright = (y: number): Model =>
     inPortrait(
       modifyFocus(
-        modifyFields(atBoards('Touch', 5), {
+        modifyFields(atBoards('Touch', EXIT_RULES.kitchenKeys + 2), {
           level: level =>
             Array.reduce([WEST_EXIT, EAST_EXIT, FAR_EXIT], level, openExitIn),
         }),

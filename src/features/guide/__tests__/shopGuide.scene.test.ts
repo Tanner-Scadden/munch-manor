@@ -12,6 +12,7 @@ import {
   openHandInScene,
   pickCardInScene,
 } from '../../../test/testing'
+import { EXIT_RULES } from '../../../world/level/exits'
 import { SHOP_GUIDE_NAME } from '../../../world/names'
 import { Message as GuideMessage } from '../message'
 import { prizeUnlockId } from '../shopGuide'
@@ -54,7 +55,7 @@ describe('the Munchopedia Finds page', () => {
           Scene.click(Scene.role('button', { name: 'House' })),
           Scene.expect(Scene.selector("[data-entry='Boards']")).toExist(),
           Scene.expect(Scene.selector("[data-entry='Rattles']")).toExist(),
-          Scene.expect(Scene.text('3 keys')).toExist(),
+          Scene.expect(Scene.text(`${EXIT_RULES.kitchenKeys} keys`)).toExist(),
           Scene.expect(Scene.selector("[data-entry='Pistol']")).toBeAbsent(),
           Scene.click(
             Scene.role('button', { name: 'Back to the Munchopedia' }),

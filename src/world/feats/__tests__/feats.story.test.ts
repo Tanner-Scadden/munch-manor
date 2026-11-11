@@ -37,6 +37,7 @@ import {
   zombieOf,
 } from '../../../test/testing'
 import { START_LEVEL } from '../../level/arena'
+import { EXIT_RULES } from '../../level/exits'
 import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
 import { Feat, freshTally } from '../../schema/worldSchema'
 import { goalOf, progressOf } from '../feats'
@@ -208,7 +209,7 @@ describe('exploring feats, one player', () => {
       APPLICATION,
       Story.given(
         modifyFocus(
-          modifyFields(withKeys(pastTimedBreaks(freshRunModel()), 5), {
+          modifyFields(withKeys(pastTimedBreaks(freshRunModel()), EXIT_RULES.kitchenKeys), {
             phase: () =>
               Phase.Preparation({
                 wave: 3,
