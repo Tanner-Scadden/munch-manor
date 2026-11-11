@@ -167,6 +167,15 @@ describe('the lobby', () => {
       ),
       Scene.expectAll(Scene.all.selector('.coop-skull-pick')).toHaveCount(4),
       Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
+      Scene.expect(
+        Scene.selector("[data-difficulty='Nightmare'] .coop-pick-icon"),
+      ).toExist(),
+      Scene.expectAll(
+        Scene.all.selector('.coop-skull-pick .lock-badge'),
+      ).toHaveCount(1),
+      Scene.expect(
+        Scene.selector("[data-difficulty='Nightmare'] .lock-badge"),
+      ).toExist(),
       Scene.expect(Scene.role('img', { name: 'Map: The Manor' })).toExist(),
       Scene.expectAll(Scene.all.selector('.lobby-map')).toHaveCount(1),
     ),

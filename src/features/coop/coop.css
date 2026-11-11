@@ -1609,6 +1609,7 @@
 }
 
 .coop-skull-pick {
+  position: relative;
   width: 48px;
 }
 
