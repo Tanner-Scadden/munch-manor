@@ -714,6 +714,14 @@ const popupLook = (popup: Popup): PopupLook => {
       hopPx: KILL_POPUP_HOP_PX,
       risePx: KILL_POPUP_RISE_PX,
     }
+  } else if (popup.kind === 'Opened') {
+    return {
+      text: 'OPEN!',
+      tone: popup.ageMs < KILL_POPUP_FLASH_MS ? 'Fresh' : 'Victory',
+      scale: popup.ageMs < KILL_POPUP_FLASH_MS ? 3 : HORDE_POPUP_SCALE,
+      hopPx: KILL_POPUP_HOP_PX,
+      risePx: KILL_POPUP_RISE_PX,
+    }
   } else if (popup.kind === 'Horde') {
     return {
       text: 'HORDE!',

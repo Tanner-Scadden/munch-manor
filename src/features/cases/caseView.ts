@@ -6,10 +6,10 @@ import {
   CASE_ART,
   CASE_HEIGHT,
   CASE_WIDTH,
-  SIGHT_PRIZE,
+  LOCK_NOTCH,
+  PRIZE_SPRITES,
 } from '../../art/caseArt'
-import { type Sprite, placeAt } from '../../art/sprite'
-import { gunIcon } from '../../art/sprites/guns'
+import { placeAt } from '../../art/sprite'
 import type { Drawable } from '../../render/depth'
 import { GLINT } from '../../render/drawing'
 import { featLockShapes, lockSpotIn } from '../../render/featLockView'
@@ -20,27 +20,17 @@ import {
 } from '../../world/feats/caseSpots'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
-import {
-  type CasePrize,
-  CaseState,
-  type DisplayCase,
-} from '../../world/schema/worldSchema'
+import { CaseState, type DisplayCase } from '../../world/schema/worldSchema'
 
 // The display cases (src/world/feats/cases.ts) in the world, sorted by the
-// floor they stand on: a locked case shows its prize behind glass and a
-// padlock, with its feat's lock over it filling with your own progress; an
+// floor they stand on: a locked case shows its prize behind glass, lit from
+// behind so it reads, and a padlock, with its feat's lock hung over it on a
+// notch, filling with your own progress and always showing its count; an
 // opened one has lost its glass and its prize bobs, glinting, until its
 // opener takes it; an emptied one stands bare.
 
-const PRIZE_SPRITES: Readonly<Record<CasePrize, Sprite>> = {
-  Shotgun: gunIcon('Shotgun', 0),
-  Smg: gunIcon('Smg', 0),
-  Rifle: gunIcon('Rifle', 0),
-  Blunderbuss: gunIcon('Blunderbuss', 0),
-  LaserSight: SIGHT_PRIZE,
-}
-
-const LOCK_LIFT_PX = 9
+const LOCK_LIFT_PX = 11
+const NOTCH_LIFT_PX = 2
 const BOB_MS = 260
 const GLINT_MS = 900
 const GLINT_ON_MS = 180
@@ -62,11 +52,11 @@ const caseShapes = (
       body,
       placeAt(prizeAt.x, prizeAt.y, prize),
       placeAt(left, top, art.front),
-      ...featLockShapes(
-        displayCase.feat,
-        focusOf(model),
-        lockSpotIn(level, { x: Math.round(foot.x), y: top - LOCK_LIFT_PX }),
-      ),
+      placeAt(Math.round(foot.x), top - NOTCH_LIFT_PX, LOCK_NOTCH),
+      ...featLockShapes(displayCase.feat, focusOf(model), {
+        ...lockSpotIn(level, { x: Math.round(foot.x), y: top - LOCK_LIFT_PX }),
+        countShows: 'Always',
+      }),
     ],
     Opened: () => {
       const bob = Math.floor(model.elapsedMs / BOB_MS) % 2 === 0 ? 0 : 1

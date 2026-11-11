@@ -195,6 +195,7 @@ describe('the first-run card', () => {
               dareTour: 'Learned',
               dareKey: 'Learned',
               rattles: 'Pending',
+              displayCase: 'Pending',
             })
           }),
           writeSave(),

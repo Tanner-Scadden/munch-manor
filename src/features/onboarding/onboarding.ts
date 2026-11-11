@@ -223,6 +223,7 @@ export const settleLessons = (lessons: Lessons): Lessons =>
     dareTour: settle,
     dareKey: settle,
     rattles: settle,
+    displayCase: settle,
   })
 
 // SKIPPING

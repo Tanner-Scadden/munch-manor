@@ -42,6 +42,7 @@ import {
   releasedKey,
   reloadFromButton,
   resumeFromPointer,
+  skipCaseCardWhenUp,
   skipDebutCardWhenUp,
   swapFromButton,
   useDevice,
@@ -67,8 +68,9 @@ const pressedPointer = (model: Model, pointer: PointerPress): UpdateReturn => {
   const pressed = isArriving(model.phase)
     ? skipIntro(started)
     : isRoundActive(model.phase)
-      ? withInput(skipDebutCardWhenUp(foldPocketCard(started)), input =>
-          pressPointer(input, started.maybeSurface, press),
+      ? withInput(
+          skipCaseCardWhenUp(skipDebutCardWhenUp(foldPocketCard(started))),
+          input => pressPointer(input, started.maybeSurface, press),
         )
       : refreshIntent(skipFromPointer(started))
   return combine(pressed, [

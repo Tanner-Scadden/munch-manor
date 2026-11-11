@@ -5,6 +5,7 @@ import { DialogBlock } from '@foldkit/ui'
 import {
   AudioState,
   Bot,
+  CaseCard,
   ClocheLift,
   DareHint,
   DifficultyCard,
@@ -148,6 +149,7 @@ export const Model = Schema.Struct({
   introSeen: SavedTrapHint,
   introSkip: IntroSkip,
   pocketCard: PocketCard,
+  caseCard: CaseCard,
   kitchenCall: KitchenCall,
   dareHint: DareHint,
   firstBreakQuest: QuestTour,
@@ -338,6 +340,7 @@ export const initialModel: OwnModel = {
   introSeen: 'Unseen',
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),
+  caseCard: CaseCard.Hidden(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   dareHint: quietDareHint,
   firstBreakQuest: QuestTour.Waiting(),

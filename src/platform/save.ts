@@ -12,6 +12,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
 import {
+  CaseCard,
   DifficultyCard,
   type PlayerBests,
   QuestTour,
@@ -814,6 +815,7 @@ export const saveOf = (model: Model): PlayerSave => ({
       dareTour: savedLesson(model.lessons.dareTour),
       dareKey: savedLesson(model.lessons.dareKey),
       rattles: savedLesson(model.lessons.rattles),
+      displayCase: savedLesson(model.lessons.displayCase),
     },
     trapHint: savedTrapHint(model.trapHint),
     introducedKinds: model.introducedKinds,
@@ -870,6 +872,7 @@ const restoreLessons = (lessons: Lessons, saved: SavedLessons): Lessons =>
     dareTour: restoreLesson(saved.dareTour),
     dareKey: restoreLesson(saved.dareKey),
     rattles: restoreLesson(saved.rattles),
+    displayCase: restoreLesson(saved.displayCase),
   })
 
 const isZombieKind = Schema.is(ZombieKind)
@@ -1031,6 +1034,7 @@ export const forgetTutorial = (model: Model): Model =>
     kitchenTour: () => Tour.Waiting(),
     introducedKinds: () => [],
     debutCard: () => DebutCard.Hidden(),
+    caseCard: () => CaseCard.Hidden(),
     seenPowerUps: () => [],
   })
 

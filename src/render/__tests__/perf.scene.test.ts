@@ -615,11 +615,17 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // rolled house's cloche, so 610 (and its shapes painted 638, so 640).
 // The dare card on the HUD added one baked slot per thing on the list, the
 // hat too (4 on Normal), and the house's dare things a few shapes more.
+// A display case's count shows always (owner's playtest, 2026-11-10: what
+// opens a case reads from across the room), a glyph image each, and its
+// padlock's gold notch is one image more: the dark cellar went to 772 shapes,
+// 620 steady paint operations, and 655 shapes painted, so 775, 625, and 660.
+// Baking each count whole would cut a few images, but a count changes with
+// every kill, so its sprites would be built at runtime, off the atlas.
 const BUDGET: FrameCost = {
-  shapesBuilt: 760,
-  steadyPaintOps: 610,
+  shapesBuilt: 775,
+  steadyPaintOps: 625,
   steadyFillStyleChanges: 500,
-  steadyShapesPainted: 640,
+  steadyShapesPainted: 660,
   fullRepaintPaintOps: 1200,
 }
 

@@ -60,6 +60,7 @@ import {
   tutorialKeySpotOf,
 } from '../../../world/run/tutorialRules'
 import { ZOMBIE_KIND_ORDER } from '../../../world/zombies/zombies'
+import { CASE_CARD_MIN_MS, isCaseCardUp } from '../caseCard'
 import {
   type QuestStep,
   isQuestOnCard,
@@ -81,6 +82,7 @@ import { isStartWaveBeckoning } from '../onboarding'
 const FRAME_MS = FIXED_STEP_MS
 const TICK_MS = 50
 const LOOK_FRAMES = Math.ceil(2600 / FRAME_MS) + 1
+const CASE_CARD_FRAMES = Math.ceil(CASE_CARD_MIN_MS / FRAME_MS) + 1
 
 const frame = tick(FRAME_MS)
 
@@ -249,6 +251,14 @@ describe('the guided first break', () => {
           expect(stepOf(current)).toEqual(Option.some('Case'))
         }),
         changeModel(current => standAt(belowTutorialCase(current))(current)),
+        // NOTE: the case's first-time card comes up at the tour's Case step
+        // (src/features/onboarding/caseCard.ts), and is put away first.
+        frame,
+        Story.model(current => {
+          expect(isCaseCardUp(current)).toBe(true)
+        }),
+        ...ticks(CASE_CARD_FRAMES, FRAME_MS),
+        tap('Enter'),
         ...holdEnter(HOLD_TICKS + 2),
         Story.model(current => {
           expect(

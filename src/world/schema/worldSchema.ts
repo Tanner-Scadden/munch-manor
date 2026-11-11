@@ -303,6 +303,7 @@ export const PopupKind = Schema.Literals([
   'Kaboom',
   'Saved',
   'Clutch',
+  'Opened',
 ])
 export type PopupKind = typeof PopupKind.Type
 
@@ -723,7 +724,9 @@ export type Lesson = typeof Lesson.Type
 // (src/features/onboarding/firstBreakQuest.ts) and `dareKey` its skeleton key
 // on the dining room floor (src/world/run/tutorialRules.ts). `rattles` is
 // meeting Rattles by the front door, his hello in the first break after the
-// practice wave (src/features/onboarding/rattlesIntro.ts).
+// practice wave (src/features/onboarding/rattlesIntro.ts). `displayCase` is the
+// card a display case raises the first time a player walks up to one in a
+// break (src/features/onboarding/caseCard.ts).
 export const Lessons = Schema.Struct({
   move: Lesson,
   fire: Lesson,
@@ -735,6 +738,7 @@ export const Lessons = Schema.Struct({
   dareTour: Lesson,
   dareKey: Lesson,
   rattles: Lesson,
+  displayCase: Lesson,
 })
 export type Lessons = typeof Lessons.Type
 

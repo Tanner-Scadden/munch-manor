@@ -9,6 +9,7 @@ import { isRunCardHeld } from '../features/end/endBeat'
 import { startingCallingOf } from '../features/heroes/callingPick'
 import type { ViewInputs as LobbyViewInputs } from '../features/lobby/block'
 import { pauseHelpView } from '../features/menus/pauseHelp'
+import { caseCardView } from '../features/onboarding/caseCardView'
 import { isOpenBreak } from '../features/onboarding/onboarding'
 import { questTrackerView } from '../features/onboarding/questView'
 import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
@@ -437,6 +438,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         preparationControlsView(model, h),
         gunClusterView(model, h),
         debutCardView(model, h),
+        caseCardView(model, h),
         questTrackerView(model, h),
         modeChoiceView(model, shareMountOf, h),
         escapeSupportView(model, h),

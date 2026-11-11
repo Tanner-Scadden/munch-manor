@@ -164,6 +164,7 @@ export const HarnessConfig = Schema.Struct({
         'dareTour',
         'dareKey',
         'rattles',
+        'displayCase',
       ]),
     ),
   ),

@@ -88,6 +88,7 @@ export const FIELD_CLASSES = {
   introSeen: 'Client',
   introSkip: 'Client',
   pocketCard: 'Client',
+  caseCard: 'Client',
   firstBreakQuest: 'Client',
   rattlesIntro: 'Client',
   kitchenTour: 'Client',

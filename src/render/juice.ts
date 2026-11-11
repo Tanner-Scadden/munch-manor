@@ -207,6 +207,9 @@ const HORDE_POPUP_INSET_PX = 22
 const KABOOM_POPUP_LIFETIME_MS = 600
 const SAVE_POPUP_LIFETIME_MS = 1300
 const SAVE_POPUP_LIFT_PX = 18
+const OPENED_POPUP_LIFETIME_MS = 1300
+// NOTE: OPEN! rises from over the case's lock, which hangs above its top.
+const OPENED_POPUP_LIFT_PX = 34
 
 export const POPUP_LIFETIME_MS: Readonly<Record<PopupKind, number>> = {
   Damage: DAMAGE_POPUP_LIFETIME_MS,
@@ -217,6 +220,7 @@ export const POPUP_LIFETIME_MS: Readonly<Record<PopupKind, number>> = {
   Kaboom: KABOOM_POPUP_LIFETIME_MS,
   Saved: SAVE_POPUP_LIFETIME_MS,
   Clutch: SAVE_POPUP_LIFETIME_MS,
+  Opened: OPENED_POPUP_LIFETIME_MS,
 }
 
 const popup =
@@ -316,7 +320,8 @@ const eventPopups = (
     FridgeOpened: () => noPopups(state),
     FridgeSlammed: () => noPopups(state),
     PrizeTaken: () => noPopups(state),
-    CaseOpened: () => noPopups(state),
+    CaseOpened: ({ x, y }) =>
+      generateMany(state, 1, popup('Opened', 0, x, y - OPENED_POPUP_LIFT_PX)),
     PrizeLeft: () => noPopups(state),
     DudBurped: () => noPopups(state),
     PantryTaken: () => noPopups(state),
