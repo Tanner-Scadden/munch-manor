@@ -22,7 +22,7 @@ import {
 } from '../pauseHelp'
 
 // NOTE: How to play's cards each carry one line of how to do the thing,
-// from a playtester who found "Leftovers" and "Charge" taught nothing. The
+// from a playtester who found a picture and a word taught nothing. The
 // line shows on focus with a keyboard and on a tap on touch (hover is CSS).
 
 const homeOn = (device: InputDevice): Model =>

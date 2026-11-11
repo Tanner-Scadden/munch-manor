@@ -74,8 +74,8 @@ const HELP_FRAMES = '.help-card-frame'
 
 // NOTE: every frame of the ten control cards' moving pictures.
 const FRAMES_BY_DEVICE: Readonly<Record<Model['lastDevice'], number>> = {
-  KeyboardMouse: 35,
-  Touch: 34,
+  KeyboardMouse: 41,
+  Touch: 40,
 }
 
 describe('sprites in HTML', () => {

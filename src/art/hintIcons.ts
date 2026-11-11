@@ -23,11 +23,9 @@ export const HintIcon = Schema.Literals([
   'Tap',
   'KeyT',
   'KeyQ',
-  'Goodie',
   'PlankDoor',
   'Gnome',
   'Guns',
-  'Stall',
 ])
 export type HintIcon = typeof HintIcon.Type
 
@@ -155,7 +153,7 @@ export const keyPixels: {
 const KEY_HEIGHT = 8
 const KEY_FRAME_MS = 420
 
-export const keyIcon = (label: string): HintIconSprites =>
+const keyIcon = (label: string): HintIconSprites =>
   iconOf(keyWidth(label), KEY_HEIGHT, KEY_FRAME_MS, [
     [layer(keyPixels(label, false), 0, 0)],
     [layer(keyPixels(label, true), 0, 0)],
@@ -320,26 +318,6 @@ const TAP = iconOf(10, 15, 380, [
 
 // THINGS
 
-const HEART_PALETTE: Palette = { r: '#e8333a', w: '#ff8a8f', o: '#140c10' }
-
-const HEART: Pixels = [
-  '.ooo.ooo.',
-  'orrrorrro',
-  'orwrrrrro',
-  'orrrrrrro',
-  '.orrrrro.',
-  '..orrro..',
-  '...oro...',
-  '....o....',
-]
-
-const DOWN_ARROW: Pixels = ['wwwww', '.www.', '..w..']
-
-const GOODIE = iconOf(9, 13, 300, [
-  [layer(DOWN_ARROW, 2, 0), layer(HEART, 0, 5, HEART_PALETTE)],
-  [layer(DOWN_ARROW, 2, 1), layer(HEART, 0, 5, HEART_PALETTE)],
-])
-
 const DOOR: Pixels = ['fffffffffff', ...Array.makeBy(11, () => 'fdddddddddf')]
 
 const PLANK_PALETTE = TRAP_ICON_PIXELS.Barricade.palette
@@ -387,112 +365,13 @@ const gunsFrame = (isFirstHeld: boolean): ReadonlyArray<Layer> => [
 
 const GUNS = iconOf(23, 8, 500, [gunsFrame(true), gunsFrame(false)])
 
-const STALL_BODY: Pixels = [
-  'rwrwrwrwrwr',
-  'rwrwrwrwrwr',
-  '.R.R.R.R.R.',
-  '.f.......f.',
-  '.f.......f.',
-  '.f.......f.',
-  '.f.......f.',
-  'fffffffffff',
-  'fYYYYYYYYYf',
-  'fffffffffff',
-]
-
-const DOLLAR: Pixels = ['.yyy.', 'yy...', '.yyy.', '...yy', '.yyy.']
-
-const STALL = iconOf(11, 11, 300, [
-  [layer(STALL_BODY, 0, 1), layer(DOLLAR, 3, 3)],
-  [layer(STALL_BODY, 0, 1), layer(DOLLAR, 3, 2)],
-])
-
 // HOW TO PLAY DEMOS
 
 // NOTE: tiny looping demos for the How to play cards whose action a still
-// picture cannot show: charging the Pressure Cooker and letting go, pulling
-// from the Mystery Leftovers fridge, and stabbing with the knife.
-
-const meter = (filled: number): Pixels => {
-  const color = filled >= 6 ? 'r' : 'y'
-  const fill = `${String.repeat(filled)(color)}${String.repeat(6 - filled)('g')}`
-  return ['oooooooo', `o${fill}o`, 'oooooooo']
-}
-
-const COOKER_LID: Pixels = ['..oo..', 'oMMMMo']
-const COOKER_POT: Pixels = [
-  'oooooooo',
-  'rmmmmmmr',
-  'omMMMMmo',
-  'ommmmmmo',
-  '.oooooo.',
-]
-const STEAM: Pixels = ['w.w', '.w.']
-const LID_BURST: Pixels = ['b...b', '.bwb.', '.wyw.', '.bwb.', 'b...b']
-
-const cookerFrame = (
-  filled: number,
-  lid: ReadonlyArray<Layer>,
-): ReadonlyArray<Layer> => [
-  layer(meter(filled), 0, 0),
-  layer(COOKER_POT, 0, 7),
-  ...lid,
-]
-
-const CHARGE_DEMO = iconOf(18, 12, 280, [
-  cookerFrame(0, [layer(COOKER_LID, 1, 5)]),
-  cookerFrame(2, [layer(COOKER_LID, 1, 5)]),
-  cookerFrame(4, [layer(COOKER_LID, 1, 4), layer(STEAM, 7, 3)]),
-  cookerFrame(6, [layer(COOKER_LID, 2, 4), layer(STEAM, 0, 3)]),
-  cookerFrame(0, [layer(COOKER_LID, 9, 3)]),
-  cookerFrame(0, [layer(LID_BURST, 13, 2)]),
-])
-
-const FRIDGE_PALETTE: Palette = {
-  o: '#140c10',
-  k: '#d6cfa4',
-  G: '#9be36a',
-  g: '#4e6a2a',
-}
-
-const FRIDGE_SHUT: Pixels = [
-  '.oooooooo.',
-  'okkkkkkkko',
-  'okkkkkkoko',
-  'oooooooooo',
-  'okkkkkkkko',
-  'okkkkkkkko',
-  'okkokkkkko',
-  'okkokkkkko',
-  'okkkkkkkko',
-  'oooooooooo',
-  '.o......o.',
-]
-
-const FRIDGE_OPEN: Pixels = [
-  '.oooooooo.',
-  'okkkkkkkko',
-  'okkkkkkoko',
-  'oooooooooo',
-  'okkkkoGGGo',
-  'okkkkoGgGo',
-  'okkokoGGGo',
-  'okkokogGgo',
-  'okkkkoGGGo',
-  'oooooooooo',
-  '.o.....go.',
-]
-
-const FOG: Pixels = ['.G.G', 'G.G.']
-
-const FRIDGE_DEMO = iconOf(12, 17, 320, [
-  [layer(FRIDGE_SHUT, 1, 6, FRIDGE_PALETTE)],
-  [layer(FRIDGE_SHUT, 2, 6, FRIDGE_PALETTE)],
-  [layer(FRIDGE_SHUT, 0, 6, FRIDGE_PALETTE)],
-  [layer(FRIDGE_OPEN, 1, 6, FRIDGE_PALETTE), layer(FOG, 7, 3, FRIDGE_PALETTE)],
-  [layer(FRIDGE_OPEN, 1, 6, FRIDGE_PALETTE), layer(SMG, 2, 1)],
-  [layer(FRIDGE_OPEN, 1, 6, FRIDGE_PALETTE), layer(SMG, 2, 0)],
-])
+// picture cannot show: stabbing with the knife, and the dare's loop: a
+// skeleton key dropping, a padlock opening the boards on a room's thing, a
+// display case's lock ticking open, the dare card filling up, and walking
+// out the front door in Uncle Chunk's party hat.
 
 const KNIFE_PALETTE: Palette = { X: '#e9e3cf', R: '#a8302a' }
 
@@ -516,12 +395,191 @@ const KNIFE_DEMO = iconOf(17, 11, 240, [
   [layer(KNIFE, 1, 1, KNIFE_PALETTE)],
 ])
 
-export type HelpDemo = 'Charge' | 'Fridge' | 'Knife'
+const SKELETON_KEY: Pixels = [
+  '.ooo.......',
+  'oyyyo......',
+  'oy.Yooooooo',
+  'oy.Yyyyyyyo',
+  'oyyyooyoyoo',
+  '.ooo..o.o..',
+]
+
+const SPARKLE: Pixels = ['..w..', '.....', 'w.y.w', '.....', '..w..']
+const GROUND: Pixels = ['SSSSSSSSSSSSS']
+
+const KEYS_DEMO = iconOf(13, 15, 260, [
+  [layer(SKELETON_KEY, 1, 0), layer(GROUND, 0, 14)],
+  [layer(SKELETON_KEY, 1, 4), layer(GROUND, 0, 14)],
+  [layer(SKELETON_KEY, 1, 8), layer(GROUND, 0, 14)],
+  [layer(SKELETON_KEY, 1, 7), layer(GROUND, 0, 14)],
+  [layer(SKELETON_KEY, 1, 8), layer(SPARKLE, 8, 2), layer(GROUND, 0, 14)],
+  [layer(SKELETON_KEY, 1, 8), layer(SPARKLE, 0, 1), layer(GROUND, 0, 14)],
+])
+
+const PADLOCK_SHUT: Pixels = [
+  '.ooo.',
+  'om.mo',
+  'om.mo',
+  'ooooo',
+  'oyyyo',
+  'oyoyo',
+  'ooooo',
+]
+
+const PADLOCK_OPEN: Pixels = [
+  '.ooo.',
+  'om.mo',
+  'om.m.',
+  'om...',
+  'ooooo',
+  'oyyyo',
+  'oyyyo',
+  'ooooo',
+]
+
+const SMALL_KEY: Pixels = ['oyyoooo', 'oyyyyyo', '.oo..o.']
+const STAR: Pixels = ['..y..', '.yby.', 'ybwby', '.yby.', '..y..']
+
+const roomWithBoards = (lock: ReadonlyArray<Layer>): ReadonlyArray<Layer> => [
+  layer(DOOR, 1, 0),
+  layer(PLANK, 0, 3, PLANK_PALETTE),
+  layer(PLANK, 0, 7, PLANK_PALETTE),
+  ...lock,
+]
+
+const ROOMS_DEMO = iconOf(13, 12, 380, [
+  roomWithBoards([layer(PADLOCK_SHUT, 4, 4)]),
+  roomWithBoards([layer(PADLOCK_SHUT, 4, 4), layer(SMALL_KEY, 6, 9)]),
+  roomWithBoards([layer(PADLOCK_OPEN, 4, 3)]),
+  [layer(DOOR, 1, 0), layer(STAR, 4, 4)],
+  [layer(DOOR, 1, 0), layer(STAR, 4, 3)],
+])
+
+const CASE_PALETTE: Palette = {
+  ...ICON_PALETTE,
+  g: '#9fd8e6',
+  G: '#5b8fa3',
+  k: '#3a3340',
+  v: '#7ee07a',
+}
+
+const CASE_BASE: Pixels = ['fffffffffff', 'fdddddddddf', 'ff.......ff']
+const CASE_GLASS: Pixels = [
+  'fffffffffff',
+  'fgggggggggf',
+  'fgGgggggggf',
+  'fgkkkkkmggf',
+  'fggkkgggggf',
+  'fgggkggggGf',
+  'fgggggggggf',
+]
+const CASE_LOCK: Pixels = ['yyyyy', '.yYy.', '..y..']
+const CASE_TICK: Pixels = ['....v', '...v.', 'v.v..', '.v...']
+const CASE_GUN: Pixels = ['kkkkkm', '.kk...', '..k...']
+
+const CASE_DEMO = iconOf(11, 17, 380, [
+  [
+    layer(CASE_LOCK, 3, 0, CASE_PALETTE),
+    layer(CASE_GLASS, 0, 4, CASE_PALETTE),
+    layer(CASE_BASE, 0, 11, CASE_PALETTE),
+  ],
+  [
+    layer(CASE_TICK, 3, 0, CASE_PALETTE),
+    layer(CASE_GLASS, 0, 4, CASE_PALETTE),
+    layer(CASE_BASE, 0, 11, CASE_PALETTE),
+  ],
+  [layer(CASE_GUN, 2, 5, CASE_PALETTE), layer(CASE_BASE, 0, 11, CASE_PALETTE)],
+  [
+    layer(CASE_GUN, 2, 1, CASE_PALETTE),
+    layer(SPARKLE, 6, 0),
+    layer(CASE_BASE, 0, 11, CASE_PALETTE),
+  ],
+])
+
+const LIST_PALETTE: Palette = {
+  ...ICON_PALETTE,
+  n: '#f4ead2',
+  k: '#3a3340',
+  L: '#8a5a2b',
+  v: '#3fae49',
+}
+
+const DARE_CARD: Pixels = [
+  'ooooooooooooo',
+  'onnnnnnnnnnno',
+  'onkknnrrnnYYo',
+  'onkknnrrnnYYo',
+  'onnnnnnnnnnno',
+  'onyynnLLnnsso',
+  'onyynnLLnnsso',
+  'onnnnnnnnnnno',
+  'ooooooooooooo',
+]
+
+const CARD_TICK: Pixels = ['...v', 'v.v.', '.v..']
+
+const LIST_DEMO = iconOf(13, 9, 420, [
+  [layer(DARE_CARD, 0, 0, LIST_PALETTE)],
+  [layer(DARE_CARD, 0, 0, LIST_PALETTE), layer(CARD_TICK, 2, 2, LIST_PALETTE)],
+  [
+    layer(DARE_CARD, 0, 0, LIST_PALETTE),
+    layer(CARD_TICK, 2, 2, LIST_PALETTE),
+    layer(CARD_TICK, 6, 2, LIST_PALETTE),
+  ],
+  [
+    layer(DARE_CARD, 0, 0, LIST_PALETTE),
+    layer(CARD_TICK, 2, 2, LIST_PALETTE),
+    layer(CARD_TICK, 6, 2, LIST_PALETTE),
+    layer(CARD_TICK, 2, 5, LIST_PALETTE),
+  ],
+])
+
+const EXIT_PALETTE: Palette = {
+  ...ICON_PALETTE,
+  P: '#ff5fa2',
+  B: '#5b8fa3',
+  n: '#fff3b0',
+}
+
+const FRONT_DOOR: Pixels = [
+  'fffffff',
+  'fnnnnnf',
+  'fnnnnnf',
+  'fnnnnnf',
+  'fnnnnnf',
+  'fnnnnnf',
+  'fnnnnnf',
+  'fnnnnnf',
+  'fnnnnnf',
+  'fnnnnnf',
+]
+
+const PARTY_HAT: Pixels = ['..y..', '.PPP.', 'PPyPP']
+const WALKER: Pixels = ['.hh.', '.hh.', 'BBBB', '.BB.', '.d.d']
+const WALKER_STEP: Pixels = ['.hh.', '.hh.', 'BBBB', '.BB.', 'd..d']
+
+const walking = (x: number, isStepping: boolean): ReadonlyArray<Layer> => [
+  layer(isStepping ? WALKER_STEP : WALKER, x, 6, EXIT_PALETTE),
+  layer(PARTY_HAT, x - 1, 3, EXIT_PALETTE),
+]
+
+const EXIT_DEMO = iconOf(18, 12, 260, [
+  [layer(FRONT_DOOR, 11, 1, EXIT_PALETTE), ...walking(1, false)],
+  [layer(FRONT_DOOR, 11, 1, EXIT_PALETTE), ...walking(4, true)],
+  [layer(FRONT_DOOR, 11, 1, EXIT_PALETTE), ...walking(7, false)],
+  [layer(FRONT_DOOR, 11, 1, EXIT_PALETTE), ...walking(11, true)],
+  [layer(FRONT_DOOR, 11, 1, EXIT_PALETTE), layer(SPARKLE, 12, 3)],
+])
+
+export type HelpDemo = 'Knife' | 'Keys' | 'Rooms' | 'Case' | 'List' | 'Exit'
 
 export const HELP_DEMO_SPRITES: Readonly<Record<HelpDemo, HintIconSprites>> = {
-  Charge: CHARGE_DEMO,
-  Fridge: FRIDGE_DEMO,
   Knife: KNIFE_DEMO,
+  Keys: KEYS_DEMO,
+  Rooms: ROOMS_DEMO,
+  Case: CASE_DEMO,
+  List: LIST_DEMO,
+  Exit: EXIT_DEMO,
 }
 
 export const HINT_ICON_SPRITES: Readonly<Record<HintIcon, HintIconSprites>> = {
@@ -532,9 +590,7 @@ export const HINT_ICON_SPRITES: Readonly<Record<HintIcon, HintIconSprites>> = {
   Tap: TAP,
   KeyT: keyIcon('T'),
   KeyQ: keyIcon('Q'),
-  Goodie: GOODIE,
   PlankDoor: PLANK_DOOR,
   Gnome: GNOME,
   Guns: GUNS,
-  Stall: STALL,
 }

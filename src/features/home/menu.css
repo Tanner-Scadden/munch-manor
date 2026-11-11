@@ -2131,6 +2131,12 @@ button.help-card:focus-visible {
   animation-delay: calc((var(--frame) - var(--frames)) * var(--frame-ms));
 }
 
+/* The first frame shows whenever the animation does not run (a stopped
+   page, a screenshot with animations off), so a card is never blank. */
+.help-card-frame[data-frame='0'] {
+  visibility: visible;
+}
+
 .help-card-frame[data-frames='1'] {
   visibility: visible;
   animation: none;
@@ -2260,10 +2266,6 @@ button.help-card:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .help-card-frame {
     animation: none;
-  }
-
-  .help-card-frame[data-frame='0'] {
-    visibility: visible;
   }
 }
 
