@@ -111,7 +111,8 @@ const kitchenChapter = (model: Model): Option.Option<Chapter> => {
 
 // NOTE: in landscape the tracker docks in the top corner away from what it
 // teaches, so it never covers the stall, the boards, or the fridge. In
-// portrait it sits in the band above the world (CSS), off the world itself.
+// portrait it always sits at the world's top left (CSS), under the hearts
+// and opposite the dare pocket.
 type Side = 'Left' | 'Right'
 
 const maybeTargetOf = (model: Model): Option.Option<Vector> =>
