@@ -5,6 +5,7 @@ import { type Html, createLazy } from 'foldkit/html'
 import { spriteWarmUpSources } from '../art/appearance'
 import { group } from '../art/sprite'
 import { clocheShapes } from '../features/cloche/clocheView'
+import { darePointerShapes } from '../features/dare/darePointer'
 import { frontDoorMarkerShapes } from '../features/dare/frontDoorView'
 import { pocketCardShapes } from '../features/dare/pocketCardView'
 import { lensOf } from '../features/end/endBeat'
@@ -15,7 +16,10 @@ import {
 import { wavePreviewShapes } from '../features/hud/wavePreview'
 import { introShapes } from '../features/intro/introView'
 import { caseCardShapes } from '../features/onboarding/caseCardView'
-import { questEdgeShapes } from '../features/onboarding/questEdgeView'
+import {
+  maybeTourMark,
+  questEdgeShapes,
+} from '../features/onboarding/questEdgeView'
 import { coopEdgeShapes } from '../features/onlineRun/coopMarksView'
 import { purchaseOverlayShapes } from '../features/shop/purchaseView'
 import { thumbAreaView } from '../input/thumbArea'
@@ -58,6 +62,17 @@ const calloutLayerShapes = (
       ]
     : []
 
+// NOTE: one gold arrow at a time: the tours' (and the padlock's) first,
+// else the dare's.
+const pointerShapes = (
+  model: Model,
+  screen: Screen,
+  camera: Camera,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.isSome(maybeTourMark(model))
+    ? questEdgeShapes(model, screen, camera)
+    : darePointerShapes(model, screen, camera)
+
 const roundOverlayShapes = (
   model: Model,
   screen: Screen,
@@ -71,7 +86,7 @@ const roundOverlayShapes = (
         ...clocheShapes(model, camera),
         ...purchaseOverlayShapes(model, camera),
         ...frontDoorMarkerShapes(model, screen, camera),
-        ...questEdgeShapes(model, screen, camera),
+        ...pointerShapes(model, screen, camera),
       ]
     : []),
   ...hudShapes(model, screen, camera),

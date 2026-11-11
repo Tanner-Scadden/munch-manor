@@ -1,4 +1,4 @@
-import { Array, Record, String } from 'effect'
+import { Array, Option, Record, String } from 'effect'
 
 import type { DareKind } from '../world/dare/dareSchema'
 import { pixelIconUrl } from './icons'
@@ -239,4 +239,59 @@ export const DARE_CARD_ICON: Sprite = spriteShapes(
   ],
   { o: '#140c10', p: '#f4e6c3', k: '#8a7a5a' },
   TOP_LEFT,
+)
+
+// NOTE: a thing at twice its size inside a dark outline one pixel wide, so
+// it reads on any floor and in Rattles' bubble: what lies in an open room
+// on Dare and Double Dare (src/features/dare/dareView.ts), and the thing a
+// hint is about (src/screens/game/stallBubble.ts).
+export const DARE_BIG_ICON_SIZE = DARE_ICON_SIZE * SLOT_SCALE + 2
+
+const OUTLINE = 'O'
+
+const isInk = (pixels: ReadonlyArray<string>, x: number, y: number): boolean =>
+  Option.exists(
+    Option.flatMap(Array.get(pixels, y), row => String.charAt(row, x)),
+    symbol => symbol !== '.' && symbol !== OUTLINE,
+  )
+
+const NEIGHBORS: ReadonlyArray<readonly [number, number]> = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1],
+]
+
+const outlined = (pixels: ReadonlyArray<string>): ReadonlyArray<string> => {
+  const big = doubled(pixels)
+  return Array.makeBy(DARE_BIG_ICON_SIZE, y =>
+    Array.join(
+      Array.makeBy(DARE_BIG_ICON_SIZE, x => {
+        const inner = { x: x - 1, y: y - 1 }
+        return isInk(big, inner.x, inner.y)
+          ? Option.getOrElse(
+              Option.flatMap(Array.get(big, inner.y), row =>
+                String.charAt(row, inner.x),
+              ),
+              () => '.',
+            )
+          : Array.some(NEIGHBORS, ([dx, dy]) =>
+                isInk(big, inner.x + dx, inner.y + dy),
+              )
+            ? OUTLINE
+            : '.'
+      }),
+      '',
+    ),
+  )
+}
+
+export const DARE_BIG_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
+  DARE_PIXELS,
+  pixels =>
+    spriteShapes(
+      outlined(pixels),
+      { ...DARE_PALETTE, [OUTLINE]: '#140c10' },
+      TOP_LEFT,
+    ),
 )

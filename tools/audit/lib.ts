@@ -208,6 +208,14 @@ export const pickViewports = (viewports: ReadonlyArray<Viewport>) =>
     return Array.filter(viewports, viewport => isListed(picked, viewport.name))
   })
 
+// NOTE: the same three screens under the long names the find passes'
+// shots wear (`desktop`, `phone-landscape`, `phone-portrait`).
+export const longNamedViewports = pickViewports([
+  { ...DESKTOP_1280, name: 'desktop' },
+  { ...PHONE_844, name: 'phone-landscape' },
+  { ...UPRIGHT_390, name: 'phone-portrait' },
+])
+
 // NOTE: a desktop, a phone on its side, and a phone held upright: the
 // screens most shot scripts take.
 export const shotViewports = Effect.gen(function* () {

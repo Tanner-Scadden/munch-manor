@@ -1,4 +1,4 @@
-import { Array, Effect, Option, String } from 'effect'
+import { Array, Effect, Match, Option, String } from 'effect'
 import type { Canvas } from 'foldkit'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -14,7 +14,14 @@ import {
   Tour,
   type Vector,
 } from '../../../app/model'
-import { cameraOf, viewBoxOf, worldToView } from '../../../render/camera'
+import {
+  cameraOf,
+  screenCameraOf,
+  viewBoxOf,
+  worldToView,
+} from '../../../render/camera'
+import { clearWindowOf } from '../../../render/hudLayout'
+import { screenOf } from '../../../render/screen'
 import { dareHintShapes, rattlesSpot } from '../../../screens/game/stallBubble'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
@@ -37,6 +44,9 @@ import {
 import { levelOf, tileCenter } from '../../../world/level/arena'
 import { DINING_ROOM_ID, roomSpotsOf } from '../../../world/level/plan'
 import { focusOf } from '../../../world/party/party'
+import type { ExitId } from '../../../world/schema/entitySchema'
+import { darePointerShapes, maybeDarePointer } from '../darePointer'
+import { dareDrawables } from '../dareView'
 import {
   EASY_REST_MS,
   HINT_LINES,
@@ -367,7 +377,7 @@ describe('the list done', () => {
 })
 
 describe('where the bubble points', () => {
-  it.effect('a thing out of view: pinned to the edge with an arrow', () =>
+  it.effect('a thing out of view: a gold arrow at the edge, not its own', () =>
     Story.story(
       APPLICATION,
       Story.given(breakOn('Normal')),
@@ -375,7 +385,9 @@ describe('where the bubble points', () => {
       settleRunCommands,
       Story.model(current => {
         expect(isInView(current, FAR_SPOT)).toBe(false)
-        expect(arrowsOf(drawn(current))).toBeGreaterThan(0)
+        expect(drawn(current).length).toBeGreaterThan(0)
+        expect(arrowsOf(drawn(current))).toBe(0)
+        expect(pointerShapesOf(current).length).toBe(1)
       }),
     ),
   )
@@ -421,4 +433,251 @@ describe('a line never twice in a row', () => {
     const lines = Array.map(HINT_LINES, ({ line }) => line)
     expect(Array.dedupe(lines)).toEqual(lines)
   })
+})
+
+// THE THINGS IN SIGHT AND THE ARROW
+
+const pointerShapesOf = (model: Model): ReadonlyArray<Canvas.Shape> =>
+  darePointerShapes(model, screenOf(model), screenCameraOf(model))
+
+// NOTE: where a drawn arrow sits in the overlay's pixels.
+const originOf = (shape: Canvas.Shape): Vector =>
+  Match.value(shape).pipe(
+    Match.tag('Image', ({ x, y }) => ({ x, y })),
+    Match.tag('Group', ({ translate }) => translate ?? { x: 0, y: 0 }),
+    Match.orElse(() => ({ x: Number.NaN, y: Number.NaN })),
+  )
+
+const arrowAt = (model: Model): Vector =>
+  originOf(Option.getOrThrow(Array.head(pointerShapesOf(model))))
+
+const isInClearWindow = (model: Model, at: Vector): boolean => {
+  const clear = clearWindowOf(screenOf(model), 3)
+  return (
+    at.x >= clear.left &&
+    at.x <= clear.right &&
+    at.y >= clear.top &&
+    at.y <= clear.bottom
+  )
+}
+
+// NOTE: the far spot's room with its boards down, so a thing there lies
+// in an open room out of the window.
+const FAR_EXIT: ExitId = Option.getOrThrow(
+  Option.flatMap(maybeThingRoom(BELL, levelOf(base)), ({ id }) =>
+    Option.flatMap(
+      Array.findFirst(levelOf(base).spec.rooms, room => room.id === id),
+      room => room.maybeExit,
+    ),
+  ),
+)
+
+const withFarRoomOpen = (model: Model): Model =>
+  modifyFields(model, {
+    level: level =>
+      modifyFields(level, {
+        openExits: (exits): ReadonlyArray<ExitId> =>
+          Array.append(exits, FAR_EXIT),
+      }),
+  })
+
+// NOTE: a break with the hint already called, so only the things and Easy's
+// own arrow show.
+const quietBreakOn = (
+  difficulty: Difficulty,
+  things: ReadonlyArray<DareThing>,
+): Model => calledAlready(breakOn(difficulty, things), '', 600_000)
+
+describe('a thing in an open room', () => {
+  it.effect(
+    'lies in plain sight on Dare and Double Dare, hidden on Triple Dare',
+    () =>
+      Effect.forEach(
+        [
+          ['Easy', 1],
+          ['Normal', 1],
+          ['Hard', 0],
+          ['Nightmare', 0],
+        ] as const,
+        ([difficulty, shown]) =>
+          Story.story(
+            APPLICATION,
+            Story.given(
+              quietBreakOn(difficulty, [hidden(0, 'SilverSpoon', NEAR_SPOT)]),
+            ),
+            tick(FRAME_MS),
+            settleRunCommands,
+            Story.model(current => {
+              expect(dareDrawables(current).length).toBe(shown)
+            }),
+          ),
+      ),
+  )
+
+  it.effect('a thing behind boards stays out of sight on Dare', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(quietBreakOn('Easy', BELL_FAR)),
+      tick(FRAME_MS),
+      settleRunCommands,
+      Story.model(current => {
+        expect(dareDrawables(current).length).toBe(0)
+      }),
+    ),
+  )
+})
+
+describe('the gold arrow', () => {
+  it.effect('bobs right over a hinted thing in view', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)])),
+      tick(FRAME_MS),
+      settleRunCommands,
+      Story.model(current => {
+        expect(isCalling(current)).toBe(true)
+        const mark = Option.getOrThrow(maybeDarePointer(current))
+        expect(mark.x).toBe(NEAR_SPOT.x)
+        expect(mark.y).toBeLessThan(NEAR_SPOT.y)
+        const at = arrowAt(current)
+        const thing = worldToView(screenCameraOf(current), NEAR_SPOT)
+        expect(Math.abs(at.x + 4 - thing.x)).toBeLessThanOrEqual(1)
+        expect(at.y).toBeLessThan(thing.y)
+        expect(isInClearWindow(current, at)).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect('waits at the window edge toward a hinted thing out of view', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(breakOn('Normal')),
+      tick(FRAME_MS),
+      settleRunCommands,
+      Story.model(current => {
+        const far = worldToView(screenCameraOf(current), FAR_SPOT)
+        expect(isInClearWindow(current, far)).toBe(false)
+        expect(isInClearWindow(current, arrowAt(current))).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect('shows nothing on Double Dare once the hint is over', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        quietBreakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)]),
+      ),
+      tick(FRAME_MS),
+      settleRunCommands,
+      Story.model(current => {
+        expect(isCalling(current)).toBe(false)
+        expect(maybeDarePointer(current)).toEqual(Option.none())
+        expect(pointerShapesOf(current).length).toBe(0)
+      }),
+    ),
+  )
+
+  it.effect(
+    'on Dare, points through the break at the nearest thing left',
+    () => {
+      const farThing = hidden(1, 'ButlersBell', FAR_SPOT)
+      const nearThing = hidden(0, 'SilverSpoon', NEAR_SPOT)
+      return Story.story(
+        APPLICATION,
+        Story.given(
+          withFarRoomOpen(quietBreakOn('Easy', [farThing, nearThing])),
+        ),
+        tick(FRAME_MS),
+        settleRunCommands,
+        Story.model(current => {
+          expect(isCalling(current)).toBe(false)
+          expect(Option.map(maybeDarePointer(current), ({ x }) => x)).toEqual(
+            Option.some(NEAR_SPOT.x),
+          )
+        }),
+        Story.model(current => {
+          const found = modifyFields(current, {
+            dareThings: () => [
+              farThing,
+              { ...nearThing, state: DareThingState.Found({ slot: 0 }) },
+            ],
+          })
+          expect(Option.map(maybeDarePointer(found), ({ x }) => x)).toEqual(
+            Option.some(FAR_SPOT.x),
+          )
+          expect(isInClearWindow(found, arrowAt(found))).toBe(true)
+          expect(
+            isInClearWindow(
+              found,
+              worldToView(screenCameraOf(found), FAR_SPOT),
+            ),
+          ).toBe(false)
+        }),
+      )
+    },
+  )
+})
+
+describe('a room opening', () => {
+  it.effect('shows its thing on Dare, named, with the arrow over it', () => {
+    const bell = hidden(0, 'ButlersBell', FAR_SPOT)
+    return Effect.gen(function* () {
+      const seen = yield* Story.story(
+        APPLICATION,
+        Story.given(quietBreakOn('Easy', [bell])),
+        tick(FRAME_MS),
+        settleRunCommands,
+      )
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(withFarRoomOpen(seen)),
+        tick(FRAME_MS),
+        settleRunCommands,
+        Story.model(current => {
+          expect(isCalling(current)).toBe(true)
+          expect(lineOf(current)).toEqual(Option.some('BELL! IN HERE!'))
+          expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
+            Option.some('ButlersBell'),
+          )
+          expect(Option.map(maybeDarePointer(current), ({ x }) => x)).toEqual(
+            Option.some(FAR_SPOT.x),
+          )
+        }),
+      )
+    })
+  })
+
+  it.effect('says nothing on Triple Dare', () => {
+    const bell = hidden(0, 'ButlersBell', FAR_SPOT)
+    return Effect.gen(function* () {
+      const seen = yield* Story.story(
+        APPLICATION,
+        Story.given(quietBreakOn('Hard', [bell])),
+        tick(FRAME_MS),
+        settleRunCommands,
+      )
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(withFarRoomOpen(seen)),
+        tick(FRAME_MS),
+        settleRunCommands,
+        Story.model(current => {
+          expect(isCalling(current)).toBe(false)
+        }),
+      )
+    })
+  })
+
+  it.effect('a run joined with rooms open says nothing of them', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(withFarRoomOpen(quietBreakOn('Easy', BELL_FAR))),
+      tick(FRAME_MS),
+      settleRunCommands,
+      Story.model(current => {
+        expect(isCalling(current)).toBe(false)
+      }),
+    ),
+  )
 })
