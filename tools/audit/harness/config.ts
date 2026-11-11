@@ -28,6 +28,7 @@ import {
   ShirtColor,
   SkinTone,
 } from '@game/shared/playerData'
+import { StationId } from '@game/world/schema/worldSchema'
 
 // NOTE: the harness's query string, decoded once. An unknown key or a bad
 // value throws when the page loads, so a typo in an audit script fails loudly
@@ -237,6 +238,8 @@ export const HarnessConfig = Schema.Struct({
   // How far east of the dining room the crowd stands (`crowdx=680` puts it
   // in the cellar).
   crowdx: Num(0),
+  // And how far south (`crowdy=-140` puts it in the kitchen).
+  crowdy: Num(0),
   tough: Flag,
   gasroom: Num(0),
   lineup: Choice(['wear', 'sizes', 'armor', 'boss']),
@@ -332,6 +335,12 @@ export const HarnessConfig = Schema.Struct({
   // `wake=Back,Window` wakes those doors' room (src/world/level/wakeUp.ts),
   // its rush alone: a wave's own spawns are dropped first.
   wake: Schema.optionalKey(ListOf(DoorId)),
+  // A room tool (src/world/stations/toolRules.ts): the share of its set-up
+  // already `worked`, or `firedms` since it fired, its effect on for what is
+  // left of its time.
+  tool: Schema.optionalKey(StationId),
+  worked: Num(0),
+  firedms: MaybeNum,
   // Which rolled house the run stands in, by its place in ARRANGEMENTS
   // (src/world/level/plan.ts): the first, the parlour west, the library
   // east, and the cellar beyond, unless given.

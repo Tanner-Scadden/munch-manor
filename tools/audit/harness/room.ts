@@ -244,7 +244,7 @@ export const roomModel = (settings: SceneSettings): Model => {
         id: 1000 + i,
         kind,
         x: sx + config.crowdx + ((i * 7) % 13) - 6,
-        y: sy + ((i * 5) % 11) - 5,
+        y: sy + config.crowdy + ((i * 5) % 11) - 5,
         speed: kind === 'Runner' ? 46 : kind === 'Tank' ? 12 : 22,
         hp: (kind === 'Tank' ? 14 : kind === 'Runner' ? 1 : 2) * toughness,
         maxHp: (kind === 'Tank' ? 30 : kind === 'Runner' ? 2 : 3) * toughness,
