@@ -24,6 +24,7 @@ import {
 import type { InstallOutcome } from '../../platform/deviceSchema'
 import { InstallPrompt } from '../../platform/install'
 import { InstallMessage, VersionMessage } from '../../platform/message'
+import { forgetTutorial } from '../../platform/save'
 import { activateNewBuild } from '../../platform/serviceWorker'
 import { reloadOnto } from '../../platform/version'
 import {
@@ -54,6 +55,7 @@ import {
   settleNightmare,
   unlockNightmare,
 } from '../../world/run/difficulty'
+import { noModifiers } from '../../world/run/modifiers'
 import { RunMode } from '../../world/schema/worldSchema'
 import {
   HandDialogBinding,
@@ -495,6 +497,28 @@ const pickFromCard = (difficulty: Difficulty) =>
     }),
   )
 
+// TUTORIAL
+
+// NOTE: PLAY TUTORIAL on How to play: the tutorial forgotten, as Settings'
+// Reset tutorial does (`forgetTutorial`), and a practice run started at
+// once, as a new player's first: the whole intro, alone, with no
+// modifiers. Rank, Bones, looks, bests, and the Munchopedia stay.
+const asNewPlayer = (model: Model): Model =>
+  modifyFields(forgetTutorial(model), {
+    home: home => modifyFields(home, { bots: () => [] }),
+    modifiers: () => noModifiers,
+  })
+
+const replayTutorial = makeStep(model =>
+  isOnHome(model.phase) && isPanelOpen(model, 'HowToPlay')
+    ? Update.combineSteps([
+        modelStep(asNewPlayer),
+        closePanel,
+        startWithMode(RunMode.Campaign()),
+      ])
+    : unchanged,
+)
+
 export const settleNightmareFrom =
   (before: Model): UpdateStep =>
   stepModel => ({
@@ -643,6 +667,9 @@ export const homeHandlers = defineHandlers({
   ClickedLeaveRunButton: model => Update.combineSteps(model, [leaveRun]),
 
   ClickedStayButton: model => Update.combineSteps(model, [closePanel]),
+
+  ClickedPlayTutorialButton: model =>
+    Update.combineSteps(model, [replayTutorial]),
 
   ClickedDifficultyCardButton: (model, { difficulty }) =>
     Update.combineSteps(model, [pickFromCard(difficulty)]),

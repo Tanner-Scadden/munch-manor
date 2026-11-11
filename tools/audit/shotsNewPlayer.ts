@@ -4,26 +4,43 @@
 // dare card, START WAVE), a display case's first-time card, the dining room's west case
 // beside the boards' padlock, a later break, a later break with the keys
 // for the kitchen and the edge arrow to its padlock, and the pause screen's How to
-// play, on a 1280x720 desktop, an 844x390 phone on its side, and a 390x844
+// play, How to play from home with PLAY TUTORIAL, and the practice run that
+// button starts, on a 1280x720 desktop, an 844x390 phone on its side, and a 390x844
 // phone held upright, as `np-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsNewPlayer.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
+import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
 import {
+  type Viewport,
   auditTag,
   deviceQuery,
   harnessQuery,
   isPickedScene,
   openBrowser,
+  openHowToPlay,
+  pressButton,
   scenePages,
   settleAnimations,
   shot,
   shotViewports,
 } from './lib'
+import type { AuditFailed } from './page'
 
-type Scene = Readonly<{ name: string; query: string }>
+type Scene = Readonly<{
+  name: string
+  query: string
+  act?: (page: Page, viewport: Viewport) => Effect.Effect<void, AuditFailed>
+}>
+
+// NOTE: a returning player at home who taps PLAY TUTORIAL on How to play.
+const replayTutorial = (page: Page, viewport: Viewport) =>
+  Effect.andThen(
+    openHowToPlay(page, viewport),
+    pressButton(page, viewport, /^Play tutorial$/),
+  )
 
 const NEW = 'learned=move,fire,startWave,pickup,rattles'
 const FIRST_BREAK = 'wave=2&break=open&breakMs=3000&seen=all&quest=running'
@@ -54,6 +71,12 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${SEEN},displayCase&wave=4&break=open&money=9&darefound=1&px=40&py=150`,
   },
   {
+    name: 'howto',
+    query: SEEN,
+    act: (page, viewport) => openHowToPlay(page, viewport),
+  },
+  { name: 'replay', query: SEEN, act: replayTutorial },
+  {
     name: 'pause',
     query: `${SEEN},displayCase&wave=3&start=wave&phase=paused`,
   },
@@ -74,6 +97,9 @@ runHarnessAudit(
           viewport,
           harnessQuery(scene.query, deviceQuery(viewport)),
         )
+        if (scene.act !== undefined) {
+          yield* scene.act(page, viewport)
+        }
         yield* settleAnimations(page)
         yield* shot(page, `np-${tag}-${viewport.name}-${scene.name}`)
       }

@@ -109,4 +109,16 @@ describe('How to play lines', () => {
       )
     },
   )
+
+  it.effect('PLAY TUTORIAL waits on How to play from home', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(homeOn('Touch')),
+      ...openHowToPlay,
+      Scene.inside(
+        howToPlay,
+        Scene.expect(Scene.role('button', { name: 'Play tutorial' })).toExist(),
+      ),
+    ),
+  )
 })
