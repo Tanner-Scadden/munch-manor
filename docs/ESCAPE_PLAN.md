@@ -72,8 +72,8 @@ Choices the plan makes that nobody has signed off yet. Each is easy to change be
 - **Key costs and drops.** Starting points for the bot to tune: a Groaner drops a key one time in four, a Hotfoot one in three, a Kaboomer or Big Leaguer one, a Big Lug two, an Ankle Biter one; a fridge pull 2. A room cost 3 to 5 keys by how deep it is until each room held one thing on the list; since 2026-11-10 the kitchen asks 8, a room off the dining room 55, and the far room 90, so on Double Dare the kitchen opens about wave 3 and the last room about wave 9.
 - **Gun levels.** Beefy at 40 kills with that gun, DELUXE at 120, 3000 at 250. A fridge weapon levels the same way.
 - **Feats per case.** Each run rolls which gun and which feat go in which case, from per-difficulty pools, so the easy feats sit near the start.
-- **The stove and the valve.** The stove cooks after 15 kills in the kitchen in this break and the last wave; the valve lights after 10 kills while standing in the kitchen. The Line Cook's starting lids (moot with endless ammo) become a stove that needs half the kills.
-- **Traps and hearts.** A trap crate sits in each room and opens when the room does (a Plank Pile or a Grumpy Gnome); traps mend for free by standing at them in a break. Hearts come from drops (Pickled Heart), the pantry, and the fridge.
+- **The stove and the valve.** The stove cooks after 15 kills in the kitchen in this break and the last wave (and in the wave, since layer 19r); the valve lights after 10 kills while standing in the kitchen. The Line Cook's starting lids (moot with endless ammo) become a stove that needs half the kills.
+- **Traps and hearts.** A trap crate sits in each room and opens when the room does (a Plank Pile or a Grumpy Gnome); traps mend for free by standing at them in a break (and at half speed in a wave, since layer 19r). Hearts come from drops (Pickled Heart), the pantry, and the fridge.
 - **The Laser Sight** becomes a display case prize.
 - **The fridge's Dud** refunds a key instead of cash. The pantry's cash goodie becomes a key.
 - **The intro** is a World phase, `Arriving`, so the room in co-op sets the slam for everyone; single player plays the same phase.
@@ -278,6 +278,16 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - As built: the bot plays the escape (`tools/balance/bot/escape.ts`, see `tools/balance/README.md`, "The escape"): the boards toward the list (the rooms that hold a thing), case prizes it wants, back to its hold point before READY, and the fridge for the Sandwich when hurt. Targets in `tools/balance/targets.ts` ("How balance is checked" in `GAME_DESIGN.md`). The bot finishes its list by wave 4 on the median run, so Uncle Chunk's earliest wave sets the escape's length: `chunkFromWave` went from 6/6/8/8 to 6/8/9/9. Normal's health went from ×0.75 to ×0.68 and Nightmare's from ×1.16 to ×1.12 to carry the longer runs. The analytical model takes the Chatterbox from a case at wave 3. Key costs and drops, gun levels, the case feats, the new guns, the heroes' perks, Broke, the hold-out, and the hungrier house were measured as they stand and left alone; see the follow-ups under "How balance is checked".
 
 **Checks.** The model's guardrails in `tools/balance/model.test.ts`, the nightly report, `test:full`.
+
+### 19r. Mid-wave
+
+**Goal.** The break is a breather (owner, 2026-11-10: "the break between waves is to let you catch a breath"): nothing waits on it.
+
+- The crates (`src/world/gear/crates.ts`), the pantry (`src/world/kitchen/pantry.ts`), and the stove (`src/world/kitchen/stove.ts`) work in the wave too, keyed by the round's wave number, so a break and its wave share one restock, one goodie, and one perk and cook a player. A find left in the break waits in the fight; going for it there is the risk.
+- Mending works in the wave at half speed (`MEND_RULES.waveScale`, 3 s from broken to whole), so the break stays the safe time.
+- The shop guide's Mend line and the changelog say so. Placing traps stays between waves; Rattles' hints are left as they are.
+
+**Checks.** Stories for each rule mid-wave and in the break (`crates.story`, `stove.story`, the pantry's in `kitchenWorth.story`), `test:full`, a wave snapshot balance batch.
 
 ### 18. Release
 

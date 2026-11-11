@@ -333,16 +333,32 @@ describe('the pantry stash', () => {
       }),
   )
 
-  it.effect('mid-wave it is gone', () =>
-    Effect.gen(function* () {
-      const fighting = modifyFields(atPantry(stocked(atFridge(0), 'Key')), {
-        phase: () =>
-          Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-      })
-      const next = yield* afterFrame(fighting)
-      expect(next.keys.held).toBe(0)
-      expect(Option.isNone(maybeStash(next))).toBe(true)
-    }),
+  it.effect(
+    "a goodie left in the break waits in its wave, and the wave never restocks a taken one",
+    () =>
+      Effect.gen(function* () {
+        const inWave = (current: Model): Model =>
+          modifyFields(current, {
+            phase: () =>
+              Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+          })
+        const taken = yield* afterFrame(
+          inWave(atPantry(stocked(atFridge(0), 'Key'))),
+        )
+        expect(taken.keys.held).toBe(PANTRY_RULES.keys)
+        expect(taken.pantry).toEqual(Pantry.Bare({ round: 5 }))
+        const bare = yield* afterFrame(
+          inWave(
+            atPantry(
+              modifyFields(atFridge(0), {
+                pantry: () => Pantry.Bare({ round: 5 }),
+              }),
+            ),
+          ),
+        )
+        expect(bare.keys.held).toBe(0)
+        expect(Option.isNone(maybeStash(bare))).toBe(true)
+      }),
   )
 
   it.effect(

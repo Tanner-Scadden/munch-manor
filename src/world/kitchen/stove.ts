@@ -31,12 +31,16 @@ import { isKitchenOpen, ovenBoxesOf } from './kitchen'
 
 // The kitchen's stove bench (owner, 2026-11-02): one of the two stoves
 // cooks the gun in a player's hands into a perk for the rest of the run.
-// Each break it offers one perk, rolled from its own generator, shown on its
-// tag over the stove. It is never bought (owner, 2026-11-10): it opens for a
-// player by a feat (src/world/feats/feats.ts), 15 kills in the kitchen in the
-// last wave and this break, and they cook by the same stand or hold as the
-// boards and the fridge (src/world/shop/purchase.ts), with a longer hold,
-// once a break. The perks themselves are in src/world/gear/weapons.ts
+// Each round (a break and the wave after it, keyed by the wave's number) it
+// offers one perk, rolled from its own generator, shown on its tag over the
+// stove. It is never bought (owner, 2026-11-10): it opens for a player by a
+// feat (src/world/feats/feats.ts), 15 kills in the kitchen since the last
+// wave began, and they cook by the same stand or hold as the boards and the
+// fridge (src/world/shop/purchase.ts), with a longer hold, once a round.
+// Since 2026-11-10 (owner: "the break between waves is to let you catch a
+// breath") it cooks in the wave too: two seconds of standing still at the
+// back door with zombies up is the gamble. The feat's count starts afresh
+// as each wave begins, so a cook earned in a break is best cooked there. The perks themselves are in src/world/gear/weapons.ts
 // (PERK_RULES).
 
 type StoveRules = Readonly<{
@@ -76,11 +80,14 @@ export const stoveBoxOf = (world: World): Option.Option<Box> =>
 
 // THE OFFER
 
-// NOTE: each break rolls the stove's perk once, as the break begins, from
+// NOTE: each round rolls the stove's perk once, as the round begins, from
 // the stove's own generator, so the run's other rolls never move.
 export const rollStove = <M extends World>(world: M): M => {
   const { phase, stove } = world
-  if (!Phase.isAnyOf(['Preparation'])(phase) || stove.wave === phase.wave) {
+  if (
+    !Phase.isAnyOf(['Preparation', 'Wave'])(phase) ||
+    stove.wave === phase.wave
+  ) {
     return world
   }
   const draw = nextRandom(stove.rngState)
@@ -96,20 +103,20 @@ export const rollStove = <M extends World>(world: M): M => {
   })
 }
 
-// NOTE: the perk on offer right now: in a break with the kitchen open,
-// once the break has rolled it.
+// NOTE: the perk on offer right now: in a round with the kitchen open,
+// once the round has rolled it.
 export const maybeStovePerk = (world: World): Option.Option<GunPerk> =>
-  Phase.isAnyOf(['Preparation'])(world.phase) &&
+  Phase.isAnyOf(['Preparation', 'Wave'])(world.phase) &&
   isKitchenOpen(levelOf(world)) &&
   world.stove.wave === world.phase.wave
     ? Option.some(world.stove.perk)
     : Option.none()
 
-const hasCookedThisBreak = (world: World, slot: PlayerSlot): boolean =>
-  Phase.isAnyOf(['Preparation'])(world.phase) &&
+const hasCookedThisRound = (world: World, slot: PlayerSlot): boolean =>
+  Phase.isAnyOf(['Preparation', 'Wave'])(world.phase) &&
   seatStateAt(world, slot).cooking.lastWave === world.phase.wave
 
-// NOTE: whether the seat at `slot` has earned a cook this break.
+// NOTE: whether the seat at `slot` has earned a cook this round.
 const hasStoveFeat: {
   (slot: PlayerSlot): (world: World) => boolean
   (world: World, slot: PlayerSlot): boolean
@@ -127,7 +134,7 @@ const stoveSpotOf = (box: Box): Vector => ({
   y: box.top + STOVE_RULES.tagDropPx,
 })
 
-// NOTE: the stove a seat has not earned this break yet: its feat, and the
+// NOTE: the stove a seat has not earned this round yet: its feat, and the
 // spot its lock hangs from.
 export const maybeStoveLock: {
   (slot: PlayerSlot): (world: World) => Option.Option<FeatLock>
@@ -140,7 +147,7 @@ export const maybeStoveLock: {
         feat: stoveFeatOf(seatStateAt(world, slot).player.calling),
         spot: stoveSpotOf(box),
       })),
-      () => !hasCookedThisBreak(world, slot) && !hasStoveFeat(world, slot),
+      () => !hasCookedThisRound(world, slot) && !hasStoveFeat(world, slot),
     ),
 )
 
@@ -151,7 +158,7 @@ export const stoveOffers: {
   Option.match(
     Option.filter(
       Option.zipWith(maybeStovePerk(world), stoveBoxOf(world), (_, box) => box),
-      () => !hasCookedThisBreak(world, slot) && hasStoveFeat(world, slot),
+      () => !hasCookedThisRound(world, slot) && hasStoveFeat(world, slot),
     ),
     {
       onNone: () => [],
@@ -194,7 +201,7 @@ export const cookGun: {
     Option.flatMap(maybeStovePerk(world), perk => {
       const { player } = seatStateAt(world, slot)
       if (
-        hasCookedThisBreak(world, slot) ||
+        hasCookedThisRound(world, slot) ||
         !hasStoveFeat(world, slot) ||
         !canCook(player) ||
         heldKeys(world) < price

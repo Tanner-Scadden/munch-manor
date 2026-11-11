@@ -110,24 +110,57 @@ describe('trap crates', () => {
       ),
   )
 
-  it.effect('a crate stays shut through a wave', () =>
+  it.effect(
+    "a find left in the break waits in its wave, and the wave never rolls it again",
+    () => {
+      const inWave = Phase.Wave({
+        wave: 3,
+        elapsedMs: 0,
+        spawns: [DISTANT_SPAWN],
+      })
+      return Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(stockedBreak(3, [diningCrate('Barricade')], inWave)),
+          ...ticks(10, FRAME_MS),
+          Story.model(current => {
+            expect(current.crates.wave).toBe(3)
+            expect(stocksOf(current)).toEqual([
+              CrateStock.Stocked({ trap: 'Barricade' }),
+            ])
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            onCrate(stockedBreak(3, [diningCrate('Barricade')], inWave)),
+          ),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(focusOf(current).trapStock.Barricade).toBe(1)
+            expect(stocksOf(current)).toEqual([CrateStock.Taken()])
+          }),
+        )
+      })
+    },
+  )
+
+  it.effect('a crate still shut from the last round rolls when a wave starts one', () =>
     Story.story(
       APPLICATION,
       Story.given(
-        onCrate(
-          stockedBreak(
-            3,
-            [diningCrate('Barricade')],
-            Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-          ),
+        stockedBreak(
+          3,
+          [{ room: 'Dining', stock: CrateStock.Taken() }],
+          Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
         ),
       ),
       tick(FRAME_MS),
       Story.model(current => {
-        expect(focusOf(current).trapStock.Barricade).toBe(0)
-        expect(stocksOf(current)).toEqual([
-          CrateStock.Stocked({ trap: 'Barricade' }),
-        ])
+        expect(current.crates.wave).toBe(4)
+        expect(Array.map(stocksOf(current), ({ _tag }) => _tag)).not.toContain(
+          'Taken',
+        )
       }),
     ),
   )
@@ -460,31 +493,40 @@ describe('mending traps', () => {
     }),
   )
 
-  it.effect('nothing mends in a wave, or while the player moves', () =>
-    Effect.gen(function* () {
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          chewedPlank(
-            10,
-            Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-          ),
+  it.effect('in a wave it mends at half the speed of a break', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        chewedPlank(
+          1,
+          Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
         ),
-        ...ticks(30, FRAME_MS),
-        Story.model(current => {
-          expect(hpOf(current)).toBe(10)
-        }),
-      )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(chewedPlank(10)),
-        press('KeyD'),
-        ...ticks(30, FRAME_MS),
-        Story.model(current => {
-          expect(hpOf(current)).toBe(10)
-        }),
-      )
-    }),
+      ),
+      ...ticks(FULL_MEND_TICKS + 1, FRAME_MS),
+      Story.model(current => {
+        expect(hpOf(current)).toBeGreaterThan(TRAPS.Barricade.hp / 3)
+        expect(hpOf(current)).toBeLessThan(TRAPS.Barricade.hp)
+      }),
+      ...ticks(
+        Math.ceil(FULL_MEND_TICKS / MEND_RULES.waveScale) - FULL_MEND_TICKS,
+        FRAME_MS,
+      ),
+      Story.model(current => {
+        expect(hpOf(current)).toBe(TRAPS.Barricade.hp)
+      }),
+    ),
+  )
+
+  it.effect('nothing mends while the player moves', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(chewedPlank(10)),
+      press('KeyD'),
+      ...ticks(30, FRAME_MS),
+      Story.model(current => {
+        expect(hpOf(current)).toBe(10)
+      }),
+    ),
   )
 })
 

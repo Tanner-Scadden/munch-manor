@@ -169,7 +169,7 @@ flowchart LR
   feats --> cases[Display cases spring open: a gun or the Laser Sight]:::built
   feats --> stove[The stove and the gas valve]:::built
   kill --> use[Kills with a gun level it up: Beefy, DELUXE, 3000]:::built
-  crates[Trap crates each break]:::built --> found[Traps, and a heart when someone is hurt]:::built
+  crates[Trap crates each round]:::built --> found[Traps, and a heart when someone is hurt]:::built
   ammo2[Ammo never runs out. Reloads stay]:::built
 
   classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff

@@ -34,8 +34,10 @@ import { isKitchenOpen } from './kitchen'
 // key for the crew's ring (it held $15 to $30 before keys, docs/ESCAPE_PLAN.md
 // layer 7), or a heart for a hurt player. A heart the taker cannot use is a
 // key instead. (A Lid Stack went with endless ammo.) It sits in
-// front of the cupboard for the break, and the first player to walk onto it
-// takes it, one a break. The walk is its price.
+// front of the cupboard for the round, the break and the wave after it
+// (since 2026-11-10; it was the break only), and the first player to walk
+// onto it takes it, one a round. The walk is its price: in a fight, a walk
+// to the kitchen's far corner.
 //
 // The goodie is drawn from the World's generator (`rngState`, salted) without
 // advancing it, so stocking the pantry never shifts the waves, the drops, or
@@ -94,14 +96,16 @@ export const pantrySpotOf = (level: Level): Option.Option<Vector> =>
     y: box.bottom + PANTRY_RULES.frontPx,
   }))
 
-const breakWaveOf = (world: World): Option.Option<number> =>
-  Phase.isAnyOf(['Preparation'])(world.phase)
+// NOTE: the round the pantry stocks for: a break and the wave after it share
+// one goodie, keyed by the round's wave number.
+const roundOf = (world: World): Option.Option<number> =>
+  Phase.isAnyOf(['Preparation', 'Wave'])(world.phase)
     ? Option.some(world.phase.wave)
     : Option.none()
 
-// NOTE: the goodie waiting in this break, if there is one.
+// NOTE: the goodie waiting in this round, if there is one.
 export const maybeStash = (world: World): Option.Option<PantryStash> =>
-  Option.flatMap(breakWaveOf(world), wave =>
+  Option.flatMap(roundOf(world), wave =>
     Pantry.isAnyOf(['Stocked'])(world.pantry) && world.pantry.round === wave
       ? Option.some(world.pantry)
       : Option.none(),
@@ -109,8 +113,8 @@ export const maybeStash = (world: World): Option.Option<PantryStash> =>
 
 // STOCKING
 
-// NOTE: each break with the kitchen open stocks the pantry once, also in a
-// break where the kitchen has just been opened.
+// NOTE: each round with the kitchen open stocks the pantry once, also in a
+// round where the kitchen has just been opened.
 const stock = (world: World, wave: number): World => {
   const kindDraw = nextRandom((world.rngState ^ PANTRY_SEED_SALT) >>> 0)
   const goodie = Option.getOrElse(
@@ -183,10 +187,10 @@ const takeFor = (world: World, slot: PlayerSlot): World => {
   )
 }
 
-// NOTE: one tick of the pantry: stock it at a break with the kitchen open,
+// NOTE: one tick of the pantry: stock it each round with the kitchen open,
 // then the first standing player in slot order on the spot takes it.
 export const advancePantry = (world: World): World =>
-  Option.match(breakWaveOf(world), {
+  Option.match(roundOf(world), {
     onNone: () => world,
     onSome: wave => {
       if (!isKitchenOpen(levelOf(world))) {

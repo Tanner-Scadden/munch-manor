@@ -505,6 +505,10 @@ export const Phase = defineTaggedUnion({
 })
 export type Phase = typeof Phase.Type
 
+// NOTE: a round is a break and the wave after it.
+export const isRoundActive = (phase: Phase): boolean =>
+  Phase.isAnyOf(['Preparation', 'Wave'])(phase)
+
 // NOTE: the wave a break or a fight is about, 0 outside a round.
 export const roundWaveOf = (phase: Phase): number =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) ? phase.wave : 0

@@ -306,7 +306,7 @@ const trapEntries = (): ReadonlyArray<GuideEntry> => [
     id: 'Mend',
     section: 'Traps',
     name: FOUND_NAMES.Mend,
-    line: 'Stand by it in a break. Free.',
+    line: 'Stand by it. Free. Twice as fast in a break.',
     art: GuideArt.Trap({ kind: 'Barricade' }),
     price: Option.none(),
     bars: [],

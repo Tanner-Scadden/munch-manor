@@ -26,7 +26,6 @@ import {
   DISTANT_SPAWN,
   atFridge,
   atStove,
-  fighting,
   freshRunModel,
   fridgeSeededFor,
   kitchenBreak,
@@ -56,7 +55,7 @@ import { offersOf } from '../../shop/purchase'
 import { STOVE_RULES, maybeStoveLock, rollStove } from '../stove'
 
 // The kitchen's stove bench (src/world/kitchen/stove.ts): a perk cooked into the gun in
-// hand, one a break, free once its feat (kitchen kills) is done, and what
+// hand, one a round (its break and its wave), free once its feat (kitchen kills) is done, and what
 // each perk does.
 
 const FRAME_MS = FIXED_STEP_MS
@@ -150,10 +149,36 @@ describe('the stove rolls its perk', () => {
     expect(rollStove(atStove(500))).toEqual(rolled)
   })
 
-  test('mid-wave nothing rolls and the stove offers nothing', () => {
-    expect(rollStove(fighting)).toBe(fighting)
-    expect(Option.isNone(stoveOffer(fighting))).toBe(true)
-  })
+  it.effect(
+    "the break's perk stays on offer through its wave, and a wave starting a round rolls one",
+    () => {
+      const rolled = rollStove(atStove(500))
+      const inWave = (wave: number): Phase =>
+        Phase.Wave({ wave, elapsedMs: 5000, spawns: [DISTANT_SPAWN] })
+      return Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(modifyFields(rolled, { phase: () => inWave(5) })),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(current.stove).toEqual(rolled.stove)
+            expect(Option.isSome(stoveOffer(current))).toBe(true)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(modifyFields(rolled, { phase: () => inWave(6) })),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(current.stove.wave).toBe(6)
+            expect(current.stove.perk).toBe(
+              rolledFrom(rolled.stove.rngState),
+            )
+          }),
+        )
+      })
+    },
+  )
 })
 
 describe('cooking a gun', () => {
@@ -254,6 +279,32 @@ describe('cooking a gun', () => {
         )
         expect(Option.isSome(stoveOffer(nextBreak))).toBe(true)
       }),
+  )
+
+  it.effect(
+    'mid-wave the stove cooks too, once a round: a cook in the break leaves nothing in its wave',
+    () => {
+      const inWave = (base: Model): Model =>
+        modifyFields(base, {
+          phase: () =>
+            Phase.Wave({ wave: 5, elapsedMs: 5000, spawns: [DISTANT_SPAWN] }),
+        })
+      return Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(inWave(offering(atStove(500), 'Crispy'))),
+          ...cook,
+          Story.model(current => {
+            expect(heldPerk(current)).toEqual(Option.some('Crispy'))
+            expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
+          }),
+        )
+        const cookedInBreak = inWave(
+          withCooking(offering(atStove(500), 'Crispy'), 1, 5),
+        )
+        expect(Option.isNone(stoveOffer(cookedInBreak))).toBe(true)
+      })
+    },
   )
 
   it.effect('cooking a gun that has a perk puts the new one in its place', () =>
