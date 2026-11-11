@@ -6,7 +6,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import type { Message } from '../../app/message'
 import { defaultAppearance } from '../../app/model'
 import { decodePng, hexOf } from '../../test/testPng'
-import { imagesIn } from '../../test/testing'
+import { imagesIn } from '../../test/viewReading'
 import { playerSprites } from '../appearance'
 import { GLYPH_SPRITES, KEY_SPRITE } from '../font'
 import {

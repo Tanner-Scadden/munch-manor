@@ -16,9 +16,9 @@ import {
   PHONE_PORTRAIT,
   SCENE_SUBSCRIPTIONS,
   measureSurfaceAs,
-  nodesOf,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
+import { nodesOf } from '../../test/viewReading'
 import { Message } from '../message'
 import { type Model, Phase } from '../model'
 import { initialModel } from '../pureApp'

@@ -3,8 +3,8 @@
 // Models live in `model.fixture.ts`. `tools/lint/duplicateHelpers.ts`
 // fails a helper copied between test files: add it here instead.
 
-import { Array, Effect, Function, Match, Option, Schema, Struct } from 'effect'
-import { Canvas, Scene, Story } from 'foldkit'
+import { Array, Effect, Function, Option, Schema, Struct } from 'effect'
+import { Scene, Story } from 'foldkit'
 
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
@@ -690,78 +690,6 @@ export const isKitchenOpen = (current: Model): boolean =>
   Array.contains(levelOf(current).openExits, KITCHEN_EXIT)
 
 export const WORLD_KEYS = Struct.keys(World.fields)
-
-// READING A VIEW
-
-type Box = Readonly<{ x: number; y: number; width: number; height: number }>
-
-// NOTE: every Rect in a shape tree, moved by its Groups' translations.
-export const rectsOf: {
-  (
-    offset: Readonly<{ x: number; y: number }>,
-  ): (shapes: ReadonlyArray<Canvas.Shape>) => ReadonlyArray<Canvas.Rect & Box>
-  (
-    shapes: ReadonlyArray<Canvas.Shape>,
-    offset: Readonly<{ x: number; y: number }>,
-  ): ReadonlyArray<Canvas.Rect & Box>
-} = Function.dual(
-  2,
-  (
-    shapes: ReadonlyArray<Canvas.Shape>,
-    offset: Readonly<{ x: number; y: number }>,
-  ): ReadonlyArray<Canvas.Rect & Box> =>
-    Array.flatMap(shapes, shape =>
-      Match.value(shape).pipe(
-        Match.tag('Group', group =>
-          rectsOf(group.shapes, {
-            x: offset.x + (group.translate?.x ?? 0),
-            y: offset.y + (group.translate?.y ?? 0),
-          }),
-        ),
-        Match.tag('Rect', rect => [
-          Canvas.Rect({ ...rect, x: rect.x + offset.x, y: rect.y + offset.y }),
-        ]),
-        Match.orElse(() => []),
-      ),
-    ),
-)
-
-export const imagesIn = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Image> =>
-  Array.flatMap(shapes, shape =>
-    Match.value(shape).pipe(
-      Match.tag('Image', image => [image]),
-      Match.tag('Group', ({ shapes: inner }) => imagesIn(inner)),
-      Match.orElse(() => []),
-    ),
-  )
-
-export type VNodeLike = Readonly<{
-  sel?: string | undefined
-  key?: PropertyKey | undefined
-  data?:
-    | Readonly<{
-        attrs?: Readonly<Record<string, unknown>> | undefined
-        props?: Readonly<Record<string, unknown>> | undefined
-      }>
-    | undefined
-  children?: ReadonlyArray<VNodeLike | string> | undefined
-}>
-
-// NOTE: a rendered VNode and every element under it, depth first.
-export const nodesOf = (root: VNodeLike): ReadonlyArray<VNodeLike> => {
-  const found: Array<VNodeLike> = []
-  const visit = (node: VNodeLike | string) => {
-    if (typeof node === 'string') {
-      return
-    }
-    found.push(node)
-    Array.forEach(node.children ?? [], visit)
-  }
-  visit(root)
-  return found
-}
 
 // LOCATORS
 
