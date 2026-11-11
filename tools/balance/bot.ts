@@ -482,6 +482,7 @@ export const play: {
       frame += 1
       const before = model
       model = send(model, Message.TickedFrame({ deltaTime: FRAME_MS }))
+      options.onFrame?.(before, model)
       if (!isKitchenOpen(before) && isKitchenOpen(model)) {
         state.kitchenWave = wave
       }

@@ -57,27 +57,28 @@ The baseline is written when it is missing or with `--update-baseline`. `--exten
 
 ## Files
 
-| File                    | What it holds                                                                                                           |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `bot.ts`                | A campaign run: the bot's frame loop and what it logs, and the seeds                                                    |
-| `bot/basics.ts`         | The Model, the bot's options, its keys, and what it sees                                                                |
-| `bot/state.ts`          | `BotState`, the plans and logs one run carries, made fresh for each run                                                 |
-| `bot/logs.ts`           | The logs a run fills as it plays, and the wave timeline                                                                 |
-| `bot/results.ts`        | `RunResult` and `WaveRun` as Schemas: what a run reports, and what a worker writes and the main process decodes         |
-| `bot/hand.ts`           | The human hand: reaction time, aim that trails and overshoots, sticky targets, what it notices; `AIM=sharp` skips it    |
-| `bot/dodging.ts`        | Pickups, the floor's and the boss's tells, kiting and engaging                                                          |
-| `bot/route.ts`          | The way between the rooms, and whether a point is floor a player stands on                                              |
-| `bot/escape.ts`         | The escape: the list, the rooms that hold it, the display cases, the front door                                         |
-| `bot/guns.ts`           | The guns it carries and which one a new gun replaces                                                                    |
-| `bot/fighting.ts`       | The Pan's stance, the knife, where it walks in a wave, aiming and firing                                                |
-| `bot/fridgeFighting.ts` | The fridge weapons' plans: the Cooker, the Pan, and Brain Freeze                                                        |
-| `bot/shopping.ts`       | Shopping, the kitchen, the ammo window, the fridge, and the break's plan                                                |
-| `bot/snapshots.ts`      | Wave snapshots and the wave pass                                                                                        |
-| `simulate.ts`           | The command line: campaign and snapshot passes, workers, the text report, `--json`                                      |
-| `summary.ts`            | Run summaries and their Schemas                                                                                         |
-| `model.ts`              | The analytical model                                                                                                    |
-| `targets.ts`            | The targets from `GAME_DESIGN.md`, as data                                                                              |
-| `suite.ts`              | The nightly's jobs, metrics, target verdicts, baseline drift, and report                                                |
-| `nightly.ts`            | The nightly's shell: runs the jobs and writes the files                                                                 |
-| `baseline.json`         | The stored numbers the nightly compares against, written by the first nightly run                                       |
-| `*.test.ts`             | The model and suite tests, run by `bun run test`; `snapshot.sim.test.ts`, the wave 2 smoke pass, by `bun run test:full` |
+| File                     | What it holds                                                                                                                                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bot.ts`                 | A campaign run: the bot's frame loop and what it logs, and the seeds                                                                                                                         |
+| `bot/basics.ts`          | The Model, the bot's options, its keys, and what it sees                                                                                                                                     |
+| `bot/state.ts`           | `BotState`, the plans and logs one run carries, made fresh for each run                                                                                                                      |
+| `bot/logs.ts`            | The logs a run fills as it plays, and the wave timeline                                                                                                                                      |
+| `bot/results.ts`         | `RunResult` and `WaveRun` as Schemas: what a run reports, and what a worker writes and the main process decodes                                                                              |
+| `bot/hand.ts`            | The human hand: reaction time, aim that trails and overshoots, sticky targets, what it notices; `AIM=sharp` skips it                                                                         |
+| `bot/dodging.ts`         | Pickups, the floor's and the boss's tells, kiting and engaging                                                                                                                               |
+| `bot/route.ts`           | The way between the rooms, and whether a point is floor a player stands on                                                                                                                   |
+| `bot/escape.ts`          | The escape: the list, the rooms that hold it, the display cases, the front door                                                                                                              |
+| `bot/guns.ts`            | The guns it carries and which one a new gun replaces                                                                                                                                         |
+| `bot/fighting.ts`        | The Pan's stance, the knife, where it walks in a wave, aiming and firing                                                                                                                     |
+| `bot/fridgeFighting.ts`  | The fridge weapons' plans: the Cooker, the Pan, and Brain Freeze                                                                                                                             |
+| `bot/shopping.ts`        | Shopping, the kitchen, the ammo window, the fridge, and the break's plan                                                                                                                     |
+| `bot/snapshots.ts`       | Wave snapshots and the wave pass                                                                                                                                                             |
+| `simulate.ts`            | The command line: campaign and snapshot passes, workers, the text report, `--json`                                                                                                           |
+| `pacing.ts`, `pacing.sh` | Pacing per wave and per run, read off the World every frame (`docs/PACING_REPORT.md`); `bun run heavy -- --cpu sh tools/balance/pacing.sh <runs>`, then `bun tools/balance/pacing.ts report` |
+| `summary.ts`             | Run summaries and their Schemas                                                                                                                                                              |
+| `model.ts`               | The analytical model                                                                                                                                                                         |
+| `targets.ts`             | The targets from `GAME_DESIGN.md`, as data                                                                                                                                                   |
+| `suite.ts`               | The nightly's jobs, metrics, target verdicts, baseline drift, and report                                                                                                                     |
+| `nightly.ts`             | The nightly's shell: runs the jobs and writes the files                                                                                                                                      |
+| `baseline.json`          | The stored numbers the nightly compares against, written by the first nightly run                                                                                                            |
+| `*.test.ts`              | The model and suite tests, run by `bun run test`; `snapshot.sim.test.ts`, the wave 2 smoke pass, by `bun run test:full`                                                                      |

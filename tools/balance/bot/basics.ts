@@ -50,6 +50,9 @@ export type BotOptions = {
   noUpgrades: boolean
   calling: Calling
   modifiers: Modifiers
+  // NOTE: called with the Models before and after each frame the bot ticks,
+  // for a script that reads the World over time (tools/balance/pacing.ts).
+  onFrame?: (before: Model, after: Model) => void
 }
 
 export const DEFAULT_OPTIONS: BotOptions = {

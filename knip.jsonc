@@ -16,7 +16,7 @@
         "src/platform/early.ts",
         "src/platform/sw/worker.ts",
         "tools/analytics/{report,smoke}.ts",
-        "tools/balance/{nightly,simulate}.ts",
+        "tools/balance/{nightly,pacing,simulate}.ts",
         "tools/determinism/{beforeAfter,build,cli,crossEngine,page,worker,worldWorker}.ts",
         "tools/mp-dev/{build,e2e,local,main,serve}.ts",
         "tools/sprites/build.ts",

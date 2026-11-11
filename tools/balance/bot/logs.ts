@@ -76,7 +76,7 @@ export const emptyWaveLog = (): WaveLog => ({
   peakAlive: 0,
 })
 
-const spawnKey = (spawn: { pack: number; offset: number; kind: string }) =>
+export const spawnKey = (spawn: { pack: number; offset: number; kind: string }) =>
   `${spawn.pack}:${spawn.offset}:${spawn.kind}`
 
 export const pendingSpawns = (model: Model) =>
