@@ -171,7 +171,11 @@ export const HarnessConfig = Schema.Struct({
   traphint: Choice(['Barricade', 'Turret']),
   // NOTE: `quest` stages the guided first break running or just done, and
   // `kitchendone` the kitchen tour just done.
-  quest: Choice(['running', 'done', 'kitchendone']),
+  // `card` stages its last step, looking at the dare card.
+  quest: Choice(['running', 'card', 'done', 'kitchendone']),
+  // NOTE: `darefound=N` marks the first N things of the dare card found,
+  // the hat last.
+  darefound: Num(0),
   // The player and the guns
   px: MaybeNum,
   py: MaybeNum,

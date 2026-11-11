@@ -2,7 +2,7 @@ import { Array, Function, Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
-import { DARE_ICONS, DARE_ICON_SIZE, DARE_SLOT_SIZE } from '../../art/dareArt'
+import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
 import { bakeText } from '../../art/font'
 import {
   type Palette,
@@ -12,7 +12,6 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
-import { dareCardLeftOf } from '../../features/dare/dareCard'
 import { isPocketCardOut } from '../../features/dare/pocketCard'
 import { HINT_LINES, maybeHintCall } from '../../features/dare/rattlesHint'
 import {
@@ -30,14 +29,13 @@ import {
 } from '../../features/onboarding/rattlesIntro'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
-import { hudLayoutFor } from '../../render/hudLayout'
 import { landscapeFrameOffset, screenOf } from '../../render/screen'
-import { dareCardOf } from '../../world/dare/dare'
 import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { RATTLES_BOX, levelOf } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/worldSchema'
 import { maybeBannerBand } from './overlay'
+import { keyRingBoxOf, maybePocketKeepout } from './pocket'
 
 // NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
 // from the spot it is about, and when that spot is out of view it waits at
@@ -340,8 +338,8 @@ const bubbleShapes = (
 ): ReadonlyArray<Canvas.Shape> =>
   placedBubble(bubbleOfKind(kind), tipInWorld, true, model, camera)
 
-// NOTE: what a bubble keeps out of, in screen pixels: the dare card on
-// the HUD with its unlock bar, and a banner's rows while one shows. A
+// NOTE: what a bubble keeps out of, in screen pixels: the dare pocket on
+// the HUD with its unlock bar, the key ring, and a banner's rows while one shows. A
 // bubble over one moves under it, or over it when there is no room under.
 type Keepout = Readonly<{
   left: number
@@ -351,24 +349,11 @@ type Keepout = Readonly<{
 }>
 
 const KEEPOUT_GAP = 2
-const DARE_CARD_BAR_ROWS = 4
 
 const keepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
-  const layout = hudLayoutFor(screen)
   const frameTop = landscapeFrameOffset(screen).y
-  const card: ReadonlyArray<Keepout> = Array.isReadonlyArrayNonEmpty(
-    dareCardOf(model),
-  )
-    ? [
-        {
-          left: dareCardLeftOf(model, layout),
-          top: layout.dareTop,
-          right: layout.dareRight,
-          bottom: layout.dareTop + DARE_SLOT_SIZE + DARE_CARD_BAR_ROWS,
-        },
-      ]
-    : []
+  const card: ReadonlyArray<Keepout> = Option.toArray(maybePocketKeepout(model))
   const banner: ReadonlyArray<Keepout> = Option.match(maybeBannerBand(model), {
     onNone: () => [],
     onSome: band => [
@@ -380,7 +365,7 @@ const keepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
       },
     ],
   })
-  return [...card, ...banner]
+  return [...card, keyRingBoxOf(model), ...banner]
 }
 
 const clearOfHud = (

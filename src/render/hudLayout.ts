@@ -56,6 +56,11 @@ export const reloadFaceOf = (
     ? { width: 18, height: SLOT_HEIGHT }
     : { width: SLOT_SIZES.Portrait.height, height: SLOT_SIZES.Portrait.height }
 
+// NOTE: the crew's key count sits under the hearts at twice the font's
+// size, so the currency of the escape reads at a glance. Beside the hearts
+// it would push the boosts' chips into the boss's name under the wave.
+const KEYS_LEFT = HUD_MARGIN
+const KEYS_TOP = HUD_MARGIN + 10
 const BOOST_CHIPS_LEFT = HUD_MARGIN + PLAYER_MAX_HP * HEART_SPACING + 2
 const BOOST_CHIP_STRIDE = 16
 const BOOST_CHIPS = 4
@@ -67,8 +72,8 @@ export type HudLayout = Readonly<{
   centerX: number
   titleY: number
   subtitleY: number
-  scoreRight: number
-  roomsTop: number
+  keysLeft: number
+  keysTop: number
   boostLeft: number
   boostTop: number
   boostColumns: number
@@ -76,16 +81,29 @@ export type HudLayout = Readonly<{
   slotLeft: number
   slotTop: number
   trapTop: number
-  dareRight: number
-  dareTop: number
+  pocket: PocketSpots
 }>
 
-// NOTE: the dare card (src/features/dare/dareCard.ts): this run's list as
-// a row of small slots, laid out from its right edge. In landscape it hangs
-// under the top strip on the right; in portrait it sits at the bottom right
-// of the HUD band, over the world window.
-const DARE_CARD_LANDSCAPE_GAP = 2
-const DARE_CARD_PORTRAIT_LIFT = 11
+// NOTE: the dare pocket (src/features/dare/dareCard.ts), laid out from its
+// right edge. Shut, a chip of the card and how many are found: in landscape
+// in the top strip left of the pause button, in portrait at the bottom
+// right of the HUD band. Open in a break, the whole list: in landscape it
+// drops from the chip's place over the room's top right, in portrait it
+// hangs just under the band, clear of the band's rows and the guided first
+// break's tracker in it.
+// `isBesideBossBar` is true where the shut chip shares the boss bar's row
+// (portrait), so the bar centers on what the chip leaves of it.
+type PocketSpots = Readonly<{
+  shutRight: number
+  shutTop: number
+  openRight: number
+  openTop: number
+  isBesideBossBar: boolean
+}>
+
+export const POCKET_CHIP_HEIGHT = 15
+const POCKET_PORTRAIT_LIFT = 2
+const POCKET_PORTRAIT_DROP = 2
 
 // NOTE: the two guns sit centered at the bottom, with the melee slot on
 // their right (and on touch the reload button past it, src/screens/game/touchControls.ts).
@@ -100,8 +118,8 @@ export const hudLayoutFor = (screen: Screen): HudLayout => {
       centerX: screen.width / 2,
       titleY: HUD_MARGIN - 2,
       subtitleY: 11,
-      scoreRight: screen.width - HUD_MARGIN - PAUSE_BUTTON_CLEARANCE,
-      roomsTop: HUD_MARGIN + 9,
+      keysLeft: KEYS_LEFT,
+      keysTop: KEYS_TOP,
       boostLeft: BOOST_CHIPS_LEFT,
       boostTop: HUD_MARGIN - 3,
       boostColumns: 2,
@@ -109,18 +127,23 @@ export const hudLayoutFor = (screen: Screen): HudLayout => {
       slotLeft,
       slotTop,
       trapTop: slotTop,
-      dareRight: screen.width - HUD_MARGIN - PAUSE_BUTTON_CLEARANCE,
-      dareTop: HUD_STRIP_HEIGHT + DARE_CARD_LANDSCAPE_GAP,
+      pocket: {
+        shutRight: screen.width - HUD_MARGIN - PAUSE_BUTTON_CLEARANCE,
+        shutTop: HUD_MARGIN - 3,
+        openRight: screen.width - HUD_MARGIN - PAUSE_BUTTON_CLEARANCE,
+        openTop: HUD_MARGIN - 3,
+        isBesideBossBar: false,
+      },
     }
   } else {
-    const scoreRight = screen.width - HUD_MARGIN - PORTRAIT_PAUSE_CLEARANCE
+    const pauseLeft = screen.width - HUD_MARGIN - PORTRAIT_PAUSE_CLEARANCE
     return {
       centerX: screen.width / 2,
       titleY: screen.world.y - 17,
       subtitleY: screen.world.y - 9,
-      scoreRight,
-      roomsTop: HUD_MARGIN + 9,
-      boostLeft: scoreRight - BOOST_CHIPS * BOOST_CHIP_STRIDE + 3,
+      keysLeft: KEYS_LEFT,
+      keysTop: KEYS_TOP,
+      boostLeft: pauseLeft - BOOST_CHIPS * BOOST_CHIP_STRIDE + 3,
       boostTop: HUD_MARGIN + 7,
       boostColumns: BOOST_CHIPS,
       slots,
@@ -130,8 +153,13 @@ export const hudLayoutFor = (screen: Screen): HudLayout => {
         thumbAreaTop(screen) + HUD_MARGIN,
         slotTop - SLOT_HEIGHT - SLOT_GAP * 2,
       ),
-      dareRight: screen.width - HUD_MARGIN,
-      dareTop: screen.world.y - DARE_CARD_PORTRAIT_LIFT,
+      pocket: {
+        shutRight: screen.width - HUD_MARGIN,
+        shutTop: screen.world.y - POCKET_CHIP_HEIGHT - POCKET_PORTRAIT_LIFT,
+        openRight: screen.width - HUD_MARGIN,
+        openTop: screen.world.y + POCKET_PORTRAIT_DROP,
+        isBesideBossBar: true,
+      },
     }
   }
 }

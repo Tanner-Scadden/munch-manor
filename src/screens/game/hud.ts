@@ -24,9 +24,11 @@ import {
 } from '../../art/sprites/hearts'
 import { TRAP_ICONS } from '../../art/sprites/traps'
 import {
-  dareCardLeftOf,
+  type DarePocket,
   dareCardPointShapes,
   dareCardShapes,
+  pocketBoxOf,
+  pocketHeaderOf,
 } from '../../features/dare/dareCard'
 import { isOnLastShots } from '../../features/hud/ammoWarning'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
@@ -88,7 +90,6 @@ import {
   maybePanOf,
 } from '../../world/gear/weapons'
 import { maxHpOf } from '../../world/heroes/calling'
-import { heldKeys } from '../../world/keys/keys'
 import {
   focusOf,
   focusSlotOf,
@@ -96,7 +97,6 @@ import {
   playersOf,
 } from '../../world/party/party'
 import { isPending, isPracticeGateHeld } from '../../world/run/lessons'
-import { scoreOf } from '../../world/run/stats'
 import type {
   CarriedGun,
   Player,
@@ -115,6 +115,7 @@ import { clamp } from '../../world/step/geometry'
 import { isRoundActive, zombiesRemaining } from '../../world/waves/waves'
 import { maybeBossBar } from '../../world/zombies/boss'
 import { waveLabel } from './overlay'
+import { KEY_RING_SCALE, keyRingLabelOf, pocketOf } from './pocket'
 import {
   dareHintShapes,
   kitchenBubbleShapes,
@@ -309,35 +310,63 @@ const roundHudShapes = (
     GameOver: () => [],
   })
 
-// NOTE: a portrait HUD puts the dare card on the boss bar's row, at its
-// right end, so the bar centers on what the card leaves of the row.
-const BOSS_BAR_HEIGHT = 8
+// NOTE: a portrait HUD puts the shut dare pocket on the boss bar's row, at
+// its right end, so the bar centers on what the pocket leaves of the row.
 const BOSS_BAR_CARD_GAP = 3
 
 const bossBarCenterOf = (model: Model, layout: HudLayout): number =>
-  layout.dareTop < layout.subtitleY + 1 + BOSS_BAR_HEIGHT
+  layout.pocket.isBesideBossBar
     ? Math.min(
         layout.centerX,
         Math.round(
-          (HUD_MARGIN + dareCardLeftOf(model, layout) - BOSS_BAR_CARD_GAP) / 2,
+          (HUD_MARGIN +
+            pocketBoxOf(model, layout, 'Shut').left -
+            BOSS_BAR_CARD_GAP) /
+            2,
         ),
       )
     : layout.centerX
 
-const KEYS_Y = HUD_MARGIN + 9
-
 // NOTE: the crew's one key ring (src/world/keys/keys.ts), a skeleton key
-// and its count (the font draws `$` as the key), the same for every player
-// in co-op. It flashes and hops a pixel the frame a key comes in.
-const keyRingShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+// and its count (the font draws `$` as the key) at twice the font's size,
+// the same for every player in co-op. It flashes and hops a pixel the frame
+// a key comes in.
+const keyRingShapes = (
+  model: Model,
+  layout: HudLayout,
+): ReadonlyArray<Canvas.Shape> => {
   const isNew = Array.some(model.frameEvents, GameEvent.isAnyOf(['KeysFound']))
-  return textShapes(
-    `$${heldKeys(model)}`,
-    isNew ? 'Damage' : 'Coin',
-    HUD_MARGIN,
-    isNew ? KEYS_Y - 1 : KEYS_Y,
-    'Left',
-  )
+  return [
+    group({
+      translate: {
+        x: layout.keysLeft,
+        y: isNew ? layout.keysTop - 1 : layout.keysTop,
+      },
+      scale: { x: KEY_RING_SCALE, y: KEY_RING_SCALE },
+      shapes: textShapes(
+        keyRingLabelOf(model),
+        isNew ? 'Damage' : 'Coin',
+        0,
+        0,
+        'Left',
+      ),
+    }),
+  ]
+}
+
+// NOTE: the dare pocket, and in the open pocket's header the rooms opened,
+// which show only in a break.
+const pocketShapes = (
+  model: Model,
+  layout: HudLayout,
+  pocket: DarePocket,
+): ReadonlyArray<Canvas.Shape> => {
+  const header = pocketHeaderOf(model, layout)
+  return [
+    ...dareCardShapes(model, layout, pocket),
+    ...(pocket === 'Open' ? roomsCounterShapes(model, header.x, header.y) : []),
+    ...(isQuestOnCard(model) ? dareCardPointShapes(model, layout, pocket) : []),
+  ]
 }
 
 const SLOT_DIM_OPACITY = 0.5
@@ -877,7 +906,7 @@ const playHudShapes = (
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => [
   ...heartShapes(focusOf(model).player),
-  ...keyRingShapes(model),
+  ...keyRingShapes(model, layout),
   ...mateHudShapes(model),
   ...streakShapes(model.streak),
   ...loadoutShapes(model, layout),
@@ -894,18 +923,7 @@ const playHudShapes = (
   ...dareHintShapes(model, camera),
   ...rattlesIntroShapes(model, camera),
   ...roundHudShapes(model, layout),
-  ...roomsCounterShapes(model, layout.scoreRight, layout.roomsTop),
-  ...dareCardShapes(model, layout),
-  ...(isQuestOnCard(model) ? dareCardPointShapes(model, layout) : []),
-  ...(isRoundActive(model.phase)
-    ? textShapes(
-        `SCORE ${scoreOf(model.stats)}`,
-        'Plain',
-        layout.scoreRight,
-        HUD_MARGIN,
-        'Right',
-      )
-    : []),
+  ...pocketShapes(model, layout, pocketOf(model)),
 ]
 
 const HUD_STRIP_COLOR = 'rgba(20, 15, 24, 0.75)'
