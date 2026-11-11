@@ -289,13 +289,13 @@ Objects, no reading needed. The HUD shows this run's list as empty outlines that
 
 ### Difficulty sets the list
 
-Built on 2026-11-10 with the help as Rattles' hints: Dare names the room every break and sparkles every hidden thing, Double Dare one hint a break, Triple Dare gives no hints, and Triple Dog Dare heckles. On Triple Dog Dare the house gets hungrier from the first find; on the other levels, once the list is done. The four levels scale the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`), and the list is a second dial on the same curve:
+Built on 2026-11-10 with the help as Rattles' hints: Dare names the room every break, Double Dare one hint a break, Triple Dare gives no hints, and Triple Dog Dare heckles. After the owner's playtest the same day ("I bought all the rooms, but can't find anything"), a thing on Dare and Double Dare lies in plain sight once its room is open, big and glowing, a gold arrow shows the way while a hint is up (on Dare all break long), and opening a room shows its thing. Triple Dare and Triple Dog Dare still hide it until you are close. On Triple Dog Dare the house gets hungrier from the first find; on the other levels, once the list is done. The four levels scale the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`), and the list is a second dial on the same curve:
 
 | Level     | Things before the hat | Help finding them                                     |
 | --------- | --------------------- | ----------------------------------------------------- |
-| Easy      | 2                     | The dare card's doodles point the way; spots sparkle  |
-| Normal    | 3                     | One doodled hint a break                              |
-| Hard      | 3                     | No sparkle, no hints                                  |
+| Easy      | 2                     | Things in sight, sparkling; a gold arrow all break    |
+| Normal    | 3                     | Things in sight; one hint a break, with the arrow     |
+| Hard      | 3                     | Hidden until close; no sparkle, no hints              |
 | Nightmare | 4                     | No hints; the house gets hungrier from the first find |
 
 A longer list makes a longer run, so the balance model and bot learn the list before the counts are tuned.
