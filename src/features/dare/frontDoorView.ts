@@ -5,7 +5,7 @@ import type { Model } from '../../app/model'
 import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '../../art/sprite'
 import { type Camera, worldToView } from '../../render/camera'
 import { rect } from '../../render/drawing'
-import { hudLayoutFor } from '../../render/hudLayout'
+import { clearWindowOf } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
 import { Finale } from '../../world/dare/dareSchema'
 import { isFrontDoorOpen, unlockShareOf } from '../../world/dare/finale'
@@ -131,10 +131,6 @@ const MARKER_HEIGHT = ICON_SIZE + BAR_HEIGHT + 1 + MARKER_PAD * 2
 const MARKER_EDGE_GAP = 2
 const ARROW_GAP = 1
 const MARKER_BACK_COLOR = 'rgba(14, 8, 12, 0.86)'
-// NOTE: the top HUD rows over a landscape window, which a marker keeps
-// clear of.
-const MARKER_TOP_CLEARANCE = 22
-const KEY_CAP_CLEARANCE = 4
 // NOTE: the door is in sight while its padlock and the bar over it are:
 // the rows from the bar down to the padlock's foot, either side of its
 // middle.
@@ -143,28 +139,6 @@ const PADLOCK_HALF_WIDTH = 4
 
 const isFinaleAtDoor = (model: Model): boolean =>
   Finale.isAnyOf(['Unlocking', 'Open'])(model.dare.finale)
-
-// NOTE: where the window shows the world clear of the HUD, in screen
-// pixels: the gun slots and their key caps cover its bottom in landscape.
-const clearWindowOf = (
-  screen: Screen,
-): Readonly<{ left: number; top: number; right: number; bottom: number }> => {
-  const window = screen.world
-  const top =
-    screen.layout === 'Landscape'
-      ? window.y + MARKER_TOP_CLEARANCE
-      : window.y + MARKER_EDGE_GAP
-  return {
-    left: window.x + MARKER_EDGE_GAP,
-    top,
-    right: window.x + window.width - MARKER_EDGE_GAP,
-    bottom:
-      Math.min(
-        window.y + window.height,
-        hudLayoutFor(screen).slotTop - KEY_CAP_CLEARANCE,
-      ) - MARKER_EDGE_GAP,
-  }
-}
 
 export const frontDoorMarkerShapes: {
   (
@@ -188,7 +162,7 @@ export const frontDoorMarkerShapes: {
       x: box.right,
       y: box.top + PADLOCK_ROWS,
     })
-    const clear = clearWindowOf(screen)
+    const clear = clearWindowOf(screen, MARKER_EDGE_GAP)
     const centerX = Math.round((topLeft.x + bottomRight.x) / 2)
     const isInSight =
       centerX - PADLOCK_HALF_WIDTH >= clear.left &&
