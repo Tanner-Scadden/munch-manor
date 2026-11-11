@@ -1,26 +1,39 @@
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import type { Model } from '../../src/app/model'
 import { initialModel } from '../../src/app/pureApp'
 import { PREPARATION_MS } from '../../src/shared/constants'
 import {
   atCase,
   atOpenedCase,
   hidingSpotIn,
+  roomOpenIn,
   withDareThings,
   withKeys,
+  withPlayerAt,
 } from '../../src/test/model.fixture'
 import { asVeteran } from '../../src/test/veteran'
 import { DareThingState } from '../../src/world/dare/dareSchema'
-import { levelOf } from '../../src/world/level/arena'
-import { EXIT_RULES } from '../../src/world/level/exits'
-import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '../../src/world/level/plan'
+import { levelOf, openExitIn } from '../../src/world/level/arena'
+import { EXIT_RULES, KITCHEN_EXIT } from '../../src/world/level/exits'
+import {
+  CELLAR_ROOM_ID,
+  DEFAULT_ARRANGEMENT,
+  DINING_ROOM_ID,
+  KITCHEN_ROOM_ID,
+} from '../../src/world/level/plan'
 import {
   CaseState,
   Phase,
   Purchasable,
 } from '../../src/world/schema/worldSchema'
-import { caseToTake, wantedBoards } from './bot/escape'
+import {
+  caseToTake,
+  escapeTarget,
+  isWorkingForEscape,
+  wantedBoards,
+} from './bot/escape'
 
 // The balance bot's hunt (tools/balance/bot/escape.ts): the room holding a
 // thing on the list gets bought open in a break, once the crew's ring holds
@@ -88,5 +101,53 @@ describe('the bot takes from the display cases', () => {
         ),
       ),
     ).toBeUndefined()
+  })
+})
+
+// NOTE: the kitchen hauls its thing up the dumbwaiter, worked by keeping
+// still in reach (src/world/dare/finds.ts); the dining room walks onto it;
+// the cellar's waits for the bulb's light, which only a wave can yank.
+describe("the bot works a room's find", () => {
+  const kitchenOpen = (model: Model): Model =>
+    modifyFields(model, { level: level => openExitIn(level, KITCHEN_EXIT) })
+
+  test('keeps still in reach of a worked find', () => {
+    expect(
+      isWorkingForEscape(
+        withPlayerAt(kitchenOpen(breakWith(0)), IN_KITCHEN.x, IN_KITCHEN.y),
+      ),
+    ).toBe(true)
+  })
+
+  test('walks on while out of its reach', () => {
+    expect(
+      isWorkingForEscape(
+        withPlayerAt(
+          kitchenOpen(breakWith(0)),
+          IN_KITCHEN.x,
+          IN_KITCHEN.y + 20,
+        ),
+      ),
+    ).toBe(false)
+  })
+
+  test('never stops on a thing walked onto', () => {
+    expect(
+      isWorkingForEscape(
+        withPlayerAt(
+          breakWith(0, IN_DINING_ROOM),
+          IN_DINING_ROOM.x,
+          IN_DINING_ROOM.y,
+        ),
+      ),
+    ).toBe(false)
+  })
+
+  test("leaves the dark cellar's thing for the wave", () => {
+    const cellarBreak = modifyFields(
+      breakWith(0, hidingSpotIn(levelOf(initialModel), CELLAR_ROOM_ID)),
+      { level: () => roomOpenIn(DEFAULT_ARRANGEMENT, 'Cellar') },
+    )
+    expect(escapeTarget(cellarBreak)).toBeUndefined()
   })
 })
