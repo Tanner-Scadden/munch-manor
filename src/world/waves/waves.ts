@@ -22,7 +22,13 @@ import {
   targetsOf,
 } from '../party/party'
 import { isEveryoneReady, returnFallen } from '../party/revive'
-import { breakMsOf, crowdSpawns, toughenSpawns } from '../run/difficulty'
+import {
+  breakMsOf,
+  crowdSpawns,
+  paceHolds,
+  paceSpawns,
+  toughenSpawns,
+} from '../run/difficulty'
 import {
   isPracticeGateHeld,
   isTimedBreak,
@@ -262,12 +268,15 @@ export const beginPreparation: {
       levelOf(model).doorIds,
       nearDoorsOf(model),
     )
-    const { holds } = rolled
+    const holds = paceHolds(model.difficulty.chosen, rolled.holds)
     const spawns = hungrierSpawns(
       model,
       crowdSpawns(
         playerCountOf(model),
-        toughenSpawns(model.difficulty.chosen, rolled.spawns),
+        toughenSpawns(
+          model.difficulty.chosen,
+          paceSpawns(model.difficulty.chosen, rolled.spawns),
+        ),
         model.modifiers,
       ),
     )

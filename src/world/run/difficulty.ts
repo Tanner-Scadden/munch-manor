@@ -8,6 +8,7 @@ import { type World, modifyWorldFields } from '../schema/world'
 import {
   type Difficulty,
   type DifficultySetting,
+  type Hold,
   Phase,
   type PlannedSpawn,
 } from '../schema/worldSchema'
@@ -26,6 +27,8 @@ type DifficultyStats = Readonly<{
   biteGraceScale: number
   reloadsWhenIdle: boolean
   breakMs: number
+  tempo: number
+  lullScale: number
 }>
 
 // NOTE: the scales multiply every zombie's base health and speed, the boss
@@ -43,6 +46,12 @@ type DifficultyStats = Readonly<{
 // shop went (owner, 2026-11-10, reversing 2026-11-01's "no wave timers on
 // easy/medium"): 30 s on Dare and Double Dare, 20 s on the two above. The
 // open break before wave 2 still waits for READY (src/world/waves/waves.ts).
+// tempo and lullScale are the wave's rhythm (owner, 2026-11-10, the pacing
+// report's pick 8): tempo scales when each spawn and hold of a wave comes,
+// so below 1 the peaks come sooner and closer together, and lullScale
+// stretches the rest after each hold. The same count comes on every level.
+// Double Dare keeps the rhythm as planned; Dare gets longer lulls, and the
+// two above it peaks more often.
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Dare',
@@ -55,6 +64,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteGraceScale: 2,
     reloadsWhenIdle: true,
     breakMs: 30_000,
+    tempo: 1,
+    lullScale: 1.5,
   },
   Normal: {
     name: 'Double Dare',
@@ -67,6 +78,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteGraceScale: 1.5,
     reloadsWhenIdle: true,
     breakMs: 30_000,
+    tempo: 1,
+    lullScale: 1,
   },
   Hard: {
     name: 'Triple Dare',
@@ -79,6 +92,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteGraceScale: 1,
     reloadsWhenIdle: false,
     breakMs: PREPARATION_MS,
+    tempo: 0.88,
+    lullScale: 1,
   },
   Nightmare: {
     name: 'Triple Dog Dare',
@@ -91,6 +106,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteGraceScale: 1,
     reloadsWhenIdle: false,
     breakMs: PREPARATION_MS,
+    tempo: 0.8,
+    lullScale: 1,
   },
 }
 
@@ -135,6 +152,51 @@ export const toughenSpawns: {
         hpScale: scale => scale * healthScale,
       }),
     )
+  },
+)
+
+// NOTE: the difficulty's rhythm on a rolled wave (see DIFFICULTIES above):
+// every spawn and hold comes at tempo times its planned time, and each
+// hold's rest lasts lullScale times as long. Applied once as the break rolls
+// the wave, so the preview and the wire carry the paced times.
+export const paceSpawns: {
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): (difficulty: Difficulty) => ReadonlyArray<PlannedSpawn>
+  (
+    difficulty: Difficulty,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): ReadonlyArray<PlannedSpawn>
+} = Function.dual(
+  2,
+  (
+    difficulty: Difficulty,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): ReadonlyArray<PlannedSpawn> => {
+    const { tempo } = DIFFICULTIES[difficulty]
+    return tempo === 1
+      ? spawns
+      : Array.map(spawns, spawn =>
+          modifyFields(spawn, { atMs: atMs => Math.round(atMs * tempo) }),
+        )
+  },
+)
+
+export const paceHolds: {
+  (holds: ReadonlyArray<Hold>): (difficulty: Difficulty) => ReadonlyArray<Hold>
+  (difficulty: Difficulty, holds: ReadonlyArray<Hold>): ReadonlyArray<Hold>
+} = Function.dual(
+  2,
+  (difficulty: Difficulty, holds: ReadonlyArray<Hold>): ReadonlyArray<Hold> => {
+    const { tempo, lullScale } = DIFFICULTIES[difficulty]
+    return tempo === 1 && lullScale === 1
+      ? holds
+      : Array.map(holds, hold =>
+          modifyFields(hold, {
+            atMs: atMs => Math.round(atMs * tempo),
+            relaxMs: relaxMs => Math.round(relaxMs * lullScale),
+          }),
+        )
   },
 )
 
