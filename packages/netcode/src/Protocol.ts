@@ -131,6 +131,9 @@ import {
 // first break; the room's clock sets the slam for every player.
 // The last zombie: the pacing holds `loneMs`, how long the wave's last
 // zombie has been hurrying in.
+// Work stations: the World holds its room tools' set-up (`stations`, the
+// cleat's worked time, cooldown, and count), with a new event,
+// StationWorked, and the rooms reshaped inside their slots.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

@@ -121,6 +121,7 @@ const takeRoomWorld = (
     dare: () => world.dare,
     dareThings: () => world.dareThings,
     gasValve: () => world.gasValve,
+    stations: () => world.stations,
     party: () => world.party,
     seats: () => takeOwnSeat(focusOf(model), world.seats),
     maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),

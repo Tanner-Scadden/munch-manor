@@ -51,6 +51,7 @@ export const FIELD_CLASSES = {
   dare: 'World',
   dareThings: 'World',
   gasValve: 'World',
+  stations: 'World',
   cases: 'World',
   hitStop: 'World',
   lessons: 'World',

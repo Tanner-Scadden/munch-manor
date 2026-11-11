@@ -31,6 +31,10 @@ import {
   type RattlesLook,
   rattlesShapes,
 } from '../../features/rattles/rattlesSpot'
+import {
+  stationGroundShapes,
+  stationOverheadShapes,
+} from '../../features/stations/stationView'
 import { bossGroundShapes, bossOverheadShapes } from '../../render/bossView'
 import { type Camera, sceneOffset } from '../../render/camera'
 import { cellarDarkOf } from '../../render/cellarDark'
@@ -176,6 +180,7 @@ const groundShapes = (
   ...(isLeadArmed(model) ? aimSightShapes(model) : []),
   ...Array.flatMap(model.bullets, bulletShapes),
   ...lidShadowShapes(model),
+  ...stationGroundShapes(model),
 ]
 
 // STANDING
@@ -282,6 +287,7 @@ const overheadShapes = (
     ? Array.flatMap(model.pickups, goodieArrowShapes)
     : []),
   ...mendRingsOf(model),
+  ...stationOverheadShapes(model),
   ...Option.match(maybeQuestMark(model), {
     onNone: () => [],
     onSome: door => doorArrowShapes(door, model.elapsedMs),

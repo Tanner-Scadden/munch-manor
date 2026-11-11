@@ -28,8 +28,9 @@ import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
 // the gap in the party table. A shot through it in a wave snaps its chain:
 // it drops into the gap, crushing every zombie under it, and lies there as
 // cover, blocking the gap, until the next break, when the house hoists it
-// back up. It never hurts a player (owner question 5 in ROOM_DRAFTS.md is
-// still open: once a wave until then). Fallen, it is the level's drop
+// back up, or a player winches it up sooner at the cleat on the west wall
+// (src/world/stations/stations.ts), to be shot down again. It never hurts
+// a player. Fallen, it is the level's drop
 // (LevelState.dropped), so the gap's tiles are solid for every walker,
 // bullet, and path without a rule of their own.
 
@@ -167,6 +168,16 @@ export const dropChandelier = (world: World): World => {
   })
 }
 
+// NOTE: the chandelier back up over the gap, its tiles floor again: at a
+// break, or winched up mid-wave at the cleat (src/world/stations/).
+export const hoistChandelier = (world: World): World =>
+  modifyFields(world, {
+    level: state =>
+      modifyFields(state, {
+        dropped: dropped => Array.filter(dropped, id => id !== CHANDELIER_DROP),
+      }),
+  })
+
 // NOTE: when a wave ends and its break begins, the house hoists the
 // chandelier back up over the gap.
 export const rehangAtBreak: {
@@ -176,12 +187,6 @@ export const rehangAtBreak: {
   Phase.isAnyOf(['Wave'])(before.phase) &&
   Phase.isAnyOf(['Preparation'])(after.phase) &&
   isChandelierDown(after)
-    ? modifyFields(after, {
-        level: state =>
-          modifyFields(state, {
-            dropped: dropped =>
-              Array.filter(dropped, id => id !== CHANDELIER_DROP),
-          }),
-      })
+    ? hoistChandelier(after)
     : after,
 )

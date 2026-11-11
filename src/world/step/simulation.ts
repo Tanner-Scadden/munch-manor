@@ -64,6 +64,7 @@ import {
   type Zombie,
 } from '../schema/worldSchema'
 import { advancePurchase } from '../shop/purchase'
+import { advanceStations, isWorkingStation } from '../stations/stations'
 import { advanceIntensity } from '../waves/pacing'
 import { advanceRound, endWhenDefeated } from '../waves/waves'
 import { recoverActions } from '../zombies/actions'
@@ -358,23 +359,26 @@ const swingWhileDown = (
 }
 
 // NOTE: only a standing player shops, reloads, and fires; one who is down
-// swings their melee slot (swingWhileDown).
+// swings their melee slot (swingWhileDown). A player at work on a room
+// tool's station holds their fire and their knife (src/world/stations/).
 const armSeat =
   (deltaMs: number) =>
   (model: World, slot: PlayerSlot): World =>
-    isStanding(seatStateAt(model, slot).seat)
-      ? stabWithKnife(
-          fire(
-            tickReload(faceTowardIntent(model, slot), slot, deltaMs),
+    isStanding(seatStateAt(model, slot).seat) && isWorkingStation(model, slot)
+      ? tickReload(faceTowardIntent(model, slot), slot, deltaMs)
+      : isStanding(seatStateAt(model, slot).seat)
+        ? stabWithKnife(
+            fire(
+              tickReload(faceTowardIntent(model, slot), slot, deltaMs),
+              slot,
+              deltaMs,
+            ),
             slot,
             deltaMs,
-          ),
-          slot,
-          deltaMs,
-        )
-      : isCoop(model) && !isOut(seatStateAt(model, slot).seat)
-        ? swingWhileDown(faceTowardIntent(model, slot), slot, deltaMs)
-        : faceTowardIntent(model, slot)
+          )
+        : isCoop(model) && !isOut(seatStateAt(model, slot).seat)
+          ? swingWhileDown(faceTowardIntent(model, slot), slot, deltaMs)
+          : faceTowardIntent(model, slot)
 
 // NOTE: only a standing player holds to buy.
 const holdToBuy =
@@ -420,7 +424,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   )
   const routed = forEachSeat(moved, holdToBuy(deltaMs))
 
-  const armed = forEachSeat(routed, armSeat(deltaMs))
+  const armed = forEachSeat(advanceStations(routed, deltaMs), armSeat(deltaMs))
 
   const advanced = modifyFields(advanceBullets(armed, seconds, deltaMs), {
     zombies: () => advanceZombies(armed, seconds, deltaMs),
