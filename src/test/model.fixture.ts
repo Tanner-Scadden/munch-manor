@@ -8,6 +8,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import {
   type Bullet,
+  type CarriedGun,
   DifficultyCard,
   type FridgePrize,
   Lesson,
@@ -75,8 +76,16 @@ import {
   type SeatState,
   type SlotRoomId,
   type Vector,
+  type WeaponKind,
 } from '../world/schema/worldSchema'
-import { PHONE_PORTRAIT, SURFACE, zombieOf } from './testing'
+import { maybeSpareGun } from './arsenals'
+import {
+  PHONE_PORTRAIT,
+  SURFACE,
+  bulletInto,
+  doomed,
+  zombieOf,
+} from './testing'
 import { asVeteran } from './veteran'
 
 // The stretch of the blink after a bite on Normal, where the named Models
@@ -280,6 +289,26 @@ export const quietWave = (wave: number): Model =>
     maybeSurface: () => Option.some(SURFACE),
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   })
+
+// NOTE: a quiet wave 3 with the player carrying `arsenal` and a shot from
+// `weapon` about to land on a one-health zombie in front of them: one tick
+// is one kill for that gun.
+export const killShot: {
+  (weapon: WeaponKind): (arsenal: Arsenal) => Model
+  (arsenal: Arsenal, weapon: WeaponKind): Model
+} = Function.dual(2, (arsenal: Arsenal, weapon: WeaponKind): Model =>
+  modifyFocus(
+    modifyFields(quietWave(3), {
+      zombies: () => [doomed],
+      bullets: () => [{ ...bulletInto(500, doomed), weapon }],
+    }),
+    { player: player => modifyFields(player, { arsenal: () => arsenal }) },
+  ),
+)
+
+// NOTE: the focused player's second gun, the one `killShot` holds.
+export const spareGunOf = (current: Model): CarriedGun =>
+  Option.getOrThrow(maybeSpareGun(focusOf(current).player.arsenal))
 
 // NOTE: past the first break's lessons, so the dining room's trap crate
 // rolls its find (a new save's guided first break always holds a Plank

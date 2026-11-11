@@ -13,6 +13,8 @@ export const HelpCard = Schema.Literals([
   'Keys',
   'Rooms',
   'Cases',
+  'Guns',
+  'Stove',
   'List',
   'Exit',
 ])

@@ -338,6 +338,7 @@ export const freshLessons: Lessons = {
   rattles: Lesson.Pending(),
   displayCase: Lesson.Pending(),
   dareCard: Lesson.Pending(),
+  gunLevel: Lesson.Pending(),
 }
 
 // NOTE: particles, shake, popups, coin bursts, trap dust, and the random

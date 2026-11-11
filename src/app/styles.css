@@ -1111,6 +1111,89 @@ body {
   height: calc(6 * var(--thing-px));
 }
 
+/* NOTE: each gun carried, under the dare (src/features/menus/pauseProgress.ts):
+   its picture at its tier, its name, its pips, and its kills toward the next
+   level on a gold bar like the HUD slot's, orange and full at its top. */
+.pause-guns {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(2 * var(--thing-px)) calc(5 * var(--thing-px));
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pause-gun {
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--thing-px));
+  color: var(--menu-ink);
+  font-weight: bold;
+  line-height: 1;
+}
+
+.pause-gun-art {
+  display: block;
+  flex: none;
+  width: calc(var(--art-w) * var(--thing-px));
+  height: calc(var(--art-h) * var(--thing-px));
+  background: center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+}
+
+.pause-gun-body {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: calc(0.75 * var(--thing-px)) calc(2 * var(--thing-px));
+}
+
+.pause-gun-name {
+  font-size: calc(5 * var(--thing-px));
+  white-space: nowrap;
+}
+
+.pause-gun-pips {
+  display: flex;
+  gap: calc(0.5 * var(--thing-px));
+}
+
+.pause-gun-pip {
+  width: calc(2 * var(--thing-px));
+  height: var(--thing-px);
+  background: rgba(244, 241, 222, 0.25);
+}
+
+.pause-gun-pip[data-on='true'] {
+  background: var(--menu-gold);
+}
+
+.pause-gun-bar {
+  position: relative;
+  display: block;
+  width: calc(28 * var(--thing-px));
+  height: calc(2 * var(--thing-px));
+  background: rgba(8, 10, 12, 0.75);
+  outline: 1px solid rgba(244, 241, 222, 0.25);
+}
+
+.pause-gun-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #ffe066;
+}
+
+.pause-gun[data-maxed='true'] .pause-gun-fill {
+  background: #ff9a2a;
+}
+
+.pause-gun-kills {
+  font-size: calc(4 * var(--thing-px));
+  color: #ffe066;
+}
+
 .preparation-controls[data-device='Touch'] {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
 }

@@ -46,6 +46,7 @@ import {
   tick,
   writeSave,
 } from '../../../test/testing'
+import { asTutorialDone } from '../../../test/veteran'
 import { isPending, isPracticeGateHeld } from '../../../world/run/lessons'
 import { noModifiers } from '../../../world/run/modifiers'
 import {
@@ -54,7 +55,6 @@ import {
 } from '../../../world/run/tutorialRules'
 import { Message as ProfileMessage } from '../../profile/message'
 import { FocusTutorialReset } from '../../profile/update'
-import { asTutorialDone } from '../../../test/veteran'
 import { isLearned } from '../onboarding'
 import { isRattlesTalking } from '../rattlesIntro'
 
@@ -231,6 +231,7 @@ describe('the first-run card', () => {
               rattles: 'Learned',
               displayCase: 'Pending',
               dareCard: 'Pending',
+              gunLevel: 'Pending',
             })
           }),
           writeSave(),
@@ -387,9 +388,9 @@ describe('PLAY TUTORIAL', () => {
           Story.Command.expectHas(WriteSave),
           Story.model(current => {
             expect(current.lessons).toEqual(freshLessons)
-            expect(
-              Array.every(Record.values(current.lessons), isPending),
-            ).toBe(true)
+            expect(Array.every(Record.values(current.lessons), isPending)).toBe(
+              true,
+            )
             expect(current.phase).toMatchObject({
               _tag: 'Arriving',
               cut: 'Full',

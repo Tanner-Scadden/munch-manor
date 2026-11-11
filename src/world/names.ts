@@ -43,14 +43,26 @@ export const GUN_NAMES: Readonly<Record<WeaponKind, string>> = {
 // base name, so an upgraded gun still reads as the same gun (decided with the
 // owner on 2026-10-30, see "Names" in GAME_DESIGN.md). Tier 0 is the base
 // name. A new tier is a new word here, never a new name for one gun.
+// The words alone, by tier from 1, are what a level up pops over the
+// player (src/render/powerupView.ts).
+const BEEFY = 'Beefy'
+const DELUXE = 'DELUXE'
+const THREE_THOUSAND = '3000'
+
+const TIER_WORDS: ReadonlyArray<string> = [BEEFY, DELUXE, THREE_THOUSAND]
+
 export const TIER_LADDER: Array.NonEmptyReadonlyArray<
   (base: string) => string
 > = [
   base => base,
-  base => `Beefy ${base}`,
-  base => `${base} DELUXE`,
-  base => `${base} 3000`,
+  base => `${BEEFY} ${base}`,
+  base => `${base} ${DELUXE}`,
+  base => `${base} ${THREE_THOUSAND}`,
 ]
+
+// NOTE: the tier word a gun reaches at `tier`, from 1; none at its base.
+export const maybeTierWord = (tier: number): Option.Option<string> =>
+  Array.get(TIER_WORDS, tier - 1)
 
 export const gunTierName: {
   (tier: number): (kind: WeaponKind) => string

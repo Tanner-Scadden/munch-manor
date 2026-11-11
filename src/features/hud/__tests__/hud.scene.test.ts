@@ -56,6 +56,7 @@ const chipFrames = (model: Model): ReadonlyArray<Box> =>
   )
 
 const LEVEL_BAR_GOLD = '#ffe066'
+const LEVEL_BAR_MAXED = '#ff9a2a'
 const HEARTS_RIGHT = 48
 const WAVE_LABEL_LEFT = 120
 const BOSS_NAME_LEFT = 94
@@ -129,7 +130,7 @@ describe('the top HUD strip', () => {
 })
 
 // NOTE: a gun's kills toward its next tier (src/world/gear/gunLevels.ts),
-// a one-pixel bar along its slot's inner bottom edge, in both layouts.
+// a two-pixel bar the slot's width just under it, in both layouts.
 describe("a gun slot's level bar", () => {
   const withSmg = (tier: number, kills: number): Model =>
     modifyFocus(twoBoosts, {
@@ -140,7 +141,11 @@ describe("a gun slot's level bar", () => {
         }),
     })
 
-  const barIn = (model: Model, screen: Screen): ReadonlyArray<Box> => {
+  const barIn = (
+    model: Model,
+    screen: Screen,
+    fill: string,
+  ): ReadonlyArray<Box> => {
     const slot = gunSlotBox(screen, 1)
     return Array.filter(
       rectsOf(
@@ -148,24 +153,33 @@ describe("a gun slot's level bar", () => {
         { x: 0, y: 0 },
       ),
       rect =>
-        rect.height === 1 &&
-        rect.fill === LEVEL_BAR_GOLD &&
-        rect.x === slot.x + 1 &&
-        rect.y === slot.y + slot.height - 2,
+        rect.height === 2 &&
+        rect.fill === fill &&
+        rect.x === slot.x &&
+        rect.y === slot.y + slot.height + 1,
     )
   }
 
   test('fills with the kills from the last tier toward the next', () => {
     Array.forEach([LANDSCAPE_SCREEN, DEFAULT_PORTRAIT_SCREEN], screen => {
-      const inner = gunSlotBox(screen, 1).width - 2
+      const { width } = gunSlotBox(screen, 1)
       expect(
-        Array.map(barIn(withSmg(1, 80), screen), ({ width }) => width),
-      ).toEqual([Math.round(inner / 2)])
-      expect(barIn(withSmg(0, 0), screen)).toEqual([])
+        Array.map(
+          barIn(withSmg(1, 80), screen, LEVEL_BAR_GOLD),
+          bar => bar.width,
+        ),
+      ).toEqual([Math.round(width / 2)])
+      expect(barIn(withSmg(0, 0), screen, LEVEL_BAR_GOLD)).toEqual([])
     })
   })
 
-  test('is gone once the gun is at its top tier', () => {
-    expect(barIn(withSmg(3, 300), LANDSCAPE_SCREEN)).toEqual([])
+  test('is full and orange once the gun is at its top tier', () => {
+    const { width } = gunSlotBox(LANDSCAPE_SCREEN, 1)
+    expect(
+      Array.map(
+        barIn(withSmg(3, 300), LANDSCAPE_SCREEN, LEVEL_BAR_MAXED),
+        bar => bar.width,
+      ),
+    ).toEqual([width])
   })
 })

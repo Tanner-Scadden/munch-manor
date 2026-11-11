@@ -633,7 +633,7 @@ describe('Home menu', () => {
           Scene.role('dialog', { name: 'How to play' }),
           Scene.inside(
             Scene.role('list', { name: 'Controls' }),
-            Scene.expectAll(Scene.all.role('listitem')).toHaveCount(10),
+            Scene.expectAll(Scene.all.role('listitem')).toHaveCount(12),
           ),
           Scene.expect(Scene.role('list', { name: 'More keys' })).toExist(),
           Scene.expect(Scene.role('region', { name: 'On the menu' })).toExist(),

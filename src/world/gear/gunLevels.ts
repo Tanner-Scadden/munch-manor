@@ -67,6 +67,15 @@ export const maybeLevelProgress = (gun: CarriedGun): Option.Option<number> =>
     }),
   )
 
+// NOTE: the kills a gun's next tier asks for, counted from its first kill:
+// none at its top tier, or for a gun with no tiers. The pause screen shows a
+// gun's kills against it.
+export const maybeNextLevelKills = (gun: CarriedGun): Option.Option<number> =>
+  pipe(
+    Array.get(UPGRADE_TIERS[gun.kind], gun.tier),
+    Option.map(({ kills }) => kills),
+  )
+
 // NOTE: a gun at a new tier holds the extra rounds its bigger magazine
 // brings (the Pan its deeper dent meter), so a level up never reads as a
 // magazine gone short.

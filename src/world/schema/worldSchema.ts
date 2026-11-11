@@ -719,6 +719,8 @@ export type Lesson = typeof Lesson.Type
 // break (src/features/onboarding/caseCard.ts). `dareCard` is the
 // dare card from the pocket read once (src/features/dare/pocketCard.ts):
 // until then it waits for a key or a tap.
+// `gunLevel` is the first time hint as a gun nears its first level on its
+// kills, learned at the first level up (src/features/onboarding/onboarding.ts).
 export const Lessons = Schema.Struct({
   move: Lesson,
   fire: Lesson,
@@ -732,6 +734,7 @@ export const Lessons = Schema.Struct({
   rattles: Lesson,
   displayCase: Lesson,
   dareCard: Lesson,
+  gunLevel: Lesson,
 })
 export type Lessons = typeof Lessons.Type
 

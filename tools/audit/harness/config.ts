@@ -166,6 +166,7 @@ export const HarnessConfig = Schema.Struct({
         'rattles',
         'displayCase',
         'dareCard',
+        'gunLevel',
       ]),
     ),
   ),
@@ -197,6 +198,13 @@ export const HarnessConfig = Schema.Struct({
   stab: Flag,
   loaded: Num(30),
   tier: Num(0),
+  // NOTE: `gunkills=25,90` gives the first and second gun that many kills
+  // of their own, toward their next level; `perk` cooks the gun in hand;
+  // `levelup` pops the gun in hand's level up to that tier, `calloutAge` ms
+  // in.
+  gunkills: Schema.optionalKey(ListOf(Schema.FiniteFromString)),
+  perk: Choice(['Spicy', 'Crispy', 'Hearty']),
+  levelup: MaybeNum,
   pistol: MaybeNum,
   aim: Schema.optionalKey(PointFromString),
   stick: Schema.optionalKey(PointFromString),

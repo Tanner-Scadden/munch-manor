@@ -932,6 +932,7 @@ const migratedLiveSave: PlayerSave = {
       rattles: 'Pending',
       displayCase: 'Pending',
       dareCard: 'Pending',
+      gunLevel: 'Pending',
     },
     trapHint: 'Seen',
     introducedKinds: ['Shambler', 'Runner', 'Tank'],

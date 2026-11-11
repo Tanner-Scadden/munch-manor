@@ -25,8 +25,9 @@ import { type Camera, worldToView } from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
 import { featLockShapes, lockSpotIn } from '../../render/featLockView'
 import {
+  COOKED_GUN_ICONS,
+  COOKED_GUN_ICON_WIDTH,
   FLAME_ICON,
-  PERK_ICONS,
   PERK_ICON_SIZE,
 } from '../../render/kitchenGearView'
 import { PADLOCK_SPRITE } from '../../render/room/kitchenView'
@@ -309,10 +310,21 @@ const goTag = (icon: Sprite): PriceTag =>
     Option.some({ sprite: icon, width: PERK_ICON_SIZE }),
   )
 
+// NOTE: the stove's tag shows the gun in hand wearing this break's perk,
+// so GO reads as "cook your gun".
+const cookTag = (perk: GunPerk): PriceTag =>
+  bakeTag(
+    bakeText('GO', 'Prompt'),
+    Option.some({
+      sprite: COOKED_GUN_ICONS[perk],
+      width: COOKED_GUN_ICON_WIDTH,
+    }),
+  )
+
 const STOVE_TAGS: Readonly<Record<GunPerk, PriceTag>> = {
-  Spicy: goTag(PERK_ICONS.Spicy),
-  Crispy: goTag(PERK_ICONS.Crispy),
-  Hearty: goTag(PERK_ICONS.Hearty),
+  Spicy: cookTag('Spicy'),
+  Crispy: cookTag('Crispy'),
+  Hearty: cookTag('Hearty'),
 }
 
 const stoveTagOf = (model: Model): PriceTag =>

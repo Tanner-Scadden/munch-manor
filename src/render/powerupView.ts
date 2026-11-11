@@ -1,7 +1,7 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import { type BakedText, bakeText, placeBaked } from '../art/font'
+import { type BakedText, GLYPH_HEIGHT, bakeText, placeBaked } from '../art/font'
 import { TOP_LEFT, group, placeAt, spriteShapes } from '../art/sprite'
 import {
   AURA_FRAME_COUNT,
@@ -22,6 +22,7 @@ import {
   PICKUP_LIFETIME_MS,
 } from '../world/gear/powerups'
 import { UPGRADE_TIERS, tierName } from '../world/gear/weapons'
+import { maybeTierWord } from '../world/names'
 import {
   type BoostKind,
   BoostTimer,
@@ -318,15 +319,68 @@ export const calloutShapes =
       : explainedShapes(frame, texts)
   }
 
-// NOTE: a gun's level up: its new name and what changed (src/world/shop/shopUpgrades.ts),
-// baked once for every gun and tier.
-const LEVEL_TEXTS: Readonly<Record<WeaponKind, ReadonlyArray<CalloutText>>> =
+// NOTE: a gun's level up pops big and short over the player: its tier word
+// (BEEFY!), then its new name and what changed (src/world/shop/shopUpgrades.ts),
+// baked once for every gun and tier. The font has capitals only, so every
+// line is upper-cased.
+type LevelText = Readonly<{
+  word: BakedText
+  name: BakedText
+  change: BakedText
+}>
+
+type LevelLines = Readonly<{ word: string; name: string; change: string }>
+
+export const levelPopLines: {
+  (tier: number): (weapon: WeaponKind) => LevelLines
+  (weapon: WeaponKind, tier: number): LevelLines
+} = Function.dual(2, (weapon: WeaponKind, tier: number): LevelLines => ({
+  word: `${String.toUpperCase(
+    Option.getOrElse(maybeTierWord(tier), () => 'LEVEL UP'),
+  )}!`,
+  name: String.toUpperCase(tierName(weapon, tier)),
+  change: String.toUpperCase(levelUpChange(weapon, tier)),
+}))
+
+const LEVEL_TEXTS: Readonly<Record<WeaponKind, ReadonlyArray<LevelText>>> =
   Record.map(UPGRADE_TIERS, (tiers, weapon) =>
-    Array.makeBy(tiers.length, index => ({
-      title: bakeText(`${tierName(weapon, index + 1)}!`, 'Victory'),
-      blurb: bakeText(levelUpChange(weapon, index + 1), 'Plain'),
-    })),
+    Array.makeBy(tiers.length, index => {
+      const { word, name, change } = levelPopLines(weapon, index + 1)
+      return {
+        word: bakeText(word, 'Victory'),
+        name: bakeText(name, 'Prompt'),
+        change: bakeText(change, 'Plain'),
+      }
+    }),
   )
+
+const LEVEL_SCALE = 3
+const LEVEL_POP_SCALE = 4
+const LEVEL_LINE_GAP = 4
+const LEVEL_LINE_HEIGHT = 9
+
+const levelShapes = (
+  frame: CalloutFrame,
+  { word, name, change }: LevelText,
+  ageMs: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const { opacity } = frame
+  const scale = ageMs < CALLOUT_POP_MS ? LEVEL_POP_SCALE : LEVEL_SCALE
+  const widest = Math.max(word.width * scale, name.width, change.width)
+  const { x, y } = centerWithin(frame, Math.ceil(widest / 2) + CALLOUT_MARGIN)
+  const top = Math.max(frame.view.y + CALLOUT_MARGIN, y - LEVEL_LINE_HEIGHT * 2)
+  const nameY = top + GLYPH_HEIGHT * scale + LEVEL_LINE_GAP
+  return [
+    placeBaked(word, { x, y: top, align: 'Center', scale, opacity }),
+    placeBaked(name, { x, y: nameY, align: 'Center', opacity }),
+    placeBaked(change, {
+      x,
+      y: nameY + LEVEL_LINE_HEIGHT,
+      align: 'Center',
+      opacity,
+    }),
+  ]
+}
 
 export const levelCalloutShapes =
   (camera: Camera) =>
@@ -334,9 +388,10 @@ export const levelCalloutShapes =
     Option.match(Array.get(LEVEL_TEXTS[callout.weapon], callout.tier - 1), {
       onNone: () => [],
       onSome: texts =>
-        explainedShapes(
+        levelShapes(
           calloutFrameOf(camera, callout, LEVEL_CALLOUT_LIFETIME_MS),
           texts,
+          callout.ageMs,
         ),
     })
 

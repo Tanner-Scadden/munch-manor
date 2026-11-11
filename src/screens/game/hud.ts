@@ -407,36 +407,75 @@ type SlotLook = Readonly<{
   isBeckoning?: boolean
   maybeIcon?: Option.Option<Sprite>
   maybePerk?: Option.Option<GunPerk>
-  maybeLevelBar?: Option.Option<number>
+  maybeLevelBar?: Option.Option<LevelBar>
+  isLevelFlashing?: boolean
 }>
 
-// NOTE: a gun's kills toward its next tier (src/world/gear/gunLevels.ts),
-// a thin bar along the slot's inner bottom edge, gone at its top tier.
+// NOTE: a gun's kills toward its next level (src/world/gear/gunLevels.ts),
+// a bar under its slot that fills as the gun kills, like an XP bar. At its
+// top level it stays full, in a deeper gold. A gun with no levels (Brain
+// Freeze) and the knife have none.
+type LevelBar = Readonly<{ share: number; isMaxed: boolean }>
+
+export const maybeLevelBarOf = (gun: CarriedGun): Option.Option<LevelBar> =>
+  maxTier(gun.kind) === 0
+    ? Option.none()
+    : Option.some(
+        Option.match(maybeLevelProgress(gun), {
+          onNone: () => ({ share: 1, isMaxed: true }),
+          onSome: share => ({ share, isMaxed: false }),
+        }),
+      )
+
+const LEVEL_BAR_HEIGHT = 2
+const LEVEL_BAR_DROP = 1
 const LEVEL_BAR_COLOR = '#ffe066'
-const LEVEL_TRACK_COLOR = 'rgba(244, 241, 222, 0.18)'
+const LEVEL_MAXED_COLOR = '#ff9a2a'
+const LEVEL_FLASH_COLOR = '#fff6c8'
+const LEVEL_TRACK_COLOR = 'rgba(8, 10, 12, 0.75)'
 
 const levelBarShapes = (
   x: number,
-  bottom: number,
+  top: number,
   width: number,
-  share: number,
+  { share, isMaxed }: LevelBar,
+  isFlashing: boolean,
 ): ReadonlyArray<Canvas.Shape> => {
   const filled = Math.round(clamp(share, 0, 1) * width)
+  const fill = isFlashing
+    ? LEVEL_FLASH_COLOR
+    : isMaxed
+      ? LEVEL_MAXED_COLOR
+      : LEVEL_BAR_COLOR
   return [
-    Canvas.Rect({ x, y: bottom, width, height: 1, fill: LEVEL_TRACK_COLOR }),
+    Canvas.Rect({
+      x,
+      y: top,
+      width,
+      height: LEVEL_BAR_HEIGHT,
+      fill: LEVEL_TRACK_COLOR,
+    }),
     ...(filled > 0
       ? [
           Canvas.Rect({
             x,
-            y: bottom,
+            y: top,
             width: filled,
-            height: 1,
-            fill: LEVEL_BAR_COLOR,
+            height: LEVEL_BAR_HEIGHT,
+            fill,
           }),
         ]
       : []),
   ]
 }
+
+// NOTE: a slot whose gun just leveled flashes its border white and gold
+// for a beat, with the pop over the player (src/render/powerupView.ts).
+const LEVEL_FLASH_MS = 900
+const LEVEL_FLASH_BLINK_MS = 110
+
+const isLevelFlashOn = (elapsedMs: number): boolean =>
+  Math.floor(elapsedMs / LEVEL_FLASH_BLINK_MS) % 2 === 0
 
 // NOTE: a cooked gun's perk (src/world/kitchen/stove.ts) sits on its slot's top left
 // corner like a sticker, half over the border, clear of the icon and the
@@ -493,10 +532,17 @@ const ammoTone = (look: AmmoLook, elapsedMs: number): TextTone =>
   isBlinkOff(look, elapsedMs) ? 'Plain' : AMMO_TONES[look]
 
 const slotBorder = (
-  { isHeld, ammoLook: look, isBeckoning = false }: SlotLook,
+  {
+    isHeld,
+    ammoLook: look,
+    isBeckoning = false,
+    isLevelFlashing = false,
+  }: SlotLook,
   elapsedMs: number,
 ): string => {
-  if (look === 'Last' && !isBlinkOff(look, elapsedMs)) {
+  if (isLevelFlashing) {
+    return isLevelFlashOn(elapsedMs) ? LEVEL_FLASH_COLOR : SLOT_HELD_BORDER
+  } else if (look === 'Last' && !isBlinkOff(look, elapsedMs)) {
     return SLOT_LAST_BORDER
   } else if (isHeld) {
     return SLOT_HELD_BORDER
@@ -650,8 +696,14 @@ const slotShapes = (
     ...slotContentShapes(x, top, width, isStacked, look, elapsedMs),
     ...Option.match(look.maybeLevelBar ?? Option.none(), {
       onNone: () => [],
-      onSome: share =>
-        levelBarShapes(x + 1, top + height - 2, width - 2, share),
+      onSome: bar =>
+        levelBarShapes(
+          x,
+          top + height + LEVEL_BAR_DROP,
+          width,
+          bar,
+          (look.isLevelFlashing ?? false) && isLevelFlashOn(elapsedMs),
+        ),
     }),
   ]
   return look.isHeld ? shapes : [group({ opacity: SLOT_DIM_OPACITY, shapes })]
@@ -676,7 +728,21 @@ const ammoLook = (
 // NOTE: no gun runs out, so a slot shows its magazine alone.
 const ammoText = (gun: CarriedGun): string => `${gun.loaded}`
 
+// NOTE: the player's own gun reached its tier this beat: the level up's
+// pop is still young (src/app/frame.ts keeps only the focused seat's).
+export const isJustLeveled: {
+  (gun: CarriedGun): (model: Model) => boolean
+  (model: Model, gun: CarriedGun): boolean
+} = Function.dual(2, (model: Model, gun: CarriedGun): boolean =>
+  Array.some(
+    model.levelCallouts,
+    ({ weapon, tier, ageMs }) =>
+      weapon === gun.kind && tier === gun.tier && ageMs < LEVEL_FLASH_MS,
+  ),
+)
+
 const gunSlotLook = (
+  model: Model,
   player: Player,
   gun: CarriedGun,
   isHeld: boolean,
@@ -686,7 +752,8 @@ const gunSlotLook = (
   isHeld,
   ammoLook: ammoLook(player, isHeld, gun),
   maybePerk: Option.fromNullishOr(gun.perk),
-  maybeLevelBar: maybeLevelProgress(gun),
+  maybeLevelBar: maybeLevelBarOf(gun),
+  isLevelFlashing: isJustLeveled(model, gun),
 })
 
 const EMPTY_SLOT: SlotLook = {
@@ -719,7 +786,10 @@ const KNIFE_SPRITE = spriteShapes(
   TOP_LEFT,
 )
 
-export const meleeSlotLook = (player: Player): SlotLook => ({
+export const meleeSlotLook: {
+  (player: Player): (model: Model) => SlotLook
+  (model: Model, player: Player): SlotLook
+} = Function.dual(2, (model: Model, player: Player): SlotLook => ({
   ...Option.match(maybePanOf(player), {
     onNone: () => ({
       maybeGun: Option.none(),
@@ -728,13 +798,14 @@ export const meleeSlotLook = (player: Player): SlotLook => ({
     onSome: pan => ({
       maybeGun: Option.some({ weapon: pan.kind, tier: pan.tier }),
       maybeMeter: Option.some(pan.loaded / magazineOf(pan.kind, pan.tier)),
-      maybeLevelBar: maybeLevelProgress(pan),
+      maybeLevelBar: maybeLevelBarOf(pan),
+      isLevelFlashing: isJustLeveled(model, pan),
     }),
   }),
   ammo: KNIFE_ROUNDS,
   isHeld: isWieldingMelee(player),
   ammoLook: 'Loaded',
-})
+}))
 
 // NOTE: until the player has swapped once, the gun they are not holding
 // pulses, where the swap happens (its Q badge on a keyboard, a tap on
@@ -760,21 +831,21 @@ const loadoutShapes = (
     onNone: () => EMPTY_SLOT,
     onSome: second =>
       beckonWhen(
-        gunSlotLook(player, second, Option.contains(held, 'Second')),
+        gunSlotLook(model, player, second, Option.contains(held, 'Second')),
         isBeckoning,
       ),
   })
   const isFirstHeld = Option.contains(held, 'First')
   const firstSlot = Array.isReadonlyArrayNonEmpty(rest)
-    ? beckonWhen(gunSlotLook(player, first, isFirstHeld), isBeckoning)
-    : gunSlotLook(player, first, isFirstHeld)
+    ? beckonWhen(gunSlotLook(model, player, first, isFirstHeld), isBeckoning)
+    : gunSlotLook(model, player, first, isFirstHeld)
   return [
     ...slotShapes(layout, 0, firstSlot, model.elapsedMs),
     ...slotShapes(layout, 1, secondSlot, model.elapsedMs),
     ...slotShapes(
       layout,
       MELEE_SLOT_INDEX,
-      meleeSlotLook(player),
+      meleeSlotLook(model, player),
       model.elapsedMs,
     ),
   ]
