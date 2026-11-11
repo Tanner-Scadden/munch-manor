@@ -601,8 +601,9 @@ export const PackDoor = Schema.Struct({
 })
 export type PackDoor = typeof PackDoor.Type
 
-// NOTE: loneMs is how long the wave's last zombie has been hurrying
-// (src/world/zombies/lastZombie.ts), 0 while it is not the last.
+// NOTE: loneMs is how long the wave's last few zombies have been the last
+// (src/world/zombies/lastZombie.ts): they hurry once it passes the rule's
+// delay. 0 while more are alive or more are to come.
 export const Pacing = Schema.Struct({
   holds: Schema.Array(Hold),
   beat: Beat,

@@ -17,7 +17,11 @@ import { bossAt, fightingBoss } from './boss.fixture'
 
 const FRAME_MS = FIXED_STEP_MS
 const SLOW = 12
-const RAMP_TICKS = Math.ceil(LAST_ZOMBIE_RULES.rampMs / FRAME_MS)
+const DELAY_TICKS = Math.ceil(LAST_ZOMBIE_RULES.delayMs / FRAME_MS)
+const RAMP_TICKS = Math.ceil(
+  (LAST_ZOMBIE_RULES.delayMs + LAST_ZOMBIE_RULES.rampMs) / FRAME_MS,
+)
+const DELAY = LAST_ZOMBIE_RULES.delayMs
 
 // NOTE: the player stands on the start spot and the zombies far to its
 // left, on open floor, so each walks straight at the player for seconds.
@@ -64,21 +68,34 @@ const paceOver = (start: Model, id: number) =>
 const after = (start: Model, count: number) =>
   Story.story(APPLICATION, Story.given(start), ...ticks(count, FRAME_MS))
 
-describe('the last zombie', () => {
-  it('ramps from its own speed to the players walk, never down', () => {
+describe('the last zombies', () => {
+  it('wait out the delay, then ramp from their own speed to the players walk, never down', () => {
     expect(lastZombieSpeed(SLOW, 0)).toBe(SLOW)
-    expect(lastZombieSpeed(SLOW, LAST_ZOMBIE_RULES.rampMs / 2)).toBeCloseTo(
-      (SLOW + PLAYER_SPEED) / 2,
-    )
-    expect(lastZombieSpeed(SLOW, LAST_ZOMBIE_RULES.rampMs)).toBe(PLAYER_SPEED)
-    expect(lastZombieSpeed(SLOW, 10 * LAST_ZOMBIE_RULES.rampMs)).toBe(
+    expect(lastZombieSpeed(SLOW, DELAY)).toBe(SLOW)
+    expect(
+      lastZombieSpeed(SLOW, DELAY + LAST_ZOMBIE_RULES.rampMs / 2),
+    ).toBeCloseTo((SLOW + PLAYER_SPEED) / 2)
+    expect(lastZombieSpeed(SLOW, DELAY + LAST_ZOMBIE_RULES.rampMs)).toBe(
       PLAYER_SPEED,
     )
-    expect(lastZombieSpeed(90, LAST_ZOMBIE_RULES.rampMs)).toBe(90)
+    expect(lastZombieSpeed(SLOW, DELAY + 10 * LAST_ZOMBIE_RULES.rampMs)).toBe(
+      PLAYER_SPEED,
+    )
+    expect(lastZombieSpeed(90, DELAY + LAST_ZOMBIE_RULES.rampMs)).toBe(90)
   })
 
+  it.effect('a lone last zombie keeps its own pace through the delay', () =>
+    Effect.gen(function* () {
+      const start = lastStanding([straggler])
+      const waited = yield* after(start, DELAY_TICKS - 6)
+      expect(waited.pacing.loneMs).toBeGreaterThan(0)
+      const pace = yield* paceOver(waited, 1)
+      expect(pace).toBeLessThan(SLOW * 2)
+    }),
+  )
+
   it.effect(
-    'a lone last zombie speeds up to the players walk over about 2 s',
+    'a lone last zombie speeds up to the players walk after the delay',
     () =>
       Effect.gen(function* () {
         const start = lastStanding([straggler])
@@ -87,7 +104,7 @@ describe('the last zombie', () => {
 
         const ramped = yield* after(start, RAMP_TICKS)
         expect(ramped.pacing.loneMs).toBeGreaterThanOrEqual(
-          LAST_ZOMBIE_RULES.rampMs,
+          DELAY + LAST_ZOMBIE_RULES.rampMs,
         )
         expect(zombieById(ramped, 1).speed).toBe(SLOW)
         const late = yield* paceOver(ramped, 1)
@@ -106,11 +123,29 @@ describe('the last zombie', () => {
     }),
   )
 
-  it.effect('it does not hurry while two are alive', () =>
+  it.effect('the last three hurry together', () =>
     Effect.gen(function* () {
       const start = lastStanding([
         straggler,
         zombieAt(2, FAR_X, PLAYER_Y - 40, { speed: SLOW }),
+        zombieAt(3, FAR_X, PLAYER_Y + 40, { speed: SLOW }),
+      ])
+      const ramped = yield* after(start, RAMP_TICKS)
+      expect(ramped.pacing.loneMs).toBeGreaterThanOrEqual(
+        DELAY + LAST_ZOMBIE_RULES.rampMs,
+      )
+      const pace = yield* paceOver(ramped, 2)
+      expect(pace).toBeGreaterThan(PLAYER_SPEED - 4)
+    }),
+  )
+
+  it.effect('it does not hurry while four are alive', () =>
+    Effect.gen(function* () {
+      const start = lastStanding([
+        straggler,
+        zombieAt(2, FAR_X, PLAYER_Y - 40, { speed: SLOW }),
+        zombieAt(3, FAR_X, PLAYER_Y + 40, { speed: SLOW }),
+        zombieAt(4, FAR_X - 30, PLAYER_Y, { speed: SLOW }),
       ])
       const later = yield* after(start, RAMP_TICKS)
       expect(later.pacing.loneMs).toBe(0)

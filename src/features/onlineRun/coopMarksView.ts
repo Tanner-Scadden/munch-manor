@@ -3,11 +3,16 @@ import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { textShapes } from '../../art/font'
-import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from '../../art/sprite'
+import { TOP_LEFT, placeAt, spriteShapes } from '../../art/sprite'
 import { isBotCrew, maybeCrewBotAt } from '../../domain/bots'
 import { maybeRoomOf } from '../../domain/coopRoom'
 import { seatNamesOf } from '../../domain/onlineRun'
 import { type Camera, worldToView } from '../../render/camera'
+import {
+  EDGE_BADGE_INK,
+  EDGE_BADGE_PX,
+  edgeBadgeOf,
+} from '../../render/edgeBadge'
 import {
   NAME_LIFT_CALLING_PX,
   NAME_LIFT_DOWNED_PX,
@@ -294,45 +299,11 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
 
 // EDGE BADGES
 
-const BADGE_PX = 9
-const BADGE_EDGE = '#1a0f14'
 const EDGE_INSET_PX = 3
-
-const badgeOf = (color: string): ReadonlyArray<Canvas.Shape> =>
-  bakeShapes([
-    Canvas.Rect({
-      x: 1,
-      y: 0,
-      width: BADGE_PX - 2,
-      height: BADGE_PX,
-      fill: BADGE_EDGE,
-    }),
-    Canvas.Rect({
-      x: 0,
-      y: 1,
-      width: BADGE_PX,
-      height: BADGE_PX - 2,
-      fill: BADGE_EDGE,
-    }),
-    Canvas.Rect({
-      x: 1,
-      y: 1,
-      width: BADGE_PX - 2,
-      height: BADGE_PX - 2,
-      fill: color,
-    }),
-    Canvas.Rect({
-      x: 3,
-      y: 3,
-      width: BADGE_PX - 6,
-      height: BADGE_PX - 6,
-      fill: BADGE_EDGE,
-    }),
-  ])
 
 const BADGES: ReadonlyArray<ReadonlyArray<Canvas.Shape>> = Array.map(
   [0, 1, 2, 3],
-  slot => badgeOf(seatColorOf(slot)),
+  slot => edgeBadgeOf(seatColorOf(slot)),
 )
 
 // NOTE: a teammate off screen who just shouted MEDIC! (src/world/party/medic.ts): their
@@ -359,7 +330,7 @@ const CALLING_BADGE: ReadonlyArray<Canvas.Shape> = spriteShapes(
   ],
   {
     g: 'rgba(255, 244, 214, 0.55)',
-    o: BADGE_EDGE,
+    o: EDGE_BADGE_INK,
     w: '#f4f1de',
     r: '#e8343a',
   },
@@ -407,8 +378,8 @@ export const coopEdgeShapes: {
         if (isOnScreen) {
           return []
         }
-        const x = Math.round(clamp(at.x, left, right - BADGE_PX))
-        const y = Math.round(clamp(at.y, top, bottom - BADGE_PX))
+        const x = Math.round(clamp(at.x, left, right - EDGE_BADGE_PX))
+        const y = Math.round(clamp(at.y, top, bottom - EDGE_BADGE_PX))
         return [badgeShapeOf(x, y, slot, isCallFresh(seat), model.elapsedMs)]
       }),
     )
