@@ -293,7 +293,8 @@ export const rugShapes = (rug: Box): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-export const PARLOUR_RUG: Box = { x: 98, y: 34, width: 124, height: 98 }
+// NOTE: the dance floor's rug, inside the parlour's ring of furniture.
+export const PARLOUR_RUG: Box = { x: 72, y: 52, width: 176, height: 76 }
 
 const GLOW_ROWS = 26
 const GLOW_RINGS = 3

@@ -19,19 +19,16 @@ import {
   LIBRARY_ROOM_ID,
   MANOR_SPEC,
   PARLOUR_ROOM_ID,
-  SECRET_EXIT,
   SECRET_SYMBOL,
   SLOTS,
-  WEST_EXIT,
   manorSpecFor,
   roomSpotsOf,
 } from '../plan'
+import { EVERY_EXIT } from './exits.fixture'
 
 // The house's slots (docs/ROOM_DRAFTS.md): the parlour west of the dining
 // room, the library east of it, and the cellar beyond the library, each on
 // the slot's footprint, with slot-relative doors and exits.
-
-const EVERY_EXIT = ['Kitchen', WEST_EXIT, EAST_EXIT, FAR_EXIT, SECRET_EXIT]
 
 const WHOLE_HOUSE = levelFor(MANOR_SPEC, EVERY_EXIT)
 
@@ -186,15 +183,15 @@ describe('the house spots', () => {
       '3',
       '4',
     ])
-    expect(library.hiding[0]?.tile).toEqual({ column: 51, row: 6 })
+    expect(library.hiding[0]?.tile).toEqual({ column: 64, row: 5 })
     expect(library.cases).toEqual([
       [
         { column: 41, row: 16 },
         { column: 42, row: 16 },
       ],
       [
-        { column: 61, row: 16 },
-        { column: 62, row: 16 },
+        { column: 63, row: 16 },
+        { column: 64, row: 16 },
       ],
     ])
     expect(library.trapCrates).toHaveLength(1)
@@ -203,8 +200,8 @@ describe('the house spots', () => {
     expect(cellar.cases).toHaveLength(2)
     expect(cellar.trapCrates).toEqual([
       [
-        { column: 83, row: 7 },
-        { column: 84, row: 7 },
+        { column: 80, row: 16 },
+        { column: 81, row: 16 },
       ],
     ])
     expect(of('Dining').hiding).toHaveLength(4)

@@ -35,6 +35,7 @@ const ICON_BOX = 22
 const ROOM_LABELS: Readonly<Record<StudioRoom, string>> = {
   Manor: 'Manor',
   Dining: 'Dining',
+  Parlour: 'Parlour',
   Library: 'Library',
   Cellar: 'Cellar',
 }

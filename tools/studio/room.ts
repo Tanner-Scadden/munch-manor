@@ -21,6 +21,7 @@ import type { Pin, Tile, TileArea } from './notes'
 export const StudioRoom = Schema.Literals([
   'Manor',
   'Dining',
+  'Parlour',
   'Library',
   'Cellar',
 ])
