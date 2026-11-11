@@ -134,6 +134,9 @@ import {
 // Work stations: the World holds its room tools' set-up (`stations`, the
 // cleat's worked time, cooldown, and count), with a new event,
 // StationWorked, and the rooms reshaped inside their slots.
+// Room finds: a hidden dare thing carries the work put into finding it
+// (Hidden's `workedMs`), as each room finds its thing its own way. A room's
+// wake-up rush rides the round's planned spawns, so it adds nothing more.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

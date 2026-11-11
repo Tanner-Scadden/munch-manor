@@ -13,8 +13,9 @@ import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Drawable } from '../../render/depth'
 import { FULL_TURN, rect } from '../../render/drawing'
 import type { Difficulty } from '../../shared/playerData'
-import { isInOpenRoom, maybeLyingAt } from '../../world/dare/dare'
+import { findStyleOf, isInOpenRoom, maybeLyingAt } from '../../world/dare/dare'
 import { type DareThing, DareThingState } from '../../world/dare/dareSchema'
+import { isWorkedFind } from '../../world/dare/finds'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
 import { Phase, type Vector } from '../../world/schema/worldSchema'
@@ -52,9 +53,14 @@ const GLOW_PULSE_PX = 2
 const GLOW_FILL = 'rgba(255, 224, 102, 0.22)'
 const GLOW_RING = 'rgba(255, 224, 102, 0.55)'
 
-// NOTE: how high over its spot a shown thing floats, for the pointer and
-// the bubble to clear it.
-export const SHOWN_THING_TOP = BIG_LIFT_PX + HALF_BIG_ICON + BOB_PX
+// NOTE: how much higher a thing floats over a room's find (its trunk, its
+// book stack, its dumbwaiter, src/features/dare/findView.ts), to clear it.
+const OVER_FIND_PX = 9
+
+// NOTE: how high over its spot a shown thing floats, at most, for the
+// pointer and the bubble to clear it.
+export const SHOWN_THING_TOP =
+  BIG_LIFT_PX + OVER_FIND_PX + HALF_BIG_ICON + BOB_PX
 
 const SHADOW: Sprite = bakeShapes([
   rect(-3, 0, 7, 1, 'rgba(0, 0, 0, 0.4)'),
@@ -149,6 +155,9 @@ const shownDrawable = (
   const x = Math.round(spot.x)
   const y = Math.round(spot.y)
   const radius = glowRadiusOf(model.elapsedMs)
+  const lift = isWorkedFind(findStyleOf(thing, levelOf(model)))
+    ? BIG_LIFT_PX + OVER_FIND_PX
+    : BIG_LIFT_PX
   return {
     footY: y,
     rank: 'Pickup',
@@ -164,7 +173,7 @@ const shownDrawable = (
       placeAt(x, y, BIG_SHADOW),
       placeAt(
         x - HALF_BIG_ICON,
-        y - BIG_LIFT_PX - HALF_BIG_ICON - bobOf(model.elapsedMs),
+        y - lift - HALF_BIG_ICON - bobOf(model.elapsedMs),
         DARE_BIG_ICONS[thing.kind],
       ),
     ],

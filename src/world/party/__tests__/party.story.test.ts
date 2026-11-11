@@ -49,6 +49,7 @@ import { KEY_RULES } from '../../keys/keys'
 import { MANOR, START_LEVEL, levelOf } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
 import { flowFieldsToward } from '../../level/pathing'
+import { WAKE_RULES, isWakePack } from '../../level/wakeUp'
 import { type World, withWorld } from '../../schema/world'
 import {
   CrateStock,
@@ -449,10 +450,14 @@ describe("the crew's key ring", () => {
     const bought = holdFor(atDoor, [1], HOLD_TICKS, [0])
     expect(bought.keys.held).toBe(KEYS - EXIT_RULES.kitchenKeys)
     expect(levelOf(bought).key).not.toBe(levelOf(atDoor).key)
-    const doors = Phase.isAnyOf(['Wave'])(bought.phase)
-      ? Array.map(bought.phase.spawns, ({ door }) => door)
+    const spawned = Phase.isAnyOf(['Wave'])(bought.phase)
+      ? bought.phase.spawns
       : []
+    const woken = Array.filter(spawned, ({ pack }) => isWakePack(pack))
+    const planned = Array.filter(spawned, ({ pack }) => !isWakePack(pack))
+    const doors = Array.map(planned, ({ door }) => door)
     expect(doors).toHaveLength(spawns.length)
+    expect(woken).toHaveLength(WAKE_RULES.count + WAKE_RULES.perExtraPlayer)
     expect(
       Array.some(doors, door => door === 'Back' || door === 'Window'),
     ).toBe(true)

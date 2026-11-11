@@ -621,11 +621,17 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // 620 steady paint operations, and 655 shapes painted, so 775, 625, and 660.
 // Baking each count whole would cut a few images, but a count changes with
 // every kill, so its sprites would be built at runtime, off the atlas.
+// The room finds and the hub touches (layer 21, 2026-11-11): a hidden
+// thing's prop in its room (one image, and its gold ring while worked), and
+// the dining room's touches of each open room, one image each (the hatch,
+// the books, one drifting note, the cobweb, one puff of dust). With every
+// room open the dark cellar went to 778 shapes and 664 painted, and the
+// rolled house to 631 steady paint operations, so 785, 635, and 670.
 const BUDGET: FrameCost = {
-  shapesBuilt: 775,
-  steadyPaintOps: 625,
+  shapesBuilt: 785,
+  steadyPaintOps: 635,
   steadyFillStyleChanges: 500,
-  steadyShapesPainted: 660,
+  steadyShapesPainted: 670,
   fullRepaintPaintOps: 1200,
 }
 

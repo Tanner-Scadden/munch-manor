@@ -7,7 +7,7 @@ import {
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
 } from '../../shared/constants'
-import { advanceDare } from '../dare/dare'
+import { advanceDare, isWorkingFind } from '../dare/dare'
 import { advanceFinale } from '../dare/finale'
 import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
 import { advanceCases } from '../feats/cases'
@@ -360,11 +360,13 @@ const swingWhileDown = (
 
 // NOTE: only a standing player shops, reloads, and fires; one who is down
 // swings their melee slot (swingWhileDown). A player at work on a room
-// tool's station holds their fire and their knife (src/world/stations/).
+// tool's station or a room's find holds their fire and their knife
+// (src/world/stations/, src/world/dare/finds.ts).
 const armSeat =
   (deltaMs: number) =>
   (model: World, slot: PlayerSlot): World =>
-    isStanding(seatStateAt(model, slot).seat) && isWorkingStation(model, slot)
+    isStanding(seatStateAt(model, slot).seat) &&
+    (isWorkingStation(model, slot) || isWorkingFind(model, slot))
       ? tickReload(faceTowardIntent(model, slot), slot, deltaMs)
       : isStanding(seatStateAt(model, slot).seat)
         ? stabWithKnife(
@@ -462,7 +464,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     advanceCrates,
     advanceTutorialKey,
     crated => advanceMending(crated, deltaMs),
-    advanceDare,
+    crated => advanceDare(crated, deltaMs),
     dared => advanceFinale(dared, deltaMs),
     rollStove,
     rounded => shedParts(model, rounded),

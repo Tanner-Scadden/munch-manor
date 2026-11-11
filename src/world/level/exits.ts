@@ -24,6 +24,7 @@ import {
   tileBox,
 } from './arena'
 import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from './plan'
+import { wakeRoom } from './wakeUp'
 
 // THE EXIT
 
@@ -232,7 +233,8 @@ export const maybePadlockedExit = (model: World): Option.Option<Box> =>
 
 // NOTE: buying the exit opens it for the rest of the run, and its spawn
 // doors join the wave shown or under way at once (joinNewDoors in
-// src/world/waves/waves.ts), drawn from the run's generator. The boards smash where
+// src/world/waves/waves.ts), drawn from the run's generator, and the room
+// wakes (src/world/level/wakeUp.ts). The boards smash where
 // the doorway meets the parlour floor.
 // The keys come off the crew's one ring, whoever holds at the boards.
 export const buyExit: {
@@ -261,11 +263,7 @@ export const buyExit: {
         GameEvent.ExitOpened({ x: (box.left + box.right) / 2, y: box.bottom }),
       ],
     })
-    return Option.some(
-      joinNewDoors(
-        opened,
-        Array.difference(levelOf(opened).doorIds, level.doorIds),
-      ),
-    )
+    const newDoors = Array.difference(levelOf(opened).doorIds, level.doorIds)
+    return Option.some(wakeRoom(joinNewDoors(opened, newDoors), newDoors))
   },
 )

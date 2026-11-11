@@ -105,7 +105,7 @@ const hidden = (
 ): DareThing => ({
   id,
   kind,
-  state: DareThingState.Hidden(at),
+  state: DareThingState.Hidden({ ...at, workedMs: 0 }),
 })
 
 const withList = (model: Model, things: ReadonlyArray<DareThing>): Model =>

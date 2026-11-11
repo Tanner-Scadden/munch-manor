@@ -13,6 +13,7 @@ import {
   RunMode,
   type Vector,
 } from '../schema/worldSchema'
+import { DRAIN_SCALE, isStill } from '../stations/work'
 import { clamp, distanceBetween } from '../step/geometry'
 import {
   type Dare,
@@ -21,6 +22,7 @@ import {
   DareThingState,
   Finale,
 } from './dareSchema'
+import { FIND_RULES, type FindStyle, findStyleOfRoom } from './finds'
 
 // The dare (LORE.md, "What the dare asks for changes every run"): your
 // friends' card asks you to bring things out of the house. One rule finds
@@ -34,9 +36,10 @@ import {
 // open a room, find its thing in it. Uncle Chunk's party hat always closes
 // the list, from the finale (src/world/dare/finale.ts).
 //
-// Walking onto a thing finds it for the whole crew; the seat that touched
-// it only says who. The finale waits on `isDareListDone` and the
-// DareListDone event.
+// Each room finds its thing its own way (src/world/dare/finds.ts): a walk
+// onto it, or work at it, a rummage, a hollow book, the dumbwaiter. Either
+// way it is found for the whole crew; the seat only says who. The finale
+// waits on `isDareListDone` and the DareListDone event.
 
 export const LAST_THING: DareKind = 'PartyHat'
 
@@ -168,7 +171,7 @@ const rolledThings = (
     ({ kind, point }, id): DareThing => ({
       id,
       kind,
-      state: DareThingState.Hidden(point),
+      state: DareThingState.Hidden({ ...point, workedMs: 0 }),
     }),
   )
   return {
@@ -353,8 +356,28 @@ export const dropHat: {
   })
 })
 
-// NOTE: the first standing player in slot order on a lying thing finds it
-// for the crew.
+// NOTE: the find style of the room a thing lies in: the hat, dropped
+// where Uncle Chunk fell, is walked onto anywhere.
+export const findStyleOf: {
+  (level: Level): (thing: DareThing) => FindStyle
+  (thing: DareThing, level: Level): FindStyle
+} = Function.dual(2, (thing: DareThing, level: Level): FindStyle =>
+  Option.match(maybeThingRoom(thing, level), {
+    onNone: (): FindStyle => 'Walk',
+    onSome: ({ id }) => findStyleOfRoom(id),
+  }),
+)
+
+// NOTE: a lying thing found by walking onto it: the hat, or a hidden one
+// in an open room that finds its thing that way.
+const maybeWalkOnto = (thing: DareThing, level: Level): Option.Option<Vector> =>
+  Option.filter(
+    maybeLyingAt(thing, level),
+    () => FIND_RULES[findStyleOf(thing, level)].workMs <= 0,
+  )
+
+// NOTE: the first standing player in slot order on a thing found by
+// walking finds it for the crew.
 const takeFor = (world: World, slot: PlayerSlot): World => {
   const { seat, player } = seatStateAt(world, slot)
   if (!isStanding(seat)) {
@@ -362,7 +385,7 @@ const takeFor = (world: World, slot: PlayerSlot): World => {
   }
   const level = levelOf(world)
   return Array.reduce(world.dareThings, world, (current, thing) =>
-    Option.match(maybeLyingAt(thing, level), {
+    Option.match(maybeWalkOnto(thing, level), {
       onNone: () => current,
       onSome: spot =>
         distanceBetween(player, spot) <= DARE_RULES.reachPx
@@ -394,9 +417,122 @@ const finishList = (before: World, after: World): World =>
 
 const isHunting = Phase.isAnyOf(['Preparation', 'Wave'])
 
+// WORKED FINDS
+
+// NOTE: a hidden thing in an open room whose room finds it by work, with
+// the work it asks for, while its room says it can be worked.
+const maybeWorkSpot = (
+  world: World,
+  level: Level,
+  thing: DareThing,
+): Option.Option<
+  Readonly<{ spot: Vector; workedMs: number; style: FindStyle }>
+> =>
+  DareThingState.isAnyOf(['Hidden'])(thing.state) &&
+  isInOpenRoom(level, thing.state)
+    ? Option.filter(
+        Option.some({
+          spot: { x: thing.state.x, y: thing.state.y },
+          workedMs: thing.state.workedMs,
+          style: findStyleOf(thing, level),
+        }),
+        ({ spot, style }) =>
+          FIND_RULES[style].workMs > 0 &&
+          FIND_RULES[style].isReady(world, spot),
+      )
+    : Option.none()
+
+const isWorkingAt = (
+  world: World,
+  slot: PlayerSlot,
+  spot: Vector,
+  style: FindStyle,
+): boolean =>
+  isStill(world, slot) &&
+  distanceBetween(seatStateAt(world, slot).player, spot) <=
+    FIND_RULES[style].reachPx
+
+// NOTE: a player at work on a room's find holds their fire, as at a
+// station (src/world/step/simulation.ts).
+export const isWorkingFind: {
+  (slot: PlayerSlot): (world: World) => boolean
+  (world: World, slot: PlayerSlot): boolean
+} = Function.dual(2, (world: World, slot: PlayerSlot): boolean => {
+  if (
+    !Array.isReadonlyArrayNonEmpty(world.dareThings) ||
+    !isHunting(world.phase)
+  ) {
+    return false
+  }
+  const level = levelOf(world)
+  return Array.some(world.dareThings, thing =>
+    Option.exists(maybeWorkSpot(world, level, thing), ({ spot, style }) =>
+      isWorkingAt(world, slot, spot, style),
+    ),
+  )
+})
+
+// NOTE: one thing's work: each player at it adds their share, nobody at it
+// drains it at half pace, and full, it is found by the first worker in
+// slot order.
+const workThing =
+  (deltaMs: number, level: Level) =>
+  (world: World, thing: DareThing): World =>
+    Option.match(maybeWorkSpot(world, level, thing), {
+      onNone: () => world,
+      onSome: ({ spot, workedMs, style }) => {
+        const workers = Array.filter(world.seats, ({ seat }) =>
+          isWorkingAt(world, seat.slot, spot, style),
+        )
+        const worked = Array.match(workers, {
+          onEmpty: () => Math.max(0, workedMs - deltaMs * DRAIN_SCALE),
+          onNonEmpty: () => workedMs + deltaMs * workers.length,
+        })
+        return Option.match(
+          Option.filter(
+            Array.head(workers),
+            () => worked >= FIND_RULES[style].workMs,
+          ),
+          {
+            onNone: () =>
+              worked === workedMs
+                ? world
+                : modifyWorldFields(world, {
+                    dareThings: things =>
+                      setThing(
+                        things,
+                        thing.id,
+                        DareThingState.Hidden({ ...spot, workedMs: worked }),
+                      ),
+                  }),
+            onSome: ({ seat }) =>
+              modifyWorldFields(world, {
+                dareThings: things =>
+                  setThing(
+                    things,
+                    thing.id,
+                    DareThingState.Found({ slot: seat.slot }),
+                  ),
+                frameEvents: events => [
+                  ...events,
+                  GameEvent.DareFound({ ...spot, kind: thing.kind }),
+                ],
+              }),
+          },
+        )
+      },
+    })
+
+const workFinds = (world: World, deltaMs: number): World =>
+  Array.reduce(world.dareThings, world, workThing(deltaMs, levelOf(world)))
+
 // NOTE: one tick of the dare: every standing player's walk onto a lying
-// thing, then the list's end.
-export const advanceDare = (world: World): World =>
+// thing, the work at each room's find, then the list's end.
+export const advanceDare: {
+  (deltaMs: number): (world: World) => World
+  (world: World, deltaMs: number): World
+} = Function.dual(2, (world: World, deltaMs: number): World =>
   Array.isReadonlyArrayNonEmpty(world.dareThings) && isHunting(world.phase)
-    ? finishList(world, forEachSeat(world, takeFor))
-    : world
+    ? finishList(world, workFinds(forEachSeat(world, takeFor), deltaMs))
+    : world,
+)

@@ -20,7 +20,7 @@ Layers 1 to 18 are built, as one stack of pull requests on `escape/01-names` to 
 | 17. Balance       | to come      | 18. Release docs        | #180         |
 | 19q. Find things  | to come      |                         |              |
 | 19. Room shapes   | to come      | 20. Room tools          | to come      |
-| 21. Finds, wakes  | to come      |                         |              |
+| 21. Finds, wakes  | this branch  |                         |              |
 
 Open for the owner:
 
@@ -340,6 +340,14 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - The hub touches: small, per room (the parlour's music in the dining room, the dumbwaiter's other end); no house-wide tool, so no fuse box.
 
 **Checks.** Stories for each find and wake-up, co-op, `test:full`, the nightly balance.
+
+**As built (2026-11-11, branch `escape/20f-room-finds`).**
+
+- The finds (`src/world/dare/finds.ts`): a room names its style in `ROOM_FINDS`; each style has its work time, reach, and a readiness hook (`isReady`, for the cellar's light). The parlour rummages a trunk (1 s), the library works a hollow book out of a stack (1 s), the kitchen hauls up the dumbwaiter (2 s). The work station's rule: still, no fire, each worker's share adds, unworked work drains at half speed. The dining room, the hat, and the cellar walk onto it. The cellar's find is layer 20's, with its bulb: one line in `ROOM_FINDS` and its readiness hook.
+- The wire: `DareThingState.Hidden` carries `workedMs` (protocol 20's history note in `packages/netcode/src/Protocol.ts`; the golden digest re-pinned).
+- The wake-up (`src/world/level/wakeUp.ts`): 6 zombies, 2 more a player past the first, over 10 s from the opened room's own doors, drawn from the round's planned spawns. Mid-wave it starts after a pack warning; in a break it comes at the next wave's start. It is planned spawns, so no new field.
+- The hub touches (`src/features/dining/hubTouchView.ts`): the dumbwaiter's hatch, a book stack, drifting notes, a cobweb and dust. Drawn only.
+- Follow-ups: a sound per find, the library's decoy books, the parlour's music in the hub as sound, and pacing's beat may still stretch a wake rush (pacing's to decide).
 
 ## Risks
 
