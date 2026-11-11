@@ -47,7 +47,8 @@ import { type DareKind, type DareThing, DareThingState } from '../dareSchema'
 
 // The dare's list and its things (src/world/dare/dare.ts): the roll at a
 // run's start, one thing to a room behind boards, found by opening the room
-// and walking onto it, the crew's one list, and none in Endless.
+// and walking onto it or working at it (each room's own way, in
+// finds.story.test.ts), the crew's one list, and none in Endless.
 
 const FRAME_MS = FIXED_STEP_MS
 
@@ -83,7 +84,7 @@ const hiddenAt = (
 ): DareThing => ({
   id,
   kind,
-  state: DareThingState.Hidden(point),
+  state: DareThingState.Hidden({ ...point, workedMs: 0 }),
 })
 
 describe('the list', () => {
@@ -254,7 +255,7 @@ describe('finding a thing', () => {
   )
 
   it.effect(
-    'behind the boards: out of reach until its room opens, then there to take',
+    'behind the boards: out of reach until its room opens, then there to work at',
     () =>
       Effect.gen(function* () {
         const shut = withPlayerAt(
@@ -289,7 +290,7 @@ describe('finding a thing', () => {
           settleRunCommands,
           Story.model(current => {
             expect(current.dareThings[0]?.state).toEqual(
-              DareThingState.Found({ slot: 0 }),
+              DareThingState.Hidden({ ...KITCHEN_SPOT, workedMs: FRAME_MS }),
             )
           }),
         )

@@ -11,7 +11,7 @@ import {
   tileBox,
 } from '../level/arena'
 import { type LevelSpec, roomSpotsOf } from '../level/plan'
-import { isStanding, seatStateAt } from '../party/party'
+import { seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import {
   GameEvent,
@@ -21,6 +21,7 @@ import {
   type StationState,
   type Vector,
 } from '../schema/worldSchema'
+import { DRAIN_SCALE, isStill } from './work'
 
 // Work stations (docs/ROOM_RESEARCH.md, "Decided", owner 2026-11-10):
 // every room tool is set up before it fires. A standing player who keeps
@@ -47,12 +48,6 @@ type StationRules = Readonly<{
   isReady: (world: World) => boolean
   fire: (world: World) => World
 }>
-
-// NOTE: the stick's tilt under which a player still counts as standing.
-const STILL_MOVE = 0.2
-
-// NOTE: the share of the set-up pace a station drains at, unworked.
-const DRAIN_SCALE = 0.5
 
 const cleatBoxes = new WeakMap<LevelSpec, Option.Option<Box>>()
 
@@ -96,13 +91,6 @@ export const stationBoxOf: {
 // cooldown.
 const isWorkable = (world: World, id: StationId): boolean =>
   world.stations[id].cooldownMs <= 0 && STATION_RULES[id].isReady(world)
-
-const isStill = (world: World, slot: PlayerSlot): boolean => {
-  const { intent, seat } = seatStateAt(world, slot)
-  return (
-    isStanding(seat) && Math.hypot(intent.move.x, intent.move.y) <= STILL_MOVE
-  )
-}
 
 const isWorkingOn = (world: World, slot: PlayerSlot, id: StationId): boolean =>
   isStill(world, slot) &&

@@ -39,6 +39,7 @@ import {
 } from '../../../test/testing'
 import { MANOR, levelOf, openExitIn, startingLevel } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
+import { WAKE_RULES, isWakePack } from '../../level/wakeUp'
 import { focusOf, modifyFocus } from '../../party/party'
 import { PURCHASE_RULES, holdProgress } from '../../shop/purchase'
 import { doorCounts, rollSpawns } from '../../waves/endlessWaves'
@@ -443,7 +444,10 @@ describe('the kitchen in the waves', () => {
         Story.given(fighting),
         ...holdToBuy,
         Story.model(current => {
-          const after = doorsOf(current)
+          const after = Array.filter(
+            doorsOf(current),
+            ({ pack }) => !isWakePack(pack),
+          )
           const clockMs = waveClockOf(current)
           expect(isKitchenOpen(current)).toBe(true)
           expect(Array.some(after, isKitchenDoor)).toBe(true)
@@ -487,8 +491,15 @@ describe('the kitchen in the waves', () => {
         Story.given(shopping),
         ...holdToBuy,
         Story.model(current => {
-          const after = doorsOf(current)
+          const woken = Array.filter(doorsOf(current), ({ pack }) =>
+            isWakePack(pack),
+          )
+          const after = Array.filter(
+            doorsOf(current),
+            ({ pack }) => !isWakePack(pack),
+          )
           expect(after).toHaveLength(WAVE_FOUR.length)
+          expect(woken).toHaveLength(WAKE_RULES.count)
           expect(Array.some(after, isKitchenDoor)).toBe(true)
           expect(
             Array.some(

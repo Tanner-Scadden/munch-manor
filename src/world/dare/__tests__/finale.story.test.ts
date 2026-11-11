@@ -57,7 +57,7 @@ const found = (id: number, kind: DareThing['kind']): DareThing => ({
 const hidden = (id: number, kind: DareThing['kind']): DareThing => ({
   id,
   kind,
-  state: DareThingState.Hidden({ x: 5000, y: 5000 }),
+  state: DareThingState.Hidden({ x: 5000, y: 5000, workedMs: 0 }),
 })
 
 const LIST_DONE: ReadonlyArray<DareThing> = [

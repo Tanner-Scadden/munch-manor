@@ -45,7 +45,7 @@ const onTheHunt = (found: ReadonlyArray<DareKind>): Model =>
         kind,
         state: Array.contains(found, kind)
           ? DareThingState.Found({ slot: 0 })
-          : DareThingState.Hidden({ x: 40, y: 40 }),
+          : DareThingState.Hidden({ x: 40, y: 40, workedMs: 0 }),
       })),
   })
 

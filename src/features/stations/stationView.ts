@@ -1,9 +1,15 @@
-import { Array, Option } from 'effect'
+import { Array } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
-import { type RingPixel, rect, ringPixels } from '../../render/drawing'
+import { rect } from '../../render/drawing'
 import { doorArrowShapes } from '../../render/powerupView'
+import {
+  COOLDOWN_RINGS,
+  SET_UP_RINGS,
+  WORK_RING_RADIUS,
+  ringStepOf,
+} from '../../render/workRing'
 import type { World } from '../../world/schema/world'
 import type { StationId } from '../../world/schema/worldSchema'
 import { type StationView, stationViewsOf } from '../../world/stations/stations'
@@ -15,51 +21,7 @@ import { type StationView, stationViewsOf } from '../../world/stations/stations'
 // waits to be worked in a run, a bobbing arrow points at it and its ring
 // pulses, so a player learns to stand at it by seeing it.
 
-const RING_RADIUS = 9
-const RING_STEPS = 12
-const SET_UP_FILLED = '#ffd23f'
-const SET_UP_EMPTY = '#3a2c10'
-const COOLDOWN_FILLED = '#8a8a96'
-const COOLDOWN_EMPTY = '#25252c'
 const HINT_PULSE_MS = 400
-
-const ring = (
-  pixels: ReadonlyArray<RingPixel>,
-  filled: number,
-  colors: Readonly<{ filled: string; empty: string }>,
-): Sprite =>
-  bakeShapes(
-    Array.map(pixels, ({ x, y, turn }) =>
-      rect(x, y, 1, 1, turn < filled ? colors.filled : colors.empty),
-    ),
-  )
-
-const ringSteps = (
-  colors: Readonly<{ filled: string; empty: string }>,
-): Array.NonEmptyReadonlyArray<Sprite> => {
-  const pixels = ringPixels(RING_RADIUS)
-  return [
-    ring(pixels, 0, colors),
-    ...Array.makeBy(RING_STEPS, step =>
-      ring(pixels, (step + 1) / RING_STEPS, colors),
-    ),
-  ]
-}
-
-const SET_UP_RINGS = ringSteps({ filled: SET_UP_FILLED, empty: SET_UP_EMPTY })
-const COOLDOWN_RINGS = ringSteps({
-  filled: COOLDOWN_FILLED,
-  empty: COOLDOWN_EMPTY,
-})
-
-const stepOf = (
-  rings: Array.NonEmptyReadonlyArray<Sprite>,
-  share: number,
-): Sprite =>
-  Option.getOrElse(
-    Array.get(rings, Math.min(RING_STEPS, Math.floor(share * RING_STEPS))),
-    () => Array.headNonEmpty(rings),
-  )
 
 // NOTE: the cleat: a brass horn bolted to the wall's inner face, the rope
 // running up from it to the ceiling and a coil of it hanging below.
@@ -90,10 +52,10 @@ const ringShapes = (
   const x = Math.round(station.center.x)
   const y = Math.round(station.center.y)
   if (station.setUp > 0) {
-    return [placeAt(x, y, stepOf(SET_UP_RINGS, station.setUp))]
+    return [placeAt(x, y, ringStepOf(SET_UP_RINGS, station.setUp))]
   }
   if (station.cooldown > 0) {
-    return [placeAt(x, y, stepOf(COOLDOWN_RINGS, 1 - station.cooldown))]
+    return [placeAt(x, y, ringStepOf(COOLDOWN_RINGS, 1 - station.cooldown))]
   }
   if (!station.isWorkable || station.timesWorked > 0) {
     return []
@@ -107,7 +69,7 @@ const ringShapes = (
         ? Array.lastNonEmpty(SET_UP_RINGS)
         : Array.headNonEmpty(SET_UP_RINGS),
     ),
-    ...doorArrowShapes({ x, y: y - RING_RADIUS }, elapsedMs),
+    ...doorArrowShapes({ x, y: y - WORK_RING_RADIUS }, elapsedMs),
   ]
 }
 

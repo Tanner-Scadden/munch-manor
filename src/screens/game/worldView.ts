@@ -7,7 +7,9 @@ import { hatRiseOf } from '../../art/sprites/hatArt'
 import { caseDrawables } from '../../features/cases/caseView'
 import { crateDrawables, mendRingsOf } from '../../features/crates/crateView'
 import { dareDrawables, dareOverheadShapes } from '../../features/dare/dareView'
+import { findDrawables, findOverheadShapes } from '../../features/dare/findView'
 import { frontDoorShapes } from '../../features/dare/frontDoorView'
+import { hubTouchShapes } from '../../features/dining/hubTouchView'
 import {
   chompShapes,
   fallenOf,
@@ -189,6 +191,7 @@ const groundShapes = (
   ...Array.flatMap(model.bullets, bulletShapes),
   ...lidShadowShapes(model),
   ...stationGroundShapes(model),
+  ...hubTouchShapes(model),
 ]
 
 // STANDING
@@ -257,6 +260,7 @@ const standingDrawables = (
     ...caseDrawables(model),
     ...crateDrawables(model),
     ...fallenChandelierDrawables(model),
+    ...findDrawables(model),
     ...dareDrawables(model),
   ]
 }
@@ -307,6 +311,7 @@ const overheadShapes = (
     : []),
   ...fridgeOverheadShapes(model),
   ...dareOverheadShapes(model),
+  ...findOverheadShapes(model),
   ...frontDoorShapes(model),
   ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),

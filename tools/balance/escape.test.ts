@@ -47,7 +47,7 @@ const breakWith = (keys: number, at = IN_KITCHEN) =>
         {
           id: 0,
           kind: 'ButlersBell',
-          state: DareThingState.Hidden(at),
+          state: DareThingState.Hidden({ ...at, workedMs: 0 }),
         },
       ],
     ),

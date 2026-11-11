@@ -35,7 +35,7 @@ const onTheHunt = (device: Model['lastDevice']): Model =>
         {
           id: 1,
           kind: 'MusicBox',
-          state: DareThingState.Hidden({ x: 40, y: 40 }),
+          state: DareThingState.Hidden({ x: 40, y: 40, workedMs: 0 }),
         },
       ]),
       {

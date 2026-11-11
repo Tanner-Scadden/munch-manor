@@ -21,12 +21,13 @@ export const DareKind = Schema.Literals([
 export type DareKind = typeof DareKind.Type
 
 // NOTE: where one thing is. Hidden lies at a spot in the room that holds
-// it, unseen until a player walks close, and out of reach while the room's
-// boards stand; Dropped lies where Uncle Chunk fell (his hat). A thing is
-// Found the moment a standing player walks onto it, by that seat's slot,
-// for the whole crew.
+// it, out of reach while the room's boards stand, with the work the crew
+// has put into finding it (src/world/dare/finds.ts: each room finds its
+// thing its own way, a rummage, a hollow book, the dumbwaiter, or a walk
+// onto it); Dropped lies where Uncle Chunk fell (his hat). A thing is
+// Found, by the seat's slot that found it, for the whole crew.
 export const DareThingState = defineTaggedUnion({
-  Hidden: { x: PositionNumber, y: PositionNumber },
+  Hidden: { x: PositionNumber, y: PositionNumber, workedMs: MillisNumber },
   Dropped: { x: PositionNumber, y: PositionNumber },
   Found: { slot: Schema.Finite },
 })
