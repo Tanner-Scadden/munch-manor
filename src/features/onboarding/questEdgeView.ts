@@ -1,4 +1,4 @@
-import { Array, Function, Option, String } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
@@ -8,7 +8,7 @@ import { type ClearWindow, clearWindowOf } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
 import type { Vector } from '../../world/schema/entitySchema'
 import { clamp } from '../../world/step/geometry'
-import { maybeQuestMark } from './firstBreakQuest'
+import { maybePadlockPointer, maybeQuestMark } from './firstBreakQuest'
 import { maybeKitchenMark } from './kitchenTour'
 
 // NOTE: the guided tours' next spot (the padlock's boards, the case, the
@@ -17,6 +17,7 @@ import { maybeKitchenMark } from './kitchenTour'
 // A new player then had a lit step in the tracker and nothing to follow
 // (2026-11-10 walkthrough). So a big gold arrow waits at the window's edge,
 // pointing the way, bobbing toward it, until the spot comes into sight.
+// Outside the tours it points the same way to a padlock the keys can open.
 
 type Pointing = 'Up' | 'Down' | 'Left' | 'Right'
 
@@ -71,8 +72,14 @@ const BOB_STEP: Readonly<Record<Pointing, Vector>> = {
 
 const UNDER: readonly [Pointing, number] = ['Up', 0]
 
+// NOTE: the tours' next spot, or outside them an affordable padlock
+// (maybePadlockPointer in ./firstBreakQuest).
 const maybeTourMark = (model: Model): Option.Option<Vector> =>
-  Option.orElse(maybeQuestMark(model), () => maybeKitchenMark(model))
+  pipe(
+    maybeQuestMark(model),
+    Option.orElse(() => maybeKitchenMark(model)),
+    Option.orElse(() => maybePadlockPointer(model)),
+  )
 
 // NOTE: the edge the spot lies past the furthest, so a spot up and a
 // little left reads as up.

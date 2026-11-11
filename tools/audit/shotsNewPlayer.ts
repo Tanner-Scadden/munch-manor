@@ -2,7 +2,8 @@
 // run, from the dare card lobby to the pause screen: the guided first
 // break's tracker on each of its steps (the key, the padlock, the case, the
 // dare card), a display case's first-time card, the dining room's west case
-// beside the boards' padlock, a later break, and the pause screen's How to
+// beside the boards' padlock, a later break, a later break with the keys
+// for the kitchen and the edge arrow to its padlock, and the pause screen's How to
 // play, on a 1280x720 desktop, an 844x390 phone on its side, and a 390x844
 // phone held upright, as `np-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsNewPlayer.ts
@@ -46,6 +47,10 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'break3',
     query: `${SEEN},displayCase&wave=4&break=open&money=6&darefound=1`,
+  },
+  {
+    name: 'padptr',
+    query: `${SEEN},displayCase&wave=4&break=open&money=9&darefound=1&px=40&py=150`,
   },
   {
     name: 'pause',

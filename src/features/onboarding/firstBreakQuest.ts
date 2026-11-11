@@ -257,3 +257,24 @@ export const maybePadlockNudge = (model: Model): Option.Option<Vector> =>
         Option.map(padlockMarkOf),
       )
     : Option.none()
+
+// THE PADLOCK POINTER
+
+// NOTE: in any solo break where the ring holds the keys a padlock asks,
+// boards opened this run or not, the cheapest padlock is the way to learn
+// what keys are for. When it is out of sight, the tours' edge arrow
+// (src/features/onboarding/questEdgeView.ts) points to it, quietly, with no
+// words, until the player is near it or the break ends. Never in co-op,
+// where the nudge above is all there is.
+export const maybePadlockPointer = (model: Model): Option.Option<Vector> =>
+  isQuestBreak(model) &&
+  isExitOfferOpenFor(model.phase) &&
+  Option.isNone(questStepOf(model)) &&
+  Option.isNone(kitchenStepOf(model)) &&
+  !isNearPadlock(model)
+    ? pipe(
+        maybeQuestPadlock(model),
+        Option.filter(({ price }) => price > 0 && price <= heldKeys(model)),
+        Option.map(padlockMarkOf),
+      )
+    : Option.none()

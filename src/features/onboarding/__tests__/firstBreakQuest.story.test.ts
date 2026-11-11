@@ -19,6 +19,8 @@ import {
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { forgetTutorial } from '../../../platform/save'
+import { screenCameraOf } from '../../../render/camera'
+import { screenOf } from '../../../render/screen'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, newPlayerCardSeen } from '../../../test/model.fixture'
 import {
@@ -66,11 +68,13 @@ import {
   isQuestOnCard,
   maybeLockProgress,
   maybePadlockNudge,
+  maybePadlockPointer,
   maybeQuestMark,
   maybeQuestPadlock,
   questStepOf,
 } from '../firstBreakQuest'
 import { isStartWaveBeckoning } from '../onboarding'
+import { questEdgeShapes } from '../questEdgeView'
 
 // NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts):
 // a new player learns the dare by doing it. Grab the key on the floor, walk
@@ -434,22 +438,23 @@ describe('the guided first break', () => {
   )
 })
 
+// NOTE: a break past the tour, the ring holding `keys`.
+const laterBreak = (keys: number): Model =>
+  modifyFields(asTutorialDone(asVeteran(newSave)), {
+    keys: ring => modifyFields(ring, { held: () => keys }),
+    phase: () =>
+      Phase.Preparation({
+        wave: 4,
+        remainingMs: PREPARATION_MS,
+        durationMs: PREPARATION_MS,
+        spawns: [DISTANT_SPAWN],
+        clock: BreakClock.Counting(),
+      }),
+  })
+
 // NOTE: outside the tour, a player who holds the keys for the cheapest
 // padlock and has opened no boards this run sees an arrow pulse over it.
 describe('the padlock nudge', () => {
-  const laterBreak = (keys: number): Model =>
-    modifyFields(asTutorialDone(asVeteran(newSave)), {
-      keys: ring => modifyFields(ring, { held: () => keys }),
-      phase: () =>
-        Phase.Preparation({
-          wave: 4,
-          remainingMs: PREPARATION_MS,
-          durationMs: PREPARATION_MS,
-          spawns: [DISTANT_SPAWN],
-          clock: BreakClock.Counting(),
-        }),
-    })
-
   const cheapestPrice = (model: Model): number =>
     Option.getOrThrow(maybeQuestPadlock(model)).price
 
@@ -502,6 +507,84 @@ describe('the padlock nudge', () => {
         frame,
         Story.model(current => {
           expect(maybePadlockNudge(current)).toEqual(Option.none())
+        }),
+      )
+    }),
+  )
+})
+
+// NOTE: in any solo break the ring can open a padlock, boards opened or
+// not, the tours' edge arrow points to the cheapest one while it is out of
+// sight, until the player walks up to it.
+describe('the padlock pointer', () => {
+  // NOTE: the level's corner furthest from the padlock, a little in.
+  const farFromPadlock = (current: Model): Vector => {
+    const level = levelOf(current)
+    const { box } = Option.getOrThrow(maybeQuestPadlock(current))
+    const middle = (level.left + level.width) / 2
+    const centre = (level.top + level.bottom) / 2
+    return {
+      x: box.left < middle ? level.left + level.width - 40 : level.left + 40,
+      y: box.top < centre ? level.bottom - 40 : level.top + 40,
+    }
+  }
+
+  const arrowsOf = (current: Model): number =>
+    questEdgeShapes(current, screenOf(current), screenCameraOf(current)).length
+
+  it.effect('points to an affordable padlock out of sight, then stops', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(laterBreak(9)),
+      changeModel(current => standAt(farFromPadlock(current))(current)),
+      Story.model(far => {
+        expect(maybePadlockPointer(far)).toEqual(
+          Option.map(maybeQuestPadlock(far), padlockMarkOf),
+        )
+        expect(arrowsOf(far)).toBe(1)
+        expect(maybePadlockPointer(standAt(belowPadlock(far))(far))).toEqual(
+          Option.none(),
+        )
+        expect(
+          maybePadlockPointer(
+            modifyFields(far, {
+              keys: ring => modifyFields(ring, { held: () => 0 }),
+            }),
+          ),
+        ).toEqual(Option.none())
+        expect(
+          maybePadlockPointer(modifyFields(far, { party: () => Party.Crew() })),
+        ).toEqual(Option.none())
+        expect(
+          maybePadlockPointer(
+            modifyFields(far, {
+              phase: () =>
+                Phase.Wave({ wave: 4, spawns: [DISTANT_SPAWN], elapsedMs: 0 }),
+            }),
+          ),
+        ).toEqual(Option.none())
+      }),
+    ),
+  )
+
+  it.effect('still points after boards have opened this run', () =>
+    Effect.gen(function* () {
+      const opened = yield* Story.story(
+        APPLICATION,
+        Story.given(laterBreak(99)),
+        changeModel(current => standAt(belowPadlock(current))(current)),
+        ...holdEnter(HOLD_TICKS + 2),
+        Story.Command.resolveAll(),
+      )
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(opened),
+        changeModel(current => standAt(farFromPadlock(current))(current)),
+        Story.model(far => {
+          expect(maybePadlockNudge(far)).toEqual(Option.none())
+          expect(maybePadlockPointer(far)).toEqual(
+            Option.map(maybeQuestPadlock(far), padlockMarkOf),
+          )
         }),
       )
     }),
