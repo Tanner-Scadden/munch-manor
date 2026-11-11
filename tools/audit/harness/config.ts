@@ -318,6 +318,16 @@ export const HarnessConfig = Schema.Struct({
   // its cleat's set-up already worked (src/world/stations/stations.ts).
   fallen: Flag,
   cleat: Num(0),
+  // A room's find (src/world/dare/finds.ts): `findroom=Parlour` lays the
+  // dare list's first thing hidden on that room's first hiding spot, with
+  // `findwork` of its work done, and stands the player `findgap` px south
+  // of it (0 stands them on it, at work).
+  findroom: Schema.optionalKey(Schema.String),
+  findwork: Num(0),
+  findgap: Num(0),
+  // `wake=Back,Window` wakes those doors' room (src/world/level/wakeUp.ts),
+  // its rush alone: a wave's own spawns are dropped first.
+  wake: Schema.optionalKey(ListOf(DoorId)),
   // Which rolled house the run stands in, by its place in ARRANGEMENTS
   // (src/world/level/plan.ts): the first, the parlour west, the library
   // east, and the cellar beyond, unless given.

@@ -938,3 +938,10 @@ export const fromHand = (name: RegExp) =>
       press(name)(page),
     ),
   )
+
+// NOTE: the rooms passes' scenes (shotsRooms.ts, shotsFinds.ts): every
+// lesson learned and every exit open, in a quiet open break of wave 3.
+export const LEARNED_ALL =
+  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,displayCase'
+export const EVERY_EXIT_OPEN = 'openexits=Kitchen,West,East,Far,Secret'
+export const OPEN_BREAK = `${LEARNED_ALL}&wave=3&break=open&${EVERY_EXIT_OPEN}`

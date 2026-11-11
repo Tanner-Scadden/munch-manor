@@ -12,6 +12,9 @@ import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
 import {
+  EVERY_EXIT_OPEN,
+  LEARNED_ALL,
+  OPEN_BREAK,
   auditTag,
   deviceQuery,
   harnessQuery,
@@ -25,21 +28,17 @@ import {
 
 type Scene = Readonly<{ name: string; query: string }>
 
-const LEARNED =
-  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,displayCase'
-const OPEN = 'openexits=Kitchen,West,East,Far,Secret'
-const BREAK = `${LEARNED}&wave=3&break=open&${OPEN}`
-const WAVE = `${LEARNED}&wave=3&start=wave&elapsed=0&${OPEN}&fallen`
+const WAVE = `${LEARNED_ALL}&wave=3&start=wave&elapsed=0&${EVERY_EXIT_OPEN}&fallen`
 
 // NOTE: the first house (src/world/level/plan.ts, ARRANGEMENTS): the
 // parlour west of the dining room, the library east, and the cellar beyond.
 const SCENES: ReadonlyArray<Scene> = [
-  { name: 'dining', query: `${BREAK}&px=180&py=150` },
-  { name: 'parlour', query: `${BREAK}&px=-160&py=130` },
-  { name: 'library-stacks', query: `${BREAK}&px=425&py=120` },
-  { name: 'library-nook', query: `${BREAK}&px=600&py=150` },
-  { name: 'cellar', query: `${BREAK}&px=840&py=130` },
-  { name: 'kitchen', query: `${BREAK}&px=100&py=-60` },
+  { name: 'dining', query: `${OPEN_BREAK}&px=180&py=150` },
+  { name: 'parlour', query: `${OPEN_BREAK}&px=-160&py=130` },
+  { name: 'library-stacks', query: `${OPEN_BREAK}&px=425&py=120` },
+  { name: 'library-nook', query: `${OPEN_BREAK}&px=600&py=150` },
+  { name: 'cellar', query: `${OPEN_BREAK}&px=840&py=130` },
+  { name: 'kitchen', query: `${OPEN_BREAK}&px=100&py=-60` },
   { name: 'cleat-hint', query: `${WAVE}&px=70&py=95` },
   { name: 'cleat-worked', query: `${WAVE}&cleat=0.5&px=16&py=95` },
 ]
