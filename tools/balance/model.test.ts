@@ -415,20 +415,28 @@ describe('guardrails from GAME_DESIGN.md', () => {
   })
 
   // NOTE: the money was the shop's; since layer 7 it is keys, spent on the
-  // rooms' padlocks and the fridge, and guns come from display cases. The
-  // keys of the first four waves cover every room's padlock, so the boards
-  // pace the hunt by choice (rooms or the fridge), never wall it.
-  const keysByWave4 = sumOf(expectedPays(ASSUMPTIONS, 4))
+  // rooms' padlocks and the fridge, and guns come from display cases. Each
+  // room holds one thing on the dare's list, so the padlocks pace the hunt:
+  // the first two waves' keys open the kitchen, and every room takes the
+  // keys of seven or eight waves, so the last room opens about wave 9.
+  const keysBy = (wave: number) => sumOf(expectedPays(ASSUMPTIONS, wave))
+  const kitchen = exitKeysOf(KITCHEN_EXIT)
   const everyRoom = sumOf(
     Array.map([KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT], exit =>
       exitKeysOf(exit),
     ),
   )
   guardrail(
-    'the keys of waves 1 to 4 cover every room on the house',
+    'the keys of waves 1 and 2 open the kitchen, and of wave 1 do not',
     'Met',
-    `${keysByWave4.toFixed(0)} keys against ${everyRoom}`,
-    () => keysByWave4 >= everyRoom,
+    `${keysBy(1).toFixed(0)} and ${keysBy(2).toFixed(0)} keys against ${kitchen}`,
+    () => keysBy(1) < kitchen && keysBy(2) >= kitchen,
+  )
+  guardrail(
+    'every room takes the keys of waves 1 to 7 or 8, not 1 to 6',
+    'Met',
+    `${keysBy(6).toFixed(0)}, ${keysBy(7).toFixed(0)}, and ${keysBy(8).toFixed(0)} keys against ${everyRoom}`,
+    () => keysBy(6) < everyRoom && keysBy(8) >= everyRoom,
   )
   guardrail(
     'a display case gives a gun by the wave 4 break',

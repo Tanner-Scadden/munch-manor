@@ -175,29 +175,29 @@ describe('spending keys', () => {
     )
 
   it.effect(
-    'the kitchen padlock asks three: two are refused, three open it',
+    'the kitchen padlock asks its price: one short is refused, the price opens it',
     () =>
       Effect.gen(function* () {
         expect(exitKeysOf(KITCHEN_EXIT)).toBe(EXIT_RULES.kitchenKeys)
         yield* Story.story(
           APPLICATION,
-          Story.given(atBoards(2)),
+          Story.given(atBoards(EXIT_RULES.kitchenKeys - 1)),
           press('Enter'),
           ...ticks(HOLD_TICKS, FRAME_MS),
           Story.model(current => {
             expect(isKitchenOpen(current)).toBe(false)
-            expect(current.keys.held).toBe(2)
+            expect(current.keys.held).toBe(EXIT_RULES.kitchenKeys - 1)
           }),
         )
         yield* Story.story(
           APPLICATION,
-          Story.given(atBoards(3)),
+          Story.given(atBoards(EXIT_RULES.kitchenKeys)),
           press('Enter'),
           ...ticks(HOLD_TICKS, FRAME_MS),
           Story.model(current => {
             expect(isKitchenOpen(current)).toBe(true)
             expect(current.keys.held).toBe(0)
-            expect(current.keys.spent).toBe(3)
+            expect(current.keys.spent).toBe(EXIT_RULES.kitchenKeys)
           }),
         )
       }),
