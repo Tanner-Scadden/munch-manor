@@ -277,15 +277,9 @@ Then the card folds itself into the HUD, and its icons become the empty outlines
 
 ### What the dare asks for changes every run
 
-Built on 2026-11-10. One rule: each room holds one thing (owner, 2026-11-10). Each run gives every room behind boards one thing on the list, fit to the room, on one of its hiding spots, from its own salted seeded stream (TranZit, Last Night on Earth). Open a room and its thing is in there. Uncle Chunk's party hat is always last.
+Built on 2026-11-10. One rule: each room holds one thing (owner, 2026-11-10). Each run gives every room behind boards one thing on the list, on one of its hiding spots, from its own salted seeded stream (TranZit, Last Night on Earth). Which thing lands in which room is fully random (owner, 2026-11-10): the music box may be in the cellar one run and the kitchen the next, never one thing twice. Open a room and its thing is in there. Uncle Chunk's party hat is always last, at the front door.
 
-| Room        | What it may hold                                                 |
-| ----------- | ---------------------------------------------------------------- |
-| The kitchen | Grandma Munch's recipe, the silver spoon, or the butler's bell   |
-| The parlour | The music box (its tune plays, as flavor) or the family portrait |
-| The library | A page of the guest book or the family portrait                  |
-| The cellar  | The butler's bell or the silver spoon                            |
-| The front   | Uncle Chunk's party hat, always last, at the front door          |
+The things: Grandma Munch's recipe, the silver spoon, the butler's bell, the music box (its tune plays, as flavor), the family portrait, and a page of the guest book.
 
 No thing is carried by a marked zombie, locked in a case, or cooked at the stove any more: the display cases and the stove keep their own prizes. Rattles may name the room a thing is in; the HUD never does.
 

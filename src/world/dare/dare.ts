@@ -3,16 +3,7 @@ import { Array, Function, Option } from 'effect'
 import { type Difficulty } from '../../shared/playerData'
 import { type Seeded, nextRandom, shuffle } from '../../shared/prng'
 import { type Level, type Room, levelOf, tileCenter } from '../level/arena'
-import {
-  CELLAR_ROOM_ID,
-  DINING_ROOM_ID,
-  KITCHEN_ROOM_ID,
-  LIBRARY_ROOM_ID,
-  type LevelSpec,
-  PARLOUR_ROOM_ID,
-  type RoomSpots,
-  roomSpotsOf,
-} from '../level/plan'
+import { type LevelSpec, type RoomSpots, roomSpotsOf } from '../level/plan'
 import { focusOf, forEachSeat, isStanding, seatStateAt } from '../party/party'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
@@ -36,9 +27,9 @@ import {
 // them all (owner, 2026-11-10): each room holds one thing. The list rolls
 // as a campaign run starts, from the dare's own salted generator
 // (`freshDare`): which rooms behind boards hold a thing, as many as the
-// difficulty asks for, and which of the room's own things lies there (the
-// recipe in the kitchen, the guest book's page in the library), on one of
-// the room's hand-picked spots (roomSpotsOf in src/world/level/plan.ts).
+// difficulty asks for, and which thing lies in each, any thing in any room
+// (owner, 2026-11-10: "fully random"), on one of the room's hand-picked
+// spots (roomSpotsOf in src/world/level/plan.ts).
 // So the loop is the same for every thing: survive the waves, earn keys,
 // open a room, find its thing in it. Uncle Chunk's party hat always closes
 // the list, from the finale (src/world/dare/finale.ts).
@@ -69,39 +60,18 @@ const DARE_RULES: DareRules = { reachPx: 10, dropInsetPx: 8 }
 
 // THE ROOMS' THINGS
 
-// NOTE: the things each room may hold, the likeliest fit first: Grandma's
-// recipe, the silver spoon, or the butler's bell in the kitchen, the music
-// box or the family portrait in the parlour, the guest book's page or the
-// portrait in the library, the bell or the spoon in the cellar. Every pair
-// of rooms keeps a thing of its own, so a run's things never repeat.
-const ROOM_THINGS: Readonly<Record<string, ReadonlyArray<DareKind>>> = {
-  [KITCHEN_ROOM_ID]: ['GrandmasRecipe', 'SilverSpoon', 'ButlersBell'],
-  [PARLOUR_ROOM_ID]: ['MusicBox', 'FamilyPortrait'],
-  [LIBRARY_ROOM_ID]: ['GuestBookPage', 'FamilyPortrait'],
-  [CELLAR_ROOM_ID]: ['ButlersBell', 'SilverSpoon'],
-  [DINING_ROOM_ID]: ['SilverSpoon', 'FamilyPortrait'],
-}
-
-// NOTE: every thing a room can hold, in the Schema's order, the hat aside:
-// a room's own fall back on these once its own are taken.
+// NOTE: every thing a room can hold, in the Schema's order, the hat aside.
+// Any of them may lie in any room (owner, 2026-11-10: "fully random"), so
+// a room draws from all of them but those the list already holds, and a
+// run's things never repeat.
 const ROLLABLE_KINDS: ReadonlyArray<DareKind> = Array.filter(
   DareKind.literals,
   kind => kind !== LAST_THING,
 )
 
-// NOTE: a room's things, its own first, then any other, none of `taken`.
-const thingsFor = (
-  room: string,
-  taken: ReadonlyArray<DareKind>,
-): ReadonlyArray<DareKind> => {
-  const own = Array.filter(
-    ROOM_THINGS[room] ?? [],
-    kind => !Array.contains(taken, kind),
-  )
-  return Array.isReadonlyArrayNonEmpty(own)
-    ? own
-    : Array.filter(ROLLABLE_KINDS, kind => !Array.contains(taken, kind))
-}
+// NOTE: the things a room may still hold: any but those `taken`.
+const thingsLeft = (taken: ReadonlyArray<DareKind>): ReadonlyArray<DareKind> =>
+  Array.filter(ROLLABLE_KINDS, kind => !Array.contains(taken, kind))
 
 // NOTE: a draw from the dare's stream as one of `items`.
 const drawOne = <A>(
@@ -145,14 +115,14 @@ type Placing = Readonly<{
   taken: ReadonlyArray<DareKind>
 }>
 
-// NOTE: a room's thing, drawn from its own, on one of its hiding spots.
+// NOTE: a room's thing, drawn from those left, on one of its hiding spots.
 const placeIn = (
   placing: Placing,
-  { room, hiding }: RoomSpots,
+  { hiding }: RoomSpots,
 ): Seeded<Option.Option<Readonly<{ kind: DareKind; point: Vector }>>> => {
   const [kindState, maybeKind] = drawOne(
     placing.state,
-    thingsFor(room, placing.taken),
+    thingsLeft(placing.taken),
   )
   const [spotState, maybeSpot] = drawOne(kindState, hiding)
   return [
