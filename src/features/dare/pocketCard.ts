@@ -1,26 +1,104 @@
-import { Function } from 'effect'
+import { Array, Function, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
 import { PocketCard } from '../../domain/clientSchema'
 import { isRunOn } from '../../domain/onlineRun'
-import { dareCardOf } from '../../world/dare/dare'
+import { LAST_THING, dareCardOf } from '../../world/dare/dare'
+import type { DareKind } from '../../world/dare/dareSchema'
+import { isPending, learn } from '../../world/run/lessons'
 import { Phase } from '../../world/schema/worldSchema'
 
 // The dare card in your pocket (LORE.md, "The dare card in your pocket"):
 // once the doors slam, the card your friends wrote opens over the screen,
-// this run's list in their scrawl, and then folds itself into the HUD's
-// dare card (src/features/dare/dareCard.ts), its pictures flying into their
-// outlines. Endless ("stay the night") has no list, so no card. It is the
-// client's own: alone the first break waits under it until it is read (a
-// key, a tap, or a few seconds), as the new zombie card holds a wave; in
-// co-op the room never waits, and the card is drawn over the first break.
+// I DARE YOU TO FIND: this run's room things in their scrawl, THEN GET
+// OUT! by a doodle of the front door, and then folds itself into the HUD's dare
+// card (src/features/dare/dareCard.ts), each picture flying into its own
+// slot. Endless ("stay the night") has no list, so no card. It is the
+// client's own: alone the first break waits under it until it is read, as
+// the new zombie card holds a wave; in co-op the room never waits, and the
+// card is drawn over the first break on its clock.
+//
+// The first time alone (the `dareCard` lesson, saved), the card waits for a
+// key or a tap, taken only after GATE_MS so a mashed key from the intro
+// does not throw it away unread, and folding it learns the lesson. After
+// that it folds on its own at READ_MS.
 
 // NOTE: the card rises out of your pocket and unfolds in UNFOLD_MS, the
 // scrawl writes itself on, and it folds away on its own at READ_MS.
 export const UNFOLD_MS = 400
 export const READ_MS = 4_500
-export const FOLD_MS = 700
+export const FOLD_MS = 900
+export const GATE_MS = 1_500
+
+// THE SCRAWL'S CLOCK
+
+// NOTE: the things the card asks you to find: the room things on this
+// run's list, in the HUD's order. The card names no one else: whatever
+// closes the list (`LAST_THING`) is not on it.
+export const cardThingsOf = (model: Model): ReadonlyArray<DareKind> =>
+  Array.filterMap(dareCardOf(model), ({ kind }) =>
+    kind === LAST_THING ? Result.failVoid : Result.succeed(kind),
+  )
+
+// NOTE: the scrawl writes itself on while you read: the dare as it opens
+// (UNFOLD_MS), then TO FIND:, then each thing with a pencil scratch, then
+// THEN GET OUT! with the door. The view (src/features/dare/pocketCardView.ts)
+// and the scratches (`scratchesBetween`) read the same clock.
+export const FIND_AT_MS = UNFOLD_MS + 200
+const FIRST_THING_AT_MS = UNFOLD_MS + 450
+const THING_GAP_MS = 320
+const OUT_AFTER_MS = 300
+
+// NOTE: when the thing at `index` is written on.
+export const thingAtMs = (index: number): number =>
+  FIRST_THING_AT_MS + index * THING_GAP_MS
+
+// NOTE: when THEN GET OUT! is written, after the last of `count` things.
+export const outAtMs = (count: number): number =>
+  thingAtMs(Math.max(0, count - 1)) + OUT_AFTER_MS
+
+// NOTE: every pencil scratch: each thing, and THEN GET OUT!.
+const scratchTimesOf = (count: number): ReadonlyArray<number> => [
+  ...Array.makeBy(count, thingAtMs),
+  outAtMs(count),
+]
+
+const thingCountOf = (model: Model): number => cardThingsOf(model).length
+
+// NOTE: how many scratches the card wrote between two Models, for the
+// pencil's sound.
+export const scratchesBetween: {
+  (after: Model): (before: Model) => number
+  (before: Model, after: Model): number
+} = Function.dual(2, (before: Model, after: Model): number => {
+  const ageOf = (model: Model): number =>
+    PocketCard.matchOrElse(
+      model.pocketCard,
+      { Reading: ({ ageMs }) => ageMs },
+      () => -1,
+    )
+  const from = ageOf(before)
+  const to = ageOf(after)
+  return to < 0
+    ? 0
+    : Array.length(
+        Array.filter(
+          scratchTimesOf(thingCountOf(after)),
+          atMs => atMs > from && atMs <= to,
+        ),
+      )
+})
+
+// NOTE: alone, until the card has been read once, it waits for a key or a
+// tap. Co-op's card keeps its clock.
+export const isPocketCardWaiting = (model: Model): boolean =>
+  isPending(model.lessons.dareCard) && !isRunOn(model)
+
+// NOTE: when a waiting card takes a key, and its prompt shows: past the
+// gate, once the whole list is written.
+export const promptAtMs = (model: Model): number =>
+  Math.max(GATE_MS, outAtMs(thingCountOf(model)))
 
 export const isPocketCardReading = (model: Model): boolean =>
   PocketCard.isAnyOf(['Reading'])(model.pocketCard)
@@ -53,20 +131,35 @@ export const raisePocketCardFrom: {
     : after,
 )
 
-// NOTE: any key or tap folds it once it has opened.
-export const foldPocketCard = (model: Model): Model =>
+const foldOf = (model: Model): Model =>
+  modifyFields(model, {
+    pocketCard: () => PocketCard.Folding({ ageMs: 0 }),
+    lessons: lessons =>
+      isRunOn(model)
+        ? lessons
+        : modifyFields(lessons, {
+            dareCard: lesson => learn(lesson, model.elapsedMs),
+          }),
+  })
+
+// NOTE: any key or tap folds it once it has opened, or, while it waits,
+// once it is past the gate.
+const isPocketCardTakingKeys = (model: Model): boolean =>
   PocketCard.matchOrElse(
     model.pocketCard,
     {
       Reading: ({ ageMs }) =>
-        ageMs < UNFOLD_MS
-          ? model
-          : modifyFields(model, {
-              pocketCard: () => PocketCard.Folding({ ageMs: 0 }),
-            }),
+        ageMs >= (isPocketCardWaiting(model) ? GATE_MS : UNFOLD_MS),
     },
-    () => model,
+    () => false,
   )
+
+// NOTE: out and read, but not yet taking a key.
+export const isPocketCardHeld = (model: Model): boolean =>
+  isPocketCardReading(model) && !isPocketCardTakingKeys(model)
+
+export const foldPocketCard = (model: Model): Model =>
+  isPocketCardTakingKeys(model) ? foldOf(model) : model
 
 export const agePocketCard: {
   (deltaMs: number): (model: Model) => Model
@@ -75,12 +168,11 @@ export const agePocketCard: {
   PocketCard.match(model.pocketCard, {
     Pocketed: () => model,
     Reading: ({ ageMs }) =>
-      modifyFields(model, {
-        pocketCard: () =>
-          ageMs + deltaMs >= READ_MS
-            ? PocketCard.Folding({ ageMs: 0 })
-            : PocketCard.Reading({ ageMs: ageMs + deltaMs }),
-      }),
+      ageMs + deltaMs >= READ_MS && !isPocketCardWaiting(model)
+        ? foldOf(model)
+        : modifyFields(model, {
+            pocketCard: () => PocketCard.Reading({ ageMs: ageMs + deltaMs }),
+          }),
     Folding: ({ ageMs }) =>
       modifyFields(model, {
         pocketCard: () =>

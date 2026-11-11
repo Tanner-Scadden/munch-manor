@@ -836,7 +836,7 @@ export type SavedLesson = typeof SavedLesson.Type
 // NOTE: a lesson added after a save was written reads as Pending when its
 // key is missing, so an older save and an older device's synced onboarding
 // still read: the dare tour and its key (docs/ESCAPE_PLAN.md, layer 16), and
-// the display case's first-time card.
+// the display case's first-time card, and the dare card read once.
 // Versions up to 16 also held `shop`, the shop's lesson, gone with the shop
 // and dropped on decoding.
 const LaterLesson = SavedLesson.pipe(
@@ -855,6 +855,7 @@ export const SavedLessons = Schema.Struct({
   dareKey: LaterLesson,
   rattles: LaterLesson,
   displayCase: LaterLesson,
+  dareCard: LaterLesson,
 })
 export type SavedLessons = typeof SavedLessons.Type
 

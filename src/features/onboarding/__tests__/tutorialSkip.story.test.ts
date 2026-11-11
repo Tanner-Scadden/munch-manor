@@ -230,12 +230,14 @@ describe('the first-run card', () => {
               dareKey: 'Learned',
               rattles: 'Learned',
               displayCase: 'Pending',
+              dareCard: 'Pending',
             })
           }),
           writeSave(),
           tick(50),
           tick(3000),
           throughIntro,
+          writeSave(),
           Story.model(later => {
             expect(Phase.guards.Preparation(later.phase)).toBe(true)
             expect(later.difficulty.chosen).toBe('Normal')
@@ -274,6 +276,7 @@ describe('the first-run card', () => {
         tick(50),
         tick(3000),
         throughIntro,
+        writeSave(),
         Story.model(later => {
           expect(Phase.guards.Preparation(later.phase)).toBe(true)
           expect(isPracticeGateHeld(later)).toBe(true)

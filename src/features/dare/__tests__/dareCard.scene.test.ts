@@ -155,7 +155,7 @@ describe('the dare pocket', () => {
     )
   })
 
-  test('is shut through a wave and under a banner, and open in a break', () => {
+  test('is shut through a wave, under a banner, and under the card, and open in a break or as the card folds', () => {
     const hunting = onTheHunt([])
     expect(pocketOf(hunting)).toBe('Shut')
     expect(pocketOf(inBreak(hunting, 0, 'Top'))).toBe('Shut')
@@ -163,10 +163,19 @@ describe('the dare pocket', () => {
     expect(
       pocketOf(
         modifyFields(inBreak(hunting, 5000, 'Bottom'), {
-          pocketCard: () => PocketCard.Folding({ ageMs: 0 }),
+          pocketCard: () => PocketCard.Reading({ ageMs: 0 }),
         }),
       ),
     ).toBe('Shut')
+    // NOTE: the card from the pocket folding opens it, a banner or not, so
+    // each picture flies into its own slot.
+    expect(
+      pocketOf(
+        modifyFields(inBreak(hunting, 0, 'Top'), {
+          pocketCard: () => PocketCard.Folding({ ageMs: 0 }),
+        }),
+      ),
+    ).toBe('Open')
   })
 
   test('sits on the screen in landscape and portrait, clear of the room while shut', () => {

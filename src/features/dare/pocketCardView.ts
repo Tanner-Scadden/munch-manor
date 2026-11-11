@@ -1,4 +1,4 @@
-import { Array, Function, String } from 'effect'
+import { Array, Function } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
@@ -9,63 +9,76 @@ import { PocketCard } from '../../domain/clientSchema'
 import { rect } from '../../render/drawing'
 import { hudLayoutFor } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
-import { dareCardOf } from '../../world/dare/dare'
 import type { DareKind } from '../../world/dare/dareSchema'
-import { ZOMBIE_NAMES } from '../../world/names'
 import type { Vector } from '../../world/schema/worldSchema'
 import { clamp, easeOut, lerp } from '../../world/step/geometry'
-import { pocketCardSpotOf } from './dareCard'
-import { FOLD_MS, UNFOLD_MS } from './pocketCard'
+import { type DarePocket, pocketSlotSpotsOf } from './dareCard'
+import {
+  FIND_AT_MS,
+  FOLD_MS,
+  UNFOLD_MS,
+  cardThingsOf,
+  isPocketCardWaiting,
+  outAtMs,
+  promptAtMs,
+  thingAtMs,
+} from './pocketCard'
 
 // The dare card in your pocket on screen (src/features/dare/pocketCard.ts):
 // a napkin card rises out of your pocket and opens in your friends' pencil
-// scrawl, I DARE YOU over this run's things as pictures, AND Uncle Chunk's
-// HAT!! with his hat, and a doodled chicken. Then it folds itself up into
-// the HUD's dare card, and each picture flies into its own outline there.
-// Show, don't explain: pictures, and a few scrawled words. Only art moves;
-// the card has no buttons, and any key or tap folds it.
+// scrawl: I DARE YOU TO FIND:, this run's room things popping on one at a
+// time, each in a pencil box with a ? for still to find, then THEN GET OUT!
+// by a doodle of the front door. Then it
+// folds itself up into the HUD's dare pocket, which opens, and each picture
+// flies into its own slot there. Show, don't explain: pictures, and a few
+// scrawled words. Only art moves; the card has no buttons, and a key or a
+// tap folds it. While it waits (the first time alone), a key cap or TAP
+// pulses under it.
 
-const CARD_HEIGHT = 88
+const CARD_HEIGHT = 80
 const CARD_MAX_WIDTH = 180
 const CARD_SIDE_GAP = 10
 const ICON_SCALE = 2
 const BIG_ICON = DARE_ICON_SIZE * ICON_SCALE
-const ICON_STRIDE = BIG_ICON + 6
+const BOX_PAD = 2
+const BOX = BIG_ICON + BOX_PAD * 2
+const BOX_STRIDE = BOX + 6
+const POP_MS = 160
+const POP_SCALE = 1.7
 
 const NAPKIN = '#f2e8d0'
 const NAPKIN_EDGE = '#c9b994'
 const NAPKIN_CREASE = '#e2d6b8'
 const PENCIL = '#4a4038'
+const PENCIL_LIGHT = '#9a8e7e'
 const CARD_SHADOW = 'rgba(0, 0, 0, 0.35)'
 const BACKDROP = 'rgba(10, 6, 14, 0.55)'
-
-// NOTE: the scrawl writes itself on while you read: the dare, then each
-// picture, then the hat, then the chicken.
-const DARE_AT_MS = UNFOLD_MS
-const FIRST_THING_AT_MS = UNFOLD_MS + 250
-const THING_GAP_MS = 220
-const HAT_AFTER_MS = 200
-const CHICKEN_AFTER_MS = 350
+const PROMPT_FILL = 'rgba(18, 13, 22, 0.94)'
+const PROMPT_RIM = '#ffe066'
 
 // THE SCRAWL
 
 type Word = Readonly<{ text: BakedText; lift: number }>
 
-// NOTE: each word a pixel off the last, as a hand writes.
-const DARE_WORDS: ReadonlyArray<Word> = Array.map(
-  ['I', 'DARE', 'YOU'],
-  (word, index) => ({
-    text: bakeText(word, 'Ink'),
-    lift: [0, -1, 1][index] ?? 0,
-  }),
-)
-const DARE_SCALE = 2
-const DARE_WORD_GAP = 6
+const BIG = 2
+const WORD_GAP = 6
 
-const HAT_LINE: BakedText = bakeText(
-  `AND ${String.toUpperCase(ZOMBIE_NAMES.Boss)}'S HAT!!`,
-  'Ink',
-)
+// NOTE: each word a pixel off the last, as a hand writes.
+const wordsOf = (words: ReadonlyArray<string>): ReadonlyArray<Word> =>
+  Array.map(words, (word, index) => ({
+    text: bakeText(word, 'Ink'),
+    lift: [0, -1, 1, 0][index] ?? 0,
+  }))
+
+const DARE_WORDS = wordsOf(['I', 'DARE', 'YOU'])
+const FIND_WORDS = wordsOf(['TO', 'FIND:'])
+const OUT_WORDS = wordsOf(['THEN', 'GET', 'OUT!'])
+
+const wordsWidth = (words: ReadonlyArray<Word>): number =>
+  Array.reduce(words, 0, (sum, { text }) => sum + text.width * BIG) +
+  WORD_GAP * (words.length - 1)
+
+const QUESTION: BakedText = bakeText('?', 'Ink')
 
 // NOTE: a chicken in pencil, for no chickening out.
 const CHICKEN: Sprite = spriteShapes(
@@ -87,12 +100,27 @@ const CHICKEN: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: a pencil squiggle under the dare.
-const SQUIGGLE: Sprite = spriteShapes(
-  ['.PP...PP...PP...PP...PP...PP..', 'P..PPP..PPP..PPP..PPP..PPP..PP'],
-  { P: PENCIL },
+// NOTE: the manor's front door in pencil, arched, with its knob, and a
+// pencil arrow running out of it: the way out once the list is done.
+const DOOR: Sprite = spriteShapes(
+  [
+    '...PPPP.......',
+    '..PDDDDP......',
+    '.PDDDDDDP.....',
+    '.PDPDDPDP.....',
+    '.PDPDDPDP...P.',
+    '.PDDDDDDP...PP',
+    '.PDDDDYDPPPPPP',
+    '.PDDDDDDP...PP',
+    '.PDPDDPDP...P.',
+    '.PDPDDPDP.....',
+    '.PDDDDDDP.....',
+    'PPPPPPPPPP....',
+  ],
+  { P: PENCIL, D: '#a86f45', Y: '#e0a020' },
   TOP_LEFT,
 )
+const DOOR_WIDTH = 14
 
 // LAYOUT
 
@@ -111,33 +139,21 @@ const cardBoxOf = (screen: Screen): CardBox => {
   }
 }
 
-const THINGS_Y = 30
-const HAT_LINE_Y = 56
-const CHICKEN_Y = CARD_HEIGHT - 16
+const DARE_Y = 5
+const FIND_Y = 19
+const THINGS_Y = 35
+const OUT_Y = 63
 
-// NOTE: where each picture sits on the card, card-local: this run's things
-// in a row, then the hat at the end of its line, in the HUD card's order.
-const pictureSpotsOf = (
-  count: number,
-  width: number,
-): ReadonlyArray<Vector> => {
-  const rowWidth = count * ICON_STRIDE - (ICON_STRIDE - BIG_ICON)
+// NOTE: where each thing's box sits on the card, card-local: this run's
+// things in a row, in the HUD card's order.
+const boxSpotsOf = (count: number, width: number): ReadonlyArray<Vector> => {
+  const rowWidth = count * BOX_STRIDE - (BOX_STRIDE - BOX)
   const rowLeft = Math.round((width - rowWidth) / 2)
-  const hatLineWidth = HAT_LINE.width + 4 + BIG_ICON
-  const hatLineLeft = Math.round((width - hatLineWidth) / 2)
-  return [
-    ...Array.makeBy(count, index => ({
-      x: rowLeft + index * ICON_STRIDE,
-      y: THINGS_Y,
-    })),
-    { x: hatLineLeft + HAT_LINE.width + 4, y: HAT_LINE_Y - 4 },
-  ]
+  return Array.makeBy(count, index => ({
+    x: rowLeft + index * BOX_STRIDE,
+    y: THINGS_Y,
+  }))
 }
-
-const shownAtMs = (index: number, count: number): number =>
-  index < count
-    ? FIRST_THING_AT_MS + index * THING_GAP_MS
-    : FIRST_THING_AT_MS + count * THING_GAP_MS + HAT_AFTER_MS
 
 // THE CARD
 
@@ -149,33 +165,61 @@ const paperShapes = (width: number): ReadonlyArray<Canvas.Shape> => [
   rect(1, Math.floor(CARD_HEIGHT / 2), width - 2, 1, NAPKIN_CREASE),
 ]
 
-const dareShapes = (width: number): ReadonlyArray<Canvas.Shape> => {
-  const total =
-    Array.reduce(DARE_WORDS, 0, (sum, { text }) => sum + text.width) *
-      DARE_SCALE +
-    DARE_WORD_GAP * (DARE_WORDS.length - 1)
-  const left = Math.round((width - total) / 2)
+const wordShapes = (
+  words: ReadonlyArray<Word>,
+  left: number,
+  y: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Array.map(words, ({ text, lift }, index) =>
+    placeBaked(text, {
+      x:
+        left +
+        Array.reduce(
+          Array.take(words, index),
+          0,
+          (sum, word) => sum + word.text.width * BIG + WORD_GAP,
+        ),
+      y: y + lift,
+      align: 'Left',
+      scale: BIG,
+    }),
+  )
+
+const centeredWords = (
+  words: ReadonlyArray<Word>,
+  width: number,
+  y: number,
+): ReadonlyArray<Canvas.Shape> =>
+  wordShapes(words, Math.round((width - wordsWidth(words)) / 2), y)
+
+const OUT_GAP = 5
+
+// NOTE: THEN GET OUT! with the door doodle after it, centered as one line.
+const outShapes = (width: number): ReadonlyArray<Canvas.Shape> => {
+  const lineWidth = wordsWidth(OUT_WORDS) + OUT_GAP + DOOR_WIDTH
+  const left = Math.round((width - lineWidth) / 2)
   return [
-    ...Array.map(DARE_WORDS, ({ text, lift }, index) =>
-      placeBaked(text, {
-        x:
-          left +
-          Array.reduce(
-            Array.take(DARE_WORDS, index),
-            0,
-            (sum, word) => sum + word.text.width * DARE_SCALE + DARE_WORD_GAP,
-          ),
-        y: 8 + lift,
-        align: 'Left',
-        scale: DARE_SCALE,
-      }),
-    ),
+    ...wordShapes(OUT_WORDS, left, OUT_Y),
     group({
-      translate: { x: Math.round((width - 30) / 2), y: 24 },
-      shapes: SQUIGGLE,
+      translate: {
+        x: left + wordsWidth(OUT_WORDS) + OUT_GAP,
+        y: OUT_Y - 1,
+      },
+      shapes: DOOR,
     }),
   ]
 }
+
+// NOTE: a pencil box with its corners cut, drawn twice a pixel apart at a
+// corner as a hand goes round, and a ? on its top right: still to find.
+const thingBoxShapes = (): ReadonlyArray<Canvas.Shape> => [
+  rect(1, 0, BOX - 2, 1, PENCIL),
+  rect(1, BOX - 1, BOX - 2, 1, PENCIL),
+  rect(0, 1, 1, BOX - 2, PENCIL),
+  rect(BOX - 1, 1, 1, BOX - 2, PENCIL),
+  rect(BOX - 3, BOX, 3, 1, PENCIL_LIGHT),
+  placeBaked(QUESTION, { x: BOX - 2, y: -5, align: 'Left' }),
+]
 
 const iconShapes = (
   kind: DareKind,
@@ -188,25 +232,36 @@ const iconShapes = (
     shapes: DARE_ICONS[kind],
   })
 
+// NOTE: a thing in its box, popping on from big as the pencil scratches.
+const boxedThingShapes = (
+  kind: DareKind,
+  spot: Vector,
+  sinceMs: number,
+): Canvas.Shape => {
+  const pop = lerp(POP_SCALE, 1, easeOut(clamp(sinceMs / POP_MS, 0, 1)))
+  const grow = (BOX * (pop - 1)) / 2
+  return group({
+    translate: { x: Math.round(spot.x - grow), y: Math.round(spot.y - grow) },
+    scale: pop === 1 ? undefined : { x: pop, y: pop },
+    shapes: [
+      ...thingBoxShapes(),
+      iconShapes(kind, { x: BOX_PAD, y: BOX_PAD }, ICON_SCALE),
+    ],
+  })
+}
+
 // NOTE: the card's words and its paper, card-local, written on by `ageMs`.
 const scrawlShapes = (
   width: number,
   count: number,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const hatAtMs = shownAtMs(count, count)
-  const hatLineLeft = Math.round((width - (HAT_LINE.width + 4 + BIG_ICON)) / 2)
-  return [
-    ...paperShapes(width),
-    ...(ageMs >= DARE_AT_MS ? dareShapes(width) : []),
-    ...(ageMs >= hatAtMs
-      ? [placeBaked(HAT_LINE, { x: hatLineLeft, y: HAT_LINE_Y, align: 'Left' })]
-      : []),
-    ...(ageMs >= hatAtMs + CHICKEN_AFTER_MS
-      ? [group({ translate: { x: 10, y: CHICKEN_Y }, shapes: CHICKEN })]
-      : []),
-  ]
-}
+): ReadonlyArray<Canvas.Shape> => [
+  ...paperShapes(width),
+  group({ translate: { x: 6, y: 4 }, shapes: CHICKEN }),
+  ...(ageMs >= UNFOLD_MS ? centeredWords(DARE_WORDS, width, DARE_Y) : []),
+  ...(ageMs >= FIND_AT_MS ? centeredWords(FIND_WORDS, width, FIND_Y) : []),
+  ...(ageMs >= outAtMs(count) ? outShapes(width) : []),
+]
 
 // NOTE: the card rising out of your pocket, from below the screen.
 const riseOf = (screen: Screen, box: CardBox, ageMs: number): number =>
@@ -214,15 +269,52 @@ const riseOf = (screen: Screen, box: CardBox, ageMs: number): number =>
     lerp(screen.height - box.y, 0, easeOut(clamp(ageMs / UNFOLD_MS, 0, 1))),
   )
 
+// NOTE: under a waiting card once it takes a key: a key cap on a keyboard,
+// TAP on touch, pulsing.
+const PROMPT_BLINK_MS = 450
+const PROMPT_PAD = 2
+const PROMPT_GAP = 3
+const KEY_PROMPT = bakeText('ANY KEY', 'Prompt')
+const TAP_PROMPT = bakeText('TAP', 'Prompt')
+
+const promptShapes = (
+  model: Model,
+  box: CardBox,
+  ageMs: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const text = model.lastDevice === 'Touch' ? TAP_PROMPT : KEY_PROMPT
+  const width = text.width * BIG + PROMPT_PAD * 2 + 2
+  const height = 12 + PROMPT_PAD * 2
+  const left = box.x + Math.round((box.width - width) / 2)
+  const top = box.y + CARD_HEIGHT + PROMPT_GAP
+  const isLit = Math.floor(ageMs / PROMPT_BLINK_MS) % 2 === 0
+  return [
+    group({
+      opacity: isLit ? 1 : 0.45,
+      shapes: [
+        rect(left + 1, top, width - 2, height, PROMPT_RIM),
+        rect(left, top + 1, width, height - 2, PROMPT_RIM),
+        rect(left + 1, top + 1, width - 2, height - 3, PROMPT_FILL),
+        placeBaked(text, {
+          x: left + PROMPT_PAD + 1,
+          y: top + PROMPT_PAD,
+          align: 'Left',
+          scale: BIG,
+        }),
+      ],
+    }),
+  ]
+}
+
 const readingShapes = (
   model: Model,
   screen: Screen,
   ageMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
-  const kinds = Array.map(dareCardOf(model), ({ kind }) => kind)
-  const count = kinds.length - 1
+  const kinds = cardThingsOf(model)
+  const count = kinds.length
   const box = cardBoxOf(screen)
-  const spots = pictureSpotsOf(count, box.width)
+  const spots = boxSpotsOf(count, box.width)
   return [
     rect(0, 0, screen.width, screen.height, BACKDROP),
     group({
@@ -232,67 +324,110 @@ const readingShapes = (
         ...Array.flatMap(
           Array.zip(kinds, spots),
           ([kind, spot]: readonly [DareKind, Vector], index: number) =>
-            ageMs >= shownAtMs(index, count)
-              ? [iconShapes(kind, spot, ICON_SCALE)]
+            ageMs >= thingAtMs(index)
+              ? [boxedThingShapes(kind, spot, ageMs - thingAtMs(index))]
               : [],
         ),
       ],
     }),
+    ...(isPocketCardWaiting(model) && ageMs >= promptAtMs(model)
+      ? promptShapes(model, box, ageMs)
+      : []),
   ]
 }
 
-// NOTE: the card folds up toward the HUD's dare pocket and fades, and each
-// picture flies into the pocket's card and fades as it lands.
+// NOTE: the card shrinks toward the HUD's pocket and fades in the first
+// part of the fold, and each picture flies on into its own slot, one a
+// little after another, landing at the slot's size, then fades to the
+// slot's outline beneath: the card is now the list.
+const PAPER_SHARE = 0.5
+const FLIGHT_STAGGER_MS = 90
+const LAND_FADE_SHARE = 0.25
+
 const foldingShapes = (
   model: Model,
   screen: Screen,
+  pocket: DarePocket,
   ageMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
-  const kinds = Array.map(dareCardOf(model), ({ kind }) => kind)
-  const count = kinds.length - 1
+  const kinds = cardThingsOf(model)
+  const count = kinds.length
   const box = cardBoxOf(screen)
-  const spots = pictureSpotsOf(count, box.width)
-  const target = pocketCardSpotOf(model, hudLayoutFor(screen))
-  const share = easeOut(clamp(ageMs / FOLD_MS, 0, 1))
-  const paperScale = lerp(1, 0.1, share)
+  const spots = boxSpotsOf(count, box.width)
+  const targets = pocketSlotSpotsOf(model, hudLayoutFor(screen), pocket)
+  const landScale = pocket === 'Open' ? ICON_SCALE : 1
+  const paperShare = easeOut(clamp(ageMs / (FOLD_MS * PAPER_SHARE), 0, 1))
+  const first = targets[0] ?? { x: box.x, y: box.y }
+  const paperScale = lerp(1, 0.2, paperShare)
+  const flightMs = FOLD_MS - FLIGHT_STAGGER_MS * count
   return [
     group({
-      opacity: 1 - share,
+      opacity: 1 - paperShare,
       shapes: [
         rect(0, 0, screen.width, screen.height, BACKDROP),
         group({
           translate: {
-            x: Math.round(lerp(box.x, target.x, share)),
-            y: Math.round(lerp(box.y, target.y, share)),
+            x: Math.round(lerp(box.x, first.x, paperShare)),
+            y: Math.round(lerp(box.y, first.y, paperShare)),
           },
           scale: { x: paperScale, y: paperScale },
           shapes: scrawlShapes(box.width, count, Number.POSITIVE_INFINITY),
         }),
-        ...Array.map(Array.zip(kinds, spots), ([kind, spot]) =>
-          iconShapes(
-            kind,
-            {
-              x: lerp(box.x + spot.x, target.x, share),
-              y: lerp(box.y + spot.y, target.y, share),
-            },
-            lerp(ICON_SCALE, 1, share),
-          ),
-        ),
       ],
     }),
+    ...Array.flatMap(
+      Array.zip(kinds, spots),
+      ([kind, spot]: readonly [DareKind, Vector], index: number) => {
+        const target = targets[index] ?? first
+        const share = clamp(
+          (ageMs - index * FLIGHT_STAGGER_MS) / flightMs,
+          0,
+          1,
+        )
+        const eased = easeOut(share)
+        const fade = clamp((1 - share) / LAND_FADE_SHARE, 0, 1)
+        return [
+          group({
+            opacity: fade,
+            shapes: [
+              iconShapes(
+                kind,
+                {
+                  x: lerp(box.x + spot.x + BOX_PAD, target.x, eased),
+                  y: lerp(box.y + spot.y + BOX_PAD, target.y, eased),
+                },
+                lerp(ICON_SCALE, landScale, eased),
+              ),
+            ],
+          }),
+        ]
+      },
+    ),
   ]
 }
 
 // NOTE: over everything else on the overlay while the card is out.
+// `pocket` is how the HUD's pocket is drawn, so the pictures land there.
 export const pocketCardShapes: {
-  (screen: Screen): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape>
+  (
+    screen: Screen,
+    pocket: DarePocket,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (
+    model: Model,
+    screen: Screen,
+    pocket: DarePocket,
+  ): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
-  2,
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
+  3,
+  (
+    model: Model,
+    screen: Screen,
+    pocket: DarePocket,
+  ): ReadonlyArray<Canvas.Shape> =>
     PocketCard.match(model.pocketCard, {
       Pocketed: () => [],
       Reading: ({ ageMs }) => readingShapes(model, screen, ageMs),
-      Folding: ({ ageMs }) => foldingShapes(model, screen, ageMs),
+      Folding: ({ ageMs }) => foldingShapes(model, screen, pocket, ageMs),
     }),
 )

@@ -165,6 +165,7 @@ export const HarnessConfig = Schema.Struct({
         'dareKey',
         'rattles',
         'displayCase',
+        'dareCard',
       ]),
     ),
   ),
@@ -176,6 +177,10 @@ export const HarnessConfig = Schema.Struct({
   // NOTE: `darefound=N` marks the first N things of the dare card found,
   // the hat last.
   darefound: Num(0),
+  // NOTE: `pocket=N` holds the dare card from the pocket out, read for N ms
+  // (src/features/dare/pocketCard.ts); `pocketfold=N` has it folding for N ms.
+  pocket: MaybeNum,
+  pocketfold: MaybeNum,
   // The player and the guns
   px: MaybeNum,
   py: MaybeNum,

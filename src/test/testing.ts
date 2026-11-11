@@ -54,7 +54,11 @@ import { PlaySound, PlayTune } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
 import { Message as CoopMessage } from '../features/coop/message'
 import { ChangeLobby, FocusCoopElement } from '../features/coop/steps'
-import { UNFOLD_MS, isPocketCardReading } from '../features/dare/pocketCard'
+import {
+  GATE_MS,
+  isPocketCardHeld,
+  isPocketCardReading,
+} from '../features/dare/pocketCard'
 import { endOffer } from '../features/end/endOffer'
 import type { ShareOutcome } from '../features/end/share'
 import { Message as GuideMessage } from '../features/guide/message'
@@ -239,20 +243,21 @@ export const emitPressedKey = (code: string) =>
 // which starts on the last of them.
 const SLAM_FRAMES = SLAM_MS / MAX_FRAME_DELTA_MS
 
-// NOTE: the dare card that comes out on the slam
-// (src/features/dare/pocketCard.ts), read: its frames until it has opened,
-// then a key folds it. A run with no list (Endless) has no card, and these
-// send nothing.
-const UNFOLD_FRAMES = Math.ceil(UNFOLD_MS / MAX_FRAME_DELTA_MS)
+// NOTE: the dare card from the slam (src/features/dare/pocketCard.ts) read:
+// frames until it takes a key, then a key. Endless has no card.
+const GATE_FRAMES = Math.ceil(GATE_MS / MAX_FRAME_DELTA_MS)
 
-const whileCardReads = (message: Message) =>
+const whileCard = (isDue: (current: Model) => boolean) => (message: Message) =>
   Story.messageWith((current: Model) =>
-    isPocketCardReading(current) ? message : Message.SuppressedContextMenu(),
+    isDue(current) ? message : Message.SuppressedContextMenu(),
   )
+const whileCardReads = whileCard(isPocketCardReading)
 
 const cardOpenFrames = () =>
-  Array.makeBy(UNFOLD_FRAMES, () =>
-    whileCardReads(Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS })),
+  Array.makeBy(GATE_FRAMES, () =>
+    whileCard(isPocketCardHeld)(
+      Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS }),
+    ),
   )
 
 const readDareCard = Story.steps(
@@ -309,7 +314,7 @@ export const throughIntroInScene = () => [
 ]
 
 const cardOpenFramesInScene = () =>
-  Array.makeBy(UNFOLD_FRAMES, () =>
+  Array.makeBy(GATE_FRAMES, () =>
     Scene.Subscription.emit(
       SCENE_SUBSCRIPTIONS.frame,
       Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS }),

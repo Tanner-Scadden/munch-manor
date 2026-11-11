@@ -716,7 +716,9 @@ export type Lesson = typeof Lesson.Type
 // meeting Rattles by the front door, his hello in the first break after the
 // practice wave (src/features/onboarding/rattlesIntro.ts). `displayCase` is the
 // card a display case raises the first time a player walks up to one in a
-// break (src/features/onboarding/caseCard.ts).
+// break (src/features/onboarding/caseCard.ts). `dareCard` is the
+// dare card from the pocket read once (src/features/dare/pocketCard.ts):
+// until then it waits for a key or a tap.
 export const Lessons = Schema.Struct({
   move: Lesson,
   fire: Lesson,
@@ -729,6 +731,7 @@ export const Lessons = Schema.Struct({
   dareKey: Lesson,
   rattles: Lesson,
   displayCase: Lesson,
+  dareCard: Lesson,
 })
 export type Lessons = typeof Lessons.Type
 

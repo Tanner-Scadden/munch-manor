@@ -63,6 +63,7 @@ export const legacySave: PlayerSave = {
       dareKey: 'Pending',
       rattles: 'Pending',
       displayCase: 'Pending',
+      dareCard: 'Pending',
     },
     trapHint: 'Seen',
     introducedKinds: ['Shambler'],

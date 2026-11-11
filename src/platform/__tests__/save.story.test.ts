@@ -186,6 +186,19 @@ describe('the schema', () => {
     ).toEqual(Option.some({ ...lessons, displayCase: 'Pending' }))
   })
 
+  // NOTE: a save from before the dare card waited has no key for it: the
+  // card waits for a key once more.
+  test('a save from before the dare card waited reads with it to read', () => {
+    const { dareCard: _dareCard, ...lessons } = learnedSave.onboarding.lessons
+    const older = jsonOf({
+      ...learnedSave,
+      onboarding: { ...learnedSave.onboarding, lessons },
+    })
+    expect(
+      Option.map(decodeSave(older), save => save.onboarding.lessons),
+    ).toEqual(Option.some({ ...lessons, dareCard: 'Pending' }))
+  })
+
   test('the difficulty round trips through the model', () => {
     expect(saveOf(restoreSave(initialModel, learnedSave)).difficulty).toEqual(
       learnedSave.difficulty,
@@ -592,6 +605,7 @@ describe('loading the save', () => {
         writeSave(),
         tick(50),
         throughIntro,
+        writeSave(),
         Story.model(current => {
           expect(current.saveStatus).toBe('Read')
           expect(isPracticeGateHeld(current)).toBe(true)

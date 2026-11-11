@@ -182,7 +182,7 @@ const practiceGateNote = (model: Model): string =>
 // NOTE: the dare card in your pocket, open after the slam
 // (src/features/dare/pocketCardView.ts).
 const POCKET_CARD_STATUS =
-  "Your friends' dare card: bring back the things they drew, and Uncle Chunk's hat. Press any key or tap to put it away."
+  "Your friends' dare card: find the things they drew, then get out the front door. Press any key or tap to put it away."
 
 const statusText = (model: Model): string =>
   Phase.match(model.phase, {

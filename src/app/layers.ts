@@ -34,6 +34,7 @@ import {
 } from '../render/screen'
 import { hudShapes, hudStripShapes } from '../screens/game/hud'
 import { overlayShapes } from '../screens/game/overlay'
+import { pocketOf } from '../screens/game/pocket'
 import { worldLayerShapes, worldOffset } from '../screens/game/worldView'
 import { percentOf } from '../ui/menuParts'
 import { type Level, levelOf } from '../world/level/arena'
@@ -83,7 +84,7 @@ const roundOverlayShapes = (
   ...(Phase.isAnyOf(['Wave'])(model.phase)
     ? inLandscapeFrame(screen, bossBandShapes(model))
     : []),
-  ...pocketCardShapes(model, screen),
+  ...pocketCardShapes(model, screen, pocketOf(model)),
   ...inLandscapeFrame(screen, caseCardShapes(model)),
 ]
 

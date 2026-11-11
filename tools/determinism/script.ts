@@ -164,6 +164,7 @@ const pastTutorial = (model: Model): Model =>
         dareKey: () => Lesson.Learned({ atMs: 0 }),
         rattles: () => Lesson.Learned({ atMs: 0 }),
         displayCase: () => Lesson.Learned({ atMs: 0 }),
+        dareCard: () => Lesson.Learned({ atMs: 0 }),
       }),
   })
 
