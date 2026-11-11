@@ -26,7 +26,12 @@ import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
 import type { Decal } from '../render/renderSchema'
 import { everyRoomImage, roomShapes } from '../render/room/room'
 import { FLOOR_COLOR } from '../render/room/roomPalette'
-import { type Screen, inLandscapeFrame, screenOf } from '../render/screen'
+import {
+  type Screen,
+  inLandscapeFrame,
+  screenOf,
+  stagePlacement,
+} from '../render/screen'
 import { hudShapes, hudStripShapes } from '../screens/game/hud'
 import { overlayShapes } from '../screens/game/overlay'
 import { worldLayerShapes, worldOffset } from '../screens/game/worldView'
@@ -297,6 +302,30 @@ const lensStyle = (
 
 const STAGE_BACKDROP = '#140c10'
 
+// NOTE: the stage's box on the measured surface (src/render/screen.ts), on
+// whole device pixels where that keeps the art crisp; before the surface is
+// measured, centered at the plain fit.
+const stageBoxStyle = (
+  model: Model,
+  screen: Screen,
+): Readonly<Record<string, string>> =>
+  Option.match(model.maybeSurface, {
+    onNone: () => ({
+      width: `min(100cqw, 100cqh * ${screen.width} / ${screen.height})`,
+      height: `min(100cqh, 100cqw * ${screen.height} / ${screen.width})`,
+    }),
+    onSome: surface => {
+      const { scale, left, top } = stagePlacement(surface, screen)
+      return {
+        margin: '0',
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${screen.width * scale}px`,
+        height: `${screen.height * scale}px`,
+      }
+    },
+  })
+
 export const gameStageView: {
   (h: ApplicationViewBuilder): (model: Model) => Html
   (model: Model, h: ApplicationViewBuilder): Html
@@ -313,8 +342,7 @@ export const gameStageView: {
           h.Class('game-stage'),
           h.DataAttribute('layout', screen.layout),
           h.Style({
-            width: `min(100cqw, 100cqh * ${screen.width} / ${screen.height})`,
-            height: `min(100cqh, 100cqw * ${screen.height} / ${screen.width})`,
+            ...stageBoxStyle(model, screen),
             backgroundColor:
               screen.layout === 'Landscape' ? FLOOR_COLOR : STAGE_BACKDROP,
           }),

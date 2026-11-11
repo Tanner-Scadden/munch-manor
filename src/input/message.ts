@@ -2,7 +2,7 @@ import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
 import { GunSlot } from '../world/schema/worldSchema'
-import { PointerDevice, TouchControls } from './inputSchema'
+import { PointerDevice, SurfaceRectangle, TouchControls } from './inputSchema'
 
 // NOTE: the root's Messages from the keyboard, the mouse, and touch, and the
 // game surface they land on. src/app/message.ts joins them into the root's
@@ -35,12 +35,7 @@ export const inputCases = {
   MovedMouse: { clientX: Schema.Finite, clientY: Schema.Finite },
   SuppressedContextMenu: {},
   TappedWithTouch: {},
-  MeasuredGameSurface: {
-    left: Schema.Finite,
-    top: Schema.Finite,
-    width: Schema.Finite,
-    height: Schema.Finite,
-  },
+  MeasuredGameSurface: SurfaceRectangle.fields,
   CompletedDetectInputDevice: { touchControls: TouchControls },
 }
 export const InputMessage = defineMessageUnion(inputCases)

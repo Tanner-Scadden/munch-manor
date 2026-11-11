@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Option, Struct } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -140,10 +140,10 @@ export const inputHandlers = defineHandlers({
   TappedWithTouch: model => ({ model }),
 
   // NOTE: turning the phone while the turn hint is up is the hint done.
-  MeasuredGameSurface: (model, { left, top, width, height }) => {
+  MeasuredGameSurface: (model, message) => {
     const measured = modifyFields(model, {
-      maybeSurface: () => Option.some({ left, top, width, height }),
-      orientation: () => orientationOf(width, height),
+      maybeSurface: () => Option.some(Struct.omit(message, ['_tag'])),
+      orientation: () => orientationOf(message.width, message.height),
     })
     return {
       model:

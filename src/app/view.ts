@@ -18,7 +18,12 @@ import { purchaseAnnouncementView } from '../features/shop/purchaseHud'
 import { escapeSupportView } from '../features/support/supportView'
 import type { PointerDevice } from '../input/inputSchema'
 import { keyGrabToastView } from '../input/keyGrab'
-import { isPortrait, landscapeFrameOffset, screenOf } from '../render/screen'
+import {
+  isPortrait,
+  landscapeFrameOffset,
+  screenOf,
+  stagePlacement,
+} from '../render/screen'
 import {
   cornerButtonsView,
   debutCardView,
@@ -407,6 +412,12 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
           '--screen-h': `${screen.height}`,
           '--world-top': `${screen.world.y}`,
           '--frame-top': `${landscapeFrameOffset(screen).y}`,
+          ...Option.match(model.maybeSurface, {
+            onNone: () => ({}),
+            onSome: surface => ({
+              '--pixel': `${stagePlacement(surface, screen).scale}px`,
+            }),
+          }),
         }),
       ],
       [
