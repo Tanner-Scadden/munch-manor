@@ -6,7 +6,6 @@ import {
   KITCHEN_FIRST_WAVE,
   OPEN_BREAK_WAVE,
   PACK_WARNING_MS,
-  PREPARATION_MS,
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
@@ -22,7 +21,7 @@ import {
   targetsOf,
 } from '../party/party'
 import { isEveryoneReady, returnFallen } from '../party/revive'
-import { crowdSpawns, hasBreakClock, toughenSpawns } from '../run/difficulty'
+import { breakMsOf, crowdSpawns, toughenSpawns } from '../run/difficulty'
 import {
   isPracticeGateHeld,
   isTimedBreak,
@@ -229,12 +228,12 @@ export const isRoundActive = (phase: Phase): boolean =>
 export const isBreak = (model: World): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase)
 
-// NOTE: a break waits for READY, with no clock, in the lesson's open break
-// (wave 2) and on every difficulty below Hard (owner, 2026-11-01). The first
-// break of a run is the short get-ready beat before wave 1: it always counts.
-const breakClockFor = (model: World, wave: number): BreakClock =>
-  wave === OPEN_BREAK_WAVE ||
-  (wave > 1 && !hasBreakClock(model.difficulty.chosen))
+// NOTE: a break waits for READY, with no clock, only in the lesson's open
+// break (wave 2); every later one counts down its difficulty's breakMs
+// (owner, 2026-11-10). The first break of a run is the short get-ready beat
+// before wave 1: it always counts.
+const breakClockFor = (wave: number): BreakClock =>
+  wave === OPEN_BREAK_WAVE
     ? BreakClock.Waiting({ elapsedMs: 0 })
     : BreakClock.Counting()
 
@@ -252,7 +251,7 @@ export const beginPreparation: {
     model: World,
     wave: number,
     durationMs: number,
-    clock: BreakClock = breakClockFor(model, wave),
+    clock: BreakClock = breakClockFor(wave),
   ): World => {
     const [waveState, rolled] = rollWave(
       model.rngState,
@@ -322,8 +321,8 @@ export const pause = <M extends World>(model: M): M =>
     GameOver: () => model,
   })
 
-// NOTE: below Hard the kitchen tour's break waits for READY too, so leaving
-// it, timed or not, learns the timed breaks lesson that holds the tour
+// NOTE: a run saved before every break counted (2026-11-10) may hold the
+// kitchen tour's break waiting for READY, so leaving it, timed or not, learns the timed breaks lesson that holds the tour
 // (src/world/run/tutorialRules.ts): it plays once per save.
 const learnFromBreak = (model: World, wave: number, clock: BreakClock) =>
   BreakClock.match(clock, {
@@ -446,7 +445,11 @@ const keyForClear = (model: World): World => {
 // Endless generator rolls them (src/world/waves/endlessWaves.ts), and an
 // escape ends at the front door (src/world/dare/finale.ts).
 const clearWave = (model: World, wave: number): World =>
-  beginPreparation(keyForClear(model), wave + 1, PREPARATION_MS)
+  beginPreparation(
+    keyForClear(model),
+    wave + 1,
+    breakMsOf(model.difficulty.chosen),
+  )
 
 // NOTE: spawns stay with their planned doors, so a door whose plank breaks
 // is a spawn point again. routed is the same list with each door rerouted

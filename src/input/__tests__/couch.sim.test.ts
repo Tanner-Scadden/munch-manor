@@ -101,8 +101,8 @@ const nearestZombie = (current: Model): Option.Option<Target> =>
     },
   )
 
-// NOTE: the breaks have no clock on Normal, so a player the READY key finds
-// at a purchasable (held there to buy) would hold the break forever. The
+// NOTE: the open break before wave 2 has no clock, so a player the READY
+// key finds at a purchasable (held there to buy) would hold it forever. The
 // walking pattern carries on through the break, so both come off it.
 const walking = (frame: number): ReadonlyArray<string> => {
   const step = Math.floor(frame / FRAMES_PER_MOVE)

@@ -32,6 +32,7 @@ import {
 } from '../../../test/testing'
 import { START_LEVEL } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
+import { breakMsOf } from '../../run/difficulty'
 import { scoreOf } from '../../run/stats'
 import { hasBoss } from '../../zombies/boss'
 import { frenzyPacksOf, isFrenzyPack } from '../../zombies/frenzy'
@@ -229,7 +230,7 @@ describe('waves', () => {
               Option.liftPredicate(phase, Phase.guards.Preparation),
             )
             expect(preparation.wave).toBe(3)
-            expect(preparation.remainingMs).toBe(PREPARATION_MS)
+            expect(preparation.remainingMs).toBe(breakMsOf('Normal'))
             expect(player.hp).toBe(3)
           }),
         )

@@ -18,7 +18,6 @@ import { endlessBannerOf } from '../../../screens/game/overlay'
 import { bestsFor } from '../../../screens/home/home'
 import {
   PACK_WARNING_MS,
-  PREPARATION_MS,
   ZOMBIE_ALIVE_MAX,
   ZOMBIE_DYING_MS,
   ZOMBIE_MAX_HP,
@@ -46,7 +45,7 @@ import { TRAPS } from '../../gear/traps'
 import { STARTING_PISTOL } from '../../gear/weapons'
 import { START_LEVEL } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
-import { DIFFICULTIES } from '../../run/difficulty'
+import { DIFFICULTIES, breakMsOf } from '../../run/difficulty'
 import { Arsenal } from '../../schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
@@ -215,7 +214,7 @@ describe('campaign and endless after the tuned waves', () => {
           Option.liftPredicate(phase, Phase.guards.Preparation),
         )
         expect(preparation.wave).toBe(FINAL_WAVE + 1)
-        expect(preparation.remainingMs).toBe(PREPARATION_MS)
+        expect(preparation.remainingMs).toBe(breakMsOf('Normal'))
         expect(preparation.spawns.length).toBe(
           endlessZombieCount(FINAL_WAVE + 1),
         )
