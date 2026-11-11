@@ -12,6 +12,7 @@ import {
   Lesson,
   type Model,
   Oven,
+  Phase,
   PocketCard,
   QuestTour,
   Tour,
@@ -32,13 +33,20 @@ import {
 import { heroIdOf } from '@game/shared/playerData'
 import { dareCardOf, maybeLyingAt } from '@game/world/dare/dare'
 import { DareThingState } from '@game/world/dare/dareSchema'
+import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
-import { levelOf } from '@game/world/level/arena'
-import { ARRANGEMENTS, CHANDELIER_DROP } from '@game/world/level/plan'
+import { levelOf, tileCenter } from '@game/world/level/arena'
+import {
+  ARRANGEMENTS,
+  CHANDELIER_DROP,
+  roomSpotsOf,
+} from '@game/world/level/plan'
+import { wakeRoom } from '@game/world/level/wakeUp'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
+import { withWorld } from '@game/world/schema/world'
 import { STATION_RULES } from '@game/world/stations/stations'
 
 import { withCoop } from './coopStage'
@@ -215,6 +223,44 @@ const nearDareThing = (model: Model, gap: number): Model =>
         }),
     },
   )
+
+// NOTE: the dare list's first thing hidden on `room`'s first hiding spot,
+// `share` of its find's work done, the player `gap` px south of it.
+const atRoomFind = (
+  model: Model,
+  room: string,
+  share: number,
+  gap: number,
+): Model => {
+  const level = levelOf(model)
+  return Option.match(
+    Option.flatMap(
+      Array.findFirst(roomSpotsOf(level.spec), spots => spots.room === room),
+      ({ hiding }) => Array.head(hiding),
+    ),
+    {
+      onNone: () => model,
+      onSome: ({ tile }) => {
+        const spot = tileCenter(tile)
+        const workedMs = share * FIND_RULES[findStyleOfRoom(room)].workMs
+        return modifyFocus(
+          modifyFields(model, {
+            dareThings: things =>
+              Array.map(things, (thing, index) =>
+                index === 0
+                  ? {
+                      ...thing,
+                      state: DareThingState.Hidden({ ...spot, workedMs }),
+                    }
+                  : thing,
+              ),
+          }),
+          { player: player => ({ ...player, x: spot.x, y: spot.y + gap }) },
+        )
+      },
+    },
+  )
+}
 
 export const scenarioModel = (settings: SceneSettings): Model =>
   withCoop(settings.config, scenarioModelOf(settings))
@@ -648,6 +694,22 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   const darenear = config.darenear
   if (darenear !== undefined) {
     model = nearDareThing(model, darenear)
+  }
+  const findroom = config.findroom
+  if (findroom !== undefined) {
+    model = atRoomFind(model, findroom, config.findwork, config.findgap)
+  }
+  const wake = config.wake
+  if (wake !== undefined) {
+    model = withWorld(
+      modifyFields(model, {
+        phase: phase =>
+          Phase.isAnyOf(['Wave'])(phase)
+            ? modifyFields(phase, { spawns: () => [] })
+            : phase,
+      }),
+      world => wakeRoom(world, wake),
+    )
   }
   return model
 }
