@@ -6,6 +6,7 @@ import { Array, Option, Record } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
+  CaseState,
   DifficultyCard,
   FridgeDoor,
   Lesson,
@@ -103,6 +104,15 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
                   durationMs: 30_000,
                 }),
       }),
+    })
+  }
+  if (config.caseopen) {
+    model = modifyFields(model, {
+      cases: cases =>
+        Array.map(cases, displayCase => ({
+          ...displayCase,
+          state: CaseState.Opened({ by: 0 }),
+        })),
     })
   }
   const fridgeSeed = config.fridgeseed

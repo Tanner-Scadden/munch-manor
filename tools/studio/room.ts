@@ -5,6 +5,7 @@
 import { Array, Option, Schema, String } from 'effect'
 import type { Canvas } from 'foldkit'
 
+import { boundsOf } from '../../src/art/sprite'
 import { roomShapes } from '../../src/render/room/room'
 import { TILE_SIZE } from '../../src/shared/constants'
 import {
@@ -13,7 +14,7 @@ import {
   symbolAt,
 } from '../../src/world/level/arena'
 import { ARRANGEMENTS, manorSpecFor } from '../../src/world/level/plan'
-import { type Bounds, boundsOf } from './catalog'
+import type { Bounds } from './catalog'
 import { DRAFT_ROOMS, DRAFT_ROOM_SOURCE, draftRoomShapes } from './draftRooms'
 import type { Pin, Tile, TileArea } from './notes'
 

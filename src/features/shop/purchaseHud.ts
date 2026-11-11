@@ -3,8 +3,10 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
-import { HOLD_ICON } from '../../art/icons'
+import { GRAB_ICON, HOLD_ICON } from '../../art/icons'
+import { spriteImage } from '../../art/sprite'
 import { InputMessage, RunButtonMessage } from '../../input/message'
+import { iconView } from '../../ui/menuParts'
 import { maybeStovePerk } from '../../world/kitchen/stove'
 import { exitName } from '../../world/level/exits'
 import {
@@ -24,6 +26,7 @@ import {
   maybeOfferOf,
   shortfallFor,
 } from '../../world/shop/purchase'
+import { maybeTakenIcon } from './purchaseView'
 
 // NOTE: the kitchen tour's free boards and pull are read as free.
 // NOTE: a price is in skeleton keys off the crew's ring (src/world/keys/keys.ts).
@@ -48,17 +51,58 @@ const nameOf = (target: Purchasable): string =>
     Case: () => 'the prize in the case',
   })
 
-// NOTE: a weapon on offer is already paid for, so its button says TAKE
-// where a price would be.
-const badgeOf = (offer: Offer): string => {
-  if (Purchasable.isAnyOf(['Prize', 'Case'])(offer.target)) {
-    return 'TAKE'
-  } else if (offer.isFull) {
-    return Purchasable.isAnyOf(['Stove'])(offer.target) ? 'NOPE' : 'FULL'
-  } else {
-    return `${offer.price}`
-  }
-}
+const badgeOf = (offer: Offer): string =>
+  offer.isFull
+    ? Purchasable.isAnyOf(['Stove'])(offer.target)
+      ? 'NOPE'
+      : 'FULL'
+    : `${offer.price}`
+
+// NOTE: the prize's picture doubled, crisp, as on the canvas tag.
+const TAKE_IMAGE_SCALE = 2
+
+// NOTE: a prize on offer is already paid for, so where a price would be,
+// its button shows an open hand and the prize's own picture: what you
+// take, with no word.
+const takeBadgeView = (
+  model: Model,
+  offer: Offer,
+  h: ApplicationViewBuilder,
+): Html =>
+  h.span(
+    [
+      h.Class('icon-button-badge hold-buy-price hold-buy-take'),
+      h.AriaHidden(true),
+    ],
+    [
+      iconView('hold-buy-take-hand', GRAB_ICON, h),
+      ...Option.match(
+        Option.flatMap(maybeTakenIcon(model, offer.target), spriteImage),
+        {
+          onNone: () => [],
+          onSome: image => [
+            h.img([
+              h.Class('hold-buy-take-item'),
+              h.Src(image.src),
+              h.Alt(''),
+              h.Style({
+                width: `${image.width * TAKE_IMAGE_SCALE}px`,
+                height: `${image.height * TAKE_IMAGE_SCALE}px`,
+              }),
+            ]),
+          ],
+        },
+      ),
+    ],
+  )
+
+const badgeView = (model: Model, offer: Offer, h: ApplicationViewBuilder) =>
+  Purchasable.isAnyOf(['Prize', 'Case'])(offer.target)
+    ? takeBadgeView(model, offer, h)
+    : h.span(
+        [h.Class('icon-button-badge hold-buy-price'), h.AriaHidden(true)],
+        [badgeOf(offer)],
+      )
 
 const labelOf = (model: Model, offer: Offer): string =>
   Purchasable.match(offer.target, {
@@ -160,10 +204,7 @@ const holdButtonFor = (
         h.AriaHidden(true),
         h.Style({ backgroundImage: HOLD_ICON }),
       ]),
-      h.span(
-        [h.Class('icon-button-badge hold-buy-price'), h.AriaHidden(true)],
-        [badgeOf(offer)],
-      ),
+      badgeView(model, offer, h),
     ],
   )
 }

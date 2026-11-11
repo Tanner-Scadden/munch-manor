@@ -7,6 +7,8 @@ import { describe, expect, it, test } from '@effect/vitest'
 import { Message } from '../../../app/message'
 import { FridgeDoor, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { prizeSprite } from '../../../art/prizeArt'
+import { spriteImage } from '../../../art/sprite'
 import { purchaseOverlayShapes } from '../../../features/shop/purchaseView'
 import type { InputDevice } from '../../../input/inputSchema'
 import { cameraOf, screenCameraOf } from '../../../render/camera'
@@ -153,14 +155,19 @@ describe('taking a fridge prize on touch', () => {
   })
 
   it.effect(
-    'the hold button says TAKE, not a price, and holding it takes the prize',
+    'the hold button shows a hand and the prize, no word, and holding it takes the prize',
     () =>
       Scene.scene(
         APPLICATION,
         Scene.given(offered()),
         measureSurface,
         Scene.expect(takeButton).toExist(),
-        Scene.expect(Scene.selector('.hold-buy-price')).toHaveText('TAKE'),
+        Scene.expect(Scene.selector('.hold-buy-take-hand')).toExist(),
+        Scene.expect(Scene.selector('.hold-buy-take-item')).toHaveAttr(
+          'src',
+          Option.getOrThrow(spriteImage(prizeSprite('Freeze'))).src,
+        ),
+        Scene.expect(Scene.selector('.hold-buy-price')).toHaveText(''),
         Scene.pointerDown(takeButton, { pointerType: 'touch', pointerId: 4 }),
         ...frames(HOLD_TICKS),
         Scene.expect(takeButton).toBeAbsent(),

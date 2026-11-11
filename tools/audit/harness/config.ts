@@ -293,6 +293,9 @@ export const HarnessConfig = Schema.Struct({
   // fridge page shows them in place of ???.
   prizes: Schema.optionalKey(ListOf(FridgePrize)),
   lobs: Flag,
+  // NOTE: `caseopen` springs every display case open for the player, so a
+  // scene can stand at a prize to take.
+  caseopen: Flag,
   iced: Choice(['freeze', 'pan']),
   // Traps and difficulty
   planks: Schema.optionalKey(ListOf(DoorId)),

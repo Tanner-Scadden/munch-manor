@@ -322,6 +322,27 @@ body {
   color: #ff8a7a;
 }
 
+/* A take's badge: an open hand and the prize's own picture, no word. */
+.hold-buy-take {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+}
+
+.hold-buy-take-hand {
+  display: block;
+  width: 16px;
+  height: 14px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.hold-buy-take-item {
+  display: block;
+  image-rendering: pixelated;
+}
+
 @keyframes hold-buy-shake {
   0%,
   100% {
