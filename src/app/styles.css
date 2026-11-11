@@ -621,6 +621,100 @@ body {
   }
 }
 
+/* The first break tour's last step (src/features/onboarding/firstBreakQuest.ts):
+   START WAVE glows hard, and a gold arrow bobs over it, the key's cap beside
+   it on a keyboard. The arrow moves; the button stays put. */
+.start-wave-pill[data-tour='true'],
+.start-wave-button[data-tour='true'] {
+  filter: brightness(1.2);
+  box-shadow:
+    0 3px 0 #7a5c00,
+    0 0 0 4px rgba(255, 255, 255, 0.75),
+    0 0 20px 8px rgba(255, 224, 102, 0.9);
+  animation: start-wave-tour 0.6s ease-in-out infinite alternate;
+}
+
+/* The big cap by the arrow says the key; the button's own small one goes. */
+.start-wave-button[data-tour='true'] .key-badge {
+  display: none;
+}
+
+@keyframes start-wave-tour {
+  from {
+    filter: brightness(1.05);
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 2px rgba(255, 255, 255, 0.5),
+      0 0 10px 4px rgba(255, 224, 102, 0.6);
+  }
+  to {
+    filter: brightness(1.35);
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 6px rgba(255, 255, 255, 0.8),
+      0 0 26px 12px rgba(255, 224, 102, 0.95);
+  }
+}
+
+.start-wave-point {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.start-wave-point-arrow {
+  width: 36px;
+  height: 36px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6));
+  animation: start-wave-point-bob 0.3s steps(1, end) infinite alternate;
+}
+
+/* A keyboard player's cap sits to the arrow's right, so the arrow stays
+   centered on the button. */
+.start-wave-point-key {
+  position: absolute;
+  left: calc(100% + 6px);
+  padding: 1px 6px;
+  border: 2px solid var(--menu-gold);
+  border-radius: var(--menu-radius-sm);
+  background: #140c10;
+  box-shadow: 0 2px 0 #7a5c00;
+  color: var(--menu-gold);
+  font: bold 12px/14px monospace;
+  white-space: nowrap;
+}
+
+@keyframes start-wave-point-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-wave-pill[data-tour='true'],
+  .start-wave-button[data-tour='true'] {
+    animation: none;
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 5px rgba(255, 255, 255, 0.8),
+      0 0 20px 8px rgba(255, 224, 102, 0.9);
+  }
+
+  .start-wave-point-arrow {
+    animation: none;
+  }
+}
+
 .start-wave-pill:focus-visible,
 .start-wave-button:focus-visible {
   outline: var(--menu-focus);

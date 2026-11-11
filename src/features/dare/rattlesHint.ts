@@ -258,7 +258,7 @@ const isHushed = (model: Model): boolean =>
   RattlesIntro.isAnyOf(['Talking'])(model.rattlesIntro) ||
   KitchenCall.isAnyOf(['Calling'])(model.kitchenCall) ||
   Tour.isAnyOf(['Running'])(model.kitchenTour) ||
-  QuestTour.isAnyOf(['Running', 'Looking'])(model.firstBreakQuest)
+  QuestTour.isAnyOf(['Running', 'Looking', 'Starting'])(model.firstBreakQuest)
 
 const modifyHint = makeModifyFieldsFor<DareHint>()
 

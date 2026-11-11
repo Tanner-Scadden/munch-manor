@@ -66,6 +66,7 @@ import { CASE_CARD_MIN_MS, isCaseCardUp } from '../caseCard'
 import {
   type QuestStep,
   isQuestOnCard,
+  isQuestOnStart,
   maybeLockProgress,
   maybePadlockNudge,
   maybePadlockPointer,
@@ -79,7 +80,7 @@ import { questEdgeShapes } from '../questEdgeView'
 // NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts):
 // a new player learns the dare by doing it. Grab the key on the floor, walk
 // up to the cheapest padlock, take the prize from the case that opened in
-// the practice wave, and look at the dare card. Rattles' hello, which comes
+// the practice wave, look at the dare card, and start the wave. Rattles' hello, which comes
 // first in a new save, has its own tests (rattlesIntro.story.test.ts), so
 // these saves have met him.
 
@@ -178,7 +179,7 @@ const tourBreak = (base: Model): Model =>
 
 describe('the guided first break', () => {
   it.effect(
-    'walks a new save from the intro and the practice wave through the key, the padlock, the case, and the dare card',
+    'walks a new save from the intro and the practice wave through the key, the padlock, the case, the dare card, and START WAVE',
     () =>
       Story.story(
         APPLICATION,
@@ -277,12 +278,25 @@ describe('the guided first break', () => {
         }),
         ...ticks(LOOK_FRAMES, FRAME_MS),
         Story.model(current => {
-          expect(QuestTour.isAnyOf(['Done'])(current.firstBreakQuest)).toBe(
-            true,
-          )
-          expect(isPending(current.lessons.dareTour)).toBe(false)
-          expect(stepOf(current)).toEqual(Option.none())
+          expect(current.firstBreakQuest).toEqual(QuestTour.Starting())
+          expect(stepOf(current)).toEqual(Option.some('Start'))
+          expect(isQuestOnStart(current)).toBe(true)
           expect(isStartWaveBeckoning(current)).toBe(true)
+          expect(isPending(current.lessons.dareTour)).toBe(true)
+          expect(current.phase).toMatchObject({
+            _tag: 'Preparation',
+            wave: DARE_TOUR_WAVE,
+            clock: { _tag: 'Waiting' },
+          })
+        }),
+        startWave,
+        frame,
+        Story.model(current => {
+          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+          expect(current.firstBreakQuest).toEqual(QuestTour.Done({ ageMs: 0 }))
+          expect(isPending(current.lessons.dareTour)).toBe(false)
+          expect(isPending(current.lessons.startWave)).toBe(false)
+          expect(stepOf(current)).toEqual(Option.none())
         }),
         Story.Command.resolveAll(),
       ),
@@ -340,6 +354,24 @@ describe('the guided first break', () => {
       Story.model(waved => {
         expect(Phase.isAnyOf(['Wave'])(waved.phase)).toBe(true)
       }),
+      frame,
+      Story.model(current => {
+        expect(current.firstBreakQuest).toEqual(QuestTour.Over())
+        expect(isPending(current.lessons.dareTour)).toBe(false)
+      }),
+      Story.Command.resolveAll(),
+    ),
+  )
+
+  it.effect('the wave started before the last step ends it unticked', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(tourBreak(newSave), {
+          firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
+        }),
+      ),
+      startWave,
       frame,
       Story.model(current => {
         expect(current.firstBreakQuest).toEqual(QuestTour.Over())
@@ -433,6 +465,101 @@ describe('the guided first break', () => {
       Story.model(current => {
         expect(stepOf(current)).toEqual(Option.none())
         expect(seatStateAt(current, 0).trapStock.Barricade).toBe(0)
+      }),
+    ),
+  )
+})
+
+// NOTE: the tour's last step: START WAVE glows with an arrow over it, and
+// starting the wave, by the button, the key, or a tap
+// (firstBreakQuest.scene.test.ts), ticks every step off.
+describe('the START WAVE step', () => {
+  const onStart: Model = modifyFields(tourBreak(newSave), {
+    firstBreakQuest: () => QuestTour.Starting(),
+  })
+
+  it.effect('comes after a moment on the dare card', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(tourBreak(newSave), {
+          firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
+        }),
+      ),
+      ...ticks(LOOK_FRAMES - 2, FRAME_MS),
+      Story.model(current => {
+        expect(stepOf(current)).toEqual(Option.some('Card'))
+        expect(isStartWaveBeckoning(current)).toBe(false)
+      }),
+      frame,
+      frame,
+      Story.model(current => {
+        expect(stepOf(current)).toEqual(Option.some('Start'))
+        expect(isStartWaveBeckoning(current)).toBe(true)
+      }),
+    ),
+  )
+
+  // NOTE: the tour's break is the open break, whose clock waits, so the
+  // step waits on the player as long as they like.
+  it.effect('never rushes the player: the break waits', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(onStart),
+      ...ticks(120, TICK_MS),
+      Story.model(current => {
+        expect(current.phase).toMatchObject({
+          _tag: 'Preparation',
+          wave: DARE_TOUR_WAVE,
+          remainingMs: PREPARATION_MS,
+        })
+        expect(
+          BreakClock.isAnyOf(['Waiting'])(
+            Phase.isAnyOf(['Preparation'])(current.phase)
+              ? current.phase.clock
+              : BreakClock.Counting(),
+          ),
+        ).toBe(true)
+        expect(stepOf(current)).toEqual(Option.some('Start'))
+      }),
+    ),
+  )
+
+  const starters = [
+    { by: 'the button', start: startWave },
+    { by: 'the key', start: tap('Enter') },
+  ]
+
+  it.effect('starting the wave ticks it off and learns the tour', () =>
+    Effect.forEach(starters, ({ start }) =>
+      Story.story(
+        APPLICATION,
+        Story.given(onStart),
+        start,
+        frame,
+        Story.model(current => {
+          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+          expect(current.firstBreakQuest).toEqual(QuestTour.Done({ ageMs: 0 }))
+          expect(isPending(current.lessons.dareTour)).toBe(false)
+          expect(isPending(current.lessons.startWave)).toBe(false)
+        }),
+        Story.Command.resolveAll(),
+      ),
+    ),
+  )
+
+  it.effect('in co-op it never comes', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(tourBreak(newSave), {
+          party: () => Party.Crew(),
+          firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
+        }),
+      ),
+      frame,
+      Story.model(current => {
+        expect(stepOf(current)).toEqual(Option.none())
       }),
     ),
   )

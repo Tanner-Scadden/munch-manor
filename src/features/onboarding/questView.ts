@@ -4,15 +4,18 @@ import type { Html } from 'foldkit/html'
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
 import {
-  QUEST_CARD_ICON,
-  QUEST_CASE_ICON,
-  QUEST_KEY_ICON,
-  QUEST_LOCK_ICON,
   TOUR_BOARDS_ICON,
   TOUR_FRIDGE_ICON,
   TOUR_PAUSED_ICON,
   TOUR_PRIZE_ICON,
 } from '../../art/icons'
+import {
+  QUEST_CARD_ICON,
+  QUEST_CASE_ICON,
+  QUEST_KEY_ICON,
+  QUEST_LOCK_ICON,
+  QUEST_START_ICON,
+} from '../../art/questIcons'
 import { Tour } from '../../domain/clientSchema'
 import { cameraOf, viewBoxOf, worldToView } from '../../render/camera'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
@@ -35,7 +38,8 @@ import { OnboardingMessage } from './message'
 // chapter's steps as icons, the current one lit with its one word, the done
 // ones ticked, and a skip button. Done, every step ticks, a little confetti
 // pops, and it fades. Chapter 1 is the first break: the key, the padlock,
-// the case, and the dare card (src/features/onboarding/firstBreakQuest.ts),
+// the case, the dare card, and START WAVE
+// (src/features/onboarding/firstBreakQuest.ts),
 // chapter 2 the kitchen and the fridge (src/features/onboarding/kitchenTour.ts), which also
 // shows the break clock held.
 
@@ -56,6 +60,7 @@ const FIRST_BREAK_STEPS: Array.NonEmptyReadonlyArray<StepLook> = [
   { icon: QUEST_LOCK_ICON, word: 'LOCK', spoken: 'Find a padlock for keys' },
   { icon: QUEST_CASE_ICON, word: 'CASE', spoken: 'Open the case' },
   { icon: QUEST_CARD_ICON, word: 'DARE', spoken: 'Look at the dare card' },
+  { icon: QUEST_START_ICON, word: 'START WAVE', spoken: 'Start the wave' },
 ]
 
 const KITCHEN_STEP_ORDER: Array.NonEmptyReadonlyArray<KitchenStep> = [

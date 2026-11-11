@@ -441,7 +441,7 @@ const HINT_RULES: ReadonlyArray<HintRule> = [
 ]
 
 // NOTE: START WAVE pulses once the player has moved and fired, until they
-// first start a wave themselves.
+// first start a wave themselves, and on the first break tour's last step.
 export const isStartWaveBeckoning = ({
   phase,
   lessons,
@@ -451,7 +451,7 @@ export const isStartWaveBeckoning = ({
   ((isPending(lessons.startWave) &&
     isLearned(lessons.move) &&
     isLearned(lessons.fire)) ||
-    QuestTour.isAnyOf(['Done'])(firstBreakQuest))
+    QuestTour.isAnyOf(['Starting'])(firstBreakQuest))
 
 // NOTE: the first timed break's countdown blinks, so the player sees the
 // clock is running.

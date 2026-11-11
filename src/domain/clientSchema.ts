@@ -287,14 +287,16 @@ export const Tour = defineTaggedUnion({
 export type Tour = typeof Tour.Type
 
 // NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts),
-// a Tour with one more stretch: once the key, the padlock, and the case are
-// done, it points at the dare card on the HUD for a moment (`Looking`)
-// before it ticks off. `isLockSeen` keeps the padlock step done once the
-// player has walked up to it, wherever they go after.
+// a Tour with two more stretches: once the key, the padlock, and the case
+// are done, it points at the dare card on the HUD for a moment (`Looking`),
+// then at START WAVE (`Starting`) until the player starts the wave, and
+// ticks off. `isLockSeen` keeps the padlock step done once the player has
+// walked up to it, wherever they go after.
 export const QuestTour = defineTaggedUnion({
   Waiting: {},
   Running: { isLockSeen: Schema.Boolean },
   Looking: { ageMs: MillisNumber },
+  Starting: {},
   Done: { ageMs: MillisNumber },
   Over: {},
 })

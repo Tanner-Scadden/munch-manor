@@ -172,7 +172,7 @@ export const HarnessConfig = Schema.Struct({
   // NOTE: `quest` stages the guided first break running or just done, and
   // `kitchendone` the kitchen tour just done.
   // `card` stages its last step, looking at the dare card.
-  quest: Choice(['running', 'card', 'done', 'kitchendone']),
+  quest: Choice(['running', 'card', 'start', 'done', 'kitchendone']),
   // NOTE: `darefound=N` marks the first N things of the dare card found,
   // the hat last.
   darefound: Num(0),

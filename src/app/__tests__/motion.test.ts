@@ -38,6 +38,8 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'key-grab-toast': 'the key grab toast, text and icons',
   'quest-now': 'a quest step, a list item with no control',
   'quest-confetti': 'confetti',
+  'start-wave-point-bob':
+    'the arrow over START WAVE, aria-hidden art beside the button, never inside or holding it',
   // menu.css
   'play-shine': "the PLAY face's shine, a pseudo-element",
   'home-coop-bob': 'the CO-OP icon inside its button',
