@@ -18,6 +18,7 @@ Every layer is built, as one stack of pull requests on `escape/01-names` to `esc
 | 7. Keys, no shop  | #181         | 16. The tutorial        | #184         |
 | 8. The house grid | #163         | 16b. Visual fixes       | #185         |
 | 17. Balance       | to come      | 18. Release docs        | #180         |
+| 19q. Find things  | to come      |                         |              |
 
 Open for the owner:
 
@@ -219,7 +220,7 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - An `Escaped` phase in place of `Victory` for the campaign (`Phase`, `isWonRun`, `isRunOver`, the end card, share text, music); Triple Dog Dare unlocks with a Triple Dare escape (`NightmareLock`, `infra/worker/syncCore.ts`).
 - Rewards per item (`src/world/heroes/rank.ts`, `src/features/end/rankRun.ts`).
 - Endless ("stay the night") has no list and keeps Uncle Chunk every tenth wave.
-- The difficulty dial: list length and help (sparkle on Dare, a doodled hint a break on Double Dare, none on Triple Dare, the house hungrier from the first find on Triple Dog Dare). Rattles hollers the hints.
+- The difficulty dial: list length and help (things in plain sight with a sparkle and a gold arrow all break on Dare, in plain sight with one hint a break on Double Dare, hidden until close on Triple Dare, the house hungrier from the first find on Triple Dog Dare). Rattles hollers the hints, each naming its thing beside its icon, with a gold arrow over the thing or at the window's edge; a room shows its thing as it opens.
 - As built: hiding spots are each room's drafted marks (`roomSpotsOf`), so they follow the rooms into their slots. One rule since 2026-11-10 (owner): each room holds one thing. Every room behind boards (the kitchen, the parlour, the library, the cellar) gets one thing on the list, on one of its spots, any thing in any room, never one twice (fully random, owner 2026-11-10; it was by theme before: the recipe, spoon, or bell in the kitchen, and so on), so every thing needs keys. No marked carrier, case, stove, or delivery holds a thing any more; the cases and the stove keep their own prizes, and the music box's tune is flavor. Rattles may name the room; the HUD never does. Uncle Chunk never comes before wave 6 on Dare and Double Dare or wave 8 on Triple Dare and Triple Dog Dare (`FINALE_RULES.chunkFromWave`), since a first balance batch escaped most Double Dare runs at wave 3. On Triple Dog Dare the house is hungrier from the first thing found.
 
 **Checks.** Stories for a thing in each room, the finale end to end, co-op escapes with a downed teammate carried out, `test:full`, `mp:e2e`, the co-op audit.
@@ -297,6 +298,17 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - `GAME_DESIGN.md`'s "Decided" rewritten for the new game; `LORE.md` and `FLOW.md` marked built; `CLAUDE.md`'s tables checked.
 - Audits on the top layer's preview: `live-check.ts`, `offline.ts`, `coop.ts` with three pages, `mp:e2e`, `perf:check`, `determinism`, portrait taps.
 - `gh stack merge`.
+
+### 19q. Finding the things
+
+**Goal.** From the owner's playtest on Dare (2026-11-10): "I bought all the rooms, but can't find anything. The hints also don't have a pointer on which way." Built on `escape/19q-find-things`, on layer 18.
+
+- On Dare and Double Dare a thing in an open room is drawn on its spot, big, bobbing, in a pulsing gold glow (`src/features/dare/dareView.ts`); Dare keeps the gold sparkle, in waves too. Triple Dare and Triple Dog Dare keep the glint up close.
+- A gold arrow over the thing, or at the window's edge toward it, while a hint is up, and on Dare all break toward the nearest thing left (`src/features/dare/darePointer.ts`, over `src/render/pointerArrow.ts`, the tours' arrow moved down a layer).
+- Every hint line names its thing beside its icon, twice its size; a room opening shows its thing ("BELL! IN HERE!").
+- Client cosmetics only: the World and the co-op wire are unchanged.
+
+**Checks.** Stories in `src/features/dare/__tests__/rattlesHint.story.test.ts`; `tools/audit/shotsDare.ts` on desktop, a phone on its side, and upright.
 
 ## Risks
 
