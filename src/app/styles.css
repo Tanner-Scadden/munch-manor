@@ -1050,9 +1050,10 @@ body {
 }
 
 /* THE GUIDED FIRST BREAK: the tracker under the hearts and the key count.
-   In landscape it sits 34 rows into the world: under the big key count on
-   a phone on its side, and under the dare pocket open in a break at the top
-   right, so it touches neither on either side. */
+   In landscape it sits 46 rows into the world: under the big key count on
+   a phone on its side, under the dare pocket open in a break at the top
+   right, and under a break's banner (NEW: and its line end near row 43),
+   so it touches none of them on either side. */
 
 .quest-frame {
   position: fixed;
@@ -1069,7 +1070,7 @@ body {
     (100cqw - var(--screen-w) * var(--arena-px)) / 2 + 4 * var(--arena-px)
   );
   top: calc(
-    (100cqh - var(--screen-h) * var(--arena-px)) / 2 + (var(--world-top) + 34) *
+    (100cqh - var(--screen-h) * var(--arena-px)) / 2 + (var(--world-top) + 46) *
       var(--arena-px)
   );
   display: flex;
