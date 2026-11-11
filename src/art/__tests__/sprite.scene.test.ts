@@ -280,7 +280,9 @@ const recordingContext = (
       Object.assign(transform, saved.pop() ?? transform)
     },
     clearRect: ignore,
-    fillRect: ignore,
+    fillRect: (...args: DrawCall) => {
+      draws.push(['fillRect', ...args])
+    },
     translate: (x: number, y: number) => {
       transform.e += transform.a * x
       transform.f += transform.d * y
@@ -383,6 +385,25 @@ describe('the patched Foldkit painter', () => {
     // NOTE: on the canvas the box runs from 3.7 to 13.7 and 2.6 to 14.6.
     expect([3.5 + 2 * x, 2 + 2 * y]).toEqual([4, 3])
     expect([2 * width, 2 * height]).toEqual([10, 12])
+  })
+
+  test('lands a filled rectangle on whole canvas pixels', () => {
+    const { draws } = paintWithFoldkit([
+      group({
+        translate: { x: 3.5, y: 2 },
+        scale: { x: 2, y: 2 },
+        shapes: [
+          Canvas.Rect({ x: 0.1, y: 0.3, width: 5, height: 1, fill: '#000' }),
+        ],
+      }),
+    ])
+    const [x = 0, y = 0, width = 0, height = 0] = Array.filter(
+      Array.drop(draws[0] ?? [], 1),
+      (value): value is number => typeof value === 'number',
+    )
+    // NOTE: on the canvas the box runs from 3.7 to 13.7 and 2.6 to 4.6.
+    expect([3.5 + 2 * x, 2 + 2 * y]).toEqual([4, 3])
+    expect([2 * width, 2 * height]).toEqual([10, 2])
   })
 
   test('draws a cropped region of the source', () => {

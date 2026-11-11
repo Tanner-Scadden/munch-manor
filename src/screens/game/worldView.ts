@@ -111,9 +111,17 @@ import { isRoundActive } from '../../world/waves/waves'
 
 // OFFSET
 
+// NOTE: the shake moves the world by whole pixels, rounded here at draw time
+// and never in the World. A fractional shake left the floor canvases (moved
+// by CSS) between device pixels while the painter put each sprite on whole
+// ones, so the floor slid under the sprites and the canvas blended the edges
+// of every rectangle into its neighbours.
 const shakeOffset = (model: Model): Vector =>
   isRoundActive(model.phase) && model.shakeSetting === 'On'
-    ? model.shake.offset
+    ? {
+        x: Math.round(model.shake.offset.x),
+        y: Math.round(model.shake.offset.y),
+      }
     : ZERO_VECTOR
 
 export const worldOffset: {
