@@ -988,6 +988,25 @@ const doneButtonView = (
     h,
   )
 
+// NOTE: PLAY TUTORIAL, for a player who wants the lessons again: it starts
+// the tutorial's practice run at once, so it asks nothing first. Only at
+// home, never over a paused run.
+const playTutorialButtonView = (h: ApplicationViewBuilder): Html =>
+  h.button(
+    [
+      h.Type('button'),
+      h.Class('panel-button panel-tutorial'),
+      h.OnClick(HomeMessage.ClickedPlayTutorialButton(), {
+        focusSelector: '.game-surface',
+        propagation: 'Stop',
+      }),
+    ],
+    [
+      iconView('panel-tutorial-icon', AIM_ICON, h),
+      h.span([], ['Play tutorial']),
+    ],
+  )
+
 const panelBodyView = (
   model: Model,
   renderInfo: Dialog.RenderInfo,
@@ -1005,7 +1024,13 @@ const panelBodyView = (
           isKeyboard(model) ? Option.some(menuKeysView(h)) : Option.none(),
         ),
       ),
-      h.div([h.Class('panel-actions')], [doneButtonView(renderInfo, h)]),
+      h.div(
+        [h.Class('panel-actions')],
+        [
+          ...(isOnHome(model.phase) ? [playTutorialButtonView(h)] : []),
+          doneButtonView(renderInfo, h),
+        ],
+      ),
     ]
   } else if (model.panel === 'WhatsNew') {
     return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)

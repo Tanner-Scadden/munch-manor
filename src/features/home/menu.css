@@ -1820,6 +1820,24 @@
   color: #ff8a7d;
 }
 
+/* NOTE: PLAY TUTORIAL on How to play: the aim icon and two words, lit
+   green as a way back in. */
+.panel-tutorial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-color: var(--menu-green);
+  background: var(--menu-green-deep);
+  color: var(--menu-green-hi);
+}
+
+.panel-tutorial-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
 /* NOTE: a quiet button is for rare things, such as Reset tutorial and the
    device link: present, never loud. */
 .panel-quiet {

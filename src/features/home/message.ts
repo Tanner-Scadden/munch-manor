@@ -22,6 +22,7 @@ export const homeCases = {
   ClickedMenuButton: {},
   ClickedLeaveRunButton: {},
   ClickedStayButton: {},
+  ClickedPlayTutorialButton: {},
   ClickedDifficultyCardButton: { difficulty: Difficulty },
   ClickedTutorialChoiceButton: { choice: TutorialChoice },
   FocusedHomeButton: { button: HomeButton },

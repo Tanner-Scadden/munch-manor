@@ -837,6 +837,28 @@ export const pressButton: {
   },
 )
 
+// NOTE: opens How to play from home: MORE, then its card in the hand.
+export const openHowToPlay: {
+  (viewport: Viewport): (page: Page) => Effect.Effect<void, AuditFailed>
+  (page: Page, viewport: Viewport): Effect.Effect<void, AuditFailed>
+} = Function.dual(
+  2,
+  (page: Page, viewport: Viewport): Effect.Effect<void, AuditFailed> =>
+    Effect.gen(function* () {
+      yield* pressButton(page, viewport, /^More:/)
+      yield* attempt(() =>
+        page.locator('dialog[open]').first().waitFor({ state: 'visible' }),
+      )
+      yield* pressButton(page, viewport, /^How to play:/)
+      yield* attempt(() =>
+        page
+          .locator('dialog[open] .panel')
+          .first()
+          .waitFor({ state: 'visible' }),
+      )
+    }),
+)
+
 const OPEN_TIMEOUT_MS = 10_000
 
 // NOTE: waits for a dialog to open, and goes on after 10 s if none does.

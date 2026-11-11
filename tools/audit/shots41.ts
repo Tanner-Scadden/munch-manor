@@ -19,7 +19,7 @@ import {
   harnessQuery,
   isPickedScene,
   openBrowser,
-  pressButton,
+  openHowToPlay,
   scenePages,
   settleAnimations,
   shot,
@@ -38,18 +38,6 @@ type Scene = Readonly<{
     label: string,
   ) => Effect.Effect<void, AuditFailed>
 }>
-
-const openHowToPlay = (page: Page, viewport: Viewport) =>
-  Effect.gen(function* () {
-    yield* pressButton(page, viewport, /^More:/)
-    yield* attempt(() =>
-      page.locator('dialog[open]').first().waitFor({ state: 'visible' }),
-    )
-    yield* pressButton(page, viewport, /^How to play:/)
-    yield* attempt(() =>
-      page.locator('dialog[open] .panel').first().waitFor({ state: 'visible' }),
-    )
-  })
 
 // NOTE: a card's line shows on focus with a keyboard and on a tap on touch.
 const openCardLine =
