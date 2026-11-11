@@ -36,9 +36,10 @@ import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
 import { levelOf } from '@game/world/level/arena'
-import { ARRANGEMENTS } from '@game/world/level/plan'
+import { ARRANGEMENTS, CHANDELIER_DROP } from '@game/world/level/plan'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
+import { STATION_RULES } from '@game/world/stations/stations'
 
 import { withCoop } from './coopStage'
 import { CALM, ROAMING, roomModel } from './room'
@@ -555,6 +556,18 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   model = modifyFields(model, {
     level: level => ({ ...level, arrangement: house }),
   })
+  if (config.fallen) {
+    model = modifyFields(model, {
+      level: level => ({ ...level, dropped: [CHANDELIER_DROP] }),
+      stations: stations => ({
+        ...stations,
+        Cleat: {
+          ...stations.Cleat,
+          workedMs: config.cleat * STATION_RULES.Cleat.setUpMs,
+        },
+      }),
+    })
+  }
   const openexits = config.openexits
   if (openexits !== undefined) {
     model = modifyFields(model, {

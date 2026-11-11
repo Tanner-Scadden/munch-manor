@@ -314,6 +314,10 @@ export const HarnessConfig = Schema.Struct({
   chewers: Num(0),
   doorway: Flag,
   openexits: Schema.optionalKey(ListOf(Schema.String)),
+  // The dining room's chandelier lying in the table's gap, and the share of
+  // its cleat's set-up already worked (src/world/stations/stations.ts).
+  fallen: Flag,
+  cleat: Num(0),
   // Which rolled house the run stands in, by its place in ARRANGEMENTS
   // (src/world/level/plan.ts): the first, the parlour west, the library
   // east, and the cellar beyond, unless given.
