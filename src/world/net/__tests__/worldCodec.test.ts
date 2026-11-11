@@ -330,7 +330,7 @@ describe("the boss's charge on the wire", () => {
 // as zombies coming in promptly after their warning did, and Normal's
 // eased health and speed (2026-10-31) did, and the escape's balance pass
 // (Normal's health x0.68, 2026-11-10) did again.
-const GOLDEN_DIGEST = '63759:c1c8db6ccd2aaa8e'
+const GOLDEN_DIGEST = '65781:5e5a964894e7f9a6'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {
