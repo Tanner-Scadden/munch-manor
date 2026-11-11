@@ -132,11 +132,19 @@ describe('the display case card', () => {
     ),
   )
 
-  it.effect('left up, it puts itself away on its clock, learned', () =>
+  // NOTE: 6 s, the owner's pick (2026-11-10), down from 9.
+  it.effect('left up, it puts itself away after 6 s, learned', () =>
     Story.story(
       APPLICATION,
       Story.given(inBreak),
-      ...ticks(Math.ceil(CASE_CARD_MS / TICK_MS) + 2, TICK_MS),
+      Story.model(() => {
+        expect(CASE_CARD_MS).toBe(6000)
+      }),
+      ...ticks(Math.floor(5500 / TICK_MS), TICK_MS),
+      Story.model(current => {
+        expect(isShowing(current)).toBe(true)
+      }),
+      ...ticks(Math.ceil(1000 / TICK_MS), TICK_MS),
       Story.model(current => {
         expect(isShowing(current)).toBe(false)
         expect(isPending(current.lessons.displayCase)).toBe(false)
