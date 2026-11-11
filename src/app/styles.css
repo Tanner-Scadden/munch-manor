@@ -1328,8 +1328,10 @@ body {
 }
 
 /* In landscape the tracker docks in the top corner away from what it
-   teaches; in portrait it sits in the band above the world, at the right,
-   compact, so it never covers the room. */
+   teaches. In portrait it sits just inside the world's top left, under
+   the hearts and the key count: the band above holds the wave text and
+   the pause button, the dare pocket fills the world's top right, and the
+   NEW banner sits lower down, so it covers none of them. */
 .quest-tracker[data-side='Right'] {
   left: auto;
   right: calc(
@@ -1338,18 +1340,13 @@ body {
 }
 
 .game-root[data-layout='Portrait'] .quest-tracker {
-  left: auto;
-  right: calc(
+  left: calc(
     (100cqw - var(--screen-w) * var(--arena-px)) / 2 + 3 * var(--arena-px)
   );
-  /* Just above the world, and never higher than the pause button's foot,
-     so the skip button's tap area stays clear of it on narrow phones. */
-  top: max(
-    58px,
-    calc(
-      (100cqh - var(--screen-h) * var(--arena-px)) / 2 +
-        (var(--world-top) - 2) * var(--arena-px) - 36px
-    )
+  right: auto;
+  top: calc(
+    (100cqh - var(--screen-h) * var(--arena-px)) / 2 + (var(--world-top) + 3) *
+      var(--arena-px)
   );
   gap: 3px;
   padding: 2px 2px 2px 4px;
@@ -1373,9 +1370,9 @@ body {
   height: 14px;
 }
 
-/* In portrait the band's pause button sits just above the tracker, so the
-   skip button's 48 px tap area grows down over the world's top edge
-   instead of up into it. */
+/* In portrait the band's key count sits just above the tracker, so the
+   skip button's 48 px tap area grows down into the world instead of up
+   into the band. */
 .game-root[data-layout='Portrait'] .quest-skip {
   margin: 0 -8px -16px;
   padding-bottom: 16px;
