@@ -5,10 +5,12 @@ import { describe, expect, test } from 'vitest'
 
 import type { Model } from '../../../app/model'
 import {
+  DARE_CARD_ICON,
+  DARE_CHECK,
   DARE_EMPTY_SLOTS,
   DARE_FOUND_SLOTS,
-  DARE_SLOT_SIZE,
 } from '../../../art/dareArt'
+import { PocketCard } from '../../../domain/clientSchema'
 import { cameraOf } from '../../../render/camera'
 import { HUD_STRIP_HEIGHT, hudLayoutFor } from '../../../render/hudLayout'
 import {
@@ -17,12 +19,16 @@ import {
   type Screen,
 } from '../../../render/screen'
 import { hudShapes } from '../../../screens/game/hud'
+import { pocketOf } from '../../../screens/game/pocket'
 import { quietWave } from '../../../test/model.fixture'
 import { type DareKind, DareThingState } from '../../../world/dare/dareSchema'
-import { dareCardShapes } from '../dareCard'
+import { Phase } from '../../../world/schema/worldSchema'
+import { type DarePocket, dareCardShapes, pocketBoxOf } from '../dareCard'
 
-// The dare card on the HUD (src/features/dare/dareCard.ts): one slot per
-// thing on the list and the hat last, each an empty outline until found.
+// The dare pocket on the HUD (src/features/dare/dareCard.ts): shut through a
+// wave, a chip of the card and the count found; open in a break, one slot
+// per thing on the list and the hat last, a silhouette until found, then in
+// color with a check.
 
 const LIST: ReadonlyArray<DareKind> = [
   'SilverSpoon',
@@ -42,6 +48,20 @@ const onTheHunt = (found: ReadonlyArray<DareKind>): Model =>
           ? DareThingState.Found({ slot: 0 })
           : DareThingState.Hidden({ x: 40, y: 40 }),
       })),
+  })
+
+// NOTE: a break `msIn` ms in, its banner in the top band or the bottom one.
+const inBreak = (model: Model, msIn: number, band: Model['hintBand']): Model =>
+  modifyFields(model, {
+    phase: () =>
+      Phase.Preparation({
+        wave: 3,
+        remainingMs: 20_000 - msIn,
+        durationMs: 20_000,
+        spawns: [],
+      }),
+    pocketCard: () => PocketCard.Pocketed(),
+    hintBand: () => band,
   })
 
 type Placed = Readonly<{ x: number; y: number; src: string }>
@@ -65,68 +85,115 @@ const isSlotIn =
   ({ src }: Placed): boolean =>
     src === srcOf(sprites[kind])
 
-const cardOf = (model: Model, screen: Screen): ReadonlyArray<Placed> =>
-  placedImages(dareCardShapes(model, hudLayoutFor(screen)))
+const ANY_KIND: ReadonlyArray<DareKind> = [...LIST, 'PartyHat']
 
-describe('the dare card', () => {
-  test('shows each thing on the list as an empty outline, the hat last', () => {
+const isAnySlot = (placed: Placed): boolean =>
+  Array.some(
+    ANY_KIND,
+    kind =>
+      isSlotIn(DARE_EMPTY_SLOTS)(kind)(placed) ||
+      isSlotIn(DARE_FOUND_SLOTS)(kind)(placed),
+  )
+
+const slotsOf = (
+  model: Model,
+  screen: Screen,
+  pocket: DarePocket,
+): ReadonlyArray<Placed> =>
+  Array.filter(
+    placedImages(dareCardShapes(model, hudLayoutFor(screen), pocket)),
+    isAnySlot,
+  )
+
+const NOWHERE: Placed = { x: 0, y: 0, src: '' }
+
+describe('the dare pocket', () => {
+  test('opens on each thing on the list as a silhouette, the hat last', () => {
     expect(srcOf(DARE_EMPTY_SLOTS.SilverSpoon)).not.toBe('')
     expect(srcOf(DARE_EMPTY_SLOTS.SilverSpoon)).not.toBe(
       srcOf(DARE_FOUND_SLOTS.SilverSpoon),
     )
-    const card = cardOf(onTheHunt([]), LANDSCAPE_SCREEN)
-    expect(card).toHaveLength(LIST.length + 1)
-    Array.forEach([...LIST, 'PartyHat' as const], (kind, index) => {
-      expect(
-        isSlotIn(DARE_EMPTY_SLOTS)(kind)(
-          card[index] ?? { x: 0, y: 0, src: '' },
-        ),
-      ).toBe(true)
+    const slots = slotsOf(onTheHunt([]), LANDSCAPE_SCREEN, 'Open')
+    expect(slots).toHaveLength(LIST.length + 1)
+    Array.forEach(ANY_KIND, (kind, index) => {
+      expect(isSlotIn(DARE_EMPTY_SLOTS)(kind)(slots[index] ?? NOWHERE)).toBe(
+        true,
+      )
     })
   })
 
-  test('fills a slot once its thing is found, and only that slot', () => {
-    const card = cardOf(onTheHunt(['FamilyPortrait']), LANDSCAPE_SCREEN)
-    const found = Array.filter(card, placed =>
-      Array.some(LIST, kind => isSlotIn(DARE_FOUND_SLOTS)(kind)(placed)),
+  test('fills a slot in color with a check once its thing is found, and only that slot', () => {
+    const model = onTheHunt(['FamilyPortrait'])
+    const slots = slotsOf(model, LANDSCAPE_SCREEN, 'Open')
+    expect(
+      Array.filter(slots, placed =>
+        Array.some(LIST, kind => isSlotIn(DARE_FOUND_SLOTS)(kind)(placed)),
+      ),
+    ).toHaveLength(1)
+    expect(
+      isSlotIn(DARE_FOUND_SLOTS)('FamilyPortrait')(slots[1] ?? NOWHERE),
+    ).toBe(true)
+    const checks = Array.filter(
+      placedImages(
+        dareCardShapes(model, hudLayoutFor(LANDSCAPE_SCREEN), 'Open'),
+      ),
+      ({ src }) => src === srcOf(DARE_CHECK),
     )
-    expect(found).toHaveLength(1)
-    expect(
-      isSlotIn(DARE_FOUND_SLOTS)('FamilyPortrait')(
-        card[1] ?? { x: 0, y: 0, src: '' },
-      ),
-    ).toBe(true)
-    expect(
-      isSlotIn(DARE_EMPTY_SLOTS)('SilverSpoon')(
-        card[0] ?? { x: 0, y: 0, src: '' },
-      ),
-    ).toBe(true)
+    expect(checks).toHaveLength(1)
   })
 
-  test('sits in a row on the screen in landscape and portrait, clear of the top strip', () => {
+  test('shut, shows the card and no slots', () => {
+    const shapes = placedImages(
+      dareCardShapes(
+        onTheHunt(['MusicBox']),
+        hudLayoutFor(LANDSCAPE_SCREEN),
+        'Shut',
+      ),
+    )
+    expect(Array.filter(shapes, isAnySlot)).toEqual([])
+    expect(Array.some(shapes, ({ src }) => src === srcOf(DARE_CARD_ICON))).toBe(
+      true,
+    )
+  })
+
+  test('is shut through a wave and under a banner, and open in a break', () => {
+    const hunting = onTheHunt([])
+    expect(pocketOf(hunting)).toBe('Shut')
+    expect(pocketOf(inBreak(hunting, 0, 'Top'))).toBe('Shut')
+    expect(pocketOf(inBreak(hunting, 5000, 'Bottom'))).toBe('Open')
+    expect(
+      pocketOf(
+        modifyFields(inBreak(hunting, 5000, 'Bottom'), {
+          pocketCard: () => PocketCard.Folding({ ageMs: 0 }),
+        }),
+      ),
+    ).toBe('Shut')
+  })
+
+  test('sits on the screen in landscape and portrait, clear of the room while shut', () => {
     Array.forEach([LANDSCAPE_SCREEN, DEFAULT_PORTRAIT_SCREEN], screen => {
-      const card = cardOf(onTheHunt([]), screen)
-      expect(new Set(Array.map(card, ({ y }) => y)).size).toBe(1)
-      Array.forEach(card, ({ x, y }) => {
-        expect(x).toBeGreaterThanOrEqual(0)
-        expect(x + DARE_SLOT_SIZE).toBeLessThanOrEqual(screen.width)
-        expect(y + DARE_SLOT_SIZE).toBeLessThanOrEqual(
-          screen.world.y + screen.world.height,
-        )
+      const model = onTheHunt([])
+      const layout = hudLayoutFor(screen)
+      const shut = pocketBoxOf(model, layout, 'Shut')
+      const open = pocketBoxOf(model, layout, 'Open')
+      Array.forEach([shut, open], box => {
+        expect(box.left).toBeGreaterThanOrEqual(0)
+        expect(box.right).toBeLessThanOrEqual(screen.width)
+        expect(box.top).toBeGreaterThanOrEqual(0)
       })
-      // NOTE: under the strip in landscape, over the world in portrait.
-      const top = screen.layout === 'Landscape' ? HUD_STRIP_HEIGHT : 0
-      const bottom =
-        screen.layout === 'Landscape' ? screen.height : screen.world.y
-      Array.forEach(card, ({ y }) => {
-        expect(y).toBeGreaterThanOrEqual(top)
-        expect(y + DARE_SLOT_SIZE).toBeLessThanOrEqual(bottom)
-      })
+      // NOTE: shut, in the top strip in landscape and in the band in
+      // portrait; open in portrait, under the band.
+      const shutBottom =
+        screen.layout === 'Landscape' ? HUD_STRIP_HEIGHT : screen.world.y
+      expect(shut.bottom).toBeLessThanOrEqual(shutBottom)
+      expect(open.top).toBeGreaterThanOrEqual(
+        screen.layout === 'Portrait' ? screen.world.y : 0,
+      )
     })
   })
 
   test('is drawn with the HUD in a run, and Endless has none', () => {
-    const model = onTheHunt([])
+    const model = inBreak(onTheHunt([]), 5000, 'Bottom')
     const hud = placedImages(
       hudShapes(model, LANDSCAPE_SCREEN, cameraOf(model)),
     )
@@ -137,6 +204,8 @@ describe('the dare card', () => {
       dare: dare => modifyFields(dare, { list: () => [] }),
       dareThings: () => [],
     })
-    expect(cardOf(endless, LANDSCAPE_SCREEN)).toEqual([])
+    expect(
+      dareCardShapes(endless, hudLayoutFor(LANDSCAPE_SCREEN), 'Open'),
+    ).toEqual([])
   })
 })

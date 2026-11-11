@@ -28,6 +28,8 @@ import {
   SyncState,
 } from '@game/platform/playerSync'
 import { heroIdOf } from '@game/shared/playerData'
+import { dareCardOf } from '@game/world/dare/dare'
+import { DareThingState } from '@game/world/dare/dareSchema'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
@@ -159,6 +161,32 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
   return model
 }
 
+const QUEST_STAGES: {
+  readonly [Stage in 'running' | 'card' | 'done']: QuestTour
+} = {
+  running: QuestTour.Running({ isLockSeen: false }),
+  card: QuestTour.Looking({ ageMs: 0 }),
+  done: QuestTour.Done({ ageMs: 0 }),
+}
+
+// NOTE: the first `count` things of the dare card found, as a player who
+// walked onto them.
+const withDareFound = (model: Model, count: number): Model => {
+  const kinds = Array.map(
+    Array.take(dareCardOf(model), count),
+    ({ kind }) => kind,
+  )
+  return modifyFields(model, {
+    dareThings: things =>
+      Array.map(things, thing =>
+        Array.contains(kinds, thing.kind) &&
+        (thing.isAsked || thing.kind === 'PartyHat')
+          ? { ...thing, state: DareThingState.Found({ slot: 0 }) }
+          : thing,
+      ),
+  })
+}
+
 export const scenarioModel = (settings: SceneSettings): Model =>
   withCoop(settings.config, scenarioModelOf(settings))
 
@@ -195,11 +223,11 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       quest === 'kitchendone'
         ? modifyFields(model, { kitchenTour: () => Tour.Done({ ageMs: 0 }) })
         : modifyFields(model, {
-            firstBreakQuest: () =>
-              quest === 'done'
-                ? QuestTour.Done({ ageMs: 0 })
-                : QuestTour.Running({ isLockSeen: false }),
+            firstBreakQuest: () => QUEST_STAGES[quest],
           })
+  }
+  if (config.darefound > 0) {
+    model = withDareFound(model, config.darefound)
   }
   const newer = config.newer
   if (newer !== undefined) {

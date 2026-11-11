@@ -6,8 +6,8 @@ import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
 // The dare's things as 7 by 7 pixel icons, for the dare card on the HUD and
 // for the things themselves in the house: the silver spoon, the family
 // portrait, a page of the guest book, Grandma Munch's recipe, the music box,
-// the butler's bell, and Uncle Chunk's party hat. Each has a silhouette too,
-// the shape alone in one dim tone, for a dare card slot still empty.
+// the butler's bell, and Uncle Chunk's party hat. Each has a light
+// silhouette too, for a slot on the HUD's pocket still empty.
 
 export const DARE_ICON_SIZE = 7
 
@@ -95,70 +95,136 @@ const DARE_PALETTE: Palette = {
   M: '#d84ab0',
 }
 
-const SILHOUETTE_TONE = '#6b6070'
-
-// NOTE: paper fills its whole square (the guest book's page, Grandma's
-// recipe), so in a silhouette it takes a darker tone: the page's lines and
-// the recipe's heart show on it in the silhouette's own, and the slot's
-// rim stays apart from the paper.
-const SILHOUETTE_PAPER_TONE = '#3e3646'
-const PAPER_KEYS: ReadonlyArray<string> = ['p', 'c', 'd']
-
-const SILHOUETTE_PALETTE: Palette = Record.map(DARE_PALETTE, (_color, key) =>
-  Array.contains(PAPER_KEYS, key) ? SILHOUETTE_PAPER_TONE : SILHOUETTE_TONE,
-)
+// NOTE: a thing still to find is a light silhouette that keeps its inner
+// detail: each color of the thing takes a lavender of about its own
+// lightness, so the spoon's bowl, the portrait's face, and the bell's shine
+// still read on the slot's dark fill. One flat grey on a dark slot read as
+// a blur on a phone (owner, 2026-11-10).
+const SILHOUETTE_PALETTE: Palette = {
+  S: '#a89cba',
+  W: '#e2dbec',
+  G: '#b4a8c6',
+  b: '#5a506a',
+  s: '#d2c9de',
+  k: '#3a3046',
+  r: '#6e6282',
+  p: '#d6cee2',
+  d: '#9e92b0',
+  c: '#d6cee2',
+  R: '#8e82a2',
+  N: '#e2dbec',
+  y: '#b8acca',
+  Y: '#ddd5e8',
+  M: '#9a8eb0',
+}
 
 export const DARE_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
   DARE_PIXELS,
   pixels => spriteShapes(pixels, DARE_PALETTE, TOP_LEFT),
 )
 
-// NOTE: a dare card slot, one sprite: a rim one pixel wide around the icon
-// on a dark fill. An empty slot has a pale rim and the silhouette; a found
-// one a gold rim and the thing in color.
-export const DARE_SLOT_SIZE = DARE_ICON_SIZE + 2
+// NOTE: a dare slot on the HUD's pocket, one sprite: the thing at twice its
+// size, so a spoon reads as a spoon on a phone, on a dark fill inside a rim
+// one pixel wide. An empty slot has a dim rim and the silhouette, the hat's
+// a party pink one, since it closes the list; a found one a gold rim and
+// the thing in color, with a green check (DARE_CHECK) on its corner.
+const SLOT_SCALE = 2
+export const DARE_SLOT_SIZE = DARE_ICON_SIZE * SLOT_SCALE + 2
 
 const RIM = 'o'
 const FILL = 'f'
 
+const doubled = (pixels: ReadonlyArray<string>): ReadonlyArray<string> =>
+  Array.flatMap(pixels, row => {
+    const wide = Array.join(
+      Array.map(String.split(row, ''), symbol =>
+        String.repeat(SLOT_SCALE)(symbol),
+      ),
+      '',
+    )
+    return Array.makeBy(SLOT_SCALE, () => wide)
+  })
+
 const slotPixels = (pixels: ReadonlyArray<string>): ReadonlyArray<string> => {
-  const edge = Array.join(
-    Array.makeBy(DARE_SLOT_SIZE, () => RIM),
-    '',
-  )
+  const edge = String.repeat(DARE_SLOT_SIZE)(RIM)
   return [
     edge,
     ...Array.map(
-      pixels,
+      doubled(pixels),
       row => `${RIM}${String.replaceAll('.', FILL)(row)}${RIM}`,
     ),
     edge,
   ]
 }
 
-const SLOT_FILL_COLOR = 'rgba(8, 10, 12, 0.7)'
-
-const DARE_EMPTY_RIM = '#8d8496'
-const DARE_FOUND_RIM = '#ffe066'
+const EMPTY_FILL = '#120d16'
+const FOUND_FILL = '#2b2131'
+const EMPTY_RIM = '#6f6580'
+const HAT_RIM = '#9a4a86'
+const FOUND_RIM = '#ffe066'
 
 const slotSprites = (
   palette: Palette,
-  rim: string,
+  fill: string,
+  rimOf: (kind: DareKind) => string,
 ): Readonly<Record<DareKind, Sprite>> =>
-  Record.map(DARE_PIXELS, pixels =>
+  Record.map(DARE_PIXELS, (pixels, kind) =>
     spriteShapes(
       slotPixels(pixels),
-      { ...palette, [RIM]: rim, [FILL]: SLOT_FILL_COLOR },
+      { ...palette, [RIM]: rimOf(kind), [FILL]: fill },
       TOP_LEFT,
     ),
   )
 
 export const DARE_EMPTY_SLOTS: Readonly<Record<DareKind, Sprite>> = slotSprites(
   SILHOUETTE_PALETTE,
-  DARE_EMPTY_RIM,
+  EMPTY_FILL,
+  kind => (kind === 'PartyHat' ? HAT_RIM : EMPTY_RIM),
 )
 
 export const DARE_FOUND_SLOTS: Readonly<Record<DareKind, Sprite>> = slotSprites(
   DARE_PALETTE,
-  DARE_FOUND_RIM,
+  FOUND_FILL,
+  () => FOUND_RIM,
+)
+
+// NOTE: the check on a found slot's bottom right corner, hanging a little
+// past it like a sticker.
+export const DARE_CHECK_SIZE = 9
+
+export const DARE_CHECK: Sprite = spriteShapes(
+  [
+    '..ooooo..',
+    '.oGGGGGo.',
+    'oGGGGGGGo',
+    'oGGGGGwGo',
+    'oGwGGwGGo',
+    'oGGwwGGGo',
+    'oGGGwGGGo',
+    '.oGGGGGo.',
+    '..ooooo..',
+  ],
+  { o: '#0f2a12', G: '#3fae49', w: '#f4f1de' },
+  TOP_LEFT,
+)
+
+// NOTE: the dare card itself, folded in your pocket: a slip of paper with
+// three lines of scrawl, on the pocket's chip and its open list.
+export const DARE_CARD_WIDTH = 7
+export const DARE_CARD_HEIGHT = 9
+
+export const DARE_CARD_ICON: Sprite = spriteShapes(
+  [
+    '.ooooo.',
+    'opppppo',
+    'okkkkpo',
+    'opppppo',
+    'okkkppo',
+    'opppppo',
+    'okkkkpo',
+    'opppppo',
+    '.ooooo.',
+  ],
+  { o: '#140c10', p: '#f4e6c3', k: '#8a7a5a' },
+  TOP_LEFT,
 )

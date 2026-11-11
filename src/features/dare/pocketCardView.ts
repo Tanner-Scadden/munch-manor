@@ -14,7 +14,7 @@ import type { DareKind } from '../../world/dare/dareSchema'
 import { ZOMBIE_NAMES } from '../../world/names'
 import type { Vector } from '../../world/schema/worldSchema'
 import { clamp, easeOut, lerp } from '../../world/step/geometry'
-import { dareSlotSpotsOf } from './dareCard'
+import { pocketCardSpotOf } from './dareCard'
 import { FOLD_MS, UNFOLD_MS } from './pocketCard'
 
 // The dare card in your pocket on screen (src/features/dare/pocketCard.ts):
@@ -241,8 +241,8 @@ const readingShapes = (
   ]
 }
 
-// NOTE: the card folds up toward the HUD's dare card and fades, and each
-// picture flies from its place on the card into its own outline.
+// NOTE: the card folds up toward the HUD's dare pocket and fades, and each
+// picture flies into the pocket's card and fades as it lands.
 const foldingShapes = (
   model: Model,
   screen: Screen,
@@ -252,12 +252,8 @@ const foldingShapes = (
   const count = kinds.length - 1
   const box = cardBoxOf(screen)
   const spots = pictureSpotsOf(count, box.width)
-  const slots = dareSlotSpotsOf(model, hudLayoutFor(screen))
+  const target = pocketCardSpotOf(model, hudLayoutFor(screen))
   const share = easeOut(clamp(ageMs / FOLD_MS, 0, 1))
-  const target = Array.match(slots, {
-    onEmpty: () => ({ x: screen.width, y: 0 }),
-    onNonEmpty: ([first]) => first,
-  })
   const paperScale = lerp(1, 0.1, share)
   return [
     group({
@@ -272,20 +268,18 @@ const foldingShapes = (
           scale: { x: paperScale, y: paperScale },
           shapes: scrawlShapes(box.width, count, Number.POSITIVE_INFINITY),
         }),
+        ...Array.map(Array.zip(kinds, spots), ([kind, spot]) =>
+          iconShapes(
+            kind,
+            {
+              x: lerp(box.x + spot.x, target.x, share),
+              y: lerp(box.y + spot.y, target.y, share),
+            },
+            lerp(ICON_SCALE, 1, share),
+          ),
+        ),
       ],
     }),
-    ...Array.map(
-      Array.zip(Array.zip(kinds, spots), slots),
-      ([[kind, spot], slot]) =>
-        iconShapes(
-          kind,
-          {
-            x: lerp(box.x + spot.x, slot.x, share),
-            y: lerp(box.y + spot.y, slot.y, share),
-          },
-          lerp(ICON_SCALE, 1, share),
-        ),
-    ),
   ]
 }
 
