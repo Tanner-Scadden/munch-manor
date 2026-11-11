@@ -138,15 +138,9 @@ flowchart TD
   dish --> hunt
 
   hunt[Each room holds one thing: find it in the room you opened]:::built
-  hunt --> kitchenThing[The kitchen: Grandma Munch's recipe, the silver spoon, or the butler's bell]:::built
-  hunt --> parlourThing[The parlour: the music box or the family portrait]:::built
-  hunt --> libraryThing[The library: a page of the guest book or the family portrait]:::built
-  hunt --> cellarThing[The cellar: the butler's bell or the silver spoon]:::built
+  hunt --> anyThing[Any thing in any room, rolled each run: the recipe, the spoon, the bell, the music box, the portrait, or a guest book page]:::built
 
-  kitchenThing --> all
-  parlourThing --> all
-  libraryThing --> all
-  cellarThing --> all
+  anyThing --> all
   all{Everything but the hat?}
 
   all -.->|Leave early with part of the dare| early([Early escape: pays less, and you are a chicken]):::proposed

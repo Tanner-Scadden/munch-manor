@@ -32,13 +32,7 @@ import {
 } from '../../../test/testing'
 import { levelOf, openExitIn } from '../../level/arena'
 import { KITCHEN_EXIT } from '../../level/exits'
-import {
-  CELLAR_ROOM_ID,
-  DINING_ROOM_ID,
-  KITCHEN_ROOM_ID,
-  LIBRARY_ROOM_ID,
-  PARLOUR_ROOM_ID,
-} from '../../level/plan'
+import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '../../level/plan'
 import { focusOf, modifyFocus, seatCrew } from '../../party/party'
 import { withWorld } from '../../schema/world'
 import {
@@ -81,15 +75,6 @@ const startedOn = (difficulty: Difficulty, seed: number) =>
 const START_ROOM_SPOT = hidingSpotIn(levelOf(quietWave(2)), DINING_ROOM_ID)
 
 const KITCHEN_SPOT = hidingSpotIn(levelOf(quietWave(2)), KITCHEN_ROOM_ID)
-
-// NOTE: the things each room may hold (ROOM_THINGS in ../dare.ts), as the
-// owner picked them: the test reads them back as a player would.
-const ROOM_FITS: Readonly<Record<string, ReadonlyArray<DareKind>>> = {
-  [KITCHEN_ROOM_ID]: ['GrandmasRecipe', 'SilverSpoon', 'ButlersBell'],
-  [PARLOUR_ROOM_ID]: ['MusicBox', 'FamilyPortrait'],
-  [LIBRARY_ROOM_ID]: ['GuestBookPage', 'FamilyPortrait'],
-  [CELLAR_ROOM_ID]: ['ButlersBell', 'SilverSpoon'],
-}
 
 const hiddenAt = (
   id: number,
@@ -139,7 +124,7 @@ describe('the list', () => {
   )
 
   it.effect(
-    'each room behind boards holds one thing of its own, none twice, on its spots, the dining room none',
+    'each room behind boards holds one thing, none twice, on its spots, the dining room none',
     () =>
       Effect.forEach(Array.range(0, 9), seed =>
         startedOn('Nightmare', seed * 104_729).pipe(
@@ -157,13 +142,42 @@ describe('the list', () => {
               Array.zip(started.dareThings, rooms),
               ([thing, room]) => {
                 expect(room.isOpen).toBe(false)
-                expect(ROOM_FITS[room.id]).toContain(thing.kind)
+                expect(thing.kind).not.toBe(LAST_THING)
                 expect(Option.isNone(maybeLyingAt(thing, level))).toBe(true)
               },
             )
           }),
         ),
       ),
+  )
+
+  // NOTE: fully random (owner, 2026-11-10): any thing may lie in any room,
+  // so over a few seeds one room holds things no theme would put there.
+  it.effect('any thing may lie in any room, by seed', () =>
+    Effect.gen(function* () {
+      const pairs = yield* Effect.forEach(Array.range(0, 19), seed =>
+        startedOn('Nightmare', seed * 7_919).pipe(
+          Effect.map(started => {
+            const level = levelOf(started)
+            return Array.map(started.dareThings, thing => ({
+              room: Option.getOrThrow(maybeThingRoom(thing, level)).id,
+              kind: thing.kind,
+            }))
+          }),
+        ),
+      )
+      const kitchenKinds = Array.dedupe(
+        Array.map(
+          Array.filter(
+            Array.flatten(pairs),
+            ({ room }) => room === KITCHEN_ROOM_ID,
+          ),
+          ({ kind }) => kind,
+        ),
+      )
+      expect(kitchenKinds).toContain('MusicBox')
+      expect(kitchenKinds).toContain('GuestBookPage')
+    }),
   )
 
   it.effect('Endless, stay the night, has no list and no card', () =>
