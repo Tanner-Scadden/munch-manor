@@ -142,6 +142,11 @@ import {
 // (Slam), the finale's Unlocking is KeyFlying (his big key in the air, from
 // where he fell, with a BigKeyBurst event), and the party hat, the Dropped
 // thing, DareDropped, and FrontDoorUnlocking are gone.
+// Every room tool a station: `stations` holds seven more (the parlour's
+// Gramophone, the library's NorthStack, SouthStack, and Shelf, the cellar's
+// Barrels and Bulb, and the kitchen's SoupPot), each with its own clock;
+// what a tool does is read off that clock, and a toppled stack lies in the
+// level's drops (NorthStack, SouthStack), so nothing else rides the wire.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

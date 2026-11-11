@@ -29,7 +29,8 @@ import type { Vector } from '../schema/worldSchema'
 // standing player keeping still in reach works it and cannot shoot, each
 // player at it adds their own share, and it drains at half pace while
 // nobody works it. `isReady` lets a room say when its thing can be worked
-// at all (the cellar's, in a later layer, only in the light).
+// at all. The cellar walks onto its thing, but only while its bulb lights
+// it (src/world/cellar/bulb.ts, read in the dare's step).
 
 export type FindStyle = 'Walk' | 'Rummage' | 'HollowBook' | 'Dumbwaiter'
 
@@ -48,8 +49,8 @@ export const FIND_RULES: Readonly<Record<FindStyle, FindRules>> = {
   Dumbwaiter: { workMs: 2000, reachPx: 12, isReady: ALWAYS },
 }
 
-// NOTE: each room's find, by its id. The cellar walks onto its thing until
-// its bulb lights it (part 2 of the rooms rework).
+// NOTE: each room's find, by its id. The cellar walks onto its thing, found
+// only in the bulb's light.
 const ROOM_FINDS: Readonly<Record<string, FindStyle>> = {
   [PARLOUR_ROOM_ID]: 'Rummage',
   [LIBRARY_ROOM_ID]: 'HollowBook',

@@ -26,6 +26,7 @@ import {
 } from '../schema/worldSchema'
 import { ZOMBIE_BLAST_TARGET } from '../step/combat'
 import { bodyRadiusOf, isFree, isGrounded, statsOf } from '../zombies/zombies'
+import { isInPuddle, puddleOf } from './soupPot'
 
 // OVENS
 
@@ -301,12 +302,16 @@ const slip = (zombie: Zombie, before: Vector): Zombie =>
 // NOTE: a zombie that steps onto spilled soup from dry floor loses its
 // footing: it skids on in the way it was walking and lies there dazed for a
 // moment. One that gets up in the soup walks out of it, so it never slips
-// forever. Big Lugs, Ankle Biters, and Uncle Chunk keep their feet.
+// forever. Big Lugs, Ankle Biters, and Uncle Chunk keep their feet. The
+// soup pot's fresh puddle (src/world/kitchen/soupPot.ts) is soup too.
 const slipOnSoup = (before: World, model: World): World => {
   const level = levelOf(model)
-  if (!level.hasSoup || !isKitchenOpen(level)) {
+  const puddle = puddleOf(model)
+  if ((!level.hasSoup && Option.isNone(puddle)) || !isKitchenOpen(level)) {
     return model
   }
+  const isSoupy = (point: Vector): boolean =>
+    isOnSoupAt(level, point) || isInPuddle(point, puddle)
   const was = new Map(
     Array.map(before.zombies, ({ id, x, y }) => [id, { x, y }] as const),
   )
@@ -314,8 +319,8 @@ const slipOnSoup = (before: World, model: World): World => {
     const from = was.get(zombie.id)
     return from !== undefined &&
       canSlip(zombie) &&
-      isOnSoupAt(level, zombie) &&
-      !isOnSoupAt(level, from)
+      isSoupy(zombie) &&
+      !isSoupy(from)
       ? Option.some(from)
       : Option.none()
   })

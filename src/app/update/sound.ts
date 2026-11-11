@@ -23,6 +23,7 @@ import {
 } from '../../features/fridge/fridgeReveal'
 import { isTickingShot } from '../../features/hud/ammoWarning'
 import { maybeKitchenSound } from '../../features/kitchen/kitchenCall'
+import { STATION_SOUNDS } from '../../features/stations/stationView'
 import { mendedSpots } from '../../render/heroTells'
 import { PICKUPS } from '../../world/gear/powerups'
 import { TRAPS } from '../../world/gear/traps'
@@ -222,7 +223,7 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     KeysFound: () => Option.some<SoundEffect>('Purchase'),
     CrateTaken: () => Option.some<SoundEffect>('Swap'),
     TrapMended: () => Option.some<SoundEffect>('Tink'),
-    StationWorked: () => Option.some<SoundEffect>('Yank'),
+    StationWorked: ({ station }) => Option.some(STATION_SOUNDS[station]),
     LidLaunched: () => Option.some<SoundEffect>('Whoosh'),
     LidBlasted: () => Option.some<SoundEffect>('Boom'),
     CookerPopped: () => Option.some<SoundEffect>('Pop'),

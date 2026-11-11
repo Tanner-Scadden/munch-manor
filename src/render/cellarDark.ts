@@ -1,27 +1,23 @@
 import { Array, Function, Option, Order, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { type Sprite, bakeShapes, placeAt, spriteShapes } from '../art/sprite'
-import { ZOMBIE_SPRITES } from '../art/sprites/zombies'
+import { bakeShapes } from '../art/sprite'
+import { isCellarLit } from '../world/cellar/bulb'
 import { type Room, levelOf } from '../world/level/arena'
 import { CELLAR_ROOM_ID } from '../world/level/plan'
-import { playersOf } from '../world/party/party'
+import { focusOf, playersOf } from '../world/party/party'
 import type { World } from '../world/schema/world'
-import {
-  type Vector,
-  type Zombie,
-  ZombieAction,
-} from '../world/schema/worldSchema'
-import { statsOf } from '../world/zombies/zombies'
+import type { Vector, Zombie } from '../world/schema/worldSchema'
 import type { Camera } from './camera'
 import { rect } from './drawing'
 import { CELLAR_BULB_OFFSET } from './room/room'
 
 // The cellar's twist (docs/ROOM_DRAFTS.md): it is dark but for a pool round
-// each player, the flash of each shot, and the one bare bulb, so a zombie
-// out in the dark shows only as two glowing eyes until it walks into the
-// light. It is a client cosmetic, read off the World each frame and never
-// stored.
+// each player, the flash of each shot, and the one bare bulb, and a zombie
+// in the dark is not drawn at all until it is close to the viewing player
+// (DARK_SIGHT): only its footsteps give it away. Yanking the bulb's chain
+// (src/world/cellar/bulb.ts) lifts the dark for a while. It is a client
+// cosmetic, read off the World each frame and never stored.
 //
 // The dark is drawn over the part of the cellar on the camera, cut along
 // the edges of each light's square into a few pieces: a piece no light
@@ -29,8 +25,8 @@ import { CELLAR_BULB_OFFSET } from './room/room'
 // light's pool, a square image baked once (dark corners, two dim rings, a
 // clear middle), and a piece two lights reach (where pools meet) is a few
 // coarse cells, each as dark as its nearest light leaves it. One player
-// costs about a dozen shapes. A zombie in the dark is not drawn at all,
-// only its eyes, so the dark costs less than the zombies it hides.
+// costs about a dozen shapes. A zombie in the dark is not drawn at all, so
+// the dark costs less than the zombies it hides.
 
 // LIGHTS
 
@@ -384,45 +380,29 @@ const pieceShapes = (
   )
 }
 
-// THE EYES
+// WHAT THE VIEWER SEES
 
-const EYES: Sprite = spriteShapes(
-  ['g.....g', '.R...R.', 'gRr.rRg', '.g...g.'],
-  {
-    R: '#ff4a3a',
-    r: '#ffd0a0',
-    g: 'rgba(255, 70, 50, 0.35)',
-  },
-  { x: 3, y: 2 },
-)
-
-const EYES_DOWN_PX = 4
-
-const eyesOf = (zombie: Zombie): Canvas.Shape =>
-  placeAt(
-    Math.round(zombie.x),
-    Math.round(zombie.y) +
-      statsOf(zombie).footOffset -
-      ZOMBIE_SPRITES[zombie.kind].height +
-      EYES_DOWN_PX,
-    EYES,
-  )
+// NOTE: in the dark a viewer sees only the zombies close to them: whole
+// within two tiles, fading out over the third, and nothing at all past it,
+// no eyes, bar, or shadow (owner, 2026-11-11). Their footsteps are the tell.
+// Each player sees by their own seat (focusOf), so in co-op a mate's pool
+// lights the floor for you but shows you none of its zombies.
+const DARK_SIGHT = { clearPx: 20, seenPx: 30 } as const
 
 const isInside = ({ box }: Room, { x, y }: Vector): boolean =>
   x >= box.left && x < box.right && y >= box.top && y < box.bottom
 
 // THE DARK
 
-// NOTE: what the dark does to a frame: the mask to draw over the room, the
-// eyes to draw over the mask, and which zombies it hides.
+// NOTE: what the dark does to a frame: the mask to draw over the room, and
+// how much of each zombie shows, from 1 (all of it) to 0 (none).
 export type CellarDark = Readonly<{
   maskShapes: ReadonlyArray<Canvas.Shape>
-  isHidden: (zombie: Zombie) => boolean
-  eyesShapes: (zombies: ReadonlyArray<Zombie>) => ReadonlyArray<Canvas.Shape>
+  fadeOf: (zombie: Zombie) => number
 }>
 
-// NOTE: a zombie is hidden past every light's dim rings, where the mask is
-// at its darkest.
+// NOTE: the dark is over the cellar once it is open, on the camera, and
+// the bulb is out.
 export const cellarDarkOf: {
   (camera: Camera): (world: World) => Option.Option<CellarDark>
   (world: World, camera: Camera): Option.Option<CellarDark>
@@ -431,27 +411,27 @@ export const cellarDarkOf: {
   (world: World, camera: Camera): Option.Option<CellarDark> =>
     pipe(
       cellarOf(world),
+      // NOTE: the bulb's chain lights the whole cellar a while
+      // (src/world/cellar/bulb.ts): no dark at all then.
+      Option.filter(() => !isCellarLit(world)),
       Option.flatMap(cellar =>
         Option.map(shownBox(cellar, camera), shown => {
-          const lights = lightsOf(world, cellar)
-          const isHidden = (zombie: Zombie): boolean =>
-            isInside(cellar, zombie) &&
-            Array.every(
-              lights,
-              light =>
-                Math.hypot(zombie.x - light.x, zombie.y - light.y) >=
-                light.radius,
-            )
+          const viewer = focusOf(world).player
+          const fadeOf = (zombie: Zombie): number =>
+            isInside(cellar, zombie)
+              ? Math.min(
+                  1,
+                  Math.max(
+                    0,
+                    (DARK_SIGHT.seenPx -
+                      Math.hypot(zombie.x - viewer.x, zombie.y - viewer.y)) /
+                      (DARK_SIGHT.seenPx - DARK_SIGHT.clearPx),
+                  ),
+                )
+              : 1
           return {
-            maskShapes: maskShapes(lights, shown),
-            isHidden,
-            eyesShapes: zombies =>
-              Array.filterMap(zombies, zombie =>
-                isHidden(zombie) &&
-                !ZombieAction.isAnyOf(['Burrowed'])(zombie.action)
-                  ? Result.succeed(eyesOf(zombie))
-                  : Result.failVoid,
-              ),
+            maskShapes: maskShapes(lightsOf(world, cellar), shown),
+            fadeOf,
           }
         }),
       ),

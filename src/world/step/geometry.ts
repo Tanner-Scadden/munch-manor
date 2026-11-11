@@ -149,3 +149,26 @@ export const decayKnockback: {
     }
   },
 )
+
+// NOTE: a point inside a box, its left and top edges in, its right and
+// bottom out.
+export const isInsideBox: {
+  (
+    box: Readonly<{ left: number; top: number; right: number; bottom: number }>,
+  ): (position: Vector) => boolean
+  (
+    position: Vector,
+    box: Readonly<{ left: number; top: number; right: number; bottom: number }>,
+  ): boolean
+} = Function.dual(
+  2,
+  (
+    { x, y }: Vector,
+    {
+      left,
+      top,
+      right,
+      bottom,
+    }: Readonly<{ left: number; top: number; right: number; bottom: number }>,
+  ): boolean => x >= left && x < right && y >= top && y < bottom,
+)

@@ -25,7 +25,9 @@ import {
 import { isChandelierDown } from '../../dining/chandelier'
 import { MANOR } from '../../level/arena'
 import { CHANDELIER_DROP } from '../../level/plan'
-import { STATION_RULES, isWorkingStation, stationBoxOf } from '../stations'
+import { stationBoxOf } from '../stationSpots'
+import { isWorkingStation } from '../stations'
+import { TOOL_RULES } from '../toolRules'
 
 // Work stations (src/world/stations/stations.ts), with the dining room's
 // chandelier cleat: a still player beside it in a wave, with the
@@ -34,7 +36,7 @@ import { STATION_RULES, isWorkingStation, stationBoxOf } from '../stations'
 // two players set it up twice as fast.
 
 const FRAME_MS = FIXED_STEP_MS
-const CLEAT = STATION_RULES.Cleat
+const CLEAT = TOOL_RULES.Cleat
 const SET_UP_TICKS = Math.ceil(CLEAT.setUpMs / FRAME_MS)
 
 const CLEAT_BOX = Option.getOrThrow(stationBoxOf(MANOR, 'Cleat'))

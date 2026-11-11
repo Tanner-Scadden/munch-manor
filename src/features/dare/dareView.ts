@@ -14,6 +14,7 @@ import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Drawable } from '../../render/depth'
 import { FULL_TURN, rect } from '../../render/drawing'
 import type { Difficulty } from '../../shared/playerData'
+import { isHiddenInDark } from '../../world/cellar/bulb'
 import { findStyleOf, isInOpenRoom, maybeLyingAt } from '../../world/dare/dare'
 import {
   type DareThing,
@@ -117,7 +118,12 @@ const shownThingSpots = (
     DareThingState.isAnyOf(['Hidden'])(thing.state)
       ? Option.match(maybeLyingAt(thing, level), {
           onNone: () => Result.failVoid,
-          onSome: spot => Result.succeed({ thing, spot }),
+          // NOTE: the cellar's thing shows only while its bulb is lit
+          // (src/world/cellar/bulb.ts).
+          onSome: spot =>
+            isHiddenInDark(model, spot)
+              ? Result.failVoid
+              : Result.succeed({ thing, spot }),
         })
       : Result.failVoid,
   )
@@ -273,6 +279,7 @@ const nearGlintShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   return Array.filterMap(model.dareThings, thing =>
     DareThingState.isAnyOf(['Hidden'])(thing.state) &&
     isInOpenRoom(level, thing.state) &&
+    !isHiddenInDark(model, thing.state) &&
     distanceBetween(player, thing.state) <= NEAR_GLINT_PX
       ? Result.succeed(placeAt(thing.state.x, thing.state.y - 2, NEAR_GLINT))
       : Result.failVoid,

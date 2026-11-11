@@ -1,16 +1,10 @@
-import { Array, Function, Option, pipe } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { hoistChandelier, isChandelierDown } from '../dining/chandelier'
-import {
-  type Box,
-  type Level,
-  boxCenter,
-  distanceToBox,
-  levelOf,
-  tileBox,
-} from '../level/arena'
-import { type LevelSpec, roomSpotsOf } from '../level/plan'
+import { boxCenter, distanceToBox, levelOf } from '../level/arena'
+import { spinShelf } from '../library/revolvingShelf'
+import { isHeapDown, toppleStack } from '../library/stacks'
 import { seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import {
@@ -21,6 +15,8 @@ import {
   type StationState,
   type Vector,
 } from '../schema/worldSchema'
+import { isStationOpen, stationBoxOf, stationCenterOf } from './stationSpots'
+import { TOOL_RULES } from './toolRules'
 import { DRAIN_SCALE, isStill } from './work'
 
 // Work stations (docs/ROOM_RESEARCH.md, "Decided", owner 2026-11-10):
@@ -31,61 +27,63 @@ import { DRAIN_SCALE, isStill } from './work'
 // drains at half that pace while nobody works it, so a step away pauses it
 // and a long walk loses it. Full, it fires its effect and goes on its
 // cooldown. In co-op each player working it adds their own share, so two
-// set it up in half the time. A tool's rules live here; its effect lives
-// with its room.
+// set it up in half the time. Every tool is used mid-wave: breaks are for
+// catching a breath. The numbers are in TOOL_RULES
+// (src/world/stations/toolRules.ts); each tool's effect lives with its
+// room:
 //
-// The first is the dining room's chandelier cleat, `j` on the west wall:
-// about 3 s of work in a wave winches a fallen chandelier back up over the
-// table's gap, to be shot down on the horde again, then 20 s of cooldown.
+// - the dining room's chandelier cleat winches a fallen chandelier back up
+//   (src/world/dining/chandelier.ts);
+// - the parlour's gramophone plays a waltz the Groaners dance to
+//   (src/world/parlour/gramophone.ts);
+// - the library's two leaning stacks topple a heap of books across an
+//   aisle (src/world/library/stacks.ts), and its secret shelf, once open,
+//   spins (src/world/library/revolvingShelf.ts);
+// - the cellar's barrels roll down the corridor (src/world/cellar/
+//   barrels.ts), and its bulb's chain lights the dark
+//   (src/world/cellar/bulb.ts);
+// - the kitchen's soup pot spills a fresh puddle
+//   (src/world/kitchen/soupPot.ts).
+//
+// A tool whose effect lasts reads it off its own station's clock
+// (`isToolActive`), so nothing but `stations` rides the wire.
 
 type StationRules = Readonly<{
-  setUpMs: number
-  cooldownMs: number
-  reachPx: number
-  // NOTE: where the station stands on a level, if the level has it.
-  boxOf: (level: Level) => Option.Option<Box>
   // NOTE: whether its effect would do anything now, cooldown aside.
   isReady: (world: World) => boolean
   fire: (world: World) => World
 }>
 
-const cleatBoxes = new WeakMap<LevelSpec, Option.Option<Box>>()
+const isInWave = (world: World): boolean => Phase.isAnyOf(['Wave'])(world.phase)
 
-// NOTE: the cleat's wall tile, read off the dining room's map (`j`). A
-// level's spec keeps its box, so a frame only reads it.
-const cleatBoxOf = (level: Level): Option.Option<Box> => {
-  const cached = cleatBoxes.get(level.spec)
-  if (cached !== undefined) {
-    return cached
-  }
-  const box = pipe(
-    roomSpotsOf(level.spec),
-    Array.flatMap(({ cleats }) => cleats),
-    Array.head,
-    Option.map(tileBox),
-  )
-  cleatBoxes.set(level.spec, box)
-  return box
-}
+// NOTE: a tool is ready in a wave with its room open; one with nothing
+// more to do needs nothing else.
+const readyInWave =
+  (id: StationId) =>
+  (world: World): boolean =>
+    isInWave(world) && isStationOpen(levelOf(world), id)
 
-export const STATION_RULES: Readonly<Record<StationId, StationRules>> = {
+const STATION_RULES: Readonly<Record<StationId, StationRules>> = {
   Cleat: {
-    setUpMs: 3000,
-    cooldownMs: 20_000,
-    reachPx: 8,
-    boxOf: cleatBoxOf,
-    isReady: world =>
-      Phase.isAnyOf(['Wave'])(world.phase) && isChandelierDown(world),
+    isReady: world => isInWave(world) && isChandelierDown(world),
     fire: hoistChandelier,
   },
+  Gramophone: { isReady: readyInWave('Gramophone'), fire: Function.identity },
+  NorthStack: {
+    isReady: world =>
+      readyInWave('NorthStack')(world) && !isHeapDown(world, 'NorthStack'),
+    fire: world => toppleStack(world, 'NorthStack'),
+  },
+  SouthStack: {
+    isReady: world =>
+      readyInWave('SouthStack')(world) && !isHeapDown(world, 'SouthStack'),
+    fire: world => toppleStack(world, 'SouthStack'),
+  },
+  Shelf: { isReady: readyInWave('Shelf'), fire: spinShelf },
+  Barrels: { isReady: readyInWave('Barrels'), fire: Function.identity },
+  Bulb: { isReady: readyInWave('Bulb'), fire: Function.identity },
+  SoupPot: { isReady: readyInWave('SoupPot'), fire: Function.identity },
 }
-
-export const stationBoxOf: {
-  (id: StationId): (level: Level) => Option.Option<Box>
-  (level: Level, id: StationId): Option.Option<Box>
-} = Function.dual(2, (level: Level, id: StationId): Option.Option<Box> =>
-  STATION_RULES[id].boxOf(level),
-)
 
 // NOTE: a station a player could work right now: ready, and off its
 // cooldown.
@@ -99,7 +97,7 @@ const isWorkingOn = (world: World, slot: PlayerSlot, id: StationId): boolean =>
     stationBoxOf(levelOf(world), id),
     box =>
       distanceToBox(seatStateAt(world, slot).player, box) <=
-      STATION_RULES[id].reachPx,
+      TOOL_RULES[id].reachPx,
   )
 
 // NOTE: a player at work on a station holds their fire.
@@ -116,15 +114,12 @@ const workersOf = (world: World, id: StationId): number =>
   )
 
 const stationCenter = (world: World, id: StationId): Vector =>
-  Option.match(stationBoxOf(levelOf(world), id), {
-    onNone: () => ({ x: 0, y: 0 }),
-    onSome: boxCenter,
-  })
+  Option.getOrElse(stationCenterOf(levelOf(world), id), () => ({ x: 0, y: 0 }))
 
 const advanceStation =
   (deltaMs: number) =>
   (world: World, id: StationId): World => {
-    const rules = STATION_RULES[id]
+    const rules = TOOL_RULES[id]
     const state = world.stations[id]
     const workers = workersOf(world, id)
     const workedMs =
@@ -133,6 +128,15 @@ const advanceStation =
         : Math.max(0, state.workedMs - deltaMs * DRAIN_SCALE)
     const cooldownMs = Math.max(0, state.cooldownMs - deltaMs)
     const isDone = workedMs >= rules.setUpMs
+    // NOTE: a station idle and cool, as most are most frames, leaves the
+    // World as it was rather than copy it.
+    if (
+      !isDone &&
+      workedMs === state.workedMs &&
+      cooldownMs === state.cooldownMs
+    ) {
+      return world
+    }
     const next: StationState = isDone
       ? {
           workedMs: 0,
@@ -147,7 +151,7 @@ const advanceStation =
       return kept
     }
     const { x, y } = stationCenter(world, id)
-    return modifyFields(rules.fire(kept), {
+    return modifyFields(STATION_RULES[id].fire(kept), {
       frameEvents: frameEvents => [
         ...frameEvents,
         GameEvent.StationWorked({ x, y, station: id }),
@@ -182,7 +186,7 @@ export const stationViewsOf = (world: World): ReadonlyArray<StationView> => {
   return Array.getSomes(
     Array.map(StationId.literals, id =>
       Option.map(stationBoxOf(level, id), (box): StationView => {
-        const rules = STATION_RULES[id]
+        const rules = TOOL_RULES[id]
         const state = world.stations[id]
         return {
           id,

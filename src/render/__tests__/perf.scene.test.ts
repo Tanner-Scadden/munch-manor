@@ -632,7 +632,9 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // he keeps on the floor went from 5 to 9 (`globMax`, 2026-11-11): every
 // puddle in this room now draws: the dark cellar went to 794 shapes and
 // 680 painted, and the rolled house to 647 steady paint operations, so
-// 800, 650, and 685.
+// 800, 650, and 685. The room tools (layer 20, 2026-11-11) put the bulb's
+// chain and a barrel in the cellar, each with its ring, while a zombie out
+// in the dark is not drawn at all, so the budgets still hold.
 const BUDGET: FrameCost = {
   shapesBuilt: 800,
   steadyPaintOps: 650,

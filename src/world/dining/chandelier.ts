@@ -22,6 +22,7 @@ import {
   type Zombie,
 } from '../schema/worldSchema'
 import { ZOMBIE_BLAST_TARGET } from '../step/combat'
+import { isInsideBox } from '../step/geometry'
 import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
 
 // The dining room's twist (docs/ROOM_DRAFTS.md): the chandelier hangs over
@@ -78,15 +79,10 @@ export const chandelierHitBox = (gap: Box): Box => ({
 export const isChandelierDown = (world: World): boolean =>
   Array.contains(world.level.dropped, CHANDELIER_DROP)
 
-const isInBox = (
-  { left, top, right, bottom }: Box,
-  { x, y }: Vector,
-): boolean => x >= left && x < right && y >= top && y < bottom
-
 // NOTE: a body in the gap when it falls is set down at the nearer open edge
 // of it, north or south, since the table halves close its east and west.
 const yOutOfGap = (gap: Box, radius: number, body: Vector): number => {
-  if (!isInBox(gap, body)) {
+  if (!isInsideBox(body, gap)) {
     return body.y
   }
   return body.y < (gap.top + gap.bottom) / 2
@@ -124,7 +120,7 @@ const crush = (world: World, gap: Box): World => {
 // stepped out to its nearer edge.
 const clearPlayers = (world: World, gap: Box): World =>
   forEachSeat(world, (current, slot) =>
-    isInBox(gap, seatStateAt(current, slot).player)
+    isInsideBox(seatStateAt(current, slot).player, gap)
       ? modifySeat(current, slot, {
           player: player =>
             modifyFields(player, {
@@ -145,12 +141,12 @@ export const dropChandelier = (world: World): World => {
     onNone: () => world,
     onSome: gap => {
       const hit = chandelierHitBox(gap)
-      if (!Array.some(world.bullets, bullet => isInBox(hit, bullet))) {
+      if (!Array.some(world.bullets, bullet => isInsideBox(bullet, hit))) {
         return world
       }
       const fallen = modifyFields(world, {
         bullets: bullets =>
-          Array.filter(bullets, bullet => !isInBox(hit, bullet)),
+          Array.filter(bullets, bullet => !isInsideBox(bullet, hit)),
         level: state =>
           modifyFields(state, {
             dropped: dropped => Array.append(dropped, CHANDELIER_DROP),

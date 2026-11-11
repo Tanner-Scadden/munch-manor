@@ -8,6 +8,7 @@ import {
   ZOMBIE_ENTRY_SPEED,
   ZOMBIE_KNOCKBACK_DECAY_PER_SECOND,
 } from '../../shared/constants'
+import { darkBoxOf, darkPaceAt } from '../cellar/bulb'
 import { chillPace } from '../fridge/fridgeWeapons'
 import {
   BAIT_RULES,
@@ -25,6 +26,12 @@ import {
   steerToBait,
   steerToward,
 } from '../level/pathing'
+import {
+  type DanceFloor,
+  danceFloorOf,
+  danceVelocity,
+  isDancing,
+} from '../parlour/gramophone'
 import { focusOf, nearestOf, targetsOf } from '../party/party'
 import type { World } from '../schema/world'
 import {
@@ -138,6 +145,10 @@ type Obstacles = Readonly<{
   boss: Boss
   zombies: ReadonlyArray<Zombie>
   loneMs: number
+  // NOTE: the parlour's dance floor while the gramophone plays, and the
+  // cellar while it is dark in a wave (the room tools, src/world/stations/).
+  danceFloor: Option.Option<DanceFloor>
+  dark: Option.Option<Box>
 }>
 
 const flowHeading = (
@@ -238,7 +249,8 @@ const heading = (
 // ZOMBIE_ENTRY_SPEED until it reaches its doorway: it shows up a beat after
 // its door's warning ends, whatever its own pace. In the room it walks at
 // its own. The wave's last zombie hurries up to the players' walk
-// (src/world/zombies/lastZombie.ts) before the boss's pace and a chill.
+// (src/world/zombies/lastZombie.ts) before the boss's pace and a chill,
+// and walks a little faster in the cellar's dark (src/world/cellar/bulb.ts).
 const walkingSpeed = (
   zombie: Zombie,
   obstacles: Obstacles,
@@ -249,7 +261,8 @@ const walkingSpeed = (
   const hurried = isLastZombie(zombie, obstacles.loneMs)
     ? lastZombieSpeed(own, obstacles.loneMs)
     : own
-  const speed = hurried * pace * chillPace(zombie)
+  const speed =
+    hurried * pace * chillPace(zombie) * darkPaceAt(zombie, obstacles.dark)
   return isInsideRoomAt(level, zombie)
     ? speed
     : Math.max(speed, ZOMBIE_ENTRY_SPEED)
@@ -267,10 +280,19 @@ const steeringVelocity = (
     Walking: () =>
       isHeld || !isFree(zombie)
         ? ZERO_VECTOR
-        : scaleVector(
-            heading(zombie, flowFields, target, obstacles),
-            walkingSpeed(zombie, obstacles, pace),
-          ),
+        : // NOTE: a plain check, so no handler is built per zombie per
+          // frame (AGENTS.md, "Keep the frame cheap").
+          Option.isSome(obstacles.danceFloor) &&
+            isDancing(zombie, obstacles.danceFloor.value)
+          ? danceVelocity(
+              zombie,
+              obstacles.danceFloor.value,
+              walkingSpeed(zombie, obstacles, pace),
+            )
+          : scaleVector(
+              heading(zombie, flowFields, target, obstacles),
+              walkingSpeed(zombie, obstacles, pace),
+            ),
     Fusing: () => ZERO_VECTOR,
     Dying: () => ZERO_VECTOR,
   })
@@ -378,6 +400,8 @@ export const advanceZombies: {
       boss: model.boss,
       zombies: model.zombies,
       loneMs: model.pacing.loneMs,
+      danceFloor: danceFloorOf(model),
+      dark: darkBoxOf(model),
     }
     const targets = targetsOf(model)
     const flowFields = flowFieldsToward(

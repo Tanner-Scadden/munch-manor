@@ -626,8 +626,19 @@ export type GasValve = typeof GasValve.Type
 
 // NOTE: the room tools a player sets up by working at them
 // (src/world/stations/stations.ts), by name: the dining room's chandelier
-// cleat first, the other rooms' tools to come.
-export const StationId = Schema.Literals(['Cleat'])
+// cleat, the parlour's gramophone, the library's two leaning stacks and its
+// revolving shelf, the cellar's barrels and bulb chain, and the kitchen's
+// soup pot.
+export const StationId = Schema.Literals([
+  'Cleat',
+  'Gramophone',
+  'NorthStack',
+  'SouthStack',
+  'Shelf',
+  'Barrels',
+  'Bulb',
+  'SoupPot',
+])
 export type StationId = typeof StationId.Type
 
 // NOTE: one work station's state: `workedMs` of its set-up time done (it
@@ -640,7 +651,16 @@ export const StationState = Schema.Struct({
 })
 export type StationState = typeof StationState.Type
 
-export const Stations = Schema.Struct({ Cleat: StationState })
+export const Stations = Schema.Struct({
+  Cleat: StationState,
+  Gramophone: StationState,
+  NorthStack: StationState,
+  SouthStack: StationState,
+  Shelf: StationState,
+  Barrels: StationState,
+  Bulb: StationState,
+  SoupPot: StationState,
+})
 export type Stations = typeof Stations.Type
 
 export const Callout = Schema.Struct({

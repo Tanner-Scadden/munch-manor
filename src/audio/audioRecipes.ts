@@ -3,6 +3,7 @@ import { Array } from 'effect'
 import { FRIDGE_SPIN_STEPS_MS, MS_PER_SECOND } from '../shared/constants'
 import type { SoundEffect } from '../shared/soundEffect'
 import { INTRO_RECIPES } from './introRecipes'
+import { ROOM_TOOL_RECIPES } from './roomToolRecipes'
 import {
   type Recipe,
   type ToneLayer,
@@ -47,6 +48,7 @@ const SPIN_LAND_SECONDS =
 export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
   ...ZOMBIE_RECIPES,
   ...INTRO_RECIPES,
+  ...ROOM_TOOL_RECIPES,
   Shot: {
     variationCents: 70,
     tones: [
