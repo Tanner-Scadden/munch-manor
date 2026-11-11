@@ -77,6 +77,7 @@ import {
   squashPulse,
   tellAlpha,
 } from './drawing'
+import { isRaging } from './frenzyView'
 import { barWidthOf, healthBarShapes } from './healthBarView'
 
 // ZOMBIES
@@ -380,16 +381,6 @@ const bossPose = (boss: Boss, zombie: Zombie): Pose =>
 const STEAM_RISE_PX = 6
 const STEAM_CYCLE_MS = 520
 const STEAM_COLOR = 'rgba(244, 241, 222, 0.6)'
-const FADE_BLINK_MS = 110
-
-const isRaging = (zombie: Zombie): boolean =>
-  Frenzy.match(zombie.frenzy, {
-    Calm: () => false,
-    Frenzied: () => true,
-    Fading: ({ remainingMs }) =>
-      Math.floor(remainingMs / FADE_BLINK_MS) % 2 === 0,
-    Spent: () => false,
-  })
 
 const HALO_COLOR = 'rgba(255, 43, 43, 0.32)'
 const HALO_RADIUS = 4
@@ -659,6 +650,7 @@ const walkingZombieShapes = (
   player: Player,
   elapsedMs: number,
   boss: Boss,
+  loneMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
   if (ZombieAction.isAnyOf(['Burrowed'])(zombie.action)) {
     return []
@@ -679,7 +671,7 @@ const walkingZombieShapes = (
   const isPlanted = stride % 2 === 0
   const stomp = isPlanted && !isStill ? gait.stompSquash : 0
   const isBossRaging = zombie.kind === 'Boss' && isEnraged(boss)
-  const isFrenzied = isRaging(zombie)
+  const isFrenzied = isRaging(zombie, loneMs)
   const isHefting = ZombieAction.isAnyOf(['Hefting'])(zombie.action)
   const frames: SpriteFrames = isBossRaging
     ? sprites.lit
@@ -918,23 +910,27 @@ export const zombieShapes: {
     player: Player,
     elapsedMs: number,
     boss: Boss,
+    loneMs: number,
   ): (zombie: Zombie) => ReadonlyArray<Canvas.Shape>
   (
     zombie: Zombie,
     player: Player,
     elapsedMs: number,
     boss: Boss,
+    loneMs: number,
   ): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
-  4,
+  5,
   (
     zombie: Zombie,
     player: Player,
     elapsedMs: number,
     boss: Boss,
+    loneMs: number,
   ): ReadonlyArray<Canvas.Shape> =>
     ZombieState.match(zombie.state, {
-      Walking: () => walkingZombieShapes(zombie, player, elapsedMs, boss),
+      Walking: () =>
+        walkingZombieShapes(zombie, player, elapsedMs, boss, loneMs),
       Fusing: ({ remainingMs }) =>
         fusingZombieShapes(zombie, player, remainingMs),
       Dying: ({ remainingMs, direction }) => [
