@@ -31,7 +31,7 @@ export const PISTOL_MAGAZINE = 14
 export const PISTOL_RELOAD_MS = 800
 // NOTE: below Hard, a gun with room in its magazine reloads by itself once
 // the trigger has rested this long with it in hand (src/world/step/firing.ts).
-export const IDLE_RELOAD_MS = 700
+export const IDLE_RELOAD_MS = 1_500
 export const BULLET_SPEED = 240
 export const BULLET_RADIUS = 1.5
 export const BULLET_LIFETIME_MS = 900
