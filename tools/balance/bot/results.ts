@@ -94,6 +94,15 @@ export const BossFight = Schema.Struct({
   heartsByAttack: Schema.Record(BossBlame, Schema.Finite),
   damageTaken: Schema.Finite,
   aimedMs: Schema.Finite,
+  // The bot's hearts and its distance to him in px at each second of his
+  // fight, the time within his slam's reach, the time with 3 or more other
+  // zombies within 48 px, and the hearts the crowd took while he stood, by
+  // kind (bot/endReport.ts).
+  hpBySecond: Schema.Array(Schema.Finite),
+  distanceBySecond: Schema.Array(Schema.Finite),
+  nearMs: Schema.Finite,
+  crowdedMs: Schema.Finite,
+  crowdHurtBy: Counts,
 })
 export type BossFight = typeof BossFight.Type
 
@@ -150,6 +159,37 @@ export const ShopVisit = Schema.Struct({
 })
 export type ShopVisit = typeof ShopVisit.Type
 
+// Where a run stopped, read off its last frame (bot/endReport.ts).
+export const RunStop = Schema.Literals([
+  'Escaped',
+  'DiedToChunk',
+  'DiedHunting',
+  'DiedListDone',
+  'TimedOut',
+])
+export type RunStop = typeof RunStop.Type
+
+// The run's last frame: where it stopped, the wave, the list's length and
+// things found, things still behind boards and hidden in open rooms, the
+// boards still shut on the list, keys left on the ring, cases opened for
+// the bot with the prize still in, cases still locked, and the step the
+// hunt's plan was on (src/features/bots/dareSearch.ts), as 'Save 38' for
+// the keys it was short.
+export const RunEnd = Schema.Struct({
+  stop: RunStop,
+  plan: Schema.String,
+  wave: Schema.Finite,
+  listLength: Schema.Finite,
+  found: Schema.Finite,
+  behindBoards: Schema.Finite,
+  hiddenInOpen: Schema.Finite,
+  shutBoards: Schema.Finite,
+  keysHeld: Schema.Finite,
+  casesWaiting: Schema.Finite,
+  casesLocked: Schema.Finite,
+})
+export type RunEnd = typeof RunEnd.Type
+
 export const RunResult = Schema.Struct({
   seed: Schema.Finite,
   cleared: Schema.Finite,
@@ -176,6 +216,7 @@ export const RunResult = Schema.Struct({
   kitchenWave: Schema.Finite,
   fridge: FridgeLog,
   escape: EscapeLog,
+  end: RunEnd,
 })
 export type RunResult = typeof RunResult.Type
 

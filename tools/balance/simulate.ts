@@ -4,6 +4,8 @@
 //   MODE=endless bun run balance [runs] [firstSeed]
 //   WORKERS=4 bun run balance 200   (splits the runs over processes, capped)
 //   TIMELINE=1 bun run balance 40   (adds the wave timeline audit)
+//   END_REPORT=1 bun run balance 100   (adds where each run stopped and
+//     each Uncle Chunk fight, tools/balance/endReport.ts)
 //   AIM=sharp bun run balance 200   (the old bot, without the human limits)
 //   KITE=1 bun run balance 200   (runs from the boss, never dodges)
 //   NO_DODGE=1 bun run balance 200   (ignores every floor tell)
@@ -64,6 +66,7 @@ const { runOnce, seedAt: seedFrom } = await import('./bot')
 const { playWavePass } = await import('./bot/snapshots')
 const { FINAL_WAVE } = await import('../../src/world/waves/wavePlans')
 const summary = await import('./summary')
+const { printEndReport } = await import('./endReport')
 const turn = await import('../heavy/turn')
 const { nextChunk } = await import('../heavy/decision')
 
@@ -168,6 +171,7 @@ const SimulateConfig = Config.all({
   maybeNoPickups: Config.String('NO_PICKUPS').pipe(Config.option),
   maybeWorkers: Config.String('WORKERS').pipe(Config.option),
   maybeTimeline: Config.String('TIMELINE').pipe(Config.option),
+  maybeEndReport: Config.String('END_REPORT').pipe(Config.option),
   maybeWorkerSlice: Config.String('WORKER_SLICE').pipe(Config.option),
   maybeWorkerSlots: Config.String('WORKER_SLOTS').pipe(Config.option),
   maybeWorkerOut: Config.String('WORKER_OUT').pipe(Config.option),
@@ -180,6 +184,7 @@ type Setup = {
   readonly kites: boolean
   readonly ignoresPickups: boolean
   readonly hasTimeline: boolean
+  readonly hasEndReport: boolean
   readonly waveFlag: string | undefined
   readonly jsonOut: string | undefined
   readonly runs: number
@@ -884,6 +889,9 @@ const reportCampaign = (
     if (setup.hasTimeline) {
       yield* reportTimelines(results, lastWave)
     }
+    if (setup.hasEndReport) {
+      yield* printEndReport(results)
+    }
 
     yield* writeJson(
       setup,
@@ -1031,6 +1039,7 @@ const program = Effect.gen(function* () {
     kites: isFlagSet(config.maybeKite),
     ignoresPickups: isFlagSet(config.maybeNoPickups),
     hasTimeline: isFlagSet(config.maybeTimeline),
+    hasEndReport: isFlagSet(config.maybeEndReport),
     waveFlag: flagValue('--wave'),
     jsonOut: flagValue('--json'),
     runs: Number(flagValue('--runs') ?? positional[0] ?? 40),

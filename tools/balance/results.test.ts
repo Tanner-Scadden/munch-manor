@@ -86,6 +86,19 @@ const runWith = (
     keyWave: 0,
     chunkFightMs: 0,
   },
+  end: {
+    stop: 'DiedHunting',
+    plan: 'Save 38',
+    wave: 4,
+    listLength: 3,
+    found: 1,
+    behindBoards: 1,
+    hiddenInOpen: 1,
+    shutBoards: 1,
+    keysHeld: 2,
+    casesWaiting: 0,
+    casesLocked: 2,
+  },
 })
 
 // NOTE: the second run skips the shop before wave 3 and dies with no killer.
