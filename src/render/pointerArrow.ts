@@ -3,7 +3,11 @@ import type { Canvas } from 'foldkit'
 
 import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '../art/sprite'
 import type { Vector } from '../world/schema/entitySchema'
-import { clamp } from '../world/step/geometry'
+import {
+  SCREEN_STEPS,
+  type ScreenDirection,
+  clamp,
+} from '../world/step/geometry'
 import { type Camera, worldToView } from './camera'
 import { type ClearWindow, clearWindowOf } from './hudLayout'
 import type { Screen } from './screen'
@@ -15,7 +19,7 @@ import type { Screen } from './screen'
 // questEdgeView.ts) and the dare's things (src/features/dare/darePointer.ts).
 // In sight, the dare's arrow bobs right over the spot, pointing down.
 
-type Pointing = 'Up' | 'Down' | 'Left' | 'Right'
+type Pointing = ScreenDirection
 
 const UP_PIXELS: ReadonlyArray<string> = [
   '....o....',
@@ -59,13 +63,6 @@ const ARROWS: Readonly<Record<Pointing, Sprite>> = {
   Right: arrowOf(reversedColumns(transposed(UP_PIXELS))),
 }
 
-const BOB_STEP: Readonly<Record<Pointing, Vector>> = {
-  Up: { x: 0, y: -1 },
-  Down: { x: 0, y: 1 },
-  Left: { x: -1, y: 0 },
-  Right: { x: 1, y: 0 },
-}
-
 const UNDER: readonly [Pointing, number] = ['Up', 0]
 
 // NOTE: the edge the spot lies past the furthest, so a spot up and a
@@ -106,7 +103,7 @@ const edgeShapesAt = (
   elapsedMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const bob = bobOf(elapsedMs)
-  const step = BOB_STEP[pointing]
+  const step = SCREEN_STEPS[pointing]
   const x = clamp(at.x - ARROW_SIZE / 2, clear.left, clear.right - ARROW_SIZE)
   const y = clamp(at.y - ARROW_SIZE / 2, clear.top, clear.bottom - ARROW_SIZE)
   return [

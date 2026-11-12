@@ -2,8 +2,11 @@ import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
 import { GunSlot } from '../world/schema/worldSchema'
+import { PadDirection } from './gamepad'
 import {
   Gamepad,
+  PadClick,
+  PadScope,
   PointerDevice,
   SurfaceRectangle,
   TouchControls,
@@ -47,12 +50,16 @@ export const inputCases = {
   PolledGamepad: Gamepad.fields,
   DisconnectedGamepad: { index: Schema.Finite },
   CompletedRumble: {},
+  RepeatedPadDirection: { direction: PadDirection },
+  ClickedPadFocus: { scope: PadScope, outcome: PadClick },
+  CompletedPadMenu: {},
 }
 export const InputMessage = defineMessageUnion(inputCases)
 
 export type PressedHudSlot = typeof InputMessage.PressedHudSlot.Type
 export type PolledGamepad = typeof InputMessage.PolledGamepad.Type
 export type DisconnectedGamepad = typeof InputMessage.DisconnectedGamepad.Type
+export type RepeatedPadDirection = typeof InputMessage.RepeatedPadDirection.Type
 
 // NOTE: the run's buttons: the touch HUD's slots, reload, MEDIC, traps,
 // READY, the hold-to-buy button, and pause. Each goes to

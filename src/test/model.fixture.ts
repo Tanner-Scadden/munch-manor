@@ -863,3 +863,9 @@ export const atOpenedCase: {
     CaseState.Opened({ by: focusSlotOf(model) }),
   ),
 )
+
+// NOTE: a root Dialog's state shown open, for a test that starts on it
+// without its show Command (`profileDialog: openedDialog`).
+export const openedDialog = (
+  dialog: Model['panelDialog'],
+): Model['panelDialog'] => modifyFields(dialog, { isOpen: () => true })

@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 
 import { Screen } from '../../domain/coopRoom'
 import { RESTART_GRACE_MS } from '../../shared/constants'
-import { home, veteranFighting } from '../../test/model.fixture'
+import { home, openedDialog, veteranFighting } from '../../test/model.fixture'
 import { pause } from '../../world/waves/waves'
 import {
   MenuState,
@@ -14,11 +14,6 @@ import {
   menuState,
 } from '../menuState'
 import { type Model, Phase } from '../model'
-
-type Dialog = Model['panelDialog']
-
-const opened = (dialog: Dialog): Dialog =>
-  modifyFields(dialog, { isOpen: () => true })
 
 const inCoop: Model = modifyFields(home, {
   coop: coop =>
@@ -55,25 +50,25 @@ describe('menuState', () => {
   })
 
   test('every dialog covers the home menu, co-op, and the phase', () => {
-    expect(tagOf(modifyFields(home, { handDialog: opened }))).toBe('Hand')
-    expect(tagOf(modifyFields(home, { homeScreenSteps: opened }))).toBe(
+    expect(tagOf(modifyFields(home, { handDialog: openedDialog }))).toBe('Hand')
+    expect(tagOf(modifyFields(home, { homeScreenSteps: openedDialog }))).toBe(
       'InstallSteps',
     )
-    expect(tagOf(modifyFields(inCoop, { updateGreeting: opened }))).toBe(
+    expect(tagOf(modifyFields(inCoop, { updateGreeting: openedDialog }))).toBe(
       'UpdateGreeting',
     )
-    expect(tagOf(modifyFields(veteranFighting, { handDialog: opened }))).toBe(
-      'Hand',
-    )
-    expect(isOnHomeMenu(modifyFields(home, { updateGreeting: opened }))).toBe(
-      false,
-    )
+    expect(
+      tagOf(modifyFields(veteranFighting, { handDialog: openedDialog })),
+    ).toBe('Hand')
+    expect(
+      isOnHomeMenu(modifyFields(home, { updateGreeting: openedDialog })),
+    ).toBe(false)
   })
 
   test('names the open panel and Profile tab', () => {
     const asking = modifyFields(pause(veteranFighting), {
       panel: () => 'LeaveRun',
-      panelDialog: opened,
+      panelDialog: openedDialog,
     })
     expect(isPanelOpen(asking, 'LeaveRun')).toBe(true)
     expect(isPanelOpen(asking, 'HowToPlay')).toBe(false)
@@ -86,7 +81,7 @@ describe('menuState', () => {
 
     const settings = modifyFields(home, {
       profile: profile => modifyFields(profile, { tab: () => 'Settings' }),
-      profileDialog: opened,
+      profileDialog: openedDialog,
     })
     expect(isProfileOpenOn(settings, 'Settings')).toBe(true)
     expect(isProfileOpenOn(settings, 'Look')).toBe(false)

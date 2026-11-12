@@ -1553,3 +1553,32 @@ body {
 .game-root[data-layout='Portrait'] .debut-card {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 25dvh);
 }
+
+/* A controller has no hover and no keyboard for the browser to notice, so
+   a pad player always sees the ring on what has focus (src/input/padFocus.ts
+   moves it), whatever the browser makes of :focus-visible. */
+/* NOTE: :where keeps this rule as weak as a class, so a control that draws
+   its ring on a part of itself (a hand card's face) can turn it off. */
+.game-root[data-device='Gamepad']
+  :where(
+    button,
+    a[href],
+    input,
+    select,
+    textarea,
+    [role='tab'],
+    [role='radio']
+  ):focus {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+.game-root[data-device='Gamepad'] .hand-card:focus {
+  outline: none;
+  translate: 0 calc(var(--o) * var(--o) * 5px - 8px);
+}
+
+.game-root[data-device='Gamepad'] .hand-card:focus .hand-card-face {
+  outline: var(--menu-focus);
+  outline-offset: 3px;
+}

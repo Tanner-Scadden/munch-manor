@@ -68,7 +68,7 @@
     },
     "tools/audit": {
       "entry": [
-        "{beacon-check,closes,coop,icons,live-check,mp,offline,og,pad,perf-check,perf,profile,profileClicks,save,splash,sqlite,sync,taps,twoThumbs}.ts",
+        "{beacon-check,closes,coop,icons,live-check,mp,offline,og,pad,padMenus,perf-check,perf,profile,profileClicks,save,splash,sqlite,sync,taps,twoThumbs}.ts",
         "shots*.ts",
         "harness/entry.ts",
         "harness/vite.config.ts",

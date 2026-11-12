@@ -24,6 +24,7 @@ import type { Model } from '../model'
 import { orInRun } from './coopRun'
 import { skipFromPointer } from './end'
 import { skipIntro } from './intro'
+import { padMenuSteps } from './padMenu'
 import {
   asAllowedPress,
   clickMedic,
@@ -162,19 +163,19 @@ export const inputHandlers = defineHandlers({
     ),
   }),
 
-  PolledGamepad: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(
-        orInRun(
-          message,
-          polledPad({
-            index: message.index,
-            axes: message.axes,
-            buttons: message.buttons,
-          }),
-        ),
-      ),
-    ]),
+  // NOTE: the pad's own presses first, then its menu presses, routed by
+  // the menu that was up before this poll (src/app/update/padMenu.ts).
+  PolledGamepad: (model, message) => {
+    const pad = {
+      index: message.index,
+      axes: message.axes,
+      buttons: message.buttons,
+    }
+    return Update.combineSteps(model, [
+      makeStep(orInRun(message, polledPad(pad))),
+      ...padMenuSteps({ model, pad }),
+    ])
+  },
 
   DisconnectedGamepad: (model, message) =>
     Update.combineSteps(model, [

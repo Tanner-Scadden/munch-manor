@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import type { TabStep } from '../../input/padFocus'
 import { NEWS_DAYS, type NewsBullet, type NewsDay } from './changelog'
 import { WhatsNewMessage } from './message'
 
@@ -53,12 +54,14 @@ const pageButtonView = (
   label: string,
   ariaLabel: string,
   message: WhatsNewMessage,
+  padPage: TabStep,
   h: ApplicationViewBuilder,
 ): Html =>
   h.button(
     [
       h.Type('button'),
       h.Class('panel-button news-page'),
+      h.DataAttribute('pad-page', padPage),
       h.AriaLabel(ariaLabel),
       h.OnClick(message, { propagation: 'Stop' }),
     ],
@@ -97,6 +100,7 @@ export const whatsNewBodyView: {
                 'Older',
                 'Older news',
                 WhatsNewMessage.ClickedOlderNewsButton(),
+                'Next',
                 h,
               ),
             ]
@@ -107,6 +111,7 @@ export const whatsNewBodyView: {
                 'Newer',
                 'Newer news',
                 WhatsNewMessage.ClickedNewerNewsButton(),
+                'Previous',
                 h,
               ),
             ]
