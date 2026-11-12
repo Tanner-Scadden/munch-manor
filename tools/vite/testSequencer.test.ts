@@ -5,9 +5,9 @@ import { fileMsOf, runOrder, shardFiles } from './testSequencer'
 
 const SLOW = [
   'src/world/waves/__tests__/pacing.sim.test.ts',
-  'src/world/level/__tests__/pathing.flat.sim.test.ts',
   'src/input/__tests__/couch.sim.test.ts',
-  'tools/sprites/atlas.test.ts',
+  'src/world/level/__tests__/pathing.flat.narrow.sim.test.ts',
+  'src/world/level/__tests__/pathing.flat.wide.sim.test.ts',
 ]
 
 const FILES = [
@@ -36,9 +36,11 @@ describe('shardFiles', () => {
     const totals = Array.map(shards, shard =>
       Number.sumAll(Array.map(shard, fileMsOf)),
     )
-    // NOTE: the 200 fast files fill the shards under the shorter slow files,
-    // so no shard runs past the slowest file by more than a fast file.
-    expect(Math.max(...totals)).toBe(fileMsOf(SLOW[0] ?? ''))
+    // NOTE: the 200 fast files fill in under the slow ones, so the shards
+    // end within one fast file of each other.
+    expect(Math.max(...totals) - Math.min(...totals)).toBeLessThanOrEqual(
+      fileMsOf('src/fast/__tests__/f0.test.ts'),
+    )
   })
 
   test('splits the same whatever order the files come in', () => {

@@ -1,9 +1,12 @@
 // The flat flow field's tests' shared setup: the search it replaced, kept as
 // the oracle, and the check that a field matches it. pathing.flat.test.ts
-// runs it on a few levels, pathing.flat.sim.test.ts on every one.
+// runs it on a few levels, and the two pathing.flat.*.sim.test.ts files on
+// every one, a clearance each.
 
 import { Array, Equivalence, Function, Result } from 'effect'
+import { describe, expect, test } from 'vitest'
 
+import { EVERY_LEVEL } from '../../../test/model.fixture'
 import type { Toll } from '../../schema/worldSchema'
 import { type Level, TILE_OUTSIDE, hasTileFlag } from '../arena'
 import {
@@ -184,3 +187,24 @@ export const mismatchedOrigins: {
       },
     ),
 )
+
+// NOTE: every level, each house with its exits shut and open, from every
+// seventh tile, for one clearance. A full house takes about 9 s over both
+// clearances and both toll sets, so each pair is its own test, well inside
+// the timeout on a busy CI runner, and the files run in the full tier only.
+export const checkEveryLevel = (clearance: Clearance): void => {
+  const cases = Array.flatMap(EVERY_LEVEL, level =>
+    Array.map(
+      TOLL_SETS,
+      ([name, tolls]) => [level.key, name, level, tolls] as const,
+    ),
+  )
+  describe(`the flat flow field answers as the search it replaced did, ${clearance}`, () => {
+    test.each(cases)(
+      '%s: from every seventh tile, %s',
+      (_key, _name, level, tolls) => {
+        expect(mismatchedOrigins(level, 7, clearance, tolls)).toEqual([])
+      },
+    )
+  })
+}
