@@ -88,9 +88,9 @@ export const open = (model: Model) =>
 // LEAVING
 
 // NOTE: how long the card takes to fold back into PLAY (lobby.css,
-// `dare-fold-back`), after which it is gone. A player who opens it again
+// `--dare-close-ms`), after which it is gone. A player who opens it again
 // before then gets it Open, and the late CompletedFold changes nothing.
-const FOLD_MS = 300
+const FOLD_MS = 280
 
 export const FoldLobby = LobbyBlock.makeCommand('FoldLobby', {
   messages: [Message.CompletedFold],
