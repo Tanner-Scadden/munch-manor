@@ -1,8 +1,15 @@
 import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { BULLET_RADIUS, PLAYER_RADIUS } from '../../shared/constants'
+import {
+  BULLET_RADIUS,
+  MS_PER_SECOND,
+  PLAYER_RADIUS,
+} from '../../shared/constants'
+import { trapBlockers } from '../gear/traps'
 import { maxHpOf } from '../heroes/calling'
+import { type Level, levelOf } from '../level/arena'
+import type { Box } from '../level/tileGrid'
 import type { World } from '../schema/world'
 import {
   type Bullet,
@@ -16,11 +23,14 @@ import {
   type SeatState,
   type Vector,
 } from '../schema/worldSchema'
+import { moveCircle, resolveCircle } from '../step/collision'
 import { bulletDirection, woundPlayer } from '../step/combat'
 import {
   ZERO_VECTOR,
   circlesOverlap,
+  clampLength,
   closestPointOnSegment,
+  distanceBetween,
 } from '../step/geometry'
 import { fallenLife, saved, sounded } from './medic'
 import {
@@ -165,10 +175,139 @@ const advanceSeat =
     })
   }
 
+// KNEELING FOR CPR
+
+// NOTE: a reviver kneels at the downed player's side (owner, 2026-11-12),
+// so the CPR pose (src/render/actionPose.ts) reads beside the body rather
+// than on top of it. The spot is a body's width to the left or right, the
+// nearer side first, then the other, then where they stand. It sits well
+// inside the revive's reach, and the slide is a few frames long.
+const KNEEL_SIDE_PX = PLAYER_RADIUS * 2 + 1
+const KNEEL_SLIDE_PX_PER_SECOND = 90
+const OPEN_SPOT_SLACK_PX = 0.01
+
+type Kneel = Readonly<{ slot: PlayerSlot; body: Vector; spot: Vector }>
+
+type Ground = Readonly<{ level: Level; blockers: ReadonlyArray<Box> }>
+
+// NOTE: a spot is open when the level would not push a player standing
+// there anywhere: no wall, prop, or trap under it, and inside the bounds.
+const isOpenSpot = ({ level, blockers }: Ground, spot: Vector): boolean => {
+  const { bounds } = level
+  return (
+    spot.x >= bounds.left + PLAYER_RADIUS &&
+    spot.x <= bounds.right - PLAYER_RADIUS &&
+    spot.y >= bounds.top + PLAYER_RADIUS &&
+    spot.y <= bounds.bottom - PLAYER_RADIUS &&
+    distanceBetween(
+      resolveCircle(level, spot, PLAYER_RADIUS, blockers, 'Player'),
+      spot,
+    ) <= OPEN_SPOT_SLACK_PX
+  )
+}
+
+const sidesOf = (body: Vector, mate: Vector): ReadonlyArray<Vector> => {
+  const left = { x: body.x - KNEEL_SIDE_PX, y: body.y }
+  const right = { x: body.x + KNEEL_SIDE_PX, y: body.y }
+  return mate.x < body.x ? [left, right] : [right, left]
+}
+
+const isSameSpot = (first: Vector, second: Vector): boolean =>
+  first.x === second.x && first.y === second.y
+
+// NOTE: each reviver of one body, in seat order, takes the nearer open
+// side no one has taken yet, or stays where they are.
+const kneelsAround = (
+  ground: Ground,
+  body: Vector,
+  revivers: ReadonlyArray<SeatState>,
+): ReadonlyArray<Kneel> =>
+  Array.reduce(revivers, Array.empty<Kneel>(), (kneels, mate) => {
+    const spot = pipe(
+      sidesOf(body, mate.player),
+      Array.findFirst(
+        side =>
+          isOpenSpot(ground, side) &&
+          !Array.some(kneels, kneel => isSameSpot(kneel.spot, side)),
+      ),
+      Option.getOrElse(() => ({ x: mate.player.x, y: mate.player.y })),
+    )
+    return Array.append(kneels, { slot: mate.seat.slot, body, spot })
+  })
+
+// NOTE: who kneels where, read off one World before anyone moves, so the
+// order of the seats never matters. A reviver beside two bodies kneels by
+// the first in seat order.
+const kneelsOf = (world: World, ground: Ground): ReadonlyArray<Kneel> => {
+  const players = playersOf(world)
+  return Array.reduce(players, Array.empty<Kneel>(), (kneels, downed) => {
+    if (!isDowned(downed.seat)) {
+      return kneels
+    }
+    const revivers = Array.filter(
+      players,
+      mate =>
+        isReviver({ slot: downed.seat.slot, player: downed.player })(mate) &&
+        !Array.some(kneels, kneel => kneel.slot === mate.seat.slot),
+    )
+    return Array.appendAll(
+      kneels,
+      kneelsAround(ground, downed.player, revivers),
+    )
+  })
+}
+
+// NOTE: a step toward the spot through the level's collision, kept only
+// while it stays in reach, so the slide never ends a revive.
+const slideTo = (
+  ground: Ground,
+  from: Vector,
+  { body, spot }: Kneel,
+  seconds: number,
+): Vector => {
+  const step = clampLength(
+    { x: spot.x - from.x, y: spot.y - from.y },
+    KNEEL_SLIDE_PX_PER_SECOND * seconds,
+  )
+  if (step.x === 0 && step.y === 0) {
+    return from
+  }
+  const moved = moveCircle(
+    ground.level,
+    from,
+    step,
+    PLAYER_RADIUS,
+    ground.blockers,
+    'Player',
+  )
+  return circlesOverlap(moved, PLAYER_RADIUS, body, COOP_RULES.reviveReachPx)
+    ? moved
+    : from
+}
+
+const kneelRevivers = (world: World, deltaMs: number): World => {
+  const level = levelOf(world)
+  const ground: Ground = { level, blockers: trapBlockers(level, world.traps) }
+  const seconds = deltaMs / MS_PER_SECOND
+  return Array.reduce(kneelsOf(world, ground), world, (current, kneel) =>
+    modifyFields(current, {
+      seats: atSeat(kneel.slot, {
+        player: player => {
+          const { x, y } = slideTo(ground, player, kneel, seconds)
+          return x === player.x && y === player.y
+            ? player
+            : modifyFields(player, { x: () => x, y: () => y })
+        },
+      }),
+    }),
+  )
+}
+
 // NOTE: after the tick's hurts: a player at zero hearts goes down, and a
 // downed one bleeds, or is revived by a teammate who stood still beside
 // them for COOP_RULES.reviveMs. Who stood still is read before anyone
-// changes, so the order of the seats never matters.
+// changes, so the order of the seats never matters. A reviver whose
+// teammate is still down then slides toward their side to kneel.
 export const advanceParty: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World
@@ -176,7 +315,10 @@ export const advanceParty: {
   if (!isCoop(world)) {
     return world
   }
-  return forEachSeat(world, advanceSeat(playersOf(world), deltaMs))
+  return kneelRevivers(
+    forEachSeat(world, advanceSeat(playersOf(world), deltaMs)),
+    deltaMs,
+  )
 })
 
 // NOTE: the downed teammate the player at `slot` is picking up, with how
