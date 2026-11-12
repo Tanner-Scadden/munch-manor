@@ -671,6 +671,9 @@ export const Purchase = defineTaggedUnion({
 })
 export type Purchase = typeof Purchase.Type
 
+// NOTE: a seat partway through a hold to buy.
+export const isHolding = Purchase.isAnyOf(['Holding'])
+
 // NOTE: a kitchen oven belches fire when it is shot while Ready, then cools
 // off before it can again. The Model keeps one per oven on the map, in the
 // order the map lists them.

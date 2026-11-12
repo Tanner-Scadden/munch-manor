@@ -179,6 +179,41 @@ export const advanceParty: {
   return forEachSeat(world, advanceSeat(playersOf(world), deltaMs))
 })
 
+// NOTE: the downed teammate the player at `slot` is picking up, with how
+// far the revive has come, 0 to 1, for the client's CPR
+// (src/render/actionPose.ts). A read of the rule above, changing nothing.
+export const maybeRevivingOf: {
+  (
+    slot: PlayerSlot,
+  ): (
+    world: World,
+  ) => Option.Option<Readonly<{ target: Vector; share: number }>>
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): Option.Option<Readonly<{ target: Vector; share: number }>>
+} = Function.dual(
+  2,
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): Option.Option<Readonly<{ target: Vector; share: number }>> => {
+    if (!isCoop(world)) {
+      return Option.none()
+    }
+    const reviver = seatStateAt(world, slot)
+    return Array.findFirst(playersOf(world), ({ seat, player }) =>
+      Life.isAnyOf(['Downed'])(seat.life) &&
+      isReviver({ slot: seat.slot, player })(reviver)
+        ? Option.some({
+            target: { x: player.x, y: player.y },
+            share: Math.min(1, seat.life.reviveMs / COOP_RULES.reviveMs),
+          })
+        : Option.none(),
+    )
+  },
+)
+
 // THE BREAK
 
 // NOTE: downed and bled-out players come back free at the next break

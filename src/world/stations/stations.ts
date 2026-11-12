@@ -112,6 +112,40 @@ export const isWorkingStation: {
   Array.some(StationId.literals, id => isWorkingOn(world, slot, id)),
 )
 
+// NOTE: the station the player at `slot` is working, with its spot and
+// how far its set-up has come, 0 to 1, for the client's work motions
+// (src/render/actionPose.ts). A read, changing nothing.
+export const maybeStationWorkOf: {
+  (
+    slot: PlayerSlot,
+  ): (
+    world: World,
+  ) => Option.Option<Readonly<{ id: StationId; center: Vector; share: number }>>
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): Option.Option<Readonly<{ id: StationId; center: Vector; share: number }>>
+} = Function.dual(
+  2,
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): Option.Option<
+    Readonly<{ id: StationId; center: Vector; share: number }>
+  > =>
+    Option.map(
+      Array.findFirst(StationId.literals, id => isWorkingOn(world, slot, id)),
+      id => ({
+        id,
+        center: stationCenter(world, id),
+        share: Math.min(
+          1,
+          world.stations[id].workedMs / TOOL_RULES[id].setUpMs,
+        ),
+      }),
+    ),
+)
+
 const workersOf = (world: World, id: StationId): number =>
   Array.length(
     Array.filter(world.seats, ({ seat }) => isWorkingOn(world, seat.slot, id)),

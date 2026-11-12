@@ -25,6 +25,7 @@ import {
   SOLO_SLOT,
   type SeatState,
   type Vector,
+  isHolding,
 } from '../schema/worldSchema'
 
 // Feats (owner, 2026-11-10, "No shop" in GAME_DESIGN.md): what a player does
@@ -147,8 +148,6 @@ const countKill =
       kitchenKills: count => (isInKitchenAt(level, kill) ? count + 1 : count),
       kitchenStandKills: count => (isStandingInKitchen ? count + 1 : count),
     })
-
-const isHolding = Purchase.isAnyOf(['Holding'])
 
 // NOTE: a seat bought a room open this tick: its hold at boards finished.
 const hasOpenedRoom = (before: SeatState, after: SeatState): boolean =>

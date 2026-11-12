@@ -100,6 +100,7 @@ import {
   playSwapSoundWhen,
   playTune,
   pocketScratchCues,
+  strikeCues,
   toggleAudioFromKey,
   unlockAudio,
 } from './sound'
@@ -427,6 +428,7 @@ export const tickFrame = (deltaTime: number) =>
           ...ammoTickCues(advanced),
           ...fridgeLandCues(model, advanced),
           ...mendCues(model, advanced),
+          ...strikeCues(model, advanced),
           ...kitchenCues(model, advanced),
           ...pocketScratchCues(model, advanced),
         ]),
