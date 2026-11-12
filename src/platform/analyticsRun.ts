@@ -135,7 +135,7 @@ const hashKey = (text: string): string => {
 
 // NOTE: one online co-op run's key, alike on every client in it, from the
 // room's lobby as its replica has it: the code, when the room was made,
-// and the round, which each start (RUN IT BACK and KEEP GOING too) counts
+// and the round, which each start (PLAY AGAIN and KEEP GOING too) counts
 // up. A code used again later is another room made at another time. Only
 // the hash is sent, so a summary names no room. A run is drawn only once
 // the lobby has left its Lobby status for the round (src/domain/onlineRun.ts,

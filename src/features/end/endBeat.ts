@@ -665,7 +665,7 @@ export const lensOf = (model: Model): Option.Option<Lens> =>
 
 // NOTE: in an online co-op run the room is back in its lobby as soon as the
 // run ends, so the lobby waits behind the end card until the player picks:
-// RUN IT BACK readies them from the card, LOBBY lets the lobby in, and
+// PLAY AGAIN readies them from the card, LOBBY lets the lobby in, and
 // LEAVE leaves the room. The card holds until then, so its buttons never
 // vanish under a finger; a next run started from it ends it too.
 export const isRunCardHeld = (model: Model): boolean =>

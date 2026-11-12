@@ -6,6 +6,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 - 🎮 Plug in a controller and play a run with it: left stick walks, right stick aims, right trigger fires, Start pauses, and it rumbles when you get munched (turn that off under Settings, RUMBLE). Menus by controller come next.
 - 🎯 Touch aim helps a bit less: it still nudges your shots onto a zombie, just more gently.
+- 🤝 A co-op wipe goes straight to the score card, no lobby peeking in first. RUN IT BACK is now PLAY AGAIN.
 
 ## November 11, 2026: Catch your breath
 

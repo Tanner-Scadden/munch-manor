@@ -154,14 +154,14 @@ export const skipFromPointer = (model: Model): Model =>
 // AN ONLINE ROOM'S CARD
 
 // NOTE: an online co-op run's end card offers the room's choices once the
-// restart grace is past (src/screens/game/menus.ts, endButtonsOf): RUN IT BACK
+// restart grace is past (src/screens/game/menus.ts, endButtonsOf): PLAY AGAIN
 // toggles this player's READY in the room's lobby, so the same crew plays
 // again once everyone is in; LOBBY lets the lobby in (to change the picks
 // or kick); LEAVE leaves the room. Until the grace, a press only skips.
 const isRunCardOffered = (model: Model): boolean =>
   isCoopOpen(model.coop) && endOffer(model) !== 'Nothing'
 
-const runItBack = makeStep(model =>
+const playAgain = makeStep(model =>
   isRunCardOffered(model)
     ? Update.combineSteps([
         toModel(skipBeat(model)),
@@ -178,7 +178,7 @@ const leaveRoomFromCard = makeStep(model =>
   isRunCardOffered(model) ? CoopBinding.requestLeave() : unchanged,
 )
 
-// NOTE: keys while an online room's run card is up: Enter is RUN IT BACK,
+// NOTE: keys while an online room's run card is up: Enter is PLAY AGAIN,
 // L is LOBBY, H is LEAVE, M and N toggle the sound (play.ts), and any
 // other key skips the beat, so none reaches the hidden lobby.
 export const isRunCardKey = (model: Model): boolean =>
@@ -191,7 +191,7 @@ export const runCardFromKey = (code: string) =>
     } else if (!isRunCardOffered(model)) {
       return toModel(skipBeat(model))
     } else if (isStartKey(code)) {
-      return runItBack
+      return playAgain
     } else if (isLobbyKey(code)) {
       return toRoomLobby
     } else if (isMenuKey(code)) {
@@ -273,8 +273,8 @@ export const endHandlers = defineHandlers({
 
   ClickedShareButton: model => combine(model, [unlockAudio, shareFromButton]),
 
-  ClickedRunItBackButton: model =>
-    Update.combineSteps(model, [unlockAudio, runItBack]),
+  ClickedPlayAgainButton: model =>
+    Update.combineSteps(model, [unlockAudio, playAgain]),
 
   ClickedRoomLobbyButton: model =>
     Update.combineSteps(model, [unlockAudio, toRoomLobby]),

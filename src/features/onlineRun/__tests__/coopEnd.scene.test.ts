@@ -31,7 +31,7 @@ import { isRunCardHeld } from '../../end/endBeat'
 
 // An online co-op run's end card (src/screens/game/menus.ts, src/app/update/end.ts): the
 // tally stays sharp with no co-op scrim over it, and its buttons are the
-// room's: LEAVE, RUN IT BACK (this player's READY, with the crew's heads),
+// room's: LEAVE, PLAY AGAIN (this player's READY, with the crew's heads),
 // LOBBY, and SHARE.
 
 const OWN_SLOT = 1
@@ -66,7 +66,7 @@ const onRoomCard = (
 
 const lost = onRoomCard(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
 
-const runItBack = Scene.role('button', { name: /^Run it back/ })
+const playAgain = Scene.role('button', { name: /^Play again/ })
 const lobbyButton = Scene.role('button', { name: /^Lobby/ })
 const leaveButton = Scene.role('button', { name: 'Leave the room' })
 const heads = Scene.all.selector('.end-button-head')
@@ -82,7 +82,7 @@ const readyUp = (ready: boolean) =>
 
 describe("an online room's end card", () => {
   it.effect(
-    'shows the tally with no scrim, and LEAVE, RUN IT BACK, LOBBY, SHARE',
+    'shows the tally with no scrim, and LEAVE, PLAY AGAIN, LOBBY, SHARE',
     () =>
       Scene.scene(
         APPLICATION,
@@ -93,10 +93,10 @@ describe("an online room's end card", () => {
         Scene.expect(Scene.selector('.coop-leave')).toBeAbsent(),
         Scene.expectAll(endButtons).toHaveCount(4),
         Scene.expect(Scene.first(endButtons)).toHaveText('LEAVEH'),
-        Scene.expect(runItBack).toHaveAttr('aria-keyshortcuts', 'Enter'),
-        Scene.expect(runItBack).toHaveAttr('aria-pressed', 'false'),
-        Scene.expect(runItBack).toHaveAccessibleName(
-          'Run it back with this crew: 1 of 2 in',
+        Scene.expect(playAgain).toHaveAttr('aria-keyshortcuts', 'Enter'),
+        Scene.expect(playAgain).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(playAgain).toHaveAccessibleName(
+          'Play again with this crew: 1 of 2 in',
         ),
         Scene.expectAll(heads).toHaveCount(2),
         Scene.expectAll(litHeads).toHaveCount(1),
@@ -106,7 +106,7 @@ describe("an online room's end card", () => {
   )
 
   it.effect(
-    'RUN IT BACK readies this player in the room, and the heads light',
+    'PLAY AGAIN readies this player in the room, and the heads light',
     () =>
       Effect.gen(function* () {
         yield* Scene.scene(
@@ -114,7 +114,7 @@ describe("an online room's end card", () => {
           Scene.given(lost),
           measureSurface,
           shareMountSettles('Cancelled'),
-          Scene.click(runItBack),
+          Scene.click(playAgain),
           Scene.Command.resolve(
             ChangeLobby({
               change: LobbyChange.ChangedReady({ ready: true, pingMs: 0 }),
@@ -131,7 +131,7 @@ describe("an online room's end card", () => {
           APPLICATION,
           Scene.given(lobbyIn),
           measureSurface,
-          Scene.expect(runItBack).toHaveAttr('aria-pressed', 'true'),
+          Scene.expect(playAgain).toHaveAttr('aria-pressed', 'true'),
           Scene.expectAll(litHeads).toHaveCount(2),
           shareMountSettles('Cancelled'),
         )
@@ -167,7 +167,7 @@ describe("an online room's end card", () => {
         Scene.click(lobbyButton),
         shareMountEnded(),
         Scene.expect(Scene.selector('.coop[data-screen="Lobby"]')).toExist(),
-        Scene.expect(runItBack).toBeAbsent(),
+        Scene.expect(playAgain).toBeAbsent(),
       )
       yield* Scene.scene(
         APPLICATION,
@@ -207,7 +207,7 @@ describe("an online room's end card from keys and taps", () => {
     },
   )
 
-  it.effect('Enter is RUN IT BACK, a second Enter takes it back', () =>
+  it.effect('Enter is PLAY AGAIN, a second Enter takes it back', () =>
     Effect.gen(function* () {
       yield* Story.story(
         APPLICATION,
@@ -223,7 +223,7 @@ describe("an online room's end card from keys and taps", () => {
             memberOf(OWN_SLOT, 'Bo', true),
           ]),
         ),
-        Story.message(Message.ClickedRunItBackButton()),
+        Story.message(Message.ClickedPlayAgainButton()),
         readyUp(false),
       )
     }),
@@ -247,7 +247,7 @@ describe("an online room's end card from keys and taps", () => {
       yield* Story.story(
         APPLICATION,
         Story.given(later),
-        Story.message(Message.ClickedRunItBackButton()),
+        Story.message(Message.ClickedPlayAgainButton()),
         readyUp(true),
         Story.model(current => {
           expectValue(isRunCardHeld(current)).toBe(true)

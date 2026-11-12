@@ -3315,7 +3315,7 @@ button.help-card:focus-visible {
 }
 
 /* NOTE: an online room's card (src/screens/game/menus.ts): LEAVE in red, LOBBY in co-op pink,
-   and RUN IT BACK with its crew's heads, each lit once they are in. Once
+   and PLAY AGAIN with its crew's heads, each lit once they are in. Once
    this player is in, the button sinks, pressed. */
 .end-button[data-look='Leave'] {
   border-color: var(--menu-red);
@@ -3337,7 +3337,7 @@ button.help-card:focus-visible {
   gap: 2px;
 }
 
-/* NOTE: a RUN IT BACK button with its crew's heads is no taller than the
+/* NOTE: a PLAY AGAIN button with its crew's heads is no taller than the
    others: a smaller icon and heads fit the same 64 px. */
 .end-button:has(.end-button-heads) .end-button-icon {
   width: var(--menu-icon-sm);
