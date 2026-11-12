@@ -43,7 +43,12 @@ import {
   shownHints,
 } from '../../features/onboarding/onboarding'
 import type { InputDevice } from '../../input/inputSchema'
-import { type Screen, landscapeFrameOffset } from '../../render/screen'
+import {
+  type FrameSpan,
+  type Screen,
+  frameSpanOf,
+  landscapeFrameOffset,
+} from '../../render/screen'
 import {
   GAME_TITLE,
   MS_PER_SECOND,
@@ -566,12 +571,12 @@ const cardHop = (ageMs: number): number =>
 
 const easeOut = (progress: number): number => 1 - (1 - progress) ** 3
 
-const cardSlideX = (ageMs: number): number => {
+const cardSlideX = (span: FrameSpan, ageMs: number): number => {
   const leftMs = DEBUT_CARD_MS - ageMs
   if (ageMs < CARD_SLIDE_IN_MS) {
-    return Math.round(-VIEW_WIDTH * (1 - easeOut(ageMs / CARD_SLIDE_IN_MS)))
+    return Math.round(-span.width * (1 - easeOut(ageMs / CARD_SLIDE_IN_MS)))
   } else if (leftMs < CARD_SLIDE_OUT_MS) {
-    return Math.round(VIEW_WIDTH * easeOut(1 - leftMs / CARD_SLIDE_OUT_MS) ** 2)
+    return Math.round(span.width * easeOut(1 - leftMs / CARD_SLIDE_OUT_MS) ** 2)
   } else {
     return 0
   }
@@ -601,6 +606,7 @@ const cardTimerShapes = (ageMs: number): ReadonlyArray<Canvas.Shape> => {
 }
 
 const debutCardShapes = (
+  span: FrameSpan,
   kind: ZombieKind,
   ageMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
@@ -610,19 +616,19 @@ const debutCardShapes = (
   return [
     CARD_BACKDROP,
     group({
-      translate: { x: cardSlideX(ageMs), y: 0 },
+      translate: { x: cardSlideX(span, ageMs), y: 0 },
       shapes: [
         Canvas.Rect({
-          x: 0,
+          x: span.left,
           y: CARD_TOP - 1,
-          width: VIEW_WIDTH,
+          width: span.width,
           height: CARD_BOTTOM - CARD_TOP + 2,
           fill: CARD_EDGE,
         }),
         Canvas.Rect({
-          x: 0,
+          x: span.left,
           y: CARD_TOP,
-          width: VIEW_WIDTH,
+          width: span.width,
           height: CARD_BOTTOM - CARD_TOP,
           fill: CARD_FILL,
         }),
@@ -647,10 +653,13 @@ const debutCardShapes = (
   ]
 }
 
-const debutCardOverlay = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const debutCardOverlay = (
+  model: Model,
+  span: FrameSpan,
+): ReadonlyArray<Canvas.Shape> =>
   DebutCard.match(model.debutCard, {
     Hidden: () => [],
-    Showing: ({ kind, ageMs }) => debutCardShapes(kind, ageMs),
+    Showing: ({ kind, ageMs }) => debutCardShapes(span, kind, ageMs),
   })
 
 // LOGO
@@ -921,16 +930,19 @@ const PARADE: ReadonlyArray<Marcher> = [
 ]
 
 const PARADE_MARGIN = 24
-const PARADE_SPAN = VIEW_WIDTH + PARADE_MARGIN * 2
 const PARADE_SHADOW = 'rgba(0, 0, 0, 0.35)'
 
 const marcherShapes =
-  (screenMs: number) =>
+  (span: FrameSpan, screenMs: number) =>
   (marcher: Marcher): ReadonlyArray<Canvas.Shape> => {
     const travelled =
       marcher.offset + (marcher.speed * screenMs) / MS_PER_SECOND
-    const along = (travelled % PARADE_SPAN) - PARADE_MARGIN
-    const x = Math.round(marcher.direction === 1 ? along : VIEW_WIDTH - along)
+    const along = (travelled % (span.width + PARADE_MARGIN * 2)) - PARADE_MARGIN
+    const x = Math.round(
+      marcher.direction === 1
+        ? span.left + along
+        : span.left + span.width - along,
+    )
     const stats = ZOMBIE_KINDS[marcher.kind]
     const stride = Math.floor(travelled / stats.stridePx)
     const facing = marcher.direction === 1 ? 'Right' : 'Left'
@@ -949,8 +961,11 @@ const marcherShapes =
     ]
   }
 
-const paradeShapes = (screenMs: number): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(PARADE, marcherShapes(screenMs))
+const paradeShapes = (
+  span: FrameSpan,
+  screenMs: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(PARADE, marcherShapes(span, screenMs))
 
 // READY
 
@@ -992,9 +1007,12 @@ const runnerShapes = (
 ]
 
 // NOTE: the logo and the room speak for themselves, so there is no tagline.
-const readyShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
+const readyShapes = (
+  model: Model,
+  span: FrameSpan,
+): ReadonlyArray<Canvas.Shape> => [
   TITLE_BACKDROP,
-  ...paradeShapes(model.screenMs),
+  ...paradeShapes(span, model.screenMs),
   ...runnerShapes(
     model.appearance,
     focusOf(model).player.calling,
@@ -1047,19 +1065,19 @@ export const overlayShapes: {
   2,
   (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
     Phase.match(model.phase, {
-      Ready: () => readyShapes(model),
-      Arriving: () => readyShapes(model),
+      Ready: () => readyShapes(model, frameSpanOf(screen)),
+      Arriving: () => readyShapes(model, frameSpanOf(screen)),
       Preparation: ({ wave }) => [
         ...preparationBanner(model, wave, msIntoPhase(model.phase)),
         ...hintShapes(model),
       ],
       Wave: ({ wave, elapsedMs }) =>
         isDebutCardUp(model)
-          ? debutCardOverlay(model)
+          ? debutCardOverlay(model, frameSpanOf(screen))
           : [...waveBanner(model, wave, elapsedMs), ...hintShapes(model)],
       Paused: ({ round }) =>
         pausedShapes(model, round.wave, resumeYFor(screen)),
-      Escaped: () => endOverlayShapes(model),
-      GameOver: () => endOverlayShapes(model),
+      Escaped: () => endOverlayShapes(model, frameSpanOf(screen)),
+      GameOver: () => endOverlayShapes(model, frameSpanOf(screen)),
     }),
 )

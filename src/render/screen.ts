@@ -47,6 +47,35 @@ export const LANDSCAPE_TOUCH_SCREEN: Screen = {
   zoom: LANDSCAPE_TOUCH_ZOOM,
 }
 
+// NOTE: a phone on its side wider than 16:9 (most are about 19.5:9) widens
+// the screen to its shape rather than leaving bars at the sides (owner,
+// 2026-11-11). It keeps 180 rows and the 4/3 zoom, so everything stays the
+// size it was and the world window shows more of the room's columns. The
+// width is the surface's aspect times 180, rounded down to a multiple of 4,
+// so the window (three quarters of it) is a whole number of the room's
+// columns and the camera and zoom stay exact. It stops at 388, about 21:9;
+// a wider surface keeps thin bars. Portrait mirrors this with its height
+// (`portraitHeightFor`). A keyboard and mouse keep 320 by 180 in any window.
+const WIDE_STEP_PX = 4
+export const LANDSCAPE_MAX_WIDTH = 388
+
+export const landscapeWidthFor = (surface: SurfaceRectangle): number =>
+  surface.height > 0
+    ? clamp(
+        Math.floor(
+          (surface.width * VIEW_HEIGHT) / surface.height / WIDE_STEP_PX,
+        ) * WIDE_STEP_PX,
+        VIEW_WIDTH,
+        LANDSCAPE_MAX_WIDTH,
+      )
+    : VIEW_WIDTH
+
+export const landscapeTouchScreen = (width: number): Screen => ({
+  ...LANDSCAPE_TOUCH_SCREEN,
+  width,
+  world: { ...LANDSCAPE_TOUCH_SCREEN.world, width },
+})
+
 // NOTE: a portrait screen is as many arena pixels wide as a landscape phone
 // is tall, so the HUD, the banners, and the cards keep the scale they have
 // when the phone is turned. Its height follows the phone's shape, the HUD
@@ -141,7 +170,10 @@ export const screenOf = (model: Model): Screen => {
       }),
     )
   } else if (model.lastDevice === 'Touch') {
-    return LANDSCAPE_TOUCH_SCREEN
+    return Option.match(model.maybeSurface, {
+      onNone: () => LANDSCAPE_TOUCH_SCREEN,
+      onSome: surface => landscapeTouchScreen(landscapeWidthFor(surface)),
+    })
   } else {
     return LANDSCAPE_SCREEN
   }
@@ -150,13 +182,31 @@ export const screenOf = (model: Model): Screen => {
 export const thumbAreaTop = (screen: Screen): number =>
   screen.world.y + screen.world.height
 
-// NOTE: banners, cards, and the end screens are laid out on the landscape
-// screen. In portrait they are drawn centered on the world window instead,
-// which keeps anything narrower than the window whole.
+// NOTE: banners, cards, and the end screens are laid out on the 320 by 180
+// landscape screen. On a wider screen or in portrait they are drawn centered
+// on the world window instead, which keeps anything narrower than the window
+// whole.
 export const landscapeFrameOffset = (screen: Screen): Vector => ({
   x: screen.world.x + Math.round((screen.world.width - VIEW_WIDTH) / 2),
   y: screen.world.y + Math.round((screen.world.height - VIEW_HEIGHT) / 2),
 })
+
+// NOTE: the part of the 320 by 180 frame's columns art that runs edge to
+// edge must cover (confetti, the parade, the new zombie card's band): the
+// frame itself and, on a wider screen, the screen's columns beside it, in
+// the frame's own pixels. In portrait the screen is narrower than the frame,
+// so this is the frame.
+export type FrameSpan = Readonly<{ left: number; width: number }>
+
+export const frameSpanOf = (screen: Screen): FrameSpan => {
+  const left = Math.min(0, -landscapeFrameOffset(screen).x)
+  return { left, width: Math.max(VIEW_WIDTH, screen.width) }
+}
+
+const isLandscapeFrame = (screen: Screen): boolean => {
+  const offset = landscapeFrameOffset(screen)
+  return offset.x === 0 && offset.y === 0
+}
 
 export const inLandscapeFrame: {
   (
@@ -172,7 +222,7 @@ export const inLandscapeFrame: {
     screen: Screen,
     shapes: ReadonlyArray<Canvas.Shape>,
   ): ReadonlyArray<Canvas.Shape> =>
-    screen.layout === 'Landscape' || Array.isReadonlyArrayEmpty(shapes)
+    isLandscapeFrame(screen) || Array.isReadonlyArrayEmpty(shapes)
       ? shapes
       : [group({ translate: landscapeFrameOffset(screen), shapes })],
 )

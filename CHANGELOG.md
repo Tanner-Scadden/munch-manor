@@ -10,6 +10,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🤝 A co-op wipe goes straight to the score card, no lobby peeking in first. RUN IT BACK is now PLAY AGAIN.
 - 🎒 Tap the dare list on your HUD (or press Tab) to pull the dare card back out: everything you've found sits in your satchel, each with a little story, and new finds plop right in.
 - 🙌 Hands on! Your hero does CPR on a downed friend, digs through the trunk, hauls the dumbwaiter, cranks and shoves the room's tools, tosses a gun to swap, and holds every find up high.
+- 📱 Phones on their side fill the whole screen now: no more black bars, just more manor at the edges.
 
 ## November 11, 2026: Catch your breath
 

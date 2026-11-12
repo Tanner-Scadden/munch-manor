@@ -26,6 +26,7 @@ import { effectiveModifiersOf } from '../../domain/onlineRun'
 import { isAskingForFeedback } from '../../domain/run'
 import { QUARTER_TURN, rect } from '../../render/drawing'
 import { playerFootY } from '../../render/playerView'
+import type { FrameSpan } from '../../render/screen'
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
 import type { Difficulty } from '../../shared/playerData'
 import { focusOf, isCoop, modifyFocus } from '../../world/party/party'
@@ -628,7 +629,10 @@ const scatter = (index: number, salt: number): number => {
   return wave - Math.floor(wave)
 }
 
-const confettiShapes = (ms: number): ReadonlyArray<Canvas.Shape> => {
+const confettiShapes = (
+  span: FrameSpan,
+  ms: number,
+): ReadonlyArray<Canvas.Shape> => {
   if (ms >= CONFETTI_MS) {
     return []
   }
@@ -649,7 +653,7 @@ const confettiShapes = (ms: number): ReadonlyArray<Canvas.Shape> => {
         const sway =
           Math.sin(seconds * (2 + scatter(index, 3) * 3) + index) *
           (2 + scatter(index, 4) * 5)
-        const x = scatter(index, 5) * VIEW_WIDTH + sway
+        const x = span.left + scatter(index, 5) * span.width + sway
         const isFlat = Math.floor(seconds * 8 + index) % 2 === 0
         return Result.succeed(
           rect(
@@ -764,25 +768,31 @@ export const isChomping = Phase.isAnyOf(['GameOver'])
 
 // THE END
 
-export const endOverlayShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
-  Option.match(endKindOf(model), {
-    onNone: () => [],
-    onSome: kind => {
-      const ms = model.screenMs
-      const layout = layoutOf(model, kind)
-      return [
-        ...dimShapes(kind, ms),
-        ...(kind === 'Won' ? confettiShapes(ms) : []),
-        ...flashShapes(kind, ms),
-        ...trophyShapes(kind, ms, layout),
-        ...stampShapes(kind, ms, layout),
-        ...(isCoop(model)
-          ? []
-          : [
-              ...skullShapes(model, kind, ms, layout),
-              ...modifierShapes(model, kind, ms, layout),
-            ]),
-        ...cardShapes(model, kind, ms, layout),
-      ]
-    },
-  })
+export const endOverlayShapes: {
+  (span: FrameSpan): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, span: FrameSpan): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, span: FrameSpan): ReadonlyArray<Canvas.Shape> =>
+    Option.match(endKindOf(model), {
+      onNone: () => [],
+      onSome: kind => {
+        const ms = model.screenMs
+        const layout = layoutOf(model, kind)
+        return [
+          ...dimShapes(kind, ms),
+          ...(kind === 'Won' ? confettiShapes(span, ms) : []),
+          ...flashShapes(kind, ms),
+          ...trophyShapes(kind, ms, layout),
+          ...stampShapes(kind, ms, layout),
+          ...(isCoop(model)
+            ? []
+            : [
+                ...skullShapes(model, kind, ms, layout),
+                ...modifierShapes(model, kind, ms, layout),
+              ]),
+          ...cardShapes(model, kind, ms, layout),
+        ]
+      },
+    }),
+)
