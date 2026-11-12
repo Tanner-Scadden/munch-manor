@@ -14,13 +14,17 @@ import type { Browser, Page } from 'playwright-core'
 // Checks player sync end to end against a deployed copy, in headless Chrome,
 // with two browser contexts as two devices:
 // 1. Device A starts from the live game's version 4 localStorage save (57
-//    zombies splatted, What's New seen, no sharing setting yet), syncs with
-//    sharing turned on and What's New still seen, changes its shirt, and
-//    finishes a run (leaving it from the pause MENU).
-// 2. A shows a link code; device B types it under "Use a code".
-// 3. B then shows A's shirt, kills, and seen What's New, and says it is
-//    linked to 2 devices.
-// 4. B turns the music off; A sees it after a reload (a new connection).
+//    zombies splatted, What's New seen, no sharing setting yet), opened
+//    with `?record=1`, syncs with sharing turned on, What's New still seen,
+//    and RECORD MY RUNS unlocked. It keeps a name, turns the music off,
+//    changes its shirt, and finishes a run (PLAY, SHAKE ON IT in the lobby,
+//    then leaving it from the pause MENU).
+// 2. A shows a link code, copied with a tap; device B types it under
+//    "Use a code".
+// 3. B then shows A's name, music off, RECORD MY RUNS, shirt, kills, and
+//    seen What's New, and says it is linked to 2 devices.
+// 4. B turns the music back on; A sees it after a reload (a new
+//    connection).
 // 5. A goes offline, turns screen shake off, says "Offline, will sync",
 //    comes back online, catches up, and B sees screen shake off.
 // Run it through the heavy guard:
@@ -99,6 +103,9 @@ const watch = (page: Page, name: string) => {
   page.on('pageerror', error => errors.push(`${name}: ${error.message}`))
 }
 
+const NAME = 'Sync Tester'
+const RECORD_LABEL = 'Record my runs'
+
 const toggleSelector = (label: string) =>
   `button[aria-label="${label}"][aria-pressed]`
 
@@ -145,6 +152,30 @@ const flip = (page: Page, label: string) =>
     attempt(() => page.locator(toggleSelector(label)).click()),
   )
 
+// NOTE: whether a setting's tile shows at all (RECORD MY RUNS only once a
+// device of the player's opened `?record=1`).
+const hasSetting = (page: Page, label: string) =>
+  Effect.andThen(
+    openTab(page, tabOf(label)),
+    attempt(() => page.locator(toggleSelector(label)).count()),
+  ).pipe(Effect.map(count => count > 0))
+
+// NOTE: the Name tab keeps a name when its form is sent (Enter).
+const keepName = (page: Page, name: string) =>
+  Effect.gen(function* () {
+    yield* openTab(page, 'Name')
+    const input = page.locator('#profile-name-input')
+    yield* attempt(() => input.fill(name))
+    yield* attempt(() => input.press('Enter'))
+    yield* wait(300)
+  })
+
+const shownName = (page: Page) =>
+  Effect.andThen(
+    openTab(page, 'Name'),
+    attempt(() => page.locator('#profile-name-input').inputValue()),
+  )
+
 const syncLine = (page: Page) =>
   Effect.andThen(
     openTab(page, 'Account'),
@@ -168,7 +199,8 @@ const hasNewsDot = (page: Page) =>
   })
 
 // NOTE: the home menu's bests badge names each best only for a screen
-// reader, beside its icon, so the kills row is found by that hidden name.
+// reader, beside its icon (bestView in src/screens/home/homeView.ts), so
+// the kills row is found by that hidden name.
 const splatted = (page: Page) =>
   Effect.gen(function* () {
     yield* closePanel(page)
@@ -218,24 +250,41 @@ const pickShirt = (page: Page, color: string) =>
     yield* closeLook(page)
   })
 
-// NOTE: the shortest real run end: start the campaign, pause, and leave it
-// from the MENU. Leaving counts the run.
+// NOTE: the shortest real run end: PLAY opens the solo lobby, SHAKE ON IT
+// seals the dare and starts the run, a key skips the drive up to the door's
+// slam, Escape pauses once the run is in the house, the pause MENU asks
+// "Leave this run?", and Leave goes home. Leaving counts the run.
 const finishRun = (page: Page) =>
   Effect.gen(function* () {
     yield* closePanel(page)
-    yield* attempt(() => page.locator('.game-surface').focus())
-    yield* attempt(() => page.keyboard.press('Enter'))
-    yield* wait(800)
-    const normal = page.getByRole('button', { name: /^Double Dare/ })
-    if ((yield* attempt(() => normal.count())) > 0) {
-      yield* attempt(() => normal.first().click())
-      yield* wait(800)
-    }
-    yield* attempt(() => page.keyboard.press('Escape'))
-    yield* wait(500)
-    yield* attempt(() => page.keyboard.press('KeyH'))
-    yield* wait(800)
-    yield* attempt(() => page.getByRole('button', { name: 'Leave' }).click())
+    yield* attempt(() => page.getByRole('button', { name: /^Play/ }).click())
+    const shake = page.getByRole('button', { name: 'Shake on it' })
+    yield* attempt(() => shake.waitFor({ timeout: 10_000 }))
+    yield* attempt(() => shake.click())
+    yield* attempt(() => shake.waitFor({ state: 'hidden', timeout: 10_000 }))
+    const menu = page.getByRole('button', { name: 'Menu: leave this run' })
+    const isPaused = attempt(() => menu.count()).pipe(
+      Effect.map(count => count > 0),
+    )
+    yield* pollUntil(
+      Effect.andThen(
+        attempt(() => page.keyboard.press('Escape')),
+        Effect.andThen(wait(700), isPaused),
+      ),
+      paused => paused,
+      0,
+      15_000,
+    )
+    yield* attempt(() => menu.click())
+    yield* attempt(() =>
+      page
+        .getByRole('dialog', { name: 'Leave this run?' })
+        .getByRole('button', { name: 'Leave' })
+        .click(),
+    )
+    yield* attempt(() =>
+      page.locator('#home-settings').waitFor({ timeout: 10_000 }),
+    )
     yield* wait(1000)
   })
 
@@ -278,7 +327,9 @@ const checkSync = (base: string) =>
         olderJson,
       ] as const),
     )
-    yield* attempt(() => a.page.goto(base))
+    const recordUrl = new URL(base)
+    recordUrl.searchParams.set('record', '1')
+    yield* attempt(() => a.page.goto(recordUrl.href))
     yield* awaitGame(a.page)
     const aSynced = yield* waitForLine(a.page, /^Synced/, SYNC_TIMEOUT)
     yield* check(
@@ -298,6 +349,16 @@ const checkSync = (base: string) =>
       'device A has stats sharing turned on by the migration',
     )
 
+    const aRecord = yield* hasSetting(a.page, RECORD_LABEL)
+    yield* check(aRecord, 'device A unlocks RECORD MY RUNS with ?record=1')
+    yield* keepName(a.page, NAME)
+    const aName = yield* shownName(a.page)
+    yield* check(aName === NAME, `device A keeps the name "${aName}"`)
+    yield* flip(a.page, 'Music')
+    const aMusicOff = yield* setting(a.page, 'Music')
+    yield* check(aMusicOff === 'false', 'device A turns the music off')
+    yield* closePanel(a.page)
+
     yield* pickShirt(a.page, 'Purple')
     const aLook = yield* look(a.page)
     yield* check(
@@ -307,21 +368,44 @@ const checkSync = (base: string) =>
     yield* closeLook(a.page)
     yield* finishRun(a.page)
     yield* wait(1500)
+    const aRunKills = yield* splatted(a.page)
+    yield* check(
+      aRunKills === `${STARTING_KILLS}`,
+      `device A still shows ${STARTING_KILLS} zombies splatted after a run (${aRunKills})`,
+    )
 
     yield* openTab(a.page, 'Account')
     yield* attempt(() =>
       a.page.getByRole('button', { name: 'Link another device' }).click(),
     )
-    yield* attempt(() =>
-      a.page.locator('.account-code').waitFor({ timeout: SYNC_TIMEOUT }),
-    )
+    const codeButton = a.page.locator('.account-code')
+    yield* attempt(() => codeButton.waitFor({ timeout: SYNC_TIMEOUT }))
     const codeText = yield* attempt(() =>
-      a.page.locator('.account-code').textContent(),
+      codeButton.getAttribute('data-link-code'),
     )
     const code = String.trim(codeText ?? '')
     yield* check(
       /^[A-Z2-9]{6}$/.test(code),
       `device A shows a link code (${code})`,
+    )
+    yield* attempt(() =>
+      a.context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+        origin: new URL(base).origin,
+      }),
+    )
+    yield* attempt(() => codeButton.click())
+    const copied = yield* pollUntil(
+      attempt(() => codeButton.getAttribute('aria-label')),
+      label => String.endsWith(', copied')(label ?? ''),
+      250,
+      5000,
+    ).pipe(Effect.map(({ last }) => last ?? ''))
+    const clipboard = yield* attempt(() =>
+      a.page.evaluate(() => navigator.clipboard.readText()),
+    )
+    yield* check(
+      String.endsWith(', copied')(copied) && clipboard === code,
+      `device A copies the code with a tap ("${copied}", clipboard "${clipboard}")`,
     )
 
     const b = yield* newDevice(browser, 'device B')
@@ -334,6 +418,9 @@ const checkSync = (base: string) =>
     )
     const bKills = yield* splatted(b.page)
     yield* check(bKills === '', 'device B starts with no kills')
+    const bRecordBefore = yield* hasSetting(b.page, RECORD_LABEL)
+    yield* check(!bRecordBefore, 'device B starts without RECORD MY RUNS')
+    yield* closePanel(b.page)
     const bDot = yield* hasNewsDot(b.page)
     yield* check(bDot, "device B starts with What's New unseen")
     yield* openTab(b.page, 'Account')
@@ -367,6 +454,12 @@ const checkSync = (base: string) =>
       SYNC_TIMEOUT,
     )
     yield* check(/Linked to 2 devices/.test(bLine), `device B says "${bLine}"`)
+    const bName = yield* shownName(b.page)
+    yield* check(bName === NAME, `device B shows A's name ("${bName}")`)
+    const bMusicLinked = yield* setting(b.page, 'Music')
+    yield* check(bMusicLinked === 'false', "device B shows A's music off")
+    const bRecord = yield* hasSetting(b.page, RECORD_LABEL)
+    yield* check(bRecord, "device B shows A's RECORD MY RUNS unlock")
     const bLinkedKills = yield* splatted(b.page)
     yield* check(
       bLinkedKills === `${STARTING_KILLS}`,
@@ -399,8 +492,8 @@ const checkSync = (base: string) =>
       musicSeen.push(seen)
     }
     yield* check(
-      Array.every(musicSeen, value => value === 'false'),
-      `device B turns the music off and it stays off (${musicBefore} then ${Array.join(
+      Array.every(musicSeen, value => value === 'true'),
+      `device B turns the music on and it stays on (${musicBefore} then ${Array.join(
         Array.map(musicSeen, value => value ?? ''),
         ', ',
       )})`,
@@ -411,7 +504,7 @@ const checkSync = (base: string) =>
     yield* waitForLine(a.page, /^Synced/, SYNC_TIMEOUT)
     const aMusic = yield* setting(a.page, 'Music')
     yield* check(
-      aMusic === 'false',
+      aMusic === 'true',
       "device A sees B's music setting after a reload",
     )
 

@@ -493,7 +493,10 @@ const bestView = (best: Best, h: ApplicationViewBuilder): Html =>
     [
       h.span(
         [h.Class('home-best-label')],
-        [iconView('home-best-icon', best.icon, h)],
+        [
+          iconView('home-best-icon', best.icon, h),
+          h.span([h.Class('sr-only')], [best.label]),
+        ],
       ),
       h.span([h.Class('home-best-value')], [best.value]),
     ],
