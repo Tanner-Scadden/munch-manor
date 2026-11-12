@@ -53,6 +53,8 @@ const MUNCHOPEDIA_NEWS = `${MUNCHOPEDIA}. Something new`
 const newsPip = Scene.selector(".manor-pip[data-card='WhatsNew']")
 const munchopediaPip = Scene.selector(".manor-pip[data-card='Munchopedia']")
 const whatsNewDialog = Scene.role('dialog', { name: "What's new" })
+const olderArrow = Scene.role('button', { name: 'Older news' })
+const newerArrow = Scene.role('button', { name: 'Newer news' })
 
 describe("What's New", () => {
   it.effect(
@@ -75,42 +77,69 @@ describe("What's New", () => {
         ...pickCardInScene(WHATS_NEW_NEWS),
         Scene.inside(
           whatsNewDialog,
-          Scene.expect(
-            Scene.text(`${newestDay.date}: ${newestDay.title}`),
-          ).toExist(),
+          Scene.expect(Scene.selector('.news-date')).toHaveText(newestDay.date),
+          Scene.expect(Scene.selector('.news-title')).toHaveText(
+            newestDay.title,
+          ),
           Scene.expectAll(Scene.all.selector('.news-bullet')).toHaveCount(
             newestDay.bullets.length,
           ),
-          Scene.expect(Scene.role('button', { name: 'Older news' })).toExist(),
-          Scene.expect(
-            Scene.role('button', { name: 'Newer news' }),
-          ).toBeAbsent(),
+          Scene.expect(olderArrow).not.toHaveAttr('aria-disabled'),
+          Scene.expect(newerArrow).toHaveAttr('aria-disabled', 'true'),
         ),
         Scene.expect(newsPip).toBeAbsent(),
         Scene.expect(munchopediaPip).toBeAbsent(),
       ),
   )
 
-  it.effect('Older shows the day before, with its intro line', () => {
-    const before = Option.getOrThrow(Array.get(NEWS_DAYS, 1))
-    return Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openHandInScene(),
-      ...pickCardInScene(WHATS_NEW_NEWS),
-      Scene.click(Scene.role('button', { name: 'Older news' })),
-      Scene.inside(
-        whatsNewDialog,
-        Scene.expect(Scene.text(`${before.date}: ${before.title}`)).toExist(),
-        ...Option.match(before.maybeIntro, {
-          onNone: () => [],
-          onSome: intro => [Scene.expect(Scene.text(intro)).toExist()],
-        }),
-        Scene.expect(Scene.role('button', { name: 'Newer news' })).toExist(),
+  it.effect(
+    'Older shows the day before, with its intro line, and wakes Newer',
+    () => {
+      const before = Option.getOrThrow(Array.get(NEWS_DAYS, 1))
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...openHandInScene(),
+        ...pickCardInScene(WHATS_NEW_NEWS),
+        Scene.click(olderArrow),
+        Scene.inside(
+          whatsNewDialog,
+          Scene.expect(Scene.selector('.news-date')).toHaveText(before.date),
+          Scene.expect(Scene.selector('.news-title')).toHaveText(before.title),
+          ...Option.match(before.maybeIntro, {
+            onNone: () => [],
+            onSome: intro => [Scene.expect(Scene.text(intro)).toExist()],
+          }),
+          Scene.expect(newerArrow).not.toHaveAttr('aria-disabled'),
+          Scene.expect(Scene.selector('.news-day-title')).toHaveAttr(
+            'aria-live',
+            'polite',
+          ),
+        ),
+      )
+    },
+  )
+
+  it.effect(
+    'the arrows sit by the title above the bullets, with no page buttons left at the foot',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...openHandInScene(),
+        ...pickCardInScene(WHATS_NEW_NEWS),
+        Scene.inside(
+          whatsNewDialog,
+          Scene.expectAll(
+            Scene.all.selector('.news-header .news-arrow'),
+          ).toHaveCount(2),
+          Scene.expect(Scene.selector('.panel-actions')).toBeAbsent(),
+          Scene.expect(Scene.role('button', { name: 'Close' })).toExist(),
+        ),
       ),
-    )
-  })
+  )
 })
 
 describe('the Munchopedia', () => {

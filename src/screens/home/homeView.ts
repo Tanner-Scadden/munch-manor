@@ -1100,9 +1100,8 @@ const panelBodyView = (
 
 // NOTE: show, don't explain. How to play and the difficulty
 // picker by PLAY speak through their icons, so their blurb is only read
-// aloud.
+// aloud. What's New shows its day's title between its page arrows instead.
 const isBlurbShown = (model: Model): boolean =>
-  model.panel === 'WhatsNew' ||
   model.panel === 'Munchopedia' ||
   model.panel === 'LeaveRun' ||
   (model.panel === 'Difficulty' && isAskingFirst(model))

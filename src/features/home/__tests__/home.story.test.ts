@@ -368,7 +368,7 @@ describe("What's New", () => {
   )
 
   it.effect(
-    'Older and Newer page through the days and stop at either end',
+    'the Older and Newer arrows page through the days and stop at either end',
     () => {
       const lastPage = NEWS_DAYS.length - 1
       return Story.story(

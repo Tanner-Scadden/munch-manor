@@ -3,7 +3,9 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { NEWER_NEWS_ICON, OLDER_NEWS_ICON } from '../../art/icons'
 import type { TabStep } from '../../input/padFocus'
+import { iconView } from '../../ui/menuParts'
 import { NEWS_DAYS, type NewsBullet, type NewsDay } from './changelog'
 import { WhatsNewMessage } from './message'
 
@@ -35,9 +37,12 @@ const bulletView = (bullet: NewsBullet, h: ApplicationViewBuilder): Html =>
     ],
   )
 
-const dayView = (day: NewsDay, h: ApplicationViewBuilder): Html =>
+// NOTE: the day's bullets scroll on their own under the arrows and the
+// title, so a long day never pushes the arrows off a short screen.
+// Keyed by the page, so a turned page starts at its top.
+const dayView = (day: NewsDay, page: number, h: ApplicationViewBuilder): Html =>
   h.div(
-    [h.Class('news-day')],
+    [h.Key(`news-day-${page}`), h.Class('news-day')],
     [
       ...Option.match(day.maybeIntro, {
         onNone: () => [],
@@ -50,26 +55,74 @@ const dayView = (day: NewsDay, h: ApplicationViewBuilder): Html =>
     ],
   )
 
-const pageButtonView = (
-  label: string,
-  ariaLabel: string,
-  message: WhatsNewMessage,
-  padPage: TabStep,
-  h: ApplicationViewBuilder,
-): Html =>
+type PageArrow = Readonly<{
+  className: string
+  icon: string
+  ariaLabel: string
+  message: WhatsNewMessage
+  padPage: TabStep
+  isOpen: boolean
+}>
+
+// NOTE: an arrow with no day past it stays in place, dimmed and inert, so the
+// title never shifts and focus stays on it at the last day.
+const pageArrowView = (arrow: PageArrow, h: ApplicationViewBuilder): Html =>
   h.button(
     [
       h.Type('button'),
-      h.Class('panel-button news-page'),
-      h.DataAttribute('pad-page', padPage),
-      h.AriaLabel(ariaLabel),
-      h.OnClick(message, { propagation: 'Stop' }),
+      h.Class(`news-page news-arrow ${arrow.className}`),
+      h.DataAttribute('pad-page', arrow.padPage),
+      h.AriaLabel(arrow.ariaLabel),
+      ...(arrow.isOpen
+        ? [h.OnClick(arrow.message, { propagation: 'Stop' })]
+        : [h.AriaDisabled(true)]),
     ],
-    [label],
+    [iconView('news-arrow-icon', arrow.icon, h)],
   )
 
-// NOTE: a page button that would go nowhere is left out instead of disabled,
-// so every button on the panel does something when tapped.
+// NOTE: the day's title between its arrows, at the top where the arrows are
+// always in reach. It is a live region, so a screen reader says the new
+// day's title on a page turn.
+const dayHeaderView = (
+  day: NewsDay,
+  page: number,
+  h: ApplicationViewBuilder,
+): Html =>
+  h.div(
+    [h.Class('news-header')],
+    [
+      pageArrowView(
+        {
+          className: 'news-newer',
+          icon: NEWER_NEWS_ICON,
+          ariaLabel: 'Newer news',
+          message: WhatsNewMessage.ClickedNewerNewsButton(),
+          padPage: 'Previous',
+          isOpen: page > 0,
+        },
+        h,
+      ),
+      h.p(
+        [h.Class('news-day-title'), h.AriaLive('polite')],
+        [
+          h.span([h.Class('news-date')], [day.date]),
+          h.span([h.Class('news-title')], [day.title]),
+        ],
+      ),
+      pageArrowView(
+        {
+          className: 'news-older',
+          icon: OLDER_NEWS_ICON,
+          ariaLabel: 'Older news',
+          message: WhatsNewMessage.ClickedOlderNewsButton(),
+          padPage: 'Next',
+          isOpen: page < NEWS_DAYS.length - 1,
+        },
+        h,
+      ),
+    ],
+  )
+
 export const whatsNewBodyView: {
   (
     doneButton: Html,
@@ -89,35 +142,11 @@ export const whatsNewBodyView: {
   ): ReadonlyArray<Html> => [
     ...Option.match(maybeShownDay(model), {
       onNone: () => [],
-      onSome: day => [dayView(day, h)],
-    }),
-    h.div(
-      [h.Class('panel-actions')],
-      [
-        ...(model.home.newsPage < NEWS_DAYS.length - 1
-          ? [
-              pageButtonView(
-                'Older',
-                'Older news',
-                WhatsNewMessage.ClickedOlderNewsButton(),
-                'Next',
-                h,
-              ),
-            ]
-          : []),
-        ...(model.home.newsPage > 0
-          ? [
-              pageButtonView(
-                'Newer',
-                'Newer news',
-                WhatsNewMessage.ClickedNewerNewsButton(),
-                'Previous',
-                h,
-              ),
-            ]
-          : []),
-        doneButton,
+      onSome: day => [
+        dayHeaderView(day, model.home.newsPage, h),
+        dayView(day, model.home.newsPage, h),
       ],
-    ),
+    }),
+    doneButton,
   ],
 )

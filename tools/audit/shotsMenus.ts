@@ -85,7 +85,7 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'whats-new-older',
     query: '',
-    open: [MANOR, '#hand-card-whatsnew', '.news-page'],
+    open: [MANOR, '#hand-card-whatsnew', '.news-older'],
     isAnimated: true,
   },
   {
