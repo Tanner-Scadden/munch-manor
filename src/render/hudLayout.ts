@@ -244,3 +244,26 @@ export const clearWindowOf: {
       ) - gap,
   }
 })
+
+// NOTE: the touch START WAVE pill's box on the screen, in screen pixels,
+// for the canvas art that must keep clear of it (Rattles' bubble). The pill
+// is sized in CSS pixels (at least 132 wide, and with its border, shadow,
+// and the gap over the gun row about 80 tall), so its screen size depends on the
+// stage's scale: this is a little wider and taller than the pill.
+const START_WAVE_PILL_HALF_CSS = 84
+const START_WAVE_PILL_RISE_CSS = 86
+
+export const startWavePillBox: {
+  (scale: number): (screen: Screen) => Box
+  (screen: Screen, scale: number): Box
+} = Function.dual(2, (screen: Screen, scale: number): Box => {
+  const cluster = gunClusterBox(screen)
+  const halfWidth = START_WAVE_PILL_HALF_CSS / scale
+  const height = START_WAVE_PILL_RISE_CSS / scale
+  return {
+    x: cluster.x + gunPairWidth(SLOT_SIZES[screen.layout]) / 2 - halfWidth,
+    y: cluster.y - height,
+    width: halfWidth * 2,
+    height,
+  }
+})

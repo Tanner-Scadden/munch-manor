@@ -508,10 +508,13 @@ const trapIconsView = (
 // and wrap upward, so they never cover a slot, the reload button, or the
 // start wave button centered over the guns. Mid-wave (only hold-to-buy) they
 // end over the melee slot. In a landscape break they run from the start wave
-// button to a fixed right edge, where the stall's left side once stood. In portrait they end over the reload button, and in a break,
-// when the start wave button takes the band over the row, one band higher.
+// button to a right edge 90 pixels past the screen's middle, where the
+// stall's left side once stood on a 320 pixel screen. In portrait they end
+// over the reload button, and in a break, when the start wave button takes
+// the band over the row, one band higher.
 const START_WAVE_HALF_PX = 64
-const SIDE_RIGHT_EDGE_PX = 250
+
+const SIDE_RIGHT_PAST_MIDDLE_PX = 90
 
 const sideStyle = (
   model: Model,
@@ -527,7 +530,9 @@ const sideStyle = (
         : '0px',
       right: isBreak
         ? percentOf(
-            cluster.x + cluster.width - SIDE_RIGHT_EDGE_PX,
+            cluster.x +
+              cluster.width -
+              (screen.width / 2 + SIDE_RIGHT_PAST_MIDDLE_PX),
             cluster.width,
           )
         : '0px',

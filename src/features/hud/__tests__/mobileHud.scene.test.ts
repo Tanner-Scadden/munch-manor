@@ -199,8 +199,10 @@ describe('the gun cluster', () => {
       APPLICATION,
       Scene.given(fightingWith(30)),
       measureSurface,
-      Scene.expect(cluster).toHaveStyle('left', '37.1875%'),
-      Scene.expect(cluster).toHaveStyle('width', '35%'),
+      // NOTE: the 2:1 surface widens the screen to 360 (src/render/screen.ts),
+      // and the gun pair stays centered on it, 20 pixels further right.
+      Scene.expect(cluster).toHaveStyle('left', `${(139 / 360) * 100}%`),
+      Scene.expect(cluster).toHaveStyle('width', `${(112 / 360) * 100}%`),
       Scene.expect(
         Scene.within(cluster, Scene.role('group', { name: 'Your guns' })),
       ).toExist(),

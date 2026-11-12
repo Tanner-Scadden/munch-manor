@@ -4,12 +4,12 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 ## November 12, 2026: Grab a controller
 
-- 🎮 Plug in a controller and play a run with it: left stick walks, right stick aims, right trigger fires, Start pauses, and it rumbles when you get munched (turn that off under Settings, RUMBLE).
-- 🛋️ Every menu works on the controller too: the d-pad or stick picks, A presses, B backs out, and the bumpers flip tabs. Couch to manor, no mouse needed.
+- 🎮 Plug in a controller and play the whole game with it: left stick walks, right stick aims, right trigger fires, and it rumbles when you get munched (RUMBLE in Settings). Every menu works too: d-pad picks, A presses, B backs out. Couch to manor, no mouse needed.
 - 🎯 Touch aim helps a bit less: it still nudges your shots onto a zombie, just more gently.
 - 🤝 A co-op wipe goes straight to the score card, no lobby peeking in first. RUN IT BACK is now PLAY AGAIN.
 - 🎒 Tap the dare list on your HUD (or press Tab) to pull the dare card back out: everything you've found sits in your satchel, each with a little story, and new finds plop right in.
 - 🙌 Hands on! Your hero does CPR on a downed friend, digs through the trunk, hauls the dumbwaiter, cranks and shoves the room's tools, tosses a gun to swap, and holds every find up high.
+- 📱 Phones on their side fill the whole screen now: no more black bars, just more manor at the edges.
 
 ## November 11, 2026: Catch your breath
 

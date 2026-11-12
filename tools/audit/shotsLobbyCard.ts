@@ -106,7 +106,11 @@ const releaseAnimations = (page: Page) =>
   )
 
 const Clipped = Schema.Array(
-  Schema.Struct({ name: Schema.String, needs: Schema.Finite, has: Schema.Finite }),
+  Schema.Struct({
+    name: Schema.String,
+    needs: Schema.Finite,
+    has: Schema.Finite,
+  }),
 )
 
 // NOTE: each hero's name tried in every hero card on the card, put back as

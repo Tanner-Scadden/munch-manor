@@ -217,7 +217,8 @@ describe('turning the phone', () => {
         Scene.given(fighting),
         measure(PHONE_LANDSCAPE),
         Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(root).toHaveStyle('--screen-w', '320'),
+        Scene.expect(root).toHaveStyle('--screen-w', '388'),
+        Scene.expect(root).toHaveStyle('--screen-h', '180'),
         Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
       )
       const wide = yield* remeasured(fighting, [PHONE_LANDSCAPE])
@@ -272,17 +273,30 @@ describe('the world zoom on phones', () => {
   const worldWindow = Scene.selector('.world-window')
 
   it.effect(
-    'a phone on its side draws 240 by 135 of the room over the whole screen',
+    'a 19.5:9 phone on its side draws 291 by 135 of the room over the whole screen',
     () =>
       Scene.scene(
         APPLICATION,
         Scene.given(fighting),
         measure(PHONE_LANDSCAPE),
         Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(worldCanvas).toHaveAttr('width', '240'),
+        Scene.expect(worldCanvas).toHaveAttr('width', '291'),
         Scene.expect(worldCanvas).toHaveAttr('height', '135'),
         Scene.expect(worldWindow).toHaveStyle('width', '100%'),
         Scene.expect(worldWindow).toHaveStyle('height', '100%'),
+      ),
+  )
+
+  it.effect(
+    'a 16:9 phone on its side draws 240 by 135 of the room on a 320 screen',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(fighting),
+        measure({ left: 0, top: 0, width: 667, height: 375 }),
+        Scene.expect(root).toHaveStyle('--screen-w', '320'),
+        Scene.expect(worldCanvas).toHaveAttr('width', '240'),
+        Scene.expect(worldCanvas).toHaveAttr('height', '135'),
       ),
   )
 

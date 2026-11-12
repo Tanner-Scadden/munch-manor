@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { type Model, Phase, RunMode } from '../../../app/model'
+import { LANDSCAPE_SCREEN, frameSpanOf } from '../../../render/screen'
 import { readyModel } from '../../../test/model.fixture'
 import { jsonOf } from '../../../test/testing'
 import {
@@ -25,6 +26,8 @@ import {
   unlocksOf,
 } from '../endBeat'
 import { endOverlayShapes } from '../endView'
+
+const LANDSCAPE_SPAN = frameSpanOf(LANDSCAPE_SCREEN)
 
 // The rank strip on the end card (src/features/end/endBeat.ts, src/features/end/rankStripView.ts):
 // it comes after the tally, fills its bar, and on a rank up pops with a
@@ -92,7 +95,7 @@ describe('the strip draws', () => {
     )
 
   const shapesAt = (gain: Gain, screenMs: number) =>
-    count(endOverlayShapes(ended(gain, screenMs)))
+    count(endOverlayShapes(LANDSCAPE_SPAN)(ended(gain, screenMs)))
 
   test('nothing before its turn, then the badge, number, bar, and Bones', () => {
     const start = stripAt(rankUp)
@@ -124,7 +127,7 @@ describe('the strip draws', () => {
         glass: false,
       }),
     })
-    expect(count(endOverlayShapes(withIcons))).toBeGreaterThan(
+    expect(count(endOverlayShapes(LANDSCAPE_SPAN)(withIcons))).toBeGreaterThan(
       shapesAt(sameRank, done),
     )
   })
@@ -205,7 +208,7 @@ describe('the cards a rank up flips', () => {
     const at = (card: number, extraMs: number) => {
       const model = ended(several)
       return jsonOf(
-        endOverlayShapes(
+        endOverlayShapes(LANDSCAPE_SPAN)(
           modifyFields(model, {
             screenMs: () =>
               unlockFlipAtMs(model, 'Munched') + unlockStartMs(card) + extraMs,
@@ -247,7 +250,7 @@ describe('the cards a rank up flips', () => {
           total + 1 + (shape._tag === 'Group' ? shapesOf(shape.shapes) : 0),
       )
     const drawn = (screenMs: number) =>
-      shapesOf(endOverlayShapes(ended(rankUp, screenMs)))
+      shapesOf(endOverlayShapes(LANDSCAPE_SPAN)(ended(rankUp, screenMs)))
     expect(goneAt).toBe(doneAt + UNLOCK_LINGER_MS)
     // NOTE: the card, its tab, and its timer are dozens of shapes; once its
     // time is up none of them is drawn.

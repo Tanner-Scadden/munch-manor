@@ -30,11 +30,17 @@ import {
 } from '../../features/onboarding/rattlesIntro'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
-import { landscapeFrameOffset, screenOf } from '../../render/screen'
+import { startWavePillBox } from '../../render/hudLayout'
+import {
+  type Screen,
+  landscapeFrameOffset,
+  screenOf,
+  stagePlacement,
+} from '../../render/screen'
 import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { RATTLES_BOX, levelOf } from '../../world/level/arena'
-import type { Vector } from '../../world/schema/worldSchema'
+import { Phase, type Vector } from '../../world/schema/worldSchema'
 import { maybeBannerBand } from './overlay'
 import { keyRingBoxOf, maybePocketKeepout } from './pocket'
 
@@ -403,6 +409,32 @@ type Keepout = Readonly<{
 
 const KEEPOUT_GAP = 2
 
+// NOTE: on touch a break's START WAVE pill stands over the gun row, an HTML
+// button the canvas cannot draw over, so a bubble keeps clear of it too.
+const startWaveKeepout = (
+  model: Model,
+  screen: Screen,
+): ReadonlyArray<Keepout> =>
+  model.lastDevice === 'Touch' && Phase.isAnyOf(['Preparation'])(model.phase)
+    ? Option.match(model.maybeSurface, {
+        onNone: () => [],
+        onSome: surface => {
+          const box = startWavePillBox(
+            screen,
+            stagePlacement(surface, screen).scale,
+          )
+          return [
+            {
+              left: box.x,
+              top: box.y,
+              right: box.x + box.width,
+              bottom: box.y + box.height,
+            },
+          ]
+        },
+      })
+    : []
+
 const keepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
   const frameTop = landscapeFrameOffset(screen).y
@@ -418,7 +450,12 @@ const keepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
       },
     ],
   })
-  return [...card, keyRingBoxOf(model), ...banner]
+  return [
+    ...card,
+    keyRingBoxOf(model),
+    ...banner,
+    ...startWaveKeepout(model, screen),
+  ]
 }
 
 const clearOfHud = (

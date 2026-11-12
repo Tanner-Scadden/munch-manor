@@ -37,12 +37,16 @@ import {
   worldWindowOf,
 } from '../camera'
 import {
+  LANDSCAPE_MAX_WIDTH,
   LANDSCAPE_SCREEN,
+  LANDSCAPE_TOUCH_SCREEN,
   PORTRAIT_HUD_PX,
   PORTRAIT_VIEW_ROWS,
   PORTRAIT_WIDTH,
   clientToView,
   isPortrait,
+  landscapeTouchScreen,
+  landscapeWidthFor,
   portraitHeightFor,
   portraitScreen,
   screenOf,
@@ -157,16 +161,73 @@ describe('the portrait screen', () => {
 })
 
 describe('the landscape phone screen', () => {
-  test('zooms the world 4/3 on a touch phone on its side, and the HUD keeps its screen', () => {
+  test('zooms the world 4/3 on a touch phone on its side, and widens to the phone', () => {
     const screen = screenOf(fightingInLandscape)
     expect(screen.layout).toBe('Landscape')
     expect(screen.zoom).toBeCloseTo(4 / 3)
     expect(screen).toMatchObject({
-      width: 320,
+      width: 388,
       height: 180,
-      world: { x: 0, y: 0, width: 320, height: 180 },
+      world: { x: 0, y: 0, width: 388, height: 180 },
     })
-    expect(worldWindowOf(screen)).toEqual({ width: 240, height: 135 })
+    expect(worldWindowOf(screen)).toEqual({ width: 291, height: 135 })
+  })
+
+  test('keeps 320 by 180 on a 16:9 phone and before the surface is measured', () => {
+    const sixteenByNine = modifyFields(fightingInLandscape, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 667, height: 375 }),
+    })
+    expect(screenOf(sixteenByNine)).toEqual(LANDSCAPE_TOUCH_SCREEN)
+    const unmeasured = modifyFields(fightingInLandscape, {
+      maybeSurface: () => Option.none(),
+    })
+    expect(screenOf(unmeasured)).toEqual(LANDSCAPE_TOUCH_SCREEN)
+    expect(worldWindowOf(LANDSCAPE_TOUCH_SCREEN)).toEqual({
+      width: 240,
+      height: 135,
+    })
+  })
+
+  test('widens by whole steps of 4 to the phone, from 320 up to 388', () => {
+    const widthAt = (width: number, height: number): number =>
+      landscapeWidthFor({ left: 0, top: 0, width, height })
+    // NOTE: 16:9, a little wider, iPhone 15 (19.5:9), 20:9, 21:9, and a
+    // window narrower than 16:9.
+    expect(widthAt(1280, 720)).toBe(320)
+    expect(widthAt(1300, 720)).toBe(324)
+    expect(widthAt(852, 393)).toBe(388)
+    expect(widthAt(800, 400)).toBe(360)
+    expect(widthAt(2400, 1080)).toBe(388)
+    expect(widthAt(1000, 1000)).toBe(320)
+    expect(widthAt(0, 0)).toBe(320)
+    Array.forEach(Array.range(560, 1200), width => {
+      const wide = widthAt(width, 360)
+      expect(wide % 4).toBe(0)
+      expect(wide).toBeGreaterThanOrEqual(320)
+      expect(wide).toBeLessThanOrEqual(LANDSCAPE_MAX_WIDTH)
+      // NOTE: never wider than the phone, so the rows still fill it.
+      expect(wide / 180).toBeLessThanOrEqual(Math.max(width / 360, 16 / 9))
+      // NOTE: the window shows whole columns of the room at the 4/3 zoom.
+      expect(
+        Number.isInteger(worldWindowOf(landscapeTouchScreen(wide)).width),
+      ).toBe(true)
+    })
+  })
+
+  test('a wider screen shows more of the room, and nothing bigger', () => {
+    const narrow = screenOf(
+      modifyFields(fightingInLandscape, {
+        maybeSurface: () =>
+          Option.some({ left: 0, top: 0, width: 667, height: 375 }),
+      }),
+    )
+    const wide = screenOf(fightingInLandscape)
+    expect(wide.zoom).toBe(narrow.zoom)
+    expect(worldWindowOf(wide).height).toBe(worldWindowOf(narrow).height)
+    expect(worldWindowOf(wide).width).toBeGreaterThan(
+      worldWindowOf(narrow).width,
+    )
   })
 
   test('keeps a whole screen of the room at zoom 1 on a keyboard and mouse, in any window', () => {
@@ -251,22 +312,22 @@ describe('the portrait camera', () => {
     expect(cameraAt(20, 90)).toEqual({
       x: 0,
       y: 23,
-      width: 240,
+      width: 291,
       height: 135,
       scale: 1,
       left: 0,
       top: 0,
     })
-    expect(cameraAt(160, 90)).toMatchObject({ x: 40, y: 23 })
+    expect(cameraAt(160, 90)).toMatchObject({ x: 15, y: 23 })
     const { bounds } = levelOf(fightingInLandscape)
     expect(cameraAt(bounds.right - 20, bounds.bottom - 10)).toMatchObject({
-      x: bounds.right - 240,
+      x: bounds.right - 291,
       y: bounds.bottom - 135,
     })
     expect(cameraAt(10, 10)).toMatchObject({ x: 0, y: 0 })
     expect(
       screenCameraOf(standingAt(fightingInLandscape, 160, 90)),
-    ).toMatchObject({ x: 40, y: 23, scale: 4 / 3, left: 0, top: 0 })
+    ).toMatchObject({ x: 15, y: 23, scale: 4 / 3, left: 0, top: 0 })
   })
 
   test('on a phone on its side, reaches the kitchen once it opens and stays in its walls', () => {
@@ -440,14 +501,14 @@ describe('aiming on a phone on its side', () => {
     const fighting = standingAt(fightingInLandscape, 200, 120)
     const screen = screenOf(fighting)
     const camera = cameraOf(fighting)
-    expect(camera).toMatchObject({ x: 80, y: 53 })
+    expect(camera).toMatchObject({ x: 55, y: 53 })
     const onScreen = Option.getOrThrow(
       clientToView(PHONE_LANDSCAPE, { x: 422, y: 195 }, screen),
     )
-    expect(onScreen.x).toBeCloseTo(160)
+    expect(onScreen.x).toBeCloseTo(194)
     expect(onScreen.y).toBeCloseTo(90)
     const world = viewToWorld(screenCameraOf(fighting), onScreen)
-    expect(world.x).toBeCloseTo(160 * (3 / 4) + 80)
+    expect(world.x).toBeCloseTo(194 * (3 / 4) + 55)
     expect(world.y).toBeCloseTo(90 * (3 / 4) + camera.y)
     const back = worldToView(screenCameraOf(fighting), world)
     expect(back.x).toBeCloseTo(onScreen.x)

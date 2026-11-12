@@ -14,8 +14,10 @@ import { Array, Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
 import {
+  ANDROID_800,
   type Act,
   type Log,
+  PHONE_667,
   PHONE_844,
   type ScenePages,
   UPRIGHT_360,
@@ -42,6 +44,8 @@ const PICKABLE_VIEWPORTS: ReadonlyArray<Viewport> = [
   { ...UPRIGHT_360, name: 'p360' },
   { ...UPRIGHT_375, name: 'p375' },
   { ...PHONE_844, name: 'l844' },
+  { ...PHONE_667, name: 'l667' },
+  { ...ANDROID_800, name: 'l800' },
 ]
 
 type Scene = Readonly<{
