@@ -20,6 +20,7 @@ import {
   callLineIndex,
   maybeCallTarget,
 } from '../../features/kitchen/kitchenCall'
+import { maybeQuestMark } from '../../features/onboarding/firstBreakQuest'
 import {
   kitchenStepOf,
   maybeKitchenMark,
@@ -31,6 +32,7 @@ import {
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { startWavePillBox } from '../../render/hudLayout'
+import { doorArrowBox } from '../../render/powerupView'
 import {
   type Screen,
   landscapeFrameOffset,
@@ -41,7 +43,7 @@ import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { RATTLES_BOX, levelOf } from '../../world/level/arena'
 import { Phase, type Vector } from '../../world/schema/worldSchema'
-import { maybeBannerBand } from './overlay'
+import { hintBoxesOf, maybeBannerBand } from './overlay'
 import { keyRingBoxOf, maybePocketKeepout } from './pocket'
 
 // NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
@@ -398,8 +400,10 @@ const bubbleShapes = (
   )
 
 // NOTE: what a bubble keeps out of, in screen pixels: the dare pocket on
-// the HUD with its unlock bar, the key ring, and a banner's rows while one shows. A
-// bubble over one moves under it, or over it when there is no room under.
+// the HUD with its unlock bar, the key ring, a banner's rows while one
+// shows, the tours' hint rows under it (BLOCK DOOR), and the quest's arrow
+// over its next spot. A bubble over one moves to the nearest place clear
+// of them all, under or over one of them.
 type Keepout = Readonly<{
   left: number
   top: number
@@ -435,52 +439,103 @@ const startWaveKeepout = (
       })
     : []
 
-const keepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
+// NOTE: the guided quest's arrow bobbing over its next spot
+// (src/screens/game/worldView.ts), while in view.
+const questArrowKeepout = (
+  model: Model,
+  camera: Camera,
+): ReadonlyArray<Keepout> =>
+  Option.match(maybeQuestMark(model), {
+    onNone: () => [],
+    onSome: mark => [doorArrowBox(worldToView(camera, mark))],
+  })
+
+const keepoutsOf = (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
-  const frameTop = landscapeFrameOffset(screen).y
+  const frame = landscapeFrameOffset(screen)
   const card: ReadonlyArray<Keepout> = Option.toArray(maybePocketKeepout(model))
   const banner: ReadonlyArray<Keepout> = Option.match(maybeBannerBand(model), {
     onNone: () => [],
     onSome: band => [
       {
         left: 0,
-        top: band.top + frameTop,
+        top: band.top + frame.y,
         right: screen.width,
-        bottom: band.bottom + frameTop,
+        bottom: band.bottom + frame.y,
       },
     ],
   })
+  const hints = Array.map(hintBoxesOf(model), box => ({
+    left: box.left + frame.x,
+    top: box.top + frame.y,
+    right: box.right + frame.x,
+    bottom: box.bottom + frame.y,
+  }))
   return [
     ...card,
     keyRingBoxOf(model),
     ...banner,
+    ...hints,
+    ...questArrowKeepout(model, camera),
     ...startWaveKeepout(model, screen),
   ]
 }
 
+const isOverKeepout =
+  (x: number, width: number, height: number, y: number) =>
+  (keepout: Keepout): boolean =>
+    x < keepout.right &&
+    x + width > keepout.left &&
+    y < keepout.bottom &&
+    y + height > keepout.top
+
+// NOTE: where the bubble wants to be, if that is clear; else the nearest
+// spot just under or just over one keepout that is clear of every one and
+// inside the window; else, with nowhere clear, it steps past each keepout
+// in turn as before.
 const clearOfHud = (
-  model: Model,
+  keepouts: ReadonlyArray<Keepout>,
   { width, height: bubbleHeight }: Bubble,
   x: number,
   y: number,
   top: number,
   bottom: number,
-): number =>
-  Array.reduce(keepoutsOf(model), y, (placed, keepout) => {
-    const height = bubbleHeight + TAIL
-    const isOver =
-      x < keepout.right &&
-      x + width > keepout.left &&
-      placed < keepout.bottom &&
-      placed + height > keepout.top
-    if (!isOver) {
-      return placed
-    }
-    const under = keepout.bottom + KEEPOUT_GAP
-    return under <= bottom
-      ? under
-      : Math.max(top, keepout.top - KEEPOUT_GAP - height)
-  })
+): number => {
+  const height = bubbleHeight + TAIL
+  const isClear = (placed: number): boolean =>
+    !Array.some(keepouts, isOverKeepout(x, width, height, placed))
+  if (isClear(y)) {
+    return y
+  }
+  const nearest = Array.reduce(
+    Array.flatMap(keepouts, keepout => [
+      keepout.bottom + KEEPOUT_GAP,
+      keepout.top - KEEPOUT_GAP - height,
+    ]),
+    Option.none<number>(),
+    (best, candidate) =>
+      candidate >= top &&
+      candidate <= bottom &&
+      isClear(candidate) &&
+      Option.match(best, {
+        onNone: () => true,
+        onSome: kept => Math.abs(candidate - y) < Math.abs(kept - y),
+      })
+        ? Option.some(candidate)
+        : best,
+  )
+  return Option.getOrElse(nearest, () =>
+    Array.reduce(keepouts, y, (placed, keepout) => {
+      if (!isOverKeepout(x, width, height, placed)(keepout)) {
+        return placed
+      }
+      const under = keepout.bottom + KEEPOUT_GAP
+      return under <= bottom
+        ? under
+        : Math.max(top, keepout.top - KEEPOUT_GAP - height)
+    }),
+  )
+}
 
 // NOTE: where a bubble goes: the spot its tail tip points at, whether it
 // draws its own arrow toward that spot out of view, and how much further
@@ -522,7 +577,8 @@ const placedBubble = (
     ),
     () => Math.max(top, Math.min(bottom, wantedY)),
   )
-  const y = clearOfHud(model, bubble, x, underY, top, bottom) + bob
+  const y =
+    clearOfHud(keepoutsOf(model, camera), bubble, x, underY, top, bottom) + bob
   const side = sideOf({ x: wantedX, y: wantedY }, left, right, top, bottom)
   return [
     placeSprite(x, y, frame),
