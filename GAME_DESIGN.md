@@ -270,8 +270,8 @@ Added on 2026-10-29. Three layers, cheapest first. The commands are in `AGENTS.m
 **Follow-ups from the escape's balance pass** (2026-11-10):
 
 - Portrait escapes are far under landscape (Normal 9% against 29.5%, Easy 42% against 62%), dying mostly on waves 5 and 6 (50.5% of portrait Normal runs). Look at what the hunt does in a narrow window (walking into far rooms and the kitchen with zombies out of view) before tuning phones on their own.
-- Make the finale the wall: Uncle Chunk on Easy and Normal barely bites, while waves 5 to 7 kill most runs. A tougher Chunk by arrival wave and gentler waves 5 and 6 would move the deaths to the end.
-- With his wave floor gone (owner, 2026-11-10) the bot on Normal finished its list on wave 9 (median, 50 runs), so the hunt itself now sets when he comes. His fight ran 44 s, under the 60 to 120 s aim; more health would cost escapes, which sat at 36% against a 30 to 45% target. On Easy (50 runs, same day) the bot escaped 40% against its 60 to 80% target (62% in the baseline): Uncle Chunk came in 31 runs, was felled in 21 (37 s median) and ended 10. Try Easy's `chunkHealthScale` at 2 (from 3) in the next balance pass, then a nightly.
+- Make the finale the wall: Uncle Chunk on Easy and Normal barely bites, while waves 5 to 7 kill most runs. A tougher Chunk by arrival wave and gentler waves 5 and 6 would move the deaths to the end. Not taken: Uncle Chunk stays as he is (owner, 2026-11-11), and the Hotfoots were slowed on Easy and Normal instead ("Runners eased").
+- With his wave floor gone (owner, 2026-11-10) the bot on Normal finished its list on wave 9 (median, 50 runs), so the hunt itself now sets when he comes. His fight ran 44 s, under the 60 to 120 s aim; more health would cost escapes, which sat at 36% against a 30 to 45% target. On Easy (50 runs, same day) the bot escaped 40% against its 60 to 80% target (62% in the baseline): Uncle Chunk came in 31 runs, was felled in 21 (37 s median) and ended 10. The idea of Easy's `chunkHealthScale` at 2 (from 3) is dropped: Uncle Chunk is not changed without the owner's say-so.
 - Keys pace the hunt (2026-11-10): each room holds one thing on the list, so the padlocks went from 3 to 5 keys to 8 for the kitchen, 55 for a room off the dining room, and 90 for the far room, against about 290 keys a campaign. On Double Dare the kitchen opens about wave 3 and the last room about wave 9. Moved closer the same day after the pacing report (owner): 8, 40 for the first room off the dining room, 75 for the second, and 90, so the last room opens about wave 8. The drops (a Groaner one in four, ...) were left as they were.
 - Not measured on their own: the gun levels (40, 120, 250 kills), the case feats, the hunting rifle's and the blunderbuss's numbers, the Penny Pincher's keys and heart, the Handyman, and Broke (`CALLING=` and `MODS=` batches).
 - The bot pulls the fridge in under a tenth of Hard and Nightmare runs: their timed breaks leave it no time after the hunt.
@@ -883,15 +883,17 @@ A kind is a row in an exhaustive table (stats, a behavior tag, how it dies, its 
 
 ## Roadmap
 
-The first playable (controls, feel, the room and the loop, the shop, the horde, traps, onboarding, and a public link) is built and live, with upgrade tiers, endless, music, power-ups, the boss, character looks, difficulty levels, the home menu, portrait play, the on-device save, sync, analytics, the tip jar, the kitchen, co-op, rank and Bones, heroes, and the art studio on top. The escape the manor update (2026-11-10) replaced the shop and the ten-wave campaign. Next, roughly in order:
+The first playable (controls, feel, the room and the loop, the shop, the horde, traps, onboarding, and a public link) is built and live, with upgrade tiers, endless, music, power-ups, the boss, character looks, difficulty levels, the home menu, portrait play, the on-device save, sync, analytics, the tip jar, the kitchen, co-op, rank and Bones, heroes, and the art studio on top. The escape the manor update shipped on 2026-11-11 (`docs/ESCAPE_PLAN.md`), replacing the shop and the ten-wave campaign. In its last balance step Hotfoots were slowed on Easy (×0.6) and Normal (×0.65) only, and Uncle Chunk was left unchanged on purpose ("Runners eased" under "Difficulty levels"). Controller support's phase 1 (a whole run on a pad, with rumble) shipped right after. Next, roughly in order:
 
-1. **Ship the escape.** Every layer of `docs/ESCAPE_PLAN.md` is built, the tutorial and the balance pass included; the release audits on the top layer's preview and one merge are left. Then the balance pass's follow-ups (see "How balance is checked"): portrait, a finale that bites, the hungrier house's start, plentiful keys, and what was not measured on its own.
-2. **Leaving early** (proposed). A back way out with part of the dare, for less pay.
-3. **Between runs** (proposed). Your friends in the car remember how the last run ended (see "Between runs" in `LORE.md`).
-4. **More rooms** from the sketch in "Exploring the manor" (the ballroom, the graveyard, the attic), each with one twist and its own Munchopedia page, joining the rolled pool.
-5. **Cosmetics and the supporter pack**, hats first (see "Making money").
-6. **The mobile stores** (see `MOBILE.md`).
-7. **Content depth.** More guns, the Spitter, and more traps.
+1. **Controller in the menus** (phase 2 of `docs/INPUT_PLAN.md`). The d-pad and stick move focus, A clicks, B backs, on every screen, so the game plays end to end with no keyboard. Then the glyphs (phase 3, Xbox and PlayStation), couch co-op with pads, and keyboard rebinding (phase 4), as decided there.
+2. **The bots.** The balance bot escapes under target on Easy and Normal, and the owner reads that as the bot, not the game. Fix the scripted bot first: exploring rooms, finding the list, spending keys, using the cases, the stove, and the room tools, and Uncle Chunk's fight. Then a "plays like you" bot learned from the owner's recorded runs: the recorder is #188 (open), and the rest follows `docs/BOT_PLAN.md` once it lands. Teammate bots get the same fixes.
+3. **The balance follow-ups** (see "How balance is checked"), measured on the better bot: portrait, plentiful keys, the room tools' untuned numbers, and what was not measured on its own (gun levels, case feats, the new guns, the heroes' perks, Broke).
+4. **The mobile stores** (see `MOBILE.md`): Capacitor for both stores, with live updates. Its wait on the escape's first steps is over.
+5. **Leaving early** (proposed). A back way out with part of the dare, for less pay.
+6. **Between runs** (proposed). Your friends in the car remember how the last run ended (see "Between runs" in `LORE.md`).
+7. **More rooms** from the sketch in "Exploring the manor" (the ballroom, the graveyard, the attic), each with one twist and its own Munchopedia page, joining the rolled pool.
+8. **Cosmetics and the supporter pack**, hats first (see "Making money").
+9. **Content depth.** More guns, the Spitter, and more traps.
 
 ### Risks
 
