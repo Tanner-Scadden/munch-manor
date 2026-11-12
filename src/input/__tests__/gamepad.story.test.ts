@@ -18,6 +18,7 @@ import {
   tick,
   zombieOf,
 } from '../../test/testing'
+import { isWieldingMelee } from '../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { Arsenal } from '../../world/schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
@@ -142,32 +143,33 @@ describe('a controller in a run', () => {
     ),
   )
 
-  it.effect('Y swaps once a press, however long it is held', () =>
-    Story.story(
+  // NOTE: owner, 2026-11-12: one button cycles the weapons, one way only.
+  it.effect('Y cycles gun, gun, knife, and round, once a press', () => {
+    const holds = (tag: 'First' | 'Second' | 'Knife') =>
+      Story.model<Model>(current => {
+        const { player } = focusOf(current)
+        expect(isWieldingMelee(player)).toBe(tag === 'Knife')
+        if (tag !== 'Knife') {
+          expect(Arsenal.isAnyOf([`Holding${tag}`])(player.arsenal)).toBe(true)
+        }
+      })
+    return Story.story(
       APPLICATION,
       Story.given(fighting),
+      holds('First'),
       rest,
       poll({ held: [Y] }),
-      Story.model(current => {
-        expect(
-          Arsenal.isAnyOf(['HoldingSecond'])(focusOf(current).player.arsenal),
-        ).toBe(true)
-      }),
+      holds('Second'),
       poll({ held: [Y], axes: [0.5, 0, 0, 0] }),
-      Story.model(current => {
-        expect(
-          Arsenal.isAnyOf(['HoldingSecond'])(focusOf(current).player.arsenal),
-        ).toBe(true)
-      }),
+      holds('Second'),
       rest,
       poll({ held: [Y] }),
-      Story.model(current => {
-        expect(
-          Arsenal.isAnyOf(['HoldingFirst'])(focusOf(current).player.arsenal),
-        ).toBe(true)
-      }),
-    ),
-  )
+      holds('Knife'),
+      rest,
+      poll({ held: [Y] }),
+      holds('First'),
+    )
+  })
 
   it.effect('A readies up in a break, as the interact key does', () =>
     Story.story(

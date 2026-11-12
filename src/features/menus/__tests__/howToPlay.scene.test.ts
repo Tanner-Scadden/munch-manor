@@ -3,6 +3,7 @@ import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
+import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import type { Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
@@ -119,6 +120,52 @@ describe('How to play lines', () => {
         howToPlay,
         Scene.expect(Scene.role('button', { name: 'Play tutorial' })).toExist(),
       ),
+    ),
+  )
+})
+
+// NOTE: with a controller in hand, How to play draws the pad with each
+// button named beside it (owner, 2026-11-12). The panel is opened on the
+// Model, since a click to open it would make the mouse the last device.
+describe('the controller diagram', () => {
+  const panelOpenOn = (device: InputDevice): Model =>
+    modifyFields(homeOn(device), {
+      panel: () => 'HowToPlay',
+      panelDialog: dialog => ({ ...dialog, isOpen: true }),
+    })
+
+  const diagram = Scene.role('region', { name: 'Controller buttons' })
+
+  it.effect('names every button a run uses beside the pad', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(panelOpenOn('Gamepad')),
+      measureSurface,
+      Scene.Mount.resolve(
+        Dialog.test.AcquireResources,
+        DialogBlock.Message.SucceededAcquireResources(),
+      ),
+      Scene.inside(
+        diagram,
+        ...Array.map(['LT', 'LB', 'RT', 'A', 'B', 'X', 'Y'], glyph =>
+          Scene.expect(Scene.text(glyph, { exact: true })).toExist(),
+        ),
+        Scene.expect(Scene.text('shoot')).toExist(),
+        Scene.expect(Scene.text('next weapon')).toExist(),
+      ),
+    ),
+  )
+
+  it.effect('is not drawn for a keyboard', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(panelOpenOn('KeyboardMouse')),
+      measureSurface,
+      Scene.Mount.resolve(
+        Dialog.test.AcquireResources,
+        DialogBlock.Message.SucceededAcquireResources(),
+      ),
+      Scene.expect(diagram).toBeAbsent(),
     ),
   )
 })

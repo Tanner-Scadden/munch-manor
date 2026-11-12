@@ -330,6 +330,7 @@ export const initialModel: OwnModel = {
   mode: RunMode.Campaign(),
   difficulty: { chosen: 'Normal', nightmare: 'Locked' },
   modifiers: noModifiers,
+  easyBreakSeconds: 0,
   difficultyCard: DifficultyCard.Unseen(),
   zombies: [],
   bullets: [],

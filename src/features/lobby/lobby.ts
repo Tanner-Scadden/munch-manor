@@ -25,28 +25,37 @@ export const SEATS: ReadonlyArray<readonly [LobbyControl, LobbyControl]> = [
   ['Bot3', 'Drop3'],
 ]
 
-const MODE_AND_DIFFICULTY_CONTROLS: ReadonlyArray<LobbyControl> = [
+// NOTE: Dare's break clock is a stop only while Dare is picked, as only
+// then is it drawn.
+const modeAndDifficultyControlsOf = (
+  picks: LobbyPicks,
+): ReadonlyArray<LobbyControl> => [
   'Campaign',
   'Endless',
   'Easy',
   'Normal',
   'Hard',
   'Nightmare',
+  ...(isEasyBreakShown(picks) ? ['EasyBreak' as const] : []),
   ...MODIFIER_ORDER,
   'Start',
 ]
 
-// NOTE: the stops of a lobby with `botCount` bots seated.
+// NOTE: the stops of a lobby with these picks: its seated bots, and Dare's
+// break clock when it shows.
 const lobbyControlsOf = (
-  botCount: number,
-): Array.NonEmptyReadonlyArray<LobbyControl> => [
-  'Back',
-  'Hero',
-  ...Array.flatMap(SEATS, ([seat, drop], index) =>
-    index < botCount ? [seat, drop] : index === botCount ? [seat] : [],
-  ),
-  ...MODE_AND_DIFFICULTY_CONTROLS,
-]
+  picks: LobbyPicks,
+): Array.NonEmptyReadonlyArray<LobbyControl> => {
+  const botCount = picks.bots.length
+  return [
+    'Back',
+    'Hero',
+    ...Array.flatMap(SEATS, ([seat, drop], index) =>
+      index < botCount ? [seat, drop] : index === botCount ? [seat] : [],
+    ),
+    ...modeAndDifficultyControlsOf(picks),
+  ]
+}
 
 const LOBBY_CONTROL_IDS: Readonly<Record<LobbyControl, string>> = {
   Back: 'lobby-back',
@@ -63,6 +72,7 @@ const LOBBY_CONTROL_IDS: Readonly<Record<LobbyControl, string>> = {
   Normal: 'lobby-normal',
   Hard: 'lobby-hard',
   Nightmare: 'lobby-nightmare',
+  EasyBreak: 'lobby-easy-break',
   FriendlyFire: 'lobby-friendly-fire',
   BigCrowd: 'lobby-big-crowd',
   Broke: 'lobby-broke',
@@ -95,24 +105,24 @@ export const LOBBY_KEYS = {
 export const steppedLobbyFocus: {
   (
     step: FocusStep,
-    botCount: number,
+    picks: LobbyPicks,
   ): (maybeFocus: Option.Option<LobbyControl>) => LobbyControl
   (
     maybeFocus: Option.Option<LobbyControl>,
     step: FocusStep,
-    botCount: number,
+    picks: LobbyPicks,
   ): LobbyControl
 } = Function.dual(
   3,
   (
     maybeFocus: Option.Option<LobbyControl>,
     step: FocusStep,
-    botCount: number,
+    picks: LobbyPicks,
   ): LobbyControl =>
     Option.match(maybeFocus, {
       onNone: (): LobbyControl => 'Start',
       onSome: focused => {
-        const controls = lobbyControlsOf(botCount)
+        const controls = lobbyControlsOf(picks)
         const index = Option.getOrElse(
           Array.findFirstIndex(controls, control => control === focused),
           () => 0,
@@ -160,6 +170,13 @@ export const nextDifficultyOf = (setting: DifficultySetting): Difficulty => {
 // (src/domain/bots.ts, botSeatsFor).
 const hasSeatedBot = (picks: LobbyPicks): boolean =>
   Array.isReadonlyArrayNonEmpty(Array.take(picks.bots, picks.botSeats))
+
+// DARE'S BREAK CLOCK
+
+// NOTE: on Dare the lobby picks the break's clock, none by default (owner,
+// 2026-11-12); the difficulties above keep their own.
+export const isEasyBreakShown = (picks: LobbyPicks): boolean =>
+  picks.difficulty.chosen === 'Easy'
 
 // MODIFIERS
 

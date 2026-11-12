@@ -100,7 +100,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
       HINT_ICON_SPRITES.Guns,
     ),
     pad: input(
-      'Y switches guns, X reloads. Ammo never runs out.',
+      'Y steps gun, gun, knife. X reloads. Ammo never runs out.',
       HINT_ICON_SPRITES.Guns,
     ),
   },

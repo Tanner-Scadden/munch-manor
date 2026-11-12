@@ -83,7 +83,7 @@ flowchart TD
     ready{READY?}
   end
 
-  ready -->|READY, or the clock runs out: 30 s on Dare and Double Dare, 20 s above| wave
+  ready -->|READY, or the clock runs out: the lobby's pick on Dare (none by default), 30 s on Double Dare, 20 s above| wave
 
   subgraph Fight [The wave]
     wave[Zombies through the doors and up through the floor]:::built --> fight[Shoot, stab, swap guns, grab drops and skeleton keys]:::built

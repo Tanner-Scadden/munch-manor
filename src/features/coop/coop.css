@@ -1795,6 +1795,42 @@
   cursor: default;
 }
 
+/* NOTE: Dare's break clock beside the skulls, in both lobbies
+   (src/ui/easyBreakView.ts): a clock over its pick, lit gold while a
+   clock is set and dim at ∞. */
+.easy-break-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px 2px;
+}
+
+.easy-break-pick .easy-break-icon {
+  width: 52%;
+  height: 52%;
+}
+
+.easy-break-value {
+  font: bold round(clamp(10px, 2.2 * var(--coop-unit), 14px), 1px) / 1
+    var(--menu-font);
+  color: var(--menu-ink);
+}
+
+.easy-break-pick[data-state='On'] {
+  border-color: var(--menu-gold);
+  background: rgba(255, 224, 102, 0.2);
+}
+
+.easy-break-pick[data-state='On'] .easy-break-icon {
+  filter: none;
+}
+
+.easy-break-pick[data-state='On'] .easy-break-value {
+  color: var(--menu-gold);
+}
+
 .modifier-bonus {
   display: grid;
   place-items: center;

@@ -25,6 +25,7 @@ const PICKS: LobbyPicks = {
   mode: 'Campaign',
   difficulty: { chosen: 'Normal', nightmare: 'Locked' },
   modifiers: noModifiers,
+  easyBreakSeconds: 0,
   bots: [],
   botSeats: 3,
 }
@@ -137,6 +138,46 @@ describe('the lobby Block', () => {
       Story.expectOutMessage(
         OutMessage.ToggledModifier({ modifier: 'FriendlyFire' }),
       ),
+    ),
+  )
+
+  // NOTE: owner, 2026-11-12: on Dare the lobby picks the break's clock,
+  // none first; above Dare there is no pill to press.
+  it.effect('on Dare the break clock steps to its next choice', () =>
+    Story.story(
+      lobbyWith({
+        ...PICKS,
+        difficulty: { chosen: 'Easy', nightmare: 'Locked' },
+        easyBreakSeconds: 0,
+      }),
+      Story.init(),
+      opened,
+      Story.message(Message.ClickedEasyBreakButton()),
+      Story.expectOutMessage(OutMessage.ChoseEasyBreak({ seconds: 60 })),
+    ),
+  )
+
+  it.effect('on Dare the break clock goes round from 20 s to none', () =>
+    Story.story(
+      lobbyWith({
+        ...PICKS,
+        difficulty: { chosen: 'Easy', nightmare: 'Locked' },
+        easyBreakSeconds: 20,
+      }),
+      Story.init(),
+      opened,
+      Story.message(Message.ClickedEasyBreakButton()),
+      Story.expectOutMessage(OutMessage.ChoseEasyBreak({ seconds: 0 })),
+    ),
+  )
+
+  it.effect('above Dare the break clock asks nothing', () =>
+    Story.story(
+      LOBBY,
+      Story.init(),
+      opened,
+      Story.message(Message.ClickedEasyBreakButton()),
+      Story.expectNoOutMessage(),
     ),
   )
 

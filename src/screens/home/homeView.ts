@@ -37,6 +37,7 @@ import type {
   MenuPanel,
 } from '../../features/home/homeSchema'
 import { HomeMessage } from '../../features/home/message'
+import { padDiagramView } from '../../features/menus/padDiagram'
 import { helpLabel, howToPlayView } from '../../features/menus/pauseHelp'
 import {
   ENTRY_COUNT,
@@ -1020,6 +1021,20 @@ const playTutorialButtonView = (h: ApplicationViewBuilder): Html =>
     ],
   )
 
+// NOTE: under How to play's cards: the menu's keys on a keyboard, the pad
+// and its buttons with a controller in hand.
+const howToPlayUnder = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): Option.Option<Html> => {
+  if (isKeyboard(model)) {
+    return Option.some(menuKeysView(h))
+  }
+  return model.lastDevice === 'Gamepad'
+    ? Option.some(padDiagramView(h))
+    : Option.none()
+}
+
 const panelBodyView = (
   model: Model,
   renderInfo: Dialog.RenderInfo,
@@ -1034,7 +1049,7 @@ const panelBodyView = (
           model,
           'Interactive',
           h,
-          isKeyboard(model) ? Option.some(menuKeysView(h)) : Option.none(),
+          howToPlayUnder(model, h),
         ),
       ),
       h.div(

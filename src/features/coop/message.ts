@@ -41,6 +41,7 @@ export const Message = defineMessageUnion({
   ClickedModePick: { mode: PickedMode },
   ClickedDifficultyPick: { difficulty: RoomDifficulty },
   ClickedModifierPick: { modifier: Modifier },
+  ClickedEasyBreakPick: {},
   ClickedCallingPill: {},
   ClickedPickNudge: { reason: NudgeReason },
   ClickedNameButton: {},

@@ -250,6 +250,7 @@ export const lobbyPicksOf = (model: Model): LobbyPicks => ({
   mode: model.home.mode,
   difficulty: model.difficulty,
   modifiers: model.modifiers,
+  easyBreakSeconds: model.easyBreakSeconds,
   bots: model.home.bots,
   botSeats: botSeatsFor(model),
 })

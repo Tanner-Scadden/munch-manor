@@ -3,7 +3,7 @@ import { Array, Function, Option, Schema, pipe } from 'effect'
 import { focusSlotOf, isDowned, seatStateAt } from '../world/party/party'
 import type { World } from '../world/schema/world'
 import { isInteractTaken } from '../world/shop/purchase'
-import { SeatAction } from '../world/step/stepWorld'
+import { SeatAction, cycleWeaponAction } from '../world/step/stepWorld'
 import {
   PAD_A,
   PAD_B,
@@ -25,8 +25,11 @@ import {
 // READY elsewhere, and while downed, MEDIC!
 export const INTERACT_KEY = 'Enter'
 
+// NOTE: swapCycles makes the swap key step through all three slots, the
+// knife too, one way (cycleWeaponAction), as a controller's Y does.
 export type ActionKeys = Readonly<{
   swap: string
+  swapCycles: boolean
   knife: string
   reload: string
   placeTrap: string
@@ -36,6 +39,7 @@ export type ActionKeys = Readonly<{
 
 const PLAYER_ACTION_KEYS: ActionKeys = {
   swap: 'KeyQ',
+  swapCycles: false,
   knife: 'KeyF',
   reload: 'KeyR',
   placeTrap: 'KeyT',
@@ -44,10 +48,12 @@ const PLAYER_ACTION_KEYS: ActionKeys = {
 }
 
 // NOTE: a controller's fixed layout (docs/INPUT_PLAN.md): A is the
-// interact button, X reloads, Y swaps, B draws the knife, LT places a trap
-// and LB picks the next. Pads are never rebound.
+// interact button, X reloads, Y cycles gun, gun, knife (owner, 2026-11-12),
+// B draws the knife outright, LT places a trap and LB picks the next. Pads
+// are never rebound.
 const PAD_ACTION_KEYS: ActionKeys = {
   swap: PAD_Y,
+  swapCycles: true,
   knife: PAD_B,
   reload: PAD_X,
   placeTrap: PAD_LT,
@@ -109,7 +115,10 @@ export const keyActionOf: {
         ACTIONS,
         ([key, action]) => keys[key] === code && isOpenTo(seat, action),
       ),
-      ([, action]) => action,
+      ([key, action]) =>
+        key === 'swap' && keys.swapCycles
+          ? cycleWeaponAction(seatStateAt(seat, focusSlotOf(seat)).player)
+          : action,
     ),
 )
 

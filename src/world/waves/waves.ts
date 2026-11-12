@@ -24,6 +24,7 @@ import {
 } from '../party/party'
 import { isEveryoneReady, returnFallen } from '../party/revive'
 import {
+  breakClockMsOf,
   breakMsOf,
   crowdSpawns,
   paceHolds,
@@ -484,12 +485,19 @@ const keyForClear = (model: World): World => {
 // NOTE: a run never ends by its wave count: past the tuned waves the
 // Endless generator rolls them (src/world/waves/endlessWaves.ts), and an
 // escape ends at the front door (src/world/dare/finale.ts).
+// Dare's break counts the lobby's pick, or with none waits for READY
+// (owner, 2026-11-12).
 const clearWave = (model: World, wave: number): World =>
-  beginPreparation(
-    keyForClear(model),
-    wave + 1,
-    breakMsOf(model.difficulty.chosen),
-  )
+  Option.match(breakClockMsOf(model), {
+    onNone: () =>
+      beginPreparation(
+        keyForClear(model),
+        wave + 1,
+        breakMsOf(model.difficulty.chosen),
+        BreakClock.Waiting({ elapsedMs: 0 }),
+      ),
+    onSome: breakMs => beginPreparation(keyForClear(model), wave + 1, breakMs),
+  })
 
 // NOTE: spawns stay with their planned doors, so a door whose plank breaks
 // is a spawn point again. routed is the same list with each door rerouted

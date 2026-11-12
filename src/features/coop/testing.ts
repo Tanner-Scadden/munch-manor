@@ -184,6 +184,7 @@ export const lobbyOf: {
     mode: 'Campaign',
     difficulty: 'Normal',
     modifiers: 0,
+    easyBreakSeconds: 0,
     canKeepGoing: false,
     round: 1,
     createdMs: 0,
