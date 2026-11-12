@@ -595,7 +595,7 @@ const crateShapes = ({
   rect(x + 12, y - 1, 2, 3, '#3d2a1a'),
 ]
 
-const COVER_DRAWINGS: Readonly<
+export const COVER_DRAWINGS: Readonly<
   Record<CoverKind, (box: Box, level: Level) => ReadonlyArray<Canvas.Shape>>
 > = {
   Piano: pianoShapes,
@@ -628,16 +628,29 @@ const COVER_DRAWINGS: Readonly<
 
 // NOTE: every block of a cover symbol on the map, each the box from its top
 // left corner across and down the symbol's run.
+const coverBlocksKept = new WeakMap<Level, Map<string, ReadonlyArray<Box>>>()
+
+// NOTE: kept per level and symbol: the tall cover and the room image ask
+// for them, and the map's cover never changes within a level.
 export const coverBlocks: {
   (symbol: string): (level: Level) => ReadonlyArray<Box>
   (level: Level, symbol: string): ReadonlyArray<Box>
-} = Function.dual(2, (level: Level, symbol: string): ReadonlyArray<Box> =>
-  pipe(
+} = Function.dual(2, (level: Level, symbol: string): ReadonlyArray<Box> => {
+  const bySymbol =
+    coverBlocksKept.get(level) ?? new Map<string, ReadonlyArray<Box>>()
+  coverBlocksKept.set(level, bySymbol)
+  const cached = bySymbol.get(symbol)
+  if (cached !== undefined) {
+    return cached
+  }
+  const blocks = pipe(
     tilesWithSymbol(level, symbol),
     Array.filter(tile => isBlockCorner(level, symbol, tile)),
     Array.map(tile => blockAt(level, symbol, tile)),
-  ),
-)
+  )
+  bySymbol.set(symbol, blocks)
+  return blocks
+})
 
 const coverShapes = (
   level: Level,

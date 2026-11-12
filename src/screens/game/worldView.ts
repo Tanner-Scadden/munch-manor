@@ -89,6 +89,7 @@ import {
   hearthFireShapes,
   hungChandelierShapes,
 } from '../../render/room/room'
+import { tallCoverDrawables } from '../../render/room/tallCover'
 import { aimSightShapes } from '../../render/sightView'
 import {
   ghostShapes,
@@ -235,6 +236,14 @@ const standingDrawables = (
       rank: 'Wall',
       shapes,
     })),
+    ...tallCoverDrawables(
+      level,
+      [
+        focusOf(model).player,
+        ...Array.map(mates, mate => focusOf(mate.model).player),
+      ],
+      zombies,
+    ),
     {
       footY: RATTLES_FOOT_Y,
       rank: 'Prop',
