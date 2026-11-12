@@ -61,7 +61,7 @@ bun alchemy deploy --stage prod             # deploy production by hand
 bun alchemy deploy --stage prod --force     # redeploy even when nothing changed
 bun alchemy destroy --stage pr-12           # tear down a preview
 bun run typecheck                           # types and the Effect diagnostics
-bun run lint                                # oxlint, then the Effect rules
+bun run lint                                # typecheck, oxlint, then the Effect rules
 bun run test                                # the Worker's tests (vitest under Bun)
 ```
 

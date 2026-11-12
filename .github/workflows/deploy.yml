@@ -20,8 +20,7 @@ env:
 
 jobs:
   # NOTE: the checks run as parallel legs, each on its own runner, so the
-  # slowest leg (lint or the full test tier) sets the time instead of their
-  # sum. Deploy waits for every leg.
+  # slowest leg sets the time instead of their sum. Deploy waits for every leg.
   check:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
@@ -31,18 +30,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: typecheck
-            run: bun run typecheck && cd infra && bun run typecheck
-          # NOTE: the two type-aware lint passes each build the whole program,
-          # so they run on separate legs.
-          - name: oxlint
-            run: bun run lint:oxlint
-          - name: effect lint
-            run: bun run lint:effect && bun run lint:rest && bun run lint:infra
-          # NOTE: the full tier: the fast tests plus the sim tier (whole wave
-          # replays and seed sweeps) that `bun run test` leaves out.
-          - name: test
-            run: bun run test:full
+          # NOTE: one pass type checks and runs every oxlint and Effect rule
+          # (.oxlintrc.all.json with --type-check), so the program is built
+          # once, not once for typecheck and again for each lint pass. Infra's
+          # lint type checks infra.
+          - name: lint
+            run: bun run lint
+          # NOTE: the full tier, the fast tests plus the sim tier (whole wave
+          # replays and seed sweeps) that `bun run test` leaves out, split by
+          # file across four runners. It took 5.5 minutes on one, the rest of
+          # the checks under 1.5.
+          - name: test 1/4
+            run: bun run test:full -- --shard=1/4
+          - name: test 2/4
+            run: bun run test:full -- --shard=2/4
+          - name: test 3/4
+            run: bun run test:full -- --shard=3/4
+          - name: test 4/4
+            run: bun run test:full -- --shard=4/4
           # NOTE: world:check bundles the co-op room's step with no UI, art,
           # audio, or store module and plays it in workerd exactly as in Bun
           # (MULTIPLAYER.md, Phase 0).

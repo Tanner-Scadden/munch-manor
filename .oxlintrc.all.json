@@ -1,0 +1,23 @@
+{
+  // NOTE: the one pass `bun run lint:types` runs: oxlint's rules
+  // (.oxlintrc.json) and every Effect rule (.oxlintrc.effect.json) together,
+  // with --type-check, so the program is built and type checked once instead
+  // of three times (typecheck, then each lint pass). The two files stay apart
+  // so stock oxlint and editors can read .oxlintrc.json without the effecttsgo
+  // plugin. `extends` carries rules, their options, overrides, and jsPlugins,
+  // but not ignorePatterns, and the Effect file turns the correctness category
+  // off for its own pass, so both are set again here.
+  "extends": ["./.oxlintrc.json", "./.oxlintrc.effect.json"],
+  "categories": {
+    "correctness": "error",
+    "perf": "error"
+  },
+  "ignorePatterns": [
+    "dist/",
+    "node_modules/",
+    "repos/",
+    "**/*.d.ts",
+    "**/*.config.js",
+    "**/*.config.mjs"
+  ]
+}
