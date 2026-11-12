@@ -19,8 +19,10 @@ import {
 } from '../../../src/render/camera'
 import {
   DEFAULT_PORTRAIT_SCREEN,
+  LANDSCAPE_MAX_WIDTH,
   LANDSCAPE_TOUCH_SCREEN,
   type Screen,
+  landscapeTouchScreen,
 } from '../../../src/render/screen'
 import type { Calling } from '../../../src/shared/playerData'
 import { CALLINGS } from '../../../src/world/heroes/calling'
@@ -153,14 +155,21 @@ const OUT_OF_REACH = new Set(['Burrowed', 'Carried', 'Flying'])
 // VIEW=portrait plays as a phone held upright would: it sees only the
 // zombies inside the portrait camera's window, which follows it and leans
 // toward its aim like the game's. Zombies out of view are not shot or fled.
-// VIEW=touch plays as a phone on its side would, through the landscape
-// phone's zoomed window. Both get the touch aim assist, as in the game.
-export const maybeWindowScreen =
-  knobText('VIEW') === 'portrait'
-    ? DEFAULT_PORTRAIT_SCREEN
-    : knobText('VIEW') === 'touch'
-      ? LANDSCAPE_TOUCH_SCREEN
-      : undefined
+// VIEW=touch plays as a 16:9 phone on its side would, through the landscape
+// phone's zoomed window, and VIEW=wide as a 19.5:9 or wider one, whose
+// screen widens to 388 and shows 291 columns of the room. All three get the
+// touch aim assist, as in the game.
+const VIEW_SCREENS: Readonly<Record<string, Screen>> = {
+  portrait: DEFAULT_PORTRAIT_SCREEN,
+  touch: LANDSCAPE_TOUCH_SCREEN,
+  wide: landscapeTouchScreen(LANDSCAPE_MAX_WIDTH),
+}
+
+export const maybeWindowScreen: Screen | undefined = Option.getOrUndefined(
+  Option.flatMap(Option.fromNullishOr(knobText('VIEW')), view =>
+    Record.get(VIEW_SCREENS, view),
+  ),
+)
 
 export const windowCamera: {
   (screen: Screen): (model: Model) => Camera

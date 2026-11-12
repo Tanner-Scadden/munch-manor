@@ -86,6 +86,14 @@ export const ANDROID_915: Viewport = {
   scale: 2.625,
   isPhone: true,
 }
+// NOTE: a 20:9 Android phone on its side, wider than the 388 pixel cap.
+export const ANDROID_800: Viewport = {
+  name: 'a800',
+  width: 800,
+  height: 360,
+  scale: 3,
+  isPhone: true,
+}
 export const UPRIGHT_390: Viewport = {
   name: 'u390',
   width: 390,

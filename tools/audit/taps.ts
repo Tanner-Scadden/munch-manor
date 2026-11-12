@@ -21,6 +21,7 @@ import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
 import {
+  ANDROID_800,
   type Log,
   PHONE_667,
   PHONE_844,
@@ -48,6 +49,7 @@ import { attempt, failWith } from './page'
 const LANDSCAPE: ReadonlyArray<Viewport> = [
   { ...PHONE_667, scale: 2 },
   { ...PHONE_844, scale: 2 },
+  { ...ANDROID_800, scale: 2 },
 ]
 
 const PORTRAIT: ReadonlyArray<Viewport> = [
