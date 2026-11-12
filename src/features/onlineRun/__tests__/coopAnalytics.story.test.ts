@@ -43,6 +43,7 @@ const started = pastArrival(
   startRoomWorld([0, OWN_SLOT, 2], 7, {
     difficulty: 'Hard',
     modifiers: noModifiers,
+    easyBreakSeconds: 0,
     mode: RunMode.Campaign(),
     callings: [],
     intro: 'Short',

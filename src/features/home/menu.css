@@ -2350,6 +2350,91 @@ button.help-card:focus-visible {
   white-space: nowrap;
 }
 
+/* NOTE: How to play's controller diagram (src/features/menus/padDiagram.ts):
+   the pad's picture in the middle, each side's buttons beside it, a dashed
+   leader from each one toward the pad. */
+.pad-diagram {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.4em;
+  padding-top: var(--menu-gap);
+  border-top: 1px solid var(--menu-line);
+  font-size: var(--menu-small-size);
+}
+
+.pad-picture {
+  width: 160px;
+  aspect-ratio: 40 / 22;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.pad-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pad-button {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  white-space: nowrap;
+}
+
+.pad-side[data-side='Left'] .pad-button {
+  justify-content: flex-end;
+}
+
+.pad-action {
+  color: var(--menu-ink);
+}
+
+.pad-glyph {
+  min-width: 1.7em;
+  padding: 0 0.3em;
+  border: 1px solid rgba(244, 241, 222, 0.6);
+  border-bottom-width: 3px;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-surface);
+  color: var(--menu-ink);
+  font: bold 1em/1.25 var(--menu-font);
+  text-align: center;
+}
+
+.pad-glyph:not([data-face='Plain']) {
+  min-width: 1.4em;
+  border-color: rgba(20, 12, 16, 0.6);
+  border-radius: 50%;
+  color: #140c10;
+}
+
+.pad-leader {
+  flex: 1 1 0.6em;
+  min-width: 0.6em;
+  max-width: 2.5em;
+  border-top: 1px dashed var(--menu-ink-dim);
+}
+
+.game-root[data-layout='Portrait'] .pad-diagram {
+  grid-template-columns: 1fr 1fr;
+}
+
+.game-root[data-layout='Portrait'] .pad-picture {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: center;
+  width: 120px;
+}
+
+.game-root[data-layout='Portrait'] .pad-leader {
+  display: none;
+}
+
 .menu-keys {
   display: flex;
   flex-direction: column;

@@ -22,6 +22,7 @@ import {
   modifierFaceView,
   modifierLabel,
 } from '../../ui/modifiersView'
+import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
 import { CALLING_NAMES, MODE_NAMES } from '../../world/names'
 import {
   DIFFICULTIES,
@@ -148,6 +149,30 @@ const skullPickView = (
     ),
   )
 }
+
+// NOTE: Dare's break clock beside the skulls, on Dare alone: the host's
+// press steps it, ∞ (none) first; a guest's tap says the host picks.
+const easyBreakPickView = (
+  room: Room,
+  lobby: Lobby,
+  h: CoopViewBuilder,
+): Html =>
+  h.keyed('button')(
+    'easy-break',
+    [
+      h.Type('button'),
+      h.Class('coop-pick easy-break-pick'),
+      h.DataAttribute('state', lobby.easyBreakSeconds > 0 ? 'On' : 'Off'),
+      h.AriaLabel(easyBreakLabel(lobby.easyBreakSeconds)),
+      ...pickAttributes(
+        isPicking(room),
+        Message.ClickedEasyBreakPick(),
+        'HostPicks',
+        h,
+      ),
+    ],
+    easyBreakFaceView(lobby.easyBreakSeconds, h),
+  )
 
 // NOTE: a run modifier is a tile the host turns on and off, lit when on. A
 // guest sees the same tiles, still, and a tap says the host picks.
@@ -309,6 +334,9 @@ export const picksView: {
               skullPickView(room, lobby, difficulty, h),
             ),
             isPicking(room) ? keyCapView('X') : h.empty,
+            lobby.difficulty === 'Easy'
+              ? easyBreakPickView(room, lobby, h)
+              : h.empty,
           ],
         ),
         h.div(

@@ -14,6 +14,7 @@ import {
   openBotHero,
   openHero,
   pickDifficulty,
+  pickEasyBreak,
   pickMode,
   pickModifier,
   start,
@@ -39,6 +40,7 @@ export const update = LobbyComposition.makeUpdate.withContext(picks => ({
     pickDifficulty(difficulty)(model, picks),
   ClickedModifierButton: (model, { modifier }) =>
     pickModifier(modifier)(model, picks),
+  ClickedEasyBreakButton: model => pickEasyBreak(model)(picks),
   FocusedControl: (model, { control }) => ({
     model: focusedControl(control)(model),
   }),

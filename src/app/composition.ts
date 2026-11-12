@@ -32,6 +32,7 @@ import { forgetAskedMode } from './update/home'
 import {
   addLobbyBot,
   buyHero,
+  chooseEasyBreak,
   chooseLobbyDifficulty,
   chooseMode,
   dropLobbyBot,
@@ -146,6 +147,7 @@ const LobbyBindingWithOutMessagePolicy = LobbyBinding.withOutMessagePolicy({
     ChoseMode: ({ mode }) => chooseMode(mode),
     ChoseDifficulty: ({ difficulty }) => chooseLobbyDifficulty(difficulty),
     ToggledModifier: ({ modifier }) => toggleModifier(modifier),
+    ChoseEasyBreak: ({ seconds }) => chooseEasyBreak(seconds),
     ClickedAddBot: () => addLobbyBot,
     DroppedBot: ({ index }) => dropLobbyBot(index),
     OpenedHeroPicker: () => openHeroPicker,

@@ -47,6 +47,10 @@ type DifficultyStats = Readonly<{
 // shop went (owner, 2026-11-10, reversing 2026-11-01's "no wave timers on
 // easy/medium"): 30 s on Dare and Double Dare, 20 s on the two above. The
 // open break before wave 2 still waits for READY (src/world/waves/waves.ts).
+// Dare's own clock is the lobby's pick instead (owner, 2026-11-12: "allow
+// the lobby owner to set the wave timer they want, and it can default to
+// infinite"): the World's easyBreakSeconds, EASY_BREAK_CHOICES below, so
+// Dare's breakMs is only what the tools read.
 // tempo and lullScale are the wave's rhythm (owner, 2026-11-10, the pacing
 // report's pick 8): tempo scales when each spawn and hold of a wave comes,
 // so below 1 the peaks come sooner and closer together, and lullScale
@@ -291,6 +295,34 @@ export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
 
 export const breakMsOf = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].breakMs
+
+// NOTE: Dare's break clocks the lobby offers, in seconds: none (the break
+// waits for READY), then a relaxed minute, then the clocks the difficulties
+// above use. The first is the default.
+export const EASY_BREAK_CHOICES: Array.NonEmptyReadonlyArray<number> = [
+  0, 60, 30, 20,
+]
+
+// NOTE: how long a World's next break counts down, or none when it waits
+// for READY: on Dare the lobby's pick, above it the difficulty's breakMs.
+export const breakClockMsOf = (world: World): Option.Option<number> =>
+  world.difficulty.chosen === 'Easy'
+    ? world.easyBreakSeconds > 0
+      ? Option.some(world.easyBreakSeconds * 1000)
+      : Option.none()
+    : Option.some(breakMsOf(world.difficulty.chosen))
+
+// NOTE: the pick after this one, round again, for a key that steps it.
+export const nextEasyBreakOf = (seconds: number): number => {
+  const index = Option.getOrElse(
+    Array.findFirstIndex(EASY_BREAK_CHOICES, choice => choice === seconds),
+    () => -1,
+  )
+  return Option.getOrElse(
+    Array.get(EASY_BREAK_CHOICES, (index + 1) % EASY_BREAK_CHOICES.length),
+    () => 0,
+  )
+}
 
 export const difficultySpeedScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].speedScale

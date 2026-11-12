@@ -174,12 +174,53 @@ describe('the first break waits', () => {
 })
 
 // NOTE: owner, 2026-11-10: with the shop gone every break counts down,
-// Easy and Normal too (2026-11-01 had none below Hard). READY still starts
-// the wave early. Running out is the same countdown on every difficulty, so
-// only the 20 s ones are played through.
+// Normal too (2026-11-01 had none below Hard), and 2026-11-12 takes the
+// clock off Easy again. READY still starts the wave early. Running out is
+// the same countdown on every difficulty, so only the 20 s ones are played
+// through.
 describe('the break clock by difficulty', () => {
+  it.effect('Easy has no countdown, and the wave waits for READY', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(clearingLaterWave('Easy')),
+      tick(FIXED_STEP_MS),
+      Story.model(current => {
+        expect(breakClock(current)).toEqual(
+          Option.some(BreakClock.Waiting({ elapsedMs: 0 })),
+        )
+      }),
+      ...ticks(BREAK_TICKS * 2, TICK_MS),
+      Story.model(current => {
+        expect(isBreak(current)).toBe(true)
+      }),
+      tap('Enter'),
+      Story.model(current => {
+        expect(isFighting(current)).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect.each([60, 30, 20])(
+    'Easy counts down the %s s the lobby picked',
+    seconds =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(clearingLaterWave('Easy'), {
+            easyBreakSeconds: () => seconds,
+          }),
+        ),
+        tick(FIXED_STEP_MS),
+        Story.model(current => {
+          expect(breakClock(current)).toEqual(
+            Option.some(BreakClock.Counting()),
+          )
+          expect(breakDurationMs(current)).toEqual(Option.some(seconds * 1000))
+        }),
+      ),
+  )
+
   it.effect.each([
-    { difficulty: 'Easy', breakMs: 30_000 },
     { difficulty: 'Normal', breakMs: 30_000 },
     { difficulty: 'Hard', breakMs: PREPARATION_MS },
     { difficulty: 'Nightmare', breakMs: PREPARATION_MS },

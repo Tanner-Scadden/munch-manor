@@ -29,6 +29,7 @@ import { makeHost } from '@munch/sync-engine/in-process'
 import { first, settle } from '@munch/sync-engine/testing'
 
 import {
+  ChangedEasyBreak,
   ChangedMemberCalling,
   ChangedMemberName,
   ChangedModifiers,
@@ -484,6 +485,33 @@ describe('the room scope', () => {
         })
         expect(value_14).toMatch(/Not in the lobby/)
         expect((yield* lobbyOf(server)).modifiers).toBe(9)
+      }),
+  )
+
+  it.effect(
+    "the host picks Dare's break clock, which takes back READY, and nobody else may",
+    () =>
+      Effect.gen(function* () {
+        const server = yield* created
+        yield* seat(server, BO)
+        expect((yield* lobbyOf(server)).easyBreakSeconds).toBe(0)
+        yield* push(server, BO, ChangedReady, { by: BO, ready: true })
+        const byGuest = yield* push(server, BO, ChangedEasyBreak, {
+          by: BO,
+          seconds: 60,
+        })
+        expect(byGuest).toMatch(/Only the host/)
+        const byHost = yield* push(server, ANA, ChangedEasyBreak, {
+          by: ANA,
+          seconds: 30,
+        })
+        expect(byHost).toBe('Acked')
+        const picked = yield* lobbyOf(server)
+        expect(picked.easyBreakSeconds).toBe(30)
+        expect(Array.map(picked.members, member => member.ready)).toEqual([
+          false,
+          false,
+        ])
       }),
   )
 

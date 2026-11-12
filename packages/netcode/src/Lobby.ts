@@ -231,6 +231,13 @@ export const ModifierMask = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: MAX_MODIFIER_MASK }),
 )
 
+// NOTE: Dare's break clock in seconds that the host picked
+// (EASY_BREAK_CHOICES in the game's src/world/run/difficulty.ts), 0 for
+// none: the break waits for READY. The room hands it to the game's rules
+// as it does the modifiers; it means nothing above Dare.
+export const EASY_BREAK_SECONDS = [0, 20, 30, 60] as const
+export const EasyBreakSeconds = Schema.Literals(EASY_BREAK_SECONDS)
+
 export const RoomScore = Schema.Struct({
   playerId: Schema.String,
   slot: Schema.Finite,
@@ -256,6 +263,7 @@ export const RoomRow = Schema.Struct({
   mode: RoomMode,
   difficulty: RoomDifficulty,
   modifiers: Schema.Finite,
+  easy_break_seconds: Schema.Finite,
   kept: Schema.Finite,
   round: Schema.Finite,
   created_ms: Schema.Finite,
@@ -317,6 +325,7 @@ export const Lobby = Schema.Struct({
   mode: RoomMode,
   difficulty: RoomDifficulty,
   modifiers: Schema.Finite,
+  easyBreakSeconds: Schema.Finite,
   canKeepGoing: Schema.Boolean,
   round: Schema.Finite,
   createdMs: Schema.Finite,
@@ -344,6 +353,7 @@ export const lobbyOfRows: {
     mode: room.mode,
     difficulty: room.difficulty,
     modifiers: room.modifiers,
+    easyBreakSeconds: room.easy_break_seconds,
     canKeepGoing: room.kept !== 0,
     round: room.round,
     createdMs: room.created_ms,
@@ -398,7 +408,7 @@ export const readLobby = (
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const value =
-      yield* sql`SELECT code, host, status, visibility, mode, difficulty, modifiers, kept, round, created_ms, updated_ms, result
+      yield* sql`SELECT code, host, status, visibility, mode, difficulty, modifiers, easy_break_seconds, kept, round, created_ms, updated_ms, result
           FROM ${context.table('room')} WHERE id = 1`
     const rooms = yield* rejectBadRows(decodeRoomRows(value))
     const value_1 =
@@ -562,6 +572,7 @@ export const CreatedRoom = defineMutation({
         mode,
         difficulty: DEFAULT_DIFFICULTY,
         modifiers: 0,
+        easy_break_seconds: 0,
         kept: 0,
         round: 0,
         created_ms: context.timestampMs,
@@ -734,6 +745,31 @@ export const ChangedModifiers = defineMutation({
       }
       yield* clearReady(context)
       yield* touch(context, { modifiers })
+    }),
+})
+
+// NOTE: the host picks Dare's break clock as they pick the modifiers: a
+// change takes back everyone's READY, and the same pick changes nothing.
+/** @stability unstable */
+export const ChangedEasyBreak = defineMutation({
+  name: 'ChangedEasyBreak',
+  version: 1,
+  args: Schema.Struct({ by: Schema.String, seconds: EasyBreakSeconds }),
+  scopes: [ROOM_SCOPE_KIND],
+  writer: 'Members',
+  authorize: (args, actor) => isSender(args, actor),
+  apply: ({ by, seconds }, context) =>
+    Effect.gen(function* () {
+      const lobby = yield* requireLobby(context)
+      yield* requireHost(lobby, by)
+      if (lobby.status !== 'Lobby') {
+        return yield* reject('Not in the lobby')
+      }
+      if (seconds === lobby.easyBreakSeconds) {
+        return
+      }
+      yield* clearReady(context)
+      yield* touch(context, { easy_break_seconds: seconds })
     }),
 })
 
@@ -933,6 +969,7 @@ export const RoomScope = defineScope({
     ChangedReady,
     ChangedPicks,
     ChangedModifiers,
+    ChangedEasyBreak,
     ChangedMemberCalling,
     ChangedMemberName,
     EndedGame,
@@ -1015,6 +1052,12 @@ export const RoomScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('members'))}
           ADD COLUMN intro INTEGER NOT NULL DEFAULT 0`
+      }),
+    '0010_easy_break': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('room'))}
+          ADD COLUMN easy_break_seconds INTEGER NOT NULL DEFAULT 0`
       }),
   },
 })

@@ -471,6 +471,7 @@ export class GameRoom {
             : lobby.difficulty,
           lobby.members,
           lobby.modifiers,
+          lobby.easyBreakSeconds,
         ),
         intro: introForRound(lobby.round, lobby.members),
       })
@@ -660,6 +661,7 @@ export class GameRoom {
           lobby.difficulty,
           lobby.members,
           lobby.modifiers,
+          lobby.easyBreakSeconds,
         ),
       )
       const read = readAll(checkpoint.world, rules.readSnapshot)

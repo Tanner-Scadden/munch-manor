@@ -463,6 +463,41 @@ describe('the lobby', () => {
       }),
   )
 
+  // NOTE: owner, 2026-11-12: on Dare the host picks the break's clock.
+  it.effect(
+    'on Dare the host steps the break clock; above Dare and for a guest it sends nothing',
+    () =>
+      Effect.gen(function* () {
+        const dare = { ...lobbyOf(TWO), difficulty: 'Easy' as const }
+        const clock = (seconds: number) =>
+          ChangeLobby({ change: LobbyChange.ChangedEasyBreak({ seconds }) })
+        yield* Story.story(
+          COOP,
+          Story.given(inRoom(0)),
+          Story.message(lobbyUpdate(dare)),
+          Story.message(Message.ClickedEasyBreakPick()),
+          Story.Command.resolve(clock(60), Message.CompletedChangeLobby()),
+          Story.message(lobbyUpdate({ ...dare, easyBreakSeconds: 20 })),
+          Story.message(Message.ClickedEasyBreakPick()),
+          Story.Command.resolve(clock(0), Message.CompletedChangeLobby()),
+        )
+        yield* Story.story(
+          COOP,
+          Story.given(inRoom(0)),
+          Story.message(lobbyUpdate(lobbyOf(TWO))),
+          Story.message(Message.ClickedEasyBreakPick()),
+          Story.Command.expectNone(),
+        )
+        yield* Story.story(
+          COOP,
+          Story.given(inRoom(1)),
+          Story.message(lobbyUpdate(dare)),
+          Story.message(Message.ClickedEasyBreakPick()),
+          Story.Command.expectNone(),
+        )
+      }),
+  )
+
   it.effect('a host in a room that has started picks no modifiers', () =>
     Story.story(
       COOP,

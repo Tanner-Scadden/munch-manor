@@ -249,6 +249,20 @@ export const applySeatAction: {
     Result.getOrElse(trySeatAction(world, slot, action), () => world),
 )
 
+// NOTE: a controller's Y (Triangle) cycles one way through the three
+// slots, first gun, second gun, knife, and round again (owner, 2026-11-12:
+// "one button to cycle through the weapons ... it just cycles one way").
+// With one gun it goes gun, knife, gun. It is made of Draw and Melee, so
+// the room needs nothing new.
+export const cycleWeaponAction = (player: Player): SeatAction =>
+  isWieldingMelee(player)
+    ? SeatAction.Draw({ slot: 'First' })
+    : Arsenal.match(player.arsenal, {
+        OneGun: () => SeatAction.Melee(),
+        HoldingFirst: () => SeatAction.Draw({ slot: 'Second' }),
+        HoldingSecond: () => SeatAction.Melee(),
+      })
+
 // NOTE: a tap on a HUD gun slot. On the gun in hand it reloads it; any
 // other tap draws that gun, from the knife too.
 export const gunSlotAction: {

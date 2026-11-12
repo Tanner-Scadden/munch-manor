@@ -124,12 +124,14 @@ export type RoomWorld = Readonly<{
 // NOTE: your own part of the World, for prediction: your slot and player.
 export type OwnSeat = Readonly<{ slot: PlayerSlot; player: Player }>
 
-// NOTE: `modifiers` is the host's pick (src/world/run/modifiers.ts). `callings` is what
+// NOTE: `modifiers` is the host's pick (src/world/run/modifiers.ts), and
+// `easyBreakSeconds` Dare's break clock, 0 for none. `callings` is what
 // each seat brings, by slot (the lobby's members, Lobby.ts); a slot with none
 // plays YOU. `intro` is the cut the run opens on (introForRound).
 export type RoomSettings = Readonly<{
   difficulty: Difficulty
   modifiers: Modifiers
+  easyBreakSeconds: number
   mode: RunMode
   callings: ReadonlyArray<Readonly<{ slot: PlayerSlot; calling: Calling }>>
   intro: IntroCut
@@ -142,12 +144,14 @@ export const roomSettingsOf: {
     difficulty: RoomDifficulty,
     members?: ReadonlyArray<Readonly<{ slot: number; calling: string }>>,
     modifierMask?: number,
+    easyBreakSeconds?: number,
   ): (mode: RoomMode) => RoomSettings
   (
     mode: RoomMode,
     difficulty: RoomDifficulty,
     members?: ReadonlyArray<Readonly<{ slot: number; calling: string }>>,
     modifierMask?: number,
+    easyBreakSeconds?: number,
   ): RoomSettings
 } = Function.dual(
   // NOTE: data-first has the difficulty second; data-last has the members there or nothing.
@@ -157,9 +161,11 @@ export const roomSettingsOf: {
     difficulty: RoomDifficulty,
     members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
     modifierMask: number = 0,
+    easyBreakSeconds: number = 0,
   ): RoomSettings => ({
     difficulty,
     modifiers: modifiersOfMask(modifierMask),
+    easyBreakSeconds,
     mode:
       mode === 'Endless' || mode === 'KeepGoing'
         ? RunMode.Endless()
@@ -350,6 +356,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   mode: settings.mode,
   difficulty: { chosen: settings.difficulty, nightmare: 'Locked' },
   modifiers: settings.modifiers,
+  easyBreakSeconds: settings.easyBreakSeconds,
   zombies: [],
   bullets: [],
   lobs: [],
@@ -766,6 +773,7 @@ const scoresOf = (world: World): ReadonlyArray<Score> =>
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   difficulty: 'Normal',
   modifiers: noModifiers,
+  easyBreakSeconds: 0,
   mode: RunMode.Campaign(),
   callings: [],
   intro: 'Short',

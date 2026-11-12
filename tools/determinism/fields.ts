@@ -30,6 +30,7 @@ export const FIELD_CLASSES = {
   mode: 'World',
   difficulty: 'World',
   modifiers: 'World',
+  easyBreakSeconds: 'World',
   zombies: 'World',
   bullets: 'World',
   lobs: 'World',

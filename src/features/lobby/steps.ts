@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import type { HomeMode } from '../../domain/clientSchema'
 import { maybeFocusStep } from '../../input/input'
 import type { Calling, Difficulty } from '../../shared/playerData'
-import { isLocked } from '../../world/run/difficulty'
+import { isLocked, nextEasyBreakOf } from '../../world/run/difficulty'
 import type { Modifier } from '../../world/run/modifiers'
 import { PickOutcome } from '../heroes/inMessage'
 import { isPickerOpen } from '../heroes/model'
@@ -13,6 +13,7 @@ import { HeroDialogBinding, HeroPickerBinding } from './bindings'
 import { LobbyBlock, makeNoopStep, makeStep } from './block'
 import {
   LOBBY_KEYS,
+  isEasyBreakShown,
   isModifierPickable,
   lobbyControlId,
   nextDifficultyOf,
@@ -157,6 +158,18 @@ export const pickModifier =
       ? { model, outMessage: OutMessage.ToggledModifier({ modifier }) }
       : { model }
 
+// NOTE: Dare's break clock steps to its next choice where it sits, as a
+// modifier turns, so focus stays on it for another press.
+export const pickEasyBreak = (model: Model) => (picks: LobbyPicks) =>
+  isActive(model) && isEasyBreakShown(picks)
+    ? {
+        model,
+        outMessage: OutMessage.ChoseEasyBreak({
+          seconds: nextEasyBreakOf(picks.easyBreakSeconds),
+        }),
+      }
+    : { model }
+
 // BOTS
 
 // NOTE: + BOT asks the root for a bot for the next empty seat, as its seeded
@@ -277,7 +290,7 @@ export const pressKey = (code: string) => (model: Model, picks: LobbyPicks) => {
       onSome: step =>
         focus(
           model,
-          steppedLobbyFocus(model.maybeFocus, step, picks.bots.length),
+          steppedLobbyFocus(model.maybeFocus, step, picks),
         ),
     })
   }

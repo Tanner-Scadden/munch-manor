@@ -123,6 +123,9 @@ export const toggleModifier = (modifier: Modifier) =>
     }),
   )
 
+export const chooseEasyBreak = (seconds: number) =>
+  pick(model => modifyFields(model, { easyBreakSeconds: () => seconds }))
+
 // NOTE: + BOT seats a bot in the next empty seat, with a goofy name and a
 // hero picked at random from the heroes this player has unlocked.
 export const addLobbyBot = pick(addBot)

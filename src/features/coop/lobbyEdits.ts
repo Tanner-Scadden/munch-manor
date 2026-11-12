@@ -8,6 +8,7 @@ import {
   isInLobby,
 } from '../../domain/coopRoom'
 import { cleanName, draftName, rollName } from '../../domain/playerName'
+import { nextEasyBreakOf } from '../../world/run/difficulty'
 import {
   type Modifier,
   maskOfModifiers,
@@ -65,6 +66,28 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
                         modifier,
                       ),
                     ),
+                  }),
+                ),
+              ],
+            }
+          : { model },
+    })
+
+  // DARE'S BREAK CLOCK
+
+  // NOTE: the host steps Dare's break clock, as they turn a modifier: the
+  // room takes back everyone's READY. Only on Dare is it drawn.
+  const pickEasyBreak = (model: Model, room: Room): R =>
+    Option.match(room.maybeLobby, {
+      onNone: () => ({ model }),
+      onSome: lobby =>
+        isPicking(room) && lobby.difficulty === 'Easy'
+          ? {
+              model,
+              commands: [
+                commands.changeLobby(
+                  LobbyChange.ChangedEasyBreak({
+                    seconds: nextEasyBreakOf(lobby.easyBreakSeconds),
                   }),
                 ),
               ],
@@ -168,6 +191,7 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
     })
 
   return {
+    pickEasyBreak,
     pickModifier,
     nudge,
     startNaming,

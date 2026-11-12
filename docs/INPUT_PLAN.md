@@ -104,7 +104,7 @@ The Gamepad API has no events for sticks and buttons, only `navigator.getGamepad
 | Right trigger (RT, R2)          | `trigger: 'Held'`, past a threshold of about 0.3                           |
 | A (Cross)                       | interact: READY, hold to buy, MEDIC                                        |
 | X (Square)                      | reload                                                                     |
-| Y (Triangle)                    | swap                                                                       |
+| Y (Triangle)                    | next weapon: gun, gun, knife, one way (owner, 2026-11-12)                  |
 | B (Circle) or right bumper      | knife                                                                      |
 | Left bumper                     | next trap                                                                  |
 | Left trigger                    | place trap                                                                 |

@@ -33,6 +33,7 @@ import {
   rankTagView,
   skullFaceViews,
 } from '../../ui/menuParts'
+import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
 import {
   bonusChipView,
   modifierFaceView,
@@ -59,6 +60,7 @@ import {
   MAPS,
   MODE_CONTROLS,
   SEATS,
+  isEasyBreakShown,
   isModifierPickable,
   lobbyControlId,
 } from './lobby'
@@ -514,6 +516,21 @@ const modifierPickView = (
   )
 }
 
+// NOTE: Dare's break clock, beside the skulls while Dare is picked: a
+// press steps it, ∞ (none) first.
+const easyBreakPickView = (picks: LobbyPicks, h: LobbyViewBuilder): Html =>
+  h.button(
+    [
+      ...controlAttributes('EasyBreak', h),
+      h.Type('button'),
+      h.Class('coop-pick easy-break-pick'),
+      h.DataAttribute('state', picks.easyBreakSeconds > 0 ? 'On' : 'Off'),
+      h.AriaLabel(easyBreakLabel(picks.easyBreakSeconds)),
+      h.OnClick(Message.ClickedEasyBreakButton()),
+    ],
+    easyBreakFaceView(picks.easyBreakSeconds, h),
+  )
+
 // NOTE: a map is a card with its picture and its name. With one map there
 // is nothing to pick, so it is shown chosen and takes no taps; a second map
 // makes this row a button group like the modes.
@@ -560,6 +577,9 @@ const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
             skullPickView(inputs.picks, difficulty, h),
           ),
           ...capView(inputs, LOBBY_KEYS.Difficulty.cap, h),
+          ...(isEasyBreakShown(inputs.picks)
+            ? [easyBreakPickView(inputs.picks, h)]
+            : []),
         ],
       ),
       h.div(

@@ -1,11 +1,13 @@
-import { Effect, Function, pipe } from 'effect'
+import { Effect, Function, Schema, pipe } from 'effect'
 
 import {
+  ChangedEasyBreak,
   ChangedMemberCalling,
   ChangedMemberName,
   ChangedModifiers,
   ChangedPicks,
   ChangedReady,
+  EasyBreakSeconds,
   KickedPlayer,
   LeftRoom,
 } from '@munch/netcode'
@@ -59,6 +61,12 @@ export const writeLobbyChange: {
               write(ChangedPicks, { by, mode, difficulty }),
             ChangedModifiers: ({ modifiers }) =>
               write(ChangedModifiers, { by, modifiers }),
+            // NOTE: a clock the room does not offer is never sent.
+            ChangedEasyBreak: ({ seconds }) =>
+              Effect.flatMap(
+                Schema.decodeUnknownEffect(EasyBreakSeconds)(seconds),
+                valid => write(ChangedEasyBreak, { by, seconds: valid }),
+              ),
             KickedPlayer: ({ playerId }) =>
               write(KickedPlayer, { by, playerId }),
           }),
