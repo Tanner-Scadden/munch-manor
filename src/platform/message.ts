@@ -15,6 +15,7 @@ import {
   RunSettled,
   SyncState,
 } from './playerSync'
+import { RecordUnlock } from './recording'
 import { PlayerSave } from './save'
 
 // The root's Messages from the browser and the Worker, by what they are
@@ -106,4 +107,13 @@ export const analyticsCases = {
   CompletedStartSummaryQueue: {},
   CompletedSendRunSummary: {},
   FailedSendRunSummary: { reason: Schema.String },
+}
+
+// NOTE: RECORD MY RUNS (src/app/update/recording.ts): this device's unlock,
+// the queue of runs waiting for the network, and a finished run sent.
+export const recordingCases = {
+  CompletedReadRecordUnlock: { unlock: RecordUnlock },
+  CompletedStartRecordingQueue: {},
+  CompletedUploadRecording: {},
+  FailedUploadRecording: { reason: Schema.String },
 }

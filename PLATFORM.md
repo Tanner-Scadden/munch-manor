@@ -373,6 +373,15 @@ Built on 2026-10-29, bound on every stage. The engine's side of it; the netcode 
 - **Routes** on the API Worker: `POST /room/create`, `POST /room/join` (bearer token, the sync limiter per address), `GET /room/socket?code=`, `GET /room/quick`. Without the bindings they answer `Unavailable`.
 - **Storage.** A room keeps a few rows and its log; nothing per tick touches SQLite. A room is deleted a day after its last change once no socket is open.
 
+## Recorded runs
+
+RECORD MY RUNS (November 2026, step 1 of Track B in `docs/BOT_PLAN.md`) keeps a player's own runs for training a bot that plays like them. Only the owner uses it today.
+
+- **Who sees it.** The Settings tile is hidden until a device opens the game once with `?record=1`. The unlock is kept on that device only (the store's `store_meta`, never synced). The setting itself (`recordRuns`, off by default) is part of the save and syncs like the others.
+- **What a recording holds** (`src/platform/recording.ts`): the build, the device and its changes, the run's settings (seed, mode, difficulty, modifiers, lessons, callings, bot seats), the World it starts from, each tick's intent for the local seats as compact text (`src/platform/recordingCodec.ts`), the seat actions pressed and any other edit made to the World outside the step, with their tick, and how the run ended with a hash of its last World. The teammate bots' intents are left out: the replay asks their brain again. Recording reads the World and never changes it. About 66 KB raw (21 KB gzipped) for 20 seconds of play while the aim moves.
+- **Where it goes.** At the run's end a Command gzips it and posts it to `/api/recordings?run=<id>` on the API Worker (`infra/worker/recordings.ts`), signed with the player's sync token. The Worker keeps it as it came in the `munch-manor-recordings` R2 bucket at `recordings/<player id>/<run id>.json.gz`, with an 8 MB cap and 10 a minute per player. A run that ends offline or before sync signs in waits in the store (the newest four, this device only) and goes at the next start. Nothing is kept beyond the player id from the token: no address, no headers. Turning the setting off sends nothing more and drops what waited.
+- **Replaying one.** `bun run learn:replay -- <file or URL>` plays a recording back through the plain step and checks the end. Math.sin and Math.cos round differently in the last bit from engine to engine, and the step and the bots' brain use them, so a run replays exactly only in the engine family that played it: the tool plays it in Bun (JavaScriptCore: Safari and every iPhone browser) and Node (V8: Chrome, Android, Edge) and passes when either matches. Firefox's runs have no local stand-in.
+
 ## Costs and limits
 
 Checked against Cloudflare's pricing pages on 2026-10-28.

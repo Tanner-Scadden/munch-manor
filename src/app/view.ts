@@ -310,6 +310,8 @@ const profileInputs = (model: Model): ProfileViewInputs => ({
     rumble: model.rumbleSetting,
     hasPad:
       model.lastDevice === 'Gamepad' || Option.isSome(model.input.maybeGamepad),
+    recordRuns: model.recordRuns,
+    recordUnlock: model.recordUnlock,
     shareStats: model.shareStats,
     screenFit: model.screenFit,
     orientationLock: model.orientationLock,

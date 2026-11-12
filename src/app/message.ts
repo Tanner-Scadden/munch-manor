@@ -14,6 +14,7 @@ import {
   installCases,
   loadCases,
   pageCases,
+  recordingCases,
   saveCases,
   versionCases,
 } from '../platform/message'
@@ -44,6 +45,7 @@ export const Message = defineMessageUnion({
   ...loadCases,
   ...saveCases,
   ...analyticsCases,
+  ...recordingCases,
   ...soundCases,
   ...homeCases,
   ...helpCases,

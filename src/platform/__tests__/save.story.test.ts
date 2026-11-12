@@ -307,6 +307,38 @@ describe('the schema', () => {
     expect(decodeSave(json)).toEqual(Option.some(sharingLearnedSave))
   })
 
+  test('a version 18 save keeps everything, with its runs not recorded', () => {
+    const { recordRuns: _recordRuns, ...versionEighteenSave } = {
+      ...learnedSave,
+      recordRuns: 'On',
+    }
+    const json = jsonOf({ ...versionEighteenSave, version: 18 })
+    expect(decodeSave(json)).toEqual(
+      Option.some({ ...learnedSave, recordRuns: 'Off' }),
+    )
+  })
+
+  test('a version 17 save rumbles and records nothing', () => {
+    const {
+      recordRuns: _recordRuns,
+      rumble: _rumble,
+      ...versionSeventeenSave
+    } = { ...learnedSave, recordRuns: 'On', rumble: 'Off' }
+    const json = jsonOf({ ...versionSeventeenSave, version: 17 })
+    expect(decodeSave(json)).toEqual(
+      Option.some({ ...learnedSave, rumble: 'On', recordRuns: 'Off' }),
+    )
+  })
+
+  test('recording runs round trips through JSON and the model', () => {
+    const recording: PlayerSave = { ...learnedSave, recordRuns: 'On' }
+    const decoded = decodeSave(jsonOf(recording))
+    expect(decoded).toEqual(Option.some(recording))
+    const restored = restoreSave(initialModel, recording)
+    expect(restored.recordRuns).toBe('On')
+    expect(saveOf(restored).recordRuns).toBe('On')
+  })
+
   test('a version 6 save keeps everything and gets the bold cursor', () => {
     const json = jsonOf({ ...versionSixSave, version: 6 })
     expect(decodeSave(json)).toEqual(Option.some(boldCursorSave))

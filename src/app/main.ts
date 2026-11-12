@@ -14,6 +14,7 @@ import { inputHandlers, pageHandlers, runButtonHandlers } from './update/input'
 import { lobbyHandlers } from './update/lobby'
 import { onboardingHandlers } from './update/onboarding'
 import { tickFrame } from './update/play'
+import { recordingHandlers } from './update/recording'
 import { saveHandlers } from './update/save'
 import { afterMessage } from './update/settle'
 import { soundHandlers } from './update/sound'
@@ -61,6 +62,7 @@ const handlers = makeUpdate({
   ...versionHandlers,
   ...deviceHandlers,
   ...saveHandlers,
+  ...recordingHandlers,
   ...soundHandlers,
   ...coopHandlers,
   ...lobbyHandlers,

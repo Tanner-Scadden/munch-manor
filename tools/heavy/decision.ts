@@ -338,11 +338,13 @@ const TIMING_SCRIPTS: ReadonlyArray<RegExp> = [
   auditScript('perf|perf-check|profile|measure|splash'),
 ]
 
-// NOTE: the balance bot and the determinism checks are not timed, but they
-// keep cores busy for minutes, so they size themselves to the budget.
+// NOTE: the balance bot, the determinism checks, and a recorded run's replay
+// are not timed, but they keep cores busy for minutes, so they size
+// themselves to the budget.
 const CPU_SCRIPTS: ReadonlyArray<RegExp> = [
   /(?:^|\/)balance\/(?:simulate|nightly)\.ts$/,
   /(?:^|\/)determinism\/(?:crossEngine|beforeAfter)\.ts$/,
+  /(?:^|\/)learn\/replay\.ts$/,
 ]
 
 const SHARED_SCRIPTS: ReadonlyArray<RegExp> = [

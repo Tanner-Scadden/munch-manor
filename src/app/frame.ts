@@ -17,6 +17,7 @@ import {
 } from '../input/aimAssist'
 import { couchInputs, isCouchPlay } from '../input/couch'
 import { deriveIntent } from '../input/input'
+import { RunRecorder, noteTick } from '../platform/recording'
 import { cameraOf, leanCamera, screenCameraOf } from '../render/camera'
 import { advanceTells } from '../render/heroTells'
 import { advanceJuice } from '../render/juice'
@@ -111,6 +112,25 @@ export const refreshIntent = (model: Model): Model =>
       ),
   })
 
+// NOTE: a recorded run (src/platform/recording.ts) notes each tick: the
+// World before the client's intent went in, every seat's intent, and the
+// World the step made. It reads only; the World is the same either way.
+const recordedTick = (
+  model: Model,
+  before: Model,
+  inputs: InputsByPlayer,
+): Model =>
+  RunRecorder.isAnyOf(['Recording'])(model.recorder)
+    ? modifyFields(model, {
+        recorder: noteTick({
+          before,
+          inputs,
+          after: model,
+          device: model.lastDevice,
+        }),
+      })
+    : model
+
 type Ticks = Readonly<{ count: number; carryMs: number }>
 
 // NOTE: every seat's intent for a tick: the human's from the client, the
@@ -157,9 +177,14 @@ const runTicks = (stepped: Stepped, count: number): Stepped => {
     return stepped
   }
   const intended = botsPressed(refreshIntent(stepped.model))
-  const ticked = stepWorld(intended, inputsOf(intended))
+  const inputs = inputsOf(intended)
+  const ticked = stepWorld(intended, inputs)
   const next = {
-    model: withWorld(intended, () => ticked.world),
+    model: recordedTick(
+      withWorld(intended, () => ticked.world),
+      stepped.model,
+      inputs,
+    ),
     events: [...stepped.events, ...ticked.events],
     worldMs: stepped.worldMs + ticked.worldMs,
   }

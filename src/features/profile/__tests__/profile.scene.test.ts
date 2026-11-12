@@ -334,3 +334,35 @@ describe('every entry point', () => {
     ),
   )
 })
+
+describe('RECORD MY RUNS', () => {
+  const recordTile = Scene.role('button', { name: 'Record my runs' })
+
+  it.effect('is hidden on a device never opened with ?record=1', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(homeAfterRead),
+      measureSurface,
+      Scene.click(settingsButton),
+      ...showDialogInScene(),
+      Scene.expect(Scene.role('button', { name: 'Sound' })).toExist(),
+      Scene.expect(recordTile).toBeAbsent(),
+    ),
+  )
+
+  it.effect('shows on an unlocked device, off until tapped', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
+        modifyFields(homeAfterRead, { recordUnlock: () => 'Unlocked' }),
+      ),
+      measureSurface,
+      Scene.click(settingsButton),
+      ...showDialogInScene(),
+      Scene.expect(recordTile).toHaveAttr('aria-pressed', 'false'),
+      Scene.click(recordTile),
+      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      Scene.expect(recordTile).toHaveAttr('aria-pressed', 'true'),
+    ),
+  )
+})

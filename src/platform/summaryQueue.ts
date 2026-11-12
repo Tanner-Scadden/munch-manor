@@ -19,7 +19,9 @@ import { PlayerStore } from './store'
 // apart.
 const QUEUE_SPACING: Duration.Input = '11 seconds'
 
-const isOnline: Effect.Effect<boolean> = Effect.sync(() => navigator.onLine)
+export const isOnline: Effect.Effect<boolean> = Effect.sync(
+  () => navigator.onLine,
+)
 
 const queueRunSummary = (summary: RunSummary) =>
   pipe(

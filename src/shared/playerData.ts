@@ -49,6 +49,12 @@ export type RotationSetting = typeof RotationSetting.Type
 export const RumbleSetting = Schema.Literals(['On', 'Off'])
 export type RumbleSetting = typeof RumbleSetting.Type
 
+// NOTE: whether this player's runs are recorded and sent for the bot that
+// learns to play like them (docs/BOT_PLAN.md, Track B). Off by default, and
+// shown only on a device opened once with `?record=1`.
+export const RecordRunsSetting = Schema.Literals(['On', 'Off'])
+export type RecordRunsSetting = typeof RecordRunsSetting.Type
+
 // NOTE: a calling (GAME_DESIGN.md, "Rank and Bones"): what a player brings
 // to a run. YOU is the default and has no quirk; the others unlock by rank
 // (src/world/heroes/calling.ts). It lives here, with the save's other Schemas, because
@@ -833,7 +839,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 18
+export const SAVE_VERSION = 19
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1034,7 +1040,8 @@ export type PlayerName = typeof PlayerName.Type
 // the hat on the look and the hats bought. Version 16 added the gun skin on
 // the look and renamed the hats bought to the cosmetics bought. Version 17
 // dropped the ammo tip from the onboarding. Version 18 added the rumble,
-// synced as its own last-write-wins change like the rotation.
+// synced as its own last-write-wins change like the rotation. Version 19
+// added RECORD MY RUNS, synced the same way.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1053,5 +1060,6 @@ export const PlayerSave = Schema.Struct({
   calling: Calling,
   boughtCosmetics: SavedBoughtCosmetics,
   seenUnlocks: SavedSeenUnlocks,
+  recordRuns: RecordRunsSetting,
 })
 export type PlayerSave = typeof PlayerSave.Type

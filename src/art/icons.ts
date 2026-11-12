@@ -360,6 +360,27 @@ export const SHAKE_ICON = icon([
   'X.XXXXX.X',
 ])
 
+// NOTE: RECORD MY RUNS: a tape's red dot, filled while on and a ring off.
+export const RECORD_ON_ICON = icon([
+  '..XXXXX..',
+  '.XXXXXXX.',
+  'XXXXXXXXX',
+  'XXXXXXXXX',
+  'XXXXXXXXX',
+  '.XXXXXXX.',
+  '..XXXXX..',
+])
+
+export const RECORD_OFF_ICON = icon([
+  '..XXXXX..',
+  '.X.....X.',
+  'X.......X',
+  'X.......X',
+  'X.......X',
+  '.X.....X.',
+  '..XXXXX..',
+])
+
 export const STATS_ICON = icon([
   '.......XX',
   '.......XX',

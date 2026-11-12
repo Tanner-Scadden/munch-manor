@@ -83,4 +83,5 @@ export const learnedSave: PlayerSave = {
   calling: 'TrackStar',
   boughtCosmetics: [],
   seenUnlocks: [],
+  recordRuns: 'Off',
 }

@@ -87,6 +87,17 @@ export class PlayerStore extends Context.Service<
     readonly queueSummary: (body: string) => Effect.Effect<void, StoreError>
     readonly takeQueuedSummary: Effect.Effect<Option.Option<string>, StoreError>
     readonly clearQueuedSummaries: Effect.Effect<void, StoreError>
+    // NOTE: RECORD MY RUNS (src/platform/recording.ts): this device's
+    // unlock, and its recorded runs waiting for the network. SQLite only,
+    // like the summaries: the localStorage fallback never unlocks.
+    readonly isRecordUnlocked: Effect.Effect<boolean, StoreError>
+    readonly unlockRecord: Effect.Effect<void, StoreError>
+    readonly queueRecording: (body: string) => Effect.Effect<void, StoreError>
+    readonly takeQueuedRecording: Effect.Effect<
+      Option.Option<string>,
+      StoreError
+    >
+    readonly clearQueuedRecordings: Effect.Effect<void, StoreError>
   }
 >()('munch-manor/platform/store/PlayerStore') {}
 
@@ -272,6 +283,34 @@ export const layer: Layer.Layer<PlayerStore> = Layer.effect(
       clearQueuedSummaries: Effect.asVoid(
         queued(
           opened => Effect.mapError(opened.clearQueuedSummaries, toStoreError),
+          undefined,
+        ),
+      ),
+      isRecordUnlocked: queued(
+        opened => Effect.mapError(opened.isRecordUnlocked, toStoreError),
+        false,
+      ),
+      unlockRecord: Effect.asVoid(
+        queued(
+          opened => Effect.mapError(opened.unlockRecord, toStoreError),
+          undefined,
+        ),
+      ),
+      queueRecording: body =>
+        Effect.asVoid(
+          queued(
+            opened =>
+              Effect.mapError(opened.queueRecording(body), toStoreError),
+            undefined,
+          ),
+        ),
+      takeQueuedRecording: queued(
+        opened => Effect.mapError(opened.takeQueuedRecording, toStoreError),
+        Option.none<string>(),
+      ),
+      clearQueuedRecordings: Effect.asVoid(
+        queued(
+          opened => Effect.mapError(opened.clearQueuedRecordings, toStoreError),
           undefined,
         ),
       ),

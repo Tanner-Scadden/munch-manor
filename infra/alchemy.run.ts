@@ -55,7 +55,12 @@ const infraEffect = Effect.map(Path.Path, path =>
 // address hash, and its own rate limit namespaces. The free plan allows
 // 100,000 Worker requests and 100,000 D1 rows written a day; one run writes
 // one row.
-const RATE_LIMIT_NAMESPACES = { visit: 7101, address: 7102, sync: 7103 }
+const RATE_LIMIT_NAMESPACES = {
+  visit: 7101,
+  address: 7102,
+  sync: 7103,
+  recordings: 7104,
+}
 
 const RUNS_PER_VISIT_PER_MINUTE = 6
 const RUNS_PER_ADDRESS_PER_MINUTE = 60
@@ -63,6 +68,11 @@ const RUNS_PER_ADDRESS_PER_MINUTE = 60
 // NOTE: identity requests (challenges, sessions, link codes) per address.
 // Sync messages themselves need a token and go to the scope's object.
 const SYNC_REQUESTS_PER_ADDRESS_PER_MINUTE = 30
+
+// NOTE: recorded runs (worker/recordings.ts) per player. A run takes minutes,
+// so ten a minute only stops a client gone wrong; the game's queue sends
+// what waited 7 seconds apart.
+const RECORDINGS_PER_PLAYER_PER_MINUTE = 10
 
 // NOTE: the analytics retention cleanup (worker/main.ts) runs once a day at
 // 04:17 UTC and deletes run rows older than 90 days. Only production gets
@@ -88,6 +98,14 @@ const Analytics = Effect.gen(function* () {
 
   // NOTE: signs sync session tokens and challenges. Made once per stage.
   const syncSecret = yield* Alchemy.makeRandom('SyncSecret')
+
+  // NOTE: RECORD MY RUNS (worker/recordings.ts): each recorded run, one
+  // object per run under its player's id, for training a bot that plays like
+  // them (docs/BOT_PLAN.md). Private: only the Worker writes it, and the
+  // owner reads it with wrangler. The free tier holds 10 GB.
+  const recordings = yield* Cloudflare.R2.Bucket('Recordings', {
+    name: stageName('munch-manor-recordings', stage),
+  })
 
   return yield* Cloudflare.Worker('Api', {
     name: apiWorkerName(stage),
@@ -123,6 +141,11 @@ const Analytics = Effect.gen(function* () {
       // free plan allows, and neither ticks while idle.
       GAME_ROOMS: Cloudflare.DurableObject('GameRoom'),
       MATCHMAKER: Cloudflare.DurableObject('Matchmaker'),
+      RECORDINGS: recordings,
+      RECORDINGS_BY_PLAYER: Cloudflare.RateLimit('RECORDINGS_BY_PLAYER', {
+        namespaceId: RATE_LIMIT_NAMESPACES.recordings,
+        simple: { limit: RECORDINGS_PER_PLAYER_PER_MINUTE, period: 60 },
+      }),
     },
     build: {
       input: { resolve: { alias: { effect: effectAlias } } },

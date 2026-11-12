@@ -13,7 +13,9 @@ import {
   LoadFonts,
   LoadSave,
   LoadStyles,
+  ReadRecordUnlock,
   ReadUpdateMarker,
+  StartRecordingQueue,
   StartSummaryQueue,
 } from './boot'
 import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
@@ -31,6 +33,7 @@ import {
   WaitForUnwrap,
 } from './update/home'
 import { CueMusic } from './update/music'
+import { UploadRecording } from './update/recording'
 import { ApplyRotation } from './update/rotation'
 import { Rumble } from './update/rumble'
 import {
@@ -96,6 +99,9 @@ export const CommandsLayer = Layer.mergeAll(
   GenerateVisitId.layer,
   StartSummaryQueue.layer,
   SendRunSummary.layer,
+  ReadRecordUnlock.layer,
+  StartRecordingQueue.layer,
+  UploadRecording.layer,
   managedResources.layer,
 )
 

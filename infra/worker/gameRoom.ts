@@ -441,19 +441,17 @@ export class GameRoom {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0] ?? nowMs
       const isNightmareOpen = yield* this.nightmareOf(lobby.host)
       yield* this.forgetKept
-      const world = roomWorldFor(
-        {
-          ...roomSettingsOf(
-            lobby.mode,
-            lobby.difficulty === 'Nightmare' && !isNightmareOpen
-              ? 'Hard'
-              : lobby.difficulty,
-            lobby.members,
-            lobby.modifiers,
-          ),
-          intro: introForRound(lobby.round, lobby.members),
-        },
-      )
+      const world = roomWorldFor({
+        ...roomSettingsOf(
+          lobby.mode,
+          lobby.difficulty === 'Nightmare' && !isNightmareOpen
+            ? 'Hard'
+            : lobby.difficulty,
+          lobby.members,
+          lobby.modifiers,
+        ),
+        intro: introForRound(lobby.round, lobby.members),
+      })
       const started = Room.startRoom(
         world,
         Array.map(lobby.members, member => ({

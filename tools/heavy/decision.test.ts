@@ -626,7 +626,7 @@ describe('jobClassOf', () => {
     )
   })
 
-  test('runs the balance bot and determinism as CPU', () => {
+  test('runs the balance bot, determinism, and the replay as CPU', () => {
     Array.forEach(
       [
         ['bun', 'tools/balance/simulate.ts', '100'],
@@ -634,6 +634,7 @@ describe('jobClassOf', () => {
         ['bun', 'tools/balance/nightly.ts'],
         ['bun', 'tools/determinism/crossEngine.ts'],
         ['bun', 'tools/determinism/beforeAfter.ts', 'origin/main'],
+        ['bun', 'tools/learn/replay.ts', 'run.json.gz'],
       ],
       command => {
         expect(classOf(...command)).toStrictEqual(JobClass.cases.Cpu.make({}))

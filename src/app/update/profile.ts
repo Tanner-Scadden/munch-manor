@@ -139,6 +139,11 @@ const toggleShareStats = (model: Model): Model =>
     shareStats: setting => (setting === 'On' ? 'Off' : 'On'),
   })
 
+const toggleRecordRuns = (model: Model): Model =>
+  modifyFields(model, {
+    recordRuns: setting => (setting === 'On' ? 'Off' : 'On'),
+  })
+
 // NOTE: each tile toggles its setting; sound, music, and full screen as
 // their buttons elsewhere do.
 const SETTING_TILES: Readonly<Record<SettingTile, UpdateStep>> = {
@@ -150,6 +155,7 @@ const SETTING_TILES: Readonly<Record<SettingTile, UpdateStep>> = {
   Rotation: modelStep(toggleRotation),
   Rumble: modelStep(toggleRumble),
   ShareStats: modelStep(toggleShareStats),
+  RecordRuns: modelStep(toggleRecordRuns),
 }
 
 export const clickedSetting = (setting: SettingTile): UpdateStep =>

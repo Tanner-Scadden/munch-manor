@@ -105,7 +105,7 @@ const ALLOWED: ReadonlyArray<
   Readonly<{ file: string; name: string; reason: string }>
 > = [
   {
-    file: 'tools/determinism/build.ts',
+    file: 'tools/determinism/bundle.ts',
     name: 'stringSource',
     reason:
       'determinism:diff copies tools/determinism into an older checkout, so it imports only src and effect',
@@ -139,6 +139,12 @@ const ALLOWED: ReadonlyArray<
     name: 'SpriteKeys',
     reason:
       'a list of strings that means sprite keys here and power-up ids in SavedPowerUps: the same shape, not one value',
+  },
+  {
+    file: 'src/platform/recording.ts',
+    name: 'RecordUnlock',
+    reason:
+      'whether this device opened ?record=1, kept apart from the synced save; SavedNightmare is a save field with the same two words, not one value',
   },
 ]
 

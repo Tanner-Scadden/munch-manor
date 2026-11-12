@@ -100,6 +100,7 @@ export const legacySave: PlayerSave = {
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],
+  recordRuns: 'Off',
 }
 
 export interface FakeLegacy {

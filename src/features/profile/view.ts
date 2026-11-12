@@ -17,6 +17,8 @@ import {
   NAME_ICON,
   PHONE_ICON,
   PORTAL_ICON,
+  RECORD_OFF_ICON,
+  RECORD_ON_ICON,
   REWIND_ICON,
   RUMBLE_ICON,
   SETTINGS_ICON,
@@ -641,6 +643,8 @@ const shownWhen = (isShown: boolean, toggle: Toggle): ReadonlyArray<Toggle> =>
 // cursor on a mouse, full screen where the browser can do it, and, on a
 // phone that can lock how it turns, ROTATE: off keeps it sideways, on lets
 // it follow the phone. RUMBLE shows once a controller is plugged in.
+// RECORD shows only on a device opened once with `?record=1`
+// (src/platform/recording.ts).
 const settingTiles = ({
   device,
   settings,
@@ -709,6 +713,15 @@ const settingTiles = ({
     offIcon: RUMBLE_ICON,
     maybeKey: Option.none(),
     setting: 'Rumble',
+  }),
+  ...shownWhen(settings.recordUnlock === 'Unlocked', {
+    label: 'Record my runs',
+    shortLabel: 'RECORD',
+    isOn: settings.recordRuns === 'On',
+    onIcon: RECORD_ON_ICON,
+    offIcon: RECORD_OFF_ICON,
+    maybeKey: Option.none(),
+    setting: 'RecordRuns',
   }),
 ]
 

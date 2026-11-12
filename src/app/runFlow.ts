@@ -1,13 +1,15 @@
 import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { activeBots, seatCallings } from '../domain/bots'
+import { activeBots, crewBotSlots, seatCallings } from '../domain/bots'
 import {
   raiseDebutCard,
   settleLessons,
 } from '../features/onboarding/onboarding'
+import { RunRecorder, beginRecording } from '../platform/recording'
+import { RUNNING_BUILD } from '../platform/version'
 import { rollDare } from '../world/dare/dare'
-import { seatCrew, withStartingHearts } from '../world/party/party'
+import { focusOf, seatCrew, withStartingHearts } from '../world/party/party'
 import { beginArrival } from '../world/run/arrival'
 import { rigTutorialCase } from '../world/run/tutorialRules'
 import { withWorld } from '../world/schema/world'
@@ -31,7 +33,28 @@ const introCutOf = (model: Model): IntroCut =>
 // lobby's bots sit after them, all before the first wave is rolled, so the
 // wave already counts them. Each bot plays its own hero, as a co-op seat
 // does (src/world/net/roomWorld.ts).
-const startRun = (model: Model, mode: RunMode): Model => {
+const startRun = (model: Model, mode: RunMode): Model =>
+  recordedFromStart(startedRun(model, mode))
+
+// NOTE: a run starts its recording (src/platform/recording.ts) from the
+// World it starts with, when this device shows RECORD MY RUNS and it is on.
+const recordedFromStart = (model: Model): Model =>
+  modifyFields(model, {
+    recorder: () =>
+      model.recordUnlock === 'Unlocked' && model.recordRuns === 'On'
+        ? beginRecording({
+            world: model,
+            maybeVisitId: model.maybeVisitId,
+            build: RUNNING_BUILD,
+            device: model.lastDevice,
+            localPlayers: model.localPlayers,
+            botSlots: crewBotSlots(model),
+            focusSlot: focusOf(model).seat.slot,
+          })
+        : RunRecorder.Idle(),
+  })
+
+const startedRun = (model: Model, mode: RunMode): Model => {
   const bots = activeBots(model)
   return withWorld(
     {

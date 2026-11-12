@@ -3,6 +3,7 @@ import { Effect, Option, Random, pipe } from 'effect'
 import { spriteWarmUpSources } from '../art/appearance'
 import { generateVisitId } from '../platform/analyticsBeacon'
 import type { ScreenFit } from '../platform/deviceSchema'
+import { startRecordingQueue } from '../platform/recordingUpload'
 import {
   awaitFirstFrame,
   decodeImages,
@@ -291,6 +292,59 @@ export const StartSummaryQueue = ApplicationBlock.makeCommand(
   },
 )
 
+// NOTE: a device opened once with `?record=1` shows RECORD MY RUNS from
+// then on (src/platform/recording.ts): the mark is kept in the store, on
+// this device alone.
+const RECORD_PARAM = 'record'
+
+const isRecordAsked: Effect.Effect<boolean> = Effect.orElseSucceed(
+  Effect.try({
+    try: () => new URLSearchParams(location.search).get(RECORD_PARAM) === '1',
+    catch: toBrowserError,
+  }),
+  () => false,
+)
+
+export const ReadRecordUnlock = ApplicationBlock.makeCommand(
+  'ReadRecordUnlock',
+  {
+    messages: [Message.CompletedReadRecordUnlock],
+    handler: function* () {
+      return () =>
+        Effect.gen(function* () {
+          const store = yield* PlayerStore
+          const isAsked = yield* isRecordAsked
+          if (isAsked) {
+            yield* Effect.orElseSucceed(store.unlockRecord, () => undefined)
+          }
+          const isKept = yield* Effect.orElseSucceed(
+            store.isRecordUnlocked,
+            () => false,
+          )
+          return Message.CompletedReadRecordUnlock({
+            unlock: isAsked || isKept ? 'Unlocked' : 'Locked',
+          })
+        })
+    },
+  },
+)
+
+// NOTE: recorded runs that ended offline are sent now, in the background,
+// like the summaries.
+export const StartRecordingQueue = ApplicationBlock.makeCommand(
+  'StartRecordingQueue',
+  {
+    messages: [Message.CompletedStartRecordingQueue],
+    handler: function* () {
+      return () =>
+        Effect.as(
+          Effect.forkDetach(startRecordingQueue()),
+          Message.CompletedStartRecordingQueue(),
+        )
+    },
+  },
+)
+
 // BOOT
 
 // NOTE: a share sheet is there when the browser has navigator.share; only a
@@ -320,6 +374,8 @@ export const bootCommands = () => [
   GenerateSeed(),
   GenerateVisitId(),
   StartSummaryQueue(),
+  ReadRecordUnlock(),
+  StartRecordingQueue(),
   DetectInputDevice(),
   DetectShareSheet(),
   DetectScreenFit(),
