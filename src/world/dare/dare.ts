@@ -411,6 +411,51 @@ export const isWorkingFind: {
   )
 })
 
+// NOTE: the room's find the player at `slot` is working, with its style,
+// spot, and how far it has come, 0 to 1, for the client's motions
+// (src/render/actionPose.ts). A read, changing nothing.
+export const maybeFindWorkOf: {
+  (
+    slot: PlayerSlot,
+  ): (
+    world: World,
+  ) => Option.Option<
+    Readonly<{ style: FindStyle; spot: Vector; share: number }>
+  >
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): Option.Option<Readonly<{ style: FindStyle; spot: Vector; share: number }>>
+} = Function.dual(
+  2,
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): Option.Option<
+    Readonly<{ style: FindStyle; spot: Vector; share: number }>
+  > => {
+    if (
+      !Array.isReadonlyArrayNonEmpty(world.dareThings) ||
+      !isHunting(world.phase)
+    ) {
+      return Option.none()
+    }
+    const level = levelOf(world)
+    return Array.findFirst(world.dareThings, thing =>
+      Option.map(
+        Option.filter(maybeWorkSpot(world, level, thing), ({ spot, style }) =>
+          isWorkingAt(world, slot, spot, style),
+        ),
+        ({ spot, style, workedMs }) => ({
+          style,
+          spot,
+          share: Math.min(1, workedMs / FIND_RULES[style].workMs),
+        }),
+      ),
+    )
+  },
+)
+
 // NOTE: one thing's work: each player at it adds their share, nobody at it
 // drains it at half pace, and full, it is found by the first worker in
 // slot order.

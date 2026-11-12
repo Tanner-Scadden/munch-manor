@@ -24,7 +24,9 @@ import {
 import { isTickingShot } from '../../features/hud/ammoWarning'
 import { maybeKitchenSound } from '../../features/kitchen/kitchenCall'
 import { STATION_SOUNDS } from '../../features/stations/stationView'
+import { strikesBetween } from '../../render/actionPose'
 import { mendedSpots } from '../../render/heroTells'
+import type { Motion } from '../../render/renderSchema'
 import { PICKUPS } from '../../world/gear/powerups'
 import { TRAPS } from '../../world/gear/traps'
 import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
@@ -311,6 +313,43 @@ export const mendCues: {
       sound: 'Tink' as const,
       variation: positionVariation(spot.x, spot.y),
     })),
+  ),
+)
+
+// NOTE: a CPR push lands a soft thump, and a hammer on a board its knock,
+// read from the hands-on actions' watch (src/render/actionPose.ts), one a
+// frame at most, so the room's World needs nothing new.
+const STRIKE_SOUNDS: Readonly<
+  Record<Motion, Option.Option<SoundCue['sound']>>
+> = {
+  Compress: Option.some('ChestPush'),
+  Hammer: Option.some('HammerTap'),
+  Rummage: Option.none(),
+  Yank: Option.none(),
+  Haul: Option.none(),
+  Crank: Option.none(),
+  Pull: Option.none(),
+  Push: Option.none(),
+  Shove: Option.none(),
+  Stir: Option.none(),
+  Pry: Option.none(),
+}
+
+export const strikeCues: {
+  (after: Model): (before: Model) => ReadonlyArray<SoundCue>
+  (before: Model, after: Model): ReadonlyArray<SoundCue>
+} = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
+  pipe(
+    strikesBetween(before.actionWatch, after.actionWatch),
+    Array.flatMap(({ motion, x, y }) =>
+      Option.toArray(
+        Option.map(STRIKE_SOUNDS[motion], sound => ({
+          sound,
+          variation: positionVariation(x, y),
+        })),
+      ),
+    ),
+    Array.take(1),
   ),
 )
 

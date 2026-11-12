@@ -66,7 +66,14 @@ import {
   SyncState,
 } from '../platform/playerSync'
 import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
-import { Decal, Particle, TellWatch, noTellWatch } from '../render/renderSchema'
+import {
+  ActionWatch,
+  Decal,
+  Particle,
+  TellWatch,
+  noActionWatch,
+  noTellWatch,
+} from '../render/renderSchema'
 import { DEFAULT_SEED } from '../shared/constants'
 import {
   Appearance,
@@ -137,6 +144,7 @@ export const Model = Schema.Struct({
   decals: Schema.Array(Decal),
   dustCooldownMs: Schema.Finite,
   tellWatch: TellWatch,
+  actionWatch: ActionWatch,
   shake: Shake,
   popups: Schema.Array(Popup),
   streak: Streak,
@@ -322,6 +330,7 @@ export const initialModel: OwnModel = {
   decals: [],
   dustCooldownMs: 0,
   tellWatch: noTellWatch,
+  actionWatch: noActionWatch,
   nextEntityId: 0,
   fridge: shutFridge,
   pantry: barePantry,

@@ -16,7 +16,7 @@ import {
 import { startingCallingOf } from '../features/heroes/callingPick'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
-import { noTellWatch } from '../render/renderSchema'
+import { noActionWatch, noTellWatch } from '../render/renderSchema'
 import { rollCases } from '../world/feats/cases'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
@@ -65,6 +65,7 @@ export type RunFields = Pick<
   | 'decals'
   | 'dustCooldownMs'
   | 'tellWatch'
+  | 'actionWatch'
   | 'fridge'
   | 'pantry'
   | 'stove'
@@ -135,6 +136,7 @@ export const freshRun = (model: Model): RunFields => ({
   decals: [],
   dustCooldownMs: 0,
   tellWatch: noTellWatch,
+  actionWatch: noActionWatch,
   fridge: shutFridge,
   pantry: barePantry,
   stove: freshStove(model.rngState),

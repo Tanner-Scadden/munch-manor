@@ -21,10 +21,12 @@ import { type Seeded, nextRandom } from '../shared/prng'
 import {
   type Palette,
   type SpriteFrames,
+  type SpriteSet,
   TRANSPARENT,
   padRow,
   recordedSpriteSources,
   spriteFrames,
+  spriteSet,
 } from './sprite'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './sprites/hatArt'
 
@@ -269,6 +271,52 @@ const exhaleRows = (top: OutfitArt['top']): Rows => [
   `S${top[0]}G`,
   `.${top[2]}G`,
 ]
+
+// NOTE: the hands of an action stance (src/render/actionPose.ts): each
+// arm's hand on a torso row, raised over the head, or out of sight. The
+// back arm is column 0 and the front arm column 7, where the gun strap
+// hangs: the figure faces right as drawn and is mirrored to face left.
+type Hand = HandRow | 'Up' | 'Hidden'
+
+const ARMS_UP_ROWS = 5
+
+const armColumn = (hand: Hand, y: number, rest: string): string => {
+  if (hand === y) {
+    return 'S'
+  }
+  return hand === 'Up' && y === 0 ? 'B' : rest
+}
+
+const actTorsoRows = (top: OutfitArt['top'], back: Hand, front: Hand): Rows =>
+  Array.map(
+    top,
+    (middle, y) =>
+      `${armColumn(back, y, '.')}${middle}${armColumn(front, y, y === 0 ? '.' : 'G')}`,
+  )
+
+// NOTE: a raised arm, over the face's rows: the hand at the top of the
+// head and the sleeve down to the shoulder.
+const raisedArmRows = (back: Hand, front: Hand): Rows =>
+  Array.makeBy(ARMS_UP_ROWS + 1, y => {
+    const symbol = y === 0 ? 'S' : 'B'
+    return `${back === 'Up' ? symbol : '.'}......${front === 'Up' ? symbol : '.'}`
+  })
+
+// NOTE: kneeling on the floor, as one row: the back shoe, the thighs in
+// the outfit's own leg color (a dress's hem), and the front shoe.
+const kneelRow = (stand: Rows): string => {
+  const thigh = Option.getOrElse(
+    Array.findFirst(
+      String.split(
+        Option.getOrElse(Array.head(stand), () => ''),
+        '',
+      ),
+      symbol => symbol !== TRANSPARENT,
+    ),
+    () => 'L',
+  )
+  return `K${String.repeat(6)(thigh)}K`
+}
 
 // BODY SHAPES
 
@@ -537,7 +585,58 @@ export const printSwatchRows = (print: Print): Rows =>
 
 type FramePixels = Array.NonEmptyReadonlyArray<Rows>
 
-type PlayerPixels = Readonly<{ walk: FramePixels; idle: FramePixels }>
+// NOTE: the stances a player's hands-on actions are drawn in
+// (src/render/actionPose.ts), each one frame: standing with the front hand
+// out low, level, or high; an arm or both raised over the head; and
+// kneeling with the front hand low, level, or raised.
+const ACT_STANCES = [
+  'Reach',
+  'ReachLow',
+  'ReachHigh',
+  'FrontUp',
+  'BackUp',
+  'BothUp',
+  'KneelLow',
+  'KneelMid',
+  'KneelUp',
+] as const
+export type ActStance = (typeof ACT_STANCES)[number]
+
+type StanceArt = Readonly<{ back: Hand; front: Hand; isKneeling: boolean }>
+
+const STANCE_ART: Readonly<Record<ActStance, StanceArt>> = {
+  Reach: { back: 'Hidden', front: 1, isKneeling: false },
+  ReachLow: { back: 'Hidden', front: 2, isKneeling: false },
+  ReachHigh: { back: 1, front: 0, isKneeling: false },
+  FrontUp: { back: 2, front: 'Up', isKneeling: false },
+  BackUp: { back: 'Up', front: 1, isKneeling: false },
+  BothUp: { back: 'Up', front: 'Up', isKneeling: false },
+  KneelLow: { back: 'Hidden', front: 2, isKneeling: true },
+  KneelMid: { back: 'Hidden', front: 1, isKneeling: true },
+  KneelUp: { back: 2, front: 'Up', isKneeling: true },
+}
+
+// NOTE: where a stance's front hand is from the feet, facing right, for a
+// tool held in it (src/render/actionView.ts): its pixel's top left. Every
+// stance is the standing frame's twelve rows: a blank row, the face, the
+// torso, and two rows of legs, or kneeling, two blank rows and one of legs.
+const FRAME_ROWS = 1 + FACE.length + 3 + 2
+
+export const frontHandOf = (
+  stance: ActStance,
+): Readonly<{ x: number; y: number }> => {
+  const { front, isKneeling } = STANCE_ART[stance]
+  const top = isKneeling ? 2 : 1
+  const row =
+    front === 'Up' ? top : top + FACE.length + (front === 'Hidden' ? 1 : front)
+  return { x: PLAYER_WIDTH - 1 - PLAYER_WIDTH / 2, y: row - FRAME_ROWS }
+}
+
+type PlayerPixels = Readonly<{
+  walk: FramePixels
+  idle: FramePixels
+  act: Readonly<Record<ActStance, Rows>>
+}>
 
 export const playerPixels: {
   (calling?: Calling): (appearance: Appearance) => PlayerPixels
@@ -551,7 +650,7 @@ export const playerPixels: {
 
     // NOTE: the torso's pixel rows read the print by their own row: the full
     // torso its three rows, the exhale its top and bottom.
-    const upper = (torso: Rows, isExhale: boolean): Rows => {
+    const upper = (torso: Rows, isExhale: boolean, raised: Rows = []): Rows => {
       const torsoRowOf = (y: number) => (isExhale && y === 1 ? 2 : y)
       const printed = withBodyProp(
         withPrint(
@@ -565,12 +664,11 @@ export const playerPixels: {
       const bearded = appearance.beard ? overlayRows(printed, BEARD) : printed
       const haired = overlayRows(bearded, hair)
       const glassed = appearance.glasses ? overlayRows(haired, GLASSES) : haired
-      return withHat(
+      const propped =
         appearance.hat === 'None'
           ? overlayRows(glassed, CALLING_PROPS[calling])
-          : glassed,
-        appearance,
-      )
+          : glassed
+      return withHat(overlayRows(propped, raised), appearance)
     }
     const legs = (rows: Rows) =>
       Array.map(shape.legs(rows), row => sneakered(calling, row))
@@ -608,6 +706,23 @@ export const playerPixels: {
           ...legs(outfit.legs.stand),
         ],
       ],
+      act: Record.map(STANCE_ART, ({ back, front, isKneeling }) => {
+        const raised =
+          back === 'Up' || front === 'Up' ? raisedArmRows(back, front) : []
+        const torso = upper(
+          actTorsoRows(outfit.top, back, front),
+          false,
+          raised,
+        )
+        return isKneeling
+          ? [
+              BLANK_ROW,
+              BLANK_ROW,
+              ...torso,
+              ...legs([kneelRow(outfit.legs.stand)]),
+            ]
+          : [BLANK_ROW, ...torso, ...legs(outfit.legs.stand)]
+      }),
     }
   },
 )
@@ -634,6 +749,7 @@ export const hatHeadRows = (look: Appearance): Rows => {
 type PlayerSprites = Readonly<{
   walk: SpriteFrames
   idle: SpriteFrames
+  act: Readonly<Record<ActStance, SpriteSet>>
 }>
 
 const buildPlayerSprites = (
@@ -645,6 +761,9 @@ const buildPlayerSprites = (
   return {
     walk: spriteFrames(pixels.walk, palette, PLAYER_WIDTH / 2),
     idle: spriteFrames(pixels.idle, palette, PLAYER_WIDTH / 2),
+    act: Record.map(pixels.act, rows =>
+      spriteSet(rows, palette, PLAYER_WIDTH / 2),
+    ),
   }
 }
 

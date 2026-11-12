@@ -17,6 +17,7 @@ import {
 } from '../input/aimAssist'
 import { couchInputs, isCouchPlay } from '../input/couch'
 import { deriveIntent } from '../input/input'
+import { advanceActions } from '../render/actionFrame'
 import { cameraOf, leanCamera, screenCameraOf } from '../render/camera'
 import { advanceTells } from '../render/heroTells'
 import { advanceJuice } from '../render/juice'
@@ -287,11 +288,17 @@ const advanceFlourishes = (
           advanceJuice(
             advanceCallouts(
               ageTrapNotice(
-                advanceTells(
-                  worldMs > 0
-                    ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
-                    : model,
-                  worldMs,
+                advanceActions(
+                  advanceTells(
+                    worldMs > 0
+                      ? advanceParticles(
+                          model,
+                          worldMs / MS_PER_SECOND,
+                          worldMs,
+                        )
+                      : model,
+                    worldMs,
+                  ),
                 ),
                 worldMs,
               ),
