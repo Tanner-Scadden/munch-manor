@@ -17,11 +17,8 @@ import {
 import { initialModel } from '../../../app/pureApp'
 import { KABOOMER_FUSE_MAX } from '../../../art/sprites/zombies'
 import { wavePreviewLabel } from '../../../features/hud/wavePreview'
-import {
-  kaboomerFuseLength,
-  kaboomerSparkMs,
-  zombieGroundShapes,
-} from '../../../render/zombieView'
+import { zombieGroundShapes } from '../../../render/zombieGroundView'
+import { kaboomerFuseLength, kaboomerSparkMs } from '../../../render/zombieView'
 import { debutPitch } from '../../../screens/game/menus'
 import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'

@@ -9,7 +9,8 @@ import {
   isSmallKind,
 } from '../../../src/world/fridge/fridgeWeapons'
 import { heldGun, isWieldingMelee } from '../../../src/world/gear/weapons'
-import { hasLineOfSight, levelOf } from '../../../src/world/level/arena'
+import { levelOf } from '../../../src/world/level/arena'
+import { hasLineOfSight } from '../../../src/world/level/tileQueries'
 import { focusOf } from '../../../src/world/party/party'
 import { bodyRadiusOf } from '../../../src/world/zombies/zombies'
 import {

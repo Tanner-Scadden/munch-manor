@@ -41,7 +41,8 @@ import {
   perkPierce,
   spendRound,
 } from '../gear/weapons'
-import { type Level, findStrike, isInsideRoomAt, levelOf } from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
+import { findStrike, isInsideRoomAt } from '../level/tileQueries'
 import {
   atSeat,
   creditShots,

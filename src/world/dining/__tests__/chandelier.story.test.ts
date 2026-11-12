@@ -13,14 +13,9 @@ import {
   withPlayerAt,
 } from '../../../test/model.fixture'
 import { APPLICATION, bulletInto, ticks, zombieAt } from '../../../test/testing'
-import {
-  MANOR,
-  findStrike,
-  isWalkableTile,
-  levelFor,
-  levelOf,
-} from '../../level/arena'
+import { MANOR, levelFor, levelOf } from '../../level/arena'
 import { CHANDELIER_DROP, MANOR_SPEC } from '../../level/plan'
+import { findStrike, isWalkableTile } from '../../level/tileQueries'
 import { focusOf } from '../../party/party'
 import {
   CHANDELIER_RULES,

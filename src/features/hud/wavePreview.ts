@@ -16,8 +16,9 @@ import { BOSS_ICON, ZOMBIE_SPRITES } from '../../art/sprites/zombies'
 import { type Camera, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { type Box, screenOf } from '../../render/screen'
-import { DOOR_OUTWARD, type Level, levelOf } from '../../world/level/arena'
+import { type Level, levelOf } from '../../world/level/arena'
 import { exitBoxOf } from '../../world/level/exits'
+import { DOOR_OUTWARD } from '../../world/level/tileGrid'
 import { isCoop } from '../../world/party/party'
 import type {
   DoorId,

@@ -3,14 +3,14 @@ import type { Canvas } from 'foldkit'
 
 import { type Palette, mirrorRows } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
+import type { Level } from '../../world/level/arena'
 import {
   COVER_SYMBOLS,
   type CoverKind,
-  type Level,
   type Tile,
   symbolAt,
   tilesWithSymbol,
-} from '../../world/level/arena'
+} from '../../world/level/tileGrid'
 import { pixelArt, rect } from '../drawing'
 import {
   fridgeShapes,

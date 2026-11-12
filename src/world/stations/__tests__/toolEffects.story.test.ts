@@ -22,8 +22,10 @@ import {
   zombieOf,
 } from '../../../test/testing'
 import { DareThingState } from '../../dare/dareSchema'
-import { boxCenter, isSolidAt, levelOf } from '../../level/arena'
+import { levelOf } from '../../level/arena'
 import { CELLAR_ROOM_ID, PARLOUR_ROOM_ID } from '../../level/plan'
+import { boxCenter } from '../../level/tileGrid'
+import { isSolidAt } from '../../level/tileQueries'
 import { heapBoxOf, isHeapDown } from '../../library/stacks'
 import { focusOf } from '../../party/party'
 import type { Vector, Zombie } from '../../schema/worldSchema'

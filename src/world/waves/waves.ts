@@ -12,7 +12,8 @@ import { type Seeded, nextRandom } from '../../shared/prng'
 import { hungrierSpawns, isCrewOut, summonAtFrontDoor } from '../dare/finale'
 import { readyPointsFor } from '../heroes/rank'
 import { KEY_RULES, grantKeys } from '../keys/keys'
-import { doorSpawnPoint, levelOf } from '../level/arena'
+import { levelOf } from '../level/arena'
+import { doorSpawnPoint } from '../level/tileQueries'
 import {
   focusOf,
   isCoop,

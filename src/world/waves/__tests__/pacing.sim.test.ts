@@ -26,7 +26,8 @@ import {
   settleRunCommands,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
-import { PARLOUR, nearestDoor } from '../../level/arena'
+import { PARLOUR } from '../../level/arena'
+import { nearestDoor } from '../../level/tileQueries'
 import { doorCounts, rollWave } from '../endlessWaves'
 import { FINAL_WAVE } from '../wavePlans'
 

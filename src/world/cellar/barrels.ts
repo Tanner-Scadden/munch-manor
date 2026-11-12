@@ -1,13 +1,9 @@
 import { Function, Option } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
-import {
-  type Level,
-  boxCenter,
-  isSolidAt,
-  levelOf,
-  tileCoordinate,
-} from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
+import { boxCenter } from '../level/tileGrid'
+import { isSolidAt, tileCoordinate } from '../level/tileQueries'
 import type { World } from '../schema/world'
 import type { Vector } from '../schema/worldSchema'
 import { knockDownWhere } from '../stations/knockDown'

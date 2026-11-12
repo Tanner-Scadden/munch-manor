@@ -8,14 +8,10 @@ import { secretShelfOf } from '../../library/secretShelf'
 import { type Arrangement, freshLevel } from '../../schema/worldSchema'
 import {
   type Level,
-  doorSpawnPoint,
-  isInsideRoomAt,
-  isWalkableTile,
   levelFor,
   levelOf,
   roomAt,
   startingLevelFor,
-  tileCenter,
 } from '../arena'
 import {
   UNREACHED_DISTANCE,
@@ -30,6 +26,8 @@ import {
   SLOT_IDS,
   manorSpecFor,
 } from '../plan'
+import { tileCenter } from '../tileGrid'
+import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
 
 // The rolled rooms (layer 11 of docs/ESCAPE_PLAN.md): each run rolls which
 // of the parlour, library, and cellar stands in each of the house's three

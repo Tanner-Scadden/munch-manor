@@ -25,7 +25,8 @@ import {
   maybePanOf,
   spendRound,
 } from '../gear/weapons'
-import { findStrike, levelOf } from '../level/arena'
+import { levelOf } from '../level/arena'
+import { findStrike } from '../level/tileQueries'
 import {
   COOP_RULES,
   atSeat,

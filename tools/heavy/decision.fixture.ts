@@ -4,16 +4,9 @@
 
 import { Function, Option } from 'effect'
 
-import {
-  BudgetPolicy,
-  Decision,
-  JobClass,
-  JobKind,
-  type LockHolder,
-  LockState,
-  type SharedSlot,
-  type Snapshot,
-} from './decision'
+import { Decision, type SharedSlot, type Snapshot } from './decision'
+import { JobKind } from './jobKind'
+import { BudgetPolicy, JobClass, type LockHolder, LockState } from './records'
 
 export const NOW = 1_700_000_600_000
 const LONG_AGO = NOW - 10 * 60_000

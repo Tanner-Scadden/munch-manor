@@ -2,14 +2,9 @@ import { Array, Option, Order } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS, TILE_SIZE } from '../../shared/constants'
-import {
-  type Level,
-  type Tile,
-  levelOf,
-  maybeExit,
-  openExitIn,
-} from '../level/arena'
+import { type Level, levelOf, maybeExit, openExitIn } from '../level/arena'
 import { LIBRARY_ROOM_ID, SECRET_EXIT, type Side } from '../level/plan'
+import type { Tile } from '../level/tileGrid'
 import { isStanding, playersOf } from '../party/party'
 import type { World } from '../schema/world'
 import { GameEvent, Phase, type Vector } from '../schema/worldSchema'

@@ -32,15 +32,8 @@ import {
   ticks,
   zombieOf,
 } from "../../../test/testing";
-import {
-  type Level,
-  PARLOUR,
-  START_LEVEL,
-  doorSpawnPoint,
-  isSolidAt,
-  nearestDoor,
-  startingLevel,
-} from "../../level/arena";
+import { type Level, PARLOUR, START_LEVEL, startingLevel } from "../../level/arena";
+import { doorSpawnPoint, isSolidAt, nearestDoor } from "../../level/tileQueries";
 import { modifyFocus } from "../../party/party";
 import type { LevelState } from "../../schema/entitySchema";
 import { roundWaveOf } from "../../schema/worldSchema";

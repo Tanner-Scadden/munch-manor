@@ -16,16 +16,12 @@ import {
   withPlayerAt,
 } from '../../../test/model.fixture'
 import { APPLICATION, ticks } from '../../../test/testing'
-import {
-  isWalkableTile,
-  levelFor,
-  levelOf,
-  openExitIn,
-  tileCenter,
-} from '../../level/arena'
+import { levelFor, levelOf, openExitIn } from '../../level/arena'
 import { exitOffers } from '../../level/exits'
 import { flowFieldToward, playerDistancePx } from '../../level/pathing'
 import { EAST_EXIT, FAR_EXIT, MANOR_SPEC, SECRET_EXIT } from '../../level/plan'
+import { tileCenter } from '../../level/tileGrid'
+import { isWalkableTile } from '../../level/tileQueries'
 import { SHELF_RULES, secretShelfOf } from '../secretShelf'
 
 // The library's secret shelf (src/world/library/secretShelf.ts): in the

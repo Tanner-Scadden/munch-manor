@@ -41,8 +41,9 @@ import {
   type DareThing,
   DareThingState,
 } from '../../../world/dare/dareSchema'
-import { levelOf, tileCenter } from '../../../world/level/arena'
+import { levelOf } from '../../../world/level/arena'
 import { DINING_ROOM_ID, roomSpotsOf } from '../../../world/level/plan'
+import { tileCenter } from '../../../world/level/tileGrid'
 import { focusOf } from '../../../world/party/party'
 import type { ExitId } from '../../../world/schema/entitySchema'
 import { darePointerShapes, maybeDarePointer } from '../darePointer'

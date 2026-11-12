@@ -11,28 +11,32 @@ import type { Vector } from '../../schema/worldSchema'
 import { moveCircle, resolveCircle } from '../../step/collision'
 import { addVectors, scaleVector, vectorLength } from '../../step/geometry'
 import {
-  DOOR_SYMBOLS,
   type Level,
   TILE_DOOR,
   TILE_OPEN_BLOCK,
   TILE_OUTSIDE,
   TILE_PLAYER_SOLID,
   TILE_SOLID,
+  hasTileFlag,
+} from '../arena'
+import {
+  DOOR_SYMBOLS,
+  isInsideRoom,
+  tileIndex,
+  tilesWithSymbol,
+} from '../tileGrid'
+import {
   findReach,
   findStrike,
   hasClearPath,
   hasLineOfSight,
-  hasTileFlag,
   isDoorTile,
   isInYardAt,
-  isInsideRoom,
   isInsideRoomAt,
   isOpenBlock,
   isSolidAt,
   isWalkableTile,
-  tileIndex,
-  tilesWithSymbol,
-} from '../arena'
+} from '../tileQueries'
 
 // NOTE: the array-building versions the flat loops replaced, kept here as
 // the oracle: they must answer exactly as the loops do.

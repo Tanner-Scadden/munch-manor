@@ -5,7 +5,7 @@ import type { Model } from '../../app/model'
 import { QuestTour } from '../../domain/clientSchema'
 import { caseBoxOf } from '../../world/feats/caseSpots'
 import { heldKeys } from '../../world/keys/keys'
-import { distanceToBox, levelOf } from '../../world/level/arena'
+import { levelOf } from '../../world/level/arena'
 import {
   type Padlock,
   hasOpenedBoards,
@@ -13,6 +13,7 @@ import {
   maybeCheapestPadlock,
   padlockMarkOf,
 } from '../../world/level/exits'
+import { distanceToBox } from '../../world/level/tileGrid'
 import { focusOf, isCoop } from '../../world/party/party'
 import { isPending, learn } from '../../world/run/lessons'
 import {

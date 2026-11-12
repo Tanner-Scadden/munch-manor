@@ -5,10 +5,9 @@ import {
   type Level,
   TILE_PLAYER_SOLID,
   hasTileFlag,
-  isInsideRoom,
-  tileCoordinate,
-  tileIndex,
 } from '../../world/level/arena'
+import { isInsideRoom, tileIndex } from '../../world/level/tileGrid'
+import { tileCoordinate } from '../../world/level/tileQueries'
 import type { World } from '../../world/schema/world'
 import {
   BossMove,

@@ -2,16 +2,13 @@ import { Function } from 'effect'
 
 import { COLLISION_STEP_PX } from '../../shared/constants'
 import {
-  type Box,
   type Level,
   TILE_PLAYER_SOLID,
   TILE_SOLID,
   hasTileFlag,
-  isInsideRoom,
-  tileBox,
-  tileCoordinate,
-  tileIndex,
 } from '../level/arena'
+import { type Box, isInsideRoom, tileBox, tileIndex } from '../level/tileGrid'
+import { tileCoordinate } from '../level/tileQueries'
 import type { Vector } from '../schema/entitySchema'
 import { clamp, vectorLength } from './geometry'
 

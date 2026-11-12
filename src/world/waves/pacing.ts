@@ -20,7 +20,8 @@ import {
   RESTLESS_QUIET_MAX_MS,
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
-import { type Level, boxCenter, distanceToBox, levelOf } from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
+import { boxCenter, distanceToBox } from '../level/tileGrid'
 import type { World } from '../schema/world'
 import {
   Alarm,

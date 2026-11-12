@@ -29,17 +29,11 @@ import {
   zombieAt,
 } from '../../../test/testing'
 import { focusOf, modifyFocus } from '../../party/party'
-import {
-  PARLOUR,
-  isInsideRoomAt,
-  isSolidAt,
-  isWalkableTile,
-  levelOf,
-  tileCenter,
-  tileOfIndex,
-} from '../arena'
+import { PARLOUR, levelOf } from '../arena'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
 import { ROOM_MAP } from '../plan'
+import { tileCenter, tileOfIndex } from '../tileGrid'
+import { isInsideRoomAt, isSolidAt, isWalkableTile } from '../tileQueries'
 
 const FRAME_MS = FIXED_STEP_MS
 

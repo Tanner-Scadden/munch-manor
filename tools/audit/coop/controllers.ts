@@ -6,11 +6,8 @@ import type { Page } from 'playwright-core'
 
 import { type Readout } from '@game/features/coop/readout'
 import { TILE_SIZE } from '@game/shared/constants'
-import {
-  START_LEVEL,
-  isWalkableTile,
-  tileCoordinate,
-} from '@game/world/level/arena'
+import { START_LEVEL } from '@game/world/level/arena'
+import { isWalkableTile, tileCoordinate } from '@game/world/level/tileQueries'
 
 import { pollUntil } from '../lib'
 import { type AuditFailed, attempt, failWith } from '../page'

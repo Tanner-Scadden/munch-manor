@@ -3,8 +3,9 @@ import { describe, expect, test } from 'vitest'
 
 import { EVERY_LEVEL } from '../../../test/model.fixture'
 import { CLEARANCES } from '../../../test/testing'
-import { type Level, tileCenter, tileOfIndex } from '../arena'
+import type { Level } from '../arena'
 import { flowFieldsToward } from '../pathing'
+import { tileCenter, tileOfIndex } from '../tileGrid'
 import {
   TOLLS,
   TOLL_SETS,

@@ -61,7 +61,7 @@ After it (Hard and Nightmare `AIM=sharp`): escapes Easy 43 of 100, Normal 23 of 
 
 ## The analytical model
 
-`model.ts` reads the real tables: wave plans rolled for six seeds, the level's health scale, bounties and the clear bonus, shop prices and upgrade tiers. It buys the bot's loadout wave by wave, works out its sustained damage a second (magazine and reload included), and plays each wave as a flow of health through the holds, rests, quiet hurries, the alive cap, and the boss's entrance. `ASSUMPTIONS` holds the guesses: how much of each gun's fire lands, the upkeep a visit, and when hearts start costing money. They are calibration knobs, not measurements.
+`model.ts` reads the real tables: wave plans rolled for six seeds, the level's health scale, bounties and the clear bonus, shop prices and upgrade tiers. It buys the bot's loadout wave by wave, works out its sustained damage a second (magazine and reload included), and plays each wave as a flow of health through the holds, rests, quiet hurries, the alive cap, and the boss's entrance. `ASSUMPTIONS` (`modelAssumptions.ts`) holds the guesses: how much of each gun's fire lands, the upkeep a visit, and when hearts start costing money. They are calibration knobs, not measurements.
 
 `model.test.ts` tests the math on hand-made tables and holds the guardrails from `GAME_DESIGN.md`, wave length ceilings included. A guardrail not met yet is a `test.todo` that prints today's value.
 
@@ -103,7 +103,10 @@ The baseline is written when it is missing or with `--update-baseline`. `--exten
 | `simulate.ts`            | The command line: campaign and snapshot passes, workers, the text report, `--json`                                                                                                           |
 | `pacing.ts`, `pacing.sh` | Pacing per wave and per run, read off the World every frame (`docs/PACING_REPORT.md`); `bun run heavy -- --cpu sh tools/balance/pacing.sh <runs>`, then `bun tools/balance/pacing.ts report` |
 | `summary.ts`             | Run summaries and their Schemas                                                                                                                                                              |
-| `model.ts`               | The analytical model                                                                                                                                                                         |
+| `model.ts`               | The analytical model: the waves rolled, the economy, the rows, time to kill, and printing                                                                                                    |
+| `modelAssumptions.ts`    | The model's guesses (`ASSUMPTIONS`)                                                                                                                                                          |
+| `modelShop.ts`           | The model's prices in keys, the loadout, and the shopping list a visit buys                                                                                                                  |
+| `modelFlow.ts`           | A wave played as a flow of health through the holds, rests, quiet hurries, the alive cap, and the boss                                                                                       |
 | `targets.ts`             | The targets from `GAME_DESIGN.md`, as data                                                                                                                                                   |
 | `suite.ts`               | The nightly's jobs, metrics, target verdicts, baseline drift, and report                                                                                                                     |
 | `nightly.ts`             | The nightly's shell: runs the jobs and writes the files                                                                                                                                      |

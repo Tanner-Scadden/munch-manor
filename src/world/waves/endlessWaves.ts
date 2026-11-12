@@ -13,7 +13,7 @@ import {
   PINCER_LAG_MAX_MS,
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
-import { DOOR_IDS } from '../level/arena'
+import { DOOR_IDS } from '../level/tileGrid'
 import type {
   DoorId,
   Hold,

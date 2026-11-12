@@ -13,26 +13,9 @@ import {
 } from '../../shared/constants'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { mendSpeedScaleOf, trapHealthScaleOf } from '../heroes/calling'
-import {
-  type Box,
-  DOOR_OUTWARD,
-  type Level,
-  RATTLES_SYMBOL,
-  TILE_OUTSIDE,
-  boxCenter,
-  circleTouchesBox,
-  distanceToBox,
-  hasLineOfSight,
-  hasTileFlag,
-  isDoorTile,
-  isInsideRoomAt,
-  isWalkableTile,
-  levelOf,
-  tileBox,
-  tileCoordinate,
-  tileIndex,
-  tilesWithSymbol,
-} from '../level/arena'
+import { type Level, TILE_OUTSIDE, hasTileFlag, levelOf } from '../level/arena'
+import { type Box, DOOR_OUTWARD, RATTLES_SYMBOL, boxCenter, circleTouchesBox, distanceToBox, tileBox, tileIndex, tilesWithSymbol } from '../level/tileGrid'
+import { hasLineOfSight, isDoorTile, isInsideRoomAt, isWalkableTile, tileCoordinate } from '../level/tileQueries'
 import { TRAP_NAMES } from '../names'
 import {
   COOP_RULES,

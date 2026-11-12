@@ -4,8 +4,9 @@ import { modifyFields } from 'foldkit/struct'
 import { SHOP_FIRST_WAVE } from '../../shared/constants'
 import { nextRandom } from '../../shared/prng'
 import { isMissingHeart, maxHpOf } from '../heroes/calling'
-import { type Level, type Tile, levelOf, tileCenter } from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
 import { type LevelSpec, roomSpotsOf } from '../level/plan'
+import { type Tile, tileCenter } from '../level/tileGrid'
 import {
   atSeat,
   forEachSeat,

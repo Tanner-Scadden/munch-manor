@@ -47,7 +47,8 @@ import {
   ticks,
   ticksFor,
 } from '../../../test/testing'
-import { MANOR, isInsideRoomAt, levelOf, nearestDoor } from '../../level/arena'
+import { MANOR, levelOf } from '../../level/arena'
+import { isInsideRoomAt, nearestDoor } from '../../level/tileQueries'
 import { focusOf, modifyFocus } from '../../party/party'
 import { rollSpawns, rollWave } from '../endlessWaves'
 import { FINAL_WAVE, debutKinds } from '../wavePlans'

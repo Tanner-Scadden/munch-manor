@@ -3,12 +3,9 @@ import type { Canvas } from 'foldkit'
 
 import { type Palette, mirrorRows } from '../../art/sprite'
 import { SHAKE_MAX_PX, TILE_SIZE } from '../../shared/constants'
-import {
-  type Level,
-  RATTLES_SYMBOL,
-  tilesWithSymbol,
-} from '../../world/level/arena'
+import type { Level } from '../../world/level/arena'
 import { PARLOUR_ROOM_ID } from '../../world/level/plan'
+import { RATTLES_SYMBOL, tilesWithSymbol } from '../../world/level/tileGrid'
 import { pixelArt, rect } from '../drawing'
 import {
   BLOOD_COLOR,

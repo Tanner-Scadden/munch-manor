@@ -7,7 +7,8 @@ import {
   SPAWN_JITTER_MS,
   STRAGGLER_JITTER_MS,
 } from '../../shared/constants'
-import { DOOR_IDS, START_LEVEL } from '../level/arena'
+import { START_LEVEL } from '../level/arena'
+import { DOOR_IDS } from '../level/tileGrid'
 import type { DoorId, Hold, ZombieKind } from '../schema/worldSchema'
 import { ZOMBIE_KIND_ORDER } from '../zombies/zombies'
 
