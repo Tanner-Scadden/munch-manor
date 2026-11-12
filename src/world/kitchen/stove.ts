@@ -13,7 +13,8 @@ import {
 } from '../gear/weapons'
 import { stoveKillsFor } from '../heroes/calling'
 import { heldKeys, spendKeys } from '../keys/keys'
-import { type Box, levelOf } from '../level/arena'
+import { levelOf } from '../level/arena'
+import type { Box } from '../level/tileGrid'
 import { atSeat, seatStateAt } from '../party/party'
 import { type World, modifyWorldFields } from '../schema/world'
 import {

@@ -2,14 +2,9 @@ import { Array, Option, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../shared/constants'
-import {
-  type Level,
-  TILE_DOOR,
-  type Tile,
-  hasTileFlag,
-  isWalkableTile,
-  tileIndex,
-} from '../world/level/arena'
+import { type Level, TILE_DOOR, hasTileFlag } from '../world/level/arena'
+import { type Tile, tileIndex } from '../world/level/tileGrid'
+import { isWalkableTile } from '../world/level/tileQueries'
 import { roomShapes } from './room/room'
 import { FACE_TOP } from './room/roomPalette'
 

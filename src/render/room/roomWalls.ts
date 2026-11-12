@@ -3,17 +3,15 @@ import type { Canvas } from 'foldkit'
 
 import { type Palette, pixelRuns } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
+import { type Exit, type Level, closedExits } from '../../world/level/arena'
 import {
   DOOR_SYMBOLS,
-  type Exit,
-  type Level,
   WALL_SYMBOL,
-  closedExits,
   isInsideRoom,
-  isWalkableTile,
   symbolAt,
   tilesWithSymbol,
-} from '../../world/level/arena'
+} from '../../world/level/tileGrid'
+import { isWalkableTile } from '../../world/level/tileQueries'
 import type { DoorId } from '../../world/schema/entitySchema'
 import { pixelArt, rect } from '../drawing'
 import { isFacedExit, leakSpillShapes, leakStillShapes } from './kitchenLeak'

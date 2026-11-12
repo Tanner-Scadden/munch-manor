@@ -1,7 +1,8 @@
 import { Array, Function } from 'effect'
 
-import { type Level, isInYardAt } from '../level/arena'
+import type { Level } from '../level/arena'
 import { KITCHEN_ROOM_ID } from '../level/plan'
+import { isInYardAt } from '../level/tileQueries'
 import type { Vector } from '../schema/worldSchema'
 
 // Kitchen key odds: kill pay once paid a quarter more on a kitchen tile

@@ -11,9 +11,9 @@ import { TILE_SIZE } from '../../src/shared/constants'
 import {
   type Level,
   levelFor as levelOfSpec,
-  symbolAt,
 } from '../../src/world/level/arena'
 import { ARRANGEMENTS, manorSpecFor } from '../../src/world/level/plan'
+import { symbolAt } from '../../src/world/level/tileGrid'
 import type { Bounds } from './catalog'
 import { DRAFT_ROOMS, DRAFT_ROOM_SOURCE, draftRoomShapes } from './draftRooms'
 import type { Pin, Tile, TileArea } from './notes'

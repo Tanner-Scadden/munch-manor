@@ -3,20 +3,11 @@ import { describe, expect, test } from 'vitest'
 
 import { cameraFor } from '../../../render/camera'
 import { TILE_SIZE } from '../../../shared/constants'
-import {
-  TILE_OUTSIDE,
-  doorSpawnPoint,
-  hasTileFlag,
-  isInsideRoomAt,
-  isWalkableTile,
-  levelFor,
-  roomAt,
-  symbolAt,
-  tileIndex,
-  tileOfIndex,
-} from '../arena'
+import { TILE_OUTSIDE, hasTileFlag, levelFor, roomAt } from '../arena'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
 import { type LevelSpec } from '../plan'
+import { symbolAt, tileIndex, tileOfIndex } from '../tileGrid'
+import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
 
 // NOTE: a made-up house on the plan: a hall at the origin, and a study west
 // of it, at negative columns, behind a boarded exit in the wall they share.

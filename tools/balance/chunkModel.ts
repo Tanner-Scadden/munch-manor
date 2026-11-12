@@ -9,12 +9,8 @@ import { Array, Console, Effect, Number, Option, String } from 'effect'
 import type { Difficulty } from '../../src/shared/playerData'
 import { chunkHpFor } from '../../src/world/dare/finale'
 import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
-import {
-  ASSUMPTIONS,
-  type BalanceModel,
-  balanceModel,
-  rolledWave,
-} from './model'
+import { type BalanceModel, balanceModel, rolledWave } from './model'
+import { ASSUMPTIONS } from './modelAssumptions'
 
 // NOTE: he comes at the start of the wave after the list is done, and the
 // balance bot finishes its list on wave 9 on the median Normal run

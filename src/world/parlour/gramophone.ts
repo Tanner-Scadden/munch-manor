@@ -1,7 +1,8 @@
 import { Array, Function, Option } from 'effect'
 
-import { type Box, type Level, boxCenter, levelOf } from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
 import { PARLOUR_ROOM_ID } from '../level/plan'
+import { type Box, boxCenter } from '../level/tileGrid'
 import type { World } from '../schema/world'
 import type { Vector, Zombie, ZombieKind } from '../schema/worldSchema'
 import { TOOL_RULES, isToolActive } from '../stations/toolRules'

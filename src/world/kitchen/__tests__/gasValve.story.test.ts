@@ -28,12 +28,13 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { type Box, boxCenter, levelOf, roomAt } from '../../level/arena'
+import { levelOf, roomAt } from '../../level/arena'
 import {
   ARRANGEMENTS,
   DEFAULT_ARRANGEMENT,
   PARLOUR_ROOM_ID,
 } from '../../level/plan'
+import { type Box, boxCenter } from '../../level/tileGrid'
 import {
   focusOf,
   focusSlotOf,

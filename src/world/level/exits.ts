@@ -15,15 +15,9 @@ import {
 import type { Offer } from '../shop/purchase'
 import { distanceBetween } from '../step/geometry'
 import { joinNewDoors } from '../waves/waves'
-import {
-  type Box,
-  type Level,
-  levelOf,
-  maybeExit,
-  openExitIn,
-  tileBox,
-} from './arena'
+import { type Level, levelOf, maybeExit, openExitIn } from './arena'
 import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from './plan'
+import { type Box, tileBox } from './tileGrid'
 import { wakeRoom } from './wakeUp'
 
 // THE EXIT

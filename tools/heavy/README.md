@@ -35,7 +35,7 @@ The game is developed on one laptop (12 cores), often with several agents at onc
 
 ## Job classes
 
-`jobClassOf` in `decision.ts` reads the class from the command's words, so a script inside `sh -c "..."` counts too. A script counts by its bare name (`taps.ts`, `./taps.ts`) or under an `audit/` folder, so `src/platform/save.ts` is not the save audit. A command that names several classes takes the most careful one, and a command the guard does not know is Timing, so a new heavy script runs alone until it is listed.
+`jobClassOf` in `jobKind.ts` reads the class from the command's words, so a script inside `sh -c "..."` counts too. A script counts by its bare name (`taps.ts`, `./taps.ts`) or under an `audit/` folder, so `src/platform/save.ts` is not the save audit. A command that names several classes takes the most careful one, and a command the guard does not know is Timing, so a new heavy script runs alone until it is listed.
 
 | Class  | Commands                                                                                                                                           | Runs                                                                                      | Cost                                                                                                                        |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -126,15 +126,17 @@ Rebase a long-lived worktree before running timing audits in it.
 
 ## Files
 
-| File               | What it holds                                                                                                                                            |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `decision.ts`      | The pure part: the snapshot, job classes and costs, the budget, fairness, the `Decision`, the slot pick, the test workers, the Schemas, argument parsing |
-| `decision.test.ts` | Tests for every decision over fixed snapshots, run by `bun run test`                                                                                     |
-| `lock.ts`          | Reading, taking, and releasing the lock and slot files, the markers, and checking a pid                                                                  |
-| `turn.ts`          | Yielding between parts: `yieldTurn` for the job, the requests and grants for the guard, the chunk size                                                   |
-| `ledger.ts`        | Reading and writing the balance batch ledger                                                                                                             |
-| `guard.ts`         | The shell: reads the budget, gathers a snapshot, acts on the decision, and runs the child                                                                |
-| `main.ts`          | The guard's entry point                                                                                                                                  |
-| `testRun.ts`       | `bun run test` and `test:full`: vitest sized to the budget                                                                                               |
+| File               | What it holds                                                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `decision.ts`      | The pure part: the snapshot, costs, the budget, fairness, the lease, the `Decision`, the slot pick, the handover, the test workers, reporting |
+| `records.ts`       | The Schemas the pure part reads and writes: job classes, the lock holder, turns, the budget ledger, and argument parsing                      |
+| `jobKind.ts`       | What a command is: a balance batch or not, its class by script name, its workers, and a Shared job's cost                                     |
+| `decision.test.ts` | Tests for every decision over fixed snapshots, run by `bun run test`                                                                          |
+| `lock.ts`          | Reading, taking, and releasing the lock and slot files, the markers, and checking a pid                                                       |
+| `turn.ts`          | Yielding between parts: `yieldTurn` for the job, the requests and grants for the guard, the chunk size                                        |
+| `ledger.ts`        | Reading and writing the balance batch ledger                                                                                                  |
+| `guard.ts`         | The shell: reads the budget, gathers a snapshot, acts on the decision, and runs the child                                                     |
+| `main.ts`          | The guard's entry point                                                                                                                       |
+| `testRun.ts`       | `bun run test` and `test:full`: vitest sized to the budget                                                                                    |
 
 Every choice is made by `decide(snapshot)` and, at a boundary, `decideHandover`, which returns `Run` (with the file to hold, the workers, the cost, whether to take over a stale file, and notes), `Wait` (with the reason), or `Refuse` (with the reason). The shell only reads the load, the files, the markers, and the ledger into a snapshot and carries out what comes back. `maybeConflictAfterTaking` is the pure check each guard makes after taking its file.

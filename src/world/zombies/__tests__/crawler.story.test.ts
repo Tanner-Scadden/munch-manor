@@ -24,7 +24,8 @@ import {
   tick,
   ticks,
 } from '../../../test/testing'
-import { START_LEVEL, isSolidAt } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
+import { isSolidAt } from '../../level/tileQueries'
 import { focusOf } from '../../party/party'
 import { doorCounts, floorCounts, rollSpawns } from '../../waves/endlessWaves'
 import { CRAWLER_RULES, drawSurfacingSpot } from '../crawler'

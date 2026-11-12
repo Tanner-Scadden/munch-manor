@@ -9,7 +9,8 @@ import {
   spriteShapes,
 } from '../art/sprite'
 import { flameZoneOf, isValveLit, valveBoxOf } from '../world/kitchen/gasValve'
-import { type Box, levelOf } from '../world/level/arena'
+import { levelOf } from '../world/level/arena'
+import type { Box } from '../world/level/tileGrid'
 import type { World } from '../world/schema/world'
 import type { GunPerk } from '../world/schema/worldSchema'
 

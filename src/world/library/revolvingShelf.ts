@@ -1,14 +1,9 @@
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  TILE_PLAYER_SOLID,
-  boxCenter,
-  distanceToBox,
-  hasTileFlag,
-  levelOf,
-  tileIndexAt,
-} from '../level/arena'
+import { TILE_PLAYER_SOLID, hasTileFlag, levelOf } from '../level/arena'
+import { boxCenter, distanceToBox } from '../level/tileGrid'
+import { tileIndexAt } from '../level/tileQueries'
 import {
   forEachSeat,
   isStanding,

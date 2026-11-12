@@ -1,13 +1,7 @@
 import { Array, Function, Option, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
-import {
-  type Box,
-  type Level,
-  boxCenter,
-  maybeExit,
-  tileBox,
-} from '../level/arena'
+import { type Level, maybeExit } from '../level/arena'
 import {
   CELLAR_ROOM_ID,
   DINING_ROOM_ID,
@@ -20,6 +14,7 @@ import {
   type SpotTile,
   roomSpotsOf,
 } from '../level/plan'
+import { type Box, boxCenter, tileBox } from '../level/tileGrid'
 import { secretShelfOf } from '../library/secretShelf'
 import type { StationId } from '../schema/worldSchema'
 

@@ -9,7 +9,8 @@ import {
   heldWeapon,
   isWieldingMelee,
 } from '../world/gear/weapons'
-import { type Level, findReach, levelOf } from '../world/level/arena'
+import { type Level, levelOf } from '../world/level/arena'
+import { findReach } from '../world/level/tileQueries'
 import { focusOf } from '../world/party/party'
 import type { Vector } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'

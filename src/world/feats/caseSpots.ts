@@ -1,19 +1,14 @@
 import { Array, Function, Option, Result } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
-import {
-  type Box,
-  type Level,
-  START_LEVEL,
-  type Tile,
-  tileBox,
-} from '../level/arena'
+import { type Level, START_LEVEL } from '../level/arena'
 import {
   type LevelSpec,
   type RoomSpec,
   roomSpotsOf,
   widthOf,
 } from '../level/plan'
+import { type Box, type Tile, tileBox } from '../level/tileGrid'
 import type { DisplayCase, Vector } from '../schema/worldSchema'
 
 // Where the display cases stand (src/world/feats/cases.ts): their spots on

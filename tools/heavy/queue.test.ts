@@ -8,26 +8,18 @@ import {
   DEFAULT_LEASE_MS,
   Decision,
   Handover,
-  type HeldTurn,
-  JobClass,
-  JobKind,
   LEASE_REMIND_MS,
-  type LockHolder,
-  LockState,
   RECENT_TURN_MS,
   type Snapshot,
   chunkRunsOf,
   decide,
   decideHandover,
-  decodeHeldTurn,
-  encodeHeldTurn,
   isAheadInQueue,
   isPastLease,
   lastTurnAt,
   maybeLeaseWarning,
   maybeWaitReason,
   nextChunk,
-  turnFileKey,
 } from './decision'
 import {
   BALANCE,
@@ -43,6 +35,16 @@ import {
   isWait,
   waiting,
 } from './decision.fixture'
+import { JobKind } from './jobKind'
+import {
+  type HeldTurn,
+  JobClass,
+  type LockHolder,
+  LockState,
+  decodeHeldTurn,
+  encodeHeldTurn,
+  turnFileKey,
+} from './records'
 
 // TURNS: round robin, handover, leases, and the max wait
 

@@ -3,8 +3,9 @@ import type { Canvas } from 'foldkit'
 
 import { type Palette, bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
-import { type Level, symbolAt } from '../../world/level/arena'
+import type { Level } from '../../world/level/arena'
 import { CHANDELIER_SYMBOL } from '../../world/level/plan'
+import { symbolAt } from '../../world/level/tileGrid'
 import { pixelArt, rect } from '../drawing'
 import {
   BONE_COLOR,

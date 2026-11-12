@@ -9,12 +9,8 @@ import {
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
 import { trapBlockers } from '../gear/traps'
-import {
-  doorSpawnPoint,
-  hasClearPath,
-  isSolidAt,
-  levelOf,
-} from '../level/arena'
+import { levelOf } from '../level/arena'
+import { doorSpawnPoint, hasClearPath, isSolidAt } from '../level/tileQueries'
 import { playerCountOf, seatStateAt } from '../party/party'
 import {
   bossAttackPace,

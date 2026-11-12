@@ -14,17 +14,16 @@ import {
   isReloading,
 } from '../../world/gear/weapons'
 import { maxHpOf } from '../../world/heroes/calling'
+import { type Level, levelOf } from '../../world/level/arena'
+import { flowFieldToward, steerToward } from '../../world/level/pathing'
+import { boxCenter } from '../../world/level/tileGrid'
 import {
-  type Level,
-  boxCenter,
   hasClearPath,
   hasLineOfSight,
   isInYardAt,
   isInsideRoomAt,
   isSolidAt,
-  levelOf,
-} from '../../world/level/arena'
-import { flowFieldToward, steerToward } from '../../world/level/pathing'
+} from '../../world/level/tileQueries'
 import { isCallFresh } from '../../world/party/medic'
 import {
   COOP_RULES,

@@ -26,7 +26,8 @@ import {
   isReloading,
   isWieldingMelee,
 } from '../../../src/world/gear/weapons'
-import { hasLineOfSight, levelOf } from '../../../src/world/level/arena'
+import { levelOf } from '../../../src/world/level/arena'
+import { hasLineOfSight } from '../../../src/world/level/tileQueries'
 import { focusOf } from '../../../src/world/party/party'
 import { maybeShieldFor } from '../../../src/world/zombies/chucker'
 import { bodyRadiusOf } from '../../../src/world/zombies/zombies'

@@ -4,18 +4,17 @@ import { modifyFields } from 'foldkit/struct'
 import { type FeatLock, hasDone } from '../feats/feats'
 import { countKills } from '../gear/melee'
 import { heldKeys, spendKeys } from '../keys/keys'
+import { type Level, levelOf } from '../level/arena'
+import { boxAround } from '../level/exits'
+import { KITCHEN_TOP_ROW } from '../level/plan'
 import {
   type Box,
   COVER_SYMBOLS,
-  type Level,
   boxCenter,
   circleTouchesBox,
-  levelOf,
   tileBox,
   tilesWithSymbol,
-} from '../level/arena'
-import { boxAround } from '../level/exits'
-import { KITCHEN_TOP_ROW } from '../level/plan'
+} from '../level/tileGrid'
 import { creditKills } from '../party/party'
 import type { World } from '../schema/world'
 import {

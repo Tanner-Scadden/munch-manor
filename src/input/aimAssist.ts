@@ -1,7 +1,8 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
 
 import type { Camera } from '../render/camera'
-import { type Level, hasLineOfSight } from '../world/level/arena'
+import type { Level } from '../world/level/arena'
+import { hasLineOfSight } from '../world/level/tileQueries'
 import type { Vector, Zombie } from '../world/schema/worldSchema'
 import { ZombieAction, ZombieState } from '../world/schema/worldSchema'
 

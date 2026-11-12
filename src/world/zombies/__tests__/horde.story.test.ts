@@ -37,7 +37,8 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { START_LEVEL, doorSpawnPoint, nearestDoor } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
+import { doorSpawnPoint, nearestDoor } from '../../level/tileQueries'
 import { focusOf, modifyFocus } from '../../party/party'
 import { vectorLength } from '../../step/geometry'
 import { rollSpawns } from '../../waves/endlessWaves'

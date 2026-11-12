@@ -28,7 +28,9 @@ import {
   ticksFor,
   zombieOf,
 } from '../../../test/testing'
-import { DOOR_IDS, START_LEVEL, doorSpawnPoint } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
+import { DOOR_IDS } from '../../level/tileGrid'
+import { doorSpawnPoint } from '../../level/tileQueries'
 import { DIFFICULTIES } from '../../run/difficulty'
 import { hpScaleFor, rollSpawns } from '../../waves/endlessWaves'
 import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'

@@ -2,12 +2,7 @@ import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { START_SPOT } from '../../../src/test/testing'
-import {
-  type Level,
-  levelFor,
-  roomAt,
-  tileCenter,
-} from '../../../src/world/level/arena'
+import { type Level, levelFor, roomAt } from '../../../src/world/level/arena'
 import {
   ARRANGEMENTS,
   MANOR_SPEC,
@@ -15,6 +10,7 @@ import {
   SLOT_IDS,
   manorSpecFor,
 } from '../../../src/world/level/plan'
+import { tileCenter } from '../../../src/world/level/tileGrid'
 import type { Vector } from './basics'
 import { routeTo } from './route'
 

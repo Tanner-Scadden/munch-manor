@@ -1,14 +1,7 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import {
-  type Level,
-  doorSpawnPoint,
-  isWalkableTile,
-  levelFor,
-  tileCenter,
-  tileIndexAt,
-} from '../arena'
+import { type Level, levelFor } from '../arena'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
 import {
   ARRANGEMENTS,
@@ -19,6 +12,8 @@ import {
   manorSpecFor,
   roomSpotsOf,
 } from '../plan'
+import { tileCenter } from '../tileGrid'
+import { doorSpawnPoint, isWalkableTile, tileIndexAt } from '../tileQueries'
 import { EVERY_EXIT } from './exits.fixture'
 
 // The rooms rework, part 1 (docs/ROOM_RESEARCH.md, "Decided"): each room

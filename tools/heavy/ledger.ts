@@ -1,8 +1,8 @@
 import { Effect, FileSystem, Function, Option, pipe } from 'effect'
 import type { PlatformError } from 'effect/PlatformError'
 
-import { type Ledger, decodeLedger, encodeLedger } from './decision'
 import { readTextIfPresent } from './lock'
+import { type Ledger, decodeLedger, encodeLedger } from './records'
 
 /** @stability unstable */
 export const readLedger = (

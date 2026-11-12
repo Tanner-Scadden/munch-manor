@@ -27,8 +27,9 @@ import {
 import { caseOffers } from '../../../src/world/feats/cases'
 import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
 import { heldKeys } from '../../../src/world/keys/keys'
-import { distanceToBox, levelOf } from '../../../src/world/level/arena'
+import { levelOf } from '../../../src/world/level/arena'
 import { exitOffers } from '../../../src/world/level/exits'
+import { distanceToBox } from '../../../src/world/level/tileGrid'
 import { focusOf, focusSlotOf } from '../../../src/world/party/party'
 import {
   type CasePrize,

@@ -100,11 +100,11 @@ import {
 import {
   zombieFootY,
   zombieGroundShapes,
-  zombieHealthBarShapes,
   zombieShadow,
-  zombieShapes,
-} from '../../render/zombieView'
-import { type Level, isInsideRoomAt, levelOf } from '../../world/level/arena'
+} from '../../render/zombieGroundView'
+import { zombieHealthBarShapes, zombieShapes } from '../../render/zombieView'
+import { type Level, levelOf } from '../../world/level/arena'
+import { isInsideRoomAt } from '../../world/level/tileQueries'
 import { focusOf } from '../../world/party/party'
 import { type Vector, type Zombie } from '../../world/schema/entitySchema'
 import { Phase } from '../../world/schema/worldSchema'

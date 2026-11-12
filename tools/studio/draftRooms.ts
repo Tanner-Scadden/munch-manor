@@ -54,12 +54,7 @@ import {
   wallShapes,
 } from '../../src/render/room/roomWalls'
 import { TILE_SIZE } from '../../src/shared/constants'
-import {
-  type Level,
-  levelFor,
-  makeLevel,
-  tilesWithSymbol,
-} from '../../src/world/level/arena'
+import { type Level, levelFor, makeLevel } from '../../src/world/level/arena'
 import {
   CELLAR_MAP,
   DINING_MAP,
@@ -68,6 +63,7 @@ import {
   PARLOUR_SLOT_MAP,
   middleOf,
 } from '../../src/world/level/plan'
+import { tilesWithSymbol } from '../../src/world/level/tileGrid'
 
 export type DraftRoomId = 'Dining' | 'Parlour' | 'Library' | 'Cellar'
 

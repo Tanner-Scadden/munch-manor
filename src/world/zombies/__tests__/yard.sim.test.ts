@@ -20,8 +20,9 @@ import {
   westPlank,
   zombieOf,
 } from '../../../test/testing'
-import { isInsideRoomAt, levelOf, openExitIn } from '../../level/arena'
+import { levelOf, openExitIn } from '../../level/arena'
 import { KITCHEN_EXIT } from '../../level/exits'
+import { isInsideRoomAt } from '../../level/tileQueries'
 import { modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS } from '../zombies'
 

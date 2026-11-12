@@ -40,7 +40,6 @@ import {
   openExitIn,
   startingLevel,
   startingLevelFor,
-  tileCenter,
 } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
 import {
@@ -49,6 +48,7 @@ import {
   SLOT_IDS,
   roomSpotsOf,
 } from '../world/level/plan'
+import { tileCenter } from '../world/level/tileGrid'
 import {
   atSeatBy,
   focusOf,

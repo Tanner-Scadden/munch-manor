@@ -37,13 +37,14 @@ import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
-import { levelOf, tileCenter } from '@game/world/level/arena'
+import { levelOf } from '@game/world/level/arena'
 import {
   ARRANGEMENTS,
   CHANDELIER_DROP,
   STACK_DROPS,
   roomSpotsOf,
 } from '@game/world/level/plan'
+import { tileCenter } from '@game/world/level/tileGrid'
 import { wakeRoom } from '@game/world/level/wakeUp'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'

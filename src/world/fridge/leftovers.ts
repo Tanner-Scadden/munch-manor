@@ -12,16 +12,15 @@ import {
 import { maxHpOf } from '../heroes/calling'
 import { grantKeys, heldKeys, spendKeys } from '../keys/keys'
 import { isKitchenOpen } from '../kitchen/kitchen'
+import { type Level, levelOf } from '../level/arena'
+import { boxAround } from '../level/exits'
 import {
   type Box,
   COVER_SYMBOLS,
-  type Level,
   distanceToBox,
-  levelOf,
   tileBox,
   tilesWithSymbol,
-} from '../level/arena'
-import { boxAround } from '../level/exits'
+} from '../level/tileGrid'
 import { atSeat, focusOf, maybePlayerAt, seatStateAt } from '../party/party'
 import { isKitchenTourOn } from '../run/tutorialRules'
 import type { World } from '../schema/world'

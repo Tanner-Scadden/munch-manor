@@ -25,8 +25,9 @@ import {
 import { maxHpOf } from '../../../src/world/heroes/calling'
 import { heldKeys } from '../../../src/world/keys/keys'
 import { STOVE_RULES, stoveOffers } from '../../../src/world/kitchen/stove'
-import { distanceToBox, levelOf } from '../../../src/world/level/arena'
+import { levelOf } from '../../../src/world/level/arena'
 import { KITCHEN_EXIT, exitOffers } from '../../../src/world/level/exits'
+import { distanceToBox } from '../../../src/world/level/tileGrid'
 import {
   focusOf,
   focusSlotOf,

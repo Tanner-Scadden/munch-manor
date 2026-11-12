@@ -23,7 +23,8 @@ import {
   SPARK_DRAG_PER_SECOND,
   SPARK_GRAVITY,
 } from '../../shared/constants'
-import { type Level, isInsideRoomAt, isSolidAt } from '../../world/level/arena'
+import type { Level } from '../../world/level/arena'
+import { isInsideRoomAt, isSolidAt } from '../../world/level/tileQueries'
 import type { ParticleKind } from '../../world/schema/entitySchema'
 import type { Decal, DecalKind, Particle } from '../renderSchema'
 

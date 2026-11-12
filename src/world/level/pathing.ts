@@ -18,23 +18,18 @@ import {
   normalize,
   scaleVector,
 } from '../step/geometry'
+import { type Level, TILE_OUTSIDE, hasTileFlag } from './arena'
+import { byDoor, tileCenter, tileIndex, tileOfIndex } from './tileGrid'
 import {
-  type Level,
-  TILE_OUTSIDE,
-  byDoor,
   doorSpawnPoint,
   hasClearPath,
-  hasTileFlag,
   isInYardAt,
   isInsideRoomAt,
   isOpenBlock,
   isWalkableTile,
   nearestDoor,
-  tileCenter,
-  tileIndex,
   tileIndexAt,
-  tileOfIndex,
-} from './arena'
+} from './tileQueries'
 
 // PER LEVEL
 

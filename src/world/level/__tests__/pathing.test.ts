@@ -6,16 +6,7 @@ import { DOOR_HALF_WIDTH_PX, TILE_SIZE } from '../../../shared/constants'
 import { CELLAR_SPOT, CLEARANCES, START_SPOT } from '../../../test/testing'
 import { moveCircle, resolveCircle } from '../../step/collision'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
-import {
-  type Level,
-  type Tile,
-  doorSpawnPoint,
-  isInsideRoomAt,
-  isOpenBlock,
-  isWalkableTile,
-  levelFor,
-  tileCenter,
-} from '../arena'
+import { type Level, levelFor } from '../arena'
 import {
   type Clearance,
   UNREACHED_DISTANCE,
@@ -25,6 +16,13 @@ import {
   steerToward,
 } from '../pathing'
 import { KITCHEN_TOP_ROW, MANOR_SPEC } from '../plan'
+import { type Tile, tileCenter } from '../tileGrid'
+import {
+  doorSpawnPoint,
+  isInsideRoomAt,
+  isOpenBlock,
+  isWalkableTile,
+} from '../tileQueries'
 
 // NOTE: the manor in both states a run sees it, boarded and open, with the
 // spots the player can stand in each: the parlour always, the kitchen once

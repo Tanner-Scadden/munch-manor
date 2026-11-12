@@ -5,16 +5,7 @@
 import { Array, Equivalence, Function, Result } from 'effect'
 
 import type { Toll } from '../../schema/worldSchema'
-import {
-  type Level,
-  TILE_OUTSIDE,
-  hasTileFlag,
-  isOpenBlock,
-  isWalkableTile,
-  tileCenter,
-  tileIndex,
-  tileOfIndex,
-} from '../arena'
+import { type Level, TILE_OUTSIDE, hasTileFlag } from '../arena'
 import {
   type Clearance,
   UNREACHED_DISTANCE,
@@ -22,6 +13,8 @@ import {
   flowFieldToward,
   isFieldTile,
 } from '../pathing'
+import { tileCenter, tileIndex, tileOfIndex } from '../tileGrid'
+import { isOpenBlock, isWalkableTile } from '../tileQueries'
 
 // NOTE: the search the flat one replaced, kept as the oracle: neighbors in
 // arrays of arrays, buckets in a Map, one ring settled after another. The
