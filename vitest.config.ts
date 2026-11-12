@@ -2,6 +2,7 @@ import { Schema } from 'effect'
 import { defineConfig } from 'vitest/config'
 
 import { encodeJson } from './tools/json.ts'
+import { TimedSequencer } from './tools/vite/testSequencer.ts'
 
 // The test tiers (docs/TESTING_PLAN.md). Each project is one tier or one
 // kind of file:
@@ -35,6 +36,9 @@ export default defineConfig({
     setupFiles: ['./src/test/vitest-setup.ts'],
     env: { VITE_COOP: 'On' },
     isolate: false,
+    // NOTE: CI's shards split by each file's time, and a run starts its
+    // slowest file first (tools/vite/testSequencer.ts).
+    sequence: { sequencer: TimedSequencer },
     // NOTE: a test reads a stylesheet's text with `?raw` (the corner's tap
     // sizes in src/features/support/__tests__/support.scene.test.ts, the moving animations in
     // src/app/__tests__/motion.test.ts). Vitest hands every other CSS file over empty.
