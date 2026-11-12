@@ -47,6 +47,8 @@ export const nearDoorsOf = (world: World): ReadonlyArray<DoorId> => {
   )
   const near = Array.filter(level.rooms, isNearRoom(occupied))
   return Array.filter(level.doorIds, door =>
+    // NOTE: at most 13 doors by a few rooms.
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.some(near, ({ box }) => isInBox(box, level.doors[door].center)),
   )
 }

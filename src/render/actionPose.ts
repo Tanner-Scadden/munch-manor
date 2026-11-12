@@ -444,6 +444,8 @@ const eventBeats = (world: World): ReadonlyArray<ActionBeat> =>
     }
     if (isRevived(event)) {
       const risen = Option.map(
+        // NOTE: at most 4 seats.
+        // oxlint-disable-next-line munch/no-nested-scan
         Array.findFirst(
           playersOf(world),
           ({ player }) => distanceBetween(player, event) < 1,
@@ -502,6 +504,8 @@ const swapBeats = (
   held: ActionWatch['held'],
 ): ReadonlyArray<ActionBeat> =>
   Array.filterMap(held, ({ slot, weapon }) =>
+    // NOTE: at most 4 seats, each holding one weapon.
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.some(
       watch.held,
       seen => seen.slot === slot && seen.weapon !== weapon,
@@ -517,6 +521,8 @@ const trapBeats = (
   watch: ActionWatch,
 ): ReadonlyArray<ActionBeat> =>
   Array.filterMap(world.traps, trap =>
+    // NOTE: at most 8 traps (2 a kind alone, 1 a kind a seat in co-op).
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.contains(watch.trapIds, trap.id)
       ? Result.failVoid
       : pipe(
@@ -595,6 +601,8 @@ export const freshBeats: {
     Array.filter(
       after.beats,
       next =>
+        // NOTE: at most one payoff a seat, 4 seats.
+        // oxlint-disable-next-line munch/no-nested-scan
         !Array.some(
           before.beats,
           seen =>
@@ -618,6 +626,8 @@ export const strikesBetween: {
       after.working,
       now =>
         isStrikeFrame(now.motion, now.frame) &&
+        // NOTE: at most one action a seat, 4 seats.
+        // oxlint-disable-next-line munch/no-nested-scan
         !Array.some(
           before.working,
           seen =>

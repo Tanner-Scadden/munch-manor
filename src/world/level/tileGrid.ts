@@ -1,14 +1,7 @@
-import {
-  Array,
-  Function,
-  Option,
-  type Record,
-  Result,
-  String,
-  pipe,
-} from 'effect'
+import { Array, Function, Option, type Record, String, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
+import { countWork } from '../../shared/workCount'
 import type { DoorId, Vector } from '../schema/entitySchema'
 import { clamp } from '../step/geometry'
 import { SLOT_DOOR_SYMBOLS } from './plan'
@@ -203,20 +196,54 @@ export const isInsideRoom: {
     row < grid.topRow + grid.rows,
 )
 
+// NOTE: one pass over a map's rows sorts every tile by its symbol, kept per
+// rows (a map's rows are shared by every level built from it, and never
+// change), so asking for a symbol's tiles is a lookup, never a scan of the
+// map. Tiles come in reading order, row by row.
+const tilesBySymbolKept = new WeakMap<
+  ReadonlyArray<string>,
+  Map<string, ReadonlyMap<string, ReadonlyArray<Tile>>>
+>()
+
+const tilesBySymbol = (
+  grid: Grid,
+): ReadonlyMap<string, ReadonlyArray<Tile>> => {
+  const byOrigin =
+    tilesBySymbolKept.get(grid.tiles) ??
+    new Map<string, ReadonlyMap<string, ReadonlyArray<Tile>>>()
+  tilesBySymbolKept.set(grid.tiles, byOrigin)
+  const origin = `${grid.leftColumn}|${grid.topRow}`
+  const cached = byOrigin.get(origin)
+  if (cached !== undefined) {
+    return cached
+  }
+  countWork('MapScan')
+  const sorted = new Map<string, Array<Tile>>()
+  Array.forEach(grid.tiles, (line, index) => {
+    Array.forEach(String.split(line, ''), (symbol, column) => {
+      const tile: Tile = {
+        column: column + grid.leftColumn,
+        row: index + grid.topRow,
+      }
+      const found = sorted.get(symbol)
+      if (found === undefined) {
+        sorted.set(symbol, [tile])
+      } else {
+        found.push(tile)
+      }
+    })
+  })
+  byOrigin.set(origin, sorted)
+  return sorted
+}
+
 export const tilesWithSymbol: {
   (symbol: string): (grid: Grid) => ReadonlyArray<Tile>
   (grid: Grid, symbol: string): ReadonlyArray<Tile>
-} = Function.dual(2, (grid: Grid, symbol: string): ReadonlyArray<Tile> =>
-  Array.flatMap(grid.tiles, (line, index) =>
-    Array.filterMap(String.split(line, ''), (lineSymbol, column) =>
-      lineSymbol === symbol
-        ? Result.succeed({
-            column: column + grid.leftColumn,
-            row: index + grid.topRow,
-          })
-        : Result.failVoid,
-    ),
-  ),
+} = Function.dual(
+  2,
+  (grid: Grid, symbol: string): ReadonlyArray<Tile> =>
+    tilesBySymbol(grid).get(symbol) ?? [],
 )
 
 export const tileCenter = ({ column, row }: Tile): Vector => ({

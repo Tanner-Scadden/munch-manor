@@ -37,7 +37,6 @@ import {
   HINT_PARTS,
   type HintId,
   type HintPart,
-  type ShownHint,
   isDebutCardUp,
   msIntoPhase,
   shownHints,
@@ -172,26 +171,23 @@ const partWidth = (
 
 type HintLayout = Readonly<{ x: number; parts: ReadonlyArray<BakedHintPart> }>
 
-const EMPTY_HINT_LAYOUT: HintLayout = { x: 0, parts: [] }
+const layOutHintParts = (parts: ReadonlyArray<HintPart>): HintLayout => {
+  const baked: Array<BakedHintPart> = []
+  let right = 0
+  for (const { icon, words } of parts) {
+    const sprites = HINT_ICON_SPRITES[icon]
+    const maybeWords = String.isNonEmpty(words)
+      ? Option.some(bakeText(words, 'Plain'))
+      : Option.none()
+    const x = Array.isReadonlyArrayEmpty(baked) ? right : right + HINT_PART_GAP
+    right = x + partWidth(sprites, maybeWords)
+    baked.push({ icon: sprites, maybeWords, x })
+  }
+  return { x: right, parts: baked }
+}
 
 const bakeHintRow = (parts: ReadonlyArray<HintPart>): BakedHintRow => {
-  const laidOut = Array.reduce(
-    parts,
-    EMPTY_HINT_LAYOUT,
-    (row, { icon, words }): HintLayout => {
-      const sprites = HINT_ICON_SPRITES[icon]
-      const maybeWords = String.isNonEmpty(words)
-        ? Option.some(bakeText(words, 'Plain'))
-        : Option.none()
-      const x = Array.isReadonlyArrayEmpty(row.parts)
-        ? row.x
-        : row.x + HINT_PART_GAP
-      return {
-        x: x + partWidth(sprites, maybeWords),
-        parts: Array.append(row.parts, { icon: sprites, maybeWords, x }),
-      }
-    },
-  )
+  const laidOut = layOutHintParts(parts)
   const iconHeight = Array.reduce(
     laidOut.parts,
     GLYPH_HEIGHT,
@@ -269,31 +265,15 @@ type HintPlacement = Readonly<{
   ageMs: number
 }>
 
-type HintStack = Readonly<{
-  top: number
-  placements: ReadonlyArray<HintPlacement>
-}>
-
 const hintPlacementsOf = (model: Model): ReadonlyArray<HintPlacement> => {
-  const start: HintStack = {
-    top: BAND_TOP[model.hintBand] + HINT_OFFSET - HINT_PAD_Y,
-    placements: [],
+  const placements: Array<HintPlacement> = []
+  let top = BAND_TOP[model.hintBand] + HINT_OFFSET - HINT_PAD_Y
+  for (const { id, ageMs } of shownHints(model)) {
+    const row = HINT_ROWS[id][model.lastDevice]
+    placements.push({ row, top, ageMs })
+    top += row.height + HINT_ROW_GAP
   }
-  return Array.reduce(
-    shownHints(model),
-    start,
-    (stack, { id, ageMs }: ShownHint): HintStack => {
-      const row = HINT_ROWS[id][model.lastDevice]
-      return {
-        top: stack.top + row.height + HINT_ROW_GAP,
-        placements: Array.append(stack.placements, {
-          row,
-          top: stack.top,
-          ageMs,
-        }),
-      }
-    },
-  ).placements
+  return placements
 }
 
 const hintShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
@@ -879,8 +859,6 @@ const lineWidth = (letters: ReadonlyArray<LogoLetter>): number =>
   Array.reduce(letters, 0, (sum, { width }) => sum + width + LOGO_GAP) -
   LOGO_GAP
 
-type LetterRun = Readonly<{ x: number; shapes: ReadonlyArray<Canvas.Shape> }>
-
 const logoLineShapes =
   (screenMs: number) =>
   (
@@ -889,24 +867,17 @@ const logoLineShapes =
   ): ReadonlyArray<Canvas.Shape> => {
     const left = Math.round(CENTER_X - lineWidth(letters) / 2)
     const top = LOGO_TOP + lineIndex * LOGO_LINE_PX
-    return Array.reduce(
-      letters,
-      { x: left, shapes: [] },
-      (run: LetterRun, letter, index): LetterRun => {
-        const phase = screenMs / LOGO_BOB_MS + (index + lineIndex * 2) * 0.9
-        const bob = Math.round(Math.sin(phase) * LOGO_BOB_PX)
-        return {
-          x: run.x + letter.width + LOGO_GAP,
-          shapes: Array.append(
-            run.shapes,
-            group({
-              translate: { x: run.x, y: top + bob },
-              shapes: letter.sprite,
-            }),
-          ),
-        }
-      },
-    ).shapes
+    const shapes: Array<Canvas.Shape> = []
+    let x = left
+    for (const [index, letter] of letters.entries()) {
+      const phase = screenMs / LOGO_BOB_MS + (index + lineIndex * 2) * 0.9
+      const bob = Math.round(Math.sin(phase) * LOGO_BOB_PX)
+      shapes.push(
+        group({ translate: { x, y: top + bob }, shapes: letter.sprite }),
+      )
+      x += letter.width + LOGO_GAP
+    }
+    return shapes
   }
 
 export const logoShapes = (screenMs: number): ReadonlyArray<Canvas.Shape> =>

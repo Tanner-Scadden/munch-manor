@@ -201,6 +201,8 @@ const collect = (
       summary._tag === 'Campaign'
         ? {
             ...played,
+            // NOTE: a nightly's handful of jobs.
+            // oxlint-disable-next-line munch/no-append-in-reduce
             campaigns: Array.append(played.campaigns, { job, summary }),
           }
         : { ...played, maybeWavePass: Option.some(summary) },

@@ -1,6 +1,7 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { countWork } from '../../shared/workCount'
 import { barricadedDoors } from '../gear/traps'
 import type { DoorId } from '../schema/entitySchema'
 import type { PackDoor, PlannedSpawn, Trap } from '../schema/worldSchema'
@@ -57,6 +58,8 @@ const clockwiseAfter = (
       CLOCKWISE.length - 1,
       step => CLOCKWISE[(index + step + 1) % CLOCKWISE.length] ?? door,
     ),
+    // NOTE: at most 13 doors around against the level's 13.
+    // oxlint-disable-next-line munch/no-nested-scan
     each => Array.contains(doors, each),
   )
 }
@@ -76,10 +79,14 @@ const openDoorFrom = (
 
   const open = Array.filter(
     clockwiseAfter(door, doors),
+    // NOTE: at most 13 doors against the few a barricade boards.
+    // oxlint-disable-next-line munch/no-nested-scan
     each => !Array.contains(boarded, each),
   )
   return pipe(
     open,
+    // NOTE: at most 13 doors against the few a pack's mates keep.
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.findFirst(each => !Array.contains(avoid, each)),
     Option.orElse(() => Array.head(open)),
     Option.getOrElse(() => door),
@@ -93,16 +100,41 @@ const PACKS_PER_VOLLEY_STRIDE = 10
 const volleyOf = (pack: number): number =>
   Math.floor(pack / PACKS_PER_VOLLEY_STRIDE)
 
+// NOTE: the door each warned pack took, by its pack and planned door, the
+// first entry winning as a scan would. It is read for every planned spawn,
+// so each list gets its index once; the list is replaced, never changed.
+const enteredIndexes = new WeakMap<
+  ReadonlyArray<PackDoor>,
+  ReadonlyMap<string, DoorId>
+>()
+
+const enteredKey = (pack: number, planned: DoorId): string =>
+  `${pack}|${planned}`
+
+const enteredIndexOf = (
+  packDoors: ReadonlyArray<PackDoor>,
+): ReadonlyMap<string, DoorId> => {
+  const cached = enteredIndexes.get(packDoors)
+  if (cached !== undefined) {
+    return cached
+  }
+  const index = new Map<string, DoorId>()
+  for (const { pack, planned, door } of packDoors) {
+    const key = enteredKey(pack, planned)
+    if (!index.has(key)) {
+      index.set(key, door)
+    }
+  }
+  enteredIndexes.set(packDoors, index)
+  return index
+}
+
 const maybeEnteredDoor = (
   packDoors: ReadonlyArray<PackDoor>,
   spawn: Readonly<{ pack: number; door: DoorId }>,
 ): Option.Option<DoorId> =>
-  pipe(
-    Array.findFirst(
-      packDoors,
-      entry => entry.pack === spawn.pack && entry.planned === spawn.door,
-    ),
-    Option.map(({ door }) => door),
+  Option.fromNullishOr(
+    enteredIndexOf(packDoors).get(enteredKey(spawn.pack, spawn.door)),
   )
 
 const isVolleyMate =
@@ -141,6 +173,8 @@ const mateDoors = (
         return Result.succeed(
           routedDoor(mate, spawns, doors, boarded, packDoors),
         )
+        // NOTE: one mate's door against the few a barricade boards.
+        // oxlint-disable-next-line munch/no-nested-scan
       } else if (!Array.contains(boarded, mate.door)) {
         return Result.succeed(mate.door)
       } else {
@@ -197,19 +231,53 @@ export const routeSpawns: {
     packDoors: ReadonlyArray<PackDoor>,
     doors: ReadonlyArray<DoorId>,
   ): ReadonlyArray<PlannedSpawn> => {
-    const boarded = barricadedDoors(traps)
+    const cached = routesKept.get(spawns)
     if (
-      Array.isReadonlyArrayEmpty(boarded) &&
-      Array.isReadonlyArrayEmpty(packDoors)
+      cached?.traps === traps &&
+      cached.packDoors === packDoors &&
+      cached.doors === doors
     ) {
-      return spawns
+      return cached.routed
     }
-
-    return Array.map(spawns, spawn => {
-      const door = routedDoor(spawn, spawns, doors, boarded, packDoors)
-      return door === spawn.door
-        ? spawn
-        : modifyFields(spawn, { door: () => door })
-    })
+    const routed = routeEach(spawns, traps, packDoors, doors)
+    routesKept.set(spawns, { traps, packDoors, doors, routed })
+    return routed
   },
 )
+
+// NOTE: a route is pure in its inputs and costs a pass over the plan (more
+// with a Pincer behind a barricade), and the wave's tick and the break's
+// door markers ask again with the same lists, which are replaced, never
+// changed. So the last route of each spawn list is kept with its inputs.
+const routesKept = new WeakMap<
+  ReadonlyArray<PlannedSpawn>,
+  Readonly<{
+    traps: ReadonlyArray<Trap>
+    packDoors: ReadonlyArray<PackDoor>
+    doors: ReadonlyArray<DoorId>
+    routed: ReadonlyArray<PlannedSpawn>
+  }>
+>()
+
+const routeEach = (
+  spawns: ReadonlyArray<PlannedSpawn>,
+  traps: ReadonlyArray<Trap>,
+  packDoors: ReadonlyArray<PackDoor>,
+  doors: ReadonlyArray<DoorId>,
+): ReadonlyArray<PlannedSpawn> => {
+  countWork('SpawnRoute')
+  const boarded = barricadedDoors(traps)
+  if (
+    Array.isReadonlyArrayEmpty(boarded) &&
+    Array.isReadonlyArrayEmpty(packDoors)
+  ) {
+    return spawns
+  }
+
+  return Array.map(spawns, spawn => {
+    const door = routedDoor(spawn, spawns, doors, boarded, packDoors)
+    return door === spawn.door
+      ? spawn
+      : modifyFields(spawn, { door: () => door })
+  })
+}

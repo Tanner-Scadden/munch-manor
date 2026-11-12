@@ -431,6 +431,8 @@ describe('a message that cannot apply', () => {
     const advanced = Room.advance(StandIn, at.room, T0 + step * 50 + 1)
     return {
       room: advanced.room,
+      // NOTE: three steps.
+      // oxlint-disable-next-line munch/no-append-in-reduce
       frames: [...at.frames, ...framesOf(advanced.out)],
     }
   }).frames

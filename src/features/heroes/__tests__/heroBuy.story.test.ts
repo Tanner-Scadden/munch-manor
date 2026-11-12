@@ -247,20 +247,16 @@ describe('teammate bots', () => {
   test('pick only from the heroes the player owns', () => {
     const rolls = globalThis.Array.from({ length: 12 })
     const heroesOf = (start: Model): ReadonlyArray<Calling> =>
-      Array.reduce(
-        Array.map(rolls, () => 'You'),
-        Array.empty<Calling>(),
-        (picked, _roll, index) => {
-          const seated = addBot(
-            withoutBots(
-              modifyFields(start, {
-                cosmeticRngState: () => start.cosmeticRngState + index * 7919,
-              }),
-            ),
-          )
-          return [...picked, seated.home.bots[0]?.calling ?? 'You']
-        },
-      )
+      Array.map(rolls, (_roll, index): Calling => {
+        const seated = addBot(
+          withoutBots(
+            modifyFields(start, {
+              cosmeticRngState: () => start.cosmeticRngState + index * 7919,
+            }),
+          ),
+        )
+        return seated.home.bots[0]?.calling ?? 'You'
+      })
     expect(new Set(heroesOf(player(20, 0)))).toEqual(new Set(['You']))
     const mixed = new Set(heroesOf(player(20, 0, ['hero:LineCook'])))
     expect(

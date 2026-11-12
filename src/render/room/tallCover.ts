@@ -127,6 +127,8 @@ export const tallCoverOf = (level: Level): ReadonlyArray<TallCover> => {
   }
   const pieces = pipe(
     Record.toEntries(COVER_SYMBOLS),
+    // NOTE: a few cover kinds, once a level (cached).
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.filter(([, kind]) => Array.contains(TALL_KINDS, kind)),
     Array.flatMap(([symbol, kind]) => tallCoverOfKind(level, symbol, kind)),
   )

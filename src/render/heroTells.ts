@@ -135,6 +135,8 @@ export const mendedSpots: {
       Array.map(({ seat }) => maybeMendingTrap(model, seat.slot)),
       Array.getSomes,
       Array.filter(trap =>
+        // NOTE: at most 8 traps (2 a kind alone, 1 a kind a seat in co-op).
+        // oxlint-disable-next-line munch/no-nested-scan
         Array.some(
           watch.traps,
           seen =>

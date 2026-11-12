@@ -408,6 +408,8 @@ const roomImage = (
 
 const openExitsNear = (level: Level, room: Room): ReadonlyArray<ExitId> =>
   Array.filter(exitIdsNear(level, room), id =>
+    // NOTE: a room has a few exits, read once a level (the room image is cached).
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.contains(level.openExits, id),
   )
 
@@ -440,6 +442,8 @@ const subsetsOf = (
   exits: ReadonlyArray<ExitId>,
 ): ReadonlyArray<ReadonlyArray<ExitId>> =>
   Array.filter(
+    // NOTE: every subset of a room's few exits (at most 16), once a level for the atlas.
+    // oxlint-disable-next-line munch/no-append-in-reduce
     Array.reduce(exits, NO_EXITS, (subsets, exit) => [
       ...subsets,
       ...Array.map(subsets, subset => Array.append(subset, exit)),
@@ -447,9 +451,13 @@ const subsetsOf = (
     subset =>
       Array.every(subset, id =>
         Option.exists(maybeExit(level, id), ({ requires }) =>
+          // NOTE: every subset of a room's few exits (at most 16), once a level for the atlas.
+          // oxlint-disable-next-line munch/no-nested-scan
           Array.every(
             requires,
             required =>
+              // NOTE: every subset of a room's few exits (at most 16), once a level for the atlas.
+              // oxlint-disable-next-line munch/no-nested-scan
               !Array.contains(exits, required) ||
               Array.contains(subset, required),
           ),

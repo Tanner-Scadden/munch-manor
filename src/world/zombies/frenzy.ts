@@ -39,26 +39,30 @@ const packOf = (spawn: PlannedSpawn): number => spawn.pack
 // never frenzies either: his Groaners are there to be thrown.
 export const frenzyPacksOf = (
   spawns: ReadonlyArray<PlannedSpawn>,
-): ReadonlyArray<FrenzyPack> =>
-  pipe(
+): ReadonlyArray<FrenzyPack> => {
+  // NOTE: each pack's size and whether a Big Leaguer is in it, counted in
+  // one pass over the spawns rather than once for each pack.
+  const sizes = new Map<number, number>()
+  const thrown = new Set<number>()
+  for (const { pack, kind } of spawns) {
+    sizes.set(pack, (sizes.get(pack) ?? 0) + 1)
+    if (kind === 'Thrower') {
+      thrown.add(pack)
+    }
+  }
+  return pipe(
     spawns,
     Array.filter(spawn => !isFloorKind(spawn.kind)),
     Array.map(packOf),
     Array.dedupe,
-    Array.filter(
-      pack =>
-        !Array.some(
-          spawns,
-          spawn => spawn.pack === pack && spawn.kind === 'Thrower',
-        ),
-    ),
     Array.filterMap(pack => {
-      const size = Array.filter(spawns, spawn => spawn.pack === pack).length
-      return size >= FRENZY_RULES.packMin
+      const size = sizes.get(pack) ?? 0
+      return !thrown.has(pack) && size >= FRENZY_RULES.packMin
         ? Result.succeed({ pack, left: size })
         : Result.failVoid
     }),
   )
+}
 
 export const isFrenzyPack: {
   (pack: number): (frenzyPacks: ReadonlyArray<FrenzyPack>) => boolean

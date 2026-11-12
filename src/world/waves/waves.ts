@@ -79,6 +79,7 @@ import {
   delayCampedPacks,
   delayWaitingPacks,
   isAlive,
+  isPackWarned,
   isThroughDoor,
   keepWarnedOnTime,
   packsWaitingToWarn,
@@ -128,6 +129,8 @@ const mateDoorsOf = (
     Array.map(spawn =>
       Option.getOrElse(
         Option.map(
+          // NOTE: only when a room opens mid-wave: a wave's spawns by the few packs moved.
+          // oxlint-disable-next-line munch/no-nested-scan
           Array.findFirst(moves, move => move.pack === spawn.pack),
           ({ door }) => door,
         ),
@@ -156,6 +159,8 @@ const drawMoves = (
       const doorDraw = nextRandom(moveDraw.nextState)
       const mates = mateDoorsOf(spawns, moves, pack)
       const choices = Array.match(
+        // NOTE: only when a room opens mid-wave: at most 13 doors.
+        // oxlint-disable-next-line munch/no-nested-scan
         Array.filter(newDoors, door => !Array.contains(mates, door)),
         { onEmpty: () => newDoors, onNonEmpty: doors => doors },
       )
@@ -170,16 +175,21 @@ const drawMoves = (
 const movedSpawns = (
   spawns: ReadonlyArray<PlannedSpawn>,
   moves: ReadonlyArray<DoorMove>,
-): ReadonlyArray<PlannedSpawn> =>
-  Array.map(spawns, spawn =>
-    Option.match(
-      Array.findFirst(moves, ({ pack }) => pack === spawn.pack),
-      {
-        onNone: () => spawn,
-        onSome: ({ door }) => modifyFields(spawn, { door: () => door }),
-      },
-    ),
-  )
+): ReadonlyArray<PlannedSpawn> => {
+  // NOTE: each pack's first move, found once rather than for every spawn.
+  const doors = new Map<number, DoorId>()
+  for (const { pack, door } of moves) {
+    if (!doors.has(pack)) {
+      doors.set(pack, door)
+    }
+  }
+  return Array.map(spawns, spawn => {
+    const door = doors.get(spawn.pack)
+    return door === undefined
+      ? spawn
+      : modifyFields(spawn, { door: () => door })
+  })
+}
 
 // NOTE: doors that open while a wave is shown or under way join it at once.
 // Each pack still to come, through a door, from a group free to pick its
@@ -209,7 +219,7 @@ export const joinNewDoors: {
       spawn =>
         isThroughDoor(spawn) &&
         spawn.atMs >= earliestMs &&
-        !Array.contains(model.pacing.warnedPacks, spawn.pack) &&
+        !isPackWarned(model.pacing.warnedPacks, spawn.pack) &&
         canPackMove(round.wave, spawn.pack),
     ),
   )

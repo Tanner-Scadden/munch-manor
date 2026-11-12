@@ -696,6 +696,8 @@ export const debutKinds = (wave: number): ReadonlyArray<ZombieKind> => {
   const present = kindsInPlan(planFor(wave))
   return Array.filter(
     ZOMBIE_KIND_ORDER,
+    // NOTE: a few zombie kinds, once a wave.
+    // oxlint-disable-next-line munch/no-nested-scan
     kind => Array.contains(present, kind) && !Array.contains(earlier, kind),
   )
 }

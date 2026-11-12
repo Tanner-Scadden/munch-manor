@@ -1,4 +1,4 @@
-import { Array, Equal, Function, Option, Result } from 'effect'
+import { Array, Function, Option, Predicate, Record, Result } from 'effect'
 import { Canvas } from 'foldkit'
 import { type Html, createLazy } from 'foldkit/html'
 
@@ -219,10 +219,38 @@ type LastShapes = { current: ReadonlyArray<Canvas.Shape> }
 // screen overlays are rebuilt as new arrays every frame. This hands back the
 // previous array while the new one is structurally equal, so the overlay
 // canvas repaints only on frames where what it shows has changed.
+// NOTE: shapes are plain data, so equal shapes have the same keys and equal
+// values. This walks both trees and stops at the first difference; it never
+// hashes, which Equal.equals does to every node of both trees every frame.
+// A sprite shared by reference is equal at once.
+const isSameData = (left: unknown, right: unknown): boolean => {
+  if (left === right) {
+    return true
+  }
+  if (Array.isArray(left)) {
+    return (
+      Array.isArray(right) &&
+      left.length === right.length &&
+      Array.every(left, (item, index) => isSameData(item, right[index]))
+    )
+  }
+  if (!Predicate.isObject(left) || !Predicate.isObject(right)) {
+    return false
+  }
+  const keys = Record.keys(left)
+  return (
+    keys.length === Record.keys(right).length &&
+    Array.every(
+      keys,
+      key => Record.has(right, key) && isSameData(left[key], right[key]),
+    )
+  )
+}
+
 const keepWhileEqual =
   (last: LastShapes) =>
   (shapes: ReadonlyArray<Canvas.Shape>): ReadonlyArray<Canvas.Shape> => {
-    if (!Equal.equals(last.current, shapes)) {
+    if (!isSameData(last.current, shapes)) {
       last.current = shapes
     }
     return last.current

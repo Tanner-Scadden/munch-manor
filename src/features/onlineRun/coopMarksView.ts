@@ -201,17 +201,12 @@ const nameTagShapes = (
   const width = tagWidthOf(cells) + iconSpan
   const left = Math.round(x - width / 2)
   const top = Math.round(bottom) - TAG_ROWS - TAG_PAD - 1
-  const icon = Array.reduce(
-    icons,
-    { at: left, shapes: Array.empty<Canvas.Shape>() },
-    (placed, found) => ({
-      at: placed.at + found.width + TAG_GAP,
-      shapes: Array.append(
-        placed.shapes,
-        placeAt(placed.at, top, found.sprite),
-      ),
-    }),
-  ).shapes
+  const icon: Array<Canvas.Shape> = []
+  let iconAt = left
+  for (const found of icons) {
+    icon.push(placeAt(iconAt, top, found.sprite))
+    iconAt += found.width + TAG_GAP
+  }
   const glyphs = Array.reduce(
     cells,
     { at: left + iconSpan, shapes: Array.empty<Canvas.Shape>() },

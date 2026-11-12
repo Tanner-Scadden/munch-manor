@@ -624,10 +624,9 @@ export const tickInput: {
     const ticks = Array.range(from + 1, Math.max(from + 1, target))
     const due = target > session.inputTick ? ticks : []
     const newest = Option.map(Array.last(session.frames), frame => frame.world)
-    const stepped = Array.reduce(due, session, (current, tick) => ({
+    const predictedThrough = Array.reduce(due, session, (current, tick) => ({
       ...current,
       inputTick: tick,
-      history: Array.append(current.history, { tick, input }),
       samples: appendSample(current.samples, input),
       samplesFrom: Array.isReadonlyArrayEmpty(current.samples)
         ? tick
@@ -636,6 +635,16 @@ export const tickInput: {
         Option.map(newest, latest => world.own.step(own, input, latest)),
       ),
     }))
+    // NOTE: the history grows by the due ticks at once, not one copy a tick.
+    const stepped = Array.isReadonlyArrayEmpty(due)
+      ? predictedThrough
+      : {
+          ...predictedThrough,
+          history: Array.appendAll(
+            session.history,
+            Array.map(due, tick => ({ tick, input })),
+          ),
+        }
     const sinceSent = nowMs - stepped.sentMs
     const wantsInput =
       Array.isReadonlyArrayNonEmpty(stepped.samples) &&

@@ -177,21 +177,19 @@ const cellRow = ({ mark, width }: Cell, row: number): string =>
       )
     : String.repeat(width)(TRANSPARENT)
 
-type Placed = Readonly<{ x: number; shapes: ReadonlyArray<Canvas.Shape> }>
-
 const placeCells = (
   cells: ReadonlyArray<Cell>,
   left: number,
   toShapes: (mark: Mark, x: number) => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
-  Array.reduce(
-    cells,
-    { x: left, shapes: [] },
-    (current: Placed, { mark, width }): Placed => ({
-      x: current.x + width + GLYPH_GAP,
-      shapes: Array.appendAll(current.shapes, toShapes(mark, current.x)),
-    }),
-  ).shapes
+): ReadonlyArray<Canvas.Shape> => {
+  const shapes: Array<Canvas.Shape> = []
+  let x = left
+  for (const { mark, width } of cells) {
+    shapes.push(...toShapes(mark, x))
+    x += width + GLYPH_GAP
+  }
+  return shapes
+}
 
 const keyAt = (x: number, top: number): Canvas.Shape =>
   placeAt(x, top - KEY_LIFT, KEY_SPRITE)
