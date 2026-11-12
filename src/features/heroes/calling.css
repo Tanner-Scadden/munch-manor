@@ -1,16 +1,32 @@
 /* HEROES: the picker the lobby's hero card opens. */
 
-.panel-dialog[data-panel='Calling'] .panel {
-  width: min(760px, calc(100vw - 16px));
+/* NOTE: one panel in both parents: the solo lobby's Dialog and co-op's
+   lobby, which draws it over a dim of its own. */
+.panel-dialog[data-panel='Calling'] .panel,
+.coop-calling-picker .calling-panel {
+  width: min(900px, calc(100vw - 16px));
 }
 
-/* NOTE: two columns of wide cards, a figure beside its name and its
+/* NOTE: three even columns of wide cards, a figure beside its name and its
    specials: perks in green with a plus, drawbacks in red with a minus. The
-   same cards sit in the co-op lobby's picker. */
+   grid has six tracks and a card spans two, so a short last row sits in
+   the middle: five heroes are three over two, never one alone. */
 .calling-cards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--menu-gap);
+}
+
+.calling-cards > * {
+  grid-column: span 2;
+}
+
+.calling-cards > :nth-child(3n + 1):nth-last-child(2) {
+  grid-column: 2 / span 2;
+}
+
+.calling-cards > :nth-child(3n + 1):nth-last-child(1) {
+  grid-column: 3 / span 2;
 }
 
 .calling-card {
@@ -186,6 +202,10 @@
   grid-template-columns: 1fr;
 }
 
+.game-root[data-layout='Portrait'] .calling-cards > * {
+  grid-column: 1;
+}
+
 /* NOTE: the rank chip is placed under the home player by default; on a card
    it sits in the flow beside the padlock. */
 .calling-need .rank-chip {
@@ -219,14 +239,13 @@
   inset: 0;
   z-index: 5;
   display: flex;
-  flex-direction: column;
-  gap: var(--menu-gap);
-  box-sizing: border-box;
-  padding: 12px max(12px, 4%);
-  overflow-y: auto;
-  background: rgba(12, 9, 16, 0.95);
+  align-items: center;
+  justify-content: center;
+  background: var(--menu-scrim);
 }
 
+/* NOTE: the name picker over co-op's lobby (src/features/coop/namePicker.ts)
+   keeps this head of its own. */
 .coop-calling-picker-head {
   position: relative;
   display: flex;
@@ -242,23 +261,7 @@
   text-transform: uppercase;
 }
 
-.coop-calling-picker .coop-close {
-  top: 0;
-  right: 0;
-}
-
-.coop-calling-picker .calling-cards {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-}
-
 @media (max-height: 500px) {
-  .coop-calling-picker {
-    gap: 4px;
-    padding-block: 6px;
-  }
-
   .coop-calling-picker-head {
     min-height: 40px;
   }
@@ -304,7 +307,8 @@
 }
 
 /* NOTE: the Bones balance, by the title and left of the close button. */
-.panel-dialog[data-panel='Calling'] .calling-balance {
+.panel-dialog[data-panel='Calling'] .calling-balance,
+.coop-calling-picker .calling-panel .calling-balance {
   position: absolute;
   top: calc(var(--menu-pad) + 2px);
   right: calc(var(--menu-pad) + 56px);
@@ -419,29 +423,9 @@
   }
 }
 
-/* NOTE: co-op's lobby picker: the Bones balance at the head's left, and the
-   BUY pill under the cards when a hero for sale is being tried on. */
-.coop-calling-picker .calling-balance {
-  position: absolute;
-  top: 6px;
-  left: 0;
-}
-
-.coop-calling-actions {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.coop-calling-actions .calling-buy {
-  flex: 0 1 360px;
-}
-
 /* NOTE: a short BUY is dim by its own colors, not by co-op's disabled fade,
    which would let the lobby show through it. */
-.coop-calling-actions .calling-buy:disabled {
+.coop-calling-picker .calling-buy:disabled {
   opacity: 1;
 }
 
