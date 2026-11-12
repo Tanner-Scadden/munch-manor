@@ -8,6 +8,7 @@ import {
   copiedLineOf,
 } from '../features/end/share'
 import { listenForTouchTaps } from '../input/touchTaps'
+import { isTextField, liftFieldsOverKeyboard } from '../platform/keyboard'
 import { ApplicationBlock } from './definition'
 import {
   type MeasuredGameSurface,
@@ -27,8 +28,41 @@ const measure = (element: Element): MeasuredGameSurface => {
   })
 }
 
+// NOTE: the measurement to send, if any. While a text field is focused,
+// the keyboard is up: it overlays the page (`interactive-widget` in
+// index.html), but iOS shrinks the visual viewport, and a browser that
+// ignores the viewport tag shrinks the page. A change of height alone is
+// that keyboard, so the game keeps its size, its layout, and its portrait
+// or landscape, and the field's panel never squishes. A new width (the
+// phone turned) still measures.
+export const steadyMeasurement: {
+  (
+    next: MeasuredGameSurface,
+    isTyping: boolean,
+  ): (last: MeasuredGameSurface | undefined) => MeasuredGameSurface | undefined
+  (
+    last: MeasuredGameSurface | undefined,
+    next: MeasuredGameSurface,
+    isTyping: boolean,
+  ): MeasuredGameSurface | undefined
+} = Function.dual(
+  3,
+  (
+    last: MeasuredGameSurface | undefined,
+    next: MeasuredGameSurface,
+    isTyping: boolean,
+  ): MeasuredGameSurface | undefined =>
+    isTyping && last !== undefined && last.width === next.width
+      ? undefined
+      : next,
+)
+
 // NOTE: the game surface's place on the page, measured when it mounts and
 // again whenever it or the window resizes, so pointer input maps onto it.
+// While a text field is focused, the page lifts it over the phone's
+// keyboard (src/platform/keyboard.ts). When it lets go of focus, iOS can
+// leave the page scrolled where it showed the field, so it goes back to
+// the top.
 export const MeasureGameSurface = ApplicationBlock.makeMountStream(
   'MeasureGameSurface',
   {
@@ -38,22 +72,54 @@ export const MeasureGameSurface = ApplicationBlock.makeMountStream(
         Stream.callback<MeasuredGameSurface>(queue =>
           Effect.acquireRelease(
             Effect.sync(() => {
+              const sent: { last: MeasuredGameSurface | undefined } = {
+                last: undefined,
+              }
               const emitMeasurement = (): void => {
-                Queue.offerUnsafe(queue, measure(element))
+                const maybeNext = steadyMeasurement(
+                  sent.last,
+                  measure(element),
+                  isTextField(element.ownerDocument.activeElement),
+                )
+                if (maybeNext !== undefined) {
+                  sent.last = maybeNext
+                  Queue.offerUnsafe(queue, maybeNext)
+                }
+              }
+              const onFocusOut = (event: FocusEvent): void => {
+                const next = event.relatedTarget
+                if (
+                  !(next instanceof Element && isTextField(next)) &&
+                  (window.scrollX !== 0 || window.scrollY !== 0)
+                ) {
+                  window.scrollTo(0, 0)
+                }
               }
               const resizeObserver = new ResizeObserver(emitMeasurement)
               resizeObserver.observe(element)
               window.addEventListener('resize', emitMeasurement)
               window.visualViewport?.addEventListener('resize', emitMeasurement)
-              return { resizeObserver, emitMeasurement }
+              element.ownerDocument.addEventListener('focusout', onFocusOut)
+              const stopLifting = liftFieldsOverKeyboard(window)
+              return {
+                resizeObserver,
+                emitMeasurement,
+                onFocusOut,
+                stopLifting,
+              }
             }),
-            ({ resizeObserver, emitMeasurement }) =>
+            ({ resizeObserver, emitMeasurement, onFocusOut, stopLifting }) =>
               Effect.sync(() => {
+                stopLifting()
                 resizeObserver.disconnect()
                 window.removeEventListener('resize', emitMeasurement)
                 window.visualViewport?.removeEventListener(
                   'resize',
                   emitMeasurement,
+                )
+                element.ownerDocument.removeEventListener(
+                  'focusout',
+                  onFocusOut,
                 )
               }),
           ).pipe(Effect.flatMap(() => Effect.never)),

@@ -82,7 +82,9 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'device-in': 'a device in the Account list, an icon with no control',
   'dot-pulse': 'a sync dot',
   'portal-turn': "the link portal's rings and icon",
-  'code-drop': "a link code's letters",
+  'code-drop': "a link code's letters, aria-hidden art inside the code button",
+  'code-copied':
+    "the link code's COPIED! flash, aria-hidden text over the code button",
   'zap-left': 'the link animation',
   'zap-right': 'the link animation',
   'zap-strike': 'the link animation',

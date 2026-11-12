@@ -1101,12 +1101,69 @@
   color: #ff8a7d;
 }
 
+/* NOTE: the code is a button: a tap copies it. */
 .account-code {
+  position: relative;
   display: flex;
   gap: 6px;
   margin: 0;
-  user-select: all;
-  -webkit-user-select: all;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* NOTE: a copy's COPIED! pops over the code and fades in place. */
+.account-code-copied {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  padding: 4px 10px;
+  border: 2px solid var(--menu-green);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-green-deep);
+  color: var(--menu-green);
+  font: bold 18px / 1 var(--menu-font);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: code-copied 1400ms ease-out forwards;
+}
+
+/* NOTE: with less motion, COPIED! only fades: with no animation it would
+   stay up. */
+@media (prefers-reduced-motion: reduce) {
+  .account-code-copied {
+    animation-name: code-copied-fade;
+  }
+}
+
+@keyframes code-copied-fade {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes code-copied {
+  0% {
+    opacity: 0;
+    scale: 1.4;
+  }
+  15%,
+  70% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1;
+  }
 }
 
 .account-code-letter {

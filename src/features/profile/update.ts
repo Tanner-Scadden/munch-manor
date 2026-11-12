@@ -1,6 +1,8 @@
-import { Effect, Schema, String, pipe } from 'effect'
+import { Effect, Option, Schema, String, pipe } from 'effect'
 import { Dom } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
+
+import { normalizeCode } from '@munch/sync-engine'
 
 import { cleanName, draftName, shownName } from '../../domain/playerName'
 import { LinkFlow } from '../../platform/playerSync'
@@ -91,6 +93,30 @@ const typeLinkCode = (model: Model, value: string) => ({
     : model,
 })
 
+// NOTE: a tap on the code field read the clipboard. Its text fills the
+// field only when it cleans to a link code (any case, a space or a dash
+// between the halves) and nothing was typed since the tap, so a paste
+// never lands over typing. Anything else leaves the field to the keyboard.
+const pasteLinkCode = (model: Model, text: string, typed: string) =>
+  LinkFlow.matchOrElse(
+    model.linkFlow,
+    {
+      Entering: ({ code }) => ({
+        model: Option.match(
+          Option.filter(normalizeCode(text), () => code === typed),
+          {
+            onNone: () => model,
+            onSome: pasted =>
+              modifyFields(model, {
+                linkFlow: () => LinkFlow.Entering({ code: pasted }),
+              }),
+          },
+        ),
+      }),
+    },
+    () => ({ model }),
+  )
+
 const submitLinkCode = (model: Model) =>
   LinkFlow.match(model.linkFlow, {
     Entering: ({ code }) => ({
@@ -163,7 +189,10 @@ export const update = ProfileComposition.makeUpdate({
   ClickedLinkDeviceButton: startLinking,
 
   SucceededRequestLinkCode: (model, { code }) => ({
-    model: modifyFields(model, { linkFlow: () => LinkFlow.Showing({ code }) }),
+    model: modifyFields(model, {
+      linkFlow: () => LinkFlow.Showing({ code }),
+      linkCodeCopies: () => 0,
+    }),
     outMessage: OutMessage.ShowedLinkCode(),
   }),
 
@@ -197,6 +226,13 @@ export const update = ProfileComposition.makeUpdate({
   ClickedCancelLinkButton: model => ({
     model: modifyFields(model, { linkFlow: () => LinkFlow.Idle() }),
   }),
+
+  SucceededCopyLinkCode: model => ({
+    model: modifyFields(model, { linkCodeCopies: count => count + 1 }),
+  }),
+
+  SucceededReadClipboard: (model, { text, typed }) =>
+    pasteLinkCode(model, text, typed),
 
   ClickedSettingTile: makeOutMessageStep.fromMessage(({ setting }) =>
     OutMessage.ClickedSetting({ setting }),

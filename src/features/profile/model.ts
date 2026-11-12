@@ -28,7 +28,7 @@ export const ProfileTabsBlock = Tabs.makeBlock<ProfileTab>()
 
 // NOTE: the Profile panel's own state: the open tab, the name as it is being
 // typed, the last effect and the Look tab's cue and try-on, the device link
-// flow, and the tutorial reset's question. The view reads fxCount only for
+// flow with the times its code was copied, and the tutorial reset's question. The view reads fxCount only for
 // its parity, so the same effect twice in a row still replays. Its tab strip
 // and the Look tab are its children, on `tabs` and `character`. What the
 // game reads (the name kept, the look, the settings) is the root's.
@@ -40,6 +40,7 @@ export const Model = Schema.Struct({
   closetCue: ClosetCue,
   maybePreview: Schema.Option(LookPreview),
   linkFlow: LinkFlow,
+  linkCodeCopies: Schema.Finite,
   tutorialReset: TutorialReset,
   tabs: ProfileTabsBlock.Model,
   character: CharacterPicker,
@@ -56,5 +57,6 @@ export const initialModel: Omit<Model, 'tabs' | 'character'> = {
   closetCue: { part: 'Hat', value: 'None', kind: 'Still', count: 0 },
   maybePreview: Option.none(),
   linkFlow: LinkFlow.Idle(),
+  linkCodeCopies: 0,
   tutorialReset: 'Idle',
 }

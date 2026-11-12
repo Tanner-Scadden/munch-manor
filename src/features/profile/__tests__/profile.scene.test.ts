@@ -21,6 +21,7 @@ import {
   settingsButton,
   showDialogInScene,
 } from '../../../test/testing'
+import { CopyLinkCodeOnClick, PasteLinkCodeOnTap } from '../linkClipboard'
 import { Message as ProfileMessage } from '../message'
 import { ProfileTabsBlock } from '../model'
 import { RequestLinkCode } from '../update'
@@ -228,10 +229,59 @@ describe('the Account tab', () => {
           Scene.role('textbox', { name: LINK_TAKES_PROGRESS_NOTE }),
         ).toExist(),
         Scene.expect(Scene.role('button', { name: 'Link' })).toExist(),
+        Scene.Mount.resolve(
+          PasteLinkCodeOnTap,
+          ProfileMessage.SucceededReadClipboard({ text: 'hi', typed: '' }),
+        ),
+        Scene.expect(
+          Scene.role('textbox', { name: LINK_TAKES_PROGRESS_NOTE }),
+        ).toHaveValue(''),
       ),
   )
 
-  it.effect('summoning asks for a code and shows it in big letters', () =>
+  it.effect(
+    'summoning shows the code in big letters, and a tap copies it with COPIED! in place',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(synced),
+        measureSurface,
+        Scene.click(settingsButton),
+        ...showDialogInScene(),
+        Scene.click(tab('Account')),
+        focusTab(2),
+        Scene.click(Scene.role('button', { name: 'Link another device' })),
+        Scene.Command.resolve(
+          RequestLinkCode,
+          ProfileMessage.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
+        ),
+        Scene.expect(
+          Scene.role('button', { name: 'Link code K Z 7 Q W M, tap to copy' }),
+        ).toExist(),
+        Scene.expect(
+          Scene.selector('.account-code[data-link-code="KZ7QWM"]'),
+        ).toExist(),
+        Scene.expectAll(Scene.all.selector('.account-code-letter')).toHaveCount(
+          6,
+        ),
+        Scene.expect(Scene.text('COPIED!')).toBeAbsent(),
+        Scene.Mount.resolve(
+          CopyLinkCodeOnClick,
+          ProfileMessage.SucceededCopyLinkCode(),
+        ),
+        Scene.expect(
+          Scene.role('button', { name: 'Link code K Z 7 Q W M, copied' }),
+        ).toExist(),
+        Scene.expect(Scene.text('COPIED!')).toExist(),
+        Scene.Mount.emit(
+          CopyLinkCodeOnClick,
+          ProfileMessage.SucceededCopyLinkCode(),
+        ),
+        Scene.expectAll(Scene.all.text('COPIED!')).toHaveCount(1),
+      ),
+  )
+
+  it.effect('a pasted code fills the field', () =>
     Scene.scene(
       APPLICATION,
       Scene.given(synced),
@@ -240,17 +290,14 @@ describe('the Account tab', () => {
       ...showDialogInScene(),
       Scene.click(tab('Account')),
       focusTab(2),
-      Scene.click(Scene.role('button', { name: 'Link another device' })),
-      Scene.Command.resolve(
-        RequestLinkCode,
-        ProfileMessage.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
+      Scene.click(Scene.role('button', { name: 'Use a code' })),
+      Scene.Mount.resolve(
+        PasteLinkCodeOnTap,
+        ProfileMessage.SucceededReadClipboard({ text: 'kz7 qwm', typed: '' }),
       ),
       Scene.expect(
-        Scene.role('paragraph', { name: 'Link code K Z 7 Q W M' }),
-      ).toExist(),
-      Scene.expectAll(Scene.all.selector('.account-code-letter')).toHaveCount(
-        6,
-      ),
+        Scene.role('textbox', { name: LINK_TAKES_PROGRESS_NOTE }),
+      ).toHaveValue('KZ7QWM'),
     ),
   )
 

@@ -1,9 +1,10 @@
-import { Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 
 import { describe, expect, it } from '@effect/vitest'
 import { Tabs } from '@foldkit/ui'
 
+import { LinkFlow } from '../../../platform/playerSync'
 import { ProfileBlock } from '../block'
 import * as Character from '../blocks/look/block'
 import { CharacterBinding, TabsBinding } from '../composition'
@@ -11,9 +12,9 @@ import { InMessage } from '../inMessage'
 import { FocusLookOption } from '../inMessageUpdate'
 import { ProfileLayer } from '../layer'
 import { Message, OutMessage } from '../message'
-import { ProfileTabsBlock } from '../model'
+import { type Model as ProfileModel, ProfileTabsBlock } from '../model'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from '../profile'
-import { FocusTutorialReset } from '../update'
+import { FocusTutorialReset, RequestLinkCode } from '../update'
 
 // The Profile Block on its own: what it keeps, what it tells the root, and
 // what it does with the root's answers. The root's side (the name saved,
@@ -236,6 +237,119 @@ describe("the Profile's Look tab", () => {
       Story.model(model => {
         expect(model.fx).toBe('Spin')
         expect(model.fxCount).toBe(2)
+      }),
+    ),
+  )
+})
+
+describe("the Profile's link code", () => {
+  const entering = (code: string) =>
+    Story.steps(
+      openOn('Account'),
+      Story.message(Message.ClickedUseCodeButton()),
+      Story.message(Message.UpdatedLinkCode({ value: code })),
+    )
+
+  const codeIs = (expected: string) =>
+    Story.model((model: ProfileModel) => {
+      expect(model.linkFlow).toEqual(LinkFlow.Entering({ code: expected }))
+    })
+
+  it.effect(
+    'a copy counts, so COPIED! flashes afresh, and a new code starts over',
+    () =>
+      Story.story(
+        PROFILE,
+        Story.init(),
+        openOn('Account'),
+        Story.message(Message.ClickedLinkDeviceButton()),
+        Story.Command.resolve(
+          RequestLinkCode,
+          Message.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
+        ),
+        Story.message(Message.SucceededCopyLinkCode()),
+        Story.message(Message.SucceededCopyLinkCode()),
+        Story.model(model => {
+          expect(model.linkCodeCopies).toBe(2)
+        }),
+        Story.message(Message.ClickedLinkDeviceButton()),
+        Story.Command.resolve(
+          RequestLinkCode,
+          Message.SucceededRequestLinkCode({ code: 'PQ23RS' }),
+        ),
+        Story.model(model => {
+          expect(model.linkFlow).toEqual(LinkFlow.Showing({ code: 'PQ23RS' }))
+          expect(model.linkCodeCopies).toBe(0)
+        }),
+        Story.expectOutMessage(OutMessage.ShowedLinkCode()),
+      ),
+  )
+
+  it.effect('a tap pastes a code from the clipboard, cleaned', () =>
+    Story.story(
+      PROFILE,
+      Story.init(),
+      entering(''),
+      Story.message(
+        Message.SucceededReadClipboard({ text: ' kz7-qwm\n', typed: '' }),
+      ),
+      codeIs('KZ7QWM'),
+    ),
+  )
+
+  it.effect('a fresh tap pastes over what the field held', () =>
+    Story.story(
+      PROFILE,
+      Story.init(),
+      entering('ABC'),
+      Story.message(
+        Message.SucceededReadClipboard({ text: 'KZ7 QWM', typed: 'ABC' }),
+      ),
+      codeIs('KZ7QWM'),
+    ),
+  )
+
+  it.effect(
+    'a clipboard that holds no code leaves the field to the keyboard',
+    () =>
+      Effect.forEach(
+        ['hello there', 'KZ7QW', 'KZ7QWMX', 'KZ7QW0', ''],
+        text =>
+          Story.story(
+            PROFILE,
+            Story.init(),
+            entering(''),
+            Story.message(Message.SucceededReadClipboard({ text, typed: '' })),
+            codeIs(''),
+          ),
+        { discard: true },
+      ),
+  )
+
+  it.effect('never pastes over letters typed since the tap', () =>
+    Story.story(
+      PROFILE,
+      Story.init(),
+      entering(''),
+      Story.message(Message.UpdatedLinkCode({ value: 'ab' })),
+      Story.message(
+        Message.SucceededReadClipboard({ text: 'KZ7QWM', typed: '' }),
+      ),
+      codeIs('AB'),
+    ),
+  )
+
+  it.effect('a clipboard read lands nowhere once the field is gone', () =>
+    Story.story(
+      PROFILE,
+      Story.init(),
+      entering(''),
+      Story.message(Message.ClickedCancelLinkButton()),
+      Story.message(
+        Message.SucceededReadClipboard({ text: 'KZ7QWM', typed: '' }),
+      ),
+      Story.model(model => {
+        expect(model.linkFlow).toEqual(LinkFlow.Idle())
       }),
     ),
   )

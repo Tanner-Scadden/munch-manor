@@ -37,6 +37,8 @@ export const Message = defineMessageUnion({
   SucceededRedeemLinkCode: {},
   FailedRedeemLinkCode: { problem: LinkProblem },
   ClickedCancelLinkButton: {},
+  SucceededCopyLinkCode: {},
+  SucceededReadClipboard: { text: Schema.String, typed: Schema.String },
   ClickedSettingTile: { setting: SettingTile },
   ClickedResetTutorialButton: {},
   ClickedConfirmResetTutorialButton: {},
