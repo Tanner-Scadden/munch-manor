@@ -27,6 +27,7 @@ import {
 import {
   COOP_DEATH_WAVES,
   COOP_GAMES,
+  COOP_NETWORK,
   COOP_PLAYERS,
   COOP_WIN_RATE,
   ENDS,
@@ -93,11 +94,30 @@ const crewPartyV2 = {
 
 const CREW_KEY = '00ff00ff00ff00ff'
 
+// NOTE: one player's link over an online run (RunSummary version 7 on).
+const NETWORK = {
+  rttP50Ms: 62,
+  rttP95Ms: 140,
+  rttSamples: 300,
+  jitterMs: 9,
+  snapshots: 9_000,
+  lateSnapshots: 30,
+  lateMsMean: 70,
+  lateMsMax: 210,
+  reconnects: 0,
+  corrections: 12,
+  correctionPxMax: 6,
+}
+
+type CrewNetwork = typeof NETWORK
+
+const crewPartyV6 = { ...crewPartyV2, runKey: CREW_KEY }
+
 // NOTE: one player's own summary of an online co-op run.
 const crewSummary: RunSummary = {
   ...summary,
   difficulty: 'Hard',
-  party: { ...crewPartyV2, runKey: CREW_KEY },
+  party: { ...crewPartyV6, network: NETWORK },
 }
 
 // NOTE: the shop's purchases, in a summary from a build before the keys
@@ -508,6 +528,86 @@ describe('POST /api/runs', () => {
       }),
   )
 
+  it.effect("a co-op summary stores the player's network numbers", () =>
+    Effect.gen(function* () {
+      const setup = yield* setUp()
+      expect((yield* post(setup, encodeSummary(crewSummary))).status).toBe(202)
+      const stored = yield* query(
+        setup,
+        'SELECT net_rtt_p50_ms, net_rtt_p95_ms, net_rtt_samples, net_jitter_ms, net_snapshots, net_late_snapshots, net_late_ms_mean, net_late_ms_max, net_reconnects, net_corrections, net_correction_px_max FROM runs',
+      )
+      expect(stored).toEqual([
+        {
+          net_rtt_p50_ms: 62,
+          net_rtt_p95_ms: 140,
+          net_rtt_samples: 300,
+          net_jitter_ms: 9,
+          net_snapshots: 9_000,
+          net_late_snapshots: 30,
+          net_late_ms_mean: 70,
+          net_late_ms_max: 210,
+          net_reconnects: 0,
+          net_corrections: 12,
+          net_correction_px_max: 6,
+        },
+      ])
+    }),
+  )
+
+  it.effect(
+    'a version 6 co-op summary, and a solo one, store no network numbers',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        const versionSix = toJson({
+          ...summary,
+          version: 6,
+          party: crewPartyV6,
+        })
+        expect((yield* post(setup, versionSix)).status).toBe(202)
+        expect((yield* post(setup, encodeSummary(summary))).status).toBe(202)
+        const stored = yield* query(
+          setup,
+          'SELECT summary_version, party, crew_key, net_rtt_p50_ms, net_reconnects, net_correction_px_max FROM runs ORDER BY id',
+        )
+        expect(stored).toEqual([
+          {
+            summary_version: 6,
+            party: 'Crew',
+            crew_key: CREW_KEY,
+            net_rtt_p50_ms: null,
+            net_reconnects: null,
+            net_correction_px_max: null,
+          },
+          {
+            summary_version: RUN_SUMMARY_VERSION,
+            party: 'Solo',
+            crew_key: null,
+            net_rtt_p50_ms: null,
+            net_reconnects: null,
+            net_correction_px_max: null,
+          },
+        ])
+      }),
+  )
+
+  it.effect(
+    'a version 7 co-op summary with no network numbers, or a freak one, is refused',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        const without = toJson({ ...summary, party: crewPartyV6 })
+        expect((yield* post(setup, without)).status).toBe(400)
+        const freak = toJson({
+          ...summary,
+          party: { ...crewPartyV6, network: { ...NETWORK, rttP95Ms: -1 } },
+        })
+        expect((yield* post(setup, freak)).status).toBe(400)
+        const stored = yield* rowCount(setup)
+        expect(stored).toBe(0)
+      }),
+  )
+
   it.effect('a co-op summary with a malformed crew key is refused', () =>
     Effect.gen(function* () {
       const setup = yield* setUp()
@@ -880,7 +980,7 @@ const crewRowJson = (
         ...crewSummary,
         outcome,
         wave,
-        party: { ...crewPartyV2, seatKills, runKey },
+        party: { ...crewPartyV2, seatKills, runKey, network: NETWORK },
       })
 
 const BITTEN: RunSummary['outcome'] = { _tag: 'GameOver', killedBy: 'Tank' }
@@ -941,6 +1041,72 @@ describe("the report's co-op counts", () => {
           `SELECT mode, runs FROM (${MEDIAN_LENGTH})`,
         )
         expect(value_35).toEqual([{ mode: 'Campaign', runs: 4 }])
+      }),
+  )
+})
+
+const networkRowJson = (
+  runKey: string,
+  seatKills: number,
+  network: CrewNetwork,
+): string =>
+  encodeSummary({
+    ...crewSummary,
+    party: { ...crewPartyV2, seatKills, runKey, network },
+  })
+
+describe("the report's co-op network", () => {
+  it.effect(
+    "puts one game's players together, newest game first, and skips rows with no numbers",
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp(20, 20)
+        const older = 'aaaaaaaaaaaaaaaa'
+        const rows = [
+          networkRowJson(older, 1, NETWORK),
+          networkRowJson(CREW_KEY, 2, { ...NETWORK, rttP95Ms: 400 }),
+          networkRowJson(older, 3, { ...NETWORK, reconnects: 2 }),
+          networkRowJson(CREW_KEY, 4, NETWORK),
+          toJson({ ...summary, version: 6, party: crewPartyV6 }),
+          encodeSummary(summary),
+        ]
+        yield* Effect.forEach(rows, row => post(setup, row))
+        const posted = yield* rowCount(setup)
+        expect(posted).toBe(rows.length)
+        const stored = yield* query(
+          setup,
+          `SELECT crew_key, rtt_p95_ms, reconnects, late_snapshots, snapshots FROM (${COOP_NETWORK})`,
+        )
+        expect(stored).toEqual([
+          {
+            crew_key: CREW_KEY,
+            rtt_p95_ms: 400,
+            reconnects: 0,
+            late_snapshots: 30,
+            snapshots: 9_000,
+          },
+          {
+            crew_key: CREW_KEY,
+            rtt_p95_ms: 140,
+            reconnects: 0,
+            late_snapshots: 30,
+            snapshots: 9_000,
+          },
+          {
+            crew_key: older,
+            rtt_p95_ms: 140,
+            reconnects: 0,
+            late_snapshots: 30,
+            snapshots: 9_000,
+          },
+          {
+            crew_key: older,
+            rtt_p95_ms: 140,
+            reconnects: 2,
+            late_snapshots: 30,
+            snapshots: 9_000,
+          },
+        ])
       }),
   )
 })

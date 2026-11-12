@@ -314,7 +314,14 @@ const receiveServerFrame = (
           // outlasted the old (READY in the second run's break never went
           // out). The new run starts with none, as the room's own memory
           // of presses does.
-          welcome.tick === 0 ? { ...room, presses: noPresses } : room,
+          // The run's network numbers start then too.
+          welcome.tick === 0
+            ? {
+                ...room,
+                presses: noPresses,
+                session: Session.startRunTally(room.session),
+              }
+            : room,
           frame,
           bytes,
           atMs,

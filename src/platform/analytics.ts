@@ -25,8 +25,11 @@ import { Difficulty } from '../shared/playerData'
 // Worker still takes version 4 and older, with their purchases, their wins
 // as Victory, and none found. Version 6 adds 'Gamepad' to `device`, a run
 // played on a controller; the Worker still takes version 5 and older, on a
-// keyboard or touch.
-export const RUN_SUMMARY_VERSION = 6
+// keyboard or touch. Version 7 adds a crew's `network`: how this player's
+// link to the room did over the run (round trips, jitter, late
+// snapshots, reconnects, prediction corrections); the Worker still takes
+// version 6 and older, with none.
+export const RUN_SUMMARY_VERSION = 7
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -155,9 +158,53 @@ export const CREW_RUN_KEY_LENGTH = 16
 // and names no room or player.
 const CrewRunKey = Schema.String.check(Schema.isPattern(/^[0-9a-f]{16}$/))
 
+const CrewPartyV6 = Schema.TaggedStruct('Crew', {
+  ...crewFields,
+  runKey: CrewRunKey,
+})
+
+// NOTE: a party from a build before the crew's network numbers.
+const SummaryPartyV6 = Schema.Union([SoloParty, CrewPartyV6])
+export type SummaryPartyV6 = typeof SummaryPartyV6.Type
+
+// NOTE: the network numbers' bounds; the client sends a freak number (a
+// link down for minutes) at the top (src/platform/analyticsRun.ts).
+export const MAX_NET_MS = 60_000
+export const MAX_CORRECTION_PX = 100_000
+
+const NetMs = Schema.Int.check(
+  Schema.isBetween({ minimum: 0, maximum: MAX_NET_MS }),
+)
+
+// NOTE: this player's link to the room over one online run, measured on
+// their own client (packages/netcode NetStats.ts): the median and 95th
+// percentile round trip of the socket's pings (`rttSamples` of them, 0 when
+// none came back), the mean jitter in the spacing of the room's snapshots,
+// the snapshots timed and those a whole send or more late (with the mean
+// and most by which they were), the reconnects, and the times the room's
+// word moved the player's own predicted position (and the biggest move, in
+// world pixels). Numbers only: nothing in it names the player or the room.
+export const CrewNetwork = Schema.Struct({
+  rttP50Ms: NetMs,
+  rttP95Ms: NetMs,
+  rttSamples: Count,
+  jitterMs: NetMs,
+  snapshots: Count,
+  lateSnapshots: Count,
+  lateMsMean: NetMs,
+  lateMsMax: NetMs,
+  reconnects: Count,
+  corrections: Count,
+  correctionPxMax: Schema.Int.check(
+    Schema.isBetween({ minimum: 0, maximum: MAX_CORRECTION_PX }),
+  ),
+})
+export type CrewNetwork = typeof CrewNetwork.Type
+
 const CrewParty = Schema.TaggedStruct('Crew', {
   ...crewFields,
   runKey: CrewRunKey,
+  network: CrewNetwork,
 })
 
 export const SummaryParty = Schema.Union([SoloParty, CrewParty])
@@ -213,7 +260,7 @@ const escapeFields = {
   keysSpent: Count,
   casesOpened: Count,
   dareItemsFound: Count,
-  party: SummaryParty,
+  party: SummaryPartyV6,
   modifiers: ModifierMask,
 }
 
@@ -221,8 +268,16 @@ export const RunSummary = Schema.Struct({
   version: Schema.Literal(RUN_SUMMARY_VERSION),
   ...escapeFields,
   device: SummaryDevice,
+  party: SummaryParty,
 })
 export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before the crew's network numbers.
+const RunSummaryV6 = Schema.Struct({
+  version: Schema.Literal(6),
+  ...escapeFields,
+  device: SummaryDevice,
+})
 
 // NOTE: a summary from a build before controllers.
 const RunSummaryV5 = Schema.Struct({
@@ -235,7 +290,7 @@ const RunSummaryV5 = Schema.Struct({
 const RunSummaryV4 = Schema.Struct({
   version: Schema.Literal(4),
   ...runFields,
-  party: SummaryParty,
+  party: SummaryPartyV6,
   modifiers: ModifierMask,
 })
 
@@ -243,7 +298,7 @@ const RunSummaryV4 = Schema.Struct({
 const RunSummaryV3 = Schema.Struct({
   version: Schema.Literal(3),
   ...runFields,
-  party: SummaryParty,
+  party: SummaryPartyV6,
 })
 type RunSummaryV3 = typeof RunSummaryV3.Type
 
@@ -263,9 +318,10 @@ export const RunSummaryV1 = Schema.Struct({
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
 // NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 5, 4, 3, 2, or 1 from a build cached before it.
+// version, or version 6, 5, 4, 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
+  RunSummaryV6,
   RunSummaryV5,
   RunSummaryV4,
   RunSummaryV3,

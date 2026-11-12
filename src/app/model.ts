@@ -1,6 +1,7 @@
 import { Option, Schema } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
+import { NetStats } from '@munch/netcode'
 
 import {
   AudioState,
@@ -240,6 +241,10 @@ export const Model = Schema.Struct({
   // NOTE: the online co-op run's key, the same on every client in it, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeCrewRunKey: Schema.Option(Schema.String),
+  // NOTE: the online co-op run's network numbers as this client measured
+  // them (packages/netcode NetStats.ts), copied from the room each frame and
+  // kept with the run so its summary has them after the room is gone.
+  maybeRunNet: Schema.Option(NetStats.ClientNet),
   loading: Loading,
   saveStatus: SaveStatus,
   syncState: SyncState,
@@ -414,6 +419,7 @@ export const initialModel: OwnModel = {
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),
   maybeCrewRunKey: Option.none(),
+  maybeRunNet: Option.none(),
   loading: Loading.Loaded(),
   saveStatus: 'Unread',
   syncState: SyncState.LocalOnly(),

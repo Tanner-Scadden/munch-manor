@@ -134,6 +134,7 @@ export const FIELD_CLASSES = {
   maybeRoomDifficulty: 'Client',
   maybeRoomModifiers: 'Client',
   maybeCrewRunKey: 'Client',
+  maybeRunNet: 'Client',
   loading: 'Client',
   saveStatus: 'Client',
   syncState: 'Client',

@@ -1,5 +1,19 @@
-import { Array, Function, Match, Option, pipe } from 'effect'
+import { Array, Function, Match, Option } from 'effect'
 
+import {
+  type LagVerdict,
+  type RoomLag,
+  type SeatNet,
+  type SeatNetReport,
+  emptySeatNet,
+  heardInput,
+  heardRtt,
+  isLaggyLink,
+  isRoomLagging,
+  lagVerdictOf,
+  noLag,
+  seatNetReportOf,
+} from './NetStats'
 import {
   ClientFrame,
   type ClosedReason,
@@ -77,6 +91,7 @@ export interface Seat {
   readonly ack: number
   readonly rttMs: number
   readonly viewLagTicks: number
+  readonly net: SeatNet
 }
 
 export interface Room<W> {
@@ -86,6 +101,7 @@ export interface Room<W> {
   readonly startedMs: number
   readonly sentWorld: W
   readonly sentTick: number
+  readonly lag: RoomLag
 }
 
 export interface Scored {
@@ -212,6 +228,7 @@ export const startRoom: {
       ack: 0,
       rttMs: 0,
       viewLagTicks: 0,
+      net: emptySeatNet(Option.isSome(member.socket) ? 1 : 0),
     }))
     const room: Room<W> = {
       seats,
@@ -220,6 +237,7 @@ export const startRoom: {
       startedMs: nowMs,
       sentWorld: first,
       sentTick: 0,
+      lag: noLag,
     }
     return {
       room,
@@ -275,12 +293,16 @@ export const restoreRoom: {
       ack: 0,
       rttMs: 0,
       viewLagTicks: 0,
+      // NOTE: every player linked before the restart, so linking again
+      // counts as a reconnect.
+      net: emptySeatNet(1),
     })),
     world: restored,
     tick,
     startedMs: nowMs - tick * TICK_MS,
     sentWorld: restored,
     sentTick: tick,
+    lag: noLag,
   }),
 )
 
@@ -323,6 +345,7 @@ export const link: {
         queued: [],
         receipts: [],
         ack: 0,
+        net: { ...seat.net, links: seat.net.links + 1 },
       }
       const seats = updateSeat(room.seats, seat.slot, () => linked)
       const next = { ...room, seats }
@@ -457,10 +480,25 @@ const changesOf = (
 // on time. A message claiming ticks too far ahead is pulled back whole.
 // The new change points replace queued ones at or after their first tick:
 // they are newer word about the same ticks.
-const pointsOf = (frame: InputFrame, tick: number): ReadonlyArray<Change> => {
+const framePointsOf = (
+  frame: InputFrame,
+  tick: number,
+): ReadonlyArray<Change> => {
   const pulledBack = Math.max(0, frame.tick - (tick + MAX_INPUT_LEAD_TICKS))
   const [points] = changesOf(frame, frame.tick - pulledBack)
-  const late = Array.filter(points, point => point.tick <= tick)
+  return points
+}
+
+const latePointsOf = (
+  points: ReadonlyArray<Change>,
+  tick: number,
+): ReadonlyArray<Change> => Array.filter(points, point => point.tick <= tick)
+
+const pointsOf = (
+  points: ReadonlyArray<Change>,
+  tick: number,
+): ReadonlyArray<Change> => {
+  const late = latePointsOf(points, tick)
   const onTime = Array.filter(points, point => point.tick > tick)
   return Option.match(Array.last(late), {
     onNone: () => onTime,
@@ -502,8 +540,15 @@ const pointsOf = (frame: InputFrame, tick: number): ReadonlyArray<Change> => {
   })
 }
 
-const enqueue = (seat: Seat, frame: InputFrame, tick: number): Seat => {
-  const changes = pointsOf(frame, tick)
+const enqueue = (
+  seat: Seat,
+  frame: InputFrame,
+  tick: number,
+  nowMs: number,
+): Seat => {
+  const points = framePointsOf(frame, tick)
+  const late = latePointsOf(points, tick)
+  const changes = pointsOf(points, tick)
   const firstTick = Option.match(Array.head(changes), {
     onNone: () => tick + 1,
     onSome: change => change.tick,
@@ -513,9 +558,18 @@ const enqueue = (seat: Seat, frame: InputFrame, tick: number): Seat => {
     onSome: change => change.tick,
   })
   const kept = Array.filter(seat.queued, change => change.tick < firstTick)
+  const lateTicks = Option.match(Array.head(late), {
+    onNone: () => 0,
+    onSome: oldest => tick - oldest.tick,
+  })
   return {
     ...seat,
     rttMs: frame.rttMs,
+    net: heardRtt(
+      heardInput(seat.net, late.length, lateTicks),
+      frame.rttMs,
+      nowMs,
+    ),
     viewLagTicks: Math.max(
       0,
       Math.min(MAX_VIEW_LAG_TICKS, lastTick - frame.seen),
@@ -584,7 +638,7 @@ export const receive: {
             room: {
               ...woke.room,
               seats: updateSeat(woke.room.seats, seat.slot, () =>
-                enqueue(current, input, woke.room.tick),
+                enqueue(current, input, woke.room.tick, nowMs),
               ),
             },
             out: woke.out,
@@ -595,6 +649,7 @@ export const receive: {
               seats: updateSeat(woke.room.seats, seat.slot, () => ({
                 ...current,
                 rttMs,
+                net: heardRtt(current.net, rttMs, nowMs),
               })),
             },
             out: [
@@ -797,6 +852,16 @@ export const ticksDue: {
   ),
 )
 
+// NOTE: a wake that owed more than two sends' ticks woke late.
+const LATE_WAKE_TICKS = 2 * TICKS_PER_SEND
+
+const laggedBy = (lag: RoomLag, owed: number): RoomLag => ({
+  wakes: lag.wakes + 1,
+  lateWakes: lag.lateWakes + (owed > LATE_WAKE_TICKS ? 1 : 0),
+  maxOwedTicks: Math.max(lag.maxOwedTicks, owed),
+  lostTicks: lag.lostTicks + Math.max(0, owed - MAX_CATCH_UP_TICKS),
+})
+
 // NOTE: one wake of the room's loop: the ticks the clock owes, one message
 // to everyone if a send tick passed, then presence, then the end of the
 // game, which first sends the last world if it is not out yet, so every
@@ -808,13 +873,14 @@ export const advance: {
   3,
   <W, Own>(world: World<W, Own>, room: Room<W>, nowMs: number): Stepped<W> => {
     const owed = ticksDue(room, nowMs)
+    const lagged = { ...room, lag: laggedBy(room.lag, owed) }
     const slipped =
       owed > MAX_CATCH_UP_TICKS
         ? {
-            ...room,
+            ...lagged,
             startedMs: nowMs - (room.tick + MAX_CATCH_UP_TICKS) * TICK_MS,
           }
-        : room
+        : lagged
     const ticked = Array.reduce(
       repeat(Math.min(owed, MAX_CATCH_UP_TICKS), () => 0),
       slipped,
@@ -863,10 +929,33 @@ export const nextWakeMs = (room: Room<unknown>): number => {
 export const linkedSockets = (room: Room<unknown>): ReadonlyArray<SocketId> =>
   Array.getSomes(Array.map(room.seats, seat => seat.socket))
 
-export const rttsOf = (
-  room: Room<unknown>,
-): ReadonlyArray<{ readonly slot: number; readonly rttMs: number }> =>
-  pipe(
-    room.seats,
-    Array.map(seat => ({ slot: seat.slot, rttMs: seat.rttMs })),
-  )
+// NOTE: how each seat's link and the room's own loop did over the run, for
+// the room's end-of-game log (infra/worker/gameRoom.ts, finish). A seat that
+// left before the end is not in it.
+export interface NetReport {
+  readonly seats: ReadonlyArray<SeatNetReport & { readonly slot: number }>
+  readonly lag: RoomLag
+  readonly verdict: LagVerdict
+}
+
+export const netReportOf = (room: Room<unknown>): NetReport => {
+  const seats = Array.map(room.seats, seat => ({
+    slot: seat.slot,
+    ...seatNetReportOf(seat.net),
+  }))
+  return {
+    seats,
+    lag: room.lag,
+    verdict: lagVerdictOf(
+      Array.map(seats, seat =>
+        isLaggyLink({
+          rttP95Ms: seat.rttP95Ms,
+          late: seat.lateInputs,
+          of: seat.inputs,
+          reconnects: seat.reconnects,
+        }),
+      ),
+      isRoomLagging(room.lag),
+    ),
+  }
+}

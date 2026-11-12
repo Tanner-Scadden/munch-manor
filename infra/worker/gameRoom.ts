@@ -1,6 +1,7 @@
 import { Function } from 'effect'
 import * as Array from 'effect/Array'
 import * as Clock from 'effect/Clock'
+import * as Console from 'effect/Console'
 import * as Effect from 'effect/Effect'
 import * as Fiber from 'effect/Fiber'
 import * as Match from 'effect/Match'
@@ -172,6 +173,30 @@ const sendFrame = (socket: WorkersWebSocket, frame: ServerFrame) =>
       socket.send(bytes)
     },
   })
+
+// NOTE: the end of a game as one object, so Workers Logs indexes each
+// field (PLATFORM.md, "Reading the room's logs"): per seat its round trip,
+// jitter, late and dropped inputs, and reconnects; the room's own loop lag;
+// and where the lag came from. It names seats by slot, never a player.
+const ROOM_GAME_ENDED = 'RoomGameEnded'
+
+const gameEndLog = ({
+  round,
+  ended,
+  net,
+}: {
+  readonly round: number
+  readonly ended: Room.Ended
+  readonly net: Room.NetReport
+}) => ({
+  event: ROOM_GAME_ENDED,
+  round,
+  reason: ended.reason,
+  ticks: ended.tick,
+  verdict: net.verdict,
+  lag: net.lag,
+  seats: net.seats,
+})
 
 export class GameRoom {
   private readonly lock = Semaphore.makeUnsafe(1)
@@ -354,10 +379,7 @@ export class GameRoom {
       onNone: () => 0,
       onSome: game => game.round,
     })
-    const rtts = Option.match(this.game, {
-      onNone: () => [],
-      onSome: game => Room.rttsOf(game.room),
-    })
+    const maybeNet = Option.map(this.game, game => Room.netReportOf(game.room))
     this.game = Option.none()
     const stopLoop = Option.match(this.loop, {
       onNone: () => Effect.void,
@@ -366,10 +388,10 @@ export class GameRoom {
     this.loop = Option.none()
     const everyone = this.syncSockets()
     return Effect.gen({ self: this }, function* () {
-      yield* Effect.logInfo(
-        `Room game ${round} ended (${ended.reason}) at tick ${ended.tick}; round trips`,
-        rtts,
-      )
+      yield* Option.match(maybeNet, {
+        onNone: () => Effect.void,
+        onSome: net => Console.log(gameEndLog({ round, ended, net })),
+      })
       yield* this.lock.withPermit(
         host.recordResult(
           {
@@ -441,19 +463,17 @@ export class GameRoom {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0] ?? nowMs
       const isNightmareOpen = yield* this.nightmareOf(lobby.host)
       yield* this.forgetKept
-      const world = roomWorldFor(
-        {
-          ...roomSettingsOf(
-            lobby.mode,
-            lobby.difficulty === 'Nightmare' && !isNightmareOpen
-              ? 'Hard'
-              : lobby.difficulty,
-            lobby.members,
-            lobby.modifiers,
-          ),
-          intro: introForRound(lobby.round, lobby.members),
-        },
-      )
+      const world = roomWorldFor({
+        ...roomSettingsOf(
+          lobby.mode,
+          lobby.difficulty === 'Nightmare' && !isNightmareOpen
+            ? 'Hard'
+            : lobby.difficulty,
+          lobby.members,
+          lobby.modifiers,
+        ),
+        intro: introForRound(lobby.round, lobby.members),
+      })
       const started = Room.startRoom(
         world,
         Array.map(lobby.members, member => ({

@@ -306,6 +306,7 @@ const drawTraced = ({
           hitStop: () => thaw.hitStop,
           maybeCrewRunKey: key =>
             Option.orElse(Option.map(room.maybeLobby, crewRunKeyOf), () => key),
+          maybeRunNet: () => Option.some(room.session.stats.net),
         }),
         modifyFields(world, {
           bullets: bullets => [
