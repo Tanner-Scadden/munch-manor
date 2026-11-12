@@ -114,7 +114,7 @@ The Gamepad API has no events for sticks and buttons, only `navigator.getGamepad
 
 ### Aim assist
 
-`withAimAssist` in `frame.ts` runs only when `lastDevice` is `'Touch'`. Extend it to a `'Gamepad'` device. A stick aims coarser than a mouse, the same reason it exists for thumbs. The same numbers are a fair start; tune with a pad in hand. It is part of the intent, so the World steps the same either way.
+`withAimAssist` in `frame.ts` runs only when `lastDevice` is `'Touch'`. Extend it to a `'Gamepad'` device. A stick aims coarser than a mouse, the same reason it exists for thumbs. The same numbers are a fair start; tune with a pad in hand. It is part of the intent, so the World steps the same either way. Built in phase 1 with the pad's own, weaker numbers (inner 0.05 radians, outer 0.11, reach 110 px); touch came down at the same time to 0.08, 0.14, and 120 px (owner, 2026-11-11).
 
 ### Menus and dialogs
 

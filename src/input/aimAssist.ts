@@ -21,12 +21,13 @@ export type AimAssistStrength = Readonly<{
   reachPx: number
 }>
 
-// NOTE: each device's own strength. A pad sees the whole room, not a
-// phone's zoomed window, and a stick held in two hands is steadier than a
-// thumb on glass, so its pull is about half touch's and reaches less far:
-// it helps, it never plays for you.
+// NOTE: each device's own strength, gentle on both: it helps, it never
+// plays for you. A pad sees the whole room, not a phone's zoomed window,
+// and a stick held in two hands is steadier than a thumb on glass, so its
+// pull is weaker than touch's and reaches less far. Touch came down from
+// 0.12, 0.2, and 140 px with the owner on 2026-11-11.
 export const AIM_ASSIST = {
-  Touch: { innerRadians: 0.12, outerRadians: 0.2, reachPx: 140 },
+  Touch: { innerRadians: 0.08, outerRadians: 0.14, reachPx: 120 },
   Gamepad: { innerRadians: 0.05, outerRadians: 0.11, reachPx: 110 },
 } as const satisfies Readonly<Record<string, AimAssistStrength>>
 
