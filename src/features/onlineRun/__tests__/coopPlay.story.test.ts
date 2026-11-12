@@ -536,6 +536,30 @@ describe('an online co-op run', () => {
     ),
   )
 
+  // NOTE: the HUD's list opens the dare card over the live room: a key
+  // past its gate puts it away and still goes to the room.
+  it.effect('Tab opens the dare card, and the room never waits for it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inRun(roomWorld)),
+      Story.message(roomFrame(100)),
+      press('Tab'),
+      Story.model(current => {
+        expect(current.pocketCard._tag).toBe('Opened')
+        expect(isPocketCardBlocking(current)).toBe(false)
+      }),
+      ...Array.makeBy(4, index => Story.message(roomFrame(150 + index * 50))),
+      Story.model(current => {
+        expect(current.pocketCard._tag).toBe('Opened')
+      }),
+      press('Enter'),
+      Story.model(current => {
+        expect(current.pocketCard._tag).toBe('Pocketed')
+        expect(queuedOf(current)).toEqual([actionCodeOf(SeatAction.Ready())])
+      }),
+    ),
+  )
+
   it.effect("the crew's one key ring comes from the room", () =>
     Story.story(
       APPLICATION,

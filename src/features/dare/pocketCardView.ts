@@ -1,15 +1,30 @@
-import { Array, Function } from 'effect'
+import { Array, Function, Option, Record } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
-import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
+import {
+  DARE_FOUND_SLOTS,
+  DARE_ICONS,
+  DARE_ICON_SIZE,
+  DARE_SLOT_SIZE,
+  PLAIN_SIGHT,
+  SATCHEL_BACK,
+  SATCHEL_BACK_HEIGHT,
+  SATCHEL_FRONT,
+  SATCHEL_FRONT_HEIGHT,
+  SATCHEL_SCALE,
+  SATCHEL_WIDTH,
+} from '../../art/dareArt'
 import { type BakedText, bakeText, placeBaked } from '../../art/font'
+import { maybeRoomIcon } from '../../art/roomIcons'
 import { type Sprite, TOP_LEFT, group, spriteShapes } from '../../art/sprite'
 import { PocketCard } from '../../domain/clientSchema'
-import { rect } from '../../render/drawing'
+import { placeSprite, rect } from '../../render/drawing'
 import { hudLayoutFor } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
+import { dareCardOf } from '../../world/dare/dare'
 import type { DareKind } from '../../world/dare/dareSchema'
+import { DARE_LINES } from '../../world/names'
 import type { Vector } from '../../world/schema/worldSchema'
 import { clamp, easeOut, lerp } from '../../world/step/geometry'
 import { type DarePocket, pocketSlotSpotsOf } from './dareCard'
@@ -19,6 +34,7 @@ import {
   UNFOLD_MS,
   cardThingsOf,
   isPocketCardWaiting,
+  maybeClueRoom,
   outAtMs,
   promptAtMs,
   thingAtMs,
@@ -126,15 +142,16 @@ const DOOR_WIDTH = 14
 
 type CardBox = Readonly<{ x: number; y: number; width: number }>
 
+const middleOf = (screen: Screen): number =>
+  screen.layout === 'Landscape'
+    ? screen.height / 2
+    : screen.world.y + screen.world.height / 2
+
 const cardBoxOf = (screen: Screen): CardBox => {
   const width = Math.min(CARD_MAX_WIDTH, screen.width - CARD_SIDE_GAP * 2)
-  const middle =
-    screen.layout === 'Landscape'
-      ? screen.height / 2
-      : screen.world.y + screen.world.height / 2
   return {
     x: Math.round((screen.width - width) / 2),
-    y: Math.round(middle - CARD_HEIGHT / 2),
+    y: Math.round(middleOf(screen) - CARD_HEIGHT / 2),
     width,
   }
 }
@@ -157,12 +174,15 @@ const boxSpotsOf = (count: number, width: number): ReadonlyArray<Vector> => {
 
 // THE CARD
 
-const paperShapes = (width: number): ReadonlyArray<Canvas.Shape> => [
-  rect(2, 2, width, CARD_HEIGHT, CARD_SHADOW),
-  rect(0, 0, width, CARD_HEIGHT, NAPKIN_EDGE),
-  rect(1, 1, width - 2, CARD_HEIGHT - 2, NAPKIN),
-  rect(Math.floor(width / 2), 1, 1, CARD_HEIGHT - 2, NAPKIN_CREASE),
-  rect(1, Math.floor(CARD_HEIGHT / 2), width - 2, 1, NAPKIN_CREASE),
+const paperShapes = (
+  width: number,
+  height: number = CARD_HEIGHT,
+): ReadonlyArray<Canvas.Shape> => [
+  rect(2, 2, width, height, CARD_SHADOW),
+  rect(0, 0, width, height, NAPKIN_EDGE),
+  rect(1, 1, width - 2, height - 2, NAPKIN),
+  rect(Math.floor(width / 2), 1, 1, height - 2, NAPKIN_CREASE),
+  rect(1, Math.floor(height / 2), width - 2, 1, NAPKIN_CREASE),
 ]
 
 const wordShapes = (
@@ -195,15 +215,18 @@ const centeredWords = (
 const OUT_GAP = 5
 
 // NOTE: THEN GET OUT! with the door doodle after it, centered as one line.
-const outShapes = (width: number): ReadonlyArray<Canvas.Shape> => {
+const outShapes = (
+  width: number,
+  y: number = OUT_Y,
+): ReadonlyArray<Canvas.Shape> => {
   const lineWidth = wordsWidth(OUT_WORDS) + OUT_GAP + DOOR_WIDTH
   const left = Math.round((width - lineWidth) / 2)
   return [
-    ...wordShapes(OUT_WORDS, left, OUT_Y),
+    ...wordShapes(OUT_WORDS, left, y),
     group({
       translate: {
         x: left + wordsWidth(OUT_WORDS) + OUT_GAP,
-        y: OUT_Y - 1,
+        y: y - 1,
       },
       shapes: DOOR,
     }),
@@ -406,6 +429,236 @@ const foldingShapes = (
   ]
 }
 
+// THE CARD OPENED AGAIN, WITH ITS SATCHEL
+
+// NOTE: the card opened from the HUD's list (Demi and the owner,
+// 2026-11-11), the same napkin with I DARE YOU: the things still missing
+// in their pencil boxes, dim, each with where it lies under it once that
+// is known (`maybeClueRoom`: its room's icon and an eye for plain sight);
+// THEN GET OUT! once none is missing; a satchel at the foot holding every
+// thing found, each poking out of its top on its gold rim; and under it a
+// line of the Munches' story for each thing found. A thing found since the
+// card was last looked at drops into the satchel with a bounce. Only art
+// moves, and the card has no buttons.
+const OPENED_MAX_WIDTH = 184
+const OPENED_SIDE_GAP = 6
+const OPENED_PAD = 5
+const MISSING_Y = 22
+const MISSING_OUT_Y = MISSING_Y + 5
+const CLUE_Y = MISSING_Y + BOX + 3
+const CLUE_ROOM_HALF = 4
+const CLUE_EYE_GAP = 1
+const ITEMS_Y = 56
+const ITEM_STRIDE = DARE_SLOT_SIZE + 2
+const ITEM_LIFTS: ReadonlyArray<number> = [1, 0, 2, 0]
+const SATCHEL_PX_WIDTH = SATCHEL_WIDTH * SATCHEL_SCALE
+const SATCHEL_BACK_Y = ITEMS_Y + 6
+const SATCHEL_FRONT_Y = SATCHEL_BACK_Y + SATCHEL_BACK_HEIGHT * SATCHEL_SCALE - 2
+const SATCHEL_BOTTOM = SATCHEL_FRONT_Y + SATCHEL_FRONT_HEIGHT * SATCHEL_SCALE
+const LINES_Y = SATCHEL_BOTTOM + 5
+const LINE_STRIDE = 10
+const LINE_ICON_GAP = 3
+const MISSING_OPACITY = 0.35
+const DROP_MS = 520
+const DROP_STAGGER_MS = 160
+const DROP_FALL_SHARE = 0.65
+const DROP_HEIGHT = 34
+const DROP_BOUNCE_PX = 4
+
+const LINE_TEXTS: Readonly<Record<DareKind, BakedText>> = Record.map(
+  DARE_LINES,
+  line => bakeText(line, 'Ink'),
+)
+
+type Opened = Readonly<{
+  missing: ReadonlyArray<DareKind>
+  found: ReadonlyArray<DareKind>
+}>
+
+const openedOf = (model: Model): Opened => {
+  const card = dareCardOf(model)
+  const kindsOf = (isFound: boolean): ReadonlyArray<DareKind> =>
+    Array.map(
+      Array.filter(card, thing => thing.isFound === isFound),
+      ({ kind }) => kind,
+    )
+  return { missing: kindsOf(false), found: kindsOf(true) }
+}
+
+const openedHeightOf = (foundCount: number): number =>
+  foundCount === 0 ? SATCHEL_BOTTOM + 5 : LINES_Y + foundCount * LINE_STRIDE
+
+const openedBoxOf = (screen: Screen, foundCount: number): CardBox => {
+  const width = Math.min(OPENED_MAX_WIDTH, screen.width - OPENED_SIDE_GAP * 2)
+  return {
+    x: Math.round((screen.width - width) / 2),
+    y: Math.max(
+      0,
+      Math.round(middleOf(screen) - openedHeightOf(foundCount) / 2),
+    ),
+    width,
+  }
+}
+
+// NOTE: where a thing lies, under its box: its room's icon, then the eye.
+const clueShapes = (
+  model: Model,
+  kind: DareKind,
+  spot: Vector,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(Option.flatMap(maybeClueRoom(model, kind), maybeRoomIcon), {
+    onNone: () => [],
+    onSome: icon => {
+      const center = spot.x + Math.round(BOX / 2)
+      return [
+        placeSprite(center - CLUE_ROOM_HALF, CLUE_Y + CLUE_ROOM_HALF, icon),
+        placeSprite(center + CLUE_EYE_GAP, CLUE_Y + 2, PLAIN_SIGHT),
+      ]
+    },
+  })
+
+const missingShapes = (
+  model: Model,
+  missing: ReadonlyArray<DareKind>,
+  width: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Array.isReadonlyArrayEmpty(missing)
+    ? outShapes(width, MISSING_OUT_Y)
+    : Array.flatMap(
+        Array.zip(
+          missing,
+          Array.map(boxSpotsOf(missing.length, width), spot => ({
+            x: spot.x,
+            y: MISSING_Y,
+          })),
+        ),
+        ([kind, spot]: readonly [DareKind, Vector]) => [
+          group({
+            translate: spot,
+            shapes: [
+              ...thingBoxShapes(),
+              group({
+                opacity: MISSING_OPACITY,
+                shapes: [
+                  iconShapes(kind, { x: BOX_PAD, y: BOX_PAD }, ICON_SCALE),
+                ],
+              }),
+            ],
+          }),
+          ...clueShapes(model, kind, spot),
+        ],
+      )
+
+// NOTE: how far a thing dropping in is still above its spot, by the share
+// of its drop: it falls, then bounces once.
+const dropLiftAt = (share: number): number =>
+  share < DROP_FALL_SHARE
+    ? -DROP_HEIGHT * (1 - (share / DROP_FALL_SHARE) ** 2)
+    : -DROP_BOUNCE_PX *
+      Math.sin((Math.PI * (share - DROP_FALL_SHARE)) / (1 - DROP_FALL_SHARE))
+
+// NOTE: the share of a thing's drop, or 1 for a thing already in the
+// satchel; below 0 before its drop starts.
+const dropShareOf = (
+  fresh: ReadonlyArray<DareKind>,
+  kind: DareKind,
+  ageMs: number,
+): number =>
+  Option.match(
+    Array.findFirstIndex(fresh, each => each === kind),
+    {
+      onNone: () => 1,
+      onSome: index =>
+        Math.min(1, (ageMs - UNFOLD_MS - index * DROP_STAGGER_MS) / DROP_MS),
+    },
+  )
+
+const satchelShapes = (
+  found: ReadonlyArray<DareKind>,
+  fresh: ReadonlyArray<DareKind>,
+  width: number,
+  ageMs: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const left = Math.round((width - SATCHEL_PX_WIDTH) / 2)
+  const rowWidth = found.length * ITEM_STRIDE - (ITEM_STRIDE - DARE_SLOT_SIZE)
+  const itemsLeft = left + Math.round((SATCHEL_PX_WIDTH - rowWidth) / 2)
+  const scale = { x: SATCHEL_SCALE, y: SATCHEL_SCALE }
+  return [
+    group({
+      translate: { x: left, y: SATCHEL_BACK_Y },
+      scale,
+      shapes: SATCHEL_BACK,
+    }),
+    ...Array.flatMap(found, (kind, index) => {
+      const share = dropShareOf(fresh, kind, ageMs)
+      return share < 0
+        ? []
+        : [
+            placeSprite(
+              itemsLeft + index * ITEM_STRIDE,
+              ITEMS_Y +
+                (ITEM_LIFTS[index % ITEM_LIFTS.length] ?? 0) +
+                Math.round(share >= 1 ? 0 : dropLiftAt(share)),
+              DARE_FOUND_SLOTS[kind],
+            ),
+          ]
+    }),
+    group({
+      translate: { x: left, y: SATCHEL_FRONT_Y },
+      scale,
+      shapes: SATCHEL_FRONT,
+    }),
+  ]
+}
+
+// NOTE: a line for each thing found, its picture before it; a thing still
+// dropping in gets its line once it lands.
+const linesShapes = (
+  found: ReadonlyArray<DareKind>,
+  fresh: ReadonlyArray<DareKind>,
+  ageMs: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(found, (kind, index) => {
+    const y = LINES_Y + index * LINE_STRIDE
+    return dropShareOf(fresh, kind, ageMs) < DROP_FALL_SHARE
+      ? []
+      : [
+          iconShapes(kind, { x: OPENED_PAD, y }, 1),
+          placeBaked(LINE_TEXTS[kind], {
+            x: OPENED_PAD + DARE_ICON_SIZE + LINE_ICON_GAP,
+            y: y + 1,
+            align: 'Left',
+          }),
+        ]
+  })
+
+const openedShapes = (
+  model: Model,
+  screen: Screen,
+  ageMs: number,
+  fresh: ReadonlyArray<DareKind>,
+): ReadonlyArray<Canvas.Shape> => {
+  const { missing, found } = openedOf(model)
+  const box = openedBoxOf(screen, found.length)
+  const rise = Math.round(
+    lerp(screen.height - box.y, 0, easeOut(clamp(ageMs / UNFOLD_MS, 0, 1))),
+  )
+  return [
+    rect(0, 0, screen.width, screen.height, BACKDROP),
+    group({
+      translate: { x: box.x, y: box.y + rise },
+      shapes: [
+        ...paperShapes(box.width, openedHeightOf(found.length)),
+        group({ translate: { x: 6, y: 4 }, shapes: CHICKEN }),
+        ...centeredWords(DARE_WORDS, box.width, DARE_Y),
+        ...missingShapes(model, missing, box.width),
+        ...satchelShapes(found, fresh, box.width, ageMs),
+        ...linesShapes(found, fresh, ageMs),
+      ],
+    }),
+  ]
+}
+
 // NOTE: over everything else on the overlay while the card is out.
 // `pocket` is how the HUD's pocket is drawn, so the pictures land there.
 export const pocketCardShapes: {
@@ -429,5 +682,6 @@ export const pocketCardShapes: {
       Pocketed: () => [],
       Reading: ({ ageMs }) => readingShapes(model, screen, ageMs),
       Folding: ({ ageMs }) => foldingShapes(model, screen, pocket, ageMs),
+      Opened: ({ ageMs, fresh }) => openedShapes(model, screen, ageMs, fresh),
     }),
 )

@@ -4,7 +4,10 @@ import type { Document, Html } from 'foldkit/html'
 import { isRunEndComing } from '../domain/onlineRun'
 import { joinName } from '../domain/playerName'
 import { hasUnseenCalling, hasUnseenLook } from '../domain/unlocks'
-import { isPocketCardReading } from '../features/dare/pocketCard'
+import {
+  isPocketCardOpened,
+  isPocketCardReading,
+} from '../features/dare/pocketCard'
 import { awardsOf, crewOf } from '../features/end/crewAwards'
 import { isRunCardHeld } from '../features/end/endBeat'
 import { startingCallingOf } from '../features/heroes/callingPick'
@@ -25,6 +28,7 @@ import {
   screenOf,
   stagePlacement,
 } from '../render/screen'
+import { dareListButtonView } from '../screens/game/dareListButton'
 import {
   cornerButtonsView,
   debutCardView,
@@ -44,6 +48,7 @@ import { GAME_TITLE } from '../shared/constants'
 import { closeButtonView } from '../ui/cornerButtons'
 import { isKeyboard } from '../ui/menuParts'
 import { rankPlateView } from '../ui/rankBadgeView'
+import { dareCardOf } from '../world/dare/dare'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '../world/gear/powerups'
 import { TRAPS, TRAP_KIND_ORDER } from '../world/gear/traps'
 import {
@@ -58,7 +63,7 @@ import {
 } from '../world/gear/weapons'
 import { bonesBalanceOf, rankOf, totalPointsOf } from '../world/heroes/rank'
 import { heldKeys } from '../world/keys/keys'
-import { CREW_AWARD_NAMES } from '../world/names'
+import { CREW_AWARD_NAMES, DARE_LINES, DARE_NAMES } from '../world/names'
 import { focusOf } from '../world/party/party'
 import { DIFFICULTIES } from '../world/run/difficulty'
 import { isPracticeGateHeld } from '../world/run/lessons'
@@ -185,7 +190,34 @@ const practiceGateNote = (model: Model): string =>
 const POCKET_CARD_STATUS =
   "Your friends' dare card: find the things they drew, then get out the front door. Press any key or tap to put it away."
 
+// NOTE: the dare card opened again from the HUD, with its satchel: the
+// things found, each with its line, and the ones still to find.
+const openedCardStatus = (model: Model): string => {
+  const card = dareCardOf(model)
+  const found = Array.filter(card, ({ isFound }) => isFound)
+  const missing = Array.filter(card, ({ isFound }) => !isFound)
+  const foundText = Array.isReadonlyArrayEmpty(found)
+    ? 'Your satchel is empty.'
+    : `In your satchel: ${Array.join(
+        Array.map(
+          found,
+          ({ kind }) => `the ${DARE_NAMES[kind]}, ${DARE_LINES[kind]}`,
+        ),
+        ' ',
+      )}`
+  const missingText = Array.isReadonlyArrayEmpty(missing)
+    ? 'Now get out the front door.'
+    : `Still to find: ${Array.join(
+        Array.map(missing, ({ kind }) => `the ${DARE_NAMES[kind]}`),
+        ', ',
+      )}.`
+  return `Your dare card. ${foundText} ${missingText} Press any key or tap to put it away.`
+}
+
 const statusText = (model: Model): string =>
+  isPocketCardOpened(model) ? openedCardStatus(model) : roundStatusText(model)
+
+const roundStatusText = (model: Model): string =>
   Phase.match(model.phase, {
     Ready: () =>
       `${GAME_TITLE}, an early alpha. ${isLobbyUp(model) ? LOBBY_MENU : HOME_MENU}`,
@@ -465,6 +497,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         isCoopOpen(model) ? h.empty : homeUnderLobbyView(model, h),
         preparationControlsView(model, h),
         gunClusterView(model, h),
+        dareListButtonView(model, h),
         debutCardView(model, h),
         caseCardView(model, h),
         questTrackerView(model, h),

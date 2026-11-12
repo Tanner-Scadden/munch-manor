@@ -27,6 +27,7 @@ import { skipIntro } from './intro'
 import { padMenuSteps } from './padMenu'
 import {
   asAllowedPress,
+  clickDareList,
   clickMedic,
   clickNextTrap,
   clickPause,
@@ -236,6 +237,10 @@ export const runButtonHandlers = defineHandlers({
 
   ClickedNextTrapButton: (model, message) =>
     Update.combineSteps(model, [makeStep(orInRun(message, clickNextTrap))]),
+
+  // NOTE: the HUD's dare list opens the dare card again, alone or online:
+  // this client's own (src/app/update/play.ts).
+  ClickedDareList: model => Update.combineSteps(model, [clickDareList]),
 })
 
 // NOTE: the page's focus, visibility, and a restore from the cache

@@ -11,7 +11,10 @@ import {
 } from '../../art/icons'
 import { QUEST_START_ARROW_ICON } from '../../art/questIcons'
 import type { SoundMessage } from '../../audio/message'
-import { isPocketCardReading } from '../../features/dare/pocketCard'
+import {
+  isPocketCardOpened,
+  isPocketCardReading,
+} from '../../features/dare/pocketCard'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
 import { wavePreviewView } from '../../features/hud/wavePreview'
 import { isCaseCardUp } from '../../features/onboarding/caseCard'
@@ -144,7 +147,8 @@ const isClusterUp = (model: Model): boolean =>
   isRoundActive(model.phase) &&
   !isDebutCardUp(model) &&
   !isCaseCardUp(model) &&
-  !isPocketCardReading(model)
+  !isPocketCardReading(model) &&
+  !isPocketCardOpened(model)
 
 const keyBadgeView = (
   model: Model,

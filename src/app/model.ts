@@ -86,6 +86,7 @@ import {
   ShareStatsSetting,
   SoundSetting,
 } from '../shared/playerData'
+import { DareKind } from '../world/dare/dareSchema'
 import { rollCases } from '../world/feats/cases'
 import { noRank } from '../world/heroes/rank'
 import { startingLevel } from '../world/level/arena'
@@ -152,6 +153,9 @@ export const Model = Schema.Struct({
   introSeen: SavedTrapHint,
   introSkip: IntroSkip,
   pocketCard: PocketCard,
+  // NOTE: the dare's things the satchel on the opened card has shown, so
+  // the ones found since drop in (src/features/dare/pocketCard.ts).
+  dareSatchel: Schema.Array(DareKind),
   caseCard: CaseCard,
   kitchenCall: KitchenCall,
   dareHint: DareHint,
@@ -349,6 +353,7 @@ export const initialModel: OwnModel = {
   introSeen: 'Unseen',
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),
+  dareSatchel: [],
   caseCard: CaseCard.Hidden(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   dareHint: quietDareHint,
