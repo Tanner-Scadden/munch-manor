@@ -42,6 +42,7 @@ const VIEW_INPUTS: ViewInputs = {
   look: defaultAppearance,
   isKeyboard: false,
   isRunCardUp: false,
+  isRunEndComing: false,
   bought: ['hero:Handyman'],
   bones: 0,
 }

@@ -62,6 +62,8 @@ import {
 
 // NOTE: `isRunCardUp` while the root's end card shows a run's end, so the
 // lobby waits behind it until the player picks one of the card's buttons.
+// `isRunEndComing` while the room is back in its lobby but the root has not
+// drawn the run's end yet, so the arena stays up until the card comes.
 
 const lookOf = (inputs: ViewInputs, room: Room, seat: number) =>
   seatLookOf(inputs.look, room.slot, seat, room.maybeLobby)
@@ -1003,8 +1005,9 @@ const arenaView = (room: Room, h: CoopViewBuilder): Html =>
   )
 
 // NOTE: while the root's end card is up the room's choices are its buttons
-// (RUN IT BACK, LOBBY, LEAVE in src/screens/game/menus.ts), so co-op draws nothing over
-// it: no scrim, and nothing to take a tap.
+// (PLAY AGAIN, LOBBY, LEAVE in src/screens/game/menus.ts), so co-op draws nothing over
+// it: no scrim, and nothing to take a tap. A room back in its lobby before
+// the root has drawn the run's end keeps the arena up until the card comes.
 const roomView = (
   room: Room,
   heroPicker: HeroPickerModel,
@@ -1013,7 +1016,7 @@ const roomView = (
 ): Html => {
   if (inputs.isRunCardUp) {
     return h.empty
-  } else if (!isInLobby(room)) {
+  } else if (!isInLobby(room) || inputs.isRunEndComing) {
     return arenaView(room, h)
   } else {
     return lobbyView(room, heroPicker, inputs, h)
@@ -1026,7 +1029,7 @@ const roomScreenName = (room: Room, inputs: ViewInputs): string => {
   if (inputs.isRunCardUp) {
     return 'RunCard'
   } else {
-    return isInLobby(room) ? 'Lobby' : 'Arena'
+    return isInLobby(room) && !inputs.isRunEndComing ? 'Lobby' : 'Arena'
   }
 }
 

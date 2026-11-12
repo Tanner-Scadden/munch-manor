@@ -245,7 +245,7 @@ const menuOnlyView = (model: Model, h: ApplicationViewBuilder): Html =>
 // pops in a beat after the one before it. SHARE has no key: the share
 // sheet and the clipboard want a tap or a click.
 //
-// NOTE: `heads` is RUN IT BACK's crew, each lit once they are in.
+// NOTE: `heads` is PLAY AGAIN's crew, each lit once they are in.
 type CrewHead = Readonly<{ slot: number; portrait: string; isIn: boolean }>
 
 type EndButton = Readonly<{
@@ -438,10 +438,10 @@ const crewHeadsOf = (model: Model, room: CoopRoom): ReadonlyArray<CrewHead> =>
       ),
   })
 
-// NOTE: RUN IT BACK is this player's READY in the room's lobby, so the same
+// NOTE: PLAY AGAIN is this player's READY in the room's lobby, so the same
 // crew plays the room's next pick (KEEP GOING after a win) once everyone is
 // in. Its heads light as each player says yes.
-const runItBackButton = (model: Model, room: CoopRoom): EndButton => {
+const playAgainButton = (model: Model, room: CoopRoom): EndButton => {
   const heads = crewHeadsOf(model, room)
   const isKeepGoing = Option.exists(
     room.maybeLobby,
@@ -452,24 +452,24 @@ const runItBackButton = (model: Model, room: CoopRoom): EndButton => {
     id: END_RETRY_BUTTON_ID,
     look: isKeepGoing ? 'KeepGoing' : 'Retry',
     icon: isKeepGoing ? ENDLESS_ICON : RETRY_ICON,
-    label: isKeepGoing ? 'KEEP GOING' : 'RUN IT BACK',
+    label: isKeepGoing ? 'KEEP GOING' : 'PLAY AGAIN',
     maybeKey: Option.some({ cap: 'ENTER', name: 'Enter' }),
-    ariaLabel: `${isKeepGoing ? 'Keep going' : 'Run it back'} with this crew: ${inCount} of ${heads.length} in`,
-    message: EndMessage.ClickedRunItBackButton(),
+    ariaLabel: `${isKeepGoing ? 'Keep going' : 'Play again'} with this crew: ${inCount} of ${heads.length} in`,
+    message: EndMessage.ClickedPlayAgainButton(),
     maybePressed: Option.some(Option.exists(meIn(room), me => me.ready)),
     heads,
   }
 }
 
 // NOTE: in an online co-op run the room's lobby comes next, so the card
-// offers the room's choices (src/app/update/end.ts): LEAVE, RUN IT BACK, LOBBY,
+// offers the room's choices (src/app/update/end.ts): LEAVE, PLAY AGAIN, LOBBY,
 // and SHARE.
 const endButtonsOf = (model: Model): ReadonlyArray<EndButton> => {
   const maybeRoom = maybeRoomOf(model.coop)
   if (Option.isSome(maybeRoom)) {
     return [
       LEAVE_ROOM_BUTTON,
-      runItBackButton(model, maybeRoom.value),
+      playAgainButton(model, maybeRoom.value),
       ROOM_LOBBY_BUTTON,
       shareButton(model),
     ]

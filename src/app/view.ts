@@ -1,6 +1,7 @@
 import { Array, Option, Result, pipe } from 'effect'
 import type { Document, Html } from 'foldkit/html'
 
+import { isRunEndComing } from '../domain/onlineRun'
 import { joinName } from '../domain/playerName'
 import { hasUnseenCalling, hasUnseenLook } from '../domain/unlocks'
 import { isPocketCardReading } from '../features/dare/pocketCard'
@@ -485,6 +486,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
               look: model.appearance,
               isKeyboard: model.lastDevice === 'KeyboardMouse',
               isRunCardUp: isRunCardHeld(model),
+              isRunEndComing: isRunEndComing(model),
               bought: model.boughtCosmetics,
               bones: bonesBalanceOf(model.rank),
             },
