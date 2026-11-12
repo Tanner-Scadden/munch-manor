@@ -2723,10 +2723,94 @@ button.help-card:focus-visible {
   width: min(560px, calc(100vw - 16px));
 }
 
+/* NOTE: the panel itself never scrolls here: the arrows and the day's title
+   stay at the top and DONE at the foot, and only the day's bullets scroll
+   between them, the same in every layout and orientation. */
+.panel-dialog[data-panel='WhatsNew'] .panel {
+  overflow: hidden;
+}
+
+.news-header {
+  display: grid;
+  grid-template-columns: var(--menu-tap) minmax(0, 1fr) var(--menu-tap);
+  align-items: center;
+  gap: var(--menu-gap);
+}
+
+.news-day-title {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+  margin: 0;
+  text-align: center;
+}
+
+.news-date {
+  color: var(--menu-ink-dim);
+  font-size: var(--menu-small-size);
+}
+
+.news-title {
+  color: var(--menu-ink);
+  font-weight: bold;
+}
+
+.news-arrow {
+  display: grid;
+  place-items: center;
+  width: var(--menu-tap);
+  height: var(--menu-tap);
+  padding: 0;
+  border: 2px solid var(--menu-line-strong);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-surface);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.news-arrow-icon {
+  width: 10px;
+  height: 14px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.news-arrow[aria-disabled='true'] {
+  border-color: var(--menu-line);
+  background: transparent;
+  cursor: default;
+}
+
+.news-arrow[aria-disabled='true'] .news-arrow-icon {
+  opacity: var(--menu-dim);
+}
+
+.news-arrow:not([aria-disabled='true']):active {
+  box-shadow: var(--menu-press);
+  filter: brightness(1.3);
+}
+
+.news-arrow:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .news-arrow:not([aria-disabled='true']):hover {
+    filter: brightness(1.15);
+  }
+}
+
 .news-day {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .news-intro {

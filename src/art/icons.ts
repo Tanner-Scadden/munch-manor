@@ -174,6 +174,28 @@ export const NEXT_TRAP_ICON = icon([
   '..X.....',
 ])
 
+// NOTE: What's New's page arrows beside the day's title: newer points left,
+// older right, as the days run newest first.
+export const NEWER_NEWS_ICON = icon([
+  '...XX',
+  '..XX.',
+  '.XX..',
+  'XX...',
+  '.XX..',
+  '..XX.',
+  '...XX',
+])
+
+export const OLDER_NEWS_ICON = icon([
+  'XX...',
+  '.XX..',
+  '..XX.',
+  '...XX',
+  '..XX.',
+  '.XX..',
+  'XX...',
+])
+
 // NOTE: MEDIC! for a downed player (src/world/party/medic.ts): a red cross on a light
 // plate.
 export const MEDIC_ICON = icon([

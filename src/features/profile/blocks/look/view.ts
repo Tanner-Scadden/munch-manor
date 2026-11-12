@@ -593,12 +593,15 @@ const sectionsView = (
 
 // ROWS
 
-// NOTE: seven small options fit across the narrowest phone, so a longer list takes
-// as few lines as it needs, filled as evenly as it can be.
+// NOTE: a list takes as few lines as it needs, filled as evenly as it can
+// be: up to seven options across, or six on a phone under 380 px wide,
+// where seven at the full tap size crowd their price and lock chips, so the
+// prints there take a line of four and a line of three.
 const MOST_COLUMNS = 7
+const MOST_NARROW_COLUMNS = 6
 
-const balancedColumns = (count: number): number => {
-  const lines = Math.ceil(count / MOST_COLUMNS)
+const balancedColumns = (count: number, most: number): number => {
+  const lines = Math.ceil(count / most)
   return Math.ceil(count / Math.max(1, lines))
 }
 
@@ -763,7 +766,8 @@ const lookRowView = (
                   ...groupAttributes,
                   h.Class('look-options'),
                   h.Style({
-                    '--look-columns': `${balancedColumns(partView.options.length)}`,
+                    '--look-columns': `${balancedColumns(partView.options.length, MOST_COLUMNS)}`,
+                    '--look-narrow-columns': `${balancedColumns(partView.options.length, MOST_NARROW_COLUMNS)}`,
                   }),
                 ],
                 Array.map(options, option =>
