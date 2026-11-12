@@ -380,6 +380,9 @@ describe('Home menu', () => {
         Scene.expect(Scene.text('12')).toExist(),
         Scene.expect(Scene.text('6:42')).toExist(),
         Scene.expect(Scene.text('341')).toExist(),
+        Scene.expect(Scene.text('Best endless wave')).toExist(),
+        Scene.expect(Scene.text('Fastest win')).toExist(),
+        Scene.expect(Scene.text('Zombies splatted')).toExist(),
       ),
       Scene.expect(
         Scene.role('button', {
