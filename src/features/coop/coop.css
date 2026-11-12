@@ -924,12 +924,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* NOTE: safe, so a lobby taller than a small phone starts at its top
+     and scrolls to READY rather than cutting READY off. */
+  justify-content: safe center;
   gap: max(10px, 2.5 * var(--coop-unit));
   width: 100%;
   height: 100%;
   box-sizing: border-box;
   padding: 12px;
+  overflow-y: auto;
+}
+
+/* NOTE: nothing in the column gives way when it runs out of room: it
+   scrolls instead, so READY and SHAKE ON IT are never squashed flat. */
+.coop-lobby > * {
+  flex-shrink: 0;
 }
 
 .coop-lobby-top {
@@ -1842,6 +1851,31 @@
   height: clamp(130px, 22cqh, 220px);
 }
 
+/* NOTE: a short phone held upright (a 360 by 740 Android) fits two rows of
+   seats, the picks, and READY only with shorter seats. */
+@container (max-height: 780px) {
+  [data-layout='Portrait'] .coop:not(.lobby) .coop-seat {
+    height: clamp(118px, 19cqh, 220px);
+  }
+
+  [data-layout='Portrait'] .coop-lobby:has(.coop-result) .coop-seat {
+    height: clamp(108px, 16cqh, 220px);
+  }
+
+  /* NOTE: and KICK is the door alone, as on a phone on its side, so the
+     word does not cover the figure's head. */
+  [data-layout='Portrait'] .coop-kick {
+    top: 2px;
+    left: 2px;
+    width: var(--menu-tap);
+    padding: 0;
+  }
+
+  [data-layout='Portrait'] .coop-kick-word {
+    display: none;
+  }
+}
+
 [data-layout='Portrait'] .coop-quick-face {
   grid-template-columns: auto 1fr;
 }
@@ -2012,6 +2046,14 @@
 
 /* NOTE: a phone held sideways has short seats: KICK is only the door icon, a
    square tucked in the corner, and the figure stays clear of it. */
+/* NOTE: on a phone held sideways the last run's line takes a row of its
+   own, so the seats give it the room and READY stays on screen. */
+@media (max-height: 500px) {
+  .coop-lobby:has(.coop-result) .coop-seat {
+    height: clamp(96px, 28 * var(--coop-unit), 250px);
+  }
+}
+
 @media (max-height: 500px) {
   .coop-kick {
     top: 2px;
