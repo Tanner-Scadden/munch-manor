@@ -812,18 +812,20 @@ From owner feedback on 2026-10-29 ("zombies are spawning behind the windows that
 
 Renamed on 2026-11-10 for the dare: Easy is Dare, Normal Double Dare, Hard Triple Dare, and Nightmare Triple Dog Dare, where a player reads them; the tags and the numbers stay. Since then the level also sets the dare's list and Rattles' hints (see "Escape the manor"). Four levels scale zombie health, speed, and bites on top of the wave's scales, the boss and endless too, and stretch the blink after a bite (1 s, 1.5 s on the last heart, on Hard). Kinds, doors, and counts are the same on every level, and the timing is set once as the break rolls the wave, so the preview stays exact. Since 2026-11-10 (the owner's pick after the pacing report) the level sets the wave's rhythm: Triple Dare's spawns and holds come at 0.88 of their planned times and Triple Dog Dare's at 0.8, so peaks come sooner and closer together, and Dare rests 1.5 times as long after each hold. Double Dare keeps the planned rhythm (`tempo` and `lullScale` in `src/world/run/difficulty.ts`).
 
-| Level                       | Health | Boss health | Speed | Bite  | Bite blink | Groaner bite | Big Lug and boss bite |
-| --------------------------- | ------ | ----------- | ----- | ----- | ---------- | ------------ | --------------------- |
-| Dare (Easy)                 | ×0.6   | ×1          | ×0.8  | ×0.5  | ×2         | 1 heart      | 1 heart               |
-| Double Dare (Normal)        | ×0.68  | ×1          | ×0.84 | ×1    | ×1.5       | 1 heart      | 2 hearts              |
-| Triple Dare (Hard)          | ×1.08  | ×2.2        | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
-| Triple Dog Dare (Nightmare) | ×1.12  | ×3.2        | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
+| Level                       | Health | Boss health | Speed | Hotfoot speed | Bite  | Bite blink | Groaner bite | Big Lug and boss bite |
+| --------------------------- | ------ | ----------- | ----- | ------------- | ----- | ---------- | ------------ | --------------------- |
+| Dare (Easy)                 | ×0.6   | ×1          | ×0.8  | ×0.6 more     | ×0.5  | ×2         | 1 heart      | 1 heart               |
+| Double Dare (Normal)        | ×0.68  | ×1          | ×0.84 | ×0.65 more    | ×1    | ×1.5       | 1 heart      | 2 hearts              |
+| Triple Dare (Hard)          | ×1.08  | ×2.2        | ×1.02 | ×1            | ×1    | ×1         | 1 heart      | 2 hearts              |
+| Triple Dog Dare (Nightmare) | ×1.12  | ×3.2        | ×1.02 | ×1            | ×1.25 | ×1         | 1 heart      | 3 hearts              |
 
 Boss health is Uncle Chunk's own, on top of the level's health (see "Boss balance").
 
 The break between waves counts down on every difficulty since 2026-11-10: 30 s on Easy and Normal, 20 s on Hard and Nightmare (`breakMs`, see "Preparation"). From 2026-11-01 until then Easy and Normal had no clock and waited for READY.
 
 Health rounds to whole hit points, so on Normal a Groaner takes 2 shots instead of 3 on every wave, and on Easy a Hotfoot takes 1.
+
+**Runners eased, 2026-11-11** (the owner, who plays better than most: the game should get easier, and of the Hotfoots, "They are tough"). On Easy and Normal a Hotfoot's wave speed is scaled again by `runnerSpeedScale` (×0.6 and ×0.65, `src/world/run/difficulty.ts`), so on Normal's wave 5 it runs about 34 px a second, still about 1.4 times a Groaner, where it ran 52. Hard and Nightmare keep theirs, and Uncle Chunk is untouched: his health, speed, attacks, and the party crashers he calls (which take the plain speed scale). No other lever moved. Picked in 100 run batches (Normal ×0.8, ×0.7, ×0.65: 17%, 24%, 30%; Easy ×0.75, ×0.65, ×0.6: 41%, 50%, 60%), then the nightly (200 runs a row, the baseline rewritten from it): Easy 51% (was 43%), Normal 25.5% (was 12%; 25.5% in a 200 run check too), Hard 1.5% and Nightmare 2.5%, unchanged. Both stay under their targets (Easy 60 to 80%, Normal 30 to 45%). Runners no longer lead the crowd's hearts on Normal's waves 5 and 6 (99 of 531, behind Big Leaguers and Groaners, against 265 of 593 before), and the runs that reach Uncle Chunk now mostly end at him (Normal: he came in 133 of 200 and ended 79), so slowing the Hotfoots further would make them trivial for little gain. The gap is the owner's call: no other lever was touched.
 
 **For the escape, 2026-11-10** (`docs/ESCAPE_PLAN.md`, layer 17): Normal health ×0.75 to ×0.68 and Nightmare ×1.16 to ×1.12, to carry runs that now go to Uncle Chunk's wave 8 and 9 instead of the old campaign's wave 10 with a shop behind them. See "How balance is checked".
 
