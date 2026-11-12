@@ -274,8 +274,10 @@ describe('two keyboards on one desktop', () => {
             // Seed 5 stalled the same way once the cases and crates moved
             // with the rooms, seed 6 once Normal's health went to x0.68, and
             // seed 7 once the dining room's ferns and cleat came in, with the
-            // chandelier shot down (see the NOTE at the top).
-            rngState: () => 1,
+            // chandelier shot down (see the NOTE at the top). Seed 1 ended
+            // its tenth wave still fighting once the Runners slowed on Easy
+            // and Normal (2026-11-11), so the run plays seed 3.
+            rngState: () => 3,
             localPlayers: () => 2,
             difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),
           }),

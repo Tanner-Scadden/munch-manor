@@ -15,6 +15,7 @@ import {
   type Model,
   type NightmareLock,
   Phase,
+  type PlannedSpawn,
   RunMode,
   type Zombie,
   ZombieAction,
@@ -45,7 +46,7 @@ import {
 import { focusOf, modifyFocus } from '../../party/party'
 import { FINAL_WAVE } from '../../waves/wavePlans'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
-import { biteDamage } from '../difficulty'
+import { DIFFICULTIES, biteDamage, toughenSpawns } from '../difficulty'
 
 const pick = (difficulty: Difficulty) =>
   Story.message(Message.ClickedDifficultyCardButton({ difficulty }))
@@ -60,6 +61,9 @@ const preparationSpawns = (current: Model) =>
     Escaped: () => [],
     GameOver: () => [],
   })
+
+const runnerScale = (difficulty: Difficulty, kind: string) =>
+  kind === 'Runner' ? DIFFICULTIES[difficulty].runnerSpeedScale : 1
 
 const withDifficulty = (
   base: Model,
@@ -337,14 +341,39 @@ describe('the multipliers', () => {
         )
         Array.forEach(Array.zip(normal, easy), ([base, scaled]) => {
           expect(scaled.hpScale).toBeCloseTo((base.hpScale * 0.6) / 0.68)
-          expect(scaled.speedScale).toBeCloseTo((base.speedScale * 0.8) / 0.84)
+          expect(scaled.speedScale).toBeCloseTo(
+            (base.speedScale * 0.8 * runnerScale('Easy', scaled.kind)) /
+              (0.84 * runnerScale('Normal', base.kind)),
+          )
         })
         Array.forEach(Array.zip(normal, nightmare), ([base, scaled]) => {
           expect(scaled.hpScale).toBeCloseTo((base.hpScale * 1.12) / 0.68)
-          expect(scaled.speedScale).toBeCloseTo((base.speedScale * 1.02) / 0.84)
+          expect(scaled.speedScale).toBeCloseTo(
+            (base.speedScale * 1.02) /
+              (0.84 * runnerScale('Normal', base.kind)),
+          )
         })
       }),
   )
+
+  describe('the Runners catch their breath on Easy and Normal', () => {
+    const planned = [
+      { ...DISTANT_SPAWN, kind: 'Shambler', speedScale: 1, hpScale: 1 },
+      { ...DISTANT_SPAWN, kind: 'Runner', speedScale: 1, hpScale: 1 },
+    ] satisfies ReadonlyArray<PlannedSpawn>
+    const speedsOn = (difficulty: Difficulty) =>
+      Array.map(toughenSpawns(difficulty, planned), spawn => spawn.speedScale)
+
+    test('Easy and Normal slow a Runner more than a Shambler', () => {
+      expect(speedsOn('Easy')).toEqual([0.8, 0.8 * 0.6])
+      expect(speedsOn('Normal')).toEqual([0.84, 0.84 * 0.65])
+    })
+
+    test('Hard and Nightmare keep a Runner at the plain scale', () => {
+      expect(speedsOn('Hard')).toEqual([1.02, 1.02])
+      expect(speedsOn('Nightmare')).toEqual([1.02, 1.02])
+    })
+  })
 
   test('bites round to whole hearts and never drop below one', () => {
     expect(biteDamage('Easy', 1)).toBe(1)

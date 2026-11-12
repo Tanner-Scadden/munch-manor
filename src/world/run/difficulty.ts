@@ -23,6 +23,7 @@ type DifficultyStats = Readonly<{
   bossHealthScale: number
   bossAttackPace: number
   speedScale: number
+  runnerSpeedScale: number
   biteScale: number
   biteGraceScale: number
   reloadsWhenIdle: boolean
@@ -51,7 +52,10 @@ type DifficultyStats = Readonly<{
 // so below 1 the peaks come sooner and closer together, and lullScale
 // stretches the rest after each hold. The same count comes on every level.
 // Double Dare keeps the rhythm as planned; Dare gets longer lulls, and the
-// two above it peaks more often.
+// two above it peaks more often. runnerSpeedScale slows the Runners alone,
+// on top of speedScale (owner, 2026-11-11: "They are tough"): Dare and
+// Double Dare ease them, the two above keep them as they were. Uncle
+// Chunk's party crashers keep the plain speedScale.
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Dare',
@@ -60,6 +64,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     bossHealthScale: 1,
     bossAttackPace: 1,
     speedScale: 0.8,
+    runnerSpeedScale: 0.6,
     biteScale: 0.5,
     biteGraceScale: 2,
     reloadsWhenIdle: true,
@@ -74,6 +79,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     bossHealthScale: 1,
     bossAttackPace: 1,
     speedScale: 0.84,
+    runnerSpeedScale: 0.65,
     biteScale: 1,
     biteGraceScale: 1.5,
     reloadsWhenIdle: true,
@@ -88,6 +94,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     bossHealthScale: 2.2,
     bossAttackPace: 0.8,
     speedScale: 1.02,
+    runnerSpeedScale: 1,
     biteScale: 1,
     biteGraceScale: 1,
     reloadsWhenIdle: false,
@@ -102,6 +109,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     bossHealthScale: 3.2,
     bossAttackPace: 0.65,
     speedScale: 1.02,
+    runnerSpeedScale: 1,
     biteScale: 1.25,
     biteGraceScale: 1,
     reloadsWhenIdle: false,
@@ -145,10 +153,12 @@ export const toughenSpawns: {
     difficulty: Difficulty,
     spawns: ReadonlyArray<PlannedSpawn>,
   ): ReadonlyArray<PlannedSpawn> => {
-    const { healthScale, speedScale } = DIFFICULTIES[difficulty]
+    const { healthScale, speedScale, runnerSpeedScale } =
+      DIFFICULTIES[difficulty]
     return Array.map(spawns, spawn =>
       modifyFields(spawn, {
-        speedScale: scale => scale * speedScale,
+        speedScale: scale =>
+          scale * speedScale * (spawn.kind === 'Runner' ? runnerSpeedScale : 1),
         hpScale: scale => scale * healthScale,
       }),
     )

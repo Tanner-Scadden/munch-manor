@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 11, 2026: Catch your breath
+
+- 🏃 Hotfoots catch their breath on Dare and Double Dare: still the quickest in the house, just not quite so quick.
+
 ## November 10, 2026: I dare you
 
 Your friends dared you to go in. Heads up: a co-op run going when the update lands ends, so start a fresh one.
