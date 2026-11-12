@@ -35,7 +35,9 @@ import {
   isSlotPressAShot,
   notePageVisibility,
   orientationOf,
+  padGone,
   pauseWhenAway,
+  polledPad,
   pressGunSlot,
   pressMeleeSlot,
   pressedKey,
@@ -159,6 +161,27 @@ export const inputHandlers = defineHandlers({
       touchControls === 'Allowed' ? 'Touch' : 'KeyboardMouse',
     ),
   }),
+
+  PolledGamepad: (model, message) =>
+    Update.combineSteps(model, [
+      makeStep(
+        orInRun(
+          message,
+          polledPad({
+            index: message.index,
+            axes: message.axes,
+            buttons: message.buttons,
+          }),
+        ),
+      ),
+    ]),
+
+  DisconnectedGamepad: (model, message) =>
+    Update.combineSteps(model, [
+      makeStep(orInRun(message, padGone(message.index))),
+    ]),
+
+  CompletedRumble: model => ({ model }),
 })
 
 // NOTE: the run's buttons (src/input/message.ts), each sent to the room in

@@ -1,5 +1,6 @@
 // The input's Schemas: the game surface's rectangle, the sticks, the mouse
-// and hold buttons, the device, and the Model's `input` record.
+// and hold buttons, a polled controller, the device, and the Model's `input`
+// record.
 
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -47,7 +48,11 @@ export type HoldButton = typeof HoldButton.Type
 export const PointerDevice = Schema.Literals(['Mouse', 'Touch'])
 export type PointerDevice = typeof PointerDevice.Type
 
-export const InputDevice = Schema.Literals(['KeyboardMouse', 'Touch'])
+export const InputDevice = Schema.Literals([
+  'KeyboardMouse',
+  'Touch',
+  'Gamepad',
+])
 export type InputDevice = typeof InputDevice.Type
 
 export const TouchControls = Schema.Literals(['Allowed', 'Blocked'])
@@ -62,6 +67,15 @@ export type Orientation = typeof Orientation.Type
 export const SlotClick = Schema.Literals(['Acts', 'PassesThrough'])
 export type SlotClick = typeof SlotClick.Type
 
+// NOTE: a controller as last polled (src/input/gamepad.ts): its index, its
+// four stick axes, and each button's value, all in 1/64 steps.
+export const Gamepad = Schema.Struct({
+  index: Schema.Finite,
+  axes: Schema.Array(Schema.Finite),
+  buttons: Schema.Array(Schema.Finite),
+})
+export type Gamepad = typeof Gamepad.Type
+
 export const Input = Schema.Struct({
   pressedKeys: Schema.Array(Schema.String),
   maybeMouseInView: Schema.Option(Vector),
@@ -70,6 +84,7 @@ export const Input = Schema.Struct({
   aimStick: Stick,
   holdButton: HoldButton,
   slotClick: SlotClick,
+  maybeGamepad: Schema.Option(Gamepad),
 })
 export type Input = typeof Input.Type
 
@@ -81,4 +96,5 @@ export const idleInput: Input = {
   aimStick: Stick.Idle(),
   holdButton: HoldButton.Released(),
   slotClick: 'Acts',
+  maybeGamepad: Option.none(),
 }

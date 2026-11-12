@@ -24,6 +24,16 @@ import {
   vectorLength,
 } from '../world/step/geometry'
 import {
+  PAD_SELECT,
+  PAD_START,
+  axis,
+  isPadCode,
+  isPadFiring,
+  isPadInteracting,
+  padAim,
+  padMove,
+} from './gamepad'
+import {
   HoldButton,
   type Input,
   MouseButton,
@@ -67,7 +77,10 @@ export const FOCUS_STEP_OFFSET: Readonly<Record<FocusStep, number>> = {
   Next: 1,
 }
 
-export const isMenuKey = (code: string): boolean => code === MENU_KEY
+// NOTE: a controller's Select (View, Share) is H: from pause it asks to
+// leave the run, as the MENU pill does.
+export const isMenuKey = (code: string): boolean =>
+  code === MENU_KEY || code === PAD_SELECT
 
 export const isLobbyKey = (code: string): boolean => code === LOBBY_KEY
 
@@ -77,10 +90,9 @@ export const isEndlessKey = (code: string): boolean => code === ENDLESS_KEY
 
 export const isCharacterKey = (code: string): boolean => code === CHARACTER_KEY
 
-export const isPauseKey = (code: string): boolean => code === PAUSE_KEY
-
-const axis = (isNegative: boolean, isPositive: boolean): number =>
-  (isPositive ? 1 : 0) - (isNegative ? 1 : 0)
+// NOTE: a controller's Start (Menu, Options) pauses and resumes, as Escape.
+export const isPauseKey = (code: string): boolean =>
+  code === PAUSE_KEY || code === PAD_START
 
 const keyboardMove = (pressedKeys: ReadonlyArray<string>): Vector =>
   pipe(
@@ -98,16 +110,20 @@ const keyboardMove = (pressedKeys: ReadonlyArray<string>): Vector =>
     Option.getOrElse(() => ZERO_VECTOR),
   )
 
+// NOTE: a controller's buttons are held in its own polled record
+// (maybeGamepad), never as keys, so a pad's press holds no key here.
 export const pressKey: {
   (code: string): (input: Input) => Input
   (input: Input, code: string): Input
 } = Function.dual(2, (input: Input, code: string): Input =>
-  modifyFields(input, {
-    pressedKeys: pressedKeys =>
-      Array.contains(pressedKeys, code)
-        ? pressedKeys
-        : Array.append(pressedKeys, code),
-  }),
+  isPadCode(code)
+    ? input
+    : modifyFields(input, {
+        pressedKeys: pressedKeys =>
+          Array.contains(pressedKeys, code)
+            ? pressedKeys
+            : Array.append(pressedKeys, code),
+      }),
 )
 
 export const releaseKey: {
@@ -392,13 +408,15 @@ const isAimStickFiring = (stick: Stick): boolean =>
 
 const triggerOf = (input: Input): Trigger =>
   isAimStickFiring(input.aimStick) ||
-  MouseButton.isAnyOf(['Held'])(input.mouseButton)
+  MouseButton.isAnyOf(['Held'])(input.mouseButton) ||
+  isPadFiring(input.maybeGamepad)
     ? 'Held'
     : 'Released'
 
 const interactOf = (input: Input): Trigger =>
   Array.contains(input.pressedKeys, INTERACT_KEY) ||
-  HoldButton.isAnyOf(['Held'])(input.holdButton)
+  HoldButton.isAnyOf(['Held'])(input.holdButton) ||
+  isPadInteracting(input.maybeGamepad)
     ? 'Held'
     : 'Released'
 
@@ -410,13 +428,18 @@ export const deriveIntent: {
   (input: Input, player: Player, camera: Camera): Intent => ({
     move: clampLength(
       addVectors(
-        keyboardMove(input.pressedKeys),
-        pipe(input.moveStick, stickDeflection, withDeadZone),
+        addVectors(
+          keyboardMove(input.pressedKeys),
+          pipe(input.moveStick, stickDeflection, withDeadZone),
+        ),
+        padMove(input.maybeGamepad),
       ),
       1,
     ),
-    maybeAim: Option.orElse(stickAim(input.aimStick), () =>
-      mouseAim(input, player, camera),
+    maybeAim: pipe(
+      stickAim(input.aimStick),
+      Option.orElse(() => padAim(input.maybeGamepad)),
+      Option.orElse(() => mouseAim(input, player, camera)),
     ),
     trigger: triggerOf(input),
     interact: interactOf(input),

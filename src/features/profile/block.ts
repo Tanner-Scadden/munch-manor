@@ -17,6 +17,7 @@ import type {
   CursorSetting,
   MusicSetting,
   RotationSetting,
+  RumbleSetting,
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
@@ -47,6 +48,8 @@ export type ViewInputs = Readonly<{
     cursor: CursorSetting
     fullscreen: FullscreenSetting
     rotation: RotationSetting
+    rumble: RumbleSetting
+    hasPad: boolean
     shareStats: ShareStatsSetting
     screenFit: ScreenFit
     orientationLock: OrientationLock

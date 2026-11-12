@@ -235,7 +235,12 @@ describe('run summaries sent or queued', () => {
         const { party: _party, modifiers: _modifiers, ...older } = withShop
         const olderBody = yield* Schema.encodeEffect(
           Schema.fromJsonString(RunSummaryV1),
-        )({ ...older, version: 1, outcome: { _tag: 'Victory' } })
+        )({
+          ...older,
+          version: 1,
+          device: 'KeyboardMouse',
+          outcome: { _tag: 'Victory' },
+        })
         const fake = yield* fakeStore([olderBody], 'On')
         const sending = yield* Effect.forkChild(
           startSummaryQueue(ORIGIN).pipe(
@@ -264,6 +269,7 @@ describe('run summaries sent or queued', () => {
         )({
           ...withShop,
           version: 2,
+          device: 'KeyboardMouse',
           outcome: { _tag: 'Victory' },
           party: {
             _tag: 'Crew',

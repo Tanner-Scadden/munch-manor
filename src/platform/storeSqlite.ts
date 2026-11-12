@@ -52,6 +52,7 @@ import {
   ChangedName,
   ChangedOnboarding,
   ChangedRotation,
+  ChangedRumble,
   ChangedSettings,
   EarnedRank,
   ForgotPowerUps,
@@ -206,6 +207,7 @@ const saveOfRow = (
   seenPowerUps: row.seen_power_ups,
   seenUnlocks: row.seen_unlocks,
   rotation: row.rotation,
+  rumble: row.rumble,
   name: row.name,
   calling: row.calling,
   boughtCosmetics: boughtCosmeticsOf(bought),
@@ -506,6 +508,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
       replica.run(ChangedSettings, { settings }),
     ChangedRotation: ({ rotation }) =>
       replica.run(ChangedRotation, { rotation }),
+    ChangedRumble: ({ rumble }) => replica.run(ChangedRumble, { rumble }),
     ChangedName: ({ name }) => replica.run(ChangedName, { name }),
     ChangedAppearance: ({ appearance }) =>
       replica.run(ChangedAppearance, { appearance }),

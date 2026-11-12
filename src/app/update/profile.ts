@@ -129,6 +129,11 @@ const toggleCursor = (model: Model): Model =>
     cursorSetting: setting => (setting === 'Bold' ? 'Thin' : 'Bold'),
   })
 
+const toggleRumble = (model: Model): Model =>
+  modifyFields(model, {
+    rumbleSetting: setting => (setting === 'On' ? 'Off' : 'On'),
+  })
+
 const toggleShareStats = (model: Model): Model =>
   modifyFields(model, {
     shareStats: setting => (setting === 'On' ? 'Off' : 'On'),
@@ -143,6 +148,7 @@ const SETTING_TILES: Readonly<Record<SettingTile, UpdateStep>> = {
   Cursor: modelStep(toggleCursor),
   Fullscreen: toggleFullscreen,
   Rotation: modelStep(toggleRotation),
+  Rumble: modelStep(toggleRumble),
   ShareStats: modelStep(toggleShareStats),
 }
 

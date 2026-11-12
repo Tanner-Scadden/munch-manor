@@ -307,6 +307,9 @@ const profileInputs = (model: Model): ProfileViewInputs => ({
     cursor: model.cursorSetting,
     fullscreen: model.fullscreen,
     rotation: model.rotationSetting,
+    rumble: model.rumbleSetting,
+    hasPad:
+      model.lastDevice === 'Gamepad' || Option.isSome(model.input.maybeGamepad),
     shareStats: model.shareStats,
     screenFit: model.screenFit,
     orientationLock: model.orientationLock,

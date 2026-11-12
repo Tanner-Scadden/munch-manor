@@ -398,6 +398,18 @@ export const HOLD_ICON = icon([
   '..OOOOOO..',
 ])
 
+// NOTE: a controller with shake lines at its sides, for the Profile's
+// RUMBLE tile.
+export const RUMBLE_ICON = icon([
+  'X...........X',
+  '.X..XXXXX..X.',
+  '...XOOOOOX...',
+  'X.XOXOOOXOX.X',
+  '..XXXOOOOXX..',
+  '.X.XOOXOOX.X.',
+  '...XXX.XXX...',
+])
+
 // NOTE: an upright phone with a little Groaner on its screen. The portrait
 // home menu's turn hint tips it on its side with CSS.
 export const TURN_PHONE_ICON = pixelIconUrl(

@@ -12,10 +12,13 @@ import { SHOTGUN } from '../../test/arsenals'
 import {
   WAVE_2_BREAK,
   WAVE_2_FIGHT,
+  armedBreak,
+  armedFight,
   readyModel,
 } from '../../test/model.fixture'
 import {
   APPLICATION,
+  isPausedPhase,
   openLobbyByKey,
   press,
   resolveFocusLobby,
@@ -29,21 +32,9 @@ import { Arsenal } from '../../world/schema/worldSchema'
 
 const FRAME_MS = 50
 
-const fighting: Model = modifyFocus(
-  modifyFields(readyModel, { phase: () => WAVE_2_FIGHT }),
-  {
-    player: player =>
-      modifyFields(player, {
-        arsenal: () =>
-          Arsenal.HoldingFirst({
-            first: { ...STARTING_PISTOL, loaded: 3 },
-            second: SHOTGUN,
-          }),
-      }),
-  },
-)
+const fighting: Model = armedFight
 
-const preparing: Model = modifyFields(fighting, { phase: () => WAVE_2_BREAK })
+const preparing: Model = armedBreak
 
 const ROUNDS: ReadonlyArray<
   readonly [Model, typeof WAVE_2_FIGHT | typeof WAVE_2_BREAK]
@@ -57,8 +48,7 @@ const withDebutCard: Model = modifyFields(fighting, {
     DebutCard.Showing({ kind: 'Runner', ageMs: DEBUT_CARD_MIN_MS }),
 })
 
-const isPaused = (current: Model): boolean =>
-  Phase.isAnyOf(['Paused'])(current.phase)
+const isPaused = isPausedPhase
 
 describe('one key per action: removed keys do nothing', () => {
   it.effect('the arrow keys do not move the player', () =>

@@ -38,6 +38,7 @@ type ControlCard = Readonly<{
   action: string
   keyboard: Input
   touch: Input
+  pad: Input
 }>
 
 const input = (line: string, sprites: HintIconSprites): Input => ({
@@ -45,12 +46,13 @@ const input = (line: string, sprites: HintIconSprites): Input => ({
   sprites,
 })
 
-const onBoth = (
+const onEvery = (
   line: string,
   sprites: HintIconSprites,
-): Readonly<{ keyboard: Input; touch: Input }> => ({
+): Readonly<{ keyboard: Input; touch: Input; pad: Input }> => ({
   keyboard: input(line, sprites),
   touch: input(line, sprites),
+  pad: input(line, sprites),
 })
 
 export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
@@ -65,6 +67,10 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
       'Drag a thumb on the left half. They are slow, so keep moving.',
       HINT_ICON_SPRITES.MoveStick,
     ),
+    pad: input(
+      'Walk with the left stick. They are slow, so keep moving.',
+      HINT_ICON_SPRITES.MoveStick,
+    ),
   },
   {
     id: 'Aim',
@@ -75,6 +81,10 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     ),
     touch: input(
       'Drag a thumb on the right half toward a zombie. It fires as you drag.',
+      HINT_ICON_SPRITES.AimStick,
+    ),
+    pad: input(
+      'Aim with the right stick. Pull the right trigger to fire.',
       HINT_ICON_SPRITES.AimStick,
     ),
   },
@@ -89,6 +99,10 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
       'Tap your other gun. Tap the one in hand to reload.',
       HINT_ICON_SPRITES.Guns,
     ),
+    pad: input(
+      'Y switches guns, X reloads. Ammo never runs out.',
+      HINT_ICON_SPRITES.Guns,
+    ),
   },
   {
     id: 'Knife',
@@ -99,6 +113,10 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     ),
     touch: input(
       'Tap its slot by your guns, then fire to stab.',
+      HELP_DEMO_SPRITES.Knife,
+    ),
+    pad: input(
+      'Press B to draw it, then fire to stab.',
       HELP_DEMO_SPRITES.Knife,
     ),
   },
@@ -113,11 +131,15 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
       'Grab them from a crate, then tap the trap button in a doorway.',
       HINT_ICON_SPRITES.PlankDoor,
     ),
+    pad: input(
+      'Grab them from a crate, then pull the left trigger in a doorway.',
+      HINT_ICON_SPRITES.PlankDoor,
+    ),
   },
   {
     id: 'Keys',
     action: 'Keys',
-    ...onBoth(
+    ...onEvery(
       'Zombies drop them. Walk over them to fill your ring.',
       HELP_DEMO_SPRITES.Keys,
     ),
@@ -133,11 +155,15 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
       'Hold the button at a padlock to spend keys. Each hides a thing.',
       HELP_DEMO_SPRITES.Rooms,
     ),
+    pad: input(
+      'Hold A at a padlock to spend keys. Each hides a thing.',
+      HELP_DEMO_SPRITES.Rooms,
+    ),
   },
   {
     id: 'Cases',
     action: 'Cases',
-    ...onBoth(
+    ...onEvery(
       'Do the deed on the lock. What is inside is yours.',
       HELP_DEMO_SPRITES.Case,
     ),
@@ -145,7 +171,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
   {
     id: 'Guns',
     action: 'Guns',
-    ...onBoth(
+    ...onEvery(
       'Kills level up the gun that made them. Its bar fills under it.',
       HINT_ICON_SPRITES.GunLevel,
     ),
@@ -153,7 +179,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
   {
     id: 'Stove',
     action: 'Stove',
-    ...onBoth(
+    ...onEvery(
       'In the kitchen, cook a perk onto the gun in your hand.',
       HELP_DEMO_SPRITES.Stove,
     ),
@@ -161,7 +187,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
   {
     id: 'List',
     action: 'Your list',
-    ...onBoth(
+    ...onEvery(
       'Up top: what the dare asks for. Find every thing.',
       HELP_DEMO_SPRITES.List,
     ),
@@ -169,7 +195,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
   {
     id: 'Exit',
     action: 'Get out',
-    ...onBoth(
+    ...onEvery(
       'All found? Beat Uncle Chunk. His key opens the front door.',
       HELP_DEMO_SPRITES.Exit,
     ),
@@ -194,10 +220,13 @@ const EXTRA_KEYS: Array.NonEmptyReadonlyArray<ExtraKey> = [
 const DEVICE_LABELS: Readonly<Record<InputDevice, string>> = {
   KeyboardMouse: 'keyboard and mouse',
   Touch: 'touch',
+  Gamepad: 'a controller',
 }
 
 const inputOf = (card: ControlCard, device: InputDevice): Input =>
-  device === 'KeyboardMouse' ? card.keyboard : card.touch
+  ({ KeyboardMouse: card.keyboard, Touch: card.touch, Gamepad: card.pad })[
+    device
+  ]
 
 export const helpLineOf: {
   (device: InputDevice): (card: HelpCard) => string

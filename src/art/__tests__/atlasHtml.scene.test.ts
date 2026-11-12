@@ -76,6 +76,7 @@ const HELP_FRAMES = '.help-card-frame'
 const FRAMES_BY_DEVICE: Readonly<Record<Model['lastDevice'], number>> = {
   KeyboardMouse: 50,
   Touch: 49,
+  Gamepad: 49,
 }
 
 describe('sprites in HTML', () => {

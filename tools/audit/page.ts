@@ -64,6 +64,11 @@ declare global {
     // NOTE: shots43.ts's stand-ins for navigator.share and the clipboard:
     // what each was handed, whether the tap's user activation was still
     // live, and whether the click was still being dispatched.
+    // NOTE: pad.ts's stand-in controller: whether it is plugged in, its
+    // four stick axes, its 17 buttons' values in the standard layout, and
+    // how many rumbles the game asked of it.
+    __pad?: { isPlugged: boolean; axes: Array<number>; buttons: Array<number> }
+    __rumbles?: number
     __shared?: Array<
       Readonly<{
         call: 'Sheet' | 'Copy'

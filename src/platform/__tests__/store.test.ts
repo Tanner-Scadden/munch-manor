@@ -492,6 +492,7 @@ describe('two devices syncing one player', () => {
             settings: { ...restyled.settings, music: 'Off' },
             home: { ...restyled.home, openedEntries: ['Shambler', 'Runner'] },
             rotation: 'Auto',
+            rumble: 'On',
           }
           yield* write(laptop, restyled, quiet)
           const onPhone = yield* until(phone.load, maybeSave =>
@@ -977,6 +978,7 @@ const migratedLiveSave: PlayerSave = {
   },
   seenPowerUps: [],
   rotation: 'Landscape',
+  rumble: 'On',
   name: '',
   records: noSavedRunRecords,
   rank: noRank,

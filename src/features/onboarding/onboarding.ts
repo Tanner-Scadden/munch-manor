@@ -332,22 +332,27 @@ export const HINT_PARTS: Readonly<
   Move: {
     KeyboardMouse: [part('Wasd', 'MOVE')],
     Touch: [part('MoveStick', 'MOVE')],
+    Gamepad: [part('MoveStick', 'MOVE')],
   },
   Fire: {
     KeyboardMouse: [part('Mouse', 'AIM + SHOOT')],
     Touch: [part('AimStick', 'AIM + SHOOT')],
+    Gamepad: [part('AimStick', 'AIM + RT')],
   },
   Barricade: {
     KeyboardMouse: [part('KeyT'), part('PlankDoor', 'BLOCK DOOR')],
     Touch: [part('Tap'), part('PlankDoor', 'BLOCK DOOR')],
+    Gamepad: [part('PlankDoor', 'LT: BLOCK DOOR')],
   },
   Turret: {
     KeyboardMouse: [part('KeyT'), part('Gnome', 'PLONK IT')],
     Touch: [part('Tap'), part('Gnome', 'PLONK IT')],
+    Gamepad: [part('Gnome', 'LT: PLONK IT')],
   },
   GunLevel: {
     KeyboardMouse: [part('GunLevel', 'LEVELS UP')],
     Touch: [part('GunLevel', 'LEVELS UP')],
+    Gamepad: [part('GunLevel', 'LEVELS UP')],
   },
 }
 
@@ -436,9 +441,10 @@ const isTrapHintFor = (model: Model, kind: 'Barricade' | 'Turret'): boolean =>
   Option.contains(maybeSelectedKind(model, focusSlotOf(model)), kind)
 
 // NOTE: on touch the ghost sticks, drawn where the thumbs go, teach moving
-// and shooting, so the center hints for them show only with a keyboard.
+// and shooting, so the center hints for them show only with a keyboard or
+// a controller.
 const isFirstWaveOnKeyboard = (model: Model): boolean =>
-  isFirstWave(model.phase) && model.lastDevice === 'KeyboardMouse'
+  isFirstWave(model.phase) && model.lastDevice !== 'Touch'
 
 // NOTE: the first time a gun in the player's hands gets halfway to its
 // first level, a hint shows that its kills level it up (owner, 2026-11-10:

@@ -8,17 +8,28 @@ import { ZombieAction, ZombieState } from '../world/schema/worldSchema'
 // AIM ASSIST
 
 // NOTE: a phone sees a zoomed window, and a thumb on a stick aims coarser
-// than a mouse, so on touch, upright or on its side, a held trigger bends
-// the aim a few degrees onto the zombie it is already almost on. Only
-// a zombie inside the camera's view, in the line of sight, and within reach
-// pulls. Inside innerRadians the aim lands on it; from there to
-// outerRadians the pull fades to nothing, so the aim never jumps. It reads
-// only the input and the world, so the same frame always bends the same way.
+// than a mouse, so on touch, upright or on its side, and on a controller's
+// right stick, a held trigger bends the aim a few degrees onto the zombie it
+// is already almost on. Only a zombie inside the camera's view, in the line
+// of sight, and within reach pulls. Inside innerRadians the aim lands on
+// it; from there to outerRadians the pull fades to nothing, so the aim
+// never jumps. It reads only the input and the world, so the same frame
+// always bends the same way.
+export type AimAssistStrength = Readonly<{
+  innerRadians: number
+  outerRadians: number
+  reachPx: number
+}>
+
+// NOTE: each device's own strength, gentle on both: it helps, it never
+// plays for you. A pad sees the whole room, not a phone's zoomed window,
+// and a stick held in two hands is steadier than a thumb on glass, so its
+// pull is weaker than touch's and reaches less far. Touch came down from
+// 0.12, 0.2, and 140 px with the owner on 2026-11-11.
 export const AIM_ASSIST = {
-  innerRadians: 0.12,
-  outerRadians: 0.2,
-  reachPx: 140,
-} as const
+  Touch: { innerRadians: 0.08, outerRadians: 0.14, reachPx: 120 },
+  Gamepad: { innerRadians: 0.05, outerRadians: 0.11, reachPx: 110 },
+} as const satisfies Readonly<Record<string, AimAssistStrength>>
 
 const OUT_OF_REACH = ZombieAction.isAnyOf(['Burrowed', 'Carried', 'Flying'])
 
@@ -39,9 +50,9 @@ const isInView = (camera: Camera, zombie: Zombie): boolean =>
   zombie.y >= camera.y &&
   zombie.y <= camera.y + camera.height
 
-const pullOf = (offset: number): number => {
+const pullOf = (offset: number, strength: AimAssistStrength): number => {
   const size = Math.abs(offset)
-  const { innerRadians, outerRadians } = AIM_ASSIST
+  const { innerRadians, outerRadians } = strength
   return size <= innerRadians
     ? offset
     : offset *
@@ -54,6 +65,7 @@ export const assistAim: {
     from: Vector,
     zombies: ReadonlyArray<Zombie>,
     aim: Vector,
+    strength: AimAssistStrength,
   ): (level: Level) => Vector
   (
     level: Level,
@@ -61,15 +73,17 @@ export const assistAim: {
     from: Vector,
     zombies: ReadonlyArray<Zombie>,
     aim: Vector,
+    strength: AimAssistStrength,
   ): Vector
 } = Function.dual(
-  5,
+  6,
   (
     level: Level,
     camera: Camera,
     from: Vector,
     zombies: ReadonlyArray<Zombie>,
     aim: Vector,
+    strength: AimAssistStrength,
   ): Vector => {
     const aimAngle = Math.atan2(aim.y, aim.x)
     return pipe(
@@ -90,15 +104,15 @@ export const assistAim: {
       })),
       Array.filter(
         ({ offset, distance }) =>
-          distance <= AIM_ASSIST.reachPx &&
-          Math.abs(offset) < AIM_ASSIST.outerRadians,
+          distance <= strength.reachPx &&
+          Math.abs(offset) < strength.outerRadians,
       ),
       Array.sort(byPull),
       Array.findFirst(({ zombie }) => hasLineOfSight(level, from, zombie)),
       Option.match({
         onNone: () => aim,
         onSome: ({ offset }) => {
-          const angle = aimAngle + pullOf(offset)
+          const angle = aimAngle + pullOf(offset, strength)
           return { x: Math.cos(angle), y: Math.sin(angle) }
         },
       }),

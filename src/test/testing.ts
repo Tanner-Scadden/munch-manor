@@ -125,6 +125,9 @@ export const PHONE_LANDSCAPE = { left: 0, top: 0, width: 844, height: 390 }
 
 export const PHONE_PORTRAIT = { left: 0, top: 0, width: 390, height: 844 }
 
+export const isPausedPhase = (current: Model): boolean =>
+  Phase.isAnyOf(['Paused'])(current.phase)
+
 export const tick = (deltaTime: number) =>
   Story.message(Message.TickedFrame({ deltaTime }))
 

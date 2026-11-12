@@ -2,11 +2,18 @@ import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
 import { GunSlot } from '../world/schema/worldSchema'
-import { PointerDevice, SurfaceRectangle, TouchControls } from './inputSchema'
+import {
+  Gamepad,
+  PointerDevice,
+  SurfaceRectangle,
+  TouchControls,
+} from './inputSchema'
 
-// NOTE: the root's Messages from the keyboard, the mouse, and touch, and the
-// game surface they land on. src/app/message.ts joins them into the root's
-// Message union; their handlers are in src/app/update/input.ts.
+// NOTE: the root's Messages from the keyboard, the mouse, touch, and a
+// controller, and the game surface they land on. A controller is polled
+// (src/app/subscriptions.ts): PolledGamepad comes only when it changed.
+// src/app/message.ts joins them into the root's Message union; their
+// handlers are in src/app/update/input.ts.
 export const inputCases = {
   PressedKey: { code: Schema.String },
   ReleasedKey: { code: Schema.String },
@@ -37,10 +44,15 @@ export const inputCases = {
   TappedWithTouch: {},
   MeasuredGameSurface: SurfaceRectangle.fields,
   CompletedDetectInputDevice: { touchControls: TouchControls },
+  PolledGamepad: Gamepad.fields,
+  DisconnectedGamepad: { index: Schema.Finite },
+  CompletedRumble: {},
 }
 export const InputMessage = defineMessageUnion(inputCases)
 
 export type PressedHudSlot = typeof InputMessage.PressedHudSlot.Type
+export type PolledGamepad = typeof InputMessage.PolledGamepad.Type
+export type DisconnectedGamepad = typeof InputMessage.DisconnectedGamepad.Type
 
 // NOTE: the run's buttons: the touch HUD's slots, reload, MEDIC, traps,
 // READY, the hold-to-buy button, and pause. Each goes to

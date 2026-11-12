@@ -23,8 +23,10 @@ import { Difficulty } from '../shared/playerData'
 // shop), a won run ends `Escaped` in place of `Victory`, and
 // `dareItemsFound` counts the things on the dare's list the run found. The
 // Worker still takes version 4 and older, with their purchases, their wins
-// as Victory, and none found.
-export const RUN_SUMMARY_VERSION = 5
+// as Victory, and none found. Version 6 adds 'Gamepad' to `device`, a run
+// played on a controller; the Worker still takes version 5 and older, on a
+// keyboard or touch.
+export const RUN_SUMMARY_VERSION = 6
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -42,8 +44,15 @@ export type SummaryKind = typeof SummaryKind.Type
 export const SummaryMode = Schema.Literals(['Campaign', 'Endless'])
 type SummaryMode = typeof SummaryMode.Type
 
-export const SummaryDevice = Schema.Literals(['KeyboardMouse', 'Touch'])
+export const SummaryDevice = Schema.Literals([
+  'KeyboardMouse',
+  'Touch',
+  'Gamepad',
+])
 export type SummaryDevice = typeof SummaryDevice.Type
+
+// NOTE: the devices of a summary from a build before controllers.
+const SummaryDeviceV5 = Schema.Literals(['KeyboardMouse', 'Touch'])
 
 export const SummaryScreenFit = Schema.Literals(['Browser', 'Installed'])
 export type SummaryScreenFit = typeof SummaryScreenFit.Type
@@ -179,7 +188,7 @@ const baseFields = {
   heartsLost: Count,
   powerUpsGrabbed: Count,
   trapsPlaced: Count,
-  device: SummaryDevice,
+  device: SummaryDeviceV5,
   screenFit: SummaryScreenFit,
   frameTime: FrameTimeBucket,
 }
@@ -198,8 +207,7 @@ const ModifierMask = Schema.Int.check(
 // NOTE: the skeleton keys the crew spent on boards and fridge pulls
 // (src/world/keys/keys.ts), the display cases the run opened, and the
 // things on the dare's list it found (src/world/dare/dare.ts).
-export const RunSummary = Schema.Struct({
-  version: Schema.Literal(RUN_SUMMARY_VERSION),
+const escapeFields = {
   ...baseFields,
   outcome: RunOutcome,
   keysSpent: Count,
@@ -207,8 +215,20 @@ export const RunSummary = Schema.Struct({
   dareItemsFound: Count,
   party: SummaryParty,
   modifiers: ModifierMask,
+}
+
+export const RunSummary = Schema.Struct({
+  version: Schema.Literal(RUN_SUMMARY_VERSION),
+  ...escapeFields,
+  device: SummaryDevice,
 })
 export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before controllers.
+const RunSummaryV5 = Schema.Struct({
+  version: Schema.Literal(5),
+  ...escapeFields,
+})
 
 // NOTE: a summary from a build before the escape: its shop purchases, and
 // a won run as Victory.
@@ -243,9 +263,10 @@ export const RunSummaryV1 = Schema.Struct({
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
 // NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 4, 3, 2, or 1 from a build cached before it.
+// version, or version 5, 4, 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
+  RunSummaryV5,
   RunSummaryV4,
   RunSummaryV3,
   RunSummaryV2,

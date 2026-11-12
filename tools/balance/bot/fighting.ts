@@ -6,7 +6,7 @@ import { Array, Function, Option } from 'effect'
 import { Message } from '../../../src/app/message'
 import { chandelierShot } from '../../../src/features/bots/dareSearch'
 import { escapeHeading } from '../../../src/features/bots/escape'
-import { assistAim } from '../../../src/input/aimAssist'
+import { AIM_ASSIST, assistAim } from '../../../src/input/aimAssist'
 import {
   screenCameraOf,
   viewToWorld,
@@ -320,6 +320,7 @@ const assistedPoint = (model: Model, rawPoint: Vector): Vector => {
       x: (raw.x - focusOf(model).player.x) / length,
       y: (raw.y - focusOf(model).player.y) / length,
     },
+    AIM_ASSIST.Touch,
   )
   return worldToView(camera, {
     x: focusOf(model).player.x + aim.x * AIM_REACH_PX,

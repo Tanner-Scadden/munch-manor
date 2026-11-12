@@ -76,6 +76,7 @@ import {
   MusicSetting,
   PlayerName,
   RotationSetting,
+  RumbleSetting,
   SavedBoughtCosmetics,
   SavedRank,
   SavedSeenUnlocks,
@@ -198,6 +199,7 @@ export const Model = Schema.Struct({
   coop: Coop.Model,
   shakeSetting: ShakeSetting,
   rotationSetting: RotationSetting,
+  rumbleSetting: RumbleSetting,
   orientationLock: OrientationLock,
   // NOTE: players sharing this keyboard, from a dev-only `?local=N` link
   // (MULTIPLAYER.md, "What Phase 1 built"). 1 in every shipped build.
@@ -388,6 +390,7 @@ export const initialModel: OwnModel = {
   playerName: '',
   shakeSetting: 'On',
   rotationSetting: 'Landscape',
+  rumbleSetting: 'On',
   orientationLock: 'Unsupported',
   localPlayers: 1,
   crewBots: [],

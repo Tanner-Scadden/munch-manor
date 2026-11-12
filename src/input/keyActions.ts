@@ -1,14 +1,16 @@
-import { Array, Function, Option } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 
 import { focusSlotOf, isDowned, seatStateAt } from '../world/party/party'
 import type { World } from '../world/schema/world'
 import { isInteractTaken } from '../world/shop/purchase'
 import { SeatAction } from '../world/step/stepWorld'
+import { PAD_A, PAD_B, PAD_LB, PAD_LT, PAD_X, PAD_Y } from './gamepad'
 
 // The keys that press a seat action (src/world/step/stepWorld.ts), in one table that
 // single player, co-op's client, and the couch all read. Each seat names
 // its own key for each action: player 1 the usual keys, a couch player a
-// block of their own (src/input/couch.ts).
+// block of their own (src/input/couch.ts), and a controller its buttons
+// (src/input/gamepad.ts).
 
 // NOTE: held to buy at a purchasable (src/world/shop/purchase.ts), pressed for
 // READY elsewhere, and while downed, MEDIC!
@@ -30,6 +32,18 @@ const PLAYER_ACTION_KEYS: ActionKeys = {
   placeTrap: 'KeyT',
   nextTrap: 'KeyG',
   ready: INTERACT_KEY,
+}
+
+// NOTE: a controller's fixed layout (docs/INPUT_PLAN.md): A is the
+// interact button, X reloads, Y swaps, B draws the knife, LT places a trap
+// and LB picks the next. Pads are never rebound.
+const PAD_ACTION_KEYS: ActionKeys = {
+  swap: PAD_Y,
+  knife: PAD_B,
+  reload: PAD_X,
+  placeTrap: PAD_LT,
+  nextTrap: PAD_LB,
+  ready: PAD_A,
 }
 
 const ACTIONS: ReadonlyArray<readonly [keyof ActionKeys, SeatAction]> = [
@@ -90,13 +104,15 @@ export const keyActionOf: {
     ),
 )
 
-// NOTE: single player's and co-op's own seat: the usual keys and the
-// number keys.
+// NOTE: single player's and co-op's own seat: the usual keys, a
+// controller's buttons, and the number keys.
 export const playerKeyAction: {
   (code: string): (model: World) => Option.Option<SeatAction>
   (model: World, code: string): Option.Option<SeatAction>
 } = Function.dual(2, (model: World, code: string): Option.Option<SeatAction> =>
-  Option.orElse(keyActionOf(model, PLAYER_ACTION_KEYS, code), () =>
-    slotKeyAction(code),
+  pipe(
+    keyActionOf(model, PLAYER_ACTION_KEYS, code),
+    Option.orElse(() => keyActionOf(model, PAD_ACTION_KEYS, code)),
+    Option.orElse(() => slotKeyAction(code)),
   ),
 )

@@ -135,7 +135,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 5,
+  version: 6,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -182,6 +182,28 @@ describe('the run summary schema', () => {
     expect(new Blob([json]).size).toBeLessThan(MAX_SUMMARY_BYTES)
   })
 
+  test('a controller run is a version 6 summary, and a version 5 one never says Gamepad', () => {
+    const decode = Schema.decodeUnknownOption(RunSummaryJson)
+    expect(
+      Option.map(
+        decode(jsonOf({ ...summary, device: 'Gamepad' })),
+        ({ device }) => device,
+      ),
+    ).toEqual(Option.some('Gamepad'))
+    expect(
+      Schema.decodeOption(PostedRunJson)(
+        jsonOf({ ...summary, version: 5, device: 'Gamepad' }),
+      ),
+    ).toEqual(Option.none())
+    expect(
+      Option.isSome(
+        Schema.decodeOption(PostedRunJson)(
+          jsonOf({ ...summary, version: 5, device: 'KeyboardMouse' }),
+        ),
+      ),
+    ).toBe(true)
+  })
+
   test('bad fields are refused', () => {
     const decode = Schema.decodeUnknownOption(RunSummaryJson)
     const withField = (field: string, value: unknown): string =>
@@ -193,7 +215,8 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 6))).toEqual(Option.none())
+    expect(decode(withField('version', 7))).toEqual(Option.none())
+    expect(decode(withField('device', 'Joystick'))).toEqual(Option.none())
     expect(decode(withField('keysSpent', -1))).toEqual(Option.none())
     expect(decode(withField('version', 4))).toEqual(Option.none())
     expect(decode(withField('outcome', { _tag: 'Victory' }))).toEqual(

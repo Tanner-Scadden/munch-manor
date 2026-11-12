@@ -9,18 +9,16 @@ import {
   GameEvent,
   Invulnerability,
   type Model,
-  Phase,
   type Zombie,
   ZombieAction,
 } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
 import {
   CONTACT_ALLOWANCE_PX,
   FIXED_STEP_MS,
   PLAYER_RADIUS,
 } from '../../../shared/constants'
 import { holdingSecond } from '../../../test/arsenals'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+import { openFloorWave } from '../../../test/model.fixture'
 import { APPLICATION, holdFire, ticks, zombieOf } from '../../../test/testing'
 import { WEAPONS } from '../../gear/weapons'
 import { focusOf, modifyFocus } from '../../party/party'
@@ -34,10 +32,7 @@ const PLAYER_X = 180
 const PLAYER_Y = 130
 const EPSILON = 1e-6
 
-const fightingBase: Model = modifyFields(initialModel, {
-  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-  phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-})
+const fightingBase: Model = openFloorWave
 
 const STEADFAST = Invulnerability.Invulnerable({
   remainingMs: 1e9,
