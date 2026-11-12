@@ -1,10 +1,19 @@
-import { Array, Function, Option, pipe } from 'effect'
+import { Array, Function, Option, Schema, pipe } from 'effect'
 
 import { focusSlotOf, isDowned, seatStateAt } from '../world/party/party'
 import type { World } from '../world/schema/world'
 import { isInteractTaken } from '../world/shop/purchase'
 import { SeatAction } from '../world/step/stepWorld'
-import { PAD_A, PAD_B, PAD_LB, PAD_LT, PAD_X, PAD_Y } from './gamepad'
+import {
+  PAD_A,
+  PAD_B,
+  PAD_LB,
+  PAD_LT,
+  PAD_RB,
+  PAD_X,
+  PAD_Y,
+  type PadDirection,
+} from './gamepad'
 
 // The keys that press a seat action (src/world/step/stepWorld.ts), in one table that
 // single player, co-op's client, and the couch all read. Each seat names
@@ -116,3 +125,43 @@ export const playerKeyAction: {
     Option.orElse(() => slotKeyAction(code)),
   ),
 )
+
+// MENUS
+
+// NOTE: what a controller presses in a menu (src/app/update/padMenu.ts):
+// A clicks what has focus, B backs out as Escape does, and the bumpers
+// turn tabs and pages. Pads are never rebound, so this is fixed too.
+export const PadMenuPress = Schema.Literals([
+  'Accept',
+  'Back',
+  'PreviousTab',
+  'NextTab',
+])
+export type PadMenuPress = typeof PadMenuPress.Type
+
+const PAD_MENU_KEYS: ReadonlyArray<readonly [string, PadMenuPress]> = [
+  [PAD_A, 'Accept'],
+  [PAD_B, 'Back'],
+  [PAD_LB, 'PreviousTab'],
+  [PAD_RB, 'NextTab'],
+]
+
+export const padMenuPressOf = (code: string): Option.Option<PadMenuPress> =>
+  Option.map(
+    Array.findFirst(PAD_MENU_KEYS, ([key]) => key === code),
+    ([, press]) => press,
+  )
+
+// NOTE: the arrow key a pad's direction is, for the menus that step their
+// own focus by arrows (the home menu, the lobby).
+export const DIRECTION_KEYS: Readonly<Record<PadDirection, string>> = {
+  Up: 'ArrowUp',
+  Down: 'ArrowDown',
+  Left: 'ArrowLeft',
+  Right: 'ArrowRight',
+}
+
+// NOTE: the keyboard key a menu press stands for on a screen that reads
+// keys itself: Enter when nothing has focus, Escape to back out.
+export const ACCEPT_KEY = 'Enter'
+export const BACK_KEY = 'Escape'

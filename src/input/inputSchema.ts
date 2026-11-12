@@ -76,6 +76,16 @@ export const Gamepad = Schema.Struct({
 })
 export type Gamepad = typeof Gamepad.Type
 
+// NOTE: where a controller moves focus in a menu (src/input/padFocus.ts):
+// the topmost open dialog, co-op's screen, or the page.
+export const PadScope = Schema.Literals(['TopDialog', 'Coop', 'Page'])
+export type PadScope = typeof PadScope.Type
+
+// NOTE: what A found to press: a focused control it clicked, or nothing
+// with focus, which a screen that reads keys takes as Enter.
+export const PadClick = Schema.Literals(['Clicked', 'NothingFocused'])
+export type PadClick = typeof PadClick.Type
+
 export const Input = Schema.Struct({
   pressedKeys: Schema.Array(Schema.String),
   maybeMouseInView: Schema.Option(Vector),

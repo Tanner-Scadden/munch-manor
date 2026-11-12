@@ -5,6 +5,17 @@ import type { Vector } from '../schema/entitySchema'
 
 export const ZERO_VECTOR: Vector = { x: 0, y: 0 }
 
+// NOTE: the four ways on screen, y down, and a unit step each way: an
+// arrow's bob and a controller's focus step in a menu.
+export type ScreenDirection = 'Up' | 'Down' | 'Left' | 'Right'
+
+export const SCREEN_STEPS: Readonly<Record<ScreenDirection, Vector>> = {
+  Up: { x: 0, y: -1 },
+  Down: { x: 0, y: 1 },
+  Left: { x: -1, y: 0 },
+  Right: { x: 1, y: 0 },
+}
+
 // NOTE: the way to push when two things sit on the same spot.
 export const OUTWARD: Vector = { x: 1, y: 0 }
 

@@ -13,6 +13,7 @@ import { homeHandlers } from './update/home'
 import { inputHandlers, pageHandlers, runButtonHandlers } from './update/input'
 import { lobbyHandlers } from './update/lobby'
 import { onboardingHandlers } from './update/onboarding'
+import { padMenuHandlers } from './update/padMenu'
 import { tickFrame } from './update/play'
 import { saveHandlers } from './update/save'
 import { afterMessage } from './update/settle'
@@ -67,6 +68,7 @@ const handlers = makeUpdate({
   ...homeHandlers,
   ...endHandlers,
   ...onboardingHandlers,
+  ...padMenuHandlers,
 })
 
 // SETTLING

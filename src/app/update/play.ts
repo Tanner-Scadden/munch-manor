@@ -225,7 +225,7 @@ export const skipDebutCardWhenUp = (model: Model): Model =>
 
 // NOTE: a card that holds the round's buttons: the new zombie card in a
 // wave, or the display case's in a break.
-const isCardHolding = (model: Model): boolean =>
+export const isCardHolding = (model: Model): boolean =>
   isDebutCardBlocking(model) || isCaseCardBlocking(model)
 
 export const skipCaseCardWhenUp = (model: Model): Model =>
@@ -516,6 +516,11 @@ const pressedButton = ({ code, device }: ButtonPress) =>
 
 export const pressedKey = (code: string) =>
   pressedButton({ code, device: 'KeyboardMouse' })
+
+// NOTE: a key a controller stands in for in a menu (src/app/update/padMenu.ts),
+// pressed as the pad's, so the pad stays the device.
+export const pressedPadKey = (code: string) =>
+  pressedButton({ code, device: 'Gamepad' })
 
 // CONTROLLERS
 

@@ -425,6 +425,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         h.OnMount(ListenForTouchTaps()),
         h.DataAttribute('layout', screen.layout),
         h.DataAttribute('cursor', model.cursorSetting),
+        h.DataAttribute('device', model.lastDevice),
         h.Style({
           '--screen-w': `${screen.width}`,
           '--screen-h': `${screen.height}`,
