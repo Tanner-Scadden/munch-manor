@@ -152,6 +152,13 @@ body {
   gap: 8px;
 }
 
+/* Paused, the corner holds MENU and three buttons, which reach over the
+   HUD's dare list: solid there, so the list does not show through. */
+.corner-buttons:has(.pause-menu-button) > * {
+  background: var(--menu-bg);
+  opacity: 1;
+}
+
 .icon-button {
   position: relative;
   display: flex;
@@ -438,8 +445,21 @@ body {
   touch-action: manipulation;
 }
 
+/* The drawn list is shorter than a thumb on a phone: the button reaches
+   past it to the 44 px a tap needs, centered on it, the art unmoved. */
+.dare-list-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 .dare-list-button:focus-visible {
-  outline: 2px solid #ffe066;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .gun-slot-button:active {
