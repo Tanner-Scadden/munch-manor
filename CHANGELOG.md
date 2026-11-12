@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 12, 2026: Grab a controller
+
+- 🎮 Plug in a controller and play a run with it: left stick walks, right stick aims, right trigger fires, Start pauses, and it rumbles when you get munched (turn that off under Settings, RUMBLE). Menus by controller come next.
+
 ## November 11, 2026: Catch your breath
 
 - 🏃 Hotfoots catch their breath on Dare and Double Dare: still the quickest in the house, just not quite so quick.

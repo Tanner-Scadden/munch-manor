@@ -349,7 +349,7 @@ describe('POST /api/runs', () => {
         )
         expect(value_6).toEqual([
           {
-            summary_version: 5,
+            summary_version: RUN_SUMMARY_VERSION,
             difficulty: 'Hard',
             party: 'Crew',
             crew_size: 3,
@@ -360,6 +360,19 @@ describe('POST /api/runs', () => {
           },
         ])
       }),
+  )
+
+  it.effect('a controller run stores its device', () =>
+    Effect.gen(function* () {
+      const setup = yield* setUp()
+      const response = yield* post(
+        setup,
+        encodeSummary({ ...summary, device: 'Gamepad' }),
+      )
+      expect(response.status).toBe(202)
+      const rows = yield* query(setup, 'SELECT device FROM runs')
+      expect(rows).toEqual([{ device: 'Gamepad' }])
+    }),
   )
 
   it.effect('the run modifiers that bit are stored as a mask', () =>
@@ -374,7 +387,9 @@ describe('POST /api/runs', () => {
         setup,
         'SELECT summary_version, modifiers FROM runs',
       )
-      expect(value_7).toEqual([{ summary_version: 5, modifiers: 12 }])
+      expect(value_7).toEqual([
+        { summary_version: RUN_SUMMARY_VERSION, modifiers: 12 },
+      ])
     }),
   )
 
@@ -405,7 +420,11 @@ describe('POST /api/runs', () => {
           'SELECT summary_version, outcome, dare_items_found FROM runs ORDER BY id',
         )
         expect(stored).toEqual([
-          { summary_version: 5, outcome: 'Escaped', dare_items_found: 2 },
+          {
+            summary_version: RUN_SUMMARY_VERSION,
+            outcome: 'Escaped',
+            dare_items_found: 2,
+          },
           { summary_version: 4, outcome: 'Victory', dare_items_found: 0 },
         ])
       }),
@@ -440,7 +459,7 @@ describe('POST /api/runs', () => {
         )
         expect(rows).toEqual([
           {
-            summary_version: 5,
+            summary_version: RUN_SUMMARY_VERSION,
             purchases: 0,
             keys_spent: 7,
             cases_opened: 2,
@@ -518,7 +537,7 @@ describe('POST /api/runs', () => {
         )
         expect(value_12).toEqual([
           {
-            summary_version: 5,
+            summary_version: RUN_SUMMARY_VERSION,
             party: 'Solo',
             crew_size: 1,
             seat_kills: null,

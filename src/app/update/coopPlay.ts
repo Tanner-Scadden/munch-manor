@@ -45,6 +45,7 @@ import {
 import type { Model } from '../model'
 import { freshRun } from '../runReset'
 import { playIntroSounds } from './intro'
+import { rumbleFor } from './rumble'
 import {
   frameSoundCues,
   fridgeLandCues,
@@ -359,6 +360,7 @@ const drawTraced = ({
         ...pocketScratchCues(base, drawn),
       ]),
       playTune(base, drawn),
+      rumbleFor(events),
       playIntroSounds(base),
       playStartSoundWhen(isStart),
     ])

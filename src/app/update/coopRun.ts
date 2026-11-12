@@ -1,10 +1,11 @@
-import { Function, Option, Schema } from 'effect'
+import { Array, Function, Option, Schema } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { isRunOn } from '../../domain/onlineRun'
 import { foldPocketCard } from '../../features/dare/pocketCard'
 import { isPauseKey, pressKey, releaseAll } from '../../input/input'
+import type { Gamepad, InputDevice } from '../../input/inputSchema'
 import { playerKeyAction } from '../../input/keyActions'
 import type { PageVisibility } from '../../platform/deviceSchema'
 import { focusOf } from '../../world/party/party'
@@ -15,6 +16,7 @@ import { Message } from '../message'
 import type { Model } from '../model'
 import { pressInRoom } from './coop'
 import { skipIntro } from './intro'
+import { forgetPad, notePad, padPresses } from './play'
 import { toggleAudioFromKey, unlockAudio } from './sound'
 import { type UpdateStep, modelStep, unchanged, withInput } from './step'
 
@@ -32,11 +34,11 @@ const pressInRun = (action: SeatAction) =>
   makeStep(() => Update.combineSteps([unlockAudio, pressInRoom(action)]))
 
 const holdKey =
-  (code: string): UpdateStep =>
+  (code: string, device: InputDevice): UpdateStep =>
   stepModel => ({
     model: withInput(
       modifyFields(toggleAudioFromKey(stepModel, code), {
-        lastDevice: () => 'KeyboardMouse',
+        lastDevice: () => device,
       }),
       input => (isPauseKey(code) ? input : pressKey(input, code)),
     ),
@@ -45,26 +47,45 @@ const holdKey =
 // NOTE: a press key goes to the room, and every key is held in the input
 // for walking. In the intro any key skips this player's drawing to the
 // door (src/app/update/intro.ts). After the slam any key folds this
-// player's dare card away, and the room never waits for it.
-const keyInRun = (code: string) =>
+// player's dare card away, and the room never waits for it. A controller's
+// button goes the same way, from its own device.
+const keyInRun = (code: string, device: InputDevice) =>
   makeStep(model =>
     isArriving(model.phase)
-      ? Update.combineSteps([holdKey(code), modelStep(skipIntro), unlockAudio])
+      ? Update.combineSteps([
+          holdKey(code, device),
+          modelStep(skipIntro),
+          unlockAudio,
+        ])
       : Option.match(playerKeyAction(model, code), {
           onNone: () =>
             Update.combineSteps([
               modelStep(foldPocketCard),
-              holdKey(code),
+              holdKey(code, device),
               unlockAudio,
             ]),
           onSome: action =>
             Update.combineSteps([
               modelStep(foldPocketCard),
-              holdKey(code),
+              holdKey(code, device),
               pressInRun(action),
             ]),
         }),
   )
+
+// NOTE: a controller in an online run: its sticks and held buttons ride in
+// the intent the client sends, and each new press goes to the room as the
+// key table's seat action. Unplugged, it lets go of everything; an online
+// run has no pause (decided 7).
+const padInRun = (pad: Gamepad) =>
+  makeStep(model =>
+    Update.combineSteps([
+      modelStep(notePad(pad)),
+      ...Array.map(padPresses(model, pad), code => keyInRun(code, 'Gamepad')),
+    ]),
+  )
+
+const padGoneInRun = modelStep(model => withInput(forgetPad(model), releaseAll))
 
 const blurInRun = modelStep(model => withInput(model, releaseAll))
 
@@ -81,6 +102,8 @@ const pageVisibilityInRun = (visibility: PageVisibility) =>
 const RunMessage = Schema.Union([
   Message.TickedFrame,
   Message.PressedKey,
+  Message.PolledGamepad,
+  Message.DisconnectedGamepad,
   Message.BlurredWindow,
   Message.ChangedPageVisibility,
   Message.ClickedPauseButton,
@@ -101,7 +124,10 @@ type RunMessage = typeof RunMessage.Type
 const inRun = (model: Model, message: RunMessage) =>
   Message.match(message, {
     TickedFrame: () => unchanged,
-    PressedKey: ({ code }) => keyInRun(code),
+    PressedKey: ({ code }) => keyInRun(code, 'KeyboardMouse'),
+    PolledGamepad: ({ index, axes, buttons }) =>
+      padInRun({ index, axes, buttons }),
+    DisconnectedGamepad: () => padGoneInRun,
     BlurredWindow: () => blurInRun,
     ChangedPageVisibility: ({ visibility }) => pageVisibilityInRun(visibility),
     ClickedPauseButton: () => unchanged,

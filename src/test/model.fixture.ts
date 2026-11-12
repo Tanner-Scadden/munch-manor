@@ -27,6 +27,7 @@ import { type DareThing, Finale } from '../world/dare/dareSchema'
 import { frontDoorSillOf } from '../world/dare/finale'
 import { caseBoxOf } from '../world/feats/caseSpots'
 import { fridgeBoxOf, pickPrize, prizeWeights } from '../world/fridge/leftovers'
+import { STARTING_PISTOL } from '../world/gear/weapons'
 import { CALLINGS, isCallingUnlocked } from '../world/heroes/calling'
 import { grantedVeteran } from '../world/heroes/rank'
 import { VALVE_RULES, valveBoxOf } from '../world/kitchen/gasValve'
@@ -61,7 +62,7 @@ import { biteGraceScale } from '../world/run/difficulty'
 import { type World, modifyWorldFields, withWorld } from '../world/schema/world'
 import {
   type Arrangement,
-  type Arsenal,
+  Arsenal,
   type CasePrize,
   CaseState,
   type ExitId,
@@ -78,7 +79,7 @@ import {
   type Vector,
   type WeaponKind,
 } from '../world/schema/worldSchema'
-import { maybeSpareGun } from './arsenals'
+import { SHOTGUN, maybeSpareGun } from './arsenals'
 import {
   PHONE_PORTRAIT,
   SURFACE,
@@ -282,6 +283,35 @@ export const escaping = (model: Model): Model =>
     FRONT_DOOR_SILL.x,
     FRONT_DOOR_SILL.y,
   )
+
+// NOTE: wave 2 under way with three rounds in the pistol and the shotgun
+// on the back, so a swap, a reload, or a shot shows, for the key and
+// controller tests.
+export const armedFight: Model = modifyFocus(
+  modifyFields(readyModel, { phase: () => WAVE_2_FIGHT }),
+  {
+    player: player =>
+      modifyFields(player, {
+        arsenal: () =>
+          Arsenal.HoldingFirst({
+            first: { ...STARTING_PISTOL, loaded: 3 },
+            second: SHOTGUN,
+          }),
+      }),
+  },
+)
+
+// NOTE: the same, in wave 2's break.
+export const armedBreak: Model = modifyFields(armedFight, {
+  phase: () => WAVE_2_BREAK,
+})
+
+// NOTE: a new player's first wave on a wide surface with nothing coming
+// in, for the contact and bite tests that stand zombies by hand.
+export const openFloorWave: Model = modifyFields(initialModel, {
+  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+  phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+})
 
 // A wave in progress on a measured surface, with nothing coming in.
 export const quietWave = (wave: number): Model =>

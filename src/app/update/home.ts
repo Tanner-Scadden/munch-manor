@@ -15,6 +15,7 @@ import type { HelpCard } from '../../features/menus/message'
 import { MunchopediaPage } from '../../features/munchopedia/model'
 import { skipTutorial } from '../../features/onboarding/onboarding'
 import { NEWS_DAYS } from '../../features/whatsNew/changelog'
+import { PAD_A, PAD_B, PAD_START } from '../../input/gamepad'
 import {
   isMenuKey,
   isStartKey,
@@ -280,6 +281,22 @@ const leaveRun = makeStep(model =>
     ? Update.combineSteps([closePanel, goHome])
     : unchanged,
 )
+
+// NOTE: a controller with the leave panel up from pause: A leaves, B or
+// Start stays. The menus by controller come later (docs/INPUT_PLAN.md); this
+// is the one panel a run needs, so a pad player is never stuck in one.
+export const leaveRunFromPad = (code: string) =>
+  makeStep(model => {
+    if (!isPaused(model.phase) || !isPanelOpen(model, 'LeaveRun')) {
+      return unchanged
+    } else if (code === PAD_A) {
+      return leaveRun
+    } else if (code === PAD_B || code === PAD_START) {
+      return closePanel
+    } else {
+      return unchanged
+    }
+  })
 
 const isEndMenuKey = (model: Model, code: string): boolean =>
   isMenuKey(code) || (isStartKey(code) && endOffer(model) === 'MenuOnly')

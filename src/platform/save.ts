@@ -6,6 +6,7 @@ import {
   Record,
   Result,
   Schema,
+  Struct,
   pipe,
 } from 'effect'
 import { modifyFields } from 'foldkit/struct'
@@ -258,10 +259,17 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 17 is the save before controllers: no rumble.
+const PlayerSaveV17 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['rumble']),
+  version: Schema.Literal(17),
+})
+type PlayerSaveV17 = typeof PlayerSaveV17.Type
+
 // NOTE: version 16 is the save before endless ammo: its onboarding also
 // held the ammo tip, which decoding drops.
 const PlayerSaveV16 = Schema.Struct({
-  ...PlayerSave.fields,
+  ...PlayerSaveV17.fields,
   version: Schema.Literal(16),
 })
 type PlayerSaveV16 = typeof PlayerSaveV16.Type
@@ -346,6 +354,7 @@ const PlayerSaveJson = Schema.fromJsonString(PlayerSave)
 const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
+const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
 
 const PlayerSaveV13Json = Schema.fromJsonString(PlayerSaveV13)
 
@@ -586,13 +595,22 @@ const migrateV15 = ({ boughtHats, ...save }: PlayerSaveV15): PlayerSaveV16 => ({
 
 // NOTE: a save from before endless ammo loses only its ammo tip, which
 // decoding already dropped.
-const migrateV16 = (save: PlayerSaveV16): PlayerSave => ({
+const migrateV16 = (save: PlayerSaveV16): PlayerSaveV17 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 17,
 })
 
-const fromV15 = (save: PlayerSaveV15): PlayerSave =>
-  migrateV16(migrateV15(save))
+// NOTE: a save from before controllers rumbles, as a new player's does.
+const migrateV17 = (save: PlayerSaveV17): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  rumble: 'On',
+})
+
+const fromV16 = (save: PlayerSaveV16): PlayerSave =>
+  migrateV17(migrateV16(save))
+
+const fromV15 = (save: PlayerSaveV15): PlayerSave => fromV16(migrateV15(save))
 
 const fromV13 = (save: PlayerSaveV13): PlayerSave =>
   fromV15(migrateV14(migrateV13(save)))
@@ -631,9 +649,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 17,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV17Json)(raw), migrateV17),
+  },
+  {
     version: 16,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV16Json)(raw), migrateV16),
+      Option.map(Schema.decodeOption(PlayerSaveV16Json)(raw), fromV16),
   },
   {
     version: 15,
@@ -787,6 +810,7 @@ export const SAVED_FIELDS = [
   'home',
   'seenPowerUps',
   'rotationSetting',
+  'rumbleSetting',
   'playerName',
   'rank',
   'calling',
@@ -847,6 +871,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   },
   seenPowerUps: model.seenPowerUps,
   rotation: model.rotationSetting,
+  rumble: model.rumbleSetting,
   name: model.playerName,
   records: savedRunRecords(model.bests),
   rank: model.rank,
@@ -994,6 +1019,7 @@ export const restoreSave: {
         }),
       seenPowerUps: seen => Array.union(seen, knownPowerUps(save.seenPowerUps)),
       rotationSetting: () => save.rotation,
+      rumbleSetting: () => save.rumble,
       playerName: () => cleanName(save.name),
       rank: () => save.rank,
       calling: () => save.calling,

@@ -1,4 +1,4 @@
-import { Function, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -29,6 +29,7 @@ import {
 } from '../../features/onboarding/onboarding'
 import { advanceRattlesIntro } from '../../features/onboarding/rattlesIntro'
 import { isCouchKey, pressCouchKey } from '../../input/couch'
+import { isPadStirred, newlyPressed } from '../../input/gamepad'
 import {
   type PointerPress,
   isPauseKey,
@@ -38,6 +39,7 @@ import {
   releaseKey,
 } from '../../input/input'
 import type {
+  Gamepad,
   InputDevice,
   Orientation,
   PointerDevice,
@@ -59,7 +61,7 @@ import { SeatAction, gunSlotAction } from '../../world/step/stepWorld'
 import { isRoundActive, pause } from '../../world/waves/waves'
 import { makeStep } from '../definition'
 import { advanceGame, clampFrameDelta, refreshIntent } from '../frame'
-import { isLobbyOpen } from '../menuState'
+import { isLobbyOpen, isPanelOpen } from '../menuState'
 import { type GunSlot, type Model, Phase } from '../model'
 import { startWave } from '../runFlow'
 import { actAsLead } from './action'
@@ -71,10 +73,16 @@ import {
   isRunCardKey,
   runCardFromKey,
 } from './end'
-import { homeFocusFromKey, homeFromKey, menuFromKey } from './home'
+import {
+  homeFocusFromKey,
+  homeFromKey,
+  leaveRunFromPad,
+  menuFromKey,
+} from './home'
 import { advanceIntro, skipIntro } from './intro'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
+import { rumbleFor } from './rumble'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
 import {
   ammoTickCues,
@@ -163,8 +171,13 @@ const preparationFromKey = (model: Model, code: string): Model => {
   }
 }
 
+// NOTE: Start with the leave panel up answers the panel (leaveRunFromPad
+// in src/app/update/home.ts), never the round under it. A key never gets
+// here then: the panel's Dialog has the keyboard.
 const resumeFromKey = (model: Model, code: string): Model =>
-  isPauseKey(code) ? startWhenAllowed(model, model.mode) : model
+  isPauseKey(code) && !isPanelOpen(model, 'LeaveRun')
+    ? startWhenAllowed(model, model.mode)
+    : model
 
 // NOTE: a press of the hand, unless a card holds the game: the new zombie
 // card or the display case's (src/features/onboarding/caseCard.ts). The
@@ -373,6 +386,7 @@ export const tickFrame = (deltaTime: number) =>
           ...pocketScratchCues(model, advanced),
         ]),
         playTune(model, advanced),
+        rumbleFor(advanced.frameEvents),
       ])
     } else if (isEndScreen(model.phase)) {
       return advanceEndScreen(clampFrameDelta(deltaTime))
@@ -389,9 +403,13 @@ export const tickFrame = (deltaTime: number) =>
 
 // KEYS
 
-export const pressedKey = (code: string) =>
+// NOTE: a key, or a controller's button by its code (src/input/gamepad.ts),
+// pressed on the device it came from.
+type ButtonPress = Readonly<{ code: string; device: InputDevice }>
+
+const pressedButton = ({ code, device }: ButtonPress) =>
   makeStep(model => {
-    const keyed = useDevice(model, 'KeyboardMouse')
+    const keyed = useDevice(model, device)
     if (isCouchKey(keyed, code)) {
       return toModel(
         withInput(pressCouchKey(keyed, code), input => pressKey(input, code)),
@@ -487,6 +505,7 @@ export const pressedKey = (code: string) =>
       menuFromKey(code),
       homeFocusFromKey(code),
       homeFromKey(code),
+      leaveRunFromPad(code),
       trapFromKey(code),
       reloadFromKey(code),
       callMedicFromKey(code),
@@ -494,6 +513,66 @@ export const pressedKey = (code: string) =>
       playSwapSoundWhen(changedWeapon(model, pressed)),
     ])
   })
+
+export const pressedKey = (code: string) =>
+  pressedButton({ code, device: 'KeyboardMouse' })
+
+// CONTROLLERS
+
+// NOTE: a polled controller is kept in the input, and once stirred it is
+// the device, with the mouse's spot forgotten so a resting right stick
+// never aims at a cursor left behind. Moving the mouse takes it back.
+export const notePad: {
+  (pad: Gamepad): (model: Model) => Model
+  (model: Model, pad: Gamepad): Model
+} = Function.dual(2, (model: Model, pad: Gamepad): Model => {
+  const noted = withInput(model, input =>
+    modifyFields(input, { maybeGamepad: () => Option.some(pad) }),
+  )
+  return isPadStirred(pad)
+    ? withInput(useDevice(noted, 'Gamepad'), input =>
+        modifyFields(input, { maybeMouseInView: () => Option.none() }),
+      )
+    : noted
+})
+
+// NOTE: the buttons this poll pressed, read before the pad is kept.
+export const padPresses: {
+  (pad: Gamepad): (model: Model) => ReadonlyArray<string>
+  (model: Model, pad: Gamepad): ReadonlyArray<string>
+} = Function.dual(2, (model: Model, pad: Gamepad): ReadonlyArray<string> =>
+  newlyPressed(model.input.maybeGamepad, pad),
+)
+
+// NOTE: each new press goes the keys' way, as the pad's: the key table
+// (src/input/keyActions.ts) turns it into the seat's action. A release
+// needs nothing: what is held is read off the kept pad.
+export const polledPad = (pad: Gamepad) =>
+  makeStep(model =>
+    Update.combineSteps([
+      toModel(notePad(model, pad)),
+      ...Array.map(padPresses(model, pad), code =>
+        pressedButton({ code, device: 'Gamepad' }),
+      ),
+    ]),
+  )
+
+const isPadAt = (model: Model, index: number): boolean =>
+  Option.exists(model.input.maybeGamepad, pad => pad.index === index)
+
+export const forgetPad = (model: Model): Model =>
+  withInput(model, input =>
+    modifyFields(input, { maybeGamepad: () => Option.none() }),
+  )
+
+// NOTE: a controller unplugged, or out of battery, mid-round pauses it, as
+// a blur does; plugged back in, its first poll is a fresh pad.
+export const padGone = (index: number) =>
+  makeStep(model =>
+    isPadAt(model, index)
+      ? Update.combineSteps([modelStep(forgetPad), pauseWhenAway])
+      : unchanged,
+  )
 
 export const releasedKey = (code: string) =>
   makeStep(model => {

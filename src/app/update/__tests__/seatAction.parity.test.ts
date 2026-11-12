@@ -188,6 +188,44 @@ const KEY_ROWS: ReadonlyArray<readonly [string, Row]> = [
   ],
 ]
 
+// NOTE: a controller's buttons press the same actions through the same
+// table (PAD_ACTION_KEYS in src/input/keyActions.ts): a pad at rest, then
+// the button down, as the gamepad Subscription sends them.
+const padPress = (button: number) =>
+  Story.steps(
+    ...Array.map([[], [button]], held =>
+      Story.message(
+        Message.PolledGamepad({
+          index: 0,
+          axes: [0, 0, 0, 0],
+          buttons: Array.makeBy(17, position =>
+            Array.contains(held, position) ? 1 : 0,
+          ),
+        }),
+      ),
+    ),
+  )
+
+const PAD_ROWS: ReadonlyArray<readonly [string, Row]> = Array.map(
+  [
+    ['pad Y', 3, 'Swap'],
+    ['pad B', 1, 'Melee'],
+    ['pad X', 2, 'Reload'],
+    ['pad LT', 6, 'PlaceTrap'],
+    ['pad LB', 4, 'NextTrap'],
+    ['pad A', 0, 'Ready'],
+  ] as const,
+  ([name, button, tag]) =>
+    [
+      name,
+      {
+        from: ROWS[tag].from,
+        action: ROWS[tag].action,
+        presses: padPress(button),
+      },
+    ] as const,
+)
+
 // NOTE: single player's side: its presses through the root's update.
 const inSinglePlayer = (from: Model, presses: RootSteps) =>
   Story.story(APPLICATION, Story.given(from), presses)
@@ -227,7 +265,7 @@ describe('one rule set for player actions', () => {
     }),
   )
 
-  it.effect.each(KEY_ROWS)(
+  it.effect.each([...KEY_ROWS, ...PAD_ROWS])(
     '%s through single player matches the room',
     ([, row]) =>
       Effect.gen(function* () {

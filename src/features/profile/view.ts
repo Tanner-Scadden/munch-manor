@@ -18,6 +18,7 @@ import {
   PHONE_ICON,
   PORTAL_ICON,
   REWIND_ICON,
+  RUMBLE_ICON,
   SETTINGS_ICON,
   SHAKE_ICON,
   SOUND_OFF_ICON,
@@ -639,7 +640,7 @@ const shownWhen = (isShown: boolean, toggle: Toggle): ReadonlyArray<Toggle> =>
 // NOTE: the quick toggles are icon tiles: sound, music, shake, the big
 // cursor on a mouse, full screen where the browser can do it, and, on a
 // phone that can lock how it turns, ROTATE: off keeps it sideways, on lets
-// it follow the phone.
+// it follow the phone. RUMBLE shows once a controller is plugged in.
 const settingTiles = ({
   device,
   settings,
@@ -699,6 +700,15 @@ const settingTiles = ({
     maybeKey: Option.none(),
     states: { on: 'AUTO', off: 'LOCKED' },
     setting: 'Rotation',
+  }),
+  ...shownWhen(settings.hasPad, {
+    label: 'Controller rumble',
+    shortLabel: 'RUMBLE',
+    isOn: settings.rumble === 'On',
+    onIcon: RUMBLE_ICON,
+    offIcon: RUMBLE_ICON,
+    maybeKey: Option.none(),
+    setting: 'Rumble',
   }),
 ]
 

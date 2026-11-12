@@ -20,6 +20,7 @@ import {
   PlayerName,
   PlayerSave,
   RotationSetting,
+  RumbleSetting,
   SEEN_BASELINE,
   SavedBestsByDifficulty,
   SavedCard,
@@ -40,7 +41,7 @@ import {
 
 // NOTE: the player scope, `player:<playerId>`: one player's settings, look,
 // name, difficulty, onboarding, bests, home menu, power-ups seen, and
-// rotation, synced
+// rotation, rumble, synced
 // between that player's devices.
 // Shared with the sync Worker in infra/worker, so it imports only `effect`,
 // the sync engine, and src/shared/playerData.ts. The tables are the ones the game
@@ -74,6 +75,7 @@ export const PlayerRow = Schema.Struct({
   seen_unlocks: Schema.fromJsonString(SavedSeenUnlocks),
   cursor: CursorSetting,
   rotation: RotationSetting,
+  rumble: RumbleSetting,
   name: PlayerName,
   calling: Calling,
   run_records: Schema.fromJsonString(SavedRunRecords),
@@ -111,6 +113,7 @@ export const PLAYER_COLUMNS = Array.make(
   'seen_unlocks',
   'cursor',
   'rotation',
+  'rumble',
   'name',
   'calling',
   'run_records',
@@ -141,6 +144,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   seen_unlocks: save.seenUnlocks,
   cursor: save.settings.cursor,
   rotation: save.rotation,
+  rumble: save.rumble,
   name: save.name,
   calling: save.calling,
   run_records: save.records,
@@ -198,11 +202,12 @@ const updatePlayer = (
 // records (save version 12), 10 the save with rank (save version 13), 11
 // the save with the calling (save version 14), 12 the save with hats
 // (save version 15), 13 the save with gun skins (save version 16), and 14
-// the save with no ammo tip (save version 17).
+// the save with no ammo tip (save version 17), and 15 the save with the
+// rumble (save version 18).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 14,
+  version: 15,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -377,6 +382,18 @@ export const ChangedRotation = defineMutation({
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
   apply: ({ rotation }, context) => updatePlayer(context, { rotation }),
+})
+
+// NOTE: whether a controller rumbles. The last device to change it wins,
+// like the rotation.
+/** @stability unstable */
+export const ChangedRumble = defineMutation({
+  name: 'ChangedRumble',
+  version: 1,
+  args: Schema.Struct({ rumble: RumbleSetting }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ rumble }, context) => updatePlayer(context, { rumble }),
 })
 
 // NOTE: the calling picked for the next run. The last device to change it
@@ -790,6 +807,7 @@ export const PlayerScope = defineScope({
     SeededPlayer,
     ChangedSettings,
     ChangedRotation,
+    ChangedRumble,
     ChangedName,
     ChangedAppearance,
     ChangedDifficulty,
@@ -933,6 +951,14 @@ export const PlayerScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN seen_unlocks TEXT NOT NULL DEFAULT '["*"]'`
+      }),
+    // NOTE: the rumble came after NEW badges, added as the rotation was.
+    // Every player's controller rumbles until they turn it off.
+    '0013_add_rumble': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN rumble TEXT NOT NULL DEFAULT 'On'`
       }),
   },
 })

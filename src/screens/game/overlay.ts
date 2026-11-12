@@ -124,6 +124,7 @@ const RESUME_PROMPT = deviceText(
   {
     KeyboardMouse: 'CLICK OR PRESS ESC TO RESUME',
     Touch: 'TAP TO RESUME',
+    Gamepad: 'START TO RESUME, SELECT TO LEAVE',
   },
   'Prompt',
 )

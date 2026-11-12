@@ -151,9 +151,13 @@ const keyBadgeView = (
   key: string,
   h: ApplicationViewBuilder,
 ): Html =>
-  isOnTouch(model)
-    ? h.empty
-    : h.span([h.Class('key-badge'), h.AriaHidden(true)], [key])
+  isKeyboard(model)
+    ? h.span([h.Class('key-badge'), h.AriaHidden(true)], [key])
+    : h.empty
+
+// NOTE: a key's cap shows to a keyboard player only: a touch player taps
+// and a controller player's buttons get their own pictures later
+// (docs/INPUT_PLAN.md, phase 3).
 
 // NOTE: the number key that picks a slot, a small cap in the slot's
 // corner on a keyboard only (src/input/keyActions.ts).
@@ -162,9 +166,9 @@ const slotNumberView = (
   number: string,
   h: ApplicationViewBuilder,
 ): Html =>
-  isOnTouch(model)
-    ? h.empty
-    : h.span([h.Class('slot-number'), h.AriaHidden(true)], [number])
+  isKeyboard(model)
+    ? h.span([h.Class('slot-number'), h.AriaHidden(true)], [number])
+    : h.empty
 
 const keyShortcuts = (keys: ReadonlyArray<string>, h: ApplicationViewBuilder) =>
   h.AriaKeyshortcuts(Array.join(keys, ' '))

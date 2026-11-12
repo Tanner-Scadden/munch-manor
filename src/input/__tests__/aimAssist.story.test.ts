@@ -127,7 +127,8 @@ describe('aim assist on touch', () => {
     'past the inner cone the pull fades, and past the outer cone it is gone',
     () =>
       Effect.gen(function* () {
-        const between = (AIM_ASSIST.innerRadians + AIM_ASSIST.outerRadians) / 2
+        const between =
+          (AIM_ASSIST.Touch.innerRadians + AIM_ASSIST.Touch.outerRadians) / 2
         yield* Story.story(
           APPLICATION,
           Story.given(aimingRight('Landscape', between)),
@@ -138,7 +139,9 @@ describe('aim assist on touch', () => {
         )
         yield* Story.story(
           APPLICATION,
-          Story.given(aimingRight('Portrait', AIM_ASSIST.outerRadians + 0.05)),
+          Story.given(
+            aimingRight('Portrait', AIM_ASSIST.Touch.outerRadians + 0.05),
+          ),
           tick(FIXED_STEP_MS),
           Story.model(current => {
             expect(aimAngleOf(current)).toBeCloseTo(0, 5)

@@ -10,7 +10,11 @@ import { ageFlight, launchPrize } from '../features/fridge/fridgeReveal'
 import { advanceBreakIdle } from '../features/hud/readyNudge'
 import { advanceKitchenCall } from '../features/kitchen/kitchenCall'
 import { raiseDebutCardFrom } from '../features/onboarding/onboarding'
-import { assistAim } from '../input/aimAssist'
+import {
+  AIM_ASSIST,
+  type AimAssistStrength,
+  assistAim,
+} from '../input/aimAssist'
 import { couchInputs, isCouchPlay } from '../input/couch'
 import { deriveIntent } from '../input/input'
 import { cameraOf, leanCamera, screenCameraOf } from '../render/camera'
@@ -60,25 +64,41 @@ import {
 export const clampFrameDelta = (deltaTime: number): number =>
   clamp(deltaTime, 0, MAX_FRAME_DELTA_MS)
 
-// NOTE: on a touch phone, upright or on its side, a held trigger's aim
-// bends onto the zombie it is almost on (src/input/aimAssist.ts). The last input
-// decides, as it does the phone's zoom, so a mouse never gets it. It is part
-// of the intent, so the world steps the same with or without it, given the
-// same intent.
+// NOTE: on a touch phone, upright or on its side, and on a controller, a
+// held trigger's aim bends onto the zombie it is almost on, each device at
+// its own strength (src/input/aimAssist.ts). The last input decides, as it
+// does the phone's zoom, so a mouse never gets it. It is part of the
+// intent, so the world steps the same with or without it, given the same
+// intent.
+const assistStrengthOf = (model: Model): Option.Option<AimAssistStrength> => {
+  if (model.lastDevice === 'Touch') {
+    return Option.some(AIM_ASSIST.Touch)
+  } else if (model.lastDevice === 'Gamepad') {
+    return Option.some(AIM_ASSIST.Gamepad)
+  } else {
+    return Option.none()
+  }
+}
+
 const withAimAssist = (model: Model, intent: Intent): Intent =>
-  model.lastDevice === 'Touch' && intent.trigger === 'Held'
-    ? modifyFields(intent, {
-        maybeAim: Option.map(aim =>
-          assistAim(
-            levelOf(model),
-            cameraOf(model),
-            focusOf(model).player,
-            model.zombies,
-            aim,
-          ),
-        ),
-      })
-    : intent
+  Option.match(assistStrengthOf(model), {
+    onNone: () => intent,
+    onSome: strength =>
+      intent.trigger === 'Held'
+        ? modifyFields(intent, {
+            maybeAim: Option.map(aim =>
+              assistAim(
+                levelOf(model),
+                cameraOf(model),
+                focusOf(model).player,
+                model.zombies,
+                aim,
+                strength,
+              ),
+            ),
+          })
+        : intent,
+  })
 
 // NOTE: the client turns raw input into intent: aim goes through the
 // camera, which only this device knows.

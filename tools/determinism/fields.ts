@@ -154,6 +154,7 @@ export const FIELD_CLASSES = {
   munchopedia: 'Client',
   profileDialog: 'Client',
   rotationSetting: 'Client',
+  rumbleSetting: 'Client',
   localPlayers: 'Client',
   crewBots: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>

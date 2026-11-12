@@ -64,6 +64,7 @@ export const learnedSave: PlayerSave = {
   },
   seenPowerUps: ['RapidFire', 'Burp'],
   rotation: 'Landscape',
+  rumble: 'On',
   name: 'Snackula',
   records: {
     Easy: { furthestWave: null, mostKills: null },

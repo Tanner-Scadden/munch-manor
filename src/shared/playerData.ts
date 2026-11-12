@@ -44,6 +44,11 @@ export type ShareStatsSetting = typeof ShareStatsSetting.Type
 export const RotationSetting = Schema.Literals(['Landscape', 'Auto'])
 export type RotationSetting = typeof RotationSetting.Type
 
+// NOTE: whether a controller rumbles on a bite, a boss slam, or a blast.
+// On for everyone until turned off.
+export const RumbleSetting = Schema.Literals(['On', 'Off'])
+export type RumbleSetting = typeof RumbleSetting.Type
+
 // NOTE: a calling (GAME_DESIGN.md, "Rank and Bones"): what a player brings
 // to a run. YOU is the default and has no quirk; the others unlock by rank
 // (src/world/heroes/calling.ts). It lives here, with the save's other Schemas, because
@@ -828,7 +833,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 17
+export const SAVE_VERSION = 18
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1028,7 +1033,8 @@ export type PlayerName = typeof PlayerName.Type
 // calling picked for the next run, synced the same way. Version 15 added
 // the hat on the look and the hats bought. Version 16 added the gun skin on
 // the look and renamed the hats bought to the cosmetics bought. Version 17
-// dropped the ammo tip from the onboarding.
+// dropped the ammo tip from the onboarding. Version 18 added the rumble,
+// synced as its own last-write-wins change like the rotation.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1040,6 +1046,7 @@ export const PlayerSave = Schema.Struct({
   home: SavedHome,
   seenPowerUps: SavedPowerUps,
   rotation: RotationSetting,
+  rumble: RumbleSetting,
   name: PlayerName,
   records: SavedRunRecords,
   rank: SavedRank,

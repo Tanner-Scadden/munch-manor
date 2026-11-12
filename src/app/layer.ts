@@ -32,6 +32,7 @@ import {
 } from './update/home'
 import { CueMusic } from './update/music'
 import { ApplyRotation } from './update/rotation'
+import { Rumble } from './update/rumble'
 import {
   AwaitRunSettled,
   HideSplash,
@@ -68,6 +69,7 @@ export const CommandsLayer = Layer.mergeAll(
   ResumeAudio.layer,
   PlaySound.layer,
   PlayTune.layer,
+  Rumble.layer,
   CueMusic.layer,
   FetchBuild.layer,
   WaitForUnwrap.layer,

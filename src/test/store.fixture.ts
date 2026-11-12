@@ -93,6 +93,7 @@ export const legacySave: PlayerSave = {
   home: { seenNewsDay: 'October 28, 2026', openedEntries: ['Shambler'] },
   seenPowerUps: ['RapidFire'],
   rotation: 'Landscape',
+  rumble: 'Off',
   name: 'Lil Gnaw',
   records: noSavedRunRecords,
   rank: noRank,

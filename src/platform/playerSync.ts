@@ -9,6 +9,7 @@ import {
   PlayerName,
   PlayerSave,
   RotationSetting,
+  RumbleSetting,
   SavedBestsByDifficulty,
   SavedCard,
   SavedHome,
@@ -30,6 +31,7 @@ import {
 export const PlayerChange = defineTaggedUnion({
   ChangedSettings: { settings: SavedSettings },
   ChangedRotation: { rotation: RotationSetting },
+  ChangedRumble: { rumble: RumbleSetting },
   ChangedName: { name: PlayerName },
   ChangedAppearance: { appearance: Appearance },
   UnlockedNightmare: {},
@@ -118,6 +120,9 @@ export const changesBetween: {
         ),
         changeWhen(before.rotation !== after.rotation, () =>
           PlayerChange.ChangedRotation({ rotation: after.rotation }),
+        ),
+        changeWhen(before.rumble !== after.rumble, () =>
+          PlayerChange.ChangedRumble({ rumble: after.rumble }),
         ),
         changeWhen(before.name !== after.name, () =>
           PlayerChange.ChangedName({ name: after.name }),
@@ -223,6 +228,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
       PlayerChange.ChangedSettings({ settings: save.settings }),
     ChangedRotation: () =>
       PlayerChange.ChangedRotation({ rotation: save.rotation }),
+    ChangedRumble: () => PlayerChange.ChangedRumble({ rumble: save.rumble }),
     ChangedName: () => PlayerChange.ChangedName({ name: save.name }),
     ChangedAppearance: () =>
       PlayerChange.ChangedAppearance({ appearance: save.appearance }),

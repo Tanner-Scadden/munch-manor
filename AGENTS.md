@@ -94,6 +94,7 @@ The root Block's wiring: its Model, Bindings, Composition, Commands, Mounts, Sub
 | `update/intro.ts`                           | The intro in update: a press skips to the slam (the World's clock alone, only this player's drawing in co-op), and its frame and sounds                                                                                                                                                                                                         |
 | `update/coop.ts`                            | Opening co-op from home, the tutorial gate, the keys while it is open, the room's frame, co-op's OutMessage folds, and `coopHandlers` (CO-OP, a room link read at start, the room's frame)                                                                                                                                                      |
 | `update/coopPlay.ts`                        | An online run in the root: the room's World taken into the Model as the game, own seat focused, cosmetics and sounds from its events                                                                                                                                                                                                            |
+| `update/rumble.ts`                          | The `Rumble` Command, which shakes the controller in hand, and the frame's rumble cue, gated on the RUMBLE setting and a controller in use                                                                                                                                                                                                      |
 | `update/lobby.ts`                           | The root's side of the single player lobby: PLAY by tap or Enter (the lobby, or straight in for a new player), its keys, and its OutMessage folds: each pick made on the root's fields with its tap, START, BACK, a bot rolled, and a hero card and BUY judged and answered, and `lobbyHandlers` (PLAY)                                         |
 
 #### `src/screens/`
@@ -309,15 +310,16 @@ The audio engine, the music, and every sound's recipe.
 
 Keyboard, mouse, and touch.
 
-| File                           | What it holds                                                                                                                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `aimAssist.ts`                 | The portrait aim assist                                                                                                                                                                                |
-| `inputSchema.ts`, `message.ts` | The input's Schemas (the surface, sticks, buttons, devices, the Model's `input`); the input's Messages as `InputMessage` (`inputCases`) and the run's buttons as `RunButtonMessage` (`runButtonCases`) |
-| `input.ts`, `thumbArea.ts`     | Keyboard, mouse, and touch input; the portrait thumb area                                                                                                                                              |
-| `couch.ts`                     | Players 2 to 4 at one keyboard (dev-only `?local=N`): their keys, intents, and shared camera                                                                                                           |
-| `keyActions.ts`                | The keys that press a seat action, one table for single player, co-op's client, and the couch, with READY's key held to buy at a purchasable                                                           |
-| `touchTaps.ts`                 | Touch taps made into clicks from each finger's pointer events, mounted on the root (`ListenForTouchTaps` in `mount.ts`)                                                                                |
-| `keyGrab.ts`, `noZoom.ts`      | Letter keys a browser extension swallows; no pinch zoom on iOS                                                                                                                                         |
+| File                           | What it holds                                                                                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `aimAssist.ts`                 | The portrait aim assist                                                                                                                                                                                      |
+| `inputSchema.ts`, `message.ts` | The input's Schemas (the surface, sticks, buttons, devices, the Model's `input`); the input's Messages as `InputMessage` (`inputCases`) and the run's buttons as `RunButtonMessage` (`runButtonCases`)       |
+| `input.ts`, `thumbArea.ts`     | Keyboard, mouse, and touch input; the portrait thumb area                                                                                                                                                    |
+| `couch.ts`                     | Players 2 to 4 at one keyboard (dev-only `?local=N`): their keys, intents, and shared camera                                                                                                                 |
+| `gamepad.ts`, `rumble.ts`      | A controller in the standard layout: its buttons as codes, the sticks as move and aim, the dead zone, the polled record and its new presses; the rumble a frame's events call for (a bite, a stomp, a blast) |
+| `keyActions.ts`                | The keys that press a seat action, one table for single player, co-op's client, and the couch, with READY's key held to buy at a purchasable                                                                 |
+| `touchTaps.ts`                 | Touch taps made into clicks from each finger's pointer events, mounted on the root (`ListenForTouchTaps` in `mount.ts`)                                                                                      |
+| `keyGrab.ts`, `noZoom.ts`      | Letter keys a browser extension swallows; no pinch zoom on iOS                                                                                                                                               |
 
 #### `src/platform/`
 

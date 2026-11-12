@@ -2,12 +2,15 @@ import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
 import { Dom } from 'foldkit'
 
 import { maybeRoomOf } from '../domain/coopRoom'
+import { isSamePoll, pickPad } from '../input/gamepad'
 import { isTrackingPointer } from '../input/input'
+import type { Gamepad } from '../input/inputSchema'
 import {
   KEY_WATCH_QUIET_MS,
   isGrabbedKeyUp,
   isLetterKeyCode,
 } from '../input/keyGrab'
+import type { DisconnectedGamepad, PolledGamepad } from '../input/message'
 import { InstallPrompt } from '../platform/install'
 import { StoreEvent } from '../platform/playerSync'
 import { PlayerStore } from '../platform/store'
@@ -350,6 +353,68 @@ const animationFrames = Stream.callback<TickedFrame>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 )
 
+type GamepadMessage = PolledGamepad | DisconnectedGamepad
+
+const hasGamepads = (): boolean => typeof navigator.getGamepads === 'function'
+
+// NOTE: the controller, polled once an animation frame while one is
+// plugged in (a pad that was in before the page loaded shows itself on its
+// first press, with `gamepadconnected`). Only a change is sent, the axes
+// already quantized (src/input/gamepad.ts), so a resting pad sends nothing
+// and `update` never reads the pad itself. When the pad goes, the root
+// hears DisconnectedGamepad and the loop stops until the next one comes.
+const gamepadMessages = Stream.callback<GamepadMessage>(queue =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const state: {
+        frameId: number
+        maybeLast: Option.Option<Gamepad>
+      } = { frameId: 0, maybeLast: Option.none() }
+      const poll = (): void => {
+        const maybePad = pickPad(
+          navigator.getGamepads(),
+          Option.map(state.maybeLast, pad => pad.index),
+        )
+        Option.match(maybePad, {
+          onNone: () => {
+            Option.map(state.maybeLast, last =>
+              Queue.offerUnsafe(
+                queue,
+                Message.DisconnectedGamepad({ index: last.index }),
+              ),
+            )
+            state.maybeLast = Option.none()
+            state.frameId = 0
+          },
+          onSome: pad => {
+            const isChanged = !Option.exists(state.maybeLast, last =>
+              isSamePoll(last, pad),
+            )
+            if (isChanged) {
+              Queue.offerUnsafe(queue, Message.PolledGamepad(pad))
+            }
+            state.maybeLast = Option.some(pad)
+            state.frameId = requestAnimationFrame(poll)
+          },
+        })
+      }
+      const start = (): void => {
+        if (state.frameId === 0) {
+          state.frameId = requestAnimationFrame(poll)
+        }
+      }
+      window.addEventListener('gamepadconnected', start)
+      start()
+      return { state, start }
+    }),
+    ({ state, start }) =>
+      Effect.sync(() => {
+        window.removeEventListener('gamepadconnected', start)
+        cancelAnimationFrame(state.frameId)
+      }),
+  ).pipe(Effect.flatMap(() => Effect.never)),
+)
+
 const FrameActivity = Schema.Struct({ isActive: Schema.Boolean })
 
 // NOTE: the co-op room's frame clock, while its game is playing: the time
@@ -430,6 +495,13 @@ export const subscriptions = makeSubscriptions(entry => ({
       },
     },
   ),
+
+  gamepad: entry('Gamepad', {
+    messages: [Message.PolledGamepad, Message.DisconnectedGamepad],
+    handler: function* () {
+      return () => (hasGamepads() ? gamepadMessages : Stream.empty)
+    },
+  }),
 
   keyboard: entry('Keyboard', {
     messages: [Message.PressedKey, Message.PressedMetaKey, Message.ReleasedKey],
