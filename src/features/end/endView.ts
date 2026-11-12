@@ -26,7 +26,12 @@ import { effectiveModifiersOf } from '../../domain/onlineRun'
 import { isAskingForFeedback } from '../../domain/run'
 import { QUARTER_TURN, rect } from '../../render/drawing'
 import { playerFootY } from '../../render/playerView'
-import type { FrameSpan } from '../../render/screen'
+import {
+  type FrameSpan,
+  type Screen,
+  frameSpanOf,
+  landscapeFrameOffset,
+} from '../../render/screen'
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
 import type { Difficulty } from '../../shared/playerData'
 import { focusOf, isCoop, modifyFocus } from '../../world/party/party'
@@ -67,7 +72,13 @@ import {
   skullCountOf,
   tallyRowsOf,
 } from './endBeat'
-import { STRIP_PX, rankStripShapes } from './rankStripView'
+import {
+  STRIP_PX,
+  type UnlockSpot,
+  rankStripShapes,
+  unlockCardBox,
+  unlockCardShapes,
+} from './rankStripView'
 import { ICON_SHIFT, TALLY_ICONS, type TallyIcon } from './tallyIcons'
 
 // The end of a run on the overlay canvas, in the landscape frame: the flash,
@@ -473,6 +484,39 @@ const crewStripPanel = (
   rect(span.left, top, span.width, STRIP_PX + 2, PANEL_FILL),
 ]
 
+// NOTE: where an unlock card goes, clear of the card's numbers (`card`, its
+// edges in the frame): beside it on a screen with room at its left, under
+// it upright, and otherwise compact under it at the left, beside the
+// buttons, which sit in the middle.
+const UNLOCK_GAP_PX = 4
+
+type CardEdges = Readonly<{ left: number; top: number; bottom: number }>
+
+export const unlockSpotOf: {
+  (card: CardEdges): (screen: Screen) => UnlockSpot
+  (screen: Screen, card: CardEdges): UnlockSpot
+} = Function.dual(2, (screen: Screen, card: CardEdges): UnlockSpot => {
+  const offset = landscapeFrameOffset(screen)
+  const visibleLeft = -offset.x
+  const full = unlockCardBox('Full')
+  if (screen.width < VIEW_WIDTH) {
+    return { x: CENTER_X, top: card.bottom + UNLOCK_GAP_PX, size: 'Full' }
+  }
+  if (card.left - visibleLeft >= full.width + UNLOCK_GAP_PX * 2) {
+    return {
+      x: Math.round((visibleLeft + card.left) / 2),
+      top: card.top,
+      size: 'Full',
+    }
+  }
+  const compact = unlockCardBox('Compact')
+  return {
+    x: Math.round(visibleLeft + UNLOCK_GAP_PX + compact.width / 2),
+    top: card.bottom + UNLOCK_GAP_PX,
+    size: 'Compact',
+  }
+})
+
 const CARD_FADE_MS = 160
 const CARD_RISE_PX = 6
 
@@ -481,6 +525,7 @@ const cardShapes = (
   kind: EndKind,
   ms: number,
   layout: Layout,
+  screen: Screen,
 ): ReadonlyArray<Canvas.Shape> => {
   const cardAtMs = TIMELINES[kind].cardAtMs
   if (ms < cardAtMs) {
@@ -515,6 +560,16 @@ const cardShapes = (
         span.left + PANEL_PAD,
         stripTop + Math.floor(STRIP_PX / 2) + 1,
         span.width - PANEL_PAD * 2,
+      ),
+      ...unlockCardShapes(
+        model,
+        kind,
+        ms,
+        unlockSpotOf(screen, {
+          left: span.left - 1,
+          top: CREW_BOARD_TOP_PX,
+          bottom: crewCardBottomPx(model, hasStrip),
+        }),
       ),
     ]
   }
@@ -565,6 +620,16 @@ const cardShapes = (
       PANEL_LEFT + PANEL_PAD,
       stripTop + 2 + Math.floor(STRIP_PX / 2),
       PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
+    ),
+    ...unlockCardShapes(
+      model,
+      kind,
+      ms,
+      unlockSpotOf(screen, {
+        left: PANEL_LEFT - 1,
+        top,
+        bottom: bottom + 1,
+      }),
     ),
   ]
 }
@@ -769,16 +834,17 @@ export const isChomping = Phase.isAnyOf(['GameOver'])
 // THE END
 
 export const endOverlayShapes: {
-  (span: FrameSpan): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, span: FrameSpan): ReadonlyArray<Canvas.Shape>
+  (screen: Screen): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   2,
-  (model: Model, span: FrameSpan): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
     Option.match(endKindOf(model), {
       onNone: () => [],
       onSome: kind => {
         const ms = model.screenMs
         const layout = layoutOf(model, kind)
+        const span = frameSpanOf(screen)
         return [
           ...dimShapes(kind, ms),
           ...(kind === 'Won' ? confettiShapes(span, ms) : []),
@@ -791,7 +857,7 @@ export const endOverlayShapes: {
                 ...skullShapes(model, kind, ms, layout),
                 ...modifierShapes(model, kind, ms, layout),
               ]),
-          ...cardShapes(model, kind, ms, layout),
+          ...cardShapes(model, kind, ms, layout, screen),
         ]
       },
     }),
