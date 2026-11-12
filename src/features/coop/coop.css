@@ -32,7 +32,7 @@
     ),
     var(--menu-scrim);
   backdrop-filter: blur(2px);
-  animation: coop-in 180ms ease-out;
+  animation: coop-in 180ms var(--menu-ease-out);
   touch-action: manipulation;
 }
 
@@ -218,7 +218,7 @@
 .coop-queue,
 .coop-asking,
 .coop-lobby {
-  animation: coop-in 200ms ease-out;
+  animation: coop-in 200ms var(--menu-ease-out);
 }
 
 /* HUB: one huge QUICK PLAY, then CODE and NEW ROOM. */
@@ -1150,7 +1150,7 @@
   border-style: dashed;
   border-color: var(--menu-line-strong);
   background: rgba(20, 15, 24, 0.6);
-  animation: coop-in 260ms ease-out both;
+  animation: coop-in 220ms var(--menu-ease-out) both;
 }
 
 /* NOTE: the seats fade up one after another as the lobby shows, each in
@@ -1908,6 +1908,20 @@
   .coop {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  /* NOTE: a fade carries no motion (web.dev, "prefers-reduced-motion"), so
+     the layer, each screen, the empty seats, and the hero picker still fade
+     in, a little quicker, while everything that travels stops. */
+  .coop.coop,
+  .coop .coop-hub,
+  .coop .coop-code,
+  .coop .coop-queue,
+  .coop .coop-asking,
+  .coop .coop-lobby,
+  .coop .coop-seat[data-state='Empty'],
+  .coop .coop-calling-picker {
+    animation-duration: 150ms !important;
   }
 
   /* NOTE: art that only says "working on it" by moving holds still: the

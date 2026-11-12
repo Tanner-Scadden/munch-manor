@@ -4,6 +4,10 @@
    the pause screen's controls, and the shop. Read these instead of new
    colors and sizes, so a new menu looks like it belongs. */
 :root {
+  /* NOTE: the menus' motion (GAME_DESIGN.md, "Motion"): a strong ease-out
+     for anything that comes in, and short, quicker exits. */
+  --menu-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --menu-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --menu-font: monospace;
   --menu-ink: #f4f1de;
   --menu-ink-dim: #b8c2b0;
@@ -554,7 +558,7 @@
   position: fixed;
   inset: 0;
   background: var(--menu-scrim);
-  animation: hand-fade 160ms ease-out both;
+  animation: hand-fade 160ms var(--menu-ease-out) both;
 }
 
 .hand {
@@ -799,9 +803,13 @@
   }
 }
 
+/* NOTE: reduced motion: the cards fade in where they lie, together, and
+   the dim fades as before; only what travels stops. */
 @media (prefers-reduced-motion: reduce) {
-  .hand-card > *,
-  .hand-backdrop,
+  .hand-card > * {
+    animation: hand-fade 150ms var(--menu-ease-out) both;
+  }
+
   .hand-card-new,
   .manor-pip {
     animation: none;
@@ -1499,7 +1507,8 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  animation: install-step-in 0.35s ease-out calc(var(--step) * 0.12s) both;
+  animation: install-step-in 260ms var(--menu-ease-out) calc(var(--step) * 60ms)
+    both;
 }
 
 .install-step:not(:last-child)::after {
@@ -1575,7 +1584,7 @@
 @keyframes install-step-in {
   from {
     opacity: 0;
-    scale: 0.6;
+    scale: 0.85;
   }
 }
 
@@ -1663,15 +1672,15 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-surface);
   font-weight: bold;
-  animation: install-step-in 0.3s ease-out both;
+  animation: install-step-in 260ms var(--menu-ease-out) both;
 }
 
 .greeting-bullet:nth-child(2) {
-  animation-delay: 0.1s;
+  animation-delay: 60ms;
 }
 
 .greeting-bullet:nth-child(3) {
-  animation-delay: 0.2s;
+  animation-delay: 120ms;
 }
 
 /* NOTE: a headline wraps to a second line on a narrow phone before it is
@@ -1786,14 +1795,30 @@
   .install-step,
   .install-step-face,
   .greeting-gift-zombie,
-  .greeting-bullet,
   .panel-dialog[data-panel='Updated'] .greeting-title,
   .greeting-confetti-piece {
     animation: none !important;
   }
+
+  .install-step,
+  .greeting-bullet {
+    animation: menu-fade-in 150ms var(--menu-ease-out) both !important;
+  }
 }
 
 /* PANELS: one shell for every menu dialog. */
+
+/* NOTE: a panel, the Profile, and the hero picker fade up in place over a
+   dim that fades with them, quick and on a strong ease-out. The panel holds
+   buttons, so it only fades; nothing in it grows or slides
+   (src/app/__tests__/motion.test.ts). A Dialog shuts at once: the exit is
+   the quicker way. A fade carries no motion, so reduced motion keeps it. */
+.panel-backdrop,
+.profile-backdrop,
+.panel-dialog[open] .panel,
+.profile-dialog[open] .profile {
+  animation: menu-fade-in 180ms var(--menu-ease-out) both;
+}
 
 .panel-dialog[open] {
   display: flex;
