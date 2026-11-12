@@ -222,13 +222,28 @@ type Board = Readonly<{
   columns: number
 }>
 
-const columnX = (board: Board, index: number): number =>
-  Math.round(
-    board.left + PAD + GUTTER + (index % board.columns) * COLUMN + COLUMN / 2,
-  )
-
 const rowOf = (board: Board, index: number): number =>
   Math.floor(index / board.columns)
+
+// NOTE: a short last row (three players held upright: two, then one) sits
+// centered under the full row above it, not at its left.
+const rowInsetOf = (board: Board, index: number): number => {
+  const inRow = Math.min(
+    board.columns,
+    board.crew.length - rowOf(board, index) * board.columns,
+  )
+  return ((board.columns - inRow) * COLUMN) / 2
+}
+
+const columnX = (board: Board, index: number): number =>
+  Math.round(
+    board.left +
+      PAD +
+      GUTTER +
+      rowInsetOf(board, index) +
+      (index % board.columns) * COLUMN +
+      COLUMN / 2,
+  )
 
 // NOTE: where a player's block starts: the top of their column.
 const blockTopOf = (board: Board, index: number): number =>
