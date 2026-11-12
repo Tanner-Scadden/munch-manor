@@ -842,6 +842,12 @@
   min-height: clamp(150px, 22cqh, 210px);
 }
 
+/* NOTE: upright, a bot's seat is a third of the card: the figure stands in
+   what the x in the corner leaves, never under it. */
+[data-layout='Portrait'] .lobby-seat-bot .coop-seat-head {
+  margin-right: calc(var(--menu-tap) + 6px);
+}
+
 /* LANDSCAPE: BACK sits in the card's top left corner, so the seats leave
    it room on a short screen, where they reach up beside it. */
 
