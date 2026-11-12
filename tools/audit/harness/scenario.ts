@@ -25,6 +25,7 @@ import { addBot } from '@game/domain/bots'
 import { isEndScreen, withBests } from '@game/domain/run'
 import { unlocksAt } from '@game/domain/unlocks'
 import { prizeUnlockId } from '@game/features/guide/shopGuide'
+import { maybeNewestNewsDay } from '@game/features/whatsNew/changelog'
 import {
   LinkFlow,
   PlayerScopeStatus,
@@ -472,7 +473,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       ...home,
       mode: config.homemode === 'endless' ? 'Endless' : home.mode,
       maybeSeenNewsDay: config.newsseen
-        ? Option.some('October 29, 2026')
+        ? Option.map(maybeNewestNewsDay, ({ date }) => date)
         : home.maybeSeenNewsDay,
       openedEntries: config.opened ?? home.openedEntries,
       newEntries: config.newentries ?? home.newEntries,

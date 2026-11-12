@@ -110,6 +110,16 @@
   pointer-events: none;
 }
 
+/* NOTE: the MORE deck's box, read by the deck on the stage and by the
+   hand's close X, which stands in the middle of where the deck was. */
+.home-stage,
+.hand {
+  --manor-w: max(112px, 48 * var(--a));
+  --manor-h: calc(
+    2 * max(var(--menu-tap), 12 * var(--a)) + var(--menu-gap-sm) + 8 * var(--a)
+  );
+}
+
 .home-stage button {
   position: relative;
   box-sizing: border-box;
@@ -443,8 +453,8 @@
   align-items: center;
   justify-content: center;
   gap: max(2px, 1 * var(--a));
-  width: max(112px, 48 * var(--a));
-  height: calc(var(--cluster-h) + 8 * var(--a));
+  width: var(--manor-w);
+  height: var(--manor-h);
   padding: 4px;
   border: 3px solid var(--menu-pink);
   border-radius: var(--menu-radius-md);
@@ -739,19 +749,24 @@
   visibility: hidden;
 }
 
+/* NOTE: an upright phone's second line of cards stands where the turn hint
+   is, so the hint goes while the hand is open rather than peek out under
+   them. */
+.game-root:has(.hand-dialog[open]) .home-turn-hint {
+  visibility: hidden;
+}
+
 /* NOTE: the close X sits in the middle of where the MORE deck was, so a
    second tap on the same spot puts the hand away (a tap around it lands on
    the backdrop, which closes it too). Its button stays 48 px, so a wide fan
    of cards never reaches into it. */
 .menu-close.hand-close {
-  --hand-deck-w: max(96px, 40 * var(--a));
-  --hand-deck-h: calc(var(--cluster-h) + 8 * var(--a));
   position: absolute;
   left: calc(
-    var(--stage-x) + 4 * var(--a) + (var(--hand-deck-w) - var(--menu-tap)) / 2
+    var(--stage-x) + 4 * var(--a) + (var(--manor-w) - var(--menu-tap)) / 2
   );
   bottom: calc(
-    var(--stage-y) + 4 * var(--a) + (var(--hand-deck-h) - var(--menu-tap)) / 2
+    var(--stage-y) + 4 * var(--a) + (var(--manor-h) - var(--menu-tap)) / 2
   );
   pointer-events: auto;
 }
@@ -1659,11 +1674,16 @@
   animation-delay: 0.2s;
 }
 
+/* NOTE: a headline wraps to a second line on a narrow phone before it is
+   cut, so it never stops mid-sentence. */
 .greeting-bullet-text {
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .greeting-bullet-emoji {
@@ -2276,6 +2296,19 @@ button.help-card:focus-visible {
   text-transform: uppercase;
 }
 
+/* NOTE: in the six-column grid a long action (AIM + SHOOT) wraps to two
+   lines, so every label there keeps two lines' room, bottom-aligned, and
+   the pictures above stand on one line. */
+.game-root:not([data-layout='Portrait'])
+  .panel-dialog[data-panel='HowToPlay']
+  .help-card-action {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 2.6em;
+  line-height: 1.3;
+}
+
 .help-extra {
   display: flex;
   flex-wrap: wrap;
@@ -2808,6 +2841,19 @@ button.help-card:focus-visible {
   font-size: 11px;
 }
 
+/* NOTE: every tile fills its grid cell, and a tile with no count (an
+   unfound kind, the Shop) keeps the count's line empty, so the names in a
+   row stand on one line. */
+.munch-tile-item {
+  display: flex;
+}
+
+.munch-tile:not(:has(.munch-tile-count))::after {
+  content: '\00a0';
+  font-size: 11px;
+  pointer-events: none;
+}
+
 .munch-tile-new {
   position: absolute;
   top: 3px;
@@ -3075,8 +3121,11 @@ button.help-card:focus-visible {
 
 /* NOTE: upright, the MANOR deck stands at the bottom left, and the cluster
    to its right stacks CO-OP over a wide PLAY. */
-.game-root[data-layout='Portrait'] .home-stage {
+.game-root[data-layout='Portrait'] :is(.home-stage, .hand) {
   --manor-w: max(88px, 42 * var(--a));
+  --manor-h: calc(
+    max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 * var(--a)
+  );
 }
 
 .game-root[data-layout='Portrait'] .home-play-cluster {
@@ -3105,7 +3154,6 @@ button.help-card:focus-visible {
 
 .game-root[data-layout='Portrait'] .home-stage .home-manor {
   width: var(--manor-w);
-  height: calc(max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 * var(--a));
 }
 
 .game-root[data-layout='Portrait'] .home-bests {
@@ -3122,18 +3170,21 @@ button.help-card:focus-visible {
 }
 
 .game-root[data-layout='Portrait'] .hand {
-  --manor-w: max(88px, 42 * var(--a));
   --card-w: max(96px, 50 * var(--a));
   --card-h: max(120px, 62 * var(--a));
-  --deck-h: calc(max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 * var(--a));
 }
 
+/* NOTE: upright, neighbours lean toward each other at the top (-2deg,
+   +2deg), so the column gap is as wide as the row gap and their tops never
+   touch. */
 .game-root[data-layout='Portrait'] .hand-cards {
-  bottom: calc(var(--stage-y) + 4 * var(--a) + var(--deck-h) + 8 * var(--a));
+  --hand-gap: max(14px, 5 * var(--a));
+  bottom: calc(var(--stage-y) + 4 * var(--a) + var(--manor-h) + 8 * var(--a));
   flex-wrap: wrap;
   justify-content: center;
-  width: calc(3 * var(--card-w) + 2 * max(6px, 2.5 * var(--a)));
-  row-gap: max(10px, 4 * var(--a));
+  column-gap: var(--hand-gap);
+  row-gap: var(--hand-gap);
+  width: calc(3 * var(--card-w) + 2 * var(--hand-gap));
 }
 
 .game-root[data-layout='Portrait'] .hand-card {
@@ -3146,11 +3197,6 @@ button.help-card:focus-visible {
 
 .game-root[data-layout='Portrait'] .hand-slot:nth-child(even) .hand-card-face {
   rotate: 2deg;
-}
-
-.game-root[data-layout='Portrait'] .hand-close {
-  --hand-deck-w: var(--manor-w);
-  --hand-deck-h: var(--deck-h);
 }
 
 .game-root[data-layout='Portrait'] .help-cards {
@@ -3168,10 +3214,7 @@ button.help-card:focus-visible {
   left: calc(4 * var(--a) + var(--manor-w) + 3 * var(--a));
   right: calc(4 * var(--a));
   justify-content: center;
-  bottom: calc(
-    4 * var(--a) + max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 *
-      var(--a) + max(10px, 4 * var(--a))
-  );
+  bottom: calc(4 * var(--a) + var(--manor-h) + max(10px, 4 * var(--a)));
   display: flex;
   align-items: center;
   gap: max(8px, 2 * var(--a));

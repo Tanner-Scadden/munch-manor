@@ -83,8 +83,11 @@
   color: var(--sg-gold);
 }
 
+/* NOTE: the pictures differ in height, so each centers in the room above
+   its name and the names stand on one line. */
 .sg-section-art {
   --px: 2px;
+  margin-block: auto;
   pointer-events: none;
 }
 

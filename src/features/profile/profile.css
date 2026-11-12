@@ -42,6 +42,8 @@
 }
 
 .profile {
+  --profile-tab-w: 88px;
+  --profile-tab-out: -16px;
   position: relative;
   box-sizing: border-box;
   width: min(700px, calc(100vw - 64px));
@@ -99,7 +101,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-left: -16px;
+  margin-left: var(--profile-tab-out);
   padding-top: 6px;
 }
 
@@ -111,7 +113,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: 88px;
+  width: var(--profile-tab-w);
   min-height: 48px;
   margin: 0;
   padding: 4px 4px;
@@ -1403,9 +1405,12 @@
     height: calc(100dvh - 16px);
   }
 
+  .profile {
+    --profile-tab-w: 80px;
+  }
+
   .profile-tab {
     min-height: 48px;
-    width: 80px;
   }
 
   .profile-tab-icon {
@@ -1462,13 +1467,24 @@
   padding-top: 0;
 }
 
+/* NOTE: the four tabs share the row in equal parts, never sized by their
+   word, so the row reads even; on the narrowest phones the letters close
+   up so SETTINGS still fits its quarter. */
 .game-root[data-layout='Portrait'] .profile-tab {
-  flex: 1;
+  flex: 1 1 0;
   width: auto;
+  min-width: 0;
   min-height: 64px;
   gap: 2px;
+  padding-inline: 2px;
   font-size: 10px;
   letter-spacing: 1px;
+}
+
+@media (max-width: 380px) {
+  .game-root[data-layout='Portrait'] .profile-tab {
+    letter-spacing: 0;
+  }
 }
 
 .game-root[data-layout='Portrait'] .profile-tab-icon {
@@ -1623,12 +1639,14 @@
   pointer-events: none;
 }
 
+/* NOTE: the plate stands in the tabs' column, as wide as a tab and its
+   left edge on theirs. */
 .profile-rank {
   position: absolute;
-  left: -12px;
+  left: var(--profile-tab-out);
   bottom: 12px;
   box-sizing: border-box;
-  width: 88px;
+  width: var(--profile-tab-w);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
