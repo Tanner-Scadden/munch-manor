@@ -251,7 +251,8 @@ const pickShirt = (page: Page, color: string) =>
   })
 
 // NOTE: the shortest real run end: PLAY opens the solo lobby, SHAKE ON IT
-// seals the dare and starts the run, Escape pauses, the pause MENU asks
+// seals the dare and starts the run, a key skips the drive up to the door's
+// slam, Escape pauses once the run is in the house, the pause MENU asks
 // "Leave this run?", and Leave goes home. Leaving counts the run.
 const finishRun = (page: Page) =>
   Effect.gen(function* () {
@@ -261,10 +262,19 @@ const finishRun = (page: Page) =>
     yield* attempt(() => shake.waitFor({ timeout: 10_000 }))
     yield* attempt(() => shake.click())
     yield* attempt(() => shake.waitFor({ state: 'hidden', timeout: 10_000 }))
-    yield* wait(1500)
-    yield* attempt(() => page.keyboard.press('Escape'))
     const menu = page.getByRole('button', { name: 'Menu: leave this run' })
-    yield* attempt(() => menu.waitFor({ timeout: 10_000 }))
+    const isPaused = attempt(() => menu.count()).pipe(
+      Effect.map(count => count > 0),
+    )
+    yield* pollUntil(
+      Effect.andThen(
+        attempt(() => page.keyboard.press('Escape')),
+        Effect.andThen(wait(700), isPaused),
+      ),
+      paused => paused,
+      0,
+      15_000,
+    )
     yield* attempt(() => menu.click())
     yield* attempt(() =>
       page
