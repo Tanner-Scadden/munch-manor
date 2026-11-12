@@ -1,6 +1,6 @@
 import { Array, Function, Option, String } from 'effect'
 
-import type { Lobby } from '@munch/netcode'
+import { type Lobby, NetStats } from '@munch/netcode'
 
 import type { Model } from '../app/model'
 import { isBotCrew } from '../domain/bots'
@@ -19,9 +19,12 @@ import {
 import { roundWave } from '../world/waves/waves'
 import {
   CREW_RUN_KEY_LENGTH,
+  type CrewNetwork,
   EscapedRun,
   type FrameTimeBucket,
   LostRun,
+  MAX_CORRECTION_PX,
+  MAX_NET_MS,
   QuitRun,
   RUN_SUMMARY_VERSION,
   type RunOutcome,
@@ -135,7 +138,7 @@ const hashKey = (text: string): string => {
 
 // NOTE: one online co-op run's key, alike on every client in it, from the
 // room's lobby as its replica has it: the code, when the room was made,
-// and the round, which each start (RUN IT BACK and KEEP GOING too) counts
+// and the round, which each start (PLAY AGAIN and KEEP GOING too) counts
 // up. A code used again later is another room made at another time. Only
 // the hash is sent, so a summary names no room. A run is drawn only once
 // the lobby has left its Lobby status for the round (src/domain/onlineRun.ts,
@@ -147,6 +150,28 @@ export const crewRunKeyOf = (lobby: Lobby): string =>
 // is keyed by its own visit and length, so the report counts it alone.
 const ownRunKey = (visitId: string, run: Model): string =>
   hashKey(`visit:${visitId}:${run.stats.runMs}`)
+
+// NOTE: a number past the summary's bounds (a link down for minutes) is
+// sent at the top rather than failing the whole summary.
+const atMost = (most: number, value: number): number =>
+  Math.min(most, Math.max(0, Math.round(value)))
+
+// NOTE: the run's network numbers from the room, or none measured for a
+// crew that never drew a room (couch play).
+const networkOf = (run: Model): CrewNetwork => {
+  const report = NetStats.clientNetReportOf(
+    Option.getOrElse(run.maybeRunNet, () => NetStats.emptyClientNet),
+  )
+  return {
+    ...report,
+    rttP50Ms: atMost(MAX_NET_MS, report.rttP50Ms),
+    rttP95Ms: atMost(MAX_NET_MS, report.rttP95Ms),
+    jitterMs: atMost(MAX_NET_MS, report.jitterMs),
+    lateMsMean: atMost(MAX_NET_MS, report.lateMsMean),
+    lateMsMax: atMost(MAX_NET_MS, report.lateMsMax),
+    correctionPxMax: atMost(MAX_CORRECTION_PX, report.correctionPxMax),
+  }
+}
 
 // NOTE: a run with teammate bots reports as Solo: it is one human's run, and
 // the crew numbers are for humans (a bot count in the summary would be a
@@ -168,6 +193,7 @@ const partyOf = (run: Model, visitId: string): SummaryParty => {
     runKey: Option.getOrElse(run.maybeCrewRunKey, () =>
       ownRunKey(visitId, run),
     ),
+    network: networkOf(run),
   }
 }
 

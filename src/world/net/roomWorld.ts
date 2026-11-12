@@ -177,7 +177,7 @@ export const roomSettingsOf: {
 // NOTE: the intro a room plays (src/world/run/arrival.ts): the whole drive
 // up on a room's first run when anyone in the crew has not watched it yet
 // (each lobby member's `hasSeenIntro`, from their save), else the knock and
-// the slam. Every run after the first (RUN IT BACK) is short, so a crew's
+// the slam. Every run after the first (PLAY AGAIN) is short, so a crew's
 // rematch stays quick.
 export const introForRound: {
   (

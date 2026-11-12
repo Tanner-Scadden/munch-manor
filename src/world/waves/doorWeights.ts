@@ -1,6 +1,7 @@
 import { Array, Result } from 'effect'
 
-import { type Box, type Room, levelOf, roomAt } from '../level/arena'
+import { type Room, levelOf, roomAt } from '../level/arena'
+import type { Box } from '../level/tileGrid'
 import { isStanding } from '../party/party'
 import type { Vector } from '../schema/entitySchema'
 import type { World } from '../schema/world'

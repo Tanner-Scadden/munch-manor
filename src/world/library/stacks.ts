@@ -2,17 +2,16 @@ import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
-import {
-  type Box,
-  type Level,
-  boxCenter,
-  circleTouchesBox,
-  levelOf,
-  tileBox,
-  tilesWithSymbol,
-} from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
 import { boxAround } from '../level/exits'
 import { type LevelSpec, STACK_DROPS } from '../level/plan'
+import {
+  type Box,
+  boxCenter,
+  circleTouchesBox,
+  tileBox,
+  tilesWithSymbol,
+} from '../level/tileGrid'
 import { forEachSeat, modifySeat, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import type { Vector } from '../schema/worldSchema'

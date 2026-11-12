@@ -56,6 +56,18 @@ import {
 } from '../world/schema/entitySchema'
 import { clamp, vectorLength } from '../world/step/geometry'
 import {
+  ActionPose,
+  isStrikeFrame,
+  maybeCompressedOf,
+  poseOf,
+} from './actionPose'
+import {
+  magazineShape,
+  maybeActingShapes,
+  reloadMotionOf,
+  tossOf,
+} from './actionView'
+import {
   AIMING_UP,
   QUARTER_TURN,
   UNIT_SCALE,
@@ -260,11 +272,53 @@ const playerPose = (player: Player): PlayerPose => {
   }
 }
 
+// NOTE: the player on their feet: at work or in a payoff, their action
+// (src/render/actionView.ts) in place of the body and gun; otherwise the
+// standing frames and the gun in hand, with a reload drawn on the gun and
+// a swapped gun tossed and caught.
 export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+  const { player, seat } = focusOf(model)
+  const pose = poseOf(model, model.actionWatch, seat.slot)
+  const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
+  return Option.getOrElse(
+    maybeActingShapes(
+      {
+        foot: footPosition(player, PLAYER_FOOT_OFFSET),
+        stances: playerSprites(model.appearance, player.calling).act,
+        tone: playerTone(player),
+        opacity: playerOpacity(player),
+        scale: playerHurtScale(player),
+        elapsedMs: model.elapsedMs,
+        facing,
+      },
+      pose,
+    ),
+    () => standingShapes(model, pose, facing),
+  )
+}
+
+const isSwapping = (pose: ActionPose): Option.Option<number> =>
+  ActionPose.isAnyOf(['Beat'])(pose) && pose.payoff === 'Swap'
+    ? Option.some(pose.share)
+    : Option.none()
+
+const reloadShareOf = (player: Player): Option.Option<number> =>
+  Reload.match(player.reload, {
+    Ready: () => Option.none(),
+    Reloading: ({ remainingMs, durationMs }) =>
+      Option.some(
+        durationMs > 0 ? clamp(1 - remainingMs / durationMs, 0, 1) : 1,
+      ),
+  })
+
+const standingShapes = (
+  model: Model,
+  pose: ActionPose,
+  facing: Facing,
+): ReadonlyArray<Canvas.Shape> => {
   const { player } = focusOf(model)
   const { weapon, tier, stats, bodyX, bodyY } = playerPose(player)
   const recoil = clamp(player.recoilRemainingMs / stats.recoilMs, 0, 1)
-  const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
   const body = group({
     translate: footPosition({ x: bodyX, y: bodyY }, PLAYER_FOOT_OFFSET),
     scale: multiplyScales(playerHurtScale(player), {
@@ -275,12 +329,27 @@ export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
     shapes: playerFrames(model)[playerTone(player)][facing],
   })
   const rattle = lidRattlePx(player, model.elapsedMs)
-  const angle = Math.atan2(player.facing.y, player.facing.x)
+  const toss = Option.map(isSwapping(pose), tossOf)
+  const reload = Option.map(
+    Option.filter(reloadShareOf(player), () => !isWieldingKnife(player)),
+    reloadMotionOf,
+  )
+  // NOTE: a tilt turns the muzzle toward the floor on either side.
+  const tilt =
+    Option.match(reload, { onNone: () => 0, onSome: motion => motion.tilt }) *
+    (facing === 'Left' ? -1 : 1)
+  const angle =
+    Math.atan2(player.facing.y, player.facing.x) +
+    tilt +
+    Option.match(toss, { onNone: () => 0, onSome: ({ spin }) => spin })
+  const gunAt = {
+    x: Math.round(bodyX + player.facing.x * GUN_HOLD_PX) + rattle,
+    y:
+      Math.round(bodyY + player.facing.y * GUN_HOLD_PX) -
+      Option.match(toss, { onNone: () => 0, onSome: ({ lift }) => lift }),
+  }
   const gun = group({
-    translate: {
-      x: Math.round(bodyX + player.facing.x * GUN_HOLD_PX) + rattle,
-      y: Math.round(bodyY + player.facing.y * GUN_HOLD_PX),
-    },
+    translate: gunAt,
     opacity: playerOpacity(player),
     shapes: heldSprite(
       player,
@@ -290,7 +359,23 @@ export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
       model.appearance.gunSkin,
     ),
   })
-  return player.facing.y < AIMING_UP ? [gun, body] : [body, gun]
+  const magazine = Option.toArray(
+    Option.flatMap(reload, ({ maybeMag }) =>
+      Option.map(maybeMag, offset =>
+        magazineShape(
+          {
+            x: gunAt.x + (facing === 'Left' ? -offset.x : offset.x),
+            y: gunAt.y + offset.y,
+          },
+          facing,
+          playerOpacity(player),
+        ),
+      ),
+    ),
+  )
+  return player.facing.y < AIMING_UP
+    ? [gun, ...magazine, body]
+    : [body, gun, ...magazine]
 }
 
 // KNOCKED OVER
@@ -329,7 +414,14 @@ export const lyingShapes: {
     const foot = footPosition(player, PLAYER_FOOT_OFFSET)
     return [
       group({
-        translate: { x: foot.x, y: foot.y - BODY_MIDDLE_PX + LYING_DROP_PX },
+        translate: {
+          x: foot.x,
+          y:
+            foot.y -
+            BODY_MIDDLE_PX +
+            LYING_DROP_PX +
+            compressionPx(model, lying),
+        },
         rotate: facing === 'Left' ? -QUARTER_TURN : QUARTER_TURN,
         opacity: lying === 'BledOut' ? BLED_OUT_OPACITY : playerOpacity(player),
         shapes: [
@@ -345,6 +437,17 @@ export const lyingShapes: {
     ]
   },
 )
+
+// NOTE: a downed body gives under each CPR push (src/render/actionPose.ts):
+// a pixel down on the push, on the reviver's own beat.
+const compressionPx = (model: Model, lying: Lying): number =>
+  lying === 'Downed' &&
+  Option.exists(
+    maybeCompressedOf(model, model.actionWatch, focusOf(model).seat.slot),
+    frame => isStrikeFrame('Compress', frame),
+  )
+    ? 1
+    : 0
 
 // NOTE: a player who is down swings their melee slot (swingWhileDown in
 // src/world/step/simulation.ts): the knife's slash, or the Clang Pan over the body for

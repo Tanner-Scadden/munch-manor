@@ -27,6 +27,7 @@ import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
   freshRunModel,
+  onDifficulty,
   pastTimedBreaks,
 } from '../../../test/model.fixture'
 import {
@@ -41,8 +42,9 @@ import {
   type DareThing,
   DareThingState,
 } from '../../../world/dare/dareSchema'
-import { levelOf, tileCenter } from '../../../world/level/arena'
+import { levelOf } from '../../../world/level/arena'
 import { DINING_ROOM_ID, roomSpotsOf } from '../../../world/level/plan'
+import { tileCenter } from '../../../world/level/tileGrid'
 import { focusOf } from '../../../world/party/party'
 import type { ExitId } from '../../../world/schema/entitySchema'
 import { darePointerShapes, maybeDarePointer } from '../darePointer'
@@ -125,11 +127,6 @@ const BELL_ROOM_WORD = Option.getOrThrow(
     String.toUpperCase(id),
   ),
 )
-
-const onDifficulty = (model: Model, difficulty: Difficulty): Model =>
-  modifyFields(model, {
-    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
-  })
 
 // NOTE: the break before wave 2, long, before the kitchen goes on sale, so
 // its holler never takes the bubble, with the guided first break over.

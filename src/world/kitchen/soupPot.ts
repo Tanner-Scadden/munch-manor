@@ -1,6 +1,7 @@
 import { Function, Option } from 'effect'
 
-import { boxCenter, levelOf } from '../level/arena'
+import { levelOf } from '../level/arena'
+import { boxCenter } from '../level/tileGrid'
 import type { World } from '../schema/world'
 import type { Vector } from '../schema/worldSchema'
 import { stationBoxOf } from '../stations/stationSpots'

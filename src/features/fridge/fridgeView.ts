@@ -25,7 +25,8 @@ import {
   fridgeBoxOf,
   prizeOddsFor,
 } from '../../world/fridge/leftovers'
-import { distanceToBox, levelOf } from '../../world/level/arena'
+import { levelOf } from '../../world/level/arena'
+import { distanceToBox } from '../../world/level/tileGrid'
 import { focusOf, focusSlotOf } from '../../world/party/party'
 import {
   Charge,

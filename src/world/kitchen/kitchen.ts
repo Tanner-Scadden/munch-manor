@@ -2,19 +2,17 @@ import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { BULLET_STEP_PX } from '../../shared/constants'
+import { type Level, levelOf, maybeExit } from '../level/arena'
+import { KITCHEN_EXIT, boxAround } from '../level/exits'
 import {
   type Box,
   COVER_SYMBOLS,
-  type Level,
   circleTouchesBox,
   distanceToBox,
-  isOnSoupAt,
-  levelOf,
-  maybeExit,
   tileBox,
   tilesWithSymbol,
-} from '../level/arena'
-import { KITCHEN_EXIT, boxAround } from '../level/exits'
+} from '../level/tileGrid'
+import { isOnSoupAt } from '../level/tileQueries'
 import type { World } from '../schema/world'
 import {
   GameEvent,

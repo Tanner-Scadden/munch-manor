@@ -6,15 +6,9 @@ import { PLAYER_RADIUS, PLAYER_SPEED } from '../../shared/constants'
 import { nextRandom } from '../../shared/prng'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { maxHpOf, speedScaleOf } from '../heroes/calling'
-import {
-  type Box,
-  type Level,
-  type Room,
-  circleTouchesBox,
-  isSolidAt,
-  levelOf,
-  roomAt,
-} from '../level/arena'
+import { type Level, type Room, levelOf, roomAt } from '../level/arena'
+import { type Box, circleTouchesBox } from '../level/tileGrid'
+import { isSolidAt } from '../level/tileQueries'
 import { PICKUP_NAMES } from '../names'
 import {
   atSeat,

@@ -14,19 +14,18 @@ import { APPLICATION, ticks } from '../../../test/testing'
 import {
   MANOR,
   closedExits,
-  isDoorTile,
-  isWalkableTile,
   levelFor,
   levelOf,
   openExit,
   openExitIn,
   roomAt,
   startingLevel,
-  tileIndex,
 } from '../arena'
 import { exitKeysOf } from '../exits'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
 import { type LevelSpec } from '../plan'
+import { tileIndex } from '../tileGrid'
+import { isDoorTile, isWalkableTile } from '../tileQueries'
 
 // NOTE: a made-up map with one boarded exit that holds a door shut, since
 // the parlour's exit has no room behind it yet. The kitchen below the boards

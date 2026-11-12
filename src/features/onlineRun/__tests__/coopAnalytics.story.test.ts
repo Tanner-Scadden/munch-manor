@@ -1,9 +1,9 @@
-import { Effect, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
-import type { Lobby } from '@munch/netcode'
+import { type Lobby, NetStats } from '@munch/netcode'
 
 import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
@@ -11,7 +11,7 @@ import { Lesson, type Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { SendRunSummary } from '../../../app/update/settle'
 import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
-import type { RunSummary } from '../../../platform/analytics'
+import type { CrewNetwork, RunSummary } from '../../../platform/analytics'
 import { crewRunKeyOf } from '../../../platform/analyticsRun'
 import { modifyLeadSeat, withSeat } from '../../../test/model.fixture'
 import { APPLICATION, resolveFocusCoop } from '../../../test/testing'
@@ -138,6 +138,22 @@ const leaveRoom = Story.steps(
   resolveFocusCoop(),
 )
 
+// NOTE: a room faked with no pings back and no Deltas timed measured
+// nothing.
+const unmeasured: CrewNetwork = {
+  rttP50Ms: 0,
+  rttP95Ms: 0,
+  rttSamples: 0,
+  jitterMs: 0,
+  snapshots: 0,
+  lateSnapshots: 0,
+  lateMsMean: 0,
+  lateMsMax: 0,
+  reconnects: 0,
+  corrections: 0,
+  correctionPxMax: 0,
+}
+
 const crewOfThree = {
   _tag: 'Crew',
   size: 3,
@@ -145,14 +161,51 @@ const crewOfThree = {
   seatDowns: 2,
   seatRevives: 1,
   runKey: crewRunKeyOf(playingLobby),
+  network: unmeasured,
 } as const
+
+// NOTE: a laggy link's run, as this client's session tallied it: four
+// pings back, one slow; three Deltas timed, one 120 ms late; one
+// reconnect; three corrections, the biggest 12.4 px.
+const laggyNet: NetStats.ClientNet = {
+  ...Array.reduce([5, -5, 120], NetStats.emptyClientNet, (net, offMs) =>
+    NetStats.arrivedOff(net, offMs),
+  ),
+  rtt: Array.reduce([60, 60, 70, 300], NetStats.emptyHistogram, (rtt, ms) =>
+    NetStats.recordSample(rtt, ms),
+  ),
+  reconnects: 1,
+  corrections: 3,
+  correctionMaxPx: 12.4,
+}
+
+const withRoomNet = (model: Model, net: NetStats.ClientNet): Model =>
+  modifyFields(model, {
+    coop: coop =>
+      modifyFields(coop, {
+        screen: () =>
+          Option.match(maybeRoomOf(coop), {
+            onNone: () => coop.screen,
+            onSome: room =>
+              Screen.InRoom({
+                room: {
+                  ...room,
+                  session: {
+                    ...room.session,
+                    stats: { ...room.session.stats, net },
+                  },
+                },
+              }),
+          }),
+      }),
+  })
 
 // NOTE: the summary this player's client sends: the room's difficulty
 // (Hard), its own seat's stats, the crew's run key.
 const crewSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 6,
+  version: 7,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -210,6 +263,82 @@ describe("an online co-op run's summary", () => {
           sent(crewSummary({ outcome: GAME_OVER, wave: 1 })),
         )
       }),
+  )
+
+  it.effect("the summary carries this client's network numbers", () =>
+    Effect.gen(function* () {
+      const ended = yield* endedIn(Phase.GameOver({ wave: 1 }))
+      yield* Story.story(
+        APPLICATION,
+        Story.given(withRoomNet(ended, laggyNet)),
+        roomFrame(200),
+        sent(
+          crewSummary({
+            outcome: GAME_OVER,
+            wave: 1,
+            party: {
+              ...crewOfThree,
+              network: {
+                rttP50Ms: 65,
+                rttP95Ms: 305,
+                rttSamples: 4,
+                jitterMs: 43,
+                snapshots: 3,
+                lateSnapshots: 1,
+                lateMsMean: 120,
+                lateMsMax: 120,
+                reconnects: 1,
+                corrections: 3,
+                correctionPxMax: 12,
+              },
+            },
+          }),
+        ),
+      )
+    }),
+  )
+
+  it.effect('leaving keeps the numbers the room measured', () =>
+    Effect.gen(function* () {
+      const playing = yield* midRun()
+      const running = yield* Story.story(
+        APPLICATION,
+        Story.given(withRoomNet(playing, laggyNet)),
+        roomFrame(150),
+      )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(running),
+        leaveRoom,
+        Story.model(current => {
+          expect(Option.isNone(maybeRoomOf(current.coop))).toBe(true)
+        }),
+        sent(
+          crewSummary({
+            outcome: { _tag: 'Quit' },
+            wave: 1,
+            runMs: 100,
+            party: {
+              ...crewOfThree,
+              network: {
+                ...unmeasured,
+                rttP50Ms: 65,
+                rttP95Ms: 305,
+                rttSamples: 4,
+                jitterMs: 43,
+                snapshots: 3,
+                lateSnapshots: 1,
+                lateMsMean: 120,
+                lateMsMax: 120,
+                reconnects: 1,
+                corrections: 3,
+                correctionPxMax: 12,
+              },
+            },
+          }),
+        ),
+      )
+    }),
   )
 
   it.effect(

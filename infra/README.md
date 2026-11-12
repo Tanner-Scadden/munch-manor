@@ -98,6 +98,7 @@ On every stage the API Worker also serves co-op rooms (see "What Phases 2 and 3 
 
 - **Durable Objects.** `GameRoom` (one per room, named `room:<code>`) and `Matchmaker` (one, named `matchmaker`), both SQLite backed, added by Alchemy as new SQLite classes on the stages that bind them. A room runs a timer loop only during a run, so it hibernates in its lobby; the Matchmaker hibernates while nobody waits.
 - **Locally.** `bun tools/mp-dev/local.ts` runs this Worker (sync and rooms, no analytics) in `node_modules/.bin/workerd`, and `bun run mp:e2e` (from the repo root) plays three players and a QUICK PLAY group through it.
+- **Logs.** The API Worker keeps Workers Logs (`API_OBSERVABILITY` in `alchemy.run.ts`). Each co-op run's end is one `RoomGameEnded` line with every seat's round trip, late inputs, reconnects, and the room's tick lag: see "Reading the room's logs" in `PLATFORM.md`. Live: `bunx wrangler tail munch-manor-api --format json --search RoomGameEnded`.
 - **On a preview.** `bun run heavy -- --shared bun tools/audit/mp.ts https://munch-manor-mp-dev-pr-<n>.tanner-scadden.workers.dev/ 4` from the repo root.
 
 ## Analytics

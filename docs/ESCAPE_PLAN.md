@@ -1,10 +1,10 @@
 # Escape the Manor: the build plan
 
-How the Munch Manor dare gets built, layer by layer, as one stack of pull requests that lands in one big update. The story is in [`LORE.md`](../LORE.md), the rules in "Escape the manor" in [`GAME_DESIGN.md`](../GAME_DESIGN.md), and the flow in [`FLOW.md`](../FLOW.md). This file is the order of work, what each layer touches, and how each is checked. Written with the owner on 2026-11-10 from a Q&A and a survey of the code.
+How the Munch Manor dare was built, layer by layer, as one stack of pull requests that landed in one big update. The story is in [`LORE.md`](../LORE.md), the rules in "Escape the manor" in [`GAME_DESIGN.md`](../GAME_DESIGN.md), and the flow in [`FLOW.md`](../FLOW.md). This file is the order of work, what each layer touched, and how each was checked. Written with the owner on 2026-11-10 from a Q&A and a survey of the code; kept as the record of the build.
 
 ## Status
 
-Layers 1 to 18 are built, as one stack of pull requests on `escape/01-names` to `escape/18-release-docs` (2026-11-10), not merged yet. Layers 19 to 21, the rooms rework ([`ROOM_RESEARCH.md`](./ROOM_RESEARCH.md), "Decided (2026-11-10)"), build on top:
+Shipped. Every layer merged to `main` together on 2026-11-11 and went out in one deploy: layers 1 to 16b on their own pull requests, and the balance pass (17), the rooms rework (19q to 21), and the release docs (18) on the top one, #180.
 
 | Layer             | Pull request | Layer                   | Pull request |
 | ----------------- | ------------ | ----------------------- | ------------ |
@@ -17,25 +17,28 @@ Layers 1 to 18 are built, as one stack of pull requests on `escape/01-names` to 
 | 6b. Crate hearts  | #176         | 15. The art             | #161         |
 | 7. Keys, no shop  | #181         | 16. The tutorial        | #184         |
 | 8. The house grid | #163         | 16b. Visual fixes       | #185         |
-| 17. Balance       | to come      | 18. Release docs        | #180         |
-| 19q. Find things  | to come      |                         |              |
-| 19. Room shapes   | to come      | 20. Room tools          | to come      |
-| 21. Finds, wakes  | this branch  |                         |              |
+| 17. Balance       | #180         | 18. Release docs        | #180         |
+| 19q. Find things  | #180         | 19r. Mid-wave           | #180         |
+| 19. Room shapes   | #180         | 20. Room tools          | #180         |
+| 21. Finds, wakes  | #180         |                         |              |
 
-Open for the owner:
+In the last balance step, on #180, Hotfoots were slowed on Easy (×0.6) and Normal (×0.65) only, and Uncle Chunk was left as he is on purpose (owner, 2026-11-11; "Runners eased" in `GAME_DESIGN.md`).
 
-- **Land it.** The release audits on the top layer's preview (layer 18's list), then `gh stack merge`.
-- **Balance follow-ups** ("How balance is checked" in `GAME_DESIGN.md`): portrait escapes about 20 points under landscape; the finale barely bites while waves 5 to 7 kill most runs; the house is hungrier for about four waves before Uncle Chunk on Double Dare; keys are plentiful (about 290 a campaign against 16 for every room); gun levels, case feats, the two new guns, the heroes' new perks, and Broke not measured on their own; the bot rarely pulls the fridge on the timed breaks; `SWAP=1` now plays as the default bot.
+Still open:
+
+- **Balance follow-ups** ("How balance is checked" in `GAME_DESIGN.md`): portrait escapes about 20 points under landscape; the bot's escapes under target on Easy and Normal, which the owner reads as the bot, not the game; keys are plentiful; gun levels, case feats, the two new guns, the heroes' new perks, and Broke not measured on their own; the bot rarely pulls the fridge on the timed breaks; `SWAP=1` now plays as the default bot.
 - **Defaults to review** below: none was signed off one by one, and the numbers marked untuned in `GAME_DESIGN.md` stand as built.
 - **Still proposed:** leaving early, your friends remembering the last run, paying off the intro's details, and the heroes' reasons (`LORE.md`). Rattles' lines and look are drafts for review.
+- **Layer 21's follow-ups:** a sound per find, the library's decoy books, the parlour's music in the hub as sound, and whether pacing's beat stretches a wake rush.
+- **Layer 20's numbers** (`TOOL_RULES`) are untuned until a balance pass with the rooms rework and the pacing both in.
 
-## How it ships
+## How it shipped
 
-- **One stack, one merge.** The work is a stack of pull requests made with GitHub's `gh stack` extension (`gh extension install github/gh-stack`), one branch per layer, each based on the one below, all in one worktree. Each layer passes `typecheck`, `lint`, `test`, and `build` on its own, and `test:full` when it touches gameplay. Nothing merges to `main` until the whole stack is done and reviewed; then `gh stack merge` lands it, and production gets everything in one deploy.
-- **No flag.** A `VITE_*` flag can only hide client code, and the World, the co-op wire, and the Worker ship as one in every build, so two rule sets cannot live side by side. The stack is the gate.
-- **Co-op protocol 20.** The World goes on the co-op wire straight from its Schema, so the first layer that changes the World bumps `PROTOCOL_VERSION` and `MIN_PROTOCOL_VERSION` to 20 (`packages/netcode/src/Protocol.ts`, with its history note; the finale's rework, with no hat and a flying key, made it 21) and each later layer only re-pins `GOLDEN_DIGEST` in `src/world/net/__tests__/worldCodec.test.ts`. The deploy ends every co-op run in progress (a room's checkpoint will not decode), and older clients are refused and shown the update prompt. Kept runs from before are dropped quietly. That is expected for a release this size; say so in What's New.
-- **Previews.** Every layer's pull request gets its own preview stage (`munch-manor-pr-<n>`), with the co-op dev page, so each layer can be played on a phone before the next is built on it.
-- **Go easy on the laptop.** Every heavy job runs through the guard (`bun run balance`, `bun run heavy -- ...`), at most about three balance batches a layer, 100 runs to sort ideas and 200 to confirm. The full balance pass waits for layer 17.
+- **One stack, one merge.** The work was a stack of pull requests made with GitHub's `gh stack` extension, one branch per layer, each based on the one below. Each layer passed `typecheck`, `lint`, `test`, and `build` on its own, and `test:full` when it touched gameplay. Nothing merged to `main` until the whole stack was done and reviewed; production got everything in one deploy.
+- **No flag.** A `VITE_*` flag can only hide client code, and the World, the co-op wire, and the Worker ship as one in every build, so two rule sets cannot live side by side. The stack was the gate.
+- **Co-op protocol 20.** The World goes on the co-op wire straight from its Schema, so the first layer that changed the World bumped `PROTOCOL_VERSION` and `MIN_PROTOCOL_VERSION` to 20 (`packages/netcode/src/Protocol.ts`, with its history note; the finale's rework, with no hat and a flying key, made it 21) and each later layer only re-pinned `GOLDEN_DIGEST` in `src/world/net/__tests__/worldCodec.test.ts`. The deploy ended every co-op run in progress, and older clients are refused and shown the update prompt. Kept runs from before were dropped quietly.
+- **Previews.** Every layer's pull request got its own preview stage (`munch-manor-pr-<n>`), with the co-op dev page.
+- **Go easy on the laptop.** Every heavy job ran through the guard, at most about three balance batches a layer.
 
 ## Decisions
 
@@ -68,7 +71,7 @@ From the owner, 2026-11-09 and 2026-11-10.
 
 ## Defaults to review
 
-Choices the plan makes that nobody has signed off yet. Each is easy to change before its layer is built.
+Choices the plan made that nobody has signed off yet. All are built; each is still easy to change.
 
 - **The house plan.** Five fixed slots, each room built to its slot's footprint. The dining room in the middle, the front door in its south wall, the kitchen fixed to the north, and three slots (west, east, and one beyond the east room) that the parlour, library, and cellar roll into. Six arrangements per run.
 - **Spawn doors.** The dining room gets four spawn doors named like the parlour's (North, West, East, South), so the ten tuned wave tables keep working; the front door and the exits are separate and never spawn.
@@ -86,7 +89,7 @@ Choices the plan makes that nobody has signed off yet. Each is easy to change be
 
 ## The layers
 
-Bottom to top. Each layer names its goal, what it changes, and how it is checked. Every layer also keeps the file tables in `CLAUDE.md` in step (lint fails a module no table names), adds its tests as Block-aware Stories and Scenes, and re-pins the wire digest when it changes the World.
+Bottom to top, as planned, with notes on what was built. Each layer names its goal, what it changes, and how it is checked. Every layer also keeps the file tables in `CLAUDE.md` in step (lint fails a module no table names), adds its tests as Block-aware Stories and Scenes, and re-pins the wire digest when it changes the World.
 
 ### 1. Names
 
@@ -299,11 +302,11 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - `CHANGELOG.md`: one fun day's entry for the update, and What's New.
 - `GAME_DESIGN.md`'s "Decided" rewritten for the new game; `LORE.md` and `FLOW.md` marked built; `CLAUDE.md`'s tables checked.
 - Audits on the top layer's preview: `live-check.ts`, `offline.ts`, `coop.ts` with three pages, `mp:e2e`, `perf:check`, `determinism`, portrait taps.
-- `gh stack merge`.
+- Merged with the stack on 2026-11-11.
 
 ### 19q. Finding the things
 
-**Goal.** From the owner's playtest on Dare (2026-11-10): "I bought all the rooms, but can't find anything. The hints also don't have a pointer on which way." Built on `escape/19q-find-things`, on layer 18.
+**Goal.** From the owner's playtest on Dare (2026-11-10): "I bought all the rooms, but can't find anything. The hints also don't have a pointer on which way." Built on layer 18.
 
 - On Dare and Double Dare a thing in an open room is drawn on its spot, big, bobbing, in a pulsing gold glow (`src/features/dare/dareView.ts`); Dare keeps the gold sparkle, in waves too. Triple Dare and Triple Dog Dare keep the glint up close.
 - A gold arrow over the thing, or at the window's edge toward it, while a hint is up, and on Dare all break toward the nearest thing left (`src/features/dare/darePointer.ts`, over `src/render/pointerArrow.ts`, the tours' arrow moved down a layer).
@@ -364,7 +367,7 @@ The choices:
 
 **Checks.** Stories for each find and wake-up, co-op, `test:full`, the nightly balance.
 
-**As built (2026-11-11, branch `escape/20f-room-finds`).**
+**As built (2026-11-11).**
 
 - The finds (`src/world/dare/finds.ts`): a room names its style in `ROOM_FINDS`; each style has its work time, reach, and a readiness hook (`isReady`, for the cellar's light). The parlour rummages a trunk (1 s), the library works a hollow book out of a stack (1 s), the kitchen hauls up the dumbwaiter (2 s). The work station's rule: still, no fire, each worker's share adds, unworked work drains at half speed. The dining room and the cellar walk onto it. The cellar's find is layer 20's, with its bulb: one line in `ROOM_FINDS` and its readiness hook.
 - The wire: `DareThingState.Hidden` carries `workedMs` (protocol 20's history note in `packages/netcode/src/Protocol.ts`; the golden digest re-pinned).
@@ -372,7 +375,7 @@ The choices:
 - The hub touches (`src/features/dining/hubTouchView.ts`): the dumbwaiter's hatch, a book stack, drifting notes, a cobweb and dust. Drawn only.
 - Follow-ups: a sound per find, the library's decoy books, the parlour's music in the hub as sound, and pacing's beat may still stretch a wake rush (pacing's to decide).
 
-## Risks
+## Risks, as planned
 
 - **Layer 7 is huge.** The shop and money reach about a hundred files and their tests. If it grows past a reviewable size, split it: keys replace money first (with the shop's prices in keys for one layer), then the shop's removal.
 - **Frame time.** A five-room house, the cellar's light, and cases in every room. `perf:check` on layers 8, 10, and 15.
@@ -383,7 +386,6 @@ The choices:
 
 ## Open questions
 
-- Which things go in the dare pool, and each one's way to get it.
-- The feat pools per difficulty, and which feats suit which guns.
-- What Rattles says now, and whether his look changes for 1924.
-- Each room's twist in detail (the library's secret door, the cellar's dark).
+Settled in the build: the dare pool and each thing's way to get it (layers 12 and 21), the feat pools (layer 4), and each room's twist (layers 10, 19, and 20). Still open:
+
+- What Rattles says now, and whether his look changes for 1924 (his lines are drafts for review).

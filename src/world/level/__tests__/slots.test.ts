@@ -2,16 +2,7 @@ import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { TILE_SIZE } from '../../../shared/constants'
-import {
-  DOOR_SYMBOLS,
-  type Level,
-  doorSpawnPoint,
-  isInsideRoomAt,
-  isWalkableTile,
-  levelFor,
-  roomAt,
-  tilesWithSymbol,
-} from '../arena'
+import { type Level, levelFor, roomAt } from '../arena'
 import {
   CELLAR_ROOM_ID,
   EAST_EXIT,
@@ -24,6 +15,8 @@ import {
   manorSpecFor,
   roomSpotsOf,
 } from '../plan'
+import { DOOR_SYMBOLS, tilesWithSymbol } from '../tileGrid'
+import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
 import { EVERY_EXIT } from './exits.fixture'
 
 // The house's slots (docs/ROOM_DRAFTS.md): the parlour west of the dining

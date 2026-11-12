@@ -3,11 +3,16 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { positionVariation } from '../../audio/audio'
+import { isRunOn } from '../../domain/onlineRun'
 import { isEndScreen } from '../../domain/run'
 import {
   agePocketCard,
+  closeDareCard,
   foldPocketCard,
+  isDareCardKey,
+  isDareCardToggling,
   isPocketCardBlocking,
+  toggleDareCard,
 } from '../../features/dare/pocketCard'
 import { skipBeat } from '../../features/end/endBeat'
 import {
@@ -95,6 +100,7 @@ import {
   playSwapSoundWhen,
   playTune,
   pocketScratchCues,
+  strikeCues,
   toggleAudioFromKey,
   unlockAudio,
 } from './sound'
@@ -225,8 +231,46 @@ export const skipDebutCardWhenUp = (model: Model): Model =>
 
 // NOTE: a card that holds the round's buttons: the new zombie card in a
 // wave, or the display case's in a break.
-const isCardHolding = (model: Model): boolean =>
+export const isCardHolding = (model: Model): boolean =>
   isDebutCardBlocking(model) || isCaseCardBlocking(model)
+
+// THE DARE CARD FROM THE HUD
+
+// NOTE: the HUD's dare list opens the card again by its button, Tab, or a
+// controller's Select, and puts it away the same way
+// (src/features/dare/pocketCard.ts), unless another card holds the round.
+// Alone the run waits under it as under the pause menu, so whatever was
+// held lets go; in co-op the room never waits.
+const isDareListTaking = (model: Model): boolean =>
+  !isCardHolding(model) && isDareCardToggling(model)
+
+const toggleDareList = modelStep(model =>
+  isRunOn(model)
+    ? toggleDareCard(model)
+    : withInput(toggleDareCard(model), releaseAll),
+)
+
+export const clickDareList = makeStep(model =>
+  isDareListTaking(model)
+    ? Update.combineSteps([unlockAudio, toggleDareList])
+    : unchanged,
+)
+
+export const isDareListKey: {
+  (code: string): (model: Model) => boolean
+  (model: Model, code: string): boolean
+} = Function.dual(
+  2,
+  (model: Model, code: string): boolean =>
+    isDareCardKey(code) && isDareListTaking(model),
+)
+
+export const dareListFromKey = (code: string) =>
+  makeStep(model =>
+    isDareListKey(model, code)
+      ? Update.combineSteps([unlockAudio, toggleDareList])
+      : unchanged,
+  )
 
 export const skipCaseCardWhenUp = (model: Model): Model =>
   isCaseCardBlocking(model) ? skipCaseCard(model) : model
@@ -306,7 +350,9 @@ export const clickMedic: UpdateStep = model =>
 
 // PAUSE
 
-const pauseRound = modelStep(model => withInput(pause(model), releaseAll))
+const pauseRound = modelStep(model =>
+  withInput(pause(closeDareCard(model)), releaseAll),
+)
 
 // NOTE: the pause button pauses a round under way and does nothing else.
 export const clickPause = makeStep(model =>
@@ -382,6 +428,7 @@ export const tickFrame = (deltaTime: number) =>
           ...ammoTickCues(advanced),
           ...fridgeLandCues(model, advanced),
           ...mendCues(model, advanced),
+          ...strikeCues(model, advanced),
           ...kitchenCues(model, advanced),
           ...pocketScratchCues(model, advanced),
         ]),
@@ -461,6 +508,10 @@ const pressedButton = ({ code, device }: ButtonPress) =>
       ])
     }
 
+    if (isDareListKey(keyed, code)) {
+      return Update.combineSteps([toModel(keyed), dareListFromKey(code)])
+    }
+
     if (isPocketCardBlocking(keyed)) {
       return Update.combineSteps([
         toModel(
@@ -516,6 +567,11 @@ const pressedButton = ({ code, device }: ButtonPress) =>
 
 export const pressedKey = (code: string) =>
   pressedButton({ code, device: 'KeyboardMouse' })
+
+// NOTE: a key a controller stands in for in a menu (src/app/update/padMenu.ts),
+// pressed as the pad's, so the pad stays the device.
+export const pressedPadKey = (code: string) =>
+  pressedButton({ code, device: 'Gamepad' })
 
 // CONTROLLERS
 

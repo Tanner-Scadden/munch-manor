@@ -14,6 +14,7 @@ import {
   SummaryKills,
   type SummaryParty,
   type SummaryPartyV2,
+  type SummaryPartyV6,
 } from '../../src/platform/analytics.ts'
 
 // BODY SIZE
@@ -144,7 +145,48 @@ export type RunRow = Readonly<{
   crew_key: string | null
   modifiers: number
   dare_items_found: number
+  net_rtt_p50_ms: number | null
+  net_rtt_p95_ms: number | null
+  net_rtt_samples: number | null
+  net_jitter_ms: number | null
+  net_snapshots: number | null
+  net_late_snapshots: number | null
+  net_late_ms_mean: number | null
+  net_late_ms_max: number | null
+  net_reconnects: number | null
+  net_corrections: number | null
+  net_correction_px_max: number | null
 }>
+
+type NetColumns = Pick<
+  RunRow,
+  | 'net_rtt_p50_ms'
+  | 'net_rtt_p95_ms'
+  | 'net_rtt_samples'
+  | 'net_jitter_ms'
+  | 'net_snapshots'
+  | 'net_late_snapshots'
+  | 'net_late_ms_mean'
+  | 'net_late_ms_max'
+  | 'net_reconnects'
+  | 'net_corrections'
+  | 'net_correction_px_max'
+>
+
+// NOTE: a solo run, or a crew from before version 7, has no network.
+const NO_NET_COLUMNS: NetColumns = {
+  net_rtt_p50_ms: null,
+  net_rtt_p95_ms: null,
+  net_rtt_samples: null,
+  net_jitter_ms: null,
+  net_snapshots: null,
+  net_late_snapshots: null,
+  net_late_ms_mean: null,
+  net_late_ms_max: null,
+  net_reconnects: null,
+  net_corrections: null,
+  net_correction_px_max: null,
+}
 
 type PartyColumns = Pick<
   RunRow,
@@ -154,7 +196,8 @@ type PartyColumns = Pick<
   | 'seat_downs'
   | 'seat_revives'
   | 'crew_key'
->
+> &
+  NetColumns
 
 const SOLO_COLUMNS: PartyColumns = {
   party: 'Solo',
@@ -163,11 +206,33 @@ const SOLO_COLUMNS: PartyColumns = {
   seat_downs: null,
   seat_revives: null,
   crew_key: null,
+  ...NO_NET_COLUMNS,
 }
+
+const netColumnsOf = (
+  party: SummaryParty | SummaryPartyV6 | SummaryPartyV2,
+): NetColumns =>
+  'network' in party
+    ? {
+        net_rtt_p50_ms: party.network.rttP50Ms,
+        net_rtt_p95_ms: party.network.rttP95Ms,
+        net_rtt_samples: party.network.rttSamples,
+        net_jitter_ms: party.network.jitterMs,
+        net_snapshots: party.network.snapshots,
+        net_late_snapshots: party.network.lateSnapshots,
+        net_late_ms_mean: party.network.lateMsMean,
+        net_late_ms_max: party.network.lateMsMax,
+        net_reconnects: party.network.reconnects,
+        net_corrections: party.network.corrections,
+        net_correction_px_max: party.network.correctionPxMax,
+      }
+    : NO_NET_COLUMNS
 
 // NOTE: a version 2 crew came before the run key, so its key is NULL and
 // the report counts its row as a game of its own.
-const partyColumnsOf = (party: SummaryParty | SummaryPartyV2): PartyColumns =>
+const partyColumnsOf = (
+  party: SummaryParty | SummaryPartyV6 | SummaryPartyV2,
+): PartyColumns =>
   party._tag === 'Solo'
     ? SOLO_COLUMNS
     : {
@@ -177,19 +242,20 @@ const partyColumnsOf = (party: SummaryParty | SummaryPartyV2): PartyColumns =>
         seat_downs: party.seatDowns,
         seat_revives: party.seatRevives,
         crew_key: 'runKey' in party ? party.runKey : null,
+        ...netColumnsOf(party),
       }
 
 // NOTE: a version 1 summary came before co-op sent any, so it was solo.
 const summaryPartyColumns = (summary: PostedRunSummary): PartyColumns =>
   summary.version === 1 ? SOLO_COLUMNS : partyColumnsOf(summary.party)
 
-// NOTE: a version 5 or 6 summary spends keys and opens cases, with no shop
+// NOTE: a version 5, 6, or 7 summary spends keys and opens cases, with no shop
 // to buy from (its purchases are 0); an older one bought from the shop, and
 // has no keys or cases (NULL).
 const shopColumnsOf = (
   summary: PostedRunSummary,
 ): Pick<RunRow, 'purchases' | 'keys_spent' | 'cases_opened'> =>
-  summary.version === 5 || summary.version === 6
+  summary.version === 5 || summary.version === 6 || summary.version === 7
     ? {
         purchases: 0,
         keys_spent: summary.keysSpent,

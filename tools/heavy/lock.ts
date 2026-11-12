@@ -12,18 +12,18 @@ import {
 } from 'effect'
 import type { PlatformError } from 'effect/PlatformError'
 
+import type { SharedSlot } from './decision'
 import {
   type HeldTurn,
   type LockHolder,
   LockState,
-  type SharedSlot,
   classifyLock,
   decodeHeldTurn,
   encodeHeldTurn,
   encodeLockHolder,
   isSameHolder,
   turnFileKey,
-} from './decision'
+} from './records'
 
 export class LockTaken extends Schema.TaggedError<
   LockTaken,

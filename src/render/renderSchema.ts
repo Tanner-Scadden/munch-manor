@@ -3,6 +3,7 @@
 
 import { Schema } from 'effect'
 
+import { DareKind } from '../world/dare/dareSchema'
 import { ParticleKind } from '../world/schema/entitySchema'
 import { MillisNumber } from '../world/schema/wireNumber'
 
@@ -71,3 +72,73 @@ export const TellWatch = Schema.Struct({
 export type TellWatch = typeof TellWatch.Type
 
 export const noTellWatch: TellWatch = { traps: [], keysFound: [] }
+
+// NOTE: the motion a hands-on action loops while it works
+// (src/render/actionPose.ts).
+export const Motion = Schema.Literals([
+  'Compress',
+  'Rummage',
+  'Yank',
+  'Haul',
+  'Crank',
+  'Pull',
+  'Push',
+  'Shove',
+  'Hammer',
+  'Stir',
+  'Pry',
+])
+export type Motion = typeof Motion.Type
+
+// NOTE: the payoff a hands-on action ends with (src/render/actionPose.ts).
+export const Payoff = Schema.Literals([
+  'HoldUp',
+  'FistPump',
+  'SpringUp',
+  'Swap',
+  'SetTrap',
+  'Grab',
+  'PryOpen',
+])
+export type Payoff = typeof Payoff.Type
+
+// NOTE: one payoff a seat is playing: what, since when on the World's
+// clock, and the thing held up for a find.
+export const ActionBeat = Schema.Struct({
+  slot: Schema.Finite,
+  payoff: Payoff,
+  startMs: Schema.Finite,
+  maybeThing: Schema.Option(DareKind),
+})
+export type ActionBeat = typeof ActionBeat.Type
+
+// NOTE: what the actions saw of the World last frame, to see what changed
+// in it: the payoffs playing, the weapon each seat held (a change is a
+// swap), the traps standing (a new one was just set down), and each seat
+// at work, its motion's frame and where (a strike frame not seen before
+// is a blow landed). A cosmetic of the client's own, like the hero tells'
+// watch.
+export const ActionWatch = Schema.Struct({
+  beats: Schema.Array(ActionBeat),
+  held: Schema.Array(
+    Schema.Struct({ slot: Schema.Finite, weapon: Schema.String }),
+  ),
+  trapIds: Schema.Array(Schema.Finite),
+  working: Schema.Array(
+    Schema.Struct({
+      slot: Schema.Finite,
+      motion: Motion,
+      frame: Schema.Finite,
+      x: Schema.Finite,
+      y: Schema.Finite,
+    }),
+  ),
+})
+export type ActionWatch = typeof ActionWatch.Type
+
+export const noActionWatch: ActionWatch = {
+  beats: [],
+  held: [],
+  trapIds: [],
+  working: [],
+}

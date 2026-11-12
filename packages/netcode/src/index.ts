@@ -1,5 +1,6 @@
 export * from './Lobby'
 export * as Matchmaking from './Matchmaking'
+export * as NetStats from './NetStats'
 export * from './Protocol'
 export * as Room from './Room'
 export * as Session from './Session'

@@ -4,21 +4,17 @@ import { describe, expect, test } from 'vitest'
 import { EXIT_RULES } from '../../src/world/level/exits'
 import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
 import { chunkRows } from './chunkModel'
+import { balanceModel, economy, expectedPays, withKills } from './model'
+import { ASSUMPTIONS } from './modelAssumptions'
+import { type FlowRules, flowWave } from './modelFlow'
+import { type GunStats, sustainedDps, timeToKill } from './modelGuns'
 import {
-  ASSUMPTIONS,
   CATALOG,
   type Catalog,
-  type FlowRules,
   type Loadout,
   STARTING_LOADOUT,
-  balanceModel,
-  economy,
-  expectedPays,
-  flowWave,
   shopVisit,
-  withKills,
-} from './model'
-import { type GunStats, sustainedDps, timeToKill } from './modelGuns'
+} from './modelShop'
 import {
   PEAK_RATIO_TARGET,
   PEAK_RATIO_WAVES,

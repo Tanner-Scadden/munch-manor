@@ -6,7 +6,8 @@ import {
   PLAYER_RADIUS,
   ZOMBIE_HIT_PULSE_MS,
 } from '../../shared/constants'
-import { type Level, hasLineOfSight, levelOf } from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
+import { hasLineOfSight } from '../level/tileQueries'
 import {
   atSeat,
   facingNearest,

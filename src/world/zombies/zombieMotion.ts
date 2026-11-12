@@ -16,7 +16,7 @@ import {
   tollsOf,
   trapBlockers,
 } from '../gear/traps'
-import { type Box, type Level, isInsideRoomAt, levelOf } from '../level/arena'
+import { type Level, levelOf } from '../level/arena'
 import {
   type Clearance,
   type FlowField,
@@ -26,6 +26,8 @@ import {
   steerToBait,
   steerToward,
 } from '../level/pathing'
+import type { Box } from '../level/tileGrid'
+import { isInsideRoomAt } from '../level/tileQueries'
 import {
   type DanceFloor,
   danceFloorOf,

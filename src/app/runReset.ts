@@ -16,7 +16,7 @@ import {
 import { startingCallingOf } from '../features/heroes/callingPick'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
-import { noTellWatch } from '../render/renderSchema'
+import { noActionWatch, noTellWatch } from '../render/renderSchema'
 import { rollCases } from '../world/feats/cases'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
@@ -65,6 +65,7 @@ export type RunFields = Pick<
   | 'decals'
   | 'dustCooldownMs'
   | 'tellWatch'
+  | 'actionWatch'
   | 'fridge'
   | 'pantry'
   | 'stove'
@@ -98,6 +99,7 @@ export type RunFields = Pick<
   | 'level'
   | 'introSkip'
   | 'pocketCard'
+  | 'dareSatchel'
   | 'caseCard'
   | 'ovens'
   | 'debutCard'
@@ -110,6 +112,7 @@ export type RunFields = Pick<
   | 'maybeRoomDifficulty'
   | 'maybeRoomModifiers'
   | 'maybeCrewRunKey'
+  | 'maybeRunNet'
   | 'screenMs'
   | 'maybeShareCopiedAtMs'
   | 'isRunCardDropped'
@@ -133,6 +136,7 @@ export const freshRun = (model: Model): RunFields => ({
   decals: [],
   dustCooldownMs: 0,
   tellWatch: noTellWatch,
+  actionWatch: noActionWatch,
   fridge: shutFridge,
   pantry: barePantry,
   stove: freshStove(model.rngState),
@@ -166,6 +170,7 @@ export const freshRun = (model: Model): RunFields => ({
   level: freshLevel(model.rngState),
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),
+  dareSatchel: [],
   caseCard: CaseCard.Hidden(),
   ovens: freshOvens(START_LEVEL),
   debutCard: DebutCard.Hidden(),
@@ -178,6 +183,7 @@ export const freshRun = (model: Model): RunFields => ({
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),
   maybeCrewRunKey: Option.none(),
+  maybeRunNet: Option.none(),
   screenMs: 0,
   maybeShareCopiedAtMs: Option.none(),
   isRunCardDropped: false,

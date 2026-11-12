@@ -9,6 +9,7 @@ import { modifyFields } from 'foldkit/struct'
 import {
   type Bullet,
   type CarriedGun,
+  type Difficulty,
   DifficultyCard,
   type FridgePrize,
   Lesson,
@@ -40,7 +41,6 @@ import {
   openExitIn,
   startingLevel,
   startingLevelFor,
-  tileCenter,
 } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
 import {
@@ -49,6 +49,7 @@ import {
   SLOT_IDS,
   roomSpotsOf,
 } from '../world/level/plan'
+import { tileCenter } from '../world/level/tileGrid'
 import {
   atSeatBy,
   focusOf,
@@ -383,6 +384,16 @@ export const onHard = (model: Model): Model =>
   modifyFields(model, {
     difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
   })
+
+// NOTE: the run on `difficulty`, for a rule read off the dial.
+export const onDifficulty: {
+  (difficulty: Difficulty): (model: Model) => Model
+  (model: Model, difficulty: Difficulty): Model
+} = Function.dual(2, (model: Model, difficulty: Difficulty): Model =>
+  modifyFields(model, {
+    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
+  }),
+)
 
 // NOTE: data first when the Model leads: a Model is no array, zombies are.
 export const withActors: {
@@ -863,3 +874,9 @@ export const atOpenedCase: {
     CaseState.Opened({ by: focusSlotOf(model) }),
   ),
 )
+
+// NOTE: a root Dialog's state shown open, for a test that starts on it
+// without its show Command (`profileDialog: openedDialog`).
+export const openedDialog = (
+  dialog: Model['panelDialog'],
+): Model['panelDialog'] => modifyFields(dialog, { isOpen: () => true })

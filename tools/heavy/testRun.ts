@@ -15,9 +15,10 @@ import { Array, Clock, Config, Console, Effect, Option } from 'effect'
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { type LockHolder, formatLoad, testWorkers } from './decision'
+import { formatLoad, testWorkers } from './decision'
 import { GuardExit, makeContext, readBudget, runChild } from './guard'
 import { ensureLockDirectory, whileTesting } from './lock'
+import type { LockHolder } from './records'
 
 const FULL_FLAG = '--full'
 

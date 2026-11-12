@@ -1,6 +1,12 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 
 import {
+  type ClientNet,
+  arrivedOff,
+  emptyClientNet,
+  recordSample,
+} from './NetStats'
+import {
   type ClientFrame,
   type ClosedReason,
   MAX_RTT_MS,
@@ -101,6 +107,9 @@ export interface Stats {
   readonly stalls: number
   readonly longestStallMs: number
   readonly sinceMs: number
+  // NOTE: the run's network numbers for its summary, started afresh by
+  // `startRunTally` when a run starts in the room.
+  readonly net: ClientNet
 }
 
 export interface Session<W, Own> {
@@ -184,10 +193,13 @@ export const makeSession = <W, Own>(nowMs: number): Session<W, Own> => ({
     stalls: 0,
     longestStallMs: 0,
     sinceMs: nowMs,
+    net: emptyClientNet,
   },
 })
 
-// NOTE: a new socket. What it learns starts over; the counters do not.
+// NOTE: a new socket. What it learns starts over; the counters do not. A
+// link that had been made and dropped is a reconnect; another try while
+// still connecting is not.
 export const reconnecting: {
   <W, Own>(nowMs: number): (session: Session<W, Own>) => Session<W, Own>
   <W, Own>(session: Session<W, Own>, nowMs: number): Session<W, Own>
@@ -196,9 +208,28 @@ export const reconnecting: {
   <W, Own>(session: Session<W, Own>, nowMs: number): Session<W, Own> => ({
     ...makeSession<W, Own>(nowMs),
     rttMs: session.rttMs,
-    stats: session.stats,
+    stats:
+      session.phase._tag === 'Connecting'
+        ? session.stats
+        : {
+            ...session.stats,
+            net: {
+              ...session.stats.net,
+              reconnects: session.stats.net.reconnects + 1,
+            },
+          },
   }),
 )
+
+// NOTE: a run starts in the room (its Welcome at tick 0), so its network
+// numbers start from nothing: the lobby's pings and an earlier run in the
+// same room are not this run's.
+export const startRunTally = <W, Own>(
+  session: Session<W, Own>,
+): Session<W, Own> => ({
+  ...session,
+  stats: { ...session.stats, net: emptyClientNet },
+})
 
 // CLOCK
 
@@ -269,6 +300,9 @@ const keepRecent = <W>(
       ),
   })
 
+// NOTE: a move this small is rounding, not a correction.
+const CORRECTION_PX = 0.5
+
 // NOTE: the room's word on your player as of `tick`, with your inputs of
 // later ticks replayed on top.
 const reconcile = <W, Own>(
@@ -310,9 +344,16 @@ const reconcile = <W, Own>(
           shown: Option.some(shown),
           stats: {
             ...session.stats,
-            corrections: session.stats.corrections + (gap > 0.5 ? 1 : 0),
+            corrections:
+              session.stats.corrections + (gap > CORRECTION_PX ? 1 : 0),
             lastCorrectionPx: gap,
             maxCorrectionPx: Math.max(session.stats.maxCorrectionPx, gap),
+            net: {
+              ...session.stats.net,
+              corrections:
+                session.stats.net.corrections + (gap > CORRECTION_PX ? 1 : 0),
+              correctionMaxPx: Math.max(session.stats.net.correctionMaxPx, gap),
+            },
           },
         }
       },
@@ -492,6 +533,7 @@ export const receive: {
                 return {
                   ...heard,
                   rttMs,
+                  stats: withRttSample(heard.stats, sample),
                   pings: Array.filter(
                     heard.pings,
                     other => other.nonce !== pong.nonce,
@@ -627,6 +669,11 @@ export const tickInput: {
   },
 )
 
+const withRttSample = (stats: Stats, sampleMs: number): Stats => ({
+  ...stats,
+  net: { ...stats.net, rtt: recordSample(stats.net.rtt, sampleMs) },
+})
+
 // NOTE: the round trip comes from the socket's free ping (a text ping the
 // room's Durable Object answers by itself, never billed and never waking
 // it), not from a message the room is billed for. `sentMs` is when it went.
@@ -652,6 +699,7 @@ export const heardPong: {
       ...session,
       rttMs:
         session.rttMs === 0 ? sample : session.rttMs * 0.75 + sample * 0.25,
+      stats: withRttSample(session.stats, sample),
     }
   },
 )
@@ -670,7 +718,8 @@ const arrived = <W, Own>(
     }),
     onSome: last => {
       const expected = (tick - last.tick) * TICK_MS
-      const off = Math.abs(nowMs - last.atMs - expected)
+      const signedOff = nowMs - last.atMs - expected
+      const off = Math.abs(signedOff)
       const jitterMs = session.jitterMs + (off - session.jitterMs) * JITTER_EASE
       const target = Math.max(
         MIN_INTERPOLATION_MS,
@@ -682,6 +731,10 @@ const arrived = <W, Own>(
       return {
         ...session,
         jitterMs,
+        stats: {
+          ...session.stats,
+          net: arrivedOff(session.stats.net, signedOff),
+        },
         interpolationMs:
           session.interpolationMs +
           (target - session.interpolationMs) * DELAY_EASE,

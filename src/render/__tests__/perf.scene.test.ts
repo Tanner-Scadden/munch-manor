@@ -65,7 +65,7 @@ import { asVeteran } from '../../test/veteran'
 import { DROP_RULES } from '../../world/gear/powerups'
 import { TRAPS as TRAP_STATS } from '../../world/gear/traps'
 import { freshGun } from '../../world/gear/weapons'
-import { DOOR_IDS, openExitIn, startingLevelFor } from '../../world/level/arena'
+import { openExitIn, startingLevelFor } from '../../world/level/arena'
 import { KITCHEN_EXIT } from '../../world/level/exits'
 import {
   CELLAR_ROOM_ID,
@@ -76,6 +76,7 @@ import {
   SECRET_EXIT,
   WEST_EXIT,
 } from '../../world/level/plan'
+import { DOOR_IDS } from '../../world/level/tileGrid'
 import { modifyFocus } from '../../world/party/party'
 import { rollSpawns } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'

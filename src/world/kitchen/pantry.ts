@@ -5,15 +5,14 @@ import { nextRandom } from '../../shared/prng'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { isMissingHeart, maxHpOf } from '../heroes/calling'
 import { grantKeys } from '../keys/keys'
+import { type Level, levelOf } from '../level/arena'
+import { boxAround } from '../level/exits'
 import {
   type Box,
   COVER_SYMBOLS,
-  type Level,
-  levelOf,
   tileBox,
   tilesWithSymbol,
-} from '../level/arena'
-import { boxAround } from '../level/exits'
+} from '../level/tileGrid'
 import { atSeat, forEachSeat, isStanding, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import {

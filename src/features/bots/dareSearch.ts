@@ -17,20 +17,21 @@ import {
 import { heldKeys } from '../../world/keys/keys'
 import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import {
-  type Box,
   type Level,
   TILE_PLAYER_SOLID,
-  circleTouchesBox,
-  distanceToBox,
-  hasLineOfSight,
   hasTileFlag,
-  isInsideRoom,
   levelOf,
-  tileIndex,
-  tileIndexAt,
-  tileOfIndex,
 } from '../../world/level/arena'
 import { exitPriceFor } from '../../world/level/exits'
+import {
+  type Box,
+  circleTouchesBox,
+  distanceToBox,
+  isInsideRoom,
+  tileIndex,
+  tileOfIndex,
+} from '../../world/level/tileGrid'
+import { hasLineOfSight, tileIndexAt } from '../../world/level/tileQueries'
 import type { World } from '../../world/schema/world'
 import { ExitId, Phase, type Vector } from '../../world/schema/worldSchema'
 import { stationBoxOf } from '../../world/stations/stationSpots'

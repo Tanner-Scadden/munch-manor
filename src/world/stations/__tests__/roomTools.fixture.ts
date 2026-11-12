@@ -4,15 +4,11 @@ import { modifyFields } from 'foldkit/struct'
 import type { Model } from '../../../app/model'
 import { PLAYER_RADIUS } from '../../../shared/constants'
 import { quietWave, withPlayerAt } from '../../../test/model.fixture'
-import {
-  type Box,
-  boxCenter,
-  isSolidAt,
-  levelOf,
-  openExitIn,
-} from '../../level/arena'
+import { levelOf, openExitIn } from '../../level/arena'
 import { KITCHEN_EXIT } from '../../level/exits'
 import { EAST_EXIT, FAR_EXIT, SECRET_EXIT, WEST_EXIT } from '../../level/plan'
+import { type Box, boxCenter } from '../../level/tileGrid'
+import { isSolidAt } from '../../level/tileQueries'
 import type { StationId, Vector } from '../../schema/worldSchema'
 import { stationBoxOf } from '../stationSpots'
 import { TOOL_RULES } from '../toolRules'

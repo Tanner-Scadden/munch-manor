@@ -22,14 +22,11 @@ import {
   shot,
   wait,
 } from './lib'
+import { RT, START, padStandIn, pressPad, setPad } from './padStandIn'
 import { attempt } from './page'
 
 const SCENE =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles,displayCase&wave=4&start=wave&elapsed=6000&crowd=6&god&seen=all'
-
-const BUTTON_COUNT = 17
-const RT = 7
-const START = 9
 
 const RunView = Schema.Struct({
   lastDevice: Schema.String,
@@ -45,87 +42,6 @@ const playerX = (view: RunView): number =>
   Array.match(view.seats, {
     onEmpty: () => 0,
     onNonEmpty: ([first]) => first.player.x,
-  })
-
-// NOTE: runs in the page before the game's modules: a controller in slot 0
-// read off `window.__pad`, with a rumble motor that counts its rumbles.
-const padStandIn = () => {
-  window.__pad = {
-    isPlugged: true,
-    axes: [0, 0, 0, 0],
-    buttons: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  }
-  window.__rumbles = 0
-  const actuator = {
-    playEffect: () => {
-      window.__rumbles = (window.__rumbles ?? 0) + 1
-      return Promise.resolve('complete')
-    },
-  }
-  Object.defineProperty(navigator, 'getGamepads', {
-    value: () => {
-      const pad = window.__pad
-      if (pad === undefined || !pad.isPlugged) {
-        return [null]
-      }
-      const buttons = []
-      for (const value of pad.buttons) {
-        buttons.push({ value, pressed: value > 0.5, touched: value > 0 })
-      }
-      return [
-        {
-          index: 0,
-          id: 'Audit pad (standard)',
-          connected: true,
-          mapping: 'standard',
-          timestamp: 0,
-          axes: pad.axes,
-          buttons,
-          vibrationActuator: actuator,
-        },
-      ]
-    },
-  })
-}
-
-type StandInPad = {
-  isPlugged: boolean
-  axes: Array<number>
-  buttons: Array<number>
-}
-
-type Hold = Readonly<{
-  axes?: ReadonlyArray<number>
-  held?: ReadonlyArray<number>
-  isPlugged?: boolean
-}>
-
-const setPad = (
-  page: Page,
-  { axes = [0, 0, 0, 0], held = [], isPlugged = true }: Hold,
-) =>
-  attempt(() =>
-    page.evaluate(
-      (pad: StandInPad) => {
-        window.__pad = pad
-      },
-      {
-        isPlugged,
-        axes: [...axes],
-        buttons: Array.makeBy(BUTTON_COUNT, position =>
-          Array.contains(held, position) ? 1 : 0,
-        ),
-      },
-    ),
-  )
-
-// NOTE: a button pressed and let go, as a thumb does, a few frames each.
-const pressPad = (page: Page, button: number) =>
-  Effect.gen(function* () {
-    yield* setPad(page, { held: [button] })
-    yield* wait(120)
-    yield* setPad(page, {})
-    yield* wait(120)
   })
 
 const runView = (page: Page) => modelAs(page, RunView)
@@ -153,7 +69,7 @@ runHarnessAudit(
       `a resting pad took the device (${resting.lastDevice})`,
     )
 
-    yield* setPad(page, { axes: [1, 0, 0, 0] })
+    yield* setPad({ page, axes: [1, 0, 0, 0] })
     yield* wait(500)
     const walked = yield* runView(page)
     check(
@@ -165,7 +81,7 @@ runHarnessAudit(
       `the left stick did not walk right (${playerX(resting)} to ${playerX(walked)})`,
     )
 
-    yield* setPad(page, { axes: [0, 0, 0, -1], held: [RT] })
+    yield* setPad({ page, axes: [0, 0, 0, -1], held: [RT] })
     yield* wait(400)
     const firing = yield* runView(page)
     check(
@@ -173,10 +89,10 @@ runHarnessAudit(
       'the right trigger fired nothing',
     )
     yield* shot(page, `pad-${tag}-${viewport.name}-firing`)
-    yield* setPad(page, {})
+    yield* setPad({ page })
     yield* wait(150)
 
-    yield* pressPad(page, START)
+    yield* pressPad({ page, button: START })
     const paused = yield* runView(page)
     check(
       paused.phase._tag === 'Paused',
@@ -184,16 +100,16 @@ runHarnessAudit(
     )
     yield* shot(page, `pad-${tag}-${viewport.name}-paused`)
 
-    yield* pressPad(page, START)
+    yield* pressPad({ page, button: START })
     const resumed = yield* runView(page)
     check(
       resumed.phase._tag === 'Wave',
       `Start did not resume (${resumed.phase._tag})`,
     )
 
-    yield* setPad(page, { axes: [1, 0, 0, 0] })
+    yield* setPad({ page, axes: [1, 0, 0, 0] })
     yield* wait(150)
-    yield* setPad(page, { isPlugged: false })
+    yield* setPad({ page, isPlugged: false })
     yield* wait(300)
     const unplugged = yield* runView(page)
     check(

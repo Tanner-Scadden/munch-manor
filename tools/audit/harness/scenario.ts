@@ -2,7 +2,7 @@
 // around it, from the home menu's state to the fridge, the planks, sync,
 // and the look, then co-op staged over it.
 
-import { Array, Option, Record } from 'effect'
+import { Array, Option, Record, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -37,13 +37,14 @@ import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
-import { levelOf, tileCenter } from '@game/world/level/arena'
+import { levelOf } from '@game/world/level/arena'
 import {
   ARRANGEMENTS,
   CHANDELIER_DROP,
   STACK_DROPS,
   roomSpotsOf,
 } from '@game/world/level/plan'
+import { tileCenter } from '@game/world/level/tileGrid'
 import { wakeRoom } from '@game/world/level/wakeUp'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
@@ -305,7 +306,21 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (config.darefound > 0) {
     model = withDareFound(model, config.darefound)
   }
-  const { pocket, pocketfold } = config
+  const { pocket, pocketfold, dareopen } = config
+  if (dareopen !== undefined) {
+    const found = Array.filterMap(dareCardOf(model), ({ kind, isFound }) =>
+      isFound ? Result.succeed(kind) : Result.fail(undefined),
+    )
+    const shown = Array.take(found, config.satchel)
+    model = modifyFields(model, {
+      pocketCard: () =>
+        PocketCard.Opened({
+          ageMs: dareopen,
+          fresh: Array.drop(found, config.satchel),
+        }),
+      dareSatchel: () => shown,
+    })
+  }
   if (pocket !== undefined) {
     model = modifyFields(model, {
       pocketCard: () => PocketCard.Reading({ ageMs: pocket }),

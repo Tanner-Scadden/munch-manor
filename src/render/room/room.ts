@@ -13,16 +13,12 @@ import {
 import { TILE_SIZE } from '../../shared/constants'
 import { gapBoxOf, isChandelierDown } from '../../world/dining/chandelier'
 import {
-  type Box as ArenaBox,
-  COVER_SYMBOLS,
-  DOOR_SYMBOLS,
   type Exit,
   type Level,
   type Room,
   levelFor,
   levelOf,
   maybeExit,
-  tilesWithSymbol,
 } from '../../world/level/arena'
 import {
   CELLAR_ROOM_ID,
@@ -32,6 +28,12 @@ import {
   PARLOUR_ROOM_ID,
   SECRET_EXIT,
 } from '../../world/level/plan'
+import {
+  type Box as ArenaBox,
+  COVER_SYMBOLS,
+  DOOR_SYMBOLS,
+  tilesWithSymbol,
+} from '../../world/level/tileGrid'
 import { secretShelfOf } from '../../world/library/secretShelf'
 import type { ExitId } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/world'

@@ -16,15 +16,14 @@ import {
   ovenBoxesOf,
   ovensOf,
 } from '../../world/kitchen/kitchen'
+import { type Level, levelOf } from '../../world/level/arena'
+import { maybePadlockedExit } from '../../world/level/exits'
 import {
-  type Level,
   SOUP_SYMBOL,
   type Tile,
-  levelOf,
   symbolAt,
   tilesWithSymbol,
-} from '../../world/level/arena'
-import { maybePadlockedExit } from '../../world/level/exits'
+} from '../../world/level/tileGrid'
 import type { World } from '../../world/schema/world'
 import { Oven } from '../../world/schema/worldSchema'
 import { pixelArt, rect } from '../drawing'

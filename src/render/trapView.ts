@@ -29,7 +29,8 @@ import {
   trapCenter,
 } from '../world/gear/traps'
 import { WEAPONS } from '../world/gear/weapons'
-import { type Box, type Level, boxCenter, levelOf } from '../world/level/arena'
+import { type Level, levelOf } from '../world/level/arena'
+import { type Box, boxCenter } from '../world/level/tileGrid'
 import { focusOf, focusSlotOf } from '../world/party/party'
 import type { DoorId, Vector } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'

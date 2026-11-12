@@ -2,8 +2,11 @@ import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
 import { GunSlot } from '../world/schema/worldSchema'
+import { PadDirection } from './gamepad'
 import {
   Gamepad,
+  PadClick,
+  PadScope,
   PointerDevice,
   SurfaceRectangle,
   TouchControls,
@@ -47,16 +50,21 @@ export const inputCases = {
   PolledGamepad: Gamepad.fields,
   DisconnectedGamepad: { index: Schema.Finite },
   CompletedRumble: {},
+  RepeatedPadDirection: { direction: PadDirection },
+  ClickedPadFocus: { scope: PadScope, outcome: PadClick },
+  CompletedPadMenu: {},
 }
 export const InputMessage = defineMessageUnion(inputCases)
 
 export type PressedHudSlot = typeof InputMessage.PressedHudSlot.Type
 export type PolledGamepad = typeof InputMessage.PolledGamepad.Type
 export type DisconnectedGamepad = typeof InputMessage.DisconnectedGamepad.Type
+export type RepeatedPadDirection = typeof InputMessage.RepeatedPadDirection.Type
 
 // NOTE: the run's buttons: the touch HUD's slots, reload, MEDIC, traps,
 // READY, the hold-to-buy button, and pause. Each goes to
-// the room in an online run (orInRun, src/app/update/coopRun.ts).
+// the room in an online run (orInRun, src/app/update/coopRun.ts), but for
+// the HUD's dare list, which opens the dare card on this client alone.
 export const runButtonCases = {
   PressedHoldButton: { pointerId: Schema.Finite },
   ClickedPauseButton: {},
@@ -68,6 +76,7 @@ export const runButtonCases = {
   ClickedMedicButton: {},
   ClickedPlaceTrapButton: {},
   ClickedNextTrapButton: {},
+  ClickedDareList: {},
 }
 export const RunButtonMessage = defineMessageUnion(runButtonCases)
 export type RunButtonMessage = typeof RunButtonMessage.Type

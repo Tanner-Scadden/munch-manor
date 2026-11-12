@@ -1,6 +1,7 @@
 import { Option, Schema } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
+import { NetStats } from '@munch/netcode'
 
 import {
   AudioState,
@@ -66,7 +67,14 @@ import {
 } from '../platform/playerSync'
 import { RecordUnlock, RunRecorder } from '../platform/recording'
 import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
-import { Decal, Particle, TellWatch, noTellWatch } from '../render/renderSchema'
+import {
+  ActionWatch,
+  Decal,
+  Particle,
+  TellWatch,
+  noActionWatch,
+  noTellWatch,
+} from '../render/renderSchema'
 import { DEFAULT_SEED } from '../shared/constants'
 import {
   Appearance,
@@ -87,6 +95,7 @@ import {
   ShareStatsSetting,
   SoundSetting,
 } from '../shared/playerData'
+import { DareKind } from '../world/dare/dareSchema'
 import { rollCases } from '../world/feats/cases'
 import { noRank } from '../world/heroes/rank'
 import { startingLevel } from '../world/level/arena'
@@ -137,6 +146,7 @@ export const Model = Schema.Struct({
   decals: Schema.Array(Decal),
   dustCooldownMs: Schema.Finite,
   tellWatch: TellWatch,
+  actionWatch: ActionWatch,
   shake: Shake,
   popups: Schema.Array(Popup),
   streak: Streak,
@@ -153,6 +163,9 @@ export const Model = Schema.Struct({
   introSeen: SavedTrapHint,
   introSkip: IntroSkip,
   pocketCard: PocketCard,
+  // NOTE: the dare's things the satchel on the opened card has shown, so
+  // the ones found since drop in (src/features/dare/pocketCard.ts).
+  dareSatchel: Schema.Array(DareKind),
   caseCard: CaseCard,
   kitchenCall: KitchenCall,
   dareHint: DareHint,
@@ -247,6 +260,10 @@ export const Model = Schema.Struct({
   // NOTE: the online co-op run's key, the same on every client in it, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeCrewRunKey: Schema.Option(Schema.String),
+  // NOTE: the online co-op run's network numbers as this client measured
+  // them (packages/netcode NetStats.ts), copied from the room each frame and
+  // kept with the run so its summary has them after the room is gone.
+  maybeRunNet: Schema.Option(NetStats.ClientNet),
   loading: Loading,
   saveStatus: SaveStatus,
   syncState: SyncState,
@@ -320,6 +337,7 @@ export const initialModel: OwnModel = {
   decals: [],
   dustCooldownMs: 0,
   tellWatch: noTellWatch,
+  actionWatch: noActionWatch,
   nextEntityId: 0,
   fridge: shutFridge,
   pantry: barePantry,
@@ -351,6 +369,7 @@ export const initialModel: OwnModel = {
   introSeen: 'Unseen',
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),
+  dareSatchel: [],
   caseCard: CaseCard.Hidden(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   dareHint: quietDareHint,
@@ -424,6 +443,7 @@ export const initialModel: OwnModel = {
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),
   maybeCrewRunKey: Option.none(),
+  maybeRunNet: Option.none(),
   loading: Loading.Loaded(),
   saveStatus: 'Unread',
   syncState: SyncState.LocalOnly(),

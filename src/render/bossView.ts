@@ -7,7 +7,8 @@ import { group } from '../art/sprite'
 import { BOSS_ICON } from '../art/sprites/zombies'
 import type { HintBand } from '../domain/clientSchema'
 import { VIEW_WIDTH } from '../shared/constants'
-import { type Level, findStrike, levelOf } from '../world/level/arena'
+import { type Level, levelOf } from '../world/level/arena'
+import { findStrike } from '../world/level/tileQueries'
 import {
   type BossAttack,
   BossMove,

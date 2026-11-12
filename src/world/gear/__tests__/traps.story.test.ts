@@ -48,13 +48,9 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import {
-  MANOR,
-  RATTLES_BOX,
-  doorSpawnPoint,
-  isInsideRoomAt,
-} from '../../level/arena'
+import { MANOR, RATTLES_BOX } from '../../level/arena'
 import { distanceAt, flowFieldToward } from '../../level/pathing'
+import { doorSpawnPoint, isInsideRoomAt } from '../../level/tileQueries'
 import { focusOf, modifyFocus } from '../../party/party'
 import { scoreOf } from '../../run/stats'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../../zombies/zombies'

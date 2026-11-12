@@ -1,4 +1,4 @@
-import { Array, Equal, Function, Option, String, pipe } from 'effect'
+import { Array, Equal, Function, Option, Schema, String, pipe } from 'effect'
 
 import type { Vector } from '../world/schema/entitySchema'
 import {
@@ -46,6 +46,7 @@ export const PAD_B: PadCode = 'GamepadB'
 export const PAD_X: PadCode = 'GamepadX'
 export const PAD_Y: PadCode = 'GamepadY'
 export const PAD_LB: PadCode = 'GamepadLB'
+export const PAD_RB: PadCode = 'GamepadRB'
 export const PAD_LT: PadCode = 'GamepadLT'
 const PAD_RT: PadCode = 'GamepadRT'
 export const PAD_SELECT: PadCode = 'GamepadSelect'
@@ -257,3 +258,74 @@ export const isPadStirred = (pad: Gamepad): boolean =>
   Array.isReadonlyArrayNonEmpty(heldCodes(pad)) ||
   vectorLength(leftStick(pad)) > 0 ||
   vectorLength(rightStick(pad)) > 0
+
+// MENUS
+
+// NOTE: where the d-pad or the left stick points a menu's focus.
+export const PadDirection = Schema.Literals(['Up', 'Down', 'Left', 'Right'])
+export type PadDirection = typeof PadDirection.Type
+
+// NOTE: a menu takes the stick as a flick: past this, it points one way,
+// the longer axis's, as a d-pad press does.
+const MENU_FLICK = 0.5
+
+// NOTE: a held direction steps again after a beat, then quickly, as a held
+// arrow key repeats (the PadRepeat Subscription in src/app/subscriptions.ts).
+export const MENU_REPEAT_DELAY_MS = 400
+export const MENU_REPEAT_MS = 110
+
+const DPAD_DIRECTIONS: ReadonlyArray<readonly [PadCode, PadDirection]> = [
+  ['GamepadUp', 'Up'],
+  ['GamepadDown', 'Down'],
+  ['GamepadLeft', 'Left'],
+  ['GamepadRight', 'Right'],
+]
+
+const stickDirection = (stick: Vector): Option.Option<PadDirection> => {
+  if (vectorLength(stick) < MENU_FLICK) {
+    return Option.none()
+  } else if (Math.abs(stick.x) > Math.abs(stick.y)) {
+    return Option.some(stick.x > 0 ? 'Right' : 'Left')
+  } else {
+    return Option.some(stick.y > 0 ? 'Down' : 'Up')
+  }
+}
+
+// NOTE: the way a pad points a menu: a held d-pad button first, else the
+// left stick flicked past MENU_FLICK.
+export const padDirection = (pad: Gamepad): Option.Option<PadDirection> => {
+  const held = heldCodes(pad)
+  return pipe(
+    Array.findFirst(DPAD_DIRECTIONS, ([code]) => Array.contains(held, code)),
+    Option.map(([, direction]) => direction),
+    Option.orElse(() => stickDirection(leftStick(pad))),
+  )
+}
+
+// NOTE: the direction this poll newly points, if any: a d-pad press or a
+// flick that was not already pointing that way at the last poll.
+export const newDirection: {
+  (
+    after: Gamepad,
+  ): (maybeBefore: Option.Option<Gamepad>) => Option.Option<PadDirection>
+  (
+    maybeBefore: Option.Option<Gamepad>,
+    after: Gamepad,
+  ): Option.Option<PadDirection>
+} = Function.dual(
+  2,
+  (
+    maybeBefore: Option.Option<Gamepad>,
+    after: Gamepad,
+  ): Option.Option<PadDirection> => {
+    const maybeWas = pipe(
+      maybeBefore,
+      Option.filter(pad => pad.index === after.index),
+      Option.flatMap(padDirection),
+    )
+    return Option.filter(
+      padDirection(after),
+      direction => !Option.contains(maybeWas, direction),
+    )
+  },
+)

@@ -34,6 +34,12 @@ import {
 } from './update/home'
 import { CueMusic } from './update/music'
 import { UploadRecording } from './update/recording'
+import {
+  ClickPadFocus,
+  EscapePadDialog,
+  MovePadFocus,
+  StepPadTab,
+} from './update/padMenu'
 import { ApplyRotation } from './update/rotation'
 import { Rumble } from './update/rumble'
 import {
@@ -81,6 +87,10 @@ export const CommandsLayer = Layer.mergeAll(
   RegisterServiceWorker.layer,
   UpdateServiceWorker.layer,
   FocusHomeButton.layer,
+  MovePadFocus.layer,
+  ClickPadFocus.layer,
+  StepPadTab.layer,
+  EscapePadDialog.layer,
   FocusHandCard.layer,
   FocusEndMenuButton.layer,
   ClickSupportLink.layer,

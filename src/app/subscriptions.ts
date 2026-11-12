@@ -1,8 +1,15 @@
 import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
 import { Dom } from 'foldkit'
 
-import { maybeRoomOf } from '../domain/coopRoom'
-import { isSamePoll, pickPad } from '../input/gamepad'
+import { isRoomFrameDue } from '../domain/onlineRun'
+import {
+  MENU_REPEAT_DELAY_MS,
+  MENU_REPEAT_MS,
+  type PadDirection,
+  isSamePoll,
+  padDirection,
+  pickPad,
+} from '../input/gamepad'
 import { isTrackingPointer } from '../input/input'
 import type { Gamepad } from '../input/inputSchema'
 import {
@@ -10,7 +17,11 @@ import {
   isGrabbedKeyUp,
   isLetterKeyCode,
 } from '../input/keyGrab'
-import type { DisconnectedGamepad, PolledGamepad } from '../input/message'
+import type {
+  DisconnectedGamepad,
+  PolledGamepad,
+  RepeatedPadDirection,
+} from '../input/message'
 import { InstallPrompt } from '../platform/install'
 import { StoreEvent } from '../platform/playerSync'
 import { PlayerStore } from '../platform/store'
@@ -20,6 +31,7 @@ import {
   isCheckingForUpdates,
   isUpdateCheckWindow,
 } from '../platform/version'
+import { DARE_LIST_BUTTON_CLASS } from '../screens/game/dareListButton'
 import { isRunUnderway } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
 import { makeSubscriptions } from './definition'
@@ -38,6 +50,7 @@ import {
   type TickedFrame,
 } from './message'
 import type { Model } from './model'
+import { isPadMenuUp } from './update/padMenu'
 import { isScreenAnimated } from './update/run'
 
 const isFrameActive = (model: Model): boolean =>
@@ -129,10 +142,18 @@ export const isKeptFromBrowser = (keyDown: KeyDown): boolean =>
     Array.contains(BROWSER_DEFAULT_KEYS, keyDown.code)) &&
   !isLeftToPage(keyDown)
 
+// NOTE: Tab opens and puts away the dare card while the HUD's dare list
+// is there to open (src/screens/game/dareListButton.ts), so then it never
+// moves the page's focus as well. Anywhere else Tab is the browser's.
+const isDareListTab = (event: KeyboardEvent): boolean =>
+  event.code === 'Tab' &&
+  !isLeftToPage(event) &&
+  document.querySelector(`.${DARE_LIST_BUTTON_CLASS}`) !== null
+
 const keyDownMessage = (
   event: KeyboardEvent,
 ): Option.Option<KeyDownMessage> => {
-  if (isKeptFromBrowser(event)) {
+  if (isKeptFromBrowser(event) || isDareListTab(event)) {
     event.preventDefault()
   }
   return maybeKeyDownMessage(event)
@@ -415,6 +436,48 @@ const gamepadMessages = Stream.callback<GamepadMessage>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 )
 
+// NOTE: a direction held on the pad while a menu is up steps again, as a
+// held arrow key repeats: first after MENU_REPEAT_DELAY_MS, then every
+// MENU_REPEAT_MS. The first step is the poll's own (newDirection in
+// src/input/gamepad.ts); this sends only the repeats, so a pad resting or
+// pointing nowhere sends nothing.
+const padRepeats = Stream.callback<RepeatedPadDirection>(queue =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const state: {
+        frameId: number
+        maybeHeld: Option.Option<PadDirection>
+        nextAtMs: number
+      } = { frameId: 0, maybeHeld: Option.none(), nextAtMs: 0 }
+      const poll = (nowMs: number): void => {
+        const maybeDirection = Option.flatMap(
+          pickPad(navigator.getGamepads(), Option.none()),
+          padDirection,
+        )
+        const isSame =
+          Option.isSome(maybeDirection) &&
+          Option.contains(state.maybeHeld, maybeDirection.value)
+        if (!isSame) {
+          state.maybeHeld = maybeDirection
+          state.nextAtMs = nowMs + MENU_REPEAT_DELAY_MS
+        } else if (nowMs >= state.nextAtMs) {
+          state.nextAtMs = nowMs + MENU_REPEAT_MS
+          Option.map(maybeDirection, direction =>
+            Queue.offerUnsafe(
+              queue,
+              Message.RepeatedPadDirection({ direction }),
+            ),
+          )
+        }
+        state.frameId = requestAnimationFrame(poll)
+      }
+      state.frameId = requestAnimationFrame(poll)
+      return state
+    }),
+    state => Effect.sync(() => cancelAnimationFrame(state.frameId)),
+  ).pipe(Effect.flatMap(() => Effect.never)),
+)
+
 const FrameActivity = Schema.Struct({ isActive: Schema.Boolean })
 
 // NOTE: the co-op room's frame clock, while its game is playing: the time
@@ -434,12 +497,6 @@ const roomFrameTimes: Stream.Stream<number> = Stream.callback<number>(queue =>
     state => Effect.sync(() => cancelAnimationFrame(state.frameId)),
   ).pipe(Effect.flatMap(() => Effect.never)),
 ).pipe(Stream.mapEffect(() => Clock.currentTimeMillis))
-
-const isRoomPlaying = (model: Model): boolean =>
-  Option.exists(
-    maybeRoomOf(model.coop),
-    room => room.session.phase._tag === 'Playing',
-  )
 
 export const subscriptions = makeSubscriptions(entry => ({
   playerSync: entry('PlayerSync', {
@@ -484,7 +541,7 @@ export const subscriptions = makeSubscriptions(entry => ({
     { isPlaying: Schema.Boolean },
     {
       messages: [Message.TickedRoomFrame],
-      modelToDependencies: model => ({ isPlaying: isRoomPlaying(model) }),
+      modelToDependencies: model => ({ isPlaying: isRoomFrameDue(model) }),
       handler: function* () {
         return ({ isPlaying }) =>
           isPlaying
@@ -502,6 +559,19 @@ export const subscriptions = makeSubscriptions(entry => ({
       return () => (hasGamepads() ? gamepadMessages : Stream.empty)
     },
   }),
+
+  padRepeat: entry(
+    'PadRepeat',
+    { isMenuUp: Schema.Boolean },
+    {
+      messages: [Message.RepeatedPadDirection],
+      modelToDependencies: model => ({ isMenuUp: isPadMenuUp(model) }),
+      handler: function* () {
+        return ({ isMenuUp }) =>
+          isMenuUp && hasGamepads() ? padRepeats : Stream.empty
+      },
+    },
+  ),
 
   keyboard: entry('Keyboard', {
     messages: [Message.PressedKey, Message.PressedMetaKey, Message.ReleasedKey],

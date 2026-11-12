@@ -10,6 +10,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { TutorialChoice } from '../shared/nameKeys'
 import { Appearance, Calling } from '../shared/playerData'
+import { DareKind } from '../world/dare/dareSchema'
 import { MillisNumber } from '../world/schema/wireNumber'
 import {
   DifficultyBests,
@@ -209,11 +210,14 @@ export type DifficultyCard = typeof DifficultyCard.Type
 
 // NOTE: the dare card in your pocket after the slam
 // (src/features/dare/pocketCard.ts): in the pocket, out and being read, or
-// folding itself into the HUD's dare card.
+// folding itself into the HUD's dare card; or Opened again from the HUD's
+// list, with its satchel, where `fresh` are the things found since it was
+// last looked at, dropping in.
 export const PocketCard = defineTaggedUnion({
   Pocketed: {},
   Reading: { ageMs: Schema.Finite },
   Folding: { ageMs: Schema.Finite },
+  Opened: { ageMs: Schema.Finite, fresh: Schema.Array(DareKind) },
 })
 export type PocketCard = typeof PocketCard.Type
 

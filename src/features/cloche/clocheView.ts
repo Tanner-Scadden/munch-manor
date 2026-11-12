@@ -2,6 +2,7 @@ import { Function } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
+import { ROOM_ICONS } from '../../art/roomIcons'
 import {
   type Palette,
   type Sprite,
@@ -52,58 +53,6 @@ const PLATE: Sprite = spriteShapes(
   ['.kGGGGGGGGGk.', '..kkkkkkkkk..'],
   CLOCHE_PALETTE,
 )
-
-// NOTE: each room's icon: the parlour's hearth, the library's red book,
-// the cellar's bottle.
-const ROOM_ICONS: Readonly<Record<SlotRoomId, Sprite>> = {
-  Parlour: spriteShapes(
-    [
-      'kkkkkkkkk',
-      'kBBBBBBBk',
-      'kBkkkkkBk',
-      'kBkdydkBk',
-      'kBkyOykBk',
-      'kBkOROkBk',
-      'kBkRRRkBk',
-      'kkkkkkkkk',
-    ],
-    {
-      k: OUTLINE,
-      B: '#a0483c',
-      d: '#2a1a1a',
-      y: '#ffe066',
-      O: '#ff9a3c',
-      R: '#e8483c',
-    },
-  ),
-  Library: spriteShapes(
-    [
-      '.kkkkkkk.',
-      'kRRRRRRwk',
-      'kRyyyyRwk',
-      'kRRRRRRwk',
-      'kRRRRRRwk',
-      'kRyyyyRwk',
-      'kRRRRRRwk',
-      '.kkkkkkk.',
-    ],
-    { k: OUTLINE, R: '#a02a34', y: '#e0c070', w: '#f4f1de' },
-  ),
-  Cellar: spriteShapes(
-    [
-      '...kkk...',
-      '...kGk...',
-      '...kGk...',
-      '..kGGGk..',
-      '.kGgGGGk.',
-      '.kGgwwGk.',
-      '.kGgwwGk.',
-      '.kGGGGGk.',
-      '..kkkkk..',
-    ],
-    { k: OUTLINE, G: '#2e5a32', g: '#5e9a5a', w: '#e8e2cc' },
-  ),
-}
 
 // THE LIFT
 

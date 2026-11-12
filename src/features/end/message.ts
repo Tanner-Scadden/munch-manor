@@ -8,7 +8,7 @@ import { ShareOutcome, ShareSheet } from './share'
 export const endCases = {
   ClickedRetryButton: {},
   ClickedShareButton: {},
-  ClickedRunItBackButton: {},
+  ClickedPlayAgainButton: {},
   ClickedRoomLobbyButton: {},
   ClickedLeaveRoomButton: {},
   SettledShare: { outcome: ShareOutcome },

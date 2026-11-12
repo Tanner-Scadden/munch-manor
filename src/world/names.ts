@@ -361,3 +361,15 @@ export const DARE_NAMES: Readonly<Record<DareKind, string>> = {
   MusicBox: 'Music Box',
   ButlersBell: "Butler's Bell",
 }
+
+// NOTE: one line of the Munches' story each thing tells, on the dare card
+// opened from the HUD (src/features/dare/pocketCardView.ts) once it is in
+// the satchel: short, in the pixel font's capitals, from LORE.md.
+export const DARE_LINES: Readonly<Record<DareKind, string>> = {
+  GrandmasRecipe: 'SOUP FOR 200. STEP ONE: LOCK THE DOORS.',
+  SilverSpoon: "UNCLE CHUNK'S. STILL HAS TOOTH MARKS.",
+  ButlersBell: 'RINGS ITSELF AT 3 AM. NOBODY ANSWERS.',
+  MusicBox: 'WINDS ITSELF. ONLY KNOWS THE CONGA.',
+  FamilyPortrait: 'THE MUNCHES, SMILING. TOO MANY TEETH.',
+  GuestBookPage: '4,012 SIGNED IN. NOBODY SIGNED OUT.',
+}

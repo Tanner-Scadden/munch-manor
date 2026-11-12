@@ -2,14 +2,13 @@ import { Array, Function, Option } from 'effect'
 
 import { isStandableTile } from '../../../src/features/bots/dareSearch'
 import { PLAYER_RADIUS } from '../../../src/shared/constants'
+import type { Level } from '../../../src/world/level/arena'
 import {
-  type Level,
-  hasClearPath,
   tileCenter,
   tileIndex,
-  tileIndexAt,
   tileOfIndex,
-} from '../../../src/world/level/arena'
+} from '../../../src/world/level/tileGrid'
+import { hasClearPath, tileIndexAt } from '../../../src/world/level/tileQueries'
 import { type Vector } from './basics'
 
 // THE WAY THERE

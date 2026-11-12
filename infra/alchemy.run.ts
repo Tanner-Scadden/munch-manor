@@ -80,6 +80,23 @@ const RECORDINGS_PER_PLAYER_PER_MINUTE = 10
 // database is destroyed with its pull request anyway.
 const RETENTION_CRON = '17 4 * * *'
 
+// NOTE: Workers Logs for the API Worker, kept (persisted) so a co-op game's
+// end-of-game log (worker/gameRoom.ts, RoomGameEnded) can be read after
+// the fact, every invocation sampled while traffic is small. The free plan
+// keeps 3 days and 200,000 events a day; Workers Paid 7 days and 20
+// million a month. Lower `headSamplingRate` if traffic grows past that.
+// See "Reading the room's logs" in PLATFORM.md.
+const API_OBSERVABILITY = {
+  enabled: true,
+  headSamplingRate: 1,
+  logs: {
+    enabled: true,
+    persist: true,
+    invocationLogs: true,
+    headSamplingRate: 1,
+  },
+}
+
 // NOTE: the co-op dev page (the stand-in world in a room) is a test tool:
 // every stage but production gets it.
 const hasDevPage = (stage: string): boolean => stage !== PRODUCTION_STAGE
@@ -112,6 +129,7 @@ const Analytics = Effect.gen(function* () {
     ...apiDomain(stage),
     main: path.resolve(import.meta.dirname, 'worker/main.ts'),
     crons: stage === PRODUCTION_STAGE ? [RETENTION_CRON] : [],
+    observability: API_OBSERVABILITY,
     env: {
       DB: database,
       ADDRESS_SALT: addressSalt,

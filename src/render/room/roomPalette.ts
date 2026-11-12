@@ -2,13 +2,13 @@ import { Array, Function, Option, Record, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { nextRandom } from '../../shared/prng'
+import type { Level } from '../../world/level/arena'
 import {
   COVER_SYMBOLS,
   type CoverKind,
-  type Level,
   type Tile,
   tilesWithSymbol,
-} from '../../world/level/arena'
+} from '../../world/level/tileGrid'
 
 // NOTE: a level's room is drawn once, as one sprite image, on the cached
 // floor canvas. Only the hearth's flames move, and they are one small image

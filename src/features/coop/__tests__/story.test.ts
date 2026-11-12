@@ -706,6 +706,47 @@ describe('the room', () => {
   )
 
   it.effect(
+    "a run's network numbers count a reconnect and its pings, and a new run starts them afresh",
+    () => {
+      const ponged = (sentMs: number, atMs: number) =>
+        Story.message(
+          Message.ReceivedRoomEvent({
+            event: RoomEvent.cases.Ponged.make({ sentMs, atMs }),
+            atMs,
+          }),
+        )
+      const connecting = (atMs: number) =>
+        Story.message(
+          Message.ReceivedRoomEvent({
+            event: RoomEvent.cases.Connecting.make({ attempt: 0 }),
+            atMs,
+          }),
+        )
+      return Story.story(
+        COOP,
+        Story.given(inRoom(0)),
+        online,
+        ponged(1100, 1180),
+        connecting(2000),
+        welcome(90, 2400),
+        Story.message(received(snapshotFrame(90), 2410)),
+        ponged(2500, 2560),
+        Story.model(current => {
+          const { net } = roomOf(current).session.stats
+          expect(net.reconnects).toBe(1)
+          expect(net.rtt.total).toBe(2)
+        }),
+        welcome(0, 9000),
+        Story.model(current => {
+          const { net } = roomOf(current).session.stats
+          expect(net.reconnects).toBe(0)
+          expect(net.rtt.total).toBe(0)
+        }),
+      )
+    },
+  )
+
+  it.effect(
     'a Delta that cannot apply asks for a new socket once, and its Snapshot brings the picture back',
     () => {
       const orphan = (tick: number) =>

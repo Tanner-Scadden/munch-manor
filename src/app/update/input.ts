@@ -24,8 +24,10 @@ import type { Model } from '../model'
 import { orInRun } from './coopRun'
 import { skipFromPointer } from './end'
 import { skipIntro } from './intro'
+import { padMenuSteps } from './padMenu'
 import {
   asAllowedPress,
+  clickDareList,
   clickMedic,
   clickNextTrap,
   clickPause,
@@ -162,19 +164,19 @@ export const inputHandlers = defineHandlers({
     ),
   }),
 
-  PolledGamepad: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(
-        orInRun(
-          message,
-          polledPad({
-            index: message.index,
-            axes: message.axes,
-            buttons: message.buttons,
-          }),
-        ),
-      ),
-    ]),
+  // NOTE: the pad's own presses first, then its menu presses, routed by
+  // the menu that was up before this poll (src/app/update/padMenu.ts).
+  PolledGamepad: (model, message) => {
+    const pad = {
+      index: message.index,
+      axes: message.axes,
+      buttons: message.buttons,
+    }
+    return Update.combineSteps(model, [
+      makeStep(orInRun(message, polledPad(pad))),
+      ...padMenuSteps({ model, pad }),
+    ])
+  },
 
   DisconnectedGamepad: (model, message) =>
     Update.combineSteps(model, [
@@ -235,6 +237,10 @@ export const runButtonHandlers = defineHandlers({
 
   ClickedNextTrapButton: (model, message) =>
     Update.combineSteps(model, [makeStep(orInRun(message, clickNextTrap))]),
+
+  // NOTE: the HUD's dare list opens the dare card again, alone or online:
+  // this client's own (src/app/update/play.ts).
+  ClickedDareList: model => Update.combineSteps(model, [clickDareList]),
 })
 
 // NOTE: the page's focus, visibility, and a restore from the cache

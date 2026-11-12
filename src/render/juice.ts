@@ -27,7 +27,7 @@ import {
 import { type Seeded, between, generateMany, nextRandom } from '../shared/prng'
 import { TRAPS } from '../world/gear/traps'
 import { WEAPONS } from '../world/gear/weapons'
-import { DOOR_OUTWARD } from '../world/level/arena'
+import { DOOR_OUTWARD } from '../world/level/tileGrid'
 import {
   type Blast,
   GameEvent,

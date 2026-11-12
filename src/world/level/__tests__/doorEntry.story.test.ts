@@ -12,8 +12,9 @@ import {
   withPlayerAt,
 } from '../../../test/model.fixture'
 import { APPLICATION, recordTicks, zombieAt } from '../../../test/testing'
-import { doorSpawnPoint, isInsideRoomAt, levelOf, openExitIn } from '../arena'
+import { levelOf, openExitIn } from '../arena'
 import { KITCHEN_EXIT } from '../exits'
+import { doorSpawnPoint, isInsideRoomAt } from '../tileQueries'
 
 // NOTE: the kitchen open, the player inside its west window, and a zombie
 // due at the dining room's west door just below it. The flow field's way in

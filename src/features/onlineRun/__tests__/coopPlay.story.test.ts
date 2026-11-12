@@ -7,7 +7,6 @@ import { describe, expect, it, test } from '@effect/vitest'
 import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, Lesson, type Model } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
 import { PlaySound } from '../../../app/update/sound'
 import { type SoundEffect, positionVariation } from '../../../audio/audio'
 import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
@@ -18,7 +17,6 @@ import {
   checkPendingSounds,
   press,
 } from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
 import { heldKeys } from '../../../world/keys/keys'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -47,22 +45,12 @@ import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom, SendRoomFrames } from '../../coop/update'
 import { UNFOLD_MS, isPocketCardBlocking } from '../../dare/pocketCard'
 import { maybeIntroFrameOf } from '../../intro/introBeat'
+import { OWN_SLOT, graduated, roomWorld } from './onlineRun.fixture'
 
 // An online co-op run in the root (src/app/update/coopPlay.ts): the room's World drawn
 // as the game, this player's own seat as the player, presses sent to the
 // room as seat actions, the crew's one key ring, and no pause. The room and its network are the co-op Block's, faked here
 // with a session already holding a World.
-
-const graduated: Model = modifyFields(asVeteran(initialModel), {
-  lessons: lessons =>
-    modifyFields(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
-})
-
-const OWN_SLOT = 1
-
-const roomWorld = pastArrival(
-  startRoomWorld([0, OWN_SLOT], 7, DEFAULT_ROOM_SETTINGS),
-)
 
 const inRun = (world: RoomWorld, isAnchored = false): Model =>
   modifyFields(graduated, {
@@ -544,6 +532,30 @@ describe('an online co-op run', () => {
           actionCodeOf(SeatAction.Draw({ slot: 'First' })),
           actionCodeOf(SeatAction.Melee()),
         ])
+      }),
+    ),
+  )
+
+  // NOTE: the HUD's list opens the dare card over the live room: a key
+  // past its gate puts it away and still goes to the room.
+  it.effect('Tab opens the dare card, and the room never waits for it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inRun(roomWorld)),
+      Story.message(roomFrame(100)),
+      press('Tab'),
+      Story.model(current => {
+        expect(current.pocketCard._tag).toBe('Opened')
+        expect(isPocketCardBlocking(current)).toBe(false)
+      }),
+      ...Array.makeBy(4, index => Story.message(roomFrame(150 + index * 50))),
+      Story.model(current => {
+        expect(current.pocketCard._tag).toBe('Opened')
+      }),
+      press('Enter'),
+      Story.model(current => {
+        expect(current.pocketCard._tag).toBe('Pocketed')
+        expect(queuedOf(current)).toEqual([actionCodeOf(SeatAction.Ready())])
       }),
     ),
   )

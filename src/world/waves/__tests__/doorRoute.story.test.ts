@@ -21,13 +21,9 @@ import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
 import { APPLICATION, ticks } from '../../../test/testing'
 import { TRAPS, trapBox } from '../../gear/traps'
-import {
-  MANOR,
-  distanceToBox,
-  isInsideRoomAt,
-  levelOf,
-  nearestDoor,
-} from '../../level/arena'
+import { MANOR, levelOf } from '../../level/arena'
+import { distanceToBox } from '../../level/tileGrid'
+import { isInsideRoomAt, nearestDoor } from '../../level/tileQueries'
 import { modifyFocus } from '../../party/party'
 import { drawSurfacingSpot } from '../../zombies/crawler'
 import { doorCounts } from '../endlessWaves'
