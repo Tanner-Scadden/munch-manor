@@ -22,7 +22,9 @@ import {
   LoadFonts,
   LoadSave,
   LoadStyles,
+  ReadRecordUnlock,
   ReadUpdateMarker,
+  StartRecordingQueue,
   StartSummaryQueue,
 } from '../app/boot'
 import { ApplicationBlock } from '../app/definition'
@@ -590,6 +592,8 @@ export const finishSplash = Story.steps(
 export const bootWithoutVisitId = Story.Command.resolveAll(
   [GenerateSeed(), Message.CompletedGenerateSeed({ seed: 1 })],
   [StartSummaryQueue(), Message.CompletedStartSummaryQueue()],
+  [ReadRecordUnlock(), Message.CompletedReadRecordUnlock({ unlock: 'Locked' })],
+  [StartRecordingQueue(), Message.CompletedStartRecordingQueue()],
   [
     DetectInputDevice(),
     Message.CompletedDetectInputDevice({ touchControls: 'Blocked' }),

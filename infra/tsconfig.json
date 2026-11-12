@@ -15,6 +15,7 @@
     "../src/platform/analytics.ts",
     "../src/shared/playerData.ts",
     "../src/platform/playerScope.ts",
+    "../src/platform/recordingApi.ts",
     "../tools/analytics/queries.ts"
   ]
 }

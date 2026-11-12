@@ -6,6 +6,7 @@ import * as Option from 'effect/Option'
 import type {
   D1Database,
   ExecutionContext,
+  R2Bucket,
   RateLimit,
   ScheduledController,
 } from '@cloudflare/workers-types'
@@ -17,6 +18,7 @@ import {
   deleteExpiredRuns,
   makeHandler,
 } from './api.ts'
+import { routeRecording } from './recordings.ts'
 import { routeRoom } from './roomRoutes.ts'
 import { type SyncBindings, routeSync } from './sync.ts'
 
@@ -30,6 +32,8 @@ export type Bindings = SyncBindings &
     RUNS_BY_VISIT: RateLimit
     RUNS_BY_ADDRESS: RateLimit
     ADDRESS_SALT: string
+    RECORDINGS: R2Bucket
+    RECORDINGS_BY_PLAYER: RateLimit
   }>
 
 const servicesOf = (env: Bindings): WorkerServices => ({
@@ -61,12 +65,17 @@ const cleanUp = (env: Bindings, scheduledMs: number) =>
   )
 
 // NOTE: the edge. Each request runs one Effect: routeSync answers the /sync
-// paths, routeRoom the /room paths (co-op rooms), each with every failure
-// on them, and anything else goes to the analytics handler.
+// paths, routeRoom the /room paths (co-op rooms), routeRecording the
+// recorded runs' path, each with every failure on them, and anything else
+// goes to the analytics handler.
 const respond = (request: Request, env: Bindings) =>
   Effect.flatMap(
-    Effect.filterOrElse(routeSync(request, env), Option.isSome, () =>
-      routeRoom(request, env),
+    Effect.filterOrElse(
+      Effect.filterOrElse(routeSync(request, env), Option.isSome, () =>
+        routeRoom(request, env),
+      ),
+      Option.isSome,
+      () => routeRecording(request, env),
     ),
     Option.match({
       onSome: Effect.succeed,

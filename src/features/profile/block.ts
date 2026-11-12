@@ -12,10 +12,12 @@ import type {
   PlayerScopeStatus,
   SyncState,
 } from '../../platform/playerSync'
+import type { RecordUnlock } from '../../platform/recording'
 import { PlayerStore } from '../../platform/store'
 import type {
   CursorSetting,
   MusicSetting,
+  RecordRunsSetting,
   RotationSetting,
   RumbleSetting,
   ShakeSetting,
@@ -50,6 +52,8 @@ export type ViewInputs = Readonly<{
     rotation: RotationSetting
     rumble: RumbleSetting
     hasPad: boolean
+    recordRuns: RecordRunsSetting
+    recordUnlock: RecordUnlock
     shareStats: ShareStatsSetting
     screenFit: ScreenFit
     orientationLock: OrientationLock

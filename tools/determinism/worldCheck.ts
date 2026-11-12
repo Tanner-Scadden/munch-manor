@@ -76,11 +76,13 @@ const isRoomModule = (path: string): boolean =>
   ROOM_FOLDERS.test(path) && !String.includes('/__tests__/')(path)
 
 // NOTE: what infra's typecheck may see that a room may not carry: the
-// player scope the sync Worker serves and the run summary the analytics
-// Worker decodes (infra/tsconfig.json includes them).
+// player scope the sync Worker serves, the run summary the analytics
+// Worker decodes, and the recorded runs' endpoint it keeps in R2
+// (infra/tsconfig.json includes them).
 const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
   /^src\/platform\/playerScope\.ts$/,
   /^src\/platform\/analytics\.ts$/,
+  /^src\/platform\/recordingApi\.ts$/,
 ]
 
 const ALLOWED_PACKAGES: ReadonlyArray<RegExp> = [

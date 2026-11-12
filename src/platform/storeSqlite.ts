@@ -51,6 +51,7 @@ import {
   ChangedHome,
   ChangedName,
   ChangedOnboarding,
+  ChangedRecordRuns,
   ChangedRotation,
   ChangedRumble,
   ChangedSettings,
@@ -144,6 +145,16 @@ const PLAYER_MIGRATIONS = {
       body TEXT NOT NULL
     )`
   }),
+  // NOTE: recorded runs (src/platform/recording.ts) finished with no
+  // network, waiting to be sent, kept on this device alone like the
+  // summaries.
+  '0003_create_queued_recordings': Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    yield* sql`CREATE TABLE queued_recordings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      body TEXT NOT NULL
+    )`
+  }),
 }
 
 // NOTE: a long trip offline keeps this many runs. The oldest go first.
@@ -153,6 +164,14 @@ const QueuedSummaryRow = Schema.Struct({
   id: Schema.Finite,
   body: Schema.String,
 })
+
+// NOTE: a recorded run is far bigger than a summary, so a trip offline
+// keeps only the last few.
+const MAX_QUEUED_RECORDINGS = 4
+
+// NOTE: this device was opened with `?record=1`, so it shows RECORD MY RUNS.
+const RECORD_UNLOCK_KEY = 'record-unlock'
+const RECORD_UNLOCKED = 'Unlocked'
 
 const LEGACY_IMPORT_KEY = 'legacy-local-storage-import'
 const SYNC_SEED_KEY = 'sync-seed'
@@ -208,6 +227,7 @@ const saveOfRow = (
   seenUnlocks: row.seen_unlocks,
   rotation: row.rotation,
   rumble: row.rumble,
+  recordRuns: row.record_runs,
   name: row.name,
   calling: row.calling,
   boughtCosmetics: boughtCosmeticsOf(bought),
@@ -255,6 +275,16 @@ export interface PlayerDatabase {
     PlayerDatabaseError
   >
   readonly clearQueuedSummaries: Effect.Effect<void, PlayerDatabaseError>
+  readonly isRecordUnlocked: Effect.Effect<boolean, PlayerDatabaseError>
+  readonly unlockRecord: Effect.Effect<void, PlayerDatabaseError>
+  readonly queueRecording: (
+    body: string,
+  ) => Effect.Effect<void, PlayerDatabaseError>
+  readonly takeQueuedRecording: Effect.Effect<
+    Option.Option<string>,
+    PlayerDatabaseError
+  >
+  readonly clearQueuedRecordings: Effect.Effect<void, PlayerDatabaseError>
 }
 
 class PlayerDatabaseError extends Schema.TaggedError<
@@ -388,13 +418,31 @@ const markMeta = (client: SqliteClientService, key: string, value: string) =>
 
 // QUEUED SUMMARIES
 
-const queueSummaryRow = (client: SqliteClientService, body: string) =>
+// NOTE: a queue of bodies waiting for the network: the run summaries, and
+// the recorded runs.
+type QueueTable = Readonly<{ table: string; limit: number }>
+
+const SUMMARY_QUEUE: QueueTable = {
+  table: 'queued_summaries',
+  limit: MAX_QUEUED_SUMMARIES,
+}
+
+const RECORDING_QUEUE: QueueTable = {
+  table: 'queued_recordings',
+  limit: MAX_QUEUED_RECORDINGS,
+}
+
+const queueRow = (
+  client: SqliteClientService,
+  { table, limit }: QueueTable,
+  body: string,
+) =>
   pipe(
     Effect.all([
-      client.sql`INSERT INTO queued_summaries ${client.sql.insert({ body })}`,
-      client.sql`DELETE FROM queued_summaries WHERE id NOT IN (
-        SELECT id FROM queued_summaries ORDER BY id DESC
-        LIMIT ${MAX_QUEUED_SUMMARIES}
+      client.sql`INSERT INTO ${client.sql(table)} ${client.sql.insert({ body })}`,
+      client.sql`DELETE FROM ${client.sql(table)} WHERE id NOT IN (
+        SELECT id FROM ${client.sql(table)} ORDER BY id DESC
+        LIMIT ${limit}
       )`,
     ]),
     client.sql.withTransaction,
@@ -402,25 +450,32 @@ const queueSummaryRow = (client: SqliteClientService, body: string) =>
     Effect.mapError(toDatabaseError),
   )
 
-// NOTE: the oldest summary is deleted as it is taken, in one transaction, so
+// NOTE: the oldest body is deleted as it is taken, in one transaction, so
 // two tabs or two drains never send the same one twice.
-const takeSummaryRow = (client: SqliteClientService) =>
+const takeRow = (client: SqliteClientService, { table }: QueueTable) =>
   pipe(
     Effect.gen(function* () {
       const rows = yield* client.query(
         QueuedSummaryRow,
-        client.sql`SELECT id, body FROM queued_summaries ORDER BY id LIMIT 1`,
+        client.sql`SELECT id, body FROM ${client.sql(table)} ORDER BY id LIMIT 1`,
       )
       return yield* Option.match(Array.head(rows), {
         onNone: () => Effect.succeedNone,
         onSome: row =>
           Effect.as(
-            client.sql`DELETE FROM queued_summaries WHERE id = ${row.id}`,
+            client.sql`DELETE FROM ${client.sql(table)} WHERE id = ${row.id}`,
             Option.some(row.body),
           ),
       })
     }),
     client.sql.withTransaction,
+    Effect.mapError(toDatabaseError),
+  )
+
+const clearRows = (client: SqliteClientService, { table }: QueueTable) =>
+  pipe(
+    client.sql`DELETE FROM ${client.sql(table)}`,
+    Effect.asVoid,
     Effect.mapError(toDatabaseError),
   )
 
@@ -509,6 +564,8 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     ChangedRotation: ({ rotation }) =>
       replica.run(ChangedRotation, { rotation }),
     ChangedRumble: ({ rumble }) => replica.run(ChangedRumble, { rumble }),
+    ChangedRecordRuns: ({ recordRuns }) =>
+      replica.run(ChangedRecordRuns, { recordRuns }),
     ChangedName: ({ name }) => replica.run(ChangedName, { name }),
     ChangedAppearance: ({ appearance }) =>
       replica.run(ChangedAppearance, { appearance }),
@@ -802,13 +859,21 @@ export const makePlayerDatabase: {
         }),
         redeemLinkCode,
         maybeRoomAccess,
-        queueSummary: body => queueSummaryRow(client, body),
-        takeQueuedSummary: takeSummaryRow(client),
-        clearQueuedSummaries: pipe(
-          client.sql`DELETE FROM queued_summaries`,
+        queueSummary: body => queueRow(client, SUMMARY_QUEUE, body),
+        takeQueuedSummary: takeRow(client, SUMMARY_QUEUE),
+        clearQueuedSummaries: clearRows(client, SUMMARY_QUEUE),
+        isRecordUnlocked: Effect.mapBoth(readMeta(client, RECORD_UNLOCK_KEY), {
+          onSuccess: Option.exists(({ value }) => value === RECORD_UNLOCKED),
+          onFailure: toDatabaseError,
+        }),
+        unlockRecord: pipe(
+          markMeta(client, RECORD_UNLOCK_KEY, RECORD_UNLOCKED),
           Effect.asVoid,
           Effect.mapError(toDatabaseError),
         ),
+        queueRecording: body => queueRow(client, RECORDING_QUEUE, body),
+        takeQueuedRecording: takeRow(client, RECORDING_QUEUE),
+        clearQueuedRecordings: clearRows(client, RECORDING_QUEUE),
       }
     }),
 )

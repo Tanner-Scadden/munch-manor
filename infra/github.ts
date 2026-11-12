@@ -25,12 +25,14 @@ const REPOSITORY = 'munch-manor'
 // the secret to a short-lived preview Worker. Account Settings Read and
 // Workers Tail Read cover account lookups and `alchemy logs`. D1 Write
 // creates each stage's analytics database and applies its migrations.
+// Workers R2 Storage Write creates each stage's recordings bucket.
 const CI_PERMISSIONS = [
   'Workers Scripts Write',
   'Secrets Store Write',
   'Account Settings Read',
   'Workers Tail Read',
   'D1 Write',
+  'Workers R2 Storage Write',
 ] as const
 
 // NOTE: production serves munchmanor.com as Workers Custom Domains

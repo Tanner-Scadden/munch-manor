@@ -32,6 +32,7 @@ tools/balance/reports/
 
 # Multiplayer spike and determinism harness bundles
 tools/determinism/out/
+tools/learn/out/
 
 # Video renders
 tools/video/out/

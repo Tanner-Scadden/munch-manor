@@ -1,6 +1,8 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
+import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
+import { notePress } from '../platform/recording'
 import {
   focusSeat,
   isBledOut,
@@ -183,7 +185,10 @@ const fieldPress = (
   Option.match(keyActionOf(focusSeat(model, slot), couch, code), {
     onNone: () => model,
     onSome: action =>
-      withWorld(model, world => applySeatAction(world, slot, action)),
+      modifyFields(
+        withWorld(model, world => applySeatAction(world, slot, action)),
+        { recorder: notePress(slot, action) },
+      ),
   })
 
 // NOTE: a couch player's key, held for their intent and applied as their

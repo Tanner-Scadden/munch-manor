@@ -20,7 +20,9 @@ import {
   LoadFonts,
   LoadSave,
   LoadStyles,
+  ReadRecordUnlock,
   ReadUpdateMarker,
+  StartRecordingQueue,
   StartSummaryQueue,
 } from '../../../app/boot'
 import { Message } from '../../../app/message'
@@ -348,6 +350,14 @@ describe('the loading splash', () => {
     Story.Command.resolve(
       StartSummaryQueue(),
       Message.CompletedStartSummaryQueue(),
+    ),
+    Story.Command.resolve(
+      ReadRecordUnlock(),
+      Message.CompletedReadRecordUnlock({ unlock: 'Locked' }),
+    ),
+    Story.Command.resolve(
+      StartRecordingQueue(),
+      Message.CompletedStartRecordingQueue(),
     ),
     Story.Command.resolve(
       DetectInputDevice(),

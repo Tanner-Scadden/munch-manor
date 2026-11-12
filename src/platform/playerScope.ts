@@ -19,6 +19,7 @@ import {
   MusicSetting,
   PlayerName,
   PlayerSave,
+  RecordRunsSetting,
   RotationSetting,
   RumbleSetting,
   SEEN_BASELINE,
@@ -76,6 +77,7 @@ export const PlayerRow = Schema.Struct({
   cursor: CursorSetting,
   rotation: RotationSetting,
   rumble: RumbleSetting,
+  record_runs: RecordRunsSetting,
   name: PlayerName,
   calling: Calling,
   run_records: Schema.fromJsonString(SavedRunRecords),
@@ -114,6 +116,7 @@ export const PLAYER_COLUMNS = Array.make(
   'cursor',
   'rotation',
   'rumble',
+  'record_runs',
   'name',
   'calling',
   'run_records',
@@ -145,6 +148,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   cursor: save.settings.cursor,
   rotation: save.rotation,
   rumble: save.rumble,
+  record_runs: save.recordRuns,
   name: save.name,
   calling: save.calling,
   run_records: save.records,
@@ -202,12 +206,13 @@ const updatePlayer = (
 // records (save version 12), 10 the save with rank (save version 13), 11
 // the save with the calling (save version 14), 12 the save with hats
 // (save version 15), 13 the save with gun skins (save version 16), and 14
-// the save with no ammo tip (save version 17), and 15 the save with the
-// rumble (save version 18).
+// the save with no ammo tip (save version 17), 15 the save with the
+// rumble (save version 18), and 16 the save with RECORD MY RUNS (save
+// version 19).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 15,
+  version: 16,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -394,6 +399,19 @@ export const ChangedRumble = defineMutation({
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
   apply: ({ rumble }, context) => updatePlayer(context, { rumble }),
+})
+
+// NOTE: RECORD MY RUNS. The last device to change it wins, like the
+// settings.
+/** @stability unstable */
+export const ChangedRecordRuns = defineMutation({
+  name: 'ChangedRecordRuns',
+  version: 1,
+  args: Schema.Struct({ recordRuns: RecordRunsSetting }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ recordRuns }, context) =>
+    updatePlayer(context, { record_runs: recordRuns }),
 })
 
 // NOTE: the calling picked for the next run. The last device to change it
@@ -808,6 +826,7 @@ export const PlayerScope = defineScope({
     ChangedSettings,
     ChangedRotation,
     ChangedRumble,
+    ChangedRecordRuns,
     ChangedName,
     ChangedAppearance,
     ChangedDifficulty,
@@ -959,6 +978,14 @@ export const PlayerScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN rumble TEXT NOT NULL DEFAULT 'On'`
+      }),
+    // NOTE: RECORD MY RUNS came after the rumble. A player from before it
+    // records nothing.
+    '0014_add_record_runs': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN record_runs TEXT NOT NULL DEFAULT 'Off'`
       }),
   },
 })

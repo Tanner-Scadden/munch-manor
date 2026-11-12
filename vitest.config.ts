@@ -59,6 +59,7 @@ export default defineConfig({
             'tools/vite/**/*.test.ts',
             'tools/balance/**/*.test.ts',
             'tools/determinism/**/*.test.ts',
+            'tools/learn/**/*.test.ts',
             'tools/lint/**/*.test.ts',
           ],
           exclude: [SCENE, SIM],

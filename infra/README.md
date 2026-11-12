@@ -126,7 +126,7 @@ The report and the smoke test use `CLOUDFLARE_API_TOKEN` (or the keychain token)
 Never put a token in the repo or in a `VITE_` variable, which Vite inlines into the game.
 
 - **Local:** the API token in the macOS keychain under `cloudflare-api-token`. It is broad: it can also create API tokens, which `github.ts` needs. The itch.io API key (account `tannerscadden`) is in the keychain under `itch-api-key`.
-- **CI:** the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets, and `BUTLER_API_KEY` (the itch.io key, for uploads with butler), all written by `github.ts`. That token is the account-owned `munch-manor-ci` token with Workers Scripts Write, Secrets Store Write, Account Settings Read, Workers Tail Read, and D1 Write (for the analytics databases). Secrets Store Write is needed because Alchemy reads the state store's token by binding it to a short-lived preview Worker.
+- **CI:** the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets, and `BUTLER_API_KEY` (the itch.io key, for uploads with butler), all written by `github.ts`. That token is the account-owned `munch-manor-ci` token with Workers Scripts Write, Secrets Store Write, Account Settings Read, Workers Tail Read, D1 Write (for the analytics databases), and Workers R2 Storage Write (for the recordings bucket, `RECORDINGS`). Secrets Store Write is needed because Alchemy reads the state store's token by binding it to a short-lived preview Worker.
 
 To rotate the CI token, the itch.io key, or change permissions, edit `github.ts` (or update the keychain item) and run:
 

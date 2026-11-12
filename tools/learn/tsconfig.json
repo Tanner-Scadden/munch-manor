@@ -1,0 +1,15 @@
+// NOTE: the replay bundles engine.ts for Node with the determinism harness's
+// bundler, so it borrows that folder's slice of the Bun types.
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": [
+    "./**/*",
+    "../../src/vite-env.d.ts",
+    "../determinism/bun-build.d.ts"
+  ],
+  "exclude": ["out"]
+}

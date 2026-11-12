@@ -17,6 +17,7 @@ export const SettingTile = Schema.Literals([
   'Rotation',
   'Rumble',
   'ShareStats',
+  'RecordRuns',
 ])
 export type SettingTile = typeof SettingTile.Type
 

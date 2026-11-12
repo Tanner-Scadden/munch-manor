@@ -14,6 +14,7 @@ import {
   installCases,
   loadCases,
   pageCases,
+  recordingCases,
   saveCases,
   versionCases,
 } from '../../platform/message'
@@ -30,6 +31,7 @@ const GROUPS = [
   loadCases,
   saveCases,
   analyticsCases,
+  recordingCases,
   soundCases,
   homeCases,
   helpCases,

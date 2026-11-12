@@ -18,6 +18,7 @@ import {
   unlockNightmareFrom,
 } from './home'
 import { cueMusicFrom } from './music'
+import { finishRecordingFrom } from './recording'
 import { applyRotationFrom } from './rotation'
 import { writeSaveFrom } from './save'
 import type { UpdateStep } from './step'
@@ -84,7 +85,8 @@ type SaveWrite = 'Write' | 'Synced'
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the run count and its summary, the new zombie badges, the
+// Nightmare, the run count and its summary, the run's recording, the new
+// zombie badges, the
 // fridge prizes pulled, and the save. `update` in src/app/main.ts runs them once
 // after every dispatch, a child's delivery and its fold included. Each looks
 // only at the root's own fields and acts on a change between the two Models,
@@ -115,6 +117,7 @@ export const afterMessage: {
       ),
     }),
     sendRunSummaryFrom(before),
+    finishRecordingFrom(before),
     stepModel => ({ model: forgetNewEntriesFrom(before, stepModel) }),
     stepModel => ({ model: notePulledPrize(stepModel) }),
     writeSaveFrom(before, saveWrite),

@@ -15,6 +15,7 @@ import { lobbyHandlers } from './update/lobby'
 import { onboardingHandlers } from './update/onboarding'
 import { padMenuHandlers } from './update/padMenu'
 import { tickFrame } from './update/play'
+import { recordingHandlers } from './update/recording'
 import { saveHandlers } from './update/save'
 import { afterMessage } from './update/settle'
 import { soundHandlers } from './update/sound'
@@ -62,6 +63,7 @@ const handlers = makeUpdate({
   ...versionHandlers,
   ...deviceHandlers,
   ...saveHandlers,
+  ...recordingHandlers,
   ...soundHandlers,
   ...coopHandlers,
   ...lobbyHandlers,

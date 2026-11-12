@@ -685,6 +685,19 @@ describe('two devices syncing one player', () => {
     ),
   )
 
+  it.effect('recording turned on on one linked device reaches the other', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, laptop } = yield* linkedPair
+        yield* write(phone, legacySave, { ...legacySave, recordRuns: 'On' })
+        const isOn = (maybeSave: Option.Option<PlayerSave>) =>
+          Option.exists(maybeSave, save => save.recordRuns === 'On')
+        const onLaptop = yield* until(laptop.load, isOn)
+        expect(isOn(onLaptop)).toBe(true)
+      }),
+    ),
+  )
+
   it.effect('a calling picked on one linked device reaches the other', () =>
     synced(
       Effect.gen(function* () {
@@ -869,6 +882,59 @@ describe('run summaries queued with no network', () => {
   )
 })
 
+describe('RECORD MY RUNS on this device', () => {
+  const takeAllRecordings = (database: PlayerDatabase) =>
+    Effect.gen(function* () {
+      const taken: Array<string> = []
+      for (;;) {
+        const maybeBody = yield* database.takeQueuedRecording
+        if (Option.isNone(maybeBody)) {
+          return taken
+        }
+        taken.push(maybeBody.value)
+      }
+    })
+
+  it.effect('the unlock lasts through a reload', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.none())
+      const hub = yield* makeHub()
+      const before = yield* openOn(hub, legacy.legacy)
+      const wasUnlocked = yield* before.isRecordUnlocked
+      expect(wasUnlocked).toBe(false)
+      yield* before.unlockRecord
+      const after = yield* openOn(hub, legacy.legacy)
+      const isUnlocked = yield* after.isRecordUnlocked
+      expect(isUnlocked).toBe(true)
+    }),
+  )
+
+  it.effect('queued recordings keep only the newest few, oldest first', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.none())
+      const hub = yield* makeHub()
+      const local = yield* openOn(hub, legacy.legacy)
+      yield* Effect.forEach(EffectArray.range(1, 6), run =>
+        local.queueRecording(`run ${run}`),
+      )
+      const taken = yield* takeAllRecordings(local)
+      expect(taken).toEqual(['run 3', 'run 4', 'run 5', 'run 6'])
+    }),
+  )
+
+  it.effect('queued recordings can all be cleared', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.none())
+      const hub = yield* makeHub()
+      const local = yield* openOn(hub, legacy.legacy)
+      yield* local.queueRecording('one')
+      yield* local.clearQueuedRecordings
+      const taken = yield* takeAllRecordings(local)
+      expect(taken).toEqual([])
+    }),
+  )
+})
+
 // THE LIVE SAVE
 
 // NOTE: the save the live game keeps today, exactly as it writes it to
@@ -985,6 +1051,7 @@ const migratedLiveSave: PlayerSave = {
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],
+  recordRuns: 'Off',
 }
 
 const realLegacy: LegacySave = {

@@ -65,6 +65,7 @@ import {
   PlayerScopeStatus,
   SyncState,
 } from '../platform/playerSync'
+import { RecordUnlock, RunRecorder } from '../platform/recording'
 import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
 import {
   ActionWatch,
@@ -83,6 +84,7 @@ import {
   HomeScreenTip,
   MusicSetting,
   PlayerName,
+  RecordRunsSetting,
   RotationSetting,
   RumbleSetting,
   SavedBoughtCosmetics,
@@ -213,6 +215,11 @@ export const Model = Schema.Struct({
   shakeSetting: ShakeSetting,
   rotationSetting: RotationSetting,
   rumbleSetting: RumbleSetting,
+  // NOTE: RECORD MY RUNS (src/platform/recording.ts): the synced setting,
+  // whether this device shows it, and the run being recorded.
+  recordRuns: RecordRunsSetting,
+  recordUnlock: RecordUnlock,
+  recorder: RunRecorder,
   orientationLock: OrientationLock,
   // NOTE: players sharing this keyboard, from a dev-only `?local=N` link
   // (MULTIPLAYER.md, "What Phase 1 built"). 1 in every shipped build.
@@ -410,6 +417,9 @@ export const initialModel: OwnModel = {
   shakeSetting: 'On',
   rotationSetting: 'Landscape',
   rumbleSetting: 'On',
+  recordRuns: 'Off',
+  recordUnlock: 'Locked',
+  recorder: RunRecorder.Idle(),
   orientationLock: 'Unsupported',
   localPlayers: 1,
   crewBots: [],
