@@ -88,6 +88,9 @@
     "munch/tap-by-click": "error",
     "munch/live-test-note": "error",
     "munch/disable-needs-reason": "error",
+    // NOTE: a reduce that copies its accumulator list each step is
+    // quadratic (AGENTS.md "Code shape").
+    "munch/no-append-in-reduce": "error",
     "typescript/no-unnecessary-condition": "error",
     "typescript/no-misused-spread": "error",
     "typescript/no-unsafe-argument": "error",
@@ -359,6 +362,46 @@
             "message": "Request through Effect's HttpClient."
           }
         ]
+      }
+    },
+    {
+      // NOTE: the code that runs every rendered frame compares references or
+      // a few fields, never deep equality (AGENTS.md "Keep the frame cheap").
+      "files": [
+        "src/render/**/*.ts",
+        "src/screens/**/*.ts",
+        "src/app/layers.ts",
+        "src/app/frame.ts",
+        "src/app/view.ts",
+        "src/app/update/play.ts",
+        "src/world/step/**/*.ts",
+        "src/world/zombies/**/*.ts"
+      ],
+      "rules": { "munch/no-deep-equal-per-frame": "error" }
+    },
+    {
+      // NOTE: the World's per-tick rules and the per-frame drawing scan no
+      // list inside a loop over another; a bounded list (at most 4 seats)
+      // says its bound in a NOTE on the disable (AGENTS.md "Keep the frame
+      // cheap").
+      "files": [
+        "src/world/step/**/*.ts",
+        "src/world/zombies/**/*.ts",
+        "src/world/waves/**/*.ts",
+        "src/world/gear/**/*.ts",
+        "src/world/party/**/*.ts",
+        "src/world/feats/**/*.ts",
+        "src/world/keys/**/*.ts",
+        "src/render/**/*.ts"
+      ],
+      "rules": { "munch/no-nested-scan": "error" }
+    },
+    {
+      // NOTE: tests may scan freely: they run once, not every frame.
+      "files": ["src/**/*.test.ts", "src/**/*.fixture.ts"],
+      "rules": {
+        "munch/no-deep-equal-per-frame": "off",
+        "munch/no-nested-scan": "off"
       }
     },
     {

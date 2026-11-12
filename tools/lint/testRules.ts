@@ -7,7 +7,13 @@ import { Array, Option, Record, String } from 'effect'
 import { defineRule } from '@oxlint/plugins'
 import type { ESTree } from '@oxlint/plugins'
 
-import { hasName, importSource, importedName, propertyName } from './ast.ts'
+import {
+  hasName,
+  importSource,
+  importedName,
+  isFunctionNode,
+  propertyName,
+} from './ast.ts'
 
 type Node = ESTree.Node
 
@@ -185,11 +191,6 @@ const callRole = (call: ESTree.CallExpression): CallRole => {
   }
   return 'Drops'
 }
-
-const isFunctionNode = (node: Node): boolean =>
-  node.type === 'ArrowFunctionExpression' ||
-  node.type === 'FunctionExpression' ||
-  node.type === 'FunctionDeclaration'
 
 const enclosingFunction = (node: Node): Node | undefined =>
   node.parent === null

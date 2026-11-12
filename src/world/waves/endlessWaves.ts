@@ -409,6 +409,8 @@ const kindCounts = (
   spawns: ReadonlyArray<PlannedSpawn>,
 ): ReadonlyArray<KindCount> =>
   Array.filterMap(ZOMBIE_KIND_ORDER, kind => {
+    // NOTE: a few zombie kinds, read when a wave is planned or shown.
+    // oxlint-disable-next-line munch/no-nested-scan
     const count = Array.filter(spawns, spawn => spawn.kind === kind).length
     return count > 0 ? Result.succeed({ kind, count }) : Result.failVoid
   })
@@ -447,6 +449,8 @@ export const doorCounts: {
   ): ReadonlyArray<DoorCount> => {
     const spawns = routeSpawns(plannedSpawns, traps, [], doors)
     return Array.filterMap(DOOR_IDS, door => {
+      // NOTE: at most 13 doors, read when a wave is planned or shown.
+      // oxlint-disable-next-line munch/no-nested-scan
       const atDoor = Array.filter(
         spawns,
         spawn => isThroughDoor(spawn) && spawn.door === door,

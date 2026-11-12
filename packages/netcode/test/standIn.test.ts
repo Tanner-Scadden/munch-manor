@@ -36,19 +36,11 @@ const wander = (slot: number, tick: number): PlayerInput => {
 }
 
 const run = (ticks: number, slots: ReadonlyArray<number>) =>
-  Array.reduce(
-    globalThis.Array.from({ length: ticks }),
-    [StandIn.start(slots, 7)],
-    (worlds, _, tick) => {
-      const last = worlds[worlds.length - 1] ?? StandIn.start(slots, 7)
-      return [
-        ...worlds,
-        StandIn.step(
-          last,
-          Array.map(slots, slot => here(slot, wander(slot, tick))),
-        ),
-      ]
-    },
+  Array.scan(Array.range(0, ticks - 1), StandIn.start(slots, 7), (last, tick) =>
+    StandIn.step(
+      last,
+      Array.map(slots, slot => here(slot, wander(slot, tick))),
+    ),
   )
 
 const snapshotOf = (world: StandInWorld): StandInWorld =>
@@ -150,9 +142,7 @@ describe('the stand-in world', () => {
     const largest = Math.max(...sizes)
     expect(largest).toBeLessThan(10 * 10 + 8)
     expect(
-      writeAll(writer =>
-        StandIn.snapshot(writer, worlds[0] ?? StandIn.start([], 1)),
-      ).length,
+      writeAll(writer => StandIn.snapshot(writer, worlds[0])).length,
     ).toBeLessThan(80)
   })
 

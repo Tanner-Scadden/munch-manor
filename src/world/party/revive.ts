@@ -221,40 +221,50 @@ const kneelsAround = (
   ground: Ground,
   body: Vector,
   revivers: ReadonlyArray<SeatState>,
-): ReadonlyArray<Kneel> =>
-  Array.reduce(revivers, Array.empty<Kneel>(), (kneels, mate) => {
+): ReadonlyArray<Kneel> => {
+  const kneels: Array<Kneel> = []
+  for (const mate of revivers) {
     const spot = pipe(
       sidesOf(body, mate.player),
       Array.findFirst(
         side =>
           isOpenSpot(ground, side) &&
+          // NOTE: at most 4 seats kneel, so a few spots to check.
+          // oxlint-disable-next-line munch/no-nested-scan
           !Array.some(kneels, kneel => isSameSpot(kneel.spot, side)),
       ),
       Option.getOrElse(() => ({ x: mate.player.x, y: mate.player.y })),
     )
-    return Array.append(kneels, { slot: mate.seat.slot, body, spot })
-  })
+    kneels.push({ slot: mate.seat.slot, body, spot })
+  }
+  return kneels
+}
 
 // NOTE: who kneels where, read off one World before anyone moves, so the
 // order of the seats never matters. A reviver beside two bodies kneels by
 // the first in seat order.
 const kneelsOf = (world: World, ground: Ground): ReadonlyArray<Kneel> => {
   const players = playersOf(world)
-  return Array.reduce(players, Array.empty<Kneel>(), (kneels, downed) => {
+  const kneels: Array<Kneel> = []
+  const kneeling = new Set<number>()
+  for (const downed of players) {
     if (!isDowned(downed.seat)) {
-      return kneels
+      continue
     }
+    // NOTE: at most 4 seats, each downed body checked against the others.
+    // oxlint-disable-next-line munch/no-nested-scan
     const revivers = Array.filter(
       players,
       mate =>
         isReviver({ slot: downed.seat.slot, player: downed.player })(mate) &&
-        !Array.some(kneels, kneel => kneel.slot === mate.seat.slot),
+        !kneeling.has(mate.seat.slot),
     )
-    return Array.appendAll(
-      kneels,
-      kneelsAround(ground, downed.player, revivers),
-    )
-  })
+    for (const kneel of kneelsAround(ground, downed.player, revivers)) {
+      kneels.push(kneel)
+      kneeling.add(kneel.slot)
+    }
+  }
+  return kneels
 }
 
 // NOTE: a step toward the spot through the level's collision, kept only

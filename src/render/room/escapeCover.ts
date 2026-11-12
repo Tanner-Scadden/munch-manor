@@ -107,7 +107,7 @@ const trapCrateShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const ESCAPE_COVER_DRAWINGS: Readonly<
+export const ESCAPE_COVER_DRAWINGS: Readonly<
   Record<
     EscapeCoverKind,
     (box: Box, level: Level) => ReadonlyArray<Canvas.Shape>

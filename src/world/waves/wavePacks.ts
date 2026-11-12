@@ -52,6 +52,8 @@ const DOOR_PAIRS: Array.NonEmptyReadonlyArray<
 const isPairWithin =
   (doors: ReadonlyArray<DoorId>) =>
   (pair: ReadonlyArray<DoorId>): boolean =>
+    // NOTE: a door pair by at most 13 doors.
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.every(pair, door => Array.contains(doors, door))
 
 export const pairsWithin = (
@@ -162,6 +164,8 @@ const groupDoors = (
   group.isAnyDoor
     ? levelDoors
     : Array.match(
+        // NOTE: a group's few doors by at most 13.
+        // oxlint-disable-next-line munch/no-nested-scan
         Array.filter(group.doors, door => Array.contains(levelDoors, door)),
         { onEmpty: () => levelDoors, onNonEmpty: doors => doors },
       )

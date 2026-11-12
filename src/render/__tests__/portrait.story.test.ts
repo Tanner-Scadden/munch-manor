@@ -354,17 +354,10 @@ describe('the portrait camera', () => {
 
 describe('the aim lean', () => {
   test('eases toward the aim and never goes past its cap', () => {
-    const steps = Array.reduce(
+    const steps = Array.scan(
       Array.makeBy(240, () => FRAME_MS),
-      [{ x: 0, y: 0 }],
-      (leans, deltaMs) => [
-        ...leans,
-        leanCamera(
-          leans[leans.length - 1]!,
-          Option.some({ x: 1, y: 0 }),
-          deltaMs,
-        ),
-      ],
+      { x: 0, y: 0 },
+      (lean, deltaMs) => leanCamera(lean, Option.some({ x: 1, y: 0 }), deltaMs),
     )
     Array.forEach(steps, ({ x, y }) => {
       expect(x).toBeLessThanOrEqual(CAMERA_LEAN_PX)

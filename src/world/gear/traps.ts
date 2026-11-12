@@ -14,8 +14,24 @@ import {
 import type { SoundEffect } from '../../shared/soundEffect'
 import { mendSpeedScaleOf, trapHealthScaleOf } from '../heroes/calling'
 import { type Level, TILE_OUTSIDE, hasTileFlag, levelOf } from '../level/arena'
-import { type Box, DOOR_OUTWARD, RATTLES_SYMBOL, boxCenter, circleTouchesBox, distanceToBox, tileBox, tileIndex, tilesWithSymbol } from '../level/tileGrid'
-import { hasLineOfSight, isDoorTile, isInsideRoomAt, isWalkableTile, tileCoordinate } from '../level/tileQueries'
+import {
+  type Box,
+  DOOR_OUTWARD,
+  RATTLES_SYMBOL,
+  boxCenter,
+  circleTouchesBox,
+  distanceToBox,
+  tileBox,
+  tileIndex,
+  tilesWithSymbol,
+} from '../level/tileGrid'
+import {
+  hasLineOfSight,
+  isDoorTile,
+  isInsideRoomAt,
+  isWalkableTile,
+  tileCoordinate,
+} from '../level/tileQueries'
 import { TRAP_NAMES } from '../names'
 import {
   COOP_RULES,
@@ -535,6 +551,8 @@ export const placedCount: {
 const ownTraps = (model: World, slot: PlayerSlot): ReadonlyArray<Trap> =>
   isCoop(model)
     ? Array.filter(model.traps, ({ id }) =>
+        // NOTE: at most 8 traps by a seat's 2 trap ids.
+        // oxlint-disable-next-line munch/no-nested-scan
         Array.contains(seatStateAt(model, slot).seat.trapIds, id),
       )
     : model.traps
@@ -703,6 +721,8 @@ const maybeDoorInReach = (
 const isHalfBoarded = (model: World): boolean => {
   const { doorIds } = levelOf(model)
   const boarded = Array.filter(barricadedDoors(model.traps), door =>
+    // NOTE: at most 13 doors by at most 8 traps.
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.contains(doorIds, door),
   )
   return boarded.length >= Math.floor(doorIds.length / 2)
@@ -1095,7 +1115,5 @@ export const advanceMending: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World
 } = Function.dual(2, (world: World, deltaMs: number): World =>
-  isRoundActive(world.phase)
-    ? forEachSeat(world, mendFor(deltaMs))
-    : world,
+  isRoundActive(world.phase) ? forEachSeat(world, mendFor(deltaMs)) : world,
 )

@@ -7,6 +7,7 @@ import {
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
 } from '../../shared/constants'
+import { countWork } from '../../shared/workCount'
 import type { DoorId, Vector } from '../schema/entitySchema'
 import type { Toll } from '../schema/worldSchema'
 import { resolveCircle } from '../step/collision'
@@ -63,8 +64,8 @@ const UNREACHED_TILE = 0x7fffffff
 // NOTE: every tile's distance, in whole tile steps and tolls, to the nearest
 // origin. originIndex is the tile the field flows to. In co-op the field
 // flows to every living player at once: the other players' tiles are
-// moreOrigins. A field is built where it is read, on the frame, from the
-// players' tiles and the traps' tolls: nothing keeps one.
+// moreOrigins. A field is asked for where it is read, on the frame, from
+// the players' tiles and the traps' tolls, and kept by them (fieldFrom).
 export type FlowField = Readonly<{
   originIndex: number
   moreOrigins: ReadonlyArray<number>
@@ -237,6 +238,7 @@ const spread = (
   clearance: Clearance,
   tolls: ReadonlyArray<Toll>,
 ): Int32Array => {
+  countWork('FlowField')
   const graphs = walkGraphsOf(level)
   const chosen = clearance === 'Wide' ? graphs.wide : graphs.narrow
   const distances = new Int32Array(level.tileCount).fill(UNREACHED_TILE)
@@ -304,16 +306,57 @@ const spread = (
   return distances
 }
 
+// NOTE: a field is a pure result of its level, clearance, origins, and
+// tolls, and it is read only, never written. The players' tiles and the
+// traps change far less often than every tick (a walker crosses a tile every
+// several), so the last few fields of each level are kept by those inputs
+// and handed back while they hold, rather than spread over every tile again.
+// The key keeps the inputs' order, since a later toll on a tile wins.
+const FIELDS_KEPT = 24
+
+const keptFieldsOf = perLevel((): Map<string, FlowField> => new Map())
+
+const fieldKey = (
+  origins: ReadonlyArray<number>,
+  clearance: Clearance,
+  tolls: ReadonlyArray<Toll>,
+): string =>
+  `${clearance}|${Array.join(
+    Array.map(origins, origin => `${origin}`),
+    ',',
+  )}|${Array.join(
+    Array.map(tolls, ({ index, cost }) => `${index}:${cost}`),
+    ',',
+  )}`
+
 const fieldFrom = (
   level: Level,
   origins: Array.NonEmptyReadonlyArray<number>,
   clearance: Clearance,
   tolls: ReadonlyArray<Toll>,
-): FlowField => ({
-  originIndex: Array.headNonEmpty(origins),
-  moreOrigins: Array.tailNonEmpty(origins),
-  distances: spread(level, origins, clearance, tolls),
-})
+): FlowField => {
+  const kept = keptFieldsOf(level)
+  const key = fieldKey(origins, clearance, tolls)
+  const cached = kept.get(key)
+  if (cached !== undefined) {
+    kept.delete(key)
+    kept.set(key, cached)
+    return cached
+  }
+  const field: FlowField = {
+    originIndex: Array.headNonEmpty(origins),
+    moreOrigins: Array.tailNonEmpty(origins),
+    distances: spread(level, origins, clearance, tolls),
+  }
+  kept.set(key, field)
+  if (kept.size > FIELDS_KEPT) {
+    for (const oldest of kept.keys()) {
+      kept.delete(oldest)
+      break
+    }
+  }
+  return field
+}
 
 export const flowFieldToward: {
   (
@@ -340,8 +383,36 @@ export const flowFieldToward: {
 
 // NOTE: in co-op the field flows to every living player at once, one pass
 // from all their tiles, so each zombie walks downhill to whoever is nearest.
-// One target is flowFieldToward exactly. Both clearances are laid out from
-// the same tiles and tolls.
+// One target is flowFieldToward exactly.
+export const flowFieldTowardAll: {
+  (
+    targets: Array.NonEmptyReadonlyArray<Vector>,
+    clearance: Clearance,
+    tolls: ReadonlyArray<Toll>,
+  ): (level: Level) => FlowField
+  (
+    level: Level,
+    targets: Array.NonEmptyReadonlyArray<Vector>,
+    clearance: Clearance,
+    tolls: ReadonlyArray<Toll>,
+  ): FlowField
+} = Function.dual(
+  4,
+  (
+    level: Level,
+    targets: Array.NonEmptyReadonlyArray<Vector>,
+    clearance: Clearance,
+    tolls: ReadonlyArray<Toll>,
+  ): FlowField =>
+    fieldFrom(
+      level,
+      Array.dedupe(Array.map(targets, target => tileIndexAt(level, target))),
+      clearance,
+      tolls,
+    ),
+)
+
+// NOTE: both clearances laid out from the same tiles and tolls.
 export const flowFieldsToward: {
   (
     targets: Array.NonEmptyReadonlyArray<Vector>,
@@ -358,15 +429,10 @@ export const flowFieldsToward: {
     level: Level,
     targets: Array.NonEmptyReadonlyArray<Vector>,
     tolls: ReadonlyArray<Toll>,
-  ): Readonly<Record<Clearance, FlowField>> => {
-    const origins = Array.dedupe(
-      Array.map(targets, target => tileIndexAt(level, target)),
-    )
-    return {
-      Narrow: fieldFrom(level, origins, 'Narrow', tolls),
-      Wide: fieldFrom(level, origins, 'Wide', tolls),
-    }
-  },
+  ): Readonly<Record<Clearance, FlowField>> => ({
+    Narrow: flowFieldTowardAll(level, targets, 'Narrow', tolls),
+    Wide: flowFieldTowardAll(level, targets, 'Wide', tolls),
+  }),
 )
 
 const isOriginOf = (flowField: FlowField, index: number): boolean =>

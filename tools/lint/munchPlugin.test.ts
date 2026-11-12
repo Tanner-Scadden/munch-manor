@@ -479,3 +479,69 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
     },
   ],
 })
+
+tester.run('no-append-in-reduce', ruleOf('no-append-in-reduce'), {
+  valid: [
+    'const total = Array.reduce(xs, 0, (sum, x) => sum + x)',
+    'const next = Array.reduce(xs, model, (acc, x) => ({ ...acc, count: acc.count + 1 }))',
+    'const all = Array.flatMap(xs, x => x.parts)',
+    'const firsts = Array.reduce(xs, [], ({ list }, x) => [...list, x])',
+  ],
+  invalid: [
+    one('const all = Array.reduce(xs, [], (acc, x) => Array.append(acc, x))'),
+    one('const all = pipe(xs, Array.reduce([], (acc, x) => [...acc, x]))'),
+    one('const all = xs.reduce((acc, x) => acc.concat(x.parts), [])'),
+    one(
+      'const next = Array.reduce(xs, start, (acc, x) => ({ ...acc, list: Array.append(acc.list, x) }))',
+    ),
+    one(
+      'const kept = Array.reduce(xs, [], (acc, x) => { if (x.dead) { return acc } return [...acc, x] })',
+    ),
+    one(
+      'const kept = Array.reduce(xs, [], (acc, x) => x.dead ? acc : Array.prepend(acc, x))',
+    ),
+  ],
+})
+
+tester.run('no-deep-equal-per-frame', ruleOf('no-deep-equal-per-frame'), {
+  valid: [
+    'const same = a === b',
+    "import { Array } from 'effect'\nconst same = Array.contains(xs, x)",
+    "import { Schema } from 'effect'\nconst Kind = Schema.Literals(['A', 'B'])",
+  ],
+  invalid: [
+    one("import { Equal } from 'effect'\nconst same = Equal.equals(a, b)"),
+    one(
+      "import { Schema } from 'effect'\nconst same = Schema.toEquivalence(Level)",
+    ),
+    one("import * as Eq from 'effect/Equal'\nconst same = Eq.equivalence()"),
+    one("import { equals } from 'effect/Equal'"),
+  ],
+})
+
+tester.run('no-nested-scan', ruleOf('no-nested-scan'), {
+  valid: [
+    'const hit = Array.some(zombies, zombie => zombie.hp <= 0)',
+    'const hits = Array.map(zombies, zombie => Array.some(zombie.parts, part => part.hit))',
+    'for (const { parts } of zombies) { parts.includes(head) }',
+    'const ids = Array.map(zombies, zombie => zombie.name.includes("Boss"))',
+    'const near = Array.map(zombies, zombie => pipe(bullets, Array.some(hits(zombie))))',
+    'const art = Array.map(boxes, box => Array.filter(drawingOf(kind)(box), isLit))',
+    'const open = Array.map(doors, door => Array.contains(level.thresholds[door].ids, 1))',
+  ],
+  invalid: [
+    one(
+      'const hit = Array.filter(zombies, zombie => Array.some(bullets, bullet => bullet.target === zombie.id))',
+    ),
+    one(
+      'for (const zombie of zombies) { if (Array.contains(dead, zombie.id)) { kill(zombie) } }',
+    ),
+    one('const kept = zombies.map(zombie => seen.includes(zombie.id))'),
+    one(
+      'const kept = Array.map(zombies, zombie => Array.containsWith(eq)(dead, zombie))',
+    ),
+    one(
+      'const near = Array.filter(traps, trap => Array.some(playersOf(world), ({ player }) => near(player, trap)))',
+    ),
+  ],
+})

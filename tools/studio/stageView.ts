@@ -60,6 +60,8 @@ const crewPlaced = (
       const shift = state.rightEdge - own.right
       return {
         rightEdge: own.left + shift - CREW_GAP,
+        // NOTE: a crew of at most 3 beside the subject.
+        // oxlint-disable-next-line munch/no-append-in-reduce
         placed: Array.append(state.placed, {
           shapes: [group({ translate: { x: shift, y: 0 }, shapes: sprite })],
           bounds: {

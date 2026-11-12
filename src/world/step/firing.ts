@@ -616,26 +616,33 @@ export const flyTracers: {
     zombies: ReadonlyArray<Zombie>,
     tracers: ReadonlyArray<Bullet>,
     deltaMs: number,
-  ): FlownTracers =>
-    Array.reduce(
-      tracers,
-      { tracers: Array.empty<Bullet>(), struck: 0 },
-      (flown, tracer) =>
-        Result.match(
-          flyBullet(level, deltaMs / MS_PER_SECOND, deltaMs)(tracer),
-          {
-            onFailure: () => flown,
-            onSuccess: moved =>
-              Array.some(
-                zombies,
-                zombie =>
-                  isFree(zombie) &&
-                  Math.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
-                    radiusOf(zombie),
-              )
-                ? { ...flown, struck: flown.struck + 1 }
-                : { ...flown, tracers: Array.append(flown.tracers, moved) },
-          },
-        ),
-    ),
+  ): FlownTracers => {
+    // NOTE: one pass, gathered in place: appending to a fresh copy for each
+    // tracer would copy the list once per tracer.
+    const flown: Array<Bullet> = []
+    let struck = 0
+    for (const tracer of tracers) {
+      Result.match(flyBullet(level, deltaMs / MS_PER_SECOND, deltaMs)(tracer), {
+        onFailure: () => undefined,
+        onSuccess: moved => {
+          if (
+            // NOTE: TODO: at most BULLET_MAX (48) tracers by ZOMBIE_ALIVE_MAX (20) zombies; the grounded grid hits.ts queries would cut it.
+            // oxlint-disable-next-line munch/no-nested-scan
+            Array.some(
+              zombies,
+              zombie =>
+                isFree(zombie) &&
+                Math.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
+                  radiusOf(zombie),
+            )
+          ) {
+            struck++
+          } else {
+            flown.push(moved)
+          }
+        },
+      })
+    }
+    return { tracers: flown, struck }
+  },
 )

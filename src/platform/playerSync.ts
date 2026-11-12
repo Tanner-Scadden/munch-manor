@@ -287,6 +287,29 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'BoughtCosmetic',
   ])(change)
 
+// NOTE: the unsaved changes, refreshed, then the new ones, with only the
+// first of each set-once kind kept.
+const keepFirstSets = (
+  unsaved: ReadonlyArray<PlayerChange>,
+  changes: ReadonlyArray<PlayerChange>,
+  save: PlayerSave,
+): ReadonlyArray<PlayerChange> => {
+  const seen = new Set<PlayerChange['_tag']>()
+  return Array.filter(
+    [...Array.map(unsaved, change => refreshed(change, save)), ...changes],
+    change => {
+      if (!isSetOnce(change)) {
+        return true
+      }
+      if (seen.has(change._tag)) {
+        return false
+      }
+      seen.add(change._tag)
+      return true
+    },
+  )
+}
+
 export const withUnsavedChanges: {
   (
     changes: ReadonlyArray<PlayerChange>,
@@ -306,18 +329,7 @@ export const withUnsavedChanges: {
   ): ReadonlyArray<PlayerChange> =>
     Array.isReadonlyArrayEmpty(unsaved)
       ? changes
-      : Array.reduce(
-          [
-            ...Array.map(unsaved, change => refreshed(change, save)),
-            ...changes,
-          ],
-          Array.empty<PlayerChange>(),
-          (kept, change) =>
-            isSetOnce(change) &&
-            Array.some(kept, other => other._tag === change._tag)
-              ? kept
-              : Array.append(kept, change),
-        ),
+      : keepFirstSets(unsaved, changes, save),
 )
 
 // STATUS

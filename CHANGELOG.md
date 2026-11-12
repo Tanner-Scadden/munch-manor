@@ -5,7 +5,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 ## November 12, 2026: Grab a controller
 
 - 🎮 Plug in a controller and play the whole game with it: left stick walks, right stick aims, right trigger fires, and it rumbles when you get munched (RUMBLE in Settings). Every menu works too: d-pad picks, A presses, B backs out. Couch to manor, no mouse needed. Y flips through your guns and knife, and How to play shows the pad with every button labeled.
-- 🔦 Down in the dark cellar you carry a flashlight now: point it where you're looking to see what's coming.
+- 🔦 Down in the dark cellar you carry a flashlight now: point it where you're looking to see what's coming. Duck behind a tall bookshelf or cabinet and it fades, so you never lose yourself.
 - 🤝 A co-op wipe goes straight to the score card, no lobby peeking in first. RUN IT BACK is now PLAY AGAIN. On Dare, the lobby picks the break clock: none at all (the default), 60, 30, or 20 seconds.
 - 🎒 Tap the dare list on your HUD (or press Tab) to pull the dare card back out: everything you've found sits in your satchel, each with a little story, and new finds plop right in.
 - 🙌 Hands on! Your hero kneels at a downed friend's side for CPR, digs through the trunk, hauls the dumbwaiter, cranks and shoves the room's tools, tosses a gun to swap, and holds every find up high.

@@ -125,12 +125,33 @@ const fade = (
     ? Beat.Resting({ remainingMs: relaxMs, extendedMs: 0, trickled: 0 })
     : Beat.Fading({ releaseBelow, relaxMs, waitedMs })
 
+// NOTE: the warned packs grow by a few a wave and are read for every planned
+// spawn several times a tick, so each list's packs are kept as a Set beside
+// it. The list is replaced, never changed, when a pack is warned.
+const warnedSets = new WeakMap<ReadonlyArray<number>, ReadonlySet<number>>()
+
+export const isPackWarned: {
+  (pack: number): (warnedPacks: ReadonlyArray<number>) => boolean
+  (warnedPacks: ReadonlyArray<number>, pack: number): boolean
+} = Function.dual(
+  2,
+  (warnedPacks: ReadonlyArray<number>, pack: number): boolean => {
+    const cached = warnedSets.get(warnedPacks)
+    if (cached !== undefined) {
+      return cached.has(pack)
+    }
+    const made = new Set(warnedPacks)
+    warnedSets.set(warnedPacks, made)
+    return made.has(pack)
+  },
+)
+
 const isAnnounced = (
   pacing: Pacing,
   spawns: ReadonlyArray<PlannedSpawn>,
 ): boolean =>
   Alarm.isAnyOf(['Ringing'])(pacing.alarm) ||
-  Array.some(spawns, ({ pack }) => Array.contains(pacing.warnedPacks, pack))
+  Array.some(spawns, ({ pack }) => isPackWarned(pacing.warnedPacks, pack))
 
 const isRoomQuiet = (
   pacing: Pacing,
@@ -397,7 +418,7 @@ const plannedDoorOf = (
 const isWarned =
   (warnedPacks: ReadonlyArray<number>) =>
   (spawn: PlannedSpawn): boolean =>
-    Array.contains(warnedPacks, spawn.pack)
+    isPackWarned(warnedPacks, spawn.pack)
 
 const isDueToWarn =
   (warnedPacks: ReadonlyArray<number>, clockMs: number) =>
@@ -488,6 +509,8 @@ export const packsWaitingToWarn: {
           ? {
               places:
                 places -
+                // NOTE: only the packs due to warn on this tick, a few.
+                // oxlint-disable-next-line munch/no-nested-scan
                 Array.filter(spawns, spawn => spawn.pack === pack).length,
               waiting,
             }
@@ -523,12 +546,16 @@ export const delayWaitingPacks: {
     // spawns: its first zombie's time decides it.
     const firsts = Array.map(waiting, () => Number.POSITIVE_INFINITY)
     Array.forEach(spawns, spawn => {
+      // NOTE: the packs held back while the house is full, a few.
+      // oxlint-disable-next-line munch/no-nested-scan
       const at = waiting.indexOf(spawn.pack)
       if (at >= 0) {
         firsts[at] = Math.min(firsts[at] ?? spawn.atMs, spawn.atMs)
       }
     })
     return Array.map(spawns, spawn => {
+      // NOTE: the packs held back while the house is full, a few.
+      // oxlint-disable-next-line munch/no-nested-scan
       const at = waiting.indexOf(spawn.pack)
       if (at < 0) {
         return spawn
@@ -569,6 +596,8 @@ export const warnPacks: {
       Array.filter(
         spawn =>
           isDueToWarn(warnedPacks, clockMs)(spawn) &&
+          // NOTE: the packs held back while the house is full, a few.
+          // oxlint-disable-next-line munch/no-nested-scan
           !Array.contains(waiting, spawn.pack),
       ),
       firstOfEachPack,
@@ -636,8 +665,7 @@ export const rattlingDoors: {
     pipe(
       routed,
       Array.filter(
-        spawn =>
-          isThroughDoor(spawn) && Array.contains(warnedPacks, spawn.pack),
+        spawn => isThroughDoor(spawn) && isPackWarned(warnedPacks, spawn.pack),
       ),
       Array.map(({ door }) => door),
       Array.dedupe,
@@ -681,6 +709,8 @@ export const delayCampedPacks: {
         spawn =>
           isDue(clockMs)(spawn) &&
           isThroughDoor(spawn) &&
+          // NOTE: at most 4 players.
+          // oxlint-disable-next-line munch/no-nested-scan
           Array.some(players, player =>
             isCampingDoor(level, player, spawn.door),
           ),
@@ -691,6 +721,8 @@ export const delayCampedPacks: {
     return Array.isReadonlyArrayEmpty(campedPacks)
       ? spawns
       : Array.map(spawns, spawn =>
+          // NOTE: the packs camped this tick, a few.
+          // oxlint-disable-next-line munch/no-nested-scan
           Array.contains(campedPacks, spawn.pack)
             ? modifyFields(spawn, { atMs: atMs => atMs + worldMs })
             : spawn,
@@ -737,6 +769,8 @@ export const advanceIntensity: {
   ): number => {
     const seconds = deltaMs / MS_PER_SECOND
     const close = Array.filter(zombies, zombie =>
+      // NOTE: at most 4 players.
+      // oxlint-disable-next-line munch/no-nested-scan
       Array.some(players, player => isClose(player)(zombie)),
     ).length
     const decayed = intensity * Math.exp(-INTENSITY_DECAY_PER_SECOND * seconds)

@@ -136,6 +136,8 @@ export const crateSpotOf: {
 export const crateRoomsOf = (world: World): ReadonlyArray<CrateRoom> => {
   const level = levelOf(world)
   return Array.filterMap(crateSpotsOf(level.spec), ({ room }) =>
+    // NOTE: one crate spot a room, a few rooms.
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.some(level.rooms, ({ id, isOpen }) => id === room && isOpen)
       ? Result.succeed(room)
       : Result.failVoid,
@@ -195,6 +197,8 @@ const trapChoices = (
   last: Option.Option<TrapKind>,
 ): ReadonlyArray<readonly [TrapKind, number]> => {
   const open = Array.filter(TRAP_WEIGHTS, ([trap]) =>
+    // NOTE: two trap kinds.
+    // oxlint-disable-next-line munch/no-nested-scan
     Array.contains(takeable, trap),
   )
   const fresh = Array.filter(open, ([trap]) => !Option.contains(last, trap))
@@ -250,6 +254,8 @@ const takeableTraps = (world: World): ReadonlyArray<TrapKind> =>
   Array.filter(
     Array.map(TRAP_WEIGHTS, ([trap]) => trap),
     trap =>
+      // NOTE: two trap kinds by at most 4 seats.
+      // oxlint-disable-next-line munch/no-nested-scan
       Array.some(world.seats, (_, slot) => canTakeFind(world, slot, trap)),
   )
 
@@ -300,6 +306,8 @@ const rollFor = (world: World, rooms: ReadonlyArray<CrateRoom>): Rolled => {
       lastTrapIn(world, room),
     )
     return {
+      // NOTE: one crate a room, a few rooms, once a break.
+      // oxlint-disable-next-line munch/no-append-in-reduce
       crates: Array.append(rolled.crates, { room, stock }),
       rngState,
       isHeartDue: rolled.isHeartDue && !CrateStock.isAnyOf(['Heart'])(stock),
@@ -319,6 +327,8 @@ const restock = (world: World, wave: number): World => {
 const addOpenedRooms = (world: World): World => {
   const missing = Array.filter(
     crateRoomsOf(world),
+    // NOTE: one crate a room, a few rooms.
+    // oxlint-disable-next-line munch/no-nested-scan
     room => !Array.some(world.crates.crates, crate => crate.room === room),
   )
   if (Array.isReadonlyArrayEmpty(missing)) {

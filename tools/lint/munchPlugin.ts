@@ -5,7 +5,7 @@
 // tools/lint/munchPlugin.test.ts runs every rule on code it must and must
 // not flag.
 
-import { Array, Option, Record, String } from 'effect'
+import { Array, Option, String } from 'effect'
 
 import {
   type ESTree,
@@ -19,8 +19,14 @@ import {
   importSource,
   importedName,
   isStringLiteral,
+  mentions,
   propertyName,
 } from './ast.ts'
+import {
+  noAppendInReduce,
+  noDeepEqualPerFrame,
+  noNestedScan,
+} from './perfRules.ts'
 import {
   liveTestNote,
   noFloatingStory,
@@ -283,25 +289,6 @@ const bareModelName = (node: ESTree.Expression): string | undefined => {
     return node.arguments[0].name
   }
   return undefined
-}
-
-// NOTE: whether the name appears in the node, at any depth: `step(m)`,
-// `leaveFor(m, 'Kicked')`, `playSounds(cues)(keep(m))`. The walk reads each
-// field of a node as unknown, skipping the link back to its parent.
-const mentions = (value: unknown, name: string): boolean => {
-  if (Array.isArray(value)) {
-    return Array.some(value, (child: unknown) => mentions(child, name))
-  }
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  if ('type' in value && value.type === 'Identifier') {
-    return 'name' in value && value.name === name
-  }
-  return Array.some(Record.keys(value), key => {
-    const child: unknown = Reflect.get(value, key)
-    return key !== 'parent' && mentions(child, name)
-  })
 }
 
 const isStepCallOn = (
@@ -1059,5 +1046,8 @@ export default definePlugin({
     'live-test-note': liveTestNote,
     'disable-needs-reason': disableNeedsReason,
     'folder-imports': folderImports,
+    'no-append-in-reduce': noAppendInReduce,
+    'no-deep-equal-per-frame': noDeepEqualPerFrame,
+    'no-nested-scan': noNestedScan,
   },
 })

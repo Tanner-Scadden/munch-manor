@@ -259,13 +259,16 @@ const mergeKinds = (
   first: Array.NonEmptyReadonlyArray<KindCount>,
   second: ReadonlyArray<KindCount>,
 ): Array.NonEmptyReadonlyArray<KindCount> =>
-  Array.reduce(second, first, (merged, { kind, count }) =>
-    Array.some(merged, entry => entry.kind === kind)
-      ? Array.map(merged, entry =>
-          entry.kind === kind ? { kind, count: entry.count + count } : entry,
-        )
-      : Array.append(merged, { kind, count }),
-  )
+  Array.reduce(second, first, (merged, { kind, count }) => {
+    if (Array.some(merged, entry => entry.kind === kind)) {
+      return Array.map(merged, entry =>
+        entry.kind === kind ? { kind, count: entry.count + count } : entry,
+      )
+    }
+    // NOTE: a few zombie kinds a door.
+    // oxlint-disable-next-line munch/no-append-in-reduce
+    return Array.append(merged, { kind, count })
+  })
 
 const NOTHING_PLACED: ReadonlyArray<PlacedCount> = []
 

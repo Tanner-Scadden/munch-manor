@@ -312,6 +312,8 @@ const openDoorwayHints = (model: World): ReadonlyArray<Canvas.Shape> => {
   const isLit = Math.floor(model.elapsedMs / DOORWAY_HINT_PULSE_MS) % 2 === 0
   return isLit
     ? Array.filterMap(level.doorIds, door =>
+        // NOTE: at most 13 doors by at most 8 traps.
+        // oxlint-disable-next-line munch/no-nested-scan
         Array.contains(boarded, door)
           ? Result.failVoid
           : Result.succeed(

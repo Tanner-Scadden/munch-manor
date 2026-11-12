@@ -154,6 +154,8 @@ const findBulletHits = (
     let nearest: Contact | undefined = undefined
     for (let at = 0; at < count; at++) {
       const zombie = zombies[near[at] ?? 0]
+      // NOTE: the zombies one bullet already struck, a few (its pierce).
+      // oxlint-disable-next-line munch/no-nested-scan
       if (zombie !== undefined && !Array.contains(struck, zombie.id)) {
         const contact = maybeContact(from, bullet, zombie)
         if (
@@ -187,11 +189,43 @@ const totalDamage = (hits: ReadonlyArray<BulletHit>): number =>
 const strongestKnockback = (hits: ReadonlyArray<BulletHit>): number =>
   Array.reduce(hits, 0, (strongest, hit) => Math.max(strongest, hit.knockback))
 
+// NOTE: a frame's hits by the zombie they land on, and each bullet's first,
+// in the order they were found. Every zombie, kill, and bullet reads them,
+// so each frame's hits are grouped once rather than scanned for each.
+type HitIndex = Readonly<{
+  byZombie: ReadonlyMap<number, ReadonlyArray<BulletHit>>
+  firstByBullet: ReadonlyMap<number, BulletHit>
+}>
+
+const hitIndexes = new WeakMap<ReadonlyArray<BulletHit>, HitIndex>()
+
+const hitIndexOf = (hits: ReadonlyArray<BulletHit>): HitIndex => {
+  const cached = hitIndexes.get(hits)
+  if (cached !== undefined) {
+    return cached
+  }
+  const byZombie = new Map<number, Array<BulletHit>>()
+  const firstByBullet = new Map<number, BulletHit>()
+  for (const hit of hits) {
+    const landed = byZombie.get(hit.zombieId)
+    if (landed === undefined) {
+      byZombie.set(hit.zombieId, [hit])
+    } else {
+      landed.push(hit)
+    }
+    if (!firstByBullet.has(hit.bulletId)) {
+      firstByBullet.set(hit.bulletId, hit)
+    }
+  }
+  const index: HitIndex = { byZombie, firstByBullet }
+  hitIndexes.set(hits, index)
+  return index
+}
+
 const hitsOn = (
   hits: ReadonlyArray<BulletHit>,
   zombieId: number,
-): ReadonlyArray<BulletHit> =>
-  Array.filter(hits, hit => hit.zombieId === zombieId)
+): ReadonlyArray<BulletHit> => hitIndexOf(hits).byZombie.get(zombieId) ?? []
 
 const applyHits =
   (hits: ReadonlyArray<BulletHit>) =>
@@ -244,7 +278,7 @@ const skewer =
   (hits: ReadonlyArray<BulletHit>) =>
   (bullet: Bullet): Result.Result<Bullet, void> =>
     Option.match(
-      Array.findFirst(hits, ({ bulletId }) => bulletId === bullet.id),
+      Option.fromNullishOr(hitIndexOf(hits).firstByBullet.get(bullet.id)),
       {
         onNone: () => Result.succeed(bullet),
         onSome: ({ zombieId }) =>
@@ -284,17 +318,13 @@ export const resolveBulletHits: {
       return resolveFriendlyFire(model, seconds, freshShots.from, firstFreshId)
     }
 
-    const hitZombieIds = Array.dedupe(
-      Array.map(hits, ({ zombieId }) => zombieId),
-    )
+    const { byZombie } = hitIndexOf(hits)
     const zombies = Array.map(model.zombies, applyHits(hits))
     const killedZombies = Array.filter(
       zombies,
-      zombie => zombie.hp <= 0 && Array.contains(hitZombieIds, zombie.id),
+      zombie => zombie.hp <= 0 && byZombie.has(zombie.id),
     )
-    const hitZombies = Array.filter(zombies, zombie =>
-      Array.contains(hitZombieIds, zombie.id),
-    )
+    const hitZombies = Array.filter(zombies, zombie => byZombie.has(zombie.id))
     const struck = modifyFields(model, {
       bullets: Array.filterMap(skewer(hits)),
       zombies: () => zombies,
@@ -356,6 +386,8 @@ const creditLanded = (model: World, hits: ReadonlyArray<BulletHit>): World => {
       current,
       slot,
       0,
+      // NOTE: at most 4 shooting seats.
+      // oxlint-disable-next-line munch/no-nested-scan
       Array.filter(shooters, shooter => shooter === slot).length,
     ),
   )

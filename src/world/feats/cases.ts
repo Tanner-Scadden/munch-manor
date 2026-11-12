@@ -159,9 +159,10 @@ export const rollCases: {
     return Array.map(CASE_SPOTS, (spot, index): DisplayCase => {
       const pool = spot.isNear ? draws.near : draws.far
       const prizes = spot.isNear ? nearPrizes : farPrizes
-      const place = spot.isNear
-        ? nearSpots.indexOf(spot)
-        : farSpots.indexOf(spot)
+      // NOTE: a few case spots, once a run.
+      const spots = spot.isNear ? nearSpots : farSpots
+      // oxlint-disable-next-line munch/no-nested-scan
+      const place = spots.indexOf(spot)
       return {
         id: index,
         spot: index,

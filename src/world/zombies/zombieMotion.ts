@@ -20,7 +20,7 @@ import { type Level, levelOf } from '../level/arena'
 import {
   type Clearance,
   type FlowField,
-  flowFieldsToward,
+  flowFieldTowardAll,
   maybeNearestBait,
   playerDistancePx,
   steerToBait,
@@ -138,7 +138,10 @@ export const separationPushes = (
   })
 }
 
-type FlowFields = Readonly<Record<Clearance, FlowField>>
+// NOTE: the field a walker of a clearance follows, laid out the first time a
+// zombie of that clearance asks for it this tick: a break, or a wave with
+// no Tank or boss, builds no Wide field.
+type FlowFields = (clearance: Clearance) => FlowField
 
 type Obstacles = Readonly<{
   level: Level
@@ -162,7 +165,7 @@ const flowHeading = (
   const stats = statsOf(zombie)
   return steerToward(
     obstacles.level,
-    flowFields[stats.clearance],
+    flowFields(stats.clearance),
     zombie,
     target,
     stats.radius - 1,
@@ -231,7 +234,7 @@ const heading = (
     maybeBaitDoor(
       obstacles.level,
       zombie,
-      flowFields[statsOf(zombie).clearance],
+      flowFields(statsOf(zombie).clearance),
       obstacles.barricaded,
     ),
     {
@@ -406,11 +409,15 @@ export const advanceZombies: {
       dark: darkBoxOf(model),
     }
     const targets = targetsOf(model)
-    const flowFields = flowFieldsToward(
-      level,
-      targets,
-      tollsOf(level, model.traps),
-    )
+    const tolls = tollsOf(level, model.traps)
+    const laidOut: Partial<Record<Clearance, FlowField>> = {}
+    const flowFields: FlowFields = clearance =>
+      (laidOut[clearance] ??= flowFieldTowardAll(
+        level,
+        targets,
+        clearance,
+        tolls,
+      ))
     return pipe(
       model.zombies,
       Array.map((zombie, index) =>

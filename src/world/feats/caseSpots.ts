@@ -60,6 +60,8 @@ const caseSpotsOf = (spec: LevelSpec): ReadonlyArray<CaseSpot> => {
   }
   const pieces = Array.flatMap(roomSpotsOf(spec), ({ room, cases }) => {
     const isNear = Option.exists(
+      // NOTE: a few rooms, once a level spec (cached).
+      // oxlint-disable-next-line munch/no-nested-scan
       Array.findFirst(spec.rooms, ({ id }) => id === room),
       roomSpec => isStartRoom(spec, roomSpec),
     )

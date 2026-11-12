@@ -29,24 +29,20 @@ const BULLET_PREFIX = '- '
 const isDayHeading = String.startsWith(DAY_PREFIX)
 const isBullet = String.startsWith(BULLET_PREFIX)
 
-const draftDays = (lines: ReadonlyArray<string>): ReadonlyArray<DraftDay> =>
-  Array.reduce(lines, [], (days: ReadonlyArray<DraftDay>, line) => {
+// NOTE: each heading starts a day, and the lines up to the next are its
+// own; lines before the first heading belong to no day.
+const draftDays = (lines: ReadonlyArray<string>): ReadonlyArray<DraftDay> => {
+  const days: Array<{ heading: string; lines: Array<string> }> = []
+  for (const line of lines) {
+    const today = days[days.length - 1]
     if (isDayHeading(line)) {
-      return Array.append(days, {
-        heading: String.slice(DAY_PREFIX.length)(line),
-        lines: [],
-      })
-    } else {
-      return Option.match(Array.last(days), {
-        onNone: () => days,
-        onSome: day =>
-          Array.append(Array.dropRight(days, 1), {
-            heading: day.heading,
-            lines: Array.append(day.lines, line),
-          }),
-      })
+      days.push({ heading: String.slice(DAY_PREFIX.length)(line), lines: [] })
+    } else if (today !== undefined) {
+      today.lines.push(line)
     }
-  })
+  }
+  return days
+}
 
 const splitOnce = (
   text: string,
