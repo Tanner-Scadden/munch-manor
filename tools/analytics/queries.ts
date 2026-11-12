@@ -151,3 +151,26 @@ export const ENDS = `
     FROM crew_games WHERE won OR lost
   )
   GROUP BY party, outcome`
+
+// NOTE: the last 20 co-op games whose players sent network numbers
+// (RunSummary version 7 on), newest first: one row per player, a game's
+// players together by crew_key, so the report can say whether one link
+// lagged or every seat did (the room).
+export const COOP_NETWORK = `
+  WITH recent AS (
+    SELECT crew_key, max(received_at) AS last_at FROM runs
+    WHERE party = 'Crew' AND crew_key IS NOT NULL
+      AND net_rtt_p50_ms IS NOT NULL
+    GROUP BY crew_key ORDER BY last_at DESC LIMIT 20
+  )
+  SELECT runs.crew_key AS crew_key, runs.crew_size AS crew_size,
+    runs.device AS device,
+    runs.net_rtt_p50_ms AS rtt_p50_ms, runs.net_rtt_p95_ms AS rtt_p95_ms,
+    runs.net_jitter_ms AS jitter_ms, runs.net_snapshots AS snapshots,
+    runs.net_late_snapshots AS late_snapshots,
+    runs.net_late_ms_mean AS late_ms_mean, runs.net_late_ms_max AS late_ms_max,
+    runs.net_reconnects AS reconnects, runs.net_corrections AS corrections,
+    runs.net_correction_px_max AS correction_px_max
+  FROM runs JOIN recent ON runs.crew_key = recent.crew_key
+  WHERE runs.party = 'Crew' AND runs.net_rtt_p50_ms IS NOT NULL
+  ORDER BY recent.last_at DESC, runs.crew_key, runs.id`

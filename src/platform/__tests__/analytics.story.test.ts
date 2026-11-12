@@ -135,7 +135,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 6,
+  version: 7,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -166,7 +166,23 @@ const CREW_V2 = {
   seatRevives: 0,
 } as const
 
-const CREW = { ...CREW_V2, runKey: CREW_KEY }
+const CREW_V6 = { ...CREW_V2, runKey: CREW_KEY }
+
+const NETWORK = {
+  rttP50Ms: 65,
+  rttP95Ms: 305,
+  rttSamples: 40,
+  jitterMs: 12,
+  snapshots: 3_000,
+  lateSnapshots: 25,
+  lateMsMean: 80,
+  lateMsMax: 220,
+  reconnects: 1,
+  corrections: 14,
+  correctionPxMax: 9,
+}
+
+const CREW = { ...CREW_V6, network: NETWORK }
 
 describe('the run summary schema', () => {
   const summary = expectedSummary({
@@ -215,7 +231,7 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 7))).toEqual(Option.none())
+    expect(decode(withField('version', 8))).toEqual(Option.none())
     expect(decode(withField('device', 'Joystick'))).toEqual(Option.none())
     expect(decode(withField('keysSpent', -1))).toEqual(Option.none())
     expect(decode(withField('version', 4))).toEqual(Option.none())
@@ -249,6 +265,33 @@ describe('the run summary schema', () => {
     const crew = { ...summary, party: CREW }
     const json = Option.getOrThrow(Schema.encodeOption(RunSummaryJson)(crew))
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.some(crew))
+  })
+
+  test('a crew summary needs its network numbers, in bounds', () => {
+    const decode = Schema.decodeUnknownOption(RunSummaryJson)
+    const crewWith = (network: object) =>
+      jsonOf({ ...summary, party: { ...CREW_V6, network } })
+    expect(Option.isSome(decode(crewWith(NETWORK)))).toBe(true)
+    expect(decode(jsonOf({ ...summary, party: CREW_V6 }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(crewWith({ ...NETWORK, rttP95Ms: 60_001 }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(crewWith({ ...NETWORK, reconnects: -1 }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(crewWith({ ...NETWORK, jitterMs: 1.5 }))).toEqual(
+      Option.none(),
+    )
+  })
+
+  test('a version 6 crew summary from a cached build still decodes, with no network', () => {
+    const json = jsonOf({ ...summary, version: 6, party: CREW_V6 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({ ...summary, version: 6, party: CREW_V6 }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
 
   // NOTE: a summary from a build with a shop counts its purchases, and has

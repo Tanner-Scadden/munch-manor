@@ -12,6 +12,7 @@ import { FetchHttpClient } from 'effect/http'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
+import { NetStats } from '@munch/netcode'
 
 import {
   type CloudflareError,
@@ -24,6 +25,7 @@ import {
 import {
   COOP_DEATH_WAVES,
   COOP_GAMES,
+  COOP_NETWORK,
   COOP_PLAYERS,
   COOP_WIN_RATE,
   DEADLIEST,
@@ -101,6 +103,24 @@ const CrewPlayerRow = Schema.Struct({
   downs: Schema.NullOr(Count),
   revives: Schema.NullOr(Count),
 })
+
+// NOTE: per player: one player's own link over one co-op game.
+const NetworkRow = Schema.Struct({
+  crew_key: Schema.String,
+  crew_size: Count,
+  device: Schema.String,
+  rtt_p50_ms: Count,
+  rtt_p95_ms: Count,
+  jitter_ms: Count,
+  snapshots: Count,
+  late_snapshots: Count,
+  late_ms_mean: Count,
+  late_ms_max: Count,
+  reconnects: Count,
+  corrections: Count,
+  correction_px_max: Count,
+})
+type NetworkRow = typeof NetworkRow.Type
 
 const KillerRow = Schema.Struct({
   killed_by: Schema.String,
@@ -218,6 +238,77 @@ const section = (
     ? `${title}\n(no runs yet)`
     : `${title}\n${table(headers, rows)}`
 
+// NOTE: one game's players side by side, then where its lag looks to
+// come from (packages/netcode NetStats.ts, lagVerdictOf): every player bad
+// together reads as the server, one alone as that player's connection.
+const NETWORK_HEADERS = [
+  'player',
+  'device',
+  'rtt p50',
+  'rtt p95',
+  'jitter',
+  'late snaps',
+  'late mean/max',
+  'reconnects',
+  'corrections',
+  'max fix px',
+]
+
+const isLaggyPlayer = (row: NetworkRow): boolean =>
+  NetStats.isLaggyLink({
+    rttP95Ms: row.rtt_p95_ms,
+    late: row.late_snapshots,
+    of: row.snapshots,
+    reconnects: row.reconnects,
+  })
+
+const VERDICT_TEXT: { readonly [Verdict in NetStats.LagVerdict]: string } = {
+  Smooth: 'smooth: no player lagged',
+  OnePlayer: "one player's connection (marked *)",
+  SomePlayers: "some players' connections (marked *), not all",
+  Server: 'the server or the room: every player lagged together',
+}
+
+const KEY_SHOWN = 8
+
+const gameBlock = (
+  players: Array.NonEmptyReadonlyArray<NetworkRow>,
+): string => {
+  const first = Array.headNonEmpty(players)
+  const laggy = Array.map(players, isLaggyPlayer)
+  const verdict = NetStats.lagVerdictOf(laggy, false)
+  const rows = Array.map(players, (row, index) => [
+    `${index + 1}${isLaggyPlayer(row) ? '*' : ''}`,
+    row.device,
+    `${row.rtt_p50_ms} ms`,
+    `${row.rtt_p95_ms} ms`,
+    `${row.jitter_ms} ms`,
+    `${row.late_snapshots}/${row.snapshots} (${percent(row.late_snapshots, row.snapshots)})`,
+    `${row.late_ms_mean}/${row.late_ms_max} ms`,
+    `${row.reconnects}`,
+    `${row.corrections}`,
+    `${row.correction_px_max}`,
+  ])
+  return `game ${String.slice(0, KEY_SHOWN)(first.crew_key)} (crew of ${first.crew_size}, ${players.length} sent numbers)\n${table(NETWORK_HEADERS, rows)}\nlag: ${VERDICT_TEXT[verdict]}`
+}
+
+const NETWORK_TITLE =
+  'Co-op network, the last 20 games (per player, version 7 on: round trip, jitter, snapshots late by a send or more, reconnects, prediction fixes)'
+
+const networkSection = (rows: ReadonlyArray<NetworkRow>): string =>
+  Array.isReadonlyArrayNonEmpty(rows)
+    ? `${NETWORK_TITLE}\n${Array.join(
+        Array.map(
+          Array.groupWith(
+            rows,
+            (left, right) => left.crew_key === right.crew_key,
+          ),
+          gameBlock,
+        ),
+        '\n\n',
+      )}`
+    : `${NETWORK_TITLE}\n(no runs yet)`
+
 // PROGRAM
 
 const program = Effect.gen(function* () {
@@ -243,6 +334,7 @@ const program = Effect.gen(function* () {
     crewPlayers,
     crewWins,
     crewWaves,
+    network,
   ] = yield* Effect.all([
     run(SOLO_WIN_RATE, WinRow),
     run(DEATH_WAVES, WaveRow),
@@ -257,6 +349,7 @@ const program = Effect.gen(function* () {
     run(COOP_PLAYERS, CrewPlayerRow),
     run(COOP_WIN_RATE, WinRow),
     run(COOP_DEATH_WAVES, CrewWaveRow),
+    run(COOP_NETWORK, NetworkRow),
   ])
   const endedAs = (party: string, outcome: string): number =>
     Array.reduce(ends, 0, (sum, row) =>
@@ -374,6 +467,7 @@ const program = Effect.gen(function* () {
             `${row.deaths}`,
           ]),
         ),
+        networkSection(network),
         section(
           'Shares by end screen (per end: solo runs, co-op games)',
           ['screen', 'path', 'shares', 'visits', 'per end'],
