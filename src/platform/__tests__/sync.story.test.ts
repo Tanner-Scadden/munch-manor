@@ -436,6 +436,18 @@ describe('changes as mutations', () => {
   })
 })
 
+describe('the RECORD MY RUNS unlock across devices', () => {
+  test('is sent once, as it unlocks, and never as a lock', () => {
+    const before = saveOf(read)
+    const after: PlayerSave = { ...before, recordUnlock: 'Unlocked' }
+    expect(changesBetween(before, after)).toEqual([
+      PlayerChange.UnlockedRecording(),
+    ])
+    expect(changesBetween(after, after)).toEqual([])
+    expect(changesBetween(after, before)).toEqual([])
+  })
+})
+
 describe('the power-ups seen across devices', () => {
   test('a new kind is sent as an addition, never the whole list', () => {
     const before: PlayerSave = { ...saveOf(read), seenPowerUps: ['RapidFire'] }

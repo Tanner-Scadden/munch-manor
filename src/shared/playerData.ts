@@ -51,9 +51,15 @@ export type RumbleSetting = typeof RumbleSetting.Type
 
 // NOTE: whether this player's runs are recorded and sent for the bot that
 // learns to play like them (docs/BOT_PLAN.md, Track B). Off by default, and
-// shown only on a device opened once with `?record=1`.
+// shown only once a device of the player's opened `?record=1`.
 export const RecordRunsSetting = Schema.Literals(['On', 'Off'])
 export type RecordRunsSetting = typeof RecordRunsSetting.Type
+
+// NOTE: whether the RECORD MY RUNS tile shows: once any of the player's
+// devices opens the game with `?record=1`, it shows on every one of them.
+// It only ever unlocks.
+export const RecordUnlock = Schema.Literals(['Locked', 'Unlocked'])
+export type RecordUnlock = typeof RecordUnlock.Type
 
 // NOTE: a calling (GAME_DESIGN.md, "Rank and Bones"): what a player brings
 // to a run. YOU is the default and has no quirk; the others unlock by rank
@@ -839,7 +845,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 19
+export const SAVE_VERSION = 20
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1041,7 +1047,8 @@ export type PlayerName = typeof PlayerName.Type
 // the look and renamed the hats bought to the cosmetics bought. Version 17
 // dropped the ammo tip from the onboarding. Version 18 added the rumble,
 // synced as its own last-write-wins change like the rotation. Version 19
-// added RECORD MY RUNS, synced the same way.
+// added RECORD MY RUNS, synced the same way. Version 20 added the RECORD MY
+// RUNS unlock, which used to stay on the device that opened `?record=1`.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1061,5 +1068,6 @@ export const PlayerSave = Schema.Struct({
   boughtCosmetics: SavedBoughtCosmetics,
   seenUnlocks: SavedSeenUnlocks,
   recordRuns: RecordRunsSetting,
+  recordUnlock: RecordUnlock,
 })
 export type PlayerSave = typeof PlayerSave.Type

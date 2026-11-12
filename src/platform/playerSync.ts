@@ -37,6 +37,7 @@ export const PlayerChange = defineTaggedUnion({
   ChangedName: { name: PlayerName },
   ChangedAppearance: { appearance: Appearance },
   UnlockedNightmare: {},
+  UnlockedRecording: {},
   ChangedDifficulty: { chosen: Difficulty, card: SavedCard },
   ChangedOnboarding: {
     onboarding: SavedOnboarding,
@@ -128,6 +129,10 @@ export const changesBetween: {
         ),
         changeWhen(before.recordRuns !== after.recordRuns, () =>
           PlayerChange.ChangedRecordRuns({ recordRuns: after.recordRuns }),
+        ),
+        changeWhen(
+          before.recordUnlock === 'Locked' && after.recordUnlock === 'Unlocked',
+          () => PlayerChange.UnlockedRecording(),
         ),
         changeWhen(before.name !== after.name, () =>
           PlayerChange.ChangedName({ name: after.name }),
@@ -240,6 +245,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     ChangedAppearance: () =>
       PlayerChange.ChangedAppearance({ appearance: save.appearance }),
     UnlockedNightmare: () => change,
+    UnlockedRecording: () => change,
     ChangedDifficulty: () =>
       PlayerChange.ChangedDifficulty({
         chosen: save.difficulty.chosen,

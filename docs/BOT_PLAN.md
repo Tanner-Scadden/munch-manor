@@ -57,7 +57,7 @@ About 30 to 60 minutes (5 to 10 runs) to see anything, 2 to 3 hours for a usable
 
 - **Whose play:** the owner's only, to start. Others come later as their own personas.
 - **Recording:** a RECORD MY RUNS toggle in Settings that uploads each run to new storage behind the Worker (an R2 bucket and an endpoint beside `/record`), tagged by player. Works on phones too.
-- **Who sees the toggle:** hidden, unlocked by opening a secret `?record=1` link once on a device; uploads are tagged by player id so training picks the owner's.
+- **Who sees the toggle:** hidden, unlocked by opening a secret `?record=1` link once on any of the player's devices (it syncs to the rest); uploads are tagged by player id so training picks the owner's.
 - **The model's job:** the hands, not the plan. The scripted planner picks where to go; the model learns moving, aiming, dodging, and kiting.
 - **Where it ends up:** the balance bot first; the teammate bots later, only once it is small, deterministic, and plays well beside people.
 - **Takeover sessions:** yes, built once a first model exists.

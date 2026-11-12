@@ -60,8 +60,12 @@ export const finishRecordingFrom =
 // HANDLERS
 
 export const recordingHandlers = defineHandlers({
+  // NOTE: the boot only ever unlocks: a save read or synced as unlocked
+  // stays so.
   CompletedReadRecordUnlock: (model, { unlock }) => ({
-    model: modifyFields(model, { recordUnlock: () => unlock }),
+    model: modifyFields(model, {
+      recordUnlock: current => (unlock === 'Unlocked' ? unlock : current),
+    }),
   }),
   CompletedStartRecordingQueue: model => ({ model }),
   CompletedUploadRecording: model => ({ model }),

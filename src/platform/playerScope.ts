@@ -20,6 +20,7 @@ import {
   PlayerName,
   PlayerSave,
   RecordRunsSetting,
+  RecordUnlock,
   RotationSetting,
   RumbleSetting,
   SEEN_BASELINE,
@@ -78,6 +79,7 @@ export const PlayerRow = Schema.Struct({
   rotation: RotationSetting,
   rumble: RumbleSetting,
   record_runs: RecordRunsSetting,
+  record_unlock: RecordUnlock,
   name: PlayerName,
   calling: Calling,
   run_records: Schema.fromJsonString(SavedRunRecords),
@@ -117,6 +119,7 @@ export const PLAYER_COLUMNS = Array.make(
   'rotation',
   'rumble',
   'record_runs',
+  'record_unlock',
   'name',
   'calling',
   'run_records',
@@ -149,6 +152,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   rotation: save.rotation,
   rumble: save.rumble,
   record_runs: save.recordRuns,
+  record_unlock: save.recordUnlock,
   name: save.name,
   calling: save.calling,
   run_records: save.records,
@@ -207,12 +211,12 @@ const updatePlayer = (
 // the save with the calling (save version 14), 12 the save with hats
 // (save version 15), 13 the save with gun skins (save version 16), and 14
 // the save with no ammo tip (save version 17), 15 the save with the
-// rumble (save version 18), and 16 the save with RECORD MY RUNS (save
-// version 19).
+// rumble (save version 18), 16 the save with RECORD MY RUNS (save
+// version 19), and 17 the save with its unlock (save version 20).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 16,
+  version: 17,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -412,6 +416,19 @@ export const ChangedRecordRuns = defineMutation({
   writer: 'Owner',
   apply: ({ recordRuns }, context) =>
     updatePlayer(context, { record_runs: recordRuns }),
+})
+
+// NOTE: RECORD MY RUNS shows on every device once any device opens the
+// game with `?record=1`. It only ever unlocks, so two devices agree in any
+// order.
+/** @stability unstable */
+export const UnlockedRecording = defineMutation({
+  name: 'UnlockedRecording',
+  version: 1,
+  args: Schema.Struct({}),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: (_, context) => updatePlayer(context, { record_unlock: 'Unlocked' }),
 })
 
 // NOTE: the calling picked for the next run. The last device to change it
@@ -827,6 +844,7 @@ export const PlayerScope = defineScope({
     ChangedRotation,
     ChangedRumble,
     ChangedRecordRuns,
+    UnlockedRecording,
     ChangedName,
     ChangedAppearance,
     ChangedDifficulty,
@@ -986,6 +1004,15 @@ export const PlayerScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN record_runs TEXT NOT NULL DEFAULT 'Off'`
+      }),
+    // NOTE: the RECORD MY RUNS unlock came after the setting, kept on each
+    // device until then. A player from before it reads as locked until a
+    // device that holds its own mark writes the unlock.
+    '0015_add_record_unlock': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN record_unlock TEXT NOT NULL DEFAULT 'Locked'`
       }),
   },
 })

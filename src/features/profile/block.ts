@@ -12,12 +12,12 @@ import type {
   PlayerScopeStatus,
   SyncState,
 } from '../../platform/playerSync'
-import type { RecordUnlock } from '../../platform/recording'
 import { PlayerStore } from '../../platform/store'
 import type {
   CursorSetting,
   MusicSetting,
   RecordRunsSetting,
+  RecordUnlock,
   RotationSetting,
   RumbleSetting,
   ShakeSetting,

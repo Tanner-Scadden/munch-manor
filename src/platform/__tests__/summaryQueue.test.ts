@@ -106,7 +106,6 @@ const fakeStore = (
       ),
       clearQueuedSummaries: Ref.set(waiting, []),
       isRecordUnlocked: unused,
-      unlockRecord: unused,
       queueRecording: () => unused,
       takeQueuedRecording: unused,
       clearQueuedRecordings: unused,

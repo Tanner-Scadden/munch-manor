@@ -3,6 +3,7 @@ import { Dom } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { LookPart } from '../../domain/looks'
+import { cleanName } from '../../domain/playerName'
 import { ProfileBlock } from './block'
 import { ProfileComposition } from './composition'
 import type { LookOutcome } from './inMessage'
@@ -57,6 +58,16 @@ export const inMessageUpdate = ProfileComposition.makeInMessageUpdate({
 
   InformedOfRolledName: (model, { name }) => ({
     model: withFx(modifyFields(model, { nameDraft: () => name }), 'Spin'),
+  }),
+
+  // NOTE: a name kept on another device replaces the draft unless the
+  // player has typed their own over it here. A stale draft would be kept
+  // again on close and undo the other device's name.
+  InformedOfSyncedName: (model, { was, name }) => ({
+    model:
+      cleanName(model.nameDraft) === was
+        ? modifyFields(model, { nameDraft: () => name })
+        : model,
   }),
 
   InformedOfLookOutcome: (model, { part, value, outcome }) => ({

@@ -21,11 +21,13 @@ export type LookOutcome = typeof LookOutcome.Type
 // NOTE: the root's requests. Each generates a ProfileBinding method
 // (`RequestedOpen` is `ProfileBinding.requestOpen({ tab, name })`), handled
 // in inMessageUpdate.ts. The dice draw from the root's seeded generator, so
-// a rolled name comes back in as `InformedOfRolledName`.
+// a rolled name comes back in as `InformedOfRolledName`. A name another
+// device kept arrives as `InformedOfSyncedName`, with the name it replaced.
 export const InMessage = defineInMessageUnion({
   RequestedOpen: { tab: ProfileTab, name: Schema.String },
   RequestedKeepName: {},
   InformedOfRolledName: { name: Schema.String },
+  InformedOfSyncedName: { was: Schema.String, name: Schema.String },
   InformedOfLookOutcome: {
     part: LookPart,
     value: Schema.String,

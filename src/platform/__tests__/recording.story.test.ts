@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -15,12 +15,14 @@ import { FIXED_STEP_MS } from '../../shared/constants'
 import {
   homeAfterRead,
   lastHeart,
+  loadingSave,
   veteranFighting,
 } from '../../test/model.fixture'
 import {
   APPLICATION,
   SURFACE,
   checkPendingArgs,
+  finishSplash,
   settleRunCommands,
   writeSave,
 } from '../../test/testing'
@@ -28,6 +30,7 @@ import { focusOf } from '../../world/party/party'
 import { PlayerChange } from '../playerSync'
 import { RunRecorder, beginRecording } from '../recording'
 import { saveOf } from '../save'
+import { learnedSave } from './save.fixture'
 
 const VISIT_ID = '0123456789abcdef'
 
@@ -56,20 +59,72 @@ const recordingLastHeart = (recordRuns: 'On' | 'Off'): Model => {
 }
 
 describe('RECORD MY RUNS', () => {
-  it.effect('opening with ?record=1 unlocks the tile on this device', () =>
+  it.effect(
+    'opening with ?record=1 unlocks the tile, saved and synced to every device',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(homeAfterRead),
+        Story.model(({ recordUnlock }) => {
+          expect(recordUnlock).toBe('Locked')
+        }),
+        Story.message(
+          Message.CompletedReadRecordUnlock({ unlock: 'Unlocked' }),
+        ),
+        Story.model(({ recordUnlock, recordRuns }) => {
+          expect(recordUnlock).toBe('Unlocked')
+          expect(recordRuns).toBe('Off')
+        }),
+        Story.Command.expectExact(
+          WriteSave({
+            save: saveOf(
+              modifyFields(homeAfterRead, { recordUnlock: () => 'Unlocked' }),
+            ),
+            changes: [PlayerChange.UnlockedRecording()],
+          }),
+        ),
+        writeSave(),
+      ),
+  )
+
+  it.effect('a device with no mark keeps an unlock its save holds', () =>
     Story.story(
       APPLICATION,
-      Story.given(homeAfterRead),
+      Story.given(
+        modifyFields(homeAfterRead, { recordUnlock: () => 'Unlocked' }),
+      ),
+      Story.message(Message.CompletedReadRecordUnlock({ unlock: 'Locked' })),
       Story.model(({ recordUnlock }) => {
-        expect(recordUnlock).toBe('Locked')
-      }),
-      Story.message(Message.CompletedReadRecordUnlock({ unlock: 'Unlocked' })),
-      Story.model(({ recordUnlock, recordRuns }) => {
         expect(recordUnlock).toBe('Unlocked')
-        expect(recordRuns).toBe('Off')
       }),
       Story.Command.expectNone(),
     ),
+  )
+
+  it.effect(
+    'an unlock read before the save is written into it once the save loads',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(loadingSave),
+        Story.message(
+          Message.CompletedReadRecordUnlock({ unlock: 'Unlocked' }),
+        ),
+        Story.Command.expectNone(),
+        Story.message(
+          Message.CompletedLoadSave({ maybeSave: Option.some(learnedSave) }),
+        ),
+        finishSplash,
+        Story.model(({ recordUnlock }) => {
+          expect(recordUnlock).toBe('Unlocked')
+        }),
+        checkPendingArgs(Story.Command.argsOf(WriteSave))(writes => {
+          expect(Array.map(writes, ({ changes }) => changes)).toEqual([
+            [PlayerChange.UnlockedRecording()],
+          ])
+        }),
+        writeSave(),
+      ),
   )
 
   it.effect('the tile turns recording on, saved and synced', () => {

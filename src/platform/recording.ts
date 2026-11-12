@@ -28,11 +28,6 @@ import { type TickInputs, encodeChunk, lineOfTick } from './recordingCodec'
 // Recording only reads: it never writes the World, so a recorded run plays
 // exactly as one that is not. Its state is the client's `recorder` field.
 
-// NOTE: the RECORD MY RUNS tile shows once this device opened the game
-// with `?record=1` (kept in the store, never synced).
-export const RecordUnlock = Schema.Literals(['Locked', 'Unlocked'])
-export type RecordUnlock = typeof RecordUnlock.Type
-
 // NOTE: a World with every field optional: the fields the client changed
 // between two ticks, each with its new value.
 const WorldPatch = World.mapFields(Struct.map(Schema.optionalKey))

@@ -82,7 +82,6 @@ const fakeStore = (
       takeQueuedSummary: unused,
       clearQueuedSummaries: unused,
       isRecordUnlocked: unused,
-      unlockRecord: unused,
       queueRecording: body => Ref.update(waiting, all => [...all, body]),
       takeQueuedRecording: Ref.modify(waiting, all =>
         Array.match(all, {

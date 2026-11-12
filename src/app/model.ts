@@ -65,7 +65,7 @@ import {
   PlayerScopeStatus,
   SyncState,
 } from '../platform/playerSync'
-import { RecordUnlock, RunRecorder } from '../platform/recording'
+import { RunRecorder } from '../platform/recording'
 import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
 import {
   ActionWatch,
@@ -85,6 +85,7 @@ import {
   MusicSetting,
   PlayerName,
   RecordRunsSetting,
+  RecordUnlock,
   RotationSetting,
   RumbleSetting,
   SavedBoughtCosmetics,
