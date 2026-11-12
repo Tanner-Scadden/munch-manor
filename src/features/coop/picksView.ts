@@ -242,20 +242,43 @@ const callingPillView = (
 // view's two signatures.
 type PicksInput = {
   readonly lobby: Lobby
+  readonly keyCapView: (key: string) => Html
+}
+
+type HeroPickInput = {
   readonly isPickerOpen: boolean
   readonly keyCapView: (key: string) => Html
 }
+
+// NOTE: the hero pill in a group of its own, which the lobby sets beside
+// READY rather than among the room's picks: it is every member's, and held
+// upright it would otherwise take a row alone.
+export const heroPickView: {
+  (input: HeroPickInput, h: CoopViewBuilder): (room: Room) => Html
+  (room: Room, input: HeroPickInput, h: CoopViewBuilder): Html
+} = Function.dual(
+  3,
+  (
+    room: Room,
+    { isPickerOpen, keyCapView }: HeroPickInput,
+    h: CoopViewBuilder,
+  ): Html =>
+    h.div(
+      [
+        h.Class('coop-pick-group coop-hero-pick'),
+        h.Role('group'),
+        h.AriaLabel('Hero'),
+      ],
+      [callingPillView(room, isPickerOpen, keyCapView('Y'), h)],
+    ),
+)
 
 export const picksView: {
   (input: PicksInput, h: CoopViewBuilder): (room: Room) => Html
   (room: Room, input: PicksInput, h: CoopViewBuilder): Html
 } = Function.dual(
   3,
-  (
-    room: Room,
-    { lobby, isPickerOpen, keyCapView }: PicksInput,
-    h: CoopViewBuilder,
-  ): Html =>
+  (room: Room, { lobby, keyCapView }: PicksInput, h: CoopViewBuilder): Html =>
     h.div(
       [
         h.Class('coop-picks'),
@@ -300,10 +323,6 @@ export const picksView: {
             ),
             bonusChipView(bonusPercentOf(modifiersOfMask(lobby.modifiers)), h),
           ],
-        ),
-        h.div(
-          [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Hero')],
-          [callingPillView(room, isPickerOpen, keyCapView('Y'), h)],
         ),
         nudgeView(room, h),
       ],
