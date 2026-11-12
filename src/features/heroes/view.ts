@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import { closeButtonView } from '../../ui/cornerButtons'
@@ -70,29 +70,33 @@ const closeView = (className: string, h: HeroPickerViewBuilder): Html =>
     h,
   )
 
-// NOTE: inside the solo lobby's Dialog, under the title it draws: the
-// cards, the Bones, and the actions. Its box takes no room of its own, so
-// the panel lays them out as before.
+// NOTE: the cards, the Bones, and the actions, the same in both parents so
+// the picker looks and lays out alike: the solo lobby's Dialog draws the
+// panel and its title around them, co-op's lobby the overlay's.
+const bodyView = (
+  model: Model,
+  inputs: ViewInputs,
+  h: HeroPickerViewBuilder,
+): ReadonlyArray<Html> => [
+  cardsView(model, inputs, h),
+  callingBalanceView(inputs.bones, h),
+  h.div(
+    [h.Class('panel-actions calling-actions')],
+    [...buyView(model, inputs, h), closeView('panel-close', h)],
+  ),
+]
+
+// NOTE: inside the solo lobby's Dialog, under the title it draws. Its box
+// takes no room of its own, so the panel lays out the body.
 const panelView = (
   model: Model,
   inputs: ViewInputs,
   h: HeroPickerViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('calling-picker')],
-    [
-      cardsView(model, inputs, h),
-      callingBalanceView(inputs.bones, h),
-      h.div(
-        [h.Class('panel-actions')],
-        [...buyView(model, inputs, h), closeView('panel-close', h)],
-      ),
-    ],
-  )
+): Html => h.div([h.Class('calling-picker')], bodyView(model, inputs, h))
 
-// NOTE: over co-op's lobby while the room still waits, with its own head.
-// A card the player's rank has not reached stays shut with the rank it
-// needs.
+// NOTE: over co-op's lobby while the room still waits: the same panel as
+// the solo lobby's Dialog, title and all, on a dim of its own. A card the
+// player's rank has not reached stays shut with the rank it needs.
 const overlayView = (
   model: Model,
   inputs: ViewInputs,
@@ -107,18 +111,12 @@ const overlayView = (
     ],
     [
       h.div(
-        [h.Class('coop-calling-picker-head')],
+        [h.Class('panel calling-panel')],
         [
-          callingBalanceView(inputs.bones, h),
-          h.span([h.Class('coop-calling-picker-title')], ['Hero']),
-          closeView('coop-close', h),
+          h.h2([h.Class('panel-title')], ['Hero']),
+          ...bodyView(model, inputs, h),
         ],
       ),
-      cardsView(model, inputs, h),
-      ...Array.match(buyView(model, inputs, h), {
-        onEmpty: () => [],
-        onNonEmpty: buy => [h.div([h.Class('coop-calling-actions')], buy)],
-      }),
     ],
   )
 

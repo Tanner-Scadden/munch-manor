@@ -26,7 +26,7 @@
   --dare-green: #2f7a1a;
   --dare-napkin:
     radial-gradient(
-      circle at 94% 92%,
+      circle at var(--dare-ring-at, 94% 92%),
       transparent 26px,
       rgba(200, 53, 43, 0.22) 27px,
       rgba(200, 53, 43, 0.22) 31px,
@@ -50,6 +50,12 @@
       var(--dare-quilt) 14px 16px
     ),
     linear-gradient(var(--dare-paper-hi), var(--dare-paper));
+}
+
+/* NOTE: upright, the bottom corner is SHAKE ON IT's, so the ring sits in
+   the top right, in the row CHICKEN OUT leaves empty beside it. */
+[data-layout='Portrait'] .lobby-layer {
+  --dare-ring-at: calc(100% - 44px) 36px;
 }
 
 /* NOTE: the dare card is a card over the home menu, not a page: the menu
@@ -830,6 +836,18 @@
 
 [data-layout='Portrait'] .lobby-seat {
   grid-column: 1 / -1;
+}
+
+/* NOTE: upright, your seat is as tall as your figure with its prop and the
+   hero card beside it, no taller, so the whole card fits a small phone
+   without a scroll. */
+[data-layout='Portrait'] .lobby .lobby-seat {
+  height: auto;
+  padding-top: 16px;
+}
+
+[data-layout='Portrait'] .lobby-seat .coop-seat-head {
+  height: clamp(84px, 12cqh, 116px);
 }
 
 [data-layout='Portrait'] .lobby-seat-empty,

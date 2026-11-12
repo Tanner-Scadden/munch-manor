@@ -4,7 +4,13 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { type Model, Phase, RunMode } from '../../../app/model'
-import { LANDSCAPE_SCREEN, frameSpanOf } from '../../../render/screen'
+import {
+  DEFAULT_PORTRAIT_SCREEN,
+  LANDSCAPE_SCREEN,
+  type Screen,
+  landscapeFrameOffset,
+  landscapeTouchScreen,
+} from '../../../render/screen'
 import { readyModel } from '../../../test/model.fixture'
 import { jsonOf } from '../../../test/testing'
 import {
@@ -25,9 +31,8 @@ import {
   unlockStartMs,
   unlocksOf,
 } from '../endBeat'
-import { endOverlayShapes } from '../endView'
-
-const LANDSCAPE_SPAN = frameSpanOf(LANDSCAPE_SCREEN)
+import { endOverlayShapes, unlockSpotOf } from '../endView'
+import { unlockCardBox } from '../rankStripView'
 
 // The rank strip on the end card (src/features/end/endBeat.ts, src/features/end/rankStripView.ts):
 // it comes after the tally, fills its bar, and on a rank up pops with a
@@ -95,7 +100,7 @@ describe('the strip draws', () => {
     )
 
   const shapesAt = (gain: Gain, screenMs: number) =>
-    count(endOverlayShapes(LANDSCAPE_SPAN)(ended(gain, screenMs)))
+    count(endOverlayShapes(LANDSCAPE_SCREEN)(ended(gain, screenMs)))
 
   test('nothing before its turn, then the badge, number, bar, and Bones', () => {
     const start = stripAt(rankUp)
@@ -127,9 +132,9 @@ describe('the strip draws', () => {
         glass: false,
       }),
     })
-    expect(count(endOverlayShapes(LANDSCAPE_SPAN)(withIcons))).toBeGreaterThan(
-      shapesAt(sameRank, done),
-    )
+    expect(
+      count(endOverlayShapes(LANDSCAPE_SCREEN)(withIcons)),
+    ).toBeGreaterThan(shapesAt(sameRank, done))
   })
 
   test('a rank up throws sparks, the same fill without one does not', () => {
@@ -208,7 +213,7 @@ describe('the cards a rank up flips', () => {
     const at = (card: number, extraMs: number) => {
       const model = ended(several)
       return jsonOf(
-        endOverlayShapes(LANDSCAPE_SPAN)(
+        endOverlayShapes(LANDSCAPE_SCREEN)(
           modifyFields(model, {
             screenMs: () =>
               unlockFlipAtMs(model, 'Munched') + unlockStartMs(card) + extraMs,
@@ -250,7 +255,7 @@ describe('the cards a rank up flips', () => {
           total + 1 + (shape._tag === 'Group' ? shapesOf(shape.shapes) : 0),
       )
     const drawn = (screenMs: number) =>
-      shapesOf(endOverlayShapes(LANDSCAPE_SPAN)(ended(rankUp, screenMs)))
+      shapesOf(endOverlayShapes(LANDSCAPE_SCREEN)(ended(rankUp, screenMs)))
     expect(goneAt).toBe(doneAt + UNLOCK_LINGER_MS)
     // NOTE: the card, its tab, and its timer are dozens of shapes; once its
     // time is up none of them is drawn.
@@ -261,6 +266,37 @@ describe('the cards a rank up flips', () => {
     expect(dismissUnlock(ended(rankUp, 500)).screenMs).toBe(500)
     expect(dismissUnlock(ended(sameRank, doneAt + 100)).screenMs).toBe(
       doneAt + 100,
+    )
+  })
+})
+
+describe('where the unlock card goes', () => {
+  // NOTE: the solo tally's panel and a crew's board as wide as the frame
+  // leaves, in the frame's pixels.
+  const SOLO_CARD = { left: 81, top: 61, bottom: 150 }
+  const CREW_CARD = { left: 40, top: 18, bottom: 124 }
+  const SCREENS: ReadonlyArray<readonly [string, Screen]> = [
+    ['desktop', LANDSCAPE_SCREEN],
+    ['phone on its side', landscapeTouchScreen(388)],
+    ['upright', DEFAULT_PORTRAIT_SCREEN],
+  ]
+
+  test('it never covers the card and stays on the screen', () => {
+    Array.forEach(SCREENS, ([, screen]) =>
+      Array.forEach([SOLO_CARD, CREW_CARD], card => {
+        const spot = unlockSpotOf(screen, card)
+        const box = unlockCardBox(spot.size)
+        const left = spot.x - box.width / 2
+        const right = spot.x + box.width / 2
+        const bottom = spot.top + box.height
+        const isBeside = right <= card.left || left >= 320 - card.left
+        const isUnder = spot.top >= card.bottom
+        expect(isBeside || isUnder).toBe(true)
+        const offset = landscapeFrameOffset(screen)
+        expect(left).toBeGreaterThanOrEqual(-offset.x)
+        expect(right).toBeLessThanOrEqual(screen.width - offset.x)
+        expect(bottom).toBeLessThanOrEqual(screen.height - offset.y)
+      }),
     )
   })
 })

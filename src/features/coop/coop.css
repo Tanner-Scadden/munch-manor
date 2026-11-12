@@ -1380,6 +1380,21 @@
   height: clamp(24px, 6 * var(--coop-unit), 36px);
 }
 
+/* NOTE: the hero pill sits beside READY, so held upright it takes no row
+   of its own. */
+.coop-ready-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 3 * var(--coop-unit), 28px);
+  max-width: 100%;
+}
+
+.coop-ready-row .coop-ready {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .coop-ready {
   width: min(70cqw, 420px);
   height: clamp(64px, 16 * var(--coop-unit), 110px);

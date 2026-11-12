@@ -1077,7 +1077,7 @@ export const overlayShapes: {
           : [...waveBanner(model, wave, elapsedMs), ...hintShapes(model)],
       Paused: ({ round }) =>
         pausedShapes(model, round.wave, resumeYFor(screen)),
-      Escaped: () => endOverlayShapes(model, frameSpanOf(screen)),
-      GameOver: () => endOverlayShapes(model, frameSpanOf(screen)),
+      Escaped: () => endOverlayShapes(model, screen),
+      GameOver: () => endOverlayShapes(model, screen),
     }),
 )

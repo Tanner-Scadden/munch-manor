@@ -48,7 +48,7 @@ import { Message } from './message'
 import { type Model } from './model'
 import { askingView, poofView, queueRollView } from './motionArt'
 import { nameButtonView, namePickerView } from './namePicker'
-import { picksView } from './picksView'
+import { heroPickView, picksView } from './picksView'
 import {
   CODE_INPUT_ID,
   QUICK_PLAY_BUTTON_ID,
@@ -820,15 +820,28 @@ const lobbyView = (
         onSome: lobby =>
           picksView(
             room,
-            {
-              lobby,
-              isPickerOpen: isPickerOpen(heroPicker),
-              keyCapView: key => keyCapView(inputs, key, h),
-            },
+            { lobby, keyCapView: key => keyCapView(inputs, key, h) },
             h,
           ),
       }),
-      readyButtonView(room, inputs, h),
+      h.div(
+        [h.Class('coop-ready-row')],
+        [
+          Option.match(room.maybeLobby, {
+            onNone: () => h.empty,
+            onSome: () =>
+              heroPickView(
+                room,
+                {
+                  isPickerOpen: isPickerOpen(heroPicker),
+                  keyCapView: key => keyCapView(inputs, key, h),
+                },
+                h,
+              ),
+          }),
+          readyButtonView(room, inputs, h),
+        ],
+      ),
       Option.match(meIn(room), {
         onNone: () => h.empty,
         onSome: me =>
