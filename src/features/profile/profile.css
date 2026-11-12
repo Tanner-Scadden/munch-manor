@@ -685,14 +685,15 @@
   }
 }
 
-/* NOTE: seven options in a row (the prints) are a few pixels short of
-   fitting a 360 px phone at the full tap size, so a column may shrink to
-   fit; every option keeps its height. */
+/* NOTE: seven options in a row (the prints) do not fit a 360 px phone at
+   the full tap size with room for their chips, so a narrow phone takes at
+   most six across (--look-narrow-columns): the prints wrap to a line of four
+   and a line of three, every option at full size on the same columns. */
 @media (max-width: 380px) {
   .look-options {
     grid-template-columns: repeat(
-      var(--look-columns, 6),
-      minmax(0, var(--menu-tap))
+      var(--look-narrow-columns, 6),
+      var(--menu-tap)
     );
   }
 }
@@ -1498,11 +1499,14 @@
 
 /* NOTE: the page clips what overflows it, and a chosen look option grows by
    8% past the page's side. A side padding with a matching negative margin
-   widens the clip box without moving or narrowing the content. */
+   widens the clip box without moving or narrowing the content. The rank
+   plate stands over the page's foot, so the page keeps that much room at
+   its bottom, and a long Look tab (the prints in two lines on a 360 px
+   phone) scrolls clear of the plate instead of sliding under it. */
 .game-root[data-layout='Portrait'] .profile-page {
   transform-origin: center top;
   margin: 0 -6px;
-  padding: 4px 6px;
+  padding: 4px 6px var(--profile-plate-room, 60px);
 }
 
 .game-root[data-layout='Portrait'] .look-tab {
