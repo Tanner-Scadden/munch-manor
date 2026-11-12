@@ -27,6 +27,7 @@ import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
   freshRunModel,
+  onDifficulty,
   pastTimedBreaks,
 } from '../../../test/model.fixture'
 import {
@@ -126,11 +127,6 @@ const BELL_ROOM_WORD = Option.getOrThrow(
     String.toUpperCase(id),
   ),
 )
-
-const onDifficulty = (model: Model, difficulty: Difficulty): Model =>
-  modifyFields(model, {
-    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
-  })
 
 // NOTE: the break before wave 2, long, before the kitchen goes on sale, so
 // its holler never takes the bubble, with the guided first break over.

@@ -9,6 +9,7 @@ import { modifyFields } from 'foldkit/struct'
 import {
   type Bullet,
   type CarriedGun,
+  type Difficulty,
   DifficultyCard,
   type FridgePrize,
   Lesson,
@@ -383,6 +384,16 @@ export const onHard = (model: Model): Model =>
   modifyFields(model, {
     difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
   })
+
+// NOTE: the run on `difficulty`, for a rule read off the dial.
+export const onDifficulty: {
+  (difficulty: Difficulty): (model: Model) => Model
+  (model: Model, difficulty: Difficulty): Model
+} = Function.dual(2, (model: Model, difficulty: Difficulty): Model =>
+  modifyFields(model, {
+    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
+  }),
+)
 
 // NOTE: data first when the Model leads: a Model is no array, zombies are.
 export const withActors: {

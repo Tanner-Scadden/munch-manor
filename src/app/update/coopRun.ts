@@ -16,7 +16,13 @@ import { Message } from '../message'
 import type { Model } from '../model'
 import { pressInRoom } from './coop'
 import { skipIntro } from './intro'
-import { forgetPad, notePad, padPresses } from './play'
+import {
+  dareListFromKey,
+  forgetPad,
+  isDareListKey,
+  notePad,
+  padPresses,
+} from './play'
 import { toggleAudioFromKey, unlockAudio } from './sound'
 import { type UpdateStep, modelStep, unchanged, withInput } from './step'
 
@@ -47,8 +53,9 @@ const holdKey =
 // NOTE: a press key goes to the room, and every key is held in the input
 // for walking. In the intro any key skips this player's drawing to the
 // door (src/app/update/intro.ts). After the slam any key folds this
-// player's dare card away, and the room never waits for it. A controller's
-// button goes the same way, from its own device.
+// player's dare card away, and the room never waits for it. Tab or a
+// controller's Select opens the card again over the live room, and puts
+// it away. A controller's button goes the same way, from its own device.
 const keyInRun = (code: string, device: InputDevice) =>
   makeStep(model =>
     isArriving(model.phase)
@@ -57,20 +64,22 @@ const keyInRun = (code: string, device: InputDevice) =>
           modelStep(skipIntro),
           unlockAudio,
         ])
-      : Option.match(playerKeyAction(model, code), {
-          onNone: () =>
-            Update.combineSteps([
-              modelStep(foldPocketCard),
-              holdKey(code, device),
-              unlockAudio,
-            ]),
-          onSome: action =>
-            Update.combineSteps([
-              modelStep(foldPocketCard),
-              holdKey(code, device),
-              pressInRun(action),
-            ]),
-        }),
+      : isDareListKey(model, code)
+        ? dareListFromKey(code)
+        : Option.match(playerKeyAction(model, code), {
+            onNone: () =>
+              Update.combineSteps([
+                modelStep(foldPocketCard),
+                holdKey(code, device),
+                unlockAudio,
+              ]),
+            onSome: action =>
+              Update.combineSteps([
+                modelStep(foldPocketCard),
+                holdKey(code, device),
+                pressInRun(action),
+              ]),
+          }),
   )
 
 // NOTE: a controller in an online run: its sticks and held buttons ride in

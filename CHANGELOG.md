@@ -8,6 +8,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🛋️ Every menu works on the controller too: the d-pad or stick picks, A presses, B backs out, and the bumpers flip tabs. Couch to manor, no mouse needed.
 - 🎯 Touch aim helps a bit less: it still nudges your shots onto a zombie, just more gently.
 - 🤝 A co-op wipe goes straight to the score card, no lobby peeking in first. RUN IT BACK is now PLAY AGAIN.
+- 🎒 Tap the dare list on your HUD (or press Tab) to pull the dare card back out: everything you've found sits in your satchel, each with a little story, and new finds plop right in.
 
 ## November 11, 2026: Catch your breath
 

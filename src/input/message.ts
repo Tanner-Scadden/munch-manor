@@ -63,7 +63,8 @@ export type RepeatedPadDirection = typeof InputMessage.RepeatedPadDirection.Type
 
 // NOTE: the run's buttons: the touch HUD's slots, reload, MEDIC, traps,
 // READY, the hold-to-buy button, and pause. Each goes to
-// the room in an online run (orInRun, src/app/update/coopRun.ts).
+// the room in an online run (orInRun, src/app/update/coopRun.ts), but for
+// the HUD's dare list, which opens the dare card on this client alone.
 export const runButtonCases = {
   PressedHoldButton: { pointerId: Schema.Finite },
   ClickedPauseButton: {},
@@ -75,6 +76,7 @@ export const runButtonCases = {
   ClickedMedicButton: {},
   ClickedPlaceTrapButton: {},
   ClickedNextTrapButton: {},
+  ClickedDareList: {},
 }
 export const RunButtonMessage = defineMessageUnion(runButtonCases)
 export type RunButtonMessage = typeof RunButtonMessage.Type

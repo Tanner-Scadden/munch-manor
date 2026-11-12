@@ -182,6 +182,11 @@ export const HarnessConfig = Schema.Struct({
   // (src/features/dare/pocketCard.ts); `pocketfold=N` has it folding for N ms.
   pocket: MaybeNum,
   pocketfold: MaybeNum,
+  // NOTE: `dareopen=N` has the card opened again from the HUD's list for N
+  // ms, with its satchel; `satchel=N` says the first N things found were
+  // in it already, so the rest drop in.
+  dareopen: MaybeNum,
+  satchel: Num(0),
   // NOTE: `darenear=N` stands the player N px south of the first thing of
   // the dare's list still lying in an open room, so it is in sight.
   darenear: MaybeNum,

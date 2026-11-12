@@ -31,6 +31,7 @@ import {
   isCheckingForUpdates,
   isUpdateCheckWindow,
 } from '../platform/version'
+import { DARE_LIST_BUTTON_CLASS } from '../screens/game/dareListButton'
 import { isRunUnderway } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
 import { makeSubscriptions } from './definition'
@@ -141,10 +142,18 @@ export const isKeptFromBrowser = (keyDown: KeyDown): boolean =>
     Array.contains(BROWSER_DEFAULT_KEYS, keyDown.code)) &&
   !isLeftToPage(keyDown)
 
+// NOTE: Tab opens and puts away the dare card while the HUD's dare list
+// is there to open (src/screens/game/dareListButton.ts), so then it never
+// moves the page's focus as well. Anywhere else Tab is the browser's.
+const isDareListTab = (event: KeyboardEvent): boolean =>
+  event.code === 'Tab' &&
+  !isLeftToPage(event) &&
+  document.querySelector(`.${DARE_LIST_BUTTON_CLASS}`) !== null
+
 const keyDownMessage = (
   event: KeyboardEvent,
 ): Option.Option<KeyDownMessage> => {
-  if (isKeptFromBrowser(event)) {
+  if (isKeptFromBrowser(event) || isDareListTab(event)) {
     event.preventDefault()
   }
   return maybeKeyDownMessage(event)

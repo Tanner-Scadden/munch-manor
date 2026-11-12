@@ -98,6 +98,7 @@ export type RunFields = Pick<
   | 'level'
   | 'introSkip'
   | 'pocketCard'
+  | 'dareSatchel'
   | 'caseCard'
   | 'ovens'
   | 'debutCard'
@@ -167,6 +168,7 @@ export const freshRun = (model: Model): RunFields => ({
   level: freshLevel(model.rngState),
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),
+  dareSatchel: [],
   caseCard: CaseCard.Hidden(),
   ovens: freshOvens(START_LEVEL),
   debutCard: DebutCard.Hidden(),

@@ -282,3 +282,69 @@ export const DARE_BIG_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
       TOP_LEFT,
     ),
 )
+
+// THE SATCHEL
+
+// NOTE: the satchel at the foot of the dare card opened from the HUD
+// (src/features/dare/pocketCardView.ts), drawn at twice its size: its back
+// wall, behind the things found, and its front, a buckled leather flap
+// with a pocket, in front of them, so each thing pokes out of the top.
+export const SATCHEL_SCALE = 2
+export const SATCHEL_WIDTH = 42
+export const SATCHEL_BACK_HEIGHT = 4
+export const SATCHEL_FRONT_HEIGHT = 14
+
+const SATCHEL_PALETTE: Palette = {
+  o: '#2a1a12',
+  L: '#c08a52',
+  B: '#9a6236',
+  b: '#6e4224',
+  l: '#b07a48',
+  s: '#e8c89a',
+  d: '#5a3418',
+  D: '#7a4a26',
+  G: '#ffd23f',
+  g: '#c9a227',
+  k: '#24140c',
+}
+
+export const SATCHEL_BACK: Sprite = spriteShapes(
+  [
+    '.oooooooooooooooooooooooooooooooooooooooo.',
+    'obbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
+    'okkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkko',
+    'okkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkko',
+  ],
+  SATCHEL_PALETTE,
+  TOP_LEFT,
+)
+
+export const SATCHEL_FRONT: Sprite = spriteShapes(
+  [
+    '.oooooooooooooooooooooooooooooooooooooooo.',
+    'oLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLo',
+    'oBsBBsBBsBBsBBsBBsBBsBBsBBsBBsBBsBBsBBsBBo',
+    'olBBBBBBBBBBBBBBBBBdDDdBBBBBBBBBBBBBBBbbbo',
+    'olBBBBBBBBBBBBBBBBBdDDdBBBBBBBBBBBBBBBbbbo',
+    'olBBBBBBBBBBddddddddDDddddddddBBBBBBBBbbbo',
+    'olBBBBBBBBBBdLLLLLGGGGGGLLLLLdBBBBBBBBbbbo',
+    'olBBBBBBBBBBdBBBBBGGDDGGBBBBBdBBBBBBBBbbbo',
+    'olBBBBBBBBBBdBBBBBgGGGGgBBBBBdBBBBBBBBbbbo',
+    'olBBBBBBBBBBdBBBBBBBBBBBBBBBBdBBBBBBBBbbbo',
+    'olBBBBBBBBBBddddddddddddddddddBBBBBBBBbbbo',
+    'olBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBbbbo',
+    '.obbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbo.',
+    '..oooooooooooooooooooooooooooooooooooooo..',
+  ],
+  SATCHEL_PALETTE,
+  TOP_LEFT,
+)
+
+// NOTE: under a missing thing's outline on the opened card, beside its
+// room's icon, on Dare and Double Dare: an eye with a gold glint, for a
+// thing that lies in plain sight there.
+export const PLAIN_SIGHT: Sprite = spriteShapes(
+  ['..ooo..', '.owwwo.', 'owwkwwo', '.owwwo.', '..ooo..'],
+  { o: '#4a4038', w: '#ffe066', k: '#140c10' },
+  TOP_LEFT,
+)

@@ -2,7 +2,7 @@
 // around it, from the home menu's state to the fridge, the planks, sync,
 // and the look, then co-op staged over it.
 
-import { Array, Option, Record } from 'effect'
+import { Array, Option, Record, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -306,7 +306,21 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (config.darefound > 0) {
     model = withDareFound(model, config.darefound)
   }
-  const { pocket, pocketfold } = config
+  const { pocket, pocketfold, dareopen } = config
+  if (dareopen !== undefined) {
+    const found = Array.filterMap(dareCardOf(model), ({ kind, isFound }) =>
+      isFound ? Result.succeed(kind) : Result.fail(undefined),
+    )
+    const shown = Array.take(found, config.satchel)
+    model = modifyFields(model, {
+      pocketCard: () =>
+        PocketCard.Opened({
+          ageMs: dareopen,
+          fresh: Array.drop(found, config.satchel),
+        }),
+      dareSatchel: () => shown,
+    })
+  }
   if (pocket !== undefined) {
     model = modifyFields(model, {
       pocketCard: () => PocketCard.Reading({ ageMs: pocket }),
