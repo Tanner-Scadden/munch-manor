@@ -12,6 +12,7 @@ export type ViewInputs = Readonly<{
   look: Appearance
   isKeyboard: boolean
   isRunCardUp: boolean
+  isRunEndComing: boolean
   bought: SavedBoughtCosmetics
   bones: number
 }>

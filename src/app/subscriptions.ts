@@ -1,7 +1,7 @@
 import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
 import { Dom } from 'foldkit'
 
-import { maybeRoomOf } from '../domain/coopRoom'
+import { isRoomFrameDue } from '../domain/onlineRun'
 import { isSamePoll, pickPad } from '../input/gamepad'
 import { isTrackingPointer } from '../input/input'
 import type { Gamepad } from '../input/inputSchema'
@@ -435,12 +435,6 @@ const roomFrameTimes: Stream.Stream<number> = Stream.callback<number>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 ).pipe(Stream.mapEffect(() => Clock.currentTimeMillis))
 
-const isRoomPlaying = (model: Model): boolean =>
-  Option.exists(
-    maybeRoomOf(model.coop),
-    room => room.session.phase._tag === 'Playing',
-  )
-
 export const subscriptions = makeSubscriptions(entry => ({
   playerSync: entry('PlayerSync', {
     messages: [
@@ -484,7 +478,7 @@ export const subscriptions = makeSubscriptions(entry => ({
     { isPlaying: Schema.Boolean },
     {
       messages: [Message.TickedRoomFrame],
-      modelToDependencies: model => ({ isPlaying: isRoomPlaying(model) }),
+      modelToDependencies: model => ({ isPlaying: isRoomFrameDue(model) }),
       handler: function* () {
         return ({ isPlaying }) =>
           isPlaying

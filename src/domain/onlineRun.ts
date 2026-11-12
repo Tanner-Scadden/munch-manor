@@ -18,9 +18,44 @@ import { type Room as CoopRoom, isInLobby, maybeRoomOf } from './coopRoom'
 // apart from src/app/update/coopPlay.ts (the drawing) and src/app/update/coopRun.ts (the
 // presses), so any update module can ask without importing either.
 
-// NOTE: a room whose run is on, its lobby Playing.
+// NOTE: the end of a run the room has finished but this client has not drawn
+// yet. The client draws the room 100 ms behind (Session's interpolation), so
+// RoomClosed, and the lobby's result on the lobby's own socket, can both come
+// before the frame that ends the run is drawn. Until it is, the run stays the
+// root's to draw: while the game's socket still plays (the last frames are
+// on their way), or once the end is in the session's frames. A session closed
+// with no end in its frames has nothing more to draw.
+const isEndToDraw = (model: Model, room: CoopRoom): boolean =>
+  isRunUnderway(model.phase) &&
+  (room.session.phase._tag === 'Playing' ||
+    Option.exists(
+      Array.last(room.session.frames),
+      frame => !isRunUnderway(frame.world.world.phase),
+    ))
+
+// NOTE: a room whose run is on, its lobby Playing, or back in its lobby with
+// the run's end still to draw, so the lobby never shows before the end card.
 export const maybeRunRoom = (model: Model): Option.Option<CoopRoom> =>
-  Option.filter(maybeRoomOf(model.coop), room => !isInLobby(room))
+  Option.filter(
+    maybeRoomOf(model.coop),
+    room => !isInLobby(room) || isEndToDraw(model, room),
+  )
+
+// NOTE: the room is back in its lobby, but the root still draws the run's
+// end, so co-op keeps its arena up and not the lobby.
+export const isRunEndComing = (model: Model): boolean =>
+  Option.exists(
+    maybeRoomOf(model.coop),
+    room => isInLobby(room) && isEndToDraw(model, room),
+  )
+
+// NOTE: the room's frames tick while its game plays, and after RoomClosed
+// until the root has drawn the run's end.
+export const isRoomFrameDue = (model: Model): boolean =>
+  Option.exists(
+    maybeRoomOf(model.coop),
+    room => room.session.phase._tag === 'Playing' || isEndToDraw(model, room),
+  )
 
 // NOTE: a run is drawn from the room once its first World has come.
 const isOnlineRun = (model: Model): boolean =>
