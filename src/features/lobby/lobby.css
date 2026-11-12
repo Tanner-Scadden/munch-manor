@@ -24,14 +24,17 @@
   --dare-pencil: #3b4a8a;
   --dare-red: #c8352b;
   --dare-green: #2f7a1a;
-  --dare-napkin:
-    radial-gradient(
-      circle at var(--dare-ring-at, 94% 92%),
-      transparent 26px,
-      rgba(200, 53, 43, 0.22) 27px,
-      rgba(200, 53, 43, 0.22) 31px,
-      transparent 32px
-    ),
+  /* NOTE: the napkin's marks are all in pixels from a corner, so the fold,
+     which grows from PLAY's size to the card's, never stretches them. The
+     ring is its own layer, so the fold can put it on one half only. */
+  --dare-ring: radial-gradient(
+    circle at var(--dare-ring-at, calc(100% - 52px) calc(100% - 40px)),
+    transparent 26px,
+    rgba(200, 53, 43, 0.22) 27px,
+    rgba(200, 53, 43, 0.22) 31px,
+    transparent 32px
+  );
+  --dare-lines:
     linear-gradient(
       90deg,
       transparent 18px,
@@ -50,6 +53,7 @@
       var(--dare-quilt) 14px 16px
     ),
     linear-gradient(var(--dare-paper-hi), var(--dare-paper));
+  --dare-napkin: var(--dare-ring), var(--dare-lines);
 }
 
 /* NOTE: upright, the bottom corner is SHAKE ON IT's, so the ring sits in
@@ -74,8 +78,9 @@
 
 /* NOTE: sized to what it holds, no taller than the screen (it scrolls
    inside if it must), with a margin, a shadow, and the paper's inked
-   edge on every screen. Its box never moves: it fades in once the fold
-   has opened (`dare-card-in`), and only then takes taps. */
+   edge on every screen. Its box never moves: it fades in over the fold
+   as the fold finishes opening (`dare-card-in`), and only then takes
+   taps. */
 .lobby .dare-card {
   position: relative;
   z-index: 1;
@@ -98,12 +103,12 @@
     0 6px 0 rgba(0, 0, 0, 0.45),
     0 18px 48px rgba(0, 0, 0, 0.6);
   color: var(--dare-ink);
-  animation: dare-card-in 320ms linear both;
+  animation: dare-card-in var(--dare-open-ms) linear both;
 }
 
 @keyframes dare-card-in {
   0%,
-  78% {
+  84% {
     opacity: 0;
     pointer-events: none;
   }
@@ -114,8 +119,9 @@
   }
 }
 
-/* NOTE: folding back into PLAY, the card is gone at once and the dim fades;
-   the fold plays the rest. */
+/* NOTE: folding back into PLAY, the card is gone at once, the fold in its
+   place, and the dim lifts as the fold shrinks into PLAY, on its easing: an
+   exit, quicker than the way in. */
 .lobby[data-state='Folding'] .dare-card {
   visibility: hidden;
   animation: none;
@@ -123,7 +129,8 @@
 
 .coop.lobby[data-state='Folding'] {
   pointer-events: none;
-  animation: lobby-dim-out 300ms ease-in both;
+  animation: lobby-dim-out var(--dare-close-ms) cubic-bezier(0.77, 0, 0.175, 1)
+    both;
 }
 
 @keyframes lobby-dim-out {
@@ -153,8 +160,24 @@
    `--home-play` in menu.css), then gone as the card fades in over it. CHICKEN
    OUT plays it backwards into PLAY. It is art: aria-hidden, no taps, and
    nothing in it is a control, so it may move (src/app/__tests__/
-   motion.test.ts). The top half is the box's top half; the bottom half
-   hangs from the crease, folded up behind it until the card opens. */
+   motion.test.ts).
+
+   It reads as PLAY opening (GAME_DESIGN.md, "Motion"): its first frame is
+   PLAY's own box, cream paper over cream PLAY; it grows to the card on a
+   strong ease-out, then the bottom half swings down from behind the top
+   half, then the card fades in over it. Out, it folds and shrinks back
+   into PLAY in a little over half the time.
+
+   PLAY's box is known only to CSS anchors, which only the insets read, so
+   the fold grows by its insets rather than a scale: one fixed box of two
+   spans with nothing laid out around it (`contain`). Its paper is drawn in
+   pixels from its corners, so growing never stretches it. */
+
+.lobby-layer {
+  --dare-open-ms: 500ms;
+  /* NOTE: src/features/lobby/steps.ts waits FOLD_MS, the same. */
+  --dare-close-ms: 280ms;
+}
 
 .dare-fold {
   --play-top: anchor(--home-play top);
@@ -171,7 +194,8 @@
   right: var(--card-right);
   bottom: var(--card-bottom);
   left: var(--card-left);
-  perspective: 2400px;
+  contain: layout style;
+  perspective: 1600px;
   opacity: 0;
   pointer-events: none;
 }
@@ -183,64 +207,55 @@
   height: 50%;
   box-sizing: border-box;
   border: 3px solid var(--dare-ink);
-  background: var(--dare-napkin);
-  background-size: 100% 200%;
+  background: var(--dare-lines);
 }
 
+/* NOTE: the top half lies over the bottom one, so the bottom half, folded
+   up, is behind it, and swings down out from under it. */
 .dare-fold-half[data-half='Top'] {
+  z-index: 1;
   top: 0;
   border-bottom-width: 1px;
   border-radius: 4px 4px 0 0;
-  background-position: top;
 }
 
-/* NOTE: the bottom half turns on the crease. Folded up, its back shows,
-   a shade darker, as the back of PLAY's dog-ear is. */
 .dare-fold-half[data-half='Bottom'] {
   top: 50%;
   border-top-width: 1px;
   border-radius: 0 0 4px 4px;
-  background-position: bottom;
+  background: var(--dare-ring), var(--dare-lines);
   transform-origin: top;
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45);
 }
 
-.dare-fold-half[data-half='Bottom']::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--dare-paper-back);
-  opacity: 0;
+/* NOTE: upright, the ring is in the top corner, so on the top half. */
+[data-layout='Portrait'] .dare-fold-half[data-half='Top'] {
+  background: var(--dare-ring), var(--dare-lines);
+}
+
+[data-layout='Portrait'] .dare-fold-half[data-half='Bottom'] {
+  background: var(--dare-lines);
 }
 
 .lobby[data-state='Open'] + .dare-fold {
-  animation: dare-unfold 320ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: dare-unfold var(--dare-open-ms) linear both;
 }
 
 .lobby[data-state='Open'] + .dare-fold .dare-fold-half[data-half='Bottom'] {
-  animation: dare-flap-open 320ms ease-out both;
-}
-
-.lobby[data-state='Open']
-  + .dare-fold
-  .dare-fold-half[data-half='Bottom']::after {
-  animation: dare-flap-back-open 320ms linear both;
+  animation: dare-flap-open var(--dare-open-ms) linear both;
 }
 
 .lobby[data-state='Folding'] + .dare-fold {
-  animation: dare-fold-back 300ms cubic-bezier(0.6, 0, 0.8, 0.4) both;
+  animation: dare-fold-back var(--dare-close-ms) linear both;
 }
 
 .lobby[data-state='Folding'] + .dare-fold .dare-fold-half[data-half='Bottom'] {
-  animation: dare-flap-close 300ms ease-in both;
+  animation: dare-flap-close var(--dare-close-ms) linear both;
 }
 
-.lobby[data-state='Folding']
-  + .dare-fold
-  .dare-fold-half[data-half='Bottom']::after {
-  animation: dare-flap-back-close 300ms linear both;
-}
-
+/* NOTE: each stretch carries its own easing: a strong ease-out to grow, the
+   same to swing open, and an ease-in-out to shrink into PLAY, a place on
+   screen it travels to. */
 @keyframes dare-unfold {
   0% {
     top: var(--play-top);
@@ -248,10 +263,11 @@
     bottom: var(--play-bottom);
     left: var(--play-left);
     opacity: 1;
+    animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
   }
 
-  50%,
-  80% {
+  44%,
+  86% {
     top: var(--card-top);
     right: var(--card-right);
     bottom: var(--card-bottom);
@@ -266,38 +282,29 @@
 
 @keyframes dare-flap-open {
   0%,
-  50% {
+  38% {
     transform: rotateX(180deg);
+    animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
   }
 
+  84%,
   100% {
     transform: rotateX(0deg);
   }
 }
 
-@keyframes dare-flap-back-open {
-  0%,
-  74% {
-    opacity: 1;
-  }
-
-  76%,
-  100% {
-    opacity: 0;
-  }
-}
-
 @keyframes dare-fold-back {
   0%,
-  45% {
+  30% {
     top: var(--card-top);
     right: var(--card-right);
     bottom: var(--card-bottom);
     left: var(--card-left);
     opacity: 1;
+    animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
   }
 
-  92% {
+  90% {
     opacity: 1;
   }
 
@@ -313,51 +320,52 @@
 @keyframes dare-flap-close {
   0% {
     transform: rotateX(0deg);
+    animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
   }
 
-  45%,
+  40%,
   100% {
     transform: rotateX(180deg);
   }
 }
 
-@keyframes dare-flap-back-close {
-  0%,
-  22% {
-    opacity: 0;
-  }
-
-  24%,
-  100% {
-    opacity: 1;
-  }
-}
-
-/* NOTE: a browser with no CSS anchors cannot find PLAY: the card fades in
-   where it stands, and goes at once. */
+/* NOTE: a browser with no CSS anchors cannot find PLAY, and a player who
+   asks for less motion gets none that travels: the card fades in where it
+   stands, and out quicker. A fade alone carries no motion (web.dev,
+   "prefers-reduced-motion"), so it stays. */
 @supports not (anchor-name: --dare-card) {
   .dare-fold {
     display: none;
   }
 
   .lobby .dare-card {
-    animation: coop-in 200ms ease-out;
+    animation: coop-in 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .lobby[data-state='Folding'] .dare-card {
+    visibility: visible;
   }
 
   .coop.lobby[data-state='Folding'] {
-    display: none;
+    animation-duration: 150ms;
   }
 }
 
-/* NOTE: reduced motion: the card is simply there, and simply gone. */
 @media (prefers-reduced-motion: reduce) {
-  .dare-fold,
-  .coop.lobby[data-state='Folding'] {
+  .dare-fold {
     display: none;
   }
 
   .lobby .dare-card {
-    animation: none;
+    animation: coop-in 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .lobby[data-state='Folding'] .dare-card {
+    visibility: visible;
+  }
+
+  .coop.lobby[data-state='Folding'] {
+    animation-duration: 150ms;
   }
 }
 

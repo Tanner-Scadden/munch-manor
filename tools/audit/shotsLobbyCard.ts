@@ -7,9 +7,12 @@
 // not start on PLAY or end on the card, any hero's name does not fit on
 // the hero card (each name is tried in every card, yours and a bot's), or
 // focus is not on START once it is open and on PLAY once it is gone.
+// FRAMES=1 also films the fold both ways, a still every `FRAME_MS` from
+// its first frame to its last, as `lobby-card-<TAG>-<viewport>-<way>-<ms>.png`
+// (`way` is `open` or `fold`).
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsLobbyCard.ts
 // VIEWPORTS picks screens.
-import { Effect, Record, Schema } from 'effect'
+import { Config, Effect, Option, Record, Schema, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { CALLING_NAMES } from '@game/world/names'
@@ -105,6 +108,65 @@ const releaseAnimations = (page: Page) =>
     }),
   )
 
+// NOTE: when the fold's and the card's last animation ends, in ms from its
+// start, past the home menu's own and the card's idle loops, which never end.
+const lastEndMs = (page: Page) =>
+  evaluateAs(page, Schema.Finite, () => {
+    let last = 0
+    for (const animation of document.getAnimations()) {
+      const effect = animation.effect
+      const endMs = Number(effect?.getComputedTiming().endTime ?? 0)
+      if (
+        effect instanceof KeyframeEffect &&
+        effect.target?.closest('.lobby-layer') !== null &&
+        Number.isFinite(endMs)
+      ) {
+        last = Math.max(last, endMs)
+      }
+    }
+    return last
+  })
+
+// NOTE: the lobby goes FOLD_MS after it starts folding, sooner than a film
+// of stills takes, so the fold back is filmed on a copy of the folding layer
+// laid beside it, which nothing takes away, the lobby itself hidden.
+const stillCopy = (page: Page) =>
+  attempt(() =>
+    page.evaluate(() => {
+      const layer = document.querySelector('.lobby-layer')
+      if (layer instanceof HTMLElement) {
+        const copy = layer.cloneNode(true)
+        if (copy instanceof HTMLElement) {
+          copy.dataset['still'] = 'Copy'
+          layer.after(copy)
+          layer.style.visibility = 'hidden'
+        }
+      }
+    }),
+  )
+
+const dropStillCopy = (page: Page) =>
+  attempt(() =>
+    page.evaluate(() => {
+      document.querySelector('[data-still="Copy"]')?.remove()
+    }),
+  )
+
+// NOTE: a still every FRAME_MS from the first frame to the last, each
+// animation held there, then let run on.
+const FRAME_MS = 40
+
+const film = (page: Page, name: (frame: string) => string, way: string) =>
+  Effect.gen(function* () {
+    const endMs = yield* lastEndMs(page)
+    for (let ms = 0; ms <= endMs + FRAME_MS - 1; ms += FRAME_MS) {
+      const at = Math.min(ms, endMs)
+      yield* holdAt(page, at)
+      yield* stillShot(page, name(`${way}-${String.padStart(4, '0')(`${at}`)}`))
+    }
+    yield* holdAt(page, 0)
+  })
+
 const Clipped = Schema.Array(
   Schema.Struct({
     name: Schema.String,
@@ -151,6 +213,8 @@ const isNear = (a: Box, b: Box): boolean =>
 runHarnessAudit(
   Effect.gen(function* () {
     const tag = yield* auditTag
+    const maybeFrames = yield* Config.String('FRAMES').pipe(Config.option)
+    const isFilming = Option.isSome(maybeFrames)
     const viewports = yield* VIEWPORTS
     const browser = yield* openBrowser
     const problems: Array<string> = []
@@ -174,6 +238,9 @@ runHarnessAudit(
       const first = yield* measure(page)
       if (!isNear(first.fold, { ...first.play, bottom: first.fold.bottom })) {
         problems.push(`${viewport.name}: the fold does not start on PLAY`)
+      }
+      if (isFilming) {
+        yield* film(page, name, 'open')
       }
       yield* holdAt(page, 230)
       yield* stillShot(page, name('mid-unfold'))
@@ -238,6 +305,11 @@ runHarnessAudit(
         problems.push(
           `${where}: the fold back does not start on the card (${boxText(folding.fold)} against ${boxText(withBot.card)})`,
         )
+      }
+      if (isFilming) {
+        yield* stillCopy(page)
+        yield* film(page, name, 'fold')
+        yield* dropStillCopy(page)
       }
       yield* holdAt(page, 200)
       yield* stillShot(page, name('mid-fold'))

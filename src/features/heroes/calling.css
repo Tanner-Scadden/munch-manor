@@ -242,6 +242,7 @@
   align-items: center;
   justify-content: center;
   background: var(--menu-scrim);
+  animation: coop-in 180ms var(--menu-ease-out);
 }
 
 /* NOTE: the name picker over co-op's lobby (src/features/coop/namePicker.ts)
