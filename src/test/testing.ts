@@ -8,7 +8,7 @@ import { Scene, Story } from 'foldkit'
 
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
-import { LobbyBinding } from '../app/bindings'
+import { LobbyBinding, ProfileDialogBinding } from '../app/bindings'
 import { layer } from '../app/block'
 import {
   AwaitFirstFrame,
@@ -429,6 +429,13 @@ export const closeDialog = () =>
   Story.Command.resolve(
     Dialog.test.CloseDialog,
     DialogBlock.Message.CompletedCloseDialog(),
+  )
+
+// NOTE: Escape on the Profile's Dialog, and its close resolved.
+export const closeProfile = () =>
+  Story.steps(
+    Story.messageIn(ProfileDialogBinding, DialogBlock.Message.CanceledDialog()),
+    closeDialog(),
   )
 
 export const closeDialogInScene = () => [

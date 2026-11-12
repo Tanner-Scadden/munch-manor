@@ -671,7 +671,7 @@ const shownWhen = (isShown: boolean, toggle: Toggle): ReadonlyArray<Toggle> =>
 // cursor on a mouse, full screen where the browser can do it, and, on a
 // phone that can lock how it turns, ROTATE: off keeps it sideways, on lets
 // it follow the phone. RUMBLE shows once a controller is plugged in.
-// RECORD shows only on a device opened once with `?record=1`
+// RECORD shows once any of the player's devices opened `?record=1`
 // (src/platform/recording.ts).
 const settingTiles = ({
   device,

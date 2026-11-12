@@ -1,6 +1,7 @@
 import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
+import { RecordUnlock } from '../shared/playerData'
 import {
   FullscreenSetting,
   InstallOffer,
@@ -15,7 +16,6 @@ import {
   RunSettled,
   SyncState,
 } from './playerSync'
-import { RecordUnlock } from './recording'
 import { PlayerSave } from './save'
 
 // The root's Messages from the browser and the Worker, by what they are

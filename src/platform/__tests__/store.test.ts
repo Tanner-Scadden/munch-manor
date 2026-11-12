@@ -698,6 +698,24 @@ describe('two devices syncing one player', () => {
     ),
   )
 
+  it.effect(
+    'RECORD MY RUNS unlocked on one linked device unlocks the other',
+    () =>
+      synced(
+        Effect.gen(function* () {
+          const { phone, laptop } = yield* linkedPair
+          yield* write(phone, legacySave, {
+            ...legacySave,
+            recordUnlock: 'Unlocked',
+          })
+          const isUnlocked = (maybeSave: Option.Option<PlayerSave>) =>
+            Option.exists(maybeSave, save => save.recordUnlock === 'Unlocked')
+          const onLaptop = yield* until(laptop.load, isUnlocked)
+          expect(isUnlocked(onLaptop)).toBe(true)
+        }),
+      ),
+  )
+
   it.effect('a calling picked on one linked device reaches the other', () =>
     synced(
       Effect.gen(function* () {
@@ -895,17 +913,36 @@ describe('RECORD MY RUNS on this device', () => {
       }
     })
 
-  it.effect('the unlock lasts through a reload', () =>
+  it.effect('a mark from before the unlock synced is still read', () =>
     Effect.gen(function* () {
       const legacy = yield* makeLegacy(Option.none())
       const hub = yield* makeHub()
       const before = yield* openOn(hub, legacy.legacy)
       const wasUnlocked = yield* before.isRecordUnlocked
       expect(wasUnlocked).toBe(false)
-      yield* before.unlockRecord
+      const sql = yield* sqlOn(hub)
+      yield* sql`INSERT INTO store_meta (key, value)
+        VALUES ('record-unlock', 'Unlocked')`
       const after = yield* openOn(hub, legacy.legacy)
       const isUnlocked = yield* after.isRecordUnlocked
       expect(isUnlocked).toBe(true)
+    }),
+  )
+
+  it.effect('the unlock lasts through a reload, in the save', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.some(legacySave))
+      const hub = yield* makeHub()
+      const before = yield* openOn(hub, legacy.legacy)
+      yield* write(before, legacySave, {
+        ...legacySave,
+        recordUnlock: 'Unlocked',
+      })
+      const after = yield* openOn(hub, legacy.legacy)
+      const maybeSave = yield* after.load
+      expect(Option.map(maybeSave, save => save.recordUnlock)).toEqual(
+        Option.some('Unlocked'),
+      )
     }),
   )
 
@@ -1052,6 +1089,7 @@ const migratedLiveSave: PlayerSave = {
   boughtCosmetics: [],
   seenUnlocks: [],
   recordRuns: 'Off',
+  recordUnlock: 'Locked',
 }
 
 const realLegacy: LegacySave = {

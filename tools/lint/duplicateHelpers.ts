@@ -141,10 +141,10 @@ const ALLOWED: ReadonlyArray<
       'a list of strings that means sprite keys here and power-up ids in SavedPowerUps: the same shape, not one value',
   },
   {
-    file: 'src/platform/recording.ts',
+    file: 'src/shared/playerData.ts',
     name: 'RecordUnlock',
     reason:
-      'whether this device opened ?record=1, kept apart from the synced save; SavedNightmare is a save field with the same two words, not one value',
+      'whether RECORD MY RUNS shows; SavedNightmare is a save field with the same two words, not one value',
   },
 ]
 

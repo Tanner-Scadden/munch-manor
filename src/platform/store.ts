@@ -91,7 +91,6 @@ export class PlayerStore extends Context.Service<
     // unlock, and its recorded runs waiting for the network. SQLite only,
     // like the summaries: the localStorage fallback never unlocks.
     readonly isRecordUnlocked: Effect.Effect<boolean, StoreError>
-    readonly unlockRecord: Effect.Effect<void, StoreError>
     readonly queueRecording: (body: string) => Effect.Effect<void, StoreError>
     readonly takeQueuedRecording: Effect.Effect<
       Option.Option<string>,
@@ -289,12 +288,6 @@ export const layer: Layer.Layer<PlayerStore> = Layer.effect(
       isRecordUnlocked: queued(
         opened => Effect.mapError(opened.isRecordUnlocked, toStoreError),
         false,
-      ),
-      unlockRecord: Effect.asVoid(
-        queued(
-          opened => Effect.mapError(opened.unlockRecord, toStoreError),
-          undefined,
-        ),
       ),
       queueRecording: body =>
         Effect.asVoid(

@@ -3,9 +3,9 @@ import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
-import { DialogBlock, RadioGroup, Tabs } from '@foldkit/ui'
+import { RadioGroup, Tabs } from '@foldkit/ui'
 
-import { ProfileBinding, ProfileDialogBinding } from '../../../app/bindings'
+import { ProfileBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, type Model, Phase } from '../../../app/model'
 import { WriteSave } from '../../../app/update/save'
@@ -26,7 +26,7 @@ import { saveOf } from '../../../platform/save'
 import { readyAfterRead } from '../../../test/model.fixture'
 import {
   APPLICATION,
-  closeDialog,
+  closeProfile,
   press,
   showDialog,
   writeSave,
@@ -37,12 +37,6 @@ import { CharacterBinding, TabsBinding } from '../composition'
 import { Message as ProfileMessage } from '../message'
 import { type ProfileTab, ProfileTabsBlock } from '../model'
 import { PROFILE_TABS } from '../profile'
-
-const closeProfile = () =>
-  Story.steps(
-    Story.messageIn(ProfileDialogBinding, DialogBlock.Message.CanceledDialog()),
-    closeDialog(),
-  )
 
 const tabIndex = (tab: ProfileTab): number =>
   pipe(

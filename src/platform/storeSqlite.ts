@@ -68,6 +68,7 @@ import {
   SawUnlocks,
   SeededPlayer,
   UnlockedNightmare,
+  UnlockedRecording,
   boughtRowsOfSave,
   killsRowsOfSave,
   playerScopeId,
@@ -169,7 +170,9 @@ const QueuedSummaryRow = Schema.Struct({
 // keeps only the last few.
 const MAX_QUEUED_RECORDINGS = 4
 
-// NOTE: this device was opened with `?record=1`, so it shows RECORD MY RUNS.
+// NOTE: this device was opened with `?record=1` before the unlock synced
+// with the player (save version 20). Only read now: the boot moves it into
+// the save, which syncs it to every linked device.
 const RECORD_UNLOCK_KEY = 'record-unlock'
 const RECORD_UNLOCKED = 'Unlocked'
 
@@ -228,6 +231,7 @@ const saveOfRow = (
   rotation: row.rotation,
   rumble: row.rumble,
   recordRuns: row.record_runs,
+  recordUnlock: row.record_unlock,
   name: row.name,
   calling: row.calling,
   boughtCosmetics: boughtCosmeticsOf(bought),
@@ -276,7 +280,6 @@ export interface PlayerDatabase {
   >
   readonly clearQueuedSummaries: Effect.Effect<void, PlayerDatabaseError>
   readonly isRecordUnlocked: Effect.Effect<boolean, PlayerDatabaseError>
-  readonly unlockRecord: Effect.Effect<void, PlayerDatabaseError>
   readonly queueRecording: (
     body: string,
   ) => Effect.Effect<void, PlayerDatabaseError>
@@ -570,6 +573,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     ChangedAppearance: ({ appearance }) =>
       replica.run(ChangedAppearance, { appearance }),
     UnlockedNightmare: () => replica.run(UnlockedNightmare, {}),
+    UnlockedRecording: () => replica.run(UnlockedRecording, {}),
     ChangedDifficulty: ({ chosen, card }) =>
       replica.run(ChangedDifficulty, { chosen, card }),
     ChangedOnboarding: ({ onboarding, homeScreenTip }) =>
@@ -866,11 +870,6 @@ export const makePlayerDatabase: {
           onSuccess: Option.exists(({ value }) => value === RECORD_UNLOCKED),
           onFailure: toDatabaseError,
         }),
-        unlockRecord: pipe(
-          markMeta(client, RECORD_UNLOCK_KEY, RECORD_UNLOCKED),
-          Effect.asVoid,
-          Effect.mapError(toDatabaseError),
-        ),
         queueRecording: body => queueRow(client, RECORDING_QUEUE, body),
         takeQueuedRecording: takeRow(client, RECORDING_QUEUE),
         clearQueuedRecordings: clearRows(client, RECORDING_QUEUE),

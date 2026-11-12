@@ -1,6 +1,8 @@
 import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
+import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { cleanName } from '../../domain/playerName'
 import { grantVeteran } from '../../features/end/rankRun'
 import {
   LastRunSync,
@@ -20,7 +22,8 @@ import { hideSplash, showSplashProgress } from '../../platform/splash'
 import { PlayerStore } from '../../platform/store'
 import { RUNNING_BUILD } from '../../platform/version'
 import { SEEN_BASELINE } from '../../shared/playerData'
-import { ApplicationBlock } from '../definition'
+import { ProfileBinding } from '../bindings'
+import { ApplicationBlock, makeStep } from '../definition'
 import { Message } from '../message'
 import { LOAD_STEPS, type LoadStep, Loading, type Model } from '../model'
 import { askForRoomLink } from './coop'
@@ -29,6 +32,8 @@ import {
   type UpdateStep,
   combine,
   defineHandlers,
+  modelStep,
+  unchanged,
 } from './step'
 import { registerServiceWorkerAfterSplash } from './version'
 
@@ -179,8 +184,16 @@ const loadSave: {
     const isBaseline = Option.exists(maybeSave, save =>
       Array.contains(save.seenUnlocks, SEEN_BASELINE),
     )
+    // NOTE: RECORD MY RUNS unlocked on this device before the save was read
+    // (a `?record=1` link, or a mark from before it synced) goes into the
+    // save, and so to every linked device.
+    const isRecordUnlockNew = Option.exists(
+      maybeSave,
+      save =>
+        save.recordUnlock === 'Locked' && granted.recordUnlock === 'Unlocked',
+    )
     return Option.isSome(maybeSave) &&
-      (!restored.rank.isVeteranGranted || isBaseline)
+      (!restored.rank.isVeteranGranted || isBaseline || isRecordUnlockNew)
       ? {
           model: modifyFields(loaded.model, {
             writesInFlight: count => count + 1,
@@ -193,6 +206,9 @@ const loadSave: {
                 ...changesBetween(saveOf(restored), saveOf(granted)),
                 ...(isBaseline
                   ? [PlayerChange.SawUnlocks({ ids: granted.seenUnlocks })]
+                  : []),
+                ...(isRecordUnlockNew
+                  ? [PlayerChange.UnlockedRecording()]
                   : []),
               ],
             }),
@@ -246,15 +262,22 @@ export const writeSaveFrom: {
 
 // NOTE: a save from another device, or from the server, replaces what this
 // device shows: its look, settings, difficulty, and bests. Lessons and
-// unlocks only ever move forward, as on load.
-const takeSyncedSave: {
-  (save: PlayerSave): (model: Model) => UpdateReturn
-  (model: Model, save: PlayerSave): UpdateReturn
-} = Function.dual(2, (model: Model, save: PlayerSave): UpdateReturn =>
-  model.writesInFlight > 0
-    ? { model: modifyFields(model, { syncedSave: () => 'Stale' }) }
-    : { model: restoreSave(model, save) },
-)
+// unlocks only ever move forward, as on load. The Profile hears of a new
+// name too, so a draft it holds from before never puts the old one back.
+const takeSyncedSave = (save: PlayerSave) =>
+  makeStep(model =>
+    model.writesInFlight > 0
+      ? modelStep(stepModel =>
+          modifyFields(stepModel, { syncedSave: () => 'Stale' }),
+        )
+      : Update.combineSteps([
+          modelStep(stepModel => restoreSave(stepModel, save)),
+          ProfileBinding.informOfSyncedName({
+            was: model.playerName,
+            name: cleanName(save.name),
+          }),
+        ]),
+  )
 
 // NOTE: once this device's own writes have landed, a save from sync that
 // was held back is read again from the store, which by then has both.
@@ -365,12 +388,12 @@ export const saveHandlers = defineHandlers({
 
   FailedWriteSave: (model, { changes }) => failWrite(model, changes),
 
-  UpdatedSyncedSave: (model, { save }) => takeSyncedSave(model, save),
+  UpdatedSyncedSave: (model, { save }) => takeSyncedSave(save)(model),
 
   CompletedReloadSyncedSave: (model, { maybeSave }) =>
     Option.match(maybeSave, {
-      onNone: () => ({ model }),
-      onSome: save => takeSyncedSave(model, save),
+      onNone: () => unchanged(model),
+      onSome: save => takeSyncedSave(save)(model),
     }),
 
   UpdatedSyncStatus: (model, { state }) => ({

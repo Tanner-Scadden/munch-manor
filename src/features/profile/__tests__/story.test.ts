@@ -56,6 +56,30 @@ describe('the Profile Block', () => {
     ),
   )
 
+  it.effect(
+    'a name kept on another device replaces the draft, unless one is typed',
+    () =>
+      Story.story(
+        PROFILE,
+        Story.init(),
+        openOn('Account'),
+        Story.inMessage(
+          InMessage.InformedOfSyncedName({ was: 'Hambone', name: 'Zed' }),
+        ),
+        Story.model(model => {
+          expect(model.nameDraft).toBe('Zed')
+        }),
+        Story.message(Message.UpdatedNameDraft({ value: 'Mo' })),
+        Story.inMessage(
+          InMessage.InformedOfSyncedName({ was: 'Zed', name: 'Bea' }),
+        ),
+        Story.model(model => {
+          expect(model.nameDraft).toBe('Mo')
+        }),
+        Story.expectNoOutMessage(),
+      ),
+  )
+
   it.effect('a tab switch keeps the name and tells the root both', () =>
     Story.story(
       PROFILE,

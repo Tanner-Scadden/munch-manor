@@ -259,9 +259,16 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 19 is the save before the RECORD MY RUNS unlock synced.
+const PlayerSaveV19 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['recordUnlock']),
+  version: Schema.Literal(19),
+})
+type PlayerSaveV19 = typeof PlayerSaveV19.Type
+
 // NOTE: version 18 is the save before RECORD MY RUNS.
 const PlayerSaveV18 = Schema.Struct({
-  ...Struct.omit(PlayerSave.fields, ['recordRuns']),
+  ...Struct.omit(PlayerSaveV19.fields, ['recordRuns']),
   version: Schema.Literal(18),
 })
 type PlayerSaveV18 = typeof PlayerSaveV18.Type
@@ -362,6 +369,8 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV19Json = Schema.fromJsonString(PlayerSaveV19)
+
 const PlayerSaveV18Json = Schema.fromJsonString(PlayerSaveV18)
 
 const PlayerSaveV13Json = Schema.fromJsonString(PlayerSaveV13)
@@ -616,14 +625,25 @@ const migrateV17 = (save: PlayerSaveV17): PlayerSaveV18 => ({
 })
 
 // NOTE: a save from before RECORD MY RUNS records nothing.
-const migrateV18 = (save: PlayerSaveV18): PlayerSave => ({
+const migrateV18 = (save: PlayerSaveV18): PlayerSaveV19 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 19,
   recordRuns: 'Off',
 })
 
-const fromV17 = (save: PlayerSaveV17): PlayerSave =>
-  migrateV18(migrateV17(save))
+// NOTE: a save from before the unlock synced reads it as locked. A device
+// that unlocked it still holds its own mark, read at boot, which unlocks
+// the save then (ReadRecordUnlock in src/app/boot.ts).
+const migrateV19 = (save: PlayerSaveV19): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  recordUnlock: 'Locked',
+})
+
+const fromV18 = (save: PlayerSaveV18): PlayerSave =>
+  migrateV19(migrateV18(save))
+
+const fromV17 = (save: PlayerSaveV17): PlayerSave => fromV18(migrateV17(save))
 
 const fromV16 = (save: PlayerSaveV16): PlayerSave => fromV17(migrateV16(save))
 
@@ -666,9 +686,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 19,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV19Json)(raw), migrateV19),
+  },
+  {
     version: 18,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV18Json)(raw), migrateV18),
+      Option.map(Schema.decodeOption(PlayerSaveV18Json)(raw), fromV18),
   },
   {
     version: 17,
@@ -839,6 +864,7 @@ export const SAVED_FIELDS = [
   'boughtCosmetics',
   'seenUnlocks',
   'recordRuns',
+  'recordUnlock',
 ] as const satisfies ReadonlyArray<keyof Model>
 
 export const hasSaveFieldsChanged: {
@@ -902,6 +928,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   boughtCosmetics: model.boughtCosmetics,
   seenUnlocks: model.seenUnlocks,
   recordRuns: model.recordRuns,
+  recordUnlock: model.recordUnlock,
 })
 
 // INTO THE MODEL
@@ -1045,6 +1072,9 @@ export const restoreSave: {
       rotationSetting: () => save.rotation,
       rumbleSetting: () => save.rumble,
       recordRuns: () => save.recordRuns,
+      // NOTE: unlocked on any device, or on this one, stays unlocked.
+      recordUnlock: unlock =>
+        save.recordUnlock === 'Unlocked' ? 'Unlocked' : unlock,
       playerName: () => cleanName(save.name),
       rank: () => save.rank,
       calling: () => save.calling,

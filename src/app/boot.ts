@@ -292,9 +292,10 @@ export const StartSummaryQueue = ApplicationBlock.makeCommand(
   },
 )
 
-// NOTE: a device opened once with `?record=1` shows RECORD MY RUNS from
-// then on (src/platform/recording.ts): the mark is kept in the store, on
-// this device alone.
+// NOTE: a device opened once with `?record=1` unlocks RECORD MY RUNS for
+// the player: the unlock goes into the save, which syncs it to every linked
+// device. A device that unlocked it before the unlock synced still holds
+// its own mark in the store, read here once more to carry it into the save.
 const RECORD_PARAM = 'record'
 
 const isRecordAsked: Effect.Effect<boolean> = Effect.orElseSucceed(
@@ -314,9 +315,6 @@ export const ReadRecordUnlock = ApplicationBlock.makeCommand(
         Effect.gen(function* () {
           const store = yield* PlayerStore
           const isAsked = yield* isRecordAsked
-          if (isAsked) {
-            yield* Effect.orElseSucceed(store.unlockRecord, () => undefined)
-          }
           const isKept = yield* Effect.orElseSucceed(
             store.isRecordUnlocked,
             () => false,

@@ -299,6 +299,7 @@ Built on 2026-10-29. The engine's design, API, protocol, and limits are in [`pac
 | `ChangedRotation`   | Owner      | Landscape or Auto for an installed phone app; the last device to change it wins                                                          |
 | `ChangedAppearance` | Owner      | The whole look                                                                                                                           |
 | `UnlockedNightmare` | Owner      | Trusted for now; becomes a server mutation once runs are verified                                                                        |
+| `UnlockedRecording` | Owner      | RECORD MY RUNS shows on every device once any one opens `?record=1`; it only ever unlocks                                                |
 | `ChangedDifficulty` | Owner      | The chosen level and the first-time card. Refused if it picks Nightmare while the scope has it locked                                    |
 | `ChangedOnboarding` | Owner      | Lessons, the trap hint, the zombie cards seen, and the Home Screen tip                                                                   |
 | `ChangedHome`       | Owner      | The newest What's New day seen and the Munchopedia entries opened, written whole                                                         |
@@ -308,6 +309,22 @@ Built on 2026-10-29. The engine's design, API, protocol, and limits are in [`pac
 | `LinkedDevices`     | ServerOnly | The number of devices on this player, written by the server when one links                                                               |
 
 **In the game.** The Profile's ACCOUNT tab shows the devices as pixel phones and laptops with sync dots, the status line ("Synced", "Offline, will sync", "Synced. Linked to 2 devices", or "Saved on this device" in a build without a sync server) and the two link buttons. Offline play is unchanged: mutations wait in the outbox and go out when the leader tab reconnects. A build without `VITE_API_ORIGIN` (`bun dev`, the tests, an itch.io zip) keeps everything local.
+
+**What syncs, and what stays on the device.** Every field of `PlayerSave` syncs: each has its `PlayerChange`, a mutation, and its `runChange` case, and a synced save takes effect live (`takeSyncedSave` in `src/app/update/save.ts`, then the after-message Steps: the music re-cues, the rotation lock applies). A child that holds its own copy of a synced field hears of the change: the Profile's name draft follows a name kept on another device (`InformedOfSyncedName`) unless the player is typing one. Before that (fixed 2026-11-12), a device with its Profile open, as it is while linking from the Account tab, kept its old draft and wrote the old name back on close, so the other device's name never stuck.
+
+| Field                                                                                     | Kept                  | Why                                                                              |
+| ----------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------- |
+| Name, look, cosmetics bought, rank and Bones, calling                                     | Synced                | The player's                                                                     |
+| Sound, music, screen shake, share stats, aim cursor, ROTATE, rumble, RECORD MY RUNS       | Synced                | The player's choices, last device wins. ROTATE only acts in the installed app    |
+| The RECORD MY RUNS unlock                                                                 | Synced (save 20)      | Once any device opens `?record=1`, every device shows the tile                   |
+| Difficulty, its card, the Nightmare unlock                                                | Synced                | The player's                                                                     |
+| Lessons, trap hint, zombie cards, the intro, Home Screen tip, What's New day, Munchopedia | Synced                | Seen once by the player, on any device                                           |
+| Power-ups seen, unlocks seen (NEW badges)                                                 | Synced, as unions     | Seen on any device stays seen                                                    |
+| Bests, kills, runs, run records                                                           | Synced, as increments | Runs on two devices offline both count                                           |
+| Full screen, the screen's fit, whether the screen can lock its turn, the input device     | Per device            | What this device and this page are, read from the browser each time              |
+| The device key, session token, and leader tab                                             | Per device            | Identity: each device signs as itself                                            |
+| Queued run summaries and recorded runs                                                    | Per device            | Waiting for this device's network; each is sent once, from where it was made     |
+| `store_meta` marks: the localStorage import, the sync seed, the old `record-unlock` mark  | Per device            | This device's own upgrade steps. The old unlock mark is only read, into the save |
 
 **Checked on a deployed copy** with `bun run heavy -- bun tools/audit/sync.ts <url>` (first on the pull request #2 preview, before the merge): two browser contexts as two devices, an older save syncing up, a shirt change and a finished run on A, linking B with A's code, B showing A's shirt and kills, B's setting reaching A after a reload, and A going offline, changing a setting, and catching up when back online.
 
