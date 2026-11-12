@@ -52,6 +52,11 @@ import {
   type ProfileViewBuilder,
   TabsBinding,
 } from './composition'
+import {
+  CopyLinkCodeOnClick,
+  LINK_CODE_DATA,
+  PasteLinkCodeOnTap,
+} from './linkClipboard'
 import { Message, type SettingTile } from './message'
 import type { Model, ProfileTab } from './model'
 import {
@@ -390,22 +395,43 @@ const portalView = (spin: 'Spinning' | 'Open', h: ProfileViewBuilder): Html =>
     ],
   )
 
-const codeView = (code: string, h: ProfileViewBuilder): Html =>
-  h.p(
+const LINK_CODE_COPIED = 'COPIED!'
+
+// NOTE: a tap on the code copies it (CopyLinkCodeOnClick), and COPIED!
+// flashes over it, afresh for each copy (keyed by the count), fading in
+// place, so the button never moves.
+const codeView = (code: string, copies: number, h: ProfileViewBuilder): Html =>
+  h.button(
     [
+      h.Type('button'),
       h.Class('account-code'),
-      h.AriaLabel(`Link code ${Array.join(Array.fromIterable(code), ' ')}`),
-    ],
-    Array.map(Array.fromIterable(code), (letter, index) =>
-      h.span(
-        [
-          h.Class('account-code-letter'),
-          h.AriaHidden(true),
-          h.Style({ '--i': `${index}` }),
-        ],
-        [letter],
+      h.DataAttribute(LINK_CODE_DATA, code),
+      h.AriaLabel(
+        `Link code ${Array.join(Array.fromIterable(code), ' ')}${copies > 0 ? ', copied' : ', tap to copy'}`,
       ),
-    ),
+      h.OnMount(CopyLinkCodeOnClick()),
+    ],
+    [
+      ...Array.map(Array.fromIterable(code), (letter, index) =>
+        h.span(
+          [
+            h.Class('account-code-letter'),
+            h.AriaHidden(true),
+            h.Style({ '--i': `${index}` }),
+          ],
+          [letter],
+        ),
+      ),
+      ...(copies > 0
+        ? [
+            h.keyed('span')(
+              `copied-${copies}`,
+              [h.Class('account-code-copied'), h.AriaHidden(true)],
+              [LINK_CODE_COPIED],
+            ),
+          ]
+        : []),
+    ],
   )
 
 const CODE_INPUT_ID = 'link-code-input'
@@ -444,6 +470,7 @@ const codeEntryView = (code: string, h: ProfileViewBuilder): Html =>
         h.Spellcheck(false),
         h.EnterKeyHint('go'),
         h.OnInput(value => Message.UpdatedLinkCode({ value })),
+        h.OnMount(PasteLinkCodeOnTap()),
       ]),
       h.div(
         [h.Class('panel-actions')],
@@ -473,6 +500,7 @@ const zapView = (device: InputDevice, h: ProfileViewBuilder): Html => {
 
 const linkView = (
   linkFlow: LinkFlow,
+  copies: number,
   device: InputDevice,
   h: ProfileViewBuilder,
 ): Html =>
@@ -516,7 +544,7 @@ const linkView = (
             [h.Class('account-hint'), h.Role('status')],
             ['Type this on your other device'],
           ),
-          codeView(code, h),
+          codeView(code, copies, h),
           noteView(CLOCK_ICON, '10 min, one use', h),
           noteView(TAKES_PROGRESS_ICON, SHOWING_TAKES_PROGRESS_NOTE, h),
           h.div(
@@ -616,7 +644,7 @@ const accountTabView = (
       devicesView(inputs, h),
       ...(SyncState.isAnyOf(['LocalOnly'])(inputs.sync.state)
         ? []
-        : [linkView(model.linkFlow, inputs.device, h)]),
+        : [linkView(model.linkFlow, model.linkCodeCopies, inputs.device, h)]),
       shareStatsView(inputs, h),
     ],
   )

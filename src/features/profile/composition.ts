@@ -9,6 +9,7 @@ import {
   makeStep,
 } from './block'
 import { CharacterBlock } from './blocks/look/block'
+import { linkMounts } from './linkClipboard'
 import { OutMessage } from './message'
 import { ProfileTabsBlock } from './model'
 import { PROFILE_TABS_ID } from './profile'
@@ -61,5 +62,6 @@ export const CharacterBinding = makeRequiredFieldBinding(CharacterBlock, {
 
 export const ProfileComposition = makeComposition({
   bindings: [TabsBinding, CharacterBinding],
+  mounts: linkMounts,
 })
 export type ProfileViewBuilder = Block.ViewBuilderFor<typeof ProfileComposition>

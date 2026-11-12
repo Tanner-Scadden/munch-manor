@@ -36,6 +36,15 @@ body {
   background: #000;
 }
 
+/* NOTE: a phone's keyboard overlays the page, which keeps its size. A
+   focused field it would cover lifts above it: the game and any open
+   dialog slide up by --keyboard-lift (src/platform/keyboard.ts), with no
+   animation, and back once the field lets go. */
+.game-root,
+dialog[open] {
+  translate: 0 calc(-1 * var(--keyboard-lift, 0px));
+}
+
 .game-surface {
   position: absolute;
   top: env(safe-area-inset-top, 0px);

@@ -6,7 +6,8 @@ import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
 import { GAME_URL, type ShareOutcome } from '../../features/end/share'
 import { SHARE_TEXT_DATA } from '../../features/end/share'
 import { describeError } from '../../shared/describeError'
-import { listenForShareClicks } from '../mount'
+import { Message } from '../message'
+import { listenForShareClicks, steadyMeasurement } from '../mount'
 
 const TEXT = '💀 Got munched on wave 4 in Munch Manor. Your turn!'
 
@@ -171,5 +172,36 @@ describe('SHARE in the click itself', () => {
     stopListening()
     clickOn(button)
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('the game surface while a phone keyboard is up', () => {
+  const surface = (width: number, height: number) =>
+    Message.MeasuredGameSurface({
+      left: 0,
+      top: 0,
+      width,
+      height,
+      pixelRatio: 3,
+    })
+
+  const upright = surface(390, 844)
+
+  test('a keyboard that shrinks the height changes nothing', () => {
+    expect(steadyMeasurement(upright, surface(390, 420), true)).toBeUndefined()
+  })
+
+  test('the phone turned while typing still measures', () => {
+    const turned = surface(844, 390)
+    expect(steadyMeasurement(upright, turned, true)).toBe(turned)
+  })
+
+  test('once typing ends, the height measures again', () => {
+    const shorter = surface(390, 760)
+    expect(steadyMeasurement(upright, shorter, false)).toBe(shorter)
+  })
+
+  test('the first measurement always goes, typing or not', () => {
+    expect(steadyMeasurement(undefined, upright, true)).toBe(upright)
   })
 })

@@ -6,6 +6,7 @@ import { ProfileBlock } from './block'
 import { CharacterLayer } from './blocks/look/layer'
 import { ProfileComposition } from './composition'
 import { FocusLookOption, inMessageUpdate } from './inMessageUpdate'
+import { CopyLinkCodeOnClick, PasteLinkCodeOnTap } from './linkClipboard'
 import { initialModel } from './model'
 import {
   FocusTutorialReset,
@@ -22,6 +23,8 @@ const EffectsLayer = Layer.mergeAll(
   RedeemLinkCode.layer,
   FocusTutorialReset.layer,
   FocusLookOption.layer,
+  CopyLinkCodeOnClick.layer,
+  PasteLinkCodeOnTap.layer,
 )
 
 // NOTE: the Profile's implementation Layer, with its tab strip's and the
