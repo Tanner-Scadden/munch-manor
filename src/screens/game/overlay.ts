@@ -262,12 +262,22 @@ const hintRowShapes = (
   ]
 }
 
-type HintStack = Readonly<{ top: number; shapes: ReadonlyArray<Canvas.Shape> }>
+// NOTE: where each shown hint's row sits, top down under the banner's rows.
+type HintPlacement = Readonly<{
+  row: BakedHintRow
+  top: number
+  ageMs: number
+}>
 
-const hintShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+type HintStack = Readonly<{
+  top: number
+  placements: ReadonlyArray<HintPlacement>
+}>
+
+const hintPlacementsOf = (model: Model): ReadonlyArray<HintPlacement> => {
   const start: HintStack = {
     top: BAND_TOP[model.hintBand] + HINT_OFFSET - HINT_PAD_Y,
-    shapes: [],
+    placements: [],
   }
   return Array.reduce(
     shownHints(model),
@@ -276,14 +286,41 @@ const hintShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
       const row = HINT_ROWS[id][model.lastDevice]
       return {
         top: stack.top + row.height + HINT_ROW_GAP,
-        shapes: Array.appendAll(
-          stack.shapes,
-          hintRowShapes(row, stack.top, ageMs),
-        ),
+        placements: Array.append(stack.placements, {
+          row,
+          top: stack.top,
+          ageMs,
+        }),
       }
     },
-  ).shapes
+  ).placements
 }
+
+const hintShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(hintPlacementsOf(model), ({ row, top, ageMs }) =>
+    hintRowShapes(row, top, ageMs),
+  )
+
+// NOTE: each shown hint's row with its backing, in the landscape frame (the
+// tours' BLOCK DOOR and the like). A bubble keeps out of them
+// (src/screens/game/stallBubble.ts).
+export type HintBox = Readonly<{
+  left: number
+  top: number
+  right: number
+  bottom: number
+}>
+
+export const hintBoxesOf = (model: Model): ReadonlyArray<HintBox> =>
+  Array.map(hintPlacementsOf(model), ({ row, top }) => {
+    const left = Math.round(CENTER_X - row.width / 2) - HINT_PAD_X
+    return {
+      left,
+      top,
+      right: left + row.width + HINT_PAD_X * 2,
+      bottom: top + row.height,
+    }
+  })
 
 // BANNERS
 

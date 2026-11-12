@@ -8,7 +8,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🎯 Touch aim helps a bit less: it still nudges your shots onto a zombie, just more gently.
 - 🤝 A co-op wipe goes straight to the score card, no lobby peeking in first. RUN IT BACK is now PLAY AGAIN.
 - 🎒 Tap the dare list on your HUD (or press Tab) to pull the dare card back out: everything you've found sits in your satchel, each with a little story, and new finds plop right in.
-- 🙌 Hands on! Your hero does CPR on a downed friend, digs through the trunk, hauls the dumbwaiter, cranks and shoves the room's tools, tosses a gun to swap, and holds every find up high.
+- 🙌 Hands on! Your hero kneels at a downed friend's side for CPR, digs through the trunk, hauls the dumbwaiter, cranks and shoves the room's tools, tosses a gun to swap, and holds every find up high.
 - 📱 Phones on their side fill the whole screen now: no more black bars, just more manor at the edges. Typing a name or a code, the keyboard slides over the game instead of squishing it, a tap copies your link code and pastes it on your other phone, and once linked, your name and every setting stick on both.
 
 ## November 11, 2026: Catch your breath

@@ -180,6 +180,25 @@ export const doorArrowShapes: {
   ],
 )
 
+// NOTE: what the door arrow covers over `point` through its bounce, for a
+// bubble to keep out of (src/screens/game/stallBubble.ts).
+const DOOR_ARROW_WIDTH = 7
+const DOOR_ARROW_HEIGHT = 5
+const DOOR_ARROW_BOUNCE_PX = 2
+
+export const doorArrowBox = (
+  point: Readonly<{ x: number; y: number }>,
+): Readonly<{ left: number; top: number; right: number; bottom: number }> => {
+  const left = Math.round(point.x) - 3
+  const top = Math.round(point.y) - GOODIE_ARROW_LIFT_PX
+  return {
+    left,
+    top,
+    right: left + DOOR_ARROW_WIDTH,
+    bottom: top + DOOR_ARROW_HEIGHT + DOOR_ARROW_BOUNCE_PX,
+  }
+}
+
 // CALLOUTS
 
 type CalloutText = Readonly<{ title: BakedText; blurb: BakedText }>

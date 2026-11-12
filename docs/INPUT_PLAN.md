@@ -206,7 +206,7 @@ Phases 1 to 3 are about 2 weeks. All four are about 3 weeks. None of it moves th
    - Yes, with a Settings toggle, on by default (recommended): half a day, big feel for a shooter.
    - No.
 
-## 5. Decided (owner, 2026-11-10 and 2026-11-11)
+## 5. Decided (owner, 2026-11-10 to 2026-11-12)
 
 1. Bindings are synced with the save (a sync mutation), not kept per device.
 2. Controller in a run first, then the menus by controller right after.
@@ -214,5 +214,6 @@ Phases 1 to 3 are about 2 weeks. All four are about 3 weeks. None of it moves th
 4. Couch co-op with pads is planned right after the glyphs phase.
 5. Controllers cannot be rebound: pads use a fixed standard layout, and only the keyboard is rebindable.
 6. Rumble is in: pads vibrate on a bite, a boss slam, or a blast, with a Settings toggle, on by default.
+7. Phase 2's menu defaults stay as built (2026-11-12, #192): A leaves and B stays on the leave question, LB and RB turn tabs in menus while LB stays the next trap in a run, and a held direction repeats after 400 ms, then every 110 ms.
 
 Work starts once the escape the manor update (PR #180) lands.
