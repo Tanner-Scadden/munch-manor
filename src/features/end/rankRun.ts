@@ -3,7 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
 import { isHumanCrew } from '../../domain/bots'
-import { effectiveModifiersOf } from '../../domain/onlineRun'
+import { effectiveModifiersOf, playedMarkOf } from '../../domain/onlineRun'
 import { isEndScreen, isGuided, isInRun, isOnHome } from '../../domain/run'
 import { playedDifficultyOf } from '../../platform/analyticsRun'
 import { purseBonesAt, purseRanksBetween } from '../../shared/rankCurve'
@@ -17,7 +17,7 @@ import {
   totalPointsOf,
 } from '../../world/heroes/rank'
 import { leadSeatOf } from '../../world/party/party'
-import { bonusPercentOf } from '../../world/run/modifiers'
+import { runBonusPercentOf } from '../../world/run/dareLadder'
 import { killTotal } from '../../world/run/stats'
 import { Phase } from '../../world/schema/worldSchema'
 import { awardsOf, crewOf } from './crewAwards'
@@ -51,7 +51,10 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
     revives: isHumanCrew(run)
       ? Math.max(0, seat.revives - run.rankPaid.revivesPaid)
       : 0,
-    bonusPercent: bonusPercentOf(effectiveModifiersOf(run)),
+    bonusPercent: runBonusPercentOf(
+      effectiveModifiersOf(run),
+      playedMarkOf(run),
+    ),
     isGuided: isGuided(run),
   }
 }

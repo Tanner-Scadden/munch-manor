@@ -135,7 +135,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 8,
+  version: 9,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -153,6 +153,7 @@ const expectedSummary = (
   party: SOLO_PARTY,
   modifiers: 0,
   dareItemsFound: 0,
+  dareMark: 0,
   ...overrides,
 })
 
@@ -189,6 +190,9 @@ describe('the run summary schema', () => {
     outcome: { _tag: 'GameOver', killedBy: 'Runner' },
     wave: 4,
   })
+  // NOTE: the same run as a build before the dare ladder sent it, with no
+  // mark.
+  const { dareMark: _mark, ...unmarked } = summary
 
   test('a summary round trips through JSON and fits the size cap', () => {
     const json = Option.getOrThrow(Schema.encodeOption(RunSummaryJson)(summary))
@@ -231,7 +235,11 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 9))).toEqual(Option.none())
+    expect(decode(withField('version', 10))).toEqual(Option.none())
+    expect(decode(withField('version', 8))).toEqual(Option.none())
+    expect(decode(withField('dareMark', 9))).toEqual(Option.none())
+    expect(decode(withField('dareMark', -1))).toEqual(Option.none())
+    expect(decode(withField('dareMark', 1.5))).toEqual(Option.none())
     expect(
       decode(
         jsonOf({ ...summary, version: 7, outcome: { _tag: 'LeftEarly' } }),
@@ -295,9 +303,9 @@ describe('the run summary schema', () => {
   })
 
   test('a version 6 crew summary from a cached build still decodes, with no network', () => {
-    const json = jsonOf({ ...summary, version: 6, party: CREW_V6 })
+    const json = jsonOf({ ...unmarked, version: 6, party: CREW_V6 })
     expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
-      Option.some({ ...summary, version: 6, party: CREW_V6 }),
+      Option.some({ ...unmarked, version: 6, party: CREW_V6 }),
     )
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
@@ -309,8 +317,16 @@ describe('the run summary schema', () => {
     casesOpened: _casesOpened,
     dareItemsFound: _found,
     ...shopless
-  } = summary
+  } = unmarked
   const withShop = { ...shopless, purchases: 3 }
+
+  test('a version 8 summary from a cached build still decodes, with no mark', () => {
+    const json = jsonOf({ ...unmarked, version: 8 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({ ...unmarked, version: 8 }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
 
   test('a version 4 summary from a cached build still decodes, with its purchases', () => {
     const json = jsonOf({ ...withShop, version: 4 })

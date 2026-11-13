@@ -932,6 +932,16 @@ export const press =
       settleAnimations(page),
     )
 
+// NOTE: a click on the first element a selector finds, then the page
+// settles.
+export const clickFirst =
+  (selector: string): Act =>
+  page =>
+    Effect.andThen(
+      attempt(() => page.locator(selector).first().click()),
+      settleAnimations(page),
+    )
+
 export const inOrder =
   (...acts: ReadonlyArray<Act>): Act =>
   page =>

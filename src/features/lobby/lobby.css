@@ -447,6 +447,25 @@
   color: var(--dare-ink-soft);
 }
 
+/* NOTE: the dare mark's seal is lit on a mark, in the paper's red ink, as a
+   modifier tile on (the seal at none stays dim with the other picks). */
+.lobby .dare-mark-pick[data-state='On'] {
+  border-color: var(--dare-red);
+  background: rgba(200, 53, 43, 0.14);
+}
+
+.lobby .dare-mark-pick[data-state='On'] .dare-mark-icon {
+  filter: none;
+}
+
+.lobby .dare-mark-pick .dare-mark-value {
+  color: var(--dare-ink-soft);
+}
+
+.lobby .dare-mark-pick[data-state='On'] .dare-mark-value {
+  color: var(--dare-red);
+}
+
 .lobby .modifier-pick[data-state='On'] {
   border-color: var(--dare-red);
   background: rgba(200, 53, 43, 0.14);

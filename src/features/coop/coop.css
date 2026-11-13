@@ -1254,6 +1254,18 @@
   animation: coop-hop 700ms ease-in-out infinite;
 }
 
+/* NOTE: the room's dare mark, a seal in the host's seat's top left corner,
+   where a guest's seat has KICK (the ping sits top right). */
+.coop-seat-dare-mark {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: 6px;
+  width: clamp(14px, 3.4 * var(--coop-unit), 22px);
+  height: clamp(14px, 3.4 * var(--coop-unit), 22px);
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6));
+}
+
 .coop-crown {
   position: absolute;
   top: -14px;
@@ -1829,6 +1841,64 @@
 
 .easy-break-pick[data-state='On'] .easy-break-value {
   color: var(--menu-gold);
+}
+
+/* NOTE: the dare ladder's pick beside the skulls, in both lobbies
+   (src/ui/dareMarkView.ts): the mark's seal over its number, dim at none
+   and lit gold on a mark. A modifier the mark turns on is lit and locked
+   (data-locked), with no padlock: the mark holds it. */
+.dare-mark-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px 2px;
+}
+
+.dare-mark-pick .dare-mark-icon {
+  width: 52%;
+  height: 52%;
+  filter: none;
+}
+
+.dare-mark-value {
+  font: bold round(clamp(10px, 2.2 * var(--coop-unit), 14px), 1px) / 1
+    var(--menu-font);
+  color: var(--menu-ink);
+}
+
+.dare-mark-pick[data-state='On'] {
+  border-color: var(--menu-gold);
+  background: rgba(255, 224, 102, 0.2);
+}
+
+.dare-mark-pick[data-state='On'] .dare-mark-value {
+  color: var(--menu-gold);
+}
+
+.modifier-pick[data-locked='Yes'] {
+  opacity: 1;
+  cursor: default;
+  border-style: dashed;
+}
+
+/* NOTE: a mark's seal beside a name: the Proof Shelf's row and the co-op
+   host's seat. */
+.dare-mark-badge {
+  display: inline-block;
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: middle;
+}
+
+.dare-mark-badge-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
 }
 
 .modifier-bonus {

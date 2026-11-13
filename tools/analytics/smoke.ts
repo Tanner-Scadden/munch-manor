@@ -57,6 +57,7 @@ const smokeSummary = (visitId: string): RunSummary => ({
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
   modifiers: 0,
+  dareMark: 0,
 })
 
 const HEX_DIGITS = 16

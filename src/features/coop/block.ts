@@ -1,13 +1,15 @@
 import { Schema } from 'effect'
 import { Block } from 'foldkit'
 
+import type { SavedDareMarks } from '../../shared/dareMarkData'
 import type { Appearance, SavedBoughtCosmetics } from '../../shared/playerData'
 import { InMessage } from './inMessage'
 import { Message, OutMessage } from './message'
 import { Model } from './model'
 import { CoopNet } from './net'
 
-// NOTE: what the root hands co-op's view each frame.
+// NOTE: what the root hands co-op's view each frame, with this player's
+// dare ladder (the host steps the room's mark through their own).
 export type ViewInputs = Readonly<{
   look: Appearance
   isKeyboard: boolean
@@ -15,6 +17,7 @@ export type ViewInputs = Readonly<{
   isRunEndComing: boolean
   bought: SavedBoughtCosmetics
   bones: number
+  dareMarks: SavedDareMarks
 }>
 
 // NOTE: co-op's public contract. Its Commands and Subscriptions are authored

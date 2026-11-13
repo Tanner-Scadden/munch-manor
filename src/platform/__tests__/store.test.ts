@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from '@effect/vitest'
 import { makeHub } from '@munch/sqlite-wasm-effect/in-process'
 import { settle } from '@munch/sync-engine/testing'
 
+import { noDareMarks } from '../../shared/dareMarkData'
 import { noJournal } from '../../shared/journalData'
 import { noMastery } from '../../shared/masteryData'
 import { noMissions } from '../../shared/missionData'
@@ -955,6 +956,7 @@ const migratedLiveSave: PlayerSave = {
   proof: noProof,
   journal: noJournal,
   mastery: noMastery,
+  dareMarks: noDareMarks,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

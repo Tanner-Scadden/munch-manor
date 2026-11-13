@@ -18,6 +18,7 @@ import {
   isStanding,
   seatStateAt,
 } from '../party/party'
+import { activeModifiersOf } from '../run/dareLadder'
 import type { Modifiers } from '../run/modifiers'
 import { totalKills } from '../run/stats'
 import type { World } from '../schema/world'
@@ -690,7 +691,7 @@ const dropFromKills = (
       const kindDraw = nextRandom(rolled.rngState)
       const kind = pickKindAt(
         kindDraw.value,
-        eligibleKinds(focusOf(model).player, model.modifiers),
+        eligibleKinds(focusOf(model).player, activeModifiersOf(model)),
       )
       return modifyFields(placePickup(model, kind, kill), {
         loot: () =>

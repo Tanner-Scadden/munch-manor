@@ -7,7 +7,9 @@ import * as SqlClient from 'effect/sql/SqlClient'
 
 import { describe, expect, it } from '@effect/vitest'
 import {
+  ChangedDareMark,
   ChangedMemberCalling,
+  ChangedPicks,
   ChangedReady,
   type ClientFrame,
   KickedPlayer,
@@ -278,6 +280,58 @@ describe('the room host', () => {
         { slot: 0, calling: 'TrackStar' },
         { slot: 1, calling: 'LineCook' },
       ])
+    }),
+  )
+
+  // NOTE: the dare ladder (GAME_DESIGN.md, "The dare ladder"): the host
+  // picks the room's mark, a guest cannot, a new difficulty starts the mark
+  // again at none, and the room's World plays the mark it starts with.
+  it.effect("the host picks the room's dare mark, and the World plays it", () =>
+    Effect.gen(function* () {
+      const host = yield* roomHost
+      yield* host.create(ANA, 'Ana', '', 1, 'You', true, false, CODE, 'Private')
+      yield* host.join(BO, 'Bo', '', 1, 'You', true, false, [])
+      const ana = fakeSocket()
+      const anaToken = yield* tokenOf(ANA)
+      yield* host.scope.onMessage(ana, hello(anaToken), [ana])
+      const bo = fakeSocket()
+      const boToken = yield* tokenOf(BO)
+      yield* host.scope.onMessage(bo, hello(boToken), [bo])
+      const fresh = yield* lobbyOf(host)
+      expect(fresh.dareMark).toBe(0)
+      const picked = yield* pushOf(
+        ChangedDareMark,
+        { by: ANA, mark: 3 },
+        'mark-ana-0001',
+      )
+      yield* host.scope.onMessage(ana, picked, [ana, bo])
+      const marked = yield* lobbyOf(host)
+      expect(marked.dareMark).toBe(3)
+      const guest = yield* pushOf(
+        ChangedDareMark,
+        { by: BO, mark: 8 },
+        'mark-bo-0001',
+      )
+      yield* host.scope.onMessage(bo, guest, [ana, bo])
+      const lobby = yield* lobbyOf(host)
+      expect(lobby.dareMark).toBe(3)
+      const world = roomSettingsOf(
+        'Campaign',
+        'Normal',
+        lobby.members,
+        lobby.modifiers,
+        lobby.easyBreakSeconds,
+        lobby.dareMark,
+      )
+      expect(world.dareMark).toBe(3)
+      const harder = yield* pushOf(
+        ChangedPicks,
+        { by: ANA, mode: 'Campaign', difficulty: 'Hard' },
+        'picks-ana-0001',
+      )
+      yield* host.scope.onMessage(ana, harder, [ana, bo])
+      const reset = yield* lobbyOf(host)
+      expect(reset.dareMark).toBe(0)
     }),
   )
 
@@ -639,6 +693,7 @@ describe('the alarm', () => {
       difficulty: 'Normal',
       modifiers: 0,
       easyBreakSeconds: 0,
+      dareMark: 0,
       canKeepGoing: false,
       round: 1,
       createdMs: 0,

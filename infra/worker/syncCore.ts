@@ -47,6 +47,7 @@ import {
   playerScopeId,
 } from '../../src/platform/playerScope.ts'
 import { PLAYER_SCOPE_KIND } from '../../src/platform/playerScopeParts.ts'
+import { SavedDareMarks, noDareMarks } from '../../src/shared/dareMarkData.ts'
 import { SavedJournal } from '../../src/shared/journalData.ts'
 
 // NOTE: the sync Worker's logic, kept apart from the Durable Object classes
@@ -178,15 +179,24 @@ const SCOPE_HEADER = 'x-sync-scope'
 export type PlayerFacts = Readonly<{
   unlocked: boolean
   milestones: ReadonlyArray<string>
+  marks: SavedDareMarks
 }>
 
-const NO_FACTS: PlayerFacts = { unlocked: false, milestones: [] }
+const NO_FACTS: PlayerFacts = {
+  unlocked: false,
+  milestones: [],
+  marks: noDareMarks,
+}
 
 const PlayerRows = Schema.Array(
   Schema.Struct({
     nightmare: Schema.String,
     journal: Schema.String.pipe(Schema.optionalKey),
+    dare_marks: Schema.String.pipe(Schema.optionalKey),
   }),
+)
+const decodeDareMarks = Schema.decodeUnknownOption(
+  Schema.fromJsonString(SavedDareMarks),
 )
 const decodePlayerRows = Schema.decodeUnknownOption(PlayerRows)
 const decodeJournal = Schema.decodeUnknownOption(
@@ -209,6 +219,13 @@ export const playerFactsIn = (
             onSome: journal => journal.milestones,
           },
         ),
+        marks: Option.getOrElse(
+          Option.flatMap(
+            Option.fromUndefinedOr(row.dare_marks),
+            decodeDareMarks,
+          ),
+          () => noDareMarks,
+        ),
       }),
     },
   )
@@ -223,6 +240,7 @@ const NightmareAnswer = Schema.fromJsonString(
   Schema.Struct({
     unlocked: Schema.Boolean,
     milestones: Schema.Array(Schema.String).pipe(Schema.optionalKey),
+    marks: SavedDareMarks.pipe(Schema.optionalKey),
   }),
 )
 const decodeNightmareAnswer = Schema.decodeUnknownOption(NightmareAnswer)
@@ -266,6 +284,7 @@ export const readPlayerFacts: {
           onSome: answer => ({
             unlocked: answer.unlocked,
             milestones: answer.milestones ?? [],
+            marks: answer.marks ?? noDareMarks,
           }),
         }),
       ),

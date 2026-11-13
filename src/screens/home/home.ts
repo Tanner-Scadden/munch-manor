@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import type { Model } from '../../app/model'
 import { botSeatsFor } from '../../domain/bots'
 import { type HomeMode, RunTally } from '../../domain/clientSchema'
+import { bestMarkOn } from '../../domain/dareMarks'
 import {
   isAskingForFeedback,
   isEndScreen,
@@ -270,6 +271,8 @@ export const lobbyPicksOf = (model: Model): LobbyPicks => ({
   difficulty: model.difficulty,
   modifiers: model.modifiers,
   easyBreakSeconds: model.easyBreakSeconds,
+  dareMark: model.dareMark,
+  bestMark: bestMarkOn(model.dareMarks, model.difficulty.chosen),
   bots: model.home.bots,
   botSeats: botSeatsFor(model),
 })

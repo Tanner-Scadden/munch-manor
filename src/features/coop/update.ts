@@ -925,6 +925,8 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
       inRoom(model, room => edits.pickModifier(model, room, modifier)),
     ClickedEasyBreakPick: () =>
       inRoom(model, room => edits.pickEasyBreak(model, room)),
+    ClickedDareMarkPick: ({ mark }) =>
+      inRoom(model, room => edits.pickDareMark(model, room, mark)),
 
     // NOTE: the pill opens the hero picker, a child Block, so `update`
     // below gives it its own Step (togglePicker) and never comes here.
@@ -1029,6 +1031,7 @@ const handlers = CoopComposition.makeUpdate({
   ClickedDifficultyPick: delivered,
   ClickedModifierPick: delivered,
   ClickedEasyBreakPick: delivered,
+  ClickedDareMarkPick: delivered,
   ClickedCallingPill: togglePicker,
   ClickedPickNudge: delivered,
   ClickedNameButton: delivered,

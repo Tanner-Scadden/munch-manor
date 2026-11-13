@@ -42,6 +42,7 @@ import {
 } from '@munch/sync-engine'
 
 import { API_ORIGIN } from './apiOrigin'
+import { ClimbedDareLadder } from './dareMarkScope'
 import {
   GainedMastery,
   GunKillsRow,
@@ -279,6 +280,7 @@ const saveOfRow = (
   lastRun: row.last_run,
   missions: row.missions,
   journal: row.journal,
+  dareMarks: row.dare_marks,
   proof: Array.map(proof, proofOfRow),
   mastery: masteryOfRows(mastery),
 })
@@ -693,6 +695,8 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     ShelvedProof: ({ entry }) => replica.run(ShelvedProof, { entry }),
     KeptJournal: ({ added }) => replica.run(KeptJournal, { added }),
     GainedMastery: ({ added }) => replica.run(GainedMastery, { added }),
+    ClimbedDareLadder: ({ difficulty, mark }) =>
+      replica.run(ClimbedDareLadder, { difficulty, mark }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)

@@ -168,6 +168,17 @@ export const LEFT_EARLY = `
   FROM runs WHERE outcome = 'LeftEarly'
   GROUP BY party, difficulty ORDER BY party, difficulty`
 
+// NOTE: the dare ladder (RunSummary version 9 on): runs by difficulty and
+// mark, solo by row and co-op games once by their key, with how many
+// escaped, so the report shows how far up the ladder players climb.
+export const DARE_MARKS = `
+  SELECT difficulty, dare_mark,
+    count(DISTINCT coalesce(crew_key, 'row:' || id)) AS runs,
+    count(DISTINCT CASE WHEN ${IS_WON}
+      THEN coalesce(crew_key, 'row:' || id) END) AS escapes
+  FROM runs WHERE summary_version >= 9 AND mode = 'Campaign'
+  GROUP BY difficulty, dare_mark ORDER BY difficulty, dare_mark`
+
 // NOTE: the last 20 co-op games whose players sent network numbers
 // (RunSummary version 7 on), newest first: one row per player, a game's
 // players together by crew_key, so the report can say whether one link

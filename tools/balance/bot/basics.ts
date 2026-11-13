@@ -27,6 +27,7 @@ import {
 import type { Calling } from '../../../src/shared/playerData'
 import { CALLINGS } from '../../../src/world/heroes/calling'
 import { levelOf } from '../../../src/world/level/arena'
+import { MAX_MARK } from '../../../src/world/run/dareLadder'
 import {
   MODIFIER_ORDER,
   type Modifiers,
@@ -52,6 +53,7 @@ export type BotOptions = {
   noUpgrades: boolean
   calling: Calling
   modifiers: Modifiers
+  dareMark: number
   // NOTE: called with the Models before and after each frame the bot ticks,
   // for a script that reads the World over time (tools/balance/pacing.ts).
   onFrame?: (before: Model, after: Model) => void
@@ -64,6 +66,7 @@ export const DEFAULT_OPTIONS: BotOptions = {
   noUpgrades: false,
   calling: 'You',
   modifiers: noModifiers,
+  dareMark: 0,
 }
 
 // CALLING=Handyman, TrackStar, PennyPincher, or LineCook (any case, spaces
@@ -85,6 +88,16 @@ export const parseCalling = (raw: string | undefined): Calling => {
 // MODS=BigCrowd,Broke,Glass (any case, commas) plays the run with those
 // modifiers on, as the lobby sets them. FriendlyFire is refused: the bot
 // plays alone, and it bites only with teammates.
+// MARK=0 to 8 plays the run at that dare ladder mark (GAME_DESIGN.md, "The
+// dare ladder"), the bot given the mark opened; none plays at 0.
+export const parseDareMark = (raw: string | undefined): number => {
+  const mark = Number(raw ?? '0')
+  if (!Number.isInteger(mark) || mark < 0 || mark > MAX_MARK) {
+    throw new Error(`MARK must be a whole number from 0 to ${MAX_MARK}`)
+  }
+  return mark
+}
+
 export const parseModifiers = (raw: string | undefined): Modifiers => {
   const names = Array.filter(
     Array.map(String.split(',')(raw ?? ''), name =>

@@ -20,6 +20,7 @@ import {
   DARE_ICONS,
   JOURNAL_BIG_ICON,
 } from '../../src/art/dareArt'
+import { markSprite } from '../../src/art/markArt'
 import {
   BRACKET_PIXELS,
   DAY_STAR_PIXELS,
@@ -80,6 +81,7 @@ import {
   ZOMBIE_NAMES,
   gunTierName,
 } from '../../src/world/names'
+import { MARKS } from '../../src/world/run/dareLadder'
 import {
   BoostKind,
   WeaponKind,
@@ -368,6 +370,8 @@ const PROOF_SOURCE = 'src/art/proofArt.ts'
 
 const DARE_SOURCE = 'src/art/dareArt.ts'
 
+const MARK_SOURCE = 'src/art/markArt.ts'
+
 const itemsSections = (): ReadonlyArray<Section> => [
   {
     title: 'Guns',
@@ -493,6 +497,19 @@ const itemsSections = (): ReadonlyArray<Section> => [
       ]),
       stillEntry('dare/Journal', JOURNAL_NAME, DARE_SOURCE, JOURNAL_BIG_ICON),
     ],
+  },
+  {
+    // NOTE: the dare ladder's badges (src/world/run/dareLadder.ts): red wax
+    // for marks 1 to 4, black wax in gold for the house rules of 5 to 8.
+    title: 'Dare marks',
+    entries: Array.map(MARKS, mark =>
+      stillEntry(
+        `mark/${mark}`,
+        `Dare mark ${mark}`,
+        MARK_SOURCE,
+        markSprite(mark),
+      ),
+    ),
   },
   {
     title: 'Proof Shelf',

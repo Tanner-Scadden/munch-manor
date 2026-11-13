@@ -4,6 +4,7 @@ import type { Model } from '../app/model'
 import { rankOf, totalPointsOf } from '../world/heroes/rank'
 import { isCoop, leadSeatOf, playerCountOf } from '../world/party/party'
 import { isRunUnderway } from '../world/run/arrival'
+import { withMarkModifiers } from '../world/run/dareLadder'
 import type { Modifiers } from '../world/run/modifiers'
 import {
   type Difficulty,
@@ -88,10 +89,16 @@ export const runDifficultyOf = (model: Model): Difficulty =>
 const playedModifiersOf = (run: Model): Modifiers =>
   Option.getOrElse(run.maybeRoomModifiers, () => run.modifiers)
 
-// NOTE: the modifiers that bite in a run. Friendly Fire needs a teammate to
-// hit, so with only one seat it is off, and pays nothing.
+// NOTE: the dare mark a run plays (src/world/run/dareLadder.ts): the room's,
+// kept with the run as the modifiers are, else the player's own pick.
+export const playedMarkOf = (run: Model): number =>
+  Option.getOrElse(run.maybeRoomDareMark, () => run.dareMark)
+
+// NOTE: the modifiers that bite in a run, its mark's too. Friendly Fire
+// needs a teammate to hit, so with only one seat it is off, and pays
+// nothing.
 export const effectiveModifiersOf = (run: Model): Modifiers => {
-  const played = playedModifiersOf(run)
+  const played = withMarkModifiers(playedModifiersOf(run), playedMarkOf(run))
   return {
     ...played,
     friendlyFire: played.friendlyFire && playerCountOf(run) > 1,

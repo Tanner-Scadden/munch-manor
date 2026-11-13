@@ -13,6 +13,7 @@ import {
   playersOf,
   seatStateAt,
 } from '../party/party'
+import { chunkHealthScaleOf } from '../run/dareLadder'
 import { spreadSpawns } from '../run/difficulty'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
@@ -161,12 +162,16 @@ export const chunkHpFor = ({
       ),
   )
 
+// NOTE: the dare ladder's mark 8 makes him tougher (src/world/run/dareLadder.ts),
+// and nothing below it changes him.
 const chunkHp = (world: World, spawns: ReadonlyArray<PlannedSpawn>): number =>
-  chunkHpFor({
-    difficulty: world.difficulty.chosen,
-    crew: playerCountOf(world),
-    spawns,
-  })
+  Math.round(
+    chunkHpFor({
+      difficulty: world.difficulty.chosen,
+      crew: playerCountOf(world),
+      spawns,
+    }) * chunkHealthScaleOf(world.dareMark),
+  )
 
 // SUMMONING
 

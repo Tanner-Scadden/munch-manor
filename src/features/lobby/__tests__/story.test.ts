@@ -26,6 +26,8 @@ const PICKS: LobbyPicks = {
   difficulty: { chosen: 'Normal', nightmare: 'Locked' },
   modifiers: noModifiers,
   easyBreakSeconds: 0,
+  dareMark: 0,
+  bestMark: 0,
   bots: [],
   botSeats: 3,
 }
@@ -178,6 +180,51 @@ describe('the lobby Block', () => {
       opened,
       Story.message(Message.ClickedEasyBreakButton()),
       Story.expectNoOutMessage(),
+    ),
+  )
+
+  // NOTE: the dare ladder (GAME_DESIGN.md, "The dare ladder"): the mark's
+  // pick steps through the marks opened, round to none, and asks nothing
+  // before an escape opens mark 1.
+  it.effect('the mark steps to the next opened, round to none', () =>
+    Story.story(
+      lobbyWith({ ...PICKS, dareMark: 2, bestMark: 3 }),
+      Story.init(),
+      opened,
+      Story.message(Message.ClickedMarkButton()),
+      Story.expectOutMessage(OutMessage.ChoseDareMark({ mark: 3 })),
+    ),
+  )
+
+  it.effect('past the best mark opened, the pick goes back to none', () =>
+    Story.story(
+      lobbyWith({ ...PICKS, dareMark: 3, bestMark: 3 }),
+      Story.init(),
+      opened,
+      Story.message(Message.ClickedMarkButton()),
+      Story.expectOutMessage(OutMessage.ChoseDareMark({ mark: 0 })),
+    ),
+  )
+
+  it.effect('with no mark opened, the mark asks nothing', () =>
+    Story.story(
+      LOBBY,
+      Story.init(),
+      opened,
+      Story.message(Message.ClickedMarkButton()),
+      Story.expectNoOutMessage(),
+    ),
+  )
+
+  it.effect('a modifier the mark holds is locked on', () =>
+    Story.story(
+      lobbyWith({ ...PICKS, dareMark: 2, bestMark: 2 }),
+      Story.init(),
+      opened,
+      Story.message(Message.ClickedModifierButton({ modifier: 'Broke' })),
+      Story.expectNoOutMessage(),
+      Story.message(Message.ClickedModifierButton({ modifier: 'Glass' })),
+      Story.expectOutMessage(OutMessage.ToggledModifier({ modifier: 'Glass' })),
     ),
   )
 

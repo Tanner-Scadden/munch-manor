@@ -612,6 +612,20 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (mods !== undefined) {
     model = modifyFields(model, { modifiers: () => modifiersOfMask(mods) })
   }
+  const { marks, dmark } = config
+  if (marks !== undefined) {
+    model = modifyFields(model, {
+      dareMarks: () => ({
+        Easy: marks,
+        Normal: Math.max(0, marks - 3),
+        Hard: Math.max(0, marks - 6),
+        Nightmare: 0,
+      }),
+    })
+  }
+  if (dmark !== undefined) {
+    model = modifyFields(model, { dareMark: () => dmark })
+  }
   const kills = config.kills
   if (kills !== undefined) {
     const counts = Record.fromEntries(kills)

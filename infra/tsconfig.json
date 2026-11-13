@@ -20,6 +20,8 @@
     "../src/platform/proofScope.ts",
     "../src/platform/masteryScope.ts",
     "../src/shared/masteryData.ts",
+    "../src/platform/dareMarkScope.ts",
+    "../src/shared/dareMarkData.ts",
     "../src/platform/missionScope.ts",
     "../src/platform/playerScopeParts.ts",
     "../src/shared/proofData.ts",

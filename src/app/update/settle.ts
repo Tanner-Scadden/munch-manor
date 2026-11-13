@@ -1,5 +1,6 @@
 import { Effect, Function, Option, pipe } from 'effect'
 
+import { climbLadder, fitDareMark } from '../../domain/dareMarks'
 import { keepJournal, tallyJournalFrom } from '../../domain/journal'
 import { fitPropStyle } from '../../domain/mastery'
 import { runDifficultyOf } from '../../domain/onlineRun'
@@ -96,7 +97,7 @@ type SaveWrite = 'Write' | 'Synced'
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, hero and gun mastery, the rank, the rank purses, and the daily missions a run pays, the Proof Shelf, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
+// Nightmare, hero and gun mastery, the rank, the rank purses, and the daily missions a run pays, the Proof Shelf, the dare ladder's marks opened and the pick held to them, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
 // next intro, the run count and its summary, the run's recording, the new
 // zombie badges, the
 // fridge prizes pulled, the prop style fitted to the hero picked, and the save. `update` in src/app/main.ts runs them once
@@ -124,6 +125,7 @@ export const afterMessage: {
     stepModel => ({ model: payMissions(before, stepModel) }),
     stepModel => ({ model: payPursesFrom(before, stepModel, saveWrite) }),
     stepModel => ({ model: shelveRun(before, stepModel) }),
+    stepModel => ({ model: fitDareMark(climbLadder(before, stepModel)) }),
     stepModel => ({ model: keepJournal(before, stepModel) }),
     stepModel => ({
       model: noteDeathTip(before, stepModel, runDifficultyOf(stepModel)),

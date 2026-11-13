@@ -2,6 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
+import { activeModifiersOf } from '../run/dareLadder'
 import { GLASS_START_HEARTS } from '../run/modifiers'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
@@ -59,7 +60,7 @@ export const isCoop = (world: World): boolean => world.party._tag === 'Crew'
 // and lid blasts hurt each other. It bites only with a teammate to hit, a
 // player or a bot, so alone it does nothing and pays nothing.
 export const isFriendlyFireOn = (world: World): boolean =>
-  world.modifiers.friendlyFire && world.seats.length > 1
+  activeModifiersOf(world).friendlyFire && world.seats.length > 1
 
 export const soloSeat: Seat = {
   slot: SOLO_SLOT,
@@ -416,7 +417,7 @@ export const facingNearest: {
 // one heart, whatever their hero's hearts. Run once, after the crew is seated
 // and made over as their heroes.
 export const withStartingHearts = (world: World): World =>
-  world.modifiers.glass
+  activeModifiersOf(world).glass
     ? forEachSeat(world, (current, slot) =>
         modifySeat(current, slot, {
           player: player =>

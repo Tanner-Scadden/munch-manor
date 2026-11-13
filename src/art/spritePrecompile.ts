@@ -1,14 +1,14 @@
-import { Array } from "effect";
+import { Array } from 'effect'
 
-import { defaultAppearance } from "../domain/clientSchema";
-import { everyBeamImage } from "../render/cellarDark";
-import { everyRoomImage } from "../render/room/room";
-import { tallCoverOf } from "../render/room/tallCover";
-import { CALLINGS } from "../world/heroes/calling";
-import { levelFor } from "../world/level/arena";
-import { EVERY_LEVEL_SPEC } from "../world/level/plan";
-import { playerSprites } from "./appearance";
-import { SEAT_LOOKS } from "./seatLooks";
+import { defaultAppearance } from '../domain/clientSchema'
+import { everyBeamImage } from '../render/cellarDark'
+import { everyRoomImage } from '../render/room/room'
+import { tallCoverOf } from '../render/room/tallCover'
+import { CALLINGS } from '../world/heroes/calling'
+import { levelFor } from '../world/level/arena'
+import { EVERY_LEVEL_SPEC } from '../world/level/plan'
+import { playerSprites } from './appearance'
+import { SEAT_LOOKS } from './seatLooks'
 
 // NOTE: most sprites are built as their modules load, and the atlas
 // generator (tools/sprites/build.ts) finds them by loading the modules. These
@@ -23,15 +23,13 @@ import { SEAT_LOOKS } from "./seatLooks";
 // atlas, and tools/sprites/atlas.test.ts fails.
 
 export const precompileSprites = (): void => {
-  Array.forEach(CALLINGS, (calling) =>
-    playerSprites(defaultAppearance, calling),
-  );
-  Array.forEach(SEAT_LOOKS, (look) =>
-    Array.forEach(CALLINGS, (calling) => playerSprites(look, calling)),
-  );
-  Array.forEach(EVERY_LEVEL_SPEC, (spec) => {
-    everyRoomImage(spec);
-    tallCoverOf(levelFor(spec));
-  });
-  everyBeamImage();
-};
+  Array.forEach(CALLINGS, calling => playerSprites(defaultAppearance, calling))
+  Array.forEach(SEAT_LOOKS, look =>
+    Array.forEach(CALLINGS, calling => playerSprites(look, calling)),
+  )
+  Array.forEach(EVERY_LEVEL_SPEC, spec => {
+    everyRoomImage(spec)
+    tallCoverOf(levelFor(spec))
+  })
+  everyBeamImage()
+}

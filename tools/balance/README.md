@@ -53,7 +53,7 @@ After it (Hard and Nightmare `AIM=sharp`): escapes Easy 43 of 100, Normal 23 of 
 
 ## Run modifiers
 
-`MODS=BigCrowd,Broke,Glass` (any case, commas; the same set the lobby toggles) plays the run with those modifiers on. For example `MODS=Glass bun run balance -- --runs 100`. `FriendlyFire` is refused: the bot plays alone, and the modifier bites only with teammates. The measures and the bonuses they suggest are in `GAME_DESIGN.md`, "Run modifier bonuses".
+`MODS=BigCrowd,Broke,Glass` (any case, commas; the same set the lobby toggles) plays the run with those modifiers on. For example `MODS=Glass bun run balance -- --runs 100`. `FriendlyFire` is refused: the bot plays alone, and the modifier bites only with teammates. `MARK=0` to `8` plays at that dare ladder mark (`GAME_DESIGN.md`, "The dare ladder"), with the mark opened for the bot: `MARK=5 bun run balance -- --runs 100`. The measures and the bonuses they suggest are in `GAME_DESIGN.md`, "Run modifier bonuses".
 
 ## Portrait view
 

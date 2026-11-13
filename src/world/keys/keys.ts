@@ -7,6 +7,7 @@ import { keyScaleOf } from '../heroes/calling'
 import { kitchenKeyScale } from '../kitchen/kitchenKeys'
 import { levelOf } from '../level/arena'
 import { maybePlayerAt, modifySeatRecord } from '../party/party'
+import { activeModifiersOf } from '../run/dareLadder'
 import { brokeKeyScaleOf } from '../run/modifiers'
 import type { World } from '../schema/world'
 import {
@@ -115,7 +116,7 @@ const expectedKeys = (
     keyOddsOf(kill.kind) *
     killerScale *
     kitchenKeyScale(levelOf(world), kill) *
-    brokeKeyScaleOf(world.modifiers)
+    brokeKeyScaleOf(activeModifiersOf(world))
   )
 }
 

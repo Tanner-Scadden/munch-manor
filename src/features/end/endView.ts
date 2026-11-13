@@ -21,9 +21,10 @@ import {
   TROPHY_PALETTE,
   TROPHY_PIXELS,
 } from '../../art/icons'
+import { markSprite } from '../../art/markArt'
 import { type Sprite, group, placeAt, spriteShapes } from '../../art/sprite'
 import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
-import { effectiveModifiersOf } from '../../domain/onlineRun'
+import { effectiveModifiersOf, playedMarkOf } from '../../domain/onlineRun'
 import { isAskingForFeedback } from '../../domain/run'
 import { QUARTER_TURN, rect } from '../../render/drawing'
 import { playerFootY } from '../../render/playerView'
@@ -409,6 +410,34 @@ const modifierShapes = (
       )
     },
   )
+}
+
+// NOTE: the dare ladder's mark the run was played at, its seal to the left
+// of the skulls, popping in with the first of them.
+const markShapes = (
+  model: Model,
+  kind: EndKind,
+  ms: number,
+  layout: Layout,
+): ReadonlyArray<Canvas.Shape> => {
+  const mark = playedMarkOf(model)
+  const atMs = kind === 'Won' ? skullAtMs(0) : TIMELINES[kind].stampAtMs
+  if (mark <= 0 || ms < atMs) {
+    return []
+  }
+  const pop = 1 + 0.6 * (1 - easeOut(progressOf(ms, atMs, 160)))
+  return [
+    group({
+      translate: {
+        x: Math.round(
+          CENTER_X - ((SKULL_SLOTS - 1) * SKULL_STRIDE) / 2 - MODIFIERS_GAP_PX,
+        ),
+        y: layout.skullsY + 5,
+      },
+      scale: pop === 1 ? undefined : { x: pop, y: pop },
+      shapes: markSprite(mark),
+    }),
+  ]
 }
 
 // TALLY
@@ -1005,6 +1034,7 @@ export const endOverlayShapes: {
           ...(isCoop(model)
             ? []
             : [
+                ...markShapes(model, kind, ms, layout),
                 ...skullShapes(model, kind, ms, layout),
                 ...modifierShapes(model, kind, ms, layout),
               ]),

@@ -145,6 +145,7 @@ export type RunRow = Readonly<{
   crew_key: string | null
   modifiers: number
   dare_items_found: number
+  dare_mark: number
   net_rtt_p50_ms: number | null
   net_rtt_p95_ms: number | null
   net_rtt_samples: number | null
@@ -249,7 +250,7 @@ const partyColumnsOf = (
 const summaryPartyColumns = (summary: PostedRunSummary): PartyColumns =>
   summary.version === 1 ? SOLO_COLUMNS : partyColumnsOf(summary.party)
 
-// NOTE: a version 5 to 8 summary spends keys and opens cases, with no shop
+// NOTE: a version 5 to 9 summary spends keys and opens cases, with no shop
 // to buy from (its purchases are 0); an older one bought from the shop, and
 // has no keys or cases (NULL).
 const shopColumnsOf = (
@@ -258,7 +259,8 @@ const shopColumnsOf = (
   summary.version === 5 ||
   summary.version === 6 ||
   summary.version === 7 ||
-  summary.version === 8
+  summary.version === 8 ||
+  summary.version === 9
     ? {
         purchases: 0,
         keys_spent: summary.keysSpent,
@@ -299,6 +301,7 @@ export const rowOf: {
       modifiers: 'modifiers' in summary ? summary.modifiers : 0,
       dare_items_found:
         'dareItemsFound' in summary ? summary.dareItemsFound : 0,
+      dare_mark: 'dareMark' in summary ? summary.dareMark : 0,
     })),
 )
 

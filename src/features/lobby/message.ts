@@ -20,6 +20,7 @@ export const Message = defineMessageUnion({
   ClickedDifficultyButton: { difficulty: Difficulty },
   ClickedModifierButton: { modifier: Modifier },
   ClickedEasyBreakButton: {},
+  ClickedMarkButton: {},
   FocusedControl: { control: LobbyControl },
   BlurredControl: {},
   CompletedFocusControl: {},
@@ -29,8 +30,8 @@ export type Message = typeof Message.Type
 
 // NOTE: what happened in the lobby that the root acts on. The picks are the
 // root's (it saves the difficulty, and a run reads them all), so each pick
-// goes up for the root to make and to tap: the mode, the difficulty, Dare's
-// break clock, a modifier, + BOT (the root's seeded generator rolls the bot), and a bot
+// goes up for the root to make and to tap: the mode, the difficulty, the
+// dare ladder's mark, Dare's break clock, a modifier, + BOT (the root's seeded generator rolls the bot), and a bot
 // sent home. START closes the lobby, and BACK (or a tap
 // outside the card) folds it back into PLAY. The picker opening plays the
 // root's tap and marks the heroes seen. A hero card and BUY ask the root,
@@ -43,6 +44,7 @@ export const OutMessage = defineMessageUnion({
   ChoseDifficulty: { difficulty: Difficulty },
   ToggledModifier: { modifier: Modifier },
   ChoseEasyBreak: { seconds: Schema.Finite },
+  ChoseDareMark: { mark: Schema.Finite },
   ClickedAddBot: {},
   DroppedBot: { index: Schema.Finite },
   OpenedHeroPicker: {},

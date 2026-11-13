@@ -44,6 +44,7 @@ const started = pastArrival(
     difficulty: 'Hard',
     modifiers: noModifiers,
     easyBreakSeconds: 0,
+    dareMark: 0,
     mode: RunMode.Campaign(),
     callings: [],
     intro: 'Short',
@@ -207,7 +208,7 @@ const withRoomNet = (model: Model, net: NetStats.ClientNet): Model =>
 const crewSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 8,
+  version: 9,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -225,6 +226,7 @@ const crewSummary = (
   party: crewOfThree,
   modifiers: 0,
   dareItemsFound: 0,
+  dareMark: 0,
   ...overrides,
 })
 

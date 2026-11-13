@@ -17,6 +17,7 @@ import {
   type Act,
   type Viewport,
   auditTag,
+  clickFirst,
   deviceQuery,
   finish,
   harnessQuery,
@@ -29,7 +30,7 @@ import {
   settleAnimations,
   shot,
 } from './lib'
-import { attempt, decodedFrom } from './page'
+import { decodedFrom } from './page'
 
 const ALL_VIEWPORTS: ReadonlyArray<Viewport> = [
   { name: 'd1280', width: 1280, height: 720, scale: 1, isPhone: false },
@@ -45,14 +46,6 @@ const LOBBY = `${LEARNED}&rank=4000&calling=Handyman`
 const LONG_NAME = 'name=WWWWWWWWWWWW'
 
 type Scene = Readonly<{ name: string; query: string; act?: Act }>
-
-const clickFirst =
-  (selector: string): Act =>
-  page =>
-    Effect.andThen(
-      attempt(() => page.locator(selector).first().click()),
-      settleAnimations(page),
-    )
 
 const lobby =
   (...then: ReadonlyArray<Act>): Act =>

@@ -14,6 +14,7 @@ import {
   tilesWithSymbol,
 } from '../level/tileGrid'
 import { atSeat, forEachSeat, isStanding, seatStateAt } from '../party/party'
+import { activeModifiersOf } from '../run/dareLadder'
 import type { World } from '../schema/world'
 import {
   GameEvent,
@@ -136,7 +137,7 @@ const goodieFor = (
 ): PantryGoodie => {
   const isUsable = {
     Key: true,
-    Heart: isMissingHeart(player) && !world.modifiers.glass,
+    Heart: isMissingHeart(player) && !activeModifiersOf(world).glass,
   }[goodie]
   return isUsable ? goodie : 'Key'
 }

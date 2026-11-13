@@ -12,6 +12,7 @@ import {
   Phase,
   type PlannedSpawn,
 } from '../schema/worldSchema'
+import { markedBreakClock } from './dareLadder'
 import { BIG_CROWD_SCALE, type Modifiers, noModifiers } from './modifiers'
 
 // TABLE
@@ -305,12 +306,16 @@ export const EASY_BREAK_CHOICES: Array.NonEmptyReadonlyArray<number> = [
 
 // NOTE: how long a World's next break counts down, or none when it waits
 // for READY: on Dare the lobby's pick, above it the difficulty's breakMs.
+// The dare ladder's mark 7 shortens it (src/world/run/dareLadder.ts).
 export const breakClockMsOf = (world: World): Option.Option<number> =>
-  world.difficulty.chosen === 'Easy'
-    ? world.easyBreakSeconds > 0
-      ? Option.some(world.easyBreakSeconds * 1000)
-      : Option.none()
-    : Option.some(breakMsOf(world.difficulty.chosen))
+  markedBreakClock(
+    world.dareMark,
+    world.difficulty.chosen === 'Easy'
+      ? world.easyBreakSeconds > 0
+        ? Option.some(world.easyBreakSeconds * 1000)
+        : Option.none()
+      : Option.some(breakMsOf(world.difficulty.chosen)),
+  )
 
 // NOTE: the pick after this one, round again, for a key that steps it.
 export const nextEasyBreakOf = (seconds: number): number => {

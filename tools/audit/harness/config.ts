@@ -382,6 +382,11 @@ export const HarnessConfig = Schema.Struct({
   // The run modifiers on, as the lobby's mask: Friendly Fire 1, Big Crowd 2,
   // Broke 4, Glass 8 (src/world/run/modifiers.ts)
   mods: MaybeNum,
+  // The dare ladder (src/world/run/dareLadder.ts): `marks` opens that mark
+  // on Easy, three fewer on Normal, and six fewer on Hard; `dmark` is the
+  // mark picked, for the run, the lobby, and a co-op room.
+  marks: MaybeNum,
+  dmark: MaybeNum,
   // The earned looks: the hat and gun skin worn, the cosmetic ids bought
   // (`Fez`, `skin:Candy`), and the Bones earned (over the tenth of the
   // rank's points) and spent. `fresh` leaves the gifts reached unseen, so

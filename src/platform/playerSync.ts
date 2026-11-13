@@ -1,4 +1,4 @@
-import { Array, Function, Option, Record, Schema, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import { DayStamp } from '../shared/dayStamp'
@@ -86,6 +86,7 @@ export const PlayerChange = defineTaggedUnion({
   ShelvedProof: { entry: ProofEntry },
   KeptJournal: { added: SavedJournal },
   GainedMastery: { added: SavedMastery },
+  ClimbedDareLadder: { difficulty: Difficulty, mark: Schema.Finite },
   PaidRankPurse: { rank: Schema.Finite },
 })
 export type PlayerChange = typeof PlayerChange.Type
@@ -378,6 +379,16 @@ export const changesBetween: {
         Array.map(masteryAdded(before.mastery, after.mastery), added =>
           PlayerChange.GainedMastery({ added }),
         ),
+        Array.filterMap(Difficulty.literals, difficulty =>
+          after.dareMarks[difficulty] > before.dareMarks[difficulty]
+            ? Result.succeed(
+                PlayerChange.ClimbedDareLadder({
+                  difficulty,
+                  mark: after.dareMarks[difficulty],
+                }),
+              )
+            : Result.failVoid,
+        ),
         Array.map(
           Array.filter(
             after.boughtCosmetics,
@@ -456,6 +467,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     ShelvedProof: () => change,
     KeptJournal: () => change,
     GainedMastery: () => change,
+    ClimbedDareLadder: () => change,
     PaidRankPurse: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
@@ -486,6 +498,7 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'ShelvedProof',
     'KeptJournal',
     'GainedMastery',
+    'ClimbedDareLadder',
     'PaidRankPurse',
   ])(change)
 

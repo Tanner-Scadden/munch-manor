@@ -918,6 +918,8 @@ export const World = Schema.Struct({
   // NOTE: Dare's break clock in seconds, picked in the lobby, 0 for none
   // (src/world/run/difficulty.ts, EASY_BREAK_CHOICES).
   easyBreakSeconds: Schema.Finite,
+  // NOTE: the dare mark the run plays, 0 for none (src/world/run/dareLadder.ts).
+  dareMark: Schema.Finite,
   zombies: Schema.Array(Zombie),
   bullets: Schema.Array(Bullet),
   lobs: Schema.Array(Lob),

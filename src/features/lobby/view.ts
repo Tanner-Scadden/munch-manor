@@ -26,6 +26,8 @@ import {
 import type { Bot, HomeMode } from '../../domain/clientSchema'
 import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
+import { dareMarkFaceView, dareMarkLabel } from '../../ui/dareMarkView'
+import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
 import {
   callingPropView,
   iconView,
@@ -33,7 +35,6 @@ import {
   rankTagView,
   skullFaceViews,
 } from '../../ui/menuParts'
-import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
 import {
   bonusChipView,
   modifierFaceView,
@@ -46,12 +47,7 @@ import {
   NIGHTMARE_LOCK_NOTE,
   isLocked,
 } from '../../world/run/difficulty'
-import {
-  MODIFIER_ORDER,
-  type Modifier,
-  bonusPercentOf,
-  isModifierOn,
-} from '../../world/run/modifiers'
+import { MODIFIER_ORDER, type Modifier } from '../../world/run/modifiers'
 import { HeroDialogBinding, HeroPickerBinding } from './bindings'
 import type { ViewInputs } from './block'
 import { LobbyComposition, type LobbyViewBuilder } from './composition'
@@ -61,8 +57,12 @@ import {
   MODE_CONTROLS,
   SEATS,
   isEasyBreakShown,
+  isMarkShown,
+  isModifierLocked,
   isModifierPickable,
+  isModifierShownOn,
   lobbyControlId,
+  picksBonusPercentOf,
 } from './lobby'
 import { Message } from './message'
 import {
@@ -488,12 +488,14 @@ const skullPickView = (
 
 // NOTE: a run modifier is a tile that turns on and off, lit when on. Friendly
 // Fire is dim until a bot sits in the crew, with nobody to hit before that.
+// One the picked mark turns on is lit and locked.
 const modifierPickView = (
   picks: LobbyPicks,
   modifier: Modifier,
   h: LobbyViewBuilder,
 ): Html => {
-  const isOn = isModifierOn(picks.modifiers, modifier)
+  const isOn = isModifierShownOn(picks, modifier)
+  const isLockedOn = isModifierLocked(picks, modifier)
   const isPickable = isModifierPickable(picks, modifier)
   return h.button(
     [
@@ -503,11 +505,14 @@ const modifierPickView = (
       h.DataAttribute('modifier', modifier),
       h.DataAttribute('state', isOn ? 'On' : 'Off'),
       h.DataAttribute('available', isPickable ? 'Yes' : 'No'),
+      h.DataAttribute('locked', isLockedOn ? 'Yes' : 'No'),
       h.AriaPressed(isOn ? 'true' : 'false'),
       h.AriaLabel(
-        isPickable
-          ? modifierLabel(modifier, isOn)
-          : `${modifierLabel(modifier, isOn)}. Add a bot teammate first`,
+        isLockedOn
+          ? `${modifierLabel(modifier, isOn)}. Held by the dare mark`
+          : isPickable
+            ? modifierLabel(modifier, isOn)
+            : `${modifierLabel(modifier, isOn)}. Add a bot teammate first`,
       ),
       ...(isPickable ? [] : [h.AriaDisabled(true)]),
       h.OnClick(Message.ClickedModifierButton({ modifier })),
@@ -529,6 +534,22 @@ const easyBreakPickView = (picks: LobbyPicks, h: LobbyViewBuilder): Html =>
       h.OnClick(Message.ClickedEasyBreakButton()),
     ],
     easyBreakFaceView(picks.easyBreakSeconds, h),
+  )
+
+// NOTE: the dare ladder's mark, beside the skulls once one is opened on the
+// picked difficulty: a press steps it, none first.
+const markPickView = (picks: LobbyPicks, h: LobbyViewBuilder): Html =>
+  h.button(
+    [
+      ...controlAttributes('Mark', h),
+      h.Type('button'),
+      h.Class('coop-pick dare-mark-pick'),
+      h.DataAttribute('state', picks.dareMark > 0 ? 'On' : 'Off'),
+      h.DataAttribute('mark', `${picks.dareMark}`),
+      h.AriaLabel(dareMarkLabel(picks.dareMark)),
+      h.OnClick(Message.ClickedMarkButton()),
+    ],
+    dareMarkFaceView(picks.dareMark, h),
   )
 
 // NOTE: a map is a card with its picture and its name. With one map there
@@ -577,6 +598,7 @@ const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
             skullPickView(inputs.picks, difficulty, h),
           ),
           ...capView(inputs, LOBBY_KEYS.Difficulty.cap, h),
+          ...(isMarkShown(inputs.picks) ? [markPickView(inputs.picks, h)] : []),
           ...(isEasyBreakShown(inputs.picks)
             ? [easyBreakPickView(inputs.picks, h)]
             : []),
@@ -593,7 +615,7 @@ const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
           ...Array.map(MODIFIER_ORDER, modifier =>
             modifierPickView(inputs.picks, modifier, h),
           ),
-          bonusChipView(bonusPercentOf(inputs.picks.modifiers), h),
+          bonusChipView(picksBonusPercentOf(inputs.picks), h),
         ],
       ),
       h.div(

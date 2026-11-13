@@ -2,6 +2,7 @@ import { type Array, type Option, Schema } from 'effect'
 import { Block } from 'foldkit'
 import type { Html } from 'foldkit/html'
 
+import type { SavedDareMarks } from '../../shared/dareMarkData'
 import type { DayStamp } from '../../shared/dayStamp'
 import type { SavedProof } from '../../shared/proofData'
 import { InMessage } from './inMessage'
@@ -11,7 +12,8 @@ import type { ShelfThing } from './proof'
 
 // NOTE: what the root hands the shelf's view: the shelf itself (saved and
 // synced), the things along each row (the house's and those opened), the days of missions done and today (the calendar), the slots
-// new since the shelf last opened (their NEW pips), and the menu panel's
+// new since the shelf last opened (their NEW pips), the dare ladder's best
+// mark on each difficulty (a seal on its row's trim), and the menu panel's
 // Done, a function so it keeps sending the root's Message.
 export type ViewInputs = Readonly<{
   proof: SavedProof
@@ -19,6 +21,7 @@ export type ViewInputs = Readonly<{
   stampedDays: ReadonlyArray<DayStamp>
   maybeToday: Option.Option<DayStamp>
   fresh: ReadonlyArray<string>
+  dareMarks: SavedDareMarks
   doneButton: () => Html
 }>
 
