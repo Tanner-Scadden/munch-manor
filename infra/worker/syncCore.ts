@@ -43,10 +43,11 @@ import {
 
 import {
   LinkedDevices,
-  PLAYER_SCOPE_KIND,
   PlayerScope,
   playerScopeId,
 } from '../../src/platform/playerScope.ts'
+import { PLAYER_SCOPE_KIND } from '../../src/platform/playerScopeParts.ts'
+import { SavedJournal } from '../../src/shared/journalData.ts'
 
 // NOTE: the sync Worker's logic, kept apart from the Durable Object classes
 // in sync.ts so `bun test` can run it without the Workers runtime. One
@@ -164,77 +165,92 @@ export const tryCall: {
 
 // NIGHTMARE
 
-// NOTE: whether a player has unlocked Nightmare, as their own scope holds
-// it on the server. A co-op room asks before it seats them, so the lobby
-// never takes a client's word for it (Lobby.ts, ChangedPicks). Anything
-// that goes wrong reads as locked.
+// NOTE: whether a player has unlocked Nightmare, and the Dare Journal's
+// milestones they have reached, as their own scope holds them on the
+// server. A co-op room asks before it seats them, so the lobby never takes
+// a client's word for Nightmare (Lobby.ts, ChangedPicks), and as a run
+// starts, so the host's milestones open the room's new dare things
+// (src/world/dare/milestones.ts). Anything that goes wrong reads as locked
+// with no milestones.
 export const NIGHTMARE_PATH = '/internal/nightmare'
 const SCOPE_HEADER = 'x-sync-scope'
 
-const NightmareRows = Schema.Array(Schema.Struct({ nightmare: Schema.String }))
-const decodeNightmareRows = Schema.decodeUnknownOption(NightmareRows)
+export type PlayerFacts = Readonly<{
+  unlocked: boolean
+  milestones: ReadonlyArray<string>
+}>
 
-export const isNightmareUnlockedIn = (
+const NO_FACTS: PlayerFacts = { unlocked: false, milestones: [] }
+
+const PlayerRows = Schema.Array(
+  Schema.Struct({
+    nightmare: Schema.String,
+    journal: Schema.String.pipe(Schema.optionalKey),
+  }),
+)
+const decodePlayerRows = Schema.decodeUnknownOption(PlayerRows)
+const decodeJournal = Schema.decodeUnknownOption(
+  Schema.fromJsonString(SavedJournal),
+)
+
+export const playerFactsIn = (
   tables: Readonly<Record<string, ReadonlyArray<unknown>>>,
-): boolean =>
-  Option.exists(
-    Option.flatMap(decodeNightmareRows(tables['player'] ?? []), Array.head),
-    row => row.nightmare === 'Unlocked',
+): PlayerFacts =>
+  Option.match(
+    Option.flatMap(decodePlayerRows(tables['player'] ?? []), Array.head),
+    {
+      onNone: () => NO_FACTS,
+      onSome: row => ({
+        unlocked: row.nightmare === 'Unlocked',
+        milestones: Option.match(
+          Option.flatMap(Option.fromUndefinedOr(row.journal), decodeJournal),
+          {
+            onNone: () => [],
+            onSome: journal => journal.milestones,
+          },
+        ),
+      }),
+    },
   )
 
 /** @stability unstable */
-export const nightmareUnlockedIn = (host: ScopeHost): Effect.Effect<boolean> =>
+export const playerFactsOf = (host: ScopeHost): Effect.Effect<PlayerFacts> =>
   Effect.map(Effect.orDie(host.server.snapshot), snapshot =>
-    snapshot._tag === 'Snapshot'
-      ? isNightmareUnlockedIn(snapshot.tables)
-      : false,
+    snapshot._tag === 'Snapshot' ? playerFactsIn(snapshot.tables) : NO_FACTS,
   )
 
 const NightmareAnswer = Schema.fromJsonString(
-  Schema.Struct({ unlocked: Schema.Boolean }),
+  Schema.Struct({
+    unlocked: Schema.Boolean,
+    milestones: Schema.Array(Schema.String).pipe(Schema.optionalKey),
+  }),
 )
 const decodeNightmareAnswer = Schema.decodeUnknownOption(NightmareAnswer)
 
 export const encodeNightmareAnswer = (
-  unlocked: boolean,
+  facts: PlayerFacts,
 ): Effect.Effect<string> =>
-  Effect.orDie(Schema.encodeEffect(NightmareAnswer)({ unlocked }))
+  Effect.orDie(Schema.encodeEffect(NightmareAnswer)(facts))
 
-export type ScopeAnswer = Readonly<{
+type ScopeAnswer = Readonly<{
   ok: boolean
   text: () => Promise<string>
 }>
 
-export const readNightmareUnlock: {
-  (
-    playerId: string,
-  ): (
-    fetchScope: (
-      scope: string,
-      url: string,
-      headers: Readonly<Record<string, string>>,
-    ) => Promise<ScopeAnswer>,
-  ) => Effect.Effect<boolean>
-  (
-    fetchScope: (
-      scope: string,
-      url: string,
-      headers: Readonly<Record<string, string>>,
-    ) => Promise<ScopeAnswer>,
-    playerId: string,
-  ): Effect.Effect<boolean>
+type FetchScope = (
+  scope: string,
+  url: string,
+  headers: Readonly<Record<string, string>>,
+) => Promise<ScopeAnswer>
+
+export const readPlayerFacts: {
+  (playerId: string): (fetchScope: FetchScope) => Effect.Effect<PlayerFacts>
+  (fetchScope: FetchScope, playerId: string): Effect.Effect<PlayerFacts>
 } = Function.dual(
   2,
-  (
-    fetchScope: (
-      scope: string,
-      url: string,
-      headers: Readonly<Record<string, string>>,
-    ) => Promise<ScopeAnswer>,
-    playerId: string,
-  ): Effect.Effect<boolean> => {
+  (fetchScope: FetchScope, playerId: string): Effect.Effect<PlayerFacts> => {
     const scope = playerScopeId(playerId)
-    return tryCall('read the Nightmare unlock', () =>
+    return tryCall('read the player facts', () =>
       fetchScope(scope, `https://sync${NIGHTMARE_PATH}`, {
         [SCOPE_HEADER]: scope,
       }),
@@ -245,9 +261,15 @@ export const readNightmareUnlock: {
           : Effect.succeed(''),
       ),
       Effect.map(text =>
-        Option.exists(decodeNightmareAnswer(text), answer => answer.unlocked),
+        Option.match(decodeNightmareAnswer(text), {
+          onNone: () => NO_FACTS,
+          onSome: answer => ({
+            unlocked: answer.unlocked,
+            milestones: answer.milestones ?? [],
+          }),
+        }),
       ),
-      Effect.orElseSucceed(() => false),
+      Effect.orElseSucceed(() => NO_FACTS),
     )
   },
 )

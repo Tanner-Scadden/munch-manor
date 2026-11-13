@@ -1,3 +1,5 @@
+import { openedThingsOf } from '../../domain/journal'
+import { shelfThingsFor } from '../../features/proof/proof'
 import { ProofShelfBinding } from '../bindings'
 import { makeStep } from '../definition'
 import { isPanelOpen } from '../menuState'
@@ -10,6 +12,9 @@ import { unchanged } from './step'
 export const proofFromKey = (code: string) =>
   makeStep(model =>
     isPanelOpen(model, 'Proof')
-      ? ProofShelfBinding.requestPressKey({ code })
+      ? ProofShelfBinding.requestPressKey({
+          code,
+          things: shelfThingsFor(openedThingsOf(model)),
+        })
       : unchanged,
   )

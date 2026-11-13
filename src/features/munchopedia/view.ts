@@ -12,6 +12,7 @@ import {
   MunchopediaComposition,
   type MunchopediaViewBuilder,
 } from './composition'
+import { journalPageViews } from './journalView'
 import { Message } from './message'
 import { type Model, MunchopediaPage } from './model'
 import {
@@ -294,6 +295,9 @@ const entryActionsView = (
     ],
   )
 
+const doneRowView = (inputs: ViewInputs, h: MunchopediaViewBuilder): Html =>
+  h.div([h.Class('panel-actions')], [inputs.doneButton()])
+
 // NOTE: the shop guide stands over the zombies while it is open, with its
 // own BACK and the panel's Done.
 const guideView = (
@@ -319,16 +323,32 @@ const pageView = (
 ): ReadonlyArray<Html> =>
   isGuideOpen(model.guide)
     ? [guideView(model, inputs, h)]
-    : MunchopediaPage.match(model.page, {
-        List: () => [
-          listView(inputs, h),
-          h.div([h.Class('panel-actions')], [inputs.doneButton()]),
-        ],
-        Entry: ({ kind }) => [
-          entryView(inputs, kind, h),
-          entryActionsView(inputs, h),
-        ],
-      })
+    : [
+        journalPageViews.tabs(model.page, inputs, h),
+        ...MunchopediaPage.match(model.page, {
+          List: () => [listView(inputs, h), doneRowView(inputs, h)],
+          Entry: ({ kind }) => [
+            entryView(inputs, kind, h),
+            entryActionsView(inputs, h),
+          ],
+          Things: () => [
+            journalPageViews.things(inputs, h),
+            doneRowView(inputs, h),
+          ],
+          Rooms: () => [
+            journalPageViews.rooms(inputs, h),
+            doneRowView(inputs, h),
+          ],
+          Story: ({ page }) => [
+            journalPageViews.story(inputs, page, h),
+            doneRowView(inputs, h),
+          ],
+          Heroes: () => [
+            journalPageViews.heroes(inputs, h),
+            doneRowView(inputs, h),
+          ],
+        }),
+      ]
 
 // NOTE: the panel's body under the title the root's menu panel draws. Its
 // box takes no room of its own, so the panel lays out the page and its

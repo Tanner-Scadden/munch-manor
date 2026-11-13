@@ -1,5 +1,6 @@
 import { Effect, Function, Option, pipe } from 'effect'
 
+import { keepJournal, tallyJournalFrom } from '../../domain/journal'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import { noteDeathTip } from '../../features/end/deathTip'
 import { noteRecords, reachRecords } from '../../features/end/endBeat'
@@ -93,7 +94,7 @@ type SaveWrite = 'Write' | 'Synced'
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the rank and the daily missions a run pays, the Proof Shelf, the death tip, how the run ended and the friends' line for the
+// Nightmare, the rank and the daily missions a run pays, the Proof Shelf, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
 // next intro, the run count and its summary, the run's recording, the new
 // zombie badges, the
 // fridge prizes pulled, and the save. `update` in src/app/main.ts runs them once
@@ -113,11 +114,13 @@ export const afterMessage: {
     unlockNightmareFrom(before),
     stepModel => ({ model: freezeMissionsFrom(stepModel, before) }),
     stepModel => ({ model: tallyMissionsFrom(before, stepModel) }),
+    stepModel => ({ model: tallyJournalFrom(before, stepModel) }),
     stepModel => ({
       model: earnRank(before, stepModel),
     }),
     stepModel => ({ model: payMissions(before, stepModel) }),
     stepModel => ({ model: shelveRun(before, stepModel) }),
+    stepModel => ({ model: keepJournal(before, stepModel) }),
     stepModel => ({
       model: noteDeathTip(before, stepModel, runDifficultyOf(stepModel)),
     }),

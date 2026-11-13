@@ -11,7 +11,9 @@ import {
   pickCardInScene,
 } from '../../../test/testing'
 import { DARE_LINES } from '../../../world/names'
-import { SLOT_COUNT } from '../proof'
+import { shelfThingsFor, slotCountOf } from '../proof'
+
+const SLOT_COUNT = slotCountOf(shelfThingsFor([]))
 
 // The Proof Shelf in its panel: opened from the MANOR hand's PROOF card, a
 // slot per thing per difficulty, the found ones filled, and a tapped slot's

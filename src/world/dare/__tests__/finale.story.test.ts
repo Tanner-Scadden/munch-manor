@@ -38,7 +38,13 @@ import { beginPreparation } from '../../waves/waves'
 import { BOSS_RULES } from '../../zombies/bossRules'
 import { ZOMBIE_KINDS, scaledHp } from '../../zombies/zombies'
 import { dareCardOf } from '../dare'
-import { DareKind, type DareThing, DareThingState, Finale } from '../dareSchema'
+import {
+  DareKind,
+  type DareThing,
+  DareThingState,
+  Finale,
+  HOUSE_THINGS,
+} from '../dareSchema'
 import { FINALE_RULES, isAtFrontDoor, isHouseHungry } from '../finale'
 
 // The finale (src/world/dare/finale.ts): the list done, Uncle Chunk at the
@@ -343,7 +349,8 @@ describe('his big key', () => {
   it.effect('no hat anywhere: not a thing, not on the card', () =>
     Effect.sync(() => {
       expect(DareKind.literals).not.toContain('PartyHat')
-      expect(DareKind.literals).toHaveLength(6)
+      expect(DareKind.literals).toHaveLength(10)
+      expect(HOUSE_THINGS).toHaveLength(6)
     }),
   )
 })

@@ -5,7 +5,13 @@ import { modifyFields } from 'foldkit/struct'
 import { ProofShelfBlock } from './block'
 import { Message } from './message'
 import { type Model, initialModel } from './model'
-import { FIRST_SPOT, ShelfSpot, maybeSteppedSpot, slotId } from './proof'
+import {
+  FIRST_SPOT,
+  type Press,
+  ShelfSpot,
+  maybeSteppedSpot,
+  slotId,
+} from './proof'
 
 // The shelf's own transitions, shared by its update and its InMessages
 // (FOLDKIT.md, "File organization").
@@ -33,11 +39,11 @@ export const openAfresh = (): Model => initialModel
 
 // NOTE: an arrow walks from the slot picked (the first, when none is) and
 // picks the slot it reaches. Any other key is not the shelf's.
-export const pressKey = (code: string) => (model: Model) =>
+export const pressKey = (press: Press) => (model: Model) =>
   Option.match(
     maybeSteppedSpot(
       Option.getOrElse(model.maybePicked, () => FIRST_SPOT),
-      code,
+      press,
     ),
     {
       onNone: () => ({ model }),

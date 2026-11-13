@@ -283,6 +283,8 @@ Built on 2026-11-10. One rule: each room holds one thing (owner, 2026-11-10). Ea
 
 The things: Grandma Munch's recipe, the silver spoon, the butler's bell, the music box (its tune plays, as flavor), the family portrait, and a page of the guest book.
 
+Settled on 2026-11-13 with the Dare Journal: four more things join a player's list as milestones open them, each with its line of story. Chunk's napkin ring (opened by the first escape: ENGRAVED CHUNK. HALF CHEWED.), Rattles' dare note (a find in every room: 1924. THE SAME DARE AS YOURS.), the party invitation (10 things found: YOU ARE CORDIALLY INVITED... FOREVER.), and Grandma's teeth (Uncle Chunk felled on Triple Dare: STILL CHATTERING IN THE JAR.). In co-op the list rolls from the host's things.
+
 No thing is carried by a marked zombie, locked in a case, or cooked at the stove any more: the display cases and the stove keep their own prizes. Rattles may name the room a thing is in; the HUD never does.
 
 Objects, no reading needed. The HUD shows this run's list as empty outlines that fill in.
@@ -332,9 +334,13 @@ Built on 2026-11-10.
 
 Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the intro's car beat carries the line. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each. Built on 2026-11-12: a bubble over the car in the drive, or from the curb over the knock in the short cut, with a few lines for each ending (a death, a quick one, an escape, and a first run's "GO ON. WE DARE YA!"), and "Chicken!" after the back door since 2026-11-13.
 
+### The story pages
+
+Settled on 2026-11-13 with the Dare Journal: eight pages, each opened by a milestone in order, alternating the 1924 guest book and Rattles' notes, three short lines each (the text is in `src/features/munchopedia/journalPages.ts`). The Party (the Munches' Halloween party, 1924, Uncle Chunk signed in twice), Dear Whoever (Rattles took the same dare, and the door shut), Soup for 200 (the doors were locked so nobody missed dessert; the house was hungry), The Deal (the house gets fed, the Munches live forever, mostly), Midnight (nobody can find their coats; Mrs. Pell bit Mr. Pell and everyone clapped), Day 40 (Rattles hungry, not for food; he hides in the trunk by the front door), The Host (Uncle Chunk swallowed the big key at the toast), and I Dare You, the last, behind an escape on Triple Dog Dare (the party ends when the last guest leaves; go home and dare the kids in town).
+
 ### Heroes and bots
 
-The bots as wind-up tin robots are in the dare card's DRAG ALONG line, and the heroes' perks with no prices are built (the Penny Pincher's kills drop more keys, the Handyman's traps are sturdier and he mends faster); the heroes' reasons are still proposed. The heroes are daredevils with their own reasons: the Handyman was paid by the town to board the place up, the Track Star is the fastest kid in school and was dared to run straight through, the Penny Pincher heard about the Munch silver, and the Line Cook wants Grandma Munch's recipe. The bots are wind-up tin robots from the nursery.
+The bots as wind-up tin robots are in the dare card's DRAG ALONG line, and the heroes' perks with no prices are built (the Penny Pincher's kills drop more keys, the Handyman's traps are sturdier and he mends faster); the heroes' reasons are settled (2026-11-13) and shown on the Dare Journal's Heroes page once a hero is played. The heroes are daredevils with their own reasons: the Handyman was paid by the town to board the place up, the Track Star is the fastest kid in school and was dared to run straight through, the Penny Pincher heard about the Munch silver, and the Line Cook wants Grandma Munch's recipe. The bots are wind-up tin robots from the nursery.
 
 ### What would change in the game
 

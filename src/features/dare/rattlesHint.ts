@@ -78,6 +78,10 @@ const THING_LINES: Readonly<Record<DareKind, Lines>> = {
   GrandmasRecipe: ["GRANDMA'S RECIPE! SNIFF!", 'SECRET RECIPE! GRAB IT!'],
   MusicBox: ['MUSIC BOX! HEAR THAT?', 'LA LA LAAA! MUSIC BOX!'],
   ButlersBell: ["BUTLER'S BELL! DING DING!", 'THE BELL! RIGHT THERE!'],
+  NapkinRing: ['NAPKIN RING! GRAB IT!', 'HE CHEWED THAT RING. EW.'],
+  DareNote: ['MY OLD DARE NOTE! GET IT!', 'I WROTE THAT IN 1924!'],
+  FalseTeeth: ['FALSE TEETH! THEY BITE!', "GRANDMA'S TEETH! GET 'EM!"],
+  Invitation: ['THE INVITATION! GRAB IT!', 'PARTY INVITE! DO NOT RSVP!'],
 }
 
 // NOTE: with the list done: Uncle Chunk is coming, and his key is the way
@@ -93,6 +97,10 @@ const THING_WORDS: Readonly<Record<DareKind, string>> = {
   GrandmasRecipe: 'RECIPE',
   MusicBox: 'MUSIC BOX',
   ButlersBell: 'BELL',
+  NapkinRing: 'NAPKIN RING',
+  DareNote: 'DARE NOTE',
+  FalseTeeth: 'TEETH',
+  Invitation: 'INVITATION',
 }
 
 const ROOM_WORDS: Readonly<Record<string, string>> = {

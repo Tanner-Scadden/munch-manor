@@ -1,7 +1,8 @@
 // The dare satchel pass: the dare card opened again from the HUD's list
 // (src/features/dare/pocketCard.ts), with things found in its satchel and
 // the rest dim with their rooms' icons, a new find dropping in, the whole
-// list found, and Triple Dare's card with no rooms shown. On a 1280x720
+// list found, Triple Dare's card with no rooms shown, and a list rolled
+// with the Dare Journal's new things. On a 1280x720
 // desktop, an 844x390 phone on its side, and a 390x844 phone held upright,
 // as `satchel-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsSatchel.ts
@@ -31,6 +32,10 @@ const SCENES: ReadonlyArray<Scene> = [
   { name: 'two', query: `${WAVE}&darefound=2&satchel=2&dareopen=2000` },
   { name: 'dropping', query: `${WAVE}&darefound=2&satchel=1&dareopen=500` },
   { name: 'all', query: `${WAVE}&darefound=6&satchel=6&dareopen=2000` },
+  {
+    name: 'newthings',
+    query: `${WAVE}&newthings&difficulty=Hard&darefound=2&satchel=2&dareopen=2000`,
+  },
   {
     name: 'triple',
     query: `${WAVE}&difficulty=Hard&darefound=1&satchel=1&dareopen=2000`,

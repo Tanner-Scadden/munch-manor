@@ -2,6 +2,7 @@ import { Array, Duration, Effect, Function, Option, Schema, pipe } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { markJournalSeen } from '../../domain/journal'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import { isEndScreen, isOnHome } from '../../domain/run'
 import { END_MENU_BUTTON_ID, endOffer } from '../../features/end/endOffer'
@@ -374,12 +375,15 @@ const openWhatsNew = makeStep(model =>
     : unchanged,
 )
 
-// NOTE: the Munchopedia (src/features/munchopedia/) opens afresh on the page
-// asked for; an entry opened says so to its fold (src/app/composition.ts).
+// NOTE: the Dare Journal (src/features/munchopedia/) opens afresh on the
+// page asked for; an entry opened says so to its fold
+// (src/app/composition.ts). Every milestone reached is seen: the card's NEW
+// pip goes, and a page new since keeps its NEW while the journal is up.
 const openMunchopedia = (page: MunchopediaPage) =>
   makeStep(model =>
     isPanelAllowed(model, 'Munchopedia')
       ? Update.combineSteps([
+          modelStep(markJournalSeen),
           MunchopediaBinding.requestOpen({ page }),
           openPanel('Munchopedia'),
         ])

@@ -264,7 +264,7 @@ const sectionsView = (
 
 const BACK_LABELS: Readonly<Record<GuidePlacement, string>> = {
   Shop: 'Back to the shop',
-  Munchopedia: 'Back to the Munchopedia',
+  Munchopedia: 'Back to the journal',
 }
 
 const backView = (placement: GuidePlacement, h: GuideViewBuilder): Html =>

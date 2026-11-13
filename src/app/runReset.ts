@@ -10,6 +10,7 @@ import {
   RattlesIntro,
   RunTally,
   cosmeticSeedOf,
+  noJournalRun,
   noRankPaid,
   quietDareHint,
 } from '../domain/clientSchema'
@@ -111,6 +112,7 @@ export type RunFields = Pick<
   | 'rankPaid'
   | 'maybeRankGain'
   | 'missionRun'
+  | 'journalRun'
   | 'maybeMissionGain'
   | 'maybeRoomDifficulty'
   | 'maybeRoomModifiers'
@@ -184,6 +186,7 @@ export const freshRun = (model: Model): RunFields => ({
   rankPaid: noRankPaid,
   maybeRankGain: Option.none(),
   missionRun: noMissionRun,
+  journalRun: noJournalRun,
   maybeMissionGain: Option.none(),
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),

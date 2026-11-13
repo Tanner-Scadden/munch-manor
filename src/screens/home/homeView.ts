@@ -26,6 +26,7 @@ import {
   TURN_PHONE_ICON,
 } from '../../art/icons'
 import { DifficultyCard } from '../../domain/clientSchema'
+import { hasNewJournalPage } from '../../domain/journal'
 import { isEndScreen, isOnHome } from '../../domain/run'
 import { hasUnseenLook } from '../../domain/unlocks'
 import { IS_COOP_RELEASED } from '../../features/coop/release'
@@ -41,6 +42,7 @@ import {
   missionsPanelView,
   missionsText,
 } from '../../features/missions/missionCard'
+import { tabOfPage } from '../../features/munchopedia/model'
 import {
   ENTRY_COUNT,
   discoveredKinds,
@@ -66,6 +68,7 @@ import {
 import { rankChipView } from '../../ui/rankBadgeView'
 import { rankOf, totalPointsOf } from '../../world/heroes/rank'
 import {
+  JOURNAL_NAME,
   MULTIPLAYER_NAME,
   PROOF_NAME,
   TUTORIAL_CHOICE_NAMES,
@@ -203,8 +206,8 @@ const CARD_LOOKS: Readonly<Record<HandCard, CardLook>> = {
     icon: CHARACTER_ICON,
   },
   Munchopedia: {
-    title: 'MUNCHOPEDIA',
-    ariaLabel: 'Munchopedia: every zombie you have splatted',
+    title: 'JOURNAL',
+    ariaLabel: `${JOURNAL_NAME}: the zombies, things, rooms, story, and heroes`,
     icon: MUNCHOPEDIA_ICON,
   },
   WhatsNew: {
@@ -252,7 +255,7 @@ const hasNews = (model: Model, card: HandCard): boolean => {
   } else if (card === 'WhatsNew') {
     return isNewsUnseen(model)
   } else if (card === 'Munchopedia') {
-    return hasUnopenedEntry(model)
+    return hasUnopenedEntry(model) || hasNewJournalPage(model)
   } else if (card === 'Proof') {
     return hasNewProof(model)
   } else {
@@ -270,7 +273,7 @@ const newsCards = (model: Model): ReadonlyArray<HandCard> =>
 
 const NEWS_NAMES: Readonly<Record<HandCard, string>> = {
   Character: 'Character',
-  Munchopedia: 'the Munchopedia',
+  Munchopedia: `the ${JOURNAL_NAME}`,
   WhatsNew: "What's new",
   HowToPlay: 'How to play',
   Proof: 'Proof',
@@ -280,9 +283,9 @@ const NEWS_NAMES: Readonly<Record<HandCard, string>> = {
 const manorAriaLabel = (model: Model): string =>
   Array.match(newsCards(model), {
     onEmpty: () =>
-      'More: character, Munchopedia, what is new, how to play, and proof',
+      'More: character, journal, what is new, how to play, and proof',
     onNonEmpty: cards =>
-      `More: character, Munchopedia, what is new, how to play, and proof. Something new in ${Array.join(
+      `More: character, journal, what is new, how to play, and proof. Something new in ${Array.join(
         Array.map(cards, card => NEWS_NAMES[card]),
         ' and ',
       )}`,
@@ -693,7 +696,7 @@ const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
   Play: 'play',
   Coop: 'co-op',
   Manor: 'manor',
-  Bests: 'Munchopedia',
+  Bests: 'journal',
   Missions: 'missions',
   Support: 'coffee',
   Settings: 'settings',
@@ -701,7 +704,7 @@ const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
 
 const CARD_KEY_ACTIONS: Readonly<Record<KeyedHandCard, string>> = {
   Character: 'character',
-  Munchopedia: 'Munchopedia',
+  Munchopedia: 'journal',
   WhatsNew: "what's new",
   HowToPlay: 'how to play',
   Proof: 'proof',
@@ -1056,9 +1059,11 @@ const panelBodyView = (
 
 // NOTE: show, don't explain. How to play and the difficulty
 // picker by PLAY speak through their icons, so their blurb is only read
-// aloud. What's New shows its day's title between its page arrows instead.
+// aloud, as is the journal's tally past its Zombies tab. What's New shows its day's title between its page arrows instead.
+// NOTE: the Dare Journal's zombie tally shows over its Zombies tab only.
 const isBlurbShown = (model: Model): boolean =>
-  model.panel === 'Munchopedia' ||
+  (model.panel === 'Munchopedia' &&
+    tabOfPage(model.munchopedia.page) === 'Zombies') ||
   model.panel === 'LeaveRun' ||
   (model.panel === 'Difficulty' && isAskingFirst(model))
 

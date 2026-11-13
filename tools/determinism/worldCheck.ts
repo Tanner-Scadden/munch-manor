@@ -83,6 +83,8 @@ const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
   /^src\/platform\/playerScope\.ts$/,
   /^src\/platform\/playerMigrations\.ts$/,
   /^src\/platform\/proofScope\.ts$/,
+  /^src\/platform\/missionScope\.ts$/,
+  /^src\/platform\/playerScopeParts\.ts$/,
   /^src\/platform\/analytics\.ts$/,
   /^src\/platform\/recordingApi\.ts$/,
 ]

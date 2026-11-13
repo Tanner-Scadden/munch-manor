@@ -3,7 +3,7 @@
 // greeting, the MORE hand, the daily missions panel, every menu panel (How
 // to play and a flipped card, What's New and an older day, the difficulty
 // question, LEAVE), the Munchopedia (empty, found, its entries, the Shop
-// page), and every tab of the Profile, on a 1280x720 desktop, an 852x393
+// page), the Dare Journal's pages and the shelf with its opened things, and every tab of the Profile, on a 1280x720 desktop, an 852x393
 // phone on its side, a 393x852 phone held upright, a small 360x740 Android,
 // and a 1024x768 tablet, as `menus-<TAG>-<viewport>-<scene>.png`.
 // It prints a phone button under 44 px, a button past the screen's edge,
@@ -163,6 +163,46 @@ const SCENES: ReadonlyArray<Scene> = [
       '.munch-tile-shop',
       '.munch-body button >> nth=0',
     ],
+  },
+  {
+    name: 'journal-things',
+    query: 'journal&proof',
+    open: [MANOR, '#hand-card-munchopedia', '#journal-tab-things'],
+  },
+  {
+    name: 'journal-rooms',
+    query: 'journal&proof',
+    open: [MANOR, '#hand-card-munchopedia', '#journal-tab-rooms'],
+  },
+  {
+    name: 'journal-story',
+    query: 'journal&proof',
+    open: [MANOR, '#hand-card-munchopedia', '#journal-tab-story'],
+  },
+  {
+    name: 'journal-story-locked',
+    query: 'journal&proof',
+    open: [
+      MANOR,
+      '#hand-card-munchopedia',
+      '#journal-tab-story',
+      '.journal-page-button >> nth=7',
+    ],
+  },
+  {
+    name: 'journal-heroes',
+    query: 'journal&proof',
+    open: [MANOR, '#hand-card-munchopedia', '#journal-tab-heroes'],
+  },
+  {
+    name: 'proof-journal',
+    query: 'journal&proof',
+    open: [MANOR, '#hand-card-proof'],
+  },
+  {
+    name: 'proof-all-things',
+    query: 'journal&journalall&proof',
+    open: [MANOR, '#hand-card-proof'],
   },
   {
     name: 'profile-look',

@@ -2,6 +2,7 @@ import { Array, Function, Option, Record, Schema, pipe } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import { DayStamp } from '../shared/dayStamp'
+import { SavedJournal, journalAdded } from '../shared/journalData'
 import {
   ALL_THREE_BONES,
   MissionReroll,
@@ -81,6 +82,7 @@ export const PlayerChange = defineTaggedUnion({
   ClaimedMission: { day: DayStamp, mission: Schema.String },
   StampedMissionDay: { day: DayStamp },
   ShelvedProof: { entry: ProofEntry },
+  KeptJournal: { added: SavedJournal },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -343,6 +345,9 @@ export const changesBetween: {
         Array.map(shelvedSince(before.proof, after.proof), entry =>
           PlayerChange.ShelvedProof({ entry }),
         ),
+        Array.map(journalAdded(before.journal, after.journal), added =>
+          PlayerChange.KeptJournal({ added }),
+        ),
         Array.map(
           Array.filter(
             after.boughtCosmetics,
@@ -416,6 +421,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     ClaimedMission: () => change,
     StampedMissionDay: () => change,
     ShelvedProof: () => change,
+    KeptJournal: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
         points: save.rank.veteranPoints,
@@ -425,7 +431,8 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
 
 // NOTE: a finished run counts each time it is sent, and the power-ups seen
 // and forgotten must keep their order, so those are all kept, as are the
-// missions' increments and marks, and each find shelved. Every other
+// missions' increments and marks, each find shelved, and what each run
+// added to the journal. Every other
 // change sets its field to what it holds now, so one of each is enough.
 const isSetOnce = (change: PlayerChange): boolean =>
   !PlayerChange.isAnyOf([
@@ -442,6 +449,7 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'ClaimedMission',
     'StampedMissionDay',
     'ShelvedProof',
+    'KeptJournal',
   ])(change)
 
 // NOTE: the unsaved changes, refreshed, then the new ones, with only the

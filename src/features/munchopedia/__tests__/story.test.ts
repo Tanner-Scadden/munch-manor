@@ -123,3 +123,49 @@ describe('the Munchopedia Block', () => {
     ),
   )
 })
+
+describe('the Dare Journal tabs', () => {
+  it.effect('each tab shows its page, and Zombies goes back to the list', () =>
+    Story.story(
+      MUNCHOPEDIA,
+      Story.init(),
+      Story.message(Message.ClickedTabButton({ tab: 'Things' })),
+      Story.model(model => {
+        expect(model.page).toEqual(MunchopediaPage.Things())
+      }),
+      Story.message(Message.ClickedTabButton({ tab: 'Rooms' })),
+      Story.model(model => {
+        expect(model.page).toEqual(MunchopediaPage.Rooms())
+      }),
+      Story.message(Message.ClickedTabButton({ tab: 'Heroes' })),
+      Story.model(model => {
+        expect(model.page).toEqual(MunchopediaPage.Heroes())
+      }),
+      Story.message(Message.ClickedTabButton({ tab: 'Zombies' })),
+      Story.model(model => {
+        expect(model.page).toEqual(MunchopediaPage.List())
+      }),
+    ),
+  )
+
+  it.effect('a story page button turns to that page', () =>
+    Story.story(
+      MUNCHOPEDIA,
+      Story.init(),
+      Story.message(Message.ClickedStoryPageButton({ page: 'FirstEscape' })),
+      Story.model(model => {
+        expect(model.page).toEqual(
+          MunchopediaPage.Story({ page: 'FirstEscape' }),
+        )
+      }),
+      Story.message(
+        Message.ClickedStoryPageButton({ page: 'EscapeTripleDogDare' }),
+      ),
+      Story.model(model => {
+        expect(model.page).toEqual(
+          MunchopediaPage.Story({ page: 'EscapeTripleDogDare' }),
+        )
+      }),
+    ),
+  )
+})

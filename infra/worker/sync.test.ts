@@ -28,13 +28,13 @@ import {
   authenticateWith,
   encodeNightmareAnswer,
   handleDirectory,
-  isNightmareUnlockedIn,
   makeDirectoryHost,
   makeScopeHost,
-  nightmareUnlockedIn,
+  playerFactsIn,
+  playerFactsOf,
   playerScopeId,
   playerScopeOf,
-  readNightmareUnlock,
+  readPlayerFacts,
   setupOnce,
 } from './syncCore.ts'
 import {
@@ -218,36 +218,63 @@ describe('the sync Worker', () => {
         const messages = yield* decodeExchange(replyText)
         expect(messages[0]).toMatchObject({ _tag: 'Deltas', head: 1 })
 
-        const unlocked = yield* nightmareUnlockedIn(host)
-        expect(unlocked).toBe(false)
+        const facts = yield* playerFactsOf(host)
+        expect(facts.unlocked).toBe(false)
+        expect(playerFactsIn({ player: [{ nightmare: 'Unlocked' }] })).toEqual({
+          unlocked: true,
+          milestones: [],
+        })
         expect(
-          isNightmareUnlockedIn({ player: [{ nightmare: 'Unlocked' }] }),
-        ).toBe(true)
+          playerFactsIn({
+            player: [
+              {
+                nightmare: 'Locked',
+                journal:
+                  '{"milestones":["FirstEscape"],"roomsOpened":[],"roomsFoundIn":[],"heroesPlayed":[],"thingsFound":3}',
+              },
+            ],
+          }),
+        ).toEqual({ unlocked: false, milestones: ['FirstEscape'] })
         expect(
-          isNightmareUnlockedIn({ player: [{ nightmare: 'Locked' }] }),
-        ).toBe(false)
-        expect(isNightmareUnlockedIn({})).toBe(false)
+          playerFactsIn({ player: [{ nightmare: 'Locked', journal: 'nope' }] }),
+        ).toEqual({ unlocked: false, milestones: [] })
+        expect(playerFactsIn({})).toEqual({ unlocked: false, milestones: [] })
         const asked: Array<Readonly<Record<string, string>>> = []
-        const answer = yield* encodeNightmareAnswer(true)
-        const answered = yield* readNightmareUnlock((_scope, _url, headers) => {
+        const answer = yield* encodeNightmareAnswer({
+          unlocked: true,
+          milestones: ['FirstEscape', 'TenThings'],
+        })
+        const answered = yield* readPlayerFacts((_scope, _url, headers) => {
           asked.push(headers)
           return Promise.resolve({
             ok: true,
             text: () => Promise.resolve(answer),
           })
         }, PLAYER)
-        expect(answered).toBe(true)
+        expect(answered).toEqual({
+          unlocked: true,
+          milestones: ['FirstEscape', 'TenThings'],
+        })
         expect(asked).toEqual([{ 'x-sync-scope': scope }])
-        const whenDown = yield* readNightmareUnlock(
+        const fromOldWorker = yield* readPlayerFacts(
+          () =>
+            Promise.resolve({
+              ok: true,
+              text: () => Promise.resolve('{"unlocked":true}'),
+            }),
+          PLAYER,
+        )
+        expect(fromOldWorker).toEqual({ unlocked: true, milestones: [] })
+        const whenDown = yield* readPlayerFacts(
           () => Promise.reject(new Error('down')),
           PLAYER,
         )
-        expect(whenDown).toBe(false)
-        const whenRefused = yield* readNightmareUnlock(
+        expect(whenDown).toEqual({ unlocked: false, milestones: [] })
+        const whenRefused = yield* readPlayerFacts(
           () => Promise.resolve({ ok: false, text: () => Promise.resolve('') }),
           PLAYER,
         )
-        expect(whenRefused).toBe(false)
+        expect(whenRefused).toEqual({ unlocked: false, milestones: [] })
 
         yield* host.linkedDevices(2, 'linked-x-2', everyone)
         expect(fromJson(phone.sent.at(-1) ?? '{}')).toMatchObject({

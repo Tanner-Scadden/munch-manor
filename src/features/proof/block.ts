@@ -1,4 +1,4 @@
-import { type Option, Schema } from 'effect'
+import { type Array, type Option, Schema } from 'effect'
 import { Block } from 'foldkit'
 import type { Html } from 'foldkit/html'
 
@@ -7,13 +7,15 @@ import type { SavedProof } from '../../shared/proofData'
 import { InMessage } from './inMessage'
 import { Message } from './message'
 import { Model } from './model'
+import type { ShelfThing } from './proof'
 
 // NOTE: what the root hands the shelf's view: the shelf itself (saved and
-// synced), the days of missions done and today (the calendar), the slots
+// synced), the things along each row (the house's and those opened), the days of missions done and today (the calendar), the slots
 // new since the shelf last opened (their NEW pips), and the menu panel's
 // Done, a function so it keeps sending the root's Message.
 export type ViewInputs = Readonly<{
   proof: SavedProof
+  things: Array.NonEmptyReadonlyArray<ShelfThing>
   stampedDays: ReadonlyArray<DayStamp>
   maybeToday: Option.Option<DayStamp>
   fresh: ReadonlyArray<string>

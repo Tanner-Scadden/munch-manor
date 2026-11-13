@@ -3,6 +3,11 @@ import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { playerSprites } from '../../art/appearance'
+import {
+  DARE_BIG_ICONS,
+  DARE_BIG_ICON_SIZE,
+  JOURNAL_BIG_ICON,
+} from '../../art/dareArt'
 import { GLYPH_HEIGHT, textShapes, textWidth } from '../../art/font'
 import { BONE, BONE_SIZE, badgeSprite, shineSprite } from '../../art/rankArt'
 import { frameAt, group, placeAt } from '../../art/sprite'
@@ -11,13 +16,20 @@ import { PART_OF_KIND, chooseLook } from '../../domain/looks'
 import { rect } from '../../render/drawing'
 import { GUN_HOLD_PX } from '../../render/playerView'
 import { PLAYER_FOOT_OFFSET } from '../../shared/constants'
+import { milestoneOf } from '../../world/dare/milestones'
 import { callingPriceOf } from '../../world/heroes/calling'
 import {
   badgeTierOf,
   rankProgressOf,
   shownPointsOf,
 } from '../../world/heroes/rank'
-import { BONE_BONUS_TAGS, CALLING_NAMES, giftName } from '../../world/names'
+import {
+  BONE_BONUS_TAGS,
+  CALLING_NAMES,
+  DARE_NAMES,
+  STORY_TITLES,
+  giftName,
+} from '../../world/names'
 import { sparkShapes } from './crewBoardView'
 import {
   CALLING_FLIP_MS,
@@ -162,6 +174,7 @@ const unlockFigureOf = (
   figure: ReadonlyArray<Canvas.Shape>
   name: string
   maybePrice: Option.Option<number>
+  tab: string
 }> =>
   EndUnlock.match(unlock, {
     Calling: ({ calling }) => ({
@@ -169,6 +182,7 @@ const unlockFigureOf = (
         .Right,
       name: CALLING_NAMES[calling],
       maybePrice: callingPriceOf(calling),
+      tab: FOR_SALE_TAB,
     }),
     Gift: ({ kind, name }) => {
       const look = chooseLook(model.appearance, PART_OF_KIND[kind], name)
@@ -186,8 +200,35 @@ const unlockFigureOf = (
         ],
         name: giftName(kind, name),
         maybePrice: Option.none(),
+        tab: GIFT_TAB,
       }
     },
+    Milestone: ({ milestone }) =>
+      Option.match(milestoneOf(milestone).maybeThing, {
+        onNone: () => ({
+          figure: [standingIcon(JOURNAL_BIG_ICON)],
+          name: STORY_TITLES[milestone],
+          maybePrice: Option.none(),
+          tab: STORY_TAB,
+        }),
+        onSome: thing => ({
+          figure: [standingIcon(DARE_BIG_ICONS[thing])],
+          name: DARE_NAMES[thing],
+          maybePrice: Option.none(),
+          tab: THING_TAB,
+        }),
+      }),
+  })
+
+// NOTE: a milestone's card stands its big icon on the figure's foot, as a
+// player stands, at its own size inside the figure's scale.
+const standingIcon = (icon: ReadonlyArray<Canvas.Shape>): Canvas.Shape =>
+  group({
+    translate: {
+      x: -Math.floor(DARE_BIG_ICON_SIZE / 2),
+      y: -DARE_BIG_ICON_SIZE - 1,
+    },
+    shapes: icon,
   })
 
 // NOTE: a hero's card is for sale, not given: a pixel bone and its price in
@@ -212,12 +253,20 @@ const priceTagShapes = (price: number): ReadonlyArray<Canvas.Shape> => {
 }
 
 // NOTE: a gold tab over the card says what the rank did: a hero for sale
-// is NOW PURCHASABLE, a gift look NOW AVAILABLE.
+// is NOW PURCHASABLE, a gift look NOW AVAILABLE; and what a milestone did:
+// a thing NEW ON THE LIST, a NEW STORY PAGE in the journal.
+const FOR_SALE_TAB = 'NOW PURCHASABLE'
+const GIFT_TAB = 'NOW AVAILABLE'
+const THING_TAB = 'NEW ON THE LIST'
+const STORY_TAB = 'NEW STORY PAGE'
 const TAB_HEIGHT = GLYPH_HEIGHT + 4
 const TAB_PAD_PX = 3
 const TAB_WIDTH_PX = Math.max(
   CARD_WIDTH + 2,
-  textWidth('NOW PURCHASABLE') + TAB_PAD_PX * 2,
+  ...Array.map(
+    [FOR_SALE_TAB, GIFT_TAB, THING_TAB, STORY_TAB],
+    text => textWidth(text) + TAB_PAD_PX * 2,
+  ),
 )
 
 // NOTE: the room a card takes, its tab and edge included.
@@ -231,8 +280,7 @@ const TIMER_HEIGHT = 1
 const TIMER_COLOR = '#ffd23f'
 const TIMER_BACK = '#140c10'
 
-const tabShapes = (isForSale: boolean): ReadonlyArray<Canvas.Shape> => {
-  const text = isForSale ? 'NOW PURCHASABLE' : 'NOW AVAILABLE'
+const tabShapes = (text: string): ReadonlyArray<Canvas.Shape> => {
   const width = TAB_WIDTH_PX
   return [
     rect(-width / 2, -TAB_HEIGHT - 1, width, TAB_HEIGHT, CARD_EDGE),
@@ -321,14 +369,17 @@ export const unlockCardShapes: {
           const scaleX = Math.max(0.04, Math.min(1, turn))
           const { height, footY, figureScale } = CARD_SIZES[spot.size]
           const top = spot.top + TAB_HEIGHT + 1
-          const { figure, name, maybePrice } = unlockFigureOf(model, unlock)
+          const { figure, name, maybePrice, tab } = unlockFigureOf(
+            model,
+            unlock,
+          )
           return [
             group({
               translate: { x: spot.x, y: top },
               scale: { x: scaleX, y: 1 },
               opacity: fade >= 1 ? undefined : fade,
               shapes: [
-                ...tabShapes(Option.isSome(maybePrice)),
+                ...tabShapes(tab),
                 rect(
                   -CARD_WIDTH / 2 - 1,
                   -1,

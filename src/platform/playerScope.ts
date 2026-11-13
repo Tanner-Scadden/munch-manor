@@ -10,17 +10,8 @@ import {
 } from '@munch/sync-engine'
 
 import { DayStamp } from '../shared/dayStamp'
-import {
-  ALL_THREE_BONES,
-  MissionReroll,
-  SavedMissions,
-  addProgress,
-  bonesOfMission,
-  claimMission,
-  freezeOn,
-  rerollOn,
-  stampDay,
-} from '../shared/missionData'
+import { SavedJournal, addToJournal } from '../shared/journalData'
+import { SavedMissions } from '../shared/missionData'
 import {
   Appearance,
   COSMETIC_PRICES,
@@ -57,7 +48,15 @@ import {
   isBetterRun,
 } from '../shared/playerData'
 import { ProofEntry } from '../shared/proofData'
+import {
+  ClaimedMission,
+  ProgressedMissions,
+  RerolledMission,
+  RolledMissions,
+  StampedMissionDay,
+} from './missionScope'
 import { PLAYER_MIGRATIONS } from './playerMigrations'
+import { Count, PLAYER_SCOPE_KIND, toRejected } from './playerScopeParts'
 import { PROOF_TABLE, seedProofRows, shelveRow } from './proofScope'
 
 // NOTE: the player scope, `player:<playerId>`: one player's settings, look,
@@ -71,8 +70,6 @@ import { PROOF_TABLE, seedProofRows, shelveRow } from './proofScope'
 // already kept on the device (src/platform/storeSqlite.ts made `player` and
 // `kills_by_kind` first, so the view tables exist with IF NOT EXISTS), plus
 // `linked_devices`, which only the server writes.
-
-export const PLAYER_SCOPE_KIND = 'player'
 
 export const playerScopeId = (playerId: string): string =>
   scopeId(PLAYER_SCOPE_KIND, playerId)
@@ -116,6 +113,7 @@ export const PlayerRow = Schema.Struct({
   escaped_on: Schema.fromJsonString(EscapedOn),
   last_run: RunEnding,
   missions: Schema.fromJsonString(SavedMissions),
+  journal: Schema.fromJsonString(SavedJournal),
 })
 export type PlayerRow = typeof PlayerRow.Type
 
@@ -160,6 +158,7 @@ export const PLAYER_COLUMNS = Array.make(
   'escaped_on',
   'last_run',
   'missions',
+  'journal',
 )
 
 export const rowOfSave = (save: PlayerSave): PlayerRow => ({
@@ -197,6 +196,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   escaped_on: save.bonuses.escapedOn,
   last_run: save.lastRun,
   missions: save.missions,
+  journal: save.journal,
 })
 
 export const BoughtRow = Schema.Struct({ id: Schema.String })
@@ -212,9 +212,6 @@ export const killsRowsOfSave = (save: PlayerSave): ReadonlyArray<KillsRow> =>
   }))
 
 const encodeRow = Schema.encodeEffect(PlayerRow)
-
-const toRejected = (error: Schema.SchemaError) =>
-  MutationRejected.make({ reason: error.message })
 
 const hasPlayer = (
   context: ApplyContext,
@@ -250,11 +247,13 @@ const updatePlayer = (
 // version 19), 17 the save with its unlock (save version 20), and 18 the
 // save with the Bones bonuses and the best runs (save version 21), 19
 // the save with the last run's ending (save version 22), and 20 the save
-// with the daily missions (save version 23).
+// with the daily missions (save version 23), 21 the save with the Proof
+// Shelf (save version 24), and 22 the save with the Dare Journal (save
+// version 25).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 21,
+  version: 22,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -605,11 +604,6 @@ export const ForgotPowerUps = defineMutation({
 const MAX_RUNS_PER_RECORD = 3
 const MAX_KILLS_PER_RUN = 5000
 
-const Count = Schema.Number.check(
-  Schema.isInt(),
-  Schema.isGreaterThanOrEqualTo(0),
-)
-
 const BestsRow = Schema.Struct({
   difficulty_bests: Schema.fromJsonString(SavedBestsByDifficulty),
 })
@@ -955,154 +949,6 @@ export const EscapedFirst = defineMutation({
     }),
 })
 
-// DAILY MISSIONS
-
-const MissionsRow = Schema.Struct({
-  missions: Schema.fromJsonString(SavedMissions),
-})
-
-const encodeMissions = Schema.encodeEffect(Schema.fromJsonString(SavedMissions))
-
-const readMissions = (context: ApplyContext) =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient
-    const rows =
-      yield* sql`SELECT missions FROM ${context.table('player')} WHERE id = 1`
-    return pipe(
-      Array.head(rows),
-      Option.flatMap(Schema.decodeUnknownOption(MissionsRow)),
-      Option.map(row => row.missions),
-    )
-  })
-
-const writeMissions = (
-  context: ApplyContext,
-  missions: SavedMissions,
-  bones: number,
-) =>
-  Effect.gen(function* () {
-    const json = yield* Effect.mapError(encodeMissions(missions), toRejected)
-    const sql = yield* SqlClient.SqlClient
-    yield* sql`UPDATE ${context.table('player')} SET
-      missions = ${json},
-      rank_bones = rank_bones + ${bones}
-      WHERE id = 1`
-  })
-
-const MAX_MISSION_COUNT = 1000
-
-// NOTE: a run's progress on a day's missions (src/shared/missionData.ts),
-// as increments by mission, each capped at its goal, so runs on two linked
-// devices the same day add up. A later day starts the record afresh; a
-// count for a day older than the record's adds nothing. `coop` marks the
-// player as one who has played an online co-op run, for good.
-/** @stability unstable */
-export const ProgressedMissions = defineMutation({
-  name: 'ProgressedMissions',
-  version: 1,
-  args: Schema.Struct({
-    day: DayStamp,
-    progress: Schema.Record(
-      Schema.String,
-      Count.check(Schema.isLessThanOrEqualTo(MAX_MISSION_COUNT)),
-    ),
-    coop: Schema.Boolean,
-  }),
-  scopes: [PLAYER_SCOPE_KIND],
-  writer: 'Owner',
-  apply: ({ day, progress, coop }, context) =>
-    Effect.gen(function* () {
-      const maybeKept = yield* readMissions(context)
-      if (Option.isNone(maybeKept)) {
-        return
-      }
-      const added = addProgress(maybeKept.value, day, progress)
-      yield* writeMissions(
-        context,
-        coop ? { ...added, hasPlayedCoop: true } : added,
-        0,
-      )
-    }),
-})
-
-// NOTE: the day's three as first rolled. The first device's stand, so a
-// gate the player passes later that day changes no device's three.
-/** @stability unstable */
-export const RolledMissions = defineMutation({
-  name: 'RolledMissions',
-  version: 1,
-  args: Schema.Struct({ day: DayStamp, rolled: Schema.Array(Schema.String) }),
-  scopes: [PLAYER_SCOPE_KIND],
-  writer: 'Owner',
-  apply: ({ day, rolled }, context) =>
-    Effect.gen(function* () {
-      const maybeKept = yield* readMissions(context)
-      if (Option.isNone(maybeKept)) {
-        return
-      }
-      yield* writeMissions(context, freezeOn(maybeKept.value, day, rolled), 0)
-    }),
-})
-
-// NOTE: the day's one free reroll. The first device's stands.
-/** @stability unstable */
-export const RerolledMission = defineMutation({
-  name: 'RerolledMission',
-  version: 1,
-  args: Schema.Struct({ day: DayStamp, reroll: MissionReroll }),
-  scopes: [PLAYER_SCOPE_KIND],
-  writer: 'Owner',
-  apply: ({ day, reroll }, context) =>
-    Effect.gen(function* () {
-      const maybeKept = yield* readMissions(context)
-      if (Option.isNone(maybeKept)) {
-        return
-      }
-      yield* writeMissions(context, rerollOn(maybeKept.value, day, reroll), 0)
-    }),
-})
-
-// NOTE: a mission done on `day` pays its Bones (MISSION_BONES, read here
-// and never from the args) once, and only once its count has met its
-// goal in this scope, so two devices that both finish it are paid once.
-/** @stability unstable */
-export const ClaimedMission = defineMutation({
-  name: 'ClaimedMission',
-  version: 1,
-  args: Schema.Struct({ day: DayStamp, mission: Schema.String }),
-  scopes: [PLAYER_SCOPE_KIND],
-  writer: 'Owner',
-  apply: ({ day, mission }, context) =>
-    Effect.gen(function* () {
-      const maybeKept = yield* readMissions(context)
-      const maybeClaimed = Option.flatMap(maybeKept, claimMission(day, mission))
-      if (Option.isNone(maybeClaimed)) {
-        return
-      }
-      yield* writeMissions(context, maybeClaimed.value, bonesOfMission(mission))
-    }),
-})
-
-// NOTE: all three of a day's missions done: ALL_THREE_BONES once, and the
-// day stamped for the Proof Shelf, once three claims stand in this scope.
-/** @stability unstable */
-export const StampedMissionDay = defineMutation({
-  name: 'StampedMissionDay',
-  version: 1,
-  args: Schema.Struct({ day: DayStamp }),
-  scopes: [PLAYER_SCOPE_KIND],
-  writer: 'Owner',
-  apply: ({ day }, context) =>
-    Effect.gen(function* () {
-      const maybeKept = yield* readMissions(context)
-      const maybeStamped = Option.flatMap(maybeKept, stampDay(day))
-      if (Option.isNone(maybeStamped)) {
-        return
-      }
-      yield* writeMissions(context, maybeStamped.value, ALL_THREE_BONES)
-    }),
-})
-
 // NOTE: a thing brought out, on the Proof Shelf (src/platform/proofScope.ts):
 // the first stamp kept, an earlier day's taking its place.
 /** @stability unstable */
@@ -1113,6 +959,53 @@ export const ShelvedProof = defineMutation({
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
   apply: ({ entry }, context) => shelveRow(context, entry),
+})
+
+const MAX_THINGS_PER_RUN = 10
+
+const JournalRow = Schema.Struct({
+  journal: Schema.fromJsonString(SavedJournal),
+})
+
+const encodeJournal = Schema.encodeEffect(Schema.fromJsonString(SavedJournal))
+
+// NOTE: what a run added to the Dare Journal (src/shared/journalData.ts):
+// the milestones reached, the rooms opened and found in, and the hero
+// played, each a union, and the things found, an increment, so two
+// devices that play offline both keep what they did. Applied once per
+// mutation id, so a retry never counts a run's things twice. The server
+// refuses a run with more things than a list can hold.
+/** @stability unstable */
+export const KeptJournal = defineMutation({
+  name: 'KeptJournal',
+  version: 1,
+  args: Schema.Struct({
+    added: SavedJournal.mapFields(fields => ({
+      ...fields,
+      thingsFound: Count.check(Schema.isLessThanOrEqualTo(MAX_THINGS_PER_RUN)),
+    })),
+  }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ added }, context) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      const rows =
+        yield* sql`SELECT journal FROM ${context.table('player')} WHERE id = 1`
+      const maybeKept = pipe(
+        Array.head(rows),
+        Option.flatMap(Schema.decodeUnknownOption(JournalRow)),
+        Option.map(row => row.journal),
+      )
+      if (Option.isNone(maybeKept)) {
+        return
+      }
+      const json = yield* Effect.mapError(
+        encodeJournal(addToJournal(maybeKept.value, added)),
+        toRejected,
+      )
+      yield* sql`UPDATE ${context.table('player')} SET journal = ${json} WHERE id = 1`
+    }),
 })
 
 // NOTE: written by the server when a device links to this player, so every
@@ -1177,6 +1070,7 @@ export const PlayerScope = defineScope({
     ClaimedMission,
     StampedMissionDay,
     ShelvedProof,
+    KeptJournal,
     LinkedDevices,
   ],
   migrations: PLAYER_MIGRATIONS,

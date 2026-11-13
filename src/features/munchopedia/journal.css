@@ -1,0 +1,233 @@
+/* THE DARE JOURNAL: the tabs over the Munchopedia's zombies, and its pages
+   of things, rooms, story, and heroes (src/features/munchopedia/
+   journalView.ts). Show, don't explain: what is not filled in yet is a dim
+   outline and ???, and a locked thing or page wears the padlock and a few
+   words. Nothing moves but the NEW tags, as every NEW tag does. */
+
+.journal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.journal-tab {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 2px solid var(--menu-line);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-surface);
+  color: var(--menu-ink-faint);
+  font: bold 12px var(--menu-font);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.journal-tab[aria-pressed='true'] {
+  border-color: var(--menu-green);
+  background: var(--menu-sunken);
+  color: var(--menu-green-hi);
+}
+
+.journal-tab:focus-visible,
+.journal-page-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: 2px;
+}
+
+.journal-new {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 0 4px;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-red);
+  color: var(--menu-bg);
+  font: bold 10px var(--menu-font);
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+/* THINGS, ROOMS, AND HEROES */
+
+.journal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 2px 2px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.journal-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px;
+  border: 2px solid var(--menu-line);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-surface);
+  color: var(--menu-ink);
+  font: bold 12px var(--menu-font);
+  text-align: center;
+}
+
+.journal-card[data-standing='Open'],
+.journal-card[data-standing='Locked'] {
+  border-style: dashed;
+  color: var(--menu-ink-faint);
+}
+
+.journal-card-icon {
+  display: block;
+  width: 42px;
+  height: 42px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.journal-card[data-standing='Locked'] .journal-card-icon {
+  opacity: 0.45;
+}
+
+.journal-card[data-standing='Open'] .journal-room-icon {
+  filter: brightness(0);
+  opacity: 0.6;
+}
+
+.journal-card-line {
+  color: #d8dccb;
+  font: italic 11px var(--menu-font);
+}
+
+.journal-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--menu-gold);
+  font: bold 11px var(--menu-font);
+}
+
+.journal-lock-icon {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+/* THE STORY */
+
+.journal-story {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding-top: 4px;
+  overflow-y: auto;
+}
+
+.journal-page-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.journal-page-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--menu-line);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-surface);
+  color: var(--menu-ink);
+  font: bold 13px var(--menu-font);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.journal-page-button[data-open='false'] {
+  border-style: dashed;
+}
+
+.journal-page-button[aria-pressed='true'] {
+  border-color: var(--menu-gold);
+  color: var(--menu-gold);
+}
+
+/* NOTE: a page of the guest book or one of Rattles' notes: old paper, ink,
+   and a hand that slants. */
+.journal-page {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--menu-radius-sm);
+  background: #e9dcb8;
+  color: #2a1a12;
+  font: 13px var(--menu-font);
+}
+
+.journal-page[data-open='false'] {
+  align-items: center;
+  background: var(--menu-sunken);
+  color: var(--menu-ink-faint);
+}
+
+.journal-page-title {
+  margin: 0;
+  font: bold 15px var(--menu-font);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.journal-page-source {
+  margin: 0 0 2px;
+  color: #7a4a2a;
+  font: italic 11px var(--menu-font);
+}
+
+.journal-page-line {
+  margin: 0;
+  font-style: italic;
+}
+
+.journal-page-icon {
+  display: block;
+  width: 42px;
+  height: 42px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  opacity: 0.6;
+}
+
+@media (hover: hover) {
+  .journal-tab:hover,
+  .journal-page-button:hover {
+    border-color: var(--menu-line-strong);
+  }
+}
+
+@media (max-height: 500px) {
+  .journal-tab {
+    font-size: 11px;
+  }
+
+  .journal-card-icon {
+    width: 32px;
+    height: 32px;
+  }
+}

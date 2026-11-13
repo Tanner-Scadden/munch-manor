@@ -117,9 +117,9 @@ describe('sprites in HTML', () => {
       Scene.given(home),
       measureSurface,
       ...openHandInScene(),
-      ...pickCardInScene(/^Munchopedia:/),
+      ...pickCardInScene(/^Dare Journal:/),
       Scene.inside(
-        Scene.role('dialog', { name: 'Munchopedia' }),
+        Scene.role('dialog', { name: 'Dare Journal' }),
         ...ownImages('img', 7),
       ),
       ...noSheetInHtml(),

@@ -205,4 +205,15 @@ export const PLAYER_MIGRATIONS: Readonly<Record<string, ScopeMigration>> = {
         PRIMARY KEY (thing, difficulty)
       )`
     }),
+  // NOTE: the Dare Journal came after the Proof Shelf: the milestones
+  // reached, the rooms opened and found in, the heroes played, and the
+  // things found. A player from before starts it empty; the milestones
+  // their save already meets are reached at their next run's end.
+  '0020_add_journal': table =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`ALTER TABLE ${sql(table('player'))}
+        ADD COLUMN journal TEXT NOT NULL
+        DEFAULT '{"milestones":[],"roomsOpened":[],"roomsFoundIn":[],"heroesPlayed":[],"thingsFound":0}'`
+    }),
 }

@@ -39,7 +39,7 @@ import {
   isWebSocketUpgrade,
   json,
   makeDirectoryHost,
-  nightmareUnlockedIn,
+  playerFactsOf,
   playerScopeId,
   playerScopeOf,
   scopeHostOnce,
@@ -199,8 +199,8 @@ export class SyncScope {
         )
       }
       if (url.pathname === NIGHTMARE_PATH) {
-        const unlocked = yield* nightmareUnlockedIn(host)
-        const answer = yield* encodeNightmareAnswer(unlocked)
+        const facts = yield* playerFactsOf(host)
+        const answer = yield* encodeNightmareAnswer(facts)
         return json(200, answer)
       }
       if (url.pathname === LINKED_DEVICES_PATH) {

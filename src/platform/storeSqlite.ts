@@ -43,6 +43,13 @@ import {
 
 import { API_ORIGIN } from './apiOrigin'
 import {
+  ClaimedMission,
+  ProgressedMissions,
+  RerolledMission,
+  RolledMissions,
+  StampedMissionDay,
+} from './missionScope'
+import {
   BoughtCosmetic,
   BoughtRow,
   ChangedAppearance,
@@ -55,27 +62,23 @@ import {
   ChangedRotation,
   ChangedRumble,
   ChangedSettings,
-  ClaimedMission,
   DoubledFirstRun,
   EarnedRank,
   EndedRun,
   EscapedFirst,
   ForgotPowerUps,
   GrantedVeteranRank,
+  KeptJournal,
   KillsRow,
   PLAYER_COLUMNS,
   PlayerRow,
   PlayerScope,
-  ProgressedMissions,
   ReachedRecords,
   RecordedRun,
-  RerolledMission,
-  RolledMissions,
   SawPowerUps,
   SawUnlocks,
   SeededPlayer,
   ShelvedProof,
-  StampedMissionDay,
   UnlockedNightmare,
   UnlockedRecording,
   boughtRowsOfSave,
@@ -261,6 +264,7 @@ const saveOfRow = (
   },
   lastRun: row.last_run,
   missions: row.missions,
+  journal: row.journal,
   proof: Array.map(proof, proofOfRow),
 })
 
@@ -641,6 +645,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
       replica.run(ClaimedMission, { day, mission }),
     StampedMissionDay: ({ day }) => replica.run(StampedMissionDay, { day }),
     ShelvedProof: ({ entry }) => replica.run(ShelvedProof, { entry }),
+    KeptJournal: ({ added }) => replica.run(KeptJournal, { added }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)
@@ -989,7 +994,10 @@ export const openPlayerDatabase: {
 
 // OPEN ONCE
 
-const LEGACY_SAVE: LegacySave = { read: readLegacySave, write: writeLegacySave }
+const LEGACY_SAVE: LegacySave = {
+  read: readLegacySave,
+  write: writeLegacySave,
+}
 
 const OPEN = 'open'
 

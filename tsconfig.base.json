@@ -57,6 +57,7 @@
           "munch-manor/platform/playerScope",
           "munch-manor/platform/playerMigrations",
           "munch-manor/platform/proofScope",
+          "munch-manor/platform/missionScope",
           "munch-manor/platform/storeSqlite",
           "munch-manor/test/store.fixture",
           "munch-manor/tools",
