@@ -44,6 +44,10 @@ export type LobbyControl = typeof LobbyControl.Type
 // link's couch players take seats). The root hands it to the lobby as its
 // update context and view input, and the lobby tells the root each pick
 // (its OutMessages): the root saves the difficulty and a run reads them all.
+// A friend's dare taken from the home menu (src/domain/beatMyRun.ts) holds
+// them all to its link's (`lock`), with no bots.
+const PicksLock = Schema.Literals(['Open', 'FriendsDare'])
+
 export const LobbyPicks = Schema.Struct({
   mode: HomeMode,
   difficulty: DifficultySetting,
@@ -53,6 +57,7 @@ export const LobbyPicks = Schema.Struct({
   bestMark: Schema.Finite,
   bots: Schema.Array(Bot),
   botSeats: Schema.Finite,
+  lock: PicksLock,
 })
 export type LobbyPicks = typeof LobbyPicks.Type
 

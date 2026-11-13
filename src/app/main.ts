@@ -5,6 +5,7 @@ import { bootCommands } from './boot'
 import { ApplicationComposition } from './composition'
 import { makeStep } from './definition'
 import { LOAD_STEPS, Loading, cosmeticSeedOf, initialModel } from './model'
+import { beatMyRunHandlers } from './update/beatMyRun'
 import { coopHandlers } from './update/coop'
 import { orInRun } from './update/coopRun'
 import { endHandlers } from './update/end'
@@ -69,6 +70,7 @@ const handlers = makeUpdate({
   ...todayHandlers,
   ...soundHandlers,
   ...coopHandlers,
+  ...beatMyRunHandlers,
   ...lobbyHandlers,
   ...homeHandlers,
   ...endHandlers,

@@ -2,6 +2,7 @@ import { Array, Function, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
+import { isDareTaken } from '../../domain/beatMyRun'
 import { botSeatsFor } from '../../domain/bots'
 import { type HomeMode, RunTally } from '../../domain/clientSchema'
 import { bestMarkOn } from '../../domain/dareMarks'
@@ -266,16 +267,24 @@ export const runModeOf = (mode: HomeMode): RunMode =>
 
 // NOTE: what the single player lobby picks from, as the root keeps it: its
 // update context and view input (LobbyBinding in src/app/bindings.ts).
-export const lobbyPicksOf = (model: Model): LobbyPicks => ({
-  mode: model.home.mode,
-  difficulty: model.difficulty,
-  modifiers: model.modifiers,
-  easyBreakSeconds: model.easyBreakSeconds,
-  dareMark: model.dareMark,
-  bestMark: bestMarkOn(model.dareMarks, model.difficulty.chosen),
-  bots: model.home.bots,
-  botSeats: botSeatsFor(model),
-})
+// NOTE: a friend's dare taken holds the picks to its link's (src/domain/beatMyRun.ts):
+// its mark shows whatever this player has opened, and no bot sits in.
+export const lobbyPicksOf = (model: Model): LobbyPicks => {
+  const isHeld = isDareTaken(model)
+  return {
+    mode: model.home.mode,
+    difficulty: model.difficulty,
+    modifiers: model.modifiers,
+    easyBreakSeconds: model.easyBreakSeconds,
+    dareMark: model.dareMark,
+    bestMark: isHeld
+      ? model.dareMark
+      : bestMarkOn(model.dareMarks, model.difficulty.chosen),
+    bots: model.home.bots,
+    botSeats: isHeld ? 0 : botSeatsFor(model),
+    lock: isHeld ? 'FriendsDare' : 'Open',
+  }
+}
 
 export const switchMode = (model: Model): Model =>
   modifyFields(model, {

@@ -809,6 +809,16 @@ Step 7 of `docs/PROGRESSION_PLAN.md` (pillar E), built 2026-11-13: marks past th
 - **Saved** as `dareMarks`, the best mark per difficulty (scope migration `0023_add_dare_marks`, mutation `ClimbedDareLadder`, a max-merge so two devices end on the higher mark), `SAVE_VERSION` 28. The mark is a World field (`dareMark`), so the co-op room plays it (protocol 23). Run summaries carry it (version 9, D1 migration `0012_add_run_dare_mark`), and the analytics report counts campaign runs and escapes by difficulty and mark.
 - **Balance.** The house rules are first numbers, left as planned. The balance bot (`MARK=5`, Normal, 100 runs) escaped 0 times, median death wave 3, and the same at `MARK=3`: Glass's one heart ends it on wave 3, where it loses about 0.7 hearts at mark 0 (25.5% escapes). So the bot cannot reach the house rules, and the owner's read stands (never nerf the house to fit the bot). Tune marks 5 to 8 from real runs (the report's "Campaign runs by dare mark"), or once the bot dodges well enough to live on one heart.
 
+### Beat my run
+
+Step 8 of `docs/PROGRESSION_PLAN.md` (pillar G), built 2026-11-13: a friend's run as a dare to beat, from SHARE's link. Client only.
+
+- **The link.** SHARE on a lone run's end card links `munchmanor.com/?dare=<code>` (`src/domain/beatLink.ts`): the seed the run started from, mode, difficulty, modifiers, dare mark, break clock, the things its list rolled from, the hero, and how it went (escaped, chicken, or munched, the wave, the things found, the run time), as a versioned list of numbers in base64url through Schema. A bad, cut, or newer link is ignored. A crew's, a couch's, or a bot run's post links the game alone.
+- **The card.** A link read at start offers BEAT MY RUN on the home menu once the tutorial is done: the friend's stamp, hero, skull, mark, wave, and things as pictures, and the things their list holds that this player has not opened as silhouettes with a ?. The x, Escape, or a controller's B lets it go. The dare comes off the address once read, so a reload never offers it again. A tap opens the solo lobby with every pick held to the friend's (a PAL'S DARE stamp, no bots); the hero stays the player's own. BACK, PLAY, or CO-OP put the player's own picks back, and the save keeps their own difficulty.
+- **The same house.** START plays the friend's seed and pool, so the rooms, the list, the cases, and every roll are theirs, even things this player has not opened. RETRY plays it again. Nightmare and marks above the player's own are allowed, as in a co-op room.
+- **The end card** puts BEAT IT! or NOT YET with a short line in the quip's place, and PAL with their result on the wave's row (the time's on an escape). An escape beats a non-escape, two escapes go to the quicker, else more things found, then the further wave, then chicken over munched. A tie is NOT YET.
+- **Not yet.** Co-op dares and the daily leaderboard.
+
 ### The newer kinds and frenzy
 
 Added on 2026-10-28 and reworked on 2026-10-29 from owner feedback, all approved. Built, not yet playtested. The code is in `src/world/zombies/frenzy.ts`, `src/world/zombies/chucker.ts`, `src/world/zombies/crawler.ts`, `src/world/zombies/actions.ts`, and `src/world/zombies/zombies.ts`; `tools/audit/shots17.ts` guards the art pixel for pixel.

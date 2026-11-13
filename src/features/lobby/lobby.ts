@@ -51,11 +51,19 @@ const modeAndDifficultyControlsOf = (
   'Start',
 ]
 
+// NOTE: whether a friend's dare holds the picks (src/domain/beatMyRun.ts).
+export const isLockedByDare = (picks: LobbyPicks): boolean =>
+  picks.lock === 'FriendsDare'
+
 // NOTE: the stops of a lobby with these picks: its seated bots, and Dare's
-// break clock when it shows.
+// break clock when it shows. A friend's dare's lobby has only BACK, the hero
+// card, and START: its picks are held.
 const lobbyControlsOf = (
   picks: LobbyPicks,
 ): Array.NonEmptyReadonlyArray<LobbyControl> => {
+  if (isLockedByDare(picks)) {
+    return ['Back', 'Hero', 'Start']
+  }
   const botCount = picks.bots.length
   return [
     'Back',

@@ -49,7 +49,8 @@ import {
 } from '../../features/end/endOffer'
 import { EndMessage } from '../../features/end/message'
 import { shareText } from '../../features/end/share'
-import { SHARE_TEXT_DATA } from '../../features/end/share'
+import { shareUrlOf } from '../../features/end/beatRun'
+import { SHARE_TEXT_DATA, SHARE_URL_DATA } from '../../features/end/share'
 import { HomeMessage } from '../../features/home/message'
 import { OnboardingMessage } from '../../features/onboarding/message'
 import { canSkipDebutCard } from '../../features/onboarding/onboarding'
@@ -355,7 +356,11 @@ const shareAttributes = (
   model: Model,
   shareMount: ShareMount,
   h: ApplicationViewBuilder,
-) => [h.DataAttribute(SHARE_TEXT_DATA, shareTextOf(model)), shareMount(h)]
+) => [
+  h.DataAttribute(SHARE_TEXT_DATA, shareTextOf(model)),
+  h.DataAttribute(SHARE_URL_DATA, shareUrlOf(model)),
+  shareMount(h),
+]
 
 const endButtonView =
   (model: Model, shareMount: ShareMount, h: ApplicationViewBuilder) =>

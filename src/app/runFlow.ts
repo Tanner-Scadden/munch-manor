@@ -1,6 +1,7 @@
-import { Array, Function } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { maybeTakenDareOf, withDarePicks } from '../domain/beatMyRun'
 import { activeBots, crewBotSlots, seatCallings } from '../domain/bots'
 import {
   raiseDebutCard,
@@ -9,6 +10,7 @@ import {
 import { RunRecorder, beginRecording } from '../platform/recording'
 import { RUNNING_BUILD } from '../platform/version'
 import { rollDare } from '../world/dare/dare'
+import type { DareKind } from '../world/dare/dareSchema'
 import { thingsOpenedBy } from '../world/dare/milestones'
 import { focusOf, seatCrew, withStartingHearts } from '../world/party/party'
 import { beginArrival } from '../world/run/arrival'
@@ -55,12 +57,36 @@ const recordedFromStart = (model: Model): Model =>
         : RunRecorder.Idle(),
   })
 
-const startedRun = (model: Model, mode: RunMode): Model => {
+// NOTE: a friend's dare taken (src/domain/beatMyRun.ts) starts from its
+// link: its seed, its picks, and the things its list rolls from, so the
+// house, the list, and every roll are the friend's. Otherwise the run rolls
+// its list from the things this player's milestones opened.
+const fromDare = (model: Model): Model =>
+  Option.match(maybeTakenDareOf(model), {
+    onNone: () => model,
+    onSome: dare =>
+      modifyFields(withDarePicks(model, dare), {
+        rngState: () => dare.seed,
+      }),
+  })
+
+const poolOf = (model: Model): ReadonlyArray<DareKind> =>
+  Option.match(maybeTakenDareOf(model), {
+    onNone: () => thingsOpenedBy(model.journal.milestones),
+    onSome: ({ pool }) => pool,
+  })
+
+const startedRun = (model: Model, mode: RunMode): Model =>
+  startedFrom(fromDare(model), mode)
+
+const startedFrom = (model: Model, mode: RunMode): Model => {
   const bots = activeBots(model)
+  const pool = poolOf(model)
   return withWorld(
     {
       ...model,
       ...freshRun(model),
+      runPool: pool,
       mode,
       lessons: settleLessons(model.lessons),
       crewBots: bots,
@@ -72,7 +98,7 @@ const startedRun = (model: Model, mode: RunMode): Model => {
           withStartingHearts(
             seatCallings(
               seatCrew(
-                rollDare(thingsOpenedBy(model.journal.milestones))(world),
+                rollDare(pool)(world),
                 model.localPlayers + bots.length,
               ),
               model.localPlayers,

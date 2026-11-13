@@ -26,6 +26,7 @@ import { ProfileBinding } from '../bindings'
 import { ApplicationBlock, makeStep } from '../definition'
 import { Message } from '../message'
 import { LOAD_STEPS, type LoadStep, Loading, type Model } from '../model'
+import { askForBeatLink } from './beatMyRun'
 import { askForRoomLink } from './coop'
 import {
   type UpdateReturn,
@@ -381,6 +382,7 @@ export const saveHandlers = defineHandlers({
     combine(model, [
       stepModel => registerServiceWorkerAfterSplash(stepModel, RUNNING_BUILD),
       askForRoomLink,
+      askForBeatLink,
     ]),
 
   CompletedLoadSave: (model, { maybeSave }) => loadSave(model, maybeSave),

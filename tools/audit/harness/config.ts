@@ -387,6 +387,10 @@ export const HarnessConfig = Schema.Struct({
   // mark picked, for the run, the lobby, and a co-op room.
   marks: MaybeNum,
   dmark: MaybeNum,
+  // Beat my run (src/domain/beatMyRun.ts): a friend's dare (munched on wave
+  // 6 on Hard with two things, its list holding the napkin ring) offered on
+  // the home menu, or taken, for its end card's verdict.
+  beat: Choice(['offered', 'taken']),
   // The earned looks: the hat and gun skin worn, the cosmetic ids bought
   // (`Fez`, `skin:Candy`), and the Bones earned (over the tenth of the
   // rank's points) and spent. `fresh` leaves the gifts reached unseen, so

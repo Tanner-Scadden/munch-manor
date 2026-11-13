@@ -36,6 +36,7 @@ import {
 import { initialModel } from '../../../app/pureApp'
 import { returnHome } from '../../../app/runReset'
 import { maybeKeyDownMessage } from '../../../app/subscriptions'
+import { ReadBeatLink } from '../../../app/update/beatMyRun'
 import { ReadRoomLink } from '../../../app/update/coop'
 import { HideSplash, ShowLoadProgress } from '../../../app/update/save'
 import { withBests } from '../../../domain/run'
@@ -468,6 +469,10 @@ describe('the loading splash', () => {
           ReadRoomLink,
           Message.CompletedReadRoomLink({ maybeCode: Option.none() }),
         ),
+        Story.Command.resolve(
+          ReadBeatLink,
+          Message.CompletedReadBeatLink({ maybeDare: Option.none() }),
+        ),
         Story.model(({ loading }) => {
           expect(loading).toEqual(Loading.Loaded())
         }),
@@ -494,6 +499,10 @@ describe('the loading splash', () => {
       Story.Command.resolve(
         ReadRoomLink,
         Message.CompletedReadRoomLink({ maybeCode: Option.none() }),
+      ),
+      Story.Command.resolve(
+        ReadBeatLink,
+        Message.CompletedReadBeatLink({ maybeDare: Option.none() }),
       ),
     ),
   )

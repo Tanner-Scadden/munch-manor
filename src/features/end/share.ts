@@ -6,7 +6,8 @@ import { CREW_AWARD_NAMES, type CrewAward, DARE_NAMES } from '../../world/names'
 
 // Sharing a run from its end screen: the post's words and the game's link.
 // Every word a shared post says lives here, so the owner can tweak the voice
-// in one place. The link is the game's address and nothing else: no
+// in one place. The link is the game's address, with a lone player's run
+// for a friend to beat (src/features/end/beatRun.ts) and nothing else: no
 // tracking parameters and no tokens.
 
 // NOTE: whether the browser has a share sheet (navigator.share). SHARE
@@ -142,6 +143,8 @@ export const sharePostOf = (run: SharedRun): SharePost => ({
 export const copiedLineOf = ({ text, url }: SharePost): string =>
   `${text} ${url}`
 
-// NOTE: the data attribute SHARE carries its post in, for the root's
-// ShareFromClick Mount (src/app/mount.ts).
+// NOTE: the data attributes SHARE carries its post's words and link in, for
+// the root's ShareFromClick Mount (src/app/mount.ts). A lone player's link
+// carries the run, for a friend to beat (src/features/end/beatRun.ts).
 export const SHARE_TEXT_DATA = 'share-text'
+export const SHARE_URL_DATA = 'share-url'

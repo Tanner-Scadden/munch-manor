@@ -20,6 +20,7 @@ import {
 } from './boot'
 import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { subscriptions } from './subscriptions'
+import { ForgetBeatLink, ReadBeatLink } from './update/beatMyRun'
 import { ReadRoomLink } from './update/coop'
 import { SendShareEvent } from './update/end'
 import { SetFullscreen } from './update/fullscreen'
@@ -102,6 +103,8 @@ export const CommandsLayer = Layer.mergeAll(
   ShowLoadProgress.layer,
   HideSplash.layer,
   ReadRoomLink.layer,
+  ReadBeatLink.layer,
+  ForgetBeatLink.layer,
   LoadSave.layer,
   WriteSave.layer,
   AwaitRunSettled.layer,

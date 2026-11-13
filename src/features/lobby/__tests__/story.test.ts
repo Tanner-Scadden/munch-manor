@@ -30,6 +30,7 @@ const PICKS: LobbyPicks = {
   bestMark: 0,
   bots: [],
   botSeats: 3,
+  lock: 'Open',
 }
 
 const WITH_BOT: LobbyPicks = {

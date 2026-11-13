@@ -2,6 +2,7 @@ import { Array, Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { isDareTaken, releaseDare } from '../../domain/beatMyRun'
 import { activeBots, addBot, removeBot, setBotCalling } from '../../domain/bots'
 import { fitDareMark } from '../../domain/dareMarks'
 import { isOnHome } from '../../domain/run'
@@ -61,7 +62,7 @@ const isInPracticeGate = (model: Model): boolean =>
 const skipsLobby = (model: Model): boolean =>
   isAskingDifficultyFirst(model) || isInPracticeGate(model)
 
-const openLobby = makeStep(model =>
+export const openLobby = makeStep(model =>
   Update.combineSteps([
     unlockAudio,
     tapSound,
@@ -70,8 +71,11 @@ const openLobby = makeStep(model =>
   ]),
 )
 
-// NOTE: PLAY, by tap or by Enter.
-const playFromHome = makeStep(model => {
+// NOTE: PLAY, by tap or by Enter, plays the player's own picks: a friend's
+// dare taken before lets go of the lobby (its card stays on the menu).
+const playFromHome = Update.combineSteps([
+  modelStep(releaseDare),
+  makeStep(model => {
   if (skipsLobby(model)) {
     return startOrAsk(runModeOf(model.home.mode))
   } else if (isOnHomeMenu(model)) {
@@ -79,7 +83,8 @@ const playFromHome = makeStep(model => {
   } else {
     return unchanged
   }
-})
+  }),
+])
 
 export const playFromKey = (code: string) =>
   makeStep(() => (isStartKey(code) ? playFromHome : unchanged))
@@ -99,17 +104,23 @@ const focusHomePlay: UpdateStep = stepModel => ({
   commands: [FocusHomeButton({ button: 'Play' })],
 })
 
-// NOTE: CHICKEN OUT clucks on the way home.
+// NOTE: CHICKEN OUT clucks on the way home, and lets go of a friend's dare.
 export const leaveLobby = Update.combineSteps([
   playSounds([uiCue('Cluck')]),
+  modelStep(releaseDare),
   focusHomePlay,
 ])
 
 // PICKS
 
-// NOTE: each pick taps, as a menu button does.
+// NOTE: each pick taps, as a menu button does. A friend's dare holds them
+// all (src/domain/beatMyRun.ts).
 const pick = (change: (model: Model) => Model) =>
-  Update.combineSteps([modelStep(change), tapSound])
+  makeStep(model =>
+    isDareTaken(model)
+      ? unchanged
+      : Update.combineSteps([modelStep(change), tapSound]),
+  )
 
 export const chooseMode = (mode: HomeMode) =>
   pick(model => (model.home.mode === mode ? model : switchMode(model)))

@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { BeatMyRun } from '../../../domain/beatLink'
 import { Screen } from '../../../domain/coopRoom'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { FocusLobbyControl, FoldLobby } from '../../../features/lobby/steps'
@@ -11,6 +12,7 @@ import type { ProfileTab } from '../../../features/profile/model'
 import {
   home,
   openedDialog,
+  readyModel,
   veteranFighting,
 } from '../../../test/model.fixture'
 import {
@@ -314,6 +316,43 @@ describe('a controller in the menus', () => {
         }),
         Story.Command.expectExact(FocusLobbyControl({ control: 'Start' })),
         resolveFocusLobby(),
+      ),
+    )
+
+    it.effect("B on the home menu lets a friend's dare go", () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          withPad(
+            modifyFields(readyModel, {
+              beatMyRun: () =>
+                BeatMyRun.Offered({
+                  dare: {
+                    seed: 99,
+                    mode: 'Campaign',
+                    difficulty: 'Easy',
+                    modifiers: readyModel.modifiers,
+                    dareMark: 0,
+                    easyBreakSeconds: 0,
+                    pool: [],
+                    hero: 'You',
+                    outcome: 'Won',
+                    wave: 10,
+                    found: [],
+                    runSeconds: 600,
+                  },
+                }),
+            }),
+          ),
+        ),
+        tapPad(B),
+        Story.Command.resolve(
+          FocusHomeButton({ button: 'Play' }),
+          Message.CompletedFocusHomeButton(),
+        ),
+        Story.model(({ beatMyRun }) => {
+          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+        }),
       ),
     )
 

@@ -2,6 +2,14 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 13, 2026: Bring back proof
+
+- 🏆 Everything you sneak out goes on the Proof Shelf in your treehouse (MORE, then PROOF), stamped ESCAPED, CHICKEN, or MUNCHED, and the Dare Journal fills in as you play: four brand new things to find, story pages about why the party never ended, and every hero's reason for taking the dare.
+- 🐔 Scared? Hold the kitchen's back door in a break once you've found something to chicken out with it. Your friends in the car will remember. They remember every run now.
+- 📅 Three daily missions on the home menu, the same for everyone, with a free reroll. Miss a day, lose nothing.
+- 🦴 Every run pays at least 3 Bones, your first run each day pays double, ranks come faster with a gift at every one, and heroes and guns level up over time into gold props and Gilded skins.
+- 🔥 Escaped? Climb the dare ladder: eight marks past each difficulty, each one meaner. Then hit SHARE and dare a friend to BEAT MY RUN in the very same house.
+
 ## November 12, 2026: Grab a controller
 
 - 🎮 Plug in a controller and play the whole game with it: left stick walks, right stick aims, right trigger fires, and it rumbles when you get munched (RUMBLE in Settings). Every menu works too: d-pad picks, A presses, B backs out. Couch to manor, no mouse needed. Y flips through your guns and knife, and How to play shows the pad with every button labeled.
