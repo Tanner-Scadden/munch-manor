@@ -31,6 +31,7 @@ import {
   SavedSettings,
 } from '../shared/playerData'
 import { ProofEntry, shelvedSince } from '../shared/proofData'
+import { purseBonesAt } from '../shared/rankCurve'
 
 // NOTE: what changed in the player's save, as the player scope's mutations
 // (src/platform/playerScope.ts) will record it. `update` computes these from the
@@ -83,6 +84,7 @@ export const PlayerChange = defineTaggedUnion({
   StampedMissionDay: { day: DayStamp },
   ShelvedProof: { entry: ProofEntry },
   KeptJournal: { added: SavedJournal },
+  PaidRankPurse: { rank: Schema.Finite },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -232,6 +234,25 @@ const missionChanges = (
   }
 }
 
+// NOTE: a rank's Bones purse is the scope's own to pay, read from
+// src/shared/rankCurve.ts, once a rank (PaidRankPurse), so its Bones come
+// out of the run's earned Bones (`purseBones`).
+const newPursesOf = (
+  before: PlayerSave,
+  after: PlayerSave,
+): ReadonlyArray<number> =>
+  Array.filter(
+    after.bonuses.purses,
+    rank => !Array.contains(before.bonuses.purses, rank),
+  )
+
+const bonesOfPurses = (ranks: ReadonlyArray<number>): number =>
+  Array.reduce(
+    ranks,
+    0,
+    (total, rank) => total + Option.getOrElse(purseBonesAt(rank), () => 0),
+  )
+
 export const changesBetween: {
   (after: PlayerSave): (before: PlayerSave) => ReadonlyArray<PlayerChange>
   (before: PlayerSave, after: PlayerSave): ReadonlyArray<PlayerChange>
@@ -242,9 +263,13 @@ export const changesBetween: {
     const totalKills = after.bests.totalKills - before.bests.totalKills
     const kills = killsAdded(before.bests.killsByKind, after.bests.killsByKind)
     const missions = missionChanges(before.missions, after.missions)
+    const purses = newPursesOf(before, after)
     const earnedBones = Math.max(
       0,
-      after.rank.earnedBones - before.rank.earnedBones - missions.missionBones,
+      after.rank.earnedBones -
+        before.rank.earnedBones -
+        missions.missionBones -
+        bonesOfPurses(purses),
     )
     const bonus = bonusChanges(before, after, earnedBones)
     const isRunRecorded =
@@ -366,6 +391,9 @@ export const changesBetween: {
               bones: after.rank.veteranBones,
             }),
         ),
+        // NOTE: last, so the points that reach a purse's rank are in the
+        // scope when it is paid.
+        Array.map(purses, rank => PlayerChange.PaidRankPurse({ rank })),
       ],
       Array.flatten,
     )
@@ -422,6 +450,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     StampedMissionDay: () => change,
     ShelvedProof: () => change,
     KeptJournal: () => change,
+    PaidRankPurse: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
         points: save.rank.veteranPoints,
@@ -431,8 +460,8 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
 
 // NOTE: a finished run counts each time it is sent, and the power-ups seen
 // and forgotten must keep their order, so those are all kept, as are the
-// missions' increments and marks, each find shelved, and what each run
-// added to the journal. Every other
+// missions' increments and marks, each find shelved, what each run
+// added to the journal, and each purse paid. Every other
 // change sets its field to what it holds now, so one of each is enough.
 const isSetOnce = (change: PlayerChange): boolean =>
   !PlayerChange.isAnyOf([
@@ -450,6 +479,7 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'StampedMissionDay',
     'ShelvedProof',
     'KeptJournal',
+    'PaidRankPurse',
   ])(change)
 
 // NOTE: the unsaved changes, refreshed, then the new ones, with only the

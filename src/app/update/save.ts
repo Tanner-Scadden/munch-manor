@@ -3,7 +3,7 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { cleanName } from '../../domain/playerName'
-import { grantVeteran } from '../../features/end/rankRun'
+import { grantVeteran, payPurses } from '../../features/end/rankRun'
 import {
   LastRunSync,
   PlayerChange,
@@ -173,7 +173,7 @@ const loadSave: {
       onNone: () => model,
       onSome: save => restoreSave(model, save),
     })
-    const granted = modifyFields(grantVeteran(restored), {
+    const granted = modifyFields(payPurses(grantVeteran(restored)), {
       saveStatus: () => 'Read',
     })
     const loaded = finishLoading(granted, 'Save')
@@ -192,8 +192,14 @@ const loadSave: {
       save =>
         save.recordUnlock === 'Locked' && granted.recordUnlock === 'Unlocked',
     )
+    // NOTE: the purses the save's rank reached unpaid (a save from before
+    // the purses, or the front-loaded curve's new ranks) write as paid.
+    const isPursePaid = granted.bonuses.purses !== restored.bonuses.purses
     return Option.isSome(maybeSave) &&
-      (!restored.rank.isVeteranGranted || isBaseline || isRecordUnlockNew)
+      (!restored.rank.isVeteranGranted ||
+        isBaseline ||
+        isRecordUnlockNew ||
+        isPursePaid)
       ? {
           model: modifyFields(loaded.model, {
             writesInFlight: count => count + 1,

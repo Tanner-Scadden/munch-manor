@@ -4,7 +4,7 @@ import { keepJournal, tallyJournalFrom } from '../../domain/journal'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import { noteDeathTip } from '../../features/end/deathTip'
 import { noteRecords, reachRecords } from '../../features/end/endBeat'
-import { earnRank } from '../../features/end/rankRun'
+import { earnRank, payPursesFrom } from '../../features/end/rankRun'
 import { notePulledPrize } from '../../features/guide/shopGuide'
 import { noteRunEnding, pickCarLine } from '../../features/intro/carLine'
 import {
@@ -94,7 +94,7 @@ type SaveWrite = 'Write' | 'Synced'
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the rank and the daily missions a run pays, the Proof Shelf, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
+// Nightmare, the rank, the rank purses, and the daily missions a run pays, the Proof Shelf, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
 // next intro, the run count and its summary, the run's recording, the new
 // zombie badges, the
 // fridge prizes pulled, and the save. `update` in src/app/main.ts runs them once
@@ -119,6 +119,7 @@ export const afterMessage: {
       model: earnRank(before, stepModel),
     }),
     stepModel => ({ model: payMissions(before, stepModel) }),
+    stepModel => ({ model: payPursesFrom(before, stepModel, saveWrite) }),
     stepModel => ({ model: shelveRun(before, stepModel) }),
     stepModel => ({ model: keepJournal(before, stepModel) }),
     stepModel => ({

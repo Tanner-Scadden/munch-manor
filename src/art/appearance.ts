@@ -96,6 +96,8 @@ export const SHIRT_SHADES: Readonly<Record<ShirtColor, ShirtShade>> = {
   Glow: { base: '#7dff3a', dark: '#3fae1c' },
   Midnight: { base: '#27315f', dark: '#141a3a' },
   Coral: { base: '#ff7f6e', dark: '#c9503f' },
+  Frost: { base: '#bfe9ff', dark: '#6fa8d0' },
+  Ember: { base: '#c2361a', dark: '#6e1a0e' },
 }
 
 // NOTE: the Rainbow print, the six stripes of the pride flag in their real

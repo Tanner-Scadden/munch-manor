@@ -13,7 +13,11 @@ import { learnedSave } from './save.fixture'
 
 const claimed: PlayerSave = {
   ...learnedSave,
-  bonuses: { doubledDay: '2026-11-11', escapedOn: ['Normal', 'Hard'] },
+  bonuses: {
+    doubledDay: '2026-11-11',
+    escapedOn: ['Normal', 'Hard'],
+    purses: [],
+  },
   records: {
     ...learnedSave.records,
     Normal: {
@@ -71,12 +75,13 @@ describe('the save of the Bones bonuses and the best runs', () => {
   test('a synced save keeps the later doubled day and every escape', () => {
     const here = restoreSave(initialModel, {
       ...learnedSave,
-      bonuses: { doubledDay: '2026-11-12', escapedOn: ['Easy'] },
+      bonuses: { doubledDay: '2026-11-12', escapedOn: ['Easy'], purses: [] },
     })
     const synced = restoreSave(here, claimed)
     expect(synced.bonuses).toEqual({
       doubledDay: '2026-11-12',
       escapedOn: ['Easy', 'Normal', 'Hard'],
+      purses: [],
     })
   })
 })

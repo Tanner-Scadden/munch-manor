@@ -83,7 +83,7 @@ export const learnedSave: PlayerSave = {
     isVeteranGranted: true,
     spentBones: 5,
   },
-  bonuses: { doubledDay: null, escapedOn: [] },
+  bonuses: { doubledDay: null, escapedOn: [], purses: [] },
   lastRun: 'NoRunYet',
   missions: noMissions,
   proof: noProof,

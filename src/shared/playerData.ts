@@ -148,7 +148,15 @@ export const FreeShirtColor = Schema.Literals([
 ])
 export type FreeShirtColor = typeof FreeShirtColor.Type
 
-export const GiftShirtColor = Schema.Literals(['Gold', 'Glow'])
+// NOTE: Frost and Ember came with the rank gifts past rank 22 (save
+// version 26), after the sold colors in `ShirtColor`, so no color moves.
+const EarlyGiftShirtColor = Schema.Literals(['Gold', 'Glow'])
+const LateGiftShirtColor = Schema.Literals(['Frost', 'Ember'])
+
+export const GiftShirtColor = Schema.Literals([
+  ...EarlyGiftShirtColor.literals,
+  ...LateGiftShirtColor.literals,
+])
 export type GiftShirtColor = typeof GiftShirtColor.Type
 
 const SoldShirtColor = Schema.Literals(['Midnight', 'Coral'])
@@ -156,8 +164,9 @@ type SoldShirtColor = typeof SoldShirtColor.Type
 
 export const ShirtColor = Schema.Literals([
   ...FreeShirtColor.literals,
-  ...GiftShirtColor.literals,
+  ...EarlyGiftShirtColor.literals,
   ...SoldShirtColor.literals,
+  ...LateGiftShirtColor.literals,
 ])
 export type ShirtColor = typeof ShirtColor.Type
 
@@ -182,7 +191,16 @@ export type Print = typeof Print.Type
 
 // NOTE: gun skins: a palette swap of the guns the player holds. Stock is the
 // guns as they always were.
-export const GiftGunSkin = Schema.Literals(['Gold', 'Slime'])
+// NOTE: the look code carries a gun skin by its place in `GunSkin`, so
+// Frost and Ember, from the rank gifts past rank 22, go after the sold
+// skins.
+const EarlyGiftGunSkin = Schema.Literals(['Gold', 'Slime'])
+const LateGiftGunSkin = Schema.Literals(['Frost', 'Ember'])
+
+export const GiftGunSkin = Schema.Literals([
+  ...EarlyGiftGunSkin.literals,
+  ...LateGiftGunSkin.literals,
+])
 export type GiftGunSkin = typeof GiftGunSkin.Type
 
 const SoldGunSkin = Schema.Literals(['Candy', 'Bone', 'Neon'])
@@ -190,8 +208,9 @@ type SoldGunSkin = typeof SoldGunSkin.Type
 
 export const GunSkin = Schema.Literals([
   'Stock',
-  ...GiftGunSkin.literals,
+  ...EarlyGiftGunSkin.literals,
   ...SoldGunSkin.literals,
+  ...LateGiftGunSkin.literals,
 ])
 export type GunSkin = typeof GunSkin.Type
 
@@ -313,7 +332,8 @@ export const COSMETIC_PRICES: Readonly<Record<string, number>> = {
 }
 
 // NOTE: the earned looks' gift ranks continue after the hats', between the
-// callings' (3, 6, 10, and 15).
+// callings' (3, 6, 10, and 15), then every fifth rank to 40; every other
+// rank from 21 on pays a Bones purse (src/shared/rankCurve.ts).
 export const COSMETIC_GIFT_RANKS: Readonly<Record<string, number>> = {
   ...HAT_GIFT_RANKS,
   'shirt:Gold': 16,
@@ -322,6 +342,10 @@ export const COSMETIC_GIFT_RANKS: Readonly<Record<string, number>> = {
   'shirt:Glow': 19,
   'print:Checker': 20,
   'skin:Slime': 22,
+  'shirt:Frost': 25,
+  'skin:Frost': 30,
+  'shirt:Ember': 35,
+  'skin:Ember': 40,
 }
 
 // NOTE: the look before hats (save versions 11 to 14, ChangedAppearance
@@ -850,7 +874,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 25
+export const SAVE_VERSION = 26
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1038,13 +1062,23 @@ export const FIRST_ESCAPE_BONES = 50
 // the difficulties escaped on since the first escape bonus came in. The
 // player scope merges them so two linked devices pay each one once
 // (DoubledFirstRun and EscapedFirst in src/platform/playerScope.ts).
+// Version 26 added the ranks whose Bones purse is paid
+// (src/shared/rankCurve.ts, PaidRankPurse), a key that reads as none when
+// missing, so an older save and an older device's synced bonuses still read.
 export const SavedBonuses = Schema.Struct({
   doubledDay: Schema.NullOr(DayStamp),
   escapedOn: Schema.Array(Difficulty),
+  purses: Schema.Array(Schema.Finite).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed([])),
+  ),
 })
 export type SavedBonuses = typeof SavedBonuses.Type
 
-export const noBonuses: SavedBonuses = { doubledDay: null, escapedOn: [] }
+export const noBonuses: SavedBonuses = {
+  doubledDay: null,
+  escapedOn: [],
+  purses: [],
+}
 
 // NOTE: version 22 added how the last run ended, which the friends in the
 // car remember at the next intro (src/features/intro/carLine.ts): none yet,
@@ -1124,6 +1158,7 @@ export type PlayerName = typeof PlayerName.Type
 // Version 23 added the daily missions (src/shared/missionData.ts).
 // Version 24 added the Proof Shelf (src/shared/proofData.ts).
 // Version 25 added the Dare Journal (src/shared/journalData.ts).
+// Version 26 added the rank purses paid, in `bonuses`.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,

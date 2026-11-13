@@ -48,6 +48,7 @@ import {
   isBetterRun,
 } from '../shared/playerData'
 import { ProofEntry } from '../shared/proofData'
+import { purseBonesAt, rankOf } from '../shared/rankCurve'
 import {
   ClaimedMission,
   ProgressedMissions,
@@ -65,7 +66,8 @@ import { PROOF_TABLE, seedProofRows, shelveRow } from './proofScope'
 // between that player's devices.
 // Shared with the sync Worker in infra/worker, so it imports only `effect`,
 // the sync engine, and src/shared/ (playerData.ts, dayStamp.ts,
-// missionData.ts), and its migrations (src/platform/playerMigrations.ts).
+// missionData.ts, rankCurve.ts), and its migrations
+// (src/platform/playerMigrations.ts).
 // The tables are the ones the game
 // already kept on the device (src/platform/storeSqlite.ts made `player` and
 // `kills_by_kind` first, so the view tables exist with IF NOT EXISTS), plus
@@ -77,6 +79,8 @@ export const playerScopeId = (playerId: string): string =>
 // ROWS
 
 const EscapedOn = Schema.Array(Difficulty)
+
+const PurseRanks = Schema.Array(Schema.Finite)
 
 export const PlayerRow = Schema.Struct({
   sound: SoundSetting,
@@ -111,6 +115,7 @@ export const PlayerRow = Schema.Struct({
   spent_bones: Schema.Finite,
   doubled_day: Schema.NullOr(DayStamp),
   escaped_on: Schema.fromJsonString(EscapedOn),
+  purses: Schema.fromJsonString(PurseRanks),
   last_run: RunEnding,
   missions: Schema.fromJsonString(SavedMissions),
   journal: Schema.fromJsonString(SavedJournal),
@@ -156,6 +161,7 @@ export const PLAYER_COLUMNS = Array.make(
   'spent_bones',
   'doubled_day',
   'escaped_on',
+  'purses',
   'last_run',
   'missions',
   'journal',
@@ -194,6 +200,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   spent_bones: save.rank.spentBones,
   doubled_day: save.bonuses.doubledDay,
   escaped_on: save.bonuses.escapedOn,
+  purses: save.bonuses.purses,
   last_run: save.lastRun,
   missions: save.missions,
   journal: save.journal,
@@ -248,12 +255,12 @@ const updatePlayer = (
 // save with the Bones bonuses and the best runs (save version 21), 19
 // the save with the last run's ending (save version 22), and 20 the save
 // with the daily missions (save version 23), 21 the save with the Proof
-// Shelf (save version 24), and 22 the save with the Dare Journal (save
-// version 25).
+// Shelf (save version 24), 22 the save with the Dare Journal (save
+// version 25), and 23 the save with the rank purses (save version 26).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 22,
+  version: 23,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -949,6 +956,56 @@ export const EscapedFirst = defineMutation({
     }),
 })
 
+const PurseRow = Schema.Struct({
+  purses: Schema.fromJsonString(PurseRanks),
+  points: Schema.Finite,
+})
+
+const encodePurses = Schema.encodeEffect(Schema.fromJsonString(PurseRanks))
+
+// NOTE: a rank's Bones purse (src/shared/rankCurve.ts): its Bones, read
+// there and never from the args, added only when the rank has a purse, is
+// not paid yet, and is reached by the points the scope holds, and the rank
+// is then paid. A union, so two devices reaching the rank offline are paid
+// once, and a purse for a rank not reached is never paid.
+/** @stability unstable */
+export const PaidRankPurse = defineMutation({
+  name: 'PaidRankPurse',
+  version: 1,
+  args: Schema.Struct({ rank: Count }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ rank }, context) =>
+    Effect.gen(function* () {
+      const maybeBones = purseBonesAt(rank)
+      if (Option.isNone(maybeBones)) {
+        return
+      }
+      const sql = yield* SqlClient.SqlClient
+      const rows =
+        yield* sql`SELECT purses, rank_points + veteran_points AS points FROM ${context.table('player')} WHERE id = 1`
+      const maybeKept = pipe(
+        Array.head(rows),
+        Option.flatMap(Schema.decodeUnknownOption(PurseRow)),
+      )
+      if (
+        Option.isNone(maybeKept) ||
+        Array.contains(maybeKept.value.purses, rank) ||
+        rankOf(maybeKept.value.points) < rank
+      ) {
+        return
+      }
+      const json = yield* Effect.mapError(
+        encodePurses(Array.append(maybeKept.value.purses, rank)),
+        toRejected,
+      )
+      yield* sql`UPDATE ${context.table('player')} SET
+        purses = ${json},
+        rank_bones = rank_bones + ${maybeBones.value}
+        WHERE id = 1`
+    }),
+})
+
 // NOTE: a thing brought out, on the Proof Shelf (src/platform/proofScope.ts):
 // the first stamp kept, an earlier day's taking its place.
 /** @stability unstable */
@@ -1063,6 +1120,7 @@ export const PlayerScope = defineScope({
     BoughtCosmetic,
     DoubledFirstRun,
     EscapedFirst,
+    PaidRankPurse,
     EndedRun,
     ProgressedMissions,
     RolledMissions,

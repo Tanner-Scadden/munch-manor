@@ -15,7 +15,7 @@ import {
   jsonOf,
   writeSave,
 } from '../../test/testing'
-import { noRank } from '../../world/heroes/rank'
+import { noRank, pointsForRank } from '../../world/heroes/rank'
 import { focusOf } from '../../world/party/party'
 import { PlayerChange } from '../playerSync'
 import {
@@ -28,25 +28,26 @@ import {
 import { learnedSave } from './save.fixture'
 
 // The rank and the calling a save carries: the veteran grant a save from
-// before rank is given once it loads, and the calling's round trip.
+// before rank is given once it loads, the purses of ranks a save reached
+// before purses paid once it loads, and the calling's round trip.
+
+// NOTE: the save read at boot, then the splash's last Commands.
+const loaded = (maybeSave: Option.Option<PlayerSave>) =>
+  Story.steps(
+    Story.message(Message.CompletedLoadSave({ maybeSave })),
+    finishSplash,
+  )
+
+// NOTE: the changes each pending save write carries, checked before it
+// is written.
+const changesWritten = (
+  check: (changes: ReadonlyArray<ReadonlyArray<PlayerChange>>) => void,
+) =>
+  checkPendingArgs(Story.Command.argsOf(WriteSave))(writes =>
+    check(Array.map(writes, ({ changes }) => changes)),
+  )
 
 describe('the veteran grant', () => {
-  // NOTE: the save read at boot, then the splash's last Commands.
-  const loaded = (maybeSave: Option.Option<PlayerSave>) =>
-    Story.steps(
-      Story.message(Message.CompletedLoadSave({ maybeSave })),
-      finishSplash,
-    )
-
-  // NOTE: the changes each pending save write carries, checked before it
-  // is written.
-  const changesWritten = (
-    check: (changes: ReadonlyArray<ReadonlyArray<PlayerChange>>) => void,
-  ) =>
-    checkPendingArgs(Story.Command.argsOf(WriteSave))(writes =>
-      check(Array.map(writes, ({ changes }) => changes)),
-    )
-
   // NOTE: a save from before rank, as the previous build wrote it.
   const beforeRank = (killsByKind: Record<string, number>) => {
     const { rank: _rank, ...rest } = learnedSave
@@ -90,8 +91,8 @@ describe('the veteran grant', () => {
       Story.given(loadingSave),
       loaded(beforeRank({ Shambler: 9000 })),
       Story.model(current => {
-        expect(current.rank.veteranPoints).toBe(1800)
-        expect(current.rank.veteranBones).toBe(180)
+        expect(current.rank.veteranPoints).toBe(1170)
+        expect(current.rank.veteranBones).toBe(117)
       }),
       writeSave(),
     ),
@@ -126,6 +127,57 @@ describe('the veteran grant', () => {
         }),
         Story.Command.expectNone(),
       ),
+  )
+})
+
+describe('the purses on load', () => {
+  // NOTE: a save at rank 24 from before purses: ranks 21, 23, and 24 have
+  // one each, 15, 17, and 18 Bones.
+  const atRank24: PlayerSave = {
+    ...learnedSave,
+    rank: { ...learnedSave.rank, earnedPoints: pointsForRank(24) },
+    bonuses: { ...learnedSave.bonuses, purses: [] },
+  }
+
+  it.effect('a save past purse ranks is paid each once, and writes them', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(loadingSave),
+      loaded(Option.some(atRank24)),
+      Story.model(current => {
+        expect(current.bonuses.purses).toEqual([21, 23, 24])
+        expect(current.rank.earnedBones).toBe(
+          atRank24.rank.earnedBones + 15 + 17 + 18,
+        )
+      }),
+      changesWritten(writes => {
+        expect(writes).toEqual([
+          [
+            PlayerChange.PaidRankPurse({ rank: 21 }),
+            PlayerChange.PaidRankPurse({ rank: 23 }),
+            PlayerChange.PaidRankPurse({ rank: 24 }),
+          ],
+        ])
+      }),
+      writeSave(),
+    ),
+  )
+
+  it.effect('a save that was paid loads as it was and writes nothing', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(loadingSave),
+      loaded(
+        Option.some({
+          ...atRank24,
+          bonuses: { ...atRank24.bonuses, purses: [21, 23, 24] },
+        }),
+      ),
+      Story.model(current => {
+        expect(current.rank.earnedBones).toBe(atRank24.rank.earnedBones)
+      }),
+      Story.Command.expectNone(),
+    ),
   )
 })
 

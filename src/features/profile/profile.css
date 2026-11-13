@@ -1671,9 +1671,16 @@
   gap: 5px;
 }
 
+.rank-track {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 6px;
+}
+
 .rank-bar {
   box-sizing: border-box;
-  flex: 1 1 100%;
+  flex: 1 1 auto;
   height: 10px;
   padding: 2px;
   border-radius: var(--menu-radius-sm);
@@ -1700,8 +1707,42 @@
   padding: 6px 12px;
 }
 
-.game-root[data-layout='Portrait'] .rank-bar {
+.game-root[data-layout='Portrait'] .rank-track {
   flex: 1 1 auto;
+}
+
+/* NOTE: what the next rank gives, by the bar and on the home chip: a hero's
+   prop, a gift box, or the bag of bones with its count. */
+.rank-next {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.rank-next-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.rank-next-count {
+  font: bold var(--menu-text-size) / 1 var(--menu-font);
+  color: var(--menu-gold);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+.rank-chip .rank-next {
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 2px solid rgba(255, 210, 63, 0.35);
+}
+
+.rank-chip .rank-next-icon {
+  width: 18px;
+  height: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {

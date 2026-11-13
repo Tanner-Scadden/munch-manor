@@ -126,6 +126,16 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=5100&rankgain=600`,
     ticks: [330, 420, 520, 640],
   },
+  // NOTE: rank 20 to 24: the Slime gift, then the purses of 21, 23, and 24.
+  {
+    name: 'end-purse',
+    query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=7600&rankgain=1900`,
+    ticks: [420, 470, 520, 580, 640],
+  },
+  // NOTE: the next rank's gift by the bar: a purse at rank 20, a look at 3.
+  { name: 'home-next-purse', query: 'rank=5200' },
+  { name: 'profile-next-purse', query: 'profile=look&rank=5200' },
+  { name: 'profile-next-gift', query: 'profile=look&rank=150' },
 ]
 
 const problems: Array<string> = []

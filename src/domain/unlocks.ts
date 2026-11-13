@@ -1,8 +1,9 @@
-import { Array, Function, String } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
-import type { SavedSeenUnlocks } from '../shared/playerData'
+import type { Calling, SavedSeenUnlocks } from '../shared/playerData'
+import { purseBonesAt } from '../shared/rankCurve'
 import { CALLINGS, UNLOCK_RANKS } from '../world/heroes/calling'
 import { rankOf, totalPointsOf } from '../world/heroes/rank'
 import { GIFTS, type Gift } from './closet'
@@ -100,6 +101,39 @@ export const hasUnseenCalling: {
 } = Function.dual(2, (rank: number, seen: SavedSeenUnlocks): boolean =>
   Array.isReadonlyArrayNonEmpty(unseenOf(callingUnlocksAt(rank), seen)),
 )
+
+// WHAT A RANK GIVES
+
+// NOTE: every rank from 2 on gives one thing (docs/PROGRESSION_PLAN.md,
+// pillar B): a hero for sale, a gift look, or a Bones purse
+// (src/shared/rankCurve.ts). The home menu and the Profile show the next
+// rank's by the rank (src/ui/rankBadgeView.ts). `Nothing` is rank 1.
+export type RankGift =
+  | Readonly<{ kind: 'Hero'; calling: Calling }>
+  | Readonly<{ kind: 'Look'; gift: Gift }>
+  | Readonly<{ kind: 'Purse'; bones: number }>
+  | Readonly<{ kind: 'Nothing' }>
+
+export const giftAtRank = (rank: number): RankGift =>
+  Option.match(
+    Array.findFirst(CALLINGS, calling => UNLOCK_RANKS[calling] === rank),
+    {
+      onSome: (calling): RankGift =>
+        calling === 'You' ? { kind: 'Nothing' } : { kind: 'Hero', calling },
+      onNone: () =>
+        Option.match(
+          Array.findFirst(GIFTS, gift => gift.rank === rank),
+          {
+            onSome: (gift): RankGift => ({ kind: 'Look', gift }),
+            onNone: () =>
+              Option.match(purseBonesAt(rank), {
+                onSome: (bones): RankGift => ({ kind: 'Purse', bones }),
+                onNone: (): RankGift => ({ kind: 'Nothing' }),
+              }),
+          },
+        ),
+    },
+  )
 
 // MARKING SEEN
 

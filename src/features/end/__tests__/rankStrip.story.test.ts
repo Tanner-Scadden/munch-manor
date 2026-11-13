@@ -13,6 +13,7 @@ import {
 } from '../../../render/screen'
 import { readyModel } from '../../../test/model.fixture'
 import { jsonOf } from '../../../test/testing'
+import { pointsForRank } from '../../../world/heroes/rank'
 import {
   CALLING_FLIP_MS,
   RANK_FILL_MS,
@@ -49,17 +50,17 @@ const ended = (gain: Gain, screenMs = 0): Model =>
   })
 
 const noGain: Gain = Option.none()
-// NOTE: 70 points is rank 1 with 30 to go, so 60 more reach rank 2.
+// NOTE: 20 points is rank 1 with 30 to go, so 40 more reach rank 2.
 const rankUp: Gain = Option.some({
-  pointsBefore: 70,
-  gained: 60,
+  pointsBefore: 20,
+  gained: 40,
   bonesGained: 6,
   bonusPercent: 0,
   bonuses: [],
 })
 const sameRank: Gain = Option.some({
   pointsBefore: 10,
-  gained: 60,
+  gained: 30,
   bonesGained: 6,
   bonusPercent: 0,
   bonuses: [],
@@ -165,11 +166,11 @@ describe('the strip sounds', () => {
 describe('the cards a rank up flips', () => {
   // NOTE: rank 1 to 2 gifts the Party Hat.
   const hatGift: Gain = rankUp
-  // NOTE: 1000 points is rank 7: the Handyman (rank 3) and the Track Star
+  // NOTE: 600 points is rank 7: the Handyman (rank 3) and the Track Star
   // (rank 6) open, and the hats gifted at ranks 2, 4, 5, and 7.
   const several: Gain = Option.some({
     pointsBefore: 0,
-    gained: 1000,
+    gained: 600,
     bonesGained: 100,
     bonusPercent: 0,
     bonuses: [],
@@ -199,6 +200,23 @@ describe('the cards a rank up flips', () => {
         unlock._tag === 'Gift' ? unlock.name : '',
       ),
     ).toEqual(['', '', 'PartyHat', 'BucketHat', 'PomBeanie', 'PropellerCap'])
+  })
+
+  test('a rank with no other gift flips its Bones purse, after the gifts', () => {
+    // NOTE: rank 20 to 24: purses at 21, 23, and 24, the Slime gun at 22.
+    const purses: Gain = Option.some({
+      pointsBefore: pointsForRank(20),
+      gained: pointsForRank(24) - pointsForRank(20),
+      bonesGained: 10,
+      bonusPercent: 0,
+      bonuses: [],
+    })
+    expect(unlocksOf(ended(purses))).toEqual([
+      { _tag: 'Gift', kind: 'Skin', name: 'Slime' },
+      { _tag: 'Purse', rank: 21, bones: 15 },
+      { _tag: 'Purse', rank: 23, bones: 17 },
+      { _tag: 'Purse', rank: 24, bones: 18 },
+    ])
   })
 
   test('each card flips after the last was held a moment, and a press skips them all', () => {

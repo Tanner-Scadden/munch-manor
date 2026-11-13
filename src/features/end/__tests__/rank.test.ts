@@ -125,18 +125,18 @@ describe('points for a run', () => {
 })
 
 describe('ranks', () => {
-  it('starts rank 1 at 0, rank 2 at 100, rank 3 at 225', () => {
+  it('starts rank 1 at 0, rank 2 at 50, rank 3 at 120', () => {
     expect(pointsForRank(1)).toBe(0)
-    expect(pointsForRank(2)).toBe(100)
-    expect(pointsForRank(3)).toBe(225)
-    expect(costOfRank(1)).toBe(100)
-    expect(costOfRank(2)).toBe(125)
+    expect(pointsForRank(2)).toBe(50)
+    expect(pointsForRank(3)).toBe(120)
+    expect(costOfRank(1)).toBe(50)
+    expect(costOfRank(2)).toBe(70)
   })
 
-  it('makes rank 10 at 1800 points', () => {
-    expect(pointsForRank(10)).toBe(1800)
-    expect(rankOf(1799)).toBe(9)
-    expect(rankOf(1800)).toBe(10)
+  it('makes rank 10 at 1170 points, a third fewer than the old 1800', () => {
+    expect(pointsForRank(10)).toBe(1170)
+    expect(rankOf(1169)).toBe(9)
+    expect(rankOf(1170)).toBe(10)
   })
 
   it('reads the rank at and around every boundary, up to rank 200', () => {
@@ -150,11 +150,11 @@ describe('ranks', () => {
     expect(rankProgressOf(0)).toEqual({
       rank: 1,
       into: 0,
-      cost: 100,
+      cost: 50,
       fraction: 0,
     })
-    expect(rankProgressOf(162)).toMatchObject({ rank: 2, into: 62, cost: 125 })
-    expect(rankProgressOf(162).fraction).toBeCloseTo(0.496)
+    expect(rankProgressOf(85)).toMatchObject({ rank: 2, into: 35, cost: 70 })
+    expect(rankProgressOf(85).fraction).toBeCloseTo(0.5)
   })
 })
 
@@ -176,7 +176,7 @@ describe('the veteran grant', () => {
     expect(veteranPointsOf(0)).toBe(0)
     expect(veteranPointsOf(420)).toBe(420)
     expect(veteranPointsOf(99999)).toBe(VETERAN_CAP_POINTS)
-    expect(VETERAN_CAP_POINTS).toBe(1800)
+    expect(VETERAN_CAP_POINTS).toBe(1170)
   })
 
   it('grants once, with Bones', () => {

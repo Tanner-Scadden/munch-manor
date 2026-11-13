@@ -206,9 +206,17 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 25 is the save before the rank purses. Its bonuses read
+// with no purse paid (SavedBonuses' default); they are paid at load.
+const PlayerSaveV25 = Schema.Struct({
+  ...PlayerSave.fields,
+  version: Schema.Literal(25),
+})
+type PlayerSaveV25 = typeof PlayerSaveV25.Type
+
 // NOTE: version 24 is the save before the Dare Journal.
 const PlayerSaveV24 = Schema.Struct({
-  ...Struct.omit(PlayerSave.fields, ['journal']),
+  ...Struct.omit(PlayerSaveV25.fields, ['journal']),
   version: Schema.Literal(24),
 })
 type PlayerSaveV24 = typeof PlayerSaveV24.Type
@@ -352,6 +360,7 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV25Json = Schema.fromJsonString(PlayerSaveV25)
 const PlayerSaveV24Json = Schema.fromJsonString(PlayerSaveV24)
 const PlayerSaveV23Json = Schema.fromJsonString(PlayerSaveV23)
 const PlayerSaveV22Json = Schema.fromJsonString(PlayerSaveV22)
@@ -663,14 +672,23 @@ const migrateV23 = (save: PlayerSaveV23): PlayerSaveV24 => ({
 
 // NOTE: a save from before the Dare Journal starts it empty: the
 // milestones it already meets are reached at the next run's end.
-const migrateV24 = (save: PlayerSaveV24): PlayerSave => ({
+const migrateV24 = (save: PlayerSaveV24): PlayerSaveV25 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 25,
   journal: noJournal,
 })
 
-const fromV23 = (save: PlayerSaveV23): PlayerSave =>
-  migrateV24(migrateV23(save))
+// NOTE: a save from before the rank purses has none paid: the purses its
+// rank has reached are paid at load, once (src/app/update/purses.ts).
+const migrateV25 = (save: PlayerSaveV25): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+})
+
+const fromV24 = (save: PlayerSaveV24): PlayerSave =>
+  migrateV25(migrateV24(save))
+
+const fromV23 = (save: PlayerSaveV23): PlayerSave => fromV24(migrateV23(save))
 
 const fromV22 = (save: PlayerSaveV22): PlayerSave => fromV23(migrateV22(save))
 
@@ -725,9 +743,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 25,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV25Json)(raw), migrateV25),
+  },
+  {
     version: 24,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV24Json)(raw), migrateV24),
+      Option.map(Schema.decodeOption(PlayerSaveV24Json)(raw), fromV24),
   },
   {
     version: 23,

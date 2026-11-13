@@ -99,7 +99,7 @@ describe('the gear rows', () => {
         ),
         Scene.expectAll(
           Scene.all.selector('[role="radio"][id^="look-gun-skin-option-"]'),
-        ).toHaveCount(6),
+        ).toHaveCount(8),
         Scene.expect(lookOptionIn('Gun skin', 'Stock')).toHaveAttr(
           'data-standing',
           'Worn',
@@ -109,6 +109,10 @@ describe('the gear rows', () => {
           'ForSale',
         ),
         Scene.expect(lookOptionIn('Gun skin', 'Gold')).toHaveAttr(
+          'data-standing',
+          'Locked',
+        ),
+        Scene.expect(lookOptionIn('Gun skin', 'Ember')).toHaveAttr(
           'data-standing',
           'Locked',
         ),
@@ -126,7 +130,7 @@ describe('the gear rows', () => {
         ...openLookSection('Outfit'),
         Scene.expectAll(
           Scene.all.selector('[role="radio"][id^="look-shirt-color-option-"]'),
-        ).toHaveCount(10),
+        ).toHaveCount(12),
         Scene.expect(lookOptionIn('Outfit color', 'Blue')).toHaveAttr(
           'aria-checked',
           'true',
@@ -140,6 +144,10 @@ describe('the gear rows', () => {
           'ForSale',
         ),
         Scene.expect(lookOptionIn('Outfit color', 'Gold')).toHaveAttr(
+          'data-standing',
+          'Locked',
+        ),
+        Scene.expect(lookOptionIn('Outfit color', 'Frost')).toHaveAttr(
           'data-standing',
           'Locked',
         ),
