@@ -10,6 +10,7 @@ import {
   priceOf,
 } from '../../domain/closet'
 import { type LookPart, chooseLook as lookWith } from '../../domain/looks'
+import { isStyleOpen } from '../../domain/mastery'
 import { rollName } from '../../domain/playerName'
 import { lookUnlockId, markLooksSeen, withoutFresh } from '../../domain/unlocks'
 import * as Character from '../../features/profile/blocks/look/block'
@@ -19,7 +20,11 @@ import type { SettingTile } from '../../features/profile/message'
 import type { ProfileTab } from '../../features/profile/model'
 import { isCharacterKey, releaseAll } from '../../input/input'
 import { forgetTutorial } from '../../platform/save'
-import { type CosmeticKind, cosmeticIdOf } from '../../shared/playerData'
+import {
+  type CosmeticKind,
+  type PropStyle,
+  cosmeticIdOf,
+} from '../../shared/playerData'
 import { rankOf, totalPointsOf } from '../../world/heroes/rank'
 import { ProfileBinding, ProfileDialogBinding } from '../bindings'
 import { makeStep } from '../definition'
@@ -287,3 +292,20 @@ export const rollLook: UpdateStep = model => {
     }),
   )
 }
+
+// THE MASTERY TAB
+
+// NOTE: a prop style picked on the MASTERY tab: worn when the hero picked
+// has opened it on their track (src/domain/mastery.ts), refused with the
+// padlock's sound when not. A stale click on a style no longer open
+// changes nothing.
+export const choosePropStyle =
+  (style: PropStyle): UpdateStep =>
+  model =>
+    isStyleOpen(model.mastery, model.calling, style)
+      ? playSounds([uiCue('Pop')])(
+          modifyFields(model, {
+            appearance: look => modifyFields(look, { propStyle: () => style }),
+          }),
+        )
+      : playSounds([uiCue('Denied')])(model)

@@ -21,6 +21,7 @@ export const ProfileTab = Schema.Literals([
   'Name',
   'Account',
   'Settings',
+  'Mastery',
 ])
 export type ProfileTab = typeof ProfileTab.Type
 

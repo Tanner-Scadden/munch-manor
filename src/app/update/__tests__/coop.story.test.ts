@@ -10,7 +10,8 @@ import { freshRoom } from '../../../features/coop/roomState'
 import { ChangeLobby } from '../../../features/coop/steps'
 import { CODE, lobbyOf, memberOf } from '../../../features/coop/testing'
 import { RememberRoom, RequestRoom } from '../../../features/coop/update'
-import { type Appearance, lookCodeOf } from '../../../shared/playerData'
+import { lookCodeOf } from '../../../shared/lookCodes'
+import type { Appearance } from '../../../shared/playerData'
 import { home, newPlayerReady } from '../../../test/model.fixture'
 import { APPLICATION, resolveFocusCoop } from '../../../test/testing'
 import { noRank, pointsForRank } from '../../../world/heroes/rank'
@@ -31,6 +32,7 @@ const PICKED_LOOK: Appearance = {
   glasses: false,
   hat: 'None',
   gunSkin: 'Stock',
+  propStyle: 'Stock',
 }
 
 describe('co-op from home', () => {

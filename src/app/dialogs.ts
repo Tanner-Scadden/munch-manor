@@ -173,6 +173,7 @@ const munchopediaView: PanelChildViews['munchopedia'] = (
       model: model.munchopedia,
       viewInputs: {
         journal: model.journal,
+        mastery: model.mastery,
         proof: model.proof,
         fresh: model.freshUnlocks,
         killsByKind: model.bests.killsByKind,

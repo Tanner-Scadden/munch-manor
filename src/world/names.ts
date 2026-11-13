@@ -2,6 +2,7 @@ import { Array, Function, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
+import type { MasterySkin } from '../shared/masteryData'
 import { CHANDELIER_CRUSH_GOAL, type MissionId } from '../shared/missionData'
 import type {
   HouseSpot,
@@ -14,6 +15,7 @@ import {
   type CosmeticKind,
   FIRST_ESCAPE_BONES,
   Hat,
+  type PropStyle,
   type RunEnding,
 } from '../shared/playerData'
 import type { ProofEnding } from '../shared/proofData'
@@ -335,6 +337,27 @@ export const CALLING_NAMES: Readonly<Record<Calling, string>> = {
   PennyPincher: 'Penny Pincher',
   LineCook: 'Line Cook',
 }
+
+// NOTE: hero mastery's prop styles and gun mastery's skins
+// (src/domain/mastery.ts), as the Profile's MASTERY tab and the end card
+// name them.
+export const PROP_STYLE_NAMES: Readonly<Record<PropStyle, string>> = {
+  Stock: 'Stock',
+  Silver: 'Silver',
+  Night: 'Midnight',
+  Ember: 'Ember',
+  Gold: 'Gold',
+}
+
+export const MASTERY_SKIN_NAMES: Readonly<Record<MasterySkin, string>> = {
+  Gilded: 'Gilded',
+  Diamond: 'Diamond',
+}
+
+// NOTE: what a style is worn on, after its name (Gold prop), and the
+// hero's second Journal page, as a mastery level's reward.
+export const PROP_WORD = 'prop'
+export const HERO_STORY_NAME = 'Story page'
 
 // NOTE: teammate bots (src/domain/bots.ts) take a goofy name from here, letters
 // and spaces only so the name tag's small font can draw it.

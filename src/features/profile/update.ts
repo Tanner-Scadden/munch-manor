@@ -247,4 +247,8 @@ export const update = ProfileComposition.makeUpdate({
   CompletedFocusTutorialReset: makeNoopStep(),
 
   CompletedFocusLookOption: makeNoopStep(),
+
+  ClickedPropStyle: makeOutMessageStep.fromMessage(({ style }) =>
+    OutMessage.ChosePropStyle({ style }),
+  ),
 })

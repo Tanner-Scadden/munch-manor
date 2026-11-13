@@ -7,6 +7,7 @@ import menuCss from '../../features/home/menu.css?raw'
 import lobbyCss from '../../features/lobby/lobby.css?raw'
 import journalCss from '../../features/munchopedia/journal.css?raw'
 import closetCss from '../../features/profile/blocks/look/closet.css?raw'
+import masteryCss from '../../features/profile/mastery.css?raw'
 import profileCss from '../../features/profile/profile.css?raw'
 import proofCss from '../../features/proof/proof.css?raw'
 import stylesCss from '../styles.css?raw'
@@ -28,6 +29,7 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/app/styles.css', stylesCss],
   ['src/features/home/menu.css', menuCss],
   ['src/features/profile/profile.css', profileCss],
+  ['src/features/profile/mastery.css', masteryCss],
   ['src/features/heroes/calling.css', callingCss],
   ['src/features/profile/blocks/look/closet.css', closetCss],
   ['src/features/coop/coop.css', coopCss],

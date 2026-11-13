@@ -51,7 +51,7 @@ const measureUpright = measureSurfaceAs({
 
 describe('the Profile', () => {
   it.effect(
-    'the gear opens it on Settings: four tabs, sound and friends, and no devices or stats sharing',
+    'the gear opens it on Settings: five tabs, sound and friends, and no devices or stats sharing',
     () =>
       Scene.scene(
         APPLICATION,
@@ -62,11 +62,12 @@ describe('the Profile', () => {
         Scene.expect(profileDialog).toExist(),
         Scene.inside(
           Scene.role('tablist', { name: 'Profile' }),
-          Scene.expectAll(Scene.all.role('tab')).toHaveCount(4),
+          Scene.expectAll(Scene.all.role('tab')).toHaveCount(5),
         ),
         Scene.expect(tab('Look')).toExist(),
         Scene.expect(tab('Name')).toExist(),
         Scene.expect(tab('Account')).toExist(),
+        Scene.expect(tab('Mastery')).toExist(),
         Scene.expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
         Scene.expect(Scene.role('tablist', { name: 'Profile' })).toHaveAttr(
           'aria-orientation',
@@ -115,8 +116,10 @@ describe('the Profile', () => {
         focusTab(1),
         Scene.expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
         Scene.keydown(tab('Name'), 'End'),
-        focusTab(3),
-        Scene.expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
+        focusTab(4),
+        Scene.expect(tab('Mastery')).toHaveAttr('aria-selected', 'true'),
+        Scene.expect(Scene.role('list', { name: 'Heroes' })).toExist(),
+        Scene.expect(Scene.role('list', { name: 'Guns' })).toExist(),
       ),
   )
 

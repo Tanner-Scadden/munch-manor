@@ -16,6 +16,7 @@ import { hatRiseOf } from '../art/sprites/hatArt'
 import { maybeCrewBotAt } from '../domain/bots'
 import { maybeRoomOf } from '../domain/coopRoom'
 import { PLAYER_RADIUS } from '../shared/constants'
+import { noMastery } from '../shared/masteryData'
 import type { Appearance } from '../shared/playerData'
 import { isCallFresh } from '../world/party/medic'
 import {
@@ -127,7 +128,10 @@ export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
           seat,
           model: modifyFields(
             withWorld(model, world => focusSeat(world, slot)),
-            { appearance: () => lookOfSeat(model, slot) },
+            {
+              appearance: () => lookOfSeat(model, slot),
+              mastery: () => noMastery,
+            },
           ),
         }),
   )
@@ -493,6 +497,10 @@ export const seatModelsOf = (
     slot,
     model: modifyFields(
       withWorld(model, world => focusSeat(world, slot)),
-      { appearance: () => lookOfSeat(model, slot) },
+      {
+        appearance: () => lookOfSeat(model, slot),
+        mastery: mastery =>
+          slot === leadSeatOf(model).slot ? mastery : noMastery,
+      },
     ),
   }))

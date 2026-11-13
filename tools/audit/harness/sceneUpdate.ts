@@ -152,7 +152,9 @@ const profileTabOf = (settings: SceneSettings): Option.Option<ProfileTab> => {
         ? 'Account'
         : profileTab === 'settings'
           ? 'Settings'
-          : 'Look',
+          : profileTab === 'mastery'
+            ? 'Mastery'
+            : 'Look',
   )
 }
 

@@ -27,6 +27,7 @@ import {
   SOUND_ON_ICON,
   STATS_ICON,
   TAKES_PROGRESS_ICON,
+  TROPHY_ICON,
   TURN_PHONE_ICON,
   ZAP_ICON,
 } from '../../art/icons'
@@ -57,6 +58,7 @@ import {
   LINK_CODE_DATA,
   PasteLinkCodeOnTap,
 } from './linkClipboard'
+import { masteryTabView } from './masteryView'
 import { Message, type SettingTile } from './message'
 import type { Model, ProfileTab } from './model'
 import {
@@ -71,10 +73,11 @@ import {
 type TabLook = Readonly<{ word: string; icon: string }>
 
 // NOTE: each tab is one word and one icon. Its color comes from
-// [data-tab] in src/features/profile/profile.css: pink Look, yellow Name, teal Account, and
-// grey Settings.
+// [data-tab] in src/features/profile/profile.css: pink Look, gold Mastery,
+// yellow Name, teal Account, and grey Settings.
 const TAB_LOOKS: Readonly<Record<ProfileTab, TabLook>> = {
   Look: { word: 'Look', icon: CHARACTER_ICON },
+  Mastery: { word: 'Mastery', icon: TROPHY_ICON },
   Name: { word: 'Name', icon: NAME_ICON },
   Account: { word: 'Account', icon: ACCOUNT_ICON },
   Settings: { word: 'Settings', icon: SETTINGS_ICON },
@@ -916,6 +919,16 @@ const lookPageView = (
 ): Html =>
   h.div(pageAttributes(panel, 'Look', h), [lookTabView(model, inputs, h)])
 
+const masteryPageView = (
+  _model: Model,
+  inputs: ViewInputs,
+  panel: PageAttributes,
+  h: ProfileViewBuilder,
+): Html =>
+  h.div(pageAttributes(panel, 'Mastery', h), [
+    masteryTabView(inputs.mastery, h),
+  ])
+
 const namePageView = (
   model: Model,
   _inputs: ViewInputs,
@@ -953,6 +966,7 @@ const PAGE_VIEWS: Readonly<
   >
 > = {
   Look: lookPageView,
+  Mastery: masteryPageView,
   Name: namePageView,
   Account: accountPageView,
   Settings: settingsPageView,

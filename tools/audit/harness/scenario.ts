@@ -23,6 +23,7 @@ import {
 } from '@game/app/model'
 import { addBot } from '@game/domain/bots'
 import { milestoneUnlockId } from '@game/domain/journal'
+import { MASTERY_GUNS, fitPropStyle } from '@game/domain/mastery'
 import { isEndScreen, withBests } from '@game/domain/run'
 import { unlocksAt } from '@game/domain/unlocks'
 import { prizeUnlockId } from '@game/features/guide/shopGuide'
@@ -40,6 +41,7 @@ import { DareThingState, Finale } from '@game/world/dare/dareSchema'
 import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
 import { MilestoneId, thingsOpenedBy } from '@game/world/dare/milestones'
 import { TRAPS } from '@game/world/gear/traps'
+import { CALLINGS } from '@game/world/heroes/calling'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
 import { levelOf } from '@game/world/level/arena'
@@ -373,6 +375,46 @@ const withSampleJournal = (model: Model): Model =>
       ),
   })
 
+// NOTE: `count` shared out along `keys`, the last the whole and each
+// before it a share less, so the tracks stand at every stage at once.
+const stepped = (
+  keys: ReadonlyArray<string>,
+  count: number,
+): Readonly<Record<string, number>> =>
+  Record.fromEntries(
+    Array.map(keys, (key, index): readonly [string, number] => [
+      key,
+      Math.round((count * (index + 1)) / keys.length),
+    ]),
+  )
+
+const withMasteryOf = (
+  model: Model,
+  config: SceneSettings['config'],
+): Model => {
+  const { heropoints, gunmastery, propstyle } = config
+  const withTracks = modifyFields(model, {
+    mastery: mastery => ({
+      heroes:
+        heropoints === undefined
+          ? mastery.heroes
+          : stepped(CALLINGS, heropoints),
+      guns:
+        gunmastery === undefined
+          ? mastery.guns
+          : stepped(MASTERY_GUNS, gunmastery),
+    }),
+  })
+  return propstyle === undefined
+    ? withTracks
+    : fitPropStyle(
+        modifyFields(withTracks, {
+          appearance: look =>
+            modifyFields(look, { propStyle: () => propstyle }),
+        }),
+      )
+}
+
 const EVERY_NEW_THING = thingsOpenedBy([
   'FirstEscape',
   'ThingInEveryRoom',
@@ -542,6 +584,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       appearance: look => modifyFields(look, { gunSkin: () => skin }),
     })
   }
+  model = withMasteryOf(model, config)
   if (!config.fresh) {
     model = modifyFields(model, {
       seenUnlocks: () => unlocksAt(rankOf(totalPointsOf(model.rank))),
@@ -871,6 +914,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         glasses: glasses === 'Glasses' || a.glasses,
         hat: a.hat,
         gunSkin: a.gunSkin,
+        propStyle: a.propStyle,
       }),
     })
   }

@@ -43,6 +43,14 @@ import {
 
 import { API_ORIGIN } from './apiOrigin'
 import {
+  GainedMastery,
+  GunKillsRow,
+  HeroMasteryRow,
+  gunRowsOf,
+  heroRowsOf,
+  masteryOfRows,
+} from './masteryScope'
+import {
   ClaimedMission,
   ProgressedMissions,
   RerolledMission,
@@ -212,6 +220,10 @@ const saveOfRow = (
   kills: ReadonlyArray<KillsRow>,
   bought: ReadonlyArray<BoughtRow>,
   proof: ReadonlyArray<ProofRow>,
+  mastery: Readonly<{
+    heroes: ReadonlyArray<HeroMasteryRow>
+    guns: ReadonlyArray<GunKillsRow>
+  }>,
 ): PlayerSave => ({
   version: SAVE_VERSION,
   onboarding: row.onboarding,
@@ -268,6 +280,7 @@ const saveOfRow = (
   missions: row.missions,
   journal: row.journal,
   proof: Array.map(proof, proofOfRow),
+  mastery: masteryOfRows(mastery),
 })
 
 // LEGACY
@@ -363,6 +376,25 @@ const readProof = (client: SqliteClientService) =>
     Effect.catchTag('SchemaError', () => Effect.succeed([])),
   )
 
+const readMastery = (client: SqliteClientService) =>
+  Effect.gen(function* () {
+    const heroes = yield* pipe(
+      client.query(
+        HeroMasteryRow,
+        client.sql`SELECT hero, points FROM hero_mastery`,
+      ),
+      Effect.catchTag('SchemaError', () => Effect.succeed([])),
+    )
+    const guns = yield* pipe(
+      client.query(
+        GunKillsRow,
+        client.sql`SELECT gun, kills FROM kills_by_gun`,
+      ),
+      Effect.catchTag('SchemaError', () => Effect.succeed([])),
+    )
+    return { heroes, guns }
+  })
+
 const readView = (client: SqliteClientService) =>
   Effect.gen(function* () {
     const sql = client.sql
@@ -380,7 +412,8 @@ const readView = (client: SqliteClientService) =>
     const kills = yield* readKills(client)
     const bought = yield* readBought(client)
     const proof = yield* readProof(client)
-    return Option.some(saveOfRow(maybeRow.value, kills, bought, proof))
+    const mastery = yield* readMastery(client)
+    return Option.some(saveOfRow(maybeRow.value, kills, bought, proof, mastery))
   })
 
 const readDevices = (client: SqliteClientService) =>
@@ -440,6 +473,16 @@ const writeWhole = (
         Array.match(proofRows, {
           onEmpty: () => Effect.void,
           onNonEmpty: rows => sql`INSERT INTO proof ${sql.insert(rows)}`,
+        }),
+        sql`DELETE FROM hero_mastery`,
+        Array.match(heroRowsOf(save.mastery), {
+          onEmpty: () => Effect.void,
+          onNonEmpty: rows => sql`INSERT INTO hero_mastery ${sql.insert(rows)}`,
+        }),
+        sql`DELETE FROM kills_by_gun`,
+        Array.match(gunRowsOf(save.mastery), {
+          onEmpty: () => Effect.void,
+          onNonEmpty: rows => sql`INSERT INTO kills_by_gun ${sql.insert(rows)}`,
         }),
       ]),
     ),
@@ -649,6 +692,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     StampedMissionDay: ({ day }) => replica.run(StampedMissionDay, { day }),
     ShelvedProof: ({ entry }) => replica.run(ShelvedProof, { entry }),
     KeptJournal: ({ added }) => replica.run(KeptJournal, { added }),
+    GainedMastery: ({ added }) => replica.run(GainedMastery, { added }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)

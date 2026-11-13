@@ -92,6 +92,7 @@ const MIGRATED_LOOK: PlayerSave['appearance'] = {
   glasses: false,
   hat: 'None',
   gunSkin: 'Stock',
+  propStyle: 'Stock',
 }
 
 const versionNineSave = { ...learnedSave, appearance: LEGACY_LOOK }
@@ -406,6 +407,7 @@ describe('the schema', () => {
         glasses: true,
         hat: 'None',
         gunSkin: 'Stock',
+        propStyle: 'Stock',
       }),
     )
     const plain = jsonOf({
@@ -435,6 +437,7 @@ describe('the schema', () => {
         glasses: false,
         hat: 'None',
         gunSkin: 'Stock',
+        propStyle: 'Stock',
       }),
     )
     const { appearance: _look, ...rest } = learnedSave

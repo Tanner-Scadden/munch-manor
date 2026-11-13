@@ -2,7 +2,8 @@ import { Array, Function, Option } from 'effect'
 
 import type { Lobby, LobbyMember } from '@munch/netcode'
 
-import { type Calling, callingOfCode, lookOfCode } from '../shared/playerData'
+import { lookOfCode } from '../shared/lookCodes'
+import { type Calling, callingOfCode } from '../shared/playerData'
 import type { Appearance } from '../world/schema/worldSchema'
 
 // NOTE: each player's own look rides in the lobby (the member's `look`,
@@ -22,6 +23,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     glasses: false,
     hat: 'None',
     gunSkin: 'Stock',
+    propStyle: 'Stock',
   },
   {
     body: 'Slim',
@@ -35,6 +37,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     glasses: true,
     hat: 'None',
     gunSkin: 'Stock',
+    propStyle: 'Stock',
   },
   {
     body: 'Broad',
@@ -48,6 +51,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     glasses: false,
     hat: 'None',
     gunSkin: 'Stock',
+    propStyle: 'Stock',
   },
   {
     body: 'Slim',
@@ -61,6 +65,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     glasses: false,
     hat: 'None',
     gunSkin: 'Stock',
+    propStyle: 'Stock',
   },
 ]
 

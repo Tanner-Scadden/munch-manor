@@ -283,6 +283,19 @@ export const HERO_REASONS: Readonly<Record<Calling, string>> = {
   LineCook: "Wants Grandma Munch's soup recipe. Will not say why.",
 }
 
+// NOTE: each hero's second page (hero mastery's level 3,
+// src/domain/mastery.ts): what they found out in the manor, under the
+// reason they came.
+export const HERO_STORIES: Readonly<Record<Calling, string>> = {
+  You: 'The friends never came in after you. The door locked from their side.',
+  Handyman:
+    'His boards are nailed in from the inside too. Someone did it before him.',
+  TrackStar:
+    'Every hall loops back to the dining room. Running harder does not help.',
+  PennyPincher: 'The silver is real. The zombies are counting it too.',
+  LineCook: 'The recipe is in the pot. The last cook never left the kitchen.',
+}
+
 export const isHeroKnown: {
   (calling: Calling): (journal: SavedJournal) => boolean
   (journal: SavedJournal, calling: Calling): boolean

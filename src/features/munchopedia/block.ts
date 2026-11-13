@@ -3,6 +3,7 @@ import { Block } from 'foldkit'
 import type { Html } from 'foldkit/html'
 
 import type { SavedJournal } from '../../shared/journalData'
+import type { SavedMastery } from '../../shared/masteryData'
 import type { SavedProof } from '../../shared/proofData'
 import type { KillCounts, ZombieKind } from '../../world/schema/worldSchema'
 import { InMessage } from './inMessage'
@@ -19,6 +20,7 @@ import { Model } from './model'
 // keeps sending the root's Message.
 export type ViewInputs = Readonly<{
   journal: SavedJournal
+  mastery: SavedMastery
   proof: SavedProof
   fresh: ReadonlyArray<string>
   killsByKind: KillCounts

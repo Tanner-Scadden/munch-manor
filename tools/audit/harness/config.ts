@@ -25,6 +25,7 @@ import {
   Hat,
   Outfit,
   Print,
+  PropStyle,
   RunEnding,
   ShirtColor,
   SkinTone,
@@ -241,7 +242,7 @@ export const HarnessConfig = Schema.Struct({
   look: Schema.optionalKey(Look),
   picker: Flag,
   looksection: Choice(['Body', 'Hair', 'Outfit', 'Gear']),
-  profile: Choice(['look', 'name', 'account', 'settings']),
+  profile: Choice(['look', 'name', 'account', 'settings', 'mastery']),
   name: Schema.optionalKey(Schema.String),
   sync: Choice(['local', 'connecting', 'synced', 'offline', 'broken']),
   devices: Num(1),
@@ -387,6 +388,12 @@ export const HarnessConfig = Schema.Struct({
   // they wear NEW badges and pips.
   hat: Schema.optionalKey(Hat),
   skin: Schema.optionalKey(GunSkin),
+  // Hero and gun mastery (src/domain/mastery.ts): `heropoints` gives the
+  // last hero that many points and each before it a share less, as
+  // `gunmastery` does the guns, and `propstyle` is the prop style worn.
+  heropoints: MaybeNum,
+  gunmastery: MaybeNum,
+  propstyle: Schema.optionalKey(PropStyle),
   bought: Schema.optionalKey(ListOf(Schema.String)),
   fresh: Flag,
   bones: MaybeNum,

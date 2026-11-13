@@ -44,11 +44,8 @@ import {
   verifyToken,
 } from '@munch/sync-engine'
 
-import {
-  callingOfCode,
-  lookCodeOf,
-  lookOfCode,
-} from '../../src/shared/playerData.ts'
+import { lookCodeOf, lookOfCode } from '../../src/shared/lookCodes.ts'
+import { callingOfCode } from '../../src/shared/playerData.ts'
 import {
   type ScopeHost,
   type ScopeHostFailed,

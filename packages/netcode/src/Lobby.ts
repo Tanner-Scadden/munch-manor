@@ -135,14 +135,14 @@ export const NameInput = Schema.String.check(Schema.isMaxLength(MAX_NAME_INPUT))
 
 // LOOKS
 
-// NOTE: a player's look as the game writes it (src/shared/playerData.ts,
+// NOTE: a player's look as the game writes it (src/shared/lookCodes.ts,
 // lookCodeOf): a few words joined by dots, such as
 // `Female.Ponytail.Ginger.Tan.Teal`. The scope keeps it as text and knows
 // nothing of what the words mean; anything else becomes '', which the game
 // draws as the seat's own look. The Worker checks the words before it
 // seats anyone.
 export const MAX_LOOK_INPUT = 64
-const LOOK_PATTERN = /^[A-Za-z]{1,12}(\.[A-Za-z]{1,12}){0,7}$/
+const LOOK_PATTERN = /^[A-Za-z]{1,12}(\.[A-Za-z]{1,12}){0,8}$/
 
 export const LookInput = Schema.String.check(Schema.isMaxLength(MAX_LOOK_INPUT))
 
@@ -167,7 +167,7 @@ export const cleanRank = (raw: number): number =>
 
 // CALLINGS
 
-// NOTE: a player's calling as the game writes it (src/shared/playerData.ts,
+// NOTE: a player's calling as the game writes it (src/shared/lookCodes.ts,
 // `Calling`): one short word, such as `Handyman`. Like a look, the scope
 // keeps it as text and knows nothing of what the words mean; anything that
 // is not a short word becomes DEFAULT_CALLING, which the game plays as no

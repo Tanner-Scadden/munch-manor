@@ -5,11 +5,12 @@ import { modifyFields } from 'foldkit/struct'
 import type { Model } from '../../app/model'
 import type { SoundEffect } from '../../audio/audio'
 import { isBotCrew } from '../../domain/bots'
-import type { RunRecord } from '../../domain/clientSchema'
+import { MasteryUnlock, type RunRecord } from '../../domain/clientSchema'
 import { giftsOpenedBy } from '../../domain/closet'
 import { isEndScreen, withBests } from '../../domain/run'
 import type { SharePath } from '../../platform/analytics'
 import { isObjectFirst, isObjectSecond } from '../../shared/dualArgs'
+import { MasterySkin } from '../../shared/masteryData'
 import {
   Calling,
   CosmeticKind,
@@ -28,6 +29,7 @@ import {
   type DifficultyBests,
   Phase,
   RunMode,
+  WeaponKind,
 } from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
 import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
@@ -288,7 +290,8 @@ export const isRankedUp = (model: Model): boolean =>
 // after the badge pops: the callings first, then the gifts by rank, the
 // Bones purses by rank (src/shared/rankCurve.ts), then
 // each milestone the run reached (src/domain/journal.ts), a new thing for
-// the list or a story page, one card at a time, each held a moment before
+// the list or a story page, then each mastery level the run's payout
+// reached (src/domain/mastery.ts), a hero's or a gun's, one card at a time, each held a moment before
 // the next flips over it. The last stays.
 export const CALLING_FLIP_MS = 420
 export const UNLOCK_HOLD_MS = 500
@@ -298,6 +301,8 @@ export const EndUnlock = defineTaggedUnion({
   Gift: { kind: CosmeticKind, name: Schema.String },
   Purse: { rank: Schema.Finite, bones: Schema.Finite },
   Milestone: { milestone: MilestoneId },
+  HeroLevel: { calling: Calling, level: Schema.Finite },
+  GunMastery: { kind: WeaponKind, skin: MasterySkin },
 })
 export type EndUnlock = typeof EndUnlock.Type
 
@@ -322,6 +327,14 @@ export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
         ),
         ...Array.map(model.journalRun.reached, milestone =>
           EndUnlock.Milestone({ milestone }),
+        ),
+        ...Array.map(model.masteryRun.unlocks, unlock =>
+          MasteryUnlock.match(unlock, {
+            HeroLevel: ({ calling, level }) =>
+              EndUnlock.HeroLevel({ calling, level }),
+            GunMastery: ({ kind, skin }) =>
+              EndUnlock.GunMastery({ kind, skin }),
+          }),
         ),
       ]
     },

@@ -62,7 +62,8 @@ import {
 import { CELLAR_BULB_SPRITE } from '../../src/render/room/cellarArt'
 import { CHANDELIER_SPRITES } from '../../src/render/room/diningArt'
 import { SHELF_SPRITES } from '../../src/render/room/libraryArt'
-import { Hat, Outfit } from '../../src/shared/playerData'
+import { MasterySkin } from '../../src/shared/masteryData'
+import { Hat, Outfit, PropStyle } from '../../src/shared/playerData'
 import { DareKind } from '../../src/world/dare/dareSchema'
 import { CALLINGS } from '../../src/world/heroes/calling'
 import {
@@ -71,8 +72,10 @@ import {
   DARE_NAMES,
   HAT_NAMES,
   JOURNAL_NAME,
+  MASTERY_SKIN_NAMES,
   PICKUP_NAMES,
   PROOF_ENDING_NAMES,
+  PROP_STYLE_NAMES,
   TRAP_NAMES,
   ZOMBIE_NAMES,
   gunTierName,
@@ -230,6 +233,43 @@ const lookEntry = (
   frames: look => framesSprites(playerSprites(appearance).walk, look),
 })
 
+// NOTE: the mastery prop styles (src/art/sprites/propStyles.ts), drafts
+// for review: each hero in each style past Stock, YOU in its medal.
+const MASTERY_SOURCE = 'src/art/sprites/propStyles.ts'
+
+const masterySections = (): ReadonlyArray<Section> => [
+  ...Array.map(CALLINGS, calling => ({
+    title: `${CALLING_NAMES[calling]} mastery`,
+    entries: Array.map(
+      Array.filter(PropStyle.literals, style => style !== 'Stock'),
+      (propStyle): Entry => ({
+        id: `mastery/${calling}/${propStyle}`,
+        title: `${PROP_STYLE_NAMES[propStyle]} ${CALLING_NAMES[calling]}`,
+        source: MASTERY_SOURCE,
+        frameMs: WALK_FRAME_MS,
+        frames: (look: Look) =>
+          framesSprites(
+            playerSprites({ ...defaultAppearance, propStyle }, calling).walk,
+            look,
+          ),
+      }),
+    ),
+  })),
+  {
+    title: 'Gun mastery skins',
+    entries: Array.flatMap(MasterySkin.literals, skin =>
+      Array.map(WeaponKind.literals, kind =>
+        stillEntry(
+          `mastery/gun/${kind}/${skin}`,
+          `${MASTERY_SKIN_NAMES[skin]} ${gunTierName(kind, 0)}`,
+          'src/art/sprites/guns.ts',
+          gunSprite(kind, 0, 0, skin),
+        ),
+      ),
+    ),
+  },
+]
+
 const looksSections = (): ReadonlyArray<Section> => [
   {
     title: 'Co-op seat looks',
@@ -265,6 +305,7 @@ const looksSections = (): ReadonlyArray<Section> => [
       ),
     ),
   },
+  ...masterySections(),
 ]
 
 // RATTLES

@@ -2,6 +2,8 @@ import { Array, Option, Schema, Struct } from 'effect'
 
 import { unlocksAt } from '../domain/unlocks'
 import { noJournal } from '../shared/journalData'
+import { StoredAppearance } from '../shared/lookCodes'
+import { noMastery } from '../shared/masteryData'
 import { noMissions } from '../shared/missionData'
 import {
   Calling,
@@ -26,7 +28,6 @@ import {
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
-  StoredAppearance,
   noBonuses,
   noSavedRunRecords,
 } from '../shared/playerData'
@@ -206,10 +207,18 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 26 is the save before hero and gun mastery. Its look reads
+// with the stock prop (Appearance's default).
+const PlayerSaveV26 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['mastery']),
+  version: Schema.Literal(26),
+})
+type PlayerSaveV26 = typeof PlayerSaveV26.Type
+
 // NOTE: version 25 is the save before the rank purses. Its bonuses read
 // with no purse paid (SavedBonuses' default); they are paid at load.
 const PlayerSaveV25 = Schema.Struct({
-  ...PlayerSave.fields,
+  ...PlayerSaveV26.fields,
   version: Schema.Literal(25),
 })
 type PlayerSaveV25 = typeof PlayerSaveV25.Type
@@ -360,6 +369,7 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV26Json = Schema.fromJsonString(PlayerSaveV26)
 const PlayerSaveV25Json = Schema.fromJsonString(PlayerSaveV25)
 const PlayerSaveV24Json = Schema.fromJsonString(PlayerSaveV24)
 const PlayerSaveV23Json = Schema.fromJsonString(PlayerSaveV23)
@@ -602,7 +612,7 @@ const migrateV14 = (save: PlayerSaveV14): PlayerSaveV15 => ({
 const migrateV15 = ({ boughtHats, ...save }: PlayerSaveV15): PlayerSaveV16 => ({
   ...save,
   version: 16,
-  appearance: { ...save.appearance, gunSkin: 'Stock' },
+  appearance: { ...save.appearance, gunSkin: 'Stock', propStyle: 'Stock' },
   boughtCosmetics: boughtHats,
   seenUnlocks: unlocksAt(rankOf(totalPointsOf(save.rank))),
 })
@@ -680,13 +690,23 @@ const migrateV24 = (save: PlayerSaveV24): PlayerSaveV25 => ({
 
 // NOTE: a save from before the rank purses has none paid: the purses its
 // rank has reached are paid at load, once (src/app/update/purses.ts).
-const migrateV25 = (save: PlayerSaveV25): PlayerSave => ({
+const migrateV25 = (save: PlayerSaveV25): PlayerSaveV26 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 26,
 })
 
-const fromV24 = (save: PlayerSaveV24): PlayerSave =>
-  migrateV25(migrateV24(save))
+// NOTE: a save from before mastery starts every hero's track and every
+// gun's kills at none: kills were never kept by gun before.
+const migrateV26 = (save: PlayerSaveV26): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  mastery: noMastery,
+})
+
+const fromV25 = (save: PlayerSaveV25): PlayerSave =>
+  migrateV26(migrateV25(save))
+
+const fromV24 = (save: PlayerSaveV24): PlayerSave => fromV25(migrateV24(save))
 
 const fromV23 = (save: PlayerSaveV23): PlayerSave => fromV24(migrateV23(save))
 
@@ -743,9 +763,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 26,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV26Json)(raw), migrateV26),
+  },
+  {
     version: 25,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV25Json)(raw), migrateV25),
+      Option.map(Schema.decodeOption(PlayerSaveV25Json)(raw), fromV25),
   },
   {
     version: 24,

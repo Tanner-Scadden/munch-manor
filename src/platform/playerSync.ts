@@ -3,6 +3,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { DayStamp } from '../shared/dayStamp'
 import { SavedJournal, journalAdded } from '../shared/journalData'
+import { SavedMastery, masteryAdded } from '../shared/masteryData'
 import {
   ALL_THREE_BONES,
   MissionReroll,
@@ -84,6 +85,7 @@ export const PlayerChange = defineTaggedUnion({
   StampedMissionDay: { day: DayStamp },
   ShelvedProof: { entry: ProofEntry },
   KeptJournal: { added: SavedJournal },
+  GainedMastery: { added: SavedMastery },
   PaidRankPurse: { rank: Schema.Finite },
 })
 export type PlayerChange = typeof PlayerChange.Type
@@ -373,6 +375,9 @@ export const changesBetween: {
         Array.map(journalAdded(before.journal, after.journal), added =>
           PlayerChange.KeptJournal({ added }),
         ),
+        Array.map(masteryAdded(before.mastery, after.mastery), added =>
+          PlayerChange.GainedMastery({ added }),
+        ),
         Array.map(
           Array.filter(
             after.boughtCosmetics,
@@ -450,6 +455,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     StampedMissionDay: () => change,
     ShelvedProof: () => change,
     KeptJournal: () => change,
+    GainedMastery: () => change,
     PaidRankPurse: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
@@ -461,7 +467,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
 // NOTE: a finished run counts each time it is sent, and the power-ups seen
 // and forgotten must keep their order, so those are all kept, as are the
 // missions' increments and marks, each find shelved, what each run
-// added to the journal, and each purse paid. Every other
+// added to the journal, each mastery gained, and each purse paid. Every other
 // change sets its field to what it holds now, so one of each is enough.
 const isSetOnce = (change: PlayerChange): boolean =>
   !PlayerChange.isAnyOf([
@@ -479,6 +485,7 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'StampedMissionDay',
     'ShelvedProof',
     'KeptJournal',
+    'GainedMastery',
     'PaidRankPurse',
   ])(change)
 

@@ -29,6 +29,12 @@ import {
   spriteSet,
 } from './sprite'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './sprites/hatArt'
+import {
+  YOU_MEDAL,
+  channelOf,
+  propStylePalette,
+  styledProp,
+} from './sprites/propStyles'
 
 // OPTIONS
 
@@ -127,9 +133,6 @@ const COIN_COLOR = '#ffd23f'
 const FLAME_COLOR = '#ff7a1a'
 const TOQUE_BAND_COLOR = '#c9c3ad'
 
-const channel = (color: string, index: number): number =>
-  Number.parseInt(String.slice(1 + index * 2, 3 + index * 2)(color), 16)
-
 const hexByte = (value: number): string =>
   String.padStart(2, '0')(Math.round(value).toString(16))
 
@@ -138,8 +141,8 @@ const mix = (from: string, to: string, amount: number): string =>
   `#${Array.join(
     Array.map([0, 1, 2], index =>
       hexByte(
-        channel(from, index) +
-          (channel(to, index) - channel(from, index)) * amount,
+        channelOf(from, index) +
+          (channelOf(to, index) - channelOf(from, index)) * amount,
       ),
     ),
     '',
@@ -179,6 +182,7 @@ export const playerPalette = (appearance: Appearance): Palette => {
     F: FLAME_COLOR,
     N: TOQUE_BAND_COLOR,
     ...HAT_COLORS,
+    ...propStylePalette(appearance.propStyle),
     ...Record.fromEntries(
       Array.map(RAINBOW_STRIPES, (color, index) => [
         symbolAt(RAINBOW_SYMBOLS, index, ''),
@@ -472,13 +476,28 @@ const overlayRows = (base: Rows, top: Rows): Rows =>
     }),
   )
 
+// NOTE: a hero's two props in the look's mastery style
+// (src/art/sprites/propStyles.ts): YOU wears the medal once a style is on.
+const propsOf = (
+  calling: Calling,
+  appearance: Appearance,
+): Readonly<{ head: Rows; body: Rows }> => {
+  const style = appearance.propStyle
+  const palette = playerPalette(appearance)
+  const body =
+    calling === 'You' && style !== 'Stock' ? YOU_MEDAL : BODY_PROPS[calling]
+  return {
+    head: styledProp(CALLING_PROPS[calling], style, palette),
+    body: styledProp(body, style, palette),
+  }
+}
+
 const withBodyProp = (
   rows: Rows,
   torsoRowOf: (y: number) => number,
-  calling: Calling,
-): Rows => {
-  const prop = BODY_PROPS[calling]
-  return Array.isReadonlyArrayEmpty(prop)
+  prop: Rows,
+): Rows =>
+  Array.isReadonlyArrayEmpty(prop)
     ? rows
     : Array.map(rows, (row, y) =>
         y < TORSO_ROW
@@ -488,7 +507,6 @@ const withBodyProp = (
               onSome: cover => overlayRow(row, cover),
             }),
       )
-}
 
 // HATS
 
@@ -649,6 +667,7 @@ export const playerPixels: {
     const shape = BODY_SHAPES[appearance.body]
     const outfit = OUTFIT_ART[appearance.outfit]
     const hair = HAIR_ART[appearance.hairStyle]
+    const props = propsOf(calling, appearance)
 
     // NOTE: the torso's pixel rows read the print by their own row: the full
     // torso its three rows, the exhale its top and bottom.
@@ -661,15 +680,13 @@ export const playerPixels: {
           appearance.print,
         ),
         torsoRowOf,
-        calling,
+        props.body,
       )
       const bearded = appearance.beard ? overlayRows(printed, BEARD) : printed
       const haired = overlayRows(bearded, hair)
       const glassed = appearance.glasses ? overlayRows(haired, GLASSES) : haired
       const propped =
-        appearance.hat === 'None'
-          ? overlayRows(glassed, CALLING_PROPS[calling])
-          : glassed
+        appearance.hat === 'None' ? overlayRows(glassed, props.head) : glassed
       return withHat(overlayRows(propped, raised), appearance)
     }
     const legs = (rows: Rows) =>
@@ -788,6 +805,7 @@ export const appearanceKey: {
         appearance.beard ? 'Beard' : 'Shaven',
         appearance.glasses ? 'Glasses' : 'Bare',
         appearance.hat,
+        appearance.propStyle,
       ],
       '.',
     ),
@@ -934,6 +952,7 @@ export const randomAppearance: {
       glasses,
       hat: current.hat,
       gunSkin: current.gunSkin,
+      propStyle: current.propStyle,
     }
     return [
       afterGlasses,
