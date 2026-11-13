@@ -316,7 +316,7 @@ Built on 2026-11-10: 1.25 times the zombies, Uncle Chunk at the start of the wav
 
 ### Leaving early
 
-Proposed. The back door in the kitchen (or a window) is an early exit: leave with part of the dare, and the run ends as an escape that pays less, and your friends call you chicken. The whole dare, hat and all, pays most. Push your luck (extraction shooters).
+Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the back door in the kitchen, held open in a break once at least one thing is found. It is an early exit: leave with part of the dare, and the run ends as an escape that pays less, and your friends call you chicken. The whole dare, hat and all, pays most. Push your luck (extraction shooters).
 
 ### Made to be talked about
 
@@ -328,7 +328,7 @@ Built on 2026-11-10.
 
 ### Between runs
 
-Proposed. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
+Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the intro's car beat carries the line. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
 
 ### Heroes and bots
 
@@ -353,4 +353,4 @@ The lore choices still open, roughly in order. Settled and built on 2026-11-10: 
 2. **Rattles.** His lines are drafts for review, and his look is open.
 3. **Which feats open which cases,** and how many skeleton keys a room and a fridge pull cost: starting numbers, tuned in the balance pass.
 4. **What is a Bone?** What you earn across runs, now that the run's own currency is skeleton keys.
-5. **Leaving early** and **between runs**: both still proposed.
+5. **Leaving early** and **between runs**: decided on 2026-11-12, to build (`docs/PROGRESSION_PLAN.md`), with the Proof Shelf, whose story pages tell why the party never ended.
