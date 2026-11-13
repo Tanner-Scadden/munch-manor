@@ -16,6 +16,7 @@ import {
   type Difficulty,
   isBetterRun,
 } from '../../shared/playerData'
+import { purseBonesAt, purseRanksBetween } from '../../shared/rankCurve'
 import { dareCardOf } from '../../world/dare/dare'
 import { MilestoneId } from '../../world/dare/milestones'
 import { callingsOpenedBy } from '../../world/heroes/calling'
@@ -284,7 +285,8 @@ export const isRankedUp = (model: Model): boolean =>
   )
 
 // NOTE: a rank up that opens a calling or a gift look flips a card for each
-// after the badge pops: the callings first, then the gifts by rank, then
+// after the badge pops: the callings first, then the gifts by rank, the
+// Bones purses by rank (src/shared/rankCurve.ts), then
 // each milestone the run reached (src/domain/journal.ts), a new thing for
 // the list or a story page, one card at a time, each held a moment before
 // the next flips over it. The last stays.
@@ -294,6 +296,7 @@ export const UNLOCK_HOLD_MS = 500
 export const EndUnlock = defineTaggedUnion({
   Calling: { calling: Calling },
   Gift: { kind: CosmeticKind, name: Schema.String },
+  Purse: { rank: Schema.Finite, bones: Schema.Finite },
   Milestone: { milestone: MilestoneId },
 })
 export type EndUnlock = typeof EndUnlock.Type
@@ -310,6 +313,12 @@ export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
         ),
         ...Array.map(giftsOpenedBy(before, after), ({ kind, name }) =>
           EndUnlock.Gift({ kind, name }),
+        ),
+        ...Array.map(purseRanksBetween(before, after), rank =>
+          EndUnlock.Purse({
+            rank,
+            bones: Option.getOrElse(purseBonesAt(rank), () => 0),
+          }),
         ),
         ...Array.map(model.journalRun.reached, milestone =>
           EndUnlock.Milestone({ milestone }),

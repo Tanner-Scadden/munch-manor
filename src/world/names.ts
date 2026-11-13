@@ -390,6 +390,9 @@ export const hatNameOf = (name: string): string =>
     () => name,
   )
 
+// NOTE: a rank's Bones purse, on the end card's flip and by the rank bar.
+export const PURSE_NAME = 'Bag of Bones'
+
 export const giftName: {
   (name: string): (kind: CosmeticKind) => string
   (kind: CosmeticKind, name: string): string

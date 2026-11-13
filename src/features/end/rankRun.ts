@@ -6,12 +6,14 @@ import { isHumanCrew } from '../../domain/bots'
 import { effectiveModifiersOf } from '../../domain/onlineRun'
 import { isEndScreen, isGuided, isInRun, isOnHome } from '../../domain/run'
 import { playedDifficultyOf } from '../../platform/analyticsRun'
+import { purseBonesAt, purseRanksBetween } from '../../shared/rankCurve'
 import { dareItemsFoundOf } from '../../world/dare/dare'
 import {
   type RunPayInput,
   bonesForRun,
   grantedVeteran,
   pointsForRun,
+  rankOf,
   totalPointsOf,
 } from '../../world/heroes/rank'
 import { leadSeatOf } from '../../world/party/party'
@@ -145,3 +147,52 @@ export const grantVeteran = (model: Model): Model =>
     : modifyFields(model, {
         rank: rank => grantedVeteran(rank, killTotal(model.bests.killsByKind)),
       })
+
+// NOTE: every rank's Bones purse the player's rank has reached and not been
+// paid (src/shared/rankCurve.ts), paid once into the earned Bones, the rank
+// kept in `bonuses.purses` so the player scope pays it once across devices
+// (PaidRankPurse). A run's rank up pays its purses in the after-message
+// steps, and a save read pays any its rank reached before (loadSave in
+// src/app/update/save.ts), the front-loaded curve's new ranks too. The
+// same Model comes back when nothing is due.
+export const payPurses = (model: Model): Model => {
+  const due = Array.filter(
+    purseRanksBetween(0, rankOf(totalPointsOf(model.rank))),
+    rank => !Array.contains(model.bonuses.purses, rank),
+  )
+  return Array.isReadonlyArrayEmpty(due)
+    ? model
+    : modifyFields(model, {
+        rank: rank =>
+          modifyFields(rank, {
+            earnedBones: earned =>
+              earned +
+              Array.reduce(
+                due,
+                0,
+                (total, purseRank) =>
+                  total + Option.getOrElse(purseBonesAt(purseRank), () => 0),
+              ),
+          }),
+        bonuses: bonuses =>
+          modifyFields(bonuses, {
+            purses: paid => [...paid, ...due],
+          }),
+      })
+}
+
+// NOTE: a rank up this device made (a run's pay, a mission's) pays its
+// purses at once. A synced save's rank up is the other device's to pay,
+// and any it left is paid at the next load.
+export const payPursesFrom: {
+  (after: Model, saveWrite: 'Write' | 'Synced'): (before: Model) => Model
+  (before: Model, after: Model, saveWrite: 'Write' | 'Synced'): Model
+} = Function.dual(
+  3,
+  (before: Model, after: Model, saveWrite: 'Write' | 'Synced'): Model =>
+    saveWrite === 'Write' &&
+    after.saveStatus === 'Read' &&
+    rankOf(totalPointsOf(after.rank)) > rankOf(totalPointsOf(before.rank))
+      ? payPurses(after)
+      : after,
+)

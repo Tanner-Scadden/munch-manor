@@ -8,6 +8,7 @@ import { Message } from '../../../app/message'
 import type { Model } from '../../../app/model'
 import { knowingDay, lastHeart } from '../../../test/model.fixture'
 import { APPLICATION, writeSave } from '../../../test/testing'
+import { pointsForRank } from '../../../world/heroes/rank'
 import {
   checkSavedChanges,
   diesOnWave7,
@@ -23,7 +24,8 @@ import {
 // a run that ends on the end card pays at least 3 Bones, the day's first
 // one pays its Bones twice, and the first escape on a difficulty pays 50
 // once. Each goes up to the player's other devices as its own change, so
-// the server pays it once (src/platform/playerScope.ts).
+// the server pays it once (src/platform/playerScope.ts). A rank with no
+// other gift pays its purse once, the run that reaches it.
 
 const TODAY = '2026-11-12'
 
@@ -210,6 +212,56 @@ describe('the first escape on a difficulty', () => {
       expect(Option.map(won.maybeRankGain, ({ bonuses }) => bonuses)).toEqual(
         Option.some(['Double', 'FirstEscape']),
       )
+    }),
+  )
+})
+
+// NOTE: a death on wave 7 (60 points, 6 Bones) that starts `short` points
+// below rank 21, with purses paid at `paid`.
+const nearRank21 = (short: number, paid: ReadonlyArray<number>): Model =>
+  modifyFields(diesOnWave7, {
+    rank: rank =>
+      modifyFields(rank, { earnedPoints: () => pointsForRank(21) - short }),
+    bonuses: bonuses => ({ ...bonuses, purses: paid }),
+  })
+
+describe('the rank purses', () => {
+  it.effect('a run that reaches rank 21 pays its purse of 15', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(nearRank21(30, [])),
+      frame,
+      Story.model(after => {
+        expect(after.rank.earnedBones).toBe(6 + 15)
+        expect(after.bonuses.purses).toEqual([21])
+      }),
+      checkSavedChanges(changes => {
+        expect(changes).toEqual(
+          expect.arrayContaining([
+            { _tag: 'EarnedRank', points: 60, bones: 6 },
+            { _tag: 'PaidRankPurse', rank: 21 },
+          ]),
+        )
+      }),
+      writeSave(),
+    ),
+  )
+
+  it.effect('a purse paid once is never paid again', () =>
+    Effect.gen(function* () {
+      // NOTE: the purse paid on another run, or another device, that ended
+      // short of the rank's points; this run reaches them again.
+      const after = yield* ended(nearRank21(30, [21]))
+      expect(after.rank.earnedBones).toBe(6)
+      expect(after.bonuses.purses).toEqual([21])
+    }),
+  )
+
+  it.effect('a run that stays below rank 21 pays no purse', () =>
+    Effect.gen(function* () {
+      const after = yield* ended(nearRank21(100, []))
+      expect(after.rank.earnedBones).toBe(6)
+      expect(after.bonuses.purses).toEqual([])
     }),
   )
 })

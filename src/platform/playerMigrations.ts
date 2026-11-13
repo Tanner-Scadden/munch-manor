@@ -216,4 +216,13 @@ export const PLAYER_MIGRATIONS: Readonly<Record<string, ScopeMigration>> = {
         ADD COLUMN journal TEXT NOT NULL
         DEFAULT '{"milestones":[],"roomsOpened":[],"roomsFoundIn":[],"heroesPlayed":[],"thingsFound":0}'`
     }),
+  // NOTE: the rank purses came after the Dare Journal: the ranks whose
+  // Bones purse is paid. A player from before has none paid; the purses
+  // their rank reaches are paid at their next load.
+  '0021_add_purses': table =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`ALTER TABLE ${sql(table('player'))}
+        ADD COLUMN purses TEXT NOT NULL DEFAULT '[]'`
+    }),
 }

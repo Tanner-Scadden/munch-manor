@@ -71,6 +71,7 @@ import {
   KeptJournal,
   KillsRow,
   PLAYER_COLUMNS,
+  PaidRankPurse,
   PlayerRow,
   PlayerScope,
   ReachedRecords,
@@ -261,6 +262,7 @@ const saveOfRow = (
   bonuses: {
     doubledDay: row.doubled_day,
     escapedOn: row.escaped_on,
+    purses: row.purses,
   },
   lastRun: row.last_run,
   missions: row.missions,
@@ -634,6 +636,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     DoubledFirstRun: ({ day, bones }) =>
       replica.run(DoubledFirstRun, { day, bones }),
     EscapedFirst: ({ difficulty }) => replica.run(EscapedFirst, { difficulty }),
+    PaidRankPurse: ({ rank }) => replica.run(PaidRankPurse, { rank }),
     EndedRun: ({ lastRun }) => replica.run(EndedRun, { lastRun }),
     ProgressedMissions: ({ day, progress, coop }) =>
       replica.run(ProgressedMissions, { day, progress, coop }),

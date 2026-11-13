@@ -358,6 +358,10 @@ const mergeBonuses = (
       ? saved.doubledDay
       : kept.doubledDay,
   escapedOn: Array.union(kept.escapedOn, saved.escapedOn),
+  // NOTE: the purses paid go with the Bones the saved rank holds, so they
+  // are the save's, never a union: a purse the scope did not pay is paid
+  // again (src/app/update/purses.ts).
+  purses: saved.purses,
 })
 
 export const restoreSave: {

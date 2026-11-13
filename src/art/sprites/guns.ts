@@ -170,6 +170,26 @@ const GUN_SKIN_TRIMS: Readonly<Record<SkinnedGunSkin, Palette>> = {
     Q: '#ffa8e6',
     D: '#b2308f',
   },
+  Frost: {
+    G: '#9fd8f5',
+    H: '#f2fbff',
+    M: '#5a9cc8',
+    W: '#cdeefe',
+    V: '#3f78a4',
+    P: '#9fd8f5',
+    Q: '#f2fbff',
+    D: '#5a9cc8',
+  },
+  Ember: {
+    G: '#e0521f',
+    H: '#ffd36b',
+    M: '#8a2410',
+    W: '#ff8a3a',
+    V: '#5e160a',
+    P: '#e0521f',
+    Q: '#ffd36b',
+    D: '#8a2410',
+  },
 }
 
 const withTrim = (base: Palette, trim: Palette): Palette =>

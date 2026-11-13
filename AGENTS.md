@@ -239,11 +239,11 @@ Client features, one folder per thing on screen: its view, styles, client rules,
 
 HTML parts several features share, as `render/` is the canvas drawing they share.
 
-| File                                   | What it holds                                                                                                                                                      |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `menuParts.ts`, `cornerButtons.ts`     | Pixel icons, key caps, CSS percents, a hero's prop, the rank tag and badge image, the NEW badge and pip; the close and back buttons every dialog and screen shares |
-| `rankBadgeView.ts`, `modifiersView.ts` | The badge on the home menu's player and the Profile's rank plate, a rank mark, and a Bones count; a modifier's tile, label, and bonus chip, in both lobbies        |
-| `easyBreakView.ts`                     | Dare's break clock pill in both lobbies: a clock and its pick, ∞ for none                                                                                          |
+| File                                   | What it holds                                                                                                                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `menuParts.ts`, `cornerButtons.ts`     | Pixel icons, key caps, CSS percents, a hero's prop, the rank tag and badge image, the NEW badge and pip; the close and back buttons every dialog and screen shares                    |
+| `rankBadgeView.ts`, `modifiersView.ts` | The badge on the home menu's player and the Profile's rank plate with the next rank's gift, a rank mark, and a Bones count; a modifier's tile, label, and bonus chip, in both lobbies |
+| `easyBreakView.ts`                     | Dare's break clock pill in both lobbies: a clock and its pick, ∞ for none                                                                                                             |
 
 #### `src/domain/`
 
@@ -315,7 +315,7 @@ Sprites and pixel art no one feature owns: the atlas, the PNG encoder, the font,
 | `handTools.ts`                                                  | What a player's hands hold while they work: the hammer, the spoon, the crowbar, the dumbwaiter's rope, a magazine, sweat, the find's sparkle, and a trunk's junk, each facing either way |
 | `dareArt.ts`, `roomIcons.ts`                                    | The dare's things as pixel icons and silhouettes; the dare card's slots, empty and found; the satchel and the plain sight eye; each room's icon, for the cloche and the opened dare card |
 | `seatLooks.ts`, `coopIcons.ts`                                  | The looks teammates wear by seat; co-op's pixel icons and portraits                                                                                                                      |
-| `rankArt.ts`, `callingArt.ts`                                   | The badge and Bone pixel art; the heroes' prop and special pixel icons                                                                                                                   |
+| `rankArt.ts`, `callingArt.ts`                                   | The badge, Bone, Bag of Bones, and gift box pixel art; the heroes' prop and special pixel icons                                                                                          |
 | `shopArt.ts`, `rattlesArt.ts`                                   | The guide's pixel art for HTML (guns, traps, the jar, the key, the Laser Sight) and a stat bar's segments; Rattles' pixel map and moods, for his spot and the guide's portrait           |
 | `caseArt.ts`                                                    | The display cases' pixel art (the gun rack, the glass case, the trophy cabinet), each case's prize sprite, the lock's notch, the card's arrow, and the feats' icons                      |
 | `prizeArt.ts`                                                   | The fridge's prizes as sprites, and the open hand a prize to take wears on its tag and the touch hold button                                                                             |
@@ -479,6 +479,7 @@ Small pure helpers and names any layer reads, the World too.
 | `missionData.ts`, `dayStamp.ts` | The daily missions' pool, goals, Bones, and saved record with its pure changes (progress, claims, the stamp, the reroll, the merge), shared with the sync Worker; the UTC day's stamp |
 | `proofData.ts`                  | The Proof Shelf's saved record: a stamp (wave, hero, crew, day, ending) per thing per difficulty, the first one kept (`shelve`, `mergeProof`), shared with the sync Worker            |
 | `journalData.ts`                | The Dare Journal's saved record (milestones, rooms opened and found in, heroes played, things found) with its union merge and increments, shared with the sync Worker                 |
+| `rankCurve.ts`                  | The rank curve (front-loaded to rank 19, then the old one) and the Bones purse each rank with no other gift pays once, shared with the sync Worker                                    |
 | `describeError.ts`              | A thrown value as an error's reason, and `BrowserError`, a browser API's failure                                                                                                      |
 | `dualArgs.ts`                   | The cheap tests that tell a dual function's data-first call from its data-last one when an argument is optional                                                                       |
 | `soundEffect.ts`                | Sound effect names apart from the audio engine, so the step can name one                                                                                                              |

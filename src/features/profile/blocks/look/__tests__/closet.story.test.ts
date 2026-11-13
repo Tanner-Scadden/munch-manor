@@ -358,6 +358,10 @@ describe('gifts', () => {
       '19 Shirt Glow',
       '20 Print Checker',
       '22 Skin Slime',
+      '25 Shirt Frost',
+      '30 Skin Frost',
+      '35 Shirt Ember',
+      '40 Skin Ember',
     ])
   })
 
@@ -378,7 +382,7 @@ describe('gifts', () => {
       'Checker',
       'Slime',
     ])
-    expect(giftsOpenedBy(1, 99)).toHaveLength(16)
+    expect(giftsOpenedBy(1, 99)).toHaveLength(20)
   })
 
   test('no gift shares a rank with a calling or with another gift', () => {

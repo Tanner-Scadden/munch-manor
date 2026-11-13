@@ -244,3 +244,57 @@ export const BONE: Sprite = spriteShapes(
 )
 
 export const BONE_IMAGE = spriteImage(BONE)
+
+// THE RANK GIFTS
+
+// NOTE: a rank's Bones purse (src/shared/rankCurve.ts): a sack tied with
+// rope, a bone across its mouth. The end card's purse flip stands it on
+// the card, and the home menu and the Profile show it as the next rank's
+// gift. Beside it the gift box, for a gift look up next.
+export const PURSE_PIXELS: ReadonlyArray<string> = [
+  '.OO.....OO.',
+  'OWWOOOOOWWO',
+  'OWWWWWWWWBO',
+  '.OOOTTTOOO.',
+  '...OTTTO...',
+  '..OSSSSSO..',
+  '.OSLSSSSSO.',
+  'OSLLSSSSSDO',
+  'OSLSSSSSSDO',
+  'OSSSSSSSDDO',
+  '.OSSSSSDDO.',
+  '..OOOOOOO..',
+]
+
+export const PURSE_PALETTE: Palette = {
+  O: '#2a1408',
+  W: '#f4f1de',
+  B: '#b8ad8c',
+  T: '#ffd23f',
+  S: '#9a643c',
+  L: '#d9a46c',
+  D: '#62391f',
+}
+
+export const PURSE_SIZE = { width: 11, height: 12 }
+
+export const PURSE: Sprite = spriteShapes(PURSE_PIXELS, PURSE_PALETTE)
+
+export const GIFT_BOX_PIXELS: ReadonlyArray<string> = [
+  '..YY...YY..',
+  '...YY.YY...',
+  'OOOOOYOOOOO',
+  'ORRRRYRRRRO',
+  'OYYYYYYYYYO',
+  'ORRRRYRRRRO',
+  'ORRRRYRRRRO',
+  'ODDDDYDDDDO',
+  'OOOOOOOOOOO',
+]
+
+export const GIFT_BOX_PALETTE: Palette = {
+  O: '#2a1408',
+  R: '#d6403a',
+  D: '#a12a2a',
+  Y: '#ffd23f',
+}

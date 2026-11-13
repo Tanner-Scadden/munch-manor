@@ -20,6 +20,7 @@
     "../src/platform/missionScope.ts",
     "../src/platform/playerScopeParts.ts",
     "../src/shared/proofData.ts",
+    "../src/shared/rankCurve.ts",
     "../src/platform/recordingApi.ts",
     "../tools/analytics/queries.ts"
   ]

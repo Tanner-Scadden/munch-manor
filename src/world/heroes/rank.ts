@@ -5,6 +5,7 @@ import {
   FIRST_ESCAPE_BONES,
   type SavedRank,
 } from '../../shared/playerData'
+import { costOfRank, pointsForRank, rankOf } from '../../shared/rankCurve'
 
 // Rank and Bones (GAME_DESIGN.md, "Rank and Bones"): the pure rules. A
 // finished run pays rank points; points make a rank; a tenth of a run's
@@ -140,36 +141,9 @@ export const bonesForRun = (input: RunBonesInput): RunBones => {
 
 // RANKS
 
-const FIRST_RANK_COST = 100
-const RANK_COST_STEP = 25
-
-// NOTE: what going from rank `rank` to the next costs: 100, then 25 more
-// each rank.
-export const costOfRank = (rank: number): number =>
-  FIRST_RANK_COST + RANK_COST_STEP * (rank - 1)
-
-// NOTE: the points that make rank `rank`: rank 1 at 0, rank 2 at 100,
-// rank 3 at 225, rank 10 at 1800. No top rank.
-export const pointsForRank = (rank: number): number => {
-  const climbed = Math.max(0, rank - 1)
-  return (
-    FIRST_RANK_COST * climbed + (RANK_COST_STEP * climbed * (climbed - 1)) / 2
-  )
-}
-
-export const rankOf = (points: number): number => {
-  const safe = Math.max(0, points)
-  // NOTE: the quadratic's root, then nudged by the exact sums, so a float
-  // slip at a boundary never shows.
-  const guess = Math.max(
-    1,
-    Math.floor(
-      (-62.5 + Math.sqrt(62.5 * 62.5 + 50 * (safe + 75))) / RANK_COST_STEP,
-    ),
-  )
-  const high = pointsForRank(guess + 1) <= safe ? guess + 1 : guess
-  return pointsForRank(high) > safe ? Math.max(1, high - 1) : high
-}
+// NOTE: the curve lives in src/shared/rankCurve.ts, where the player scope
+// reads it to pay a purse: rank 2 at 50 points, rank 10 at 1,170.
+export { costOfRank, pointsForRank, rankOf }
 
 export type RankProgress = Readonly<{
   rank: number
