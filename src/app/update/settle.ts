@@ -11,6 +11,7 @@ import {
   payMissions,
   tallyMissionsFrom,
 } from '../../features/missions/missions'
+import { shelveRun } from '../../features/proof/proof'
 import { RunSummary } from '../../platform/analytics'
 import { maybeRunOutcome, runSummaryOf } from '../../platform/analyticsRun'
 import { sendOrQueueRunSummary } from '../../platform/summaryQueue'
@@ -92,7 +93,7 @@ type SaveWrite = 'Write' | 'Synced'
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the rank and the daily missions a run pays, the death tip, how the run ended and the friends' line for the
+// Nightmare, the rank and the daily missions a run pays, the Proof Shelf, the death tip, how the run ended and the friends' line for the
 // next intro, the run count and its summary, the run's recording, the new
 // zombie badges, the
 // fridge prizes pulled, and the save. `update` in src/app/main.ts runs them once
@@ -116,6 +117,7 @@ export const afterMessage: {
       model: earnRank(before, stepModel),
     }),
     stepModel => ({ model: payMissions(before, stepModel) }),
+    stepModel => ({ model: shelveRun(before, stepModel) }),
     stepModel => ({
       model: noteDeathTip(before, stepModel, runDifficultyOf(stepModel)),
     }),

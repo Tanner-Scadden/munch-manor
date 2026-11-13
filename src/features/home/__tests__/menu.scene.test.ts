@@ -58,6 +58,7 @@ const characterCard = Scene.role('button', { name: CARD_NAMES.Character })
 const munchopediaCard = Scene.role('button', { name: /^Munchopedia:/ })
 const whatsNewCard = Scene.role('button', { name: /^What's new:/ })
 const howToPlayCard = Scene.role('button', { name: CARD_NAMES.HowToPlay })
+const proofCard = Scene.role('button', { name: /^Proof:/ })
 const munchopediaName = /^Munchopedia:/
 const whatsNewName = /^What's new:/
 const pauseMenuButton = Scene.role('button', { name: 'Menu: leave this run' })
@@ -156,11 +157,12 @@ describe('Home menu', () => {
         ...openHandInScene(),
         Scene.inside(
           hand,
-          Scene.expectAll(Scene.all.selector('.hand-card')).toHaveCount(5),
+          Scene.expectAll(Scene.all.selector('.hand-card')).toHaveCount(6),
           Scene.expect(characterCard).toHaveAttr('aria-keyshortcuts', 'C'),
           Scene.expect(munchopediaCard).toHaveAttr('aria-keyshortcuts', 'Z'),
           Scene.expect(whatsNewCard).toHaveAttr('aria-keyshortcuts', 'L'),
           Scene.expect(howToPlayCard).toHaveAttr('aria-keyshortcuts', 'I'),
+          Scene.expect(proofCard).toHaveAttr('aria-keyshortcuts', 'P'),
           Scene.expect(Scene.role('link', { name: /^Tip jar/ })).toBeAbsent(),
           Scene.click(closeButton),
         ),
@@ -190,6 +192,8 @@ describe('Home menu', () => {
         Scene.keydown(characterCard, 'ArrowRight'),
         focusCard('Munchopedia'),
         Scene.keydown(howToPlayCard, 'ArrowDown'),
+        focusCard('Proof'),
+        Scene.keydown(proofCard, 'ArrowDown'),
         focusCard('Code'),
         Scene.keydown(Scene.role('link', { name: /^Code:/ }), 'ArrowRight'),
         focusCard('Character'),
@@ -209,7 +213,7 @@ describe('Home menu', () => {
         ...openHandInScene(),
         Scene.inside(
           hand,
-          Scene.expectAll(Scene.all.selector('.hand-card')).toHaveCount(5),
+          Scene.expectAll(Scene.all.selector('.hand-card')).toHaveCount(6),
           Scene.expect(Scene.role('link', { name: /coffee/i })).toBeAbsent(),
         ),
       ),

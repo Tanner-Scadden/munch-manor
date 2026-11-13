@@ -74,6 +74,7 @@ import {
   SawPowerUps,
   SawUnlocks,
   SeededPlayer,
+  ShelvedProof,
   StampedMissionDay,
   UnlockedNightmare,
   UnlockedRecording,
@@ -90,6 +91,7 @@ import {
   StoreEvent,
   SyncState,
 } from './playerSync'
+import { ProofRow, encodedProofRows, proofOfRow } from './proofScope'
 import { type RoomAccess, makeRoomAccess } from './roomReplica'
 import {
   type PlayerSave,
@@ -205,6 +207,7 @@ const saveOfRow = (
   row: PlayerRow,
   kills: ReadonlyArray<KillsRow>,
   bought: ReadonlyArray<BoughtRow>,
+  proof: ReadonlyArray<ProofRow>,
 ): PlayerSave => ({
   version: SAVE_VERSION,
   onboarding: row.onboarding,
@@ -258,6 +261,7 @@ const saveOfRow = (
   },
   lastRun: row.last_run,
   missions: row.missions,
+  proof: Array.map(proof, proofOfRow),
 })
 
 // LEGACY
@@ -344,6 +348,15 @@ const readBought = (client: SqliteClientService) =>
     Effect.catchTag('SchemaError', () => Effect.succeed([])),
   )
 
+const readProof = (client: SqliteClientService) =>
+  pipe(
+    client.query(
+      ProofRow,
+      client.sql`SELECT thing, difficulty, wave, hero, crew, day, ending FROM proof`,
+    ),
+    Effect.catchTag('SchemaError', () => Effect.succeed([])),
+  )
+
 const readView = (client: SqliteClientService) =>
   Effect.gen(function* () {
     const sql = client.sql
@@ -360,7 +373,8 @@ const readView = (client: SqliteClientService) =>
     }
     const kills = yield* readKills(client)
     const bought = yield* readBought(client)
-    return Option.some(saveOfRow(maybeRow.value, kills, bought))
+    const proof = yield* readProof(client)
+    return Option.some(saveOfRow(maybeRow.value, kills, bought, proof))
   })
 
 const readDevices = (client: SqliteClientService) =>
@@ -388,8 +402,11 @@ const writeWhole = (
   save: PlayerSave,
 ): Effect.Effect<void, PlayerDatabaseError> =>
   pipe(
-    Schema.encodeEffect(PlayerRow)(rowOfSave(save)),
-    Effect.flatMap(encoded =>
+    Effect.all([
+      Schema.encodeEffect(PlayerRow)(rowOfSave(save)),
+      encodedProofRows(save.proof),
+    ]),
+    Effect.flatMap(([encoded, proofRows]) =>
       Effect.all([
         sql`INSERT INTO player ${sql.insert({ id: 1, ...encoded })}
         ON CONFLICT (id) DO UPDATE SET ${sql.literal(
@@ -412,6 +429,11 @@ const writeWhole = (
           onEmpty: () => Effect.void,
           onNonEmpty: rows =>
             sql`INSERT INTO bought_cosmetics ${sql.insert(rows)}`,
+        }),
+        sql`DELETE FROM proof`,
+        Array.match(proofRows, {
+          onEmpty: () => Effect.void,
+          onNonEmpty: rows => sql`INSERT INTO proof ${sql.insert(rows)}`,
         }),
       ]),
     ),
@@ -618,6 +640,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     ClaimedMission: ({ day, mission }) =>
       replica.run(ClaimedMission, { day, mission }),
     StampedMissionDay: ({ day }) => replica.run(StampedMissionDay, { day }),
+    ShelvedProof: ({ entry }) => replica.run(ShelvedProof, { entry }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)

@@ -140,6 +140,7 @@ export const HAND_CARDS: Array.NonEmptyReadonlyArray<HandCard> = [
   'Munchopedia',
   'WhatsNew',
   'HowToPlay',
+  'Proof',
   'Code',
 ]
 
@@ -161,6 +162,9 @@ export const HAND_KEYS: Readonly<Record<KeyedHandCard, HomeKey>> = {
   Munchopedia: { code: 'KeyZ', cap: 'Z', name: 'Z' },
   WhatsNew: { code: 'KeyL', cap: 'L', name: 'L' },
   HowToPlay: { code: 'KeyI', cap: 'I', name: 'I' },
+  // NOTE: P for the Proof Shelf, a letter only a couch player's reload
+  // uses, in a run.
+  Proof: { code: 'KeyP', cap: 'P', name: 'P' },
 }
 
 export const KEYED_HAND_CARDS: ReadonlyArray<KeyedHandCard> = [
@@ -168,6 +172,7 @@ export const KEYED_HAND_CARDS: ReadonlyArray<KeyedHandCard> = [
   'Munchopedia',
   'WhatsNew',
   'HowToPlay',
+  'Proof',
 ]
 
 export const maybeHandCardOfKey = (

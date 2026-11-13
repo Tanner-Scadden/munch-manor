@@ -87,6 +87,7 @@ import {
 import { advanceIntro, skipIntro } from './intro'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
+import { proofFromKey } from './proof'
 import { rumbleFor } from './rumble'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
 import {
@@ -555,6 +556,7 @@ const pressedButton = ({ code, device }: ButtonPress) =>
       coopFromKey(code),
       playFromKey(code),
       menuFromKey(code),
+      proofFromKey(code),
       homeFocusFromKey(code),
       homeFromKey(code),
       leaveRunFromPad(code),

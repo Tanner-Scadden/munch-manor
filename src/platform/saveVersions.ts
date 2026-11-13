@@ -1,6 +1,7 @@
 import { Array, Option, Schema, Struct } from 'effect'
 
 import { unlocksAt } from '../domain/unlocks'
+import { noMissions } from '../shared/missionData'
 import {
   Calling,
   HomeScreenTip,
@@ -28,7 +29,7 @@ import {
   noBonuses,
   noSavedRunRecords,
 } from '../shared/playerData'
-import { noMissions } from '../shared/missionData'
+import { noProof } from '../shared/proofData'
 import { noRank, rankOf, totalPointsOf } from '../world/heroes/rank'
 
 // The save's older versions and how each is brought to the current one,
@@ -204,9 +205,16 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 23 is the save before the Proof Shelf.
+const PlayerSaveV23 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['proof']),
+  version: Schema.Literal(23),
+})
+type PlayerSaveV23 = typeof PlayerSaveV23.Type
+
 // NOTE: version 22 is the save before the daily missions.
 const PlayerSaveV22 = Schema.Struct({
-  ...Struct.omit(PlayerSave.fields, ['missions']),
+  ...Struct.omit(PlayerSaveV23.fields, ['missions']),
   version: Schema.Literal(22),
 })
 type PlayerSaveV22 = typeof PlayerSaveV22.Type
@@ -336,6 +344,7 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV23Json = Schema.fromJsonString(PlayerSaveV23)
 const PlayerSaveV22Json = Schema.fromJsonString(PlayerSaveV22)
 const PlayerSaveV21Json = Schema.fromJsonString(PlayerSaveV21)
 const PlayerSaveV20Json = Schema.fromJsonString(PlayerSaveV20)
@@ -629,14 +638,24 @@ const migrateV21 = (save: PlayerSaveV21): PlayerSaveV22 => ({
 
 // NOTE: a save from before the daily missions has none yet and has played
 // no co-op as far as the missions know: its first online run says so.
-const migrateV22 = (save: PlayerSaveV22): PlayerSave => ({
+const migrateV22 = (save: PlayerSaveV22): PlayerSaveV23 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 23,
   missions: noMissions,
 })
 
-const fromV21 = (save: PlayerSaveV21): PlayerSave =>
-  migrateV22(migrateV21(save))
+// NOTE: a save from before the Proof Shelf has an empty shelf: what it
+// brought out before then left no stamp.
+const migrateV23 = (save: PlayerSaveV23): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  proof: noProof,
+})
+
+const fromV22 = (save: PlayerSaveV22): PlayerSave =>
+  migrateV23(migrateV22(save))
+
+const fromV21 = (save: PlayerSaveV21): PlayerSave => fromV22(migrateV21(save))
 
 const fromV20 = (save: PlayerSaveV20): PlayerSave => fromV21(migrateV20(save))
 
@@ -687,9 +706,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 23,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV23Json)(raw), migrateV23),
+  },
+  {
     version: 22,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV22Json)(raw), migrateV22),
+      Option.map(Schema.decodeOption(PlayerSaveV22Json)(raw), fromV22),
   },
   {
     version: 21,

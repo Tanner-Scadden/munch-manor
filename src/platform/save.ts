@@ -23,6 +23,7 @@ import {
 import { lookInOwned } from '../domain/closet'
 import { cleanName } from '../domain/playerName'
 import { unlocksAt } from '../domain/unlocks'
+import { mergeMissions } from '../shared/missionData'
 import {
   PlayerSave,
   SAVE_VERSION,
@@ -37,7 +38,7 @@ import {
   type SavedRunRecords,
   type SavedTrapHint,
 } from '../shared/playerData'
-import { mergeMissions } from '../shared/missionData'
+import { mergeProof } from '../shared/proofData'
 import { DareKind } from '../world/dare/dareSchema'
 import { callingForRun } from '../world/heroes/calling'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
@@ -159,6 +160,7 @@ export const SAVED_FIELDS = [
   'bonuses',
   'lastRunEnding',
   'missions',
+  'proof',
   'calling',
   'boughtCosmetics',
   'seenUnlocks',
@@ -226,6 +228,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   bonuses: model.bonuses,
   lastRun: model.lastRunEnding,
   missions: model.missions,
+  proof: model.proof,
   calling: model.calling,
   boughtCosmetics: model.boughtCosmetics,
   seenUnlocks: model.seenUnlocks,
@@ -411,6 +414,7 @@ export const restoreSave: {
       bonuses: bonuses => mergeBonuses(bonuses, save.bonuses),
       lastRunEnding: () => save.lastRun,
       missions: missions => mergeMissions(missions, save.missions),
+      proof: proof => mergeProof(proof, save.proof),
       calling: () => save.calling,
       boughtCosmetics: () => save.boughtCosmetics,
       // NOTE: unlocks seen on any device stay seen. The baseline mark of a row

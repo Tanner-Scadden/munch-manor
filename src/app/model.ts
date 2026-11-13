@@ -50,6 +50,7 @@ import {
 } from '../features/missions/missionSchema'
 import * as Munchopedia from '../features/munchopedia/model'
 import * as Profile from '../features/profile/model'
+import * as ProofShelf from '../features/proof/model'
 import {
   Input,
   InputDevice,
@@ -107,6 +108,7 @@ import {
   SoundSetting,
   noBonuses,
 } from '../shared/playerData'
+import { SavedProof, noProof } from '../shared/proofData'
 import { DareKind } from '../world/dare/dareSchema'
 import { rollCases } from '../world/feats/cases'
 import { noRank } from '../world/heroes/rank'
@@ -221,6 +223,7 @@ export const Model = Schema.Struct({
   profile: Profile.Model,
   lobby: Lobby.Model,
   munchopedia: Munchopedia.Model,
+  proofShelf: ProofShelf.Model,
   profileDialog: DialogBlock.Model,
   playerName: PlayerName,
   coop: Coop.Model,
@@ -272,6 +275,10 @@ export const Model = Schema.Struct({
   missions: SavedMissions,
   missionRun: MissionRun,
   maybeMissionGain: Schema.Option(MissionGain),
+  // NOTE: the Proof Shelf (src/features/proof/proof.ts): a slot per dare
+  // thing per difficulty, each with the first run that found it, saved and
+  // synced.
+  proof: SavedProof,
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
@@ -343,6 +350,7 @@ type ChildField =
   | 'profile'
   | 'lobby'
   | 'munchopedia'
+  | 'proofShelf'
   | 'profileDialog'
   | 'coop'
   | 'panelDialog'
@@ -475,6 +483,7 @@ export const initialModel: OwnModel = {
   lastRunEnding: 'NoRunYet',
   maybeCarLine: Option.none(),
   missions: noMissions,
+  proof: noProof,
   missionRun: noMissionRun,
   maybeMissionGain: Option.none(),
   calling: 'You',

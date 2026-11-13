@@ -22,6 +22,7 @@ export const HandCard = Schema.Literals([
   'Munchopedia',
   'WhatsNew',
   'HowToPlay',
+  'Proof',
   'Code',
 ])
 export type HandCard = typeof HandCard.Type
@@ -33,5 +34,6 @@ export const MenuPanel = Schema.Literals([
   'WhatsNew',
   'Munchopedia',
   'Missions',
+  'Proof',
 ])
 export type MenuPanel = typeof MenuPanel.Type

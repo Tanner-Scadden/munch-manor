@@ -82,6 +82,7 @@ const isRoomModule = (path: string): boolean =>
 const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
   /^src\/platform\/playerScope\.ts$/,
   /^src\/platform\/playerMigrations\.ts$/,
+  /^src\/platform\/proofScope\.ts$/,
   /^src\/platform\/analytics\.ts$/,
   /^src\/platform\/recordingApi\.ts$/,
 ]

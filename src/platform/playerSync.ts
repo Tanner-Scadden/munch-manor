@@ -29,6 +29,7 @@ import {
   SavedSeenUnlocks,
   SavedSettings,
 } from '../shared/playerData'
+import { ProofEntry, shelvedSince } from '../shared/proofData'
 
 // NOTE: what changed in the player's save, as the player scope's mutations
 // (src/platform/playerScope.ts) will record it. `update` computes these from the
@@ -79,6 +80,7 @@ export const PlayerChange = defineTaggedUnion({
   RerolledMission: { day: DayStamp, reroll: MissionReroll },
   ClaimedMission: { day: DayStamp, mission: Schema.String },
   StampedMissionDay: { day: DayStamp },
+  ShelvedProof: { entry: ProofEntry },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -338,6 +340,9 @@ export const changesBetween: {
         ),
         bonus.changes,
         missions.changes,
+        Array.map(shelvedSince(before.proof, after.proof), entry =>
+          PlayerChange.ShelvedProof({ entry }),
+        ),
         Array.map(
           Array.filter(
             after.boughtCosmetics,
@@ -410,6 +415,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     RerolledMission: () => change,
     ClaimedMission: () => change,
     StampedMissionDay: () => change,
+    ShelvedProof: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
         points: save.rank.veteranPoints,
@@ -419,7 +425,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
 
 // NOTE: a finished run counts each time it is sent, and the power-ups seen
 // and forgotten must keep their order, so those are all kept, as are the
-// missions' increments and marks. Every other
+// missions' increments and marks, and each find shelved. Every other
 // change sets its field to what it holds now, so one of each is enough.
 const isSetOnce = (change: PlayerChange): boolean =>
   !PlayerChange.isAnyOf([
@@ -435,6 +441,7 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'RerolledMission',
     'ClaimedMission',
     'StampedMissionDay',
+    'ShelvedProof',
   ])(change)
 
 // NOTE: the unsaved changes, refreshed, then the new ones, with only the

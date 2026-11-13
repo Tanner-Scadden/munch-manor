@@ -2,7 +2,12 @@ import { Array, Option, Result, String } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
-import { DARE_BIG_ICONS, DARE_BIG_ICON_SIZE } from '../../art/dareArt'
+import {
+  BIG_KEY_PALETTE,
+  BIG_KEY_PIXELS,
+  DARE_BIG_ICONS,
+  DARE_BIG_ICON_SIZE,
+} from '../../art/dareArt'
 import {
   type Sprite,
   TOP_LEFT,
@@ -171,24 +176,8 @@ const shownDrawable = (
 
 // THE BIG KEY
 
-// NOTE: Uncle Chunk's big skeleton key, twice a house key's size, gold with
-// a dark outline, glinting as it turns in the air.
-const BIG_KEY_PALETTE = {
-  k: '#140c10',
-  Y: '#ffd23f',
-  y: '#c9971c',
-  W: '#fff7d0',
-}
-
-const BIG_KEY_PIXELS = [
-  '.kkkk..........',
-  'kYWYYk.........',
-  'kYkkYkkkkkkkkk.',
-  'kYkkYYYYYYYYYYk',
-  'kyyyykkkkykkyyk',
-  '.kkkk....kk.kkk',
-]
-
+// NOTE: Uncle Chunk's big key (BIG_KEY_PIXELS in src/art/dareArt.ts),
+// glinting as it turns in the air.
 const BIG_KEY: Sprite = spriteShapes(BIG_KEY_PIXELS, BIG_KEY_PALETTE, TOP_LEFT)
 const BIG_KEY_GLINT: Sprite = spriteShapes(
   Array.map(BIG_KEY_PIXELS, row => String.replaceAll('Y', 'W')(row)),

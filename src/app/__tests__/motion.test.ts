@@ -7,6 +7,7 @@ import menuCss from '../../features/home/menu.css?raw'
 import lobbyCss from '../../features/lobby/lobby.css?raw'
 import closetCss from '../../features/profile/blocks/look/closet.css?raw'
 import profileCss from '../../features/profile/profile.css?raw'
+import proofCss from '../../features/proof/proof.css?raw'
 import stylesCss from '../styles.css?raw'
 
 // NOTE: a press lands where a button is when the finger goes down and
@@ -30,6 +31,7 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/features/profile/blocks/look/closet.css', closetCss],
   ['src/features/coop/coop.css', coopCss],
   ['src/features/lobby/lobby.css', lobbyCss],
+  ['src/features/proof/proof.css', proofCss],
 ]
 
 const MOVING_ART: Readonly<Record<string, string>> = {

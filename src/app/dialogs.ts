@@ -4,7 +4,7 @@ import { type Html, createKeyedLazy } from 'foldkit/html'
 import type { Dialog, DialogBlock } from '@foldkit/ui'
 
 import {
-  type MunchopediaView,
+  type PanelChildViews,
   manorHandInsidesView,
   menuPanelInsidesView,
 } from '../screens/home/homeView'
@@ -16,6 +16,7 @@ import {
   MunchopediaBinding,
   PanelDialogBinding,
   type ProfileDialogBinding,
+  ProofShelfBinding,
   UpdateGreetingBinding,
 } from './bindings'
 import type {
@@ -156,9 +157,14 @@ export const dialogShell: {
 // NOTE: each root Dialog Binding in its shell, around the insides its screen
 // draws.
 
-// NOTE: the Munchopedia in the menu panel, through its Binding, built at
-// module scope so a frame makes no closure for it.
-const munchopediaView: MunchopediaView = (model, doneButton, h) =>
+// NOTE: the menu panel's children, the Munchopedia and the Proof Shelf,
+// each through its Binding, built at module scope so a frame makes no
+// closure for them.
+const munchopediaView: PanelChildViews['munchopedia'] = (
+  model,
+  doneButton,
+  h,
+) =>
   h.block(
     MunchopediaBinding.embedView({
       slotId: 'munchopedia',
@@ -172,6 +178,26 @@ const munchopediaView: MunchopediaView = (model, doneButton, h) =>
       },
     }),
   )
+
+const proofShelfView: PanelChildViews['proof'] = (model, doneButton, h) =>
+  h.block(
+    ProofShelfBinding.embedView({
+      slotId: 'proof-shelf',
+      model: model.proofShelf,
+      viewInputs: {
+        proof: model.proof,
+        stampedDays: model.missions.stampedDays,
+        maybeToday: model.maybeToday,
+        fresh: model.freshUnlocks,
+        doneButton,
+      },
+    }),
+  )
+
+const PANEL_CHILD_VIEWS: PanelChildViews = {
+  munchopedia: munchopediaView,
+  proof: proofShelfView,
+}
 
 export const manorHandView: {
   (h: ApplicationViewBuilder): (model: Model) => Html
@@ -203,7 +229,7 @@ export const menuPanelView: {
       panelClass: 'panel',
       dialogAttributes: [h.DataAttribute('panel', model.panel)],
       panelView: renderInfo =>
-        menuPanelInsidesView(model, renderInfo, munchopediaView, h),
+        menuPanelInsidesView(model, renderInfo, PANEL_CHILD_VIEWS, h),
       binding: PanelDialogBinding,
     },
     h,

@@ -56,7 +56,9 @@ import {
   StoredAppearance,
   isBetterRun,
 } from '../shared/playerData'
+import { ProofEntry } from '../shared/proofData'
 import { PLAYER_MIGRATIONS } from './playerMigrations'
+import { PROOF_TABLE, seedProofRows, shelveRow } from './proofScope'
 
 // NOTE: the player scope, `player:<playerId>`: one player's settings, look,
 // name, difficulty, onboarding, bests, home menu, power-ups seen, and
@@ -252,7 +254,7 @@ const updatePlayer = (
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 20,
+  version: 21,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -283,6 +285,7 @@ export const SeededPlayer = defineMutation({
             sql`INSERT INTO ${context.table('bought_cosmetics')} ${sql.insert(rows)}`,
           ),
       })
+      yield* seedProofRows(context, save.proof)
     }),
 })
 
@@ -1100,6 +1103,18 @@ export const StampedMissionDay = defineMutation({
     }),
 })
 
+// NOTE: a thing brought out, on the Proof Shelf (src/platform/proofScope.ts):
+// the first stamp kept, an earlier day's taking its place.
+/** @stability unstable */
+export const ShelvedProof = defineMutation({
+  name: 'ShelvedProof',
+  version: 1,
+  args: Schema.Struct({ entry: ProofEntry }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ entry }, context) => shelveRow(context, entry),
+})
+
 // NOTE: written by the server when a device links to this player, so every
 // device can say how many are linked.
 /** @stability unstable */
@@ -1122,7 +1137,13 @@ export const LinkedDevices = defineMutation({
 /** @stability unstable */
 export const PlayerScope = defineScope({
   kind: PLAYER_SCOPE_KIND,
-  tables: ['player', 'kills_by_kind', 'linked_devices', 'bought_cosmetics'],
+  tables: [
+    'player',
+    'kills_by_kind',
+    'linked_devices',
+    'bought_cosmetics',
+    PROOF_TABLE,
+  ],
   readers: 'Owner',
   replica: 'ReadWrite',
   mutations: [
@@ -1155,6 +1176,7 @@ export const PlayerScope = defineScope({
     RerolledMission,
     ClaimedMission,
     StampedMissionDay,
+    ShelvedProof,
     LinkedDevices,
   ],
   migrations: PLAYER_MIGRATIONS,

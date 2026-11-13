@@ -48,6 +48,7 @@ import {
   hasUnopenedEntry,
   munchopediaText,
 } from '../../features/munchopedia/munchopedia'
+import { hasNewProof } from '../../features/proof/proof'
 import {
   whatsNewBodyView,
   whatsNewText,
@@ -64,7 +65,11 @@ import {
 } from '../../ui/menuParts'
 import { rankChipView } from '../../ui/rankBadgeView'
 import { rankOf, totalPointsOf } from '../../world/heroes/rank'
-import { MULTIPLAYER_NAME, TUTORIAL_CHOICE_NAMES } from '../../world/names'
+import {
+  MULTIPLAYER_NAME,
+  PROOF_NAME,
+  TUTORIAL_CHOICE_NAMES,
+} from '../../world/names'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
@@ -212,6 +217,11 @@ const CARD_LOOKS: Readonly<Record<HandCard, CardLook>> = {
     ariaLabel: 'How to play: the controls',
     icon: HELP_ICON,
   },
+  Proof: {
+    title: 'PROOF',
+    ariaLabel: `${PROOF_NAME}: everything you brought out of the manor`,
+    icon: TROPHY_ICON,
+  },
   Code: {
     title: 'CODE',
     ariaLabel: "Code: the game's source on GitHub. Opens in a new tab",
@@ -233,6 +243,7 @@ const CARD_MESSAGES: Readonly<Record<KeyedHandCard, HomeMessage>> = {
   Munchopedia: HomeMessage.ClickedMunchopediaButton(),
   WhatsNew: HomeMessage.ClickedWhatsNewButton(),
   HowToPlay: HomeMessage.ClickedHowToPlayButton(),
+  Proof: HomeMessage.ClickedProofButton(),
 }
 
 const hasNews = (model: Model, card: HandCard): boolean => {
@@ -242,6 +253,8 @@ const hasNews = (model: Model, card: HandCard): boolean => {
     return isNewsUnseen(model)
   } else if (card === 'Munchopedia') {
     return hasUnopenedEntry(model)
+  } else if (card === 'Proof') {
+    return hasNewProof(model)
   } else {
     return false
   }
@@ -260,14 +273,16 @@ const NEWS_NAMES: Readonly<Record<HandCard, string>> = {
   Munchopedia: 'the Munchopedia',
   WhatsNew: "What's new",
   HowToPlay: 'How to play',
+  Proof: 'Proof',
   Code: 'the code',
 }
 
 const manorAriaLabel = (model: Model): string =>
   Array.match(newsCards(model), {
-    onEmpty: () => 'More: character, Munchopedia, what is new, and how to play',
+    onEmpty: () =>
+      'More: character, Munchopedia, what is new, how to play, and proof',
     onNonEmpty: cards =>
-      `More: character, Munchopedia, what is new, and how to play. Something new in ${Array.join(
+      `More: character, Munchopedia, what is new, how to play, and proof. Something new in ${Array.join(
         Array.map(cards, card => NEWS_NAMES[card]),
         ' and ',
       )}`,
@@ -689,6 +704,7 @@ const CARD_KEY_ACTIONS: Readonly<Record<KeyedHandCard, string>> = {
   Munchopedia: 'Munchopedia',
   WhatsNew: "what's new",
   HowToPlay: 'how to play',
+  Proof: 'proof',
 }
 
 const menuKeysView = (h: ApplicationViewBuilder): Html =>
@@ -865,6 +881,14 @@ const tutorialChoicesView = (
 
 type PanelText = Readonly<{ title: string; blurb: string }>
 
+// NOTE: the shelf speaks through its pictures, so its blurb is only read
+// aloud.
+const PROOF_TEXT: PanelText = {
+  title: PROOF_NAME,
+  blurb:
+    'Everything you brought out of the manor, a row per difficulty. Tap one for its stamp.',
+}
+
 const panelText = (model: Model, panel: MenuPanel): PanelText => {
   if (panel === 'HowToPlay') {
     return {
@@ -887,6 +911,8 @@ const panelText = (model: Model, panel: MenuPanel): PanelText => {
     return munchopediaText(model)
   } else if (panel === 'Missions') {
     return missionsText(model)
+  } else if (panel === 'Proof') {
+    return PROOF_TEXT
   } else {
     return {
       title: 'Leave this run?',
@@ -949,7 +975,7 @@ const howToPlayUnder = (
 const panelBodyView = (
   model: Model,
   renderInfo: Dialog.RenderInfo,
-  munchopediaView: MunchopediaView,
+  childViews: PanelChildViews,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> => {
   if (model.panel === 'HowToPlay') {
@@ -969,7 +995,11 @@ const panelBodyView = (
   } else if (model.panel === 'WhatsNew') {
     return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)
   } else if (model.panel === 'Munchopedia') {
-    return [munchopediaView(model, () => doneButtonView(renderInfo, h), h)]
+    return [
+      childViews.munchopedia(model, () => doneButtonView(renderInfo, h), h),
+    ]
+  } else if (model.panel === 'Proof') {
+    return [childViews.proof(model, () => doneButtonView(renderInfo, h), h)]
   } else if (model.panel === 'Missions') {
     return [missionsPanelView(model, doneButtonView(renderInfo, h), h)]
   } else if (model.panel === 'Difficulty') {
@@ -1035,7 +1065,7 @@ const isBlurbShown = (model: Model): boolean =>
 const panelView = (
   model: Model,
   renderInfo: Dialog.RenderInfo,
-  munchopediaView: MunchopediaView,
+  childViews: PanelChildViews,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> => {
   const text = panelText(model, model.panel)
@@ -1048,31 +1078,36 @@ const panelView = (
       ],
       [text.blurb],
     ),
-    ...panelBodyView(model, renderInfo, munchopediaView, h),
+    ...panelBodyView(model, renderInfo, childViews, h),
   ]
 }
 
-// NOTE: the Munchopedia inside the menu panel. It is a child Block the root
-// binds, so the root hands its view in (src/app/dialogs.ts), given the
-// panel's Done button.
-export type MunchopediaView = (
+// NOTE: the child Blocks inside the menu panel, the Munchopedia and the
+// Proof Shelf. The root binds them, so it hands their views in
+// (src/app/dialogs.ts), each given the panel's Done button.
+type PanelChildView = (
   model: Model,
   doneButton: () => Html,
   h: ApplicationViewBuilder,
 ) => Html
+
+export type PanelChildViews = Readonly<{
+  munchopedia: PanelChildView
+  proof: PanelChildView
+}>
 
 // NOTE: the menu panel's insides, for the root's panel Dialog
 // (src/app/dialogs.ts).
 export const menuPanelInsidesView: {
   (
     renderInfo: Dialog.RenderInfo,
-    munchopediaView: MunchopediaView,
+    childViews: PanelChildViews,
     h: ApplicationViewBuilder,
   ): (model: Model) => ReadonlyArray<Html>
   (
     model: Model,
     renderInfo: Dialog.RenderInfo,
-    munchopediaView: MunchopediaView,
+    childViews: PanelChildViews,
     h: ApplicationViewBuilder,
   ): ReadonlyArray<Html>
 } = Function.dual(4, panelView)

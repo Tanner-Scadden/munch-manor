@@ -13,6 +13,16 @@ import {
 } from 'effect'
 
 import { playerSprites } from '../../src/art/appearance'
+import { BIG_KEY_PALETTE, BIG_KEY_PIXELS } from '../../src/art/dareArt'
+import {
+  BRACKET_PIXELS,
+  DAY_STAR_PIXELS,
+  HOOK_PIXELS,
+  PLANK_PIXELS,
+  PROOF_PALETTE,
+  STAMP_PALETTES,
+  STAMP_PIXELS,
+} from '../../src/art/proofArt'
 import {
   MOOD_FACES,
   type Mood,
@@ -49,9 +59,11 @@ import { SHELF_SPRITES } from '../../src/render/room/libraryArt'
 import { Hat, Outfit } from '../../src/shared/playerData'
 import { CALLINGS } from '../../src/world/heroes/calling'
 import {
+  BIG_KEY_NAME,
   CALLING_NAMES,
   HAT_NAMES,
   PICKUP_NAMES,
+  PROOF_ENDING_NAMES,
   TRAP_NAMES,
   ZOMBIE_NAMES,
   gunTierName,
@@ -302,6 +314,8 @@ const stillEntry = (
   frames: () => still(sprite),
 })
 
+const PROOF_SOURCE = 'src/art/proofArt.ts'
+
 const itemsSections = (): ReadonlyArray<Section> => [
   {
     title: 'Guns',
@@ -402,6 +416,40 @@ const itemsSections = (): ReadonlyArray<Section> => [
         'Cellar bulb',
         'src/render/room/cellarArt.ts',
         CELLAR_BULB_SPRITE,
+      ),
+    ],
+  },
+  {
+    title: 'Proof Shelf',
+    entries: [
+      ...Array.map(
+        [
+          ['Plank', 'Shelf plank', PLANK_PIXELS],
+          ['Bracket', 'Shelf bracket', BRACKET_PIXELS],
+          ['Hook', 'Big key hook', HOOK_PIXELS],
+          ['DayStar', 'Mission day star', DAY_STAR_PIXELS],
+        ] as const,
+        ([id, title, pixels]) =>
+          stillEntry(
+            `proof/${id}`,
+            title,
+            PROOF_SOURCE,
+            spriteShapes(pixels, PROOF_PALETTE),
+          ),
+      ),
+      stillEntry(
+        'proof/BigKey',
+        BIG_KEY_NAME,
+        'src/art/dareArt.ts',
+        spriteShapes(BIG_KEY_PIXELS, BIG_KEY_PALETTE),
+      ),
+      ...Array.map(Record.toEntries(STAMP_PIXELS), ([ending, pixels]) =>
+        stillEntry(
+          `proof/stamp/${ending}`,
+          `${PROOF_ENDING_NAMES[ending]} stamp`,
+          PROOF_SOURCE,
+          spriteShapes(pixels, STAMP_PALETTES[ending]),
+        ),
       ),
     ],
   },

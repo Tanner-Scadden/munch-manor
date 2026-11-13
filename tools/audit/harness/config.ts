@@ -394,6 +394,10 @@ export const HarnessConfig = Schema.Struct({
   newentries: Schema.optionalKey(ListOf(ZombieKind)),
   homemode: Choice(['endless', 'campaign']),
   newsseen: Flag,
+  // The Proof Shelf: a sample shelf (finds on three difficulties, the big
+  // key on Easy, a crew with a bot) and a week of mission days, on a known
+  // day.
+  proof: Flag,
   newer: Schema.optionalKey(Schema.String),
   fit: Choice(['home', 'full']),
   install: Flag,

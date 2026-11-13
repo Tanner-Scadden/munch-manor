@@ -188,4 +188,21 @@ export const PLAYER_MIGRATIONS: Readonly<Record<string, ScopeMigration>> = {
         ADD COLUMN missions TEXT NOT NULL
         DEFAULT '{"day":null,"rolled":[],"progress":{},"claimed":[],"reroll":null,"stampedDays":[],"hasPlayedCoop":false}'`
     }),
+  // NOTE: the Proof Shelf came after the daily missions: one row per
+  // thing per difficulty, its first stamp. A player from before has an
+  // empty shelf.
+  '0019_add_proof': table =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('proof'))} (
+        thing TEXT NOT NULL,
+        difficulty TEXT NOT NULL,
+        wave INTEGER NOT NULL,
+        hero TEXT NOT NULL,
+        crew TEXT NOT NULL,
+        day TEXT,
+        ending TEXT NOT NULL,
+        PRIMARY KEY (thing, difficulty)
+      )`
+    }),
 }

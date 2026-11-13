@@ -11,6 +11,7 @@ import {
 
 import { DayStamp } from './dayStamp'
 import { SavedMissions } from './missionData'
+import { SavedProof } from './proofData'
 
 // NOTE: the player's lasting data as Schemas, shared with the sync Worker in
 // infra/worker, which bundles it against its own, newer Effect. It imports
@@ -848,7 +849,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 23
+export const SAVE_VERSION = 24
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1120,6 +1121,7 @@ export type PlayerName = typeof PlayerName.Type
 // Version 21 added the Bones bonuses and each difficulty's best run.
 // Version 22 added how the last run ended, for the friends in the car.
 // Version 23 added the daily missions (src/shared/missionData.ts).
+// Version 24 added the Proof Shelf (src/shared/proofData.ts).
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1143,5 +1145,6 @@ export const PlayerSave = Schema.Struct({
   bonuses: SavedBonuses,
   lastRun: RunEnding,
   missions: SavedMissions,
+  proof: SavedProof,
 })
 export type PlayerSave = typeof PlayerSave.Type
