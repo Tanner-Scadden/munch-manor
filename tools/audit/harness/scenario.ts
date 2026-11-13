@@ -38,7 +38,7 @@ import { BIG_KEY, type SavedProof } from '@game/shared/proofData'
 import { dareCardOf, maybeLyingAt, rollDare } from '@game/world/dare/dare'
 import { DareThingState, Finale } from '@game/world/dare/dareSchema'
 import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
-import { thingsOpenedBy } from '@game/world/dare/milestones'
+import { MilestoneId, thingsOpenedBy } from '@game/world/dare/milestones'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
@@ -603,6 +603,12 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   if (config.journal) {
     model = withSampleJournal(model)
+  }
+  if (config.journalall) {
+    model = modifyFields(model, {
+      journal: journal =>
+        modifyFields(journal, { milestones: () => MilestoneId.literals }),
+    })
   }
   model = Array.reduce(Array.range(1, config.lobbybots ?? 0), model, seated =>
     config.lobbybots === undefined ? seated : addBot(seated),

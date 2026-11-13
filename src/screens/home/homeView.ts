@@ -42,6 +42,7 @@ import {
   missionsPanelView,
   missionsText,
 } from '../../features/missions/missionCard'
+import { tabOfPage } from '../../features/munchopedia/model'
 import {
   ENTRY_COUNT,
   discoveredKinds,
@@ -1058,9 +1059,11 @@ const panelBodyView = (
 
 // NOTE: show, don't explain. How to play and the difficulty
 // picker by PLAY speak through their icons, so their blurb is only read
-// aloud. What's New shows its day's title between its page arrows instead.
+// aloud, as is the journal's tally past its Zombies tab. What's New shows its day's title between its page arrows instead.
+// NOTE: the Dare Journal's zombie tally shows over its Zombies tab only.
 const isBlurbShown = (model: Model): boolean =>
-  model.panel === 'Munchopedia' ||
+  (model.panel === 'Munchopedia' &&
+    tabOfPage(model.munchopedia.page) === 'Zombies') ||
   model.panel === 'LeaveRun' ||
   (model.panel === 'Difficulty' && isAskingFirst(model))
 

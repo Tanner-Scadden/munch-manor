@@ -200,6 +200,11 @@ const SCENES: ReadonlyArray<Scene> = [
     open: [MANOR, '#hand-card-proof'],
   },
   {
+    name: 'proof-all-things',
+    query: 'journal&journalall&proof',
+    open: [MANOR, '#hand-card-proof'],
+  },
+  {
     name: 'profile-look',
     query: LOOK,
     open: [MANOR, '#hand-card-character'],

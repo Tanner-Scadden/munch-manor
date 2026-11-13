@@ -404,6 +404,9 @@ export const HarnessConfig = Schema.Struct({
   // The Dare Journal: a sample journal (four milestones, two of them new,
   // two rooms opened, two heroes played) for its pages.
   journal: Flag,
+  // NOTE: `journalall` reaches every milestone, so all four new things are
+  // open on the list and the shelf.
+  journalall: Flag,
   newer: Schema.optionalKey(Schema.String),
   fit: Choice(['home', 'full']),
   install: Flag,

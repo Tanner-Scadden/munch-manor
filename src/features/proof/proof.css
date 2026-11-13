@@ -50,7 +50,10 @@
     var(--proof-wood) 0 38px,
     var(--proof-wood-seam) 38px 40px
   );
+  background-attachment: local;
   list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .proof-row {
@@ -59,6 +62,7 @@
   grid-template-columns: 20px minmax(0, 1fr);
   align-items: end;
   gap: 4px;
+  min-width: max-content;
   padding-bottom: 10px;
 }
 
@@ -80,15 +84,20 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(var(--shelf-things, 7), minmax(0, 1fr));
+  grid-template-columns: repeat(var(--shelf-things, 7), minmax(44px, 1fr));
   gap: 3px;
 }
 
-/* NOTE: on an upright phone a row past what fits at a finger's 44px wraps
-   onto a second line above its plank, as each thing the Dare Journal opens
-   adds a column (src/features/proof/proof.ts). Side by side with its card,
-   the shelf takes most of the width instead. */
+/* NOTE: every slot stays a finger's 44px as each thing the Dare Journal
+   opens adds a column (src/features/proof/proof.ts). Side by side with its
+   card, the shelf takes most of the width, and past that (all four opened
+   on a phone on its side) its rows slide sideways together. On an upright
+   phone a row wraps onto a second line above its plank instead. */
 @media (max-aspect-ratio: 1/1) {
+  .proof-row {
+    min-width: 0;
+  }
+
   .proof-slots {
     grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
     row-gap: 6px;
