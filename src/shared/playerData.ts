@@ -845,7 +845,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 20
+export const SAVE_VERSION = 21
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -953,9 +953,37 @@ export type SavedBests = typeof SavedBests.Type
 // campaign wave reached and the most zombies splatted in one run, for the
 // end card's NEW BEST. A record not set yet is null. Two devices merge them
 // to the larger (src/platform/playerScope.ts).
+// NOTE: version 21 added the best run, the one the end card's ghost shows:
+// the most things on the dare's list found, then the furthest wave, with
+// the things by kind id. A key that reads as null when missing, so an older
+// save and an older device's synced records still read.
+export const SavedBestRun = Schema.Struct({
+  wave: Schema.Finite,
+  things: Schema.Array(Schema.String),
+})
+export type SavedBestRun = typeof SavedBestRun.Type
+
+// NOTE: a run better than another: more things found, then a further wave.
+// A tie is not better, so the run kept stays. The bests and the player
+// scope's merge both read it.
+export const isBetterRun: {
+  (than: BestRunShape): (run: BestRunShape) => boolean
+  (run: BestRunShape, than: BestRunShape): boolean
+} = Function.dual(
+  2,
+  (run: BestRunShape, than: BestRunShape): boolean =>
+    run.things.length > than.things.length ||
+    (run.things.length === than.things.length && run.wave > than.wave),
+)
+
+type BestRunShape = Readonly<{ wave: number; things: ReadonlyArray<string> }>
+
 export const SavedRunRecord = Schema.Struct({
   furthestWave: Schema.NullOr(Schema.Finite),
   mostKills: Schema.NullOr(Schema.Finite),
+  bestRun: Schema.NullOr(SavedBestRun).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed(null)),
+  ),
 })
 export type SavedRunRecord = typeof SavedRunRecord.Type
 
@@ -967,7 +995,11 @@ export const SavedRunRecords = Schema.Struct({
 })
 export type SavedRunRecords = typeof SavedRunRecords.Type
 
-const noSavedRunRecord: SavedRunRecord = { furthestWave: null, mostKills: null }
+const noSavedRunRecord: SavedRunRecord = {
+  furthestWave: null,
+  mostKills: null,
+  bestRun: null,
+}
 
 export const noSavedRunRecords: SavedRunRecords = {
   Easy: noSavedRunRecord,
@@ -990,6 +1022,31 @@ export const SavedRank = Schema.Struct({
   spentBones: Schema.Finite,
 })
 export type SavedRank = typeof SavedRank.Type
+
+// NOTE: a UTC day as YYYY-MM-DD, as the Model's `maybeToday` holds it
+// (src/platform/today.ts). Days of this shape sort as strings.
+export const DayStamp = Schema.String.check(
+  Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
+)
+export type DayStamp = typeof DayStamp.Type
+
+// NOTE: the Bones the first escape on each difficulty pays, once
+// (docs/PROGRESSION_PLAN.md, pillar A). The player scope reads it here, never
+// from a mutation's args.
+export const FIRST_ESCAPE_BONES = 50
+
+// NOTE: version 21 added the Bones bonuses a player can have only once:
+// the day of the last run that paid double (the first run of each day), and
+// the difficulties escaped on since the first escape bonus came in. The
+// player scope merges them so two linked devices pay each one once
+// (DoubledFirstRun and EscapedFirst in src/platform/playerScope.ts).
+export const SavedBonuses = Schema.Struct({
+  doubledDay: Schema.NullOr(DayStamp),
+  escapedOn: Schema.Array(Difficulty),
+})
+export type SavedBonuses = typeof SavedBonuses.Type
+
+export const noBonuses: SavedBonuses = { doubledDay: null, escapedOn: [] }
 
 // NOTE: version 15 added the closet: the sold hats the player has bought.
 // Version 16 added the shirt colors, prints, and gun skins, so the list now
@@ -1049,6 +1106,7 @@ export type PlayerName = typeof PlayerName.Type
 // synced as its own last-write-wins change like the rotation. Version 19
 // added RECORD MY RUNS, synced the same way. Version 20 added the RECORD MY
 // RUNS unlock, which used to stay on the device that opened `?record=1`.
+// Version 21 added the Bones bonuses and each difficulty's best run.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1069,5 +1127,6 @@ export const PlayerSave = Schema.Struct({
   seenUnlocks: SavedSeenUnlocks,
   recordRuns: RecordRunsSetting,
   recordUnlock: RecordUnlock,
+  bonuses: SavedBonuses,
 })
 export type PlayerSave = typeof PlayerSave.Type

@@ -1,6 +1,10 @@
-import { Function } from 'effect'
+import { Array, Function } from 'effect'
 
-import type { Difficulty, SavedRank } from '../../shared/playerData'
+import {
+  type Difficulty,
+  FIRST_ESCAPE_BONES,
+  type SavedRank,
+} from '../../shared/playerData'
 
 // Rank and Bones (GAME_DESIGN.md, "Rank and Bones"): the pure rules. A
 // finished run pays rank points; points make a rank; a tenth of a run's
@@ -84,6 +88,55 @@ export const pointsForRun = (input: RunPayInput): number => {
 
 export const bonesForPoints = (points: number): number =>
   Math.floor(Math.max(0, points) / POINTS_PER_BONE)
+
+// BONES FOR A RUN
+
+// NOTE: more pay early (docs/PROGRESSION_PLAN.md, pillar A): a run that ends
+// at the end card with any points pays at least BONES_FLOOR Bones; the
+// day's first such run pays its Bones twice; and the first escape on each
+// difficulty adds FIRST_ESCAPE_BONES once. A run left for home pays its
+// points' Bones only, so quitting never farms the floor or spends the
+// double, and a guided run still pays nothing. Points are never doubled.
+const BONES_FLOOR = 3
+
+export const BONE_BONUSES = ['Floor', 'Double', 'FirstEscape'] as const
+export type BoneBonus = (typeof BONE_BONUSES)[number]
+
+export type RunBonesInput = Readonly<{
+  points: number
+  isEnded: boolean
+  isGuided: boolean
+  isFirstOfDay: boolean
+  isFirstEscape: boolean
+}>
+
+export type RunBones = Readonly<{
+  bones: number
+  bonuses: ReadonlyArray<BoneBonus>
+}>
+
+export const bonesForRun = (input: RunBonesInput): RunBones => {
+  if (input.isGuided) {
+    return { bones: 0, bonuses: [] }
+  }
+  const earned = bonesForPoints(input.points)
+  const isPaid = input.isEnded && input.points > 0
+  const isFloored = isPaid && earned < BONES_FLOOR
+  const isDoubled = isPaid && input.isFirstOfDay
+  const isFirstEscape = input.isEnded && input.isFirstEscape
+  const base = isFloored ? BONES_FLOOR : earned
+  return {
+    bones:
+      base * (isDoubled ? 2 : 1) + (isFirstEscape ? FIRST_ESCAPE_BONES : 0),
+    bonuses: Array.filter(
+      BONE_BONUSES,
+      bonus =>
+        ({ Floor: isFloored, Double: isDoubled, FirstEscape: isFirstEscape })[
+          bonus
+        ],
+    ),
+  }
+}
 
 // RANKS
 

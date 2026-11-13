@@ -10,6 +10,7 @@ import { whatsNewCases } from '../features/whatsNew/message'
 import { inputCases, runButtonCases } from '../input/message'
 import {
   analyticsCases,
+  dayCases,
   deviceCases,
   installCases,
   loadCases,
@@ -45,6 +46,7 @@ export const Message = defineMessageUnion({
   ...loadCases,
   ...saveCases,
   ...analyticsCases,
+  ...dayCases,
   ...recordingCases,
   ...soundCases,
   ...homeCases,

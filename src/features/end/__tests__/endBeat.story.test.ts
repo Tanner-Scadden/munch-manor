@@ -432,15 +432,17 @@ describe('the run records', () => {
   test('two devices merge their records to the larger of each', () => {
     const record = (furthestWave: number | null, mostKills: number | null) => ({
       ...noSavedRunRecords,
-      Hard: { furthestWave, mostKills },
+      Hard: { furthestWave, mostKills, bestRun: null },
     })
     expect(mergeRunRecords(record(7, 40), record(4, 95)).Hard).toEqual({
       furthestWave: 7,
       mostKills: 95,
+      bestRun: null,
     })
     expect(mergeRunRecords(record(null, 12), record(3, null)).Hard).toEqual({
       furthestWave: 3,
       mostKills: 12,
+      bestRun: null,
     })
     expect(mergeRunRecords(record(4, 95), record(7, 40))).toEqual(
       mergeRunRecords(record(7, 40), record(4, 95)),

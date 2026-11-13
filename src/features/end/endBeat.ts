@@ -10,12 +10,19 @@ import { giftsOpenedBy } from '../../domain/closet'
 import { isEndScreen, withBests } from '../../domain/run'
 import type { SharePath } from '../../platform/analytics'
 import { isObjectFirst, isObjectSecond } from '../../shared/dualArgs'
-import { Calling, CosmeticKind, type Difficulty } from '../../shared/playerData'
+import {
+  Calling,
+  CosmeticKind,
+  type Difficulty,
+  isBetterRun,
+} from '../../shared/playerData'
+import { dareCardOf } from '../../world/dare/dare'
 import { callingsOpenedBy } from '../../world/heroes/calling'
 import { isRankUp, rankOf } from '../../world/heroes/rank'
 import { isCoop, leadSeatOf } from '../../world/party/party'
 import { accuracyPercent, totalKills } from '../../world/run/stats'
 import {
+  type BestRun,
   type DifficultyBests,
   Phase,
   RunMode,
@@ -532,9 +539,27 @@ const higher = (maybeBest: Option.Option<number>, reached: number) =>
     }),
   )
 
+// NOTE: the run as the end card's ghost draws it: the wave it reached and
+// the things it found, in the list's order.
+export const bestRunOf = (model: Model): BestRun => ({
+  wave: roundWave(model.phase),
+  things: Array.flatMap(dareCardOf(model), ({ kind, isFound }) =>
+    isFound ? [kind] : [],
+  ),
+})
+
+const better = (maybeBest: Option.Option<BestRun>, reached: BestRun) =>
+  Option.some(
+    Option.match(maybeBest, {
+      onNone: () => reached,
+      onSome: best => (isBetterRun(reached, best) ? reached : best),
+    }),
+  )
+
 // NOTE: the run records a finished run sets, on the frame it ends: the
 // most kills in a run, and in the campaign the furthest wave reached (a win
-// reaches the last wave). Endless keeps its own deepest wave in the bests.
+// reaches the last wave) and the best run (the most things found, then the
+// furthest wave). Endless keeps its own deepest wave in the bests.
 export const reachRecords: {
   (after: Model, played?: Difficulty): (before: Model) => Model
   (before: Model, after: Model, played?: Difficulty): Model
@@ -556,6 +581,10 @@ export const reachRecords: {
                 RunMode.isAnyOf(['Campaign'])(after.mode)
                   ? higher(maybeFurthest, roundWave(after.phase))
                   : maybeFurthest,
+              maybeBestRun: maybeBest =>
+                RunMode.isAnyOf(['Campaign'])(after.mode)
+                  ? better(maybeBest, bestRunOf(after))
+                  : maybeBest,
             }),
           played,
         )

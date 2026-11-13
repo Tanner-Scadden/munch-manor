@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from '@effect/vitest'
 import { makeHub } from '@munch/sqlite-wasm-effect/in-process'
 import { settle } from '@munch/sync-engine/testing'
 
-import { noSavedRunRecords } from '../../shared/playerData'
+import { noBonuses, noSavedRunRecords } from '../../shared/playerData'
 import {
   legacySave,
   linkedPair,
@@ -627,7 +627,7 @@ describe('two devices syncing one player', () => {
           ...legacySave,
           records: {
             ...noSavedRunRecords,
-            Normal: { furthestWave, mostKills },
+            Normal: { furthestWave, mostKills, bestRun: null },
           },
         })
         // NOTE: the phone sets higher records, the laptop lower ones; the
@@ -646,7 +646,7 @@ describe('two devices syncing one player', () => {
           ...withNormal(4, 40),
           records: {
             ...withNormal(4, 40).records,
-            Easy: { furthestWave: 2, mostKills: 2 },
+            Easy: { furthestWave: 2, mostKills: 2, bestRun: null },
           },
         }
         yield* write(laptop, legacySave, stale)
@@ -1085,6 +1085,7 @@ const migratedLiveSave: PlayerSave = {
   name: '',
   records: noSavedRunRecords,
   rank: noRank,
+  bonuses: noBonuses,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

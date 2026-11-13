@@ -20,6 +20,7 @@ import { saveHandlers } from './update/save'
 import { afterMessage } from './update/settle'
 import { soundHandlers } from './update/sound'
 import { combine } from './update/step'
+import { todayHandlers } from './update/today'
 import { versionHandlers } from './update/version'
 // INIT
 
@@ -64,6 +65,7 @@ const handlers = makeUpdate({
   ...deviceHandlers,
   ...saveHandlers,
   ...recordingHandlers,
+  ...todayHandlers,
   ...soundHandlers,
   ...coopHandlers,
   ...lobbyHandlers,

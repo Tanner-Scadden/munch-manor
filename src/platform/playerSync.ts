@@ -4,7 +4,9 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import {
   Appearance,
   Calling,
+  DayStamp,
   Difficulty,
+  FIRST_ESCAPE_BONES,
   HomeScreenTip,
   PlayerName,
   PlayerSave,
@@ -58,6 +60,8 @@ export const PlayerChange = defineTaggedUnion({
   EarnedRank: { points: Schema.Finite, bones: Schema.Finite },
   GrantedVeteranRank: { points: Schema.Finite, bones: Schema.Finite },
   BoughtCosmetic: { id: Schema.String },
+  DoubledFirstRun: { day: DayStamp, bones: Schema.Finite },
+  EscapedFirst: { difficulty: Difficulty },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -102,6 +106,49 @@ const changeWhen = (
   change: () => PlayerChange,
 ): ReadonlyArray<PlayerChange> => (isChanged ? [change()] : [])
 
+// NOTE: a run's Bones bonuses ride apart from its earned Bones, so the
+// player scope can pay each once across devices (src/platform/playerScope.ts):
+// a new difficulty escaped on pays FIRST_ESCAPE_BONES, and a new doubled day
+// pays the run's Bones a second time, half of what is left of the Bones
+// earned (src/world/heroes/rank.ts, bonesForRun).
+type BonusChanges = Readonly<{
+  changes: ReadonlyArray<PlayerChange>
+  bonusBones: number
+}>
+
+const bonusChanges = (
+  before: PlayerSave,
+  after: PlayerSave,
+  earnedBones: number,
+): BonusChanges => {
+  const escapes = Array.filter(
+    after.bonuses.escapedOn,
+    difficulty => !Array.contains(before.bonuses.escapedOn, difficulty),
+  )
+  const escapeBones = escapes.length * FIRST_ESCAPE_BONES
+  const maybeDoubledDay = Option.filter(
+    Option.fromNullishOr(after.bonuses.doubledDay),
+    day => day !== before.bonuses.doubledDay,
+  )
+  const doubleBones = Option.isSome(maybeDoubledDay)
+    ? Math.floor(Math.max(0, earnedBones - escapeBones) / 2)
+    : 0
+  return {
+    changes: [
+      ...Array.map(escapes, difficulty =>
+        PlayerChange.EscapedFirst({ difficulty }),
+      ),
+      ...Option.match(maybeDoubledDay, {
+        onNone: () => [],
+        onSome: day => [
+          PlayerChange.DoubledFirstRun({ day, bones: doubleBones }),
+        ],
+      }),
+    ],
+    bonusBones: Math.min(earnedBones, escapeBones + doubleBones),
+  }
+}
+
 export const changesBetween: {
   (after: PlayerSave): (before: PlayerSave) => ReadonlyArray<PlayerChange>
   (before: PlayerSave, after: PlayerSave): ReadonlyArray<PlayerChange>
@@ -111,6 +158,11 @@ export const changesBetween: {
     const runs = after.bests.runsPlayed - before.bests.runsPlayed
     const totalKills = after.bests.totalKills - before.bests.totalKills
     const kills = killsAdded(before.bests.killsByKind, after.bests.killsByKind)
+    const earnedBones = Math.max(
+      0,
+      after.rank.earnedBones - before.rank.earnedBones,
+    )
+    const bonus = bonusChanges(before, after, earnedBones)
     const isRunRecorded =
       runs > 0 ||
       totalKills > 0 ||
@@ -191,19 +243,17 @@ export const changesBetween: {
         ),
         changeWhen(
           after.rank.earnedPoints > before.rank.earnedPoints ||
-            after.rank.earnedBones > before.rank.earnedBones,
+            earnedBones > bonus.bonusBones,
           () =>
             PlayerChange.EarnedRank({
               points: Math.max(
                 0,
                 after.rank.earnedPoints - before.rank.earnedPoints,
               ),
-              bones: Math.max(
-                0,
-                after.rank.earnedBones - before.rank.earnedBones,
-              ),
+              bones: earnedBones - bonus.bonusBones,
             }),
         ),
+        bonus.changes,
         Array.map(
           Array.filter(
             after.boughtCosmetics,
@@ -268,6 +318,8 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
       PlayerChange.ChangedCalling({ calling: save.calling }),
     EarnedRank: () => change,
     BoughtCosmetic: () => change,
+    DoubledFirstRun: () => change,
+    EscapedFirst: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
         points: save.rank.veteranPoints,
@@ -285,6 +337,8 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'ForgotPowerUps',
     'EarnedRank',
     'BoughtCosmetic',
+    'DoubledFirstRun',
+    'EscapedFirst',
   ])(change)
 
 // NOTE: the unsaved changes, refreshed, then the new ones, with only the

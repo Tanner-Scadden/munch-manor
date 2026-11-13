@@ -1,36 +1,30 @@
-import { Array, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
-import { type Model, Phase, RunMode } from '../../../app/model'
+import { type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
-import { WriteSave } from '../../../app/update/save'
-import { type PlayerChange } from '../../../platform/playerSync'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  escaping,
-  lastHeart,
-  readyAfterRead,
-  withDareThings,
-} from '../../../test/model.fixture'
-import {
-  APPLICATION,
-  closeDialog,
-  showDialog,
-  tick,
-  ticks,
-  writeSave,
-} from '../../../test/testing'
-import { type DareThing, DareThingState } from '../../../world/dare/dareSchema'
+import { lastHeart, withDareThings } from '../../../test/model.fixture'
+import { APPLICATION, ticks, writeSave } from '../../../test/testing'
 import { noRank } from '../../../world/heroes/rank'
 import { seatCrew } from '../../../world/party/party'
 import { type Modifiers } from '../../../world/run/modifiers'
 import { withWorld } from '../../../world/schema/world'
-import { noKills } from '../../../world/schema/worldSchema'
+import {
+  FOUND_THINGS,
+  checkSavedChanges,
+  diesOnWave7,
+  ended,
+  frame,
+  lastWave,
+  leave,
+  runAt,
+  wave,
+} from './rank.fixture'
 
 // Rank and Bones (src/world/heroes/rank.ts, src/features/end/rankRun.ts): a run pays its points and
 // Bones into the saved rank when it ends or is left, and sets what the end
@@ -38,88 +32,9 @@ import { noKills } from '../../../world/schema/worldSchema'
 // on wave 7 pays 60 points and 6 Bones; a Normal escape on wave 10 with its
 // three things and Uncle Chunk felled 315 and 31.
 
-const frame = tick(FIXED_STEP_MS)
-
-// NOTE: a run in `phase` that has cleared `wavesCleared` waves, on Normal.
-const runAt = (phase: Phase, wavesCleared: number, bosses = 0): Model =>
-  modifyFields(readyAfterRead, {
-    phase: () => phase,
-    mode: () => RunMode.Campaign(),
-    stats: stats =>
-      modifyFields(stats, {
-        wavesCleared: () => wavesCleared,
-        kills: () => ({ ...noKills, Boss: bosses }),
-      }),
-  })
-
-const foundBy0 = DareThingState.Found({ slot: 0 })
-
-const wave = (number: number): Phase =>
-  Phase.Wave({ wave: number, elapsedMs: 4000, spawns: [] })
-
-const diesOnWave7 = lastHeart(runAt(wave(7), 6))
-
-// NOTE: the dare's three things found.
-const FOUND_THINGS: ReadonlyArray<DareThing> = [
-  { id: 0, kind: 'SilverSpoon', state: foundBy0 },
-  { id: 1, kind: 'MusicBox', state: foundBy0 },
-  { id: 2, kind: 'FamilyPortrait', state: foundBy0 },
-]
-
-// NOTE: wave 10 with the list done, Uncle Chunk felled, the front door
-// open, and the player on its sill: the next tick walks out.
-const lastWave = escaping(
-  withDareThings(
-    modifyFields(
-      runAt(
-        Phase.Wave({ wave: 10, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
-        9,
-        1,
-      ),
-      {
-        stats: stats =>
-          modifyFields(stats, {
-            kills: kills => modifyFields(kills, { Boss: () => 1 }),
-          }),
-      },
-    ),
-    FOUND_THINGS,
-  ),
-)
-
-// NOTE: the Model one frame after `model`, its run ended and the end saved.
-const ended = (model: Model) =>
-  Story.story(APPLICATION, Story.given(model), frame, writeSave())
-
-// NOTE: a step that hands the save's pending changes to a check.
-const checkSavedChanges =
-  (check: (changes: ReadonlyArray<PlayerChange>) => void) =>
-  <StoryModel, StoryMessage, OutMessage>(
-    simulation: Story.StorySimulation<StoryModel, StoryMessage, OutMessage>,
-  ): Story.StorySimulation<StoryModel, StoryMessage, OutMessage> => {
-    check(
-      Array.flatMap(simulation.commands, command =>
-        Option.match(Story.Command.argsOf(WriteSave)(command), {
-          onNone: () => [],
-          onSome: ({ changes }) => changes,
-        }),
-      ),
-    )
-    return simulation
-  }
-
 // NOTE: the end card's beat is over, so its buttons work.
 const afterBeat = (model: Model): Model =>
   modifyFields(model, { screenMs: () => 60_000 })
-
-// NOTE: pause, MENU, and leave the run for home.
-const leave = Story.steps(
-  Story.message(Message.ClickedPauseButton()),
-  Story.message(Message.ClickedMenuButton()),
-  showDialog(),
-  Story.message(Message.ClickedLeaveRunButton()),
-  closeDialog(),
-)
 
 describe('a death', () => {
   it.effect('pays 10 points a wave cleared, and a Bone for each 10', () =>
@@ -136,6 +51,7 @@ describe('a death', () => {
             gained: 60,
             bonesGained: 6,
             bonusPercent: 0,
+            bonuses: [],
           }),
         )
       }),
@@ -160,6 +76,7 @@ describe('a death', () => {
             gained: 60,
             bonesGained: 6,
             bonusPercent: 0,
+            bonuses: [],
           }),
         )
       }),
@@ -187,6 +104,7 @@ describe('a death', () => {
           gained: 60,
           bonesGained: 6,
           bonusPercent: 0,
+          bonuses: [],
         }),
       )
     }),
@@ -226,6 +144,7 @@ describe('a death', () => {
             gained: 315,
             bonesGained: 31,
             bonusPercent: 425,
+            bonuses: [],
           }),
         )
       }),
@@ -250,7 +169,7 @@ describe('a death', () => {
         APPLICATION,
         Story.given(
           withWorld(
-            modifyFields(runAt(wave(7), 6), { modifiers: () => friendly }),
+            modifyFields(runAt(wave(7), 6, 0), { modifiers: () => friendly }),
             world => seatCrew(world, 2),
           ),
         ),
@@ -284,13 +203,15 @@ describe('an escape', () => {
       Effect.gen(function* () {
         const won = yield* ended(lastWave)
         expect(won.phase._tag).toBe('Escaped')
-        expect(won.rank).toMatchObject({ earnedPoints: 315, earnedBones: 31 })
+        // NOTE: the first escape on Normal adds its 50 Bones.
+        expect(won.rank).toMatchObject({ earnedPoints: 315, earnedBones: 81 })
         expect(won.maybeRankGain).toEqual(
           Option.some({
             pointsBefore: 0,
             gained: 315,
-            bonesGained: 31,
+            bonesGained: 81,
             bonusPercent: 0,
+            bonuses: ['FirstEscape'],
           }),
         )
       }),
@@ -299,7 +220,7 @@ describe('an escape', () => {
   it.effect('a death still pays for the things it found', () =>
     Effect.gen(function* () {
       const after = yield* ended(
-        lastHeart(withDareThings(runAt(wave(7), 6), FOUND_THINGS)),
+        lastHeart(withDareThings(runAt(wave(7), 6, 0), FOUND_THINGS)),
       )
       expect(after.phase._tag).toBe('GameOver')
       expect(after.rank.earnedPoints).toBe(60 + 75)
@@ -311,7 +232,7 @@ describe('leaving a run', () => {
   it.effect('pays the waves cleared so far like a death, once', () =>
     Story.story(
       APPLICATION,
-      Story.given(runAt(wave(4), 3)),
+      Story.given(runAt(wave(4), 3, 0)),
       leave,
       Story.model(left => {
         expect(left.phase._tag).toBe('Ready')

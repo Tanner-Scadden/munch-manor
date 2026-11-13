@@ -443,6 +443,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
           gained: rankGain,
           bonesGained: Math.floor(rankGain / 10),
           bonusPercent: bonusPercentOf(modifiersOfMask(config.mods ?? 0)),
+          bonuses: [],
         }),
     })
   }

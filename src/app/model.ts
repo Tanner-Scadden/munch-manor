@@ -9,6 +9,7 @@ import {
   CaseCard,
   ClocheLift,
   DareHint,
+  DeathTip,
   DifficultyCard,
   HintBand,
   HomeMenu,
@@ -80,6 +81,7 @@ import {
   Appearance,
   Calling,
   CursorSetting,
+  DayStamp,
   Difficulty,
   HomeScreenTip,
   MusicSetting,
@@ -88,6 +90,7 @@ import {
   RecordUnlock,
   RotationSetting,
   RumbleSetting,
+  SavedBonuses,
   SavedBoughtCosmetics,
   SavedRank,
   SavedSeenUnlocks,
@@ -95,6 +98,7 @@ import {
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
+  noBonuses,
 } from '../shared/playerData'
 import { DareKind } from '../world/dare/dareSchema'
 import { rollCases } from '../world/feats/cases'
@@ -242,6 +246,13 @@ export const Model = Schema.Struct({
   rankPaid: RankPaid,
   maybeRankGain: Schema.Option(RankGain),
   rank: SavedRank,
+  // NOTE: the Bones bonuses had once (src/world/heroes/rank.ts), saved and synced.
+  bonuses: SavedBonuses,
+  // NOTE: today's UTC day, from the Today Subscription
+  // (src/platform/today.ts), so `update` never reads the clock. None until
+  // the first arrives.
+  maybeToday: Schema.Option(DayStamp),
+  maybeDeathTip: Schema.Option(DeathTip),
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
@@ -290,6 +301,7 @@ const noDifficultyBests: DifficultyBests = {
   maybeBestEndlessWave: Option.none(),
   maybeFurthestWave: Option.none(),
   maybeMostKills: Option.none(),
+  maybeBestRun: Option.none(),
 }
 
 export const noBests: PlayerBests = {
@@ -438,6 +450,9 @@ export const initialModel: OwnModel = {
   rankPaid: noRankPaid,
   maybeRankGain: Option.none(),
   rank: noRank,
+  bonuses: noBonuses,
+  maybeToday: Option.none(),
+  maybeDeathTip: Option.none(),
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

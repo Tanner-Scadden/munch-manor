@@ -521,6 +521,7 @@ describe("an online co-op run's rank", () => {
             gained: 95,
             bonesGained: 9,
             bonusPercent: 0,
+            bonuses: [],
           }),
         )
       }),

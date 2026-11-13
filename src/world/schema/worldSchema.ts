@@ -346,13 +346,22 @@ export const DifficultySetting = Schema.Struct({
 })
 export type DifficultySetting = typeof DifficultySetting.Type
 
-// NOTE: the furthest campaign wave and the most kills in one run are the
-// run records, saved apart from the bests (SavedRunRecords).
+// NOTE: the best campaign run on a difficulty, for the end card's ghost:
+// the most things on the dare's list found, then the furthest wave.
+export const BestRun = Schema.Struct({
+  wave: Schema.Finite,
+  things: Schema.Array(DareKind),
+})
+export type BestRun = typeof BestRun.Type
+
+// NOTE: the furthest campaign wave, the most kills in one run, and the best
+// run are the run records, saved apart from the bests (SavedRunRecords).
 export const DifficultyBests = Schema.Struct({
   maybeFastestWinMs: Schema.Option(Schema.Finite),
   maybeBestEndlessWave: Schema.Option(Schema.Finite),
   maybeFurthestWave: Schema.Option(Schema.Finite),
   maybeMostKills: Schema.Option(Schema.Finite),
+  maybeBestRun: Schema.Option(BestRun),
 })
 export type DifficultyBests = typeof DifficultyBests.Type
 
