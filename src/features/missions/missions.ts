@@ -348,6 +348,7 @@ const MEASURES: Readonly<
         playedDifficultyOf(run) !== 'Easy',
     ),
   SplatZombies: run => focusOf(run).feats.kills,
+  LeaveEarly: run => toCount(Phase.isAnyOf(['LeftEarly'])(run.phase)),
 }
 
 const measureOf: {

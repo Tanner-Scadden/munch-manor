@@ -19,11 +19,10 @@ import { Phase } from '../../world/schema/worldSchema'
 // NOTE: a death on these waves or sooner is a quick one: "Brave or dumb?".
 export const QUICK_DEATH_WAVE = 2
 
-// NOTE: how a run that just ended ended, read off the phase it ends on.
-// Leaving early by the back door (pillar A, a later layer) ends on a phase
-// of its own and joins here as `LeftEarly`; its lines are already in
-// FRIEND_LINES. A run left from the pause MENU is not an ending: the
-// friends remember the run before it.
+// NOTE: how a run that just ended ended, read off the phase it ends on:
+// munched, escaped, or left early by the kitchen's back door (pillar A,
+// src/world/kitchen/backDoor.ts). A run left from the pause MENU is not an
+// ending: the friends remember the run before it.
 const maybeEndingOf = (phase: Phase): Option.Option<RunEnding> =>
   Phase.matchOrElse(
     phase,
@@ -31,6 +30,7 @@ const maybeEndingOf = (phase: Phase): Option.Option<RunEnding> =>
       GameOver: ({ wave }): Option.Option<RunEnding> =>
         Option.some(wave <= QUICK_DEATH_WAVE ? 'MunchedEarly' : 'Munched'),
       Escaped: (): Option.Option<RunEnding> => Option.some('Escaped'),
+      LeftEarly: (): Option.Option<RunEnding> => Option.some('LeftEarly'),
     },
     () => Option.none(),
   )

@@ -139,7 +139,7 @@ describe('the friends in the car', () => {
 
   it.effect('a line for each ending', () =>
     Effect.forEach(
-      ['Munched', 'MunchedEarly', 'Escaped'] as const,
+      ['Munched', 'MunchedEarly', 'Escaped', 'LeftEarly'] as const,
       ending =>
         Effect.map(retriedAfter(onEndScreen(ending, 5)), after => {
           expect(after.phase._tag).toBe('Arriving')

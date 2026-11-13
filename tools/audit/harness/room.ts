@@ -1005,6 +1005,15 @@ export const roomModel = (settings: SceneSettings): Model => {
       }),
     })
   }
+  if (phase === 'leftearly') {
+    model = modifyFields(model, {
+      phase: () => Phase.LeftEarly({ wave }),
+      stats: s => ({
+        ...s,
+        kills: { ...s.kills, Shambler: s.kills.Shambler + 87 },
+      }),
+    })
+  }
   // NOTE: a staged end screen breaks the records the run would have, so
   // `best` below the wave shows its NEW BEST.
   return noteRecords(beforeEnd, model)

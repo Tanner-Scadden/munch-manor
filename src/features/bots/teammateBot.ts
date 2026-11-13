@@ -14,6 +14,7 @@ import {
   isReloading,
 } from '../../world/gear/weapons'
 import { maxHpOf } from '../../world/heroes/calling'
+import { backDoorStandOf } from '../../world/kitchen/backDoor'
 import { type Level, levelOf } from '../../world/level/arena'
 import { flowFieldToward, steerToward } from '../../world/level/pathing'
 import { boxCenter } from '../../world/level/tileGrid'
@@ -40,6 +41,8 @@ import {
   Phase,
   type Pickup,
   type PlayerSlot,
+  Purchasable,
+  Purchase,
   type SeatState,
   type Vector,
   type Zombie,
@@ -91,6 +94,8 @@ const HUNT_PX = 170
 const POST_INSET_PX = 30
 const POST_REACHED_PX = 10
 const POST_MS = 14_000
+// NOTE: near enough the back door's spot to stand in its reach.
+const BACK_DOOR_STOP_PX = 3
 const STRAFE_MS = 1300
 const RELOAD_QUIET_PX = 90
 const REVIVE_STOP_PX = PLAYER_RADIUS + COOP_RULES.reviveReachPx - 4
@@ -289,6 +294,7 @@ const clockMsOf = (world: World): number =>
     Wave: wave => wave.elapsedMs,
     Paused: () => 0,
     Escaped: () => 0,
+    LeftEarly: () => 0,
     GameOver: () => 0,
   })
 
@@ -546,9 +552,35 @@ const fightIntent = (world: World, me: SeatState): Intent => {
 const humanReady = (world: World): boolean =>
   leadSeatOf(world).readiness === 'Ready'
 
+// NOTE: a teammate holding the kitchen's back door (src/world/kitchen/
+// backDoor.ts) waits for the whole crew there, so the bot walks over and
+// stands with them. A bot never holds the door itself: leaving early is the
+// human's call.
+const toBackDoor = (world: World, me: SeatState): Option.Option<Vector> =>
+  Array.some(
+    playersOf(world),
+    mate =>
+      mate.seat.slot !== me.seat.slot &&
+      Purchase.matchOrElse(
+        mate.purchase,
+        { Holding: ({ target }) => Purchasable.isAnyOf(['BackDoor'])(target) },
+        () => false,
+      ),
+  )
+    ? Option.map(backDoorStandOf(levelOf(world)), spot =>
+        distanceBetween(me.player, spot) <= BACK_DOOR_STOP_PX
+          ? ZERO_VECTOR
+          : walkToward(world, me.player, spot),
+      )
+    : Option.none()
+
 const breakIntent = (world: World, me: SeatState): Intent => {
   if (!isStanding(me.seat)) {
     return idleIntent
+  }
+  const maybeToBackDoor = toBackDoor(world, me)
+  if (Option.isSome(maybeToBackDoor)) {
+    return { ...idleIntent, move: maybeToBackDoor.value }
   }
   const maybeToPickup = toPickup(world, me)
   if (Option.isSome(maybeToPickup)) {
@@ -624,6 +656,7 @@ const intentFor = (world: World, slot: PlayerSlot): Intent =>
           Wave: () => outThroughFrontDoor(world, me, fightIntent(world, me)),
           Paused: () => idleIntent,
           Escaped: () => idleIntent,
+          LeftEarly: () => idleIntent,
           GameOver: () => idleIntent,
         })
       },
@@ -681,6 +714,7 @@ const pressFor = (world: World, slot: PlayerSlot): Option.Option<SeatAction> =>
         Wave: () => fightPress(world, me),
         Paused: () => Option.none(),
         Escaped: () => Option.none(),
+        LeftEarly: () => Option.none(),
         GameOver: () => Option.none(),
       })
     },

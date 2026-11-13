@@ -7,9 +7,11 @@ import { GRAB_ICON, HOLD_ICON } from '../../art/icons'
 import { spriteImage } from '../../art/sprite'
 import { InputMessage, RunButtonMessage } from '../../input/message'
 import { iconView } from '../../ui/menuParts'
+import { isCrewAtBackDoor } from '../../world/kitchen/backDoor'
 import { maybeStovePerk } from '../../world/kitchen/stove'
 import { exitName } from '../../world/level/exits'
 import {
+  BACK_DOOR_NAME,
   FRIDGE_NAME,
   GUN_PERK_NAMES,
   STOVE_NAME,
@@ -49,14 +51,17 @@ const nameOf = (target: Purchasable): string =>
     Stove: () => String.toLowerCase(STOVE_NAME),
     Valve: () => String.toLowerCase(VALVE_NAME),
     Case: () => 'the prize in the case',
+    BackDoor: () => String.toLowerCase(BACK_DOOR_NAME),
   })
 
 const badgeOf = (offer: Offer): string =>
   offer.isFull
-    ? Purchasable.isAnyOf(['Stove'])(offer.target)
+    ? Purchasable.isAnyOf(['Stove', 'BackDoor'])(offer.target)
       ? 'NOPE'
       : 'FULL'
-    : `${offer.price}`
+    : Purchasable.isAnyOf(['BackDoor'])(offer.target)
+      ? 'OUT'
+      : `${offer.price}`
 
 // NOTE: the prize's picture doubled, crisp, as on the canvas tag.
 const TAKE_IMAGE_SCALE = 2
@@ -120,6 +125,12 @@ const labelOf = (model: Model, offer: Offer): string =>
           })} for ${priceWords(offer.price)}`,
     Valve: () => 'Hold to light the fireplace',
     Case: () => 'Hold to take the prize from the case',
+    BackDoor: () =>
+      offer.isFull
+        ? 'Find a thing on the dare first'
+        : isCrewAtBackDoor(model)
+          ? `Hold to leave early by the ${nameOf(offer.target)}`
+          : `Bring the whole crew to the ${nameOf(offer.target)} to leave early`,
   })
 
 // NOTE: what the player is at: the offer in reach, or the one they still

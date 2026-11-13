@@ -7,7 +7,7 @@ import { Calling } from '../shared/playerData'
 import { hashWorld } from '../world/net/worldHash'
 import { focusOf, modifyFocus } from '../world/party/party'
 import { World } from '../world/schema/world'
-import { PlayerSlot, noPractice } from '../world/schema/worldSchema'
+import { Phase, PlayerSlot, noPractice } from '../world/schema/worldSchema'
 import {
   type InputsByPlayer,
   SeatAction,
@@ -69,7 +69,7 @@ type RunSettings = typeof RunSettings.Type
 
 export const RunEnd = Schema.Struct({
   ticks: Schema.Finite,
-  outcome: Schema.Literals(['Escaped', 'GameOver', 'Quit']),
+  outcome: Schema.Literals(['Escaped', 'LeftEarly', 'GameOver', 'Quit']),
   wave: Schema.Finite,
   hash: Schema.Finite,
 })
@@ -352,9 +352,15 @@ export const noteTick: {
 // END
 
 export const outcomeOf = (world: World): RunEnd['outcome'] =>
-  world.phase._tag === 'Escaped' || world.phase._tag === 'GameOver'
-    ? world.phase._tag
-    : 'Quit'
+  Phase.matchOrElse(
+    world.phase,
+    {
+      Escaped: (): RunEnd['outcome'] => 'Escaped',
+      LeftEarly: (): RunEnd['outcome'] => 'LeftEarly',
+      GameOver: (): RunEnd['outcome'] => 'GameOver',
+    },
+    (): RunEnd['outcome'] => 'Quit',
+  )
 
 // NOTE: the run as it ended, with the hash of its last ticked World, or
 // nothing when no run was recorded. Its device is the one it started on,

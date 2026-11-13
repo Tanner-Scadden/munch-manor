@@ -538,7 +538,7 @@ export const StandIn: World<StandInWorld, Dot> = {
     dots: Array.filter(world.dots, dot => dot.slot !== slot),
   }),
   isOver: world => world.tick >= ROUND_TICKS,
-  isWon: () => false,
+  endReason: () => 'GameOver',
   scores: (world): ReadonlyArray<Score> =>
     Array.map(world.dots, dot => ({ slot: dot.slot, score: dot.score })),
   snapshot,

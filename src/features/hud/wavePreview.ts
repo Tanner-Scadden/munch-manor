@@ -550,6 +550,7 @@ export const wavePreviewShapes: {
       Wave: () => [],
       Paused: () => [],
       Escaped: () => [],
+      LeftEarly: () => [],
       GameOver: () => [],
     }),
 )

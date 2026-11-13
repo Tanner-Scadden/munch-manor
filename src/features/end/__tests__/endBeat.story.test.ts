@@ -454,12 +454,31 @@ describe('sharing a run', () => {
   const base = {
     isEndless: false,
     wave: 4,
+    things: [],
     difficulty: 'Normal' as const,
     kills: 87,
     crew: 1,
     maybeMvp: Option.none(),
     maybeOwnAward: Option.none(),
   }
+
+  test('a run left early names what it ran off with, with a chicken', () => {
+    expect(
+      shareText({ ...base, outcome: 'Chicken', things: ['SilverSpoon'] }),
+    ).toBe(
+      '🐔 I chickened out of Munch Manor with the Silver Spoon on wave 4. 87 zombies splatted first. Braver than me?',
+    )
+    expect(
+      shareText({
+        ...base,
+        outcome: 'Chicken',
+        crew: 2,
+        things: ['SilverSpoon', 'MusicBox', 'ButlersBell'],
+      }),
+    ).toBe(
+      "🐔 Our crew of 2 chickened out of Munch Manor with the Silver Spoon, the Music Box, and the Butler's Bell on wave 4. 87 zombies splatted together. Next time, the front door.",
+    )
+  })
 
   test('a death says the wave and the kills, with a skull', () => {
     expect(shareText({ ...base, outcome: 'Munched' })).toBe(

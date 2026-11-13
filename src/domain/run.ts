@@ -22,7 +22,7 @@ export const isOnHome = Phase.isAnyOf(['Ready'])
 
 export const isInRun = Phase.isAnyOf(['Preparation', 'Wave', 'Paused'])
 
-export const isEndScreen = Phase.isAnyOf(['Escaped', 'GameOver'])
+export const isEndScreen = Phase.isAnyOf(['Escaped', 'LeftEarly', 'GameOver'])
 
 // NOTE: a run still on the practice gate (wave 1 with the basics not yet
 // tried, even paused) pays nothing, Bones or missions: the tutorial is not

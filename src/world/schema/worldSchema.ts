@@ -513,6 +513,8 @@ export type IntroCut = typeof IntroCut.Type
 
 // NOTE: Arriving is the intro before the first break: only its clock runs,
 // counting up to the slam, which starts the run (src/world/run/arrival.ts).
+// LeftEarly is a run the crew left by the kitchen's back door in a break
+// (src/world/kitchen/backDoor.ts): an ending between GameOver and Escaped.
 export const Phase = defineTaggedUnion({
   Ready: {},
   Arriving: { elapsedMs: MillisNumber, cut: IntroCut },
@@ -520,6 +522,7 @@ export const Phase = defineTaggedUnion({
   Wave: waveFields,
   Paused: { round: Round },
   Escaped: { wave: Schema.Finite },
+  LeftEarly: { wave: Schema.Finite },
   GameOver: { wave: Schema.Finite },
 })
 export type Phase = typeof Phase.Type
@@ -658,6 +661,7 @@ export const Purchasable = defineTaggedUnion({
   Stove: {},
   Valve: {},
   Case: { id: Schema.Finite },
+  BackDoor: {},
 })
 export type Purchasable = typeof Purchasable.Type
 

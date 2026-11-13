@@ -344,6 +344,7 @@ export const pause = <M extends World>(model: M): M =>
       modifyWorldFields(model, { phase: () => Phase.Paused({ round: wave }) }),
     Paused: () => model,
     Escaped: () => model,
+    LeftEarly: () => model,
     GameOver: () => model,
   })
 
@@ -399,6 +400,7 @@ export const startWaveEarly = (model: World): World =>
     Wave: () => model,
     Paused: () => model,
     Escaped: () => model,
+    LeftEarly: () => model,
     GameOver: () => model,
   })
 
@@ -672,6 +674,7 @@ export const advanceRound: {
     Wave: round => advanceWave(model, round, worldMs),
     Paused: () => model,
     Escaped: () => model,
+    LeftEarly: () => model,
     GameOver: () => model,
   }),
 )
@@ -684,6 +687,7 @@ export const roundWave = (phase: Phase): number =>
     Wave: ({ wave }) => wave,
     Paused: ({ round }) => round.wave,
     Escaped: ({ wave }) => wave,
+    LeftEarly: ({ wave }) => wave,
     GameOver: ({ wave }) => wave,
   })
 

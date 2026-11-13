@@ -149,8 +149,12 @@ import {
 // level's drops (NorthStack, SouthStack), so nothing else rides the wire.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
-export const PROTOCOL_VERSION = 20
-export const MIN_PROTOCOL_VERSION = 20
+// Version 21, leaving early: a run can end LeftEarly (a new phase, with its
+// wave) out the kitchen's back door, held as a new purchasable (BackDoor).
+// The room closes such a run with a reason of its own, LeftEarly, so the
+// lobby's last result can say so.
+export const PROTOCOL_VERSION = 21
+export const MIN_PROTOCOL_VERSION = 21
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000
@@ -317,8 +321,13 @@ export const ClosedReason = Schema.Literals([
   'Abandoned',
   'Interrupted',
   'Won',
+  'LeftEarly',
 ])
 export type ClosedReason = typeof ClosedReason.Type
+
+// NOTE: how a run the room played to its end closed: won, left early out a
+// back door, or lost.
+export type RunEndReason = 'GameOver' | 'Won' | 'LeftEarly'
 
 export const RoomState = Schema.Literals(['Waiting', 'Playing'])
 export type RoomState = typeof RoomState.Type

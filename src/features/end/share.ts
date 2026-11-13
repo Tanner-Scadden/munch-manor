@@ -1,7 +1,8 @@
 import { Array, Option, Schema } from 'effect'
 
 import type { Difficulty } from '../../shared/playerData'
-import { CREW_AWARD_NAMES, type CrewAward } from '../../world/names'
+import type { DareKind } from '../../world/dare/dareSchema'
+import { CREW_AWARD_NAMES, type CrewAward, DARE_NAMES } from '../../world/names'
 
 // Sharing a run from its end screen: the post's words and the game's link.
 // Every word a shared post says lives here, so the owner can tweak the voice
@@ -28,10 +29,13 @@ export type ShareOutcome = typeof ShareOutcome.Type
 export const GAME_URL = 'https://munchmanor.com'
 
 // NOTE: what a post is built from: how the run ended, its wave, difficulty,
-// and kills, and how many players were in it (1 alone). A crew's post
-// crowns its MVP and brags about the sharer's own award, if they won one.
+// kills, and the dare's things found, and how many players were in it (1
+// alone). A crew's post crowns its MVP and brags about the sharer's own
+// award, if they won one. A run left early by the back door names what it
+// ran off with.
 export type SharedRun = Readonly<{
-  outcome: 'Munched' | 'Won'
+  outcome: 'Munched' | 'Chicken' | 'Won'
+  things: ReadonlyArray<DareKind>
   isEndless: boolean
   wave: number
   difficulty: Difficulty
@@ -54,10 +58,31 @@ const splatted = (kills: number): string =>
 const where = ({ isEndless, wave }: SharedRun): string =>
   isEndless ? `endless wave ${wave}` : `wave ${wave}`
 
-const soloText = (run: SharedRun): string =>
-  run.outcome === 'Won'
-    ? `🗝️ I beat Uncle Chunk and escaped Munch Manor on ${SHOUTED[run.difficulty]}! Out on wave ${run.wave}, ${splatted(run.kills)}.`
-    : `💀 Got munched on ${where(run)} in Munch Manor. ${splatted(run.kills)} first. Your turn!`
+// NOTE: the things a run ran off with, read aloud: "the Silver Spoon", "the
+// Silver Spoon and the Music Box", "the Silver Spoon, the Music Box, and
+// the Butler's Bell".
+const haul = (things: ReadonlyArray<DareKind>): string => {
+  const named = Array.map(things, thing => `the ${DARE_NAMES[thing]}`)
+  return named.length <= 2
+    ? Option.getOrElse(
+        Option.liftPredicate(Array.join(named, ' and '), line => line !== ''),
+        () => 'nothing',
+      )
+    : `${Array.join(Array.dropRight(named, 1), ', ')}, and ${Array.join(Array.takeRight(named, 1), '')}`
+}
+
+const SOLO_TEXT: Readonly<
+  Record<SharedRun['outcome'], (run: SharedRun) => string>
+> = {
+  Won: run =>
+    `🗝️ I beat Uncle Chunk and escaped Munch Manor on ${SHOUTED[run.difficulty]}! Out on wave ${run.wave}, ${splatted(run.kills)}.`,
+  Chicken: run =>
+    `🐔 I chickened out of Munch Manor with ${haul(run.things)} on wave ${run.wave}. ${splatted(run.kills)} first. Braver than me?`,
+  Munched: run =>
+    `💀 Got munched on ${where(run)} in Munch Manor. ${splatted(run.kills)} first. Your turn!`,
+}
+
+const soloText = (run: SharedRun): string => SOLO_TEXT[run.outcome](run)
 
 const AWARD_BRAGS: Readonly<Record<CrewAward, string>> = {
   Mvp: `I was the ${CREW_AWARD_NAMES.Mvp} 👑`,
@@ -87,10 +112,18 @@ const crewBrags = (run: SharedRun): string =>
     '',
   )
 
-const crewText = (run: SharedRun): string =>
-  run.outcome === 'Won'
-    ? `🗝️ Our crew of ${run.crew} beat Uncle Chunk and escaped Munch Manor on ${SHOUTED[run.difficulty]}! Out on wave ${run.wave}, ${splatted(run.kills)} together.${crewBrags(run)}`
-    : `💀 Our crew of ${run.crew} got munched on ${where(run)} in Munch Manor. ${splatted(run.kills)} together.${crewBrags(run)} Bring snacks.`
+const CREW_TEXT: Readonly<
+  Record<SharedRun['outcome'], (run: SharedRun) => string>
+> = {
+  Won: run =>
+    `🗝️ Our crew of ${run.crew} beat Uncle Chunk and escaped Munch Manor on ${SHOUTED[run.difficulty]}! Out on wave ${run.wave}, ${splatted(run.kills)} together.${crewBrags(run)}`,
+  Chicken: run =>
+    `🐔 Our crew of ${run.crew} chickened out of Munch Manor with ${haul(run.things)} on wave ${run.wave}. ${splatted(run.kills)} together.${crewBrags(run)} Next time, the front door.`,
+  Munched: run =>
+    `💀 Our crew of ${run.crew} got munched on ${where(run)} in Munch Manor. ${splatted(run.kills)} together.${crewBrags(run)} Bring snacks.`,
+}
+
+const crewText = (run: SharedRun): string => CREW_TEXT[run.outcome](run)
 
 export const shareText = (run: SharedRun): string =>
   run.crew > 1 ? crewText(run) : soloText(run)

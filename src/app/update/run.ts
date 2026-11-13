@@ -18,6 +18,7 @@ const canStart = (model: Model): boolean =>
     Wave: () => false,
     Paused: () => true,
     Escaped: () => endOffer(model) === 'MenuAndModes',
+    LeftEarly: () => endOffer(model) === 'MenuAndModes',
     GameOver: () => endOffer(model) === 'MenuAndModes',
   })
 
@@ -50,4 +51,4 @@ export const startFromButton: {
 )
 
 export const isScreenAnimated = (phase: Phase): boolean =>
-  Phase.isAnyOf(['Ready', 'Escaped', 'GameOver'])(phase)
+  Phase.isAnyOf(['Ready', 'Escaped', 'LeftEarly', 'GameOver'])(phase)

@@ -901,11 +901,7 @@ export const advance: {
         out: [
           ...out,
           ...last.out,
-          ...endRoom(
-            world,
-            last.room,
-            world.isWon(last.room.world) ? 'Won' : 'GameOver',
-          ),
+          ...endRoom(world, last.room, world.endReason(last.room.world)),
         ],
       }
     }

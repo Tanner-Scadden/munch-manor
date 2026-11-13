@@ -90,6 +90,7 @@ const previewDoors = (current: Model): ReadonlyArray<DoorId> =>
     Wave: () => [],
     Paused: () => [],
     Escaped: () => [],
+    LeftEarly: () => [],
     GameOver: () => [],
   })
 

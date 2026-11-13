@@ -1,6 +1,6 @@
 import type { Option } from 'effect'
 
-import type { PlayerInput } from './Protocol'
+import type { PlayerInput, RunEndReason } from './Protocol'
 import type { Reader, Writer } from './Wire'
 
 // NOTE: what the room and the client need from a game, and nothing else.
@@ -56,9 +56,9 @@ export interface World<W, Own> {
   readonly step: (world: W, players: ReadonlyArray<PlayerTick>) => W
   readonly removePlayer: (world: W, slot: number) => W
   readonly isOver: (world: W) => boolean
-  // NOTE: an over world that ended in a win, so the room's result says
-  // Won and the lobby can offer to keep going.
-  readonly isWon: (world: W) => boolean
+  // NOTE: how an over world ended: Won lets the lobby offer to keep going,
+  // LeftEarly is a crew out a back door, and anything else is GameOver.
+  readonly endReason: (world: W) => RunEndReason
   readonly scores: (world: W) => ReadonlyArray<Score>
   // NOTE: the wire. `snapshot` writes the whole world as a client needs
   // it; `diff` writes what changed from `prev` to `next`, comparing values

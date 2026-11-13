@@ -727,6 +727,7 @@ const dropLoot = (before: World, model: World, worldMs: number): World =>
           ),
     Paused: () => model,
     Escaped: () => model,
+    LeftEarly: () => model,
     GameOver: () => model,
   })
 

@@ -71,6 +71,7 @@ const phasePlan = (model: Model): MusicPlan => {
       level: 'Ducked',
     }),
     Escaped: () => SILENT_PLAN,
+    LeftEarly: () => SILENT_PLAN,
     GameOver: () => SILENT_PLAN,
   })
 }
@@ -89,6 +90,11 @@ const phaseStinger = (before: Phase, after: Phase): MusicStinger => {
     !Phase.isAnyOf(['Escaped'])(before)
   ) {
     return 'Escaped'
+  } else if (
+    Phase.isAnyOf(['LeftEarly'])(after) &&
+    !Phase.isAnyOf(['LeftEarly'])(before)
+  ) {
+    return 'Chicken'
   } else if (
     Phase.isAnyOf(['GameOver'])(after) &&
     !Phase.isAnyOf(['GameOver'])(before)

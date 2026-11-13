@@ -30,6 +30,7 @@ export const MusicStinger = Schema.Literals([
   'None',
   'Cleared',
   'Escaped',
+  'Chicken',
   'GameOver',
 ])
 export type MusicStinger = typeof MusicStinger.Type
@@ -43,7 +44,7 @@ export type MusicCue = Readonly<{
 const LoopMood = MusicMood.pick(['Creep', 'Romp', 'Stampede'])
 type LoopMood = typeof LoopMood.Type
 
-const Fanfare = MusicStinger.pick(['Cleared', 'Escaped', 'GameOver'])
+const Fanfare = MusicStinger.pick(['Cleared', 'Escaped', 'Chicken', 'GameOver'])
 type Fanfare = typeof Fanfare.Type
 
 // NOTATION
@@ -269,6 +270,16 @@ const ESCAPED = tune(140, 0, [
   line('Snare', '. . x . . . x x | x . . . . . . .'),
 ])
 
+// NOTE: leaving early by the back door: a quick, silly bop down and out,
+// half a chicken dance, with the bass tiptoeing off.
+const CHICKEN = tune(170, 0.15, [
+  line('Organ', 'G4 G4 A4 A4 E4 E4 G4 - | C5 B4 A4 G4 E4 - C4 .'),
+  line('Stab', '. D4 . D4 . C4 . C4 | . E4 . D4 . C4 . .'),
+  line('Bass', 'C2 . G1 . C2 . G1 . | F1 . G1 . C2 - . .'),
+  line('Kick', 'x . . . x . . . | x . . . x . . .'),
+  line('Hat', '. x . x . x . x | . x . x . x . .'),
+])
+
 const GAME_OVER = tune(120, 0, [
   line('Organ', 'B4 - - A#4 - - A4 - | G#4 - - - - - - .'),
   line('Spook', 'B3 - - A#3 - - A3 - | G#3 - - - - - - .'),
@@ -285,6 +296,7 @@ const LOOPS: Readonly<Record<LoopMood, Tune>> = {
 const STINGERS: Readonly<Record<Fanfare, Tune>> = {
   Cleared: CLEARED,
   Escaped: ESCAPED,
+  Chicken: CHICKEN,
   GameOver: GAME_OVER,
 }
 

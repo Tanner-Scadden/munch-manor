@@ -101,6 +101,7 @@ export const startOrResume: {
     Wave: () => model,
     Paused: ({ round }) => resume(model, round),
     Escaped: () => startRun(model, mode),
+    LeftEarly: () => startRun(model, mode),
     GameOver: () => startRun(model, mode),
   }),
 )

@@ -1090,6 +1090,10 @@ export const overlayShapes: {
         ...endOverlayShapes(model, screen),
         ...endMissionShapes(model, screen),
       ],
+      LeftEarly: () => [
+        ...endOverlayShapes(model, screen),
+        ...endMissionShapes(model, screen),
+      ],
       GameOver: () => [
         ...endOverlayShapes(model, screen),
         ...endMissionShapes(model, screen),

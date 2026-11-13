@@ -16,6 +16,7 @@ import {
   changeModel,
   checkPendingSounds,
   press,
+  settleRunCommands,
 } from '../../../test/testing'
 import { heldKeys } from '../../../world/keys/keys'
 import {
@@ -44,6 +45,7 @@ import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom, SendRoomFrames } from '../../coop/update'
 import { UNFOLD_MS, isPocketCardBlocking } from '../../dare/pocketCard'
+import { endKindOf } from '../../end/endBeat'
 import { maybeIntroFrameOf } from '../../intro/introBeat'
 import { OWN_SLOT, graduated, roomWorld } from './onlineRun.fixture'
 
@@ -400,6 +402,41 @@ describe('an online co-op run', () => {
             expect(lost.bests.byDifficulty.Normal.maybeBestEndlessWave).toEqual(
               graduated.bests.byDifficulty.Normal.maybeBestEndlessWave,
             )
+          }),
+        )
+      }),
+  )
+
+  it.effect(
+    'a crew that leaves by the back door ends CHICKEN on every client, paid as left early',
+    () =>
+      Effect.gen(function* () {
+        const leftEarly: RoomWorld = {
+          ...roomWorld,
+          world: modifyFields(roomWorld.world, {
+            phase: () => Phase.LeftEarly({ wave: 3 }),
+          }),
+        }
+        const playing = yield* Story.story(
+          APPLICATION,
+          Story.given(inRun(roomWorld)),
+          Story.message(roomFrame(100)),
+          Story.model(current => {
+            expect(current.phase._tag).toBe('Preparation')
+          }),
+        )
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(showing(playing, leftEarly)),
+          Story.message(roomFrame(200)),
+          settleRunCommands,
+          Story.model(left => {
+            expect(left.phase).toEqual(Phase.LeftEarly({ wave: 3 }))
+            expect(endKindOf(left)).toEqual(Option.some('Chicken'))
+            expect(left.lastRunEnding).toBe('LeftEarly')
+            const gain = Option.getOrThrow(left.maybeRankGain)
+            expect(gain.bonuses).not.toContain('FirstEscape')
+            expect(left.bonuses.escapedOn).toEqual(graduated.bonuses.escapedOn)
           }),
         )
       }),

@@ -48,7 +48,7 @@ import { GAME_TITLE } from '../shared/constants'
 import { closeButtonView } from '../ui/cornerButtons'
 import { isKeyboard } from '../ui/menuParts'
 import { rankPlateView } from '../ui/rankBadgeView'
-import { dareCardOf } from '../world/dare/dare'
+import { dareCardOf, dareItemsFoundOf } from '../world/dare/dare'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '../world/gear/powerups'
 import { TRAPS, TRAP_KIND_ORDER } from '../world/gear/traps'
 import {
@@ -235,6 +235,8 @@ const roundStatusText = (model: Model): string =>
       `Paused during ${statusWave(model, round.wave)}. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.`,
     Escaped: ({ wave }) =>
       `You escaped the manor on wave ${wave}. ${escapeVerdict(model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
+    LeftEarly: ({ wave }) =>
+      `You chickened out the back door on wave ${wave}, with ${dareItemsFoundOf(model)} of the dare found. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
     GameOver: ({ wave }) =>
       `Game over. ${defeatVerdict(wave, model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
   })

@@ -307,6 +307,7 @@ const roundHudShapes = (
       }),
     Paused: () => [],
     Escaped: () => [],
+    LeftEarly: () => [],
     GameOver: () => [],
   })
 

@@ -318,6 +318,8 @@ Built on 2026-11-10: 1.25 times the zombies, Uncle Chunk at the start of the wav
 
 Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the back door in the kitchen, held open in a break once at least one thing is found. It is an early exit: leave with part of the dare, and the run ends as an escape that pays less, and your friends call you chicken. The whole dare, hat and all, pays most. Push your luck (extraction shooters).
 
+Built on 2026-11-13: a plank door out to the garden in the kitchen's east wall, under a little EXIT sign that glows green once you hold a thing. Hold it in a break and you are out: the end card stamps CHICKEN! with a flapping chicken, and your friends in the car say so next time. A crew goes together or not at all. Once Uncle Chunk is in the house, the front door is the only way out.
+
 ### Made to be talked about
 
 Built on 2026-11-10.
@@ -328,7 +330,7 @@ Built on 2026-11-10.
 
 ### Between runs
 
-Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the intro's car beat carries the line. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each. Built on 2026-11-12: a bubble over the car in the drive, or from the curb over the knock in the short cut, with a few lines for each ending (a death, a quick one, an escape, and a first run's "GO ON. WE DARE YA!"); "Chicken!" waits for the back door.
+Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the intro's car beat carries the line. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each. Built on 2026-11-12: a bubble over the car in the drive, or from the curb over the knock in the short cut, with a few lines for each ending (a death, a quick one, an escape, and a first run's "GO ON. WE DARE YA!"), and "Chicken!" after the back door since 2026-11-13.
 
 ### Heroes and bots
 

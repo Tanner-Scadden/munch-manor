@@ -125,7 +125,9 @@ export const keyFlightShareOf = (world: World): number =>
 export const isFrontDoorOpen = (world: World): boolean =>
   Finale.isAnyOf(['Open'])(world.dare.finale)
 
-const hasChunkInHouse = (world: World): boolean =>
+// NOTE: Uncle Chunk in the house: his body among the zombies, or his fight
+// begun. The kitchen's back door shuts for good then (../kitchen/backDoor.ts).
+export const hasChunkInHouse = (world: World): boolean =>
   Array.some(world.zombies, isBoss) || !Boss.isAnyOf(['Absent'])(world.boss)
 
 // NOTE: Uncle Chunk is due at the front door once the list is done, at the

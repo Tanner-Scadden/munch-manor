@@ -191,6 +191,18 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '.obkkkkbo.',
     'oooooooooo',
   ],
+  // NOTE: a chicken running off: out the back door early.
+  LeaveEarly: [
+    '...rr.....',
+    '..owwo....',
+    'fowowwo...',
+    '..owwwwoo.',
+    '..owwwwwwo',
+    '...owwwwo.',
+    '....oooo..',
+    '....f..f..',
+    '...ff.ff..',
+  ],
   // NOTE: a Groaner's head: zombies, any kind.
   SplatZombies: [
     '..ooooo...',

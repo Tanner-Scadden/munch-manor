@@ -157,6 +157,7 @@ const cornerButtons = (
       ...audioButtons,
     ],
     Escaped: () => audioButtons,
+    LeftEarly: () => audioButtons,
     GameOver: () => audioButtons,
   })
 }

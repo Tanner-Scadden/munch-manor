@@ -14,8 +14,8 @@ import { DayStamp } from './dayStamp'
 
 // NOTE: every mission any day can roll. The list only grows at its end: a
 // saved progress names an id, and a device that does not know an id keeps
-// it untouched. Leaving early (pillar A, build order step 4) joins the
-// Medium size here as `LeaveEarly` once the back door is built.
+// it untouched. Leaving early (pillar A, build order step 4) joined last,
+// a Medium: out the kitchen's back door once (src/world/kitchen/backDoor.ts).
 export const MissionId = Schema.Literals([
   'HotfootKills',
   'PullFridge',
@@ -31,6 +31,7 @@ export const MissionId = Schema.Literals([
   'GunToDeluxe',
   'EscapeDoubleDare',
   'SplatZombies',
+  'LeaveEarly',
 ])
 export type MissionId = typeof MissionId.Type
 
@@ -81,6 +82,7 @@ export const MISSION_RULES: Readonly<Record<MissionId, MissionRule>> = {
   GunToDeluxe: { size: 'Large', goal: 1, kind: 'Kills', gate: 'Anyone' },
   EscapeDoubleDare: { size: 'Large', goal: 1, kind: 'Dare', gate: 'Anyone' },
   SplatZombies: { size: 'Large', goal: 150, kind: 'Kills', gate: 'Anyone' },
+  LeaveEarly: { size: 'Medium', goal: 1, kind: 'Dare', gate: 'Anyone' },
 }
 
 // NOTE: how many zombies one chandelier drop must crush for ChandelierCrush.
