@@ -53,6 +53,8 @@ flowchart TD
 
   reward --> spend[Spend Bones: heroes, looks, hats, gun skins]:::built
   reward -.-> rattlesMemory[Your friends in the car remember how the last run ended]:::proposed
+  reward -.-> shelf[Proof Shelf, Dare Journal, daily missions, mastery: docs/PROGRESSION_PLAN.md]:::proposed
+  shelf -.-> home
   spend --> home
   rattlesMemory -.-> home
   reward -->|RETRY| picks
@@ -143,7 +145,7 @@ flowchart TD
   anyThing --> all
   all{Everything on the list?}
 
-  all -.->|Leave early with part of the dare| early([Early escape: pays less, and you are a chicken]):::proposed
+  all -.->|Leave early by the kitchen's back door, in a break| early([Early escape: pays for what was found, and you are a chicken]):::proposed
   all -->|Yes| hungry[The house gets hungrier: more zombies]:::built
   hungry --> goodbye[Uncle Chunk, the final boss, comes through the front door at the next wave]:::built
   goodbye --> holdout[Fell him: his big gold key bursts out and flies into the front door's padlock, which opens at once]:::built
@@ -225,6 +227,6 @@ The lore choices still open, from `LORE.md`:
 1. Which more things join the rooms, and which room each fits.
 2. Rattles' lines and his 1924 look.
 3. The feat pools per difficulty and the key costs, tuned in the balance pass.
-4. Leaving early, and what your friends in the car say between runs.
+4. Leaving early and your friends in the car: decided on 2026-11-12 with the rest of the progression, to build (`docs/PROGRESSION_PLAN.md`).
 
 The build is in [`docs/ESCAPE_PLAN.md`](./docs/ESCAPE_PLAN.md). Settled and built on 2026-11-10: no shop (feats open display cases, guns level up with kills, zombies drop skeleton keys for rooms and the fridge); endless ammo with reloads kept; your friends write the dare card; the power-ups are the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room; the parlour, the library, and the cellar roll into the house's slots.
