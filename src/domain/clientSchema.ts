@@ -8,6 +8,7 @@
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
+import { MasterySkin } from '../shared/masteryData'
 import { TutorialChoice } from '../shared/nameKeys'
 import { Appearance, Calling } from '../shared/playerData'
 import { DareKind } from '../world/dare/dareSchema'
@@ -390,6 +391,7 @@ export const defaultAppearance: Appearance = {
   glasses: false,
   hat: 'None',
   gunSkin: 'Stock',
+  propStyle: 'Stock',
 }
 
 export { TutorialChoice }
@@ -409,3 +411,30 @@ export const JournalRun = Schema.Struct({
 export type JournalRun = typeof JournalRun.Type
 
 export const noJournalRun: JournalRun = { foundIn: [], reached: [] }
+
+// NOTE: what a run's mastery payout opened, for the end card's unlock
+// flips: a hero's new level, or a gun's new skin.
+export const MasteryUnlock = defineTaggedUnion({
+  HeroLevel: { calling: Calling, level: Schema.Finite },
+  GunMastery: { kind: WeaponKind, skin: MasterySkin },
+})
+export type MasteryUnlock = typeof MasteryUnlock.Type
+
+// NOTE: what a run has paid into mastery so far (the waves cleared, the
+// dare things found, each gun's kills), so a run that keeps going pays only
+// what is new when it ends again, as `rankPaid` does for rank; and what its
+// last payout opened.
+export const MasteryRun = Schema.Struct({
+  wavesPaid: Schema.Finite,
+  thingsPaid: Schema.Finite,
+  killsPaid: Schema.Record(Schema.String, Schema.Finite),
+  unlocks: Schema.Array(MasteryUnlock),
+})
+export type MasteryRun = typeof MasteryRun.Type
+
+export const noMasteryRun: MasteryRun = {
+  wavesPaid: 0,
+  thingsPaid: 0,
+  killsPaid: {},
+  unlocks: [],
+}

@@ -3,6 +3,7 @@ import { defineMessageUnion } from 'foldkit/message'
 
 import { LookPart } from '../../domain/looks'
 import { LinkProblem } from '../../platform/playerSync'
+import { PropStyle } from '../../shared/playerData'
 import { LookToggle } from './blocks/look/lookSchema'
 import { ProfileTab } from './model'
 
@@ -45,13 +46,15 @@ export const Message = defineMessageUnion({
   ClickedCancelResetTutorialButton: {},
   CompletedFocusTutorialReset: {},
   CompletedFocusLookOption: {},
+  ClickedPropStyle: { style: PropStyle },
 })
 export type Message = typeof Message.Type
 
 // NOTE: what happened in the Profile that the root acts on: the name kept
 // (each with the name, cleaned), the dice, a setting's tile, the tutorial
 // reset, the link flow's moments (for their sounds), and the Look tab's
-// picks, which change the root's look and Bones. A pick's outcome comes back
+// picks, which change the root's look and Bones, and the MASTERY tab's
+// prop style. A pick's outcome comes back
 // as `InformedOfLookOutcome`, and a dice name as `InformedOfRolledName`.
 export const OutMessage = defineMessageUnion({
   SwitchedTab: { tab: ProfileTab, name: Schema.String },
@@ -66,5 +69,6 @@ export const OutMessage = defineMessageUnion({
   FlippedLook: { toggle: LookToggle },
   RolledLookDice: {},
   ClickedBuyLook: { part: LookPart, value: Schema.String },
+  ChosePropStyle: { style: PropStyle },
 })
 export type OutMessage = typeof OutMessage.Type

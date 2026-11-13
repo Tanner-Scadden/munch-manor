@@ -42,6 +42,7 @@ import {
   makePlayerDatabase,
 } from '../platform/storeSqlite'
 import { noJournal } from '../shared/journalData'
+import { noMastery } from '../shared/masteryData'
 import { noMissions } from '../shared/missionData'
 import { noBonuses, noSavedRunRecords } from '../shared/playerData'
 import { noProof } from '../shared/proofData'
@@ -105,6 +106,7 @@ export const legacySave: PlayerSave = {
   missions: noMissions,
   proof: noProof,
   journal: noJournal,
+  mastery: noMastery,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

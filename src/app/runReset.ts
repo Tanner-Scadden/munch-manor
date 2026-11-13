@@ -11,6 +11,7 @@ import {
   RunTally,
   cosmeticSeedOf,
   noJournalRun,
+  noMasteryRun,
   noRankPaid,
   quietDareHint,
 } from '../domain/clientSchema'
@@ -113,6 +114,7 @@ export type RunFields = Pick<
   | 'maybeRankGain'
   | 'missionRun'
   | 'journalRun'
+  | 'masteryRun'
   | 'maybeMissionGain'
   | 'maybeRoomDifficulty'
   | 'maybeRoomModifiers'
@@ -187,6 +189,7 @@ export const freshRun = (model: Model): RunFields => ({
   maybeRankGain: Option.none(),
   missionRun: noMissionRun,
   journalRun: noJournalRun,
+  masteryRun: noMasteryRun,
   maybeMissionGain: Option.none(),
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),

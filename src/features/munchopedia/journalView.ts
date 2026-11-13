@@ -10,6 +10,7 @@ import {
 import { PADLOCK_ICON } from '../../art/icons'
 import { maybeRoomIcon } from '../../art/roomIcons'
 import { spriteImage } from '../../art/sprite'
+import { isHeroStoryOpen } from '../../domain/mastery'
 import { Calling } from '../../shared/playerData'
 import { iconView } from '../../ui/menuParts'
 import type { DareKind } from '../../world/dare/dareSchema'
@@ -25,6 +26,7 @@ import type { ViewInputs } from './block'
 import type { MunchopediaViewBuilder } from './composition'
 import {
   HERO_REASONS,
+  HERO_STORIES,
   JOURNAL_ROOMS,
   JOURNAL_TAB_NAMES,
   JOURNAL_THINGS,
@@ -285,6 +287,14 @@ const heroesView = (inputs: ViewInputs, h: MunchopediaViewBuilder): Html =>
             [h.Class('journal-card-line')],
             [isKnown ? HERO_REASONS[calling] : UNKNOWN],
           ),
+          ...(isHeroStoryOpen(inputs.mastery, calling)
+            ? [
+                h.span(
+                  [h.Class('journal-card-line journal-card-story')],
+                  [HERO_STORIES[calling]],
+                ),
+              ]
+            : []),
         ],
       )
     }),

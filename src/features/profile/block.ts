@@ -26,16 +26,19 @@ import type {
 } from '../../shared/playerData'
 import type { ViewInputs as LookInputs } from './blocks/look/block'
 import { InMessage } from './inMessage'
+import type { MasteryInputs } from './masteryView'
 import { Message, OutMessage } from './message'
 import { Model } from './model'
 
 // NOTE: what the root hands the Profile's view: only the root's fields its
 // tabs show. The Look tab's look, owned, and new things; whether the Look
-// tab holds something new; the layout and the device; sync's state for the
+// tab holds something new; the MASTERY tab's tracks, hero picked, and
+// look; the layout and the device; sync's state for the
 // Account tab; and the settings' values and what this device can do.
 export type ViewInputs = Readonly<{
   look: Omit<LookInputs, 'fx' | 'fxCount' | 'maybePreview' | 'cue'>
   isLookNew: boolean
+  mastery: MasteryInputs
   isPortrait: boolean
   device: InputDevice
   sync: Readonly<{

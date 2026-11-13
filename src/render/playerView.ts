@@ -11,7 +11,8 @@ import {
   frameAt,
   group,
 } from '../art/sprite'
-import { gunSprite, knifeSprite } from '../art/sprites/guns'
+import { type DrawnGunSkin, gunSprite, knifeSprite } from '../art/sprites/guns'
+import { masterySkinIn } from '../domain/mastery'
 import {
   MUZZLE_FLASH_BIG_MS,
   MUZZLE_FLASH_CORE_COLOR,
@@ -357,6 +358,7 @@ const standingShapes = (
       tier,
       angle + swingTurn(weapon, recoil),
       model.appearance.gunSkin,
+      drawnSkinOf(model, weapon),
     ),
   })
   const magazine = Option.toArray(
@@ -471,7 +473,7 @@ const downSwingShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                 tier,
                 Math.atan2(player.facing.y, player.facing.x) +
                   swingTurn(kind, recoil),
-                model.appearance.gunSkin,
+                drawnSkinOf(model, kind),
               ),
             }),
           ]
@@ -482,15 +484,26 @@ const downSwingShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: the knife in hand rests where the gun would; mid-slash the thrust
 // blade (knifeSlashShapes) takes its place.
+// NOTE: the skin a gun wears in this seat's hands: its mastery skin once
+// its kills have opened one (src/domain/mastery.ts), else the look's. A
+// teammate's or a bot's seat Model holds no mastery, so theirs wear their
+// look's skin.
+const drawnSkinOf = (model: Model, kind: WeaponKind): DrawnGunSkin =>
+  Option.getOrElse(
+    masterySkinIn(model.mastery, kind),
+    (): DrawnGunSkin => model.appearance.gunSkin,
+  )
+
 const heldSprite = (
   player: Player,
   weapon: WeaponKind,
   tier: number,
   angle: number,
   skin: GunSkin,
+  gunSkin: DrawnGunSkin,
 ): Sprite => {
   if (!isWieldingKnife(player)) {
-    return gunSprite(weapon, tier, angle, skin)
+    return gunSprite(weapon, tier, angle, gunSkin)
   }
   return Option.isSome(maybeSlashShare(player)) ? [] : knifeSprite(angle, skin)
 }

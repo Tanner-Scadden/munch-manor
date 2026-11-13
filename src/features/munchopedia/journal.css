@@ -109,6 +109,10 @@
   font: italic 11px var(--menu-font);
 }
 
+.journal-card-story {
+  color: var(--menu-gold);
+}
+
 .journal-lock {
   display: inline-flex;
   align-items: center;

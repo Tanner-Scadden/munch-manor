@@ -18,8 +18,9 @@ import {
   shineSprite,
 } from '../../art/rankArt'
 import { frameAt, group, placeAt } from '../../art/sprite'
-import { gunSprite } from '../../art/sprites/guns'
+import { gunIcon, gunSprite } from '../../art/sprites/guns'
 import { PART_OF_KIND, chooseLook } from '../../domain/looks'
+import { heroRewardAt } from '../../domain/mastery'
 import { rect } from '../../render/drawing'
 import { GUN_HOLD_PX } from '../../render/playerView'
 import { PLAYER_FOOT_OFFSET } from '../../shared/constants'
@@ -34,6 +35,9 @@ import {
   BONE_BONUS_TAGS,
   CALLING_NAMES,
   DARE_NAMES,
+  MASTERY_SKIN_NAMES,
+  PROP_STYLE_NAMES,
+  PROP_WORD,
   PURSE_NAME,
   STORY_TITLES,
   giftName,
@@ -217,6 +221,41 @@ const unlockFigureOf = (
       maybeBoneTag: Option.some(`+${bones}`),
       tab: PURSE_TAB,
     }),
+    HeroLevel: ({ calling, level }) =>
+      Option.match(
+        Option.filter(heroRewardAt(level), reward => reward !== 'Story'),
+        {
+          onNone: () => ({
+            figure: [standingIcon(JOURNAL_BIG_ICON)],
+            name: CALLING_NAMES[calling],
+            maybeBoneTag: Option.none(),
+            tab: STORY_TAB,
+          }),
+          onSome: style => ({
+            figure: frameAt(
+              playerSprites(
+                { ...model.appearance, hat: 'None', propStyle: style },
+                calling,
+              ).idle,
+              0,
+            ).Normal.Right,
+            name: `${PROP_STYLE_NAMES[style]} ${PROP_WORD}`,
+            maybeBoneTag: Option.none(),
+            tab: MASTERY_TAB,
+          }),
+        },
+      ),
+    GunMastery: ({ kind, skin }) => ({
+      figure: [
+        group({
+          translate: { x: 0, y: -3 },
+          shapes: gunIcon(kind, 0, skin),
+        }),
+      ],
+      name: MASTERY_SKIN_NAMES[skin],
+      maybeBoneTag: Option.none(),
+      tab: MASTERY_TAB,
+    }),
     Milestone: ({ milestone }) =>
       Option.match(milestoneOf(milestone).maybeThing, {
         onNone: () => ({
@@ -279,19 +318,21 @@ const boneTagShapes = (text: string): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: a gold tab over the card says what the rank did: a hero for sale
 // is NOW PURCHASABLE, a gift look NOW AVAILABLE; and what a milestone did:
-// a thing NEW ON THE LIST, a NEW STORY PAGE in the journal; and a purse
-// BONUS BONES.
+// a thing NEW ON THE LIST, a NEW STORY PAGE in the journal; a purse
+// BONUS BONES; and a hero's or a gun's mastery level MASTERY UP (a hero's
+// story level a NEW STORY PAGE too).
 const FOR_SALE_TAB = 'NOW PURCHASABLE'
 const GIFT_TAB = 'NOW AVAILABLE'
 const PURSE_TAB = 'BONUS BONES'
 const THING_TAB = 'NEW ON THE LIST'
 const STORY_TAB = 'NEW STORY PAGE'
+const MASTERY_TAB = 'MASTERY UP'
 const TAB_HEIGHT = GLYPH_HEIGHT + 4
 const TAB_PAD_PX = 3
 const TAB_WIDTH_PX = Math.max(
   CARD_WIDTH + 2,
   ...Array.map(
-    [FOR_SALE_TAB, GIFT_TAB, PURSE_TAB, THING_TAB, STORY_TAB],
+    [FOR_SALE_TAB, GIFT_TAB, PURSE_TAB, THING_TAB, STORY_TAB, MASTERY_TAB],
     text => textWidth(text) + TAB_PAD_PX * 2,
   ),
 )

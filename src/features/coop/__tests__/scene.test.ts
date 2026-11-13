@@ -14,7 +14,8 @@ import {
   RoomRequest,
   Screen,
 } from '../../../domain/coopRoom'
-import { type Appearance, lookCodeOf } from '../../../shared/playerData'
+import { lookCodeOf } from '../../../shared/lookCodes'
+import type { Appearance } from '../../../shared/playerData'
 import type { ViewInputs } from '../block'
 import { Message } from '../message'
 import { type Model, emptyQueue } from '../model'
@@ -483,6 +484,7 @@ describe('the lobby', () => {
         glasses: true,
         hat: 'None',
         gunSkin: 'Stock',
+        propStyle: 'Stock',
       }
       return Scene.scene(
         COOP_SCENE,

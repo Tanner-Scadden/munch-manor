@@ -13,15 +13,16 @@ import {
   restoreSave,
   saveOf,
 } from '../../../../../platform/save'
+import { lookCodeOf, lookOfCode } from '../../../../../shared/lookCodes'
+import { noMastery } from '../../../../../shared/masteryData'
 import {
   type Appearance,
   GunSkin,
   Hat,
   Print,
+  PropStyle,
   SEEN_BASELINE,
   ShirtColor,
-  lookCodeOf,
-  lookOfCode,
 } from '../../../../../shared/playerData'
 import { legacySave } from '../../../../../test/store.fixture'
 import { jsonOf } from '../../../../../test/testing'
@@ -44,6 +45,7 @@ const MOHAWK: Appearance = {
   glasses: false,
   hat: 'None',
   gunSkin: 'Stock',
+  propStyle: 'Stock',
 }
 
 describe('the save with hats', () => {
@@ -66,6 +68,7 @@ describe('the save with hats', () => {
       ...lookWithoutHat,
       hat: 'None',
       gunSkin: 'Stock',
+      propStyle: 'Stock',
     })
     expect(migrated.boughtCosmetics).toEqual([])
     expect(migrated.calling).toBe(legacySave.calling)
@@ -250,6 +253,7 @@ describe('the gun skin and the other earned looks in the look code', () => {
       print: 'Flames',
       hat: 'PumpkinHead',
       gunSkin: 'Neon',
+      propStyle: 'Gold',
     })
     expect(cleanLook(code)).toBe(code)
   })
@@ -312,7 +316,8 @@ describe('the hat in the look code', () => {
         'Slim.Mohawk.Pink.Tan.Teal.CCBA.MM',
         'Slim.Mohawk.Pink.Tan.Teal.CCBA.m',
         'Slim.Mohawk.Pink.Tan.Teal.CCBA.',
-        'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.A.A',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.A.A.A',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.A.Z',
         'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.Z',
         'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.AA',
       ],
@@ -331,5 +336,48 @@ describe('the hat in the look code', () => {
     Array.forEach(Hat.literals, hat => {
       expect(hat === 'None' || hat in HAT_ART).toBe(true)
     })
+  })
+})
+
+describe('the mastery prop style in the look code', () => {
+  test('a ninth word, after the hat and skin words, only once it is not Stock', () => {
+    expect(lookCodeOf({ ...MOHAWK, propStyle: 'Silver' })).toBe(
+      'Slim.Mohawk.Pink.Tan.Teal.CCBA.A.A.B',
+    )
+    expect(
+      lookCodeOf({ ...MOHAWK, hat: 'Fez', gunSkin: 'Neon', propStyle: 'Gold' }),
+    ).toBe('Slim.Mohawk.Pink.Tan.Teal.CCBA.M.F.E')
+    expect(lookCodeOf({ ...MOHAWK, hat: 'Fez', propStyle: 'Stock' })).toBe(
+      'Slim.Mohawk.Pink.Tan.Teal.CCBA.M',
+    )
+  })
+
+  test('every style reads back, and a code with no ninth word is Stock', () => {
+    Array.forEach(PropStyle.literals, propStyle => {
+      Array.forEach(['Stock', 'Gold'] as const, gunSkin => {
+        const look: Appearance = { ...MOHAWK, hat: 'Fez', gunSkin, propStyle }
+        expect(lookOfCode(lookCodeOf(look))).toEqual(Option.some(look))
+      })
+    })
+    expect(lookOfCode('Slim.Mohawk.Pink.Tan.Teal.CCBA.M.F')).toEqual(
+      Option.some({ ...MOHAWK, hat: 'Fez', gunSkin: 'Neon' }),
+    )
+  })
+
+  test('a save from before mastery reads with the stock prop and no tracks', () => {
+    const { mastery: _mastery, ...rest } = saveOf(initialModel)
+    const { propStyle: _propStyle, ...look } = rest.appearance
+    const decoded = decodeSave(
+      jsonOf({ ...rest, appearance: look, version: 26 }),
+    )
+    expect(Option.map(decoded, save => save.appearance.propStyle)).toEqual(
+      Option.some('Stock'),
+    )
+    expect(Option.map(decoded, save => save.mastery)).toEqual(
+      Option.some(noMastery),
+    )
+    expect(Option.map(decoded, save => save.version)).toEqual(
+      Option.some(SAVE_VERSION),
+    )
   })
 })

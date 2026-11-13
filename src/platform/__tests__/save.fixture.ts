@@ -1,4 +1,5 @@
 import { noJournal } from '../../shared/journalData'
+import { noMastery } from '../../shared/masteryData'
 import { noMissions } from '../../shared/missionData'
 import { noProof } from '../../shared/proofData'
 // The save a returning player's device holds, every field set, which the
@@ -48,6 +49,7 @@ export const learnedSave: PlayerSave = {
     glasses: true,
     hat: 'None',
     gunSkin: 'Stock',
+    propStyle: 'Stock',
   },
   difficulty: { chosen: 'Hard', card: 'Seen', nightmare: 'Unlocked' },
   bests: {
@@ -88,6 +90,7 @@ export const learnedSave: PlayerSave = {
   missions: noMissions,
   proof: noProof,
   journal: noJournal,
+  mastery: noMastery,
   calling: 'TrackStar',
   boughtCosmetics: [],
   seenUnlocks: [],

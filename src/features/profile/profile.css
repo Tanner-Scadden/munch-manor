@@ -5,6 +5,7 @@
 
 :root {
   --profile-look: var(--menu-pink);
+  --profile-mastery: var(--menu-orange);
   --profile-name: var(--menu-gold);
   --profile-account: var(--menu-teal);
   --profile-settings: #c9cfc2;
@@ -27,6 +28,10 @@
 
 .profile-dialog[data-tab='Look'] {
   --tab-color: var(--profile-look);
+}
+
+.profile-dialog[data-tab='Mastery'] {
+  --tab-color: var(--profile-mastery);
 }
 
 .profile-dialog[data-tab='Name'] {
@@ -137,6 +142,10 @@
 
 .profile-tab[data-tab='Look'] {
   --tab-color: var(--profile-look);
+}
+
+.profile-tab[data-tab='Mastery'] {
+  --tab-color: var(--profile-mastery);
 }
 
 .profile-tab[data-tab='Name'] {

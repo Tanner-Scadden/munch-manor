@@ -1,9 +1,11 @@
 import { Effect, Function, Option, pipe } from 'effect'
 
 import { keepJournal, tallyJournalFrom } from '../../domain/journal'
+import { fitPropStyle } from '../../domain/mastery'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import { noteDeathTip } from '../../features/end/deathTip'
 import { noteRecords, reachRecords } from '../../features/end/endBeat'
+import { earnMastery } from '../../features/end/masteryRun'
 import { earnRank, payPursesFrom } from '../../features/end/rankRun'
 import { notePulledPrize } from '../../features/guide/shopGuide'
 import { noteRunEnding, pickCarLine } from '../../features/intro/carLine'
@@ -94,10 +96,10 @@ type SaveWrite = 'Write' | 'Synced'
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the rank, the rank purses, and the daily missions a run pays, the Proof Shelf, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
+// Nightmare, hero and gun mastery, the rank, the rank purses, and the daily missions a run pays, the Proof Shelf, the Dare Journal and its milestones, the death tip, how the run ended and the friends' line for the
 // next intro, the run count and its summary, the run's recording, the new
 // zombie badges, the
-// fridge prizes pulled, and the save. `update` in src/app/main.ts runs them once
+// fridge prizes pulled, the prop style fitted to the hero picked, and the save. `update` in src/app/main.ts runs them once
 // after every dispatch, a child's delivery and its fold included. Each looks
 // only at the root's own fields and acts on a change between the two Models,
 // so a dispatch that leaves the root as it was does nothing here.
@@ -115,6 +117,7 @@ export const afterMessage: {
     stepModel => ({ model: freezeMissionsFrom(stepModel, before) }),
     stepModel => ({ model: tallyMissionsFrom(before, stepModel) }),
     stepModel => ({ model: tallyJournalFrom(before, stepModel) }),
+    stepModel => ({ model: earnMastery(before, stepModel) }),
     stepModel => ({
       model: earnRank(before, stepModel),
     }),
@@ -143,6 +146,7 @@ export const afterMessage: {
     finishRecordingFrom(before),
     stepModel => ({ model: forgetNewEntriesFrom(before, stepModel) }),
     stepModel => ({ model: notePulledPrize(stepModel) }),
+    stepModel => ({ model: fitPropStyle(stepModel) }),
     writeSaveFrom(before, saveWrite),
   ],
 )

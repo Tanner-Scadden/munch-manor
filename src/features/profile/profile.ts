@@ -14,6 +14,7 @@ export const PROFILE_TABS: Array.NonEmptyReadonlyArray<ProfileTab> = [
   'Name',
   'Account',
   'Settings',
+  'Mastery',
 ]
 
 // NAME

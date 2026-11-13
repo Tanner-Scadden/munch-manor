@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 
+import type { MasterySkin } from '../../shared/masteryData'
 import type { GunSkin } from '../../shared/playerData'
 import type { WeaponKind } from '../../world/schema/entitySchema'
 import {
@@ -117,7 +118,11 @@ export const GUN_TIER_TRIMS: ReadonlyArray<Palette> = [
 // the Pan's black (D). The outline (K), the shotgun's red tip, and the
 // old guns' brass (Y, J) stay. A
 // tier's trim lies over a skin, so a skinned gun still shows its tier.
-type SkinnedGunSkin = Exclude<GunSkin, 'Stock'>
+// NOTE: a skin as a gun is drawn: the look's, or a gun's mastery skin
+// (src/domain/mastery.ts), which that gun wears in its master's hands.
+export type DrawnGunSkin = GunSkin | MasterySkin
+
+type SkinnedGunSkin = Exclude<DrawnGunSkin, 'Stock'>
 
 const GUN_SKIN_TRIMS: Readonly<Record<SkinnedGunSkin, Palette>> = {
   Gold: {
@@ -190,15 +195,38 @@ const GUN_SKIN_TRIMS: Readonly<Record<SkinnedGunSkin, Palette>> = {
     Q: '#ffd36b',
     D: '#8a2410',
   },
+  // NOTE: the mastery skins (drafts pinned in Munch Studio): Gilded is
+  // bright gold metal on dark ebony wood, richer than the gift's Gold;
+  // Diamond is pale ice with white facets.
+  Gilded: {
+    G: '#f0c43a',
+    H: '#fffbe0',
+    M: '#b07c10',
+    W: '#3a2418',
+    V: '#1e120c',
+    P: '#f0c43a',
+    Q: '#fffbe0',
+    D: '#b07c10',
+  },
+  Diamond: {
+    G: '#bfefff',
+    H: '#ffffff',
+    M: '#6fb8d8',
+    W: '#e6f8ff',
+    V: '#8fd0ea',
+    P: '#bfefff',
+    Q: '#ffffff',
+    D: '#6fb8d8',
+  },
 }
 
 const withTrim = (base: Palette, trim: Palette): Palette =>
   Record.union(base, trim, (_base, trimmed) => trimmed)
 
-const skinPalette = (skin: GunSkin): Palette =>
+const skinPalette = (skin: DrawnGunSkin): Palette =>
   skin === 'Stock' ? GUN_PALETTE : withTrim(GUN_PALETTE, GUN_SKIN_TRIMS[skin])
 
-const gunPalette = (tier: number, skin: GunSkin = 'Stock'): Palette =>
+const gunPalette = (tier: number, skin: DrawnGunSkin = 'Stock'): Palette =>
   Option.match(Array.get(GUN_TIER_TRIMS, tier), {
     onNone: () => skinPalette(skin),
     onSome: trim => withTrim(skinPalette(skin), trim),
@@ -324,11 +352,11 @@ const skinnedIcons = new Map<string, Sprite>()
 const isKindFirst = (args: IArguments): boolean => typeof args[0] === 'string'
 
 export const gunIcon: {
-  (tier: number, skin?: GunSkin): (kind: WeaponKind) => Sprite
-  (kind: WeaponKind, tier: number, skin?: GunSkin): Sprite
+  (tier: number, skin?: DrawnGunSkin): (kind: WeaponKind) => Sprite
+  (kind: WeaponKind, tier: number, skin?: DrawnGunSkin): Sprite
 } = Function.dual(
   isKindFirst,
-  (kind: WeaponKind, tier: number, skin: GunSkin = 'Stock'): Sprite => {
+  (kind: WeaponKind, tier: number, skin: DrawnGunSkin = 'Stock'): Sprite => {
     if (skin !== 'Stock') {
       const key = `${skin}.${kind}.${tier}`
       return Option.getOrElse(
@@ -352,15 +380,19 @@ export const gunIcon: {
 )
 
 export const gunSprite: {
-  (tier: number, angle: number, skin?: GunSkin): (kind: WeaponKind) => Sprite
-  (kind: WeaponKind, tier: number, angle: number, skin?: GunSkin): Sprite
+  (
+    tier: number,
+    angle: number,
+    skin?: DrawnGunSkin,
+  ): (kind: WeaponKind) => Sprite
+  (kind: WeaponKind, tier: number, angle: number, skin?: DrawnGunSkin): Sprite
 } = Function.dual(
   isKindFirst,
   (
     kind: WeaponKind,
     tier: number,
     angle: number,
-    skin: GunSkin = 'Stock',
+    skin: DrawnGunSkin = 'Stock',
   ): Sprite => {
     if (skin !== 'Stock') {
       return turnAt(
@@ -385,19 +417,19 @@ export const gunSprite: {
 // Pistol in a skin.
 export const gunPictureOf: {
   (
-    skin: GunSkin,
+    skin: DrawnGunSkin,
   ): (
     kind: WeaponKind,
   ) => Readonly<{ rows: ReadonlyArray<string>; palette: Palette }>
   (
     kind: WeaponKind,
-    skin: GunSkin,
+    skin: DrawnGunSkin,
   ): Readonly<{ rows: ReadonlyArray<string>; palette: Palette }>
 } = Function.dual(
   2,
   (
     kind: WeaponKind,
-    skin: GunSkin,
+    skin: DrawnGunSkin,
   ): Readonly<{ rows: ReadonlyArray<string>; palette: Palette }> => ({
     rows: GUN_PIXELS[kind].pixels,
     palette: gunPalette(0, skin),

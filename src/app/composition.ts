@@ -46,6 +46,7 @@ import {
 import {
   buyLook,
   chooseLook,
+  choosePropStyle,
   clickedSetting,
   flipLook,
   keepName,
@@ -132,6 +133,7 @@ const ProfileBindingWithOutMessagePolicy = ProfileBinding.withOutMessagePolicy({
     FlippedLook: ({ toggle }) => flipLook(toggle),
     RolledLookDice: () => rollLook,
     ClickedBuyLook: buyLook,
+    ChosePropStyle: ({ style }) => choosePropStyle(style),
   }),
 })
 

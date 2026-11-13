@@ -139,6 +139,8 @@ export const FIELD_CLASSES = {
   proof: 'Client',
   journal: 'Client',
   journalRun: 'Client',
+  mastery: 'Client',
+  masteryRun: 'Client',
   missionRun: 'Client',
   maybeMissionGain: 'Client',
   calling: 'Client',

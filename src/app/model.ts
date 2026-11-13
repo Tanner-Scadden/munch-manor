@@ -19,6 +19,7 @@ import {
   LevelCallout,
   type LoadStep,
   Loading,
+  MasteryRun,
   PlayerBests,
   PocketCard,
   PrizeFlight,
@@ -37,6 +38,7 @@ import {
   freshHomeMenu,
   freshLessons,
   noJournalRun,
+  noMasteryRun,
   noRankPaid,
   quietDareHint,
 } from '../domain/clientSchema'
@@ -87,6 +89,7 @@ import {
 import { DEFAULT_SEED } from '../shared/constants'
 import { DayStamp } from '../shared/dayStamp'
 import { SavedJournal, noJournal } from '../shared/journalData'
+import { SavedMastery, noMastery } from '../shared/masteryData'
 import { SavedMissions, noMissions } from '../shared/missionData'
 import {
   Appearance,
@@ -287,6 +290,11 @@ export const Model = Schema.Struct({
   // gathers toward it.
   journal: SavedJournal,
   journalRun: JournalRun,
+  // NOTE: hero and gun mastery (src/domain/mastery.ts): each hero's points
+  // and each gun's kills across every run, saved and synced, and what this
+  // run has paid into them and opened.
+  mastery: SavedMastery,
+  masteryRun: MasteryRun,
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
@@ -494,6 +502,8 @@ export const initialModel: OwnModel = {
   proof: noProof,
   journal: noJournal,
   journalRun: noJournalRun,
+  mastery: noMastery,
+  masteryRun: noMasteryRun,
   missionRun: noMissionRun,
   maybeMissionGain: Option.none(),
   calling: 'You',

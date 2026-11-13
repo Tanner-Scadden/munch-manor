@@ -122,6 +122,7 @@ const PICKED: Appearance = {
   glasses: true,
   hat: 'None',
   gunSkin: 'Stock',
+  propStyle: 'Stock',
 }
 
 const flip = (toggle: 'Beard' | 'Glasses') =>
@@ -223,6 +224,7 @@ describe('Character', () => {
       glasses: false,
       hat: 'None',
       gunSkin: 'Stock',
+      propStyle: 'Stock',
     })
   })
 
@@ -522,6 +524,7 @@ describe('Character', () => {
         glasses: true,
         hat: 'None',
         gunSkin: 'Stock',
+        propStyle: 'Stock',
       },
     ]
     const frameSizes = (appearance: Appearance) =>

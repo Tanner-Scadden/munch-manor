@@ -328,6 +328,11 @@ const profileInputs = (model: Model): ProfileViewInputs => ({
     rankOf(totalPointsOf(model.rank)),
     model.seenUnlocks,
   ),
+  mastery: {
+    mastery: model.mastery,
+    picked: model.calling,
+    look: model.appearance,
+  },
   isPortrait: isPortrait(model),
   device: model.lastDevice,
   sync: {

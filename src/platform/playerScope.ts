@@ -11,6 +11,7 @@ import {
 
 import { DayStamp } from '../shared/dayStamp'
 import { SavedJournal, addToJournal } from '../shared/journalData'
+import { StoredAppearance } from '../shared/lookCodes'
 import { SavedMissions } from '../shared/missionData'
 import {
   Appearance,
@@ -44,11 +45,16 @@ import {
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
-  StoredAppearance,
   isBetterRun,
 } from '../shared/playerData'
 import { ProofEntry } from '../shared/proofData'
 import { purseBonesAt, rankOf } from '../shared/rankCurve'
+import {
+  GUN_KILLS_TABLE,
+  GainedMastery,
+  HERO_MASTERY_TABLE,
+  seedMasteryRows,
+} from './masteryScope'
 import {
   ClaimedMission,
   ProgressedMissions,
@@ -256,11 +262,12 @@ const updatePlayer = (
 // the save with the last run's ending (save version 22), and 20 the save
 // with the daily missions (save version 23), 21 the save with the Proof
 // Shelf (save version 24), 22 the save with the Dare Journal (save
-// version 25), and 23 the save with the rank purses (save version 26).
+// version 25), 23 the save with the rank purses (save version 26), and 24
+// the save with hero and gun mastery (save version 27).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 23,
+  version: 24,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -292,6 +299,7 @@ export const SeededPlayer = defineMutation({
           ),
       })
       yield* seedProofRows(context, save.proof)
+      yield* seedMasteryRows(context, save.mastery)
     }),
 })
 
@@ -313,7 +321,7 @@ export const ChangedSettings = defineMutation({
     }),
 })
 
-// NOTE: version 5 carries the gun skin (version 4 the hat, 3 the simple
+// NOTE: version 6 carries the prop style, version 5 the gun skin (version 4 the hat, 3 the simple
 // look, 2 the many-part one). The row may still hold an older look until the
 // first change, so it is read as StoredAppearance. A look worn but not owned
 // is not checked against what the player owns here: it is shown as stock
@@ -321,7 +329,7 @@ export const ChangedSettings = defineMutation({
 /** @stability unstable */
 export const ChangedAppearance = defineMutation({
   name: 'ChangedAppearance',
-  version: 5,
+  version: 6,
   args: Schema.Struct({ appearance: Appearance }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -1093,6 +1101,8 @@ export const PlayerScope = defineScope({
     'linked_devices',
     'bought_cosmetics',
     PROOF_TABLE,
+    HERO_MASTERY_TABLE,
+    GUN_KILLS_TABLE,
   ],
   readers: 'Owner',
   replica: 'ReadWrite',
@@ -1129,6 +1139,7 @@ export const PlayerScope = defineScope({
     StampedMissionDay,
     ShelvedProof,
     KeptJournal,
+    GainedMastery,
     LinkedDevices,
   ],
   migrations: PLAYER_MIGRATIONS,

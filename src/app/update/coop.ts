@@ -15,7 +15,8 @@ import {
   startingCallingOf,
 } from '../../features/heroes/callingPick'
 import { isCoopKey } from '../../screens/home/home'
-import { type Calling, lookCodeOf } from '../../shared/playerData'
+import { lookCodeOf } from '../../shared/lookCodes'
+import type { Calling } from '../../shared/playerData'
 import { stepWhen } from '../../shared/stepWhen'
 import { callingStandingOf, canAffordCalling } from '../../world/heroes/calling'
 import { bonesBalanceOf, rankOf, totalPointsOf } from '../../world/heroes/rank'

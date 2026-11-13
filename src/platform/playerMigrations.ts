@@ -225,4 +225,20 @@ export const PLAYER_MIGRATIONS: Readonly<Record<string, ScopeMigration>> = {
       yield* sql`ALTER TABLE ${sql(table('player'))}
         ADD COLUMN purses TEXT NOT NULL DEFAULT '[]'`
     }),
+  // NOTE: hero and gun mastery came after the rank purses: a hero's
+  // mastery points and a gun's kills, one row each (src/platform/
+  // masteryScope.ts). A player from before starts both at none; the kills
+  // they made before were never kept by gun.
+  '0022_add_mastery': table =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('hero_mastery'))} (
+        hero TEXT PRIMARY KEY,
+        points INTEGER NOT NULL
+      )`
+      yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('kills_by_gun'))} (
+        gun TEXT PRIMARY KEY,
+        kills INTEGER NOT NULL
+      )`
+    }),
 }
