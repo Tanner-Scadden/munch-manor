@@ -55,6 +55,7 @@ import {
   ChangedRotation,
   ChangedRumble,
   ChangedSettings,
+  ClaimedMission,
   DoubledFirstRun,
   EarnedRank,
   EndedRun,
@@ -65,11 +66,15 @@ import {
   PLAYER_COLUMNS,
   PlayerRow,
   PlayerScope,
+  ProgressedMissions,
   ReachedRecords,
   RecordedRun,
+  RerolledMission,
+  RolledMissions,
   SawPowerUps,
   SawUnlocks,
   SeededPlayer,
+  StampedMissionDay,
   UnlockedNightmare,
   UnlockedRecording,
   boughtRowsOfSave,
@@ -252,6 +257,7 @@ const saveOfRow = (
     escapedOn: row.escaped_on,
   },
   lastRun: row.last_run,
+  missions: row.missions,
 })
 
 // LEGACY
@@ -603,6 +609,15 @@ const runChange = (replica: Replica, change: PlayerChange) =>
       replica.run(DoubledFirstRun, { day, bones }),
     EscapedFirst: ({ difficulty }) => replica.run(EscapedFirst, { difficulty }),
     EndedRun: ({ lastRun }) => replica.run(EndedRun, { lastRun }),
+    ProgressedMissions: ({ day, progress, coop }) =>
+      replica.run(ProgressedMissions, { day, progress, coop }),
+    RolledMissions: ({ day, rolled }) =>
+      replica.run(RolledMissions, { day, rolled }),
+    RerolledMission: ({ day, reroll }) =>
+      replica.run(RerolledMission, { day, reroll }),
+    ClaimedMission: ({ day, mission }) =>
+      replica.run(ClaimedMission, { day, mission }),
+    StampedMissionDay: ({ day }) => replica.run(StampedMissionDay, { day }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)

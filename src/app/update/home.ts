@@ -36,6 +36,8 @@ import {
   homeButtonsOf,
   isInstallTileShown,
   isManorKey,
+  isMissionCardShown,
+  isMissionsKey,
   isSettingsKey,
   isSupportKey,
   isSupportShown,
@@ -256,6 +258,11 @@ const openPanel = (panel: MenuPanel) =>
       : unchanged,
   )
 
+// NOTE: the day's missions open from their card or U, once the card shows.
+export const openMissions = makeStep(model =>
+  isMissionCardShown(model) ? openPanel('Missions') : unchanged,
+)
+
 const closePanel = makeStep(model =>
   isAnyPanelOpen(model) ? PanelDialogBinding.requestClose() : unchanged,
 )
@@ -412,6 +419,8 @@ export const homeFromKey = (code: string) =>
       return clickSupportLink
     } else if (isSettingsKey(code)) {
       return openProfile('Settings')
+    } else if (isMissionsKey(code)) {
+      return openMissions
     } else {
       return Option.match(maybeHandCardOfKey(code), {
         onNone: () => unchanged,

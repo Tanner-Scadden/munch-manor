@@ -1,10 +1,16 @@
 import { Array, Function, Option, Record, Schema, pipe } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
+import { DayStamp } from '../shared/dayStamp'
+import {
+  ALL_THREE_BONES,
+  MissionReroll,
+  type SavedMissions,
+  bonesOfMission,
+} from '../shared/missionData'
 import {
   Appearance,
   Calling,
-  DayStamp,
   Difficulty,
   FIRST_ESCAPE_BONES,
   HomeScreenTip,
@@ -64,6 +70,15 @@ export const PlayerChange = defineTaggedUnion({
   DoubledFirstRun: { day: DayStamp, bones: Schema.Finite },
   EscapedFirst: { difficulty: Difficulty },
   EndedRun: { lastRun: RunEnding },
+  ProgressedMissions: {
+    day: DayStamp,
+    progress: Schema.Record(Schema.String, Schema.Finite),
+    coop: Schema.Boolean,
+  },
+  RolledMissions: { day: DayStamp, rolled: Schema.Array(Schema.String) },
+  RerolledMission: { day: DayStamp, reroll: MissionReroll },
+  ClaimedMission: { day: DayStamp, mission: Schema.String },
+  StampedMissionDay: { day: DayStamp },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -151,6 +166,68 @@ const bonusChanges = (
   }
 }
 
+// NOTE: the daily missions' changes (src/shared/missionData.ts), each an
+// increment or a once-only mark the player scope merges, so two devices on
+// the same day add up. The progress goes first, so a claim it meets finds
+// it. The Bones a claim and the day's stamp pay are the scope's own, read
+// there, so they come out of the run's earned Bones (`missionBones`).
+type MissionChanges = Readonly<{
+  changes: ReadonlyArray<PlayerChange>
+  missionBones: number
+}>
+
+const progressAdded = (
+  before: SavedMissions,
+  after: SavedMissions,
+): Record<string, number> =>
+  before.day === after.day
+    ? killsAdded(before.progress, after.progress)
+    : Record.filter(after.progress, count => count > 0)
+
+const missionChanges = (
+  before: SavedMissions,
+  after: SavedMissions,
+): MissionChanges => {
+  if (after.day === null) {
+    return { changes: [], missionBones: 0 }
+  }
+  const day = after.day
+  const isNewDay = before.day !== day
+  const progress = progressAdded(before, after)
+  const isCoopNew = after.hasPlayedCoop && !before.hasPlayedCoop
+  const claims = Array.filter(
+    after.claimed,
+    id => isNewDay || !Array.contains(before.claimed, id),
+  )
+  const stamps = Array.filter(
+    after.stampedDays,
+    stamped => !Array.contains(before.stampedDays, stamped),
+  )
+  return {
+    changes: [
+      ...changeWhen(!Record.isEmptyRecord(progress) || isCoopNew, () =>
+        PlayerChange.ProgressedMissions({ day, progress, coop: isCoopNew }),
+      ),
+      ...(Array.isReadonlyArrayNonEmpty(after.rolled) &&
+      (isNewDay || Array.isReadonlyArrayEmpty(before.rolled))
+        ? [PlayerChange.RolledMissions({ day, rolled: after.rolled })]
+        : []),
+      ...(after.reroll !== null && (isNewDay || before.reroll === null)
+        ? [PlayerChange.RerolledMission({ day, reroll: after.reroll })]
+        : []),
+      ...Array.map(claims, mission =>
+        PlayerChange.ClaimedMission({ day, mission }),
+      ),
+      ...Array.map(stamps, stamped =>
+        PlayerChange.StampedMissionDay({ day: stamped }),
+      ),
+    ],
+    missionBones:
+      Array.reduce(claims, 0, (total, id) => total + bonesOfMission(id)) +
+      stamps.length * ALL_THREE_BONES,
+  }
+}
+
 export const changesBetween: {
   (after: PlayerSave): (before: PlayerSave) => ReadonlyArray<PlayerChange>
   (before: PlayerSave, after: PlayerSave): ReadonlyArray<PlayerChange>
@@ -160,9 +237,10 @@ export const changesBetween: {
     const runs = after.bests.runsPlayed - before.bests.runsPlayed
     const totalKills = after.bests.totalKills - before.bests.totalKills
     const kills = killsAdded(before.bests.killsByKind, after.bests.killsByKind)
+    const missions = missionChanges(before.missions, after.missions)
     const earnedBones = Math.max(
       0,
-      after.rank.earnedBones - before.rank.earnedBones,
+      after.rank.earnedBones - before.rank.earnedBones - missions.missionBones,
     )
     const bonus = bonusChanges(before, after, earnedBones)
     const isRunRecorded =
@@ -259,6 +337,7 @@ export const changesBetween: {
             }),
         ),
         bonus.changes,
+        missions.changes,
         Array.map(
           Array.filter(
             after.boughtCosmetics,
@@ -326,6 +405,11 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     DoubledFirstRun: () => change,
     EscapedFirst: () => change,
     EndedRun: () => PlayerChange.EndedRun({ lastRun: save.lastRun }),
+    ProgressedMissions: () => change,
+    RolledMissions: () => change,
+    RerolledMission: () => change,
+    ClaimedMission: () => change,
+    StampedMissionDay: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
         points: save.rank.veteranPoints,
@@ -334,7 +418,8 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
   })
 
 // NOTE: a finished run counts each time it is sent, and the power-ups seen
-// and forgotten must keep their order, so those are all kept. Every other
+// and forgotten must keep their order, so those are all kept, as are the
+// missions' increments and marks. Every other
 // change sets its field to what it holds now, so one of each is enough.
 const isSetOnce = (change: PlayerChange): boolean =>
   !PlayerChange.isAnyOf([
@@ -345,6 +430,11 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'BoughtCosmetic',
     'DoubledFirstRun',
     'EscapedFirst',
+    'ProgressedMissions',
+    'RolledMissions',
+    'RerolledMission',
+    'ClaimedMission',
+    'StampedMissionDay',
   ])(change)
 
 // NOTE: the unsaved changes, refreshed, then the new ones, with only the

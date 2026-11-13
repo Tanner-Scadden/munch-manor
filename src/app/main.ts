@@ -12,6 +12,7 @@ import { deviceHandlers } from './update/fullscreen'
 import { homeHandlers } from './update/home'
 import { inputHandlers, pageHandlers, runButtonHandlers } from './update/input'
 import { lobbyHandlers } from './update/lobby'
+import { missionHandlers } from './update/missions'
 import { onboardingHandlers } from './update/onboarding'
 import { padMenuHandlers } from './update/padMenu'
 import { tickFrame } from './update/play'
@@ -72,6 +73,7 @@ const handlers = makeUpdate({
   ...homeHandlers,
   ...endHandlers,
   ...onboardingHandlers,
+  ...missionHandlers,
   ...padMenuHandlers,
 })
 

@@ -14,6 +14,7 @@ import {
   quietDareHint,
 } from '../domain/clientSchema'
 import { startingCallingOf } from '../features/heroes/callingPick'
+import { noMissionRun } from '../features/missions/missionSchema'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
 import { noActionWatch, noTellWatch } from '../render/renderSchema'
@@ -109,6 +110,8 @@ export type RunFields = Pick<
   | 'runTally'
   | 'rankPaid'
   | 'maybeRankGain'
+  | 'missionRun'
+  | 'maybeMissionGain'
   | 'maybeRoomDifficulty'
   | 'maybeRoomModifiers'
   | 'maybeCrewRunKey'
@@ -180,6 +183,8 @@ export const freshRun = (model: Model): RunFields => ({
   runTally: RunTally.Uncounted(),
   rankPaid: noRankPaid,
   maybeRankGain: Option.none(),
+  missionRun: noMissionRun,
+  maybeMissionGain: Option.none(),
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),
   maybeCrewRunKey: Option.none(),

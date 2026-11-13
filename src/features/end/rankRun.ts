@@ -2,9 +2,9 @@ import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
-import { isBotCrew } from '../../domain/bots'
+import { isHumanCrew } from '../../domain/bots'
 import { effectiveModifiersOf } from '../../domain/onlineRun'
-import { isEndScreen, isInRun, isOnHome } from '../../domain/run'
+import { isEndScreen, isGuided, isInRun, isOnHome } from '../../domain/run'
 import { playedDifficultyOf } from '../../platform/analyticsRun'
 import { dareItemsFoundOf } from '../../world/dare/dare'
 import {
@@ -14,12 +14,10 @@ import {
   pointsForRun,
   totalPointsOf,
 } from '../../world/heroes/rank'
-import { isCoop, leadSeatOf } from '../../world/party/party'
-import { isPending } from '../../world/run/lessons'
+import { leadSeatOf } from '../../world/party/party'
 import { bonusPercentOf } from '../../world/run/modifiers'
 import { killTotal } from '../../world/run/stats'
 import { Phase } from '../../world/schema/worldSchema'
-import { roundWave } from '../../world/waves/waves'
 import { awardsOf, crewOf } from './crewAwards'
 
 // Reading a run into the rank it pays (src/world/heroes/rank.ts has the numbers). A run
@@ -27,17 +25,8 @@ import { awardsOf, crewOf } from './crewAwards'
 // for the menu, once each way: the same moments the run is counted in the
 // bests (countRunFrom in src/screens/home/home.ts).
 
-// NOTE: awards and revives pay only in a crew of people. Teammate bots are
-// opponents for neither: a run with bots pays as a single player run does,
-// so a bot never makes Bones (and a human never farms them by reviving or
-// outscoring one).
-const isHumanCrew = (run: Model): boolean => isCoop(run) && !isBotCrew(run)
-
-// NOTE: a run still on the practice gate (wave 1 with the basics not yet
-// tried, even paused) pays nothing: the tutorial is not a run to rank.
-const isGuided = (run: Model): boolean =>
-  roundWave(run.phase) === 1 &&
-  (isPending(run.lessons.move) || isPending(run.lessons.fire))
+// NOTE: awards and revives pay only in a crew of people (isHumanCrew in
+// src/domain/bots.ts): a run with bots pays as a single player run does.
 
 // NOTE: what a run, as the Model holds it, has earned beyond what it was
 // paid already (`rankPaid`): the waves cleared and bosses felled after the

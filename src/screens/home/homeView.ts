@@ -9,14 +9,12 @@ import { COOP_ICON } from '../../art/coopIcons'
 import {
   AIM_ICON,
   CHARACTER_ICON,
-  CLOCK_ICON,
   COFFEE_CUP_ICON,
   COFFEE_STEAM_ICON,
   FULLSCREEN_ICON,
   GITHUB_MARK_ICON,
   HAND_ICON,
   HELP_ICON,
-  KILLS_ICON,
   MUNCHOPEDIA_ICON,
   NEWS_ICON,
   PLAY_ICON,
@@ -39,6 +37,10 @@ import type {
 import { HomeMessage } from '../../features/home/message'
 import { padDiagramView } from '../../features/menus/padDiagram'
 import { helpLabel, howToPlayView } from '../../features/menus/pauseHelp'
+import {
+  missionsPanelView,
+  missionsText,
+} from '../../features/missions/missionCard'
 import {
   ENTRY_COUNT,
   discoveredKinds,
@@ -69,7 +71,7 @@ import {
   NIGHTMARE_LOCK_NOTE,
   isLocked,
 } from '../../world/run/difficulty'
-import { durationLabel } from '../../world/run/stats'
+import { topLeftView } from './bestsView'
 import {
   HAND_CARDS,
   HAND_KEYS,
@@ -79,38 +81,19 @@ import {
   type KeyedHandCard,
   type LinkHandCard,
   SOURCE_URL,
-  bestsFor,
   handCardId,
-  homeButtonId,
   isLinkHandCard,
   isNewsUnseen,
   isTurnHintShown,
   steppedHandCard,
 } from './home'
+import {
+  homeButtonAttributes,
+  homeFocusAttributes,
+  keyBadgeView,
+} from './homeAttributes'
 import { installTileView } from './installView'
 import { updateGiftView } from './updateGift'
-
-// KEY BADGES
-
-const keyBadgeView = (
-  model: Model,
-  button: HomeButton,
-  h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => keyCapView(model, HOME_KEYS[button].cap, h)
-
-// NOTE: what every home button shares, a link like the coffee too: its id,
-// its key, and focus for the arrow keys.
-const homeFocusAttributes = (button: HomeButton, h: ApplicationViewBuilder) => [
-  h.Id(homeButtonId(button)),
-  h.AriaKeyshortcuts(HOME_KEYS[button].name),
-  h.OnFocus(HomeMessage.FocusedHomeButton({ button })),
-  h.OnBlur(HomeMessage.BlurredHomeButton()),
-]
-
-const homeButtonAttributes = (
-  button: HomeButton,
-  h: ApplicationViewBuilder,
-) => [h.Type('button'), ...homeFocusAttributes(button, h)]
 
 // PLAY
 
@@ -460,81 +443,6 @@ const handView = (
   ]
 }
 
-// BESTS
-
-type Best = Readonly<{ label: string; icon: string; value: string }>
-
-const shownBests = (model: Model): ReadonlyArray<Best> => [
-  ...Option.match(bestsFor(model).maybeBestEndlessWave, {
-    onNone: () => [],
-    onSome: wave => [
-      { label: 'Best endless wave', icon: TROPHY_ICON, value: `${wave}` },
-    ],
-  }),
-  ...Option.match(bestsFor(model).maybeFastestWinMs, {
-    onNone: () => [],
-    onSome: runMs => [
-      { label: 'Fastest win', icon: CLOCK_ICON, value: durationLabel(runMs) },
-    ],
-  }),
-  ...(model.bests.totalKills > 0
-    ? [
-        {
-          label: 'Zombies splatted',
-          icon: KILLS_ICON,
-          value: `${model.bests.totalKills}`,
-        },
-      ]
-    : []),
-]
-
-const bestView = (best: Best, h: ApplicationViewBuilder): Html =>
-  h.span(
-    [h.Class('home-best')],
-    [
-      h.span(
-        [h.Class('home-best-label')],
-        [
-          iconView('home-best-icon', best.icon, h),
-          h.span([h.Class('sr-only')], [best.label]),
-        ],
-      ),
-      h.span([h.Class('home-best-value')], [best.value]),
-    ],
-  )
-
-// NOTE: a button of icons and big numbers, in the chosen level's color, that
-// opens the Munchopedia, and nothing at all until the player has a best.
-const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
-  Array.match(shownBests(model), {
-    onEmpty: () => h.empty,
-    onNonEmpty: bests =>
-      h.button(
-        [
-          ...homeButtonAttributes('Bests', h),
-          h.Class('home-bests'),
-          h.DataAttribute('difficulty', model.difficulty.chosen),
-          h.AriaLabel(
-            `Your bests, ${DIFFICULTIES[model.difficulty.chosen].name}: ${Array.join(
-              Array.map(bests, best => `${best.label} ${best.value}`),
-              ', ',
-            )}. Opens the Munchopedia`,
-          ),
-          h.AriaHasPopup('dialog'),
-          h.OnClick(HomeMessage.ClickedMunchopediaButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          iconView('home-bests-level', SKULL_ICONS[model.difficulty.chosen], h),
-          h.span(
-            [h.Class('home-bests-list')],
-            Array.map(bests, best => bestView(best, h)),
-          ),
-        ],
-      ),
-  })
-
 // STAGE
 
 // NOTE: the player walks on the spot in the middle of the stage, drawn on
@@ -734,7 +642,7 @@ export const homeMenuView: {
             [
               playClusterView(model, h),
               manorButtonView(model, h),
-              bestsView(model, h),
+              topLeftView(model, h),
               heroButtonView(model, h),
               newEntryButtonView(model, h),
               turnHintView(model, h),
@@ -771,6 +679,7 @@ const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
   Coop: 'co-op',
   Manor: 'manor',
   Bests: 'Munchopedia',
+  Missions: 'missions',
   Support: 'coffee',
   Settings: 'settings',
 }
@@ -976,6 +885,8 @@ const panelText = (model: Model, panel: MenuPanel): PanelText => {
     return whatsNewText(model)
   } else if (panel === 'Munchopedia') {
     return munchopediaText(model)
+  } else if (panel === 'Missions') {
+    return missionsText(model)
   } else {
     return {
       title: 'Leave this run?',
@@ -1045,12 +956,7 @@ const panelBodyView = (
     return [
       h.div(
         [h.Class('panel-help'), h.DataAttribute('device', model.lastDevice)],
-        howToPlayView(
-          model,
-          'Interactive',
-          h,
-          howToPlayUnder(model, h),
-        ),
+        howToPlayView(model, 'Interactive', h, howToPlayUnder(model, h)),
       ),
       h.div(
         [h.Class('panel-actions')],
@@ -1064,6 +970,8 @@ const panelBodyView = (
     return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)
   } else if (model.panel === 'Munchopedia') {
     return [munchopediaView(model, () => doneButtonView(renderInfo, h), h)]
+  } else if (model.panel === 'Missions') {
+    return [missionsPanelView(model, doneButtonView(renderInfo, h), h)]
   } else if (model.panel === 'Difficulty') {
     return [
       ...tutorialChoicesView(model, h),

@@ -1,0 +1,300 @@
+/* DAILY MISSIONS: the home menu's card under the bests, and its panel. */
+
+/* NOTE: the bests badge and the mission card share the top left in one
+   column, so the card moves up while a new player has no best. */
+.home-top-left {
+  position: absolute;
+  left: calc(4 * var(--a));
+  top: calc(4 * var(--a));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: max(6px, 2 * var(--a));
+}
+
+.home-top-left .home-bests {
+  position: relative;
+  left: auto;
+  top: auto;
+}
+
+.mission-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: max(6px, 2 * var(--a));
+  min-height: var(--menu-tap);
+  padding: max(4px, 1.2 * var(--a)) max(8px, 2.5 * var(--a));
+  border: 2px solid var(--menu-teal);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-glass);
+  box-shadow: var(--menu-lift);
+  color: var(--menu-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mission-card[data-all='true'] {
+  border-color: var(--menu-gold);
+}
+
+.mission-card:active {
+  box-shadow: var(--menu-press);
+  filter: brightness(1.3);
+}
+
+.mission-card:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .mission-card:hover {
+    filter: brightness(1.15);
+  }
+}
+
+.mission-pip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: max(2px, 0.6 * var(--a));
+}
+
+.mission-picture {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+.mission-pip-picture {
+  width: max(18px, 6 * var(--a));
+  height: max(18px, 6 * var(--a));
+}
+
+.mission-icon,
+.mission-check {
+  position: absolute;
+  inset: 0;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+/* NOTE: a done mission's picture dims under its green check. */
+.mission-pip[data-done='true'] .mission-icon,
+.mission-row[data-done='true'] .mission-icon {
+  opacity: 0.45;
+}
+
+.mission-check {
+  inset: 15%;
+}
+
+.mission-bar {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  height: max(4px, 1.2 * var(--a));
+  border-radius: var(--menu-radius-pill);
+  background: var(--menu-sunken);
+  box-shadow: inset 0 0 0 1px var(--menu-line-strong);
+}
+
+.mission-pip .mission-bar {
+  width: max(22px, 7 * var(--a));
+}
+
+.mission-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--menu-teal);
+}
+
+[data-done='true'] > .mission-bar .mission-bar-fill,
+[data-done='true'] .mission-row-track .mission-bar-fill {
+  background: var(--menu-green);
+}
+
+/* NOTE: the rosette for all three, dim until the day's three are done. */
+.mission-card-all {
+  width: max(14px, 4.5 * var(--a));
+  height: max(14px, 4.5 * var(--a));
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.mission-card[data-all='true'] .mission-card-all {
+  opacity: 1;
+  filter: none;
+}
+
+/* PANEL */
+
+.panel-dialog[data-panel='Missions'] .panel {
+  --panel-accent: var(--menu-teal);
+}
+
+.missions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--menu-gap);
+}
+
+.mission-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mission-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--menu-tap);
+  padding: 4px 8px;
+  border: 2px solid var(--menu-line);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-surface);
+}
+
+.mission-row[data-done='true'] {
+  border-color: var(--menu-green);
+  background: var(--menu-green-deep);
+}
+
+.mission-row-picture {
+  width: 32px;
+  height: 32px;
+}
+
+.mission-row-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mission-row-name {
+  font-weight: bold;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.mission-row-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mission-row-track .mission-bar {
+  flex: 1;
+  height: 6px;
+}
+
+.mission-row-count {
+  flex: none;
+  color: var(--menu-ink-dim);
+  font-size: var(--menu-small-size);
+}
+
+.mission-row-bones,
+.mission-all-bones {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  color: var(--menu-gold);
+  font-weight: bold;
+}
+
+.mission-bones-count {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mission-reroll,
+.mission-reroll-gap {
+  flex: none;
+  width: var(--menu-tap);
+  height: var(--menu-tap);
+}
+
+.mission-reroll {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--menu-teal);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-sunken);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mission-reroll[aria-disabled='true'] {
+  border-color: var(--menu-line);
+  cursor: default;
+  opacity: var(--menu-dim);
+}
+
+.mission-reroll:not([aria-disabled='true']):active {
+  box-shadow: var(--menu-press);
+  filter: brightness(1.3);
+}
+
+.mission-reroll:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: 2px;
+}
+
+.mission-reroll-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.mission-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--menu-ink-dim);
+}
+
+.mission-all-icon {
+  width: 24px;
+  height: 24px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.mission-all[data-done='true'] {
+  color: var(--menu-gold);
+}
+
+.mission-all[data-done='true'] .mission-all-icon {
+  opacity: 1;
+  filter: none;
+}
+
+.mission-all-tag {
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* NOTE: upright, the column keeps to the left of the corner buttons, as
+   the bests badge does. */
+.game-root[data-layout='Portrait'] .home-top-left {
+  max-width: calc(172 * var(--a) - 2 * max(48px, 12 * var(--a)) - 12px);
+}

@@ -21,7 +21,9 @@ import {
 } from '../app/model'
 import { initialModel } from '../app/pureApp'
 import { freshRun } from '../app/runReset'
+import { missionsOn } from '../features/missions/missions'
 import { PLAYER_MAX_HP, PREPARATION_MS } from '../shared/constants'
+import { freezeOn } from '../shared/missionData'
 import { heroIdOf } from '../shared/playerData'
 import { nextRandom } from '../shared/prng'
 import { type DareThing, Finale } from '../world/dare/dareSchema'
@@ -165,6 +167,19 @@ export const heroesBoughtBy = (rank: number): ReadonlyArray<string> =>
 
 // NOTE: a returning player on the home menu: the tutorial is done, so no
 // lesson or first-run card gets in the way.
+// NOTE: the UTC day known (src/platform/today.ts), for the day's Bones
+// bonuses and missions, a while ago: the day's three already frozen, as
+// the first Message after the day came in left them.
+export const knowingDay: {
+  (day: string): (model: Model) => Model
+  (model: Model, day: string): Model
+} = Function.dual(2, (model: Model, day: string): Model => {
+  const known = modifyFields(model, { maybeToday: () => Option.some(day) })
+  return modifyFields(known, {
+    missions: missions => freezeOn(missions, day, missionsOn(known, day)),
+  })
+})
+
 // NOTE: `keys` on the crew's ring (src/world/keys/keys.ts), to spend.
 export const withKeys: {
   (keys: number): <M extends World>(base: M) => M

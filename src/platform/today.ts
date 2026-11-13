@@ -1,6 +1,6 @@
 import { DateTime, Duration, Effect, Stream } from 'effect'
 
-import type { DayStamp } from '../shared/playerData'
+import type { DayStamp } from '../shared/dayStamp'
 
 // Today's day in UTC, as YYYY-MM-DD: read when the game starts and checked
 // each minute after, said only when it changes. The Today Subscription

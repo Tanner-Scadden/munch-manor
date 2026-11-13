@@ -6,6 +6,7 @@
 @import '../features/profile/blocks/look/closet.css';
 @import '../features/coop/coop.css';
 @import '../features/lobby/lobby.css';
+@import '../features/missions/missions.css';
 
 html,
 body {

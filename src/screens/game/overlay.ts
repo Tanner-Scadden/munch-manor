@@ -74,6 +74,7 @@ import { clamp } from '../../world/step/geometry'
 import { endlessDepth, hpScaleFor } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE, debutKinds } from '../../world/waves/wavePlans'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
+import { endMissionShapes } from './endMissions'
 
 // SHARED
 
@@ -1085,7 +1086,13 @@ export const overlayShapes: {
           : [...waveBanner(model, wave, elapsedMs), ...hintShapes(model)],
       Paused: ({ round }) =>
         pausedShapes(model, round.wave, resumeYFor(screen)),
-      Escaped: () => endOverlayShapes(model, screen),
-      GameOver: () => endOverlayShapes(model, screen),
+      Escaped: () => [
+        ...endOverlayShapes(model, screen),
+        ...endMissionShapes(model, screen),
+      ],
+      GameOver: () => [
+        ...endOverlayShapes(model, screen),
+        ...endMissionShapes(model, screen),
+      ],
     }),
 )

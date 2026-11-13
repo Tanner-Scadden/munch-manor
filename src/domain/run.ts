@@ -4,11 +4,13 @@ import { modifyFields } from 'foldkit/struct'
 import type { Model } from '../app/model'
 import { isObjectFirst } from '../shared/dualArgs'
 import type { Level } from '../world/level/arena'
+import { isPending } from '../world/run/lessons'
 import {
   type Difficulty,
   type DifficultyBests,
   Phase,
 } from '../world/schema/worldSchema'
+import { roundWave } from '../world/waves/waves'
 
 // What several features read of where a run stands: home, in a run, or on
 // an end screen; the rooms opened; the bests a run writes; and the feedback
@@ -21,6 +23,13 @@ export const isOnHome = Phase.isAnyOf(['Ready'])
 export const isInRun = Phase.isAnyOf(['Preparation', 'Wave', 'Paused'])
 
 export const isEndScreen = Phase.isAnyOf(['Escaped', 'GameOver'])
+
+// NOTE: a run still on the practice gate (wave 1 with the basics not yet
+// tried, even paused) pays nothing, Bones or missions: the tutorial is not
+// a run to rank.
+export const isGuided = (run: Model): boolean =>
+  roundWave(run.phase) === 1 &&
+  (isPending(run.lessons.move) || isPending(run.lessons.fire))
 
 // ROOMS
 

@@ -8,6 +8,7 @@ export const HomeButton = Schema.Literals([
   'Coop',
   'Manor',
   'Bests',
+  'Missions',
   'Support',
   'Settings',
 ])
@@ -31,5 +32,6 @@ export const MenuPanel = Schema.Literals([
   'Difficulty',
   'WhatsNew',
   'Munchopedia',
+  'Missions',
 ])
 export type MenuPanel = typeof MenuPanel.Type

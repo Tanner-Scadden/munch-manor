@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from '@effect/vitest'
 import { makeHub } from '@munch/sqlite-wasm-effect/in-process'
 import { settle } from '@munch/sync-engine/testing'
 
+import { noMissions } from '../../shared/missionData'
 import { noBonuses, noSavedRunRecords } from '../../shared/playerData'
 import {
   legacySave,
@@ -1087,6 +1088,7 @@ const migratedLiveSave: PlayerSave = {
   rank: noRank,
   bonuses: noBonuses,
   lastRun: 'NoRunYet',
+  missions: noMissions,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

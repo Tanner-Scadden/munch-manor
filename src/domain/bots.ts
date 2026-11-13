@@ -8,7 +8,7 @@ import { nextRandom } from '../shared/prng'
 import { ownedCallings } from '../world/heroes/calling'
 import { seatedAs } from '../world/heroes/callingPlayer'
 import { BOT_NAMES } from '../world/names'
-import { COOP_RULES, modifySeat } from '../world/party/party'
+import { COOP_RULES, isCoop, modifySeat } from '../world/party/party'
 import type { World } from '../world/schema/world'
 import type { PlayerSlot } from '../world/schema/worldSchema'
 import type { Bot } from './clientSchema'
@@ -42,6 +42,12 @@ export const botSlotOf: {
 // lobby with a crew. An online room's run never does.
 export const isBotCrew = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(model.crewBots)
+
+// NOTE: a crew of people, an online co-op room's: awards, revives, and the
+// co-op missions count only here, never with teammate bots, so a bot never
+// makes Bones (and a human never farms them by reviving or outscoring one).
+export const isHumanCrew = (model: Model): boolean =>
+  isCoop(model) && !isBotCrew(model)
 
 export const maybeCrewBotAt: {
   (slot: PlayerSlot): (model: Model) => Option.Option<Bot>
