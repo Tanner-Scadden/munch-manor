@@ -67,10 +67,10 @@ export const learnedSave: PlayerSave = {
   rumble: 'On',
   name: 'Snackula',
   records: {
-    Easy: { furthestWave: null, mostKills: null },
-    Normal: { furthestWave: 7, mostKills: 140 },
-    Hard: { furthestWave: 4, mostKills: 66 },
-    Nightmare: { furthestWave: null, mostKills: null },
+    Easy: { furthestWave: null, mostKills: null, bestRun: null },
+    Normal: { furthestWave: 7, mostKills: 140, bestRun: null },
+    Hard: { furthestWave: 4, mostKills: 66, bestRun: null },
+    Nightmare: { furthestWave: null, mostKills: null, bestRun: null },
   },
   rank: {
     earnedPoints: 340,
@@ -80,6 +80,7 @@ export const learnedSave: PlayerSave = {
     isVeteranGranted: true,
     spentBones: 5,
   },
+  bonuses: { doubledDay: null, escapedOn: [] },
   calling: 'TrackStar',
   boughtCosmetics: [],
   seenUnlocks: [],

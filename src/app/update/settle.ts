@@ -1,6 +1,7 @@
 import { Effect, Function, Option, pipe } from 'effect'
 
 import { runDifficultyOf } from '../../domain/onlineRun'
+import { noteDeathTip } from '../../features/end/deathTip'
 import { noteRecords, reachRecords } from '../../features/end/endBeat'
 import { earnRank } from '../../features/end/rankRun'
 import { notePulledPrize } from '../../features/guide/shopGuide'
@@ -104,6 +105,9 @@ export const afterMessage: {
     unlockNightmareFrom(before),
     stepModel => ({
       model: earnRank(before, stepModel),
+    }),
+    stepModel => ({
+      model: noteDeathTip(before, stepModel, runDifficultyOf(stepModel)),
     }),
     stepModel => ({
       model: countRunFrom(

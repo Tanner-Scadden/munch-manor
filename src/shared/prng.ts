@@ -1,4 +1,4 @@
-import { Array, Function, Order } from 'effect'
+import { Array, Function, Option, Order } from 'effect'
 
 const MULBERRY_INCREMENT = 0x6d2b79f5
 const UINT32_RANGE = 4294967296
@@ -82,6 +82,44 @@ export const shuffle: {
     return [
       nextState,
       Array.map(Array.sort(keyed, byKey<A>()), ({ item }) => item),
+    ]
+  },
+)
+
+// NOTE: a draw from a stream as an index below `count`.
+export const drawIndex: {
+  (count: number): (state: number) => Seeded<number>
+  (state: number, count: number): Seeded<number>
+} = Function.dual(2, (state: number, count: number): Seeded<number> => {
+  const draw = nextRandom(state)
+  return [draw.nextState, Math.floor(draw.value * count)]
+})
+
+// NOTE: one of the lines, never the one the player saw last (Rattles'
+// hints and the end card's death tip, from the cosmetic stream).
+export const pickLine: {
+  (
+    lines: Array.NonEmptyReadonlyArray<string>,
+    lastLine: string,
+  ): (state: number) => Seeded<string>
+  (
+    state: number,
+    lines: Array.NonEmptyReadonlyArray<string>,
+    lastLine: string,
+  ): Seeded<string>
+} = Function.dual(
+  3,
+  (
+    state: number,
+    lines: Array.NonEmptyReadonlyArray<string>,
+    lastLine: string,
+  ): Seeded<string> => {
+    const fresh = Array.filter(lines, line => line !== lastLine)
+    const pool = Array.isReadonlyArrayNonEmpty(fresh) ? fresh : lines
+    const [nextState, index] = drawIndex(state, pool.length)
+    return [
+      nextState,
+      Option.getOrElse(Array.get(pool, index), () => Array.headNonEmpty(pool)),
     ]
   },
 )

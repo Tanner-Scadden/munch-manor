@@ -17,7 +17,7 @@ import {
   rankProgressOf,
   shownPointsOf,
 } from '../../world/heroes/rank'
-import { CALLING_NAMES, giftName } from '../../world/names'
+import { BONE_BONUS_TAGS, CALLING_NAMES, giftName } from '../../world/names'
 import { sparkShapes } from './crewBoardView'
 import {
   CALLING_FLIP_MS,
@@ -63,9 +63,48 @@ const BONUS_BAR_WIDTH = 48
 const BONUS_GAP_PX = 4
 const BONES_GAP_PX = 4
 const BONE_TEXT_GAP_PX = 3
+const TAG_GAP_PX = 2
+const TAG_PAD_PX = 1
+const TAG_FILL = '#ffd23f'
+const MIN_BAR_WIDTH = 24
 const POP_SCALE = 1.2
 const FADE_MS = 120
 const SHINE_FRAME_MS = 45
+
+// NOTE: a bonus's tag, a small gold pill, from its left edge.
+const tagWidth = (text: string): number => textWidth(text) + TAG_PAD_PX * 2
+
+const tagShapes = (
+  text: string,
+  left: number,
+  centerY: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const top = centerY - Math.floor(GLYPH_HEIGHT / 2)
+  return [
+    rect(left, top - 1, tagWidth(text), GLYPH_HEIGHT + 1, TAG_FILL),
+    ...textShapes(text, 'Ink', left + TAG_PAD_PX, top, 'Left'),
+  ]
+}
+
+// NOTE: the run's bonus tags in a row ending at `right`.
+const tagsShapes = (
+  tags: ReadonlyArray<string>,
+  right: number,
+  centerY: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const [, shapes] = Array.mapAccum(
+    tags,
+    right - tagsWidth(tags),
+    (left, text): readonly [number, ReadonlyArray<Canvas.Shape>] => [
+      left + tagWidth(text) + TAG_GAP_PX,
+      tagShapes(text, left, centerY),
+    ],
+  )
+  return Array.flatten(shapes)
+}
+
+const tagsWidth = (tags: ReadonlyArray<string>): number =>
+  Array.reduce(tags, 0, (sum, text) => sum + tagWidth(text) + TAG_GAP_PX)
 
 const barShapes = (
   x: number,
@@ -356,7 +395,13 @@ export const rankStripShapes: {
   ): ReadonlyArray<Canvas.Shape> =>
     Option.match(model.maybeRankGain, {
       onNone: () => [],
-      onSome: ({ pointsBefore, gained, bonesGained, bonusPercent }) => {
+      onSome: ({
+        pointsBefore,
+        gained,
+        bonesGained,
+        bonusPercent,
+        bonuses,
+      }) => {
         const startMs = rankStripAtMs(model, kind)
         if (ms < startMs) {
           return []
@@ -375,7 +420,12 @@ export const rankStripShapes: {
           : 1
         const number = `${progress.rank}`
         const barX = left + BAR_X
-        const barWidth = bonusPercent > 0 ? BONUS_BAR_WIDTH : BAR_WIDTH
+        const tags = Array.map(bonuses, bonus => BONE_BONUS_TAGS[bonus])
+        const tagsRoom = tagsWidth(tags)
+        const barWidth = Math.max(
+          MIN_BAR_WIDTH,
+          (bonusPercent > 0 ? BONUS_BAR_WIDTH : BAR_WIDTH) - tagsRoom,
+        )
         const bonusText = `+${bonusPercent}%`
         const bonusRoom =
           bonusPercent > 0 ? BONUS_GAP_PX + textWidth(bonusText) : 0
@@ -420,8 +470,13 @@ export const rankStripShapes: {
                   )
                 : []),
               ...(bonesGained > 0 &&
-              barX + barWidth + bonusRoom + BONES_GAP_PX < boneX
+              barX + barWidth + bonusRoom + tagsRoom + BONES_GAP_PX < boneX
                 ? [
+                    ...tagsShapes(
+                      tags,
+                      Math.round(boneX - BONE_SIZE.width / 2) - 1,
+                      centerY,
+                    ),
                     placeAt(Math.round(boneX), centerY, BONE),
                     ...textShapes(
                       bonesText,

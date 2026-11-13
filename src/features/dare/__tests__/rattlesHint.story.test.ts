@@ -24,6 +24,7 @@ import { clearWindowOf } from '../../../render/hudLayout'
 import { screenOf } from '../../../render/screen'
 import { dareHintShapes, rattlesSpot } from '../../../screens/game/stallBubble'
 import { FIXED_STEP_MS } from '../../../shared/constants'
+import { pickLine } from '../../../shared/prng'
 import {
   DISTANT_SPAWN,
   freshRunModel,
@@ -54,7 +55,6 @@ import {
   HINT_LINES,
   HINT_MS,
   maybeHintCall,
-  pickLine,
 } from '../rattlesHint'
 
 // Rattles' hints about the dare (src/features/dare/rattlesHint.ts), drawn

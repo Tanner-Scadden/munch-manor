@@ -50,6 +50,7 @@ import {
   crewBoardSpan,
   sparkShapes,
 } from './crewBoardView'
+import { deathTipShapes } from './deathTip'
 import {
   BEST_POP_MS,
   type EndKind,
@@ -72,6 +73,7 @@ import {
   skullCountOf,
   tallyRowsOf,
 } from './endBeat'
+import { ghostShapes, maybeGhostOf } from './ghostView'
 import {
   STRIP_PX,
   type UnlockSpot,
@@ -613,6 +615,7 @@ const cardShapes = (
       ...kindShapes(model, footerTop + 1),
     ]),
     ...Array.flatMap(rows, rowShapes(kind, ms, top, rowPx)),
+    ...ghostRowShapes(model, kind, ms, rows, top, rowPx),
     ...rankStripShapes(
       model,
       kind,
@@ -634,11 +637,35 @@ const cardShapes = (
   ]
 }
 
+// NOTE: the best run's ghost on the wave's row, once the row lands.
+const ghostRowShapes = (
+  model: Model,
+  kind: EndKind,
+  ms: number,
+  rows: ReadonlyArray<TallyRow>,
+  top: number,
+  rowPx: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(
+    Option.all([
+      maybeGhostOf(model),
+      Array.findFirstIndex(rows, row => row.icon === 'Wave'),
+    ]),
+    {
+      onNone: () => [],
+      onSome: ([best, index]) =>
+        ms >= rowLandMs(kind, index)
+          ? [ghostShapes(best, CENTER_X, top + PANEL_PAD + index * rowPx)]
+          : [],
+    },
+  )
+
 const UNLOCK_BLINK_MS = 400
 
 // NOTE: the line over the tally is the quip, or, when there is news (Nightmare
-// unlocked, or the first runs' ask for feedback), the news in its place. Under
-// the card there is no room: on a phone on its side the buttons start there.
+// unlocked, or the first runs' ask for feedback), the news in its place, or
+// on a loss Rattles' death tip (src/features/end/deathTip.ts). Under the card
+// there is no room: on a phone on its side the buttons start there.
 const lineShapes = (
   model: Model,
   kind: EndKind,
@@ -646,9 +673,17 @@ const lineShapes = (
   y: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const note = noteShapes(model, ms, y)
-  return Array.isReadonlyArrayNonEmpty(note)
-    ? note
-    : textShapes(quipOf(model, kind), 'Prompt', CENTER_X, y, 'Center')
+  if (Array.isReadonlyArrayNonEmpty(note)) {
+    return note
+  }
+  return Option.match(
+    kind === 'Munched' ? model.maybeDeathTip : Option.none(),
+    {
+      onNone: () =>
+        textShapes(quipOf(model, kind), 'Prompt', CENTER_X, y, 'Center'),
+      onSome: tip => deathTipShapes(tip, CENTER_X, y),
+    },
+  )
 }
 
 const noteShapes = (

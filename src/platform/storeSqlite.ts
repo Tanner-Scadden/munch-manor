@@ -55,7 +55,9 @@ import {
   ChangedRotation,
   ChangedRumble,
   ChangedSettings,
+  DoubledFirstRun,
   EarnedRank,
+  EscapedFirst,
   ForgotPowerUps,
   GrantedVeteranRank,
   KillsRow,
@@ -243,6 +245,10 @@ const saveOfRow = (
     veteranBones: row.veteran_bones,
     isVeteranGranted: row.veteran_granted === 1,
     spentBones: row.spent_bones,
+  },
+  bonuses: {
+    doubledDay: row.doubled_day,
+    escapedOn: row.escaped_on,
   },
 })
 
@@ -591,6 +597,9 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     BoughtCosmetic: ({ id }) => replica.run(BoughtCosmetic, { id }),
     GrantedVeteranRank: ({ points, bones }) =>
       replica.run(GrantedVeteranRank, { points, bones }),
+    DoubledFirstRun: ({ day, bones }) =>
+      replica.run(DoubledFirstRun, { day, bones }),
+    EscapedFirst: ({ difficulty }) => replica.run(EscapedFirst, { difficulty }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)

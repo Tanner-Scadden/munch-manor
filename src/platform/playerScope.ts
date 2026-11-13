@@ -14,7 +14,9 @@ import {
   COSMETIC_PRICES,
   Calling,
   CursorSetting,
+  DayStamp,
   Difficulty,
+  FIRST_ESCAPE_BONES,
   HomeScreenTip,
   MusicSetting,
   PlayerName,
@@ -24,6 +26,7 @@ import {
   RotationSetting,
   RumbleSetting,
   SEEN_BASELINE,
+  type SavedBestRun,
   SavedBestsByDifficulty,
   SavedCard,
   type SavedDifficultyBests,
@@ -39,6 +42,7 @@ import {
   ShareStatsSetting,
   SoundSetting,
   StoredAppearance,
+  isBetterRun,
 } from '../shared/playerData'
 
 // NOTE: the player scope, `player:<playerId>`: one player's settings, look,
@@ -57,6 +61,8 @@ export const playerScopeId = (playerId: string): string =>
   scopeId(PLAYER_SCOPE_KIND, playerId)
 
 // ROWS
+
+const EscapedOn = Schema.Array(Difficulty)
 
 export const PlayerRow = Schema.Struct({
   sound: SoundSetting,
@@ -89,6 +95,8 @@ export const PlayerRow = Schema.Struct({
   veteran_bones: Schema.Finite,
   veteran_granted: Schema.Finite,
   spent_bones: Schema.Finite,
+  doubled_day: Schema.NullOr(DayStamp),
+  escaped_on: Schema.fromJsonString(EscapedOn),
 })
 export type PlayerRow = typeof PlayerRow.Type
 
@@ -129,6 +137,8 @@ export const PLAYER_COLUMNS = Array.make(
   'veteran_bones',
   'veteran_granted',
   'spent_bones',
+  'doubled_day',
+  'escaped_on',
 )
 
 export const rowOfSave = (save: PlayerSave): PlayerRow => ({
@@ -162,6 +172,8 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   veteran_bones: save.rank.veteranBones,
   veteran_granted: save.rank.isVeteranGranted ? 1 : 0,
   spent_bones: save.rank.spentBones,
+  doubled_day: save.bonuses.doubledDay,
+  escaped_on: save.bonuses.escapedOn,
 })
 
 export const BoughtRow = Schema.Struct({ id: Schema.String })
@@ -212,11 +224,12 @@ const updatePlayer = (
 // (save version 15), 13 the save with gun skins (save version 16), and 14
 // the save with no ammo tip (save version 17), 15 the save with the
 // rumble (save version 18), 16 the save with RECORD MY RUNS (save
-// version 19), and 17 the save with its unlock (save version 20).
+// version 19), 17 the save with its unlock (save version 20), and 18 the
+// save with the Bones bonuses and the best runs (save version 21).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 17,
+  version: 18,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -655,12 +668,23 @@ const RecordsRow = Schema.Struct({
   run_records: Schema.fromJsonString(SavedRunRecords),
 })
 
+const betterRun = (
+  kept: SavedBestRun | null,
+  reached: SavedBestRun | null,
+): SavedBestRun | null =>
+  kept === null
+    ? reached
+    : reached !== null && isBetterRun(reached, kept)
+      ? reached
+      : kept
+
 const mergeRecord = (
   kept: SavedRunRecord,
   reached: SavedRunRecord,
 ): SavedRunRecord => ({
   furthestWave: larger(kept.furthestWave, reached.furthestWave),
   mostKills: larger(kept.mostKills, reached.mostKills),
+  bestRun: betterRun(kept.bestRun, reached.bestRun),
 })
 
 export const mergeRunRecords: {
@@ -679,10 +703,11 @@ export const mergeRunRecords: {
 // NOTE: the run records a device reached, merged into the player's as the
 // larger of each, never written over, so two devices that set records
 // offline both keep their best, in whatever order the server gets them.
+// Version 2 carries each difficulty's best run, merged as the better run.
 /** @stability unstable */
 export const ReachedRecords = defineMutation({
   name: 'ReachedRecords',
-  version: 1,
+  version: 2,
   args: Schema.Struct({ records: SavedRunRecords }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -813,6 +838,85 @@ export const BoughtCosmetic = defineMutation({
     }),
 })
 
+const BonusesRow = Schema.Struct({
+  doubled_day: Schema.NullOr(DayStamp),
+  escaped_on: Schema.fromJsonString(EscapedOn),
+})
+
+const readBonuses = (context: ApplyContext) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const rows =
+      yield* sql`SELECT doubled_day, escaped_on FROM ${context.table('player')} WHERE id = 1`
+    return pipe(
+      Array.head(rows),
+      Option.flatMap(Schema.decodeUnknownOption(BonusesRow)),
+    )
+  })
+
+// NOTE: the day's first run paid twice: its Bones again, added only when
+// the day is later than the last doubled day, so two linked devices that
+// both double the same day offline are paid once, whichever the server
+// gets first. Days sort as strings (DayStamp).
+/** @stability unstable */
+export const DoubledFirstRun = defineMutation({
+  name: 'DoubledFirstRun',
+  version: 1,
+  args: Schema.Struct({ day: DayStamp, bones: Bones }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ day, bones }, context) =>
+    Effect.gen(function* () {
+      const maybeKept = yield* readBonuses(context)
+      if (
+        Option.isNone(maybeKept) ||
+        (maybeKept.value.doubled_day !== null &&
+          maybeKept.value.doubled_day >= day)
+      ) {
+        return
+      }
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`UPDATE ${context.table('player')} SET
+        doubled_day = ${day},
+        rank_bones = rank_bones + ${bones}
+        WHERE id = 1`
+    }),
+})
+
+const encodeEscapedOn = Schema.encodeEffect(Schema.fromJsonString(EscapedOn))
+
+// NOTE: the first escape on a difficulty: FIRST_ESCAPE_BONES, read here and
+// never from the args, added only when the difficulty is not escaped on
+// yet, which it then is. A union, so two devices escaping offline on the
+// same difficulty are paid once.
+/** @stability unstable */
+export const EscapedFirst = defineMutation({
+  name: 'EscapedFirst',
+  version: 1,
+  args: Schema.Struct({ difficulty: Difficulty }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ difficulty }, context) =>
+    Effect.gen(function* () {
+      const maybeKept = yield* readBonuses(context)
+      if (
+        Option.isNone(maybeKept) ||
+        Array.contains(maybeKept.value.escaped_on, difficulty)
+      ) {
+        return
+      }
+      const json = yield* Effect.mapError(
+        encodeEscapedOn(Array.append(maybeKept.value.escaped_on, difficulty)),
+        toRejected,
+      )
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`UPDATE ${context.table('player')} SET
+        escaped_on = ${json},
+        rank_bones = rank_bones + ${FIRST_ESCAPE_BONES}
+        WHERE id = 1`
+    }),
+})
+
 // NOTE: written by the server when a device links to this player, so every
 // device can say how many are linked.
 /** @stability unstable */
@@ -860,6 +964,8 @@ export const PlayerScope = defineScope({
     EarnedRank,
     GrantedVeteranRank,
     BoughtCosmetic,
+    DoubledFirstRun,
+    EscapedFirst,
     LinkedDevices,
   ],
   migrations: {
@@ -1013,6 +1119,17 @@ export const PlayerScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN record_unlock TEXT NOT NULL DEFAULT 'Locked'`
+      }),
+    // NOTE: the Bones bonuses came after the unlock. A player from before
+    // them has doubled no day and escaped on nothing since. The best runs
+    // ride in run_records' JSON, read as none where missing.
+    '0016_add_bonuses': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN doubled_day TEXT`
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN escaped_on TEXT NOT NULL DEFAULT '[]'`
       }),
   },
 })

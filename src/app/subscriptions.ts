@@ -25,6 +25,7 @@ import type {
 import { InstallPrompt } from '../platform/install'
 import { StoreEvent } from '../platform/playerSync'
 import { PlayerStore } from '../platform/store'
+import { todays } from '../platform/today'
 import {
   RUNNING_BUILD,
   UPDATE_CHECK_INTERVAL,
@@ -508,6 +509,14 @@ export const subscriptions = makeSubscriptions(entry => ({
     handler: function* () {
       const store = yield* PlayerStore
       return () => Stream.map(store.events, syncMessageOf)
+    },
+  }),
+
+  // NOTE: today's day in UTC, from start, then each new day.
+  today: entry('Today', {
+    messages: [Message.ChangedToday],
+    handler: function* () {
+      return () => Stream.map(todays, day => Message.ChangedToday({ day }))
     },
   }),
 

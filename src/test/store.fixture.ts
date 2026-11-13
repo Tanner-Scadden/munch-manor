@@ -41,7 +41,7 @@ import {
   type SyncSetup,
   makePlayerDatabase,
 } from '../platform/storeSqlite'
-import { noSavedRunRecords } from '../shared/playerData'
+import { noBonuses, noSavedRunRecords } from '../shared/playerData'
 import { noRank } from '../world/heroes/rank'
 
 // NOTE: what the store tests (src/platform/__tests__/store.test.ts) start from: a save, a fake
@@ -97,6 +97,7 @@ export const legacySave: PlayerSave = {
   name: 'Lil Gnaw',
   records: noSavedRunRecords,
   rank: noRank,
+  bonuses: noBonuses,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

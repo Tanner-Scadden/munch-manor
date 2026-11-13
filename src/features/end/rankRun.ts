@@ -1,4 +1,4 @@
-import { Function, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
@@ -9,7 +9,7 @@ import { playedDifficultyOf } from '../../platform/analyticsRun'
 import { dareItemsFoundOf } from '../../world/dare/dare'
 import {
   type RunPayInput,
-  bonesForPoints,
+  bonesForRun,
   grantedVeteran,
   pointsForRun,
   totalPointsOf,
@@ -93,13 +93,35 @@ export const earnRank: {
   const run = isEnded ? after : before
   const input = payInputOf(run, isEnded)
   const points = pointsForRun(input)
-  const bones = bonesForPoints(points)
+  const isFirstEscape = input.isEscape && isFirstEscapeOn(after, input)
+  const maybeDoubleDay = Option.filter(
+    after.maybeToday,
+    today => after.bonuses.doubledDay !== today,
+  )
+  const { bones, bonuses } = bonesForRun({
+    points,
+    isEnded,
+    isGuided: input.isGuided,
+    isFirstOfDay: Option.isSome(maybeDoubleDay),
+    isFirstEscape,
+  })
   const pointsBefore = totalPointsOf(after.rank)
   const paid = modifyFields(after, {
     rank: rank =>
       modifyFields(rank, {
         earnedPoints: earned => earned + points,
         earnedBones: earned => earned + bones,
+      }),
+    bonuses: saved =>
+      modifyFields(saved, {
+        doubledDay: day =>
+          Array.contains(bonuses, 'Double')
+            ? Option.getOrElse(maybeDoubleDay, () => day)
+            : day,
+        escapedOn: escaped =>
+          Array.contains(bonuses, 'FirstEscape')
+            ? Array.append(escaped, input.difficulty)
+            : escaped,
       }),
   })
   return isEnded
@@ -113,10 +135,16 @@ export const earnRank: {
                 gained: points,
                 bonesGained: bones,
                 bonusPercent: input.bonusPercent,
+                bonuses,
               }),
       })
     : paid
 })
+
+// NOTE: the first escape on a difficulty pays its bonus once: the
+// difficulties escaped on since the bonus came in are saved and synced.
+const isFirstEscapeOn = (model: Model, input: RunPayInput): boolean =>
+  !Array.contains(model.bonuses.escapedOn, input.difficulty)
 
 // NOTE: a save from before rank is granted its veteran start once, when
 // it is first read (loadSave in src/app/update/save.ts), from the kills it

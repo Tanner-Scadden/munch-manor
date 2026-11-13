@@ -55,12 +55,14 @@ const rankUp: Gain = Option.some({
   gained: 60,
   bonesGained: 6,
   bonusPercent: 0,
+  bonuses: [],
 })
 const sameRank: Gain = Option.some({
   pointsBefore: 10,
   gained: 60,
   bonesGained: 6,
   bonusPercent: 0,
+  bonuses: [],
 })
 
 const stripAt = (gain: Gain): number => rankStripAtMs(ended(gain), 'Munched')
@@ -170,6 +172,7 @@ describe('the cards a rank up flips', () => {
     gained: 1000,
     bonesGained: 100,
     bonusPercent: 0,
+    bonuses: [],
   })
   const tag = (model: Model) =>
     Array.map(unlocksOf(model), unlock => unlock._tag)

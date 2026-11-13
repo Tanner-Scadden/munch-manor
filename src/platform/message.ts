@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
-import { RecordUnlock } from '../shared/playerData'
+import { DayStamp, RecordUnlock } from '../shared/playerData'
 import {
   FullscreenSetting,
   InstallOffer,
@@ -107,6 +107,13 @@ export const analyticsCases = {
   CompletedStartSummaryQueue: {},
   CompletedSendRunSummary: {},
   FailedSendRunSummary: { reason: Schema.String },
+}
+
+// NOTE: today's day in UTC, from the Today Subscription
+// (src/platform/today.ts): the day the first run pays double Bones, and any
+// daily reward after it (src/app/update/today.ts).
+export const dayCases = {
+  ChangedToday: { day: DayStamp },
 }
 
 // NOTE: RECORD MY RUNS (src/app/update/recording.ts): this device's unlock,

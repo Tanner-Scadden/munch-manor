@@ -8,8 +8,14 @@ import type {
   ShopGuideSection,
   TutorialChoice,
 } from '../shared/nameKeys'
-import { type Calling, type CosmeticKind, Hat } from '../shared/playerData'
+import {
+  type Calling,
+  type CosmeticKind,
+  FIRST_ESCAPE_BONES,
+  Hat,
+} from '../shared/playerData'
 import type { DareKind } from './dare/dareSchema'
+import type { BoneBonus } from './heroes/rank'
 import type { Modifier } from './run/modifiers'
 import type {
   FridgePrize,
@@ -97,6 +103,58 @@ export const ZOMBIE_NAMES: Readonly<Record<ZombieKind, string>> = {
   Thrower: 'Big Leaguer',
   Crawler: 'Ankle Biter',
   Boss: 'Uncle Chunk',
+}
+
+// NOTE: the end card's tags for the Bones a run's bonuses added
+// (src/world/heroes/rank.ts): the floor, the day's first run doubled, and
+// the first escape on a difficulty.
+export const BONE_BONUS_TAGS: Readonly<Record<BoneBonus, string>> = {
+  Floor: 'MIN',
+  Double: 'X2',
+  FirstEscape: `+${FIRST_ESCAPE_BONES}`,
+}
+
+// NOTE: Rattles' tip on the end card about the zombie that landed the last
+// bite (src/features/end/deathTip.ts), a few to each so one never comes
+// twice in a row. Short, goofy, and true.
+export const DEATH_TIPS: Readonly<
+  Record<ZombieKind, Array.NonEmptyReadonlyArray<string>>
+> = {
+  Shambler: [
+    'GROANERS ARE SLOW. BACK UP!',
+    "DON'T LET 'EM CROWD YOU",
+    'KEEP MOVING, KEEP SHOOTING',
+  ],
+  Runner: [
+    'HOTFOOTS HATE PLANKS',
+    'SHOOT THE FAST ONE FIRST',
+    'HOTFOOTS RUN. YOU AIM.',
+  ],
+  Tank: [
+    "DON'T HUG THE BIG LUG",
+    'BIG LUGS PLOD. KITE EM!',
+    'SAVE THE BIG GUN FOR LUGS',
+  ],
+  Exploder: [
+    'POP KABOOMERS FROM AFAR',
+    'KABOOMERS GO BOOM. BACK UP!',
+    'NEVER HUG A KABOOMER',
+  ],
+  Thrower: [
+    'BIG LEAGUERS THROW. DODGE!',
+    'DUCK BEHIND THE FURNITURE',
+    'KEEP MOVING. THEY AIM SLOW.',
+  ],
+  Crawler: [
+    'WATCH YOUR ANKLES!',
+    'ANKLE BITERS POP UP. LOOK DOWN!',
+    'SHAKE EM OFF. KEEP MOVING!',
+  ],
+  Boss: [
+    'CHUNK WINDS UP. THEN DODGE!',
+    'MIND THE BELLY SLAM',
+    'STAY OFF HIS STOMP',
+  ],
 }
 
 // TRAPS

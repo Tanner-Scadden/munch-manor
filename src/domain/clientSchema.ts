@@ -11,6 +11,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { TutorialChoice } from '../shared/nameKeys'
 import { Appearance, Calling } from '../shared/playerData'
 import { DareKind } from '../world/dare/dareSchema'
+import { BONE_BONUSES } from '../world/heroes/rank'
 import { MillisNumber } from '../world/schema/wireNumber'
 import {
   DifficultyBests,
@@ -116,17 +117,32 @@ export const noRankPaid: RankPaid = {
   revivesPaid: 0,
 }
 
+// NOTE: what lifted a run's Bones (src/world/heroes/rank.ts, bonesForRun):
+// the floor every run that ends pays, the day's first run doubled, and the
+// first escape on a difficulty. The end card tags each one.
+const BoneBonus = Schema.Literals(BONE_BONUSES)
+
 // NOTE: what the run on the end card paid, for its rank strip: the total
 // points before it (so the bar fills from there), the points it paid, and
-// the Bones.
+// the Bones, its bonuses counted in.
 export const RankGain = Schema.Struct({
   pointsBefore: Schema.Finite,
   gained: Schema.Finite,
   bonesGained: Schema.Finite,
   // NOTE: the run modifiers' bonus in percent, 0 with none (src/world/run/modifiers.ts).
   bonusPercent: Schema.Finite,
+  bonuses: Schema.Array(BoneBonus),
 })
 export type RankGain = typeof RankGain.Type
+
+// NOTE: Rattles' tip on the end card after a death (src/features/end/deathTip.ts):
+// the zombie that landed the last bite and his line about it. Kept after
+// the run, so the next tip is never the same line twice in a row.
+export const DeathTip = Schema.Struct({
+  kind: ZombieKind,
+  line: Schema.String,
+})
+export type DeathTip = typeof DeathTip.Type
 
 // HOME MENU
 

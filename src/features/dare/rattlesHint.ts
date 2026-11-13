@@ -13,7 +13,7 @@ import {
 } from '../../domain/clientSchema'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Difficulty } from '../../shared/playerData'
-import { type Seeded, nextRandom } from '../../shared/prng'
+import { type Seeded, drawIndex, pickLine } from '../../shared/prng'
 import {
   isDareListDone,
   isInOpenRoom,
@@ -170,29 +170,6 @@ const FINALE: Hint = {
 }
 
 const HECKLE: Hint = { lines: HECKLES, maybeThingId: Option.none() }
-
-// NOTE: a draw from the cosmetic stream as an index below `count`.
-const drawIndex = (state: number, count: number): Seeded<number> => {
-  const draw = nextRandom(state)
-  return [draw.nextState, Math.floor(draw.value * count)]
-}
-
-// NOTE: one of the lines, never the one the player saw last.
-export const pickLine: {
-  (lines: Lines, lastLine: string): (state: number) => Seeded<string>
-  (state: number, lines: Lines, lastLine: string): Seeded<string>
-} = Function.dual(
-  3,
-  (state: number, lines: Lines, lastLine: string): Seeded<string> => {
-    const fresh = Array.filter(lines, line => line !== lastLine)
-    const pool = Array.isReadonlyArrayNonEmpty(fresh) ? fresh : lines
-    const [nextState, index] = drawIndex(state, pool.length)
-    return [
-      nextState,
-      Option.getOrElse(Array.get(pool, index), () => Array.headNonEmpty(pool)),
-    ]
-  },
-)
 
 // NOTE: where a thing on the list lies for the bubble to point at: its spot
 // while hidden (behind the boards too, as the kitchen holler points there).
