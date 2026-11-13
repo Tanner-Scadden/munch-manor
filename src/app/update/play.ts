@@ -85,6 +85,7 @@ import {
   menuFromKey,
 } from './home'
 import { advanceIntro, skipIntro } from './intro'
+import { beatCardFromKey } from './beatMyRun'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { proofFromKey } from './proof'
@@ -559,6 +560,7 @@ const pressedButton = ({ code, device }: ButtonPress) =>
       proofFromKey(code),
       homeFocusFromKey(code),
       homeFromKey(code),
+      beatCardFromKey(code),
       leaveRunFromPad(code),
       trapFromKey(code),
       reloadFromKey(code),

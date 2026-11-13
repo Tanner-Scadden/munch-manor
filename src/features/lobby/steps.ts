@@ -15,6 +15,7 @@ import { LobbyBlock, makeNoopStep, makeStep } from './block'
 import {
   LOBBY_KEYS,
   isEasyBreakShown,
+  isLockedByDare,
   isMarkShown,
   isModifierPickable,
   lobbyControlId,
@@ -133,20 +134,32 @@ export const finishFold = (model: Model): Model =>
 
 // PICKS
 
+// NOTE: a friend's dare holds every pick to its link's
+// (src/domain/beatMyRun.ts): the tiles show them, and take no taps or keys.
+const isPickOpen = (model: Model, picks: LobbyPicks): boolean =>
+  isActive(model) && !isLockedByDare(picks)
+
 // NOTE: a pick puts focus on START, so Enter after a pick starts the run
 // instead of pressing the tile again, and goes up for the root to make.
-const picked = (model: Model, outMessage: OutMessage, isAllowed = true) =>
-  isActive(model) && isAllowed
+const picked = (
+  model: Model,
+  picks: LobbyPicks,
+  outMessage: OutMessage,
+  isAllowed = true,
+) =>
+  isPickOpen(model, picks) && isAllowed
     ? { ...focus(model, 'Start'), outMessage }
     : { model }
 
-export const pickMode = (mode: HomeMode) => (model: Model) =>
-  picked(model, OutMessage.ChoseMode({ mode }))
+export const pickMode =
+  (mode: HomeMode) => (model: Model, picks: LobbyPicks) =>
+    picked(model, picks, OutMessage.ChoseMode({ mode }))
 
 export const pickDifficulty =
   (difficulty: Difficulty) => (model: Model, picks: LobbyPicks) =>
     picked(
       model,
+      picks,
       OutMessage.ChoseDifficulty({ difficulty }),
       !isLocked(picks.difficulty, difficulty),
     )
@@ -156,14 +169,14 @@ export const pickDifficulty =
 // waits for a bot to hit, as the tile says.
 export const pickModifier =
   (modifier: Modifier) => (model: Model, picks: LobbyPicks) =>
-    isActive(model) && isModifierPickable(picks, modifier)
+    isPickOpen(model, picks) && isModifierPickable(picks, modifier)
       ? { model, outMessage: OutMessage.ToggledModifier({ modifier }) }
       : { model }
 
 // NOTE: Dare's break clock steps to its next choice where it sits, as a
 // modifier turns, so focus stays on it for another press.
 export const pickEasyBreak = (model: Model) => (picks: LobbyPicks) =>
-  isActive(model) && isEasyBreakShown(picks)
+  isPickOpen(model, picks) && isEasyBreakShown(picks)
     ? {
         model,
         outMessage: OutMessage.ChoseEasyBreak({
@@ -175,7 +188,7 @@ export const pickEasyBreak = (model: Model) => (picks: LobbyPicks) =>
 // NOTE: the dare ladder's mark steps to the next opened where it sits, round
 // to none, as the break clock does.
 export const pickDareMark = (model: Model) => (picks: LobbyPicks) =>
-  isActive(model) && isMarkShown(picks)
+  isPickOpen(model, picks) && isMarkShown(picks)
     ? {
         model,
         outMessage: OutMessage.ChoseDareMark({
@@ -190,16 +203,18 @@ export const pickDareMark = (model: Model) => (picks: LobbyPicks) =>
 // generator picks the goofy name (none the crew wears) and the hero (one
 // this player owns). With no seat free it changes nothing, but it is still
 // a pick: its tap and START's focus.
-export const addBot = (model: Model) =>
-  picked(model, OutMessage.ClickedAddBot())
+export const addBot = (model: Model) => (picks: LobbyPicks) =>
+  picked(model, picks, OutMessage.ClickedAddBot())
 
 // NOTE: the x on a bot: the root sends it home (the last bot takes Friendly
 // Fire with it), and a picker choosing for a bot chooses for nobody.
-export const dropBot = (index: number) => (model: Model) =>
-  picked(
-    modifyFields(model, { maybePickingBot: () => Option.none() }),
-    OutMessage.DroppedBot({ index }),
-  )
+export const dropBot =
+  (index: number) => (model: Model, picks: LobbyPicks) =>
+    picked(
+      modifyFields(model, { maybePickingBot: () => Option.none() }),
+      picks,
+      OutMessage.DroppedBot({ index }),
+    )
 
 // THE HERO PICKER
 
@@ -293,11 +308,14 @@ export const pressKey = (code: string) => (model: Model, picks: LobbyPicks) => {
   } else if (code === LOBBY_KEYS.Back.code) {
     return leave(model)
   } else if (code === LOBBY_KEYS.Mode.code) {
-    return pickMode(picks.mode === 'Campaign' ? 'Endless' : 'Campaign')(model)
+    return pickMode(picks.mode === 'Campaign' ? 'Endless' : 'Campaign')(
+      model,
+      picks,
+    )
   } else if (code === LOBBY_KEYS.Difficulty.code) {
     return pickDifficulty(nextDifficultyOf(picks.difficulty))(model, picks)
   } else if (code === LOBBY_KEYS.Bot.code) {
-    return addBot(model)
+    return addBot(model)(picks)
   } else {
     return Option.match(maybeFocusStep(code), {
       onNone: () => ({ model }),

@@ -2,6 +2,7 @@ import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
 import { soundCases } from '../audio/message'
+import { FriendsDare } from '../domain/beatLink'
 import { endCases } from '../features/end/message'
 import { homeCases } from '../features/home/message'
 import { helpCases } from '../features/menus/message'
@@ -22,14 +23,16 @@ import {
 } from '../platform/message'
 
 // NOTE: the root's own Messages: the frames, the seed, the couch's players,
-// and a room link read at start. Their handlers are in src/app/main.ts and
-// src/app/update/coop.ts.
+// and a room link and a SHARE link read at start. Their handlers are in
+// src/app/main.ts, src/app/update/coop.ts, and src/app/update/beatMyRun.ts.
 export const frameCases = {
   TickedFrame: { deltaTime: Schema.Finite },
   TickedRoomFrame: { nowMs: Schema.Finite },
   CompletedGenerateSeed: { seed: Schema.Finite },
   CompletedDetectLocalPlayers: { count: Schema.Finite },
   CompletedReadRoomLink: { maybeCode: Schema.Option(Schema.String) },
+  CompletedReadBeatLink: { maybeDare: Schema.Option(FriendsDare) },
+  CompletedForgetBeatLink: {},
 }
 
 // NOTE: the root's Message union is the one flat join of every group, each

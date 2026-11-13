@@ -29,14 +29,14 @@ export const update = LobbyComposition.makeUpdate.withContext(picks => ({
   ClickedStartButton: start,
   ClickedHeroButton: model =>
     pipe(openHero(model), Update.withOutMessage(heroOpenedFrom(model))),
-  ClickedAddBotButton: addBot,
-  ClickedDropBotButton: (model, { index }) => dropBot(index)(model),
+  ClickedAddBotButton: model => addBot(model)(picks),
+  ClickedDropBotButton: (model, { index }) => dropBot(index)(model, picks),
   ClickedBotHeroButton: (model, { index }) =>
     pipe(
       openBotHero({ index, picks })(model),
       Update.withOutMessage(botHeroOpenedFrom({ index, picks })(model)),
     ),
-  ClickedModeButton: (model, { mode }) => pickMode(mode)(model),
+  ClickedModeButton: (model, { mode }) => pickMode(mode)(model, picks),
   ClickedDifficultyButton: (model, { difficulty }) =>
     pickDifficulty(difficulty)(model, picks),
   ClickedModifierButton: (model, { modifier }) =>

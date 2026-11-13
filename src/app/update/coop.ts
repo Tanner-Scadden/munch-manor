@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
+import { releaseDare } from '../../domain/beatMyRun'
 import { isLeftFromRoom, maybeRunRoom } from '../../domain/onlineRun'
 import { cleanName, joinName } from '../../domain/playerName'
 import { IS_COOP_RELEASED } from '../../features/coop/release'
@@ -163,6 +164,7 @@ const openCoop = (maybeCode: Option.Option<string>) =>
     canOpenCoop(model)
       ? Update.combineSteps([
           releaseInput,
+          modelStep(releaseDare),
           CoopBinding.requestOpen({
             name: joinName(model),
             maybeCode,

@@ -20,6 +20,7 @@ import {
   Tour,
   freshLessons,
 } from '../domain/clientSchema'
+import { savedDifficultyOf } from '../domain/beatMyRun'
 import { lookInOwned } from '../domain/closet'
 import { cleanName } from '../domain/playerName'
 import { unlocksAt } from '../domain/unlocks'
@@ -213,7 +214,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   },
   appearance: model.appearance,
   difficulty: {
-    chosen: model.difficulty.chosen,
+    chosen: savedDifficultyOf(model),
     card: DifficultyCard.isAnyOf(['Seen'])(model.difficultyCard)
       ? 'Seen'
       : 'Unseen',

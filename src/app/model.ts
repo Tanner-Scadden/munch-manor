@@ -42,6 +42,7 @@ import {
   noRankPaid,
   quietDareHint,
 } from '../domain/clientSchema'
+import { BeatMyRun, noBeatMyRun } from '../domain/beatLink'
 import * as Coop from '../features/coop/model'
 import { ShareSheet } from '../features/end/share'
 import { HomeButton, MenuPanel } from '../features/home/homeSchema'
@@ -250,6 +251,13 @@ export const Model = Schema.Struct({
   // starts from the lobby's bots, so RETRY seats the same ones and a LEAVE
   // clears them.
   crewBots: Schema.Array(Bot),
+  // NOTE: beat my run (src/domain/beatMyRun.ts): a friend's dare from a
+  // SHARE link, offered on the home menu or taken into the lobby; and what
+  // this run started from, for its own link: the seed and the things its
+  // list rolled from.
+  beatMyRun: BeatMyRun,
+  runSeed: Schema.Finite,
+  runPool: Schema.Array(DareKind),
   shareStats: ShareStatsSetting,
   cursorSetting: CursorSetting,
   maybeVisitId: Schema.Option(Schema.String),
@@ -488,6 +496,9 @@ export const initialModel: OwnModel = {
   orientationLock: 'Unsupported',
   localPlayers: 1,
   crewBots: [],
+  beatMyRun: noBeatMyRun,
+  runSeed: DEFAULT_SEED,
+  runPool: [],
   party: Party.Solo(),
   seats: [soloState],
   shareStats: 'On',

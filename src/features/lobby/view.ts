@@ -57,6 +57,7 @@ import {
   MODE_CONTROLS,
   SEATS,
   isEasyBreakShown,
+  isLockedByDare,
   isMarkShown,
   isModifierLocked,
   isModifierPickable,
@@ -574,9 +575,26 @@ const mapCardView = (map: MapId, h: LobbyViewBuilder): Html =>
     ],
   )
 
+// NOTE: a friend's dare holds the picks to its link's: they show, inert,
+// under a stamp, and the arrow keys skip them (src/features/lobby/lobby.ts).
+const heldStampView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
+  isLockedByDare(inputs.picks)
+    ? h.span(
+        [h.Class('lobby-held-stamp'), h.Role('note')],
+        ["PAL'S DARE"],
+      )
+    : h.empty
+
 const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
   h.div(
-    [h.Class('coop-picks lobby-picks'), h.DataAttribute('host', 'Picking')],
+    [
+      h.Class('coop-picks lobby-picks'),
+      h.DataAttribute('host', 'Picking'),
+      h.DataAttribute('held', isLockedByDare(inputs.picks) ? 'Yes' : 'No'),
+      ...(isLockedByDare(inputs.picks)
+        ? [h.Inert(true), h.AriaLabel("Picks held to your friend's dare")]
+        : []),
+    ],
     [
       h.div(
         [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Mode')],
@@ -799,6 +817,7 @@ const view = LobbyComposition.makeView.withInputs<ViewInputs>(
                   [
                     lobbyBackView(inputs, h),
                     seatsView(inputs, h),
+                    heldStampView(inputs, h),
                     picksView(inputs, h),
                     startButtonView(inputs, h),
                   ],

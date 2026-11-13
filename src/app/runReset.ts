@@ -129,6 +129,8 @@ export type RunFields = Pick<
   | 'party'
   | 'seats'
   | 'crewBots'
+  | 'runSeed'
+  | 'runPool'
 >
 
 export const freshRun = (model: Model): RunFields => ({
@@ -215,6 +217,8 @@ export const freshRun = (model: Model): RunFields => ({
     }),
   ],
   crewBots: [],
+  runSeed: model.rngState,
+  runPool: [],
 })
 
 // NOTE: going home ends the run, so every run field goes back to a fresh start.

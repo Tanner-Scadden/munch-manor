@@ -21,6 +21,7 @@ import {
   type Zombie,
   ZombieAction,
 } from '@game/app/model'
+import { BeatMyRun, type FriendsDare } from '@game/domain/beatLink'
 import { addBot } from '@game/domain/bots'
 import { milestoneUnlockId } from '@game/domain/journal'
 import { MASTERY_GUNS, fitPropStyle } from '@game/domain/mastery'
@@ -422,6 +423,46 @@ const EVERY_NEW_THING = thingsOpenedBy([
   'ChunkTripleDare',
 ])
 
+
+// NOTE: `beat`: the friend's dare the home card and the end card show.
+const FRIENDS_DARE: FriendsDare = {
+  seed: 1234567,
+  mode: 'Campaign',
+  difficulty: 'Hard',
+  modifiers: { friendlyFire: false, bigCrowd: false, broke: true, glass: false },
+  dareMark: 2,
+  easyBreakSeconds: 0,
+  pool: ['NapkinRing'],
+  hero: 'Handyman',
+  outcome: 'Munched',
+  wave: 6,
+  found: ['SilverSpoon', 'MusicBox'],
+  runSeconds: 412,
+}
+
+const withBeat = (
+  model: Model,
+  beat: 'offered' | 'taken' | undefined,
+): Model =>
+  beat === undefined
+    ? model
+    : modifyFields(model, {
+        beatMyRun: () =>
+          beat === 'offered'
+            ? BeatMyRun.Offered({ dare: FRIENDS_DARE })
+            : BeatMyRun.Taken({
+                dare: FRIENDS_DARE,
+                own: {
+                  mode: model.home.mode,
+                  difficulty: model.difficulty.chosen,
+                  modifiers: model.modifiers,
+                  dareMark: model.dareMark,
+                  easyBreakSeconds: model.easyBreakSeconds,
+                  bots: model.home.bots,
+                },
+              }),
+      })
+
 export const scenarioModel = (settings: SceneSettings): Model =>
   withCoop(settings.config, scenarioModelOf(settings))
 
@@ -626,6 +667,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (dmark !== undefined) {
     model = modifyFields(model, { dareMark: () => dmark })
   }
+  model = withBeat(model, config.beat)
   const kills = config.kills
   if (kills !== undefined) {
     const counts = Record.fromEntries(kills)

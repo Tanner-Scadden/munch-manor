@@ -3664,3 +3664,131 @@ button.help-card:focus-visible {
     animation: none;
   }
 }
+
+/* BEAT MY RUN: a friend's dare from a SHARE link (src/screens/home/beatCard.ts),
+   a paper card under the top of the menu with their result in pictures.
+   The card is the button; its x lets the dare go. */
+
+.beat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  animation: menu-fade-in 0.35s ease-out both;
+}
+
+.home-stage .beat-card {
+  position: absolute;
+  left: 50%;
+  top: calc(80 * var(--a));
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.beat-card-take {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: var(--menu-tap);
+  padding: 5px 14px 6px;
+  border: 3px solid #2a1d14;
+  border-radius: 4px;
+  background: #f3e6c4;
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 255, 255, 0.35),
+    0 4px 0 rgba(0, 0, 0, 0.45);
+  color: #2a1d14;
+  font: bold round(clamp(10px, 3.2 * var(--a, 2px), 20px), 1px) / 1.1
+    var(--menu-font);
+  rotate: -1deg;
+  cursor: pointer;
+}
+
+.beat-card-take:hover,
+.beat-card-take:focus-visible {
+  outline: 3px solid var(--menu-ink);
+  outline-offset: 2px;
+}
+
+.beat-card-flag {
+  color: #c8323a;
+  letter-spacing: 2px;
+  pointer-events: none;
+}
+
+.beat-card-result {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.beat-card-stamp {
+  padding: 1px 5px;
+  border: 2px solid currentcolor;
+  border-radius: 3px;
+  font-size: 0.8em;
+  letter-spacing: 1px;
+  rotate: -4deg;
+}
+
+.beat-card-stamp[data-outcome='Won'] {
+  color: #2f8a2a;
+}
+
+.beat-card-stamp[data-outcome='Chicken'] {
+  color: #c77a12;
+}
+
+.beat-card-stamp[data-outcome='Munched'] {
+  color: #c8323a;
+}
+
+.beat-card-hero,
+.beat-card-skull,
+.beat-card-mark,
+.beat-card-thing {
+  display: inline-block;
+  width: 1.4em;
+  height: 1.4em;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.beat-card-things,
+.beat-card-unopened {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.beat-card-thing-dim {
+  opacity: 0.7;
+}
+
+.beat-card-unopened-mark {
+  color: #c8323a;
+}
+
+.beat-card-wave {
+  color: #2a1d14;
+  letter-spacing: 1px;
+}
+
+/* NOTE: NEW ENTRY holds the card's spot when both are up: the card steps
+   down under it. */
+.home-stage .new-entry ~ .beat-card {
+  top: calc(102 * var(--a));
+}
+
+.game-root[data-layout='Portrait'] .home-stage .beat-card {
+  top: calc((80 + var(--frame-top)) * var(--a));
+}
+
+.game-root[data-layout='Portrait'] .home-stage .new-entry ~ .beat-card {
+  top: calc((102 + var(--frame-top)) * var(--a));
+}
+
+.beat-card-close {
+  margin: -10px -10px 0 -8px;
+}

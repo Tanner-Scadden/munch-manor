@@ -49,6 +49,7 @@ import {
   ShareFromClick,
 } from '../app/mount'
 import { subscriptions, type update } from '../app/pureApp'
+import { ReadBeatLink } from '../app/update/beatMyRun'
 import { ReadRoomLink } from '../app/update/coop'
 import { CueMusic } from '../app/update/music'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
@@ -577,7 +578,7 @@ export const resolvePlayed = (sound: SoundEffect) =>
   )
 
 // NOTE: the boot splash's last Commands once the save is read: the load
-// bar fills, the splash goes, and no room link is waiting.
+// bar fills, the splash goes, and no room link or SHARE link is waiting.
 export const finishSplash = Story.steps(
   Story.Command.resolve(
     ShowLoadProgress({ loaded: 5, total: 5 }),
@@ -587,6 +588,10 @@ export const finishSplash = Story.steps(
   Story.Command.resolve(
     ReadRoomLink,
     Message.CompletedReadRoomLink({ maybeCode: Option.none() }),
+  ),
+  Story.Command.resolve(
+    ReadBeatLink,
+    Message.CompletedReadBeatLink({ maybeDare: Option.none() }),
   ),
 )
 
@@ -637,6 +642,7 @@ export const bootWithoutVisitId = Story.Command.resolveAll(
   ),
   [HideSplash(), Message.CompletedHideSplash()],
   [ReadRoomLink, Message.CompletedReadRoomLink({ maybeCode: Option.none() })],
+  [ReadBeatLink, Message.CompletedReadBeatLink({ maybeDare: Option.none() })],
 )
 
 // NOTE: PLAY by Enter opens the single player lobby with START focused; Enter

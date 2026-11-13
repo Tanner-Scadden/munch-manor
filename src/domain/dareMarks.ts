@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
 import { playedDifficultyOf } from '../platform/analyticsRun'
+import { isDareTaken } from './beatMyRun'
 import type { SavedDareMarks } from '../shared/dareMarkData'
 import type { Difficulty } from '../shared/playerData'
 import { MAX_MARK, clampMark } from '../world/run/dareLadder'
@@ -32,8 +33,12 @@ export const nextMarkOf: {
 )
 
 // NOTE: the pick held to what the picked difficulty has opened, as the
-// difficulty changes or a save comes in.
+// difficulty changes or a save comes in. A friend's dare holds its own mark
+// (src/domain/beatMyRun.ts).
 export const fitDareMark = (model: Model): Model => {
+  if (isDareTaken(model)) {
+    return model
+  }
   const best = bestMarkOn(model.dareMarks, model.difficulty.chosen)
   return model.dareMark > best
     ? modifyFields(model, { dareMark: () => best })

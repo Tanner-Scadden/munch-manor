@@ -3,6 +3,7 @@ import { Effect, Function, Queue, Stream } from 'effect'
 import {
   GAME_URL,
   SHARE_TEXT_DATA,
+  SHARE_URL_DATA,
   type ShareOutcome,
   type SharePost,
   copiedLineOf,
@@ -156,9 +157,9 @@ export const ListenForTouchTaps = ApplicationBlock.makeMountStream(
 
 // SHARE
 
-// NOTE: the end screen's SHARE button carries its post's words here, read
-// at the tap, so the post is always the run on screen
-// (`data-share-text`).
+// NOTE: the end screen's SHARE button carries its post's words and link
+// here, read at the tap, so the post is always the run on screen
+// (`data-share-text`, `data-share-url`).
 
 const isAbort = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError'
@@ -207,7 +208,8 @@ export const listenForShareClicks: {
   ): (() => void) => {
     const onClick = (): void => {
       const text = element.getAttribute(`data-${SHARE_TEXT_DATA}`) ?? ''
-      void sharePost({ text, url: GAME_URL }).then(onSettled)
+      const url = element.getAttribute(`data-${SHARE_URL_DATA}`) ?? GAME_URL
+      void sharePost({ text, url }).then(onSettled)
     }
     element.addEventListener('click', onClick)
     return () => {

@@ -76,6 +76,8 @@ import {
   skullCountOf,
   tallyRowsOf,
 } from './endBeat'
+import { maybeBeatComparisonOf } from './beatRun'
+import { beatVerdictShapes, friendRowShapes } from './beatRunView'
 import { ghostShapes, maybeGhostOf } from './ghostView'
 import {
   STRIP_PX,
@@ -781,7 +783,9 @@ const cardShapes = (
   ]
 }
 
-// NOTE: the best run's ghost on the wave's row, once the row lands.
+// NOTE: the best run's ghost on the wave's row, once the row lands, or a
+// friend's dare's result in its place (src/features/end/beatRunView.ts), on
+// the time's row when an escape's tally has no wave row.
 const ghostRowShapes = (
   model: Model,
   kind: EndKind,
@@ -789,25 +793,42 @@ const ghostRowShapes = (
   rows: ReadonlyArray<TallyRow>,
   top: number,
   rowPx: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(
-    Option.all([
-      maybeGhostOf(model),
-      Array.findFirstIndex(rows, row => row.icon === 'Wave'),
-    ]),
-    {
-      onNone: () => [],
-      onSome: ([best, index]) =>
-        ms >= rowLandMs(kind, index)
-          ? [ghostShapes(best, CENTER_X, top + PANEL_PAD + index * rowPx)]
-          : [],
-    },
-  )
+): ReadonlyArray<Canvas.Shape> => {
+  const rowY = (index: number): Option.Option<number> =>
+    ms < rowLandMs(kind, index)
+      ? Option.none()
+      : Option.some(top + PANEL_PAD + index * rowPx)
+  const waveIndex = Array.findFirstIndex(rows, row => row.icon === 'Wave')
+  return Option.match(maybeBeatComparisonOf(model), {
+    onNone: () =>
+      Option.match(
+        Option.all([Option.flatMap(waveIndex, rowY), maybeGhostOf(model)]),
+        {
+          onNone: () => [],
+          onSome: ([y, best]) => [ghostShapes(best, CENTER_X, y)],
+        },
+      ),
+    onSome: comparison =>
+      Option.match(
+        Option.flatMap(
+          Option.orElse(waveIndex, () =>
+            Array.findFirstIndex(rows, row => row.icon === 'Time'),
+          ),
+          rowY,
+        ),
+        {
+          onNone: () => [],
+          onSome: y => [friendRowShapes(comparison, CENTER_X, y)],
+        },
+      ),
+  })
+}
 
 const UNLOCK_BLINK_MS = 400
 
-// NOTE: the line over the tally is the quip, or, when there is news (Nightmare
-// unlocked, or the first runs' ask for feedback), the news in its place, or
+// NOTE: the line over the tally is a friend's dare's verdict, or the quip,
+// or, when there is news (Nightmare unlocked, or the first runs' ask for
+// feedback), the news in its place, or
 // on a loss Rattles' death tip (src/features/end/deathTip.ts). Under the card
 // there is no room: on a phone on its side the buttons start there.
 const lineShapes = (
@@ -816,6 +837,10 @@ const lineShapes = (
   ms: number,
   y: number,
 ): ReadonlyArray<Canvas.Shape> => {
+  const comparison = maybeBeatComparisonOf(model)
+  if (Option.isSome(comparison)) {
+    return beatVerdictShapes(comparison.value, CENTER_X, y)
+  }
   const note = noteShapes(model, ms, y)
   if (Array.isReadonlyArrayNonEmpty(note)) {
     return note

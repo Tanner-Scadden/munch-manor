@@ -181,6 +181,9 @@ export const FIELD_CLASSES = {
   rumbleSetting: 'Client',
   localPlayers: 'Client',
   crewBots: 'Client',
+  beatMyRun: 'Client',
+  runSeed: 'Client',
+  runPool: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>
 
 // NOTE: the player fields at the root of a Model before seats by slot. A

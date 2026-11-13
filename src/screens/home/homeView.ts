@@ -102,6 +102,7 @@ import {
 } from './homeAttributes'
 import { installTileView } from './installView'
 import { updateGiftView } from './updateGift'
+import { beatCardView } from './beatCard'
 
 // PLAY
 
@@ -663,6 +664,7 @@ export const homeMenuView: {
               topLeftView(model, h),
               heroButtonView(model, h),
               newEntryButtonView(model, h),
+              beatCardView(model, h),
               turnHintView(model, h),
               h.div(
                 [h.Class('home-corner')],

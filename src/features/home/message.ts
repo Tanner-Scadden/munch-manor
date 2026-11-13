@@ -6,9 +6,9 @@ import { ZombieKind } from '../../world/schema/entitySchema'
 import { HandCard, HomeButton } from './homeSchema'
 
 // NOTE: the home menu, the MANOR hand, the panels, and the pause MENU pill.
-// Their handlers are in ./update.ts, but for those that open a child Block
-// the root drives: PLAY (src/app/update/lobby.ts) and CO-OP
-// (src/app/update/coop.ts).
+// Their handlers are in src/app/update/home.ts, but for those that open a
+// child Block the root drives: PLAY (src/app/update/lobby.ts), CO-OP
+// (src/app/update/coop.ts), and BEAT MY RUN (src/app/update/beatMyRun.ts).
 export const homeCases = {
   ClickedCampaignButton: {},
   ClickedEndlessButton: {},
@@ -34,6 +34,8 @@ export const homeCases = {
   ClickedProofButton: {},
   ClickedNewEntryButton: { kind: ZombieKind },
   ClickedManorButton: {},
+  ClickedBeatMyRunButton: {},
+  ClickedDismissBeatMyRunButton: {},
   ClickedTurnHint: {},
   SteppedHandFocus: { card: HandCard },
   CompletedFocusHandCard: {},
