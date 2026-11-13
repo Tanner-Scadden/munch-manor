@@ -4,15 +4,17 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
+import { type Model, Phase, RunMode } from '../../../app/model'
 import { crewBotSlots } from '../../../domain/bots'
 import { isLeftFromRoom } from '../../../domain/onlineRun'
 import { cameraFocus } from '../../../render/camera'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
   crewInWave,
+  kitchenBreak,
   pickupAt,
   placeSeat,
+  withDareThings,
   withPickups,
   withSeatLife,
   withZombies,
@@ -21,9 +23,14 @@ import {
   APPLICATION,
   press,
   release,
+  settleRunCommands,
   ticks,
   zombieOf,
 } from '../../../test/testing'
+import { DareThingState } from '../../../world/dare/dareSchema'
+import { backDoorStandOf } from '../../../world/kitchen/backDoor'
+import { levelOf, openExitIn } from '../../../world/level/arena'
+import { KITCHEN_EXIT } from '../../../world/level/exits'
 import { maybePlayerAt, playersOf } from '../../../world/party/party'
 import { Life } from '../../../world/schema/worldSchema'
 import { coopNameShapes } from '../../onlineRun/coopMarksView'
@@ -346,5 +353,61 @@ describe('a bot run in the root', () => {
   test('is not taken for a room run left behind, which goes home', () => {
     expect(isLeftFromRoom(crewInWave(2))).toBe(true)
     expect(isLeftFromRoom(crew())).toBe(false)
+  })
+})
+
+describe('at the back door', () => {
+  // NOTE: a campaign break with the kitchen open and a thing found, the
+  // human at the back door and the bot across the kitchen.
+  const atBackDoor = (): Model => {
+    const opened = withDareThings(
+      modifyFields(withBot(crewInWave(2, kitchenBreak(4))), {
+        mode: () => RunMode.Campaign(),
+        level: level => openExitIn(level, KITCHEN_EXIT),
+      }),
+      [
+        {
+          id: 0,
+          kind: 'SilverSpoon',
+          state: DareThingState.Found({ slot: 0 }),
+        },
+      ],
+    )
+    const door = Option.getOrThrow(backDoorStandOf(levelOf(opened)))
+    return placeSeat(
+      1,
+      door.x - 70,
+      door.y,
+    )(placeSeat(0, door.x, door.y)(opened))
+  }
+
+  it.effect(
+    'a bot walks over to a human holding it, and the crew leaves together',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(atBackDoor()),
+        press('Enter'),
+        ...ticks(60, TICK_MS),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Preparation')
+        }),
+        ...ticks(240, TICK_MS),
+        Story.model(current => {
+          expect(current.phase).toEqual(Phase.LeftEarly({ wave: 4 }))
+        }),
+        release('Enter'),
+        settleRunCommands,
+      ),
+  )
+
+  test('a bot never holds the door itself', () => {
+    const bot = seatOf(atBackDoor(), 1)
+    expect(
+      botInputs(
+        placeSeat(1, bot.player.x + 70, bot.player.y)(atBackDoor()),
+        [1],
+      ).get(1)?.interact,
+    ).toBe('Released')
   })
 })

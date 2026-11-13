@@ -48,6 +48,8 @@ const phaseState = (model: Model): MenuState =>
     Paused: () => MenuState.Paused(),
     Escaped: () =>
       MenuState.EndScreen({ isPastGrace: isPastRestartGrace(model) }),
+    LeftEarly: () =>
+      MenuState.EndScreen({ isPastGrace: isPastRestartGrace(model) }),
     GameOver: () =>
       MenuState.EndScreen({ isPastGrace: isPastRestartGrace(model) }),
   })

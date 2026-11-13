@@ -2,6 +2,7 @@ import { Array, Option, Order, String, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import {
+  type ClosedReason,
   type Lobby,
   type LobbyMember,
   MAX_PLAYERS,
@@ -25,6 +26,7 @@ import {
   portraitOf,
 } from '../../art/coopIcons'
 import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../../art/icons'
+import { MISSION_ICONS } from '../../art/missionIcons'
 import { callingOfMember, seatLook, seatLookOf } from '../../art/seatLooks'
 import {
   type CoopProblem,
@@ -651,6 +653,17 @@ const memberSeatView = (
   )
 }
 
+// NOTE: the last run's icon by how the room closed: a trophy for an
+// escape, the chicken for a crew out the back door, a skull for the rest.
+const RESULT_ICONS: Readonly<Record<ClosedReason, string>> = {
+  Won: TROPHY_ICON,
+  LeftEarly: MISSION_ICONS.LeaveEarly,
+  GameOver: SKULL_ICONS.Hard,
+  EndedByHost: SKULL_ICONS.Hard,
+  Abandoned: SKULL_ICONS.Hard,
+  Interrupted: SKULL_ICONS.Hard,
+}
+
 const resultView = (
   room: Room,
   lobby: Lobby,
@@ -663,11 +676,7 @@ const resultView = (
       h.div(
         [h.Class('coop-result'), h.AriaLabel('Last run')],
         [
-          iconView(
-            'coop-result-icon',
-            result.reason === 'Won' ? TROPHY_ICON : SKULL_ICONS.Hard,
-            h,
-          ),
+          iconView('coop-result-icon', RESULT_ICONS[result.reason], h),
           h.ol(
             [h.Class('coop-result-scores')],
             pipe(

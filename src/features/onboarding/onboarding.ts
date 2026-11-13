@@ -141,6 +141,7 @@ const maybeNewKindIn = (model: Model): Option.Option<ZombieKind> =>
       ),
     Paused: () => Option.none(),
     Escaped: () => Option.none(),
+    LeftEarly: () => Option.none(),
     GameOver: () => Option.none(),
   })
 
@@ -393,6 +394,7 @@ export const msIntoPhase = (phase: Phase): number =>
     Wave: ({ elapsedMs }) => elapsedMs,
     Paused: () => 0,
     Escaped: () => 0,
+    LeftEarly: () => 0,
     GameOver: () => 0,
   })
 
@@ -404,6 +406,7 @@ const isFirstWave = (phase: Phase): boolean =>
     Wave: ({ wave }) => wave === 1,
     Paused: () => false,
     Escaped: () => false,
+    LeftEarly: () => false,
     GameOver: () => false,
   })
 
@@ -426,6 +429,7 @@ const isBreakWith = (
     Wave: () => false,
     Paused: () => false,
     Escaped: () => false,
+    LeftEarly: () => false,
     GameOver: () => false,
   })
 

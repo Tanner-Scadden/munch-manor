@@ -249,13 +249,16 @@ const partyColumnsOf = (
 const summaryPartyColumns = (summary: PostedRunSummary): PartyColumns =>
   summary.version === 1 ? SOLO_COLUMNS : partyColumnsOf(summary.party)
 
-// NOTE: a version 5, 6, or 7 summary spends keys and opens cases, with no shop
+// NOTE: a version 5 to 8 summary spends keys and opens cases, with no shop
 // to buy from (its purchases are 0); an older one bought from the shop, and
 // has no keys or cases (NULL).
 const shopColumnsOf = (
   summary: PostedRunSummary,
 ): Pick<RunRow, 'purchases' | 'keys_spent' | 'cases_opened'> =>
-  summary.version === 5 || summary.version === 6 || summary.version === 7
+  summary.version === 5 ||
+  summary.version === 6 ||
+  summary.version === 7 ||
+  summary.version === 8
     ? {
         purchases: 0,
         keys_spent: summary.keysSpent,

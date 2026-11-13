@@ -23,7 +23,8 @@ const CREW_GAMES = `
       max(run_ms) AS run_ms,
       min(received_day) AS received_day,
       max(${IS_WON}) AS won,
-      max(outcome = 'GameOver') AND NOT max(${IS_WON}) AS lost
+      max(outcome = 'GameOver') AND NOT max(${IS_WON}) AS lost,
+      max(outcome = 'LeftEarly') AS left_early
     FROM runs WHERE party = 'Crew'
     GROUP BY game
   )`
@@ -136,21 +137,36 @@ export const SHARES = `
   SELECT screen, path, count(*) AS shares, count(DISTINCT visit_id) AS visits
   FROM shares GROUP BY screen, path ORDER BY shares DESC`
 
-// NOTE: the runs that ended at Game Over or a win: solo runs by row,
-// co-op games by game, so a co-op end screen's shares read per game. A win
-// reads as Escaped, the share screen's name for it.
+// NOTE: the runs that ended at Game Over, a win, or the back door: solo
+// runs by row, co-op games by game, so a co-op end screen's shares read per
+// game. A win reads as Escaped, the share screen's name for it.
 export const ENDS = `
   WITH ${CREW_GAMES}
   SELECT party, outcome, count(*) AS runs FROM (
     SELECT party,
       CASE WHEN ${IS_WON} THEN 'Escaped' ELSE outcome END AS outcome
     FROM runs
-    WHERE party = 'Solo' AND outcome IN ('GameOver', 'Escaped', 'Victory')
+    WHERE party = 'Solo'
+      AND outcome IN ('GameOver', 'Escaped', 'Victory', 'LeftEarly')
     UNION ALL
-    SELECT 'Crew', CASE WHEN won THEN 'Escaped' ELSE 'GameOver' END
-    FROM crew_games WHERE won OR lost
+    SELECT 'Crew', CASE
+      WHEN won THEN 'Escaped'
+      WHEN left_early THEN 'LeftEarly'
+      ELSE 'GameOver' END
+    FROM crew_games WHERE won OR lost OR left_early
   )
   GROUP BY party, outcome`
+
+// NOTE: the runs left early by the kitchen's back door (RunSummary version
+// 8 on): solo runs by row, co-op games once by their key, by difficulty,
+// with the wave they left on and the things on the list they had found.
+export const LEFT_EARLY = `
+  SELECT party, difficulty,
+    count(DISTINCT coalesce(crew_key, 'row:' || id)) AS runs,
+    avg(wave) AS wave,
+    avg(dare_items_found) AS dare_items_found
+  FROM runs WHERE outcome = 'LeftEarly'
+  GROUP BY party, difficulty ORDER BY party, difficulty`
 
 // NOTE: the last 20 co-op games whose players sent network numbers
 // (RunSummary version 7 on), newest first: one row per player, a game's

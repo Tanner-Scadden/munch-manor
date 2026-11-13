@@ -1046,10 +1046,10 @@ export const noBonuses: SavedBonuses = { doubledDay: null, escapedOn: [] }
 
 // NOTE: version 22 added how the last run ended, which the friends in the
 // car remember at the next intro (src/features/intro/carLine.ts): none yet,
-// munched, munched early on, or escaped. LeftEarly waits for leaving by the
-// back door (docs/PROGRESSION_PLAN.md, pillar A): nothing ends a run that
-// way yet, but it is in the Schema now so a device that has it never fails
-// to read another's save. The last device to end a run wins.
+// munched, munched early on, escaped, or left early by the kitchen's back
+// door (docs/PROGRESSION_PLAN.md, pillar A), which was in the Schema from
+// the start so no save version was needed when it shipped. The last device
+// to end a run wins.
 export const RunEnding = Schema.Literals([
   'NoRunYet',
   'Munched',

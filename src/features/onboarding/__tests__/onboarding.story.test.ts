@@ -68,6 +68,7 @@ const remainingMs = (current: Model): number =>
     Wave: () => -1,
     Paused: () => -1,
     Escaped: () => -1,
+    LeftEarly: () => -1,
     GameOver: () => -1,
   })
 
@@ -79,6 +80,7 @@ const waveClockMs = (current: Model): number =>
     Wave: wave => wave.elapsedMs,
     Paused: () => -1,
     Escaped: () => -1,
+    LeftEarly: () => -1,
     GameOver: () => -1,
   })
 

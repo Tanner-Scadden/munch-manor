@@ -170,6 +170,7 @@ const PURCHASE_MOTIONS: Readonly<Record<Purchasable['_tag'], Motion>> = {
   Stove: 'Stir',
   Valve: 'Crank',
   Case: 'Pry',
+  BackDoor: 'Push',
 }
 
 // NOTE: a motion quickens as its work fills: a third faster past half way,

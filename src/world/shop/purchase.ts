@@ -4,6 +4,12 @@ import { modifyFields } from 'foldkit/struct'
 import { caseOffers, takeCase } from '../feats/cases'
 import { fridgeOffers, pullFridge, takePrize } from '../fridge/leftovers'
 import { heldKeys } from '../keys/keys'
+import {
+  BACK_DOOR_RULES,
+  backDoorOffers,
+  isBackDoorHoldPaused,
+  leaveEarly,
+} from '../kitchen/backDoor'
 import { buyValve, valveOffers } from '../kitchen/gasValve'
 import { STOVE_RULES, cookGun, stoveOffers } from '../kitchen/stove'
 import { buyExit, exitOffers } from '../level/exits'
@@ -39,6 +45,10 @@ import {
 // A new kind of purchasable (like the Mystery Leftovers fridge) adds a case
 // to `Purchasable` in src/world/schema/worldSchema.ts, its offers to `offersOf`, its buy
 // to `buy`, and its tag to the view's `tagOf` (src/features/shop/purchaseView.ts).
+//
+// The kitchen's back door (src/world/kitchen/backDoor.ts) is held the same
+// way, for nothing, and its hold fills only while the whole crew stands at
+// it: away from it, the ring waits where it is.
 
 type PurchaseRules = Readonly<{
   holdMs: number
@@ -81,6 +91,7 @@ export const offersOf: {
   ...stoveOffers(world, slot),
   ...valveOffers(world, slot),
   ...caseOffers(world, slot),
+  ...backDoorOffers(world),
 ])
 
 const buy = (
@@ -95,6 +106,7 @@ const buy = (
     Stove: () => cookGun(world, slot, offer.price),
     Valve: () => buyValve(world, slot, offer.price),
     Case: ({ id }) => takeCase(world, slot, id),
+    BackDoor: () => leaveEarly(world),
   })
 
 export const isSamePurchasable: {
@@ -108,16 +120,24 @@ export const isSamePurchasable: {
     Stove: () => second._tag === 'Stove',
     Valve: () => second._tag === 'Valve',
     Case: ({ id }) => second._tag === 'Case' && second.id === id,
+    BackDoor: () => second._tag === 'BackDoor',
   }),
 )
 
 // NOTE: how long the key holds to buy: half a second, but two at the
-// stove, since a cook is a choice for the rest of the run. Standing fills
-// at half the key's speed, as everywhere.
+// stove, since a cook is a choice for the rest of the run, and at the back
+// door, which ends it. Standing fills at half the key's speed, as
+// everywhere.
 const holdMsOf = (target: Purchasable): number =>
-  Purchasable.isAnyOf(['Stove'])(target)
-    ? STOVE_RULES.holdMs
-    : PURCHASE_RULES.holdMs
+  Purchasable.match(target, {
+    Exit: () => PURCHASE_RULES.holdMs,
+    Fridge: () => PURCHASE_RULES.holdMs,
+    Prize: () => PURCHASE_RULES.holdMs,
+    Stove: () => STOVE_RULES.holdMs,
+    Valve: () => PURCHASE_RULES.holdMs,
+    Case: () => PURCHASE_RULES.holdMs,
+    BackDoor: () => BACK_DOOR_RULES.holdMs,
+  })
 
 const reachOf = (world: World, slot: PlayerSlot, offer: Offer): number =>
   distanceToBox(seatStateAt(world, slot).player, offer.box)
@@ -271,7 +291,9 @@ export const advancePurchase: {
                   slot,
                   Purchase.Holding({
                     target: offer.target,
-                    heldMs: deltaMs * STAND_RATE,
+                    heldMs: isBackDoorHoldPaused(world, offer.target)
+                      ? 0
+                      : deltaMs * STAND_RATE,
                   }),
                 )
               : world,
@@ -285,7 +307,9 @@ export const advancePurchase: {
         if ((!isHeld && !isStanding) || Option.isNone(maybeHeld)) {
           return withPurchase(world, slot, Purchase.Idle())
         }
-        const nextMs = heldMs + (isHeld ? deltaMs : deltaMs * STAND_RATE)
+        const nextMs = isBackDoorHoldPaused(world, target)
+          ? heldMs
+          : heldMs + (isHeld ? deltaMs : deltaMs * STAND_RATE)
         return nextMs >= holdMsOf(target)
           ? complete(world, slot, maybeHeld.value)
           : withPurchase(

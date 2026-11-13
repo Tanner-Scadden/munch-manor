@@ -28,8 +28,11 @@ import { Difficulty } from '../shared/playerData'
 // keyboard or touch. Version 7 adds a crew's `network`: how this player's
 // link to the room did over the run (round trips, jitter, late
 // snapshots, reconnects, prediction corrections); the Worker still takes
-// version 6 and older, with none.
-export const RUN_SUMMARY_VERSION = 7
+// version 6 and older, with none. Version 8 adds the `LeftEarly` outcome, a
+// run the crew left by the kitchen's back door in a break
+// (src/world/kitchen/backDoor.ts); the Worker still takes version 7 and
+// older, with no such run.
+export const RUN_SUMMARY_VERSION = 8
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -97,8 +100,19 @@ export const LostRun = Schema.TaggedStruct('GameOver', {
 
 export const QuitRun = Schema.TaggedStruct('Quit', {})
 
-export const RunOutcome = Schema.Union([EscapedRun, LostRun, QuitRun])
+// NOTE: left by the kitchen's back door, from version 8.
+export const LeftEarlyRun = Schema.TaggedStruct('LeftEarly', {})
+
+export const RunOutcome = Schema.Union([
+  EscapedRun,
+  LeftEarlyRun,
+  LostRun,
+  QuitRun,
+])
 export type RunOutcome = typeof RunOutcome.Type
+
+// NOTE: the outcomes of a summary from a build before the back door.
+const RunOutcomeV7 = Schema.Union([EscapedRun, LostRun, QuitRun])
 
 const RunOutcomeV4 = Schema.Union([WonRun, LostRun, QuitRun])
 
@@ -256,7 +270,7 @@ const ModifierMask = Schema.Int.check(
 // things on the dare's list it found (src/world/dare/dare.ts).
 const escapeFields = {
   ...baseFields,
-  outcome: RunOutcome,
+  outcome: RunOutcomeV7,
   keysSpent: Count,
   casesOpened: Count,
   dareItemsFound: Count,
@@ -267,10 +281,19 @@ const escapeFields = {
 export const RunSummary = Schema.Struct({
   version: Schema.Literal(RUN_SUMMARY_VERSION),
   ...escapeFields,
+  outcome: RunOutcome,
   device: SummaryDevice,
   party: SummaryParty,
 })
 export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before the back door.
+const RunSummaryV7 = Schema.Struct({
+  version: Schema.Literal(7),
+  ...escapeFields,
+  device: SummaryDevice,
+  party: SummaryParty,
+})
 
 // NOTE: a summary from a build before the crew's network numbers.
 const RunSummaryV6 = Schema.Struct({
@@ -318,9 +341,10 @@ export const RunSummaryV1 = Schema.Struct({
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
 // NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 6, 5, 4, 3, 2, or 1 from a build cached before it.
+// version, or version 7, 6, 5, 4, 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
+  RunSummaryV7,
   RunSummaryV6,
   RunSummaryV5,
   RunSummaryV4,
@@ -353,8 +377,10 @@ export const SHARE_EVENT_VERSION = 2
 export const ShareScreen = Schema.Literals([
   'Death',
   'Escaped',
+  'LeftEarly',
   'CoopDeath',
   'CoopEscaped',
+  'CoopLeftEarly',
   'Victory',
   'CoopVictory',
 ])

@@ -303,6 +303,7 @@ const phaseFromKey = (model: Model, code: string): Model =>
     Wave: () => (isPauseKey(code) ? pause(model) : model),
     Paused: () => resumeFromKey(model, code),
     Escaped: () => endFromKey(model, code),
+    LeftEarly: () => endFromKey(model, code),
     GameOver: () => endFromKey(model, code),
   })
 

@@ -460,17 +460,26 @@ describe('the lobby picks', () => {
       elapsedMs: () => 600000,
     })
     const rules = roomWorldFor(roomSettingsOf('KeepGoing', 'Normal'))
-    expect(rules.isWon({ ...TWO_SEAT_ROOM, world: escaped })).toBe(true)
+    expect(rules.endReason({ ...TWO_SEAT_ROOM, world: escaped })).toBe('Won')
     expect(rules.isOver({ ...TWO_SEAT_ROOM, world: escaped })).toBe(true)
     const next = rules.start([0, 1], 99)
     expect(next.world.elapsedMs).toBe(0)
     expect(next.world.mode._tag).toBe('Endless')
     expect(
-      rules.isWon({
+      rules.endReason({
         ...TWO_SEAT_ROOM,
         world: modifyFields(escaped, { mode: () => RunMode.Endless() }),
       }),
-    ).toBe(false)
+    ).toBe('GameOver')
+  })
+
+  test('a crew out the back door closes the room LeftEarly', () => {
+    const left = modifyFields(TWO_SEAT_ROOM.world, {
+      phase: () => Phase.LeftEarly({ wave: 4 }),
+    })
+    const rules = roomWorldFor(roomSettingsOf('Campaign', 'Normal'))
+    expect(rules.isOver({ ...TWO_SEAT_ROOM, world: left })).toBe(true)
+    expect(rules.endReason({ ...TWO_SEAT_ROOM, world: left })).toBe('LeftEarly')
   })
 })
 

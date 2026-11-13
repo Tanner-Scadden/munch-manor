@@ -62,6 +62,7 @@ const breakClock = (current: Model): Option.Option<BreakClock> =>
     Wave: () => Option.none(),
     Paused: () => Option.none(),
     Escaped: () => Option.none(),
+    LeftEarly: () => Option.none(),
     GameOver: () => Option.none(),
   })
 
@@ -73,6 +74,7 @@ const breakDurationMs = (current: Model): Option.Option<number> =>
     Wave: () => Option.none(),
     Paused: () => Option.none(),
     Escaped: () => Option.none(),
+    LeftEarly: () => Option.none(),
     GameOver: () => Option.none(),
   })
 

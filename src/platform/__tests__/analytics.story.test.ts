@@ -135,7 +135,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 7,
+  version: 8,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -231,7 +231,15 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 8))).toEqual(Option.none())
+    expect(decode(withField('version', 9))).toEqual(Option.none())
+    expect(
+      decode(
+        jsonOf({ ...summary, version: 7, outcome: { _tag: 'LeftEarly' } }),
+      ),
+    ).toEqual(Option.none())
+    expect(
+      Option.isSome(decode(withField('outcome', { _tag: 'LeftEarly' }))),
+    ).toBe(true)
     expect(decode(withField('device', 'Joystick'))).toEqual(Option.none())
     expect(decode(withField('keysSpent', -1))).toEqual(Option.none())
     expect(decode(withField('version', 4))).toEqual(Option.none())

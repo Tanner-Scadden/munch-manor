@@ -37,6 +37,7 @@ import {
   stationGroundShapes,
   stationOverheadShapes,
 } from '../../features/stations/stationView'
+import { backDoorGroundShapes } from '../../render/backDoorView'
 import { bossGroundShapes, bossOverheadShapes } from '../../render/bossView'
 import { type Camera, sceneOffset } from '../../render/camera'
 import { cellarDarkOf } from '../../render/cellarDark'
@@ -177,6 +178,7 @@ const groundShapes = (
   ...kitchenLeakShapes(model),
   ...ovenGlowShapes(model),
   ...kitchenGearGroundShapes(model),
+  ...backDoorGroundShapes(model),
   ...RATTLES_GROUND_SHAPES,
   ...reviveRingGroundShapes(model),
   ...(isLeadInHouse(model) ? [playerShadow(focusOf(model).player)] : []),

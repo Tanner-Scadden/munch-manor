@@ -8,6 +8,7 @@ import type {
   RoomDifficulty,
   RoomMode,
   World as RoomWorldOf,
+  RunEndReason,
   Score,
   Writer,
 } from '@munch/netcode'
@@ -473,6 +474,15 @@ const isWonRun = (world: World): boolean =>
   Phase.isAnyOf(['Escaped'])(world.phase) &&
   RunMode.isAnyOf(['Campaign'])(world.mode)
 
+// NOTE: how the room closes a run over: an escape won, a crew out the
+// kitchen's back door left early, and anything else lost.
+const endReasonOf = (world: World): RunEndReason =>
+  isWonRun(world)
+    ? 'Won'
+    : Phase.isAnyOf(['LeftEarly'])(world.phase)
+      ? 'LeftEarly'
+      : 'GameOver'
+
 // STEP
 
 const syncPresence = (world: World, tick: PlayerTick): World =>
@@ -762,7 +772,7 @@ const blendOwn = (from: OwnSeat, to: OwnSeat, t: number): OwnSeat => ({
 // THE ROOM'S WORLD
 
 const isRunOver = (world: World): boolean =>
-  Phase.isAnyOf(['GameOver', 'Escaped'])(world.phase)
+  Phase.isAnyOf(['GameOver', 'LeftEarly', 'Escaped'])(world.phase)
 
 const scoresOf = (world: World): ReadonlyArray<Score> =>
   Array.map(playersOf(world), ({ seat }) => ({
@@ -792,7 +802,7 @@ export const roomWorldFor = (
     world: setPresence(room.world, slot, 'Away'),
   }),
   isOver: room => isRunOver(room.world),
-  isWon: room => isWonRun(room.world),
+  endReason: room => endReasonOf(room.world),
   scores: room => scoresOf(room.world),
   snapshot: writeRoomSnapshot,
   readSnapshot: readRoomSnapshot,

@@ -2,7 +2,8 @@
 // steam, Rattles' bubble on screen and pinned at the edge, and the rooms
 // counter in a break before and after the kitchen opens, on a 1280x720
 // desktop, an 844x390 phone on its side, and a 390x844 phone held upright, as
-// `sfk-<TAG>-<viewport>-<scene>.png`.
+// `sfk-<TAG>-<viewport>-<scene>.png`. The back door scenes show the way out
+// shut, open once a thing is found, held, and the CHICKEN end card after.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsFindKitchen.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
@@ -43,6 +44,22 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'counter-after',
     query: `${BREAK}&openexits=Kitchen&px=160&py=100&tick=30`,
+  },
+  {
+    name: 'back-door-shut',
+    query: `${BREAK}&openexits=Kitchen&px=180&py=-10&tick=30`,
+  },
+  {
+    name: 'back-door-open',
+    query: `${BREAK}&openexits=Kitchen&darefound=1&px=184&py=-10&tick=30`,
+  },
+  {
+    name: 'back-door-hold',
+    query: `${BREAK}&openexits=Kitchen&darefound=1&px=184&py=-10&hold&tick=60`,
+  },
+  {
+    name: 'chicken-end',
+    query: `wave=4&darefound=2&${LEARNED}&phase=leftearly&tick=90`,
   },
   {
     name: 'counter-sparkle',

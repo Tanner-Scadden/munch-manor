@@ -3,6 +3,7 @@ import type { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
+import { CHICKEN_FRAMES, CHICKEN_WIDTH_PX, FEATHER } from '../../art/chickenArt'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -34,6 +35,7 @@ import {
 } from '../../render/screen'
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
 import type { Difficulty } from '../../shared/playerData'
+import { CHICKEN_QUIP, CHICKEN_WORD } from '../../world/names'
 import { focusOf, isCoop, modifyFocus } from '../../world/party/party'
 import { DIFFICULTIES } from '../../world/run/difficulty'
 import { modifiersOn } from '../../world/run/modifiers'
@@ -115,6 +117,7 @@ const MODIFIER_SPRITES = Record.map(MODIFIER_PIXELS, pixels =>
 
 const TITLES: Readonly<Record<EndKind, BakedText>> = {
   Munched: bakeText('MUNCHED!', 'Defeat'),
+  Chicken: bakeText(CHICKEN_WORD, 'Fresh'),
   Won: bakeText('YOU ESCAPED!', 'Victory'),
 }
 
@@ -147,6 +150,14 @@ type Layout = Readonly<{
 
 const LAYOUTS: Readonly<Record<EndKind, Layout>> = {
   Munched: {
+    trophyX: 0,
+    trophyY: 0,
+    titleY: 12,
+    skullsY: 30,
+    quipY: 43,
+    panelTop: 53,
+  },
+  Chicken: {
     trophyX: 0,
     trophyY: 0,
     titleY: 12,
@@ -211,14 +222,17 @@ const wash = (fill: string, opacity: number): Canvas.Shape =>
 
 // FLASH AND DIM
 
+const FLASHES: Readonly<
+  Record<EndKind, Readonly<{ fill: string; opacity: number }>>
+> = {
+  Munched: { fill: '#ff2030', opacity: 0.5 },
+  Chicken: { fill: '#fff6d0', opacity: 0.2 },
+  Won: { fill: '#fff6d0', opacity: 0.3 },
+}
+
 const flashShapes = (kind: EndKind, ms: number): ReadonlyArray<Canvas.Shape> =>
   ms < FLASH_MS
-    ? [
-        wash(
-          kind === 'Munched' ? '#ff2030' : '#fff6d0',
-          (kind === 'Munched' ? 0.5 : 0.3) * (1 - ms / FLASH_MS),
-        ),
-      ]
+    ? [wash(FLASHES[kind].fill, FLASHES[kind].opacity * (1 - ms / FLASH_MS))]
     : []
 
 const DIM_MAX = 0.72
@@ -250,6 +264,60 @@ const stampShapes = (
       align: 'Center',
       scale,
       opacity: Math.min(1, 0.4 + t),
+    }),
+  ]
+}
+
+// THE CHICKEN
+
+const CHICKEN_SCALE = 2
+const CHICKEN_GAP_PX = 6
+const FLAP_MS = 140
+const FEATHERS = 5
+const FEATHER_MS = 1600
+
+// NOTE: a run left early: a big chicken flaps beside CHICKEN! as it stamps,
+// hopping on each flap, and a few feathers drift off it and fade. Every
+// piece is placed by the end clock, so it needs no state.
+const chickenShapes = (
+  kind: EndKind,
+  ms: number,
+  layout: Layout,
+): ReadonlyArray<Canvas.Shape> => {
+  const atMs = TIMELINES[kind].stampAtMs
+  if (kind !== 'Chicken' || ms < atMs) {
+    return []
+  }
+  const flap = Math.floor((ms - atMs) / FLAP_MS) % 2
+  const x = Math.round(
+    CENTER_X +
+      (TITLES.Chicken.width * TITLE_SCALE) / 2 +
+      CHICKEN_GAP_PX +
+      (CHICKEN_WIDTH_PX * CHICKEN_SCALE) / 2,
+  )
+  const y = layout.titleY + GLYPH_HEIGHT - flap * 2
+  const since = ms - atMs
+  return [
+    group({
+      translate: { x, y },
+      scale: { x: -CHICKEN_SCALE, y: CHICKEN_SCALE },
+      shapes: flap === 0 ? CHICKEN_FRAMES[0] : CHICKEN_FRAMES[1],
+    }),
+    ...Array.filterMap(Array.range(0, FEATHERS - 1), index => {
+      const t = (since - index * 220) / FEATHER_MS
+      if (t < 0 || t >= 1) {
+        return Result.failVoid
+      }
+      return Result.succeed(
+        group({
+          translate: {
+            x: Math.round(x + (index - 2) * 7 + Math.sin(t * 6 + index) * 4),
+            y: Math.round(y - 4 + t * 34),
+          },
+          opacity: 1 - t,
+          shapes: FEATHER,
+        }),
+      )
     }),
   ]
 }
@@ -453,12 +521,14 @@ const kindShapes = (model: Model, y: number): ReadonlyArray<Canvas.Shape> => {
 
 // THE CARD
 
+const QUIPS: Readonly<Record<EndKind, (model: Model) => string>> = {
+  Munched: model => defeatQuip(roundWave(model.phase), model.stats),
+  Chicken: () => CHICKEN_QUIP,
+  Won: model => escapeVerdict(model.stats),
+}
+
 const quipOf = (model: Model, kind: EndKind): string =>
-  String.toUpperCase(
-    kind === 'Won'
-      ? escapeVerdict(model.stats)
-      : defeatQuip(roundWave(model.phase), model.stats),
-  )
+  String.toUpperCase(QUIPS[kind](model))
 
 // NOTE: the bar a crew's rank strip sits in, under the board.
 const crewStripTop = (model: Model): number =>
@@ -931,6 +1001,7 @@ export const endOverlayShapes: {
           ...flashShapes(kind, ms),
           ...trophyShapes(kind, ms, layout),
           ...stampShapes(kind, ms, layout),
+          ...chickenShapes(kind, ms, layout),
           ...(isCoop(model)
             ? []
             : [

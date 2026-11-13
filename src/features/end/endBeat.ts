@@ -38,9 +38,11 @@ import type { TallyIcon } from './tallyIcons'
 // topples, the camera punches in as the color drains, MUNCHED! stamps down,
 // and the card tallies the run row by row. A win: the camera eases in,
 // confetti falls, YOU ESCAPED! stamps, the trophy drops with the skulls of
-// the difficulty, and the same tally. Any press skips to the finished card.
+// the difficulty, and the same tally. Left early by the kitchen's back
+// door: no flash of red, a chicken flaps beside CHICKEN! with a cluck, and
+// the same tally. Any press skips to the finished card.
 
-export type EndKind = 'Munched' | 'Won'
+export type EndKind = 'Munched' | 'Chicken' | 'Won'
 
 export const endKindOf = (model: Model): Option.Option<EndKind> =>
   Phase.match(model.phase, {
@@ -50,6 +52,7 @@ export const endKindOf = (model: Model): Option.Option<EndKind> =>
     Wave: () => Option.none(),
     Paused: () => Option.none(),
     Escaped: () => Option.some<EndKind>('Won'),
+    LeftEarly: () => Option.some<EndKind>('Chicken'),
     GameOver: () => Option.some<EndKind>('Munched'),
   })
 
@@ -81,6 +84,13 @@ export const TIMELINES: Readonly<Record<EndKind, Timeline>> = {
     cardAtMs: 950,
     zoom: 1.3,
     saturation: 0.2,
+  },
+  Chicken: {
+    stampAtMs: 300,
+    trophyAtMs: Number.POSITIVE_INFINITY,
+    cardAtMs: 950,
+    zoom: 1.12,
+    saturation: 0.7,
   },
   Won: {
     stampAtMs: 250,
@@ -409,10 +419,7 @@ export const beatSounds: {
         const isPast = (atMs: number): boolean => crossed(fromMs, toMs, atMs)
         const skulls = Array.range(0, skullCountOf(model.difficulty.chosen) - 1)
         return [
-          ...soundWhen(
-            isPast(timeline.stampAtMs),
-            kind === 'Munched' ? 'BossStomp' : 'Thud',
-          ),
+          ...soundWhen(isPast(timeline.stampAtMs), STAMP_SOUNDS[kind]),
           ...soundWhen(isPast(timeline.trophyAtMs + TROPHY_DROP_MS), 'Clang'),
           ...soundWhen(
             kind === 'Won' &&
@@ -454,6 +461,12 @@ export const beatSounds: {
       },
     }),
 )
+
+const STAMP_SOUNDS: Readonly<Record<EndKind, SoundEffect>> = {
+  Munched: 'BossStomp',
+  Chicken: 'Cluck',
+  Won: 'Thud',
+}
 
 const soundWhen = (
   isOn: boolean,
@@ -499,6 +512,13 @@ const recordsBroken = (
           fastest => after.stats.runMs < fastest,
         ),
         'Time',
+      ),
+      ...killsRecord(bests, after),
+    ],
+    LeftEarly: ({ wave }): ReadonlyArray<RunRecord> => [
+      ...recordWhen(
+        Option.exists(bests.maybeFurthestWave, best => wave > best),
+        'Wave',
       ),
       ...killsRecord(bests, after),
     ],
@@ -637,6 +657,7 @@ export const sharedRunOf: {
     outcome: Option.getOrElse(endKindOf(model), (): EndKind => 'Munched'),
     isEndless: RunMode.isAnyOf(['Endless'])(model.mode),
     wave: roundWave(model.phase),
+    things: bestRunOf(model).things,
     difficulty: played,
     kills: totalKills(model.stats),
     // NOTE: bots are not a crew to boast of: a run with them posts as one

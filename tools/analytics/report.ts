@@ -33,6 +33,7 @@ import {
   DEVICES,
   ENDS,
   KEYS,
+  LEFT_EARLY,
   MEDIAN_LENGTH,
   RUNS_PER_DAY,
   SHARES,
@@ -144,6 +145,14 @@ const KeysRow = Schema.Struct({
   runs: Count,
   keys_spent: Schema.NullOr(Schema.Finite),
   cases_opened: Schema.NullOr(Schema.Finite),
+  dare_items_found: Schema.NullOr(Schema.Finite),
+})
+
+const LeftEarlyRow = Schema.Struct({
+  party: Schema.String,
+  difficulty: Schema.String,
+  runs: Count,
+  wave: Schema.NullOr(Schema.Finite),
   dare_items_found: Schema.NullOr(Schema.Finite),
 })
 
@@ -335,6 +344,7 @@ const program = Effect.gen(function* () {
     crewWins,
     crewWaves,
     network,
+    leftEarly,
   ] = yield* Effect.all([
     run(SOLO_WIN_RATE, WinRow),
     run(DEATH_WAVES, WaveRow),
@@ -350,6 +360,7 @@ const program = Effect.gen(function* () {
     run(COOP_WIN_RATE, WinRow),
     run(COOP_DEATH_WAVES, CrewWaveRow),
     run(COOP_NETWORK, NetworkRow),
+    run(LEFT_EARLY, LeftEarlyRow),
   ])
   const endedAs = (party: string, outcome: string): number =>
     Array.reduce(ends, 0, (sum, row) =>
@@ -363,7 +374,9 @@ const program = Effect.gen(function* () {
       String.startsWith('Coop')(screen) ? 'Crew' : 'Solo',
       String.endsWith('Escaped')(screen) || String.endsWith('Victory')(screen)
         ? 'Escaped'
-        : 'GameOver',
+        : String.endsWith('LeftEarly')(screen)
+          ? 'LeftEarly'
+          : 'GameOver',
     )
 
   const totalGames = Array.reduce(medians, 0, (sum, { runs }) => sum + runs)
@@ -424,6 +437,19 @@ const program = Effect.gen(function* () {
             `${row.runs}`,
             row.keys_spent === null ? '-' : row.keys_spent.toFixed(1),
             row.cases_opened === null ? '-' : row.cases_opened.toFixed(1),
+            row.dare_items_found === null
+              ? '-'
+              : row.dare_items_found.toFixed(1),
+          ]),
+        ),
+        section(
+          'Left early by the back door (version 8 on; solo by run, co-op by game)',
+          ['party', 'difficulty', 'runs', 'wave', 'dare found'],
+          Array.map(leftEarly, row => [
+            row.party,
+            row.difficulty,
+            `${row.runs}`,
+            row.wave === null ? '-' : row.wave.toFixed(1),
             row.dare_items_found === null
               ? '-'
               : row.dare_items_found.toFixed(1),

@@ -59,6 +59,7 @@ const preparationSpawns = (current: Model) =>
     Wave: ({ spawns }) => spawns,
     Paused: () => [],
     Escaped: () => [],
+    LeftEarly: () => [],
     GameOver: () => [],
   })
 

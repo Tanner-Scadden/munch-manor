@@ -52,6 +52,7 @@ const isFirstPreparation = (phase: Phase): boolean =>
     Wave: () => false,
     Paused: () => false,
     Escaped: () => false,
+    LeftEarly: () => false,
     GameOver: () => false,
   })
 

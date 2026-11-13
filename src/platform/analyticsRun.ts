@@ -22,6 +22,7 @@ import {
   type CrewNetwork,
   EscapedRun,
   type FrameTimeBucket,
+  LeftEarlyRun,
   LostRun,
   MAX_CORRECTION_PX,
   MAX_NET_MS,
@@ -94,6 +95,7 @@ export const maybeRunOutcome: {
       Wave: () => Option.none(),
       Paused: () => Option.none(),
       Escaped: () => Option.some(EscapedRun.make({})),
+      LeftEarly: () => Option.some(LeftEarlyRun.make({})),
       GameOver: () =>
         Option.some(
           LostRun.make({
@@ -260,12 +262,29 @@ export const runSummaryOf: {
 
 // SHARE
 
-const shareScreenOf = (isWon: boolean, isCrew: boolean): ShareScreen => {
-  if (isCrew) {
-    return isWon ? 'CoopEscaped' : 'CoopDeath'
-  } else {
-    return isWon ? 'Escaped' : 'Death'
-  }
+type ShareEnding = 'Escaped' | 'LeftEarly' | 'Death'
+
+const SHARE_SCREENS: Readonly<
+  Record<ShareEnding, Readonly<{ solo: ShareScreen; crew: ShareScreen }>>
+> = {
+  Escaped: { solo: 'Escaped', crew: 'CoopEscaped' },
+  LeftEarly: { solo: 'LeftEarly', crew: 'CoopLeftEarly' },
+  Death: { solo: 'Death', crew: 'CoopDeath' },
+}
+
+const shareEndingOf = (phase: Phase): ShareEnding =>
+  Phase.matchOrElse(
+    phase,
+    {
+      Escaped: (): ShareEnding => 'Escaped',
+      LeftEarly: (): ShareEnding => 'LeftEarly',
+    },
+    (): ShareEnding => 'Death',
+  )
+
+const shareScreenOf = (phase: Phase, isCrew: boolean): ShareScreen => {
+  const screens = SHARE_SCREENS[shareEndingOf(phase)]
+  return isCrew ? screens.crew : screens.solo
 }
 
 // NOTE: a tap on SHARE as its event: which end screen, a crew's or one
@@ -297,10 +316,7 @@ export const shareEventOf: {
     version: SHARE_EVENT_VERSION,
     visitId,
     build,
-    screen: shareScreenOf(
-      Phase.isAnyOf(['Escaped'])(model.phase),
-      isCoop(model) && !isBotCrew(model),
-    ),
+    screen: shareScreenOf(model.phase, isCoop(model) && !isBotCrew(model)),
     mode: RunMode.isAnyOf(['Endless'])(model.mode) ? 'Endless' : 'Campaign',
     difficulty: played,
     path,

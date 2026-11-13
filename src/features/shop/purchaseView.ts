@@ -3,6 +3,7 @@ import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { CASE_HEIGHT, PRIZE_SPRITES } from '../../art/caseArt'
+import { CHICKEN_ICON, CHICKEN_ICON_SIZE } from '../../art/chickenArt'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -33,6 +34,7 @@ import {
 import { PADLOCK_SPRITE } from '../../render/room/kitchenView'
 import { FRIDGE_RULES } from '../../world/fridge/leftovers'
 import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
+import { crewAtBackDoorOf } from '../../world/kitchen/backDoor'
 import { maybeValveLock } from '../../world/kitchen/gasValve'
 import { maybeStoveLock, maybeStovePerk } from '../../world/kitchen/stove'
 import { levelOf } from '../../world/level/arena'
@@ -228,6 +230,7 @@ const maybeTakenPrize = (
     Fridge: noTake,
     Stove: noTake,
     Valve: noTake,
+    BackDoor: noTake,
     Prize: () => {
       const { door } = model.fridge
       return FridgeDoor.isAnyOf(['Offering'])(door)
@@ -332,6 +335,12 @@ const stoveTagOf = (model: Model): PriceTag =>
 
 const VALVE_TAG = goTag(FLAME_ICON)
 
+// NOTE: the back door's tag is a chicken and OUT: what leaving makes you.
+const BACK_DOOR_TAG = bakeTag(
+  bakeText('OUT', 'Prompt'),
+  Option.some({ sprite: CHICKEN_ICON, width: CHICKEN_ICON_SIZE }),
+)
+
 const tagOf = (model: Model, offer: Offer): PriceTag =>
   Purchasable.match(offer.target, {
     Exit: () => (offer.price === 0 ? FREE_TAG : exitTagOf(offer.price)),
@@ -340,6 +349,7 @@ const tagOf = (model: Model, offer: Offer): PriceTag =>
     Stove: () => stoveTagOf(model),
     Valve: () => VALVE_TAG,
     Case: () => takeTagAt(model, offer.target),
+    BackDoor: () => BACK_DOOR_TAG,
   })
 
 // THE PROMPT
@@ -453,8 +463,9 @@ const refusedShapes = (
 // NOTE: the stove cooks only a gun Rattles sells, so a press there with
 // the knife, the Pan, or a fridge weapon in hand shakes the tag with a red
 // cross beside it, and no price.
+// The back door with nothing on the list found shakes the same way.
 const isUncooked = (offer: Offer, sinceMs: number): boolean =>
-  Purchasable.isAnyOf(['Stove'])(offer.target) &&
+  Purchasable.isAnyOf(['Stove', 'BackDoor'])(offer.target) &&
   offer.isFull &&
   sinceMs < PURCHASE_RULES.refusedMs
 
@@ -513,6 +524,7 @@ const placedOffer = (model: Model, offer: Offer, tag: PriceTag): Offer =>
     Fridge: () => offer,
     Stove: () => offer,
     Valve: () => offer,
+    BackDoor: () => offer,
     Case: () => ({
       ...offer,
       spot: {
@@ -596,6 +608,28 @@ const replacedShapes = (
       })
     : []
 
+// NOTE: in a crew the back door counts who stands at it under its tag,
+// 1/3, gold once everyone is there: the hold fills only then.
+const crewCountShapes = (
+  model: Model,
+  offer: Offer,
+  tag: PriceTag,
+): ReadonlyArray<Canvas.Shape> => {
+  if (!Purchasable.isAnyOf(['BackDoor'])(offer.target) || offer.isFull) {
+    return []
+  }
+  const { at, of } = crewAtBackDoorOf(model)
+  return of > 1
+    ? textShapes(
+        `${at}/${of}`,
+        at === of ? 'Victory' : 'Hint',
+        offer.spot.x,
+        offer.spot.y + tag.height + 2,
+        'Center',
+      )
+    : []
+}
+
 const offerShapes =
   (model: Model, maybeInReach: Option.Option<Offer>) =>
   (unplaced: Offer): ReadonlyArray<Canvas.Shape> => {
@@ -612,7 +646,10 @@ const offerShapes =
       offer.spot.y,
       isInReach ? tag.lit : tag.plain,
     )
-    const prompt = isInReach ? promptShapes(model, offer, tag) : []
+    const prompt = [
+      ...(isInReach ? promptShapes(model, offer, tag) : []),
+      ...crewCountShapes(model, offer, tag),
+    ]
     const shapes = Purchase.match(focusOf(model).purchase, {
       Idle: () => [tagShape, ...prompt],
       Holding: ({ target }) =>

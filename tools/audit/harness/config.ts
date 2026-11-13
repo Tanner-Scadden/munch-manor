@@ -130,7 +130,14 @@ export const HarnessConfig = Schema.Struct({
   start: Choice(['wave']),
   // NOTE: `escaped` ends the run in an escape; `victory` is its old name,
   // kept for shot lists written before it.
-  phase: Choice(['escaped', 'victory', 'paused', 'gameover', 'arriving']),
+  phase: Choice([
+    'escaped',
+    'victory',
+    'paused',
+    'gameover',
+    'leftearly',
+    'arriving',
+  ]),
   // NOTE: `phase=arriving` stands the run in its intro: `cut` and
   // `introMs` into it, the friends' line the `lineAt`th of `carLine`'s.
   cut: Choice(['full', 'short']),

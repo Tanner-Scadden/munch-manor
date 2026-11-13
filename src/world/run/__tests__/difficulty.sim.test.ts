@@ -35,6 +35,7 @@ const skipBreak = (started: Model): Model =>
         Wave: () => phase,
         Paused: () => phase,
         Escaped: () => phase,
+        LeftEarly: () => phase,
         GameOver: () => phase,
       }),
   })

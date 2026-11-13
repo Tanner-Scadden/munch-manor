@@ -71,6 +71,7 @@ const remainingOf = (current: Model): number =>
     Wave: () => 0,
     Paused: () => 0,
     Escaped: () => 0,
+    LeftEarly: () => 0,
     GameOver: () => 0,
   })
 

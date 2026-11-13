@@ -2,13 +2,13 @@ import { Array, Function, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
+import { CHANDELIER_CRUSH_GOAL, type MissionId } from '../shared/missionData'
 import type {
   HouseSpot,
   MapId,
   ShopGuideSection,
   TutorialChoice,
 } from '../shared/nameKeys'
-import { CHANDELIER_CRUSH_GOAL, type MissionId } from '../shared/missionData'
 import {
   type Calling,
   type CosmeticKind,
@@ -279,6 +279,14 @@ export const STOVE_NAME = 'The Stove'
 
 export const VALVE_NAME = 'Gas Valve'
 
+// NOTE: the kitchen's way out early (src/world/kitchen/backDoor.ts), and the
+// stamp on the end card of a run left by it.
+export const BACK_DOOR_NAME = 'Back Door'
+
+export const CHICKEN_WORD = 'CHICKEN!'
+
+export const CHICKEN_QUIP = 'Bawk. The front door was right there'
+
 export const GUN_PERK_NAMES: Readonly<Record<GunPerk, string>> = {
   Spicy: 'Spicy',
   Crispy: 'Crispy',
@@ -489,6 +497,7 @@ export const MISSION_NAMES: Readonly<Record<MissionId, string>> = {
   GunToDeluxe: `A gun to ${DELUXE}`,
   EscapeDoubleDare: 'Escape on Double Dare',
   SplatZombies: 'Splat 150 zombies',
+  LeaveEarly: `Chicken out the ${BACK_DOOR_NAME}`,
 }
 
 // NOTE: the mission panel's title, and its tag for all three done.
