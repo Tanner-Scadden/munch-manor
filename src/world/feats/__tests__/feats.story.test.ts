@@ -209,15 +209,18 @@ describe('exploring feats, one player', () => {
       APPLICATION,
       Story.given(
         modifyFocus(
-          modifyFields(withKeys(pastTimedBreaks(freshRunModel()), EXIT_RULES.kitchenKeys), {
-            phase: () =>
-              Phase.Preparation({
-                wave: 3,
-                remainingMs: 15_000,
-                durationMs: 20_000,
-                spawns: [DISTANT_SPAWN],
-              }),
-          }),
+          modifyFields(
+            withKeys(pastTimedBreaks(freshRunModel()), EXIT_RULES.kitchenKeys),
+            {
+              phase: () =>
+                Phase.Preparation({
+                  wave: 3,
+                  remainingMs: 15_000,
+                  durationMs: 20_000,
+                  spawns: [DISTANT_SPAWN],
+                }),
+            },
+          ),
           {
             player: player =>
               modifyFields(player, {

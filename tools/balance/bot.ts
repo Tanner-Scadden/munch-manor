@@ -242,6 +242,11 @@ export const startedRun: {
       difficulty: () => ({ chosen: options.difficulty, nightmare: 'Unlocked' }),
       calling: () => options.calling,
       modifiers: () => options.modifiers,
+      dareMark: () => options.dareMark,
+      dareMarks: marks => ({
+        ...marks,
+        [options.difficulty]: options.dareMark,
+      }),
       rank: () => ({ ...noRank, earnedPoints: BOT_RANK_POINTS }),
       boughtCosmetics: () =>
         options.calling === 'You' ? [] : [heroIdOf(options.calling)],

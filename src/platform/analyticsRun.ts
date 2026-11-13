@@ -4,7 +4,7 @@ import { type Lobby, NetStats } from '@munch/netcode'
 
 import type { Model } from '../app/model'
 import { isBotCrew } from '../domain/bots'
-import { effectiveModifiersOf } from '../domain/onlineRun'
+import { effectiveModifiersOf, playedMarkOf } from '../domain/onlineRun'
 import { isInRun } from '../domain/run'
 import type { Difficulty } from '../shared/playerData'
 import { dareItemsFoundOf } from '../world/dare/dare'
@@ -256,6 +256,7 @@ export const runSummaryOf: {
       party: partyOf(run, visitId),
       modifiers: maskOfModifiers(effectiveModifiersOf(run)),
       dareItemsFound: dareItemsFoundOf(run),
+      dareMark: playedMarkOf(run),
     }
   },
 )

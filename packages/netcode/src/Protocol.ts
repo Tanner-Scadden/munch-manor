@@ -156,8 +156,12 @@ import {
 // Version 22, the Dare Journal: four new dare things (NapkinRing, DareNote,
 // FalseTeeth, Invitation) may be on the list and in the house, opened by
 // the host's milestones, which the room reads from the host's own scope.
-export const PROTOCOL_VERSION = 22
-export const MIN_PROTOCOL_VERSION = 22
+// Version 23, the dare ladder: the World carries `dareMark`, the mark the
+// host picked (held to their own best on the difficulty, read from their
+// scope), and its rules: the marked modifiers, Hotfoots faster, dearer
+// padlocks, a shorter break clock, and Uncle Chunk tougher.
+export const PROTOCOL_VERSION = 23
+export const MIN_PROTOCOL_VERSION = 23
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

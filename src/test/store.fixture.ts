@@ -41,6 +41,7 @@ import {
   type SyncSetup,
   makePlayerDatabase,
 } from '../platform/storeSqlite'
+import { noDareMarks } from '../shared/dareMarkData'
 import { noJournal } from '../shared/journalData'
 import { noMastery } from '../shared/masteryData'
 import { noMissions } from '../shared/missionData'
@@ -107,6 +108,7 @@ export const legacySave: PlayerSave = {
   proof: noProof,
   journal: noJournal,
   mastery: noMastery,
+  dareMarks: noDareMarks,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

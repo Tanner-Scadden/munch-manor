@@ -58,8 +58,13 @@ Object.assign(globalThis, {
   __BUILD_ID__: 'dev',
 })
 
-const { DEFAULT_OPTIONS, parseCalling, parseModifiers, parseDifficulty } =
-  await import('./bot/basics')
+const {
+  DEFAULT_OPTIONS,
+  parseCalling,
+  parseDareMark,
+  parseModifiers,
+  parseDifficulty,
+} = await import('./bot/basics')
 const { KINDS, emptyHurt, quietPartMs } = await import('./bot/logs')
 const { RunResults, WaveRuns } = await import('./bot/results')
 const { runOnce, seedAt: seedFrom } = await import('./bot')
@@ -167,6 +172,7 @@ const SimulateConfig = Config.all({
   maybeNoUpgrades: Config.String('NO_UPGRADES').pipe(Config.option),
   maybeCalling: Config.String('CALLING').pipe(Config.option),
   maybeMods: Config.String('MODS').pipe(Config.option),
+  maybeMark: Config.String('MARK').pipe(Config.option),
   maybeKite: Config.String('KITE').pipe(Config.option),
   maybeNoPickups: Config.String('NO_PICKUPS').pipe(Config.option),
   maybeWorkers: Config.String('WORKERS').pipe(Config.option),
@@ -1034,6 +1040,7 @@ const program = Effect.gen(function* () {
       noUpgrades: isFlagSet(config.maybeNoUpgrades),
       calling: parseCalling(Option.getOrUndefined(config.maybeCalling)),
       modifiers: parseModifiers(Option.getOrUndefined(config.maybeMods)),
+      dareMark: parseDareMark(Option.getOrUndefined(config.maybeMark)),
     },
     isEndless,
     kites: isFlagSet(config.maybeKite),

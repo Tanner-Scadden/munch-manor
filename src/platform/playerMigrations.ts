@@ -241,4 +241,14 @@ export const PLAYER_MIGRATIONS: Readonly<Record<string, ScopeMigration>> = {
         kills INTEGER NOT NULL
       )`
     }),
+  // NOTE: the dare ladder came after mastery: the best mark opened on each
+  // difficulty (src/platform/dareMarkScope.ts). A player from before has
+  // none opened; the ladder starts at their next escape.
+  '0023_add_dare_marks': table =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`ALTER TABLE ${sql(table('player'))}
+        ADD COLUMN dare_marks TEXT NOT NULL
+        DEFAULT '{"Easy":0,"Normal":0,"Hard":0,"Nightmare":0}'`
+    }),
 }

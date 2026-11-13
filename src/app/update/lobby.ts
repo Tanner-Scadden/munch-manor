@@ -3,6 +3,7 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { activeBots, addBot, removeBot, setBotCalling } from '../../domain/bots'
+import { fitDareMark } from '../../domain/dareMarks'
 import { isOnHome } from '../../domain/run'
 import { markCallingsSeen } from '../../domain/unlocks'
 import { buyCalling, chooseCalling } from '../../features/heroes/callingPick'
@@ -113,8 +114,9 @@ const pick = (change: (model: Model) => Model) =>
 export const chooseMode = (mode: HomeMode) =>
   pick(model => (model.home.mode === mode ? model : switchMode(model)))
 
+// NOTE: the mark is held to what the new difficulty has opened.
 export const chooseLobbyDifficulty = (difficulty: Difficulty) =>
-  pick(model => chooseDifficulty(model, difficulty))
+  pick(model => fitDareMark(chooseDifficulty(model, difficulty)))
 
 export const toggleModifier = (modifier: Modifier) =>
   pick(model =>
@@ -122,6 +124,9 @@ export const toggleModifier = (modifier: Modifier) =>
       modifiers: modifiers => toggledModifier(modifiers, modifier),
     }),
   )
+
+export const chooseDareMark = (mark: number) =>
+  pick(model => fitDareMark(modifyFields(model, { dareMark: () => mark })))
 
 export const chooseEasyBreak = (seconds: number) =>
   pick(model => modifyFields(model, { easyBreakSeconds: () => seconds }))

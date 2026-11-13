@@ -31,8 +31,10 @@ import { Difficulty } from '../shared/playerData'
 // version 6 and older, with none. Version 8 adds the `LeftEarly` outcome, a
 // run the crew left by the kitchen's back door in a break
 // (src/world/kitchen/backDoor.ts); the Worker still takes version 7 and
-// older, with no such run.
-export const RUN_SUMMARY_VERSION = 8
+// older, with no such run. Version 9 adds `dareMark`, the dare ladder's mark
+// the run was played at (src/world/run/dareLadder.ts), 0 for none; the
+// Worker still takes version 8 and older, at mark 0.
+export const RUN_SUMMARY_VERSION = 9
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -278,14 +280,30 @@ const escapeFields = {
   modifiers: ModifierMask,
 }
 
+// NOTE: the dare ladder's mark, 0 to the ladder's top (TOP_MARK in
+// src/shared/dareMarkData.ts, repeated here so the Worker reads nothing more).
+const SummaryDareMark = Schema.Int.check(
+  Schema.isBetween({ minimum: 0, maximum: 8 }),
+)
+
 export const RunSummary = Schema.Struct({
   version: Schema.Literal(RUN_SUMMARY_VERSION),
   ...escapeFields,
   outcome: RunOutcome,
   device: SummaryDevice,
   party: SummaryParty,
+  dareMark: SummaryDareMark,
 })
 export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before the dare ladder.
+const RunSummaryV8 = Schema.Struct({
+  version: Schema.Literal(8),
+  ...escapeFields,
+  outcome: RunOutcome,
+  device: SummaryDevice,
+  party: SummaryParty,
+})
 
 // NOTE: a summary from a build before the back door.
 const RunSummaryV7 = Schema.Struct({
@@ -341,9 +359,10 @@ export const RunSummaryV1 = Schema.Struct({
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
 // NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 7, 6, 5, 4, 3, 2, or 1 from a build cached before it.
+// version, or version 8, 7, 6, 5, 4, 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
+  RunSummaryV8,
   RunSummaryV7,
   RunSummaryV6,
   RunSummaryV5,

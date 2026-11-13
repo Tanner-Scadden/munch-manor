@@ -8,6 +8,7 @@ import {
   isInLobby,
 } from '../../domain/coopRoom'
 import { cleanName, draftName, rollName } from '../../domain/playerName'
+import { clampMark, isCoveredByMark } from '../../world/run/dareLadder'
 import { nextEasyBreakOf } from '../../world/run/difficulty'
 import {
   type Modifier,
@@ -54,7 +55,7 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
     Option.match(room.maybeLobby, {
       onNone: () => ({ model }),
       onSome: lobby =>
-        isPicking(room)
+        isPicking(room) && !isCoveredByMark(lobby.dareMark, modifier)
           ? {
               model,
               commands: [
@@ -89,6 +90,27 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
                   LobbyChange.ChangedEasyBreak({
                     seconds: nextEasyBreakOf(lobby.easyBreakSeconds),
                   }),
+                ),
+              ],
+            }
+          : { model },
+    })
+
+  // THE DARE LADDER
+
+  // NOTE: the host picks the room's mark, as they step the break clock: the
+  // room takes back everyone's READY, and holds the mark to the host's own
+  // best on the room's difficulty when the run starts.
+  const pickDareMark = (model: Model, room: Room, mark: number): R =>
+    Option.match(room.maybeLobby, {
+      onNone: () => ({ model }),
+      onSome: lobby =>
+        isPicking(room) && mark !== lobby.dareMark
+          ? {
+              model,
+              commands: [
+                commands.changeLobby(
+                  LobbyChange.ChangedDareMark({ mark: clampMark(mark) }),
                 ),
               ],
             }
@@ -191,6 +213,7 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
     })
 
   return {
+    pickDareMark,
     pickEasyBreak,
     pickModifier,
     nudge,

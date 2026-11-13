@@ -14,6 +14,7 @@ import {
   RoomRequest,
   Screen,
 } from '../../../domain/coopRoom'
+import { noDareMarks } from '../../../shared/dareMarkData'
 import { lookCodeOf } from '../../../shared/lookCodes'
 import type { Appearance } from '../../../shared/playerData'
 import type { ViewInputs } from '../block'
@@ -46,6 +47,7 @@ const VIEW_INPUTS: ViewInputs = {
   isRunEndComing: false,
   bought: ['hero:Handyman'],
   bones: 0,
+  dareMarks: noDareMarks,
 }
 
 const COOP_SCENE = { ...COOP, viewInputs: VIEW_INPUTS }

@@ -118,6 +118,7 @@ export type RunFields = Pick<
   | 'maybeMissionGain'
   | 'maybeRoomDifficulty'
   | 'maybeRoomModifiers'
+  | 'maybeRoomDareMark'
   | 'maybeCrewRunKey'
   | 'maybeRunNet'
   | 'screenMs'
@@ -193,6 +194,7 @@ export const freshRun = (model: Model): RunFields => ({
   maybeMissionGain: Option.none(),
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),
+  maybeRoomDareMark: Option.none(),
   maybeCrewRunKey: Option.none(),
   maybeRunNet: Option.none(),
   screenMs: 0,

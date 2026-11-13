@@ -171,9 +171,7 @@ describe('the stove rolls its perk', () => {
           tick(FRAME_MS),
           Story.model(current => {
             expect(current.stove.wave).toBe(6)
-            expect(current.stove.perk).toBe(
-              rolledFrom(rolled.stove.rngState),
-            )
+            expect(current.stove.perk).toBe(rolledFrom(rolled.stove.rngState))
           }),
         )
       })

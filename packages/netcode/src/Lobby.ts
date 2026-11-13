@@ -238,6 +238,15 @@ export const ModifierMask = Schema.Int.check(
 export const EASY_BREAK_SECONDS = [0, 20, 30, 60] as const
 export const EasyBreakSeconds = Schema.Literals(EASY_BREAK_SECONDS)
 
+// NOTE: the dare ladder's mark the host picked (src/world/run/dareLadder.ts
+// in the game), 0 for none. The scope keeps what the host asks; the room
+// holds it to the host's own best on the difficulty, read from their
+// scope, as the run starts, as it does Nightmare.
+export const MAX_DARE_MARK = 8
+export const DareMark = Schema.Int.check(
+  Schema.isBetween({ minimum: 0, maximum: MAX_DARE_MARK }),
+)
+
 export const RoomScore = Schema.Struct({
   playerId: Schema.String,
   slot: Schema.Finite,
@@ -264,6 +273,7 @@ export const RoomRow = Schema.Struct({
   difficulty: RoomDifficulty,
   modifiers: Schema.Finite,
   easy_break_seconds: Schema.Finite,
+  dare_mark: Schema.Finite,
   kept: Schema.Finite,
   round: Schema.Finite,
   created_ms: Schema.Finite,
@@ -326,6 +336,7 @@ export const Lobby = Schema.Struct({
   difficulty: RoomDifficulty,
   modifiers: Schema.Finite,
   easyBreakSeconds: Schema.Finite,
+  dareMark: Schema.Finite,
   canKeepGoing: Schema.Boolean,
   round: Schema.Finite,
   createdMs: Schema.Finite,
@@ -354,6 +365,7 @@ export const lobbyOfRows: {
     difficulty: room.difficulty,
     modifiers: room.modifiers,
     easyBreakSeconds: room.easy_break_seconds,
+    dareMark: room.dare_mark,
     canKeepGoing: room.kept !== 0,
     round: room.round,
     createdMs: room.created_ms,
@@ -408,7 +420,7 @@ export const readLobby = (
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     const value =
-      yield* sql`SELECT code, host, status, visibility, mode, difficulty, modifiers, easy_break_seconds, kept, round, created_ms, updated_ms, result
+      yield* sql`SELECT code, host, status, visibility, mode, difficulty, modifiers, easy_break_seconds, dare_mark, kept, round, created_ms, updated_ms, result
           FROM ${context.table('room')} WHERE id = 1`
     const rooms = yield* rejectBadRows(decodeRoomRows(value))
     const value_1 =
@@ -573,6 +585,7 @@ export const CreatedRoom = defineMutation({
         difficulty: DEFAULT_DIFFICULTY,
         modifiers: 0,
         easy_break_seconds: 0,
+        dare_mark: 0,
         kept: 0,
         round: 0,
         created_ms: context.timestampMs,
@@ -718,7 +731,14 @@ export const ChangedPicks = defineMutation({
         return
       }
       yield* clearReady(context)
-      yield* touch(context, { mode, difficulty })
+      // NOTE: a mark is opened per difficulty, so a new difficulty starts
+      // the ladder's pick at none.
+      yield* touch(
+        context,
+        difficulty === lobby.difficulty
+          ? { mode, difficulty }
+          : { mode, difficulty, dare_mark: 0 },
+      )
     }),
 })
 
@@ -770,6 +790,31 @@ export const ChangedEasyBreak = defineMutation({
       }
       yield* clearReady(context)
       yield* touch(context, { easy_break_seconds: seconds })
+    }),
+})
+
+// NOTE: the host picks the dare ladder's mark as they pick the modifiers:
+// a change takes back everyone's READY, and the same pick changes nothing.
+/** @stability unstable */
+export const ChangedDareMark = defineMutation({
+  name: 'ChangedDareMark',
+  version: 1,
+  args: Schema.Struct({ by: Schema.String, mark: DareMark }),
+  scopes: [ROOM_SCOPE_KIND],
+  writer: 'Members',
+  authorize: (args, actor) => isSender(args, actor),
+  apply: ({ by, mark }, context) =>
+    Effect.gen(function* () {
+      const lobby = yield* requireLobby(context)
+      yield* requireHost(lobby, by)
+      if (lobby.status !== 'Lobby') {
+        return yield* reject('Not in the lobby')
+      }
+      if (mark === lobby.dareMark) {
+        return
+      }
+      yield* clearReady(context)
+      yield* touch(context, { dare_mark: mark })
     }),
 })
 
@@ -970,6 +1015,7 @@ export const RoomScope = defineScope({
     ChangedPicks,
     ChangedModifiers,
     ChangedEasyBreak,
+    ChangedDareMark,
     ChangedMemberCalling,
     ChangedMemberName,
     EndedGame,
@@ -1058,6 +1104,12 @@ export const RoomScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('room'))}
           ADD COLUMN easy_break_seconds INTEGER NOT NULL DEFAULT 0`
+      }),
+    '0011_dare_mark': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('room'))}
+          ADD COLUMN dare_mark INTEGER NOT NULL DEFAULT 0`
       }),
   },
 })

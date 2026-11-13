@@ -22,6 +22,7 @@ import {
   tilesWithSymbol,
 } from '../level/tileGrid'
 import { atSeat, focusOf, maybePlayerAt, seatStateAt } from '../party/party'
+import { activeModifiersOf } from '../run/dareLadder'
 import { isKitchenTourOn } from '../run/tutorialRules'
 import type { World } from '../schema/world'
 import {
@@ -200,7 +201,9 @@ const weightsFor = (
   slot: PlayerSlot,
 ): ReadonlyArray<readonly [FridgePrize, number]> => {
   const offered = prizeWeights(world.fridge, seatStateAt(world, slot).player)
-  const weights = world.modifiers.glass ? withoutHealing(offered) : offered
+  const weights = activeModifiersOf(world).glass
+    ? withoutHealing(offered)
+    : offered
   return isKitchenTourOn(world) ? weaponsOnly(weights) : weights
 }
 
@@ -272,7 +275,7 @@ export const fridgeBoxOf = (level: Level): Option.Option<Box> => {
 // NOTE: for sale once the kitchen is open, in a break or mid-wave, while
 // the door is shut. Never for a Broke run: there are no pulls.
 const isFridgeForSale = (world: World): boolean =>
-  !world.modifiers.broke &&
+  !activeModifiersOf(world).broke &&
   Phase.isAnyOf(['Preparation', 'Wave'])(world.phase) &&
   isKitchenOpen(levelOf(world)) &&
   FridgeDoor.isAnyOf(['Shut'])(world.fridge.door)

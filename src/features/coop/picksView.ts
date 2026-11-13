@@ -16,14 +16,21 @@ import {
 import { callingOfMember } from '../../art/seatLooks'
 import { specialsNoteOf } from '../../domain/callingSpecials'
 import type { NudgeReason, Room } from '../../domain/coopRoom'
+import { nextMarkOf } from '../../domain/dareMarks'
+import { dareMarkFaceView, dareMarkLabel } from '../../ui/dareMarkView'
+import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
 import { iconView, skullFaceViews } from '../../ui/menuParts'
 import {
   bonusChipView,
   modifierFaceView,
   modifierLabel,
 } from '../../ui/modifiersView'
-import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
 import { CALLING_NAMES, MODE_NAMES } from '../../world/names'
+import {
+  isCoveredByMark,
+  runBonusPercentOf,
+  withMarkModifiers,
+} from '../../world/run/dareLadder'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
@@ -32,7 +39,6 @@ import {
 import {
   MODIFIER_ORDER,
   type Modifier,
-  bonusPercentOf,
   isModifierOn,
   modifiersOfMask,
 } from '../../world/run/modifiers'
@@ -174,15 +180,51 @@ const easyBreakPickView = (
     easyBreakFaceView(lobby.easyBreakSeconds, h),
   )
 
+// NOTE: the dare ladder's mark beside the skulls: the host's press steps it
+// through the marks they have opened on the room's difficulty, round to
+// none; a guest sees the room's mark, and a tap says the host picks. It
+// shows once the host has a mark to pick, or the room has one.
+const markPickView = (
+  room: Room,
+  lobby: Lobby,
+  bestMark: number,
+  h: CoopViewBuilder,
+): Html =>
+  h.keyed('button')(
+    'dare-mark',
+    [
+      h.Type('button'),
+      h.Class('coop-pick dare-mark-pick'),
+      h.DataAttribute('state', lobby.dareMark > 0 ? 'On' : 'Off'),
+      h.DataAttribute('mark', `${lobby.dareMark}`),
+      h.AriaLabel(dareMarkLabel(lobby.dareMark)),
+      ...pickAttributes(
+        isPicking(room),
+        Message.ClickedDareMarkPick({
+          mark: nextMarkOf(lobby.dareMark, bestMark),
+        }),
+        'HostPicks',
+        h,
+      ),
+    ],
+    dareMarkFaceView(lobby.dareMark, h),
+  )
+
+const isMarkPickShown = (room: Room, lobby: Lobby, bestMark: number) =>
+  lobby.dareMark > 0 || (isPicking(room) && bestMark > 0)
+
 // NOTE: a run modifier is a tile the host turns on and off, lit when on. A
-// guest sees the same tiles, still, and a tap says the host picks.
+// guest sees the same tiles, still, and a tap says the host picks. One the
+// room's mark turns on is lit and locked.
 const modifierPickView = (
   room: Room,
   lobby: Lobby,
   modifier: Modifier,
   h: CoopViewBuilder,
 ): Html => {
-  const isOn = isModifierOn(modifiersOfMask(lobby.modifiers), modifier)
+  const isLockedOn = isCoveredByMark(lobby.dareMark, modifier)
+  const isOn =
+    isLockedOn || isModifierOn(modifiersOfMask(lobby.modifiers), modifier)
   return h.keyed('button')(
     `modifier-${modifier}`,
     [
@@ -190,10 +232,15 @@ const modifierPickView = (
       h.Class('coop-pick modifier-pick'),
       h.DataAttribute('modifier', modifier),
       h.DataAttribute('state', isOn ? 'On' : 'Off'),
+      h.DataAttribute('locked', isLockedOn ? 'Yes' : 'No'),
       h.AriaPressed(isOn ? 'true' : 'false'),
-      h.AriaLabel(modifierLabel(modifier, isOn)),
+      h.AriaLabel(
+        isLockedOn
+          ? `${modifierLabel(modifier, isOn)}. Held by the dare mark`
+          : modifierLabel(modifier, isOn),
+      ),
       ...pickAttributes(
-        isPicking(room),
+        isPicking(room) && !isLockedOn,
         Message.ClickedModifierPick({ modifier }),
         'HostPicks',
         h,
@@ -267,6 +314,7 @@ const callingPillView = (
 // view's two signatures.
 type PicksInput = {
   readonly lobby: Lobby
+  readonly bestMark: number
   readonly keyCapView: (key: string) => Html
 }
 
@@ -303,7 +351,11 @@ export const picksView: {
   (room: Room, input: PicksInput, h: CoopViewBuilder): Html
 } = Function.dual(
   3,
-  (room: Room, { lobby, keyCapView }: PicksInput, h: CoopViewBuilder): Html =>
+  (
+    room: Room,
+    { lobby, bestMark, keyCapView }: PicksInput,
+    h: CoopViewBuilder,
+  ): Html =>
     h.div(
       [
         h.Class('coop-picks'),
@@ -334,6 +386,9 @@ export const picksView: {
               skullPickView(room, lobby, difficulty, h),
             ),
             isPicking(room) ? keyCapView('X') : h.empty,
+            isMarkPickShown(room, lobby, bestMark)
+              ? markPickView(room, lobby, bestMark, h)
+              : h.empty,
             lobby.difficulty === 'Easy'
               ? easyBreakPickView(room, lobby, h)
               : h.empty,
@@ -349,7 +404,16 @@ export const picksView: {
             ...Array.map(MODIFIER_ORDER, modifier =>
               modifierPickView(room, lobby, modifier, h),
             ),
-            bonusChipView(bonusPercentOf(modifiersOfMask(lobby.modifiers)), h),
+            bonusChipView(
+              runBonusPercentOf(
+                withMarkModifiers(
+                  modifiersOfMask(lobby.modifiers),
+                  lobby.dareMark,
+                ),
+                lobby.dareMark,
+              ),
+              h,
+            ),
           ],
         ),
         nudgeView(room, h),

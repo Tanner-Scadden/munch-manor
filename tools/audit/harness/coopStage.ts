@@ -342,10 +342,11 @@ const coopScreen = (
 }
 
 // NOTE: `mods` is the host's pick of run modifiers (a mask, as the lobby keeps
-// it), shown in a staged lobby.
+// it), and `dmark` the dare mark, shown in a staged lobby.
 const withModifiersPicked = (
   screen: CoopModel.Screen,
   mask: number,
+  dareMark: number,
 ): CoopModel.Screen =>
   CoopModel.Screen.matchOrElse(
     screen,
@@ -357,6 +358,7 @@ const withModifiersPicked = (
             maybeLobby: Option.map(room.maybeLobby, lobby => ({
               ...lobby,
               modifiers: mask,
+              dareMark,
             })),
           },
         }),
@@ -392,6 +394,7 @@ export const withCoop: {
       screen: withModifiersPicked(
         coopScreen(stage, config.seats ?? LIVE_SEATS),
         config.mods ?? 0,
+        config.dmark ?? 0,
       ),
       heroPicker: pickerOf(stage),
     }),

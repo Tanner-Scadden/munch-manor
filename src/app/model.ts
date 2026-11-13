@@ -87,6 +87,7 @@ import {
   noTellWatch,
 } from '../render/renderSchema'
 import { DEFAULT_SEED } from '../shared/constants'
+import { SavedDareMarks, noDareMarks } from '../shared/dareMarkData'
 import { DayStamp } from '../shared/dayStamp'
 import { SavedJournal, noJournal } from '../shared/journalData'
 import { SavedMastery, noMastery } from '../shared/masteryData'
@@ -295,6 +296,10 @@ export const Model = Schema.Struct({
   // run has paid into them and opened.
   mastery: SavedMastery,
   masteryRun: MasteryRun,
+  // NOTE: the dare ladder (src/domain/dareMarks.ts): the best mark opened on
+  // each difficulty, saved and synced. The mark picked for the next run is
+  // the World's `dareMark`.
+  dareMarks: SavedDareMarks,
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
@@ -311,6 +316,8 @@ export const Model = Schema.Struct({
   maybeRoomDifficulty: Schema.Option(Difficulty),
   // NOTE: the room's modifiers, kept the same way (src/world/run/modifiers.ts).
   maybeRoomModifiers: Schema.Option(Modifiers),
+  // NOTE: the room's dare mark, kept the same way (src/world/run/dareLadder.ts).
+  maybeRoomDareMark: Schema.Option(Schema.Finite),
   // NOTE: the online co-op run's key, the same on every client in it, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeCrewRunKey: Schema.Option(Schema.String),
@@ -386,6 +393,7 @@ export const initialModel: OwnModel = {
   difficulty: { chosen: 'Normal', nightmare: 'Locked' },
   modifiers: noModifiers,
   easyBreakSeconds: 0,
+  dareMark: 0,
   difficultyCard: DifficultyCard.Unseen(),
   zombies: [],
   bullets: [],
@@ -504,6 +512,7 @@ export const initialModel: OwnModel = {
   journalRun: noJournalRun,
   mastery: noMastery,
   masteryRun: noMasteryRun,
+  dareMarks: noDareMarks,
   missionRun: noMissionRun,
   maybeMissionGain: Option.none(),
   calling: 'You',
@@ -512,6 +521,7 @@ export const initialModel: OwnModel = {
   freshUnlocks: [],
   maybeRoomDifficulty: Option.none(),
   maybeRoomModifiers: Option.none(),
+  maybeRoomDareMark: Option.none(),
   maybeCrewRunKey: Option.none(),
   maybeRunNet: Option.none(),
   loading: Loading.Loaded(),

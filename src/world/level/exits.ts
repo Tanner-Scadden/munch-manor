@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
 import { heldKeys, spendKeys } from '../keys/keys'
+import { markedPadlockKeys } from '../run/dareLadder'
 import { isKitchenTourOn } from '../run/tutorialRules'
 import type { World } from '../schema/world'
 import {
@@ -152,7 +153,7 @@ export const exitPriceFor: {
 } = Function.dual(2, (model: World, exit: ExitId): number =>
   exit === KITCHEN_EXIT && isKitchenTourOn(model)
     ? 0
-    : exitKeysOf(levelOf(model), exit),
+    : markedPadlockKeys(model.dareMark, exitKeysOf(levelOf(model), exit)),
 )
 
 // NOTE: each boarded exit for sale, as a purchasable: walk up and hold the

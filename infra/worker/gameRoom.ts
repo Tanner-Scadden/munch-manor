@@ -465,15 +465,18 @@ export class GameRoom {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0] ?? nowMs
       const hostFacts = yield* this.factsOf(lobby.host)
       yield* this.forgetKept
+      const difficulty =
+        lobby.difficulty === 'Nightmare' && !hostFacts.unlocked
+          ? 'Hard'
+          : lobby.difficulty
       const world = roomWorldFor({
         ...roomSettingsOf(
           lobby.mode,
-          lobby.difficulty === 'Nightmare' && !hostFacts.unlocked
-            ? 'Hard'
-            : lobby.difficulty,
+          difficulty,
           lobby.members,
           lobby.modifiers,
           lobby.easyBreakSeconds,
+          Math.min(lobby.dareMark, hostFacts.marks[difficulty]),
         ),
         intro: introForRound(lobby.round, lobby.members),
         things: thingsOpenedBy(hostFacts.milestones),
@@ -671,6 +674,7 @@ export class GameRoom {
           lobby.members,
           lobby.modifiers,
           lobby.easyBreakSeconds,
+          lobby.dareMark,
         ),
       )
       const read = readAll(checkpoint.world, rules.readSnapshot)

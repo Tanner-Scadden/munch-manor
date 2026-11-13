@@ -3,6 +3,7 @@ import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import type { HomeMode } from '../../domain/clientSchema'
+import { nextMarkOf } from '../../domain/dareMarks'
 import { maybeFocusStep } from '../../input/input'
 import type { Calling, Difficulty } from '../../shared/playerData'
 import { isLocked, nextEasyBreakOf } from '../../world/run/difficulty'
@@ -14,6 +15,7 @@ import { LobbyBlock, makeNoopStep, makeStep } from './block'
 import {
   LOBBY_KEYS,
   isEasyBreakShown,
+  isMarkShown,
   isModifierPickable,
   lobbyControlId,
   nextDifficultyOf,
@@ -170,6 +172,18 @@ export const pickEasyBreak = (model: Model) => (picks: LobbyPicks) =>
       }
     : { model }
 
+// NOTE: the dare ladder's mark steps to the next opened where it sits, round
+// to none, as the break clock does.
+export const pickDareMark = (model: Model) => (picks: LobbyPicks) =>
+  isActive(model) && isMarkShown(picks)
+    ? {
+        model,
+        outMessage: OutMessage.ChoseDareMark({
+          mark: nextMarkOf(picks.dareMark, picks.bestMark),
+        }),
+      }
+    : { model }
+
 // BOTS
 
 // NOTE: + BOT asks the root for a bot for the next empty seat, as its seeded
@@ -288,10 +302,7 @@ export const pressKey = (code: string) => (model: Model, picks: LobbyPicks) => {
     return Option.match(maybeFocusStep(code), {
       onNone: () => ({ model }),
       onSome: step =>
-        focus(
-          model,
-          steppedLobbyFocus(model.maybeFocus, step, picks),
-        ),
+        focus(model, steppedLobbyFocus(model.maybeFocus, step, picks)),
     })
   }
 }

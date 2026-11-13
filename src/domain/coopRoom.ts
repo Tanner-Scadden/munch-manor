@@ -96,6 +96,7 @@ export const LobbyChange = defineTaggedUnion({
   ChangedPicks: { mode: PickedMode, difficulty: RoomDifficulty },
   ChangedModifiers: { modifiers: Schema.Finite },
   ChangedEasyBreak: { seconds: Schema.Finite },
+  ChangedDareMark: { mark: Schema.Finite },
   ChangedMemberCalling: { calling: Calling },
   ChangedMemberName: { name: Schema.String },
   KickedPlayer: { playerId: Schema.String },

@@ -20,6 +20,7 @@ import {
 } from '@munch/sync-engine'
 
 import { ChangedSettings, PlayerScope } from '../../src/platform/playerScope.ts'
+import { noDareMarks } from '../../src/shared/dareMarkData.ts'
 import {
   type DirectoryHost,
   type Linked,
@@ -223,6 +224,21 @@ describe('the sync Worker', () => {
         expect(playerFactsIn({ player: [{ nightmare: 'Unlocked' }] })).toEqual({
           unlocked: true,
           milestones: [],
+          marks: noDareMarks,
+        })
+        expect(
+          playerFactsIn({
+            player: [
+              {
+                nightmare: 'Locked',
+                dare_marks: '{"Easy":0,"Normal":5,"Hard":1,"Nightmare":0}',
+              },
+            ],
+          }),
+        ).toEqual({
+          unlocked: false,
+          milestones: [],
+          marks: { ...noDareMarks, Normal: 5, Hard: 1 },
         })
         expect(
           playerFactsIn({
@@ -234,15 +250,24 @@ describe('the sync Worker', () => {
               },
             ],
           }),
-        ).toEqual({ unlocked: false, milestones: ['FirstEscape'] })
+        ).toEqual({
+          unlocked: false,
+          milestones: ['FirstEscape'],
+          marks: noDareMarks,
+        })
         expect(
           playerFactsIn({ player: [{ nightmare: 'Locked', journal: 'nope' }] }),
-        ).toEqual({ unlocked: false, milestones: [] })
-        expect(playerFactsIn({})).toEqual({ unlocked: false, milestones: [] })
+        ).toEqual({ unlocked: false, milestones: [], marks: noDareMarks })
+        expect(playerFactsIn({})).toEqual({
+          unlocked: false,
+          milestones: [],
+          marks: noDareMarks,
+        })
         const asked: Array<Readonly<Record<string, string>>> = []
         const answer = yield* encodeNightmareAnswer({
           unlocked: true,
           milestones: ['FirstEscape', 'TenThings'],
+          marks: { ...noDareMarks, Normal: 3 },
         })
         const answered = yield* readPlayerFacts((_scope, _url, headers) => {
           asked.push(headers)
@@ -254,6 +279,7 @@ describe('the sync Worker', () => {
         expect(answered).toEqual({
           unlocked: true,
           milestones: ['FirstEscape', 'TenThings'],
+          marks: { ...noDareMarks, Normal: 3 },
         })
         expect(asked).toEqual([{ 'x-sync-scope': scope }])
         const fromOldWorker = yield* readPlayerFacts(
@@ -264,17 +290,29 @@ describe('the sync Worker', () => {
             }),
           PLAYER,
         )
-        expect(fromOldWorker).toEqual({ unlocked: true, milestones: [] })
+        expect(fromOldWorker).toEqual({
+          unlocked: true,
+          milestones: [],
+          marks: noDareMarks,
+        })
         const whenDown = yield* readPlayerFacts(
           () => Promise.reject(new Error('down')),
           PLAYER,
         )
-        expect(whenDown).toEqual({ unlocked: false, milestones: [] })
+        expect(whenDown).toEqual({
+          unlocked: false,
+          milestones: [],
+          marks: noDareMarks,
+        })
         const whenRefused = yield* readPlayerFacts(
           () => Promise.resolve({ ok: false, text: () => Promise.resolve('') }),
           PLAYER,
         )
-        expect(whenRefused).toEqual({ unlocked: false, milestones: [] })
+        expect(whenRefused).toEqual({
+          unlocked: false,
+          milestones: [],
+          marks: noDareMarks,
+        })
 
         yield* host.linkedDevices(2, 'linked-x-2', everyone)
         expect(fromJson(phone.sent.at(-1) ?? '{}')).toMatchObject({

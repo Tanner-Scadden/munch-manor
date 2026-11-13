@@ -28,6 +28,7 @@ import {
   COOP_NETWORK,
   COOP_PLAYERS,
   COOP_WIN_RATE,
+  DARE_MARKS,
   DEADLIEST,
   DEATH_WAVES,
   DEVICES,
@@ -154,6 +155,13 @@ const LeftEarlyRow = Schema.Struct({
   runs: Count,
   wave: Schema.NullOr(Schema.Finite),
   dare_items_found: Schema.NullOr(Schema.Finite),
+})
+
+const DareMarkRow = Schema.Struct({
+  difficulty: Schema.String,
+  dare_mark: Count,
+  runs: Count,
+  escapes: Count,
 })
 
 const DayRow = Schema.Struct({ received_day: Schema.String, runs: Count })
@@ -345,6 +353,7 @@ const program = Effect.gen(function* () {
     crewWaves,
     network,
     leftEarly,
+    dareMarks,
   ] = yield* Effect.all([
     run(SOLO_WIN_RATE, WinRow),
     run(DEATH_WAVES, WaveRow),
@@ -361,6 +370,7 @@ const program = Effect.gen(function* () {
     run(COOP_DEATH_WAVES, CrewWaveRow),
     run(COOP_NETWORK, NetworkRow),
     run(LEFT_EARLY, LeftEarlyRow),
+    run(DARE_MARKS, DareMarkRow),
   ])
   const endedAs = (party: string, outcome: string): number =>
     Array.reduce(ends, 0, (sum, row) =>
@@ -453,6 +463,17 @@ const program = Effect.gen(function* () {
             row.dare_items_found === null
               ? '-'
               : row.dare_items_found.toFixed(1),
+          ]),
+        ),
+        section(
+          'Campaign runs by dare mark (version 9 on; solo by run, co-op by game)',
+          ['difficulty', 'mark', 'runs', 'escapes', 'escape rate'],
+          Array.map(dareMarks, row => [
+            row.difficulty,
+            `${row.dare_mark}`,
+            `${row.runs}`,
+            `${row.escapes}`,
+            percent(row.escapes, row.runs),
           ]),
         ),
         section(

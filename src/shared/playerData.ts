@@ -1,5 +1,6 @@
 import { Array, Effect, Function, type Option, Record, Schema } from 'effect'
 
+import { SavedDareMarks } from './dareMarkData'
 import { DayStamp } from './dayStamp'
 import { SavedJournal } from './journalData'
 import { SavedMastery } from './masteryData'
@@ -396,7 +397,7 @@ export type Appearance = typeof Appearance.Type
 
 // SAVED
 
-export const SAVE_VERSION = 27
+export const SAVE_VERSION = 28
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -683,6 +684,8 @@ export type PlayerName = typeof PlayerName.Type
 // Version 26 added the rank purses paid, in `bonuses`.
 // Version 27 added hero and gun mastery (src/shared/masteryData.ts), and
 // the prop style on the look.
+// Version 28 added the dare ladder's best mark on each difficulty
+// (src/shared/dareMarkData.ts).
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -709,5 +712,6 @@ export const PlayerSave = Schema.Struct({
   proof: SavedProof,
   journal: SavedJournal,
   mastery: SavedMastery,
+  dareMarks: SavedDareMarks,
 })
 export type PlayerSave = typeof PlayerSave.Type

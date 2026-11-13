@@ -49,6 +49,7 @@ import {
 } from '../shared/playerData'
 import { ProofEntry } from '../shared/proofData'
 import { purseBonesAt, rankOf } from '../shared/rankCurve'
+import { ClimbedDareLadder, DareMarksJson } from './dareMarkScope'
 import {
   GUN_KILLS_TABLE,
   GainedMastery,
@@ -125,6 +126,7 @@ export const PlayerRow = Schema.Struct({
   last_run: RunEnding,
   missions: Schema.fromJsonString(SavedMissions),
   journal: Schema.fromJsonString(SavedJournal),
+  dare_marks: DareMarksJson,
 })
 export type PlayerRow = typeof PlayerRow.Type
 
@@ -171,6 +173,7 @@ export const PLAYER_COLUMNS = Array.make(
   'last_run',
   'missions',
   'journal',
+  'dare_marks',
 )
 
 export const rowOfSave = (save: PlayerSave): PlayerRow => ({
@@ -210,6 +213,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   last_run: save.lastRun,
   missions: save.missions,
   journal: save.journal,
+  dare_marks: save.dareMarks,
 })
 
 export const BoughtRow = Schema.Struct({ id: Schema.String })
@@ -262,12 +266,13 @@ const updatePlayer = (
 // the save with the last run's ending (save version 22), and 20 the save
 // with the daily missions (save version 23), 21 the save with the Proof
 // Shelf (save version 24), 22 the save with the Dare Journal (save
-// version 25), 23 the save with the rank purses (save version 26), and 24
-// the save with hero and gun mastery (save version 27).
+// version 25), 23 the save with the rank purses (save version 26), 24
+// the save with hero and gun mastery (save version 27), and 25 the save
+// with the dare ladder (save version 28).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 24,
+  version: 25,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -1140,6 +1145,7 @@ export const PlayerScope = defineScope({
     ShelvedProof,
     KeptJournal,
     GainedMastery,
+    ClimbedDareLadder,
     LinkedDevices,
   ],
   migrations: PLAYER_MIGRATIONS,

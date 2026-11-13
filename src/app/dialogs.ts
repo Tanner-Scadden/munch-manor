@@ -196,6 +196,7 @@ const proofShelfView: PanelChildViews['proof'] = (model, doneButton, h) =>
         stampedDays: model.missions.stampedDays,
         maybeToday: model.maybeToday,
         fresh: model.freshUnlocks,
+        dareMarks: model.dareMarks,
         doneButton,
       },
     }),

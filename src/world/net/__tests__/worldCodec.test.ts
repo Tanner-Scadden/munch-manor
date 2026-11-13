@@ -339,8 +339,8 @@ describe("the boss's charge on the wire", () => {
 // the last zombie's hurry (2026-11-10) as well, and the rooms' new shapes
 // (the rooms rework, 2026-11-10) once more, and the work stations (2026-11-10),
 // and the rooms' finds (a hidden thing's `workedMs`) and wake-ups
-// (2026-11-11), and Uncle Chunk's last fight (2026-11-11), and every room tool a station of its own (2026-11-11), and the tighter opening waves (2026-11-11), and the hotter, shorter waves (2026-11-11), and READY's rank points (2026-11-11), and the slower Runners on Easy and Normal (2026-11-11), and Dare's break clock picked in the lobby (`easyBreakSeconds`, 2026-11-12).
-const GOLDEN_DIGEST = '73614:bbd25da5919dc297'
+// (2026-11-11), and Uncle Chunk's last fight (2026-11-11), and every room tool a station of its own (2026-11-11), and the tighter opening waves (2026-11-11), and the hotter, shorter waves (2026-11-11), and READY's rank points (2026-11-11), and the slower Runners on Easy and Normal (2026-11-11), and Dare's break clock picked in the lobby (`easyBreakSeconds`, 2026-11-12), and the dare ladder's mark (`dareMark`, 2026-11-13: 8 bytes, the field alone, the room plays at mark 0).
+const GOLDEN_DIGEST = '73622:25ec28dddc12f8d3'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

@@ -28,6 +28,7 @@ import {
 import { levelOf } from '../../world/level/arena'
 import { distanceToBox } from '../../world/level/tileGrid'
 import { focusOf, focusSlotOf } from '../../world/party/party'
+import { activeModifiersOf } from '../../world/run/dareLadder'
 import {
   Charge,
   FridgeDoor,
@@ -221,7 +222,7 @@ const oddsRow = (
 
 const isNearShutFridge = (model: Model): boolean =>
   isKitchenShown(model) &&
-  !model.modifiers.broke &&
+  !activeModifiersOf(model).broke &&
   FridgeDoor.isAnyOf(['Shut'])(model.fridge.door) &&
   Option.exists(
     fridgeBoxOf(levelOf(model)),

@@ -81,6 +81,7 @@ const summary: RunSummary = {
   party: SOLO_PARTY,
   modifiers: 0,
   dareItemsFound: 2,
+  dareMark: 0,
 }
 
 // NOTE: a co-op crew as a build before the run key sent it.
@@ -414,13 +415,17 @@ describe('POST /api/runs', () => {
   )
 
   it.effect(
-    'an escape stores its outcome and the things it found, and a version 4 win still goes in',
+    'an escape stores its outcome, the things it found, and its dare mark, and a version 4 win still goes in at mark 0',
     () =>
       Effect.gen(function* () {
         const setup = yield* setUp()
         const escaped = yield* post(
           setup,
-          encodeSummary({ ...summary, outcome: { _tag: 'Escaped' } }),
+          encodeSummary({
+            ...summary,
+            outcome: { _tag: 'Escaped' },
+            dareMark: 5,
+          }),
         )
         expect(escaped.status).toBe(202)
         const won = yield* post(
@@ -437,15 +442,21 @@ describe('POST /api/runs', () => {
         expect(won.status).toBe(202)
         const stored = yield* query(
           setup,
-          'SELECT summary_version, outcome, dare_items_found FROM runs ORDER BY id',
+          'SELECT summary_version, outcome, dare_items_found, dare_mark FROM runs ORDER BY id',
         )
         expect(stored).toEqual([
           {
             summary_version: RUN_SUMMARY_VERSION,
             outcome: 'Escaped',
             dare_items_found: 2,
+            dare_mark: 5,
           },
-          { summary_version: 4, outcome: 'Victory', dare_items_found: 0 },
+          {
+            summary_version: 4,
+            outcome: 'Victory',
+            dare_items_found: 0,
+            dare_mark: 0,
+          },
         ])
       }),
   )

@@ -1,12 +1,14 @@
 import { Effect, Function, Schema, pipe } from 'effect'
 
 import {
+  ChangedDareMark,
   ChangedEasyBreak,
   ChangedMemberCalling,
   ChangedMemberName,
   ChangedModifiers,
   ChangedPicks,
   ChangedReady,
+  DareMark,
   EasyBreakSeconds,
   KickedPlayer,
   LeftRoom,
@@ -66,6 +68,11 @@ export const writeLobbyChange: {
               Effect.flatMap(
                 Schema.decodeUnknownEffect(EasyBreakSeconds)(seconds),
                 valid => write(ChangedEasyBreak, { by, seconds: valid }),
+              ),
+            // NOTE: a mark off the ladder is never sent.
+            ChangedDareMark: ({ mark }) =>
+              Effect.flatMap(Schema.decodeEffect(DareMark)(mark), valid =>
+                write(ChangedDareMark, { by, mark: valid }),
               ),
             KickedPlayer: ({ playerId }) =>
               write(KickedPlayer, { by, playerId }),

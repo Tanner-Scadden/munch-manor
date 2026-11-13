@@ -111,7 +111,7 @@ describe('trap crates', () => {
   )
 
   it.effect(
-    "a find left in the break waits in its wave, and the wave never rolls it again",
+    'a find left in the break waits in its wave, and the wave never rolls it again',
     () => {
       const inWave = Phase.Wave({
         wave: 3,
@@ -145,24 +145,26 @@ describe('trap crates', () => {
     },
   )
 
-  it.effect('a crate still shut from the last round rolls when a wave starts one', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        stockedBreak(
-          3,
-          [{ room: 'Dining', stock: CrateStock.Taken() }],
-          Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+  it.effect(
+    'a crate still shut from the last round rolls when a wave starts one',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          stockedBreak(
+            3,
+            [{ room: 'Dining', stock: CrateStock.Taken() }],
+            Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+          ),
         ),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(current.crates.wave).toBe(4)
+          expect(
+            Array.map(stocksOf(current), ({ _tag }) => _tag),
+          ).not.toContain('Taken')
+        }),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.crates.wave).toBe(4)
-        expect(Array.map(stocksOf(current), ({ _tag }) => _tag)).not.toContain(
-          'Taken',
-        )
-      }),
-    ),
   )
 
   it.effect(

@@ -14,6 +14,7 @@ import {
   isStanding,
   seatStateAt,
 } from '../party/party'
+import { activeModifiersOf } from '../run/dareLadder'
 import { isPending } from '../run/lessons'
 import type { World } from '../schema/world'
 import {
@@ -176,7 +177,7 @@ export const maybeFindIn: {
 // NOTE: a crate may hold a heart while anyone in the crew is missing one,
 // never under Glass.
 const isHeartDue = (world: World): boolean =>
-  !world.modifiers.glass &&
+  !activeModifiersOf(world).glass &&
   Array.some(world.seats, ({ player }) => isMissingHeart(player))
 
 // STOCKING
@@ -354,7 +355,7 @@ export const canTakeFind: {
   3,
   (world: World, slot: PlayerSlot, find: CrateFind): boolean =>
     find === 'Heart'
-      ? !world.modifiers.glass &&
+      ? !activeModifiersOf(world).glass &&
         isMissingHeart(seatStateAt(world, slot).player)
       : ownedCount(world, slot, find) < trapLimitOf(world, find),
 )

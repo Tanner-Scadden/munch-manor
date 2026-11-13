@@ -10,6 +10,7 @@ import { trapBlockers } from '../gear/traps'
 import { maxHpOf } from '../heroes/calling'
 import { type Level, levelOf } from '../level/arena'
 import type { Box } from '../level/tileGrid'
+import { activeModifiersOf } from '../run/dareLadder'
 import type { World } from '../schema/world'
 import {
   type Bullet,
@@ -99,7 +100,7 @@ const fall = (world: World, slot: PlayerSlot): World => {
 
 // NOTE: a Glass run (src/world/run/modifiers.ts) gets up on one heart, as it started.
 const reviveHeartsOf = (world: World): number =>
-  world.modifiers.glass ? 1 : COOP_RULES.reviveHearts
+  activeModifiersOf(world).glass ? 1 : COOP_RULES.reviveHearts
 
 const standUp = (world: World, slot: PlayerSlot, hearts: number): World => {
   const { player: risen } = seatStateAt(world, slot)

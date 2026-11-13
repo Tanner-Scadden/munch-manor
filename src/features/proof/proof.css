@@ -68,12 +68,22 @@
 
 .proof-row-mark {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   padding-bottom: 4px;
 }
 
+/* NOTE: the dare mark's seal under the difficulty's skull, in the row's
+   narrow mark column (beside it on an upright phone). */
+.proof-row-dare-mark {
+  width: 16px;
+  height: 16px;
+}
+
 .proof-skull {
+  flex: none;
   width: 18px;
   height: 18px;
   background: center / contain no-repeat;
@@ -162,8 +172,14 @@
     left: 50%;
     bottom: -14px;
     z-index: 2;
+    flex-direction: row;
     padding: 0;
     translate: -50% 0;
+  }
+
+  .proof-row-dare-mark {
+    width: 14px;
+    height: 14px;
   }
 
   .proof-skull {

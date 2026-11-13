@@ -23,6 +23,7 @@ import {
 import { lookInOwned } from '../domain/closet'
 import { cleanName } from '../domain/playerName'
 import { unlocksAt } from '../domain/unlocks'
+import { mergeDareMarks } from '../shared/dareMarkData'
 import { mergeJournal } from '../shared/journalData'
 import { mergeMastery } from '../shared/masteryData'
 import { mergeMissions } from '../shared/missionData'
@@ -165,6 +166,7 @@ export const SAVED_FIELDS = [
   'proof',
   'journal',
   'mastery',
+  'dareMarks',
   'calling',
   'boughtCosmetics',
   'seenUnlocks',
@@ -235,6 +237,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   proof: model.proof,
   journal: model.journal,
   mastery: model.mastery,
+  dareMarks: model.dareMarks,
   calling: model.calling,
   boughtCosmetics: model.boughtCosmetics,
   seenUnlocks: model.seenUnlocks,
@@ -427,6 +430,7 @@ export const restoreSave: {
       proof: proof => mergeProof(proof, save.proof),
       journal: journal => mergeJournal(journal, save.journal),
       mastery: mastery => mergeMastery(mastery, save.mastery),
+      dareMarks: marks => mergeDareMarks(marks, save.dareMarks),
       calling: () => save.calling,
       boughtCosmetics: () => save.boughtCosmetics,
       // NOTE: unlocks seen on any device stay seen. The baseline mark of a row

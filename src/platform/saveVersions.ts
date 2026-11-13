@@ -1,6 +1,7 @@
 import { Array, Option, Schema, Struct } from 'effect'
 
 import { unlocksAt } from '../domain/unlocks'
+import { noDareMarks } from '../shared/dareMarkData'
 import { noJournal } from '../shared/journalData'
 import { StoredAppearance } from '../shared/lookCodes'
 import { noMastery } from '../shared/masteryData'
@@ -207,10 +208,17 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 27 is the save before the dare ladder.
+const PlayerSaveV27 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['dareMarks']),
+  version: Schema.Literal(27),
+})
+type PlayerSaveV27 = typeof PlayerSaveV27.Type
+
 // NOTE: version 26 is the save before hero and gun mastery. Its look reads
 // with the stock prop (Appearance's default).
 const PlayerSaveV26 = Schema.Struct({
-  ...Struct.omit(PlayerSave.fields, ['mastery']),
+  ...Struct.omit(PlayerSaveV27.fields, ['mastery']),
   version: Schema.Literal(26),
 })
 type PlayerSaveV26 = typeof PlayerSaveV26.Type
@@ -369,6 +377,7 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV27Json = Schema.fromJsonString(PlayerSaveV27)
 const PlayerSaveV26Json = Schema.fromJsonString(PlayerSaveV26)
 const PlayerSaveV25Json = Schema.fromJsonString(PlayerSaveV25)
 const PlayerSaveV24Json = Schema.fromJsonString(PlayerSaveV24)
@@ -697,14 +706,24 @@ const migrateV25 = (save: PlayerSaveV25): PlayerSaveV26 => ({
 
 // NOTE: a save from before mastery starts every hero's track and every
 // gun's kills at none: kills were never kept by gun before.
-const migrateV26 = (save: PlayerSaveV26): PlayerSave => ({
+const migrateV26 = (save: PlayerSaveV26): PlayerSaveV27 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 27,
   mastery: noMastery,
 })
 
-const fromV25 = (save: PlayerSaveV25): PlayerSave =>
-  migrateV26(migrateV25(save))
+// NOTE: a save from before the dare ladder has no mark opened. An escape it
+// made already does not count: the ladder starts at the next one.
+const migrateV27 = (save: PlayerSaveV27): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  dareMarks: noDareMarks,
+})
+
+const fromV26 = (save: PlayerSaveV26): PlayerSave =>
+  migrateV27(migrateV26(save))
+
+const fromV25 = (save: PlayerSaveV25): PlayerSave => fromV26(migrateV25(save))
 
 const fromV24 = (save: PlayerSaveV24): PlayerSave => fromV25(migrateV24(save))
 
@@ -763,9 +782,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 27,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV27Json)(raw), migrateV27),
+  },
+  {
     version: 26,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV26Json)(raw), migrateV26),
+      Option.map(Schema.decodeOption(PlayerSaveV26Json)(raw), fromV26),
   },
   {
     version: 25,

@@ -185,6 +185,7 @@ export const lobbyOf: {
     difficulty: 'Normal',
     modifiers: 0,
     easyBreakSeconds: 0,
+    dareMark: 0,
     canKeepGoing: false,
     round: 1,
     createdMs: 0,

@@ -532,6 +532,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
               isRunEndComing: isRunEndComing(model),
               bought: model.boughtCosmetics,
               bones: bonesBalanceOf(model.rank),
+              dareMarks: model.dareMarks,
             },
           }),
         ),

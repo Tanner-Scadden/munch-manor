@@ -1,3 +1,4 @@
+import { noDareMarks } from '../../shared/dareMarkData'
 import { noJournal } from '../../shared/journalData'
 import { noMastery } from '../../shared/masteryData'
 import { noMissions } from '../../shared/missionData'
@@ -91,6 +92,7 @@ export const learnedSave: PlayerSave = {
   proof: noProof,
   journal: noJournal,
   mastery: noMastery,
+  dareMarks: noDareMarks,
   calling: 'TrackStar',
   boughtCosmetics: [],
   seenUnlocks: [],

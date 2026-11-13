@@ -38,6 +38,7 @@ import {
   withStartingHearts,
 } from '../party/party'
 import { beginArrival, endArrival, isArriving } from '../run/arrival'
+import { clampMark } from '../run/dareLadder'
 import { settledLessons } from '../run/lessons'
 import { type Modifiers, modifiersOfMask, noModifiers } from '../run/modifiers'
 import { type World, modifyWorldFields } from '../schema/world'
@@ -127,7 +128,9 @@ export type RoomWorld = Readonly<{
 export type OwnSeat = Readonly<{ slot: PlayerSlot; player: Player }>
 
 // NOTE: `modifiers` is the host's pick (src/world/run/modifiers.ts), and
-// `easyBreakSeconds` Dare's break clock, 0 for none. `callings` is what
+// `easyBreakSeconds` Dare's break clock, 0 for none, and `dareMark` the
+// dare ladder's mark (src/world/run/dareLadder.ts), 0 for none, which the
+// room holds to the host's own best as the run starts. `callings` is what
 // each seat brings, by slot (the lobby's members, Lobby.ts); a slot with none
 // plays YOU. `intro` is the cut the run opens on (introForRound). `things`
 // are the dare things the host's milestones open (thingsOpenedBy in
@@ -137,6 +140,7 @@ export type RoomSettings = Readonly<{
   difficulty: Difficulty
   modifiers: Modifiers
   easyBreakSeconds: number
+  dareMark: number
   mode: RunMode
   callings: ReadonlyArray<Readonly<{ slot: PlayerSlot; calling: Calling }>>
   intro: IntroCut
@@ -151,6 +155,7 @@ export const roomSettingsOf: {
     members?: ReadonlyArray<Readonly<{ slot: number; calling: string }>>,
     modifierMask?: number,
     easyBreakSeconds?: number,
+    dareMark?: number,
   ): (mode: RoomMode) => RoomSettings
   (
     mode: RoomMode,
@@ -158,6 +163,7 @@ export const roomSettingsOf: {
     members?: ReadonlyArray<Readonly<{ slot: number; calling: string }>>,
     modifierMask?: number,
     easyBreakSeconds?: number,
+    dareMark?: number,
   ): RoomSettings
 } = Function.dual(
   // NOTE: data-first has the difficulty second; data-last has the members there or nothing.
@@ -168,10 +174,12 @@ export const roomSettingsOf: {
     members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
     modifierMask: number = 0,
     easyBreakSeconds: number = 0,
+    dareMark: number = 0,
   ): RoomSettings => ({
     difficulty,
     modifiers: modifiersOfMask(modifierMask),
     easyBreakSeconds,
+    dareMark: clampMark(dareMark),
     mode:
       mode === 'Endless' || mode === 'KeepGoing'
         ? RunMode.Endless()
@@ -364,6 +372,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   difficulty: { chosen: settings.difficulty, nightmare: 'Locked' },
   modifiers: settings.modifiers,
   easyBreakSeconds: settings.easyBreakSeconds,
+  dareMark: settings.dareMark,
   zombies: [],
   bullets: [],
   lobs: [],
@@ -793,6 +802,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   difficulty: 'Normal',
   modifiers: noModifiers,
   easyBreakSeconds: 0,
+  dareMark: 0,
   mode: RunMode.Campaign(),
   callings: [],
   intro: 'Short',

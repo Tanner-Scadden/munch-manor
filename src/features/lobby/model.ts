@@ -10,8 +10,8 @@ import { isPickerOpen } from '../heroes/model'
 
 // NOTE: every control the lobby's arrow keys walk, in order: BACK, the hero
 // card, each crew seat (a + BOT tile, or a bot's hero card with its x), the
-// two modes, the four difficulties, Dare's break clock (on Dare alone), the
-// modifiers, then START.
+// two modes, the four difficulties, the dare ladder's mark (once one is
+// opened), Dare's break clock (on Dare alone), the modifiers, then START.
 export const LobbyControl = Schema.Literals([
   'Back',
   'Hero',
@@ -27,6 +27,7 @@ export const LobbyControl = Schema.Literals([
   'Normal',
   'Hard',
   'Nightmare',
+  'Mark',
   'EasyBreak',
   'FriendlyFire',
   'BigCrowd',
@@ -38,6 +39,7 @@ export type LobbyControl = typeof LobbyControl.Type
 
 // NOTE: what a run is picked from, as the root keeps it: the mode, the
 // difficulty (with whether Nightmare is open, for its padlock and NEW pip),
+// the dare ladder's mark with the best opened on that difficulty,
 // Dare's break clock, the run modifiers, and the teammate bots, with how many bots fit (a dev
 // link's couch players take seats). The root hands it to the lobby as its
 // update context and view input, and the lobby tells the root each pick
@@ -47,6 +49,8 @@ export const LobbyPicks = Schema.Struct({
   difficulty: DifficultySetting,
   modifiers: Modifiers,
   easyBreakSeconds: Schema.Finite,
+  dareMark: Schema.Finite,
+  bestMark: Schema.Finite,
   bots: Schema.Array(Bot),
   botSeats: Schema.Finite,
 })

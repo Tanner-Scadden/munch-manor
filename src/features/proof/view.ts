@@ -16,6 +16,7 @@ import {
 import type { DayStamp } from '../../shared/dayStamp'
 import { type Difficulty, callingOfCode } from '../../shared/playerData'
 import type { CrewMate, ProofStamp } from '../../shared/proofData'
+import { dareMarkBadgeView } from '../../ui/dareMarkView'
 import { iconView } from '../../ui/menuParts'
 import {
   BIG_KEY_LINE,
@@ -158,6 +159,11 @@ const rowView = (
         [
           iconView('proof-skull', SKULL_ICONS[difficulty], h),
           h.span([h.Class('sr-only')], [DIFFICULTIES[difficulty].name]),
+          ...dareMarkBadgeView(
+            inputs.dareMarks[difficulty],
+            'proof-row-dare-mark',
+            h,
+          ),
         ],
       ),
       h.div(

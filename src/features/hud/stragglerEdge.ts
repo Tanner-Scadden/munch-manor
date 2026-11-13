@@ -34,7 +34,11 @@ export const stragglerEdgeShapes: {
   (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   3,
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape> => {
+  (
+    model: Model,
+    screen: Screen,
+    camera: Camera,
+  ): ReadonlyArray<Canvas.Shape> => {
     const loneMs = model.pacing.loneMs
     if (loneMs <= 0) {
       return []

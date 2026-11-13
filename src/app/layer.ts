@@ -33,13 +33,13 @@ import {
   WaitForUnwrap,
 } from './update/home'
 import { CueMusic } from './update/music'
-import { UploadRecording } from './update/recording'
 import {
   ClickPadFocus,
   EscapePadDialog,
   MovePadFocus,
   StepPadTab,
 } from './update/padMenu'
+import { UploadRecording } from './update/recording'
 import { ApplyRotation } from './update/rotation'
 import { Rumble } from './update/rumble'
 import {

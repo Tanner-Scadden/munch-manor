@@ -36,9 +36,11 @@ import {
   Screen,
   isInLobby,
 } from '../../domain/coopRoom'
+import { bestMarkOn } from '../../domain/dareMarks'
 import { seatColorOf } from '../../render/partyView'
 import type { Appearance, Calling } from '../../shared/playerData'
 import { backButtonView, closeButtonView } from '../../ui/cornerButtons'
+import { dareMarkBadgeView } from '../../ui/dareMarkView'
 import { callingPropView, iconView, rankTagView } from '../../ui/menuParts'
 import { CALLING_NAMES } from '../../world/names'
 import { type Model as HeroPickerModel, isPickerOpen } from '../heroes/model'
@@ -608,6 +610,9 @@ const memberSeatView = (
       ),
       poofView('Arrive', h),
       isTheHost ? iconView(crownClassOf(room), CROWN_ICON, h) : h.empty,
+      ...(isTheHost
+        ? dareMarkBadgeView(lobby.dareMark, 'coop-seat-dare-mark', h)
+        : []),
       member.ready
         ? h.span(
             [h.Class('coop-stamp'), h.AriaHidden(true)],
@@ -829,7 +834,11 @@ const lobbyView = (
         onSome: lobby =>
           picksView(
             room,
-            { lobby, keyCapView: key => keyCapView(inputs, key, h) },
+            {
+              lobby,
+              bestMark: bestMarkOn(inputs.dareMarks, lobby.difficulty),
+              keyCapView: key => keyCapView(inputs, key, h),
+            },
             h,
           ),
       }),

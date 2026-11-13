@@ -4,8 +4,17 @@ import type { HomeMode } from '../../domain/clientSchema'
 import { FOCUS_STEP_OFFSET, type FocusStep } from '../../input/input'
 import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
+import {
+  isCoveredByMark,
+  runBonusPercentOf,
+  withMarkModifiers,
+} from '../../world/run/dareLadder'
 import { DIFFICULTY_ORDER, isLocked } from '../../world/run/difficulty'
-import { MODIFIER_ORDER, type Modifier } from '../../world/run/modifiers'
+import {
+  MODIFIER_ORDER,
+  type Modifier,
+  isModifierOn,
+} from '../../world/run/modifiers'
 import type { DifficultySetting } from '../../world/schema/worldSchema'
 import type { LobbyControl, LobbyPicks } from './model'
 
@@ -36,6 +45,7 @@ const modeAndDifficultyControlsOf = (
   'Normal',
   'Hard',
   'Nightmare',
+  ...(isMarkShown(picks) ? ['Mark' as const] : []),
   ...(isEasyBreakShown(picks) ? ['EasyBreak' as const] : []),
   ...MODIFIER_ORDER,
   'Start',
@@ -72,6 +82,7 @@ const LOBBY_CONTROL_IDS: Readonly<Record<LobbyControl, string>> = {
   Normal: 'lobby-normal',
   Hard: 'lobby-hard',
   Nightmare: 'lobby-nightmare',
+  Mark: 'lobby-mark',
   EasyBreak: 'lobby-easy-break',
   FriendlyFire: 'lobby-friendly-fire',
   BigCrowd: 'lobby-big-crowd',
@@ -178,17 +189,59 @@ const hasSeatedBot = (picks: LobbyPicks): boolean =>
 export const isEasyBreakShown = (picks: LobbyPicks): boolean =>
   picks.difficulty.chosen === 'Easy'
 
+// THE DARE LADDER
+
+// NOTE: the mark's pick shows once an escape on the picked difficulty has
+// opened mark 1 (GAME_DESIGN.md, "The dare ladder").
+export const isMarkShown = (picks: LobbyPicks): boolean => picks.bestMark > 0
+
 // MODIFIERS
 
+// NOTE: a modifier the picked mark turns on is lit and locked: the mark
+// holds it, and turning the mark down lets it go.
+export const isModifierLocked: {
+  (modifier: Modifier): (picks: LobbyPicks) => boolean
+  (picks: LobbyPicks, modifier: Modifier): boolean
+} = Function.dual(2, (picks: LobbyPicks, modifier: Modifier): boolean =>
+  isCoveredByMark(picks.dareMark, modifier),
+)
+
 // NOTE: Friendly Fire needs a teammate to hit, so it is dim and cannot be
-// turned on until a bot sits in the crew. The rest are always there.
+// turned on until a bot sits in the crew. The rest are always there, but
+// for one the mark holds.
 export const isModifierPickable: {
   (modifier: Modifier): (picks: LobbyPicks) => boolean
   (picks: LobbyPicks, modifier: Modifier): boolean
 } = Function.dual(
   2,
   (picks: LobbyPicks, modifier: Modifier): boolean =>
-    modifier !== 'FriendlyFire' || hasSeatedBot(picks),
+    !isModifierLocked(picks, modifier) &&
+    (modifier !== 'FriendlyFire' || hasSeatedBot(picks)),
+)
+
+// NOTE: the bonus the picks pay, as the run will: the mark's modifiers with
+// the picked ones, Friendly Fire only with a bot to hit, and the mark's
+// house rules.
+export const picksBonusPercentOf = (picks: LobbyPicks): number => {
+  const modifiers = withMarkModifiers(picks.modifiers, picks.dareMark)
+  return runBonusPercentOf(
+    {
+      ...modifiers,
+      friendlyFire: modifiers.friendlyFire && hasSeatedBot(picks),
+    },
+    picks.dareMark,
+  )
+}
+
+// NOTE: whether a modifier's tile is lit: picked, or held by the mark.
+export const isModifierShownOn: {
+  (modifier: Modifier): (picks: LobbyPicks) => boolean
+  (picks: LobbyPicks, modifier: Modifier): boolean
+} = Function.dual(
+  2,
+  (picks: LobbyPicks, modifier: Modifier): boolean =>
+    isModifierOn(picks.modifiers, modifier) ||
+    isModifierLocked(picks, modifier),
 )
 
 // MAPS

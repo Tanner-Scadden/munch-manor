@@ -24,6 +24,11 @@ import {
 } from '../party/party'
 import { isEveryoneReady, returnFallen } from '../party/revive'
 import {
+  activeModifiersOf,
+  chunkHealthScaleOf,
+  markSpawns,
+} from '../run/dareLadder'
+import {
   breakClockMsOf,
   breakMsOf,
   crowdSpawns,
@@ -285,11 +290,14 @@ export const beginPreparation: {
       model,
       crowdSpawns(
         playerCountOf(model),
-        toughenSpawns(
-          model.difficulty.chosen,
-          paceSpawns(model.difficulty.chosen, rolled.spawns),
+        markSpawns(
+          model.dareMark,
+          toughenSpawns(
+            model.difficulty.chosen,
+            paceSpawns(model.difficulty.chosen, rolled.spawns),
+          ),
         ),
-        model.modifiers,
+        activeModifiersOf(model),
       ),
     )
     // NOTE: Uncle Chunk comes every tenth wave only in Endless; an escape
@@ -304,8 +312,13 @@ export const beginPreparation: {
           model.difficulty.chosen,
         )
       : [waveState, Boss.Absent()]
+    const markedBoss = Boss.isAnyOf(['Waiting'])(boss)
+      ? modifyFields(boss, {
+          hp: hp => Math.round(hp * chunkHealthScaleOf(model.dareMark)),
+        })
+      : boss
     return modifyFields(returnFallen(model), {
-      boss: () => boss,
+      boss: () => markedBoss,
       frenzyPacks: () => frenzyPacksOf(spawns),
       phase: () =>
         Phase.Preparation({

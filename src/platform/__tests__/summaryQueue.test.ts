@@ -50,6 +50,7 @@ const summary: RunSummary = {
   party: SOLO_PARTY,
   modifiers: 0,
   dareItemsFound: 3,
+  dareMark: 0,
 }
 
 // NOTE: the same run as a build with a shop sent it, with its purchases.

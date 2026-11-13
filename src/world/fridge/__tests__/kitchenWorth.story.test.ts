@@ -334,7 +334,7 @@ describe('the pantry stash', () => {
   )
 
   it.effect(
-    "a goodie left in the break waits in its wave, and the wave never restocks a taken one",
+    'a goodie left in the break waits in its wave, and the wave never restocks a taken one',
     () =>
       Effect.gen(function* () {
         const inWave = (current: Model): Model =>
