@@ -76,7 +76,7 @@ Cheapest first, most value early. Each is one pull request with its tests, and b
 
 1. **A's pay and the end card:** the Bones floor, first run of the day, first escape bonus, the best run's ghost, the death tip. Built 2026-11-12 (see "What the early pay built" in `GAME_DESIGN.md`); the date Subscription came with it, so C reads `maybeToday`.
 2. **F: the friends in the car.** Small, and it gives A's outcomes a voice. Built 2026-11-12 (see "What the friends in the car built" in `GAME_DESIGN.md`); "Chicken!" is written and waits for step 4's leaving early, which adds its `LeftEarly` ending in `src/features/intro/carLine.ts`.
-3. **C: daily missions,** with the date Subscription that the first run of the day also reads.
+3. **C: daily missions,** with the date Subscription that the first run of the day also reads. Built 2026-11-12 (see "What the daily missions built" in `GAME_DESIGN.md`).
 4. **A's leaving early,** a World rule, protocol, analytics, and balance (`test:full`, a wave pass).
 5. **B: the Proof Shelf,** then the Dare Journal, then rank gifts at every rank. The milestone table goes in here with its first new content: two list things and their hiding spots.
 6. **D: hero and gun mastery.**

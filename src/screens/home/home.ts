@@ -14,6 +14,7 @@ import {
 import { IS_COOP_RELEASED } from '../../features/coop/release'
 import type { HandCard, HomeButton } from '../../features/home/homeSchema'
 import type { LobbyPicks } from '../../features/lobby/model'
+import { maybeTodaysMissions } from '../../features/missions/missions'
 import {
   isDiscovered,
   newlyDiscovered,
@@ -45,14 +46,15 @@ import {
 // (homeButtonsOf).
 export const HOME_BUTTONS: Array.NonEmptyReadonlyArray<HomeButton> =
   IS_COOP_RELEASED
-    ? ['Play', 'Coop', 'Manor', 'Bests', 'Support', 'Settings']
-    : ['Play', 'Manor', 'Bests', 'Support', 'Settings']
+    ? ['Play', 'Coop', 'Manor', 'Bests', 'Missions', 'Support', 'Settings']
+    : ['Play', 'Manor', 'Bests', 'Missions', 'Support', 'Settings']
 
 const HOME_BUTTON_IDS: Readonly<Record<HomeButton, string>> = {
   Play: 'home-play',
   Coop: 'home-coop',
   Manor: 'home-manor',
   Bests: 'home-bests',
+  Missions: 'home-missions',
   Support: 'home-support',
   Settings: 'home-settings',
 }
@@ -67,13 +69,19 @@ const hasBests = (model: Model): boolean =>
   Option.isSome(bestsFor(model).maybeFastestWinMs) ||
   model.bests.totalKills > 0
 
+// NOTE: the mission card shows once the day is known (src/platform/today.ts)
+// and the day has its three.
+export const isMissionCardShown = (model: Model): boolean =>
+  Option.exists(maybeTodaysMissions(model), Array.isReadonlyArrayNonEmpty)
+
 // NOTE: the buttons the home menu draws, in arrow key order.
 export const homeButtonsOf = (model: Model): ReadonlyArray<HomeButton> =>
   Array.filter(
     HOME_BUTTONS,
     button =>
       (button !== 'Support' || isSupportShown(model)) &&
-      (button !== 'Bests' || hasBests(model)),
+      (button !== 'Bests' || hasBests(model)) &&
+      (button !== 'Missions' || isMissionCardShown(model)),
   )
 
 type HomeKey = Readonly<{ code: string; cap: string; name: string }>
@@ -89,6 +97,9 @@ export const HOME_KEYS: Readonly<Record<HomeButton, HomeKey>> = {
   Manor: { code: 'KeyV', cap: 'V', name: 'V' },
   // NOTE: the bests badge opens the Munchopedia, so it shares the card's key.
   Bests: { code: 'KeyZ', cap: 'Z', name: 'Z' },
+  // NOTE: U for the day's missions, a letter only a couch player's fire
+  // uses, in a run.
+  Missions: { code: 'KeyU', cap: 'U', name: 'U' },
   Support: { code: 'KeyB', cap: 'B', name: 'B' },
   Settings: { code: 'KeyO', cap: 'O', name: 'O' },
 }
@@ -97,6 +108,9 @@ export const isCoopKey = (code: string): boolean => code === HOME_KEYS.Coop.code
 
 export const isManorKey = (code: string): boolean =>
   code === HOME_KEYS.Manor.code
+
+export const isMissionsKey = (code: string): boolean =>
+  code === HOME_KEYS.Missions.code
 
 export const isSupportKey = (code: string): boolean =>
   code === HOME_KEYS.Support.code

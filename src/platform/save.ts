@@ -37,6 +37,7 @@ import {
   type SavedRunRecords,
   type SavedTrapHint,
 } from '../shared/playerData'
+import { mergeMissions } from '../shared/missionData'
 import { DareKind } from '../world/dare/dareSchema'
 import { callingForRun } from '../world/heroes/calling'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
@@ -157,6 +158,7 @@ export const SAVED_FIELDS = [
   'rank',
   'bonuses',
   'lastRunEnding',
+  'missions',
   'calling',
   'boughtCosmetics',
   'seenUnlocks',
@@ -223,6 +225,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   rank: model.rank,
   bonuses: model.bonuses,
   lastRun: model.lastRunEnding,
+  missions: model.missions,
   calling: model.calling,
   boughtCosmetics: model.boughtCosmetics,
   seenUnlocks: model.seenUnlocks,
@@ -407,6 +410,7 @@ export const restoreSave: {
       rank: () => save.rank,
       bonuses: bonuses => mergeBonuses(bonuses, save.bonuses),
       lastRunEnding: () => save.lastRun,
+      missions: missions => mergeMissions(missions, save.missions),
       calling: () => save.calling,
       boughtCosmetics: () => save.boughtCosmetics,
       // NOTE: unlocks seen on any device stay seen. The baseline mark of a row

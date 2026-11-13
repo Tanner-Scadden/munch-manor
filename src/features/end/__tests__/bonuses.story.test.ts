@@ -6,7 +6,7 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import type { Model } from '../../../app/model'
-import { lastHeart } from '../../../test/model.fixture'
+import { knowingDay, lastHeart } from '../../../test/model.fixture'
 import { APPLICATION, writeSave } from '../../../test/testing'
 import {
   checkSavedChanges,
@@ -31,7 +31,7 @@ const TODAY = '2026-11-12'
 const diesOnWave2 = lastHeart(runAt(wave(2), 1, 0))
 
 const today = (model: Model, day: string = TODAY): Model =>
-  modifyFields(model, { maybeToday: () => Option.some(day) })
+  knowingDay(model, day)
 
 const doubledOn = (model: Model, day: string): Model =>
   modifyFields(model, {
@@ -92,6 +92,8 @@ describe("the day's first run", () => {
       APPLICATION,
       Story.given(diesOnWave7),
       Story.message(Message.ChangedToday({ day: TODAY })),
+      // NOTE: the day's three frozen as the day comes in.
+      writeSave(),
       frame,
       Story.model(after => {
         expect(after.rank.earnedBones).toBe(12)
@@ -198,7 +200,13 @@ describe('the first escape on a difficulty', () => {
   it.effect("stacks on the day's first run, which doubles only the run", () =>
     Effect.gen(function* () {
       const won = yield* ended(today(lastWave))
-      expect(won.rank.earnedBones).toBe(31 * 2 + 50)
+      // NOTE: a known day pays the day's missions too (an escape may finish
+      // one), apart from the bonuses (src/features/missions/missions.ts).
+      const missionBones = Option.match(won.maybeMissionGain, {
+        onNone: () => 0,
+        onSome: ({ bones }) => bones,
+      })
+      expect(won.rank.earnedBones - missionBones).toBe(31 * 2 + 50)
       expect(Option.map(won.maybeRankGain, ({ bonuses }) => bonuses)).toEqual(
         Option.some(['Double', 'FirstEscape']),
       )

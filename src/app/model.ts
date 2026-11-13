@@ -43,6 +43,11 @@ import { ShareSheet } from '../features/end/share'
 import { HomeButton, MenuPanel } from '../features/home/homeSchema'
 import * as Lobby from '../features/lobby/model'
 import { HelpCard } from '../features/menus/message'
+import {
+  MissionGain,
+  MissionRun,
+  noMissionRun,
+} from '../features/missions/missionSchema'
 import * as Munchopedia from '../features/munchopedia/model'
 import * as Profile from '../features/profile/model'
 import {
@@ -77,11 +82,12 @@ import {
   noTellWatch,
 } from '../render/renderSchema'
 import { DEFAULT_SEED } from '../shared/constants'
+import { DayStamp } from '../shared/dayStamp'
+import { SavedMissions, noMissions } from '../shared/missionData'
 import {
   Appearance,
   Calling,
   CursorSetting,
-  DayStamp,
   Difficulty,
   HomeScreenTip,
   MusicSetting,
@@ -259,6 +265,13 @@ export const Model = Schema.Struct({
   // kept after it so the next is never the same line twice in a row.
   lastRunEnding: RunEnding,
   maybeCarLine: Schema.Option(Schema.String),
+  // NOTE: the daily missions (src/features/missions/missions.ts): the
+  // player's record of the day, saved and synced; what this run tallies
+  // toward them from its frames; and the bars the end card shows of the
+  // missions it moved.
+  missions: SavedMissions,
+  missionRun: MissionRun,
+  maybeMissionGain: Schema.Option(MissionGain),
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
@@ -461,6 +474,9 @@ export const initialModel: OwnModel = {
   maybeDeathTip: Option.none(),
   lastRunEnding: 'NoRunYet',
   maybeCarLine: Option.none(),
+  missions: noMissions,
+  missionRun: noMissionRun,
+  maybeMissionGain: Option.none(),
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

@@ -1,7 +1,8 @@
 import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
-import { DayStamp, RecordUnlock } from '../shared/playerData'
+import { DayStamp } from '../shared/dayStamp'
+import { RecordUnlock } from '../shared/playerData'
 import {
   FullscreenSetting,
   InstallOffer,

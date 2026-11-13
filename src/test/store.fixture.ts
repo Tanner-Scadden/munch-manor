@@ -41,6 +41,7 @@ import {
   type SyncSetup,
   makePlayerDatabase,
 } from '../platform/storeSqlite'
+import { noMissions } from '../shared/missionData'
 import { noBonuses, noSavedRunRecords } from '../shared/playerData'
 import { noRank } from '../world/heroes/rank'
 
@@ -99,6 +100,7 @@ export const legacySave: PlayerSave = {
   rank: noRank,
   bonuses: noBonuses,
   lastRun: 'NoRunYet',
+  missions: noMissions,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

@@ -8,6 +8,7 @@ import type {
   ShopGuideSection,
   TutorialChoice,
 } from '../shared/nameKeys'
+import { CHANDELIER_CRUSH_GOAL, type MissionId } from '../shared/missionData'
 import {
   type Calling,
   type CosmeticKind,
@@ -467,3 +468,29 @@ export const DARE_LINES: Readonly<Record<DareKind, string>> = {
   FamilyPortrait: 'THE MUNCHES, SMILING. TOO MANY TEETH.',
   GuestBookPage: '4,012 SIGNED IN. NOBODY SIGNED OUT.',
 }
+
+// DAILY MISSIONS
+
+// NOTE: each daily mission as the player reads it (src/features/missions/),
+// a few words with its goal (MISSION_RULES in src/shared/missionData.ts).
+// Short enough for a phone's mission row.
+export const MISSION_NAMES: Readonly<Record<MissionId, string>> = {
+  HotfootKills: `Splat 15 ${ZOMBIE_NAMES.Runner}s`,
+  PullFridge: `Pull the ${FRIDGE_NAME}`,
+  RunWithBot: 'A run with a bot',
+  PlayHandyman: `Play as the ${CALLING_NAMES.Handyman}`,
+  ReviveFriend: 'Revive a friend',
+  FindDareThings: 'Find 2 dare things',
+  OpenCellar: 'Open the cellar',
+  WorkRoomTools: 'Work 3 room tools',
+  OpenCase: 'Open a display case',
+  ChandelierCrush: `Drop the chandelier on ${CHANDELIER_CRUSH_GOAL}`,
+  BarnBusterKills: `40 kills with the ${GUN_NAMES.Shotgun}`,
+  GunToDeluxe: `A gun to ${DELUXE}`,
+  EscapeDoubleDare: 'Escape on Double Dare',
+  SplatZombies: 'Splat 150 zombies',
+}
+
+// NOTE: the mission panel's title, and its tag for all three done.
+export const MISSIONS_TITLE = 'Daily missions'
+export const ALL_THREE_TAG = 'ALL 3'

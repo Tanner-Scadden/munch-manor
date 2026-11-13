@@ -28,6 +28,7 @@ import {
   noBonuses,
   noSavedRunRecords,
 } from '../shared/playerData'
+import { noMissions } from '../shared/missionData'
 import { noRank, rankOf, totalPointsOf } from '../world/heroes/rank'
 
 // The save's older versions and how each is brought to the current one,
@@ -203,9 +204,16 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 22 is the save before the daily missions.
+const PlayerSaveV22 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['missions']),
+  version: Schema.Literal(22),
+})
+type PlayerSaveV22 = typeof PlayerSaveV22.Type
+
 // NOTE: version 21 is the save before the last run's ending.
 const PlayerSaveV21 = Schema.Struct({
-  ...Struct.omit(PlayerSave.fields, ['lastRun']),
+  ...Struct.omit(PlayerSaveV22.fields, ['lastRun']),
   version: Schema.Literal(21),
 })
 type PlayerSaveV21 = typeof PlayerSaveV21.Type
@@ -328,6 +336,7 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV22Json = Schema.fromJsonString(PlayerSaveV22)
 const PlayerSaveV21Json = Schema.fromJsonString(PlayerSaveV21)
 const PlayerSaveV20Json = Schema.fromJsonString(PlayerSaveV20)
 const PlayerSaveV19Json = Schema.fromJsonString(PlayerSaveV19)
@@ -612,14 +621,24 @@ const migrateV20 = (save: PlayerSaveV20): PlayerSaveV21 => ({
 
 // NOTE: a save from before the friends in the car remembered reads as no
 // run yet, so the first intro after the update says nothing new.
-const migrateV21 = (save: PlayerSaveV21): PlayerSave => ({
+const migrateV21 = (save: PlayerSaveV21): PlayerSaveV22 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 22,
   lastRun: 'NoRunYet',
 })
 
-const fromV20 = (save: PlayerSaveV20): PlayerSave =>
-  migrateV21(migrateV20(save))
+// NOTE: a save from before the daily missions has none yet and has played
+// no co-op as far as the missions know: its first online run says so.
+const migrateV22 = (save: PlayerSaveV22): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  missions: noMissions,
+})
+
+const fromV21 = (save: PlayerSaveV21): PlayerSave =>
+  migrateV22(migrateV21(save))
+
+const fromV20 = (save: PlayerSaveV20): PlayerSave => fromV21(migrateV20(save))
 
 const fromV19 = (save: PlayerSaveV19): PlayerSave => fromV20(migrateV19(save))
 
@@ -668,9 +687,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 22,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV22Json)(raw), migrateV22),
+  },
+  {
     version: 21,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV21Json)(raw), migrateV21),
+      Option.map(Schema.decodeOption(PlayerSaveV21Json)(raw), fromV21),
   },
   {
     version: 20,

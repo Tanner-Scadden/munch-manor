@@ -5,6 +5,7 @@ import { soundCases } from '../audio/message'
 import { endCases } from '../features/end/message'
 import { homeCases } from '../features/home/message'
 import { helpCases } from '../features/menus/message'
+import { missionCases } from '../features/missions/message'
 import { onboardingCases } from '../features/onboarding/message'
 import { whatsNewCases } from '../features/whatsNew/message'
 import { inputCases, runButtonCases } from '../input/message'
@@ -54,6 +55,7 @@ export const Message = defineMessageUnion({
   ...whatsNewCases,
   ...endCases,
   ...onboardingCases,
+  ...missionCases,
 })
 export type Message = typeof Message.Type
 

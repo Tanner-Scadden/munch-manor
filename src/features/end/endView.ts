@@ -519,6 +519,52 @@ export const unlockSpotOf: {
   }
 })
 
+// NOTE: a lone player's card: the tally's rows, the kinds' footer under
+// them, and the rank strip under that when there is one.
+const soloFooterTop = (model: Model, layout: Layout): number =>
+  layout.panelTop +
+  PANEL_PAD +
+  tallyRowsOf(model).length * (hasRankStrip(model) ? STRIPPED_ROW_PX : ROW_PX) +
+  2
+
+const soloCardBottom = (model: Model, layout: Layout): number =>
+  soloFooterTop(model, layout) +
+  KINDS_PX +
+  PANEL_PAD -
+  2 +
+  (hasRankStrip(model) ? STRIP_PX + 2 : 0)
+
+// NOTE: the end card's edges in the frame, its border too, for what the
+// screen sets beside or under it (the day's missions).
+export type EndCardEdges = Readonly<{
+  left: number
+  right: number
+  top: number
+  bottom: number
+}>
+
+export const endCardEdgesOf: {
+  (kind: EndKind): (model: Model) => EndCardEdges
+  (model: Model, kind: EndKind): EndCardEdges
+} = Function.dual(2, (model: Model, kind: EndKind): EndCardEdges => {
+  if (isCoop(model)) {
+    const span = crewBoardSpan(model, CENTER_X)
+    return {
+      left: span.left - 1,
+      right: span.left + span.width + 1,
+      top: CREW_BOARD_TOP_PX - 1,
+      bottom: crewCardBottomPx(model, hasRankStrip(model)),
+    }
+  }
+  const layout = layoutOf(model, kind)
+  return {
+    left: PANEL_LEFT - 1,
+    right: PANEL_RIGHT + 1,
+    top: layout.panelTop - 1,
+    bottom: soloCardBottom(model, layout) + 1,
+  }
+})
+
 const CARD_FADE_MS = 160
 const CARD_RISE_PX = 6
 
@@ -579,10 +625,9 @@ const cardShapes = (
   const hasStrip = hasRankStrip(model)
   const rowPx = hasStrip ? STRIPPED_ROW_PX : ROW_PX
   const top = layout.panelTop
-  const footerTop = top + PANEL_PAD + rows.length * rowPx + 2
+  const footerTop = soloFooterTop(model, layout)
   const stripTop = footerTop + KINDS_PX
-  const bottom =
-    footerTop + KINDS_PX + PANEL_PAD - 2 + (hasStrip ? STRIP_PX + 2 : 0)
+  const bottom = soloCardBottom(model, layout)
   return [
     rise([
       ...lineShapes(model, kind, ms, layout.quipY),

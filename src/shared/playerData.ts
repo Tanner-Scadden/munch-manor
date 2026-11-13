@@ -9,10 +9,13 @@ import {
   String,
 } from 'effect'
 
+import { DayStamp } from './dayStamp'
+import { SavedMissions } from './missionData'
+
 // NOTE: the player's lasting data as Schemas, shared with the sync Worker in
 // infra/worker, which bundles it against its own, newer Effect. It imports
-// nothing but `effect` and uses only Schema APIs both versions have, so the
-// Worker never pulls in the game. src/app/model.ts and src/platform/save.ts re-export
+// nothing but `effect` and its own folder and uses only Schema APIs both
+// versions have, so the Worker never pulls in the game. src/app/model.ts and src/platform/save.ts re-export
 // these.
 
 // SETTINGS
@@ -845,7 +848,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 22
+export const SAVE_VERSION = 23
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1023,13 +1026,6 @@ export const SavedRank = Schema.Struct({
 })
 export type SavedRank = typeof SavedRank.Type
 
-// NOTE: a UTC day as YYYY-MM-DD, as the Model's `maybeToday` holds it
-// (src/platform/today.ts). Days of this shape sort as strings.
-export const DayStamp = Schema.String.check(
-  Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
-)
-export type DayStamp = typeof DayStamp.Type
-
 // NOTE: the Bones the first escape on each difficulty pays, once
 // (docs/PROGRESSION_PLAN.md, pillar A). The player scope reads it here, never
 // from a mutation's args.
@@ -1123,6 +1119,7 @@ export type PlayerName = typeof PlayerName.Type
 // RUNS unlock, which used to stay on the device that opened `?record=1`.
 // Version 21 added the Bones bonuses and each difficulty's best run.
 // Version 22 added how the last run ended, for the friends in the car.
+// Version 23 added the daily missions (src/shared/missionData.ts).
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1145,5 +1142,6 @@ export const PlayerSave = Schema.Struct({
   recordUnlock: RecordUnlock,
   bonuses: SavedBonuses,
   lastRun: RunEnding,
+  missions: SavedMissions,
 })
 export type PlayerSave = typeof PlayerSave.Type

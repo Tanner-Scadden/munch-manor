@@ -1,11 +1,11 @@
 // The menus polish pass: the home menu (fresh, with bests, the corner with
 // the gift and the install tile, Endless), the iPhone guide, the update
-// greeting, the MORE hand, every menu panel (How to play and a flipped
-// card, What's New and an older day, the difficulty question, LEAVE), the
-// Munchopedia (empty, found, its entries, the Shop page), and every tab of
-// the Profile, on a 1280x720 desktop, an 852x393 phone on its side, a
-// 393x852 phone held upright, a small 360x740 Android, and a 1024x768
-// tablet, as `menus-<TAG>-<viewport>-<scene>.png`.
+// greeting, the MORE hand, the daily missions panel, every menu panel (How
+// to play and a flipped card, What's New and an older day, the difficulty
+// question, LEAVE), the Munchopedia (empty, found, its entries, the Shop
+// page), and every tab of the Profile, on a 1280x720 desktop, an 852x393
+// phone on its side, a 393x852 phone held upright, a small 360x740 Android,
+// and a 1024x768 tablet, as `menus-<TAG>-<viewport>-<scene>.png`.
 // It prints a phone button under 44 px, a button past the screen's edge,
 // text cut off in its box, and a page that scrolls, and exits with 1 on any.
 // FRAMES=1 also steps each opening animation (the hand's deal, a panel, the
@@ -73,6 +73,7 @@ const SCENES: ReadonlyArray<Scene> = [
     open: ['#home-install'],
     isAnimated: true,
   },
+  { name: 'missions', query: '', open: ['#home-missions'], isAnimated: true },
   { name: 'greet', query: 'greet' },
   { name: 'hand', query: 'support', open: [MANOR], isAnimated: true },
   { name: 'hand-found', query: `${FOUND}&newsseen`, open: [MANOR] },

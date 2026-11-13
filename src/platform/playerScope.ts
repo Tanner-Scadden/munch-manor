@@ -9,12 +9,23 @@ import {
   scopeId,
 } from '@munch/sync-engine'
 
+import { DayStamp } from '../shared/dayStamp'
+import {
+  ALL_THREE_BONES,
+  MissionReroll,
+  SavedMissions,
+  addProgress,
+  bonesOfMission,
+  claimMission,
+  freezeOn,
+  rerollOn,
+  stampDay,
+} from '../shared/missionData'
 import {
   Appearance,
   COSMETIC_PRICES,
   Calling,
   CursorSetting,
-  DayStamp,
   Difficulty,
   FIRST_ESCAPE_BONES,
   HomeScreenTip,
@@ -45,13 +56,16 @@ import {
   StoredAppearance,
   isBetterRun,
 } from '../shared/playerData'
+import { PLAYER_MIGRATIONS } from './playerMigrations'
 
 // NOTE: the player scope, `player:<playerId>`: one player's settings, look,
 // name, difficulty, onboarding, bests, home menu, power-ups seen, and
 // rotation, rumble, synced
 // between that player's devices.
 // Shared with the sync Worker in infra/worker, so it imports only `effect`,
-// the sync engine, and src/shared/playerData.ts. The tables are the ones the game
+// the sync engine, and src/shared/ (playerData.ts, dayStamp.ts,
+// missionData.ts), and its migrations (src/platform/playerMigrations.ts).
+// The tables are the ones the game
 // already kept on the device (src/platform/storeSqlite.ts made `player` and
 // `kills_by_kind` first, so the view tables exist with IF NOT EXISTS), plus
 // `linked_devices`, which only the server writes.
@@ -99,6 +113,7 @@ export const PlayerRow = Schema.Struct({
   doubled_day: Schema.NullOr(DayStamp),
   escaped_on: Schema.fromJsonString(EscapedOn),
   last_run: RunEnding,
+  missions: Schema.fromJsonString(SavedMissions),
 })
 export type PlayerRow = typeof PlayerRow.Type
 
@@ -142,6 +157,7 @@ export const PLAYER_COLUMNS = Array.make(
   'doubled_day',
   'escaped_on',
   'last_run',
+  'missions',
 )
 
 export const rowOfSave = (save: PlayerSave): PlayerRow => ({
@@ -178,6 +194,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   doubled_day: save.bonuses.doubledDay,
   escaped_on: save.bonuses.escapedOn,
   last_run: save.lastRun,
+  missions: save.missions,
 })
 
 export const BoughtRow = Schema.Struct({ id: Schema.String })
@@ -229,12 +246,13 @@ const updatePlayer = (
 // the save with no ammo tip (save version 17), 15 the save with the
 // rumble (save version 18), 16 the save with RECORD MY RUNS (save
 // version 19), 17 the save with its unlock (save version 20), and 18 the
-// save with the Bones bonuses and the best runs (save version 21), and 19
-// the save with the last run's ending (save version 22).
+// save with the Bones bonuses and the best runs (save version 21), 19
+// the save with the last run's ending (save version 22), and 20 the save
+// with the daily missions (save version 23).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 19,
+  version: 20,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -934,6 +952,154 @@ export const EscapedFirst = defineMutation({
     }),
 })
 
+// DAILY MISSIONS
+
+const MissionsRow = Schema.Struct({
+  missions: Schema.fromJsonString(SavedMissions),
+})
+
+const encodeMissions = Schema.encodeEffect(Schema.fromJsonString(SavedMissions))
+
+const readMissions = (context: ApplyContext) =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    const rows =
+      yield* sql`SELECT missions FROM ${context.table('player')} WHERE id = 1`
+    return pipe(
+      Array.head(rows),
+      Option.flatMap(Schema.decodeUnknownOption(MissionsRow)),
+      Option.map(row => row.missions),
+    )
+  })
+
+const writeMissions = (
+  context: ApplyContext,
+  missions: SavedMissions,
+  bones: number,
+) =>
+  Effect.gen(function* () {
+    const json = yield* Effect.mapError(encodeMissions(missions), toRejected)
+    const sql = yield* SqlClient.SqlClient
+    yield* sql`UPDATE ${context.table('player')} SET
+      missions = ${json},
+      rank_bones = rank_bones + ${bones}
+      WHERE id = 1`
+  })
+
+const MAX_MISSION_COUNT = 1000
+
+// NOTE: a run's progress on a day's missions (src/shared/missionData.ts),
+// as increments by mission, each capped at its goal, so runs on two linked
+// devices the same day add up. A later day starts the record afresh; a
+// count for a day older than the record's adds nothing. `coop` marks the
+// player as one who has played an online co-op run, for good.
+/** @stability unstable */
+export const ProgressedMissions = defineMutation({
+  name: 'ProgressedMissions',
+  version: 1,
+  args: Schema.Struct({
+    day: DayStamp,
+    progress: Schema.Record(
+      Schema.String,
+      Count.check(Schema.isLessThanOrEqualTo(MAX_MISSION_COUNT)),
+    ),
+    coop: Schema.Boolean,
+  }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ day, progress, coop }, context) =>
+    Effect.gen(function* () {
+      const maybeKept = yield* readMissions(context)
+      if (Option.isNone(maybeKept)) {
+        return
+      }
+      const added = addProgress(maybeKept.value, day, progress)
+      yield* writeMissions(
+        context,
+        coop ? { ...added, hasPlayedCoop: true } : added,
+        0,
+      )
+    }),
+})
+
+// NOTE: the day's three as first rolled. The first device's stand, so a
+// gate the player passes later that day changes no device's three.
+/** @stability unstable */
+export const RolledMissions = defineMutation({
+  name: 'RolledMissions',
+  version: 1,
+  args: Schema.Struct({ day: DayStamp, rolled: Schema.Array(Schema.String) }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ day, rolled }, context) =>
+    Effect.gen(function* () {
+      const maybeKept = yield* readMissions(context)
+      if (Option.isNone(maybeKept)) {
+        return
+      }
+      yield* writeMissions(context, freezeOn(maybeKept.value, day, rolled), 0)
+    }),
+})
+
+// NOTE: the day's one free reroll. The first device's stands.
+/** @stability unstable */
+export const RerolledMission = defineMutation({
+  name: 'RerolledMission',
+  version: 1,
+  args: Schema.Struct({ day: DayStamp, reroll: MissionReroll }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ day, reroll }, context) =>
+    Effect.gen(function* () {
+      const maybeKept = yield* readMissions(context)
+      if (Option.isNone(maybeKept)) {
+        return
+      }
+      yield* writeMissions(context, rerollOn(maybeKept.value, day, reroll), 0)
+    }),
+})
+
+// NOTE: a mission done on `day` pays its Bones (MISSION_BONES, read here
+// and never from the args) once, and only once its count has met its
+// goal in this scope, so two devices that both finish it are paid once.
+/** @stability unstable */
+export const ClaimedMission = defineMutation({
+  name: 'ClaimedMission',
+  version: 1,
+  args: Schema.Struct({ day: DayStamp, mission: Schema.String }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ day, mission }, context) =>
+    Effect.gen(function* () {
+      const maybeKept = yield* readMissions(context)
+      const maybeClaimed = Option.flatMap(maybeKept, claimMission(day, mission))
+      if (Option.isNone(maybeClaimed)) {
+        return
+      }
+      yield* writeMissions(context, maybeClaimed.value, bonesOfMission(mission))
+    }),
+})
+
+// NOTE: all three of a day's missions done: ALL_THREE_BONES once, and the
+// day stamped for the Proof Shelf, once three claims stand in this scope.
+/** @stability unstable */
+export const StampedMissionDay = defineMutation({
+  name: 'StampedMissionDay',
+  version: 1,
+  args: Schema.Struct({ day: DayStamp }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ day }, context) =>
+    Effect.gen(function* () {
+      const maybeKept = yield* readMissions(context)
+      const maybeStamped = Option.flatMap(maybeKept, stampDay(day))
+      if (Option.isNone(maybeStamped)) {
+        return
+      }
+      yield* writeMissions(context, maybeStamped.value, ALL_THREE_BONES)
+    }),
+})
+
 // NOTE: written by the server when a device links to this player, so every
 // device can say how many are linked.
 /** @stability unstable */
@@ -984,177 +1150,12 @@ export const PlayerScope = defineScope({
     DoubledFirstRun,
     EscapedFirst,
     EndedRun,
+    ProgressedMissions,
+    RolledMissions,
+    RerolledMission,
+    ClaimedMission,
+    StampedMissionDay,
     LinkedDevices,
   ],
-  migrations: {
-    '0001_create_player': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('player'))} (
-          id INTEGER PRIMARY KEY CHECK (id = 1),
-          sound TEXT NOT NULL,
-          music TEXT NOT NULL,
-          shake TEXT NOT NULL,
-          share_stats TEXT NOT NULL,
-          appearance TEXT NOT NULL,
-          difficulty TEXT NOT NULL,
-          difficulty_card TEXT NOT NULL,
-          nightmare TEXT NOT NULL,
-          onboarding TEXT NOT NULL,
-          home_screen_tip TEXT NOT NULL,
-          runs_played INTEGER NOT NULL,
-          total_kills INTEGER NOT NULL,
-          difficulty_bests TEXT NOT NULL
-        )`
-        yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('kills_by_kind'))} (
-          kind TEXT PRIMARY KEY,
-          kills INTEGER NOT NULL
-        )`
-      }),
-    '0002_create_linked_devices': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('linked_devices'))} (
-          id INTEGER PRIMARY KEY CHECK (id = 1),
-          count INTEGER NOT NULL
-        )`
-      }),
-    // NOTE: the home menu came from main after the player table shipped to
-    // the preview, so it is added here with an unvisited default.
-    '0003_add_home': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN home TEXT NOT NULL
-          DEFAULT '{"seenNewsDay":null,"openedEntries":[]}'`
-      }),
-    // NOTE: the power-ups seen came after the home menu, so they are added
-    // the same way, with none seen.
-    '0004_add_seen_power_ups': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN seen_power_ups TEXT NOT NULL DEFAULT '[]'`
-      }),
-    // NOTE: the cursor setting came after the power-ups seen. A player from
-    // before it gets the bold cursor, as a new player does.
-    '0005_add_cursor': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN cursor TEXT NOT NULL DEFAULT 'Bold'`
-      }),
-    // NOTE: the rotation came after the cursor, added the same way. Every
-    // player starts locked to landscape.
-    '0006_add_rotation': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN rotation TEXT NOT NULL DEFAULT 'Landscape'`
-      }),
-    // NOTE: the display name came after the rotation. A player from before
-    // it has none, and the game shows the placeholder.
-    '0007_add_name': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN name TEXT NOT NULL DEFAULT ''`
-      }),
-    // NOTE: the run records came after the name. A player from before them
-    // has none, so their first records set without a NEW BEST.
-    '0008_add_run_records': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN run_records TEXT NOT NULL
-          DEFAULT '{"Easy":{"furthestWave":null,"mostKills":null},"Normal":{"furthestWave":null,"mostKills":null},"Hard":{"furthestWave":null,"mostKills":null},"Nightmare":{"furthestWave":null,"mostKills":null}}'`
-      }),
-    // NOTE: rank came after the run records. A player from before it has
-    // earned nothing and has not been granted the veteran start, so the
-    // first device to load grants it. Spent Bones are for the closet.
-    '0009_add_rank': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN rank_points INTEGER NOT NULL DEFAULT 0`
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN rank_bones INTEGER NOT NULL DEFAULT 0`
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN veteran_points INTEGER NOT NULL DEFAULT 0`
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN veteran_bones INTEGER NOT NULL DEFAULT 0`
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN veteran_granted INTEGER NOT NULL DEFAULT 0`
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN spent_bones INTEGER NOT NULL DEFAULT 0`
-      }),
-    // NOTE: callings came after rank. A player from before them picks YOU.
-    '0010_add_calling': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN calling TEXT NOT NULL DEFAULT 'You'`
-      }),
-    // NOTE: the closet came after callings. The hat is part of the look's
-    // JSON (a look from before reads bare headed), so the only new thing is
-    // the table of hats bought with Bones.
-    '0011_closet': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('bought_cosmetics'))} (
-          id TEXT PRIMARY KEY
-        )`
-      }),
-    // NOTE: NEW badges came after the closet. A player from before them has
-    // seen the baseline mark: every unlock reached by the first load.
-    '0012_add_seen_unlocks': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN seen_unlocks TEXT NOT NULL DEFAULT '["*"]'`
-      }),
-    // NOTE: the rumble came after NEW badges, added as the rotation was.
-    // Every player's controller rumbles until they turn it off.
-    '0013_add_rumble': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN rumble TEXT NOT NULL DEFAULT 'On'`
-      }),
-    // NOTE: RECORD MY RUNS came after the rumble. A player from before it
-    // records nothing.
-    '0014_add_record_runs': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN record_runs TEXT NOT NULL DEFAULT 'Off'`
-      }),
-    // NOTE: the RECORD MY RUNS unlock came after the setting, kept on each
-    // device until then. A player from before it reads as locked until a
-    // device that holds its own mark writes the unlock.
-    '0015_add_record_unlock': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN record_unlock TEXT NOT NULL DEFAULT 'Locked'`
-      }),
-    // NOTE: the Bones bonuses came after the unlock. A player from before
-    // them has doubled no day and escaped on nothing since. The best runs
-    // ride in run_records' JSON, read as none where missing.
-    '0016_add_bonuses': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN doubled_day TEXT`
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN escaped_on TEXT NOT NULL DEFAULT '[]'`
-      }),
-    // NOTE: a player from before reads as no run yet, as an old save does.
-    '0017_add_last_run': table =>
-      Effect.gen(function* () {
-        const sql = yield* SqlClient.SqlClient
-        yield* sql`ALTER TABLE ${sql(table('player'))}
-          ADD COLUMN last_run TEXT NOT NULL DEFAULT 'NoRunYet'`
-      }),
-  },
+  migrations: PLAYER_MIGRATIONS,
 })
