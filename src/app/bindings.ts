@@ -11,6 +11,7 @@ import { CoopBlock } from '../features/coop'
 import { LobbyBlock } from '../features/lobby/block'
 import { MunchopediaBlock } from '../features/munchopedia/block'
 import { ProfileBlock } from '../features/profile/block'
+import { ProofShelfBlock } from '../features/proof/block'
 import { lobbyPicksOf } from '../screens/home/home'
 import { makeRequiredFieldBinding } from './definition'
 import { isPanelOpen } from './menuState'
@@ -57,6 +58,15 @@ export const UpdateGreetingBinding = makeRequiredFieldBinding(DialogBlock, {
 export const MunchopediaBinding = makeRequiredFieldBinding(MunchopediaBlock, {
   field: 'munchopedia',
   delivery: { when: model => isPanelOpen(model, 'Munchopedia') },
+})
+
+// THE PROOF SHELF
+
+// NOTE: the Proof Shelf in the menu panel. Its taps and keys count only
+// while its panel is up.
+export const ProofShelfBinding = makeRequiredFieldBinding(ProofShelfBlock, {
+  field: 'proofShelf',
+  delivery: { when: model => isPanelOpen(model, 'Proof') },
 })
 
 // THE PROFILE

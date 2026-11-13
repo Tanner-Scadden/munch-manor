@@ -7,6 +7,7 @@ import { settle } from '@munch/sync-engine/testing'
 
 import { noMissions } from '../../shared/missionData'
 import { noBonuses, noSavedRunRecords } from '../../shared/playerData'
+import { noProof } from '../../shared/proofData'
 import {
   legacySave,
   linkedPair,
@@ -1089,6 +1090,7 @@ const migratedLiveSave: PlayerSave = {
   bonuses: noBonuses,
   lastRun: 'NoRunYet',
   missions: noMissions,
+  proof: noProof,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

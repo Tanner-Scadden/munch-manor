@@ -31,6 +31,7 @@ export const homeCases = {
   CompletedFocusEndMenuButton: {},
   ClickedWhatsNewButton: {},
   ClickedMunchopediaButton: {},
+  ClickedProofButton: {},
   ClickedNewEntryButton: { kind: ZombieKind },
   ClickedManorButton: {},
   ClickedTurnHint: {},

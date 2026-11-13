@@ -43,7 +43,9 @@ export default defineConfig({
     // sizes in src/features/support/__tests__/support.scene.test.ts, the moving animations in
     // src/app/__tests__/motion.test.ts). Vitest hands every other CSS file over empty.
     css: {
-      include: [/(menu|profile|shop|styles|coop|calling|closet|lobby)\.css/],
+      include: [
+        /(menu|profile|shop|styles|coop|calling|closet|lobby|proof)\.css/,
+      ],
     },
     server: {
       deps: {

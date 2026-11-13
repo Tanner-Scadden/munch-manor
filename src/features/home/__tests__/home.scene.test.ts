@@ -67,7 +67,7 @@ describe("What's New", () => {
         Scene.expect(newsPip).toExist(),
         Scene.expect(manorButton).toHaveAttr(
           'aria-label',
-          "More: character, Munchopedia, what is new, and how to play. Something new in What's new",
+          "More: character, Munchopedia, what is new, how to play, and proof. Something new in What's new",
         ),
         ...openHandInScene(),
         Scene.expect(whatsNewWithDot).toExist(),

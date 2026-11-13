@@ -32,6 +32,7 @@ import {
   SyncState,
 } from '@game/platform/playerSync'
 import { heroIdOf } from '@game/shared/playerData'
+import { BIG_KEY, type SavedProof } from '@game/shared/proofData'
 import { dareCardOf, maybeLyingAt } from '@game/world/dare/dare'
 import { DareThingState, Finale } from '@game/world/dare/dareSchema'
 import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
@@ -265,6 +266,83 @@ const atRoomFind = (
   )
 }
 
+// NOTE: the Proof Shelf's sample: a lost run's finds on Normal, a Triple
+// Dare escape with a crew, the big key on Easy, and a week of mission
+// days, on a known day.
+const PROOF_DAY = '2026-11-13'
+
+const SAMPLE_PROOF: SavedProof = [
+  ...Array.map(
+    ['SilverSpoon', 'MusicBox', 'FamilyPortrait', BIG_KEY],
+    thing => ({
+      thing,
+      difficulty: 'Easy',
+      stamp: {
+        wave: 10,
+        hero: 'You',
+        crew: [],
+        day: '2026-11-02',
+        ending: 'Escaped' as const,
+      },
+    }),
+  ),
+  ...Array.map(['SilverSpoon', 'GuestBookPage'], thing => ({
+    thing,
+    difficulty: 'Normal',
+    stamp: {
+      wave: 6,
+      hero: 'Handyman',
+      crew: [],
+      day: '2026-11-09',
+      ending: 'Munched' as const,
+    },
+  })),
+  {
+    thing: 'MusicBox',
+    difficulty: 'Hard',
+    stamp: {
+      wave: 8,
+      hero: 'TrackStar',
+      crew: [
+        { name: 'GIZMO', isBot: true },
+        { name: 'DR. CHOMP', isBot: false },
+      ],
+      day: PROOF_DAY,
+      ending: 'Chicken',
+    },
+  },
+]
+
+const PROOF_DAYS = [
+  '2026-11-03',
+  '2026-11-04',
+  '2026-11-07',
+  '2026-11-10',
+  '2026-11-11',
+  '2026-11-12',
+]
+
+// NOTE: all of it seen before but the Triple Dare find, which wears NEW.
+const SEEN_PROOF = [
+  ...Array.filterMap(SAMPLE_PROOF, entry =>
+    entry.difficulty === 'Hard'
+      ? Result.failVoid
+      : Result.succeed(`proof:${entry.thing}:${entry.difficulty}`),
+  ),
+  ...Array.map(PROOF_DAYS, day => `proof:day:${day}`),
+]
+
+const withSampleProof = (model: Model): Model =>
+  modifyFields(model, {
+    proof: () => SAMPLE_PROOF,
+    maybeToday: () => Option.some(PROOF_DAY),
+    missions: missions =>
+      modifyFields(missions, {
+        stampedDays: () => PROOF_DAYS,
+      }),
+    seenUnlocks: seen => Array.union(seen, SEEN_PROOF),
+  })
+
 export const scenarioModel = (settings: SceneSettings): Model =>
   withCoop(settings.config, scenarioModelOf(settings))
 
@@ -480,6 +558,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       newEntries: config.newentries ?? home.newEntries,
     }),
   })
+  if (config.proof) {
+    model = withSampleProof(model)
+  }
   model = Array.reduce(Array.range(1, config.lobbybots ?? 0), model, seated =>
     config.lobbybots === undefined ? seated : addBot(seated),
   )

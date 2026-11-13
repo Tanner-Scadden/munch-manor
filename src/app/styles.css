@@ -7,6 +7,7 @@
 @import '../features/coop/coop.css';
 @import '../features/lobby/lobby.css';
 @import '../features/missions/missions.css';
+@import '../features/proof/proof.css';
 
 html,
 body {

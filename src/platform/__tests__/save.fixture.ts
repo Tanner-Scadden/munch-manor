@@ -1,4 +1,5 @@
 import { noMissions } from '../../shared/missionData'
+import { noProof } from '../../shared/proofData'
 // The save a returning player's device holds, every field set, which the
 // save tests load, write, and migrate from.
 import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
@@ -84,6 +85,7 @@ export const learnedSave: PlayerSave = {
   bonuses: { doubledDay: null, escapedOn: [] },
   lastRun: 'NoRunYet',
   missions: noMissions,
+  proof: noProof,
   calling: 'TrackStar',
   boughtCosmetics: [],
   seenUnlocks: [],

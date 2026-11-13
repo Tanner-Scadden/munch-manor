@@ -6,6 +6,7 @@ import { CoopLayer } from '../features/coop'
 import { LobbyLayer } from '../features/lobby/layer'
 import { MunchopediaLayer } from '../features/munchopedia/layer'
 import { ProfileLayer } from '../features/profile/layer'
+import { ProofShelfLayer } from '../features/proof/layer'
 import { ApplicationBlock } from './definition'
 import { EffectsLayer } from './layer'
 import { init, update } from './main'
@@ -14,11 +15,12 @@ import { managedResources } from './update/sound'
 import { view } from './view'
 
 // NOTE: every child's implementation Layer: the dialogs, the
-// Munchopedia, the Profile, the lobby, and co-op. The audit
+// Munchopedia, the Proof Shelf, the Profile, the lobby, and co-op. The audit
 // harness (tools/audit/harness/entry.ts) completes the root with them too.
 export const ChildLayers = Layer.mergeAll(
   Dialog.layer,
   MunchopediaLayer,
+  ProofShelfLayer,
   ProfileLayer,
   LobbyLayer,
   CoopLayer,

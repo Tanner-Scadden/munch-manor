@@ -16,6 +16,7 @@ import {
   Hat,
   type RunEnding,
 } from '../shared/playerData'
+import type { ProofEnding } from '../shared/proofData'
 import type { DareKind } from './dare/dareSchema'
 import type { BoneBonus } from './heroes/rank'
 import type { Modifier } from './run/modifiers'
@@ -475,6 +476,23 @@ export const DARE_LINES: Readonly<Record<DareKind, string>> = {
   MusicBox: 'WINDS ITSELF. ONLY KNOWS THE CONGA.',
   FamilyPortrait: 'THE MUNCHES, SMILING. TOO MANY TEETH.',
   GuestBookPage: '4,012 SIGNED IN. NOBODY SIGNED OUT.',
+}
+
+// THE PROOF SHELF
+
+// NOTE: the Proof Shelf (src/features/proof/): its card in the MORE hand,
+// the big key that hangs on each row once Uncle Chunk falls there, and how
+// a stamped run ended.
+export const PROOF_NAME = 'Proof'
+
+export const BIG_KEY_NAME = "Uncle Chunk's Big Key"
+
+export const BIG_KEY_LINE = 'OPENS THE FRONT DOOR. HE WANTS IT BACK.'
+
+export const PROOF_ENDING_NAMES: Readonly<Record<ProofEnding, string>> = {
+  Escaped: 'ESCAPED',
+  Chicken: 'CHICKEN',
+  Munched: 'MUNCHED',
 }
 
 // DAILY MISSIONS

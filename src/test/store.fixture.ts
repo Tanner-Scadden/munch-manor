@@ -43,6 +43,7 @@ import {
 } from '../platform/storeSqlite'
 import { noMissions } from '../shared/missionData'
 import { noBonuses, noSavedRunRecords } from '../shared/playerData'
+import { noProof } from '../shared/proofData'
 import { noRank } from '../world/heroes/rank'
 
 // NOTE: what the store tests (src/platform/__tests__/store.test.ts) start from: a save, a fake
@@ -101,6 +102,7 @@ export const legacySave: PlayerSave = {
   bonuses: noBonuses,
   lastRun: 'NoRunYet',
   missions: noMissions,
+  proof: noProof,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

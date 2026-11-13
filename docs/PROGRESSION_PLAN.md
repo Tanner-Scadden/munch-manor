@@ -78,7 +78,7 @@ Cheapest first, most value early. Each is one pull request with its tests, and b
 2. **F: the friends in the car.** Small, and it gives A's outcomes a voice. Built 2026-11-12 (see "What the friends in the car built" in `GAME_DESIGN.md`); "Chicken!" came with step 4's leaving early.
 3. **C: daily missions,** with the date Subscription that the first run of the day also reads. Built 2026-11-12 (see "What the daily missions built" in `GAME_DESIGN.md`).
 4. **A's leaving early,** a World rule, protocol, analytics, and balance (`test:full`, a wave pass). Built 2026-11-13 (see "What leaving early built" in `GAME_DESIGN.md`): protocol 21, run summary version 8, D1 migration 0011, the `LeaveEarly` mission. The balance bot never leaves early, so no wave pass was needed. The Proof Shelf's CHICKEN stamp comes with step 5.
-5. **B: the Proof Shelf,** then the Dare Journal, then rank gifts at every rank. The milestone table goes in here with its first new content: two list things and their hiding spots.
+5. **B: the Proof Shelf,** then the Dare Journal, then rank gifts at every rank. The milestone table goes in here with its first new content: two list things and their hiding spots. The shelf was built 2026-11-13 (see "What the Proof Shelf built" in `GAME_DESIGN.md`): save version 24, scope migration 0019. The CHICKEN count is left for later.
 6. **D: hero and gun mastery.**
 7. **E: the dare ladder.**
 8. **G: beat my run.**

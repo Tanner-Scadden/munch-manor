@@ -16,6 +16,7 @@ import {
   PanelDialogBinding,
   ProfileBinding,
   ProfileDialogBinding,
+  ProofShelfBinding,
   UpdateGreetingBinding,
 } from './bindings'
 import { ApplicationBlock, makeComposition, makeNoopStep } from './definition'
@@ -179,6 +180,7 @@ export const ApplicationComposition = makeComposition({
     ProfileBindingWithOutMessagePolicy,
     LobbyBindingWithOutMessagePolicy,
     MunchopediaBindingWithOutMessagePolicy,
+    ProofShelfBinding,
     CoopBindingWithOutMessagePolicy,
   ],
   mounts,

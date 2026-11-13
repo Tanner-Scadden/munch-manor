@@ -14,6 +14,7 @@ import { HomeMessage } from '../../features/home/message'
 import type { HelpCard } from '../../features/menus/message'
 import { MunchopediaPage } from '../../features/munchopedia/model'
 import { skipTutorial } from '../../features/onboarding/onboarding'
+import { markProofSeen } from '../../features/proof/proof'
 import { NEWS_DAYS } from '../../features/whatsNew/changelog'
 import { PAD_A, PAD_B, PAD_START } from '../../input/gamepad'
 import {
@@ -65,6 +66,7 @@ import {
   HomeScreenStepsBinding,
   MunchopediaBinding,
   PanelDialogBinding,
+  ProofShelfBinding,
   UpdateGreetingBinding,
 } from '../bindings'
 import { ApplicationBlock, makeStep } from '../definition'
@@ -384,6 +386,19 @@ const openMunchopedia = (page: MunchopediaPage) =>
       : unchanged,
   )
 
+// NOTE: the Proof Shelf opens with nothing picked, and everything on it is
+// seen: the PROOF card's NEW pip goes, and what was new keeps its own NEW
+// while the shelf stays up.
+const openProof = makeStep(model =>
+  isPanelAllowed(model, 'Proof')
+    ? Update.combineSteps([
+        modelStep(markProofSeen),
+        ProofShelfBinding.requestOpen(),
+        openPanel('Proof'),
+      ])
+    : unchanged,
+)
+
 const turnNews: {
   (step: number): (model: Model) => UpdateReturn
   (model: Model, step: number): UpdateReturn
@@ -403,6 +418,8 @@ const openCard = (card: KeyedHandCard) => {
       return openProfile('Look')
     case 'HowToPlay':
       return openPanel('HowToPlay')
+    case 'Proof':
+      return openProof
   }
 }
 
@@ -724,6 +741,9 @@ export const homeHandlers = defineHandlers({
       closeHand,
       openMunchopedia(MunchopediaPage.List()),
     ]),
+
+  ClickedProofButton: model =>
+    Update.combineSteps(model, [unlockAudio, closeHand, openProof]),
 
   ClickedNewEntryButton: (model, { kind }) =>
     Update.combineSteps(model, [

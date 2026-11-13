@@ -348,3 +348,24 @@ export const PLAIN_SIGHT: Sprite = spriteShapes(
   { o: '#4a4038', w: '#ffe066', k: '#140c10' },
   TOP_LEFT,
 )
+
+// THE BIG KEY
+
+// NOTE: Uncle Chunk's big skeleton key, twice a house key's size, gold with
+// a dark outline: in flight to the front door (src/features/dare/dareView.ts)
+// and hung on the Proof Shelf once he is felled (src/features/proof/).
+export const BIG_KEY_PALETTE: Palette = {
+  k: '#140c10',
+  Y: '#ffd23f',
+  y: '#c9971c',
+  W: '#fff7d0',
+}
+
+export const BIG_KEY_PIXELS: ReadonlyArray<string> = [
+  '.kkkk..........',
+  'kYWYYk.........',
+  'kYkkYkkkkkkkkk.',
+  'kYkkYYYYYYYYYYk',
+  'kyyyykkkkykkyyk',
+  '.kkkk....kk.kkk',
+]

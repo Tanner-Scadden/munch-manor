@@ -16,6 +16,8 @@
     "../src/shared/playerData.ts",
     "../src/platform/playerScope.ts",
     "../src/platform/playerMigrations.ts",
+    "../src/platform/proofScope.ts",
+    "../src/shared/proofData.ts",
     "../src/platform/recordingApi.ts",
     "../tools/analytics/queries.ts"
   ]

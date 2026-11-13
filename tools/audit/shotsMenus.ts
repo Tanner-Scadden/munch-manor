@@ -108,6 +108,19 @@ const SCENES: ReadonlyArray<Scene> = [
     open: ['.pause-menu-button'],
     isAnimated: true,
   },
+  { name: 'proof-empty', query: '', open: [MANOR, '#hand-card-proof'] },
+  {
+    name: 'proof',
+    query: 'proof',
+    open: [MANOR, '#hand-card-proof'],
+    isAnimated: true,
+  },
+  {
+    name: 'proof-picked',
+    query: 'proof',
+    open: [MANOR, '#hand-card-proof', '#proof-slot-musicbox-hard'],
+    isAnimated: true,
+  },
   {
     name: 'munchopedia-empty',
     query: '',

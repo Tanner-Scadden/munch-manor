@@ -1,0 +1,420 @@
+/* THE PROOF SHELF: your friends' treehouse shelf in the menu panel
+   (src/features/proof/view.ts). A row per difficulty, its skull at the
+   left, the house's things along a board and Uncle Chunk's hook last;
+   beside it (under it on a narrow screen) the picked slot's stamp and the
+   calendar of mission days. Nothing moves: a pick changes at once, and only
+   the NEW tags blink, as every NEW tag does. */
+
+.panel-dialog[data-panel='Proof'] .panel {
+  --panel-accent: var(--menu-gold);
+  width: min(720px, calc(100vw - 16px));
+}
+
+/* NOTE: the shelf's Block draws its body in one box that takes no room of
+   its own, so the house and the actions row lay out as the panel's
+   children, as the Munchopedia's do. */
+.proof-body {
+  display: contents;
+}
+
+.proof-house {
+  --proof-wood-dark: #2a1a12;
+  --proof-wood: #4a2e1c;
+  --proof-wood-seam: #3a2416;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--menu-gap);
+  min-height: 0;
+}
+
+@media (min-aspect-ratio: 4/3) {
+  .proof-house {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}
+
+/* THE SHELF */
+
+/* NOTE: the treehouse's back wall: dark boards side by side. */
+.proof-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 8px 12px;
+  border: 3px solid var(--proof-wood-dark);
+  border-radius: var(--menu-radius-sm);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--proof-wood) 0 38px,
+    var(--proof-wood-seam) 38px 40px
+  );
+  list-style: none;
+}
+
+.proof-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: end;
+  gap: 4px;
+  padding-bottom: 10px;
+}
+
+.proof-row-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 4px;
+}
+
+.proof-skull {
+  width: 18px;
+  height: 18px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.proof-slots {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+/* NOTE: the board the row's things stand on, with a bracket under each
+   end. */
+.proof-plank {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  pointer-events: none;
+}
+
+.proof-board {
+  position: absolute;
+  inset: 0;
+  background: center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+}
+
+.proof-bracket {
+  position: absolute;
+  top: 9px;
+  width: 9px;
+  height: 9px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.proof-bracket-left {
+  left: 22px;
+}
+
+.proof-bracket-right {
+  right: 6px;
+  scale: -1 1;
+}
+
+/* NOTE: on an upright screen the skull hangs under its board, between the
+   brackets, so the seven slots get the whole width and stay a thumb wide. */
+@media (max-aspect-ratio: 1/1) {
+  .panel-dialog[data-panel='Proof'] .panel {
+    padding-inline: 6px;
+  }
+
+  .proof-shelf {
+    gap: 16px;
+    padding: 6px 2px 16px;
+    border-width: 2px;
+  }
+
+  .proof-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .proof-row-mark {
+    position: absolute;
+    left: 50%;
+    bottom: -14px;
+    z-index: 2;
+    padding: 0;
+    translate: -50% 0;
+  }
+
+  .proof-skull {
+    width: 14px;
+    height: 14px;
+  }
+
+  .proof-slots {
+    gap: 2px;
+  }
+
+  .proof-bracket-left {
+    left: 6px;
+  }
+}
+
+/* A SLOT */
+
+.proof-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 32px;
+  padding: 3px;
+  border: 2px dashed rgba(244, 241, 222, 0.22);
+  border-radius: var(--menu-radius-sm);
+  background: rgba(10, 6, 4, 0.35);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.proof-slot[data-filled='true'] {
+  border-style: solid;
+  border-color: rgba(255, 224, 102, 0.55);
+  background: rgba(255, 224, 102, 0.08);
+}
+
+.proof-slot[aria-pressed='true'] {
+  border-color: var(--menu-gold);
+  box-shadow: inset 0 0 0 2px var(--menu-gold);
+}
+
+.proof-slot:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) {
+  .proof-slot:hover {
+    filter: brightness(1.2);
+  }
+}
+
+.proof-slot:active {
+  filter: brightness(1.35);
+}
+
+.proof-thing {
+  width: 80%;
+  height: 80%;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.proof-slot[data-filled='false'] .proof-thing {
+  opacity: 0.45;
+}
+
+/* NOTE: the hook's slot: the bare nail dim until the big key hangs on it. */
+.proof-hook {
+  border-style: dotted;
+}
+
+.proof-hook[data-filled='true'] .proof-thing {
+  width: 100%;
+}
+
+.proof-stamp {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 13px;
+  height: 13px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6));
+}
+
+.proof-new {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  z-index: 2;
+  padding: 0 3px;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-red);
+  color: #fff;
+  font: bold 8px / 11px var(--menu-font);
+  letter-spacing: 1px;
+  pointer-events: none;
+  animation: menu-blink 0.8s steps(2) infinite;
+}
+
+/* THE STAMP CARD */
+
+.proof-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--menu-gap);
+  min-width: 0;
+}
+
+.proof-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 2px solid var(--menu-line-strong);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-surface);
+}
+
+.proof-card[data-picked='false'] {
+  grid-template-columns: 40px auto;
+  justify-content: center;
+}
+
+.proof-card-thing {
+  width: 100%;
+  aspect-ratio: 1;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.proof-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.proof-card-text p {
+  margin: 0;
+}
+
+.proof-card-name {
+  color: var(--menu-gold);
+  font-weight: bold;
+}
+
+.proof-card-tally {
+  margin: 0;
+  color: var(--menu-gold);
+  font: bold var(--menu-title-size) / 1 var(--menu-font);
+}
+
+.proof-card-stamp {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: var(--menu-small-size);
+}
+
+.proof-ending,
+.proof-hero,
+.proof-mate {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.proof-ending {
+  font-weight: bold;
+}
+
+.proof-ending[data-ending='Escaped'] {
+  color: var(--menu-green);
+}
+
+.proof-ending[data-ending='Chicken'] {
+  color: var(--menu-orange);
+}
+
+.proof-ending[data-ending='Munched'] {
+  color: var(--menu-red);
+}
+
+.proof-ending-icon,
+.proof-hero-icon,
+.proof-bot {
+  width: 14px;
+  height: 14px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.proof-wave,
+.proof-day {
+  color: var(--menu-ink-dim);
+}
+
+.proof-not-yet {
+  color: var(--menu-ink-faint);
+  letter-spacing: 1px;
+}
+
+.proof-card-line {
+  color: var(--menu-ink-dim);
+  font-size: var(--menu-small-size);
+  font-style: italic;
+}
+
+/* THE CALENDAR */
+
+.proof-calendar {
+  padding: 6px 8px 8px;
+  border: 2px solid var(--menu-line);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-sunken);
+}
+
+.proof-month {
+  margin: 0 0 4px;
+  color: var(--menu-ink-dim);
+  font-size: var(--menu-small-size);
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.proof-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.proof-day-cell:first-child {
+  grid-column-start: var(--first);
+}
+
+.proof-day-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  max-height: 22px;
+  border-radius: 3px;
+  color: var(--menu-ink-faint);
+  font-size: 9px;
+}
+
+.proof-day-cell[data-today='true'] {
+  box-shadow: inset 0 0 0 1px var(--menu-gold);
+  color: var(--menu-ink);
+}
+
+.proof-day-star {
+  width: 80%;
+  height: 80%;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proof-new {
+    animation: none;
+  }
+}
