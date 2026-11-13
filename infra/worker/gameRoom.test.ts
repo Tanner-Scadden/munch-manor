@@ -413,7 +413,7 @@ describe('the room host', () => {
     const junks = [
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.Z',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.AA',
-      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A.A',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A.A.A',
       'Slim.Mohawk.Pink.Deep.Magenta.CCBB',
       'Slim.Mohawk.Pink.Deep.Teal.CHBB',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.R',
