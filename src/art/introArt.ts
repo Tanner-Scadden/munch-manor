@@ -532,16 +532,20 @@ export const IRON_BOLT: Sprite = bakeShapes(
   ]),
 )
 
-// NOTE: HELLO?'s speech bubble, white with a tail down to you, as wide as
-// its word needs.
-const BUBBLE_HEIGHT = 12
+// NOTE: a speech bubble, white with a tail down to whoever speaks, as wide
+// as its words need: HELLO?, and your friends in the car. The tail sits
+// `tailX` in from the bubble's left.
+export const BUBBLE_HEIGHT = 12
+export const BUBBLE_TAIL = 4
 
-export const speechBubble = (width: number): Sprite =>
+export type BubbleShape = Readonly<{ width: number; tailX: number }>
+
+export const speechBubble = ({ width, tailX }: BubbleShape): Sprite =>
   bakeShapes(
     rects([
       [1, 0, width - 2, BUBBLE_HEIGHT, '#f4f1de'],
       [0, 1, width, BUBBLE_HEIGHT - 2, '#f4f1de'],
-      [6, BUBBLE_HEIGHT, 4, 2, '#f4f1de'],
-      [6, BUBBLE_HEIGHT + 2, 2, 2, '#f4f1de'],
+      [tailX, BUBBLE_HEIGHT, 4, BUBBLE_TAIL / 2, '#f4f1de'],
+      [tailX, BUBBLE_HEIGHT + BUBBLE_TAIL / 2, 2, BUBBLE_TAIL / 2, '#f4f1de'],
     ]),
   )

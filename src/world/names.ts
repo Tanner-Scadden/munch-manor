@@ -13,6 +13,7 @@ import {
   type CosmeticKind,
   FIRST_ESCAPE_BONES,
   Hat,
+  type RunEnding,
 } from '../shared/playerData'
 import type { DareKind } from './dare/dareSchema'
 import type { BoneBonus } from './heroes/rank'
@@ -112,6 +113,41 @@ export const BONE_BONUS_TAGS: Readonly<Record<BoneBonus, string>> = {
   Floor: 'MIN',
   Double: 'X2',
   FirstEscape: `+${FIRST_ESCAPE_BONES}`,
+}
+
+// NOTE: your friends in the car at the intro (src/features/intro/carLine.ts),
+// by how your last run ended, a few to each so one never comes twice in a
+// row. A few words each, all caps for the pixel font, short enough for the
+// bubble to fit the picture.
+export const FRIEND_LINES: Readonly<
+  Record<RunEnding, Array.NonEmptyReadonlyArray<string>>
+> = {
+  NoRunYet: [
+    'GO ON. WE DARE YA!',
+    "WE'LL WAIT RIGHT HERE",
+    'BRING US A SOUVENIR!',
+    'NO CHICKENS IN THIS CAR',
+  ],
+  Munched: [
+    'BACK FOR SECONDS?',
+    'YOU STILL SMELL LIKE SOUP',
+    'AGAIN?! OKAY...',
+    'ROUND TWO, CHAMP?',
+    'WE KEPT YOUR SEAT WARM',
+  ],
+  MunchedEarly: [
+    'BRAVE OR DUMB?',
+    'THAT WAS QUICK!',
+    'DID YOU EVEN GO IN?',
+    'WE TIMED IT. NOT GREAT.',
+  ],
+  Escaped: [
+    'YOU ACTUALLY DID IT!',
+    'SHOW-OFF!',
+    'OKAY, BUT DO IT AGAIN',
+    'WE OWE YOU A SODA',
+  ],
+  LeftEarly: ['CHICKEN!', 'BAWK BAWK!', 'SCARED, HUH?', 'WE SAW YOU RUN!'],
 }
 
 // NOTE: Rattles' tip on the end card about the zombie that landed the last

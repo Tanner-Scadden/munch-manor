@@ -13,6 +13,7 @@ import {
   RecordRunsSetting,
   RotationSetting,
   RumbleSetting,
+  RunEnding,
   SavedBestsByDifficulty,
   SavedCard,
   SavedHome,
@@ -62,6 +63,7 @@ export const PlayerChange = defineTaggedUnion({
   BoughtCosmetic: { id: Schema.String },
   DoubledFirstRun: { day: DayStamp, bones: Schema.Finite },
   EscapedFirst: { difficulty: Difficulty },
+  EndedRun: { lastRun: RunEnding },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -238,6 +240,9 @@ export const changesBetween: {
         changeWhen(!sameRecords(before.records, after.records), () =>
           PlayerChange.ReachedRecords({ records: after.records }),
         ),
+        changeWhen(before.lastRun !== after.lastRun, () =>
+          PlayerChange.EndedRun({ lastRun: after.lastRun }),
+        ),
         changeWhen(before.calling !== after.calling, () =>
           PlayerChange.ChangedCalling({ calling: after.calling }),
         ),
@@ -320,6 +325,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     BoughtCosmetic: () => change,
     DoubledFirstRun: () => change,
     EscapedFirst: () => change,
+    EndedRun: () => PlayerChange.EndedRun({ lastRun: save.lastRun }),
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
         points: save.rank.veteranPoints,

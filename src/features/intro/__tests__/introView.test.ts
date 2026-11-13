@@ -1,4 +1,4 @@
-import { Array, Match } from 'effect'
+import { Array, Match, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
@@ -11,10 +11,11 @@ import {
   type Screen,
 } from '../../../render/screen'
 import { readyModel } from '../../../test/model.fixture'
+import { FRIEND_LINES } from '../../../world/names'
 import { ARRIVAL_MS } from '../../../world/run/arrival'
 import type { IntroCut } from '../../../world/schema/worldSchema'
 import { introFrameAt } from '../introBeat'
-import { introShapes } from '../introView'
+import { introShapes, widestFriendBubble } from '../introView'
 
 // The intro's drawing on either screen: every beat of either cut covers the
 // whole screen, and its picture sits inside it at a whole scale.
@@ -84,6 +85,38 @@ describe('the intro drawn', () => {
           (picture?.translate?.y ?? 0) + PICTURE_HEIGHT * scale,
         ).toBeLessThanOrEqual(screen.height)
       }),
+    )
+  })
+
+  test("every friends' line fits the picture", () => {
+    expect(widestFriendBubble()).toBeLessThanOrEqual(PICTURE_WIDTH - 4)
+  })
+
+  // NOTE: the shapes in the picture at `ms` into `cut`, with and without the
+  // friends' line.
+  const pictureCount = (cut: IntroCut, ms: number, hasLine: boolean) =>
+    groupOf(
+      groupOf(
+        introShapes(
+          modifyFields(arrivingAt(cut, ms), {
+            maybeCarLine: () =>
+              hasLine ? Option.some(FRIEND_LINES.Munched[0]) : Option.none(),
+          }),
+          LANDSCAPE_SCREEN,
+        )[0],
+      )?.shapes[1],
+    )?.shapes.length ?? 0
+
+  test("the friends' line: over the car in the drive, over the knock in the short cut", () => {
+    expect(pictureCount('Full', 2_000, true)).toBeGreaterThan(
+      pictureCount('Full', 2_000, false),
+    )
+    expect(pictureCount('Short', 600, true)).toBeGreaterThan(
+      pictureCount('Short', 600, false),
+    )
+    // NOTE: the full cut said it in the car; its knock is the house's.
+    expect(pictureCount('Full', 8_000, true)).toBe(
+      pictureCount('Full', 8_000, false),
     )
   })
 

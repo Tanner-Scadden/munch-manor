@@ -328,7 +328,7 @@ Built on 2026-11-10.
 
 ### Between runs
 
-Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the intro's car beat carries the line. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
+Decided on 2026-11-12 (`docs/PROGRESSION_PLAN.md`): the intro's car beat carries the line. Your friends remember. They wait in the car, and greet you with a few words that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each. Built on 2026-11-12: a bubble over the car in the drive, or from the curb over the knock in the short cut, with a few lines for each ending (a death, a quick one, an escape, and a first run's "GO ON. WE DARE YA!"); "Chicken!" waits for the back door.
 
 ### Heroes and bots
 

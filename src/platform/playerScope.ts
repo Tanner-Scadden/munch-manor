@@ -25,6 +25,7 @@ import {
   RecordUnlock,
   RotationSetting,
   RumbleSetting,
+  RunEnding,
   SEEN_BASELINE,
   type SavedBestRun,
   SavedBestsByDifficulty,
@@ -97,6 +98,7 @@ export const PlayerRow = Schema.Struct({
   spent_bones: Schema.Finite,
   doubled_day: Schema.NullOr(DayStamp),
   escaped_on: Schema.fromJsonString(EscapedOn),
+  last_run: RunEnding,
 })
 export type PlayerRow = typeof PlayerRow.Type
 
@@ -139,6 +141,7 @@ export const PLAYER_COLUMNS = Array.make(
   'spent_bones',
   'doubled_day',
   'escaped_on',
+  'last_run',
 )
 
 export const rowOfSave = (save: PlayerSave): PlayerRow => ({
@@ -174,6 +177,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   spent_bones: save.rank.spentBones,
   doubled_day: save.bonuses.doubledDay,
   escaped_on: save.bonuses.escapedOn,
+  last_run: save.lastRun,
 })
 
 export const BoughtRow = Schema.Struct({ id: Schema.String })
@@ -225,11 +229,12 @@ const updatePlayer = (
 // the save with no ammo tip (save version 17), 15 the save with the
 // rumble (save version 18), 16 the save with RECORD MY RUNS (save
 // version 19), 17 the save with its unlock (save version 20), and 18 the
-// save with the Bones bonuses and the best runs (save version 21).
+// save with the Bones bonuses and the best runs (save version 21), and 19
+// the save with the last run's ending (save version 22).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 18,
+  version: 19,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -442,6 +447,18 @@ export const UnlockedRecording = defineMutation({
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
   apply: (_, context) => updatePlayer(context, { record_unlock: 'Unlocked' }),
+})
+
+// NOTE: how the last run ended, for the friends in the car. The last
+// device to end a run wins, like the settings.
+/** @stability unstable */
+export const EndedRun = defineMutation({
+  name: 'EndedRun',
+  version: 1,
+  args: Schema.Struct({ lastRun: RunEnding }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ lastRun }, context) => updatePlayer(context, { last_run: lastRun }),
 })
 
 // NOTE: the calling picked for the next run. The last device to change it
@@ -966,6 +983,7 @@ export const PlayerScope = defineScope({
     BoughtCosmetic,
     DoubledFirstRun,
     EscapedFirst,
+    EndedRun,
     LinkedDevices,
   ],
   migrations: {
@@ -1130,6 +1148,13 @@ export const PlayerScope = defineScope({
           ADD COLUMN doubled_day TEXT`
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN escaped_on TEXT NOT NULL DEFAULT '[]'`
+      }),
+    // NOTE: a player from before reads as no run yet, as an old save does.
+    '0017_add_last_run': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN last_run TEXT NOT NULL DEFAULT 'NoRunYet'`
       }),
   },
 })

@@ -845,7 +845,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 21
+export const SAVE_VERSION = 22
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1048,6 +1048,21 @@ export type SavedBonuses = typeof SavedBonuses.Type
 
 export const noBonuses: SavedBonuses = { doubledDay: null, escapedOn: [] }
 
+// NOTE: version 22 added how the last run ended, which the friends in the
+// car remember at the next intro (src/features/intro/carLine.ts): none yet,
+// munched, munched early on, or escaped. LeftEarly waits for leaving by the
+// back door (docs/PROGRESSION_PLAN.md, pillar A): nothing ends a run that
+// way yet, but it is in the Schema now so a device that has it never fails
+// to read another's save. The last device to end a run wins.
+export const RunEnding = Schema.Literals([
+  'NoRunYet',
+  'Munched',
+  'MunchedEarly',
+  'Escaped',
+  'LeftEarly',
+])
+export type RunEnding = typeof RunEnding.Type
+
 // NOTE: version 15 added the closet: the sold hats the player has bought.
 // Version 16 added the shirt colors, prints, and gun skins, so the list now
 // holds cosmetic ids (COSMETIC_PRICES): the hats as before, the rest with
@@ -1107,6 +1122,7 @@ export type PlayerName = typeof PlayerName.Type
 // added RECORD MY RUNS, synced the same way. Version 20 added the RECORD MY
 // RUNS unlock, which used to stay on the device that opened `?record=1`.
 // Version 21 added the Bones bonuses and each difficulty's best run.
+// Version 22 added how the last run ended, for the friends in the car.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1128,5 +1144,6 @@ export const PlayerSave = Schema.Struct({
   recordRuns: RecordRunsSetting,
   recordUnlock: RecordUnlock,
   bonuses: SavedBonuses,
+  lastRun: RunEnding,
 })
 export type PlayerSave = typeof PlayerSave.Type

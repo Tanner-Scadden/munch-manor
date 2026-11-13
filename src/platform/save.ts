@@ -156,6 +156,7 @@ export const SAVED_FIELDS = [
   'playerName',
   'rank',
   'bonuses',
+  'lastRunEnding',
   'calling',
   'boughtCosmetics',
   'seenUnlocks',
@@ -221,6 +222,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   records: savedRunRecords(model.bests),
   rank: model.rank,
   bonuses: model.bonuses,
+  lastRun: model.lastRunEnding,
   calling: model.calling,
   boughtCosmetics: model.boughtCosmetics,
   seenUnlocks: model.seenUnlocks,
@@ -404,6 +406,7 @@ export const restoreSave: {
       playerName: () => cleanName(save.name),
       rank: () => save.rank,
       bonuses: bonuses => mergeBonuses(bonuses, save.bonuses),
+      lastRunEnding: () => save.lastRun,
       calling: () => save.calling,
       boughtCosmetics: () => save.boughtCosmetics,
       // NOTE: unlocks seen on any device stay seen. The baseline mark of a row

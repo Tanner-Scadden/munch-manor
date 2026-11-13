@@ -5,6 +5,7 @@ import { noteDeathTip } from '../../features/end/deathTip'
 import { noteRecords, reachRecords } from '../../features/end/endBeat'
 import { earnRank } from '../../features/end/rankRun'
 import { notePulledPrize } from '../../features/guide/shopGuide'
+import { noteRunEnding, pickCarLine } from '../../features/intro/carLine'
 import { RunSummary } from '../../platform/analytics'
 import { maybeRunOutcome, runSummaryOf } from '../../platform/analyticsRun'
 import { sendOrQueueRunSummary } from '../../platform/summaryQueue'
@@ -86,7 +87,8 @@ type SaveWrite = 'Write' | 'Synced'
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the run count and its summary, the run's recording, the new
+// Nightmare, the death tip, how the run ended and the friends' line for the
+// next intro, the run count and its summary, the run's recording, the new
 // zombie badges, the
 // fridge prizes pulled, and the save. `update` in src/app/main.ts runs them once
 // after every dispatch, a child's delivery and its fold included. Each looks
@@ -108,6 +110,9 @@ export const afterMessage: {
     }),
     stepModel => ({
       model: noteDeathTip(before, stepModel, runDifficultyOf(stepModel)),
+    }),
+    stepModel => ({
+      model: pickCarLine(before, noteRunEnding(before, stepModel)),
     }),
     stepModel => ({
       model: countRunFrom(
