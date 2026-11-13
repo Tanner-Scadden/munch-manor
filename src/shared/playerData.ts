@@ -10,6 +10,7 @@ import {
 } from 'effect'
 
 import { DayStamp } from './dayStamp'
+import { SavedJournal } from './journalData'
 import { SavedMissions } from './missionData'
 import { SavedProof } from './proofData'
 
@@ -849,7 +850,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 24
+export const SAVE_VERSION = 25
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -1122,6 +1123,7 @@ export type PlayerName = typeof PlayerName.Type
 // Version 22 added how the last run ended, for the friends in the car.
 // Version 23 added the daily missions (src/shared/missionData.ts).
 // Version 24 added the Proof Shelf (src/shared/proofData.ts).
+// Version 25 added the Dare Journal (src/shared/journalData.ts).
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -1146,5 +1148,6 @@ export const PlayerSave = Schema.Struct({
   lastRun: RunEnding,
   missions: SavedMissions,
   proof: SavedProof,
+  journal: SavedJournal,
 })
 export type PlayerSave = typeof PlayerSave.Type

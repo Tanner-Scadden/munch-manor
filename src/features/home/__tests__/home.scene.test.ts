@@ -42,13 +42,14 @@ const whatsNewWithDot = Scene.role('button', {
   name: "What's new: the latest changes. Something new",
 })
 const munchopediaButton = Scene.role('button', {
-  name: 'Munchopedia: every zombie you have splatted',
+  name: 'Dare Journal: the zombies, things, rooms, story, and heroes',
 })
 const munchopediaWithDot = Scene.role('button', {
-  name: 'Munchopedia: every zombie you have splatted. Something new',
+  name: 'Dare Journal: the zombies, things, rooms, story, and heroes. Something new',
 })
 const WHATS_NEW_NEWS = "What's new: the latest changes. Something new"
-const MUNCHOPEDIA = 'Munchopedia: every zombie you have splatted'
+const MUNCHOPEDIA =
+  'Dare Journal: the zombies, things, rooms, story, and heroes'
 const MUNCHOPEDIA_NEWS = `${MUNCHOPEDIA}. Something new`
 const newsPip = Scene.selector(".manor-pip[data-card='WhatsNew']")
 const munchopediaPip = Scene.selector(".manor-pip[data-card='Munchopedia']")
@@ -67,7 +68,7 @@ describe("What's New", () => {
         Scene.expect(newsPip).toExist(),
         Scene.expect(manorButton).toHaveAttr(
           'aria-label',
-          "More: character, Munchopedia, what is new, how to play, and proof. Something new in What's new",
+          "More: character, journal, what is new, how to play, and proof. Something new in What's new",
         ),
         ...openHandInScene(),
         Scene.expect(whatsNewWithDot).toExist(),

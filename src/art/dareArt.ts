@@ -7,7 +7,10 @@ import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
 // The dare's things as 7 by 7 pixel icons, for the dare card on the HUD and
 // for the things themselves in the house: the silver spoon, the family
 // portrait, a page of the guest book, Grandma Munch's recipe, the music box,
-// and the butler's bell. Each has a light
+// the butler's bell, and the four a player's milestones open
+// (src/world/dare/milestones.ts): Uncle Chunk's chewed napkin ring,
+// Rattles' dare note from 1924, Grandma's false teeth in their jar, and
+// the party's invitation. Each has a light
 // silhouette too, for a slot on the HUD's pocket still empty.
 
 export const DARE_ICON_SIZE = 7
@@ -67,6 +70,42 @@ const DARE_PIXELS: Readonly<Record<DareKind, ReadonlyArray<string>>> = {
     'ddddddd',
     '.......',
   ],
+  NapkinRing: [
+    '..ccc..',
+    '.cGGGc.',
+    'cG...Gc',
+    'cG...Gc',
+    'cG...Gc',
+    '.cG.Gc.',
+    '..c.c..',
+  ],
+  DareNote: [
+    'aaaaaa.',
+    'akkakaa',
+    'aaaaaaa',
+    'akakkka',
+    'aaaaaaa',
+    'aaaRRRa',
+    '.aaaaaa',
+  ],
+  FalseTeeth: [
+    '.kkkkk.',
+    'jjjjjjj',
+    'jRRRRRj',
+    'jWWWWWj',
+    'jWWWWWj',
+    'jRRRRRj',
+    '.jjjjj.',
+  ],
+  Invitation: [
+    '.......',
+    'eeeeeee',
+    'eGeeeGe',
+    'eeGeGee',
+    'eeeReee',
+    'eeeeeee',
+    '.......',
+  ],
 }
 
 const DARE_PALETTE: Palette = {
@@ -84,6 +123,9 @@ const DARE_PALETTE: Palette = {
   N: '#f4f1de',
   y: '#e0b232',
   Y: '#fff1a8',
+  a: '#d9c48f',
+  j: '#7fb8c9',
+  e: '#e9c7d8',
 }
 
 // NOTE: a thing still to find is a light silhouette that keeps its inner
@@ -106,6 +148,9 @@ const SILHOUETTE_PALETTE: Palette = {
   N: '#e2dbec',
   y: '#b8acca',
   Y: '#ddd5e8',
+  a: '#c4b8d4',
+  j: '#9e92b0',
+  e: '#d2c9de',
 }
 
 export const DARE_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
@@ -281,6 +326,37 @@ export const DARE_BIG_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(
       { ...DARE_PALETTE, [OUTLINE]: '#140c10' },
       TOP_LEFT,
     ),
+)
+
+// THE DARE JOURNAL
+
+// NOTE: the Dare Journal itself, a brown book with a gold J and its pages'
+// edge: a story page opened on the end card's unlock card
+// (src/features/end/rankStripView.ts), big and outlined as the things are,
+// and the journal's Story tab (src/features/munchopedia/view.ts).
+const JOURNAL_PIXELS: ReadonlyArray<string> = [
+  'BBBBBBp',
+  'BbGGGbp',
+  'BbbGbbp',
+  'BbbGbbp',
+  'BGbGbbp',
+  'BbGbbbp',
+  'BBBBBBp',
+]
+
+const JOURNAL_PALETTE: Palette = {
+  B: '#4a2e1c',
+  b: '#7a4a2a',
+  G: '#ffd23f',
+  p: '#f1e7cf',
+}
+
+export const JOURNAL_ICON_URL = pixelIconUrl(JOURNAL_PIXELS, JOURNAL_PALETTE)
+
+export const JOURNAL_BIG_ICON: Sprite = spriteShapes(
+  outlined(JOURNAL_PIXELS),
+  { ...JOURNAL_PALETTE, [OUTLINE]: '#140c10' },
+  TOP_LEFT,
 )
 
 // THE SATCHEL

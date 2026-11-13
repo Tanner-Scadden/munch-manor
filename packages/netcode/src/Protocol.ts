@@ -153,8 +153,11 @@ import {
 // wave) out the kitchen's back door, held as a new purchasable (BackDoor).
 // The room closes such a run with a reason of its own, LeftEarly, so the
 // lobby's last result can say so.
-export const PROTOCOL_VERSION = 21
-export const MIN_PROTOCOL_VERSION = 21
+// Version 22, the Dare Journal: four new dare things (NapkinRing, DareNote,
+// FalseTeeth, Invitation) may be on the list and in the house, opened by
+// the host's milestones, which the room reads from the host's own scope.
+export const PROTOCOL_VERSION = 22
+export const MIN_PROTOCOL_VERSION = 22
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

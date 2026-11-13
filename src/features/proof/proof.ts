@@ -17,7 +17,13 @@ import {
   type SavedProof,
   shelve,
 } from '../../shared/proofData'
-import { DareKind, DareThingState, Finale } from '../../world/dare/dareSchema'
+import {
+  DareKind,
+  DareThingState,
+  Finale,
+  HOUSE_THINGS,
+} from '../../world/dare/dareSchema'
+import { dareThingPool, thingsOpenedBy } from '../../world/dare/milestones'
 import { focusOf, playersOf } from '../../world/party/party'
 import { Phase } from '../../world/schema/worldSchema'
 
@@ -41,12 +47,16 @@ export const ShelfSpot = Schema.Struct({
 export type ShelfSpot = typeof ShelfSpot.Type
 
 // NOTE: the shelf's rows, easiest at the top, and each row's slots, the
-// house's things in the dare card's order and the big key's hook last.
+// house's things in the dare card's order, then the things the player's
+// milestones opened (src/world/dare/milestones.ts), so the shelf grows a
+// slot as each opens, and the big key's hook last.
 export const SHELF_ROWS: Array.NonEmptyReadonlyArray<Difficulty> =
   Difficulty.literals
 
-export const SHELF_THINGS: Array.NonEmptyReadonlyArray<ShelfThing> =
-  ShelfThing.literals
+export const shelfThingsFor = (
+  opened: ReadonlyArray<DareKind>,
+): Array.NonEmptyReadonlyArray<ShelfThing> =>
+  Array.append(dareThingPool(opened), BIG_KEY)
 
 export const isBigKey = (thing: ShelfThing): thing is typeof BIG_KEY =>
   thing === BIG_KEY
@@ -55,11 +65,12 @@ export const slotId = (spot: ShelfSpot): string =>
   `proof-slot-${String.toLowerCase(spot.thing)}-${String.toLowerCase(spot.difficulty)}`
 
 export const FIRST_SPOT: ShelfSpot = {
-  thing: SHELF_THINGS[0],
+  thing: Array.headNonEmpty(HOUSE_THINGS),
   difficulty: SHELF_ROWS[0],
 }
 
-export const SLOT_COUNT = SHELF_ROWS.length * SHELF_THINGS.length
+export const slotCountOf = (things: ReadonlyArray<ShelfThing>): number =>
+  SHELF_ROWS.length * things.length
 
 export const maybeStampAt: {
   (spot: ShelfSpot): (proof: SavedProof) => Option.Option<ProofStamp>
@@ -77,17 +88,23 @@ export const maybeStampAt: {
     ),
 )
 
-// NOTE: the slots this build knows that are filled (a thing a later build
-// added stays on the shelf, unshown).
-export const filledCount = (proof: SavedProof): number =>
-  Array.filter(proof, entry =>
-    Array.some(
-      SHELF_ROWS,
-      difficulty =>
-        difficulty === entry.difficulty &&
-        Array.some(SHELF_THINGS, thing => thing === entry.thing),
-    ),
-  ).length
+// NOTE: the slots shown that are filled (a thing a later build added stays
+// on the shelf, unshown).
+export const filledCount: {
+  (things: ReadonlyArray<ShelfThing>): (proof: SavedProof) => number
+  (proof: SavedProof, things: ReadonlyArray<ShelfThing>): number
+} = Function.dual(
+  2,
+  (proof: SavedProof, things: ReadonlyArray<ShelfThing>): number =>
+    Array.filter(proof, entry =>
+      Array.some(
+        SHELF_ROWS,
+        difficulty =>
+          difficulty === entry.difficulty &&
+          Array.some(things, thing => thing === entry.thing),
+      ),
+    ).length,
+)
 
 // MOVING BETWEEN SLOTS
 
@@ -117,14 +134,20 @@ const stepped = <A>(
     Option.getOrElse(() => from),
   )
 
+// NOTE: the key and the slots along a row as the shelf shows them.
+export type Press = Readonly<{
+  code: string
+  things: Array.NonEmptyReadonlyArray<ShelfThing>
+}>
+
 export const maybeSteppedSpot: {
-  (code: string): (spot: ShelfSpot) => Option.Option<ShelfSpot>
-  (spot: ShelfSpot, code: string): Option.Option<ShelfSpot>
+  (press: Press): (spot: ShelfSpot) => Option.Option<ShelfSpot>
+  (spot: ShelfSpot, press: Press): Option.Option<ShelfSpot>
 } = Function.dual(
   2,
-  (spot: ShelfSpot, code: string): Option.Option<ShelfSpot> =>
+  (spot: ShelfSpot, { code, things }: Press): Option.Option<ShelfSpot> =>
     Option.map(Option.fromNullishOr(ARROW_STEPS[code]), ([columns, rows]) => ({
-      thing: stepped(SHELF_THINGS, spot.thing, columns),
+      thing: stepped(things, spot.thing, columns),
       difficulty: stepped(SHELF_ROWS, spot.difficulty, rows),
     })),
 )
@@ -247,11 +270,15 @@ export const spotUnlockId = (spot: ShelfSpot): string =>
 
 const dayUnlockId = (day: DayStamp): string => `proof:day:${day}`
 
+// NOTE: a new slot on the shelf for a thing a milestone opened.
+const openedUnlockId = (kind: DareKind): string => `proof:open:${kind}`
+
 const isProofId = (id: string): boolean => String.startsWith('proof:')(id)
 
 const shelfIdsOf = (model: Model): ReadonlyArray<string> => [
   ...Array.map(model.proof, entryUnlockId),
   ...Array.map(model.missions.stampedDays, dayUnlockId),
+  ...Array.map(thingsOpenedBy(model.journal.milestones), openedUnlockId),
 ]
 
 const unseenProofOf = (model: Model): ReadonlyArray<string> =>

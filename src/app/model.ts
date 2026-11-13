@@ -14,6 +14,7 @@ import {
   HintBand,
   HomeMenu,
   IntroSkip,
+  JournalRun,
   KitchenCall,
   LevelCallout,
   type LoadStep,
@@ -35,6 +36,7 @@ import {
   defaultAppearance,
   freshHomeMenu,
   freshLessons,
+  noJournalRun,
   noRankPaid,
   quietDareHint,
 } from '../domain/clientSchema'
@@ -84,6 +86,7 @@ import {
 } from '../render/renderSchema'
 import { DEFAULT_SEED } from '../shared/constants'
 import { DayStamp } from '../shared/dayStamp'
+import { SavedJournal, noJournal } from '../shared/journalData'
 import { SavedMissions, noMissions } from '../shared/missionData'
 import {
   Appearance,
@@ -279,6 +282,11 @@ export const Model = Schema.Struct({
   // thing per difficulty, each with the first run that found it, saved and
   // synced.
   proof: SavedProof,
+  // NOTE: the Dare Journal (src/domain/journal.ts): the milestones reached
+  // and what the journal's pages read, saved and synced, and what this run
+  // gathers toward it.
+  journal: SavedJournal,
+  journalRun: JournalRun,
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
@@ -484,6 +492,8 @@ export const initialModel: OwnModel = {
   maybeCarLine: Option.none(),
   missions: noMissions,
   proof: noProof,
+  journal: noJournal,
+  journalRun: noJournalRun,
   missionRun: noMissionRun,
   maybeMissionGain: Option.none(),
   calling: 'You',

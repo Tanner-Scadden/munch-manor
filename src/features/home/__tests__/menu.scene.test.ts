@@ -50,16 +50,16 @@ const playCluster = Scene.role('group', { name: 'Play' })
 const hand = Scene.role('dialog', { name: 'The manor' })
 const CARD_NAMES = {
   Character: 'Character: change how you look',
-  Munchopedia: 'Munchopedia: every zombie you have splatted',
+  Munchopedia: 'Dare Journal: the zombies, things, rooms, story, and heroes',
   WhatsNew: "What's new: the latest changes",
   HowToPlay: 'How to play: the controls',
 } as const
 const characterCard = Scene.role('button', { name: CARD_NAMES.Character })
-const munchopediaCard = Scene.role('button', { name: /^Munchopedia:/ })
+const munchopediaCard = Scene.role('button', { name: /^Dare Journal:/ })
 const whatsNewCard = Scene.role('button', { name: /^What's new:/ })
 const howToPlayCard = Scene.role('button', { name: CARD_NAMES.HowToPlay })
 const proofCard = Scene.role('button', { name: /^Proof:/ })
-const munchopediaName = /^Munchopedia:/
+const munchopediaName = /^Dare Journal:/
 const whatsNewName = /^What's new:/
 const pauseMenuButton = Scene.role('button', { name: 'Menu: leave this run' })
 const endMenuButton = Scene.role('button', {
@@ -254,7 +254,7 @@ describe('Home menu', () => {
     Effect.forEach(
       [
         { name: CARD_NAMES.Character, dialog: 'Profile' },
-        { name: CARD_NAMES.Munchopedia, dialog: 'Munchopedia' },
+        { name: CARD_NAMES.Munchopedia, dialog: 'Dare Journal' },
         { name: `${CARD_NAMES.WhatsNew}. Something new`, dialog: "What's new" },
         { name: CARD_NAMES.HowToPlay, dialog: 'How to play' },
       ],
@@ -407,7 +407,7 @@ describe('Home menu', () => {
       measureSurface,
       Scene.click(bests),
       ...showDialogInScene(),
-      Scene.expect(Scene.role('dialog', { name: 'Munchopedia' })).toExist(),
+      Scene.expect(Scene.role('dialog', { name: 'Dare Journal' })).toExist(),
     ),
   )
 
@@ -507,7 +507,7 @@ describe('Home menu', () => {
     Effect.forEach(
       [
         { key: 'KeyL', dialog: "What's new" },
-        { key: 'KeyZ', dialog: 'Munchopedia' },
+        { key: 'KeyZ', dialog: 'Dare Journal' },
         { key: 'KeyI', dialog: 'How to play' },
         { key: 'KeyO', dialog: 'Profile' },
       ],
@@ -585,7 +585,7 @@ describe('Home menu', () => {
       open: [...openHandInScene(), ...pickCardInScene(CARD_NAMES.Character)],
     },
     {
-      dialog: 'Munchopedia',
+      dialog: 'Dare Journal',
       open: [...openHandInScene(), ...pickCardInScene(munchopediaName)],
     },
     {

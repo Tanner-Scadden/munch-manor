@@ -34,7 +34,7 @@ const resolveFocusGuide = Scene.Command.resolve(
 // NOTE: the Munchopedia open from the MANOR hand, on its Finds page.
 const openFinds = () => [
   ...openHandInScene(),
-  ...pickCardInScene(/^Munchopedia:/),
+  ...pickCardInScene(/^Dare Journal:/),
   Scene.inside(munchopediaDialog, Scene.click(findsTile)),
   resolveFocusGuide,
 ]
@@ -57,9 +57,7 @@ describe('the Munchopedia Finds page', () => {
           Scene.expect(Scene.selector("[data-entry='Rattles']")).toExist(),
           Scene.expect(Scene.text(`${EXIT_RULES.kitchenKeys} keys`)).toExist(),
           Scene.expect(Scene.selector("[data-entry='Pistol']")).toBeAbsent(),
-          Scene.click(
-            Scene.role('button', { name: 'Back to the Munchopedia' }),
-          ),
+          Scene.click(Scene.role('button', { name: 'Back to the journal' })),
         ),
         resolveFocusGuide,
         Scene.inside(

@@ -2,13 +2,17 @@
 // is, and the run's list, apart from the rules (src/world/dare/dare.ts) so the
 // World's Schema (src/world/schema/worldSchema.ts) reads them with no cycle.
 
-import { Schema } from 'effect'
+import { type Array, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import { MillisNumber, Point, PositionNumber } from '../schema/wireNumber'
 
 // NOTE: every thing in the house's pool. The list is only these: Uncle
-// Chunk is no thing on it, just the fight once it is done.
+// Chunk is no thing on it, just the fight once it is done. The first six
+// are every player's from the first run; the last four each join a
+// player's pool once a milestone opens it (src/world/dare/milestones.ts).
+// New things go at the end, so a pool's order, and so what a seed rolls
+// from the first six, never moves.
 export const DareKind = Schema.Literals([
   'SilverSpoon',
   'FamilyPortrait',
@@ -16,8 +20,22 @@ export const DareKind = Schema.Literals([
   'GrandmasRecipe',
   'MusicBox',
   'ButlersBell',
+  'NapkinRing',
+  'DareNote',
+  'FalseTeeth',
+  'Invitation',
 ])
 export type DareKind = typeof DareKind.Type
+
+// NOTE: the things every run may roll, from the first.
+export const HOUSE_THINGS: Array.NonEmptyReadonlyArray<DareKind> = [
+  'SilverSpoon',
+  'FamilyPortrait',
+  'GuestBookPage',
+  'GrandmasRecipe',
+  'MusicBox',
+  'ButlersBell',
+]
 
 // NOTE: where one thing is. Hidden lies at a spot in the room that holds
 // it, out of reach while the room's boards stand, with the work the crew

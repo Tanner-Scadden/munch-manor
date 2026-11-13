@@ -22,6 +22,7 @@ import {
   ZombieAction,
 } from '@game/app/model'
 import { addBot } from '@game/domain/bots'
+import { milestoneUnlockId } from '@game/domain/journal'
 import { isEndScreen, withBests } from '@game/domain/run'
 import { unlocksAt } from '@game/domain/unlocks'
 import { prizeUnlockId } from '@game/features/guide/shopGuide'
@@ -31,11 +32,13 @@ import {
   PlayerScopeStatus,
   SyncState,
 } from '@game/platform/playerSync'
+import { noJournal } from '@game/shared/journalData'
 import { heroIdOf } from '@game/shared/playerData'
 import { BIG_KEY, type SavedProof } from '@game/shared/proofData'
-import { dareCardOf, maybeLyingAt } from '@game/world/dare/dare'
+import { dareCardOf, maybeLyingAt, rollDare } from '@game/world/dare/dare'
 import { DareThingState, Finale } from '@game/world/dare/dareSchema'
 import { FIND_RULES, findStyleOfRoom } from '@game/world/dare/finds'
+import { thingsOpenedBy } from '@game/world/dare/milestones'
 import { TRAPS } from '@game/world/gear/traps'
 import { playerOfCalling } from '@game/world/heroes/callingPlayer'
 import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
@@ -43,6 +46,8 @@ import { levelOf } from '@game/world/level/arena'
 import {
   ARRANGEMENTS,
   CHANDELIER_DROP,
+  KITCHEN_ROOM_ID,
+  PARLOUR_ROOM_ID,
   STACK_DROPS,
   roomSpotsOf,
 } from '@game/world/level/plan'
@@ -343,6 +348,38 @@ const withSampleProof = (model: Model): Model =>
     seenUnlocks: seen => Array.union(seen, SEEN_PROOF),
   })
 
+// NOTE: four milestones reached, the first two seen before and the last
+// two wearing NEW: the napkin ring and the dare note open on the list.
+const SAMPLE_MILESTONES = [
+  'FirstFind',
+  'EveryRoomOpened',
+  'FirstEscape',
+  'ThingInEveryRoom',
+]
+
+const withSampleJournal = (model: Model): Model =>
+  modifyFields(model, {
+    journal: () => ({
+      ...noJournal,
+      milestones: SAMPLE_MILESTONES,
+      roomsOpened: [KITCHEN_ROOM_ID, PARLOUR_ROOM_ID],
+      heroesPlayed: ['You', 'Handyman'],
+      thingsFound: 7,
+    }),
+    seenUnlocks: seen =>
+      Array.union(
+        seen,
+        Array.map(Array.take(SAMPLE_MILESTONES, 2), milestoneUnlockId),
+      ),
+  })
+
+const EVERY_NEW_THING = thingsOpenedBy([
+  'FirstEscape',
+  'ThingInEveryRoom',
+  'TenThings',
+  'ChunkTripleDare',
+])
+
 export const scenarioModel = (settings: SceneSettings): Model =>
   withCoop(settings.config, scenarioModelOf(settings))
 
@@ -381,6 +418,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         : modifyFields(model, {
             firstBreakQuest: () => QUEST_STAGES[quest],
           })
+  }
+  if (config.newthings) {
+    model = rollDare(EVERY_NEW_THING)(model)
   }
   if (config.darefound > 0) {
     model = withDareFound(model, config.darefound)
@@ -560,6 +600,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   })
   if (config.proof) {
     model = withSampleProof(model)
+  }
+  if (config.journal) {
+    model = withSampleJournal(model)
   }
   model = Array.reduce(Array.range(1, config.lobbybots ?? 0), model, seated =>
     config.lobbybots === undefined ? seated : addBot(seated),

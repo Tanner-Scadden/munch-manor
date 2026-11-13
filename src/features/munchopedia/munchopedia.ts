@@ -4,7 +4,7 @@ import type { Canvas } from 'foldkit'
 import type { Model } from '../../app/model'
 import { standaloneSource } from '../../art/sprite'
 import { type WornFrames, ZOMBIE_SPRITES } from '../../art/sprites/zombies'
-import { ZOMBIE_NAMES } from '../../world/names'
+import { JOURNAL_NAME, ZOMBIE_NAMES } from '../../world/names'
 import type { ZombieKind } from '../../world/schema/entitySchema'
 import type { KillCounts } from '../../world/schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
@@ -119,11 +119,11 @@ export const unopenedKinds = (model: Model): ReadonlyArray<ZombieKind> =>
 export const hasUnopenedEntry = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(unopenedKinds(model))
 
-// NOTE: the menu panel's title and blurb over the Munchopedia.
+// NOTE: the menu panel's title and blurb over the Dare Journal.
 export const munchopediaText = (
   model: Model,
 ): Readonly<{ title: string; blurb: string }> => ({
-  title: 'Munchopedia',
+  title: JOURNAL_NAME,
   blurb: `${discoveredKinds(model.bests.killsByKind).length} of ${ENTRY_COUNT} discovered, ${countLabel(model.bests.totalKills)} zombies splatted`,
 })
 

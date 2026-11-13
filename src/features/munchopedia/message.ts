@@ -1,13 +1,18 @@
 import { defineMessageUnion } from 'foldkit/message'
 
+import { MilestoneId } from '../../world/dare/milestones'
 import { ZombieKind } from '../../world/schema/worldSchema'
+import { JournalTab } from './journalPages'
 
-// NOTE: the Munchopedia's own facts: a zombie's tile, BACK from an entry to
-// the list, and the Shop tile.
+// NOTE: the Dare Journal's own facts: a zombie's tile, BACK from an entry
+// to the list, the Shop tile, a tab, and a story page's number (the Story
+// tab sends the page it opens on, the first new one).
 export const Message = defineMessageUnion({
   ClickedEntryButton: { kind: ZombieKind },
   ClickedListButton: {},
   ClickedShopButton: {},
+  ClickedTabButton: { tab: JournalTab },
+  ClickedStoryPageButton: { page: MilestoneId },
 })
 export type Message = typeof Message.Type
 

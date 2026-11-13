@@ -9,6 +9,7 @@ import {
 import { RunRecorder, beginRecording } from '../platform/recording'
 import { RUNNING_BUILD } from '../platform/version'
 import { rollDare } from '../world/dare/dare'
+import { thingsOpenedBy } from '../world/dare/milestones'
 import { focusOf, seatCrew, withStartingHearts } from '../world/party/party'
 import { beginArrival } from '../world/run/arrival'
 import { rigTutorialCase } from '../world/run/tutorialRules'
@@ -70,7 +71,10 @@ const startedRun = (model: Model, mode: RunMode): Model => {
         rigTutorialCase(
           withStartingHearts(
             seatCallings(
-              seatCrew(rollDare(world), model.localPlayers + bots.length),
+              seatCrew(
+                rollDare(thingsOpenedBy(model.journal.milestones))(world),
+                model.localPlayers + bots.length,
+              ),
               model.localPlayers,
               Array.map(bots, ({ calling }) => calling),
             ),

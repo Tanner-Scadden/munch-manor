@@ -44,7 +44,7 @@ export default defineConfig({
     // src/app/__tests__/motion.test.ts). Vitest hands every other CSS file over empty.
     css: {
       include: [
-        /(menu|profile|shop|styles|coop|calling|closet|lobby|proof)\.css/,
+        /(menu|profile|shop|styles|coop|calling|closet|lobby|proof|journal)\.css/,
       ],
     },
     server: {

@@ -1,6 +1,7 @@
 import { Array, Option, Schema, Struct } from 'effect'
 
 import { unlocksAt } from '../domain/unlocks'
+import { noJournal } from '../shared/journalData'
 import { noMissions } from '../shared/missionData'
 import {
   Calling,
@@ -205,9 +206,16 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 24 is the save before the Dare Journal.
+const PlayerSaveV24 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['journal']),
+  version: Schema.Literal(24),
+})
+type PlayerSaveV24 = typeof PlayerSaveV24.Type
+
 // NOTE: version 23 is the save before the Proof Shelf.
 const PlayerSaveV23 = Schema.Struct({
-  ...Struct.omit(PlayerSave.fields, ['proof']),
+  ...Struct.omit(PlayerSaveV24.fields, ['proof']),
   version: Schema.Literal(23),
 })
 type PlayerSaveV23 = typeof PlayerSaveV23.Type
@@ -344,6 +352,7 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV24Json = Schema.fromJsonString(PlayerSaveV24)
 const PlayerSaveV23Json = Schema.fromJsonString(PlayerSaveV23)
 const PlayerSaveV22Json = Schema.fromJsonString(PlayerSaveV22)
 const PlayerSaveV21Json = Schema.fromJsonString(PlayerSaveV21)
@@ -646,14 +655,24 @@ const migrateV22 = (save: PlayerSaveV22): PlayerSaveV23 => ({
 
 // NOTE: a save from before the Proof Shelf has an empty shelf: what it
 // brought out before then left no stamp.
-const migrateV23 = (save: PlayerSaveV23): PlayerSave => ({
+const migrateV23 = (save: PlayerSaveV23): PlayerSaveV24 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 24,
   proof: noProof,
 })
 
-const fromV22 = (save: PlayerSaveV22): PlayerSave =>
-  migrateV23(migrateV22(save))
+// NOTE: a save from before the Dare Journal starts it empty: the
+// milestones it already meets are reached at the next run's end.
+const migrateV24 = (save: PlayerSaveV24): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  journal: noJournal,
+})
+
+const fromV23 = (save: PlayerSaveV23): PlayerSave =>
+  migrateV24(migrateV23(save))
+
+const fromV22 = (save: PlayerSaveV22): PlayerSave => fromV23(migrateV22(save))
 
 const fromV21 = (save: PlayerSaveV21): PlayerSave => fromV22(migrateV21(save))
 
@@ -706,9 +725,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 24,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV24Json)(raw), migrateV24),
+  },
+  {
     version: 23,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV23Json)(raw), migrateV23),
+      Option.map(Schema.decodeOption(PlayerSaveV23Json)(raw), fromV23),
   },
   {
     version: 22,

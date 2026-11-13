@@ -191,6 +191,9 @@ export const HarnessConfig = Schema.Struct({
   // `card` stages its last step, looking at the dare card.
   quest: Choice(['running', 'card', 'start', 'done', 'kitchendone']),
   // NOTE: `darefound=N` marks the first N things of the dare card found.
+  // NOTE: `newthings` rolls the list from a pool with the four things the
+  // Dare Journal's milestones open (src/world/dare/milestones.ts).
+  newthings: Flag,
   darefound: Num(0),
   // NOTE: `pocket=N` holds the dare card from the pocket out, read for N ms
   // (src/features/dare/pocketCard.ts); `pocketfold=N` has it folding for N ms.
@@ -398,6 +401,9 @@ export const HarnessConfig = Schema.Struct({
   // key on Easy, a crew with a bot) and a week of mission days, on a known
   // day.
   proof: Flag,
+  // The Dare Journal: a sample journal (four milestones, two of them new,
+  // two rooms opened, two heroes played) for its pages.
+  journal: Flag,
   newer: Schema.optionalKey(Schema.String),
   fit: Choice(['home', 'full']),
   install: Flag,

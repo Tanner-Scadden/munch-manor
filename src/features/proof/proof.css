@@ -29,7 +29,7 @@
 
 @media (min-aspect-ratio: 4/3) {
   .proof-house {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 5fr) minmax(0, 2fr);
     align-items: start;
   }
 }
@@ -80,8 +80,19 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--shelf-things, 7), minmax(0, 1fr));
   gap: 3px;
+}
+
+/* NOTE: on an upright phone a row past what fits at a finger's 44px wraps
+   onto a second line above its plank, as each thing the Dare Journal opens
+   adds a column (src/features/proof/proof.ts). Side by side with its card,
+   the shelf takes most of the width instead. */
+@media (max-aspect-ratio: 1/1) {
+  .proof-slots {
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+    row-gap: 6px;
+  }
 }
 
 /* NOTE: the board the row's things stand on, with a bracket under each

@@ -11,6 +11,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { TutorialChoice } from '../shared/nameKeys'
 import { Appearance, Calling } from '../shared/playerData'
 import { DareKind } from '../world/dare/dareSchema'
+import { MilestoneId } from '../world/dare/milestones'
 import { BONE_BONUSES } from '../world/heroes/rank'
 import { MillisNumber } from '../world/schema/wireNumber'
 import {
@@ -397,3 +398,14 @@ export { TutorialChoice }
 // deepest endless wave, or the fastest win (src/features/end/endBeat.ts).
 export const RunRecord = Schema.Literals(['Wave', 'Time', 'Kills'])
 export type RunRecord = typeof RunRecord.Type
+
+// NOTE: what a run gathers for the Dare Journal (src/domain/journal.ts):
+// the rooms a thing was found in this run, tallied from its frames, and the
+// milestones its payout reached, which the end card flips a card for.
+export const JournalRun = Schema.Struct({
+  foundIn: Schema.Array(Schema.String),
+  reached: Schema.Array(MilestoneId),
+})
+export type JournalRun = typeof JournalRun.Type
+
+export const noJournalRun: JournalRun = { foundIn: [], reached: [] }

@@ -5,6 +5,7 @@ import coopCss from '../../features/coop/coop.css?raw'
 import callingCss from '../../features/heroes/calling.css?raw'
 import menuCss from '../../features/home/menu.css?raw'
 import lobbyCss from '../../features/lobby/lobby.css?raw'
+import journalCss from '../../features/munchopedia/journal.css?raw'
 import closetCss from '../../features/profile/blocks/look/closet.css?raw'
 import profileCss from '../../features/profile/profile.css?raw'
 import proofCss from '../../features/proof/proof.css?raw'
@@ -32,6 +33,7 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/features/coop/coop.css', coopCss],
   ['src/features/lobby/lobby.css', lobbyCss],
   ['src/features/proof/proof.css', proofCss],
+  ['src/features/munchopedia/journal.css', journalCss],
 ]
 
 const MOVING_ART: Readonly<Record<string, string>> = {

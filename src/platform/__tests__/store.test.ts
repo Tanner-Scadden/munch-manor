@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from '@effect/vitest'
 import { makeHub } from '@munch/sqlite-wasm-effect/in-process'
 import { settle } from '@munch/sync-engine/testing'
 
+import { noJournal } from '../../shared/journalData'
 import { noMissions } from '../../shared/missionData'
 import { noBonuses, noSavedRunRecords } from '../../shared/playerData'
 import { noProof } from '../../shared/proofData'
@@ -722,7 +723,10 @@ describe('two devices syncing one player', () => {
     synced(
       Effect.gen(function* () {
         const { phone, laptop } = yield* linkedPair
-        yield* write(phone, legacySave, { ...legacySave, calling: 'TrackStar' })
+        yield* write(phone, legacySave, {
+          ...legacySave,
+          calling: 'TrackStar',
+        })
         const isPicked = (maybeSave: Option.Option<PlayerSave>) =>
           Option.exists(maybeSave, save => save.calling === 'TrackStar')
         const value_11 = yield* until(laptop.load, isPicked)
@@ -1091,6 +1095,7 @@ const migratedLiveSave: PlayerSave = {
   lastRun: 'NoRunYet',
   missions: noMissions,
   proof: noProof,
+  journal: noJournal,
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

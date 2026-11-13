@@ -3,6 +3,8 @@ import { type Html, createKeyedLazy } from 'foldkit/html'
 
 import type { Dialog, DialogBlock } from '@foldkit/ui'
 
+import { openedThingsOf } from '../domain/journal'
+import { shelfThingsFor } from '../features/proof/proof'
 import {
   type PanelChildViews,
   manorHandInsidesView,
@@ -170,6 +172,9 @@ const munchopediaView: PanelChildViews['munchopedia'] = (
       slotId: 'munchopedia',
       model: model.munchopedia,
       viewInputs: {
+        journal: model.journal,
+        proof: model.proof,
+        fresh: model.freshUnlocks,
         killsByKind: model.bests.killsByKind,
         openedEntries: model.home.openedEntries,
         seenUnlocks: model.seenUnlocks,
@@ -186,6 +191,7 @@ const proofShelfView: PanelChildViews['proof'] = (model, doneButton, h) =>
       model: model.proofShelf,
       viewInputs: {
         proof: model.proof,
+        things: shelfThingsFor(openedThingsOf(model)),
         stampedDays: model.missions.stampedDays,
         maybeToday: model.maybeToday,
         fresh: model.freshUnlocks,

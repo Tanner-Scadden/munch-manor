@@ -19,12 +19,13 @@ import { DRAIN_SCALE, isStill } from '../stations/work'
 import { distanceBetween } from '../step/geometry'
 import {
   type Dare,
-  DareKind,
+  type DareKind,
   type DareThing,
   DareThingState,
   Finale,
 } from './dareSchema'
 import { FIND_RULES, type FindStyle, findStyleOfRoom } from './finds'
+import { dareThingPool } from './milestones'
 
 // The dare (LORE.md, "What the dare asks for changes every run"): your
 // friends' card asks you to bring things out of the house. One rule finds
@@ -64,12 +65,15 @@ const DARE_RULES: DareRules = { reachPx: 10 }
 
 // THE ROOMS' THINGS
 
-// NOTE: the things a room may still hold, in the Schema's order: any but
+// NOTE: the things a room may still hold, in the pool's order: any but
 // those `taken`. Any of them may lie in any room (owner, 2026-11-10: "fully
 // random"), so a room draws from all of them but those the list already
 // holds, and a run's things never repeat.
-const thingsLeft = (taken: ReadonlyArray<DareKind>): ReadonlyArray<DareKind> =>
-  Array.filter(DareKind.literals, kind => !Array.contains(taken, kind))
+const thingsLeft = (
+  pool: ReadonlyArray<DareKind>,
+  taken: ReadonlyArray<DareKind>,
+): ReadonlyArray<DareKind> =>
+  Array.filter(pool, kind => !Array.contains(taken, kind))
 
 // NOTE: a draw from the dare's stream as one of `items`.
 const drawOne = <A>(
@@ -110,6 +114,7 @@ const roomOrder = (
 
 type Placing = Readonly<{
   state: number
+  pool: ReadonlyArray<DareKind>
   taken: ReadonlyArray<DareKind>
 }>
 
@@ -120,7 +125,7 @@ const placeIn = (
 ): Seeded<Option.Option<Readonly<{ kind: DareKind; point: Vector }>>> => {
   const [kindState, maybeKind] = drawOne(
     placing.state,
-    thingsLeft(placing.taken),
+    thingsLeft(placing.pool, placing.taken),
   )
   const [spotState, maybeSpot] = drawOne(kindState, hiding)
   return [
@@ -134,13 +139,14 @@ const placeIn = (
 
 const rolledThings = (
   world: World,
+  pool: ReadonlyArray<DareKind>,
 ): Readonly<{ dare: Dare; things: ReadonlyArray<DareThing> }> => {
   const level = levelOf(world)
   const [orderState, rooms] = roomOrder(world.dare.rngState, level)
   const chosen = Array.take(rooms, LIST_LENGTHS[world.difficulty.chosen])
   const [placing, placed] = Array.mapAccum(
     chosen,
-    { state: orderState, taken: [] },
+    { state: orderState, pool, taken: [] },
     (
       current: Placing,
       room,
@@ -152,6 +158,7 @@ const rolledThings = (
       return [
         {
           state,
+          pool: current.pool,
           taken: Option.match(maybePlaced, {
             onNone: () => current.taken,
             onSome: ({ kind }) => [...current.taken, kind],
@@ -180,20 +187,24 @@ const rolledThings = (
 }
 
 // NOTE: rolls the run's list and lays each thing in its room, as a run
-// starts. Endless ("stay the night") has no list.
-export const rollDare = <M extends World>(world: M): M => {
-  if (!RunMode.isAnyOf(['Campaign'])(world.mode)) {
+// starts, from the house's six and the things `opened` for the run (the
+// milestones of its player, or its room's host: src/world/dare/milestones.ts).
+// Endless ("stay the night") has no list.
+export const rollDare =
+  (opened: ReadonlyArray<DareKind>) =>
+  <M extends World>(world: M): M => {
+    if (!RunMode.isAnyOf(['Campaign'])(world.mode)) {
+      return modifyWorldFields(world, {
+        dare: current => ({ ...current, list: [] }),
+        dareThings: () => [],
+      })
+    }
+    const { dare, things } = rolledThings(world, dareThingPool(opened))
     return modifyWorldFields(world, {
-      dare: current => ({ ...current, list: [] }),
-      dareThings: () => [],
+      dare: () => dare,
+      dareThings: () => things,
     })
   }
-  const { dare, things } = rolledThings(world)
-  return modifyWorldFields(world, {
-    dare: () => dare,
-    dareThings: () => things,
-  })
-}
 
 // READING
 

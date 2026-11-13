@@ -7,7 +7,7 @@ import { ProofShelfBlock } from '../block'
 import { InMessage } from '../inMessage'
 import { ProofShelfLayer } from '../layer'
 import { Message } from '../message'
-import { FIRST_SPOT, type ShelfSpot } from '../proof'
+import { FIRST_SPOT, type ShelfSpot, shelfThingsFor } from '../proof'
 import { FocusShelfSlot } from '../steps'
 
 // The Proof Shelf Block on its own: a tapped slot is picked, the arrows
@@ -16,9 +16,11 @@ import { FocusShelfSlot } from '../steps'
 
 const SHELF = { block: ProofShelfBlock, layer: ProofShelfLayer }
 
-const press = (code: string, spot: ShelfSpot) =>
+const HOUSE_SHELF = shelfThingsFor([])
+
+const press = (code: string, spot: ShelfSpot, things = HOUSE_SHELF) =>
   Story.steps(
-    Story.inMessage(InMessage.RequestedPressKey({ code })),
+    Story.inMessage(InMessage.RequestedPressKey({ code, things })),
     Story.Command.expectExact(FocusShelfSlot({ spot })),
     Story.Command.resolve(FocusShelfSlot, Message.CompletedFocusSlot()),
   )
@@ -58,11 +60,35 @@ describe('the Proof Shelf Block', () => {
     ),
   )
 
+  it.effect('an opened thing grows a slot the arrows walk onto', () =>
+    Story.story(
+      SHELF,
+      Story.init(),
+      Story.message(
+        Message.ClickedSlot({
+          spot: { thing: 'ButlersBell', difficulty: 'Easy' },
+        }),
+      ),
+      press(
+        'ArrowRight',
+        { thing: 'NapkinRing', difficulty: 'Easy' },
+        shelfThingsFor(['NapkinRing']),
+      ),
+      press(
+        'ArrowRight',
+        { thing: 'BigKey', difficulty: 'Easy' },
+        shelfThingsFor(['NapkinRing']),
+      ),
+    ),
+  )
+
   it.effect('any other key is left to the root', () =>
     Story.story(
       SHELF,
       Story.init(),
-      Story.inMessage(InMessage.RequestedPressKey({ code: 'KeyQ' })),
+      Story.inMessage(
+        InMessage.RequestedPressKey({ code: 'KeyQ', things: HOUSE_SHELF }),
+      ),
       Story.Command.expectNone(),
       Story.model(model => {
         expect(model.maybePicked).toEqual(Option.none())

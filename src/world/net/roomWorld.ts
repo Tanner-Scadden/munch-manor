@@ -16,6 +16,7 @@ import type {
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { type Calling, callingOfCode } from '../../shared/playerData'
 import { rollDare } from '../dare/dare'
+import type { DareKind } from '../dare/dareSchema'
 import { rollCases } from '../feats/cases'
 import { TURRET_WEAPON } from '../gear/traps'
 import { seatedAs } from '../heroes/callingPlayer'
@@ -128,7 +129,10 @@ export type OwnSeat = Readonly<{ slot: PlayerSlot; player: Player }>
 // NOTE: `modifiers` is the host's pick (src/world/run/modifiers.ts), and
 // `easyBreakSeconds` Dare's break clock, 0 for none. `callings` is what
 // each seat brings, by slot (the lobby's members, Lobby.ts); a slot with none
-// plays YOU. `intro` is the cut the run opens on (introForRound).
+// plays YOU. `intro` is the cut the run opens on (introForRound). `things`
+// are the dare things the host's milestones open (thingsOpenedBy in
+// src/world/dare/milestones.ts), which the room reads from the host's own
+// scope as the run starts, as it reads their Nightmare unlock.
 export type RoomSettings = Readonly<{
   difficulty: Difficulty
   modifiers: Modifiers
@@ -136,6 +140,7 @@ export type RoomSettings = Readonly<{
   mode: RunMode
   callings: ReadonlyArray<Readonly<{ slot: PlayerSlot; calling: Calling }>>
   intro: IntroCut
+  things: ReadonlyArray<DareKind>
 }>
 
 // NOTE: what the lobby picked (packages/netcode, Lobby.ts) as the run's
@@ -178,6 +183,7 @@ export const roomSettingsOf: {
       }),
     ),
     intro: 'Short',
+    things: [],
   }),
 )
 
@@ -447,7 +453,10 @@ export const startRoomWorld: {
     world: beginArrival(
       withStartingHearts(
         seatCallings(
-          seatSlots(rollDare(freshWorld(seed, settings)), slots),
+          seatSlots(
+            rollDare(settings.things)(freshWorld(seed, settings)),
+            slots,
+          ),
           settings.callings,
         ),
       ),
@@ -787,6 +796,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   mode: RunMode.Campaign(),
   callings: [],
   intro: 'Short',
+  things: [],
 }
 
 // NOTE: the room's World for one run: a fresh run with the lobby's

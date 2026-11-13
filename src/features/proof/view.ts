@@ -35,8 +35,6 @@ import { Message } from './message'
 import type { Model } from './model'
 import {
   SHELF_ROWS,
-  SHELF_THINGS,
-  SLOT_COUNT,
   type ShelfSpot,
   type ShelfThing,
   dayLabel,
@@ -48,6 +46,7 @@ import {
   maybeCalendarDay,
   maybeStampAt,
   monthLabel,
+  slotCountOf,
   slotId,
   spotUnlockId,
 } from './proof'
@@ -162,8 +161,11 @@ const rowView = (
         ],
       ),
       h.div(
-        [h.Class('proof-slots')],
-        Array.map(SHELF_THINGS, thing =>
+        [
+          h.Class('proof-slots'),
+          h.Style({ '--shelf-things': `${inputs.things.length}` }),
+        ],
+        Array.map(inputs.things, thing =>
           slotView(model, inputs, { thing, difficulty }, h),
         ),
       ),
@@ -271,7 +273,9 @@ const tallyView = (
   iconView('proof-card-thing', TROPHY_ICON, h),
   h.p(
     [h.Class('proof-card-tally')],
-    [`${filledCount(inputs.proof)}/${SLOT_COUNT}`],
+    [
+      `${filledCount(inputs.proof, inputs.things)}/${slotCountOf(inputs.things)}`,
+    ],
   ),
 ]
 

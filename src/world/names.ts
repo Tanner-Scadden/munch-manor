@@ -18,6 +18,7 @@ import {
 } from '../shared/playerData'
 import type { ProofEnding } from '../shared/proofData'
 import type { DareKind } from './dare/dareSchema'
+import type { MilestoneId } from './dare/milestones'
 import type { BoneBonus } from './heroes/rank'
 import type { Modifier } from './run/modifiers'
 import type {
@@ -464,6 +465,10 @@ export const DARE_NAMES: Readonly<Record<DareKind, string>> = {
   GrandmasRecipe: "Grandma's Recipe",
   MusicBox: 'Music Box',
   ButlersBell: "Butler's Bell",
+  NapkinRing: "Chunk's Napkin Ring",
+  DareNote: "Rattles' Dare Note",
+  FalseTeeth: "Grandma's Teeth",
+  Invitation: 'Party Invitation',
 }
 
 // NOTE: one line of the Munches' story each thing tells, on the dare card
@@ -476,6 +481,40 @@ export const DARE_LINES: Readonly<Record<DareKind, string>> = {
   MusicBox: 'WINDS ITSELF. ONLY KNOWS THE CONGA.',
   FamilyPortrait: 'THE MUNCHES, SMILING. TOO MANY TEETH.',
   GuestBookPage: '4,012 SIGNED IN. NOBODY SIGNED OUT.',
+  NapkinRing: 'ENGRAVED CHUNK. HALF CHEWED.',
+  DareNote: '1924. THE SAME DARE AS YOURS.',
+  FalseTeeth: 'STILL CHATTERING IN THE JAR.',
+  Invitation: 'YOU ARE CORDIALLY INVITED... FOREVER.',
+}
+
+// THE DARE JOURNAL
+
+// NOTE: the Munchopedia as the player reads it since the journal came
+// (src/features/munchopedia/): its title, its tabs, and what each
+// milestone (src/world/dare/milestones.ts) asks, short, on a locked thing
+// or story page, and the title of the story page it opens.
+export const JOURNAL_NAME = 'Dare Journal'
+
+export const MILESTONE_HINTS: Readonly<Record<MilestoneId, string>> = {
+  FirstFind: 'Find a thing',
+  FirstEscape: 'Escape once',
+  EveryRoomOpened: 'Open every room',
+  ThingInEveryRoom: 'A find in every room',
+  TenThings: 'Find 10 things',
+  EscapeDoubleDare: 'Escape on Double Dare',
+  ChunkTripleDare: 'Fell Chunk on Triple Dare',
+  EscapeTripleDogDare: 'Escape on Triple Dog Dare',
+}
+
+export const STORY_TITLES: Readonly<Record<MilestoneId, string>> = {
+  FirstFind: 'The Party',
+  FirstEscape: 'Dear Whoever',
+  EveryRoomOpened: 'Soup for 200',
+  ThingInEveryRoom: 'The Deal',
+  TenThings: 'Midnight',
+  EscapeDoubleDare: 'Day 40',
+  ChunkTripleDare: 'The Host',
+  EscapeTripleDogDare: 'I Dare You',
 }
 
 // THE PROOF SHELF

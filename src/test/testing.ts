@@ -410,7 +410,7 @@ export const pauseButton = Scene.role('button', { name: 'Pause' })
 
 export const statusLine = Scene.role('status')
 
-export const munchopediaDialog = Scene.role('dialog', { name: 'Munchopedia' })
+export const munchopediaDialog = Scene.role('dialog', { name: 'Dare Journal' })
 
 // NOTE: deals the MANOR hand on the home menu.
 export const openHandInScene = () => [

@@ -47,6 +47,7 @@ const started = pastArrival(
     mode: RunMode.Campaign(),
     callings: [],
     intro: 'Short',
+    things: [],
   }),
 )
 

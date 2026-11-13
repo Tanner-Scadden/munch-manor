@@ -43,6 +43,7 @@ import {
   PONG_JSON,
 } from '@munch/sync-engine'
 
+import { thingsOpenedBy } from '../../src/world/dare/milestones.ts'
 import {
   type OwnSeat,
   type RoomWorld,
@@ -68,10 +69,11 @@ import type { SyncBindings } from './sync.ts'
 import type { SyncCallFailed } from './syncCore.ts'
 import {
   BadSyncBody,
+  type PlayerFacts,
   type Socket,
   type SyncSetupFailed,
   json,
-  readNightmareUnlock,
+  readPlayerFacts,
   sqlOf,
   syncErrorResponse,
   tryCall,
@@ -461,12 +463,12 @@ export class GameRoom {
       const sockets = this.gameSockets()
       const nowMs = yield* Clock.currentTimeMillis
       const seed = crypto.getRandomValues(new Uint32Array(1))[0] ?? nowMs
-      const isNightmareOpen = yield* this.nightmareOf(lobby.host)
+      const hostFacts = yield* this.factsOf(lobby.host)
       yield* this.forgetKept
       const world = roomWorldFor({
         ...roomSettingsOf(
           lobby.mode,
-          lobby.difficulty === 'Nightmare' && !isNightmareOpen
+          lobby.difficulty === 'Nightmare' && !hostFacts.unlocked
             ? 'Hard'
             : lobby.difficulty,
           lobby.members,
@@ -474,6 +476,7 @@ export class GameRoom {
           lobby.easyBreakSeconds,
         ),
         intro: introForRound(lobby.round, lobby.members),
+        things: thingsOpenedBy(hostFacts.milestones),
       })
       const started = Room.startRoom(
         world,
@@ -592,13 +595,19 @@ export class GameRoom {
   // NOTE: read from the player's own scope on the server each time it
   // matters: when the room seats them and when a run starts, so a
   // Nightmare run or a kept Nightmare run never rests on a client's word.
-  private nightmareOf(playerId: string): Effect.Effect<boolean> {
+  // The host's milestones are read the same way as a run starts, for the
+  // new dare things they open (src/world/dare/milestones.ts).
+  private factsOf(playerId: string): Effect.Effect<PlayerFacts> {
     const scopes = this.env.SYNC_SCOPES
-    return readNightmareUnlock(
+    return readPlayerFacts(
       (scope, url, headers) =>
         scopes.get(scopes.idFromName(scope)).fetch(url, { headers }),
       playerId,
     )
+  }
+
+  private nightmareOf(playerId: string): Effect.Effect<boolean> {
+    return Effect.map(this.factsOf(playerId), facts => facts.unlocked)
   }
 
   // CHECKPOINT

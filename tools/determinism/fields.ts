@@ -137,6 +137,8 @@ export const FIELD_CLASSES = {
   lastRunEnding: 'Client',
   missions: 'Client',
   proof: 'Client',
+  journal: 'Client',
+  journalRun: 'Client',
   missionRun: 'Client',
   maybeMissionGain: 'Client',
   calling: 'Client',

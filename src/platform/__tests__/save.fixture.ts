@@ -1,3 +1,4 @@
+import { noJournal } from '../../shared/journalData'
 import { noMissions } from '../../shared/missionData'
 import { noProof } from '../../shared/proofData'
 // The save a returning player's device holds, every field set, which the
@@ -86,6 +87,7 @@ export const learnedSave: PlayerSave = {
   lastRun: 'NoRunYet',
   missions: noMissions,
   proof: noProof,
+  journal: noJournal,
   calling: 'TrackStar',
   boughtCosmetics: [],
   seenUnlocks: [],

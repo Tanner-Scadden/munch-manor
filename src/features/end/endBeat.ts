@@ -17,6 +17,7 @@ import {
   isBetterRun,
 } from '../../shared/playerData'
 import { dareCardOf } from '../../world/dare/dare'
+import { MilestoneId } from '../../world/dare/milestones'
 import { callingsOpenedBy } from '../../world/heroes/calling'
 import { isRankUp, rankOf } from '../../world/heroes/rank'
 import { isCoop, leadSeatOf } from '../../world/party/party'
@@ -283,14 +284,17 @@ export const isRankedUp = (model: Model): boolean =>
   )
 
 // NOTE: a rank up that opens a calling or a gift look flips a card for each
-// after the badge pops: the callings first, then the gifts by rank, one card at a
-// time, each held a moment before the next flips over it. The last stays.
+// after the badge pops: the callings first, then the gifts by rank, then
+// each milestone the run reached (src/domain/journal.ts), a new thing for
+// the list or a story page, one card at a time, each held a moment before
+// the next flips over it. The last stays.
 export const CALLING_FLIP_MS = 420
 export const UNLOCK_HOLD_MS = 500
 
 export const EndUnlock = defineTaggedUnion({
   Calling: { calling: Calling },
   Gift: { kind: CosmeticKind, name: Schema.String },
+  Milestone: { milestone: MilestoneId },
 })
 export type EndUnlock = typeof EndUnlock.Type
 
@@ -306,6 +310,9 @@ export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
         ),
         ...Array.map(giftsOpenedBy(before, after), ({ kind, name }) =>
           EndUnlock.Gift({ kind, name }),
+        ),
+        ...Array.map(model.journalRun.reached, milestone =>
+          EndUnlock.Milestone({ milestone }),
         ),
       ]
     },

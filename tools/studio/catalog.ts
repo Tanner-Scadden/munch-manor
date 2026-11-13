@@ -13,7 +13,13 @@ import {
 } from 'effect'
 
 import { playerSprites } from '../../src/art/appearance'
-import { BIG_KEY_PALETTE, BIG_KEY_PIXELS } from '../../src/art/dareArt'
+import {
+  BIG_KEY_PALETTE,
+  BIG_KEY_PIXELS,
+  DARE_BIG_ICONS,
+  DARE_ICONS,
+  JOURNAL_BIG_ICON,
+} from '../../src/art/dareArt'
 import {
   BRACKET_PIXELS,
   DAY_STAR_PIXELS,
@@ -57,11 +63,14 @@ import { CELLAR_BULB_SPRITE } from '../../src/render/room/cellarArt'
 import { CHANDELIER_SPRITES } from '../../src/render/room/diningArt'
 import { SHELF_SPRITES } from '../../src/render/room/libraryArt'
 import { Hat, Outfit } from '../../src/shared/playerData'
+import { DareKind } from '../../src/world/dare/dareSchema'
 import { CALLINGS } from '../../src/world/heroes/calling'
 import {
   BIG_KEY_NAME,
   CALLING_NAMES,
+  DARE_NAMES,
   HAT_NAMES,
+  JOURNAL_NAME,
   PICKUP_NAMES,
   PROOF_ENDING_NAMES,
   TRAP_NAMES,
@@ -316,6 +325,8 @@ const stillEntry = (
 
 const PROOF_SOURCE = 'src/art/proofArt.ts'
 
+const DARE_SOURCE = 'src/art/dareArt.ts'
+
 const itemsSections = (): ReadonlyArray<Section> => [
   {
     title: 'Guns',
@@ -420,6 +431,29 @@ const itemsSections = (): ReadonlyArray<Section> => [
     ],
   },
   {
+    // NOTE: every thing the dare can ask for, the last four opened by the
+    // Dare Journal's milestones (src/world/dare/milestones.ts), big as the
+    // satchel and the journal draw them and small as on the HUD's list.
+    title: 'Dare things',
+    entries: [
+      ...Array.flatMap(DareKind.literals, kind => [
+        stillEntry(
+          `dare/${kind}`,
+          DARE_NAMES[kind],
+          DARE_SOURCE,
+          DARE_BIG_ICONS[kind],
+        ),
+        stillEntry(
+          `dare/${kind}/icon`,
+          `${DARE_NAMES[kind]} icon`,
+          DARE_SOURCE,
+          DARE_ICONS[kind],
+        ),
+      ]),
+      stillEntry('dare/Journal', JOURNAL_NAME, DARE_SOURCE, JOURNAL_BIG_ICON),
+    ],
+  },
+  {
     title: 'Proof Shelf',
     entries: [
       ...Array.map(
@@ -440,7 +474,7 @@ const itemsSections = (): ReadonlyArray<Section> => [
       stillEntry(
         'proof/BigKey',
         BIG_KEY_NAME,
-        'src/art/dareArt.ts',
+        DARE_SOURCE,
         spriteShapes(BIG_KEY_PIXELS, BIG_KEY_PALETTE),
       ),
       ...Array.map(Record.toEntries(STAMP_PIXELS), ([ending, pixels]) =>
