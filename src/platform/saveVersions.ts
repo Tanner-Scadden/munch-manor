@@ -203,10 +203,17 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 21 is the save before the last run's ending.
+const PlayerSaveV21 = Schema.Struct({
+  ...Struct.omit(PlayerSave.fields, ['lastRun']),
+  version: Schema.Literal(21),
+})
+type PlayerSaveV21 = typeof PlayerSaveV21.Type
+
 // NOTE: version 20 is the save before the Bones bonuses. Its records read
 // with no best run (SavedRunRecord's default).
 const PlayerSaveV20 = Schema.Struct({
-  ...Struct.omit(PlayerSave.fields, ['bonuses']),
+  ...Struct.omit(PlayerSaveV21.fields, ['bonuses']),
   version: Schema.Literal(20),
 })
 type PlayerSaveV20 = typeof PlayerSaveV20.Type
@@ -321,6 +328,7 @@ const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 const PlayerSaveV17Json = Schema.fromJsonString(PlayerSaveV17)
+const PlayerSaveV21Json = Schema.fromJsonString(PlayerSaveV21)
 const PlayerSaveV20Json = Schema.fromJsonString(PlayerSaveV20)
 const PlayerSaveV19Json = Schema.fromJsonString(PlayerSaveV19)
 
@@ -596,14 +604,24 @@ const migrateV19 = (save: PlayerSaveV19): PlayerSaveV20 => ({
 // NOTE: a save from before the Bones bonuses has had none: its next run of
 // the day pays double, and its first escape on each difficulty pays the
 // bonus, an escape from before included.
-const migrateV20 = (save: PlayerSaveV20): PlayerSave => ({
+const migrateV20 = (save: PlayerSaveV20): PlayerSaveV21 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 21,
   bonuses: noBonuses,
 })
 
-const fromV19 = (save: PlayerSaveV19): PlayerSave =>
-  migrateV20(migrateV19(save))
+// NOTE: a save from before the friends in the car remembered reads as no
+// run yet, so the first intro after the update says nothing new.
+const migrateV21 = (save: PlayerSaveV21): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  lastRun: 'NoRunYet',
+})
+
+const fromV20 = (save: PlayerSaveV20): PlayerSave =>
+  migrateV21(migrateV20(save))
+
+const fromV19 = (save: PlayerSaveV19): PlayerSave => fromV20(migrateV19(save))
 
 const fromV18 = (save: PlayerSaveV18): PlayerSave => fromV19(migrateV18(save))
 
@@ -650,9 +668,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 21,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV21Json)(raw), migrateV21),
+  },
+  {
     version: 20,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV20Json)(raw), migrateV20),
+      Option.map(Schema.decodeOption(PlayerSaveV20Json)(raw), fromV20),
   },
   {
     version: 19,

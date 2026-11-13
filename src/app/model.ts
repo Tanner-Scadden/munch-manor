@@ -90,6 +90,7 @@ import {
   RecordUnlock,
   RotationSetting,
   RumbleSetting,
+  RunEnding,
   SavedBonuses,
   SavedBoughtCosmetics,
   SavedRank,
@@ -253,6 +254,11 @@ export const Model = Schema.Struct({
   // the first arrives.
   maybeToday: Schema.Option(DayStamp),
   maybeDeathTip: Schema.Option(DeathTip),
+  // NOTE: how the last run ended, saved and synced, and the line your
+  // friends in the car say at this run's intro (src/features/intro/carLine.ts),
+  // kept after it so the next is never the same line twice in a row.
+  lastRunEnding: RunEnding,
+  maybeCarLine: Schema.Option(Schema.String),
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
@@ -453,6 +459,8 @@ export const initialModel: OwnModel = {
   bonuses: noBonuses,
   maybeToday: Option.none(),
   maybeDeathTip: Option.none(),
+  lastRunEnding: 'NoRunYet',
+  maybeCarLine: Option.none(),
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],

@@ -57,6 +57,7 @@ import {
   ChangedSettings,
   DoubledFirstRun,
   EarnedRank,
+  EndedRun,
   EscapedFirst,
   ForgotPowerUps,
   GrantedVeteranRank,
@@ -250,6 +251,7 @@ const saveOfRow = (
     doubledDay: row.doubled_day,
     escapedOn: row.escaped_on,
   },
+  lastRun: row.last_run,
 })
 
 // LEGACY
@@ -600,6 +602,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     DoubledFirstRun: ({ day, bones }) =>
       replica.run(DoubledFirstRun, { day, bones }),
     EscapedFirst: ({ difficulty }) => replica.run(EscapedFirst, { difficulty }),
+    EndedRun: ({ lastRun }) => replica.run(EndedRun, { lastRun }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)

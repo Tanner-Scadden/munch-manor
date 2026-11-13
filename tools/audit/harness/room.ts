@@ -44,6 +44,7 @@ import {
 } from '@game/world/gear/weapons'
 import { levelOf, openExitIn } from '@game/world/level/arena'
 import { KITCHEN_EXIT } from '@game/world/level/exits'
+import { FRIEND_LINES } from '@game/world/names'
 import {
   creditKills,
   focusOf,
@@ -982,6 +983,18 @@ export const roomModel = (settings: SceneSettings): Model => {
   }
   if (phase === 'paused') {
     model = pause(model)
+  }
+  if (phase === 'arriving') {
+    const carLine = config.carLine
+    const lines = carLine === undefined ? [] : FRIEND_LINES[carLine]
+    model = modifyFields(model, {
+      phase: () =>
+        Phase.Arriving({
+          elapsedMs: config.introMs,
+          cut: config.cut === 'short' ? 'Short' : 'Full',
+        }),
+      maybeCarLine: () => Array.get(lines, config.lineAt),
+    })
   }
   if (phase === 'gameover') {
     model = modifyFields(model, {

@@ -81,6 +81,7 @@ export const learnedSave: PlayerSave = {
     spentBones: 5,
   },
   bonuses: { doubledDay: null, escapedOn: [] },
+  lastRun: 'NoRunYet',
   calling: 'TrackStar',
   boughtCosmetics: [],
   seenUnlocks: [],

@@ -86,6 +86,7 @@ export const FIELD_CLASSES = {
   breakIdleMs: 'Cosmetic',
   cosmeticRngState: 'Cosmetic',
   maybeDeathTip: 'Cosmetic',
+  maybeCarLine: 'Cosmetic',
 
   difficultyCard: 'Client',
   trapHint: 'Client',
@@ -133,6 +134,7 @@ export const FIELD_CLASSES = {
   rank: 'Client',
   bonuses: 'Client',
   maybeToday: 'Client',
+  lastRunEnding: 'Client',
   calling: 'Client',
   boughtCosmetics: 'Client',
   seenUnlocks: 'Client',

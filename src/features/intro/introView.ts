@@ -1,13 +1,15 @@
-import { Array, Function, Option, Result } from 'effect'
+import { Array, Function, Option, Record, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
-import { bakeText, placeBaked } from '../../art/font'
+import { type BakedText, bakeText, placeBaked } from '../../art/font'
 import {
   ANTENNA,
   BEAM,
   BIKE,
   BONY_HAND,
+  BUBBLE_HEIGHT,
+  BUBBLE_TAIL,
   COAT_CHECK,
   COUPE,
   DINING_ROOM,
@@ -38,6 +40,7 @@ import {
 } from '../../art/introArt'
 import { type Sprite, group, placeAt } from '../../art/sprite'
 import type { Screen } from '../../render/screen'
+import { FRIEND_LINES } from '../../world/names'
 import { ARRIVAL_MS } from '../../world/run/arrival'
 import type { Vector } from '../../world/schema/worldSchema'
 import { lerp } from '../../world/step/geometry'
@@ -76,16 +79,125 @@ const frameOf = <A>(
   stepMs: number,
 ): A => frames[Math.floor(ms / stepMs) % frames.length] ?? frames[0]
 
+type MaybeLine = Option.Option<string>
+
 const nonEmpty = <A>(
   items: ReadonlyArray<A>,
 ): Array.NonEmptyReadonlyArray<A> | undefined =>
   Array.isReadonlyArrayNonEmpty(items) ? items : undefined
 
+// YOUR FRIENDS' LINE
+
+// NOTE: the line your friends in the car say (src/features/intro/carLine.ts),
+// in a speech bubble: over the car in the drive, and in the short cut from
+// the car behind you, at the picture's bottom left over the knock. Every
+// line's bubbles are baked once, here.
+const BUBBLE_PAD = 4
+const EDGE = 2
+
+const CAR_X = 58
+const CAR_Y = 64
+
+// NOTE: the tail points down at the car's middle window.
+const CAR_WINDOW_X = CAR_X + 13
+const DRIVE_BUBBLE_TOP = CAR_Y - BUBBLE_HEIGHT - BUBBLE_TAIL - 1
+
+const KNOCK_BUBBLE_LEFT = 4
+const KNOCK_BUBBLE_TOP = PICTURE_HEIGHT - BUBBLE_HEIGHT - BUBBLE_TAIL
+const KNOCK_TAIL_X = 6
+
+type FriendBubble = Readonly<{
+  text: BakedText
+  driveLeft: number
+  driveBubble: Sprite
+  knockBubble: Sprite
+}>
+
+const bubbleWidthOf = (text: BakedText): number => text.width + BUBBLE_PAD * 2
+
+const friendBubble = (line: string): FriendBubble => {
+  const text = bakeText(line, 'Ink')
+  const width = bubbleWidthOf(text)
+  const driveLeft = Math.max(
+    EDGE,
+    Math.min(CAR_WINDOW_X - 6, PICTURE_WIDTH - EDGE - width),
+  )
+  return {
+    text,
+    driveLeft,
+    driveBubble: speechBubble({ width, tailX: CAR_WINDOW_X - driveLeft }),
+    knockBubble: speechBubble({ width, tailX: KNOCK_TAIL_X }),
+  }
+}
+
+const FRIEND_BUBBLES: Readonly<Record<string, FriendBubble>> =
+  Record.fromEntries(
+    Array.map(Array.flatten(Record.values(FRIEND_LINES)), line => [
+      line,
+      friendBubble(line),
+    ]),
+  )
+
+// NOTE: the widest bubble any line needs, for the test that each fits.
+export const widestFriendBubble = (): number =>
+  Array.reduce(Record.values(FRIEND_BUBBLES), 0, (widest, { text }) =>
+    Math.max(widest, bubbleWidthOf(text)),
+  )
+
+const bubbleOf = (maybeLine: MaybeLine): Option.Option<FriendBubble> =>
+  Option.flatMap(maybeLine, line => Record.get(FRIEND_BUBBLES, line))
+
+const bubbleShapes = (
+  bubble: Sprite,
+  text: BakedText,
+  left: number,
+  top: number,
+): ReadonlyArray<Canvas.Shape> => [
+  at(left, top, bubble),
+  placeBaked(text, { x: left + BUBBLE_PAD, y: top + 3, align: 'Left' }),
+]
+
+// NOTE: in the drive the radio crackles first, then the friends talk over it.
+const DRIVE_LINE_FROM = 0.35
+
+const isDriveLineUp = (maybeLine: MaybeLine, progress: number): boolean =>
+  Option.isSome(bubbleOf(maybeLine)) && progress >= DRIVE_LINE_FROM
+
+const driveLineShapes = (
+  maybeLine: MaybeLine,
+  progress: number,
+  bob: number,
+): ReadonlyArray<Canvas.Shape> =>
+  progress >= DRIVE_LINE_FROM
+    ? Option.match(bubbleOf(maybeLine), {
+        onNone: () => [],
+        onSome: ({ text, driveLeft, driveBubble }) =>
+          bubbleShapes(driveBubble, text, driveLeft, DRIVE_BUBBLE_TOP + bob),
+      })
+    : []
+
+// NOTE: the short cut's line, called from the car at the curb as you
+// knock, gone before the house knocks back.
+const KNOCK_LINE_FROM_MS = 100
+const KNOCK_LINE_UNTIL_MS = 1_400
+
+const knockLineShapes = (
+  { cut, beatMs }: IntroFrame,
+  maybeLine: MaybeLine,
+): ReadonlyArray<Canvas.Shape> =>
+  cut === 'Short' &&
+  beatMs >= KNOCK_LINE_FROM_MS &&
+  beatMs < KNOCK_LINE_UNTIL_MS
+    ? Option.match(bubbleOf(maybeLine), {
+        onNone: () => [],
+        onSome: ({ text, knockBubble }) =>
+          bubbleShapes(knockBubble, text, KNOCK_BUBBLE_LEFT, KNOCK_BUBBLE_TOP),
+      })
+    : []
+
 // THE DRIVE
 
 const DASH_GAP = 24
-const CAR_X = 58
-const CAR_Y = 64
 const ANTENNA_X = CAR_X + 4
 const ANTENNA_RISE = 4
 const STATIC_X = ANTENNA_X - 3
@@ -97,13 +209,18 @@ const SIGN_WIDTH = 26
 const isSignBehindStatic = (signX: number): boolean =>
   signX < STATIC_X + STATIC_WIDTH + 2 && signX + SIGN_WIDTH > STATIC_X - 2
 
-const driveShapes = ({ beatMs, progress }: IntroFrame) => {
+const driveShapes = (
+  { beatMs, progress }: IntroFrame,
+  maybeLine: MaybeLine,
+) => {
   const roll = (beatMs / 12) % DASH_GAP
   const bob = Math.floor(beatMs / 140) % 2
   const crackle = nonEmpty(RADIO_STATIC)
   const signX = lerp(170, -40, progress)
   const isCrackling =
-    Math.floor(beatMs / 350) % 3 !== 2 && !isSignBehindStatic(signX)
+    Math.floor(beatMs / 350) % 3 !== 2 &&
+    !isSignBehindStatic(signX) &&
+    !isDriveLineUp(maybeLine, progress)
   return [
     at(0, 0, DRIVE_BACKDROP),
     ...Array.makeBy(8, index => at(index * DASH_GAP - roll, 78, ROAD_DASH)),
@@ -119,6 +236,7 @@ const driveShapes = ({ beatMs, progress }: IntroFrame) => {
           ),
         ]
       : []),
+    ...driveLineShapes(maybeLine, progress, bob),
   ]
 }
 
@@ -187,7 +305,8 @@ const doorShapes = (
   ]
 }
 
-const knockShapes = ({ beatMs }: IntroFrame) => {
+const knockShapes = (frame: IntroFrame, maybeLine: MaybeLine) => {
+  const { beatMs } = frame
   const isKnocking = Array.some(KNOCKS_MS, atMs =>
     isNear(beatMs, atMs, KNOCK_SHAKE_MS),
   )
@@ -202,6 +321,7 @@ const knockShapes = ({ beatMs }: IntroFrame) => {
   return [
     at(0, 0, DOOR_FRAME),
     ...doorShapes(shiftX, 0),
+    ...knockLineShapes(frame, maybeLine),
     ...(beatMs < KNOCK_BACK_MS - 300 ? [at(112, fistY, FIST)] : []),
     ...(dustAgeMs > 0 && dustAgeMs < 900
       ? Array.map([46, 70, 95, 110], (x, index) =>
@@ -228,8 +348,10 @@ const coatsShapes = ({ beatMs, progress }: IntroFrame) => {
 // THE DINING ROOM
 
 const HELLO = bakeText('HELLO?', 'Ink')
-const BUBBLE_PAD = 4
-const BUBBLE: Sprite = speechBubble(HELLO.width + BUBBLE_PAD * 2)
+const BUBBLE: Sprite = speechBubble({
+  width: bubbleWidthOf(HELLO),
+  tailX: 6,
+})
 
 // NOTE: your place card stands on the table at its gap, by the empty
 // chair at the left half's end.
@@ -328,7 +450,10 @@ const slamShapes = ({ beatMs }: IntroFrame) => {
 // THE PICTURE
 
 const BEAT_SHAPES: Readonly<
-  Record<IntroBeat, (frame: IntroFrame) => ReadonlyArray<Canvas.Shape>>
+  Record<
+    IntroBeat,
+    (frame: IntroFrame, maybeLine: MaybeLine) => ReadonlyArray<Canvas.Shape>
+  >
 > = {
   Drive: driveShapes,
   Driveway: drivewayShapes,
@@ -411,7 +536,7 @@ export const introShapes: {
               group({
                 translate: pictureOrigin(screen, scale),
                 scale: scale === 1 ? undefined : { x: scale, y: scale },
-                shapes: BEAT_SHAPES[frame.beat](frame),
+                shapes: BEAT_SHAPES[frame.beat](frame, model.maybeCarLine),
               }),
               ...letterboxShapes(screen, scale),
             ],

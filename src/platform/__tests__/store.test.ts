@@ -1086,6 +1086,7 @@ const migratedLiveSave: PlayerSave = {
   records: noSavedRunRecords,
   rank: noRank,
   bonuses: noBonuses,
+  lastRun: 'NoRunYet',
   calling: 'You',
   boughtCosmetics: [],
   seenUnlocks: [],
