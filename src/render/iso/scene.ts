@@ -66,7 +66,7 @@ import {
 import { AMBIENT, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
 import { FloorLayer } from './painter'
-import { PITCH, STRETCH, UNIT, zOf } from './space'
+import { PITCH, STRETCH, UNIT, canvasStepOf, zOf } from './space'
 import { Textures } from './textures'
 import { chandelierSwayAt, windClockOf } from './wind'
 
@@ -236,21 +236,41 @@ export class IsoScene {
         this.textures.preload(src)
       })
     }
-    // NOTE: the renderer's size is in CSS pixels, fractions kept; its canvas
-    // holds those times the device's pixel ratio, so a canvas pixel is a
-    // device pixel and the page never stretches it.
-    const width = Math.max(1, size.width)
-    const height = Math.max(1, size.height)
+    // NOTE: the renderer's size is in CSS pixels, fractions kept. Its canvas
+    // holds a canvas pixel for each square of `step` device pixels
+    // (canvasStepOf), so the page stretches it by exactly that, pixelated.
+    // A box whose device pixels the step does not divide is drawn a canvas
+    // pixel wider or taller, past its right and bottom edges, which the box
+    // clips: the view is anchored on its top left corner.
     const ratio = window.devicePixelRatio
+    const step = canvasStepOf({
+      devicePerGamePixel: (size.width * ratio) / Math.max(1, camera.width),
+      ratio,
+    })
+    const resolution = ratio / step
+    const width = Math.max(
+      1,
+      Math.ceil((size.width * ratio) / step) / resolution,
+    )
+    const height = Math.max(
+      1,
+      Math.ceil((size.height * ratio) / step) / resolution,
+    )
     if (
       this.app.renderer.width !== width ||
       this.app.renderer.height !== height ||
-      this.app.renderer.resolution !== ratio
+      this.app.renderer.resolution !== resolution
     ) {
-      this.app.renderer.resize(width, height, ratio)
+      this.app.renderer.resize(width, height, resolution)
     }
     const built = this.builtFor(levelOf(model))
-    if (this.textures.loaded !== this.lastLoaded) {
+    // NOTE: the floor is painted again once what it waits on has loaded,
+    // not as each file comes in: a first visit loads a few dozen, and
+    // painting the whole floor for each held the splash in a hitch apiece.
+    if (
+      this.textures.loaded !== this.lastLoaded &&
+      (this.textures.isSettled || this.lastLoaded < 0)
+    ) {
       this.lastLoaded = this.textures.loaded
       built.room.paintLeaves(built.floorArt)
       this.lastDecals = undefined

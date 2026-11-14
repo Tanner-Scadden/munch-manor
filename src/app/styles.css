@@ -107,9 +107,11 @@ dialog[open] {
 }
 
 /* NOTE: the 3D world (<munch-world>, src/render/iso/element.ts) fills the
-   lens; its canvas fills it. */
+   lens; its canvas fills it, or runs a canvas pixel past its right and
+   bottom edges (src/render/iso/space.ts, canvasStepOf), clipped here. */
 .world-view {
   display: block;
+  overflow: hidden;
 }
 
 .world-view,

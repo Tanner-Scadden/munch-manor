@@ -15,9 +15,16 @@ export const AtlasEntries = Schema.Record(
   Schema.NullOr(AtlasEntry),
 )
 
+// NOTE: each level spec's id to the files holding its room images.
+export const AtlasLevels = Schema.Record(
+  Schema.String,
+  Schema.Array(Schema.Finite),
+)
+
 export const SpriteAtlasManifest = Schema.Struct({
   sources: Schema.Array(Schema.String),
   entries: AtlasEntries,
+  levels: AtlasLevels,
 })
 
 // NOTE: what `build.ts --keys` prints: every sprite key.

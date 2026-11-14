@@ -3,6 +3,7 @@ import { Canvas } from 'foldkit'
 import { type Html, createLazy } from 'foldkit/html'
 
 import { spriteWarmUpSources } from '../art/appearance'
+import { atlasRoomSources } from '../art/spriteAtlas'
 import { clocheShapes } from '../features/cloche/clocheView'
 import { darePointerShapes } from '../features/dare/darePointer'
 import { frontDoorMarkerShapes } from '../features/dare/frontDoorView'
@@ -200,9 +201,13 @@ const lazyOverlayLayer = createLazy()
 // shown for the first time mid-fight would be missing for a frame. The
 // renderer starts loading every sprite built as the game loaded, the classic
 // look's frames, and every room image of the house the run stands in (every
-// set of its exits, so opening a room never shows a bare floor). The list is
-// built once per house, and read at the first render rather than when this
-// module loads, so it holds the sprites of modules loaded after it.
+// set of its exits, so opening a room never shows a bare floor). A
+// production build's atlas names the files holding a house's room images,
+// so the list is those, with no room art built: building every room image
+// of every set of exits froze a phone's first frame for seconds. With no
+// atlas (a dev server) they are built. The list is made once per house, and read at the
+// first render rather than when this module loads, so it holds the sprites
+// of modules loaded after it.
 const preloads = new WeakMap<LevelSpec, ReadonlyArray<string>>()
 
 const preloadSourcesOf = (spec: LevelSpec): ReadonlyArray<string> => {
@@ -211,8 +216,10 @@ const preloadSourcesOf = (spec: LevelSpec): ReadonlyArray<string> => {
     return known
   }
   const sources = Array.dedupe([
-    ...Array.filterMap(everyRoomImage(spec), shape =>
-      shape._tag === 'Image' ? Result.succeed(shape.src) : Result.failVoid,
+    ...Option.getOrElse(atlasRoomSources(spec.id), () =>
+      Array.filterMap(everyRoomImage(spec), shape =>
+        shape._tag === 'Image' ? Result.succeed(shape.src) : Result.failVoid,
+      ),
     ),
     ...spriteWarmUpSources(defaultAppearance),
   ])

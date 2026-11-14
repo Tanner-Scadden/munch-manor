@@ -13,7 +13,7 @@ import type { Plugin, ViteDevServer } from 'vite'
 import type { SpriteAtlas } from '../../src/art/spriteAtlas.ts'
 import { encodeJson, readJsonFile } from '../json.ts'
 import { nodeRuntime, textOf } from '../node.ts'
-import { AtlasEntries, SpriteAtlasManifest } from './manifest.ts'
+import { AtlasEntries, AtlasLevels, SpriteAtlasManifest } from './manifest.ts'
 
 // The sprite atlas in the build (docs/IMAGES_PLAN.md). ./build.ts writes the
 // atlas, one file per room, and a manifest into a cache folder, reusing them
@@ -44,7 +44,8 @@ const GENERATOR = `${ROOT}/tools/sprites/build.ts`
 const BUILD_CACHE_DIR = `${ROOT}/node_modules/.cache/munch-sprites`
 const DEV_CACHE_DIR = `${ROOT}/node_modules/.cache/munch-sprites-dev`
 
-const EMPTY_ATLAS_MODULE = 'export default { sources: [], entries: {} }\n'
+const EMPTY_ATLAS_MODULE =
+  'export default { sources: [], entries: {}, levels: {} }\n'
 
 class GeneratorFailed extends Schema.TaggedError<
   GeneratorFailed,
@@ -122,7 +123,7 @@ const builtAtlasModule = (outDir: string) =>
         return Array.join(
           [
             ...imports,
-            `export default { sources: [${Array.join(sources, ', ')}], entries: ${encodeJson(AtlasEntries)(manifest.entries)} }`,
+            `export default { sources: [${Array.join(sources, ', ')}], entries: ${encodeJson(AtlasEntries)(manifest.entries)}, levels: ${encodeJson(AtlasLevels)(manifest.levels)} }`,
             '',
           ],
           '\n',
@@ -146,6 +147,7 @@ const devAtlasModule = Effect.map(manifestIn(DEV_CACHE_DIR), maybeManifest =>
           name => `${DEV_URL_PREFIX}${name}`,
         ),
         entries: manifest.entries,
+        levels: manifest.levels,
       }
       return `export default ${encodeJson(SpriteAtlasManifest)(atlas)}\n`
     },
