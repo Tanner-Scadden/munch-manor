@@ -21,7 +21,11 @@ import { initialModel } from '../../../app/pureApp'
 import { forgetTutorial } from '../../../platform/save'
 import { screenCameraOf } from '../../../render/camera'
 import { screenOf } from '../../../render/screen'
-import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
+import {
+  FIXED_STEP_MS,
+  HIT_STOP_WAVE_CLEAR_MS,
+  PREPARATION_MS,
+} from '../../../shared/constants'
 import { DISTANT_SPAWN, newPlayerCardSeen } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -90,6 +94,12 @@ const LOOK_FRAMES = Math.ceil(2600 / FRAME_MS) + 1
 const CASE_CARD_FRAMES = Math.ceil(CASE_CARD_MIN_MS / FRAME_MS) + 1
 
 const frame = tick(FRAME_MS)
+
+// NOTE: the wave's clearing blow holds the world still a moment
+// (src/world/step/hitStop.ts) before the break's first step.
+const throughClearingBlow = Story.steps(
+  ...ticks(Math.ceil(HIT_STOP_WAVE_CLEAR_MS / FRAME_MS), FRAME_MS),
+)
 
 // NOTE: a new save on a measured surface, its zombies all met so no new
 // zombie card holds the practice wave.
@@ -162,6 +172,7 @@ const reachFirstBreak = Story.steps(
   changeModel(wonPracticeWave),
   frame,
   frame,
+  throughClearingBlow,
 )
 
 // NOTE: the tour's break set straight, for the checks that need no run.
@@ -218,6 +229,7 @@ describe('the guided first break', () => {
             Option.some(tutorialKeySpotOf(current)),
           )
         }),
+        throughClearingBlow,
         changeModel(current => standAt(tutorialKeySpotOf(current))(current)),
         frame,
         Story.model(current => {

@@ -1,7 +1,13 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { chandelierSwayAt, windClockOf, windOffsetAt } from '../wind'
+import {
+  bendWeightOf,
+  chandelierSwayAt,
+  fernBandOf,
+  windClockOf,
+  windOffsetAt,
+} from '../wind'
 
 // The draft through the manor (src/render/iso/wind.ts): read off the World's
 // clock alone, in whole pixels, posed ten times a second.
@@ -42,5 +48,29 @@ describe('the wind', () => {
     Array.forEach(TIMES, t => {
       expect(Math.abs(chandelierSwayAt(t))).toBeLessThanOrEqual(3)
     })
+  })
+
+  test('bends a fern from its pot: higher bands sway more, the pot not at all', () => {
+    const plant = { left: 0, top: 0, right: 12, bottom: 16 }
+    expect(fernBandOf({ rect: { x: 0, y: 0, width: 1 }, plant })).toBe('0:0')
+    expect(fernBandOf({ rect: { x: 5, y: 3, width: 2 }, plant })).toBe('1:1')
+    expect(fernBandOf({ rect: { x: 11, y: 12, width: 1 }, plant })).toBe('2:6')
+    expect(fernBandOf({ rect: { x: 5, y: 14, width: 2 }, plant })).toBe('pot')
+
+    const weights = Array.map(Array.range(0, 6), band =>
+      bendWeightOf({ band: `0:${band}`, top: band * 2, height: 2 }),
+    )
+    Array.forEach(
+      Array.zip(weights, Array.drop(weights, 1)),
+      ([upper, lower]) => {
+        expect(upper).toBeGreaterThan(lower)
+      },
+    )
+    expect(Array.headNonEmpty(weights)).toBeLessThanOrEqual(1)
+    expect(Array.lastNonEmpty(weights)).toBeGreaterThan(0)
+    expect(bendWeightOf({ band: '1:0', top: 0, height: 2 })).toBeLessThan(
+      Array.headNonEmpty(weights),
+    )
+    expect(bendWeightOf({ band: 'pot', top: 13, height: 3 })).toBe(0)
   })
 })

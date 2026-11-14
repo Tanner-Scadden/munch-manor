@@ -5,7 +5,7 @@
 // time. The renderer (PixiJS 3D) loads in its own chunk the first time an
 // element joins the page.
 
-import { Effect, Option } from 'effect'
+import { Effect, Option, Schedule, pipe } from 'effect'
 import { CustomElement } from 'foldkit'
 
 import { toBrowserError } from '../../shared/describeError'
@@ -78,6 +78,7 @@ const worldElementClass = () =>
             onFailure: () => {
               this.isStarting = false
               this.replaceChildren(unsupportedNode())
+              this.dataset['ready'] = 'true'
             },
           }),
         ),
@@ -120,8 +121,37 @@ const worldElementClass = () =>
       })
       // NOTE: the audits wait for it before they take a picture.
       this.dataset['drawn'] = 'true'
+      // NOTE: the splash waits for this: the world drawn with every sprite
+      // it asked for (src/app/boot.ts).
+      if (this.scene.value.isSettled) {
+        this.dataset['ready'] = 'true'
+      }
     }
   }
+
+// SPLASH
+
+const READY_POLL_MS = 50
+const READY_GIVE_UP_MS = 15_000
+
+const isWorldReady = (): boolean => {
+  const world = document.querySelector<HTMLElement>(TAG)
+  return world === null || world.dataset['ready'] === 'true'
+}
+
+// NOTE: the world's first whole frame: the renderer loaded, its shaders
+// built, and every sprite it asked for in, so the menu never opens on a
+// black, stalling world. Given up on after a while, so a slow device still
+// gets in.
+export const awaitWorldReady: Effect.Effect<void> = pipe(
+  Effect.sync(isWorldReady),
+  Effect.repeat({
+    until: isReady => isReady,
+    schedule: Schedule.spaced(READY_POLL_MS),
+  }),
+  Effect.timeout(READY_GIVE_UP_MS),
+  Effect.ignore,
+)
 
 // NOTE: called once by the page's entry; tests never define it, so there the
 // element stays a plain one that draws nothing.

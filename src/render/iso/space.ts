@@ -1,6 +1,9 @@
 // The 3D world's space: how the game's 2D world maps onto 3D units.
 
+import { String } from 'effect'
+
 import { TILE_SIZE } from '../../shared/constants'
+import { WALL_SYMBOL } from '../../world/level/tileGrid'
 
 // NOTE: one world unit is one tile. A game pixel is a tenth of a unit, x runs
 // east and z runs south (the game's y), and y is up.
@@ -23,6 +26,36 @@ export const STRETCH = 1 / Math.sin(PITCH)
 export const zOf = (gameY: number): number => gameY * UNIT * STRETCH
 
 export const WALL_HEIGHT = 1.4
+
+// NOTE: a wall with floor just north of it, through at most its own two
+// tiles of thickness, stands between the lens and whoever is in that room,
+// so it is built low for good, as the 2D game drew a room's front wall. It
+// never moves: walls that dropped as the player walked by were not liked
+// (owner, 2026-11-14). The side walls and the house's back walls stand tall.
+export const FRONT_WALL_HEIGHT = 0.4
+const FRONT_WALL_DEPTH = 2
+const OUTSIDE = ','
+
+export const isFrontWallAt = ({
+  tiles,
+  row,
+  column,
+}: Readonly<{
+  tiles: ReadonlyArray<string>
+  row: number
+  column: number
+}>): boolean => {
+  for (let step = 1; step <= FRONT_WALL_DEPTH; step += 1) {
+    const north = String.charAt(tiles[row - step] ?? '', column)
+    if (north._tag === 'None' || north.value === OUTSIDE) {
+      return false
+    }
+    if (north.value !== WALL_SYMBOL) {
+      return true
+    }
+  }
+  return false
+}
 
 // NOTE: where "up" and "toward the lens" point in the world. The camera
 // looks straight north, so every billboard faces it square, and a sprite's

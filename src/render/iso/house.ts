@@ -17,7 +17,6 @@ import {
   type CoverKind,
   WALL_SYMBOL,
 } from '../../world/level/tileGrid'
-import type { Vector } from '../../world/schema/entitySchema'
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
 import { roomArtOf } from '../room/room'
 import { COVER_DRAWINGS, coverBlocks } from '../room/roomCover'
@@ -30,20 +29,24 @@ import {
 } from './billboards'
 import { type Leaf, flatten, rectKey } from './flatten'
 import { FlatPainter } from './painter'
-import { STRETCH, UNIT, WALL_HEIGHT, zOf } from './space'
+import {
+  FRONT_WALL_HEIGHT,
+  STRETCH,
+  UNIT,
+  WALL_HEIGHT,
+  isFrontWallAt,
+  zOf,
+} from './space'
 import { type Textures, colorOf } from './textures'
-import { windOffsetAt } from './wind'
+import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
 
 // WALLS
 
-const CUTAWAY_HEIGHT = 0.25
 const WALL_GEOMETRY = new CubeGeometry({ width: 1, height: 1, depth: 1 })
-
-export type Wall = Readonly<{ mesh: Mesh3D; x: number; z: number }>
 
 export const buildWalls = (
   input: Readonly<{ level: Level; material: ToonMaterial }>,
-): ReadonlyArray<Wall> => {
+): ReadonlyArray<Mesh3D> => {
   const { level, material } = input
   return Array.flatMap(level.tiles, (line, row) =>
     Array.filterMap(Array.fromIterable(line), (symbol, column) => {
@@ -52,40 +55,21 @@ export const buildWalls = (
       }
       const x = (level.left + column * TILE_SIZE) * UNIT + 0.5
       const z = zOf(level.top + (row + 0.5) * TILE_SIZE)
-      return Result.succeed({
-        x,
-        z,
-        mesh: new Mesh3D({
+      const height = isFrontWallAt({ tiles: level.tiles, row, column })
+        ? FRONT_WALL_HEIGHT
+        : WALL_HEIGHT
+      return Result.succeed(
+        new Mesh3D({
           geometry: WALL_GEOMETRY,
           material,
-          position: { x, y: WALL_HEIGHT / 2, z },
-          scale: { x: 1, y: WALL_HEIGHT, z: STRETCH },
+          position: { x, y: height / 2, z },
+          scale: { x: 1, y: height, z: STRETCH },
           castShadow: true,
           receiveShadow: true,
         }),
-      })
+      )
     }),
   )
-}
-
-// NOTE: walls between the camera and the player drop low, as a dollhouse
-// cutaway, so the camera never loses the player behind one. The camera looks
-// north, so those are the walls just south of the player.
-export const cutAway = ({
-  walls,
-  player,
-}: Readonly<{ walls: ReadonlyArray<Wall>; player: Vector }>): void => {
-  const px = player.x * UNIT
-  const pz = zOf(player.y)
-  for (const { mesh, x, z } of walls) {
-    const ahead = z - pz
-    const isInFront = ahead > 0.5 && ahead < 9 && Math.abs(x - px) < 5
-    const height = isInFront ? CUTAWAY_HEIGHT : WALL_HEIGHT
-    if (mesh.scale.y !== height) {
-      mesh.scale.y = height
-      mesh.position.y = height / 2
-    }
-  }
 }
 
 // FURNITURE
@@ -156,17 +140,12 @@ type Clump = Readonly<{
   weight: number
 }>
 
-export type Plant = Readonly<{ footY: number; clumps: ReadonlyArray<Clump> }>
-
-// NOTE: a fern's leaves (its top 13 rows) in six clumps, thirds across and
-// two bands down, and its pot, which never moves.
-const LEAF_ROWS = 13
-
-type Bounds = Readonly<{
-  left: number
-  top: number
-  right: number
-  bottom: number
+export type Plant = Readonly<{
+  footY: number
+  spot: Readonly<{ x: number; y: number }>
+  clumps: ReadonlyArray<Clump>
+  // NOTE: the whole fern in one texture, for its shadow, which stays still.
+  caster: Cutout
 }>
 
 const boundsOf = (rects: ReadonlyArray<Canvas.Rect>): Bounds =>
@@ -185,16 +164,6 @@ const boundsOf = (rects: ReadonlyArray<Canvas.Rect>): Bounds =>
       bottom: Math.max(bounds.bottom, rect.y + rect.height),
     }),
   )
-
-const clumpKey = (rect: Canvas.Rect, plant: Bounds): string => {
-  const row = rect.y - plant.top
-  const third = (plant.right - plant.left) / 3
-  const column = Math.min(
-    2,
-    Math.floor((rect.x + rect.width / 2 - plant.left) / third),
-  )
-  return row >= LEAF_ROWS ? 'pot' : `${column}${row < 6 ? 'top' : 'low'}`
-}
 
 const bakeRects = (
   app: Application,
@@ -234,32 +203,38 @@ export const plantsOf = (
         shape._tag === 'Rect' ? Result.succeed(shape) : Result.failVoid,
     )
     const plant = boundsOf(rects)
-    const center = {
-      x: (plant.left + plant.right) / 2,
-      y: plant.top + LEAF_ROWS,
-    }
-    const reach = Math.hypot((plant.right - plant.left) / 2, LEAF_ROWS)
     const clumps = pipe(
-      Array.groupBy(rects, rect => clumpKey(rect, plant)),
+      Array.groupBy(rects, rect => fernBandOf({ rect, plant })),
       Record.toEntries,
       Array.map(([key, members]): Clump => {
         const bounds = boundsOf(members)
-        const distance = Math.hypot(
-          (bounds.left + bounds.right) / 2 - center.x,
-          (bounds.top + bounds.bottom) / 2 - center.y,
-        )
         return {
           texture: bakeRects(app, members, bounds),
           left: bounds.left,
           top: bounds.top,
           width: bounds.right - bounds.left,
           height: bounds.bottom - bounds.top,
-          weight:
-            key === 'pot' ? 0 : 0.35 + 0.65 * Math.min(1, distance / reach),
+          weight: bendWeightOf({
+            band: key,
+            top: bounds.top - plant.top,
+            height: bounds.bottom - bounds.top,
+          }),
         }
       }),
     )
-    return { footY: plant.bottom, clumps }
+    return {
+      footY: plant.bottom,
+      spot: { x: plant.left, y: plant.top },
+      clumps,
+      caster: {
+        texture: bakeRects(app, rects, plant),
+        left: plant.left,
+        top: plant.top,
+        width: plant.right - plant.left,
+        height: plant.bottom - plant.top,
+        footY: plant.bottom,
+      },
+    }
   })
 }
 
@@ -268,15 +243,13 @@ export const standPlant = (
 ): void => {
   const { pool, plant, t } = input
   Array.forEach(plant.clumps, (clump, part) => {
-    const sway = windOffsetAt({
-      t,
-      spot: { x: clump.left, y: clump.top },
-      weight: clump.weight,
-    })
+    const sway = windOffsetAt({ t, spot: plant.spot, weight: clump.weight })
     pool.place({
       texture: clump.texture,
       centerX: clump.left + clump.width / 2 + sway.x,
-      bottom: clump.top + clump.height + sway.y,
+      // NOTE: sideways only: bands that rose and fell apart would open a
+      // pixel's gap between their rows.
+      bottom: clump.top + clump.height,
       drawnWidth: clump.width,
       drawnHeight: clump.height,
       footY: plant.footY,
@@ -362,9 +335,7 @@ export const furnitureCastersOf = (
   )
   const cutouts: ReadonlyArray<Cutout> = [
     ...baked,
-    ...Array.flatMap(plants, plant =>
-      Array.map(plant.clumps, clump => ({ ...clump, footY: plant.footY })),
-    ),
+    ...Array.map(plants, ({ caster }) => caster),
   ]
   Array.forEach(cutouts, cutout => {
     standCutout({

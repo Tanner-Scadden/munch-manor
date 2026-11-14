@@ -27,6 +27,7 @@ import {
   HIT_STOP_KILL_MAX_MS,
   HIT_STOP_KILL_MS,
   HIT_STOP_MAX_MS,
+  HIT_STOP_WAVE_CLEAR_MS,
   KILL_POPUP_LIFETIME_MS,
   MEAT_GIBS_PER_KILL,
   PARTICLE_MAX,
@@ -42,6 +43,7 @@ import {
   SHAKE_TRAUMA_HURT,
   SHAKE_TRAUMA_KILL,
   SHAKE_TRAUMA_MAX,
+  SHAKE_TRAUMA_WAVE_CLEAR,
   STREAK_WINDOW_MS,
   ZOMBIE_MAX_HP,
 } from '../../shared/constants'
@@ -637,6 +639,34 @@ describe('hit-stop', () => {
         }),
       )
     }),
+  )
+
+  it.effect(
+    "the wave's last kill freezes longest and shakes hardest, cooldown or not",
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(massacreModel(1), {
+            hitStop: () =>
+              HitStop.Running({ cooldownMs: HIT_STOP_COOLDOWN_MS }),
+            phase: phase =>
+              Phase.isAnyOf(['Wave'])(phase)
+                ? modifyFields(phase, { spawns: () => [] })
+                : phase,
+          }),
+        ),
+        tick(FRAME_MS),
+        Story.model(({ hitStop, frameEvents, shake }) => {
+          expect(
+            Array.some(frameEvents, GameEvent.isAnyOf(['WaveCleared'])),
+          ).toBe(true)
+          expect(hitStop).toEqual(
+            HitStop.Frozen({ remainingMs: HIT_STOP_WAVE_CLEAR_MS }),
+          )
+          expect(shake.trauma).toBeGreaterThanOrEqual(SHAKE_TRAUMA_WAVE_CLEAR)
+        }),
+      ),
   )
 
   it.effect('a kill right after a stop ends does not freeze again', () =>

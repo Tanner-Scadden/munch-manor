@@ -14,6 +14,7 @@ import {
 import { PlayerStore } from '../platform/store'
 import { startSummaryQueue } from '../platform/summaryQueue'
 import { readUpdateMarker } from '../platform/version'
+import { awaitWorldReady } from '../render/iso/element'
 import { toBrowserError } from '../shared/describeError'
 import { ApplicationBlock } from './definition'
 import { Message } from './message'
@@ -225,6 +226,7 @@ export const AwaitFirstFrame = ApplicationBlock.makeCommand('AwaitFirstFrame', {
     return () =>
       pipe(
         awaitFirstFrame,
+        Effect.andThen(awaitWorldReady),
         Effect.andThen(markLoadStep('FirstFrame')),
         Effect.as(Message.CompletedAwaitFirstFrame()),
       )

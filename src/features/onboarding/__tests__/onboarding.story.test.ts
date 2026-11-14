@@ -16,6 +16,7 @@ import { initialModel } from '../../../app/pureApp'
 import {
   FIRST_PREPARATION_MS,
   FIXED_STEP_MS,
+  HIT_STOP_WAVE_CLEAR_MS,
   PREPARATION_MS,
 } from '../../../shared/constants'
 import { newPlayerCardSeen, onHard } from '../../../test/model.fixture'
@@ -186,9 +187,12 @@ describe('new zombie card', () => {
           expect(cardKind(current)).toStrictEqual(Option.none())
           expect(remainingMs(current)).toBe(PREPARATION_MS)
         }),
+        // NOTE: the clearing blow holds the world still first.
         ...ticks(4, TICK_MS),
         Story.model(current => {
-          expect(remainingMs(current)).toBeCloseTo(PREPARATION_MS - 4 * TICK_MS)
+          expect(remainingMs(current)).toBeCloseTo(
+            PREPARATION_MS - (4 * TICK_MS - HIT_STOP_WAVE_CLEAR_MS),
+          )
         }),
         ...ticks(Math.ceil(PREPARATION_MS / TICK_MS), TICK_MS),
         Story.model(current => {
