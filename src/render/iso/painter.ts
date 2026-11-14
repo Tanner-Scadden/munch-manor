@@ -186,7 +186,9 @@ export class FlatPainter {
 export class FloorLayer {
   readonly mesh: Mesh3D
   private readonly painter: FlatPainter
-  private readonly texture: ContainerTexture
+  // NOTE: the layer's picture of the level, one texel a game pixel from its
+  // top left corner, which the walls' tops wear too (house.ts).
+  readonly texture: ContainerTexture
 
   constructor(
     input: Readonly<{
