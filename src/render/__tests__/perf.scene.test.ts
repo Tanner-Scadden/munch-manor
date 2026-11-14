@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { WARM_UP_CLASS, sceneShapes } from '../../app/layers'
+import { sceneShapes } from '../../app/layers'
 import { Message } from '../../app/message'
 import {
   Alarm,
@@ -484,13 +484,14 @@ const countingContext = (counts: PaintCounts) => {
 
 type CanvasNode = NonNullable<Html>
 
-// NOTE: the sprite warm-up canvases paint once as the game loads and never
-// again, so they are not part of a frame's cost.
+// NOTE: the world is drawn in 3D (src/render/iso/), on no Foldkit canvas,
+// so the canvases measured here are the overlay's: the HUD, the banners, and
+// the markers over the world.
 const canvasNodes = (node: Html | string): ReadonlyArray<CanvasNode> => {
   if (node === null || typeof node === 'string') {
     return []
   } else if (node.sel !== undefined && String.startsWith('canvas')(node.sel)) {
-    return node.data?.class?.[WARM_UP_CLASS] === true ? [] : [node]
+    return [node]
   } else {
     return Array.flatMap(node.children ?? [], canvasNodes)
   }
@@ -519,6 +520,16 @@ const paintCanvases = (
   return counts
 }
 
+const flatImageCount = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+  Array.reduce(
+    shapes,
+    0,
+    (count, shape) =>
+      count +
+      (shape._tag === 'Image' ? 1 : 0) +
+      (shape._tag === 'Group' ? flatImageCount(shape.shapes) : 0),
+  )
+
 const flatShapeCount = (shapes: ReadonlyArray<Canvas.Shape>): number =>
   Array.reduce(
     shapes,
@@ -535,7 +546,7 @@ type FrameCost = Readonly<{
   fullRepaintPaintOps: number
 }>
 
-type Measured = FrameCost & Readonly<{ steadyImagesDrawn: number }>
+type Measured = FrameCost & Readonly<{ imagesBuilt: number }>
 
 // NOTE: the canvases of the frame once the surface is measured, and of the
 // next frame, once the mouse moves: the steady frame. Kept from the Scene's
@@ -564,7 +575,7 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
     steadyFillStyleChanges: steady.fillStyleChanges,
     steadyShapesPainted: steady.shapesPainted,
     fullRepaintPaintOps: paintCanvases([], last).paintOps,
-    steadyImagesDrawn: steady.imagesDrawn,
+    imagesBuilt: flatImageCount(sceneShapes(model)),
   } satisfies Measured
 })
 
@@ -636,6 +647,10 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // 800, 650, and 685. The room tools (layer 20, 2026-11-11) put the bulb's
 // chain and a barrel in the cellar, each with its ring, while a zombie out
 // in the dark is not drawn at all, so the budgets still hold.
+// The 3D renderer (November 2026) took the world off Foldkit's canvases:
+// shapesBuilt still counts every shape a frame builds for it, while the
+// paint budgets now measure the overlay alone, well under the old numbers.
+// The 3D frame's own cost is `bun run perf:check`'s to gate.
 const BUDGET: FrameCost = {
   shapesBuilt: 800,
   steadyPaintOps: 650,
@@ -644,10 +659,10 @@ const BUDGET: FrameCost = {
   fullRepaintPaintOps: 1200,
 }
 
-// NOTE: happy-dom loads a data URL image as soon as its src is set, so every
-// sprite image here is drawn. If none were, the paint budgets above would pass
-// without measuring the sprites at all.
-const IMAGES_DRAWN_MIN = ZOMBIE_ALIVE_MAX + 1
+// NOTE: every zombie and the player are sprite images among the shapes
+// built. If none were, the shape budget above would pass without counting
+// the sprites at all.
+const IMAGES_BUILT_MIN = ZOMBIE_ALIVE_MAX + 1
 
 const BUDGET_KEYS: ReadonlyArray<keyof FrameCost> = [
   'shapesBuilt',
@@ -877,9 +892,9 @@ describe('Frame cost', () => {
       }),
   )
 
-  it.effect.each(SCENARIOS)('$name draws its sprites as images', ({ model }) =>
-    Effect.map(measureFrames(model), ({ steadyImagesDrawn }) => {
-      expect(steadyImagesDrawn).toBeGreaterThanOrEqual(IMAGES_DRAWN_MIN)
+  it.effect.each(SCENARIOS)('$name builds its sprites as images', ({ model }) =>
+    Effect.map(measureFrames(model), ({ imagesBuilt }) => {
+      expect(imagesBuilt).toBeGreaterThanOrEqual(IMAGES_BUILT_MIN)
     }),
   )
 })

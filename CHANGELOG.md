@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 14, 2026: The manor in 3D
+
+- 🏚️ The manor stands up in 3D: walls with real depth, candlelight and flickering flames in every room, shadows under everyone, ferns and the chandelier swaying in a draft, and a cellar so dark only your flashlight cuts through it. (Older devices without WebGL2 can't run the manor anymore, sorry!)
+
 ## November 13, 2026: Bring back proof
 
 - 🏆 Everything you sneak out goes on the Proof Shelf in your treehouse (MORE, then PROOF), stamped ESCAPED, CHICKEN, or MUNCHED, and the Dare Journal fills in as you play: four brand new things to find, story pages about why the party never ended, and every hero's reason for taking the dare.

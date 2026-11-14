@@ -171,7 +171,7 @@ const inspect = (page: Page, minTap: number) =>
         if (
           box.width <= 0 ||
           box.height <= 0 ||
-          el.closest('.sr-only, canvas, .world-window, .floor-layers') !== null
+          el.closest('.sr-only, canvas, .world-window, .world-view') !== null
         ) {
           continue
         }

@@ -5,6 +5,8 @@ import { Effect } from 'effect'
 import { Program, Runtime } from 'foldkit'
 
 import { preventPageZoom } from '../input/noZoom'
+import { defineWorldElement } from '../render/iso/element'
+import { canDrawWorld, unsupportedNode } from '../render/iso/support'
 import { layer } from './block'
 import { ApplicationBlock } from './definition'
 import { ApplicationLayer } from './services'
@@ -30,4 +32,19 @@ const program = Program.make({
   },
 }).provide(ApplicationLayer)
 
-Runtime.run(program)
+// NOTE: a device with no WebGL2 can't draw the house: the splash says so
+// in place of its load bar, and the game never starts.
+const showUnsupported = (): void => {
+  const splash = document.getElementById('splash')
+  splash?.querySelector('.splash-line')?.remove()
+  splash?.querySelector('.splash-bar')?.remove()
+  splash?.setAttribute('aria-busy', 'false')
+  splash?.append(unsupportedNode())
+}
+
+if (canDrawWorld()) {
+  defineWorldElement()
+  Runtime.run(program)
+} else {
+  showUnsupported()
+}

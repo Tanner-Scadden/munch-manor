@@ -24,11 +24,19 @@ import { type AuditFailed, attempt, evaluateAs, failWith } from './page'
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 export const GAME = 'http://localhost:4173/'
 
+// NOTE: the world draws in 3D (src/render/iso/), so headless Chrome gets the
+// Mac's real GPU through Metal, with WebGPU on, instead of no WebGL2 at all.
+const GPU_ARGS = [
+  '--enable-unsafe-webgpu',
+  '--enable-features=Vulkan,WebGPU',
+  '--use-angle=metal',
+]
+
 export const launch = () =>
   chromium.launch({
     executablePath: CHROME,
     headless: true,
-    args: ['--autoplay-policy=no-user-gesture-required'],
+    args: ['--autoplay-policy=no-user-gesture-required', ...GPU_ARGS],
   })
 
 // VIEWPORTS
@@ -764,9 +772,9 @@ export const modelAs: {
 export const canvasRect = (page: Page) =>
   attempt(() =>
     page.evaluate(() => {
-      const c = document.querySelector('.game-canvas')
+      const c = document.querySelector('.world-view')
       if (c === null) {
-        throw new Error('No .game-canvas on the page')
+        throw new Error('No .world-view on the page')
       }
       const r = c.getBoundingClientRect()
       const scale = Math.min(r.width / 320, r.height / 180)

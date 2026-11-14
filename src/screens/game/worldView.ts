@@ -51,6 +51,7 @@ import {
   groundParticleShapes,
   popupShape,
 } from '../../render/effectsView'
+import type { WorldStrata } from '../../render/iso/frame'
 import { kitchenGearGroundShapes } from '../../render/kitchenGearView'
 import { isBehindWall, occludersOf } from '../../render/occluders'
 import {
@@ -120,7 +121,7 @@ import { isRoundActive } from '../../world/waves/waves'
 // by CSS) between device pixels while the painter put each sprite on whole
 // ones, so the floor slid under the sprites and the canvas blended the edges
 // of every rectangle into its neighbours.
-const shakeOffset = (model: Model): Vector =>
+export const shakeOffset = (model: Model): Vector =>
   isRoundActive(model.phase) && model.shakeSetting === 'On'
     ? {
         x: Math.round(model.shake.offset.x),
@@ -128,7 +129,7 @@ const shakeOffset = (model: Model): Vector =>
       }
     : ZERO_VECTOR
 
-export const worldOffset: {
+const worldOffset: {
   (camera: Camera): (model: Model) => Vector
   (model: Model, camera: Camera): Vector
 } = Function.dual(2, (model: Model, camera: Camera): Vector =>
@@ -352,73 +353,92 @@ const overheadShapes = (
 
 // WORLD
 
-const titleWorldShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
-  ...hearthFireShapes(levelOf(model), model.screenMs),
-  ...RATTLES_GROUND_SHAPES,
-  ...rattlesShapes('Dozing', model.screenMs),
-  ...hungChandelierShapes(model),
-]
+// NOTE: the title screen's house: the hearth, Rattles dozing on his trunk,
+// and the chandelier, by the screen's own clock.
+const titleStrataOf = (model: Model): WorldStrata => ({
+  ground: [
+    ...hearthFireShapes(levelOf(model), model.screenMs),
+    ...RATTLES_GROUND_SHAPES,
+  ],
+  standing: [
+    {
+      footY: RATTLES_FOOT_Y,
+      rank: 'Prop',
+      shapes: rattlesShapes('Dozing', model.screenMs),
+    },
+  ],
+  overhead: hungChandelierShapes(model),
+})
 
-const playWorldShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> => {
+// NOTE: a playing world's strata. In the cellar's dark a zombie shows only
+// close to the viewing player, fading in over the last tile, with its shadow
+// and bar (src/render/cellarDark.ts); the 3D renderer darkens the cellar
+// itself.
+const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
   const look = rattlesLook(model)
   const onCamera = shownZombies(model, camera)
   const mates = mateModelsOf(model)
-  // NOTE: in the cellar's dark a zombie shows only close to the viewing
-  // player, fading in over the last tile, with its shadow and bar
-  // (src/render/cellarDark.ts).
-  return Option.match(cellarDarkOf(model, camera), {
-    onNone: () => [
-      ...groundShapes(model, camera, onCamera, mates),
-      ...depthSortedShapes(standingDrawables(model, look, onCamera, mates)),
-      ...overheadShapes(model, camera, onCamera, mates),
-    ],
+  return Option.match(cellarDarkOf(model), {
+    onNone: () => ({
+      ground: groundShapes(model, camera, onCamera, mates),
+      standing: standingDrawables(model, look, onCamera, mates),
+      overhead: overheadShapes(model, camera, onCamera, mates),
+    }),
     onSome: dark => {
       const seen = Array.filter(onCamera, zombie => dark.fadeOf(zombie) > 0)
       const whole = Array.filter(seen, zombie => dark.fadeOf(zombie) >= 1)
       const fading = Array.filter(seen, zombie => dark.fadeOf(zombie) < 1)
       const fade = fadedBy(dark.fadeOf)
-      return [
-        ...groundShapes(model, camera, whole, mates),
-        ...Array.flatMap(fading, zombie =>
-          fade(zombie, [
-            ...zombieGroundShapes([zombie], model.elapsedMs),
-            ...Array.filterMap([zombie], zombieShadow),
-          ]),
-        ),
-        ...depthSortedShapes(
-          standingDrawables(model, look, seen, mates, dark.fadeOf),
-        ),
-        ...dark.maskShapes,
-        ...overheadShapes(model, camera, whole, mates),
-        ...Array.flatMap(
-          Array.filter(fading, zombie => isInView(levelOf(model))(zombie)),
-          (zombie: Zombie) => fade(zombie, zombieHealthBarShapes(zombie)),
-        ),
-      ]
+      return {
+        ground: [
+          ...groundShapes(model, camera, whole, mates),
+          ...Array.flatMap(fading, zombie =>
+            fade(zombie, [
+              ...zombieGroundShapes([zombie], model.elapsedMs),
+              ...Array.filterMap([zombie], zombieShadow),
+            ]),
+          ),
+        ],
+        standing: standingDrawables(model, look, seen, mates, dark.fadeOf),
+        overhead: [
+          ...overheadShapes(model, camera, whole, mates),
+          ...Array.flatMap(
+            Array.filter(fading, zombie => isInView(levelOf(model))(zombie)),
+            (zombie: Zombie) => fade(zombie, zombieHealthBarShapes(zombie)),
+          ),
+        ],
+      }
     },
   })
 }
 
-const worldShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
+// NOTE: the world's three strata kept apart, for the 3D renderer
+// (src/render/iso/scene.ts): what lies on the floor, what stands up at its
+// feet, and what floats over both.
+export const worldStrataOf: {
+  (camera: Camera): (model: Model) => WorldStrata
+  (model: Model, camera: Camera): WorldStrata
+} = Function.dual(2, (model: Model, camera: Camera): WorldStrata =>
   Phase.isAnyOf(['Ready'])(model.phase)
-    ? titleWorldShapes(model)
-    : playWorldShapes(model, camera)
+    ? titleStrataOf(model)
+    : playStrataOf(model, camera),
+)
 
+// NOTE: the strata as one flat list in draw order, moved by the shake: what
+// a frame shows, as plain data for the tests and the tools (the sprite atlas,
+// the audit harness) that read the world's shapes.
 export const worldLayerShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => [
-    group({
-      translate: worldOffset(model, camera),
-      shapes: worldShapes(model, camera),
-    }),
-  ],
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => {
+    const { ground, standing, overhead } = worldStrataOf(model, camera)
+    return [
+      group({
+        translate: worldOffset(model, camera),
+        shapes: [...ground, ...depthSortedShapes(standing), ...overhead],
+      }),
+    ]
+  },
 )

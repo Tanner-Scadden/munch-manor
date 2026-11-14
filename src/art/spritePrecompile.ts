@@ -1,7 +1,6 @@
 import { Array } from 'effect'
 
 import { defaultAppearance } from '../domain/clientSchema'
-import { everyBeamImage } from '../render/cellarDark'
 import { everyRoomImage } from '../render/room/room'
 import { tallCoverOf } from '../render/room/tallCover'
 import { CALLINGS } from '../world/heroes/calling'
@@ -31,5 +30,4 @@ export const precompileSprites = (): void => {
     everyRoomImage(spec)
     tallCoverOf(levelFor(spec))
   })
-  everyBeamImage()
 }

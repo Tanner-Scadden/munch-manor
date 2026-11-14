@@ -269,7 +269,7 @@ describe('turning the phone', () => {
 })
 
 describe('the world zoom on phones', () => {
-  const worldCanvas = Scene.selector('.game-canvas')
+  const worldView = Scene.selector('.world-view')
   const worldWindow = Scene.selector('.world-window')
 
   it.effect(
@@ -280,8 +280,8 @@ describe('the world zoom on phones', () => {
         Scene.given(fighting),
         measure(PHONE_LANDSCAPE),
         Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(worldCanvas).toHaveAttr('width', '291'),
-        Scene.expect(worldCanvas).toHaveAttr('height', '135'),
+        Scene.expect(worldView).toHaveAttr('data-view-width', '291'),
+        Scene.expect(worldView).toHaveAttr('data-view-height', '135'),
         Scene.expect(worldWindow).toHaveStyle('width', '100%'),
         Scene.expect(worldWindow).toHaveStyle('height', '100%'),
       ),
@@ -295,8 +295,8 @@ describe('the world zoom on phones', () => {
         Scene.given(fighting),
         measure({ left: 0, top: 0, width: 667, height: 375 }),
         Scene.expect(root).toHaveStyle('--screen-w', '320'),
-        Scene.expect(worldCanvas).toHaveAttr('width', '240'),
-        Scene.expect(worldCanvas).toHaveAttr('height', '135'),
+        Scene.expect(worldView).toHaveAttr('data-view-width', '240'),
+        Scene.expect(worldView).toHaveAttr('data-view-height', '135'),
       ),
   )
 
@@ -308,8 +308,8 @@ describe('the world zoom on phones', () => {
         Scene.given(fighting),
         measure(PHONE_PORTRAIT),
         Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
-        Scene.expect(worldCanvas).toHaveAttr('width', '120'),
-        Scene.expect(worldCanvas).toHaveAttr('height', '160'),
+        Scene.expect(worldView).toHaveAttr('data-view-width', '120'),
+        Scene.expect(worldView).toHaveAttr('data-view-height', '160'),
         Scene.expect(worldWindow).toHaveStyle(
           'height',
           `${(240 / 390) * 100}%`,
@@ -328,8 +328,8 @@ describe('the world zoom on phones', () => {
             modifyFields(fighting, { lastDevice: () => 'KeyboardMouse' }),
           ),
           measure(surface),
-          Scene.expect(worldCanvas).toHaveAttr('width', '320'),
-          Scene.expect(worldCanvas).toHaveAttr('height', '180'),
+          Scene.expect(worldView).toHaveAttr('data-view-width', '320'),
+          Scene.expect(worldView).toHaveAttr('data-view-height', '180'),
         ),
       ),
   )

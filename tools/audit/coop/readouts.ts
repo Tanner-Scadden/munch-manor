@@ -107,7 +107,7 @@ export const toClient: {
     decodedFrom(Vector, () =>
       page.evaluate(
         ([worldX, worldY]) => {
-          const canvas = document.querySelector('.game-canvas')
+          const canvas = document.querySelector('.world-view')
           if (canvas === null) {
             return { x: 0, y: 0 }
           }

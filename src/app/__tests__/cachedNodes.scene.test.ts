@@ -114,9 +114,7 @@ describe('cached VNodes', () => {
         PHONE_LANDSCAPE,
       )
       expect(unkeyed).toEqual([])
-      expect(keys).toEqual(
-        expect.arrayContaining(['room-layer', 'decal-layer', 'sprite-warm-up']),
-      )
+      expect(keys).toEqual(expect.arrayContaining(['home-screen-steps']))
     }),
   )
 
@@ -128,7 +126,7 @@ describe('cached VNodes', () => {
       )
       expect(unkeyed).toEqual([])
       expect(keys).toEqual(
-        expect.arrayContaining(['room-layer', 'sprite-warm-up']),
+        expect.arrayContaining(['overlay-layer']),
       )
     }),
   )
@@ -143,11 +141,7 @@ describe('cached VNodes', () => {
         )
         expect(unkeyed).toEqual([])
         expect(keys).toEqual(
-          expect.arrayContaining([
-            'room-layer',
-            'sprite-warm-up',
-            'thumb-area',
-          ]),
+          expect.arrayContaining(['overlay-layer', 'thumb-area']),
         )
       }),
   )

@@ -39,6 +39,7 @@ import { view } from '@game/app/view'
 import { quietCoopNet } from '@game/features/coop/testing'
 import { quietLayer as quietInstallPrompt } from '@game/platform/install'
 import { layer as PlayerStoreLayer } from '@game/platform/store'
+import { defineWorldElement } from '@game/render/iso/element'
 import { screenOf } from '@game/render/screen'
 import { RATTLES_BOX, START_LEVEL } from '@game/world/level/arena'
 
@@ -398,6 +399,8 @@ const recordUpdate = ({
     window.__timings.tickFrames.push(animationFrameTime())
   }
 }
+
+defineWorldElement()
 
 const startScene = () =>
   Runtime.embed(
