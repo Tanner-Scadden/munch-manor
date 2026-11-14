@@ -22,6 +22,7 @@ import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { stationCenterOf } from '../../world/stations/stationSpots'
 import { coverBlocks } from '../room/roomCover'
+import { type Mood, moodOf } from './mood'
 import { UNIT, zOf } from './space'
 
 // NOTE: what lights a spot where no lamp reaches, as a share of the art's own
@@ -160,11 +161,13 @@ export const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
   return specs
 }
 
-const flickerAt = (t: number, seed: number): number =>
+// NOTE: `strength` scales the flicker's swing: the mood's, harder in a wave.
+const flickerAt = (t: number, seed: number, strength: number): number =>
   1 +
-  0.1 * Math.sin(t * 9.1 + seed) +
-  0.07 * Math.sin(t * 15.7 + seed * 2.3) +
-  0.05 * Math.sin(t * 27.3 + seed * 4.1)
+  strength *
+    (0.1 * Math.sin(t * 9.1 + seed) +
+      0.07 * Math.sin(t * 15.7 + seed * 2.3) +
+      0.05 * Math.sin(t * 27.3 + seed * 4.1))
 
 // NOTE: whether a flame burns now (the chandelier's and the bulb's change),
 // how far it sways off its spot in units, and whether it flickers.
@@ -299,6 +302,9 @@ export type LightsFrame = Readonly<{
   // carries the flashlight and the pool.
   isInDark: boolean
   flames: ReadonlyArray<FlameFrame>
+  // NOTE: the house's mood (src/render/iso/mood.ts): the fills above are
+  // already scaled by it; the tint, the ambient, and the storm are not.
+  mood: Mood
 }>
 
 const isInBox = (box: RoomBox, { x, y }: Vector): boolean =>
@@ -312,6 +318,7 @@ export const lightsFrameOf = (
 ): LightsFrame => {
   const { world, level, viewer } = input
   const t = world.elapsedMs / 1000
+  const mood = moodOf(world)
   const maybeCellar = Array.findFirst(
     level.rooms,
     ({ id }) => id === CELLAR_ROOM_ID,
@@ -323,7 +330,9 @@ export const lightsFrameOf = (
   const isInDark =
     isDark && Option.exists(maybeCellar, ({ box }) => isInBox(box, viewer))
   const fillShares = Array.map(level.rooms, ({ id, isOpen }) =>
-    id === CELLAR_ROOM_ID && isDark ? 0 : isOpen ? OPEN_FILL : SHUT_FILL,
+    id === CELLAR_ROOM_ID && isDark
+      ? 0
+      : (isOpen ? OPEN_FILL : SHUT_FILL) * mood.fill,
   )
   const cellCount = Option.match(maybeCellar, {
     onNone: () => 0,
@@ -356,11 +365,13 @@ export const lightsFrameOf = (
     fillShares,
     isDark,
     isInDark,
+    mood,
     flames: Array.map(specs, (spec, index) => ({
       isShown: shown.has(index),
       x: spec.x + SWAYS[spec.kind](t),
       intensity:
-        spec.intensity * (spec.kind === 'Bulb' ? 1 : flickerAt(t, spec.seed)),
+        spec.intensity *
+        (spec.kind === 'Bulb' ? 1 : flickerAt(t, spec.seed, mood.flicker)),
     })),
   }
 }

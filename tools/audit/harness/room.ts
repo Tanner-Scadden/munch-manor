@@ -155,6 +155,8 @@ export const roomModel = (settings: SceneSettings): Model => {
                   : BreakClock.Counting(),
             }),
       decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
+      elapsedMs: elapsedMs => config.clock ?? elapsedMs,
+      intensity: intensity => config.heat ?? intensity,
     }),
     {
       trapStock: () => ({

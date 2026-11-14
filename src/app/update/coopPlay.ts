@@ -58,6 +58,7 @@ import {
   pocketScratchCues,
   shotSoundCue,
   strikeCues,
+  thunderCues,
 } from './sound'
 import { toModel, unchanged } from './step'
 
@@ -361,6 +362,7 @@ const drawTraced = ({
         ...mendCues(base, drawn),
         ...strikeCues(base, drawn),
         ...kitchenCues(base, drawn),
+        ...thunderCues(base, drawn),
         ...pocketScratchCues(base, drawn),
       ]),
       playTune(base, drawn),

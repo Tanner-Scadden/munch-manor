@@ -70,6 +70,7 @@ import { isLobbyOpen, isPanelOpen } from '../menuState'
 import { type GunSlot, type Model, Phase } from '../model'
 import { startWave } from '../runFlow'
 import { actAsLead } from './action'
+import { beatCardFromKey } from './beatMyRun'
 import { coopFromKey, isCoopOpen, pressCoopKey, releaseCoopKey } from './coop'
 import {
   advanceEndScreen,
@@ -85,7 +86,6 @@ import {
   menuFromKey,
 } from './home'
 import { advanceIntro, skipIntro } from './intro'
-import { beatCardFromKey } from './beatMyRun'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { proofFromKey } from './proof'
@@ -103,6 +103,7 @@ import {
   playTune,
   pocketScratchCues,
   strikeCues,
+  thunderCues,
   toggleAudioFromKey,
   unlockAudio,
 } from './sound'
@@ -433,6 +434,7 @@ export const tickFrame = (deltaTime: number) =>
           ...mendCues(model, advanced),
           ...strikeCues(model, advanced),
           ...kitchenCues(model, advanced),
+          ...thunderCues(model, advanced),
           ...pocketScratchCues(model, advanced),
         ]),
         playTune(model, advanced),

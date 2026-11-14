@@ -12,6 +12,7 @@ import {
   delayedEnvelope,
   envelope,
 } from './soundRecipe'
+import { WEATHER_RECIPES } from './weatherRecipes'
 import { ZOMBIE_RECIPES } from './zombieRecipes'
 
 const PICKUP_CHIRP: ReadonlyArray<ToneLayer> = [
@@ -51,6 +52,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
   ...INTRO_RECIPES,
   ...ROOM_TOOL_RECIPES,
   ...ACTION_RECIPES,
+  ...WEATHER_RECIPES,
   Shot: {
     variationCents: 70,
     tones: [
