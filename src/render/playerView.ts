@@ -613,6 +613,16 @@ export const playerFlashShapes = (
   ]
 }
 
+// NOTE: how bright the muzzle's flash is now, 1 the moment a shot leaves and
+// 0 once the flash the 2D art draws is gone, for the light it throws.
+export const muzzleFlashLevel = (player: Player): number => {
+  const { stats } = playerPose(player)
+  const msSinceShot = stats.recoilMs - player.recoilRemainingMs
+  return player.recoilRemainingMs <= 0 || msSinceShot >= MUZZLE_FLASH_MS
+    ? 0
+    : 1 - msSinceShot / MUZZLE_FLASH_MS
+}
+
 export const playerFootY = (player: Player): number =>
   player.y + PLAYER_FOOT_OFFSET
 

@@ -57,6 +57,11 @@ const pendingImages = (): ReadonlyArray<HTMLImageElement> => {
   return pending
 }
 
+// NOTE: the 3D world (src/render/iso/element.ts) starts its renderer on its
+// own, after the first render: a scene is not ready until it has drawn.
+const isWorldDrawn = (): boolean =>
+  document.querySelector('munch-world:not([data-drawn])') === null
+
 // NOTE: waits for the next animation frame.
 export const nextFrame = Effect.callback<void>(resume => {
   requestAnimationFrame(() => resume(Effect.void))
@@ -72,7 +77,8 @@ const pageNow = Effect.sync(() => performance.now())
 const decoded = (image: HTMLImageElement) =>
   Effect.promise(() => image.decode().catch(() => undefined))
 
-// NOTE: resolves once the fonts are loaded, the scene has rendered, and every
+// NOTE: resolves once the fonts are loaded, the scene has rendered, the world
+// has drawn, and every
 // image the page asked for has loaded and decoded, with two more frames so a
 // canvas that repaints when its image arrives has painted. `isHeld` is the
 // extra condition a scene needs, such as a frozen scene's last frame. It gives
@@ -84,7 +90,7 @@ export const settle = (isHeld: () => boolean): Effect.Effect<void> =>
     yield* twoFrames
     while ((yield* pageNow) - startedAt < SETTLE_LIMIT_MS) {
       const pending = pendingImages()
-      if (pending.length === 0 && isHeld()) {
+      if (pending.length === 0 && isWorldDrawn() && isHeld()) {
         yield* twoFrames
         if (pendingImages().length === 0) {
           return

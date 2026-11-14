@@ -341,7 +341,7 @@ runAuditWith(
             if (splash === null && times['splash in DOM'] !== undefined) {
               times['splash removed'] ??= performance.now()
             }
-            if (document.querySelector('.game-canvas') !== null) {
+            if (document.querySelector('.world-view') !== null) {
               times['game canvas'] ??= performance.now()
             }
           }).observe(document, {

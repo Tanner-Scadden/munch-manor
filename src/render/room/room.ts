@@ -264,7 +264,7 @@ const slotWallArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
 
 // NOTE: the bare bulb hangs over the cellar's middle aisle, where the light
 // mask lights it (src/render/cellarDark.ts).
-export const CELLAR_BULB_OFFSET = { x: 160, y: 52 }
+const CELLAR_BULB_OFFSET = { x: 160, y: 52 }
 
 const slotPropArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
   ...inRoom(level, LIBRARY_ROOM_ID, ladderShapes),

@@ -106,15 +106,20 @@ dialog[open] {
   pointer-events: none;
 }
 
-.floor-layers,
+/* NOTE: the 3D world (<munch-world>, src/render/iso/element.ts) fills the
+   lens; its canvas fills it. */
+.world-view {
+  display: block;
+}
+
+.world-view,
 .overlay-layer-canvas {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.floor-layer-canvas,
-.game-canvas,
+.world-canvas,
 .overlay-layer-canvas {
   position: absolute;
   inset: 0;

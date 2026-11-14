@@ -26,9 +26,6 @@
         // agent runs inbox.ts and resolve.ts.
         "tools/studio/{entry,inbox,resolve}.ts",
         "tools/video/{audioPage,video}.ts",
-        // NOTE: the 3D spike's page (tools/spike3d/index.html) and its Vite
-        // config, run by hand on the dev server.
-        "tools/spike3d/{entry,vite.config}.ts",
       ],
       "project": [
         "src/**/*.{ts,css}",

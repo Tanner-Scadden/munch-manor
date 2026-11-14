@@ -59,14 +59,16 @@ const SCENES: ReadonlyArray<Scene> = [
 const measure = (page: Page) =>
   attempt(() =>
     page.evaluate(() => {
-      const canvas = document.querySelector<HTMLCanvasElement>('.game-canvas')
-      if (canvas === null) {
+      const world = document.querySelector<HTMLElement>('.world-view')
+      if (world === null) {
         return undefined
       }
-      const box = canvas.getBoundingClientRect()
+      const box = world.getBoundingClientRect()
+      const width = Number(world.dataset['viewWidth'])
+      const height = Number(world.dataset['viewHeight'])
       return {
-        cssPerWorldPx: box.width / canvas.width,
-        view: { width: canvas.width, height: canvas.height },
+        cssPerWorldPx: box.width / width,
+        view: { width, height },
         layout:
           document.querySelector('.game-root')?.getAttribute('data-layout') ??
           '',

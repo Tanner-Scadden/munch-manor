@@ -312,7 +312,7 @@ const program = Effect.gen(function* () {
         return (
           readout?.players.length === players &&
           (yield* isOnArena(page)) &&
-          (yield* attempt(() => page.locator('.game-canvas').isVisible()))
+          (yield* attempt(() => page.locator('.world-view').isVisible()))
         )
       }),
     )
