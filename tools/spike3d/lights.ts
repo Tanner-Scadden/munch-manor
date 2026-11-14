@@ -31,7 +31,7 @@ import { STRETCH, UNIT, zOf } from './space'
 // NOTE: what lights a spot where no lamp reaches, as a share of the art's own
 // color (lit surfaces divide light by pi). Low, so each room's light and
 // each flame reads as a pool.
-export const AMBIENT = 0.3 * Math.PI
+export const AMBIENT = 0.2 * Math.PI
 
 const MAX_LIGHTS = 32
 
@@ -44,17 +44,24 @@ const ROOM_TINTS: Readonly<Record<string, number>> = {
   Library: 0xd4f0c0,
   [CELLAR_ROOM_ID]: 0xb8c4ff,
 }
-const OPEN_FILL = 0.42
+const OPEN_FILL = 0.4
 const SHUT_FILL = 0.08
 // NOTE: how much light the cellar's dark takes away: the ambient and the
 // room's own light, and a third more, so it stays black past the edges of
 // the player's lights.
 const DARK_DEPTH = (AMBIENT / Math.PI + OPEN_FILL) * 1.35
 
-// NOTE: a room's light hangs high over its middle, so it falls nearly even
-// across the floor and fades toward the corners.
+// NOTE: a room's light hangs high over its middle and a little to the
+// north-west, as if through a skylight, so it falls nearly even across the
+// floor and each piece of furniture casts a short shadow south-east,
+// toward the lens, where it shows.
 const fillHeightOf = (halfDiagonal: number): number =>
-  Math.max(5, halfDiagonal * 0.9)
+  Math.max(8, halfDiagonal * 1.6)
+const FILL_FROM = { x: -0.1, z: -0.2 }
+// NOTE: a spot's floor lands about a third as bright as the inverse square
+// says (its cone's falloff and the range's window), measured off the screen
+// in linear color, so the fill is scaled up to the share it is meant to give.
+const FILL_GAIN = 3.2
 
 // A FLAME
 
@@ -175,7 +182,7 @@ const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
 
 type RoomLight = Readonly<{
   id: string
-  fill: PointLight
+  fill: SpotLight
   // NOTE: the dark's cells: spots that take light away (a negative
   // intensity), each straight down over a square of the room. Only the
   // cellar has them.
@@ -196,14 +203,40 @@ const roomLightOf = (
   const halfDepth = zOf(bottom - top) / 2
   const halfDiagonal = Math.hypot(halfWidth, halfDepth)
   const height = fillHeightOf(halfDiagonal)
-  // NOTE: bright at its middle: share * pi * distance squared.
-  const fillIntensity = Math.PI * height * height
-  const fill = new PointLight({
+  const from = {
+    x: x + FILL_FROM.x * height,
+    y: height,
+    z: z + FILL_FROM.z * height,
+  }
+  const axis = { x: x - from.x, y: -from.y, z: z - from.z }
+  const reach = Math.hypot(axis.x, axis.y, axis.z)
+  // NOTE: the cone just takes in the room's four corners.
+  const corners = [
+    { x: left * UNIT, z: zOf(top) },
+    { x: right * UNIT, z: zOf(top) },
+    { x: left * UNIT, z: zOf(bottom) },
+    { x: right * UNIT, z: zOf(bottom) },
+  ].map(corner => {
+    const to = { x: corner.x - from.x, y: -from.y, z: corner.z - from.z }
+    const length = Math.hypot(to.x, to.y, to.z)
+    const cos = (to.x * axis.x + to.y * axis.y + to.z * axis.z) / (length * reach)
+    return { angle: Math.acos(Math.min(1, cos)), length }
+  })
+  const cone =
+    (Math.max(...corners.map(({ angle }) => angle)) * 180) / Math.PI + 6
+  // NOTE: bright at its middle: share * pi * distance squared, over the
+  // slant it strikes the floor at.
+  const fillIntensity = (FILL_GAIN * Math.PI * reach * reach * reach) / height
+  const fill = new SpotLight({
     color: ROOM_TINTS[room.id] ?? 0xffe2b4,
     intensity: 0,
-    range: height * 2.6,
+    range: Math.max(...corners.map(({ length }) => length)) * 1.4,
+    coneAngle: cone,
+    penumbra: 0.3,
+    castShadow: true,
   })
-  fill.position.set(x, height, z)
+  fill.position.set(from.x, from.y, from.z)
+  fill.lookAt({ x, y: 0, z })
   parent.addChild(fill)
   const dark =
     room.id === CELLAR_ROOM_ID ? darkCellsOf(parent, room.box) : []

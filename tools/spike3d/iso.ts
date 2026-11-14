@@ -51,7 +51,11 @@ import type { Canvas } from 'foldkit'
 
 import type { Model } from '@game/app/model'
 import { viewToWorld, worldCameraFor } from '@game/render/camera'
-import { decalShapes } from '@game/render/effectsView'
+import {
+  airborneParticleShapes,
+  decalShapes,
+  groundParticleShapes,
+} from '@game/render/effectsView'
 import { hungChandelierShapes, roomArtOf } from '@game/render/room/room'
 import { COVER_DRAWINGS, coverBlocks } from '@game/render/room/roomCover'
 import {
@@ -411,6 +415,55 @@ type Placement = Readonly<{
   part: number
 }>
 
+// NOTE: a leaf as it is drawn: its texture (a white quad for a Rect), the
+// middle of its bottom edge, its size, and its tint, or nothing when it
+// draws nothing (an outline, an image still loading).
+type DrawnLeaf = Readonly<{
+  texture: Texture
+  centerX: number
+  bottom: number
+  drawnWidth: number
+  drawnHeight: number
+  tint: number
+  alpha: number
+}>
+
+const drawnLeafOf = ({ shape, matrix, alpha }: Leaf): DrawnLeaf | undefined => {
+  if (shape._tag !== 'Image' && shape._tag !== 'Rect') {
+    return undefined
+  }
+  if (shape._tag === 'Rect' && shape.fill === undefined) {
+    return undefined
+  }
+  const left = matrix.a * shape.x + matrix.c * shape.y + matrix.e
+  const top = matrix.b * shape.x + matrix.d * shape.y + matrix.f
+  const width = matrix.a * shape.width + matrix.c * shape.height
+  const height = matrix.b * shape.width + matrix.d * shape.height
+  const drawnWidth = Math.abs(width)
+  const drawnHeight = Math.abs(height)
+  if (drawnWidth < 0.01 || drawnHeight < 0.01) {
+    return undefined
+  }
+  const texture =
+    shape._tag === 'Image' ? textureOf(shape, width < 0) : Texture.WHITE
+  if (texture === undefined) {
+    return undefined
+  }
+  const fill =
+    shape._tag === 'Rect' && shape.fill !== undefined
+      ? colorOf(shape.fill)
+      : { color: 0xffffff, alpha: 1 }
+  return {
+    texture,
+    centerX: left + width / 2,
+    bottom: Math.max(top, top + height),
+    drawnWidth,
+    drawnHeight,
+    tint: fill.color,
+    alpha: fill.alpha * alpha,
+  }
+}
+
 // NOTE: every Image of a standing drawable as a billboard at its foot: its
 // bottom edge stands as far above the foot as it is drawn above it. Rects
 // (bars, small bits of a body) stand the same way as tinted white quads.
@@ -459,42 +512,16 @@ class BillboardPool {
     opacity = 1,
   ): void {
     let part = 0
-    for (const { shape, matrix, alpha } of leaves) {
-      if (shape._tag !== 'Image' && shape._tag !== 'Rect') {
+    for (const leaf of leaves) {
+      const drawn = drawnLeafOf(leaf)
+      if (drawn === undefined) {
         continue
       }
-      if (shape._tag === 'Rect' && shape.fill === undefined) {
-        continue
-      }
-      const left = matrix.a * shape.x + matrix.c * shape.y + matrix.e
-      const top = matrix.b * shape.x + matrix.d * shape.y + matrix.f
-      const width = matrix.a * shape.width + matrix.c * shape.height
-      const height = matrix.b * shape.width + matrix.d * shape.height
-      const isFlipped = width < 0
-      const drawnWidth = Math.abs(width)
-      const drawnHeight = Math.abs(height)
-      if (drawnWidth < 0.01 || drawnHeight < 0.01) {
-        continue
-      }
-      const texture =
-        shape._tag === 'Image' ? textureOf(shape, isFlipped) : Texture.WHITE
-      if (texture === undefined) {
-        continue
-      }
-      const fill =
-        shape._tag === 'Rect' && shape.fill !== undefined
-          ? colorOf(shape.fill)
-          : { color: 0xffffff, alpha: 1 }
       this.place({
-        texture,
-        centerX: left + width / 2,
-        bottom: Math.max(top, top + height),
-        drawnWidth,
-        drawnHeight,
+        ...drawn,
         footY,
         hover,
-        tint: fill.color,
-        alpha: fill.alpha * alpha * opacity,
+        alpha: drawn.alpha * opacity,
         part,
       })
       part += 1
@@ -806,6 +833,106 @@ const imageKey = (shape: Canvas.Shape, matrix: Affine): string =>
     ? `${shape.src}|${shape.x + matrix.e}|${shape.y + matrix.f}`
     : ''
 
+// SHADOWS
+
+// NOTE: a billboard turns to the lens, and the shadow pass does not turn
+// it (nor draws a sprite kept out of the opaque pass), so each tall piece
+// and fern casts through a stand-in: its art baked into one texture and
+// cut out upright on a plain mesh at its foot, in no pass but the shadow's.
+const CASTER_GEOMETRY = new PlaneGeometry({ width: 1, height: 1 })
+
+type Cutout = Readonly<{
+  texture: Texture
+  left: number
+  top: number
+  width: number
+  height: number
+  footY: number
+}>
+
+const bakePiece = (app: Application, piece: TallCover): Cutout | undefined => {
+  const drawn = flatten(piece.shapes).flatMap(leaf => {
+    const one = drawnLeafOf(leaf)
+    return one === undefined || one.alpha < 0.5 ? [] : [one]
+  })
+  if (drawn.length === 0) {
+    return undefined
+  }
+  const left = Math.min(...drawn.map(d => d.centerX - d.drawnWidth / 2))
+  const right = Math.max(...drawn.map(d => d.centerX + d.drawnWidth / 2))
+  const top = Math.min(...drawn.map(d => d.bottom - d.drawnHeight))
+  const bottom = Math.max(...drawn.map(d => d.bottom))
+  const painter = new FlatPainter()
+  painter.paint(piece.shapes)
+  painter.container.position.set(-left, -top)
+  const holder = new Container()
+  holder.addChild(painter.container)
+  const texture = app.renderer.generateTexture({
+    target: holder,
+    frame: new Rectangle(0, 0, Math.ceil(right - left), Math.ceil(bottom - top)),
+    resolution: 1,
+  })
+  return {
+    texture,
+    left,
+    top,
+    width: right - left,
+    height: bottom - top,
+    footY: piece.footY,
+  }
+}
+
+const shadowCastersOf = (
+  app: Application,
+  parent: Container3D,
+  pieces: ReadonlyArray<TallCover>,
+  plants: ReadonlyArray<Plant>,
+): Container3D => {
+  const holder = new Container3D()
+  parent.addChild(holder)
+  const stand = (cutout: Cutout): void => {
+    const mesh = new Mesh3D({
+      geometry: CASTER_GEOMETRY,
+      material: new Material3D({
+        baseColorTexture: cutout.texture,
+        alphaMode: 'mask',
+        alphaCutoff: 0.5,
+        // NOTE: the lights shine from the north, onto its back.
+        doubleSided: true,
+      }),
+      castShadow: true,
+      receiveShadow: false,
+    })
+    // NOTE: #casters shows the stand-ins, to check them.
+    if (!location.hash.includes('casters')) {
+      mesh.disablePass('opaque')
+      mesh.disablePass('outline')
+    }
+    mesh.scale.set(cutout.width * UNIT, cutout.height * UNIT, 1)
+    // NOTE: a plane's v runs up and a texture's rows run down: turn it over.
+    mesh.rotation.z = Math.PI
+    mesh.rotation.y = Math.PI
+    mesh.position.set(
+      (cutout.left + cutout.width / 2) * UNIT,
+      (cutout.footY - cutout.top - cutout.height / 2) * UNIT,
+      zOf(cutout.footY),
+    )
+    holder.addChild(mesh)
+  }
+  for (const piece of pieces) {
+    const cutout = bakePiece(app, piece)
+    if (cutout !== undefined) {
+      stand(cutout)
+    }
+  }
+  for (const plant of plants) {
+    for (const clump of plant.clumps) {
+      stand({ ...clump, footY: plant.footY })
+    }
+  }
+  return holder
+}
+
 // THE SCENE
 
 type Level3D = Readonly<{
@@ -813,6 +940,9 @@ type Level3D = Readonly<{
   room: FloorLayer
   decals: FloorLayer
   ground: FloorLayer
+  // NOTE: what has landed (casings, gibs, dust), lit as the floor is, so
+  // it sinks into the cellar's dark where the glows and rings do not.
+  landed: FloorLayer
   walls: ReadonlyArray<Wall>
   holder: Container3D
   floorArt: ReadonlyArray<Leaf>
@@ -894,7 +1024,7 @@ export const startIsometric = async (): Promise<void> => {
   const sun = new DirectionalLight({
     color: 0xffe6c4,
     intensity: 0.2,
-    castShadow: true,
+    castShadow: false,
   })
   view.root.addChild(sun)
   // NOTE: the rest of the light is each room's own (lights.ts).
@@ -933,6 +1063,11 @@ export const startIsometric = async (): Promise<void> => {
   const glowing = new BillboardPool(standing, false)
 
   let built: Level3D | undefined
+  let casters: Container3D | undefined
+  const castShadows = (level3d: Level3D): void => {
+    casters?.destroy({ children: true })
+    casters = shadowCastersOf(app, level3d.holder, level3d.furniture, level3d.plants)
+  }
   let lastDecals: unknown
   let lastImagesLoaded = -1
   let yaw = YAW
@@ -1059,21 +1194,22 @@ export const startIsometric = async (): Promise<void> => {
     view.root.addChild(holder)
     const room = new FloorLayer(app, level, 0, true)
     const decals = new FloorLayer(app, level, 0.005, true)
+    const landed = new FloorLayer(app, level, 0.008, true)
     const ground = new FloorLayer(app, level, 0.012, false)
     const walls = buildWalls(level, wallMaterial)
-    holder.addChild(room.mesh, decals.mesh, ground.mesh)
+    holder.addChild(room.mesh, decals.mesh, landed.mesh, ground.mesh)
     for (const wall of walls) {
       holder.addChild(wall.mesh)
     }
     const floorArt = floorArtOf(level)
     room.paintLeaves(floorArt)
     lastDecals = undefined
-    sun.fitShadowBounds()
     return {
       level,
       room,
       decals,
       ground,
+      landed,
       walls,
       holder,
       floorArt,
@@ -1088,11 +1224,14 @@ export const startIsometric = async (): Promise<void> => {
     const level = levelOf(model)
     if (built === undefined || built.level !== level) {
       built = buildLevel(level)
+      casters = undefined
+      castShadows(built)
     }
     if (imagesLoaded !== lastImagesLoaded) {
       lastImagesLoaded = imagesLoaded
       built.room.paintLeaves(built.floorArt)
       lastDecals = undefined
+      castShadows(built)
     }
     if (model.decals !== lastDecals) {
       lastDecals = model.decals
@@ -1168,7 +1307,18 @@ export const startIsometric = async (): Promise<void> => {
       height: gameCamera.height * 3,
     }
     const strata = worldStrataOf(model, wide)
-    built.ground.paint(strata.ground)
+    const landed = flatten(groundParticleShapes(model.particles))
+    const landedKeys = new Set(
+      landed.flatMap(({ shape }) =>
+        shape._tag === 'Rect' ? [rectKey(shape)] : [],
+      ),
+    )
+    built.landed.paintLeaves(landed)
+    built.ground.paintLeaves(
+      flatten(strata.ground).filter(
+        ({ shape }) => !(shape._tag === 'Rect' && landedKeys.has(rectKey(shape))),
+      ),
+    )
 
     // NOTE: the game hands back a tall piece only while someone is behind
     // it, faded for them. Every piece stands here all the time, at the
@@ -1204,6 +1354,13 @@ export const startIsometric = async (): Promise<void> => {
       ),
     )
     const sway = chandelierSway(t)
+    // NOTE: sparks, blood, and dust in the air are lit as the bodies are,
+    // so they vanish into the cellar's dark with them.
+    const airborne = new Set(
+      flatten(airborneParticleShapes(model.particles)).flatMap(({ shape }) =>
+        shape._tag === 'Rect' ? [rectKey(shape)] : [],
+      ),
+    )
     for (const { shape, matrix, alpha } of flatten(strata.overhead)) {
       const bottom =
         shape._tag === 'Image' || shape._tag === 'Rect'
@@ -1214,7 +1371,9 @@ export const startIsometric = async (): Promise<void> => {
       const swung = isChandelier
         ? { ...matrix, e: matrix.e + sway }
         : matrix
-      ;(isChandelier ? billboards : glowing).standLeaves(
+      const isLitInAir =
+        isChandelier || (shape._tag === 'Rect' && airborne.has(rectKey(shape)))
+      ;(isLitInAir ? billboards : glowing).standLeaves(
         [{ shape, matrix: swung, alpha }],
         bottom + 2,
         6,
