@@ -57,6 +57,7 @@ import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
   type Plant,
+  buildWallTops,
   buildWalls,
   floorArtOf,
   furnitureCastersOf,
@@ -470,7 +471,16 @@ export class IsoScene {
     const landed = layer(0.008, true)
     const ground = layer(0.012, false)
     const walls = buildWalls({ level, material: this.wallMaterial })
-    holder.addChild(room.mesh, decals.mesh, landed.mesh, ground.mesh)
+    const wallTops = buildWallTops({
+      level,
+      material: new Material3D({
+        baseColorTexture: room.texture,
+        roughness: 1,
+        metallic: 0,
+        specular: { factor: 0 },
+      }),
+    })
+    holder.addChild(room.mesh, decals.mesh, landed.mesh, ground.mesh, wallTops)
     Array.forEach(walls, mesh => {
       holder.addChild(mesh)
     })

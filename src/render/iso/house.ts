@@ -7,7 +7,13 @@ import { Array, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 import { type Application, Container, Graphics, Rectangle } from 'pixi.js'
 
-import { type Container3D, CubeGeometry, Material3D, Mesh3D } from '@pixi/3d'
+import {
+  type Container3D,
+  CubeGeometry,
+  Geometry3D,
+  Material3D,
+  Mesh3D,
+} from '@pixi/3d'
 import type { ToonMaterial } from '@pixi/3d/extras'
 
 import { TILE_SIZE } from '../../shared/constants'
@@ -71,6 +77,66 @@ export const buildWalls = (
     }),
   )
 }
+
+// NOTE: every wall tile's top as one mesh, wearing the room's art as the 2D
+// game drew it from above: the wallpaper, the trim, the portraits. Each top
+// is a quad over its tile, its texture coordinates on the floor's own
+// picture of the level, so a game pixel on a wall's top is the same size as
+// one on the floor and the art repaints with it. The block below stays the
+// plain toon wall that gives it its height (owner, 2026-11-14: the walls
+// were grey blobs).
+export const buildWallTops = (
+  input: Readonly<{ level: Level; material: Material3D }>,
+): Mesh3D => {
+  const { level, material } = input
+  const tiles = Array.flatMap(level.tiles, (line, row) =>
+    Array.filterMap(Array.fromIterable(line), (symbol, column) =>
+      symbol === WALL_SYMBOL
+        ? Result.succeed({
+            row,
+            column,
+            height: isFrontWallAt({ tiles: level.tiles, row, column })
+              ? FRONT_WALL_HEIGHT
+              : WALL_HEIGHT,
+          })
+        : Result.failVoid,
+    ),
+  )
+  const positions = new Float32Array(tiles.length * 12)
+  const normals = new Float32Array(tiles.length * 12)
+  const uvs = new Float32Array(tiles.length * 8)
+  const indices = new Uint32Array(tiles.length * 6)
+  Array.forEach(tiles, ({ row, column, height }, index) => {
+    const left = column * TILE_SIZE
+    const top = row * TILE_SIZE
+    const x0 = (level.left + left) * UNIT
+    const x1 = x0 + TILE_SIZE * UNIT
+    const z0 = zOf(level.top + top)
+    const z1 = zOf(level.top + top + TILE_SIZE)
+    const y = height + TOP_LIFT
+    const u0 = left / level.width
+    const u1 = (left + TILE_SIZE) / level.width
+    const v0 = top / level.height
+    const v1 = (top + TILE_SIZE) / level.height
+    positions.set([x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1], index * 12)
+    normals.set([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], index * 12)
+    uvs.set([u0, v0, u1, v0, u1, v1, u0, v1], index * 8)
+    const first = index * 4
+    indices.set(
+      [first, first + 2, first + 1, first, first + 3, first + 2],
+      index * 6,
+    )
+  })
+  return new Mesh3D({
+    geometry: new Geometry3D({ positions, normals, uvs, indices }),
+    material,
+    castShadow: false,
+    receiveShadow: true,
+  })
+}
+
+// NOTE: just over the block's own top, so the two never fight.
+const TOP_LIFT = 0.002
 
 // FURNITURE
 
