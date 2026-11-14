@@ -69,26 +69,14 @@ import { COVER_SYMBOLS, WALL_SYMBOL } from '@game/world/level/tileGrid'
 import type { CoverKind } from '@game/world/level/tileGrid'
 import { focusOf } from '@game/world/party/party'
 
+import { AMBIENT, lightsOf } from './lights'
+import type { Lights } from './lights'
+import { PITCH, STRETCH, UNIT, zOf } from './space'
+
 // UNITS
 
-// NOTE: one world unit is one tile. A game pixel is a tenth of a unit, x runs
-// east and z runs south (the game's y), and y is up.
-const UNIT = 1 / TILE_SIZE
 const WALL_HEIGHT = 1.4
-
-// NOTE: the camera, looking straight north and down steeply: the game's own
-// map, tilted just enough to show the walls standing.
-const PITCH = (62 * Math.PI) / 180
 const YAW = 0
-
-// NOTE: crisp pixels. A floor seen at a slant is squashed (by sin PITCH),
-// while a billboard faces the lens square, so floor pixels and sprite pixels
-// would come out different heights. The world is stretched north-south by
-// the inverse, so a game pixel is square on screen on the floor too, and
-// with a whole number of screen pixels per game pixel (snapped, below)
-// every pixel of art lands on the screen's own grid, as in the 2D game.
-const STRETCH = 1 / Math.sin(PITCH)
-const zOf = (gameY: number): number => gameY * UNIT * STRETCH
 const CUTAWAY_HEIGHT = 0.25
 
 TextureSource.defaultOptions.scaleMode = 'nearest'
@@ -830,6 +818,7 @@ type Level3D = Readonly<{
   floorArt: ReadonlyArray<Leaf>
   furniture: ReadonlyArray<TallCover>
   plants: ReadonlyArray<Plant>
+  lights: Lights
 }>
 
 const mountPoint = async (): Promise<HTMLElement> => {
@@ -904,16 +893,13 @@ export const startIsometric = async (): Promise<void> => {
 
   const sun = new DirectionalLight({
     color: 0xffe6c4,
-    intensity: 0.6,
+    intensity: 0.2,
     castShadow: true,
   })
   view.root.addChild(sun)
-  // NOTE: lit surfaces divide light by pi, so this is about 0.85 of the
-  // art's own colors where nothing else lights it: a dim manor, in true color.
-  view.root.addChild(
-    new AmbientLight({ color: 0xffffff, intensity: 0.85 * Math.PI }),
-  )
-  const lamp = new PointLight({ color: 0xffc27a, intensity: 14, range: 9 })
+  // NOTE: the rest of the light is each room's own (lights.ts).
+  view.root.addChild(new AmbientLight({ color: 0xffffff, intensity: AMBIENT }))
+  const lamp = new PointLight({ color: 0xffc27a, intensity: 6, range: 6 })
   const flash = new PointLight({ color: 0xffe08a, intensity: 0, range: 7 })
   view.root.addChild(lamp, flash)
 
@@ -1092,6 +1078,7 @@ export const startIsometric = async (): Promise<void> => {
       holder,
       floorArt,
       furniture: tallCoverOf(level),
+      lights: lightsOf(level, holder),
       plants: plantsOf(app, level),
     }
   }
@@ -1240,6 +1227,7 @@ export const startIsometric = async (): Promise<void> => {
     sun.position.set(focus.x - 20, 30, focus.z - 10)
     sun.lookAt({ x: focus.x, y: 0, z: focus.z })
     lamp.position.set(target.x, 1.6, target.z)
+    built.lights.update(model)
     if (player.fireCooldownMs > lastCooldown + 1) {
       flashLevel = 1
     }

@@ -359,47 +359,64 @@ const titleWorldShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
   ...hungChandelierShapes(model),
 ]
 
-const playWorldShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> => {
+// NOTE: a playing world's strata: what lies on the floor, what stands up
+// at its feet, the cellar's dark mask over both, and what floats over all.
+// In the cellar's dark a zombie shows only close to the viewing player,
+// fading in over the last tile, with its shadow and bar
+// (src/render/cellarDark.ts).
+type PlayStrata = Readonly<{
+  ground: ReadonlyArray<Canvas.Shape>
+  standing: ReadonlyArray<Drawable>
+  mask: ReadonlyArray<Canvas.Shape>
+  overhead: ReadonlyArray<Canvas.Shape>
+}>
+
+const playStrataOf = (model: Model, camera: Camera): PlayStrata => {
   const look = rattlesLook(model)
   const onCamera = shownZombies(model, camera)
   const mates = mateModelsOf(model)
-  // NOTE: in the cellar's dark a zombie shows only close to the viewing
-  // player, fading in over the last tile, with its shadow and bar
-  // (src/render/cellarDark.ts).
   return Option.match(cellarDarkOf(model, camera), {
-    onNone: () => [
-      ...groundShapes(model, camera, onCamera, mates),
-      ...depthSortedShapes(standingDrawables(model, look, onCamera, mates)),
-      ...overheadShapes(model, camera, onCamera, mates),
-    ],
+    onNone: () => ({
+      ground: groundShapes(model, camera, onCamera, mates),
+      standing: standingDrawables(model, look, onCamera, mates),
+      mask: [],
+      overhead: overheadShapes(model, camera, onCamera, mates),
+    }),
     onSome: dark => {
       const seen = Array.filter(onCamera, zombie => dark.fadeOf(zombie) > 0)
       const whole = Array.filter(seen, zombie => dark.fadeOf(zombie) >= 1)
       const fading = Array.filter(seen, zombie => dark.fadeOf(zombie) < 1)
       const fade = fadedBy(dark.fadeOf)
-      return [
-        ...groundShapes(model, camera, whole, mates),
-        ...Array.flatMap(fading, zombie =>
-          fade(zombie, [
-            ...zombieGroundShapes([zombie], model.elapsedMs),
-            ...Array.filterMap([zombie], zombieShadow),
-          ]),
-        ),
-        ...depthSortedShapes(
-          standingDrawables(model, look, seen, mates, dark.fadeOf),
-        ),
-        ...dark.maskShapes,
-        ...overheadShapes(model, camera, whole, mates),
-        ...Array.flatMap(
-          Array.filter(fading, zombie => isInView(levelOf(model))(zombie)),
-          (zombie: Zombie) => fade(zombie, zombieHealthBarShapes(zombie)),
-        ),
-      ]
+      return {
+        ground: [
+          ...groundShapes(model, camera, whole, mates),
+          ...Array.flatMap(fading, zombie =>
+            fade(zombie, [
+              ...zombieGroundShapes([zombie], model.elapsedMs),
+              ...Array.filterMap([zombie], zombieShadow),
+            ]),
+          ),
+        ],
+        standing: standingDrawables(model, look, seen, mates, dark.fadeOf),
+        mask: dark.maskShapes,
+        overhead: [
+          ...overheadShapes(model, camera, whole, mates),
+          ...Array.flatMap(
+            Array.filter(fading, zombie => isInView(levelOf(model))(zombie)),
+            (zombie: Zombie) => fade(zombie, zombieHealthBarShapes(zombie)),
+          ),
+        ],
+      }
     },
   })
+}
+
+const playWorldShapes = (
+  model: Model,
+  camera: Camera,
+): ReadonlyArray<Canvas.Shape> => {
+  const { ground, standing, mask, overhead } = playStrataOf(model, camera)
+  return [...ground, ...depthSortedShapes(standing), ...mask, ...overhead]
 }
 
 const worldShapes = (
@@ -427,8 +444,9 @@ export const worldLayerShapes: {
 
 // NOTE: the world's three strata kept apart, for the 3D renderer spike
 // (tools/spike3d): what lies on the floor, what stands up at its feet, and
-// what floats over both. It skips the cellar's dark mask, since the spike
-// lights the cellar itself.
+// what floats over both. It hides zombies in the cellar's dark as the 2D
+// view does, but skips the dark's mask, since the spike lights the cellar
+// itself.
 export type WorldStrata = Readonly<{
   ground: ReadonlyArray<Canvas.Shape>
   standing: ReadonlyArray<Drawable>
@@ -439,18 +457,9 @@ export const worldStrataOf: {
   (camera: Camera): (model: Model) => WorldStrata
   (model: Model, camera: Camera): WorldStrata
 } = Function.dual(2, (model: Model, camera: Camera): WorldStrata => {
-  const onCamera = shownZombies(model, camera)
-  const mates = mateModelsOf(model)
-  return Phase.isAnyOf(['Ready'])(model.phase)
-    ? { ground: titleWorldShapes(model), standing: [], overhead: [] }
-    : {
-        ground: groundShapes(model, camera, onCamera, mates),
-        standing: standingDrawables(
-          model,
-          rattlesLook(model),
-          onCamera,
-          mates,
-        ),
-        overhead: overheadShapes(model, camera, onCamera, mates),
-      }
+  if (Phase.isAnyOf(['Ready'])(model.phase)) {
+    return { ground: titleWorldShapes(model), standing: [], overhead: [] }
+  }
+  const { ground, standing, overhead } = playStrataOf(model, camera)
+  return { ground, standing, overhead }
 })
