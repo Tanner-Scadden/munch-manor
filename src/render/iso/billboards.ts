@@ -96,8 +96,6 @@ export class BillboardPool {
   private readonly parent: Container3D
   private readonly textures: Textures
   private readonly isLit: boolean
-  // NOTE: one screen pixel, in game pixels: every edge snaps to it.
-  grid = 1
 
   constructor(
     input: Readonly<{
@@ -111,9 +109,8 @@ export class BillboardPool {
     this.isLit = input.isLit
   }
 
-  begin(grid: number): void {
+  begin(): void {
     this.used = 0
-    this.grid = grid
   }
 
   end(): void {
@@ -169,12 +166,14 @@ export class BillboardPool {
     if (sprite.alphaMode !== mode) {
       sprite.alphaMode = mode
     }
-    const snap = (value: number): number =>
-      Math.round(value / this.grid) * this.grid
-    const left = snap(p.centerX - p.drawnWidth / 2)
-    const footY = snap(p.footY)
-    const bottom = snap(p.bottom)
-    const rise = (footY - bottom + p.hover + p.drawnHeight / 2) * UNIT
+    // NOTE: every edge on a whole game pixel, so a sprite moves a whole
+    // pixel at a time and never lands between two (pixel-perfect settings,
+    // owner, 2026-11-14).
+    const left = Math.round(p.centerX - p.drawnWidth / 2)
+    const footY = Math.round(p.footY)
+    const bottom = Math.round(p.bottom)
+    const rise =
+      (footY - bottom + Math.round(p.hover) + p.drawnHeight / 2) * UNIT
     const nudge = p.part * PART_BIAS
     sprite.position.set(
       (left + p.drawnWidth / 2) * UNIT +

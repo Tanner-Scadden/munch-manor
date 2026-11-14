@@ -51,8 +51,16 @@ describe('the stage on whole device pixels', () => {
     })
   })
 
-  test('a big loss keeps the fractional fit', () => {
-    expect(stagePlacement(surface(608, 342, 1), LANDSCAPE_SIZE).scale).toBe(1.9)
+  test('a small window snaps down too, with a border around it', () => {
+    expect(stagePlacement(surface(608, 342, 1), LANDSCAPE_SIZE)).toEqual({
+      scale: 1,
+      left: 144,
+      top: 81,
+    })
+  })
+
+  test('a surface under one device pixel per screen pixel keeps its fit', () => {
+    expect(stagePlacement(surface(160, 90, 1), LANDSCAPE_SIZE).scale).toBe(0.5)
   })
 
   test('with no pixel ratio the stage fits as before', () => {
