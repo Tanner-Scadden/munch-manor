@@ -469,6 +469,9 @@ export const HarnessConfig = Schema.Struct({
   seed: MaybeNum,
   instrument: Flag,
   nodev: Flag,
+  // Lit sprites without their normal maps, to compare (the renderer reads it
+  // off the address itself: src/render/iso/billboards.ts)
+  flat: Flag,
   // The video tool (tools/video): ticks only when it asks, logs audio
   director: Flag,
 })

@@ -21,8 +21,12 @@ export const AtlasLevels = Schema.Record(
   Schema.Array(Schema.Finite),
 )
 
+// NOTE: each source's normal map, in the same order, null for a room's.
+const AtlasNormals = Schema.Array(Schema.NullOr(Schema.String))
+
 export const SpriteAtlasManifest = Schema.Struct({
   sources: Schema.Array(Schema.String),
+  normals: AtlasNormals,
   entries: AtlasEntries,
   levels: AtlasLevels,
 })

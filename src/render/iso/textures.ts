@@ -3,6 +3,7 @@
 // the lamp's rim and the shadows' stand-ins. One cache per renderer, emptied
 // when it goes.
 
+import { Option } from 'effect'
 import type { Canvas } from 'foldkit'
 import {
   type Application,
@@ -17,6 +18,8 @@ import {
 } from 'pixi.js'
 
 import { Material3D } from '@pixi/3d'
+
+import { atlasNormalOf } from '../../art/spriteAtlas'
 
 TextureSource.defaultOptions.scaleMode = 'nearest'
 
@@ -41,6 +44,13 @@ export class Textures {
   private readonly crops = new Map<string, Texture>()
   private readonly silhouettes = new Map<Texture, Texture>()
   private readonly casterMaterials = new Map<Texture, Material3D>()
+  private readonly normals = new Map<TextureSource, Texture>()
+  // NOTE: the address each loaded source came from, to find its normal map.
+  private readonly addresses = new Map<TextureSource, string>()
+  // NOTE: the atlas's normal maps, loaded at a lit sprite's first draw, after
+  // the splash; apart from `sources`, so they never hold the splash, take its
+  // bandwidth, or repaint the floor.
+  private readonly normalSheets = new Map<string, Texture | 'Loading'>()
   // NOTE: how many sources have loaded, so the floor repaints as they do.
   loaded = 0
   // NOTE: how many are still on their way; one that fails counts as done,
@@ -78,13 +88,31 @@ export class Textures {
     this.pending += 1
     const image = new Image()
     image.addEventListener('load', () => {
-      this.sources.set(src, Texture.from(image))
+      const texture = Texture.from(image)
+      this.sources.set(src, texture)
+      this.addresses.set(texture.source, src)
       this.pending -= 1
       this.loaded += 1
       this.onLoaded()
     })
     image.addEventListener('error', () => {
       this.pending -= 1
+      this.onLoaded()
+    })
+    image.src = src
+    return undefined
+  }
+
+  // NOTE: a prebuilt normal map, or nothing while it loads (or if it fails).
+  private normalSheetOf(src: string): Texture | undefined {
+    const known = this.normalSheets.get(src)
+    if (known !== undefined) {
+      return known === 'Loading' ? undefined : known
+    }
+    this.normalSheets.set(src, 'Loading')
+    const image = new Image()
+    image.addEventListener('load', () => {
+      this.normalSheets.set(src, Texture.from(image))
       this.onLoaded()
     })
     image.src = src
@@ -144,6 +172,52 @@ export class Textures {
     return baked
   }
 
+  // NOTE: the normal map of the sheet a texture is cropped from, baked with
+  // the atlas. A lit billboard's material crops it with the texture's own
+  // frame, so the whole sheet is the right texture for every crop of it.
+  // Anything else (a sprite encoded on its own, what the renderer drew, a
+  // sheet's map still loading) faces straight out.
+  normalOf(texture: Texture): Texture {
+    const known = this.normals.get(texture.source)
+    if (known !== undefined) {
+      return known
+    }
+    const address = this.addresses.get(texture.source)
+    const normal =
+      address === undefined
+        ? undefined
+        : Option.match(atlasNormalOf(address), {
+            onNone: () => this.flatNormal(),
+            onSome: src => this.normalSheetOf(src),
+          })
+    if (normal === undefined) {
+      return this.flatNormal()
+    }
+    this.normals.set(texture.source, normal)
+    return normal
+  }
+
+  // NOTE: a normal map that faces straight out everywhere. A lit sprite is
+  // built wearing it: pixi picks a mesh's shader once, with normal mapping
+  // only when it already has a normal map, so one set later would be ignored.
+  flatNormal(): Texture {
+    const known = this.normals.get(Texture.WHITE.source)
+    if (known !== undefined) {
+      return known
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const context = canvas.getContext('2d')
+    if (context !== null) {
+      context.fillStyle = 'rgb(128, 128, 255)'
+      context.fillRect(0, 0, 1, 1)
+    }
+    const texture = Texture.from(canvas)
+    this.normals.set(Texture.WHITE.source, texture)
+    return texture
+  }
+
   // NOTE: the material a hidden shadow stand-in wears: its silhouette cut
   // out, seen from both sides (the lights shine from the north, onto its
   // back).
@@ -174,6 +248,17 @@ export class Textures {
         source.destroy(true)
       }
     }
+    for (const texture of new Set([
+      ...this.normals.values(),
+      ...this.normalSheets.values(),
+    ])) {
+      if (texture !== 'Loading') {
+        texture.destroy(true)
+      }
+    }
+    this.normals.clear()
+    this.normalSheets.clear()
+    this.addresses.clear()
     this.silhouettes.clear()
     this.crops.clear()
     this.sources.clear()

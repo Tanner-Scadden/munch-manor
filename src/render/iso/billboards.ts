@@ -84,14 +84,25 @@ export const drawnLeafOf = ({
       }
 }
 
-const litMaterial = (): Material3D =>
-  new Material3D({ roughness: 1, metallic: 0, specular: { factor: 0 } })
+// NOTE: whether lit sprites wear their sheet's normal map, so the light
+// rounds their bodies. `?flat` in the address turns it off, to compare.
+const IS_SHADED = !new URLSearchParams(window.location.search).has('flat')
+
+const litMaterial = (textures: Textures): Material3D =>
+  new Material3D({
+    roughness: 1,
+    metallic: 0,
+    specular: { factor: 0 },
+    ...(IS_SHADED ? { normalTexture: textures.flatNormal() } : {}),
+  })
 
 // NOTE: a pool of billboards, lit (Material3D, so the room's light, the lamp,
 // and the muzzle flash fall on them) or flat, for what glows of itself
 // (flashes, bars, rims). Mutable on purpose: it pools pixi's own objects.
 export class BillboardPool {
   private readonly sprites: Array<Sprite3D> = []
+  // NOTE: each lit sprite's own material, beside it, to swap its normal map.
+  private readonly materials: Array<Material3D | undefined> = []
   private used = 0
   private readonly parent: Container3D
   private readonly textures: Textures
@@ -153,9 +164,19 @@ export class BillboardPool {
   }
 
   place(p: Placement): void {
+    const index = this.used
     const sprite = this.next()
     if (sprite.texture !== p.texture) {
       sprite.texture = p.texture
+    }
+    // NOTE: asked every placement, not only on a new texture, since a
+    // sheet's normal map may arrive after its first frame.
+    const material = this.materials[index]
+    if (material !== undefined && IS_SHADED) {
+      const normal = this.textures.normalOf(p.texture)
+      if (material.textures.normal !== normal) {
+        material.textures.normal = normal
+      }
     }
     const pixel = p.drawnHeight / p.texture.frame.height
     sprite.pixelSize = pixel * UNIT
@@ -191,9 +212,10 @@ export class BillboardPool {
     if (existing !== undefined) {
       return existing
     }
+    const material = this.isLit ? litMaterial(this.textures) : undefined
     const sprite = new Sprite3D({
       texture: Texture.WHITE,
-      ...(this.isLit ? { material: litMaterial() } : {}),
+      ...(material === undefined ? {} : { material }),
       anchor: { x: 0.5, y: 0.5 },
       billboardMode: 'spherical',
       alphaMode: 'mask',
@@ -202,6 +224,7 @@ export class BillboardPool {
     })
     this.parent.addChild(sprite)
     this.sprites.push(sprite)
+    this.materials.push(material)
     return sprite
   }
 }
