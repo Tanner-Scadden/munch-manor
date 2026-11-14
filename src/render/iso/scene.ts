@@ -39,6 +39,7 @@ import {
 import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 
 import type { Model } from '../../app/model'
+import { isFlashShape } from '../../art/sprite'
 import { type BrowserError, toBrowserError } from '../../shared/describeError'
 import type { Level } from '../../world/level/arena'
 import { levelOf } from '../../world/level/arena'
@@ -309,8 +310,16 @@ export class IsoScene {
       if (Option.isSome(maybePiece)) {
         fades.set(maybePiece.value.piece, maybePiece.value.opacity)
       } else {
-        this.billboards.standUp(drawable.shapes, drawable.footY)
         const leaves = flatten(drawable.shapes)
+        // NOTE: a hit flash glows white in any light, the cellar's dark too,
+        // so it stands with what glows of itself rather than what is lit.
+        const lit: Array<Leaf> = []
+        const flashing: Array<Leaf> = []
+        for (const leaf of leaves) {
+          ;(isFlashShape(leaf.shape) ? flashing : lit).push(leaf)
+        }
+        this.billboards.standLeaves(lit, drawable.footY, 0, 1)
+        this.glowing.standLeaves(flashing, drawable.footY, 0, 1)
         rimUp({
           pool: this.rims,
           textures: this.textures,
@@ -501,8 +510,8 @@ export class IsoScene {
         layer.destroy()
       },
     )
-    Array.forEach(built.plants, ({ clumps }) => {
-      Array.forEach(clumps, ({ texture }) => {
+    Array.forEach(built.plants, ({ clumps, caster }) => {
+      Array.forEach([...clumps, caster], ({ texture }) => {
         texture.destroy(true)
       })
     })

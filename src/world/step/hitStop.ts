@@ -13,6 +13,7 @@ import {
   HIT_STOP_KILL_MAX_MS,
   HIT_STOP_KILL_MS,
   HIT_STOP_MAX_MS,
+  HIT_STOP_WAVE_CLEAR_MS,
   STEP_EPSILON_MS,
 } from '../../shared/constants'
 import type { World } from '../schema/world'
@@ -96,6 +97,18 @@ const triggerHitStop = (
     },
   })
 
+// NOTE: the wave's last blow freezes the longest, whatever froze before it;
+// only the boss's slow motion outranks it.
+const clearingBlow = (hitStop: HitStop): HitStop =>
+  HitStop.match(hitStop, {
+    Running: () => HitStop.Frozen({ remainingMs: HIT_STOP_WAVE_CLEAR_MS }),
+    Frozen: ({ remainingMs }) =>
+      HitStop.Frozen({
+        remainingMs: Math.max(remainingMs, HIT_STOP_WAVE_CLEAR_MS),
+      }),
+    Slowed: () => hitStop,
+  })
+
 // HITS
 
 export const countWhere: {
@@ -126,16 +139,19 @@ export const stopForHits: {
     event =>
       GameEvent.isAnyOf(['ZombieKilled'])(event) && event.kind === 'Boss',
   )
+  const isWaveCleared = Array.some(events, GameEvent.isAnyOf(['WaveCleared']))
   return modifyFields(model, {
     hitStop: hitStop =>
       isBossFelled
         ? HitStop.Slowed({ remainingMs: BOSS_SLOW_MOTION_MS, carryMs: 0 })
-        : triggerHitStop(
-            hitStop,
-            countWhere(events, GameEvent.isAnyOf(['ZombieKilled'])),
-            countWhere(events, GameEvent.isAnyOf(['PlayerHurt'])),
-            countWhere(events, GameEvent.isAnyOf(['Exploded'])),
-            worldMs,
-          ),
+        : isWaveCleared
+          ? clearingBlow(hitStop)
+          : triggerHitStop(
+              hitStop,
+              countWhere(events, GameEvent.isAnyOf(['ZombieKilled'])),
+              countWhere(events, GameEvent.isAnyOf(['PlayerHurt'])),
+              countWhere(events, GameEvent.isAnyOf(['Exploded'])),
+              worldMs,
+            ),
   })
 })

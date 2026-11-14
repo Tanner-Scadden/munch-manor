@@ -21,6 +21,7 @@ import {
   SHAKE_TRAUMA_GRAB,
   SHAKE_TRAUMA_HURT,
   SHAKE_TRAUMA_MAX,
+  SHAKE_TRAUMA_WAVE_CLEAR,
   STREAK_WINDOW_MS,
   TRAP_CRACK_TRAUMA,
 } from '../shared/constants'
@@ -87,7 +88,7 @@ const eventTrauma = (event: GameEvent): number =>
     DryFired: () => 0,
     ReloadStarted: () => 0,
     Reloaded: () => 0,
-    WaveCleared: () => 0,
+    WaveCleared: () => SHAKE_TRAUMA_WAVE_CLEAR,
     RushedIn: () => 0,
     PackWarned: () => 0,
     TrapHit: () => 0,

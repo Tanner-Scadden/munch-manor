@@ -370,6 +370,39 @@ const builtSpriteShapes = (
   })
 }
 
+// FLASH
+
+const FLASH_COLOR = '#ffffff'
+
+// NOTE: a hit flash is pure white whatever light it stands in (owner,
+// 2026-11-14, from a hit feel guide: a tint multiplies, so a dark pixel stays
+// dark). So the flash palettes, and the sprites built from them, are known
+// by identity: the 3D renderer draws a flash sprite unlit
+// (src/render/iso/scene.ts). Weak, so a sprite let go is forgotten.
+const FLASH_PALETTES = new WeakSet<Palette>()
+const FLASH_SHAPES = new WeakSet<Canvas.Shape>()
+
+export const flashPalette = (palette: Palette): Palette => {
+  const flash = Record.map(palette, () => FLASH_COLOR)
+  FLASH_PALETTES.add(flash)
+  return flash
+}
+
+export const isFlashShape = (shape: Canvas.Shape): boolean =>
+  FLASH_SHAPES.has(shape)
+
+const noteFlash = (
+  palette: Palette,
+  shapes: ReadonlyArray<Canvas.Shape>,
+): ReadonlyArray<Canvas.Shape> => {
+  if (FLASH_PALETTES.has(palette)) {
+    Array.forEach(shapes, shape => {
+      FLASH_SHAPES.add(shape)
+    })
+  }
+  return shapes
+}
+
 // NOTE: a sprite is one image of its pixel map, drawn with a single
 // drawImage, instead of a rectangle for each run of same colored pixels. A
 // prebuilt one is found by its key with no pixel work at all. A palette color
@@ -394,18 +427,21 @@ export const spriteShapes: {
   ): ReadonlyArray<Canvas.Shape> => {
     const width = spriteWidth(pixels)
     const key = pixelsKeyOf(width, pixels, palette)
-    return Option.match(atlasLookup(key), {
-      onNone: () => builtSpriteShapes(key, pixels, palette, anchor, width),
-      onSome: maybeHit =>
-        Option.match(maybeHit, {
-          onNone: () => [],
-          onSome: hit => [
-            atlasImageAt(hit, -anchor.x, -anchor.y, () =>
-              runsDataUrl(width, pixels.length, rowRunsOf(pixels, palette)),
-            ),
-          ],
-        }),
-    })
+    return noteFlash(
+      palette,
+      Option.match(atlasLookup(key), {
+        onNone: () => builtSpriteShapes(key, pixels, palette, anchor, width),
+        onSome: maybeHit =>
+          Option.match(maybeHit, {
+            onNone: () => [],
+            onSome: hit => [
+              atlasImageAt(hit, -anchor.x, -anchor.y, () =>
+                runsDataUrl(width, pixels.length, rowRunsOf(pixels, palette)),
+              ),
+            ],
+          }),
+      }),
+    )
   },
 )
 
@@ -722,11 +758,6 @@ export const padRow: {
   (row: string, left: number, right: number): string =>
     `${String.repeat(left)(TRANSPARENT)}${row}${String.repeat(right)(TRANSPARENT)}`,
 )
-
-const FLASH_COLOR = '#ffffff'
-
-export const flashPalette = (palette: Palette): Palette =>
-  Record.map(palette, () => FLASH_COLOR)
 
 // SPRITES
 

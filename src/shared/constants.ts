@@ -230,6 +230,11 @@ export const HIT_STOP_KILL_MAX_MS = 60
 export const HIT_STOP_HURT_MS = 70
 export const HIT_STOP_MAX_MS = 70
 export const HIT_STOP_COOLDOWN_MS = 120
+// NOTE: the blow that clears a wave lands like a finisher: about 9 ticks
+// still, past the cap and the cooldown, and a hard shake (owner, 2026-11-14,
+// from a hit feel guide's killing blow).
+export const HIT_STOP_WAVE_CLEAR_MS = 150
+export const SHAKE_TRAUMA_WAVE_CLEAR = 0.7
 
 export const POPUP_MAX = 10
 export const DAMAGE_POPUP_LIFETIME_MS = 480
