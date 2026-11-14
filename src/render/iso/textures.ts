@@ -43,6 +43,9 @@ export class Textures {
   private readonly casterMaterials = new Map<Texture, Material3D>()
   // NOTE: how many sources have loaded, so the floor repaints as they do.
   loaded = 0
+  // NOTE: how many are still on their way; one that fails counts as done,
+  // so a bad image never holds the splash.
+  private pending = 0
 
   // NOTE: called as each source loads, so the world draws again with it even
   // when no new frame comes (a paused game, a held scene).
@@ -51,6 +54,11 @@ export class Textures {
   constructor(app: Application, onLoaded: () => void) {
     this.app = app
     this.onLoaded = onLoaded
+  }
+
+  // NOTE: whether every source asked for so far has loaded (or failed).
+  get isSettled(): boolean {
+    return this.pending === 0
   }
 
   // NOTE: starts loading a source, so it is ready by the time it shows.
@@ -67,10 +75,16 @@ export class Textures {
       return known
     }
     this.sources.set(src, 'Loading')
+    this.pending += 1
     const image = new Image()
     image.addEventListener('load', () => {
       this.sources.set(src, Texture.from(image))
+      this.pending -= 1
       this.loaded += 1
+      this.onLoaded()
+    })
+    image.addEventListener('error', () => {
+      this.pending -= 1
       this.onLoaded()
     })
     image.src = src

@@ -17,7 +17,6 @@ import {
   type CoverKind,
   WALL_SYMBOL,
 } from '../../world/level/tileGrid'
-import type { Vector } from '../../world/schema/entitySchema'
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
 import { roomArtOf } from '../room/room'
 import { COVER_DRAWINGS, coverBlocks } from '../room/roomCover'
@@ -30,20 +29,24 @@ import {
 } from './billboards'
 import { type Leaf, flatten, rectKey } from './flatten'
 import { FlatPainter } from './painter'
-import { STRETCH, UNIT, WALL_HEIGHT, zOf } from './space'
+import {
+  FRONT_WALL_HEIGHT,
+  STRETCH,
+  UNIT,
+  WALL_HEIGHT,
+  isFrontWallAt,
+  zOf,
+} from './space'
 import { type Textures, colorOf } from './textures'
 import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
 
 // WALLS
 
-const CUTAWAY_HEIGHT = 0.25
 const WALL_GEOMETRY = new CubeGeometry({ width: 1, height: 1, depth: 1 })
-
-export type Wall = Readonly<{ mesh: Mesh3D; x: number; z: number }>
 
 export const buildWalls = (
   input: Readonly<{ level: Level; material: ToonMaterial }>,
-): ReadonlyArray<Wall> => {
+): ReadonlyArray<Mesh3D> => {
   const { level, material } = input
   return Array.flatMap(level.tiles, (line, row) =>
     Array.filterMap(Array.fromIterable(line), (symbol, column) => {
@@ -52,40 +55,21 @@ export const buildWalls = (
       }
       const x = (level.left + column * TILE_SIZE) * UNIT + 0.5
       const z = zOf(level.top + (row + 0.5) * TILE_SIZE)
-      return Result.succeed({
-        x,
-        z,
-        mesh: new Mesh3D({
+      const height = isFrontWallAt({ tiles: level.tiles, row, column })
+        ? FRONT_WALL_HEIGHT
+        : WALL_HEIGHT
+      return Result.succeed(
+        new Mesh3D({
           geometry: WALL_GEOMETRY,
           material,
-          position: { x, y: WALL_HEIGHT / 2, z },
-          scale: { x: 1, y: WALL_HEIGHT, z: STRETCH },
+          position: { x, y: height / 2, z },
+          scale: { x: 1, y: height, z: STRETCH },
           castShadow: true,
           receiveShadow: true,
         }),
-      })
+      )
     }),
   )
-}
-
-// NOTE: walls between the camera and the player drop low, as a dollhouse
-// cutaway, so the camera never loses the player behind one. The camera looks
-// north, so those are the walls just south of the player.
-export const cutAway = ({
-  walls,
-  player,
-}: Readonly<{ walls: ReadonlyArray<Wall>; player: Vector }>): void => {
-  const px = player.x * UNIT
-  const pz = zOf(player.y)
-  for (const { mesh, x, z } of walls) {
-    const ahead = z - pz
-    const isInFront = ahead > 0.5 && ahead < 9 && Math.abs(x - px) < 5
-    const height = isInFront ? CUTAWAY_HEIGHT : WALL_HEIGHT
-    if (mesh.scale.y !== height) {
-      mesh.scale.y = height
-      mesh.position.y = height / 2
-    }
-  }
 }
 
 // FURNITURE

@@ -57,9 +57,7 @@ import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
   type Plant,
-  type Wall,
   buildWalls,
-  cutAway,
   floorArtOf,
   furnitureCastersOf,
   plantsOf,
@@ -74,6 +72,7 @@ import { chandelierSwayAt, windClockOf } from './wind'
 
 const BACKGROUND = 0x16121c
 const CAMERA_DISTANCE = 80
+const TRACER_RADIUS = 0.05
 
 // NOTE: whatever floats overhead stands this far over its own bottom edge,
 // so it never sinks into what it hangs over.
@@ -88,7 +87,6 @@ type Built = Readonly<{
   // sinks into the cellar's dark where the glows and rings do not.
   landed: FloorLayer
   ground: FloorLayer
-  walls: ReadonlyArray<Wall>
   floorArt: ReadonlyArray<Leaf>
   plants: ReadonlyArray<Plant>
   // NOTE: each tall piece by the shapes the game draws it with, to read the
@@ -148,7 +146,11 @@ export class IsoScene {
   private readonly muzzle: Mesh3D
   private readonly muzzleMaterial: Material3D
   private readonly tracerMaterial: Material3D
-  private readonly tracerGeometry = new SphereGeometry({ radius: 0.12 })
+  // NOTE: a game pixel across: the glowing core of the bullet the floor
+  // draws, the bloom its glow (owner, 2026-11-14: bullets were massive).
+  private readonly tracerGeometry = new SphereGeometry({
+    radius: TRACER_RADIUS,
+  })
   private readonly tracers: Array<Mesh3D> = []
   private readonly wallMaterial: ToonMaterial
   private readonly billboards: BillboardPool
@@ -283,7 +285,6 @@ export class IsoScene {
     this.view.camera.orthographicSize = (shownWidth * UNIT) / 2
 
     const { player } = focusOf(model)
-    cutAway({ walls: built.walls, player })
 
     // THE FLOOR
     const landed = flatten(groundParticleShapes(model.particles))
@@ -402,7 +403,9 @@ export class IsoScene {
     Array.forEach(model.bullets, (bullet, index) => {
       const tracer = this.tracers[index] ?? this.newTracer()
       tracer.visible = true
-      tracer.position.set(bullet.x * UNIT, 0.7, zOf(bullet.y))
+      // NOTE: on the floor, where the game draws the bullet: the 2D game's
+      // map already puts a shot at the gun's height.
+      tracer.position.set(bullet.x * UNIT, TRACER_RADIUS, zOf(bullet.y))
     })
     for (
       let index = model.bullets.length;
@@ -448,7 +451,7 @@ export class IsoScene {
     const ground = layer(0.012, false)
     const walls = buildWalls({ level, material: this.wallMaterial })
     holder.addChild(room.mesh, decals.mesh, landed.mesh, ground.mesh)
-    Array.forEach(walls, ({ mesh }) => {
+    Array.forEach(walls, mesh => {
       holder.addChild(mesh)
     })
     const floorArt = floorArtOf(level)
@@ -461,7 +464,6 @@ export class IsoScene {
       decals,
       landed,
       ground,
-      walls,
       floorArt,
       plants: plantsOf({ app: this.app, level }),
       furniture: new Map(
@@ -516,6 +518,12 @@ export class IsoScene {
       })
     })
     this.built = undefined
+  }
+
+  // NOTE: whether the last frame drew with every sprite it asked for, so the
+  // splash can wait for a world that is all there.
+  get isSettled(): boolean {
+    return this.textures.isSettled
   }
 
   destroy(): void {
