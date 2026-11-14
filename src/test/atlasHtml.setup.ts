@@ -29,5 +29,6 @@ useSpriteAtlas({
         typeof key === 'string' ? placeOf(key) : undefined,
     },
   ),
+  normals: [],
   levels: {},
 })

@@ -15,6 +15,7 @@ import {
   Option,
   Order,
   Path,
+  Predicate,
   Record,
   Result,
   Schema,
@@ -24,6 +25,7 @@ import {
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
+import { normalPixelsOf } from '../../src/art/normalMap'
 import { rasterOf } from '../../src/art/png'
 import {
   type AtlasEntry,
@@ -55,13 +57,26 @@ const contents = spriteContents()
 const keys = Array.sort([...contents.keys()], String.Order)
 
 // NOTE: only the files a previous manifest named, read from a manifest of
-// any version (one written before `levels` holds none).
+// any version (one written before `levels` holds none, and before `normals`
+// none of those).
 const PreviousManifest = Schema.Struct({
   sources: Schema.Array(Schema.String),
+  normals: Schema.optionalKey(Schema.Array(Schema.NullOr(Schema.String))),
 })
 
+// NOTE: every file a manifest names, its sheets and their normal maps.
+const filesOf = (
+  manifest: Readonly<{
+    sources: ReadonlyArray<string>
+    normals?: ReadonlyArray<string | null>
+  }>,
+): ReadonlyArray<string> => [
+  ...manifest.sources,
+  ...Array.filter(manifest.normals ?? [], Predicate.isNotNull),
+]
+
 // NOTE: changing how the files are written must make every cache miss.
-const GENERATOR_VERSION = 4
+const GENERATOR_VERSION = 5
 const MANIFEST_FILE = 'manifest.json'
 const SIGNATURE_FILE = 'signature.txt'
 
@@ -160,7 +175,11 @@ const ATLAS_WIDTH = 1024
 // shared one would let a sprite sample its neighbor.
 const FRAME = 1
 
-type Sheet = Readonly<{ raster: Raster; placed: ReadonlyArray<Placed> }>
+type Sheet = Readonly<{
+  raster: Raster
+  placed: ReadonlyArray<Placed>
+  frame: number
+}>
 type Placed = Readonly<{ image: Image; x: number; y: number }>
 
 const clamp = (value: number, high: number): number =>
@@ -187,7 +206,7 @@ const sheetOf = (
       }
     }
   }
-  return { raster: { width, height, pixels }, placed }
+  return { raster: { width, height, pixels }, placed, frame }
 }
 
 type Packed = Readonly<{
@@ -236,6 +255,33 @@ const sheetsOf = (images: ReadonlyArray<Image>): Packed => {
     ],
   }
 }
+
+// NOTE: a sheet's normal map, each sprite's read off its own pixels alone
+// and laid in its place with the same frame, so a crop of the sheet finds
+// its own sprite's normals and never a neighbor's dome.
+const normalSheetOf = ({ raster, placed, frame }: Sheet): Raster =>
+  sheetOf(
+    raster.width,
+    raster.height,
+    Array.map(placed, ({ image, x, y }) => ({
+      image: { ...image, raster: normalRasterOf(image.raster) },
+      x,
+      y,
+    })),
+    frame,
+  ).raster
+
+const normalRasterOf = (raster: Raster): Raster => ({
+  width: raster.width,
+  height: raster.height,
+  pixels: new Uint8Array(
+    normalPixelsOf({
+      pixels: new Uint8ClampedArray(raster.pixels),
+      width: raster.width,
+      height: raster.height,
+    }).buffer,
+  ),
+})
 
 // ENCODE AND CHECK
 
@@ -322,20 +368,38 @@ const writeAtlas = (outDir: string) =>
       bytes += png.length
     }
 
+    // NOTE: each sheet's normal map beside it, but a room's: a room lies
+    // flat on the floor, and no light rounds it.
+    const levels = levelSourcesOf(entries)
+    const roomSources = new Set(Array.flatten(Record.values(levels)))
+    const normalNames: Array<string | null> = []
+    for (const [source, { name, sheet }] of sheets.entries()) {
+      if (roomSources.has(source)) {
+        normalNames.push(null)
+        continue
+      }
+      const png = encodePng(normalSheetOf(sheet))
+      const fileName = yield* fileNameOf(`${name}-normal`, png)
+      yield* fs.writeFile(path.join(outDir, fileName), png)
+      normalNames.push(fileName)
+      bytes += png.length
+    }
+
     // NOTE: the manifest lands whole, by a rename, since the dev server may
     // read it at any moment. Files the previous manifest named stay, for a
     // page that loaded it a moment ago, and older ones go.
     const manifest: SpriteAtlas = {
       sources: fileNames,
+      normals: normalNames,
       entries,
-      levels: levelSourcesOf(entries),
+      levels,
     }
     const manifestPath = path.join(outDir, MANIFEST_FILE)
     const previousFiles: ReadonlyArray<string> = (yield* fileExists(
       fs,
       manifestPath,
     ))
-      ? (yield* readJsonFile(PreviousManifest, manifestPath)).sources
+      ? yield* Effect.map(readJsonFile(PreviousManifest, manifestPath), filesOf)
       : []
     yield* fs.writeFileString(
       `${manifestPath}.next`,
@@ -347,7 +411,7 @@ const writeAtlas = (outDir: string) =>
     for (const file of files) {
       if (
         String.endsWith('.png')(file) &&
-        !Array.contains(fileNames, file) &&
+        !Array.contains(filesOf(manifest), file) &&
         !Array.contains(previousFiles, file)
       ) {
         yield* fs.remove(path.join(outDir, file))

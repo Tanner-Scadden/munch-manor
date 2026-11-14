@@ -4,6 +4,7 @@ import {
   Effect,
   FileSystem,
   Option,
+  Result,
   Schema,
   String,
 } from 'effect'
@@ -45,7 +46,7 @@ const BUILD_CACHE_DIR = `${ROOT}/node_modules/.cache/munch-sprites`
 const DEV_CACHE_DIR = `${ROOT}/node_modules/.cache/munch-sprites-dev`
 
 const EMPTY_ATLAS_MODULE =
-  'export default { sources: [], entries: {}, levels: {} }\n'
+  'export default { sources: [], entries: {}, normals: [], levels: {} }\n'
 
 class GeneratorFailed extends Schema.TaggedError<
   GeneratorFailed,
@@ -111,19 +112,29 @@ const builtAtlasModule = (outDir: string) =>
     Option.match(maybeManifest, {
       onNone: () => EMPTY_ATLAS_MODULE,
       onSome: manifest => {
-        const imports = Array.map(
-          manifest.sources,
-          (name, index) =>
-            `import source${index} from ${encodeJson(Schema.String)(`${outDir}/${name}?url&no-inline`)}`,
-        )
+        const importOf = (binding: string, name: string): string =>
+          `import ${binding} from ${encodeJson(Schema.String)(`${outDir}/${name}?url&no-inline`)}`
+        const imports = [
+          ...Array.map(manifest.sources, (name, index) =>
+            importOf(`source${index}`, name),
+          ),
+          ...Array.filterMap(manifest.normals, (name, index) =>
+            name === null
+              ? Result.failVoid
+              : Result.succeed(importOf(`normal${index}`, name)),
+          ),
+        ]
         const sources = Array.map(
           manifest.sources,
           (_name, index) => `source${index}`,
         )
+        const normals = Array.map(manifest.normals, (name, index) =>
+          name === null ? 'null' : `normal${index}`,
+        )
         return Array.join(
           [
             ...imports,
-            `export default { sources: [${Array.join(sources, ', ')}], entries: ${encodeJson(AtlasEntries)(manifest.entries)}, levels: ${encodeJson(AtlasLevels)(manifest.levels)} }`,
+            `export default { sources: [${Array.join(sources, ', ')}], normals: [${Array.join(normals, ', ')}], entries: ${encodeJson(AtlasEntries)(manifest.entries)}, levels: ${encodeJson(AtlasLevels)(manifest.levels)} }`,
             '',
           ],
           '\n',
@@ -145,6 +156,9 @@ const devAtlasModule = Effect.map(manifestIn(DEV_CACHE_DIR), maybeManifest =>
         sources: Array.map(
           manifest.sources,
           name => `${DEV_URL_PREFIX}${name}`,
+        ),
+        normals: Array.map(manifest.normals, name =>
+          name === null ? null : `${DEV_URL_PREFIX}${name}`,
         ),
         entries: manifest.entries,
         levels: manifest.levels,

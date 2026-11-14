@@ -15,11 +15,14 @@ export type AtlasEntry = readonly [
   height: number,
 ]
 
-// NOTE: a key that maps to null is a sprite that draws nothing. `levels`
-// names, for each level spec's id, the files holding its room images, so a
-// run preloads its own house without building its art.
+// NOTE: a key that maps to null is a sprite that draws nothing. `normals`
+// holds each source's normal map, in the same order (null for a room's),
+// baked with the atlas so the game reads no pixels back. `levels` names, for
+// each level spec's id, the files holding its room images, so a run preloads
+// its own house without building its art.
 export type SpriteAtlas = Readonly<{
   sources: ReadonlyArray<string>
+  normals: ReadonlyArray<string | null>
   entries: Readonly<Record<string, AtlasEntry | null>>
   levels: Readonly<Record<string, ReadonlyArray<number>>>
 }>
@@ -30,7 +33,12 @@ export type SpriteAtlas = Readonly<{
 // generator can read its pixels.
 export type SpriteMode = 'Encode' | 'StandIn'
 
-const EMPTY_ATLAS: SpriteAtlas = { sources: [], entries: {}, levels: {} }
+const EMPTY_ATLAS: SpriteAtlas = {
+  sources: [],
+  entries: {},
+  normals: [],
+  levels: {},
+}
 
 const state: { atlas: SpriteAtlas; mode: SpriteMode } = {
   atlas: EMPTY_ATLAS,
@@ -58,6 +66,14 @@ export const atlasRoomSources = (
     Array.getSomes(
       Array.map(indices, index => Array.get(state.atlas.sources, index)),
     ),
+  )
+
+// NOTE: the prebuilt normal map of a source file, or None for a source the
+// atlas does not hold (a sprite encoded on its own, a stand-in) or a room's.
+export const atlasNormalOf = (src: string): Option.Option<string> =>
+  Option.flatMap(
+    Array.findFirstIndex(state.atlas.sources, s => s === src),
+    index => Option.fromNullishOr(state.atlas.normals[index]),
   )
 
 export type AtlasHit = Readonly<{

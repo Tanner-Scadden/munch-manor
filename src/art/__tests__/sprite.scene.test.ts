@@ -179,7 +179,7 @@ const ATLAS_FILE = 'sprites.png'
 
 describe('prebuilt sprites', () => {
   afterEach(() => {
-    useSpriteAtlas({ sources: [], entries: {}, levels: {} })
+    useSpriteAtlas({ sources: [], entries: {}, normals: [], levels: {} })
     useSpriteMode('StandIn')
   })
 
@@ -205,6 +205,7 @@ describe('prebuilt sprites', () => {
     useSpriteAtlas({
       sources: [ATLAS_FILE],
       entries: { [key]: [0, 7, 9, 5, 6] },
+      normals: [],
       levels: {},
     })
     expect(onlyImage(spriteShapes(PIXELS, PALETTE, { x: 2, y: 6 }))).toEqual(
@@ -225,6 +226,7 @@ describe('prebuilt sprites', () => {
     useSpriteAtlas({
       sources: [ATLAS_FILE],
       entries: { [key]: null },
+      normals: [],
       levels: {},
     })
     expect(spriteShapes(PIXELS, PALETTE)).toEqual([])
@@ -240,6 +242,7 @@ describe('prebuilt sprites', () => {
     useSpriteAtlas({
       sources: [ATLAS_FILE],
       entries: { [key]: [0, 1, 1, 3, 2] },
+      normals: [],
       levels: {},
     })
     expect(onlyImage(bakeShapes(rects(40)))).toMatchObject({
