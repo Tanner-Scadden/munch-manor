@@ -1,6 +1,6 @@
 // The 3D world's space: how the game's 2D world maps onto 3D units.
 
-import { String } from 'effect'
+import { Array, Option, String } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { WALL_SYMBOL } from '../../world/level/tileGrid'
@@ -75,4 +75,28 @@ export const TOWARD_CAMERA: Vec3 = {
   x: 0,
   y: Math.sin(PITCH),
   z: Math.cos(PITCH),
+}
+
+// THE CANVAS'S PIXELS
+
+// NOTE: how many device pixels each canvas pixel covers, across and down,
+// for a game pixel of this many device pixels. The world is lit and drawn at
+// about one canvas pixel per CSS pixel, not the device's full ratio: a 3x
+// phone filled three million pixels with every light each frame and dropped
+// frames (owner, 2026-11-14). The step is the largest whole number up to the
+// ratio that divides the game pixel, so a game pixel is still a whole number
+// of canvas pixels and each canvas pixel a square of device pixels: the art
+// comes out the same, and only the light's gradients are coarser.
+export const canvasStepOf = ({
+  devicePerGamePixel,
+  ratio,
+}: Readonly<{ devicePerGamePixel: number; ratio: number }>): number => {
+  const whole = Math.max(1, Math.round(devicePerGamePixel))
+  const most = Math.max(1, Math.min(whole, Math.floor(ratio)))
+  return Option.getOrElse(
+    Array.findFirst(Array.reverse(Array.range(1, most)), step =>
+      Number.isInteger(whole / step),
+    ),
+    () => 1,
+  )
 }

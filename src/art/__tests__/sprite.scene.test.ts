@@ -179,7 +179,7 @@ const ATLAS_FILE = 'sprites.png'
 
 describe('prebuilt sprites', () => {
   afterEach(() => {
-    useSpriteAtlas({ sources: [], entries: {} })
+    useSpriteAtlas({ sources: [], entries: {}, levels: {} })
     useSpriteMode('StandIn')
   })
 
@@ -205,6 +205,7 @@ describe('prebuilt sprites', () => {
     useSpriteAtlas({
       sources: [ATLAS_FILE],
       entries: { [key]: [0, 7, 9, 5, 6] },
+      levels: {},
     })
     expect(onlyImage(spriteShapes(PIXELS, PALETTE, { x: 2, y: 6 }))).toEqual(
       Canvas.Image({
@@ -221,7 +222,11 @@ describe('prebuilt sprites', () => {
 
   test('a sprite the atlas marks empty draws nothing', () => {
     const key = keyOf(spriteShapes(PIXELS, PALETTE))
-    useSpriteAtlas({ sources: [ATLAS_FILE], entries: { [key]: null } })
+    useSpriteAtlas({
+      sources: [ATLAS_FILE],
+      entries: { [key]: null },
+      levels: {},
+    })
     expect(spriteShapes(PIXELS, PALETTE)).toEqual([])
   })
 
@@ -235,6 +240,7 @@ describe('prebuilt sprites', () => {
     useSpriteAtlas({
       sources: [ATLAS_FILE],
       entries: { [key]: [0, 1, 1, 3, 2] },
+      levels: {},
     })
     expect(onlyImage(bakeShapes(rects(40)))).toMatchObject({
       src: ATLAS_FILE,

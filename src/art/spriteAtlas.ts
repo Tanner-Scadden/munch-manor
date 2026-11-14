@@ -1,4 +1,4 @@
-import { Option, String } from 'effect'
+import { Array, Option, String } from 'effect'
 
 // The prebuilt sprite images (docs/IMAGES_PLAN.md). A production build packs
 // every sprite the game builds as it loads into a few PNG files and a
@@ -15,10 +15,13 @@ export type AtlasEntry = readonly [
   height: number,
 ]
 
-// NOTE: a key that maps to null is a sprite that draws nothing.
+// NOTE: a key that maps to null is a sprite that draws nothing. `levels`
+// names, for each level spec's id, the files holding its room images, so a
+// run preloads its own house without building its art.
 export type SpriteAtlas = Readonly<{
   sources: ReadonlyArray<string>
   entries: Readonly<Record<string, AtlasEntry | null>>
+  levels: Readonly<Record<string, ReadonlyArray<number>>>
 }>
 
 // NOTE: `Encode` builds a PNG data URL for every sprite the atlas lacks, as
@@ -27,7 +30,7 @@ export type SpriteAtlas = Readonly<{
 // generator can read its pixels.
 export type SpriteMode = 'Encode' | 'StandIn'
 
-const EMPTY_ATLAS: SpriteAtlas = { sources: [], entries: {} }
+const EMPTY_ATLAS: SpriteAtlas = { sources: [], entries: {}, levels: {} }
 
 const state: { atlas: SpriteAtlas; mode: SpriteMode } = {
   atlas: EMPTY_ATLAS,
@@ -45,6 +48,17 @@ export const useSpriteMode = (mode: SpriteMode): void => {
 }
 
 export const spriteMode = (): SpriteMode => state.mode
+
+// NOTE: the prebuilt files holding a level spec's room images, or None when
+// the atlas does not know the spec (no atlas: a dev server, tests).
+export const atlasRoomSources = (
+  specId: string,
+): Option.Option<ReadonlyArray<string>> =>
+  Option.map(Option.fromNullishOr(state.atlas.levels[specId]), indices =>
+    Array.getSomes(
+      Array.map(indices, index => Array.get(state.atlas.sources, index)),
+    ),
+  )
 
 export type AtlasHit = Readonly<{
   src: string

@@ -29,4 +29,5 @@ useSpriteAtlas({
         typeof key === 'string' ? placeOf(key) : undefined,
     },
   ),
+  levels: {},
 })

@@ -13,7 +13,10 @@ import {
   Effect,
   FileSystem,
   Option,
+  Order,
   Path,
+  Record,
+  Result,
   Schema,
   String,
 } from 'effect'
@@ -25,6 +28,7 @@ import { rasterOf } from '../../src/art/png'
 import {
   type AtlasEntry,
   type SpriteAtlas,
+  standInKeyOf,
   useSpriteMode,
 } from '../../src/art/spriteAtlas'
 import { encodeJson, readJsonFile } from '../json'
@@ -44,12 +48,20 @@ await import('../../src/app/main')
 await import('../../src/app/boot')
 const { precompileSprites } = await import('../../src/art/spritePrecompile')
 precompileSprites()
+const { everyRoomImage } = await import('../../src/render/room/room')
+const { EVERY_LEVEL_SPEC } = await import('../../src/world/level/plan')
 
 const contents = spriteContents()
 const keys = Array.sort([...contents.keys()], String.Order)
 
+// NOTE: only the files a previous manifest named, read from a manifest of
+// any version (one written before `levels` holds none).
+const PreviousManifest = Schema.Struct({
+  sources: Schema.Array(Schema.String),
+})
+
 // NOTE: changing how the files are written must make every cache miss.
-const GENERATOR_VERSION = 3
+const GENERATOR_VERSION = 4
 const MANIFEST_FILE = 'manifest.json'
 const SIGNATURE_FILE = 'signature.txt'
 
@@ -313,13 +325,17 @@ const writeAtlas = (outDir: string) =>
     // NOTE: the manifest lands whole, by a rename, since the dev server may
     // read it at any moment. Files the previous manifest named stay, for a
     // page that loaded it a moment ago, and older ones go.
-    const manifest: SpriteAtlas = { sources: fileNames, entries }
+    const manifest: SpriteAtlas = {
+      sources: fileNames,
+      entries,
+      levels: levelSourcesOf(entries),
+    }
     const manifestPath = path.join(outDir, MANIFEST_FILE)
     const previousFiles: ReadonlyArray<string> = (yield* fileExists(
       fs,
       manifestPath,
     ))
-      ? (yield* readJsonFile(SpriteAtlasManifest, manifestPath)).sources
+      ? (yield* readJsonFile(PreviousManifest, manifestPath)).sources
       : []
     yield* fs.writeFileString(
       `${manifestPath}.next`,
@@ -342,6 +358,35 @@ const writeAtlas = (outDir: string) =>
       `sprites: ${keys.length} sprites, ${images.length} distinct, in ${sheets.length} files (atlas ${width}x${height}), ${Math.round(bytes / 1024)} KB, ${Math.round(finished - started)} ms`,
     )
   })
+
+// NOTE: each level spec's id to the files its room images sit in, so the
+// game preloads a house without building its art (src/app/layers.ts).
+const levelSourcesOf = (
+  entries: Readonly<Record<string, AtlasEntry>>,
+): Record<string, ReadonlyArray<number>> =>
+  Record.fromEntries(
+    Array.map(EVERY_LEVEL_SPEC, spec => [
+      spec.id,
+      Array.sort(
+        Array.dedupe(
+          Array.filterMap(everyRoomImage(spec), shape =>
+            shape._tag === 'Image'
+              ? Option.match(
+                  Option.flatMap(standInKeyOf(shape.src), key =>
+                    Option.fromNullishOr(entries[key]),
+                  ),
+                  {
+                    onNone: () => Result.failVoid,
+                    onSome: ([source]) => Result.succeed(source),
+                  },
+                )
+              : Result.failVoid,
+          ),
+        ),
+        Order.Number,
+      ),
+    ]),
+  )
 
 class Usage extends Schema.TaggedError<
   Usage,

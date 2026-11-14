@@ -6,6 +6,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 - 🏚️ The manor stands up in 3D: walls with real depth, candlelight and flickering flames in every room, shadows under everyone, ferns and the chandelier swaying in a draft, and a cellar so dark only your flashlight cuts through it. (Older devices without WebGL2 can't run the manor anymore, sorry!)
 - 🔍 Every pixel is the same size now, on every phone and window, so the art stays razor sharp as the camera glides.
+- 🚀 The manor loads faster and runs smoother on phones, with no more freeze on the loading screen.
 - 💥 Hits flash bright white even in the darkest cellar, the last zombie of a wave goes down with a big freeze and a thump, and the ferns bend in the draft like real plants.
 
 ## November 13, 2026: Bring back proof

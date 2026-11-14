@@ -373,6 +373,32 @@ const isExitNear =
 const exitIdsNear = (level: Level, room: Room): ReadonlyArray<ExitId> =>
   Array.map(Array.filter(level.exits, isExitNear(room.box)), ({ id }) => id)
 
+const levelArtCache = new WeakMap<
+  LevelSpec,
+  Map<string, ReadonlyArray<Canvas.Shape>>
+>()
+
+// NOTE: the whole level's art with these exits open, built once for its
+// spec and exits: rooms whose nearby exits are the same (every room, at a
+// run's start) cut their images from one build instead of one each, which
+// was most of the first frame on a phone.
+const levelArtOf = (
+  spec: LevelSpec,
+  openExits: ReadonlyArray<ExitId>,
+): ReadonlyArray<Canvas.Shape> => {
+  const key = Array.join(openExits, '+')
+  const arts =
+    levelArtCache.get(spec) ?? new Map<string, ReadonlyArray<Canvas.Shape>>()
+  levelArtCache.set(spec, arts)
+  const cached = arts.get(key)
+  if (cached !== undefined) {
+    return cached
+  }
+  const art = roomArtOf(levelFor(spec, openExits))
+  arts.set(key, art)
+  return art
+}
+
 const roomImageCache = new WeakMap<
   LevelSpec,
   Map<string, ReadonlyArray<Canvas.Shape>>
@@ -396,7 +422,7 @@ const roomImage = (
   if (cached !== undefined) {
     return cached
   }
-  const image = bakeShapesWithin(roomArtOf(levelFor(spec, openExits)), {
+  const image = bakeShapesWithin(levelArtOf(spec, openExits), {
     left: room.box.left,
     top: room.box.top,
     right: room.box.right,
