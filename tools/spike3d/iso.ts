@@ -38,6 +38,7 @@ import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 import {
   Application,
   Color,
+  ColorMatrixFilter,
   Container,
   Graphics,
   Matrix,
@@ -585,6 +586,181 @@ class BillboardPool {
   }
 }
 
+// RIMS
+
+// NOTE: how far from the player its lamp draws a rim on what stands, in
+// game pixels, and the rim's color, whiter in a muzzle flash.
+const RIM_REACH = 80
+const RIM_COLOR = 0xffd7a0
+const RIM_FLASH_COLOR = 0xfff4e0
+
+// NOTE: a texture's shape in plain white, baked once, so a tint gives a
+// solid rim of the lamp's color.
+const silhouettes = new Map<Texture, Texture>()
+const silhouetteOf = (app: Application, texture: Texture): Texture => {
+  if (texture === Texture.WHITE) {
+    return texture
+  }
+  const known = silhouettes.get(texture)
+  if (known !== undefined) {
+    return known
+  }
+  const sprite = new Sprite(texture)
+  const white = new ColorMatrixFilter()
+  white.matrix = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0]
+  white.padding = 0
+  sprite.filters = [white]
+  const baked = app.renderer.generateTexture({
+    target: sprite,
+    resolution: 1,
+    frame: new Rectangle(0, 0, texture.frame.width, texture.frame.height),
+  })
+  baked.source.scaleMode = 'nearest'
+  sprite.destroy()
+  silhouettes.set(texture, baked)
+  return baked
+}
+
+// NOTE: the lamp's rim on a standing drawable near the player: its shape
+// in the lamp's color, one game pixel toward the player and just behind
+// it, so only the lit edge shows, fading with distance.
+const rimUp = (
+  app: Application,
+  pool: BillboardPool,
+  leaves: ReadonlyArray<Leaf>,
+  footY: number,
+  lamp: Readonly<{ x: number; y: number; flash: number }>,
+): void => {
+  const drawn = leaves.flatMap(leaf => drawnLeafOf(leaf) ?? [])
+  const [first] = drawn
+  if (first === undefined) {
+    return
+  }
+  const dx = lamp.x - first.centerX
+  const dy = lamp.y - footY
+  const distance = Math.hypot(dx, dy)
+  if (distance < 6 || distance > RIM_REACH) {
+    return
+  }
+  const strength = Math.min(
+    1,
+    (1 - distance / RIM_REACH) ** 1.5 * (1 + 0.8 * lamp.flash),
+  )
+  const offsetX = Math.round(dx / distance)
+  const offsetY = Math.round(dy / distance)
+  const tint = lamp.flash > 0.3 ? RIM_FLASH_COLOR : RIM_COLOR
+  for (const leaf of drawn) {
+    pool.place({
+      ...leaf,
+      texture: silhouetteOf(app, leaf.texture),
+      centerX: leaf.centerX + offsetX,
+      bottom: leaf.bottom + offsetY,
+      footY,
+      hover: 0,
+      tint,
+      alpha: Math.min(0.97, strength * leaf.alpha),
+      part: -1,
+    })
+  }
+}
+
+// BODY SHADOWS
+
+// NOTE: whatever moves (players, zombies, pickups, traps) casts its shadow
+// from the room's light through a hidden stand-in of its biggest sprite,
+// in its pose this frame, as furniture does through its cut-out.
+const casterMaterials = new Map<Texture, Material3D>()
+const casterMaterialOf = (texture: Texture): Material3D => {
+  const known = casterMaterials.get(texture)
+  if (known !== undefined) {
+    return known
+  }
+  const material = new Material3D({
+    baseColorTexture: texture,
+    alphaMode: 'mask',
+    alphaCutoff: 0.5,
+    doubleSided: true,
+  })
+  casterMaterials.set(texture, material)
+  return material
+}
+
+class BodyCasters {
+  private readonly meshes: Array<Mesh3D> = []
+  private used = 0
+  private readonly parent: Container3D
+
+  constructor(parent: Container3D) {
+    this.parent = parent
+  }
+
+  begin(): void {
+    this.used = 0
+  }
+
+  end(): void {
+    for (let index = this.used; index < this.meshes.length; index += 1) {
+      const mesh = this.meshes[index]
+      if (mesh !== undefined) {
+        mesh.visible = false
+      }
+    }
+  }
+
+  cast(app: Application, leaves: ReadonlyArray<Leaf>, footY: number): void {
+    let biggest: DrawnLeaf | undefined
+    for (const leaf of leaves) {
+      const drawn = leaf.shape._tag === 'Image' ? drawnLeafOf(leaf) : undefined
+      if (
+        drawn !== undefined &&
+        drawn.alpha >= 0.5 &&
+        (biggest === undefined ||
+          drawn.drawnWidth * drawn.drawnHeight >
+            biggest.drawnWidth * biggest.drawnHeight)
+      ) {
+        biggest = drawn
+      }
+    }
+    if (biggest === undefined) {
+      return
+    }
+    const mesh = this.next(casterMaterialOf(silhouetteOf(app, biggest.texture)))
+    mesh.scale.set(biggest.drawnWidth * UNIT, biggest.drawnHeight * UNIT, 1)
+    mesh.position.set(
+      biggest.centerX * UNIT,
+      (footY - biggest.bottom + biggest.drawnHeight / 2) * UNIT,
+      zOf(footY),
+    )
+    mesh.visible = true
+  }
+
+  private next(material: Material3D): Mesh3D {
+    const existing = this.meshes[this.used]
+    this.used += 1
+    if (existing !== undefined) {
+      if (existing.material !== material) {
+        existing.material = material
+      }
+      return existing
+    }
+    const mesh = new Mesh3D({
+      geometry: CASTER_GEOMETRY,
+      material,
+      castShadow: true,
+      receiveShadow: false,
+    })
+    if (!location.hash.includes('casters')) {
+      mesh.disablePass('opaque')
+      mesh.disablePass('outline')
+    }
+    mesh.rotation.z = Math.PI
+    mesh.rotation.y = Math.PI
+    this.parent.addChild(mesh)
+    this.meshes.push(mesh)
+    return mesh
+  }
+}
+
 // WALLS
 
 type Wall = Readonly<{ mesh: Mesh3D; x: number; z: number }>
@@ -1061,6 +1237,8 @@ export const startIsometric = async (): Promise<void> => {
   view.root.addChild(standing)
   const billboards = new BillboardPool(standing, true)
   const glowing = new BillboardPool(standing, false)
+  const rims = new BillboardPool(standing, false)
+  const bodies = new BodyCasters(standing)
 
   let built: Level3D | undefined
   let casters: Container3D | undefined
@@ -1252,6 +1430,7 @@ export const startIsometric = async (): Promise<void> => {
     )
     billboards.grid = 1 / pixels
     glowing.grid = 1 / pixels
+    rims.grid = 1 / pixels
     const k = focus.isSet ? 1 - Math.exp(-6 * (ticker.deltaMS / 1000)) : 1
     focus.x += (target.x - focus.x) * k
     focus.z += (target.z - focus.z) * k
@@ -1286,6 +1465,7 @@ export const startIsometric = async (): Promise<void> => {
     }
     billboards.basis = basis
     glowing.basis = basis
+    rims.basis = basis
     if (cursor !== undefined) {
       remap(
         new PointerEvent('pointermove', {
@@ -1327,6 +1507,9 @@ export const startIsometric = async (): Promise<void> => {
     const t = Math.floor((model.elapsedMs / 1000) * POSE_HZ) / POSE_HZ
     billboards.begin()
     glowing.begin()
+    rims.begin()
+    bodies.begin()
+    const lampSpot = { x: player.x, y: player.y, flash: flashLevel }
     for (const drawable of strata.standing) {
       const [first] = drawable.shapes
       const piece = built.furniture.find(
@@ -1341,6 +1524,9 @@ export const startIsometric = async (): Promise<void> => {
         continue
       }
       billboards.standUp(drawable.shapes, drawable.footY)
+      const leaves = flatten(drawable.shapes)
+      rimUp(app, rims, leaves, drawable.footY, lampSpot)
+      bodies.cast(app, leaves, drawable.footY)
     }
     for (const piece of built.furniture) {
       billboards.standUp(piece.shapes, piece.footY, 0, fades.get(piece.shapes) ?? 1)
@@ -1381,6 +1567,8 @@ export const startIsometric = async (): Promise<void> => {
     }
     billboards.end()
     glowing.end()
+    rims.end()
+    bodies.end()
 
     // THE LIGHTS
     sun.position.set(focus.x - 20, 30, focus.z - 10)
