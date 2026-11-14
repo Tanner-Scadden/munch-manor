@@ -26,6 +26,7 @@ import { maybeKitchenSound } from '../../features/kitchen/kitchenCall'
 import { STATION_SOUNDS } from '../../features/stations/stationView'
 import { strikesBetween } from '../../render/actionPose'
 import { mendedSpots } from '../../render/heroTells'
+import { didStrikeBetween } from '../../render/iso/mood'
 import type { Motion } from '../../render/renderSchema'
 import { PICKUPS } from '../../world/gear/powerups'
 import { TRAPS } from '../../world/gear/traps'
@@ -381,6 +382,23 @@ export const kitchenCues: {
     })),
     Option.toArray,
   ),
+)
+
+// NOTE: thunder as the storm's lightning strikes between two frames
+// (src/render/iso/mood.ts), read off the World's clock, so co-op hears it
+// together, each roll pitched by when it strikes.
+export const thunderCues: {
+  (after: Model): (before: Model) => ReadonlyArray<SoundCue>
+  (before: Model, after: Model): ReadonlyArray<SoundCue>
+} = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
+  didStrikeBetween({ world: after, previousMs: before.elapsedMs })
+    ? [
+        {
+          sound: 'Thunder' as const,
+          variation: positionVariation(after.elapsedMs, 0),
+        },
+      ]
+    : [],
 )
 
 export const frameSoundCues = (

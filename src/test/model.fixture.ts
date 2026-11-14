@@ -329,6 +329,14 @@ export const openFloorWave: Model = modifyFields(initialModel, {
   phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
 })
 
+// NOTE: the World's clock set to `elapsedMs`, for what is read off it.
+export const atClock: {
+  (elapsedMs: number): (model: Model) => Model
+  (model: Model, elapsedMs: number): Model
+} = Function.dual(2, (model: Model, elapsedMs: number): Model =>
+  modifyFields(model, { elapsedMs: () => elapsedMs }),
+)
+
 // A wave in progress on a measured surface, with nothing coming in.
 export const quietWave = (wave: number): Model =>
   modifyFields(initialModel, {

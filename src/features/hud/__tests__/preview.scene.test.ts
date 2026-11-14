@@ -10,6 +10,7 @@ import { startOrResume } from '../../../app/runFlow'
 import { cameraOf } from '../../../render/camera'
 import { screenOf } from '../../../render/screen'
 import { hudStripShapes } from '../../../screens/game/hud'
+import { atClock } from '../../../test/model.fixture'
 import { rollSpawns } from '../../../world/waves/endlessWaves'
 import { wavePreviewShapes } from '../wavePreview'
 
@@ -32,9 +33,6 @@ const shaken = (model: Model): Model =>
   modifyFields(model, {
     shake: () => ({ trauma: 1, offset: { x: 3, y: -3 } }),
   })
-
-const atTime = (model: Model, elapsedMs: number): Model =>
-  modifyFields(model, { elapsedMs: () => elapsedMs })
 
 const withoutOpacity = (shape: Canvas.Shape): Canvas.Shape =>
   shape._tag === 'Group'
@@ -69,7 +67,7 @@ describe('Door preview', () => {
   test('holds its letters still: no scaling, only the frame pulses', () => {
     const base = preparing(4)
     const frames = Array.makeBy(15, index =>
-      wavePreviewShapes(atTime(base, index * 100), cameraOf(base)),
+      wavePreviewShapes(atClock(base, index * 100), cameraOf(base)),
     )
     expect(Array.some(Array.flatten(frames), isScaled)).toBe(false)
     const [first, ...rest] = Array.map(frames, frame =>

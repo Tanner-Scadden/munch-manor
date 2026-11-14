@@ -153,6 +153,11 @@ export const HarnessConfig = Schema.Struct({
   // NOTE: `lobbybots` waits that many bots in the lobby's seats, for PLAY to open.
   lobbybots: MaybeNum,
   elapsed: Num(0),
+  // NOTE: `clock` sets the World's own clock, ms, which the storm's
+  // lightning strikes by (src/render/iso/mood.ts); `heat` the wave's
+  // intensity, 0 to 1, which the mood light follows.
+  clock: MaybeNum,
+  heat: MaybeNum,
   prep: Num(20000),
   break: Choice(['open']),
   breakMs: Num(0),

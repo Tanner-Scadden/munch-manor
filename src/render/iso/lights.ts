@@ -19,6 +19,7 @@ import {
   fillSpecOf,
   flameSpecsOf,
 } from './lightSpecs'
+import { mixColor } from './mood'
 import { STRETCH, UNIT, zOf } from './space'
 
 // NOTE: the player's flashlight in the dark: the 2D beam was 120 px long and
@@ -60,7 +61,7 @@ export const houseLightsOf = (
     })
     fill.position.set(spec.from.x, spec.from.y, spec.from.z)
     fill.lookAt(spec.to)
-    return { fill, fullIntensity: spec.fullIntensity }
+    return { fill, fullIntensity: spec.fullIntensity, color: spec.color }
   })
   const cells = Option.match(
     Array.findFirst(level.rooms, ({ id }) => id === CELLAR_ROOM_ID),
@@ -108,14 +109,25 @@ export const houseLightsOf = (
     penumbra: 0.45,
   })
 
+  // NOTE: the mood's tint last applied, so a color is set only on a change.
+  let lastTint = Number.NaN
   const apply = (frame: LightsFrame, player: Player): void => {
-    Array.forEach(fills, ({ fill, fullIntensity }, index) => {
+    const { tint, tintShare } = frame.mood
+    const tintKey = tint + tintShare
+    const isTintChanged = tintKey !== lastTint
+    lastTint = tintKey
+    Array.forEach(fills, ({ fill, fullIntensity, color }, index) => {
       const share = Option.getOrElse(
         Array.get(frame.fillShares, index),
         () => 0,
       )
       fill.intensity = share * fullIntensity
       fill.visible = share > 0
+      if (isTintChanged) {
+        fill.color.setValue(
+          mixColor({ from: color, to: tint, share: tintShare }),
+        )
+      }
     })
     Array.forEach(cells, cell => {
       cell.visible = frame.isDark

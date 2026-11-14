@@ -66,10 +66,16 @@ import {
 } from './house'
 import { AMBIENT, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
+import { mixColor } from './mood'
 import { FloorLayer } from './painter'
 import { PITCH, STRETCH, UNIT, canvasStepOf, zOf } from './space'
 import { Textures } from './textures'
 import { chandelierSwayAt, windClockOf } from './wind'
+
+// NOTE: the lightning's flash: a cold white, at its peak four times
+// the ambient light.
+const STORM_COLOR = 0xdce6ff
+const STORM_LIFT = AMBIENT * 3
 
 const BACKGROUND = 0x16121c
 const CAMERA_DISTANCE = 80
@@ -143,6 +149,10 @@ export class IsoScene {
   private readonly textures: Textures
   private readonly view: View3D
   private readonly lamp: PointLight
+  private readonly ambient: AmbientLight
+  private readonly storm: AmbientLight
+  // NOTE: the mood's ambient color last set, so it is set only on a change.
+  private ambientColor = 0xffffff
   private readonly flash: PointLight
   private readonly muzzle: Mesh3D
   private readonly muzzleMaterial: Material3D
@@ -184,7 +194,10 @@ export class IsoScene {
     camera.near = 0.1
     camera.far = 400
     // NOTE: the rest of the light is each room's own (lights.ts).
-    root.addChild(new AmbientLight({ color: 0xffffff, intensity: AMBIENT }))
+    this.ambient = new AmbientLight({ color: 0xffffff, intensity: AMBIENT })
+    // NOTE: the storm's lightning, a cold flash over the whole house.
+    this.storm = new AmbientLight({ color: STORM_COLOR, intensity: 0 })
+    root.addChild(this.ambient, this.storm)
     this.lamp = new PointLight({ color: 0xffc27a, intensity: 6, range: 6 })
     this.flash = new PointLight({ color: 0xffe08a, intensity: 0, range: 7 })
     root.addChild(this.lamp, this.flash)
@@ -401,10 +414,25 @@ export class IsoScene {
     const px = player.x * UNIT
     const pz = zOf(player.y)
     this.lamp.position.set(px, 1.6, pz)
-    built.lights.apply(
-      lightsFrameOf({ world: model, level: built.level, viewer: player }),
-      player,
-    )
+    const lights = lightsFrameOf({
+      world: model,
+      level: built.level,
+      viewer: player,
+    })
+    built.lights.apply(lights, player)
+    const { mood } = lights
+    this.ambient.intensity = AMBIENT * mood.ambient
+    const ambientColor = mixColor({
+      from: 0xffffff,
+      to: mood.tint,
+      share: mood.tintShare,
+    })
+    if (ambientColor !== this.ambientColor) {
+      this.ambientColor = ambientColor
+      this.ambient.color.setValue(ambientColor)
+    }
+    // NOTE: no lightning reaches the dark cellar's flashlight.
+    this.storm.intensity = lights.isInDark ? 0 : STORM_LIFT * mood.strike
     const muzzleX = px + player.facing.x * 0.9
     const muzzleZ = pz + player.facing.y * 0.9 * STRETCH
     this.flash.position.set(muzzleX, 0.9, muzzleZ)
