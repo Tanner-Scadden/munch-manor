@@ -422,3 +422,35 @@ export const worldLayerShapes: {
     }),
   ],
 )
+
+// STRATA
+
+// NOTE: the world's three strata kept apart, for the 3D renderer spike
+// (tools/spike3d): what lies on the floor, what stands up at its feet, and
+// what floats over both. It skips the cellar's dark mask, since the spike
+// lights the cellar itself.
+export type WorldStrata = Readonly<{
+  ground: ReadonlyArray<Canvas.Shape>
+  standing: ReadonlyArray<Drawable>
+  overhead: ReadonlyArray<Canvas.Shape>
+}>
+
+export const worldStrataOf: {
+  (camera: Camera): (model: Model) => WorldStrata
+  (model: Model, camera: Camera): WorldStrata
+} = Function.dual(2, (model: Model, camera: Camera): WorldStrata => {
+  const onCamera = shownZombies(model, camera)
+  const mates = mateModelsOf(model)
+  return Phase.isAnyOf(['Ready'])(model.phase)
+    ? { ground: titleWorldShapes(model), standing: [], overhead: [] }
+    : {
+        ground: groundShapes(model, camera, onCamera, mates),
+        standing: standingDrawables(
+          model,
+          rattlesLook(model),
+          onCamera,
+          mates,
+        ),
+        overhead: overheadShapes(model, camera, onCamera, mates),
+      }
+})
