@@ -27,9 +27,11 @@ import {
   Material3D,
   Mesh3D,
   PlaneGeometry,
+  Plane,
   PointLight,
   SphereGeometry,
   Sprite3D,
+  Vector3,
   View3D,
 } from '@pixi/3d'
 import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
@@ -48,15 +50,23 @@ import {
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '@game/app/model'
-import { worldCameraFor } from '@game/render/camera'
+import { viewToWorld, worldCameraFor } from '@game/render/camera'
 import { decalShapes } from '@game/render/effectsView'
-import { roomShapes } from '@game/render/room/room'
-import { screenOf } from '@game/render/screen'
+import { hungChandelierShapes, roomArtOf } from '@game/render/room/room'
+import { COVER_DRAWINGS, coverBlocks } from '@game/render/room/roomCover'
+import {
+  ESCAPE_COVER_DRAWINGS,
+  isEscapeCoverKind,
+} from '@game/render/room/escapeCover'
+import { tallCoverOf } from '@game/render/room/tallCover'
+import type { TallCover } from '@game/render/room/tallCover'
+import { clientToView, screenOf } from '@game/render/screen'
 import { worldStrataOf } from '@game/screens/game/worldView'
 import { TILE_SIZE } from '@game/shared/constants'
 import { levelOf } from '@game/world/level/arena'
 import type { Level } from '@game/world/level/arena'
-import { WALL_SYMBOL } from '@game/world/level/tileGrid'
+import { COVER_SYMBOLS, WALL_SYMBOL } from '@game/world/level/tileGrid'
+import type { CoverKind } from '@game/world/level/tileGrid'
 import { focusOf } from '@game/world/party/party'
 
 // UNITS
@@ -65,6 +75,20 @@ import { focusOf } from '@game/world/party/party'
 // east and z runs south (the game's y), and y is up.
 const UNIT = 1 / TILE_SIZE
 const WALL_HEIGHT = 1.4
+
+// NOTE: the camera, looking straight north and down steeply: the game's own
+// map, tilted just enough to show the walls standing.
+const PITCH = (62 * Math.PI) / 180
+const YAW = 0
+
+// NOTE: crisp pixels. A floor seen at a slant is squashed (by sin PITCH),
+// while a billboard faces the lens square, so floor pixels and sprite pixels
+// would come out different heights. The world is stretched north-south by
+// the inverse, so a game pixel is square on screen on the floor too, and
+// with a whole number of screen pixels per game pixel (snapped, below)
+// every pixel of art lands on the screen's own grid, as in the 2D game.
+const STRETCH = 1 / Math.sin(PITCH)
+const zOf = (gameY: number): number => gameY * UNIT * STRETCH
 const CUTAWAY_HEIGHT = 0.25
 
 TextureSource.defaultOptions.scaleMode = 'nearest'
@@ -207,11 +231,15 @@ class FlatPainter {
   private readonly sprites: Array<Sprite> = []
 
   paint(shapes: ReadonlyArray<Canvas.Shape>): void {
+    this.paintLeaves(flatten(shapes))
+  }
+
+  paintLeaves(leaves: ReadonlyArray<Leaf>): void {
     let graphicsUsed = 0
     let spritesUsed = 0
     let current: Graphics | undefined
     this.container.removeChildren()
-    for (const { shape, matrix, alpha } of flatten(shapes)) {
+    for (const { shape, matrix, alpha } of leaves) {
       if (shape._tag === 'Image') {
         const texture = textureOf(shape, false)
         if (texture === undefined) {
@@ -335,21 +363,23 @@ class FloorLayer {
     const material = isLit
       ? new Material3D({
           baseColorTexture: this.texture,
-          roughness: 0.9,
+          roughness: 1,
+          metallic: 0,
+          specular: { factor: 0 },
           alphaMode: lift === 0 ? 'opaque' : 'blend',
         })
       : new FlatMaterial({ baseColorTexture: this.texture, alphaMode: 'blend' })
     this.mesh = new Mesh3D({
       geometry: new PlaneGeometry({
         width: level.width * UNIT,
-        height: level.height * UNIT,
+        height: level.height * UNIT * STRETCH,
       }),
       material,
       rotation: { x: -Math.PI / 2, y: 0, z: 0 },
       position: {
         x: (level.left + level.width / 2) * UNIT,
         y: lift,
-        z: (level.top + level.height / 2) * UNIT,
+        z: zOf(level.top + level.height / 2),
       },
       castShadow: false,
       receiveShadow: isLit,
@@ -357,26 +387,59 @@ class FloorLayer {
   }
 
   paint(shapes: ReadonlyArray<Canvas.Shape>): void {
-    this.painter.paint(shapes)
+    this.paintLeaves(flatten(shapes))
+  }
+
+  paintLeaves(leaves: ReadonlyArray<Leaf>): void {
+    this.painter.paintLeaves(leaves)
     this.texture.render()
   }
 }
 
 // STANDING SPRITES
 
+// NOTE: where "up" and "toward the lens" point in the world this frame. The
+// bird's-eye camera looks down steeply, and every billboard faces it square
+// (spherical), so a sprite's parts are offset from its foot along the
+// camera's own up: that keeps the whole sprite at its foot's depth, which
+// is exactly the game's foot sort, and keeps the parts of one body (a hat
+// over a head, a gun in a hand) where the 2D game drew them.
+type Vec3 = { x: number; y: number; z: number }
+type Basis = { up: Vec3; toward: Vec3 }
+
+// NOTE: parts later in a drawable win ties, nudged this far toward the lens.
+const PART_BIAS = 0.002
+
+type Placement = Readonly<{
+  texture: Texture
+  centerX: number
+  bottom: number
+  drawnWidth: number
+  drawnHeight: number
+  footY: number
+  hover: number
+  tint: number
+  alpha: number
+  part: number
+}>
+
 // NOTE: every Image of a standing drawable as a billboard at its foot: its
-// bottom edge stands as far above the foot as it is drawn above it, and the
-// billboard sits on the foot's row, so the depth buffer sorts what the
-// game's foot sort did. Rects (bars, small bits of a body) stand the same
-// way as tinted white quads.
+// bottom edge stands as far above the foot as it is drawn above it. Rects
+// (bars, small bits of a body) stand the same way as tinted white quads.
+// Sprites are lit (Material3D) so the lamp and the muzzle flash fall on
+// them, or flat for what glows of itself (flashes, health bars).
 class BillboardPool {
   private readonly sprites: Array<Sprite3D> = []
   private used = 0
-
   private readonly parent: Container3D
+  private readonly isLit: boolean
+  basis: Basis = { up: { x: 0, y: 1, z: 0 }, toward: { x: 0, y: 0, z: 1 } }
+  // NOTE: one screen pixel, in game pixels: every edge snaps to it.
+  grid = 1
 
-  constructor(parent: Container3D) {
+  constructor(parent: Container3D, isLit: boolean) {
     this.parent = parent
+    this.isLit = isLit
   }
 
   begin(): void {
@@ -392,8 +455,23 @@ class BillboardPool {
     }
   }
 
-  standUp(shapes: ReadonlyArray<Canvas.Shape>, footY: number, hover = 0): void {
-    for (const { shape, matrix, alpha } of flatten(shapes)) {
+  standUp(
+    shapes: ReadonlyArray<Canvas.Shape>,
+    footY: number,
+    hover = 0,
+    opacity = 1,
+  ): void {
+    this.standLeaves(flatten(shapes), footY, hover, opacity)
+  }
+
+  standLeaves(
+    leaves: ReadonlyArray<Leaf>,
+    footY: number,
+    hover = 0,
+    opacity = 1,
+  ): void {
+    let part = 0
+    for (const { shape, matrix, alpha } of leaves) {
       if (shape._tag !== 'Image' && shape._tag !== 'Rect') {
         continue
       }
@@ -410,38 +488,59 @@ class BillboardPool {
       if (drawnWidth < 0.01 || drawnHeight < 0.01) {
         continue
       }
-      const bottom = Math.max(top, top + height)
-      const centerX = left + width / 2
       const texture =
         shape._tag === 'Image' ? textureOf(shape, isFlipped) : Texture.WHITE
       if (texture === undefined) {
         continue
       }
-      const sprite = this.next()
-      if (sprite.texture !== texture) {
-        sprite.texture = texture
-      }
-      sprite.pixelSize = (drawnHeight / texture.frame.height) * UNIT
-      // NOTE: a white quad is square; stretch it to the rect.
-      sprite.scale.x =
-        shape._tag === 'Rect'
-          ? drawnWidth / texture.frame.width / (drawnHeight / texture.frame.height)
-          : 1
-      if (shape._tag === 'Rect' && shape.fill !== undefined) {
-        const { color, alpha: a } = colorOf(shape.fill)
-        sprite.tint = color
-        sprite.alpha = a * alpha
-      } else {
-        sprite.tint = 0xffffff
-        sprite.alpha = alpha
-      }
-      sprite.position.set(
-        centerX * UNIT,
-        (footY - bottom + hover) * UNIT,
-        footY * UNIT,
-      )
-      sprite.visible = true
+      const fill =
+        shape._tag === 'Rect' && shape.fill !== undefined
+          ? colorOf(shape.fill)
+          : { color: 0xffffff, alpha: 1 }
+      this.place({
+        texture,
+        centerX: left + width / 2,
+        bottom: Math.max(top, top + height),
+        drawnWidth,
+        drawnHeight,
+        footY,
+        hover,
+        tint: fill.color,
+        alpha: fill.alpha * alpha * opacity,
+        part,
+      })
+      part += 1
     }
+  }
+
+  place(p: Placement): void {
+    const sprite = this.next()
+    if (sprite.texture !== p.texture) {
+      sprite.texture = p.texture
+    }
+    const pixel = p.drawnHeight / p.texture.frame.height
+    sprite.pixelSize = pixel * UNIT
+    sprite.scale.x = p.drawnWidth / p.texture.frame.width / pixel
+    sprite.tint = p.tint
+    sprite.alpha = p.alpha
+    const mode = p.alpha < 0.98 ? 'blend' : 'mask'
+    if (sprite.alphaMode !== mode) {
+      sprite.alphaMode = mode
+    }
+    const { up, toward } = this.basis
+    const snap = (value: number): number =>
+      Math.round(value / this.grid) * this.grid
+    const left = snap(p.centerX - p.drawnWidth / 2)
+    const footY = snap(p.footY)
+    const bottom = snap(p.bottom)
+    const rise = (footY - bottom + p.hover + p.drawnHeight / 2) * UNIT
+    const nudge = p.part * PART_BIAS
+    sprite.position.set(
+      (left + p.drawnWidth / 2) * UNIT + up.x * rise + toward.x * nudge,
+      up.y * rise + toward.y * nudge,
+      zOf(footY) + up.z * rise + toward.z * nudge,
+    )
+    sprite.visible = true
   }
 
   private next(): Sprite3D {
@@ -452,8 +551,15 @@ class BillboardPool {
     }
     const sprite = new Sprite3D({
       texture: Texture.WHITE,
-      anchor: { x: 0.5, y: 1 },
-      billboardMode: 'cylindrical',
+      ...(this.isLit
+        ? { material: new Material3D({
+            roughness: 1,
+            metallic: 0,
+            specular: { factor: 0 },
+          }) }
+        : {}),
+      anchor: { x: 0.5, y: 0.5 },
+      billboardMode: 'spherical',
       alphaMode: 'mask',
       alphaCutoff: 0.5,
       position: { x: 0, y: 0, z: 0 },
@@ -478,7 +584,7 @@ const buildWalls = (level: Level, material: ToonMaterial): ReadonlyArray<Wall> =
         continue
       }
       const x = (level.left + column * TILE_SIZE) * UNIT + 0.5
-      const z = (level.top + row * TILE_SIZE) * UNIT + 0.5
+      const z = zOf(level.top + (row + 0.5) * TILE_SIZE)
       walls.push({
         x,
         z,
@@ -486,7 +592,7 @@ const buildWalls = (level: Level, material: ToonMaterial): ReadonlyArray<Wall> =
           geometry: WALL_GEOMETRY,
           material,
           position: { x, y: WALL_HEIGHT / 2, z },
-          scale: { x: 1, y: WALL_HEIGHT, z: 1 },
+          scale: { x: 1, y: WALL_HEIGHT, z: STRETCH },
           castShadow: true,
           receiveShadow: true,
         }),
@@ -517,6 +623,201 @@ const cutAway = (
   }
 }
 
+// FURNITURE
+
+// NOTE: the kinds the game redraws over whoever stands behind them
+// (src/render/room/tallCover.ts), and the ferns, which sway. In 3D they
+// leave the floor and stand up for good, so nothing pops in or out.
+const STANDING_KINDS: ReadonlyArray<string> = [
+  'Piano',
+  'Bookshelf',
+  'Pantry',
+  'PartyTable',
+  'Hutch',
+  'Candelabra',
+  'BookStack',
+  'Desk',
+  'WineRack',
+  'Fern',
+]
+
+const FERN_SYMBOL = 'V'
+
+type Box = Readonly<{ x: number; y: number; width: number; height: number }>
+
+const drawingOf = (
+  kind: CoverKind,
+): ((box: Box, level: Level) => ReadonlyArray<Canvas.Shape>) =>
+  isEscapeCoverKind(kind) ? ESCAPE_COVER_DRAWINGS[kind] : COVER_DRAWINGS[kind]
+
+const rectKey = (shape: Canvas.Shape & { _tag: 'Rect' }): string =>
+  `${shape.x},${shape.y},${shape.width},${shape.height},${shape.fill ?? ''}`
+
+const isFaint = (fill: string | undefined): boolean => {
+  const match = /^rgba\([^)]*,\s*([\d.]+)\)$/.exec(fill ?? '')
+  return match !== null && Number(match[1]) < 0.2
+}
+
+// NOTE: the room's art with every standing piece taken out, rect by rect:
+// the pieces' own drawings give the rects to leave out (their faint floor
+// glows stay on the floor).
+const floorArtOf = (level: Level): ReadonlyArray<Leaf> => {
+  const lifted = new Set<string>()
+  for (const [symbol, kind] of Object.entries(COVER_SYMBOLS)) {
+    if (!STANDING_KINDS.includes(kind)) {
+      continue
+    }
+    for (const box of coverBlocks(level, symbol)) {
+      for (const { shape } of flatten(drawingOf(kind)(box, level))) {
+        if (shape._tag === 'Rect' && !isFaint(shape.fill)) {
+          lifted.add(rectKey(shape))
+        }
+      }
+    }
+  }
+  return flatten(roomArtOf(level)).filter(
+    ({ shape }) => shape._tag !== 'Rect' || !lifted.has(rectKey(shape)),
+  )
+}
+
+// WIND
+
+// NOTE: the spritecook.ai tree wind, indoors as a draft through the manor:
+// each plant is cut into clumps of leaves that move by whole pixels, posed
+// at 10 Hz from a fixed 20 s gust loop, a breeze wave running across the
+// room, and a lean that lags the gusts. It reads only the World's clock,
+// so it is the same on every machine and never touches the game.
+type Clump = Readonly<{
+  texture: Texture
+  left: number
+  top: number
+  width: number
+  height: number
+  weight: number
+}>
+
+type Plant = Readonly<{ footY: number; clumps: ReadonlyArray<Clump> }>
+
+const GUST_LOOP_S = 20
+const POSE_HZ = 10
+const BREEZE = 0.6
+
+const bump = (u: number, center: number, width: number): number =>
+  Math.exp(-(((u - center) / width) ** 2))
+
+const gustAt = (t: number): number => {
+  const u = (((t % GUST_LOOP_S) + GUST_LOOP_S) % GUST_LOOP_S) / GUST_LOOP_S
+  return bump(u, 0.22, 0.05) + 0.7 * bump(u, 0.6, 0.07) + 0.5 * bump(u, 0.85, 0.03)
+}
+
+// NOTE: a spring's lean behind the gust: it pushes over, overshoots, and
+// settles, about one sway each 2.2 s.
+const leanAt = (t: number): number =>
+  2.2 * gustAt(t - 0.3) +
+  0.8 * gustAt(t - 0.9) * Math.sin((2 * Math.PI * t) / 2.2)
+
+const windOffset = (
+  t: number,
+  x: number,
+  y: number,
+  weight: number,
+): Readonly<{ dx: number; dy: number }> => {
+  const gust = gustAt(t)
+  const along = x + 0.25 * y
+  const a = 2 * Math.PI * (t / 1.54 - along / 69)
+  const dx =
+    leanAt(t) * weight +
+    weight * (0.9 * BREEZE + 1.3 * gust) * (0.5 - 0.5 * Math.cos(a))
+  const dy = -weight * (0.75 * BREEZE + 0.5 * gust) * Math.max(Math.sin(a), 0)
+  return { dx: Math.round(dx), dy: Math.round(dy) }
+}
+
+// NOTE: a fern's leaves (its top 13 rows) in six clumps, thirds across and
+// two bands down, and its pot, which never moves.
+const LEAF_ROWS = 13
+
+const plantsOf = (app: Application, level: Level): ReadonlyArray<Plant> =>
+  coverBlocks(level, FERN_SYMBOL).map(box => {
+    const rects = flatten(COVER_DRAWINGS.Fern(box, level)).flatMap(
+      ({ shape }) => (shape._tag === 'Rect' ? [shape] : []),
+    )
+    const left = Math.min(...rects.map(r => r.x))
+    const right = Math.max(...rects.map(r => r.x + r.width))
+    const top = Math.min(...rects.map(r => r.y))
+    const bottom = Math.max(...rects.map(r => r.y + r.height))
+    const third = (right - left) / 3
+    const groups = new Map<string, Array<Canvas.Shape & { _tag: 'Rect' }>>()
+    for (const rect of rects) {
+      const row = rect.y - top
+      const key =
+        row >= LEAF_ROWS
+          ? 'pot'
+          : `${Math.min(2, Math.floor((rect.x + rect.width / 2 - left) / third))}${row < 6 ? 'top' : 'low'}`
+      groups.set(key, [...(groups.get(key) ?? []), rect])
+    }
+    const center = { x: (left + right) / 2, y: top + LEAF_ROWS }
+    const reach = Math.hypot((right - left) / 2, LEAF_ROWS)
+    const clumps = [...groups.entries()].map(([key, members]): Clump => {
+      const cl = Math.min(...members.map(r => r.x))
+      const ct = Math.min(...members.map(r => r.y))
+      const cr = Math.max(...members.map(r => r.x + r.width))
+      const cb = Math.max(...members.map(r => r.y + r.height))
+      const g = new Graphics()
+      for (const r of members) {
+        const { color, alpha } = colorOf(r.fill ?? '#000')
+        g.rect(r.x - cl, r.y - ct, r.width, r.height).fill({ color, alpha })
+      }
+      const texture = app.renderer.generateTexture({
+        target: g,
+        frame: new Rectangle(0, 0, cr - cl, cb - ct),
+        resolution: 1,
+      })
+      texture.source.scaleMode = 'nearest'
+      const distance = Math.hypot((cl + cr) / 2 - center.x, (ct + cb) / 2 - center.y)
+      return {
+        texture,
+        left: cl,
+        top: ct,
+        width: cr - cl,
+        height: cb - ct,
+        weight: key === 'pot' ? 0 : 0.35 + 0.65 * Math.min(1, distance / reach),
+      }
+    })
+    return { footY: bottom, clumps }
+  })
+
+const standPlant = (pool: BillboardPool, plant: Plant, t: number): void => {
+  plant.clumps.forEach((clump, part) => {
+    const { dx, dy } =
+      clump.weight === 0
+        ? { dx: 0, dy: 0 }
+        : windOffset(t, clump.left, clump.top, clump.weight)
+    pool.place({
+      texture: clump.texture,
+      centerX: clump.left + clump.width / 2 + dx,
+      bottom: clump.top + clump.height + dy,
+      drawnWidth: clump.width,
+      drawnHeight: clump.height,
+      footY: plant.footY,
+      hover: 0,
+      tint: 0xffffff,
+      alpha: 1,
+      part,
+    })
+  })
+}
+
+// NOTE: the chandelier swings a pixel or two on its chain, harder in a gust.
+const chandelierSway = (t: number): number =>
+  Math.round(
+    (1 + 1.5 * gustAt(t - 0.2)) * Math.sin((2 * Math.PI * t) / 3.4),
+  )
+
+const imageKey = (shape: Canvas.Shape, matrix: Affine): string =>
+  shape._tag === 'Image'
+    ? `${shape.src}|${shape.x + matrix.e}|${shape.y + matrix.f}`
+    : ''
+
 // THE SCENE
 
 type Level3D = Readonly<{
@@ -526,6 +827,9 @@ type Level3D = Readonly<{
   ground: FloorLayer
   walls: ReadonlyArray<Wall>
   holder: Container3D
+  floorArt: ReadonlyArray<Leaf>
+  furniture: ReadonlyArray<TallCover>
+  plants: ReadonlyArray<Plant>
 }>
 
 const mountPoint = async (): Promise<HTMLElement> => {
@@ -544,7 +848,7 @@ export const startIsometric = async (): Promise<void> => {
   await app.init({
     preference: location.hash === '#webgl' ? 'webgl' : 'webgpu',
     background: 0x16121c,
-    antialias: true,
+    antialias: false,
     resizeTo: host,
     resolution: Math.min(window.devicePixelRatio, 2),
     autoDensity: true,
@@ -584,11 +888,11 @@ export const startIsometric = async (): Promise<void> => {
   const view = new View3D({
     autoResize: true,
     shadowQuality: 'high',
-    toneMapping: 'aces',
-    environment: { skyColor: 0x9db4ff, groundColor: 0x3a2a30, intensity: 0.55 },
+    toneMapping: 'none',
+    environment: { skyColor: 0x9db4ff, groundColor: 0x3a2a30, intensity: 0 },
     passes: [
       new OutlinePass({ width: 0.04, color: 0x1a1220 }),
-      new BloomEffect({ threshold: 1.2, intensity: 1.1, radius: 0.6 }),
+      new BloomEffect({ threshold: 2, intensity: 1.1, radius: 0.6 }),
     ],
   })
   app.stage.addChild(view)
@@ -600,12 +904,16 @@ export const startIsometric = async (): Promise<void> => {
 
   const sun = new DirectionalLight({
     color: 0xffe6c4,
-    intensity: 1.4,
+    intensity: 0.6,
     castShadow: true,
   })
   view.root.addChild(sun)
-  view.root.addChild(new AmbientLight({ color: 0x8090ff, intensity: 0.6 }))
-  const lamp = new PointLight({ color: 0xffc27a, intensity: 18, range: 9 })
+  // NOTE: lit surfaces divide light by pi, so this is about 0.85 of the
+  // art's own colors where nothing else lights it: a dim manor, in true color.
+  view.root.addChild(
+    new AmbientLight({ color: 0xffffff, intensity: 0.85 * Math.PI }),
+  )
+  const lamp = new PointLight({ color: 0xffc27a, intensity: 14, range: 9 })
   const flash = new PointLight({ color: 0xffe08a, intensity: 0, range: 7 })
   view.root.addChild(lamp, flash)
 
@@ -626,21 +934,25 @@ export const startIsometric = async (): Promise<void> => {
   view.root.addChild(muzzle)
 
   const wallMaterial = new ToonMaterial({
-    baseColor: 0x7a5c58,
+    baseColor: 0x5a4458,
     bands: 3,
+    specularSize: 0,
     rimIntensity: 0.3,
-    passes: { outline: true },
+    outline: true,
   })
 
   const standing = new Container3D()
   view.root.addChild(standing)
-  const billboards = new BillboardPool(standing)
+  const billboards = new BillboardPool(standing, true)
+  const glowing = new BillboardPool(standing, false)
 
   let built: Level3D | undefined
   let lastDecals: unknown
   let lastImagesLoaded = -1
-  let yaw = Math.PI / 4
-  let zoom = 1
+  let yaw = YAW
+  // NOTE: zoom is whole screen pixels per game pixel more or less than the
+  // 2D game's own scale.
+  let zoom = 0
   const focus = { x: 0, z: 0, isSet: false }
   let flashLevel = 0
   let lastCooldown = 0
@@ -652,12 +964,12 @@ export const startIsometric = async (): Promise<void> => {
       if (event.code === 'Comma' || event.code === 'Period') {
         yaw += turn[event.code]
       } else if (event.code === 'Minus') {
-        zoom = Math.max(0.4, zoom / 1.15)
+        zoom -= 1
       } else if (event.code === 'Equal') {
-        zoom = Math.min(3, zoom * 1.15)
+        zoom += 1
       } else if (event.code === 'Digit0') {
-        yaw = Math.PI / 4
-        zoom = 1
+        yaw = YAW
+        zoom = 0
       } else if (event.code === 'Backslash') {
         show2d(app.canvas.style.opacity !== '0')
       } else {
@@ -668,6 +980,90 @@ export const startIsometric = async (): Promise<void> => {
     },
     { capture: true },
   )
+
+  // THE MOUSE
+  // NOTE: the game aims through its own 2D camera. Each mouse move or press
+  // is caught before the game sees it, cast as a ray through the 3D view
+  // onto the floor, and sent on again at the client point where the 2D
+  // game draws that spot of floor, so the crosshair lands where it looks.
+  const floor = new Plane(new Vector3(0, 1, 0), 0)
+  const remapped = new WeakSet<Event>()
+  // NOTE: the last real cursor, sent again each frame: both cameras move
+  // under a still cursor (the game's leans toward the aim), so the spot
+  // under it changes even when the mouse does not.
+  let cursor: { x: number; y: number; buttons: number } | undefined
+  const remap = (event: PointerEvent): void => {
+    if (event.pointerType !== 'mouse' || remapped.has(event)) {
+      return
+    }
+    cursor = { x: event.clientX, y: event.clientY, buttons: event.buttons }
+    const model: Model = window.__model
+    if (model.maybeSurface._tag === 'None') {
+      return
+    }
+    const surface = model.maybeSurface.value
+    const rect = app.canvas.getBoundingClientRect()
+    const hit = view.screenToWorld(
+      { x: event.clientX - rect.left, y: event.clientY - rect.top },
+      floor,
+    )
+    if (hit === null) {
+      return
+    }
+    const gameCamera = worldCameraFor(model, screenOf(model))
+    const inView = {
+      x: (hit.x / UNIT - gameCamera.x) * gameCamera.scale + gameCamera.left,
+      y: (hit.z / UNIT / STRETCH - gameCamera.y) * gameCamera.scale + gameCamera.top,
+    }
+    const origin = clientToView(surface, { x: 0, y: 0 })
+    const far = clientToView(surface, { x: 1000, y: 1000 })
+    if (origin._tag === 'None' || far._tag === 'None') {
+      return
+    }
+    const kx = (far.value.x - origin.value.x) / 1000
+    const ky = (far.value.y - origin.value.y) / 1000
+    const again = new PointerEvent(event.type, {
+      clientX: (inView.x - origin.value.x) / kx,
+      clientY: (inView.y - origin.value.y) / ky,
+      pointerId: event.pointerId,
+      pointerType: 'mouse',
+      button: event.button,
+      buttons: event.buttons,
+      isPrimary: event.isPrimary,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    })
+    remapped.add(again)
+    event.stopImmediatePropagation()
+    ;(event.target ?? document).dispatchEvent(again)
+  }
+  window.addEventListener('pointermove', remap, { capture: true })
+  window.addEventListener('pointerdown', remap, { capture: true })
+  // NOTE: for the spike's own checks (the aim test reads it).
+  Object.assign(window, {
+    __iso: {
+      view,
+      // NOTE: where the cursor's floor point is, and where the game now aims.
+      check: (clientX: number, clientY: number) => {
+        const model: Model = window.__model
+        const rect = app.canvas.getBoundingClientRect()
+        const hit = view.screenToWorld(
+          { x: clientX - rect.left, y: clientY - rect.top },
+          floor,
+        )
+        const gameCamera = worldCameraFor(model, screenOf(model))
+        const aim =
+          model.input.maybeMouseInView._tag === 'Some'
+            ? viewToWorld(gameCamera, model.input.maybeMouseInView.value)
+            : undefined
+        return {
+          hit: hit && { x: hit.x / UNIT, y: hit.z / UNIT / STRETCH },
+          aim,
+        }
+      },
+    },
+  })
 
   const buildLevel = (level: Level): Level3D => {
     if (built !== undefined) {
@@ -683,10 +1079,21 @@ export const startIsometric = async (): Promise<void> => {
     for (const wall of walls) {
       holder.addChild(wall.mesh)
     }
-    room.paint(roomShapes(level))
+    const floorArt = floorArtOf(level)
+    room.paintLeaves(floorArt)
     lastDecals = undefined
     sun.fitShadowBounds()
-    return { level, room, decals, ground, walls, holder }
+    return {
+      level,
+      room,
+      decals,
+      ground,
+      walls,
+      holder,
+      floorArt,
+      furniture: tallCoverOf(level),
+      plants: plantsOf(app, level),
+    }
   }
 
   app.ticker.add(ticker => {
@@ -697,7 +1104,7 @@ export const startIsometric = async (): Promise<void> => {
     }
     if (imagesLoaded !== lastImagesLoaded) {
       lastImagesLoaded = imagesLoaded
-      built.room.paint(roomShapes(level))
+      built.room.paintLeaves(built.floorArt)
       lastDecals = undefined
     }
     if (model.decals !== lastDecals) {
@@ -705,10 +1112,67 @@ export const startIsometric = async (): Promise<void> => {
       built.decals.paint(decalShapes(model.decals))
     }
 
-    // NOTE: the game culls to its own camera; the isometric view shows more,
-    // so it asks with a camera three times as wide and tall.
+    // THE CAMERA
+    // NOTE: the game culls to its own camera; the 3D view shows a little
+    // more, so it asks with a camera three times as wide and tall.
     const screen = screenOf(model)
     const gameCamera = worldCameraFor(model, screen)
+    const { player } = focusOf(model)
+    const target = { x: player.x * UNIT, z: zOf(player.y) }
+    const across = app.canvas.width
+    const pixels = Math.max(
+      1,
+      Math.round(across / gameCamera.width) + zoom,
+    )
+    billboards.grid = 1 / pixels
+    glowing.grid = 1 / pixels
+    const k = focus.isSet ? 1 - Math.exp(-6 * (ticker.deltaMS / 1000)) : 1
+    focus.x += (target.x - focus.x) * k
+    focus.z += (target.z - focus.z) * k
+    focus.isSet = true
+    // NOTE: the camera moves by whole screen pixels, so the art never
+    // shimmers between them.
+    const stepX = UNIT / pixels
+    const stepZ = (UNIT * STRETCH) / pixels
+    const lookX = Math.round(focus.x / stepX) * stepX
+    const lookZ = Math.round(focus.z / stepZ) * stepZ
+    const toCamera = { x: Math.sin(yaw), z: Math.cos(yaw) }
+    const distance = 80
+    camera.position.set(
+      lookX + toCamera.x * Math.cos(PITCH) * distance,
+      Math.sin(PITCH) * distance,
+      lookZ + toCamera.z * Math.cos(PITCH) * distance,
+    )
+    camera.lookAt({ x: lookX, y: 0, z: lookZ })
+    camera.orthographicSize = (across * UNIT) / (2 * pixels)
+    cutAway(built.walls, target, toCamera)
+    const basis: Basis = {
+      up: {
+        x: -toCamera.x * Math.sin(PITCH),
+        y: Math.cos(PITCH),
+        z: -toCamera.z * Math.sin(PITCH),
+      },
+      toward: {
+        x: toCamera.x * Math.cos(PITCH),
+        y: Math.sin(PITCH),
+        z: toCamera.z * Math.cos(PITCH),
+      },
+    }
+    billboards.basis = basis
+    glowing.basis = basis
+    if (cursor !== undefined) {
+      remap(
+        new PointerEvent('pointermove', {
+          clientX: cursor.x,
+          clientY: cursor.y,
+          buttons: cursor.buttons,
+          pointerType: 'mouse',
+          pointerId: 1,
+          isPrimary: true,
+        }),
+      )
+    }
+
     const wide = {
       ...gameCamera,
       x: gameCamera.x - gameCamera.width,
@@ -719,37 +1183,58 @@ export const startIsometric = async (): Promise<void> => {
     const strata = worldStrataOf(model, wide)
     built.ground.paint(strata.ground)
 
+    // NOTE: the game hands back a tall piece only while someone is behind
+    // it, faded for them. Every piece stands here all the time, at the
+    // game's fade when it gives one.
+    const fades = new Map<ReadonlyArray<Canvas.Shape>, number>()
+    const t = Math.floor((model.elapsedMs / 1000) * POSE_HZ) / POSE_HZ
     billboards.begin()
+    glowing.begin()
     for (const drawable of strata.standing) {
+      const [first] = drawable.shapes
+      const piece = built.furniture.find(
+        ({ shapes }) =>
+          shapes === drawable.shapes ||
+          (drawable.shapes.length === 1 &&
+            first?._tag === 'Group' &&
+            first.shapes === shapes),
+      )
+      if (piece !== undefined) {
+        fades.set(piece.shapes, first?._tag === 'Group' ? (first.opacity ?? 1) : 1)
+        continue
+      }
       billboards.standUp(drawable.shapes, drawable.footY)
     }
-    for (const { shape, matrix } of flatten(strata.overhead)) {
+    for (const piece of built.furniture) {
+      billboards.standUp(piece.shapes, piece.footY, 0, fades.get(piece.shapes) ?? 1)
+    }
+    for (const plant of built.plants) {
+      standPlant(billboards, plant, t)
+    }
+    const chandelier = new Set(
+      flatten(hungChandelierShapes(model)).map(({ shape, matrix }) =>
+        imageKey(shape, matrix),
+      ),
+    )
+    const sway = chandelierSway(t)
+    for (const { shape, matrix, alpha } of flatten(strata.overhead)) {
       const bottom =
         shape._tag === 'Image' || shape._tag === 'Rect'
           ? matrix.b * shape.x + matrix.d * (shape.y + shape.height) + matrix.f
           : 0
-      billboards.standUp([shape], bottom + 2, 6)
+      const isChandelier =
+        shape._tag === 'Image' && chandelier.has(imageKey(shape, matrix))
+      const swung = isChandelier
+        ? { ...matrix, e: matrix.e + sway }
+        : matrix
+      ;(isChandelier ? billboards : glowing).standLeaves(
+        [{ shape, matrix: swung, alpha }],
+        bottom + 2,
+        6,
+      )
     }
     billboards.end()
-
-    // THE CAMERA
-    const { player } = focusOf(model)
-    const target = { x: player.x * UNIT, z: player.y * UNIT }
-    const k = focus.isSet ? 1 - Math.exp(-6 * (ticker.deltaMS / 1000)) : 1
-    focus.x += (target.x - focus.x) * k
-    focus.z += (target.z - focus.z) * k
-    focus.isSet = true
-    const pitch = (35 * Math.PI) / 180
-    const toCamera = { x: Math.sin(yaw), z: Math.cos(yaw) }
-    const distance = 80
-    camera.position.set(
-      focus.x + toCamera.x * Math.cos(pitch) * distance,
-      Math.sin(pitch) * distance,
-      focus.z + toCamera.z * Math.cos(pitch) * distance,
-    )
-    camera.lookAt({ x: focus.x, y: 0, z: focus.z })
-    camera.orthographicSize = (gameCamera.width * UNIT * 0.62) / zoom
-    cutAway(built.walls, target, toCamera)
+    glowing.end()
 
     // THE LIGHTS
     sun.position.set(focus.x - 20, 30, focus.z - 10)
@@ -761,9 +1246,9 @@ export const startIsometric = async (): Promise<void> => {
     lastCooldown = player.fireCooldownMs
     flashLevel *= Math.exp(-18 * (ticker.deltaMS / 1000))
     const muzzleX = target.x + player.facing.x * 0.9
-    const muzzleZ = target.z + player.facing.y * 0.9
+    const muzzleZ = target.z + player.facing.y * 0.9 * STRETCH
     flash.position.set(muzzleX, 0.9, muzzleZ)
-    flash.intensity = 40 * flashLevel
+    flash.intensity = 24 * flashLevel
     muzzle.position.set(muzzleX, 0.8, muzzleZ)
     muzzle.scale.set(flashLevel, flashLevel, flashLevel)
     if (muzzle.material instanceof Material3D && muzzle.material.emissive !== undefined) {
@@ -784,7 +1269,7 @@ export const startIsometric = async (): Promise<void> => {
         view.root.addChild(tracer)
       }
       tracer.visible = true
-      tracer.position.set(bullet.x * UNIT, 0.7, bullet.y * UNIT)
+      tracer.position.set(bullet.x * UNIT, 0.7, zOf(bullet.y))
     })
     for (let index = model.bullets.length; index < tracers.length; index += 1) {
       const tracer = tracers[index]

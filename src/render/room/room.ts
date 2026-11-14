@@ -319,7 +319,7 @@ const openedExitArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: every shape of the room art for a level, in paint order, as plain
 // rectangles. The room images are cut from it.
-const roomArtOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
+export const roomArtOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
   const floor = parlourFloorOf(level)
   return [
     ...onFloor(
