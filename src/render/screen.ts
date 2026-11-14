@@ -161,7 +161,7 @@ const layoutOf = (model: Model): Layout =>
 export const isPortrait = (model: Model): boolean =>
   layoutOf(model) === 'Portrait'
 
-export const screenOf = (model: Model): Screen => {
+const screenBeforeSnapOf = (model: Model): Screen => {
   if (isPortrait(model)) {
     return portraitScreen(
       Option.match(model.maybeSurface, {
@@ -178,6 +178,36 @@ export const screenOf = (model: Model): Screen => {
     return LANDSCAPE_SCREEN
   }
 }
+
+// NOTE: every game pixel the same whole number of device pixels (owner,
+// 2026-11-14, from a pixel-perfect settings guide): a zoom of 4/3 on a stage
+// of 4 device pixels per screen pixel would draw game pixels 5 and 6 device
+// pixels wide by turns. So the zoom becomes the nearest whole number of
+// device pixels per game pixel over the stage's (8/6 stays 4/3; 4 per
+// screen pixel at 4/3 becomes 5/4), and the window shows a little more or
+// less of the room. Without the device's pixel ratio (tests, the tools) the
+// zoom stays as laid out.
+const SNAP_TOLERANCE = 1e-6
+
+const onWholeGamePixels = (
+  screen: Screen,
+  surface: SurfaceRectangle,
+): Screen => {
+  const ratio = surface.pixelRatio ?? 0
+  const perScreenPixel = stagePlacement(surface, screen).scale * ratio
+  const whole = Math.round(perScreenPixel)
+  if (whole < 1 || Math.abs(perScreenPixel - whole) > SNAP_TOLERANCE) {
+    return screen
+  }
+  const perGamePixel = Math.max(1, Math.round(whole * screen.zoom))
+  return { ...screen, zoom: perGamePixel / whole }
+}
+
+export const screenOf = (model: Model): Screen =>
+  Option.match(model.maybeSurface, {
+    onNone: () => screenBeforeSnapOf(model),
+    onSome: surface => onWholeGamePixels(screenBeforeSnapOf(model), surface),
+  })
 
 export const thumbAreaTop = (screen: Screen): number =>
   screen.world.y + screen.world.height
@@ -239,11 +269,10 @@ export const LANDSCAPE_SIZE: ScreenSize = {
 // NOTE: a pixel-art canvas stretched by a fraction of a device pixel draws
 // its lines 4 or 5 device pixels wide by turns (a 390 wide phone at 3x fits
 // one screen pixel in 6.5). So the stage shrinks to the largest whole number
-// of device pixels per screen pixel, and a thin border takes the rest, as
-// long as that loses at most this share of its size. A larger loss (a small
-// desktop window at 1x, 3.65 down to 3) keeps the fractional fit.
-const MAX_SNAP_LOSS = 0.15
-
+// of device pixels per screen pixel, and a dark border takes the rest, in
+// any window (owner, 2026-11-14: a small desktop window at 1x goes from 1.9
+// down to 1 rather than drawing uneven pixels). Only a surface too small for
+// one device pixel per screen pixel keeps the fractional fit.
 // NOTE: where the stage sits on the surface, in CSS pixels: its scale (CSS
 // pixels per screen pixel) and its left and top edges. When the surface says
 // its devicePixelRatio, the scale is snapped as above and the centered edges
@@ -274,7 +303,7 @@ export const stagePlacement: {
     const devicePixels = fit * ratio
     // NOTE: the small nudge keeps an exact fit (4 at 1x) from flooring to 3.
     const whole = Math.floor(devicePixels + 1e-6)
-    const isSnapped = whole >= 1 && 1 - whole / devicePixels <= MAX_SNAP_LOSS
+    const isSnapped = whole >= 1
     const scale = isSnapped ? whole / ratio : fit
     const align = (value: number): number =>
       isSnapped ? toDevicePixel(value, ratio) : value

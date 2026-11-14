@@ -233,15 +233,18 @@ export class IsoScene {
         this.textures.preload(src)
       })
     }
-    // NOTE: the renderer's size is in CSS pixels; its canvas holds those
-    // times the resolution.
-    const width = Math.max(1, Math.round(size.width))
-    const height = Math.max(1, Math.round(size.height))
+    // NOTE: the renderer's size is in CSS pixels, fractions kept; its canvas
+    // holds those times the device's pixel ratio, so a canvas pixel is a
+    // device pixel and the page never stretches it.
+    const width = Math.max(1, size.width)
+    const height = Math.max(1, size.height)
+    const ratio = window.devicePixelRatio
     if (
       this.app.renderer.width !== width ||
-      this.app.renderer.height !== height
+      this.app.renderer.height !== height ||
+      this.app.renderer.resolution !== ratio
     ) {
-      this.app.renderer.resize(width, height)
+      this.app.renderer.resize(width, height, ratio)
     }
     const built = this.builtFor(levelOf(model))
     if (this.textures.loaded !== this.lastLoaded) {
@@ -257,19 +260,26 @@ export class IsoScene {
     }
 
     // THE CAMERA
-    // NOTE: locked to the game's camera: the middle of what it shows, less
-    // the shake, as wide as it is.
-    const lookX = (camera.x + camera.width / 2 - shake.x) * UNIT
-    const lookZ = zOf(camera.y + camera.height / 2 - shake.y)
+    // NOTE: locked to the game's camera, at a whole number of canvas pixels
+    // per game pixel (the stage and the zoom are snapped so it is exact,
+    // src/render/screen.ts), its top left corner on the camera's, less the
+    // shake. The view is as many game pixels across as fit the canvas, so
+    // every game pixel is the same size and its edges meet the canvas's.
+    const pixelsPerGamePixel = Math.max(
+      1,
+      Math.round(this.app.canvas.width / Math.max(1, camera.width)),
+    )
+    const shownWidth = this.app.canvas.width / pixelsPerGamePixel
+    const shownHeight = this.app.canvas.height / pixelsPerGamePixel
+    const lookX = (camera.x - shake.x + shownWidth / 2) * UNIT
+    const lookZ = zOf(camera.y - shake.y + shownHeight / 2)
     this.view.camera.position.set(
       lookX,
       Math.sin(PITCH) * CAMERA_DISTANCE,
       lookZ + Math.cos(PITCH) * CAMERA_DISTANCE,
     )
     this.view.camera.lookAt({ x: lookX, y: 0, z: lookZ })
-    this.view.camera.orthographicSize = (camera.width * UNIT) / 2
-    // NOTE: one screen pixel, in game pixels.
-    const grid = camera.width / Math.max(1, this.app.canvas.width)
+    this.view.camera.orthographicSize = (shownWidth * UNIT) / 2
 
     const { player } = focusOf(model)
     cutAway({ walls: built.walls, player })
@@ -290,9 +300,9 @@ export class IsoScene {
     const flashLevel = muzzleFlashLevel(player)
     const lamp = { x: player.x, y: player.y, flash: flashLevel }
     const fades = new Map<TallCover, number>()
-    this.billboards.begin(grid)
-    this.glowing.begin(grid)
-    this.rims.begin(grid)
+    this.billboards.begin()
+    this.glowing.begin()
+    this.rims.begin()
     this.bodies.begin()
     for (const drawable of strata.standing) {
       const maybePiece = furnitureOf(built.furniture, drawable.shapes)
@@ -527,7 +537,7 @@ export const createIsoScene = ({
           autoStart: false,
           width: Math.max(1, host.clientWidth),
           height: Math.max(1, host.clientHeight),
-          resolution: Math.min(window.devicePixelRatio, 2),
+          resolution: window.devicePixelRatio,
           autoDensity: true,
         }),
       catch: toBrowserError,

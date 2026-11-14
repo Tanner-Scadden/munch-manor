@@ -30,6 +30,11 @@ const startScene = (host: HTMLElement, onLoaded: () => void) =>
     return yield* createIsoScene({ host, onLoaded })
   })
 
+const lengthOr = (length: string, fallback: number): number => {
+  const pixels = Number.parseFloat(length)
+  return Number.isFinite(pixels) && pixels > 0 ? pixels : fallback
+}
+
 // NOTE: mutable on purpose: a custom element is the browser's own mutable
 // object, holding the renderer while it is on the page. Built only when it is
 // defined, since HTMLElement exists only in a browser.
@@ -104,9 +109,14 @@ const worldElementClass = () =>
       if (Option.isNone(this.scene) || Option.isNone(this.latest)) {
         return
       }
+      // NOTE: the box's laid out size, fractions kept (a stage on whole
+      // device pixels can be a fraction of a CSS pixel wide,
+      // src/render/screen.ts), and before the lens's scale, which stretches
+      // the drawn canvas instead.
+      const style = getComputedStyle(this)
       this.scene.value.draw(this.latest.value, {
-        width: this.clientWidth,
-        height: this.clientHeight,
+        width: lengthOr(style.width, this.clientWidth),
+        height: lengthOr(style.height, this.clientHeight),
       })
       // NOTE: the audits wait for it before they take a picture.
       this.dataset['drawn'] = 'true'
