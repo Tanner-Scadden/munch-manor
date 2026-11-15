@@ -1,6 +1,7 @@
-import { Array, Function, Result } from 'effect'
+import { Array, Function, Record, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
+import { group } from '../art/sprite'
 import {
   SHADOW_COLOR,
   SHADOW_FADED_COLOR,
@@ -17,8 +18,9 @@ import {
 import { clamp } from '../world/step/geometry'
 import { CHUCKER_RULES } from '../world/zombies/chucker'
 import { surfacingProgress } from '../world/zombies/crawler'
-import { Behavior, statsOf } from '../world/zombies/zombies'
+import { Behavior, ZOMBIE_KINDS, statsOf } from '../world/zombies/zombies'
 import { footShadow, tellAlpha } from './drawing'
+import { bakeDiscs, bakeRings, pixelDisc, pixelRing } from './pixelCircle'
 
 // DEPTH AND SHADOW
 
@@ -96,8 +98,12 @@ export const zombieShadow = (
 const TELL_EDGE_COLOR = '#ff4a4f'
 const TELL_SWEEP_COLOR = '#ffe066'
 
-const tellFill = (progress: number): string =>
-  `rgba(255, 58, 63, ${tellAlpha(0.1, 0.3, progress)})`
+const TELL_FILL_COLOR = 'rgb(255, 58, 63)'
+
+// NOTE: the tell's fill under its edge, fainter to stronger as it fills, an
+// opacity rather than a color so one baked disc serves every step.
+const tellFillOpacity = (progress: number): number =>
+  tellAlpha(0.1, 0.3, progress)
 
 const tellRingShapes = (
   at: Vector,
@@ -107,21 +113,18 @@ const tellRingShapes = (
   const x = Math.round(at.x)
   const y = Math.round(at.y)
   return [
-    Canvas.Circle({
+    group({
+      opacity: tellFillOpacity(progress),
+      shapes: [pixelDisc(x, y, radius - 1, TELL_FILL_COLOR)],
+    }),
+    pixelRing(x, y, radius, 1, TELL_EDGE_COLOR),
+    pixelRing(
       x,
       y,
-      radius,
-      fill: tellFill(progress),
-      stroke: TELL_EDGE_COLOR,
-      lineWidth: 1,
-    }),
-    Canvas.Circle({
-      x,
-      y,
-      radius: Math.max(1, Math.round(radius * progress)),
-      stroke: TELL_SWEEP_COLOR,
-      lineWidth: 1,
-    }),
+      Math.max(1, Math.round(radius * progress)),
+      1,
+      TELL_SWEEP_COLOR,
+    ),
   ]
 }
 
@@ -167,6 +170,26 @@ const landingShapes = (zombie: Zombie): ReadonlyArray<Canvas.Shape> => {
   )
 }
 
+// NOTE: every tell's rings baked as the module loads: the Kaboomer's blast
+// and the Big Leaguer's landing, each with its fill and its sweep.
+const TELL_RADII: ReadonlyArray<number> = [
+  ...Array.filterMap(Record.values(ZOMBIE_KINDS), ({ behavior }) =>
+    Behavior.match(behavior, {
+      Brawler: () => Result.failVoid,
+      Bomber: ({ blastRadius }) => Result.succeed(blastRadius),
+      Thrower: () => Result.failVoid,
+      Crawler: () => Result.failVoid,
+    }),
+  ),
+  CHUCKER_RULES.landRadius,
+]
+
+Array.forEach(TELL_RADII, radius => {
+  bakeRings(radius, radius, 1, TELL_EDGE_COLOR)
+  bakeDiscs(radius - 1, radius - 1, TELL_FILL_COLOR)
+  bakeRings(1, radius, 1, TELL_SWEEP_COLOR)
+})
+
 const CRACK_COLOR = '#f0c27a'
 const HOLE_COLOR = '#140c10'
 const CLAW_COLOR = '#dcf5b8'
@@ -175,6 +198,13 @@ const CRACK_DUST_COLOR = 'rgba(214, 196, 160, 0.8)'
 const CRACK_JUMP_MS = 90
 const CRACK_RING_MIN_PX = 3
 const CRACK_RING_GROW_PX = 8
+
+bakeRings(
+  CRACK_RING_MIN_PX,
+  CRACK_RING_MIN_PX + CRACK_RING_GROW_PX,
+  1,
+  CRACK_RING_COLOR,
+)
 
 type Crack = Readonly<{ dx: number; dy: number; length: number }>
 
@@ -196,13 +226,13 @@ const crackShapes = (
   const x = Math.round(zombie.x)
   const y = Math.round(zombie.y)
   const jump = Math.floor((elapsedMs + zombie.id * 53) / CRACK_JUMP_MS) % 2
-  const ring = Canvas.Circle({
+  const ring = pixelRing(
     x,
     y,
-    radius: CRACK_RING_MIN_PX + Math.round(CRACK_RING_GROW_PX * progress),
-    stroke: CRACK_RING_COLOR,
-    lineWidth: 1,
-  })
+    CRACK_RING_MIN_PX + Math.round(CRACK_RING_GROW_PX * progress),
+    1,
+    CRACK_RING_COLOR,
+  )
   const cracks = Array.map(CRACKS, ({ dx, dy, length }) => {
     const reach = Math.max(1, Math.round(length * Math.min(1, progress * 1.4)))
     return Canvas.Rect({

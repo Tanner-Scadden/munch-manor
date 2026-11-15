@@ -4,7 +4,6 @@ import { Canvas } from 'foldkit'
 import { type TextTone, textWidth } from '../art/font'
 import { group } from '../art/sprite'
 import {
-  BLAST_FLASH_MS,
   BLOOD_DECAL_COLOR,
   BLOOD_DECAL_FADED_COLOR,
   BLOOD_PARTICLE_COLOR,
@@ -73,7 +72,7 @@ import type {
   WeaponKind,
 } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'
-import { type Blast, Phase, type Popup } from '../world/schema/worldSchema'
+import { Phase, type Popup } from '../world/schema/worldSchema'
 import { clamp } from '../world/step/geometry'
 import { routeSpawns } from '../world/waves/doorRoute'
 import { rattlingDoors } from '../world/waves/pacing'
@@ -598,86 +597,6 @@ export const groundParticleShapes = particleShapesWhere(isGround)
 export const airborneParticleShapes = particleShapesWhere(
   particle => !isGround(particle),
 )
-
-// BLASTS
-
-const BLAST_FLASH_END_MS = 60
-const BLAST_FLASH_COLOR = '#ffffff'
-const BLAST_CORE_COLOR = '#ffe066'
-const BLAST_FIRE_COLOR = '#ff7a2e'
-const BLAST_RING_COLOR = '#fffbe6'
-const BLAST_SMOKE_COLOR = 'rgba(70, 64, 66, 0.6)'
-const BLAST_SMOKE_RISE_PX = 10
-
-type Puff = Readonly<{ dx: number; dy: number; size: number }>
-
-const SMOKE_PUFFS: ReadonlyArray<Puff> = [
-  { dx: 0, dy: -0.2, size: 0.45 },
-  { dx: -0.35, dy: 0, size: 0.35 },
-  { dx: 0.35, dy: 0.05, size: 0.35 },
-]
-
-// NOTE: a cartoon KABOOM: a white flash with a hot core, then a fireball
-// that shrinks inside a growing shockwave ring while a puffy cloud of smoke
-// rises and fades.
-export const blastShapes = (blast: Blast): ReadonlyArray<Canvas.Shape> => {
-  const x = Math.round(blast.x)
-  const y = Math.round(blast.y)
-  if (blast.ageMs < BLAST_FLASH_END_MS) {
-    return [
-      Canvas.Circle({ x, y, radius: blast.radius, fill: BLAST_FLASH_COLOR }),
-      Canvas.Circle({
-        x,
-        y,
-        radius: Math.round(blast.radius * 0.55),
-        fill: BLAST_CORE_COLOR,
-      }),
-    ]
-  }
-
-  const progress = clamp(blast.ageMs / BLAST_FLASH_MS, 0, 1)
-  const rise = Math.round(BLAST_SMOKE_RISE_PX * progress)
-  return [
-    group({
-      opacity: 1 - progress,
-      shapes: [
-        ...Array.map(SMOKE_PUFFS, puff =>
-          Canvas.Circle({
-            x: x + Math.round(puff.dx * blast.radius * (0.6 + progress)),
-            y: y - rise + Math.round(puff.dy * blast.radius),
-            radius: Math.max(
-              1,
-              Math.round(blast.radius * puff.size * (0.7 + 0.6 * progress)),
-            ),
-            fill: BLAST_SMOKE_COLOR,
-          }),
-        ),
-        Canvas.Circle({
-          x,
-          y,
-          radius: Math.max(1, Math.round(blast.radius * 0.6 * (1 - progress))),
-          fill: BLAST_FIRE_COLOR,
-        }),
-        Canvas.Circle({
-          x,
-          y,
-          radius: Math.max(
-            1,
-            Math.round(blast.radius * 0.3 * (1 - progress * 1.5)),
-          ),
-          fill: BLAST_CORE_COLOR,
-        }),
-        Canvas.Circle({
-          x,
-          y,
-          radius: Math.round(blast.radius * (0.8 + 0.5 * progress)),
-          stroke: BLAST_RING_COLOR,
-          lineWidth: 2,
-        }),
-      ],
-    }),
-  ]
-}
 
 // POPUPS
 

@@ -39,6 +39,7 @@ import {
   worldToView,
   worldWindowOf,
 } from '../camera'
+import { HUD_STRIP_HEIGHT } from '../hudLayout'
 import {
   floorRowsSeen,
   floorToScreenDirection,
@@ -76,6 +77,11 @@ const fightingInLandscape: Model = modifyFields(fightingInPortrait, {
   orientation: () => 'Landscape',
   maybeSurface: () => Option.some(PHONE_LANDSCAPE),
 })
+
+// NOTE: on a phone on its side the HUD strip covers the window's top rows,
+// so at the top of the house the camera follows on past the house by them,
+// keeping the north wall's top under the strip, not behind it.
+const STRIP_ROWS = Math.ceil(HUD_STRIP_HEIGHT / (4 / 3))
 
 const standingAt = (base: Model, x: number, y: number): Model =>
   modifyFocus(base, { player: player => ({ ...player, x, y }) })
@@ -303,7 +309,7 @@ describe('the portrait camera', () => {
         const seen = floorSeenOf(camera)
         expect(camera.x).toBeGreaterThanOrEqual(bounds.left)
         expect(camera.x + camera.width).toBeLessThanOrEqual(bounds.right)
-        expect(seen.top).toBeGreaterThanOrEqual(bounds.top - 1)
+        expect(seen.top).toBeGreaterThanOrEqual(bounds.top - STRIP_ROWS - 1)
         expect(seen.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
       })
     })
@@ -342,7 +348,7 @@ describe('the portrait camera', () => {
     expect(floorSeenOf(atCorner).bottom).toBeCloseTo(bounds.bottom, -0.5)
     const atTop = cameraAt(10, 10)
     expect(atTop.x).toBe(0)
-    expect(floorSeenOf(atTop).top).toBeCloseTo(bounds.top, -0.5)
+    expect(floorSeenOf(atTop).top).toBeCloseTo(bounds.top - STRIP_ROWS, -0.5)
     expect(
       screenCameraOf(standingAt(fightingInLandscape, 160, 90)),
     ).toMatchObject({ x: 15, y: rowY, scale: 4 / 3, left: 0, top: 0 })
@@ -356,17 +362,20 @@ describe('the portrait camera', () => {
     const shutTop = levelOf(fightingInLandscape).bounds.top
     expect(
       floorSeenOf(cameraOf(standingAt(fightingInLandscape, 40, 10))).top,
-    ).toBeCloseTo(shutTop, -0.5)
+    ).toBeCloseTo(shutTop - STRIP_ROWS, -0.5)
     const atKitchenTop = cameraOf(standingAt(kitchen, 40, bounds.top + 10))
     expect(atKitchenTop.x).toBe(0)
-    expect(floorSeenOf(atKitchenTop).top).toBeCloseTo(bounds.top, -0.5)
+    expect(floorSeenOf(atKitchenTop).top).toBeCloseTo(
+      bounds.top - STRIP_ROWS,
+      -0.5,
+    )
     Array.forEach([bounds.left, 100, 220, bounds.right], x => {
       Array.forEach([bounds.top, -100, 0, 90, bounds.bottom], y => {
         const camera = cameraOf(standingAt(kitchen, x, y))
         expect(camera.x).toBeGreaterThanOrEqual(bounds.left)
         const seen = floorSeenOf(camera)
         expect(camera.x + camera.width).toBeLessThanOrEqual(bounds.right)
-        expect(seen.top).toBeGreaterThanOrEqual(bounds.top - 1)
+        expect(seen.top).toBeGreaterThanOrEqual(bounds.top - STRIP_ROWS - 1)
         expect(seen.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
       })
     })
@@ -614,7 +623,7 @@ describe('the hint band on a zoomed phone', () => {
   test('moves away from the player where the player is on the screen, not in the room', () => {
     const at = (base: Model) =>
       moveHintBand(
-        modifyFields(standingAt(base, 160, 80), { hintBand: () => 'Top' }),
+        modifyFields(standingAt(base, 160, 64), { hintBand: () => 'Top' }),
       ).hintBand
     expect(
       at(

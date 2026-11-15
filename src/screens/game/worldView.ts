@@ -6,7 +6,11 @@ import { group } from '../../art/sprite'
 import { hatRiseOf } from '../../art/sprites/hatArt'
 import { caseDrawables } from '../../features/cases/caseView'
 import { crateDrawables, mendRingsOf } from '../../features/crates/crateView'
-import { dareDrawables, dareOverheadShapes } from '../../features/dare/dareView'
+import {
+  dareDrawables,
+  dareGroundShapes,
+  dareOverheadShapes,
+} from '../../features/dare/dareView'
 import { findDrawables, findOverheadShapes } from '../../features/dare/findView'
 import { frontDoorShapes } from '../../features/dare/frontDoorView'
 import { hubTouchShapes } from '../../features/dining/hubTouchView'
@@ -50,7 +54,6 @@ import { cellarDarkOf } from '../../render/cellarDark'
 import { type Drawable, depthSortedShapes } from '../../render/depth'
 import {
   airborneParticleShapes,
-  blastShapes,
   bulletShapes,
   doorRattleShapes,
   gibShadow,
@@ -193,6 +196,8 @@ const groundShapes = (
   ...zombieGroundShapes(zombies, model.elapsedMs),
   ...Array.filterMap(zombies, zombieShadow),
   ...bossGroundShapes(model),
+  ...dareGroundShapes(model),
+  ...Array.flatMap(model.cosmetics.callouts, burpRingShapes),
   ...Array.filterMap(model.traps, trapShadow(levelOf(model))),
   ...Array.filterMap(model.cosmetics.particles, gibShadow),
   ...groundParticleShapes(model.cosmetics.particles),
@@ -329,8 +334,6 @@ const overheadShapes = (
     Array.filter(zombies, isClearOfWall(levelOf(model))),
     zombieHealthBarShapes,
   ),
-  ...Array.flatMap(model.cosmetics.blasts, blastShapes),
-  ...Array.flatMap(model.cosmetics.callouts, burpRingShapes),
   ...bossOverheadShapes(model),
   ...airborneParticleShapes(model.cosmetics.particles),
   ...(isGoodieBeckoning(model)

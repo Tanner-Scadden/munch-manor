@@ -3,7 +3,7 @@ import { Canvas } from 'foldkit'
 
 import type { Model } from '../app/model'
 import { bakeText, placeBaked } from '../art/font'
-import { group } from '../art/sprite'
+import { type Sprite, bakeShapes, group, placeAt } from '../art/sprite'
 import { BOSS_ICON } from '../art/sprites/zombies'
 import type { HintBand } from '../domain/clientSchema'
 import { VIEW_WIDTH } from '../shared/constants'
@@ -24,6 +24,13 @@ import { BOSS_RULES } from '../world/zombies/bossRules'
 import { ZOMBIE_KINDS } from '../world/zombies/zombies'
 import { FULL_TURN, tellAlpha } from './drawing'
 import { barWidthOf, healthBarShapes } from './healthBarView'
+import {
+  bakeDiscs,
+  bakeRings,
+  pixelDisc,
+  pixelDiscSpans,
+  pixelRing,
+} from './pixelCircle'
 
 // STOMP AND SLAM RINGS
 
@@ -32,8 +39,7 @@ const RING_FILL_STRONG = 0.34
 const RING_EDGE_COLOR = '#ff4a4f'
 const RING_SWEEP_COLOR = '#ffe066'
 
-const ringFill = (progress: number): string =>
-  `rgba(255, 58, 63, ${tellAlpha(RING_FILL_FAINT, RING_FILL_STRONG, progress)})`
+const RING_FILL_COLOR = 'rgb(255, 58, 63)'
 
 const progressOf = (remainingMs: number, durationMs: number): number =>
   clamp(1 - remainingMs / Math.max(1, durationMs), 0, 1)
@@ -48,28 +54,28 @@ const ringShapes = (
   const x = Math.round(boss.x)
   const y = Math.round(boss.y)
   return [
-    Canvas.Circle({
+    group({
+      opacity: tellAlpha(RING_FILL_FAINT, RING_FILL_STRONG, progress),
+      shapes: [pixelDisc(x, y, ringRadius - 1, RING_FILL_COLOR)],
+    }),
+    pixelRing(x, y, ringRadius, 1, RING_EDGE_COLOR),
+    pixelRing(
       x,
       y,
-      radius: ringRadius,
-      fill: ringFill(progress),
-    }),
-    Canvas.Circle({
-      x,
-      y,
-      radius: ringRadius,
-      stroke: RING_EDGE_COLOR,
-      lineWidth: 1,
-    }),
-    Canvas.Circle({
-      x,
-      y,
-      radius: Math.max(1, Math.round(ringRadius * progress)),
-      stroke: RING_SWEEP_COLOR,
-      lineWidth: 2,
-    }),
+      Math.max(1, Math.round(ringRadius * progress)),
+      2,
+      RING_SWEEP_COLOR,
+    ),
   ]
 }
+
+// NOTE: the stomp's and the slam's rings baked as the module loads, each
+// with its fill and its sweep.
+Array.forEach([BOSS_RULES.stompRadius, BOSS_RULES.slamRadius], radius => {
+  bakeDiscs(radius - 1, radius - 1, RING_FILL_COLOR)
+  bakeRings(radius, radius, 1, RING_EDGE_COLOR)
+  bakeRings(1, radius, 2, RING_SWEEP_COLOR)
+})
 
 // CHARGE LANE
 
@@ -198,8 +204,41 @@ const GLOB_PEAK_PX = 30
 const GLOB_RADIUS = 4
 const MOUTH_ABOVE_PX = 8
 
-const markerFill = (progress: number): string =>
-  `rgba(150, 230, 70, ${tellAlpha(0.1, 0.35, progress)})`
+const MARKER_FILL_COLOR = 'rgb(150, 230, 70)'
+const GLOB_SHADOW_COLOR = 'rgba(0, 0, 0, 0.35)'
+const GLOB_SHADOW_RADIUS = 2
+const GOO_COLOR = 'rgb(84, 150, 44)'
+
+// NOTE: the pooled goo as one baked shape, three overlapping blobs, so
+// where they overlap is no darker than the rest as it fades.
+const GOO_PUDDLE: Sprite = bakeShapes(
+  Array.flatMap(
+    [
+      { dx: 0, dy: 0, radius: BOSS_RULES.puddleRadius - 1 },
+      {
+        dx: Math.round(BOSS_RULES.puddleRadius * 0.6),
+        dy: 2,
+        radius: Math.round(BOSS_RULES.puddleRadius * 0.5),
+      },
+      {
+        dx: -Math.round(BOSS_RULES.puddleRadius * 0.55),
+        dy: 3,
+        radius: Math.round(BOSS_RULES.puddleRadius * 0.45),
+      },
+    ],
+    ({ dx, dy, radius }) => pixelDiscSpans(dx, dy, radius, GOO_COLOR),
+  ),
+)
+
+bakeDiscs(
+  BOSS_RULES.spitRadius - 1,
+  BOSS_RULES.spitRadius - 1,
+  MARKER_FILL_COLOR,
+)
+bakeRings(BOSS_RULES.spitRadius, BOSS_RULES.spitRadius, 1, GLOB_EDGE)
+bakeRings(1, BOSS_RULES.spitRadius, 2, RING_SWEEP_COLOR)
+bakeDiscs(GLOB_SHADOW_RADIUS, GLOB_SHADOW_RADIUS, GLOB_SHADOW_COLOR)
+bakeDiscs(GLOB_RADIUS, GLOB_RADIUS, GLOB_FILL)
 
 const globPoint = (from: Vector, to: Vector, progress: number): Vector => ({
   x: from.x + (to.x - from.x) * progress,
@@ -214,48 +253,31 @@ const globGroundShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> =>
       const y = Math.round(to.y)
       const shadow = globPoint(from, to, progress)
       return [
-        Canvas.Circle({
+        group({
+          opacity: tellAlpha(0.1, 0.35, progress),
+          shapes: [
+            pixelDisc(x, y, BOSS_RULES.spitRadius - 1, MARKER_FILL_COLOR),
+          ],
+        }),
+        pixelRing(x, y, BOSS_RULES.spitRadius, 1, GLOB_EDGE),
+        pixelRing(
           x,
           y,
-          radius: BOSS_RULES.spitRadius,
-          fill: markerFill(progress),
-          stroke: GLOB_EDGE,
-          lineWidth: 1,
-        }),
-        Canvas.Circle({
-          x,
-          y,
-          radius: Math.max(1, Math.round(BOSS_RULES.spitRadius * progress)),
-          stroke: RING_SWEEP_COLOR,
-          lineWidth: 2,
-        }),
-        Canvas.Circle({
-          x: Math.round(shadow.x),
-          y: Math.round(shadow.y),
-          radius: 2,
-          fill: 'rgba(0, 0, 0, 0.35)',
-        }),
+          Math.max(1, Math.round(BOSS_RULES.spitRadius * progress)),
+          2,
+          RING_SWEEP_COLOR,
+        ),
+        pixelDisc(shadow.x, shadow.y, GLOB_SHADOW_RADIUS, GLOB_SHADOW_COLOR),
       ]
     },
     Pooled: ({ at, remainingMs }) => {
       const fade = clamp(remainingMs / PUDDLE_FADE_MS, 0, 1)
       const x = Math.round(at.x)
       const y = Math.round(at.y)
-      const radius = BOSS_RULES.puddleRadius
-      const goo = `rgba(84, 150, 44, ${tellAlpha(0, PUDDLE_ALPHA, fade)})`
       return [
-        Canvas.Circle({ x, y, radius: radius - 1, fill: goo }),
-        Canvas.Circle({
-          x: x + Math.round(radius * 0.6),
-          y: y + 2,
-          radius: Math.round(radius * 0.5),
-          fill: goo,
-        }),
-        Canvas.Circle({
-          x: x - Math.round(radius * 0.55),
-          y: y + 3,
-          radius: Math.round(radius * 0.45),
-          fill: goo,
+        group({
+          opacity: tellAlpha(0, PUDDLE_ALPHA, fade),
+          shapes: [placeAt(x, y, GOO_PUDDLE)],
         }),
         Canvas.Rect({
           x: x - 4,
@@ -279,7 +301,7 @@ const flyingGlobShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> => {
   const x = Math.round(point.x)
   const y = Math.round(point.y - lift - MOUTH_ABOVE_PX * (1 - progress))
   return [
-    Canvas.Circle({ x, y, radius: GLOB_RADIUS, fill: GLOB_FILL }),
+    pixelDisc(x, y, GLOB_RADIUS, GLOB_FILL),
     Canvas.Rect({ x: x - 1, y: y - 2, width: 1, height: 1, fill: GLOB_SHINE }),
   ]
 }
@@ -344,6 +366,7 @@ const STEAM_COUNT = 3
 const STEAM_RISE_PX = 10
 const STEAM_CYCLE_MS = 700
 const HEAD_ABOVE_PX = 16
+const STEAM_COLOR = 'rgb(244, 241, 222)'
 
 const starShapes = (
   boss: Zombie,
@@ -381,13 +404,20 @@ const steamShapes = (
       ((elapsedMs + (index * STEAM_CYCLE_MS) / STEAM_COUNT) % STEAM_CYCLE_MS) /
       STEAM_CYCLE_MS
     const side = index - 1
-    return Canvas.Circle({
-      x: Math.round(boss.x + side * 5 + side * phase * 3),
-      y: Math.round(boss.y - HEAD_ABOVE_PX - phase * STEAM_RISE_PX),
-      radius: 1 + Math.round(phase * 2),
-      fill: `rgba(244, 241, 222, ${Math.round((1 - phase) * 7) / 10})`,
+    return group({
+      opacity: Math.round((1 - phase) * 7) / 10,
+      shapes: [
+        pixelDisc(
+          boss.x + side * 5 + side * phase * 3,
+          boss.y - HEAD_ABOVE_PX - phase * STEAM_RISE_PX,
+          1 + Math.round(phase * 2),
+          STEAM_COLOR,
+        ),
+      ],
     })
   })
+
+bakeDiscs(1, 3, STEAM_COLOR)
 
 export const bossOverheadShapes = (
   model: Model,
