@@ -194,22 +194,24 @@ export const chandelierOf = (
       materials,
       castsShadow: true,
     })
-    // NOTE: the rope in each state, standing where its blocks are, from no
-    // anchor, shown while the chandelier is in that state. It casts no
-    // shadow: a thin line across the room's floor read as a crack.
+    // NOTE: the rope's pieces in each state, standing where their blocks
+    // are, from no anchor, shown while the chandelier is in that state. It
+    // casts no shadow: a thin line across the room's floor read as a crack.
     const ropes = Option.match(chandelierRopeOf(input.level), {
       onNone: () => [],
       onSome: pieces =>
-        Array.map(['Hung', 'Fallen'] as const, state => ({
-          isDown: state === 'Fallen',
-          built: buildPiece({
-            piece: pieces[state],
-            anchor: { x: 0, y: 0 },
-            parent: input.parent,
-            materials,
-            castsShadow: false,
-          }),
-        })),
+        Array.flatMap(['Hung', 'Fallen'] as const, state =>
+          Array.map(pieces[state], piece => ({
+            isDown: state === 'Fallen',
+            built: buildPiece({
+              piece,
+              anchor: { x: 0, y: 0 },
+              parent: input.parent,
+              materials,
+              castsShadow: false,
+            }),
+          })),
+        ),
     })
     const marks = floorMarksOf(anchors.Fallen)
     return {

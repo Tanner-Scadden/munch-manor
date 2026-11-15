@@ -4,12 +4,15 @@
 // its nook, the cellar's lanes, the kitchen), and the dining room's
 // chandelier winch mid-wave: taut over the hung chandelier, slack and
 // waiting to be worked the first time once it is down, and being worked,
-// its crank turning and its gold ring filling. On a 1280x720 desktop, an 844x390
+// its crank turning and its gold ring filling; and the winch's rope along
+// the wall tops, hung and dropped, from the dining room's corners, the
+// middle of its north half, its middle, and by the winch
+// (`rope-<state>-<spot>`). On a 1280x720 desktop, an 844x390
 // phone on its side, and a 390x844 phone held upright, as
 // `rooms-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsRooms.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
-import { Effect } from 'effect'
+import { Array, Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
 import {
@@ -32,6 +35,29 @@ type Scene = Readonly<{ name: string; query: string }>
 const WAVE = `${LEARNED_ALL}&wave=3&start=wave&elapsed=0&${EVERY_EXIT_OPEN}`
 const FALLEN = `${WAVE}&fallen`
 
+// NOTE: where the player stands for the rope's shots, in the dining room.
+const ROPE_SPOTS: ReadonlyArray<Readonly<{ name: string; at: string }>> = [
+  { name: 'nw', at: 'px=40&py=40' },
+  { name: 'north', at: 'px=180&py=45' },
+  { name: 'ne', at: 'px=320&py=40' },
+  { name: 'winch', at: 'px=30&py=105' },
+  { name: 'mid', at: 'px=180&py=150' },
+  { name: 'sw', at: 'px=40&py=180' },
+  { name: 'se', at: 'px=320&py=180' },
+]
+
+const ROPE_SCENES: ReadonlyArray<Scene> = Array.flatMap(
+  [
+    { state: 'hung', query: WAVE },
+    { state: 'fallen', query: FALLEN },
+  ],
+  ({ state, query }) =>
+    Array.map(ROPE_SPOTS, spot => ({
+      name: `rope-${state}-${spot.name}`,
+      query: `${query}&${spot.at}`,
+    })),
+)
+
 // NOTE: the first house (src/world/level/plan.ts, ARRANGEMENTS): the
 // parlour west of the dining room, the library east, and the cellar beyond.
 const SCENES: ReadonlyArray<Scene> = [
@@ -44,6 +70,7 @@ const SCENES: ReadonlyArray<Scene> = [
   { name: 'cleat-hung', query: `${WAVE}&px=70&py=105` },
   { name: 'cleat-hint', query: `${FALLEN}&px=70&py=105` },
   { name: 'cleat-worked', query: `${FALLEN}&cleat=0.5&px=26&py=105` },
+  ...ROPE_SCENES,
 ]
 
 runHarnessAudit(

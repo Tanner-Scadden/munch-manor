@@ -4,12 +4,14 @@ import { type Sprite, TOP_LEFT, spriteShapes } from './sprite'
 
 // The chandelier's winch, the dining room's cleat station: an oak post
 // against the west wall, an iron arm out to a brass pulley, the rope
-// running up out of it toward the chandelier, and a drum on iron feet with a
-// crank. Hung, the drum is wound full and the rope stands straight and taut;
+// leaving its top for the chandelier, and a drum on iron feet with a crank. Hung, the drum is wound full and the rope stands straight and taut;
 // dropped, the drum is bare and the rope hangs loose off the pulley. The
-// crank turns while the winch is worked. Its rope up to the chandelier is
-// carved in 3D from where the art's rope leaves its top
-// (src/render/room/chandelierRope.ts).
+// crank turns while the winch is worked. The pulley stands as high as the
+// west wall's top, so its rope runs on in 3D from where it leaves the art's
+// top, west onto the wall and along the wall tops to the chandelier
+// (src/render/room/chandelierRope.ts). The rope is one solid color with a
+// darker side, never a twist of two: a checker of two tones read from afar
+// as a fence (owner, 2026-11-15).
 
 // NOTE: high value contrast, as the room's look pass keeps value and loses
 // most hue: bright brass and a pale rope against a dark outline, as the
@@ -31,21 +33,15 @@ const PALETTE = {
 }
 
 const TAUT_ROWS: ReadonlyArray<string> = [
-  '.......Rr...',
-  '.......rR...',
-  '.......Rr...',
-  '.......rR...',
-  '.......Rr...',
-  '.......rR...',
   'ooo....Rr...',
   'oPo..bGYGb..',
   'oPIIIGYRrGb.',
   'oPiiiGrRYGb.',
   'oPo..bGGGb..',
   'oPo....Rr...',
-  'oPo....rR...',
   'oPo....Rr...',
-  'oPo....rR...',
+  'oPo....Rr...',
+  'oPo....Rr...',
   'oPo.bGGRrGGb',
   'oPo.GRRRRRRG',
   'oPo.YrrrrrrY',
@@ -63,12 +59,6 @@ const TAUT_ROWS: ReadonlyArray<string> = [
 ]
 
 const SLACK_ROWS: ReadonlyArray<string> = [
-  '.......Rr...',
-  '.......rR...',
-  '......Rr....',
-  '......rR....',
-  '.......Rr...',
-  '........rR..',
   'ooo....Rr...',
   'oPo..bGYGb..',
   'oPIIIGYRrGb.',
@@ -104,32 +94,32 @@ export const WINCH_ROPE_COLUMN = 7
 // up, east, down, west: dark iron and a dark brass knob on the pale rope.
 type Pixel = Readonly<{ column: number; row: number; mark: string }>
 
-const HUB = { column: 7, row: 19 }
+const HUB = { column: 7, row: 13 }
 
 const CRANK_TURNS: Array.NonEmptyReadonlyArray<ReadonlyArray<Pixel>> = [
   [
     { ...HUB, mark: 'o' },
-    { column: 7, row: 18, mark: 'i' },
-    { column: 7, row: 17, mark: 'i' },
+    { column: 7, row: 12, mark: 'i' },
+    { column: 7, row: 11, mark: 'i' },
+    { column: 7, row: 10, mark: 'b' },
+  ],
+  [
+    { ...HUB, mark: 'o' },
+    { column: 8, row: 13, mark: 'i' },
+    { column: 9, row: 13, mark: 'i' },
+    { column: 10, row: 13, mark: 'b' },
+  ],
+  [
+    { ...HUB, mark: 'o' },
+    { column: 7, row: 14, mark: 'i' },
+    { column: 7, row: 15, mark: 'i' },
     { column: 7, row: 16, mark: 'b' },
   ],
   [
     { ...HUB, mark: 'o' },
-    { column: 8, row: 19, mark: 'i' },
-    { column: 9, row: 19, mark: 'i' },
-    { column: 10, row: 19, mark: 'b' },
-  ],
-  [
-    { ...HUB, mark: 'o' },
-    { column: 7, row: 20, mark: 'i' },
-    { column: 7, row: 21, mark: 'i' },
-    { column: 7, row: 22, mark: 'b' },
-  ],
-  [
-    { ...HUB, mark: 'o' },
-    { column: 6, row: 19, mark: 'i' },
-    { column: 5, row: 19, mark: 'i' },
-    { column: 4, row: 19, mark: 'b' },
+    { column: 6, row: 13, mark: 'i' },
+    { column: 5, row: 13, mark: 'i' },
+    { column: 4, row: 13, mark: 'b' },
   ],
 ]
 
@@ -169,7 +159,8 @@ export const WINCH_TAUT: Array.NonEmptyReadonlyArray<Sprite> =
 export const WINCH_SLACK: Array.NonEmptyReadonlyArray<Sprite> =
   framesOf(SLACK_ROWS)
 
-// NOTE: the rope's two colors, for its 3D run up to the chandelier.
+// NOTE: the rope's color and its darker underside, for its 3D run to the
+// chandelier, and the brass of its pulleys.
 export const ROPE_LIGHT_COLOR = PALETTE.R
 export const ROPE_DARK_COLOR = PALETTE.r
 export const BRASS_COLOR = PALETTE.G

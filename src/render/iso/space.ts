@@ -179,3 +179,10 @@ export const wallHeightAt = (
     : isFrontWallAt(at)
       ? FRONT_WALL_HEIGHT
       : WALL_HEIGHT
+
+// NOTE: how many game pixels up the lens's up a wall's top on a tile stands,
+// 0 for no wall: what lies on the wall (the chandelier's rope) stands its
+// blocks that high, so it sits on the top the eye already reads as high.
+export const wallTopRiseAt = (
+  at: Readonly<{ tiles: ReadonlyArray<string>; row: number; column: number }>,
+): number => Math.floor((wallHeightAt(at) * TILE_SIZE) / CAMERA_UP.y)
