@@ -306,7 +306,6 @@ const standingDrawables = (
     ...fallenChandelierDrawables(model),
     ...findDrawables(model),
     ...dareDrawables(model),
-    ...hubTouchDrawables(model),
     ...kitchenGearDrawables(model),
     ...backDoorDrawables(model),
   ]
@@ -389,6 +388,7 @@ const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
       standing: [
         ...standingDrawables(model, look, onCamera, mates),
         ...stationDrawables(model, isOnCamera(camera)),
+        ...hubTouchDrawables(model, isOnCamera(camera)),
         ...hearthFireDrawables(levelOf(model), model.elapsedMs),
       ],
       overhead: overheadShapes(model, camera, onCamera, mates),
@@ -411,6 +411,7 @@ const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
         standing: [
           ...standingDrawables(model, look, seen, mates, dark.fadeOf),
           ...stationDrawables(model, isOnCamera(camera)),
+          ...hubTouchDrawables(model, isOnCamera(camera)),
           ...hearthFireDrawables(levelOf(model), model.elapsedMs),
         ],
         overhead: [

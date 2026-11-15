@@ -27,18 +27,29 @@ import {
 const LEARNED =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,displayCase,rattles'
 const HOUSE = `god&nodev&seen=all&wave=3&openexits=West,East,Far,Kitchen&kitchen&${LEARNED}`
-const breakAt = (tick: number) => `${HOUSE}&break=open&nohud&tick=${tick}`
-const BREAK = breakAt(240)
+const BREAK = `${HOUSE}&break=open&nohud&tick=240`
+
+// NOTE: the parlour's notes on their way from the gramophone to the
+// dining room, from inside the parlour, at its doorway, and from the
+// dining room, in a house (src/world/level/plan.ts ARRANGEMENTS) with the
+// parlour west of the dining room (0), just east of it (2), and in the far
+// slot, crossing the cellar (3) or the library (5).
+const notesIn = (house: number, x: number, y: number) =>
+  `${BREAK}&house=${house}&px=${x}&py=${y}`
 
 const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'hub', query: `${BREAK}&px=175&py=40` },
   { name: 'cobweb', query: `${BREAK}&px=310&py=55` },
-  { name: 'notes', query: `${BREAK}&px=60&py=110` },
-  // NOTE: the parlour's notes from a few spots, each note of the cycle:
-  // the first half way up its rise, from the south and from far off east.
-  { name: 'notes-rise', query: `${breakAt(120)}&px=60&py=110` },
-  { name: 'notes-south', query: `${breakAt(120)}&px=40&py=200` },
-  { name: 'notes-far', query: `${BREAK}&px=150&py=150` },
+  { name: 'notes-west-parlour', query: notesIn(0, -170, 120) },
+  { name: 'notes-west-door', query: notesIn(0, -40, 150) },
+  { name: 'notes-west-dining', query: notesIn(0, 70, 130) },
+  { name: 'notes-east-parlour', query: notesIn(2, 440, 90) },
+  { name: 'notes-east-door', query: notesIn(2, 370, 115) },
+  { name: 'notes-east-dining', query: notesIn(2, 290, 110) },
+  { name: 'notes-far-parlour', query: notesIn(3, 750, 95) },
+  { name: 'notes-far-cellar', query: notesIn(3, 560, 105) },
+  { name: 'notes-far-dining', query: notesIn(3, 300, 110) },
+  { name: 'notes-far-library', query: notesIn(5, 520, 105) },
   { name: 'valve', query: `${BREAK}&px=170&py=-25` },
   { name: 'hearth', query: `${BREAK}&valve&px=-160&py=120` },
   { name: 'pickups', query: `${BREAK}&pickups=all&px=160&py=150` },
