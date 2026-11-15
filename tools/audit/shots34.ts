@@ -10,7 +10,7 @@
 // ONLY picks scenes, such as `ONLY=wave,break`, and VIEWPORTS picks phones,
 // such as `VIEWPORTS=p390,l844`. SHOTS_PARALLEL sets how many scenes run at
 // once, each in its own browser context (3 by default).
-import { Array, Effect } from 'effect'
+import { Array, Config, Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
 import {
@@ -343,7 +343,15 @@ runHarnessAudit(
     // NOTE: every scene plays 72 frames (1.2 s) at once and holds there, so
     // the pictures are the same on every run, and a page per screen and
     // worker switches scenes in place.
-    const pages = scenePages(browser, ['device=touch', 'nodev', 'tick=72'])
+    // NOTE: `QUALITY=scaled` (or `light`, `floor`) shoots the 3D world at
+    // that tier (src/render/iso/quality.ts); automation draws at Full.
+    const quality = yield* Config.String('QUALITY').pipe(Config.withDefault(''))
+    const pages = scenePages(browser, [
+      'device=touch',
+      'nodev',
+      'tick=72',
+      quality === '' ? '' : `quality=${quality}`,
+    ])
     const parallel = yield* parallelFrom('SHOTS_PARALLEL')
     const problems = yield* forEachInOrder(
       units,

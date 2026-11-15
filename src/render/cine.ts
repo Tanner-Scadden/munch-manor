@@ -80,6 +80,10 @@ const cinesOf = (model: Model): ReadonlyArray<Cine> => {
   ])
 }
 
+// NOTE: whether any moment is on, so the 3D renderer judges no frame of
+// one for its quality (src/render/iso/quality.ts).
+export const isCineOn = (model: Model): boolean => cinesOf(model).length > 0
+
 // NOTE: how close to the window's edge the glide may bring the player, in
 // world pixels, so the moment never takes them out of sight.
 const KEEP_IN_VIEW_PX = 48
