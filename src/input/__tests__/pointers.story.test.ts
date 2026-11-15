@@ -99,7 +99,7 @@ describe('stuck sticks', () => {
         ),
         touchDown(LEFT_THUMB, 100),
         touchDown(RIGHT_THUMB, 700),
-        Story.message(Message.ReleasedEveryTouch()),
+        Story.message(Message.ChangedTouches({ points: [] })),
         Story.model(after => {
           expect(isAnyStickActive(after)).toBe(false)
           expect(after.input.mouseButton).toEqual(
@@ -107,6 +107,66 @@ describe('stuck sticks', () => {
           )
         }),
       ),
+  )
+
+  it.effect(
+    'a stick whose finger lifted unheard lets go at the next touch',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(playingModel),
+        touchDown(LEFT_THUMB, 100),
+        touchDown(RIGHT_THUMB, 700),
+        // NOTE: the left thumb's lift is lost; the right thumb is still down.
+        Story.message(
+          Message.ChangedTouches({ points: [{ clientX: 700, clientY: 300 }] }),
+        ),
+        Story.model(after => {
+          expect(after.input.moveStick).toEqual(Stick.Idle())
+          expect(Stick.isAnyOf(['Active'])(after.input.aimStick)).toBe(true)
+        }),
+      ),
+  )
+
+  it.effect('a finger still on the glass keeps its stick as it moves', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(playingModel),
+      touchDown(LEFT_THUMB, 100),
+      Story.message(
+        Message.MovedPointer({
+          pointerId: LEFT_THUMB,
+          clientX: 160,
+          clientY: 280,
+        }),
+      ),
+      Story.message(
+        Message.ChangedTouches({ points: [{ clientX: 175, clientY: 290 }] }),
+      ),
+      Story.model(after => {
+        expect(Stick.isAnyOf(['Active'])(after.input.moveStick)).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect('a thumb landing on a stick left held takes it back', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(playingModel),
+      touchDown(LEFT_THUMB, 100),
+      touchDown(13, 140),
+      Story.message(
+        Message.MovedPointer({
+          pointerId: LEFT_THUMB,
+          clientX: 40,
+          clientY: 300,
+        }),
+      ),
+      Story.message(Message.ReleasedPointer({ pointerId: 13 })),
+      Story.model(after => {
+        expect(after.input.moveStick).toEqual(Stick.Idle())
+      }),
+    ),
   )
 
   it.effect('releasing a pointer nothing tracks changes nothing', () =>

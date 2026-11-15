@@ -40,12 +40,12 @@ import {
   type BlurredWindow,
   type CancelledPointer,
   type ChangedPageVisibility,
+  type ChangedTouches,
   type FocusedWindow,
   Message,
   type MissedKeyDown,
   type PressedKey,
   type PressedMetaKey,
-  type ReleasedEveryTouch,
   type ReleasedPointer,
   type RestoredPageFromCache,
   type TickedFrame,
@@ -285,12 +285,15 @@ const pointerMoveMessages = () =>
           ),
   })
 
-const maybeEveryTouchEndedMessage = (
-  event: TouchEvent,
-): Option.Option<ReleasedEveryTouch> =>
-  event.touches.length === 0
-    ? Option.some(Message.ReleasedEveryTouch())
-    : Option.none()
+// NOTE: the fingers on the glass, so a stick held by a finger whose lift
+// never came (iOS Safari loses one now and then) lets go at the next touch.
+const touchesMessage = (event: TouchEvent): ChangedTouches =>
+  Message.ChangedTouches({
+    points: Array.map(Array.fromIterable(event.touches), touch => ({
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+    })),
+  })
 
 // NOTE: releases listen all the time, not only while a pointer is tracked.
 // A quick tap can lift its finger before a tracking-only listener is
@@ -298,7 +301,7 @@ const maybeEveryTouchEndedMessage = (
 // pointer that is not tracked changes nothing.
 const pointerReleaseMessages = () =>
   Stream.mergeAll<
-    ReleasedPointer | CancelledPointer | ReleasedEveryTouch,
+    ReleasedPointer | CancelledPointer | ChangedTouches,
     never,
     never
   >(
@@ -315,15 +318,20 @@ const pointerReleaseMessages = () =>
         mapEvent: event =>
           Message.CancelledPointer({ pointerId: event.pointerId }),
       }),
-      Dom.streamFromEventFilterMap({
+      Dom.streamFromEvent({
+        target: document,
+        type: 'touchstart',
+        mapEvent: touchesMessage,
+      }),
+      Dom.streamFromEvent({
         target: document,
         type: 'touchend',
-        filterMapEvent: maybeEveryTouchEndedMessage,
+        mapEvent: touchesMessage,
       }),
-      Dom.streamFromEventFilterMap({
+      Dom.streamFromEvent({
         target: document,
         type: 'touchcancel',
-        filterMapEvent: maybeEveryTouchEndedMessage,
+        mapEvent: touchesMessage,
       }),
     ],
     { concurrency: 'unbounded' },
@@ -682,7 +690,7 @@ export const subscriptions = makeSubscriptions(entry => ({
     messages: [
       Message.ReleasedPointer,
       Message.CancelledPointer,
-      Message.ReleasedEveryTouch,
+      Message.ChangedTouches,
     ],
     handler: function* () {
       return pointerReleaseMessages
