@@ -31,7 +31,7 @@ import {
 } from '../../features/onboarding/rattlesIntro'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
-import { startWavePillBox } from '../../render/hudLayout'
+import { gunClusterBox, startWavePillBox } from '../../render/hudLayout'
 import { doorArrowBox } from '../../render/powerupView'
 import {
   type Screen,
@@ -413,13 +413,17 @@ type Keepout = Readonly<{
 
 const KEEPOUT_GAP = 2
 
-// NOTE: on touch a break's START WAVE pill stands over the gun row, an HTML
-// button the canvas cannot draw over, so a bubble keeps clear of it too.
+// NOTE: the slots' key caps stand this far over the slots.
+const CLUSTER_CAP_RISE = 3
+
+// NOTE: a break's START WAVE button stands over the gun row, an HTML
+// button the canvas cannot draw over, so a bubble keeps clear of it too, on
+// a keyboard as on touch (the two are the same size).
 const startWaveKeepout = (
   model: Model,
   screen: Screen,
 ): ReadonlyArray<Keepout> =>
-  model.lastDevice === 'Touch' && Phase.isAnyOf(['Preparation'])(model.phase)
+  Phase.isAnyOf(['Preparation'])(model.phase)
     ? Option.match(model.maybeSurface, {
         onNone: () => [],
         onSome: surface => {
@@ -450,6 +454,19 @@ const questArrowKeepout = (
     onSome: mark => [doorArrowBox(worldToView(camera, mark))],
   })
 
+// NOTE: the gun slots and their key caps over the window's bottom in
+// landscape (under it, in the thumb area, in portrait, where this is out of
+// the window's reach anyway).
+const clusterKeepout = (screen: Screen): Keepout => {
+  const cluster = gunClusterBox(screen)
+  return {
+    left: cluster.x,
+    top: cluster.y - CLUSTER_CAP_RISE,
+    right: cluster.x + cluster.width,
+    bottom: cluster.y + cluster.height,
+  }
+}
+
 const keepoutsOf = (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
   const frame = landscapeFrameOffset(screen)
@@ -478,6 +495,7 @@ const keepoutsOf = (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
     ...hints,
     ...questArrowKeepout(model, camera),
     ...startWaveKeepout(model, screen),
+    clusterKeepout(screen),
   ]
 }
 
@@ -595,7 +613,7 @@ const placedBubble = (
 const LEAVE_TIP_RIGHT = 26
 const LEAVE_TIP_DROP = 32
 
-export const kitchenBubbleShapes: {
+const kitchenBubbleShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
@@ -743,7 +761,7 @@ const INTRO_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
 
 // NOTE: his hello hangs from his own spot and points at it, so with him off
 // screen the bubble waits at the window's edge with an arrow toward him.
-export const rattlesIntroShapes: {
+const rattlesIntroShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
@@ -769,4 +787,34 @@ export const rattlesIntroShapes: {
           ),
       },
     ),
+)
+
+// RATTLES' ONE BUBBLE
+
+// NOTE: Rattles says one thing at a time, so two of his bubbles never stack
+// up over each other: the kitchen tour's first, then his hello, then his
+// holler about the kitchen, then a hint about the dare.
+const RATTLES_BUBBLES: ReadonlyArray<
+  (model: Model, camera: Camera) => ReadonlyArray<Canvas.Shape>
+> = [
+  (model, camera) => kitchenBubbleShapes(model, camera),
+  (model, camera) => rattlesIntroShapes(model, camera),
+  (model, camera) => soupBubbleShapes(model, camera),
+  (model, camera) => dareHintShapes(model, camera),
+]
+
+export const rattlesBubbleShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => {
+    for (const bubble of RATTLES_BUBBLES) {
+      const shapes = bubble(model, camera)
+      if (shapes.length > 0) {
+        return shapes
+      }
+    }
+    return []
+  },
 )
