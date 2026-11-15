@@ -197,22 +197,24 @@ export class VoxelBatch {
     if (step < 1) {
       return true
     }
-    return Option.match(this.placementOf(input), {
-      onNone: () => false,
-      onSome: ({ carved, sheet, elements, blocks }) => {
-        reach.blocks = blocks
-        const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
-        this.fill({
-          geometry: carved.geometry,
-          material: isFlash
-            ? this.flash
-            : this.sheetMaterialOf(sheet, isOpaque ? FADE_STEPS : step),
-          elements,
-          passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
-        })
-        return true
-      },
+    // NOTE: checked by hand, not Option.match, so the hot path builds no
+    // handler closures per leaf per frame.
+    const placement = this.placementOf(input)
+    if (Option.isNone(placement)) {
+      return false
+    }
+    const { carved, sheet, elements, blocks } = placement.value
+    reach.blocks = blocks
+    const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
+    this.fill({
+      geometry: carved.geometry,
+      material: isFlash
+        ? this.flash
+        : this.sheetMaterialOf(sheet, isOpaque ? FADE_STEPS : step),
+      elements,
+      passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
     })
+    return true
   }
 
   // NOTE: where a sprite's blocks stand, as `standLeaf` stands them, and
