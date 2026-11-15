@@ -16,6 +16,7 @@ import {
   ZOMBIE_MAX_HP,
   ZOMBIE_RADIUS,
 } from '../../../shared/constants'
+import { walkToward } from '../../../test/lensTesting'
 import {
   DISTANT_SPAWN,
   quietWave,
@@ -26,7 +27,6 @@ import {
   press,
   tick,
   ticks,
-  walkToward,
   zombieAt,
 } from '../../../test/testing'
 import { focusOf, modifyFocus } from '../../party/party'

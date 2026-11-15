@@ -14,6 +14,7 @@ import {
   STICK_RADIUS_PX,
 } from '../../shared/constants'
 import { holdingSecond } from '../../test/arsenals'
+import { RIGHT_ON_SCREEN, nearly } from '../../test/lensTesting'
 import {
   FIGHTING_PHASE,
   playingModel,
@@ -21,8 +22,6 @@ import {
 } from '../../test/model.fixture'
 import {
   APPLICATION,
-  RIGHT_ON_SCREEN,
-  nearly,
   settleRunCommands,
   tick,
   touchDown,

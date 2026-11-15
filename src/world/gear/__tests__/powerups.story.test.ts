@@ -42,6 +42,7 @@ import {
   ZOMBIE_KNOCKBACK_SPEED,
 } from '../../../shared/constants'
 import { pistolOf, withPistol } from '../../../test/arsenals'
+import { walkToward } from '../../../test/lensTesting'
 import {
   DISTANT_SPAWN,
   pickupAt,
@@ -60,7 +61,6 @@ import {
   tick,
   ticks,
   ticksFor,
-  walkToward,
   zombieOf,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'

@@ -10,7 +10,8 @@ import { initialModel } from '../../app/pureApp'
 import { deriveIntent } from '../../input/input'
 import type { Input } from '../../input/inputSchema'
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
-import { APPLICATION, WIDE_SURFACE, nearly } from '../../test/testing'
+import { floorSeenOf, nearly } from '../../test/lensTesting'
+import { APPLICATION, WIDE_SURFACE } from '../../test/testing'
 import { PARLOUR, makeLevel } from '../../world/level/arena'
 import { ROOM_MAP } from '../../world/level/plan'
 import { focusOf, modifyFocus } from '../../world/party/party'
@@ -22,6 +23,11 @@ const WIDE_LEVEL = makeLevel(Array.map(ROOM_MAP, line => line + line))
 const NARROW_LEVEL = makeLevel(
   Array.map(ROOM_MAP, line => String.slice(0, 16)(line)),
 )
+
+// NOTE: a room one screen tall sits still on its rows, a little south of
+// the flat window's: the lens shows more floor above the view's middle,
+// far off, than below it, near.
+const ONE_SCREEN_Y = cameraFor(PARLOUR, { x: 160, y: 90 }).y
 
 const playingModel: Model = modifyFields(initialModel, {
   maybeSurface: () => Option.some(WIDE_SURFACE),
@@ -49,9 +55,16 @@ describe('camera', () => {
         { x: 310, y: 170 },
       ],
       focus => {
-        expect(cameraFor(PARLOUR, focus)).toMatchObject({ x: 0, y: 0 })
+        expect(cameraFor(PARLOUR, focus)).toMatchObject({
+          x: 0,
+          y: ONE_SCREEN_Y,
+        })
       },
     )
+    // NOTE: the whole room in view, its top wall to its front wall.
+    const seen = floorSeenOf(cameraFor(PARLOUR, { x: 160, y: 90 }))
+    expect(seen.top).toBeLessThanOrEqual(PARLOUR.bounds.top)
+    expect(seen.bottom).toBeGreaterThanOrEqual(PARLOUR.bounds.bottom)
   })
 
   test('follows the player across a map twice the width and stops at its edges', () => {
@@ -60,24 +73,26 @@ describe('camera', () => {
 
     expect(cameraFor(WIDE_LEVEL, { x: 320, y: 90 })).toMatchObject({
       x: 160,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(WIDE_LEVEL, { x: 400.4, y: 30 })).toMatchObject({
       x: 240,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(WIDE_LEVEL, { x: 40, y: 90 })).toMatchObject({
       x: 0,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(WIDE_LEVEL, { x: 620, y: 170 })).toMatchObject({
       x: WIDE_LEVEL.width - VIEW_WIDTH,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
   })
 
   test('keeps the followed player in the middle of the view between the edges', () => {
-    const player = { x: 333, y: 90 }
+    // NOTE: on the view's middle row, where the lens shows a game pixel as
+    // one on the screen; a room one screen tall holds it still there.
+    const player = { x: 333, y: ONE_SCREEN_Y + VIEW_HEIGHT / 2 }
     const camera = cameraFor(WIDE_LEVEL, player)
     const onScreen = worldToView(camera, player)
     expect(Math.abs(onScreen.x - VIEW_WIDTH / 2)).toBeLessThanOrEqual(0.5)
@@ -88,11 +103,11 @@ describe('camera', () => {
     expect(NARROW_LEVEL.width).toBe(VIEW_WIDTH / 2)
     expect(cameraFor(NARROW_LEVEL, { x: 10, y: 90 })).toMatchObject({
       x: -VIEW_WIDTH / 4,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(NARROW_LEVEL, { x: 150, y: 90 })).toMatchObject({
       x: -VIEW_WIDTH / 4,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
   })
 
@@ -103,7 +118,7 @@ describe('camera', () => {
       y: 90,
     }
     const camera = cameraFor(WIDE_LEVEL, player)
-    expect(camera).toMatchObject({ x: 240, y: 0 })
+    expect(camera).toMatchObject({ x: 240, y: ONE_SCREEN_Y })
 
     const cursorInView = Option.getOrThrow(
       clientToView(WIDE_SURFACE, { x: 1120, y: 360 }),
@@ -139,7 +154,7 @@ describe('camera', () => {
       ),
       Story.message(Message.MovedMouse({ clientX: 1000, clientY: 360 })),
       Story.model(current => {
-        expect(cameraOf(current)).toMatchObject({ x: 0, y: 0 })
+        expect(cameraOf(current)).toMatchObject({ x: 0 })
         expect(current.input.maybeMouseInView).toEqual(
           Option.some({ x: 250, y: 90 }),
         )

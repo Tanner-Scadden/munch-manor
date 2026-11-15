@@ -22,7 +22,7 @@ import {
 } from '../world/step/geometry'
 import { glideFocus } from './cine'
 import { hudLayoutFor } from './hudLayout'
-import { lensOf } from './lens'
+import { floorRowsSeen, lensOf } from './lens'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 
 // CAMERA
@@ -58,6 +58,21 @@ const followAxis = (
     : start +
       Math.round(clamp(focus - start - viewSpan / 2, 0, span - viewSpan))
 
+// NOTE: the window's top row for a focus, by the floor the lens shows above
+// and below the window's middle (src/render/lens.ts): the near rows at the
+// bottom show bigger, so fewer of them fit, and the camera stops where the
+// level's last row meets the bottom edge, not where the window's flat
+// height would, so the front wall and what stands in it stay in reach.
+const followRows = (focus: number, level: Level, rows: number): number => {
+  const { above, below } = floorRowsSeen(rows)
+  const { top, bottom } = level.bounds
+  const middle =
+    bottom - top <= above + below
+      ? (top + above + bottom - below) / 2
+      : clamp(focus, top + above, bottom - below)
+  return Math.round(middle - rows / 2)
+}
+
 // NOTE: the camera is derived, not stored. It centers the window on the
 // focus and stops at the edges of the level's open rooms, its bounds, and a
 // level no bigger than the window sits centered and still. While the kitchen
@@ -82,12 +97,7 @@ export const cameraFor: {
       level.bounds.right - level.bounds.left,
       window.width,
     ),
-    y: followAxis(
-      focus.y,
-      level.bounds.top,
-      level.bounds.bottom - level.bounds.top,
-      window.height,
-    ),
+    y: followRows(focus.y, level, window.height),
     width: window.width,
     height: window.height,
     scale: 1,

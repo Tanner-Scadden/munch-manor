@@ -114,9 +114,9 @@ export const STORM_LIFT = AMBIENT * 3
 
 // NOTE: the void behind the house: black, as shut rooms and the yard draw.
 const BACKGROUND = 0x000000
-// NOTE: the lens's depth range, in world units from the lens: it stands
-// LENS_DISTANCE from the floor it looks at (src/render/lens.ts), and the
-// house is about three screens wide.
+// NOTE: the lens's depth range, in world units from the lens: it stands 36
+// to 46 tiles from the floor it looks at by the view's height
+// (src/render/lens.ts), and the house is about three screens wide.
 const LENS_NEAR = 4
 const LENS_FAR = 200
 const TRACER_RADIUS = 0.05

@@ -18,6 +18,7 @@ import {
   ZOMBIE_KNOCKBACK_SPEED,
   ZOMBIE_MAX_HP,
 } from '../../shared/constants'
+import { RIGHT_ON_SCREEN } from '../../test/lensTesting'
 import {
   NORMAL_BITE_GRACE,
   playingModel,
@@ -29,7 +30,6 @@ import {
   FRAME_MS,
   MUZZLE_X,
   RESTART_GRACE_TICKS,
-  RIGHT_ON_SCREEN,
   holdFire,
   openLobbyByKey,
   releaseFire,

@@ -6,12 +6,12 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { STICK_RADIUS_PX } from '../../shared/constants'
+import { nearly } from '../../test/lensTesting'
 import { playingModel } from '../../test/model.fixture'
 import {
   APPLICATION,
   FRAME_MS,
   WIDE_SURFACE,
-  nearly,
   ticks,
   touchDown,
   touchMove,

@@ -17,6 +17,7 @@ import {
   MOUSE_LEAN_SHARE,
   STICK_RADIUS_PX,
 } from '../../shared/constants'
+import { floorSeenOf } from '../../test/lensTesting'
 import { DISTANT_SPAWN, withKeys } from '../../test/model.fixture'
 import {
   APPLICATION,
@@ -38,7 +39,11 @@ import {
   worldToView,
   worldWindowOf,
 } from '../camera'
-import { floorToScreenDirection, screenToFloorDirection } from '../lens'
+import {
+  floorRowsSeen,
+  floorToScreenDirection,
+  screenToFloorDirection,
+} from '../lens'
 import {
   LANDSCAPE_MAX_WIDTH,
   LANDSCAPE_SCREEN,
@@ -248,7 +253,9 @@ describe('the landscape phone screen', () => {
         expect(screenOf(desktop)).toEqual(LANDSCAPE_SCREEN)
         expect(cameraOf(desktop)).toEqual({
           x: Math.min(player.x - 160, bounds.right - 320),
-          y: Math.min(player.y - 90, bounds.bottom - 180),
+          y: Math.round(
+            Math.min(player.y, bounds.bottom - floorRowsSeen(180).below) - 90,
+          ),
           width: 320,
           height: 180,
           scale: 1,
@@ -265,39 +272,45 @@ describe('the portrait camera', () => {
     const { bounds } = levelOf(fightingInPortrait)
     const cameraAt = (x: number) =>
       cameraOf(standingAt(fightingInPortrait, x, 120))
+    const rowY = cameraAt(160).y
     expect(cameraAt(20)).toEqual({
       x: 0,
-      y: 40,
+      y: rowY,
       width: 120,
       height: 160,
       scale: 1,
       left: 0,
       top: 0,
     })
-    expect(cameraAt(160)).toMatchObject({ x: 100, y: 40 })
+    expect(cameraAt(160)).toMatchObject({ x: 100 })
     expect(cameraAt(bounds.right - 20)).toMatchObject({
       x: bounds.right - 120,
-      y: 40,
+      y: rowY,
     })
-    expect(cameraOf(standingAt(fightingInPortrait, 160, 10))).toMatchObject({
-      y: 0,
-    })
+    // NOTE: at the top and front walls, the lens shows the wall's row at
+    // the view's edge, to the rounding of a whole pixel.
     expect(
-      cameraOf(standingAt(fightingInPortrait, 160, bounds.bottom - 10)),
-    ).toMatchObject({ y: bounds.bottom - 160 })
+      floorSeenOf(cameraOf(standingAt(fightingInPortrait, 160, 10))).top,
+    ).toBeCloseTo(bounds.top, -0.5)
+    expect(
+      floorSeenOf(
+        cameraOf(standingAt(fightingInPortrait, 160, bounds.bottom - 10)),
+      ).bottom,
+    ).toBeCloseTo(bounds.bottom, -0.5)
     Array.forEach([0, 40, 90, 200, 260, 320, 360], x => {
       Array.forEach([0, 60, 120, 180, 220], y => {
         const camera = cameraOf(standingAt(fightingInPortrait, x, y))
+        const seen = floorSeenOf(camera)
         expect(camera.x).toBeGreaterThanOrEqual(bounds.left)
         expect(camera.x + camera.width).toBeLessThanOrEqual(bounds.right)
-        expect(camera.y).toBeGreaterThanOrEqual(bounds.top)
-        expect(camera.y + camera.height).toBeLessThanOrEqual(bounds.bottom)
+        expect(seen.top).toBeGreaterThanOrEqual(bounds.top - 1)
+        expect(seen.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
       })
     })
   })
 
   test('keeps the player in the middle of the window between the walls', () => {
-    const fighting = standingAt(fightingInPortrait, 151, 90)
+    const fighting = standingAt(fightingInPortrait, 151, 120)
     const onWindow = worldToView(cameraOf(fighting), focusOf(fighting).player)
     expect(Math.abs(onWindow.x - 120 / 2)).toBeLessThanOrEqual(0.5)
     expect(Math.abs(onWindow.y - 160 / 2)).toBeLessThanOrEqual(0.5)
@@ -312,25 +325,27 @@ describe('the portrait camera', () => {
   test('on a phone on its side, follows the player and stops at the walls', () => {
     const cameraAt = (x: number, y: number) =>
       cameraOf(standingAt(fightingInLandscape, x, y))
+    const rowY = cameraAt(160, 90).y
     expect(cameraAt(20, 90)).toEqual({
       x: 0,
-      y: 23,
+      y: rowY,
       width: 291,
       height: 135,
       scale: 1,
       left: 0,
       top: 0,
     })
-    expect(cameraAt(160, 90)).toMatchObject({ x: 15, y: 23 })
+    expect(cameraAt(160, 90)).toMatchObject({ x: 15 })
     const { bounds } = levelOf(fightingInLandscape)
-    expect(cameraAt(bounds.right - 20, bounds.bottom - 10)).toMatchObject({
-      x: bounds.right - 291,
-      y: bounds.bottom - 135,
-    })
-    expect(cameraAt(10, 10)).toMatchObject({ x: 0, y: 0 })
+    const atCorner = cameraAt(bounds.right - 20, bounds.bottom - 10)
+    expect(atCorner.x).toBe(bounds.right - 291)
+    expect(floorSeenOf(atCorner).bottom).toBeCloseTo(bounds.bottom, -0.5)
+    const atTop = cameraAt(10, 10)
+    expect(atTop.x).toBe(0)
+    expect(floorSeenOf(atTop).top).toBeCloseTo(bounds.top, -0.5)
     expect(
       screenCameraOf(standingAt(fightingInLandscape, 160, 90)),
-    ).toMatchObject({ x: 15, y: 23, scale: 4 / 3, left: 0, top: 0 })
+    ).toMatchObject({ x: 15, y: rowY, scale: 4 / 3, left: 0, top: 0 })
   })
 
   test('on a phone on its side, reaches the kitchen once it opens and stays in its walls', () => {
@@ -338,18 +353,21 @@ describe('the portrait camera', () => {
       level: level => openExitIn(level, 'Kitchen'),
     })
     const { bounds } = levelOf(kitchen)
-    expect(cameraOf(standingAt(fightingInLandscape, 40, 10)).y).toBe(0)
-    expect(cameraOf(standingAt(kitchen, 40, bounds.top + 10))).toMatchObject({
-      x: 0,
-      y: bounds.top,
-    })
+    const shutTop = levelOf(fightingInLandscape).bounds.top
+    expect(
+      floorSeenOf(cameraOf(standingAt(fightingInLandscape, 40, 10))).top,
+    ).toBeCloseTo(shutTop, -0.5)
+    const atKitchenTop = cameraOf(standingAt(kitchen, 40, bounds.top + 10))
+    expect(atKitchenTop.x).toBe(0)
+    expect(floorSeenOf(atKitchenTop).top).toBeCloseTo(bounds.top, -0.5)
     Array.forEach([bounds.left, 100, 220, bounds.right], x => {
       Array.forEach([bounds.top, -100, 0, 90, bounds.bottom], y => {
         const camera = cameraOf(standingAt(kitchen, x, y))
         expect(camera.x).toBeGreaterThanOrEqual(bounds.left)
+        const seen = floorSeenOf(camera)
         expect(camera.x + camera.width).toBeLessThanOrEqual(bounds.right)
-        expect(camera.y).toBeGreaterThanOrEqual(bounds.top)
-        expect(camera.y + camera.height).toBeLessThanOrEqual(bounds.bottom)
+        expect(seen.top).toBeGreaterThanOrEqual(bounds.top - 1)
+        expect(seen.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
       })
     })
   })
@@ -596,7 +614,7 @@ describe('the hint band on a zoomed phone', () => {
   test('moves away from the player where the player is on the screen, not in the room', () => {
     const at = (base: Model) =>
       moveHintBand(
-        modifyFields(standingAt(base, 160, 60), { hintBand: () => 'Top' }),
+        modifyFields(standingAt(base, 160, 80), { hintBand: () => 'Top' }),
       ).hintBand
     expect(
       at(

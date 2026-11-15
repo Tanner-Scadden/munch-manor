@@ -6,9 +6,10 @@
 // marker sits on what it marks and up on a stick walks up the screen.
 //
 // The camera looks down at PITCH, turned YAW off north, through a slight
-// perspective lens LENS_DISTANCE world units from the floor point at the
-// view's middle. A game pixel on the floor there is about one game pixel on
-// the screen, as it was with the flat camera; nearer the lens things grow a
+// perspective lens that sees FIELD_OF_VIEW from the view's top to its
+// bottom, standing as far from the floor point at the view's middle as
+// that takes. A game pixel on the floor there is one game pixel on the
+// screen, as it was with the flat camera; nearer the lens things grow a
 // little, and tall things lean out toward the screen's edges.
 //
 // NOTE: it runs per entity per frame, so it is plain scalar math. lensOf
@@ -27,15 +28,19 @@ import { PITCH, STRETCH, UNIT, type Vec3 } from './iso/space'
 // (owner's pick, 2026-11-15: 12 degrees tipped it too far, 5 by shots).
 export const YAW = (5 * Math.PI) / 180
 
-// NOTE: how far the lens stands from the floor at the view's middle, in
-// world units (tiles). A game pixel there is a game pixel on the screen, so
-// the lens's focal length is this many tiles of game pixels. At 36 tiles
-// the desktop's 180 rows see about 28 degrees from top to bottom: enough
-// for tall things to lean at the edges, not so much that the room bends.
-const LENS_DISTANCE = 36
+// NOTE: what the lens sees from the view's top to its bottom, the same on
+// every layout: enough for tall things to lean at the edges, not so much
+// that the room bends. A fixed distance instead let a phone held upright,
+// whose view is taller, see 35 degrees to the desktop's 28 and read more
+// tilted (owner, 2026-11-15).
+const FIELD_OF_VIEW = (28 * Math.PI) / 180
 
-// NOTE: the focal length in game pixels.
-const FOCAL_PX = LENS_DISTANCE * TILE_SIZE
+// NOTE: the focal length in game pixels for a view this many rows tall: a
+// game pixel at the view's middle stays a game pixel on the screen, so the
+// lens stands this far off in game pixels (36 tiles on the desktop's 180
+// rows, 46 on a phone held upright).
+const focalFor = (rows: number): number =>
+  rows / 2 / Math.tan(FIELD_OF_VIEW / 2)
 
 // NOTE: from the floor toward the lens, and the screen's right and up in
 // the world: the right lies flat on the floor, the up leans back with the
@@ -96,10 +101,12 @@ const buildLens = (frame: LensFrame): Lens => {
   const { x, y, width, height, scale, left, top } = frame
   const lookX = (x + width / 2) * PER_X
   const lookZ = (y + height / 2) * PER_Y
-  const eyeX = lookX + TOWARD_X * LENS_DISTANCE
-  const eyeY = TOWARD_Y * LENS_DISTANCE
-  const eyeZ = lookZ + TOWARD_Z * LENS_DISTANCE
-  const focal = FOCAL_PX * scale
+  const focalPx = focalFor(height)
+  const distance = focalPx / TILE_SIZE
+  const eyeX = lookX + TOWARD_X * distance
+  const eyeY = TOWARD_Y * distance
+  const eyeZ = lookZ + TOWARD_Z * distance
+  const focal = focalPx * scale
   const middleX = left + (scale * width) / 2
   const middleY = top + (scale * height) / 2
 
@@ -222,4 +229,38 @@ export const screenToFloorDirection = (direction: Vector): Vector => {
         x: keptPlaces((floorX * length) / floorLength),
         y: keptPlaces((floorY * length) / floorLength),
       }
+}
+
+// FLOOR SEEN
+
+// NOTE: how many rows of the floor the lens shows above and below the
+// view's middle, for a view this many rows tall: more above, where the
+// floor is far off and small, and fewer below, where it is near and big.
+// The lens looks the same everywhere on the map, so it rests on the height
+// alone, and the camera stops at a level's edges by it.
+export type FloorRowsSeen = Readonly<{ above: number; below: number }>
+
+const seenByRows = new Map<number, FloorRowsSeen>()
+
+export const floorRowsSeen = (rows: number): FloorRowsSeen => {
+  const known = seenByRows.get(rows)
+  if (known !== undefined) {
+    return known
+  }
+  const lens = buildLens({
+    x: 0,
+    y: 0,
+    width: rows,
+    height: rows,
+    scale: 1,
+    left: 0,
+    top: 0,
+  })
+  const middle = rows / 2
+  const at = { x: 0, y: 0 }
+  const top = lens.unprojectInto(middle, 0, at).y
+  const bottom = lens.unprojectInto(middle, rows, at).y
+  const seen = { above: middle - top, below: bottom - middle }
+  seenByRows.set(rows, seen)
+  return seen
 }
