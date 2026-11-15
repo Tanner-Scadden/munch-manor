@@ -190,6 +190,9 @@ const worldElementClass = () =>
       )
       // NOTE: the audits wait for it before they take a picture.
       this.dataset['drawn'] = 'true'
+      // NOTE: the quality tier the world draws at (quality.ts), for the
+      // audits and a look in the page's inspector.
+      this.dataset['quality'] = this.scene.value.tier
       // NOTE: the splash waits for this: the world drawn with every sprite
       // it asked for (src/app/boot.ts).
       if (this.scene.value.isSettled) {

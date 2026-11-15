@@ -500,6 +500,10 @@ export const HarnessConfig = Schema.Struct({
   // Lit sprites without their normal maps, to compare (the renderer reads it
   // off the address itself: src/render/iso/billboards.ts)
   flat: Flag,
+  // The 3D world's quality tier pinned (src/render/iso/quality.ts, which
+  // reads it off the address itself); automation is pinned at Full anyway,
+  // and `auto` lets it adapt
+  quality: Choice(['full', 'light', 'scaled', 'floor', 'auto']),
   // The video tool (tools/video): ticks only when it asks, logs audio
   director: Flag,
 })

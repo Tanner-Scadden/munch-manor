@@ -145,6 +145,11 @@ export const standingPointOf = (
 
 // THE CANVAS'S PIXELS
 
+// NOTE: the steps that keep a game pixel a whole number of canvas pixels:
+// the whole numbers that divide it, smallest first.
+const stepsOf = (whole: number): ReadonlyArray<number> =>
+  Array.filter(Array.range(1, whole), step => Number.isInteger(whole / step))
+
 // NOTE: how many device pixels each canvas pixel covers, across and down,
 // for a game pixel of this many device pixels. The world is lit and drawn at
 // about one canvas pixel per CSS pixel, not the device's full ratio: a 3x
@@ -152,19 +157,49 @@ export const standingPointOf = (
 // frames (owner, 2026-11-14). The step is the largest whole number up to the
 // ratio that divides the game pixel, so a game pixel is still a whole number
 // of canvas pixels and each canvas pixel a square of device pixels: the art
-// comes out the same, and only the light's gradients are coarser.
+// comes out the same, and only the light's gradients are coarser. A game
+// pixel of 5 or 7 device pixels has no such step but 1, which drew the world
+// at the device's full resolution, up to nine times the pixels: at a ratio
+// of 2 or more it takes the smallest step over 1 instead, a canvas pixel to
+// the game pixel for a prime.
 export const canvasStepOf = ({
   devicePerGamePixel,
   ratio,
 }: Readonly<{ devicePerGamePixel: number; ratio: number }>): number => {
   const whole = Math.max(1, Math.round(devicePerGamePixel))
-  const most = Math.max(1, Math.min(whole, Math.floor(ratio)))
-  return Option.getOrElse(
-    Array.findFirst(Array.reverse(Array.range(1, most)), step =>
-      Number.isInteger(whole / step),
-    ),
+  const steps = stepsOf(whole)
+  const most = Math.max(1, Math.floor(ratio))
+  const step = Option.getOrElse(
+    Array.findLast(steps, candidate => candidate <= most),
     () => 1,
   )
+  return step === 1 && most >= 2
+    ? Option.getOrElse(
+        Array.findFirst(steps, candidate => candidate > 1),
+        () => 1,
+      )
+    : step
+}
+
+// NOTE: the step for a quality tier that draws at most a few canvas pixels
+// to a game pixel (src/render/iso/quality.ts): the largest whole step that
+// still leaves at least that many, or a canvas pixel per game pixel where a
+// game pixel is that small already, and never finer than `canvasStepOf`.
+export const scaledStepOf = ({
+  devicePerGamePixel,
+  ratio,
+  perGamePixel,
+}: Readonly<{
+  devicePerGamePixel: number
+  ratio: number
+  perGamePixel: number
+}>): number => {
+  const whole = Math.max(1, Math.round(devicePerGamePixel))
+  const scaled = Option.getOrElse(
+    Array.findLast(stepsOf(whole), step => whole / step >= perGamePixel),
+    () => 1,
+  )
+  return Math.max(scaled, canvasStepOf({ devicePerGamePixel, ratio }))
 }
 
 // NOTE: how tall the wall on a tile is, 0 for no wall.

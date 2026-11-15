@@ -39,7 +39,7 @@ import {
   SphereGeometry,
   View3D,
 } from '@pixi/3d'
-import { BloomEffect, ToonMaterial } from '@pixi/3d/extras'
+import { ToonMaterial } from '@pixi/3d/extras'
 
 import type { Model } from '../../app/model'
 import { FRAME_ROWS } from '../../art/appearance'
@@ -112,16 +112,12 @@ import {
   pickupRingOf,
   pickupSpinOf,
 } from './powerups'
+import type { QualityTier } from './quality'
+import { WorldQuality } from './qualityControl'
 import { ShadowWatch } from './shadowWatch'
 import { type Chandelier, chandelierOf, isChandelierSprite } from './showpieces'
 import { SoupLayer } from './soupLayer'
-import {
-  OVERHEAD_FOOT_PX,
-  UNIT,
-  canvasStepOf,
-  standingPointOf,
-  zOf,
-} from './space'
+import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space'
 import { FAR_KEY, stormKeyOf, stormOf, stormTilesOf } from './storm'
 import { Textures, colorOf } from './textures'
 import { VoxelBatch, newReach } from './voxels'
@@ -315,16 +311,19 @@ export class IsoScene {
   // NOTE: the Munchopedia's plinths, drawn with this renderer (plinth.ts),
   // built at the first one asked for.
   private plinth: PlinthStage | undefined
+  // NOTE: the quality tier (shadows, bloom, render scale) picked from this
+  // device's own frame times (qualityControl.ts).
+  private readonly quality: WorldQuality
 
   constructor(app: Application, onLoaded: () => void) {
     this.app = app
     this.textures = new Textures(app, onLoaded)
+    this.quality = new WorldQuality(app)
     this.view = new View3D({
       autoResize: true,
-      shadowQuality: 'high',
       toneMapping: 'none',
       environment: { skyColor: 0x9db4ff, groundColor: 0x3a2a30, intensity: 0 },
-      passes: [new BloomEffect({ threshold: 2, intensity: 1.1, radius: 0.6 })],
+      ...this.quality.viewOptions,
     })
     app.stage.addChild(this.view)
     const { camera, root } = this.view
@@ -388,6 +387,7 @@ export class IsoScene {
     options: Readonly<{ isStill: boolean }>,
   ): void {
     const { model, strata, camera, shake } = frame
+    const atMs = this.quality.begin()
     if (frame.preload !== this.lastPreload) {
       this.lastPreload = frame.preload
       Array.forEach(frame.preload, src => {
@@ -403,7 +403,7 @@ export class IsoScene {
     const ratio = window.devicePixelRatio
     const devicePerGamePixel = (size.width * ratio) / Math.max(1, camera.width)
     const step = IsoLens.match(frame.lens, {
-      Play: () => canvasStepOf({ devicePerGamePixel, ratio }),
+      Play: () => this.quality.playStepOf({ devicePerGamePixel, ratio }),
       Diorama: () => dioramaStepOf(devicePerGamePixel),
     })
     const resolution = ratio / step
@@ -421,8 +421,13 @@ export class IsoScene {
       this.app.renderer.resolution !== resolution
     ) {
       this.app.renderer.resize(width, height, resolution)
+      this.quality.hold(atMs)
     }
+    const wasBuilt = this.built
     const built = this.builtFor(standingLevelOf(levelOf(model)))
+    if (built !== wasBuilt) {
+      this.quality.hold(atMs)
+    }
     // NOTE: the floor is painted again once what it waits on has loaded,
     // not as each file comes in: a first visit loads a few dozen, and
     // painting the whole floor for each held the splash in a hitch apiece.
@@ -768,6 +773,12 @@ export class IsoScene {
     this.drawTracers(model)
 
     this.app.render()
+    this.quality.end(frame, this.view)
+  }
+
+  // NOTE: the tier the world draws at, for the page's `data-quality`.
+  get tier(): QualityTier {
+    return this.quality.tier
   }
 
   // NOTE: what stands as its carved sprites, each part in front of the
@@ -1109,6 +1120,7 @@ export class IsoScene {
   }
 
   destroy(): void {
+    this.quality.destroy()
     this.plinth?.destroy()
     this.dropLevel()
     this.voxels.destroy()

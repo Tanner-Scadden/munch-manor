@@ -238,7 +238,9 @@ export const measureScenario: {
       }
       const page = yield* desktop(browser)
       const cdp = yield* attempt(() => page.context().newCDPSession(page))
-      yield* attempt(() => page.goto(base + scenario.q + '&instrument'))
+      yield* attempt(() =>
+        page.goto(base + scenario.q + '&instrument&quality=full'),
+      )
       yield* wait(300)
       let isDone = false
       yield* scenario.warm
