@@ -9,6 +9,7 @@ import type { Model } from '../../app/model'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { Camera } from '../camera'
 import type { Drawable } from '../depth'
+import type { IsoLens } from './diorama'
 
 // NOTE: the world's three strata kept apart: what lies on the floor, what
 // stands up at its feet, and what floats over both. In the cellar's dark a
@@ -23,6 +24,8 @@ export type IsoFrame = Readonly<{
   model: Model
   strata: WorldStrata
   camera: Camera
+  // NOTE: the game's own camera, or the title's diorama (diorama.ts).
+  lens: IsoLens
   // NOTE: the screen shake, in whole pixels.
   shake: Vector
   // NOTE: sprite sources the run may show soon, loaded ahead.

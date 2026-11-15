@@ -9,7 +9,10 @@ import { Effect, Option, Schedule, pipe } from 'effect'
 import { CustomElement } from 'foldkit'
 
 import { toBrowserError } from '../../shared/describeError'
+import { DIORAMA_FRAME_MS, IsoLens } from './diorama'
 import { type IsoFrame, IsoFrameSchema } from './frame'
+import type { PlinthPicture } from './plinth'
+import type { PlinthPose } from './plinthPose'
 import type { IsoScene } from './scene'
 import { unsupportedNode } from './support'
 
@@ -51,9 +54,40 @@ const worldElementClass = () =>
     }
 
     set frame(next: IsoFrame) {
+      const isDue = this.isDueAt(next.lens)
       this.latest = Option.some(next)
-      this.draw()
+      if (isDue) {
+        this.draw()
+      }
     }
+
+    // NOTE: the title's diorama draws at most DIORAMA_FPS frames a second
+    // by its own clock, so a phone resting on the menu does half the work.
+    // The play camera draws every frame it is handed.
+    private lastDioramaMs = Number.NEGATIVE_INFINITY
+
+    private isDueAt(lens: IsoLens): boolean {
+      return IsoLens.match(lens, {
+        Play: () => {
+          this.lastDioramaMs = Number.NEGATIVE_INFINITY
+          return true
+        },
+        Diorama: ({ clockMs }) => {
+          const since = clockMs - this.lastDioramaMs
+          if (since >= 0 && since < DIORAMA_FRAME_MS) {
+            return false
+          }
+          this.lastDioramaMs = clockMs
+          return true
+        },
+      })
+    }
+
+    // NOTE: the browser's reduced motion setting, read as each frame
+    // draws: the title's diorama then holds still.
+    private readonly reducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    )
 
     connectedCallback(): void {
       this.isOnPage = true
@@ -126,6 +160,17 @@ const worldElementClass = () =>
       return copy
     }
 
+    // NOTE: a plinth's picture drawn with this renderer, so the page keeps
+    // one WebGL context (plinthElement.ts); none before the renderer is in.
+    drawPlinth(
+      pose: PlinthPose,
+      options: Readonly<{ isStill: boolean }>,
+    ): Option.Option<PlinthPicture> {
+      return Option.flatMap(this.scene, scene =>
+        scene.drawPlinth(pose, options),
+      )
+    }
+
     private draw(): void {
       if (Option.isNone(this.scene) || Option.isNone(this.latest)) {
         return
@@ -135,10 +180,14 @@ const worldElementClass = () =>
       // src/render/screen.ts), and before the lens's scale, which stretches
       // the drawn canvas instead.
       const style = getComputedStyle(this)
-      this.scene.value.draw(this.latest.value, {
-        width: lengthOr(style.width, this.clientWidth),
-        height: lengthOr(style.height, this.clientHeight),
-      })
+      this.scene.value.draw(
+        this.latest.value,
+        {
+          width: lengthOr(style.width, this.clientWidth),
+          height: lengthOr(style.height, this.clientHeight),
+        },
+        { isStill: this.reducedMotion.matches },
+      )
       // NOTE: the audits wait for it before they take a picture.
       this.dataset['drawn'] = 'true'
       // NOTE: the splash waits for this: the world drawn with every sprite
@@ -153,6 +202,17 @@ type WorldElement = InstanceType<ReturnType<typeof worldElementClass>>
 
 const isWorldElement = (node: Element | null): node is WorldElement =>
   node !== null && 'snapshot' in node
+
+// NOTE: a plinth's picture, drawn by the world's renderer on the page; none
+// before the renderer is in, or while the sprite loads.
+export const drawPlinthOnWorld = (
+  input: Readonly<{ pose: PlinthPose; isStill: boolean }>,
+): Option.Option<PlinthPicture> => {
+  const world = document.querySelector(TAG)
+  return isWorldElement(world)
+    ? world.drawPlinth(input.pose, { isStill: input.isStill })
+    : Option.none()
+}
 
 // NOTE: the world's frame on the page drawn again and copied, for the dev
 // tools that read its pixels; none before the renderer is in.

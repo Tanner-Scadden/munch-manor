@@ -2,6 +2,7 @@ import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import { SHOP_TILE_ART } from '../../art/shopArt'
+import { plinthElement } from '../../render/iso/plinthElement'
 import { backButtonView } from '../../ui/cornerButtons'
 import { SHOP_GUIDE_NAME } from '../../world/names'
 import type { KillCounts, ZombieKind } from '../../world/schema/worldSchema'
@@ -21,12 +22,12 @@ import {
   MUNCHOPEDIA,
   type MunchopediaEntry,
   countLabel,
-  entryFrameAt,
   entryName,
   entryOf,
   firstEntryFrame,
   isDiscovered,
   killsOf,
+  plinthImageAt,
 } from './munchopedia'
 
 // TEXT
@@ -73,6 +74,40 @@ const pictureView = (
         }),
       ]),
   })
+
+// NOTE: a known zombie stands carved in blocks, turning on a lit plinth,
+// drawn by the world's renderer (src/render/iso/plinthElement.ts); Uncle
+// Chunk is lit from below in red, his hero shot. One not met yet stays a
+// flat silhouette.
+const plinthView = (
+  inputs: ViewInputs,
+  kind: ZombieKind,
+  h: MunchopediaViewBuilder,
+): Html => {
+  const plinth = plinthElement.withMessage(h)
+  return h.div(
+    [h.Class('munch-stage munch-stage-plinth')],
+    Option.match(plinthImageAt(kind, inputs.screenMs), {
+      onNone: () => [],
+      onSome: image => [
+        plinth(
+          [
+            h.Key(`plinth-${kind}`),
+            h.Class('munch-plinth'),
+            h.Role('img'),
+            h.AriaLabel(pictureAlt(kind, true)),
+            plinth.Pose({
+              image,
+              clockMs: inputs.screenMs,
+              light: isBoss(kind) ? 'Villain' : 'Candle',
+            }),
+          ],
+          [],
+        ),
+      ],
+    }),
+  )
+}
 
 const pictureAlt = (kind: ZombieKind, isKnown: boolean): string =>
   isKnown
@@ -242,20 +277,20 @@ const entryView = (
       h.AriaLabelledBy(ENTRY_NAME_ID),
     ],
     [
-      h.div(
-        [h.Class('munch-stage')],
-        [
-          pictureView(
-            isKnown
-              ? entryFrameAt(kind, inputs.screenMs)
-              : firstEntryFrame(kind),
-            isKnown,
-            pictureAlt(kind, isKnown),
-            'munch-sprite',
-            h,
+      isKnown
+        ? plinthView(inputs, kind, h)
+        : h.div(
+            [h.Class('munch-stage')],
+            [
+              pictureView(
+                firstEntryFrame(kind),
+                false,
+                pictureAlt(kind, false),
+                'munch-sprite',
+                h,
+              ),
+            ],
           ),
-        ],
-      ),
       h.div(
         [h.Class('munch-facts')],
         [

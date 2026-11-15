@@ -41,6 +41,7 @@ import { quietLayer as quietInstallPrompt } from '@game/platform/install'
 import { layer as PlayerStoreLayer } from '@game/platform/store'
 import { worldCameraFor } from '@game/render/camera'
 import { defineWorldElement, snapshotWorld } from '@game/render/iso/element'
+import { definePlinthElement } from '@game/render/iso/plinthElement'
 import { screenOf } from '@game/render/screen'
 import { RATTLES_BOX, START_LEVEL } from '@game/world/level/arena'
 
@@ -404,6 +405,7 @@ const recordUpdate = ({
 }
 
 defineWorldElement()
+definePlinthElement()
 
 // NOTE: `nohud` hides what stands over the world (harness.css), per scene.
 const startScene = () => {

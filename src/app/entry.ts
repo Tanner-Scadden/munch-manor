@@ -6,6 +6,7 @@ import { Program, Runtime } from 'foldkit'
 
 import { preventPageZoom } from '../input/noZoom'
 import { defineWorldElement } from '../render/iso/element'
+import { definePlinthElement } from '../render/iso/plinthElement'
 import { canDrawWorld, unsupportedNode } from '../render/iso/support'
 import { layer } from './block'
 import { ApplicationBlock } from './definition'
@@ -44,6 +45,7 @@ const showUnsupported = (): void => {
 
 if (canDrawWorld()) {
   defineWorldElement()
+  definePlinthElement()
   Runtime.run(program)
 } else {
   showUnsupported()

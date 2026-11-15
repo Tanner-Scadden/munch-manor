@@ -151,72 +151,80 @@ export type EntryFrame = Readonly<{
   height: number
 }>
 
+const spriteImageOf = (
+  sprite: ReadonlyArray<Canvas.Shape>,
+): Option.Option<Canvas.Image> =>
+  Option.flatMap(Array.head(sprite), shape =>
+    shape._tag === 'Image' ? Option.some(shape) : Option.none(),
+  )
+
 const imageOf = (
   sprite: ReadonlyArray<Canvas.Shape>,
 ): Option.Option<EntryFrame> =>
-  pipe(
-    Array.head(sprite),
-    Option.flatMap(shape =>
-      shape._tag === 'Image'
-        ? Option.some({
-            src: standaloneSource(shape),
-            width: shape.width,
-            height: shape.height,
-          })
-        : Option.none(),
-    ),
-  )
+  Option.map(spriteImageOf(sprite), shape => ({
+    src: standaloneSource(shape),
+    width: shape.width,
+    height: shape.height,
+  }))
 
 // NOTE: an entry walks through every wear stage in turn, a few strides each,
 // facing right like the new zombie card.
 const STRIDES_PER_STAGE = 4
 
-const strideImage = (stage: WornFrames, stride: number) =>
-  imageOf(
-    Option.getOrElse(Array.get(stage.walk, stride % stage.walk.length), () =>
-      Array.headNonEmpty(stage.walk),
-    ).Normal.Right,
-  )
+const strideSprite = (stage: WornFrames, stride: number) =>
+  Option.getOrElse(Array.get(stage.walk, stride % stage.walk.length), () =>
+    Array.headNonEmpty(stage.walk),
+  ).Normal.Right
 
-const entryFramesOf = (kind: ZombieKind): ReadonlyArray<EntryFrame> =>
-  pipe(
-    ZOMBIE_SPRITES[kind].stages,
-    Array.flatMap(stage =>
-      Array.makeBy(STRIDES_PER_STAGE, stride => strideImage(stage, stride)),
-    ),
-    Array.getSomes,
-  )
+const firstEntryFrames = new Map<ZombieKind, Option.Option<EntryFrame>>()
 
-const entryFramesByKind = new Map<ZombieKind, ReadonlyArray<EntryFrame>>()
-
-// NOTE: the pictures are <img> elements, which cannot crop a sprite out of
-// the prebuilt atlas, so each frame gets an image of its own. They are built
-// the first time the Munchopedia shows the kind, not as the game loads.
-const entryFrames = (kind: ZombieKind): ReadonlyArray<EntryFrame> => {
-  const cached = entryFramesByKind.get(kind)
+// NOTE: an unknown entry's silhouette and a tile's picture: the first
+// stride, an <img>, which cannot crop a sprite out of the prebuilt atlas, so
+// it gets an image of its own, built the first time the Munchopedia shows
+// the kind, not as the game loads.
+export const firstEntryFrame = (
+  kind: ZombieKind,
+): Option.Option<EntryFrame> => {
+  const cached = firstEntryFrames.get(kind)
   if (cached !== undefined) {
     return cached
   }
-  const frames = entryFramesOf(kind)
-  entryFramesByKind.set(kind, frames)
-  return frames
+  const frame = imageOf(
+    strideSprite(Array.headNonEmpty(ZOMBIE_SPRITES[kind].stages), 0),
+  )
+  firstEntryFrames.set(kind, frame)
+  return frame
 }
 
 const ENTRY_STRIDE_MS = 200
 
-export const entryFrameAt: {
-  (screenMs: number): (kind: ZombieKind) => Option.Option<EntryFrame>
-  (kind: ZombieKind, screenMs: number): Option.Option<EntryFrame>
+// NOTE: a known entry walks through every wear stage in turn, a few strides
+// each, facing right like the new zombie card, carved into blocks on its
+// plinth by the world's renderer (src/render/iso/plinth.ts).
+const plinthImagesOf = (kind: ZombieKind): ReadonlyArray<Canvas.Image> =>
+  pipe(
+    ZOMBIE_SPRITES[kind].stages,
+    Array.flatMap(stage =>
+      Array.makeBy(STRIDES_PER_STAGE, stride =>
+        spriteImageOf(strideSprite(stage, stride)),
+      ),
+    ),
+    Array.getSomes,
+  )
+
+const plinthImagesByKind = new Map<ZombieKind, ReadonlyArray<Canvas.Image>>()
+
+export const plinthImageAt: {
+  (screenMs: number): (kind: ZombieKind) => Option.Option<Canvas.Image>
+  (kind: ZombieKind, screenMs: number): Option.Option<Canvas.Image>
 } = Function.dual(
   2,
-  (kind: ZombieKind, screenMs: number): Option.Option<EntryFrame> => {
-    const frames = entryFrames(kind)
+  (kind: ZombieKind, screenMs: number): Option.Option<Canvas.Image> => {
+    const images = plinthImagesByKind.get(kind) ?? plinthImagesOf(kind)
+    plinthImagesByKind.set(kind, images)
     return Array.get(
-      frames,
-      Math.floor(screenMs / ENTRY_STRIDE_MS) % Math.max(1, frames.length),
+      images,
+      Math.floor(screenMs / ENTRY_STRIDE_MS) % Math.max(1, images.length),
     )
   },
 )
-
-export const firstEntryFrame = (kind: ZombieKind): Option.Option<EntryFrame> =>
-  Array.head(entryFrames(kind))
