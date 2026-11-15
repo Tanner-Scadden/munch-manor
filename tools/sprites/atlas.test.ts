@@ -9,7 +9,6 @@ import { sceneShapes } from '../../src/app/layers'
 import { type Model, Phase } from '../../src/app/model'
 import { initialModel } from '../../src/app/pureApp'
 import { standInKeyOf } from '../../src/art/spriteAtlas'
-import { occludersOf } from '../../src/render/occluders'
 import { roomShapes } from '../../src/render/room/room'
 import { fighting, withActors } from '../../src/test/model.fixture'
 import { SURFACE, openFloorSpot, zombieOf } from '../../src/test/testing'
@@ -49,11 +48,7 @@ const keysDrawnIn = (model: Model): ReadonlyArray<string> => {
   const level = levelOf(model)
   return Array.getSomes(
     Array.map(
-      imagesIn([
-        ...roomShapes(level),
-        ...Array.flatMap(occludersOf(level), ({ shapes }) => shapes),
-        ...sceneShapes(model),
-      ]),
+      imagesIn([...roomShapes(level), ...sceneShapes(model)]),
       ({ src }) => standInKeyOf(src),
     ),
   )

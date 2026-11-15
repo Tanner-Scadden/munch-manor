@@ -35,10 +35,24 @@ const WALL_HEIGHT = 1.4
 // tiles of thickness, stands between the lens and whoever is in that room,
 // so it is built low for good, as the 2D game drew a room's front wall. It
 // never moves: walls that dropped as the player walked by were not liked
-// (owner, 2026-11-14). The side walls and the house's back walls stand tall.
+// (owner, 2026-11-14). The side walls and the house's back walls stand tall,
+// a side wall all the way down past its doorways: the floor north of a side
+// wall's tile under a doorway is the doorway, wall again a tile or two up,
+// not a room, so that tile is no front wall and the side wall keeps one
+// height with one top where two rooms' walls meet.
 const FRONT_WALL_HEIGHT = 0.4
 const FRONT_WALL_DEPTH = 2
+// NOTE: the most rows a doorway in a side wall opens (the ports and the
+// spawn doors are two). A room's floor runs far longer north of its front
+// wall.
+const DOORWAY_ROWS = 2
 const OUTSIDE = ','
+
+const symbolAt = (
+  tiles: ReadonlyArray<string>,
+  row: number,
+  column: number,
+): Option.Option<string> => String.charAt(tiles[row] ?? '', column)
 
 export const isFrontWallAt = ({
   tiles,
@@ -50,11 +64,39 @@ export const isFrontWallAt = ({
   column: number
 }>): boolean => {
   for (let step = 1; step <= FRONT_WALL_DEPTH; step += 1) {
-    const north = String.charAt(tiles[row - step] ?? '', column)
+    const north = symbolAt(tiles, row - step, column)
     if (north._tag === 'None' || north.value === OUTSIDE) {
       return false
     }
     if (north.value !== WALL_SYMBOL) {
+      return !(
+        isSideWallAt(tiles, row, column) &&
+        isDoorwayAbove(tiles, row - step, column)
+      )
+    }
+  }
+  return false
+}
+
+// NOTE: a side wall's tile has no wall on one side of it, east or west,
+// where a front wall runs on across the house with wall on both.
+const isSideWallAt = (
+  tiles: ReadonlyArray<string>,
+  row: number,
+  column: number,
+): boolean =>
+  !Option.contains(symbolAt(tiles, row, column - 1), WALL_SYMBOL) ||
+  !Option.contains(symbolAt(tiles, row, column + 1), WALL_SYMBOL)
+
+// NOTE: whether the open tiles from `row` north are a doorway: wall again
+// within a doorway's rows.
+const isDoorwayAbove = (
+  tiles: ReadonlyArray<string>,
+  row: number,
+  column: number,
+): boolean => {
+  for (let step = 1; step <= DOORWAY_ROWS; step += 1) {
+    if (Option.contains(symbolAt(tiles, row - step, column), WALL_SYMBOL)) {
       return true
     }
   }

@@ -139,8 +139,7 @@ const TRACER_RADIUS = 0.05
 // NOTE: what stands carved (voxels.ts), by its rank, and the most blocks
 // deep each is carved: a body as deep as it is wide, up to a big zombie's
 // belly; the house's pieces, the traps, and the pickups flatter, so a wide
-// table or a barricade does not swell into a ball. A wall's face over a
-// doorway stays flat.
+// table or a barricade does not swell into a ball.
 const MOST_DEPTH: Readonly<Partial<Record<Drawable['rank'], number>>> = {
   Zombie: 16,
   Player: 16,

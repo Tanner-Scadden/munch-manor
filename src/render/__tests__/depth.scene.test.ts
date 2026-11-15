@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Option } from 'effect'
 import { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
@@ -13,12 +13,11 @@ import {
   MANOR,
   PARLOUR,
   RATTLES_BOX,
-  levelOf,
   openExit,
 } from '../../world/level/arena'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { type Drawable, depthSortedShapes } from '../depth'
-import { isBehindWall, occludersOf } from '../occluders'
+import { doorwaysOf, isBehindWall } from '../doorways'
 import { playerShapes } from '../playerView'
 import { zombieHealthBarShapes, zombieShapes } from '../zombieView'
 
@@ -85,19 +84,6 @@ const trunkIndex = (current: Model): number =>
 
 const NORTH_DOOR_X = MANOR.doors.North.center.x
 
-const lintelIndex = (current: Model): number =>
-  pipe(
-    occludersOf(levelOf(current)),
-    Array.findFirst(
-      ({ left, right }) => NORTH_DOOR_X >= left && NORTH_DOOR_X < right,
-    ),
-    Option.flatMap(({ shapes }) => Array.head(shapes)),
-    Option.match({
-      onNone: () => -1,
-      onSome: shape => indexOf(worldShapesOf(current), shape),
-    }),
-  )
-
 const hasHealthBar = (current: Model, zombie: Zombie): boolean =>
   Option.match(Array.head(zombieHealthBarShapes(zombie)), {
     onNone: () => false,
@@ -155,16 +141,6 @@ describe('Depth sort', () => {
     expect(zombieIndex(current, behindTrunk)).toBeLessThan(trunk)
   })
 
-  test('a zombie in the north doorway draws under the lintel and one inside draws over it', () => {
-    const inDoorway = zombieOf('Shambler', 1, NORTH_DOOR_X - 4, 8)
-    const inside = zombieOf('Shambler', 2, NORTH_DOOR_X - 16, 26)
-    const current = fightingModel({ x: 160, y: 90 }, [inDoorway, inside])
-    const lintel = lintelIndex(current)
-    expect(lintel).toBeGreaterThanOrEqual(0)
-    expect(zombieIndex(current, inDoorway)).toBeLessThan(lintel)
-    expect(zombieIndex(current, inside)).toBeGreaterThan(lintel)
-  })
-
   test('a hurt zombie behind the lintel shows no bar until it steps in', () => {
     const inDoorway = zombieOf('Tank', 1, NORTH_DOOR_X, 8, {
       hp: 10,
@@ -179,25 +155,20 @@ describe('Depth sort', () => {
     expect(hasHealthBar(current, inside)).toBe(true)
   })
 
-  test('only doorways in a top wall get a lintel, an opened exit included', () => {
-    const spans = (level: Level) =>
-      Array.map(occludersOf(level), ({ floorY, left, right }) => ({
-        floorY,
-        left,
-        right,
-      }))
-    expect(spans(PARLOUR)).toEqual([{ floorY: 20, left: 190, right: 250 }])
+  test('only doorways in a top wall count, an opened exit included', () => {
+    const spans = (level: Level) => doorwaysOf(level)
+    expect(spans(PARLOUR)).toEqual([{ row: 1, first: 21, last: 22 }])
     expect(spans(openExit(PARLOUR, 'Kitchen'))).toEqual([
-      { floorY: 20, left: 40, right: 100 },
-      { floorY: 20, left: 190, right: 250 },
+      { row: 1, first: 6, last: 7 },
+      { row: 1, first: 21, last: 22 },
     ])
     // NOTE: the dining room's north door, cols 27 and 28, and the kitchen's
     // boards and back door once it is open.
-    expect(spans(MANOR)).toEqual([{ floorY: 20, left: 250, right: 310 }])
+    expect(spans(MANOR)).toEqual([{ row: 1, first: 27, last: 28 }])
     expect(spans(openExit(MANOR, 'Kitchen'))).toEqual([
-      { floorY: -130, left: 100, right: 160 },
-      { floorY: 20, left: 40, right: 100 },
-      { floorY: 20, left: 250, right: 310 },
+      { row: -14, first: 12, last: 13 },
+      { row: 1, first: 6, last: 7 },
+      { row: 1, first: 27, last: 28 },
     ])
   })
 

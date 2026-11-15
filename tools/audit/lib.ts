@@ -200,7 +200,7 @@ export const tagOr = (fallback: string) =>
 export const auditTag = tagOr('after')
 
 // NOTE: a variable that holds a list, such as `ONLY=a,b`.
-const listFromEnv = (key: string) =>
+export const listFromEnv = (key: string) =>
   Config.String(key).pipe(Config.map(String.split(',')), Config.option)
 
 const isListed = (

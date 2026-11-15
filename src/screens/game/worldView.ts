@@ -52,6 +52,7 @@ import {
 } from '../../render/camera'
 import { cellarDarkOf } from '../../render/cellarDark'
 import { type Drawable, depthSortedShapes } from '../../render/depth'
+import { isBehindWall } from '../../render/doorways'
 import {
   bulletShapes,
   doorRattleShapes,
@@ -60,7 +61,6 @@ import {
 } from '../../render/effectsView'
 import type { WorldStrata } from '../../render/iso/frame'
 import { kitchenGearGroundShapes } from '../../render/kitchenGearView'
-import { isBehindWall, occludersOf } from '../../render/occluders'
 import {
   type MateModel,
   isLeadArmed,
@@ -242,11 +242,6 @@ const standingDrawables = (
   const level = levelOf(model)
   const drawTrap = trapShapes(level, model.elapsedMs)
   return [
-    ...Array.map(occludersOf(level), ({ floorY, shapes }): Drawable => ({
-      footY: floorY,
-      rank: 'Wall',
-      shapes,
-    })),
     ...tallCoverDrawables(
       level,
       [

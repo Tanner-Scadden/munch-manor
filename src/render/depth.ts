@@ -5,23 +5,15 @@ import type { Canvas } from 'foldkit'
 
 // NOTE: `Glow` is what shines of itself on a body's own plane, a muzzle
 // flash and the knife's slash, drawn after the body it stands with.
-type DepthRank =
-  | 'Wall'
-  | 'Prop'
-  | 'Trap'
-  | 'Pickup'
-  | 'Zombie'
-  | 'Player'
-  | 'Glow'
+type DepthRank = 'Prop' | 'Trap' | 'Pickup' | 'Zombie' | 'Player' | 'Glow'
 
 const RANK_ORDER: Readonly<Record<DepthRank, number>> = {
-  Wall: 0,
-  Prop: 1,
-  Trap: 2,
-  Pickup: 3,
-  Zombie: 4,
-  Player: 5,
-  Glow: 6,
+  Prop: 0,
+  Trap: 1,
+  Pickup: 2,
+  Zombie: 3,
+  Player: 4,
+  Glow: 5,
 }
 
 export type Drawable = Readonly<{

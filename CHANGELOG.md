@@ -10,6 +10,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🌙 Moonlight pours through the windows in dusty shafts that flare when lightning strikes, the library got a stained-glass rose window that splashes colored light across its floor, the chandelier throws a warm cone onto the table, and your flashlight cuts a real beam through the cellar's dark.
 - 👀 Zombie eyes glow in the dark now (Rattles' too), Kaboomer fuses sizzle bright, the kitchen soup glows a sickly green, and pickled hearts glow in jars on the cellar shelf.
 - 📏 A pixel-perfect polish: wave banners sit on a dark plate so they read over the chandelier, Rattles says one thing at a time and keeps out from under your buttons, danger rings and splashes are crisp pixel circles, and Uncle Chunk's flying spit, a burp's shockwave, and the glow under a dare thing show up again.
+- 🧱 The walls line up where rooms meet, no more stumpy bits by the doors, and the doorways zombies shamble through are clean, with no grey fuzz stuck in them.
 
 ## November 14, 2026: The manor in 3D
 
