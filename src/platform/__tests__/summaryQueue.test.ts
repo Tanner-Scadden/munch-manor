@@ -87,7 +87,7 @@ const fakeStore = (
           : Option.some(
               saveOf(
                 modifyFields(asVeteran(initialModel), {
-                  shareStats: () => shareStats,
+                  settings: modifyFields({ shareStats: () => shareStats }),
                 }),
               ),
             ),

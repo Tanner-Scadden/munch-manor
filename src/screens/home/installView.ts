@@ -18,7 +18,7 @@ import { isInstallTileShown } from './home'
 // TILE
 
 const tileLabel = (model: Model): string =>
-  model.installOffer === 'Ready'
+  model.release.installOffer === 'Ready'
     ? 'Install Munch Manor'
     : 'Add to Home Screen: show me how'
 
@@ -37,7 +37,9 @@ export const installTileView: {
           h.Class('home-corner-button home-install'),
           h.DataAttribute('tip', model.homeScreenTip),
           h.AriaLabel(tileLabel(model)),
-          ...(model.installOffer === 'Ready' ? [] : [h.AriaHasPopup('dialog')]),
+          ...(model.release.installOffer === 'Ready'
+            ? []
+            : [h.AriaHasPopup('dialog')]),
           h.OnClick(InstallMessage.ClickedInstallButton(), {
             propagation: 'Stop',
           }),

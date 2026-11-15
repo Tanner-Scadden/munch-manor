@@ -41,7 +41,7 @@ export const botSlotOf: {
 // NOTE: whether this run has bots at its seats: a run started from the
 // lobby with a crew. An online room's run never does.
 export const isBotCrew = (model: Model): boolean =>
-  Array.isReadonlyArrayNonEmpty(model.crewBots)
+  Array.isReadonlyArrayNonEmpty(model.runStart.crewBots)
 
 // NOTE: a crew of people, an online co-op room's: awards, revives, and the
 // co-op missions count only here, never with teammate bots, so a bot never
@@ -53,11 +53,11 @@ export const maybeCrewBotAt: {
   (slot: PlayerSlot): (model: Model) => Option.Option<Bot>
   (model: Model, slot: PlayerSlot): Option.Option<Bot>
 } = Function.dual(2, (model: Model, slot: PlayerSlot): Option.Option<Bot> =>
-  Array.get(model.crewBots, slot - model.localPlayers),
+  Array.get(model.runStart.crewBots, slot - model.localPlayers),
 )
 
 export const crewBotSlots = (model: Model): ReadonlyArray<PlayerSlot> =>
-  Array.map(model.crewBots, (_bot, index) => botSlotOf(model, index))
+  Array.map(model.runStart.crewBots, (_bot, index) => botSlotOf(model, index))
 
 // NOTE: the seats from `firstSlot` on made over as these heroes, in order:
 // their hearts and their gun, as the room seats a lobby's callings.
@@ -118,7 +118,7 @@ export const addBot = (model: Model): Model => {
     return model
   }
   const [afterName, name] = pickFrom(
-    model.cosmeticRngState,
+    model.cosmetics.cosmeticRngState,
     unusedNamesOf(model),
   )
   const [afterHero, calling] = pickFrom(afterName, heroChoicesOf(model))
@@ -128,8 +128,8 @@ export const addBot = (model: Model): Model => {
     look: seatLook(botSlotOf(model, model.home.bots.length)),
   }
   return modifyFields(model, {
-    cosmeticRngState: () => afterHero,
     home: home => modifyFields(home, { bots: bots => Array.append(bots, bot) }),
+    cosmetics: modifyFields({ cosmeticRngState: () => afterHero }),
   })
 }
 

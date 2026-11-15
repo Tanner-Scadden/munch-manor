@@ -195,8 +195,8 @@ export const home: Model = asVeteran(initialModel)
 // NOTE: the home menu once the save has been read, so the menu's buttons are
 // up. A save that was read has been granted its veteran start (0 here).
 export const homeAfterRead: Model = modifyFields(home, {
-  saveStatus: () => 'Read',
   rank: rank => grantedVeteran(rank, 0),
+  saving: modifyFields({ saveStatus: () => 'Read' }),
 })
 
 // NOTE: a returning player on a measured surface, ready to start a run.
@@ -220,14 +220,16 @@ export const newPlayerCardSeen: Model = modifyFields(initialModel, {
 // read.
 export const readyAfterRead: Model = modifyFields(home, {
   maybeSurface: () => Option.some(SURFACE),
-  saveStatus: () => 'Read',
   rank: rank => grantedVeteran(rank, 0),
+  saving: modifyFields({ saveStatus: () => 'Read' }),
 })
 
 // NOTE: the boot splash, still reading the save.
 export const loadingSave: Model = modifyFields(initialModel, {
   maybeSurface: () => Option.some(SURFACE),
-  loading: () => Loading.Loading({ pending: ['Save'] }),
+  saving: modifyFields({
+    loading: () => Loading.Loading({ pending: ['Save'] }),
+  }),
 })
 
 // FIGHTING
@@ -515,7 +517,11 @@ export const inPortrait = (model: Model): Model =>
   })
 
 export const withNewerBuild = (model: Model): Model =>
-  modifyFields(model, { maybeNewerBuild: () => Option.some('newer-build') })
+  modifyFields(model, {
+    release: modifyFields({
+      maybeNewerBuild: () => Option.some('newer-build'),
+    }),
+  })
 
 // THE HOUSE
 

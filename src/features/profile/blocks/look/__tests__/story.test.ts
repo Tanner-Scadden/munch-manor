@@ -379,14 +379,20 @@ describe('Character', () => {
         const rollFrom = (seed: number) =>
           Story.story(
             APPLICATION,
-            Story.given(modifyFields(home, { cosmeticRngState: () => seed })),
+            Story.given(
+              modifyFields(home, {
+                cosmetics: modifyFields({ cosmeticRngState: () => seed }),
+              }),
+            ),
             rollDice(),
           )
         const first = yield* rollFrom(1234)
         const again = yield* rollFrom(1234)
         expect(again.appearance).toEqual(first.appearance)
-        expect(again.cosmeticRngState).toBe(first.cosmeticRngState)
-        expect(first.cosmeticRngState).not.toBe(1234)
+        expect(again.cosmetics.cosmeticRngState).toBe(
+          first.cosmetics.cosmeticRngState,
+        )
+        expect(first.cosmetics.cosmeticRngState).not.toBe(1234)
         expect(first.appearance).not.toEqual(defaultAppearance)
 
         const rolled = yield* Effect.forEach(Array.range(1, 40), rollFrom)

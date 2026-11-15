@@ -62,7 +62,7 @@ const HOME_BUTTON_IDS: Readonly<Record<HomeButton, string>> = {
 }
 
 export const isSupportShown = (model: Model): boolean =>
-  Option.isSome(model.maybeSupportUrl)
+  Option.isSome(model.release.maybeSupportUrl)
 
 // NOTE: the bests badge is a button, and is drawn only once the player has
 // a best on the chosen level or a zombie splatted.
@@ -247,10 +247,11 @@ export const steppedHomeFocus: {
 
 // NOTE: a newer build waits on the home menu only, never mid-run.
 export const isUpdateGiftShown = (model: Model): boolean =>
-  Option.isSome(model.maybeNewerBuild) && isOnHome(model.phase)
+  Option.isSome(model.release.maybeNewerBuild) && isOnHome(model.phase)
 
 const isInstalled = (model: Model): boolean =>
-  model.screenFit === 'Installed' || model.installOffer === 'Installed'
+  model.settings.screenFit === 'Installed' ||
+  model.release.installOffer === 'Installed'
 
 // NOTE: the install tile is for a browser that can put the game on the Home
 // Screen: one that offered Chrome's install prompt, or an iPhone, which can
@@ -258,7 +259,8 @@ const isInstalled = (model: Model): boolean =>
 export const isInstallTileShown = (model: Model): boolean =>
   isOnHome(model.phase) &&
   !isInstalled(model) &&
-  (model.installOffer === 'Ready' || model.screenFit === 'HomeScreen')
+  (model.release.installOffer === 'Ready' ||
+    model.settings.screenFit === 'HomeScreen')
 
 // MODE
 
@@ -383,7 +385,6 @@ const countRun = (
         totalKills: total => total + killTotal(newKills),
         killsByKind: () => killsByKind,
       }),
-    runTally: () => RunTally.Counted({ kills }),
     home: home =>
       modifyFields(home, {
         newEntries: fresh =>
@@ -392,6 +393,7 @@ const countRun = (
             newlyDiscovered(model.bests.killsByKind, killsByKind),
           ),
       }),
+    runGains: modifyFields({ runTally: () => RunTally.Counted({ kills }) }),
   })
   return isWin
     ? withBests(
@@ -424,15 +426,23 @@ export const countRunFrom: {
     if (!isEndScreen(before.phase) && isEndScreen(after.phase)) {
       return countRun(
         after,
-        after.runTally,
+        after.runGains.runTally,
         after.stats.kills,
         hasJustWon(before, after),
         played,
       )
     } else if (isInRun(before.phase) && isOnHome(after.phase)) {
       return modifyFields(
-        countRun(after, before.runTally, before.stats.kills, false, played),
-        { runTally: () => RunTally.Uncounted() },
+        countRun(
+          after,
+          before.runGains.runTally,
+          before.stats.kills,
+          false,
+          played,
+        ),
+        {
+          runGains: modifyFields({ runTally: () => RunTally.Uncounted() }),
+        },
       )
     } else {
       return after

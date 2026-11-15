@@ -11,7 +11,10 @@ import {
   dareCodeOf,
   readBeatLink,
 } from '../../../domain/beatLink'
-import { maybeBeatComparisonOf, shareUrlOf } from '../../../features/end/beatRun'
+import {
+  maybeBeatComparisonOf,
+  shareUrlOf,
+} from '../../../features/end/beatRun'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { FoldLobby } from '../../../features/lobby/steps'
 import { readyModel } from '../../../test/model.fixture'
@@ -101,7 +104,9 @@ describe('the link', () => {
   it('ignores a bad, cut, or other version link', () => {
     const code = Option.getOrElse(dareCodeOf(DARE), () => '')
     expect(readBeatLink('?dare=not-a-run')).toEqual(Option.none())
-    expect(readBeatLink(`?dare=${String.slice(0, 10)(code)}`)).toEqual(Option.none())
+    expect(readBeatLink(`?dare=${String.slice(0, 10)(code)}`)).toEqual(
+      Option.none(),
+    )
     expect(readBeatLink('')).toEqual(Option.none())
     // NOTE: version 2, and a wave past the wire's range.
     expect(readBeatLink('?dare=WzIsMSwwLDAsMCwwLDAsMCwwLDAsMSwwLDBd')).toEqual(
@@ -134,7 +139,9 @@ describe('the link', () => {
       APPLICATION,
       Story.given(readyModel),
       Story.message(
-        Message.CompletedReadBeatLink({ maybeDare: readBeatLink(linkOf(DARE)) }),
+        Message.CompletedReadBeatLink({
+          maybeDare: readBeatLink(linkOf(DARE)),
+        }),
       ),
       Story.model(({ beatMyRun }) => {
         expect(beatMyRun).toEqual(BeatMyRun.Offered({ dare: DARE }))
@@ -142,35 +149,42 @@ describe('the link', () => {
       // NOTE: and the dare comes off the address, so a reload never offers
       // it again.
       Story.Command.expectExact(ForgetBeatLink()),
-      Story.Command.resolve(ForgetBeatLink(), Message.CompletedForgetBeatLink()),
+      Story.Command.resolve(
+        ForgetBeatLink(),
+        Message.CompletedForgetBeatLink(),
+      ),
     ),
   )
 
   it('the address loses its dare and keeps the rest', () => {
     expect(
-      addressWithoutDare(`https://munchmanor.com/${linkOf(DARE)}&room=ABCD#top`),
+      addressWithoutDare(
+        `https://munchmanor.com/${linkOf(DARE)}&room=ABCD#top`,
+      ),
     ).toBe('https://munchmanor.com/?room=ABCD#top')
     expect(addressWithoutDare('https://munchmanor.com/?room=ABCD')).toBe(
       'https://munchmanor.com/?room=ABCD',
     )
   })
 
-  it.effect("SHARE's link carries a lone run's seed, picks, pool, and result", () =>
-    Effect.gen(function* () {
-      const running = yield* startedRun(friendHome)
-      const munched = modifyFields(running, {
-        phase: () => Phase.GameOver({ wave: 3 }),
-      })
-      const shared = readBeatLink(
-        new URL(shareUrlOf(munched)).search,
-      ).pipe(Option.getOrThrow)
-      expect(shared.seed).toBe(FRIEND_SEED)
-      expect(shared.difficulty).toBe('Hard')
-      expect(shared.modifiers.broke).toBe(true)
-      expect(shared.pool).toEqual(['NapkinRing'])
-      expect(shared.outcome).toBe('Munched')
-      expect(shared.wave).toBe(3)
-    }),
+  it.effect(
+    "SHARE's link carries a lone run's seed, picks, pool, and result",
+    () =>
+      Effect.gen(function* () {
+        const running = yield* startedRun(friendHome)
+        const munched = modifyFields(running, {
+          phase: () => Phase.GameOver({ wave: 3 }),
+        })
+        const shared = readBeatLink(new URL(shareUrlOf(munched)).search).pipe(
+          Option.getOrThrow,
+        )
+        expect(shared.seed).toBe(FRIEND_SEED)
+        expect(shared.difficulty).toBe('Hard')
+        expect(shared.modifiers.broke).toBe(true)
+        expect(shared.pool).toEqual(['NapkinRing'])
+        expect(shared.outcome).toBe('Munched')
+        expect(shared.wave).toBe(3)
+      }),
   )
 })
 
@@ -254,8 +268,8 @@ describe('BEAT MY RUN', () => {
         const friendRun = yield* startedRun(friendHome)
         const dare: FriendsDare = {
           ...DARE,
-          seed: friendRun.runSeed,
-          pool: friendRun.runPool,
+          seed: friendRun.runStart.runSeed,
+          pool: friendRun.runStart.runPool,
         }
         const ownRun = yield* Story.story(
           APPLICATION,
@@ -266,7 +280,7 @@ describe('BEAT MY RUN', () => {
         )
         // NOTE: the napkin ring is not this player's, but it is the
         // friend's dare's, so the list rolls from it all the same.
-        expect(ownRun.runPool).toEqual(['NapkinRing'])
+        expect(ownRun.runStart.runPool).toEqual(['NapkinRing'])
         expect(houseOf(ownRun)).toEqual(houseOf(friendRun))
         expect(ownRun.elapsedMs).toBe(friendRun.elapsedMs)
         expect(ownRun.rngState).toBe(friendRun.rngState)

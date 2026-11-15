@@ -279,7 +279,7 @@ const playerPose = (player: Player): PlayerPose => {
 // a swapped gun tossed and caught.
 export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   const { player, seat } = focusOf(model)
-  const pose = poseOf(model, model.actionWatch, seat.slot)
+  const pose = poseOf(model, model.cosmetics.actionWatch, seat.slot)
   const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
   return Option.getOrElse(
     maybeActingShapes(
@@ -445,7 +445,11 @@ export const lyingShapes: {
 const compressionPx = (model: Model, lying: Lying): number =>
   lying === 'Downed' &&
   Option.exists(
-    maybeCompressedOf(model, model.actionWatch, focusOf(model).seat.slot),
+    maybeCompressedOf(
+      model,
+      model.cosmetics.actionWatch,
+      focusOf(model).seat.slot,
+    ),
     frame => isStrikeFrame('Compress', frame),
   )
     ? 1

@@ -153,7 +153,7 @@ const fightingWith = (
   })
 
 const refusal = (current: Model): Option.Option<string> =>
-  TrapNotice.match(current.trapNotice, {
+  TrapNotice.match(current.cosmetics.trapNotice, {
     Quiet: () => Option.none(),
     Refused: ({ reason }) => Option.some(reason),
   })
@@ -185,7 +185,7 @@ describe('placing a barricade', () => {
             seats: [{ trapStock }],
             trapHint,
             nextEntityId,
-            particles,
+            cosmetics: { particles },
           }) => {
             expect(traps).toEqual([barricade(start.nextEntityId, 'North')])
             expect(trapStock.Barricade).toBe(0)
@@ -302,7 +302,7 @@ describe('placing a barricade', () => {
       press('KeyT'),
       ...ticks(40, LONG_FRAME_MS),
       Story.model(current => {
-        expect(current.trapNotice).toEqual(TrapNotice.Quiet())
+        expect(current.cosmetics.trapNotice).toEqual(TrapNotice.Quiet())
       }),
     ),
   )
@@ -656,7 +656,7 @@ describe('barricade damage', () => {
           GameEvent.TrapBroken({ x: NORTH_X, y: 15, kind: 'Barricade' }),
         ])
         expect(
-          Array.some(frames, ({ particles }) =>
+          Array.some(frames, ({ cosmetics: { particles } }) =>
             Array.some(particles, ({ kind }) => kind === 'Plank'),
           ),
         ).toBe(true)

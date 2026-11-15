@@ -351,7 +351,9 @@ describe('full screen', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(initialModel, { screenFit: () => 'Fullscreen' }),
+          modifyFields(initialModel, {
+            settings: modifyFields({ screenFit: () => 'Fullscreen' }),
+          }),
         ),
         Story.message(Message.ClickedFullscreenButton()),
         Story.Command.expectExact(SetFullscreen({ fullscreen: 'On' })),
@@ -360,7 +362,7 @@ describe('full screen', () => {
           Message.FailedSetFullscreen({ reason: 'Permission denied' }),
         ),
         Story.model(current => {
-          expect(current.fullscreen).toBe('Off')
+          expect(current.settings.fullscreen).toBe('Off')
         }),
         Story.message(Message.ClickedFullscreenButton()),
         Story.Command.resolve(
@@ -368,7 +370,7 @@ describe('full screen', () => {
           Message.CompletedSetFullscreen({ fullscreen: 'On' }),
         ),
         Story.model(current => {
-          expect(current.fullscreen).toBe('On')
+          expect(current.settings.fullscreen).toBe('On')
         }),
         Story.message(Message.ClickedFullscreenButton()),
         Story.Command.expectExact(SetFullscreen({ fullscreen: 'Off' })),
@@ -378,7 +380,7 @@ describe('full screen', () => {
         ),
         Story.message(Message.ChangedFullscreen({ fullscreen: 'On' })),
         Story.model(current => {
-          expect(current.fullscreen).toBe('On')
+          expect(current.settings.fullscreen).toBe('On')
         }),
       ),
   )
@@ -391,7 +393,9 @@ describe('the install tile', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(initialModel, { screenFit: () => 'Fullscreen' }),
+          modifyFields(initialModel, {
+            settings: modifyFields({ screenFit: () => 'Fullscreen' }),
+          }),
         ),
         Story.message(Message.ChangedInstallOffer({ installOffer: 'Ready' })),
         Story.model(current => {
@@ -408,7 +412,7 @@ describe('the install tile', () => {
           Message.CompletedShowInstallPrompt({ outcome: 'Accepted' }),
         ),
         Story.model(current => {
-          expect(current.installOffer).toBe('Installed')
+          expect(current.release.installOffer).toBe('Installed')
         }),
       ),
   )
@@ -419,7 +423,9 @@ describe('the install tile', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(initialModel, { installOffer: () => 'Ready' }),
+          modifyFields(initialModel, {
+            release: modifyFields({ installOffer: () => 'Ready' }),
+          }),
         ),
         Story.message(Message.ClickedInstallButton()),
         Story.Command.resolve(
@@ -427,7 +433,7 @@ describe('the install tile', () => {
           Message.CompletedShowInstallPrompt({ outcome: 'Dismissed' }),
         ),
         Story.model(current => {
-          expect(current.installOffer).toBe('None')
+          expect(current.release.installOffer).toBe('None')
         }),
         Story.message(Message.ClickedInstallButton()),
         Story.Command.expectNone(),
@@ -438,7 +444,9 @@ describe('the install tile', () => {
     Story.story(
       APPLICATION,
       Story.given(
-        modifyFields(initialModel, { screenFit: () => 'HomeScreen' }),
+        modifyFields(initialModel, {
+          settings: modifyFields({ screenFit: () => 'HomeScreen' }),
+        }),
       ),
       Story.message(Message.ClickedInstallButton()),
       Story.model(current => {
@@ -454,8 +462,8 @@ describe('the install tile', () => {
       APPLICATION,
       Story.given(
         modifyFields(initialModel, {
-          screenFit: () => 'HomeScreen',
           difficultyCard: () => DifficultyCard.Seen(),
+          settings: modifyFields({ screenFit: () => 'HomeScreen' }),
         }),
       ),
       tap('Enter'),
@@ -475,7 +483,7 @@ describe('the install tile', () => {
           Message.CompletedDetectScreenFit({ screenFit: 'Installed' }),
         ),
         Story.model(current => {
-          expect(current.screenFit).toBe('Installed')
+          expect(current.settings.screenFit).toBe('Installed')
         }),
       ),
   )

@@ -76,7 +76,7 @@ describe("a run pays its hero's track", () => {
         frame,
         Story.model(after => {
           expect(after.mastery.heroes[callingOf(diesOnWave7)]).toBe(150)
-          expect(after.masteryRun.unlocks).toEqual([
+          expect(after.runGains.masteryRun.unlocks).toEqual([
             MasteryUnlock.HeroLevel({
               calling: callingOf(diesOnWave7),
               level: 1,
@@ -101,7 +101,7 @@ describe("a run pays its hero's track", () => {
       leave,
       Story.model(after => {
         expect(after.mastery.heroes).toEqual({ [callingOf(diesOnWave7)]: 60 })
-        expect(after.masteryRun.unlocks).toEqual([])
+        expect(after.runGains.masteryRun.unlocks).toEqual([])
       }),
       writeSave(),
     ),
@@ -137,7 +137,7 @@ describe("a gun's kills fill its track", () => {
         expect(masterySkinIn(after.mastery, 'Pistol')).toEqual(
           Option.some('Gilded'),
         )
-        expect(after.masteryRun.unlocks).toContainEqual(
+        expect(after.runGains.masteryRun.unlocks).toContainEqual(
           MasteryUnlock.GunMastery({ kind: 'Pistol', skin: 'Gilded' }),
         )
       }),

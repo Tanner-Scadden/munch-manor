@@ -149,7 +149,9 @@ describe('the bots answer', () => {
   }
 
   const withBot = (base: Model): Model =>
-    modifyFields(base, { crewBots: () => [BOT] })
+    modifyFields(base, {
+      runStart: modifyFields({ crewBots: () => [BOT] }),
+    })
 
   it.effect('a bot leaves a power-up beside it to answer a call', () => {
     const start = withPickups(
@@ -195,7 +197,7 @@ describe('the payoff', () => {
     )(crewInWave(2))
 
   const popupKindsOf = (current: Model) =>
-    Array.map(current.popups, ({ kind }) => kind)
+    Array.map(current.cosmetics.popups, ({ kind }) => kind)
 
   it.effect('a revive shows SAVED! with confetti over the reviver', () =>
     Story.story(
@@ -207,7 +209,10 @@ describe('the payoff', () => {
         expect(popupKindsOf(current)).toContain('Saved')
         expect(popupKindsOf(current)).not.toContain('Clutch')
         expect(
-          Array.some(current.particles, ({ kind }) => kind === 'Confetti'),
+          Array.some(
+            current.cosmetics.particles,
+            ({ kind }) => kind === 'Confetti',
+          ),
         ).toBe(true)
       }),
     ),

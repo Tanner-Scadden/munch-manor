@@ -137,7 +137,10 @@ describe('holding to buy the kitchen open', () => {
             'Window',
           ])
           expect(
-            Array.some(current.particles, ({ kind }) => kind === 'Splinter'),
+            Array.some(
+              current.cosmetics.particles,
+              ({ kind }) => kind === 'Splinter',
+            ),
           ).toBe(true)
           expect(current.shake.trauma).toBeGreaterThan(0)
         }),

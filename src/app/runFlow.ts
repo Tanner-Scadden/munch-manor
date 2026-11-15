@@ -44,7 +44,7 @@ const startRun = (model: Model, mode: RunMode): Model =>
 const recordedFromStart = (model: Model): Model =>
   modifyFields(model, {
     recorder: () =>
-      model.recordUnlock === 'Unlocked' && model.recordRuns === 'On'
+      model.recordUnlock === 'Unlocked' && model.settings.recordRuns === 'On'
         ? beginRecording({
             world: model,
             maybeVisitId: model.maybeVisitId,
@@ -86,10 +86,9 @@ const startedFrom = (model: Model, mode: RunMode): Model => {
     {
       ...model,
       ...freshRun(model),
-      runPool: pool,
+      runStart: { runSeed: model.rngState, runPool: pool, crewBots: bots },
       mode,
       lessons: settleLessons(model.lessons),
-      crewBots: bots,
       introSeen: 'Seen',
     },
     world =>
@@ -97,10 +96,7 @@ const startedFrom = (model: Model, mode: RunMode): Model => {
         rigTutorialCase(
           withStartingHearts(
             seatCallings(
-              seatCrew(
-                rollDare(pool)(world),
-                model.localPlayers + bots.length,
-              ),
+              seatCrew(rollDare(pool)(world), model.localPlayers + bots.length),
               model.localPlayers,
               Array.map(bots, ({ calling }) => calling),
             ),

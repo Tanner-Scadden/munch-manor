@@ -604,7 +604,7 @@ const promptInstall: UpdateStep = stepModel => ({
 const pressInstall = makeStep(model => {
   if (!isInstallTileShown(model)) {
     return unchanged
-  } else if (model.installOffer === 'Ready') {
+  } else if (model.release.installOffer === 'Ready') {
     return promptInstall
   } else {
     return Update.combineSteps([
@@ -619,18 +619,22 @@ const settleInstallPrompt: {
   (model: Model, outcome: InstallOutcome): Model
 } = Function.dual(2, (model: Model, outcome: InstallOutcome): Model =>
   modifyFields(model, {
-    installOffer: () => (outcome === 'Accepted' ? 'Installed' : 'None'),
+    release: modifyFields({
+      installOffer: () => (outcome === 'Accepted' ? 'Installed' : 'None'),
+    }),
   }),
 )
 
 // UPDATE GIFT
 
 export const unwrapUpdateGift: UpdateStep = stepWhen(
-  model => isUpdateGiftShown(model) && model.updateGift === 'Wrapped',
+  model => isUpdateGiftShown(model) && model.release.updateGift === 'Wrapped',
   model =>
     combine(model, [
       stepModel => ({
-        model: modifyFields(stepModel, { updateGift: () => 'Unwrapping' }),
+        model: modifyFields(stepModel, {
+          release: modifyFields({ updateGift: () => 'Unwrapping' }),
+        }),
         commands: [WaitForUnwrap()],
       }),
       playSounds([uiCue('LootPop')]),
@@ -638,10 +642,12 @@ export const unwrapUpdateGift: UpdateStep = stepWhen(
 )
 
 export const rewrapUpdateGift = (model: Model): Model =>
-  modifyFields(model, { updateGift: () => 'Wrapped' })
+  modifyFields(model, {
+    release: modifyFields({ updateGift: () => 'Wrapped' }),
+  })
 
 export const reloadOntoNewerBuild: UpdateStep = model =>
-  Option.match(model.maybeNewerBuild, {
+  Option.match(model.release.maybeNewerBuild, {
     onNone: () => ({ model: rewrapUpdateGift(model) }),
     onSome: build => ({ model, commands: [ReloadPage({ build })] }),
   })
@@ -776,7 +782,9 @@ export const homeHandlers = defineHandlers({
     Update.combineSteps(model, [unlockAudio, tapSound, pressInstall]),
 
   ChangedInstallOffer: (model, { installOffer }) => ({
-    model: modifyFields(model, { installOffer: () => installOffer }),
+    model: modifyFields(model, {
+      release: modifyFields({ installOffer: () => installOffer }),
+    }),
   }),
 
   CompletedShowInstallPrompt: (model, { outcome }) => ({

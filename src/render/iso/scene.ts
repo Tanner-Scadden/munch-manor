@@ -393,7 +393,7 @@ export class IsoScene {
       this.lastDecals = undefined
       this.castFurniture(built)
     }
-    const decals = model.decals
+    const decals = model.cosmetics.decals
     const isDecalsChanged = decals !== this.lastDecals
     if (isDecalsChanged) {
       this.lastDecals = decals
@@ -432,7 +432,7 @@ export class IsoScene {
     const rattle = houseRattleOf(model.shake.trauma)
 
     // THE FLOOR
-    const landed = flatten(groundParticleShapes(model.particles))
+    const landed = flatten(groundParticleShapes(model.cosmetics.particles))
     const landedKeys = rectKeysOf(landed)
     const isLanded = landed.length > 0
     if (isDecalsChanged || isLanded || this.wasLanded) {
@@ -550,7 +550,7 @@ export class IsoScene {
     // a see-through color stays a lit billboard.
     const airborne = new Set<string>()
     const cubed = new Set<string>()
-    for (const particle of airborneParticlesOf(model.particles)) {
+    for (const particle of airborneParticlesOf(model.cosmetics.particles)) {
       const { shape } = particle
       if (shape._tag !== 'Rect') {
         continue
@@ -753,7 +753,7 @@ export class IsoScene {
   // the room, the brightest while two go off together.
   private standBlasts(model: Model): void {
     let brightest = 0
-    for (const blast of model.blasts) {
+    for (const blast of model.cosmetics.blasts) {
       for (const piece of blastPiecesOf(blast)) {
         this.voxels.standCube({
           x: piece.x,

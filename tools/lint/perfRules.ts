@@ -462,3 +462,47 @@ export const noNestedScan = defineRule({
     }
   },
 })
+
+// NOTE: `stepWorld(model, inputs)` in client code hands the step the whole
+// Model, so every World write inside it copies the Model's hundred-odd
+// fields. Narrowed to its World first, `stepWorld(worldOf(model), inputs)`,
+// each write copies only the World's.
+const isWorldOfCall = (node: Node): boolean => {
+  const inner = unwrap(node)
+  return (
+    inner.type === 'CallExpression' &&
+    inner.callee.type === 'Identifier' &&
+    inner.callee.name === 'worldOf'
+  )
+}
+
+export const stepWorldAlone = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Step the World alone: hand stepWorld worldOf(model), never the whole client Model.',
+    },
+  },
+  create(context) {
+    return {
+      CallExpression(node) {
+        if (
+          node.callee.type !== 'Identifier' ||
+          node.callee.name !== 'stepWorld'
+        ) {
+          return
+        }
+        const first = node.arguments[0]
+        if (first === undefined || isWorldOfCall(first)) {
+          return
+        }
+        context.report({
+          node,
+          message:
+            'stepWorld given the client Model copies every Model field on each World write: pass worldOf(model) and merge back with withWorld (AGENTS.md "Keep the frame cheap").',
+        })
+      },
+    }
+  },
+})

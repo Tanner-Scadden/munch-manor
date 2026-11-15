@@ -60,15 +60,17 @@ export const raiseCloche: {
           onNone: () => after,
           onSome: ({ slot, box }) =>
             modifyFields(after, {
-              clocheLift: () =>
-                ClocheLift.Lifting({
-                  room: after.level.arrangement[slot],
-                  at: {
-                    x: Math.round((box.left + box.right) / 2),
-                    y: Math.round((box.top + box.bottom) / 2),
-                  },
-                  ageMs: 0,
-                }),
+              cosmetics: modifyFields({
+                clocheLift: () =>
+                  ClocheLift.Lifting({
+                    room: after.level.arrangement[slot],
+                    at: {
+                      x: Math.round((box.left + box.right) / 2),
+                      y: Math.round((box.top + box.bottom) / 2),
+                    },
+                    ageMs: 0,
+                  }),
+              }),
             }),
         }),
       ),
@@ -78,14 +80,16 @@ export const ageCloche: {
   (frameMs: number): (model: Model) => Model
   (model: Model, frameMs: number): Model
 } = Function.dual(2, (model: Model, frameMs: number): Model =>
-  ClocheLift.match(model.clocheLift, {
+  ClocheLift.match(model.cosmetics.clocheLift, {
     Resting: () => model,
     Lifting: lift =>
       modifyFields(model, {
-        clocheLift: () =>
-          lift.ageMs + frameMs >= CLOCHE_TOTAL_MS
-            ? ClocheLift.Resting()
-            : ClocheLift.Lifting({ ...lift, ageMs: lift.ageMs + frameMs }),
+        cosmetics: modifyFields({
+          clocheLift: () =>
+            lift.ageMs + frameMs >= CLOCHE_TOTAL_MS
+              ? ClocheLift.Resting()
+              : ClocheLift.Lifting({ ...lift, ageMs: lift.ageMs + frameMs }),
+        }),
       }),
   }),
 )

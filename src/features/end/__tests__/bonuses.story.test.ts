@@ -49,10 +49,13 @@ describe('the Bones floor', () => {
       Story.model(after => {
         expect(after.rank).toMatchObject({ earnedPoints: 10, earnedBones: 3 })
         expect(
-          Option.map(after.maybeRankGain, ({ bonesGained, bonuses }) => ({
-            bonesGained,
-            bonuses,
-          })),
+          Option.map(
+            after.runGains.maybeRankGain,
+            ({ bonesGained, bonuses }) => ({
+              bonesGained,
+              bonuses,
+            }),
+          ),
         ).toEqual(Option.some({ bonesGained: 3, bonuses: ['Floor'] }))
       }),
       checkSavedChanges(changes => {
@@ -101,7 +104,7 @@ describe("the day's first run", () => {
         expect(after.rank.earnedBones).toBe(12)
         expect(after.bonuses.doubledDay).toBe(TODAY)
         expect(
-          Option.map(after.maybeRankGain, ({ bonuses }) => bonuses),
+          Option.map(after.runGains.maybeRankGain, ({ bonuses }) => bonuses),
         ).toEqual(Option.some(['Double']))
       }),
       checkSavedChanges(changes => {
@@ -124,9 +127,9 @@ describe("the day's first run", () => {
     Effect.gen(function* () {
       const after = yield* ended(today(diesOnWave2))
       expect(after.rank.earnedBones).toBe(6)
-      expect(Option.map(after.maybeRankGain, ({ bonuses }) => bonuses)).toEqual(
-        Option.some(['Floor', 'Double']),
-      )
+      expect(
+        Option.map(after.runGains.maybeRankGain, ({ bonuses }) => bonuses),
+      ).toEqual(Option.some(['Floor', 'Double']))
     }),
   )
 
@@ -134,9 +137,9 @@ describe("the day's first run", () => {
     Effect.gen(function* () {
       const after = yield* ended(doubledOn(today(diesOnWave7), TODAY))
       expect(after.rank.earnedBones).toBe(6)
-      expect(Option.map(after.maybeRankGain, ({ bonuses }) => bonuses)).toEqual(
-        Option.some([]),
-      )
+      expect(
+        Option.map(after.runGains.maybeRankGain, ({ bonuses }) => bonuses),
+      ).toEqual(Option.some([]))
     }),
   )
 
@@ -193,9 +196,9 @@ describe('the first escape on a difficulty', () => {
         }),
       )
       expect(won.rank.earnedBones).toBe(31)
-      expect(Option.map(won.maybeRankGain, ({ bonuses }) => bonuses)).toEqual(
-        Option.some([]),
-      )
+      expect(
+        Option.map(won.runGains.maybeRankGain, ({ bonuses }) => bonuses),
+      ).toEqual(Option.some([]))
     }),
   )
 
@@ -204,14 +207,14 @@ describe('the first escape on a difficulty', () => {
       const won = yield* ended(today(lastWave))
       // NOTE: a known day pays the day's missions too (an escape may finish
       // one), apart from the bonuses (src/features/missions/missions.ts).
-      const missionBones = Option.match(won.maybeMissionGain, {
+      const missionBones = Option.match(won.runGains.maybeMissionGain, {
         onNone: () => 0,
         onSome: ({ bones }) => bones,
       })
       expect(won.rank.earnedBones - missionBones).toBe(31 * 2 + 50)
-      expect(Option.map(won.maybeRankGain, ({ bonuses }) => bonuses)).toEqual(
-        Option.some(['Double', 'FirstEscape']),
-      )
+      expect(
+        Option.map(won.runGains.maybeRankGain, ({ bonuses }) => bonuses),
+      ).toEqual(Option.some(['Double', 'FirstEscape']))
     }),
   )
 })

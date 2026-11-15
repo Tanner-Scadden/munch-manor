@@ -172,7 +172,7 @@ const openCoop = (maybeCode: Option.Option<string>) =>
             rank: rankOf(totalPointsOf(model.rank)),
             calling: startingCallingOf(model),
             introSeen: model.introSeen === 'Seen',
-            rngState: model.cosmeticRngState,
+            rngState: model.cosmetics.cosmeticRngState,
             bought: model.boughtCosmetics,
             bones: bonesBalanceOf(model.rank),
           }),

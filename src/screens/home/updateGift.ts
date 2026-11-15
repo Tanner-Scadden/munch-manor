@@ -65,9 +65,9 @@ export const updateGiftView: {
           h.Type('button'),
           h.Id('home-gift'),
           h.Class('home-corner-button home-gift'),
-          h.DataAttribute('state', model.updateGift),
+          h.DataAttribute('state', model.release.updateGift),
           h.AriaLabel(UPDATE_GIFT_LABEL),
-          h.AriaBusy(model.updateGift === 'Unwrapping'),
+          h.AriaBusy(model.release.updateGift === 'Unwrapping'),
           h.OnClick(VersionMessage.ClickedUpdateButton(), {
             propagation: 'Stop',
           }),

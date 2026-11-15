@@ -48,7 +48,7 @@ export const finishRecordingFrom =
             recorder: () => RunRecorder.Idle(),
           }),
           commands:
-            stepModel.recordRuns === 'On'
+            stepModel.settings.recordRuns === 'On'
               ? Option.match(finishRecording(stepModel.recorder), {
                   onNone: () => [],
                   onSome: recording => [UploadRecording({ recording })],

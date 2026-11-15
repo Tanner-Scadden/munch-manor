@@ -68,8 +68,11 @@ const calloutLayerShapes = (
 ): ReadonlyArray<Canvas.Shape> =>
   isRoundActive(model.phase)
     ? [
-        ...Array.flatMap(model.callouts, calloutShapes(camera)),
-        ...Array.flatMap(model.levelCallouts, levelCalloutShapes(camera)),
+        ...Array.flatMap(model.cosmetics.callouts, calloutShapes(camera)),
+        ...Array.flatMap(
+          model.cosmetics.levelCallouts,
+          levelCalloutShapes(camera),
+        ),
       ]
     : []
 

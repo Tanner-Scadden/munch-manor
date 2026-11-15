@@ -110,12 +110,12 @@ export const switchedTab =
 // name already showing; the Profile shows the name it lands on.
 export const rollNameDice = (current: string) =>
   makeStep(model => {
-    const [rngState, name] = rollName(model.cosmeticRngState, current)
+    const [rngState, name] = rollName(model.cosmetics.cosmeticRngState, current)
     return Update.combineSteps([
       stepModel =>
         playSounds([uiCue('LootPop')])(
           modifyFields(withName(stepModel, name), {
-            cosmeticRngState: () => rngState,
+            cosmetics: modifyFields({ cosmeticRngState: () => rngState }),
           }),
         ),
       ProfileBinding.informOfRolledName({ name }),
@@ -126,27 +126,37 @@ export const rollNameDice = (current: string) =>
 
 const toggleShake = (model: Model): Model =>
   modifyFields(model, {
-    shakeSetting: setting => (setting === 'On' ? 'Off' : 'On'),
+    settings: modifyFields({
+      shakeSetting: setting => (setting === 'On' ? 'Off' : 'On'),
+    }),
   })
 
 const toggleCursor = (model: Model): Model =>
   modifyFields(model, {
-    cursorSetting: setting => (setting === 'Bold' ? 'Thin' : 'Bold'),
+    settings: modifyFields({
+      cursorSetting: setting => (setting === 'Bold' ? 'Thin' : 'Bold'),
+    }),
   })
 
 const toggleRumble = (model: Model): Model =>
   modifyFields(model, {
-    rumbleSetting: setting => (setting === 'On' ? 'Off' : 'On'),
+    settings: modifyFields({
+      rumbleSetting: setting => (setting === 'On' ? 'Off' : 'On'),
+    }),
   })
 
 const toggleShareStats = (model: Model): Model =>
   modifyFields(model, {
-    shareStats: setting => (setting === 'On' ? 'Off' : 'On'),
+    settings: modifyFields({
+      shareStats: setting => (setting === 'On' ? 'Off' : 'On'),
+    }),
   })
 
 const toggleRecordRuns = (model: Model): Model =>
   modifyFields(model, {
-    recordRuns: setting => (setting === 'On' ? 'Off' : 'On'),
+    settings: modifyFields({
+      recordRuns: setting => (setting === 'On' ? 'Off' : 'On'),
+    }),
   })
 
 // NOTE: each tile toggles its setting; sound, music, and full screen as
@@ -280,15 +290,15 @@ export const flipLook =
 
 export const rollLook: UpdateStep = model => {
   const [rngState, appearance] = randomAppearance(
-    model.cosmeticRngState,
+    model.cosmetics.cosmeticRngState,
     model.appearance,
     model.boughtCosmetics,
     rankOf(totalPointsOf(model.rank)),
   )
   return playSounds([uiCue('LootPop')])(
     modifyFields(model, {
-      cosmeticRngState: () => rngState,
       appearance: () => appearance,
+      cosmetics: modifyFields({ cosmeticRngState: () => rngState }),
     }),
   )
 }

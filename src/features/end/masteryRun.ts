@@ -27,14 +27,21 @@ const paidCount = (counts: Readonly<Record<string, number>>, key: string) =>
 // seat's own tally.
 const earnedOf = (run: Model): SavedMastery => {
   const seat = focusOf(run)
-  const waves = Math.max(0, run.stats.wavesCleared - run.masteryRun.wavesPaid)
-  const things = Math.max(0, dareItemsFoundOf(run) - run.masteryRun.thingsPaid)
+  const waves = Math.max(
+    0,
+    run.stats.wavesCleared - run.runGains.masteryRun.wavesPaid,
+  )
+  const things = Math.max(
+    0,
+    dareItemsFoundOf(run) - run.runGains.masteryRun.thingsPaid,
+  )
   const points = waves * POINTS_PER_WAVE + things * POINTS_PER_THING
   const guns = Record.filter(
     Record.fromEntries(
       Array.map(MASTERY_GUNS, (kind): readonly [string, number] => [
         kind,
-        seat.feats.killsWith[kind] - paidCount(run.masteryRun.killsPaid, kind),
+        seat.feats.killsWith[kind] -
+          paidCount(run.runGains.masteryRun.killsPaid, kind),
       ]),
     ),
     kills => kills > 0,
@@ -72,11 +79,13 @@ export const earnMastery: {
   const mastery = addToMastery(after.mastery, earnedOf(run))
   return modifyFields(after, {
     mastery: () => mastery,
-    masteryRun: () => ({
-      wavesPaid: run.stats.wavesCleared,
-      thingsPaid: dareItemsFoundOf(run),
-      killsPaid: killsPaidBy(run),
-      unlocks: isEnded ? unlocksBetween(after.mastery, mastery) : [],
+    runGains: modifyFields({
+      masteryRun: () => ({
+        wavesPaid: run.stats.wavesCleared,
+        thingsPaid: dareItemsFoundOf(run),
+        killsPaid: killsPaidBy(run),
+        unlocks: isEnded ? unlocksBetween(after.mastery, mastery) : [],
+      }),
     }),
   })
 })

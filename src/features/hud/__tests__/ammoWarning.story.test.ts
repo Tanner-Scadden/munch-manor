@@ -40,10 +40,10 @@ const fightingWith = (second: CarriedGun, first = STARTING_PISTOL): Model =>
     modifyFields(initialModel, {
       difficultyCard: () => DifficultyCard.Seen(),
       maybeSurface: () => Option.some(SURFACE),
-      musicSetting: () => 'Off',
       audio: () => AudioState.Ready(),
       phase: () =>
         Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      settings: modifyFields({ musicSetting: () => 'Off' }),
     }),
     {
       player: player =>

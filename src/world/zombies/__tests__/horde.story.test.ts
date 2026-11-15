@@ -408,7 +408,7 @@ describe('exploders', () => {
         expect(focusOf(Option.getOrThrow(Array.last(frames))).player.hp).toBe(
           PLAYER_MAX_HP - EXPLODER.playerDamage,
         )
-        expect(Array.isReadonlyArrayNonEmpty(burst.blasts)).toBe(true)
+        expect(Array.isReadonlyArrayNonEmpty(burst.cosmetics.blasts)).toBe(true)
       }),
   )
 
@@ -421,7 +421,7 @@ describe('exploders', () => {
         withScene([gasbag], pistolsInto(10, ZOMBIE_KINDS.Exploder.hp, gasbag)),
       ),
       tick(FRAME_MS),
-      Story.model(({ zombies, particles }) => {
+      Story.model(({ zombies, cosmetics: { particles } }) => {
         expect(Array.map(zombies, ({ state }) => state._tag)).toEqual([
           'Fusing',
         ])

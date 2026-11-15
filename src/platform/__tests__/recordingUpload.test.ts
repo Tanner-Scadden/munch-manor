@@ -68,7 +68,7 @@ const fakeStore = (
       load: Effect.succeedSome(
         saveOf(
           modifyFields(asVeteran(initialModel), {
-            recordRuns: () => recordRuns,
+            settings: modifyFields({ recordRuns: () => recordRuns }),
           }),
         ),
       ),

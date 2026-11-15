@@ -122,7 +122,7 @@ import { isRoundActive } from '../../world/waves/waves'
 // ones, so the floor slid under the sprites and the canvas blended the edges
 // of every rectangle into its neighbours.
 export const shakeOffset = (model: Model): Vector =>
-  isRoundActive(model.phase) && model.shakeSetting === 'On'
+  isRoundActive(model.phase) && model.settings.shakeSetting === 'On'
     ? {
         x: Math.round(model.shake.offset.x),
         y: Math.round(model.shake.offset.y),
@@ -188,8 +188,8 @@ const groundShapes = (
   ...Array.filterMap(zombies, zombieShadow),
   ...bossGroundShapes(model),
   ...Array.filterMap(model.traps, trapShadow(levelOf(model))),
-  ...Array.filterMap(model.particles, gibShadow),
-  ...groundParticleShapes(model.particles),
+  ...Array.filterMap(model.cosmetics.particles, gibShadow),
+  ...groundParticleShapes(model.cosmetics.particles),
   ...ghostShapes(model),
   ...doorRattleShapes(model),
   ...(isLeadArmed(model) ? aimSightShapes(model) : []),
@@ -324,10 +324,10 @@ const overheadShapes = (
     Array.filter(zombies, isInView(levelOf(model))),
     zombieHealthBarShapes,
   ),
-  ...Array.flatMap(model.blasts, blastShapes),
-  ...Array.flatMap(model.callouts, burpRingShapes),
+  ...Array.flatMap(model.cosmetics.blasts, blastShapes),
+  ...Array.flatMap(model.cosmetics.callouts, burpRingShapes),
   ...bossOverheadShapes(model),
-  ...airborneParticleShapes(model.particles),
+  ...airborneParticleShapes(model.cosmetics.particles),
   ...(isGoodieBeckoning(model)
     ? Array.flatMap(model.pickups, goodieArrowShapes)
     : []),
@@ -338,7 +338,7 @@ const overheadShapes = (
     onSome: door => doorArrowShapes(door, model.elapsedMs),
   }),
   ...questLockShapes(model),
-  ...Array.map(model.popups, popupShape(camera)),
+  ...Array.map(model.cosmetics.popups, popupShape(camera)),
   ...(isLeadArmed(model)
     ? reloadBarShapes(focusOf(model).player, hatRiseOf(model.appearance))
     : []),

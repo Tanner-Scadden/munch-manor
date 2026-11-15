@@ -298,7 +298,6 @@ describe("an online room's next run", () => {
   it.effect('starts straight from the card once everyone is in', () => {
     const nextWorld = startRoomWorld([0, OWN_SLOT], 9, DEFAULT_ROOM_SETTINGS)
     const playing = modifyFields(lost, {
-      isRunCardDropped: () => true,
       coop: coop =>
         modifyFields(coop, {
           screen: () =>
@@ -319,6 +318,7 @@ describe("an online room's next run", () => {
                 }),
             }),
         }),
+      endCard: modifyFields({ isRunCardDropped: () => true }),
     })
     return Story.story(
       APPLICATION,
@@ -326,7 +326,7 @@ describe("an online room's next run", () => {
       Story.message(Message.TickedRoomFrame({ nowMs: 100 })),
       Story.model(current => {
         expectValue(current.phase._tag).toBe('Arriving')
-        expectValue(current.isRunCardDropped).toBe(false)
+        expectValue(current.endCard.isRunCardDropped).toBe(false)
       }),
     )
   })

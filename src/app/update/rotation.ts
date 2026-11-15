@@ -41,8 +41,10 @@ export const ApplyRotation = ApplicationBlock.makeCommand('ApplyRotation', {
 export const toggleRotation = (model: Model): Model =>
   model.orientationLock === 'Supported'
     ? modifyFields(model, {
-        rotationSetting: setting =>
-          setting === 'Landscape' ? 'Auto' : 'Landscape',
+        settings: modifyFields({
+          rotationSetting: setting =>
+            setting === 'Landscape' ? 'Auto' : 'Landscape',
+        }),
       })
     : model
 
@@ -54,9 +56,11 @@ export const toggleRotation = (model: Model): Model =>
 const shouldApplyRotation = (before: Model, after: Model): boolean =>
   after.orientationLock === 'Supported' &&
   (before.orientationLock !== after.orientationLock ||
-    (before.saveStatus !== after.saveStatus && after.saveStatus === 'Read') ||
-    before.rotationSetting !== after.rotationSetting ||
-    (before.fullscreen !== after.fullscreen && after.fullscreen === 'On') ||
+    (before.saving.saveStatus !== after.saving.saveStatus &&
+      after.saving.saveStatus === 'Read') ||
+    before.settings.rotationSetting !== after.settings.rotationSetting ||
+    (before.settings.fullscreen !== after.settings.fullscreen &&
+      after.settings.fullscreen === 'On') ||
     (before.pageVisibility !== after.pageVisibility &&
       after.pageVisibility === 'Visible'))
 
@@ -66,6 +70,8 @@ export const applyRotationFrom =
     shouldApplyRotation(before, stepModel)
       ? {
           model: stepModel,
-          commands: [ApplyRotation({ rotation: stepModel.rotationSetting })],
+          commands: [
+            ApplyRotation({ rotation: stepModel.settings.rotationSetting }),
+          ],
         }
       : { model: stepModel }

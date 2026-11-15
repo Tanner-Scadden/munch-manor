@@ -200,7 +200,7 @@ describe('parts coming off', () => {
         APPLICATION,
         Story.given(withScene([groaner], [bulletInto(500, groaner)])),
         tick(FRAME_MS),
-        Story.model(({ particles }) => {
+        Story.model(({ cosmetics: { particles } }) => {
           const arms = Array.filter(
             particles,
             ({ kind }) => kind === 'GreenLimb',
@@ -209,7 +209,7 @@ describe('parts coming off', () => {
           expect(Array.every(arms, ({ velocityZ }) => velocityZ > 0)).toBe(true)
         }),
         ...Array.makeBy(150, () => tick(FRAME_MS)),
-        Story.model(({ decals, particles }) => {
+        Story.model(({ cosmetics: { decals, particles } }) => {
           landed.push(decals)
           expect(
             Array.filter(particles, ({ kind }) => kind === 'GreenLimb'),
@@ -259,8 +259,10 @@ describe('caps', () => {
     () =>
       Effect.gen(function* () {
         const packed = modifyFields(withScene(crowd), {
-          particles: () => Array.makeBy(PARTICLE_MAX, fullParticle),
-          decals: () => Array.makeBy(DECAL_MAX, fullDecal),
+          cosmetics: modifyFields({
+            particles: () => Array.makeBy(PARTICLE_MAX, fullParticle),
+            decals: () => Array.makeBy(DECAL_MAX, fullDecal),
+          }),
         })
         const heavyHits = (current: Model): Model =>
           reload(
@@ -276,15 +278,24 @@ describe('caps', () => {
           tick(FRAME_MS),
           Story.model(current => {
             shedCounts.push(shedIn(current.frameEvents).length)
-            expect(current.particles.length).toBeLessThanOrEqual(PARTICLE_MAX)
-            expect(current.decals.length).toBeLessThanOrEqual(DECAL_MAX)
+            expect(current.cosmetics.particles.length).toBeLessThanOrEqual(
+              PARTICLE_MAX,
+            )
+            expect(current.cosmetics.decals.length).toBeLessThanOrEqual(
+              DECAL_MAX,
+            )
           }),
           ...Array.makeBy(200, () => tick(FRAME_MS)),
           Story.model(current => {
-            expect(current.particles.length).toBeLessThanOrEqual(PARTICLE_MAX)
-            expect(current.decals.length).toBe(DECAL_MAX)
+            expect(current.cosmetics.particles.length).toBeLessThanOrEqual(
+              PARTICLE_MAX,
+            )
+            expect(current.cosmetics.decals.length).toBe(DECAL_MAX)
             expect(
-              Array.some(current.decals, ({ kind }) => kind === 'FryingPan'),
+              Array.some(
+                current.cosmetics.decals,
+                ({ kind }) => kind === 'FryingPan',
+              ),
             ).toBe(true)
           }),
         )
@@ -357,7 +368,7 @@ describe('the Big Lug armor', () => {
           APPLICATION,
           Story.given(scene),
           tick(FRAME_MS),
-          Story.model(({ frameEvents, particles, zombies }) => {
+          Story.model(({ frameEvents, cosmetics: { particles }, zombies }) => {
             expect(zombies[0]?.hp).toBe(hp - 9)
             expect(shedIn(frameEvents)).toEqual([{ kind: 'Tank', stage }])
             expect(countOf(particles, part)).toBe(1)
@@ -376,8 +387,8 @@ describe('the Big Lug armor', () => {
         expect(heardSounds[0]).not.toContain('LimbPop')
         const after = landed[0]
         expect(after).toBeDefined()
-        expect(countOf(after?.decals ?? [], part)).toBe(1)
-        expect(countOf(after?.particles ?? [], part)).toBe(0)
+        expect(countOf(after?.cosmetics.decals ?? [], part)).toBe(1)
+        expect(countOf(after?.cosmetics.particles ?? [], part)).toBe(0)
       }),
   )
 

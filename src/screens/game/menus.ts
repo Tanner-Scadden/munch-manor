@@ -34,6 +34,7 @@ import { type Room as CoopRoom, maybeRoomOf } from '../../domain/coopRoom'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import { meIn, pickedModeOf } from '../../features/coop/roomState'
 import { isOpen as isCoopOpen } from '../../features/coop/update'
+import { shareUrlOf } from '../../features/end/beatRun'
 import {
   isRunCardHeld,
   isShareCopied,
@@ -49,7 +50,6 @@ import {
 } from '../../features/end/endOffer'
 import { EndMessage } from '../../features/end/message'
 import { shareText } from '../../features/end/share'
-import { shareUrlOf } from '../../features/end/beatRun'
 import { SHARE_TEXT_DATA, SHARE_URL_DATA } from '../../features/end/share'
 import { HomeMessage } from '../../features/home/message'
 import { OnboardingMessage } from '../../features/onboarding/message'
@@ -84,7 +84,7 @@ export const debutPitch = (kind: ZombieKind): string =>
 // CORNER BUTTONS
 
 const muteButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const isMuted = model.soundSetting === 'Muted'
+  const isMuted = model.settings.soundSetting === 'Muted'
   return iconButtonView(
     {
       className: 'corner-button mute-button',
@@ -99,7 +99,7 @@ const muteButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
 }
 
 const musicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const isOn = model.musicSetting === 'On'
+  const isOn = model.settings.musicSetting === 'On'
   return iconButtonView(
     {
       className: 'corner-button music-button',
@@ -126,14 +126,14 @@ const pauseButtonView = (h: ApplicationViewBuilder): Html =>
   )
 
 const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  model.screenFit === 'Fullscreen'
+  model.settings.screenFit === 'Fullscreen'
     ? iconButtonView(
         {
           className: 'corner-button fullscreen-button',
           label: 'Full screen',
           icon: FULLSCREEN_ICON,
           message: DeviceMessage.ClickedFullscreenButton(),
-          maybePressed: model.fullscreen === 'On',
+          maybePressed: model.settings.fullscreen === 'On',
         },
         h,
       )

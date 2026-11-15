@@ -13,7 +13,8 @@ import { diesOnWave7, ended } from './rank.fixture'
 // in diesOnWave7), never the line shown last, and none once the player has
 // escaped on that difficulty.
 
-const tipOf = (model: Model): Option.Option<DeathTip> => model.maybeDeathTip
+const tipOf = (model: Model): Option.Option<DeathTip> =>
+  model.endCard.maybeDeathTip
 
 describe("Rattles' death tip", () => {
   it.effect('is about the zombie that landed the last bite', () =>
@@ -38,9 +39,11 @@ describe("Rattles' death tip", () => {
         return Effect.map(
           ended(
             modifyFields(diesOnWave7, {
-              cosmeticRngState: () => seed * 7919,
-              maybeDeathTip: () =>
-                Option.some({ kind: 'Runner' as const, line: last }),
+              endCard: modifyFields({
+                maybeDeathTip: () =>
+                  Option.some({ kind: 'Runner' as const, line: last }),
+              }),
+              cosmetics: modifyFields({ cosmeticRngState: () => seed * 7919 }),
             }),
           ),
           after => {

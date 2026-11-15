@@ -207,8 +207,10 @@ export const launchPrize: {
             onNone: () => after,
             onSome: from =>
               modifyFields(after, {
-                prizeFlight: () =>
-                  PrizeFlight.Flying({ prize, from, ageMs: 0 }),
+                cosmetics: modifyFields({
+                  prizeFlight: () =>
+                    PrizeFlight.Flying({ prize, from, ageMs: 0 }),
+                }),
               }),
           })
         : after,
@@ -224,14 +226,20 @@ export const ageFlight: {
   (frameMs: number): (model: Model) => Model
   (model: Model, frameMs: number): Model
 } = Function.dual(2, (model: Model, frameMs: number): Model =>
-  PrizeFlight.match(model.prizeFlight, {
+  PrizeFlight.match(model.cosmetics.prizeFlight, {
     Grounded: () => model,
     Flying: flight =>
       modifyFields(model, {
-        prizeFlight: () =>
-          flight.ageMs + frameMs >= REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs
-            ? PrizeFlight.Grounded()
-            : PrizeFlight.Flying({ ...flight, ageMs: flight.ageMs + frameMs }),
+        cosmetics: modifyFields({
+          prizeFlight: () =>
+            flight.ageMs + frameMs >=
+            REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs
+              ? PrizeFlight.Grounded()
+              : PrizeFlight.Flying({
+                  ...flight,
+                  ageMs: flight.ageMs + frameMs,
+                }),
+        }),
       }),
   }),
 )

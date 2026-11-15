@@ -239,7 +239,7 @@ describe('a run pays the missions', () => {
       expect(after.missions.progress['SplatZombies']).toBe(40)
       expect(isClaimed(after, 'SplatZombies')).toBe(false)
       expect(after.rank.earnedBones).toBe(start.rank.earnedBones + 6 * 2)
-      expect(after.maybeMissionGain).toEqual(
+      expect(after.runGains.maybeMissionGain).toEqual(
         Option.some({
           moved: [
             {
@@ -275,10 +275,13 @@ describe('a run pays the missions', () => {
             start.rank.earnedBones + 12 + 20 + ALL_THREE_BONES,
           )
           expect(
-            Option.map(after.maybeMissionGain, ({ bones, isAllThree }) => ({
-              bones,
-              isAllThree,
-            })),
+            Option.map(
+              after.runGains.maybeMissionGain,
+              ({ bones, isAllThree }) => ({
+                bones,
+                isAllThree,
+              }),
+            ),
           ).toEqual(Option.some({ bones: 45, isAllThree: true }))
         }),
         checkSavedChanges(changes => {
@@ -312,7 +315,7 @@ describe('a run pays the missions', () => {
       leave,
       Story.model(left => {
         expect(left.missions.progress['SplatZombies']).toBe(30)
-        expect(left.maybeMissionGain).toEqual(Option.none())
+        expect(left.runGains.maybeMissionGain).toEqual(Option.none())
       }),
       writeSave(),
     ),
@@ -322,7 +325,7 @@ describe('a run pays the missions', () => {
     Effect.gen(function* () {
       const after = yield* ended(withKills(diesOnWave7, 160))
       expect(after.missions).toEqual(noMissions)
-      expect(after.maybeMissionGain).toEqual(Option.none())
+      expect(after.runGains.maybeMissionGain).toEqual(Option.none())
     }),
   )
 })

@@ -106,7 +106,7 @@ describe('particles and decals', () => {
         Story.given(shotZombieModel(HEALTH_THAT_KEEPS_ITS_PARTS)),
         holdFire,
         tick(FRAME_MS),
-        Story.model(({ particles }) => {
+        Story.model(({ cosmetics: { particles } }) => {
           const blood = Array.filter(particles, ({ kind }) => kind === 'Blood')
           expect(blood).toHaveLength(BLOOD_PER_HIT)
           expect(Array.every(blood, ({ velocityX }) => velocityX > 0)).toBe(
@@ -124,7 +124,7 @@ describe('particles and decals', () => {
       Story.given(shotZombieModel(1)),
       holdFire,
       tick(FRAME_MS),
-      Story.model(({ particles }) => {
+      Story.model(({ cosmetics: { particles } }) => {
         expect(countKind(particles, 'MeatGib')).toBe(MEAT_GIBS_PER_KILL)
         expect(countKind(particles, 'RotGib')).toBe(ROT_GIBS_PER_KILL)
         expect(countKind(particles, 'Blood')).toBe(
@@ -148,11 +148,11 @@ describe('particles and decals', () => {
         holdFire,
         tick(FRAME_MS),
         releaseFire,
-        Story.model(({ decals }) => {
+        Story.model(({ cosmetics: { decals } }) => {
           expect(decals).toEqual([])
         }),
         ...landingFrames,
-        Story.model(({ particles, decals }) => {
+        Story.model(({ cosmetics: { particles, decals } }) => {
           expect(particles).toEqual([])
           expect(countKind(decals, 'Blood')).toBe(
             BLOOD_PER_HIT + BLOOD_PER_KILL,
@@ -178,15 +178,15 @@ describe('particles and decals', () => {
       Story.given(playingModel),
       Story.message(Message.PressedKey({ code: 'KeyD' })),
       tick(FRAME_MS),
-      Story.model(({ particles }) => {
+      Story.model(({ cosmetics: { particles } }) => {
         expect(countKind(particles, 'Dust')).toBe(1)
       }),
       ...ticks(framesBeforeSecondPuff - 2, FRAME_MS),
-      Story.model(({ particles }) => {
+      Story.model(({ cosmetics: { particles } }) => {
         expect(countKind(particles, 'Dust')).toBe(1)
       }),
       tick(FRAME_MS),
-      Story.model(({ particles }) => {
+      Story.model(({ cosmetics: { particles } }) => {
         expect(countKind(particles, 'Dust')).toBe(2)
       }),
     )
@@ -218,19 +218,21 @@ describe('particles and decals', () => {
     const oldDecal: Decal = { kind: 'Shell', x: 1, y: 1, width: 2, height: 1 }
     const floodModel = modifyFields(withZombies(playingModel, victims), {
       bullets: () => killingBullets,
-      decals: () => Array.makeBy(DECAL_MAX, () => oldDecal),
+      cosmetics: modifyFields({
+        decals: () => Array.makeBy(DECAL_MAX, () => oldDecal),
+      }),
     })
 
     return Story.story(
       APPLICATION,
       Story.given(floodModel),
       tick(FRAME_MS),
-      Story.model(({ particles, stats }) => {
+      Story.model(({ cosmetics: { particles }, stats }) => {
         expect(scoreOf(stats)).toBe(floodSize * SCORE_PER_ZOMBIE)
         expect(particles).toHaveLength(PARTICLE_MAX)
       }),
       ...landingFrames,
-      Story.model(({ particles, decals }) => {
+      Story.model(({ cosmetics: { particles, decals } }) => {
         expect(particles).toEqual([])
         expect(decals).toHaveLength(DECAL_MAX)
         expect(countKind(decals, 'Shell')).toBeLessThan(DECAL_MAX)
@@ -243,21 +245,23 @@ describe('particles and decals', () => {
     const messyModel = modifyFields(playingModel, {
       phase: () => Phase.GameOver({ wave: 2 }),
       screenMs: () => RESTART_GRACE_MS,
-      particles: () => [
-        {
-          kind: 'MeatGib',
-          x: 40,
-          y: 40,
-          z: 3,
-          velocityX: 0,
-          velocityY: 0,
-          velocityZ: 10,
-          size: 2,
-          remainingMs: 500,
-        },
-      ],
-      decals: () => [{ kind: 'Blood', x: 50, y: 50, width: 2, height: 1 }],
-      dustCooldownMs: () => 40,
+      cosmetics: modifyFields({
+        particles: () => [
+          {
+            kind: 'MeatGib',
+            x: 40,
+            y: 40,
+            z: 3,
+            velocityX: 0,
+            velocityY: 0,
+            velocityZ: 10,
+            size: 2,
+            remainingMs: 500,
+          },
+        ],
+        decals: () => [{ kind: 'Blood', x: 50, y: 50, width: 2, height: 1 }],
+        dustCooldownMs: () => 40,
+      }),
     })
 
     return Story.story(
@@ -265,12 +269,14 @@ describe('particles and decals', () => {
       Story.given(messyModel),
       Story.message(Message.PressedKey({ code: 'Enter' })),
       throughIntro,
-      Story.model(({ phase, particles, decals, dustCooldownMs }) => {
-        expect(Phase.guards.Preparation(phase)).toBe(true)
-        expect(particles).toEqual([])
-        expect(decals).toEqual([])
-        expect(dustCooldownMs).toBe(0)
-      }),
+      Story.model(
+        ({ phase, cosmetics: { particles, decals, dustCooldownMs } }) => {
+          expect(Phase.guards.Preparation(phase)).toBe(true)
+          expect(particles).toEqual([])
+          expect(decals).toEqual([])
+          expect(dustCooldownMs).toBe(0)
+        },
+      ),
     )
   })
 
@@ -279,7 +285,9 @@ describe('particles and decals', () => {
       APPLICATION,
       Story.given(
         withZombies(
-          modifyFields(playingModel, { cosmeticRngState: () => seed }),
+          modifyFields(playingModel, {
+            cosmetics: modifyFields({ cosmeticRngState: () => seed }),
+          }),
           [
             zombieAt(100, 200, START_LEVEL.start.y, { speed: 0 }),
             zombieAt(101, 230, START_LEVEL.start.y, { speed: 0 }),
@@ -299,11 +307,13 @@ describe('particles and decals', () => {
         const first = yield* playParticleSession(1234)
         const second = yield* playParticleSession(1234)
 
-        expect(countKind(first.particles, 'MeatGib')).toBeGreaterThan(0)
-        expect(countKind(first.particles, 'Dust')).toBeGreaterThan(0)
-        expect(first.decals.length).toBeGreaterThan(0)
-        expect(second.particles).toEqual(first.particles)
-        expect(second.decals).toEqual(first.decals)
+        expect(countKind(first.cosmetics.particles, 'MeatGib')).toBeGreaterThan(
+          0,
+        )
+        expect(countKind(first.cosmetics.particles, 'Dust')).toBeGreaterThan(0)
+        expect(first.cosmetics.decals.length).toBeGreaterThan(0)
+        expect(second.cosmetics.particles).toEqual(first.cosmetics.particles)
+        expect(second.cosmetics.decals).toEqual(first.cosmetics.decals)
         expect(second.rngState).toBe(first.rngState)
       }),
   )
@@ -312,7 +322,7 @@ describe('particles and decals', () => {
     Effect.gen(function* () {
       const first = yield* playParticleSession(1234)
       const other = yield* playParticleSession(98765)
-      expect(other.particles).not.toEqual(first.particles)
+      expect(other.cosmetics.particles).not.toEqual(first.cosmetics.particles)
     }),
   )
 })
@@ -395,7 +405,7 @@ const expectWorldAdvancedBy = (nextModel: Model, worldMs: number): void => {
 }
 
 const kindsAndValues = (model_: Model) =>
-  Array.map(model_.popups, ({ kind, value }) => [kind, value])
+  Array.map(model_.cosmetics.popups, ({ kind, value }) => [kind, value])
 
 describe('screen shake', () => {
   it.effect('a shot, a kill, and a hurt add rising trauma', () =>
@@ -725,7 +735,7 @@ describe('hit-stop', () => {
           Story.model(nextModel => {
             expect(HitStop.guards.Frozen(nextModel.hitStop)).toBe(true)
             expect(nextModel.shake.trauma).toBeGreaterThan(0)
-            expect(nextModel.popups).not.toEqual([])
+            expect(nextModel.cosmetics.popups).not.toEqual([])
             expect(Streak.guards.Hot(nextModel.streak)).toBe(true)
           }),
           Story.message(Message.PressedKey({ code: 'Escape' })),
@@ -750,7 +760,7 @@ describe('hit-stop', () => {
           Story.model(nextModel => {
             expect(nextModel.hitStop).toEqual(initialModel.hitStop)
             expect(nextModel.shake).toEqual(initialModel.shake)
-            expect(nextModel.popups).toEqual([])
+            expect(nextModel.cosmetics.popups).toEqual([])
             expect(nextModel.streak).toEqual(Streak.Cold())
           }),
         )
@@ -815,7 +825,7 @@ describe('damage numbers', () => {
         tick(FRAME_MS),
         releaseFire,
         tick(FRAME_MS),
-        Story.model(({ popups, hitStop }) => {
+        Story.model(({ cosmetics: { popups }, hitStop }) => {
           expect(HitStop.guards.Frozen(hitStop)).toBe(true)
           expect(Array.map(popups, ({ ageMs }) => ageMs)).toEqual([
             FRAME_MS,
@@ -823,11 +833,11 @@ describe('damage numbers', () => {
           ])
         }),
         ...ticks(damageFrames - 1, FRAME_MS),
-        Story.model(({ popups }) => {
+        Story.model(({ cosmetics: { popups } }) => {
           expect(Array.map(popups, ({ kind }) => kind)).toEqual(['Kill'])
         }),
         ...ticks(killFrames - damageFrames, FRAME_MS),
-        Story.model(({ popups }) => {
+        Story.model(({ cosmetics: { popups } }) => {
           expect(popups).toEqual([])
         }),
       )
@@ -839,7 +849,7 @@ describe('damage numbers', () => {
       APPLICATION,
       Story.given(massacreModel(20)),
       tick(FRAME_MS),
-      Story.model(({ popups }) => {
+      Story.model(({ cosmetics: { popups } }) => {
         expect(popups).toHaveLength(POPUP_MAX)
         expect(Array.every(popups, ({ ageMs }) => ageMs === 0)).toBe(true)
       }),
@@ -894,7 +904,9 @@ describe('juice determinism', () => {
       APPLICATION,
       Story.given(
         withZombies(
-          modifyFields(playingModel, { cosmeticRngState: () => seed }),
+          modifyFields(playingModel, {
+            cosmetics: modifyFields({ cosmeticRngState: () => seed }),
+          }),
           [bigKillAt(100, 200), bigKillAt(101, 230), bigKillAt(102, 260)],
         ),
       ),
@@ -904,7 +916,12 @@ describe('juice determinism', () => {
     return frames
   })
 
-  const juiceOf = ({ shake, hitStop, popups, streak }: Model) => ({
+  const juiceOf = ({
+    shake,
+    hitStop,
+    cosmetics: { popups },
+    streak,
+  }: Model) => ({
     shake,
     hitStop,
     popups,

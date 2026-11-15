@@ -58,7 +58,9 @@ describe('checking for a new build', () => {
         Message.CompletedFetchBuild({ build: NEWER_BUILD }),
       ),
       Story.model(current => {
-        expect(current.maybeNewerBuild).toStrictEqual(Option.some(NEWER_BUILD))
+        expect(current.release.maybeNewerBuild).toStrictEqual(
+          Option.some(NEWER_BUILD),
+        )
       }),
     ),
   )
@@ -96,7 +98,7 @@ describe('checking for a new build', () => {
       Story.given(initialModel),
       Story.message(Message.CompletedFetchBuild({ build: RUNNING_BUILD })),
       Story.model(current => {
-        expect(current.maybeNewerBuild).toStrictEqual(Option.none())
+        expect(current.release.maybeNewerBuild).toStrictEqual(Option.none())
       }),
     ),
   )
@@ -112,7 +114,9 @@ describe('checking for a new build', () => {
       Story.message(Message.CompletedFetchBuild({ build: NEWER_BUILD })),
       Story.message(Message.FailedFetchBuild({ reason: 'timed out' })),
       Story.model(current => {
-        expect(current.maybeNewerBuild).toStrictEqual(Option.some(NEWER_BUILD))
+        expect(current.release.maybeNewerBuild).toStrictEqual(
+          Option.some(NEWER_BUILD),
+        )
       }),
     ),
   )
@@ -125,7 +129,9 @@ describe('checking for a new build', () => {
       Story.Command.expectNone(),
       Story.model(current => {
         expect(current.phase).toStrictEqual(fighting.phase)
-        expect(current.maybeNewerBuild).toStrictEqual(Option.some(NEWER_BUILD))
+        expect(current.release.maybeNewerBuild).toStrictEqual(
+          Option.some(NEWER_BUILD),
+        )
       }),
     ),
   )
@@ -137,12 +143,14 @@ describe('checking for a new build', () => {
         APPLICATION,
         Story.given(
           modifyFields(initialModel, {
-            maybeNewerBuild: () => Option.some(NEWER_BUILD),
+            release: modifyFields({
+              maybeNewerBuild: () => Option.some(NEWER_BUILD),
+            }),
           }),
         ),
         Story.message(Message.ClickedUpdateButton()),
         Story.model(current => {
-          expect(current.updateGift).toBe('Unwrapping')
+          expect(current.release.updateGift).toBe('Unwrapping')
         }),
         Story.Command.expectExact(WaitForUnwrap),
         Story.Command.resolve(WaitForUnwrap, Message.CompletedWaitForUnwrap()),
@@ -156,8 +164,10 @@ describe('checking for a new build', () => {
       APPLICATION,
       Story.given(
         modifyFields(initialModel, {
-          maybeNewerBuild: () => Option.some(NEWER_BUILD),
-          updateGift: () => 'Unwrapping',
+          release: modifyFields({
+            maybeNewerBuild: () => Option.some(NEWER_BUILD),
+            updateGift: () => 'Unwrapping',
+          }),
         }),
       ),
       Story.message(Message.ClickedUpdateButton()),
@@ -170,12 +180,14 @@ describe('checking for a new build', () => {
       APPLICATION,
       Story.given(
         modifyFields(fighting, {
-          maybeNewerBuild: () => Option.some(NEWER_BUILD),
+          release: modifyFields({
+            maybeNewerBuild: () => Option.some(NEWER_BUILD),
+          }),
         }),
       ),
       Story.message(Message.ClickedUpdateButton()),
       Story.model(current => {
-        expect(current.updateGift).toBe('Wrapped')
+        expect(current.release.updateGift).toBe('Wrapped')
       }),
       Story.Command.expectNone(),
     ),
@@ -269,7 +281,9 @@ describe('the end screens with a new version waiting', () => {
   const waiting = (phase: Phase, screenMs: number): Model =>
     modifyFields(onPhase(phase), {
       screenMs: () => screenMs,
-      maybeNewerBuild: () => Option.some(NEWER_BUILD),
+      release: modifyFields({
+        maybeNewerBuild: () => Option.some(NEWER_BUILD),
+      }),
     })
 
   it.effect.each([
@@ -288,7 +302,9 @@ describe('the end screens with a new version waiting', () => {
       Story.message(Message.PressedKey({ code: 'Enter' })),
       Story.model(current => {
         expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(current.maybeNewerBuild).toStrictEqual(Option.some(NEWER_BUILD))
+        expect(current.release.maybeNewerBuild).toStrictEqual(
+          Option.some(NEWER_BUILD),
+        )
       }),
     ),
   )
@@ -364,7 +380,9 @@ describe('the service worker', () => {
 
   test('a newer build asks the worker to fetch it in the background', () => {
     const found = recordRemoteBuild(initialModel, PRODUCTION_BUILD, NEWER_BUILD)
-    expect(found.model.maybeNewerBuild).toStrictEqual(Option.some(NEWER_BUILD))
+    expect(found.model.release.maybeNewerBuild).toStrictEqual(
+      Option.some(NEWER_BUILD),
+    )
     expect(namesOf(found.commands)).toStrictEqual(
       namesOf([UpdateServiceWorker()]),
     )
@@ -374,11 +392,13 @@ describe('the service worker', () => {
       PRODUCTION_BUILD,
       PRODUCTION_BUILD,
     )
-    expect(same.model.maybeNewerBuild).toStrictEqual(Option.none())
+    expect(same.model.release.maybeNewerBuild).toStrictEqual(Option.none())
     expect(same.commands ?? []).toHaveLength(0)
 
     const onDev = recordRemoteBuild(initialModel, 'dev', NEWER_BUILD)
-    expect(onDev.model.maybeNewerBuild).toStrictEqual(Option.some(NEWER_BUILD))
+    expect(onDev.model.release.maybeNewerBuild).toStrictEqual(
+      Option.some(NEWER_BUILD),
+    )
     expect(onDev.commands ?? []).toHaveLength(0)
   })
 

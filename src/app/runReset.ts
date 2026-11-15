@@ -3,23 +3,16 @@ import { modifyFields } from 'foldkit/struct'
 
 import {
   CaseCard,
-  ClocheLift,
   KitchenCall,
   PocketCard,
-  PrizeFlight,
   RattlesIntro,
-  RunTally,
   cosmeticSeedOf,
-  noJournalRun,
-  noMasteryRun,
-  noRankPaid,
   quietDareHint,
 } from '../domain/clientSchema'
 import { startingCallingOf } from '../features/heroes/callingPick'
-import { noMissionRun } from '../features/missions/missionSchema'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
-import { STILL_GLIDE, noActionWatch, noTellWatch } from '../render/renderSchema'
+import { STILL_GLIDE } from '../render/renderSchema'
 import { rollCases } from '../world/feats/cases'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
@@ -31,7 +24,6 @@ import {
   Party,
   Phase,
   Streak,
-  TrapNotice,
   barePantry,
   calmPacing,
   freshCrates,
@@ -49,7 +41,12 @@ import {
   stillShake,
 } from '../world/schema/worldSchema'
 import { ZERO_VECTOR } from '../world/step/geometry'
-import type { Model } from './model'
+import {
+  type Model,
+  freshCosmetics,
+  freshRoomRun,
+  freshRunGains,
+} from './model'
 
 // NOTE: every field that belongs to one run, set as a new run starts. Starting
 // a run and going home both spread this record, so neither can leave a stale
@@ -66,11 +63,6 @@ export type RunFields = Pick<
   | 'zombies'
   | 'bullets'
   | 'lobs'
-  | 'particles'
-  | 'decals'
-  | 'dustCooldownMs'
-  | 'tellWatch'
-  | 'actionWatch'
   | 'fridge'
   | 'pantry'
   | 'stove'
@@ -85,22 +77,14 @@ export type RunFields = Pick<
   | 'frameEvents'
   | 'hitStop'
   | 'shake'
-  | 'popups'
   | 'streak'
-  | 'blasts'
   | 'traps'
   | 'pickups'
   | 'loot'
-  | 'cosmeticRngState'
   | 'stepCarryMs'
-  | 'callouts'
-  | 'levelCallouts'
-  | 'prizeFlight'
-  | 'clocheLift'
   | 'kitchenCall'
   | 'dareHint'
   | 'breakIdleMs'
-  | 'trapNotice'
   | 'level'
   | 'introSkip'
   | 'pocketCard'
@@ -111,28 +95,16 @@ export type RunFields = Pick<
   | 'rattlesIntro'
   | 'hintBand'
   | 'stats'
-  | 'runTally'
-  | 'rankPaid'
-  | 'maybeRankGain'
-  | 'missionRun'
-  | 'journalRun'
-  | 'masteryRun'
-  | 'maybeMissionGain'
-  | 'maybeRoomDifficulty'
-  | 'maybeRoomModifiers'
-  | 'maybeRoomDareMark'
-  | 'maybeCrewRunKey'
-  | 'maybeRunNet'
+  | 'runGains'
+  | 'roomRun'
   | 'screenMs'
-  | 'maybeShareCopiedAtMs'
-  | 'isRunCardDropped'
+  | 'endCard'
   | 'runRecords'
   | 'bestStreak'
   | 'party'
   | 'seats'
-  | 'crewBots'
-  | 'runSeed'
-  | 'runPool'
+  | 'runStart'
+  | 'cosmetics'
 >
 
 export const freshRun = (model: Model): RunFields => ({
@@ -146,11 +118,6 @@ export const freshRun = (model: Model): RunFields => ({
   zombies: [],
   bullets: [],
   lobs: [],
-  particles: [],
-  decals: [],
-  dustCooldownMs: 0,
-  tellWatch: noTellWatch,
-  actionWatch: noActionWatch,
   fridge: shutFridge,
   pantry: barePantry,
   stove: freshStove(model.rngState),
@@ -165,22 +132,14 @@ export const freshRun = (model: Model): RunFields => ({
   frameEvents: [],
   hitStop: initialHitStop,
   shake: stillShake,
-  popups: [],
   streak: Streak.Cold(),
-  blasts: [],
   traps: [],
   pickups: [],
   loot: freshLoot(model.rngState),
-  cosmeticRngState: cosmeticSeedOf(model.rngState),
   stepCarryMs: 0,
-  callouts: [],
-  levelCallouts: [],
-  prizeFlight: PrizeFlight.Grounded(),
-  clocheLift: ClocheLift.Resting(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   dareHint: quietDareHint,
   breakIdleMs: 0,
-  trapNotice: TrapNotice.Quiet(),
   level: freshLevel(model.rngState),
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),
@@ -191,21 +150,15 @@ export const freshRun = (model: Model): RunFields => ({
   rattlesIntro: RattlesIntro.Waiting(),
   hintBand: 'Top',
   stats: freshStats,
-  runTally: RunTally.Uncounted(),
-  rankPaid: noRankPaid,
-  maybeRankGain: Option.none(),
-  missionRun: noMissionRun,
-  journalRun: noJournalRun,
-  masteryRun: noMasteryRun,
-  maybeMissionGain: Option.none(),
-  maybeRoomDifficulty: Option.none(),
-  maybeRoomModifiers: Option.none(),
-  maybeRoomDareMark: Option.none(),
-  maybeCrewRunKey: Option.none(),
-  maybeRunNet: Option.none(),
+  runGains: freshRunGains,
+  roomRun: freshRoomRun,
   screenMs: 0,
-  maybeShareCopiedAtMs: Option.none(),
-  isRunCardDropped: false,
+  // NOTE: SHARE's sheet and the death tip outlive a run; the rest of the end
+  // card starts fresh.
+  endCard: modifyFields(model.endCard, {
+    maybeShareCopiedAtMs: () => Option.none(),
+    isRunCardDropped: () => false,
+  }),
   runRecords: [],
   bestStreak: 0,
   party: Party.Solo(),
@@ -220,9 +173,10 @@ export const freshRun = (model: Model): RunFields => ({
         ),
     }),
   ],
-  crewBots: [],
-  runSeed: model.rngState,
-  runPool: [],
+  runStart: { runSeed: model.rngState, runPool: [], crewBots: [] },
+  cosmetics: modifyFields(freshCosmetics, {
+    cosmeticRngState: () => cosmeticSeedOf(model.rngState),
+  }),
 })
 
 // NOTE: going home ends the run, so every run field goes back to a fresh start.

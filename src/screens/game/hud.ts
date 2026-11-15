@@ -736,7 +736,7 @@ export const isJustLeveled: {
   (model: Model, gun: CarriedGun): boolean
 } = Function.dual(2, (model: Model, gun: CarriedGun): boolean =>
   Array.some(
-    model.levelCallouts,
+    model.cosmetics.levelCallouts,
     ({ weapon, tier, ageMs }) =>
       weapon === gun.kind && tier === gun.tier && ageMs < LEVEL_FLASH_MS,
   ),
@@ -913,7 +913,7 @@ const trapNoticeShapes = (
   model: Model,
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> =>
-  TrapNotice.match(model.trapNotice, {
+  TrapNotice.match(model.cosmetics.trapNotice, {
     Quiet: () => [],
     Refused: ({ reason }) => {
       const content = String.toUpperCase(reason)

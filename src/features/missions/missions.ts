@@ -141,8 +141,8 @@ export const freezeMissionsFrom: {
     onSome: day => {
       const current = onDay(model.missions, day)
       if (
-        before.saveStatus === 'Unread' ||
-        model.saveStatus === 'Unread' ||
+        before.saving.saveStatus === 'Unread' ||
+        model.saving.saveStatus === 'Unread' ||
         (model.missions.day !== null && model.missions.day > day) ||
         Array.isReadonlyArrayNonEmpty(current.rolled)
       ) {
@@ -280,21 +280,23 @@ export const tallyMissionsFrom: {
     return after
   }
   const tally = tallyEvents(
-    after.missionRun,
+    after.runGains.missionRun,
     after.frameEvents,
     leadSeatOf(after).slot,
   )
-  return tally.crushBest === after.missionRun.crushBest &&
-    tally.topTier === after.missionRun.topTier &&
-    tally.fridgePulls === after.missionRun.fridgePulls
+  return tally.crushBest === after.runGains.missionRun.crushBest &&
+    tally.topTier === after.runGains.missionRun.topTier &&
+    tally.fridgePulls === after.runGains.missionRun.fridgePulls
     ? after
     : modifyFields(after, {
-        missionRun: run =>
-          modifyFields(run, {
-            crushBest: () => tally.crushBest,
-            topTier: () => tally.topTier,
-            fridgePulls: () => tally.fridgePulls,
-          }),
+        runGains: modifyFields({
+          missionRun: run =>
+            modifyFields(run, {
+              crushBest: () => tally.crushBest,
+              topTier: () => tally.topTier,
+              fridgePulls: () => tally.fridgePulls,
+            }),
+        }),
       })
 })
 
@@ -355,7 +357,7 @@ const measureOf: {
   (id: MissionId): (run: Model) => number
   (run: Model, id: MissionId): number
 } = Function.dual(2, (run: Model, id: MissionId): number =>
-  MEASURES[id](run, run.missionRun),
+  MEASURES[id](run, run.runGains.missionRun),
 )
 
 // PAYING
@@ -431,7 +433,10 @@ const payOn = (
     Math.max(
       0,
       count -
-        Option.getOrElse(Record.get(run.missionRun.credited, id), () => 0),
+        Option.getOrElse(
+          Record.get(run.runGains.missionRun.credited, id),
+          () => 0,
+        ),
     ),
   )
   const progressed = addProgress(start, day, added)
@@ -465,15 +470,17 @@ const payOn = (
   })
   return isEnded
     ? modifyFields(paidModel, {
-        missionRun: missionRun =>
-          modifyFields(missionRun, {
-            credited: credited =>
-              Record.union(credited, measured, (_, latest) => latest),
-          }),
-        maybeMissionGain: () =>
-          Array.isReadonlyArrayNonEmpty(moved)
-            ? Option.some(gain)
-            : Option.none(),
+        runGains: modifyFields({
+          missionRun: missionRun =>
+            modifyFields(missionRun, {
+              credited: credited =>
+                Record.union(credited, measured, (_, latest) => latest),
+            }),
+          maybeMissionGain: () =>
+            Array.isReadonlyArrayNonEmpty(moved)
+              ? Option.some(gain)
+              : Option.none(),
+        }),
       })
     : paidModel
 }

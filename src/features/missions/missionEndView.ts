@@ -203,7 +203,7 @@ export const missionEndShapes: {
     startMs: number,
     spot: MissionSpot,
   ): ReadonlyArray<Canvas.Shape> =>
-    Option.match(model.maybeMissionGain, {
+    Option.match(model.runGains.maybeMissionGain, {
       onNone: () => [],
       onSome: gain => {
         if (ms < startMs || !Array.isReadonlyArrayNonEmpty(gain.moved)) {

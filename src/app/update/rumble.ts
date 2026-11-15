@@ -65,7 +65,7 @@ export const Rumble = ApplicationBlock.makeCommand('Rumble', {
 // NOTE: the pad that rumbles: the one in hand, while it is the device in
 // use and the rumble is on.
 const rumblingPad = (model: Model): Option.Option<number> =>
-  model.rumbleSetting === 'On' && model.lastDevice === 'Gamepad'
+  model.settings.rumbleSetting === 'On' && model.lastDevice === 'Gamepad'
     ? Option.map(model.input.maybeGamepad, pad => pad.index)
     : Option.none()
 

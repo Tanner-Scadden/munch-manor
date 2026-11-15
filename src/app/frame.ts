@@ -60,6 +60,7 @@ import {
   GameEvent,
   type GunLeveled,
   type Intent,
+  type LevelCallout,
   type Model,
   Phase,
   type PickupKind,
@@ -215,38 +216,33 @@ const runTicks = (stepped: Stepped, count: number): Stepped => {
 }
 
 // NOTE: a refused placement's notice fades on world time, on the client.
-const ageTrapNotice = (model: Model, worldMs: number): Model =>
-  TrapNotice.isAnyOf(['Quiet'])(model.trapNotice)
-    ? model
-    : modifyFields(model, {
-        trapNotice: notice =>
-          TrapNotice.match(notice, {
-            Quiet: () => notice,
-            Refused: ({ reason, remainingMs }) =>
-              remainingMs > worldMs
-                ? TrapNotice.Refused({
-                    reason,
-                    remainingMs: remainingMs - worldMs,
-                  })
-                : TrapNotice.Quiet(),
-          }),
-      })
+const ageTrapNotice = (notice: TrapNotice, worldMs: number): TrapNotice =>
+  TrapNotice.match(notice, {
+    Quiet: () => notice,
+    Refused: ({ reason, remainingMs }) =>
+      remainingMs > worldMs
+        ? TrapNotice.Refused({
+            reason,
+            remainingMs: remainingMs - worldMs,
+          })
+        : TrapNotice.Quiet(),
+  })
 
 const CALLOUT_MAX = 1
 
-const ageCallouts = (model: Model, deltaMs: number): Model =>
-  Array.isReadonlyArrayEmpty(model.callouts)
-    ? model
-    : modifyFields(model, {
-        callouts: callouts =>
-          Array.filterMap(callouts, callout =>
-            callout.ageMs + deltaMs < CALLOUT_LIFETIME_MS[callout.look]
-              ? Result.succeed(
-                  modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
-                )
-              : Result.failVoid,
-          ),
-      })
+const ageCallouts = (
+  callouts: ReadonlyArray<Callout>,
+  deltaMs: number,
+): ReadonlyArray<Callout> =>
+  Array.isReadonlyArrayEmpty(callouts)
+    ? callouts
+    : Array.filterMap(callouts, callout =>
+        callout.ageMs + deltaMs < CALLOUT_LIFETIME_MS[callout.look]
+          ? Result.succeed(
+              modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
+            )
+          : Result.failVoid,
+      )
 
 // NOTE: a kind is explained once, ever: the save keeps the kinds seen, so a
 // returning player only sees the name pop. The list keeps its reference
@@ -262,7 +258,10 @@ const calloutFor = (model: Model, kind: PickupKind): Model => {
   }
   return modifyFields(model, {
     seenPowerUps: seen => (isSeen ? seen : Array.append(seen, kind)),
-    callouts: callouts => Array.takeRight([...callouts, callout], CALLOUT_MAX),
+    cosmetics: modifyFields({
+      callouts: callouts =>
+        Array.takeRight([...callouts, callout], CALLOUT_MAX),
+    }),
   })
 }
 
@@ -271,39 +270,42 @@ const calloutFor = (model: Model, kind: PickupKind): Model => {
 const levelCalloutFor = (model: Model, event: GunLeveled): Model =>
   event.slot === focusOf(model).seat.slot
     ? modifyFields(model, {
-        levelCallouts: callouts =>
-          Array.takeRight(
-            [
-              ...callouts,
-              {
-                weapon: event.weapon,
-                tier: event.tier,
-                x: event.x,
-                y: event.y,
-                ageMs: 0,
-              },
-            ],
-            CALLOUT_MAX,
-          ),
+        cosmetics: modifyFields({
+          levelCallouts: callouts =>
+            Array.takeRight(
+              [
+                ...callouts,
+                {
+                  weapon: event.weapon,
+                  tier: event.tier,
+                  x: event.x,
+                  y: event.y,
+                  ageMs: 0,
+                },
+              ],
+              CALLOUT_MAX,
+            ),
+        }),
       })
     : model
 
-const ageLevelCallouts = (model: Model, deltaMs: number): Model =>
-  Array.isReadonlyArrayEmpty(model.levelCallouts)
-    ? model
-    : modifyFields(model, {
-        levelCallouts: callouts =>
-          Array.filterMap(callouts, callout =>
-            callout.ageMs + deltaMs < LEVEL_CALLOUT_LIFETIME_MS
-              ? Result.succeed(
-                  modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
-                )
-              : Result.failVoid,
-          ),
-      })
+const ageLevelCallouts = (
+  callouts: ReadonlyArray<LevelCallout>,
+  deltaMs: number,
+): ReadonlyArray<LevelCallout> =>
+  Array.isReadonlyArrayEmpty(callouts)
+    ? callouts
+    : Array.filterMap(callouts, callout =>
+        callout.ageMs + deltaMs < LEVEL_CALLOUT_LIFETIME_MS
+          ? Result.succeed(
+              modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
+            )
+          : Result.failVoid,
+      )
 
 // NOTE: a cosmetic, made after the step from the frame's grabs and level
-// ups. Callouts hold still while the shop is open, as the pickups do.
+// ups. Callouts hold still while the shop is open, as the pickups do. The
+// trap notice and both callout lists age in one write of the cosmetics.
 const advanceCallouts = (model: Model, worldMs: number): Model => {
   const called = Array.reduce(model.frameEvents, model, (current, event) =>
     GameEvent.matchOrElse(
@@ -315,7 +317,13 @@ const advanceCallouts = (model: Model, worldMs: number): Model => {
       () => current,
     ),
   )
-  return ageLevelCallouts(ageCallouts(called, worldMs), worldMs)
+  return modifyFields(called, {
+    cosmetics: modifyFields({
+      trapNotice: notice => ageTrapNotice(notice, worldMs),
+      callouts: callouts => ageCallouts(callouts, worldMs),
+      levelCallouts: callouts => ageLevelCallouts(callouts, worldMs),
+    }),
+  })
 }
 
 // NOTE: what the frame looks like once its ticks ran: the camera lean,
@@ -332,20 +340,13 @@ const advanceFlourishes = (
         ageFlight(
           advanceJuice(
             advanceCallouts(
-              ageTrapNotice(
-                advanceActions(
-                  advanceTells(
-                    worldMs > 0
-                      ? advanceParticles(
-                          model,
-                          worldMs / MS_PER_SECOND,
-                          worldMs,
-                        )
-                      : model,
-                    worldMs,
-                  ),
+              advanceActions(
+                advanceTells(
+                  worldMs > 0
+                    ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
+                    : model,
+                  worldMs,
                 ),
-                worldMs,
               ),
               worldMs,
             ),

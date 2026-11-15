@@ -298,7 +298,7 @@ describe('music only plays when it can be heard', () => {
       APPLICATION,
       Story.given(
         modifyFields(preparing(1, [FAR_AWAY_SPAWN], AudioState.Ready()), {
-          musicSetting: () => 'Off',
+          settings: modifyFields({ musicSetting: () => 'Off' }),
         }),
       ),
       press('Enter'),
@@ -314,7 +314,7 @@ describe('music only plays when it can be heard', () => {
       APPLICATION,
       Story.given(fighting(2, AudioState.Ready())),
       press('KeyN'),
-      Story.model(({ musicSetting }) => {
+      Story.model(({ settings: { musicSetting } }) => {
         expect(musicSetting).toBe('Off')
       }),
       Story.Command.expectExact(
@@ -322,7 +322,7 @@ describe('music only plays when it can be heard', () => {
       ),
       resolveCue('Silence'),
       press('KeyN'),
-      Story.model(({ musicSetting }) => {
+      Story.model(({ settings: { musicSetting } }) => {
         expect(musicSetting).toBe('On')
       }),
       Story.Command.expectExact(
@@ -337,13 +337,13 @@ describe('music only plays when it can be heard', () => {
       APPLICATION,
       Story.given(titleScreen(AudioState.Locked())),
       Story.message(Message.ClickedMusicButton()),
-      Story.model(({ musicSetting, audio }) => {
+      Story.model(({ settings: { musicSetting }, audio }) => {
         expect(musicSetting).toBe('Off')
         expect(audio).toEqual(AudioState.Unlocking())
       }),
       Story.Command.expectNone(),
       Story.message(Message.ClickedMusicButton()),
-      Story.model(({ musicSetting }) => {
+      Story.model(({ settings: { musicSetting } }) => {
         expect(musicSetting).toBe('On')
       }),
     ),
@@ -405,7 +405,7 @@ describe('music only plays when it can be heard', () => {
       APPLICATION,
       Story.given(holdingOut(AudioState.Ready())),
       press('KeyM'),
-      Story.model(({ soundSetting, musicSetting }) => {
+      Story.model(({ settings: { soundSetting, musicSetting } }) => {
         expect(soundSetting).toBe('Muted')
         expect(musicSetting).toBe('On')
       }),
@@ -454,7 +454,7 @@ describe('music only plays when it can be heard', () => {
       Story.given(
         modifyFields(
           escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
-          { soundSetting: () => 'Muted' },
+          { settings: modifyFields({ soundSetting: () => 'Muted' }) },
         ),
       ),
       press('Enter'),
@@ -479,7 +479,7 @@ describe('the end stingers stop when the music goes quiet', () => {
       APPLICATION,
       Story.given(escapedScreen(AudioState.Ready())),
       press('KeyM'),
-      Story.model(({ soundSetting }) => {
+      Story.model(({ settings: { soundSetting } }) => {
         expect(soundSetting).toBe('Muted')
       }),
       Story.Command.expectExact(
@@ -498,7 +498,7 @@ describe('the end stingers stop when the music goes quiet', () => {
         }),
       ),
       Story.message(Message.ClickedMusicButton()),
-      Story.model(({ musicSetting }) => {
+      Story.model(({ settings: { musicSetting } }) => {
         expect(musicSetting).toBe('Off')
       }),
       Story.Command.expectExact(
@@ -513,11 +513,11 @@ describe('the end stingers stop when the music goes quiet', () => {
       APPLICATION,
       Story.given(
         modifyFields(escapedScreen(AudioState.Ready()), {
-          soundSetting: () => 'Muted',
+          settings: modifyFields({ soundSetting: () => 'Muted' }),
         }),
       ),
       press('KeyM'),
-      Story.model(({ soundSetting }) => {
+      Story.model(({ settings: { soundSetting } }) => {
         expect(soundSetting).toBe('On')
       }),
       Story.Command.expectNone(),

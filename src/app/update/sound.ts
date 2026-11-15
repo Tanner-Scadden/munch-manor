@@ -150,7 +150,8 @@ const MUTE_KEY = 'KeyM'
 const MUSIC_KEY = 'KeyN'
 
 export const isSoundAudible = (model: Model): boolean =>
-  AudioState.isAnyOf(['Ready'])(model.audio) && model.soundSetting === 'On'
+  AudioState.isAnyOf(['Ready'])(model.audio) &&
+  model.settings.soundSetting === 'On'
 
 export type SoundCue = Readonly<{ sound: SoundEffect; variation: number }>
 
@@ -308,7 +309,7 @@ export const mendCues: {
   (before: Model, after: Model): ReadonlyArray<SoundCue>
 } = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
   pipe(
-    mendedSpots(after, before.tellWatch),
+    mendedSpots(after, before.cosmetics.tellWatch),
     Array.take(1),
     Array.map(spot => ({
       sound: 'Tink' as const,
@@ -341,7 +342,7 @@ export const strikeCues: {
   (before: Model, after: Model): ReadonlyArray<SoundCue>
 } = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
   pipe(
-    strikesBetween(before.actionWatch, after.actionWatch),
+    strikesBetween(before.cosmetics.actionWatch, after.cosmetics.actionWatch),
     Array.flatMap(({ motion, x, y }) =>
       Option.toArray(
         Option.map(STRIKE_SOUNDS[motion], sound => ({
@@ -493,7 +494,9 @@ export const unlockAudio: UpdateStep = stepModel =>
 
 export const toggleSound = (model: Model): Model =>
   modifyFields(model, {
-    soundSetting: setting => (setting === 'On' ? 'Muted' : 'On'),
+    settings: modifyFields({
+      soundSetting: setting => (setting === 'On' ? 'Muted' : 'On'),
+    }),
   })
 
 const toggleSoundFromKey = (model: Model, code: string): Model =>
@@ -501,7 +504,9 @@ const toggleSoundFromKey = (model: Model, code: string): Model =>
 
 export const toggleMusic = (model: Model): Model =>
   modifyFields(model, {
-    musicSetting: setting => (setting === 'On' ? 'Off' : 'On'),
+    settings: modifyFields({
+      musicSetting: setting => (setting === 'On' ? 'Off' : 'On'),
+    }),
   })
 
 const toggleMusicFromKey = (model: Model, code: string): Model =>

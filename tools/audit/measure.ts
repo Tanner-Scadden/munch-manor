@@ -90,9 +90,11 @@ export const collectTrace = (cdp: CDPSession) => {
 
 const RunModel = Schema.Struct({
   zombies: Schema.Array(Schema.Unknown),
-  particles: Schema.Array(Schema.Unknown),
   phase: Schema.Struct({ _tag: Schema.String }),
-  decals: Schema.Array(Schema.Unknown),
+  cosmetics: Schema.Struct({
+    particles: Schema.Array(Schema.Unknown),
+    decals: Schema.Array(Schema.Unknown),
+  }),
 })
 
 const FrameData = Schema.Struct({
@@ -335,9 +337,9 @@ export const measureScenario: {
         busyMs: round(mainThreadBusyMs(traceEvents) / data.deltas.length, 2),
         shapes: data.shapes,
         zombies: `${m0.zombies.length}->${m1.zombies.length}`,
-        particles: `${m0.particles.length}->${m1.particles.length}`,
+        particles: `${m0.cosmetics.particles.length}->${m1.cosmetics.particles.length}`,
         phase: m1.phase._tag,
-        decals: m1.decals.length,
+        decals: m1.cosmetics.decals.length,
         drawnFps: round((1000 * cadence.drawnFrames) / data.elapsedMs, 1),
         ticksPerDraw: round(cadence.ticksPerDraw, 2),
         drawnTickShare: round(cadence.drawnTickShare, 2),

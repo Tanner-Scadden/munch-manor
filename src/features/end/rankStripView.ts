@@ -512,7 +512,7 @@ export const rankStripShapes: {
     centerY: number,
     width: number,
   ): ReadonlyArray<Canvas.Shape> =>
-    Option.match(model.maybeRankGain, {
+    Option.match(model.runGains.maybeRankGain, {
       onNone: () => [],
       onSome: ({
         pointsBefore,

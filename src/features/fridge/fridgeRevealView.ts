@@ -543,7 +543,7 @@ export const prizeFlightShapes: {
 } = Function.dual(
   3,
   (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape> =>
-    PrizeFlight.match(model.prizeFlight, {
+    PrizeFlight.match(model.cosmetics.prizeFlight, {
       Grounded: () => [],
       Flying: ({ prize, from, ageMs }) => {
         const box = gunSlotBox(

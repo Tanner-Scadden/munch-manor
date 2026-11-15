@@ -134,8 +134,10 @@ const { home: _home, ...versionThreeSave } = versionFiveSave
 const { bests: _bests, ...versionTwoSave } = versionThreeSave
 
 const read: Model = modifyFields(loadingSave, {
-  loading: () => Loading.Loaded(),
-  saveStatus: () => 'Read',
+  saving: modifyFields({
+    loading: () => Loading.Loaded(),
+    saveStatus: () => 'Read',
+  }),
 })
 
 describe('the schema', () => {
@@ -239,7 +241,7 @@ describe('the schema', () => {
 
   test('the sharing setting round trips through the model', () => {
     const restored = restoreSave(initialModel, learnedSave)
-    expect(restored.shareStats).toBe('Off')
+    expect(restored.settings.shareStats).toBe('Off')
     expect(saveOf(restored).settings.shareStats).toBe('Off')
   })
 
@@ -336,7 +338,7 @@ describe('the schema', () => {
     const decoded = decodeSave(jsonOf(recording))
     expect(decoded).toEqual(Option.some(recording))
     const restored = restoreSave(initialModel, recording)
-    expect(restored.recordRuns).toBe('On')
+    expect(restored.settings.recordRuns).toBe('On')
     expect(saveOf(restored).recordRuns).toBe('On')
   })
 
@@ -347,7 +349,7 @@ describe('the schema', () => {
       initialModel,
       Option.getOrThrow(decodeSave(json)),
     )
-    expect(restored.cursorSetting).toBe('Bold')
+    expect(restored.settings.cursorSetting).toBe('Bold')
   })
 
   test('a version 9 save keeps everything, its look read as the closest current one', () => {
@@ -496,7 +498,7 @@ describe('the schema', () => {
       initialModel,
       Option.getOrThrow(decodeSave(json)),
     )
-    expect(reloaded.cursorSetting).toBe('Thin')
+    expect(reloaded.settings.cursorSetting).toBe('Thin')
     expect(saveOf(reloaded).settings.cursor).toBe('Thin')
   })
 
@@ -598,9 +600,9 @@ describe('loading the save', () => {
         ),
         finishSplash,
         Story.model(current => {
-          expect(current.saveStatus).toBe('Read')
-          expect(current.soundSetting).toBe('Muted')
-          expect(current.shakeSetting).toBe('Off')
+          expect(current.saving.saveStatus).toBe('Read')
+          expect(current.settings.soundSetting).toBe('Muted')
+          expect(current.settings.shakeSetting).toBe('Off')
           expect(current.appearance).toEqual(learnedSave.appearance)
           expect(current.homeScreenTip).toBe('Dismissed')
           expect(TrapHint.guards.Seen(current.trapHint)).toBe(true)
@@ -654,7 +656,7 @@ describe('loading the save', () => {
         throughIntro,
         writeSave(),
         Story.model(current => {
-          expect(current.saveStatus).toBe('Read')
+          expect(current.saving.saveStatus).toBe('Read')
           expect(isPracticeGateHeld(current)).toBe(true)
           expect(Array.map(shownHints(current), ({ id }) => id)).toContain(
             'Move',
@@ -672,10 +674,10 @@ describe('loading the save', () => {
         Story.message(Message.FailedLoadSave({ reason: 'SecurityError' })),
         finishSplash,
         Story.model(current => {
-          expect(current.saveStatus).toBe('Read')
+          expect(current.saving.saveStatus).toBe('Read')
           expect(current.lessons).toEqual(freshLessons)
-          expect(current.soundSetting).toBe('On')
-          expect(Loading.guards.Loaded(current.loading)).toBe(true)
+          expect(current.settings.soundSetting).toBe('On')
+          expect(Loading.guards.Loaded(current.saving.loading)).toBe(true)
         }),
       ),
   )
@@ -699,7 +701,7 @@ describe('loading the save', () => {
       finishSplash,
       Story.model(current => {
         expect(current.introducedKinds).toEqual(['Shambler'])
-        expect(current.soundSetting).toBe('Muted')
+        expect(current.settings.soundSetting).toBe('Muted')
         expect(current.bests.killsByKind).toEqual(
           modifyFields(noKills, { Shambler: () => 5 }),
         )
@@ -711,7 +713,9 @@ describe('loading the save', () => {
 
 describe('writing the save', () => {
   it.effect('changing a setting writes the new save', () => {
-    const muted = modifyFields(read, { soundSetting: () => 'Muted' })
+    const muted = modifyFields(read, {
+      settings: modifyFields({ soundSetting: () => 'Muted' }),
+    })
     return Story.story(
       APPLICATION,
       Story.given(read),
@@ -930,7 +934,7 @@ describe('writing the save', () => {
           tick(FIXED_STEP_MS),
           Story.model(current => {
             expect(current.pickups).toEqual([])
-            expect(current.callouts[0]?.look).toBe('Named')
+            expect(current.cosmetics.callouts[0]?.look).toBe('Named')
           }),
           Story.Command.expectNone(),
         )
@@ -1000,9 +1004,11 @@ describe('writing the save', () => {
           modifyFields(stats, {
             kills: () => modifyFields(noKills, { Shambler: () => 4 }),
           }),
-        runTally: () => RunTally.Counted({ kills: noKills }),
         panel: () => 'WhatsNew',
         orientation: () => 'Portrait',
+        runGains: modifyFields({
+          runTally: () => RunTally.Counted({ kills: noKills }),
+        }),
       }),
       3,
     )
@@ -1031,8 +1037,10 @@ describe('reset tutorial', () => {
     introducedKinds: () => ZOMBIE_KIND_ORDER,
     seenPowerUps: () => ['RapidFire', 'Pierce'],
     homeScreenTip: () => 'Dismissed',
-    soundSetting: () => 'Muted',
-    shakeSetting: () => 'Off',
+    settings: modifyFields({
+      soundSetting: () => 'Muted',
+      shakeSetting: () => 'Off',
+    }),
     appearance: () => learnedSave.appearance,
     bests: () => restoreSave(read, learnedSave).bests,
   })
@@ -1075,8 +1083,8 @@ describe('reset tutorial', () => {
           ),
         ).toEqual(['ChangedOnboarding', 'ForgotPowerUps'])
         expect(TrapHint.guards.Unseen(current.trapHint)).toBe(true)
-        expect(current.soundSetting).toBe('Muted')
-        expect(current.shakeSetting).toBe('Off')
+        expect(current.settings.soundSetting).toBe('Muted')
+        expect(current.settings.shakeSetting).toBe('Off')
         expect(current.appearance).toEqual(learnedSave.appearance)
         expect(current.homeScreenTip).toBe('Dismissed')
         expect(saveOf(current).bests).toEqual(learnedSave.bests)

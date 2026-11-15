@@ -45,6 +45,8 @@ import { Invulnerability, type Zombie } from '../../world/schema/entitySchema'
 import { Phase } from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
 import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
+import { maybeBeatComparisonOf } from './beatRun'
+import { beatVerdictShapes, friendRowShapes } from './beatRunView'
 import {
   PANEL_EDGE,
   PANEL_FILL,
@@ -76,8 +78,6 @@ import {
   skullCountOf,
   tallyRowsOf,
 } from './endBeat'
-import { maybeBeatComparisonOf } from './beatRun'
-import { beatVerdictShapes, friendRowShapes } from './beatRunView'
 import { ghostShapes, maybeGhostOf } from './ghostView'
 import {
   STRIP_PX,
@@ -846,7 +846,7 @@ const lineShapes = (
     return note
   }
   return Option.match(
-    kind === 'Munched' ? model.maybeDeathTip : Option.none(),
+    kind === 'Munched' ? model.endCard.maybeDeathTip : Option.none(),
     {
       onNone: () =>
         textShapes(quipOf(model, kind), 'Prompt', CENTER_X, y, 'Center'),

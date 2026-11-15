@@ -309,8 +309,8 @@ describe('finding a thing', () => {
             withDareThings(quietWave(3), [hiddenAt(0, 'MusicBox', box)]),
             {
               audio: () => AudioState.Ready(),
-              musicSetting: () => 'Off',
               elapsedMs: () => BEAT_EDGE_MS,
+              settings: modifyFields({ musicSetting: () => 'Off' }),
             },
           ),
           at.x,

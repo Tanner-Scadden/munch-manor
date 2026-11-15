@@ -45,8 +45,10 @@ const FRAME_MS = FIXED_STEP_MS
 const audibleAtFridge = (balance: number): Model =>
   modifyFields(atFridge(balance), {
     audio: () => AudioState.Ready(),
-    soundSetting: () => 'On',
-    musicSetting: () => 'Off',
+    settings: modifyFields({
+      soundSetting: () => 'On',
+      musicSetting: () => 'Off',
+    }),
   })
 
 // NOTE: the Model after each Message of a pull and the sounds its Commands
@@ -202,7 +204,7 @@ describe('the take', () => {
         APPLICATION,
         Story.given(offering('Freeze', 0)),
         Story.model(current => {
-          expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
+          expect(current.cosmetics.prizeFlight).toEqual(PrizeFlight.Grounded())
         }),
         press('Enter'),
         ...ticks(HOLD_TICKS, FRAME_MS),
@@ -210,7 +212,7 @@ describe('the take', () => {
           expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
             false,
           )
-          expect(current.prizeFlight).toMatchObject({
+          expect(current.cosmetics.prizeFlight).toMatchObject({
             _tag: 'Flying',
             prize: 'Freeze',
           })
@@ -222,7 +224,7 @@ describe('the take', () => {
           FRAME_MS,
         ),
         Story.model(current => {
-          expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
+          expect(current.cosmetics.prizeFlight).toEqual(PrizeFlight.Grounded())
         }),
       ),
   )
@@ -234,7 +236,7 @@ describe('the take', () => {
       ...ticks(Math.ceil(5000 / FRAME_MS) + 2, FRAME_MS),
       Story.model(current => {
         expect(current.fridge.door._tag).not.toBe('Offering')
-        expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
+        expect(current.cosmetics.prizeFlight).toEqual(PrizeFlight.Grounded())
       }),
     ),
   )

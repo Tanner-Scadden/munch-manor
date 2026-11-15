@@ -47,26 +47,34 @@ const setDust = (model: Model, slot: number): Batch => {
 // landed against what the watch saw last frame, their dust and splinters,
 // then the new watch. A frame with no tick changes nothing but the watch.
 export const advanceActions = (model: Model): Model => {
-  const actionWatch = nextActionWatch(model, model.actionWatch)
-  const after = modifyFields(model, { actionWatch: () => actionWatch })
+  const actionWatch = nextActionWatch(model, model.cosmetics.actionWatch)
   const batches: ReadonlyArray<Batch> = [
     ...pipe(
-      freshBeats(model.actionWatch, actionWatch),
+      freshBeats(model.cosmetics.actionWatch, actionWatch),
       Array.filter(({ payoff }) => payoff === 'SetTrap'),
       Array.map(({ slot }) => setDust(model, slot)),
     ),
     ...pipe(
-      strikesBetween(model.actionWatch, actionWatch),
+      strikesBetween(model.cosmetics.actionWatch, actionWatch),
       Array.filter(({ motion }) => motion === 'Hammer'),
       Array.map(({ x, y }) => woodBits('Splinter', { x, y }, HAMMER_SPLINTERS)),
     ),
   ]
   if (Array.isReadonlyArrayEmpty(batches)) {
-    return after
+    return modifyFields(model, {
+      cosmetics: modifyFields({ actionWatch: () => actionWatch }),
+    })
   }
-  const [cosmeticRngState, particles] = chain(model.cosmeticRngState, batches)
-  return modifyFields(after, {
-    cosmeticRngState: () => cosmeticRngState,
-    particles: current => keepNewest([...current, ...particles], PARTICLE_MAX),
+  const [cosmeticRngState, particles] = chain(
+    model.cosmetics.cosmeticRngState,
+    batches,
+  )
+  return modifyFields(model, {
+    cosmetics: modifyFields({
+      actionWatch: () => actionWatch,
+      cosmeticRngState: () => cosmeticRngState,
+      particles: current =>
+        keepNewest([...current, ...particles], PARTICLE_MAX),
+    }),
   })
 }

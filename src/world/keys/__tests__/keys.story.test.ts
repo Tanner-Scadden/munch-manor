@@ -98,9 +98,9 @@ describe('key drops by kind', () => {
           Array.filter(current.frameEvents, GameEvent.isAnyOf(['KeysFound']))
             .length,
         ).toBe(current.keys.held)
-        expect(Array.some(current.popups, ({ kind }) => kind === 'Kill')).toBe(
-          true,
-        )
+        expect(
+          Array.some(current.cosmetics.popups, ({ kind }) => kind === 'Kill'),
+        ).toBe(true)
       }),
     ),
   )

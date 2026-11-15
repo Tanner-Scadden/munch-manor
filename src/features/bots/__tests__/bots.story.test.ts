@@ -290,7 +290,7 @@ describe('START with bots', () => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(current.party._tag).toBe('Crew')
           expect(playersOf(current)).toHaveLength(3)
-          expect(current.crewBots).toHaveLength(2)
+          expect(current.runStart.crewBots).toHaveLength(2)
           const callings = Array.map(
             playersOf(current),
             ({ player }) => player.calling,
@@ -315,7 +315,7 @@ describe('START with bots', () => {
       Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.party._tag).toBe('Solo')
-        expect(current.crewBots).toHaveLength(0)
+        expect(current.runStart.crewBots).toHaveLength(0)
       }),
     ),
   )
@@ -377,7 +377,7 @@ describe('START with bots', () => {
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(playersOf(current)).toHaveLength(2)
-          expect(current.crewBots[0]?.name).toBe('Gizmo')
+          expect(current.runStart.crewBots[0]?.name).toBe('Gizmo')
           expect(playersOf(current)[1]?.player.calling).toBe('LineCook')
         }),
       )
@@ -428,7 +428,9 @@ describe('rank for a run with bots', () => {
   it.effect('the same revives in a crew of people do pay', () =>
     Effect.gen(function* () {
       const run = yield* botted
-      const people = modifyFields(run, { crewBots: () => [] })
+      const people = modifyFields(run, {
+        runStart: modifyFields({ crewBots: () => [] }),
+      })
       expect(pointsOf(run, people)).toBeGreaterThan(pointsOf(run, run))
     }),
   )

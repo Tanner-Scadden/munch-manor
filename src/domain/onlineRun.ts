@@ -87,12 +87,12 @@ export const runDifficultyOf = (model: Model): Difficulty =>
 // (maybeRoomModifiers) so a LEAVE, which drops the room, still has them,
 // else the player's own pick.
 const playedModifiersOf = (run: Model): Modifiers =>
-  Option.getOrElse(run.maybeRoomModifiers, () => run.modifiers)
+  Option.getOrElse(run.roomRun.maybeRoomModifiers, () => run.modifiers)
 
 // NOTE: the dare mark a run plays (src/world/run/dareLadder.ts): the room's,
 // kept with the run as the modifiers are, else the player's own pick.
 export const playedMarkOf = (run: Model): number =>
-  Option.getOrElse(run.maybeRoomDareMark, () => run.dareMark)
+  Option.getOrElse(run.roomRun.maybeRoomDareMark, () => run.dareMark)
 
 // NOTE: the modifiers that bite in a run, its mark's too. Friendly Fire
 // needs a teammate to hit, so with only one seat it is off, and pays
@@ -124,7 +124,7 @@ const botCrewNames = (
           ),
         ],
         ...Array.map(
-          model.crewBots,
+          model.runStart.crewBots,
           (bot, index) => [botSlotOf(model, index), botNameOf(bot)] as const,
         ),
       ]
@@ -156,7 +156,7 @@ const botCrewRanks = (
     ? [
         [leadSeatOf(model).slot, rankOf(totalPointsOf(model.rank))],
         ...Array.map(
-          model.crewBots,
+          model.runStart.crewBots,
           (_bot, index) => [botSlotOf(model, index), 0] as const,
         ),
       ]

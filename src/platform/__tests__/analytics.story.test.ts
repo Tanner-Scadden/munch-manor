@@ -95,7 +95,7 @@ const midRun: Model = modifyFields(home, {
   phase: () => Phase.Wave({ wave: 4, elapsedMs: 4000, spawns: [] }),
   difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
   lastDevice: () => 'Touch',
-  screenFit: () => 'Installed',
+  settings: modifyFields({ screenFit: () => 'Installed' }),
   keys: ring => modifyFields(ring, { spent: () => 3 }),
   stats: () =>
     modifyFields(freshStats, {
@@ -576,7 +576,11 @@ describe('sending at the end of a run', () => {
       Effect.gen(function* () {
         yield* Story.story(
           APPLICATION,
-          Story.given(modifyFields(lastHeart, { shareStats: () => 'Off' })),
+          Story.given(
+            modifyFields(lastHeart, {
+              settings: modifyFields({ shareStats: () => 'Off' }),
+            }),
+          ),
           Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
           Story.model(({ phase }) => {
             expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
@@ -609,8 +613,12 @@ describe('sending at the end of a run', () => {
 
 describe('the sharing setting', () => {
   it.effect('the toggle turns sharing off and saves it', () => {
-    const saved = modifyFields(home, { saveStatus: () => 'Read' })
-    const off = modifyFields(saved, { shareStats: () => 'Off' })
+    const saved = modifyFields(home, {
+      saving: modifyFields({ saveStatus: () => 'Read' }),
+    })
+    const off = modifyFields(saved, {
+      settings: modifyFields({ shareStats: () => 'Off' }),
+    })
     return Story.story(
       APPLICATION,
       Story.given(saved),
@@ -618,7 +626,7 @@ describe('the sharing setting', () => {
         ProfileBinding,
         ProfileMessage.ClickedSettingTile({ setting: 'ShareStats' }),
       ),
-      Story.model(({ shareStats }) => {
+      Story.model(({ settings: { shareStats } }) => {
         expect(shareStats).toBe('Off')
       }),
       Story.Command.expectExact(

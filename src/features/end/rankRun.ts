@@ -42,14 +42,23 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
     isEnded && isHumanCrew(run) ? awardsOf(crewOf(run), seat.slot).length : 0
   return {
     difficulty: playedDifficultyOf(run),
-    wavesCleared: Math.max(0, run.stats.wavesCleared - run.rankPaid.wavesPaid),
-    bossesFelled: Math.max(0, run.stats.kills.Boss - run.rankPaid.bossesPaid),
-    readyPoints: Math.max(0, run.stats.readyPoints - run.rankPaid.readyPaid),
+    wavesCleared: Math.max(
+      0,
+      run.stats.wavesCleared - run.runGains.rankPaid.wavesPaid,
+    ),
+    bossesFelled: Math.max(
+      0,
+      run.stats.kills.Boss - run.runGains.rankPaid.bossesPaid,
+    ),
+    readyPoints: Math.max(
+      0,
+      run.stats.readyPoints - run.runGains.rankPaid.readyPaid,
+    ),
     dareItems: dareItemsFoundOf(run),
     isEscape: Phase.isAnyOf(['Escaped'])(run.phase),
-    awards: Math.max(0, awards - run.rankPaid.awardsPaid),
+    awards: Math.max(0, awards - run.runGains.rankPaid.awardsPaid),
     revives: isHumanCrew(run)
-      ? Math.max(0, seat.revives - run.rankPaid.revivesPaid)
+      ? Math.max(0, seat.revives - run.runGains.rankPaid.revivesPaid)
       : 0,
     bonusPercent: runBonusPercentOf(
       effectiveModifiersOf(run),
@@ -60,7 +69,10 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
 }
 
 // NOTE: the player's own seat's numbers so far, to remember as paid.
-const paidBy = (run: Model, isEnded: boolean): Model['rankPaid'] => ({
+const paidBy = (
+  run: Model,
+  isEnded: boolean,
+): Model['runGains']['rankPaid'] => ({
   wavesPaid: run.stats.wavesCleared,
   bossesPaid: run.stats.kills.Boss,
   readyPaid: run.stats.readyPoints,
@@ -120,17 +132,19 @@ export const earnRank: {
   })
   return isEnded
     ? modifyFields(paid, {
-        rankPaid: () => paidBy(run, true),
-        maybeRankGain: () =>
-          input.isGuided
-            ? Option.none()
-            : Option.some({
-                pointsBefore,
-                gained: points,
-                bonesGained: bones,
-                bonusPercent: input.bonusPercent,
-                bonuses,
-              }),
+        runGains: modifyFields({
+          rankPaid: () => paidBy(run, true),
+          maybeRankGain: () =>
+            input.isGuided
+              ? Option.none()
+              : Option.some({
+                  pointsBefore,
+                  gained: points,
+                  bonesGained: bones,
+                  bonusPercent: input.bonusPercent,
+                  bonuses,
+                }),
+        }),
       })
     : paid
 })
@@ -194,7 +208,7 @@ export const payPursesFrom: {
   3,
   (before: Model, after: Model, saveWrite: 'Write' | 'Synced'): Model =>
     saveWrite === 'Write' &&
-    after.saveStatus === 'Read' &&
+    after.saving.saveStatus === 'Read' &&
     rankOf(totalPointsOf(after.rank)) > rankOf(totalPointsOf(before.rank))
       ? payPurses(after)
       : after,

@@ -56,7 +56,9 @@ const atCaseIn = (base: Model, phase: Phase): Model =>
 
 // NOTE: the save has been read, so a learned lesson is written back.
 const inBreak = atCaseIn(
-  modifyFields(readyModel, { saveStatus: () => 'Read' }),
+  modifyFields(readyModel, {
+    saving: modifyFields({ saveStatus: () => 'Read' }),
+  }),
   breakBefore(4),
 )
 

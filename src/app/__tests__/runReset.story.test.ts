@@ -30,31 +30,34 @@ const RUN_FIELDS = [
   'cameraGlide',
   'zombies',
   'bullets',
-  'particles',
-  'decals',
-  'dustCooldownMs',
   'elapsedMs',
   'frameEvents',
   'hitStop',
   'shake',
-  'popups',
   'streak',
-  'blasts',
   'traps',
   'pickups',
   'loot',
-  'callouts',
-  'trapNotice',
   'level',
   'debutCard',
   'hintBand',
   'stats',
-  'runTally',
   'screenMs',
 ] as const satisfies ReadonlyArray<keyof Model>
 
-const runState = (current: Model) =>
-  Record.fromEntries(Array.map(RUN_FIELDS, field => [field, current[field]]))
+const runState = (current: Model) => ({
+  ...Record.fromEntries(
+    Array.map(RUN_FIELDS, field => [field, current[field]]),
+  ),
+  runTally: current.runGains.runTally,
+  particles: current.cosmetics.particles,
+  decals: current.cosmetics.decals,
+  dustCooldownMs: current.cosmetics.dustCooldownMs,
+  popups: current.cosmetics.popups,
+  blasts: current.cosmetics.blasts,
+  callouts: current.cosmetics.callouts,
+  trapNotice: current.cosmetics.trapNotice,
+})
 
 const leaveForHome = Story.steps(
   press('Escape'),
@@ -92,11 +95,13 @@ describe('going home', () => {
               offset: { x: 40, y: 9 },
               velocity: { x: -3, y: 1 },
             }),
-            dustCooldownMs: () => 90,
-            trapNotice: () =>
-              TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
             hintBand: () => 'Bottom',
             loot: loot => modifyFields(loot, { dryMs: () => 5000 }),
+            cosmetics: modifyFields({
+              dustCooldownMs: () => 90,
+              trapNotice: () =>
+                TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
+            }),
           }),
           {
             selectedTrap: () => 'Turret',

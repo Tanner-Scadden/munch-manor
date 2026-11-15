@@ -397,11 +397,29 @@
       "rules": { "munch/no-nested-scan": "error" }
     },
     {
+      // NOTE: the client hands stepWorld its World alone, never the whole
+      // Model, whose copies past 128 fields cost about 17 times as much
+      // (AGENTS.md "Keep the frame cheap"). The World's own folders step a
+      // World already.
+      "files": [
+        "src/app/**/*.ts",
+        "src/screens/**/*.ts",
+        "src/features/**/*.ts",
+        "src/domain/**/*.ts",
+        "src/render/**/*.ts",
+        "src/input/**/*.ts",
+        "src/platform/**/*.ts",
+        "src/ui/**/*.ts"
+      ],
+      "rules": { "munch/step-world-alone": "error" }
+    },
+    {
       // NOTE: tests may scan freely: they run once, not every frame.
       "files": ["src/**/*.test.ts", "src/**/*.fixture.ts"],
       "rules": {
         "munch/no-deep-equal-per-frame": "off",
-        "munch/no-nested-scan": "off"
+        "munch/no-nested-scan": "off",
+        "munch/step-world-alone": "off"
       }
     },
     {

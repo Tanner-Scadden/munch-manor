@@ -142,7 +142,7 @@ describe('a run that ends', () => {
 describe('the crew on a stamp', () => {
   it('names the other seats as this player saw them, a bot marked a bot', () => {
     const crew = modifyFields(withDareThings(crewInWave(3), [SPOON]), {
-      crewBots: () => [BOT, BOT],
+      runStart: modifyFields({ crewBots: () => [BOT, BOT] }),
     })
     const over = modifyFields(crew, {
       phase: () => Phase.GameOver({ wave: 3 }),

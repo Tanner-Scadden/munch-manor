@@ -322,7 +322,7 @@ describe('one key per action: the kept keys work', () => {
       Story.given(fighting),
       tap('KeyM'),
       tap('KeyN'),
-      Story.model(({ soundSetting, musicSetting }) => {
+      Story.model(({ settings: { soundSetting, musicSetting } }) => {
         expect(soundSetting).toBe('Muted')
         expect(musicSetting).toBe('Off')
       }),

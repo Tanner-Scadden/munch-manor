@@ -49,7 +49,7 @@ const LEFT_X = 60
 const ROW_Y = 104
 
 const poseAt = (model: Model, slot: number): ActionPose =>
-  poseOf(model, model.actionWatch, slot)
+  poseOf(model, model.cosmetics.actionWatch, slot)
 
 const motionOf = (pose: ActionPose): Option.Option<string> =>
   ActionPose.isAnyOf(['Working'])(pose)
@@ -58,7 +58,7 @@ const motionOf = (pose: ActionPose): Option.Option<string> =>
 
 const payoffsOf = (model: Model, slot: number): ReadonlyArray<string> =>
   Array.map(
-    Array.filter(model.actionWatch.beats, beat => beat.slot === slot),
+    Array.filter(model.cosmetics.actionWatch.beats, beat => beat.slot === slot),
     ({ payoff }) => payoff,
   )
 
@@ -134,7 +134,7 @@ describe('CPR', () => {
       Story.given(beside),
       ...ticks(Math.floor(COOP_RULES.reviveMs / FRAME_MS / 2), FRAME_MS),
       Story.model(current => {
-        expect(current.actionWatch.working).toEqual([
+        expect(current.cosmetics.actionWatch.working).toEqual([
           expect.objectContaining({ slot: 0, motion: 'Compress' }),
         ])
       }),

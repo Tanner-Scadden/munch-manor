@@ -271,7 +271,7 @@ describe('an online co-op run', () => {
       }
       const audible = modifyFields(inRun(withShots, true), {
         audio: () => AudioState.Ready(),
-        soundSetting: () => 'On',
+        settings: modifyFields({ soundSetting: () => 'On' }),
       })
       return Story.story(
         APPLICATION,
@@ -352,7 +352,7 @@ describe('an online co-op run', () => {
                 ),
                 {
                   audio: () => AudioState.Ready(),
-                  soundSetting: () => 'On',
+                  settings: modifyFields({ soundSetting: () => 'On' }),
                 },
               ),
             ),
@@ -434,7 +434,7 @@ describe('an online co-op run', () => {
             expect(left.phase).toEqual(Phase.LeftEarly({ wave: 3 }))
             expect(endKindOf(left)).toEqual(Option.some('Chicken'))
             expect(left.lastRunEnding).toBe('LeftEarly')
-            const gain = Option.getOrThrow(left.maybeRankGain)
+            const gain = Option.getOrThrow(left.runGains.maybeRankGain)
             expect(gain.bonuses).not.toContain('FirstEscape')
             expect(left.bonuses.escapedOn).toEqual(graduated.bonuses.escapedOn)
           }),

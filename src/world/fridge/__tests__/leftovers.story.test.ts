@@ -80,7 +80,10 @@ describe('pulling from Mystery Leftovers', () => {
           expect(current.fridge.pulls).toBe(1)
           expect(focusOf(current).player.arsenal).toEqual(pistolOnly())
           expect(
-            Array.some(current.particles, ({ kind }) => kind === 'Fog'),
+            Array.some(
+              current.cosmetics.particles,
+              ({ kind }) => kind === 'Fog',
+            ),
           ).toBe(true)
           expect(isFridgeOffered(current)).toBe(false)
         }),
@@ -259,7 +262,7 @@ describe('pulling from Mystery Leftovers', () => {
           10 - FRIDGE_RULES.keys + FRIDGE_RULES.dudRefund,
         )
         expect(
-          Array.some(current.popups, ({ kind }) => kind === 'Payday'),
+          Array.some(current.cosmetics.popups, ({ kind }) => kind === 'Payday'),
         ).toBe(false)
       }),
     ),

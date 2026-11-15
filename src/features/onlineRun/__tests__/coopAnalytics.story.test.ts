@@ -393,7 +393,9 @@ describe("an online co-op run's summary", () => {
   it.effect('nothing is sent with sharing off', () =>
     Effect.gen(function* () {
       const private_ = yield* midRun(
-        modifyFields(player, { shareStats: () => 'Off' as const }),
+        modifyFields(player, {
+          settings: modifyFields({ shareStats: () => 'Off' as const }),
+        }),
       )
       yield* Story.story(
         APPLICATION,
@@ -518,7 +520,7 @@ describe("an online co-op run's rank", () => {
         )
         // NOTE: 4 waves x 10 x 1.5 = 60, 3 awards x 10, 1 revive x 5.
         expect(ended.rank).toMatchObject({ earnedPoints: 95, earnedBones: 9 })
-        expect(ended.maybeRankGain).toEqual(
+        expect(ended.runGains.maybeRankGain).toEqual(
           Option.some({
             pointsBefore: 0,
             gained: 95,
@@ -544,7 +546,7 @@ describe("an online co-op run's rank", () => {
         world: startWaveEarly(started.world),
       }
       const fresh = yield* endWith(won, again, 500)
-      expect(fresh.rankPaid).toEqual({
+      expect(fresh.runGains.rankPaid).toEqual({
         wavesPaid: 0,
         bossesPaid: 0,
         readyPaid: 0,
