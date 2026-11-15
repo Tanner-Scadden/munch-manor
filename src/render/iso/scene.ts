@@ -24,7 +24,7 @@
 
 import { Array, Effect, Option, Result } from 'effect'
 import type { Canvas } from 'foldkit'
-import { Application, type Texture } from 'pixi.js'
+import { Application, Texture } from 'pixi.js'
 
 import {
   AmbientLight,
@@ -52,6 +52,7 @@ import {
 import { muzzleFlashLevel } from '../playerView'
 import { hungChandelierShapes } from '../room/room'
 import { type TallCover, tallCoverOf } from '../room/tallCover'
+import { airOf } from './air'
 import { BillboardPool, BodyCasters, rimUp } from './billboards'
 import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
@@ -404,6 +405,22 @@ export class IsoScene {
         OVERHEAD_HOVER,
         1,
       )
+    }
+
+    // THE AIR
+    for (const mote of airOf({ world: model, level: built.level })) {
+      ;(mote.isGlowing ? this.glowing : this.billboards).place({
+        texture: Texture.WHITE,
+        centerX: mote.x + 0.5,
+        bottom: mote.y,
+        drawnWidth: 1,
+        drawnHeight: 1,
+        tint: mote.color,
+        alpha: mote.alpha,
+        footY: mote.y,
+        hover: mote.hover,
+        part: 0,
+      })
     }
     this.billboards.end()
     this.glowing.end()
