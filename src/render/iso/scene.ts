@@ -61,6 +61,7 @@ import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
   type Plant,
+  buildLintels,
   buildTileQuads,
   buildWallTops,
   buildWalls,
@@ -556,7 +557,10 @@ export class IsoScene {
       }),
       tiles: stormTilesOf(level),
     })
-    const walls = buildWalls({ level, material: this.wallMaterial })
+    const walls = [
+      ...buildWalls({ level, material: this.wallMaterial }),
+      ...buildLintels({ level, material: this.wallMaterial }),
+    ]
     const wallTops = buildWallTops({
       level,
       material: new Material3D({

@@ -7,7 +7,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🏚️ The manor stands up in 3D: walls with real depth, candlelight and flickering flames in every room that wrap round every body, shadows under everyone, ferns and the chandelier swaying in a draft, a cellar so dark only your flashlight cuts through it, and a storm outside: the lights cool and dim as a wave heats up, burn red when the house gets hungry, rain runs down the windows and lightning flashes through them, throwing its light across the floor, with thunder rolling after, dust drifts in the candlelight, embers float up off the fire, moths flutter round the candles, and every blast and stomp makes the candles gutter, the chandelier jolt, and dust rain off the ceiling. (Older devices without WebGL2 can't run the manor anymore, sorry!)
 - 🔍 Every pixel is the same size now, on every phone and window, so the art stays razor sharp as the camera glides.
 - 🚀 The manor loads faster and runs smoother on phones, with no more freeze on the loading screen.
-- 🖼️ The walls got their wallpaper, trim, wainscoting, and portraits back, no more plain grey blocks.
+- 🖼️ The walls got their wallpaper, trim, wainscoting, and portraits back, no more plain grey blocks, and the doorways are cut right through them under solid lintels.
 - 💥 Hits flash bright white even in the darkest cellar, the last zombie of a wave goes down with a big freeze and a thump, and the ferns bend in the draft like real plants.
 - 🩹 Heading back to the menu after a run no longer crashes the game.
 

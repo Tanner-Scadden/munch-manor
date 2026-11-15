@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../shared/constants'
@@ -32,19 +32,27 @@ const LINTEL_BOTTOM = FACE_TOP + 2
 // zombie standing in it, Uncle Chunk.
 const BESIDE_PX = TILE_SIZE * 2
 
-type Opening = Readonly<{ row: number; first: number; last: number }>
+// NOTE: a doorway in a top wall: the row it opens onto the room from, and
+// its first and last columns.
+export type Opening = Readonly<{ row: number; first: number; last: number }>
 
-const isPassage = (level: Level, column: number, row: number): boolean =>
-  hasTileFlag(level, tileIndex(level, column, row), TILE_DOOR) ||
-  Array.some(
-    level.exits,
-    exit =>
-      exit.isOpen &&
-      Array.some(
-        exit.tiles,
-        (tile: Tile) => tile.column === column && tile.row === row,
-      ),
-  )
+export const isPassage: {
+  (column: number, row: number): (level: Level) => boolean
+  (level: Level, column: number, row: number): boolean
+} = Function.dual(
+  3,
+  (level: Level, column: number, row: number): boolean =>
+    hasTileFlag(level, tileIndex(level, column, row), TILE_DOOR) ||
+    Array.some(
+      level.exits,
+      exit =>
+        exit.isOpen &&
+        Array.some(
+          exit.tiles,
+          (tile: Tile) => tile.column === column && tile.row === row,
+        ),
+    ),
+)
 
 // NOTE: a doorway in a top wall is a passage tile, a door or an open exit,
 // right above walkable floor that is not a passage too.
@@ -158,6 +166,20 @@ const occluderOf =
     }
   }
 
+const builtOpenings = new WeakMap<Level, ReadonlyArray<Opening>>()
+
+// NOTE: every doorway in a top wall, built once for each level, for the
+// occluders here and the 3D house's lintels (src/render/iso/house.ts).
+export const doorwaysOf = (level: Level): ReadonlyArray<Opening> => {
+  const cached = builtOpenings.get(level)
+  if (cached !== undefined) {
+    return cached
+  }
+  const openings = openingsOf(level)
+  builtOpenings.set(level, openings)
+  return openings
+}
+
 const builtOccluders = new WeakMap<Level, ReadonlyArray<Occluder>>()
 
 // NOTE: built once for each level and kept, like the room image they crop.
@@ -172,7 +194,7 @@ export const occludersOf = (level: Level): ReadonlyArray<Occluder> => {
   )
   const occluders =
     images.length === room.length
-      ? Array.map(openingsOf(level), occluderOf(level, images))
+      ? Array.map(doorwaysOf(level), occluderOf(level, images))
       : []
   builtOccluders.set(level, occluders)
   return occluders
