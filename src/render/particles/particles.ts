@@ -103,6 +103,7 @@ import {
   sparks,
   splatParticles,
   stompParticles,
+  wadeSplash,
   withState,
   woodBit,
   woodBits,
@@ -367,8 +368,7 @@ const eventParticles = (
 
 // NOTE: each step through a roof leak's puddle kicks up this many drops,
 // low and slow beside a burst of goo.
-const WADE_SPLASH = 2
-const WADE_SPLASH_SPEED = { min: 12, max: 34 }
+const WADE_SPLASH = 3
 
 type Spawn = Readonly<{
   rngState: number
@@ -395,11 +395,7 @@ const walkingDust = (
   const ground = playerGround(player.x, player.y)
   // NOTE: feet in a roof leak's puddle kick up water, not dust.
   const [nextState, particles] = isWadingAt(levelOf(model), player)
-    ? generateMany(
-        rngState,
-        WADE_SPLASH,
-        droplet('Splash', ground, heading, Math.PI, WADE_SPLASH_SPEED),
-      )
+    ? generateMany(rngState, WADE_SPLASH, wadeSplash({ ground, heading }))
     : generateMany(
         rngState,
         1,

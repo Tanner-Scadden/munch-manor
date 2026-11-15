@@ -12,6 +12,7 @@ import { Array, Option, Order } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../../shared/constants'
+import { isCellarLit } from '../../world/cellar/bulb'
 import type { Level } from '../../world/level/arena'
 import {
   type Leak,
@@ -19,9 +20,11 @@ import {
   leakRoll,
   leaksOf,
 } from '../../world/level/leaks'
+import { CELLAR_ROOM_ID } from '../../world/level/plan'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { clamp, distanceBetween } from '../../world/step/geometry'
+import { beamReach } from '../cellarDark'
 import { rect } from '../drawing'
 import type { Mote } from './air'
 import type { TileQuad } from './house'
@@ -34,12 +37,11 @@ import {
 } from './lightSpecs'
 import { mixColor, strikeOf } from './mood'
 
-// NOTE: the puddles' quads sit over the ground's glows (0.012) and under
-// the storm's thrown light (0.014).
-const OVER_FLOOR = 0.013
-
-// NOTE: every tile a puddle lies on, a quad each.
-export const leakTilesOf = (level: Level): ReadonlyArray<TileQuad> => {
+// NOTE: every tile a puddle lies on, a quad each, this high over the floor.
+export const leakTilesOf = ({
+  level,
+  lift,
+}: Readonly<{ level: Level; lift: number }>): ReadonlyArray<TileQuad> => {
   const keys = new Set<number>()
   const tiles: Array<TileQuad> = []
   Array.forEach(leaksOf(level), ({ rows }) => {
@@ -53,7 +55,7 @@ export const leakTilesOf = (level: Level): ReadonlyArray<TileQuad> => {
         const key = row * level.columns + column
         if (!keys.has(key)) {
           keys.add(key)
-          tiles.push({ row, column, y: OVER_FLOOR })
+          tiles.push({ row, column, y: lift })
         }
       }
     })
@@ -185,13 +187,14 @@ export const maybeDripHeard = ({
 
 // THE PUDDLES
 
-// NOTE: the water darkens and cools the planks under it and lets them show
-// through, softer at its two ends; its far edge is a pixel of pale sheen,
-// the sky off the wet.
-const WATER = 'rgba(4, 10, 20, 0.66)'
-const WATER_EDGE = 'rgba(4, 10, 20, 0.4)'
-const RIM = 'rgba(150, 176, 196, 0.18)'
-const RING = 'rgba(190, 212, 240, 0.5)'
+// NOTE: the water is a cool blue-grey over the planks, see-through and
+// softer at its two ends, lit by the room as the floor is (leakLayer.ts), so
+// it shows in the light and is lost in the cellar's dark but for a beam; its
+// far edge is a pixel of pale rim, the sky off the wet.
+const WATER = 'rgba(112, 150, 196, 0.62)'
+const WATER_EDGE = 'rgba(112, 150, 196, 0.4)'
+const RIM = 'rgba(206, 228, 250, 0.8)'
+const RING = 'rgba(206, 228, 250, 0.7)'
 const STRIKE_RGB = '232, 240, 255'
 
 // NOTE: how far from a puddle a flame still shows in it, in game pixels,
@@ -397,20 +400,20 @@ const flameStreaksOf = (
     return []
   }
   const centerX = clamp(mirror.x, row.left + 2, row.right - 2)
-  const length = 2 + Math.round(strength * 4)
-  const alpha = hundredths(0.35 + 0.5 * strength)
+  const length = 3 + Math.round(strength * 4)
+  const alpha = hundredths(0.6 + 0.4 * strength)
   const shimmer = leak.rows[rowIndex + 1]
   return [
     ...streakOn(row, centerX, length, `rgba(${mirror.rgb}, ${alpha})`),
-    ...(strength > 0.5
-      ? streakOn(row, centerX, 2, `rgba(${mirror.coreRgb}, 0.95)`)
+    ...(strength > 0.25
+      ? streakOn(row, centerX, 2, `rgba(${mirror.coreRgb}, 1)`)
       : []),
-    ...(shimmer !== undefined && strength > 0.3
+    ...(shimmer !== undefined && strength > 0.2
       ? streakOn(
           shimmer,
           centerX + 1,
-          length - 3,
-          `rgba(${mirror.rgb}, ${hundredths(0.3 * strength + 0.2)})`,
+          length - 2,
+          `rgba(${mirror.rgb}, ${hundredths(0.4 * strength + 0.35)})`,
         )
       : []),
   ]
@@ -456,6 +459,64 @@ const strikeBandOf = (
           `rgba(${STRIKE_RGB}, 0.5)`,
         )
       : []),
+  ]
+}
+
+// NOTE: the flashlight in the cellar's dark (cellarDark.ts) catches a
+// puddle under its beam or in its pool round the feet: a cold white streak
+// across its middle with a brighter core, and its far rim lit, so the water
+// shows where nothing else does.
+const POOL_GLINT_PX = 34
+const BEAM_RGB = '226, 238, 255'
+
+type Viewer = Readonly<{ x: number; y: number; facing: Vector }>
+
+const isCaughtBy = (viewer: Viewer, { spot }: Leak): boolean => {
+  const dx = spot.x - viewer.x
+  const dy = spot.y - viewer.y
+  return (
+    Math.hypot(dx, dy) < POOL_GLINT_PX ||
+    beamReach({ facing: viewer.facing, dx, dy }) < 1
+  )
+}
+
+// NOTE: whether the viewer stands in the cellar with its bulb out, their
+// flashlight on.
+const isInDarkAt = (world: World, level: Level, viewer: Viewer): boolean =>
+  !isCellarLit(world) &&
+  Array.some(
+    level.rooms,
+    ({ id, isOpen, box }) =>
+      id === CELLAR_ROOM_ID &&
+      isOpen &&
+      viewer.x >= box.left &&
+      viewer.x < box.right &&
+      viewer.y >= box.top &&
+      viewer.y < box.bottom,
+  )
+
+const beamGlintOf = (
+  leak: Leak,
+  viewer: Viewer,
+): ReadonlyArray<Canvas.Shape> => {
+  const { rows } = leak
+  const first = Array.headNonEmpty(rows)
+  const middle = rows[Math.floor(rows.length / 2)] ?? first
+  const centerX = clamp(
+    Math.round((leak.spot.x * 2 + viewer.x) / 3),
+    middle.left + 2,
+    middle.right - 2,
+  )
+  return [
+    rect(
+      first.left,
+      first.y,
+      first.right - first.left + 1,
+      1,
+      `rgba(${BEAM_RGB}, 0.7)`,
+    ),
+    ...streakOn(middle, centerX, 6, `rgba(${BEAM_RGB}, 0.75)`),
+    ...streakOn(middle, centerX, 2, `rgba(${BEAM_RGB}, 1)`),
   ]
 }
 
@@ -512,12 +573,17 @@ export const puddleKeyOf = ({
   world,
   level,
   viewer,
-}: Readonly<{ world: World; level: Level; viewer: Vector }>): string => {
+}: Readonly<{ world: World; level: Level; viewer: Viewer }>): string => {
+  const isDark = isInDarkAt(world, level, viewer)
   let rings = ''
+  let beam = ''
   for (const leak of leaksOf(level)) {
     rings += isNear(viewer, leak) ? `${ringStepOf(leak, world.elapsedMs)}` : '0'
+    if (isDark && leak.isUnderground) {
+      beam += isCaughtBy(viewer, leak) ? '1' : '0'
+    }
   }
-  return `${isFlameLit(world, 'Chandelier') ? 1 : 0}${isFlameLit(world, 'Bulb') ? 1 : 0}|${strikeStepOf(world)}|${rings}`
+  return `${isFlameLit(world, 'Chandelier') ? 1 : 0}${isFlameLit(world, 'Bulb') ? 1 : 0}|${strikeStepOf(world)}|${rings}|${beam}`
 }
 
 // NOTE: the puddles' glints and the near rings this frame, over their
@@ -529,15 +595,19 @@ export const puddleGlintsOf = ({
 }: Readonly<{
   world: World
   level: Level
-  viewer: Vector
+  viewer: Viewer
 }>): ReadonlyArray<Canvas.Shape> => {
   const lit = litOf(world)
   const strike = strikeStepOf(world)
   const mirrors = mirrorsOf(level)
+  const isDark = isInDarkAt(world, level, viewer)
   return Array.flatMap(leaksOf(level), (leak, index) => {
     const step = isNear(viewer, leak) ? ringStepOf(leak, world.elapsedMs) : 0
     return [
       ...glintsOf(leak, mirrors[index] ?? [], lit, strike),
+      ...(isDark && leak.isUnderground && isCaughtBy(viewer, leak)
+        ? beamGlintOf(leak, viewer)
+        : []),
       ...(step > 0 ? ringOf(leak, step) : []),
     ]
   })

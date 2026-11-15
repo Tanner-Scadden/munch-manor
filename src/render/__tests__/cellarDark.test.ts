@@ -37,18 +37,14 @@ describe('the cellar dark', () => {
   })
 
   test('draws nothing of a zombie far in the dark, and all of a near one', () => {
-    const dark = Option.getOrThrow(
-      darkOf(inCellar(quietWave(4))),
-    )
+    const dark = Option.getOrThrow(darkOf(inCellar(quietWave(4))))
     expect(dark.fadeOf(NEAR)).toBe(1)
     expect(dark.fadeOf(FAR_OFF)).toBe(0)
   })
 
   test('fades a zombie in over the last tile, by the viewing player', () => {
     const fading = zombieAt(3, CELLAR_SPOT.x - 25, CELLAR_SPOT.y)
-    const dark = Option.getOrThrow(
-      darkOf(inCellar(quietWave(4))),
-    )
+    const dark = Option.getOrThrow(darkOf(inCellar(quietWave(4))))
     expect(dark.fadeOf(fading)).toBeGreaterThan(0)
     expect(dark.fadeOf(fading)).toBeLessThan(1)
   })
@@ -68,9 +64,7 @@ describe('the cellar dark', () => {
   })
 
   test('draws a zombie outside the cellar as usual', () => {
-    const dark = Option.getOrThrow(
-      darkOf(inCellar(quietWave(4))),
-    )
+    const dark = Option.getOrThrow(darkOf(inCellar(quietWave(4))))
     expect(dark.fadeOf(zombieAt(4, 40, 60))).toBe(1)
   })
 

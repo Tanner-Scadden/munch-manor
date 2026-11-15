@@ -24,8 +24,12 @@ const BEAM = { lengthPx: 120, halfAngle: Math.PI / 7 } as const
 const DIM = 0.8
 
 // NOTE: how far into the beam a point is, 0 at its root and 1 at its edge or
-// its end, by whichever is further.
-const beamReach = (facing: Vector, dx: number, dy: number): number => {
+// its end, by whichever is further; a puddle in it glints (iso/leaks.ts).
+export const beamReach = ({
+  facing,
+  dx,
+  dy,
+}: Readonly<{ facing: Vector; dx: number; dy: number }>): number => {
   const distance = Math.hypot(dx, dy)
   if (distance === 0) {
     return 0
@@ -62,7 +66,7 @@ const nearFade = (viewer: Vector, zombie: Vector): number =>
 
 // NOTE: whole inside the beam's clear core, fading out across its dim edge.
 const beamFade = (facing: Vector, dx: number, dy: number): number =>
-  Math.min(1, Math.max(0, (1 - beamReach(facing, dx, dy)) / (1 - DIM)))
+  Math.min(1, Math.max(0, (1 - beamReach({ facing, dx, dy })) / (1 - DIM)))
 
 const cellarOf = (world: World): Option.Option<Room> =>
   Array.findFirst(

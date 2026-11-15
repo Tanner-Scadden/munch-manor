@@ -1,11 +1,13 @@
 import { Array, Option, String } from 'effect'
 import type { Canvas } from 'foldkit'
+import { modifyFields } from 'foldkit/struct'
 import { expect, test } from 'vitest'
 
 import { atClock, quietWave } from '../../../test/model.fixture'
 import { rectsOf } from '../../../test/viewReading'
-import { levelOf } from '../../../world/level/arena'
+import { levelOf, openExitIn } from '../../../world/level/arena'
 import { leaksOf } from '../../../world/level/leaks'
+import { EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
 import {
   dripsOf,
   maybeDripHeard,
@@ -74,7 +76,7 @@ test('a strike lights the puddles, and only a change paints them again', () => {
   const struck = Option.getOrThrow(
     Array.findFirst(clocks, ms => strikeOf(atClock(wave, ms)) === 1),
   )
-  const viewer = { x: 10_000, y: 10_000 }
+  const viewer = { x: 10_000, y: 10_000, facing: { x: 1, y: 0 } }
   const glints = (ms: number) =>
     rectsOf(
       puddleGlintsOf({ world: atClock(wave, ms), level: manor, viewer }),
@@ -87,14 +89,42 @@ test('a strike lights the puddles, and only a change paints them again', () => {
   expect(keyAt(calm)).toBe(keyAt(calm + 10))
 })
 
+test('the flashlight catches a cellar puddle in the dark', () => {
+  const dark = modifyFields(quietWave(4), {
+    level: state => openExitIn(openExitIn(state, EAST_EXIT), FAR_EXIT),
+  })
+  const level = levelOf(dark)
+  const puddle = Option.getOrThrow(
+    Array.findFirst(leaksOf(level), ({ isUnderground }) => isUnderground),
+  )
+  const viewerFacing = (x: number) => ({
+    x: puddle.spot.x - 45,
+    y: puddle.spot.y,
+    facing: { x, y: 0 },
+  })
+  const glintsFacing = (x: number) =>
+    rectsOf(puddleGlintsOf({ world: dark, level, viewer: viewerFacing(x) }), {
+      x: 0,
+      y: 0,
+    })
+  expect(glintsFacing(1).length).toBeGreaterThan(glintsFacing(-1).length)
+  const keyFacing = (x: number) =>
+    puddleKeyOf({ world: dark, level, viewer: viewerFacing(x) })
+  expect(keyFacing(1)).not.toBe(keyFacing(-1))
+})
+
 // NOTE: the pixels a ring covers around its landing, read as what a viewer
 // near the puddle sees that one far off does not.
 const ringPixelsAt = (ms: number, spot: Readonly<{ x: number; y: number }>) => {
   const keyOf = ({ x, y, width, height, fill }: Canvas.Rect) =>
     `${x},${y},${width},${height},${fill}`
-  const glints = (viewer: Readonly<{ x: number; y: number }>) =>
+  const glints = (at: Readonly<{ x: number; y: number }>) =>
     rectsOf(
-      puddleGlintsOf({ world: atClock(wave, ms), level: manor, viewer }),
+      puddleGlintsOf({
+        world: atClock(wave, ms),
+        level: manor,
+        viewer: { ...at, facing: { x: 1, y: 0 } },
+      }),
       {
         x: 0,
         y: 0,

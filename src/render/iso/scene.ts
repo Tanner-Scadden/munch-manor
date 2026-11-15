@@ -612,7 +612,8 @@ export class IsoScene {
     })
     // NOTE: sparks, blood, and gibs in the air stand as cubes, lit as the
     // bodies are, so they vanish into the cellar's dark with them; one with
-    // a see-through color (or with no cube left) stays a lit billboard. The
+    // a see-through color (or with no cube left) stays a lit billboard. A
+    // wading splash keeps its own blue-white in any light. The
     // scene reads them off the particles, never the overhead strata.
     for (const particle of airborneParticlesOf(model.cosmetics.particles)) {
       const { shape } = particle
@@ -629,7 +630,7 @@ export class IsoScene {
           width: shape.width,
           height: shape.height,
           color: look.color,
-          glow: 0,
+          glow: particle.isGlowing ? 1 : 0,
         })
       if (!isCubed) {
         const leaf = { shape, matrix: IDENTITY, alpha: 1 }
@@ -956,7 +957,8 @@ export class IsoScene {
     holder.addChild(
       floor.mesh,
       ground.mesh,
-      leaks.mesh,
+      leaks.body,
+      leaks.glints,
       wallTops,
       wallFaces,
       stormQuads,
