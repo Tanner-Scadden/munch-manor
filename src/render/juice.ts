@@ -163,6 +163,20 @@ const eventTrauma = (event: GameEvent): number =>
     SteppedOut: () => 0,
   })
 
+// NOTE: how hard the house itself rattles, 0 to 1: the shake past what
+// gunfire alone can reach, so a blast, a stomp, or a slam rattles it and a
+// held trigger never does. The 3D house reads it (src/render/iso/): the
+// flames gutter, the chandelier jolts, dust sifts off the ceiling.
+export const houseRattleOf = (trauma: number): number =>
+  Math.min(
+    1,
+    Math.max(
+      0,
+      (trauma - SHAKE_FIRING_TRAUMA_MAX) /
+        (SHAKE_TRAUMA_MAX - SHAKE_FIRING_TRAUMA_MAX),
+    ),
+  )
+
 const shakeAxis = (roll: number, trauma: number): number => {
   const pixels = Math.round(SHAKE_MAX_PX * trauma * (roll * 2 - 1))
   return pixels === 0 ? 0 : pixels

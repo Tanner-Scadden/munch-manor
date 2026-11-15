@@ -178,6 +178,11 @@ const flickerAt = (t: number, seed: number, strength: number): number =>
       0.07 * Math.sin(t * 15.7 + seed * 2.3) +
       0.05 * Math.sin(t * 27.3 + seed * 4.1))
 
+// NOTE: a flame guttering as the house rattles: dipping hard and fast, the
+// bulb swinging on its cord too.
+const guttered = (t: number, seed: number, rattle: number): number =>
+  1 - rattle * (0.35 + 0.3 * Math.sin(t * 41 + seed * 3.7))
+
 // NOTE: whether a flame burns now (the chandelier's and the bulb's change),
 // how far it sways off its spot in units, and whether it flickers.
 const isFlameLit = (world: World, kind: FlameKind): boolean =>
@@ -323,9 +328,15 @@ const isInBox = (box: RoomBox, { x, y }: Vector): boolean =>
 // cellar), the dark, the flashlight, and the burning flames nearest the
 // viewer, as many as the budget has left.
 export const lightsFrameOf = (
-  input: Readonly<{ world: World; level: Level; viewer: Vector }>,
+  input: Readonly<{
+    world: World
+    level: Level
+    viewer: Vector
+    // NOTE: how hard the house rattles (houseRattleOf), 0 to 1.
+    rattle: number
+  }>,
 ): LightsFrame => {
-  const { world, level, viewer } = input
+  const { world, level, viewer, rattle } = input
   const t = world.elapsedMs / 1000
   const mood = moodOf(world)
   const maybeCellar = Array.findFirst(
@@ -380,6 +391,7 @@ export const lightsFrameOf = (
       x: spec.x + SWAYS[spec.kind](t),
       intensity:
         spec.intensity *
+        guttered(t, spec.seed, rattle) *
         (spec.kind === 'Bulb' ? 1 : flickerAt(t, spec.seed, mood.flicker)),
     })),
   }

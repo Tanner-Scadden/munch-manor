@@ -157,6 +157,10 @@ export const roomModel = (settings: SceneSettings): Model => {
       decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
       elapsedMs: elapsedMs => config.clock ?? elapsedMs,
       intensity: intensity => config.heat ?? intensity,
+      shake: shake =>
+        config.trauma === undefined
+          ? shake
+          : { trauma: config.trauma, offset: { x: 0, y: 0 } },
     }),
     {
       trapStock: () => ({

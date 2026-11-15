@@ -49,6 +49,7 @@ import {
   decalShapes,
   groundParticleShapes,
 } from '../effectsView'
+import { houseRattleOf } from '../juice'
 import { muzzleFlashLevel } from '../playerView'
 import { hungChandelierShapes } from '../room/room'
 import { type TallCover, tallCoverOf } from '../room/tallCover'
@@ -320,6 +321,7 @@ export class IsoScene {
     this.view.camera.orthographicSize = (shownWidth * UNIT) / 2
 
     const { player } = focusOf(model)
+    const rattle = houseRattleOf(model.shake.trauma)
 
     // THE FLOOR
     const landed = flatten(groundParticleShapes(model.particles))
@@ -380,7 +382,9 @@ export class IsoScene {
         imageKey(shape, matrix),
       ),
     )
-    const sway = chandelierSwayAt(t)
+    // NOTE: a rattle jolts the chandelier on its chain, a whole pixel at a
+    // time.
+    const sway = chandelierSwayAt(t) + Math.round(Math.sin(t * 38) * rattle * 3)
     // NOTE: sparks, blood, and dust in the air are lit as the bodies are, so
     // they vanish into the cellar's dark with them.
     const airborne = rectKeysOf(
@@ -408,7 +412,12 @@ export class IsoScene {
     }
 
     // THE AIR
-    for (const mote of airOf({ world: model, level: built.level })) {
+    for (const mote of airOf({
+      world: model,
+      level: built.level,
+      viewer: player,
+      rattle,
+    })) {
       ;(mote.isGlowing ? this.glowing : this.billboards).place({
         texture: Texture.WHITE,
         centerX: mote.x + 0.5,
@@ -435,6 +444,7 @@ export class IsoScene {
       world: model,
       level: built.level,
       viewer: player,
+      rattle,
     })
     built.lights.apply(lights, player)
     const { mood } = lights
