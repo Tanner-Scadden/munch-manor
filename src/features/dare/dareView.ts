@@ -1,5 +1,5 @@
 import { Array, Option, Result, String } from 'effect'
-import { Canvas } from 'foldkit'
+import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -18,6 +18,12 @@ import {
 import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Drawable } from '../../render/depth'
 import { FULL_TURN, rect } from '../../render/drawing'
+import {
+  bakeDiscs,
+  bakeRings,
+  pixelDisc,
+  pixelRing,
+} from '../../render/pixelCircle'
 import type { Difficulty } from '../../shared/playerData'
 import { isHiddenInDark } from '../../world/cellar/bulb'
 import { findStyleOf, isInOpenRoom, maybeLyingAt } from '../../world/dare/dare'
@@ -139,8 +145,8 @@ const glowRadiusOf = (elapsedMs: number): number =>
     GLOW_RADIUS + Math.sin((FULL_TURN * elapsedMs) / GLOW_MS) * GLOW_PULSE_PX,
   )
 
-// NOTE: a thing in plain sight: the glow on the floor, its shadow, and the
-// thing floating over them.
+// NOTE: a thing in plain sight: its shadow and the thing floating over it,
+// its glow on the floor under them (dareGroundShapes).
 const shownDrawable = (
   model: Model,
   thing: DareThing,
@@ -148,7 +154,6 @@ const shownDrawable = (
 ): Drawable => {
   const x = Math.round(spot.x)
   const y = Math.round(spot.y)
-  const radius = glowRadiusOf(model.elapsedMs)
   const lift = isWorkedFind(findStyleOf(thing, levelOf(model)))
     ? BIG_LIFT_PX + OVER_FIND_PX
     : BIG_LIFT_PX
@@ -156,14 +161,6 @@ const shownDrawable = (
     footY: y,
     rank: 'Pickup',
     shapes: [
-      Canvas.Circle({ x, y: y - 2, radius, fill: GLOW_FILL }),
-      Canvas.Circle({
-        x,
-        y: y - 2,
-        radius,
-        stroke: GLOW_RING,
-        lineWidth: 1,
-      }),
       placeAt(x, y, BIG_SHADOW),
       placeAt(
         x - HALF_BIG_ICON,
@@ -225,6 +222,32 @@ const keyDrawable = (model: Model): Option.Option<Drawable> =>
     },
     (): Option.Option<Drawable> => Option.none(),
   )
+
+bakeDiscs(
+  GLOW_RADIUS - GLOW_PULSE_PX - 1,
+  GLOW_RADIUS + GLOW_PULSE_PX - 1,
+  GLOW_FILL,
+)
+bakeRings(
+  GLOW_RADIUS - GLOW_PULSE_PX,
+  GLOW_RADIUS + GLOW_PULSE_PX,
+  1,
+  GLOW_RING,
+)
+
+// NOTE: the glow on the floor under each thing in plain sight, pulsing, in
+// whole pixels on the floor itself.
+export const dareGroundShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+  const radius = glowRadiusOf(model.elapsedMs)
+  return Array.flatMap(shownThingSpots(model), ({ spot }) => {
+    const x = Math.round(spot.x)
+    const y = Math.round(spot.y) - 2
+    return [
+      pixelDisc(x, y, radius - 1, GLOW_FILL),
+      pixelRing(x, y, radius, 1, GLOW_RING),
+    ]
+  })
+}
 
 export const dareDrawables = (model: Model): ReadonlyArray<Drawable> => [
   ...Array.getSomes([keyDrawable(model)]),

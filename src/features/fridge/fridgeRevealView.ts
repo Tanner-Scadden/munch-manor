@@ -1,5 +1,5 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import { Canvas } from 'foldkit'
+import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type BakedText, bakeText, placeBaked } from '../../art/font'
@@ -25,6 +25,7 @@ import {
 } from '../../render/camera'
 import { rect } from '../../render/drawing'
 import { HUD_STRIP_HEIGHT, gunSlotBox } from '../../render/hudLayout'
+import { bakeRings, pixelRing } from '../../render/pixelCircle'
 import type { Screen } from '../../render/screen'
 import { FRIDGE_RULES, refundOf } from '../../world/fridge/leftovers'
 import { heldSlotOf } from '../../world/gear/weapons'
@@ -327,19 +328,25 @@ const burstShapes = (
     group({
       opacity: Math.ceil((1 - share) * 4) / 4,
       shapes: [
-        Canvas.Circle({
-          x: frame.at.x,
-          y: frame.at.y,
-          radius: Math.round(
-            BURST_FROM_PX + (BURST_TO_PX - BURST_FROM_PX) * share,
-          ),
-          stroke: RARITY_LOOKS[rarity].ring,
-          lineWidth: 2,
-        }),
+        pixelRing(
+          frame.at.x,
+          frame.at.y,
+          BURST_FROM_PX + (BURST_TO_PX - BURST_FROM_PX) * share,
+          2,
+          RARITY_LOOKS[rarity].ring,
+        ),
       ],
     }),
   ]
 }
+
+// NOTE: a Dud bursts no ring.
+Array.forEach(
+  [RARITY_LOOKS.Common, RARITY_LOOKS.Rare, RARITY_LOOKS.Snack],
+  ({ ring }) => {
+    bakeRings(BURST_FROM_PX, BURST_TO_PX, 2, ring)
+  },
+)
 
 const raysShapes = (
   model: Model,

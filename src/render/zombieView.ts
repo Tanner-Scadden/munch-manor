@@ -260,25 +260,6 @@ const STEAM_RISE_PX = 6
 const STEAM_CYCLE_MS = 520
 const STEAM_COLOR = 'rgba(244, 241, 222, 0.6)'
 
-const HALO_COLOR = 'rgba(255, 43, 43, 0.32)'
-const HALO_RADIUS = 4
-const HALO_BELOW_TOP_PX = 3
-
-const haloShapes = (
-  zombie: Zombie,
-  headTop: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Frenzy.isAnyOf(['Frenzied'])(zombie.frenzy)
-    ? [
-        Canvas.Circle({
-          x: Math.round(zombie.x),
-          y: headTop + HALO_BELOW_TOP_PX,
-          radius: HALO_RADIUS,
-          fill: HALO_COLOR,
-        }),
-      ]
-    : []
-
 const steamShapes = (
   zombie: Zombie,
   elapsedMs: number,
@@ -469,7 +450,6 @@ const walkingZombieShapes = (
   const top = Math.round(foot.y - placement.lift - pump)
   const headTop = top - ZOMBIE_SPRITES[zombie.kind].height
   return [
-    ...haloShapes(zombie, headTop),
     group({
       translate: { x: foot.x + shake, y: top },
       rotate:

@@ -1,4 +1,4 @@
-import { Array, Effect, Option, Result } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { type Canvas, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -23,6 +23,7 @@ import { debutPitch } from '../../../screens/game/menus'
 import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import { APPLICATION, bulletInto, tick, ticks } from '../../../test/testing'
+import { imagesIn } from '../../../test/viewReading'
 import { START_LEVEL } from '../../level/arena'
 import { focusOf } from '../../party/party'
 import { rollSpawns } from '../../waves/endlessWaves'
@@ -76,10 +77,10 @@ const sceneWith = (
 const blewUp = (current: Model): boolean =>
   Array.some(current.frameEvents, GameEvent.isAnyOf(['Exploded']))
 
+// NOTE: the radii of the whole-pixel rings and discs drawn, each a sprite
+// as wide as its two radii and its middle pixel.
 const circleRadii = (shapes: ReadonlyArray<Canvas.Shape>) =>
-  Array.filterMap(shapes, shape =>
-    shape._tag === 'Circle' ? Result.succeed(shape.radius) : Result.failVoid,
-  )
+  Array.map(imagesIn(shapes), ({ width }) => (width - 1) / 2)
 
 describe('the Kaboomer', () => {
   it.effect(

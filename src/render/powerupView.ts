@@ -37,6 +37,7 @@ import { levelUpChange } from '../world/shop/shopUpgrades'
 import { clamp } from '../world/step/geometry'
 import { type Camera, viewBoxOf, worldToView } from './camera'
 import { FULL_TURN } from './drawing'
+import { pixelRingSpans } from './pixelCircle'
 
 // COLORS
 
@@ -433,20 +434,14 @@ export const burpRingShapes = (
     group({
       opacity: 1 - progress,
       shapes: [
-        Canvas.Circle({
+        ...pixelRingSpans(x, y, BURP_RADIUS * reach, 3, BURP_RING_COLOR),
+        ...pixelRingSpans(
           x,
           y,
-          radius: Math.max(1, Math.round(BURP_RADIUS * reach)),
-          stroke: BURP_RING_COLOR,
-          lineWidth: 3,
-        }),
-        Canvas.Circle({
-          x,
-          y,
-          radius: Math.max(1, Math.round(BURP_RADIUS * reach * 0.75)),
-          stroke: BURP_RING_INNER_COLOR,
-          lineWidth: 2,
-        }),
+          BURP_RADIUS * reach * 0.75,
+          2,
+          BURP_RING_INNER_COLOR,
+        ),
       ],
     }),
   ]
