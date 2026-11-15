@@ -91,7 +91,7 @@ export const houseLightsOf = (
       intensity: 0,
       range: spec.range,
     })
-    light.position.set(spec.x, spec.height, spec.z)
+    light.position.set(spec.x, spec.y, spec.z)
     holder.addChild(light)
     return light
   })

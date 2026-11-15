@@ -66,20 +66,32 @@ export type Cube = Readonly<{
 
 // NOTE: every material here takes the blocks' vertex colors: white on the
 // fronts, darker toward the foot on a standing body's sides (voxelShape.ts).
-const lit = (options: ConstructorParameters<typeof Material3D>[0]) =>
+const lit = (
+  textures: Textures,
+  options: ConstructorParameters<typeof Material3D>[0],
+) =>
   new Material3D({
     vertexColors: true,
     roughness: 1,
     metallic: 0,
     specular: { factor: 0 },
+    ...textures.lookOptions('Standing'),
     ...options,
   })
 
 // NOTE: a fading body's blocks, blended but still writing their depth, so
 // its front faces (drawn first, voxelShape.ts) hide the tops and sides
 // behind them and it fades as the flat sprite did, never showing its insides.
-const fadedOf = (sheet: Texture, alpha: number): Material3D => {
-  const material = lit({ baseColorTexture: sheet, alphaMode: 'blend', alpha })
+const fadedOf = (
+  textures: Textures,
+  sheet: Texture,
+  alpha: number,
+): Material3D => {
+  const material = lit(textures, {
+    baseColorTexture: sheet,
+    alphaMode: 'blend',
+    alpha,
+  })
   material.state.depthMask = true
   return material
 }
@@ -318,11 +330,11 @@ export class VoxelBatch {
       this.sheetMaterials.get(sheet) ??
       Array.from({ length: FADE_STEPS + 1 }, (_, at) =>
         at === FADE_STEPS
-          ? lit({ baseColorTexture: sheet })
-          : fadedOf(sheet, at / FADE_STEPS),
+          ? lit(this.textures, { baseColorTexture: sheet })
+          : fadedOf(this.textures, sheet, at / FADE_STEPS),
       )
     this.sheetMaterials.set(sheet, steps)
-    return steps[step] ?? lit({ baseColorTexture: sheet })
+    return steps[step] ?? lit(this.textures, { baseColorTexture: sheet })
   }
 
   private colorMaterialOf(color: number, glow: number): Material3D {
@@ -338,7 +350,7 @@ export class VoxelBatch {
             baseColor: 0x000000,
             emissive: { color, strength },
           })
-        : lit({ baseColor: color })
+        : lit(this.textures, { baseColor: color })
     this.colorMaterials.set(key, material)
     return material
   }

@@ -9,9 +9,10 @@ import { WALL_SYMBOL } from '../../world/level/tileGrid'
 // east and z runs south (the game's y), and y is up.
 export const UNIT = 1 / TILE_SIZE
 
-// NOTE: the camera, looking straight north and down steeply: the game's own
-// map, tilted just enough to show the walls standing.
-export const PITCH = (62 * Math.PI) / 180
+// NOTE: the camera, looking straight north and down at 49 degrees: low
+// enough that what stands shows its fronts and its volume, high enough that
+// the floor's tops stay readable (owner, 2026-11-14).
+export const PITCH = (49 * Math.PI) / 180
 
 // NOTE: crisp pixels, and the 2D game's own map. A floor seen at a slant is
 // squashed (by sin PITCH), while a billboard faces the lens square, so floor
@@ -24,6 +25,10 @@ export const PITCH = (62 * Math.PI) / 180
 export const STRETCH = 1 / Math.sin(PITCH)
 
 export const zOf = (gameY: number): number => gameY * UNIT * STRETCH
+
+// NOTE: what floats overhead (the hung chandelier, sparks) stands on the
+// floor this many game pixels south of its own bottom edge.
+export const OVERHEAD_FOOT_PX = 2
 
 const WALL_HEIGHT = 1.4
 
@@ -76,6 +81,17 @@ export const TOWARD_CAMERA: Vec3 = {
   y: Math.sin(PITCH),
   z: Math.cos(PITCH),
 }
+
+// NOTE: a point standing over game row `footY` as a sprite stands: `rise`
+// world units up the camera's up from the floor there and `out` toward the
+// lens, so a light burns where its sprite draws its flame at this camera
+// (a candle's light, the muzzle flash, the player's lamp).
+export const standingPointOf = (
+  input: Readonly<{ footY: number; rise: number; out: number }>,
+): Readonly<{ y: number; z: number }> => ({
+  y: input.rise * CAMERA_UP.y + input.out * TOWARD_CAMERA.y,
+  z: zOf(input.footY) + input.rise * CAMERA_UP.z + input.out * TOWARD_CAMERA.z,
+})
 
 // THE CANVAS'S PIXELS
 

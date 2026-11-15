@@ -98,6 +98,7 @@ const litMaterial = (textures: Textures): Material3D =>
     metallic: 0,
     specular: { factor: 0 },
     ...(IS_SHADED ? { normalTexture: textures.flatNormal() } : {}),
+    ...textures.lookOptions('Standing'),
   })
 
 // NOTE: a pool of billboards, lit (Material3D, so the room's light, the lamp,
