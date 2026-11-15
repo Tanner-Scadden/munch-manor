@@ -8,6 +8,7 @@ import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
 import type { Vector } from '../world/schema/entitySchema'
 import { ZERO_VECTOR, clamp, scaleVector } from '../world/step/geometry'
+import { glideFocus } from './cine'
 import { hudLayoutFor } from './hudLayout'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 
@@ -136,13 +137,14 @@ const finaleLevelOf = (model: Model, screen: Screen): Level => {
 export const worldCameraFor: {
   (screen: Screen): (model: Model) => Camera
   (model: Model, screen: Screen): Camera
-} = Function.dual(2, (model: Model, screen: Screen): Camera =>
-  cameraFor(
+} = Function.dual(2, (model: Model, screen: Screen): Camera => {
+  const window = worldWindowOf(screen)
+  return cameraFor(
     finaleLevelOf(model, screen),
-    cameraFocus(model),
-    worldWindowOf(screen),
-  ),
-)
+    glideFocus({ model, focus: cameraFocus(model), window }),
+    window,
+  )
+})
 
 export const toScreenCamera: {
   (screen: Screen): (camera: Camera) => Camera

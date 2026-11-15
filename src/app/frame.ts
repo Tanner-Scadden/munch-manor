@@ -20,6 +20,7 @@ import { deriveIntent } from '../input/input'
 import { RunRecorder, noteTick } from '../platform/recording'
 import { advanceActions } from '../render/actionFrame'
 import { cameraOf, leanCamera, screenCameraOf } from '../render/camera'
+import { FINISHER_CINE_MS } from '../render/cine'
 import { advanceTells } from '../render/heroTells'
 import { advanceJuice } from '../render/juice'
 import { advanceParticles } from '../render/particles/particles'
@@ -349,12 +350,50 @@ const noticeFoundTrap = (model: Model): Model =>
     ? modifyFields(model, { trapHint: () => TrapHint.Showing() })
     : model
 
+// NOTE: the blow that clears a wave starts the camera's glide to it, aged
+// on the display's clock and let go once the glide is over (src/render/
+// cine.ts).
+// NOTE: the wave's last blow, where the camera glides as it clears: the
+// frame's last kill, or where the clear was noted when no kill made it (a
+// wave cleared by a pack wiped some other way).
+const noteFinisher = (model: Model, frameMs: number): Model => {
+  const cleared = Array.findFirst(
+    model.frameEvents,
+    GameEvent.isAnyOf(['WaveCleared']),
+  )
+  const spotOf = (fallback: Readonly<{ x: number; y: number }>) =>
+    Option.getOrElse(
+      Array.findLast(model.frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
+      () => fallback,
+    )
+  return modifyFields(model, {
+    maybeFinisher: maybeFinisher =>
+      Option.match(cleared, {
+        onSome: clear => {
+          const { x, y } = spotOf(clear)
+          return Option.some({ x, y, ageMs: 0 })
+        },
+        onNone: () =>
+          Option.filter(
+            Option.map(maybeFinisher, finisher => ({
+              ...finisher,
+              ageMs: finisher.ageMs + frameMs,
+            })),
+            ({ ageMs }) => ageMs < FINISHER_CINE_MS,
+          ),
+      }),
+  })
+}
+
 export const advanceCosmetics: {
   (frameMs: number, worldMs: number): (model: Model) => Model
   (model: Model, frameMs: number, worldMs: number): Model
 } = Function.dual(3, (model: Model, frameMs: number, worldMs: number): Model =>
   noticeFoundTrap(
-    advanceBreakIdle(advanceFlourishes(model, frameMs, worldMs), worldMs),
+    advanceBreakIdle(
+      advanceFlourishes(noteFinisher(model, frameMs), frameMs, worldMs),
+      worldMs,
+    ),
   ),
 )
 

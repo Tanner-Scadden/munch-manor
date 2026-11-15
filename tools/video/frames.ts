@@ -12,6 +12,7 @@ import type { PlatformError } from 'effect/PlatformError'
 import type { Browser, Page } from 'playwright-core'
 
 import { textPixels } from '../../src/art/font'
+import { smoothStep } from '../../src/world/step/geometry'
 import {
   harnessQuery,
   harnessUrl,
@@ -446,9 +447,6 @@ const pngSource = (png: Uint8Array): string =>
 
 // THE CAMERA
 
-// NOTE: eases in and out between two keys.
-const smooth = (share: number): number => share * share * (3 - 2 * share)
-
 const cameraAt = (
   keys: ReadonlyArray<CameraKey>,
   tick: number,
@@ -463,7 +461,7 @@ const cameraAt = (
   }
   const from = before.value
   const to = after.value
-  const share = smooth((tick - from.at) / (to.at - from.at))
+  const share = smoothStep((tick - from.at) / (to.at - from.at))
   const blend = (a: number, b: number) => a + (b - a) * share
   return Option.some({
     zoom: blend(from.zoom, to.zoom),

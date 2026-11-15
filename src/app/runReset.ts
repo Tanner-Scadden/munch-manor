@@ -61,6 +61,7 @@ export type RunFields = Pick<
   | 'frenzyPacks'
   | 'intensity'
   | 'cameraLean'
+  | 'maybeFinisher'
   | 'zombies'
   | 'bullets'
   | 'lobs'
@@ -139,6 +140,7 @@ export const freshRun = (model: Model): RunFields => ({
   frenzyPacks: [],
   intensity: 0,
   cameraLean: ZERO_VECTOR,
+  maybeFinisher: Option.none(),
   zombies: [],
   bullets: [],
   lobs: [],

@@ -25,7 +25,13 @@ import { coopEdgeShapes } from '../features/onlineRun/coopMarksView'
 import { purchaseOverlayShapes } from '../features/shop/purchaseView'
 import { thumbAreaView } from '../input/thumbArea'
 import { bossBandShapes } from '../render/bossView'
-import { type Camera, toScreenCamera, worldCameraFor } from '../render/camera'
+import {
+  type Camera,
+  toScreenCamera,
+  viewBoxOf,
+  worldCameraFor,
+} from '../render/camera'
+import { cineBarShapes } from '../render/cine'
 import { worldElement } from '../render/iso/element'
 import type { IsoFrame } from '../render/iso/frame'
 import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
@@ -83,6 +89,7 @@ const roundOverlayShapes = (
   screen: Screen,
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => [
+  ...cineBarShapes({ model, world: viewBoxOf(camera) }),
   ...hudStripShapes(model, screen, camera),
   ...wavePreviewShapes(model, camera),
   ...(isRoundActive(model.phase)
