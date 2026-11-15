@@ -85,12 +85,16 @@ const worldElementClass = () =>
       )
     }
 
+    // NOTE: the scene is let go of before it is destroyed, so a teardown that
+    // throws never leaves a dead scene to draw with when the element joins
+    // the page again.
     disconnectedCallback(): void {
       this.isOnPage = false
-      Option.map(this.scene, scene => {
-        scene.destroy()
-      })
+      const scene = this.scene
       this.scene = Option.none()
+      Option.map(scene, live => {
+        live.destroy()
+      })
     }
 
     // NOTE: a sprite that loads asks for one more draw on the next animation

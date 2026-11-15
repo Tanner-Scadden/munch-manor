@@ -589,6 +589,9 @@ export class IsoScene {
     if (built === undefined) {
       return
     }
+    this.billboards.release()
+    this.glowing.release()
+    this.rims.release()
     built.holder.destroy({ children: true })
     Array.forEach(
       [built.room, built.decals, built.landed, built.ground],
