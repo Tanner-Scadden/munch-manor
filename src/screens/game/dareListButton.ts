@@ -12,7 +12,7 @@ import { isCaseCardUp } from '../../features/onboarding/caseCard'
 import { isDebutCardUp } from '../../features/onboarding/onboarding'
 import { RunButtonMessage } from '../../input/message'
 import { hudLayoutFor } from '../../render/hudLayout'
-import { screenOf } from '../../render/screen'
+import { type Screen, screenOf } from '../../render/screen'
 import { percentOf } from '../../ui/menuParts'
 import { pocketOf } from './pocket'
 
@@ -24,6 +24,34 @@ import { pocketOf } from './pocket'
 // another card holds the round.
 const HIT_PAD = 2
 const TAP_PX = 48
+
+// NOTE: the corner's buttons end 54 px below the tap frame's top (6 px in
+// and 48 px tall, `.corner-buttons` in src/app/styles.css). The stage sits
+// centered in the frame, so in the stage that line is up by half the room
+// the frame has over the stage.
+const CORNER_BOTTOM = `calc(54px - (100cqh - var(--screen-h) * var(--hud-px)) / 2)`
+
+type Span = Readonly<{ top: string; height: string }>
+
+// NOTE: the button's height, never under a thumb's 48 px. On a phone on its
+// side it grows out from the list's middle. Upright, the list stands right
+// under the pause button, so the button starts at the list's top or the
+// corner's bottom, whichever is lower, and grows down from there.
+const verticalSpan = (
+  layout: Screen['layout'],
+  top: string,
+  bottom: string,
+  height: string,
+): Span =>
+  layout === 'Portrait'
+    ? {
+        top: `max(${top}, ${CORNER_BOTTOM})`,
+        height: `max(${bottom} - max(${top}, ${CORNER_BOTTOM}), ${TAP_PX}px)`,
+      }
+    : {
+        top: `max(${top} + ${height} / 2, max(${height}, ${TAP_PX}px) / 2)`,
+        height: `max(${height}, ${TAP_PX}px)`,
+      }
 
 export const DARE_LIST_BUTTON_CLASS = 'dare-list-button'
 
@@ -44,6 +72,12 @@ export const dareListButtonView: {
   const top = Math.max(0, box.top - HIT_PAD)
   const width = percentOf(box.right + HIT_PAD - left, screen.width)
   const height = percentOf(box.bottom + HIT_PAD - top, screen.height)
+  const span = verticalSpan(
+    screen.layout,
+    percentOf(top, screen.height),
+    percentOf(box.bottom + HIT_PAD, screen.height),
+    height,
+  )
   return h.div(
     [h.Class('hud-tap-frame')],
     [
@@ -59,14 +93,14 @@ export const dareListButtonView: {
                 : 'Open the dare card',
             ),
             h.AriaKeyshortcuts('Tab'),
-            // NOTE: centered on the drawn list and never under a thumb's
-            // 48 px, kept inside the screen's edges; the art never moves.
+            // NOTE: never under a thumb's 48 px: centered across the drawn
+            // list and kept inside the screen's sides, its height as
+            // verticalSpan says; the art never moves.
             h.Style({
               left: `max(${percentOf(left, screen.width)} + ${width} / 2, max(${width}, ${TAP_PX}px) / 2)`,
-              top: `max(${percentOf(top, screen.height)} + ${height} / 2, max(${height}, ${TAP_PX}px) / 2)`,
               width: `max(${width}, ${TAP_PX}px)`,
-              height: `max(${height}, ${TAP_PX}px)`,
-              translate: '-50% -50%',
+              ...span,
+              translate: screen.layout === 'Portrait' ? '-50% 0' : '-50% -50%',
             }),
             h.OnClick(RunButtonMessage.ClickedDareList(), {
               focusSelector: '.game-surface',
