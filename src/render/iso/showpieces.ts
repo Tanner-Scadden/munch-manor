@@ -141,9 +141,10 @@ const floorMarksOf = (
 export type Chandelier = Readonly<{
   // NOTE: shows the state it is in, swung `sway` game pixels on its chain,
   // and hidden while it lies far off screen.
+  // It hands back a key of what it shows, which changes when its shadow does.
   apply: (
     input: Readonly<{ isDown: boolean; sway: number; view: ViewBox }>,
-  ) => void
+  ) => number
   // NOTE: the floor's marks for the state it is in.
   floorMarks: (isDown: boolean) => ReadonlyArray<Leaf>
   destroy: () => void
@@ -223,13 +224,19 @@ export const chandelierOf = (
         Array.forEach(fallen.meshes, mesh => {
           mesh.visible = isFallenShown
         })
-        Array.forEach(ropes, rope => {
+        const ropesShown = Array.reduce(ropes, 0, (key, rope, index) => {
           const isShown =
             rope.isDown === isDown && isNearView(rope.built.box, view)
           Array.forEach(rope.built.meshes, mesh => {
             mesh.visible = isShown
           })
+          return isShown ? key | (1 << index) : key
         })
+        return (
+          (isHungShown ? 1 + 2 * (sway + 64) : 0) +
+          (isFallenShown ? 512 : 0) +
+          ropesShown * 1024
+        )
       },
       floorMarks: isDown => (isDown ? marks : []),
       destroy: () => {

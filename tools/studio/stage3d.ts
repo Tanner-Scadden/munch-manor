@@ -25,6 +25,7 @@ import { LOOK_TUNING } from '../../src/render/iso/lookSpecs'
 import { mixColor } from '../../src/render/iso/mood'
 import { FloorLayer } from '../../src/render/iso/painter'
 import { STORM_COLOR, STORM_LIFT } from '../../src/render/iso/scene'
+import { ShadowWatch } from '../../src/render/iso/shadowWatch'
 import { CAMERA_UP, PITCH, UNIT, zOf } from '../../src/render/iso/space'
 import { Textures } from '../../src/render/iso/textures'
 import {
@@ -460,7 +461,13 @@ class StageRenderer {
       level,
       holder,
       floor,
-      lights: houseLightsOf({ level, parent: holder }),
+      // NOTE: a watch never ended keeps every fill drawing its shadow each
+      // frame, as the studio's lab moves the light.
+      lights: houseLightsOf({
+        level,
+        parent: holder,
+        watch: new ShadowWatch(),
+      }),
     }
     this.built = built
     return built

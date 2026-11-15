@@ -21,6 +21,7 @@ import {
   flameSpecsOf,
 } from './lightSpecs'
 import { mixColor } from './mood'
+import type { ShadowWatch } from './shadowWatch'
 import { STRETCH, UNIT, zOf } from './space'
 
 // NOTE: the player's flashlight in the dark: the 2D beam was 120 px long and
@@ -47,9 +48,9 @@ export type HouseLights = Readonly<{
 }>
 
 export const houseLightsOf = (
-  input: Readonly<{ level: Level; parent: Container3D }>,
+  input: Readonly<{ level: Level; parent: Container3D; watch: ShadowWatch }>,
 ): HouseLights => {
-  const { level, parent } = input
+  const { level, parent, watch } = input
   const holder = new Container3D()
   parent.addChild(holder)
   const fills = Array.map(level.rooms, room => {
@@ -64,8 +65,15 @@ export const houseLightsOf = (
     })
     fill.position.set(spec.from.x, spec.from.y, spec.from.z)
     fill.lookAt(spec.to)
+    // NOTE: drawn again only when its casters change (shadowWatch.ts).
+    fill.shadow.update = 'manual'
     return { fill, spec }
   })
+  watch.watch(Array.map(fills, ({ spec }) => spec))
+  // NOTE: the fills casting last frame. The shadow pass hands out its map's
+  // layers by order among the casting lights, so when one starts or stops,
+  // every casting fill draws its map again into the layer it now has.
+  let lastCasting: ReadonlyArray<boolean> = []
   const specs = flameSpecsOf(level)
   const flames = Array.map(specs, spec => {
     const { color, range } = FLAME_TUNING.now[spec.kind]
@@ -105,17 +113,30 @@ export const houseLightsOf = (
     const tintKey = tint + tintShare
     const isTintChanged = tintKey !== lastTint
     lastTint = tintKey
+    const shares = Array.map(fills, (_, index) =>
+      Option.getOrElse(Array.get(frame.fillShares, index), () => 0),
+    )
+    // NOTE: a fill off screen keeps its light (the screen's tiles drop it
+    // for free), but a casting light draws the whole house into its
+    // shadow map, seen or not.
+    const casting = Array.map(
+      fills,
+      ({ spec }, index) =>
+        (shares[index] ?? 0) > 0 && isNearView(spec.pool, view),
+    )
+    const isCastingChanged =
+      casting.length !== lastCasting.length ||
+      !Array.every(casting, (isOn, index) => isOn === lastCasting[index])
+    lastCasting = casting
     Array.forEach(fills, ({ fill, spec }, index) => {
-      const share = Option.getOrElse(
-        Array.get(frame.fillShares, index),
-        () => 0,
-      )
+      const share = shares[index] ?? 0
       fill.intensity = share * spec.fullIntensity
       fill.visible = share > 0
-      // NOTE: a fill off screen keeps its light (the screen's tiles drop it
-      // for free), but a casting light draws the whole house into its
-      // shadow map each frame, seen or not.
-      fill.castShadow = share > 0 && isNearView(spec.pool, view)
+      const isCasting = casting[index] === true
+      fill.castShadow = isCasting
+      if (isCasting && (isCastingChanged || watch.isChanged(index))) {
+        fill.refreshShadows()
+      }
       if (isTintChanged) {
         fill.color.setValue(
           mixColor({ from: spec.color, to: tint, share: tintShare }),
