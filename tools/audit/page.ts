@@ -61,6 +61,8 @@ declare global {
     // from navigation, by name), and the long tasks as [start, duration].
     __splashTimes?: Record<string, number>
     __longTasks?: Array<[number, number]>
+    // NOTE: spikes.ts's frame clock: each animation frame's timestamp.
+    __frameStamps?: Array<number>
     // NOTE: shots43.ts's stand-ins for navigator.share and the clipboard:
     // what each was handed, whether the tap's user activation was still
     // live, and whether the click was still being dispatched.
