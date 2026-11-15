@@ -40,7 +40,7 @@ const CLEAT = TOOL_RULES.Cleat
 const SET_UP_TICKS = Math.ceil(CLEAT.setUpMs / FRAME_MS)
 
 const CLEAT_BOX = Option.getOrThrow(stationBoxOf(MANOR, 'Cleat'))
-// NOTE: the floor just east of the cleat's wall tile.
+// NOTE: the floor just east of the cleat's tile, by the west wall.
 const AT_CLEAT = {
   x: CLEAT_BOX.right + PLAYER_RADIUS + 1,
   y: (CLEAT_BOX.top + CLEAT_BOX.bottom) / 2,

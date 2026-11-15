@@ -263,6 +263,41 @@ const fixedOwn = ({
   return own
 }
 
+// HAND-PLACED BLOCKS
+
+const NO_VIEW: PixelView = { rows: [], palette: {} }
+
+// NOTE: a piece that is only hand-placed blocks, each its own color, with
+// no views to carve from: a thin run no three views can say (the
+// chandelier's rope across the dining room, src/render/room/chandelierRope.ts).
+// Its grid holds the blocks from 0; one outside it is left out.
+export const blocksModelOf = (
+  blocks: ReadonlyArray<Voxel & Readonly<{ color: string }>>,
+): CarvedModel => {
+  const reach = (read: (voxel: Voxel) => number): number =>
+    Array.reduce(blocks, 1, (most, voxel) => Math.max(most, read(voxel) + 1))
+  const size = {
+    width: reach(({ x }) => x),
+    height: reach(({ y }) => y),
+    depth: reach(({ z }) => z),
+  }
+  const cells = size.width * size.height * size.depth
+  const solid = new Uint8Array(cells)
+  const part = new Uint8Array(cells).fill(NO_PART)
+  return {
+    ...size,
+    lean: 1,
+    views: {
+      front: NO_VIEW,
+      parts: [{ name: 'blocks', top: NO_VIEW, side: NO_VIEW }],
+    },
+    part,
+    solid,
+    own: fixedOwn({ size, solid, part, fixes: { add: blocks } }),
+    fill: new Map(),
+  }
+}
+
 // DEFAULT FORM
 
 // NOTE: a sprite's form with no views drawn for it, read off its front art
@@ -455,8 +490,6 @@ const fillOf = (
   }
   return own
 }
-
-const NO_VIEW: PixelView = { rows: [], palette: {} }
 
 // NOTE: a sprite's default carve: its form (`formOf`) as blocks, lean 1 as
 // the game's art is drawn, each block's front its pixel and its tops and

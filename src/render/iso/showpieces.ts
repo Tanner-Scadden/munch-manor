@@ -2,7 +2,7 @@
 // level as real volumes, never through the per-frame batch, and only shown,
 // hidden, or swung each frame. The first is the dining room's chandelier,
 // hung over the table's gap or lying in it, with the cracks its fall left on
-// the floor.
+// the floor, and its rope from the winch, taut or slack.
 
 import { Array, Option, Result, String } from 'effect'
 
@@ -22,6 +22,7 @@ import {
   type CarvedShowpiece,
   carvedChandelierOf,
 } from '../room/chandelierCarve'
+import { chandelierRopeOf } from '../room/chandelierRope'
 import {
   CHANDELIER_SHAPES,
   CHANDELIER_SPRITES,
@@ -60,9 +61,10 @@ const buildPiece = (
     anchor: Readonly<{ x: number; y: number }>
     parent: Container3D
     materials: Readonly<{ lit: Material3D; glowing: FlatMaterial }>
+    castsShadow: boolean
   }>,
 ): Built => {
-  const { piece, anchor, parent, materials } = input
+  const { piece, anchor, parent, materials, castsShadow } = input
   const placement = {
     left: anchor.x + piece.left,
     footY: anchor.y + piece.foot,
@@ -77,7 +79,11 @@ const buildPiece = (
   const [litGeometry, glowingGeometry] = geometries
   const meshes = Array.filterMap(
     [
-      { geometry: litGeometry, material: materials.lit, castShadow: true },
+      {
+        geometry: litGeometry,
+        material: materials.lit,
+        castShadow: castsShadow,
+      },
       {
         geometry: glowingGeometry,
         material: materials.glowing,
@@ -179,12 +185,31 @@ export const chandelierOf = (
       anchor: anchors.Hung,
       parent: input.parent,
       materials,
+      castsShadow: true,
     })
     const fallen = buildPiece({
       piece: carvedChandelierOf('Fallen'),
       anchor: anchors.Fallen,
       parent: input.parent,
       materials,
+      castsShadow: true,
+    })
+    // NOTE: the rope in each state, standing where its blocks are, from no
+    // anchor, shown while the chandelier is in that state. It casts no
+    // shadow: a thin line across the room's floor read as a crack.
+    const ropes = Option.match(chandelierRopeOf(input.level), {
+      onNone: () => [],
+      onSome: pieces =>
+        Array.map(['Hung', 'Fallen'] as const, state => ({
+          isDown: state === 'Fallen',
+          built: buildPiece({
+            piece: pieces[state],
+            anchor: { x: 0, y: 0 },
+            parent: input.parent,
+            materials,
+            castsShadow: false,
+          }),
+        })),
     })
     const marks = floorMarksOf(anchors.Fallen)
     return {
@@ -198,12 +223,25 @@ export const chandelierOf = (
         Array.forEach(fallen.meshes, mesh => {
           mesh.visible = isFallenShown
         })
+        Array.forEach(ropes, rope => {
+          const isShown =
+            rope.isDown === isDown && isNearView(rope.built.box, view)
+          Array.forEach(rope.built.meshes, mesh => {
+            mesh.visible = isShown
+          })
+        })
       },
       floorMarks: isDown => (isDown ? marks : []),
       destroy: () => {
-        Array.forEach([...hung.geometries, ...fallen.geometries], geometry => {
-          geometry.destroy()
-        })
+        Array.forEach(
+          Array.flatMap(
+            [hung, fallen, ...Array.map(ropes, ({ built }) => built)],
+            built => built.geometries,
+          ),
+          geometry => {
+            geometry.destroy()
+          },
+        )
       },
     }
   })

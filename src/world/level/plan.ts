@@ -70,8 +70,9 @@ export const KITCHEN_TOP_ROW = -KITCHEN_MAP.length
 // Munches' party table in two halves with the chandelier's gap between
 // them, the loop round it, the sideboard, china cabinets, and candelabras,
 // two potted ferns that give the south hall a foothold (rooms rework,
-// docs/ROOM_RESEARCH.md), the chandelier's rope cleat `j` in the west wall
-// (a work station, src/world/stations/stations.ts), the chained front
+// docs/ROOM_RESEARCH.md), the chandelier's rope winch `j` on the floor
+// against the west wall, where the lens always sees it (a work station,
+// src/world/stations/stations.ts), the chained front
 // door in the south wall, and Rattles on his trunk (`$`) just east of it,
 // waiting by the door since 1924, a tile clear of the doorway. Its four spawn
 // doors keep the parlour's names, North top right through the yard, West
@@ -88,8 +89,8 @@ export const DINING_MAP: ReadonlyArray<string> = [
   '#HHH.......i............i.......HHH#',
   '#HHH1...........................HHH#',
   '#..................................>',
-  'j..........................3.......>',
-  '#.......=========^^=========.......#',
+  '#..........................3.......>',
+  '#j......=========^^=========.......#',
   '#.......=========^^=========.......#',
   '<..................................#',
   '<..................................?',
@@ -199,10 +200,10 @@ export const CELLAR_MAP: ReadonlyArray<string> = [
 // NOTE: the review marks every drafted map shares: the hidden-item spots,
 // the display case and trap crate spots (`c` and `t`, where the World's
 // cases and crates stand, src/world/feats/cases.ts and
-// src/world/gear/crates.ts), the start spot, and a room tool's floor spot
-// (`*`, src/world/stations/stationSpots.ts) are floor; a work station in a wall
-// (`j`, the chandelier's cleat, src/world/stations/stations.ts) is wall, and
-// a secret shelf's wall is wall unless the house swings it (secretShelfOf
+// src/world/gear/crates.ts), the start spot, a room tool's floor spot
+// (`*`, src/world/stations/stationSpots.ts), and the chandelier's winch
+// against its wall (`j`, src/world/stations/stations.ts) are floor, and a
+// secret shelf's wall is wall unless the house swings it (secretShelfOf
 // below).
 const REVIEW_MARKS: Readonly<Record<string, string>> = {
   c: '.',
@@ -213,7 +214,7 @@ const REVIEW_MARKS: Readonly<Record<string, string>> = {
   '4': '.',
   '@': '.',
   '*': '.',
-  j: '#',
+  j: '.',
   '?': '#',
   '%': '#',
 }
@@ -687,7 +688,7 @@ export const specOfState = (state: LevelState): LevelSpec =>
 // (layers 12 and on of docs/ESCAPE_PLAN.md) to read: each room's hidden-item
 // spots (`1` to `4`, stand there to search what is beside you), its display
 // cases (`c`, two tiles against a wall), its trap crate (`t`), and its
-// work stations' tiles (`j`, the chandelier's cleat in a wall, and `*`, each
+// work stations' tiles (`j`, the chandelier's winch, and `*`, each
 // other room tool's floor tile in reading order,
 // src/world/stations/stationSpots.ts), in world tiles. The marks are read off
 // the room's own map, before its renames.

@@ -99,11 +99,11 @@ const CELLAR_COVER: Readonly<Record<string, EscapeCoverKind>> = {
 // NOTE: the drafted map as the game's walls and doors read it: a slot
 // room's spawn doors drawn as the parlour's North and South, the front door
 // and the secret shelves as wall (their art goes over it), and the review
-// marks as floor (`*`, a room tool's tile to come, too). The chandelier's
-// gap, `^`, stays: the party table finds its halves by it, and it is floor
-// while the chandelier hangs. The cleat, `j`, is wall.
-const WALL_MARKS = new Set(['M', '%', '?', 'j'])
-const FLOOR_MARKS = new Set(['@', '1', '2', '3', '4', '*'])
+// marks as floor (`*`, a room tool's tile, and `j`, the chandelier's winch,
+// too). The chandelier's gap, `^`, stays: the party table finds its halves
+// by it, and it is floor while the chandelier hangs.
+const WALL_MARKS = new Set(['M', '%', '?'])
+const FLOOR_MARKS = new Set(['@', '1', '2', '3', '4', '*', 'j'])
 
 const engineMapOf = (map: ReadonlyArray<string>): ReadonlyArray<string> =>
   Array.map(map, line =>

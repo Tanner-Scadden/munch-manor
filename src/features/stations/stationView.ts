@@ -9,6 +9,7 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
+import { WINCH_HEIGHT_PX, WINCH_SLACK, WINCH_TAUT } from '../../art/winchArt'
 import type { Drawable } from '../../render/depth'
 import { rect } from '../../render/drawing'
 import { doorArrowShapes } from '../../render/powerupView'
@@ -21,6 +22,7 @@ import {
 import { TILE_SIZE } from '../../shared/constants'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { barrelOf } from '../../world/cellar/barrels'
+import { isChandelierDown } from '../../world/dining/chandelier'
 import { puddleOf } from '../../world/kitchen/soupPot'
 import { levelOf } from '../../world/level/arena'
 import { STACK_IDS, heapBoxOf, isHeapDown } from '../../world/library/stacks'
@@ -36,7 +38,7 @@ import {
 
 // The room tools' work stations (src/world/stations/stations.ts) drawn,
 // and what each does while it is on. Show, don't explain: each tool is its
-// own thing on the floor (the cleat's brass and rope, the gramophone, a
+// own thing on the floor (the chandelier's winch and rope, the gramophone, a
 // loose pile at a leaning stack, the bulb's chain, a barrel on its side,
 // the soup pot); while a player works one a gold ring fills round it, a
 // step away drains it, and once it fires a grey ring refills over its
@@ -49,26 +51,25 @@ import {
 
 const HINT_PULSE_MS = 400
 
-// NOTE: the cleat: a brass horn bolted to the wall's inner face, the rope
-// running up from it to the ceiling and a coil of it hanging below.
-const CLEAT_SPRITE: Sprite = bakeShapes([
-  rect(6, -14, 1, 15, '#c9a66b'),
-  rect(7, -14, 1, 15, '#8a6a3a'),
-  rect(5, -1, 4, 1, '#6a4a1c'),
-  rect(4, 0, 6, 2, '#d8b04a'),
-  rect(4, 2, 6, 1, '#8a6420'),
-  rect(6, 3, 2, 3, '#a8822e'),
-  rect(4, 6, 6, 1, '#d8b04a'),
-  rect(4, 7, 6, 1, '#8a6420'),
-  rect(5, 8, 1, 4, '#c9a66b'),
-  rect(8, 8, 1, 5, '#c9a66b'),
-  rect(5, 12, 4, 1, '#8a6a3a'),
-])
-
 const tile = (
   pixels: ReadonlyArray<string>,
   palette: Readonly<Record<string, string>>,
 ): Sprite => spriteShapes(pixels, palette, TOP_LEFT)
+
+const CRANK_STEP_MS = 140
+
+// NOTE: the winch as it stands now: taut over a hung chandelier, slack under
+// a fallen one, its crank turning while it is worked.
+const cleatSpriteOf = (world: World, station: StationView): Sprite => {
+  const frames = isChandelierDown(world) ? WINCH_SLACK : WINCH_TAUT
+  const turn =
+    station.setUp > 0
+      ? Math.floor(world.elapsedMs / CRANK_STEP_MS) % frames.length
+      : 0
+  return Option.getOrElse(Array.get(frames, turn), () =>
+    Array.headNonEmpty(frames),
+  )
+}
 
 // NOTE: the gramophone: a wooden box, its turntable, and a brass horn.
 // Carved by hand: its box and legs flush and deep, the horn's bell a few
@@ -206,22 +207,47 @@ const POT_SPRITE: Sprite = tile(
   { k: '#25252c', K: '#4a4a52', g: '#5a8a2c', G: '#8ac84a', l: '#a8a8b0' },
 )
 
-// NOTE: each tool's art, and whether it stands up off the floor (carved,
-// in the depth sort) or lies flat on it, as the fallen books at a stack do.
-type StationArt = Readonly<{ sprite: Sprite; isStanding: boolean }>
+// NOTE: each tool's art as it stands now, how tall it is over the foot of
+// its tile, and whether it stands up off the floor (carved, in the depth
+// sort) or lies flat on it, as the fallen books at a stack do.
+type StationArt = Readonly<{
+  spriteOf: (world: World, station: StationView) => Sprite
+  heightPx: number
+  // NOTE: how far east of the middle the first time arrow points down.
+  arrowDx: number
+  isStanding: boolean
+}>
 
-const STATION_SPRITES: Readonly<Record<StationId, Option.Option<StationArt>>> =
-  {
-    Cleat: Option.some({ sprite: CLEAT_SPRITE, isStanding: true }),
-    Gramophone: Option.some({ sprite: GRAMOPHONE_SPRITE, isStanding: true }),
-    NorthStack: Option.some({ sprite: BOOKS_SPRITE, isStanding: false }),
-    SouthStack: Option.some({ sprite: BOOKS_SPRITE, isStanding: false }),
-    // NOTE: the shelf is the secret shelf's own art, its glinting red book.
-    Shelf: Option.none(),
-    Bulb: Option.some({ sprite: CHAIN_SPRITE, isStanding: true }),
-    Barrels: Option.some({ sprite: BARREL_SPRITE, isStanding: true }),
-    SoupPot: Option.some({ sprite: POT_SPRITE, isStanding: true }),
-  }
+const stillArt = (
+  sprite: Sprite,
+  isStanding: boolean,
+): Option.Option<StationArt> =>
+  Option.some({
+    spriteOf: Function.constant(sprite),
+    heightPx: TILE_SIZE,
+    arrowDx: 0,
+    isStanding,
+  })
+
+const STATION_ART: Readonly<Record<StationId, Option.Option<StationArt>>> = {
+  Cleat: Option.some({
+    spriteOf: cleatSpriteOf,
+    heightPx: WINCH_HEIGHT_PX,
+    // NOTE: east of the rope that runs straight up out of the winch's
+    // pulley (src/render/room/chandelierRope.ts), which stands nearer the
+    // lens than the arrow and would cut through it.
+    arrowDx: 7,
+    isStanding: true,
+  }),
+  Gramophone: stillArt(GRAMOPHONE_SPRITE, true),
+  NorthStack: stillArt(BOOKS_SPRITE, false),
+  SouthStack: stillArt(BOOKS_SPRITE, false),
+  // NOTE: the shelf is the secret shelf's own art, its glinting red book.
+  Shelf: Option.none(),
+  Bulb: stillArt(CHAIN_SPRITE, true),
+  Barrels: stillArt(BARREL_SPRITE, true),
+  SoupPot: stillArt(POT_SPRITE, true),
+}
 
 // NOTE: what a station sounds as it fires (src/app/update/sound.ts).
 export const STATION_SOUNDS: Readonly<Record<StationId, SoundEffect>> = {
@@ -349,6 +375,32 @@ const ringShapes = (
   ]
 }
 
+// NOTE: the foot of a station's tile, where what stands there stands.
+const footOf = (station: StationView): number =>
+  Math.round(station.center.y) + HALF_TILE
+
+// NOTE: the top of a station's art, so the arrow floats clear over a tall
+// one (the winch), its bounce and all.
+const artTopOf = (station: StationView): number =>
+  footOf(station) -
+  Option.match(STATION_ART[station.id], {
+    onNone: () => TILE_SIZE,
+    onSome: ({ heightPx }) => heightPx,
+  })
+
+const arrowDxOf = (station: StationView): number =>
+  Option.match(STATION_ART[station.id], {
+    onNone: () => 0,
+    onSome: ({ arrowDx }) => arrowDx,
+  })
+
+// NOTE: where the arrow's point sits under the art's top: the arrow is
+// drawn from 15 px over its point, 5 px tall, bobbing 2 px down
+// (src/render/powerupView.ts), and what floats overhead stands 6 px over its
+// own bottom edge in 3D (OVERHEAD_HOVER in src/render/iso/scene.ts), so its
+// lowest pixel shows 2 px over the art's top.
+const ARROW_CLEAR_PX = 12
+
 // NOTE: the bobbing arrow, over only the new station nearest the viewing
 // player, so two new tools in one room point one way at a time.
 const arrowShapes = (
@@ -369,11 +421,14 @@ const arrowShapes = (
     ),
     {
       onNone: () => [],
-      onSome: ({ center }) =>
+      onSome: station =>
         doorArrowShapes(
           {
-            x: Math.round(center.x),
-            y: Math.round(center.y) - WORK_RING_RADIUS,
+            x: Math.round(station.center.x) + arrowDxOf(station),
+            y: Math.min(
+              Math.round(station.center.y) - WORK_RING_RADIUS,
+              artTopOf(station) + ARROW_CLEAR_PX,
+            ),
           },
           world.elapsedMs,
         ),
@@ -501,38 +556,47 @@ const rollingBarrelDrawables = (world: World): ReadonlyArray<Drawable> =>
   })
 
 const stationArtShapes = (
+  world: World,
   station: StationView,
-  sprite: Sprite,
+  { spriteOf, heightPx }: StationArt,
 ): ReadonlyArray<Canvas.Shape> => [
   placeAt(
     Math.round(station.center.x) - HALF_TILE,
-    Math.round(station.center.y) - HALF_TILE,
-    sprite,
+    footOf(station) - heightPx,
+    spriteOf(world, station),
   ),
 ]
 
 // NOTE: on the ground layer, over the room's walls: what lies flat (the
-// spilled soup, the toppled books, the fallen books at a stack's foot).
+// spilled soup, the toppled books, the fallen books at a stack's foot), and
+// each station's set-up or cooldown ring, or its first time pulse, flat on
+// the floor round its foot, so what stands there stands in front of the
+// ring's far half and never under it (owner, 2026-11-15: the ring floating
+// over the winch hid its drum and crank).
 export const stationGroundShapes: {
   (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   2,
-  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => [
-    ...puddleShapes(world),
-    ...heapShapes(world),
-    ...Array.flatMap(shownStations(world, isShown), station =>
-      Option.match(STATION_SPRITES[station.id], {
-        onNone: () => [],
-        onSome: ({ sprite, isStanding }) =>
-          isStanding ? [] : stationArtShapes(station, sprite),
-      }),
-    ),
-  ],
+  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => {
+    const stations = shownStations(world, isShown)
+    return [
+      ...puddleShapes(world),
+      ...heapShapes(world),
+      ...Array.flatMap(stations, station => [
+        ...ringShapes(station, world.elapsedMs),
+        ...Option.match(STATION_ART[station.id], {
+          onNone: () => [],
+          onSome: art =>
+            art.isStanding ? [] : stationArtShapes(world, station, art),
+        }),
+      ]),
+    ]
+  },
 )
 
 // NOTE: what stands up off the floor, in the depth sort with the bodies
-// and carved like them: the cleat, the gramophone, the bulb's chain, the
+// and carved like them: the winch, the gramophone, the bulb's chain, the
 // barrels, the soup pot, each at the foot of its tile, and the rolling
 // barrel.
 export const stationDrawables: {
@@ -542,15 +606,15 @@ export const stationDrawables: {
   2,
   (world: World, isShown: Shown): ReadonlyArray<Drawable> => [
     ...Array.flatMap(shownStations(world, isShown), station =>
-      Option.match(STATION_SPRITES[station.id], {
+      Option.match(STATION_ART[station.id], {
         onNone: () => [],
-        onSome: ({ sprite, isStanding }): ReadonlyArray<Drawable> =>
-          isStanding
+        onSome: (art): ReadonlyArray<Drawable> =>
+          art.isStanding
             ? [
                 {
-                  footY: Math.round(station.center.y) + HALF_TILE,
+                  footY: footOf(station),
                   rank: 'Prop',
-                  shapes: stationArtShapes(station, sprite),
+                  shapes: stationArtShapes(world, station, art),
                 },
               ]
             : [],
@@ -560,8 +624,8 @@ export const stationDrawables: {
   ],
 )
 
-// NOTE: over everything: a tool's notes or dust while it is on, and a
-// station's set-up or cooldown ring, or its first time hint.
+// NOTE: over everything: a tool's notes or dust while it is on, and the
+// first time hint's arrow.
 export const stationOverheadShapes: {
   (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
@@ -570,10 +634,7 @@ export const stationOverheadShapes: {
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => {
     const stations = shownStations(world, isShown)
     return [
-      ...Array.flatMap(stations, station => [
-        ...toolOverheadShapes(world, station),
-        ...ringShapes(station, world.elapsedMs),
-      ]),
+      ...Array.flatMap(stations, station => toolOverheadShapes(world, station)),
       ...arrowShapes(world, stations),
     ]
   },
