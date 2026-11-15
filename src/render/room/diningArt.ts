@@ -806,12 +806,16 @@ const cabinetShapes = ({
 export const hutchShapes = (box: Box): ReadonlyArray<Canvas.Shape> =>
   box.width >= TILE_SIZE * 5 ? sideboardShapes(box) : cabinetShapes(box)
 
+// NOTE: a standing candelabra's middle flame, from its box's top left: the
+// pixel its light burns on (src/render/iso/lightSpecs.ts).
+export const CANDELABRA_FLAME = { x: 4, y: -15 }
+
 // NOTE: a standing candelabra taller than a guest, its glow on the floor.
 export const candelabraShapes = ({
   x,
   y,
 }: Box): ReadonlyArray<Canvas.Shape> => {
-  const centerX = x + 4
+  const centerX = x + CANDELABRA_FLAME.x
   return [
     rect(centerX - 8, y - 22, 17, 14, 'rgba(255, 200, 90, 0.07)'),
     rect(centerX - 5, y - 19, 11, 9, 'rgba(255, 200, 90, 0.07)'),
@@ -831,7 +835,7 @@ export const candelabraShapes = ({
     rect(centerX + 4, y - 15, 1, 3, CANDLE_COLOR),
     rect(centerX - 3, y - 13, 1, 1, CANDLE_COLOR),
     rect(centerX - 4, y - 16, 1, 1, FLAME_COLOR),
-    rect(centerX, y - 15, 1, 1, FLAME_COLOR),
+    rect(centerX, y + CANDELABRA_FLAME.y, 1, 1, FLAME_COLOR),
     rect(centerX + 4, y - 16, 1, 1, FLAME_COLOR),
     rect(centerX - 4, y - 17, 1, 1, FLAME_TIP_COLOR),
     rect(centerX, y - 16, 1, 1, FLAME_TIP_COLOR),

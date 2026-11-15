@@ -15,7 +15,7 @@ import {
 } from '@pixi/3d'
 
 import type { Leaf } from './flatten'
-import { CAMERA_UP, TOWARD_CAMERA, UNIT, zOf } from './space'
+import { UNIT, standingPointOf, zOf } from './space'
 import { type Textures, colorOf } from './textures'
 
 // NOTE: parts later in a drawable win ties, nudged this far toward the lens.
@@ -210,18 +210,13 @@ export class BillboardPool {
     // pixel at a time and never lands between two (pixel-perfect settings,
     // owner, 2026-11-14).
     const left = Math.round(p.centerX - p.drawnWidth / 2)
-    const footY = Math.round(p.footY)
-    const bottom = Math.round(p.bottom)
-    const rise =
-      (footY - bottom + Math.round(p.hover) + p.drawnHeight / 2) * UNIT
-    const nudge = p.part * PART_BIAS
-    sprite.position.set(
-      (left + p.drawnWidth / 2) * UNIT +
-        CAMERA_UP.x * rise +
-        TOWARD_CAMERA.x * nudge,
-      CAMERA_UP.y * rise + TOWARD_CAMERA.y * nudge,
-      zOf(footY) + CAMERA_UP.z * rise + TOWARD_CAMERA.z * nudge,
-    )
+    const at = standingPointOf({
+      x: left + p.drawnWidth / 2,
+      footY: Math.round(p.footY),
+      atY: Math.round(p.bottom) - Math.round(p.hover) - p.drawnHeight / 2,
+      out: p.part * PART_BIAS,
+    })
+    sprite.position.set(at.x, at.y, at.z)
     sprite.visible = true
   }
 

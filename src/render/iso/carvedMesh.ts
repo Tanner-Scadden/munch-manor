@@ -21,7 +21,7 @@ import {
   voxelsOf,
 } from '../../art/carve'
 import { parseColor } from '../../art/png'
-import { CAMERA_UP, TOWARD_CAMERA, UNIT, zOf } from './space'
+import { TOWARD_CAMERA, UNIT, standingPointOf } from './space'
 import { DEPTH_BACK } from './voxelShape'
 
 // NOTE: a geometry's arrays, its colors four floats a corner, 0 to 1 as
@@ -131,13 +131,13 @@ const FACES: ReadonlyArray<FaceSpec> = [
 // lens's up by its row and depth, and back along the lens by its depth, so
 // a step of depth is a game pixel north along the floor.
 const worldPointOf = (placement: CarvedPlacement, [x, y, z]: Point): Point => {
-  const up = (placement.rise - y + z) * UNIT
-  const back = z * DEPTH_BACK * UNIT
-  return [
-    (placement.left + x) * UNIT,
-    CAMERA_UP.y * up - TOWARD_CAMERA.y * back,
-    zOf(placement.footY) + CAMERA_UP.z * up - TOWARD_CAMERA.z * back,
-  ]
+  const at = standingPointOf({
+    x: placement.left + x,
+    footY: placement.footY,
+    atY: placement.footY - (placement.rise - y + z),
+    out: -z * DEPTH_BACK * UNIT,
+  })
+  return [at.x, at.y, at.z]
 }
 
 // NOTE: mutable on purpose: the arrays are filled once, as the geometry is

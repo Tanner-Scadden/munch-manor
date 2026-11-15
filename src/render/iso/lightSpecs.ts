@@ -21,7 +21,7 @@ import { CELLAR_ROOM_ID } from '../../world/level/plan'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { stationCenterOf } from '../../world/stations/stationSpots'
-import { CHANDELIER_SHAPES } from '../room/diningArt'
+import { CANDELABRA_FLAME, CHANDELIER_SHAPES } from '../room/diningArt'
 import { coverBlocks } from '../room/roomCover'
 import { type Mood, moodOf } from './mood'
 import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space'
@@ -96,11 +96,10 @@ export type FlameSpec = Readonly<{
   seed: number
 }>
 
-// NOTE: a flame's light, standing over the foot of the sprite it burns in
-// (`standingPointOf`): `rise` up the camera's up and `out` toward the lens,
-// in world units, so it sits in the flame as the camera draws it.
+// NOTE: a flame's light stands `out` world units toward the lens from the
+// pixel it burns on (`FlameSpot`), which only brings it nearer the front it
+// lights.
 type FlameLook = Readonly<{
-  rise: number
   out: number
   color: number
   intensity: number
@@ -108,18 +107,22 @@ type FlameLook = Readonly<{
 }>
 
 const FLAME_LOOKS: Readonly<Record<FlameKind, FlameLook>> = {
-  Candle: { rise: 0.7, out: 1.32, color: 0xffb35a, intensity: 11, range: 6 },
-  Hearth: { rise: -0.14, out: 0.7, color: 0xff7a2e, intensity: 22, range: 8 },
-  Sconce: { rise: 1.41, out: 0.72, color: 0xffc070, intensity: 3.5, range: 4 },
-  Oven: { rise: 0.01, out: 0.5, color: 0xff5a2a, intensity: 7, range: 4.5 },
+  Candle: { out: 1.32, color: 0xffb35a, intensity: 11, range: 6 },
+  Hearth: { out: 0.7, color: 0xff7a2e, intensity: 22, range: 8 },
+  Sconce: {
+    out: 0.72,
+    color: 0xffc070,
+    intensity: 3.5,
+    range: 4,
+  },
+  Oven: { out: 0.5, color: 0xff5a2a, intensity: 7, range: 4.5 },
   Chandelier: {
-    rise: 5.03,
     out: 0.05,
     color: 0xffd890,
     intensity: 26,
     range: 9,
   },
-  Bulb: { rise: 1.03, out: 1.94, color: 0xfff0c8, intensity: 36, range: 12 },
+  Bulb: { out: 1.94, color: 0xfff0c8, intensity: 36, range: 12 },
 }
 
 // NOTE: the hung chandelier's sprite's bottom edge under the gap's top: the
@@ -129,56 +132,84 @@ const HUNG_BOTTOM = Array.reduce(CHANDELIER_SHAPES.Hung, 0, (most, shape) =>
 )
 
 // NOTE: `spot` is where it burns on the game's map; `footY` the row its
-// sprite stands on.
-type FlameSpot = Readonly<{ kind: FlameKind; spot: Vector; footY: number }>
+// sprite stands on, and `flame` the pixel the 2D game draws its flame on,
+// where its light stands (`standingPointOf`). A candelabra's is read off its
+// art. The others' art hangs on a wall's top, lies on the floor, or floats
+// overhead rather than standing, so theirs are still the heights placed by
+// eye over their foot, in game pixels (`FLAME_RISE_PX`).
+type FlameSpot = Readonly<{
+  kind: FlameKind
+  spot: Vector
+  footY: number
+  flame: Vector
+}>
+
+const FLAME_RISE_PX: Readonly<Record<Exclude<FlameKind, 'Candle'>, number>> = {
+  Hearth: -1,
+  Sconce: 14,
+  Oven: 0,
+  Chandelier: 50,
+  Bulb: 10,
+}
+
+const placedByEye = (
+  kind: Exclude<FlameKind, 'Candle'>,
+  spot: Vector,
+  footY: number,
+): FlameSpot => ({
+  kind,
+  spot,
+  footY,
+  flame: { x: spot.x, y: footY - FLAME_RISE_PX[kind] },
+})
 
 const flameSpotsOf = (level: Level): ReadonlyArray<FlameSpot> => [
   ...Array.map(coverBlocks(level, 'i'), box => ({
     kind: 'Candle' as const,
     spot: { x: box.x + box.width / 2, y: box.y + box.height },
     footY: box.y + box.height,
+    flame: {
+      x: box.x + CANDELABRA_FLAME.x + 0.5,
+      y: box.y + CANDELABRA_FLAME.y + 0.5,
+    },
   })),
   ...Array.flatMap(coverBlocks(level, 'F'), box => [
-    {
-      kind: 'Hearth' as const,
-      spot: { x: box.x + box.width / 2, y: box.y + box.height + 4 },
-      footY: box.y + box.height,
-    },
+    placedByEye(
+      'Hearth',
+      { x: box.x + box.width / 2, y: box.y + box.height + 4 },
+      box.y + box.height,
+    ),
     // NOTE: the sconces either side of the hearth (sconceShapes).
-    {
-      kind: 'Sconce' as const,
-      spot: { x: box.x - 15, y: box.y + 2 },
-      footY: box.y + box.height,
-    },
-    {
-      kind: 'Sconce' as const,
-      spot: { x: box.x + box.width + 19, y: box.y + 2 },
-      footY: box.y + box.height,
-    },
+    placedByEye('Sconce', { x: box.x - 15, y: box.y + 2 }, box.y + box.height),
+    placedByEye(
+      'Sconce',
+      { x: box.x + box.width + 19, y: box.y + 2 },
+      box.y + box.height,
+    ),
   ]),
-  ...Array.map(coverBlocks(level, 'G'), box => ({
-    kind: 'Oven' as const,
-    spot: { x: box.x + box.width / 2, y: box.y + box.height + 2 },
-    footY: box.y + box.height,
-  })),
+  ...Array.map(coverBlocks(level, 'G'), box =>
+    placedByEye(
+      'Oven',
+      { x: box.x + box.width / 2, y: box.y + box.height + 2 },
+      box.y + box.height,
+    ),
+  ),
   ...Option.match(gapBoxOf(level), {
     onNone: () => [],
     onSome: gap => [
-      {
-        kind: 'Chandelier' as const,
-        spot: {
+      placedByEye(
+        'Chandelier',
+        {
           x: (gap.left + gap.right) / 2,
           y: gap.top - CHANDELIER_RULES.hungRisePx,
         },
-        footY: gap.top + HUNG_BOTTOM + OVERHEAD_FOOT_PX,
-      },
+        gap.top + HUNG_BOTTOM + OVERHEAD_FOOT_PX,
+      ),
     ],
   }),
   ...Option.match(stationCenterOf(level, 'Bulb'), {
     onNone: () => [],
-    onSome: center => [
-      { kind: 'Bulb' as const, spot: center, footY: center.y },
-    ],
+    onSome: center => [placedByEye('Bulb', center, center.y)],
   }),
 ]
 
@@ -191,13 +222,12 @@ export const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
   }
   const specs = Array.map(
     flameSpotsOf(level),
-    ({ kind, spot, footY }, index) => {
-      const { rise, out, color, intensity, range } = FLAME_LOOKS[kind]
+    ({ kind, spot, footY, flame }, index) => {
+      const { out, color, intensity, range } = FLAME_LOOKS[kind]
       return {
         kind,
         spot,
-        x: spot.x * UNIT,
-        ...standingPointOf({ footY, rise, out }),
+        ...standingPointOf({ x: flame.x, footY, atY: flame.y, out }),
         color,
         intensity,
         range,

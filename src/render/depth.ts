@@ -3,7 +3,16 @@ import type { Canvas } from 'foldkit'
 
 // DRAWABLE
 
-type DepthRank = 'Wall' | 'Prop' | 'Trap' | 'Pickup' | 'Zombie' | 'Player'
+// NOTE: `Glow` is what shines of itself on a body's own plane, a muzzle
+// flash and the knife's slash, drawn after the body it stands with.
+type DepthRank =
+  | 'Wall'
+  | 'Prop'
+  | 'Trap'
+  | 'Pickup'
+  | 'Zombie'
+  | 'Player'
+  | 'Glow'
 
 const RANK_ORDER: Readonly<Record<DepthRank, number>> = {
   Wall: 0,
@@ -12,6 +21,7 @@ const RANK_ORDER: Readonly<Record<DepthRank, number>> = {
   Pickup: 3,
   Zombie: 4,
   Player: 5,
+  Glow: 6,
 }
 
 export type Drawable = Readonly<{
@@ -27,6 +37,23 @@ const byDepth: Order.Order<Drawable> = Order.combine(
   Order.mapInput(Order.Number, ({ footY }: Drawable) => footY),
   Order.mapInput(Order.Number, ({ rank }: Drawable) => RANK_ORDER[rank]),
 )
+
+// NOTE: what glows on a body (`Glow`) stands on that body's own plane, so
+// in 3D it moves with the body at any angle; a pixel nearer the lens, so the
+// body's own front blocks never cover it.
+const GLOW_NEARER_PX = 1
+
+export const glowOn = ({
+  bodyFootY,
+  shapes,
+}: Readonly<{
+  bodyFootY: number
+  shapes: ReadonlyArray<Canvas.Shape>
+}>): Drawable => ({
+  footY: bodyFootY + GLOW_NEARER_PX,
+  rank: 'Glow',
+  shapes,
+})
 
 export const depthSortedShapes = (
   drawables: ReadonlyArray<Drawable>,

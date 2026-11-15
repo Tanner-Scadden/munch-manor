@@ -44,7 +44,7 @@ import { barWidthOf, healthBarShapes } from './healthBarView'
 import {
   type Lying,
   lyingShapes,
-  playerFlashShapes,
+  playerFlashDrawable,
   playerFootY,
   playerShadow,
   playerShapes,
@@ -187,11 +187,16 @@ const mateBodyShapes = ({
 export const mateDrawables = (
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Drawable> =>
-  Array.map(mates, (mate): Drawable => ({
-    footY: playerFootY(focusOf(mate.model).player),
-    rank: 'Player',
-    shapes: mateBodyShapes(mate),
-  }))
+  Array.flatMap(mates, (mate): ReadonlyArray<Drawable> => [
+    {
+      footY: playerFootY(focusOf(mate.model).player),
+      rank: 'Player',
+      shapes: mateBodyShapes(mate),
+    },
+    ...(isStanding(mate.seat)
+      ? [playerFlashDrawable(focusOf(mate.model).player)]
+      : []),
+  ])
 
 // SEAT MARKS
 
@@ -474,13 +479,10 @@ export const mateOverheadShapes: {
       ? [
           ...Array.flatMap(mates, ({ model: mate, seat }) =>
             isStanding(seat)
-              ? [
-                  ...playerFlashShapes(focusOf(mate).player),
-                  ...reloadBarShapes(
-                    focusOf(mate).player,
-                    hatRiseOf(mate.appearance),
-                  ),
-                ]
+              ? reloadBarShapes(
+                  focusOf(mate).player,
+                  hatRiseOf(mate.appearance),
+                )
               : [],
           ),
           ...seatMarkShapes(model),
