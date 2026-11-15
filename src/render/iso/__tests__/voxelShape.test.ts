@@ -114,29 +114,22 @@ const lensPictureOf = (
   return new Map(Array.map([...nearest], ([key, { uv }]) => [key, uv]))
 }
 
-// NOTE: the art as the lens should see its carve: every pixel its own, and
-// over a pixel with nothing over it and nothing under it (a toe, a barrel
-// one pixel thick) its own top, the one row a carve stands taller.
+// NOTE: the art as the lens should see its carve: every pixel its own and
+// nothing more, a toe or a barrel one pixel thick too.
 const artPictureOf = (
   art: ReadonlyArray<string>,
-): ReadonlyMap<string, readonly [number, number]> => {
-  const isSolid = (column: number, row: number) =>
-    (art[row]?.[column] ?? '.') !== '.'
-  return new Map(
+): ReadonlyMap<string, readonly [number, number]> =>
+  new Map(
     Array.flatMap(art, (line, row) =>
-      Array.flatMap(Array.makeBy(line.length, column => column), column => [
-        ...(isSolid(column, row)
-          ? [[`${column},${row}`, [column, row]] as const]
-          : []),
-        ...(isSolid(column, row) &&
-        !isSolid(column, row - 1) &&
-        !isSolid(column, row + 1)
-          ? [[`${column},${row - 1}`, [column, row]] as const]
-          : []),
-      ]),
+      Array.flatMap(
+        Array.makeBy(line.length, column => column),
+        column =>
+          (art[row]?.[column] ?? '.') === '.'
+            ? []
+            : [[`${column},${row}`, [column, row]] as const],
+      ),
     ),
   )
-}
 
 const thicknessAt = (
   form: ReturnType<typeof lensFormOf>,
@@ -166,7 +159,7 @@ describe('carved form', () => {
     expect(lensFormOf({ ...square, most: 3 }).depth).toBeLessThanOrEqual(3)
   })
 
-  test("a top edge folds into the tops of the row under it", () => {
+  test('a top edge folds into the tops of the row under it', () => {
     const form = lensFormOf(square)
     expect(form.folded[3]).toBe(1)
     expect(form.folded[12 + 3]).toBe(0)
@@ -183,6 +176,24 @@ describe('carved form', () => {
       ),
     )
     expect(lowest - form.lift).toBe(12)
+  })
+
+  test('a box set by hand is flush and as deep everywhere', () => {
+    const form = lensFormOf({ ...square, depthOf: () => 4 })
+    expect(thicknessAt(form, 0, 6)).toBe(4)
+    expect(thicknessAt(form, 6, 6)).toBe(4)
+    expect(form.near[6 * 12]).toBe(0)
+    expect(form.near[6 * 12 + 6]).toBe(0)
+  })
+
+  test('a pixel the hand leaves out keeps the round default', () => {
+    const round = lensFormOf(square)
+    const form = lensFormOf({
+      ...square,
+      depthOf: column => (column === 0 ? 2 : undefined),
+    })
+    expect(thicknessAt(form, 0, 6)).toBe(2)
+    expect(thicknessAt(form, 6, 6)).toBe(thicknessAt(round, 6, 6))
   })
 })
 
@@ -205,22 +216,19 @@ describe('from the lens', () => {
     gun: ['..........', '.########.', '.###......', '.##.......'],
   }
 
-  test.each(Record.keys(ART))(
-    'the %s carved shows exactly its art',
-    name => {
-      const art = ART[name] ?? []
-      const picture = lensPictureOf(
-        voxelMeshOf({ ...rows(art), uvOf: uvByPixel }),
-      )
-      expect(picture).toEqual(artPictureOf(art))
-    },
-  )
+  test.each(Record.keys(ART))('the %s carved shows exactly its art', name => {
+    const art = ART[name] ?? []
+    const picture = lensPictureOf(
+      voxelMeshOf({ ...rows(art), uvOf: uvByPixel }),
+    )
+    expect(picture).toEqual(artPictureOf(art))
+  })
 })
 
 describe('voxel mesh', () => {
-  test('a lone pixel is a whole block: six faces of two triangles', () => {
+  test('a pixel on one under it is one block, its top the upper pixel', () => {
     const mesh = voxelMeshOf({
-      ...rows(['#']),
+      ...rows(['#', '#']),
       uvOf: () => [0.5, 0.5],
     })
     expect(mesh.indices.length).toBe(6 * 6)
@@ -229,10 +237,24 @@ describe('voxel mesh', () => {
 
   test('neighbors as deep share no face between them', () => {
     const mesh = voxelMeshOf({
-      ...rows(['##']),
+      ...rows(['##', '##']),
       uvOf: () => [0.5, 0.5],
     })
     expect(mesh.indices.length / 6).toBe(10)
+  })
+
+  test('a pixel with nothing over or under it is a plate: one top', () => {
+    const mesh = voxelMeshOf({ ...rows(['###']), uvOf: uvByPixel })
+    const faces = facesOf(mesh)
+    expect(faces.length).toBe(3)
+    expect(Array.map(faces, ({ uv }) => uv)).toEqual([
+      [0, 0],
+      [1, 0],
+      [2, 0],
+    ])
+    expect(
+      Array.every(faces, ({ normalZ }) => normalZ > 0 && normalZ < 1),
+    ).toBe(true)
   })
 
   test('every front face comes first, so a fading body hides its insides', () => {
@@ -462,5 +484,24 @@ describe('slab matrix', () => {
     expect(dot(column(0), column(2))).toBeCloseTo(0, 9)
     expect(dot(column(1), column(2))).toBeCloseTo(0, 9)
     expect(dot(column(0), column(1))).toBeCloseTo(0, 9)
+  })
+})
+
+describe('shadow caster', () => {
+  test('a block of blocks casts through one quad a side', () => {
+    const { caster } = voxelMeshOf({
+      ...rows(Array.makeBy(6, () => '######')),
+      uvOf: () => [0.5, 0.5],
+      most: 1,
+    })
+    expect(caster.indices.length / 6).toBe(6)
+  })
+
+  test('a body casts through far fewer faces than it shows', () => {
+    const mesh = voxelMeshOf({
+      ...rows(Array.makeBy(12, () => '############')),
+      uvOf: () => [0.5, 0.5],
+    })
+    expect(mesh.caster.indices.length * 4).toBeLessThan(mesh.indices.length)
   })
 })

@@ -5,9 +5,11 @@ import {
   type Sprite,
   TOP_LEFT,
   bakeShapes,
+  deepSprite,
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
+import type { Drawable } from '../../render/depth'
 import { rect } from '../../render/drawing'
 import { doorArrowShapes } from '../../render/powerupView'
 import {
@@ -69,26 +71,44 @@ const tile = (
 ): Sprite => spriteShapes(pixels, palette, TOP_LEFT)
 
 // NOTE: the gramophone: a wooden box, its turntable, and a brass horn.
-const GRAMOPHONE_SPRITE: Sprite = tile(
-  [
-    '......hhh.',
-    '.....hHHHh',
-    '....hHddHh',
-    '....hHHHh.',
-    '...n.hhh..',
-    '..n.......',
-    '.wwwwwww..',
-    '.wbbbbbw..',
-    '.wwwwwww..',
-    '.ww...ww..',
-  ],
+// Carved by hand: its box and legs flush and deep, the horn's bell a few
+// blocks, its neck one.
+const GRAMOPHONE_SPRITE: Sprite = deepSprite(
+  tile(
+    [
+      '......hhh.',
+      '.....hHHHh',
+      '....hHddHh',
+      '....hHHHh.',
+      '...n.hhh..',
+      '..n.......',
+      '.wwwwwww..',
+      '.wbbbbbw..',
+      '.wwwwwww..',
+      '.ww...ww..',
+    ],
+    {
+      h: '#a8822e',
+      H: '#ffd23f',
+      d: '#3a2c10',
+      n: '#8a6a3a',
+      w: '#6a3e1c',
+      b: '#2a1a10',
+    },
+  ),
   {
-    h: '#a8822e',
-    H: '#ffd23f',
-    d: '#3a2c10',
-    n: '#8a6a3a',
-    w: '#6a3e1c',
-    b: '#2a1a10',
+    rows: [
+      '......333.',
+      '.....33333',
+      '....333333',
+      '....33333.',
+      '...1.333..',
+      '..1.......',
+      '.6666666..',
+      '.6666666..',
+      '.6666666..',
+      '.66...66..',
+    ],
   },
 )
 
@@ -186,17 +206,22 @@ const POT_SPRITE: Sprite = tile(
   { k: '#25252c', K: '#4a4a52', g: '#5a8a2c', G: '#8ac84a', l: '#a8a8b0' },
 )
 
-const STATION_SPRITES: Readonly<Record<StationId, Option.Option<Sprite>>> = {
-  Cleat: Option.some(CLEAT_SPRITE),
-  Gramophone: Option.some(GRAMOPHONE_SPRITE),
-  NorthStack: Option.some(BOOKS_SPRITE),
-  SouthStack: Option.some(BOOKS_SPRITE),
-  // NOTE: the shelf is the secret shelf's own art, its glinting red book.
-  Shelf: Option.none(),
-  Bulb: Option.some(CHAIN_SPRITE),
-  Barrels: Option.some(BARREL_SPRITE),
-  SoupPot: Option.some(POT_SPRITE),
-}
+// NOTE: each tool's art, and whether it stands up off the floor (carved,
+// in the depth sort) or lies flat on it, as the fallen books at a stack do.
+type StationArt = Readonly<{ sprite: Sprite; isStanding: boolean }>
+
+const STATION_SPRITES: Readonly<Record<StationId, Option.Option<StationArt>>> =
+  {
+    Cleat: Option.some({ sprite: CLEAT_SPRITE, isStanding: true }),
+    Gramophone: Option.some({ sprite: GRAMOPHONE_SPRITE, isStanding: true }),
+    NorthStack: Option.some({ sprite: BOOKS_SPRITE, isStanding: false }),
+    SouthStack: Option.some({ sprite: BOOKS_SPRITE, isStanding: false }),
+    // NOTE: the shelf is the secret shelf's own art, its glinting red book.
+    Shelf: Option.none(),
+    Bulb: Option.some({ sprite: CHAIN_SPRITE, isStanding: true }),
+    Barrels: Option.some({ sprite: BARREL_SPRITE, isStanding: true }),
+    SoupPot: Option.some({ sprite: POT_SPRITE, isStanding: true }),
+  }
 
 // NOTE: what a station sounds as it fires (src/app/update/sound.ts).
 export const STATION_SOUNDS: Readonly<Record<StationId, SoundEffect>> = {
@@ -449,28 +474,45 @@ const puddleShapes = (world: World): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: the barrel stands on its lane, its foot on the line, so the wine
 // racks' tops south of the corridor never hide it as it rolls past.
-const rollingBarrelShapes = (world: World): ReadonlyArray<Canvas.Shape> =>
+const rollingBarrelDrawables = (world: World): ReadonlyArray<Drawable> =>
   Option.match(barrelOf(world), {
     onNone: () => [],
     onSome: ({ x, y, isBroken }) => [
-      placeAt(
-        Math.round(x) - HALF_TILE,
-        Math.round(y) - TILE_SIZE,
-        isBroken
-          ? BURST_SPRITE
-          : Option.getOrElse(
-              Array.get(
-                BARREL_FRAMES,
-                Math.floor(x / 4) % BARREL_FRAMES.length,
-              ),
-              () => BARREL_SPRITE,
-            ),
-      ),
+      {
+        footY: Math.round(y),
+        rank: 'Prop',
+        shapes: [
+          placeAt(
+            Math.round(x) - HALF_TILE,
+            Math.round(y) - TILE_SIZE,
+            isBroken
+              ? BURST_SPRITE
+              : Option.getOrElse(
+                  Array.get(
+                    BARREL_FRAMES,
+                    Math.floor(x / 4) % BARREL_FRAMES.length,
+                  ),
+                  () => BARREL_SPRITE,
+                ),
+          ),
+        ],
+      },
     ],
   })
 
-// NOTE: on the ground layer, over the room's walls: each station's art,
-// the spilled soup and the toppled books under it, the rolling barrel.
+const stationArtShapes = (
+  station: StationView,
+  sprite: Sprite,
+): ReadonlyArray<Canvas.Shape> => [
+  placeAt(
+    Math.round(station.center.x) - HALF_TILE,
+    Math.round(station.center.y) - HALF_TILE,
+    sprite,
+  ),
+]
+
+// NOTE: on the ground layer, over the room's walls: what lies flat (the
+// spilled soup, the toppled books, the fallen books at a stack's foot).
 export const stationGroundShapes: {
   (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
@@ -479,19 +521,42 @@ export const stationGroundShapes: {
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => [
     ...puddleShapes(world),
     ...heapShapes(world),
-    ...Array.flatMap(shownStations(world, isShown), ({ id, center }) =>
-      Option.match(STATION_SPRITES[id], {
+    ...Array.flatMap(shownStations(world, isShown), station =>
+      Option.match(STATION_SPRITES[station.id], {
         onNone: () => [],
-        onSome: sprite => [
-          placeAt(
-            Math.round(center.x) - HALF_TILE,
-            Math.round(center.y) - HALF_TILE,
-            sprite,
-          ),
-        ],
+        onSome: ({ sprite, isStanding }) =>
+          isStanding ? [] : stationArtShapes(station, sprite),
       }),
     ),
-    ...rollingBarrelShapes(world),
+  ],
+)
+
+// NOTE: what stands up off the floor, in the depth sort with the bodies
+// and carved like them: the cleat, the gramophone, the bulb's chain, the
+// barrels, the soup pot, each at the foot of its tile, and the rolling
+// barrel.
+export const stationDrawables: {
+  (isShown: Shown): (world: World) => ReadonlyArray<Drawable>
+  (world: World, isShown: Shown): ReadonlyArray<Drawable>
+} = Function.dual(
+  2,
+  (world: World, isShown: Shown): ReadonlyArray<Drawable> => [
+    ...Array.flatMap(shownStations(world, isShown), station =>
+      Option.match(STATION_SPRITES[station.id], {
+        onNone: () => [],
+        onSome: ({ sprite, isStanding }): ReadonlyArray<Drawable> =>
+          isStanding
+            ? [
+                {
+                  footY: Math.round(station.center.y) + HALF_TILE,
+                  rank: 'Prop',
+                  shapes: stationArtShapes(station, sprite),
+                },
+              ]
+            : [],
+      }),
+    ),
+    ...rollingBarrelDrawables(world),
   ],
 )
 

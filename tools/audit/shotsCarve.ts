@@ -2,7 +2,9 @@
 // showpieces.ts): every standing thing carved into blocks, in the rooms
 // where it stands: the dining room's chandelier hung and fallen, its table
 // and hutches, the display cases, the library's stacks, the cellar's racks,
-// the kitchen's pantry and crates in a break, and a crowd of bodies, as
+// the kitchen's pantry and crates in a break, the stove and the fridge
+// carved as boxes, the parlour's gramophone and hearth with its fire, the
+// front door, Uncle Chunk's hand set depth, and a crowd of bodies, as
 // `carve-<TAG>-<viewport>-<scene>.png`. Set beside an earlier TAG for a
 // before and after, and zoom in on the bodies to look for rims and holes.
 //   TAG=try bun run heavy -- --shared bun tools/audit/shotsCarve.ts
@@ -54,6 +56,23 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   {
     name: 'kitchen',
     query: `${HOUSE}&px=160&py=-75&break=open&freeze=20`,
+  },
+  {
+    name: 'stove',
+    query: `${HOUSE}&px=120&py=-90&break=open&tool=SoupPot&firedms=200&freeze=20`,
+  },
+  {
+    name: 'parlour',
+    query: `${HOUSE}&px=-190&py=110&break=open&freeze=20`,
+  },
+  {
+    name: 'door',
+    query: `${HOUSE}&px=180&py=190&break=open&freeze=20`,
+  },
+  {
+    name: 'boss',
+    query:
+      'wave=8&seen=all&start=wave&elapsed=6000&god&boss=fighting&bx=200&by=80&freeze=20',
   },
 ]
 

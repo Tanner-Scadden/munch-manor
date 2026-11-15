@@ -5,7 +5,7 @@
 
 import { Array, Option, Record, Result, String, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
-import { type Application, Container, Graphics, Rectangle } from 'pixi.js'
+import { type Application, Graphics, Rectangle } from 'pixi.js'
 
 import {
   type Container3D,
@@ -27,19 +27,16 @@ import {
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
 import { roomArtOf } from '../room/room'
 import { COVER_DRAWINGS, coverBlocks } from '../room/roomCover'
-import type { TallCover } from '../room/tallCover'
 import {
   type BillboardPool,
   type Cutout,
-  drawnLeafOf,
   standCutout,
 } from './billboards'
 import type { ViewBox } from './cull'
 import { type Leaf, flatten, rectKey } from './flatten'
 import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
-import { FlatPainter } from './painter'
 import { STRETCH, UNIT, wallHeightAt, zOf } from './space'
-import { type Textures, colorOf } from './textures'
+import { colorOf } from './textures'
 import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
 
 // WALLS
@@ -301,6 +298,9 @@ const STANDING_KINDS: ReadonlySet<CoverKind> = new Set<CoverKind>([
   'Desk',
   'WineRack',
   'Fern',
+  'Hearth',
+  'Oven',
+  'Fridge',
 ])
 
 const FERN_SYMBOL = 'V'
@@ -474,104 +474,32 @@ export const standPlant = (
   })
 }
 
-// FURNITURE'S SHADOWS
+// THE FERNS' SHADOWS
 
-const bakePiece = (
-  input: Readonly<{ app: Application; textures: Textures; piece: TallCover }>,
-): Option.Option<Cutout> => {
-  const { app, textures, piece } = input
-  const drawn = Array.filter(
-    Array.filterMap(flatten(piece.shapes), leaf =>
-      Result.fromNullishOr(drawnLeafOf({ textures, leaf }), () => undefined),
-    ),
-    ({ alpha }) => alpha >= 0.5,
-  )
-  if (!Array.isReadonlyArrayNonEmpty(drawn)) {
-    return Option.none()
-  }
-  const bounds = Array.reduce(
-    drawn,
-    {
-      left: Number.POSITIVE_INFINITY,
-      top: Number.POSITIVE_INFINITY,
-      right: Number.NEGATIVE_INFINITY,
-      bottom: Number.NEGATIVE_INFINITY,
-    },
-    (most, one) => ({
-      left: Math.min(most.left, one.centerX - one.drawnWidth / 2),
-      top: Math.min(most.top, one.bottom - one.drawnHeight),
-      right: Math.max(most.right, one.centerX + one.drawnWidth / 2),
-      bottom: Math.max(most.bottom, one.bottom),
-    }),
-  )
-  const painter = new FlatPainter(textures)
-  painter.paint(piece.shapes)
-  painter.container.position.set(-bounds.left, -bounds.top)
-  const holder = new Container()
-  holder.addChild(painter.container)
-  const texture = app.renderer.generateTexture({
-    target: holder,
-    frame: new Rectangle(
-      0,
-      0,
-      Math.ceil(bounds.right - bounds.left),
-      Math.ceil(bounds.bottom - bounds.top),
-    ),
-    resolution: 1,
-  })
-  holder.destroy({ children: true })
-  return Option.some({
-    texture,
-    left: bounds.left,
-    top: bounds.top,
-    width: bounds.right - bounds.left,
-    height: bounds.bottom - bounds.top,
-    footY: piece.footY,
-  })
-}
-
-// NOTE: every tall piece and fern casts through a stand-in: its art baked
-// into one texture and cut out upright on a plain mesh at its foot. Baked
-// again whenever more images have loaded, so no piece is left without one.
 // NOTE: a shadow stand-in and the box on the game's map it stands over, so
 // the scene can leave it out while it lies far off screen.
 export type Caster = Readonly<{ mesh: Mesh3D; box: ViewBox }>
 
-export const furnitureCastersOf = (
-  input: Readonly<{
-    app: Application
-    textures: Textures
-    parent: Container3D
-    pieces: ReadonlyArray<TallCover>
-    plants: ReadonlyArray<Plant>
-  }>,
-): Readonly<{
-  textures: ReadonlyArray<Cutout['texture']>
-  casters: ReadonlyArray<Caster>
-}> => {
-  const { app, textures, parent, pieces, plants } = input
-  const baked = Array.getSomes(
-    Array.map(pieces, piece => bakePiece({ app, textures, piece })),
-  )
-  const cutouts: ReadonlyArray<Cutout> = [
-    ...baked,
-    ...Array.map(plants, ({ caster }) => caster),
-  ]
-  const casters = Array.map(cutouts, cutout => ({
+// NOTE: a fern turns to the lens and bends in the wind, so it casts through
+// a stand-in: the whole fern baked into one texture (`plantsOf`) and cut out
+// upright on a plain mesh at its foot. Furniture is carved and casts
+// through its own blocks (voxels.ts).
+export const plantCastersOf = (
+  input: Readonly<{ parent: Container3D; plants: ReadonlyArray<Plant> }>,
+): ReadonlyArray<Caster> =>
+  Array.map(input.plants, ({ caster }) => ({
     mesh: standCutout({
-      parent,
+      parent: input.parent,
       material: new Material3D({
-        baseColorTexture: cutout.texture,
+        baseColorTexture: caster.texture,
         alphaMode: 'mask',
         alphaCutoff: 0.5,
         doubleSided: true,
       }),
-      cutout,
+      cutout: caster,
     }),
-    box: cutoutBoxOf(cutout),
+    box: cutoutBoxOf(caster),
   }))
-  return { textures: Array.map(baked, ({ texture }) => texture), casters }
-}
 
 // NOTE: where a cutout stands on the game's map, in game pixels.
 export const cutoutBoxOf = (cutout: Cutout): ViewBox => ({

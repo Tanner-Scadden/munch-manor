@@ -34,6 +34,7 @@ import {
   rattlesShapes,
 } from '../../features/rattles/rattlesSpot'
 import {
+  stationDrawables,
   stationGroundShapes,
   stationOverheadShapes,
 } from '../../features/stations/stationView'
@@ -89,11 +90,12 @@ import { kitchenLeakShapes } from '../../render/room/kitchenLeak'
 import {
   ovenFlameShapes,
   ovenGlowShapes,
+  ovenWindowDrawables,
   padlockShapes,
 } from '../../render/room/kitchenView'
 import {
   fallenChandelierDrawables,
-  hearthFireShapes,
+  hearthFireDrawables,
   hungChandelierShapes,
 } from '../../render/room/room'
 import { tallCoverDrawables } from '../../render/room/tallCover'
@@ -180,7 +182,6 @@ const groundShapes = (
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
-  ...hearthFireShapes(levelOf(model), model.elapsedMs),
   ...kitchenLeakShapes(model),
   ...ovenGlowShapes(model),
   ...kitchenGearGroundShapes(model),
@@ -295,6 +296,7 @@ const standingDrawables = (
     ...(isLeadArmed(model) ? [playerFlashDrawable(focusOf(model).player)] : []),
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
+    ...ovenWindowDrawables(model),
     ...pantryDrawables(model),
     ...questKeyDrawables(model),
     ...caseDrawables(model),
@@ -359,11 +361,9 @@ const overheadShapes = (
 // NOTE: the title screen's house: the hearth, Rattles dozing on his trunk,
 // and the chandelier, by the screen's own clock.
 const titleStrataOf = (model: Model): WorldStrata => ({
-  ground: [
-    ...hearthFireShapes(levelOf(model), model.screenMs),
-    ...RATTLES_GROUND_SHAPES,
-  ],
+  ground: RATTLES_GROUND_SHAPES,
   standing: [
+    ...hearthFireDrawables(levelOf(model), model.screenMs),
     {
       footY: RATTLES_FOOT_Y,
       rank: 'Prop',
@@ -384,7 +384,11 @@ const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
   return Option.match(cellarDarkOf(model), {
     onNone: () => ({
       ground: groundShapes(model, camera, onCamera, mates),
-      standing: standingDrawables(model, look, onCamera, mates),
+      standing: [
+        ...standingDrawables(model, look, onCamera, mates),
+        ...stationDrawables(model, isOnCamera(camera)),
+        ...hearthFireDrawables(levelOf(model), model.elapsedMs),
+      ],
       overhead: overheadShapes(model, camera, onCamera, mates),
     }),
     onSome: dark => {
@@ -402,7 +406,11 @@ const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
             ]),
           ),
         ],
-        standing: standingDrawables(model, look, seen, mates, dark.fadeOf),
+        standing: [
+          ...standingDrawables(model, look, seen, mates, dark.fadeOf),
+          ...stationDrawables(model, isOnCamera(camera)),
+          ...hearthFireDrawables(levelOf(model), model.elapsedMs),
+        ],
         overhead: [
           ...overheadShapes(model, camera, whole, mates),
           ...Array.flatMap(

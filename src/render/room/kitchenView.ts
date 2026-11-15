@@ -26,6 +26,7 @@ import {
 } from '../../world/level/tileGrid'
 import type { World } from '../../world/schema/world'
 import { Oven } from '../../world/schema/worldSchema'
+import { type Drawable, IN_FRONT_PX } from '../depth'
 import { pixelArt, rect } from '../drawing'
 
 // NOTE: the kitchen is drawn like the parlour: everything that never moves
@@ -920,37 +921,24 @@ const windowOf = (box: OvenBox): Box => ({
   height: 4,
 })
 
-const glowShapes = (
+// NOTE: the oven's window, on the carved stove's face.
+const windowGlowShapes = (
   oven: Oven,
   box: OvenBox,
-  elapsedMs: number,
+  pulse: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const glass = windowOf(box)
   return Oven.match(oven, {
-    Ready: () => {
-      const pulse =
-        Math.round(
-          (0.55 + 0.45 * Math.sin((Math.PI * 2 * elapsedMs) / GLOW_PULSE_MS)) *
-            10,
-        ) / 10
-      return [
-        rect(glass.x, glass.y, glass.width, glass.height, '#ff8a2a'),
-        Canvas.Rect({
-          x: glass.x + 1,
-          y: glass.y + 1,
-          width: glass.width - 2,
-          height: 2,
-          fill: `rgba(255, 224, 102, ${pulse})`,
-        }),
-        Canvas.Rect({
-          x: box.left + 2,
-          y: box.bottom,
-          width: box.right - box.left - 4,
-          height: 3,
-          fill: `rgba(255, 140, 40, ${Math.round(pulse * 3) / 10})`,
-        }),
-      ]
-    },
+    Ready: () => [
+      rect(glass.x, glass.y, glass.width, glass.height, '#ff8a2a'),
+      Canvas.Rect({
+        x: glass.x + 1,
+        y: glass.y + 1,
+        width: glass.width - 2,
+        height: 2,
+        fill: `rgba(255, 224, 102, ${pulse})`,
+      }),
+    ],
     Belching: () => [
       rect(glass.x, glass.y, glass.width, glass.height, '#fff2a0'),
     ],
@@ -965,6 +953,29 @@ const glowShapes = (
     ],
   })
 }
+
+const pulseAt = (elapsedMs: number): number =>
+  Math.round(
+    (0.55 + 0.45 * Math.sin((Math.PI * 2 * elapsedMs) / GLOW_PULSE_MS)) * 10,
+  ) / 10
+
+// NOTE: the warm light a ready oven throws on the floor in front of it.
+const floorGlowShapes = (
+  oven: Oven,
+  box: OvenBox,
+  pulse: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Oven.isAnyOf(['Ready'])(oven)
+    ? [
+        Canvas.Rect({
+          x: box.left + 2,
+          y: box.bottom,
+          width: box.right - box.left - 4,
+          height: 3,
+          fill: `rgba(255, 140, 40, ${Math.round(pulse * 3) / 10})`,
+        }),
+      ]
+    : []
 
 const flameShapes = (
   oven: Oven,
@@ -987,19 +998,41 @@ const flameShapes = (
       ]
     : []
 
-// NOTE: drawn on the scene canvas under the actors: each oven's window,
-// glowing while it is ready to belch, white hot while it does, and banked
-// down to embers while it cools.
+// NOTE: on the ground under the actors: the light a ready oven throws on
+// the floor.
 export const ovenGlowShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
-  const boxes = ovenBoxesOf(levelOf(model))
   if (!isKitchenShown(model)) {
     return []
   }
   const ovens = ovensOf(model)
-  return Array.flatMap(boxes, (box, index) =>
+  const pulse = pulseAt(model.elapsedMs)
+  return Array.flatMap(ovenBoxesOf(levelOf(model)), (box, index) =>
     Option.match(Array.get(ovens, index), {
       onNone: () => [],
-      onSome: oven => glowShapes(oven, box, model.elapsedMs),
+      onSome: oven => floorGlowShapes(oven, box, pulse),
+    }),
+  )
+}
+
+// NOTE: each oven's window, standing in front of the carved stove
+// (`IN_FRONT_PX`): glowing while it is ready to belch, white hot while it
+// does, and banked down to embers while it cools.
+export const ovenWindowDrawables = (model: World): ReadonlyArray<Drawable> => {
+  if (!isKitchenShown(model)) {
+    return []
+  }
+  const ovens = ovensOf(model)
+  const pulse = pulseAt(model.elapsedMs)
+  return Array.flatMap(ovenBoxesOf(levelOf(model)), (box, index) =>
+    Option.match(Array.get(ovens, index), {
+      onNone: () => [],
+      onSome: (oven): ReadonlyArray<Drawable> => [
+        {
+          footY: box.bottom + IN_FRONT_PX,
+          rank: 'Prop',
+          shapes: windowGlowShapes(oven, box, pulse),
+        },
+      ],
     }),
   )
 }

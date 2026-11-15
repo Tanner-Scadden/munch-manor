@@ -28,6 +28,7 @@ import {
   COVER_SHADOW_COLOR,
   FACE_TOP,
   FLAME_COLOR,
+  FLAME_TIP_COLOR,
   GOLD_COLOR,
   GOLD_DARK_COLOR,
   INK_COLOR,
@@ -160,8 +161,21 @@ const pianoShapes = ({
   ]
 }
 
+// NOTE: a sconce on the hearth's wall, y the top of that wall.
+const sconce = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
+  rect(x - 4, y + 4, 10, 11, 'rgba(255, 200, 90, 0.08)'),
+  rect(x - 2, y + 5, 6, 8, 'rgba(255, 200, 90, 0.1)'),
+  rect(x, y + 6, 2, 2, FLAME_COLOR),
+  rect(x, y + 5, 1, 1, FLAME_TIP_COLOR),
+  rect(x, y + 8, 2, 3, CANDLE_COLOR),
+  rect(x + 1, y + 11, 1, 1, CANDLE_COLOR),
+  rect(x - 1, y + 11, 4, 1, GOLD_COLOR),
+  rect(x, y + 12, 2, 2, GOLD_DARK_COLOR),
+]
+
 // NOTE: the fireplace: a stone chimney breast up the wall, a mantel with a
-// skull, a clock, and a candle, and a firebox whose flames the scene draws.
+// skull, a clock, and a candle, a firebox whose flames the scene draws, and
+// a sconce either side, so the whole hearth stands carved as one piece.
 const hearthShapes = ({
   x,
   y,
@@ -250,6 +264,8 @@ const hearthShapes = ({
     rect(x - 4, bottom - 3, width + 8, 3, '#7d7384'),
     rect(x - 4, bottom - 3, width + 8, 1, '#968ca0'),
     rect(x - 4, bottom - 1, width + 8, 1, '#5e5568'),
+    ...sconce(x - 18, wallTop),
+    ...sconce(x + width + 16, wallTop),
   ]
 }
 

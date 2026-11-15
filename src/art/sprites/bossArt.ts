@@ -1,6 +1,6 @@
 import { Function } from 'effect'
 
-import { type Palette, TRANSPARENT } from '../sprite'
+import { type Palette, type SpriteDepth, TRANSPARENT } from '../sprite'
 import {
   type FramePixels,
   type Patch,
@@ -73,6 +73,38 @@ const BOSS_UPPER: ReadonlyArray<string> = [
   'PPPPP.BBBBBBBBBBBBBB.PPPPP',
   '.QQQ..BBBBBBBBBBBBBB..QQQ.',
 ]
+
+// NOTE: how deep Uncle Chunk is carved, a digit a pixel over his upper
+// body (his legs keep the round default): his belly the deepest, bulging
+// toward its middle and down to his belt, his jacket round it, his head a
+// little shallower, his arms and hands thin at his sides. Even both ways,
+// so either facing reads it the same.
+export const BOSS_DEPTH: SpriteDepth = {
+  rows: [
+    '............2.............',
+    '...........222............',
+    '..........22222...........',
+    '.........68888886.........',
+    '.........68888886.........',
+    '.........68888886.........',
+    '.........68888886.........',
+    '.......666888888666.......',
+    '....48899aaaaaaaa99884....',
+    '..3448899aaaaaaaa9988443..',
+    '.344499aabbbbbbbbaa994443.',
+    '.4444.9aabbbbbbbbaa9.4444.',
+    '.4444.abbccccccccbba.4444.',
+    '.4444aabbccccccccbbaa4444.',
+    '.4444aabbccccccccbbaa4444.',
+    '.4444aabbccccccccbbaa4444.',
+    '.4444aabbccccccccbbaa4444.',
+    '.4444a.bbccccccccbb.a4444.',
+    '.4444aabbccccccccbbaa4444.',
+    '44444.abbccccccccbba.44444',
+    '44444.89999999999998.44444',
+    '.333..89999999999998..333.',
+  ],
+}
 
 const BOSS_GAPE_MOUTH: ReadonlyArray<Patch> = [
   patch(10, 5, 'M', 6),

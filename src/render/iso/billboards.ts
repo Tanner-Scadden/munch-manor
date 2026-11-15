@@ -23,7 +23,7 @@ export const PART_BIAS = 0.002
 
 // NOTE: a leaf as it is drawn: its texture (a white quad for a Rect), the
 // middle of its bottom edge, its size, and its tint.
-export type DrawnLeaf = Readonly<{
+type DrawnLeaf = Readonly<{
   texture: Texture
   centerX: number
   bottom: number
@@ -54,7 +54,7 @@ const textureAndTint = (
 
 // NOTE: an Image or a filled Rect as it is drawn, or nothing when it draws
 // nothing standing (an outline, a path, an image still loading).
-export const drawnLeafOf = ({
+const drawnLeafOf = ({
   textures,
   leaf: { shape, matrix, alpha },
 }: Readonly<{ textures: Textures; leaf: Leaf }>): DrawnLeaf | undefined => {
@@ -323,9 +323,10 @@ export const rimUp = (
 // SHADOW STAND-INS
 
 // NOTE: a billboard turns to the lens, and the shadow pass does not turn it
-// (nor draws a sprite kept out of the opaque pass), so what stands casts
-// through a stand-in: its art cut out upright on a plain mesh at its foot,
-// in no pass but the shadow's.
+// (nor draws a sprite kept out of the opaque pass), so a fern casts through
+// a stand-in: its art cut out upright on a plain mesh at its foot, in no
+// pass but the shadow's. What is carved casts through its own blocks
+// (voxels.ts).
 const CASTER_GEOMETRY = new PlaneGeometry({ width: 1, height: 1 })
 
 export type Cutout = Readonly<{
@@ -368,76 +369,4 @@ const placeCutout = (mesh: Mesh3D, cutout: Cutout): void => {
     (cutout.footY - cutout.top - cutout.height / 2) * UNIT,
     zOf(cutout.footY),
   )
-}
-
-// NOTE: whatever moves (players, zombies, pickups, traps) casts its shadow
-// from the room's light through a stand-in of its biggest sprite, in its
-// pose this frame. Mutable on purpose: it pools pixi's own objects.
-export class BodyCasters {
-  private readonly meshes: Array<Mesh3D> = []
-  private used = 0
-  private readonly parent: Container3D
-  private readonly textures: Textures
-
-  constructor(input: Readonly<{ parent: Container3D; textures: Textures }>) {
-    this.parent = input.parent
-    this.textures = input.textures
-  }
-
-  begin(): void {
-    this.used = 0
-  }
-
-  end(): void {
-    for (let index = this.used; index < this.meshes.length; index += 1) {
-      const mesh = this.meshes[index]
-      if (mesh !== undefined) {
-        mesh.visible = false
-      }
-    }
-  }
-
-  cast(leaves: ReadonlyArray<Leaf>, footY: number): void {
-    let biggest: DrawnLeaf | undefined
-    for (const leaf of leaves) {
-      const drawn =
-        leaf.shape._tag === 'Image'
-          ? drawnLeafOf({ textures: this.textures, leaf })
-          : undefined
-      if (
-        drawn !== undefined &&
-        drawn.alpha >= 0.5 &&
-        (biggest === undefined ||
-          drawn.drawnWidth * drawn.drawnHeight >
-            biggest.drawnWidth * biggest.drawnHeight)
-      ) {
-        biggest = drawn
-      }
-    }
-    if (biggest === undefined) {
-      return
-    }
-    const material = this.textures.casterMaterialOf(
-      this.textures.silhouetteOf(biggest.texture),
-    )
-    const cutout: Cutout = {
-      texture: biggest.texture,
-      left: biggest.centerX - biggest.drawnWidth / 2,
-      top: biggest.bottom - biggest.drawnHeight,
-      width: biggest.drawnWidth,
-      height: biggest.drawnHeight,
-      footY,
-    }
-    const existing = this.meshes[this.used]
-    this.used += 1
-    if (existing === undefined) {
-      this.meshes.push(standCutout({ parent: this.parent, material, cutout }))
-      return
-    }
-    if (existing.material !== material) {
-      existing.material = material
-    }
-    placeCutout(existing, cutout)
-    existing.visible = true
-  }
 }

@@ -1,13 +1,15 @@
-import { Array, Function, Option, pipe } from 'effect'
+import { Array, Function, Option, Record, pipe } from 'effect'
 
 import type { ZombieKind } from '../../world/schema/entitySchema'
 import {
   type Facing,
   type Palette,
   type Sprite,
+  type SpriteDepth,
   type SpriteFrames,
   type SpriteSet,
   TRANSPARENT,
+  deepSprite,
   facingSprites,
   frameAt,
   spriteFrames,
@@ -16,6 +18,7 @@ import {
   spriteWidth,
 } from '../sprite'
 import {
+  BOSS_DEPTH,
   BOSS_ENRAGED_PALETTE,
   BOSS_ICON_PIXELS,
   BOSS_LEGS_PLANTED,
@@ -142,6 +145,32 @@ const zombieSprites = (art: WearArt): ZombieSprites => {
   }
 }
 
+// NOTE: every image of a kind's worn frames, each tone and facing, to
+// carve to its hand set depth (`deepSprite`).
+const deepZombie =
+  (depth: SpriteDepth) =>
+  (sprites: ZombieSprites): ZombieSprites => {
+    for (const worn of sprites.stages) {
+      const sets: ReadonlyArray<SpriteSet> = [
+        ...worn.walk,
+        ...worn.lit,
+        ...worn.rage,
+        worn.gape,
+        worn.litGape,
+        worn.rageGape,
+        worn.taunt,
+      ]
+      for (const set of sets) {
+        for (const facings of Record.values(set)) {
+          for (const sprite of Record.values(facings)) {
+            deepSprite(sprite, depth)
+          }
+        }
+      }
+    }
+    return sprites
+  }
+
 export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
   Shambler: zombieSprites({
     stageCount: GROANER_HIGH_WEAR.length,
@@ -209,17 +238,19 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
     icon: CRAWLER_ICON_PIXELS,
     maybeTauntAt: Option.none(),
   }),
-  Boss: zombieSprites({
-    stageCount: BOSS_WEAR.length,
-    pixelsAt: bossWalkPixels,
-    gapeAt: stage => bossPixels(BOSS_LEGS_PLANTED, stage, true),
-    palette: BOSS_PALETTE,
-    litPalette: BOSS_ENRAGED_PALETTE,
-    ragePalette: BOSS_ENRAGED_PALETTE,
-    anchorX: BOSS_ANCHOR_X,
-    icon: BOSS_ICON_PIXELS,
-    maybeTauntAt: Option.none(),
-  }),
+  Boss: deepZombie(BOSS_DEPTH)(
+    zombieSprites({
+      stageCount: BOSS_WEAR.length,
+      pixelsAt: bossWalkPixels,
+      gapeAt: stage => bossPixels(BOSS_LEGS_PLANTED, stage, true),
+      palette: BOSS_PALETTE,
+      litPalette: BOSS_ENRAGED_PALETTE,
+      ragePalette: BOSS_ENRAGED_PALETTE,
+      anchorX: BOSS_ANCHOR_X,
+      icon: BOSS_ICON_PIXELS,
+      maybeTauntAt: Option.none(),
+    }),
+  ),
 }
 
 export const wornFramesAt: {

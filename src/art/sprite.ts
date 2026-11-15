@@ -403,6 +403,57 @@ const noteFlash = (
   return shapes
 }
 
+// NOTE: a sprite that is a light of itself (a hearth's flames) stands in
+// the 3D world glowing, the same in any light. Known by its image's source
+// and crop, since placing a sprite copies its image.
+const GLOWING_IMAGES = new Set<string>()
+
+// NOTE: one sprite image by its sheet and its crop: in a production build
+// every sprite is a crop of a few atlas sheets, so the sheet alone names
+// many.
+export const cropKeyOf = (image: Canvas.Image): string =>
+  `${image.src}|${image.crop?.x ?? 0},${image.crop?.y ?? 0}`
+
+export const glowingSprite = (sprite: Sprite): Sprite => {
+  Array.forEach(sprite, shape => {
+    if (shape._tag === 'Image') {
+      GLOWING_IMAGES.add(cropKeyOf(shape))
+    }
+  })
+  return sprite
+}
+
+export const isGlowingShape = (shape: Canvas.Shape): boolean =>
+  shape._tag === 'Image' && GLOWING_IMAGES.has(cropKeyOf(shape))
+
+// NOTE: how a sprite stands carved in the 3D world when its round default
+// reads wrong, set beside its pixel map: `most`, its depth cap; `isBox`,
+// every pixel the cap deep with its front flush, as a fridge or a stove
+// is; `rows`, a hand drawn depth map over the pixel map, a digit a pixel
+// (how many blocks deep, flush), `.` for the round default.
+export type SpriteDepth = Readonly<{
+  most?: number
+  isBox?: boolean
+  rows?: ReadonlyArray<string>
+}>
+
+const SPRITE_DEPTHS = new Map<string, SpriteDepth>()
+
+export const deepSprite: {
+  (depth: SpriteDepth): (sprite: Sprite) => Sprite
+  (sprite: Sprite, depth: SpriteDepth): Sprite
+} = Function.dual(2, (sprite: Sprite, depth: SpriteDepth): Sprite => {
+  Array.forEach(sprite, shape => {
+    if (shape._tag === 'Image') {
+      SPRITE_DEPTHS.set(cropKeyOf(shape), depth)
+    }
+  })
+  return sprite
+})
+
+export const spriteDepthOf = (shape: Canvas.Image): SpriteDepth | undefined =>
+  SPRITE_DEPTHS.get(cropKeyOf(shape))
+
 // NOTE: a sprite is one image of its pixel map, drawn with a single
 // drawImage, instead of a rectangle for each run of same colored pixels. A
 // prebuilt one is found by its key with no pixel work at all. A palette color
