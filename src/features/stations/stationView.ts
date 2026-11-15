@@ -1,4 +1,4 @@
-import { Array, Function, Option, String } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import {
@@ -9,6 +9,7 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
+import { WINCH_HEIGHT_PX, WINCH_SLACK, WINCH_TAUT } from '../../art/winchArt'
 import type { Drawable } from '../../render/depth'
 import { rect } from '../../render/drawing'
 import { doorArrowShapes } from '../../render/powerupView'
@@ -55,157 +56,12 @@ const tile = (
   palette: Readonly<Record<string, string>>,
 ): Sprite => spriteShapes(pixels, palette, TOP_LEFT)
 
-// NOTE: the chandelier's winch, the cleat (owner, 2026-11-15: its old
-// brass horn stood inside the west wall, where the 3D wall hid it): an oak
-// post against the wall's face, an iron arm out to a brass pulley, the rope
-// running up through it to the ceiling, and a drum with a crank on an iron
-// foot. Hung, the drum is wound full and the rope stands straight and taut;
-// dropped, the drum is bare and the rope hangs in loose loops to a coil on
-// the floor. The crank turns while the winch is worked.
-const CLEAT_PALETTE = {
-  p: '#24140a',
-  P: '#6a4422',
-  i: '#16161c',
-  I: '#5a5a66',
-  g: '#8a6420',
-  G: '#d8a838',
-  Y: '#fff0a0',
-  r: '#6a4a24',
-  R: '#f4dca8',
-  w: '#3a2412',
-  W: '#6a4426',
-}
-
-const CLEAT_TAUT_ROWS: ReadonlyArray<string> = [
-  '......Rr..',
-  '......rR..',
-  '......Rr..',
-  '......rR..',
-  '......Rr..',
-  '......rR..',
-  'pp...iYGi.',
-  'pPiiiYRrGi',
-  'pP..iGrRgi',
-  'pP...igg..',
-  'pP....Rr..',
-  'pP....rR..',
-  'pP....Rr..',
-  'pP....rR..',
-  'pP....Rr..',
-  'pP.iYGrRYi',
-  'pPiYRRRRRG',
-  'pPiGrrrrrg',
-  'pPiYRRRRRG',
-  'pPiGrrrrrg',
-  'pPiYRRRRRG',
-  'pPiGrrrrrg',
-  'pP.igg.ggi',
-  'pP..i...i.',
-  'pP..i...i.',
-  'pPiiiiiiii',
-  'IIIIIIIIII',
-  'iiiiiiiiii',
-]
-
-const CLEAT_SLACK_ROWS: ReadonlyArray<string> = [
-  '.....Rr...',
-  '......R...',
-  '......rR..',
-  '.......R..',
-  '......Rr..',
-  '......R...',
-  'pp...iYGi.',
-  'pPiiiYRrGi',
-  'pP..iGrRgi',
-  'pP...iggR.',
-  'pP......R.',
-  'pP.......R',
-  'pP.......R',
-  'pP......R.',
-  'pP.....R..',
-  'pP.iYGR.Yi',
-  'pPiYwWwWwG',
-  'pPiGwWwWwg',
-  'pPiYwWwWwG',
-  'pPiGwWRWwg',
-  'pPiYwWwWwG',
-  'pPiGwWwWwg',
-  'pP.igg.ggi',
-  'pP..i.rRr.',
-  'pP..irR.Rr',
-  'pPiiiRrrRi',
-  'IIIIIIIIII',
-  'iiiiiiiiii',
-]
-
-const CLEAT_HEIGHT_PX = CLEAT_TAUT_ROWS.length
-
-// NOTE: the crank's arm from the drum's middle, a quarter turn a frame:
-// up, east, down, west, its knob the bright brass.
-type Pixel = Readonly<{ column: number; row: number; mark: string }>
-
-const CRANK_TURNS: Array.NonEmptyReadonlyArray<ReadonlyArray<Pixel>> = [
-  [
-    { column: 6, row: 18, mark: 'i' },
-    { column: 6, row: 17, mark: 'G' },
-    { column: 6, row: 16, mark: 'G' },
-    { column: 6, row: 15, mark: 'Y' },
-  ],
-  [
-    { column: 6, row: 18, mark: 'i' },
-    { column: 7, row: 18, mark: 'G' },
-    { column: 8, row: 18, mark: 'G' },
-    { column: 9, row: 18, mark: 'Y' },
-  ],
-  [
-    { column: 6, row: 18, mark: 'i' },
-    { column: 6, row: 19, mark: 'G' },
-    { column: 6, row: 20, mark: 'G' },
-    { column: 6, row: 21, mark: 'Y' },
-  ],
-  [
-    { column: 6, row: 18, mark: 'i' },
-    { column: 5, row: 18, mark: 'G' },
-    { column: 4, row: 18, mark: 'G' },
-    { column: 3, row: 18, mark: 'Y' },
-  ],
-]
-
-const withPixels = (
-  rows: ReadonlyArray<string>,
-  pixels: ReadonlyArray<Pixel>,
-): ReadonlyArray<string> =>
-  Array.map(rows, (line, row) =>
-    Array.join(
-      Array.map(String.split(line, ''), (mark, column) =>
-        Option.getOrElse(
-          Option.map(
-            Array.findFirst(
-              pixels,
-              pixel => pixel.row === row && pixel.column === column,
-            ),
-            pixel => pixel.mark,
-          ),
-          () => mark,
-        ),
-      ),
-      '',
-    ),
-  )
-
-const cleatFrames = (
-  rows: ReadonlyArray<string>,
-): Array.NonEmptyReadonlyArray<Sprite> =>
-  Array.map(CRANK_TURNS, turn => tile(withPixels(rows, turn), CLEAT_PALETTE))
-
-const CLEAT_TAUT = cleatFrames(CLEAT_TAUT_ROWS)
-const CLEAT_SLACK = cleatFrames(CLEAT_SLACK_ROWS)
 const CRANK_STEP_MS = 140
 
 // NOTE: the winch as it stands now: taut over a hung chandelier, slack under
 // a fallen one, its crank turning while it is worked.
 const cleatSpriteOf = (world: World, station: StationView): Sprite => {
-  const frames = isChandelierDown(world) ? CLEAT_SLACK : CLEAT_TAUT
+  const frames = isChandelierDown(world) ? WINCH_SLACK : WINCH_TAUT
   const turn =
     station.setUp > 0
       ? Math.floor(world.elapsedMs / CRANK_STEP_MS) % frames.length
@@ -357,6 +213,8 @@ const POT_SPRITE: Sprite = tile(
 type StationArt = Readonly<{
   spriteOf: (world: World, station: StationView) => Sprite
   heightPx: number
+  // NOTE: how far east of the middle the first time arrow points down.
+  arrowDx: number
   isStanding: boolean
 }>
 
@@ -367,13 +225,18 @@ const stillArt = (
   Option.some({
     spriteOf: Function.constant(sprite),
     heightPx: TILE_SIZE,
+    arrowDx: 0,
     isStanding,
   })
 
 const STATION_ART: Readonly<Record<StationId, Option.Option<StationArt>>> = {
   Cleat: Option.some({
     spriteOf: cleatSpriteOf,
-    heightPx: CLEAT_HEIGHT_PX,
+    heightPx: WINCH_HEIGHT_PX,
+    // NOTE: east of the rope that runs straight up out of the winch's
+    // pulley (src/render/room/chandelierRope.ts), which stands nearer the
+    // lens than the arrow and would cut through it.
+    arrowDx: 7,
     isStanding: true,
   }),
   Gramophone: stillArt(GRAMOPHONE_SPRITE, true),
@@ -525,6 +388,12 @@ const artTopOf = (station: StationView): number =>
     onSome: ({ heightPx }) => heightPx,
   })
 
+const arrowDxOf = (station: StationView): number =>
+  Option.match(STATION_ART[station.id], {
+    onNone: () => 0,
+    onSome: ({ arrowDx }) => arrowDx,
+  })
+
 // NOTE: where the arrow's point sits under the art's top: the arrow is
 // drawn from 15 px over its point, 5 px tall, bobbing 2 px down
 // (src/render/powerupView.ts), and what floats overhead stands 6 px over its
@@ -555,7 +424,7 @@ const arrowShapes = (
       onSome: station =>
         doorArrowShapes(
           {
-            x: Math.round(station.center.x),
+            x: Math.round(station.center.x) + arrowDxOf(station),
             y: Math.min(
               Math.round(station.center.y) - WORK_RING_RADIUS,
               artTopOf(station) + ARROW_CLEAR_PX,
@@ -699,23 +568,31 @@ const stationArtShapes = (
 ]
 
 // NOTE: on the ground layer, over the room's walls: what lies flat (the
-// spilled soup, the toppled books, the fallen books at a stack's foot).
+// spilled soup, the toppled books, the fallen books at a stack's foot), and
+// each station's set-up or cooldown ring, or its first time pulse, flat on
+// the floor round its foot, so what stands there stands in front of the
+// ring's far half and never under it (owner, 2026-11-15: the ring floating
+// over the winch hid its drum and crank).
 export const stationGroundShapes: {
   (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   2,
-  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => [
-    ...puddleShapes(world),
-    ...heapShapes(world),
-    ...Array.flatMap(shownStations(world, isShown), station =>
-      Option.match(STATION_ART[station.id], {
-        onNone: () => [],
-        onSome: art =>
-          art.isStanding ? [] : stationArtShapes(world, station, art),
-      }),
-    ),
-  ],
+  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => {
+    const stations = shownStations(world, isShown)
+    return [
+      ...puddleShapes(world),
+      ...heapShapes(world),
+      ...Array.flatMap(stations, station => [
+        ...ringShapes(station, world.elapsedMs),
+        ...Option.match(STATION_ART[station.id], {
+          onNone: () => [],
+          onSome: art =>
+            art.isStanding ? [] : stationArtShapes(world, station, art),
+        }),
+      ]),
+    ]
+  },
 )
 
 // NOTE: what stands up off the floor, in the depth sort with the bodies
@@ -747,8 +624,8 @@ export const stationDrawables: {
   ],
 )
 
-// NOTE: over everything: a tool's notes or dust while it is on, and a
-// station's set-up or cooldown ring, or its first time hint.
+// NOTE: over everything: a tool's notes or dust while it is on, and the
+// first time hint's arrow.
 export const stationOverheadShapes: {
   (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
@@ -757,10 +634,7 @@ export const stationOverheadShapes: {
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => {
     const stations = shownStations(world, isShown)
     return [
-      ...Array.flatMap(stations, station => [
-        ...toolOverheadShapes(world, station),
-        ...ringShapes(station, world.elapsedMs),
-      ]),
+      ...Array.flatMap(stations, station => toolOverheadShapes(world, station)),
       ...arrowShapes(world, stations),
     ]
   },
