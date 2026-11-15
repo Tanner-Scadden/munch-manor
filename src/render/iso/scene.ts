@@ -55,6 +55,7 @@ import { hungChandelierShapes } from '../room/room'
 import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { airOf } from './air'
 import { BillboardPool, BodyCasters, rimUp } from './billboards'
+import { crittersOf } from './critters'
 import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
@@ -412,17 +413,15 @@ export class IsoScene {
     }
 
     // THE AIR
-    for (const mote of airOf({
-      world: model,
-      level: built.level,
-      viewer: player,
-      rattle,
-    })) {
+    for (const mote of [
+      ...airOf({ world: model, level: built.level, viewer: player, rattle }),
+      ...crittersOf({ world: model, level: built.level }),
+    ]) {
       ;(mote.isGlowing ? this.glowing : this.billboards).place({
         texture: Texture.WHITE,
-        centerX: mote.x + 0.5,
+        centerX: mote.x + (mote.width ?? 1) / 2,
         bottom: mote.y,
-        drawnWidth: 1,
+        drawnWidth: mote.width ?? 1,
         drawnHeight: 1,
         tint: mote.color,
         alpha: mote.alpha,
