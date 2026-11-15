@@ -79,6 +79,8 @@ import {
   plantsOf,
   standPlant,
 } from './house'
+import { LeakLayer } from './leakLayer'
+import { dripsOf } from './leaks'
 import { aimSceneCamera, sceneLensOf } from './lensCamera'
 import { AMBIENT, type LightsFrame, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
@@ -177,6 +179,8 @@ type Built = Readonly<{
   // NOTE: the storm at the windows (storm.ts), unlit, on its own quads over
   // the glass and the floor it lights.
   storm: FloorPicture
+  // NOTE: the roof leaks' puddles (leaks.ts).
+  leaks: LeakLayer
   floorArt: ReadonlyArray<Leaf>
   plants: ReadonlyArray<Plant>
   // NOTE: each tall piece by the shapes the game draws it with, to read the
@@ -467,6 +471,7 @@ export class IsoScene {
           : stormOf({ world: model, level: built.level }),
       )
     }
+    built.leaks.paint({ world: model, viewer: player })
 
     // WHAT STANDS
     const flashLevel = muzzleFlashLevel(player)
@@ -642,6 +647,7 @@ export class IsoScene {
     for (const mote of [
       ...airOf({ world: model, level: built.level, viewer: player, rattle }),
       ...crittersOf({ world: model, level: built.level }),
+      ...dripsOf({ world: model, level: built.level }),
     ]) {
       ;(mote.isGlowing ? this.glowing : this.billboards).place({
         texture: Texture.WHITE,
@@ -915,7 +921,15 @@ export class IsoScene {
     })
     const wallTops = buildWallTops({ level, material: wallArt })
     const wallFaces = buildWallFaces({ level, material: wallArt })
-    holder.addChild(floor.mesh, ground.mesh, wallTops, wallFaces, stormQuads)
+    const leaks = new LeakLayer({ app, textures, level })
+    holder.addChild(
+      floor.mesh,
+      ground.mesh,
+      leaks.mesh,
+      wallTops,
+      wallFaces,
+      stormQuads,
+    )
     Array.forEach(walls, mesh => {
       holder.addChild(mesh)
     })
@@ -930,6 +944,7 @@ export class IsoScene {
       floor,
       ground,
       storm,
+      leaks,
       floorArt,
       plants: plantsOf({ app: this.app, level }),
       furniture: new Map(
@@ -983,7 +998,7 @@ export class IsoScene {
     })
     built.holder.destroy({ children: true })
     Array.forEach(
-      [built.room, built.floor, built.ground, built.storm],
+      [built.room, built.floor, built.ground, built.storm, built.leaks],
       layer => {
         layer.destroy()
       },

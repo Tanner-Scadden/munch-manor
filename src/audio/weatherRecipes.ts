@@ -31,4 +31,24 @@ export const WEATHER_RECIPES = {
       },
     ],
   },
+  // NOTE: a roof leak's drop landing in its puddle: a tiny plip that bends
+  // up, with a breath of water under it, quiet enough to sit under the rain.
+  Drip: {
+    variationCents: 300,
+    tones: [
+      {
+        wave: 'sine',
+        pitch: [at(0, 900), at(0.05, 1700)],
+        envelope: delayedEnvelope(0.05, 0.002, 0.06, 0),
+      },
+    ],
+    noises: [
+      {
+        filter: 'bandpass',
+        quality: 2,
+        cutoff: [at(0, 2400), at(0.06, 1400)],
+        envelope: delayedEnvelope(0.015, 0.001, 0.04, 0),
+      },
+    ],
+  },
 } satisfies Partial<Record<SoundEffect, Recipe>>

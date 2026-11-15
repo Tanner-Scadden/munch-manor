@@ -11,7 +11,7 @@ import {
   Phase,
   RunMode,
 } from '../../../app/model'
-import { PlayTune } from '../../../app/update/sound'
+import { PlayPlaced } from '../../../app/update/sound'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -326,8 +326,13 @@ describe('finding a thing', () => {
             APPLICATION,
             Story.given(listening(box, at)),
             tick(FRAME_MS),
-            checkPendingArgs(Story.Command.argsOf(PlayTune))(tunes => {
-              heard.push(...tunes)
+            checkPendingArgs(Story.Command.argsOf(PlayPlaced))(placed => {
+              heard.push(
+                ...Array.map(
+                  Array.filter(placed, ({ sound }) => sound === 'MusicBox'),
+                  ({ volume, pan }) => ({ volume, pan }),
+                ),
+              )
             }),
             settleRunCommands,
           ).pipe(Effect.as(heard))

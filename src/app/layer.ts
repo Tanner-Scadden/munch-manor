@@ -52,8 +52,8 @@ import {
 } from './update/save'
 import { SendRunSummary } from './update/settle'
 import {
+  PlayPlaced,
   PlaySound,
-  PlayTune,
   ResumeAudio,
   managedResources,
 } from './update/sound'
@@ -78,7 +78,7 @@ export const CommandsLayer = Layer.mergeAll(
   SetFullscreen.layer,
   ResumeAudio.layer,
   PlaySound.layer,
-  PlayTune.layer,
+  PlayPlaced.layer,
   Rumble.layer,
   CueMusic.layer,
   FetchBuild.layer,
