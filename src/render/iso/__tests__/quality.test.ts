@@ -102,6 +102,8 @@ describe('pinning a tier', () => {
   test('a pinned tier never steps', () => {
     const governor = new QualityGovernor(Option.some('Light'))
     expect(governor.tier).toBe('Light')
+    expect(governor.isPinned).toBe(true)
+    expect(new QualityGovernor(Option.none()).isPinned).toBe(false)
     const { steps } = feed({ governor, fromMs: 0, seconds: 10, costMs: 30 })
     expect(steps).toEqual([])
     expect(governor.tier).toBe('Light')

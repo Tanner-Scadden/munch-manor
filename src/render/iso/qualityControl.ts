@@ -61,7 +61,11 @@ export class WorldQuality {
         isAutomated: navigator.webdriver,
       }),
     )
-    this.probe = new FrameProbe(glOf(app))
+    // NOTE: a pinned tier asks the GPU for no timings, so a pinned audit
+    // draws exactly as before.
+    this.probe = new FrameProbe(
+      this.governor.isPinned ? Option.none() : glOf(app),
+    )
   }
 
   get tier(): QualityTier {
@@ -105,6 +109,9 @@ export class WorldQuality {
   // draws nothing new.
   end(frame: IsoFrame, view: View3D): void {
     const probed = this.probe.end()
+    if (this.governor.isPinned) {
+      return
+    }
     const { model } = frame
     const isPlay = IsoLens.match(frame.lens, {
       Play: () => true,

@@ -177,6 +177,11 @@ export class QualityGovernor {
     return Option.getOrElse(Array.get(TIERS, this.index), () => 'Full')
   }
 
+  // NOTE: a pinned tier never steps, so its frames need no measuring.
+  get isPinned(): boolean {
+    return Option.isSome(this.pin)
+  }
+
   // NOTE: a change on screen (a level built, the canvas resized, a tier
   // stepped): nothing is judged for a second after it.
   holdFrom(atMs: number): void {
