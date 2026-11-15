@@ -133,6 +133,19 @@ export class BillboardPool {
     }
   }
 
+  // NOTE: every sprite let go of what it wore, before a level's own textures
+  // (the ferns' clumps) are destroyed. The renderer still reads a hidden
+  // sprite's material, and a destroyed texture there crashed the first frame
+  // of the next level (MENU off an end card).
+  release(): void {
+    for (const sprite of this.sprites) {
+      sprite.visible = false
+      if (sprite.texture !== Texture.WHITE) {
+        sprite.texture = Texture.WHITE
+      }
+    }
+  }
+
   standUp(
     shapes: ReadonlyArray<Canvas.Shape>,
     footY: number,
