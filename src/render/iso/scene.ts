@@ -112,6 +112,7 @@ import {
   pickupRingOf,
   pickupSpinOf,
 } from './powerups'
+import { ShadowWatch } from './shadowWatch'
 import { type Chandelier, chandelierOf, isChandelierSprite } from './showpieces'
 import { SoupLayer } from './soupLayer'
 import {
@@ -300,6 +301,8 @@ export class IsoScene {
   private built: Built | undefined
   private casters: Container3D | undefined
   private plantCasters: ReadonlyArray<Caster> = []
+  // NOTE: which fills' shadow maps are drawn again this frame.
+  private readonly shadowWatch = new ShadowWatch()
   private lastDecals: unknown
   // NOTE: whether anything had landed on the floor last frame, so a frame
   // with nothing there and nothing before draws the floor's picture again
@@ -372,7 +375,11 @@ export class IsoScene {
       isLit: false,
     })
     this.rims = new BillboardPool({ parent: standing, textures, isLit: false })
-    this.voxels = new VoxelBatch({ parent: standing, textures })
+    this.voxels = new VoxelBatch({
+      parent: standing,
+      textures,
+      watch: this.shadowWatch,
+    })
   }
 
   draw(
@@ -520,6 +527,7 @@ export class IsoScene {
     this.glowing.begin()
     this.rims.begin()
     this.voxels.begin()
+    this.shadowWatch.begin()
     for (const drawable of strata.standing) {
       // NOTE: a muzzle flash glows on its body's own plane, so it sits on
       // the gun's tip; it lights, casts, and takes no rim. Aimed down the
@@ -603,9 +611,14 @@ export class IsoScene {
         })
       }
     }
+    // NOTE: which ferns cast, culled to the view, noted as the voxels' own
+    // casters are (shadowWatch.ts).
+    let plantsShown = 0
     for (const { mesh, box } of this.plantCasters) {
       mesh.visible = isNearView(box, view)
+      plantsShown = Math.imul(plantsShown, 31) + (mesh.visible ? 1 : 2)
     }
+    this.shadowWatch.note(plantsShown)
     const t = windClockOf(model.elapsedMs)
     for (const plant of built.plants) {
       if (isNearView(cutoutBoxOf(plant.caster), view)) {
@@ -618,7 +631,7 @@ export class IsoScene {
     // time.
     const sway = chandelierSwayAt(t) + Math.round(Math.sin(t * 38) * rattle * 3)
     Option.map(built.chandelier, carved => {
-      carved.apply({ isDown, sway, view })
+      this.shadowWatch.note(carved.apply({ isDown, sway, view }))
     })
     // NOTE: sparks, blood, and gibs in the air stand as cubes, lit as the
     // bodies are, so they vanish into the cellar's dark with them; one with
@@ -701,6 +714,7 @@ export class IsoScene {
     this.glowing.end()
     this.rims.end()
     this.voxels.end()
+    this.shadowWatch.end()
 
     // THE LIGHTS
     const lampAt = standingPointOf({
@@ -1000,7 +1014,7 @@ export class IsoScene {
       furniture: new Map(
         Array.map(tallCoverOf(level), piece => [piece.shapes, piece] as const),
       ),
-      lights: houseLightsOf({ level, parent: holder }),
+      lights: houseLightsOf({ level, parent: holder, watch: this.shadowWatch }),
       rays: new GodRays({ level, parent: holder }),
       glows: new HouseGlows({ app, textures, level, parent: holder }),
       chandelier: chandelierOf({ level, parent: holder }),

@@ -25,6 +25,7 @@ import {
 } from '../../art/sprite'
 import { PART_BIAS } from './billboards'
 import { IDENTITY, type Leaf } from './flatten'
+import type { ShadowWatch } from './shadowWatch'
 import { UNIT } from './space'
 import type { PixelMasks, Textures } from './textures'
 import {
@@ -225,6 +226,7 @@ export class VoxelBatch {
   private readonly casters: BatchedMesh3D
   private readonly textures: Textures
   private readonly scratch = new Matrix4()
+  private readonly watch: ShadowWatch | undefined
   private used = 0
   private readonly filled: Array<boolean> = []
   private readonly slotGeometry: Array<Geometry3D | undefined> = []
@@ -263,8 +265,16 @@ export class VoxelBatch {
     emissive: { color: 0xffffff, strength: 1 },
   })
 
-  constructor(input: Readonly<{ parent: Container3D; textures: Textures }>) {
+  constructor(
+    input: Readonly<{
+      parent: Container3D
+      textures: Textures
+      // NOTE: the scene's watch on its fills' casters; a plinth has none.
+      watch?: ShadowWatch
+    }>,
+  ) {
     this.textures = input.textures
+    this.watch = input.watch
     this.batch = new BatchedMesh3D({ size: SLOTS })
     this.casters = new BatchedMesh3D({ size: SLOTS })
     input.parent.addChild(this.batch)
@@ -356,6 +366,21 @@ export class VoxelBatch {
     return true
   }
 
+  // NOTE: the caster summed into each fill's cone it reaches
+  // (shadowWatch.ts), by its bounding sphere through the matrix.
+  private watchCast(caster: Geometry3D): void {
+    if (this.watch === undefined) {
+      return
+    }
+    const { center, radius } = caster.boundsSphere
+    this.watch.cast({
+      shape: caster,
+      elements: this.scratch.elements,
+      center,
+      radius,
+    })
+  }
+
   // NOTE: a carve's shadow, through its merged blocks at the matrix it
   // stands at (the one `fill` just set).
   private cast(caster: Geometry3D): void {
@@ -373,6 +398,7 @@ export class VoxelBatch {
       this.casters.setGeometryAt(index, caster)
     }
     this.casters.setMatrixAt(index, this.scratch)
+    this.watchCast(caster)
     if (this.casterShown[index] !== true) {
       this.casterShown[index] = true
       this.casters.setVisibleAt(index, true)
