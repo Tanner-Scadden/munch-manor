@@ -350,17 +350,70 @@ const NEW_KIND_SHIFT = Math.round(
   (NEW_KIND_ICON_GAP + (NEW_KIND_ICON_SCALE * NEW_KIND_ICON_PX) / 2) / 2,
 )
 
+// NOTE: a banner stands on a dark plate as wide as its widest line, so it
+// reads over anything the room holds under it (the chandelier, the table,
+// a crowd). The plate meets the HUD strip over it and the hint rows under
+// it rather than overlapping them.
+const BANNER_PLATE_COLOR = 'rgba(8, 10, 12, 0.55)'
+const BANNER_PLATE_PAD_X = 4
+const BANNER_PLATE_PAD_Y = 1
+
+const bannerBottomOf = (
+  band: HintBand,
+  maybeSubtitle: Option.Option<BakedText>,
+): number =>
+  BAND_TOP[band] +
+  (Option.isSome(maybeSubtitle)
+    ? SUBTITLE_OFFSET + GLYPH_HEIGHT
+    : TITLE_SCALE * GLYPH_HEIGHT)
+
+const bannerPlate = (
+  band: HintBand,
+  left: number,
+  right: number,
+  maybeSubtitle: Option.Option<BakedText>,
+): Canvas.Shape => {
+  const top = BAND_TOP[band] - BANNER_PLATE_PAD_Y
+  return Canvas.Rect({
+    x: left - BANNER_PLATE_PAD_X,
+    y: top,
+    width: right - left + 2 * BANNER_PLATE_PAD_X,
+    height: bannerBottomOf(band, maybeSubtitle) + BANNER_PLATE_PAD_Y - top,
+    fill: BANNER_PLATE_COLOR,
+  })
+}
+
+// NOTE: the columns a line centered on the frame takes.
+const centeredSpan = (width: number): readonly [number, number] => {
+  const left = Math.round(CENTER_X - width / 2)
+  return [left, left + width]
+}
+
 const bannerAt = (
   band: HintBand,
   title: BakedText,
   maybeSubtitle: Option.Option<BakedText>,
-): ReadonlyArray<Canvas.Shape> => [
-  centered(title, BAND_TOP[band], TITLE_SCALE),
-  ...Option.match(maybeSubtitle, {
-    onNone: () => [],
-    onSome: subtitle => [centered(subtitle, BAND_TOP[band] + SUBTITLE_OFFSET)],
-  }),
-]
+): ReadonlyArray<Canvas.Shape> => {
+  const [left, right] = centeredSpan(
+    Math.max(
+      title.width * TITLE_SCALE,
+      Option.match(maybeSubtitle, {
+        onNone: () => 0,
+        onSome: subtitle => subtitle.width,
+      }),
+    ),
+  )
+  return [
+    bannerPlate(band, left, right, maybeSubtitle),
+    centered(title, BAND_TOP[band], TITLE_SCALE),
+    ...Option.match(maybeSubtitle, {
+      onNone: () => [],
+      onSome: subtitle => [
+        centered(subtitle, BAND_TOP[band] + SUBTITLE_OFFSET),
+      ],
+    }),
+  ]
+}
 
 const bakedFor = (
   list: ReadonlyArray<BakedText>,
@@ -379,10 +432,28 @@ const iconBanner = (
     shownMs < NEW_KIND_HOP_MS
       ? 1 + 0.5 * Math.sin((Math.PI * shownMs) / NEW_KIND_HOP_MS)
       : 1
-  const scale = NEW_KIND_ICON_SCALE * hop
+  // NOTE: the hop steps in whole pixels, 2 then 3 then 2, never a scale
+  // between, which would draw the icon's pixels uneven.
+  const scale = Math.round(NEW_KIND_ICON_SCALE * hop)
   const titleX = CENTER_X + NEW_KIND_SHIFT
   const titleLeft = Math.round(titleX - (title.width * TITLE_SCALE) / 2)
+  const iconLeft =
+    titleLeft -
+    NEW_KIND_ICON_GAP -
+    Math.ceil((NEW_KIND_ICON_SCALE * NEW_KIND_ICON_PX) / 2)
+  const [taglineLeft, taglineRight] = centeredSpan(
+    Option.match(maybeTagline, {
+      onNone: () => 0,
+      onSome: tagline => tagline.width,
+    }),
+  )
   return [
+    bannerPlate(
+      band,
+      Option.isSome(maybeTagline) ? Math.min(iconLeft, taglineLeft) : iconLeft,
+      Math.max(titleLeft + title.width * TITLE_SCALE, taglineRight),
+      maybeTagline,
+    ),
     group({
       translate: {
         x: titleLeft - NEW_KIND_ICON_GAP,
