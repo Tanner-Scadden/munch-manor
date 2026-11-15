@@ -423,13 +423,17 @@ const EVERY_NEW_THING = thingsOpenedBy([
   'ChunkTripleDare',
 ])
 
-
 // NOTE: `beat`: the friend's dare the home card and the end card show.
 const FRIENDS_DARE: FriendsDare = {
   seed: 1234567,
   mode: 'Campaign',
   difficulty: 'Hard',
-  modifiers: { friendlyFire: false, bigCrowd: false, broke: true, glass: false },
+  modifiers: {
+    friendlyFire: false,
+    bigCrowd: false,
+    broke: true,
+    glass: false,
+  },
   dareMark: 2,
   easyBreakSeconds: 0,
   pool: ['NapkinRing'],
@@ -545,18 +549,27 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   const newer = config.newer
   if (newer !== undefined) {
     model = modifyFields(model, {
-      maybeNewerBuild: () => Option.some(newer || 'next'),
+      release: modifyFields({
+        maybeNewerBuild: () => Option.some(newer || 'next'),
+      }),
     })
   }
   if (config.unwrap) {
-    model = modifyFields(model, { updateGift: () => 'Unwrapping' })
+    model = modifyFields(model, {
+      release: modifyFields({ updateGift: () => 'Unwrapping' }),
+    })
   }
   if (config.install) {
-    model = modifyFields(model, { installOffer: () => 'Ready' })
+    model = modifyFields(model, {
+      release: modifyFields({ installOffer: () => 'Ready' }),
+    })
   }
   if (config.support) {
     model = modifyFields(model, {
-      maybeSupportUrl: () => Option.some('https://buy.stripe.com/test_harness'),
+      release: modifyFields({
+        maybeSupportUrl: () =>
+          Option.some('https://buy.stripe.com/test_harness'),
+      }),
     })
   }
   if (config.bests) {
@@ -639,14 +652,16 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   if (rankGain !== undefined && isEndScreen(model.phase)) {
     model = modifyFields(model, {
-      maybeRankGain: () =>
-        Option.some({
-          pointsBefore: Math.max(0, (rankPoints ?? 0) - rankGain),
-          gained: rankGain,
-          bonesGained: Math.floor(rankGain / 10),
-          bonusPercent: bonusPercentOf(modifiersOfMask(config.mods ?? 0)),
-          bonuses: [],
-        }),
+      runGains: modifyFields({
+        maybeRankGain: () =>
+          Option.some({
+            pointsBefore: Math.max(0, (rankPoints ?? 0) - rankGain),
+            gained: rankGain,
+            bonesGained: Math.floor(rankGain / 10),
+            bonusPercent: bonusPercentOf(modifiersOfMask(config.mods ?? 0)),
+            bonuses: [],
+          }),
+      }),
     })
   }
   const { mods } = config
@@ -910,18 +925,20 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (sync !== undefined) {
     const devices = config.devices
     model = modifyFields(model, {
-      syncState: () =>
-        sync === 'local'
-          ? SyncState.LocalOnly()
-          : sync === 'connecting'
-            ? SyncState.Connecting()
-            : sync === 'offline'
-              ? SyncState.Offline({ devices })
-              : SyncState.Synced({ devices }),
-      playerScopeStatus: () =>
-        sync === 'broken'
-          ? PlayerScopeStatus.Failed({ reason: 'harness' })
-          : PlayerScopeStatus.Ready({ seq: 1, fresh: sync === 'synced' }),
+      saving: modifyFields({
+        syncState: () =>
+          sync === 'local'
+            ? SyncState.LocalOnly()
+            : sync === 'connecting'
+              ? SyncState.Connecting()
+              : sync === 'offline'
+                ? SyncState.Offline({ devices })
+                : SyncState.Synced({ devices }),
+        playerScopeStatus: () =>
+          sync === 'broken'
+            ? PlayerScopeStatus.Failed({ reason: 'harness' })
+            : PlayerScopeStatus.Ready({ seq: 1, fresh: sync === 'synced' }),
+      }),
     })
   }
   const link = config.link

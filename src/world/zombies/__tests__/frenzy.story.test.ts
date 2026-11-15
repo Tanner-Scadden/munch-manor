@@ -138,7 +138,10 @@ describe('horde frenzy', () => {
         ...ticks(40, FRAME_MS),
         Story.model(current => {
           expect(
-            Array.some(current.popups, ({ kind }) => kind === 'Horde'),
+            Array.some(
+              current.cosmetics.popups,
+              ({ kind }) => kind === 'Horde',
+            ),
           ).toBe(true)
         }),
       )

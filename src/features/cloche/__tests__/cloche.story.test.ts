@@ -75,15 +75,17 @@ describe('the cloche over the boards', () => {
         release('Enter'),
         Story.model(current => {
           expect(current.level.openExits).toContain(WEST_EXIT)
-          expect(ClocheLift.isAnyOf(['Lifting'])(current.clocheLift)).toBe(true)
-          if (ClocheLift.isAnyOf(['Lifting'])(current.clocheLift)) {
-            expect(current.clocheLift.room).toBe(arrangement.West)
-            expect(Math.abs(current.clocheLift.at.x)).toBeLessThan(10)
+          expect(
+            ClocheLift.isAnyOf(['Lifting'])(current.cosmetics.clocheLift),
+          ).toBe(true)
+          if (ClocheLift.isAnyOf(['Lifting'])(current.cosmetics.clocheLift)) {
+            expect(current.cosmetics.clocheLift.room).toBe(arrangement.West)
+            expect(Math.abs(current.cosmetics.clocheLift.at.x)).toBeLessThan(10)
           }
         }),
         ...ticks(TOTAL_TICKS, FRAME_MS),
         Story.model(current => {
-          expect(current.clocheLift).toEqual(ClocheLift.Resting())
+          expect(current.cosmetics.clocheLift).toEqual(ClocheLift.Resting())
         }),
       ),
   )
@@ -100,7 +102,7 @@ describe('the cloche over the boards', () => {
       Story.model(current => {
         expect(current.level.openExits).toContain('Kitchen')
         expect(current.keys.held).toBeLessThan(PLENTY)
-        expect(current.clocheLift).toEqual(ClocheLift.Resting())
+        expect(current.cosmetics.clocheLift).toEqual(ClocheLift.Resting())
       }),
     ),
   )

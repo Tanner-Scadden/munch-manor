@@ -154,7 +154,7 @@ export const mendedSpots: {
 // (src/world/keys/keys.ts).
 const isKeyFound = (model: Model, { seat }: SeatState): boolean =>
   Array.some(
-    model.tellWatch.keysFound,
+    model.cosmetics.tellWatch.keysFound,
     seen => seen.slot === seat.slot && seen.keysFound < seat.keysFound,
   )
 
@@ -211,17 +211,22 @@ const tellsAfter = (model: Model, worldMs: number): Model => {
         ? TELLS[seat.player.calling](model, seat, worldMs)
         : [],
     ),
-    ...Array.map(mendedSpots(model, model.tellWatch), spot =>
+    ...Array.map(mendedSpots(model, model.cosmetics.tellWatch), spot =>
       sparks(spot, REPAIR_SPARKS),
     ),
   ]
-  const [cosmeticRngState, particles] = chain(model.cosmeticRngState, batches)
+  const [cosmeticRngState, particles] = chain(
+    model.cosmetics.cosmeticRngState,
+    batches,
+  )
   return modifyFields(model, {
-    particles: current =>
-      Array.isReadonlyArrayEmpty(particles)
-        ? current
-        : keepNewest([...current, ...particles], PARTICLE_MAX),
-    cosmeticRngState: () => cosmeticRngState,
-    tellWatch: () => watchOf(model),
+    cosmetics: modifyFields({
+      particles: current =>
+        Array.isReadonlyArrayEmpty(particles)
+          ? current
+          : keepNewest([...current, ...particles], PARTICLE_MAX),
+      cosmeticRngState: () => cosmeticRngState,
+      tellWatch: () => watchOf(model),
+    }),
   })
 }

@@ -347,7 +347,11 @@ describe('rumble', () => {
   it.effect('with RUMBLE off, a bite rumbles nothing', () =>
     Effect.gen(function* () {
       const rumbles = yield* rumblesOver(
-        bitten(modifyFields(biteBase, { rumbleSetting: () => 'Off' })),
+        bitten(
+          modifyFields(biteBase, {
+            settings: modifyFields({ rumbleSetting: () => 'Off' }),
+          }),
+        ),
       )
       expect(rumbles).toEqual([])
     }),

@@ -32,7 +32,7 @@ const onTouch: Model = modifyFields(homeAfterRead, {
 })
 
 const synced: Model = modifyFields(homeAfterRead, {
-  syncState: () => SyncState.Synced({ devices: 2 }),
+  saving: modifyFields({ syncState: () => SyncState.Synced({ devices: 2 }) }),
 })
 
 const tab = (name: string) => Scene.role('tab', { name })
@@ -149,7 +149,9 @@ describe('the Profile', () => {
       APPLICATION,
       Scene.given(
         modifyFields(onTouch, {
-          syncState: () => SyncState.Synced({ devices: 2 }),
+          saving: modifyFields({
+            syncState: () => SyncState.Synced({ devices: 2 }),
+          }),
         }),
       ),
       measureSurface,
@@ -199,7 +201,11 @@ describe('the Name tab', () => {
   it.effect('the dice rolls a goofy name onto the stone', () =>
     Scene.scene(
       APPLICATION,
-      Scene.given(modifyFields(homeAfterRead, { cosmeticRngState: () => 99 })),
+      Scene.given(
+        modifyFields(homeAfterRead, {
+          cosmetics: modifyFields({ cosmeticRngState: () => 99 }),
+        }),
+      ),
       measureSurface,
       Scene.click(settingsButton),
       ...showDialogInScene(),

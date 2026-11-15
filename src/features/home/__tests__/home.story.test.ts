@@ -54,7 +54,7 @@ import {
 import type { MenuPanel } from '../homeSchema'
 
 const homeAfterRead: Model = modifyFields(readyModel, {
-  saveStatus: () => 'Read',
+  saving: modifyFields({ saveStatus: () => 'Read' }),
 })
 
 const withKills = (

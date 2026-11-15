@@ -90,7 +90,7 @@ describe('the bests', () => {
         APPLICATION,
         Story.given(withKills(veteranFighting, 3, 0)),
         Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
-        Story.model(({ bests, runTally }) => {
+        Story.model(({ bests, runGains: { runTally } }) => {
           expect(bests.totalKills).toBe(0)
           expect(bests.runsPlayed).toBe(0)
           expect(RunTally.guards.Uncounted(runTally)).toBe(true)
@@ -114,19 +114,21 @@ describe('the bests', () => {
     const over = modifyFields(withKills(veteranFighting, 7, 0), {
       phase: () => Phase.GameOver({ wave: 3 }),
       screenMs: () => RESTART_GRACE_MS,
-      runTally: () =>
-        RunTally.Counted({
-          kills: modifyFields(noKills, { Shambler: () => 7 }),
-        }),
       bests: bests =>
         modifyFields(bests, { totalKills: () => 7, runsPlayed: () => 1 }),
+      runGains: modifyFields({
+        runTally: () =>
+          RunTally.Counted({
+            kills: modifyFields(noKills, { Shambler: () => 7 }),
+          }),
+      }),
     })
     return Story.story(
       APPLICATION,
       Story.given(over),
       Story.message(Message.ClickedEndlessButton()),
       throughIntro,
-      Story.model(({ phase, stats, bests, runTally }) => {
+      Story.model(({ phase, stats, bests, runGains: { runTally } }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(stats.kills.Shambler).toBe(0)
         expect(bests.totalKills).toBe(7)
@@ -144,7 +146,7 @@ describe('the bests', () => {
       showDialog(),
       Story.message(Message.ClickedLeaveRunButton()),
       closeDialog(),
-      Story.model(({ phase, bests, runTally }) => {
+      Story.model(({ phase, bests, runGains: { runTally } }) => {
         expect(Phase.guards.Ready(phase)).toBe(true)
         expect(bests.totalKills).toBe(5)
         expect(bests.killsByKind.Shambler).toBe(5)
@@ -158,12 +160,14 @@ describe('the bests', () => {
     'a win that goes on into endless adds only its new kills when it ends again',
     () => {
       const goneOn = modifyFields(dying(withKills(veteranFighting, 6, 0)), {
-        runTally: () =>
-          RunTally.Counted({
-            kills: modifyFields(noKills, { Shambler: () => 4 }),
-          }),
         bests: bests =>
           modifyFields(bests, { totalKills: () => 4, runsPlayed: () => 1 }),
+        runGains: modifyFields({
+          runTally: () =>
+            RunTally.Counted({
+              kills: modifyFields(noKills, { Shambler: () => 4 }),
+            }),
+        }),
       })
       return Story.story(
         APPLICATION,
@@ -313,18 +317,20 @@ describe('leaving a run', () => {
   test('going home clears the room but keeps the look, the settings, and the bests', () => {
     const messy = modifyFields(withEndlessBest(veteranFighting, 11), {
       stats: scoring(900),
-      soundSetting: () => 'Muted',
-      shakeSetting: () => 'Off',
       appearance: appearance =>
         modifyFields(appearance, { hairColor: () => 'Pink' }),
+      settings: modifyFields({
+        soundSetting: () => 'Muted',
+        shakeSetting: () => 'Off',
+      }),
     })
     const cleared = returnHome(messy)
     expect(Phase.guards.Ready(cleared.phase)).toBe(true)
     expect(scoreOf(cleared.stats)).toBe(0)
     expect(cleared.zombies).toEqual([])
     expect(focusOf(cleared).player).toEqual(focusOf(initialModel).player)
-    expect(cleared.soundSetting).toBe('Muted')
-    expect(cleared.shakeSetting).toBe('Off')
+    expect(cleared.settings.soundSetting).toBe('Muted')
+    expect(cleared.settings.shakeSetting).toBe('Off')
     expect(bestsFor(cleared).maybeBestEndlessWave).toEqual(Option.some(11))
     expect(cleared.appearance.hairColor).toBe('Pink')
   })
@@ -394,7 +400,7 @@ describe('the loading splash', () => {
       Story.story(
         APPLICATION,
         Story.init(),
-        Story.model(({ loading }) => {
+        Story.model(({ saving: { loading } }) => {
           expect(loading).toEqual(
             Loading.Loading({
               pending: ['Save', 'Styles', 'Fonts', 'FirstFrame', 'Sprites'],
@@ -427,7 +433,7 @@ describe('the loading splash', () => {
           DecodeSprites(),
         ),
         resolveProgress(2),
-        Story.model(({ loading }) => {
+        Story.model(({ saving: { loading } }) => {
           expect(loading).toEqual(
             Loading.Loading({ pending: ['Save', 'FirstFrame', 'Sprites'] }),
           )
@@ -451,7 +457,7 @@ describe('the loading splash', () => {
           LoadSave(),
         ),
         resolveProgress(4),
-        Story.model(({ loading }) => {
+        Story.model(({ saving: { loading } }) => {
           expect(loading).toEqual(Loading.Loading({ pending: ['Save'] }))
         }),
         Story.Command.resolve(
@@ -473,7 +479,7 @@ describe('the loading splash', () => {
           ReadBeatLink,
           Message.CompletedReadBeatLink({ maybeDare: Option.none() }),
         ),
-        Story.model(({ loading }) => {
+        Story.model(({ saving: { loading } }) => {
           expect(loading).toEqual(Loading.Loaded())
         }),
         Story.message(Message.CompletedAwaitFirstFrame()),
@@ -486,7 +492,9 @@ describe('the loading splash', () => {
       APPLICATION,
       Story.given(
         modifyFields(initialModel, {
-          loading: () => Loading.Loading({ pending: ['Fonts'] }),
+          saving: modifyFields({
+            loading: () => Loading.Loading({ pending: ['Fonts'] }),
+          }),
         }),
       ),
       Story.message(Message.FailedLoadFonts({ reason: 'offline' })),

@@ -39,14 +39,14 @@ import { unlockCardBox } from '../rankStripView'
 // it comes after the tally, fills its bar, and on a rank up pops with a
 // fanfare. A press skips to its end.
 
-type Gain = Model['maybeRankGain']
+type Gain = Model['runGains']['maybeRankGain']
 
 const ended = (gain: Gain, screenMs = 0): Model =>
   modifyFields(readyModel, {
     phase: () => Phase.GameOver({ wave: 4 }),
     mode: () => RunMode.Campaign(),
     screenMs: () => screenMs,
-    maybeRankGain: () => gain,
+    runGains: modifyFields({ maybeRankGain: () => gain }),
   })
 
 const noGain: Gain = Option.none()

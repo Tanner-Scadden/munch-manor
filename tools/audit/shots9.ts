@@ -32,8 +32,10 @@ import {
 const SceneCounts = Schema.Struct({
   shake: Schema.Struct({ offset: Vector }),
   zombies: Schema.Array(Schema.Unknown),
-  particles: Schema.Array(Schema.Unknown),
-  decals: Schema.Array(Schema.Unknown),
+  cosmetics: Schema.Struct({
+    particles: Schema.Array(Schema.Unknown),
+    decals: Schema.Array(Schema.Unknown),
+  }),
 })
 
 const offsetJson = encodeJson(Vector)
@@ -84,7 +86,7 @@ runHarnessAuditWith(
       yield* Console.log(
         scene.name,
         `shake ${offsetJson(m.shake.offset)}`,
-        `zombies ${m.zombies.length} particles ${m.particles.length} decals ${m.decals.length}`,
+        `zombies ${m.zombies.length} particles ${m.cosmetics.particles.length} decals ${m.cosmetics.decals.length}`,
       )
       yield* closePage(page)
     }

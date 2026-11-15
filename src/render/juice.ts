@@ -490,7 +490,7 @@ export const advanceJuice: {
       model.shake,
       events,
       seconds,
-      model.cosmeticRngState,
+      model.cosmetics.cosmeticRngState,
     )
     const [popupState, popupBatches] = Array.mapAccum(
       events,
@@ -499,28 +499,30 @@ export const advanceJuice: {
     )
 
     return modifyFields(model, {
-      blasts: current =>
-        Array.isReadonlyArrayEmpty(current) &&
-        Array.isReadonlyArrayEmpty(newBlasts)
-          ? current
-          : ageBlasts(
-              Array.takeRight([...current, ...newBlasts], BLAST_MAX),
-              deltaMs,
-            ),
       shake: () => shake,
-      popups: popups =>
-        keepNewestHorde(
-          Array.takeRight(
-            [
-              ...agePopups(popups, seconds, deltaMs),
-              ...Array.flatten(popupBatches),
-            ],
-            POPUP_MAX,
-          ),
-        ),
       streak: () => streak,
       bestStreak: best => Math.max(best, streakCount(streak)),
-      cosmeticRngState: () => popupState,
+      cosmetics: modifyFields({
+        blasts: current =>
+          Array.isReadonlyArrayEmpty(current) &&
+          Array.isReadonlyArrayEmpty(newBlasts)
+            ? current
+            : ageBlasts(
+                Array.takeRight([...current, ...newBlasts], BLAST_MAX),
+                deltaMs,
+              ),
+        popups: popups =>
+          keepNewestHorde(
+            Array.takeRight(
+              [
+                ...agePopups(popups, seconds, deltaMs),
+                ...Array.flatten(popupBatches),
+              ],
+              POPUP_MAX,
+            ),
+          ),
+        cosmeticRngState: () => popupState,
+      }),
     })
   },
 )

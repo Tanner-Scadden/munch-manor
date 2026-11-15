@@ -32,7 +32,9 @@ import { versionHandlers } from './update/version'
 // Command that loads them.
 export const init = ApplicationComposition.makeInit(() => ({
   model: modifyFields(initialModel, {
-    loading: () => Loading.Loading({ pending: LOAD_STEPS }),
+    saving: modifyFields({
+      loading: () => Loading.Loading({ pending: LOAD_STEPS }),
+    }),
   }),
   commands: bootCommands(),
 }))
@@ -52,7 +54,7 @@ const handlers = makeUpdate({
   CompletedGenerateSeed: (model, { seed }) => ({
     model: modifyFields(model, {
       rngState: () => seed,
-      cosmeticRngState: () => cosmeticSeedOf(seed),
+      cosmetics: modifyFields({ cosmeticRngState: () => cosmeticSeedOf(seed) }),
     }),
   }),
 

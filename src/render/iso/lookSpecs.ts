@@ -64,11 +64,11 @@ export const NEUTRAL: RoomLook = {
 export const LOOK: LookSpecs = {
   steps: 5,
   dither: 0.5,
-  blackBelow: 0.03,
-  brightest: 1.15,
+  blackBelow: 0.08,
+  brightest: 1.3,
   hueKeep: 0.35,
-  roomFill: 1,
-  ambient: 1,
+  roomFill: 0.6,
+  ambient: 0.55,
   rooms: {
     // NOTE: candlelit amber, with blood red at the pools' edge.
     Dining: {

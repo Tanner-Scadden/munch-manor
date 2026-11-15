@@ -189,7 +189,7 @@ describe('the intro', () => {
         Story.given(
           modifyFields(readyModel, {
             audio: () => AudioState.Ready(),
-            musicSetting: () => 'Off',
+            settings: modifyFields({ musicSetting: () => 'Off' }),
           }),
         ),
         startFrom,

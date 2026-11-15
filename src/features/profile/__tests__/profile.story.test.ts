@@ -340,9 +340,9 @@ describe('the name dice', () => {
       APPLICATION,
       Story.given(
         modifyFields(openOn('Name'), {
-          cosmeticRngState: () => seed,
           playerName: () => name,
           profile: profile => modifyFields(profile, { nameDraft: () => name }),
+          cosmetics: modifyFields({ cosmeticRngState: () => seed }),
         }),
       ),
       Story.messageIn(ProfileBinding, ProfileMessage.ClickedNameDiceButton()),
@@ -356,8 +356,10 @@ describe('the name dice', () => {
         const first = yield* rollFrom(1234)
         const again = yield* rollFrom(1234)
         expect(again.playerName).toBe(first.playerName)
-        expect(again.cosmeticRngState).toBe(first.cosmeticRngState)
-        expect(first.cosmeticRngState).not.toBe(1234)
+        expect(again.cosmetics.cosmeticRngState).toBe(
+          first.cosmetics.cosmeticRngState,
+        )
+        expect(first.cosmetics.cosmeticRngState).not.toBe(1234)
         expect(first.rngState).toBe(readyAfterRead.rngState)
         expect(GOOFY_NAMES).toContain(first.playerName)
         expect(first.profile.nameDraft).toBe(first.playerName)

@@ -18,21 +18,27 @@ import { initialModel } from '../../pureApp'
 
 describe('the rumble setting', () => {
   test('is on for a new player', () => {
-    expect(initialModel.rumbleSetting).toBe('On')
+    expect(initialModel.settings.rumbleSetting).toBe('On')
   })
 
   test('round-trips through the save', () => {
-    const off = modifyFields(readyAfterRead, { rumbleSetting: () => 'Off' })
+    const off = modifyFields(readyAfterRead, {
+      settings: modifyFields({ rumbleSetting: () => 'Off' }),
+    })
     const save = saveOf(off)
     expect(save.rumble).toBe('Off')
     const raw = Option.getOrThrow(encodeSave(save))
     const decoded = Option.getOrThrow(decodeSave(raw))
-    expect(restoreSave(initialModel, decoded).rumbleSetting).toBe('Off')
+    expect(restoreSave(initialModel, decoded).settings.rumbleSetting).toBe(
+      'Off',
+    )
   })
 
   test('a save from before controllers loads rumbling', () => {
     const { rumble: _rumble, ...withoutRumble } = saveOf(
-      modifyFields(readyAfterRead, { shakeSetting: () => 'Off' }),
+      modifyFields(readyAfterRead, {
+        settings: modifyFields({ shakeSetting: () => 'Off' }),
+      }),
     )
     const versionSeventeen = jsonOf({ ...withoutRumble, version: 17 })
     const migrated = Option.getOrThrow(decodeSave(versionSeventeen))
@@ -50,7 +56,7 @@ describe('the rumble setting', () => {
       ),
       writeSave(),
       Story.model(current => {
-        expect(current.rumbleSetting).toBe('Off')
+        expect(current.settings.rumbleSetting).toBe('Off')
         expect(saveOf(current).rumble).toBe('Off')
       }),
       Story.messageIn(
@@ -59,7 +65,7 @@ describe('the rumble setting', () => {
       ),
       writeSave(),
       Story.model(current => {
-        expect(current.rumbleSetting).toBe('On')
+        expect(current.settings.rumbleSetting).toBe('On')
       }),
     ),
   )

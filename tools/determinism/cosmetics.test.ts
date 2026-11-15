@@ -12,13 +12,15 @@ import { runScript } from './run'
 
 const stripCosmetics = (model: Model): Model =>
   modifyFields(model, {
-    particles: () => [],
-    decals: () => [],
-    dustCooldownMs: () => 0,
     shake: () => stillShake,
-    popups: () => [],
-    blasts: () => [],
-    callouts: () => [],
+    cosmetics: modifyFields({
+      particles: () => [],
+      decals: () => [],
+      dustCooldownMs: () => 0,
+      popups: () => [],
+      blasts: () => [],
+      callouts: () => [],
+    }),
   })
 
 describe('cosmetics', () => {

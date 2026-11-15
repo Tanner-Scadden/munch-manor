@@ -61,7 +61,7 @@ describe('a run that ends', () => {
             focusOf(munchedWithPage).player.calling,
           ])
           expect(model.journal.milestones).toEqual(['FirstFind'])
-          expect(model.journalRun.reached).toEqual(['FirstFind'])
+          expect(model.runGains.journalRun.reached).toEqual(['FirstFind'])
           expect(hasNewJournalPage(model)).toBe(true)
           expect(openedThingsOf(model)).toEqual([])
         }),
@@ -89,7 +89,7 @@ describe('a run that ends', () => {
         Story.model(model => {
           expect(Phase.guards.Escaped(model.phase)).toBe(true)
           expect(model.journal.milestones).toContain('FirstEscape')
-          expect(model.journalRun.reached).toContain('FirstEscape')
+          expect(model.runGains.journalRun.reached).toContain('FirstEscape')
           expect(openedThingsOf(model)).toEqual(['NapkinRing'])
           expect(unlocksOf(model)).toEqual(
             expect.arrayContaining([
@@ -117,7 +117,7 @@ describe('a run that ends', () => {
       frame,
       Story.model(model => {
         expect(model.journal.thingsFound).toBe(5)
-        expect(model.journalRun.reached).toEqual([])
+        expect(model.runGains.journalRun.reached).toEqual([])
         expect(
           Array.filter(unlocksOf(model), unlock => unlock._tag === 'Milestone'),
         ).toEqual([])

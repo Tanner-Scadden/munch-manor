@@ -118,7 +118,7 @@ const markReadyWhenSettled = (number: number) => {
   Effect.runFork(
     settle(
       () =>
-        window.__model.saveStatus !== 'Unread' &&
+        window.__model.saving.saveStatus !== 'Unread' &&
         page.framesRun >= framesWanted(page.settings),
     ).pipe(
       Effect.andThen(
@@ -158,7 +158,7 @@ const nextSceneOf = (model: Model): Scene =>
     modifyFields(scenarioModel(page.settings), {
       maybeSurface: () => model.maybeSurface,
       orientation: () => model.orientation,
-      saveStatus: () => 'Read' as const,
+      saving: modifyFields({ saveStatus: () => 'Read' as const }),
     }),
   )
 

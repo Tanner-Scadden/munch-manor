@@ -414,7 +414,7 @@ describe('kitchen key odds', () => {
           expect(current.keys.held).toBeGreaterThanOrEqual(2)
           expect(current.keys.held).toBeLessThanOrEqual(3)
           expect(
-            Array.some(current.popups, ({ kind }) => kind === 'Kill'),
+            Array.some(current.cosmetics.popups, ({ kind }) => kind === 'Kill'),
           ).toBe(true)
         }),
       ),

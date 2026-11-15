@@ -31,8 +31,10 @@ import {
 import { type PlayerSave, saveOf } from '../save'
 
 const read: Model = modifyFields(initialModel, {
-  loading: () => Loading.Loaded(),
-  saveStatus: () => 'Read',
+  saving: modifyFields({
+    loading: () => Loading.Loaded(),
+    saveStatus: () => 'Read',
+  }),
 })
 
 const fromAnotherDevice = (base: Model): PlayerSave => {
@@ -61,7 +63,7 @@ describe('a save from another device', () => {
         Story.message(Message.UpdatedSyncedSave({ save: synced })),
         Story.model(current => {
           expect(current.appearance.shirtColor).toBe('Purple')
-          expect(current.musicSetting).toBe('Off')
+          expect(current.settings.musicSetting).toBe('Off')
           expect(current.bests.runsPlayed).toBe(9)
           expect(current.bests.killsByKind.Shambler).toBe(390)
           expect(current.bests.killsByKind.Tank).toBe(10)
@@ -73,9 +75,9 @@ describe('a save from another device', () => {
 
   it.effect('a change after it writes only that change', () => {
     const synced = fromAnotherDevice(read)
-    const afterSync = modifyFields(read, {
+    const afterSync: Model = modifyFields(read, {
       appearance: () => synced.appearance,
-      musicSetting: () => 'Off',
+      settings: modifyFields({ musicSetting: () => 'Off' }),
     })
     return Story.story(
       APPLICATION,
@@ -86,7 +88,6 @@ describe('a save from another device', () => {
         WriteSave({
           save: saveOf(
             modifyFields(afterSync, {
-              soundSetting: () => 'Muted',
               bests: () => ({
                 ...read.bests,
                 runsPlayed: 9,
@@ -97,6 +98,7 @@ describe('a save from another device', () => {
                   Tank: 10,
                 },
               }),
+              settings: modifyFields({ soundSetting: () => 'Muted' }),
             }),
           ),
           changes: [
@@ -118,20 +120,20 @@ describe('a save from sync during a write', () => {
       APPLICATION,
       Story.given(
         modifyFields(read, {
-          soundSetting: () => 'Muted',
-          writesInFlight: () => 1,
+          saving: modifyFields({ writesInFlight: () => 1 }),
+          settings: modifyFields({ soundSetting: () => 'Muted' }),
         }),
       ),
       Story.message(Message.UpdatedSyncedSave({ save: synced })),
       Story.model(current => {
-        expect(current.soundSetting).toBe('Muted')
-        expect(current.musicSetting).toBe('On')
-        expect(current.syncedSave).toBe('Stale')
+        expect(current.settings.soundSetting).toBe('Muted')
+        expect(current.settings.musicSetting).toBe('On')
+        expect(current.saving.syncedSave).toBe('Stale')
       }),
       Story.message(Message.CompletedWriteSave()),
       Story.model(current => {
-        expect(current.writesInFlight).toBe(0)
-        expect(current.syncedSave).toBe('Current')
+        expect(current.saving.writesInFlight).toBe(0)
+        expect(current.saving.syncedSave).toBe('Current')
       }),
       Story.Command.resolve(
         ReloadSyncedSave,
@@ -143,8 +145,8 @@ describe('a save from sync during a write', () => {
         }),
       ),
       Story.model(current => {
-        expect(current.soundSetting).toBe('Muted')
-        expect(current.musicSetting).toBe('Off')
+        expect(current.settings.soundSetting).toBe('Muted')
+        expect(current.settings.musicSetting).toBe('Off')
       }),
     )
   })
@@ -162,7 +164,7 @@ describe('the sync status line', () => {
           }),
         ),
         Story.model(current => {
-          expect(syncStateText(current.syncState)).toBe(
+          expect(syncStateText(current.saving.syncState)).toBe(
             'Synced. Linked to 2 devices',
           )
         }),
@@ -172,7 +174,9 @@ describe('the sync status line', () => {
           }),
         ),
         Story.model(current => {
-          expect(syncStateText(current.syncState)).toBe('Offline, will sync')
+          expect(syncStateText(current.saving.syncState)).toBe(
+            'Offline, will sync',
+          )
         }),
       )
       expect(syncStateText(SyncState.Synced({ devices: 1 }))).toBe('Synced')
@@ -195,9 +199,12 @@ describe('the player scope status', () => {
           ),
           Story.message(Message.UpdatedPlayerScopeStatus({ status: cached })),
           Story.model(current => {
-            expect(current.playerScopeStatus).toEqual(cached)
+            expect(current.saving.playerScopeStatus).toEqual(cached)
             expect(
-              devicesStatusText(current.syncState, current.playerScopeStatus),
+              devicesStatusText(
+                current.saving.syncState,
+                current.saving.playerScopeStatus,
+              ),
             ).toBe('Connecting. Showing saved progress')
           }),
           Story.message(
@@ -212,7 +219,10 @@ describe('the player scope status', () => {
           ),
           Story.model(current => {
             expect(
-              devicesStatusText(current.syncState, current.playerScopeStatus),
+              devicesStatusText(
+                current.saving.syncState,
+                current.saving.playerScopeStatus,
+              ),
             ).toBe('Synced')
           }),
           Story.Command.expectNone(),
@@ -243,8 +253,8 @@ describe('a recorded run reaching the server', () => {
           Message.CompletedWriteSaveWithRun({ runId: 'run-0001' }),
         ),
         Story.model(current => {
-          expect(current.writesInFlight).toBe(0)
-          expect(current.lastRunSync).toEqual(
+          expect(current.saving.writesInFlight).toBe(0)
+          expect(current.saving.lastRunSync).toEqual(
             LastRunSync.Waiting({ id: 'run-0001' }),
           )
         }),
@@ -257,7 +267,7 @@ describe('a recorded run reaching the server', () => {
           }),
         ),
         Story.model(current => {
-          expect(current.lastRunSync).toEqual(
+          expect(current.saving.lastRunSync).toEqual(
             LastRunSync.Confirmed({ seq: 12 }),
           )
         }),
@@ -271,7 +281,9 @@ describe('a recorded run reaching the server', () => {
         APPLICATION,
         Story.given(
           modifyFields(read, {
-            lastRunSync: () => LastRunSync.Waiting({ id: 'run-0002' }),
+            saving: modifyFields({
+              lastRunSync: () => LastRunSync.Waiting({ id: 'run-0002' }),
+            }),
           }),
         ),
         Story.message(
@@ -281,7 +293,7 @@ describe('a recorded run reaching the server', () => {
           }),
         ),
         Story.model(current => {
-          expect(current.lastRunSync).toEqual(
+          expect(current.saving.lastRunSync).toEqual(
             LastRunSync.Waiting({ id: 'run-0002' }),
           )
         }),
@@ -292,7 +304,7 @@ describe('a recorded run reaching the server', () => {
           }),
         ),
         Story.model(current => {
-          expect(current.lastRunSync).toEqual(
+          expect(current.saving.lastRunSync).toEqual(
             LastRunSync.Rejected({ reason: 'Precondition: too many' }),
           )
         }),
@@ -305,14 +317,16 @@ describe('a recorded run reaching the server', () => {
       APPLICATION,
       Story.given(
         modifyFields(read, {
-          lastRunSync: () => LastRunSync.Waiting({ id: 'run-0003' }),
+          saving: modifyFields({
+            lastRunSync: () => LastRunSync.Waiting({ id: 'run-0003' }),
+          }),
         }),
       ),
       Story.message(
         Message.FailedAwaitRunSettled({ runId: 'run-0003', reason: 'closed' }),
       ),
       Story.model(current => {
-        expect(current.lastRunSync).toEqual(LastRunSync.NoRun())
+        expect(current.saving.lastRunSync).toEqual(LastRunSync.NoRun())
       }),
     ),
   )
@@ -509,8 +523,12 @@ describe('a write the store could not make', () => {
     kills: { Shambler: 12 },
     bests: saveOf(read).bests.byDifficulty,
   })
-  const muted = modifyFields(read, { soundSetting: () => 'Muted' })
-  const quiet = modifyFields(muted, { musicSetting: () => 'Off' })
+  const muted: Model = modifyFields(read, {
+    settings: modifyFields({ soundSetting: () => 'Muted' }),
+  })
+  const quiet = modifyFields(muted, {
+    settings: modifyFields({ musicSetting: () => 'Off' }),
+  })
 
   it.effect(
     'goes out again with the next change, with what the fields hold now',
@@ -532,8 +550,8 @@ describe('a write the store could not make', () => {
           }),
         ),
         Story.model(current => {
-          expect(current.writesInFlight).toBe(0)
-          expect(current.unsavedChanges).toHaveLength(2)
+          expect(current.saving.writesInFlight).toBe(0)
+          expect(current.saving.unsavedChanges).toHaveLength(2)
         }),
         Story.message(Message.ClickedMusicButton()),
         Story.Command.expectHas(
@@ -548,13 +566,13 @@ describe('a write the store could not make', () => {
           }),
         ),
         Story.model(current => {
-          expect(current.unsavedChanges).toEqual([])
-          expect(current.writesInFlight).toBe(1)
+          expect(current.saving.unsavedChanges).toEqual([])
+          expect(current.saving.writesInFlight).toBe(1)
         }),
         writeSave(),
         Story.model(current => {
-          expect(current.unsavedChanges).toEqual([])
-          expect(current.writesInFlight).toBe(0)
+          expect(current.saving.unsavedChanges).toEqual([])
+          expect(current.saving.writesInFlight).toBe(0)
         }),
       ),
   )

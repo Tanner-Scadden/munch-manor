@@ -496,7 +496,9 @@ describe('the corner', () => {
     () =>
       Effect.gen(function* () {
         const canFill = (base: Model): Model =>
-          modifyFields(base, { screenFit: () => 'Fullscreen' })
+          modifyFields(base, {
+            settings: modifyFields({ screenFit: () => 'Fullscreen' }),
+          })
         yield* Scene.scene(
           APPLICATION,
           Scene.given(canFill(initialModel)),
@@ -533,7 +535,7 @@ describe('the corner', () => {
 
 describe('the install tile', () => {
   const onIphone: Model = modifyFields(onTouch(initialModel), {
-    screenFit: () => 'HomeScreen',
+    settings: modifyFields({ screenFit: () => 'HomeScreen' }),
   })
   const showSteps = [
     Scene.Command.resolve(
@@ -639,7 +641,7 @@ describe('the install tile', () => {
         APPLICATION,
         Scene.given(
           modifyFields(onTouch(initialModel), {
-            screenFit: () => 'Fullscreen',
+            settings: modifyFields({ screenFit: () => 'Fullscreen' }),
           }),
         ),
         measureSurface,
@@ -665,7 +667,11 @@ describe('the install tile', () => {
       Effect.gen(function* () {
         yield* Scene.scene(
           APPLICATION,
-          Scene.given(modifyFields(onIphone, { screenFit: () => 'Installed' })),
+          Scene.given(
+            modifyFields(onIphone, {
+              settings: modifyFields({ screenFit: () => 'Installed' }),
+            }),
+          ),
           measureSurface,
           Scene.expect(homeScreenTip).toBeAbsent(),
           Scene.expect(fullscreenButton).toBeAbsent(),
@@ -673,7 +679,9 @@ describe('the install tile', () => {
         yield* Scene.scene(
           APPLICATION,
           Scene.given(
-            modifyFields(initialModel, { screenFit: () => 'Fullscreen' }),
+            modifyFields(initialModel, {
+              settings: modifyFields({ screenFit: () => 'Fullscreen' }),
+            }),
           ),
           measureSurface,
           Scene.expect(homeScreenTip).toBeAbsent(),
@@ -723,7 +731,9 @@ describe('the title icons and the character picker', () => {
     Scene.scene(
       APPLICATION,
       Scene.given(
-        modifyFields(onTouch(initialModel), { screenFit: () => 'HomeScreen' }),
+        modifyFields(onTouch(initialModel), {
+          settings: modifyFields({ screenFit: () => 'HomeScreen' }),
+        }),
       ),
       measureSurface,
       Scene.expect(muteButton).toBeAbsent(),

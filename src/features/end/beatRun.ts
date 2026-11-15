@@ -35,13 +35,15 @@ const maybeDareOfRun = (model: Model): Option.Option<FriendsDare> =>
     ? Option.map(endKindOf(model), outcome => {
         const { wave, things } = bestRunOf(model)
         return {
-          seed: model.runSeed,
-          mode: RunMode.isAnyOf(['Endless'])(model.mode) ? 'Endless' : 'Campaign',
+          seed: model.runStart.runSeed,
+          mode: RunMode.isAnyOf(['Endless'])(model.mode)
+            ? 'Endless'
+            : 'Campaign',
           difficulty: model.difficulty.chosen,
           modifiers: model.modifiers,
           dareMark: model.dareMark,
           easyBreakSeconds: model.easyBreakSeconds,
-          pool: model.runPool,
+          pool: model.runStart.runPool,
           hero: focusOf(model).player.calling,
           outcome,
           wave,

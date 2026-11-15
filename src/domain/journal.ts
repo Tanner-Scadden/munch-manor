@@ -50,14 +50,16 @@ export const tallyJournalFrom: {
   }
   const rooms = Array.filter(
     foundRoomsOf(after),
-    id => !Array.contains(after.journalRun.foundIn, id),
+    id => !Array.contains(after.runGains.journalRun.foundIn, id),
   )
   return Array.isReadonlyArrayNonEmpty(rooms)
     ? modifyFields(after, {
-        journalRun: run =>
-          modifyFields(run, {
-            foundIn: found => Array.union(found, rooms),
-          }),
+        runGains: modifyFields({
+          journalRun: run =>
+            modifyFields(run, {
+              foundIn: found => Array.union(found, rooms),
+            }),
+        }),
       })
     : after
 })
@@ -85,7 +87,7 @@ export const keepJournal: {
   const journal = addToJournal(after.journal, {
     milestones: [],
     roomsOpened: openedRoomsOf(after),
-    roomsFoundIn: after.journalRun.foundIn,
+    roomsFoundIn: after.runGains.journalRun.foundIn,
     heroesPlayed: [focusOf(after).player.calling],
     thingsFound: dareItemsFoundOf(after),
   })
@@ -103,7 +105,9 @@ export const keepJournal: {
         heroesPlayed: [],
         thingsFound: 0,
       }),
-    journalRun: run => modifyFields(run, { reached: () => reached }),
+    runGains: modifyFields({
+      journalRun: run => modifyFields(run, { reached: () => reached }),
+    }),
   })
 })
 

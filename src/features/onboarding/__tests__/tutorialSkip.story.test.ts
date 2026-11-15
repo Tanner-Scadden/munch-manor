@@ -65,7 +65,7 @@ import { isRattlesTalking } from '../rattlesIntro'
 // back.
 
 const firstVisit: Model = modifyFields(newPlayerReady, {
-  saveStatus: () => 'Read',
+  saving: modifyFields({ saveStatus: () => 'Read' }),
 })
 
 const chooseTutorial = (choice: TutorialChoice) =>
@@ -306,7 +306,7 @@ describe('the first-run card', () => {
         writeSave(),
       )
       const skipped = modifyFields(reloaded(skippedRun), {
-        saveStatus: () => 'Read',
+        saving: modifyFields({ saveStatus: () => 'Read' }),
       })
       const isGuidedSkipped = yield* isGuidedFirstBreakOn(skipped)
       expect(isGuidedSkipped).toBe(false)
@@ -351,7 +351,6 @@ describe('PLAY TUTORIAL', () => {
   // NOTE: a returning player past every lesson, with rank, Bones spent on
   // a look, a best, kills for the Munchopedia, a bot, and a modifier.
   const returning: Model = modifyFields(asTutorialDone(readyModel), {
-    saveStatus: () => 'Read',
     rank: rank =>
       modifyFields(rank, {
         earnedPoints: () => 4_200,
@@ -372,6 +371,7 @@ describe('PLAY TUTORIAL', () => {
         ],
       }),
     modifiers: modifiers => modifyFields(modifiers, { glass: () => true }),
+    saving: modifyFields({ saveStatus: () => 'Read' }),
   })
 
   it.effect(
@@ -396,7 +396,7 @@ describe('PLAY TUTORIAL', () => {
               cut: 'Full',
             })
             expect(RunMode.guards.Campaign(current.mode)).toBe(true)
-            expect(current.crewBots).toEqual([])
+            expect(current.runStart.crewBots).toEqual([])
             expect(current.modifiers).toEqual(noModifiers)
             expect(current.firstBreakQuest).toEqual(QuestTour.Waiting())
             expect(current.introducedKinds).toEqual([])

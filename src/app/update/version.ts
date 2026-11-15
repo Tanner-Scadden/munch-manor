@@ -103,7 +103,9 @@ export const recordRemoteBuild: {
   3,
   (model: Model, runningBuild: string, remoteBuild: string): UpdateReturn => {
     const maybeNewer = maybeNewerBuild(runningBuild, remoteBuild)
-    const next = modifyFields(model, { maybeNewerBuild: () => maybeNewer })
+    const next = modifyFields(model, {
+      release: modifyFields({ maybeNewerBuild: () => maybeNewer }),
+    })
     return Option.isSome(maybeNewer) && isUsingServiceWorker(runningBuild)
       ? { model: next, commands: [UpdateServiceWorker()] }
       : { model: next }

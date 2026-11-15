@@ -63,12 +63,12 @@ export const pickCarLine: {
     return after
   }
   const [state, line] = pickLine(
-    after.cosmeticRngState,
+    after.cosmetics.cosmeticRngState,
     FRIEND_LINES[after.lastRunEnding],
     lastLineOf(after),
   )
   return modifyFields(after, {
-    cosmeticRngState: () => state,
     maybeCarLine: () => Option.some(line),
+    cosmetics: modifyFields({ cosmeticRngState: () => state }),
   })
 })

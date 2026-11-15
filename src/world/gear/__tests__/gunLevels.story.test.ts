@@ -148,7 +148,7 @@ describe('kills level a gun', () => {
             Array.map(leveledIn(current), ({ weapon, tier }) => [weapon, tier]),
           ).toEqual([['Smg', 1]])
           expect(
-            Array.map(current.levelCallouts, ({ weapon, tier }) => [
+            Array.map(current.cosmetics.levelCallouts, ({ weapon, tier }) => [
               weapon,
               tier,
             ]),
@@ -194,7 +194,7 @@ describe('kills level a gun', () => {
           1, 119,
         ])
         expect(leveledIn(current)).toEqual([])
-        expect(current.levelCallouts).toEqual([])
+        expect(current.cosmetics.levelCallouts).toEqual([])
       }),
     ),
   )

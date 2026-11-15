@@ -224,17 +224,19 @@ describe('bullets and cover', () => {
           }),
         ),
         ...ticks(6, FRAME_MS),
-        Story.model(({ bullets, frameEvents, particles, zombies }) => {
-          expect(bullets).toEqual([])
-          const strike = Option.getOrThrow(Array.head(frameEvents))
-          expect(strike._tag).toBe('BulletStruck')
-          expect(strike.y).toBeGreaterThanOrEqual(COUCH_BOTTOM)
-          expect(strike.y).toBeLessThan(COUCH_BOTTOM + 3)
-          expect(Array.some(particles, ({ kind }) => kind === 'Chip')).toBe(
-            true,
-          )
-          expect(Array.map(zombies, ({ hp }) => hp)).toEqual([ZOMBIE_MAX_HP])
-        }),
+        Story.model(
+          ({ bullets, frameEvents, cosmetics: { particles }, zombies }) => {
+            expect(bullets).toEqual([])
+            const strike = Option.getOrThrow(Array.head(frameEvents))
+            expect(strike._tag).toBe('BulletStruck')
+            expect(strike.y).toBeGreaterThanOrEqual(COUCH_BOTTOM)
+            expect(strike.y).toBeLessThan(COUCH_BOTTOM + 3)
+            expect(Array.some(particles, ({ kind }) => kind === 'Chip')).toBe(
+              true,
+            )
+            expect(Array.map(zombies, ({ hp }) => hp)).toEqual([ZOMBIE_MAX_HP])
+          },
+        ),
         ...ticks(10, FRAME_MS),
         Story.model(({ zombies }) => {
           expect(Array.map(zombies, ({ hp }) => hp)).toEqual([ZOMBIE_MAX_HP])
@@ -297,15 +299,17 @@ describe('particles and walls', () => {
         APPLICATION,
         Story.given(
           modifyFields(parlourWave(), {
-            particles: () => [
-              fallingDrop(5, 50),
-              fallingDrop(25, 30),
-              fallingDrop(100, 100),
-            ],
+            cosmetics: modifyFields({
+              particles: () => [
+                fallingDrop(5, 50),
+                fallingDrop(25, 30),
+                fallingDrop(100, 100),
+              ],
+            }),
           }),
         ),
         tick(FRAME_MS),
-        Story.model(({ decals }) => {
+        Story.model(({ cosmetics: { decals } }) => {
           expect(Array.map(decals, ({ x, y }) => ({ x, y }))).toEqual([
             { x: 100, y: 100 },
           ])

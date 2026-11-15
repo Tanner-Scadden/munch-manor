@@ -382,19 +382,21 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
           belchMs: 0,
           globs: WORST_GLOBS,
         }),
-      particles: () => Array.makeBy(PARTICLE_MAX, particleAt),
-      decals: () => Array.makeBy(DECAL_MAX, decalAt),
       bullets: () => Array.makeBy(BULLET_MAX, bulletAt),
-      blasts: () => Array.makeBy(BLAST_MAX / 2, blastAt),
-      popups: () => Array.makeBy(POPUP_MAX, popupAt),
       traps: () => TRAPS,
       pickups: () => Array.makeBy(DROP_RULES.floorMax, pickupAt),
-      callouts: () => [
-        { kind: 'Pierce', look: 'Explained', x: 160, y: 90, ageMs: 600 },
-      ],
       streak: () => Streak.Hot({ count: 12, remainingMs: 900 }),
       stats: scoring(98_760),
       keys: ring => ({ ...ring, held: 99 }),
+      cosmetics: modifyFields({
+        particles: () => Array.makeBy(PARTICLE_MAX, particleAt),
+        decals: () => Array.makeBy(DECAL_MAX, decalAt),
+        blasts: () => Array.makeBy(BLAST_MAX / 2, blastAt),
+        popups: () => Array.makeBy(POPUP_MAX, popupAt),
+        callouts: () => [
+          { kind: 'Pierce', look: 'Explained', x: 160, y: 90, ageMs: 600 },
+        ],
+      }),
     }),
     {
       boosts: () => ALL_BOOSTED,
@@ -754,12 +756,14 @@ const rolledCellarRoom = (wave: number): Model => {
             y: () => 65 + ((index * 23) % 145),
           }),
         ),
-      clocheLift: () =>
-        ClocheLift.Lifting({
-          room: PARLOUR_ROOM_ID,
-          at: { x: -10, y: 125 },
-          ageMs: 500,
-        }),
+      cosmetics: modifyFields({
+        clocheLift: () =>
+          ClocheLift.Lifting({
+            room: PARLOUR_ROOM_ID,
+            at: { x: -10, y: 125 },
+            ageMs: 500,
+          }),
+      }),
     }),
     {
       player: player =>
@@ -806,7 +810,6 @@ const fridgeFight = (
           charge: 1,
           tier: 3,
         })),
-      blasts: () => [{ x: 140, y: -70, radius: 34, ageMs: 60 }],
       zombies: zombies =>
         Array.map(zombies, (zombie, index) =>
           index % 3 === 0 && zombie.kind !== 'Boss'
@@ -824,6 +827,9 @@ const fridgeFight = (
               })
             : zombie,
         ),
+      cosmetics: modifyFields({
+        blasts: () => [{ x: 140, y: -70, radius: 34, ageMs: 60 }],
+      }),
     }),
     {
       player: player =>

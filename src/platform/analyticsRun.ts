@@ -162,7 +162,7 @@ const atMost = (most: number, value: number): number =>
 // crew that never drew a room (couch play).
 const networkOf = (run: Model): CrewNetwork => {
   const report = NetStats.clientNetReportOf(
-    Option.getOrElse(run.maybeRunNet, () => NetStats.emptyClientNet),
+    Option.getOrElse(run.roomRun.maybeRunNet, () => NetStats.emptyClientNet),
   )
   return {
     ...report,
@@ -192,7 +192,7 @@ const partyOf = (run: Model, visitId: string): SummaryParty => {
     seatKills: seat.kills,
     seatDowns: seat.downs,
     seatRevives: seat.revives,
-    runKey: Option.getOrElse(run.maybeCrewRunKey, () =>
+    runKey: Option.getOrElse(run.roomRun.maybeCrewRunKey, () =>
       ownRunKey(visitId, run),
     ),
     network: networkOf(run),
@@ -208,7 +208,7 @@ const casesOpenedOf = (run: Model): number =>
   ).length
 
 export const playedDifficultyOf = (run: Model): Difficulty =>
-  Option.getOrElse(run.maybeRoomDifficulty, () => run.difficulty.chosen)
+  Option.getOrElse(run.roomRun.maybeRoomDifficulty, () => run.difficulty.chosen)
 
 export const runSummaryOf: {
   (
@@ -251,7 +251,7 @@ export const runSummaryOf: {
       powerUpsGrabbed: stats.powerUpsGrabbed,
       trapsPlaced: stats.trapsPlaced,
       device: run.lastDevice,
-      screenFit: summaryScreenFit(run.screenFit),
+      screenFit: summaryScreenFit(run.settings.screenFit),
       frameTime: frameTimeBucket(stats),
       party: partyOf(run, visitId),
       modifiers: maskOfModifiers(effectiveModifiersOf(run)),

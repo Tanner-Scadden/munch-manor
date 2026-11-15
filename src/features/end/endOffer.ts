@@ -19,7 +19,7 @@ export const END_LEAVE_ROOM_BUTTON_ID = 'end-leave-button'
 export const endOffer = (model: Model): EndOffer => {
   if (!isEndScreen(model.phase) || model.screenMs < RESTART_GRACE_MS) {
     return 'Nothing'
-  } else if (Option.isSome(model.maybeNewerBuild)) {
+  } else if (Option.isSome(model.release.maybeNewerBuild)) {
     return 'MenuOnly'
   } else {
     return 'MenuAndModes'

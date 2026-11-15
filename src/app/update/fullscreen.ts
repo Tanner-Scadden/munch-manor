@@ -46,7 +46,9 @@ export const SetFullscreen = ApplicationBlock.makeCommand('SetFullscreen', {
 export const toggleFullscreen: UpdateStep = model => ({
   model,
   commands: [
-    SetFullscreen({ fullscreen: model.fullscreen === 'On' ? 'Off' : 'On' }),
+    SetFullscreen({
+      fullscreen: model.settings.fullscreen === 'On' ? 'Off' : 'On',
+    }),
   ],
 })
 
@@ -56,17 +58,23 @@ export const deviceHandlers = defineHandlers({
   ClickedFullscreenButton: model => toggleFullscreen(model),
 
   CompletedSetFullscreen: (model, { fullscreen }) => ({
-    model: modifyFields(model, { fullscreen: () => fullscreen }),
+    model: modifyFields(model, {
+      settings: modifyFields({ fullscreen: () => fullscreen }),
+    }),
   }),
 
   FailedSetFullscreen: model => ({ model }),
 
   ChangedFullscreen: (model, { fullscreen }) => ({
-    model: modifyFields(model, { fullscreen: () => fullscreen }),
+    model: modifyFields(model, {
+      settings: modifyFields({ fullscreen: () => fullscreen }),
+    }),
   }),
 
   CompletedDetectScreenFit: (model, { screenFit }) => ({
-    model: modifyFields(model, { screenFit: () => screenFit }),
+    model: modifyFields(model, {
+      settings: modifyFields({ screenFit: () => screenFit }),
+    }),
   }),
 
   CompletedDetectOrientationLock: (model, { orientationLock }) => ({

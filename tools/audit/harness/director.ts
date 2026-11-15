@@ -270,9 +270,11 @@ export const logMusic = (
 const audible = (model: Model): Model =>
   modifyFields(model, {
     audio: () => AudioState.Ready(),
-    soundSetting: () => 'On' as const,
-    musicSetting: () => 'On' as const,
     pageVisibility: () => 'Visible' as const,
+    settings: modifyFields({
+      soundSetting: () => 'On' as const,
+      musicSetting: () => 'On' as const,
+    }),
   })
 
 // NOTE: starts a shot on the scene the query staged: the log restarts with

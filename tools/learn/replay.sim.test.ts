@@ -42,7 +42,7 @@ const recordingStart = (model: Model): Model =>
     maybeSurface: () => Option.some(SURFACE),
     maybeVisitId: () => Option.some('0123456789abcdef'),
     recordUnlock: () => 'Unlocked',
-    recordRuns: () => 'On',
+    settings: modifyFields({ recordRuns: () => 'On' }),
   })
 
 const nearestZombie = (current: Model) => {

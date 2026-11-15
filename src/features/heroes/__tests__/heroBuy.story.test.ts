@@ -251,7 +251,10 @@ describe('teammate bots', () => {
         const seated = addBot(
           withoutBots(
             modifyFields(start, {
-              cosmeticRngState: () => start.cosmeticRngState + index * 7919,
+              cosmetics: modifyFields({
+                cosmeticRngState: () =>
+                  start.cosmetics.cosmeticRngState + index * 7919,
+              }),
             }),
           ),
         )

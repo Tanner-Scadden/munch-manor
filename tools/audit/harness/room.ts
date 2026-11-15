@@ -154,13 +154,15 @@ export const roomModel = (settings: SceneSettings): Model => {
                   ? BreakClock.Waiting({ elapsedMs: config.breakMs })
                   : BreakClock.Counting(),
             }),
-      decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
       elapsedMs: elapsedMs => config.clock ?? elapsedMs,
       intensity: intensity => config.heat ?? intensity,
       shake: shake =>
         config.trauma === undefined
           ? shake
           : { trauma: config.trauma, offset: { x: 0, y: 0 } },
+      cosmetics: modifyFields({
+        decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
+      }),
     }),
     {
       trapStock: () => ({
@@ -544,28 +546,30 @@ export const roomModel = (settings: SceneSettings): Model => {
       }),
     )
     model = modifyFields(model, {
-      popups: () => [
-        {
-          kind: 'Horde' as const,
-          value: 0,
-          x: 40,
-          y: 72,
-          velocityX: 0,
-          ageMs: config.hordeAge,
-        },
-        ...(config.wipe
-          ? [
-              {
-                kind: 'Wipe' as const,
-                value: 5,
-                x: 200,
-                y: 80,
-                velocityX: 0,
-                ageMs: 400,
-              },
-            ]
-          : []),
-      ],
+      cosmetics: modifyFields({
+        popups: () => [
+          {
+            kind: 'Horde' as const,
+            value: 0,
+            x: 40,
+            y: 72,
+            velocityX: 0,
+            ageMs: config.hordeAge,
+          },
+          ...(config.wipe
+            ? [
+                {
+                  kind: 'Wipe' as const,
+                  value: 5,
+                  x: 200,
+                  y: 80,
+                  velocityX: 0,
+                  ageMs: 400,
+                },
+              ]
+            : []),
+        ],
+      }),
     })
   }
   const chucker = config.chucker
@@ -704,7 +708,9 @@ export const roomModel = (settings: SceneSettings): Model => {
     const blastAge = config.blast
     const { x, y } = focusOf(model).player
     model = modifyFields(model, {
-      blasts: () => [{ x: x + 48, y: y - 8, radius: 28, ageMs: blastAge }],
+      cosmetics: modifyFields({
+        blasts: () => [{ x: x + 48, y: y - 8, radius: 28, ageMs: blastAge }],
+      }),
     })
   }
   const { best, pistol, aim, card } = config
@@ -883,59 +889,65 @@ export const roomModel = (settings: SceneSettings): Model => {
   if (levelup !== undefined) {
     const { player } = focusOf(model)
     model = modifyFields(model, {
-      levelCallouts: () => [
-        {
-          weapon: heldWeapon(player.arsenal),
-          tier: levelup,
-          x: player.x,
-          y: player.y,
-          ageMs: config.calloutAge,
-        },
-      ],
+      cosmetics: modifyFields({
+        levelCallouts: () => [
+          {
+            weapon: heldWeapon(player.arsenal),
+            tier: levelup,
+            x: player.x,
+            y: player.y,
+            ageMs: config.calloutAge,
+          },
+        ],
+      }),
     })
   }
   const calloutKind = config.callout
   if (calloutKind !== undefined) {
     model = modifyFields(model, {
-      callouts: () => [
-        {
-          kind: calloutKind,
-          look: config.calloutLook ?? 'Explained',
-          x: focusOf(model).player.x,
-          y: focusOf(model).player.y,
-          ageMs: config.calloutAge,
-        },
-      ],
+      cosmetics: modifyFields({
+        callouts: () => [
+          {
+            kind: calloutKind,
+            look: config.calloutLook ?? 'Explained',
+            x: focusOf(model).player.x,
+            y: focusOf(model).player.y,
+            ageMs: config.calloutAge,
+          },
+        ],
+      }),
     })
   }
   if (config.bounty) {
     model = modifyFields(model, {
-      popups: () => [
-        {
-          kind: 'Kill' as const,
-          value: 3,
-          x: 90,
-          y: 80,
-          velocityX: 0,
-          ageMs: 50,
-        },
-        {
-          kind: 'Kill' as const,
-          value: 20,
-          x: 150,
-          y: 80,
-          velocityX: 0,
-          ageMs: 400,
-        },
-        {
-          kind: 'Payday' as const,
-          value: 35,
-          x: 225,
-          y: 80,
-          velocityX: 0,
-          ageMs: 600,
-        },
-      ],
+      cosmetics: modifyFields({
+        popups: () => [
+          {
+            kind: 'Kill' as const,
+            value: 3,
+            x: 90,
+            y: 80,
+            velocityX: 0,
+            ageMs: 50,
+          },
+          {
+            kind: 'Kill' as const,
+            value: 20,
+            x: 150,
+            y: 80,
+            velocityX: 0,
+            ageMs: 400,
+          },
+          {
+            kind: 'Payday' as const,
+            value: 35,
+            x: 225,
+            y: 80,
+            velocityX: 0,
+            ageMs: 600,
+          },
+        ],
+      }),
     })
   }
   const { party } = config
@@ -969,7 +981,9 @@ export const roomModel = (settings: SceneSettings): Model => {
           (seated, slot) => creditKills(seated, slot, PARTY_KILLS[slot] ?? 0),
         ),
       ),
-      { crewBots: () => crewBots },
+      {
+        runStart: modifyFields({ crewBots: () => crewBots }),
+      },
     )
   }
   if (config.mates === 'ready') {

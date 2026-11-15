@@ -117,8 +117,8 @@ describe('the end screens', () => {
         modifyFields(
           onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS),
           {
-            shareStats: () => 'On' as const,
             maybeVisitId: () => Option.some('0123456789abcdef'),
+            settings: modifyFields({ shareStats: () => 'On' as const }),
           },
         ),
       ),

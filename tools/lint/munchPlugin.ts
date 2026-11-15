@@ -26,6 +26,7 @@ import {
   noAppendInReduce,
   noDeepEqualPerFrame,
   noNestedScan,
+  stepWorldAlone,
 } from './perfRules.ts'
 import {
   liveTestNote,
@@ -1049,5 +1050,6 @@ export default definePlugin({
     'no-append-in-reduce': noAppendInReduce,
     'no-deep-equal-per-frame': noDeepEqualPerFrame,
     'no-nested-scan': noNestedScan,
+    'step-world-alone': stepWorldAlone,
   },
 })

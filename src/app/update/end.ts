@@ -226,7 +226,7 @@ export const SendShareEvent = ApplicationBlock.makeCommand('SendShareEvent', {
 // NOTE: a tap is counted once, as an anonymous event with the path it took,
 // only while the player shares play stats (src/platform/analytics.ts, ShareEvent).
 const shareEventCommands = (model: Model) =>
-  model.shareStats === 'On'
+  model.settings.shareStats === 'On'
     ? Option.match(model.maybeVisitId, {
         onNone: () => [],
         onSome: visitId => [
@@ -262,7 +262,9 @@ const settleShare =
     outcome === 'Copied'
       ? {
           model: modifyFields(model, {
-            maybeShareCopiedAtMs: () => Option.some(model.screenMs),
+            endCard: modifyFields({
+              maybeShareCopiedAtMs: () => Option.some(model.screenMs),
+            }),
           }),
         }
       : { model }
@@ -289,6 +291,8 @@ export const endHandlers = defineHandlers({
   FailedSendShareEvent: model => ({ model }),
 
   CompletedDetectShareSheet: (model, { shareSheet }) => ({
-    model: modifyFields(model, { shareSheet: () => shareSheet }),
+    model: modifyFields(model, {
+      endCard: modifyFields({ shareSheet: () => shareSheet }),
+    }),
   }),
 })

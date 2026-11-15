@@ -33,10 +33,14 @@ const coffeeLink = Scene.role('link', { name: /buy rattles a coffee/i })
 const homeCoffee = Scene.role('link', { name: /^Buy Rattles a coffee/ })
 
 const withLink = (model: Model): Model =>
-  modifyFields(model, { maybeSupportUrl: () => Option.some(TEST_LINK) })
+  modifyFields(model, {
+    release: modifyFields({ maybeSupportUrl: () => Option.some(TEST_LINK) }),
+  })
 
 const withoutLink = (model: Model): Model =>
-  modifyFields(model, { maybeSupportUrl: () => Option.none() })
+  modifyFields(model, {
+    release: modifyFields({ maybeSupportUrl: () => Option.none() }),
+  })
 
 const onPhase = (phase: Phase, screenMs: number): Model =>
   modifyFields(home, { phase: () => phase, screenMs: () => screenMs })
@@ -121,8 +125,8 @@ const pxOf = (rule: string, property: string): number =>
 // update gift, and the install tile.
 const fullCorner = (model: Model): Model =>
   modifyFields(withNewerBuild(withLink(model)), {
-    installOffer: () => 'Ready',
-    screenFit: () => 'Fullscreen',
+    release: modifyFields({ installOffer: () => 'Ready' }),
+    settings: modifyFields({ screenFit: () => 'Fullscreen' }),
   })
 
 const LAYOUTS = [

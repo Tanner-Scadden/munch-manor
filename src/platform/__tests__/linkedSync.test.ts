@@ -166,7 +166,7 @@ describe('a setting on two linked devices', () => {
         save => ({ ...save, settings: { ...save.settings, music: 'Off' } }),
         save => save.settings.music === 'Off',
       )
-      expect(start.musicSetting).toBe('On')
+      expect(start.settings.musicSetting).toBe('On')
       const written: Array<ReadonlyArray<PlayerChange>> = []
       const model = yield* Story.story(
         APPLICATION,
@@ -181,7 +181,7 @@ describe('a setting on two linked devices', () => {
         ),
         writtenBack(written),
       )
-      expect(model.musicSetting).toBe('Off')
+      expect(model.settings.musicSetting).toBe('Off')
       expect(written).toEqual([])
     }).pipe(synced),
   )

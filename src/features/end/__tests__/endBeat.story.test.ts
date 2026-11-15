@@ -50,7 +50,7 @@ const onEndScreen = (phase: Phase, screenMs: number): Model =>
 const audible = (base: Model): Model =>
   modifyFields(base, {
     audio: () => AudioState.Ready(),
-    soundSetting: () => 'On' as const,
+    settings: modifyFields({ soundSetting: () => 'On' as const }),
   })
 
 const gameOver = Phase.GameOver({ wave: 4 })
@@ -566,12 +566,14 @@ describe('sharing a run', () => {
   const VISIT_ID = '0123456789abcdef'
   const counted = (ended: Model, shareStats: 'On' | 'Off'): Model =>
     modifyFields(ended, {
-      shareStats: () => shareStats,
       maybeVisitId: () => Option.some(VISIT_ID),
+      settings: modifyFields({ shareStats: () => shareStats }),
     })
 
   const withSheet = (ended: Model): Model =>
-    modifyFields(ended, { shareSheet: () => 'Available' as const })
+    modifyFields(ended, {
+      endCard: modifyFields({ shareSheet: () => 'Available' as const }),
+    })
 
   const deathEvent = (path: 'Sheet' | 'Copy') =>
     SendShareEvent({
@@ -594,7 +596,7 @@ describe('sharing a run', () => {
         Message.CompletedDetectShareSheet({ shareSheet: 'Available' }),
       ),
       Story.model(after => {
-        expect(after.shareSheet).toBe('Available')
+        expect(after.endCard.shareSheet).toBe('Available')
       }),
     ),
   )
@@ -645,7 +647,9 @@ describe('sharing a run', () => {
       Story.message(Message.SettledShare({ outcome: 'Copied' })),
       Story.Command.expectNone(),
       Story.model(after => {
-        expect(after.maybeShareCopiedAtMs).toEqual(Option.some(atEnd.screenMs))
+        expect(after.endCard.maybeShareCopiedAtMs).toEqual(
+          Option.some(atEnd.screenMs),
+        )
         expect(isShareCopied(after)).toBe(true)
       }),
       ...Array.makeBy(Math.ceil(SHARE_COPIED_MS / 50), () => tick(50)),

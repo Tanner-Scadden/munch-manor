@@ -11,6 +11,7 @@ import {
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
+import { savedDifficultyOf } from '../domain/beatMyRun'
 import {
   CaseCard,
   DifficultyCard,
@@ -20,7 +21,6 @@ import {
   Tour,
   freshLessons,
 } from '../domain/clientSchema'
-import { savedDifficultyOf } from '../domain/beatMyRun'
 import { lookInOwned } from '../domain/closet'
 import { cleanName } from '../domain/playerName'
 import { unlocksAt } from '../domain/unlocks'
@@ -146,19 +146,15 @@ export const SAVED_FIELDS = [
   'introSeen',
   'introducedKinds',
   'homeScreenTip',
-  'soundSetting',
-  'musicSetting',
-  'shakeSetting',
-  'shareStats',
-  'cursorSetting',
+  // NOTE: the whole group, though saveOf reads only some of it: a change to
+  // the screen's fit or full screen builds a save that isSameSave drops.
+  'settings',
   'appearance',
   'difficulty',
   'difficultyCard',
   'bests',
   'home',
   'seenPowerUps',
-  'rotationSetting',
-  'rumbleSetting',
   'playerName',
   'rank',
   'bonuses',
@@ -171,7 +167,6 @@ export const SAVED_FIELDS = [
   'calling',
   'boughtCosmetics',
   'seenUnlocks',
-  'recordRuns',
   'recordUnlock',
 ] as const satisfies ReadonlyArray<keyof Model>
 
@@ -206,11 +201,11 @@ export const saveOf = (model: Model): PlayerSave => ({
   },
   homeScreenTip: model.homeScreenTip,
   settings: {
-    sound: model.soundSetting,
-    music: model.musicSetting,
-    shake: model.shakeSetting,
-    shareStats: model.shareStats,
-    cursor: model.cursorSetting,
+    sound: model.settings.soundSetting,
+    music: model.settings.musicSetting,
+    shake: model.settings.shakeSetting,
+    shareStats: model.settings.shareStats,
+    cursor: model.settings.cursorSetting,
   },
   appearance: model.appearance,
   difficulty: {
@@ -227,8 +222,8 @@ export const saveOf = (model: Model): PlayerSave => ({
     ...(model.home.isTurnHintSeen ? { turnHintSeen: true } : {}),
   },
   seenPowerUps: model.seenPowerUps,
-  rotation: model.rotationSetting,
-  rumble: model.rumbleSetting,
+  rotation: model.settings.rotationSetting,
+  rumble: model.settings.rumbleSetting,
   name: model.playerName,
   records: savedRunRecords(model.bests),
   rank: model.rank,
@@ -242,7 +237,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   calling: model.calling,
   boughtCosmetics: model.boughtCosmetics,
   seenUnlocks: model.seenUnlocks,
-  recordRuns: model.recordRuns,
+  recordRuns: model.settings.recordRuns,
   recordUnlock: model.recordUnlock,
 })
 
@@ -385,11 +380,16 @@ export const restoreSave: {
         Array.union(kinds, knownKinds(save.onboarding.introducedKinds)),
       homeScreenTip: tip =>
         save.homeScreenTip === 'Dismissed' ? 'Dismissed' : tip,
-      soundSetting: () => save.settings.sound,
-      musicSetting: () => save.settings.music,
-      shakeSetting: () => save.settings.shake,
-      shareStats: () => save.settings.shareStats,
-      cursorSetting: () => save.settings.cursor,
+      settings: modifyFields({
+        soundSetting: () => save.settings.sound,
+        musicSetting: () => save.settings.music,
+        shakeSetting: () => save.settings.shake,
+        shareStats: () => save.settings.shareStats,
+        cursorSetting: () => save.settings.cursor,
+        rotationSetting: () => save.rotation,
+        rumbleSetting: () => save.rumble,
+        recordRuns: () => save.recordRuns,
+      }),
       // NOTE: a look worn but not owned (a purchase another device's Bones
       // outran) comes off.
       appearance: () =>
@@ -417,9 +417,6 @@ export const restoreSave: {
           isTurnHintSeen: isSeen => isSeen || save.home.turnHintSeen === true,
         }),
       seenPowerUps: seen => Array.union(seen, knownPowerUps(save.seenPowerUps)),
-      rotationSetting: () => save.rotation,
-      rumbleSetting: () => save.rumble,
-      recordRuns: () => save.recordRuns,
       // NOTE: unlocked on any device, or on this one, stays unlocked.
       recordUnlock: unlock =>
         save.recordUnlock === 'Unlocked' ? 'Unlocked' : unlock,

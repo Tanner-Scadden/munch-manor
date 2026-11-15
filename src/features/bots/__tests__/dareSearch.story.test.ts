@@ -59,9 +59,9 @@ const searching = (
   roomId: string,
 ): Readonly<{ model: Model; spot: { x: number; y: number } }> => {
   const opened = modifyFields(crewInWave(2), {
-    crewBots: () => [BOT],
     phase: () => phase,
     level: () => roomOpenIn(DEFAULT_ARRANGEMENT, room),
+    runStart: modifyFields({ crewBots: () => [BOT] }),
   })
   const spot = hidingSpotIn(levelOf(opened), roomId)
   return {
@@ -171,10 +171,10 @@ describe('a bot searches for the list', () => {
 describe('a bot runs its errands', () => {
   it.effect("in a break it takes the pantry's goodie", () => {
     const found = modifyFields(crewInWave(2), {
-      crewBots: () => [BOT],
       phase: () => BREAK,
       level: level => openExitIn(level, KITCHEN_EXIT),
       pantry: () => Pantry.Stocked({ round: BREAK.wave, goodie: 'Key' }),
+      runStart: modifyFields({ crewBots: () => [BOT] }),
     })
     const spot = Option.getOrThrow(pantrySpotOf(levelOf(found)))
     return Story.story(

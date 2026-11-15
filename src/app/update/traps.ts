@@ -29,13 +29,15 @@ const shakeBy = (model: Model, trauma: number): Model =>
 const notePlacement = (model: Model): Model =>
   modifyFields(model, {
     trapHint: () => TrapHint.Seen(),
-    trapNotice: () => TrapNotice.Quiet(),
+    cosmetics: modifyFields({ trapNotice: () => TrapNotice.Quiet() }),
   })
 
 const refusePlacement = (model: Model, reason: string): Model =>
   modifyFields(model, {
-    trapNotice: () =>
-      TrapNotice.Refused({ reason, remainingMs: TRAP_NOTICE_MS }),
+    cosmetics: modifyFields({
+      trapNotice: () =>
+        TrapNotice.Refused({ reason, remainingMs: TRAP_NOTICE_MS }),
+    }),
   })
 
 // NOTE: a placed trap stamps its dust and thunk where it landed; a refused

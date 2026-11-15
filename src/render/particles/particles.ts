@@ -380,7 +380,7 @@ const walkingDust = (
     return { rngState, dustCooldownMs: 0, particles: [] }
   }
 
-  const dustCooldownMs = model.dustCooldownMs - deltaMs
+  const dustCooldownMs = model.cosmetics.dustCooldownMs - deltaMs
   if (dustCooldownMs > 0) {
     return { rngState, dustCooldownMs, particles: [] }
   }
@@ -441,7 +441,7 @@ export const advanceParticles: {
   3,
   (model: Model, seconds: number, deltaMs: number): Model => {
     const [stillFlying, leftBehind] = Array.partition(
-      model.particles,
+      model.cosmetics.particles,
       stepParticle(levelOf(model), seconds, deltaMs),
     )
     const landed = [
@@ -451,23 +451,25 @@ export const advanceParticles: {
 
     const [eventState, eventBatches] = Array.mapAccum(
       model.frameEvents,
-      model.cosmeticRngState,
+      model.cosmetics.cosmeticRngState,
       (drawState, event) => eventParticles(drawState, event),
     )
     const dust = walkingDust(model, deltaMs, eventState)
 
     return modifyFields(model, {
-      particles: () =>
-        keepNewest(
-          [...stillFlying, ...Array.flatten(eventBatches), ...dust.particles],
-          PARTICLE_MAX,
-        ),
-      decals: decals =>
-        Array.isReadonlyArrayEmpty(landed)
-          ? decals
-          : keepNewest([...decals, ...landed], DECAL_MAX),
-      cosmeticRngState: () => dust.rngState,
-      dustCooldownMs: () => dust.dustCooldownMs,
+      cosmetics: modifyFields({
+        particles: () =>
+          keepNewest(
+            [...stillFlying, ...Array.flatten(eventBatches), ...dust.particles],
+            PARTICLE_MAX,
+          ),
+        decals: decals =>
+          Array.isReadonlyArrayEmpty(landed)
+            ? decals
+            : keepNewest([...decals, ...landed], DECAL_MAX),
+        cosmeticRngState: () => dust.rngState,
+        dustCooldownMs: () => dust.dustCooldownMs,
+      }),
     })
   },
 )
@@ -482,10 +484,13 @@ export const puffDust: {
   const [rngState, puffs] = dustRing(
     { x, y },
     DUST_PER_PLACEMENT,
-  )(model.cosmeticRngState)
+  )(model.cosmetics.cosmeticRngState)
   return modifyFields(model, {
-    particles: particles => keepNewest([...particles, ...puffs], PARTICLE_MAX),
-    cosmeticRngState: () => rngState,
+    cosmetics: modifyFields({
+      particles: particles =>
+        keepNewest([...particles, ...puffs], PARTICLE_MAX),
+      cosmeticRngState: () => rngState,
+    }),
   })
 })
 
@@ -500,7 +505,9 @@ export const dropClip = (model: Model): Model => {
   return Array.isReadonlyArrayEmpty(clips)
     ? model
     : modifyFields(model, {
-        particles: particles =>
-          keepNewest([...particles, ...clips], PARTICLE_MAX),
+        cosmetics: modifyFields({
+          particles: particles =>
+            keepNewest([...particles, ...clips], PARTICLE_MAX),
+        }),
       })
 }

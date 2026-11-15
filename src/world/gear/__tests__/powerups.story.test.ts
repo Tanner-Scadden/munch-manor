@@ -384,12 +384,19 @@ describe('grabbing', () => {
       }),
       press('KeyD'),
       ...ticks(3, FRAME_MS),
-      Story.model(({ pickups, seats: [{ boosts }], callouts, lessons }) => {
-        expect(pickups).toEqual([])
-        expect(remainingOf(boosts, 'RapidFire')).toBeGreaterThan(0)
-        expect(Array.map(callouts, ({ kind }) => kind)).toEqual(['RapidFire'])
-        expect(lessons.pickup._tag).toBe('Learned')
-      }),
+      Story.model(
+        ({
+          pickups,
+          seats: [{ boosts }],
+          cosmetics: { callouts },
+          lessons,
+        }) => {
+          expect(pickups).toEqual([])
+          expect(remainingOf(boosts, 'RapidFire')).toBeGreaterThan(0)
+          expect(Array.map(callouts, ({ kind }) => kind)).toEqual(['RapidFire'])
+          expect(lessons.pickup._tag).toBe('Learned')
+        },
+      ),
     )
   })
 
@@ -459,7 +466,7 @@ describe('explaining a power-up once', () => {
     )
 
   const looksOf = (current: Model) =>
-    Array.map(current.callouts, ({ kind, look }) => ({ kind, look }))
+    Array.map(current.cosmetics.callouts, ({ kind, look }) => ({ kind, look }))
 
   it.effect(
     'the first grab explains a kind, the next only names it, and a new kind is explained',
@@ -488,18 +495,20 @@ describe('explaining a power-up once', () => {
     Effect.gen(function* () {
       const grabbed = yield* afterGrabbing(fighting, 'Speed')
       const named = modifyFields(grabbed, {
-        callouts: callouts =>
-          Array.map(callouts, callout => ({
-            ...callout,
-            look: 'Named' as const,
-          })),
+        cosmetics: modifyFields({
+          callouts: callouts =>
+            Array.map(callouts, callout => ({
+              ...callout,
+              look: 'Named' as const,
+            })),
+        }),
       })
       const explained = yield* afterGrabbing(fighting, 'Speed')
       yield* Story.story(
         APPLICATION,
         Story.given(named),
         ...ticksFor(1100, FRAME_MS),
-        Story.model(({ callouts }) => {
+        Story.model(({ cosmetics: { callouts } }) => {
           expect(callouts).toEqual([])
         }),
       )
@@ -507,7 +516,7 @@ describe('explaining a power-up once', () => {
         APPLICATION,
         Story.given(explained),
         ...ticksFor(1100, FRAME_MS),
-        Story.model(({ callouts }) => {
+        Story.model(({ cosmetics: { callouts } }) => {
           expect(Array.map(callouts, ({ look }) => look)).toEqual(['Explained'])
         }),
       )
@@ -525,7 +534,7 @@ describe('explaining a power-up once', () => {
         APPLICATION,
         Story.given(seen),
         press('Enter'),
-        Story.model(({ seenPowerUps, callouts }) => {
+        Story.model(({ seenPowerUps, cosmetics: { callouts } }) => {
           expect(seenPowerUps).toEqual(['Pierce'])
           expect(callouts).toEqual([])
         }),
@@ -757,7 +766,7 @@ describe('timers', () => {
   const timersOf = (current: Model) => ({
     remainingMs: remainingOf(focusOf(current).boosts, 'RapidFire'),
     pickupAges: Array.map(current.pickups, ({ ageMs }) => ageMs),
-    calloutAges: Array.map(current.callouts, ({ ageMs }) => ageMs),
+    calloutAges: Array.map(current.cosmetics.callouts, ({ ageMs }) => ageMs),
   })
 
   const frozenRoom = (base: Model): Model =>
@@ -766,9 +775,17 @@ describe('timers', () => {
         pickupAt(901, 'Damage', 40, 150, 2000),
       ]),
       {
-        callouts: () => [
-          { kind: 'RapidFire', look: 'Explained', x: 100, y: 100, ageMs: 300 },
-        ],
+        cosmetics: modifyFields({
+          callouts: () => [
+            {
+              kind: 'RapidFire',
+              look: 'Explained',
+              x: 100,
+              y: 100,
+              ageMs: 300,
+            },
+          ],
+        }),
       },
     )
 
@@ -944,21 +961,25 @@ describe('the floor', () => {
       {
         phase: () => Phase.GameOver({ wave: 3 }),
         screenMs: () => 5000,
-        callouts: () => [
-          { kind: 'Damage', look: 'Explained', x: 10, y: 10, ageMs: 0 },
-        ],
+        cosmetics: modifyFields({
+          callouts: () => [
+            { kind: 'Damage', look: 'Explained', x: 10, y: 10, ageMs: 0 },
+          ],
+        }),
       },
     )
     return Story.story(
       APPLICATION,
       Story.given(over),
       press('Enter'),
-      Story.model(({ pickups, seats: [{ boosts }], callouts, loot }) => {
-        expect(pickups).toEqual([])
-        expect(boosts).toEqual(idleBoosts)
-        expect(callouts).toEqual([])
-        expect(loot.dryMs).toBe(0)
-      }),
+      Story.model(
+        ({ pickups, seats: [{ boosts }], cosmetics: { callouts }, loot }) => {
+          expect(pickups).toEqual([])
+          expect(boosts).toEqual(idleBoosts)
+          expect(callouts).toEqual([])
+          expect(loot.dryMs).toBe(0)
+        },
+      ),
     )
   })
 })

@@ -44,7 +44,7 @@ const tipKindOf = (
     : model.stats.maybeLastHurtBy
 
 const lastLineOf = (model: Model): string =>
-  Option.match(model.maybeDeathTip, {
+  Option.match(model.endCard.maybeDeathTip, {
     onNone: () => '',
     onSome: ({ line }) => line,
   })
@@ -63,17 +63,20 @@ export const noteDeathTip: {
   ): Model =>
     !isMunched(before) && isMunched(after)
       ? Option.match(tipKindOf(after, played), {
-          onNone: () => modifyFields(after, { maybeDeathTip: Option.none }),
+          onNone: () =>
+            modifyFields(after, {
+              endCard: modifyFields({ maybeDeathTip: Option.none }),
+            }),
           onSome: kind => {
             const [state, line] = pickLine(
-              after.cosmeticRngState,
+              after.cosmetics.cosmeticRngState,
               DEATH_TIPS[kind],
               lastLineOf(after),
             )
             const tip: DeathTip = { kind, line }
             return modifyFields(after, {
-              cosmeticRngState: () => state,
-              maybeDeathTip: () => Option.some(tip),
+              endCard: modifyFields({ maybeDeathTip: () => Option.some(tip) }),
+              cosmetics: modifyFields({ cosmeticRngState: () => state }),
             })
           },
         })

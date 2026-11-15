@@ -545,3 +545,14 @@ tester.run('no-nested-scan', ruleOf('no-nested-scan'), {
     ),
   ],
 })
+
+tester.run('step-world-alone', ruleOf('step-world-alone'), {
+  valid: [
+    'const ticked = stepWorld(worldOf(intended), inputs)',
+    'const ticked = withWorld(model, world => stepWorld(worldOf(model), inputs).world)',
+  ],
+  invalid: [
+    one('const ticked = stepWorld(intended, inputs)'),
+    one('const ticked = stepWorld({ ...model, phase }, inputs)'),
+  ],
+})

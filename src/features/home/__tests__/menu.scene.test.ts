@@ -150,7 +150,9 @@ describe('Home menu', () => {
       Scene.scene(
         APPLICATION,
         Scene.given(
-          modifyFields(home, { maybeSupportUrl: () => Option.none() }),
+          modifyFields(home, {
+            release: modifyFields({ maybeSupportUrl: () => Option.none() }),
+          }),
         ),
         measureSurface,
         Scene.expect(hand).toBeAbsent(),
@@ -183,7 +185,9 @@ describe('Home menu', () => {
       return Scene.scene(
         APPLICATION,
         Scene.given(
-          modifyFields(home, { maybeSupportUrl: () => Option.none() }),
+          modifyFields(home, {
+            release: modifyFields({ maybeSupportUrl: () => Option.none() }),
+          }),
         ),
         measureSurface,
         emitPressedKey('KeyV'),
@@ -528,7 +532,11 @@ describe('Home menu', () => {
   it.effect('without a support link the arrow keys skip the coffee', () =>
     Scene.scene(
       APPLICATION,
-      Scene.given(modifyFields(home, { maybeSupportUrl: () => Option.none() })),
+      Scene.given(
+        modifyFields(home, {
+          release: modifyFields({ maybeSupportUrl: () => Option.none() }),
+        }),
+      ),
       measureSurface,
       emitPressedKey('ArrowRight'),
       Scene.Command.resolve(
@@ -718,7 +726,11 @@ describe('Home menu', () => {
         )
       return Scene.scene(
         APPLICATION,
-        Scene.given(modifyFields(home, { saveStatus: () => 'Read' })),
+        Scene.given(
+          modifyFields(home, {
+            saving: modifyFields({ saveStatus: () => 'Read' }),
+          }),
+        ),
         measureSurface,
         Scene.click(settingsButton),
         ...showDialogInScene(),

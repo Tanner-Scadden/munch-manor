@@ -63,7 +63,7 @@ export const SendRunSummary = ApplicationBlock.makeCommand('SendRunSummary', {
 const sendRunSummaryFrom =
   (before: Model): UpdateStep =>
   stepModel => {
-    if (stepModel.shareStats === 'Off') {
+    if (stepModel.settings.shareStats === 'Off') {
       return { model: stepModel }
     }
 

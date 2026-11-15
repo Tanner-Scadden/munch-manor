@@ -115,7 +115,7 @@ export const clocheShapes: {
 } = Function.dual(
   2,
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
-    ClocheLift.match(model.clocheLift, {
+    ClocheLift.match(model.cosmetics.clocheLift, {
       Resting: () => [],
       Lifting: ({ room, at, ageMs }) => [
         group({

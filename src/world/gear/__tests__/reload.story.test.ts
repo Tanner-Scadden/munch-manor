@@ -220,7 +220,7 @@ describe('manual reload', () => {
       APPLICATION,
       Story.given(withPistolLoaded(fighting, 3)),
       press('KeyR'),
-      Story.model(({ seats: [{ player }], particles }) => {
+      Story.model(({ seats: [{ player }], cosmetics: { particles } }) => {
         expect(reloadingMs(player.reload)).toEqual(
           Option.some(PISTOL_RELOAD_MS),
         )

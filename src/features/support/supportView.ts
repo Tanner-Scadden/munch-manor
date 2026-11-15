@@ -46,7 +46,7 @@ export const escapeSupportView: {
   (h: ApplicationViewBuilder): (model: Model) => Html
   (model: Model, h: ApplicationViewBuilder): Html
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  Option.match(model.maybeSupportUrl, {
+  Option.match(model.release.maybeSupportUrl, {
     onNone: () => h.empty,
     onSome: url => (isEscapeShown(model) ? supportLinkView(url, h) : h.empty),
   }),

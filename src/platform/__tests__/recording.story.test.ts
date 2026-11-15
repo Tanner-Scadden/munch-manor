@@ -41,7 +41,7 @@ const recordingLastHeart = (recordRuns: 'On' | 'Off'): Model => {
       maybeSurface: () => Option.some(SURFACE),
       maybeVisitId: () => Option.some(VISIT_ID),
       recordUnlock: () => 'Unlocked',
-      recordRuns: () => recordRuns,
+      settings: modifyFields({ recordRuns: () => recordRuns }),
     }),
   )
   return modifyFields(run, {
@@ -71,7 +71,7 @@ describe('RECORD MY RUNS', () => {
         Story.message(
           Message.CompletedReadRecordUnlock({ unlock: 'Unlocked' }),
         ),
-        Story.model(({ recordUnlock, recordRuns }) => {
+        Story.model(({ recordUnlock, settings: { recordRuns } }) => {
           expect(recordUnlock).toBe('Unlocked')
           expect(recordRuns).toBe('Off')
         }),
@@ -131,7 +131,9 @@ describe('RECORD MY RUNS', () => {
     const unlocked = modifyFields(homeAfterRead, {
       recordUnlock: () => 'Unlocked',
     })
-    const on = modifyFields(unlocked, { recordRuns: () => 'On' })
+    const on = modifyFields(unlocked, {
+      settings: modifyFields({ recordRuns: () => 'On' }),
+    })
     return Story.story(
       APPLICATION,
       Story.given(unlocked),
@@ -139,7 +141,7 @@ describe('RECORD MY RUNS', () => {
         ProfileBinding,
         ProfileMessage.ClickedSettingTile({ setting: 'RecordRuns' }),
       ),
-      Story.model(({ recordRuns }) => {
+      Story.model(({ settings: { recordRuns } }) => {
         expect(recordRuns).toBe('On')
       }),
       Story.Command.expectExact(
@@ -202,7 +204,9 @@ describe('RECORD MY RUNS', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(recordingLastHeart('On'), { recordRuns: () => 'Off' }),
+          modifyFields(recordingLastHeart('On'), {
+            settings: modifyFields({ recordRuns: () => 'Off' }),
+          }),
         ),
         Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
         Story.model(({ recorder }) => {

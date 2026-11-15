@@ -198,7 +198,9 @@ describe('the calling in the save', () => {
 
   test('a synced pick the rank has not reached still starts as YOU', () => {
     const synced = restoreSave(
-      modifyFields(initialModel, { saveStatus: () => 'Read' }),
+      modifyFields(initialModel, {
+        saving: modifyFields({ saveStatus: () => 'Read' }),
+      }),
       { ...learnedSave, calling: 'LineCook', rank: noRank },
     )
     expect(synced.calling).toBe('LineCook')

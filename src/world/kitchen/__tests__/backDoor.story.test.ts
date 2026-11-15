@@ -129,7 +129,7 @@ describe('the back door alone', () => {
         bonusPercent: 0,
         isGuided: false,
       }
-      const gain = Option.getOrThrow(after.maybeRankGain)
+      const gain = Option.getOrThrow(after.runGains.maybeRankGain)
       expect(gain.gained).toBe(pointsForRun(input))
       expect(gain.gained).toBeLessThan(
         pointsForRun({ ...input, isEscape: true }),

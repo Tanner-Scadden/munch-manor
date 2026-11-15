@@ -270,7 +270,7 @@ export const RANK_FILL_MS = 800
 export const RANK_POP_MS = 360
 
 export const hasRankStrip = (model: Model): boolean =>
-  Option.isSome(model.maybeRankGain)
+  Option.isSome(model.runGains.maybeRankGain)
 
 export const rankStripAtMs: {
   (kind: EndKind): (model: Model) => number
@@ -282,7 +282,7 @@ export const rankStripAtMs: {
 )
 
 export const isRankedUp = (model: Model): boolean =>
-  Option.exists(model.maybeRankGain, ({ pointsBefore, gained }) =>
+  Option.exists(model.runGains.maybeRankGain, ({ pointsBefore, gained }) =>
     isRankUp(pointsBefore, gained),
   )
 
@@ -307,7 +307,7 @@ export const EndUnlock = defineTaggedUnion({
 export type EndUnlock = typeof EndUnlock.Type
 
 export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
-  Option.match(model.maybeRankGain, {
+  Option.match(model.runGains.maybeRankGain, {
     onNone: () => [],
     onSome: ({ pointsBefore, gained }) => {
       const before = rankOf(pointsBefore)
@@ -325,10 +325,10 @@ export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
             bones: Option.getOrElse(purseBonesAt(rank), () => 0),
           }),
         ),
-        ...Array.map(model.journalRun.reached, milestone =>
+        ...Array.map(model.runGains.journalRun.reached, milestone =>
           EndUnlock.Milestone({ milestone }),
         ),
-        ...Array.map(model.masteryRun.unlocks, unlock =>
+        ...Array.map(model.runGains.masteryRun.unlocks, unlock =>
           MasteryUnlock.match(unlock, {
             HeroLevel: ({ calling, level }) =>
               EndUnlock.HeroLevel({ calling, level }),
@@ -663,13 +663,13 @@ export const noteRecords: {
 // without copies the post (ShareFromClick in src/app/mount.ts decides the same
 // way at the tap).
 export const sharePathOf = (model: Model): SharePath =>
-  model.shareSheet === 'Available' ? 'Sheet' : 'Copy'
+  model.endCard.shareSheet === 'Available' ? 'Sheet' : 'Copy'
 
 // NOTE: how long SHARE says COPIED! after the post goes to the clipboard.
 export const SHARE_COPIED_MS = 1500
 
 export const isShareCopied = (model: Model): boolean =>
-  Option.match(model.maybeShareCopiedAtMs, {
+  Option.match(model.endCard.maybeShareCopiedAtMs, {
     onNone: () => false,
     onSome: atMs =>
       model.screenMs >= atMs && model.screenMs - atMs < SHARE_COPIED_MS,
@@ -748,8 +748,10 @@ export const lensOf = (model: Model): Option.Option<Lens> =>
 // LEAVE leaves the room. The card holds until then, so its buttons never
 // vanish under a finger; a next run started from it ends it too.
 export const isRunCardHeld = (model: Model): boolean =>
-  Option.isSome(endKindOf(model)) && !model.isRunCardDropped
+  Option.isSome(endKindOf(model)) && !model.endCard.isRunCardDropped
 
 // NOTE: LOBBY lets the lobby in, beat or no beat.
 export const dropRunCard = (model: Model): Model =>
-  modifyFields(model, { isRunCardDropped: () => true })
+  modifyFields(model, {
+    endCard: modifyFields({ isRunCardDropped: () => true }),
+  })

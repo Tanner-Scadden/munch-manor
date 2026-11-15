@@ -79,6 +79,7 @@ import {
   NIGHTMARE_LOCK_NOTE,
   isLocked,
 } from '../../world/run/difficulty'
+import { beatCardView } from './beatCard'
 import { topLeftView } from './bestsView'
 import {
   HAND_CARDS,
@@ -102,7 +103,6 @@ import {
 } from './homeAttributes'
 import { installTileView } from './installView'
 import { updateGiftView } from './updateGift'
-import { beatCardView } from './beatCard'
 
 // PLAY
 
@@ -484,13 +484,13 @@ const heroButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
 // CORNER
 
 const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  model.screenFit === 'Fullscreen'
+  model.settings.screenFit === 'Fullscreen'
     ? h.button(
         [
           h.Type('button'),
           h.Class('home-corner-button home-fullscreen'),
           h.AriaLabel('Full screen'),
-          h.AriaPressed(model.fullscreen === 'On' ? 'true' : 'false'),
+          h.AriaPressed(model.settings.fullscreen === 'On' ? 'true' : 'false'),
           h.OnClick(DeviceMessage.ClickedFullscreenButton(), {
             propagation: 'Stop',
           }),
@@ -525,7 +525,7 @@ const COFFEE_LABEL = 'Buy Rattles a coffee'
 const STEAM_WISPS = 2
 
 const supportButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  Option.match(model.maybeSupportUrl, {
+  Option.match(model.release.maybeSupportUrl, {
     onNone: () => h.empty,
     onSome: url =>
       h.a(
@@ -653,7 +653,7 @@ export const homeMenuView: {
         [
           h.Class('home-frame'),
           h.DataAttribute('device', model.lastDevice),
-          h.DataAttribute('fit', model.screenFit),
+          h.DataAttribute('fit', model.settings.screenFit),
         ],
         [
           h.div(

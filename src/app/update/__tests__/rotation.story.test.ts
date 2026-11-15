@@ -36,18 +36,24 @@ const applied = (rotation: 'Landscape' | 'Auto') =>
 
 describe('the rotation setting in the save', () => {
   test('round-trips through the save', () => {
-    const auto = modifyFields(readyAfterRead, { rotationSetting: () => 'Auto' })
+    const auto = modifyFields(readyAfterRead, {
+      settings: modifyFields({ rotationSetting: () => 'Auto' }),
+    })
     const save = saveOf(auto)
     expect(save.rotation).toBe('Auto')
     const raw = Option.getOrThrow(encodeSave(save))
     const decoded = Option.getOrThrow(decodeSave(raw))
     expect(decoded.rotation).toBe('Auto')
-    expect(restoreSave(initialModel, decoded).rotationSetting).toBe('Auto')
+    expect(restoreSave(initialModel, decoded).settings.rotationSetting).toBe(
+      'Auto',
+    )
   })
 
   test('a save from before the rotation loads locked to landscape', () => {
     const { rotation: _rotation, ...withoutRotation } = saveOf(
-      modifyFields(readyAfterRead, { shakeSetting: () => 'Off' }),
+      modifyFields(readyAfterRead, {
+        settings: modifyFields({ shakeSetting: () => 'Off' }),
+      }),
     )
     const versionSeven = jsonOf({ ...withoutRotation, version: 7 })
     const migrated = Option.getOrThrow(decodeSave(versionSeven))
@@ -73,7 +79,7 @@ describe('applying the rotation', () => {
         finishSplash,
         applied('Auto'),
         Story.model(current => {
-          expect(current.rotationSetting).toBe('Auto')
+          expect(current.settings.rotationSetting).toBe('Auto')
         }),
       )
     },
@@ -93,7 +99,7 @@ describe('applying the rotation', () => {
         applied('Landscape'),
         Story.model(current => {
           expect(current.orientationLock).toBe('Supported')
-          expect(current.rotationSetting).toBe('Landscape')
+          expect(current.settings.rotationSetting).toBe('Landscape')
         }),
       ),
   )
@@ -109,7 +115,7 @@ describe('applying the rotation', () => {
       applied('Auto'),
       writeSave(),
       Story.model(current => {
-        expect(current.rotationSetting).toBe('Auto')
+        expect(current.settings.rotationSetting).toBe('Auto')
         expect(saveOf(current).rotation).toBe('Auto')
       }),
       Story.messageIn(
@@ -119,7 +125,7 @@ describe('applying the rotation', () => {
       applied('Landscape'),
       writeSave(),
       Story.model(current => {
-        expect(current.rotationSetting).toBe('Landscape')
+        expect(current.settings.rotationSetting).toBe('Landscape')
       }),
     ),
   )
@@ -129,7 +135,9 @@ describe('applying the rotation', () => {
     () =>
       Effect.gen(function* () {
         const auto = onPhone(
-          modifyFields(readyAfterRead, { rotationSetting: () => 'Auto' }),
+          modifyFields(readyAfterRead, {
+            settings: modifyFields({ rotationSetting: () => 'Auto' }),
+          }),
         )
         yield* Story.story(
           APPLICATION,
@@ -163,7 +171,7 @@ describe('applying the rotation', () => {
       Story.message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
       Story.Command.expectNone(),
       Story.model(current => {
-        expect(current.rotationSetting).toBe('Landscape')
+        expect(current.settings.rotationSetting).toBe('Landscape')
       }),
     ),
   )

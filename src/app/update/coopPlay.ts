@@ -128,9 +128,11 @@ const takeRoomWorld = (
     stations: () => world.stations,
     party: () => world.party,
     seats: () => takeOwnSeat(focusOf(model), world.seats),
-    maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
-    maybeRoomModifiers: () => Option.some(world.modifiers),
-    maybeRoomDareMark: () => Option.some(world.dareMark),
+    roomRun: modifyFields({
+      maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
+      maybeRoomModifiers: () => Option.some(world.modifiers),
+      maybeRoomDareMark: () => Option.some(world.dareMark),
+    }),
   })
 
 const isFrozen = HitStop.isAnyOf(['Frozen'])
@@ -191,13 +193,13 @@ const traceOwnShots = (
       tracers: flown.tracers,
       fired: 0,
       struck: flown.struck,
-      cosmeticRngState: model.cosmeticRngState,
+      cosmeticRngState: model.cosmetics.cosmeticRngState,
     }
   }
   const [cosmeticRngState, fired] = aimTracers(
     world,
     room.slot,
-    model.cosmeticRngState,
+    model.cosmetics.cosmeticRngState,
     -1 - room.tracerCount,
   )
   return {
@@ -243,7 +245,9 @@ const drawRoom = (frameMs: number) =>
         return Update.combineSteps([
           toModel(
             modifyFields(base, {
-              cosmeticRngState: () => shot.cosmeticRngState,
+              cosmetics: modifyFields({
+                cosmeticRngState: () => shot.cosmeticRngState,
+              }),
             }),
           ),
           CoopBinding.requestKeepTracers({
@@ -308,9 +312,14 @@ const drawTraced = ({
       takeRoomWorld(
         modifyFields(traced, {
           hitStop: () => thaw.hitStop,
-          maybeCrewRunKey: key =>
-            Option.orElse(Option.map(room.maybeLobby, crewRunKeyOf), () => key),
-          maybeRunNet: () => Option.some(room.session.stats.net),
+          roomRun: modifyFields({
+            maybeCrewRunKey: key =>
+              Option.orElse(
+                Option.map(room.maybeLobby, crewRunKeyOf),
+                () => key,
+              ),
+            maybeRunNet: () => Option.some(room.session.stats.net),
+          }),
         }),
         modifyFields(world, {
           bullets: bullets => [

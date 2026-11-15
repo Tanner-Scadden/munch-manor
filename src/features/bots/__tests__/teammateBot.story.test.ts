@@ -43,7 +43,9 @@ import { BOT, BREAK } from './bots.fixture'
 const TICK_MS = FIXED_STEP_MS
 
 const withBot = (base: Model): Model =>
-  modifyFields(base, { crewBots: () => [BOT] })
+  modifyFields(base, {
+    runStart: modifyFields({ crewBots: () => [BOT] }),
+  })
 
 const crew = (): Model => withBot(crewInWave(2))
 
@@ -161,7 +163,10 @@ describe('on its own', () => {
   it.effect('two bots side by side split up to posts of their own', () => {
     const twoBots = modifyFields(
       placeSeat(2, 152, 90)(placeSeat(1, 148, 90)(crewInWave(3))),
-      { crewBots: () => [BOT, BOT], phase: () => BREAK },
+      {
+        phase: () => BREAK,
+        runStart: modifyFields({ crewBots: () => [BOT, BOT] }),
+      },
     )
     return Story.story(
       APPLICATION,

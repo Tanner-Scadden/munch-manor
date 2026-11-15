@@ -43,7 +43,7 @@ const SHOT_Y = START_LEVEL.start.y
 const readyScreen: Model = modifyFields(initialModel, {
   difficultyCard: () => DifficultyCard.Seen(),
   maybeSurface: () => Option.some(SURFACE),
-  musicSetting: () => 'Off',
+  settings: modifyFields({ musicSetting: () => 'Off' }),
 })
 
 const withAudio = (base: Model, audio: AudioState): Model =>
@@ -345,7 +345,7 @@ describe('frame sounds', () => {
       APPLICATION,
       Story.given(withOneHitZombieInFront(playing(AudioState.Ready()))),
       pressMute,
-      Story.model(({ soundSetting }) => {
+      Story.model(({ settings: { soundSetting } }) => {
         expect(soundSetting).toBe('Muted')
       }),
       pressFire,
@@ -362,11 +362,11 @@ describe('frame sounds', () => {
       APPLICATION,
       Story.given(
         modifyFields(withOneHitZombieInFront(playing(AudioState.Ready())), {
-          soundSetting: () => 'Muted',
+          settings: modifyFields({ soundSetting: () => 'Muted' }),
         }),
       ),
       pressMute,
-      Story.model(({ soundSetting }) => {
+      Story.model(({ settings: { soundSetting } }) => {
         expect(soundSetting).toBe('On')
       }),
       pressFire,
@@ -381,12 +381,12 @@ describe('frame sounds', () => {
       APPLICATION,
       Story.given(playing(AudioState.Locked())),
       Story.message(Message.ClickedMuteButton()),
-      Story.model(({ soundSetting, audio }) => {
+      Story.model(({ settings: { soundSetting }, audio }) => {
         expect(soundSetting).toBe('Muted')
         expect(audio).toEqual(AudioState.Unlocking())
       }),
       Story.message(Message.ClickedMuteButton()),
-      Story.model(({ soundSetting }) => {
+      Story.model(({ settings: { soundSetting } }) => {
         expect(soundSetting).toBe('On')
       }),
     ),

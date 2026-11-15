@@ -264,12 +264,11 @@ const withHint = (model: Model, change: HintChange): Model =>
 
 const startCall = (model: Model, hint: Hint, change: HintChange): Model => {
   const [state, line] = pickLine(
-    model.cosmeticRngState,
+    model.cosmetics.cosmeticRngState,
     hint.lines,
     model.dareHint.lastLine,
   )
   return modifyFields(model, {
-    cosmeticRngState: () => state,
     dareHint: current =>
       modifyHint(modifyHint(current, change), {
         call: () =>
@@ -281,6 +280,7 @@ const startCall = (model: Model, hint: Hint, change: HintChange): Model => {
             remainingMs: HINT_MS,
           }),
       }),
+    cosmetics: modifyFields({ cosmeticRngState: () => state }),
   })
 }
 
@@ -329,7 +329,7 @@ const callInBreak = (model: Model, wave: number, frameMs: number): Model => {
       restMs: restMs => Math.max(0, restMs - frameMs),
     })
   }
-  const [state, maybeHint] = breakHint(model, model.cosmeticRngState)
+  const [state, maybeHint] = breakHint(model, model.cosmetics.cosmeticRngState)
   return Option.match(maybeHint, {
     onNone: () =>
       withHint(model, {
@@ -338,7 +338,9 @@ const callInBreak = (model: Model, wave: number, frameMs: number): Model => {
       }),
     onSome: picked =>
       startCall(
-        modifyFields(model, { cosmeticRngState: () => state }),
+        modifyFields(model, {
+          cosmetics: modifyFields({ cosmeticRngState: () => state }),
+        }),
         picked,
         {
           calledWave: () => wave,

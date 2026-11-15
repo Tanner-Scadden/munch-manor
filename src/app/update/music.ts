@@ -78,7 +78,7 @@ const phasePlan = (model: Model): MusicPlan => {
 
 const isMusicAudible = (model: Model): boolean =>
   isSoundAudible(model) &&
-  model.musicSetting === 'On' &&
+  model.settings.musicSetting === 'On' &&
   model.pageVisibility === 'Visible'
 
 const musicPlan = (model: Model): MusicPlan =>

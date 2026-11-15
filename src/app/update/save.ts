@@ -137,7 +137,7 @@ const finishLoading: {
   (step: LoadStep): (model: Model) => UpdateReturn
   (model: Model, step: LoadStep): UpdateReturn
 } = Function.dual(2, (model: Model, step: LoadStep): UpdateReturn =>
-  Loading.match(model.loading, {
+  Loading.match(model.saving.loading, {
     Loaded: () => ({ model }),
     Loading: ({ pending }) => {
       const remaining = Array.filter(pending, waiting => waiting !== step)
@@ -147,13 +147,17 @@ const finishLoading: {
       })
       if (Array.isReadonlyArrayEmpty(remaining)) {
         return {
-          model: modifyFields(model, { loading: () => Loading.Loaded() }),
+          model: modifyFields(model, {
+            saving: modifyFields({ loading: () => Loading.Loaded() }),
+          }),
           commands: [progress, HideSplash()],
         }
       } else {
         return {
           model: modifyFields(model, {
-            loading: () => Loading.Loading({ pending: remaining }),
+            saving: modifyFields({
+              loading: () => Loading.Loading({ pending: remaining }),
+            }),
           }),
           commands: [progress],
         }
@@ -175,7 +179,7 @@ const loadSave: {
       onSome: save => restoreSave(model, save),
     })
     const granted = modifyFields(payPurses(grantVeteran(restored)), {
-      saveStatus: () => 'Read',
+      saving: modifyFields({ saveStatus: () => 'Read' }),
     })
     const loaded = finishLoading(granted, 'Save')
     // NOTE: a player with no save has nothing to write yet: their first write
@@ -203,7 +207,7 @@ const loadSave: {
         isPursePaid)
       ? {
           model: modifyFields(loaded.model, {
-            writesInFlight: count => count + 1,
+            saving: modifyFields({ writesInFlight: count => count + 1 }),
           }),
           commands: [
             ...(loaded.commands ?? []),
@@ -236,8 +240,8 @@ export const writeSaveFrom: {
   (before: Model, saveWrite: 'Write' | 'Synced'): UpdateStep =>
     stepModel => {
       if (
-        before.saveStatus === 'Unread' ||
-        stepModel.saveStatus === 'Unread' ||
+        before.saving.saveStatus === 'Unread' ||
+        stepModel.saving.saveStatus === 'Unread' ||
         saveWrite === 'Synced' ||
         !hasSaveFieldsChanged(before, stepModel)
       ) {
@@ -250,14 +254,16 @@ export const writeSaveFrom: {
         ? { model: stepModel }
         : {
             model: modifyFields(stepModel, {
-              writesInFlight: count => count + 1,
-              unsavedChanges: () => [],
+              saving: modifyFields({
+                writesInFlight: count => count + 1,
+                unsavedChanges: () => [],
+              }),
             }),
             commands: [
               WriteSave({
                 save,
                 changes: withUnsavedChanges(
-                  stepModel.unsavedChanges,
+                  stepModel.saving.unsavedChanges,
                   changesBetween(beforeSave, save),
                   save,
                 ),
@@ -273,9 +279,11 @@ export const writeSaveFrom: {
 // name too, so a draft it holds from before never puts the old one back.
 const takeSyncedSave = (save: PlayerSave) =>
   makeStep(model =>
-    model.writesInFlight > 0
+    model.saving.writesInFlight > 0
       ? modelStep(stepModel =>
-          modifyFields(stepModel, { syncedSave: () => 'Stale' }),
+          modifyFields(stepModel, {
+            saving: modifyFields({ syncedSave: () => 'Stale' }),
+          }),
         )
       : Update.combineSteps([
           modelStep(stepModel => restoreSave(stepModel, save)),
@@ -289,12 +297,14 @@ const takeSyncedSave = (save: PlayerSave) =>
 // NOTE: once this device's own writes have landed, a save from sync that
 // was held back is read again from the store, which by then has both.
 const finishWrite = (model: Model): UpdateReturn => {
-  const next = modifyFields(model, {
-    writesInFlight: count => Math.max(count - 1, 0),
+  const next: Model = modifyFields(model, {
+    saving: modifyFields({ writesInFlight: count => Math.max(count - 1, 0) }),
   })
-  return next.writesInFlight === 0 && next.syncedSave === 'Stale'
+  return next.saving.writesInFlight === 0 && next.saving.syncedSave === 'Stale'
     ? {
-        model: modifyFields(next, { syncedSave: () => 'Current' }),
+        model: modifyFields(next, {
+          saving: modifyFields({ syncedSave: () => 'Current' }),
+        }),
         commands: [ReloadSyncedSave()],
       }
     : { model: next }
@@ -309,14 +319,17 @@ const finishWriteWithRun: {
   const finished = finishWrite(model)
   return {
     model: modifyFields(finished.model, {
-      lastRunSync: () => LastRunSync.Waiting({ id: runId }),
+      saving: modifyFields({
+        lastRunSync: () => LastRunSync.Waiting({ id: runId }),
+      }),
     }),
     commands: [...(finished.commands ?? []), AwaitRunSettled({ runId })],
   }
 })
 
 const isWaitingFor = (model: Model, runId: string): boolean =>
-  model.lastRunSync._tag === 'Waiting' && model.lastRunSync.id === runId
+  model.saving.lastRunSync._tag === 'Waiting' &&
+  model.saving.lastRunSync.id === runId
 
 const settleRun: {
   (runId: string, settled: RunSettled): (model: Model) => UpdateReturn
@@ -327,11 +340,13 @@ const settleRun: {
     isWaitingFor(model, runId)
       ? {
           model: modifyFields(model, {
-            lastRunSync: () =>
-              RunSettled.match(settled, {
-                Confirmed: ({ seq }) => LastRunSync.Confirmed({ seq }),
-                Rejected: ({ reason }) => LastRunSync.Rejected({ reason }),
-              }),
+            saving: modifyFields({
+              lastRunSync: () =>
+                RunSettled.match(settled, {
+                  Confirmed: ({ seq }) => LastRunSync.Confirmed({ seq }),
+                  Rejected: ({ reason }) => LastRunSync.Rejected({ reason }),
+                }),
+            }),
           }),
         }
       : { model },
@@ -343,7 +358,11 @@ const forgetRunWait: {
   (model: Model, runId: string): UpdateReturn
 } = Function.dual(2, (model: Model, runId: string): UpdateReturn =>
   isWaitingFor(model, runId)
-    ? { model: modifyFields(model, { lastRunSync: () => LastRunSync.NoRun() }) }
+    ? {
+        model: modifyFields(model, {
+          saving: modifyFields({ lastRunSync: () => LastRunSync.NoRun() }),
+        }),
+      }
     : { model },
 )
 
@@ -358,7 +377,9 @@ const failWrite: {
   (model: Model, changes: ReadonlyArray<PlayerChange>): UpdateReturn =>
     finishWrite(
       modifyFields(model, {
-        unsavedChanges: unsaved => [...changes, ...unsaved],
+        saving: modifyFields({
+          unsavedChanges: unsaved => [...changes, ...unsaved],
+        }),
       }),
     ),
 )
@@ -405,11 +426,15 @@ export const saveHandlers = defineHandlers({
     }),
 
   UpdatedSyncStatus: (model, { state }) => ({
-    model: modifyFields(model, { syncState: () => state }),
+    model: modifyFields(model, {
+      saving: modifyFields({ syncState: () => state }),
+    }),
   }),
 
   UpdatedPlayerScopeStatus: (model, { status }) => ({
-    model: modifyFields(model, { playerScopeStatus: () => status }),
+    model: modifyFields(model, {
+      saving: modifyFields({ playerScopeStatus: () => status }),
+    }),
   }),
 
   SettledRecordedRun: (model, { runId, settled }) =>

@@ -45,7 +45,7 @@ describe('a death', () => {
       Story.model(after => {
         expect(after.phase._tag).toBe('GameOver')
         expect(after.rank).toMatchObject({ earnedPoints: 60, earnedBones: 6 })
-        expect(after.maybeRankGain).toEqual(
+        expect(after.runGains.maybeRankGain).toEqual(
           Option.some({
             pointsBefore: 0,
             gained: 60,
@@ -70,7 +70,7 @@ describe('a death', () => {
       frame,
       Story.model(after => {
         expect(after.rank.earnedPoints).toBe(150)
-        expect(after.maybeRankGain).toEqual(
+        expect(after.runGains.maybeRankGain).toEqual(
           Option.some({
             pointsBefore: 90,
             gained: 60,
@@ -98,7 +98,7 @@ describe('a death', () => {
           rank: rank => ({ ...rank, veteranPoints: 400, veteranBones: 40 }),
         }),
       )
-      expect(after.maybeRankGain).toEqual(
+      expect(after.runGains.maybeRankGain).toEqual(
         Option.some({
           pointsBefore: 400,
           gained: 60,
@@ -138,7 +138,7 @@ describe('a death', () => {
           modifyFields(diesOnWave7, { modifiers: () => modifiers }),
         )
         expect(after.rank).toMatchObject({ earnedPoints: 315, earnedBones: 31 })
-        expect(after.maybeRankGain).toEqual(
+        expect(after.runGains.maybeRankGain).toEqual(
           Option.some({
             pointsBefore: 0,
             gained: 315,
@@ -163,7 +163,10 @@ describe('a death', () => {
       )
       expect(alone.rank.earnedPoints).toBe(60)
       expect(
-        Option.map(alone.maybeRankGain, ({ bonusPercent }) => bonusPercent),
+        Option.map(
+          alone.runGains.maybeRankGain,
+          ({ bonusPercent }) => bonusPercent,
+        ),
       ).toEqual(Option.some(0))
       return yield* Story.story(
         APPLICATION,
@@ -205,7 +208,7 @@ describe('an escape', () => {
         expect(won.phase._tag).toBe('Escaped')
         // NOTE: the first escape on Normal adds its 50 Bones.
         expect(won.rank).toMatchObject({ earnedPoints: 315, earnedBones: 81 })
-        expect(won.maybeRankGain).toEqual(
+        expect(won.runGains.maybeRankGain).toEqual(
           Option.some({
             pointsBefore: 0,
             gained: 315,
@@ -237,7 +240,7 @@ describe('leaving a run', () => {
       Story.model(left => {
         expect(left.phase._tag).toBe('Ready')
         expect(left.rank).toMatchObject({ earnedPoints: 30, earnedBones: 3 })
-        expect(Option.isNone(left.maybeRankGain)).toBe(true)
+        expect(Option.isNone(left.runGains.maybeRankGain)).toBe(true)
       }),
       writeSave(),
       Story.message(Message.ClickedMenuButton()),

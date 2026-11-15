@@ -67,7 +67,7 @@ const tellsFor = (start: Model, ms = SECOND_MS): Model =>
   )
 
 const kindsOf = (current: Model): ReadonlyArray<string> =>
-  Array.map(current.particles, ({ kind }) => kind)
+  Array.map(current.cosmetics.particles, ({ kind }) => kind)
 
 describe('the body prop on the sprite', () => {
   test('YOU wears nothing over the player look', () => {
@@ -136,9 +136,11 @@ describe('the signature effects', () => {
   const keyed = (calling: Calling, hasFound: boolean): Model =>
     modifyFocus(
       modifyFields(withCalling(calling)(playingModel), {
-        tellWatch: () => ({
-          traps: [],
-          keysFound: [{ slot: 0, keysFound: 2 }],
+        cosmetics: modifyFields({
+          tellWatch: () => ({
+            traps: [],
+            keysFound: [{ slot: 0, keysFound: 2 }],
+          }),
         }),
       }),
       {
@@ -181,7 +183,9 @@ describe('the signature effects', () => {
             hitRemainingMs: 0,
           }),
         ],
-        tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], keysFound: [] }),
+        cosmetics: modifyFields({
+          tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], keysFound: [] }),
+        }),
       }),
       {
         player: player =>
@@ -194,7 +198,7 @@ describe('the signature effects', () => {
 
   test('a trap a Handyman mends throws sparks and tinks as it passes a third', () => {
     const mended = atTheTrap('Handyman')
-    expect(mendedSpots(mended, mended.tellWatch)).toHaveLength(1)
+    expect(mendedSpots(mended, mended.cosmetics.tellWatch)).toHaveLength(1)
     const after = advanceTells(mended, FRAME_MS)
     expect(
       Array.filter(kindsOf(after), kind => kind === 'Spark').length,
