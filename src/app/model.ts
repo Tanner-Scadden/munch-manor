@@ -81,9 +81,11 @@ import { RunRecorder } from '../platform/recording'
 import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
 import {
   ActionWatch,
+  CameraGlide,
   Decal,
   Finisher,
   Particle,
+  STILL_GLIDE,
   TellWatch,
   noActionWatch,
   noTellWatch,
@@ -205,6 +207,7 @@ export const Model = Schema.Struct({
   orientation: Orientation,
   cameraLean: Vector,
   maybeFinisher: Schema.Option(Finisher),
+  cameraGlide: CameraGlide,
   introducedKinds: Schema.Array(ZombieKind),
   seenPowerUps: Schema.Array(PickupKind),
   hintBand: HintBand,
@@ -464,6 +467,7 @@ export const initialModel: OwnModel = {
   orientation: 'Landscape',
   cameraLean: { x: 0, y: 0 },
   maybeFinisher: Option.none(),
+  cameraGlide: STILL_GLIDE,
   lessons: freshLessons,
   practice: noPractice,
   debutCard: DebutCard.Hidden(),

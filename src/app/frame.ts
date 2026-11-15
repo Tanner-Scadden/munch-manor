@@ -16,14 +16,21 @@ import {
   assistAim,
 } from '../input/aimAssist'
 import { couchInputs, isCouchPlay } from '../input/couch'
-import { deriveIntent } from '../input/input'
+import { aimReachOf, deriveIntent } from '../input/input'
 import { RunRecorder, noteTick } from '../platform/recording'
 import { advanceActions } from '../render/actionFrame'
-import { cameraOf, leanCamera, screenCameraOf } from '../render/camera'
-import { FINISHER_CINE_MS } from '../render/cine'
+import {
+  cameraFocus,
+  cameraOf,
+  leanCamera,
+  screenCameraOf,
+  worldWindowOf,
+} from '../render/camera'
+import { FINISHER_CINE_MS, cinePullOf, glideCamera } from '../render/cine'
 import { advanceTells } from '../render/heroTells'
 import { advanceJuice } from '../render/juice'
 import { advanceParticles } from '../render/particles/particles'
+import { screenOf } from '../render/screen'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -397,16 +404,28 @@ export const advanceCosmetics: {
   ),
 )
 
-// NOTE: the camera leans toward the aim on the display's own time.
+// NOTE: the camera's lean toward the aim and its glide toward the big
+// moments, eased on the display's own time.
 export const leanFor: {
   (frameMs: number): (model: Model) => Model
   (model: Model, frameMs: number): Model
-} = Function.dual(2, (model: Model, frameMs: number): Model =>
-  modifyFields(model, {
+} = Function.dual(2, (model: Model, frameMs: number): Model => {
+  const screen = screenOf(model)
+  return modifyFields(model, {
     cameraLean: lean =>
-      leanCamera(lean, focusOf(model).intent.maybeAim, frameMs),
-  }),
-)
+      leanCamera(lean, aimReachOf(model.input, screenCameraOf(model)), frameMs),
+    cameraGlide: glide =>
+      glideCamera(
+        glide,
+        cinePullOf({
+          model,
+          focus: cameraFocus(model),
+          window: worldWindowOf(screen),
+        }),
+        frameMs,
+      ),
+  })
+})
 
 const recordBestWave = (
   model: Model,

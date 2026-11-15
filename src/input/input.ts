@@ -4,6 +4,8 @@ import { modifyFields } from 'foldkit/struct'
 import { type Camera, viewToWorld } from '../render/camera'
 import { clientToView, isLeftHalf } from '../render/screen'
 import {
+  CAMERA_LEAN_PX,
+  MOUSE_LEAN_SHARE,
   STICK_DEAD_ZONE,
   STICK_FIRE_ZONE,
   STICK_RADIUS_PX,
@@ -31,6 +33,7 @@ import {
   isPadFiring,
   isPadInteracting,
   padAim,
+  padAimReach,
   padMove,
 } from './gamepad'
 import {
@@ -443,6 +446,38 @@ const mouseAim = (
   Option.flatMap(input.maybeMouseInView, mouseInView =>
     directionBetween(player, viewToWorld(camera, mouseInView)),
   )
+
+// NOTE: how hard the player aims, a vector of length 0 to 1 in the aim's
+// direction, which the camera leans by (src/render/camera.ts): a stick by
+// how far it is pushed, the mouse by how far the cursor sits from the
+// window's middle. The middle, not the player, so the lean moving the
+// player on the screen never feeds back into it.
+export const aimReachOf: {
+  (camera: Camera): (input: Input) => Option.Option<Vector>
+  (input: Input, camera: Camera): Option.Option<Vector>
+} = Function.dual(2, (input: Input, camera: Camera): Option.Option<Vector> =>
+  pipe(
+    Option.liftPredicate(
+      withDeadZone(stickDeflection(input.aimStick)),
+      reach => vectorLength(reach) > 0,
+    ),
+    Option.orElse(() => padAimReach(input.maybeGamepad)),
+    Option.orElse(() =>
+      Option.map(input.maybeMouseInView, mouse =>
+        clampLength(
+          scaleVector(
+            {
+              x: (mouse.x - camera.left) / camera.scale - camera.width / 2,
+              y: (mouse.y - camera.top) / camera.scale - camera.height / 2,
+            },
+            MOUSE_LEAN_SHARE / CAMERA_LEAN_PX,
+          ),
+          1,
+        ),
+      ),
+    ),
+  ),
+)
 
 // NOTE: a thumb on the aim stick pulls the trigger only once it is pushed
 // past the fire zone. At the moment it lands the stick has no direction, so

@@ -27,6 +27,7 @@ const RUN_FIELDS = [
   'seats',
   'intensity',
   'cameraLean',
+  'cameraGlide',
   'zombies',
   'bullets',
   'particles',
@@ -87,6 +88,10 @@ describe('going home', () => {
         const messy = modifyFocus(
           modifyFields(played[0]!, {
             cameraLean: () => ({ x: 12, y: -7 }),
+            cameraGlide: () => ({
+              offset: { x: 40, y: 9 },
+              velocity: { x: -3, y: 1 },
+            }),
             dustCooldownMs: () => 90,
             trapNotice: () =>
               TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),

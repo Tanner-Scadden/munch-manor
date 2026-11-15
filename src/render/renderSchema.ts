@@ -4,7 +4,7 @@
 import { Schema } from 'effect'
 
 import { DareKind } from '../world/dare/dareSchema'
-import { ParticleKind } from '../world/schema/entitySchema'
+import { ParticleKind, Vector } from '../world/schema/entitySchema'
 import { MillisNumber } from '../world/schema/wireNumber'
 
 export const Particle = Schema.Struct({
@@ -151,3 +151,18 @@ export const Finisher = Schema.Struct({
   ageMs: Schema.Finite,
 })
 export type Finisher = typeof Finisher.Type
+
+// NOTE: how far the camera has glided off the player toward the big
+// moments, and how fast it is going, in world pixels: a spring's state, so
+// the glide eases in and out and two moments never jump it
+// (src/render/cine.ts).
+export const CameraGlide = Schema.Struct({
+  offset: Vector,
+  velocity: Vector,
+})
+export type CameraGlide = typeof CameraGlide.Type
+
+export const STILL_GLIDE: CameraGlide = {
+  offset: { x: 0, y: 0 },
+  velocity: { x: 0, y: 0 },
+}
