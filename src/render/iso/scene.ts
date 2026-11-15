@@ -5,7 +5,8 @@
 // How the game's picture becomes 3D, with no art redrawn:
 // - The room's floor art (and the decals) paint into textures on a floor
 //   plane, through the same Canvas shapes the game builds.
-// - Each wall tile ('#') stands up as an ink-outlined toon block.
+// - Each wall tile ('#') stands up as a toon block wearing the room's art
+//   on its top, its front, and the sides the lens sees.
 // - Every standing drawable (zombies, players, props) is made of shapes
 //   placed above its foot, so each Image stands up as a billboard at that
 //   foot, as tall as it is drawn.
@@ -38,7 +39,7 @@ import {
   SphereGeometry,
   View3D,
 } from '@pixi/3d'
-import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
+import { BloomEffect, ToonMaterial } from '@pixi/3d/extras'
 
 import type { Model } from '../../app/model'
 import { FRAME_ROWS } from '../../art/appearance'
@@ -83,6 +84,7 @@ import {
   buildLintels,
   buildTileQuads,
   buildWallFaces,
+  buildWallSides,
   buildWallTops,
   buildWalls,
   cutoutBoxOf,
@@ -315,10 +317,7 @@ export class IsoScene {
       shadowQuality: 'high',
       toneMapping: 'none',
       environment: { skyColor: 0x9db4ff, groundColor: 0x3a2a30, intensity: 0 },
-      passes: [
-        new OutlinePass({ width: 0.04, color: 0x1a1220 }),
-        new BloomEffect({ threshold: 2, intensity: 1.1, radius: 0.6 }),
-      ],
+      passes: [new BloomEffect({ threshold: 2, intensity: 1.1, radius: 0.6 })],
     })
     app.stage.addChild(this.view)
     const { camera, root } = this.view
@@ -347,7 +346,12 @@ export class IsoScene {
       bands: 3,
       specularSize: 0,
       rimIntensity: 0.3,
-      outline: true,
+      // NOTE: no ink round the walls. The pass pushed their back faces out
+      // less than half a game pixel, and against the dark of a doorway and
+      // the black round the house that sliver of ink read as grey specks
+      // under every lintel and a grey line along every wall (owner,
+      // 2026-11-15). The walls' own art draws their edges.
+      outline: false,
       ...this.textures.lookOptions('Toon'),
     })
     const standing = new Container3D()
@@ -952,6 +956,7 @@ export class IsoScene {
     })
     const wallTops = buildWallTops({ level, material: wallArt })
     const wallFaces = buildWallFaces({ level, material: wallArt })
+    const wallSides = buildWallSides({ level, material: wallArt })
     const leaks = new LeakLayer({ app, textures, level })
     holder.addChild(
       floor.mesh,
@@ -960,6 +965,7 @@ export class IsoScene {
       leaks.glints,
       wallTops,
       wallFaces,
+      wallSides,
       stormQuads,
     )
     Array.forEach(walls, mesh => {

@@ -3,7 +3,7 @@
 import { Array, Option, String } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
-import { WALL_SYMBOL } from '../../world/level/tileGrid'
+import { OUTSIDE_SYMBOL, WALL_SYMBOL } from '../../world/level/tileGrid'
 
 // NOTE: one world unit is one tile. A game pixel is a tenth of a unit, x runs
 // east and z runs south (the game's y), and y is up.
@@ -46,7 +46,6 @@ const FRONT_WALL_DEPTH = 2
 // spawn doors are two). A room's floor runs far longer north of its front
 // wall.
 const DOORWAY_ROWS = 2
-const OUTSIDE = ','
 
 const symbolAt = (
   tiles: ReadonlyArray<string>,
@@ -65,7 +64,7 @@ export const isFrontWallAt = ({
 }>): boolean => {
   for (let step = 1; step <= FRONT_WALL_DEPTH; step += 1) {
     const north = symbolAt(tiles, row - step, column)
-    if (north._tag === 'None' || north.value === OUTSIDE) {
+    if (north._tag === 'None' || north.value === OUTSIDE_SYMBOL) {
       return false
     }
     if (north.value !== WALL_SYMBOL) {

@@ -1,7 +1,7 @@
-// The house in 3D, built once per level: the walls as ink-outlined blocks,
-// the room's art on the floor less the furniture that stands up, the ferns
-// cut into clumps for the wind, and the hidden stand-ins the furniture's
-// shadows are cast through.
+// The house in 3D, built once per level: the walls as blocks wearing the
+// room's art, the room's art on the floor less the furniture that stands
+// up, the ferns cut into clumps for the wind, and the hidden stand-ins the
+// furniture's shadows are cast through.
 
 import { Array, Option, Record, Result, String, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
@@ -22,6 +22,7 @@ import type { Level } from '../../world/level/arena'
 import {
   COVER_SYMBOLS,
   type CoverKind,
+  OUTSIDE_SYMBOL,
   WALL_SYMBOL,
 } from '../../world/level/tileGrid'
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
@@ -38,6 +39,12 @@ import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
 // WALLS
 
 const WALL_GEOMETRY = new CubeGeometry({ width: 1, height: 1, depth: 1 })
+
+// NOTE: each block stands this far inside its tile, across and along, so
+// the art over its front and its open sides, lifted off its tile's edges
+// (FACE_LIFT), closes round it: no sliver of the plain block shows at a
+// corner where two of them meet, as one did down every doorway's jambs.
+const BLOCK_INSET = 0.003
 
 export const buildWalls = (
   input: Readonly<{ level: Level; material: ToonMaterial }>,
@@ -56,7 +63,11 @@ export const buildWalls = (
           geometry: WALL_GEOMETRY,
           material,
           position: { x, y: height / 2, z },
-          scale: { x: 1, y: height, z: STRETCH },
+          scale: {
+            x: 1 - BLOCK_INSET * 2,
+            y: height,
+            z: STRETCH - BLOCK_INSET * 2,
+          },
           castShadow: true,
           receiveShadow: true,
         }),
@@ -170,7 +181,7 @@ export const buildLintels = (
       geometry: WALL_GEOMETRY,
       material,
       position: { x, y: LINTEL_FLOOR + tall / 2, z },
-      scale: { x: 1, y: tall, z: STRETCH },
+      scale: { x: 1 - BLOCK_INSET * 2, y: tall, z: STRETCH - BLOCK_INSET * 2 },
       castShadow: true,
       receiveShadow: true,
     })
@@ -249,21 +260,147 @@ export const buildWallFaces = (
   const uvs = new Float32Array(faces.length * 8)
   const indices = new Uint32Array(faces.length * 6)
   Array.forEach(faces, ({ row, column, bottom, top, art }, index) => {
-    const x0 = (level.left + column * TILE_SIZE) * UNIT
-    const x1 = x0 + TILE_SIZE * UNIT
-    const z = zOf(level.top + (row + 1) * TILE_SIZE) + FACE_LIFT
-    const u0 = (art.column * TILE_SIZE) / level.width
-    const u1 = ((art.column + 1) * TILE_SIZE) / level.width
+    // NOTE: run out past the tile's ends to the sides' plane (FACE_LIFT),
+    // its art run on with it, so a jamb's corner closes with no notch.
+    const x0 = (level.left + column * TILE_SIZE) * UNIT - FACE_LIFT
+    const x1 = x0 + TILE_SIZE * UNIT + FACE_LIFT * 2
+    // NOTE: its top edge meets the top's edge exactly, at the top's lift,
+    // leaning in the lift's depth, as a side's does (buildWallSides).
+    const edge = zOf(level.top + (row + 1) * TILE_SIZE)
+    const z = edge + FACE_LIFT
+    const lid = top + TOP_LIFT
+    const lip = FACE_LIFT / UNIT / level.width
+    const u0 = (art.column * TILE_SIZE) / level.width - lip
+    const u1 = ((art.column + 1) * TILE_SIZE) / level.width + lip
     // NOTE: the picture is upside down in its texture (buildTileQuads).
     const foot = (art.row + 1) * TILE_SIZE
     const vTop = 1 - (foot - FACE_ART_PX) / level.height
     const vFoot = 1 - foot / level.height
     positions.set(
-      [x0, top, z, x1, top, z, x1, bottom, z, x0, bottom, z],
+      [x0, lid, edge, x1, lid, edge, x1, bottom, z, x0, bottom, z],
       index * 12,
     )
     normals.set([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], index * 12)
     uvs.set([u0, vTop, u1, vTop, u1, vFoot, u0, vFoot], index * 8)
+    const first = index * 4
+    indices.set(
+      [first, first + 2, first + 1, first, first + 3, first + 2],
+      index * 6,
+    )
+  })
+  return new Mesh3D({
+    geometry: new Geometry3D({ positions, normals, uvs, indices }),
+    material,
+    castShadow: false,
+    receiveShadow: true,
+  })
+}
+
+// SIDE FACES
+
+// NOTE: the lens is turned a little off north (src/render/lens.ts) and sees
+// through a slight perspective, so beside a wall's front it sees one of its
+// sides: a doorway's jambs, the end of a wall, a side wall's face. Each
+// wears the column of its own tile's art on that edge, run from the tile's
+// back to its front and stood up the wall, as a wall's front wears the foot
+// of its art: a doorway's casing down its jamb, a wall's dark edge down its
+// end, where the plain block showed slivers of grey.
+type SideQuad = Readonly<{
+  row: number
+  column: number
+  bottom: number
+  top: number
+  isEast: boolean
+}>
+
+// NOTE: half a texel in from the tile's edge, so a side samples its own
+// tile's edge column and never its neighbor's.
+const EDGE_TEXEL = 0.5
+
+// NOTE: how high the side of a wall is hidden by what stands beside it: by
+// the floor (or a doorway), or by a lower wall (a room's low front wall
+// against a tall side wall); none out over the dark round the house.
+const coveredBeside = (
+  tiles: ReadonlyArray<string>,
+  row: number,
+  column: number,
+): Option.Option<number> =>
+  Option.map(
+    Option.filter(
+      String.charAt(tiles[row] ?? '', column),
+      symbol => symbol !== OUTSIDE_SYMBOL,
+    ),
+    () => wallHeightAt({ tiles, row, column }),
+  )
+
+const sideFacesOf = (level: Level): ReadonlyArray<SideQuad> =>
+  Array.flatMap(level.tiles, (line, row) =>
+    Array.flatMap(Array.fromIterable(line), (symbol, column) => {
+      if (symbol !== WALL_SYMBOL) {
+        return []
+      }
+      const top = wallHeightAt({ tiles: level.tiles, row, column })
+      return Array.filterMap([true, false], isEast =>
+        Option.match(
+          Option.filter(
+            coveredBeside(level.tiles, row, isEast ? column + 1 : column - 1),
+            bottom => bottom < top,
+          ),
+          {
+            onNone: () => Result.failVoid,
+            onSome: bottom =>
+              Result.succeed({ row, column, bottom, top, isEast }),
+          },
+        ),
+      )
+    }),
+  )
+
+// NOTE: every wall's east and west sides the lens can see as one mesh.
+export const buildWallSides = (
+  input: Readonly<{ level: Level; material: Material3D }>,
+): Mesh3D => {
+  const { level, material } = input
+  const sides = sideFacesOf(level)
+  const positions = new Float32Array(sides.length * 12)
+  const normals = new Float32Array(sides.length * 12)
+  const uvs = new Float32Array(sides.length * 8)
+  const indices = new Uint32Array(sides.length * 6)
+  Array.forEach(sides, ({ row, column, bottom, top, isEast }, index) => {
+    const west = (level.left + column * TILE_SIZE) * UNIT
+    const edge = isEast ? west + TILE_SIZE * UNIT : west
+    const x = isEast ? edge + FACE_LIFT : edge - FACE_LIFT
+    // NOTE: the side's top edge meets the top's edge exactly, at its lift,
+    // leaning in the lift's width, so no line of the block shows between
+    // them along a wall's top.
+    const lip = top + TOP_LIFT
+    // NOTE: run on to the front's plane (FACE_LIFT), its art with it, to
+    // meet a wall's front face at the corner.
+    const back = zOf(level.top + row * TILE_SIZE)
+    const front = zOf(level.top + (row + 1) * TILE_SIZE) + FACE_LIFT
+    const u =
+      (column * TILE_SIZE + (isEast ? TILE_SIZE - EDGE_TEXEL : EDGE_TEXEL)) /
+      level.width
+    // NOTE: the picture is upside down in its texture (buildTileQuads).
+    const vBack = 1 - (row * TILE_SIZE) / level.height
+    const vFront =
+      1 - ((row + 1) * TILE_SIZE + FACE_LIFT / UNIT / STRETCH) / level.height
+    // NOTE: corners in the order a front face takes them, its top left
+    // first as the side is seen from out in the room: the front first on an
+    // east side, the back first on a west one.
+    const [nearZ, farZ, nearV, farV] = isEast
+      ? [front, back, vFront, vBack]
+      : [back, front, vBack, vFront]
+    const normal = isEast ? 1 : -1
+    positions.set(
+      [edge, lip, nearZ, edge, lip, farZ, x, bottom, farZ, x, bottom, nearZ],
+      index * 12,
+    )
+    normals.set(
+      [normal, 0, 0, normal, 0, 0, normal, 0, 0, normal, 0, 0],
+      index * 12,
+    )
+    uvs.set([u, nearV, u, farV, u, farV, u, nearV], index * 8)
     const first = index * 4
     indices.set(
       [first, first + 2, first + 1, first, first + 3, first + 2],

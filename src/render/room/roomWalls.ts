@@ -21,7 +21,6 @@ import {
   BASEBOARD_Y,
   BONE_COLOR,
   BROKEN_LEAF_COLOR,
-  BROKEN_LEAF_DARK_COLOR,
   type Box,
   CASING_COLOR,
   CASING_DARK_COLOR,
@@ -559,7 +558,11 @@ const splinters = (
   })
 
 // NOTE: drawn from the top of the door's two wall rows, y, so a north door
-// in a room lower on the plan draws at its own wall.
+// in a room lower on the plan draws at its own wall. The opening is the
+// doorway's floor, dark to the threshold: in 3D the walls stand round it
+// and a lintel spans it, so the casing runs down the walls on each side,
+// on their tops and down the jambs (house.ts), and nothing of a door seen
+// from the front (its head, its hanging leaf, a nail) lies on that floor.
 const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
   const right = x + width
   const face = y + FACE_TOP
@@ -570,21 +573,6 @@ const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
     rect(x - 1, face + 2, 1, TILE_SIZE * 2 - FACE_TOP - 2, CASING_LIGHT_COLOR),
     rect(right, face, 3, TILE_SIZE * 2 - FACE_TOP, CASING_COLOR),
     rect(right, face + 2, 1, TILE_SIZE * 2 - FACE_TOP - 2, CASING_DARK_COLOR),
-    rect(x - 4, face - 1, width + 8, 3, CASING_COLOR),
-    rect(x - 4, face - 1, width + 8, 1, CASING_LIGHT_COLOR),
-    rect(x + 6, face, 1, 2, CASING_DARK_COLOR),
-    rect(x + 7, face + 1, 2, 1, CASING_DARK_COLOR),
-    // NOTE: what is left of the door hangs off its top hinge.
-    rect(x, y + 5, 6, 11, BROKEN_LEAF_COLOR),
-    rect(x + 6, y + 6, 2, 7, BROKEN_LEAF_COLOR),
-    rect(x + 8, y + 7, 1, 3, BROKEN_LEAF_COLOR),
-    rect(x + 2, y + 5, 1, 10, BROKEN_LEAF_DARK_COLOR),
-    rect(x + 5, y + 6, 1, 9, BROKEN_LEAF_DARK_COLOR),
-    rect(x, y + 6, 1, 2, NAIL_COLOR),
-    rect(right - 3, y + 8, 3, 6, BROKEN_LEAF_COLOR),
-    rect(right - 4, y + 9, 1, 3, BROKEN_LEAF_COLOR),
-    rect(right + 1, y + 9, 1, 3, CASING_DARK_COLOR),
-    rect(right + 1, y + 13, 1, 2, CASING_DARK_COLOR),
     ...splinters(x - 2, y + TILE_SIZE * 2 + 1, width + 4, 6, 1),
   ]
 }

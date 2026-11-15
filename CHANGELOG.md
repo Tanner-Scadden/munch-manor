@@ -9,8 +9,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🪵 The stove, fridge, fireplace, gramophone, and every work station stand up as chunky 3D pieces now (the chandelier's winch too, out of the wall in bright brass, its rope running up and across to the chandelier and going slack when it crashes down), the fire roars in front of the hearth again, Uncle Chunk has a real belly on him, and every shadow takes the shape of what casts it.
 - 🌙 Moonlight pours through the windows in dusty shafts that flare when lightning strikes, the library got a stained-glass rose window that splashes colored light across its floor, the chandelier throws a warm cone onto the table, and your flashlight cuts a real beam through the cellar's dark.
 - 👀 Zombie eyes glow in the dark now (Rattles' too), Kaboomer fuses sizzle bright, the kitchen soup glows a sickly green, and pickled hearts glow in jars on the cellar shelf.
-- 📏 A pixel-perfect polish: wave banners sit on a dark plate so they read over the chandelier, Rattles says one thing at a time and keeps out from under your buttons, danger rings and splashes are crisp pixel circles, and Uncle Chunk's flying spit, a burp's shockwave, and the glow under a dare thing show up again.
-- 🧱 The walls line up where rooms meet, no more stumpy bits by the doors, and the doorways zombies shamble through are clean, with no grey fuzz stuck in them.
+- 📏 A pixel-perfect polish: wave banners sit on a dark plate so they read over the chandelier, Rattles says one thing at a time and keeps out from under your buttons, danger rings and splashes are crisp pixel circles, and Uncle Chunk's flying spit, a burp's shockwave, and the glow under a dare thing show up again. The walls line up where rooms meet, and the doorways zombies shamble through are clean, with no grey fuzz stuck in them.
 
 ## November 14, 2026: The manor in 3D
 

@@ -128,8 +128,8 @@ const outlineOf = (
 // NOTE: whose color each pixel's sides wear, by index: its own, but for a
 // pixel of the drawn outline (`outlineOf`), the nearest solid pixel inside it (by steps
 // across and down through the art), so the outline stays on the front face
-// alone and the sides show no dark rim. The scene's outline pass inks the
-// body's silhouette. An outline with nothing inside it keeps its own color.
+// alone and the sides show no dark rim. An outline with nothing inside it
+// keeps its own color.
 export const sideSourcesOf = (
   input: Readonly<{
     width: number
