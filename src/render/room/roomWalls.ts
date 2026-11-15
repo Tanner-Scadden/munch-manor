@@ -20,7 +20,6 @@ import {
   BASEBOARD_COLOR,
   BASEBOARD_Y,
   BONE_COLOR,
-  BROKEN_LEAF_COLOR,
   type Box,
   CASING_COLOR,
   CASING_DARK_COLOR,
@@ -577,6 +576,9 @@ const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
+// NOTE: the side walls stand to the doorway's north and south in 3D, so its
+// casing is their ends, and the leaves' stumps a top-down door would show
+// are left out: on the doorway's floor they lay flat.
 const sideDoorShapes = (
   { x, y, width, height }: Box,
   facesEast: boolean,
@@ -591,13 +593,6 @@ const sideDoorShapes = (
     rect(x, y - 1, width, 1, CASING_LIGHT_COLOR),
     rect(x, y + height, width, 3, CASING_COLOR),
     rect(x, y + height, width, 1, CASING_DARK_COLOR),
-    // NOTE: splintered stumps of the two leaves still hang on the posts.
-    rect(fromHinge(3, 2), y, 2, 6, BROKEN_LEAF_COLOR),
-    rect(fromHinge(5, 2), y, 2, 4, BROKEN_LEAF_COLOR),
-    rect(fromHinge(7, 1), y, 1, 2, BROKEN_LEAF_COLOR),
-    rect(fromHinge(3, 2), y + height - 6, 2, 6, BROKEN_LEAF_COLOR),
-    rect(fromHinge(5, 2), y + height - 4, 2, 4, BROKEN_LEAF_COLOR),
-    rect(fromHinge(7, 1), y + height - 2, 1, 2, BROKEN_LEAF_COLOR),
     ...splinters(
       facesEast ? inner + 1 : inner - 9,
       y - 2,
@@ -608,6 +603,10 @@ const sideDoorShapes = (
   ]
 }
 
+// NOTE: drawn on the doorway's one wall row, y. As at a north door, the
+// low front wall stands on each side of the opening in 3D, so the casing
+// runs on its tops and down its jambs (house.ts), and the leaves' stumps a
+// front-on door would show are left out: on this floor they lay flat.
 const southDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
   const right = x + width
   return [
@@ -617,10 +616,6 @@ const southDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
     rect(x - 1, y, 1, TILE_SIZE, CASING_LIGHT_COLOR),
     rect(right, y, 3, TILE_SIZE, CASING_COLOR),
     rect(right, y, 1, TILE_SIZE, CASING_DARK_COLOR),
-    rect(x, y + 3, 6, 2, BROKEN_LEAF_COLOR),
-    rect(x, y + 5, 4, 2, BROKEN_LEAF_COLOR),
-    rect(right - 5, y + 3, 5, 2, BROKEN_LEAF_COLOR),
-    rect(right - 3, y + 5, 3, 2, BROKEN_LEAF_COLOR),
     ...splinters(x - 2, y - 7, width + 4, 6, 4),
   ]
 }

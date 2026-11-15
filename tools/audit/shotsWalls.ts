@@ -69,6 +69,31 @@ const ROSE_SPOTS: ReadonlyArray<string> = [
   'px=592&py=60',
 ]
 
+// NOTE: each room's low front (south) wall and what stands against it,
+// three tiles north of it at its west, middle, and east: the dining room's
+// at row 21, the west slot's at row 21, the east and far slots' at row 17.
+// The dining room's side spawn doors close up: `W` in its west wall at rows
+// 2 and 3, `E` in its east wall at rows 18 and 19.
+const FRONT_ROWS: ReadonlyArray<
+  Readonly<{ room: string; xs: ReadonlyArray<number>; py: number }>
+> = [
+  { room: 'dining', xs: [60, 180, 300], py: 185 },
+  { room: 'west', xs: [-270, -160, -50], py: 185 },
+  { room: 'east', xs: [410, 520, 630], py: 145 },
+  { room: 'far', xs: [730, 840, 950], py: 145 },
+]
+
+const FRONT_WALLS: ReadonlyArray<Scene> = [
+  ...Array.flatMap(FRONT_ROWS, ({ room, xs, py }) =>
+    Array.map(xs, (px, at) => ({
+      name: `front-${room}-${at}`,
+      query: () => `${OPEN_BREAK}&px=${px}&py=${py}`,
+    })),
+  ),
+  { name: 'side-door-west', query: () => `${OPEN_BREAK}&px=40&py=40` },
+  { name: 'side-door-east', query: () => `${OPEN_BREAK}&px=320&py=180` },
+]
+
 const SCENES: ReadonlyArray<Scene> = [
   ...Array.map(SEAMS, ({ name, query }) => ({ name, query: () => query })),
   {
@@ -79,6 +104,7 @@ const SCENES: ReadonlyArray<Scene> = [
   // NOTE: the chandelier's winch on the dining room's west wall, the plan's
   // `j` at column 1 and row 10, with its rope up to the ceiling's pulley.
   { name: 'dining-winch', query: () => `${OPEN_BREAK}&px=50&py=120` },
+  ...FRONT_WALLS,
 ]
 
 runHarnessAudit(
