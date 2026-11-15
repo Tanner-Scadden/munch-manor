@@ -465,18 +465,6 @@ dialog[open] {
   touch-action: manipulation;
 }
 
-/* The drawn list is shorter than a thumb on a phone: the button reaches
-   past it to the 44 px a tap needs, centered on it, the art unmoved. */
-.dare-list-button::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: max(100%, 44px);
-  height: max(100%, 44px);
-  transform: translate(-50%, -50%);
-}
-
 .dare-list-button:focus-visible {
   outline: var(--menu-focus);
   outline-offset: var(--menu-focus-offset);

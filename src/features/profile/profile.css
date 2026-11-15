@@ -185,11 +185,13 @@
 /* NOTE: the chosen tab is filled with its color, so its icon sits on a dark
    badge to stay seen. */
 .profile-tab[aria-selected='true'] .profile-tab-icon {
+  box-sizing: border-box;
   width: 36px;
   height: 32px;
+  padding: 3px 5px;
   border-radius: var(--menu-radius-md);
   background-color: var(--menu-bg);
-  background-size: 26px;
+  background-origin: content-box;
   animation: tab-icon-pop 380ms cubic-bezier(0.2, 1.8, 0.4, 1);
 }
 
@@ -379,16 +381,18 @@
   }
 }
 
+/* NOTE: the preview canvas is 20 pixels square, so every size it takes is a
+   whole number of CSS px to each of its pixels (160, 120, 100). */
 .look-stage .look-preview {
-  width: 150px;
-  height: 150px;
+  width: 160px;
+  height: 160px;
   border: 0;
   background: transparent;
 }
 
 .look-stage .look-preview-canvas {
-  width: 150px;
-  height: 150px;
+  width: 160px;
+  height: 160px;
 }
 
 .look-poof {
@@ -1431,7 +1435,6 @@
   .profile-tab[aria-selected='true'] .profile-tab-icon {
     width: 30px;
     height: 26px;
-    background-size: 20px;
   }
 
   .look-stage {
@@ -1491,7 +1494,13 @@
   letter-spacing: 1px;
 }
 
+/* NOTE: a 360 px phone closes the gaps between the tabs, so each of the
+   five stays 48 px across for a thumb. */
 @media (max-width: 380px) {
+  .game-root[data-layout='Portrait'] .profile-tabs {
+    gap: 3px;
+  }
+
   .game-root[data-layout='Portrait'] .profile-tab {
     letter-spacing: 0;
   }
@@ -1558,8 +1567,8 @@
 
   .game-root[data-layout='Portrait'] .look-stage .look-preview,
   .game-root[data-layout='Portrait'] .look-stage .look-preview-canvas {
-    width: 96px;
-    height: 96px;
+    width: 100px;
+    height: 100px;
   }
 
   .game-root[data-layout='Portrait'] .look-bounce {
@@ -1620,8 +1629,12 @@
    bottom of the Profile, under the tabs on a phone on its side and across
    the bottom upright. Pictures and numbers only. */
 
+/* NOTE: --art-step is one art pixel at the fewest whole device pixels, so a
+   surface that sizes the badge or the bone in CSS px snaps it down to a
+   whole number of them: max(var(--art-step), round(down, <size>, ...)). */
 .rank-badge-img,
 .rank-bone-img {
+  --art-step: calc(var(--art-w, 1) * var(--dpx, 1px));
   display: block;
   flex: none;
   image-rendering: pixelated;

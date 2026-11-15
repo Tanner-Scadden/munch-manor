@@ -1209,6 +1209,18 @@
 }
 
 .gift-art {
+  /* NOTE: one art pixel of the gift's layers, a whole number of device
+     pixels, so the lid, the box, and the Groaner always match. The art
+     box is about 16.7 of them across. */
+  --gift-px: max(
+    var(--dpx, 1px),
+    round(
+      down,
+      (max(var(--menu-tap), 12 * var(--a)) - 8px) * 0.06,
+      var(--dpx, 1px)
+    )
+  );
+
   position: relative;
   flex: none;
   width: calc(max(var(--menu-tap), 12 * var(--a)) - 8px);
@@ -1226,26 +1238,26 @@
 
 .gift-box {
   bottom: 2.5%;
-  width: 77.5%;
-  height: 47.5%;
+  width: calc(13 * var(--gift-px));
+  height: calc(8 * var(--gift-px));
 }
 
 .gift-lid {
   bottom: 45%;
-  width: 90%;
-  height: 42.5%;
+  width: calc(15 * var(--gift-px));
+  height: calc(7 * var(--gift-px));
   transform-origin: 50% 100%;
 }
 
 .gift-zombie {
   bottom: 20%;
-  width: 55%;
-  height: 47.5%;
+  width: calc(9 * var(--gift-px));
+  height: calc(8 * var(--gift-px));
 }
 
 .gift-sparkle {
-  width: 30%;
-  height: 30%;
+  width: calc(5 * var(--gift-px));
+  height: calc(5 * var(--gift-px));
   animation: gift-twinkle 1.4s steps(4, end) infinite;
 }
 
@@ -1632,11 +1644,12 @@
   height: 32px;
 }
 
+/* NOTE: the Groaner at the box's own 4 px a pixel. */
 .greeting-gift-zombie {
-  left: 19px;
+  left: 16px;
   bottom: 24px;
-  width: 30px;
-  height: 27px;
+  width: 36px;
+  height: 32px;
   animation: greeting-zombie 0.9s ease-in-out infinite alternate;
 }
 
@@ -2118,7 +2131,9 @@
 }
 
 .help-cards {
-  --pic-px: 2.4px;
+  /* NOTE: one art pixel of a card's picture, snapped down to whole device
+     pixels (--dpx is one), so its pixels are all one width. */
+  --pic-px: max(var(--dpx, 1px), round(down, 2.4px, var(--dpx, 1px)));
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 0.5em;
@@ -3008,14 +3023,21 @@ button.help-card:focus-visible {
   pointer-events: none;
 }
 
+/* NOTE: a picture is a whole number of device pixels to each of its
+   pixels: its own scale on the entry's stage, and on a tile the most that
+   keeps it under the tile's height. */
 .munch-tile .munch-sprite {
-  max-width: 100%;
-  max-height: 48px;
-  object-fit: contain;
+  --sprite-px: min(
+    var(--art-scale) * 1px,
+    max(var(--dpx, 1px), round(down, 48px / var(--art-h), var(--dpx, 1px)))
+  );
 }
 
 .munch-sprite {
+  --sprite-px: calc(var(--art-scale) * 1px);
   display: block;
+  width: calc(var(--art-w) * var(--sprite-px));
+  height: calc(var(--art-h) * var(--sprite-px));
   image-rendering: pixelated;
   pointer-events: none;
 }
@@ -3208,7 +3230,10 @@ button.help-card:focus-visible {
   }
 
   .munch-tile .munch-sprite {
-    max-height: 36px;
+    --sprite-px: min(
+      var(--art-scale) * 1px,
+      max(var(--dpx, 1px), round(down, 36px / var(--art-h), var(--dpx, 1px)))
+    );
   }
 
   .munch-entry {
@@ -3291,20 +3316,24 @@ button.help-card:focus-visible {
   align-items: center;
 }
 
-/* NOTE: the gift on MENU's corner when a new version waits on the menu. */
+/* NOTE: the gift on MENU's corner when a new version waits on the menu,
+   its lid (15 by 7) over its box (13 by 8) at a whole number of device
+   pixels to each of theirs. */
 .mode-button-gift {
+  --gift-px: max(var(--dpx, 1px), round(down, 2.4px, var(--dpx, 1px)));
+
   position: absolute;
   top: -18px;
   left: -14px;
-  width: 36px;
-  height: 36px;
+  width: calc(15 * var(--gift-px));
+  height: calc(15 * var(--gift-px));
   background-repeat: no-repeat;
   background-position:
     center top,
     center bottom;
   background-size:
-    100% 46.7%,
-    86.7% 53.3%;
+    calc(15 * var(--gift-px)) calc(7 * var(--gift-px)),
+    calc(13 * var(--gift-px)) calc(8 * var(--gift-px));
   image-rendering: pixelated;
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5));
   pointer-events: none;
@@ -3491,7 +3520,7 @@ button.help-card:focus-visible {
 }
 
 .pause-help .help-cards {
-  --pic-px: 0.19em;
+  --pic-px: max(var(--dpx, 1px), round(down, 0.19em, var(--dpx, 1px)));
 }
 
 /* END BUTTONS

@@ -23,6 +23,7 @@ import { pocketOf } from './pocket'
 // and it never moves. Endless has no list, so no button; nor while
 // another card holds the round.
 const HIT_PAD = 2
+const TAP_PX = 48
 
 export const DARE_LIST_BUTTON_CLASS = 'dare-list-button'
 
@@ -41,6 +42,8 @@ export const dareListButtonView: {
   const box = pocketBoxOf(model, hudLayoutFor(screen), pocketOf(model))
   const left = Math.max(0, box.left - HIT_PAD)
   const top = Math.max(0, box.top - HIT_PAD)
+  const width = percentOf(box.right + HIT_PAD - left, screen.width)
+  const height = percentOf(box.bottom + HIT_PAD - top, screen.height)
   return h.div(
     [h.Class('hud-tap-frame')],
     [
@@ -56,11 +59,14 @@ export const dareListButtonView: {
                 : 'Open the dare card',
             ),
             h.AriaKeyshortcuts('Tab'),
+            // NOTE: centered on the drawn list and never under a thumb's
+            // 48 px, kept inside the screen's edges; the art never moves.
             h.Style({
-              left: percentOf(left, screen.width),
-              top: percentOf(top, screen.height),
-              width: percentOf(box.right + HIT_PAD - left, screen.width),
-              height: percentOf(box.bottom + HIT_PAD - top, screen.height),
+              left: `max(${percentOf(left, screen.width)} + ${width} / 2, max(${width}, ${TAP_PX}px) / 2)`,
+              top: `max(${percentOf(top, screen.height)} + ${height} / 2, max(${height}, ${TAP_PX}px) / 2)`,
+              width: `max(${width}, ${TAP_PX}px)`,
+              height: `max(${height}, ${TAP_PX}px)`,
+              translate: '-50% -50%',
             }),
             h.OnClick(RunButtonMessage.ClickedDareList(), {
               focusSelector: '.game-surface',
