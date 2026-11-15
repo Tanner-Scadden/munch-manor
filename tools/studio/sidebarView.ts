@@ -22,6 +22,13 @@ import {
   zoomed,
 } from './drawing'
 import {
+  LiveBodies,
+  LiveMood,
+  type LiveScene,
+  LiveSpot,
+  LiveTool,
+} from './liveScene'
+import {
   HOUSES,
   type RoomView,
   StudioRoom,
@@ -33,11 +40,108 @@ import {
 const ICON_BOX = 22
 
 const ROOM_LABELS: Readonly<Record<StudioRoom, string>> = {
+  Live: '3D',
   Manor: 'Manor',
   Dining: 'Dining',
   Parlour: 'Parlour',
   Library: 'Library',
   Cellar: 'Cellar',
+}
+
+const MOOD_TITLES: Readonly<Record<LiveMood, string>> = {
+  Break: 'A break: warm light',
+  Wave: 'Early in a wave',
+  Late: 'A wave at its hottest',
+  Frenzy: 'A frenzy',
+  Boss: 'Uncle Chunk in the house',
+}
+
+const TOOL_LABELS: Readonly<Record<LiveTool, string>> = {
+  Pin: '📌 Pin',
+  Loupe: '🔍 Loupe',
+}
+
+// NOTE: the live room's controls: which room, its mood, who stands in it,
+// the storm, the chandelier, and how it is shown. Each choice sends the
+// whole scene with one part changed.
+const liveControls = (
+  live: LiveScene,
+  liveTool: LiveTool,
+  h: StudioViewBuilder,
+): ReadonlyArray<Html> => {
+  const pick = (change: Partial<LiveScene>) =>
+    Message.ClickedLive({ live: { ...live, ...change } })
+  return [
+    field(
+      'Look with',
+      segmented(
+        Array.map(LiveTool.literals, tool => ({
+          label: TOOL_LABELS[tool],
+          isOn: tool === liveTool,
+          message: Message.ClickedLiveTool({ tool }),
+        })),
+        h,
+      ),
+      h,
+    ),
+    field(
+      'Stand in',
+      segmented(
+        Array.map(LiveSpot.literals, spot => ({
+          label: spot,
+          isOn: spot === live.spot,
+          message: pick({ spot }),
+        })),
+        h,
+      ),
+      h,
+    ),
+    field(
+      'Mood',
+      segmented(
+        Array.map(LiveMood.literals, mood => ({
+          label: mood,
+          isOn: mood === live.mood,
+          message: pick({ mood }),
+          title: MOOD_TITLES[mood],
+        })),
+        h,
+      ),
+      h,
+    ),
+    field(
+      'Zombies',
+      segmented(
+        Array.map(LiveBodies.literals, bodies => ({
+          label: bodies,
+          isOn: bodies === live.bodies,
+          message: pick({ bodies }),
+        })),
+        h,
+      ),
+      h,
+    ),
+    switchRow(
+      'Lightning strike',
+      live.isStrike,
+      pick({ isStrike: !live.isStrike }),
+      h,
+    ),
+    switchRow(
+      'Chandelier down',
+      live.isFallen,
+      pick({ isFallen: !live.isFallen }),
+      h,
+    ),
+    switchRow('Hold still', live.isStill, pick({ isStill: !live.isStill }), h),
+    switchRow(
+      'Flat bodies',
+      live.isBillboards,
+      pick({ isBillboards: !live.isBillboards }),
+      h,
+    ),
+    switchRow('HUD', live.isHudOn, pick({ isHudOn: !live.isHudOn }), h),
+  ]
 }
 
 const TONE_LABELS: Readonly<Record<Tone, string>> = {
@@ -178,6 +282,8 @@ const sidebarBody = (
   isPlaying: boolean,
   roomView: RoomView,
   isGridOn: boolean,
+  live: LiveScene,
+  liveTool: LiveTool,
   freshTabs: string,
   h: StudioViewBuilder,
 ): Html =>
@@ -200,19 +306,23 @@ const sidebarBody = (
       h.p([h.Class('section-label')], ['Library']),
       navView(tab, freshTabs, h),
       h.p([h.Class('section-label')], ['Display']),
-      field(
-        'Size',
-        segmented(
-          Array.map(ZOOMS, choice => ({
-            label: `${choice}×`,
-            isOn: choice === zoom,
-            message: Message.ClickedZoom({ zoom: choice }),
-          })),
-          h,
-        ),
-        h,
-      ),
-      field('Background', swatches(backdrop, h), h),
+      ...(tab === 'Rooms' && roomView.room === 'Live'
+        ? []
+        : [
+            field(
+              'Size',
+              segmented(
+                Array.map(ZOOMS, choice => ({
+                  label: `${choice}×`,
+                  isOn: choice === zoom,
+                  message: Message.ClickedZoom({ zoom: choice }),
+                })),
+                h,
+              ),
+              h,
+            ),
+            field('Background', swatches(backdrop, h), h),
+          ]),
       ...(tab === 'Rooms'
         ? [
             field(
@@ -251,7 +361,10 @@ const sidebarBody = (
                 ),
               ],
             }),
-            ...(roomView.room === 'Manor'
+            ...(roomView.room === 'Live'
+              ? liveControls(live, liveTool, h)
+              : []),
+            ...(roomView.room === 'Manor' || roomView.room === 'Live'
               ? [
                   field(
                     'House',
@@ -376,6 +489,8 @@ export const sidebarView: {
       model.isPlaying,
       roomViewOf(model),
       model.isGridOn,
+      model.live,
+      model.liveTool,
       freshTabsOf(model),
       h,
     ]) ?? h.nav([]),

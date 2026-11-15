@@ -9,6 +9,9 @@ import { Flags, StudioBlock } from './block'
 import { EffectsLayer, flags, subscriptions } from './commands'
 import { init, update } from './update'
 import { view } from './view'
+import { defineStudioWorld } from './worldStage'
+
+defineStudioWorld()
 
 const layer = StudioBlock.makeLayer({
   init,

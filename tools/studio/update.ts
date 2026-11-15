@@ -59,6 +59,8 @@ const savedViewOf = (model: Model): SavedView => ({
   isKitchenOpen: model.isKitchenOpen,
   house: model.house,
   isTwistOn: model.isTwistOn,
+  live: model.live,
+  liveTool: model.liveTool,
   isGridOn: model.isGridOn,
   isOnion: model.isOnion,
   isCrew: model.isCrew,
@@ -136,19 +138,21 @@ const draftOf = (model: Model, targetId: string): NoteDraft => {
 // NOTE: the canvas a note's before picture comes from: the big view's art,
 // or the room around the picked tiles (the whole room with none).
 const captureOf = (model: Model): Capture =>
-  model.tab === 'Rooms'
-    ? {
-        selector: '.room-art',
-        crop: Option.getOrNull(
-          Option.map(model.maybeDraftArea, area =>
-            cropAround({
-              bounds: roomFrameOf(model).bounds,
-              zoom: model.zoom,
-            })(area),
+  model.tab === 'Rooms' && model.room === 'Live'
+    ? { selector: '.live-shot', crop: null }
+    : model.tab === 'Rooms'
+      ? {
+          selector: '.room-art',
+          crop: Option.getOrNull(
+            Option.map(model.maybeDraftArea, area =>
+              cropAround({
+                bounds: roomFrameOf(model).bounds,
+                zoom: model.zoom,
+              })(area),
+            ),
           ),
-        ),
-      }
-    : { selector: '.stage-art', crop: null }
+        }
+      : { selector: '.stage-art', crop: null }
 
 const isSendable = (model: Model): boolean =>
   String.isNonEmpty(String.trim(model.note)) &&
@@ -229,6 +233,16 @@ export const update = StudioComposition.makeUpdate({
         house: () => house,
         maybeDraftPin: () => Option.none(),
         maybeDraftArea: () => Option.none(),
+      }),
+    ),
+  ClickedLive: (model, { live }) =>
+    saved(modifyFields(model, { live: () => live })),
+  ClickedLiveTool: (model, { tool }) =>
+    saved(
+      modifyFields(model, {
+        liveTool: () => tool,
+        maybeHoverTile: () => Option.none(),
+        maybeDragFrom: () => Option.none(),
       }),
     ),
   ClickedPlay: makeFieldsStep(() => ({ isPlaying: isPlaying => !isPlaying })),

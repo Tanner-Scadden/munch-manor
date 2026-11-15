@@ -12,7 +12,7 @@ It is dev only: `bun run build` never includes it.
 
 ## Using it
 
-1. Pick a tab (Zombies, Heroes, Looks, Rattles, Items, Rooms) and tap anything. The Rooms tab shows the manor and the escape's drafted rooms (the dining room, the library, the cellar), each with its toggle: the kitchen boarded or open, the chandelier hung or fallen, the secret shelf shut or open. The Items tab's Dare things holds every thing the dare can ask for, big and as its HUD icon (the napkin ring, the dare note, the false teeth, and the invitation are the four the Dare Journal's milestones open), and the journal's own icon. Its Dare marks holds the dare ladder's eight badges.
+1. Pick a tab (Zombies, Heroes, Looks, Rattles, Items, Rooms) and tap anything. The Rooms tab opens on **3D**: the manor as the game draws it, lit, through its own 3D renderer. Pick the room to stand in, the mood (a break's warm light, a wave early and late, a frenzy, Uncle Chunk), the zombies (none, a crowd, a lineup of sizes), a lightning strike, the chandelier down, flat bodies to compare, and the HUD. **📌 Pin** picks tiles for a note as below; **🔍 Loupe** shows the pixels under the pointer big, each square one game pixel, ringing in magenta any that are mixed (a half-pixel edge, a soft rim), with its spot, tile, and color. Beside 3D it shows the manor and the escape's drafted rooms (the dining room, the library, the cellar), each with its toggle: the kitchen boarded or open, the chandelier hung or fallen, the secret shelf shut or open. The Items tab's Dare things holds every thing the dare can ask for, big and as its HUD icon (the napkin ring, the dare note, the false teeth, and the invitation are the four the Dare Journal's milestones open), and the journal's own icon. Its Dare marks holds the dare ladder's eight badges.
 2. It opens big at the top: play, pause, step frame by frame, slow it down, show the frame before as a ghost, or stand it **next to the crew** (the player and a Groaner) to check its size.
 3. Tap the big picture to drop a pin (in a room, drag over the tiles you mean), pick what kind of note it is (✏️ Change, 💡 Idea, 🐞 Something's off, ❤️ Love it), write it, and press **Send to Claude**.
 4. The note shows ⏳ Waiting. When Claude has done it, it turns ✅ Done with a short reply and a picture of how it looked before, and the sprite, its card, and its tab sparkle with ✨ Updated until it is opened.
@@ -33,19 +33,21 @@ The log is `tools/studio/notes.jsonl` (events, one JSON line each: `Noted` and `
 
 ## Files
 
-| File                               | What it holds                                                                                                               |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `catalog.ts`                       | The tabs and their entries, each a sprite from the game's art modules, and the crew                                         |
-| `block.ts`                         | The Block contract: Model, Messages, flags                                                                                  |
-| `update.ts`                        | init and update: the controls, picking, pins, sending, the notes coming back                                                |
-| `commands.ts`                      | Saving the view and what was seen, the before picture and sending, polling the notes                                        |
-| `view.ts`                          | The controls, the gallery's lazy cards, the room with its grid and pins                                                     |
-| `stageView.ts`, `inspectorView.ts` | The big view with its frame controls; the right side: asking, the notes, all notes                                          |
-| `drawing.ts`, `pins.ts`, `room.ts` | Drawing helpers; pins on a picture; the Rooms tab's rooms, their toggles, and the note's picture crop                       |
-| `draftRooms.ts`                    | The escape's drafted rooms (`docs/ROOM_DRAFTS.md`): their maps, laid out with the game's walls and doors and the rooms' art |
-| `notes.ts`                         | The notes' Schemas and log, shared with the dev server and the scripts                                                      |
-| `inbox.ts`, `resolve.ts`           | The agent's scripts                                                                                                         |
-| `entry.ts`, `index.html`           | The page and its styles                                                                                                     |
-| `../vite/studioNotes.ts`           | The dev server's side: takes notes, answers the list, keeps and serves before pictures                                      |
+| File                               | What it holds                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog.ts`                       | The tabs and their entries, each a sprite from the game's art modules, and the crew                                                               |
+| `block.ts`                         | The Block contract: Model, Messages, flags                                                                                                        |
+| `update.ts`                        | init and update: the controls, picking, pins, sending, the notes coming back                                                                      |
+| `commands.ts`                      | Saving the view and what was seen, the before picture and sending, polling the notes                                                              |
+| `view.ts`                          | The controls, the gallery's lazy cards, the room with its grid and pins                                                                           |
+| `stageView.ts`, `inspectorView.ts` | The big view with its frame controls; the right side: asking, the notes, all notes                                                                |
+| `drawing.ts`, `pins.ts`, `room.ts` | Drawing helpers; pins on a picture; the Rooms tab's rooms, their toggles, and the note's picture crop                                             |
+| `liveScene.ts`                     | The live room's scene (the room, the mood, the bodies, the storm, the chandelier) and the audit harness's query for it                            |
+| `worldStage.ts`, `bridge.ts`       | `<studio-world>`: the harness in a frame, the marks over it, the loupe, and the note's picture; what the harness hands it (its camera and pixels) |
+| `draftRooms.ts`                    | The escape's drafted rooms (`docs/ROOM_DRAFTS.md`): their maps, laid out with the game's walls and doors and the rooms' art                       |
+| `notes.ts`                         | The notes' Schemas and log, shared with the dev server and the scripts                                                                            |
+| `inbox.ts`, `resolve.ts`           | The agent's scripts                                                                                                                               |
+| `entry.ts`, `index.html`           | The page and its styles                                                                                                                           |
+| `../vite/studioNotes.ts`           | The dev server's side: takes notes, answers the list, keeps and serves before pictures                                                            |
 
 A new kind of art (a room, an escape piece, a party guest) gets an entry in `catalog.ts`, or a tab of its own.

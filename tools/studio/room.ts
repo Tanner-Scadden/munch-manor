@@ -19,6 +19,7 @@ import { DRAFT_ROOMS, DRAFT_ROOM_SOURCE, draftRoomShapes } from './draftRooms'
 import type { Pin, Tile, TileArea } from './notes'
 
 export const StudioRoom = Schema.Literals([
+  'Live',
   'Manor',
   'Dining',
   'Parlour',
@@ -41,21 +42,29 @@ export const isRoomTarget = (targetId: string): boolean =>
   String.startsWith(ROOM_PREFIX)(targetId)
 
 export const roomTitleOf = (room: StudioRoom): string =>
-  room === 'Manor' ? 'The manor' : DRAFT_ROOMS[room].title
+  room === 'Live'
+    ? 'The manor, live in 3D'
+    : room === 'Manor'
+      ? 'The manor'
+      : DRAFT_ROOMS[room].title
 
 export const roomSourceOf = (room: StudioRoom): string =>
-  room === 'Manor'
-    ? 'the map: src/world/level/arena.ts; the art: src/render/room/'
-    : DRAFT_ROOM_SOURCE
+  room === 'Live'
+    ? 'the 3D renderer: src/render/iso/; the room art: src/render/room/; the map: src/world/level/arena.ts'
+    : room === 'Manor'
+      ? 'the map: src/world/level/arena.ts; the art: src/render/room/'
+      : DRAFT_ROOM_SOURCE
 
 // NOTE: the toggle a room shows in the sidebar: the manor's kitchen, or a
 // drafted room's twist; none for a room without one.
 export type RoomToggle = Readonly<{ label: string; off: string; on: string }>
 
 export const roomToggleOf = (room: StudioRoom): Option.Option<RoomToggle> =>
-  room === 'Manor'
-    ? Option.some({ label: 'Kitchen', off: 'Boarded', on: 'Open' })
-    : DRAFT_ROOMS[room].maybeTwist
+  room === 'Live'
+    ? Option.none()
+    : room === 'Manor'
+      ? Option.some({ label: 'Kitchen', off: 'Boarded', on: 'Open' })
+      : DRAFT_ROOMS[room].maybeTwist
 
 // NOTE: the manor in one of its rolled arrangements, its kitchen shut or
 // open. Notes read the map letters off the first, the default house.
@@ -102,11 +111,13 @@ export type RoomView = Readonly<{
 }>
 
 export const isToggleOn = (view: RoomView): boolean =>
-  view.room === 'Manor' ? view.isKitchenOpen : view.isTwistOn
+  view.room === 'Manor' || view.room === 'Live'
+    ? view.isKitchenOpen
+    : view.isTwistOn
 
 export const roomFrameOf = (view: RoomView): RoomFrame => {
   const shapes =
-    view.room === 'Manor'
+    view.room === 'Manor' || view.room === 'Live'
       ? roomShapes(manorOf(view.house, view.isKitchenOpen))
       : draftRoomShapes(DRAFT_ROOMS[view.room], view.isTwistOn)
   return { shapes, bounds: wholeBounds(boundsOf(shapes)) }
@@ -136,7 +147,7 @@ export const areaHeight = (area: TileArea): number => area.bottom - area.top + 1
 const mapLetterAt =
   (room: StudioRoom) =>
   (column: number, row: number): string =>
-    room === 'Manor'
+    room === 'Manor' || room === 'Live'
       ? Option.getOrElse(symbolAt(OPEN_MANOR, column, row), () => ' ')
       : Option.getOrElse(
           Option.flatMap(Array.get(DRAFT_ROOMS[room].map, row), line =>

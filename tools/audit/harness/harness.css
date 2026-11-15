@@ -34,3 +34,10 @@
   image-rendering: pixelated;
   pointer-events: none;
 }
+
+/* `nohud`: the world alone, for Munch Studio's live rooms: the HUD's
+   canvas over the world and every button and dialog over the game. */
+:root[data-nohud] .game-stage > :not(.world-window),
+:root[data-nohud] .game-root > :not(.game-surface) {
+  visibility: hidden;
+}

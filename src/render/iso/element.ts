@@ -110,6 +110,22 @@ const worldElementClass = () =>
       })
     }
 
+    // NOTE: the frame drawn again and copied at once, in the same task, since
+    // WebGL clears its canvas once the page shows it: Munch Studio's pixel
+    // loupe and a note's picture (tools/studio/worldStage.ts).
+    snapshot(): HTMLCanvasElement | undefined {
+      this.draw()
+      const canvas = this.querySelector('canvas.world-canvas')
+      if (!(canvas instanceof HTMLCanvasElement)) {
+        return undefined
+      }
+      const copy = document.createElement('canvas')
+      copy.width = canvas.width
+      copy.height = canvas.height
+      copy.getContext('2d')?.drawImage(canvas, 0, 0)
+      return copy
+    }
+
     private draw(): void {
       if (Option.isNone(this.scene) || Option.isNone(this.latest)) {
         return
@@ -132,6 +148,20 @@ const worldElementClass = () =>
       }
     }
   }
+
+type WorldElement = InstanceType<ReturnType<typeof worldElementClass>>
+
+const isWorldElement = (node: Element | null): node is WorldElement =>
+  node !== null && 'snapshot' in node
+
+// NOTE: the world's frame on the page drawn again and copied, for the dev
+// tools that read its pixels; none before the renderer is in.
+export const snapshotWorld = (): Option.Option<HTMLCanvasElement> => {
+  const world = document.querySelector(TAG)
+  return isWorldElement(world)
+    ? Option.fromNullishOr(world.snapshot())
+    : Option.none()
+}
 
 // SPLASH
 
