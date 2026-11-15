@@ -68,6 +68,12 @@ export const DARK_HEIGHT = 30
 const HALF_RANGE_WINDOW = (1 - 0.5 ** 4) ** 2
 export const DARK_TAKES = DARK_DEPTH * HALF_RANGE_WINDOW
 
+// NOTE: what the dark takes off every face alike, however it turns: the
+// ambient's share of it, since the ambient falls on a side as on a top. A
+// face of what stands loses this much at least, so the side of a wine rack
+// seen edge on stays as black as the dark round it.
+export const DARK_EVEN = (AMBIENT / Math.PI) * 1.35
+
 // NOTE: a room's light hangs high over its middle and a little to the
 // north-west, as if through a skylight, so it falls nearly even across the
 // floor and each piece of furniture casts a short shadow south-east,

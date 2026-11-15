@@ -9,7 +9,14 @@ import { levelOf, openExitIn } from '../../../world/level/arena'
 import { EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
 import { focusOf } from '../../../world/party/party'
 import { TOOL_RULES } from '../../../world/stations/toolRules'
-import { flameSpecsOf, lightsFrameOf } from '../lightSpecs'
+import {
+  AMBIENT,
+  DARK_EVEN,
+  DARK_TAKES,
+  flameSpecsOf,
+  lightsFrameOf,
+} from '../lightSpecs'
+import { LOOK } from '../lookSpecs'
 
 // The house's light as plain data (src/render/iso/lightSpecs.ts): every
 // room's fill, the cellar's dark, and the flames nearest the viewer, held
@@ -85,6 +92,11 @@ describe('the house lights', () => {
       }),
     })
     expect(frameOf(lit).isDark).toBe(false)
+  })
+
+  test('take the whole ambient off a side in the dark, and less than off a top', () => {
+    expect(DARK_EVEN).toBeGreaterThan((AMBIENT / Math.PI) * LOOK.ambient)
+    expect(DARK_EVEN).toBeLessThan(DARK_TAKES)
   })
 
   test('is the same for the same World', () => {

@@ -15,9 +15,10 @@
 // The cellar's dark is cut here too, off the same room map, so it ends on
 // the cellar's own tiles and walls: what its dark takes away (DARK_TAKES)
 // comes off the light on a pixel before it is banded, all of it off the
-// house's floor and walls, and off what stands only as much as its face
-// looks up, so a body by the player's lights keeps its front. The player's
-// pool and flashlight add theirs back first.
+// house's floor and walls. Off what stands, the ambient's share (DARK_EVEN)
+// comes off every face and the rest only as much as the face looks up, so a
+// body by the player's lights keeps its front and a side seen edge on stays
+// black. The player's pool and flashlight add theirs back first.
 //
 // Its cost is two small texture reads and a few lines of math a pixel, after
 // the lights: no loop and no new pass.
@@ -27,7 +28,7 @@ import { BufferImageSource, Texture } from 'pixi.js'
 import type { ShaderBit } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
-import { DARK_TAKES } from './lightSpecs'
+import { DARK_EVEN, DARK_TAKES } from './lightSpecs'
 import { LOOK, LOOK_TUNING, type LookSpecs } from './lookSpecs'
 import {
   BRIGHTEST_RANGE,
@@ -63,6 +64,7 @@ const CONSTANTS = {
   mapColumns: glFloat(ROOM_MAP.columns),
   mapRows: glFloat(ROOM_MAP.rows),
   dark: glFloat(DARK_TAKES),
+  darkEven: glFloat(DARK_EVEN),
 }
 
 // NOTE: the 4x4 Bayer dither on whole game pixels, which the god rays
@@ -97,7 +99,7 @@ const glCut = (glow: string, isStanding: boolean): string => {
   vec2 lookRoomUv = (lookTile - vec2(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2(${c.mapColumns}, ${c.mapRows});
   vec4 lookRoom = sampleLookRoomsDirect(lookRoomUv);
   float lookSlot = floor(lookRoom.r * 255.0 + 0.5);
-  float lookDark = step(0.5, lookRoom.g) * ${c.dark} * ${isStanding ? 'max(normal.y, 0.0)' : '1.0'};
+  float lookDark = step(0.5, lookRoom.g) * ${isStanding ? `(${c.darkEven} + (${c.dark} - ${c.darkEven}) * max(normal.y, 0.0))` : c.dark};
   vec3 lookMask = step(vec3(0.002), albedo);
   vec3 lookLit = max(max(finalColor - lookGlow, vec3(0.0)) / max(albedo, vec3(0.002)) - lookDark, vec3(0.0)) * lookMask;
   float lookLevel = max(max(lookLit.r, lookLit.g), lookLit.b);
@@ -129,7 +131,7 @@ const gpuCut = (glow: string, isStanding: boolean): string => {
   let lookRoomUv = (lookTile - vec2<f32>(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2<f32>(${c.mapColumns}, ${c.mapRows});
   let lookRoom = sampleLookRoomsDirect(lookRoomUv);
   let lookSlot = floor(lookRoom.r * 255.0 + 0.5);
-  let lookDark = step(0.5, lookRoom.g) * ${c.dark} * ${isStanding ? 'max(normal.y, 0.0)' : '1.0'};
+  let lookDark = step(0.5, lookRoom.g) * ${isStanding ? `(${c.darkEven} + (${c.dark} - ${c.darkEven}) * max(normal.y, 0.0))` : c.dark};
   let lookMask = step(vec3<f32>(0.002), albedo);
   let lookLit = max(max(finalColor - lookGlow, vec3<f32>(0.0)) / max(albedo, vec3<f32>(0.002)) - lookDark, vec3<f32>(0.0)) * lookMask;
   let lookLevel = max(max(lookLit.r, lookLit.g), lookLit.b);
