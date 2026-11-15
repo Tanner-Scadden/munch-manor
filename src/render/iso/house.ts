@@ -35,6 +35,7 @@ import {
   standCutout,
 } from './billboards'
 import { type Leaf, flatten, rectKey } from './flatten'
+import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
 import { FlatPainter } from './painter'
 import { STRETCH, UNIT, wallHeightAt, zOf } from './space'
 import { type Textures, colorOf } from './textures'
@@ -92,12 +93,21 @@ export const buildWallTops = (
         : Result.failVoid,
     ),
   )
-  return buildTileQuads({ level, material, tiles })
+  return buildTileQuads({
+    level,
+    material,
+    tiles: [...tiles, ...lintelTopsOf(level)],
+  })
 }
 
 // NOTE: a tile of the level by its row and column, and the height its quad
-// lies at.
-export type TileQuad = Readonly<{ row: number; column: number; y: number }>
+// lies at. It wears the picture over its own tile, or over `art`'s.
+export type TileQuad = Readonly<{
+  row: number
+  column: number
+  y: number
+  art?: Readonly<{ row: number; column: number }>
+}>
 
 // NOTE: a flat quad over each tile, its texture coordinates on a picture of
 // the whole level, one texel a game pixel from its top left corner.
@@ -113,19 +123,21 @@ export const buildTileQuads = (
   const normals = new Float32Array(tiles.length * 12)
   const uvs = new Float32Array(tiles.length * 8)
   const indices = new Uint32Array(tiles.length * 6)
-  Array.forEach(tiles, ({ row, column, y }, index) => {
+  Array.forEach(tiles, ({ row, column, y, art }, index) => {
     const left = column * TILE_SIZE
     const top = row * TILE_SIZE
     const x0 = (level.left + left) * UNIT
     const x1 = x0 + TILE_SIZE * UNIT
     const z0 = zOf(level.top + top)
     const z1 = zOf(level.top + top + TILE_SIZE)
-    const u0 = left / level.width
-    const u1 = (left + TILE_SIZE) / level.width
+    const artLeft = (art?.column ?? column) * TILE_SIZE
+    const artTop = (art?.row ?? row) * TILE_SIZE
+    const u0 = artLeft / level.width
+    const u1 = (artLeft + TILE_SIZE) / level.width
     // NOTE: the picture is rendered to its texture upside down, so its rows
     // count up from the bottom.
-    const v0 = 1 - top / level.height
-    const v1 = 1 - (top + TILE_SIZE) / level.height
+    const v0 = 1 - artTop / level.height
+    const v1 = 1 - (artTop + TILE_SIZE) / level.height
     positions.set([x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1], index * 12)
     normals.set([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], index * 12)
     uvs.set([u0, v0, u1, v0, u1, v1, u0, v1], index * 8)
@@ -145,6 +157,39 @@ export const buildTileQuads = (
 
 // NOTE: just over the block's own top, so the two never fight.
 const TOP_LIFT = 0.002
+
+// DOORWAYS
+
+// NOTE: a block over each tile a lintel spans (lintels.ts), from the
+// lintel's floor to the wall's top, so a doorway reads as cut through the
+// wall rather than a gap in it. Its top wears the wall's art beside it
+// (`lintelTopsOf`).
+export const buildLintels = (
+  input: Readonly<{ level: Level; material: ToonMaterial }>,
+): ReadonlyArray<Mesh3D> => {
+  const { level, material } = input
+  return Array.map(lintelTilesOf(level), ({ row, column, height }) => {
+    const x = (level.left + column * TILE_SIZE) * UNIT + 0.5
+    const z = zOf(level.top + (row + 0.5) * TILE_SIZE)
+    const tall = height - LINTEL_FLOOR
+    return new Mesh3D({
+      geometry: WALL_GEOMETRY,
+      material,
+      position: { x, y: LINTEL_FLOOR + tall / 2, z },
+      scale: { x: 1, y: tall, z: STRETCH },
+      castShadow: true,
+      receiveShadow: true,
+    })
+  })
+}
+
+const lintelTopsOf = (level: Level): ReadonlyArray<TileQuad> =>
+  Array.map(lintelTilesOf(level), ({ row, column, height, art }) => ({
+    row,
+    column,
+    y: height + TOP_LIFT,
+    art,
+  }))
 
 // FURNITURE
 
