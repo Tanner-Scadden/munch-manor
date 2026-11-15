@@ -1,14 +1,13 @@
 // The manor's windows as the storm sees them: the glass of each one the
-// room art draws (the dining room's rose window too), and the patch of floor a lightning strike throws its
-// light on. The boxes come from the art's own modules, so the storm always
-// lands on the glass (src/render/iso/storm.ts).
+// room art draws (the library's rose window too), and the patch of floor a
+// lightning strike throws its light on. The boxes come from the art's own
+// modules, so the storm always lands on the glass (src/render/iso/storm.ts).
 
 import { Array, Option } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
 import {
-  DINING_ROOM_ID,
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
@@ -18,10 +17,10 @@ import { libraryWindowPaneOf } from './libraryArt'
 import { roomBoxOf } from './room'
 import type { Box } from './roomPalette'
 import { PARLOUR_WINDOW_GAPS, doorBox } from './roomWalls'
-import { roseGlassOf } from './roseWindowArt'
+import { roseGlassOf, roseLightsOf } from './roseWindowArt'
 
 // NOTE: a window high in a back wall, one in a side wall's gap, or the
-// dining room's rose window.
+// library's rose window.
 type PaneKind = 'High' | 'Side' | 'Rose'
 
 export type Pane = Readonly<{
@@ -30,6 +29,9 @@ export type Pane = Readonly<{
   roomId: string
   // NOTE: the glass, in game pixels.
   glass: Box
+  // NOTE: the glass a strike lights and the rain runs over, in game pixels:
+  // the whole glass, or the rose window's colored glass between its lead.
+  lights: ReadonlyArray<Box>
   // NOTE: where the wall under the glass meets the floor, in game pixels
   // down the map: the front edge a shaft of its light leaves the wall at.
   sill: number
@@ -65,7 +67,11 @@ const sillBelow = (level: Level, glass: Box): number => {
 const wallPane = (
   level: Level,
   glass: Box,
-  at: Readonly<{ kind: PaneKind; roomId: string }>,
+  at: Readonly<{
+    kind: PaneKind
+    roomId: string
+    lights: ReadonlyArray<Box>
+  }>,
 ): Pane => {
   const sill = sillBelow(level, glass)
   const over = sill - (glass.y + glass.height)
@@ -94,6 +100,7 @@ const sidePane = (level: Level, glass: Box): Pane => {
     kind: 'Side',
     roomId: KITCHEN_ROOM_ID,
     glass,
+    lights: [glass],
     sill: glass.y + glass.height,
     thrown: {
       x: isWallEast ? glass.x - SIDE_THROW - 2 : glass.x + glass.width + 2,
@@ -114,36 +121,37 @@ export const windowPanesOf = (level: Level): ReadonlyArray<Pane> => {
   const parlour = Option.match(roomBoxOf(level, PARLOUR_ROOM_ID), {
     onNone: () => [],
     onSome: room =>
-      Array.map(PARLOUR_WINDOW_GAPS, gap =>
-        wallPane(
-          level,
-          { ...gap, x: gap.x + room.x, y: gap.y + room.y },
-          { kind: 'High', roomId: PARLOUR_ROOM_ID },
-        ),
-      ),
+      Array.map(PARLOUR_WINDOW_GAPS, gap => {
+        const glass = { ...gap, x: gap.x + room.x, y: gap.y + room.y }
+        return wallPane(level, glass, {
+          kind: 'High',
+          roomId: PARLOUR_ROOM_ID,
+          lights: [glass],
+        })
+      }),
   })
   const library = Option.match(roomBoxOf(level, LIBRARY_ROOM_ID), {
     onNone: () => [],
-    onSome: room => [
-      wallPane(level, libraryWindowPaneOf(room), {
-        kind: 'High',
-        roomId: LIBRARY_ROOM_ID,
-      }),
-    ],
-  })
-  const rose = Option.match(roomBoxOf(level, DINING_ROOM_ID), {
-    onNone: () => [],
-    onSome: room => [
-      wallPane(level, roseGlassOf(room), {
-        kind: 'Rose',
-        roomId: DINING_ROOM_ID,
-      }),
-    ],
+    onSome: room => {
+      const glass = libraryWindowPaneOf(room)
+      return [
+        wallPane(level, glass, {
+          kind: 'High',
+          roomId: LIBRARY_ROOM_ID,
+          lights: [glass],
+        }),
+        wallPane(level, roseGlassOf(room), {
+          kind: 'Rose',
+          roomId: LIBRARY_ROOM_ID,
+          lights: roseLightsOf(room),
+        }),
+      ]
+    },
   })
   const kitchen = Array.contains(level.doorIds, 'Window')
     ? [sidePane(level, doorBox(level, 'Window'))]
     : []
-  const panes = [...parlour, ...library, ...rose, ...kitchen]
+  const panes = [...parlour, ...library, ...kitchen]
   builtPanes.set(level, panes)
   return panes
 }

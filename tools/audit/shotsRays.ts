@@ -1,16 +1,19 @@
 // The god rays, the rose window, and what glows (src/render/iso/godRays.ts,
-// emissives.ts): the dining room and the library in a break and on a
-// lightning strike, the cellar in the dark with zombies near and their eyes,
-// Kaboomers' fuses sparking, and the kitchen's soup with Kaboomers in it, as
+// emissives.ts): the dining room, the library with its rose window in each
+// slot it rolls into (west, east, far) in a break, a wave, and on a
+// lightning strike, and behind its boards before it opens, the cellar in the
+// dark with zombies near and their eyes, Kaboomers' fuses sparking, and the
+// kitchen's soup with Kaboomers in it, as
 // `rays-<TAG>-<viewport>-<scene>.png`.
 //   TAG=before bun run heavy -- --shared bun tools/audit/shotsRays.ts
-import { Effect } from 'effect'
+import { Array, Effect } from 'effect'
 
 import { strikeClockOf } from '../../src/render/iso/mood'
 import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,
   PHONE_844,
+  UPRIGHT_390,
   auditTag,
   closePage,
   deviceQuery,
@@ -31,17 +34,50 @@ const BASE_QUERY =
 const FROZEN_MS = Math.round((20 * 1000) / 60)
 const STRIKE = `clock=${strikeClockOf(3) - 10 + 30 - FROZEN_MS}&start=wave&heat=0.3`
 
-const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
+type Scene = Readonly<{ name: string; query: string }>
+
+// NOTE: the library's top left in each house it rolls into a slot of
+// (ARRANGEMENTS in src/world/level/plan.ts), in game pixels, and the slot.
+const LIBRARY_HOUSES: ReadonlyArray<
+  Readonly<{ house: number; slot: string; x: number; y: number }>
+> = [
+  { house: 0, slot: 'east', x: 360, y: 0 },
+  { house: 1, slot: 'far', x: 680, y: 0 },
+  { house: 2, slot: 'west', x: -320, y: 40 },
+]
+
+// NOTE: a few steps out from under the rose window, where the lens shows
+// the back wall and its shaft and pool whole: in a break and a wave played
+// on past their banners (5 s), and on a strike.
+const LIBRARY_SCENES: ReadonlyArray<Scene> = Array.flatMap(
+  LIBRARY_HOUSES,
+  ({ house, slot, x, y }) => {
+    const at = `house=${house}&px=${x + 232}&py=${y + 70}`
+    return [
+      { name: `library-${slot}-break`, query: `${at}&break=open&freeze=300` },
+      {
+        name: `library-${slot}-wave`,
+        query: `${at}&start=wave&heat=0.5&freeze=300`,
+      },
+      { name: `library-${slot}-strike`, query: `${at}&${STRIKE}&freeze=20` },
+    ]
+  },
+)
+
+const SCENES: ReadonlyArray<Scene> = [
   { name: 'dining-break', query: 'px=250&py=60&break=open&freeze=20' },
   { name: 'dining-strike', query: `px=250&py=60&${STRIKE}&freeze=20` },
   {
     name: 'dining-crowd',
     query: 'px=180&py=150&start=wave&heat=0.8&crowd=12&freeze=20',
   },
-  { name: 'library-break', query: 'px=520&py=90&break=open&freeze=20' },
-  { name: 'library-strike', query: `px=520&py=90&${STRIKE}&freeze=20` },
-  // NOTE: up under the library's window, so its shaft and pool show whole.
-  { name: 'library-window', query: 'px=470&py=40&break=open&freeze=20' },
+  ...LIBRARY_SCENES,
+  // NOTE: the library still boarded in the east slot, from the dining
+  // room's east side, where its wall shows over the boards.
+  {
+    name: 'library-boarded',
+    query: 'house=0&openexits=West,Kitchen&px=320&py=60&break=open&freeze=20',
+  },
   {
     name: 'cellar-dark',
     query: 'px=780&py=110&start=wave&heat=0.8&crowd=8&crowdx=680&freeze=20',
@@ -70,6 +106,7 @@ runHarnessAudit(
     const viewports = yield* pickViewports([
       DESKTOP_1280,
       { ...PHONE_844, name: 'l844' },
+      UPRIGHT_390,
     ])
     const browser = yield* openBrowser
     for (const viewport of viewports) {

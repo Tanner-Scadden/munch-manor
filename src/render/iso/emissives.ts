@@ -1,4 +1,4 @@
-// What glows of itself in the dark, lit by no room: the dining room's rose
+// What glows of itself in the dark, lit by no room: the library's rose
 // window, the pickled hearts in their jars on the cellar's shelf, the
 // kitchen's soup, the zombies' eyes and Rattles', and a Kaboomer's sparks.
 //
@@ -18,8 +18,8 @@ import { Container3D, FlatMaterial } from '@pixi/3d'
 import type { Level } from '../../world/level/arena'
 import {
   CELLAR_ROOM_ID,
-  DINING_ROOM_ID,
   KITCHEN_ROOM_ID,
+  LIBRARY_ROOM_ID,
 } from '../../world/level/plan'
 import { heartJarGlowShapes } from '../room/cellarArt'
 import { soupGlowShapes } from '../room/kitchenView'
@@ -45,7 +45,7 @@ const inRoom = (
 // NOTE: every glow the level has in its open rooms, in game pixels on the
 // level's picture.
 const glowShapesOf = (level: Level): ReadonlyArray<Canvas.Shape> => [
-  ...inRoom(level, DINING_ROOM_ID, roseGlowShapes),
+  ...inRoom(level, LIBRARY_ROOM_ID, roseGlowShapes),
   ...inRoom(level, CELLAR_ROOM_ID, heartJarGlowShapes),
   ...(isRoomOpen(level, KITCHEN_ROOM_ID) ? soupGlowShapes(level) : []),
 ]

@@ -214,8 +214,9 @@ export const libraryWindowPaneOf = (room: Box): Box => {
 }
 
 // NOTE: a tall arched window with the moon in it, between two stretches of
-// paper; a clock stopped at the party's hour; a map with a red X; and a
-// Munch who never looked up from her book.
+// paper; a clock stopped at the party's hour and a map with a red X, either
+// side of the rose window (roseWindowArt.ts); and a Munch who never looked
+// up from her book.
 export const libraryWallDecorShapes = (
   room: Box,
 ): ReadonlyArray<Canvas.Shape> => {
@@ -231,7 +232,7 @@ export const libraryWallDecorShapes = (
     rect(windowX - 2, windowY + 15, 16, 2, '#5a3a22'),
     rect(windowX + 2, windowY + 10, 2, 2, 'rgba(200, 220, 255, 0.25)'),
     ...pixelArt(room.x + 96, room.y + 6, READER_PIXELS, READER_PALETTE),
-    ...pixelArt(room.x + 214, room.y + 4, CLOCK_PIXELS, CLOCK_PALETTE),
+    ...pixelArt(room.x + 204, room.y + 4, CLOCK_PIXELS, CLOCK_PALETTE),
     ...pixelArt(room.x + 252, room.y + 7, MAP_PIXELS, MAP_PALETTE),
   ]
 }

@@ -1,6 +1,6 @@
 // God rays: the moonlight through the storm's windows as shafts down to the
-// floor and the pools they leave there (the dining room's rose window's in
-// its own colors), the flare on a lightning strike, the cone of light under
+// floor and the pools they leave there (the library's rose window's in its
+// own colors), the flare on a lightning strike, the cone of light under
 // the dining room's chandelier, and the flashlight's beam in the cellar's
 // dark, with lit dust drifting in the shafts.
 //

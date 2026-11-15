@@ -449,8 +449,7 @@ const MANOR_PAINTING_PALETTE: Palette = {
 
 // NOTE: the Munches, hung by hand between the drafted room's doors and
 // furniture: a lady in pearls, Uncle Chunk in his party hat over the
-// sideboard, the manor on its hill, and the family hound in a ruff beside
-// him, clear of the rose window (roseWindowArt.ts).
+// sideboard, the manor on its hill, and the family hound in a ruff.
 export const diningWallDecorShapes = (
   room: Box,
 ): ReadonlyArray<Canvas.Shape> => [
@@ -467,7 +466,7 @@ export const diningWallDecorShapes = (
     UNCLE_CHUNK_PIXELS,
     UNCLE_CHUNK_PALETTE,
   ),
-  ...pixelArt(room.x + 205, room.y + 5, HOUND_PIXELS, HOUND_PALETTE),
+  ...pixelArt(room.x + 242, room.y + 5, HOUND_PIXELS, HOUND_PALETTE),
   ...pixelArt(room.x + 318, room.y + 5, LADY_PIXELS, {
     ...LADY_PALETTE,
     h: '#3a2a1a',
