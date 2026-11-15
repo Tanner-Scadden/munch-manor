@@ -21,7 +21,7 @@ import {
   scaleVector,
 } from '../world/step/geometry'
 import { glideFocus } from './cine'
-import { hudLayoutFor } from './hudLayout'
+import { HUD_STRIP_HEIGHT, hudLayoutFor } from './hudLayout'
 import { floorRowsSeen, lensOf } from './lens'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 
@@ -148,14 +148,27 @@ const clusterReserveOf = (screen: Screen): number =>
 const isFinaleOn = (model: Model): boolean =>
   !Finale.isAnyOf(['Hunting'])(model.dare.finale)
 
-const finaleLevelOf = (model: Model, screen: Screen): Level => {
+// NOTE: in landscape the HUD strip covers the window's top rows, so the
+// camera may follow on past the top of the house by what it covers: at the
+// north wall the wall's candelabras, portraits, and shelves then stand
+// under the strip, not behind it. Portrait has its HUD band over the
+// window instead.
+const stripReserveOf = (screen: Screen): number =>
+  screen.layout === 'Landscape' ? Math.ceil(HUD_STRIP_HEIGHT / screen.zoom) : 0
+
+const cameraLevelOf = (model: Model, screen: Screen): Level => {
   const level = levelOf(model)
-  const reserve = isFinaleOn(model) ? clusterReserveOf(screen) : 0
-  return reserve === 0
+  const above = stripReserveOf(screen)
+  const below = isFinaleOn(model) ? clusterReserveOf(screen) : 0
+  return above === 0 && below === 0
     ? level
     : {
         ...level,
-        bounds: { ...level.bounds, bottom: level.bounds.bottom + reserve },
+        bounds: {
+          ...level.bounds,
+          top: level.bounds.top - above,
+          bottom: level.bounds.bottom + below,
+        },
       }
 }
 
@@ -165,7 +178,7 @@ export const worldCameraFor: {
 } = Function.dual(2, (model: Model, screen: Screen): Camera => {
   const window = worldWindowOf(screen)
   return cameraFor(
-    finaleLevelOf(model, screen),
+    cameraLevelOf(model, screen),
     glideFocus({ model, focus: cameraFocus(model), window }),
     window,
   )
