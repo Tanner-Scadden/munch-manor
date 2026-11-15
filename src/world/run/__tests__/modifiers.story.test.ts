@@ -302,8 +302,9 @@ describe('Big Crowd', () => {
     const solo = rolled(1, noModifiers)
     const plain = rolled(2, noModifiers)
     const crowded = rolled(2, only({ bigCrowd: true }))
-    expect(plain).toHaveLength(Math.floor(solo.length * 1.6))
-    expect(crowded).toHaveLength(Math.floor(solo.length * 1.6 * 1.5))
+    const pair = COOP_RULES.waveCountScale[1]
+    expect(plain).toHaveLength(Math.floor(solo.length * pair))
+    expect(crowded).toHaveLength(Math.floor(solo.length * pair * 1.5))
     expect(crowded[0]?.hpScale).toBeCloseTo(plain[0]?.hpScale ?? 1)
   })
 

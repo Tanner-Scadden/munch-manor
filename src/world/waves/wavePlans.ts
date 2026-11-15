@@ -220,8 +220,10 @@ const WAVE_7_MIX = mixOf(3, 2, 0.75)
 // that kind, so the NEW card never promises a zombie the roll left out.
 // NOTE: waves 1 and 2 were tightened on 2026-11-10 after the pacing report
 // (docs/PACING_REPORT.md, owner's pick 3b): wave 1 is 8 Groaners in two
-// quick squads through one door, done in about 15 s (6 over 23 s before),
-// and wave 2 sends its Groaners faster and fades at 12 s (17.5 before).
+// quick squads, done in about 15 s (6 over 23 s before), and wave 2 sends
+// its Groaners faster and fades at 12 s (17.5 before).
+// Since 2026-11-14 (owner: wave 1 always came from the same room) each of
+// wave 1's squads draws its own door, where it was always North.
 // The times written for waves 3 on are their old ones: HEAT packs them
 // tighter (see `hotter` below the table).
 const WAVE_TABLE: Array.NonEmptyReadonlyArray<WavePlan> = [
@@ -232,14 +234,14 @@ const WAVE_TABLE: Array.NonEmptyReadonlyArray<WavePlan> = [
       squads({
         packs: [1, 2, 1],
         mix: only('Shambler'),
-        from: through('North'),
+        from: anyDoors(1),
         startMs: 1200,
         everyMs: 1800,
       }),
       squads({
         packs: [2, 2],
         mix: only('Shambler'),
-        from: through('North'),
+        from: anyDoors(1),
         startMs: 7500,
         everyMs: 2200,
       }),
@@ -661,7 +663,10 @@ const hotter = (plan: WavePlan): WavePlan => ({
     startMs: heated(group.startMs),
     intervalMs: heated(group.intervalMs),
   })),
-  holds: Array.map(plan.holds, hold => ({ ...hold, atMs: heated(hold.atMs) })),
+  holds: Array.map(plan.holds, hold => ({
+    ...hold,
+    atMs: heated(hold.atMs),
+  })),
 })
 
 export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = Array.map(

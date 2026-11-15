@@ -31,6 +31,11 @@ describe('a full wave', () => {
   // shots fly up it clear of the table and the chandelier.
   const STEP_UP_TICKS = 4
   const STEP_RIGHT_TICKS = 28
+  // NOTE: wave 1 draws its doors from the run's seed (2026-11-14); these two
+  // seeds roll both its squads through the North door, the lane the player
+  // stands under.
+  const NORTH_SEED = 15
+  const OTHER_NORTH_SEED = 45
 
   // NOTE: every frame's Model of the wave, gathered in an array the Story
   // alone fills, as `recordTicks` gathers them.
@@ -67,8 +72,8 @@ describe('a full wave', () => {
     'wave 1 can be cleared, leads to wave 2 preparation, and replays identically',
     () =>
       Effect.gen(function* () {
-        const first = yield* playFirstWave(1234)
-        const second = yield* playFirstWave(1234)
+        const first = yield* playFirstWave(NORTH_SEED)
+        const second = yield* playFirstWave(NORTH_SEED)
 
         const maybeCleared = Array.findFirst(
           first,
@@ -79,7 +84,7 @@ describe('a full wave', () => {
         expect(focusOf(cleared).player.hp).toBeGreaterThan(0)
         expect(focusOf(cleared).player.hp).toBeLessThanOrEqual(PLAYER_MAX_HP)
         expect(second).toEqual(first)
-        const other = yield* playFirstWave(98765)
+        const other = yield* playFirstWave(OTHER_NORTH_SEED)
         expect(other).not.toEqual(first)
       }),
   )

@@ -2,7 +2,7 @@ import { Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { MS_PER_SECOND } from '../shared/constants'
-import { firingStats } from '../world/gear/powerups'
+import { firingStats, withLaserSight } from '../world/gear/powerups'
 import {
   type WeaponStats,
   heldTier,
@@ -86,10 +86,12 @@ export const aimSightShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
     onSome: aim => {
       const { player } = focusOf(model)
       const level = levelOf(model)
-      const stats = firingStats(
-        focusOf(model).boosts,
-        heldWeapon(player.arsenal),
-        heldTier(player),
+      const stats = withLaserSight(
+        firingStats(
+          focusOf(model).boosts,
+          heldWeapon(player.arsenal),
+          heldTier(player),
+        ),
       )
       const muzzle = addVectors(player, scaleVector(aim, stats.muzzleReach))
       const range = rangeOf(stats)

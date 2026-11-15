@@ -24,6 +24,7 @@ import {
   firingStats,
   isAmmoFree,
   keepTopped,
+  withLaserSight,
 } from '../gear/powerups'
 import {
   type WeaponStats,
@@ -64,6 +65,7 @@ import {
   Pierce,
   type PlayerSlot,
   Reload,
+  type SeatState,
   type Vector,
   type WeaponKind,
   type Zombie,
@@ -149,8 +151,15 @@ const withPierce = (pierce: Pierce, extra: number): Pierce =>
           Pierce.Skewers({ left: left + extra, struck }),
       })
 
-const loadOf = (boosts: Boosts, gun: CarriedGun): Load => {
-  const boosted = firingStats(boosts, gun.kind, gun.tier)
+const loadOf = (
+  {
+    boosts,
+    laserSight,
+  }: Readonly<{ boosts: Boosts; laserSight: SeatState['laserSight'] }>,
+  gun: CarriedGun,
+): Load => {
+  const fired = firingStats(boosts, gun.kind, gun.tier)
+  const boosted = laserSight === 'Fitted' ? withLaserSight(fired) : fired
   const glaze = bulletGlaze(boosts)
   return {
     stats: modifyFields(boosted, {
@@ -184,8 +193,9 @@ const shoot = (
   deltaMs: number,
 ): World => {
   const { nextEntityId } = model
-  const { player, boosts } = seatStateAt(model, slot)
-  const load = loadOf(boosts, gun)
+  const seat = seatStateAt(model, slot)
+  const { player, boosts } = seat
+  const load = loadOf(seat, gun)
   const { stats, weapon } = load
   const muzzle = addVectors(
     player,
@@ -570,8 +580,9 @@ export const aimTracers: {
     seed: number,
     firstId: number,
   ): Seeded<ReadonlyArray<Bullet>> => {
-    const { player, boosts } = seatStateAt(model, slot)
-    const load = loadOf(boosts, heldGun(player.arsenal))
+    const seat = seatStateAt(model, slot)
+    const { player } = seat
+    const load = loadOf(seat, heldGun(player.arsenal))
     const { stats } = load
     const muzzle = addVectors(
       player,
