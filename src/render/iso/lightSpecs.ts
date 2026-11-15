@@ -21,9 +21,10 @@ import { CELLAR_ROOM_ID } from '../../world/level/plan'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { stationCenterOf } from '../../world/stations/stationSpots'
+import { CHANDELIER_SHAPES } from '../room/diningArt'
 import { coverBlocks } from '../room/roomCover'
 import { type Mood, moodOf } from './mood'
-import { UNIT, zOf } from './space'
+import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space'
 
 // NOTE: what lights a spot where no lamp reaches, as a share of the art's own
 // color (lit surfaces divide light by pi). Low, so each room's light and
@@ -85,53 +86,80 @@ export type FlameSpec = Readonly<{
   kind: FlameKind
   // NOTE: where it stands on the game's map, in game pixels.
   spot: Vector
+  // NOTE: where its light hangs, in world units.
   x: number
+  y: number
   z: number
-  height: number
   color: number
   intensity: number
   range: number
   seed: number
 }>
 
+// NOTE: a flame's light, standing over the foot of the sprite it burns in
+// (`standingPointOf`): `rise` up the camera's up and `out` toward the lens,
+// in world units, so it sits in the flame as the camera draws it.
 type FlameLook = Readonly<{
-  height: number
+  rise: number
+  out: number
   color: number
   intensity: number
   range: number
 }>
 
 const FLAME_LOOKS: Readonly<Record<FlameKind, FlameLook>> = {
-  Candle: { height: 1.5, color: 0xffb35a, intensity: 11, range: 6 },
-  Hearth: { height: 0.55, color: 0xff7a2e, intensity: 22, range: 8 },
-  Sconce: { height: 1.3, color: 0xffc070, intensity: 3.5, range: 4 },
-  Oven: { height: 0.45, color: 0xff5a2a, intensity: 7, range: 4.5 },
-  Chandelier: { height: 2.4, color: 0xffd890, intensity: 26, range: 9 },
-  Bulb: { height: 2.2, color: 0xfff0c8, intensity: 36, range: 12 },
+  Candle: { rise: 0.7, out: 1.32, color: 0xffb35a, intensity: 11, range: 6 },
+  Hearth: { rise: -0.14, out: 0.7, color: 0xff7a2e, intensity: 22, range: 8 },
+  Sconce: { rise: 1.41, out: 0.72, color: 0xffc070, intensity: 3.5, range: 4 },
+  Oven: { rise: 0.01, out: 0.5, color: 0xff5a2a, intensity: 7, range: 4.5 },
+  Chandelier: {
+    rise: 5.03,
+    out: 0.05,
+    color: 0xffd890,
+    intensity: 26,
+    range: 9,
+  },
+  Bulb: { rise: 1.03, out: 1.94, color: 0xfff0c8, intensity: 36, range: 12 },
 }
 
-type FlameSpot = Readonly<{ kind: FlameKind; spot: Vector }>
+// NOTE: the hung chandelier's sprite's bottom edge under the gap's top: the
+// row it stands on overhead, less OVERHEAD_FOOT_PX.
+const HUNG_BOTTOM = Array.reduce(CHANDELIER_SHAPES.Hung, 0, (most, shape) =>
+  shape._tag === 'Rect' ? Math.max(most, shape.y + shape.height) : most,
+)
+
+// NOTE: `spot` is where it burns on the game's map; `footY` the row its
+// sprite stands on.
+type FlameSpot = Readonly<{ kind: FlameKind; spot: Vector; footY: number }>
 
 const flameSpotsOf = (level: Level): ReadonlyArray<FlameSpot> => [
   ...Array.map(coverBlocks(level, 'i'), box => ({
     kind: 'Candle' as const,
     spot: { x: box.x + box.width / 2, y: box.y + box.height },
+    footY: box.y + box.height,
   })),
   ...Array.flatMap(coverBlocks(level, 'F'), box => [
     {
       kind: 'Hearth' as const,
       spot: { x: box.x + box.width / 2, y: box.y + box.height + 4 },
+      footY: box.y + box.height,
     },
     // NOTE: the sconces either side of the hearth (sconceShapes).
-    { kind: 'Sconce' as const, spot: { x: box.x - 15, y: box.y + 2 } },
+    {
+      kind: 'Sconce' as const,
+      spot: { x: box.x - 15, y: box.y + 2 },
+      footY: box.y + box.height,
+    },
     {
       kind: 'Sconce' as const,
       spot: { x: box.x + box.width + 19, y: box.y + 2 },
+      footY: box.y + box.height,
     },
   ]),
   ...Array.map(coverBlocks(level, 'G'), box => ({
     kind: 'Oven' as const,
     spot: { x: box.x + box.width / 2, y: box.y + box.height + 2 },
+    footY: box.y + box.height,
   })),
   ...Option.match(gapBoxOf(level), {
     onNone: () => [],
@@ -142,12 +170,15 @@ const flameSpotsOf = (level: Level): ReadonlyArray<FlameSpot> => [
           x: (gap.left + gap.right) / 2,
           y: gap.top - CHANDELIER_RULES.hungRisePx,
         },
+        footY: gap.top + HUNG_BOTTOM + OVERHEAD_FOOT_PX,
       },
     ],
   }),
   ...Option.match(stationCenterOf(level, 'Bulb'), {
     onNone: () => [],
-    onSome: center => [{ kind: 'Bulb' as const, spot: center }],
+    onSome: center => [
+      { kind: 'Bulb' as const, spot: center, footY: center.y },
+    ],
   }),
 ]
 
@@ -158,14 +189,22 @@ export const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
   if (cached !== undefined) {
     return cached
   }
-  const specs = Array.map(flameSpotsOf(level), ({ kind, spot }, index) => ({
-    kind,
-    spot,
-    x: spot.x * UNIT,
-    z: zOf(spot.y),
-    seed: index * 2.17,
-    ...FLAME_LOOKS[kind],
-  }))
+  const specs = Array.map(
+    flameSpotsOf(level),
+    ({ kind, spot, footY }, index) => {
+      const { rise, out, color, intensity, range } = FLAME_LOOKS[kind]
+      return {
+        kind,
+        spot,
+        x: spot.x * UNIT,
+        ...standingPointOf({ footY, rise, out }),
+        color,
+        intensity,
+        range,
+        seed: index * 2.17,
+      }
+    },
+  )
   flameSpecCache.set(level, specs)
   return specs
 }
@@ -386,13 +425,12 @@ export const lightsFrameOf = (
     (isDark ? cellCount : 0) +
     (isInDark ? 2 : 0)
   const specs = flameSpecsOf(level)
-  const vx = viewer.x * UNIT
-  const vz = zOf(viewer.y)
+  // NOTE: by the game's map, where the flames burn.
   const nearest = pipe(
     Array.map(specs, (spec, index) => ({
       index,
       isLit: isFlameLit(world, spec.kind),
-      distance: Math.hypot(spec.x - vx, spec.z - vz),
+      distance: Math.hypot(spec.spot.x - viewer.x, spec.spot.y - viewer.y),
     })),
     Array.filter(({ isLit }) => isLit),
     Array.sort(

@@ -90,7 +90,14 @@ import {
   pickupRingOf,
   pickupSpinOf,
 } from './powerups'
-import { PITCH, STRETCH, UNIT, canvasStepOf, zOf } from './space'
+import {
+  OVERHEAD_FOOT_PX,
+  PITCH,
+  UNIT,
+  canvasStepOf,
+  standingPointOf,
+  zOf,
+} from './space'
 import { FAR_KEY, stormKeyOf, stormOf, stormTilesOf } from './storm'
 import { Textures, colorOf } from './textures'
 import { VoxelBatch } from './voxels'
@@ -124,6 +131,16 @@ const IS_VOXEL = !new URLSearchParams(window.location.search).has('billboards')
 const BLAST_LIGHT_COLOR = 0xffa850
 const BLAST_LIGHT_PEAK = 60
 const BLAST_LIGHT_REACH = 2.5
+
+// NOTE: where the player's lamp, the muzzle flash's light and its glowing
+// ball, and a blast's light stand over their foot (`standingPointOf`), in
+// world units up the camera's up and toward the lens.
+const LAMP_AT = { rise: 0.75, out: 1.41 }
+const FLASH_AT = { rise: 0.42, out: 0.8 }
+const MUZZLE_AT = { rise: 0.38, out: 0.71 }
+const BLAST_AT = { rise: 0.56, out: 1.06 }
+// NOTE: how far ahead of the player the muzzle is, in game pixels.
+const MUZZLE_REACH_PX = 9
 
 // NOTE: whatever floats overhead stands this far over its own bottom edge,
 // so it never sinks into what it hangs over.
@@ -576,7 +593,7 @@ export class IsoScene {
             alpha,
           },
         ],
-        bottomOf(leaf) + 2,
+        bottomOf(leaf) + OVERHEAD_FOOT_PX,
         OVERHEAD_HOVER,
         1,
       )
@@ -608,8 +625,8 @@ export class IsoScene {
 
     // THE LIGHTS
     const px = player.x * UNIT
-    const pz = zOf(player.y)
-    this.lamp.position.set(px, 1.6, pz)
+    const lampAt = standingPointOf({ footY: player.y, ...LAMP_AT })
+    this.lamp.position.set(px, lampAt.y, lampAt.z)
     const lights = lookLightsOf(
       lightsFrameOf({
         world: model,
@@ -633,11 +650,13 @@ export class IsoScene {
     }
     // NOTE: no lightning reaches the dark cellar's flashlight.
     this.storm.intensity = lights.isInDark ? 0 : STORM_LIFT * mood.strike
-    const muzzleX = px + player.facing.x * 0.9
-    const muzzleZ = pz + player.facing.y * 0.9 * STRETCH
-    this.flash.position.set(muzzleX, 0.9, muzzleZ)
+    const muzzleX = (player.x + player.facing.x * MUZZLE_REACH_PX) * UNIT
+    const muzzleFoot = player.y + player.facing.y * MUZZLE_REACH_PX
+    const flashAt = standingPointOf({ footY: muzzleFoot, ...FLASH_AT })
+    const muzzleAt = standingPointOf({ footY: muzzleFoot, ...MUZZLE_AT })
+    this.flash.position.set(muzzleX, flashAt.y, flashAt.z)
     this.flash.intensity = 24 * flashLevel
-    this.muzzle.position.set(muzzleX, 0.8, muzzleZ)
+    this.muzzle.position.set(muzzleX, muzzleAt.y, muzzleAt.z)
     this.muzzle.scale.set(flashLevel, flashLevel, flashLevel)
     if (this.muzzleMaterial.emissive !== undefined) {
       this.muzzleMaterial.emissive.strength = 8 * flashLevel
@@ -749,7 +768,8 @@ export class IsoScene {
       const level = blastLightOf(blast)
       if (level > brightest) {
         brightest = level
-        this.blastLight.position.set(blast.x * UNIT, 1.2, zOf(blast.y))
+        const blastAt = standingPointOf({ footY: blast.y, ...BLAST_AT })
+        this.blastLight.position.set(blast.x * UNIT, blastAt.y, blastAt.z)
         this.blastLight.range = Math.max(
           3,
           blast.radius * UNIT * BLAST_LIGHT_REACH,
