@@ -56,6 +56,15 @@ const lit = (options: ConstructorParameters<typeof Material3D>[0]) =>
     ...options,
   })
 
+// NOTE: a fading body's blocks, blended but still writing their depth, so
+// its front faces (drawn first, voxelShape.ts) hide the tops and sides
+// behind them and it fades as the flat sprite did, never showing its insides.
+const fadedOf = (sheet: Texture, alpha: number): Material3D => {
+  const material = lit({ baseColorTexture: sheet, alphaMode: 'blend', alpha })
+  material.state.depthMask = true
+  return material
+}
+
 // NOTE: mutable on purpose: it pools pixi's own batch slots and caches each
 // sprite's blocks for the life of the renderer.
 export class VoxelBatch {
@@ -253,11 +262,7 @@ export class VoxelBatch {
       Array.from({ length: FADE_STEPS + 1 }, (_, at) =>
         at === FADE_STEPS
           ? lit({ baseColorTexture: sheet })
-          : lit({
-              baseColorTexture: sheet,
-              alphaMode: 'blend',
-              alpha: at / FADE_STEPS,
-            }),
+          : fadedOf(sheet, at / FADE_STEPS),
       )
     this.sheetMaterials.set(sheet, steps)
     return steps[step] ?? lit({ baseColorTexture: sheet })
