@@ -220,11 +220,23 @@ export type FillSpec = Readonly<{
   range: number
   // NOTE: bright at its middle at a share of 1.
   fullIntensity: number
+  // NOTE: the floor its cone can reach, in game pixels: the room, and the
+  // little its cone's spare degrees spill past the walls.
+  pool: RoomBox
 }>
 
 type RoomBox = Level['rooms'][number]['box']
 
+// NOTE: the cone takes in the room's corners and this many degrees more.
+const FILL_SPARE_DEGREES = 6
+
 const toDegrees = (radians: number): number => (radians * 180) / Math.PI
+
+// NOTE: how far past the room's corners the cone's spare degrees reach on
+// the floor, in game pixels, from a corner as far as `slant`: the arc they
+// sweep there, doubled for the slant it strikes the floor at.
+const spillOf = (slant: number): number =>
+  (2 * slant * Math.tan((FILL_SPARE_DEGREES * Math.PI) / 180)) / UNIT
 
 export const fillSpecOf = (room: Level['rooms'][number]): FillSpec => {
   const { left, top, right, bottom } = room.box
@@ -264,16 +276,23 @@ export const fillSpecOf = (room: Level['rooms'][number]): FillSpec => {
   const farthest = Array.reduce(corners, 0, (most, { length }) =>
     Math.max(most, length),
   )
+  const spill = spillOf(farthest)
   return {
     roomId: room.id,
     from,
     to: { x, y: 0, z },
     color: ROOM_TINTS[room.id] ?? DEFAULT_TINT,
-    coneAngle: toDegrees(widest) + 6,
+    coneAngle: toDegrees(widest) + FILL_SPARE_DEGREES,
     range: farthest * 1.4,
     // NOTE: share * pi * distance squared, over the slant it strikes the
     // floor at.
     fullIntensity: (FILL_GAIN * Math.PI * reach * reach * reach) / height,
+    pool: {
+      left: left - spill,
+      top: top - spill,
+      right: right + spill,
+      bottom: bottom + spill,
+    },
   }
 }
 

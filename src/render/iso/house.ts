@@ -34,6 +34,7 @@ import {
   drawnLeafOf,
   standCutout,
 } from './billboards'
+import type { ViewBox } from './cull'
 import { type Leaf, flatten, rectKey } from './flatten'
 import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
 import { FlatPainter } from './painter'
@@ -532,6 +533,10 @@ const bakePiece = (
 // NOTE: every tall piece and fern casts through a stand-in: its art baked
 // into one texture and cut out upright on a plain mesh at its foot. Baked
 // again whenever more images have loaded, so no piece is left without one.
+// NOTE: a shadow stand-in and the box on the game's map it stands over, so
+// the scene can leave it out while it lies far off screen.
+export type Caster = Readonly<{ mesh: Mesh3D; box: ViewBox }>
+
 export const furnitureCastersOf = (
   input: Readonly<{
     app: Application
@@ -540,7 +545,10 @@ export const furnitureCastersOf = (
     pieces: ReadonlyArray<TallCover>
     plants: ReadonlyArray<Plant>
   }>,
-): ReadonlyArray<Cutout['texture']> => {
+): Readonly<{
+  textures: ReadonlyArray<Cutout['texture']>
+  casters: ReadonlyArray<Caster>
+}> => {
   const { app, textures, parent, pieces, plants } = input
   const baked = Array.getSomes(
     Array.map(pieces, piece => bakePiece({ app, textures, piece })),
@@ -549,8 +557,8 @@ export const furnitureCastersOf = (
     ...baked,
     ...Array.map(plants, ({ caster }) => caster),
   ]
-  Array.forEach(cutouts, cutout => {
-    standCutout({
+  const casters = Array.map(cutouts, cutout => ({
+    mesh: standCutout({
       parent,
       material: new Material3D({
         baseColorTexture: cutout.texture,
@@ -559,7 +567,16 @@ export const furnitureCastersOf = (
         doubleSided: true,
       }),
       cutout,
-    })
-  })
-  return Array.map(baked, ({ texture }) => texture)
+    }),
+    box: cutoutBoxOf(cutout),
+  }))
+  return { textures: Array.map(baked, ({ texture }) => texture), casters }
 }
+
+// NOTE: where a cutout stands on the game's map, in game pixels.
+export const cutoutBoxOf = (cutout: Cutout): ViewBox => ({
+  left: cutout.left,
+  top: cutout.top,
+  right: cutout.left + cutout.width,
+  bottom: Math.max(cutout.top + cutout.height, cutout.footY),
+})

@@ -2,9 +2,16 @@
 // Graphics, and each image gets a pooled Sprite, in the shapes' own order.
 // A floor layer shows what it paints on a plane over the floor.
 
-import { Match } from 'effect'
+import { Array, Match, Option } from 'effect'
 import type { Canvas } from 'foldkit'
-import { type Application, Container, Graphics, Matrix, Sprite } from 'pixi.js'
+import {
+  type Application,
+  Container,
+  Graphics,
+  Matrix,
+  Sprite,
+  type Texture,
+} from 'pixi.js'
 
 import {
   ContainerTexture,
@@ -179,30 +186,39 @@ export class FlatPainter {
   }
 }
 
-// NOTE: a floor-sized texture painted from shapes in level pixels, on a plane
-// just above the floor. `lift` keeps the layers from fighting. A lit layer
-// takes the room's light (it sinks into the cellar's dark); an unlit one
-// glows of itself (the rings, the sights).
-export class FloorLayer {
-  readonly mesh: Mesh3D
-  private readonly painter: FlatPainter
-  // NOTE: the layer's picture of the level, one texel a game pixel from its
-  // top left corner, which the walls' tops wear too (house.ts).
+// NOTE: a floor-sized picture painted from shapes in level pixels, one
+// texel a game pixel from the level's top left corner, with no plane of its
+// own. It is painted in coats, each its own shapes, over an optional base
+// picture, so a layer that changes every frame (what has landed) can share
+// one picture with one that seldom does (the decals) and one that never does
+// (the room's art).
+export class FloorPicture {
   readonly texture: ContainerTexture
+  private readonly coats: ReadonlyArray<FlatPainter>
 
   constructor(
     input: Readonly<{
       app: Application
       textures: Textures
       level: Level
-      lift: number
-      isLit: boolean
+      coats?: number
+      base?: Texture
     }>,
   ) {
-    const { app, textures, level, lift, isLit } = input
-    this.painter = new FlatPainter(textures)
+    const { app, textures, level, coats = 1, base } = input
+    this.coats = Array.makeBy(coats, () => new FlatPainter(textures))
     const frame = new Container()
-    frame.addChild(this.painter.container)
+    if (base !== undefined) {
+      // NOTE: a ContainerTexture is stored the other way up from an image,
+      // so its sprite is turned over in place to land upright.
+      const under = new Sprite(base)
+      under.position.set(level.left, level.top + level.height)
+      under.scale.set(1, -1)
+      frame.addChild(under)
+    }
+    for (const coat of this.coats) {
+      frame.addChild(coat.container)
+    }
     frame.position.set(-level.left, -level.top)
     this.texture = new ContainerTexture({
       container: frame,
@@ -211,15 +227,67 @@ export class FloorLayer {
       renderer: app.renderer,
     })
     this.texture.source.scaleMode = 'nearest'
+  }
+
+  // NOTE: one coat painted, and the picture drawn again only by `render`, so
+  // a frame that paints several coats draws the picture once.
+  paintCoat(coat: number, leaves: ReadonlyArray<Leaf>): void {
+    Option.map(Array.get(this.coats, coat), painter => {
+      painter.paintLeaves(leaves)
+    })
+  }
+
+  paint(shapes: ReadonlyArray<Canvas.Shape>): void {
+    this.paintLeaves(flatten(shapes))
+  }
+
+  paintLeaves(leaves: ReadonlyArray<Leaf>): void {
+    this.paintCoat(0, leaves)
+    this.render()
+  }
+
+  render(): void {
+    this.texture.render()
+  }
+
+  destroy(): void {
+    this.texture.destroy(true)
+  }
+}
+
+// NOTE: a floor picture on a plane just above the floor. `lift` keeps the
+// layers from fighting. A lit layer takes the room's light (it sinks into the
+// cellar's dark); an unlit one glows of itself (the rings, the sights). Each
+// plane over the floor is shaded for every pixel it covers, so the lit
+// layers share one plane: a lit plane costs as much as every light reaching
+// the screen.
+export class FloorLayer {
+  readonly mesh: Mesh3D
+  readonly picture: FloorPicture
+
+  constructor(
+    input: Readonly<{
+      app: Application
+      textures: Textures
+      level: Level
+      lift: number
+      isLit: boolean
+      coats?: number
+      base?: Texture
+    }>,
+  ) {
+    const { level, lift, isLit } = input
+    this.picture = new FloorPicture(input)
+    const texture = this.picture.texture
     const material = isLit
       ? new Material3D({
-          baseColorTexture: this.texture,
+          baseColorTexture: texture,
           roughness: 1,
           metallic: 0,
           specular: { factor: 0 },
           alphaMode: lift === 0 ? 'opaque' : 'blend',
         })
-      : new FlatMaterial({ baseColorTexture: this.texture, alphaMode: 'blend' })
+      : new FlatMaterial({ baseColorTexture: texture, alphaMode: 'blend' })
     this.mesh = new Mesh3D({
       geometry: new PlaneGeometry({
         width: level.width * UNIT,
@@ -237,16 +305,11 @@ export class FloorLayer {
     })
   }
 
-  paint(shapes: ReadonlyArray<Canvas.Shape>): void {
-    this.paintLeaves(flatten(shapes))
-  }
-
   paintLeaves(leaves: ReadonlyArray<Leaf>): void {
-    this.painter.paintLeaves(leaves)
-    this.texture.render()
+    this.picture.paintLeaves(leaves)
   }
 
   destroy(): void {
-    this.texture.destroy(true)
+    this.picture.destroy()
   }
 }
