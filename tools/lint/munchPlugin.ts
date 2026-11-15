@@ -616,6 +616,36 @@ const keyActionOnce = defineRule({
   },
 })
 
+// NOTE: anything standing in the 3D world, a sprite, a voxel body, or a
+// light, stands through `standingPointOf` (src/render/iso/space.ts), given
+// the game pixel its sprite draws. The muzzle flash sat off the gun for weeks
+// once the game went 3D, placed by a height tuned by eye; a module that takes
+// the camera's up or its way toward the lens is about to tune one again.
+const STANDING_BASIS = new Set(['CAMERA_UP', 'TOWARD_CAMERA'])
+
+const standThroughSpace = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Stand anything in the 3D world through standingPointOf, never a height tuned along the camera.',
+    },
+  },
+  create(context) {
+    return {
+      ImportSpecifier(node) {
+        if (STANDING_BASIS.has(importedName(node))) {
+          context.report({
+            node,
+            message:
+              'Stand it through standingPointOf in src/render/iso/space.ts, given the game pixel its sprite draws, not a height tuned along the camera (AGENTS.md "Rules").',
+          })
+        }
+      },
+    }
+  },
+})
+
 // NOTE: the Model fields a child Block lives on through its Binding
 // (src/app/bindings.ts, the Profile's own in
 // src/features/profile/composition.ts, the lobby's in
@@ -1043,6 +1073,7 @@ export default definePlugin({
     'tap-by-click': tapByClick,
     'seat-action-once': seatActionOnce,
     'key-action-once': keyActionOnce,
+    'stand-through-space': standThroughSpace,
     'no-binding-field-write': noBindingFieldWrite,
     'live-test-note': liveTestNote,
     'disable-needs-reason': disableNeedsReason,

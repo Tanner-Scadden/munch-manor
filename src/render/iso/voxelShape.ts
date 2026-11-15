@@ -11,7 +11,7 @@
 
 import { formOf } from '../../art/carve'
 import type { Affine } from './flatten'
-import { CAMERA_UP, PITCH, TOWARD_CAMERA, UNIT, zOf } from './space'
+import { CAMERA_UP, PITCH, TOWARD_CAMERA, UNIT, standingPointOf } from './space'
 
 // NOTE: one pixel of depth sinks this far toward the lens's back, in game
 // pixels along the camera's view, while it rises one along its up: together
@@ -675,8 +675,6 @@ export const slabMatrixOf = (
   const isTurned = Math.abs(matrix.b) > 1e-6 || Math.abs(matrix.c) > 1e-6
   const x = isTurned ? originX : Math.round(originX)
   const y = isTurned ? originY : Math.round(originY)
-  const foot = Math.round(footY)
-  const rise = (foot - y + Math.round(hover)) * UNIT
   // NOTE: a step across the sprite in the world, and a step up it (the
   // geometry's y runs up, the sprite's rows down).
   const column = [
@@ -690,11 +688,13 @@ export const slabMatrixOf = (
     TOWARD_CAMERA.y * UNIT * depth,
     TOWARD_CAMERA.z * UNIT * depth,
   ]
-  const translation = [
-    x * UNIT + CAMERA_UP.x * rise + TOWARD_CAMERA.x * nudge,
-    CAMERA_UP.y * rise + TOWARD_CAMERA.y * nudge,
-    zOf(foot) + CAMERA_UP.z * rise + TOWARD_CAMERA.z * nudge,
-  ]
+  const at = standingPointOf({
+    x,
+    footY: Math.round(footY),
+    atY: y - Math.round(hover),
+    out: nudge,
+  })
+  const translation = [at.x, at.y, at.z]
   if (spin !== 0) {
     // NOTE: the whole map turned about the sprite's own upright (the lens's
     // up) through its middle column, so it turns like a coin held up to the

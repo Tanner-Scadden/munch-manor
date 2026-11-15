@@ -640,7 +640,7 @@ const STANCE_ART: Readonly<Record<ActStance, StanceArt>> = {
 // tool held in it (src/render/actionView.ts): its pixel's top left. Every
 // stance is the standing frame's twelve rows: a blank row, the face, the
 // torso, and two rows of legs, or kneeling, two blank rows and one of legs.
-const FRAME_ROWS = 1 + FACE.length + 3 + 2
+export const FRAME_ROWS = 1 + FACE.length + 3 + 2
 
 export const frontHandOf = (
   stance: ActStance,

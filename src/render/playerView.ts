@@ -11,7 +11,13 @@ import {
   frameAt,
   group,
 } from '../art/sprite'
-import { type DrawnGunSkin, gunSprite, knifeSprite } from '../art/sprites/guns'
+import {
+  type DrawnGunSkin,
+  gunSprite,
+  gunTipOf,
+  knifeSprite,
+  turnAngleOf,
+} from '../art/sprites/guns'
 import { masterySkinIn } from '../domain/mastery'
 import {
   MUZZLE_FLASH_BIG_MS,
@@ -68,6 +74,7 @@ import {
   reloadMotionOf,
   tossOf,
 } from './actionView'
+import { type Drawable, glowOn } from './depth'
 import {
   AIMING_UP,
   QUARTER_TURN,
@@ -226,6 +233,13 @@ const muzzleFlashShapes = (
 
 export const GUN_HOLD_PX = 2
 
+// NOTE: the pixel a gun is held by, ahead of the body: where its sprite's
+// pivot is drawn, and where the muzzle flash reads the barrel's tip from.
+const gunHoldOf = (player: Player, body: Vector): Vector => ({
+  x: Math.round(body.x + player.facing.x * GUN_HOLD_PX),
+  y: Math.round(body.y + player.facing.y * GUN_HOLD_PX),
+})
+
 // NOTE: the Clang Pan sweeps across the front as it swings: from one side
 // to the other over the swing, then back at rest.
 const SWING_TURN = 1.3
@@ -343,10 +357,11 @@ const standingShapes = (
     Math.atan2(player.facing.y, player.facing.x) +
     tilt +
     Option.match(toss, { onNone: () => 0, onSome: ({ spin }) => spin })
+  const hold = gunHoldOf(player, { x: bodyX, y: bodyY })
   const gunAt = {
-    x: Math.round(bodyX + player.facing.x * GUN_HOLD_PX) + rattle,
+    x: hold.x + rattle,
     y:
-      Math.round(bodyY + player.facing.y * GUN_HOLD_PX) -
+      hold.y -
       Option.match(toss, { onNone: () => 0, onSome: ({ lift }) => lift }),
   }
   const gun = group({
@@ -468,10 +483,7 @@ const downSwingShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
       return recoil > 0
         ? [
             group({
-              translate: {
-                x: Math.round(player.x + player.facing.x * GUN_HOLD_PX),
-                y: Math.round(player.y + player.facing.y * GUN_HOLD_PX),
-              },
+              translate: gunHoldOf(player, player),
               shapes: gunSprite(
                 kind,
                 tier,
@@ -600,22 +612,54 @@ const knifeSlashShapes = (player: Player): ReadonlyArray<Canvas.Shape> =>
     ],
   })
 
-export const playerFlashShapes = (
-  player: Player,
-): ReadonlyArray<Canvas.Shape> => {
-  const { tier, stats, bodyX, bodyY } = playerPose(player)
-  const flashReach = stats.muzzleReach + 2
+// NOTE: how far past the barrel's tip pixel the flash's middle pixel sits,
+// along the way the gun is drawn turned.
+const FLASH_PAST_TIP_PX = 2
+
+// NOTE: the pixel a muzzle flash centers on for a gun held by pixel `hold`
+// and aimed at `angle`: just past the tip of the gun as its art draws it at
+// that turn (`gunTipOf`), whatever the gun's length. Bullets leave from
+// `muzzleReach` (src/world/step/firing.ts), a rule of play the art never
+// moves.
+export const flashPointOf = ({
+  hold,
+  kind,
+  angle,
+}: Readonly<{ hold: Vector; kind: WeaponKind; angle: number }>): Vector => {
+  const tip = gunTipOf(kind, angle)
+  const turn = turnAngleOf(angle)
+  return {
+    x: hold.x + tip.x + Math.round(Math.cos(turn) * FLASH_PAST_TIP_PX),
+    y: hold.y + tip.y + Math.round(Math.sin(turn) * FLASH_PAST_TIP_PX),
+  }
+}
+
+// NOTE: the pixel a player's muzzle flash centers on, on their own plane.
+export const muzzlePointOf = (player: Player): Vector => {
+  const { weapon, bodyX, bodyY } = playerPose(player)
+  return flashPointOf({
+    hold: gunHoldOf(player, { x: bodyX, y: bodyY }),
+    kind: weapon,
+    angle: Math.atan2(player.facing.y, player.facing.x),
+  })
+}
+
+const playerFlashShapes = (player: Player): ReadonlyArray<Canvas.Shape> => {
+  const { tier, stats } = playerPose(player)
+  const muzzle = muzzlePointOf(player)
   return [
-    ...muzzleFlashShapes(
-      player,
-      stats,
-      tier,
-      Math.round(bodyX + player.facing.x * flashReach),
-      Math.round(bodyY + player.facing.y * flashReach),
-    ),
+    ...muzzleFlashShapes(player, stats, tier, muzzle.x, muzzle.y),
     ...knifeSlashShapes(player),
   ]
 }
+
+// NOTE: the flash and the slash stand on the player's own plane, as the gun
+// does, so in 3D they sit on the gun's tip at any angle.
+export const playerFlashDrawable = (player: Player): Drawable =>
+  glowOn({
+    bodyFootY: playerFootY(player),
+    shapes: playerFlashShapes(player),
+  })
 
 // NOTE: how bright the muzzle's flash is now, 1 the moment a shot leaves and
 // 0 once the flash the 2D art draws is gone, for the light it throws.

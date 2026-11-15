@@ -40,6 +40,7 @@ import {
 import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 
 import type { Model } from '../../app/model'
+import { FRAME_ROWS } from '../../art/appearance'
 import { isFlashShape } from '../../art/sprite'
 import { type BrowserError, toBrowserError } from '../../shared/describeError'
 import { isChandelierDown } from '../../world/dining/chandelier'
@@ -53,14 +54,14 @@ import {
   groundParticleShapes,
 } from '../effectsView'
 import { houseRattleOf } from '../juice'
-import { muzzleFlashLevel } from '../playerView'
+import { muzzleFlashLevel, muzzlePointOf, playerFootY } from '../playerView'
 import { hungChandelierShapes } from '../room/room'
 import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { airOf } from './air'
 import { BillboardPool, BodyCasters, rimUp } from './billboards'
 import { crittersOf } from './critters'
 import { isNearView, viewBoxOf } from './cull'
-import { blastLightOf, blastPiecesOf } from './explosions'
+import { ballMiddleOf, blastLightOf, blastPiecesOf } from './explosions'
 import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
@@ -136,15 +137,17 @@ const BLAST_LIGHT_COLOR = 0xffa850
 const BLAST_LIGHT_PEAK = 60
 const BLAST_LIGHT_REACH = 2.5
 
-// NOTE: where the player's lamp, the muzzle flash's light and its glowing
-// ball, and a blast's light stand over their foot (`standingPointOf`), in
-// world units up the camera's up and toward the lens.
-const LAMP_AT = { rise: 0.75, out: 1.41 }
-const FLASH_AT = { rise: 0.42, out: 0.8 }
-const MUZZLE_AT = { rise: 0.38, out: 0.71 }
-const BLAST_AT = { rise: 0.56, out: 1.06 }
-// NOTE: how far ahead of the player the muzzle is, in game pixels.
-const MUZZLE_REACH_PX = 9
+// NOTE: the lights that go with a body stand on its pixels
+// (`standingPointOf`), then this many world units toward the lens, so they
+// light its front: the player's lamp on the top of their head, the muzzle flash's on
+// the flash, and a blast's in its fireball's middle.
+const LAMP_OUT = 1.41
+const FLASH_OUT = 0.8
+const BLAST_OUT = 1.06
+
+// NOTE: a glow reaching past its body's foot stands this far under its own
+// bottom edge, so none of it sinks into the floor.
+const GLOW_FOOT_PX = 1
 
 // NOTE: whatever floats overhead stands this far over its own bottom edge,
 // so it never sinks into what it hangs over.
@@ -258,8 +261,6 @@ export class IsoScene {
   // NOTE: the mood's ambient color last set, so it is set only on a change.
   private ambientColor = 0xffffff
   private readonly flash: PointLight
-  private readonly muzzle: Mesh3D
-  private readonly muzzleMaterial: Material3D
   private readonly tracerMaterial: Material3D
   // NOTE: a game pixel across: the glowing core of the bullet the floor
   // draws, the bloom its glow (owner, 2026-11-14: bullets were massive).
@@ -324,16 +325,6 @@ export class IsoScene {
       baseColor: 0x000000,
       emissive: { color: 0xffb040, strength: 6 },
     })
-    this.muzzleMaterial = new Material3D({
-      baseColor: 0x000000,
-      emissive: { color: 0xfff0a0, strength: 0 },
-    })
-    this.muzzle = new Mesh({
-      geometry: new SphereGeometry({ radius: 0.28 }),
-      material: this.muzzleMaterial,
-      castShadow: false,
-    })
-    root.addChild(this.muzzle)
     this.wallMaterial = new ToonMaterial({
       baseColor: 0x5a4458,
       bands: 3,
@@ -495,6 +486,19 @@ export class IsoScene {
     this.bodies.begin()
     this.voxels.begin()
     for (const drawable of strata.standing) {
+      // NOTE: a muzzle flash glows on its body's own plane, so it sits on
+      // the gun's tip; it lights, casts, and takes no rim. Aimed down the
+      // screen it reaches past the body's foot, so there it stands on its
+      // own bottom edge instead, in front of the body, never under the floor.
+      if (drawable.rank === 'Glow') {
+        const glow = flatten(drawable.shapes)
+        let footY = drawable.footY
+        for (const leaf of glow) {
+          footY = Math.max(footY, bottomOf(leaf) + GLOW_FOOT_PX)
+        }
+        this.glowing.standLeaves(glow, footY, 0, 1)
+        continue
+      }
       if (isCarved(built, drawable)) {
         continue
       }
@@ -667,9 +671,13 @@ export class IsoScene {
     this.voxels.end()
 
     // THE LIGHTS
-    const px = player.x * UNIT
-    const lampAt = standingPointOf({ footY: player.y, ...LAMP_AT })
-    this.lamp.position.set(px, lampAt.y, lampAt.z)
+    const lampAt = standingPointOf({
+      x: player.x,
+      footY: playerFootY(player),
+      atY: playerFootY(player) - FRAME_ROWS,
+      out: LAMP_OUT,
+    })
+    this.lamp.position.set(lampAt.x, lampAt.y, lampAt.z)
     const lights = lookLightsOf(
       lightsFrameOf({
         world: model,
@@ -693,17 +701,15 @@ export class IsoScene {
     }
     // NOTE: no lightning reaches the dark cellar's flashlight.
     this.storm.intensity = lights.isInDark ? 0 : STORM_LIFT * mood.strike
-    const muzzleX = (player.x + player.facing.x * MUZZLE_REACH_PX) * UNIT
-    const muzzleFoot = player.y + player.facing.y * MUZZLE_REACH_PX
-    const flashAt = standingPointOf({ footY: muzzleFoot, ...FLASH_AT })
-    const muzzleAt = standingPointOf({ footY: muzzleFoot, ...MUZZLE_AT })
-    this.flash.position.set(muzzleX, flashAt.y, flashAt.z)
+    const muzzle = muzzlePointOf(player)
+    const flashAt = standingPointOf({
+      x: muzzle.x,
+      footY: Math.max(playerFootY(player), muzzle.y + GLOW_FOOT_PX),
+      atY: muzzle.y,
+      out: FLASH_OUT,
+    })
+    this.flash.position.set(flashAt.x, flashAt.y, flashAt.z)
     this.flash.intensity = 24 * flashLevel
-    this.muzzle.position.set(muzzleX, muzzleAt.y, muzzleAt.z)
-    this.muzzle.scale.set(flashLevel, flashLevel, flashLevel)
-    if (this.muzzleMaterial.emissive !== undefined) {
-      this.muzzleMaterial.emissive.strength = 8 * flashLevel
-    }
     this.drawTracers(model)
 
     this.app.render()
@@ -819,8 +825,13 @@ export class IsoScene {
       const level = blastLightOf(blast)
       if (level > brightest) {
         brightest = level
-        const blastAt = standingPointOf({ footY: blast.y, ...BLAST_AT })
-        this.blastLight.position.set(blast.x * UNIT, blastAt.y, blastAt.z)
+        const blastAt = standingPointOf({
+          x: blast.x,
+          footY: blast.y,
+          atY: blast.y - ballMiddleOf(blast),
+          out: BLAST_OUT,
+        })
+        this.blastLight.position.set(blastAt.x, blastAt.y, blastAt.z)
         this.blastLight.range = Math.max(
           3,
           blast.radius * UNIT * BLAST_LIGHT_REACH,

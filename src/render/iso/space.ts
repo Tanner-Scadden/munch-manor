@@ -82,16 +82,24 @@ export const TOWARD_CAMERA: Vec3 = {
   z: Math.cos(PITCH),
 }
 
-// NOTE: a point standing over game row `footY` as a sprite stands: `rise`
-// world units up the camera's up from the floor there and `out` toward the
-// lens, so a light burns where its sprite draws its flame at this camera
-// (a candle's light, the muzzle flash, the player's lamp).
+// NOTE: the one way anything stands in the world: the game pixel at `x`,
+// `atY` that a sprite standing on row `footY` draws, put up the camera's up
+// from the floor at its foot, so it shows on the very pixel the 2D game drew
+// it on, at its foot's depth; then `out` world units toward the lens, which
+// moves it nearer without moving it on screen. Billboards, voxel bodies, and
+// lights (a candle's, the muzzle flash's, the lamp) all stand through it, so
+// what one body holds never drifts from it. Never place a standing thing
+// with a hand-tuned height: give the pixel it draws on.
 export const standingPointOf = (
-  input: Readonly<{ footY: number; rise: number; out: number }>,
-): Readonly<{ y: number; z: number }> => ({
-  y: input.rise * CAMERA_UP.y + input.out * TOWARD_CAMERA.y,
-  z: zOf(input.footY) + input.rise * CAMERA_UP.z + input.out * TOWARD_CAMERA.z,
-})
+  input: Readonly<{ x: number; footY: number; atY: number; out: number }>,
+): Vec3 => {
+  const rise = (input.footY - input.atY) * UNIT
+  return {
+    x: input.x * UNIT + CAMERA_UP.x * rise + TOWARD_CAMERA.x * input.out,
+    y: CAMERA_UP.y * rise + TOWARD_CAMERA.y * input.out,
+    z: zOf(input.footY) + CAMERA_UP.z * rise + TOWARD_CAMERA.z * input.out,
+  }
+}
 
 // THE CANVAS'S PIXELS
 

@@ -90,6 +90,11 @@ const placed = (
   }
 }
 
+// NOTE: how high the fireball's middle hangs over the blast's row, in game
+// pixels: low, climbing a little as it burns. Its light stands there too.
+export const ballMiddleOf = (blast: Blast): number =>
+  blast.radius * BALL_REACH * 0.45 + progressOf(blast) * 6
+
 export const blastPiecesOf = (blast: Blast): ReadonlyArray<BlastPiece> => {
   const seed = seedOf(blast)
   const roll = (index: number, salt: number): number =>
@@ -98,8 +103,7 @@ export const blastPiecesOf = (blast: Blast): ReadonlyArray<BlastPiece> => {
   const spread = easeOut(progress)
   const reach = blast.radius * BALL_REACH
   const isFlash = blast.ageMs < FLASH_MS
-  // NOTE: the ball hangs low and climbs a little as it burns.
-  const middle = reach * 0.45 + progress * 6
+  const middle = ballMiddleOf(blast)
   const fire = Array.makeBy(FIRE_COUNT, (index): BlastPiece => {
     const turn = roll(index, 1) * Math.PI * 2
     const out = Math.sqrt(roll(index, 2)) * reach * (0.25 + 0.75 * spread)

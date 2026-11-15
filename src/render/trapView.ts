@@ -36,6 +36,7 @@ import type { DoorId, Vector } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'
 import { Trap, type Turret, TurretGun } from '../world/schema/worldSchema'
 import { isBreak } from '../world/waves/waves'
+import { type Drawable, glowOn } from './depth'
 import {
   AIMING_UP,
   FULL_TURN,
@@ -44,7 +45,7 @@ import {
   footShadow,
   placeSprite,
 } from './drawing'
-import { MUZZLE_FLASHES } from './playerView'
+import { MUZZLE_FLASHES, flashPointOf } from './playerView'
 
 // TRAPS
 
@@ -146,6 +147,12 @@ const turretHealthBar = (
   ]
 }
 
+// NOTE: the gnome's gun is held by this pixel, its art turned about it.
+const turretHoldOf = (center: Vector, jolt: number): Vector => ({
+  x: turretFoot(center).x + jolt,
+  y: Math.round(center.y),
+})
+
 const gnomeShapes = (
   center: Vector,
   facing: Vector,
@@ -160,7 +167,7 @@ const gnomeShapes = (
     shapes: GNOME_SPRITES[tone][side],
   })
   const gun = group({
-    translate: { x: foot.x + jolt, y: Math.round(center.y) },
+    translate: turretHoldOf(center, jolt),
     shapes: gunSprite(TURRET_WEAPON, 0, angle),
   })
   return Math.sin(angle) < AIMING_UP ? [gun, body] : [body, gun]
@@ -182,34 +189,64 @@ const turretShapes = (
 const turretOverheadShapes = (
   level: Level,
   turret: Turret,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const center = trapCenter(level, turret)
-  const angle = turretAngle(turret.facing, turret.gun, turret.id, elapsedMs)
-  const reach = WEAPONS[TURRET_WEAPON].muzzleReach + 1
-  const flash = Option.match(msSinceTurretShot(turret.gun), {
-    onNone: () => [],
-    onSome: msSinceShot =>
-      msSinceShot < MUZZLE_FLASH_MS
-        ? MUZZLE_FLASHES[WEAPONS[TURRET_WEAPON].flash](
-            msSinceShot < MUZZLE_FLASH_BIG_MS,
-            Math.round(center.x + Math.cos(angle) * reach),
-            Math.round(center.y + Math.sin(angle) * reach),
-          )
-        : [],
-  })
-  return [...flash, ...turretHealthBar(center, turret.hp, turret.maxHp)]
-}
+): ReadonlyArray<Canvas.Shape> =>
+  turretHealthBar(trapCenter(level, turret), turret.hp, turret.maxHp)
 
 export const trapOverheadShapes: {
-  (level: Level, elapsedMs: number): (trap: Trap) => ReadonlyArray<Canvas.Shape>
-  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+  (level: Level): (trap: Trap) => ReadonlyArray<Canvas.Shape>
+  (trap: Trap, level: Level): ReadonlyArray<Canvas.Shape>
+} = Function.dual(2, (trap: Trap, level: Level): ReadonlyArray<Canvas.Shape> =>
+  Trap.match(trap, {
+    Barricade: () => [],
+    Turret: turret => turretOverheadShapes(level, turret),
+  }),
+)
+
+// NOTE: the gnome's muzzle flash stands on the gnome's own plane, as its gun
+// does, centered just past the gun's drawn tip (`flashPointOf`), so in 3D it
+// moves with the gnome at any angle.
+const turretFlashShapes = (
+  level: Level,
+  turret: Turret,
+  elapsedMs: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(msSinceTurretShot(turret.gun), {
+    onNone: () => [],
+    onSome: msSinceShot => {
+      if (msSinceShot >= MUZZLE_FLASH_MS) {
+        return []
+      }
+      const angle = turretAngle(turret.facing, turret.gun, turret.id, elapsedMs)
+      const flash = flashPointOf({
+        hold: turretHoldOf(
+          trapCenter(level, turret),
+          trapJolt(turret.hitRemainingMs),
+        ),
+        kind: TURRET_WEAPON,
+        angle,
+      })
+      return MUZZLE_FLASHES[WEAPONS[TURRET_WEAPON].flash](
+        msSinceShot < MUZZLE_FLASH_BIG_MS,
+        flash.x,
+        flash.y,
+      )
+    },
+  })
+
+export const trapGlowDrawables: {
+  (level: Level, elapsedMs: number): (trap: Trap) => ReadonlyArray<Drawable>
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Drawable>
 } = Function.dual(
   3,
-  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Drawable> =>
     Trap.match(trap, {
       Barricade: () => [],
-      Turret: turret => turretOverheadShapes(level, turret, elapsedMs),
+      Turret: turret => {
+        const shapes = turretFlashShapes(level, turret, elapsedMs)
+        return Array.isReadonlyArrayNonEmpty(shapes)
+          ? [glowOn({ bodyFootY: trapFootY(level, trap), shapes })]
+          : []
+      },
     }),
 )
 

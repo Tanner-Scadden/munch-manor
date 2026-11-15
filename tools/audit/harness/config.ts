@@ -226,7 +226,15 @@ export const HarnessConfig = Schema.Struct({
   // The player and the guns
   px: MaybeNum,
   py: MaybeNum,
-  gun: Choice(['smg', 'shotgun', 'cooker', 'pan', 'freeze']),
+  gun: Choice([
+    'smg',
+    'shotgun',
+    'cooker',
+    'pan',
+    'freeze',
+    'rifle',
+    'blunderbuss',
+  ]),
   // NOTE: `gun=pan` puts the Clang Pan in the melee slot, in hand. `first`
   // puts a gun in the first slot in place of the pistol, as a player who
   // traded it away carries; `pan` puts the Clang Pan (at `tier`) in the

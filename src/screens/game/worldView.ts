@@ -66,7 +66,7 @@ import {
   reviveRingGroundShapes,
 } from '../../render/partyView'
 import {
-  playerFlashShapes,
+  playerFlashDrawable,
   playerFootY,
   playerShadow,
   playerShapes,
@@ -96,6 +96,7 @@ import { aimSightShapes } from '../../render/sightView'
 import {
   ghostShapes,
   trapFootY,
+  trapGlowDrawables,
   trapOverheadShapes,
   trapShadow,
   trapShapes,
@@ -257,6 +258,7 @@ const standingDrawables = (
       rank: 'Trap',
       shapes: drawTrap(trap),
     })),
+    ...Array.flatMap(model.traps, trapGlowDrawables(level, model.elapsedMs)),
     ...Array.map(model.pickups, (pickup): Drawable => ({
       footY: pickupFootY(pickup),
       rank: 'Pickup',
@@ -286,6 +288,7 @@ const standingDrawables = (
         ]),
       ),
     },
+    ...(isLeadArmed(model) ? [playerFlashDrawable(focusOf(model).player)] : []),
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
     ...pantryDrawables(model),
@@ -313,13 +316,9 @@ const overheadShapes = (
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
-  ...(isLeadArmed(model) ? playerFlashShapes(focusOf(model).player) : []),
   ...hungChandelierShapes(model),
   ...ovenFlameShapes(model),
-  ...Array.flatMap(
-    model.traps,
-    trapOverheadShapes(levelOf(model), model.elapsedMs),
-  ),
+  ...Array.flatMap(model.traps, trapOverheadShapes(levelOf(model))),
   ...Array.flatMap(
     Array.filter(zombies, isInView(levelOf(model))),
     zombieHealthBarShapes,

@@ -2,7 +2,8 @@ import { Array, Function, Option, Record, String, pipe } from 'effect'
 
 import type { MasterySkin } from '../../shared/masteryData'
 import type { GunSkin } from '../../shared/playerData'
-import type { WeaponKind } from '../../world/schema/entitySchema'
+import type { Vector, WeaponKind } from '../../world/schema/entitySchema'
+import { ZERO_VECTOR } from '../../world/step/geometry'
 import {
   type Anchor,
   type Palette,
@@ -232,11 +233,12 @@ const gunPalette = (tier: number, skin: DrawnGunSkin = 'Stock'): Palette =>
     onSome: trim => withTrim(skinPalette(skin), trim),
   })
 
-const rotatedGun = (
-  { pixels, pivot }: GunPixels,
-  palette: Palette,
-  angle: number,
-): Sprite => {
+// NOTE: a gun's pixel map turned to `angle` about its pivot, on a square
+// whose middle pixel (`reach`, `reach`) is the pivot: what its sprite bakes,
+// and where its barrel's tip lands (`gunTipOf`).
+type TurnedGun = Readonly<{ rows: ReadonlyArray<string>; reach: number }>
+
+const turnedGun = ({ pixels, pivot }: GunPixels, angle: number): TurnedGun => {
   const isPointingLeft = Math.cos(angle) < -STRAIGHT_UP_TOLERANCE
   const source = isPointingLeft ? Array.reverse(pixels) : pixels
   const pivotY = isPointingLeft ? pixels.length - 1 - pivot.y : pivot.y
@@ -258,6 +260,15 @@ const rotatedGun = (
       Array.join(''),
     ),
   )
+  return { rows, reach }
+}
+
+const rotatedGun = (
+  gun: GunPixels,
+  palette: Palette,
+  angle: number,
+): Sprite => {
+  const { rows, reach } = turnedGun(gun, angle)
   return spriteShapes(rows, palette, { x: reach, y: reach })
 }
 
@@ -292,18 +303,71 @@ const KNIFE_IN_HAND: GunPixels = {
 
 const KNIFE_TURNS = gunTurns(KNIFE_IN_HAND, GUN_PALETTE)
 
+const TURN_STEP = (Math.PI * 2) / GUN_DIRECTIONS
+
+const turnIndexOf = (angle: number): number =>
+  ((Math.round(angle / TURN_STEP) % GUN_DIRECTIONS) + GUN_DIRECTIONS) %
+  GUN_DIRECTIONS
+
+// NOTE: the angle a gun aimed at `angle` is drawn at: one of its turns.
+export const turnAngleOf = (angle: number): number =>
+  turnIndexOf(angle) * TURN_STEP
+
 const turnAt = (
   turns: Array.NonEmptyReadonlyArray<Sprite>,
   angle: number,
-): Sprite => {
-  const step = (Math.PI * 2) / GUN_DIRECTIONS
-  const index =
-    ((Math.round(angle / step) % GUN_DIRECTIONS) + GUN_DIRECTIONS) %
-    GUN_DIRECTIONS
-  return Option.getOrElse(Array.get(turns, index), () =>
+): Sprite =>
+  Option.getOrElse(Array.get(turns, turnIndexOf(angle)), () =>
     Array.headNonEmpty(turns),
   )
+
+// THE BARREL'S TIP
+
+// NOTE: the pixel of a turned gun that reaches farthest along its turn, the
+// nearest the barrel's line on a tie: as its column and row from the pixel
+// the gun is held by. Read off the very rows its sprite bakes, so the muzzle
+// flash sits on the tip the art draws, whatever the gun's length or pivot.
+const tipOf = (gun: GunPixels, angle: number): Vector => {
+  const { rows, reach } = turnedGun(gun, angle)
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  const best = Array.reduce(
+    rows,
+    { x: 0, y: 0, along: -Infinity, across: Infinity },
+    (most, row, rowIndex) =>
+      Array.reduce(String.split(row, ''), most, (farthest, symbol, col) => {
+        if (symbol === TRANSPARENT) {
+          return farthest
+        }
+        const x = col - reach
+        const y = rowIndex - reach
+        const along = x * cos + y * sin
+        const across = Math.abs(y * cos - x * sin)
+        return along > farthest.along + 1e-9 ||
+          (Math.abs(along - farthest.along) <= 1e-9 && across < farthest.across)
+          ? { x, y, along, across }
+          : farthest
+      }),
+  )
+  return { x: best.x, y: best.y }
 }
+
+// NOTE: every gun's tip at each of its turns, worked out once as the module
+// loads: a lookup on the frame.
+const GUN_TIPS: Readonly<Record<WeaponKind, ReadonlyArray<Vector>>> =
+  Record.map(GUN_PIXELS, gun =>
+    Array.makeBy(GUN_DIRECTIONS, index => tipOf(gun, index * TURN_STEP)),
+  )
+
+export const gunTipOf: {
+  (angle: number): (kind: WeaponKind) => Vector
+  (kind: WeaponKind, angle: number): Vector
+} = Function.dual(2, (kind: WeaponKind, angle: number): Vector =>
+  Option.getOrElse(
+    Array.get(GUN_TIPS[kind], turnIndexOf(angle)),
+    () => ZERO_VECTOR,
+  ),
+)
 
 // NOTE: a skinned gun's turns are built the first time they are held, as the
 // player's own look is. The stock guns are built when this module loads, so
