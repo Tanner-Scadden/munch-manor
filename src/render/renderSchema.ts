@@ -142,3 +142,12 @@ export const noActionWatch: ActionWatch = {
   trapIds: [],
   working: [],
 }
+
+// NOTE: the blow that cleared the wave, where it landed and how long ago on
+// the display's clock, while the camera glides to it (src/render/cine.ts).
+export const Finisher = Schema.Struct({
+  x: Schema.Finite,
+  y: Schema.Finite,
+  ageMs: Schema.Finite,
+})
+export type Finisher = typeof Finisher.Type

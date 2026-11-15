@@ -3,6 +3,7 @@ import { Option, Schema } from 'effect'
 import { DialogBlock } from '@foldkit/ui'
 import { NetStats } from '@munch/netcode'
 
+import { BeatMyRun, noBeatMyRun } from '../domain/beatLink'
 import {
   AudioState,
   Bot,
@@ -42,7 +43,6 @@ import {
   noRankPaid,
   quietDareHint,
 } from '../domain/clientSchema'
-import { BeatMyRun, noBeatMyRun } from '../domain/beatLink'
 import * as Coop from '../features/coop/model'
 import { ShareSheet } from '../features/end/share'
 import { HomeButton, MenuPanel } from '../features/home/homeSchema'
@@ -82,6 +82,7 @@ import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
 import {
   ActionWatch,
   Decal,
+  Finisher,
   Particle,
   TellWatch,
   noActionWatch,
@@ -203,6 +204,7 @@ export const Model = Schema.Struct({
   touchControls: TouchControls,
   orientation: Orientation,
   cameraLean: Vector,
+  maybeFinisher: Schema.Option(Finisher),
   introducedKinds: Schema.Array(ZombieKind),
   seenPowerUps: Schema.Array(PickupKind),
   hintBand: HintBand,
@@ -461,6 +463,7 @@ export const initialModel: OwnModel = {
   touchControls: 'Allowed',
   orientation: 'Landscape',
   cameraLean: { x: 0, y: 0 },
+  maybeFinisher: Option.none(),
   lessons: freshLessons,
   practice: noPractice,
   debutCard: DebutCard.Hidden(),

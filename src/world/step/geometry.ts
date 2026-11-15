@@ -88,6 +88,10 @@ export const clamp: {
   Math.min(max, Math.max(min, value)),
 )
 
+// NOTE: a share from 0 to 1 eased in and out, slow at both ends.
+export const smoothStep = (share: number): number =>
+  share * share * (3 - 2 * share)
+
 // NOTE: a share of 0 to 1 eased out, fast at first and settling.
 export const easeOut = (share: number): number => 1 - (1 - share) * (1 - share)
 
