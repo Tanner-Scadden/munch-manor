@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import {
   TOUR_BOARDS_ICON,
   TOUR_FRIDGE_ICON,
@@ -188,7 +189,7 @@ const stepView = (
       h.span([
         h.Class('quest-step-icon'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: look.icon }),
+        h.Style(pixelArtStyle(look.icon)),
       ]),
       state === 'Now'
         ? h.span([h.Class('quest-step-word'), h.AriaHidden(true)], [look.word])
@@ -222,7 +223,7 @@ const chapterView = (
                 h.Class('quest-held'),
                 h.Role('img'),
                 h.AriaLabel('The break clock waits'),
-                h.Style({ backgroundImage: TOUR_PAUSED_ICON }),
+                h.Style(pixelArtStyle(TOUR_PAUSED_ICON)),
               ])
             : h.empty,
           h.ol(

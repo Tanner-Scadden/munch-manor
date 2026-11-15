@@ -282,7 +282,7 @@
 }
 
 .calling-price .rank-bone-img {
-  width: 12px !important;
+  width: max(var(--art-step), round(down, 12px, var(--art-step))) !important;
   height: auto !important;
 }
 
@@ -327,7 +327,7 @@
 }
 
 .calling-balance .rank-bone-img {
-  width: 14px !important;
+  width: max(var(--art-step), round(down, 14px, var(--art-step))) !important;
   height: auto !important;
 }
 
@@ -377,7 +377,7 @@
 }
 
 .calling-buy .rank-bone-img {
-  width: 18px !important;
+  width: max(var(--art-step), round(down, 18px, var(--art-step))) !important;
   height: auto !important;
   filter: brightness(0.35);
 }

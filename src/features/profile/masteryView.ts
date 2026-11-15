@@ -1,6 +1,7 @@
 import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
+import { pixelArtStyle } from '../../art/artSize'
 import { portraitOf } from '../../art/coopIcons'
 import { pixelIconUrl } from '../../art/icons'
 import { gunPictureOf } from '../../art/sprites/guns'
@@ -159,7 +160,7 @@ const heroRowView = (
       h.span([
         h.Class('mastery-figure'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: portraitOf(look, calling) }),
+        h.Style(pixelArtStyle(portraitOf(look, calling))),
       ]),
       h.span(
         [h.Class('mastery-body')],
@@ -220,7 +221,7 @@ const gunRowView = (
       h.span([
         h.Class('mastery-gun-img'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: gunPictureUrl(kind, maybeSkin) }),
+        h.Style(pixelArtStyle(gunPictureUrl(kind, maybeSkin))),
       ]),
       h.span(
         [h.Class('mastery-body')],

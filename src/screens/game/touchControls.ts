@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import {
   MEDIC_ICON,
   NEXT_TRAP_ICON,
@@ -134,7 +135,7 @@ export const iconButtonView: {
         h.span([
           h.Class('icon-button-glyph'),
           h.AriaHidden(true),
-          h.Style({ backgroundImage: button.icon }),
+          h.Style(pixelArtStyle(button.icon)),
         ]),
         ...children,
       ],
@@ -406,7 +407,7 @@ const reloadButtonView = (
         h.Style({
           width: hudPixels(reloadFaceOf(screen).width),
           height: hudPixels(reloadFaceOf(screen).height),
-          backgroundImage: RELOAD_ICON,
+          ...pixelArtStyle(RELOAD_ICON),
         }),
       ]),
     ],
@@ -461,7 +462,7 @@ const placeIconView = (
       h.span([
         h.Class('icon-button-glyph'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: TRAP_BUTTON_ICONS[kind] }),
+        h.Style(pixelArtStyle(TRAP_BUTTON_ICONS[kind])),
       ]),
       h.span(
         [h.Class('icon-button-badge'), h.AriaHidden(true)],
@@ -572,7 +573,7 @@ const medicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
           h.span([
             h.Class('icon-button-glyph'),
             h.AriaHidden(true),
-            h.Style({ backgroundImage: MEDIC_ICON }),
+            h.Style(pixelArtStyle(MEDIC_ICON)),
           ]),
           keyBadgeView(model, 'ENTER', h),
         ],
@@ -624,7 +625,7 @@ const startWavePointView = (model: Model, h: ApplicationViewBuilder): Html =>
         [
           h.span([
             h.Class('start-wave-point-arrow'),
-            h.Style({ backgroundImage: QUEST_START_ARROW_ICON }),
+            h.Style(pixelArtStyle(QUEST_START_ARROW_ICON)),
           ]),
           isKeyboard(model)
             ? h.span([h.Class('start-wave-point-key')], ['ENTER'])

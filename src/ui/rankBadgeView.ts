@@ -3,6 +3,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../app/composition'
 import type { Model } from '../app/model'
+import { pixelArtStyle } from '../art/artSize'
 import { PROP_ICONS } from '../art/callingArt'
 import { pixelIconUrl } from '../art/icons'
 import {
@@ -96,10 +97,7 @@ const nextGiftView = <Message>(rank: number, h: HtmlBuilder<Message>): Html => {
           h.AriaHidden(true),
         ],
         [
-          h.span([
-            h.Class('rank-next-icon'),
-            h.Style({ backgroundImage: icon }),
-          ]),
+          h.span([h.Class('rank-next-icon'), h.Style(pixelArtStyle(icon))]),
           ...(gift.kind === 'Purse'
             ? [h.span([h.Class('rank-next-count')], [`+${gift.bones}`])]
             : []),
@@ -157,6 +155,7 @@ export const boneCountView: {
               h.Style({
                 width: `${image.width * ART_SCALE}px`,
                 height: `${image.height * ART_SCALE}px`,
+                '--art-w': `${image.width}`,
               }),
             ]),
           ],

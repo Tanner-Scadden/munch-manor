@@ -1,6 +1,7 @@
 import { Function } from 'effect'
 import type { Attribute, ChildAttribute, Html, HtmlBuilder } from 'foldkit/html'
 
+import { pixelArtStyle } from '../art/artSize'
 import { BACK_ICON } from '../art/coopIcons'
 import { CLOSE_ICON } from '../art/icons'
 
@@ -85,5 +86,5 @@ const faceView = <Message>(
 ): Html =>
   h.span(
     [h.Class('menu-close-face'), h.AriaHidden(true)],
-    [h.span([h.Class(iconClass), h.Style({ backgroundImage: icon })])],
+    [h.span([h.Class(iconClass), h.Style(pixelArtStyle(icon))])],
   )

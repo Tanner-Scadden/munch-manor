@@ -1,6 +1,7 @@
 import { Array, Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
+import { pixelArtStyle } from '../../art/artSize'
 import { portraitOf } from '../../art/coopIcons'
 import { PADLOCK_ICON } from '../../art/icons'
 import {
@@ -112,7 +113,7 @@ const cardView = <Message>(
         [
           h.span([
             h.Class('calling-figure-img'),
-            h.Style({ backgroundImage: portraitOf(input.look, calling) }),
+            h.Style(pixelArtStyle(portraitOf(input.look, calling))),
           ]),
         ],
       ),

@@ -5,6 +5,7 @@ import type { Dialog } from '@foldkit/ui'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import { COOP_ICON } from '../../art/coopIcons'
 import {
   AIM_ICON,
@@ -548,7 +549,7 @@ const supportButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
               h.AriaHidden(true),
               h.Style({
                 '--wisp': `${wisp}`,
-                backgroundImage: COFFEE_STEAM_ICON,
+                ...pixelArtStyle(COFFEE_STEAM_ICON),
               }),
             ]),
           ),

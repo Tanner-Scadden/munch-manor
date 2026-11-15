@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import { COFFEE_ICON } from '../../art/icons'
 import { RESTART_GRACE_MS } from '../../shared/constants'
 import { Phase } from '../../world/schema/worldSchema'
@@ -28,7 +29,7 @@ const supportLinkView = (url: string, h: ApplicationViewBuilder): Html =>
       h.span([
         h.Class('support-link-icon'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: COFFEE_ICON }),
+        h.Style(pixelArtStyle(COFFEE_ICON)),
       ]),
       h.span(
         [h.Class('support-link-text')],

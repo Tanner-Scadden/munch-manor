@@ -5,6 +5,7 @@ import type { Dialog } from '@foldkit/ui'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import {
   ADD_TO_HOME_SCREEN_ICON,
   HOME_SCREEN_APP_ICON,
@@ -48,7 +49,7 @@ export const installTileView: {
           h.span([
             h.Class('home-corner-icon home-install-icon'),
             h.AriaHidden(true),
-            h.Style({ backgroundImage: INSTALL_ICON }),
+            h.Style(pixelArtStyle(INSTALL_ICON)),
           ]),
         ],
       )
@@ -82,10 +83,7 @@ const stepView = (
       h.span(
         [h.Class('install-step-face'), h.AriaHidden(true)],
         [
-          h.span([
-            h.Class('install-step-icon'),
-            h.Style({ backgroundImage: icon }),
-          ]),
+          h.span([h.Class('install-step-icon'), h.Style(pixelArtStyle(icon))]),
           ...(index === 0
             ? [h.span([h.Class('install-step-more')], ['•••'])]
             : []),

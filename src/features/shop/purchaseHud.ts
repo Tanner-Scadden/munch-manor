@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import { GRAB_ICON, HOLD_ICON } from '../../art/icons'
 import { spriteImage } from '../../art/sprite'
 import { InputMessage, RunButtonMessage } from '../../input/message'
@@ -213,7 +214,7 @@ const holdButtonFor = (
       h.span([
         h.Class('icon-button-glyph'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: HOLD_ICON }),
+        h.Style(pixelArtStyle(HOLD_ICON)),
       ]),
       badgeView(model, offer, h),
     ],

@@ -5,6 +5,7 @@ import type { Dialog } from '@foldkit/ui'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import {
   GIFT_BOX_ICON,
   GIFT_LID_ICON,
@@ -28,11 +29,7 @@ const layerView = (
   icon: string,
   h: ApplicationViewBuilder,
 ): Html =>
-  h.span([
-    h.Class(className),
-    h.AriaHidden(true),
-    h.Style({ backgroundImage: icon }),
-  ])
+  h.span([h.Class(className), h.AriaHidden(true), h.Style(pixelArtStyle(icon))])
 
 // NOTE: the Groaner hides in the box, under the lid, until the unwrap pops
 // it out. Two sparkles twinkle around it while it waits.

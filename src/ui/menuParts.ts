@@ -2,6 +2,7 @@ import { Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import type { Model } from '../app/model'
+import { pixelArtStyle } from '../art/artSize'
 import { PROP_ICONS } from '../art/callingArt'
 import { PADLOCK_ICON, SKULL_OFF_ICON } from '../art/icons'
 import { badgeImage } from '../art/rankArt'
@@ -25,7 +26,7 @@ export const iconView: {
     h.span([
       h.Class(className),
       h.AriaHidden(true),
-      h.Style({ backgroundImage: icon }),
+      h.Style(pixelArtStyle(icon)),
     ]),
 )
 
@@ -90,7 +91,7 @@ export const callingPropView: {
           h.Class(className),
           h.DataAttribute('calling', calling),
           h.AriaHidden(true),
-          h.Style({ backgroundImage: PROP_ICONS[calling] }),
+          h.Style(pixelArtStyle(PROP_ICONS[calling])),
         ]),
 )
 
@@ -115,6 +116,7 @@ export const rankBadgeImgView: {
           h.Style({
             width: `${image.width * scale}px`,
             height: `${image.height * scale}px`,
+            '--art-w': `${image.width}`,
           }),
         ]),
     }),
