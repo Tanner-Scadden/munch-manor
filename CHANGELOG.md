@@ -8,7 +8,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🔍 Every pixel is the same size now, on every phone and window, so the art stays razor sharp as the camera glides.
 - 🚀 The manor loads faster and runs smoother on phones, with no more freeze on the loading screen.
 - 🖼️ The walls got their wallpaper, trim, wainscoting, and portraits back with wood panelling down to the floor, no more plain grey blocks, and the doorways are cut right through them under solid lintels.
-- 💥 Hits flash bright white even in the darkest cellar, the last zombie of a wave goes down with a big freeze and a thump as the camera glides in on it like a movie (the boss's entrance and the big key's flight too), and the ferns bend in the draft like real plants.
+- 💥 Zombies, heroes, and guns are chunky 3D pixel figures now, catching the candlelight on every side, power-ups spin over a ring of light and your boost rings you for real, KABOOMs burst into real 3D fireballs with a ring of sparks and rolling smoke, hits flash bright white even in the darkest cellar, the last zombie of a wave goes down with a big freeze and a thump as the camera glides in on it like a movie (the boss's entrance and the big key's flight too), and the ferns bend in the draft like real plants.
 - 🩹 Heading back to the menu after a run no longer crashes the game, and iPhones no longer turn the manor blue.
 
 ## November 13, 2026: Bring back proof

@@ -161,6 +161,9 @@ export const HarnessConfig = Schema.Struct({
   // NOTE: `trauma` starts the screen shaking that hard, 0 to 1, so past
   // gunfire's 0.3 the house rattles (houseRattleOf in src/render/juice.ts).
   trauma: MaybeNum,
+  // NOTE: `blast` sets a Kaboomer's blast off just east of the player, this
+  // many ms old.
+  blast: MaybeNum,
   prep: Num(20000),
   break: Choice(['open']),
   breakMs: Num(0),
@@ -480,6 +483,9 @@ export const HarnessConfig = Schema.Struct({
   // Lit sprites without their normal maps, to compare (the renderer reads it
   // off the address itself: src/render/iso/billboards.ts)
   flat: Flag,
+  // Bodies as flat billboards, not voxels, to compare (the renderer reads it
+  // off the address itself: src/render/iso/scene.ts)
+  billboards: Flag,
   // The video tool (tools/video): ticks only when it asks, logs audio
   director: Flag,
 })

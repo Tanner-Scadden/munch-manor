@@ -700,6 +700,13 @@ export const roomModel = (settings: SceneSettings): Model => {
       { player: p => ({ ...p, x: config.px ?? p.x, y: py }) },
     )
   }
+  if (config.blast !== undefined) {
+    const blastAge = config.blast
+    const { x, y } = focusOf(model).player
+    model = modifyFields(model, {
+      blasts: () => [{ x: x + 48, y: y - 8, radius: 28, ageMs: blastAge }],
+    })
+  }
   const { best, pistol, aim, card } = config
   if (best !== undefined) {
     model = withBests(model, bests => ({

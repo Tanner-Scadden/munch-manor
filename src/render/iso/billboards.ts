@@ -19,7 +19,7 @@ import { CAMERA_UP, TOWARD_CAMERA, UNIT, zOf } from './space'
 import { type Textures, colorOf } from './textures'
 
 // NOTE: parts later in a drawable win ties, nudged this far toward the lens.
-const PART_BIAS = 0.002
+export const PART_BIAS = 0.002
 
 // NOTE: a leaf as it is drawn: its texture (a white quad for a Rect), the
 // middle of its bottom edge, its size, and its tint.
@@ -61,22 +61,26 @@ export const drawnLeafOf = ({
   if (shape._tag !== 'Image' && shape._tag !== 'Rect') {
     return undefined
   }
-  const left = matrix.a * shape.x + matrix.c * shape.y + matrix.e
-  const top = matrix.b * shape.x + matrix.d * shape.y + matrix.f
-  const width = matrix.a * shape.width + matrix.c * shape.height
-  const height = matrix.b * shape.width + matrix.d * shape.height
-  const drawnWidth = Math.abs(width)
-  const drawnHeight = Math.abs(height)
+  // NOTE: the drawn size from the matrix's own scales, and the spot from the
+  // shape's middle, so a turned sprite (a running Hotfoot's lean, a falling
+  // zombie) keeps its size rather than squashing to its turned width.
+  const middleX = shape.x + shape.width / 2
+  const middleY = shape.y + shape.height / 2
+  const centerX = matrix.a * middleX + matrix.c * middleY + matrix.e
+  const centerY = matrix.b * middleX + matrix.d * middleY + matrix.f
+  const drawnWidth = Math.hypot(matrix.a, matrix.b) * shape.width
+  const drawnHeight = Math.hypot(matrix.c, matrix.d) * shape.height
   if (drawnWidth < 0.01 || drawnHeight < 0.01) {
     return undefined
   }
+  const width = matrix.a < 0 ? -drawnWidth : drawnWidth
   const look = textureAndTint(textures, shape, width < 0)
   return look === undefined
     ? undefined
     : {
         texture: look.texture,
-        centerX: left + width / 2,
-        bottom: Math.max(top, top + height),
+        centerX,
+        bottom: centerY + drawnHeight / 2,
         drawnWidth,
         drawnHeight,
         tint: look.color,
@@ -173,6 +177,15 @@ export class BillboardPool {
         })
         part += 1
       }
+    }
+  }
+
+  // NOTE: one leaf as its own part of a drawable, or nothing when it draws
+  // nothing standing.
+  standLeaf(leaf: Leaf, footY: number, part: number): void {
+    const drawn = drawnLeafOf({ textures: this.textures, leaf })
+    if (drawn !== undefined) {
+      this.place({ ...drawn, footY, hover: 0, part })
     }
   }
 

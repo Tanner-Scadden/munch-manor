@@ -14,7 +14,7 @@ export type Affine = Readonly<{
   f: number
 }>
 
-const IDENTITY: Affine = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }
+export const IDENTITY: Affine = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }
 
 const multiply = (m: Affine, n: Affine): Affine => ({
   a: m.a * n.a + m.c * n.b,

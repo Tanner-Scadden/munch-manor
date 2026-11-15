@@ -11,11 +11,14 @@ import { type Palette, type Sprite, TRANSPARENT, spriteShapes } from '../sprite'
 // silver gleam sweeping a ring with a twinkle at the shoulders (Family
 // Silver), music notes rising over sparkling footprints (Dancing Shoes), and
 // a ring of hat pins circling (Hat Pins). Each is a few frames baked once
-// here, laid around the player's feet, so the frame draws one image.
+// here, laid around the player's feet, so the frame draws one image. The 3D
+// renderer reads the same frames as their stamps (`AURA_STAMPS`), standing
+// what rings the feet on the floor round the player and floating the rest.
 
 const AURA_WIDTH = 29
 const AURA_HEIGHT = 26
 const CENTER = { x: 14, y: 20 }
+export const AURA_CENTER: Readonly<{ x: number; y: number }> = CENTER
 const RING_X = 10
 const RING_Y = 4
 
@@ -24,11 +27,17 @@ export const AURA_FRAME_MS = 90
 
 type Point = Readonly<{ x: number; y: number }>
 
-type Stamp = Readonly<{
+// NOTE: a little picture in an aura's frame: its pixels from its top left,
+// and whether it rings the feet on the floor (`isAloft` false) or hangs in
+// the air over them (notes, twinkles).
+export type Stamp = Readonly<{
   left: number
   top: number
   rows: ReadonlyArray<string>
+  isAloft: boolean
 }>
+
+const aloft = (stamp: Stamp): Stamp => ({ ...stamp, isAloft: true })
 
 const stampAt = (point: Point, rows: ReadonlyArray<string>): Stamp => {
   const width = Option.match(Array.head(rows), {
@@ -39,6 +48,7 @@ const stampAt = (point: Point, rows: ReadonlyArray<string>): Stamp => {
     left: point.x - Math.floor(width / 2),
     top: point.y - Math.floor(rows.length / 2),
     rows,
+    isAloft: false,
   }
 }
 
@@ -102,13 +112,11 @@ const GEAR_TURNED: ReadonlyArray<string> = [
 
 const GEAR_PALETTE: Palette = { Y: '#e8b84a', y: '#a8782a', o: '#3a2418' }
 
-const gearFrame = (frame: number): ReadonlyArray<string> =>
-  rasterOf(
-    Array.makeBy(3, index =>
-      stampAt(
-        ringPoint(spinOf(frame) + index * THIRD_TURN),
-        frame % 2 === 0 ? GEAR_STRAIGHT : GEAR_TURNED,
-      ),
+const gearFrame = (frame: number): ReadonlyArray<Stamp> =>
+  Array.makeBy(3, index =>
+    stampAt(
+      ringPoint(spinOf(frame) + index * THIRD_TURN),
+      frame % 2 === 0 ? GEAR_STRAIGHT : GEAR_TURNED,
     ),
   )
 
@@ -133,18 +141,18 @@ const twinkleAt = (frame: number): ReadonlyArray<string> =>
 
 const SILVER_PALETTE: Palette = { S: '#9aa6ba', W: '#ffffff', s: '#5e6a80' }
 
-const silverFrame = (frame: number): ReadonlyArray<string> => {
+const silverFrame = (frame: number): ReadonlyArray<Stamp> => {
   const gleamStart = Math.round((frame / AURA_FRAME_COUNT) * RING_DOTS)
-  return rasterOf([
+  return [
     ...Array.makeBy(RING_DOTS, dot => {
       const lead = (dot - gleamStart + RING_DOTS) % RING_DOTS
       return stampAt(ringPoint(dot / RING_DOTS), [
         lead < GLEAM_LENGTH ? 'W' : dot % 2 === 0 ? 'S' : 's',
       ])
     }),
-    stampAt(offset(-8, -14), twinkleAt(frame)),
-    stampAt(offset(8, -9), twinkleAt(frame + 4)),
-  ])
+    aloft(stampAt(offset(-8, -14), twinkleAt(frame))),
+    aloft(stampAt(offset(8, -9), twinkleAt(frame + 4))),
+  ]
 }
 
 // DANCING SHOES
@@ -156,12 +164,14 @@ const NOTE_RISE_PX = 12
 
 const noteAt = (frame: number, side: number): Stamp => {
   const progress = frame / AURA_FRAME_COUNT
-  return stampAt(
-    offset(
-      side * 9 + (frame % 4 < 2 ? 0 : side),
-      -4 - Math.round(progress * NOTE_RISE_PX),
+  return aloft(
+    stampAt(
+      offset(
+        side * 9 + (frame % 4 < 2 ? 0 : side),
+        -4 - Math.round(progress * NOTE_RISE_PX),
+      ),
+      progress < 0.75 ? NOTE : NOTE_FADED,
     ),
-    progress < 0.75 ? NOTE : NOTE_FADED,
   )
 }
 
@@ -185,12 +195,11 @@ const DANCE_PALETTE: Palette = {
   W: '#ffffff',
 }
 
-const danceFrame = (frame: number): ReadonlyArray<string> =>
-  rasterOf([
-    ...Array.map(FOOTPRINTS, sparkleAt(frame)),
-    noteAt(frame, -1),
-    noteAt((frame + AURA_FRAME_COUNT / 2) % AURA_FRAME_COUNT, 1),
-  ])
+const danceFrame = (frame: number): ReadonlyArray<Stamp> => [
+  ...Array.map(FOOTPRINTS, sparkleAt(frame)),
+  noteAt(frame, -1),
+  noteAt((frame + AURA_FRAME_COUNT / 2) % AURA_FRAME_COUNT, 1),
+]
 
 // HAT PINS
 
@@ -213,13 +222,13 @@ const PIN_PALETTE: Palette = {
   s: '#8a90a0',
 }
 
-const pinFrame = (frame: number): ReadonlyArray<string> =>
-  rasterOf(Array.makeBy(PINS, index => pinAt(frame, index)))
+const pinFrame = (frame: number): ReadonlyArray<Stamp> =>
+  Array.makeBy(PINS, index => pinAt(frame, index))
 
 // SPRITES
 
-const FRAME_PIXELS: Readonly<
-  Record<BoostKind, (frame: number) => ReadonlyArray<string>>
+const FRAME_STAMPS: Readonly<
+  Record<BoostKind, (frame: number) => ReadonlyArray<Stamp>>
 > = {
   RapidFire: gearFrame,
   Damage: silverFrame,
@@ -231,9 +240,19 @@ const FRAME_PIXELS: Readonly<
 const auraPixels = (
   kind: BoostKind,
 ): Array.NonEmptyReadonlyArray<ReadonlyArray<string>> =>
-  Array.map(FRAMES, FRAME_PIXELS[kind])
+  Array.map(FRAMES, frame => rasterOf(FRAME_STAMPS[kind](frame)))
 
-const AURA_PALETTES: Readonly<Record<BoostKind, Palette>> = {
+// NOTE: every aura frame's stamps, for the 3D renderer.
+export const AURA_STAMPS: Readonly<
+  Record<BoostKind, Array.NonEmptyReadonlyArray<ReadonlyArray<Stamp>>>
+> = {
+  RapidFire: Array.map(FRAMES, FRAME_STAMPS.RapidFire),
+  Damage: Array.map(FRAMES, FRAME_STAMPS.Damage),
+  Speed: Array.map(FRAMES, FRAME_STAMPS.Speed),
+  Pierce: Array.map(FRAMES, FRAME_STAMPS.Pierce),
+}
+
+export const AURA_PALETTES: Readonly<Record<BoostKind, Palette>> = {
   RapidFire: GEAR_PALETTE,
   Damage: SILVER_PALETTE,
   Speed: DANCE_PALETTE,
