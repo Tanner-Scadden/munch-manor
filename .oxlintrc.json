@@ -114,6 +114,7 @@
         "munch/no-menu-field": "error",
         "munch/command-beside-update": "error",
         "munch/key-action-once": "error",
+        "munch/stand-through-space": "error",
         "munch/no-binding-field-write": "error",
         "munch/folder-imports": "error",
         "no-restricted-properties": [
@@ -433,6 +434,19 @@
       // key is held to buy (munch/key-action-once).
       "files": ["src/input/keyActions.ts"],
       "rules": { "munch/key-action-once": "off" }
+    },
+    {
+      // NOTE: a voxel slab's own axes run along the camera's up and toward
+      // the lens, and a carved piece's faces point toward it; both still
+      // stand through standingPointOf. The alignment
+      // test reads a point back onto the screen with them
+      // (munch/stand-through-space).
+      "files": [
+        "src/render/iso/voxelShape.ts",
+        "src/render/iso/carvedMesh.ts",
+        "src/render/__tests__/muzzleFlash.test.ts"
+      ],
+      "rules": { "munch/stand-through-space": "off" }
     },
     {
       // NOTE: tests and their shared setup run Effects with it.effect from

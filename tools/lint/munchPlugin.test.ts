@@ -200,6 +200,14 @@ tester.run('key-action-once', ruleOf('key-action-once'), {
   invalid: [one("import { isInteractTaken } from '../purchase'")],
 })
 
+tester.run('stand-through-space', ruleOf('stand-through-space'), {
+  valid: ["import { UNIT, standingPointOf } from './space'"],
+  invalid: [
+    one("import { CAMERA_UP } from './space'"),
+    one("import { TOWARD_CAMERA, zOf } from '../iso/space'"),
+  ],
+})
+
 tester.run('no-binding-field-write', ruleOf('no-binding-field-write'), {
   valid: [
     'const step = CoopBinding.requestKeepTracers(shot)',
