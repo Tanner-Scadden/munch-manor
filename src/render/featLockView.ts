@@ -2,7 +2,7 @@ import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { FEAT_FLAME, FEAT_ICONS } from '../art/caseArt'
-import { textShapes } from '../art/font'
+import { textShapes, textWidth } from '../art/font'
 import { type Sprite, bakeShapes, placeAt } from '../art/sprite'
 import { gunIcon, knifeSprite } from '../art/sprites/guns'
 import { ZOMBIE_SPRITES } from '../art/sprites/zombies'
@@ -15,6 +15,7 @@ import {
   type Vector,
 } from '../world/schema/worldSchema'
 import { rect, ringPixels } from './drawing'
+import type { Keepout as Box } from './keepout'
 
 // A feat's lock (src/world/feats/feats.ts), hung over what it opens: a
 // display case, the stove, or the gas valve. The feat's icon sits in a dark
@@ -112,6 +113,23 @@ export const featCountOf: {
   return goal > 1
     ? Option.some(`${progressOf(tally, feat)}/${goal}`)
     : Option.none()
+})
+
+// NOTE: what a lock covers round `at`, in the game's pixels: its ring, and
+// its count's side as wide as the count's goal, so the box holds still as
+// the count climbs.
+export const featLockBoxOf: {
+  (at: LockSpot): (feat: Feat) => Box
+  (feat: Feat, at: LockSpot): Box
+} = Function.dual(2, (feat: Feat, at: LockSpot): Box => {
+  const goal = goalOf(feat)
+  const count = goal > 1 ? COUNT_GAP_PX + textWidth(`${goal}/${goal}`) : 0
+  return {
+    left: at.x - RING_RADIUS - (at.countSide === 'Left' ? count : 0),
+    top: at.y - RING_RADIUS,
+    right: at.x + RING_RADIUS + 1 + (at.countSide === 'Right' ? count : 0),
+    bottom: at.y + RING_RADIUS + 1,
+  }
 })
 
 // NOTE: a lock centred on `at`, filled to the player's own tally.

@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 
 import type { Model } from '../../app/model'
 import { GLYPH_HEIGHT, textWidth } from '../../art/font'
@@ -8,6 +8,8 @@ import {
   type PocketBox,
   pocketBoxOf,
 } from '../../features/dare/dareCard'
+import { tagKeepoutsOf } from '../../features/shop/purchaseView'
+import type { Camera } from '../../render/camera'
 import {
   HEART_SPACING,
   HUD_MARGIN,
@@ -151,6 +153,44 @@ const clusterKeepout = (screen: Screen): Keepout => {
 // for the art pinned over the world to keep out of: the dare pocket, the
 // key ring and the hearts over it, the corner button, START WAVE in a
 // break, and the gun slots.
+// NOTE: the rows a banner takes while one shows (WAVE CLEARED, the break's
+// clock), across the whole screen, in screen pixels.
+const bannerKeepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
+  const screen = screenOf(model)
+  const frame = landscapeFrameOffset(screen)
+  return Option.match(maybeBannerBand(model), {
+    onNone: () => [],
+    onSome: band => [
+      {
+        left: 0,
+        top: band.top + frame.y,
+        right: screen.width,
+        bottom: band.bottom + frame.y,
+      },
+    ],
+  })
+}
+
+// NOTE: what the price tags and the feat locks keep out of: the HUD's
+// buttons and panels, and a banner's rows.
+export const hudAndBannerKeepoutsOf = (
+  model: Model,
+): ReadonlyArray<Keepout> => [
+  ...hudKeepoutsOf(model),
+  ...bannerKeepoutsOf(model),
+]
+
+// NOTE: what the notes pinned over the world keep out of: those, and the
+// price tags as they are pinned. The fridge's odds note keeps out of these,
+// and Rattles' bubbles of these and the note.
+export const pinnedKeepoutsOf: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Keepout>
+  (model: Model, camera: Camera): ReadonlyArray<Keepout>
+} = Function.dual(2, (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
+  const fixed = hudAndBannerKeepoutsOf(model)
+  return [...fixed, ...tagKeepoutsOf(model, camera, fixed)]
+})
+
 export const hudKeepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
   return [

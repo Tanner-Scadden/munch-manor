@@ -37,9 +37,8 @@ type Placing = Readonly<{
 
 // NOTE: where the box wants to be, if that is clear; else the nearest top
 // just under or just over one keepout that is clear of every one and
-// between `top` and `bottom`; else, with nowhere clear, it steps past each
-// keepout in turn.
-export const clearOfKeepouts = ({
+// between `top` and `bottom`; else none.
+export const maybeClearOfKeepouts = ({
   keepouts,
   x,
   y,
@@ -47,15 +46,15 @@ export const clearOfKeepouts = ({
   height,
   top,
   bottom,
-}: Placing): number => {
+}: Placing): Option.Option<number> => {
   // NOTE: a handful of keepouts (the HUD's few panels and buttons, a
   // banner, a hint row or two), each against the others' candidates.
   const isClear = (placed: number): boolean =>
     !Array.some(keepouts, isOverKeepout(x, width, height, placed))
   if (isClear(y)) {
-    return y
+    return Option.some(y)
   }
-  const nearest = Array.reduce(
+  return Array.reduce(
     Array.flatMap(keepouts, keepout => [
       keepout.bottom + KEEPOUT_GAP,
       keepout.top - KEEPOUT_GAP - height,
@@ -72,15 +71,26 @@ export const clearOfKeepouts = ({
         ? Option.some(candidate)
         : best,
   )
-  return Option.getOrElse(nearest, () =>
-    Array.reduce(keepouts, y, (placed, keepout) => {
-      if (!isOverKeepout(x, width, height, placed)(keepout)) {
+}
+
+// NOTE: as `maybeClearOfKeepouts`, but with nowhere clear the box steps
+// past each keepout in turn, for what must always show (a price).
+export const clearOfKeepouts = (placing: Placing): number =>
+  Option.getOrElse(maybeClearOfKeepouts(placing), () =>
+    Array.reduce(placing.keepouts, placing.y, (placed, keepout) => {
+      if (
+        !isOverKeepout(
+          placing.x,
+          placing.width,
+          placing.height,
+          placed,
+        )(keepout)
+      ) {
         return placed
       }
       const under = keepout.bottom + KEEPOUT_GAP
-      return under <= bottom
+      return under <= placing.bottom
         ? under
-        : Math.max(top, keepout.top - KEEPOUT_GAP - height)
+        : Math.max(placing.top, keepout.top - KEEPOUT_GAP - placing.height)
     }),
   )
-}

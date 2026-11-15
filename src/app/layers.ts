@@ -13,6 +13,7 @@ import {
   fridgeRevealShapes,
   prizeFlightShapes,
 } from '../features/fridge/fridgeRevealView'
+import { fridgeOddsShapes } from '../features/fridge/fridgeView'
 import { stragglerEdgeShapes } from '../features/hud/stragglerEdge'
 import { wavePreviewShapes } from '../features/hud/wavePreview'
 import { introShapes } from '../features/intro/introView'
@@ -47,7 +48,11 @@ import {
 } from '../render/screen'
 import { hudShapes, hudStripShapes } from '../screens/game/hud'
 import { overlayShapes } from '../screens/game/overlay'
-import { hudKeepoutsOf, pocketOf } from '../screens/game/pocket'
+import {
+  hudAndBannerKeepoutsOf,
+  pinnedKeepoutsOf,
+  pocketOf,
+} from '../screens/game/pocket'
 import {
   shakeOffset,
   worldLayerShapes,
@@ -101,7 +106,8 @@ const roundOverlayShapes = (
     ? [
         ...fridgeRevealShapes(model, screen, camera),
         ...clocheShapes(model, camera),
-        ...purchaseOverlayShapes(model, camera, hudKeepoutsOf(model)),
+        ...purchaseOverlayShapes(model, camera, hudAndBannerKeepoutsOf(model)),
+        ...fridgeOddsShapes(model, camera, pinnedKeepoutsOf(model, camera)),
         ...frontDoorMarkerShapes(model, screen, camera),
         ...pointerShapes(model, screen, camera),
         ...stragglerEdgeShapes(model, screen, camera),

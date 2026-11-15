@@ -24,7 +24,11 @@ import {
 import { gunIcon } from '../../art/sprites/guns'
 import { type Camera, anchoredAt, placedAt } from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
-import { featLockShapes, lockSpotIn } from '../../render/featLockView'
+import {
+  featLockBoxOf,
+  featLockShapes,
+  lockSpotIn,
+} from '../../render/featLockView'
 import { clearWindowOf } from '../../render/hudLayout'
 import { type Keepout, clearOfKeepouts } from '../../render/keepout'
 import {
@@ -816,11 +820,15 @@ export const tagKeepoutsOf: {
 // hang a feat's lock (src/render/featLockView.ts) where their tag will.
 const LOCK_DROP_PX = 6
 
+// NOTE: a lock moves up or down off the HUD and a banner's rows
+// (`keepouts`), as a tag does, so WAVE CLEARED never prints over its count.
 const lockShapes = (
   model: Model,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Array.map(
+  keepouts: ReadonlyArray<Keepout>,
+): ReadonlyArray<Canvas.Shape> => {
+  const clear = clearWindowOf(screenOf(model), EDGE_GAP)
+  return Array.map(
     Array.getSomes([
       maybeStoveLock(model, focusSlotOf(model)),
       maybeValveLock(model, focusSlotOf(model)),
@@ -830,9 +838,32 @@ const lockShapes = (
         x: spot.x,
         y: spot.y + LOCK_DROP_PX,
       })
-      return placedAt(camera, at, featLockShapes(feat, focusOf(model), at))
+      const lock = placedAt(
+        camera,
+        at,
+        featLockShapes(feat, focusOf(model), at),
+      )
+      const { translate, scale } = anchoredAt(camera, at)
+      const box = featLockBoxOf(feat, at)
+      const top = translate.y + box.top * scale
+      const height = (box.bottom - box.top) * scale
+      const shift = Math.round(
+        clearOfKeepouts({
+          keepouts,
+          x: translate.x + box.left * scale,
+          y: top,
+          width: (box.right - box.left) * scale,
+          height,
+          top: clear.top,
+          bottom: Math.max(clear.top, clear.bottom - height),
+        }) - top,
+      )
+      return shift === 0
+        ? lock
+        : group({ translate: { x: 0, y: shift }, shapes: [lock] })
     },
   )
+}
 
 // NOTE: drawn on the overlay, over the actors and the HUD strip, each tag
 // placed on its spot through the lens by the screen camera, so a tag is
@@ -856,7 +887,7 @@ export const purchaseOverlayShapes: {
     camera: Camera,
     keepouts: ReadonlyArray<Keepout>,
   ): ReadonlyArray<Canvas.Shape> => [
-    ...lockShapes(model, camera),
+    ...lockShapes(model, camera, keepouts),
     ...Array.map(
       pinnedTagsOf(model, camera, keepouts),
       pinnedTagShapes(model, camera),

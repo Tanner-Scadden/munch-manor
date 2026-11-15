@@ -15,6 +15,7 @@ import {
 import { maybeDarePointer } from '../../features/dare/darePointer'
 import { isPocketCardOut } from '../../features/dare/pocketCard'
 import { HINT_LINES, maybeHintCall } from '../../features/dare/rattlesHint'
+import { fridgeOddsKeepoutsOf } from '../../features/fridge/fridgeView'
 import {
   CALL_LINES,
   callLineIndex,
@@ -29,7 +30,6 @@ import {
   RATTLES_INTRO_LINES,
   maybeRattlesLine,
 } from '../../features/onboarding/rattlesIntro'
-import { tagKeepoutsOf } from '../../features/shop/purchaseView'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { type Keepout, clearOfKeepouts } from '../../render/keepout'
@@ -39,8 +39,8 @@ import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { RATTLES_BOX, levelOf } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/worldSchema'
-import { hintBoxesOf, maybeBannerBand } from './overlay'
-import { hudKeepoutsOf } from './pocket'
+import { hintBoxesOf } from './overlay'
+import { pinnedKeepoutsOf } from './pocket'
 
 // NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
 // from the spot it is about, and when that spot is out of view it waits at
@@ -400,10 +400,11 @@ const bubbleShapes = (
   )
 
 // NOTE: what a bubble keeps out of, in screen pixels: the HUD's buttons and
-// panels (`hudKeepoutsOf`), the shop's tags as they are pinned, a banner's
-// rows while one shows, the tours' hint rows under it (BLOCK DOOR), and the
-// quest's arrow over its next spot. A bubble over one moves to the nearest place clear of them all,
-// under or over one of them.
+// panels, the shop's tags as they are pinned, and a banner's rows while one
+// shows (`pinnedKeepoutsOf`), the fridge's odds note, the tours' hint rows
+// under the banner (BLOCK DOOR), and the quest's arrow over its next spot.
+// A bubble over one moves to the nearest place clear of them all, under or
+// over one of them.
 
 // NOTE: the guided quest's arrow bobbing over its next spot
 // (src/screens/game/worldView.ts), while in view.
@@ -419,28 +420,16 @@ const questArrowKeepout = (
 const keepoutsOf = (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
   const frame = landscapeFrameOffset(screen)
-  const banner: ReadonlyArray<Keepout> = Option.match(maybeBannerBand(model), {
-    onNone: () => [],
-    onSome: band => [
-      {
-        left: 0,
-        top: band.top + frame.y,
-        right: screen.width,
-        bottom: band.bottom + frame.y,
-      },
-    ],
-  })
   const hints = Array.map(hintBoxesOf(model), box => ({
     left: box.left + frame.x,
     top: box.top + frame.y,
     right: box.right + frame.x,
     bottom: box.bottom + frame.y,
   }))
-  const hud = hudKeepoutsOf(model)
+  const pinned = pinnedKeepoutsOf(model, camera)
   return [
-    ...hud,
-    ...tagKeepoutsOf(model, camera, hud),
-    ...banner,
+    ...pinned,
+    ...fridgeOddsKeepoutsOf(model, camera, pinned),
     ...hints,
     ...questArrowKeepout(model, camera),
   ]

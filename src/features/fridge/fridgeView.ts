@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
@@ -6,12 +6,17 @@ import { prizeSprite } from '../../art/prizeArt'
 import {
   type Sprite,
   bakeShapes,
+  group,
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
+import { type Camera, worldToView } from '../../render/camera'
 import { type Drawable, IN_FRONT_PX } from '../../render/depth'
 import { rect } from '../../render/drawing'
+import { clearWindowOf } from '../../render/hudLayout'
+import { type Keepout, maybeClearOfKeepouts } from '../../render/keepout'
 import { FRIDGE_RISE_PX, isKitchenShown } from '../../render/room/kitchenView'
+import { screenOf } from '../../render/screen'
 import { TILE_SIZE } from '../../shared/constants'
 import {
   PAN_RULES,
@@ -35,7 +40,9 @@ import {
   type FridgePrize,
   type Lob,
   type Player,
+  type Vector,
 } from '../../world/schema/entitySchema'
+import { clamp } from '../../world/step/geometry'
 import { type Rarity, revealOf } from './fridgeReveal'
 
 // The Mystery Leftovers fridge in motion (src/world/fridge/leftovers.ts) and the fridge
@@ -230,24 +237,151 @@ const isNearShutFridge = (model: Model): boolean =>
     box => distanceToBox(focusOf(model).player, box) <= ODDS_NEAR_PX,
   )
 
-const oddsShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+// NOTE: the note hangs east of the fridge, over the wall by its door, so it
+// never covers the stove's feat lock and count west of it or the fridge's
+// own price tag. It is drawn on the overlay, as the tags are, so no wall
+// stands in front of it and its rows never sink behind its paper; moved
+// up or down off the HUD, the tags, and a banner's rows (`keepouts`), and
+// kept whole in the window.
+const ODDS_GAP_PX = 3
+// NOTE: what the paper covers round its rows: its edge, the tape over its
+// top, and its shadow.
+const ODDS_EDGE_PX = 2
+const ODDS_EDGE_GAP = 2
+
+type PlacedOdds = Readonly<{
+  anchor: Vector
+  translate: Vector
+  scale: number
+  covers: Keepout
+}>
+
+const maybePlacedOdds = (
+  model: Model,
+  camera: Camera,
+  keepouts: ReadonlyArray<Keepout>,
+): Option.Option<PlacedOdds> =>
   isNearShutFridge(model)
-    ? Option.match(maybeFridgeSpot(model), {
-        onNone: () => [],
-        onSome: spot => {
-          const left = spot.left - ODDS_WIDTH - 2
-          const top = spot.top + 1
-          return [
-            placeAt(left, top, ODDS_CARD),
+    ? Option.flatMap(fridgeBoxOf(levelOf(model)), box => {
+        const anchor = { x: box.right + ODDS_GAP_PX, y: box.top }
+        // NOTE: a whole number of screen pixels to a game pixel, so every
+        // pip on the note is the same width.
+        const scale = Math.max(1, Math.round(camera.scale))
+        const at = worldToView(camera, anchor)
+        const left = Math.round(at.x) - ODDS_EDGE_PX * scale
+        const top = Math.round(at.y) - ODDS_EDGE_PX * scale
+        const width = (ODDS_WIDTH + ODDS_EDGE_PX * 2) * scale
+        const height = (ODDS_HEIGHT + ODDS_EDGE_PX * 2) * scale
+        const window = screenOf(model).world
+        const isOut =
+          left + width <= window.x ||
+          left >= window.x + window.width ||
+          top + height <= window.y ||
+          top >= window.y + window.height
+        if (isOut) {
+          return Option.none()
+        }
+        const clear = clearWindowOf(screenOf(model), ODDS_EDGE_GAP)
+        const x = clamp(left, clear.left, clear.right - width)
+        const lowest = clear.bottom - height
+        // NOTE: with nowhere clear (a phone held upright, with WAVE CLEARED
+        // over the kitchen), the note waits for room rather than cover
+        // something.
+        return Option.map(
+          maybeClearOfKeepouts({
+            keepouts,
+            x,
+            y: clamp(top, clear.top, lowest),
+            width,
+            height,
+            top: clear.top,
+            bottom: lowest,
+          }),
+          y => {
+            const placedLeft = Math.round(x)
+            const placedTop = Math.round(y)
+            return {
+              anchor,
+              translate: {
+                x: placedLeft + (ODDS_EDGE_PX - anchor.x) * scale,
+                y: placedTop + (ODDS_EDGE_PX - anchor.y) * scale,
+              },
+              scale,
+              covers: {
+                left: placedLeft,
+                top: placedTop,
+                right: placedLeft + width,
+                bottom: placedTop + height,
+              },
+            }
+          },
+        )
+      })
+    : Option.none()
+
+// NOTE: the note as drawn, in the overlay's pixels.
+export const fridgeOddsShapes: {
+  (
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Canvas.Shape> =>
+    Option.match(maybePlacedOdds(model, camera, keepouts), {
+      onNone: () => [],
+      onSome: ({ anchor, translate, scale }) => [
+        group({
+          translate,
+          scale: { x: scale, y: scale },
+          shapes: [
+            placeAt(anchor.x, anchor.y, ODDS_CARD),
             ...Array.flatMap(
               prizeOddsFor(model, focusSlotOf(model)),
               ([prize, share], index) =>
-                oddsRow(left, top, index, prize, share),
+                oddsRow(anchor.x, anchor.y, index, prize, share),
             ),
-          ]
-        },
-      })
-    : []
+          ],
+        }),
+      ],
+    }),
+)
+
+// NOTE: what the note covers on the screen, for Rattles' bubbles to keep
+// out of.
+export const fridgeOddsKeepoutsOf: {
+  (
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): (model: Model) => ReadonlyArray<Keepout>
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Keepout>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Keepout> =>
+    Option.toArray(
+      Option.map(
+        maybePlacedOdds(model, camera, keepouts),
+        ({ covers }) => covers,
+      ),
+    ),
+)
 
 // THE DIAL
 
@@ -388,8 +522,4 @@ const lidShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 // NOTE: what flies over the heads of everything standing.
 export const fridgeOverheadShapes = (
   model: Model,
-): ReadonlyArray<Canvas.Shape> => [
-  ...oddsShapes(model),
-  ...lidShapes(model),
-  ...dialShapes(model),
-]
+): ReadonlyArray<Canvas.Shape> => [...lidShapes(model), ...dialShapes(model)]
