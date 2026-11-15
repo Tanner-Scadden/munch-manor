@@ -1523,13 +1523,24 @@
 /* NOTE: the page clips what overflows it, and a chosen look option grows by
    8% past the page's side. A side padding with a matching negative margin
    widens the clip box without moving or narrowing the content. The rank
-   plate stands over the page's foot, so the page keeps that much room at
-   its bottom, and a long Look tab (the prints in two lines on a 360 px
-   phone) scrolls clear of the plate instead of sliding under it. */
+   plate stands at the Profile's foot, a fixed height, so the page ends a
+   gap above it (the plate's spot, its height and shadow, and the gap, less
+   the Profile's own bottom padding): a long Look tab (the prints in two
+   lines on a 360 px phone) scrolls inside that clean edge, its last row and
+   lock tags clear of the plate, and nothing ever slides under the plate.
+   The page's own bottom padding keeps the last row off that edge. */
+.game-root[data-layout='Portrait'] .profile {
+  --profile-plate-bottom: 16px;
+  --profile-plate-h: 48px;
+}
+
 .game-root[data-layout='Portrait'] .profile-page {
   transform-origin: center top;
-  margin: 0 -6px;
-  padding: 4px 6px var(--profile-plate-room, 60px);
+  margin: 0 -6px
+    calc(
+      var(--profile-plate-bottom) + var(--profile-plate-h) + 4px + 6px - 12px
+    );
+  padding: 4px 6px 8px;
 }
 
 .game-root[data-layout='Portrait'] .look-tab {
@@ -1726,8 +1737,9 @@
 .game-root[data-layout='Portrait'] .profile-rank {
   left: 16px;
   right: 16px;
-  bottom: 16px;
+  bottom: var(--profile-plate-bottom);
   width: auto;
+  height: var(--profile-plate-h);
   flex-wrap: nowrap;
   justify-content: flex-start;
   gap: 10px;
