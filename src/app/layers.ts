@@ -47,7 +47,7 @@ import {
 } from '../render/screen'
 import { hudShapes, hudStripShapes } from '../screens/game/hud'
 import { overlayShapes } from '../screens/game/overlay'
-import { pocketOf } from '../screens/game/pocket'
+import { hudKeepoutsOf, pocketOf } from '../screens/game/pocket'
 import {
   shakeOffset,
   worldLayerShapes,
@@ -101,7 +101,7 @@ const roundOverlayShapes = (
     ? [
         ...fridgeRevealShapes(model, screen, camera),
         ...clocheShapes(model, camera),
-        ...purchaseOverlayShapes(model, camera),
+        ...purchaseOverlayShapes(model, camera, hudKeepoutsOf(model)),
         ...frontDoorMarkerShapes(model, screen, camera),
         ...pointerShapes(model, screen, camera),
         ...stragglerEdgeShapes(model, screen, camera),

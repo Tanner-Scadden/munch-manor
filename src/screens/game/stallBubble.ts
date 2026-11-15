@@ -29,22 +29,18 @@ import {
   RATTLES_INTRO_LINES,
   maybeRattlesLine,
 } from '../../features/onboarding/rattlesIntro'
+import { tagKeepoutsOf } from '../../features/shop/purchaseView'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
-import { gunClusterBox, startWavePillBox } from '../../render/hudLayout'
+import { type Keepout, clearOfKeepouts } from '../../render/keepout'
 import { doorArrowBox } from '../../render/powerupView'
-import {
-  type Screen,
-  landscapeFrameOffset,
-  screenOf,
-  stagePlacement,
-} from '../../render/screen'
+import { landscapeFrameOffset, screenOf } from '../../render/screen'
 import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { RATTLES_BOX, levelOf } from '../../world/level/arena'
-import { Phase, type Vector } from '../../world/schema/worldSchema'
+import type { Vector } from '../../world/schema/worldSchema'
 import { hintBoxesOf, maybeBannerBand } from './overlay'
-import { keyRingBoxOf, maybePocketKeepout } from './pocket'
+import { hudKeepoutsOf } from './pocket'
 
 // NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
 // from the spot it is about, and when that spot is out of view it waits at
@@ -249,6 +245,10 @@ type Side = 'Left' | 'Right' | 'Up' | 'Down' | 'Inside'
 const EDGE_MARGIN = 4
 const HUD_CLEARANCE = 22
 const ARROW_LENGTH = 4
+// NOTE: how far an arrow reaches past the bubble's side (its one pixel gap
+// and its length), and how far the bob moves the bubble each way.
+const ARROW_REACH = ARROW_LENGTH + 1
+const BOB_PX = 1
 const BOB_MS = 900
 const RATTLES_HEAD_LIFT = 6
 
@@ -399,49 +399,11 @@ const bubbleShapes = (
     camera,
   )
 
-// NOTE: what a bubble keeps out of, in screen pixels: the dare pocket on
-// the HUD with its unlock bar, the key ring, a banner's rows while one
-// shows, the tours' hint rows under it (BLOCK DOOR), and the quest's arrow
-// over its next spot. A bubble over one moves to the nearest place clear
-// of them all, under or over one of them.
-type Keepout = Readonly<{
-  left: number
-  top: number
-  right: number
-  bottom: number
-}>
-
-const KEEPOUT_GAP = 2
-
-// NOTE: the slots' key caps stand this far over the slots.
-const CLUSTER_CAP_RISE = 3
-
-// NOTE: a break's START WAVE button stands over the gun row, an HTML
-// button the canvas cannot draw over, so a bubble keeps clear of it too, on
-// a keyboard as on touch (the two are the same size).
-const startWaveKeepout = (
-  model: Model,
-  screen: Screen,
-): ReadonlyArray<Keepout> =>
-  Phase.isAnyOf(['Preparation'])(model.phase)
-    ? Option.match(model.maybeSurface, {
-        onNone: () => [],
-        onSome: surface => {
-          const box = startWavePillBox(
-            screen,
-            stagePlacement(surface, screen).scale,
-          )
-          return [
-            {
-              left: box.x,
-              top: box.y,
-              right: box.x + box.width,
-              bottom: box.y + box.height,
-            },
-          ]
-        },
-      })
-    : []
+// NOTE: what a bubble keeps out of, in screen pixels: the HUD's buttons and
+// panels (`hudKeepoutsOf`), the shop's tags as they are pinned, a banner's
+// rows while one shows, the tours' hint rows under it (BLOCK DOOR), and the
+// quest's arrow over its next spot. A bubble over one moves to the nearest place clear of them all,
+// under or over one of them.
 
 // NOTE: the guided quest's arrow bobbing over its next spot
 // (src/screens/game/worldView.ts), while in view.
@@ -454,23 +416,9 @@ const questArrowKeepout = (
     onSome: mark => [doorArrowBox(worldToView(camera, mark))],
   })
 
-// NOTE: the gun slots and their key caps over the window's bottom in
-// landscape (under it, in the thumb area, in portrait, where this is out of
-// the window's reach anyway).
-const clusterKeepout = (screen: Screen): Keepout => {
-  const cluster = gunClusterBox(screen)
-  return {
-    left: cluster.x,
-    top: cluster.y - CLUSTER_CAP_RISE,
-    right: cluster.x + cluster.width,
-    bottom: cluster.y + cluster.height,
-  }
-}
-
 const keepoutsOf = (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
   const frame = landscapeFrameOffset(screen)
-  const card: ReadonlyArray<Keepout> = Option.toArray(maybePocketKeepout(model))
   const banner: ReadonlyArray<Keepout> = Option.match(maybeBannerBand(model), {
     onNone: () => [],
     onSome: band => [
@@ -488,71 +436,14 @@ const keepoutsOf = (model: Model, camera: Camera): ReadonlyArray<Keepout> => {
     right: box.right + frame.x,
     bottom: box.bottom + frame.y,
   }))
+  const hud = hudKeepoutsOf(model)
   return [
-    ...card,
-    keyRingBoxOf(model),
+    ...hud,
+    ...tagKeepoutsOf(model, camera, hud),
     ...banner,
     ...hints,
     ...questArrowKeepout(model, camera),
-    ...startWaveKeepout(model, screen),
-    clusterKeepout(screen),
   ]
-}
-
-const isOverKeepout =
-  (x: number, width: number, height: number, y: number) =>
-  (keepout: Keepout): boolean =>
-    x < keepout.right &&
-    x + width > keepout.left &&
-    y < keepout.bottom &&
-    y + height > keepout.top
-
-// NOTE: where the bubble wants to be, if that is clear; else the nearest
-// spot just under or just over one keepout that is clear of every one and
-// inside the window; else, with nowhere clear, it steps past each keepout
-// in turn as before.
-const clearOfHud = (
-  keepouts: ReadonlyArray<Keepout>,
-  { width, height: bubbleHeight }: Bubble,
-  x: number,
-  y: number,
-  top: number,
-  bottom: number,
-): number => {
-  const height = bubbleHeight + TAIL
-  const isClear = (placed: number): boolean =>
-    !Array.some(keepouts, isOverKeepout(x, width, height, placed))
-  if (isClear(y)) {
-    return y
-  }
-  const nearest = Array.reduce(
-    Array.flatMap(keepouts, keepout => [
-      keepout.bottom + KEEPOUT_GAP,
-      keepout.top - KEEPOUT_GAP - height,
-    ]),
-    Option.none<number>(),
-    (best, candidate) =>
-      candidate >= top &&
-      candidate <= bottom &&
-      isClear(candidate) &&
-      Option.match(best, {
-        onNone: () => true,
-        onSome: kept => Math.abs(candidate - y) < Math.abs(kept - y),
-      })
-        ? Option.some(candidate)
-        : best,
-  )
-  return Option.getOrElse(nearest, () =>
-    Array.reduce(keepouts, y, (placed, keepout) => {
-      if (!isOverKeepout(x, width, height, placed)(keepout)) {
-        return placed
-      }
-      const under = keepout.bottom + KEEPOUT_GAP
-      return under <= bottom
-        ? under
-        : Math.max(top, keepout.top - KEEPOUT_GAP - height)
-    }),
-  )
 }
 
 // NOTE: where a bubble goes: the spot its tail tip points at, whether it
@@ -577,7 +468,9 @@ const placedBubble = (
   const { goods, frame, width, height } = bubble
   const view = viewBoxOf(camera)
   const tip = worldToView(camera, tipInWorld)
-  const bob = Math.round(Math.sin((FULL_TURN * model.elapsedMs) / BOB_MS) * 1)
+  const bob = Math.round(
+    Math.sin((FULL_TURN * model.elapsedMs) / BOB_MS) * BOB_PX,
+  )
   const margin = EDGE_MARGIN + ARROW_LENGTH + inset
   const left = view.x + margin
   const right = view.x + view.width - margin - width
@@ -595,15 +488,32 @@ const placedBubble = (
     ),
     () => Math.max(top, Math.min(bottom, wantedY)),
   )
-  const y =
-    clearOfHud(keepoutsOf(model, camera), bubble, x, underY, top, bottom) + bob
   const side = sideOf({ x: wantedX, y: wantedY }, left, right, top, bottom)
+  const arrowSide = isPointing ? side : 'Inside'
+  // NOTE: what the bubble covers as it bobs, with its arrow past the side
+  // it points to, is what keeps clear of the HUD and the tags.
+  const above = BOB_PX + (arrowSide === 'Up' ? ARROW_REACH : 0)
+  const below = BOB_PX + (arrowSide === 'Down' ? ARROW_REACH : 0)
+  const before = arrowSide === 'Left' ? ARROW_REACH : 0
+  const after = arrowSide === 'Right' ? ARROW_REACH : 0
+  const y =
+    clearOfKeepouts({
+      keepouts: keepoutsOf(model, camera),
+      x: x - before,
+      y: underY - above,
+      width: width + before + after,
+      height: height + TAIL + above + below,
+      top: top - above,
+      bottom: bottom - above,
+    }) +
+    above +
+    bob
   return [
     placeSprite(x, y, frame),
     ...goodsShapes(goods, x, y, height),
-    ...(side === 'Inside' || !isPointing
+    ...(arrowSide === 'Inside'
       ? []
-      : arrowRects(side, x, y, width, height, BUBBLE_INK)),
+      : arrowRects(arrowSide, x, y, width, height, BUBBLE_INK)),
   ]
 }
 

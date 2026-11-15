@@ -1,7 +1,8 @@
 import { Function } from 'effect'
 
+import type { SurfaceRectangle } from '../input/inputSchema'
 import { PLAYER_MAX_HP } from '../shared/constants'
-import { type Box, type Screen, thumbAreaTop } from './screen'
+import { type Box, type Screen, stagePlacement, thumbAreaTop } from './screen'
 
 // Where the HUD's parts sit on each screen: the hearts, the streak, the gun
 // and trap slots, and the strip behind the top rows. The HUD draws there
@@ -265,5 +266,28 @@ export const startWavePillBox: {
     y: cluster.y - height,
     width: halfWidth * 2,
     height,
+  }
+})
+
+// NOTE: the corner button over a run (PAUSE, or co-op's LEAVE in its
+// place), an HTML button the canvas cannot draw over, in screen pixels.
+// It is 48 CSS pixels square, 6 in from the game surface's top right
+// (`.corner-buttons` in src/app/styles.css, `.coop-arena-hud` in
+// src/features/coop/coop.css), so where it lands on the screen depends on
+// how the stage sits in the surface.
+const CORNER_INSET_CSS = 6
+const CORNER_BUTTON_CSS = 48
+
+export const cornerButtonBox: {
+  (surface: SurfaceRectangle): (screen: Screen) => Box
+  (screen: Screen, surface: SurfaceRectangle): Box
+} = Function.dual(2, (screen: Screen, surface: SurfaceRectangle): Box => {
+  const { scale, left, top } = stagePlacement(surface, screen)
+  const right = surface.width - CORNER_INSET_CSS
+  return {
+    x: (right - CORNER_BUTTON_CSS - left) / scale,
+    y: (CORNER_INSET_CSS - top) / scale,
+    width: CORNER_BUTTON_CSS / scale,
+    height: CORNER_BUTTON_CSS / scale,
   }
 })

@@ -17,18 +17,16 @@ import {
   TOP_LEFT,
   bakeShapes,
   boundsOf,
+  group,
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
 import { gunIcon } from '../../art/sprites/guns'
-import {
-  type Camera,
-  placedAt,
-  viewBoxOf,
-  worldToView,
-} from '../../render/camera'
+import { type Camera, anchoredAt, placedAt } from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
 import { featLockShapes, lockSpotIn } from '../../render/featLockView'
+import { clearWindowOf } from '../../render/hudLayout'
+import { type Keepout, clearOfKeepouts } from '../../render/keepout'
 import {
   COOKED_GUN_ICONS,
   COOKED_GUN_ICON_WIDTH,
@@ -36,6 +34,7 @@ import {
   PERK_ICON_SIZE,
 } from '../../render/kitchenGearView'
 import { PADLOCK_SPRITE } from '../../render/room/kitchenView'
+import { screenOf } from '../../render/screen'
 import { FRIDGE_RULES } from '../../world/fridge/leftovers'
 import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
 import { crewAtBackDoorOf } from '../../world/kitchen/backDoor'
@@ -634,60 +633,184 @@ const crewCountShapes = (
     : []
 }
 
-const offerShapes =
-  (model: Model, maybeInReach: Option.Option<Offer>) =>
-  (unplaced: Offer): ReadonlyArray<Canvas.Shape> => {
+type TagDrawing = Readonly<{
+  model: Model
+  maybeInReach: Option.Option<Offer>
+  offer: Offer
+  tag: PriceTag
+}>
+
+const offerShapes = ({
+  model,
+  maybeInReach,
+  offer,
+  tag,
+}: TagDrawing): ReadonlyArray<Canvas.Shape> => {
+  const replaced = replacedShapes(model, offer, tag)
+  const isMine = (target: Purchasable) =>
+    isSamePurchasable(target, offer.target)
+  const isInReach = Option.exists(maybeInReach, ({ target }) => isMine(target))
+  const tagShape = placeAt(
+    tagLeft(offer, tag),
+    offer.spot.y,
+    isInReach ? tag.lit : tag.plain,
+  )
+  const prompt = [
+    ...(isInReach ? promptShapes(model, offer, tag) : []),
+    ...crewCountShapes(model, offer, tag),
+  ]
+  const shapes = Purchase.match(focusOf(model).purchase, {
+    Idle: () => [tagShape, ...prompt],
+    Holding: ({ target }) =>
+      isMine(target)
+        ? [
+            ...ringShapes(offer, tag, holdProgress(focusOf(model).purchase)),
+            tagShape,
+          ]
+        : [tagShape, ...prompt],
+    Refused: ({ target, shortBy, sinceMs }) =>
+      isMine(target)
+        ? isUncooked(offer, sinceMs)
+          ? uncookedShapes(offer, tag, sinceMs)
+          : refusedShapes(offer, tag, shortBy, sinceMs)
+        : [tagShape, ...prompt],
+    Done: () => [tagShape],
+    Spent: () => [tagShape, ...prompt],
+  })
+  return [...shapes, ...replaced]
+}
+
+// NOTE: what a tag covers in the game's pixels round its placed spot: the
+// tag with its edge and nail, and room on its right for the keycap (or the
+// finger) that comes as the player walks up, so a tag pinned to an edge
+// never jumps when it lights.
+const NAIL_RISE = 5
+const PROMPT_WIDTH = 10
+
+const tagBoxOf = (offer: Offer, tag: PriceTag): Keepout => ({
+  left: tagLeft(offer, tag) - 1,
+  top: offer.spot.y - NAIL_RISE,
+  right: offer.spot.x + Math.ceil(tag.width / 2) + PROMPT_GAP + PROMPT_WIDTH,
+  bottom: offer.spot.y + tag.height + 1,
+})
+
+// NOTE: a tag pinned to the window's edge stays whole inside the window,
+// clear of the HUD strip's rows in landscape and of the gun slots, and
+// moves up or down off the HUD's buttons and panels (`keepouts`, as
+// Rattles' bubbles do). A tag wholly out of the window is not drawn: a
+// zoomed phone window can stop short of the boards or the fridge, and the
+// overlay has no edge of its own over the portrait HUD band or the thumbs.
+const EDGE_GAP = 2
+
+// NOTE: a tag as it is drawn: its offer placed, its tag, how far it moves
+// to stay whole and clear, and what it then covers on the screen.
+type PinnedTag = Readonly<{
+  unplaced: Offer
+  offer: Offer
+  tag: PriceTag
+  shift: Readonly<{ x: number; y: number }>
+  covers: Keepout
+}>
+
+// NOTE: the window and its clear part are read once a frame, not per tag.
+const maybePinnedTag = (
+  model: Model,
+  camera: Camera,
+  keepouts: ReadonlyArray<Keepout>,
+) => {
+  const window = screenOf(model).world
+  const clear = clearWindowOf(screenOf(model), EDGE_GAP)
+  return (unplaced: Offer): Option.Option<PinnedTag> => {
     const tag = tagOf(model, unplaced)
     const offer = placedOffer(model, unplaced, tag)
-    const replaced = replacedShapes(model, offer, tag)
-    const isMine = (target: Purchasable) =>
-      isSamePurchasable(target, offer.target)
-    const isInReach = Option.exists(maybeInReach, ({ target }) =>
-      isMine(target),
-    )
-    const tagShape = placeAt(
-      tagLeft(offer, tag),
-      offer.spot.y,
-      isInReach ? tag.lit : tag.plain,
-    )
-    const prompt = [
-      ...(isInReach ? promptShapes(model, offer, tag) : []),
-      ...crewCountShapes(model, offer, tag),
-    ]
-    const shapes = Purchase.match(focusOf(model).purchase, {
-      Idle: () => [tagShape, ...prompt],
-      Holding: ({ target }) =>
-        isMine(target)
-          ? [
-              ...ringShapes(offer, tag, holdProgress(focusOf(model).purchase)),
-              tagShape,
-            ]
-          : [tagShape, ...prompt],
-      Refused: ({ target, shortBy, sinceMs }) =>
-        isMine(target)
-          ? isUncooked(offer, sinceMs)
-            ? uncookedShapes(offer, tag, sinceMs)
-            : refusedShapes(offer, tag, shortBy, sinceMs)
-          : [tagShape, ...prompt],
-      Done: () => [tagShape],
-      Spent: () => [tagShape, ...prompt],
+    const { translate, scale } = anchoredAt(camera, unplaced.spot)
+    const box = tagBoxOf(offer, tag)
+    const left = translate.x + box.left * scale
+    const top = translate.y + box.top * scale
+    const width = (box.right - box.left) * scale
+    const height = (box.bottom - box.top) * scale
+    const isOut =
+      left + width <= window.x ||
+      left >= window.x + window.width ||
+      top + height <= window.y ||
+      top >= window.y + window.height
+    if (isOut) {
+      return Option.none()
+    }
+    const x = clamp(left, clear.left, clear.right - width)
+    const lowest = clear.bottom - height
+    const y = clearOfKeepouts({
+      keepouts,
+      x,
+      y: clamp(top, clear.top, lowest),
+      width,
+      height,
+      top: clear.top,
+      bottom: lowest,
     })
-    return [...shapes, ...replaced]
+    const shift = { x: Math.round(x - left), y: Math.round(y - top) }
+    return Option.some({
+      unplaced,
+      offer,
+      tag,
+      shift,
+      covers: {
+        left: left + shift.x,
+        top: top + shift.y,
+        right: left + shift.x + width,
+        bottom: top + shift.y + height,
+      },
+    })
   }
+}
 
-// NOTE: a zoomed phone window can stop short of the boards or the fridge,
-// and the overlay has no edge of its own there: a tag wholly above or
-// below the window would hang over the portrait HUD band or the thumbs.
-const isTagInView =
-  (model: Model, camera: Camera) =>
-  (offer: Offer): boolean => {
-    const { height } = tagOf(model, offer)
-    const top = worldToView(camera, offer.spot).y
-    const view = viewBoxOf(camera)
-    return (
-      top + height * camera.scale >= view.y && top <= view.y + view.height
+const pinnedTagsOf = (
+  model: Model,
+  camera: Camera,
+  keepouts: ReadonlyArray<Keepout>,
+): ReadonlyArray<PinnedTag> =>
+  Array.getSomes(
+    Array.map(
+      offersOf(model, focusSlotOf(model)),
+      maybePinnedTag(model, camera, keepouts),
+    ),
+  )
+
+const pinnedTagShapes = (model: Model, camera: Camera) => {
+  const maybeInReach = maybeOfferInReach(model, focusSlotOf(model))
+  return ({ unplaced, offer, tag, shift }: PinnedTag): Canvas.Shape => {
+    const tagShapes = placedAt(
+      camera,
+      unplaced.spot,
+      offerShapes({ model, maybeInReach, offer, tag }),
     )
+    return shift.x === 0 && shift.y === 0
+      ? tagShapes
+      : group({ translate: shift, shapes: [tagShapes] })
   }
+}
+
+// NOTE: what the tags cover on the screen as they are drawn, for Rattles'
+// bubbles to keep out of, so a hint never hides a price.
+export const tagKeepoutsOf: {
+  (
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): (model: Model) => ReadonlyArray<Keepout>
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Keepout>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Keepout> =>
+    Array.map(pinnedTagsOf(model, camera, keepouts), ({ covers }) => covers),
+)
 
 // NOTE: the stove and the valve, until the player has done their feats,
 // hang a feat's lock (src/render/featLockView.ts) where their tag will.
@@ -714,27 +837,29 @@ const lockShapes = (
 // NOTE: drawn on the overlay, over the actors and the HUD strip, each tag
 // placed on its spot through the lens by the screen camera, so a tag is
 // never lost behind a zombie at the boards or dimmed by the strip it hangs
-// under.
+// under. `keepouts` are the HUD's buttons and panels it stays off
+// (src/screens/game/pocket.ts).
 export const purchaseOverlayShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
-  2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => [
+  3,
+  (
+    model: Model,
+    camera: Camera,
+    keepouts: ReadonlyArray<Keepout>,
+  ): ReadonlyArray<Canvas.Shape> => [
     ...lockShapes(model, camera),
     ...Array.map(
-      Array.filter(
-        offersOf(model, focusSlotOf(model)),
-        isTagInView(model, camera),
-      ),
-      offer =>
-        placedAt(
-          camera,
-          offer.spot,
-          offerShapes(model, maybeOfferInReach(model, focusSlotOf(model)))(
-            offer,
-          ),
-        ),
+      pinnedTagsOf(model, camera, keepouts),
+      pinnedTagShapes(model, camera),
     ),
   ],
 )

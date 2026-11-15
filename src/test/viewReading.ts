@@ -6,6 +6,13 @@ import { Canvas } from 'foldkit'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
+type Edges = Readonly<{
+  left: number
+  top: number
+  right: number
+  bottom: number
+}>
+
 // NOTE: every Rect in a shape tree, moved by its Groups' translations.
 export const rectsOf: {
   (
@@ -36,6 +43,48 @@ export const rectsOf: {
       ),
     ),
 )
+
+// NOTE: every Image and Rect a shape tree draws, as its edges on the canvas,
+// through its Groups' translations and scales.
+type Placing = Readonly<{ x: number; y: number; scale: number }>
+
+const drawnBoxesAt = (
+  shapes: ReadonlyArray<Canvas.Shape>,
+  at: Placing,
+): ReadonlyArray<Edges> =>
+  Array.flatMap(shapes, shape =>
+    Match.value(shape).pipe(
+      Match.tag('Group', ({ shapes: inner, translate, scale }) =>
+        drawnBoxesAt(inner, {
+          x: at.x + (translate?.x ?? 0) * at.scale,
+          y: at.y + (translate?.y ?? 0) * at.scale,
+          scale: at.scale * (scale?.x ?? 1),
+        }),
+      ),
+      Match.tag('Image', 'Rect', ({ x, y, width, height }) => [
+        {
+          left: at.x + x * at.scale,
+          top: at.y + y * at.scale,
+          right: at.x + (x + width) * at.scale,
+          bottom: at.y + (y + height) * at.scale,
+        },
+      ]),
+      Match.orElse(() => []),
+    ),
+  )
+
+export const drawnBoxesOf = (
+  shapes: ReadonlyArray<Canvas.Shape>,
+): ReadonlyArray<Edges> => drawnBoxesAt(shapes, { x: 0, y: 0, scale: 1 })
+
+// NOTE: whether two boxes overlap, edges touching not counted.
+export const isOverBox =
+  (box: Edges) =>
+  (other: Edges): boolean =>
+    box.left < other.right &&
+    box.right > other.left &&
+    box.top < other.bottom &&
+    box.bottom > other.top
 
 export const imagesIn = (
   shapes: ReadonlyArray<Canvas.Shape>,
