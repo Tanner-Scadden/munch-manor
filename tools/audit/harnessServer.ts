@@ -108,6 +108,10 @@ const harnessHash = Effect.gen(function* () {
     Order.String,
   )
   const hasher = new Bun.CryptoHasher('sha256')
+  // NOTE: the profiling build (`PROFILE` set, unminified, so a profile names
+  // its functions) is cached apart from the minified one.
+  const profile = yield* Config.String('PROFILE').pipe(Config.withDefault(''))
+  hasher.update(profile === '' ? 'minified\0' : 'profile\0')
   for (const file of paths) {
     hasher.update(path.relative(root, file))
     hasher.update('\0')

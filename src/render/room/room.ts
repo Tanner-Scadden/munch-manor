@@ -457,6 +457,8 @@ const roomImage = (
   room: Room,
   openExits: ReadonlyArray<ExitId>,
 ): ReadonlyArray<Canvas.Shape> => {
+  // NOTE: once per room as a level is built, never per frame.
+  // oxlint-disable-next-line munch/no-string-key-per-frame
   const key = `${room.id}:${Array.join(openExits, '+')}`
   const images =
     roomImageCache.get(spec) ?? new Map<string, ReadonlyArray<Canvas.Shape>>()

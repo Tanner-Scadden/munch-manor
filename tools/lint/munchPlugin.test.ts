@@ -527,6 +527,22 @@ tester.run('no-deep-equal-per-frame', ruleOf('no-deep-equal-per-frame'), {
   ],
 })
 
+tester.run('no-string-key-per-frame', ruleOf('no-string-key-per-frame'), {
+  valid: [
+    'const known = cache.get(texture)',
+    'const label = `${count} zombies`',
+    'const known = corners.get(x * 65536 + y)',
+    'const key = HOME_KEYS.Coop.code',
+    'const keyOf = (shape) => { return `${shape.x}` }',
+  ],
+  invalid: [
+    one('const known = cache.get(`${src}|${x},${y}`)'),
+    one('seen.add(`${row},${column}`)'),
+    one('const key = `${color}|${strength}`'),
+    one('const cropKeyOf = (image) => `${image.src}|${image.crop.x}`'),
+  ],
+})
+
 tester.run('no-nested-scan', ruleOf('no-nested-scan'), {
   valid: [
     'const hit = Array.some(zombies, zombie => zombie.hp <= 0)',

@@ -23,7 +23,7 @@
 // clock, the flash from the gun's recoil, the camera from the game's. So the
 // same frame draws the same picture, as a screenshot or a video wants.
 
-import { Array, Effect, Option, Result } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 import { Application, Texture } from 'pixi.js'
 
@@ -61,7 +61,6 @@ import {
 } from '../effectsView'
 import { houseRattleOf } from '../juice'
 import { muzzleFlashLevel, muzzlePointOf, playerFootY } from '../playerView'
-import { hungChandelierShapes } from '../room/room'
 import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { airOf } from './air'
 import { BillboardPool, rimUp } from './billboards'
@@ -75,7 +74,7 @@ import {
 } from './diorama'
 import { HouseGlows } from './emissives'
 import { ballMiddleOf, blastLightOf, blastPiecesOf } from './explosions'
-import { type Affine, type Leaf, flatten, rectKey } from './flatten'
+import { IDENTITY, type Leaf, flatten } from './flatten'
 import type { IsoFrame } from './frame'
 import { GodRays, shaftMotesOf } from './godRays'
 import {
@@ -210,11 +209,6 @@ type Built = Readonly<{
   chandelier: Option.Option<Chandelier>
 }>
 
-const imageKey = (shape: Leaf['shape'], matrix: Affine): string =>
-  shape._tag === 'Image'
-    ? `${shape.src}|${shape.x + matrix.e}|${shape.y + matrix.f}`
-    : ''
-
 const bottomOf = ({ shape, matrix }: Leaf): number =>
   shape._tag === 'Image' || shape._tag === 'Rect'
     ? matrix.b * shape.x + matrix.d * (shape.y + shape.height) + matrix.f
@@ -271,13 +265,6 @@ const isCarved = (built: Built, drawable: Drawable): boolean => {
     isChandelierSprite(first)
   )
 }
-
-const rectKeysOf = (leaves: ReadonlyArray<Leaf>): ReadonlySet<string> =>
-  new Set(
-    Array.filterMap(leaves, ({ shape }) =>
-      shape._tag === 'Rect' ? Result.succeed(rectKey(shape)) : Result.failVoid,
-    ),
-  )
 
 // NOTE: mutable on purpose: a renderer owns pixi's mutable scene and keeps
 // what it built until the level changes.
@@ -483,8 +470,9 @@ export class IsoScene {
     const rattle = houseRattleOf(model.shake.trauma)
 
     // THE FLOOR
+    // NOTE: what has landed is painted into the floor's own picture alone,
+    // never in the ground's strata, so the ground needs no sorting out.
     const landed = flatten(groundParticleShapes(model.cosmetics.particles))
-    const landedKeys = rectKeysOf(landed)
     const isLanded = landed.length > 0
     if (isDecalsChanged || isLanded || this.wasLanded) {
       built.floor.picture.paintCoat(LANDED_COAT, landed)
@@ -497,11 +485,7 @@ export class IsoScene {
         onNone: () => [],
         onSome: chandelier => chandelier.floorMarks(isDown),
       }),
-      ...Array.filter(
-        flatten(strata.ground),
-        ({ shape }) =>
-          !(shape._tag === 'Rect' && landedKeys.has(rectKey(shape))),
-      ),
+      ...flatten(strata.ground),
     ])
     const stormKey = stormKeyOf({
       world: model,
@@ -620,11 +604,6 @@ export class IsoScene {
     }
 
     // WHAT FLOATS
-    const chandelier = new Set(
-      Array.map(flatten(hungChandelierShapes(model)), ({ shape, matrix }) =>
-        imageKey(shape, matrix),
-      ),
-    )
     // NOTE: a rattle jolts the chandelier on its chain, a whole pixel at a
     // time.
     const sway = chandelierSwayAt(t) + Math.round(Math.sin(t * 38) * rattle * 3)
@@ -633,18 +612,15 @@ export class IsoScene {
     })
     // NOTE: sparks, blood, and gibs in the air stand as cubes, lit as the
     // bodies are, so they vanish into the cellar's dark with them; one with
-    // a see-through color stays a lit billboard.
-    const airborne = new Set<string>()
-    const cubed = new Set<string>()
+    // a see-through color (or with no cube left) stays a lit billboard. The
+    // scene reads them off the particles, never the overhead strata.
     for (const particle of airborneParticlesOf(model.cosmetics.particles)) {
       const { shape } = particle
       if (shape._tag !== 'Rect') {
         continue
       }
-      const key = rectKey(shape)
-      airborne.add(key)
       const look = colorOf(shape.fill ?? '#000')
-      if (
+      const isCubed =
         look.alpha >= 0.98 &&
         this.voxels.standCube({
           x: particle.x,
@@ -655,24 +631,26 @@ export class IsoScene {
           color: look.color,
           glow: 0,
         })
-      ) {
-        cubed.add(key)
+      if (!isCubed) {
+        const leaf = { shape, matrix: IDENTITY, alpha: 1 }
+        this.billboards.standLeaves(
+          [leaf],
+          bottomOf(leaf) + OVERHEAD_FOOT_PX,
+          OVERHEAD_HOVER,
+          1,
+        )
       }
     }
     this.standBlasts(model)
     for (const leaf of flatten(strata.overhead)) {
       const { shape, matrix, alpha } = leaf
-      if (shape._tag === 'Rect' && cubed.has(rectKey(shape))) {
-        continue
-      }
-      const isChandelier =
-        shape._tag === 'Image' && chandelier.has(imageKey(shape, matrix))
+      // NOTE: the hung chandelier's sprite, known by its crop: the carved
+      // one stands in its place where the level has one.
+      const isChandelier = shape._tag === 'Image' && isChandelierSprite(shape)
       if (isChandelier && Option.isSome(built.chandelier)) {
         continue
       }
-      const isLitInAir =
-        isChandelier || (shape._tag === 'Rect' && airborne.has(rectKey(shape)))
-      const pool = isLitInAir ? this.billboards : this.glowing
+      const pool = isChandelier ? this.billboards : this.glowing
       pool.standLeaves(
         [
           {

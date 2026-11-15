@@ -594,10 +594,6 @@ const particleShapesWhere =
 
 export const groundParticleShapes = particleShapesWhere(isGround)
 
-export const airborneParticleShapes = particleShapesWhere(
-  particle => !isGround(particle),
-)
-
 // POPUPS
 
 type PopupLook = Readonly<{
