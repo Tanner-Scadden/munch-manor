@@ -18,7 +18,13 @@ import {
   playingModel,
   readyModel,
 } from '../../test/model.fixture'
-import { APPLICATION, tick, touchDown, touchMove } from '../../test/testing'
+import {
+  APPLICATION,
+  settleRunCommands,
+  tick,
+  touchDown,
+  touchMove,
+} from '../../test/testing'
 import { WEAPONS, freshGun } from '../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { MouseButton, Stick } from '../inputSchema'
@@ -211,6 +217,8 @@ describe('touch sticks', () => {
 })
 
 describe('mouse', () => {
+  // NOTE: a release with no step since the press keeps the trigger Held
+  // until one sees it (FirePress), then it lets go.
   it.effect(
     'aims at the pointer through the letterboxed canvas and fires while held',
     () => {
@@ -252,8 +260,14 @@ describe('mouse', () => {
         }),
         Story.message(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),
         Story.model(({ seats: [{ intent }] }) => {
+          expect(intent.trigger).toBe('Held')
+        }),
+        tick(FIXED_STEP_MS),
+        tick(FIXED_STEP_MS),
+        Story.model(({ seats: [{ intent }] }) => {
           expect(intent.trigger).toBe('Released')
         }),
+        settleRunCommands,
       )
     },
   )

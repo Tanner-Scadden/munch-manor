@@ -16,7 +16,7 @@ import {
   assistAim,
 } from '../input/aimAssist'
 import { couchInputs, isCouchPlay } from '../input/couch'
-import { aimReachOf, deriveIntent } from '../input/input'
+import { aimReachOf, deriveIntent, seeFirePress } from '../input/input'
 import { RunRecorder, noteTick } from '../platform/recording'
 import { advanceActions } from '../render/actionFrame'
 import {
@@ -142,6 +142,13 @@ const recordedTick = (
 
 type Ticks = Readonly<{ count: number; carryMs: number }>
 
+// NOTE: the intent is left as the tick saw it; the next tick's refresh
+// reads the trigger without the press.
+export const withFirePressSeen = (model: Model): Model =>
+  model.input.firePress === 'Seen'
+    ? model
+    : modifyFields(model, { input: seeFirePress })
+
 // NOTE: every seat's intent for a tick: the human's from the client, the
 // couch players' from their keys, and each teammate bot's from its brain
 // (src/features/bots/teammateBot.ts).
@@ -181,8 +188,13 @@ const hasSlammed = (before: Phase, after: Phase): boolean =>
 
 // NOTE: a tick that ends the round ends the frame's ticks. The intro's
 // ticks run its clock (src/world/run/arrival.ts).
+// A tick sees a fire press waiting for one (FirePress in
+// src/input/inputSchema.ts), and a frame with no run under way lets go of
+// one, so it never fires the next run's first tick.
 const runTicks = (stepped: Stepped, count: number): Stepped => {
-  if (count <= 0 || !isRunUnderway(stepped.model.phase)) {
+  if (!isRunUnderway(stepped.model.phase)) {
+    return { ...stepped, model: withFirePressSeen(stepped.model) }
+  } else if (count <= 0) {
     return stepped
   }
   const intended = botsPressed(refreshIntent(stepped.model))
@@ -190,7 +202,7 @@ const runTicks = (stepped: Stepped, count: number): Stepped => {
   const ticked = stepWorld(intended, inputs)
   const next = {
     model: recordedTick(
-      withWorld(intended, () => ticked.world),
+      withFirePressSeen(withWorld(intended, () => ticked.world)),
       stepped.model,
       inputs,
     ),

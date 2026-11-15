@@ -333,6 +333,21 @@ describe('the Pressure Cooker', () => {
     ),
   )
 
+  it.effect('a click let go before the next frame still throws a lid', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(holding(freshGun('Cooker'))),
+      Story.message(FIRE_PRESS),
+      Story.message(FIRE_PUSH),
+      Story.message(FIRE_LIFT),
+      ...ticks(2, FRAME_MS),
+      Story.model(current => {
+        expect(current.lobs.length).toBe(1)
+      }),
+      settleRunCommands,
+    ),
+  )
+
   it.effect('the last lid thrown reloads the pot with no press', () => {
     const lastLid = modifyFields(freshGun('Cooker'), { loaded: () => 1 })
     return Story.story(
@@ -650,7 +665,9 @@ describe('Brain Freeze', () => {
         const beside = zombieOf('Runner', 901, PLAYER_X + 40, ROW_Y + 14, {
           hp: 99,
         })
-        const lug = zombieOf('Tank', 902, PLAYER_X + 52, ROW_Y - 14, { hp: 99 })
+        const lug = zombieOf('Tank', 902, PLAYER_X + 52, ROW_Y - 14, {
+          hp: 99,
+        })
         const away = zombieOf('Shambler', 903, PLAYER_X + 40, ROW_Y + 60, {
           hp: 99,
         })
