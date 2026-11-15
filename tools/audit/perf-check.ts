@@ -60,7 +60,7 @@ const scenarioNamesOf = (settings: Settings) =>
   String.split(',')(
     Option.getOrElse(
       settings.scenarios,
-      () => 'worst,endlessCap,coopLive,cellar',
+      () => 'worst,endlessCap,coopLive,cellar,allRooms',
     ),
   )
 

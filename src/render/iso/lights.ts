@@ -10,6 +10,7 @@ import { Container3D, PointLight, SpotLight } from '@pixi/3d'
 import type { Level } from '../../world/level/arena'
 import { CELLAR_ROOM_ID } from '../../world/level/plan'
 import type { Player } from '../../world/schema/entitySchema'
+import { type ViewBox, isNearView } from './cull'
 import {
   DARK_CELL_INTENSITY,
   DARK_DEPTH,
@@ -40,7 +41,9 @@ const hungSpot = (
 }
 
 export type HouseLights = Readonly<{
-  apply: (frame: LightsFrame, player: Player) => void
+  apply: (
+    input: Readonly<{ frame: LightsFrame; player: Player; view: ViewBox }>,
+  ) => void
 }>
 
 export const houseLightsOf = (
@@ -61,7 +64,7 @@ export const houseLightsOf = (
     })
     fill.position.set(spec.from.x, spec.from.y, spec.from.z)
     fill.lookAt(spec.to)
-    return { fill, fullIntensity: spec.fullIntensity, color: spec.color }
+    return { fill, spec }
   })
   const cells = Option.match(
     Array.findFirst(level.rooms, ({ id }) => id === CELLAR_ROOM_ID),
@@ -111,21 +114,29 @@ export const houseLightsOf = (
 
   // NOTE: the mood's tint last applied, so a color is set only on a change.
   let lastTint = Number.NaN
-  const apply = (frame: LightsFrame, player: Player): void => {
+  const apply = ({
+    frame,
+    player,
+    view,
+  }: Readonly<{ frame: LightsFrame; player: Player; view: ViewBox }>): void => {
     const { tint, tintShare } = frame.mood
     const tintKey = tint + tintShare
     const isTintChanged = tintKey !== lastTint
     lastTint = tintKey
-    Array.forEach(fills, ({ fill, fullIntensity, color }, index) => {
+    Array.forEach(fills, ({ fill, spec }, index) => {
       const share = Option.getOrElse(
         Array.get(frame.fillShares, index),
         () => 0,
       )
-      fill.intensity = share * fullIntensity
+      fill.intensity = share * spec.fullIntensity
       fill.visible = share > 0
+      // NOTE: a fill off screen keeps its light (the screen's tiles drop it
+      // for free), but a casting light draws the whole house into its
+      // shadow map each frame, seen or not.
+      fill.castShadow = share > 0 && isNearView(spec.pool, view)
       if (isTintChanged) {
         fill.color.setValue(
-          mixColor({ from: color, to: tint, share: tintShare }),
+          mixColor({ from: spec.color, to: tint, share: tintShare }),
         )
       }
     })

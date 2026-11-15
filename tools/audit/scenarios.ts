@@ -44,6 +44,14 @@ export const SCENARIOS: Record<string, Scenario> = {
     warm: wait(4000),
     bot: true,
   },
+  // Every room open (the kitchen, both side rooms, the far room, and the
+  // library's secret shelf), the room full, so the whole house's light,
+  // shadows, and floor are in play, as late in a run.
+  allRooms: {
+    q: '?wave=8&start=wave&god&gun=smg&openexits=West,East,Far,Kitchen,Secret&kitchen&fill&crowd=30',
+    warm: wait(4000),
+    bot: true,
+  },
   // The co-op arena staged with three players and a network that never
   // answers, so it measures the online run's view of a still World.
   coopArena: { q: '?coop=arena', warm: wait(1500), bot: false },

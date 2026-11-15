@@ -58,16 +58,19 @@ import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { airOf } from './air'
 import { BillboardPool, BodyCasters, rimUp } from './billboards'
 import { crittersOf } from './critters'
+import { isNearView, viewBoxOf } from './cull'
 import { blastLightOf, blastPiecesOf } from './explosions'
 import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
+  type Caster,
   type Plant,
   buildLintels,
   buildTileQuads,
   buildWallFaces,
   buildWallTops,
   buildWalls,
+  cutoutBoxOf,
   floorArtOf,
   furnitureCastersOf,
   plantsOf,
@@ -76,7 +79,7 @@ import {
 import { AMBIENT, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
 import { mixColor } from './mood'
-import { FloorLayer } from './painter'
+import { FloorLayer, FloorPicture } from './painter'
 import {
   auraCubesOf,
   auraFeetOf,
@@ -124,18 +127,25 @@ const BLAST_LIGHT_REACH = 2.5
 // so it never sinks into what it hangs over.
 const OVERHEAD_HOVER = 6
 
+// NOTE: the floor plane's coats over the room's art.
+const DECALS_COAT = 0
+const LANDED_COAT = 1
+
 type Built = Readonly<{
   level: Level
   holder: Container3D
-  room: FloorLayer
-  decals: FloorLayer
-  // NOTE: what has landed (casings, gibs, dust), lit as the floor is, so it
-  // sinks into the cellar's dark where the glows and rings do not.
-  landed: FloorLayer
+  // NOTE: the room's own art, which the walls' tops and faces wear too.
+  room: FloorPicture
+  // NOTE: the one lit plane over the floor: the room's art, then the decals,
+  // then what has landed (casings, gibs, dust), lit as the floor is, so it
+  // sinks into the cellar's dark where the glows and rings do not. One plane
+  // and not three, since every pixel of a lit plane is shaded for every
+  // light that reaches it.
+  floor: FloorLayer
   ground: FloorLayer
   // NOTE: the storm at the windows (storm.ts), unlit, on its own quads over
   // the glass and the floor it lights.
-  storm: FloorLayer
+  storm: FloorPicture
   floorArt: ReadonlyArray<Leaf>
   plants: ReadonlyArray<Plant>
   // NOTE: each tall piece by the shapes the game draws it with, to read the
@@ -216,7 +226,12 @@ export class IsoScene {
   private built: Built | undefined
   private casters: Container3D | undefined
   private casterTextures: ReadonlyArray<Texture> = []
+  private furnitureCasters: ReadonlyArray<Caster> = []
   private lastDecals: unknown
+  // NOTE: whether anything had landed on the floor last frame, so a frame
+  // with nothing there and nothing before draws the floor's picture again
+  // only when the decals change.
+  private wasLanded = false
   // NOTE: what the storm's layer was last painted for (storm.ts).
   private stormKey: string | undefined
   private lastPreload: ReadonlyArray<string> = []
@@ -344,9 +359,10 @@ export class IsoScene {
       this.castFurniture(built)
     }
     const decals = model.decals
-    if (decals !== this.lastDecals) {
+    const isDecalsChanged = decals !== this.lastDecals
+    if (isDecalsChanged) {
       this.lastDecals = decals
-      built.decals.paint(decalShapes(decals))
+      built.floor.picture.paintCoat(DECALS_COAT, flatten(decalShapes(decals)))
     }
 
     // THE CAMERA
@@ -370,6 +386,12 @@ export class IsoScene {
     )
     this.view.camera.lookAt({ x: lookX, y: 0, z: lookZ })
     this.view.camera.orthographicSize = (shownWidth * UNIT) / 2
+    const view = viewBoxOf({
+      x: camera.x - shake.x,
+      y: camera.y - shake.y,
+      width: shownWidth,
+      height: shownHeight,
+    })
 
     const { player } = focusOf(model)
     const rattle = houseRattleOf(model.shake.trauma)
@@ -377,7 +399,12 @@ export class IsoScene {
     // THE FLOOR
     const landed = flatten(groundParticleShapes(model.particles))
     const landedKeys = rectKeysOf(landed)
-    built.landed.paintLeaves(landed)
+    const isLanded = landed.length > 0
+    if (isDecalsChanged || isLanded || this.wasLanded) {
+      built.floor.picture.paintCoat(LANDED_COAT, landed)
+      built.floor.picture.render()
+    }
+    this.wasLanded = isLanded
     built.ground.paintLeaves(
       Array.filter(
         flatten(strata.ground),
@@ -440,12 +467,35 @@ export class IsoScene {
         this.bodies.cast(leaves, drawable.footY)
       }
     }
+    // NOTE: the house's own pieces stand only near the view: the rest of a
+    // house three screens wide would cost every pass, the shadows' too.
     for (const piece of built.furniture.values()) {
-      this.billboards.standUp(piece.shapes, piece.footY, fades.get(piece) ?? 1)
+      if (
+        isNearView(
+          {
+            left: piece.left,
+            top: piece.artTop,
+            right: piece.right,
+            bottom: piece.footY,
+          },
+          view,
+        )
+      ) {
+        this.billboards.standUp(
+          piece.shapes,
+          piece.footY,
+          fades.get(piece) ?? 1,
+        )
+      }
+    }
+    for (const { mesh, box } of this.furnitureCasters) {
+      mesh.visible = isNearView(box, view)
     }
     const t = windClockOf(model.elapsedMs)
     for (const plant of built.plants) {
-      standPlant({ pool: this.billboards, plant, t })
+      if (isNearView(cutoutBoxOf(plant.caster), view)) {
+        standPlant({ pool: this.billboards, plant, t })
+      }
     }
 
     // WHAT FLOATS
@@ -545,7 +595,7 @@ export class IsoScene {
       viewer: player,
       rattle,
     })
-    built.lights.apply(lights, player)
+    built.lights.apply({ frame: lights, player, view })
     const { mood } = lights
     this.ambient.intensity = AMBIENT * mood.ambient
     const ambientColor = mixColor({
@@ -724,21 +774,28 @@ export class IsoScene {
     this.dropLevel()
     const holder = new Container3D()
     this.view.root.addChild(holder)
-    const layer = (lift: number, isLit: boolean): FloorLayer =>
-      new FloorLayer({
-        app: this.app,
-        textures: this.textures,
-        level,
-        lift,
-        isLit,
-      })
-    const room = layer(0, true)
-    const decals = layer(0.005, true)
-    const landed = layer(0.008, true)
-    const ground = layer(0.012, false)
+    const app = this.app
+    const textures = this.textures
+    const room = new FloorPicture({ app, textures, level })
+    const floor = new FloorLayer({
+      app,
+      textures,
+      level,
+      lift: 0,
+      isLit: true,
+      coats: 2,
+      base: room.texture,
+    })
+    const ground = new FloorLayer({
+      app,
+      textures,
+      level,
+      lift: 0.012,
+      isLit: false,
+    })
     // NOTE: the storm's picture shows only on its own quads, never on a
-    // plane over the whole level, so its layer's plane is left out.
-    const storm = layer(0, false)
+    // plane over the whole level.
+    const storm = new FloorPicture({ app, textures, level })
     const stormQuads = buildTileQuads({
       level,
       material: new FlatMaterial({
@@ -759,15 +816,7 @@ export class IsoScene {
     })
     const wallTops = buildWallTops({ level, material: wallArt })
     const wallFaces = buildWallFaces({ level, material: wallArt })
-    holder.addChild(
-      room.mesh,
-      decals.mesh,
-      landed.mesh,
-      ground.mesh,
-      wallTops,
-      wallFaces,
-      stormQuads,
-    )
+    holder.addChild(floor.mesh, ground.mesh, wallTops, wallFaces, stormQuads)
     Array.forEach(walls, mesh => {
       holder.addChild(mesh)
     })
@@ -779,8 +828,7 @@ export class IsoScene {
       level,
       holder,
       room,
-      decals,
-      landed,
+      floor,
       ground,
       storm,
       floorArt,
@@ -800,13 +848,15 @@ export class IsoScene {
     const casters = new Container3D()
     built.holder.addChild(casters)
     this.casters = casters
-    this.casterTextures = furnitureCastersOf({
+    const cast = furnitureCastersOf({
       app: this.app,
       textures: this.textures,
       parent: casters,
       pieces: [...built.furniture.values()],
       plants: built.plants,
     })
+    this.casterTextures = cast.textures
+    this.furnitureCasters = cast.casters
   }
 
   private dropCasters(): void {
@@ -816,6 +866,7 @@ export class IsoScene {
       texture.destroy(true)
     })
     this.casterTextures = []
+    this.furnitureCasters = []
   }
 
   private dropLevel(): void {
@@ -829,7 +880,7 @@ export class IsoScene {
     this.rims.release()
     built.holder.destroy({ children: true })
     Array.forEach(
-      [built.room, built.decals, built.landed, built.ground, built.storm],
+      [built.room, built.floor, built.ground, built.storm],
       layer => {
         layer.destroy()
       },
