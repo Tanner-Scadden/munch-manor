@@ -59,7 +59,7 @@ test('the rain runs down the glass alone, the same for the same clock', () => {
 
 test('a strike flashes the glass and throws its light on the floor', () => {
   const flashed = rainAt(wave, struck)
-  Array.forEach(panes, ({ glass, thrown }) => {
+  Array.forEach(panes, ({ kind, glass, thrown }) => {
     expect(
       Array.some(
         flashed,
@@ -70,13 +70,16 @@ test('a strike flashes the glass and throws its light on the floor', () => {
           shape.height === glass.height,
       ),
     ).toBe(true)
+    // NOTE: the rose window throws its strike in its own colors, as a god
+    // ray (godRays.ts), not as the storm's white.
     expect(
       Array.some(
         flashed,
         shape => isInside(shape, thrown) && shape.y >= thrown.y,
       ),
-    ).toBe(true)
+    ).toBe(kind !== 'Rose')
   })
+  expect(Array.some(panes, ({ kind }) => kind === 'Rose')).toBe(true)
   expect(
     Array.some(rainAt(wave, calm), shape =>
       Array.some(panes, ({ thrown }) => isInside(shape, thrown)),

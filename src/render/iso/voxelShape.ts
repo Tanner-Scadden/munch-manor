@@ -482,7 +482,9 @@ const FRONT_FACE: FaceSpec = {
 // lies on the tops under it; every other face wears the color inside a dark
 // outline pixel (`isDark`, `sideSourcesOf`), so the outline shows on the
 // front alone, and on a body standing on the floor (`isGrounded`) darkens
-// toward it.
+// toward it. The front faces of the pixels that glow of themselves
+// (`isGlow`, a zombie's eyes) go apart, into `glow`, for a glowing material
+// on those few faces alone.
 export const voxelMeshOf = ({
   width,
   height,
@@ -492,6 +494,7 @@ export const voxelMeshOf = ({
   isGrounded = false,
   most,
   depthOf,
+  isGlow,
 }: Readonly<{
   width: number
   height: number
@@ -501,7 +504,13 @@ export const voxelMeshOf = ({
   isGrounded?: boolean
   most?: number
   depthOf?: DepthOf
-}>): VoxelMeshData & Readonly<{ lift: number; caster: CasterMeshData }> => {
+  isGlow?: (column: number, row: number) => boolean
+}>): VoxelMeshData &
+  Readonly<{
+    lift: number
+    caster: CasterMeshData
+    glow: VoxelMeshData | undefined
+  }> => {
   const form = lensFormOf({
     width,
     height,
@@ -549,17 +558,19 @@ export const voxelMeshOf = ({
   const shadeOf = (gridRow: number): number =>
     isGrounded ? sideShadeOf(floor - gridRow - 0.5) : 1
   const out = new Builder()
+  const glowOut = new Builder()
   const faceOf = (
     spec: FaceSpec,
     at: readonly [number, number, number],
     uv: readonly [number, number],
     shade: number,
+    into: Builder = out,
   ): void => {
     const [column, gridRow, d] = at
     const [c0, c1, c2, c3] = spec.corners
     const corner = ([x, y, z]: Point): Point =>
       pointOf(column + x, gridRow + y, d + z)
-    out.quad(
+    into.quad(
       [corner(c0), corner(c1), corner(c2), corner(c3)],
       spec.normal,
       uv,
@@ -585,7 +596,14 @@ export const voxelMeshOf = ({
           isFilled(column, gridRow, d) &&
           isOpen(FRONT_FACE, column, gridRow, d)
         ) {
-          faceOf(FRONT_FACE, [column, gridRow, d], uvOf(column, gridRow - d), 1)
+          const row = gridRow - d
+          faceOf(
+            FRONT_FACE,
+            [column, gridRow, d],
+            uvOf(column, row),
+            1,
+            isGlow?.(column, row) === true ? glowOut : out,
+          )
         }
       }
     }
@@ -628,13 +646,10 @@ export const voxelMeshOf = ({
     }
   }
   return {
-    positions: Float32Array.from(out.positions),
-    normals: Float32Array.from(out.normals),
-    uvs: Float32Array.from(out.uvs),
-    colors: Float32Array.from(out.colors),
-    indices: Uint32Array.from(out.indices),
+    ...meshDataOf(out),
     lift: form.lift,
     caster: casterOf({ size: [width, rows, depth], isFilled }),
+    glow: glowOut.indices.length === 0 ? undefined : meshDataOf(glowOut),
   }
 }
 
@@ -732,6 +747,14 @@ const casterOf = (
     indices: Uint32Array.from(out.indices),
   }
 }
+
+const meshDataOf = (built: Builder): VoxelMeshData => ({
+  positions: Float32Array.from(built.positions),
+  normals: Float32Array.from(built.normals),
+  uvs: Float32Array.from(built.uvs),
+  colors: Float32Array.from(built.colors),
+  indices: Uint32Array.from(built.indices),
+})
 
 // NOTE: where a sprite's blocks stand: its box as the game draws it (the
 // shape's own box under its groups' matrix), its texture's size in pixels,

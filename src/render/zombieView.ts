@@ -9,6 +9,7 @@ import {
   type Tone,
   bakeShapes,
   frameAt,
+  glowing,
   group,
   placeAt,
 } from '../art/sprite'
@@ -175,28 +176,32 @@ const sparkShapes = (
   flick: number,
   count: number,
 ): ReadonlyArray<Canvas.Shape> => [
-  Canvas.Rect({
-    x: tip.x,
-    y: tip.y,
-    width: 1,
-    height: 1,
-    fill: SPARK_CORE_COLOR,
-  }),
+  glowing(
+    Canvas.Rect({
+      x: tip.x,
+      y: tip.y,
+      width: 1,
+      height: 1,
+      fill: SPARK_CORE_COLOR,
+    }),
+  ),
   ...Array.makeBy(count, index => {
     const ray = Option.getOrElse(
       Array.get(SPARK_RAYS, (flick * 3 + index * 5) % SPARK_RAYS.length),
       () => Array.headNonEmpty(SPARK_RAYS),
     )
-    return Canvas.Rect({
-      x: tip.x + ray.x,
-      y: tip.y + ray.y,
-      width: 1,
-      height: 1,
-      fill: Option.getOrElse(
-        Array.get(SPARK_COLORS, (flick + index) % SPARK_COLORS.length),
-        () => Array.headNonEmpty(SPARK_COLORS),
-      ),
-    })
+    return glowing(
+      Canvas.Rect({
+        x: tip.x + ray.x,
+        y: tip.y + ray.y,
+        width: 1,
+        height: 1,
+        fill: Option.getOrElse(
+          Array.get(SPARK_COLORS, (flick + index) % SPARK_COLORS.length),
+          () => Array.headNonEmpty(SPARK_COLORS),
+        ),
+      }),
+    )
   }),
 ]
 

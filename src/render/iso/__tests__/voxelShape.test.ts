@@ -2,6 +2,7 @@ import { Array, Option, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
+  type VoxelMeshData,
   isGroundedOf,
   lensFormOf,
   sideShadeOf,
@@ -48,7 +49,7 @@ type Face = Readonly<{
   shade: number
 }>
 
-const facesOf = (mesh: ReturnType<typeof voxelMeshOf>): ReadonlyArray<Face> =>
+const facesOf = (mesh: VoxelMeshData): ReadonlyArray<Face> =>
   Array.makeBy(mesh.normals.length / (FACE_CORNERS * 3), face => ({
     normalZ: mesh.normals[face * FACE_CORNERS * 3 + 2] ?? 0,
     uv: [
@@ -226,6 +227,34 @@ describe('from the lens', () => {
 })
 
 describe('voxel mesh', () => {
+  test('the front face of an eye pixel goes apart, to glow, and nowhere else', () => {
+    const mesh = voxelMeshOf({
+      ...rows(['###', '###', '###']),
+      uvOf: uvByPixel,
+      isGlow: (column, row) => column === 1 && row === 1,
+    })
+    const isEye = ({ uv }: Face) => uv[0] === 1 && uv[1] === 1
+    const glow = facesOf(mesh.glow ?? { ...mesh, indices: new Uint32Array() })
+    expect(glow.length).toBe(1)
+    const [eye] = glow
+    expect(eye?.uv).toEqual([1, 1])
+    expect(
+      Array.some(
+        facesOf(mesh),
+        face => isEye(face) && face.normalZ === eye?.normalZ,
+      ),
+    ).toBe(false)
+  })
+
+  test('a carve with no glowing pixel has no glow', () => {
+    const mesh = voxelMeshOf({
+      ...rows(['##']),
+      uvOf: uvByPixel,
+      isGlow: () => false,
+    })
+    expect(mesh.glow).toBeUndefined()
+  })
+
   test('a pixel on one under it is one block, its top the upper pixel', () => {
     const mesh = voxelMeshOf({
       ...rows(['#', '#']),

@@ -33,7 +33,7 @@ import {
 import { PITCH, STRETCH, UNIT } from './space'
 
 // NOTE: a number as GLSL and WGSL read a float, with its point.
-const glFloat = (value: number): string =>
+export const glFloat = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(1) : `${value}`
 
 const RAMP_ROWS = rampRowsOf(LOOK)
@@ -56,7 +56,9 @@ const CONSTANTS = {
   mapRows: glFloat(ROOM_MAP.rows),
 }
 
-const GL_HEADER = `
+// NOTE: the 4x4 Bayer dither on whole game pixels, which the god rays
+// (godRays.ts) dither on too.
+export const GL_HEADER = `
 float lookBayer2(vec2 a) {
   a = floor(a);
   return fract(a.x * 0.5 + a.y * a.y * 0.75);
@@ -66,7 +68,7 @@ float lookBayer4(vec2 a) {
 }
 `
 
-const GPU_HEADER = `
+export const GPU_HEADER = `
 fn lookBayer2(b: vec2<f32>) -> f32 {
   let a = floor(b);
   return fract(a.x * 0.5 + a.y * a.y * 0.75);
@@ -180,11 +182,11 @@ export type LookOptions = Readonly<{
   textures?: Record<string, Texture>
 }>
 
-const dataTexture = (
-  data: Uint8Array,
-  width: number,
-  height: number,
-): Texture =>
+export const dataTexture = ({
+  data,
+  width,
+  height,
+}: Readonly<{ data: Uint8Array; width: number; height: number }>): Texture =>
   new Texture({
     source: new BufferImageSource({
       resource: data,
@@ -210,9 +212,17 @@ export class LookTextures {
 
   constructor() {
     this.rampBytes = rampTexelsOf(LOOK)
-    this.ramps = dataTexture(this.rampBytes, RAMP_COLUMNS, RAMP_ROWS)
+    this.ramps = dataTexture({
+      data: this.rampBytes,
+      width: RAMP_COLUMNS,
+      height: RAMP_ROWS,
+    })
     this.roomBytes = new Uint8Array(ROOM_MAP.columns * ROOM_MAP.rows * 4)
-    this.rooms = dataTexture(this.roomBytes, ROOM_MAP.columns, ROOM_MAP.rows)
+    this.rooms = dataTexture({
+      data: this.roomBytes,
+      width: ROOM_MAP.columns,
+      height: ROOM_MAP.rows,
+    })
   }
 
   // NOTE: each room's slot, again only for a new level (an exit opened) or

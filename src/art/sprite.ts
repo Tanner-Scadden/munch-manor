@@ -391,13 +391,81 @@ export const flashPalette = (palette: Palette): Palette => {
 export const isFlashShape = (shape: Canvas.Shape): boolean =>
   FLASH_SHAPES.has(shape)
 
+// GLOWS
+
+// NOTE: what glows of itself in the 3D renderer, lit by no room: the eyes
+// of a sprite drawn from a palette marked here with its eyes' letters (the
+// zombies', Rattles'), and any shape marked one by one (a Kaboomer's
+// sparks). Known by identity, as a flash is. A marked sprite's eye pixels
+// are read off its pixel map once, as it is built, so the carve gives them
+// their own glowing faces (src/render/iso/voxels.ts) and nothing else of
+// the body, gold buttons and all, ever glows.
+const EYE_LETTERS = new WeakMap<Palette, string>()
+const EYE_PIXELS = new WeakMap<Canvas.Shape, EyePixels>()
+const GLOW_SHAPES = new WeakSet<Canvas.Shape>()
+
+// NOTE: a sprite's eye pixels: 1 for each pixel of its map, row by row,
+// that wears an eye's letter.
+export type EyePixels = Readonly<{
+  width: number
+  height: number
+  isEye: Uint8Array
+}>
+
+export const glowingEyes: {
+  (letters: string): <P extends Palette>(palette: P) => P
+  <P extends Palette>(palette: P, letters: string): P
+} = Function.dual(2, <P extends Palette>(palette: P, letters: string): P => {
+  EYE_LETTERS.set(palette, letters)
+  return palette
+})
+
+export const eyePixelsOf = (shape: Canvas.Shape): EyePixels | undefined =>
+  EYE_PIXELS.get(shape)
+
+const eyePixelsIn = (
+  pixels: ReadonlyArray<string>,
+  letters: string,
+): EyePixels | undefined => {
+  const width = spriteWidth(pixels)
+  const height = pixels.length
+  const isEye = new Uint8Array(width * height)
+  let count = 0
+  for (let row = 0; row < height; row += 1) {
+    const line = pixels[row] ?? ''
+    for (let column = 0; column < line.length; column += 1) {
+      if (String.includes(line[column] ?? '.')(letters)) {
+        isEye[row * width + column] = 1
+        count += 1
+      }
+    }
+  }
+  return count === 0 ? undefined : { width, height, isEye }
+}
+
+export const glowing = <S extends Canvas.Shape>(shape: S): S => {
+  GLOW_SHAPES.add(shape)
+  return shape
+}
+
+export const isGlowShape = (shape: Canvas.Shape): boolean =>
+  GLOW_SHAPES.has(shape)
+
 const noteFlash = (
   palette: Palette,
+  pixels: ReadonlyArray<string>,
   shapes: ReadonlyArray<Canvas.Shape>,
 ): ReadonlyArray<Canvas.Shape> => {
   if (FLASH_PALETTES.has(palette)) {
     Array.forEach(shapes, shape => {
       FLASH_SHAPES.add(shape)
+    })
+  }
+  const letters = EYE_LETTERS.get(palette)
+  const eyes = letters === undefined ? undefined : eyePixelsIn(pixels, letters)
+  if (eyes !== undefined) {
+    Array.forEach(shapes, shape => {
+      EYE_PIXELS.set(shape, eyes)
     })
   }
   return shapes
@@ -480,6 +548,7 @@ export const spriteShapes: {
     const key = pixelsKeyOf(width, pixels, palette)
     return noteFlash(
       palette,
+      pixels,
       Option.match(atlasLookup(key), {
         onNone: () => builtSpriteShapes(key, pixels, palette, anchor, width),
         onSome: maybeHit =>

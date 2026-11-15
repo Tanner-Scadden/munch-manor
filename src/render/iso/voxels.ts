@@ -18,7 +18,11 @@ import {
   RenderPassBit,
 } from '@pixi/3d'
 
-import { type SpriteDepth, spriteDepthOf } from '../../art/sprite'
+import {
+  type EyePixels,
+  type SpriteDepth,
+  spriteDepthOf,
+} from '../../art/sprite'
 import { PART_BIAS } from './billboards'
 import { IDENTITY, type Leaf } from './flatten'
 import { UNIT } from './space'
@@ -48,6 +52,7 @@ const WARM_SCALE = 1e-4
 const {
   lift: _cubeLift,
   caster: _cubeCaster,
+  glow: _cubeGlow,
   ...UNIT_CUBE
 } = voxelMeshOf({
   width: 1,
@@ -58,25 +63,31 @@ const {
 
 // NOTE: how a crop's blocks stand: with its columns reversed or not (its
 // matrix mirrored), on the floor with its sides darkening toward it or not,
-// and the most blocks deep it is carved, as `true|false|255` and the like.
-type ShapeKey = `${boolean}|${boolean}|${number}`
+// the most blocks deep it is carved, and whether its eyes glow apart, as
+// `true|false|255|false` and the like.
+type ShapeKey = `${boolean}|${boolean}|${number}|${boolean}`
 
 const shapeKeyOf = ({
   isFlipped,
   isGrounded,
   most,
+  hasEyes,
 }: Readonly<{
   isFlipped: boolean
   isGrounded: boolean
   most: number
-}>): ShapeKey => `${isFlipped}|${isGrounded}|${most}`
+  hasEyes: boolean
+}>): ShapeKey => `${isFlipped}|${isGrounded}|${most}|${hasEyes}`
 
 // NOTE: a carve's geometry, what it casts its shadow through, how many
 // blocks it moves toward the lens to stand on the floor (`voxelMeshOf`'s
-// lift), and the hand set depth it was carved to, if any (`deepSprite`).
+// lift), the hand set depth it was carved to, if any (`deepSprite`), and
+// the front faces of its eyes apart from the rest (a few faces, drawn
+// glowing), if it has any.
 export type Carved = Readonly<{
   geometry: Geometry3D
   caster: Geometry3D
+  eyes: Geometry3D | undefined
   lift: number
   depthOf?: DepthOf
 }>
@@ -102,6 +113,8 @@ export type StandInput = Readonly<{
   most: number
   reach: PartReach
   spin?: number
+  // NOTE: its eye pixels, which glow in the dark (src/art/sprite.ts).
+  eyes?: EyePixels | undefined
 }>
 
 // NOTE: a sprite's blocks as they stand: their carve, its sheet and pixel
@@ -306,6 +319,18 @@ export class VoxelBatch {
       elements,
       passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
     })
+    // NOTE: the eyes' few front faces, in the same place, glowing their
+    // own colors in any light: only those faces read the glowing material.
+    // Always opaque, as the glowing material only draws there, so a body
+    // fading at the edge of the cellar's dark keeps its eyes bright.
+    if (carved.eyes !== undefined && this.used < SLOTS) {
+      this.fill({
+        geometry: carved.eyes,
+        material: isFlash ? this.flash : this.glowMaterialOf(sheet),
+        elements,
+        passes: RenderPassBit.OPAQUE,
+      })
+    }
     if (alpha >= CASTING_ALPHA && !isGlowing) {
       this.cast(carved.caster)
     }
@@ -358,7 +383,7 @@ export class VoxelBatch {
     input: StandInput,
     into: MutablePlacement | undefined,
   ): MutablePlacement | undefined {
-    const { leaf, footY, part, most, reach, spin } = input
+    const { leaf, footY, part, most, reach, spin, eyes } = input
     const { shape, matrix } = leaf
     if (shape._tag !== 'Image') {
       return undefined
@@ -392,6 +417,7 @@ export class VoxelBatch {
       isGrounded,
       most,
       depth: spriteDepthOf(shape),
+      eyes,
     })
     // NOTE: a body on the floor moves toward the lens until its lowest
     // block stands on it; any part moves at least as far as the parts
@@ -503,26 +529,37 @@ export class VoxelBatch {
       isGrounded: boolean
       most: number
       depth: SpriteDepth | undefined
+      eyes: EyePixels | undefined
     }>,
   ): Carved {
     const { texture, sheet, masks, isFlipped, isGrounded, depth } = input
+    const { x, y, width, height } = texture.frame
     // NOTE: a sprite's own depth (`deepSprite`) is the same for every place
     // its crop stands, so the crop's cache holds it.
     const most = depth?.most ?? input.most
-    const shapeKey = shapeKeyOf({ isFlipped, isGrounded, most })
+    // NOTE: eyes read off a pixel map the size of its crop, or none.
+    const eyes =
+      input.eyes?.width === width && input.eyes.height === height
+        ? input.eyes
+        : undefined
+    const shapeKey = shapeKeyOf({
+      isFlipped,
+      isGrounded,
+      most,
+      hasEyes: eyes !== undefined,
+    })
     const shapes = this.geometries.get(texture) ?? new Map<ShapeKey, Carved>()
     this.geometries.set(texture, shapes)
     const known = shapes.get(shapeKey)
     if (known !== undefined) {
       return known
     }
-    const { x, y, width, height } = texture.frame
     const columnOf = (column: number): number =>
       isFlipped ? width - 1 - column : column
     const sheetWidth = Math.max(1, sheet.source.width)
     const sheetHeight = Math.max(1, sheet.source.height)
     const hand = depthOfSprite({ depth, most, columnOf })
-    const { lift, caster, ...mesh } = voxelMeshOf({
+    const { lift, caster, glow, ...mesh } = voxelMeshOf({
       width,
       height,
       isSolid: (column, row) =>
@@ -535,10 +572,17 @@ export class VoxelBatch {
         (x + columnOf(column) + 0.5) / sheetWidth,
         (y + row + 0.5) / sheetHeight,
       ],
+      ...(eyes === undefined
+        ? {}
+        : {
+            isGlow: (column: number, row: number) =>
+              eyes.isEye[row * width + columnOf(column)] === 1,
+          }),
     })
     const carved = {
       geometry: new Geometry3D({ ...mesh }),
       caster: new Geometry3D({ ...caster }),
+      eyes: glow === undefined ? undefined : new Geometry3D({ ...glow }),
       lift,
       ...hand,
     }
@@ -594,9 +638,10 @@ export class VoxelBatch {
     this.batch.destroy()
     this.casters.destroy()
     for (const shapes of this.geometries.values()) {
-      for (const { geometry, caster } of shapes.values()) {
+      for (const { geometry, caster, eyes } of shapes.values()) {
         geometry.destroy()
         caster.destroy()
+        eyes?.destroy()
       }
     }
     this.casterMaterial.destroy()
