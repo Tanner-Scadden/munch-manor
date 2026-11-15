@@ -17,6 +17,9 @@ It is dev only: `bun run build` never includes it.
 3. Tap the big picture to drop a pin (in a room, drag over the tiles you mean), pick what kind of note it is (✏️ Change, 💡 Idea, 🐞 Something's off, ❤️ Love it), write it, and press **Send to Claude**.
 4. The note shows ⏳ Waiting. When Claude has done it, it turns ✅ Done with a short reply and a picture of how it looked before, and the sprite, its card, and its tab sparkle with ✨ Updated until it is opened.
 
+5. Any sprite tab's **🧊 Blocks** stands the picked thing carved in blocks on a lit floor, through the game's own 3D renderer and carve. Drag to turn it, **🔄 Spin** to turn it by itself, **🎮 Game camera** to look from the game's 49°. The presets light it as the manor would: a break, a wave, the frenzy, the dread, beside a candle, under the chandelier, in the cellar's dark by a flashlight, in a lightning strike. A tap on a block pins the sprite pixel it was carved from.
+6. **🎨 Light lab** (under the stage, or over a live room) has a slider or a color for every value of the look (`lookSpecs.ts`), the flames (`lightSpecs.ts`), and the moods' ambient (`mood.ts`). The stage and the live room change as you slide. **Propose these** sends a note with each value as shipped and as slid, by file, and **Reset** puts them back. Nothing changes the game until an agent lands the note.
+
 Every note is listed under **All your notes**; tap one to go back to what it is about. The view survives a reload, so an art change (which reloads the page) lands back where it was.
 
 ## For the agent
@@ -33,21 +36,25 @@ The log is `tools/studio/notes.jsonl` (events, one JSON line each: `Noted` and `
 
 ## Files
 
-| File                               | What it holds                                                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `catalog.ts`                       | The tabs and their entries, each a sprite from the game's art modules, and the crew                                                               |
-| `block.ts`                         | The Block contract: Model, Messages, flags                                                                                                        |
-| `update.ts`                        | init and update: the controls, picking, pins, sending, the notes coming back                                                                      |
-| `commands.ts`                      | Saving the view and what was seen, the before picture and sending, polling the notes                                                              |
-| `view.ts`                          | The controls, the gallery's lazy cards, the room with its grid and pins                                                                           |
-| `stageView.ts`, `inspectorView.ts` | The big view with its frame controls; the right side: asking, the notes, all notes                                                                |
-| `drawing.ts`, `pins.ts`, `room.ts` | Drawing helpers; pins on a picture; the Rooms tab's rooms, their toggles, and the note's picture crop                                             |
-| `liveScene.ts`                     | The live room's scene (the room, the mood, the bodies, the storm, the chandelier) and the audit harness's query for it                            |
-| `worldStage.ts`, `bridge.ts`       | `<studio-world>`: the harness in a frame, the marks over it, the loupe, and the note's picture; what the harness hands it (its camera and pixels) |
-| `draftRooms.ts`                    | The escape's drafted rooms (`docs/ROOM_DRAFTS.md`): their maps, laid out with the game's walls and doors and the rooms' art                       |
-| `notes.ts`                         | The notes' Schemas and log, shared with the dev server and the scripts                                                                            |
-| `inbox.ts`, `resolve.ts`           | The agent's scripts                                                                                                                               |
-| `entry.ts`, `index.html`           | The page and its styles                                                                                                                           |
-| `../vite/studioNotes.ts`           | The dev server's side: takes notes, answers the list, keeps and serves before pictures                                                            |
+| File                               | What it holds                                                                                                                                        |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog.ts`                       | The tabs and their entries, each a sprite from the game's art modules, and the crew                                                                  |
+| `block.ts`                         | The Block contract: Model, Messages, flags                                                                                                           |
+| `update.ts`                        | init and update: the controls, picking, pins, sending, the notes coming back                                                                         |
+| `commands.ts`                      | Saving the view and what was seen, the before picture and sending, polling the notes                                                                 |
+| `view.ts`                          | The controls, the gallery's lazy cards, the room with its grid and pins                                                                              |
+| `stageView.ts`, `inspectorView.ts` | The big view with its frame controls; the right side: asking, the notes, all notes                                                                   |
+| `drawing.ts`, `pins.ts`, `room.ts` | Drawing helpers; pins on a picture; the Rooms tab's rooms, their toggles, and the note's picture crop                                                |
+| `liveScene.ts`                     | The live room's scene (the room, the mood, the bodies, the storm, the chandelier) and the audit harness's query for it                               |
+| `worldStage.ts`, `bridge.ts`       | `<studio-world>`: the harness in a frame, the marks over it, the loupe, and the note's picture; what the harness hands it (its camera and pixels)    |
+| `stage3d.ts`, `stagePresets.ts`    | `<studio-stage>`: one sprite carved on a lit floor by the game's renderer, the turntable, the pins on blocks; the light presets as the game's lights |
+| `lab.ts`, `labView.ts`             | The light and color lab: a control per value, the edits made into the renderer's tables, the proposal note; its panel                                |
+| `draftRooms.ts`                    | The escape's drafted rooms (`docs/ROOM_DRAFTS.md`): their maps, laid out with the game's walls and doors and the rooms' art                          |
+| `notes.ts`                         | The notes' Schemas and log, shared with the dev server and the scripts                                                                               |
+| `inbox.ts`, `resolve.ts`           | The agent's scripts                                                                                                                                  |
+| `entry.ts`, `index.html`           | The page and its styles                                                                                                                              |
+| `../vite/studioNotes.ts`           | The dev server's side: takes notes, answers the list, keeps and serves before pictures                                                               |
+
+A lab proposal names each value by its path (`LOOK.rooms.Dining.light: 0x... -> 0x...`) under the file that holds it: copy the new numbers in. `bun run heavy -- --shared bun tools/audit/studioLab.ts` (with `STUDIO` set to the dev server's Studio) checks the stage, a pin, the lab, and a proposal in Chrome.
 
 A new kind of art (a room, an escape piece, a party guest) gets an entry in `catalog.ts`, or a tab of its own.

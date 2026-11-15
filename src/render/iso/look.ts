@@ -20,7 +20,7 @@ import { BufferImageSource, Texture } from 'pixi.js'
 import type { ShaderBit } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
-import { LOOK } from './lookSpecs'
+import { LOOK, LOOK_TUNING, type LookSpecs } from './lookSpecs'
 import {
   BRIGHTEST_RANGE,
   CUT_RANGE,
@@ -198,26 +198,38 @@ const dataTexture = (
   })
 
 // NOTE: mutable on purpose: it owns the two textures every lit material
-// shares, the room map painted again as rooms open.
+// shares, the room map painted again as rooms open, and both again when
+// the specs read are another table (Munch Studio's lab, ./tunable.ts).
 export class LookTextures {
   private readonly ramps: Texture
   private readonly rooms: Texture
+  private readonly rampBytes: Uint8Array
   private readonly roomBytes: Uint8Array
   private lastLevel: Level | undefined
+  private lastSpecs: LookSpecs = LOOK
 
   constructor() {
-    this.ramps = dataTexture(rampTexelsOf(LOOK), RAMP_COLUMNS, RAMP_ROWS)
+    this.rampBytes = rampTexelsOf(LOOK)
+    this.ramps = dataTexture(this.rampBytes, RAMP_COLUMNS, RAMP_ROWS)
     this.roomBytes = new Uint8Array(ROOM_MAP.columns * ROOM_MAP.rows * 4)
     this.rooms = dataTexture(this.roomBytes, ROOM_MAP.columns, ROOM_MAP.rows)
   }
 
-  // NOTE: each room's slot, again only for a new level (an exit opened).
+  // NOTE: each room's slot, again only for a new level (an exit opened) or
+  // new specs, and the ramps again only for new specs.
   paintRooms(level: Level): void {
-    if (level === this.lastLevel) {
+    const specs = LOOK_TUNING.now
+    const isNewSpecs = specs !== this.lastSpecs
+    if (level === this.lastLevel && !isNewSpecs) {
       return
     }
+    if (isNewSpecs) {
+      this.lastSpecs = specs
+      this.rampBytes.set(rampTexelsOf(specs))
+      this.ramps.source.update()
+    }
     this.lastLevel = level
-    this.roomBytes.set(roomTexelsOf({ specs: LOOK, level }))
+    this.roomBytes.set(roomTexelsOf({ specs, level }))
     this.rooms.source.update()
   }
 

@@ -15,6 +15,13 @@ import {
 } from './block'
 import { type Entry, entryById, tabOfEntry } from './catalog'
 import { type Capture, SaveSeen, SaveView, SendNote } from './commands'
+import {
+  changesOf,
+  controlById,
+  inputValueOf,
+  proposalOf,
+  withEdit,
+} from './lab'
 import type { NoteDraft, StoredNote } from './notes'
 import {
   areaBetween,
@@ -43,6 +50,7 @@ export const init = StudioComposition.makeInit((startFlags: Flags) => ({
     notes: [],
     seenDone: startFlags.seenDone,
     isInboxOnline: true,
+    cameraResets: 0,
   }),
 }))
 
@@ -65,6 +73,11 @@ const savedViewOf = (model: Model): SavedView => ({
   isOnion: model.isOnion,
   isCrew: model.isCrew,
   speed: model.speed,
+  stageMode: model.stageMode,
+  stagePreset: model.stagePreset,
+  isAutoSpin: model.isAutoSpin,
+  labEdits: model.labEdits,
+  isLabOpen: model.isLabOpen,
 })
 
 // NOTE: a change to the saved part of the view, written to sessionStorage.
@@ -138,21 +151,61 @@ const draftOf = (model: Model, targetId: string): NoteDraft => {
 // NOTE: the canvas a note's before picture comes from: the big view's art,
 // or the room around the picked tiles (the whole room with none).
 const captureOf = (model: Model): Capture =>
-  model.tab === 'Rooms' && model.room === 'Live'
-    ? { selector: '.live-shot', crop: null }
-    : model.tab === 'Rooms'
-      ? {
-          selector: '.room-art',
-          crop: Option.getOrNull(
-            Option.map(model.maybeDraftArea, area =>
-              cropAround({
-                bounds: roomFrameOf(model).bounds,
-                zoom: model.zoom,
-              })(area),
+  model.tab !== 'Rooms' && model.stageMode === 'Blocks'
+    ? { selector: '.stage-shot', crop: null }
+    : model.tab === 'Rooms' && model.room === 'Live'
+      ? { selector: '.live-shot', crop: null }
+      : model.tab === 'Rooms'
+        ? {
+            selector: '.room-art',
+            crop: Option.getOrNull(
+              Option.map(model.maybeDraftArea, area =>
+                cropAround({
+                  bounds: roomFrameOf(model).bounds,
+                  zoom: model.zoom,
+                })(area),
+              ),
             ),
-          ),
-        }
-      : { selector: '.stage-art', crop: null }
+          }
+        : { selector: '.stage-art', crop: null }
+
+// THE LAB
+
+// NOTE: where the lab's values were tried, as its note says.
+const labWhereOf = (model: Model): string =>
+  model.tab === 'Rooms'
+    ? model.room === 'Live'
+      ? `the live room (${model.live.spot}, ${model.live.mood})`
+      : roomTitleOf(model.room)
+    : Option.match(pickedEntry(model), {
+        onNone: () => 'the Studio',
+        onSome: entry =>
+          model.stageMode === 'Blocks'
+            ? `${entry.title} on the 3D stage, ${model.stagePreset}`
+            : entry.title,
+      })
+
+// NOTE: the lab's note: its values, before and after, about what is open.
+const labDraftOf = (model: Model, targetId: string): NoteDraft => ({
+  tab: model.tab,
+  targetId,
+  title: 'Light and color lab',
+  source: Array.join(
+    Array.dedupe(
+      Array.map(changesOf(model.labEdits), ({ control }) => control.file),
+    ),
+    ', ',
+  ),
+  kind: 'Change',
+  pin: null,
+  area: null,
+  note: proposalOf({
+    edits: model.labEdits,
+    words: model.note,
+    where: labWhereOf(model),
+  }),
+  before: null,
+})
 
 const isSendable = (model: Model): boolean =>
   String.isNonEmpty(String.trim(model.note)) &&
@@ -352,6 +405,54 @@ export const update = StudioComposition.makeUpdate({
     model.isInboxOnline
       ? { model: modifyFields(model, { isInboxOnline: () => false }) }
       : { model },
+  ClickedStageMode: (model, { mode }) =>
+    saved(modifyFields(model, { stageMode: () => mode })),
+  ClickedStagePreset: (model, { preset }) =>
+    saved(modifyFields(model, { stagePreset: () => preset })),
+  ClickedAutoSpin: model =>
+    saved(modifyFields(model, { isAutoSpin: isOn => !isOn })),
+  ClickedPlayCamera: makeFieldsStep(() => ({
+    isAutoSpin: () => false,
+    cameraResets: count => count + 1,
+  })),
+  ClickedLabToggle: model =>
+    saved(modifyFields(model, { isLabOpen: isOpen => !isOpen })),
+  ChangedLab: (model, { id, text }) =>
+    Option.match(
+      Option.flatMap(controlById(id), control => inputValueOf(control, text)),
+      {
+        onNone: () => ({ model }),
+        onSome: value =>
+          saved(
+            modifyFields(model, {
+              labEdits: edits => withEdit(edits, id, value),
+            }),
+          ),
+      },
+    ),
+  ClickedLabReset: model =>
+    saved(modifyFields(model, { labEdits: () => ({}) })),
+  ClickedPropose: model =>
+    Option.match(
+      Option.filter(
+        targetIdOf(model),
+        () =>
+          Array.isReadonlyArrayNonEmpty(changesOf(model.labEdits)) &&
+          model.sendStatus !== 'Sending',
+      ),
+      {
+        onNone: () => ({ model }),
+        onSome: targetId => ({
+          model: modifyFields(model, { sendStatus: () => 'Sending' as const }),
+          commands: [
+            SendNote({
+              draft: labDraftOf(model, targetId),
+              capture: captureOf(model),
+            }),
+          ],
+        }),
+      },
+    ),
   CompletedSaveView: makeNoopStep(),
   CompletedSaveSeen: makeNoopStep(),
 })

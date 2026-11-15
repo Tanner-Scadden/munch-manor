@@ -4,6 +4,7 @@
 // glowing blocks and the debris in the air as cubes. All of it in one batch,
 // its slots pooled frame to frame, each carve built once and kept.
 
+import { Option } from 'effect'
 import type { Texture } from 'pixi.js'
 
 import {
@@ -62,7 +63,7 @@ const shapeKeyOf = ({
 
 // NOTE: a carve's geometry and how many blocks it moves toward the lens to
 // stand on the floor (`voxelMeshOf`'s lift).
-type Carved = Readonly<{ geometry: Geometry3D; lift: number }>
+export type Carved = Readonly<{ geometry: Geometry3D; lift: number }>
 
 // NOTE: where a drawable's parts stand along the lens's ray: each part in
 // front of every part before it, as the 2D game painted it over them, in
@@ -70,6 +71,30 @@ type Carved = Readonly<{ geometry: Geometry3D; lift: number }>
 export type PartReach = { blocks: number }
 
 export const newReach = (): PartReach => ({ blocks: 0 })
+
+export type StandInput = Readonly<{
+  leaf: Leaf
+  footY: number
+  part: number
+  isFlash: boolean
+  most: number
+  reach: PartReach
+  spin?: number
+}>
+
+// NOTE: a sprite's blocks as they stand: their carve, its sheet and pixel
+// masks, its size in pixels, whether its columns run mirrored, the matrix
+// that stands them (sixteen numbers, column by column), and how many blocks
+// they moved toward the lens.
+export type VoxelPlacement = Readonly<{
+  carved: Carved
+  sheet: Texture
+  masks: PixelMasks
+  texels: Readonly<{ width: number; height: number }>
+  isFlipped: boolean
+  elements: ReadonlyArray<number>
+  blocks: number
+}>
 
 // NOTE: a cube of color standing at a spot on the floor, raised `rise`
 // game pixels, `width` across, `height` tall, and as deep as its smaller side.
@@ -162,19 +187,9 @@ export class VoxelBatch {
   // false when it must stand as a billboard: not an image, still loading, or
   // no slot left. One faded past seeing stands as nothing. `most` caps how
   // deep it is carved; `reach` keeps it in front of the parts before it.
-  standLeaf(
-    input: Readonly<{
-      leaf: Leaf
-      footY: number
-      part: number
-      isFlash: boolean
-      most: number
-      reach: PartReach
-      spin?: number
-    }>,
-  ): boolean {
-    const { leaf, footY, part, isFlash, most, reach, spin } = input
-    const { shape, matrix, alpha } = leaf
+  standLeaf(input: StandInput): boolean {
+    const { leaf, isFlash, reach } = input
+    const { shape, alpha } = leaf
     if (shape._tag !== 'Image' || this.used >= SLOTS) {
       return false
     }
@@ -182,14 +197,44 @@ export class VoxelBatch {
     if (step < 1) {
       return true
     }
+    // NOTE: checked by hand, not Option.match, so the hot path builds no
+    // handler closures per leaf per frame.
+    const placement = this.placementOf(input)
+    if (Option.isNone(placement)) {
+      return false
+    }
+    const { carved, sheet, elements, blocks } = placement.value
+    reach.blocks = blocks
+    const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
+    this.fill({
+      geometry: carved.geometry,
+      material: isFlash
+        ? this.flash
+        : this.sheetMaterialOf(sheet, isOpaque ? FADE_STEPS : step),
+      elements,
+      passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
+    })
+    return true
+  }
+
+  // NOTE: where a sprite's blocks stand, as `standLeaf` stands them, and
+  // what they are carved from: none for a sprite still loading. Read alone,
+  // it moves no `reach`: Munch Studio's stage maps a press on a block back
+  // to the sprite's pixel through it (tools/studio/stage3d.ts).
+  placementOf(input: StandInput): Option.Option<VoxelPlacement> {
+    const { leaf, footY, part, most, reach, spin } = input
+    const { shape, matrix } = leaf
+    if (shape._tag !== 'Image') {
+      return Option.none()
+    }
     const texture = this.textures.imageOf(shape, false)
     if (texture === undefined) {
-      return false
+      return Option.none()
     }
     const sheet = this.textures.sheetOf(texture)
     const masks = this.textures.masksOf(texture)
     if (sheet === undefined || masks === undefined) {
-      return false
+      return Option.none()
     }
     const texels = {
       width: texture.frame.width,
@@ -215,7 +260,6 @@ export class VoxelBatch {
     // block stands on it; any part moves at least as far as the parts
     // before it reach, so it shows over them as the 2D game drew it.
     const blocks = Math.max(isGrounded ? carved.lift : 0, reach.blocks)
-    reach.blocks = blocks
     const { elements } = slabMatrixOf({
       matrix,
       box: shape,
@@ -226,17 +270,15 @@ export class VoxelBatch {
       depth: 1,
       ...(spin === undefined ? {} : { spin }),
     })
-    const geometry = carved.geometry
-    const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
-    this.fill({
-      geometry,
-      material: isFlash
-        ? this.flash
-        : this.sheetMaterialOf(sheet, isOpaque ? FADE_STEPS : step),
+    return Option.some({
+      carved,
+      sheet,
+      masks,
+      texels,
+      isFlipped,
       elements,
-      passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
+      blocks,
     })
-    return true
   }
 
   // NOTE: a cube of plain color, glowing or lit, or false with no slot left.

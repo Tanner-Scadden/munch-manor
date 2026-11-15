@@ -80,7 +80,7 @@ import {
 } from './house'
 import { AMBIENT, type LightsFrame, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
-import { LOOK } from './lookSpecs'
+import { LOOK_TUNING } from './lookSpecs'
 import { mixColor } from './mood'
 import { FloorLayer, FloorPicture } from './painter'
 import {
@@ -108,8 +108,8 @@ import { chandelierSwayAt, windClockOf } from './wind'
 
 // NOTE: the lightning's flash: a cold white, at its peak four times
 // the ambient light.
-const STORM_COLOR = 0xdce6ff
-const STORM_LIFT = AMBIENT * 3
+export const STORM_COLOR = 0xdce6ff
+export const STORM_LIFT = AMBIENT * 3
 
 // NOTE: the void behind the house: black, as shut rooms and the yard draw.
 const BACKGROUND = 0x000000
@@ -219,16 +219,19 @@ const furnitureOf = (
 // NOTE: a shut room's fill is put out (it draws black anyway) and an open
 // room's is turned down, so the flames and the lamp carry the picture
 // (src/render/iso/lookSpecs.ts).
-const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame => ({
-  ...frame,
-  fillShares: Array.map(frame.fillShares, (share, index) =>
-    Option.match(Array.get(level.rooms, index), {
-      onNone: () => 0,
-      onSome: ({ id, isOpen }) =>
-        isOpen ? share * (LOOK.rooms[id]?.fill ?? LOOK.roomFill) : 0,
-    }),
-  ),
-})
+const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame => {
+  const look = LOOK_TUNING.now
+  return {
+    ...frame,
+    fillShares: Array.map(frame.fillShares, (share, index) =>
+      Option.match(Array.get(level.rooms, index), {
+        onNone: () => 0,
+        onSome: ({ id, isOpen }) =>
+          isOpen ? share * (look.rooms[id]?.fill ?? look.roomFill) : 0,
+      }),
+    ),
+  }
+}
 
 // NOTE: whether a drawable is the 2D sprite of a carved showpiece the house
 // stands for it.
@@ -689,7 +692,7 @@ export class IsoScene {
     )
     built.lights.apply({ frame: lights, player, view })
     const { mood } = lights
-    this.ambient.intensity = AMBIENT * mood.ambient * LOOK.ambient
+    this.ambient.intensity = AMBIENT * mood.ambient * LOOK_TUNING.now.ambient
     const ambientColor = mixColor({
       from: 0xffffff,
       to: mood.tint,

@@ -6,13 +6,13 @@ import { Array, Option, Schema } from 'effect'
 
 import { strikeClockOf } from '../../src/render/iso/mood'
 import { TILE_SIZE } from '../../src/shared/constants'
-import { CrateRoom } from '../../src/world/schema/entitySchema'
 import {
   ARRANGEMENTS,
   type RoomSpec,
   manorSpecFor,
   widthOf,
 } from '../../src/world/level/plan'
+import { CrateRoom } from '../../src/world/schema/entitySchema'
 
 // NOTE: the room the live scene stands in: every room of the manor, as the
 // World names them.

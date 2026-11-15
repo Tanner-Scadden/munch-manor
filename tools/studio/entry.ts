@@ -7,11 +7,13 @@ import { Program, Runtime } from 'foldkit'
 
 import { Flags, StudioBlock } from './block'
 import { EffectsLayer, flags, subscriptions } from './commands'
+import { defineStudioStage } from './stage3d'
 import { init, update } from './update'
 import { view } from './view'
 import { defineStudioWorld } from './worldStage'
 
 defineStudioWorld()
+defineStudioStage()
 
 const layer = StudioBlock.makeLayer({
   init,

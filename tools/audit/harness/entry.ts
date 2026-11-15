@@ -45,6 +45,7 @@ import { screenOf } from '@game/render/screen'
 import { RATTLES_BOX, START_LEVEL } from '@game/world/level/arena'
 
 import { BRIDGE_KEY, type StudioBridge } from '../../studio/bridge.ts'
+import { tuneTables } from '../../studio/lab.ts'
 import { cardShapes } from './cards'
 import { type HarnessConfig, decodeHarnessConfig } from './config'
 import * as Director from './director'
@@ -518,6 +519,10 @@ const studioBridge: StudioBridge = {
     }
   },
   snapshot: () => Option.getOrUndefined(snapshotWorld()),
+  tune: tables => {
+    tuneTables(tables)
+    snapshotWorld()
+  },
 }
 Reflect.set(window, BRIDGE_KEY, studioBridge)
 
