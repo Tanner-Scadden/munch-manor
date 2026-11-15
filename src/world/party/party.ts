@@ -36,11 +36,13 @@ import {
 
 // RULES
 
-// NOTE: co-op's starting values (MULTIPLAYER.md, "Decided"), for the
-// multi-bot balance pass to tune. Index 0 is one player.
+// NOTE: co-op's crowd (MULTIPLAYER.md, "Decided"), for the multi-bot
+// balance pass to tune. Index 0 is one player. Eased on 2026-11-14 (owner:
+// the extra zombies per player made a crew run much, much harder) from
+// counts of 1.6, 2.2, 2.8 and health of 1.1, 1.2, 1.3.
 export const COOP_RULES = {
-  waveCountScale: [1, 1.6, 2.2, 2.8],
-  healthScale: [1, 1.1, 1.2, 1.3],
+  waveCountScale: [1, 1.35, 1.7, 2.05],
+  healthScale: [1, 1.05, 1.1, 1.15],
   bleedOutMs: 20_000,
   reviveMs: 2000,
   reviveHearts: 2,

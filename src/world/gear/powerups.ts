@@ -284,6 +284,15 @@ export const firingStats: {
     boostWeapon(statsAt(kind, tier), boosts),
 )
 
+// NOTE: the Laser Sight steadies the hand (owner, 2026-11-14): a gun that
+// scatters throws its pellets in a cone this much narrower, and the fan it
+// draws narrows with it. A gun that shoots straight already goes where the
+// line points.
+export const LASER_SPREAD_SCALE = 0.55
+
+export const withLaserSight = (stats: WeaponStats): WeaponStats =>
+  modifyFields(stats, { spread: spread => spread * LASER_SPREAD_SCALE })
+
 export const playerSpeed: {
   (player: Player): (boosts: Boosts) => number
   (boosts: Boosts, player: Player): number

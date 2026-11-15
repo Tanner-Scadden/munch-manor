@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { sceneShapes } from '../../../app/layers'
-import { type Model, Phase, RunMode } from '../../../app/model'
+import { Boss, type Model, Phase, RunMode } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { startOrResume } from '../../../app/runFlow'
 import { cameraOf } from '../../../render/camera'
@@ -14,7 +14,15 @@ import { atClock } from '../../../test/model.fixture'
 import { rollSpawns } from '../../../world/waves/endlessWaves'
 import { wavePreviewShapes } from '../wavePreview'
 
-const preparing = (wave: number): Model => {
+// NOTE: Uncle Chunk waiting at his door, the one marker the preview draws.
+const CHUNK_WAITING = Boss.Waiting({
+  door: 'South',
+  waitBelow: 20,
+  hp: 300,
+  guestHpScale: 1,
+})
+
+const preparing = (wave: number, boss: Boss = CHUNK_WAITING): Model => {
   const started = startOrResume(initialModel, RunMode.Campaign())
   const [rngState, spawns] = rollSpawns(started.rngState, wave)
   return modifyFields(started, {
@@ -26,6 +34,7 @@ const preparing = (wave: number): Model => {
         durationMs: 20_000,
         spawns,
       }),
+    boss: () => boss,
   })
 }
 
@@ -46,7 +55,12 @@ const isScaled = (shape: Canvas.Shape): boolean =>
   shape._tag === 'Group' &&
   (shape.scale !== undefined || Array.some(shape.shapes, isScaled))
 
-describe('Door preview', () => {
+describe('the wave preview', () => {
+  test('says nothing of which door a zombie comes through', () => {
+    const plain = preparing(4, Boss.Absent())
+    expect(wavePreviewShapes(plain, cameraOf(plain))).toEqual([])
+  })
+
   test('sits on the overlay, so a screen shake never moves it', () => {
     const still = preparing(4)
     const shaking = shaken(still)

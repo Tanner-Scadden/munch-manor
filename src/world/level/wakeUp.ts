@@ -35,7 +35,7 @@ type WakeRules = Readonly<{
 export const WAKE_RULES: WakeRules = {
   rushMs: 10_000,
   count: 6,
-  perExtraPlayer: 2,
+  perExtraPlayer: 1,
   packBase: 900_000,
 }
 

@@ -72,7 +72,7 @@ flowchart TD
   start([After the slam: the run starts at the dining room's table, exits padlocked]):::built --> prep
 
   subgraph Break [Preparation: the break]
-    prep[Walk the manor, read the door preview, hunt the dare's list]:::built --> crates[Trap crates: a Plank Pile, a Grumpy Gnome, or a heart for the hurt]:::built
+    prep[Walk the manor, hunt the dare's list]:::built --> crates[Trap crates: a Plank Pile, a Grumpy Gnome, or a heart for the hurt]:::built
     prep --> cases[Display cases: finish a feat, take the gun]:::built
     prep --> fridge[Mystery Leftovers: spend keys on a pull]:::built
     prep --> boards[Spend skeleton keys on padlocked boards: a room opens]:::built
