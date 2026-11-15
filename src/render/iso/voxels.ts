@@ -16,8 +16,13 @@ import {
 
 import { PART_BIAS } from './billboards'
 import { IDENTITY, type Leaf } from './flatten'
-import type { Textures } from './textures'
-import { slabMatrixOf, voxelMeshOf } from './voxelShape'
+import type { PixelMasks, Textures } from './textures'
+import {
+  isGroundedOf,
+  slabMatrixOf,
+  solidBoundsOf,
+  voxelMeshOf,
+} from './voxelShape'
 
 // NOTE: the most blocks of sprites and cubes standing at once. Past it the
 // rest stand as billboards, as before.
@@ -36,6 +41,17 @@ const UNIT_CUBE = voxelMeshOf({
   uvOf: () => [0.5, 0.5],
 })
 
+// NOTE: how a crop's blocks stand: with its rows reversed or not (its
+// matrix mirrored), and on the floor with its sides darkening toward it or
+// not, as `true|false` and the like.
+type ShapeKey = `${boolean}|${boolean}`
+
+const shapeKeyOf = ({
+  isFlipped,
+  isGrounded,
+}: Readonly<{ isFlipped: boolean; isGrounded: boolean }>): ShapeKey =>
+  `${isFlipped}|${isGrounded}`
+
 // NOTE: a cube of color standing at a spot on the floor, raised `rise`
 // game pixels, `width` across, `height` tall, and as deep as its smaller side.
 export type Cube = Readonly<{
@@ -48,8 +64,11 @@ export type Cube = Readonly<{
   glow: number
 }>
 
+// NOTE: every material here takes the blocks' vertex colors: white on the
+// fronts, darker toward the foot on a standing body's sides (voxelShape.ts).
 const lit = (options: ConstructorParameters<typeof Material3D>[0]) =>
   new Material3D({
+    vertexColors: true,
     roughness: 1,
     metallic: 0,
     specular: { factor: 0 },
@@ -76,8 +95,10 @@ export class VoxelBatch {
   private readonly slotGeometry: Array<Geometry3D | undefined> = []
   private readonly slotMaterial: Array<Material3D | undefined> = []
   private readonly slotPasses: Array<number> = []
-  // NOTE: each crop's blocks, upright and with its rows reversed.
-  private readonly geometries = new Map<Texture, Map<boolean, Geometry3D>>()
+  // NOTE: each crop's blocks by how they stand (`shapeKeyOf`), and its
+  // lowest solid row.
+  private readonly geometries = new Map<Texture, Map<ShapeKey, Geometry3D>>()
+  private readonly solidBottoms = new Map<Texture, number>()
   // NOTE: each sheet's materials by fade step, the last step opaque.
   private readonly sheetMaterials = new Map<Texture, Array<Material3D>>()
   private readonly colorMaterials = new Map<string, Material3D>()
@@ -132,8 +153,8 @@ export class VoxelBatch {
       return false
     }
     const sheet = this.textures.sheetOf(texture)
-    const solid = this.textures.solidOf(texture)
-    if (sheet === undefined || solid === undefined) {
+    const masks = this.textures.masksOf(texture)
+    if (sheet === undefined || masks === undefined) {
       return false
     }
     const texels = {
@@ -150,7 +171,20 @@ export class VoxelBatch {
       depth: 1,
       ...(spin === undefined ? {} : { spin }),
     })
-    const geometry = this.geometryOf({ texture, sheet, solid, isFlipped })
+    const isGrounded = isGroundedOf({
+      matrix,
+      box: shape,
+      texels,
+      footY,
+      solidBottom: this.solidBottomOf(texture, masks),
+    })
+    const geometry = this.geometryOf({
+      texture,
+      sheet,
+      masks,
+      isFlipped,
+      isGrounded,
+    })
     const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
     this.fill({
       geometry,
@@ -222,18 +256,36 @@ export class VoxelBatch {
     }
   }
 
+  private solidBottomOf(texture: Texture, masks: PixelMasks): number {
+    const known = this.solidBottoms.get(texture)
+    if (known !== undefined) {
+      return known
+    }
+    const { width, height } = texture.frame
+    const { bottom } = solidBoundsOf({
+      width,
+      height,
+      isSolid: (column, row) => masks.solid[row * width + column] === 1,
+    })
+    this.solidBottoms.set(texture, bottom)
+    return bottom
+  }
+
   private geometryOf(
     input: Readonly<{
       texture: Texture
       sheet: Texture
-      solid: Uint8Array
+      masks: PixelMasks
       isFlipped: boolean
+      isGrounded: boolean
     }>,
   ): Geometry3D {
-    const { texture, sheet, solid, isFlipped } = input
-    const both = this.geometries.get(texture) ?? new Map<boolean, Geometry3D>()
-    this.geometries.set(texture, both)
-    const known = both.get(isFlipped)
+    const { texture, sheet, masks, isFlipped, isGrounded } = input
+    const shapeKey = shapeKeyOf({ isFlipped, isGrounded })
+    const shapes =
+      this.geometries.get(texture) ?? new Map<ShapeKey, Geometry3D>()
+    this.geometries.set(texture, shapes)
+    const known = shapes.get(shapeKey)
     if (known !== undefined) {
       return known
     }
@@ -245,14 +297,19 @@ export class VoxelBatch {
       ...voxelMeshOf({
         width,
         height,
-        isSolid: (column, row) => solid[rowOf(row) * width + column] === 1,
+        isSolid: (column, row) =>
+          masks.solid[rowOf(row) * width + column] === 1,
+        isDark: (column, row) => masks.dark[rowOf(row) * width + column] === 1,
+        // NOTE: reversed rows run up from the foot, as the matrix stands
+        // them (slabMatrixOf).
+        ground: isGrounded ? (isFlipped ? 'Above' : 'Below') : 'None',
         uvOf: (column, row) => [
           (x + column + 0.5) / sheetWidth,
           (y + rowOf(row) + 0.5) / sheetHeight,
         ],
       }),
     })
-    both.set(isFlipped, geometry)
+    shapes.set(shapeKey, geometry)
     return geometry
   }
 
@@ -288,13 +345,14 @@ export class VoxelBatch {
 
   destroy(): void {
     this.batch.destroy()
-    for (const both of this.geometries.values()) {
-      for (const geometry of both.values()) {
+    for (const shapes of this.geometries.values()) {
+      for (const geometry of shapes.values()) {
         geometry.destroy()
       }
     }
     this.cube.destroy()
     this.geometries.clear()
+    this.solidBottoms.clear()
     this.sheetMaterials.clear()
     this.colorMaterials.clear()
   }
