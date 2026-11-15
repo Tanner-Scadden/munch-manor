@@ -68,6 +68,7 @@ export const FIELD_CLASSES = {
   orientation: 'Client',
   cameraLean: 'Client',
   maybeFinisher: 'Client',
+  cameraGlide: 'Client',
 
   particles: 'Cosmetic',
   decals: 'Cosmetic',

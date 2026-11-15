@@ -2,12 +2,22 @@ import { Function, Option } from 'effect'
 
 import type { Model } from '../app/model'
 import { couchFocus } from '../input/couch'
-import { CAMERA_LEAN_EASE_MS, CAMERA_LEAN_PX } from '../shared/constants'
+import {
+  CAMERA_LEAN_PX,
+  CAMERA_LEAN_RATE,
+  CAMERA_LEAN_RETURN_RATE,
+  MS_PER_SECOND,
+} from '../shared/constants'
 import { Finale } from '../world/dare/dareSchema'
 import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
 import type { Vector } from '../world/schema/entitySchema'
-import { ZERO_VECTOR, clamp, scaleVector } from '../world/step/geometry'
+import {
+  ZERO_VECTOR,
+  clamp,
+  clampLength,
+  scaleVector,
+} from '../world/step/geometry'
 import { glideFocus } from './cine'
 import { hudLayoutFor } from './hudLayout'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
@@ -200,29 +210,51 @@ export const sceneOffset: {
 
 // LEAN
 
-const leanTarget = (maybeAim: Option.Option<Vector>): Vector =>
-  Option.match(maybeAim, {
-    onNone: () => ZERO_VECTOR,
-    onSome: aim => scaleVector(aim, CAMERA_LEAN_PX),
-  })
+// NOTE: within this of its target the lean lands on it, a quarter of a
+// world pixel, below what the whole pixel camera can show.
+const LEAN_SETTLE_PX = 0.25
 
-// NOTE: the camera leans toward where the player aims, eased so a flick of
-// the stick does not jerk the view. It is a few dozen pixels at most, and it
-// is stored in the Model because each frame's lean depends on the last.
+// NOTE: the share of the way to a target a rate per second closes in
+// deltaMs, the same at any frame rate: two 8 ms frames close what one 16 ms
+// frame does.
+const easeShareOf: {
+  (deltaMs: number): (ratePerSecond: number) => number
+  (ratePerSecond: number, deltaMs: number): number
+} = Function.dual(
+  2,
+  (ratePerSecond: number, deltaMs: number): number =>
+    1 - Math.exp((-ratePerSecond * Math.max(0, deltaMs)) / MS_PER_SECOND),
+)
+
+// NOTE: the camera leans toward where the player aims, by how hard they
+// aim (aimReachOf in src/input/input.ts), up to CAMERA_LEAN_PX. It eases
+// quickly toward an aim and slowly home once the aim is let go, so a flick
+// of the stick or a lifted thumb does not jerk the view. The lean is stored
+// in the Model because each frame's lean depends on the last.
 export const leanCamera: {
-  (maybeAim: Option.Option<Vector>, deltaMs: number): (lean: Vector) => Vector
-  (lean: Vector, maybeAim: Option.Option<Vector>, deltaMs: number): Vector
+  (maybeReach: Option.Option<Vector>, deltaMs: number): (lean: Vector) => Vector
+  (lean: Vector, maybeReach: Option.Option<Vector>, deltaMs: number): Vector
 } = Function.dual(
   3,
-  (lean: Vector, maybeAim: Option.Option<Vector>, deltaMs: number): Vector => {
-    const target = leanTarget(maybeAim)
-    const share = clamp(deltaMs / CAMERA_LEAN_EASE_MS, 0, 1)
+  (
+    lean: Vector,
+    maybeReach: Option.Option<Vector>,
+    deltaMs: number,
+  ): Vector => {
+    const target = Option.match(maybeReach, {
+      onNone: () => ZERO_VECTOR,
+      onSome: reach => scaleVector(clampLength(reach, 1), CAMERA_LEAN_PX),
+    })
+    const share = easeShareOf(
+      Option.isSome(maybeReach) ? CAMERA_LEAN_RATE : CAMERA_LEAN_RETURN_RATE,
+      deltaMs,
+    )
     const next = {
       x: lean.x + (target.x - lean.x) * share,
       y: lean.y + (target.y - lean.y) * share,
     }
-    return Math.abs(next.x - target.x) < 0.05 &&
-      Math.abs(next.y - target.y) < 0.05
+    return Math.abs(next.x - target.x) < LEAN_SETTLE_PX &&
+      Math.abs(next.y - target.y) < LEAN_SETTLE_PX
       ? target
       : next
   },

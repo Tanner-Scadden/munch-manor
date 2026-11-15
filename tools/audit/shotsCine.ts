@@ -24,7 +24,7 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'still', query: `${BASE}&freeze=20` },
   {
     name: 'boss-door',
-    query: `${BASE}&boss=arriving&door=Front&arriveMs=1300&freeze=1`,
+    query: `${BASE}&boss=arriving&door=Front&arriveMs=2200&freeze=45`,
   },
 ]
 

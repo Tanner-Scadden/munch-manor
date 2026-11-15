@@ -9,10 +9,12 @@ import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { moveHintBand } from '../../features/onboarding/onboarding'
+import { aimReachOf } from '../../input/input'
 import { Stick } from '../../input/inputSchema'
 import {
   CAMERA_LEAN_PX,
   FIXED_STEP_MS,
+  MOUSE_LEAN_SHARE,
   STICK_RADIUS_PX,
 } from '../../shared/constants'
 import { DISTANT_SPAWN, withKeys } from '../../test/model.fixture'
@@ -395,6 +397,55 @@ describe('the aim lean', () => {
         }),
       ),
   )
+
+  test('leans by how hard the player aims, the same at any frame rate', () => {
+    const settled = (reach: { x: number; y: number }) =>
+      leanCamera({ x: 0, y: 0 }, Option.some(reach), 10_000)
+    expect(settled({ x: 0.5, y: 0 })).toEqual({ x: CAMERA_LEAN_PX / 2, y: 0 })
+    expect(settled({ x: 3, y: 0 })).toEqual({ x: CAMERA_LEAN_PX, y: 0 })
+    const after = (frames: number, deltaMs: number) =>
+      Array.reduce(
+        Array.makeBy(frames, () => deltaMs),
+        { x: 0, y: 0 },
+        (lean, ms) => leanCamera(lean, Option.some({ x: 1, y: 0 }), ms),
+      )
+    expect(after(12, 1000 / 60).x).toBeCloseTo(after(24, 1000 / 120).x, 6)
+  })
+
+  test('drifts home slowly once the aim is let go, with no snap back', () => {
+    const home = Array.scan(
+      Array.makeBy(18, () => 1000 / 60),
+      { x: CAMERA_LEAN_PX, y: 0 },
+      (lean, deltaMs) => leanCamera(lean, Option.none(), deltaMs),
+    )
+    expect(home[home.length - 1]!.x).toBeGreaterThan(CAMERA_LEAN_PX / 3)
+    Array.forEach(Array.zip(home, Array.drop(home, 1)), ([from, to]) => {
+      expect(from.x - to.x).toBeLessThan(2)
+    })
+  })
+
+  test('a cursor near the middle of the window leans the camera only a little', () => {
+    const camera = cameraOf(fightingInLandscape)
+    const middle = {
+      x: camera.left + (camera.width * camera.scale) / 2,
+      y: camera.top + (camera.height * camera.scale) / 2,
+    }
+    const reachAt = (dx: number) =>
+      Option.map(
+        aimReachOf(
+          {
+            ...fightingInLandscape.input,
+            maybeMouseInView: Option.some({ x: middle.x + dx, y: middle.y }),
+          },
+          camera,
+        ),
+        ({ x }) => x,
+      )
+    expect(reachAt(10)).toEqual(
+      Option.some(10 * (MOUSE_LEAN_SHARE / CAMERA_LEAN_PX)),
+    )
+    expect(reachAt(-1000)).toEqual(Option.some(-1))
+  })
 
   it.effect('the same messages lean the camera the same way every time', () => {
     const leanAfter = () =>

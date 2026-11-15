@@ -19,7 +19,7 @@ import { startingCallingOf } from '../features/heroes/callingPick'
 import { noMissionRun } from '../features/missions/missionSchema'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
-import { noActionWatch, noTellWatch } from '../render/renderSchema'
+import { STILL_GLIDE, noActionWatch, noTellWatch } from '../render/renderSchema'
 import { rollCases } from '../world/feats/cases'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
@@ -62,6 +62,7 @@ export type RunFields = Pick<
   | 'intensity'
   | 'cameraLean'
   | 'maybeFinisher'
+  | 'cameraGlide'
   | 'zombies'
   | 'bullets'
   | 'lobs'
@@ -141,6 +142,7 @@ export const freshRun = (model: Model): RunFields => ({
   intensity: 0,
   cameraLean: ZERO_VECTOR,
   maybeFinisher: Option.none(),
+  cameraGlide: STILL_GLIDE,
   zombies: [],
   bullets: [],
   lobs: [],

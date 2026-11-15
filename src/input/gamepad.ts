@@ -245,6 +245,15 @@ export const padAim = (
 ): Option.Option<Vector> =>
   Option.flatMap(maybePad, pad => normalize(rightStick(pad)))
 
+// NOTE: how far the right stick is pushed, a vector of length 0 to 1, while
+// it is pushed past its dead zone: the camera leans by it.
+export const padAimReach = (
+  maybePad: Option.Option<Gamepad>,
+): Option.Option<Vector> =>
+  Option.flatMap(maybePad, pad =>
+    Option.liftPredicate(rightStick(pad), stick => vectorLength(stick) > 0),
+  )
+
 export const isPadFiring = (maybePad: Option.Option<Gamepad>): boolean =>
   isHeld(maybePad, PAD_RT)
 

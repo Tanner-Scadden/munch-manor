@@ -22,9 +22,15 @@ import {
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
 import { cameraOf } from '../camera'
-import { FINISHER_CINE_MS, cineBarShapes, cineWeightOf } from '../cine'
+import {
+  FINISHER_CINE_MS,
+  cineBarShapes,
+  cineWeightOf,
+  glideCamera,
+} from '../cine'
+import { STILL_GLIDE } from '../renderSchema'
 
-// The camera's big moments (src/render/cine.ts): it glides partway toward
+// The camera's big moments (src/render/cine.ts): it springs partway toward
 // the moment and back, never taking the player out of the window, while
 // letterbox bars slide in.
 
@@ -60,18 +66,80 @@ describe('the cinematic camera', () => {
     expect(cineWeightOf(0.9)).toBeLessThan(cineWeightOf(0.8))
   })
 
-  it("glides toward the boss's door and keeps the player in the window", () => {
-    const door = levelOf(midRoom).doors.Front.center
-    const still = centerOf(midRoom)
-    const glided = centerOf(arrivingAt(midRoom, ENTRANCE_MS / 2))
-    expect(Math.abs(glided.y - door.y)).toBeLessThan(Math.abs(still.y - door.y))
-    const camera = cameraOf(arrivingAt(midRoom, ENTRANCE_MS / 2))
-    const { player } = focusOf(midRoom)
-    expect(player.x).toBeGreaterThan(camera.x)
-    expect(player.x).toBeLessThan(camera.x + camera.width)
-    expect(player.y).toBeGreaterThan(camera.y)
-    expect(player.y).toBeLessThan(camera.y + camera.height)
-    expect(cameraOf(arrivingAt(midRoom, 0))).toEqual(cameraOf(midRoom))
+  it.effect(
+    "glides toward the boss's door, keeps the player in the window, and comes home",
+    () => {
+      const door = levelOf(midRoom).doors.Front.center
+      const still = centerOf(midRoom)
+      return Story.story(
+        APPLICATION,
+        Story.given(arrivingAt(midRoom, ENTRANCE_MS)),
+        ...ticks(45, FRAME_MS),
+        Story.model(current => {
+          const glided = centerOf(current)
+          expect(Math.abs(glided.y - door.y)).toBeLessThan(
+            Math.abs(still.y - door.y),
+          )
+          const camera = cameraOf(current)
+          const { player } = focusOf(current)
+          expect(player.x).toBeGreaterThan(camera.x)
+          expect(player.x).toBeLessThan(camera.x + camera.width)
+          expect(player.y).toBeGreaterThan(camera.y)
+          expect(player.y).toBeLessThan(camera.y + camera.height)
+        }),
+        ...ticks(Math.ceil(ENTRANCE_MS / FRAME_MS) + 120, FRAME_MS),
+        Story.model(({ cameraGlide }) => {
+          expect(cameraGlide).toEqual(STILL_GLIDE)
+        }),
+      )
+    },
+  )
+
+  it('springs the same at any frame rate and never overshoots', () => {
+    const pull = { x: 100, y: -40 }
+    const at60 = Array.reduce(
+      Array.makeBy(60, () => 1000 / 60),
+      STILL_GLIDE,
+      (glide, deltaMs) => glideCamera(glide, pull, deltaMs),
+    )
+    const at120 = Array.reduce(
+      Array.makeBy(120, () => 1000 / 120),
+      STILL_GLIDE,
+      (glide, deltaMs) => glideCamera(glide, pull, deltaMs),
+    )
+    expect(at60.offset.x).toBeCloseTo(at120.offset.x, 6)
+    expect(at60.offset.y).toBeCloseTo(at120.offset.y, 6)
+    const path = Array.scan(
+      Array.makeBy(240, () => FRAME_MS),
+      STILL_GLIDE,
+      (glide, deltaMs) => glideCamera(glide, pull, deltaMs),
+    )
+    Array.forEach(path, ({ offset }) => {
+      expect(offset.x).toBeLessThanOrEqual(pull.x)
+      expect(offset.y).toBeGreaterThanOrEqual(pull.y)
+    })
+    expect(path[path.length - 1]).toEqual({
+      offset: pull,
+      velocity: { x: 0, y: 0 },
+    })
+  })
+
+  it('a moment ending while another plays moves the view a little a frame, never a jump', () => {
+    const toKey = Array.reduce(
+      Array.makeBy(40, () => FRAME_MS),
+      STILL_GLIDE,
+      (glide, deltaMs) => glideCamera(glide, { x: 0, y: 42 }, deltaMs),
+    )
+    const toBlow = Array.scan(
+      Array.makeBy(60, () => FRAME_MS),
+      toKey,
+      (glide, deltaMs) => glideCamera(glide, { x: -112, y: -20 }, deltaMs),
+    )
+    Array.forEach(Array.zip(toBlow, Array.drop(toBlow, 1)), ([from, to]) => {
+      expect(
+        Math.hypot(to.offset.x - from.offset.x, to.offset.y - from.offset.y),
+      ).toBeLessThan(5)
+    })
   })
 
   it('slides its bars in with the moment and out again', () => {

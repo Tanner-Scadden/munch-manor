@@ -1,8 +1,14 @@
 export const VIEW_WIDTH = 320
 export const VIEW_HEIGHT = 180
 
+// NOTE: the aim lean's cap, in world pixels; the share of the cursor's
+// distance from the window's middle the mouse leans by; and how fast the
+// lean eases, per second: quick toward an aim, slow back home once the aim
+// is let go, so a lifted thumb does not swing the view (src/render/camera.ts).
 export const CAMERA_LEAN_PX = 28
-export const CAMERA_LEAN_EASE_MS = 240
+export const MOUSE_LEAN_SHARE = 0.2
+export const CAMERA_LEAN_RATE = 6
+export const CAMERA_LEAN_RETURN_RATE = 3
 
 export const MS_PER_SECOND = 1000
 export const MAX_FRAME_DELTA_MS = 50
