@@ -6,7 +6,7 @@
 // drawn by hand, so the art and the light it throws read off one grid
 // (src/render/iso/godRays.ts, src/render/iso/emissives.ts).
 
-import { Array, Record, String } from 'effect'
+import { Array, Option, Record, Result, String } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { pixelArt } from '../drawing'
@@ -98,6 +98,33 @@ const spotOf = (room: Box): Readonly<{ x: number; y: number }> => ({
 export const roseGlassOf = (room: Box): Box => {
   const { x, y } = spotOf(room)
   return { x: x + 1, y: y + 1, width: SIZE - 2, height: SIZE - 2 }
+}
+
+// NOTE: the colored glass as runs along each row, from the window's top
+// left, built once: what a strike lights and the rain runs over, so the
+// lead and the stone ring stay dark and the round window never flashes
+// as a square.
+const GLASS_RUNS: ReadonlyArray<Box> = Array.flatMap(ROSE_PIXELS, (line, row) =>
+  Array.filterMap(
+    Array.makeBy(SIZE, column => column),
+    column => {
+      const isGlass = (at: number): boolean =>
+        isRoseGlass(String.charAt(line, at).pipe(Option.getOrElse(() => '.')))
+      if (!isGlass(column) || (column > 0 && isGlass(column - 1))) {
+        return Result.failVoid
+      }
+      const width = Array.findFirstIndex(
+        Array.makeBy(SIZE - column, step => column + step),
+        at => !isGlass(at),
+      ).pipe(Option.getOrElse(() => SIZE - column))
+      return Result.succeed({ x: column, y: row, width, height: 1 })
+    },
+  ),
+)
+
+export const roseLightsOf = (room: Box): ReadonlyArray<Box> => {
+  const { x, y } = spotOf(room)
+  return Array.map(GLASS_RUNS, run => ({ ...run, x: run.x + x, y: run.y + y }))
 }
 
 export const roseWindowShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {

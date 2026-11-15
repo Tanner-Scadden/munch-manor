@@ -59,17 +59,19 @@ test('the rain runs down the glass alone, the same for the same clock', () => {
 
 test('a strike flashes the glass and throws its light on the floor', () => {
   const flashed = rainAt(wave, struck)
-  Array.forEach(panes, ({ kind, glass, thrown }) => {
-    expect(
-      Array.some(
-        flashed,
-        shape =>
-          shape.x === glass.x &&
-          shape.y === glass.y &&
-          shape.width === glass.width &&
-          shape.height === glass.height,
-      ),
-    ).toBe(true)
+  Array.forEach(panes, ({ kind, lights, thrown }) => {
+    Array.forEach(lights, light =>
+      expect(
+        Array.some(
+          flashed,
+          shape =>
+            shape.x === light.x &&
+            shape.y === light.y &&
+            shape.width === light.width &&
+            shape.height === light.height,
+        ),
+      ).toBe(true),
+    )
     // NOTE: the rose window throws its strike in its own colors, as a god
     // ray (godRays.ts), not as the storm's white.
     expect(
@@ -83,6 +85,34 @@ test('a strike flashes the glass and throws its light on the floor', () => {
   expect(
     Array.some(rainAt(wave, calm), shape =>
       Array.some(panes, ({ thrown }) => isInside(shape, thrown)),
+    ),
+  ).toBe(false)
+})
+
+test("the rose window's strike and rain stay on its colored glass, off its lead and stone", () => {
+  const rose = Option.getOrThrow(
+    Array.findFirst(panes, ({ kind }) => kind === 'Rose'),
+  )
+  const onRose = (ms: number) =>
+    Array.filter(rainAt(wave, ms), shape => isInside(shape, rose.glass))
+  const isOnGlass = (shape: Box): boolean =>
+    Array.some(rose.lights, light => isInside(shape, light)) ||
+    (shape.width === 1 &&
+      Array.every(
+        Array.makeBy(shape.height, step => shape.y + step),
+        row =>
+          Array.some(rose.lights, light =>
+            isInside({ ...shape, y: row, height: 1 }, light),
+          ),
+      ))
+  const shapes = [...onRose(calm), ...onRose(struck)]
+  expect(Array.some(onRose(struck), shape => shape.width > 1)).toBe(true)
+  expect(Array.every(shapes, isOnGlass)).toBe(true)
+  expect(
+    Array.some(
+      onRose(struck),
+      ({ width, height }) =>
+        width === rose.glass.width && height === rose.glass.height,
     ),
   ).toBe(false)
 })

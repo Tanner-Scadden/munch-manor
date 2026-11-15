@@ -4,7 +4,7 @@
 // clock and the level alone, like the mood's strikes (mood.ts), so every
 // player in a co-op room sees the same rain.
 
-import { Array, Result } from 'effect'
+import { Array, Order, Result } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../../shared/constants'
@@ -58,32 +58,80 @@ export const stormKeyOf = ({
 const rollOf = (pane: number, streak: number, use: number): number =>
   unitOf(pane * 7919 + streak * 37 + use)
 
+type Span = Readonly<{ top: number; bottom: number }>
+
+const builtSpans = new WeakMap<Pane, ReadonlyMap<number, ReadonlyArray<Span>>>()
+
+// NOTE: the lit glass down each column of a pane, top to bottom, built once
+// per pane: where a streak of rain shows, so it never runs over the rose
+// window's lead or past its round edge.
+const columnSpansOf = (
+  pane: Pane,
+): ReadonlyMap<number, ReadonlyArray<Span>> => {
+  const cached = builtSpans.get(pane)
+  if (cached !== undefined) {
+    return cached
+  }
+  const rows = new Map<number, Array<number>>()
+  Array.forEach(pane.lights, ({ x, y, width, height }) => {
+    for (let column = x; column < x + width; column += 1) {
+      const lit = rows.get(column) ?? []
+      for (let row = y; row < y + height; row += 1) {
+        lit.push(row)
+      }
+      rows.set(column, lit)
+    }
+  })
+  const spans = new Map<number, ReadonlyArray<Span>>()
+  rows.forEach((lit, column) => {
+    const merged: Array<{ top: number; bottom: number }> = []
+    Array.forEach(Array.sort(lit, Order.Number), row => {
+      const last = merged[merged.length - 1]
+      if (last?.bottom === row) {
+        last.bottom = row + 1
+      } else {
+        merged.push({ top: row, bottom: row + 1 })
+      }
+    })
+    spans.set(column, merged)
+  })
+  builtSpans.set(pane, spans)
+  return spans
+}
+
 const rainOn = (
-  glass: Box,
-  pane: number,
+  pane: Pane,
+  index: number,
   ms: number,
 ): ReadonlyArray<Canvas.Shape> => {
+  const { glass } = pane
+  const spans = columnSpansOf(pane)
   const count = Math.max(
     1,
     Math.round((glass.width * glass.height) / GLASS_PER_STREAK),
   )
-  const bottom = glass.y + glass.height
-  return Array.filterMap(
+  return Array.flatMap(
     Array.makeBy(count, streak => streak),
     streak => {
-      const fallMs = 420 + rollOf(pane, streak, 0) * 260
-      const age = (ms + rollOf(pane, streak, 1) * fallMs) % fallMs
+      const fallMs = 420 + rollOf(index, streak, 0) * 260
+      const age = (ms + rollOf(index, streak, 1) * fallMs) % fallMs
       // NOTE: each fall of a streak runs down its own column.
-      const fall = Math.floor((ms + rollOf(pane, streak, 1) * fallMs) / fallMs)
+      const fall = Math.floor((ms + rollOf(index, streak, 1) * fallMs) / fallMs)
       const column =
-        glass.x + Math.floor(rollOf(pane, streak * 131 + fall, 2) * glass.width)
+        glass.x +
+        Math.floor(rollOf(index, streak * 131 + fall, 2) * glass.width)
       const head =
         glass.y + Math.floor((age / fallMs) * (glass.height + STREAK_LENGTH))
-      const top = Math.max(glass.y, head - STREAK_LENGTH)
-      const end = Math.min(bottom, head)
-      return end > top
-        ? Result.succeed(rect(column, top, 1, end - top, RAIN_COLOR))
-        : Result.failVoid
+      const start = head - STREAK_LENGTH
+      // NOTE: a column holds a few runs of glass at most (the rose
+      // window's, between its lead), so this walks no more than those.
+      return Array.filterMap(spans.get(column) ?? [], ({ top, bottom }) => {
+        const from = Math.max(top, start)
+        const end = Math.min(bottom, head)
+        return end > from
+          ? Result.succeed(rect(column, from, 1, end - from, RAIN_COLOR))
+          : Result.failVoid
+      })
     },
   )
 }
@@ -124,23 +172,31 @@ const thrownShapes = (patch: Box, fill: string): ReadonlyArray<Canvas.Shape> =>
     rect(box.x, box.y, box.width, box.height, fill),
   )
 
+// NOTE: the rose window's colored glass flashes softer than clear glass,
+// so its colors still read through the strike.
+const ROSE_FLASH_SHARE = 0.55
+
 const paneShapes = (
-  { glass }: Pane,
-  pane: number,
+  pane: Pane,
+  index: number,
   ms: number,
   strike: number,
 ): ReadonlyArray<Canvas.Shape> => [
-  ...rainOn(glass, pane, ms),
+  ...rainOn(pane, index, ms),
   ...(strike > 0
-    ? [
+    ? Array.map(pane.lights, ({ x, y, width, height }) =>
         rect(
-          glass.x,
-          glass.y,
-          glass.width,
-          glass.height,
-          flashColor(strike * FLASH_ALPHA),
+          x,
+          y,
+          width,
+          height,
+          flashColor(
+            strike *
+              FLASH_ALPHA *
+              (pane.kind === 'Rose' ? ROSE_FLASH_SHARE : 1),
+          ),
         ),
-      ]
+      )
     : []),
 ]
 
