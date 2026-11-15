@@ -76,8 +76,10 @@ import {
   plantsOf,
   standPlant,
 } from './house'
-import { AMBIENT, lightsFrameOf } from './lightSpecs'
+import { AMBIENT, type LightsFrame, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
+import { IS_LOOK, LOOK_BACKGROUND } from './look'
+import { LOOK } from './lookSpecs'
 import { mixColor } from './mood'
 import { FloorLayer, FloorPicture } from './painter'
 import {
@@ -187,6 +189,21 @@ const furnitureOf = (
   )
 }
 
+// NOTE: under the look pass (`?lookpass`), a shut room's fill is put out (it
+// draws black anyway) and an open room's is turned down, so the flames and
+// the lamp carry the picture.
+const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame =>
+  IS_LOOK
+    ? {
+        ...frame,
+        fillShares: Array.map(frame.fillShares, (share, index) =>
+          Option.exists(Array.get(level.rooms, index), ({ isOpen }) => isOpen)
+            ? share * LOOK.roomFill
+            : 0,
+        ),
+      }
+    : frame
+
 const rectKeysOf = (leaves: ReadonlyArray<Leaf>): ReadonlySet<string> =>
   new Set(
     Array.filterMap(leaves, ({ shape }) =>
@@ -288,6 +305,7 @@ export class IsoScene {
       specularSize: 0,
       rimIntensity: 0.3,
       outline: true,
+      ...this.textures.lookOptions('Toon'),
     })
     const standing = new Container3D()
     root.addChild(standing)
@@ -346,6 +364,7 @@ export class IsoScene {
       this.app.renderer.resize(width, height, resolution)
     }
     const built = this.builtFor(levelOf(model))
+    this.textures.lookAt(built.level)
     // NOTE: the floor is painted again once what it waits on has loaded,
     // not as each file comes in: a first visit loads a few dozen, and
     // painting the whole floor for each held the splash in a hitch apiece.
@@ -592,15 +611,19 @@ export class IsoScene {
     const px = player.x * UNIT
     const pz = zOf(player.y)
     this.lamp.position.set(px, 1.6, pz)
-    const lights = lightsFrameOf({
-      world: model,
-      level: built.level,
-      viewer: player,
-      rattle,
-    })
+    const lights = lookLightsOf(
+      lightsFrameOf({
+        world: model,
+        level: built.level,
+        viewer: player,
+        rattle,
+      }),
+      built.level,
+    )
     built.lights.apply({ frame: lights, player, view })
     const { mood } = lights
-    this.ambient.intensity = AMBIENT * mood.ambient
+    this.ambient.intensity =
+      AMBIENT * mood.ambient * (IS_LOOK ? LOOK.ambient : 1)
     const ambientColor = mixColor({
       from: 0xffffff,
       to: mood.tint,
@@ -816,6 +839,7 @@ export class IsoScene {
       roughness: 1,
       metallic: 0,
       specular: { factor: 0 },
+      ...textures.lookOptions('House'),
     })
     const wallTops = buildWallTops({ level, material: wallArt })
     const wallFaces = buildWallFaces({ level, material: wallArt })
@@ -929,7 +953,7 @@ export const createIsoScene = ({
       try: () =>
         app.init({
           preference: 'webgl',
-          background: BACKGROUND,
+          background: IS_LOOK ? LOOK_BACKGROUND : BACKGROUND,
           antialias: false,
           autoStart: false,
           width: Math.max(1, host.clientWidth),

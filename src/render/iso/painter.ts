@@ -276,7 +276,7 @@ export class FloorLayer {
       base?: Texture
     }>,
   ) {
-    const { level, lift, isLit } = input
+    const { level, lift, isLit, textures } = input
     this.picture = new FloorPicture(input)
     const texture = this.picture.texture
     const material = isLit
@@ -286,6 +286,7 @@ export class FloorLayer {
           metallic: 0,
           specular: { factor: 0 },
           alphaMode: lift === 0 ? 'opaque' : 'blend',
+          ...textures.lookOptions('House'),
         })
       : new FlatMaterial({ baseColorTexture: texture, alphaMode: 'blend' })
     this.mesh = new Mesh3D({
