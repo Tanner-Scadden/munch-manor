@@ -2,13 +2,15 @@
 // tunables in src/render/iso/lookSpecs.ts and the level: the ramps (one row
 // of band colors per room, under a row of the tunables themselves) and the
 // room map (which room's ramp each tile of the house wears, black for a room
-// not yet opened and for the outside). src/render/iso/look.ts uploads them
+// not yet opened and for the outside, and which tiles the cellar's dark
+// lies on). src/render/iso/look.ts uploads them
 // and its shader reads them.
 
 import { Array, Option, Record } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
+import { CELLAR_ROOM_ID } from '../../world/level/plan'
 import type { LookSpecs, RoomLook } from './lookSpecs'
 import { NEUTRAL } from './lookSpecs'
 import { mixColor } from './mood'
@@ -121,32 +123,38 @@ export const rampTexelsOf = (specs: LookSpecs): Uint8Array => {
 // NOTE: the slot (as its red byte) each world tile in ROOM_MAP wears: the
 // open room whose box holds the tile's middle, or the void. Walls on a
 // room's edge are inside its box, so they wear its ramp; a shut room and
-// the yard are black.
+// the yard are black. The green byte is full on the dark cellar's tiles
+// (`isDark`, its bulb out), so the dark ends on the same whole tiles and
+// walls as the room.
 export const roomTexelsOf = (
-  input: Readonly<{ specs: LookSpecs; level: Level }>,
+  input: Readonly<{ specs: LookSpecs; level: Level; isDark: boolean }>,
 ): Uint8Array => {
-  const { specs, level } = input
+  const { specs, level, isDark } = input
   const texels = new Uint8Array(ROOM_MAP.columns * ROOM_MAP.rows * 4)
   const open = Array.filter(level.rooms, ({ isOpen }) => isOpen)
   const slots = Array.map(open, room => slotOf({ specs, roomId: room.id }))
+  const darks = Array.map(open, ({ id }) =>
+    isDark && id === CELLAR_ROOM_ID ? 255 : 0,
+  )
   for (let row = 0; row < ROOM_MAP.rows; row += 1) {
     const y = (ROOM_MAP.row + row + 0.5) * TILE_SIZE
     for (let column = 0; column < ROOM_MAP.columns; column += 1) {
       const x = (ROOM_MAP.column + column + 0.5) * TILE_SIZE
       // NOTE: a level has at most a handful of rooms (six today).
-      const slot = Option.match(
-        Array.findFirstIndex(
-          open,
-          ({ box }) =>
-            x > box.left && x < box.right && y > box.top && y < box.bottom,
-        ),
-        {
-          onNone: () => VOID_SLOT,
-          onSome: index => slots[index] ?? VOID_SLOT,
-        },
+      const maybeIndex = Array.findFirstIndex(
+        open,
+        ({ box }) =>
+          x > box.left && x < box.right && y > box.top && y < box.bottom,
       )
       const at = (row * ROOM_MAP.columns + column) * 4
-      texels[at] = slot
+      texels[at] = Option.match(maybeIndex, {
+        onNone: () => VOID_SLOT,
+        onSome: index => slots[index] ?? VOID_SLOT,
+      })
+      texels[at + 1] = Option.match(maybeIndex, {
+        onNone: () => 0,
+        onSome: index => darks[index] ?? 0,
+      })
       texels[at + 3] = 255
     }
   }

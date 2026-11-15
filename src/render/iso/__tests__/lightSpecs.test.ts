@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
@@ -6,10 +6,10 @@ import type { Model } from '../../../app/model'
 import { quietWave, withPlayerAt } from '../../../test/model.fixture'
 import { CELLAR_SPOT } from '../../../test/testing'
 import { levelOf, openExitIn } from '../../../world/level/arena'
-import { CELLAR_ROOM_ID, EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
+import { EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
 import { focusOf } from '../../../world/party/party'
 import { TOOL_RULES } from '../../../world/stations/toolRules'
-import { darkCellsOf, flameSpecsOf, lightsFrameOf } from '../lightSpecs'
+import { flameSpecsOf, lightsFrameOf } from '../lightSpecs'
 
 // The house's light as plain data (src/render/iso/lightSpecs.ts): every
 // room's fill, the cellar's dark, and the flames nearest the viewer, held
@@ -37,13 +37,8 @@ const frameOf = (model: Model) =>
 
 const lightsUsed = (model: Model): number => {
   const frame = frameOf(model)
-  const cells = Option.match(
-    Array.findFirst(levelOf(model).rooms, ({ id }) => id === CELLAR_ROOM_ID),
-    { onNone: () => 0, onSome: ({ box }) => darkCellsOf(box).length },
-  )
   return (
     Array.filter(frame.fillShares, share => share > 0).length +
-    (frame.isDark ? cells : 0) +
     (frame.isInDark ? 2 : 0) +
     Array.filter(frame.flames, ({ isShown }) => isShown).length
   )

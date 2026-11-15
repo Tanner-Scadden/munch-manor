@@ -1,6 +1,7 @@
 // The house's light hung in the 3D view: each room's fill (a spot that casts
-// the furniture's shadows), the flames, the cellar's dark cells, and the
-// player's flashlight and pool in the dark. What each does this frame is
+// the furniture's shadows), the flames, and the player's flashlight and pool
+// in the cellar's dark (the dark itself is the look pass's, on the cellar's
+// tiles: src/render/iso/look.ts). What each does this frame is
 // worked out in src/render/iso/lightSpecs.ts; this only applies it.
 
 import { Array, Option } from 'effect'
@@ -8,17 +9,14 @@ import { Array, Option } from 'effect'
 import { Container3D, PointLight, SpotLight } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
-import { CELLAR_ROOM_ID } from '../../world/level/plan'
 import type { Player } from '../../world/schema/entitySchema'
 import { type ViewBox, isNearView } from './cull'
 import {
-  DARK_CELL_INTENSITY,
   DARK_DEPTH,
   DARK_HEIGHT,
   FLAME_TUNING,
   type FlameLooks,
   type LightsFrame,
-  darkCellsOf,
   fillSpecOf,
   flameSpecsOf,
 } from './lightSpecs'
@@ -68,25 +66,6 @@ export const houseLightsOf = (
     fill.lookAt(spec.to)
     return { fill, spec }
   })
-  const cells = Option.match(
-    Array.findFirst(level.rooms, ({ id }) => id === CELLAR_ROOM_ID),
-    {
-      onNone: () => [],
-      onSome: ({ box }) =>
-        Array.map(darkCellsOf(box), cell => {
-          const light = hungSpot(holder, {
-            color: 0xffffff,
-            intensity: DARK_CELL_INTENSITY,
-            range: DARK_HEIGHT * 2,
-            coneAngle: cell.coneAngle,
-            penumbra: 0.12,
-          })
-          light.position.set(cell.x, DARK_HEIGHT, cell.z)
-          light.lookAt({ x: cell.x, y: 0, z: cell.z + 0.001 })
-          return light
-        }),
-    },
-  )
   const specs = flameSpecsOf(level)
   const flames = Array.map(specs, spec => {
     const { color, range } = FLAME_TUNING.now[spec.kind]
@@ -142,9 +121,6 @@ export const houseLightsOf = (
           mixColor({ from: spec.color, to: tint, share: tintShare }),
         )
       }
-    })
-    Array.forEach(cells, cell => {
-      cell.visible = frame.isDark
     })
     const looks = FLAME_TUNING.now
     if (looks !== lastLooks) {

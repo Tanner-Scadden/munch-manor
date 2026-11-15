@@ -12,6 +12,13 @@
 // room by the tile its foot stands on: a billboard's or a wall's height is
 // slid back down the camera's view to the floor first.
 //
+// The cellar's dark is cut here too, off the same room map, so it ends on
+// the cellar's own tiles and walls: what its dark takes away (DARK_TAKES)
+// comes off the light on a pixel before it is banded, all of it off the
+// house's floor and walls, and off what stands only as much as its face
+// looks up, so a body by the player's lights keeps its front. The player's
+// pool and flashlight add theirs back first.
+//
 // Its cost is two small texture reads and a few lines of math a pixel, after
 // the lights: no loop and no new pass.
 
@@ -20,6 +27,7 @@ import { BufferImageSource, Texture } from 'pixi.js'
 import type { ShaderBit } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
+import { DARK_TAKES } from './lightSpecs'
 import { LOOK, LOOK_TUNING, type LookSpecs } from './lookSpecs'
 import {
   BRIGHTEST_RANGE,
@@ -54,6 +62,7 @@ const CONSTANTS = {
   mapRow: glFloat(ROOM_MAP.row),
   mapColumns: glFloat(ROOM_MAP.columns),
   mapRows: glFloat(ROOM_MAP.rows),
+  dark: glFloat(DARK_TAKES),
 }
 
 // NOTE: the 4x4 Bayer dither on whole game pixels, which the god rays
@@ -84,8 +93,13 @@ const glCut = (glow: string, isStanding: boolean): string => {
   const c = CONSTANTS
   return `{
   vec3 lookGlow = ${glow};
+  vec2 lookTile = floor(vec2(vPosition.x, (vPosition.z${isStanding ? ` + vPosition.y * ${c.tanPitch}` : ''}) / ${c.stretch}));
+  vec2 lookRoomUv = (lookTile - vec2(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2(${c.mapColumns}, ${c.mapRows});
+  vec4 lookRoom = sampleLookRoomsDirect(lookRoomUv);
+  float lookSlot = floor(lookRoom.r * 255.0 + 0.5);
+  float lookDark = step(0.5, lookRoom.g) * ${c.dark} * ${isStanding ? 'max(normal.y, 0.0)' : '1.0'};
   vec3 lookMask = step(vec3(0.002), albedo);
-  vec3 lookLit = max(finalColor - lookGlow, vec3(0.0)) / max(albedo, vec3(0.002)) * lookMask;
+  vec3 lookLit = max(max(finalColor - lookGlow, vec3(0.0)) / max(albedo, vec3(0.002)) - lookDark, vec3(0.0)) * lookMask;
   float lookLevel = max(max(lookLit.r, lookLit.g), lookLit.b);
   vec3 lookLight = lookLit + (1.0 - lookMask) * lookLevel;
   vec3 lookP0 = sampleLookRampsDirect(vec2(0.5 / ${c.columns}, 0.5 / ${c.rows})).rgb;
@@ -93,9 +107,6 @@ const glCut = (glow: string, isStanding: boolean): string => {
   float lookSteps = max(1.0, floor(lookP0.r * 255.0 + 0.5));
   float lookCut = lookP0.b * ${c.cutRange};
   float lookBright = max(lookP1.g * ${c.brightRange}, lookCut + 0.01);
-  vec2 lookTile = floor(vec2(vPosition.x, (vPosition.z${isStanding ? ` + vPosition.y * ${c.tanPitch}` : ''}) / ${c.stretch}));
-  vec2 lookRoomUv = (lookTile - vec2(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2(${c.mapColumns}, ${c.mapRows});
-  float lookSlot = floor(sampleLookRoomsDirect(lookRoomUv).r * 255.0 + 0.5);
   vec2 lookPixel = vec2(vPosition.x, vPosition.z * ${c.sinPitch} - vPosition.y * ${c.cosPitch}) / ${c.unit};
   float lookShift = mix(0.5, lookBayer4(lookPixel) + 0.03125, lookP0.g);
   float lookP = sqrt(clamp((lookLevel - lookCut) / (lookBright - lookCut), 0.0, 1.0));
@@ -113,8 +124,14 @@ const gpuCut = (glow: string, isStanding: boolean): string => {
   const c = CONSTANTS
   return `{
   let lookGlow = ${glow};
+  let lookAt = input.vPosition;
+  let lookTile = floor(vec2<f32>(lookAt.x, (lookAt.z${isStanding ? ` + lookAt.y * ${c.tanPitch}` : ''}) / ${c.stretch}));
+  let lookRoomUv = (lookTile - vec2<f32>(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2<f32>(${c.mapColumns}, ${c.mapRows});
+  let lookRoom = sampleLookRoomsDirect(lookRoomUv);
+  let lookSlot = floor(lookRoom.r * 255.0 + 0.5);
+  let lookDark = step(0.5, lookRoom.g) * ${c.dark} * ${isStanding ? 'max(normal.y, 0.0)' : '1.0'};
   let lookMask = step(vec3<f32>(0.002), albedo);
-  let lookLit = max(finalColor - lookGlow, vec3<f32>(0.0)) / max(albedo, vec3<f32>(0.002)) * lookMask;
+  let lookLit = max(max(finalColor - lookGlow, vec3<f32>(0.0)) / max(albedo, vec3<f32>(0.002)) - lookDark, vec3<f32>(0.0)) * lookMask;
   let lookLevel = max(max(lookLit.r, lookLit.g), lookLit.b);
   let lookLight = lookLit + (1.0 - lookMask) * lookLevel;
   let lookP0 = sampleLookRampsDirect(vec2<f32>(0.5 / ${c.columns}, 0.5 / ${c.rows})).rgb;
@@ -122,10 +139,6 @@ const gpuCut = (glow: string, isStanding: boolean): string => {
   let lookSteps = max(1.0, floor(lookP0.r * 255.0 + 0.5));
   let lookCut = lookP0.b * ${c.cutRange};
   let lookBright = max(lookP1.g * ${c.brightRange}, lookCut + 0.01);
-  let lookAt = input.vPosition;
-  let lookTile = floor(vec2<f32>(lookAt.x, (lookAt.z${isStanding ? ` + lookAt.y * ${c.tanPitch}` : ''}) / ${c.stretch}));
-  let lookRoomUv = (lookTile - vec2<f32>(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2<f32>(${c.mapColumns}, ${c.mapRows});
-  let lookSlot = floor(sampleLookRoomsDirect(lookRoomUv).r * 255.0 + 0.5);
   let lookPixel = vec2<f32>(lookAt.x, lookAt.z * ${c.sinPitch} - lookAt.y * ${c.cosPitch}) / ${c.unit};
   let lookShift = mix(0.5, lookBayer4(lookPixel) + 0.03125, lookP0.g);
   let lookP = sqrt(clamp((lookLevel - lookCut) / (lookBright - lookCut), 0.0, 1.0));
@@ -208,6 +221,7 @@ export class LookTextures {
   private readonly rampBytes: Uint8Array
   private readonly roomBytes: Uint8Array
   private lastLevel: Level | undefined
+  private lastIsDark = false
   private lastSpecs: LookSpecs = LOOK
 
   constructor() {
@@ -225,12 +239,13 @@ export class LookTextures {
     })
   }
 
-  // NOTE: each room's slot, again only for a new level (an exit opened) or
-  // new specs, and the ramps again only for new specs.
-  paintRooms(level: Level): void {
+  // NOTE: each room's slot and the cellar's dark, again only for a new
+  // level (an exit opened), the dark coming or going (the bulb), or new
+  // specs, and the ramps again only for new specs.
+  paintRooms(level: Level, isDark: boolean): void {
     const specs = LOOK_TUNING.now
     const isNewSpecs = specs !== this.lastSpecs
-    if (level === this.lastLevel && !isNewSpecs) {
+    if (level === this.lastLevel && isDark === this.lastIsDark && !isNewSpecs) {
       return
     }
     if (isNewSpecs) {
@@ -239,7 +254,8 @@ export class LookTextures {
       this.ramps.source.update()
     }
     this.lastLevel = level
-    this.roomBytes.set(roomTexelsOf({ specs, level }))
+    this.lastIsDark = isDark
+    this.roomBytes.set(roomTexelsOf({ specs, level, isDark }))
     this.rooms.source.update()
   }
 

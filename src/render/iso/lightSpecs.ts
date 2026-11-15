@@ -1,7 +1,8 @@
 // The house's light as plain numbers: each room's own colored fill, the
 // flames (candelabras, the hearth and its sconces, the ovens, the chandelier,
-// the cellar's bulb), and the cellar's dark. src/render/iso/lights.ts hangs
-// them in the 3D view.
+// the cellar's bulb), and how much the cellar's dark takes away.
+// src/render/iso/lights.ts hangs them in the 3D view; the dark itself is cut
+// on the cellar's tiles by the look pass (src/render/iso/look.ts).
 //
 // Light follows the game's state and nothing else: which rooms are open,
 // whether the chandelier hangs, whether the cellar's bulb burns, where the
@@ -56,9 +57,16 @@ const SHUT_FILL = 0.08
 // the player's lights.
 export const DARK_DEPTH = (AMBIENT / Math.PI + OPEN_FILL) * 1.35
 
-// NOTE: the dark's cells and the player's pool hang this high, so each
-// falls as an even disc.
+// NOTE: the player's pool hangs this high, so it falls as an even disc.
 export const DARK_HEIGHT = 30
+
+// NOTE: what the dark takes off the light falling down on the cellar's
+// floor, in the look pass's units (a share of the art's own color): the
+// dark's depth, less the window a light's range puts on it at half its
+// reach, as it does on the pool hung DARK_HEIGHT up with twice that range,
+// so the pool still lifts the floor its share over the dark.
+const HALF_RANGE_WINDOW = (1 - 0.5 ** 4) ** 2
+export const DARK_TAKES = DARK_DEPTH * HALF_RANGE_WINDOW
 
 // NOTE: a room's light hangs high over its middle and a little to the
 // north-west, as if through a skylight, so it falls nearly even across the
@@ -373,44 +381,13 @@ export const fillSpecOf = (room: Level['rooms'][number]): FillSpec => {
   }
 }
 
-// THE CELLAR'S DARK
-
-export type DarkCell = Readonly<{ x: number; z: number; coneAngle: number }>
-
-// NOTE: the dark's cells: spots that take light away (a negative intensity),
-// each straight down over a square of the room, lit from far overhead so its
-// whole square sits inside its cone; the dark overshoots, and the screen
-// clamps the overshoot to black.
-export const darkCellsOf = (box: RoomBox): ReadonlyArray<DarkCell> => {
-  const width = (box.right - box.left) * UNIT
-  const depth = zOf(box.bottom - box.top)
-  // NOTE: half the room's short side, so a cone's round edge spills only a
-  // little past the walls.
-  const side = Math.min(width, depth) / 2
-  const columns = Math.max(1, Math.round(width / side))
-  const rows = Math.max(1, Math.round(depth / side))
-  const cellWidth = width / columns
-  const cellDepth = depth / rows
-  const coneAngle = toDegrees(
-    Math.atan(Math.hypot(cellWidth, cellDepth) / 2 / DARK_HEIGHT),
-  )
-  return Array.flatMap(Array.range(0, columns - 1), column =>
-    Array.map(Array.range(0, rows - 1), row => ({
-      x: box.left * UNIT + (column + 0.5) * cellWidth,
-      z: zOf(box.top) + (row + 0.5) * cellDepth,
-      coneAngle,
-    })),
-  )
-}
-
-export const DARK_CELL_INTENSITY =
-  -DARK_DEPTH * Math.PI * DARK_HEIGHT * DARK_HEIGHT
-
 // THE FRAME
 
 export type LightsFrame = Readonly<{
   // NOTE: each room's fill share, in the level's room order.
   fillShares: ReadonlyArray<number>
+  // NOTE: whether the open cellar is dark, its bulb out: the look pass
+  // darkens its tiles (src/render/iso/look.ts).
   isDark: boolean
   // NOTE: whether the viewing player stands in the cellar's dark, and so
   // carries the flashlight and the pool.
@@ -425,8 +402,8 @@ const isInBox = (box: RoomBox, { x, y }: Vector): boolean =>
   x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
 
 // NOTE: every light's part this frame: the rooms' fills (none in the dark
-// cellar), the dark, the flashlight, and the burning flames nearest the
-// viewer, as many as the budget has left.
+// cellar), whether the dark is down, the flashlight, and the burning flames
+// nearest the viewer, as many as the budget has left.
 export const lightsFrameOf = (
   input: Readonly<{
     world: World
@@ -454,13 +431,8 @@ export const lightsFrameOf = (
       ? 0
       : (isOpen ? OPEN_FILL : SHUT_FILL) * mood.fill,
   )
-  const cellCount = Option.match(maybeCellar, {
-    onNone: () => 0,
-    onSome: ({ box }) => darkCellsOf(box).length,
-  })
   const used =
     Array.reduce(fillShares, 0, (count, share) => count + (share > 0 ? 1 : 0)) +
-    (isDark ? cellCount : 0) +
     (isInDark ? 2 : 0)
   const specs = flameSpecsOf(level)
   const looks = FLAME_TUNING.now

@@ -95,9 +95,10 @@ export class Textures {
     return this.look.optionsFor(kind)
   }
 
-  // NOTE: the look's room map, for the level now drawn.
-  lookAt(level: Level): void {
-    this.look.paintRooms(level)
+  // NOTE: the look's room map, for the level now drawn and whether the
+  // cellar is dark.
+  lookAt(level: Level, isDark: boolean): void {
+    this.look.paintRooms(level, isDark)
   }
 
   // NOTE: whether every source asked for so far has loaded (or failed).

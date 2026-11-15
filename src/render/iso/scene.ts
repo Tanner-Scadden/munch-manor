@@ -416,7 +416,6 @@ export class IsoScene {
       this.app.renderer.resize(width, height, resolution)
     }
     const built = this.builtFor(standingLevelOf(levelOf(model)))
-    this.textures.lookAt(built.level)
     // NOTE: the floor is painted again once what it waits on has loaded,
     // not as each file comes in: a first visit loads a few dozen, and
     // painting the whole floor for each held the splash in a hitch apiece.
@@ -721,6 +720,7 @@ export class IsoScene {
       built.level,
     )
     built.lights.apply({ frame: lights, player, view })
+    this.textures.lookAt(built.level, lights.isDark)
     built.rays.apply({ world: model, player, isInDark: lights.isInDark })
     const { mood } = lights
     this.ambient.intensity =
