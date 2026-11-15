@@ -10,6 +10,7 @@ import { type Application, Container, Graphics, Rectangle } from 'pixi.js'
 import {
   type Container3D,
   CubeGeometry,
+  type FlatMaterial,
   Geometry3D,
   Material3D,
   Mesh3D,
@@ -35,14 +36,7 @@ import {
 } from './billboards'
 import { type Leaf, flatten, rectKey } from './flatten'
 import { FlatPainter } from './painter'
-import {
-  FRONT_WALL_HEIGHT,
-  STRETCH,
-  UNIT,
-  WALL_HEIGHT,
-  isFrontWallAt,
-  zOf,
-} from './space'
+import { STRETCH, UNIT, wallHeightAt, zOf } from './space'
 import { type Textures, colorOf } from './textures'
 import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
 
@@ -61,9 +55,7 @@ export const buildWalls = (
       }
       const x = (level.left + column * TILE_SIZE) * UNIT + 0.5
       const z = zOf(level.top + (row + 0.5) * TILE_SIZE)
-      const height = isFrontWallAt({ tiles: level.tiles, row, column })
-        ? FRONT_WALL_HEIGHT
-        : WALL_HEIGHT
+      const height = wallHeightAt({ tiles: level.tiles, row, column })
       return Result.succeed(
         new Mesh3D({
           geometry: WALL_GEOMETRY,
@@ -95,29 +87,45 @@ export const buildWallTops = (
         ? Result.succeed({
             row,
             column,
-            height: isFrontWallAt({ tiles: level.tiles, row, column })
-              ? FRONT_WALL_HEIGHT
-              : WALL_HEIGHT,
+            y: wallHeightAt({ tiles: level.tiles, row, column }) + TOP_LIFT,
           })
         : Result.failVoid,
     ),
   )
+  return buildTileQuads({ level, material, tiles })
+}
+
+// NOTE: a tile of the level by its row and column, and the height its quad
+// lies at.
+export type TileQuad = Readonly<{ row: number; column: number; y: number }>
+
+// NOTE: a flat quad over each tile, its texture coordinates on a picture of
+// the whole level, one texel a game pixel from its top left corner.
+export const buildTileQuads = (
+  input: Readonly<{
+    level: Level
+    material: Material3D | FlatMaterial
+    tiles: ReadonlyArray<TileQuad>
+  }>,
+): Mesh3D => {
+  const { level, material, tiles } = input
   const positions = new Float32Array(tiles.length * 12)
   const normals = new Float32Array(tiles.length * 12)
   const uvs = new Float32Array(tiles.length * 8)
   const indices = new Uint32Array(tiles.length * 6)
-  Array.forEach(tiles, ({ row, column, height }, index) => {
+  Array.forEach(tiles, ({ row, column, y }, index) => {
     const left = column * TILE_SIZE
     const top = row * TILE_SIZE
     const x0 = (level.left + left) * UNIT
     const x1 = x0 + TILE_SIZE * UNIT
     const z0 = zOf(level.top + top)
     const z1 = zOf(level.top + top + TILE_SIZE)
-    const y = height + TOP_LIFT
     const u0 = left / level.width
     const u1 = (left + TILE_SIZE) / level.width
-    const v0 = top / level.height
-    const v1 = (top + TILE_SIZE) / level.height
+    // NOTE: the picture is rendered to its texture upside down, so its rows
+    // count up from the bottom.
+    const v0 = 1 - top / level.height
+    const v1 = 1 - (top + TILE_SIZE) / level.height
     positions.set([x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1], index * 12)
     normals.set([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], index * 12)
     uvs.set([u0, v0, u1, v0, u1, v1, u0, v1], index * 8)

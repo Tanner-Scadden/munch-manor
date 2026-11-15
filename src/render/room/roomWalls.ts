@@ -377,6 +377,14 @@ const SKULL_OVAL_PALETTE: Palette = {
   '.': '#1c1622',
 }
 
+// NOTE: the night that shows between the parlour window's boards, in the
+// parlour's own block, where the storm flashes (src/render/iso/storm.ts).
+export const PARLOUR_WINDOW_GAPS: ReadonlyArray<Box> = [
+  { x: 238, y: 7, width: 13, height: 1 },
+  { x: 238, y: 12, width: 13, height: 1 },
+  { x: 238, y: 16, width: 13, height: 1 },
+]
+
 const BOARDED_WINDOW: ReadonlyArray<Canvas.Shape> = [
   rect(236, 5, 17, 13, CASING_COLOR),
   rect(238, 7, 13, 9, '#1c2a44'),
