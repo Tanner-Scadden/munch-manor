@@ -31,6 +31,7 @@ import {
 import { type Seeded, generateMany } from '../../shared/prng'
 import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
 import { levelOf } from '../../world/level/arena'
+import { isWadingAt } from '../../world/level/leaks'
 import { focusOf } from '../../world/party/party'
 import { GameEvent } from '../../world/schema/worldSchema'
 import { ZERO_VECTOR, vectorLength } from '../../world/step/geometry'
@@ -364,6 +365,11 @@ const eventParticles = (
       generateMany(state, CONFETTI_PER_SAVE, confettiBit(playerGround(x, y))),
   })
 
+// NOTE: each step through a roof leak's puddle kicks up this many drops,
+// low and slow beside a burst of goo.
+const WADE_SPLASH = 2
+const WADE_SPLASH_SPEED = { min: 12, max: 34 }
+
 type Spawn = Readonly<{
   rngState: number
   dustCooldownMs: number
@@ -386,16 +392,19 @@ const walkingDust = (
   }
 
   const heading = angleOf(intent.move) + Math.PI
-  const [nextState, particles] = generateMany(
-    rngState,
-    1,
-    dustPuff(
-      playerGround(player.x, player.y),
-      heading,
-      Math.PI / 2,
-      DUST_SPEED_MIN,
-    )(DUST_SPEED_MAX),
-  )
+  const ground = playerGround(player.x, player.y)
+  // NOTE: feet in a roof leak's puddle kick up water, not dust.
+  const [nextState, particles] = isWadingAt(levelOf(model), player)
+    ? generateMany(
+        rngState,
+        WADE_SPLASH,
+        droplet('Splash', ground, heading, Math.PI, WADE_SPLASH_SPEED),
+      )
+    : generateMany(
+        rngState,
+        1,
+        dustPuff(ground, heading, Math.PI / 2, DUST_SPEED_MIN)(DUST_SPEED_MAX),
+      )
   return {
     rngState: nextState,
     dustCooldownMs: dustCooldownMs + DUST_INTERVAL_MS,

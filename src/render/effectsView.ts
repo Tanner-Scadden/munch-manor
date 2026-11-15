@@ -401,6 +401,7 @@ const PARTICLE_COLORS: Readonly<Record<ParticleKind, string>> = {
   IceGib: '#9fd8f0',
   Fog: 'rgba(150, 210, 90, 0.55)',
   Confetti: '#ff6fb5',
+  Splash: '#b4d0ff',
 }
 
 const LIMBS: ReadonlyArray<ParticleKind | DecalKind> = [

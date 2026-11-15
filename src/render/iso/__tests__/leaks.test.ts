@@ -2,16 +2,12 @@ import { Array, Option, String } from 'effect'
 import type { Canvas } from 'foldkit'
 import { expect, test } from 'vitest'
 
-import { TILE_SIZE } from '../../../shared/constants'
 import { atClock, quietWave } from '../../../test/model.fixture'
 import { rectsOf } from '../../../test/viewReading'
-import { TILE_DOOR, hasTileFlag, levelFor } from '../../../world/level/arena'
-import { EVERY_LEVEL_SPEC } from '../../../world/level/plan'
-import { symbolAt, tileIndex } from '../../../world/level/tileGrid'
-import { rugsOf } from '../../room/room'
+import { levelOf } from '../../../world/level/arena'
+import { leaksOf } from '../../../world/level/leaks'
 import {
   dripsOf,
-  leaksOf,
   maybeDripHeard,
   puddleGlintsOf,
   puddleKeyOf,
@@ -19,102 +15,13 @@ import {
 } from '../leaks'
 import { strikeOf } from '../mood'
 
-// The roof leaks (src/render/iso/leaks.ts): a few seeded puddles in every
-// open room, on plain floor clear of cover and doorways, drips off the
-// World's clock, and glints mirrored from the flames and the lightning.
+// The roof leaks drawn (src/render/iso/leaks.ts): the World's puddles in
+// whole pixels, drips off the World's clock, and glints mirrored from the
+// flames and the lightning.
 
-const EVERY_EXIT = [
-  'West',
-  'East',
-  'Far',
-  'Kitchen',
-  'NorthStack',
-  'SouthStack',
-] as const
-
-const levels = Array.map(EVERY_LEVEL_SPEC, spec => levelFor(spec, EVERY_EXIT))
 const wave = atClock(quietWave(5), 0)
-const manor = Option.getOrThrow(Array.get(levels, 1))
-
-test('every open room leaks two or three times, on plain floor far from any door', () => {
-  Array.forEach(levels, level => {
-    const leaks = leaksOf(level)
-    const openRooms = Array.filter(level.rooms, ({ isOpen }) => isOpen)
-    expect(leaks.length).toBeGreaterThanOrEqual(openRooms.length * 2)
-    Array.forEach(leaks, ({ spot, rows }) => {
-      const column = Math.floor(spot.x / TILE_SIZE)
-      const row = Math.floor(spot.y / TILE_SIZE)
-      Array.forEach(
-        Array.makeBy(9, around => around),
-        around => {
-          const at = symbolAt(
-            level,
-            column + (around % 3) - 1,
-            row + Math.floor(around / 3) - 1,
-          )
-          expect(Option.getOrThrow(at)).toBe('.')
-        },
-      )
-      Array.forEach(level.doorIds, id => {
-        const { center } = level.doors[id]
-        expect(
-          Math.max(
-            Math.abs(Math.floor(center.x / TILE_SIZE) - column),
-            Math.abs(Math.floor(center.y / TILE_SIZE) - row),
-          ),
-        ).toBeGreaterThan(2)
-      })
-      Array.forEach(rows, puddle => {
-        Array.forEach([puddle.left, puddle.right], x => {
-          const at = symbolAt(
-            level,
-            Math.floor(x / TILE_SIZE),
-            Math.floor(puddle.y / TILE_SIZE),
-          )
-          expect(Option.getOrThrow(at)).toBe('.')
-          expect(
-            hasTileFlag(
-              level,
-              tileIndex(
-                level,
-                Math.floor(x / TILE_SIZE),
-                Math.floor(puddle.y / TILE_SIZE),
-              ),
-              TILE_DOOR,
-            ),
-          ).toBe(false)
-        })
-      })
-    })
-  })
-})
-
-test('no puddle lies on a rug or a runner', () => {
-  Array.forEach(levels, level => {
-    const rugs = rugsOf(level)
-    Array.forEach(leaksOf(level), ({ rows }) => {
-      Array.forEach(rows, ({ y, left, right }) => {
-        Array.forEach(rugs, rug => {
-          const isOn =
-            y >= rug.y &&
-            y < rug.y + rug.height &&
-            right >= rug.x &&
-            left < rug.x + rug.width
-          expect(isOn).toBe(false)
-        })
-      })
-    })
-  })
-})
-
-test('the leaks stay put as more of the house opens', () => {
-  const shut = levelFor(Option.getOrThrow(Array.get(EVERY_LEVEL_SPEC, 1)), [])
-  const parlourSpots = Array.map(leaksOf(shut), ({ spot }) => spot)
-  const openSpots = Array.map(leaksOf(manor), ({ spot }) => spot)
-  Array.forEach(parlourSpots, spot => {
-    expect(openSpots).toContainEqual(spot)
-  })
-})
+// NOTE: the house a run starts in, the dining room open.
+const manor = levelOf(wave)
 
 test('the puddles lie in whole pixels', () => {
   const rects = rectsOf(puddlesOf(manor), { x: 0, y: 0 })

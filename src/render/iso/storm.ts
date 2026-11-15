@@ -8,6 +8,7 @@ import { Array, Order, Result } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../../shared/constants'
+import { unitOf } from '../../shared/prng'
 import type { Level } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
@@ -15,7 +16,7 @@ import { rect } from '../drawing'
 import type { Box } from '../room/roomPalette'
 import { type Pane, windowPanesOf } from '../room/windows'
 import type { TileQuad } from './house'
-import { strikeOf, unitOf } from './mood'
+import { strikeOf } from './mood'
 import { wallHeightAt } from './space'
 
 // RAIN

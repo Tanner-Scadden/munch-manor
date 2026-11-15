@@ -5,11 +5,11 @@
 
 import { Array } from 'effect'
 
+import { unitOf } from '../../shared/prng'
 import type { Level } from '../../world/level/arena'
 import type { World } from '../../world/schema/worldSchema'
 import type { Mote } from './air'
 import { type FlameKind, flameSpecsOf, isFlameLit } from './lightSpecs'
-import { unitOf } from './mood'
 
 // NOTE: how many moths each kind of flame draws, how wide they circle it,
 // and how high its light hangs over its spot on screen, in game pixels. A

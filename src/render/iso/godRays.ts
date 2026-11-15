@@ -25,6 +25,7 @@ import {
 } from '@pixi/3d'
 
 import { TILE_SIZE } from '../../shared/constants'
+import { unitOf } from '../../shared/prng'
 import { gapBoxOf, isChandelierDown } from '../../world/dining/chandelier'
 import type { Level } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/entitySchema'
@@ -36,7 +37,7 @@ import { type Pane, windowPanesOf } from '../room/windows'
 import type { Mote } from './air'
 import { flameSpecsOf } from './lightSpecs'
 import { GL_HEADER, GPU_HEADER, dataTexture, glFloat } from './look'
-import { mixColor, strikeOf, unitOf } from './mood'
+import { mixColor, strikeOf } from './mood'
 import {
   PITCH,
   STRETCH,

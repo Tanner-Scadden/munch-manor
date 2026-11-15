@@ -8,9 +8,9 @@
 import { Array, Option } from 'effect'
 
 import { BLAST_FLASH_MS } from '../../shared/constants'
+import { unitOf } from '../../shared/prng'
 import type { Blast } from '../../world/schema/worldSchema'
 import { easeOut } from '../../world/step/geometry'
-import { unitOf } from './mood'
 
 // NOTE: one block of the blast: its spot on the floor, how high it hangs, its
 // width and height, in whole game pixels (as deep as it is wide), its color,

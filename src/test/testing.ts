@@ -973,8 +973,8 @@ export const modelAfterMessages: {
 export const startedRun = (model: Model) =>
   Story.story(APPLICATION, Story.given(model), startRunFromHome)
 
-// NOTE: a step that hands the sounds the pending Commands would play to a
-// check, then plays them, for a frame whose sounds' variations hang on
+// NOTE: a step that hands the sounds the pending Commands would play (a
+// placed one's too, such as a leak's drip) to a check, then plays them, for a frame whose sounds' variations hang on
 // where they happen, so no exact Command can be named.
 export const checkPendingSounds =
   (check: (sounds: ReadonlyArray<SoundEffect>) => void) =>
@@ -986,10 +986,24 @@ export const checkPendingSounds =
         Story.Command.argsOf(PlaySound)(command),
       ),
     )
-    check(Array.map(cues, ({ sound }) => sound))
-    return Array.reduce(cues, simulation, (current, cue) =>
+    const placed = Array.getSomes(
+      Array.map(simulation.commands, command =>
+        Story.Command.argsOf(PlayPlaced)(command),
+      ),
+    )
+    check([
+      ...Array.map(cues, ({ sound }) => sound),
+      ...Array.map(placed, ({ sound }) => sound),
+    ])
+    const played = Array.reduce(cues, simulation, (current, cue) =>
       Story.Command.resolve(
         PlaySound(cue),
+        Message.CompletedPlaySound({ sound: cue.sound, outcome: 'Played' }),
+      )(current),
+    )
+    return Array.reduce(placed, played, (current, cue) =>
+      Story.Command.resolve(
+        PlayPlaced(cue),
         Message.CompletedPlaySound({ sound: cue.sound, outcome: 'Played' }),
       )(current),
     )

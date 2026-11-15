@@ -5,6 +5,7 @@ import { type Palette, bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
 import { CHANDELIER_SYMBOL } from '../../world/level/plan'
+import { DINING_RUGS } from '../../world/level/rugs'
 import { symbolAt } from '../../world/level/tileGrid'
 import { pixelArt, rect } from '../drawing'
 import {
@@ -246,14 +247,6 @@ const runnerShapes = (rug: Box): ReadonlyArray<Canvas.Shape> => {
     ),
   ]
 }
-
-// NOTE: the rug under the party table, and the hall runner from the front
-// door up to the gap, placed by hand on the drafted map (docs/ROOM_DRAFTS.md),
-// from the room's top left.
-export const DINING_RUGS: ReadonlyArray<Box> = [
-  { x: 62, y: 86, width: 236, height: 48 },
-  { x: 166, y: 138, width: 28, height: 62 },
-]
 
 export const diningRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => [
   ...Array.flatMap(DINING_RUGS, rug =>

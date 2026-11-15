@@ -4,6 +4,7 @@ import type { Canvas } from 'foldkit'
 import { type Palette, bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
+import { LIBRARY_RUG } from '../../world/level/rugs'
 import { pixelArt, rect } from '../drawing'
 import {
   BOOK_COLORS,
@@ -74,10 +75,6 @@ export const libraryFloorShadeShapes = (
 ): ReadonlyArray<Canvas.Shape> => [
   rect(room.x, room.y, room.width, room.height, FLOOR_SHADE_COLOR),
 ]
-
-// NOTE: the long green rug under the reading desk in the nook, placed by
-// hand on the map.
-export const LIBRARY_RUG: Box = { x: 176, y: 102, width: 108, height: 36 }
 
 export const libraryRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
   const x = room.x + LIBRARY_RUG.x

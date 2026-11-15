@@ -8,6 +8,7 @@
 // Everything is read off the World alone, so a replay and every player in a
 // co-op room see the same mood and the same strikes.
 
+import { unitOf } from '../../shared/prng'
 import { isHouseHungry } from '../../world/dare/finale'
 import { Boss, Phase, type World } from '../../world/schema/worldSchema'
 import { lerp } from '../../world/step/geometry'
@@ -137,15 +138,6 @@ const windowMsOf = (wave: number): number =>
   Math.max(11_000, 26_000 - wave * 1500)
 
 const STRIKE_MS = 900
-
-// NOTE: a number from 0 to 1 for a whole number, the same on every engine
-// (Math.sin is not, so this is an integer hash).
-export const unitOf = (n: number): number => {
-  let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b)
-  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
-  h ^= h >>> 16
-  return (h >>> 0) / 4294967296
-}
 
 // NOTE: the flash's shape: a bright flick, a dip, a second flick, a fade.
 const flashAt = (sinceMs: number): number => {

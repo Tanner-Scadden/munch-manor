@@ -6,12 +6,13 @@
 
 import { Array } from 'effect'
 
+import { unitOf } from '../../shared/prng'
 import type { Level } from '../../world/level/arena'
 import type { Box } from '../../world/level/tileGrid'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { type FlameKind, flameSpecsOf } from './lightSpecs'
-import { mixColor, unitOf } from './mood'
+import { mixColor } from './mood'
 
 export type Mote = Readonly<{
   // NOTE: the spot on the floor under it and its height over it, in game
