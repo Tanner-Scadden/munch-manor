@@ -161,6 +161,8 @@ const runBuild = (draft: string) =>
           VITE,
           'build',
           'tools/audit/harness',
+          '--configLoader',
+          'native',
           '--outDir',
           draft,
           '--emptyOutDir',

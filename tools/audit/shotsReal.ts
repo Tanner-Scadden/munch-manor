@@ -3,7 +3,7 @@
 // first load, and the home menu, the Profile's Look tab, and a started run
 // are shot, as `s49-<TAG>-<viewport>-<scene>.png`. The home hero, the look
 // preview, and the player in play must all wear the calling's prop.
-//   bun run build && bunx vite preview --port 4173 --strictPort
+//   bun run build && bun run preview -- --port 4173 --strictPort
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsReal.ts
 // CALLING picks the calling (Handyman by default).
 import { Config, Effect, Option, Schema } from 'effect'

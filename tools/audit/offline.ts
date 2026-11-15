@@ -121,6 +121,8 @@ const serve = Effect.gen(function* () {
       'bunx',
       'vite',
       'preview',
+      '--configLoader',
+      'native',
       '--port',
       globalThis.String(PREVIEW_PORT),
       '--strictPort',

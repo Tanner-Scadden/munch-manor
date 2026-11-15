@@ -105,6 +105,12 @@ const ALLOWED: ReadonlyArray<
   Readonly<{ file: string; name: string; reason: string }>
 > = [
   {
+    file: 'tools/studio/notes.ts',
+    name: 'Pin',
+    reason:
+      "the Vite config loads notes.ts natively, which needs file extensions that src's imports leave out",
+  },
+  {
     file: 'tools/determinism/bundle.ts',
     name: 'stringSource',
     reason:

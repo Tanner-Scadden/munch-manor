@@ -1,8 +1,6 @@
 import { Array, Schema, String, pipe } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import { Vector } from '../../src/world/schema/entitySchema'
-
 // NOTE: the notes between the art studio's page and the agent, as a log of
 // events in NOTES_FILE, one JSON object a line: a note asked for (Noted) and
 // a note done (Resolved). The page posts a draft to NOTES_PATH and reads the
@@ -33,8 +31,10 @@ export const TileArea = Schema.Struct({
 })
 export type TileArea = typeof TileArea.Type
 
-// NOTE: a spot on a picked sprite, in its pixels from its anchor.
-export const Pin = Vector
+// NOTE: a spot on a picked sprite, in its pixels from its anchor. The same
+// shape as the World's Vector, declared here since the Vite config loads this
+// module natively, and src's imports there carry no file extensions.
+export const Pin = Schema.Struct({ x: Schema.Finite, y: Schema.Finite })
 export type Pin = typeof Pin.Type
 
 const NoteFields = {
