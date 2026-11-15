@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { canvasStepOf, isFrontWallAt } from '../space'
@@ -35,6 +36,37 @@ describe('the walls', () => {
 
   test('keep a corner tall: wall all the way up', () => {
     expect(isFront(4, 0)).toBe(false)
+  })
+})
+
+// NOTE: two rooms side by side, each side wall with a doorway two rows tall
+// in it: the side wall under a doorway stays tall, so the two rooms' walls
+// meet at one height with no low stub.
+const SIDE_DOORS: ReadonlyArray<string> = [
+  ',,,,,,,,',
+  '########',
+  '#..##..#',
+  '...##...',
+  '...##...',
+  '#..##..#',
+  '#.....##',
+  '#.....##',
+  '#..##..#',
+  '########',
+]
+
+describe('a side wall with a doorway in it', () => {
+  test("stands tall under the doorway, both rooms' walls alike", () => {
+    Array.forEach([0, 3, 4, 7], column => {
+      expect(isFrontWallAt({ tiles: SIDE_DOORS, row: 5, column })).toBe(false)
+    })
+    expect(isFrontWallAt({ tiles: SIDE_DOORS, row: 8, column: 3 })).toBe(false)
+    expect(isFrontWallAt({ tiles: SIDE_DOORS, row: 8, column: 4 })).toBe(false)
+  })
+
+  test("the room's own front wall under its floor stays low", () => {
+    expect(isFrontWallAt({ tiles: SIDE_DOORS, row: 9, column: 1 })).toBe(true)
+    expect(isFrontWallAt({ tiles: SIDE_DOORS, row: 9, column: 5 })).toBe(true)
   })
 })
 

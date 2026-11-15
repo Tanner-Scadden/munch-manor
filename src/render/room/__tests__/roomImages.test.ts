@@ -4,7 +4,6 @@ import { describe, expect, test } from 'vitest'
 
 import { MANOR, levelFor, openExit } from '../../../world/level/arena'
 import { type LevelSpec, MANOR_SPEC } from '../../../world/level/plan'
-import { occludersOf } from '../../occluders'
 import { everyRoomImage, roomShapes } from '../room'
 
 // NOTE: a hall with a study west of it and a den east of it, each behind its
@@ -139,16 +138,5 @@ describe('room images', () => {
 
   test('images grow with the rooms and their own exits', () => {
     expect(imagesOf(everyRoomImage(HOUSE))).toHaveLength(4 + 2 + 2)
-  })
-
-  test("an occluder's crops come from the room images", () => {
-    const sources = new Set(
-      Array.map(imagesOf(roomShapes(MANOR)), ({ src }) => src),
-    )
-    Array.forEach(occludersOf(MANOR), ({ shapes }) =>
-      Array.forEach(imagesOf(shapes), ({ src }) => {
-        expect(sources.has(src)).toBe(true)
-      }),
-    )
   })
 })

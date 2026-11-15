@@ -353,7 +353,6 @@ export const standCutout = (
     receiveShadow: false,
   })
   mesh.disablePass('opaque')
-  mesh.disablePass('outline')
   // NOTE: a plane's v runs up and a texture's rows run down: turn it over.
   mesh.rotation.z = Math.PI
   mesh.rotation.y = Math.PI

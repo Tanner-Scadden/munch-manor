@@ -6,7 +6,7 @@
 import { Array } from 'effect'
 
 import type { Level } from '../../world/level/arena'
-import { doorwaysOf, isPassage } from '../occluders'
+import { doorwaysOf, isPassage } from '../doorways'
 import { wallHeightAt } from './space'
 
 // NOTE: how high a lintel starts, in world units: a tall wall is 1.4, and
