@@ -401,6 +401,7 @@ const PARTICLE_COLORS: Readonly<Record<ParticleKind, string>> = {
   IceGib: '#9fd8f0',
   Fog: 'rgba(150, 210, 90, 0.55)',
   Confetti: '#ff6fb5',
+  Splash: '#c4e0ff',
 }
 
 const LIMBS: ReadonlyArray<ParticleKind | DecalKind> = [
@@ -566,11 +567,19 @@ const particleShape = (particle: Particle): Canvas.Shape => {
 }
 
 // NOTE: each particle in the air as the 3D renderer stands it: its spot on
-// the floor, how high it flies, and the box the 2D game draws for it.
+// the floor, how high it flies, the box the 2D game draws for it, and
+// whether it keeps its own color in any light (a wading splash's water
+// reads blue-white even by candlelight, never as warm dust).
 export const airborneParticlesOf = (
   particles: ReadonlyArray<Particle>,
 ): ReadonlyArray<
-  Readonly<{ x: number; footY: number; rise: number; shape: Canvas.Shape }>
+  Readonly<{
+    x: number
+    footY: number
+    rise: number
+    shape: Canvas.Shape
+    isGlowing: boolean
+  }>
 > =>
   Array.filterMap(particles, particle =>
     isGround(particle)
@@ -580,6 +589,7 @@ export const airborneParticlesOf = (
           footY: Math.round(particle.y),
           rise: Math.round(particle.z),
           shape: particleShape(particle),
+          isGlowing: particle.kind === 'Splash',
         }),
   )
 

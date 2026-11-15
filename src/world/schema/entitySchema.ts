@@ -343,6 +343,7 @@ export const ParticleKind = Schema.Literals([
   'IceGib',
   'Fog',
   'Confetti',
+  'Splash',
 ])
 export type ParticleKind = typeof ParticleKind.Type
 

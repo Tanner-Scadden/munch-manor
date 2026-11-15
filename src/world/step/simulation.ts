@@ -36,6 +36,7 @@ import { advanceKitchen, soupSkid } from '../kitchen/kitchen'
 import { advancePantry } from '../kitchen/pantry'
 import { rollStove } from '../kitchen/stove'
 import { type Level, levelOf } from '../level/arena'
+import { wadePaceAt } from '../level/leaks'
 import type { Box } from '../level/tileGrid'
 import { swingShelf } from '../library/secretShelf'
 import { shelveHeaps } from '../library/stacks'
@@ -267,11 +268,12 @@ const feelIntensity = (before: World, after: World, deltaMs: number): World =>
 // NOTE: a downed player crawls (decided row 4), and one an Ankle Biter
 // clings to drags their feet. In single player any clinging Ankle Biter is
 // on the one player's ankles.
-const speedOf = (model: World, slot: PlayerSlot): number => {
+const speedOf = (level: Level, model: World, slot: PlayerSlot): number => {
   const { boosts, player, seat } = seatStateAt(model, slot)
   return (
     playerSpeed(boosts, player) *
     puddleSlowAt(model.boss, player) *
+    wadePaceAt(level, player) *
     (isCoop(model)
       ? ankleSlowNear(model.zombies, player) *
         (isStanding(seat) ? 1 : COOP_RULES.downedCrawlScale)
@@ -296,7 +298,7 @@ const moveSeat =
               level,
               player,
               intent.move,
-              speedOf(model, slot),
+              speedOf(level, model, slot),
               blockers,
               seconds,
               deltaMs,

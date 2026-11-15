@@ -4,7 +4,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 ## November 15, 2026: Leaky roof, museum night
 
-- 💧 The old roof leaks: drips fall into puddles all over the manor, and the puddles shine with the candlelight and flash when lightning strikes. Listen close and you'll hear them plink.
+- 💧 The old roof leaks: drips fall into puddles all over the manor, and the puddles shine with the candlelight and flash when lightning strikes. Listen close and you'll hear them plink, and splash through one to slow right down (the zombies too, so lead them through).
 - 🏛️ The title shows the manor as a tiny model in the dark, slowly turning as the candles flicker and the storm flashes, and every zombie you've met stands on its own lit plinth in the Dare Journal, turning so you can see it from every side. Uncle Chunk gets the spooky lighting he deserves.
 - 🪵 The stove, fridge, fireplace, gramophone, and every work station stand up as chunky 3D pieces now, the fire roars in front of the hearth again, Uncle Chunk has a real belly on him, and every shadow takes the shape of what casts it.
 - 🌙 Moonlight pours through the windows in dusty shafts that flare when lightning strikes, the library got a stained-glass rose window that splashes colored light across its floor, the chandelier throws a warm cone onto the table, and your flashlight cuts a real beam through the cellar's dark.

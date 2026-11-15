@@ -1,17 +1,15 @@
 import { Array, Option, String } from 'effect'
 import type { Canvas } from 'foldkit'
+import { modifyFields } from 'foldkit/struct'
 import { expect, test } from 'vitest'
 
-import { TILE_SIZE } from '../../../shared/constants'
 import { atClock, quietWave } from '../../../test/model.fixture'
 import { rectsOf } from '../../../test/viewReading'
-import { TILE_DOOR, hasTileFlag, levelFor } from '../../../world/level/arena'
-import { EVERY_LEVEL_SPEC } from '../../../world/level/plan'
-import { symbolAt, tileIndex } from '../../../world/level/tileGrid'
-import { rugsOf } from '../../room/room'
+import { levelOf, openExitIn } from '../../../world/level/arena'
+import { leaksOf } from '../../../world/level/leaks'
+import { EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
 import {
   dripsOf,
-  leaksOf,
   maybeDripHeard,
   puddleGlintsOf,
   puddleKeyOf,
@@ -19,102 +17,13 @@ import {
 } from '../leaks'
 import { strikeOf } from '../mood'
 
-// The roof leaks (src/render/iso/leaks.ts): a few seeded puddles in every
-// open room, on plain floor clear of cover and doorways, drips off the
-// World's clock, and glints mirrored from the flames and the lightning.
+// The roof leaks drawn (src/render/iso/leaks.ts): the World's puddles in
+// whole pixels, drips off the World's clock, and glints mirrored from the
+// flames and the lightning.
 
-const EVERY_EXIT = [
-  'West',
-  'East',
-  'Far',
-  'Kitchen',
-  'NorthStack',
-  'SouthStack',
-] as const
-
-const levels = Array.map(EVERY_LEVEL_SPEC, spec => levelFor(spec, EVERY_EXIT))
 const wave = atClock(quietWave(5), 0)
-const manor = Option.getOrThrow(Array.get(levels, 1))
-
-test('every open room leaks two or three times, on plain floor far from any door', () => {
-  Array.forEach(levels, level => {
-    const leaks = leaksOf(level)
-    const openRooms = Array.filter(level.rooms, ({ isOpen }) => isOpen)
-    expect(leaks.length).toBeGreaterThanOrEqual(openRooms.length * 2)
-    Array.forEach(leaks, ({ spot, rows }) => {
-      const column = Math.floor(spot.x / TILE_SIZE)
-      const row = Math.floor(spot.y / TILE_SIZE)
-      Array.forEach(
-        Array.makeBy(9, around => around),
-        around => {
-          const at = symbolAt(
-            level,
-            column + (around % 3) - 1,
-            row + Math.floor(around / 3) - 1,
-          )
-          expect(Option.getOrThrow(at)).toBe('.')
-        },
-      )
-      Array.forEach(level.doorIds, id => {
-        const { center } = level.doors[id]
-        expect(
-          Math.max(
-            Math.abs(Math.floor(center.x / TILE_SIZE) - column),
-            Math.abs(Math.floor(center.y / TILE_SIZE) - row),
-          ),
-        ).toBeGreaterThan(2)
-      })
-      Array.forEach(rows, puddle => {
-        Array.forEach([puddle.left, puddle.right], x => {
-          const at = symbolAt(
-            level,
-            Math.floor(x / TILE_SIZE),
-            Math.floor(puddle.y / TILE_SIZE),
-          )
-          expect(Option.getOrThrow(at)).toBe('.')
-          expect(
-            hasTileFlag(
-              level,
-              tileIndex(
-                level,
-                Math.floor(x / TILE_SIZE),
-                Math.floor(puddle.y / TILE_SIZE),
-              ),
-              TILE_DOOR,
-            ),
-          ).toBe(false)
-        })
-      })
-    })
-  })
-})
-
-test('no puddle lies on a rug or a runner', () => {
-  Array.forEach(levels, level => {
-    const rugs = rugsOf(level)
-    Array.forEach(leaksOf(level), ({ rows }) => {
-      Array.forEach(rows, ({ y, left, right }) => {
-        Array.forEach(rugs, rug => {
-          const isOn =
-            y >= rug.y &&
-            y < rug.y + rug.height &&
-            right >= rug.x &&
-            left < rug.x + rug.width
-          expect(isOn).toBe(false)
-        })
-      })
-    })
-  })
-})
-
-test('the leaks stay put as more of the house opens', () => {
-  const shut = levelFor(Option.getOrThrow(Array.get(EVERY_LEVEL_SPEC, 1)), [])
-  const parlourSpots = Array.map(leaksOf(shut), ({ spot }) => spot)
-  const openSpots = Array.map(leaksOf(manor), ({ spot }) => spot)
-  Array.forEach(parlourSpots, spot => {
-    expect(openSpots).toContainEqual(spot)
-  })
-})
+// NOTE: the house a run starts in, the dining room open.
+const manor = levelOf(wave)
 
 test('the puddles lie in whole pixels', () => {
   const rects = rectsOf(puddlesOf(manor), { x: 0, y: 0 })
@@ -167,7 +76,7 @@ test('a strike lights the puddles, and only a change paints them again', () => {
   const struck = Option.getOrThrow(
     Array.findFirst(clocks, ms => strikeOf(atClock(wave, ms)) === 1),
   )
-  const viewer = { x: 10_000, y: 10_000 }
+  const viewer = { x: 10_000, y: 10_000, facing: { x: 1, y: 0 } }
   const glints = (ms: number) =>
     rectsOf(
       puddleGlintsOf({ world: atClock(wave, ms), level: manor, viewer }),
@@ -180,14 +89,42 @@ test('a strike lights the puddles, and only a change paints them again', () => {
   expect(keyAt(calm)).toBe(keyAt(calm + 10))
 })
 
+test('the flashlight catches a cellar puddle in the dark', () => {
+  const dark = modifyFields(quietWave(4), {
+    level: state => openExitIn(openExitIn(state, EAST_EXIT), FAR_EXIT),
+  })
+  const level = levelOf(dark)
+  const puddle = Option.getOrThrow(
+    Array.findFirst(leaksOf(level), ({ isUnderground }) => isUnderground),
+  )
+  const viewerFacing = (x: number) => ({
+    x: puddle.spot.x - 45,
+    y: puddle.spot.y,
+    facing: { x, y: 0 },
+  })
+  const glintsFacing = (x: number) =>
+    rectsOf(puddleGlintsOf({ world: dark, level, viewer: viewerFacing(x) }), {
+      x: 0,
+      y: 0,
+    })
+  expect(glintsFacing(1).length).toBeGreaterThan(glintsFacing(-1).length)
+  const keyFacing = (x: number) =>
+    puddleKeyOf({ world: dark, level, viewer: viewerFacing(x) })
+  expect(keyFacing(1)).not.toBe(keyFacing(-1))
+})
+
 // NOTE: the pixels a ring covers around its landing, read as what a viewer
 // near the puddle sees that one far off does not.
 const ringPixelsAt = (ms: number, spot: Readonly<{ x: number; y: number }>) => {
   const keyOf = ({ x, y, width, height, fill }: Canvas.Rect) =>
     `${x},${y},${width},${height},${fill}`
-  const glints = (viewer: Readonly<{ x: number; y: number }>) =>
+  const glints = (at: Readonly<{ x: number; y: number }>) =>
     rectsOf(
-      puddleGlintsOf({ world: atClock(wave, ms), level: manor, viewer }),
+      puddleGlintsOf({
+        world: atClock(wave, ms),
+        level: manor,
+        viewer: { ...at, facing: { x: 1, y: 0 } },
+      }),
       {
         x: 0,
         y: 0,

@@ -51,4 +51,24 @@ export const WEATHER_RECIPES = {
       },
     ],
   },
+  // NOTE: a foot through a roof leak's puddle: a short low slosh of water,
+  // soft, so a stride through it never covers the fight.
+  Wade: {
+    variationCents: 250,
+    tones: [
+      {
+        wave: 'sine',
+        pitch: [at(0, 320), at(0.08, 520)],
+        envelope: delayedEnvelope(0.035, 0.004, 0.08, 0),
+      },
+    ],
+    noises: [
+      {
+        filter: 'bandpass',
+        quality: 1.4,
+        cutoff: [at(0, 900), at(0.1, 1900)],
+        envelope: delayedEnvelope(0.09, 0.006, 0.11, 0),
+      },
+    ],
+  },
 } satisfies Partial<Record<SoundEffect, Recipe>>

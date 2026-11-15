@@ -152,6 +152,33 @@ type Speed = Readonly<{ min: number; max: number }>
 export const BLOOD_SPEED: Speed = { min: BLOOD_SPEED_MIN, max: BLOOD_SPEED_MAX }
 export const GOO_BURST_SPEED: Speed = { min: GOO_SPEED_MIN, max: GOO_SPEED_MAX }
 
+// NOTE: water a wading foot kicks up: single pixels that leave the water's
+// surface, arc a few pixels up and out, and fall straight back into it
+// (Splash leaves no decal, so a drop is gone as it lands).
+const SPLASH_LIFT = { min: 40, max: 58 }
+const SPLASH_SPEED = { min: 6, max: 16 }
+
+export const wadeSplash =
+  ({ ground, heading }: Readonly<{ ground: Vector; heading: number }>) =>
+  (state: number): Seeded<Particle> => {
+    const angleDraw = nextRandom(state)
+    const speedDraw = nextRandom(angleDraw.nextState)
+    const liftDraw = nextRandom(speedDraw.nextState)
+    return [
+      liftDraw.nextState,
+      launch({
+        kind: 'Splash',
+        ground,
+        height: 1,
+        angle: heading + (angleDraw.value - 0.5) * Math.PI * 1.5,
+        speed: between(speedDraw.value, SPLASH_SPEED.min, SPLASH_SPEED.max),
+        lift: between(liftDraw.value, SPLASH_LIFT.min, SPLASH_LIFT.max),
+        size: 1,
+        lifetimeMs: BLOOD_LIFETIME_MS,
+      }),
+    ]
+  }
+
 export const droplet: {
   (
     ground: Vector,

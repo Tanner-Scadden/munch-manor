@@ -17,6 +17,7 @@ import {
   trapBlockers,
 } from '../gear/traps'
 import { type Level, levelOf } from '../level/arena'
+import { wadePaceAt } from '../level/leaks'
 import {
   type Clearance,
   type FlowField,
@@ -255,7 +256,8 @@ const heading = (
 // its door's warning ends, whatever its own pace. In the room it walks at
 // its own. The wave's last zombie hurries up to the players' walk
 // (src/world/zombies/lastZombie.ts) before the boss's pace and a chill,
-// and walks a little faster in the cellar's dark (src/world/cellar/bulb.ts).
+// walks a little faster in the cellar's dark (src/world/cellar/bulb.ts),
+// and wades slower through a roof leak's puddle (src/world/level/leaks.ts).
 const walkingSpeed = (
   zombie: Zombie,
   obstacles: Obstacles,
@@ -267,7 +269,11 @@ const walkingSpeed = (
     ? lastZombieSpeed(own, obstacles.loneMs)
     : own
   const speed =
-    hurried * pace * chillPace(zombie) * darkPaceAt(zombie, obstacles.dark)
+    hurried *
+    pace *
+    chillPace(zombie) *
+    darkPaceAt(zombie, obstacles.dark) *
+    wadePaceAt(level, zombie)
   return isInsideRoomAt(level, zombie)
     ? speed
     : Math.max(speed, ZOMBIE_ENTRY_SPEED)

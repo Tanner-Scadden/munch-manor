@@ -36,12 +36,7 @@ import {
   libraryWallShapes,
 } from '../../src/render/room/libraryArt'
 import { allCoverShapes } from '../../src/render/room/roomCover'
-import {
-  PARLOUR_RUG,
-  boardShapes,
-  cobweb,
-  rugShapes,
-} from '../../src/render/room/roomFloor'
+import { boardShapes, cobweb, rugShapes } from '../../src/render/room/roomFloor'
 import {
   type Box,
   FACE_TOP,
@@ -64,6 +59,7 @@ import {
   PARLOUR_SLOT_MAP,
   middleOf,
 } from '../../src/world/level/plan'
+import { PARLOUR_RUG } from '../../src/world/level/rugs'
 import { tilesWithSymbol } from '../../src/world/level/tileGrid'
 
 export type DraftRoomId = 'Dining' | 'Parlour' | 'Library' | 'Cellar'

@@ -189,6 +189,14 @@ const PHYSICS: Readonly<Record<ParticleKind, ParticlePhysics>> = {
     restitution: 0,
     maybeDecalKind: Option.none(),
   },
+  // NOTE: water kicked up wading through a puddle falls as blood does and
+  // leaves nothing behind: it lands back in the water.
+  Splash: {
+    gravity: BLOOD_GRAVITY,
+    dragPerSecond: BLOOD_DRAG_PER_SECOND,
+    restitution: 0,
+    maybeDecalKind: Option.none(),
+  },
 }
 
 export const LAUNCH_SIZE: Readonly<Record<ParticleKind, number>> = {
@@ -228,6 +236,7 @@ export const LAUNCH_SIZE: Readonly<Record<ParticleKind, number>> = {
   IceGib: 2,
   Fog: 4,
   Confetti: 1,
+  Splash: 1,
 }
 
 const DECAL_HEIGHT: Readonly<Record<DecalKind, (size: number) => number>> = {

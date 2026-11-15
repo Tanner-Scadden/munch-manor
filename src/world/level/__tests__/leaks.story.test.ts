@@ -1,0 +1,140 @@
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
+import { modifyFields } from 'foldkit/struct'
+
+import { describe, expect, it } from '@effect/vitest'
+
+import { AudioState, type Model } from '../../../app/model'
+import { PlayPlaced } from '../../../app/update/sound'
+import { FIXED_STEP_MS, PLAYER_FOOT_OFFSET } from '../../../shared/constants'
+import { quietWave } from '../../../test/model.fixture'
+import {
+  APPLICATION,
+  checkPendingArgs,
+  press,
+  settleRunCommands,
+  ticks,
+  zombieOf,
+} from '../../../test/testing'
+import { focusOf, modifyFocus } from '../../party/party'
+import { distanceBetween } from '../../step/geometry'
+import { levelOf } from '../arena'
+import { WADE_PACE, leaksOf } from '../leaks'
+
+// Wading through a roof leak's puddle (src/world/level/leaks.ts): a player's
+// or a zombie's feet in the water walk at WADE_PACE, the same steps on dry
+// floor beside it at full pace.
+
+const FRAME_MS = FIXED_STEP_MS
+const STEPS = 8
+
+const wave = quietWave(5)
+const leak = Option.getOrThrow(Array.head(leaksOf(levelOf(wave))))
+const middle = Option.getOrThrow(
+  Array.get(leak.rows, Math.floor(leak.rows.length / 2)),
+)
+
+// NOTE: a body whose feet stand on the puddle's middle row at its west
+// edge, so walking east keeps them in the water for the whole stretch; and
+// the same spot a step north of the puddle's far row, on dry floor.
+const wet = { x: middle.left + 0.5, y: middle.y - PLAYER_FOOT_OFFSET + 0.5 }
+const dry = {
+  x: wet.x,
+  y: Array.headNonEmpty(leak.rows).y - PLAYER_FOOT_OFFSET - 4.5,
+}
+
+// NOTE: a step west of the water on the same row, so walking east wades
+// in; long enough to reach the second puff of the walk, the first being
+// dust on the dry floor.
+const shore = { x: middle.left - 4.5, y: wet.y }
+const SPLASH_STEPS = 12
+
+const playerAt = (at: Readonly<{ x: number; y: number }>): Model =>
+  modifyFocus(wave, {
+    player: player => modifyFields(player, { x: () => at.x, y: () => at.y }),
+  })
+
+const playerWalked = (at: Readonly<{ x: number; y: number }>) =>
+  Story.story(
+    APPLICATION,
+    Story.given(playerAt(at)),
+    press('KeyD'),
+    ...ticks(STEPS, FRAME_MS),
+  ).pipe(Effect.map(model => distanceBetween(focusOf(model).player, at)))
+
+// NOTE: one Groaner at the spot, the player well east of it on its row, so
+// it walks east toward them.
+const zombieAt = (at: Readonly<{ x: number; y: number }>): Model =>
+  modifyFocus(
+    modifyFields(wave, {
+      zombies: () => [zombieOf('Shambler', 900, at.x, at.y, { speed: 40 })],
+    }),
+    {
+      player: player =>
+        modifyFields(player, { x: () => at.x + 90, y: () => at.y }),
+    },
+  )
+
+const zombieWalked = (at: Readonly<{ x: number; y: number }>) =>
+  Story.story(
+    APPLICATION,
+    Story.given(zombieAt(at)),
+    ...ticks(STEPS, FRAME_MS),
+  ).pipe(
+    Effect.map(({ zombies }) =>
+      distanceBetween(Option.getOrThrow(Array.head(zombies)), at),
+    ),
+  )
+
+describe('wading through a roof leak', () => {
+  it.effect('a player walks slower with their feet in a puddle', () =>
+    Effect.gen(function* () {
+      const inWater = yield* playerWalked(wet)
+      const onFloor = yield* playerWalked(dry)
+      expect(onFloor).toBeGreaterThan(0)
+      expect(inWater / onFloor).toBeCloseTo(WADE_PACE, 2)
+    }),
+  )
+
+  it.effect('a zombie wades slower through a puddle too', () =>
+    Effect.gen(function* () {
+      const inWater = yield* zombieWalked(wet)
+      const onFloor = yield* zombieWalked(dry)
+      expect(onFloor).toBeGreaterThan(0)
+      expect(inWater / onFloor).toBeCloseTo(WADE_PACE, 1)
+    }),
+  )
+
+  it.effect('wading feet slosh and kick up water, dry feet do not', () => {
+    const steppedIn = (at: Readonly<{ x: number; y: number }>) =>
+      Effect.suspend(() => {
+        const sounds: Array<string> = []
+        return Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(playerAt(at), { audio: () => AudioState.Ready() }),
+          ),
+          press('KeyD'),
+          ...ticks(SPLASH_STEPS, FRAME_MS),
+          checkPendingArgs(Story.Command.argsOf(PlayPlaced))(placed => {
+            sounds.push(...Array.map(placed, ({ sound }) => sound))
+          }),
+          settleRunCommands,
+        ).pipe(
+          Effect.map(({ cosmetics }) => ({
+            isSloshing: Array.contains(sounds, 'Wade'),
+            isSplashing: Array.some(
+              cosmetics.particles,
+              ({ kind }) => kind === 'Splash',
+            ),
+          })),
+        )
+      })
+    return Effect.gen(function* () {
+      const wading = yield* steppedIn(shore)
+      const walking = yield* steppedIn(dry)
+      expect(wading).toEqual({ isSloshing: true, isSplashing: true })
+      expect(walking).toEqual({ isSloshing: false, isSplashing: false })
+    })
+  })
+})

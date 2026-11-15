@@ -34,7 +34,9 @@ import { TRAPS } from '../../world/gear/traps'
 import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
 import { PANTRY_SOUNDS } from '../../world/kitchen/pantry'
 import { levelOf } from '../../world/level/arena'
+import { isWadingAt } from '../../world/level/leaks'
 import { focusOf } from '../../world/party/party'
+import { vectorLength } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
 import { ZOMBIE_KINDS, isArmorShedAt } from '../../world/zombies/zombies'
 import {
@@ -452,8 +454,26 @@ const maybeDripCue = (before: Model, after: Model) =>
       })
     : Option.none()
 
+// NOTE: the focused player's feet sloshing through a roof leak's puddle
+// (src/world/level/leaks.ts): the first step in, then a stride each this
+// long of the World's clock while they walk on in it, soft and centered.
+const WADE_STRIDE_MS = 320
+const WADE_VOLUME = 0.7
+
+const isWalkingInWater = (model: Model): boolean => {
+  const { player, intent } = focusOf(model)
+  return vectorLength(intent.move) > 0 && isWadingAt(levelOf(model), player)
+}
+
+const isWadeDue = (before: Model, after: Model): boolean =>
+  isRoundActive(after.phase) &&
+  isWalkingInWater(after) &&
+  (!isWalkingInWater(before) ||
+    Math.floor(after.elapsedMs / WADE_STRIDE_MS) !==
+      Math.floor(before.elapsedMs / WADE_STRIDE_MS))
+
 // NOTE: the placed sounds between two frames, when they are due and heard:
-// the music box's tune and the nearest drip.
+// the music box's tune, the nearest drip, and a stride through a puddle.
 export const playPlaced: {
   (after: Model): (before: Model) => UpdateStep
   (before: Model, after: Model): UpdateStep
@@ -475,6 +495,9 @@ export const playPlaced: {
                   PlayPlaced({ sound: 'Drip', ...placement }),
                 ),
               ),
+              ...(isWadeDue(before, after)
+                ? [PlayPlaced({ sound: 'Wade', volume: WADE_VOLUME, pan: 0 })]
+                : []),
             ],
           }
         : { model: stepModel },
