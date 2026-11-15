@@ -18,7 +18,7 @@ import { CAMERA_UP, PITCH, TOWARD_CAMERA, UNIT, zOf } from './space'
 // NOTE: one pixel of depth sinks this far toward the lens's back, in game
 // pixels along the camera's view, while it rises one along its up: together
 // one game pixel north along the floor.
-const DEPTH_BACK = Math.cos(PITCH) / Math.sin(PITCH)
+export const DEPTH_BACK = Math.cos(PITCH) / Math.sin(PITCH)
 
 // NOTE: the deepest a sprite's blocks go, in pixels: a quarter of its
 // narrower side, at least one and at most three, so a gun is a sliver and a
