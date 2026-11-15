@@ -360,28 +360,53 @@ const openDoorwayHints = (model: World): ReadonlyArray<Canvas.Shape> => {
     : []
 }
 
-export const ghostShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
-  if (!isBreak(model)) {
-    return []
-  }
+// NOTE: the spot the placement ghost stands on, in a break only.
+const ghostSpotOf = (model: World): Option.Option<TrapSpot> =>
+  isBreak(model)
+    ? Option.flatMap(
+        maybePlacement(model, focusSlotOf(model)),
+        ({ maybeSpot }) => maybeSpot,
+      )
+    : Option.none()
 
-  return Option.match(maybePlacement(model, focusSlotOf(model)), {
-    onNone: () => [],
-    onSome: ({ maybeSpot, verdict }) =>
-      Option.match(maybeSpot, {
-        onNone: () => openDoorwayHints(model),
-        onSome: spot => [
-          group({
-            opacity: GHOST_OPACITY,
-            shapes: ghostSprite(spot, model),
+// NOTE: on the floor: the ghost's footprint, green where it may go and red
+// where it may not, or the open doorways' hints while no spot is picked.
+export const ghostShapes = (model: World): ReadonlyArray<Canvas.Shape> =>
+  isBreak(model)
+    ? Option.match(maybePlacement(model, focusSlotOf(model)), {
+        onNone: () => [],
+        onSome: ({ maybeSpot, verdict }) =>
+          Option.match(maybeSpot, {
+            onNone: () => openDoorwayHints(model),
+            onSome: spot => [
+              outlineShape(
+                spotBox(levelOf(model), spot),
+                PlaceVerdict.isAnyOf(['Placeable'])(verdict)
+                  ? GHOST_OK_COLOR
+                  : GHOST_BLOCKED_COLOR,
+              ),
+            ],
           }),
-          outlineShape(
-            spotBox(levelOf(model), spot),
-            PlaceVerdict.isAnyOf(['Placeable'])(verdict)
-              ? GHOST_OK_COLOR
-              : GHOST_BLOCKED_COLOR,
-          ),
-        ],
-      }),
+      })
+    : []
+
+// NOTE: the trap itself, standing carved as a placed one does, see-through.
+export const ghostDrawables = (model: World): ReadonlyArray<Drawable> =>
+  Option.match(ghostSpotOf(model), {
+    onNone: () => [],
+    onSome: spot => {
+      const box = spotBox(levelOf(model), spot)
+      return [
+        {
+          footY: TrapSpot.match(spot, {
+            Doorway: () => box.bottom,
+            Floor: () => boxCenter(box).y + TURRET_FOOT_DROP,
+          }),
+          rank: 'Trap',
+          shapes: [
+            group({ opacity: GHOST_OPACITY, shapes: ghostSprite(spot, model) }),
+          ],
+        },
+      ]
+    },
   })
-}

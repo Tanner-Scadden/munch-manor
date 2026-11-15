@@ -360,6 +360,9 @@ export const HarnessConfig = Schema.Struct({
   // Traps and difficulty
   planks: Schema.optionalKey(ListOf(DoorId)),
   plankhp: Num(30),
+  // NOTE: `gnomes=12,9;14,10` stands a Grumpy Gnome on each tile (column,
+  // row), facing east, its gun armed.
+  gnomes: Schema.optionalKey(Puddles),
   chewers: Num(0),
   doorway: Flag,
   openexits: Schema.optionalKey(ListOf(Schema.String)),

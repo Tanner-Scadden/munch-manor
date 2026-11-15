@@ -1,6 +1,7 @@
 // What glows of itself in the dark, lit by no room: the library's rose
 // window, the pickled hearts in their jars on the cellar's shelf, the
-// kitchen's soup, the zombies' eyes and Rattles', and a Kaboomer's sparks.
+// zombies' eyes and Rattles', and a Kaboomer's sparks. The kitchen's soup
+// is its own picture, unlit as the leaks' puddles are (soupLayer.ts).
 //
 // The house's glows are one unlit layer, painted once per level on quads over
 // only the tiles they cover (as the storm is, storm.ts), and only in open
@@ -16,13 +17,8 @@ import type { Application } from 'pixi.js'
 import { Container3D, FlatMaterial } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
-import {
-  CELLAR_ROOM_ID,
-  KITCHEN_ROOM_ID,
-  LIBRARY_ROOM_ID,
-} from '../../world/level/plan'
+import { CELLAR_ROOM_ID, LIBRARY_ROOM_ID } from '../../world/level/plan'
 import { heartJarGlowShapes } from '../room/cellarArt'
-import { soupGlowShapes } from '../room/kitchenView'
 import { isRoomOpen, roomBoxOf } from '../room/room'
 import type { Box } from '../room/roomPalette'
 import { roseGlowShapes } from '../room/roseWindowArt'
@@ -47,7 +43,6 @@ const inRoom = (
 const glowShapesOf = (level: Level): ReadonlyArray<Canvas.Shape> => [
   ...inRoom(level, LIBRARY_ROOM_ID, roseGlowShapes),
   ...inRoom(level, CELLAR_ROOM_ID, heartJarGlowShapes),
-  ...(isRoomOpen(level, KITCHEN_ROOM_ID) ? soupGlowShapes(level) : []),
 ]
 
 const boxesOf = (shapes: ReadonlyArray<Canvas.Shape>): ReadonlyArray<Box> =>

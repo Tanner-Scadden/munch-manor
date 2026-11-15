@@ -4,7 +4,6 @@ import type { Canvas } from 'foldkit'
 import {
   type Sprite,
   TOP_LEFT,
-  bakeShapes,
   deepSprite,
   placeAt,
   spriteShapes,
@@ -23,7 +22,6 @@ import { TILE_SIZE } from '../../shared/constants'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { barrelOf } from '../../world/cellar/barrels'
 import { isChandelierDown } from '../../world/dining/chandelier'
-import { puddleOf } from '../../world/kitchen/soupPot'
 import { levelOf } from '../../world/level/arena'
 import { STACK_IDS, heapBoxOf, isHeapDown } from '../../world/library/stacks'
 import { focusOf } from '../../world/party/party'
@@ -35,6 +33,7 @@ import {
   isToolActive,
   toolActiveMs,
 } from '../../world/stations/toolRules'
+import { BOOK_PALETTE, HEAP_ROWS } from './heapArt'
 
 // The room tools' work stations (src/world/stations/stations.ts) drawn,
 // and what each does while it is on. Show, don't explain: each tool is its
@@ -118,25 +117,16 @@ const BOOKS_SPRITE: Sprite = tile(
   [
     '..........',
     '..........',
-    '....rr....',
-    '...rRRr...',
-    '..gggggg..',
-    '..gGGGGg..',
-    '.bbbbb....',
-    '.bBBBb.yy.',
-    '......yYYy',
+    '....AA....',
+    '...AaaA...',
+    '..BBBBBB..',
+    '..BbbbbB..',
+    '.EEEEE....',
+    '.EeeeE.DD.',
+    '......DddD',
     '..........',
   ],
-  {
-    r: '#7a1c1c',
-    R: '#b83a2c',
-    g: '#1c4a2c',
-    G: '#3a7a4a',
-    b: '#2a2a5a',
-    B: '#4a4a8a',
-    y: '#8a6420',
-    Y: '#d8b04a',
-  },
+  BOOK_PALETTE,
 )
 
 // NOTE: the bulb's pull chain, hanging to a brass bead.
@@ -207,26 +197,20 @@ const POT_SPRITE: Sprite = tile(
   { k: '#25252c', K: '#4a4a52', g: '#5a8a2c', G: '#8ac84a', l: '#a8a8b0' },
 )
 
-// NOTE: each tool's art as it stands now, how tall it is over the foot of
-// its tile, and whether it stands up off the floor (carved, in the depth
-// sort) or lies flat on it, as the fallen books at a stack do.
+// NOTE: each tool's art as it stands now, standing up off the floor
+// (carved, in the depth sort), and how tall it is over the foot of its tile.
 type StationArt = Readonly<{
   spriteOf: (world: World, station: StationView) => Sprite
   heightPx: number
   // NOTE: how far east of the middle the first time arrow points down.
   arrowDx: number
-  isStanding: boolean
 }>
 
-const stillArt = (
-  sprite: Sprite,
-  isStanding: boolean,
-): Option.Option<StationArt> =>
+const stillArt = (sprite: Sprite): Option.Option<StationArt> =>
   Option.some({
     spriteOf: Function.constant(sprite),
     heightPx: TILE_SIZE,
     arrowDx: 0,
-    isStanding,
   })
 
 const STATION_ART: Readonly<Record<StationId, Option.Option<StationArt>>> = {
@@ -237,16 +221,15 @@ const STATION_ART: Readonly<Record<StationId, Option.Option<StationArt>>> = {
     // pulley (src/render/room/chandelierRope.ts), which stands nearer the
     // lens than the arrow and would cut through it.
     arrowDx: 7,
-    isStanding: true,
   }),
-  Gramophone: stillArt(GRAMOPHONE_SPRITE, true),
-  NorthStack: stillArt(BOOKS_SPRITE, false),
-  SouthStack: stillArt(BOOKS_SPRITE, false),
+  Gramophone: stillArt(GRAMOPHONE_SPRITE),
+  NorthStack: stillArt(BOOKS_SPRITE),
+  SouthStack: stillArt(BOOKS_SPRITE),
   // NOTE: the shelf is the secret shelf's own art, its glinting red book.
   Shelf: Option.none(),
-  Bulb: stillArt(CHAIN_SPRITE, true),
-  Barrels: stillArt(BARREL_SPRITE, true),
-  SoupPot: stillArt(POT_SPRITE, true),
+  Bulb: stillArt(CHAIN_SPRITE),
+  Barrels: stillArt(BARREL_SPRITE),
+  SoupPot: stillArt(POT_SPRITE),
 }
 
 // NOTE: what a station sounds as it fires (src/app/update/sound.ts).
@@ -270,32 +253,6 @@ const NOTE_COUNT = 3
 const NOTE_RISE_MS = 1800
 const NOTE_RISE_PX = 18
 
-// NOTE: one tile of the toppled books, laid over each tile of a heap.
-const HEAP_SPRITE: Sprite = tile(
-  [
-    'rrRRr.gggG',
-    'rRRRrggGGg',
-    'bbbbBBgGGg',
-    'bBBBBbyyyY',
-    '.yyYYyyYYy',
-    'gGGgrrrRRr',
-    'gGGgrRRRRr',
-    'bbbBBBbyyy',
-    'bBBBBBbyYY',
-    '.rrrRRRr..',
-  ],
-  {
-    r: '#7a1c1c',
-    R: '#b83a2c',
-    g: '#1c4a2c',
-    G: '#3a7a4a',
-    b: '#2a2a5a',
-    B: '#4a4a8a',
-    y: '#8a6420',
-    Y: '#d8b04a',
-  },
-)
-
 // NOTE: the barrel burst on the far wall: staves and a splash of old wine.
 const BURST_SPRITE: Sprite = tile(
   [
@@ -310,30 +267,6 @@ const BURST_SPRITE: Sprite = tile(
   ],
   { w: '#7a4a24', v: '#4a1030', V: '#7a2050' },
 )
-
-// NOTE: the soup pot's spill: a round green puddle, baked once.
-const PUDDLE_RADIUS = TOOL_RULES.SoupPot.radiusPx
-const PUDDLE_SPRITE: Sprite = bakeShapes(
-  Array.flatMap(
-    Array.makeBy(PUDDLE_RADIUS * 2, row => row - PUDDLE_RADIUS + 0.5),
-    dy => {
-      const half = Math.floor(Math.sqrt(PUDDLE_RADIUS ** 2 - dy ** 2))
-      const y = Math.floor(dy)
-      return [
-        rect(-half, y, half * 2, 1, '#4a7a24'),
-        ...(Math.abs(dy) < PUDDLE_RADIUS - 3
-          ? [rect(-half + 2, y, Math.max(0, half * 2 - 4), 1, '#6aa834')]
-          : []),
-      ]
-    },
-  ),
-)
-const PUDDLE_SHINE: Sprite = bakeShapes([
-  rect(-8, -6, 4, 1, '#b8e87a'),
-  rect(3, 2, 3, 1, '#b8e87a'),
-  rect(-2, 8, 2, 1, '#b8e87a'),
-])
-const SHINE_MS = 500
 
 // NOTE: the shelf's spin: dust swirling round it while it turns.
 const DUST_COUNT = 8
@@ -495,37 +428,25 @@ const toolOverheadShapes = (
       ? dustShapes(world, station)
       : []
 
-const heapShapes = (world: World): ReadonlyArray<Canvas.Shape> =>
+// NOTE: the toppled books stand as the heap they are, a mound a row of its
+// tiles, each at the foot of its row so a body beside it sorts round it.
+const heapDrawables = (world: World): ReadonlyArray<Drawable> =>
   Array.flatMap(STACK_IDS, id =>
     isHeapDown(world, id)
       ? Option.match(heapBoxOf(levelOf(world), id), {
           onNone: () => [],
           onSome: box =>
-            Array.flatMap(
-              Array.makeBy((box.bottom - box.top) / TILE_SIZE, row => row),
-              row =>
-                Array.makeBy((box.right - box.left) / TILE_SIZE, column =>
-                  placeAt(
-                    box.left + column * TILE_SIZE,
-                    box.top + row * TILE_SIZE,
-                    HEAP_SPRITE,
-                  ),
-                ),
-            ),
+            Array.map(HEAP_ROWS[id], ({ sprite, height }, row): Drawable => {
+              const footY = box.top + (row + 1) * TILE_SIZE
+              return {
+                footY,
+                rank: 'Prop',
+                shapes: [placeAt(box.left, footY - height, sprite)],
+              }
+            }),
         })
       : [],
   )
-
-const puddleShapes = (world: World): ReadonlyArray<Canvas.Shape> =>
-  Option.match(puddleOf(world), {
-    onNone: () => [],
-    onSome: ({ x, y }) => [
-      placeAt(Math.round(x), Math.round(y), PUDDLE_SPRITE),
-      ...(Math.floor(world.elapsedMs / SHINE_MS) % 2 === 0
-        ? [placeAt(Math.round(x), Math.round(y), PUDDLE_SHINE)]
-        : []),
-    ],
-  })
 
 // NOTE: the barrel stands on its lane, its foot on the line, so the wine
 // racks' tops south of the corridor never hide it as it rolls past.
@@ -567,38 +488,26 @@ const stationArtShapes = (
   ),
 ]
 
-// NOTE: on the ground layer, over the room's walls: what lies flat (the
-// spilled soup, the toppled books, the fallen books at a stack's foot), and
-// each station's set-up or cooldown ring, or its first time pulse, flat on
-// the floor round its foot, so what stands there stands in front of the
-// ring's far half and never under it (owner, 2026-11-15: the ring floating
-// over the winch hid its drum and crank).
+// NOTE: on the ground layer, over the room's walls: each station's set-up
+// or cooldown ring, or its first time pulse, flat on the floor round its
+// foot, so what stands there stands in front of the ring's far half and
+// never under it (owner, 2026-11-15: the ring floating over the winch hid
+// its drum and crank).
 export const stationGroundShapes: {
   (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
   (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   2,
-  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => {
-    const stations = shownStations(world, isShown)
-    return [
-      ...puddleShapes(world),
-      ...heapShapes(world),
-      ...Array.flatMap(stations, station => [
-        ...ringShapes(station, world.elapsedMs),
-        ...Option.match(STATION_ART[station.id], {
-          onNone: () => [],
-          onSome: art =>
-            art.isStanding ? [] : stationArtShapes(world, station, art),
-        }),
-      ]),
-    ]
-  },
+  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> =>
+    Array.flatMap(shownStations(world, isShown), station =>
+      ringShapes(station, world.elapsedMs),
+    ),
 )
 
 // NOTE: what stands up off the floor, in the depth sort with the bodies
-// and carved like them: the winch, the gramophone, the bulb's chain, the
-// barrels, the soup pot, each at the foot of its tile, and the rolling
-// barrel.
+// and carved like them: the winch, the gramophone, the books at a stack's
+// foot, the bulb's chain, the barrels, the soup pot, each at the foot of
+// its tile, the toppled books, and the rolling barrel.
 export const stationDrawables: {
   (isShown: Shown): (world: World) => ReadonlyArray<Drawable>
   (world: World, isShown: Shown): ReadonlyArray<Drawable>
@@ -608,18 +517,16 @@ export const stationDrawables: {
     ...Array.flatMap(shownStations(world, isShown), station =>
       Option.match(STATION_ART[station.id], {
         onNone: () => [],
-        onSome: (art): ReadonlyArray<Drawable> =>
-          art.isStanding
-            ? [
-                {
-                  footY: footOf(station),
-                  rank: 'Prop',
-                  shapes: stationArtShapes(world, station, art),
-                },
-              ]
-            : [],
+        onSome: (art): ReadonlyArray<Drawable> => [
+          {
+            footY: footOf(station),
+            rank: 'Prop',
+            shapes: stationArtShapes(world, station, art),
+          },
+        ],
       }),
     ),
+    ...heapDrawables(world),
     ...rollingBarrelDrawables(world),
   ],
 )

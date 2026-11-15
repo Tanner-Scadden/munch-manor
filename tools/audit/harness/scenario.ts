@@ -18,6 +18,7 @@ import {
   Tour,
   Trap,
   TrapHint,
+  TurretGun,
   type Zombie,
   ZombieAction,
 } from '@game/app/model'
@@ -791,6 +792,26 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
             hp: config.plankhp,
             maxHp: TRAPS.Barricade.hp,
             hitRemainingMs: 0,
+          }),
+        ),
+      ],
+    })
+  }
+  const gnomes = config.gnomes
+  if (gnomes !== undefined) {
+    model = modifyFields(model, {
+      traps: traps => [
+        ...traps,
+        ...Array.map(gnomes, ([column, row], index) =>
+          Trap.Turret({
+            id: 9050 + index,
+            column,
+            row,
+            hp: TRAPS.Turret.hp,
+            maxHp: TRAPS.Turret.hp,
+            hitRemainingMs: 0,
+            facing: { x: 1, y: 0 },
+            gun: TurretGun.Armed(),
           }),
         ),
       ],
