@@ -77,11 +77,12 @@ export const libraryFloorShadeShapes = (
 
 // NOTE: the long green rug under the reading desk in the nook, placed by
 // hand on the map.
+export const LIBRARY_RUG: Box = { x: 176, y: 102, width: 108, height: 36 }
+
 export const libraryRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
-  const x = room.x + 176
-  const y = room.y + 102
-  const width = 108
-  const height = 36
+  const x = room.x + LIBRARY_RUG.x
+  const y = room.y + LIBRARY_RUG.y
+  const { width, height } = LIBRARY_RUG
   return [
     rect(x, y, width, height, RUG_EDGE_COLOR),
     rect(x + 2, y + 2, width - 4, height - 4, GOLD_DARK_COLOR),

@@ -93,6 +93,10 @@ export type FlameSpec = Readonly<{
   y: number
   z: number
   seed: number
+  // NOTE: where its mirror image shows in water on the floor, in game
+  // pixels: as far under its foot on the screen as its flame draws over it,
+  // which on the floor is as many pixels south (a roof leak's puddle).
+  reflection: Vector
 }>
 
 // NOTE: a flame's light stands `out` world units toward the lens from the
@@ -235,6 +239,7 @@ export const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
         spot,
         ...standingPointOf({ x: flame.x, footY, atY: flame.y, out }),
         seed: index * 2.17,
+        reflection: { x: flame.x, y: footY + (footY - flame.y) },
       }
     },
   )

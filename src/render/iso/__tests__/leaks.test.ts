@@ -7,6 +7,7 @@ import { rectsOf } from '../../../test/viewReading'
 import { TILE_DOOR, hasTileFlag, levelFor } from '../../../world/level/arena'
 import { EVERY_LEVEL_SPEC } from '../../../world/level/plan'
 import { symbolAt, tileIndex } from '../../../world/level/tileGrid'
+import { rugsOf } from '../../room/room'
 import {
   dripsOf,
   leaksOf,
@@ -81,6 +82,24 @@ test('every open room leaks two or three times, on plain floor far from any door
               TILE_DOOR,
             ),
           ).toBe(false)
+        })
+      })
+    })
+  })
+})
+
+test('no puddle lies on a rug or a runner', () => {
+  Array.forEach(levels, level => {
+    const rugs = rugsOf(level)
+    Array.forEach(leaksOf(level), ({ rows }) => {
+      Array.forEach(rows, ({ y, left, right }) => {
+        Array.forEach(rugs, rug => {
+          const isOn =
+            y >= rug.y &&
+            y < rug.y + rug.height &&
+            right >= rug.x &&
+            left < rug.x + rug.width
+          expect(isOn).toBe(false)
         })
       })
     })

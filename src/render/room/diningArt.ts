@@ -248,10 +248,17 @@ const runnerShapes = (rug: Box): ReadonlyArray<Canvas.Shape> => {
 }
 
 // NOTE: the rug under the party table, and the hall runner from the front
-// door up to the gap, placed by hand on the drafted map (docs/ROOM_DRAFTS.md).
+// door up to the gap, placed by hand on the drafted map (docs/ROOM_DRAFTS.md),
+// from the room's top left.
+export const DINING_RUGS: ReadonlyArray<Box> = [
+  { x: 62, y: 86, width: 236, height: 48 },
+  { x: 166, y: 138, width: 28, height: 62 },
+]
+
 export const diningRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => [
-  ...runnerShapes({ x: room.x + 62, y: room.y + 86, width: 236, height: 48 }),
-  ...runnerShapes({ x: room.x + 166, y: room.y + 138, width: 28, height: 62 }),
+  ...Array.flatMap(DINING_RUGS, rug =>
+    runnerShapes({ ...rug, x: room.x + rug.x, y: room.y + rug.y }),
+  ),
   // NOTE: a dropped napkin and a spilled goblet's stain on the rug.
   rect(room.x + 104, room.y + 128, 5, 3, CLOTH_COLOR),
   rect(room.x + 105, room.y + 128, 3, 1, CLOTH_LIGHT_COLOR),

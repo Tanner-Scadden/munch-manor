@@ -1,13 +1,14 @@
 // The roof leaks: the storm (storm.ts) finds a few holes over every open
 // room, each dripping into a puddle on the floor. A drop falls from the
 // ceiling in whole pixels, a small ring splashes out as it lands, and the
-// puddle mirrors the flames near it and the lightning, as a cheap fake: no
-// reflection is rendered, only the puddle's own pixels lit in the flame's
-// color, by a 4x4 Bayer dither on whole game pixels like the look pass
-// (look.ts). The spots are rolled off each room's map, on plain floor clear
-// of cover and doorways, and the drips are read off the World's clock, so
-// every player in a co-op room sees and hears the same leaks. Cosmetic only:
-// nothing in the World knows they are there.
+// puddle darkens and cools the planks under it, a pale rim on its far edge.
+// It mirrors the flames near it and the lightning as a cheap fake: no
+// reflection is rendered, only short streaks of light across the water, a
+// flame's warm and the strike's a bright band along the far edge. The spots
+// are rolled off each room's map, on plain floor clear of cover, rugs, and
+// doorways, and the drips are read off the World's clock, so every player
+// in a co-op room sees and hears the same leaks. Cosmetic only: nothing in
+// the World knows they are there.
 
 import { Array, Option, Order } from 'effect'
 import type { Canvas } from 'foldkit'
@@ -20,11 +21,18 @@ import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { clamp, distanceBetween } from '../../world/step/geometry'
 import { rect } from '../drawing'
+import { rugsOf } from '../room/room'
+import type { Box } from '../room/roomPalette'
 import type { Mote } from './air'
 import type { TileQuad } from './house'
-import { type FlameKind, flameSpecsOf, isFlameLit } from './lightSpecs'
+import {
+  FLAME_TUNING,
+  type FlameKind,
+  type FlameSpec,
+  flameSpecsOf,
+  isFlameLit,
+} from './lightSpecs'
 import { mixColor, strikeOf, unitOf } from './mood'
-import { PITCH, STRETCH, UNIT } from './space'
 
 // WHERE THEY ARE
 
@@ -110,9 +118,37 @@ const puddleRowsOf = (
   })
 }
 
+// NOTE: a puddle keeps this many game pixels off a rug's edge, past its
+// fringe and tassels, so it never reads as lying half on one.
+const RUG_CLEARANCE = 4
+
+const isOffRugs = (
+  rows: ReadonlyArray<PuddleRow>,
+  rugs: ReadonlyArray<Box>,
+): boolean =>
+  // NOTE: once per level, a puddle's seven rows at most against a room's
+  // two rugs.
+  Array.every(rows, ({ y, left, right }) =>
+    // oxlint-disable-next-line munch/no-nested-scan
+    Array.every(
+      rugs,
+      rug =>
+        y < rug.y - RUG_CLEARANCE ||
+        y >= rug.y + rug.height + RUG_CLEARANCE ||
+        right < rug.x - RUG_CLEARANCE ||
+        left >= rug.x + rug.width + RUG_CLEARANCE,
+    ),
+  )
+
+const spotOf = (column: number, row: number): Vector => ({
+  x: column * TILE_SIZE + 3 + Math.floor(tileRoll(column, row, 1) * 4),
+  y: row * TILE_SIZE + 4 + Math.floor(tileRoll(column, row, 2) * 3),
+})
+
 const leaksIn = (
   level: Level,
   room: Level['rooms'][number],
+  rugs: ReadonlyArray<Box>,
 ): ReadonlyArray<Leak> => {
   const { box } = room
   const candidates: Array<Readonly<{ column: number; row: number }>> = []
@@ -125,7 +161,10 @@ const leaksIn = (
     for (let column = left; column < right; column += 1) {
       if (isPlainFloor(level, column, row)) {
         floorTiles += 1
-        if (isClearTile(level, column, row)) {
+        if (
+          isClearTile(level, column, row) &&
+          isOffRugs(puddleRowsOf(spotOf(column, row), column, row), rugs)
+        ) {
           candidates.push({ column, row })
         }
       }
@@ -161,10 +200,7 @@ const leaksIn = (
     }
   }
   return Array.map(picked, ({ column, row }) => {
-    const spot = {
-      x: column * TILE_SIZE + 3 + Math.floor(tileRoll(column, row, 1) * 4),
-      y: row * TILE_SIZE + 4 + Math.floor(tileRoll(column, row, 2) * 3),
-    }
+    const spot = spotOf(column, row)
     const periodMs = 1700 + Math.floor(tileRoll(column, row, 5) * 1900)
     return {
       spot,
@@ -185,9 +221,10 @@ export const leaksOf = (level: Level): ReadonlyArray<Leak> => {
     return cached
   }
   const leaks: Array<Leak> = []
+  const rugs = rugsOf(level)
   Array.forEach(level.rooms, room => {
     if (room.isOpen) {
-      leaks.push(...leaksIn(level, room))
+      leaks.push(...leaksIn(level, room, rugs))
     }
   })
   leakCache.set(level, leaks)
@@ -333,100 +370,140 @@ export const maybeDripHeard = ({
 
 // THE PUDDLES
 
-const WATER = 'rgba(22, 30, 48, 0.5)'
-const SHEEN = 'rgba(150, 172, 206, 0.32)'
-const RING = 'rgba(190, 212, 240, 0.7)'
-const STRIKE_GLINT = '#e8f0ff'
+// NOTE: the water darkens and cools the planks under it and lets them show
+// through, softer at its two ends; its far edge is a pixel of pale sheen,
+// the sky off the wet.
+const WATER = 'rgba(4, 10, 20, 0.66)'
+const WATER_EDGE = 'rgba(4, 10, 20, 0.4)'
+const RIM = 'rgba(150, 176, 196, 0.18)'
+const RING = 'rgba(190, 212, 240, 0.5)'
+const STRIKE_RGB = '232, 240, 255'
 
-// NOTE: how far a flame's mirror image lights a puddle, in game pixels, and
-// how strongly each kind does.
-const MIRROR_REACH = 52
+// NOTE: how far from a puddle a flame still shows in it, in game pixels,
+// and how strongly each kind does. A point of light on water is a short
+// streak across it, longer and paler at its core the nearer the flame.
+const MIRROR_REACH = 120
 const MIRROR_WEIGHT: Readonly<Record<FlameKind, number>> = {
-  Candle: 0.9,
-  Hearth: 1,
-  Sconce: 0.55,
-  Oven: 0.75,
-  Chandelier: 1.1,
-  Bulb: 1.1,
+  Candle: 1,
+  Hearth: 1.1,
+  Sconce: 0.75,
+  Oven: 0.85,
+  Chandelier: 1.2,
+  Bulb: 1.2,
 }
-// NOTE: the share of a puddle's pixels the brightest lightning lights.
-const STRIKE_SHARE = 0.75
-// NOTE: the share of a puddle's far edge the dark sky glints off, always,
-// so a puddle reads as wet with no flame near it.
-const SKY_SHARE = 0.14
-const SKY_GLINT = 'rgb(118, 138, 172)'
-// NOTE: a point of light on water stretches toward the viewer: a mirror
-// image reaches this much further down the floor than across it.
-const STREAK_ACROSS = 1.8
-const STREAK_DOWN = 0.7
+// NOTE: a puddle shows the two nearest flames at most, a row apart.
+const MOST_MIRRORS = 2
 const STRIKE_STEPS = 4
 
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
-
-const bayerAt = (x: number, y: number): number =>
-  (BAYER[(y & 3) * 4 + (x & 3)] ?? 0) / 16 + 1 / 32
-
-const cssOf = (color: number): string =>
-  `rgb(${(color >> 16) & 0xff}, ${(color >> 8) & 0xff}, ${color & 0xff})`
-
-// NOTE: a flame's mirror image as the camera sees it on the floor: the
-// light's point turned under the floor, slid down the view to the floor.
+// NOTE: a flame's mirror image as the camera sees it on the floor: as far
+// under the flame's foot on the screen as the flame stands over it, which
+// on the floor is as many game pixels south.
 type Mirror = Readonly<{
   x: number
   y: number
   kind: FlameKind
   weight: number
-  color: string
-  core: string
+  rgb: string
+  coreRgb: string
 }>
+
+const rgbOf = (color: number): string =>
+  `${(color >> 16) & 0xff}, ${(color >> 8) & 0xff}, ${color & 0xff}`
+
+const mirrorOf = (spec: FlameSpec): Mirror => {
+  const { color } = FLAME_TUNING.shipped[spec.kind]
+  return {
+    x: Math.round(spec.reflection.x),
+    y: Math.round(spec.reflection.y),
+    kind: spec.kind,
+    weight: MIRROR_WEIGHT[spec.kind],
+    rgb: rgbOf(color),
+    coreRgb: rgbOf(mixColor({ from: color, to: 0xffffff, share: 0.55 })),
+  }
+}
+
+const hundredths = (value: number): number => Math.round(value * 100) / 100
+
+const boxOfRows = (rows: ReadonlyArray<PuddleRow>) => ({
+  top: Option.getOrElse(Array.head(rows), () => ({ y: 0 })).y,
+  bottom: Option.getOrElse(Array.last(rows), () => ({ y: 0 })).y,
+})
+
+// NOTE: how far a mirror image lies from a puddle's blob, in game pixels.
+const gapTo = (leak: Leak, mirror: Mirror): number => {
+  const { top, bottom } = boxOfRows(leak.rows)
+  const dy = Math.max(0, top - mirror.y, mirror.y - bottom)
+  return Math.hypot(mirror.x - leak.spot.x, dy)
+}
 
 const mirrorCache = new WeakMap<Level, ReadonlyArray<ReadonlyArray<Mirror>>>()
 
-// NOTE: each leak's flames near enough to show in its puddle.
+// NOTE: each leak's flames near enough to show in its puddle, nearest first.
 const mirrorsOf = (level: Level): ReadonlyArray<ReadonlyArray<Mirror>> => {
   const cached = mirrorCache.get(level)
   if (cached !== undefined) {
     return cached
   }
-  const mirrors = Array.map(flameSpecsOf(level), spec => ({
-    x: Math.round(spec.x / UNIT),
-    y: Math.round((spec.z + spec.y / Math.tan(PITCH)) / (UNIT * STRETCH)),
-    kind: spec.kind,
-    weight: MIRROR_WEIGHT[spec.kind],
-    color: cssOf(spec.color),
-    core: cssOf(mixColor({ from: spec.color, to: 0xffffff, share: 0.5 })),
-  }))
+  const mirrors = Array.map(flameSpecsOf(level), spec => mirrorOf(spec))
   // NOTE: once per level, the house's few dozen flames for its few dozen
   // leaks.
   const near = Array.map(leaksOf(level), leak =>
-    // oxlint-disable-next-line munch/no-nested-scan
-    Array.filter(
-      mirrors,
-      mirror =>
-        Math.hypot(
-          (mirror.x - leak.spot.x) * STREAK_ACROSS,
-          (mirror.y - leak.spot.y) * STREAK_DOWN,
-        ) <
-        MIRROR_REACH + 8,
+    Array.sortWith(
+      // oxlint-disable-next-line munch/no-nested-scan
+      Array.filter(mirrors, mirror => gapTo(leak, mirror) < MIRROR_REACH),
+      (mirror: Mirror) => gapTo(leak, mirror),
+      Order.Number,
     ),
   )
   mirrorCache.set(level, near)
   return near
 }
 
-// NOTE: the body of every puddle, which never changes: dark water and a
-// sheen along its far edge.
-export const puddlesOf = (level: Level): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(leaksOf(level), ({ rows }) => [
-    ...Array.map(rows, ({ y, left, right }) =>
-      rect(left, y, right - left + 1, 1, WATER),
-    ),
-    ...Option.match(Array.head(rows), {
-      onNone: () => [],
-      onSome: ({ y, left, right }) =>
-        right - left > 3 ? [rect(left + 2, y, right - left - 3, 1, SHEEN)] : [],
-    }),
-  ])
+// NOTE: the body of every puddle, which never changes: the water, softer
+// at each row's ends, and the pale rim along its far edge.
+export const puddlesOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
+  const shapes: Array<Canvas.Shape> = []
+  Array.forEach(leaksOf(level), ({ rows }) => {
+    Array.forEach(rows, ({ y, left, right }, index) => {
+      const above = rows[index - 1]
+      if (above === undefined) {
+        shapes.push(rect(left, y, right - left + 1, 1, RIM))
+        return
+      }
+      // NOTE: in the far half, what a row reaches past the row above it is
+      // the far edge too.
+      const isFarHalf = index <= rows.length / 2
+      const bodyLeft = isFarHalf ? Math.max(left, above.left) : left
+      const bodyRight = isFarHalf ? Math.min(right, above.right) : right
+      // NOTE: a step out is rim at its outer pixel only, the diagonal edge
+      // a line of single pixels rather than a pale block.
+      if (bodyLeft > left) {
+        shapes.push(rect(left, y, 1, 1, RIM))
+        if (bodyLeft - left > 1) {
+          shapes.push(rect(left + 1, y, bodyLeft - left - 1, 1, WATER_EDGE))
+        }
+      }
+      if (bodyRight < right) {
+        shapes.push(rect(right, y, 1, 1, RIM))
+        if (right - bodyRight > 1) {
+          shapes.push(
+            rect(bodyRight + 1, y, right - bodyRight - 1, 1, WATER_EDGE),
+          )
+        }
+      }
+      if (bodyRight - bodyLeft >= 2) {
+        shapes.push(
+          rect(bodyLeft, y, 1, 1, WATER_EDGE),
+          rect(bodyLeft + 1, y, bodyRight - bodyLeft - 1, 1, WATER),
+          rect(bodyRight, y, 1, 1, WATER_EDGE),
+        )
+      } else if (bodyRight >= bodyLeft) {
+        shapes.push(rect(bodyLeft, y, bodyRight - bodyLeft + 1, 1, WATER_EDGE))
+      }
+    })
+  })
+  return shapes
+}
 
 // NOTE: the ring a landing splashes, one pixel wide, wider each step.
 const ringOf = (leak: Leak, step: number): ReadonlyArray<Canvas.Shape> => {
@@ -441,53 +518,128 @@ const ringOf = (leak: Leak, step: number): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-// NOTE: a puddle's glints: each pixel lit by the flame whose mirror image
-// is nearest it, dithered by how near (a streak down the floor, its core
-// paler), the lightning's cold white brightest at the far edge, and the
-// dark sky's faint sheen there too.
+// NOTE: a horizontal streak of light on a row, held inside it.
+const streakOn = (
+  row: PuddleRow,
+  centerX: number,
+  length: number,
+  color: string,
+): ReadonlyArray<Canvas.Shape> => {
+  const inside = row.right - row.left - 1
+  const width = Math.min(length, inside)
+  if (width < 1) {
+    return []
+  }
+  const left = clamp(
+    centerX - Math.floor(width / 2),
+    row.left + 1,
+    row.right - width,
+  )
+  return [rect(left, row.y, width, 1, color)]
+}
+
+// NOTE: a flame in a puddle: a warm streak across the row its mirror image
+// falls on (the nearest edge row when it falls outside), longer the nearer,
+// a paler core in its middle, and a shorter shimmer a row nearer.
+const flameStreaksOf = (
+  leak: Leak,
+  mirror: Mirror,
+  rowIndex: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const strength = clamp(
+    mirror.weight * (1 - gapTo(leak, mirror) / MIRROR_REACH),
+    0,
+    1,
+  )
+  const row = leak.rows[rowIndex]
+  if (row === undefined || strength <= 0) {
+    return []
+  }
+  const centerX = clamp(mirror.x, row.left + 2, row.right - 2)
+  const length = 2 + Math.round(strength * 4)
+  const alpha = hundredths(0.35 + 0.5 * strength)
+  const shimmer = leak.rows[rowIndex + 1]
+  return [
+    ...streakOn(row, centerX, length, `rgba(${mirror.rgb}, ${alpha})`),
+    ...(strength > 0.5
+      ? streakOn(row, centerX, 2, `rgba(${mirror.coreRgb}, 0.95)`)
+      : []),
+    ...(shimmer !== undefined && strength > 0.3
+      ? streakOn(
+          shimmer,
+          centerX + 1,
+          length - 3,
+          `rgba(${mirror.rgb}, ${hundredths(0.3 * strength + 0.2)})`,
+        )
+      : []),
+  ]
+}
+
+// NOTE: the row a mirror image falls on, held off the far rim and kept a
+// row apart from a nearer flame's.
+const mirrorRowOf = (leak: Leak, mirror: Mirror, taken: number): number => {
+  const { top } = boxOfRows(leak.rows)
+  const last = leak.rows.length - 2
+  const wanted = clamp(mirror.y - top, 1, Math.max(1, last))
+  return Math.abs(wanted - taken) < 2
+    ? wanted + 2 <= last
+      ? wanted + 2
+      : Math.max(1, wanted - 2)
+    : wanted
+}
+
+// NOTE: the lightning on a puddle: its far rim lit as a bright band, and
+// in the brightest steps a shorter band a row nearer.
+const strikeBandOf = (
+  rows: ReadonlyArray<PuddleRow>,
+  step: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const [first, second] = rows
+  if (first === undefined || step === 0) {
+    return []
+  }
+  const alpha = hundredths(0.25 + (0.7 * step) / STRIKE_STEPS)
+  return [
+    rect(
+      first.left,
+      first.y,
+      first.right - first.left + 1,
+      1,
+      `rgba(${STRIKE_RGB}, ${alpha})`,
+    ),
+    ...(second !== undefined && step >= STRIKE_STEPS - 1
+      ? streakOn(
+          second,
+          Math.round((second.left + second.right) / 2),
+          Math.max(2, second.right - second.left - 4),
+          `rgba(${STRIKE_RGB}, 0.5)`,
+        )
+      : []),
+  ]
+}
+
+// NOTE: a puddle's glints: the nearest lit flames as warm streaks, and the
+// lightning's band along the far edge (none underground).
 const glintsOf = (
   leak: Leak,
   mirrors: ReadonlyArray<Mirror>,
   lit: ReadonlySet<FlameKind>,
-  strike: number,
+  strikeStep: number,
 ): ReadonlyArray<Canvas.Shape> => {
+  const shown = Array.take(
+    Array.filter(mirrors, ({ kind }) => lit.has(kind)),
+    MOST_MIRRORS,
+  )
   const shapes: Array<Canvas.Shape> = []
-  const last = Math.max(1, leak.rows.length - 1)
-  Array.forEach(leak.rows, ({ y, left, right }, index) => {
-    const far = 1 - (0.8 * index) / last
-    const strikeLevel = leak.isUnderground ? 0 : strike * STRIKE_SHARE * far
-    const skyLevel = leak.isUnderground ? 0 : SKY_SHARE * far
-    for (let x = left; x <= right; x += 1) {
-      const threshold = bayerAt(x, y)
-      let best = 0
-      let color = ''
-      for (const mirror of mirrors) {
-        if (!lit.has(mirror.kind)) {
-          continue
-        }
-        const near =
-          1 -
-          Math.hypot(
-            (mirror.x - x) * STREAK_ACROSS,
-            (mirror.y - y) * STREAK_DOWN,
-          ) /
-            MIRROR_REACH
-        const level = near > 0 ? mirror.weight * near * near * near : 0
-        if (level > best) {
-          best = level
-          color = level > 0.85 ? mirror.core : mirror.color
-        }
-      }
-      if (strikeLevel > threshold && strikeLevel >= best) {
-        shapes.push(rect(x, y, 1, 1, STRIKE_GLINT))
-      } else if (best > threshold) {
-        shapes.push(rect(x, y, 1, 1, color))
-      } else if (skyLevel > threshold) {
-        shapes.push(rect(x, y, 1, 1, SKY_GLINT))
-      }
-    }
+  let taken = -10
+  Array.forEach(shown, mirror => {
+    const rowIndex = mirrorRowOf(leak, mirror, taken)
+    taken = rowIndex
+    shapes.push(...flameStreaksOf(leak, mirror, rowIndex))
   })
-  return shapes
+  return leak.isUnderground
+    ? shapes
+    : [...shapes, ...strikeBandOf(leak.rows, strikeStep)]
 }
 
 // NOTE: a leak this far from the viewer, each way, is off every screen the
@@ -539,7 +691,7 @@ export const puddleGlintsOf = ({
   viewer: Vector
 }>): ReadonlyArray<Canvas.Shape> => {
   const lit = litOf(world)
-  const strike = strikeStepOf(world) / STRIKE_STEPS
+  const strike = strikeStepOf(world)
   const mirrors = mirrorsOf(level)
   return Array.flatMap(leaksOf(level), (leak, index) => {
     const step = isNear(viewer, leak) ? ringStepOf(leak, world.elapsedMs) : 0
