@@ -227,14 +227,14 @@ describe('the Kaboomer', () => {
     )
   })
 
-  test('the debut card and the door preview call him the Kaboomer', () => {
+  test('the debut card and the wave preview call him the Kaboomer', () => {
     expect(ZOMBIE_KINDS.Exploder.name).toBe('Kaboomer')
     expect(debutPitch('Exploder')).toBe(
       'He wants a hug. Pop him from far away.',
     )
     const [, spawns] = rollSpawns(7, 4)
     expect(Array.some(spawns, ({ kind }) => kind === 'Exploder')).toBe(true)
-    const label = wavePreviewLabel(4, spawns, [], initialModel.boss)
+    const label = wavePreviewLabel(4, initialModel.boss)
     expect(label).toContain('Kaboomer')
     expect(label).toContain('New this wave: Kaboomer.')
     expect(label).not.toContain('Gasbag')

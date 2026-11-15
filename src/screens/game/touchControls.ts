@@ -799,12 +799,12 @@ export const preparationControlsView: {
   Phase.match(model.phase, {
     Ready: () => h.empty,
     Arriving: () => h.empty,
-    Preparation: ({ wave, remainingMs, spawns, clock }) =>
+    Preparation: ({ wave, remainingMs, clock }) =>
       h.div(
         [],
         [
           preparationTimerView(wave, remainingMs, clock, h),
-          wavePreviewView(wave, spawns, model.traps, model.boss, h),
+          wavePreviewView(wave, model.boss, h),
         ],
       ),
     Wave: () => h.empty,

@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../app/message'
-import { BreakClock, type Model, Phase } from '../../app/model'
+import { Boss, BreakClock, type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { wavePreviewShapes } from '../../features/hud/wavePreview'
 import { restoreSave, saveOf } from '../../platform/save'
@@ -481,8 +481,8 @@ describe('the turn hint', () => {
   )
 })
 
-describe('the portrait door preview', () => {
-  test('pins the markers of doors out of view to the window edge', () => {
+describe('the portrait wave preview', () => {
+  test('pins the boss marker of a door out of view to the window edge', () => {
     const breakAtWestWall = inPortrait(
       modifyFocus(
         onTouch(
@@ -500,9 +500,18 @@ describe('the portrait door preview', () => {
         { player: player => ({ ...player, x: 40, y: 90 }) },
       ),
     )
-    const screen = screenOf(breakAtWestWall)
+    const withChunk = modifyFields(breakAtWestWall, {
+      boss: () =>
+        Boss.Waiting({
+          door: 'North',
+          waitBelow: 20,
+          hp: 300,
+          guestHpScale: 1,
+        }),
+    })
+    const screen = screenOf(withChunk)
     const rects = rectsOf(
-      wavePreviewShapes(breakAtWestWall, screenCameraOf(breakAtWestWall)),
+      wavePreviewShapes(withChunk, screenCameraOf(withChunk)),
       { x: 0, y: 0 },
     )
     vitestExpect(rects.length).toBeGreaterThan(0)
