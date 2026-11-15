@@ -3085,6 +3085,25 @@ button.help-card:focus-visible {
     var(--menu-sunken);
 }
 
+.munch-stage-plinth {
+  align-items: center;
+  padding-bottom: 0;
+  overflow: hidden;
+  background: #0c0810;
+}
+
+.munch-plinth {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.plinth-canvas {
+  display: block;
+  width: 0;
+  image-rendering: pixelated;
+}
+
 .munch-facts {
   display: flex;
   flex-direction: column;

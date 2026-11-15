@@ -62,6 +62,12 @@ import { airOf } from './air'
 import { BillboardPool, BodyCasters, rimUp } from './billboards'
 import { crittersOf } from './critters'
 import { isNearView, viewBoxOf } from './cull'
+import {
+  DIORAMA_AMBIENT,
+  IsoLens,
+  dioramaCameraOf,
+  dioramaStepOf,
+} from './diorama'
 import { ballMiddleOf, blastLightOf, blastPiecesOf } from './explosions'
 import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
@@ -87,6 +93,8 @@ import { type HouseLights, houseLightsOf } from './lights'
 import { LOOK_TUNING } from './lookSpecs'
 import { mixColor } from './mood'
 import { FloorLayer, FloorPicture } from './painter'
+import { type PlinthPicture, PlinthStage } from './plinth'
+import type { PlinthPose } from './plinthPose'
 import {
   auraCubesOf,
   auraFeetOf,
@@ -301,6 +309,9 @@ export class IsoScene {
   private stormKey: string | undefined
   private lastPreload: ReadonlyArray<string> = []
   private lastLoaded = -1
+  // NOTE: the Munchopedia's plinths, drawn with this renderer (plinth.ts),
+  // built at the first one asked for.
+  private plinth: PlinthStage | undefined
 
   constructor(app: Application, onLoaded: () => void) {
     this.app = app
@@ -366,6 +377,7 @@ export class IsoScene {
   draw(
     frame: IsoFrame,
     size: Readonly<{ width: number; height: number }>,
+    options: Readonly<{ isStill: boolean }>,
   ): void {
     const { model, strata, camera, shake } = frame
     if (frame.preload !== this.lastPreload) {
@@ -381,9 +393,10 @@ export class IsoScene {
     // pixel wider or taller, past its right and bottom edges, which the box
     // clips: the view is anchored on its top left corner.
     const ratio = window.devicePixelRatio
-    const step = canvasStepOf({
-      devicePerGamePixel: (size.width * ratio) / Math.max(1, camera.width),
-      ratio,
+    const devicePerGamePixel = (size.width * ratio) / Math.max(1, camera.width)
+    const step = IsoLens.match(frame.lens, {
+      Play: () => canvasStepOf({ devicePerGamePixel, ratio }),
+      Diorama: () => dioramaStepOf(devicePerGamePixel),
     })
     const resolution = ratio / step
     const width = Math.max(
@@ -425,14 +438,40 @@ export class IsoScene {
     // THE CAMERA
     // NOTE: the lens (src/render/lens.ts) on the game's camera, less the
     // shake, on this canvas (src/render/iso/lensCamera.ts): the same
-    // projection the overlay, the aim, and culling read.
+    // projection the overlay, the aim, and culling read. The title's
+    // diorama (diorama.ts) is a camera of its own, swinging round the house.
     const canvasSize = {
       width: this.app.canvas.width,
       height: this.app.canvas.height,
     }
     const lens = sceneLensOf(camera, shake, canvasSize)
-    aimSceneCamera(this.view.camera, lens, canvasSize)
-    const view = viewBoxOf(lens.frame)
+    const view = IsoLens.match(frame.lens, {
+      Play: () => {
+        this.view.camera.mode = 'perspective'
+        aimSceneCamera(this.view.camera, lens, canvasSize)
+        return viewBoxOf(lens.frame)
+      },
+      Diorama: ({ clockMs }) => {
+        const diorama = dioramaCameraOf({
+          clockMs,
+          isStill: options.isStill,
+          target: lens.lookedAt,
+          centerX: camera.x + camera.width / 2,
+          centerY: camera.y + camera.height / 2,
+          canvasWidth: canvasSize.width,
+          canvasHeight: canvasSize.height,
+        })
+        this.view.camera.mode = 'orthographic'
+        this.view.camera.position.set(
+          diorama.position.x,
+          diorama.position.y,
+          diorama.position.z,
+        )
+        this.view.camera.lookAt(diorama.target)
+        this.view.camera.orthographicSize = diorama.orthographicSize
+        return diorama.view
+      },
+    })
 
     const { player } = focusOf(model)
     const rattle = houseRattleOf(model.shake.trauma)
@@ -687,7 +726,14 @@ export class IsoScene {
     )
     built.lights.apply({ frame: lights, player, view })
     const { mood } = lights
-    this.ambient.intensity = AMBIENT * mood.ambient * LOOK_TUNING.now.ambient
+    this.ambient.intensity =
+      AMBIENT *
+      mood.ambient *
+      LOOK_TUNING.now.ambient *
+      IsoLens.match(frame.lens, {
+        Play: () => 1,
+        Diorama: () => DIORAMA_AMBIENT,
+      })
     const ambientColor = mixColor({
       from: 0xffffff,
       to: mood.tint,
@@ -1017,7 +1063,33 @@ export class IsoScene {
     return this.textures.isSettled
   }
 
+  // NOTE: a plinth's picture, or none before a level is built or while its
+  // sprite loads. It stands in the middle of the level's first open room.
+  drawPlinth(
+    pose: PlinthPose,
+    options: Readonly<{ isStill: boolean }>,
+  ): Option.Option<PlinthPicture> {
+    const room = Option.flatMap(Option.fromNullishOr(this.built), built =>
+      Array.findFirst(built.level.rooms, ({ isOpen }) => isOpen),
+    )
+    if (Option.isNone(room)) {
+      return Option.none()
+    }
+    const { box } = room.value
+    const stage = this.plinth ?? new PlinthStage(this.app, this.textures)
+    this.plinth = stage
+    return stage.draw({
+      pose,
+      at: {
+        x: ((box.left + box.right) / 2) * UNIT,
+        z: zOf((box.top + box.bottom) / 2),
+      },
+      isStill: options.isStill,
+    })
+  }
+
   destroy(): void {
+    this.plinth?.destroy()
     this.dropLevel()
     this.voxels.destroy()
     this.textures.destroy()

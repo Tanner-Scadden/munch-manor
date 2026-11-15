@@ -1,0 +1,82 @@
+import { Canvas } from 'foldkit'
+import { describe, expect, test } from 'vitest'
+
+import { dioramaCameraOf, dioramaStepOf } from '../diorama'
+import { plinthSizeOf } from '../plinthPose'
+import { PITCH, UNIT } from '../space'
+
+// The title's diorama (src/render/iso/diorama.ts) and the Munchopedia's
+// plinth (src/render/iso/plinthPose.ts): their own cameras, one canvas pixel
+// to a game pixel, and still with reduced motion.
+
+const TARGET = { x: 10, y: 0, z: 20 }
+
+const cameraAt = (clockMs: number, isStill: boolean) =>
+  dioramaCameraOf({
+    clockMs,
+    isStill,
+    target: TARGET,
+    centerX: 100,
+    centerY: 80,
+    canvasWidth: 320,
+    canvasHeight: 180,
+  })
+
+describe('the diorama', () => {
+  test('a canvas pixel covers half the play camera game pixel, whole', () => {
+    expect(dioramaStepOf(6)).toBe(3)
+    expect(dioramaStepOf(4)).toBe(2)
+    expect(dioramaStepOf(3)).toBe(1)
+    expect(dioramaStepOf(1)).toBe(1)
+  })
+
+  test('shows one game pixel to a canvas pixel', () => {
+    expect(cameraAt(0, false).orthographicSize).toBeCloseTo((320 * UNIT) / 2)
+  })
+
+  test('swings round the house as its clock runs, at the play pitch', () => {
+    const start = cameraAt(0, false)
+    const later = cameraAt(12_000, false)
+    expect(later.position.x).not.toBeCloseTo(start.position.x)
+    const rise = later.position.y - TARGET.y
+    const across = Math.hypot(
+      later.position.x - TARGET.x,
+      later.position.z - TARGET.z,
+    )
+    expect(Math.atan2(rise, across)).toBeCloseTo(PITCH)
+  })
+
+  test('holds still with reduced motion', () => {
+    expect(cameraAt(0, true).position).toEqual(cameraAt(31_000, true).position)
+  })
+
+  test('culls to the floor any turn could show', () => {
+    expect(cameraAt(0, false).view).toEqual({
+      left: -220,
+      top: -240,
+      right: 420,
+      bottom: 400,
+    })
+  })
+})
+
+describe('the plinth', () => {
+  const image = (width: number, height: number) =>
+    Canvas.Image({
+      src: 'a.png',
+      x: 0,
+      y: 0,
+      width,
+      height,
+      rendering: 'Pixelated',
+    })
+
+  test('its picture is square, even, and holds the sprite on its plinth', () => {
+    const tall = plinthSizeOf(image(10, 14))
+    expect(tall % 2).toBe(0)
+    expect(tall).toBeGreaterThanOrEqual(14 + 6)
+    const boss = plinthSizeOf(image(30, 40))
+    expect(boss % 2).toBe(0)
+    expect(boss).toBeGreaterThan(tall)
+  })
+})

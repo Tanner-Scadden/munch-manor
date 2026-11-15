@@ -208,6 +208,9 @@ describe('the Munchopedia', () => {
               name: 'Groaner shuffling along and falling apart',
             }),
           ).toExist(),
+          // NOTE: a found zombie stands carved on its plinth, not a picture.
+          Scene.expect(Scene.selector('munch-plinth.munch-plinth')).toExist(),
+          Scene.expect(Scene.selector('.munch-entry img')).not.toExist(),
           Scene.expect(
             Scene.role('heading', { name: 'What it does' }),
           ).toExist(),

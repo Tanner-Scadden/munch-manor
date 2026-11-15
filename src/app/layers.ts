@@ -33,6 +33,7 @@ import {
   worldToView,
 } from '../render/camera'
 import { cineBarShapes } from '../render/cine'
+import { IsoLens } from '../render/iso/diorama'
 import { worldElement } from '../render/iso/element'
 import type { IsoFrame } from '../render/iso/frame'
 import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
@@ -242,6 +243,9 @@ const isoFrameOf = (model: Model, camera: Camera): IsoFrame => ({
   model,
   strata: worldStrataOf(model, camera),
   camera,
+  lens: Phase.isAnyOf(['Ready'])(model.phase)
+    ? IsoLens.Diorama({ clockMs: model.screenMs })
+    : IsoLens.Play(),
   shake: shakeOffset(model),
   preload: preloadSourcesOf(levelOf(model).spec),
 })
