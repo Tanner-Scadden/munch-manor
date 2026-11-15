@@ -1,15 +1,25 @@
 // @vitest-environment happy-dom
-import { Effect, Fiber, Layer, Option, Stream } from 'effect'
+import { Array, Effect, Fiber, Layer, Option, Stream } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
+import { GameEvent, type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { subscriptions } from '../../app/subscriptions'
-import { APPLICATION, SURFACE } from '../../test/testing'
+import { FIXED_STEP_MS } from '../../shared/constants'
+import {
+  APPLICATION,
+  FIRE_LIFT,
+  FIRE_PRESS,
+  FIRE_PUSH,
+  SURFACE,
+  settleRunCommands,
+  tick,
+  ticks,
+} from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { focusOf } from '../../world/party/party'
 import { isTrackingPointer } from '../input'
@@ -208,5 +218,56 @@ describe('stuck sticks', () => {
         Message.CancelledPointer({ pointerId: RIGHT_THUMB }),
       ])
     }),
+  )
+})
+
+// NOTE: a slow frame can come after a click is already let go. The press
+// waits for the next step (FirePress), so the shot is still fired, once.
+describe('quick clicks on slow frames', () => {
+  const firedOn = (current: Model): number =>
+    Array.filter(current.frameEvents, GameEvent.isAnyOf(['Fired'])).length
+
+  it.effect('a mouse click let go before the next frame still fires once', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(playingModel, { lastDevice: () => 'KeyboardMouse' }),
+      ),
+      Story.message(
+        Message.PressedPointer({
+          pointerId: MOUSE_POINTER,
+          device: 'Mouse',
+          clientX: 600,
+          clientY: 200,
+        }),
+      ),
+      Story.message(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),
+      tick(FIXED_STEP_MS),
+      Story.model(after => {
+        expect(firedOn(after)).toBe(1)
+        expect(after.input.firePress).toBe('Seen')
+      }),
+      ...ticks(30, FIXED_STEP_MS),
+      Story.model(after => {
+        expect(focusOf(after).intent.trigger).toBe('Released')
+        expect(firedOn(after)).toBe(0)
+      }),
+      settleRunCommands,
+    ),
+  )
+
+  it.effect('a thumb flicked through the fire zone between frames fires', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(playingModel),
+      Story.message(FIRE_PRESS),
+      Story.message(FIRE_PUSH),
+      Story.message(FIRE_LIFT),
+      tick(FIXED_STEP_MS),
+      Story.model(after => {
+        expect(firedOn(after)).toBe(1)
+      }),
+      settleRunCommands,
+    ),
   )
 })
