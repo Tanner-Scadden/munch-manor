@@ -8,7 +8,7 @@
 // player stands and faces. The flicker is a sum of sines over elapsedMs, so a
 // replay flickers the same.
 
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Function, Option, Order, pipe } from 'effect'
 
 import { isCellarLit } from '../../world/cellar/bulb'
 import {
@@ -185,10 +185,14 @@ const guttered = (t: number, seed: number, rattle: number): number =>
 
 // NOTE: whether a flame burns now (the chandelier's and the bulb's change),
 // how far it sways off its spot in units, and whether it flickers.
-const isFlameLit = (world: World, kind: FlameKind): boolean =>
+export const isFlameLit: {
+  (kind: FlameKind): (world: World) => boolean
+  (world: World, kind: FlameKind): boolean
+} = Function.dual(2, (world: World, kind: FlameKind): boolean =>
   kind === 'Chandelier'
     ? !isChandelierDown(world)
-    : kind !== 'Bulb' || isCellarLit(world)
+    : kind !== 'Bulb' || isCellarLit(world),
+)
 
 const SWAYS: Readonly<Record<FlameKind, (t: number) => number>> = {
   Candle: () => 0,

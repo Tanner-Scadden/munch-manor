@@ -19,6 +19,9 @@ export type Mote = Readonly<{
   x: number
   y: number
   hover: number
+  // NOTE: how wide it is drawn, in game pixels: a mote is one, a moth's
+  // open wings two.
+  width?: number
   color: number
   alpha: number
   // NOTE: an ember glows of itself; dust is lit, so it shows only in light.
