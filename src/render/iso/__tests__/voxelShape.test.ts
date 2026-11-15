@@ -1,6 +1,7 @@
 import { Array, Option, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
+import { PITCH, UNIT, zOf } from '../space'
 import {
   type VoxelMeshData,
   isGroundedOf,
@@ -9,6 +10,7 @@ import {
   sideSourcesOf,
   slabMatrixOf,
   snappedSpinOf,
+  uprightMatrixOf,
   voxelMeshOf,
 } from '../voxelShape'
 
@@ -513,6 +515,65 @@ describe('slab matrix', () => {
     expect(dot(column(0), column(2))).toBeCloseTo(0, 9)
     expect(dot(column(1), column(2))).toBeCloseTo(0, 9)
     expect(dot(column(0), column(1))).toBeCloseTo(0, 9)
+  })
+})
+
+describe('standing upright', () => {
+  // NOTE: a china cabinet's art, 6 wide and 12 tall, standing upright on 4
+  // pixels of floor, as src/render/iso/voxels.ts carves one: as deep as its
+  // tiles, the stacks near the foot shallower so none goes under the floor.
+  const ART = rows(Array.makeBy(12, () => '######'))
+  const MOST = 4
+  const mesh = voxelMeshOf({
+    ...ART,
+    uvOf: uvByPixel,
+    most: MOST,
+    depthOf: (_column, row) => Math.max(1, Math.min(MOST, 12 - row)),
+    isUpright: true,
+  })
+  const placement = {
+    box: { x: 0, y: -12, width: 6, height: 12 },
+    texels: { width: 6, height: 12 },
+    matrix: { a: 1, b: 0, c: 0, d: 1, e: 50, f: 100 },
+    footY: 100,
+    hover: 0,
+    nudge: 0,
+    depth: 1,
+  }
+  const { elements } = uprightMatrixOf(placement)
+  // NOTE: each corner of the blocks where the matrix stands it.
+  const corners = Array.makeBy(mesh.positions.length / 3, corner => {
+    const local = Array.makeBy(
+      3,
+      axis => mesh.positions[corner * 3 + axis] ?? 0,
+    )
+    return Array.makeBy(3, axis =>
+      Array.reduce(
+        local,
+        elements[12 + axis] ?? 0,
+        (sum, part, index) => sum + part * (elements[index * 4 + axis] ?? 0),
+      ),
+    )
+  })
+  const heights = Array.map(corners, ([, y]) => y ?? 0)
+  const depths = Array.map(corners, ([, , z]) => z ?? 0)
+
+  test('it stands on the floor, never under it', () => {
+    expect(Math.min(...heights)).toBeCloseTo(0, 6)
+  })
+
+  test('its front is on its foot and its back as deep as its tiles', () => {
+    expect(Math.max(...depths)).toBeCloseTo(zOf(100), 6)
+    expect(Math.min(...depths)).toBeCloseTo(zOf(100 - MOST), 6)
+  })
+
+  // NOTE: its top row folds into the tops of the row under it, as every
+  // carve's does, so its front rises the rows under that.
+  test('it rises straight up, as tall on screen as its art', () => {
+    expect(Math.max(...heights)).toBeCloseTo(
+      ((12 - 1) * UNIT) / Math.cos(PITCH),
+      6,
+    )
   })
 })
 

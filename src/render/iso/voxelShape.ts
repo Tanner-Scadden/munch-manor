@@ -17,6 +17,7 @@ import {
   SOUTH_NORMAL,
   TOWARD_CAMERA,
   UNIT,
+  UP_NORMAL,
   standingPointOf,
 } from './space'
 
@@ -362,6 +363,31 @@ const pointOf = (x: number, y: number, d: number): Point => [
   -d * DEPTH_BACK,
 ]
 
+// NOTE: a point of the blocks of a piece standing upright (`isUpright`),
+// in game pixels with no lean: x across, y straight up, z south. A grid row
+// of its art is 1 / cos PITCH tall, so its upright front shows the lens
+// the art's own rows, and a step of depth runs one game pixel north along
+// the floor. A block one deeper still sits one row lower, so each stack
+// runs back along the lens's ray as a leaning body's does.
+const UPRIGHT_ROW = 1 / Math.cos(PITCH)
+const UPRIGHT_DEPTH = 1 / Math.sin(PITCH)
+
+const uprightPointOf = (x: number, y: number, d: number): Point => [
+  x,
+  -y * UPRIGHT_ROW,
+  -d * UPRIGHT_DEPTH,
+]
+
+type PointAt = (x: number, y: number, d: number) => Point
+
+export const STRAIGHT_DOWN: Point = [0, -1, 0]
+
+// NOTE: an upright front is shaded as the floor it stands on, facing up
+// rather than straight out: the room's lights hang over the middle of the
+// room and on the walls behind the pieces, so a straight-out front would
+// catch little of them, and a piece by the south wall, facing it, none.
+const UPRIGHT_FRONT = UP_NORMAL
+
 const TOP_LENGTH = Math.hypot(DEPTH_BACK, 1)
 const FRONT: Point = SOUTH_NORMAL
 const BACK: Point = [0, 0, -1]
@@ -413,12 +439,15 @@ class Builder {
 // corners as offsets in the grid (column, grid row, depth).
 type FaceSpec = Readonly<{
   normal: Point
+  // NOTE: the face's normal for a piece standing upright (`isUpright`).
+  uprightNormal: Point
   neighbor: readonly [number, number, number]
   corners: readonly [Point, Point, Point, Point]
 }>
 
 const TOP_FACE: FaceSpec = {
   normal: TOP,
+  uprightNormal: UP_NORMAL,
   neighbor: [0, -1, 0],
   corners: [
     [0, 0, 0],
@@ -431,6 +460,7 @@ const TOP_FACE: FaceSpec = {
 const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   {
     normal: BACK,
+    uprightNormal: BACK,
     neighbor: [0, 0, 1],
     corners: [
       [0, 0, 1],
@@ -442,6 +472,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   TOP_FACE,
   {
     normal: BOTTOM,
+    uprightNormal: STRAIGHT_DOWN,
     neighbor: [0, 1, 0],
     corners: [
       [0, 1, 0],
@@ -452,6 +483,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   },
   {
     normal: LEFT,
+    uprightNormal: LEFT,
     neighbor: [-1, 0, 0],
     corners: [
       [0, 0, 0],
@@ -462,6 +494,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   },
   {
     normal: RIGHT,
+    uprightNormal: RIGHT,
     neighbor: [1, 0, 0],
     corners: [
       [1, 0, 0],
@@ -474,6 +507,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
 
 const FRONT_FACE: FaceSpec = {
   normal: FRONT,
+  uprightNormal: UPRIGHT_FRONT,
   neighbor: [0, 0, -1],
   corners: [
     [0, 0, 0],
@@ -502,6 +536,7 @@ export const voxelMeshOf = ({
   most,
   depthOf,
   isGlow,
+  isUpright = false,
 }: Readonly<{
   width: number
   height: number
@@ -512,6 +547,9 @@ export const voxelMeshOf = ({
   most?: number
   depthOf?: DepthOf
   isGlow?: (column: number, row: number) => boolean
+  // NOTE: built to stand upright (`uprightMatrixOf`), not leaned square to
+  // the pitch.
+  isUpright?: boolean
 }>): VoxelMeshData &
   Readonly<{
     lift: number
@@ -564,6 +602,9 @@ export const voxelMeshOf = ({
     row >= 0 && form.folded[row * width + column] === 1
   const shadeOf = (gridRow: number): number =>
     isGrounded ? sideShadeOf(floor - gridRow - 0.5) : 1
+  const pointAt: PointAt = isUpright ? uprightPointOf : pointOf
+  const normalOf = (spec: FaceSpec): Point =>
+    isUpright ? spec.uprightNormal : spec.normal
   const out = new Builder()
   const glowOut = new Builder()
   const faceOf = (
@@ -576,10 +617,10 @@ export const voxelMeshOf = ({
     const [column, gridRow, d] = at
     const [c0, c1, c2, c3] = spec.corners
     const corner = ([x, y, z]: Point): Point =>
-      pointOf(column + x, gridRow + y, d + z)
+      pointAt(column + x, gridRow + y, d + z)
     into.quad(
       [corner(c0), corner(c1), corner(c2), corner(c3)],
-      spec.normal,
+      normalOf(spec),
       uv,
       shade,
     )
@@ -655,7 +696,12 @@ export const voxelMeshOf = ({
   return {
     ...meshDataOf(out),
     lift: form.lift,
-    caster: casterOf({ size: [width, rows, depth], isFilled }),
+    caster: casterOf({
+      size: [width, rows, depth],
+      isFilled,
+      pointAt,
+      normalOf,
+    }),
     glow: glowOut.indices.length === 0 ? undefined : meshDataOf(glowOut),
   }
 }
@@ -670,9 +716,11 @@ const casterOf = (
   input: Readonly<{
     size: readonly [number, number, number]
     isFilled: (column: number, gridRow: number, d: number) => boolean
+    pointAt: PointAt
+    normalOf: (spec: FaceSpec) => Point
   }>,
 ): CasterMeshData => {
-  const { size, isFilled } = input
+  const { size, isFilled, pointAt, normalOf } = input
   const out = new Builder()
   for (const spec of ALL_FACES) {
     const axis = spec.neighbor[0] !== 0 ? 0 : spec.neighbor[1] !== 0 ? 1 : 2
@@ -736,12 +784,12 @@ const casterOf = (
             ]
             at[across] = (origin[across] ?? 0) + (offset[across] ?? 0) * wide
             at[down] = (origin[down] ?? 0) + (offset[down] ?? 0) * tall
-            return pointOf(at[0], at[1], at[2])
+            return pointAt(at[0], at[1], at[2])
           }
           const [c0, c1, c2, c3] = spec.corners
           out.quad(
             [corner(c0), corner(c1), corner(c2), corner(c3)],
-            spec.normal,
+            normalOf(spec),
             [0, 0],
           )
         }
@@ -949,6 +997,53 @@ export const slabMatrixOf = (
       translation[0] ?? 0,
       translation[1] ?? 0,
       translation[2] ?? 0,
+      1,
+    ],
+  }
+}
+
+// NOTE: the matrix that stands a piece's upright blocks (`isUpright`) at
+// its foot: its art's top left corner straight over the foot, on the very
+// ray `slabMatrixOf` puts it on, so the lens sees the same pixels, and its
+// front square to the floor on the foot's row, its depth running north from
+// there. A piece of the house stands straight, never turned or spun.
+export const uprightMatrixOf = (
+  placement: SlabPlacement,
+): Readonly<{ elements: ReadonlyArray<number>; isFlipped: boolean }> => {
+  const { matrix, box, texels, footY, nudge, depth } = placement
+  const across = box.width / texels.width
+  const down = box.height / texels.height
+  const isFlipped = isFlippedOf(placement)
+  const left = isFlipped ? box.x + box.width : box.x
+  const x = Math.round(matrix.a * left + matrix.c * box.y + matrix.e)
+  const y = Math.round(matrix.b * left + matrix.d * box.y + matrix.f)
+  const foot = Math.round(footY)
+  // NOTE: up the camera's up from the foot, then along the ray to straight
+  // over it: a rise of r up the pitch is r / cos PITCH straight up.
+  const at = standingPointOf({
+    x,
+    footY: foot,
+    atY: y,
+    out: nudge + (foot - y) * UNIT * Math.tan(PITCH),
+  })
+  return {
+    isFlipped,
+    elements: [
+      matrix.a * across * (isFlipped ? -1 : 1) * UNIT,
+      0,
+      0,
+      0,
+      0,
+      matrix.d * down * UNIT,
+      0,
+      0,
+      0,
+      0,
+      UNIT * depth,
+      0,
+      at.x,
+      at.y,
+      at.z,
       1,
     ],
   }

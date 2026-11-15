@@ -9,8 +9,9 @@
 // a 4x4 Bayer matrix on whole game pixels, counted on the world's own grid
 // (the floor's texels, a billboard's pixels up the camera), so it lands on
 // the art's pixels and never crawls as the camera moves. Each pixel finds its
-// room by the tile its foot stands on: a billboard's or a wall's height is
-// slid back down the camera's view to the floor first.
+// room by the tile its foot stands on: a billboard's or a body's height is
+// slid back down the camera's view to the floor first, and a piece standing
+// upright stands straight over its own tiles already.
 //
 // The cellar's dark is cut here too, off the same room map, so it ends on
 // the cellar's own tiles and walls: what its dark takes away (DARK_TAKES)
@@ -59,6 +60,10 @@ const CONSTANTS = {
   sinPitch: glFloat(Math.sin(PITCH)),
   cosPitch: glFloat(Math.cos(PITCH)),
   unit: glFloat(UNIT),
+  // NOTE: half a game pixel north, in tiles: a piece standing upright has its
+  // front on its foot, the very edge of its tiles, so it reads its room a
+  // little behind that, on its own tiles, never the wall's south of them.
+  uprightBack: glFloat(UNIT / 2),
   mapColumn: glFloat(ROOM_MAP.column),
   mapRow: glFloat(ROOM_MAP.row),
   mapColumns: glFloat(ROOM_MAP.columns),
@@ -91,11 +96,12 @@ fn lookBayer4(a: vec2<f32>) -> f32 {
 
 // NOTE: the cut, after the lights. `glow` is what the material glows of
 // itself, kept whole.
-const glCut = (glow: string, isStanding: boolean): string => {
+const glCut = (glow: string, look: Look): string => {
   const c = CONSTANTS
+  const { isStanding } = look
   return `{
   vec3 lookGlow = ${glow};
-  vec2 lookTile = floor(vec2(vPosition.x, (vPosition.z${isStanding ? ` + vPosition.y * ${c.tanPitch}` : ''}) / ${c.stretch}));
+  vec2 lookTile = floor(vec2(vPosition.x, ${footOf('vPosition', look.foot)}));
   vec2 lookRoomUv = (lookTile - vec2(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2(${c.mapColumns}, ${c.mapRows});
   vec4 lookRoom = sampleLookRoomsDirect(lookRoomUv);
   float lookSlot = floor(lookRoom.r * 255.0 + 0.5);
@@ -122,12 +128,13 @@ const glCut = (glow: string, isStanding: boolean): string => {
 }`
 }
 
-const gpuCut = (glow: string, isStanding: boolean): string => {
+const gpuCut = (glow: string, look: Look): string => {
   const c = CONSTANTS
+  const { isStanding } = look
   return `{
   let lookGlow = ${glow};
   let lookAt = input.vPosition;
-  let lookTile = floor(vec2<f32>(lookAt.x, (lookAt.z${isStanding ? ` + lookAt.y * ${c.tanPitch}` : ''}) / ${c.stretch}));
+  let lookTile = floor(vec2<f32>(lookAt.x, ${footOf('lookAt', look.foot)}));
   let lookRoomUv = (lookTile - vec2<f32>(${c.mapColumn}, ${c.mapRow}) + 0.5) / vec2<f32>(${c.mapColumns}, ${c.mapRows});
   let lookRoom = sampleLookRoomsDirect(lookRoomUv);
   let lookSlot = floor(lookRoom.r * 255.0 + 0.5);
@@ -156,22 +163,44 @@ const gpuCut = (glow: string, isStanding: boolean): string => {
 
 const TEXTURES = ['lookRamps', 'lookRooms']
 
-// NOTE: the three bits: what stands (billboards and bodies of blocks, its
-// room read at its foot, down the camera's up), the house's lit planes (the
+// NOTE: how a bit reads its pixel: as what stands (the dark taken off by
+// how much a face looks up) or as the house's planes, and its room at its
+// foot down the camera's up or straight down.
+type Look = Readonly<{ isStanding: boolean; foot: Foot }>
+
+// NOTE: where a pixel's foot is, the tile it reads its room from: slid down
+// the camera's view (a leaning billboard or body), straight under it (the
+// house's planes), or straight under it and a little behind (a piece
+// standing upright, whose front is on the very edge of its tiles).
+type Foot = 'DownTheView' | 'Under' | 'BehindTheFront'
+
+const footOf = (at: string, foot: Foot): string => {
+  const c = CONSTANTS
+  const rows = `${at}.z / ${c.stretch}`
+  return {
+    DownTheView: `(${at}.z + ${at}.y * ${c.tanPitch}) / ${c.stretch}`,
+    Under: rows,
+    BehindTheFront: `${rows} - ${c.uprightBack}`,
+  }[foot]
+}
+
+// NOTE: the four bits: what stands (billboards and bodies of blocks, its
+// room read at its foot, down the camera's up), the pieces of the house
+// standing upright (`isUpright`, straight down), the house's lit planes (the
 // floor and the walls' art, straight down), and the walls' toon blocks,
 // which glow of nothing.
 const bitOf = (
-  input: Readonly<{ name: string; glow: GlowOf; isStanding: boolean }>,
+  input: Readonly<{ name: string; glow: GlowOf; look: Look }>,
 ): ShaderBit => ({
   name: input.name,
   textures: TEXTURES,
   gpu: {
     header: GPU_HEADER,
-    fragment: { lobePostLighting: gpuCut(input.glow.gpu, input.isStanding) },
+    fragment: { lobePostLighting: gpuCut(input.glow.gpu, input.look) },
   },
   gl: {
     header: GL_HEADER,
-    fragment: { lobePostLighting: glCut(input.glow.gl, input.isStanding) },
+    fragment: { lobePostLighting: glCut(input.glow.gl, input.look) },
   },
 })
 
@@ -180,16 +209,23 @@ type GlowOf = Readonly<{ gpu: string; gl: string }>
 const EMISSIVE: GlowOf = { gpu: 'emissive', gl: 'emissive' }
 const NO_GLOW: GlowOf = { gpu: 'vec3<f32>(0.0)', gl: 'vec3(0.0)' }
 
-export type LookKind = 'Standing' | 'House' | 'Toon'
+export type LookKind = 'Standing' | 'Upright' | 'House' | 'Toon'
+
+const PLANE: Look = { isStanding: false, foot: 'Under' }
 
 const LOOK_BITS: Readonly<Record<LookKind, ShaderBit>> = {
   Standing: bitOf({
     name: 'munchLookStanding',
     glow: EMISSIVE,
-    isStanding: true,
+    look: { isStanding: true, foot: 'DownTheView' },
   }),
-  House: bitOf({ name: 'munchLookHouse', glow: EMISSIVE, isStanding: false }),
-  Toon: bitOf({ name: 'munchLookToon', glow: NO_GLOW, isStanding: false }),
+  Upright: bitOf({
+    name: 'munchLookUpright',
+    glow: EMISSIVE,
+    look: { isStanding: true, foot: 'BehindTheFront' },
+  }),
+  House: bitOf({ name: 'munchLookHouse', glow: EMISSIVE, look: PLANE }),
+  Toon: bitOf({ name: 'munchLookToon', glow: NO_GLOW, look: PLANE }),
 }
 
 export type LookOptions = Readonly<{

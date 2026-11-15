@@ -255,6 +255,7 @@ const pickMeshOf = (placement: VoxelPlacement, most: number): VoxelMeshData => {
     isDark: (column, row) => masks.dark[row * width + columnOf(column)] === 1,
     most,
     ...(depthOf === undefined ? {} : { depthOf }),
+    isUpright: placement.isUpright,
     uvOf: (column, row) => [columnOf(column) + 0.5, row + 0.5],
   })
   meshes.set(placement.carved, mesh)

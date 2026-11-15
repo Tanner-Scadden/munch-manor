@@ -1,10 +1,12 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Option, Result, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import {
   type Palette,
   type Sprite,
   TOP_LEFT,
+  bakeShapes,
+  deepSprite,
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
@@ -21,8 +23,9 @@ import { maybePadlockedExit } from '../../world/level/exits'
 import { tilesWithSymbol } from '../../world/level/tileGrid'
 import type { World } from '../../world/schema/world'
 import { Oven } from '../../world/schema/worldSchema'
-import { type Drawable, IN_FRONT_PX } from '../depth'
+import { type Drawable, ON_FRONT_PX } from '../depth'
 import { pixelArt, rect } from '../drawing'
+import { mixColor } from '../iso/mood'
 
 // NOTE: the kitchen is drawn like the parlour: everything that never moves
 // is part of the room's one baked image, and only the ovens' glow and their
@@ -852,45 +855,79 @@ type OvenBox = Readonly<{
   bottom: number
 }>
 
-const windowOf = (box: OvenBox): Box => ({
-  x: box.left + 6,
-  y: box.top + 10,
-  width: box.right - box.left - 12,
-  height: 4,
-})
+// NOTE: the oven's window on the stove's face, inset from its sides; an
+// oven is always two tiles wide.
+const WINDOW_INSET_PX = 6
+const WINDOW_TOP_PX = 10
+const WINDOW_WIDTH = TILE_SIZE * 2 - WINDOW_INSET_PX * 2
+const WINDOW_HEIGHT = 4
+const GLOW_STEPS = 10
+
+const READY_GLASS = 0xff8a2a
+const READY_GLOW = 0xffe066
+
+const hexOf = (color: number): string =>
+  `#${pipe(color.toString(16), String.padStart(6, '0'))}`
+
+// NOTE: each window stands upright on the carved stove's face
+// (`ON_FRONT_PX`), a block deep.
+const windowSprite = (shapes: ReadonlyArray<Canvas.Shape>): Sprite =>
+  deepSprite(bakeShapes(shapes), { most: 1, isUpright: true })
+
+const plainWindow = (color: string): Sprite =>
+  windowSprite([rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, color)])
+
+// NOTE: a ready oven's glass with its pulse over the middle rows, mixed
+// solid at each tenth of the pulse (a pixel under half opacity carves to
+// nothing).
+const READY_WINDOWS: Array.NonEmptyReadonlyArray<Sprite> = [
+  plainWindow(hexOf(READY_GLASS)),
+  ...Array.makeBy(GLOW_STEPS, step =>
+    windowSprite([
+      rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hexOf(READY_GLASS)),
+      rect(
+        1,
+        1,
+        WINDOW_WIDTH - 2,
+        2,
+        hexOf(
+          mixColor({
+            from: READY_GLASS,
+            to: READY_GLOW,
+            share: (step + 1) / GLOW_STEPS,
+          }),
+        ),
+      ),
+    ]),
+  ),
+]
+const BELCHING_WINDOW = plainWindow('#fff2a0')
+const COOLING_WINDOW = plainWindow('#5a1a10')
+const COOLED_WINDOW = plainWindow('#3a120c')
 
 // NOTE: the oven's window, on the carved stove's face.
 const windowGlowShapes = (
   oven: Oven,
   box: OvenBox,
   pulse: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const glass = windowOf(box)
-  return Oven.match(oven, {
-    Ready: () => [
-      rect(glass.x, glass.y, glass.width, glass.height, '#ff8a2a'),
-      Canvas.Rect({
-        x: glass.x + 1,
-        y: glass.y + 1,
-        width: glass.width - 2,
-        height: 2,
-        fill: `rgba(255, 224, 102, ${pulse})`,
-      }),
-    ],
-    Belching: () => [
-      rect(glass.x, glass.y, glass.width, glass.height, '#fff2a0'),
-    ],
-    Cooling: ({ remainingMs }) => [
-      rect(
-        glass.x,
-        glass.y,
-        glass.width,
-        glass.height,
-        remainingMs > OVEN_RULES.cooldownMs / 2 ? '#5a1a10' : '#3a120c',
-      ),
-    ],
-  })
-}
+): ReadonlyArray<Canvas.Shape> => [
+  placeAt(
+    box.left + WINDOW_INSET_PX,
+    box.top + WINDOW_TOP_PX,
+    Oven.match(oven, {
+      Ready: () =>
+        Option.getOrElse(
+          Array.get(READY_WINDOWS, Math.round(pulse * GLOW_STEPS)),
+          () => READY_WINDOWS[0],
+        ),
+      Belching: () => BELCHING_WINDOW,
+      Cooling: ({ remainingMs }) =>
+        remainingMs > OVEN_RULES.cooldownMs / 2
+          ? COOLING_WINDOW
+          : COOLED_WINDOW,
+    }),
+  ),
+]
 
 const pulseAt = (elapsedMs: number): number =>
   Math.round(
@@ -952,8 +989,8 @@ export const ovenGlowShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
   )
 }
 
-// NOTE: each oven's window, standing in front of the carved stove
-// (`IN_FRONT_PX`): glowing while it is ready to belch, white hot while it
+// NOTE: each oven's window, standing upright on the carved stove's face
+// (`ON_FRONT_PX`): glowing while it is ready to belch, white hot while it
 // does, and banked down to embers while it cools.
 export const ovenWindowDrawables = (model: World): ReadonlyArray<Drawable> => {
   if (!isKitchenShown(model)) {
@@ -966,7 +1003,7 @@ export const ovenWindowDrawables = (model: World): ReadonlyArray<Drawable> => {
       onNone: () => [],
       onSome: (oven): ReadonlyArray<Drawable> => [
         {
-          footY: box.bottom + IN_FRONT_PX,
+          footY: box.bottom + ON_FRONT_PX,
           rank: 'Prop',
           shapes: windowGlowShapes(oven, box, pulse),
         },

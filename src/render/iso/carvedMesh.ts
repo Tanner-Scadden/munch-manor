@@ -32,7 +32,7 @@ import {
   standingPointOf,
   zOf,
 } from './space'
-import { DEPTH_BACK } from './voxelShape'
+import { DEPTH_BACK, STRAIGHT_DOWN } from './voxelShape'
 
 // NOTE: a geometry's arrays, its colors four floats a corner, 0 to 1 as
 // drawn (sRGB): the renderer turns them to linear light.
@@ -55,7 +55,7 @@ export type CarvedPlacement = Readonly<{
 type Point = readonly [number, number, number]
 
 const TOP: Point = UP_NORMAL
-const BOTTOM: Point = [0, -1, 0]
+const BOTTOM: Point = STRAIGHT_DOWN
 const FRONT: Point = [TOWARD_CAMERA.x, TOWARD_CAMERA.y, TOWARD_CAMERA.z]
 const BACK: Point = [-TOWARD_CAMERA.x, -TOWARD_CAMERA.y, -TOWARD_CAMERA.z]
 

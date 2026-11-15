@@ -35,6 +35,7 @@ import {
   isGroundedOf,
   slabMatrixOf,
   solidBoundsOf,
+  uprightMatrixOf,
   voxelMeshOf,
 } from './voxelShape'
 
@@ -134,6 +135,7 @@ export type VoxelPlacement = Readonly<{
   masks: PixelMasks
   texels: Readonly<{ width: number; height: number }>
   isFlipped: boolean
+  isUpright: boolean
   elements: ReadonlyArray<number>
   blocks: number
 }>
@@ -160,46 +162,64 @@ export type Cube = Readonly<{
 const lit = (
   textures: Textures,
   options: ConstructorParameters<typeof Material3D>[0],
+  look: StandLook,
 ) =>
   new Material3D({
     vertexColors: true,
     roughness: 1,
     metallic: 0,
     specular: { factor: 0 },
-    ...textures.lookOptions('Standing'),
+    ...textures.lookOptions(look),
     ...options,
   })
+
+// NOTE: a body's look reads its room at its foot down the lens's ray; an
+// upright piece's straight down, where it stands.
+type StandLook = 'Standing' | 'Upright'
 
 // NOTE: a fading body's blocks, blended but still writing their depth, so
 // its front faces (drawn first, voxelShape.ts) hide the tops and sides
 // behind them and it fades as the flat sprite did, never showing its insides.
 const fadedOf = (
-  textures: Textures,
-  sheet: Texture,
-  alpha: number,
+  input: Readonly<{
+    textures: Textures
+    sheet: Texture
+    alpha: number
+    look: StandLook
+  }>,
 ): Material3D => {
-  const material = lit(textures, {
-    baseColorTexture: sheet,
-    alphaMode: 'blend',
-    alpha,
-  })
+  const { textures, sheet, alpha, look } = input
+  const material = lit(
+    textures,
+    { baseColorTexture: sheet, alphaMode: 'blend', alpha },
+    look,
+  )
   material.state.depthMask = true
   return material
 }
 
 // NOTE: a sprite's hand set depth as the lens carve reads it: a box is its
 // cap deep everywhere, a map a digit a pixel (`.` the round default), read
-// mirrored for a body facing the other way.
+// mirrored for a body facing the other way. An upright piece is a box whose
+// low rows' stacks stop at the floor: a block one deeper is one row lower,
+// so a row this many rows over the foot reaches this many blocks back
+// before it would sink under it.
 const depthOfSprite = (
   input: Readonly<{
     depth: SpriteDepth | undefined
     most: number
     columnOf: (column: number) => number
+    bottom: number
   }>,
 ): Readonly<{ depthOf?: DepthOf }> => {
-  const { depth, most, columnOf } = input
+  const { depth, most, columnOf, bottom } = input
   if (depth === undefined) {
     return {}
+  }
+  if (depth.isUpright === true) {
+    return {
+      depthOf: (_column, row) => Math.max(1, Math.min(most, bottom + 1 - row)),
+    }
   }
   const { rows } = depth
   if (rows !== undefined) {
@@ -242,8 +262,11 @@ export class VoxelBatch {
   // lowest solid row.
   private readonly geometries = new Map<Texture, Map<ShapeKey, Carved>>()
   private readonly solidBottoms = new Map<Texture, number>()
-  // NOTE: each sheet's materials by fade step, the last step opaque.
-  private readonly sheetMaterials = new Map<Texture, Array<Material3D>>()
+  // NOTE: each sheet's materials by look and fade step, the last step
+  // opaque.
+  private readonly sheetMaterials: Readonly<
+    Record<StandLook, Map<Texture, Array<Material3D>>>
+  > = { Standing: new Map(), Upright: new Map() }
   // NOTE: by color and glow in tenths as one number, asked for every cube
   // each frame.
   private readonly colorMaterials = new Map<number, Material3D>()
@@ -324,7 +347,7 @@ export class VoxelBatch {
     if (placement === undefined) {
       return false
     }
-    const { carved, sheet, elements, blocks } = placement
+    const { carved, sheet, elements, blocks, isUpright } = placement
     reach.blocks = blocks
     const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
     this.fill({
@@ -333,7 +356,11 @@ export class VoxelBatch {
         ? this.flash
         : isGlowing
           ? this.glowMaterialOf(sheet)
-          : this.sheetMaterialOf(sheet, isOpaque ? FADE_STEPS : step),
+          : this.sheetMaterialOf({
+              sheet,
+              step: isOpaque ? FADE_STEPS : step,
+              look: isUpright ? 'Upright' : 'Standing',
+            }),
       elements,
       passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
     })
@@ -349,14 +376,18 @@ export class VoxelBatch {
         passes: RenderPassBit.OPAQUE,
       })
     }
-    if (alpha >= CASTING_ALPHA && !isGlowing) {
+    // NOTE: a piece standing upright casts nothing: the room's light hangs
+    // high, nearly over the wall it stands against, so its shadow would
+    // fall under it or on the wall behind, and its own box would shade its
+    // front.
+    if (alpha >= CASTING_ALPHA && !isGlowing && !isUpright) {
       this.cast(carved.caster)
     }
     if (!this.isBlendWarm && this.used < SLOTS) {
       this.isBlendWarm = true
       this.fill({
         geometry: carved.geometry,
-        material: this.sheetMaterialOf(sheet, 1),
+        material: this.sheetMaterialOf({ sheet, step: 1, look: 'Standing' }),
         elements: Array.map(elements, (value, index) =>
           index < 12 && index % 4 !== 3 ? value * WARM_SCALE : value,
         ),
@@ -443,6 +474,8 @@ export class VoxelBatch {
       solidBottom: this.solidBottomOf(texture, masks),
     })
     const isFlipped = isFlippedOf({ matrix, box: shape })
+    const depth = spriteDepthOf(shape)
+    const isUpright = depth?.isUpright === true
     const carved = this.carvedOf({
       texture,
       sheet,
@@ -450,14 +483,18 @@ export class VoxelBatch {
       isFlipped,
       isGrounded,
       most,
-      depth: spriteDepthOf(shape),
+      depth,
       eyes,
     })
     // NOTE: a body on the floor moves toward the lens until its lowest
     // block stands on it; any part moves at least as far as the parts
-    // before it reach, so it shows over them as the 2D game drew it.
-    const blocks = Math.max(isGrounded ? carved.lift : 0, reach.blocks)
-    const { elements } = slabMatrixOf({
+    // before it reach, so it shows over them as the 2D game drew it. An
+    // upright piece already stands its front on the floor.
+    const blocks = Math.max(
+      isGrounded && !isUpright ? carved.lift : 0,
+      reach.blocks,
+    )
+    const { elements } = (isUpright ? uprightMatrixOf : slabMatrixOf)({
       matrix,
       box: shape,
       texels,
@@ -468,13 +505,23 @@ export class VoxelBatch {
       ...(spin === undefined ? {} : { spin }),
     })
     if (into === undefined) {
-      return { carved, sheet, masks, texels, isFlipped, elements, blocks }
+      return {
+        carved,
+        sheet,
+        masks,
+        texels,
+        isFlipped,
+        isUpright,
+        elements,
+        blocks,
+      }
     }
     into.carved = carved
     into.sheet = sheet
     into.masks = masks
     into.texels = texels
     into.isFlipped = isFlipped
+    into.isUpright = isUpright
     into.elements = elements
     into.blocks = blocks
     return into
@@ -595,7 +642,12 @@ export class VoxelBatch {
       isFlipped ? width - 1 - column : column
     const sheetWidth = Math.max(1, sheet.source.width)
     const sheetHeight = Math.max(1, sheet.source.height)
-    const hand = depthOfSprite({ depth, most, columnOf })
+    const hand = depthOfSprite({
+      depth,
+      most,
+      columnOf,
+      bottom: this.solidBottomOf(texture, masks),
+    })
     const { lift, caster, glow, ...mesh } = voxelMeshOf({
       width,
       height,
@@ -605,6 +657,7 @@ export class VoxelBatch {
       isGrounded,
       most,
       ...hand,
+      isUpright: depth?.isUpright === true,
       uvOf: (column, row) => [
         (x + columnOf(column) + 0.5) / sheetWidth,
         (y + row + 0.5) / sheetHeight,
@@ -627,16 +680,25 @@ export class VoxelBatch {
     return carved
   }
 
-  private sheetMaterialOf(sheet: Texture, step: number): Material3D {
+  private sheetMaterialOf(
+    input: Readonly<{ sheet: Texture; step: number; look: StandLook }>,
+  ): Material3D {
+    const { sheet, step, look } = input
+    const byLook = this.sheetMaterials[look]
     const steps =
-      this.sheetMaterials.get(sheet) ??
+      byLook.get(sheet) ??
       Array.makeBy(FADE_STEPS + 1, at =>
         at === FADE_STEPS
-          ? lit(this.textures, { baseColorTexture: sheet })
-          : fadedOf(this.textures, sheet, at / FADE_STEPS),
+          ? lit(this.textures, { baseColorTexture: sheet }, look)
+          : fadedOf({
+              textures: this.textures,
+              sheet,
+              alpha: at / FADE_STEPS,
+              look,
+            }),
       )
-    this.sheetMaterials.set(sheet, steps)
-    return steps[step] ?? lit(this.textures, { baseColorTexture: sheet })
+    byLook.set(sheet, steps)
+    return steps[step] ?? lit(this.textures, { baseColorTexture: sheet }, look)
   }
 
   private glowMaterialOf(sheet: Texture): Material3D {
@@ -668,7 +730,7 @@ export class VoxelBatch {
             baseColor: 0x000000,
             emissive: { color, strength },
           })
-        : lit(this.textures, { baseColor: color })
+        : lit(this.textures, { baseColor: color }, 'Standing')
     this.colorMaterials.set(key, material)
     return material
   }
@@ -687,7 +749,8 @@ export class VoxelBatch {
     this.cube.destroy()
     this.geometries.clear()
     this.solidBottoms.clear()
-    this.sheetMaterials.clear()
+    this.sheetMaterials.Standing.clear()
+    this.sheetMaterials.Upright.clear()
     this.colorMaterials.clear()
     this.glowMaterials.clear()
   }

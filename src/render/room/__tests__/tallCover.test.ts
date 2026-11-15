@@ -1,10 +1,13 @@
-import { Array, Option, Order } from 'effect'
+import { Array, Option, Order, Record } from 'effect'
 import type { Canvas } from 'foldkit'
 import { describe, expect, test } from 'vitest'
 
+import { spriteDepthOf } from '../../../art/sprite'
+import { TILE_SIZE } from '../../../shared/constants'
 import { zombieAt } from '../../../test/testing'
 import { levelFor } from '../../../world/level/arena'
 import { MANOR_SPEC } from '../../../world/level/plan'
+import { COVER_SYMBOLS, symbolAt } from '../../../world/level/tileGrid'
 import { isInsideRoomAt, isSolidAt } from '../../../world/level/tileQueries'
 import type { Player, Zombie } from '../../../world/schema/entitySchema'
 import { initialPlayer } from '../../../world/schema/worldSchema'
@@ -74,7 +77,46 @@ const drawnFor = (
     ({ footY }) => footY === piece.footY,
   )
 
+// NOTE: how deep a piece carved upright goes, and the cover tiles north of
+// its foot under its middle: what blocks a walker there.
+const uprightDepthOf = ({ shapes }: TallCover): Option.Option<number> =>
+  Option.flatMap(Array.head(shapes), shape =>
+    shape._tag === 'Image' && spriteDepthOf(shape)?.isUpright === true
+      ? Option.fromNullishOr(spriteDepthOf(shape)?.most)
+      : Option.none(),
+  )
+
+const solidDepthOf = ({ left, right, footY }: TallCover): number => {
+  const column = Math.floor((left + right) / 2 / TILE_SIZE)
+  const footRow = Math.floor(footY / TILE_SIZE)
+  const isCover = (row: number) =>
+    Option.match(symbolAt(level, column, row), {
+      onNone: () => false,
+      onSome: symbol => Record.has(COVER_SYMBOLS, symbol),
+    })
+  let rows = 0
+  while (isCover(footRow - rows - 1)) {
+    rows += 1
+  }
+  return rows * TILE_SIZE
+}
+
 describe('tall cover', () => {
+  test('a piece against a wall stands upright exactly as deep as it blocks', () => {
+    const upright = Array.getSomes(
+      Array.map(tallCoverOf(level), tall =>
+        Option.map(uprightDepthOf(tall), most => ({
+          most,
+          solid: solidDepthOf(tall),
+        })),
+      ),
+    )
+    expect(upright.length).toBeGreaterThan(20)
+    Array.forEach(upright, ({ most, solid }) => {
+      expect(most).toBe(solid)
+    })
+  })
+
   test('the levels have tall pieces to stand behind', () => {
     expect(tallCoverOf(level).length).toBeGreaterThan(0)
   })
