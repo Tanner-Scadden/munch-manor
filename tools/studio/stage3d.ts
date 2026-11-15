@@ -497,12 +497,12 @@ class StageRenderer {
       this.app.renderer.resize(lens.width, lens.height, ratio)
     }
     const built = this.builtFor(level)
-    this.textures.lookAt(level)
     if (this.textures.loaded !== this.lastLoaded && this.textures.isSettled) {
       this.lastLoaded = this.textures.loaded
       built.floor.paintLeaves(floorArtOf(level))
     }
     const setup = stageSetupOf(level, preset)
+    this.textures.lookAt(level, setup.lights.isDark)
     built.lights.apply({
       frame: setup.lights,
       player: {
