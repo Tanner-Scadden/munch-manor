@@ -77,7 +77,7 @@ export class Textures {
   // when no new frame comes (a paused game, a held scene).
   private readonly onLoaded: () => void
 
-  // NOTE: the look pass's shared textures, only with `?lookpass`
+  // NOTE: the look pass's shared textures, off with `?oldlook`
   // (src/render/iso/look.ts).
   private readonly look: Option.Option<LookTextures> = IS_LOOK
     ? Option.some(new LookTextures())

@@ -1,6 +1,6 @@
-// The look pass (src/render/iso/look.ts, lookSpecs.ts): the dining room and
-// the cellar in a break, a hot wave, a frenzy, and a break with every room
-// open, drawn the old way and with `lookpass`, as
+// The look pass (src/render/iso/look.ts, lookSpecs.ts): every room in a
+// break or a hot wave, the dining room in a frenzy, and the cellar dark and
+// lit, drawn with `oldlook` and as the game draws it, as
 // `look-<TAG>-<old|new>-<viewport>-<scene>.png`, so the dithered bands, the
 // dark, and each room's colors can be set side by side.
 //   TAG=try bun run heavy -- --shared bun tools/audit/shotsLook.ts
@@ -49,11 +49,17 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
     name: 'cellar-break',
     query: 'px=840&py=110&break=open&tool=Bulb&firedms=200&freeze=20',
   },
+  { name: 'library-break', query: 'px=520&py=90&break=open&freeze=20' },
+  {
+    name: 'kitchen-wave',
+    query: 'px=160&py=-75&start=wave&heat=0.8&crowd=8&crowdx=20&crowdy=-130&freeze=20',
+  },
+  { name: 'parlour-break', query: 'px=-160&py=130&break=open&freeze=20' },
 ]
 
 const LOOKS: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
-  { name: 'old', query: '' },
-  { name: 'new', query: '&lookpass' },
+  { name: 'old', query: '&oldlook' },
+  { name: 'new', query: '' },
 ]
 
 runHarnessAudit(

@@ -1,7 +1,7 @@
 // The look pass's every tunable, as plain data: how the 3D light is cut into
 // dithered bands, how dark the dark is, and each room's color script. Only
-// the renderer reads it, and only with `?lookpass` in the address
-// (src/render/iso/look.ts), so the old look stays one address away.
+// the renderer reads it (src/render/iso/look.ts), and `?oldlook` in the
+// address turns it off, so the old look stays one address away.
 //
 // Kept plain on purpose: Munch Studio's light and color lab is to slide these
 // numbers and colors and propose new ones as a note, so nothing here is code,
@@ -27,6 +27,9 @@ export type RoomLook = Readonly<{
   accent: number
   // NOTE: how much of that band is the accent, 0 to 1.
   accentShare: number
+  // NOTE: the room's own fill in place of `roomFill`, for a room with few
+  // flames of its own to carry it (the library).
+  fill?: number
 }>
 
 export type LookSpecs = Readonly<{
@@ -84,15 +87,17 @@ export const LOOK: LookSpecs = {
       accent: 0xff6eb4,
       accentShare: 0.65,
     },
-    // NOTE: stubbed for the next pass: moonlit violet.
+    // NOTE: moonlit lavender, pale: the ramp tints the art it lights, so a
+    // deep violet over the brown wood would draw it black.
     Library: {
-      shadow: 0x5a4aa0,
-      mid: 0xa898ff,
-      light: 0xe4dcff,
+      shadow: 0x9a8cc0,
+      mid: 0xe6defa,
+      light: 0xfff8f0,
       accent: 0xffd27a,
       accentShare: 0.5,
+      fill: 1,
     },
-    // NOTE: stubbed for the next pass: oven orange, with teal steam.
+    // NOTE: oven orange, with teal steam.
     Kitchen: {
       shadow: 0xa04a28,
       mid: 0xff9a48,

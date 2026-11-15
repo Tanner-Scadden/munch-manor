@@ -189,7 +189,7 @@ const furnitureOf = (
   )
 }
 
-// NOTE: under the look pass (`?lookpass`), a shut room's fill is put out (it
+// NOTE: under the look pass (on unless `?oldlook`), a shut room's fill is put out (it
 // draws black anyway) and an open room's is turned down, so the flames and
 // the lamp carry the picture.
 const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame =>
@@ -197,9 +197,11 @@ const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame =>
     ? {
         ...frame,
         fillShares: Array.map(frame.fillShares, (share, index) =>
-          Option.exists(Array.get(level.rooms, index), ({ isOpen }) => isOpen)
-            ? share * LOOK.roomFill
-            : 0,
+          Option.match(Array.get(level.rooms, index), {
+            onNone: () => 0,
+            onSome: ({ id, isOpen }) =>
+              isOpen ? share * (LOOK.rooms[id]?.fill ?? LOOK.roomFill) : 0,
+          }),
         ),
       }
     : frame

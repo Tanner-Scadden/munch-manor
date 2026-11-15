@@ -1,7 +1,7 @@
-// The look pass on the GPU: `?lookpass` in the address cuts the 3D light into
+// The look pass on the GPU, the house's look: it cuts the 3D light into
 // a room's dithered bands of color (the tunables in src/render/iso/lookSpecs.ts,
-// their bytes in src/render/iso/lookTexels.ts). Without it nothing here runs
-// and the house draws as before, to compare.
+// their bytes in src/render/iso/lookTexels.ts). `?oldlook` in the address turns it
+// off, and the house draws as before, to compare.
 //
 // The cut is one shader bit on every lit material, after the lights are
 // summed. The light alone is read back out of the lit color (the lit color
@@ -33,8 +33,8 @@ import {
 } from './lookTexels'
 import { PITCH, STRETCH, UNIT } from './space'
 
-export const IS_LOOK = new URLSearchParams(window.location.search).has(
-  'lookpass',
+export const IS_LOOK = !new URLSearchParams(window.location.search).has(
+  'oldlook',
 )
 
 // NOTE: the void behind the house under the look: black.
@@ -90,8 +90,8 @@ const glCut = (glow: string, isStanding: boolean): string => {
   const c = CONSTANTS
   return `{
   vec3 lookGlow = ${glow};
-  vec3 lookMask = step(vec3(0.03), albedo);
-  vec3 lookLit = max(finalColor - lookGlow, vec3(0.0)) / max(albedo, vec3(0.03)) * lookMask;
+  vec3 lookMask = step(vec3(0.002), albedo);
+  vec3 lookLit = max(finalColor - lookGlow, vec3(0.0)) / max(albedo, vec3(0.002)) * lookMask;
   float lookLevel = max(max(lookLit.r, lookLit.g), lookLit.b);
   vec3 lookLight = lookLit + (1.0 - lookMask) * lookLevel;
   vec3 lookP0 = sampleLookRampsDirect(vec2(0.5 / ${c.columns}, 0.5 / ${c.rows})).rgb;
@@ -119,8 +119,8 @@ const gpuCut = (glow: string, isStanding: boolean): string => {
   const c = CONSTANTS
   return `{
   let lookGlow = ${glow};
-  let lookMask = step(vec3<f32>(0.03), albedo);
-  let lookLit = max(finalColor - lookGlow, vec3<f32>(0.0)) / max(albedo, vec3<f32>(0.03)) * lookMask;
+  let lookMask = step(vec3<f32>(0.002), albedo);
+  let lookLit = max(finalColor - lookGlow, vec3<f32>(0.0)) / max(albedo, vec3<f32>(0.002)) * lookMask;
   let lookLevel = max(max(lookLit.r, lookLit.g), lookLit.b);
   let lookLight = lookLit + (1.0 - lookMask) * lookLevel;
   let lookP0 = sampleLookRampsDirect(vec2<f32>(0.5 / ${c.columns}, 0.5 / ${c.rows})).rgb;
