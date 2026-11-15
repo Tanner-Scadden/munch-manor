@@ -17,12 +17,16 @@ import {
   TOP_LEFT,
   bakeShapes,
   boundsOf,
-  group,
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
 import { gunIcon } from '../../art/sprites/guns'
-import { type Camera, worldToView } from '../../render/camera'
+import {
+  type Camera,
+  placedAt,
+  viewBoxOf,
+  worldToView,
+} from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
 import { featLockShapes, lockSpotIn } from '../../render/featLockView'
 import {
@@ -56,7 +60,7 @@ import {
   maybeOfferInReach,
   offersOf,
 } from '../../world/shop/purchase'
-import { ZERO_VECTOR, clamp } from '../../world/step/geometry'
+import { clamp } from '../../world/step/geometry'
 
 // NOTE: a purchasable says what it costs without a word: a dark tag with
 // the coin and the price hangs off a nail. Walk up and it brightens, with a
@@ -678,9 +682,10 @@ const isTagInView =
   (model: Model, camera: Camera) =>
   (offer: Offer): boolean => {
     const { height } = tagOf(model, offer)
+    const top = worldToView(camera, offer.spot).y
+    const view = viewBoxOf(camera)
     return (
-      offer.spot.y + height >= camera.y &&
-      offer.spot.y <= camera.y + camera.height
+      top + height * camera.scale >= view.y && top <= view.y + view.height
     )
   }
 
@@ -688,54 +693,48 @@ const isTagInView =
 // hang a feat's lock (src/render/featLockView.ts) where their tag will.
 const LOCK_DROP_PX = 6
 
-const lockShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(
+const lockShapes = (
+  model: Model,
+  camera: Camera,
+): ReadonlyArray<Canvas.Shape> =>
+  Array.map(
     Array.getSomes([
       maybeStoveLock(model, focusSlotOf(model)),
       maybeValveLock(model, focusSlotOf(model)),
     ]),
-    ({ feat, spot }) =>
-      featLockShapes(
-        feat,
-        focusOf(model),
-        lockSpotIn(levelOf(model), { x: spot.x, y: spot.y + LOCK_DROP_PX }),
-      ),
+    ({ feat, spot }) => {
+      const at = lockSpotIn(levelOf(model), {
+        x: spot.x,
+        y: spot.y + LOCK_DROP_PX,
+      })
+      return placedAt(camera, at, featLockShapes(feat, focusOf(model), at))
+    },
   )
 
-const purchaseShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> => [
-  ...lockShapes(model),
-  ...Array.flatMap(
-    Array.filter(
-      offersOf(model, focusSlotOf(model)),
-      isTagInView(model, camera),
-    ),
-    offerShapes(model, maybeOfferInReach(model, focusSlotOf(model))),
-  ),
-]
-
-// NOTE: drawn on the overlay, over the actors and the HUD strip, placed
-// in the world by the screen camera, so a tag is never lost behind a
-// zombie at the boards or dimmed by the strip it hangs under.
+// NOTE: drawn on the overlay, over the actors and the HUD strip, each tag
+// placed on its spot through the lens by the screen camera, so a tag is
+// never lost behind a zombie at the boards or dimmed by the strip it hangs
+// under.
 export const purchaseOverlayShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
-    Array.match(purchaseShapes(model, camera), {
-      onEmpty: () => [],
-      onNonEmpty: shapes => [
-        group({
-          translate: worldToView(camera, ZERO_VECTOR),
-          scale:
-            camera.scale === 1
-              ? undefined
-              : { x: camera.scale, y: camera.scale },
-          shapes,
-        }),
-      ],
-    }),
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => [
+    ...lockShapes(model, camera),
+    ...Array.map(
+      Array.filter(
+        offersOf(model, focusSlotOf(model)),
+        isTagInView(model, camera),
+      ),
+      offer =>
+        placedAt(
+          camera,
+          offer.spot,
+          offerShapes(model, maybeOfferInReach(model, focusSlotOf(model)))(
+            offer,
+          ),
+        ),
+    ),
+  ],
 )

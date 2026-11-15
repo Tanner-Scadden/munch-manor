@@ -14,9 +14,10 @@
 // - Light is new: each room's own, the flames, the lamp that follows the
 //   player, the muzzle flash, and glowing tracers.
 //
-// The camera is locked to the game's own (src/render/camera.ts): the floor
-// lands exactly where the game's map puts it, so the aim, the touch controls,
-// and the overlay's markers line up with no change.
+// The camera looks through the game's lens (src/render/lens.ts), turned off
+// north with a slight perspective, on the game's own camera
+// (src/render/camera.ts): the aim, the touch controls, and the overlay's
+// markers place themselves through the same lens, so they line up.
 //
 // Everything that moves reads the Model: the wind and the flicker from its
 // clock, the flash from the gun's recoil, the camera from the game's. So the
@@ -78,6 +79,7 @@ import {
   plantsOf,
   standPlant,
 } from './house'
+import { aimSceneCamera, sceneLensOf } from './lensCamera'
 import { AMBIENT, type LightsFrame, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
 import { LOOK_TUNING } from './lookSpecs'
@@ -95,7 +97,6 @@ import {
 import { type Chandelier, chandelierOf, isChandelierSprite } from './showpieces'
 import {
   OVERHEAD_FOOT_PX,
-  PITCH,
   UNIT,
   canvasStepOf,
   standingPointOf,
@@ -113,7 +114,11 @@ export const STORM_LIFT = AMBIENT * 3
 
 // NOTE: the void behind the house: black, as shut rooms and the yard draw.
 const BACKGROUND = 0x000000
-const CAMERA_DISTANCE = 80
+// NOTE: the lens's depth range, in world units from the lens: it stands
+// LENS_DISTANCE from the floor it looks at (src/render/lens.ts), and the
+// house is about three screens wide.
+const LENS_NEAR = 4
+const LENS_FAR = 200
 const TRACER_RADIUS = 0.05
 
 // NOTE: what stands carved (voxels.ts), by its rank, and the most blocks
@@ -308,9 +313,9 @@ export class IsoScene {
     })
     app.stage.addChild(this.view)
     const { camera, root } = this.view
-    camera.mode = 'orthographic'
-    camera.near = 0.1
-    camera.far = 400
+    camera.mode = 'perspective'
+    camera.near = LENS_NEAR
+    camera.far = LENS_FAR
     // NOTE: the rest of the light is each room's own (lights.ts).
     this.ambient = new AmbientLight({ color: 0xffffff, intensity: AMBIENT })
     // NOTE: the storm's lightning, a cold flash over the whole house.
@@ -414,32 +419,16 @@ export class IsoScene {
     }
 
     // THE CAMERA
-    // NOTE: locked to the game's camera, at a whole number of canvas pixels
-    // per game pixel (the stage and the zoom are snapped so it is exact,
-    // src/render/screen.ts), its top left corner on the camera's, less the
-    // shake. The view is as many game pixels across as fit the canvas, so
-    // every game pixel is the same size and its edges meet the canvas's.
-    const pixelsPerGamePixel = Math.max(
-      1,
-      Math.round(this.app.canvas.width / Math.max(1, camera.width)),
-    )
-    const shownWidth = this.app.canvas.width / pixelsPerGamePixel
-    const shownHeight = this.app.canvas.height / pixelsPerGamePixel
-    const lookX = (camera.x - shake.x + shownWidth / 2) * UNIT
-    const lookZ = zOf(camera.y - shake.y + shownHeight / 2)
-    this.view.camera.position.set(
-      lookX,
-      Math.sin(PITCH) * CAMERA_DISTANCE,
-      lookZ + Math.cos(PITCH) * CAMERA_DISTANCE,
-    )
-    this.view.camera.lookAt({ x: lookX, y: 0, z: lookZ })
-    this.view.camera.orthographicSize = (shownWidth * UNIT) / 2
-    const view = viewBoxOf({
-      x: camera.x - shake.x,
-      y: camera.y - shake.y,
-      width: shownWidth,
-      height: shownHeight,
-    })
+    // NOTE: the lens (src/render/lens.ts) on the game's camera, less the
+    // shake, on this canvas (src/render/iso/lensCamera.ts): the same
+    // projection the overlay, the aim, and culling read.
+    const canvasSize = {
+      width: this.app.canvas.width,
+      height: this.app.canvas.height,
+    }
+    const lens = sceneLensOf(camera, shake, canvasSize)
+    aimSceneCamera(this.view.camera, lens, canvasSize)
+    const view = viewBoxOf(lens.frame)
 
     const { player } = focusOf(model)
     const rattle = houseRattleOf(model.shake.trauma)

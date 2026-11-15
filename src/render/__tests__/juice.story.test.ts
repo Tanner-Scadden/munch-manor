@@ -73,6 +73,7 @@ import { keyOddsOf } from '../../world/keys/keys'
 import { START_LEVEL } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { scoreOf } from '../../world/run/stats'
+import { screenToFloorDirection } from '../lens'
 import type { Decal, Particle } from '../renderSchema'
 
 describe('particles and decals', () => {
@@ -708,7 +709,7 @@ describe('hit-stop', () => {
       tick(FRAME_MS),
       Story.model(({ seats: [{ player, intent }], input }) => {
         expect(input.pressedKeys).toEqual(['KeyD'])
-        expect(intent.move).toEqual({ x: 1, y: 0 })
+        expect(intent.move).toEqual(screenToFloorDirection({ x: 1, y: 0 }))
         expect(player.x).toBe(START_LEVEL.start.x)
       }),
       ...ticks(freezeTicks(HIT_STOP_KILL_MS) - 1, FRAME_MS),
@@ -718,7 +719,11 @@ describe('hit-stop', () => {
       tick(FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(
-          START_LEVEL.start.x + (PLAYER_SPEED * FRAME_MS) / 1000,
+          START_LEVEL.start.x +
+            (screenToFloorDirection({ x: 1, y: 0 }).x *
+              PLAYER_SPEED *
+              FRAME_MS) /
+              1000,
         )
       }),
     ),

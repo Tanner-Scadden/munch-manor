@@ -7,6 +7,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
 import { Rumble } from '../../app/update/rumble'
+import { screenToFloorDirection } from '../../render/lens'
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { armedBreak, armedFight, openFloorWave } from '../../test/model.fixture'
 import {
@@ -75,8 +76,9 @@ describe('a controller in a run', () => {
       poll({ axes: [1, 0, 0, 0] }),
       Story.model(current => {
         expect(current.lastDevice).toBe('Gamepad')
-        expect(focusOf(current).intent.move.x).toBeCloseTo(1)
-        expect(focusOf(current).intent.move.y).toBeCloseTo(0)
+        expect(focusOf(current).intent.move).toEqual(
+          screenToFloorDirection({ x: 1, y: 0 }),
+        )
       }),
       tick(FRAME_MS),
       Story.model(current => {
@@ -93,7 +95,9 @@ describe('a controller in a run', () => {
       Story.given(fighting),
       poll({ held: [DPAD_RIGHT] }),
       Story.model(current => {
-        expect(focusOf(current).intent.move).toEqual({ x: 1, y: 0 })
+        expect(focusOf(current).intent.move).toEqual(
+          screenToFloorDirection({ x: 1, y: 0 }),
+        )
       }),
     ),
   )
@@ -265,7 +269,9 @@ describe('pausing and leaving by controller', () => {
       Story.message(Message.DisconnectedGamepad({ index: 2 })),
       Story.model(current => {
         expect(isPaused(current)).toBe(false)
-        expect(focusOf(current).intent.move.x).toBeCloseTo(1)
+        expect(focusOf(current).intent.move).toEqual(
+          screenToFloorDirection({ x: 1, y: 0 }),
+        )
       }),
     ),
   )

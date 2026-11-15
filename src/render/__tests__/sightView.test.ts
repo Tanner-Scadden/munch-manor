@@ -14,6 +14,7 @@ import { asVeteran } from '../../test/veteran'
 import { levelOf } from '../../world/level/arena'
 import { isSolidAt } from '../../world/level/tileQueries'
 import { focusOf, modifyFocus } from '../../world/party/party'
+import { floorToScreenDirection } from '../lens'
 import { aimSightShapes } from '../sightView'
 
 const fighting: Model = modifyFocus(
@@ -38,23 +39,29 @@ const unfitted: Model = modifyFocus(fighting, { laserSight: () => 'None' })
 // straight right or straight up gives a sight to test against.
 const THUMB = 70
 
-const thumbAim = (dx: number, dy: number) => [
-  Story.message(
-    Message.PressedPointer({
-      pointerId: THUMB,
-      device: 'Touch',
-      clientX: 600,
-      clientY: 200,
-    }),
-  ),
-  Story.message(
-    Message.MovedPointer({
-      pointerId: THUMB,
-      clientX: 600 + dx,
-      clientY: 200 + dy,
-    }),
-  ),
-]
+// NOTE: the thumb pushes the aim stick this far along a floor direction,
+// as the screen shows it through the lens, so the sight runs along it.
+const thumbAim = (dx: number, dy: number) => {
+  const onScreen = floorToScreenDirection({ x: dx, y: dy })
+  const stretch = Math.hypot(dx, dy) / Math.hypot(onScreen.x, onScreen.y)
+  return [
+    Story.message(
+      Message.PressedPointer({
+        pointerId: THUMB,
+        device: 'Touch',
+        clientX: 600,
+        clientY: 200,
+      }),
+    ),
+    Story.message(
+      Message.MovedPointer({
+        pointerId: THUMB,
+        clientX: 600 + onScreen.x * stretch,
+        clientY: 200 + onScreen.y * stretch,
+      }),
+    ),
+  ]
+}
 
 const liftThumb = Story.message(Message.ReleasedPointer({ pointerId: THUMB }))
 

@@ -510,6 +510,9 @@ class StageRenderer {
         y: setup.spot.y - lens.height,
         width: lens.width * 2,
         height: lens.height * 2,
+        scale: 1,
+        left: 0,
+        top: 0,
       }),
     })
     const { mood } = setup.lights

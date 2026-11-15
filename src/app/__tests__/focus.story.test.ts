@@ -1,4 +1,3 @@
-// @vitest-environment happy-dom
 import { Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -6,6 +5,8 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { MouseButton, Stick } from '../../input/inputSchema'
+// @vitest-environment happy-dom
+import { screenToFloorDirection } from '../../render/lens'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
 import { holdingFirst } from '../../test/arsenals'
 import {
@@ -210,7 +211,7 @@ describe('resuming', () => {
           expect(phase).toEqual(WAVE_2_FIGHT)
           expect(input.pressedKeys).toEqual(['KeyD'])
           expect(intent.trigger).toBe('Released')
-          expect(intent.move).toEqual({ x: 1, y: 0 })
+          expect(intent.move).toEqual(screenToFloorDirection({ x: 1, y: 0 }))
         }),
       ),
   )

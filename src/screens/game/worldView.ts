@@ -39,7 +39,12 @@ import {
 } from '../../features/stations/stationView'
 import { backDoorGroundShapes } from '../../render/backDoorView'
 import { bossGroundShapes, bossOverheadShapes } from '../../render/bossView'
-import { type Camera, sceneOffset } from '../../render/camera'
+import {
+  type Camera,
+  type ViewMargin,
+  isInView,
+  sceneOffset,
+} from '../../render/camera'
 import { cellarDarkOf } from '../../render/cellarDark'
 import { type Drawable, depthSortedShapes } from '../../render/depth'
 import {
@@ -145,19 +150,18 @@ const rattlesLook = (model: Model): RattlesLook =>
 
 // CULLING
 
-const CULL_MARGIN_PX = 24
-
 // NOTE: on a map bigger than the window, a zombie out of the camera's view
 // costs nothing to draw, and one outside the house, in the yard or past the
-// map's edge, is never drawn at all. The margin keeps a big zombie whose feet
-// are just off the edge drawn, along with its shadow and its health bar.
+// map's edge, is never drawn at all. The margin keeps a zombie that still
+// shows drawn: half the widest body (18 pixels) and its health bar at the
+// sides, the tallest body under the bottom edge, and its shadow and the
+// rings round its feet over the top.
+const CULL_MARGIN: ViewMargin = { side: 12, above: 6, below: 24 }
+
 const isOnCamera =
   (camera: Camera) =>
-  ({ x, y }: Vector): boolean =>
-    x > camera.x - CULL_MARGIN_PX &&
-    x < camera.x + camera.width + CULL_MARGIN_PX &&
-    y > camera.y - CULL_MARGIN_PX &&
-    y < camera.y + camera.height + CULL_MARGIN_PX
+  (point: Vector): boolean =>
+    isInView(camera, point, CULL_MARGIN)
 
 const shownZombies = (model: Model, camera: Camera): ReadonlyArray<Zombie> => {
   const level = levelOf(model)
@@ -305,7 +309,7 @@ const standingDrawables = (
 
 // NOTE: a zombie still in a doorway behind the wall's face is covered by the
 // lintel, so its bar would float over the wall. It shows once it steps in.
-const isInView =
+const isClearOfWall =
   (level: Level) =>
   (zombie: Zombie): boolean =>
     !isBehindWall(level)(zombie.x, zombieFootY(zombie))
@@ -320,7 +324,7 @@ const overheadShapes = (
   ...ovenFlameShapes(model),
   ...Array.flatMap(model.traps, trapOverheadShapes(levelOf(model))),
   ...Array.flatMap(
-    Array.filter(zombies, isInView(levelOf(model))),
+    Array.filter(zombies, isClearOfWall(levelOf(model))),
     zombieHealthBarShapes,
   ),
   ...Array.flatMap(model.cosmetics.blasts, blastShapes),
@@ -402,7 +406,9 @@ const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
         overhead: [
           ...overheadShapes(model, camera, whole, mates),
           ...Array.flatMap(
-            Array.filter(fading, zombie => isInView(levelOf(model))(zombie)),
+            Array.filter(fading, zombie =>
+              isClearOfWall(levelOf(model))(zombie),
+            ),
             (zombie: Zombie) => fade(zombie, zombieHealthBarShapes(zombie)),
           ),
         ],

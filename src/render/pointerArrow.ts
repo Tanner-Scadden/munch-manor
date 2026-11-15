@@ -89,12 +89,21 @@ const pointingOf = (
 const bobOf = (elapsedMs: number): number =>
   (Math.floor(elapsedMs / BOB_MS) % 2) * BOB_PX
 
+// NOTE: the spot on the floor, and how far over it the tip goes, in game
+// pixels straight up the screen: a thing's height stands up the screen
+// through the lens, not up the map (src/render/lens.ts).
 export type PointerAt = Readonly<{
   mark: Vector
+  liftPx: number
   elapsedMs: number
   screen: Screen
   camera: Camera
 }>
+
+const liftedAt = (camera: Camera, mark: Vector, liftPx: number): Vector => {
+  const at = worldToView(camera, mark)
+  return { x: at.x, y: at.y - liftPx * camera.scale }
+}
 
 const edgeShapesAt = (
   at: Vector,
@@ -119,11 +128,12 @@ const edgeShapesAt = (
 // own mark over it.
 export const edgeArrowShapes = ({
   mark,
+  liftPx,
   elapsedMs,
   screen,
   camera,
 }: PointerAt): ReadonlyArray<Canvas.Shape> => {
-  const at = worldToView(camera, mark)
+  const at = liftedAt(camera, mark, liftPx)
   const clear = clearWindowOf(screen, EDGE_GAP)
   return Option.match(pointingOf(at, clear), {
     onNone: () => [],
@@ -163,11 +173,12 @@ const overShapes = (
 // it, pointing down, its tip just above the spot.
 export const pointerArrowShapes = ({
   mark,
+  liftPx,
   elapsedMs,
   screen,
   camera,
 }: PointerAt): ReadonlyArray<Canvas.Shape> => {
-  const at = worldToView(camera, mark)
+  const at = liftedAt(camera, mark, liftPx)
   const clear = clearWindowOf(screen, EDGE_GAP)
   return Option.match(pointingOf(at, clear), {
     onNone: () => overShapes(at, elapsedMs),

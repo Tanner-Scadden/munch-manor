@@ -8,6 +8,7 @@ import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { screenCameraOf, worldToView } from '../../render/camera'
+import { screenToFloorDirection } from '../../render/lens'
 import { FIXED_STEP_MS, STICK_RADIUS_PX } from '../../shared/constants'
 import { DISTANT_SPAWN } from '../../test/model.fixture'
 import {
@@ -27,13 +28,22 @@ import { MouseButton, Stick } from '../inputSchema'
 const PLAYER = START_SPOT
 const ZOMBIE_DISTANCE_PX = 40
 
+// NOTE: straight right on the screen, as the floor angle under it: the lens
+// turns the stick onto the floor (src/render/lens.ts).
+const RIGHT_ON_SCREEN = (() => {
+  const { x, y } = screenToFloorDirection({ x: 1, y: 0 })
+  return Math.atan2(y, x)
+})()
+
 // NOTE: the right thumb holds the aim stick straight right, so the raw aim
-// is angle 0 and the trigger is held.
+// is RIGHT_ON_SCREEN and the trigger is held. The zombie stands this many
+// radians off it.
 const aimingRight = (
   orientation: 'Portrait' | 'Landscape',
-  zombieAngle: number,
-): Model =>
-  modifyFocus(
+  offAim: number,
+): Model => {
+  const zombieAngle = RIGHT_ON_SCREEN + offAim
+  return modifyFocus(
     modifyFields(asVeteran(initialModel), {
       lastDevice: () => 'Touch',
       orientation: () => orientation,
@@ -65,6 +75,7 @@ const aimingRight = (
     }),
     { player: player => ({ ...player, ...PLAYER }) },
   )
+}
 
 const aimAngleOf = (current: Model): number =>
   Option.match(focusOf(current).intent.maybeAim, {
@@ -88,8 +99,8 @@ const mouseAimingRight = (zombieAngle: number): Model => {
         maybeMouseInView: () =>
           Option.some(
             worldToView(screenCameraOf(mousing), {
-              x: PLAYER.x + ZOMBIE_DISTANCE_PX,
-              y: PLAYER.y,
+              x: PLAYER.x + Math.cos(RIGHT_ON_SCREEN) * ZOMBIE_DISTANCE_PX,
+              y: PLAYER.y + Math.sin(RIGHT_ON_SCREEN) * ZOMBIE_DISTANCE_PX,
             }),
           ),
       }),
@@ -105,7 +116,7 @@ describe('aim assist on touch', () => {
         Story.given(aimingRight('Portrait', 0.06)),
         tick(FIXED_STEP_MS),
         Story.model(current => {
-          expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
+          expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN + 0.06, 5)
         }),
       ),
   )
@@ -118,7 +129,7 @@ describe('aim assist on touch', () => {
         Story.given(aimingRight('Landscape', 0.06)),
         tick(FIXED_STEP_MS),
         Story.model(current => {
-          expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
+          expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN + 0.06, 5)
         }),
       ),
   )
@@ -134,7 +145,10 @@ describe('aim assist on touch', () => {
           Story.given(aimingRight('Landscape', between)),
           tick(FIXED_STEP_MS),
           Story.model(current => {
-            expect(aimAngleOf(current)).toBeCloseTo(between / 2, 5)
+            expect(aimAngleOf(current)).toBeCloseTo(
+              RIGHT_ON_SCREEN + between / 2,
+              5,
+            )
           }),
         )
         yield* Story.story(
@@ -144,7 +158,7 @@ describe('aim assist on touch', () => {
           ),
           tick(FIXED_STEP_MS),
           Story.model(current => {
-            expect(aimAngleOf(current)).toBeCloseTo(0, 5)
+            expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
           }),
         )
       }),
@@ -156,7 +170,7 @@ describe('aim assist on touch', () => {
       Story.given(mouseAimingRight(0.06)),
       tick(FIXED_STEP_MS),
       Story.model(current => {
-        expect(aimAngleOf(current)).toBeCloseTo(0, 5)
+        expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
       }),
     ),
   )
@@ -169,7 +183,7 @@ describe('aim assist on touch', () => {
       tick(FIXED_STEP_MS),
       Story.model(current => {
         expect(current.lastDevice).toBe('KeyboardMouse')
-        expect(aimAngleOf(current)).toBeCloseTo(0, 5)
+        expect(aimAngleOf(current)).toBeCloseTo(RIGHT_ON_SCREEN, 5)
       }),
     ),
   )

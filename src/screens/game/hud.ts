@@ -1030,11 +1030,11 @@ export const hudStripShapes: {
       })
     return Option.match(maybeLeakSpan(model), {
       onNone: () => [stripPiece(0, screen.width)],
-      onSome: ({ left, right }) => {
-        const gapLeft = Math.max(0, worldToView(camera, { x: left, y: 0 }).x)
+      onSome: ({ left, right, y }) => {
+        const gapLeft = Math.max(0, worldToView(camera, { x: left, y }).x)
         const gapRight = Math.min(
           screen.width,
-          worldToView(camera, { x: right, y: 0 }).x,
+          worldToView(camera, { x: right, y }).x,
         )
         return [stripPiece(0, gapLeft), stripPiece(gapRight, screen.width)]
       },

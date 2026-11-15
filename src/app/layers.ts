@@ -30,6 +30,7 @@ import {
   toScreenCamera,
   viewBoxOf,
   worldCameraFor,
+  worldToView,
 } from '../render/camera'
 import { cineBarShapes } from '../render/cine'
 import { worldElement } from '../render/iso/element'
@@ -280,7 +281,7 @@ const lensStyle = (
     onNone: () => NO_LENS,
     onSome: ({ zoom, saturation }) => ({
       transform: `scale(${zoom})`,
-      transformOrigin: `${percentOf(focusOf(model).player.x - camera.x, camera.width)} ${percentOf(focusOf(model).player.y - camera.y, camera.height)}`,
+      transformOrigin: `${percentOf(worldToView(camera, focusOf(model).player).x, camera.width)} ${percentOf(worldToView(camera, focusOf(model).player).y, camera.height)}`,
       filter: saturation < 1 ? `saturate(${saturation})` : 'none',
     }),
   })

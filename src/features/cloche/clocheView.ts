@@ -12,9 +12,9 @@ import {
   spriteShapes,
 } from '../../art/sprite'
 import { ClocheLift } from '../../domain/clientSchema'
-import { type Camera, worldToView } from '../../render/camera'
+import { type Camera, placedAt } from '../../render/camera'
 import type { SlotRoomId, Vector } from '../../world/schema/entitySchema'
-import { ZERO_VECTOR, clamp, easeOut } from '../../world/step/geometry'
+import { clamp, easeOut } from '../../world/step/geometry'
 import { CLOCHE_RULES } from './clocheReveal'
 
 // What the cloche reveal looks like (src/features/cloche/clocheReveal.ts),
@@ -118,14 +118,7 @@ export const clocheShapes: {
     ClocheLift.match(model.cosmetics.clocheLift, {
       Resting: () => [],
       Lifting: ({ room, at, ageMs }) => [
-        group({
-          translate: worldToView(camera, ZERO_VECTOR),
-          scale:
-            camera.scale === 1
-              ? undefined
-              : { x: camera.scale, y: camera.scale },
-          shapes: liftShapes(room, at, ageMs),
-        }),
+        placedAt(camera, at, liftShapes(room, at, ageMs)),
       ],
     }),
 )

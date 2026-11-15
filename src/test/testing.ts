@@ -77,6 +77,7 @@ import {
   shownHints,
 } from '../features/onboarding/onboarding'
 import { PartRadioGroupBlock } from '../features/profile/blocks/look/lookRadios'
+import { floorToScreenDirection, screenToFloorDirection } from '../render/lens'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -166,12 +167,18 @@ export const FIRE_PRESS = Message.PressedPointer({
   clientY: 200,
 })
 
-const firePushToward = (direction: Vector) =>
-  Message.MovedPointer({
+// NOTE: the aim stick pushed all the way toward a direction on the floor:
+// the way the screen shows it through the lens (src/render/lens.ts), so the
+// shot flies that way on the floor.
+const firePushToward = (direction: Vector) => {
+  const onScreen = floorToScreenDirection(direction)
+  const length = Math.max(1e-9, Math.hypot(onScreen.x, onScreen.y))
+  return Message.MovedPointer({
     pointerId: FIRE_THUMB,
-    clientX: 600 + direction.x * STICK_RADIUS_PX,
-    clientY: 200 + direction.y * STICK_RADIUS_PX,
+    clientX: 600 + (onScreen.x / length) * STICK_RADIUS_PX,
+    clientY: 200 + (onScreen.y / length) * STICK_RADIUS_PX,
   })
+}
 
 export const FIRE_PUSH = firePushToward({ x: 1, y: 0 })
 
@@ -182,6 +189,46 @@ export const holdFireToward = (direction: Vector) =>
   )
 
 export const holdFire = holdFireToward({ x: 1, y: 0 })
+
+const WALK_THUMB = 71
+
+// NOTE: a thumb that lands on the move stick and pushes it all the way
+// toward a direction on the floor, as the screen shows it through the lens,
+// so the player walks straight that way on the game's map: for the tests
+// about where a walk ends, not about which key walks where.
+export const walkToward = (direction: Vector) => {
+  const onScreen = floorToScreenDirection(direction)
+  const length = Math.max(1e-9, Math.hypot(onScreen.x, onScreen.y))
+  return Story.steps(
+    Story.message(
+      Message.PressedPointer({
+        pointerId: WALK_THUMB,
+        device: 'Touch',
+        clientX: 100,
+        clientY: 200,
+      }),
+    ),
+    Story.message(
+      Message.MovedPointer({
+        pointerId: WALK_THUMB,
+        clientX: 100 + (onScreen.x / length) * STICK_RADIUS_PX,
+        clientY: 200 + (onScreen.y / length) * STICK_RADIUS_PX,
+      }),
+    ),
+  )
+}
+
+// NOTE: straight right on the screen (D, a stick, a pad) as the floor way
+// under it, through the lens's turn (src/render/lens.ts).
+export const RIGHT_ON_SCREEN = screenToFloorDirection({ x: 1, y: 0 })
+
+// NOTE: a point or a direction to six places: the lens there and back
+// (src/render/lens.ts) leaves float noise past them, so a test compares two
+// of these with toEqual.
+export const nearly = ({ x, y }: Vector): Vector => ({
+  x: Math.round(x * 1e6) / 1e6 + 0,
+  y: Math.round(y * 1e6) / 1e6 + 0,
+})
 
 export const FIRE_LIFT = Message.ReleasedPointer({ pointerId: FIRE_THUMB })
 

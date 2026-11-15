@@ -7,6 +7,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Message } from '../../app/message'
 import { DebutCard, type Model, Phase, Reload, RunMode } from '../../app/model'
 import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
+import { screenToFloorDirection } from '../../render/lens'
 import { RESTART_GRACE_MS } from '../../shared/constants'
 import { SHOTGUN } from '../../test/arsenals'
 import {
@@ -185,7 +186,7 @@ describe('one key per action: the kept keys work', () => {
           Story.given(fighting),
           press(code),
           Story.model(({ seats: [{ intent }] }) => {
-            expect(intent.move).toEqual(move)
+            expect(intent.move).toEqual(screenToFloorDirection(move))
           }),
         ),
       )

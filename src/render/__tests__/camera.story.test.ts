@@ -10,7 +10,7 @@ import { initialModel } from '../../app/pureApp'
 import { deriveIntent } from '../../input/input'
 import type { Input } from '../../input/inputSchema'
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
-import { APPLICATION, WIDE_SURFACE } from '../../test/testing'
+import { APPLICATION, WIDE_SURFACE, nearly } from '../../test/testing'
 import { PARLOUR, makeLevel } from '../../world/level/arena'
 import { ROOM_MAP } from '../../world/level/plan'
 import { focusOf, modifyFocus } from '../../world/party/party'
@@ -81,7 +81,7 @@ describe('camera', () => {
     const camera = cameraFor(WIDE_LEVEL, player)
     const onScreen = worldToView(camera, player)
     expect(Math.abs(onScreen.x - VIEW_WIDTH / 2)).toBeLessThanOrEqual(0.5)
-    expect(viewToWorld(camera, onScreen)).toEqual(player)
+    expect(nearly(viewToWorld(camera, onScreen))).toEqual(nearly(player))
   })
 
   test('centers a map narrower than the view and holds it still', () => {
@@ -109,21 +109,24 @@ describe('camera', () => {
       clientToView(WIDE_SURFACE, { x: 1120, y: 360 }),
     )
     expect(cursorInView).toEqual({ x: 280, y: 90 })
-    expect(viewToWorld(camera, cursorInView)).toEqual({ x: 520, y: 90 })
-
-    const scrolledAim = deriveIntent(mouseInputAt(cursorInView), player, camera)
-    expect(scrolledAim.maybeAim).toEqual(Option.some({ x: 1, y: 0 }))
-
-    const leftOfPlayer = { x: 100, y: 90 }
-    const unscrolledAim = deriveIntent(
-      mouseInputAt(leftOfPlayer),
-      player,
-      cameraFor(PARLOUR, player),
+    const underCursor = viewToWorld(camera, cursorInView)
+    expect(nearly(worldToView(camera, underCursor))).toEqual(
+      nearly(cursorInView),
     )
-    expect(unscrolledAim.maybeAim).toEqual(Option.some({ x: -1, y: 0 }))
-    const followedAim = deriveIntent(mouseInputAt(leftOfPlayer), player, camera)
-    expect(followedAim.maybeAim).toEqual(Option.some({ x: -1, y: 0 }))
-    expect(viewToWorld(camera, leftOfPlayer)).toEqual({ x: 340, y: 90 })
+    expect(underCursor.x).toBeGreaterThan(player.x + 100)
+
+    const east = worldToView(camera, { x: 520, y: 90 })
+    const scrolledAim = deriveIntent(mouseInputAt(east), player, camera)
+    expect(nearly(Option.getOrThrow(scrolledAim.maybeAim))).toEqual(
+      nearly({ x: 1, y: 0 }),
+    )
+
+    const west = worldToView(camera, { x: 340, y: 90 })
+    const followedAim = deriveIntent(mouseInputAt(west), player, camera)
+    expect(nearly(Option.getOrThrow(followedAim.maybeAim))).toEqual(
+      nearly({ x: -1, y: 0 }),
+    )
+    expect(nearly(viewToWorld(camera, west))).toEqual(nearly({ x: 340, y: 90 }))
   })
 
   it.effect('in the arena, the mouse aims where it points on the screen', () =>
@@ -140,8 +143,15 @@ describe('camera', () => {
         expect(current.input.maybeMouseInView).toEqual(
           Option.some({ x: 250, y: 90 }),
         )
-        expect(focusOf(current).intent.maybeAim).toEqual(
-          Option.some({ x: 1, y: 0 }),
+        const target = viewToWorld(cameraOf(current), { x: 250, y: 90 })
+        const length = Math.hypot(target.x - 100, target.y - 90)
+        expect(
+          nearly(Option.getOrThrow(focusOf(current).intent.maybeAim)),
+        ).toEqual(
+          nearly({
+            x: (target.x - 100) / length,
+            y: (target.y - 90) / length,
+          }),
         )
       }),
     ),

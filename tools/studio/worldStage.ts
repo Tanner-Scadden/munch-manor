@@ -7,9 +7,11 @@
 // It keeps a copy of the frame around the picked tiles in `.live-shot`, the
 // picture a note sends. The light and color lab's edits (`tuning`) reach the
 // harness's renderer through the same bridge, so the room shows them live.
-import { Option, Schema, String } from 'effect'
+import { Array, Option, Schema, String } from 'effect'
 import { CustomElement } from 'foldkit'
 
+import { viewBoxOf as floorBoxOf } from '../../src/render/iso/cull'
+import { type LensFrame, lensOf } from '../../src/render/lens'
 import { TILE_SIZE } from '../../src/shared/constants'
 import { type BridgeView, type StudioBridge, bridgeOf } from './bridge'
 import { LabEdits, tablesOf } from './lab'
@@ -65,7 +67,7 @@ const AREA_COLORS = {
   Draft: { line: '#4fa3ff', fill: 'rgba(79, 163, 255, 0.22)' },
 }
 
-// NOTE: the world's pixels around a picked area, in world pixels.
+// NOTE: the view's pixels around a picked area, in game pixels.
 const SHOT_MARGIN = 40
 
 type Cell = Readonly<{
@@ -128,6 +130,65 @@ const cellAt = (
 // THE ELEMENT
 
 type Point = Readonly<{ x: number; y: number }>
+
+// NOTE: the camera the harness reports, as the lens's frame in the view's
+// own game pixels.
+const lensViewOf = (view: BridgeView): LensFrame => ({
+  x: view.cameraX,
+  y: view.cameraY,
+  width: view.viewWidth,
+  height: view.viewHeight,
+  scale: 1,
+  left: 0,
+  top: 0,
+})
+
+// NOTE: a floor point in the view's game pixels, through the lens.
+const floorToLens = (frame: LensFrame, point: Point): Point =>
+  lensOf(frame).projectInto(point.x, point.y, { x: 0, y: 0 })
+
+// NOTE: a point on the frame (CSS pixels of the harness's page) in the
+// view's own game pixels, from its top left corner.
+const viewPointAt = (view: BridgeView, point: Point): Point => ({
+  x: ((point.x - view.left) / view.width) * view.viewWidth,
+  y: ((point.y - view.top) / view.height) * view.viewHeight,
+})
+
+// NOTE: the part of the view a note's picture takes, in the view's game
+// pixels: the box around the picked tiles through the lens, with a margin,
+// or the whole view with none.
+const shotBoxOf = (
+  view: BridgeView,
+  draft: TileArea | null,
+): Readonly<{ left: number; top: number; right: number; bottom: number }> => {
+  if (draft === null) {
+    return { left: 0, top: 0, right: view.viewWidth, bottom: view.viewHeight }
+  }
+  const lens = lensViewOf(view)
+  const corners = [
+    floorToLens(lens, { x: draft.left * TILE_SIZE, y: draft.top * TILE_SIZE }),
+    floorToLens(lens, {
+      x: (draft.right + 1) * TILE_SIZE,
+      y: draft.top * TILE_SIZE,
+    }),
+    floorToLens(lens, {
+      x: draft.left * TILE_SIZE,
+      y: (draft.bottom + 1) * TILE_SIZE,
+    }),
+    floorToLens(lens, {
+      x: (draft.right + 1) * TILE_SIZE,
+      y: (draft.bottom + 1) * TILE_SIZE,
+    }),
+  ]
+  const xs = Array.map(corners, corner => corner.x)
+  const ys = Array.map(corners, corner => corner.y)
+  return {
+    left: Math.max(0, Math.min(...xs) - SHOT_MARGIN),
+    top: Math.max(0, Math.min(...ys) - SHOT_MARGIN),
+    right: Math.min(view.viewWidth, Math.max(...xs) + SHOT_MARGIN),
+    bottom: Math.min(view.viewHeight, Math.max(...ys) + SHOT_MARGIN),
+  }
+}
 
 const sameTile = (a: Tile | null, b: Tile | null): boolean =>
   a === null || b === null ? a === b : a.column === b.column && a.row === b.row
@@ -279,14 +340,12 @@ const studioWorldClass = () =>
       )
     }
 
-    // NOTE: a point on the frame (CSS pixels of the harness's page) as a
-    // point in the world, by the camera the harness reports.
+    // NOTE: a point on the frame (CSS pixels of the harness's page) as the
+    // floor point it looks at, through the game's lens on the camera the
+    // harness reports (src/render/lens.ts).
     private worldAt(view: BridgeView, point: Point): Point {
-      return {
-        x: view.cameraX + ((point.x - view.left) / view.width) * view.viewWidth,
-        y:
-          view.cameraY + ((point.y - view.top) / view.height) * view.viewHeight,
-      }
+      const at = viewPointAt(view, point)
+      return lensOf(lensViewOf(view)).unprojectInto(at.x, at.y, { x: 0, y: 0 })
     }
 
     private pointerAt(event: PointerEvent): void {
@@ -377,52 +436,70 @@ const studioWorldClass = () =>
       }
       context.clearRect(0, 0, this.marksCanvas.width, this.marksCanvas.height)
       const scale = view.width / view.viewWidth
-      const screenX = (x: number): number =>
-        view.left + (x - view.cameraX) * scale
-      const screenY = (y: number): number =>
-        view.top + (y - view.cameraY) * scale
+      const lens = lensViewOf(view)
+      const screenAt = (world: Point): Point => {
+        const at = floorToLens(lens, world)
+        return { x: view.left + at.x * scale, y: view.top + at.y * scale }
+      }
+      const line = (from: Point, to: Point): void => {
+        const start = screenAt(from)
+        const end = screenAt(to)
+        context.beginPath()
+        context.moveTo(start.x, start.y)
+        context.lineTo(end.x, end.y)
+        context.stroke()
+      }
       const marks = this.latestMarks
       if (marks.isGridOn) {
-        context.fillStyle = GRID_COLOR
-        const firstColumn = Math.ceil(view.cameraX / TILE_SIZE)
-        const lastColumn = Math.floor(
-          (view.cameraX + view.viewWidth) / TILE_SIZE,
-        )
+        context.strokeStyle = GRID_COLOR
+        context.lineWidth = 1
+        const floor = floorBoxOf(lens)
+        const firstColumn = Math.ceil(floor.left / TILE_SIZE)
+        const lastColumn = Math.floor(floor.right / TILE_SIZE)
         for (let column = firstColumn; column <= lastColumn; column++) {
-          context.fillRect(
-            Math.round(screenX(column * TILE_SIZE)),
-            view.top,
-            1,
-            view.height,
+          line(
+            { x: column * TILE_SIZE, y: floor.top },
+            { x: column * TILE_SIZE, y: floor.bottom },
           )
         }
-        const firstRow = Math.ceil(view.cameraY / TILE_SIZE)
-        const lastRow = Math.floor((view.cameraY + view.viewHeight) / TILE_SIZE)
+        const firstRow = Math.ceil(floor.top / TILE_SIZE)
+        const lastRow = Math.floor(floor.bottom / TILE_SIZE)
         for (let row = firstRow; row <= lastRow; row++) {
-          context.fillRect(
-            view.left,
-            Math.round(screenY(row * TILE_SIZE)),
-            view.width,
-            1,
+          line(
+            { x: floor.left, y: row * TILE_SIZE },
+            { x: floor.right, y: row * TILE_SIZE },
           )
         }
       }
-      const areaBox = (area: TileArea) => ({
-        x: screenX(area.left * TILE_SIZE),
-        y: screenY(area.top * TILE_SIZE),
-        width: (area.right - area.left + 1) * TILE_SIZE * scale,
-        height: (area.bottom - area.top + 1) * TILE_SIZE * scale,
-      })
+      // NOTE: an area's outline on the floor, its four corners through the
+      // lens.
+      const outline = (area: TileArea): void => {
+        const left = area.left * TILE_SIZE
+        const top = area.top * TILE_SIZE
+        const right = (area.right + 1) * TILE_SIZE
+        const bottom = (area.bottom + 1) * TILE_SIZE
+        const corners = [
+          screenAt({ x: left, y: top }),
+          screenAt({ x: right, y: top }),
+          screenAt({ x: right, y: bottom }),
+          screenAt({ x: left, y: bottom }),
+        ]
+        context.beginPath()
+        for (const corner of corners) {
+          context.lineTo(corner.x, corner.y)
+        }
+        context.closePath()
+      }
       const drawArea = (
         area: TileArea,
         colors: Readonly<{ line: string; fill: string }>,
       ): void => {
-        const box = areaBox(area)
+        outline(area)
         context.fillStyle = colors.fill
-        context.fillRect(box.x, box.y, box.width, box.height)
+        context.fill()
         context.strokeStyle = colors.line
         context.lineWidth = 2
-        context.strokeRect(box.x, box.y, box.width, box.height)
+        context.stroke()
       }
       for (const { area, isDone } of marks.areas) {
         drawArea(area, isDone ? AREA_COLORS.Done : AREA_COLORS.Open)
@@ -431,7 +508,7 @@ const studioWorldClass = () =>
         drawArea(marks.draft, AREA_COLORS.Draft)
       }
       if (marks.hover !== null && marks.tool === 'Pin') {
-        const box = areaBox({
+        outline({
           left: marks.hover.column,
           top: marks.hover.row,
           right: marks.hover.column,
@@ -439,13 +516,14 @@ const studioWorldClass = () =>
         })
         context.strokeStyle = HOVER_COLOR
         context.lineWidth = 2
-        context.strokeRect(box.x, box.y, box.width, box.height)
+        context.stroke()
       }
       if (marks.tool === 'Loupe') {
         Option.map(this.maybePointer, pointer => {
-          const world = this.worldAt(view, pointer)
-          const left = screenX(Math.floor(world.x) - LOUPE_COLUMNS / 2)
-          const top = screenY(Math.floor(world.y) - LOUPE_ROWS / 2)
+          const at = viewPointAt(view, pointer)
+          const left =
+            view.left + (Math.floor(at.x) - LOUPE_COLUMNS / 2) * scale
+          const top = view.top + (Math.floor(at.y) - LOUPE_ROWS / 2) * scale
           context.strokeStyle = MIXED_COLOR
           context.lineWidth = 1
           context.strokeRect(
@@ -472,29 +550,10 @@ const studioWorldClass = () =>
         onNone: () => false,
         onSome: frame => {
           const ratio = frame.width / view.viewWidth
-          const draft = this.latestMarks.draft
-          const left =
-            draft === null
-              ? view.cameraX
-              : Math.max(view.cameraX, draft.left * TILE_SIZE - SHOT_MARGIN)
-          const top =
-            draft === null
-              ? view.cameraY
-              : Math.max(view.cameraY, draft.top * TILE_SIZE - SHOT_MARGIN)
-          const right =
-            draft === null
-              ? view.cameraX + view.viewWidth
-              : Math.min(
-                  view.cameraX + view.viewWidth,
-                  (draft.right + 1) * TILE_SIZE + SHOT_MARGIN,
-                )
-          const bottom =
-            draft === null
-              ? view.cameraY + view.viewHeight
-              : Math.min(
-                  view.cameraY + view.viewHeight,
-                  (draft.bottom + 1) * TILE_SIZE + SHOT_MARGIN,
-                )
+          const { left, top, right, bottom } = shotBoxOf(
+            view,
+            this.latestMarks.draft,
+          )
           const width = Math.max(1, Math.round((right - left) * ratio))
           const height = Math.max(1, Math.round((bottom - top) * ratio))
           this.shot.width = width
@@ -503,8 +562,8 @@ const studioWorldClass = () =>
             .getContext('2d')
             ?.drawImage(
               frame,
-              Math.round((left - view.cameraX) * ratio),
-              Math.round((top - view.cameraY) * ratio),
+              Math.round(left * ratio),
+              Math.round(top * ratio),
               width,
               height,
               0,
@@ -536,11 +595,9 @@ const studioWorldClass = () =>
         onNone: () => false,
         onSome: frame => {
           const ratio = frame.width / view.viewWidth
-          const world = this.worldAt(view, pointer)
-          const originX = Math.floor(world.x) - LOUPE_COLUMNS / 2
-          const originY = Math.floor(world.y) - LOUPE_ROWS / 2
-          const sourceX = (originX - view.cameraX) * ratio
-          const sourceY = (originY - view.cameraY) * ratio
+          const at = viewPointAt(view, pointer)
+          const sourceX = (Math.floor(at.x) - LOUPE_COLUMNS / 2) * ratio
+          const sourceY = (Math.floor(at.y) - LOUPE_ROWS / 2) * ratio
           const readLeft = Math.max(0, Math.floor(sourceX))
           const readTop = Math.max(0, Math.floor(sourceY))
           const readWidth = Math.max(
@@ -624,6 +681,7 @@ const studioWorldClass = () =>
             LOUPE_CELL,
             LOUPE_CELL,
           )
+          const world = this.worldAt(view, pointer)
           const x = Math.floor(world.x)
           const y = Math.floor(world.y)
           this.readout.textContent = `x ${x}  y ${y}  ·  tile ${Math.floor(x / TILE_SIZE)}, ${Math.floor(y / TILE_SIZE)}  ·  ${hexOf(middle)}${middle.isMixed ? ' (mixed)' : ''}  ·  ${mixedCount} mixed of ${LOUPE_COLUMNS * LOUPE_ROWS}  ·  ${Math.round(ratio * 100) / 100} screen px a game px`

@@ -123,13 +123,14 @@ const closedKitchenBox = (level: Level): Option.Option<Box> =>
 
 // NOTE: the HUD strip along the top (src/screens/game/hud.ts) would dim the boards, which
 // sit right under it, so it leaves a gap over them: the boards' span in
-// world x, while they are up.
+// world x on the row at their foot, while they are up.
 export const maybeLeakSpan = (
   model: World,
-): Option.Option<Readonly<{ left: number; right: number }>> =>
+): Option.Option<Readonly<{ left: number; right: number; y: number }>> =>
   Option.map(closedKitchenBox(levelOf(model)), box => ({
     left: box.x - STRIP_GAP_PX,
     right: box.x + box.width + STRIP_GAP_PX,
+    y: box.y + box.height,
   }))
 
 // NOTE: the light breathing and the steam rising, only while the boards are

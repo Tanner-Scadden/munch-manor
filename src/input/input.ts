@@ -2,6 +2,7 @@ import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Camera, viewToWorld } from '../render/camera'
+import { screenToFloorDirection } from '../render/lens'
 import { clientToView, isLeftHalf } from '../render/screen'
 import {
   CAMERA_LEAN_PX,
@@ -473,7 +474,8 @@ const mouseAim = (
 // direction, which the camera leans by (src/render/camera.ts): a stick by
 // how far it is pushed, the mouse by how far the cursor sits from the
 // window's middle. The middle, not the player, so the lean moving the
-// player on the screen never feeds back into it.
+// player on the screen never feeds back into it. Each reaches across the
+// screen, so it is turned onto the floor under it (src/render/lens.ts).
 export const aimReachOf: {
   (camera: Camera): (input: Input) => Option.Option<Vector>
   (input: Input, camera: Camera): Option.Option<Vector>
@@ -498,6 +500,7 @@ export const aimReachOf: {
         ),
       ),
     ),
+    Option.map(screenToFloorDirection),
   ),
 )
 
@@ -522,25 +525,33 @@ const interactOf = (input: Input): Trigger =>
     ? 'Held'
     : 'Released'
 
+// NOTE: the client turns what the player pushes across the screen (the
+// keys, a stick, a pad) onto the floor under it, so up walks up the screen
+// whichever way the lens is turned (src/render/lens.ts). The mouse's aim
+// casts its ray onto the floor instead. The World reads only the floor's
+// directions, so the bots and the co-op room need nothing of the lens.
 export const deriveIntent: {
   (player: Player, camera: Camera): (input: Input) => Intent
   (input: Input, player: Player, camera: Camera): Intent
 } = Function.dual(
   3,
   (input: Input, player: Player, camera: Camera): Intent => ({
-    move: clampLength(
-      addVectors(
+    move: screenToFloorDirection(
+      clampLength(
         addVectors(
-          keyboardMove(input.pressedKeys),
-          pipe(input.moveStick, stickDeflection, withDeadZone),
+          addVectors(
+            keyboardMove(input.pressedKeys),
+            pipe(input.moveStick, stickDeflection, withDeadZone),
+          ),
+          padMove(input.maybeGamepad),
         ),
-        padMove(input.maybeGamepad),
+        1,
       ),
-      1,
     ),
     maybeAim: pipe(
       stickAim(input.aimStick),
       Option.orElse(() => padAim(input.maybeGamepad)),
+      Option.map(screenToFloorDirection),
       Option.orElse(() => mouseAim(input, player, camera)),
     ),
     trigger: triggerOf(input),

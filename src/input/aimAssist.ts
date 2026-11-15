@@ -1,6 +1,6 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
 
-import type { Camera } from '../render/camera'
+import { type Camera, isInView } from '../render/camera'
 import type { Level } from '../world/level/arena'
 import { hasLineOfSight } from '../world/level/tileQueries'
 import type { Vector, Zombie } from '../world/schema/worldSchema'
@@ -44,12 +44,6 @@ const byPull: Order.Order<Pull> = Order.combine(
 
 const angleBetween = (from: number, to: number): number =>
   Math.atan2(Math.sin(to - from), Math.cos(to - from))
-
-const isInView = (camera: Camera, zombie: Zombie): boolean =>
-  zombie.x >= camera.x &&
-  zombie.x <= camera.x + camera.width &&
-  zombie.y >= camera.y &&
-  zombie.y <= camera.y + camera.height
 
 const pullOf = (offset: number, strength: AimAssistStrength): number => {
   const size = Math.abs(offset)

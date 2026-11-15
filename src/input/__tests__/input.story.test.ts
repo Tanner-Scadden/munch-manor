@@ -6,7 +6,8 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Bullet, Phase } from '../../app/model'
-import { cameraOf, worldToView } from '../../render/camera'
+import { cameraOf, viewToWorld, worldToView } from '../../render/camera'
+import { screenToFloorDirection } from '../../render/lens'
 import {
   FIXED_STEP_MS,
   STICK_FIRE_ZONE,
@@ -20,6 +21,8 @@ import {
 } from '../../test/model.fixture'
 import {
   APPLICATION,
+  RIGHT_ON_SCREEN,
+  nearly,
   settleRunCommands,
   tick,
   touchDown,
@@ -33,6 +36,9 @@ const LEFT_THUMB = 11
 const RIGHT_THUMB = 12
 const STRAY_POINTER = 99
 const MOUSE_POINTER = 1
+
+// NOTE: up on the screen, as the floor way under it.
+const UP_ON_SCREEN = screenToFloorDirection({ x: 0, y: -1 })
 
 describe('touch sticks', () => {
   it.effect('two thumbs drive the move and aim sticks independently', () =>
@@ -64,13 +70,13 @@ describe('touch sticks', () => {
       touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX / 2, 300),
       touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX),
       Story.model(({ seats: [{ intent }] }) => {
-        expect(intent.move).toEqual({ x: 0.5, y: 0 })
-        expect(intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
+        expect(intent.move).toEqual(screenToFloorDirection({ x: 0.5, y: 0 }))
+        expect(intent.maybeAim).toEqual(Option.some(UP_ON_SCREEN))
         expect(intent.trigger).toBe('Held')
       }),
       touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX * 3, 300),
       Story.model(({ seats: [{ intent }] }) => {
-        expect(intent.move).toEqual({ x: 1, y: 0 })
+        expect(intent.move).toEqual(RIGHT_ON_SCREEN)
       }),
       Story.message(Message.ReleasedPointer({ pointerId: LEFT_THUMB })),
       Story.model(({ input, seats: [{ intent }] }) => {
@@ -93,7 +99,10 @@ describe('touch sticks', () => {
           }),
       })
       const isUpward = ({ velocityX, velocityY }: Bullet): boolean =>
-        Math.abs(Math.atan2(velocityY, velocityX) + Math.PI / 2) <=
+        Math.abs(
+          Math.atan2(velocityY, velocityX) -
+            Math.atan2(UP_ON_SCREEN.y, UP_ON_SCREEN.x),
+        ) <=
         WEAPONS.Shotgun.spread / 2 + 0.01
 
       return Story.story(
@@ -109,10 +118,10 @@ describe('touch sticks', () => {
         touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX * 0.3),
         tick(FIXED_STEP_MS),
         Story.model(({ seats: [{ intent, player }], bullets }) => {
-          expect(intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
+          expect(intent.maybeAim).toEqual(Option.some(UP_ON_SCREEN))
           expect(intent.trigger).toBe('Released')
           expect(bullets).toEqual([])
-          expect(player.facing).toEqual({ x: 0, y: -1 })
+          expect(player.facing).toEqual(UP_ON_SCREEN)
         }),
         touchMove(
           RIGHT_THUMB,
@@ -229,10 +238,11 @@ describe('mouse', () => {
       // NOTE: the canvas is drawn twice as big, 60 px below the top. The
       // dining room is bigger than a screen, so the camera follows the
       // player, and the player's row on the screen is read off it.
-      const playerView = worldToView(
-        cameraOf(letterboxedModel),
-        focusOf(letterboxedModel).player,
-      )
+      const camera = cameraOf(letterboxedModel)
+      const player = focusOf(letterboxedModel).player
+      const playerView = worldToView(camera, player)
+      const underTop = viewToWorld(camera, { x: 160, y: 0 })
+      const towardTop = Math.hypot(underTop.x - player.x, underTop.y - player.y)
 
       return Story.story(
         APPLICATION,
@@ -240,7 +250,12 @@ describe('mouse', () => {
         Story.message(Message.MovedMouse({ clientX: 320, clientY: 60 })),
         Story.model(({ input, seats: [{ intent }] }) => {
           expect(input.maybeMouseInView).toEqual(Option.some({ x: 160, y: 0 }))
-          expect(intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
+          expect(nearly(Option.getOrThrow(intent.maybeAim))).toEqual(
+            nearly({
+              x: (underTop.x - player.x) / towardTop,
+              y: (underTop.y - player.y) / towardTop,
+            }),
+          )
           expect(intent.trigger).toBe('Released')
         }),
         Story.message(
@@ -255,7 +270,9 @@ describe('mouse', () => {
           expect(input.mouseButton).toEqual(
             MouseButton.Held({ pointerId: MOUSE_POINTER }),
           )
-          expect(intent.maybeAim).toEqual(Option.some({ x: 1, y: 0 }))
+          expect(nearly(Option.getOrThrow(intent.maybeAim))).toEqual(
+            nearly(RIGHT_ON_SCREEN),
+          )
           expect(intent.trigger).toBe('Held')
         }),
         Story.message(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),

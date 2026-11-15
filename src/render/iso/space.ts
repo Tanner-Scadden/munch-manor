@@ -9,19 +9,18 @@ import { WALL_SYMBOL } from '../../world/level/tileGrid'
 // east and z runs south (the game's y), and y is up.
 export const UNIT = 1 / TILE_SIZE
 
-// NOTE: the camera, looking straight north and down at 49 degrees: low
-// enough that what stands shows its fronts and its volume, high enough that
-// the floor's tops stay readable (owner, 2026-11-14).
+// NOTE: the camera looks down at 49 degrees: low enough that what stands
+// shows its fronts and its volume, high enough that the floor's tops stay
+// readable (owner, 2026-11-14). It is turned a little off north and looks
+// through a slight perspective lens (src/render/lens.ts).
 export const PITCH = (49 * Math.PI) / 180
 
-// NOTE: crisp pixels, and the 2D game's own map. A floor seen at a slant is
-// squashed (by sin PITCH), while a billboard faces the lens square, so floor
-// pixels and sprite pixels would come out different heights. The world is
-// stretched north-south by the inverse, so a game pixel is square on screen
-// on the floor too. The floor then projects exactly onto the game's 2D map:
-// a camera locked to the game's own camera puts every floor point where the
-// game aims, so the mouse, the touch aim, and the overlay's markers need
-// nothing new.
+// NOTE: square pixels. A floor seen at a slant is squashed (by sin PITCH),
+// while a billboard stands square to the pitch, so floor pixels and sprite
+// pixels would come out different heights. The world is stretched
+// north-south by the inverse, so a game pixel on the floor is as tall on the
+// screen as one on a sprite. The lens (src/render/lens.ts) places every
+// floor point for the 3D camera, the overlay, and the aim alike.
 export const STRETCH = 1 / Math.sin(PITCH)
 
 export const zOf = (gameY: number): number => gameY * UNIT * STRETCH
@@ -62,12 +61,14 @@ export const isFrontWallAt = ({
   return false
 }
 
-// NOTE: where "up" and "toward the lens" point in the world. The camera
-// looks straight north, so every billboard faces it square, and a sprite's
-// parts are offset from its foot along the camera's own up: that keeps the
-// whole sprite at its foot's depth, which is exactly the game's foot sort,
-// and keeps the parts of one body (a hat over a head, a gun in a hand)
-// where the 2D game drew them.
+// NOTE: where a standing sprite's "up" and "out" point in the world: every
+// billboard faces south, leaned back square to the pitch, and a sprite's
+// parts are offset from its foot along that up: that keeps the whole sprite
+// at its foot's depth, which is exactly the game's foot sort, and keeps the
+// parts of one body (a hat over a head, a gun in a hand) where the 2D game
+// drew them. The frame stays with the house, not the lens: the lens is
+// turned a little off it (src/render/lens.ts), so a carved body shows a
+// sliver of its side beside its front.
 export type Vec3 = Readonly<{ x: number; y: number; z: number }>
 
 export const CAMERA_UP: Vec3 = {

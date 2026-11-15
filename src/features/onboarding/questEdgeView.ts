@@ -40,6 +40,12 @@ export const questEdgeShapes: {
     Option.match(maybeTourMark(model), {
       onNone: () => [],
       onSome: mark =>
-        edgeArrowShapes({ mark, elapsedMs: model.elapsedMs, screen, camera }),
+        edgeArrowShapes({
+          mark,
+          liftPx: 0,
+          elapsedMs: model.elapsedMs,
+          screen,
+          camera,
+        }),
     }),
 )

@@ -1,6 +1,8 @@
 import { Function, Option } from 'effect'
+import type { Canvas } from 'foldkit'
 
 import type { Model } from '../app/model'
+import { group } from '../art/sprite'
 import { couchFocus } from '../input/couch'
 import {
   CAMERA_LEAN_PX,
@@ -20,15 +22,18 @@ import {
 } from '../world/step/geometry'
 import { glideFocus } from './cine'
 import { hudLayoutFor } from './hudLayout'
+import { lensOf } from './lens'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 
 // CAMERA
 
-// NOTE: x, y, width, and height are the part of the world the camera sees,
-// in world pixels. scale, left, and top place it on a canvas: a world point
-// lands at (point - x) * scale + left. The world canvas is the camera's own
-// size, so there scale is 1 and left and top are 0. The overlay canvas holds
-// the whole screen, where the world window sits below the HUD band and, in
+// NOTE: x, y, width, and height are the window on the game's map the camera
+// follows, in world pixels: the lens (src/render/lens.ts) looks at its
+// middle and shows a game pixel there as one on the screen. scale, left, and
+// top place the view on a canvas: a point the lens puts at p in the view
+// lands at p * scale + left. The world canvas is the camera's own size, so
+// there scale is 1 and left and top are 0. The overlay canvas holds the
+// whole screen, where the world window sits below the HUD band and, in
 // portrait, is zoomed in.
 export type Camera = Readonly<{
   x: number
@@ -177,21 +182,24 @@ export const screenCameraOf = (model: Model): Camera => {
   return toScreenCamera(worldCameraFor(model, screen), screen)
 }
 
+// NOTE: where a point on the game's floor lands on the camera's canvas,
+// through the lens (src/render/lens.ts). Everything drawn over the world
+// in 2D places itself through this, so it sits on what it marks.
 export const worldToView: {
   (point: Vector): (camera: Camera) => Vector
   (camera: Camera, point: Vector): Vector
-} = Function.dual(2, (camera: Camera, point: Vector): Vector => ({
-  x: (point.x - camera.x) * camera.scale + camera.left,
-  y: (point.y - camera.y) * camera.scale + camera.top,
-}))
+} = Function.dual(2, (camera: Camera, point: Vector): Vector =>
+  lensOf(camera).projectInto(point.x, point.y, { x: 0, y: 0 }),
+)
 
+// NOTE: the floor point under a point on the camera's canvas: the ray from
+// the lens through it, cast onto the floor (a mouse's aim, a tap).
 export const viewToWorld: {
   (point: Vector): (camera: Camera) => Vector
   (camera: Camera, point: Vector): Vector
-} = Function.dual(2, (camera: Camera, point: Vector): Vector => ({
-  x: (point.x - camera.left) / camera.scale + camera.x,
-  y: (point.y - camera.top) / camera.scale + camera.y,
-}))
+} = Function.dual(2, (camera: Camera, point: Vector): Vector =>
+  lensOf(camera).unprojectInto(point.x, point.y, { x: 0, y: 0 }),
+)
 
 // NOTE: where the camera's view sits on its canvas, in that canvas's pixels.
 export const viewBoxOf = (camera: Camera): Box => ({
@@ -201,12 +209,110 @@ export const viewBoxOf = (camera: Camera): Box => ({
   height: camera.height * camera.scale,
 })
 
+// NOTE: how far past each edge of the view, in the game's pixels, a floor
+// point still counts as in it: what stands on a point rises up the screen
+// from it, so a tall body's feet may be well under the bottom edge and
+// still show, while one whose feet are over the top is out of sight.
+export type ViewMargin = Readonly<{
+  side: number
+  above: number
+  below: number
+}>
+
+const NO_MARGIN: ViewMargin = { side: 0, above: 0, below: 0 }
+
+// NOTE: whether a floor point lands in the camera's view, or within the
+// margin of it.
+export const isInView: {
+  (point: Vector, margin?: ViewMargin): (camera: Camera) => boolean
+  (camera: Camera, point: Vector, margin?: ViewMargin): boolean
+} = Function.dual(
+  // NOTE: data-first starts with the camera, which has a scale.
+  (args: IArguments): boolean =>
+    typeof args[0] === 'object' && 'scale' in args[0],
+  (camera: Camera, point: Vector, margin: ViewMargin = NO_MARGIN): boolean => {
+    const lens = lensOf(camera)
+    const x = lens.screenX(point.x, point.y)
+    const y = lens.screenY(point.x, point.y)
+    const side = margin.side * camera.scale
+    return (
+      x >= camera.left - side &&
+      x <= camera.left + camera.width * camera.scale + side &&
+      y >= camera.top - margin.above * camera.scale &&
+      y <= camera.top + (camera.height + margin.below) * camera.scale
+    )
+  },
+)
+
+// NOTE: a group of shapes drawn in the game's pixels around one floor
+// point, placed on the camera's canvas as a whole: the point lands where
+// the lens puts it, and the group keeps the canvas's scale, so a price tag
+// or a reveal stays crisp pixel art on what it marks.
+export type Anchored = Readonly<{ translate: Vector; scale: number }>
+
+export const anchoredAt: {
+  (anchor: Vector): (camera: Camera) => Anchored
+  (camera: Camera, anchor: Vector): Anchored
+} = Function.dual(2, (camera: Camera, anchor: Vector): Anchored => {
+  const at = worldToView(camera, anchor)
+  return {
+    translate: {
+      x: Math.round(at.x - anchor.x * camera.scale),
+      y: Math.round(at.y - anchor.y * camera.scale),
+    },
+    scale: camera.scale,
+  }
+})
+
+// NOTE: shapes drawn in the game's pixels around a floor point, placed on
+// the camera's canvas as one group (anchoredAt).
+export const placedAt: {
+  (
+    anchor: Vector,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): (camera: Camera) => Canvas.Shape
+  (
+    camera: Camera,
+    anchor: Vector,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): Canvas.Shape
+} = Function.dual(
+  3,
+  (
+    camera: Camera,
+    anchor: Vector,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): Canvas.Shape => {
+    const { translate, scale } = anchoredAt(camera, anchor)
+    return group({
+      translate,
+      scale: scale === 1 ? undefined : { x: scale, y: scale },
+      shapes,
+    })
+  },
+)
+
+// NOTE: a point in an anchored group's own game pixels, from a point on the
+// canvas: the inverse of the group's placing.
+export const anchoredToWorld: {
+  (point: Vector): (anchored: Anchored) => Vector
+  (anchored: Anchored, point: Vector): Vector
+} = Function.dual(2, (anchored: Anchored, point: Vector): Vector => ({
+  x: (point.x - anchored.translate.x) / anchored.scale,
+  y: (point.y - anchored.translate.y) / anchored.scale,
+}))
+
+// NOTE: the flat map's offset: the world's shapes as one flat list on the
+// game's own map, moved by the shake, for the tests and the tools that read
+// a frame's shapes as plain data (worldLayerShapes). The screen is drawn by
+// the 3D renderer through the lens.
 export const sceneOffset: {
   (shake: Vector): (camera: Camera) => Vector
   (camera: Camera, shake: Vector): Vector
-} = Function.dual(2, (camera: Camera, shake: Vector): Vector =>
-  worldToView(camera, shake),
-)
+} = Function.dual(2, (camera: Camera, shake: Vector): Vector => ({
+  x: (shake.x - camera.x) * camera.scale + camera.left,
+  y: (shake.y - camera.y) * camera.scale + camera.top,
+}))
 
 // LEAN
 

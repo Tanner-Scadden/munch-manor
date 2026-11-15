@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
 import { notePress } from '../platform/recording'
+import { screenToFloorDirection } from '../render/lens'
 import {
   focusSeat,
   isBledOut,
@@ -122,7 +123,7 @@ const moveOf = (keys: ReadonlyArray<string>, couch: CouchKeys): Vector =>
 const intentOf = (model: Model, couch: CouchKeys): Intent => {
   const keys = model.input.pressedKeys
   return {
-    move: moveOf(keys, couch),
+    move: screenToFloorDirection(moveOf(keys, couch)),
     maybeAim: Option.none(),
     trigger: Array.contains(keys, couch.fire) ? 'Held' : 'Released',
     interact: Array.contains(keys, couch.ready) ? 'Held' : 'Released',

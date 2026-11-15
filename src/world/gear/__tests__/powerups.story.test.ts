@@ -60,6 +60,7 @@ import {
   tick,
   ticks,
   ticksFor,
+  walkToward,
   zombieOf,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
@@ -620,7 +621,7 @@ describe('effects', () => {
     return Story.story(
       APPLICATION,
       Story.given(onOpenFloor),
-      press('KeyD'),
+      walkToward({ x: 1, y: 0 }),
       ...ticksFor(1000, FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.x - startX).toBeCloseTo(

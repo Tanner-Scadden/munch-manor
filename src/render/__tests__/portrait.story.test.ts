@@ -38,6 +38,7 @@ import {
   worldToView,
   worldWindowOf,
 } from '../camera'
+import { floorToScreenDirection, screenToFloorDirection } from '../lens'
 import {
   LANDSCAPE_MAX_WIDTH,
   LANDSCAPE_SCREEN,
@@ -383,9 +384,12 @@ describe('the aim lean', () => {
         moveThumb(RIGHT_THUMB, 300 + STICK_RADIUS_PX, 700),
         ...ticks(90, FRAME_MS),
         Story.model(current => {
-          expect(current.cameraLean.x).toBeGreaterThan(CAMERA_LEAN_PX - 1)
-          expect(current.cameraLean.x).toBeLessThanOrEqual(CAMERA_LEAN_PX)
-          expect(Math.abs(current.cameraLean.y)).toBeLessThan(0.5)
+          const lean = Math.hypot(current.cameraLean.x, current.cameraLean.y)
+          expect(lean).toBeGreaterThan(CAMERA_LEAN_PX - 1)
+          expect(lean).toBeLessThanOrEqual(CAMERA_LEAN_PX + 1e-9)
+          expect(
+            Math.abs(floorToScreenDirection(current.cameraLean).y),
+          ).toBeLessThan(0.5)
           const camera = cameraOf(current)
           expect(camera.x).toBeGreaterThan(93)
           expect(focusOf(current).player.x - camera.x).toBeLessThan(135 / 2)
@@ -439,12 +443,19 @@ describe('the aim lean', () => {
           },
           camera,
         ),
-        ({ x }) => x,
+        reach => reach,
       )
     expect(reachAt(10)).toEqual(
-      Option.some(10 * (MOUSE_LEAN_SHARE / CAMERA_LEAN_PX)),
+      Option.some(
+        screenToFloorDirection({
+          x: 10 * (MOUSE_LEAN_SHARE / CAMERA_LEAN_PX),
+          y: 0,
+        }),
+      ),
     )
-    expect(reachAt(-1000)).toEqual(Option.some(-1))
+    expect(reachAt(-1000)).toEqual(
+      Option.some(screenToFloorDirection({ x: -1, y: 0 })),
+    )
   })
 
   it.effect('the same messages lean the camera the same way every time', () => {
@@ -512,7 +523,7 @@ describe('portrait input', () => {
         )
         expect(Stick.isAnyOf(['Active'])(fighting.input.moveStick)).toBe(true)
         expect(focusOf(fighting).intent.maybeAim).toEqual(
-          Option.some({ x: 0, y: -1 }),
+          Option.some(screenToFloorDirection({ x: 0, y: -1 })),
         )
       })
     })
@@ -529,11 +540,14 @@ describe('portrait input', () => {
     expect(onScreen.y).toBeCloseTo(
       (422 - (PHONE_PORTRAIT.height - screen.height * scale) / 2) / scale,
     )
+    const camera = cameraOf(fighting)
+    const middle = viewToWorld(screenCameraOf(fighting), {
+      x: (camera.width * screen.zoom) / 2,
+      y: PORTRAIT_HUD_PX + (camera.height * screen.zoom) / 2,
+    })
+    expect(middle.x).toBeCloseTo(camera.x + camera.width / 2)
+    expect(middle.y).toBeCloseTo(camera.y + camera.height / 2)
     const world = viewToWorld(screenCameraOf(fighting), onScreen)
-    expect(world.x).toBeCloseTo(90 / screen.zoom + cameraOf(fighting).x)
-    expect(world.y).toBeCloseTo(
-      (onScreen.y - PORTRAIT_HUD_PX) / screen.zoom + cameraOf(fighting).y,
-    )
     const back = worldToView(screenCameraOf(fighting), world)
     expect(back.x).toBeCloseTo(onScreen.x)
     expect(back.y).toBeCloseTo(onScreen.y)
