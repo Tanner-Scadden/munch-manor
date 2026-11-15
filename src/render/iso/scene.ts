@@ -429,14 +429,17 @@ export class IsoScene {
           }
           this.billboards.standLeaves(lit, drawable.footY, 0, 1)
           this.glowing.standLeaves(flashing, drawable.footY, 0, 1)
+          // NOTE: only a flat billboard takes the lamp's rim: a body of
+          // blocks is lit on its sides by the room's own lights, and the
+          // rim's flat cutout would stand round it as a tan outline.
+          rimUp({
+            pool: this.rims,
+            textures: this.textures,
+            leaves,
+            footY: drawable.footY,
+            lamp,
+          })
         }
-        rimUp({
-          pool: this.rims,
-          textures: this.textures,
-          leaves,
-          footY: drawable.footY,
-          lamp,
-        })
         this.bodies.cast(leaves, drawable.footY)
       }
     }
