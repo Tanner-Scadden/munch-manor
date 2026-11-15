@@ -222,10 +222,11 @@ const AFTER_TAP_MS = 250
 
 const surfaceTags = new Set(['PressedPointer'])
 
-// NOTE: a form's submit button names its tap with a Submitted Message, and
-// the hold-to-buy button its press with PressedHoldButton.
+// NOTE: a form's submit button names its tap with a Submitted Message, the
+// hold-to-buy button its press with PressedHoldButton, and the link code,
+// which copies itself on its own click (a Mount), with SucceededCopyLinkCode.
 const TAP_LEAVES =
-  /(^|:)(Clicked\w*|Submitted\w*|SelectedOption|SelectedTab|RequestedClose|PressedPointer|PressedHoldButton)$/
+  /(^|:)(Clicked\w*|Submitted\w*|SelectedOption|SelectedTab|RequestedClose|PressedPointer|PressedHoldButton|SucceededCopyLinkCode)$/
 
 const isTapMessage = (tag: string): boolean => TAP_LEAVES.test(tag)
 
@@ -293,6 +294,9 @@ const visibleTargets = (page: Page) =>
     page.evaluate(targets => {
       const openDialog = document.querySelector('dialog[open]')
       const scope: ParentNode = openDialog ?? document
+      // NOTE: a button no tap may reach is not a target: one inside an inert
+      // part of the page (the home menu under the lobby's card) and one that
+      // says it is disabled (What's New's arrow at the newest day).
       const isVisible = (button: Element) => {
         const box = button.getBoundingClientRect()
         const style = getComputedStyle(button)
@@ -301,6 +305,8 @@ const visibleTargets = (page: Page) =>
           box.height > 0 &&
           style.visibility !== 'hidden' &&
           style.display !== 'none' &&
+          button.closest('[inert]') === null &&
+          button.getAttribute('aria-disabled') !== 'true' &&
           (openDialog !== null || button.closest('dialog') === null)
         )
       }
@@ -520,6 +526,11 @@ const checkScene = (
             .route('https://x.com/**', route =>
               route.fulfill({ status: 200, body: '' }),
             ),
+        )
+        // NOTE: the link code copies itself to the clipboard on a tap, which
+        // a headless page refuses unless it may write there.
+        yield* attempt(() =>
+          tapPage.context().grantPermissions(['clipboard-write']),
         )
         yield* attempt(() =>
           tapPage
