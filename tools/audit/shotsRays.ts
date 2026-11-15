@@ -46,17 +46,18 @@ const LIBRARY_HOUSES: ReadonlyArray<
   { house: 2, slot: 'west', x: -320, y: 40 },
 ]
 
-// NOTE: in the room before the rose window in a break, so its shaft and pool show
-// whole; in a wave; and on a strike.
+// NOTE: a few steps out from under the rose window, where the lens shows
+// the back wall and its shaft and pool whole: in a break and a wave played
+// on past their banners (5 s), and on a strike.
 const LIBRARY_SCENES: ReadonlyArray<Scene> = Array.flatMap(
   LIBRARY_HOUSES,
   ({ house, slot, x, y }) => {
-    const at = `house=${house}&px=${x + 232}&py=${y + 110}`
+    const at = `house=${house}&px=${x + 232}&py=${y + 70}`
     return [
-      { name: `library-${slot}-break`, query: `${at}&break=open&freeze=20` },
+      { name: `library-${slot}-break`, query: `${at}&break=open&freeze=300` },
       {
         name: `library-${slot}-wave`,
-        query: `${at}&start=wave&heat=0.5&freeze=20`,
+        query: `${at}&start=wave&heat=0.5&freeze=300`,
       },
       { name: `library-${slot}-strike`, query: `${at}&${STRIKE}&freeze=20` },
     ]
