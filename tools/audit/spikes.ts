@@ -207,6 +207,19 @@ runHarnessAudit(
         Array.filter(String.split(',')(text), name => name !== ''),
       ),
     )
+    // NOTE: `ABOVE=transformFields` splits the own time of every call whose
+    // label starts with it (the time in its own code, not its callees') by
+    // the calls above it, so a helper many
+    // callers share says who spends it.
+    // NOTE: a helper's callers are often a wrapper (a dual's arrow), so each
+    // caller is named with the calls above it, this many in all.
+    const ABOVE_DEPTH = 3
+    const aboves = yield* Config.String('ABOVE').pipe(
+      Config.withDefault(''),
+      Config.map(text =>
+        Array.filter(String.split(',')(text), name => name !== ''),
+      ),
+    )
     // NOTE: `PER=1` prints each of the longest frames on its own; otherwise
     // their samples are summed, which shows what a long frame is made of.
     const isPer = yield* Config.String('PER').pipe(
@@ -220,6 +233,7 @@ runHarnessAudit(
       const self = new Map<string, number>()
       const inclusive = new Map<string, number>()
       const belows = Array.map(unders, () => new Map<string, number>())
+      const callers = Array.map(aboves, () => new Map<string, number>())
       let count = 0
       for (let i = 0; i < samples.length; i++) {
         const t = times[i] ?? 0
@@ -232,6 +246,12 @@ runHarnessAudit(
         const label = labelOf(id)
         self.set(label, (self.get(label) ?? 0) + ms)
         const seen = new Set<string>()
+        const callerLabels: Array<string | undefined> = Array.map(
+          aboves,
+          () => undefined,
+        )
+        // NOTE: how many more calls above join each caller's chain.
+        const callersLeft: Array<number> = Array.map(aboves, () => 0)
         let child = label
         const belowLabels: Array<string | undefined> = Array.map(
           unders,
@@ -247,6 +267,19 @@ runHarnessAudit(
             seen.add(name)
             inclusive.set(name, (inclusive.get(name) ?? 0) + ms)
           }
+          for (let a = 0; a < aboves.length; a++) {
+            if (
+              current !== id &&
+              child === label &&
+              String.startsWith(aboves[a] ?? '')(label)
+            ) {
+              callerLabels[a] = name
+              callersLeft[a] = ABOVE_DEPTH - 1
+            } else if ((callersLeft[a] ?? 0) > 0) {
+              callerLabels[a] = `${callerLabels[a] ?? ''} < ${name}`
+              callersLeft[a] = (callersLeft[a] ?? 0) - 1
+            }
+          }
           for (let u = 0; u < unders.length; u++) {
             if (String.startsWith(unders[u] ?? '')(name)) {
               belowLabels[u] = current === id ? '(self)' : child
@@ -254,6 +287,12 @@ runHarnessAudit(
           }
           child = name
         }
+        Array.forEach(callerLabels, (callerLabel, a) => {
+          const above = callers[a]
+          if (callerLabel !== undefined && above !== undefined) {
+            above.set(callerLabel, (above.get(callerLabel) ?? 0) + ms)
+          }
+        })
         Array.forEach(belowLabels, (belowLabel, u) => {
           const below = belows[u]
           if (belowLabel !== undefined && below !== undefined) {
@@ -277,6 +316,15 @@ runHarnessAudit(
       yield* Console.log('--- inclusive')
       for (const [name, ms] of top(inclusive, ROWS)) {
         yield* Console.log(String.padStart(7)(ms.toFixed(2)) + 'ms', name)
+      }
+      for (let a = 0; a < aboves.length; a++) {
+        yield* Console.log(`--- above ${aboves[a] ?? ''}`)
+        for (const [name, ms] of top(
+          callers[a] ?? new Map<string, number>(),
+          ROWS,
+        )) {
+          yield* Console.log(String.padStart(7)(ms.toFixed(2)) + 'ms', name)
+        }
       }
       for (let u = 0; u < unders.length; u++) {
         yield* Console.log(`--- under ${unders[u] ?? ''}`)
