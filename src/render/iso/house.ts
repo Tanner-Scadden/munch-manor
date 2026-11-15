@@ -3,7 +3,7 @@
 // cut into clumps for the wind, and the hidden stand-ins the furniture's
 // shadows are cast through.
 
-import { Array, Option, Record, Result, pipe } from 'effect'
+import { Array, Option, Record, Result, String, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 import { type Application, Container, Graphics, Rectangle } from 'pixi.js'
 
@@ -190,6 +190,99 @@ const lintelTopsOf = (level: Level): ReadonlyArray<TileQuad> =>
     y: height + TOP_LIFT,
     art,
   }))
+
+// WALL FACES
+
+// NOTE: the rows at the foot of a wall tile's art that its face wears: the
+// wainscot and the skirting the 2D game drew at the bottom of a top wall.
+const FACE_ART_PX = 6
+// NOTE: just in front of the block's own face, so the two never fight.
+const FACE_LIFT = 0.003
+
+type FaceQuad = Readonly<{
+  row: number
+  column: number
+  bottom: number
+  top: number
+  art: Readonly<{ row: number; column: number }>
+}>
+
+const isWallTile = (
+  tiles: ReadonlyArray<string>,
+  row: number,
+  column: number,
+) =>
+  Option.exists(
+    String.charAt(tiles[row] ?? '', column),
+    symbol => symbol === WALL_SYMBOL,
+  )
+
+// NOTE: every wall face the lens sees: a wall tile's south side over floor,
+// from the floor to its top, and a lintel's from its floor to its top.
+const wallFacesOf = (level: Level): ReadonlyArray<FaceQuad> => [
+  ...Array.flatMap(level.tiles, (line, row) =>
+    Array.filterMap(Array.fromIterable(line), (symbol, column) =>
+      symbol === WALL_SYMBOL && !isWallTile(level.tiles, row + 1, column)
+        ? Result.succeed({
+            row,
+            column,
+            bottom: 0,
+            top: wallHeightAt({ tiles: level.tiles, row, column }),
+            art: { row, column },
+          })
+        : Result.failVoid,
+    ),
+  ),
+  ...Array.map(lintelTilesOf(level), ({ row, column, height, art }) => ({
+    row,
+    column,
+    bottom: LINTEL_FLOOR,
+    top: height,
+    art,
+  })),
+]
+
+// NOTE: every wall's south face as one mesh, wearing the foot of its own
+// art stretched down it, so the 2D game's wainscot runs down to the floor
+// instead of a plain grey band under every wall.
+export const buildWallFaces = (
+  input: Readonly<{ level: Level; material: Material3D }>,
+): Mesh3D => {
+  const { level, material } = input
+  const faces = wallFacesOf(level)
+  const positions = new Float32Array(faces.length * 12)
+  const normals = new Float32Array(faces.length * 12)
+  const uvs = new Float32Array(faces.length * 8)
+  const indices = new Uint32Array(faces.length * 6)
+  Array.forEach(faces, ({ row, column, bottom, top, art }, index) => {
+    const x0 = (level.left + column * TILE_SIZE) * UNIT
+    const x1 = x0 + TILE_SIZE * UNIT
+    const z = zOf(level.top + (row + 1) * TILE_SIZE) + FACE_LIFT
+    const u0 = (art.column * TILE_SIZE) / level.width
+    const u1 = ((art.column + 1) * TILE_SIZE) / level.width
+    // NOTE: the picture is upside down in its texture (buildTileQuads).
+    const foot = (art.row + 1) * TILE_SIZE
+    const vTop = 1 - (foot - FACE_ART_PX) / level.height
+    const vFoot = 1 - foot / level.height
+    positions.set(
+      [x0, top, z, x1, top, z, x1, bottom, z, x0, bottom, z],
+      index * 12,
+    )
+    normals.set([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], index * 12)
+    uvs.set([u0, vTop, u1, vTop, u1, vFoot, u0, vFoot], index * 8)
+    const first = index * 4
+    indices.set(
+      [first, first + 2, first + 1, first, first + 3, first + 2],
+      index * 6,
+    )
+  })
+  return new Mesh3D({
+    geometry: new Geometry3D({ positions, normals, uvs, indices }),
+    material,
+    castShadow: false,
+    receiveShadow: true,
+  })
+}
 
 // FURNITURE
 

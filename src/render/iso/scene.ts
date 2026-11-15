@@ -63,6 +63,7 @@ import {
   type Plant,
   buildLintels,
   buildTileQuads,
+  buildWallFaces,
   buildWallTops,
   buildWalls,
   floorArtOf,
@@ -561,21 +562,21 @@ export class IsoScene {
       ...buildWalls({ level, material: this.wallMaterial }),
       ...buildLintels({ level, material: this.wallMaterial }),
     ]
-    const wallTops = buildWallTops({
-      level,
-      material: new Material3D({
-        baseColorTexture: room.texture,
-        roughness: 1,
-        metallic: 0,
-        specular: { factor: 0 },
-      }),
+    const wallArt = new Material3D({
+      baseColorTexture: room.texture,
+      roughness: 1,
+      metallic: 0,
+      specular: { factor: 0 },
     })
+    const wallTops = buildWallTops({ level, material: wallArt })
+    const wallFaces = buildWallFaces({ level, material: wallArt })
     holder.addChild(
       room.mesh,
       decals.mesh,
       landed.mesh,
       ground.mesh,
       wallTops,
+      wallFaces,
       stormQuads,
     )
     Array.forEach(walls, mesh => {
