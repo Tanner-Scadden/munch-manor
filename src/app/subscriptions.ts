@@ -36,6 +36,7 @@ import { DARE_LIST_BUTTON_CLASS } from '../screens/game/dareListButton'
 import { isRunUnderway } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
 import { makeSubscriptions } from './definition'
+import { OPEN_GATE, gateFrame } from './frameGate'
 import {
   type BlurredWindow,
   type CancelledPointer,
@@ -363,17 +364,29 @@ const syncMessageOf = (event: StoreEvent) =>
   })
 
 // NOTE: requestAnimationFrame's ticks with the time since the last one,
-// while the round or an end screen is moving. A hidden tab gets no frames,
+// while the round or an end screen is moving, through the frame gate
+// (src/app/frameGate.ts): a fast screen's frames that owe no sim tick are
+// held and sent with the next, so the game draws at most about 60 a
+// second. A hidden tab gets no frames,
 // so the first delta after it comes back can be seconds long: the update
 // clamps it (clampFrameDelta in src/app/frame.ts).
 const animationFrames = Stream.callback<TickedFrame>(queue =>
   Effect.acquireRelease(
     Effect.sync(() => {
-      const state = { frameId: 0, lastTime: performance.now() }
+      const state = {
+        frameId: 0,
+        lastTime: performance.now(),
+        gate: OPEN_GATE,
+      }
       const tick = (now: number) => {
-        const deltaTime = now - state.lastTime
+        const gated = gateFrame(state.gate, now - state.lastTime)
         state.lastTime = now
-        Queue.offerUnsafe(queue, Message.TickedFrame({ deltaTime }))
+        state.gate = gated.gate
+        Option.match(gated.sendMs, {
+          onNone: () => {},
+          onSome: deltaTime =>
+            Queue.offerUnsafe(queue, Message.TickedFrame({ deltaTime })),
+        })
         state.frameId = requestAnimationFrame(tick)
       }
       state.frameId = requestAnimationFrame(tick)
@@ -495,9 +508,14 @@ const FrameActivity = Schema.Struct({ isActive: Schema.Boolean })
 const roomFrameTimes: Stream.Stream<number> = Stream.callback<number>(queue =>
   Effect.acquireRelease(
     Effect.sync(() => {
-      const state = { frameId: 0 }
-      const tick = (): void => {
-        Queue.offerUnsafe(queue, 0)
+      const state = { frameId: 0, lastTime: performance.now(), gate: OPEN_GATE }
+      const tick = (now: number): void => {
+        const gated = gateFrame(state.gate, now - state.lastTime)
+        state.lastTime = now
+        state.gate = gated.gate
+        if (Option.isSome(gated.sendMs)) {
+          Queue.offerUnsafe(queue, 0)
+        }
         state.frameId = requestAnimationFrame(tick)
       }
       state.frameId = requestAnimationFrame(tick)
