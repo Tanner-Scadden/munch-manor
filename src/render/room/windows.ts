@@ -1,14 +1,13 @@
 // The manor's windows as the storm sees them: the glass of each one the
-// room art draws (the dining room's rose window too), and the patch of floor a lightning strike throws its
-// light on. The boxes come from the art's own modules, so the storm always
-// lands on the glass (src/render/iso/storm.ts).
+// room art draws (the library's rose window too), and the patch of floor a
+// lightning strike throws its light on. The boxes come from the art's own
+// modules, so the storm always lands on the glass (src/render/iso/storm.ts).
 
 import { Array, Option } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
 import {
-  DINING_ROOM_ID,
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
@@ -21,7 +20,7 @@ import { PARLOUR_WINDOW_GAPS, doorBox } from './roomWalls'
 import { roseGlassOf } from './roseWindowArt'
 
 // NOTE: a window high in a back wall, one in a side wall's gap, or the
-// dining room's rose window.
+// library's rose window.
 type PaneKind = 'High' | 'Side' | 'Rose'
 
 export type Pane = Readonly<{
@@ -129,21 +128,16 @@ export const windowPanesOf = (level: Level): ReadonlyArray<Pane> => {
         kind: 'High',
         roomId: LIBRARY_ROOM_ID,
       }),
-    ],
-  })
-  const rose = Option.match(roomBoxOf(level, DINING_ROOM_ID), {
-    onNone: () => [],
-    onSome: room => [
       wallPane(level, roseGlassOf(room), {
         kind: 'Rose',
-        roomId: DINING_ROOM_ID,
+        roomId: LIBRARY_ROOM_ID,
       }),
     ],
   })
   const kitchen = Array.contains(level.doorIds, 'Window')
     ? [sidePane(level, doorBox(level, 'Window'))]
     : []
-  const panes = [...parlour, ...library, ...rose, ...kitchen]
+  const panes = [...parlour, ...library, ...kitchen]
   builtPanes.set(level, panes)
   return panes
 }

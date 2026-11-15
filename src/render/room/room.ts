@@ -236,7 +236,6 @@ const diningWallArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
   inDining(level, room => [
     ...diningWallShapes(level, room),
     ...diningWallDecorShapes(room),
-    ...roseWindowShapes(room),
   ])
 
 const frontDoorArt = (level: Level): ReadonlyArray<Canvas.Shape> => {
@@ -299,6 +298,7 @@ const slotWallArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
   ...inRoom(level, LIBRARY_ROOM_ID, room => [
     ...libraryWallShapes(level, room),
     ...libraryWallDecorShapes(room),
+    ...roseWindowShapes(room),
   ]),
   ...inRoom(level, CELLAR_ROOM_ID, room => [
     ...cellarWallShapes(level, room),

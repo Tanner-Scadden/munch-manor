@@ -53,6 +53,7 @@ import {
   wallShadowShapes,
   wallShapes,
 } from '../../src/render/room/roomWalls'
+import { roseWindowShapes } from '../../src/render/room/roseWindowArt'
 import { TILE_SIZE } from '../../src/shared/constants'
 import { type Level, levelFor, makeLevel } from '../../src/world/level/arena'
 import {
@@ -334,6 +335,7 @@ const libraryShapes = (isOpen: boolean): ReadonlyArray<Canvas.Shape> => {
     ...walls(level),
     ...libraryWallShapes(level, room),
     ...libraryWallDecorShapes(room),
+    ...roseWindowShapes(room),
     ...doors(level),
     ...Option.match(westTop, {
       onNone: () => [],

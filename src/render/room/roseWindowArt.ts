@@ -1,6 +1,7 @@
-// The dining room's rose window: a round stained-glass window high in the
-// north wall, east of Uncle Chunk's portrait, over clear floor, so the
-// colored light it throws lands where the crew walks. Its glass is worked
+// The library's rose window: a round stained-glass window high in the
+// north wall over the reading nook, between the stopped clock and the map,
+// over clear floor, so the colored light it throws lands where the crew
+// walks, clear of the stacks and the secret shelf. Its glass is worked
 // out from a wheel (eight petals round a four-leaf middle in lead), not
 // drawn by hand, so the art and the light it throws read off one grid
 // (src/render/iso/godRays.ts, src/render/iso/emissives.ts).
@@ -88,7 +89,7 @@ const isRoseGlass = (letter: string): boolean =>
   String.includes(letter)('rbgpy')
 
 const spotOf = (room: Box): Readonly<{ x: number; y: number }> => ({
-  x: room.x + 237,
+  x: room.x + 224,
   y: room.y + 2,
 })
 
