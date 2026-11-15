@@ -12,6 +12,8 @@ import { spriteImage } from '../../../art/sprite'
 import { purchaseOverlayShapes } from '../../../features/shop/purchaseView'
 import type { InputDevice } from '../../../input/inputSchema'
 import { cameraOf, screenCameraOf } from '../../../render/camera'
+import { screenOf } from '../../../render/screen'
+import { hudKeepoutsOf } from '../../../screens/game/pocket'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   inPortrait,
@@ -21,10 +23,13 @@ import {
 import {
   APPLICATION,
   HOLD_TICKS,
+  PHONE_LANDSCAPE,
   SCENE_SUBSCRIPTIONS,
+  SURFACE,
   measureSurface,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
+import { drawnBoxesOf, isOverBox } from '../../../test/viewReading'
 import { FRIDGE_RULES, fridgeBoxOf } from '../../fridge/leftovers'
 import { levelOf, openExitIn } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
@@ -181,7 +186,7 @@ describe('taking a fridge prize on touch', () => {
 
 describe('the price tag in a zoomed phone window', () => {
   const tagsFor = (model: Model) =>
-    purchaseOverlayShapes(model, screenCameraOf(model))
+    purchaseOverlayShapes(model, screenCameraOf(model), hudKeepoutsOf(model))
   // NOTE: the side rooms' boards are open, so the kitchen's are the only
   // ones with a tag.
   const upright = (y: number): Model =>
@@ -203,4 +208,66 @@ describe('the price tag in a zoomed phone window', () => {
     expect(cameraOf(upright(170)).y).toBeGreaterThan(cameraOf(upright(26)).y)
     expect(tagsFor(upright(170))).toHaveLength(0)
   })
+})
+
+describe('a price tag at the edge of the window', () => {
+  const sideways = (model: Model): Model =>
+    modifyFields(model, {
+      maybeSurface: () => Option.some(PHONE_LANDSCAPE),
+    })
+  const onDesktop = (model: Model): Model =>
+    modifyFields(model, {
+      lastDevice: (): InputDevice => 'KeyboardMouse',
+      maybeSurface: () => Option.some(SURFACE),
+    })
+  const LAYOUTS: ReadonlyArray<Readonly<[string, (model: Model) => Model]>> = [
+    ['a phone on its side', sideways],
+    ['a phone held upright', inPortrait],
+    ['a desktop', onDesktop],
+  ]
+  const STRIDE = 12
+  const start = atBoards('Touch', EXIT_RULES.kitchenKeys + 2)
+  const { bounds } = levelOf(start)
+  const spots = Array.flatMap(
+    Array.range(0, Math.floor((bounds.right - bounds.left) / STRIDE)),
+    column =>
+      Array.map(
+        Array.range(0, Math.floor((bounds.bottom - bounds.top) / STRIDE)),
+        row => ({
+          x: bounds.left + column * STRIDE,
+          y: bounds.top + row * STRIDE,
+        }),
+      ),
+  )
+
+  test.each(LAYOUTS)(
+    'stays whole in the window and off the HUD on %s',
+    (_name, layout) => {
+      const misses = Array.flatMap(spots, spot => {
+        const model = layout(
+          modifyFocus(start, {
+            player: player =>
+              modifyFields(player, { x: () => spot.x, y: () => spot.y }),
+          }),
+        )
+        const window = screenOf(model).world
+        const keepouts = hudKeepoutsOf(model)
+        const drawn = drawnBoxesOf(
+          purchaseOverlayShapes(model, screenCameraOf(model), keepouts),
+        )
+        return Array.filter(
+          drawn,
+          box =>
+            box.left < window.x ||
+            box.top < window.y ||
+            box.right > window.x + window.width ||
+            box.bottom > window.y + window.height ||
+            Array.some(keepouts, isOverBox(box)),
+        ).length > 0
+          ? [spot]
+          : []
+      })
+      expect(misses).toEqual([])
+    },
+  )
 })

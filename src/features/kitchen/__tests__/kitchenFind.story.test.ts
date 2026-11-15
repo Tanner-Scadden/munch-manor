@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -6,20 +6,26 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { Boss, KitchenCall, type Model, Phase } from '../../../app/model'
 import { roomsOf } from '../../../domain/run'
-import { cameraOf } from '../../../render/camera'
+import { tagKeepoutsOf } from '../../../features/shop/purchaseView'
+import type { InputDevice } from '../../../input/inputSchema'
+import { cameraOf, screenCameraOf } from '../../../render/camera'
 import { kitchenLeakShapes } from '../../../render/room/kitchenLeak'
+import { hudKeepoutsOf } from '../../../screens/game/pocket'
 import { soupBubbleShapes } from '../../../screens/game/stallBubble'
 import {
   DISTANT_SPAWN,
   freshRunModel,
+  inPortrait,
   pastTimedBreaks,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
   BELOW_KITCHEN_DOOR,
   FRAME_MS,
+  PHONE_LANDSCAPE,
   ticks,
 } from '../../../test/testing'
+import { drawnBoxesOf, isOverBox } from '../../../test/viewReading'
 import { levelFor, levelOf, openExitIn } from '../../../world/level/arena'
 import { MANOR_SPEC } from '../../../world/level/plan'
 import { modifyFocus } from '../../../world/party/party'
@@ -249,4 +255,77 @@ describe('the smell of soup', () => {
     const after = bossed(near(beat(breakAt(3), 7100)))
     expect(Option.isNone(maybeKitchenSound(before, after))).toBe(true)
   })
+})
+
+describe('the holler beside the price tags', () => {
+  // NOTE: the boards' tag pinned to the window's edge on a phone on its
+  // side (2026-11-15 shots) slid under the holler: the bubble keeps off
+  // every tag as it is drawn, wherever the player stands in the dining
+  // room, on every layout.
+  const LAYOUTS: ReadonlyArray<Readonly<[string, (model: Model) => Model]>> = [
+    [
+      'a phone on its side',
+      current =>
+        modifyFields(current, {
+          lastDevice: (): InputDevice => 'Touch',
+          maybeSurface: () => Option.some(PHONE_LANDSCAPE),
+        }),
+    ],
+    [
+      'a phone held upright',
+      current =>
+        inPortrait(
+          modifyFields(current, { lastDevice: (): InputDevice => 'Touch' }),
+        ),
+    ],
+    ['a desktop', current => current],
+  ]
+  const STRIDE = 12
+
+  it.effect.each(LAYOUTS)('never covers a tag on %s', ([_name, layout]) =>
+    Story.story(
+      APPLICATION,
+      Story.given(breakAt(3)),
+      ...ticks(2, FRAME_MS),
+      Story.model(called => {
+        const { bounds } = levelOf(called)
+        const misses = Array.flatMap(
+          Array.range(0, Math.floor((bounds.right - bounds.left) / STRIDE)),
+          column =>
+            Array.flatMap(
+              Array.range(0, Math.floor((bounds.bottom - bounds.top) / STRIDE)),
+              row => {
+                const spot = {
+                  x: bounds.left + column * STRIDE,
+                  y: bounds.top + row * STRIDE,
+                }
+                const current = layout(
+                  modifyFocus(called, {
+                    player: player =>
+                      modifyFields(player, {
+                        x: () => spot.x,
+                        y: () => spot.y,
+                      }),
+                  }),
+                )
+                const camera = screenCameraOf(current)
+                const tags = tagKeepoutsOf(
+                  current,
+                  camera,
+                  hudKeepoutsOf(current),
+                )
+                const bubble = drawnBoxesOf(soupBubbleShapes(current, camera))
+                return Array.some(bubble, box =>
+                  Array.some(tags, isOverBox(box)),
+                )
+                  ? [spot]
+                  : []
+              },
+            ),
+        )
+        expect(isCalling(called)).toBe(true)
+        expect(misses).toEqual([])
+      }),
+    ),
+  )
 })
