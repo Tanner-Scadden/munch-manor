@@ -120,7 +120,7 @@ const STRIKE_MS = 900
 
 // NOTE: a number from 0 to 1 for a whole number, the same on every engine
 // (Math.sin is not, so this is an integer hash).
-const unitOf = (n: number): number => {
+export const unitOf = (n: number): number => {
   let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b)
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
   h ^= h >>> 16

@@ -73,10 +73,18 @@ const FILL_GAIN = 3.2
 
 // FLAMES
 
-type FlameKind = 'Candle' | 'Hearth' | 'Sconce' | 'Oven' | 'Chandelier' | 'Bulb'
+export type FlameKind =
+  | 'Candle'
+  | 'Hearth'
+  | 'Sconce'
+  | 'Oven'
+  | 'Chandelier'
+  | 'Bulb'
 
 export type FlameSpec = Readonly<{
   kind: FlameKind
+  // NOTE: where it stands on the game's map, in game pixels.
+  spot: Vector
   x: number
   z: number
   height: number
@@ -152,6 +160,7 @@ export const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
   }
   const specs = Array.map(flameSpotsOf(level), ({ kind, spot }, index) => ({
     kind,
+    spot,
     x: spot.x * UNIT,
     z: zOf(spot.y),
     seed: index * 2.17,

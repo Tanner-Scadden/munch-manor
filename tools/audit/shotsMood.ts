@@ -1,6 +1,8 @@
-// The mood light (src/render/iso/mood.ts): the same room in a calm break, a
-// wave at full heat, and a lightning strike, as
-// `mood-<TAG>-<viewport>-<scene>.png`, so the light's turn can be judged.
+// The mood light and the air (src/render/iso/mood.ts, air.ts): the same
+// room in a calm break, a wave at full heat, and a lightning strike, then
+// the parlour's hearth and the kitchen's ovens with their embers, as
+// `mood-<TAG>-<viewport>-<scene>.png`, so the light's turn and the air can
+// be judged.
 //   TAG=try bun run heavy -- --shared bun tools/audit/shotsMood.ts
 import { Effect } from 'effect'
 
@@ -31,6 +33,14 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
     name: 'strike',
     query:
       'wave=5&seen=all&start=wave&elapsed=6000&clock=1770&god&crowd=12&freeze=20',
+  },
+  {
+    name: 'hearth',
+    query: 'wave=5&seen=all&god&openexits=West&px=-160&py=120&freeze=60',
+  },
+  {
+    name: 'ovens',
+    query: 'wave=5&seen=all&god&openexits=Kitchen&px=90&py=-70&freeze=60',
   },
 ]
 
