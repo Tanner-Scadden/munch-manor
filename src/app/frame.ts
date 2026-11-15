@@ -46,7 +46,7 @@ import { TRAP_KIND_ORDER } from '../world/gear/traps'
 import { levelOf } from '../world/level/arena'
 import { focusOf, modifyFocus } from '../world/party/party'
 import { isArriving, isRunUnderway } from '../world/run/arrival'
-import { withWorld } from '../world/schema/world'
+import { withWorld, worldOf } from '../world/schema/world'
 import { clamp } from '../world/step/geometry'
 import {
   type InputsByPlayer,
@@ -199,7 +199,7 @@ const runTicks = (stepped: Stepped, count: number): Stepped => {
   }
   const intended = botsPressed(refreshIntent(stepped.model))
   const inputs = inputsOf(intended)
-  const ticked = stepWorld(intended, inputs)
+  const ticked = stepWorld(worldOf(intended), inputs)
   const next = {
     model: recordedTick(
       withFirePressSeen(withWorld(intended, () => ticked.world)),
