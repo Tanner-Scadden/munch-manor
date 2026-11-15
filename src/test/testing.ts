@@ -77,6 +77,7 @@ import {
   shownHints,
 } from '../features/onboarding/onboarding'
 import { PartRadioGroupBlock } from '../features/profile/blocks/look/lookRadios'
+import { floorToScreenDirection } from '../render/lens'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -166,12 +167,18 @@ export const FIRE_PRESS = Message.PressedPointer({
   clientY: 200,
 })
 
-const firePushToward = (direction: Vector) =>
-  Message.MovedPointer({
+// NOTE: the aim stick pushed all the way toward a direction on the floor:
+// the way the screen shows it through the lens (src/render/lens.ts), so the
+// shot flies that way on the floor.
+const firePushToward = (direction: Vector) => {
+  const onScreen = floorToScreenDirection(direction)
+  const length = Math.max(1e-9, Math.hypot(onScreen.x, onScreen.y))
+  return Message.MovedPointer({
     pointerId: FIRE_THUMB,
-    clientX: 600 + direction.x * STICK_RADIUS_PX,
-    clientY: 200 + direction.y * STICK_RADIUS_PX,
+    clientX: 600 + (onScreen.x / length) * STICK_RADIUS_PX,
+    clientY: 200 + (onScreen.y / length) * STICK_RADIUS_PX,
   })
+}
 
 export const FIRE_PUSH = firePushToward({ x: 1, y: 0 })
 

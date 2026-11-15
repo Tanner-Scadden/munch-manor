@@ -9,7 +9,16 @@ import { fillSpecOf } from '../lightSpecs'
 // off screen is left out of the frame, its shadows too, and what lies on the
 // view or just past it never is.
 
-const VIEW = viewBoxOf({ x: 100, y: 50, width: 400, height: 220 })
+// NOTE: a view on its own canvas, a game pixel to a pixel.
+const ON_ITS_CANVAS = { scale: 1, left: 0, top: 0 }
+
+const VIEW = viewBoxOf({
+  x: 100,
+  y: 50,
+  width: 400,
+  height: 220,
+  ...ON_ITS_CANVAS,
+})
 
 describe('the view', () => {
   test('keeps what lies on it or just past its edges', () => {
@@ -49,6 +58,7 @@ describe('the view', () => {
           y: bottom - 1,
           width: 400,
           height: 220,
+          ...ON_ITS_CANVAS,
         })
         expect(isNearView(pool, corner)).toBe(true)
       },

@@ -19,6 +19,7 @@ import { freshRun } from '../../../app/runReset'
 import { Stick } from '../../../input/inputSchema'
 import { cameraFor } from '../../../render/camera'
 import { FIXED_STEP_MS } from '../../../shared/constants'
+import { floorSeenOf } from '../../../test/lensTesting'
 import {
   DISTANT_SPAWN,
   freshRunModel,
@@ -585,8 +586,9 @@ describe('the kitchen in the waves', () => {
 
   test('the camera stays on the parlour until the kitchen opens', () => {
     const atTop = { x: 70, y: 24 }
-    expect(cameraFor(levelOf(base), atTop).y).toBe(0)
-    expect(cameraFor(levelOf(withKitchen(base)), atTop).y).toBeLessThan(0)
+    const shut = cameraFor(levelOf(base), atTop)
+    expect(floorSeenOf(shut).top).toBeCloseTo(levelOf(base).bounds.top, -0.5)
+    expect(cameraFor(levelOf(withKitchen(base)), atTop).y).toBeLessThan(shut.y)
   })
 })
 

@@ -29,16 +29,25 @@ const started = playedThrough(startedRun(3, 'Campaign'), [
 
 // NOTE: a frame's events are all its ticks' events, so a 30 Hz frame holds
 // two ticks' worth, and the run stats count frames and their real time.
+// The move lesson counts each frame's walk as a straight line from where
+// the frame began (src/features/onboarding/onboarding.ts), so a walk that
+// bends (along a wall) cuts the corner at 30 Hz. D walks a little off the
+// map's east through the turned camera (src/render/lens.ts), so it bends.
 // Everything else must match.
 const worldOf = (model: Model): Readonly<Record<string, unknown>> => {
-  const { frameEvents: _events, stats: _stats, ...rest } = gameplayOf(model)
+  const {
+    frameEvents: _events,
+    stats: _stats,
+    practice: _practice,
+    ...rest
+  } = gameplayOf(model)
   const {
     activeFrames: _frames,
     activeFrameMs: _frameMs,
     runMs: _runMs,
     ...counts
   } = model.stats
-  return { ...rest, stats: counts }
+  return { ...rest, stats: counts, aimedShots: model.practice.aimedShots }
 }
 
 const playFor = (seconds: number, hz: number) =>

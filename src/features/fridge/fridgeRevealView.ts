@@ -15,9 +15,12 @@ import {
 import { gunIcon } from '../../art/sprites/guns'
 import { PrizeFlight } from '../../domain/clientSchema'
 import {
+  type Anchored,
   type Camera,
+  anchoredAt,
+  anchoredToWorld,
+  placedAt,
   viewBoxOf,
-  viewToWorld,
   worldToView,
 } from '../../render/camera'
 import { rect } from '../../render/drawing'
@@ -27,7 +30,7 @@ import { FRIDGE_RULES, refundOf } from '../../world/fridge/leftovers'
 import { heldSlotOf } from '../../world/gear/weapons'
 import { focusOf, maybePlayerAt } from '../../world/party/party'
 import type { FridgePrize, Vector } from '../../world/schema/entitySchema'
-import { ZERO_VECTOR, clamp, easeOut } from '../../world/step/geometry'
+import { clamp, easeOut } from '../../world/step/geometry'
 import {
   type DoorReveal,
   REVEAL_RULES,
@@ -247,12 +250,16 @@ type RevealFrame = Readonly<{
 const revealFrameOf = (
   screen: Screen,
   camera: Camera,
+  anchored: Anchored,
   spot: Vector,
 ): RevealFrame => {
   const view = viewBoxOf(camera)
   const stripPx = screen.layout === 'Landscape' ? HUD_STRIP_HEIGHT : 0
-  const topLeft = viewToWorld(camera, { x: view.x, y: view.y + stripPx })
-  const bottomRight = viewToWorld(camera, {
+  const topLeft = anchoredToWorld(anchored, {
+    x: view.x,
+    y: view.y + stripPx,
+  })
+  const bottomRight = anchoredToWorld(anchored, {
     x: Math.min(view.x + view.width, screen.width),
     y: view.y + view.height,
   })
@@ -484,18 +491,15 @@ export const fridgeRevealShapes: {
       {
         onNone: () => [],
         onSome: ({ reveal, spot }) => [
-          group({
-            translate: worldToView(camera, ZERO_VECTOR),
-            scale:
-              camera.scale === 1
-                ? undefined
-                : { x: camera.scale, y: camera.scale },
-            shapes: revealShapes(
+          placedAt(
+            camera,
+            spot,
+            revealShapes(
               model,
-              revealFrameOf(screen, camera, spot),
+              revealFrameOf(screen, camera, anchoredAt(camera, spot), spot),
               reveal,
             ),
-          }),
+          ),
         ],
       },
     ),

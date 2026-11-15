@@ -69,6 +69,7 @@ import type {
   BulletGlaze,
   DoorId,
   ParticleKind,
+  Vector,
   WeaponKind,
 } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'
@@ -80,6 +81,7 @@ import { bossRattleDoors } from '../world/zombies/boss'
 import type { Camera } from './camera'
 import { centeredGlyphs, centeredRect, progressBetween } from './drawing'
 import { POPUP_LIFETIME_MS } from './juice'
+import { lensOf } from './lens'
 import type { Decal, DecalKind, Particle } from './renderSchema'
 
 // BULLETS
@@ -776,6 +778,25 @@ const popupLook = (popup: Popup): PopupLook => {
   }
 }
 
+// NOTE: a popup's floor spot held inside the view's left and right edges by
+// half its width, across the screen through the lens (src/render/lens.ts),
+// so a kill at the edge still reads.
+const keptOnScreen = (
+  camera: Camera,
+  spot: Vector,
+  halfWidth: number,
+): Vector => {
+  const lens = lensOf(camera)
+  const atX = lens.screenX(spot.x, spot.y)
+  const edge = halfWidth * camera.scale
+  const left = camera.left + edge
+  const right = Math.max(left, camera.left + camera.width * camera.scale - edge)
+  const keptX = clamp(atX, left, right)
+  return keptX === atX
+    ? spot
+    : lens.unprojectInto(keptX, lens.screenY(spot.x, spot.y), { x: 0, y: 0 })
+}
+
 export const popupShape =
   (camera: Camera) =>
   (popup: Popup): Canvas.Shape => {
@@ -786,16 +807,11 @@ export const popupShape =
         ? look.hopPx * Math.sin((Math.PI * popup.ageMs) / POPUP_HOP_MS)
         : 0
     const halfWidth = Math.ceil((textWidth(look.text) * look.scale) / 2)
+    const at = keptOnScreen(camera, popup, halfWidth)
     return group({
       translate: {
-        x: Math.round(
-          clamp(
-            popup.x,
-            camera.x + halfWidth,
-            camera.x + Math.max(halfWidth, camera.width - halfWidth),
-          ),
-        ),
-        y: Math.round(popup.y - hop - look.risePx * progress),
+        x: Math.round(at.x),
+        y: Math.round(at.y - hop - look.risePx * progress),
       },
       scale: { x: look.scale, y: look.scale },
       opacity: 1 - progressBetween(progress, POPUP_FADE_START, 1),

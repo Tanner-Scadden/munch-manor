@@ -15,8 +15,10 @@ import {
   type Camera,
   cameraFocus,
   cameraFor,
+  isInView as isLensInView,
   worldWindowOf,
 } from '../../../src/render/camera'
+import { floorToScreenDirection } from '../../../src/render/lens'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_MAX_WIDTH,
@@ -200,13 +202,7 @@ export const isInView: {
     if (maybeWindowScreen === undefined) {
       return true
     }
-    const camera = windowCamera(model, maybeWindowScreen)
-    return (
-      zombie.x >= camera.x &&
-      zombie.x <= camera.x + camera.width &&
-      zombie.y >= camera.y &&
-      zombie.y <= camera.y + camera.height
-    )
+    return isLensInView(windowCamera(model, maybeWindowScreen), zombie)
   },
 )
 
@@ -240,14 +236,18 @@ export const steerToward: {
     : { x: (to.x - from.x) / length, y: (to.y - from.y) / length }
 })
 
+// NOTE: the keys walk across the screen, which the lens shows turned
+// (src/render/lens.ts), so the bot picks them by the way it wants to go as
+// the screen shows it, as a player would.
 export const desiredKeys = (direction: Vector): Set<string> => {
   const keys = new Set<string>()
-  const length = Math.hypot(direction.x, direction.y)
+  const onScreen = floorToScreenDirection(direction)
+  const length = Math.hypot(onScreen.x, onScreen.y)
   if (length < 1e-6) {
     return keys
   }
-  const x = direction.x / length
-  const y = direction.y / length
+  const x = onScreen.x / length
+  const y = onScreen.y / length
   if (x > 0.38) {
     keys.add(KEYS.right)
   }

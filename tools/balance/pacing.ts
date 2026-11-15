@@ -48,6 +48,7 @@ const { runOnce, seedAt } = await import('./bot')
 const { pendingSpawns, spawnKey } = await import('./bot/logs')
 const { knobText } = await import('./bot/knobs')
 const { LANDSCAPE_SCREEN } = await import('../../src/render/screen')
+const { isInView } = await import('../../src/render/camera')
 const { focusOf } = await import('../../src/world/party/party')
 const { killTotal } = await import('../../src/world/run/stats')
 const { aliveCount, isAlive } = await import('../../src/world/waves/pacing')
@@ -193,13 +194,8 @@ const recorder = () => {
       const player = focusOf(after).player
       const camera = windowCamera(after, LANDSCAPE_SCREEN)
       const living = Array.filter(after.zombies, isAlive)
-      const inView = Array.filter(
-        living,
-        zombie =>
-          zombie.x >= camera.x &&
-          zombie.x <= camera.x + camera.width &&
-          zombie.y >= camera.y &&
-          zombie.y <= camera.y + camera.height,
+      const inView = Array.filter(living, zombie =>
+        isInView(camera, zombie),
       ).length
       const near = Array.some(
         living,

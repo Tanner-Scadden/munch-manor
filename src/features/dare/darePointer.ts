@@ -27,17 +27,12 @@ import { maybeHintCall } from './rattlesHint'
 
 const FLOOR_LIFT = 6
 
-// NOTE: where the arrow's tip goes for a thing: over the thing floating in
-// plain sight, else just over its spot.
-const markOf = (model: Model, spot: Vector): Vector => ({
-  x: spot.x,
-  y:
-    spot.y -
-    (isThingShownOn(runDifficultyOf(model)) &&
-    isInOpenRoom(levelOf(model), spot)
-      ? SHOWN_THING_TOP
-      : FLOOR_LIFT),
-})
+// NOTE: how far over the thing's spot the arrow's tip goes: over the thing
+// floating in plain sight, else just over its spot.
+const liftOf = (model: Model, spot: Vector): number =>
+  isThingShownOn(runDifficultyOf(model)) && isInOpenRoom(levelOf(model), spot)
+    ? SHOWN_THING_TOP
+    : FLOOR_LIFT
 
 const lyingSpot = (model: Model, thing: DareThing): Option.Option<Vector> =>
   DareThingState.isAnyOf(['Found'])(thing.state)
@@ -69,15 +64,13 @@ const maybeNearestThing = (model: Model): Option.Option<Vector> =>
       )
     : Option.none()
 
+// NOTE: the floor spot the arrow points at, while it shows.
 export const maybeDarePointer = (model: Model): Option.Option<Vector> =>
   isPocketCardOut(model)
     ? Option.none()
-    : Option.map(
-        Option.orElse(
-          Option.flatMap(maybeHintCall(model), call => call.maybeTarget),
-          () => maybeNearestThing(model),
-        ),
-        spot => markOf(model, spot),
+    : Option.orElse(
+        Option.flatMap(maybeHintCall(model), call => call.maybeTarget),
+        () => maybeNearestThing(model),
       )
 
 // NOTE: in the overlay canvas's pixels, from the screen camera.
@@ -95,6 +88,7 @@ export const darePointerShapes: {
       onSome: mark =>
         pointerArrowShapes({
           mark,
+          liftPx: liftOf(model, mark),
           elapsedMs: model.elapsedMs,
           screen,
           camera,

@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { screenToFloorDirection } from '../../render/lens'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
@@ -17,6 +18,7 @@ import {
   ZOMBIE_KNOCKBACK_SPEED,
   ZOMBIE_MAX_HP,
 } from '../../shared/constants'
+import { RIGHT_ON_SCREEN } from '../../test/lensTesting'
 import {
   NORMAL_BITE_GRACE,
   playingModel,
@@ -62,6 +64,14 @@ const dyingZombieAt = (id: number, x: number, y: number): Zombie =>
   })
 const RIGHT = { x: 1, y: 0 }
 
+// NOTE: the keys walk the screen's ways, turned onto the floor by the lens.
+const KEY_LEFT = screenToFloorDirection({ x: -1, y: 0 })
+const KEY_DOWN = screenToFloorDirection({ x: 0, y: 1 })
+const KEY_UP_RIGHT = screenToFloorDirection({
+  x: Math.SQRT1_2,
+  y: -Math.SQRT1_2,
+})
+
 const GRACE_TICK_MS = 50
 
 describe('movement', () => {
@@ -73,9 +83,13 @@ describe('movement', () => {
       tick(FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(
-          START_LEVEL.start.x + (PLAYER_SPEED * FRAME_MS) / 1000,
+          START_LEVEL.start.x +
+            (RIGHT_ON_SCREEN.x * PLAYER_SPEED * FRAME_MS) / 1000,
         )
-        expect(player.y).toBe(START_LEVEL.start.y)
+        expect(player.y).toBeCloseTo(
+          START_LEVEL.start.y +
+            (RIGHT_ON_SCREEN.y * PLAYER_SPEED * FRAME_MS) / 1000,
+        )
       }),
     ),
   )
@@ -87,7 +101,9 @@ describe('movement', () => {
       Story.message(Message.PressedKey({ code: 'KeyA' })),
       tick(5000),
       Story.model(({ seats: [{ player }], elapsedMs }) => {
-        expect(player.x).toBeCloseTo(START_LEVEL.start.x - PLAYER_SPEED * 0.05)
+        expect(player.x).toBeCloseTo(
+          START_LEVEL.start.x + KEY_LEFT.x * PLAYER_SPEED * 0.05,
+        )
         expect(elapsedMs).toBe(50)
       }),
     ),
@@ -115,12 +131,11 @@ describe('keyboard intent', () => {
       Story.message(Message.PressedKey({ code: 'KeyW' })),
       Story.message(Message.PressedKey({ code: 'KeyD' })),
       Story.model(({ seats: [{ intent }] }) => {
-        expect(intent.move.x).toBeCloseTo(Math.SQRT1_2)
-        expect(intent.move.y).toBeCloseTo(-Math.SQRT1_2)
+        expect(intent.move).toEqual(KEY_UP_RIGHT)
       }),
       Story.message(Message.ReleasedKey({ code: 'KeyW' })),
       Story.model(({ seats: [{ intent }] }) => {
-        expect(intent.move).toEqual({ x: 1, y: 0 })
+        expect(intent.move).toEqual(RIGHT_ON_SCREEN)
       }),
     ),
   )
@@ -132,7 +147,7 @@ describe('keyboard intent', () => {
       Story.message(Message.PressedKey({ code: 'KeyS' })),
       holdFire,
       Story.model(({ seats: [{ intent }] }) => {
-        expect(intent.move).toEqual({ x: 0, y: 1 })
+        expect(intent.move).toEqual(KEY_DOWN)
         expect(intent.trigger).toBe('Held')
       }),
       Story.message(Message.BlurredWindow()),

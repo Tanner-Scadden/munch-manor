@@ -10,6 +10,7 @@ import { initialModel } from '../../app/pureApp'
 import { deriveIntent } from '../../input/input'
 import type { Input } from '../../input/inputSchema'
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
+import { floorSeenOf, nearly } from '../../test/lensTesting'
 import { APPLICATION, WIDE_SURFACE } from '../../test/testing'
 import { PARLOUR, makeLevel } from '../../world/level/arena'
 import { ROOM_MAP } from '../../world/level/plan'
@@ -22,6 +23,11 @@ const WIDE_LEVEL = makeLevel(Array.map(ROOM_MAP, line => line + line))
 const NARROW_LEVEL = makeLevel(
   Array.map(ROOM_MAP, line => String.slice(0, 16)(line)),
 )
+
+// NOTE: a room one screen tall sits still on its rows, a little south of
+// the flat window's: the lens shows more floor above the view's middle,
+// far off, than below it, near.
+const ONE_SCREEN_Y = cameraFor(PARLOUR, { x: 160, y: 90 }).y
 
 const playingModel: Model = modifyFields(initialModel, {
   maybeSurface: () => Option.some(WIDE_SURFACE),
@@ -49,9 +55,16 @@ describe('camera', () => {
         { x: 310, y: 170 },
       ],
       focus => {
-        expect(cameraFor(PARLOUR, focus)).toMatchObject({ x: 0, y: 0 })
+        expect(cameraFor(PARLOUR, focus)).toMatchObject({
+          x: 0,
+          y: ONE_SCREEN_Y,
+        })
       },
     )
+    // NOTE: the whole room in view, its top wall to its front wall.
+    const seen = floorSeenOf(cameraFor(PARLOUR, { x: 160, y: 90 }))
+    expect(seen.top).toBeLessThanOrEqual(PARLOUR.bounds.top)
+    expect(seen.bottom).toBeGreaterThanOrEqual(PARLOUR.bounds.bottom)
   })
 
   test('follows the player across a map twice the width and stops at its edges', () => {
@@ -60,39 +73,41 @@ describe('camera', () => {
 
     expect(cameraFor(WIDE_LEVEL, { x: 320, y: 90 })).toMatchObject({
       x: 160,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(WIDE_LEVEL, { x: 400.4, y: 30 })).toMatchObject({
       x: 240,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(WIDE_LEVEL, { x: 40, y: 90 })).toMatchObject({
       x: 0,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(WIDE_LEVEL, { x: 620, y: 170 })).toMatchObject({
       x: WIDE_LEVEL.width - VIEW_WIDTH,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
   })
 
   test('keeps the followed player in the middle of the view between the edges', () => {
-    const player = { x: 333, y: 90 }
+    // NOTE: on the view's middle row, where the lens shows a game pixel as
+    // one on the screen; a room one screen tall holds it still there.
+    const player = { x: 333, y: ONE_SCREEN_Y + VIEW_HEIGHT / 2 }
     const camera = cameraFor(WIDE_LEVEL, player)
     const onScreen = worldToView(camera, player)
     expect(Math.abs(onScreen.x - VIEW_WIDTH / 2)).toBeLessThanOrEqual(0.5)
-    expect(viewToWorld(camera, onScreen)).toEqual(player)
+    expect(nearly(viewToWorld(camera, onScreen))).toEqual(nearly(player))
   })
 
   test('centers a map narrower than the view and holds it still', () => {
     expect(NARROW_LEVEL.width).toBe(VIEW_WIDTH / 2)
     expect(cameraFor(NARROW_LEVEL, { x: 10, y: 90 })).toMatchObject({
       x: -VIEW_WIDTH / 4,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
     expect(cameraFor(NARROW_LEVEL, { x: 150, y: 90 })).toMatchObject({
       x: -VIEW_WIDTH / 4,
-      y: 0,
+      y: ONE_SCREEN_Y,
     })
   })
 
@@ -103,27 +118,30 @@ describe('camera', () => {
       y: 90,
     }
     const camera = cameraFor(WIDE_LEVEL, player)
-    expect(camera).toMatchObject({ x: 240, y: 0 })
+    expect(camera).toMatchObject({ x: 240, y: ONE_SCREEN_Y })
 
     const cursorInView = Option.getOrThrow(
       clientToView(WIDE_SURFACE, { x: 1120, y: 360 }),
     )
     expect(cursorInView).toEqual({ x: 280, y: 90 })
-    expect(viewToWorld(camera, cursorInView)).toEqual({ x: 520, y: 90 })
-
-    const scrolledAim = deriveIntent(mouseInputAt(cursorInView), player, camera)
-    expect(scrolledAim.maybeAim).toEqual(Option.some({ x: 1, y: 0 }))
-
-    const leftOfPlayer = { x: 100, y: 90 }
-    const unscrolledAim = deriveIntent(
-      mouseInputAt(leftOfPlayer),
-      player,
-      cameraFor(PARLOUR, player),
+    const underCursor = viewToWorld(camera, cursorInView)
+    expect(nearly(worldToView(camera, underCursor))).toEqual(
+      nearly(cursorInView),
     )
-    expect(unscrolledAim.maybeAim).toEqual(Option.some({ x: -1, y: 0 }))
-    const followedAim = deriveIntent(mouseInputAt(leftOfPlayer), player, camera)
-    expect(followedAim.maybeAim).toEqual(Option.some({ x: -1, y: 0 }))
-    expect(viewToWorld(camera, leftOfPlayer)).toEqual({ x: 340, y: 90 })
+    expect(underCursor.x).toBeGreaterThan(player.x + 100)
+
+    const east = worldToView(camera, { x: 520, y: 90 })
+    const scrolledAim = deriveIntent(mouseInputAt(east), player, camera)
+    expect(nearly(Option.getOrThrow(scrolledAim.maybeAim))).toEqual(
+      nearly({ x: 1, y: 0 }),
+    )
+
+    const west = worldToView(camera, { x: 340, y: 90 })
+    const followedAim = deriveIntent(mouseInputAt(west), player, camera)
+    expect(nearly(Option.getOrThrow(followedAim.maybeAim))).toEqual(
+      nearly({ x: -1, y: 0 }),
+    )
+    expect(nearly(viewToWorld(camera, west))).toEqual(nearly({ x: 340, y: 90 }))
   })
 
   it.effect('in the arena, the mouse aims where it points on the screen', () =>
@@ -136,12 +154,19 @@ describe('camera', () => {
       ),
       Story.message(Message.MovedMouse({ clientX: 1000, clientY: 360 })),
       Story.model(current => {
-        expect(cameraOf(current)).toMatchObject({ x: 0, y: 0 })
+        expect(cameraOf(current)).toMatchObject({ x: 0 })
         expect(current.input.maybeMouseInView).toEqual(
           Option.some({ x: 250, y: 90 }),
         )
-        expect(focusOf(current).intent.maybeAim).toEqual(
-          Option.some({ x: 1, y: 0 }),
+        const target = viewToWorld(cameraOf(current), { x: 250, y: 90 })
+        const length = Math.hypot(target.x - 100, target.y - 90)
+        expect(
+          nearly(Option.getOrThrow(focusOf(current).intent.maybeAim)),
+        ).toEqual(
+          nearly({
+            x: (target.x - 100) / length,
+            y: (target.y - 90) / length,
+          }),
         )
       }),
     ),

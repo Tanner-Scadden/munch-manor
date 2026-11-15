@@ -535,8 +535,7 @@ describe('the gold arrow', () => {
       Story.model(current => {
         expect(isCalling(current)).toBe(true)
         const mark = Option.getOrThrow(maybeDarePointer(current))
-        expect(mark.x).toBe(NEAR_SPOT.x)
-        expect(mark.y).toBeLessThan(NEAR_SPOT.y)
+        expect(mark).toEqual(NEAR_SPOT)
         const at = arrowAt(current)
         const thing = worldToView(screenCameraOf(current), NEAR_SPOT)
         expect(Math.abs(at.x + 4 - thing.x)).toBeLessThanOrEqual(1)

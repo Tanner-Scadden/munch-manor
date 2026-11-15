@@ -6,6 +6,8 @@
 
 import { Function } from 'effect'
 
+import { type LensFrame, lensOf } from '../lens'
+
 // NOTE: a box on the game's map, in game pixels.
 export type ViewBox = Readonly<{
   left: number
@@ -19,16 +21,27 @@ export type ViewBox = Readonly<{
 // tall piece), and a shadow falls a little way from what casts it.
 const VIEW_MARGIN = 48
 
-// NOTE: the floor the camera shows, from its top left corner and the game
-// pixels it shows across and down.
-export const viewBoxOf = (
-  input: Readonly<{ x: number; y: number; width: number; height: number }>,
-): ViewBox => ({
-  left: input.x,
-  top: input.y,
-  right: input.x + input.width,
-  bottom: input.y + input.height,
-})
+// NOTE: the floor the camera shows, boxed on the game's map: the floor
+// points under the view's four corners through the lens
+// (src/render/lens.ts), which turns the view and widens it away from the
+// camera.
+export const viewBoxOf = (frame: LensFrame): ViewBox => {
+  const lens = lensOf(frame)
+  const left = frame.left
+  const top = frame.top
+  const right = left + frame.width * frame.scale
+  const bottom = top + frame.height * frame.scale
+  const topLeft = lens.unprojectInto(left, top, { x: 0, y: 0 })
+  const topRight = lens.unprojectInto(right, top, { x: 0, y: 0 })
+  const bottomLeft = lens.unprojectInto(left, bottom, { x: 0, y: 0 })
+  const bottomRight = lens.unprojectInto(right, bottom, { x: 0, y: 0 })
+  return {
+    left: Math.min(topLeft.x, topRight.x, bottomLeft.x, bottomRight.x),
+    top: Math.min(topLeft.y, topRight.y, bottomLeft.y, bottomRight.y),
+    right: Math.max(topLeft.x, topRight.x, bottomLeft.x, bottomRight.x),
+    bottom: Math.max(topLeft.y, topRight.y, bottomLeft.y, bottomRight.y),
+  }
+}
 
 // NOTE: whether a box lies on the view or within its margin.
 export const isNearView: {

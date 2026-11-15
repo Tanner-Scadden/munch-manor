@@ -9,6 +9,7 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase } from '../../../app/model'
 import { PLAYER_MAX_HP } from '../../../shared/constants'
+import { releaseWalk, walkToward } from '../../../test/lensTesting'
 import { readyModel } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -26,8 +27,9 @@ const FRAME_MS = 50
 
 describe('a full wave', () => {
   const SECONDS_PER_RUN = 40
-  // NOTE: from the start spot, up into the aisle below the party table,
-  // then east past the table's end, under the North door's lane, where the
+  // NOTE: from the start spot, up the map into the aisle below the party
+  // table, then east past the table's end (the stick walks the map's ways,
+  // which the turned lens shows a hair off the screen's), under the North door's lane, where the
   // shots fly up it clear of the table and the chandelier.
   const STEP_UP_TICKS = 4
   const STEP_RIGHT_TICKS = 28
@@ -50,15 +52,15 @@ describe('a full wave', () => {
         Story.given(modifyFields(readyModel, { rngState: () => seed })),
         startRunFromHome,
         release('Enter'),
-        press('KeyW'),
+        walkToward({ x: 0, y: -1 }),
         ...ticks(STEP_UP_TICKS, FRAME_MS),
-        release('KeyW'),
-        press('KeyD'),
+        releaseWalk,
+        walkToward({ x: 1, y: 0 }),
         ...ticks(STEP_RIGHT_TICKS, FRAME_MS),
-        release('KeyD'),
-        press('KeyW'),
+        releaseWalk,
+        walkToward({ x: 0, y: -1 }),
         tick(FRAME_MS),
-        release('KeyW'),
+        releaseWalk,
         press('Enter'),
         holdFireToward({ x: 0, y: -1 }),
         ...Array.flatMap(

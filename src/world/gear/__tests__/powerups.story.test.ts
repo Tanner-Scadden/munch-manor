@@ -42,6 +42,7 @@ import {
   ZOMBIE_KNOCKBACK_SPEED,
 } from '../../../shared/constants'
 import { pistolOf, withPistol } from '../../../test/arsenals'
+import { walkToward } from '../../../test/lensTesting'
 import {
   DISTANT_SPAWN,
   pickupAt,
@@ -620,7 +621,7 @@ describe('effects', () => {
     return Story.story(
       APPLICATION,
       Story.given(onOpenFloor),
-      press('KeyD'),
+      walkToward({ x: 1, y: 0 }),
       ...ticksFor(1000, FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.x - startX).toBeCloseTo(

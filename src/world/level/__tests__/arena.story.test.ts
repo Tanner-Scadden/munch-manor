@@ -16,6 +16,7 @@ import {
   ZOMBIE_MAX_HP,
   ZOMBIE_RADIUS,
 } from '../../../shared/constants'
+import { walkToward } from '../../../test/lensTesting'
 import {
   DISTANT_SPAWN,
   quietWave,
@@ -121,7 +122,7 @@ describe('player collision', () => {
         yield* Story.story(
           APPLICATION,
           Story.given(withPlayerAt(parlourWave(), 125, 40)),
-          press('KeyW'),
+          walkToward({ x: 0, y: -1 }),
           ...ticks(40, MAX_FRAME_DELTA_MS),
           Story.model(({ seats: [{ player }] }) => {
             expect(player.y).toBeCloseTo(TOP_WALL_BOTTOM + PLAYER_RADIUS)
@@ -132,7 +133,7 @@ describe('player collision', () => {
         yield* Story.story(
           APPLICATION,
           Story.given(withPlayerAt(parlourWave(), 25, 70)),
-          press('KeyW'),
+          walkToward({ x: 0, y: -1 }),
           ...ticks(20, MAX_FRAME_DELTA_MS),
           Story.model(({ seats: [{ player }] }) => {
             expect(player.y).toBeCloseTo(PIANO_BOTTOM + PLAYER_RADIUS)
@@ -148,8 +149,7 @@ describe('player collision', () => {
       Story.story(
         APPLICATION,
         Story.given(withPlayerAt(parlourWave(), 20, 50)),
-        press('KeyW'),
-        press('KeyD'),
+        walkToward({ x: Math.SQRT1_2, y: -Math.SQRT1_2 }),
         ...ticks(5, MAX_FRAME_DELTA_MS),
         Story.model(({ seats: [{ player }] }) => {
           expect(player.y).toBeGreaterThanOrEqual(
