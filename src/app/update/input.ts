@@ -5,13 +5,13 @@ import { modifyFields } from 'foldkit/struct'
 import { foldPocketCard } from '../../features/dare/pocketCard'
 import {
   type PointerPress,
+  keepTouchedSticks,
   moveMouse,
   movePointer,
   pressHoldButton,
   pressPointer,
   releaseKeys,
   releasePointer,
-  releaseSticks,
 } from '../../input/input'
 import type { InputDevice, PointerDevice } from '../../input/inputSchema'
 import { noteMissedKeyDown } from '../../input/keyGrab'
@@ -129,7 +129,9 @@ export const inputHandlers = defineHandlers({
     model: withInput(model, input => releasePointer(input, pointerId)),
   }),
 
-  ReleasedEveryTouch: model => ({ model: withInput(model, releaseSticks) }),
+  ChangedTouches: (model, { points }) => ({
+    model: withInput(model, input => keepTouchedSticks(input, points)),
+  }),
 
   MovedMouse: (model, { clientX, clientY }) => ({
     model: withInput(useDevice(model, 'KeyboardMouse'), input =>

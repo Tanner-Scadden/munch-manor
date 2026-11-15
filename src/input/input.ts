@@ -149,11 +149,44 @@ export const releaseAll = (input: Input): Input =>
     holdButton: () => HoldButton.Released(),
   })
 
-export const releaseSticks = (input: Input): Input =>
-  modifyFields(input, {
-    moveStick: () => Stick.Idle(),
-    aimStick: () => Stick.Idle(),
+// NOTE: how far a stick's last point may sit from a finger still on the
+// glass and stay held. A finger's last move can trail its touch a little;
+// the two thumbs sit far apart, on their own halves.
+const STICK_TOUCH_REACH_PX = 96
+
+type TouchPoint = Readonly<{ clientX: number; clientY: number }>
+
+const keepIfTouched = (
+  stick: Stick,
+  points: ReadonlyArray<TouchPoint>,
+): Stick =>
+  Stick.match(stick, {
+    Idle: () => stick,
+    Active: active =>
+      Array.some(
+        points,
+        point =>
+          Math.hypot(
+            point.clientX - active.currentX,
+            point.clientY - active.currentY,
+          ) <= STICK_TOUCH_REACH_PX,
+      )
+        ? stick
+        : Stick.Idle(),
   })
+
+// NOTE: a stick lets go when no finger on the glass is near it, so one whose
+// lift never came (iOS Safari loses one now and then) never walks the
+// player on alone. No finger left lets go of both.
+export const keepTouchedSticks: {
+  (points: ReadonlyArray<TouchPoint>): (input: Input) => Input
+  (input: Input, points: ReadonlyArray<TouchPoint>): Input
+} = Function.dual(2, (input: Input, points: ReadonlyArray<TouchPoint>): Input =>
+  modifyFields(input, {
+    moveStick: stick => keepIfTouched(stick, points),
+    aimStick: stick => keepIfTouched(stick, points),
+  }),
+)
 
 // POINTERS
 
@@ -170,18 +203,29 @@ type PointerPosition = Readonly<{
   clientY: number
 }>
 
-const activateIfIdle = (stick: Stick, press: PointerPress): Stick =>
-  Stick.match(stick, {
-    Idle: () =>
-      Stick.Active({
-        pointerId: press.pointerId,
-        originX: press.clientX,
-        originY: press.clientY,
-        currentX: press.clientX,
-        currentY: press.clientY,
-      }),
-    Active: () => stick,
+// NOTE: a held stick stays its finger's against a stray touch on its half
+// (a palm, a third finger), but a thumb landing on the stick itself takes
+// it: no second finger lands there while a thumb holds it, so the stick's
+// own finger must be gone, its lift lost.
+const takeStick = (stick: Stick, press: PointerPress): Stick => {
+  const pressed = Stick.Active({
+    pointerId: press.pointerId,
+    originX: press.clientX,
+    originY: press.clientY,
+    currentX: press.clientX,
+    currentY: press.clientY,
   })
+  return Stick.match(stick, {
+    Idle: () => pressed,
+    Active: active =>
+      Math.hypot(
+        press.clientX - active.originX,
+        press.clientY - active.originY,
+      ) <= STICK_RADIUS_PX
+        ? pressed
+        : stick,
+  })
+}
 
 const pressTouch = (
   input: Input,
@@ -190,11 +234,11 @@ const pressTouch = (
 ): Input => {
   if (isLeftHalf(surface, press.clientX)) {
     return modifyFields(input, {
-      moveStick: stick => activateIfIdle(stick, press),
+      moveStick: stick => takeStick(stick, press),
     })
   } else {
     return modifyFields(input, {
-      aimStick: stick => activateIfIdle(stick, press),
+      aimStick: stick => takeStick(stick, press),
     })
   }
 }

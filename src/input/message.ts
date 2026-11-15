@@ -41,7 +41,13 @@ export const inputCases = {
   },
   ReleasedPointer: { pointerId: Schema.Finite },
   CancelledPointer: { pointerId: Schema.Finite },
-  ReleasedEveryTouch: {},
+  // NOTE: every finger still on the glass, at each touch's start, lift,
+  // or cancel (src/app/subscriptions.ts).
+  ChangedTouches: {
+    points: Schema.Array(
+      Schema.Struct({ clientX: Schema.Finite, clientY: Schema.Finite }),
+    ),
+  },
   MovedMouse: { clientX: Schema.Finite, clientY: Schema.Finite },
   SuppressedContextMenu: {},
   TappedWithTouch: {},
