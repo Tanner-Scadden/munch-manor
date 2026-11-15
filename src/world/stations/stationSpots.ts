@@ -19,7 +19,7 @@ import { secretShelfOf } from '../library/secretShelf'
 import type { StationId } from '../schema/worldSchema'
 
 // Where each work station stands on a level, read off the rooms' maps: the
-// cleat's `j` in the dining room's wall, and each other room's `*` marks in
+// cleat's `j` against the dining room's west wall, and each other room's `*` marks in
 // reading order (src/world/level/plan.ts): the parlour's gramophone, the
 // library's north and south stacks, the cellar's bulb chain then its
 // barrels, the kitchen's soup pot. The revolving shelf is the library's

@@ -28,7 +28,7 @@ import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
 // the gap in the party table. A shot through it in a wave snaps its chain:
 // it drops into the gap, crushing every zombie under it, and lies there as
 // cover, blocking the gap, until the next break, when the house hoists it
-// back up, or a player winches it up sooner at the cleat on the west wall
+// back up, or a player winches it up sooner at the cleat by the west wall
 // (src/world/stations/stations.ts), to be shot down again. It never hurts
 // a player. Fallen, it is the level's drop
 // (LevelState.dropped), so the gap's tiles are solid for every walker,
