@@ -230,7 +230,7 @@ const hitDistance = (
 
 // NOTE: a placement's blocks as the game carves them, each face's corners
 // carrying the pixel it shows (its column in the art, unmirrored, and its
-// row), kept for each carve.
+// row), at its hand set depth too, kept for each carve.
 const meshes = new WeakMap<VoxelPlacement['carved'], VoxelMeshData>()
 
 const pickMeshOf = (placement: VoxelPlacement, most: number): VoxelMeshData => {
@@ -242,12 +242,18 @@ const pickMeshOf = (placement: VoxelPlacement, most: number): VoxelMeshData => {
   const { masks, isFlipped } = placement
   const columnOf = (column: number): number =>
     isFlipped ? width - 1 - column : column
-  const { lift: _lift, ...mesh } = voxelMeshOf({
+  const { depthOf } = placement.carved
+  const {
+    lift: _lift,
+    caster: _caster,
+    ...mesh
+  } = voxelMeshOf({
     width,
     height,
     isSolid: (column, row) => masks.solid[row * width + columnOf(column)] === 1,
     isDark: (column, row) => masks.dark[row * width + columnOf(column)] === 1,
     most,
+    ...(depthOf === undefined ? {} : { depthOf }),
     uvOf: (column, row) => [columnOf(column) + 0.5, row + 0.5],
   })
   meshes.set(placement.carved, mesh)

@@ -23,7 +23,6 @@ import {
   BROKEN_LEAF_COLOR,
   BROKEN_LEAF_DARK_COLOR,
   type Box,
-  CANDLE_COLOR,
   CASING_COLOR,
   CASING_DARK_COLOR,
   CASING_LIGHT_COLOR,
@@ -35,8 +34,6 @@ import {
   EXIT_BOARD_EDGE_COLOR,
   EXIT_GAP_COLOR,
   FACE_TOP,
-  FLAME_COLOR,
-  FLAME_TIP_COLOR,
   GOLD_COLOR,
   GOLD_DARK_COLOR,
   INK_COLOR,
@@ -61,7 +58,6 @@ import {
   WALL_TRIM_COLOR,
   ZOMBIE_SKIN_COLOR,
   boundingBox,
-  boxOfKind,
   roll,
 } from './roomPalette'
 
@@ -319,18 +315,6 @@ export const wallShadowShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
 
 // WALL DECOR
 
-// NOTE: y is the top of the wall the sconce hangs on, the hearth's wall.
-const sconce = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
-  rect(x - 4, y + 4, 10, 11, 'rgba(255, 200, 90, 0.08)'),
-  rect(x - 2, y + 5, 6, 8, 'rgba(255, 200, 90, 0.1)'),
-  rect(x, y + 6, 2, 2, FLAME_COLOR),
-  rect(x, y + 5, 1, 1, FLAME_TIP_COLOR),
-  rect(x, y + 8, 2, 3, CANDLE_COLOR),
-  rect(x + 1, y + 11, 1, 1, CANDLE_COLOR),
-  rect(x - 1, y + 11, 4, 1, GOLD_COLOR),
-  rect(x, y + 12, 2, 2, GOLD_DARK_COLOR),
-]
-
 const PORTRAIT_PIXELS: ReadonlyArray<string> = [
   'FFFFFFFFFFFFFF',
   'FffffffffffffF',
@@ -546,15 +530,6 @@ export const PARLOUR_WALL_DECOR: ReadonlyArray<Canvas.Shape> = [
   ...pixelArt(47, 6, SKULL_OVAL_PIXELS, SKULL_OVAL_PALETTE),
   ...BOARDED_WINDOW,
 ]
-
-export const sconceShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
-  Option.match(boxOfKind(level, 'Hearth'), {
-    onNone: () => [],
-    onSome: hearth => [
-      ...sconce(hearth.x - 18, hearth.y - TILE_SIZE * 2),
-      ...sconce(hearth.x + hearth.width + 16, hearth.y - TILE_SIZE * 2),
-    ],
-  })
 
 // DOORS
 

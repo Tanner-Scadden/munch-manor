@@ -1,7 +1,6 @@
 // The renderer's textures: each sprite source loaded once, each crop of it
 // (mirrored when drawn flipped), and each crop's plain white silhouette for
-// the lamp's rim and the shadows' stand-ins. One cache per renderer, emptied
-// when it goes.
+// the lamp's rim. One cache per renderer, emptied when it goes.
 
 import { Option } from 'effect'
 import type { Canvas } from 'foldkit'
@@ -16,8 +15,6 @@ import {
   TextureSource,
   groupD8,
 } from 'pixi.js'
-
-import { Material3D } from '@pixi/3d'
 
 import { atlasNormalOf } from '../../art/spriteAtlas'
 import type { Level } from '../../world/level/arena'
@@ -53,7 +50,6 @@ export class Textures {
   private readonly sources = new Map<string, Texture | 'Loading'>()
   private readonly crops = new Map<string, Texture>()
   private readonly silhouettes = new Map<Texture, Texture>()
-  private readonly casterMaterials = new Map<Texture, Material3D>()
   private readonly normals = new Map<TextureSource, Texture>()
   // NOTE: the address each loaded source came from, to find its normal map.
   private readonly addresses = new Map<TextureSource, string>()
@@ -295,24 +291,6 @@ export class Textures {
     return texture
   }
 
-  // NOTE: the material a hidden shadow stand-in wears: its silhouette cut
-  // out, seen from both sides (the lights shine from the north, onto its
-  // back).
-  casterMaterialOf(texture: Texture): Material3D {
-    const known = this.casterMaterials.get(texture)
-    if (known !== undefined) {
-      return known
-    }
-    const material = new Material3D({
-      baseColorTexture: texture,
-      alphaMode: 'mask',
-      alphaCutoff: 0.5,
-      doubleSided: true,
-    })
-    this.casterMaterials.set(texture, material)
-    return material
-  }
-
   destroy(): void {
     this.look.destroy()
     for (const texture of this.silhouettes.values()) {
@@ -343,6 +321,5 @@ export class Textures {
     this.silhouettes.clear()
     this.crops.clear()
     this.sources.clear()
-    this.casterMaterials.clear()
   }
 }

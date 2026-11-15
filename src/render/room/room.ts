@@ -6,6 +6,7 @@ import {
   type Sprite,
   TOP_LEFT,
   bakeShapesWithin,
+  glowingSprite,
   group,
   placeAt,
   spriteShapes,
@@ -37,7 +38,7 @@ import {
 import { secretShelfOf } from '../../world/library/secretShelf'
 import type { ExitId } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/world'
-import type { Drawable } from '../depth'
+import { type Drawable, IN_FRONT_PX } from '../depth'
 import {
   CELLAR_BULB_SHAPES,
   cellarFloorShapes,
@@ -97,7 +98,6 @@ import {
   closedExitShapes,
   doorBox,
   doorwayShapes,
-  sconceShapes,
   wallShadowShapes,
   wallShapes,
 } from './roomWalls'
@@ -367,7 +367,6 @@ export const roomArtOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
     ...slotWallArt(level),
     ...kitchenWallShapes(level),
     ...inParlour(level, PARLOUR_WALL_DECOR),
-    ...sconceShapes(level),
     ...closedExitShapes(level),
     ...openedExitArt(level),
     ...doorwayShapes(level),
@@ -589,48 +588,65 @@ const FIRE_FRAMES: Array.NonEmptyReadonlyArray<ReadonlyArray<string>> = [
 
 const FIRE_SPRITES: Array.NonEmptyReadonlyArray<Sprite> = Array.map(
   FIRE_FRAMES,
-  pixels => spriteShapes(pixels, FIRE_PALETTE, TOP_LEFT),
+  pixels => glowingSprite(spriteShapes(pixels, FIRE_PALETTE, TOP_LEFT)),
 )
 
 const FIRE_WIDTH = 18
 
 type Spot = Readonly<{ x: number; y: number }>
 
-const fireSpots = new WeakMap<Level, Option.Option<Spot>>()
+// NOTE: where the fire stands: its spot in the firebox, and a foot nearer
+// than the carved hearth reaches (`IN_FRONT_PX`), so it shows in its
+// firebox.
+type FireSpot = Spot & Readonly<{ footY: number }>
 
-const fireSpotOf = (level: Level): Option.Option<Spot> => {
+const fireSpots = new WeakMap<Level, Option.Option<FireSpot>>()
+
+const fireSpotOf = (level: Level): Option.Option<FireSpot> => {
   const cached = fireSpots.get(level)
   if (cached !== undefined) {
     return cached
   }
-  const spot = Option.map(boxOfKind(level, 'Hearth'), ({ x, y, width }) => ({
-    x: x + Math.floor((width - FIRE_WIDTH) / 2),
-    y: y - 6,
-  }))
+  const spot = Option.map(
+    boxOfKind(level, 'Hearth'),
+    ({ x, y, width, height }) => ({
+      x: x + Math.floor((width - FIRE_WIDTH) / 2),
+      y: y - 6,
+      footY: y + height + IN_FRONT_PX,
+    }),
+  )
   fireSpots.set(level, spot)
   return spot
 }
 
-export const hearthFireShapes: {
-  (elapsedMs: number): (level: Level) => ReadonlyArray<Canvas.Shape>
-  (level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+// NOTE: the hearth's fire stands in the depth sort, in front of the carved
+// hearth, glowing of itself.
+export const hearthFireDrawables: {
+  (elapsedMs: number): (level: Level) => ReadonlyArray<Drawable>
+  (level: Level, elapsedMs: number): ReadonlyArray<Drawable>
 } = Function.dual(
   2,
-  (level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
+  (level: Level, elapsedMs: number): ReadonlyArray<Drawable> =>
     Option.match(fireSpotOf(level), {
       onNone: () => [],
-      onSome: ({ x, y }) => [
-        placeAt(
-          x,
-          y,
-          Option.getOrElse(
-            Array.get(
-              FIRE_SPRITES,
-              Math.floor(elapsedMs / FIRE_FRAME_MS) % FIRE_SPRITES.length,
+      onSome: ({ x, y, footY }) => [
+        {
+          footY,
+          rank: 'Prop',
+          shapes: [
+            placeAt(
+              x,
+              y,
+              Option.getOrElse(
+                Array.get(
+                  FIRE_SPRITES,
+                  Math.floor(elapsedMs / FIRE_FRAME_MS) % FIRE_SPRITES.length,
+                ),
+                () => FIRE_SPRITES[0],
+              ),
             ),
-            () => FIRE_SPRITES[0],
-          ),
-        ),
+          ],
+        },
       ],
     }),
 )

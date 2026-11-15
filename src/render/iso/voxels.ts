@@ -2,9 +2,11 @@
 // pickups, the house's furniture and set pieces, each sprite carved into
 // blocks (voxelShape.ts), lit by the room with their true faces; the blast's
 // glowing blocks and the debris in the air as cubes. All of it in one batch,
-// its slots pooled frame to frame, each carve built once and kept.
+// its slots pooled frame to frame, each carve built once and kept. Each
+// carve casts its shadow through its own blocks, merged into a few quads
+// (`casterOf`), from a second batch the shadow pass alone draws.
 
-import { Option } from 'effect'
+import { Array, Option, String } from 'effect'
 import type { Texture } from 'pixi.js'
 
 import {
@@ -16,12 +18,14 @@ import {
   RenderPassBit,
 } from '@pixi/3d'
 
+import { type SpriteDepth, spriteDepthOf } from '../../art/sprite'
 import { PART_BIAS } from './billboards'
 import { IDENTITY, type Leaf } from './flatten'
 import { UNIT } from './space'
 import type { PixelMasks, Textures } from './textures'
 import {
   DEPTH_BACK,
+  type DepthOf,
   isFlippedOf,
   isGroundedOf,
   slabMatrixOf,
@@ -41,7 +45,11 @@ const OPAQUE_ALPHA = 0.98
 // NOTE: how small the warm-up copy stands (see `isBlendWarm`).
 const WARM_SCALE = 1e-4
 
-const { lift: _cubeLift, ...UNIT_CUBE } = voxelMeshOf({
+const {
+  lift: _cubeLift,
+  caster: _cubeCaster,
+  ...UNIT_CUBE
+} = voxelMeshOf({
   width: 1,
   height: 1,
   isSolid: () => true,
@@ -63,9 +71,18 @@ const shapeKeyOf = ({
   most: number
 }>): ShapeKey => `${isFlipped}|${isGrounded}|${most}`
 
-// NOTE: a carve's geometry and how many blocks it moves toward the lens to
-// stand on the floor (`voxelMeshOf`'s lift).
-export type Carved = Readonly<{ geometry: Geometry3D; lift: number }>
+// NOTE: a carve's geometry, what it casts its shadow through, how many
+// blocks it moves toward the lens to stand on the floor (`voxelMeshOf`'s
+// lift), and the hand set depth it was carved to, if any (`deepSprite`).
+export type Carved = Readonly<{
+  geometry: Geometry3D
+  caster: Geometry3D
+  lift: number
+  depthOf?: DepthOf
+}>
+
+// NOTE: a body more faded than this casts no shadow.
+const CASTING_ALPHA = 0.5
 
 // NOTE: where a drawable's parts stand along the lens's ray: each part in
 // front of every part before it, as the 2D game painted it over them, in
@@ -79,6 +96,9 @@ export type StandInput = Readonly<{
   footY: number
   part: number
   isFlash: boolean
+  // NOTE: a light of itself (a hearth's flames): its own colors, unlit,
+  // casting no shadow.
+  isGlowing?: boolean
   most: number
   reach: PartReach
   spin?: number
@@ -147,10 +167,43 @@ const fadedOf = (
   return material
 }
 
+// NOTE: a sprite's hand set depth as the lens carve reads it: a box is its
+// cap deep everywhere, a map a digit a pixel (`.` the round default), read
+// mirrored for a body facing the other way.
+const depthOfSprite = (
+  input: Readonly<{
+    depth: SpriteDepth | undefined
+    most: number
+    columnOf: (column: number) => number
+  }>,
+): Readonly<{ depthOf?: DepthOf }> => {
+  const { depth, most, columnOf } = input
+  if (depth === undefined) {
+    return {}
+  }
+  const { rows } = depth
+  if (rows !== undefined) {
+    return {
+      depthOf: (column, row) =>
+        Option.match(
+          Option.flatMap(Array.get(rows, row), line =>
+            String.charAt(line, columnOf(column)),
+          ),
+          {
+            onNone: () => undefined,
+            onSome: symbol => Math.min(most, Number.parseInt(symbol, 16) || 0),
+          },
+        ),
+    }
+  }
+  return depth.isBox === true ? { depthOf: () => most } : {}
+}
+
 // NOTE: mutable on purpose: it pools pixi's own batch slots and caches each
 // sprite's blocks for the life of the renderer.
 export class VoxelBatch {
   private readonly batch: BatchedMesh3D
+  private readonly casters: BatchedMesh3D
   private readonly textures: Textures
   private readonly scratch = new Matrix4()
   private used = 0
@@ -158,6 +211,12 @@ export class VoxelBatch {
   private readonly slotGeometry: Array<Geometry3D | undefined> = []
   private readonly slotMaterial: Array<Material3D | undefined> = []
   private readonly slotPasses: Array<number> = []
+  private castersUsed = 0
+  private readonly casterGeometry: Array<Geometry3D | undefined> = []
+  private readonly casterShown: Array<boolean> = []
+  // NOTE: the shadow pass draws depth alone, so every caster shares one
+  // plain material.
+  private readonly casterMaterial = new Material3D({})
   // NOTE: each crop's blocks by how they stand (`shapeKeyOf`), and its
   // lowest solid row.
   private readonly geometries = new Map<Texture, Map<ShapeKey, Carved>>()
@@ -165,6 +224,7 @@ export class VoxelBatch {
   // NOTE: each sheet's materials by fade step, the last step opaque.
   private readonly sheetMaterials = new Map<Texture, Array<Material3D>>()
   private readonly colorMaterials = new Map<string, Material3D>()
+  private readonly glowMaterials = new Map<Texture, Material3D>()
   private readonly cube = new Geometry3D({ ...UNIT_CUBE })
   // NOTE: a fading body draws through its own shader program, which the GPU
   // links the first time one is drawn: about 8 ms on a desktop and many
@@ -185,17 +245,30 @@ export class VoxelBatch {
   constructor(input: Readonly<{ parent: Container3D; textures: Textures }>) {
     this.textures = input.textures
     this.batch = new BatchedMesh3D({ size: SLOTS })
+    this.casters = new BatchedMesh3D({ size: SLOTS })
     input.parent.addChild(this.batch)
+    input.parent.addChild(this.casters)
   }
 
   begin(): void {
     this.used = 0
+    this.castersUsed = 0
   }
 
   end(): void {
     for (let index = this.used; index < this.filled.length; index += 1) {
       if (this.batch.getVisibleAt(index)) {
         this.batch.setVisibleAt(index, false)
+      }
+    }
+    for (
+      let index = this.castersUsed;
+      index < this.casterShown.length;
+      index += 1
+    ) {
+      if (this.casterShown[index] === true) {
+        this.casterShown[index] = false
+        this.casters.setVisibleAt(index, false)
       }
     }
   }
@@ -206,6 +279,7 @@ export class VoxelBatch {
   // deep it is carved; `reach` keeps it in front of the parts before it.
   standLeaf(input: StandInput): boolean {
     const { leaf, isFlash, reach } = input
+    const isGlowing = input.isGlowing === true
     const { shape, alpha } = leaf
     if (shape._tag !== 'Image' || this.used >= SLOTS) {
       return false
@@ -226,22 +300,50 @@ export class VoxelBatch {
       geometry: carved.geometry,
       material: isFlash
         ? this.flash
-        : this.sheetMaterialOf(sheet, isOpaque ? FADE_STEPS : step),
+        : isGlowing
+          ? this.glowMaterialOf(sheet)
+          : this.sheetMaterialOf(sheet, isOpaque ? FADE_STEPS : step),
       elements,
       passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
     })
+    if (alpha >= CASTING_ALPHA && !isGlowing) {
+      this.cast(carved.caster)
+    }
     if (!this.isBlendWarm && this.used < SLOTS) {
       this.isBlendWarm = true
       this.fill({
         geometry: carved.geometry,
         material: this.sheetMaterialOf(sheet, 1),
-        elements: Array.from(elements, (value, index) =>
+        elements: Array.map(elements, (value, index) =>
           index < 12 && index % 4 !== 3 ? value * WARM_SCALE : value,
         ),
         passes: RenderPassBit.TRANSPARENT,
       })
     }
     return true
+  }
+
+  // NOTE: a carve's shadow, through its merged blocks at the matrix it
+  // stands at (the one `fill` just set).
+  private cast(caster: Geometry3D): void {
+    if (this.castersUsed >= SLOTS) {
+      return
+    }
+    const index = this.castersUsed
+    this.castersUsed += 1
+    if (this.casterGeometry[index] !== caster) {
+      if (this.casterGeometry[index] === undefined) {
+        this.casters.setMaterialAt(index, this.casterMaterial)
+        this.casters.setPassesAt(index, RenderPassBit.SHADOW)
+      }
+      this.casterGeometry[index] = caster
+      this.casters.setGeometryAt(index, caster)
+    }
+    this.casters.setMatrixAt(index, this.scratch)
+    if (this.casterShown[index] !== true) {
+      this.casterShown[index] = true
+      this.casters.setVisibleAt(index, true)
+    }
   }
 
   // NOTE: where a sprite's blocks stand, as `standLeaf` stands them, and
@@ -289,6 +391,7 @@ export class VoxelBatch {
       isFlipped,
       isGrounded,
       most,
+      depth: spriteDepthOf(shape),
     })
     // NOTE: a body on the floor moves toward the lens until its lowest
     // block stands on it; any part moves at least as far as the parts
@@ -399,9 +502,13 @@ export class VoxelBatch {
       isFlipped: boolean
       isGrounded: boolean
       most: number
+      depth: SpriteDepth | undefined
     }>,
   ): Carved {
-    const { texture, sheet, masks, isFlipped, isGrounded, most } = input
+    const { texture, sheet, masks, isFlipped, isGrounded, depth } = input
+    // NOTE: a sprite's own depth (`deepSprite`) is the same for every place
+    // its crop stands, so the crop's cache holds it.
+    const most = depth?.most ?? input.most
     const shapeKey = shapeKeyOf({ isFlipped, isGrounded, most })
     const shapes = this.geometries.get(texture) ?? new Map<ShapeKey, Carved>()
     this.geometries.set(texture, shapes)
@@ -414,7 +521,8 @@ export class VoxelBatch {
       isFlipped ? width - 1 - column : column
     const sheetWidth = Math.max(1, sheet.source.width)
     const sheetHeight = Math.max(1, sheet.source.height)
-    const { lift, ...mesh } = voxelMeshOf({
+    const hand = depthOfSprite({ depth, most, columnOf })
+    const { lift, caster, ...mesh } = voxelMeshOf({
       width,
       height,
       isSolid: (column, row) =>
@@ -422,12 +530,18 @@ export class VoxelBatch {
       isDark: (column, row) => masks.dark[row * width + columnOf(column)] === 1,
       isGrounded,
       most,
+      ...hand,
       uvOf: (column, row) => [
         (x + columnOf(column) + 0.5) / sheetWidth,
         (y + row + 0.5) / sheetHeight,
       ],
     })
-    const carved = { geometry: new Geometry3D({ ...mesh }), lift }
+    const carved = {
+      geometry: new Geometry3D({ ...mesh }),
+      caster: new Geometry3D({ ...caster }),
+      lift,
+      ...hand,
+    }
     shapes.set(shapeKey, carved)
     return carved
   }
@@ -435,13 +549,27 @@ export class VoxelBatch {
   private sheetMaterialOf(sheet: Texture, step: number): Material3D {
     const steps =
       this.sheetMaterials.get(sheet) ??
-      Array.from({ length: FADE_STEPS + 1 }, (_, at) =>
+      Array.makeBy(FADE_STEPS + 1, at =>
         at === FADE_STEPS
           ? lit(this.textures, { baseColorTexture: sheet })
           : fadedOf(this.textures, sheet, at / FADE_STEPS),
       )
     this.sheetMaterials.set(sheet, steps)
     return steps[step] ?? lit(this.textures, { baseColorTexture: sheet })
+  }
+
+  private glowMaterialOf(sheet: Texture): Material3D {
+    const known = this.glowMaterials.get(sheet)
+    if (known !== undefined) {
+      return known
+    }
+    const material = new Material3D({
+      vertexColors: true,
+      baseColor: 0x000000,
+      emissive: { texture: sheet, strength: 1 },
+    })
+    this.glowMaterials.set(sheet, material)
+    return material
   }
 
   private colorMaterialOf(color: number, glow: number): Material3D {
@@ -464,15 +592,19 @@ export class VoxelBatch {
 
   destroy(): void {
     this.batch.destroy()
+    this.casters.destroy()
     for (const shapes of this.geometries.values()) {
-      for (const { geometry } of shapes.values()) {
+      for (const { geometry, caster } of shapes.values()) {
         geometry.destroy()
+        caster.destroy()
       }
     }
+    this.casterMaterial.destroy()
     this.cube.destroy()
     this.geometries.clear()
     this.solidBottoms.clear()
     this.sheetMaterials.clear()
     this.colorMaterials.clear()
+    this.glowMaterials.clear()
   }
 }

@@ -6,6 +6,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 - 💧 The old roof leaks: drips fall into puddles all over the manor, and the puddles shine with the candlelight and flash when lightning strikes. Listen close and you'll hear them plink.
 - 🏛️ The title shows the manor as a tiny model in the dark, slowly turning as the candles flicker and the storm flashes, and every zombie you've met stands on its own lit plinth in the Dare Journal, turning so you can see it from every side. Uncle Chunk gets the spooky lighting he deserves.
+- 🪵 The stove, fridge, fireplace, gramophone, and every work station stand up as chunky 3D pieces now, the fire roars in front of the hearth again, Uncle Chunk has a real belly on him, and every shadow takes the shape of what casts it.
 
 ## November 14, 2026: The manor in 3D
 

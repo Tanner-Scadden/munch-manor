@@ -5,6 +5,7 @@
 // the floor.
 
 import { Array, Option, Result, String } from 'effect'
+import type { Canvas } from 'foldkit'
 
 import {
   type Container3D,
@@ -15,7 +16,7 @@ import {
   srgbToLinear,
 } from '@pixi/3d'
 
-import { placeAt } from '../../art/sprite'
+import { cropKeyOf, placeAt } from '../../art/sprite'
 import { gapBoxOf } from '../../world/dining/chandelier'
 import type { Level } from '../../world/level/arena'
 import {
@@ -144,17 +145,20 @@ export type Chandelier = Readonly<{
 }>
 
 // NOTE: the 2D sprite the carved chandelier stands in for, in either state,
-// so the scene leaves the sprite out.
-const SPRITE_SOURCES: ReadonlySet<string> = new Set(
+// so the scene leaves the sprite out. A sprite is known by its crop too:
+// in a production build the chandelier shares its atlas sheet with others.
+const SPRITE_KEYS: ReadonlySet<string> = new Set(
   Array.flatMap([CHANDELIER_SPRITES.Hung, CHANDELIER_SPRITES.Fallen], sprite =>
     Array.filterMap(sprite, shape =>
-      shape._tag === 'Image' ? Result.succeed(shape.src) : Result.failVoid,
+      shape._tag === 'Image'
+        ? Result.succeed(cropKeyOf(shape))
+        : Result.failVoid,
     ),
   ),
 )
 
-export const isChandelierSprite = (src: string): boolean =>
-  SPRITE_SOURCES.has(src)
+export const isChandelierSprite = (image: Canvas.Image): boolean =>
+  SPRITE_KEYS.has(cropKeyOf(image))
 
 const lit = (): Material3D =>
   new Material3D({

@@ -9,7 +9,7 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
-import type { Drawable } from '../../render/depth'
+import { type Drawable, IN_FRONT_PX } from '../../render/depth'
 import { rect } from '../../render/drawing'
 import { FRIDGE_RISE_PX, isKitchenShown } from '../../render/room/kitchenView'
 import { TILE_SIZE } from '../../shared/constants'
@@ -97,7 +97,7 @@ const maybeFridgeSpot = (model: Model): Option.Option<FridgeSpot> =>
 
 const openDoor = (model: Model, spot: FridgeSpot): ReadonlyArray<Drawable> => [
   {
-    footY: spot.bottom,
+    footY: spot.bottom + IN_FRONT_PX,
     rank: 'Prop',
     shapes: [
       placeAt(spot.left, spot.top, OPEN_DOOR),
@@ -108,7 +108,8 @@ const openDoor = (model: Model, spot: FridgeSpot): ReadonlyArray<Drawable> => [
   },
 ]
 
-// NOTE: the door's state, sorted with what stands in front of the fridge.
+// NOTE: the door's state, standing in front of the carved fridge
+// (`IN_FRONT_PX`).
 export const fridgeDrawables = (model: Model): ReadonlyArray<Drawable> =>
   isKitchenShown(model)
     ? Option.match(maybeFridgeSpot(model), {
@@ -127,7 +128,7 @@ export const fridgeDrawables = (model: Model): ReadonlyArray<Drawable> =>
                   : 0
               return [
                 {
-                  footY: spot.bottom,
+                  footY: spot.bottom + IN_FRONT_PX,
                   rank: 'Prop',
                   shapes: [placeAt(spot.left + shake, spot.top, CHAIN)],
                 },

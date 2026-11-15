@@ -42,13 +42,13 @@ import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 
 import type { Model } from '../../app/model'
 import { FRAME_ROWS } from '../../art/appearance'
-import { isFlashShape } from '../../art/sprite'
+import { isFlashShape, isGlowingShape } from '../../art/sprite'
 import { type BrowserError, toBrowserError } from '../../shared/describeError'
 import { isChandelierDown } from '../../world/dining/chandelier'
 import type { Level } from '../../world/level/arena'
 import { levelOf, standingLevelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
-import type { Drawable } from '../depth'
+import { type Drawable, TALL_MOST } from '../depth'
 import {
   airborneParticlesOf,
   decalShapes,
@@ -59,7 +59,7 @@ import { muzzleFlashLevel, muzzlePointOf, playerFootY } from '../playerView'
 import { hungChandelierShapes } from '../room/room'
 import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { airOf } from './air'
-import { BillboardPool, BodyCasters, rimUp } from './billboards'
+import { BillboardPool, rimUp } from './billboards'
 import { crittersOf } from './critters'
 import { isNearView, viewBoxOf } from './cull'
 import {
@@ -81,7 +81,7 @@ import {
   buildWalls,
   cutoutBoxOf,
   floorArtOf,
-  furnitureCastersOf,
+  plantCastersOf,
   plantsOf,
   standPlant,
 } from './house'
@@ -99,7 +99,6 @@ import {
   auraCubesOf,
   auraFeetOf,
   auraFrameOf,
-  castingLeavesOf,
   isPowerupImage,
   pickupRingOf,
   pickupSpinOf,
@@ -144,7 +143,7 @@ const MOST_DEPTH: Readonly<Partial<Record<Drawable['rank'], number>>> = {
   Prop: 6,
 }
 
-const FURNITURE_MOST = 6
+const FURNITURE_MOST = TALL_MOST
 
 // NOTE: a blast's flash of light: its color, its peak, and its reach, as
 // many times the blast's own radius.
@@ -258,7 +257,7 @@ const isCarved = (built: Built, drawable: Drawable): boolean => {
     Option.isSome(built.chandelier) &&
     drawable.shapes.length === 1 &&
     first?._tag === 'Image' &&
-    isChandelierSprite(first.src)
+    isChandelierSprite(first)
   )
 }
 
@@ -292,14 +291,12 @@ export class IsoScene {
   private readonly billboards: BillboardPool
   private readonly glowing: BillboardPool
   private readonly rims: BillboardPool
-  private readonly bodies: BodyCasters
   private readonly voxels: VoxelBatch
   // NOTE: the newest blast's flash over the room.
   private readonly blastLight: PointLight
   private built: Built | undefined
   private casters: Container3D | undefined
-  private casterTextures: ReadonlyArray<Texture> = []
-  private furnitureCasters: ReadonlyArray<Caster> = []
+  private plantCasters: ReadonlyArray<Caster> = []
   private lastDecals: unknown
   // NOTE: whether anything had landed on the floor last frame, so a frame
   // with nothing there and nothing before draws the floor's picture again
@@ -370,7 +367,6 @@ export class IsoScene {
       isLit: false,
     })
     this.rims = new BillboardPool({ parent: standing, textures, isLit: false })
-    this.bodies = new BodyCasters({ parent: standing, textures })
     this.voxels = new VoxelBatch({ parent: standing, textures })
   }
 
@@ -426,7 +422,6 @@ export class IsoScene {
       this.lastLoaded = this.textures.loaded
       built.room.paintLeaves(built.floorArt)
       this.lastDecals = undefined
-      this.castFurniture(built)
     }
     const decals = model.cosmetics.decals
     const isDecalsChanged = decals !== this.lastDecals
@@ -519,7 +514,6 @@ export class IsoScene {
     this.billboards.begin()
     this.glowing.begin()
     this.rims.begin()
-    this.bodies.begin()
     this.voxels.begin()
     for (const drawable of strata.standing) {
       // NOTE: a muzzle flash glows on its body's own plane, so it sits on
@@ -542,13 +536,11 @@ export class IsoScene {
       if (Option.isSome(maybePiece)) {
         fades.set(maybePiece.value.piece, maybePiece.value.opacity)
       } else {
-        const flattened = flatten(drawable.shapes)
+        const leaves = flatten(drawable.shapes)
         const most = MOST_DEPTH[drawable.rank]
-        const leaves =
-          most === undefined ? flattened : castingLeavesOf(flattened)
         if (most !== undefined) {
           this.standBody({
-            leaves: flattened,
+            leaves,
             footY: drawable.footY,
             elapsedMs: model.elapsedMs,
             most,
@@ -575,7 +567,6 @@ export class IsoScene {
             lamp,
           })
         }
-        this.bodies.cast(leaves, drawable.footY)
       }
     }
     // NOTE: the house's own pieces stand only near the view: the rest of a
@@ -604,7 +595,7 @@ export class IsoScene {
         })
       }
     }
-    for (const { mesh, box } of this.furnitureCasters) {
+    for (const { mesh, box } of this.plantCasters) {
       mesh.visible = isNearView(box, view)
     }
     const t = windClockOf(model.elapsedMs)
@@ -704,7 +695,6 @@ export class IsoScene {
     this.billboards.end()
     this.glowing.end()
     this.rims.end()
-    this.bodies.end()
     this.voxels.end()
 
     // THE LIGHTS
@@ -796,6 +786,7 @@ export class IsoScene {
             footY,
             part,
             isFlash,
+            isGlowing: isGlowingShape(shape),
             most,
             reach,
             ...(spin === undefined ? {} : { spin }),
@@ -1000,34 +991,25 @@ export class IsoScene {
       chandelier: chandelierOf({ level, parent: holder }),
     }
     this.built = built
-    this.castFurniture(built)
+    this.castPlants(built)
     return built
   }
 
-  private castFurniture(built: Built): void {
+  private castPlants(built: Built): void {
     this.dropCasters()
     const casters = new Container3D()
     built.holder.addChild(casters)
     this.casters = casters
-    const cast = furnitureCastersOf({
-      app: this.app,
-      textures: this.textures,
+    this.plantCasters = plantCastersOf({
       parent: casters,
-      pieces: [...built.furniture.values()],
       plants: built.plants,
     })
-    this.casterTextures = cast.textures
-    this.furnitureCasters = cast.casters
   }
 
   private dropCasters(): void {
     this.casters?.destroy({ children: true })
     this.casters = undefined
-    Array.forEach(this.casterTextures, texture => {
-      texture.destroy(true)
-    })
-    this.casterTextures = []
-    this.furnitureCasters = []
+    this.plantCasters = []
   }
 
   private dropLevel(): void {

@@ -11,6 +11,7 @@
 import { Array, Option, Record, String } from 'effect'
 import type { Canvas } from 'foldkit'
 
+import { cropKeyOf } from '../../art/sprite'
 import {
   AURA_CENTER,
   AURA_PALETTES,
@@ -19,13 +20,12 @@ import {
 } from '../../art/sprites/auras'
 import { PICKUP_SPRITES } from '../../art/sprites/pickups'
 import type { BoostKind } from '../../world/schema/entitySchema'
-import type { Affine, Leaf } from './flatten'
-
-const keyOf = (image: Canvas.Image): string =>
-  `${image.src}|${image.crop?.x ?? 0},${image.crop?.y ?? 0}`
+import type { Affine } from './flatten'
 
 const keysOf = (sprite: ReadonlyArray<Canvas.Shape>): ReadonlyArray<string> =>
-  Array.flatMap(sprite, shape => (shape._tag === 'Image' ? [keyOf(shape)] : []))
+  Array.flatMap(sprite, shape =>
+    shape._tag === 'Image' ? [cropKeyOf(shape)] : [],
+  )
 
 // NOTE: each aura frame's image, by where it is cut from.
 const AURA_FRAMES: ReadonlyMap<
@@ -47,23 +47,10 @@ const POWERUP_IMAGES: ReadonlySet<string> = new Set(
 export const auraFrameOf = (
   image: Canvas.Image,
 ): Option.Option<Readonly<{ kind: BoostKind; frame: number }>> =>
-  Option.fromNullishOr(AURA_FRAMES.get(keyOf(image)))
-
-// NOTE: a body's leaves less its aura and a spinning goodie, for its flat
-// shadow and its rim: an aura stands as its own blocks round the feet, and a
-// goodie's rim would show its unturned outline behind it.
-export const castingLeavesOf = (
-  leaves: ReadonlyArray<Leaf>,
-): ReadonlyArray<Leaf> =>
-  Array.filter(
-    leaves,
-    ({ shape }) =>
-      shape._tag !== 'Image' ||
-      (!AURA_FRAMES.has(keyOf(shape)) && !POWERUP_IMAGES.has(keyOf(shape))),
-  )
+  Option.fromNullishOr(AURA_FRAMES.get(cropKeyOf(image)))
 
 export const isPowerupImage = (image: Canvas.Image): boolean =>
-  POWERUP_IMAGES.has(keyOf(image))
+  POWERUP_IMAGES.has(cropKeyOf(image))
 
 // NOTE: one little block: its spot on the floor, how high it hangs, in
 // whole game pixels, its color, and how bright it glows.

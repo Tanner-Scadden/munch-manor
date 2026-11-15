@@ -1,7 +1,7 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { bakeShapes, group } from '../../art/sprite'
+import { bakeShapes, deepSprite, group } from '../../art/sprite'
 import type { Level } from '../../world/level/arena'
 import { COVER_SYMBOLS, type CoverKind } from '../../world/level/tileGrid'
 import type { Player, Zombie } from '../../world/schema/entitySchema'
@@ -20,9 +20,9 @@ import { COVER_DRAWINGS, coverBlocks } from './roomCover'
 // nobody loses themselves or a threat behind a china cabinet or a stack.
 
 // NOTE: the kinds whose art rises a body's height or so above the floor
-// they stand on. A kind with something drawn over it every frame (the
-// hearth's fire, the ovens' flames, the fridge's door) stays out, since its
-// image would cover what moves on it.
+// they stand on. What is drawn on one every frame (the hearth's fire, the
+// stove's window, the fridge's door) stands in front of it, `IN_FRONT_PX`
+// nearer than its foot.
 const TALL_KINDS: ReadonlyArray<CoverKind> = [
   'Piano',
   'Bookshelf',
@@ -33,7 +33,14 @@ const TALL_KINDS: ReadonlyArray<CoverKind> = [
   'BookStack',
   'Desk',
   'WineRack',
+  'Hearth',
+  'Oven',
+  'Fridge',
 ]
+
+// NOTE: the pieces that are boxes, a flat front as deep as a piece goes,
+// not the round default: masonry and iron and enamel.
+const BOX_KINDS: ReadonlyArray<CoverKind> = ['Hearth', 'Oven', 'Fridge']
 
 export type TallCover = Readonly<{
   left: number
@@ -96,8 +103,9 @@ const tallCoverOfKind = (
   level: Level,
   symbol: string,
   kind: CoverKind,
-): ReadonlyArray<TallCover> =>
-  Array.filterMap(coverBlocks(level, symbol), box => {
+): ReadonlyArray<TallCover> => {
+  const isBox = Array.contains(BOX_KINDS, kind)
+  return Array.filterMap(coverBlocks(level, symbol), box => {
     const art = Array.filter(
       drawingOf(kind)(box, level),
       shape => !isGlow(shape),
@@ -110,10 +118,13 @@ const tallCoverOfKind = (
           right,
           artTop: top,
           footY: box.y + box.height,
-          shapes: bakeShapes(art),
+          shapes: isBox
+            ? deepSprite(bakeShapes(art), { isBox: true })
+            : bakeShapes(art),
         }),
     })
   })
+}
 
 const builtTallCover = new WeakMap<Level, ReadonlyArray<TallCover>>()
 

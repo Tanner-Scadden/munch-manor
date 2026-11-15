@@ -189,7 +189,7 @@ const flameSpotsOf = (level: Level): ReadonlyArray<FlameSpot> => [
       { x: box.x + box.width / 2, y: box.y + box.height + 4 },
       box.y + box.height,
     ),
-    // NOTE: the sconces either side of the hearth (sconceShapes).
+    // NOTE: the sconces either side of the hearth (`hearthShapes`).
     placedByEye('Sconce', { x: box.x - 15, y: box.y + 2 }, box.y + box.height),
     placedByEye(
       'Sconce',

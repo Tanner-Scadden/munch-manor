@@ -9,7 +9,7 @@
 // Plain data, no pixi: the geometry's arrays, and the matrix that stands a
 // sprite's blocks at its foot.
 
-import { formOf } from '../../art/carve'
+import { type SpriteForm, formOf } from '../../art/carve'
 import type { Affine } from './flatten'
 import { CAMERA_UP, PITCH, TOWARD_CAMERA, UNIT, standingPointOf } from './space'
 
@@ -197,6 +197,11 @@ export const sideShadeOf = (height: number): number =>
 // - folded: a pixel with nothing over it and a solid pixel under it stands
 //   as the tops of the stack under it, in its own color, rather than as
 //   blocks with a row of tops over them, so the body is as tall as its art.
+// - plate: a pixel with nothing over it and nothing under it (a toe, a gun's
+//   barrel) has no stack to fold into, and a block of it would show its
+//   front and a row of top over it, two rows for its one. So it stands as a
+//   plate: one block's floor, facing up, which the lens sees as exactly its
+//   pixel.
 // Down each column a stack never starts nearer the lens than the one over
 // it, or its top would show in front of that pixel in the wrong color.
 // `lift` is how many blocks the whole form moves toward the lens, along the
@@ -208,30 +213,59 @@ export type LensForm = Readonly<{
   near: Uint8Array
   back: Uint8Array
   folded: Uint8Array
+  plate: Uint8Array
   lift: number
 }>
+
+// NOTE: how many blocks deep a pixel stands, set by hand for a sprite that
+// reads wrong round (a fridge is a box, src/art/sprite.ts `deepSprite`):
+// its stack starts at the sprite's own plane, flush, and runs that many
+// back. Undefined, or 0, keeps the round default.
+export type DepthOf = (column: number, row: number) => number | undefined
+
+const handFormOf = (form: SpriteForm, depthOf: DepthOf): SpriteForm => {
+  const near = new Uint8Array(form.near)
+  const thick = new Uint8Array(form.thick)
+  let depth = form.depth
+  for (let row = 0; row < form.height; row += 1) {
+    for (let column = 0; column < form.width; column += 1) {
+      const index = row * form.width + column
+      const blocks = depthOf(column, row) ?? 0
+      if ((thick[index] ?? 0) > 0 && blocks > 0) {
+        near[index] = 0
+        thick[index] = blocks
+        depth = Math.max(depth, blocks)
+      }
+    }
+  }
+  return { ...form, depth, near, thick }
+}
 
 export const lensFormOf = ({
   width,
   height,
   isSolid,
   most,
+  depthOf,
 }: Readonly<{
   width: number
   height: number
   isSolid: (column: number, row: number) => boolean
   most?: number
+  depthOf?: DepthOf
 }>): LensForm => {
-  const form = formOf({
+  const round = formOf({
     width,
     height,
     isSolid,
     ...(most === undefined ? {} : { most }),
   })
+  const form = depthOf === undefined ? round : handFormOf(round, depthOf)
   const count = width * height
   const near = new Uint8Array(count)
   const back = new Uint8Array(count)
   const folded = new Uint8Array(count)
+  const plate = new Uint8Array(count)
   const isSolidAt = (column: number, row: number): boolean =>
     row >= 0 && row < height && (form.thick[row * width + column] ?? 0) > 0
   let shallowest = 255
@@ -243,7 +277,9 @@ export const lensFormOf = ({
         over = -1
         continue
       }
-      if (!isSolidAt(column, row - 1) && isSolidAt(column, row + 1)) {
+      const isTop = !isSolidAt(column, row - 1)
+      const isBottom = !isSolidAt(column, row + 1)
+      if (isTop && !isBottom) {
         folded[index] = 1
         continue
       }
@@ -251,7 +287,9 @@ export const lensFormOf = ({
       const ownBack = ownNear + (form.thick[index] ?? 1)
       const start = Math.max(ownNear, over)
       near[index] = start
-      back[index] = Math.max(start + 1, ownBack)
+      // NOTE: a plate is one block's floor, so one deep.
+      plate[index] = isTop && isBottom ? 1 : 0
+      back[index] = isTop && isBottom ? start + 1 : Math.max(start + 1, ownBack)
       over = start
       shallowest = Math.min(shallowest, start)
     }
@@ -280,6 +318,7 @@ export const lensFormOf = ({
     near,
     back,
     folded,
+    plate,
     lift: Math.max(0, lowest - (bottom + 1)),
   }
 }
@@ -291,6 +330,15 @@ export type VoxelMeshData = Readonly<{
   // NOTE: each corner's color the material multiplies by, RGBA: white on
   // the front faces, darker toward the foot on the sides.
   colors: Float32Array
+  indices: Uint32Array
+}>
+
+// NOTE: what a carve casts its shadow through: its blocks' outer faces,
+// each flat run of them merged into one quad, with no color, since the
+// shadow pass draws depth alone.
+export type CasterMeshData = Readonly<{
+  positions: Float32Array
+  normals: Float32Array
   indices: Uint32Array
 }>
 
@@ -362,6 +410,17 @@ type FaceSpec = Readonly<{
   corners: readonly [Point, Point, Point, Point]
 }>
 
+const TOP_FACE: FaceSpec = {
+  normal: TOP,
+  neighbor: [0, -1, 0],
+  corners: [
+    [0, 0, 0],
+    [1, 0, 0],
+    [1, 0, 1],
+    [0, 0, 1],
+  ],
+}
+
 const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   {
     normal: BACK,
@@ -373,16 +432,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
       [0, 1, 1],
     ],
   },
-  {
-    normal: TOP,
-    neighbor: [0, -1, 0],
-    corners: [
-      [0, 0, 0],
-      [1, 0, 0],
-      [1, 0, 1],
-      [0, 0, 1],
-    ],
-  },
+  TOP_FACE,
   {
     normal: BOTTOM,
     neighbor: [0, 1, 0],
@@ -441,6 +491,7 @@ export const voxelMeshOf = ({
   isDark = () => false,
   isGrounded = false,
   most,
+  depthOf,
 }: Readonly<{
   width: number
   height: number
@@ -449,12 +500,14 @@ export const voxelMeshOf = ({
   isDark?: (column: number, row: number) => boolean
   isGrounded?: boolean
   most?: number
-}>): VoxelMeshData & Readonly<{ lift: number }> => {
+  depthOf?: DepthOf
+}>): VoxelMeshData & Readonly<{ lift: number; caster: CasterMeshData }> => {
   const form = lensFormOf({
     width,
     height,
     isSolid,
     ...(most === undefined ? {} : { most }),
+    ...(depthOf === undefined ? {} : { depthOf }),
   })
   const { depth } = form
   const sources = sideSourcesOf({ width, height, isSolid, isDark })
@@ -468,6 +521,10 @@ export const voxelMeshOf = ({
   for (let row = 0; row < height; row += 1) {
     for (let column = 0; column < width; column += 1) {
       const index = row * width + column
+      if (form.plate[index] === 1) {
+        floor = Math.max(floor, row + (form.near[index] ?? 0) + 1)
+        continue
+      }
       for (let d = form.near[index] ?? 0; d < (form.back[index] ?? 0); d += 1) {
         filled[cellOf(column, row + d, d)] = 1
         floor = Math.max(floor, row + d + 1)
@@ -533,6 +590,18 @@ export const voxelMeshOf = ({
       }
     }
   }
+  // NOTE: a plate (`lensFormOf`) is the top of the block under its own
+  // place, which the lens sees on exactly its pixel's row: its front's
+  // color, unshaded.
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      const index = row * width + column
+      if (form.plate[index] === 1) {
+        const d = form.near[index] ?? 0
+        faceOf(TOP_FACE, [column, row + d + 1, d], uvOf(column, row), 1)
+      }
+    }
+  }
   for (let d = 0; d < depth; d += 1) {
     for (let gridRow = d; gridRow < d + height; gridRow += 1) {
       for (let column = 0; column < width; column += 1) {
@@ -565,6 +634,102 @@ export const voxelMeshOf = ({
     colors: Float32Array.from(out.colors),
     indices: Uint32Array.from(out.indices),
     lift: form.lift,
+    caster: casterOf({ size: [width, rows, depth], isFilled }),
+  }
+}
+
+const ALL_FACES: ReadonlyArray<FaceSpec> = [FRONT_FACE, ...SIDE_FACES]
+
+// NOTE: the outer faces of a grid of blocks merged greedily: in each slice
+// across a face's normal, the open faces are taken as the widest runs, then
+// as many rows of that run as match, each run one quad. A body of hundreds
+// of faces casts through a few dozen, so a crowd's shadows stay cheap.
+const casterOf = (
+  input: Readonly<{
+    size: readonly [number, number, number]
+    isFilled: (column: number, gridRow: number, d: number) => boolean
+  }>,
+): CasterMeshData => {
+  const { size, isFilled } = input
+  const out = new Builder()
+  for (const spec of ALL_FACES) {
+    const axis = spec.neighbor[0] !== 0 ? 0 : spec.neighbor[1] !== 0 ? 1 : 2
+    const across = (axis + 1) % 3
+    const down = (axis + 2) % 3
+    const spanAcross = size[across] ?? 0
+    const spanDown = size[down] ?? 0
+    const cellAt = (
+      slice: number,
+      a: number,
+      b: number,
+    ): [number, number, number] => {
+      const cell: [number, number, number] = [0, 0, 0]
+      cell[axis] = slice
+      cell[across] = a
+      cell[down] = b
+      return cell
+    }
+    const isOpenAt = (slice: number, a: number, b: number): boolean => {
+      const [column, gridRow, d] = cellAt(slice, a, b)
+      const [dx, dy, dz] = spec.neighbor
+      return (
+        isFilled(column, gridRow, d) &&
+        !isFilled(column + dx, gridRow + dy, d + dz)
+      )
+    }
+    for (let slice = 0; slice < size[axis]; slice += 1) {
+      const taken = new Uint8Array(spanAcross * spanDown)
+      const isFree = (a: number, b: number): boolean =>
+        taken[a + spanAcross * b] === 0 && isOpenAt(slice, a, b)
+      for (let b = 0; b < spanDown; b += 1) {
+        for (let a = 0; a < spanAcross; a += 1) {
+          if (!isFree(a, b)) {
+            continue
+          }
+          let wide = 1
+          while (a + wide < spanAcross && isFree(a + wide, b)) {
+            wide += 1
+          }
+          let tall = 1
+          const isRowFree = (row: number): boolean => {
+            for (let at = a; at < a + wide; at += 1) {
+              if (!isFree(at, row)) {
+                return false
+              }
+            }
+            return true
+          }
+          while (b + tall < spanDown && isRowFree(b + tall)) {
+            tall += 1
+          }
+          for (let row = b; row < b + tall; row += 1) {
+            taken.fill(1, a + spanAcross * row, a + wide + spanAcross * row)
+          }
+          const origin = cellAt(slice, a, b)
+          const corner = (offset: Point): Point => {
+            const at: [number, number, number] = [
+              origin[0] + offset[0],
+              origin[1] + offset[1],
+              origin[2] + offset[2],
+            ]
+            at[across] = (origin[across] ?? 0) + (offset[across] ?? 0) * wide
+            at[down] = (origin[down] ?? 0) + (offset[down] ?? 0) * tall
+            return pointOf(at[0], at[1], at[2])
+          }
+          const [c0, c1, c2, c3] = spec.corners
+          out.quad(
+            [corner(c0), corner(c1), corner(c2), corner(c3)],
+            spec.normal,
+            [0, 0],
+          )
+        }
+      }
+    }
+  }
+  return {
+    positions: Float32Array.from(out.positions),
+    normals: Float32Array.from(out.normals),
+    indices: Uint32Array.from(out.indices),
   }
 }
 

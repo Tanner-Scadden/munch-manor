@@ -55,6 +55,16 @@ export const glowOn = ({
   shapes,
 })
 
+// NOTE: how many blocks deep a piece of furniture is carved at most in the
+// 3D world.
+export const TALL_MOST = 6
+
+// NOTE: a carved piece stands its lowest blocks on the floor, so its front
+// reaches toward the lens by up to its depth; what is drawn on it every
+// frame (the hearth's fire, the stove's window, the fridge's door) stands
+// this much nearer than its foot, in front of that.
+export const IN_FRONT_PX = TALL_MOST + 1
+
 export const depthSortedShapes = (
   drawables: ReadonlyArray<Drawable>,
 ): ReadonlyArray<Canvas.Shape> =>
