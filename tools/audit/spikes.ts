@@ -191,7 +191,22 @@ runHarnessAudit(
       now += delta
       times.push(now)
     }
-    const worst = Array.take(byLength, TOP)
+    // NOTE: `TOP=0` sums every frame of the window, for the steady cost
+    // rather than the spikes.
+    const worst = TOP === 0 ? byLength : Array.take(byLength, TOP)
+    const ROWS = yield* Config.String('ROWS').pipe(
+      Config.withDefault('45'),
+      Config.map(Number),
+    )
+    // NOTE: `UNDER=draw,view` splits the time of the outermost call whose label
+    // starts with it into the calls straight under it, inclusive, so a deep
+    // stack reads one level at a time.
+    const unders = yield* Config.String('UNDER').pipe(
+      Config.withDefault(''),
+      Config.map(text =>
+        Array.filter(String.split(',')(text), name => name !== ''),
+      ),
+    )
     // NOTE: `PER=1` prints each of the longest frames on its own; otherwise
     // their samples are summed, which shows what a long frame is made of.
     const isPer = yield* Config.String('PER').pipe(
@@ -204,6 +219,7 @@ runHarnessAudit(
     for (const group of groups) {
       const self = new Map<string, number>()
       const inclusive = new Map<string, number>()
+      const belows = Array.map(unders, () => new Map<string, number>())
       let count = 0
       for (let i = 0; i < samples.length; i++) {
         const t = times[i] ?? 0
@@ -216,6 +232,11 @@ runHarnessAudit(
         const label = labelOf(id)
         self.set(label, (self.get(label) ?? 0) + ms)
         const seen = new Set<string>()
+        let child = label
+        const belowLabels: Array<string | undefined> = Array.map(
+          unders,
+          () => undefined,
+        )
         for (
           let current: number | undefined = id;
           current !== undefined;
@@ -226,7 +247,19 @@ runHarnessAudit(
             seen.add(name)
             inclusive.set(name, (inclusive.get(name) ?? 0) + ms)
           }
+          for (let u = 0; u < unders.length; u++) {
+            if (String.startsWith(unders[u] ?? '')(name)) {
+              belowLabels[u] = current === id ? '(self)' : child
+            }
+          }
+          child = name
         }
+        Array.forEach(belowLabels, (belowLabel, u) => {
+          const below = belows[u]
+          if (belowLabel !== undefined && below !== undefined) {
+            below.set(belowLabel, (below.get(belowLabel) ?? 0) + ms)
+          }
+        })
       }
       const total = Array.reduce(group, 0, (sum, { dur }) => sum + dur)
       yield* Console.log(
@@ -238,12 +271,21 @@ runHarnessAudit(
           n,
         )
       yield* Console.log('--- self')
-      for (const [name, ms] of top(self, 20)) {
+      for (const [name, ms] of top(self, Math.max(20, ROWS / 2))) {
         yield* Console.log(String.padStart(7)(ms.toFixed(2)) + 'ms', name)
       }
       yield* Console.log('--- inclusive')
-      for (const [name, ms] of top(inclusive, 45)) {
+      for (const [name, ms] of top(inclusive, ROWS)) {
         yield* Console.log(String.padStart(7)(ms.toFixed(2)) + 'ms', name)
+      }
+      for (let u = 0; u < unders.length; u++) {
+        yield* Console.log(`--- under ${unders[u] ?? ''}`)
+        for (const [name, ms] of top(
+          belows[u] ?? new Map<string, number>(),
+          ROWS,
+        )) {
+          yield* Console.log(String.padStart(7)(ms.toFixed(2)) + 'ms', name)
+        }
       }
     }
   }),

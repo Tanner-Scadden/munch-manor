@@ -186,7 +186,7 @@ export const tileQuadsOver = (
   }>,
 ): ReadonlyArray<TileQuad> => {
   const { level, boxes, overWall, overFloor } = input
-  const keys = new Set<string>()
+  const keys = new Set<number>()
   const tiles: Array<TileQuad> = []
   Array.forEach(boxes, ({ x, y, width, height }) => {
     const left = Math.floor((x - level.left) / TILE_SIZE)
@@ -195,7 +195,7 @@ export const tileQuadsOver = (
     const bottom = Math.floor((y + height - 1 - level.top) / TILE_SIZE)
     for (let row = top; row <= bottom; row += 1) {
       for (let column = left; column <= right; column += 1) {
-        const key = `${row},${column}`
+        const key = row * level.columns + column
         if (!keys.has(key)) {
           keys.add(key)
           const wall = wallHeightAt({ tiles: level.tiles, row, column })

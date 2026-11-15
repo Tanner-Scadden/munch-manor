@@ -26,6 +26,7 @@ import {
   noAppendInReduce,
   noDeepEqualPerFrame,
   noNestedScan,
+  noStringKeyPerFrame,
   stepWorldAlone,
 } from './perfRules.ts'
 import {
@@ -1080,6 +1081,7 @@ export default definePlugin({
     'folder-imports': folderImports,
     'no-append-in-reduce': noAppendInReduce,
     'no-deep-equal-per-frame': noDeepEqualPerFrame,
+    'no-string-key-per-frame': noStringKeyPerFrame,
     'no-nested-scan': noNestedScan,
     'step-world-alone': stepWorldAlone,
   },

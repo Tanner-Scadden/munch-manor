@@ -53,11 +53,9 @@ import {
 import { cellarDarkOf } from '../../render/cellarDark'
 import { type Drawable, depthSortedShapes } from '../../render/depth'
 import {
-  airborneParticleShapes,
   bulletShapes,
   doorRattleShapes,
   gibShadow,
-  groundParticleShapes,
   popupShape,
 } from '../../render/effectsView'
 import type { WorldStrata } from '../../render/iso/frame'
@@ -200,7 +198,6 @@ const groundShapes = (
   ...Array.flatMap(model.cosmetics.callouts, burpRingShapes),
   ...Array.filterMap(model.traps, trapShadow(levelOf(model))),
   ...Array.filterMap(model.cosmetics.particles, gibShadow),
-  ...groundParticleShapes(model.cosmetics.particles),
   ...ghostShapes(model),
   ...doorRattleShapes(model),
   ...(isLeadArmed(model) ? aimSightShapes(model) : []),
@@ -335,7 +332,6 @@ const overheadShapes = (
     zombieHealthBarShapes,
   ),
   ...bossOverheadShapes(model),
-  ...airborneParticleShapes(model.cosmetics.particles),
   ...(isGoodieBeckoning(model)
     ? Array.flatMap(model.pickups, goodieArrowShapes)
     : []),

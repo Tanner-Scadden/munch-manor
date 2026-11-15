@@ -11,7 +11,7 @@
 import { Array, Option, Record, String } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { cropKeyOf } from '../../art/sprite'
+import { cropSetOf, makeCropTable } from '../../art/sprite'
 import {
   AURA_CENTER,
   AURA_PALETTES,
@@ -22,35 +22,22 @@ import { PICKUP_SPRITES } from '../../art/sprites/pickups'
 import type { BoostKind } from '../../world/schema/entitySchema'
 import type { Affine } from './flatten'
 
-const keysOf = (sprite: ReadonlyArray<Canvas.Shape>): ReadonlyArray<string> =>
-  Array.flatMap(sprite, shape =>
-    shape._tag === 'Image' ? [cropKeyOf(shape)] : [],
-  )
-
 // NOTE: each aura frame's image, by where it is cut from.
-const AURA_FRAMES: ReadonlyMap<
-  string,
-  Readonly<{ kind: BoostKind; frame: number }>
-> = new Map(
-  Array.flatMap(Record.toEntries(AURA_SPRITES), ([kind, sprites]) =>
-    Array.flatMap(sprites, (sprite, frame) =>
-      Array.map(keysOf(sprite), key => [key, { kind, frame }] as const),
-    ),
-  ),
-)
-
-const POWERUP_IMAGES: ReadonlySet<string> = new Set(
-  Array.flatMap(Record.values(PICKUP_SPRITES), keysOf),
-)
+const AURA_FRAMES =
+  makeCropTable<Readonly<{ kind: BoostKind; frame: number }>>()
+Array.forEach(Record.toEntries(AURA_SPRITES), ([kind, sprites]) => {
+  Array.forEach(sprites, (sprite, frame) => {
+    AURA_FRAMES.setSprite(sprite, { kind, frame })
+  })
+})
 
 // NOTE: which boost's frame an image is, if it is one.
 export const auraFrameOf = (
   image: Canvas.Image,
 ): Option.Option<Readonly<{ kind: BoostKind; frame: number }>> =>
-  Option.fromNullishOr(AURA_FRAMES.get(cropKeyOf(image)))
+  Option.fromUndefinedOr(AURA_FRAMES.get(image))
 
-export const isPowerupImage = (image: Canvas.Image): boolean =>
-  POWERUP_IMAGES.has(cropKeyOf(image))
+export const isPowerupImage = cropSetOf(Record.values(PICKUP_SPRITES))
 
 // NOTE: one little block: its spot on the floor, how high it hangs, in
 // whole game pixels, its color, and how bright it glows.

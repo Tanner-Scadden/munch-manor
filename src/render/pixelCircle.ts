@@ -25,14 +25,30 @@ const reachOf = (radius: number, row: number): number => {
   return squared < 0 ? -1 : Math.floor(Math.sqrt(squared))
 }
 
-const spansByKey = new Map<string, ReadonlyArray<Span>>()
+// NOTE: a table keyed by its parts, one Map each, asked for every ring of
+// every frame, so a lookup builds no key.
+const innerOf = <K, V>(
+  outer: Map<K, Map<number, V>>,
+  key: K,
+): Map<number, V> => {
+  const known = outer.get(key)
+  if (known !== undefined) {
+    return known
+  }
+  const inner = new Map<number, V>()
+  outer.set(key, inner)
+  return inner
+}
+
+// NOTE: by radius, then thickness.
+const spansByRadius = new Map<number, Map<number, ReadonlyArray<Span>>>()
 
 // NOTE: the spans of a ring this thick at this radius, its outer edge on the
 // radius; as thick as the radius or more, a whole disc. Each row's pixels
 // reach the row's outer edge, so the ring never breaks into loose dots.
 const spansOf = (radius: number, thickness: number): ReadonlyArray<Span> => {
-  const key = `${radius}|${thickness}`
-  const known = spansByKey.get(key)
+  const byThickness = innerOf(spansByRadius, radius)
+  const known = byThickness.get(thickness)
   if (known !== undefined) {
     return known
   }
@@ -51,7 +67,7 @@ const spansOf = (radius: number, thickness: number): ReadonlyArray<Span> => {
           ]
     },
   )
-  spansByKey.set(key, spans)
+  byThickness.set(thickness, spans)
   return spans
 }
 
@@ -65,7 +81,8 @@ const spanRects = (
     rect(x + left, y + row, width, 1, color),
   )
 
-const spritesByKey = new Map<string, Sprite>()
+// NOTE: by color, then radius, then thickness.
+const spritesByColor = new Map<string, Map<number, Map<number, Sprite>>>()
 
 // NOTE: the baked ring, built once per radius, thickness, and color. A
 // module that draws one bakes its sizes as it loads (bakeRings), so the
@@ -76,13 +93,13 @@ const ringSprite = (
   color: string,
 ): Sprite => {
   const whole = Math.max(1, Math.round(radius))
-  const key = `${whole}|${thickness}|${color}`
-  const known = spritesByKey.get(key)
+  const byThickness = innerOf(innerOf(spritesByColor, color), whole)
+  const known = byThickness.get(thickness)
   if (known !== undefined) {
     return known
   }
   const sprite = bakeShapes(spanRects(0, 0, spansOf(whole, thickness), color))
-  spritesByKey.set(key, sprite)
+  byThickness.set(thickness, sprite)
   return sprite
 }
 

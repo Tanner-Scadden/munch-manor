@@ -474,25 +474,65 @@ const noteFlash = (
 // NOTE: a sprite that is a light of itself (a hearth's flames) stands in
 // the 3D world glowing, the same in any light. Known by its image's source
 // and crop, since placing a sprite copies its image.
-const GLOWING_IMAGES = new Set<string>()
+// NOTE: a table by sprite image, known by its sheet and its crop's corner:
+// in a production build every sprite is a crop of a few atlas sheets, so
+// the sheet alone names many. The 3D renderer asks it for every part of
+// every body each frame, so a lookup builds no key: the sheet's string
+// keeps its own hash, and the corner is one number.
+export type CropTable<V> = Readonly<{
+  get: (image: Canvas.Image) => V | undefined
+  // NOTE: every image of a sprite, set to one value.
+  setSprite: (sprite: ReadonlyArray<Canvas.Shape>, value: V) => void
+}>
 
-// NOTE: one sprite image by its sheet and its crop: in a production build
-// every sprite is a crop of a few atlas sheets, so the sheet alone names
-// many.
-export const cropKeyOf = (image: Canvas.Image): string =>
-  `${image.src}|${image.crop?.x ?? 0},${image.crop?.y ?? 0}`
+// NOTE: wider than any sheet, so each corner is its own number.
+const CORNER_SPAN = 65536
+
+const cornerOf = (image: Canvas.Image): number =>
+  (image.crop?.x ?? 0) * CORNER_SPAN + (image.crop?.y ?? 0)
+
+export const makeCropTable = <V>(): CropTable<V> => {
+  const bySheet = new Map<string, Map<number, V>>()
+  const set = (image: Canvas.Image, value: V): void => {
+    const known = bySheet.get(image.src)
+    const corners = known ?? new Map<number, V>()
+    if (known === undefined) {
+      bySheet.set(image.src, corners)
+    }
+    corners.set(cornerOf(image), value)
+  }
+  return {
+    get: image => bySheet.get(image.src)?.get(cornerOf(image)),
+    setSprite: (sprite, value) => {
+      Array.forEach(sprite, shape => {
+        if (shape._tag === 'Image') {
+          set(shape, value)
+        }
+      })
+    },
+  }
+}
+
+// NOTE: whether an image is one of these sprites', by its crop.
+export const cropSetOf = (
+  sprites: ReadonlyArray<ReadonlyArray<Canvas.Shape>>,
+): ((image: Canvas.Image) => boolean) => {
+  const table = makeCropTable<true>()
+  Array.forEach(sprites, sprite => {
+    table.setSprite(sprite, true)
+  })
+  return image => table.get(image) === true
+}
+
+const GLOWING_IMAGES = makeCropTable<true>()
 
 export const glowingSprite = (sprite: Sprite): Sprite => {
-  Array.forEach(sprite, shape => {
-    if (shape._tag === 'Image') {
-      GLOWING_IMAGES.add(cropKeyOf(shape))
-    }
-  })
+  GLOWING_IMAGES.setSprite(sprite, true)
   return sprite
 }
 
 export const isGlowingShape = (shape: Canvas.Shape): boolean =>
-  shape._tag === 'Image' && GLOWING_IMAGES.has(cropKeyOf(shape))
+  shape._tag === 'Image' && GLOWING_IMAGES.get(shape) === true
 
 // NOTE: how a sprite stands carved in the 3D world when its round default
 // reads wrong, set beside its pixel map: `most`, its depth cap; `isBox`,
@@ -505,22 +545,18 @@ export type SpriteDepth = Readonly<{
   rows?: ReadonlyArray<string>
 }>
 
-const SPRITE_DEPTHS = new Map<string, SpriteDepth>()
+const SPRITE_DEPTHS = makeCropTable<SpriteDepth>()
 
 export const deepSprite: {
   (depth: SpriteDepth): (sprite: Sprite) => Sprite
   (sprite: Sprite, depth: SpriteDepth): Sprite
 } = Function.dual(2, (sprite: Sprite, depth: SpriteDepth): Sprite => {
-  Array.forEach(sprite, shape => {
-    if (shape._tag === 'Image') {
-      SPRITE_DEPTHS.set(cropKeyOf(shape), depth)
-    }
-  })
+  SPRITE_DEPTHS.setSprite(sprite, depth)
   return sprite
 })
 
 export const spriteDepthOf = (shape: Canvas.Image): SpriteDepth | undefined =>
-  SPRITE_DEPTHS.get(cropKeyOf(shape))
+  SPRITE_DEPTHS.get(shape)
 
 // NOTE: a sprite is one image of its pixel map, drawn with a single
 // drawImage, instead of a rectangle for each run of same colored pixels. A

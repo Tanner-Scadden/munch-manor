@@ -86,5 +86,8 @@ export const flatten = (
 // NOTE: a rectangle named by where it is and how it is filled, to find one
 // list's rectangles in another (the room's art less the standing furniture,
 // the ground less what has landed).
+// NOTE: read once per level, as the house's floor art is sorted out
+// (house.ts), never per frame.
+// oxlint-disable-next-line munch/no-string-key-per-frame
 export const rectKey = (shape: Canvas.Rect): string =>
   `${shape.x},${shape.y},${shape.width},${shape.height},${shape.fill ?? ''}`

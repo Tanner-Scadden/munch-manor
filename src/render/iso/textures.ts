@@ -45,10 +45,18 @@ export type PixelMasks = Readonly<{ solid: Uint8Array; dark: Uint8Array }>
 // outlines' near blacks (#140c10, #2a1418) and not a body's own shades.
 const INK_LUMA = 56
 
+// NOTE: wider than any sheet, so each crop's corner is its own number.
+const CORNER_SPAN = 65536
+
 export class Textures {
   private readonly app: Application
   private readonly sources = new Map<string, Texture | 'Loading'>()
-  private readonly crops = new Map<string, Texture>()
+  // NOTE: each crop's texture by its sheet, then by its corner and flip as
+  // one number, asked for every part of every body each frame, so a lookup
+  // builds no key. A second crop of the same corner and another size (never
+  // in the atlas) is kept by a whole key apart.
+  private readonly crops = new Map<string, Map<number, Texture>>()
+  private readonly oddCrops = new Map<string, Texture>()
   private readonly silhouettes = new Map<Texture, Texture>()
   private readonly normals = new Map<TextureSource, Texture>()
   // NOTE: the address each loaded source came from, to find its normal map.
@@ -160,17 +168,38 @@ export class Textures {
       width: base.source.width,
       height: base.source.height,
     }
-    const key = `${image.src}|${crop.x},${crop.y},${crop.width},${crop.height}|${isFlipped}`
-    const cached = this.crops.get(key)
-    if (cached !== undefined) {
+    const known = this.crops.get(image.src)
+    const corners = known ?? new Map<number, Texture>()
+    if (known === undefined) {
+      this.crops.set(image.src, corners)
+    }
+    const corner = (crop.x * CORNER_SPAN + crop.y) * 2 + (isFlipped ? 1 : 0)
+    const cached = corners.get(corner)
+    const isSameSize =
+      cached !== undefined &&
+      cached.frame.width === crop.width &&
+      cached.frame.height === crop.height
+    if (isSameSize) {
       return cached
+    }
+    // NOTE: only past a miss, for a second size at one corner, never in the
+    // atlas.
+    // oxlint-disable-next-line munch/no-string-key-per-frame
+    const key = `${image.src}|${crop.x},${crop.y},${crop.width},${crop.height}|${isFlipped}`
+    const odd = cached === undefined ? undefined : this.oddCrops.get(key)
+    if (odd !== undefined) {
+      return odd
     }
     const texture = new Texture({
       source: base.source,
       frame: new Rectangle(crop.x, crop.y, crop.width, crop.height),
       rotate: isFlipped ? groupD8.MIRROR_HORIZONTAL : 0,
     })
-    this.crops.set(key, texture)
+    if (cached === undefined) {
+      corners.set(corner, texture)
+    } else {
+      this.oddCrops.set(key, texture)
+    }
     return texture
   }
 
@@ -296,7 +325,12 @@ export class Textures {
     for (const texture of this.silhouettes.values()) {
       texture.destroy(true)
     }
-    for (const texture of this.crops.values()) {
+    for (const corners of this.crops.values()) {
+      for (const texture of corners.values()) {
+        texture.destroy(false)
+      }
+    }
+    for (const texture of this.oddCrops.values()) {
       texture.destroy(false)
     }
     for (const source of this.sources.values()) {
@@ -320,6 +354,7 @@ export class Textures {
     this.masks.clear()
     this.silhouettes.clear()
     this.crops.clear()
+    this.oddCrops.clear()
     this.sources.clear()
   }
 }

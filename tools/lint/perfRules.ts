@@ -424,7 +424,10 @@ const iterationNames = (
     }
   }
   if (parent.type === 'ForOfStatement' && parent.body === node) {
-    return { inside: true, names: [...outer.names, ...boundNames(parent.left)] }
+    return {
+      inside: true,
+      names: [...outer.names, ...boundNames(parent.left)],
+    }
   }
   return outer
 }
@@ -502,6 +505,67 @@ export const stepWorldAlone = defineRule({
           message:
             'stepWorld given the client Model copies every Model field on each World write: pass worldOf(model) and merge back with withWorld (AGENTS.md "Keep the frame cheap").',
         })
+      },
+    }
+  },
+})
+
+// NOTE: a key built as a string, `${a}|${b}`, allocates and hashes a new
+// string each time; on a frame that asks once for every body part, cube, or
+// rect it was a few percent of the frame and its garbage.
+const KEYED_METHODS: ReadonlySet<string> = new Set([
+  'get',
+  'has',
+  'set',
+  'add',
+  'delete',
+])
+
+const isBuiltString = (node: Node | null | undefined): boolean => {
+  if (node === null || node === undefined) {
+    return false
+  }
+  const inner = unwrap(node)
+  return inner.type === 'TemplateLiteral' && inner.expressions.length > 0
+}
+
+const isKeyName = (name: string): boolean => /(key|Key|KeyOf)$/.test(name)
+
+const STRING_KEY_MESSAGE =
+  'A key built as a string on every frame allocates and hashes it each time: key the table by a number, by the object itself, or by its parts as a Map of Maps, or build the key once per level (AGENTS.md "Keep the frame cheap").'
+
+export const noStringKeyPerFrame = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Code that runs every frame looks tables up by numbers or objects, never by a string key built for the lookup.',
+    },
+  },
+  create(context) {
+    return {
+      CallExpression(node) {
+        const { callee } = node
+        if (
+          callee.type === 'MemberExpression' &&
+          hasName(KEYED_METHODS, propertyName(callee)) &&
+          isBuiltString(node.arguments[0])
+        ) {
+          context.report({ node, message: STRING_KEY_MESSAGE })
+        }
+      },
+      VariableDeclarator(node) {
+        if (node.id.type !== 'Identifier' || !isKeyName(node.id.name)) {
+          return
+        }
+        const init = node.init === null ? undefined : unwrap(node.init)
+        const isKeyBuilder =
+          init?.type === 'ArrowFunctionExpression' &&
+          init.body.type !== 'BlockStatement' &&
+          isBuiltString(init.body)
+        if (isBuiltString(init) || isKeyBuilder) {
+          context.report({ node, message: STRING_KEY_MESSAGE })
+        }
       },
     }
   },

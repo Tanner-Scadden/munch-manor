@@ -367,7 +367,9 @@
     },
     {
       // NOTE: the code that runs every rendered frame compares references or
-      // a few fields, never deep equality (AGENTS.md "Keep the frame cheap").
+      // a few fields, never deep equality, and looks tables up by numbers or
+      // objects, never a string key built for the lookup (AGENTS.md "Keep the
+      // frame cheap").
       "files": [
         "src/render/**/*.ts",
         "src/screens/**/*.ts",
@@ -378,7 +380,10 @@
         "src/world/step/**/*.ts",
         "src/world/zombies/**/*.ts"
       ],
-      "rules": { "munch/no-deep-equal-per-frame": "error" }
+      "rules": {
+        "munch/no-deep-equal-per-frame": "error",
+        "munch/no-string-key-per-frame": "error"
+      }
     },
     {
       // NOTE: the World's per-tick rules and the per-frame drawing scan no
@@ -419,6 +424,7 @@
       "files": ["src/**/*.test.ts", "src/**/*.fixture.ts"],
       "rules": {
         "munch/no-deep-equal-per-frame": "off",
+        "munch/no-string-key-per-frame": "off",
         "munch/no-nested-scan": "off",
         "munch/step-world-alone": "off"
       }

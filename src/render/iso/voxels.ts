@@ -61,11 +61,16 @@ const {
   uvOf: () => [0.5, 0.5],
 })
 
+// NOTE: more tenths of glow than any cube has, so each glow is its own
+// number beside its color.
+const GLOW_TENTHS_SPAN = 1024
+
 // NOTE: how a crop's blocks stand: with its columns reversed or not (its
 // matrix mirrored), on the floor with its sides darkening toward it or not,
 // the most blocks deep it is carved, and whether its eyes glow apart, as
-// `true|false|255|false` and the like.
-type ShapeKey = `${boolean}|${boolean}|${number}|${boolean}`
+// one number (the three flags as its low bits, the depth over them), so a
+// body's every part each frame builds no key.
+type ShapeKey = number
 
 const shapeKeyOf = ({
   isFlipped,
@@ -77,7 +82,8 @@ const shapeKeyOf = ({
   isGrounded: boolean
   most: number
   hasEyes: boolean
-}>): ShapeKey => `${isFlipped}|${isGrounded}|${most}|${hasEyes}`
+}>): ShapeKey =>
+  most * 8 + (isFlipped ? 4 : 0) + (isGrounded ? 2 : 0) + (hasEyes ? 1 : 0)
 
 // NOTE: a carve's geometry, what it casts its shadow through, how many
 // blocks it moves toward the lens to stand on the floor (`voxelMeshOf`'s
@@ -236,7 +242,9 @@ export class VoxelBatch {
   private readonly solidBottoms = new Map<Texture, number>()
   // NOTE: each sheet's materials by fade step, the last step opaque.
   private readonly sheetMaterials = new Map<Texture, Array<Material3D>>()
-  private readonly colorMaterials = new Map<string, Material3D>()
+  // NOTE: by color and glow in tenths as one number, asked for every cube
+  // each frame.
+  private readonly colorMaterials = new Map<number, Material3D>()
   private readonly glowMaterials = new Map<Texture, Material3D>()
   private readonly cube = new Geometry3D({ ...UNIT_CUBE })
   // NOTE: a fading body draws through its own shader program, which the GPU
@@ -548,8 +556,11 @@ export class VoxelBatch {
       most,
       hasEyes: eyes !== undefined,
     })
-    const shapes = this.geometries.get(texture) ?? new Map<ShapeKey, Carved>()
-    this.geometries.set(texture, shapes)
+    const knownShapes = this.geometries.get(texture)
+    const shapes = knownShapes ?? new Map<ShapeKey, Carved>()
+    if (knownShapes === undefined) {
+      this.geometries.set(texture, shapes)
+    }
     const known = shapes.get(shapeKey)
     if (known !== undefined) {
       return known
@@ -617,8 +628,10 @@ export class VoxelBatch {
   }
 
   private colorMaterialOf(color: number, glow: number): Material3D {
-    const strength = Math.round(glow * 10) / 10
-    const key = `${color}|${strength}`
+    const tenths = Math.max(0, Math.round(glow * 10))
+    const strength = tenths / 10
+    const key =
+      color * GLOW_TENTHS_SPAN + Math.min(tenths, GLOW_TENTHS_SPAN - 1)
     const known = this.colorMaterials.get(key)
     if (known !== undefined) {
       return known
