@@ -27,12 +27,18 @@ import {
 const LEARNED =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,displayCase,rattles'
 const HOUSE = `god&nodev&seen=all&wave=3&openexits=West,East,Far,Kitchen&kitchen&${LEARNED}`
-const BREAK = `${HOUSE}&break=open&nohud&tick=240`
+const breakAt = (tick: number) => `${HOUSE}&break=open&nohud&tick=${tick}`
+const BREAK = breakAt(240)
 
 const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'hub', query: `${BREAK}&px=175&py=40` },
   { name: 'cobweb', query: `${BREAK}&px=310&py=55` },
   { name: 'notes', query: `${BREAK}&px=60&py=110` },
+  // NOTE: the parlour's notes from a few spots, each note of the cycle:
+  // the first half way up its rise, from the south and from far off east.
+  { name: 'notes-rise', query: `${breakAt(120)}&px=60&py=110` },
+  { name: 'notes-south', query: `${breakAt(120)}&px=40&py=200` },
+  { name: 'notes-far', query: `${BREAK}&px=150&py=150` },
   { name: 'valve', query: `${BREAK}&px=170&py=-25` },
   { name: 'hearth', query: `${BREAK}&valve&px=-160&py=120` },
   { name: 'pickups', query: `${BREAK}&pickups=all&px=160&py=150` },

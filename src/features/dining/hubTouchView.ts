@@ -1,13 +1,14 @@
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
   type Sprite,
+  TOP_LEFT,
   bakeShapes,
   deepSprite,
   glowingSprite,
   placeAt,
+  spriteShapes,
 } from '../../art/sprite'
 import { type Drawable, IN_FRONT_PX } from '../../render/depth'
 import { rect } from '../../render/drawing'
@@ -66,6 +67,10 @@ const EAST_BOARDS = { column: 35, row: 9 }
 const NOTE_CYCLE_MS = 3600
 const NOTE_RISE_PX = 10
 const NOTE_DRIFT_PX = 10
+// NOTE: the notes come in a couple of tiles past the boards, so they rise
+// clear of the display case standing just in front of the west boards
+// (DINING_MAP's `c` on row 15), never half hidden behind its top.
+const NOTE_IN_PX = 22
 // NOTE: the notes come in about head high and rise to the walls' tops.
 const NOTE_LIFT_PX = 8
 const MOTE_CYCLE_MS = 5200
@@ -134,26 +139,29 @@ const COBWEB: Sprite = deepSprite(
   { most: 1 },
 )
 
-// NOTE: an eighth note and a pair of beamed ones in gold, glowing of
-// themselves.
-const NOTE_COLOR = '#ffe680'
+// NOTE: an eighth note and a quarter note in gold, glowing of themselves,
+// each a filled oval head tilted the way a written one is, with a pale
+// glint, a stem a pixel wide off its right side, and the eighth's flag
+// curling off the stem's top, so each reads as a note at a pixel a block.
+const NOTE_PALETTE = { G: '#ffe680', L: '#fff8d6' }
 
-const noteSprite = (shapes: ReadonlyArray<Canvas.Shape>): Sprite =>
-  glowingSprite(deepSprite(bakeShapes(shapes), { most: 1 }))
+const noteSprite = (pixels: ReadonlyArray<string>): Sprite =>
+  glowingSprite(
+    deepSprite(spriteShapes(pixels, NOTE_PALETTE, TOP_LEFT), { most: 1 }),
+  )
 
 const NOTES: Array.NonEmptyReadonlyArray<Sprite> = [
   noteSprite([
-    rect(2, 0, 1, 4, NOTE_COLOR),
-    rect(0, 3, 2, 2, NOTE_COLOR),
-    rect(3, 1, 1, 1, NOTE_COLOR),
+    '...G..',
+    '...GGG',
+    '...G.G',
+    '...G.G',
+    '...G..',
+    '.LGG..',
+    'GGGG..',
+    'GGG...',
   ]),
-  noteSprite([
-    rect(2, 0, 4, 1, NOTE_COLOR),
-    rect(2, 0, 1, 4, NOTE_COLOR),
-    rect(5, 0, 1, 4, NOTE_COLOR),
-    rect(0, 3, 2, 2, NOTE_COLOR),
-    rect(3, 3, 2, 2, NOTE_COLOR),
-  ]),
+  noteSprite(['...G', '...G', '...G', '...G', '...G', '.LGG', 'GGGG', 'GGG.']),
 ]
 
 const MOTE_COLOR = '#c4ccd8'
@@ -209,7 +217,7 @@ const fixedAt = (
   shapes: [placeAt(dining.x + spot.x, dining.y + spot.y, sprite)],
 })
 
-// NOTE: one note at a time, a single and then a beamed pair, rising through
+// NOTE: one note at a time, an eighth and then a quarter, rising through
 // the air from its side's boards and drifting in, gone for the last part of
 // its cycle: one piece at most, so the frame stays cheap.
 const noteDrawables = (
@@ -229,7 +237,9 @@ const noteDrawables = (
             rank: 'Prop',
             shapes: [
               placeAt(
-                Math.round(side.x + inward * (4 + phase * NOTE_DRIFT_PX)),
+                Math.round(
+                  side.x + inward * (NOTE_IN_PX + phase * NOTE_DRIFT_PX),
+                ),
                 Math.round(
                   side.y -
                     NOTE_LIFT_PX -
