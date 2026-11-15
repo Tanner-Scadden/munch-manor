@@ -134,12 +134,6 @@ const liveControls = (
       h,
     ),
     switchRow('Hold still', live.isStill, pick({ isStill: !live.isStill }), h),
-    switchRow(
-      'Flat bodies',
-      live.isBillboards,
-      pick({ isBillboards: !live.isBillboards }),
-      h,
-    ),
     switchRow('HUD', live.isHudOn, pick({ isHudOn: !live.isHudOn }), h),
   ]
 }

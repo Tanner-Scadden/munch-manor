@@ -102,7 +102,7 @@ import {
 } from './space'
 import { FAR_KEY, stormKeyOf, stormOf, stormTilesOf } from './storm'
 import { Textures, colorOf } from './textures'
-import { VoxelBatch } from './voxels'
+import { VoxelBatch, newReach } from './voxels'
 import { chandelierSwayAt, windClockOf } from './wind'
 
 // NOTE: the lightning's flash: a cold white, at its peak four times
@@ -115,18 +115,20 @@ const BACKGROUND = 0x000000
 const CAMERA_DISTANCE = 80
 const TRACER_RADIUS = 0.05
 
-// NOTE: what stands as voxels (voxels.ts): whatever moves or is picked up.
-// The house's own pieces (furniture, Rattles, the fridge) stay billboards.
-const VOXEL_RANKS: ReadonlySet<Drawable['rank']> = new Set([
-  'Zombie',
-  'Player',
-  'Pickup',
-  'Trap',
-])
+// NOTE: what stands carved (voxels.ts), by its rank, and the most blocks
+// deep each is carved: a body as deep as it is wide, up to a big zombie's
+// belly; the house's pieces, the traps, and the pickups flatter, so a wide
+// table or a barricade does not swell into a ball. A wall's face over a
+// doorway stays flat.
+const MOST_DEPTH: Readonly<Partial<Record<Drawable['rank'], number>>> = {
+  Zombie: 16,
+  Player: 16,
+  Pickup: 8,
+  Trap: 6,
+  Prop: 6,
+}
 
-// NOTE: `?billboards` in the address stands the bodies as flat billboards
-// again, and the carved showpieces as their sprites, to compare.
-const IS_VOXEL = !new URLSearchParams(window.location.search).has('billboards')
+const FURNITURE_MOST = 6
 
 // NOTE: a blast's flash of light: its color, its peak, and its reach, as
 // many times the blast's own radius.
@@ -501,10 +503,16 @@ export class IsoScene {
         fades.set(maybePiece.value.piece, maybePiece.value.opacity)
       } else {
         const flattened = flatten(drawable.shapes)
-        const isVoxel = IS_VOXEL && VOXEL_RANKS.has(drawable.rank)
-        const leaves = isVoxel ? castingLeavesOf(flattened) : flattened
-        if (isVoxel) {
-          this.standBody(flattened, drawable.footY, model.elapsedMs)
+        const most = MOST_DEPTH[drawable.rank]
+        const leaves =
+          most === undefined ? flattened : castingLeavesOf(flattened)
+        if (most !== undefined) {
+          this.standBody({
+            leaves: flattened,
+            footY: drawable.footY,
+            elapsedMs: model.elapsedMs,
+            most,
+          })
         } else {
           // NOTE: a hit flash glows white in any light, the cellar's dark
           // too, so it stands with what glows of itself rather than what is
@@ -544,11 +552,16 @@ export class IsoScene {
           view,
         )
       ) {
-        this.billboards.standUp(
-          piece.shapes,
-          piece.footY,
-          fades.get(piece) ?? 1,
-        )
+        const opacity = fades.get(piece) ?? 1
+        this.standBody({
+          leaves: Array.map(flatten(piece.shapes), leaf => ({
+            ...leaf,
+            alpha: leaf.alpha * opacity,
+          })),
+          footY: piece.footY,
+          elapsedMs: model.elapsedMs,
+          most: FURNITURE_MOST,
+        })
       }
     }
     for (const { mesh, box } of this.furnitureCasters) {
@@ -587,7 +600,6 @@ export class IsoScene {
       airborne.add(key)
       const look = colorOf(shape.fill ?? '#000')
       if (
-        IS_VOXEL &&
         look.alpha >= 0.98 &&
         this.voxels.standCube({
           x: particle.x,
@@ -697,14 +709,20 @@ export class IsoScene {
     this.app.render()
   }
 
-  // NOTE: a body's sprites as voxels, each part nudged ahead of the last as
-  // the 2D game drew it over; a hit flash's as glowing white blocks. A part
-  // that cannot stand as voxels stands as a billboard.
+  // NOTE: what stands as its carved sprites, each part in front of the
+  // parts before it as the 2D game drew it over them; a hit flash's as
+  // glowing white blocks. A part that cannot stand carved stands as a
+  // billboard.
   private standBody(
-    leaves: ReadonlyArray<Leaf>,
-    footY: number,
-    elapsedMs: number,
+    input: Readonly<{
+      leaves: ReadonlyArray<Leaf>
+      footY: number
+      elapsedMs: number
+      most: number
+    }>,
   ): void {
+    const { leaves, footY, elapsedMs, most } = input
+    const reach = newReach()
     const isPowerup = Array.some(
       leaves,
       ({ shape }) => shape._tag === 'Image' && isPowerupImage(shape),
@@ -728,6 +746,8 @@ export class IsoScene {
             footY,
             part,
             isFlash,
+            most,
+            reach,
             ...(spin === undefined ? {} : { spin }),
           })
         ) {
@@ -913,9 +933,7 @@ export class IsoScene {
         Array.map(tallCoverOf(level), piece => [piece.shapes, piece] as const),
       ),
       lights: houseLightsOf({ level, parent: holder }),
-      chandelier: IS_VOXEL
-        ? chandelierOf({ level, parent: holder })
-        : Option.none(),
+      chandelier: chandelierOf({ level, parent: holder }),
     }
     this.built = built
     this.castFurniture(built)

@@ -1,8 +1,7 @@
-// The voxel bodies and the 3D blasts (src/render/iso/voxels.ts,
+// The carved bodies and the 3D blasts (src/render/iso/voxels.ts,
 // explosions.ts): every kind in a row and at every wear stage, a crowd under
-// fire, guns aimed every way, the boss, and Kaboomers bursting, each as
-// voxels and as the old flat billboards (`billboards`), as
-// `voxels-<TAG>-<viewport>-<scene>-<voxel|billboard>.png`.
+// fire, guns aimed every way, the boss, power-ups, boosts, and Kaboomers
+// bursting, as `voxels-<TAG>-<viewport>-<scene>.png`.
 //   TAG=try bun run heavy -- --shared bun tools/audit/shotsVoxels.ts
 import { Array, Effect } from 'effect'
 
@@ -73,8 +72,6 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   },
 ]
 
-const LOOKS = ['voxel', 'billboard'] as const
-
 runHarnessAudit(
   Effect.gen(function* () {
     const tag = yield* auditTag
@@ -85,17 +82,10 @@ runHarnessAudit(
         if (!(yield* isPickedScene(scene.name))) {
           continue
         }
-        for (const look of LOOKS) {
-          const page = yield* openPage(browser, viewport)
-          const query =
-            look === 'billboard' ? `${scene.query}&billboards` : scene.query
-          yield* gotoScene(page, harnessUrl(query, deviceQuery(viewport)))
-          yield* shot(
-            page,
-            `voxels-${tag}-${viewport.name}-${scene.name}-${look}`,
-          )
-          yield* closePage(page)
-        }
+        const page = yield* openPage(browser, viewport)
+        yield* gotoScene(page, harnessUrl(scene.query, deviceQuery(viewport)))
+        yield* shot(page, `voxels-${tag}-${viewport.name}-${scene.name}`)
+        yield* closePage(page)
       }
     }
   }),

@@ -1,7 +1,8 @@
-// What moves stands as voxels: zombies, players, their guns, traps, and
-// pickups, each sprite's pixels as little blocks (voxelShape.ts), lit by the
-// room with their true faces; the blast's glowing blocks and the debris in
-// the air as cubes. All of it in one batch, its slots pooled frame to frame.
+// What stands stands carved: zombies, players, their guns and props, traps,
+// pickups, the house's furniture and set pieces, each sprite carved into
+// blocks (voxelShape.ts), lit by the room with their true faces; the blast's
+// glowing blocks and the debris in the air as cubes. All of it in one batch,
+// its slots pooled frame to frame, each carve built once and kept.
 
 import type { Texture } from 'pixi.js'
 
@@ -16,8 +17,11 @@ import {
 
 import { PART_BIAS } from './billboards'
 import { IDENTITY, type Leaf } from './flatten'
+import { UNIT } from './space'
 import type { PixelMasks, Textures } from './textures'
 import {
+  DEPTH_BACK,
+  isFlippedOf,
   isGroundedOf,
   slabMatrixOf,
   solidBoundsOf,
@@ -34,23 +38,38 @@ const SLOTS = 2048
 const FADE_STEPS = 8
 const OPAQUE_ALPHA = 0.98
 
-const UNIT_CUBE = voxelMeshOf({
+const { lift: _cubeLift, ...UNIT_CUBE } = voxelMeshOf({
   width: 1,
   height: 1,
   isSolid: () => true,
   uvOf: () => [0.5, 0.5],
 })
 
-// NOTE: how a crop's blocks stand: with its rows reversed or not (its
-// matrix mirrored), and on the floor with its sides darkening toward it or
-// not, as `true|false` and the like.
-type ShapeKey = `${boolean}|${boolean}`
+// NOTE: how a crop's blocks stand: with its columns reversed or not (its
+// matrix mirrored), on the floor with its sides darkening toward it or not,
+// and the most blocks deep it is carved, as `true|false|255` and the like.
+type ShapeKey = `${boolean}|${boolean}|${number}`
 
 const shapeKeyOf = ({
   isFlipped,
   isGrounded,
-}: Readonly<{ isFlipped: boolean; isGrounded: boolean }>): ShapeKey =>
-  `${isFlipped}|${isGrounded}`
+  most,
+}: Readonly<{
+  isFlipped: boolean
+  isGrounded: boolean
+  most: number
+}>): ShapeKey => `${isFlipped}|${isGrounded}|${most}`
+
+// NOTE: a carve's geometry and how many blocks it moves toward the lens to
+// stand on the floor (`voxelMeshOf`'s lift).
+type Carved = Readonly<{ geometry: Geometry3D; lift: number }>
+
+// NOTE: where a drawable's parts stand along the lens's ray: each part in
+// front of every part before it, as the 2D game painted it over them, in
+// blocks toward the lens from the sprites' plane. Begun for each drawable.
+export type PartReach = { blocks: number }
+
+export const newReach = (): PartReach => ({ blocks: 0 })
 
 // NOTE: a cube of color standing at a spot on the floor, raised `rise`
 // game pixels, `width` across, `height` tall, and as deep as its smaller side.
@@ -109,7 +128,7 @@ export class VoxelBatch {
   private readonly slotPasses: Array<number> = []
   // NOTE: each crop's blocks by how they stand (`shapeKeyOf`), and its
   // lowest solid row.
-  private readonly geometries = new Map<Texture, Map<ShapeKey, Geometry3D>>()
+  private readonly geometries = new Map<Texture, Map<ShapeKey, Carved>>()
   private readonly solidBottoms = new Map<Texture, number>()
   // NOTE: each sheet's materials by fade step, the last step opaque.
   private readonly sheetMaterials = new Map<Texture, Array<Material3D>>()
@@ -139,19 +158,22 @@ export class VoxelBatch {
     }
   }
 
-  // NOTE: a sprite of a standing body as its blocks, faded as it is, or
+  // NOTE: a sprite of what stands as its carved blocks, faded as it is, or
   // false when it must stand as a billboard: not an image, still loading, or
-  // no slot left. One faded past seeing stands as nothing.
+  // no slot left. One faded past seeing stands as nothing. `most` caps how
+  // deep it is carved; `reach` keeps it in front of the parts before it.
   standLeaf(
     input: Readonly<{
       leaf: Leaf
       footY: number
       part: number
       isFlash: boolean
+      most: number
+      reach: PartReach
       spin?: number
     }>,
   ): boolean {
-    const { leaf, footY, part, isFlash, spin } = input
+    const { leaf, footY, part, isFlash, most, reach, spin } = input
     const { shape, matrix, alpha } = leaf
     if (shape._tag !== 'Image' || this.used >= SLOTS) {
       return false
@@ -173,16 +195,6 @@ export class VoxelBatch {
       width: texture.frame.width,
       height: texture.frame.height,
     }
-    const { elements, isFlipped } = slabMatrixOf({
-      matrix,
-      box: shape,
-      texels,
-      footY,
-      hover: 0,
-      nudge: part * PART_BIAS,
-      depth: 1,
-      ...(spin === undefined ? {} : { spin }),
-    })
     const isGrounded = isGroundedOf({
       matrix,
       box: shape,
@@ -190,13 +202,31 @@ export class VoxelBatch {
       footY,
       solidBottom: this.solidBottomOf(texture, masks),
     })
-    const geometry = this.geometryOf({
+    const isFlipped = isFlippedOf({ matrix, box: shape })
+    const carved = this.carvedOf({
       texture,
       sheet,
       masks,
       isFlipped,
       isGrounded,
+      most,
     })
+    // NOTE: a body on the floor moves toward the lens until its lowest
+    // block stands on it; any part moves at least as far as the parts
+    // before it reach, so it shows over them as the 2D game drew it.
+    const blocks = Math.max(isGrounded ? carved.lift : 0, reach.blocks)
+    reach.blocks = blocks
+    const { elements } = slabMatrixOf({
+      matrix,
+      box: shape,
+      texels,
+      footY,
+      hover: 0,
+      nudge: part * PART_BIAS + blocks * DEPTH_BACK * UNIT,
+      depth: 1,
+      ...(spin === undefined ? {} : { spin }),
+    })
+    const geometry = carved.geometry
     const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
     this.fill({
       geometry,
@@ -283,46 +313,45 @@ export class VoxelBatch {
     return bottom
   }
 
-  private geometryOf(
+  private carvedOf(
     input: Readonly<{
       texture: Texture
       sheet: Texture
       masks: PixelMasks
       isFlipped: boolean
       isGrounded: boolean
+      most: number
     }>,
-  ): Geometry3D {
-    const { texture, sheet, masks, isFlipped, isGrounded } = input
-    const shapeKey = shapeKeyOf({ isFlipped, isGrounded })
-    const shapes =
-      this.geometries.get(texture) ?? new Map<ShapeKey, Geometry3D>()
+  ): Carved {
+    const { texture, sheet, masks, isFlipped, isGrounded, most } = input
+    const shapeKey = shapeKeyOf({ isFlipped, isGrounded, most })
+    const shapes = this.geometries.get(texture) ?? new Map<ShapeKey, Carved>()
     this.geometries.set(texture, shapes)
     const known = shapes.get(shapeKey)
     if (known !== undefined) {
       return known
     }
     const { x, y, width, height } = texture.frame
-    const rowOf = (row: number): number => (isFlipped ? height - 1 - row : row)
+    const columnOf = (column: number): number =>
+      isFlipped ? width - 1 - column : column
     const sheetWidth = Math.max(1, sheet.source.width)
     const sheetHeight = Math.max(1, sheet.source.height)
-    const geometry = new Geometry3D({
-      ...voxelMeshOf({
-        width,
-        height,
-        isSolid: (column, row) =>
-          masks.solid[rowOf(row) * width + column] === 1,
-        isDark: (column, row) => masks.dark[rowOf(row) * width + column] === 1,
-        // NOTE: reversed rows run up from the foot, as the matrix stands
-        // them (slabMatrixOf).
-        ground: isGrounded ? (isFlipped ? 'Above' : 'Below') : 'None',
-        uvOf: (column, row) => [
-          (x + column + 0.5) / sheetWidth,
-          (y + rowOf(row) + 0.5) / sheetHeight,
-        ],
-      }),
+    const { lift, ...mesh } = voxelMeshOf({
+      width,
+      height,
+      isSolid: (column, row) =>
+        masks.solid[row * width + columnOf(column)] === 1,
+      isDark: (column, row) => masks.dark[row * width + columnOf(column)] === 1,
+      isGrounded,
+      most,
+      uvOf: (column, row) => [
+        (x + columnOf(column) + 0.5) / sheetWidth,
+        (y + row + 0.5) / sheetHeight,
+      ],
     })
-    shapes.set(shapeKey, geometry)
-    return geometry
+    const carved = { geometry: new Geometry3D({ ...mesh }), lift }
+    shapes.set(shapeKey, carved)
+    return carved
   }
 
   private sheetMaterialOf(sheet: Texture, step: number): Material3D {
@@ -358,7 +387,7 @@ export class VoxelBatch {
   destroy(): void {
     this.batch.destroy()
     for (const shapes of this.geometries.values()) {
-      for (const geometry of shapes.values()) {
+      for (const { geometry } of shapes.values()) {
         geometry.destroy()
       }
     }
