@@ -32,6 +32,7 @@ const frameOf = (model: Model) =>
     world: model,
     level: levelOf(model),
     viewer: focusOf(model).player,
+    rattle: 0,
   })
 
 const lightsUsed = (model: Model): number => {

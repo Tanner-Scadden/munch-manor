@@ -158,6 +158,9 @@ export const HarnessConfig = Schema.Struct({
   // intensity, 0 to 1, which the mood light follows.
   clock: MaybeNum,
   heat: MaybeNum,
+  // NOTE: `trauma` starts the screen shaking that hard, 0 to 1, so past
+  // gunfire's 0.3 the house rattles (houseRattleOf in src/render/juice.ts).
+  trauma: MaybeNum,
   prep: Num(20000),
   break: Choice(['open']),
   breakMs: Num(0),

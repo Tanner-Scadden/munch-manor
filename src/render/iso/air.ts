@@ -8,6 +8,7 @@ import { Array } from 'effect'
 
 import type { Level } from '../../world/level/arena'
 import type { Box } from '../../world/level/tileGrid'
+import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
 import { type FlameKind, flameSpecsOf } from './lightSpecs'
 import { mixColor, unitOf } from './mood'
@@ -118,11 +119,50 @@ const embersOf = (level: Level, ms: number): ReadonlyArray<Mote> =>
     }),
   )
 
-// NOTE: the air this frame. A hotter wave stirs the dust further.
+// SIFTING
+
+// NOTE: dust shaken off the ceiling as the house rattles: this many motes
+// at most, over this much floor round the viewer, each falling from the
+// ceiling in this long, thicker and brighter the harder it rattles.
+const SIFT_COUNT = 36
+const SIFT_REACH_X = 170
+const SIFT_REACH_Y = 110
+const SIFT_FALL_MS = 1100
+const CEILING = 64
+
+const siftOf = (
+  viewer: Vector,
+  ms: number,
+  rattle: number,
+): ReadonlyArray<Mote> =>
+  Array.makeBy(Math.round(SIFT_COUNT * rattle), mote => {
+    const offset = rollOf(-1, mote, 20) * SIFT_FALL_MS
+    const fall = (ms + offset) % SIFT_FALL_MS
+    // NOTE: each fall of a mote comes off its own spot of the ceiling.
+    const drop = Math.floor((ms + offset) / SIFT_FALL_MS)
+    return {
+      x: viewer.x + (rollOf(drop, mote, 21) - 0.5) * 2 * SIFT_REACH_X,
+      y: viewer.y + (rollOf(drop, mote, 22) - 0.5) * 2 * SIFT_REACH_Y,
+      hover: CEILING * (1 - fall / SIFT_FALL_MS),
+      color: DUST_COLOR,
+      alpha: Math.min(1, 0.3 + rattle),
+      isGlowing: false,
+    }
+  })
+
+// NOTE: the air this frame. A hotter wave stirs the dust further, and a
+// rattle sifts more off the ceiling.
 export const airOf = ({
   world,
   level,
-}: Readonly<{ world: World; level: Level }>): ReadonlyArray<Mote> => {
+  viewer,
+  rattle,
+}: Readonly<{
+  world: World
+  level: Level
+  viewer: Vector
+  rattle: number
+}>): ReadonlyArray<Mote> => {
   const seconds = world.elapsedMs / 1000
   const stir = 1 + world.intensity * 0.8
   return [
@@ -130,5 +170,6 @@ export const airOf = ({
       isOpen ? dustIn(box, room, seconds, stir) : [],
     ),
     ...embersOf(level, world.elapsedMs),
+    ...siftOf(viewer, world.elapsedMs, rattle),
   ]
 }

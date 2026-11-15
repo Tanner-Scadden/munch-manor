@@ -42,6 +42,11 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
     name: 'ovens',
     query: 'wave=5&seen=all&god&openexits=Kitchen&px=90&py=-70&freeze=60',
   },
+  {
+    name: 'rattle',
+    query:
+      'wave=5&seen=all&start=wave&elapsed=6000&clock=9000&god&trauma=1&freeze=2',
+  },
 ]
 
 runHarnessAudit(

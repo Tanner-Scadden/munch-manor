@@ -4,7 +4,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 ## November 14, 2026: The manor in 3D
 
-- 🏚️ The manor stands up in 3D: walls with real depth, candlelight and flickering flames in every room that wrap round every body, shadows under everyone, ferns and the chandelier swaying in a draft, a cellar so dark only your flashlight cuts through it, and a storm outside: the lights cool and dim as a wave heats up, burn red when the house gets hungry, lightning flashes through the windows with thunder rolling after, dust drifts in the candlelight, and embers float up off the fire. (Older devices without WebGL2 can't run the manor anymore, sorry!)
+- 🏚️ The manor stands up in 3D: walls with real depth, candlelight and flickering flames in every room that wrap round every body, shadows under everyone, ferns and the chandelier swaying in a draft, a cellar so dark only your flashlight cuts through it, and a storm outside: the lights cool and dim as a wave heats up, burn red when the house gets hungry, lightning flashes through the windows with thunder rolling after, dust drifts in the candlelight, embers float up off the fire, and every blast and stomp makes the candles gutter, the chandelier jolt, and dust rain off the ceiling. (Older devices without WebGL2 can't run the manor anymore, sorry!)
 - 🔍 Every pixel is the same size now, on every phone and window, so the art stays razor sharp as the camera glides.
 - 🚀 The manor loads faster and runs smoother on phones, with no more freeze on the loading screen.
 - 🖼️ The walls got their wallpaper, trim, and wainscoting back, no more plain grey blocks.

@@ -6,6 +6,7 @@ import type { Model } from '../../../app/model'
 import { atClock, quietWave } from '../../../test/model.fixture'
 import { levelOf, openExitIn } from '../../../world/level/arena'
 import { WEST_EXIT } from '../../../world/level/plan'
+import { houseRattleOf } from '../../juice'
 import { airOf } from '../air'
 
 // The air in the manor (src/render/iso/air.ts): dust in the open rooms and
@@ -13,7 +14,12 @@ import { airOf } from '../air'
 
 const airAt = (model: Model, ms: number) => {
   const world = atClock(model, ms)
-  return airOf({ world, level: levelOf(world) })
+  return airOf({
+    world,
+    level: levelOf(world),
+    viewer: { x: 180, y: 110 },
+    rattle: 0,
+  })
 }
 
 const isIn =
@@ -64,5 +70,18 @@ describe('the air', () => {
     expect(
       Array.every(high, up => Array.every(low, down => up.alpha <= down.alpha)),
     ).toBe(true)
+  })
+
+  test('a rattle sifts dust off the ceiling, and gunfire never does', () => {
+    const wave = quietWave(3)
+    const level = levelOf(wave)
+    const viewer = { x: 180, y: 110 }
+    const motes = (trauma: number) =>
+      airOf({ world: wave, level, viewer, rattle: houseRattleOf(trauma) })
+        .length
+    expect(houseRattleOf(0.3)).toBe(0)
+    expect(motes(0.3)).toBe(motes(0))
+    expect(motes(1)).toBeGreaterThan(motes(0.6))
+    expect(motes(0.6)).toBeGreaterThan(motes(0))
   })
 })
