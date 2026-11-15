@@ -15,6 +15,8 @@
 // the light's own hue (`hueKeep`) is kept over the ramp, so the wave's mood
 // (moonlight, the boss's red, src/render/iso/mood.ts) still turns the house.
 
+import { Tunable } from './tunable'
+
 export type RoomLook = Readonly<{
   // NOTE: the ramp's hues, low to high. Each is taken at full brightness:
   // how bright a band is comes from the light, not from these.
@@ -106,3 +108,7 @@ export const LOOK: LookSpecs = {
     },
   },
 }
+
+// NOTE: the specs as the renderer reads them (src/render/iso/tunable.ts):
+// LOOK, unless Munch Studio's lab is sliding them.
+export const LOOK_TUNING = new Tunable<LookSpecs>(LOOK)

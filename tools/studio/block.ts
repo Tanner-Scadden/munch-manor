@@ -6,14 +6,21 @@ import { Block } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 
 import { FacingChoice, Tab, Tone } from './catalog'
+import { LabEdits } from './lab'
 import { DEFAULT_LIVE, LiveScene, LiveTool } from './liveScene'
 import { NoteKind, Pin, StoredNote, Tile, TileArea } from './notes'
 import { StudioRoom } from './room'
+import { StagePreset } from './stagePresets'
 
 // MODEL
 
 export const Backdrop = Schema.Literals(['Floor', 'Dark', 'Light', 'Grass'])
 export type Backdrop = typeof Backdrop.Type
+
+// NOTE: the big view as the flat picture, or carved into blocks on the 3D
+// stage (./stage3d.ts).
+export const StageMode = Schema.Literals(['Flat', 'Blocks'])
+export type StageMode = typeof StageMode.Type
 
 export const ZOOMS: Array.NonEmptyReadonlyArray<number> = [2, 3, 4, 6, 8]
 
@@ -42,6 +49,13 @@ export const SavedView = Schema.Struct({
   isOnion: Schema.Boolean,
   isCrew: Schema.Boolean,
   speed: Schema.Finite,
+  stageMode: StageMode,
+  stagePreset: StagePreset,
+  isAutoSpin: Schema.Boolean,
+  // NOTE: the light and color lab's edits (./lab.ts), kept until reset, and
+  // whether its panel is open.
+  labEdits: LabEdits,
+  isLabOpen: Schema.Boolean,
 })
 export type SavedView = typeof SavedView.Type
 
@@ -64,6 +78,8 @@ export const Model = Schema.Struct({
   notes: Schema.Array(StoredNote),
   seenDone: Schema.Array(Schema.String),
   isInboxOnline: Schema.Boolean,
+  // NOTE: raised to stand the stage's camera where the game's stands.
+  cameraResets: Schema.Finite,
 })
 export type Model = typeof Model.Type
 
@@ -90,6 +106,11 @@ export const DEFAULT_VIEW: SavedView = {
   isOnion: false,
   isCrew: false,
   speed: 1,
+  stageMode: 'Flat',
+  stagePreset: 'Break',
+  isAutoSpin: false,
+  labEdits: {},
+  isLabOpen: false,
 }
 
 // MESSAGE
@@ -127,6 +148,14 @@ export const Message = defineMessageUnion({
   FailedSendNote: { reason: Schema.String },
   ReceivedNotes: { notes: Schema.Array(StoredNote) },
   LostInbox: {},
+  ClickedStageMode: { mode: StageMode },
+  ClickedStagePreset: { preset: StagePreset },
+  ClickedAutoSpin: {},
+  ClickedPlayCamera: {},
+  ClickedLabToggle: {},
+  ChangedLab: { id: Schema.String, text: Schema.String },
+  ClickedLabReset: {},
+  ClickedPropose: {},
   CompletedSaveView: {},
   CompletedSaveSeen: {},
 })

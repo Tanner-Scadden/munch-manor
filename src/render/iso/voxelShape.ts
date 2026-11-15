@@ -502,7 +502,12 @@ export const voxelMeshOf = ({
     const [c0, c1, c2, c3] = spec.corners
     const corner = ([x, y, z]: Point): Point =>
       pointOf(column + x, gridRow + y, d + z)
-    out.quad([corner(c0), corner(c1), corner(c2), corner(c3)], spec.normal, uv, shade)
+    out.quad(
+      [corner(c0), corner(c1), corner(c2), corner(c3)],
+      spec.normal,
+      uv,
+      shade,
+    )
   }
   const isOpen = (
     spec: FaceSpec,

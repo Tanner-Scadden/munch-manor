@@ -15,6 +15,8 @@ import {
   DARK_CELL_INTENSITY,
   DARK_DEPTH,
   DARK_HEIGHT,
+  FLAME_TUNING,
+  type FlameLooks,
   type LightsFrame,
   darkCellsOf,
   fillSpecOf,
@@ -85,12 +87,10 @@ export const houseLightsOf = (
         }),
     },
   )
-  const flames = Array.map(flameSpecsOf(level), spec => {
-    const light = new PointLight({
-      color: spec.color,
-      intensity: 0,
-      range: spec.range,
-    })
+  const specs = flameSpecsOf(level)
+  const flames = Array.map(specs, spec => {
+    const { color, range } = FLAME_TUNING.now[spec.kind]
+    const light = new PointLight({ color, intensity: 0, range })
     light.position.set(spec.x, spec.y, spec.z)
     holder.addChild(light)
     return light
@@ -112,8 +112,11 @@ export const houseLightsOf = (
     penumbra: 0.45,
   })
 
-  // NOTE: the mood's tint last applied, so a color is set only on a change.
+  // NOTE: the mood's tint last applied, so a color is set only on a change,
+  // and the flames' looks, set again only when Munch Studio's lab hands
+  // the renderer new ones.
   let lastTint = Number.NaN
+  let lastLooks: FlameLooks = FLAME_TUNING.now
   const apply = ({
     frame,
     player,
@@ -143,6 +146,16 @@ export const houseLightsOf = (
     Array.forEach(cells, cell => {
       cell.visible = frame.isDark
     })
+    const looks = FLAME_TUNING.now
+    if (looks !== lastLooks) {
+      lastLooks = looks
+      Array.forEach(flames, (light, index) => {
+        Option.map(Array.get(specs, index), ({ kind }) => {
+          light.color.setValue(looks[kind].color)
+          light.range = looks[kind].range
+        })
+      })
+    }
     Array.forEach(flames, (light, index) => {
       Option.match(Array.get(frame.flames, index), {
         onNone: () => {

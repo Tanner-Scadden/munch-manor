@@ -5,12 +5,14 @@
 // hands over the world's pixels through its bridge (./bridge.ts), so a press
 // lands on the world tile under it and the loupe reads the very pixels drawn.
 // It keeps a copy of the frame around the picked tiles in `.live-shot`, the
-// picture a note sends.
+// picture a note sends. The light and color lab's edits (`tuning`) reach the
+// harness's renderer through the same bridge, so the room shows them live.
 import { Option, Schema, String } from 'effect'
 import { CustomElement } from 'foldkit'
 
 import { TILE_SIZE } from '../../src/shared/constants'
 import { type BridgeView, type StudioBridge, bridgeOf } from './bridge'
+import { LabEdits, tablesOf } from './lab'
 import { HARNESS_PATH, LiveTool } from './liveScene'
 import { Tile, TileArea } from './notes'
 
@@ -34,7 +36,7 @@ const Nothing = Schema.Struct({})
 
 export const studioWorld = CustomElement.define({
   tag: TAG,
-  properties: { query: Schema.String, marks: Marks },
+  properties: { query: Schema.String, marks: Marks, tuning: LabEdits },
   events: {
     'hover-tile': Tile,
     'press-tile': Tile,
@@ -164,6 +166,8 @@ const studioWorldClass = () =>
     private lastTile: Tile | null = null
     private isLoupeDue = false
     private isShotDue = false
+    private latestTuning: LabEdits = {}
+    private isTuneDue = false
     private readonly host = document.createElement('div')
     private readonly harness = document.createElement('iframe')
     private readonly marksCanvas = document.createElement('canvas')
@@ -198,6 +202,18 @@ const studioWorldClass = () =>
       this.latestMarks = next
     }
 
+    get tuning(): LabEdits {
+      return this.latestTuning
+    }
+
+    set tuning(next: LabEdits) {
+      if (next === this.latestTuning) {
+        return
+      }
+      this.latestTuning = next
+      this.isTuneDue = true
+    }
+
     connectedCallback(): void {
       this.isOnPage = true
       if (!this.isBuilt) {
@@ -217,6 +233,7 @@ const studioWorldClass = () =>
       this.harness.title = 'The manor, live in 3D'
       this.harness.addEventListener('load', () => {
         this.isShotDue = true
+        this.isTuneDue = true
       })
       this.marksCanvas.className = 'live-marks'
       this.loupe.className = 'live-loupe'
@@ -303,6 +320,14 @@ const studioWorldClass = () =>
           this.clearMarks()
         },
         onSome: view => {
+          if (this.isTuneDue) {
+            this.isTuneDue = false
+            this.isShotDue = true
+            this.isLoupeDue = true
+            Option.map(this.bridge(), bridge => {
+              bridge.tune(tablesOf(this.latestTuning))
+            })
+          }
           this.drawMarks(view)
           if (this.isShotDue || isLiveRead) {
             this.isShotDue = !this.takeShot(view)

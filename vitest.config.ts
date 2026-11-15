@@ -67,6 +67,7 @@ export default defineConfig({
             'tools/determinism/**/*.test.ts',
             'tools/learn/**/*.test.ts',
             'tools/lint/**/*.test.ts',
+            'tools/studio/**/*.test.ts',
           ],
           exclude: [SCENE, SIM],
         },

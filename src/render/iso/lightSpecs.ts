@@ -25,6 +25,7 @@ import { CANDELABRA_FLAME, CHANDELIER_SHAPES } from '../room/diningArt'
 import { coverBlocks } from '../room/roomCover'
 import { type Mood, moodOf } from './mood'
 import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space'
+import { Tunable } from './tunable'
 
 // NOTE: what lights a spot where no lamp reaches, as a share of the art's own
 // color (lit surfaces divide light by pi). Low, so each room's light and
@@ -47,7 +48,7 @@ const ROOM_TINTS: Readonly<Record<string, number>> = {
   [CELLAR_ROOM_ID]: 0xb8c4ff,
 }
 const DEFAULT_TINT = 0xffe2b4
-const OPEN_FILL = 0.4
+export const OPEN_FILL = 0.4
 const SHUT_FILL = 0.08
 
 // NOTE: how much light the cellar's dark takes away: the ambient and the
@@ -86,13 +87,11 @@ export type FlameSpec = Readonly<{
   kind: FlameKind
   // NOTE: where it stands on the game's map, in game pixels.
   spot: Vector
-  // NOTE: where its light hangs, in world units.
+  // NOTE: where its light hangs, in world units. Its color, intensity, and
+  // range are its kind's, read off FLAME_TUNING as it burns.
   x: number
   y: number
   z: number
-  color: number
-  intensity: number
-  range: number
   seed: number
 }>
 
@@ -106,7 +105,9 @@ type FlameLook = Readonly<{
   range: number
 }>
 
-const FLAME_LOOKS: Readonly<Record<FlameKind, FlameLook>> = {
+export type FlameLooks = Readonly<Record<FlameKind, FlameLook>>
+
+const FLAME_LOOKS: FlameLooks = {
   Candle: { out: 1.32, color: 0xffb35a, intensity: 11, range: 6 },
   Hearth: { out: 0.7, color: 0xff7a2e, intensity: 22, range: 8 },
   Sconce: {
@@ -124,6 +125,11 @@ const FLAME_LOOKS: Readonly<Record<FlameKind, FlameLook>> = {
   },
   Bulb: { out: 1.94, color: 0xfff0c8, intensity: 36, range: 12 },
 }
+
+// NOTE: the flames' looks as the renderer reads them (./tunable.ts): as
+// shipped, unless Munch Studio's lab is sliding their light. Where a flame
+// hangs (`rise`, `out`) is read once for each level.
+export const FLAME_TUNING = new Tunable<FlameLooks>(FLAME_LOOKS)
 
 // NOTE: the hung chandelier's sprite's bottom edge under the gap's top: the
 // row it stands on overhead, less OVERHEAD_FOOT_PX.
@@ -223,14 +229,11 @@ export const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
   const specs = Array.map(
     flameSpotsOf(level),
     ({ kind, spot, footY, flame }, index) => {
-      const { out, color, intensity, range } = FLAME_LOOKS[kind]
+      const { out } = FLAME_LOOKS[kind]
       return {
         kind,
         spot,
         ...standingPointOf({ x: flame.x, footY, atY: flame.y, out }),
-        color,
-        intensity,
-        range,
         seed: index * 2.17,
       }
     },
@@ -455,6 +458,7 @@ export const lightsFrameOf = (
     (isDark ? cellCount : 0) +
     (isInDark ? 2 : 0)
   const specs = flameSpecsOf(level)
+  const looks = FLAME_TUNING.now
   // NOTE: by the game's map, where the flames burn.
   const nearest = pipe(
     Array.map(specs, (spec, index) => ({
@@ -481,7 +485,7 @@ export const lightsFrameOf = (
       isShown: shown.has(index),
       x: spec.x + SWAYS[spec.kind](t),
       intensity:
-        spec.intensity *
+        looks[spec.kind].intensity *
         guttered(t, spec.seed, rattle) *
         (spec.kind === 'Bulb' ? 1 : flickerAt(t, spec.seed, mood.flicker)),
     })),

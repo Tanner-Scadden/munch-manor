@@ -1,6 +1,8 @@
 // The big view of the picked sprite: it plays large, steps frame by frame,
 // shows the frame before as a ghost, stands beside the crew for scale, and
-// takes a tap as a pin for a note.
+// takes a tap as a pin for a note. In Blocks it stands carved on the 3D
+// stage instead (./stage3d.ts), lit by a preset, the light and color lab
+// under it.
 import { Array, Function } from 'effect'
 import { Canvas } from 'foldkit'
 import type { Html } from 'foldkit/html'
@@ -10,11 +12,12 @@ import {
   Message,
   type Model,
   SPEEDS,
+  StageMode,
   type StudioViewBuilder,
   freshDoneOf,
   notesFor,
 } from './block'
-import { type Bounds, type Entry, crewOf } from './catalog'
+import { type Bounds, type Entry, type Tab, crewOf } from './catalog'
 import {
   backdropRect,
   frameIndexOf,
@@ -26,7 +29,10 @@ import {
   spritesBounds,
   zoomed,
 } from './drawing'
-import { pinAt, pinShapes } from './pins'
+import { labToggleView, labView } from './labView'
+import { pinAt, pinShapes, stagePinsOf } from './pins'
+import { studioStage } from './stage3d'
+import { PRESET_LABELS, StagePreset } from './stagePresets'
 
 // NOTE: the big view aims for a picture about this tall, in screen pixels.
 const STAGE_HEIGHT = 260
@@ -111,6 +117,122 @@ const toggle = (
 
 const divider = (h: StudioViewBuilder): Html =>
   h.span([h.Class('tool-divider'), h.AriaHidden(true)])
+
+// NOTE: how many blocks deep the stage carves a tab's sprites, as the game
+// carves bodies (16) and its smaller things (src/render/iso/scene.ts).
+const MOST_BY_TAB: Readonly<Record<Tab, number>> = {
+  Zombies: 16,
+  Heroes: 16,
+  Looks: 16,
+  Rattles: 16,
+  Items: 8,
+  Rooms: 6,
+}
+
+const segmentedOf = <A extends string>(
+  input: Readonly<{
+    title: string
+    choices: ReadonlyArray<A>
+    picked: A
+    labelOf: (choice: A) => string
+    messageOf: (choice: A) => Message
+  }>,
+  h: StudioViewBuilder,
+): Html =>
+  h.div(
+    [h.Class('segmented small'), h.Role('group'), h.Title(input.title)],
+    Array.map(input.choices, choice =>
+      h.button(
+        [
+          h.Class(input.picked === choice ? 'segment on' : 'segment'),
+          h.AriaPressed(input.picked === choice ? 'true' : 'false'),
+          h.OnClick(input.messageOf(choice)),
+        ],
+        [input.labelOf(choice)],
+      ),
+    ),
+  )
+
+const MODE_LABELS: Readonly<Record<StageMode, string>> = {
+  Flat: '🖼️ Flat',
+  Blocks: '🧊 Blocks',
+}
+
+// NOTE: the stage's own controls: flat or blocks, and in blocks the light,
+// the spin, and the game's camera.
+const stageBarView = (model: Model, h: StudioViewBuilder): Html =>
+  h.div(
+    [h.Class('toolbar'), h.Role('toolbar')],
+    [
+      segmentedOf(
+        {
+          title: 'See it flat or carved into blocks in 3D',
+          choices: StageMode.literals,
+          picked: model.stageMode,
+          labelOf: mode => MODE_LABELS[mode],
+          messageOf: mode => Message.ClickedStageMode({ mode }),
+        },
+        h,
+      ),
+      ...(model.stageMode === 'Blocks'
+        ? [
+            divider(h),
+            segmentedOf(
+              {
+                title: 'The light it stands in',
+                choices: StagePreset.literals,
+                picked: model.stagePreset,
+                labelOf: preset => PRESET_LABELS[preset],
+                messageOf: preset => Message.ClickedStagePreset({ preset }),
+              },
+              h,
+            ),
+            divider(h),
+            toggle(
+              '🔄 Spin',
+              'Turn it round and round (or drag it)',
+              model.isAutoSpin,
+              Message.ClickedAutoSpin(),
+              h,
+            ),
+            toolButton(
+              '🎮 Game camera',
+              "Look from the game's own camera, 49° down",
+              Message.ClickedPlayCamera(),
+              h,
+              'tool-toggle',
+            ),
+            labToggleView(model, h),
+          ]
+        : []),
+    ],
+  )
+
+// NOTE: the picked sprite carved on the 3D stage.
+const blocksView = (model: Model, entry: Entry, h: StudioViewBuilder): Html => {
+  const stage = studioStage.withMessage(h)
+  return stage(
+    [
+      h.Key('studio-stage'),
+      h.Class('stage3d'),
+      stage.Subject({
+        id: entry.id,
+        facing: model.facing,
+        tone: model.tone,
+        clockMs: model.clockMs,
+        most: MOST_BY_TAB[model.tab],
+      }),
+      stage.Preset(model.stagePreset),
+      stage.House(model.house),
+      stage.IsAutoSpin(model.isAutoSpin),
+      stage.CameraResets(model.cameraResets),
+      stage.Tuning(model.labEdits),
+      stage.Pins(stagePinsOf({ model, notes: notesFor(model, entry.id) })),
+      stage.OnPressBlock(pin => Message.PressedPicture({ pin })),
+    ],
+    [],
+  )
+}
 
 const toolbarView = (
   model: Model,
@@ -209,62 +331,75 @@ export const stageView: {
             ...(isFresh
               ? [h.span([h.Class('updated-chip')], ['Updated'])]
               : []),
-            h.span([h.Class('stage-hint')], ['Tap the picture to pin a note']),
-          ],
-        ),
-        h.div(
-          [h.Class('stage-surface')],
-          [
-            h.div(
+            h.span(
+              [h.Class('stage-hint')],
               [
-                h.Class('stage-canvases'),
-                h.Style({ width: `${width}px`, height: `${height}px` }),
-              ],
-              [
-                Canvas.view(
-                  {
-                    key: 'stage-art',
-                    width,
-                    height,
-                    shapes: [
-                      backdropRect({ width, height }, model.backdrop),
-                      zoomed(
-                        [
-                          ...ghost,
-                          ...Array.flatMap(crew, placed => placed.shapes),
-                          ...frameOf(frames, index),
-                        ],
-                        bounds,
-                        zoom,
-                      ),
-                    ],
-                    className: 'sprite stage-art',
-                  },
-                  h,
-                ),
-                Canvas.view(
-                  {
-                    key: 'stage-pins',
-                    width,
-                    height,
-                    shapes: pinShapes({
-                      model,
-                      notes: notesFor(model, entry.id),
-                      frame: { bounds, zoom },
-                    }),
-                    className: 'pins',
-                    onPointerDown: ({ x, y }) =>
-                      Message.PressedPicture({
-                        pin: pinAt({ bounds, zoom })({ x, y }),
-                      }),
-                  },
-                  h,
-                ),
+                model.stageMode === 'Blocks'
+                  ? 'Drag to turn it, tap a block to pin a note'
+                  : 'Tap the picture to pin a note',
               ],
             ),
           ],
         ),
+        stageBarView(model, h),
+        h.div(
+          [h.Class('stage-surface')],
+          model.stageMode === 'Blocks'
+            ? [blocksView(model, entry, h)]
+            : [
+                h.div(
+                  [
+                    h.Class('stage-canvases'),
+                    h.Style({ width: `${width}px`, height: `${height}px` }),
+                  ],
+                  [
+                    Canvas.view(
+                      {
+                        key: 'stage-art',
+                        width,
+                        height,
+                        shapes: [
+                          backdropRect({ width, height }, model.backdrop),
+                          zoomed(
+                            [
+                              ...ghost,
+                              ...Array.flatMap(crew, placed => placed.shapes),
+                              ...frameOf(frames, index),
+                            ],
+                            bounds,
+                            zoom,
+                          ),
+                        ],
+                        className: 'sprite stage-art',
+                      },
+                      h,
+                    ),
+                    Canvas.view(
+                      {
+                        key: 'stage-pins',
+                        width,
+                        height,
+                        shapes: pinShapes({
+                          model,
+                          notes: notesFor(model, entry.id),
+                          frame: { bounds, zoom },
+                        }),
+                        className: 'pins',
+                        onPointerDown: ({ x, y }) =>
+                          Message.PressedPicture({
+                            pin: pinAt({ bounds, zoom })({ x, y }),
+                          }),
+                      },
+                      h,
+                    ),
+                  ],
+                ),
+              ],
+        ),
         toolbarView(model, index, count, h),
+        ...(model.stageMode === 'Blocks' && model.isLabOpen
+          ? [labView(model, h)]
+          : []),
       ],
     )
   },

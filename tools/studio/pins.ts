@@ -89,6 +89,36 @@ export const pinShapes = (
   ]
 }
 
+// NOTE: the same pins as marks for the 3D stage (./stage3d.ts), which
+// draws them where each pixel's blocks stand.
+export const stagePinsOf = ({
+  model,
+  notes,
+}: Readonly<{
+  model: Model
+  notes: ReadonlyArray<StoredNote>
+}>): ReadonlyArray<Readonly<{ pin: Pin; label: string; color: string }>> => [
+  ...pipe(
+    numberedNotes(notes),
+    Array.flatMap(([number, note]) =>
+      Option.match(Option.fromNullishOr(note.pin), {
+        onNone: () => [],
+        onSome: pin => [
+          {
+            pin,
+            label: `${number}`,
+            color: note.status === 'Done' ? DONE_COLOR : OPEN_COLOR,
+          },
+        ],
+      }),
+    ),
+  ),
+  ...Option.match(model.maybeDraftPin, {
+    onNone: () => [],
+    onSome: pin => [{ pin, label: '+', color: DRAFT_COLOR }],
+  }),
+]
+
 // NOTE: where a press on a picture lands, in the picture's own pixels.
 export const pinAt =
   ({ bounds, zoom }: PictureFrame) =>

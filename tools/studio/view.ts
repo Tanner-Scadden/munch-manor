@@ -33,6 +33,7 @@ import {
   zoomed,
 } from './drawing'
 import { inspectorView } from './inspectorView'
+import { labToggleView, labView } from './labView'
 import { harnessQueryOf } from './liveScene'
 import type { Tile } from './notes'
 import { areaShapes, pinAt } from './pins'
@@ -322,10 +323,13 @@ const liveView = (model: Model, h: StudioViewBuilder): Html => {
           world.OnHoverTile(tile => Message.HoveredTile({ tile })),
           world.OnPressTile(tile => Message.PressedRoomTile({ tile })),
           world.OnReleaseTile(() => Message.ReleasedRoom()),
+          world.Tuning(model.labEdits),
           world.OnLeaveWorld(() => Message.LeftRoom()),
         ],
         [],
       ),
+      h.div([h.Class('toolbar'), h.Role('toolbar')], [labToggleView(model, h)]),
+      ...(model.isLabOpen ? [labView(model, h)] : []),
     ],
   )
 }

@@ -11,6 +11,7 @@
 import { isHouseHungry } from '../../world/dare/finale'
 import { Boss, Phase, type World } from '../../world/schema/worldSchema'
 import { lerp } from '../../world/step/geometry'
+import { Tunable } from './tunable'
 
 export type Mood = Readonly<{
   // NOTE: a share of each room's own light, 1 in a break.
@@ -32,19 +33,37 @@ const BLOOD = 0xff5a48
 // NOTE: how long the light takes to turn as a wave or a break begins.
 const TURN_MS = 3000
 
-const CALM: Mood = {
+// NOTE: the ambient light's share in each mood: a break's, a wave's at the
+// start and how far it drops as the wave's intensity climbs to 1, and the
+// dread's. As the renderer reads them (./tunable.ts): as shipped, unless
+// Munch Studio's lab is sliding them.
+export type MoodAmbients = Readonly<{
+  calm: number
+  wave: number
+  waveDrop: number
+  dread: number
+}>
+
+export const MOOD_AMBIENT = new Tunable<MoodAmbients>({
+  calm: 1,
+  wave: 0.85,
+  waveDrop: 0.25,
+  dread: 0.7,
+})
+
+export const calmMood = (): Mood => ({
   fill: 1,
-  ambient: 1,
+  ambient: MOOD_AMBIENT.now.calm,
   tint: MOONLIGHT,
   tintShare: 0,
   flicker: 1,
   strike: 0,
-}
+})
 
 // NOTE: a wave's mood at full turn, by its intensity (0 to 1).
-const waveMood = (intensity: number): Mood => ({
+export const waveMood = (intensity: number): Mood => ({
   fill: 0.85 - 0.2 * intensity,
-  ambient: 0.85 - 0.25 * intensity,
+  ambient: MOOD_AMBIENT.now.wave - MOOD_AMBIENT.now.waveDrop * intensity,
   tint: MOONLIGHT,
   tintShare: 0.25 + 0.2 * intensity,
   flicker: 1.4 + 0.8 * intensity,
@@ -52,14 +71,14 @@ const waveMood = (intensity: number): Mood => ({
 })
 
 // NOTE: the hungrier house, or the boss on the floor.
-const DREAD: Mood = {
+export const dreadMood = (): Mood => ({
   fill: 0.7,
-  ambient: 0.7,
+  ambient: MOOD_AMBIENT.now.dread,
   tint: BLOOD,
   tintShare: 0.4,
   flicker: 2.4,
   strike: 0,
-}
+})
 
 // NOTE: one mood eased into another. Only the calm's and a wave's are
 // eased, and the calm leans toward no color, so the tint is the one that
@@ -82,18 +101,19 @@ const isDreadful = (world: World): boolean =>
 // NOTE: the mood before the storm: the round's, eased in as it turns.
 const roundMood = (world: World): Mood => {
   if (isDreadful(world)) {
-    return DREAD
+    return dreadMood()
   }
+  const calm = calmMood()
   const wave = waveMood(world.intensity)
   return Phase.matchOrElse(
     world.phase,
     {
-      Wave: ({ elapsedMs }) => between(CALM, wave, turned(elapsedMs)),
+      Wave: ({ elapsedMs }) => between(calm, wave, turned(elapsedMs)),
       Preparation: ({ remainingMs, durationMs }) =>
-        between(wave, CALM, turned(durationMs - remainingMs)),
-      Paused: ({ round }) => (round._tag === 'Wave' ? wave : CALM),
+        between(wave, calm, turned(durationMs - remainingMs)),
+      Paused: ({ round }) => (round._tag === 'Wave' ? wave : calm),
     },
-    () => CALM,
+    () => calm,
   )
 }
 
