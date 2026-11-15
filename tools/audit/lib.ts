@@ -232,21 +232,32 @@ export const longNamedViewports = pickViewports([
   { ...UPRIGHT_390, name: 'phone-portrait' },
 ])
 
+// NOTE: more screens, taken only when asked for by name: a narrower,
+// shorter upright phone (360 by 780), and the other phones `taps.ts`
+// sweeps, so a shot set covers every phone (VIEWPORTS=p667,a800,u360,u430).
+const ON_REQUEST: ReadonlyArray<Viewport> = [
+  { ...UPRIGHT_360, width: 360, height: 780, name: 'p360' },
+  PHONE_667,
+  ANDROID_800,
+  UPRIGHT_360,
+  UPRIGHT_430,
+]
+
 // NOTE: a desktop, a phone on its side, and a phone held upright: the
-// screens most shot scripts take.
+// screens most shot scripts take, and any of `ON_REQUEST` named.
 export const shotViewports = Effect.gen(function* () {
   const picked = yield* listFromEnv('VIEWPORTS')
-  const isP360Picked = Option.exists(picked, Array.contains('p360'))
-  return yield* pickViewports([
+  const defaults = yield* pickViewports([
     { ...DESKTOP_1280, name: 'd1280' },
     { ...PHONE_844, name: 'l844' },
     { ...UPRIGHT_390, name: 'p390' },
-    // NOTE: a narrower, shorter upright phone (360 by 780), taken only when
-    // asked for with VIEWPORTS=p360.
-    ...(isP360Picked
-      ? [{ ...UPRIGHT_360, width: 360, height: 780, name: 'p360' }]
-      : []),
   ])
+  return [
+    ...defaults,
+    ...Array.filter(ON_REQUEST, viewport =>
+      Option.exists(picked, Array.contains(viewport.name)),
+    ),
+  ]
 })
 
 // CONCURRENCY
