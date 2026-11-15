@@ -100,10 +100,16 @@ const makeDecals = (count: number): Array<Decal> => {
   return out
 }
 
-const FRIDGE_GUNS: Readonly<Record<'cooker' | 'pan' | 'freeze', WeaponKind>> = {
+// NOTE: the fridge's guns and the display cases' two (Old Thunder and the
+// Big Blunder), each held fresh at the scene's tier.
+const FRIDGE_GUNS: Readonly<
+  Record<'cooker' | 'pan' | 'freeze' | 'rifle' | 'blunderbuss', WeaponKind>
+> = {
   cooker: 'Cooker',
   pan: 'Pan',
   freeze: 'Freeze',
+  rifle: 'Rifle',
+  blunderbuss: 'Blunderbuss',
 }
 
 export const roomModel = (settings: SceneSettings): Model => {
@@ -192,7 +198,10 @@ export const roomModel = (settings: SceneSettings): Model => {
                 }),
                 wield: 'Melee',
               }
-            : gun === 'cooker' || gun === 'freeze'
+            : gun === 'cooker' ||
+                gun === 'freeze' ||
+                gun === 'rifle' ||
+                gun === 'blunderbuss'
               ? {
                   ...p,
                   arsenal: Arsenal.HoldingSecond({
