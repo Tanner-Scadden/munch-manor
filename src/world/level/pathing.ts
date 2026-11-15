@@ -19,7 +19,13 @@ import {
   normalize,
   scaleVector,
 } from '../step/geometry'
-import { type Level, TILE_OUTSIDE, hasTileFlag } from './arena'
+import {
+  type Level,
+  TILE_OPEN_BLOCK,
+  TILE_OUTSIDE,
+  TILE_SOLID,
+  hasTileFlag,
+} from './arena'
 import { byDoor, tileCenter, tileIndex, tileOfIndex } from './tileGrid'
 import {
   doorSpawnPoint,
@@ -175,33 +181,69 @@ export const isFieldTile: {
   )
 })
 
+// NOTE: laid out in one pass over the level's flag bytes, with each tile's
+// neighbors found by index, so a new level (an exit opened, the chandelier
+// dropped mid-wave) costs a fraction of a frame. The walks are the straight
+// steps alone (STRAIGHT_STEP_COUNT), the ones the field spreads over.
 const walkGraphFor = (level: Level, clearance: Clearance): WalkGraph => {
-  const start = new Int32Array(level.tileCount + 1)
-  const adjacent: Array<number> = []
-  for (let index = 0; index < level.tileCount; index++) {
+  const { columns, rows, tileCount, tileFlags } = level
+  const flagsAt = (column: number, row: number): number =>
+    column < 0 || row < 0 || column >= columns || row >= rows
+      ? 0
+      : (tileFlags[row * columns + column] ?? 0)
+  const isWalkableAt = (column: number, row: number): boolean =>
+    column >= 0 &&
+    row >= 0 &&
+    column < columns &&
+    row < rows &&
+    ((tileFlags[row * columns + column] ?? TILE_SOLID) & TILE_SOLID) === 0
+  const isOpenBlockAt = (column: number, row: number): boolean =>
+    (flagsAt(column, row) & TILE_OPEN_BLOCK) !== 0
+  const isInField = new Uint8Array(tileCount)
+  for (let index = 0; index < tileCount; index++) {
     const { column, row } = tileOfIndex(level, index)
-    const isInField = isFieldTile(level, column, row)
-    for (let step = 0; step < STRAIGHT_STEP_COUNT; step++) {
+    isInField[index] = isFieldTile(level, column, row) ? 1 : 0
+  }
+  const isStepOpen = (
+    column: number,
+    row: number,
+    stepColumn: number,
+    stepRow: number,
+  ): boolean => {
+    if (clearance === 'Narrow') {
+      return isWalkableAt(column + stepColumn, row + stepRow)
+    }
+    const left = Math.min(column, column + stepColumn)
+    const top = Math.min(row, row + stepRow)
+    return stepRow === 0
+      ? isOpenBlockAt(left, row - 1) || isOpenBlockAt(left, row)
+      : isOpenBlockAt(column - 1, top) || isOpenBlockAt(column, top)
+  }
+  const start = new Int32Array(tileCount + 1)
+  const adjacent: Array<number> = []
+  for (let index = 0; index < tileCount; index++) {
+    const column = index % columns
+    const row = Math.floor(index / columns)
+    const isOutside = ((tileFlags[index] ?? 0) & TILE_OUTSIDE) !== 0
+    for (
+      let step = 0;
+      isInField[index] === 1 && step < STRAIGHT_STEP_COUNT;
+      step++
+    ) {
       const stepColumn = STEP_COLUMNS[step] ?? 0
       const stepRow = STEP_ROWS[step] ?? 0
+      if (!isStepOpen(column, row, stepColumn, stepRow)) {
+        continue
+      }
+      const neighbor = (row + stepRow) * columns + column + stepColumn
+      // NOTE: the yard's one way rule (isStepIntoTheHouse): a zombie walks
+      // from the neighbor onto this tile, never from the house out into
+      // the yard.
       if (
-        isInField &&
-        isClearanceStepOpen(
-          level,
-          clearance,
-          column,
-          row,
-          stepColumn,
-          stepRow,
-        ) &&
-        isFieldTile(level, column + stepColumn, row + stepRow) &&
-        isStepIntoTheHouse(
-          level,
-          tileIndex(level, column + stepColumn, row + stepRow),
-          index,
-        )
+        isInField[neighbor] === 1 &&
+        (((tileFlags[neighbor] ?? 0) & TILE_OUTSIDE) !== 0 || !isOutside)
       ) {
-        adjacent.push(tileIndex(level, column + stepColumn, row + stepRow))
+        adjacent.push(neighbor)
       }
     }
     start[index + 1] = adjacent.length

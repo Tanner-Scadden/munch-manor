@@ -34,27 +34,11 @@ import {
   WALL_SYMBOL,
   byDoor,
   isInsideRoom,
-  symbolAt,
   tileBox,
   tileCenter,
   tileIndex,
-  tileOfIndex,
   tilesWithSymbol,
 } from './tileGrid'
-
-const indicesWhere = (
-  grid: Grid,
-  isMarked: (column: number, row: number) => boolean,
-): ReadonlySet<number> =>
-  new Set(
-    Array.filter(
-      Array.makeBy(grid.columns * grid.rows, index => index),
-      index => {
-        const { column, row } = tileOfIndex(grid, index)
-        return isMarked(column, row)
-      },
-    ),
-  )
 
 const boundingBox = (tiles: ReadonlyArray<Tile>): Box =>
   Array.reduce(
@@ -195,19 +179,6 @@ export const hasTileFlag: {
     ((level.tileFlags[index] ?? 0) & flag) !== 0,
 )
 
-const packTileFlags = (
-  tileCount: number,
-  marked: ReadonlyArray<readonly [ReadonlySet<number>, number]>,
-): Uint8Array => {
-  const flags = new Uint8Array(tileCount)
-  for (const [indices, flag] of marked) {
-    for (const index of indices) {
-      flags[index] = (flags[index] ?? 0) | flag
-    }
-  }
-  return flags
-}
-
 const openExitIdsOf = (
   spec: LevelSpec,
   openExits: ReadonlyArray<ExitId>,
@@ -314,6 +285,55 @@ const roomBoxOf = ({ tiles, origin }: RoomSpec): Box => ({
   bottom: (origin.row + tiles.length) * TILE_SIZE,
 })
 
+// NOTE: each tile of a spec's map, by index: its symbol ('' past a row's
+// end), and the rooms whose box holds its center, as bits by the room's
+// place in `spec.rooms`. Kept per spec, which never changes, so building
+// another level of it reads them instead of searching the map again.
+type TileTable = Readonly<{
+  symbols: ReadonlyArray<string>
+  roomMasks: Uint32Array
+}>
+
+const tileTables = new WeakMap<LevelSpec, TileTable>()
+
+const tileTableOf = (spec: LevelSpec, grid: Grid): TileTable => {
+  const kept = tileTables.get(spec)
+  if (kept !== undefined) {
+    return kept
+  }
+  const boxes = Array.map(spec.rooms, roomBoxOf)
+  const tileCount = grid.columns * grid.rows
+  const symbols: Array<string> = []
+  const roomMasks = new Uint32Array(tileCount)
+  for (let index = 0; index < tileCount; index++) {
+    const column = (index % grid.columns) + grid.leftColumn
+    const row = Math.floor(index / grid.columns) + grid.topRow
+    const line = grid.tiles[row - grid.topRow] ?? ''
+    symbols.push(line[column - grid.leftColumn] ?? '')
+    const x = column * TILE_SIZE + TILE_SIZE / 2
+    const y = row * TILE_SIZE + TILE_SIZE / 2
+    let mask = 0
+    // NOTE: a level has a handful of rooms (five in the manor), well under
+    // the 32 bits of a mask.
+    for (let room = 0; room < boxes.length; room++) {
+      const box = boxes[room]
+      if (
+        box !== undefined &&
+        x > box.left &&
+        x < box.right &&
+        y > box.top &&
+        y < box.bottom
+      ) {
+        mask |= 1 << room
+      }
+    }
+    roomMasks[index] = mask
+  }
+  const table = { symbols, roomMasks }
+  tileTables.set(spec, table)
+  return table
+}
+
 const buildLevel = (
   spec: LevelSpec,
   requestedExits: ReadonlyArray<ExitId>,
@@ -358,59 +378,61 @@ const buildLevel = (
       onSome: exit => Array.contains(openExits, exit),
     }),
   }))
-  const isInRoom =
-    (column: number, row: number) =>
-    ({ box }: Room): boolean => {
-      const { x, y } = tileCenter({ column, row })
-      return x > box.left && x < box.right && y > box.top && y < box.bottom
-    }
-  // NOTE: a room behind a closed exit is not there yet. Its tiles are open
-  // ground outside the house, the way the space past the map's edge is, so a
-  // zombie walking around the parlour never bumps into the kitchen's walls.
-  const isShutAway = (column: number, row: number): boolean =>
-    Array.some(rooms, room => !room.isOpen && isInRoom(column, row)(room)) &&
-    !Array.some(rooms, room => room.isOpen && isInRoom(column, row)(room))
-  const solidTiles = indicesWhere(
-    grid,
-    (column, row) =>
-      !isShutAway(column, row) &&
-      Option.exists(symbolAt(grid, column, row), symbol =>
-        solidSymbols.has(symbol),
-      ),
+  // NOTE: one pass over the map's tiles marks each with its flags, reading
+  // each tile's symbol and the rooms round it off the spec's table, so a
+  // new level (an exit opened, the chandelier dropped mid-wave) is built in
+  // a fraction of a frame.
+  const { symbols, roomMasks } = tileTableOf(spec, grid)
+  const openRooms = Array.reduce(rooms, 0, (mask, room, index) =>
+    room.isOpen ? mask | (1 << index) : mask,
   )
-  const symbolTiles = (symbol: string): ReadonlySet<number> =>
-    indicesWhere(grid, (column, row) =>
-      Option.contains(symbolAt(grid, column, row), symbol),
-    )
-  const outsideTiles = indicesWhere(
-    grid,
-    (column, row) =>
-      isShutAway(column, row) ||
-      Option.contains(symbolAt(grid, column, row), OUTSIDE_SYMBOL),
+  const doorSymbols: ReadonlySet<string> = new Set(
+    Array.map(doorIds, id => DOOR_SYMBOLS[id]),
   )
-  const soupTiles = symbolTiles(SOUP_SYMBOL)
-  const playerSolidTiles: ReadonlySet<number> = new Set([
-    ...solidTiles,
-    ...outsideTiles,
-  ])
+  const tileCount = columns * grid.rows
+  const tileFlags = new Uint8Array(tileCount)
+  let hasSoup = false
+  for (let index = 0; index < tileCount; index++) {
+    const symbol = symbols[index] ?? ''
+    const inRooms = roomMasks[index] ?? 0
+    // NOTE: a room behind a closed exit is not there yet. Its tiles are open
+    // ground outside the house, the way the space past the map's edge is,
+    // so a zombie walking around the parlour never bumps into the kitchen's
+    // walls.
+    const isShutAway =
+      (inRooms & ~openRooms) !== 0 && (inRooms & openRooms) === 0
+    const isSolid = !isShutAway && solidSymbols.has(symbol)
+    const isOutside = isShutAway || symbol === OUTSIDE_SYMBOL
+    const isSoup = symbol === SOUP_SYMBOL
+    hasSoup = hasSoup || isSoup
+    tileFlags[index] =
+      (isSolid ? TILE_SOLID : 0) |
+      (isOutside ? TILE_OUTSIDE : 0) |
+      (isSolid || isOutside ? TILE_PLAYER_SOLID : 0) |
+      (isSoup ? TILE_SOUP : 0) |
+      (doorSymbols.has(symbol) ? TILE_DOOR : 0)
+  }
+  const isFlagged = (column: number, row: number, flag: number): boolean =>
+    ((tileFlags[tileIndex(grid, column, row)] ?? 0) & flag) !== 0
   const isWalkable = (column: number, row: number): boolean =>
-    isInsideRoom(grid, column, row) &&
-    !solidTiles.has(tileIndex(grid, column, row))
-  const openBlocks = indicesWhere(
-    grid,
-    (column, row) =>
-      isWalkable(column, row) &&
-      isWalkable(column + 1, row) &&
-      isWalkable(column, row + 1) &&
-      isWalkable(column + 1, row + 1),
-  )
-
-  const doorSymbols = Array.map(doorIds, id => DOOR_SYMBOLS[id])
-  const doorTiles = indicesWhere(grid, (column, row) =>
-    Option.exists(symbolAt(grid, column, row), symbol =>
-      Array.contains(doorSymbols, symbol),
-    ),
-  )
+    isInsideRoom(grid, column, row) && !isFlagged(column, row, TILE_SOLID)
+  // NOTE: a tile opens a block when it and the tiles east, south, and
+  // south-east of it are all on the map and none is solid.
+  const isOpenAt = (index: number): boolean =>
+    ((tileFlags[index] ?? TILE_SOLID) & TILE_SOLID) === 0
+  for (let row = 0; row < grid.rows - 1; row++) {
+    for (let column = 0; column < columns - 1; column++) {
+      const index = row * columns + column
+      if (
+        isOpenAt(index) &&
+        isOpenAt(index + 1) &&
+        isOpenAt(index + columns) &&
+        isOpenAt(index + columns + 1)
+      ) {
+        tileFlags[index] = (tileFlags[index] ?? 0) | TILE_OPEN_BLOCK
+      }
+    }
+  }
 
   const doors = byDoor((id): Door => {
     const tiles = tilesWithSymbol(grid, DOOR_SYMBOLS[id])
@@ -435,7 +457,7 @@ const buildLevel = (
         const innerRow = row - outward.y
         return (
           isWalkable(innerColumn, innerRow) &&
-          !doorTiles.has(tileIndex(grid, innerColumn, innerRow))
+          !isFlagged(innerColumn, innerRow, TILE_DOOR)
         )
       },
     )
@@ -492,15 +514,8 @@ const buildLevel = (
     doors,
     thresholds,
     doorTileIndices,
-    tileFlags: packTileFlags(columns * grid.rows, [
-      [solidTiles, TILE_SOLID],
-      [outsideTiles, TILE_OUTSIDE],
-      [playerSolidTiles, TILE_PLAYER_SOLID],
-      [soupTiles, TILE_SOUP],
-      [openBlocks, TILE_OPEN_BLOCK],
-      [doorTiles, TILE_DOOR],
-    ]),
-    hasSoup: soupTiles.size > 0,
+    tileFlags,
+    hasSoup,
     start: spec.start,
   }
 }
@@ -655,6 +670,14 @@ export const levelOf = ({ level }: Readonly<{ level: LevelState }>): Level => {
   levelsByState.set(level, found)
   return found
 }
+
+// NOTE: the same level with nothing dropped, the one cached record for its
+// open exits: what stands of the house is drawn from it, so a chandelier
+// falling keeps the drawn house instead of building it again.
+export const standingLevelOf = (level: Level): Level =>
+  Array.isReadonlyArrayNonEmpty(level.dropped)
+    ? levelFor(level.spec, level.openExits)
+    : level
 
 // EXITS
 
