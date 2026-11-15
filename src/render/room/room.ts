@@ -581,18 +581,18 @@ const FIRE_SPRITES: Array.NonEmptyReadonlyArray<Sprite> = Array.map(
   pixels => glowingSprite(spriteShapes(pixels, FIRE_PALETTE, TOP_LEFT)),
 )
 
-const FIRE_WIDTH = 18
+export const FIRE_WIDTH = 18
 
 type Spot = Readonly<{ x: number; y: number }>
 
 // NOTE: where the fire stands: its spot in the firebox, and a foot nearer
 // than the carved hearth reaches (`IN_FRONT_PX`), so it shows in its
 // firebox.
-type FireSpot = Spot & Readonly<{ footY: number }>
+export type FireSpot = Spot & Readonly<{ footY: number }>
 
 const fireSpots = new WeakMap<Level, Option.Option<FireSpot>>()
 
-const fireSpotOf = (level: Level): Option.Option<FireSpot> => {
+export const fireSpotOf = (level: Level): Option.Option<FireSpot> => {
   const cached = fireSpots.get(level)
   if (cached !== undefined) {
     return cached

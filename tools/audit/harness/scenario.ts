@@ -59,6 +59,7 @@ import { tileCenter } from '@game/world/level/tileGrid'
 import { wakeRoom } from '@game/world/level/wakeUp'
 import { modifyFocus } from '@game/world/party/party'
 import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
+import { GasValve } from '@game/world/schema/entitySchema'
 import { withWorld } from '@game/world/schema/world'
 import { TOOL_RULES } from '@game/world/stations/toolRules'
 
@@ -904,6 +905,11 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
           workedMs: config.cleat * TOOL_RULES.Cleat.setUpMs,
         },
       }),
+    })
+  }
+  if (config.valve) {
+    model = modifyFields(model, {
+      gasValve: () => GasValve.Lit({ owner: 0, nextBurnMs: 0 }),
     })
   }
   const tool = config.tool

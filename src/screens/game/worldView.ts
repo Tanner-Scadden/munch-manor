@@ -13,7 +13,7 @@ import {
 } from '../../features/dare/dareView'
 import { findDrawables, findOverheadShapes } from '../../features/dare/findView'
 import { frontDoorShapes } from '../../features/dare/frontDoorView'
-import { hubTouchShapes } from '../../features/dining/hubTouchView'
+import { hubTouchDrawables } from '../../features/dining/hubTouchView'
 import {
   chompShapes,
   fallenOf,
@@ -42,7 +42,7 @@ import {
   stationGroundShapes,
   stationOverheadShapes,
 } from '../../features/stations/stationView'
-import { backDoorGroundShapes } from '../../render/backDoorView'
+import { backDoorDrawables } from '../../render/backDoorView'
 import { bossGroundShapes, bossOverheadShapes } from '../../render/bossView'
 import {
   type Camera,
@@ -60,7 +60,10 @@ import {
   popupShape,
 } from '../../render/effectsView'
 import type { WorldStrata } from '../../render/iso/frame'
-import { kitchenGearGroundShapes } from '../../render/kitchenGearView'
+import {
+  kitchenGearDrawables,
+  kitchenGearGroundShapes,
+} from '../../render/kitchenGearView'
 import {
   type MateModel,
   isLeadArmed,
@@ -188,7 +191,6 @@ const groundShapes = (
   ...kitchenLeakShapes(model),
   ...ovenGlowShapes(model),
   ...kitchenGearGroundShapes(model),
-  ...backDoorGroundShapes(model),
   ...RATTLES_GROUND_SHAPES,
   ...reviveRingGroundShapes(model),
   ...(isLeadInHouse(model) ? [playerShadow(focusOf(model).player)] : []),
@@ -206,7 +208,6 @@ const groundShapes = (
   ...Array.flatMap(model.bullets, bulletShapes),
   ...lidShadowShapes(model),
   ...stationGroundShapes(model, isOnCamera(camera)),
-  ...hubTouchShapes(model),
 ]
 
 // STANDING
@@ -305,6 +306,9 @@ const standingDrawables = (
     ...fallenChandelierDrawables(model),
     ...findDrawables(model),
     ...dareDrawables(model),
+    ...hubTouchDrawables(model),
+    ...kitchenGearDrawables(model),
+    ...backDoorDrawables(model),
   ]
 }
 
