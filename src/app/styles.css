@@ -618,10 +618,12 @@ dialog[open] {
 }
 
 .start-wave-button,
+/* Its width is START_WAVE_PX, set in touchControls.ts, which places the
+   hold-to-buy and trap buttons one gap past its right edge. */
 .start-wave-pill {
-  min-width: 132px;
   min-height: var(--menu-tap);
-  padding: 0 18px;
+  padding: 0;
+  white-space: nowrap;
   border: var(--menu-border-panel) solid #fff3b0;
   border-radius: var(--menu-radius-md);
   background: var(--menu-gold);

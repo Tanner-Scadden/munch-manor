@@ -512,8 +512,10 @@ const trapIconsView = (
 // button to a right edge 90 pixels past the screen's middle, where the
 // stall's left side once stood on a 320 pixel screen. In portrait they end
 // over the reload button, and in a break, when the start wave button takes
-// the band over the row, one band higher.
-const START_WAVE_HALF_PX = 64
+// the band over the row, one band higher. The touch pill is exactly
+// START_WAVE_PX wide, room for START WAVE in its bold monospace with the
+// border and a margin, so the column starts one gap past its right edge.
+const START_WAVE_PX = 148
 
 const SIDE_RIGHT_PAST_MIDDLE_PX = 90
 
@@ -527,7 +529,7 @@ const sideStyle = (
   if (screen.layout === 'Landscape') {
     return {
       left: isBreak
-        ? `calc(${percentOf(gunPairWidthOf(screen) / 2, cluster.width)} + ${START_WAVE_HALF_PX}px)`
+        ? `calc(${percentOf(gunPairWidthOf(screen) / 2, cluster.width)} + ${START_WAVE_PX / 2 + SIDE_GAP_PX}px)`
         : '0px',
       right: isBreak
         ? percentOf(
@@ -660,6 +662,7 @@ const startWaveButtonView = (
               h.Class(
                 isOnTouch(model) ? 'start-wave-pill' : 'start-wave-button',
               ),
+              h.Style(isOnTouch(model) ? { width: `${START_WAVE_PX}px` } : {}),
               h.AriaLabel(startWaveLabel(model, wave)),
               h.DataAttribute('ready', leadSeatOf(model).readiness),
               h.DataAttribute(
