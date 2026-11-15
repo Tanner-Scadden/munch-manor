@@ -18,12 +18,7 @@ import {
 } from '../../world/kitchen/kitchen'
 import { type Level, levelOf } from '../../world/level/arena'
 import { maybePadlockedExit } from '../../world/level/exits'
-import {
-  SOUP_SYMBOL,
-  type Tile,
-  symbolAt,
-  tilesWithSymbol,
-} from '../../world/level/tileGrid'
+import { tilesWithSymbol } from '../../world/level/tileGrid'
 import type { World } from '../../world/schema/world'
 import { Oven } from '../../world/schema/worldSchema'
 import { type Drawable, IN_FRONT_PX } from '../depth'
@@ -69,11 +64,7 @@ const BONE_COLOR = '#e8e2cc'
 const INK_COLOR = '#141018'
 const SKIN_COLOR = '#8fc060'
 const BLOOD_COLOR = 'rgba(120, 18, 28, 0.55)'
-const SOUP_COLOR = '#7c9c3a'
 const SOUP_LIGHT_COLOR = '#a6c450'
-const SOUP_RIM_COLOR = '#4e6624'
-const CARROT_COLOR = '#e07a2a'
-const PEA_COLOR = '#c6e070'
 const BURLAP_COLOR = '#9a8456'
 const BURLAP_DARK_COLOR = '#6e5c38'
 const FLOUR_COLOR = '#e8e2d4'
@@ -258,104 +249,26 @@ const yardShapes = (box: Box): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const isSoup = (level: Level, column: number, row: number): boolean =>
-  Option.contains(symbolAt(level, column, row), SOUP_SYMBOL)
+// NOTE: the WET FLOOR sign by the spilled soup, standing on its two legs
+// (the soup itself stands in 3D, src/render/iso/soup.ts).
+const WET_FLOOR_SIGN: Sprite = spriteShapes(
+  ['..dd..', '.dyyd.', '.dykd.', 'dyyyyd', 'dykkyd', 'dyyyyd', 'd....d'],
+  { d: SIGN_DARK_COLOR, y: SIGN_COLOR, k: INK_COLOR },
+  TOP_LEFT,
+)
+const WET_FLOOR_AT = { x: 172, y: -60 }
+const WET_FLOOR_FOOT = WET_FLOOR_AT.y + 7
 
-// NOTE: spilled soup is a pea green puddle with a darker rim where it meets
-// dry floor, carrots and peas floating in it, and a few drips around it.
-const soupTileShapes =
-  (level: Level) =>
-  ({ column, row }: Tile): ReadonlyArray<Canvas.Shape> => {
-    const x = column * TILE_SIZE
-    const y = row * TILE_SIZE
-    const isUpDry = !isSoup(level, column, row - 1)
-    const isDownDry = !isSoup(level, column, row + 1)
-    const isLeftDry = !isSoup(level, column - 1, row)
-    const isRightDry = !isSoup(level, column + 1, row)
-    const inset = (isDry: boolean): number => (isDry ? 1 : 0)
-    const left = x + inset(isLeftDry)
-    const top = y + inset(isUpDry)
-    const right = x + TILE_SIZE - inset(isRightDry)
-    const bottom = y + TILE_SIZE - inset(isDownDry)
-    return [
-      rect(left, top, right - left, bottom - top, SOUP_COLOR),
-      ...(isUpDry
-        ? [rect(left + 1, top, right - left - 2, 1, SOUP_RIM_COLOR)]
-        : []),
-      ...(isDownDry
-        ? [rect(left + 1, bottom - 1, right - left - 2, 1, SOUP_RIM_COLOR)]
-        : []),
-      ...(isLeftDry
-        ? [rect(left, top + 1, 1, bottom - top - 2, SOUP_RIM_COLOR)]
-        : []),
-      ...(isRightDry
-        ? [rect(right - 1, top + 1, 1, bottom - top - 2, SOUP_RIM_COLOR)]
-        : []),
-      rect(x + 3, y + 3, 2, 1, SOUP_LIGHT_COLOR),
-      rect(
-        x + 2 + Math.floor(roll(column, row) * 5),
-        y + 5 + Math.floor(roll(row, column) * 3),
-        2,
-        1,
-        roll(column + 7, row) < 0.5 ? CARROT_COLOR : PEA_COLOR,
-      ),
-      rect(
-        x + 6,
-        y + 2 + Math.floor(roll(column, row + 3) * 5),
-        1,
-        1,
-        PEA_COLOR,
-      ),
-    ]
-  }
-
-// NOTE: what glows of the spilled soup in the dark: a faint green over the
-// puddle and a bubble or two in it (src/render/iso/emissives.ts).
-const SOUP_GLOW_COLOR = 'rgba(150, 210, 70, 0.16)'
-const SOUP_BUBBLE_COLOR = '#d8ff70'
-
-export const soupGlowShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(tilesWithSymbol(level, SOUP_SYMBOL), ({ column, row }) => {
-    const x = column * TILE_SIZE
-    const y = row * TILE_SIZE
-    return [
-      rect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2, SOUP_GLOW_COLOR),
-      rect(x + 3, y + 3, 2, 1, SOUP_BUBBLE_COLOR),
-      ...(roll(row + 11, column) < 0.5
-        ? [
-            rect(
-              x + 2 + Math.floor(roll(column + 5, row) * 6),
-              y + 6,
-              1,
-              1,
-              SOUP_BUBBLE_COLOR,
-            ),
-          ]
-        : []),
-    ]
-  })
-
-const WET_FLOOR_SIGN: ReadonlyArray<string> = [
-  '..dd..',
-  '.dyyd.',
-  '.dykd.',
-  'dyyyyd',
-  'dykkyd',
-  'dyyyyd',
-  'd....d',
-]
-
-const wetFloorSign = (x: number, y: number): ReadonlyArray<Canvas.Shape> =>
-  pixelArt(x, y, WET_FLOOR_SIGN, {
-    d: SIGN_DARK_COLOR,
-    y: SIGN_COLOR,
-    k: INK_COLOR,
-  })
-
-const soupShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
-  ...Array.flatMap(tilesWithSymbol(level, SOUP_SYMBOL), soupTileShapes(level)),
-  ...wetFloorSign(172, -60),
-]
+export const wetFloorSignDrawables = (model: World): ReadonlyArray<Drawable> =>
+  isKitchenShown(model) && levelOf(model).hasSoup
+    ? [
+        {
+          footY: WET_FLOOR_FOOT,
+          rank: 'Prop',
+          shapes: [placeAt(WET_FLOOR_AT.x, WET_FLOOR_AT.y, WET_FLOOR_SIGN)],
+        },
+      ]
+    : []
 
 export const kitchenFloorShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
   Option.match(kitchenBox(level), {
@@ -369,7 +282,6 @@ export const kitchenFloorShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
           x: yardLeft,
           width: box.x + box.width - yardLeft,
         }),
-        ...soupShapes(level),
       ]
     },
   })

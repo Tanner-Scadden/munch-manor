@@ -195,12 +195,12 @@ const WATER = 'rgba(112, 150, 196, 0.62)'
 const WATER_EDGE = 'rgba(112, 150, 196, 0.4)'
 const RIM = 'rgba(206, 228, 250, 0.8)'
 const RING = 'rgba(206, 228, 250, 0.7)'
-const STRIKE_RGB = '232, 240, 255'
+export const STRIKE_RGB = '232, 240, 255'
 
 // NOTE: how far from a puddle a flame still shows in it, in game pixels,
 // and how strongly each kind does. A point of light on water is a short
 // streak across it, longer and paler at its core the nearer the flame.
-const MIRROR_REACH = 120
+export const MIRROR_REACH = 120
 const MIRROR_WEIGHT: Readonly<Record<FlameKind, number>> = {
   Candle: 1,
   Hearth: 1.1,
@@ -211,12 +211,12 @@ const MIRROR_WEIGHT: Readonly<Record<FlameKind, number>> = {
 }
 // NOTE: a puddle shows the two nearest flames at most, a row apart.
 const MOST_MIRRORS = 2
-const STRIKE_STEPS = 4
+export const STRIKE_STEPS = 4
 
 // NOTE: a flame's mirror image as the camera sees it on the floor: as far
 // under the flame's foot on the screen as the flame stands over it, which
 // on the floor is as many game pixels south.
-type Mirror = Readonly<{
+export type Mirror = Readonly<{
   x: number
   y: number
   kind: FlameKind
@@ -228,7 +228,7 @@ type Mirror = Readonly<{
 const rgbOf = (color: number): string =>
   `${(color >> 16) & 0xff}, ${(color >> 8) & 0xff}, ${color & 0xff}`
 
-const mirrorOf = (spec: FlameSpec): Mirror => {
+export const mirrorOf = (spec: FlameSpec): Mirror => {
   const { color } = FLAME_TUNING.shipped[spec.kind]
   return {
     x: Math.round(spec.reflection.x),
@@ -240,7 +240,8 @@ const mirrorOf = (spec: FlameSpec): Mirror => {
   }
 }
 
-const hundredths = (value: number): number => Math.round(value * 100) / 100
+export const hundredths = (value: number): number =>
+  Math.round(value * 100) / 100
 
 const boxOfRows = (rows: Array.NonEmptyReadonlyArray<PuddleRow>) => ({
   top: Array.headNonEmpty(rows).y,
@@ -561,10 +562,10 @@ const LIGHTS: ReadonlyArray<FlameKind> = [
   'Bulb',
 ]
 
-const litOf = (world: World): ReadonlySet<FlameKind> =>
+export const litOf = (world: World): ReadonlySet<FlameKind> =>
   new Set(Array.filter(LIGHTS, kind => isFlameLit(world, kind)))
 
-const strikeStepOf = (world: World): number =>
+export const strikeStepOf = (world: World): number =>
   Math.round(strikeOf(world) * STRIKE_STEPS)
 
 // NOTE: what the puddles' glints and rings depend on: when it is the same

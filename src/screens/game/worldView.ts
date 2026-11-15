@@ -93,6 +93,7 @@ import {
   ovenGlowShapes,
   ovenWindowDrawables,
   padlockShapes,
+  wetFloorSignDrawables,
 } from '../../render/room/kitchenView'
 import {
   fallenChandelierDrawables,
@@ -102,6 +103,7 @@ import {
 import { tallCoverDrawables } from '../../render/room/tallCover'
 import { aimSightShapes } from '../../render/sightView'
 import {
+  ghostDrawables,
   ghostShapes,
   trapFootY,
   trapGlowDrawables,
@@ -261,6 +263,7 @@ const standingDrawables = (
       shapes: drawTrap(trap),
     })),
     ...Array.flatMap(model.traps, trapGlowDrawables(level, model.elapsedMs)),
+    ...ghostDrawables(model),
     ...Array.map(model.pickups, (pickup): Drawable => ({
       footY: pickupFootY(pickup),
       rank: 'Pickup',
@@ -294,6 +297,7 @@ const standingDrawables = (
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
     ...ovenWindowDrawables(model),
+    ...wetFloorSignDrawables(model),
     ...pantryDrawables(model),
     ...questKeyDrawables(model),
     ...caseDrawables(model),

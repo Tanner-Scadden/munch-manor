@@ -51,6 +51,7 @@ import {
 } from '../../art/sprite'
 import { type BrowserError, toBrowserError } from '../../shared/describeError'
 import { isChandelierDown } from '../../world/dining/chandelier'
+import { puddleOf } from '../../world/kitchen/soupPot'
 import type { Level } from '../../world/level/arena'
 import { levelOf, standingLevelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
@@ -112,6 +113,7 @@ import {
   pickupSpinOf,
 } from './powerups'
 import { type Chandelier, chandelierOf, isChandelierSprite } from './showpieces'
+import { SoupLayer } from './soupLayer'
 import {
   OVERHEAD_FOOT_PX,
   UNIT,
@@ -195,6 +197,8 @@ type Built = Readonly<{
   storm: FloorPicture
   // NOTE: the roof leaks' puddles (leaks.ts).
   leaks: LeakLayer
+  // NOTE: the kitchen's goop, the soup pot's puddle too (soup.ts).
+  soup: SoupLayer
   floorArt: ReadonlyArray<Leaf>
   plants: ReadonlyArray<Plant>
   // NOTE: each tall piece by the shapes the game draws it with, to read the
@@ -504,6 +508,10 @@ export class IsoScene {
       )
     }
     built.leaks.paint({ world: model, viewer: player })
+    built.soup.paint({
+      world: model,
+      isSpilled: Option.isSome(puddleOf(model)),
+    })
 
     // WHAT STANDS
     const flashLevel = muzzleFlashLevel(player)
@@ -674,6 +682,7 @@ export class IsoScene {
       ...airOf({ world: model, level: built.level, viewer: player, rattle }),
       ...crittersOf({ world: model, level: built.level }),
       ...dripsOf({ world: model, level: built.level }),
+      ...built.soup.bubblesOf(model),
       ...shaftMotesOf({ world: model, level: built.level, viewer: player }),
     ]) {
       ;(mote.isGlowing ? this.glowing : this.billboards).place({
@@ -958,11 +967,13 @@ export class IsoScene {
     const wallFaces = buildWallFaces({ level, material: wallArt })
     const wallSides = buildWallSides({ level, material: wallArt })
     const leaks = new LeakLayer({ app, textures, level })
+    const soup = new SoupLayer({ app, textures, level })
     holder.addChild(
       floor.mesh,
       ground.mesh,
       leaks.body,
       leaks.glints,
+      soup.mesh,
       wallTops,
       wallFaces,
       wallSides,
@@ -983,6 +994,7 @@ export class IsoScene {
       ground,
       storm,
       leaks,
+      soup,
       floorArt,
       plants: plantsOf({ app: this.app, level }),
       furniture: new Map(
@@ -1031,7 +1043,14 @@ export class IsoScene {
     built.glows.destroy()
     built.holder.destroy({ children: true })
     Array.forEach(
-      [built.room, built.floor, built.ground, built.storm, built.leaks],
+      [
+        built.room,
+        built.floor,
+        built.ground,
+        built.storm,
+        built.leaks,
+        built.soup,
+      ],
       layer => {
         layer.destroy()
       },
