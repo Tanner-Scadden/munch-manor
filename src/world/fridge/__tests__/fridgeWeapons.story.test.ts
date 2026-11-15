@@ -311,6 +311,45 @@ describe('the Pressure Cooker', () => {
       }),
     )
   })
+
+  it.effect('a tap right after a throw throws again', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(holding(freshGun('Cooker'))),
+      Story.message(FIRE_PRESS),
+      Story.message(FIRE_PUSH),
+      ...ticks(3, FRAME_MS),
+      Story.message(FIRE_LIFT),
+      tick(FRAME_MS),
+      Story.message(FIRE_PRESS),
+      Story.message(FIRE_PUSH),
+      ...ticks(3, FRAME_MS),
+      Story.message(FIRE_LIFT),
+      tick(FRAME_MS),
+      Story.model(current => {
+        expect(current.lobs.length).toBe(2)
+      }),
+      settleRunCommands,
+    ),
+  )
+
+  it.effect('the last lid thrown reloads the pot with no press', () => {
+    const lastLid = modifyFields(freshGun('Cooker'), { loaded: () => 1 })
+    return Story.story(
+      APPLICATION,
+      Story.given(holding(lastLid)),
+      Story.message(FIRE_PRESS),
+      Story.message(FIRE_PUSH),
+      ...ticks(3, FRAME_MS),
+      Story.message(FIRE_LIFT),
+      ...ticks(2, FRAME_MS),
+      Story.model(current => {
+        expect(current.lobs.length).toBe(1)
+        expect(focusOf(current).player.reload._tag).toBe('Reloading')
+      }),
+      settleRunCommands,
+    )
+  })
 })
 
 describe('the Clang Pan', () => {

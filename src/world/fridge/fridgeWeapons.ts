@@ -81,7 +81,10 @@ import { bodyRadiusOf, deathState, isGrounded } from '../zombies/zombies'
 //   player, and throws a lid along the aim when it is let go. The lid
 //   bursts where it lands or on the first zombie it meets; more charge
 //   throws it farther with a bigger blast. Held past full it pops in the
-//   player's hands: a shove and a lost lid. Any charge costs one lid.
+//   player's hands: a shove and a lost lid. Any charge costs one lid. A
+//   press is never eaten: a new charge starts the moment fire is held, even
+//   right after a throw, and an empty pot reloads at once, as a gun does,
+//   rather than spending the next press on it (Brain Freeze too).
 // - The Clang Pan sits in the melee slot in place of the knife, drawn as
 //   the knife is (F or a tap on the slot), and swings on repeat while fire
 //   is held, a wide arc in front
@@ -126,7 +129,6 @@ type CookerRules = Readonly<{
   maxDamage: number
   knockback: number
   popShove: number
-  launchCooldownMs: number
 }>
 
 export const COOKER_RULES: CookerRules = {
@@ -143,7 +145,6 @@ export const COOKER_RULES: CookerRules = {
   maxDamage: 9,
   knockback: 240,
   popShove: 150,
-  launchCooldownMs: 250,
 }
 
 // NOTE: tier 1 (Beefy) blasts bigger, tier 2 (DELUXE) charges faster, and
@@ -362,7 +363,6 @@ const launch = (
             boosts,
             modifyFields(current, {
               charge: () => Charge.Idle(),
-              fireCooldownMs: () => COOKER_RULES.launchCooldownMs,
               recoilRemainingMs: () => 180,
             }),
           ),
@@ -407,17 +407,17 @@ const fireCooker = (
             modifyFields(current, { charge: () => Charge.Idle() }),
           ),
     Idle: () => {
-      if (!isHeld || player.fireCooldownMs > 0) {
+      if (spare.loaded <= 0) {
+        return startReload(cooled, slot)
+      } else if (!isHeld) {
         return cooled
-      } else if (spare.loaded > 0) {
+      } else {
         return withPlayer(cooled, slot, current =>
           modifyFields(current, {
             charge: () =>
               Charge.Building({ heldMs: deltaMs, aim: current.facing }),
           }),
         )
-      } else {
-        return startReload(cooled, slot)
       }
     },
     Building: ({ heldMs, aim }) => {
@@ -851,10 +851,13 @@ const fireFreeze = (
 ): World => {
   const cooled = withPlayer(world, slot, player => coolDown(player, deltaMs))
   const { intent, player } = seatStateAt(cooled, slot)
-  if (intent.trigger !== 'Held' || player.fireCooldownMs > 0) {
+  if (spare.loaded <= 0) {
+    return startReload(cooled, slot)
+  } else if (intent.trigger !== 'Held' || player.fireCooldownMs > 0) {
     return cooled
+  } else {
+    return spray(cooled, slot)
   }
-  return spare.loaded > 0 ? spray(cooled, slot) : startReload(cooled, slot)
 }
 
 // THE TRIGGER
