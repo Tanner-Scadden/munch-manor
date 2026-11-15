@@ -38,6 +38,8 @@ const SLOTS = 2048
 // material; under the first step it is gone.
 const FADE_STEPS = 8
 const OPAQUE_ALPHA = 0.98
+// NOTE: how small the warm-up copy stands (see `isBlendWarm`).
+const WARM_SCALE = 1e-4
 
 const { lift: _cubeLift, ...UNIT_CUBE } = voxelMeshOf({
   width: 1,
@@ -159,6 +161,13 @@ export class VoxelBatch {
   private readonly sheetMaterials = new Map<Texture, Array<Material3D>>()
   private readonly colorMaterials = new Map<string, Material3D>()
   private readonly cube = new Geometry3D({ ...UNIT_CUBE })
+  // NOTE: a fading body draws through its own shader program, which the GPU
+  // links the first time one is drawn: about 8 ms on a desktop and many
+  // times that on a phone, the hitch as the first zombie of a run fell. So
+  // the first body that stands also stands a copy too small to see in a
+  // faded material, and the program is linked with the rest as the run
+  // starts.
+  private isBlendWarm = false
   // NOTE: a hit flash glows white in any light, the cellar's dark too.
   private readonly flash = new Material3D({
     baseColor: 0x000000,
@@ -214,6 +223,17 @@ export class VoxelBatch {
       elements,
       passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
     })
+    if (!this.isBlendWarm && this.used < SLOTS) {
+      this.isBlendWarm = true
+      this.fill({
+        geometry: carved.geometry,
+        material: this.sheetMaterialOf(sheet, 1),
+        elements: Array.from(elements, (value, index) =>
+          index < 12 && index % 4 !== 3 ? value * WARM_SCALE : value,
+        ),
+        passes: RenderPassBit.TRANSPARENT,
+      })
+    }
     return true
   }
 

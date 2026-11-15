@@ -197,11 +197,24 @@ export class BillboardPool {
         material.textures.normal = normal
       }
     }
+    // NOTE: each set only when it changes: a tint runs through pixi's Color
+    // and writes the material's uniforms, about 0.3 ms a frame over the
+    // pool at 4x throttle when set on every sprite every frame.
     const pixel = p.drawnHeight / p.texture.frame.height
-    sprite.pixelSize = pixel * UNIT
-    sprite.scale.x = p.drawnWidth / p.texture.frame.width / pixel
-    sprite.tint = p.tint
-    sprite.alpha = p.alpha
+    const pixelSize = pixel * UNIT
+    if (sprite.pixelSize !== pixelSize) {
+      sprite.pixelSize = pixelSize
+    }
+    const scaleX = p.drawnWidth / p.texture.frame.width / pixel
+    if (sprite.scale.x !== scaleX) {
+      sprite.scale.x = scaleX
+    }
+    if (sprite.tint !== p.tint) {
+      sprite.tint = p.tint
+    }
+    if (sprite.alpha !== p.alpha) {
+      sprite.alpha = p.alpha
+    }
     const mode = p.alpha < 0.98 ? 'blend' : 'mask'
     if (sprite.alphaMode !== mode) {
       sprite.alphaMode = mode
@@ -217,7 +230,9 @@ export class BillboardPool {
       out: p.part * PART_BIAS,
     })
     sprite.position.set(at.x, at.y, at.z)
-    sprite.visible = true
+    if (!sprite.visible) {
+      sprite.visible = true
+    }
   }
 
   private next(): Sprite3D {

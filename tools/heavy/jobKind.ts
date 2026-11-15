@@ -24,7 +24,7 @@ const auditScript = (names: string): RegExp =>
   new RegExp(`^(?:(?:.*/)?audit/|\\./)?(?:${names})\\.ts$`)
 
 const TIMING_SCRIPTS: ReadonlyArray<RegExp> = [
-  auditScript('perf|perf-check|profile|measure|splash'),
+  auditScript('perf|perf-check|profile|measure|spikes|splash'),
 ]
 
 // NOTE: the balance bot, the determinism checks, and a recorded run's replay
