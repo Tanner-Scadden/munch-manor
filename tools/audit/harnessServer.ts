@@ -44,6 +44,9 @@ const INPUT_DIRS = [
   'tools/vite',
   'public',
   'patches',
+  // NOTE: the installed Foldkit, as patched, so a local edit to its dist while
+  // trying a change to the patch rebuilds the harness, as the patch file does.
+  'node_modules/foldkit/dist',
 ]
 const INPUT_FILES = ['package.json', 'bun.lock', 'tsconfig.json']
 const SKIPPED_DIRS = new Set(['dist', 'dist-profile', 'node_modules'])
