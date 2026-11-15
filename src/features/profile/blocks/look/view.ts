@@ -102,8 +102,10 @@ const isPrint = (value: string): value is Print =>
 const isSkin = (value: string): value is GunSkin =>
   Array.some(GunSkin.literals, skin => skin === value)
 
+// NOTE: a print's flag, 30 by 18, so its 1, 3, or 6 stripes and a pixel
+// print's 6 by 3 each take whole CSS px.
 const FLAG_WIDTH = 30
-const FLAG_HEIGHT = 20
+const FLAG_HEIGHT = 18
 
 const stripesUrl = (colors: ReadonlyArray<string>): string => {
   const height = FLAG_HEIGHT / colors.length

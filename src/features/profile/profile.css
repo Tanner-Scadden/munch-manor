@@ -614,17 +614,20 @@
   height: 32px;
 }
 
+/* NOTE: a flag is 30 by 18 pixels, shown one CSS px to each; a pixel
+   print's 6 by 3 fills it at 5 by 6 CSS px to each of its pixels. */
 .look-swatch.look-flag {
-  width: 33px;
-  height: 22px;
+  width: 30px;
+  height: 18px;
   border-radius: var(--menu-radius-sm);
-  background-size: cover;
+  background-size: 100% 100%;
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 /* NOTE: the heading sits over its options, so a row of six swatches has the
    column's whole width and never wraps one swatch onto a line of its own. */
 .look-row {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: 1fr;
   gap: 3px;
@@ -698,11 +701,11 @@
   }
 }
 
-/* NOTE: seven options in a row (the prints) do not fit a 360 px phone at
-   the full tap size with room for their chips, so a narrow phone takes at
+/* NOTE: seven options in a row (the prints) need 7 by 48 px and their
+   gaps, more than an upright phone's row has, so a narrower row takes at
    most six across (--look-narrow-columns): the prints wrap to a line of four
    and a line of three, every option at full size on the same columns. */
-@media (max-width: 380px) {
+@container (width < 370px) {
   .look-options {
     grid-template-columns: repeat(
       var(--look-narrow-columns, 6),
@@ -1480,18 +1483,24 @@
   padding-top: 0;
 }
 
-/* NOTE: the four tabs share the row in equal parts, never sized by their
-   word, so the row reads even; on the narrowest phones the letters close
-   up so SETTINGS still fits its quarter. */
+/* NOTE: the five tabs share the row in equal parts, never sized by their
+   word, so the row reads even. Each word takes the size that fits SETTINGS,
+   the longest, inside its tab's borders (8 letters of a monospace font,
+   0.6 of its size each), at most 10px, so every word on the row has the
+   same size and none runs into a border. */
 .game-root[data-layout='Portrait'] .profile-tab {
+  container-type: inline-size;
   flex: 1 1 0;
   width: auto;
   min-width: 0;
   min-height: 64px;
   gap: 2px;
   padding-inline: 2px;
-  font-size: 10px;
-  letter-spacing: 1px;
+  letter-spacing: 0;
+}
+
+.game-root[data-layout='Portrait'] .profile-tab-word {
+  font-size: min(10px, 100cqw / 4.8);
 }
 
 /* NOTE: a 360 px phone closes the gaps between the tabs, so each of the
@@ -1499,10 +1508,6 @@
 @media (max-width: 380px) {
   .game-root[data-layout='Portrait'] .profile-tabs {
     gap: 3px;
-  }
-
-  .game-root[data-layout='Portrait'] .profile-tab {
-    letter-spacing: 0;
   }
 }
 
@@ -1798,14 +1803,18 @@
 }
 
 /* NOTE: on a phone on its side the rank plate stands under the tabs, so the
-   tabs close up a little to leave it room. */
+   tabs close up to a thumb's 48 px each, their icon and word tight, to
+   leave it room under MASTERY. */
 @media (max-height: 460px) and (orientation: landscape) {
   .profile-tabs {
     gap: 4px;
+    padding-top: 0;
   }
 
   .profile-tab {
     min-height: 48px;
+    gap: 2px;
+    padding-block: 1px;
   }
 
   .profile-rank {

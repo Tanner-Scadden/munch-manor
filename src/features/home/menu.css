@@ -3016,8 +3016,10 @@ button.help-card:focus-visible {
 }
 
 .munch-tile-picture {
+  container-type: inline-size;
   display: flex;
   flex: 1;
+  align-self: stretch;
   align-items: flex-end;
   justify-content: center;
   pointer-events: none;
@@ -3025,17 +3027,25 @@ button.help-card:focus-visible {
 
 /* NOTE: a picture is a whole number of device pixels to each of its
    pixels: its own scale on the entry's stage, and on a tile the most that
-   keeps it under the tile's height. */
+   keeps it under the tile's height and inside its width. */
 .munch-tile .munch-sprite {
   --sprite-px: min(
     var(--art-scale) * 1px,
-    max(var(--dpx, 1px), round(down, 48px / var(--art-h), var(--dpx, 1px)))
+    max(
+      var(--dpx, 1px),
+      round(
+        down,
+        min(48px / var(--art-h), 100cqw / var(--art-w)),
+        var(--dpx, 1px)
+      )
+    )
   );
 }
 
 .munch-sprite {
   --sprite-px: calc(var(--art-scale) * 1px);
   display: block;
+  flex: none;
   width: calc(var(--art-w) * var(--sprite-px));
   height: calc(var(--art-h) * var(--sprite-px));
   image-rendering: pixelated;
@@ -3232,7 +3242,14 @@ button.help-card:focus-visible {
   .munch-tile .munch-sprite {
     --sprite-px: min(
       var(--art-scale) * 1px,
-      max(var(--dpx, 1px), round(down, 36px / var(--art-h), var(--dpx, 1px)))
+      max(
+        var(--dpx, 1px),
+        round(
+          down,
+          min(36px / var(--art-h), 100cqw / var(--art-w)),
+          var(--dpx, 1px)
+        )
+      )
     );
   }
 
