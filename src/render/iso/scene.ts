@@ -666,8 +666,11 @@ export class IsoScene {
   }
 }
 
-// NOTE: the renderer on a canvas in `host`, WebGPU where there is one and
-// WebGL2 otherwise. It never runs a ticker: the element draws each frame the
+// NOTE: the renderer on a canvas in `host`, on WebGL2 everywhere. WebGPU
+// is left off: on an iPhone, Safari's WebGPU at times drew the manor with
+// red and blue swapped from its first frame (zombies, candles, furniture,
+// and the floating words all blue) until the page went away and came back
+// (owner, 2026-11-14), and every device the game supports has WebGL2. It never runs a ticker: the element draws each frame the
 // view hands it, and only then.
 export const createIsoScene = ({
   host,
@@ -681,7 +684,7 @@ export const createIsoScene = ({
     yield* Effect.tryPromise({
       try: () =>
         app.init({
-          preference: 'webgpu',
+          preference: 'webgl',
           background: BACKGROUND,
           antialias: false,
           autoStart: false,
