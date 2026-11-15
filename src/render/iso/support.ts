@@ -1,6 +1,5 @@
-// Whether this device can draw the world: the 3D renderer needs WebGL2 (it
-// prefers WebGPU where there is one, and falls back to WebGL2). A device with
-// neither is told so plainly, instead of a game that cannot draw.
+// Whether this device can draw the world: the 3D renderer runs on WebGL2. A
+// device without it is told so plainly, instead of a game that cannot draw.
 
 const UNSUPPORTED_TITLE = "THIS DEVICE CAN'T DRAW THE MANOR"
 const UNSUPPORTED_LINE =
