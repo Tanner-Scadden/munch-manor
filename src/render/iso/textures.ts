@@ -38,6 +38,14 @@ const WHITE_MATRIX: ColorMatrix = [
 
 // NOTE: mutable on purpose: the renderer draws into pixi's own mutable
 // objects, and this cache is private to one renderer.
+// NOTE: a crop's pixels, one byte each, row by row: solid, and dark enough
+// to be an outline's ink.
+export type PixelMasks = Readonly<{ solid: Uint8Array; dark: Uint8Array }>
+
+// NOTE: a pixel this dark or darker, in luma out of 255, is ink: the
+// outlines' near blacks (#140c10, #2a1418) and not a body's own shades.
+const INK_LUMA = 56
+
 export class Textures {
   private readonly app: Application
   private readonly sources = new Map<string, Texture | 'Loading'>()
@@ -52,7 +60,7 @@ export class Textures {
   private readonly images = new Map<TextureSource, HTMLImageElement>()
   private readonly sheets = new Map<TextureSource, Texture>()
   // NOTE: each crop's solid pixels (1) and clear ones (0), read once.
-  private readonly solids = new Map<Texture, Uint8Array>()
+  private readonly masks = new Map<Texture, PixelMasks>()
   // NOTE: the atlas's normal maps, loaded at a lit sprite's first draw, after
   // the splash; apart from `sources`, so they never hold the splash, take its
   // bandwidth, or repaint the floor.
@@ -160,11 +168,12 @@ export class Textures {
     return this.sheets.get(texture.source)
   }
 
-  // NOTE: which of a crop's pixels are solid, row by row (an alpha of at
-  // least half), read off its image once, or nothing for a texture the
-  // renderer drew itself.
-  solidOf(texture: Texture): Uint8Array | undefined {
-    const known = this.solids.get(texture)
+  // NOTE: which of a crop's pixels are solid (an alpha of at least half)
+  // and which of those are dark enough to be an outline's ink, row by row,
+  // read off its image once, or nothing for a texture the renderer drew
+  // itself.
+  masksOf(texture: Texture): PixelMasks | undefined {
+    const known = this.masks.get(texture)
     if (known !== undefined) {
       return known
     }
@@ -183,11 +192,19 @@ export class Textures {
     context.drawImage(image, x, y, width, height, 0, 0, width, height)
     const pixels = context.getImageData(0, 0, width, height).data
     const solid = new Uint8Array(width * height)
+    const dark = new Uint8Array(width * height)
     for (let index = 0; index < solid.length; index += 1) {
-      solid[index] = (pixels[index * 4 + 3] ?? 0) >= 128 ? 1 : 0
+      const at = index * 4
+      solid[index] = (pixels[at + 3] ?? 0) >= 128 ? 1 : 0
+      const luma =
+        0.299 * (pixels[at] ?? 0) +
+        0.587 * (pixels[at + 1] ?? 0) +
+        0.114 * (pixels[at + 2] ?? 0)
+      dark[index] = solid[index] === 1 && luma < INK_LUMA ? 1 : 0
     }
-    this.solids.set(texture, solid)
-    return solid
+    const masks = { solid, dark }
+    this.masks.set(texture, masks)
+    return masks
   }
 
   // NOTE: a texture's shape in plain white, baked once, so a tint gives a
@@ -305,7 +322,7 @@ export class Textures {
     this.addresses.clear()
     this.images.clear()
     this.sheets.clear()
-    this.solids.clear()
+    this.masks.clear()
     this.silhouettes.clear()
     this.crops.clear()
     this.sources.clear()

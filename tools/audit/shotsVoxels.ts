@@ -1,7 +1,7 @@
 // The voxel bodies and the 3D blasts (src/render/iso/voxels.ts,
-// explosions.ts): every kind in a row, a crowd under fire, guns aimed every
-// way, the boss, and Kaboomers bursting, each as voxels and as the old flat
-// billboards (`billboards`), as
+// explosions.ts): every kind in a row and at every wear stage, a crowd under
+// fire, guns aimed every way, the boss, and Kaboomers bursting, each as
+// voxels and as the old flat billboards (`billboards`), as
 // `voxels-<TAG>-<viewport>-<scene>-<voxel|billboard>.png`.
 //   TAG=try bun run heavy -- --shared bun tools/audit/shotsVoxels.ts
 import { Array, Effect } from 'effect'
@@ -24,6 +24,10 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   {
     name: 'lineup',
     query: 'wave=3&seen=all&start=wave&elapsed=6000&god&lineup=sizes&freeze=20',
+  },
+  {
+    name: 'wear',
+    query: 'wave=3&seen=all&start=wave&elapsed=6000&god&lineup=wear&freeze=20',
   },
   {
     name: 'crowd',

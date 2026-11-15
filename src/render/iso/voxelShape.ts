@@ -10,6 +10,8 @@
 // Plain data, no pixi: the geometry's arrays, and the matrix that stands a
 // sprite's blocks at its foot.
 
+import { Match } from 'effect'
+
 import type { Affine } from './flatten'
 import { CAMERA_UP, PITCH, TOWARD_CAMERA, UNIT, zOf } from './space'
 
@@ -30,8 +32,9 @@ export const maxDepthOf = ({
   Math.max(1, Math.min(MOST_DEPTH, Math.floor(Math.min(width, height) / 4)))
 
 // NOTE: the box of a sprite's solid pixels: a gun turned in its big square
-// cell is only as thick as its own art.
-const solidBoundsOf = ({
+// cell is only as thick as its own art. `top` and `bottom` are its highest
+// and lowest solid rows (`bottom` -1 for clear art).
+export const solidBoundsOf = ({
   width,
   height,
   isSolid,
@@ -39,7 +42,12 @@ const solidBoundsOf = ({
   width: number
   height: number
   isSolid: (column: number, row: number) => boolean
-}>): Readonly<{ width: number; height: number }> => {
+}>): Readonly<{
+  width: number
+  height: number
+  top: number
+  bottom: number
+}> => {
   let left = width
   let right = -1
   let top = height
@@ -57,6 +65,8 @@ const solidBoundsOf = ({
   return {
     width: Math.max(0, right - left + 1),
     height: Math.max(0, bottom - top + 1),
+    top,
+    bottom,
   }
 }
 
@@ -120,10 +130,149 @@ export const depthsOf = ({
   return depths
 }
 
+// NOTE: whether a solid pixel lies on the art's edge: a clear pixel or the
+// cell's border beside it or on a corner.
+const isEdgePixel = (
+  input: Readonly<{
+    width: number
+    height: number
+    isSolid: (column: number, row: number) => boolean
+  }>,
+  column: number,
+  row: number,
+): boolean => {
+  const { width, height, isSolid } = input
+  for (let down = -1; down <= 1; down += 1) {
+    for (let across = -1; across <= 1; across += 1) {
+      const x = column + across
+      const y = row + down
+      if (x < 0 || y < 0 || x >= width || y >= height || !isSolid(x, y)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+// NOTE: the art's drawn outline: dark pixels on its edge that touch no dark
+// pixel inside it across or down, so a one pixel line of ink over a lighter
+// fill is outline, and the edge of a dark mass (hair, a coat) is not.
+const outlineOf = (
+  input: Readonly<{
+    width: number
+    height: number
+    isSolid: (column: number, row: number) => boolean
+    isDark: (column: number, row: number) => boolean
+  }>,
+): Uint8Array => {
+  const { width, height, isSolid, isDark } = input
+  const edge = new Uint8Array(width * height)
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      edge[row * width + column] =
+        isSolid(column, row) && isEdgePixel(input, column, row) ? 1 : 0
+    }
+  }
+  const isDarkInside = (column: number, row: number): boolean =>
+    column >= 0 &&
+    row >= 0 &&
+    column < width &&
+    row < height &&
+    edge[row * width + column] === 0 &&
+    isSolid(column, row) &&
+    isDark(column, row)
+  const outline = new Uint8Array(width * height)
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      outline[row * width + column] =
+        edge[row * width + column] === 1 &&
+        isDark(column, row) &&
+        !isDarkInside(column - 1, row) &&
+        !isDarkInside(column + 1, row) &&
+        !isDarkInside(column, row - 1) &&
+        !isDarkInside(column, row + 1)
+          ? 1
+          : 0
+    }
+  }
+  return outline
+}
+
+// NOTE: whose color each pixel's sides wear, by index: its own, but for a
+// pixel of the drawn outline (`outlineOf`), the nearest solid pixel inside it (by steps
+// across and down through the art), so the outline stays on the front face
+// alone and the sides show no dark rim. The scene's outline pass inks the
+// body's silhouette. An outline with nothing inside it keeps its own color.
+export const sideSourcesOf = (
+  input: Readonly<{
+    width: number
+    height: number
+    isSolid: (column: number, row: number) => boolean
+    isDark: (column: number, row: number) => boolean
+  }>,
+): Int32Array => {
+  const { width, height, isSolid } = input
+  const sources = new Int32Array(width * height).fill(-1)
+  const outline = outlineOf(input)
+  const queue: Array<number> = []
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      const index = row * width + column
+      if (isSolid(column, row) && outline[index] === 0) {
+        sources[index] = index
+        queue.push(index)
+      }
+    }
+  }
+  for (let head = 0; head < queue.length; head += 1) {
+    const index = queue[head] ?? 0
+    const column = index % width
+    const row = (index - column) / width
+    const source = sources[index] ?? index
+    const neighbors = [
+      column > 0 ? index - 1 : -1,
+      column < width - 1 ? index + 1 : -1,
+      row > 0 ? index - width : -1,
+      row < height - 1 ? index + width : -1,
+    ]
+    for (const next of neighbors) {
+      if (next >= 0 && outline[next] === 1 && sources[next] === -1) {
+        sources[next] = source
+        queue.push(next)
+      }
+    }
+  }
+  for (let index = 0; index < sources.length; index += 1) {
+    if (sources[index] === -1) {
+      sources[index] = index
+    }
+  }
+  return sources
+}
+
+// NOTE: the side faces darken toward the floor, as light reaches less of a
+// body's foot: this share of their color at the foot, back to their own
+// color this many pixels up. A share of linear light, as the renderer's
+// vertex colors are.
+const FOOT_SHADE = 0.5
+const SHADE_RISE = 6
+
+// NOTE: how much of its own color a side face shows at a height over the
+// foot, in pixels, to the middle of its pixel.
+export const sideShadeOf = (height: number): number =>
+  FOOT_SHADE + (1 - FOOT_SHADE) * Math.min(1, Math.max(0, height / SHADE_RISE))
+
+// NOTE: where a sprite's foot lies in its blocks' rows: past its last solid
+// row, before its first, or nowhere (it is not on the floor).
+export type Ground = 'Below' | 'Above' | 'None'
+
 export type VoxelMeshData = Readonly<{
   positions: Float32Array
   normals: Float32Array
   uvs: Float32Array
+  // NOTE: each corner's color the material multiplies by, RGBA: white on
+  // the front faces, darker toward the foot on the sides.
+  colors: Float32Array
   indices: Uint32Array
 }>
 
@@ -152,6 +301,7 @@ class Builder {
   readonly positions: Array<number> = []
   readonly normals: Array<number> = []
   readonly uvs: Array<number> = []
+  readonly colors: Array<number> = []
   readonly indices: Array<number> = []
 
   // NOTE: one face, its corners turned to wind counterclockwise seen from
@@ -160,6 +310,7 @@ class Builder {
     corners: readonly [Point, Point, Point, Point],
     normal: Point,
     uv: readonly [number, number],
+    shade = 1,
   ): void {
     const [p0, p1, p2] = corners
     const e1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]] as const
@@ -173,6 +324,7 @@ class Builder {
       this.positions.push(corner[0], corner[1], corner[2])
       this.normals.push(normal[0], normal[1], normal[2])
       this.uvs.push(uv[0], uv[1])
+      this.colors.push(shade, shade, shade, 1)
     }
     if (facing >= 0) {
       this.indices.push(base, base + 1, base + 2, base, base + 2, base + 3)
@@ -184,19 +336,40 @@ class Builder {
 
 // NOTE: the blocks of a sprite: a front face for every solid pixel, its back,
 // and the sides, top, and bottom where its neighbor is shallower, each
-// colored by the middle of its pixel (`uvOf`).
+// colored by the middle of its pixel (`uvOf`). The front wears the pixel's
+// own color; the rest wear the color inside a dark outline pixel (`isDark`,
+// `sideSourcesOf`), and on a body standing on the floor darken toward the
+// solid row at its foot: its last row (`ground` Below), or its first where
+// its rows are reversed and run up from the foot (Above).
 export const voxelMeshOf = ({
   width,
   height,
   isSolid,
   uvOf,
+  isDark = () => false,
+  ground = 'None',
 }: Readonly<{
   width: number
   height: number
   isSolid: (column: number, row: number) => boolean
   uvOf: (column: number, row: number) => readonly [number, number]
+  isDark?: (column: number, row: number) => boolean
+  ground?: Ground
 }>): VoxelMeshData => {
   const depths = depthsOf({ width, height, isSolid })
+  const sources = sideSourcesOf({ width, height, isSolid, isDark })
+  const { top, bottom } = solidBoundsOf({ width, height, isSolid })
+  const sideUvOf = (column: number, row: number): readonly [number, number] => {
+    const source = sources[row * width + column] ?? row * width + column
+    const sourceColumn = source % width
+    return uvOf(sourceColumn, (source - sourceColumn) / width)
+  }
+  const shadeOf = (row: number): number =>
+    Match.value(ground).pipe(
+      Match.when('Below', () => sideShadeOf(bottom - row + 0.5)),
+      Match.when('Above', () => sideShadeOf(row - top + 0.5)),
+      Match.orElse(() => 1),
+    )
   const depthAt = (column: number, row: number): number =>
     column < 0 || row < 0 || column >= width || row >= height
       ? 0
@@ -228,7 +401,8 @@ export const voxelMeshOf = ({
       if (depth === 0) {
         continue
       }
-      const uv = uvOf(column, row)
+      const uv = sideUvOf(column, row)
+      const shade = shadeOf(row)
       const x0 = column
       const x1 = column + 1
       const y0 = row
@@ -242,6 +416,7 @@ export const voxelMeshOf = ({
         ],
         BACK,
         uv,
+        shade,
       )
       const above = depthAt(column, row - 1)
       if (above < depth) {
@@ -254,6 +429,7 @@ export const voxelMeshOf = ({
           ],
           TOP,
           uv,
+          shade,
         )
       }
       const below = depthAt(column, row + 1)
@@ -267,6 +443,7 @@ export const voxelMeshOf = ({
           ],
           BOTTOM,
           uv,
+          shade,
         )
       }
       const left = depthAt(column - 1, row)
@@ -280,6 +457,7 @@ export const voxelMeshOf = ({
           ],
           LEFT,
           uv,
+          shade,
         )
       }
       const right = depthAt(column + 1, row)
@@ -293,6 +471,7 @@ export const voxelMeshOf = ({
           ],
           RIGHT,
           uv,
+          shade,
         )
       }
     }
@@ -301,6 +480,7 @@ export const voxelMeshOf = ({
     positions: Float32Array.from(out.positions),
     normals: Float32Array.from(out.normals),
     uvs: Float32Array.from(out.uvs),
+    colors: Float32Array.from(out.colors),
     indices: Uint32Array.from(out.indices),
   }
 }
@@ -323,6 +503,54 @@ export type SlabPlacement = Readonly<{
   spin?: number
 }>
 
+// NOTE: a coin turn shows only in steps of a sixteenth of a turn (22.5
+// degrees), so a spinning body jumps from one crisp pose to the next and
+// never shows the pixels of an angle in between, as a sprite stack turns.
+const SPIN_STEP = Math.PI / 8
+
+export const snappedSpinOf = (spin: number): number => {
+  const steps = Math.round(spin / SPIN_STEP) % 16
+  return steps === 0 ? 0 : steps * SPIN_STEP
+}
+
+// NOTE: how far a body's lowest solid row may sit off its foot, in game
+// pixels, and still stand on the floor: a walk's bob and a squash.
+const GROUND_SLACK = 3
+
+// NOTE: the most a body may lean and still stand on its foot, as the slope
+// of its upright (across over down): a Runner's lean and a waddle, short of
+// a fall.
+const MOST_LEAN = 0.6
+
+// NOTE: whether a sprite's art stands on the floor, the middle of its
+// lowest solid row (`solidBottom`, in its own rows) at its foot and the art
+// upright or leaning a little, so its sides may darken toward the floor. A
+// gun in a hand, a body held aloft, thrown, or fallen over, and a sprite
+// mirrored top to bottom do not.
+export const isGroundedOf = (
+  input: Readonly<{
+    matrix: Affine
+    box: Readonly<{ x: number; y: number; width: number; height: number }>
+    texels: Readonly<{ height: number }>
+    footY: number
+    solidBottom: number
+  }>,
+): boolean => {
+  const { matrix, box, texels, footY, solidBottom } = input
+  if (matrix.d <= 0 || Math.abs(matrix.c) > matrix.d * MOST_LEAN) {
+    return false
+  }
+  if (solidBottom < 0) {
+    return false
+  }
+  const down = box.height / texels.height
+  const lowest =
+    matrix.b * (box.x + box.width / 2) +
+    matrix.d * (box.y + (solidBottom + 1) * down) +
+    matrix.f
+  return Math.abs(lowest - footY) <= GROUND_SLACK
+}
+
 // NOTE: the matrix (sixteen numbers, column by column) that stands the
 // blocks where the billboard stood: across and down the sprite through the
 // shapes' own matrix, so a lean, a turn, and a squash all show; and the
@@ -335,7 +563,7 @@ export const slabMatrixOf = (
   placement: SlabPlacement,
 ): Readonly<{ elements: ReadonlyArray<number>; isFlipped: boolean }> => {
   const { matrix, box, texels, footY, hover, nudge, depth } = placement
-  const spin = placement.spin ?? 0
+  const spin = snappedSpinOf(placement.spin ?? 0)
   const across = box.width / texels.width
   const down = box.height / texels.height
   const ux = matrix.a * across
@@ -392,7 +620,9 @@ export const slabMatrixOf = (
       vector[1] = py * cos + (kz * px - kx * pz) * sin + ky * along
       vector[2] = pz * cos + (kx * py - ky * px) * sin + kz * along
     }
-    const half = texels.width / 2
+    // NOTE: the upright on a whole pixel's edge, so every pose turns about
+    // the same game pixel line.
+    const half = Math.round(texels.width / 2)
     const pivot = [
       (translation[0] ?? 0) + (column[0] ?? 0) * half,
       (translation[1] ?? 0) + (column[1] ?? 0) * half,
