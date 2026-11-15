@@ -43,7 +43,7 @@ import type { Model } from '../../app/model'
 import { isFlashShape } from '../../art/sprite'
 import { type BrowserError, toBrowserError } from '../../shared/describeError'
 import type { Level } from '../../world/level/arena'
-import { levelOf } from '../../world/level/arena'
+import { levelOf, standingLevelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
 import type { Drawable } from '../depth'
 import {
@@ -379,7 +379,7 @@ export class IsoScene {
     ) {
       this.app.renderer.resize(width, height, resolution)
     }
-    const built = this.builtFor(levelOf(model))
+    const built = this.builtFor(standingLevelOf(levelOf(model)))
     this.textures.lookAt(built.level)
     // NOTE: the floor is painted again once what it waits on has loaded,
     // not as each file comes in: a first visit loads a few dozen, and
