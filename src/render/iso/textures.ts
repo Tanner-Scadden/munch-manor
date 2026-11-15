@@ -21,7 +21,7 @@ import { Material3D } from '@pixi/3d'
 
 import { atlasNormalOf } from '../../art/spriteAtlas'
 import type { Level } from '../../world/level/arena'
-import { IS_LOOK, type LookKind, type LookOptions, LookTextures } from './look'
+import { type LookKind, type LookOptions, LookTextures } from './look'
 
 TextureSource.defaultOptions.scaleMode = 'nearest'
 
@@ -77,11 +77,8 @@ export class Textures {
   // when no new frame comes (a paused game, a held scene).
   private readonly onLoaded: () => void
 
-  // NOTE: the look pass's shared textures, off with `?oldlook`
-  // (src/render/iso/look.ts).
-  private readonly look: Option.Option<LookTextures> = IS_LOOK
-    ? Option.some(new LookTextures())
-    : Option.none()
+  // NOTE: the look pass's shared textures (src/render/iso/look.ts).
+  private readonly look = new LookTextures()
 
   constructor(app: Application, onLoaded: () => void) {
     this.app = app
@@ -89,19 +86,14 @@ export class Textures {
   }
 
   // NOTE: what a lit material is built with for the look pass: its bit and
-  // textures, or nothing with the look off.
+  // textures.
   lookOptions(kind: LookKind): LookOptions {
-    return Option.match(this.look, {
-      onNone: () => ({}),
-      onSome: look => look.optionsFor(kind),
-    })
+    return this.look.optionsFor(kind)
   }
 
   // NOTE: the look's room map, for the level now drawn.
   lookAt(level: Level): void {
-    Option.map(this.look, look => {
-      look.paintRooms(level)
-    })
+    this.look.paintRooms(level)
   }
 
   // NOTE: whether every source asked for so far has loaded (or failed).
@@ -322,9 +314,7 @@ export class Textures {
   }
 
   destroy(): void {
-    Option.map(this.look, look => {
-      look.destroy()
-    })
+    this.look.destroy()
     for (const texture of this.silhouettes.values()) {
       texture.destroy(true)
     }

@@ -78,7 +78,6 @@ import {
 } from './house'
 import { AMBIENT, type LightsFrame, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
-import { IS_LOOK, LOOK_BACKGROUND } from './look'
 import { LOOK } from './lookSpecs'
 import { mixColor } from './mood'
 import { FloorLayer, FloorPicture } from './painter'
@@ -102,7 +101,8 @@ import { chandelierSwayAt, windClockOf } from './wind'
 const STORM_COLOR = 0xdce6ff
 const STORM_LIFT = AMBIENT * 3
 
-const BACKGROUND = 0x16121c
+// NOTE: the void behind the house: black, as shut rooms and the yard draw.
+const BACKGROUND = 0x000000
 const CAMERA_DISTANCE = 80
 const TRACER_RADIUS = 0.05
 
@@ -189,22 +189,19 @@ const furnitureOf = (
   )
 }
 
-// NOTE: under the look pass (on unless `?oldlook`), a shut room's fill is put out (it
-// draws black anyway) and an open room's is turned down, so the flames and
-// the lamp carry the picture.
-const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame =>
-  IS_LOOK
-    ? {
-        ...frame,
-        fillShares: Array.map(frame.fillShares, (share, index) =>
-          Option.match(Array.get(level.rooms, index), {
-            onNone: () => 0,
-            onSome: ({ id, isOpen }) =>
-              isOpen ? share * (LOOK.rooms[id]?.fill ?? LOOK.roomFill) : 0,
-          }),
-        ),
-      }
-    : frame
+// NOTE: a shut room's fill is put out (it draws black anyway) and an open
+// room's is turned down, so the flames and the lamp carry the picture
+// (src/render/iso/lookSpecs.ts).
+const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame => ({
+  ...frame,
+  fillShares: Array.map(frame.fillShares, (share, index) =>
+    Option.match(Array.get(level.rooms, index), {
+      onNone: () => 0,
+      onSome: ({ id, isOpen }) =>
+        isOpen ? share * (LOOK.rooms[id]?.fill ?? LOOK.roomFill) : 0,
+    }),
+  ),
+})
 
 const rectKeysOf = (leaves: ReadonlyArray<Leaf>): ReadonlySet<string> =>
   new Set(
@@ -624,8 +621,7 @@ export class IsoScene {
     )
     built.lights.apply({ frame: lights, player, view })
     const { mood } = lights
-    this.ambient.intensity =
-      AMBIENT * mood.ambient * (IS_LOOK ? LOOK.ambient : 1)
+    this.ambient.intensity = AMBIENT * mood.ambient * LOOK.ambient
     const ambientColor = mixColor({
       from: 0xffffff,
       to: mood.tint,
@@ -955,7 +951,7 @@ export const createIsoScene = ({
       try: () =>
         app.init({
           preference: 'webgl',
-          background: IS_LOOK ? LOOK_BACKGROUND : BACKGROUND,
+          background: BACKGROUND,
           antialias: false,
           autoStart: false,
           width: Math.max(1, host.clientWidth),

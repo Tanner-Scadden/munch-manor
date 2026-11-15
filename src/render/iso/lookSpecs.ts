@@ -1,7 +1,6 @@
 // The look pass's every tunable, as plain data: how the 3D light is cut into
 // dithered bands, how dark the dark is, and each room's color script. Only
-// the renderer reads it (src/render/iso/look.ts), and `?oldlook` in the
-// address turns it off, so the old look stays one address away.
+// the renderer reads it (src/render/iso/look.ts).
 //
 // Kept plain on purpose: Munch Studio's light and color lab is to slide these
 // numbers and colors and propose new ones as a note, so nothing here is code,

@@ -1,8 +1,7 @@
 // The look pass (src/render/iso/look.ts, lookSpecs.ts): every room in a
 // break or a hot wave, the dining room in a frenzy, and the cellar dark and
-// lit, drawn with `oldlook` and as the game draws it, as
-// `look-<TAG>-<old|new>-<viewport>-<scene>.png`, so the dithered bands, the
-// dark, and each room's colors can be set side by side.
+// lit, as `look-<TAG>-<viewport>-<scene>.png`, so a change to the dithered
+// bands, the dark, or a room's colors can be set beside an earlier TAG.
 //   TAG=try bun run heavy -- --shared bun tools/audit/shotsLook.ts
 import { Effect } from 'effect'
 
@@ -52,14 +51,10 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'library-break', query: 'px=520&py=90&break=open&freeze=20' },
   {
     name: 'kitchen-wave',
-    query: 'px=160&py=-75&start=wave&heat=0.8&crowd=8&crowdx=20&crowdy=-130&freeze=20',
+    query:
+      'px=160&py=-75&start=wave&heat=0.8&crowd=8&crowdx=20&crowdy=-130&freeze=20',
   },
   { name: 'parlour-break', query: 'px=-160&py=130&break=open&freeze=20' },
-]
-
-const LOOKS: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
-  { name: 'old', query: '&oldlook' },
-  { name: 'new', query: '' },
 ]
 
 runHarnessAudit(
@@ -72,21 +67,13 @@ runHarnessAudit(
         if (!(yield* isPickedScene(scene.name))) {
           continue
         }
-        for (const look of LOOKS) {
-          const page = yield* openPage(browser, viewport)
-          yield* gotoScene(
-            page,
-            harnessUrl(
-              `${BASE_QUERY}&${scene.query}${look.query}`,
-              deviceQuery(viewport),
-            ),
-          )
-          yield* shot(
-            page,
-            `look-${tag}-${look.name}-${viewport.name}-${scene.name}`,
-          )
-          yield* closePage(page)
-        }
+        const page = yield* openPage(browser, viewport)
+        yield* gotoScene(
+          page,
+          harnessUrl(`${BASE_QUERY}&${scene.query}`, deviceQuery(viewport)),
+        )
+        yield* shot(page, `look-${tag}-${viewport.name}-${scene.name}`)
+        yield* closePage(page)
       }
     }
   }),

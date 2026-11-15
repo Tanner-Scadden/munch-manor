@@ -1,7 +1,6 @@
-// The look pass on the GPU, the house's look: it cuts the 3D light into
-// a room's dithered bands of color (the tunables in src/render/iso/lookSpecs.ts,
-// their bytes in src/render/iso/lookTexels.ts). `?oldlook` in the address turns it
-// off, and the house draws as before, to compare.
+// The look pass on the GPU, the house's look: it cuts the 3D light into a
+// room's dithered bands of color (the tunables in src/render/iso/lookSpecs.ts,
+// their bytes in src/render/iso/lookTexels.ts).
 //
 // The cut is one shader bit on every lit material, after the lights are
 // summed. The light alone is read back out of the lit color (the lit color
@@ -32,13 +31,6 @@ import {
   roomTexelsOf,
 } from './lookTexels'
 import { PITCH, STRETCH, UNIT } from './space'
-
-export const IS_LOOK = !new URLSearchParams(window.location.search).has(
-  'oldlook',
-)
-
-// NOTE: the void behind the house under the look: black.
-export const LOOK_BACKGROUND = 0x000000
 
 // NOTE: a number as GLSL and WGSL read a float, with its point.
 const glFloat = (value: number): string =>

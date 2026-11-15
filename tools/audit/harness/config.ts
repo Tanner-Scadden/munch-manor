@@ -489,9 +489,6 @@ export const HarnessConfig = Schema.Struct({
   // Bodies as flat billboards, not voxels, to compare (the renderer reads it
   // off the address itself: src/render/iso/scene.ts)
   billboards: Flag,
-  // The old look, before the look pass's dithered light and room colors (the
-  // renderer reads it off the address itself: src/render/iso/look.ts)
-  oldlook: Flag,
   // The video tool (tools/video): ticks only when it asks, logs audio
   director: Flag,
 })
