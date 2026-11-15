@@ -202,6 +202,26 @@ export const voxelMeshOf = ({
       ? 0
       : (depths[row * width + column] ?? 0)
   const out = new Builder()
+  // NOTE: every front face first, so a fading body, drawn blended with its
+  // depth written (voxels.ts), hides the tops and sides behind its own front
+  // rather than showing its insides through it.
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      if (depthAt(column, row) === 0) {
+        continue
+      }
+      out.quad(
+        [
+          pointOf(column, row, 0),
+          pointOf(column, row + 1, 0),
+          pointOf(column + 1, row + 1, 0),
+          pointOf(column + 1, row, 0),
+        ],
+        FRONT,
+        uvOf(column, row),
+      )
+    }
+  }
   for (let row = 0; row < height; row += 1) {
     for (let column = 0; column < width; column += 1) {
       const depth = depthAt(column, row)
@@ -213,16 +233,6 @@ export const voxelMeshOf = ({
       const x1 = column + 1
       const y0 = row
       const y1 = row + 1
-      out.quad(
-        [
-          pointOf(x0, y0, 0),
-          pointOf(x0, y1, 0),
-          pointOf(x1, y1, 0),
-          pointOf(x1, y0, 0),
-        ],
-        FRONT,
-        uv,
-      )
       out.quad(
         [
           pointOf(x0, y0, depth),

@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { depthsOf, maxDepthOf, slabMatrixOf, voxelMeshOf } from '../voxelShape'
@@ -67,6 +67,25 @@ describe('voxel mesh', () => {
       uvOf: () => [0.5, 0.5],
     })
     expect(mesh.indices.length / 6).toBe(10)
+  })
+
+  test('every front face comes first, so a fading body hides its insides', () => {
+    const body = rows(Array.makeBy(8, () => '########'))
+    const mesh = voxelMeshOf({ ...body, uvOf: () => [0.5, 0.5] })
+    const fronts = 8 * 8
+    const normalZOf = (face: number) => mesh.normals[face * 4 * 3 + 2] ?? 0
+    const faces = mesh.normals.length / (4 * 3)
+    const firstOthers = Array.findFirstIndex(
+      Array.makeBy(faces, face => normalZOf(face)),
+      z => z !== 1,
+    )
+    expect(Option.getOrUndefined(firstOthers)).toBe(fronts)
+    expect(
+      Array.every(
+        Array.makeBy(fronts, face => normalZOf(face)),
+        z => z === 1,
+      ),
+    ).toBe(true)
   })
 })
 
