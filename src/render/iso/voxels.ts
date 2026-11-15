@@ -98,6 +98,11 @@ export type VoxelPlacement = Readonly<{
   blocks: number
 }>
 
+// NOTE: a placement written in place, so `standLeaf` reuses one record.
+type MutablePlacement = {
+  -readonly [Field in keyof VoxelPlacement]: VoxelPlacement[Field]
+}
+
 // NOTE: a cube of color standing at a spot on the floor, raised `rise`
 // game pixels, `width` across, `height` tall, and as deep as its smaller side.
 export type Cube = Readonly<{
@@ -168,6 +173,9 @@ export class VoxelBatch {
   // faded material, and the program is linked with the rest as the run
   // starts.
   private isBlendWarm = false
+  // NOTE: the placement `standLeaf` reads, written in place each leaf, so
+  // the hot path builds no record and no Option per leaf per frame.
+  private placement: MutablePlacement | undefined = undefined
   // NOTE: a hit flash glows white in any light, the cellar's dark too.
   private readonly flash = new Material3D({
     baseColor: 0x000000,
@@ -206,13 +214,12 @@ export class VoxelBatch {
     if (step < 1) {
       return true
     }
-    // NOTE: checked by hand, not Option.match, so the hot path builds no
-    // handler closures per leaf per frame.
-    const placement = this.placementOf(input)
-    if (Option.isNone(placement)) {
+    const placement = this.placeInto(input, this.placement)
+    this.placement = placement ?? this.placement
+    if (placement === undefined) {
       return false
     }
-    const { carved, sheet, elements, blocks } = placement.value
+    const { carved, sheet, elements, blocks } = placement
     reach.blocks = blocks
     const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
     this.fill({
@@ -242,19 +249,26 @@ export class VoxelBatch {
   // it moves no `reach`: Munch Studio's stage maps a press on a block back
   // to the sprite's pixel through it (tools/studio/stage3d.ts).
   placementOf(input: StandInput): Option.Option<VoxelPlacement> {
+    return Option.fromUndefinedOr(this.placeInto(input, undefined))
+  }
+
+  private placeInto(
+    input: StandInput,
+    into: MutablePlacement | undefined,
+  ): MutablePlacement | undefined {
     const { leaf, footY, part, most, reach, spin } = input
     const { shape, matrix } = leaf
     if (shape._tag !== 'Image') {
-      return Option.none()
+      return undefined
     }
     const texture = this.textures.imageOf(shape, false)
     if (texture === undefined) {
-      return Option.none()
+      return undefined
     }
     const sheet = this.textures.sheetOf(texture)
     const masks = this.textures.masksOf(texture)
     if (sheet === undefined || masks === undefined) {
-      return Option.none()
+      return undefined
     }
     const texels = {
       width: texture.frame.width,
@@ -290,15 +304,17 @@ export class VoxelBatch {
       depth: 1,
       ...(spin === undefined ? {} : { spin }),
     })
-    return Option.some({
-      carved,
-      sheet,
-      masks,
-      texels,
-      isFlipped,
-      elements,
-      blocks,
-    })
+    if (into === undefined) {
+      return { carved, sheet, masks, texels, isFlipped, elements, blocks }
+    }
+    into.carved = carved
+    into.sheet = sheet
+    into.masks = masks
+    into.texels = texels
+    into.isFlipped = isFlipped
+    into.elements = elements
+    into.blocks = blocks
+    return into
   }
 
   // NOTE: a cube of plain color, glowing or lit, or false with no slot left.
