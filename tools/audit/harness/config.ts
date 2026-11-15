@@ -370,6 +370,9 @@ export const HarnessConfig = Schema.Struct({
   // its cleat's set-up already worked (src/world/stations/stations.ts).
   fallen: Flag,
   cleat: Num(0),
+  // NOTE: `valve` turns the kitchen's gas valve, so the parlour's hearth
+  // roars (src/world/kitchen/gasValve.ts).
+  valve: Flag,
   // A room's find (src/world/dare/finds.ts): `findroom=Parlour` lays the
   // dare list's first thing hidden on that room's first hiding spot, with
   // `findwork` of its work done, and stands the player `findgap` px south

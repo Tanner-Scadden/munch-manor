@@ -10,7 +10,6 @@ import {
 } from '../art/sprites/auras'
 import { PICKUP_SPRITES, PICKUP_TINTS } from '../art/sprites/pickups'
 import type { LevelCallout } from '../domain/clientSchema'
-import { SHADOW_COLOR, SHADOW_HEIGHT } from '../shared/constants'
 import {
   BOOST_KIND_ORDER,
   BOOST_WARNING_MS,
@@ -66,8 +65,9 @@ const PICKUP_BLINK_SLOW_MS = 180
 const PICKUP_BLINK_FAST_MS = 80
 const PICKUP_URGENT_MS = 1000
 const PICKUP_DIM_OPACITY = 0.2
-const PICKUP_SHADOW_WIDTH = 6
-const PICKUP_SHADOW_DROP = 4
+// NOTE: a goodie's foot, a little under its spot: it stands carved there
+// and casts its own shadow, so it draws none.
+const PICKUP_FOOT_DROP = 4
 
 const PICKUP_GLOWS: Readonly<Record<PickupKind, string>> = Record.map(
   PICKUP_TINTS,
@@ -95,7 +95,7 @@ const popScale = (ageMs: number): number => {
 }
 
 export const pickupFootY = (pickup: Pickup): number =>
-  pickup.y + PICKUP_SHADOW_DROP
+  pickup.y + PICKUP_FOOT_DROP
 
 export const pickupShapes = (pickup: Pickup): ReadonlyArray<Canvas.Shape> => {
   const turn = (pickup.ageMs / PICKUP_BOB_MS) * FULL_TURN
@@ -104,13 +104,6 @@ export const pickupShapes = (pickup: Pickup): ReadonlyArray<Canvas.Shape> => {
   const floatY = y - PICKUP_LIFT_PX + Math.round(Math.sin(turn) * PICKUP_BOB_PX)
   const scale = popScale(pickup.ageMs)
   return [
-    Canvas.Rect({
-      x: x - PICKUP_SHADOW_WIDTH / 2,
-      y: y + PICKUP_SHADOW_DROP,
-      width: PICKUP_SHADOW_WIDTH,
-      height: SHADOW_HEIGHT,
-      fill: SHADOW_COLOR,
-    }),
     group({
       opacity: isBlinkedOut(pickup) ? PICKUP_DIM_OPACITY : undefined,
       shapes: [
