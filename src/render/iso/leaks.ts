@@ -505,17 +505,43 @@ export const puddlesOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
   return shapes
 }
 
-// NOTE: the ring a landing splashes, one pixel wide, wider each step.
+// NOTE: the ring a landing splashes, one pixel wide, wider each step: a
+// closed oval squashed as the floor is, each pixel touching the next (a
+// corner counts), as spans of [row, left, width] from the landing. A ring
+// of loose pixels at its first step read as four dots.
+type RingSpan = readonly [row: number, left: number, width: number]
+
+const RING_SPANS: ReadonlyArray<ReadonlyArray<RingSpan>> = [
+  [
+    [-1, -1, 3],
+    [0, -2, 1],
+    [0, 2, 1],
+    [1, -1, 3],
+  ],
+  [
+    [-1, -2, 5],
+    [0, -3, 1],
+    [0, 3, 1],
+    [1, -2, 5],
+  ],
+  [
+    [-2, -2, 5],
+    [-1, -3, 1],
+    [-1, 3, 1],
+    [0, -4, 1],
+    [0, 4, 1],
+    [1, -3, 1],
+    [1, 3, 1],
+    [2, -2, 5],
+  ],
+]
+
 const ringOf = (leak: Leak, step: number): ReadonlyArray<Canvas.Shape> => {
   const { x, y } = leak.spot
-  const across = step + 1
-  const down = Math.max(1, step - 1)
-  return [
-    rect(x - across, y, 1, 1, RING),
-    rect(x + across, y, 1, 1, RING),
-    rect(x - step + 1, y - down, Math.max(1, 2 * step - 1), 1, RING),
-    rect(x - step + 1, y + down, Math.max(1, 2 * step - 1), 1, RING),
-  ]
+  const spans = RING_SPANS[clamp(step, 1, RING_SPANS.length) - 1] ?? []
+  return Array.map(spans, ([row, left, width]) =>
+    rect(x + left, y + row, width, 1, RING),
+  )
 }
 
 // NOTE: a horizontal streak of light on a row, held inside it.

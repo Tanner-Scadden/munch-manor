@@ -1,4 +1,5 @@
-import { Array, Option } from 'effect'
+import { Array, Option, String } from 'effect'
+import type { Canvas } from 'foldkit'
 import { expect, test } from 'vitest'
 
 import { TILE_SIZE } from '../../../shared/constants'
@@ -177,4 +178,70 @@ test('a strike lights the puddles, and only a change paints them again', () => {
     puddleKeyOf({ world: atClock(wave, ms), level: manor, viewer })
   expect(keyAt(calm)).not.toBe(keyAt(struck))
   expect(keyAt(calm)).toBe(keyAt(calm + 10))
+})
+
+// NOTE: the pixels a ring covers around its landing, read as what a viewer
+// near the puddle sees that one far off does not.
+const ringPixelsAt = (ms: number, spot: Readonly<{ x: number; y: number }>) => {
+  const keyOf = ({ x, y, width, height, fill }: Canvas.Rect) =>
+    `${x},${y},${width},${height},${fill}`
+  const glints = (viewer: Readonly<{ x: number; y: number }>) =>
+    rectsOf(
+      puddleGlintsOf({ world: atClock(wave, ms), level: manor, viewer }),
+      {
+        x: 0,
+        y: 0,
+      },
+    )
+  const far = new Set(
+    Array.map(glints({ x: 100_000, y: 100_000 }), rect => keyOf(rect)),
+  )
+  const ring = Array.filter(
+    glints(spot),
+    rect =>
+      !far.has(keyOf(rect)) &&
+      Math.abs(rect.y - spot.y) <= 2 &&
+      Math.abs(rect.x - spot.x) <= 4,
+  )
+  return Array.flatMap(ring, ({ x, y, width }) =>
+    Array.makeBy(width, along => `${x + along},${y}`),
+  )
+}
+
+const isOneLoop = (pixels: ReadonlyArray<string>): boolean => {
+  const left = new Set(pixels)
+  const queue = Array.take(pixels, 1)
+  Array.forEach(queue, at => left.delete(at))
+  for (let index = 0; index < queue.length; index += 1) {
+    const [x, y = 0] = Array.map(String.split(queue[index] ?? '', ','), Number)
+    for (const dx of [-1, 0, 1]) {
+      for (const dy of [-1, 0, 1]) {
+        const next = `${x + dx},${y + dy}`
+        if (left.delete(next)) {
+          queue.push(next)
+        }
+      }
+    }
+  }
+  return left.size === 0
+}
+
+test('a splash ring is one closed loop at every step, never loose dots', () => {
+  const leak = Option.getOrThrow(Array.head(leaksOf(manor)))
+  const center = `${leak.spot.x},${leak.spot.y}`
+  const rings = Array.filter(
+    Array.map(
+      Array.makeBy(4000 / 10, index => index * 10),
+      ms => ringPixelsAt(ms, leak.spot),
+    ),
+    pixels => pixels.length > 0,
+  )
+  const shapes = new Set(Array.map(rings, pixels => Array.join(pixels, ' ')))
+  expect(shapes.size).toBe(3)
+  Array.forEach(rings, pixels => {
+    expect(pixels.length).toBeGreaterThanOrEqual(8)
+    expect(new Set(pixels).size).toBe(pixels.length)
+    expect(pixels).not.toContain(center)
+    expect(isOneLoop(pixels)).toBe(true)
+  })
 })
