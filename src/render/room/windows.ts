@@ -1,5 +1,5 @@
 // The manor's windows as the storm sees them: the glass of each one the
-// room art draws, and the patch of floor a lightning strike throws its
+// room art draws (the dining room's rose window too), and the patch of floor a lightning strike throws its
 // light on. The boxes come from the art's own modules, so the storm always
 // lands on the glass (src/render/iso/storm.ts).
 
@@ -7,16 +7,32 @@ import { Array, Option } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
-import { LIBRARY_ROOM_ID, PARLOUR_ROOM_ID } from '../../world/level/plan'
+import {
+  DINING_ROOM_ID,
+  KITCHEN_ROOM_ID,
+  LIBRARY_ROOM_ID,
+  PARLOUR_ROOM_ID,
+} from '../../world/level/plan'
 import { WALL_SYMBOL, symbolAt } from '../../world/level/tileGrid'
 import { libraryWindowPaneOf } from './libraryArt'
 import { roomBoxOf } from './room'
 import type { Box } from './roomPalette'
 import { PARLOUR_WINDOW_GAPS, doorBox } from './roomWalls'
+import { roseGlassOf } from './roseWindowArt'
+
+// NOTE: a window high in a back wall, one in a side wall's gap, or the
+// dining room's rose window.
+type PaneKind = 'High' | 'Side' | 'Rose'
 
 export type Pane = Readonly<{
+  kind: PaneKind
+  // NOTE: the room it lights, by id.
+  roomId: string
   // NOTE: the glass, in game pixels.
   glass: Box
+  // NOTE: where the wall under the glass meets the floor, in game pixels
+  // down the map: the front edge a shaft of its light leaves the wall at.
+  sill: number
   // NOTE: the floor a strike lights through this glass.
   thrown: Box
 }>
@@ -46,11 +62,17 @@ const sillBelow = (level: Level, glass: Box): number => {
   )
 }
 
-const wallPane = (level: Level, glass: Box): Pane => {
+const wallPane = (
+  level: Level,
+  glass: Box,
+  at: Readonly<{ kind: PaneKind; roomId: string }>,
+): Pane => {
   const sill = sillBelow(level, glass)
   const over = sill - (glass.y + glass.height)
   return {
+    ...at,
     glass,
+    sill,
     thrown: {
       x: glass.x + 2,
       y: sill + Math.round(over * THROW_REACH),
@@ -69,7 +91,10 @@ const sidePane = (level: Level, glass: Box): Pane => {
     glass.y + Math.floor(glass.height / 2),
   )
   return {
+    kind: 'Side',
+    roomId: KITCHEN_ROOM_ID,
     glass,
+    sill: glass.y + glass.height,
     thrown: {
       x: isWallEast ? glass.x - SIDE_THROW - 2 : glass.x + glass.width + 2,
       y: glass.y + 2,
@@ -90,17 +115,35 @@ export const windowPanesOf = (level: Level): ReadonlyArray<Pane> => {
     onNone: () => [],
     onSome: room =>
       Array.map(PARLOUR_WINDOW_GAPS, gap =>
-        wallPane(level, { ...gap, x: gap.x + room.x, y: gap.y + room.y }),
+        wallPane(
+          level,
+          { ...gap, x: gap.x + room.x, y: gap.y + room.y },
+          { kind: 'High', roomId: PARLOUR_ROOM_ID },
+        ),
       ),
   })
   const library = Option.match(roomBoxOf(level, LIBRARY_ROOM_ID), {
     onNone: () => [],
-    onSome: room => [wallPane(level, libraryWindowPaneOf(room))],
+    onSome: room => [
+      wallPane(level, libraryWindowPaneOf(room), {
+        kind: 'High',
+        roomId: LIBRARY_ROOM_ID,
+      }),
+    ],
+  })
+  const rose = Option.match(roomBoxOf(level, DINING_ROOM_ID), {
+    onNone: () => [],
+    onSome: room => [
+      wallPane(level, roseGlassOf(room), {
+        kind: 'Rose',
+        roomId: DINING_ROOM_ID,
+      }),
+    ],
   })
   const kitchen = Array.contains(level.doorIds, 'Window')
     ? [sidePane(level, doorBox(level, 'Window'))]
     : []
-  const panes = [...parlour, ...library, ...kitchen]
+  const panes = [...parlour, ...library, ...rose, ...kitchen]
   builtPanes.set(level, panes)
   return panes
 }

@@ -309,6 +309,32 @@ const soupTileShapes =
     ]
   }
 
+// NOTE: what glows of the spilled soup in the dark: a faint green over the
+// puddle and a bubble or two in it (src/render/iso/emissives.ts).
+const SOUP_GLOW_COLOR = 'rgba(150, 210, 70, 0.16)'
+const SOUP_BUBBLE_COLOR = '#d8ff70'
+
+export const soupGlowShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(tilesWithSymbol(level, SOUP_SYMBOL), ({ column, row }) => {
+    const x = column * TILE_SIZE
+    const y = row * TILE_SIZE
+    return [
+      rect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2, SOUP_GLOW_COLOR),
+      rect(x + 3, y + 3, 2, 1, SOUP_BUBBLE_COLOR),
+      ...(roll(row + 11, column) < 0.5
+        ? [
+            rect(
+              x + 2 + Math.floor(roll(column + 5, row) * 6),
+              y + 6,
+              1,
+              1,
+              SOUP_BUBBLE_COLOR,
+            ),
+          ]
+        : []),
+    ]
+  })
+
 const WET_FLOOR_SIGN: ReadonlyArray<string> = [
   '..dd..',
   '.dyyd.',

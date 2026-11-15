@@ -27,11 +27,7 @@ import {
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
 import { roomArtOf } from '../room/room'
 import { COVER_DRAWINGS, coverBlocks } from '../room/roomCover'
-import {
-  type BillboardPool,
-  type Cutout,
-  standCutout,
-} from './billboards'
+import { type BillboardPool, type Cutout, standCutout } from './billboards'
 import type { ViewBox } from './cull'
 import { type Leaf, flatten, rectKey } from './flatten'
 import { LINTEL_FLOOR, lintelTilesOf } from './lintels'

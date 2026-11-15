@@ -96,26 +96,33 @@ const THROWN_ALPHA = 0.32
 const flashColor = (alpha: number): string =>
   `rgba(232, 240, 255, ${alpha.toFixed(3)})`
 
-// NOTE: the light a strike throws, cut by the window's cross into its four
-// panes where it is big enough to show one.
-const thrownShapes = (
-  { x, y, width, height }: Box,
-  fill: string,
-): ReadonlyArray<Canvas.Shape> => {
+// NOTE: a patch of window light cut by the window's cross into its four
+// panes, where it is big enough to show one.
+export const paneBoxesOf = ({
+  x,
+  y,
+  width,
+  height,
+}: Box): ReadonlyArray<Box> => {
   if (width < 6 || height < 6) {
-    return [rect(x, y, width, height, fill)]
+    return [{ x, y, width, height }]
   }
   const left = Math.floor((width - 1) / 2)
   const top = Math.floor((height - 1) / 2)
   const right = width - left - 1
   const bottom = height - top - 1
   return [
-    rect(x, y, left, top, fill),
-    rect(x + left + 1, y, right, top, fill),
-    rect(x, y + top + 1, left, bottom, fill),
-    rect(x + left + 1, y + top + 1, right, bottom, fill),
+    { x, y, width: left, height: top },
+    { x: x + left + 1, y, width: right, height: top },
+    { x, y: y + top + 1, width: left, height: bottom },
+    { x: x + left + 1, y: y + top + 1, width: right, height: bottom },
   ]
 }
+
+const thrownShapes = (patch: Box, fill: string): ReadonlyArray<Canvas.Shape> =>
+  Array.map(paneBoxesOf(patch), box =>
+    rect(box.x, box.y, box.width, box.height, fill),
+  )
 
 const paneShapes = (
   { glass }: Pane,
@@ -149,10 +156,13 @@ export const stormOf = ({
   const glass = Array.flatMap(panes, (pane, index) =>
     paneShapes(pane, index, rainClockOf(world), strike),
   )
+  // NOTE: the rose window throws its strike in its own colors (godRays.ts).
   const thrown =
     strike > 0
-      ? Array.flatMap(panes, ({ thrown: patch }) =>
-          thrownShapes(patch, flashColor(strike * THROWN_ALPHA)),
+      ? Array.flatMap(
+          Array.filter(panes, (pane: Pane) => pane.kind !== 'Rose'),
+          (pane: Pane) =>
+            thrownShapes(pane.thrown, flashColor(strike * THROWN_ALPHA)),
         )
       : []
   return [...glass, ...thrown]
@@ -165,6 +175,42 @@ export const stormOf = ({
 const OVER_WALL = 0.006
 const OVER_FLOOR = 0.014
 
+// NOTE: a quad over every tile any of `boxes` touches, once each, lying
+// just over what it lies on: a wall's top or the floor.
+export const tileQuadsOver = (
+  input: Readonly<{
+    level: Level
+    boxes: ReadonlyArray<Box>
+    overWall: number
+    overFloor: number
+  }>,
+): ReadonlyArray<TileQuad> => {
+  const { level, boxes, overWall, overFloor } = input
+  const keys = new Set<string>()
+  const tiles: Array<TileQuad> = []
+  Array.forEach(boxes, ({ x, y, width, height }) => {
+    const left = Math.floor((x - level.left) / TILE_SIZE)
+    const right = Math.floor((x + width - 1 - level.left) / TILE_SIZE)
+    const top = Math.floor((y - level.top) / TILE_SIZE)
+    const bottom = Math.floor((y + height - 1 - level.top) / TILE_SIZE)
+    for (let row = top; row <= bottom; row += 1) {
+      for (let column = left; column <= right; column += 1) {
+        const key = `${row},${column}`
+        if (!keys.has(key)) {
+          keys.add(key)
+          const wall = wallHeightAt({ tiles: level.tiles, row, column })
+          tiles.push({
+            row,
+            column,
+            y: wall > 0 ? wall + overWall : overFloor,
+          })
+        }
+      }
+    }
+  })
+  return tiles
+}
+
 const builtTiles = new WeakMap<Level, ReadonlyArray<TileQuad>>()
 
 // NOTE: every tile the storm can show on, a quad each: the glass and the
@@ -175,29 +221,14 @@ export const stormTilesOf = (level: Level): ReadonlyArray<TileQuad> => {
   if (cached !== undefined) {
     return cached
   }
-  const keys = new Set<string>()
-  const tiles: Array<TileQuad> = []
-  Array.forEach(windowPanesOf(level), ({ glass, thrown }) => {
-    Array.forEach([glass, thrown], ({ x, y, width, height }) => {
-      const left = Math.floor((x - level.left) / TILE_SIZE)
-      const right = Math.floor((x + width - 1 - level.left) / TILE_SIZE)
-      const top = Math.floor((y - level.top) / TILE_SIZE)
-      const bottom = Math.floor((y + height - 1 - level.top) / TILE_SIZE)
-      for (let row = top; row <= bottom; row += 1) {
-        for (let column = left; column <= right; column += 1) {
-          const key = `${row},${column}`
-          if (!keys.has(key)) {
-            keys.add(key)
-            const wall = wallHeightAt({ tiles: level.tiles, row, column })
-            tiles.push({
-              row,
-              column,
-              y: wall > 0 ? wall + OVER_WALL : OVER_FLOOR,
-            })
-          }
-        }
-      }
-    })
+  const tiles = tileQuadsOver({
+    level,
+    boxes: Array.flatMap(windowPanesOf(level), ({ glass, thrown }) => [
+      glass,
+      thrown,
+    ]),
+    overWall: OVER_WALL,
+    overFloor: OVER_FLOOR,
   })
   builtTiles.set(level, tiles)
   return tiles

@@ -42,7 +42,12 @@ import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 
 import type { Model } from '../../app/model'
 import { FRAME_ROWS } from '../../art/appearance'
-import { isFlashShape, isGlowingShape } from '../../art/sprite'
+import {
+  eyePixelsOf,
+  isFlashShape,
+  isGlowShape,
+  isGlowingShape,
+} from '../../art/sprite'
 import { type BrowserError, toBrowserError } from '../../shared/describeError'
 import { isChandelierDown } from '../../world/dining/chandelier'
 import type { Level } from '../../world/level/arena'
@@ -68,9 +73,11 @@ import {
   dioramaCameraOf,
   dioramaStepOf,
 } from './diorama'
+import { HouseGlows } from './emissives'
 import { ballMiddleOf, blastLightOf, blastPiecesOf } from './explosions'
 import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
+import { GodRays, shaftMotesOf } from './godRays'
 import {
   type Caster,
   type Plant,
@@ -194,6 +201,10 @@ type Built = Readonly<{
   // fade the game gives one while someone stands behind it.
   furniture: ReadonlyMap<ReadonlyArray<Canvas.Shape>, TallCover>
   lights: HouseLights
+  // NOTE: the god rays and what glows in the dark (godRays.ts,
+  // emissives.ts).
+  rays: GodRays
+  glows: HouseGlows
   // NOTE: the dining room's carved chandelier (showpieces.ts), where the
   // level has one.
   chandelier: Option.Option<Chandelier>
@@ -552,7 +563,10 @@ export class IsoScene {
           const lit: Array<Leaf> = []
           const flashing: Array<Leaf> = []
           for (const leaf of leaves) {
-            ;(isFlashShape(leaf.shape) ? flashing : lit).push(leaf)
+            ;(isFlashShape(leaf.shape) || isGlowShape(leaf.shape)
+              ? flashing
+              : lit
+            ).push(leaf)
           }
           this.billboards.standLeaves(lit, drawable.footY, 0, 1)
           this.glowing.standLeaves(flashing, drawable.footY, 0, 1)
@@ -678,6 +692,7 @@ export class IsoScene {
       ...airOf({ world: model, level: built.level, viewer: player, rattle }),
       ...crittersOf({ world: model, level: built.level }),
       ...dripsOf({ world: model, level: built.level }),
+      ...shaftMotesOf({ world: model, level: built.level, viewer: player }),
     ]) {
       ;(mote.isGlowing ? this.glowing : this.billboards).place({
         texture: Texture.WHITE,
@@ -715,6 +730,7 @@ export class IsoScene {
       built.level,
     )
     built.lights.apply({ frame: lights, player, view })
+    built.rays.apply({ world: model, player, isInDark: lights.isInDark })
     const { mood } = lights
     this.ambient.intensity =
       AMBIENT *
@@ -790,13 +806,13 @@ export class IsoScene {
             most,
             reach,
             ...(spin === undefined ? {} : { spin }),
+            eyes: eyePixelsOf(shape),
           })
         ) {
-          ;(isFlash ? this.glowing : this.billboards).standLeaf(
-            leaf,
-            footY,
-            part,
-          )
+          ;(isFlash || isGlowShape(shape)
+            ? this.glowing
+            : this.billboards
+          ).standLeaf(leaf, footY, part)
         }
       }
       part += 1
@@ -988,6 +1004,8 @@ export class IsoScene {
         Array.map(tallCoverOf(level), piece => [piece.shapes, piece] as const),
       ),
       lights: houseLightsOf({ level, parent: holder }),
+      rays: new GodRays({ level, parent: holder }),
+      glows: new HouseGlows({ app, textures, level, parent: holder }),
       chandelier: chandelierOf({ level, parent: holder }),
     }
     this.built = built
@@ -1024,6 +1042,8 @@ export class IsoScene {
     Option.map(built.chandelier, chandelier => {
       chandelier.destroy()
     })
+    built.rays.destroy()
+    built.glows.destroy()
     built.holder.destroy({ children: true })
     Array.forEach(
       [built.room, built.floor, built.ground, built.storm, built.leaks],

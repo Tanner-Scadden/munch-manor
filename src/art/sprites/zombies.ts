@@ -12,6 +12,7 @@ import {
   deepSprite,
   facingSprites,
   frameAt,
+  glowingEyes,
   spriteFrames,
   spriteSet,
   spriteShapes,
@@ -98,6 +99,8 @@ type WearArt = Readonly<{
   palette: Palette
   litPalette: Palette
   ragePalette: Palette
+  // NOTE: the letter its eyes wear in every palette, which glow in the dark.
+  eye: string
   anchorX: number
   icon: ReadonlyArray<string>
   maybeTauntAt: Option.Option<(stage: number) => ReadonlyArray<string>>
@@ -133,7 +136,13 @@ const wornFrames =
     }
   }
 
-const zombieSprites = (art: WearArt): ZombieSprites => {
+const zombieSprites = (given: WearArt): ZombieSprites => {
+  const art: WearArt = {
+    ...given,
+    palette: glowingEyes(given.palette, given.eye),
+    litPalette: glowingEyes(given.litPalette, given.eye),
+    ragePalette: glowingEyes(given.ragePalette, given.eye),
+  }
   const stages = Array.map(Array.range(0, art.stageCount), wornFrames(art))
   const fresh = Array.headNonEmpty(stages)
   return {
@@ -179,6 +188,7 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
     palette: ZOMBIE_PALETTE,
     litPalette: ZOMBIE_PALETTE,
     ragePalette: withRedEyes(ZOMBIE_PALETTE, 'R'),
+    eye: 'R',
     anchorX: GROANER_ANCHOR_X,
     icon: SHAMBLER_ICON_PIXELS,
     maybeTauntAt: Option.none(),
@@ -190,6 +200,7 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
     palette: RUNNER_PALETTE,
     litPalette: RUNNER_PALETTE,
     ragePalette: withRedEyes(RUNNER_PALETTE, 'W'),
+    eye: 'W',
     anchorX: 5,
     icon: RUNNER_ICON_PIXELS,
     maybeTauntAt: Option.none(),
@@ -201,6 +212,7 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
     palette: TANK_PALETTE,
     litPalette: TANK_PALETTE,
     ragePalette: withRedEyes(TANK_PALETTE, 'E'),
+    eye: 'E',
     anchorX: 9,
     icon: TANK_ICON_PIXELS,
     maybeTauntAt: Option.none(),
@@ -212,6 +224,7 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
     palette: EXPLODER_PALETTE,
     litPalette: EXPLODER_LIT_PALETTE,
     ragePalette: withRedEyes(EXPLODER_PALETTE, 'E'),
+    eye: 'E',
     anchorX: EXPLODER_ANCHOR_X,
     icon: EXPLODER_ICON_PIXELS,
     maybeTauntAt: Option.none(),
@@ -223,6 +236,7 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
     palette: CHUCKER_PALETTE,
     litPalette: CHUCKER_PALETTE,
     ragePalette: withRedEyes(CHUCKER_PALETTE, 'E'),
+    eye: 'E',
     anchorX: CHUCKER_ANCHOR_X,
     icon: CHUCKER_ICON_PIXELS,
     maybeTauntAt: Option.some(chuckerTauntPixels),
@@ -234,6 +248,7 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
     palette: CRAWLER_PALETTE,
     litPalette: CRAWLER_PALETTE,
     ragePalette: withRedEyes(CRAWLER_PALETTE, 'E'),
+    eye: 'E',
     anchorX: CRAWLER_ANCHOR_X,
     icon: CRAWLER_ICON_PIXELS,
     maybeTauntAt: Option.none(),
@@ -246,6 +261,7 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
       palette: BOSS_PALETTE,
       litPalette: BOSS_ENRAGED_PALETTE,
       ragePalette: BOSS_ENRAGED_PALETTE,
+      eye: 'E',
       anchorX: BOSS_ANCHOR_X,
       icon: BOSS_ICON_PIXELS,
       maybeTauntAt: Option.none(),

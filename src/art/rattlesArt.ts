@@ -1,5 +1,7 @@
 // Rattles' pixel map, shared by the stall's sprite and the shop's portrait.
 
+import { glowingEyes } from './sprite'
+
 // MOOD
 
 export type Mood = 'Grinning' | 'Delighted' | 'Sad' | 'Shrugging'
@@ -8,20 +10,24 @@ export type Mood = 'Grinning' | 'Delighted' | 'Sad' | 'Shrugging'
 
 // NOTE: Rattles is one pixel map: the stall draws it at the room's scale,
 // and the shop's portrait is the same map scaled up, cropped at his bow tie,
-// so the two never drift apart. A mood swaps only his eyes and mouth.
-export const RATTLES_PALETTE: Readonly<Record<string, string>> = {
-  P: '#5b3f8c',
-  Q: '#7a5ab0',
-  W: '#f4f1de',
-  S: '#c9c3b0',
-  E: '#2a1418',
-  G: '#9be36a',
-  Y: '#ffd23f',
-  R: '#e8333a',
-  T: '#6fc3ff',
-  C: '#2f4a6b',
-  D: '#223650',
-}
+// so the two never drift apart. A mood swaps only his eyes and mouth. His
+// green eyes glow in the dark (src/render/iso/voxels.ts).
+export const RATTLES_PALETTE: Readonly<Record<string, string>> = glowingEyes(
+  {
+    P: '#5b3f8c',
+    Q: '#7a5ab0',
+    W: '#f4f1de',
+    S: '#c9c3b0',
+    E: '#2a1418',
+    G: '#9be36a',
+    Y: '#ffd23f',
+    R: '#e8333a',
+    T: '#6fc3ff',
+    C: '#2f4a6b',
+    D: '#223650',
+  },
+  'G',
+)
 
 export type RattlesFace = Readonly<{
   eyes: string

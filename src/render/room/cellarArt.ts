@@ -4,7 +4,7 @@ import type { Canvas } from 'foldkit'
 import { bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
-import { rect } from '../drawing'
+import { pixelArt, rect } from '../drawing'
 import {
   BASEBOARD_Y,
   type Box,
@@ -337,6 +337,73 @@ export const oddBottleShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
     rect(x + 1, y, 1, 1, ODD_BOTTLE_GLINT_COLOR),
     rect(x - 1, y - 2, 5, 6, 'rgba(160, 120, 255, 0.18)'),
   ]
+}
+
+// HEART JARS
+
+// NOTE: three pickled hearts in jars of green brine on a plank shelf high
+// on the north wall, the Munches' oddest preserve. The hearts and the brine
+// glow of themselves in the dark (src/render/iso/emissives.ts).
+const HEART_JAR_PIXELS: ReadonlyArray<string> = [
+  '.kkk.',
+  '.ccc.',
+  'gbbbg',
+  'gbhhg',
+  'ghhHg',
+  'gbhbg',
+  'gbbbg',
+  '.ggg.',
+]
+
+const HEART_JAR_PALETTE: Readonly<Record<string, string>> = {
+  k: '#2a2a30',
+  c: '#6b4a2a',
+  g: '#7aa080',
+  b: '#2e5a3a',
+  h: '#a8203a',
+  H: '#ff6a7a',
+}
+
+// NOTE: what glows of a jar: the brine dim, the heart bright.
+const HEART_GLOW_PALETTE: Readonly<Record<string, string>> = {
+  b: 'rgba(90, 200, 110, 0.55)',
+  h: '#e8304e',
+  H: '#ff9aa6',
+}
+
+const HEART_JAR_STEP = 7
+const HEART_JARS = 3
+
+const heartJarSpotOf = (room: Box): Readonly<{ x: number; y: number }> => ({
+  x: room.x + 138,
+  y: room.y + 5,
+})
+
+export const heartJarShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+  const { x, y } = heartJarSpotOf(room)
+  const shelfY = y + HEART_JAR_PIXELS.length
+  const width = HEART_JARS * HEART_JAR_STEP + 1
+  return [
+    rect(x - 2, shelfY, width + 1, 2, '#5a3a22'),
+    rect(x - 2, shelfY, width + 1, 1, '#7a5232'),
+    rect(x, shelfY + 2, 1, 2, '#3a2616'),
+    rect(x + width - 4, shelfY + 2, 1, 2, '#3a2616'),
+    ...Array.flatMap(Array.range(0, HEART_JARS - 1), jar =>
+      pixelArt(
+        x + jar * HEART_JAR_STEP,
+        y,
+        HEART_JAR_PIXELS,
+        HEART_JAR_PALETTE,
+      ),
+    ),
+  ]
+}
+
+export const heartJarGlowShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+  const { x, y } = heartJarSpotOf(room)
+  return Array.flatMap(Array.range(0, HEART_JARS - 1), jar =>
+    pixelArt(x + jar * HEART_JAR_STEP, y, HEART_JAR_PIXELS, HEART_GLOW_PALETTE),
+  )
 }
 
 // BARRELS

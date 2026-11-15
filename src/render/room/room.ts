@@ -44,6 +44,7 @@ import {
   cellarFloorShapes,
   cellarWallShapes,
   coalHeapShapes,
+  heartJarShapes,
   looseStoneShapes,
   oddBottleShapes,
 } from './cellarArt'
@@ -101,6 +102,7 @@ import {
   wallShadowShapes,
   wallShapes,
 } from './roomWalls'
+import { roseWindowShapes } from './roseWindowArt'
 
 // FLOOR DETAILS
 
@@ -157,6 +159,14 @@ const floorDetailShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
 
 // NOTE: a room's block of the map, where its hand-placed art goes, so the
 // art moves with the room wherever the plan puts it.
+// NOTE: whether the room of this id is open in the level.
+export const isRoomOpen: {
+  (roomId: string): (level: Level) => boolean
+  (level: Level, roomId: string): boolean
+} = Function.dual(2, (level: Level, roomId: string): boolean =>
+  Array.some(level.rooms, ({ id, isOpen }) => id === roomId && isOpen),
+)
+
 export const roomBoxOf: {
   (roomId: string): (level: Level) => Option.Option<Box>
   (level: Level, roomId: string): Option.Option<Box>
@@ -226,6 +236,7 @@ const diningWallArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
   inDining(level, room => [
     ...diningWallShapes(level, room),
     ...diningWallDecorShapes(room),
+    ...roseWindowShapes(room),
   ])
 
 const frontDoorArt = (level: Level): ReadonlyArray<Canvas.Shape> => {
@@ -289,7 +300,10 @@ const slotWallArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
     ...libraryWallShapes(level, room),
     ...libraryWallDecorShapes(room),
   ]),
-  ...inRoom(level, CELLAR_ROOM_ID, room => cellarWallShapes(level, room)),
+  ...inRoom(level, CELLAR_ROOM_ID, room => [
+    ...cellarWallShapes(level, room),
+    ...heartJarShapes(room),
+  ]),
 ]
 
 // NOTE: the bare bulb hangs over the cellar's middle aisle, where the light
