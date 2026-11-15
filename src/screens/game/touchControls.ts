@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import {
   MEDIC_ICON,
   NEXT_TRAP_ICON,
@@ -134,7 +135,7 @@ export const iconButtonView: {
         h.span([
           h.Class('icon-button-glyph'),
           h.AriaHidden(true),
-          h.Style({ backgroundImage: button.icon }),
+          h.Style(pixelArtStyle(button.icon)),
         ]),
         ...children,
       ],
@@ -406,7 +407,7 @@ const reloadButtonView = (
         h.Style({
           width: hudPixels(reloadFaceOf(screen).width),
           height: hudPixels(reloadFaceOf(screen).height),
-          backgroundImage: RELOAD_ICON,
+          ...pixelArtStyle(RELOAD_ICON),
         }),
       ]),
     ],
@@ -461,7 +462,7 @@ const placeIconView = (
       h.span([
         h.Class('icon-button-glyph'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: TRAP_BUTTON_ICONS[kind] }),
+        h.Style(pixelArtStyle(TRAP_BUTTON_ICONS[kind])),
       ]),
       h.span(
         [h.Class('icon-button-badge'), h.AriaHidden(true)],
@@ -511,8 +512,10 @@ const trapIconsView = (
 // button to a right edge 90 pixels past the screen's middle, where the
 // stall's left side once stood on a 320 pixel screen. In portrait they end
 // over the reload button, and in a break, when the start wave button takes
-// the band over the row, one band higher.
-const START_WAVE_HALF_PX = 64
+// the band over the row, one band higher. The touch pill is exactly
+// START_WAVE_PX wide, room for START WAVE in its bold monospace with the
+// border and a margin, so the column starts one gap past its right edge.
+const START_WAVE_PX = 148
 
 const SIDE_RIGHT_PAST_MIDDLE_PX = 90
 
@@ -526,7 +529,7 @@ const sideStyle = (
   if (screen.layout === 'Landscape') {
     return {
       left: isBreak
-        ? `calc(${percentOf(gunPairWidthOf(screen) / 2, cluster.width)} + ${START_WAVE_HALF_PX}px)`
+        ? `calc(${percentOf(gunPairWidthOf(screen) / 2, cluster.width)} + ${START_WAVE_PX / 2 + SIDE_GAP_PX}px)`
         : '0px',
       right: isBreak
         ? percentOf(
@@ -572,7 +575,7 @@ const medicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
           h.span([
             h.Class('icon-button-glyph'),
             h.AriaHidden(true),
-            h.Style({ backgroundImage: MEDIC_ICON }),
+            h.Style(pixelArtStyle(MEDIC_ICON)),
           ]),
           keyBadgeView(model, 'ENTER', h),
         ],
@@ -624,7 +627,7 @@ const startWavePointView = (model: Model, h: ApplicationViewBuilder): Html =>
         [
           h.span([
             h.Class('start-wave-point-arrow'),
-            h.Style({ backgroundImage: QUEST_START_ARROW_ICON }),
+            h.Style(pixelArtStyle(QUEST_START_ARROW_ICON)),
           ]),
           isKeyboard(model)
             ? h.span([h.Class('start-wave-point-key')], ['ENTER'])
@@ -659,6 +662,7 @@ const startWaveButtonView = (
               h.Class(
                 isOnTouch(model) ? 'start-wave-pill' : 'start-wave-button',
               ),
+              h.Style(isOnTouch(model) ? { width: `${START_WAVE_PX}px` } : {}),
               h.AriaLabel(startWaveLabel(model, wave)),
               h.DataAttribute('ready', leadSeatOf(model).readiness),
               h.DataAttribute(

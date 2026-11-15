@@ -8,6 +8,7 @@ import type {
   ApplicationViewBuilder,
 } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import {
   CHECK_ICON,
   COOP_ICON,
@@ -315,7 +316,7 @@ const endButtonFace = (
   h.span([
     h.Class('end-button-icon'),
     h.AriaHidden(true),
-    h.Style({ backgroundImage: button.icon }),
+    h.Style(pixelArtStyle(button.icon)),
   ]),
   h.span([h.Class('end-button-label'), h.AriaHidden(true)], [button.label]),
   ...(Array.isReadonlyArrayNonEmpty(button.heads)
@@ -326,7 +327,7 @@ const endButtonFace = (
             h.keyed('span')(`head-${head.slot}`, [
               h.Class('end-button-head'),
               h.DataAttribute('in', head.isIn ? 'In' : 'Out'),
-              h.Style({ backgroundImage: head.portrait }),
+              h.Style(pixelArtStyle(head.portrait)),
             ]),
           ),
         ),

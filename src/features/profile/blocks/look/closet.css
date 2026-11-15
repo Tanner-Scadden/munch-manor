@@ -80,7 +80,7 @@
 }
 
 .look-price .rank-bone-img {
-  width: 10px !important;
+  width: max(var(--art-step), round(down, 10px, var(--art-step))) !important;
   height: auto !important;
 }
 
@@ -102,7 +102,7 @@
 }
 
 .look-need .rank-badge-img {
-  width: 9px !important;
+  width: max(var(--art-step), round(down, 9px, var(--art-step))) !important;
   height: auto !important;
 }
 
@@ -288,15 +288,9 @@
   }
 }
 
-/* THE ROWS NEED ROOM: the Look tab holds up to five lines of options, so a
-   phone on its side takes smaller options and an upright one a shorter
-   stage. */
-
-@media (max-height: 460px) and (orientation: landscape) {
-  .look-tab {
-    --menu-tap: 44px;
-  }
-}
+/* THE ROWS NEED ROOM: the Look tab holds up to five lines of options, so an
+   upright phone takes a shorter stage; the options stay 48 px for a thumb
+   everywhere, and the page scrolls on a phone on its side. */
 
 .game-root[data-layout='Portrait'] .look-stage {
   height: 120px;
@@ -304,8 +298,8 @@
 
 .game-root[data-layout='Portrait'] .look-stage .look-preview,
 .game-root[data-layout='Portrait'] .look-stage .look-preview-canvas {
-  width: 96px;
-  height: 96px;
+  width: 100px;
+  height: 100px;
 }
 
 .game-root[data-layout='Portrait'] .look-bounce {
@@ -324,14 +318,6 @@
 
 .game-root[data-layout='Portrait'] .look-tab {
   --menu-tap: 48px;
-}
-
-/* NOTE: a 360 px phone cannot fit a row of 48 px options beside the panel's
-   padding, so only it keeps the 44 px ones. */
-@media (max-width: 370px) {
-  .game-root[data-layout='Portrait'] .look-tab {
-    --menu-tap: 44px;
-  }
 }
 
 /* TRYING ON: the option being tried on glows, and the BUY pill sits in the
@@ -368,7 +354,7 @@
 }
 
 .look-buy-price .rank-bone-img {
-  width: 12px !important;
+  width: max(var(--art-step), round(down, 12px, var(--art-step))) !important;
   height: auto !important;
 }
 

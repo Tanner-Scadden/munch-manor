@@ -476,6 +476,11 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
             onNone: () => ({}),
             onSome: surface => ({
               '--pixel': `${stagePlacement(surface, screen).scale}px`,
+              // NOTE: one device pixel, for pixel art in HTML drawn at whole
+              // device pixels (src/art/artSize.ts).
+              ...(surface.pixelRatio !== undefined && surface.pixelRatio > 0
+                ? { '--dpx': `${1 / surface.pixelRatio}px` }
+                : {}),
             }),
           }),
         }),

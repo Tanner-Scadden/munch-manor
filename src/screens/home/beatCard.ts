@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
+import { pixelArtStyle } from '../../art/artSize'
 import { PROP_ICONS } from '../../art/callingArt'
 import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '../../art/dareArt'
 import { SKULL_ICONS } from '../../art/icons'
@@ -61,7 +62,7 @@ const thingsView = (dare: FriendsDare, h: ApplicationViewBuilder): Html =>
           h.span([
             h.Class('beat-card-thing'),
             h.Title(DARE_NAMES[thing]),
-            h.Style({ backgroundImage: DARE_ICON_URLS[thing] }),
+            h.Style(pixelArtStyle(DARE_ICON_URLS[thing])),
           ]),
         ),
       ),
@@ -84,7 +85,7 @@ const unopenedView = (
             h.span([
               h.Class('beat-card-thing beat-card-thing-dim'),
               h.AriaHidden(true),
-              h.Style({ backgroundImage: DARE_SILHOUETTE_URLS[thing] }),
+              h.Style(pixelArtStyle(DARE_SILHOUETTE_URLS[thing])),
             ]),
           ),
           h.span([h.Class('beat-card-unopened-mark')], ['?']),

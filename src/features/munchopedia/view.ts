@@ -69,8 +69,9 @@ const pictureView = (
         h.Alt(altText),
         h.DataAttribute('known', isKnown ? 'Known' : 'Unknown'),
         h.Style({
-          width: `${frame.width * pictureScale(frame)}px`,
-          height: `${frame.height * pictureScale(frame)}px`,
+          '--art-w': `${frame.width}`,
+          '--art-h': `${frame.height}`,
+          '--art-scale': `${pictureScale(frame)}`,
         }),
       ]),
   })

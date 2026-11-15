@@ -3,6 +3,7 @@ import { Array, Function, Record, pipe } from 'effect'
 import type { Difficulty } from '../shared/playerData'
 import type { Modifier } from '../world/run/modifiers'
 import type { TrapKind } from '../world/schema/entitySchema'
+import { noteArtSize } from './artSize'
 import { GRAB_PALETTE, GRAB_PIXELS } from './prizeArt'
 import { type Palette, pixelRuns } from './sprite'
 import { TRAP_ICON_PIXELS } from './sprites/traps'
@@ -49,8 +50,13 @@ export const pixelIconUrl: {
       ),
       Array.join(''),
     )
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${iconWidth(pixels)} ${pixels.length}"${fit === 'Stretch' ? ' preserveAspectRatio="none"' : ''} shape-rendering="crispEdges">${rects}</svg>`
-    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+    const width = iconWidth(pixels)
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${pixels.length}"${fit === 'Stretch' ? ' preserveAspectRatio="none"' : ''} shape-rendering="crispEdges">${rects}</svg>`
+    const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+    if (fit === 'Keep') {
+      noteArtSize(url, { width, height: pixels.length })
+    }
+    return url
   },
 )
 

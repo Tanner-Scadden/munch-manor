@@ -24,6 +24,7 @@ import {
   playerSprites,
   printSwatchRows,
 } from '../../../../art/appearance'
+import { pixelArtStyle } from '../../../../art/artSize'
 import { DICE_ICON, pixelIconUrl } from '../../../../art/icons'
 import { type Facing, frameAt, group } from '../../../../art/sprite'
 import { gunPictureOf, gunSprite } from '../../../../art/sprites/guns'
@@ -101,8 +102,10 @@ const isPrint = (value: string): value is Print =>
 const isSkin = (value: string): value is GunSkin =>
   Array.some(GunSkin.literals, skin => skin === value)
 
+// NOTE: a print's flag, 30 by 18, so its 1, 3, or 6 stripes and a pixel
+// print's 6 by 3 each take whole CSS px.
 const FLAG_WIDTH = 30
-const FLAG_HEIGHT = 20
+const FLAG_HEIGHT = 18
 
 const stripesUrl = (colors: ReadonlyArray<string>): string => {
   const height = FLAG_HEIGHT / colors.length
@@ -439,7 +442,7 @@ const stageChildren = (
       h.span([
         h.Class('profile-dice-icon'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: DICE_ICON }),
+        h.Style(pixelArtStyle(DICE_ICON)),
       ]),
     ],
   ),
@@ -575,9 +578,7 @@ const sectionsView = (
                   h.span([
                     h.Class('look-section-icon'),
                     h.AriaHidden(true),
-                    h.Style({
-                      backgroundImage: SECTION_LOOKS[option.value].icon,
-                    }),
+                    h.Style(pixelArtStyle(SECTION_LOOKS[option.value].icon)),
                   ]),
                   h.span(
                     [...option.label, h.Class('look-section-word')],
@@ -616,16 +617,14 @@ const optionFace = (
     return h.span([
       h.Class('look-hat-icon'),
       h.AriaHidden(true),
-      h.Style({
-        backgroundImage: hatIconOf(chooseLook(appearance, part, value)),
-      }),
+      h.Style(pixelArtStyle(hatIconOf(chooseLook(appearance, part, value)))),
     ])
   }
   if (partView.look === 'Gun') {
     return h.span([
       h.Class('look-gun-icon'),
       h.AriaHidden(true),
-      h.Style({ backgroundImage: partView.swatch(value, appearance) }),
+      h.Style(pixelArtStyle(partView.swatch(value, appearance))),
     ])
   }
   if (partView.look === 'Figure' || partView.look === 'Head') {
@@ -634,12 +633,11 @@ const optionFace = (
         partView.look === 'Figure' ? 'look-figure-icon' : 'look-head-icon',
       ),
       h.AriaHidden(true),
-      h.Style({
-        backgroundImage: partIconOf(
-          chooseLook(appearance, part, value),
-          partView.look,
+      h.Style(
+        pixelArtStyle(
+          partIconOf(chooseLook(appearance, part, value), partView.look),
         ),
-      }),
+      ),
     ])
   }
   return h.span([
@@ -822,7 +820,7 @@ const toggleView = (
       h.span([
         h.Class('look-head-icon'),
         h.AriaHidden(true),
-        h.Style({ backgroundImage: partIconOf(shown, 'Head') }),
+        h.Style(pixelArtStyle(partIconOf(shown, 'Head'))),
       ]),
     ],
   )

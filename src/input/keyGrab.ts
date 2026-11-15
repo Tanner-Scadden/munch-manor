@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { ApplicationViewBuilder } from '../app/composition'
 import type { Model } from '../app/model'
+import { pixelArtStyle } from '../art/artSize'
 import { pixelIconUrl } from '../art/icons'
 
 // KEYS A BROWSER EXTENSION GRABS
@@ -108,11 +109,11 @@ export const keyGrabToastView: {
             [
               h.span([
                 h.Class('key-grab-icon'),
-                h.Style({ backgroundImage: KEYBOARD_ICON }),
+                h.Style(pixelArtStyle(KEYBOARD_ICON)),
               ]),
               h.span([
                 h.Class('key-grab-icon'),
-                h.Style({ backgroundImage: NO_EXTENSION_ICON }),
+                h.Style(pixelArtStyle(NO_EXTENSION_ICON)),
               ]),
             ],
           ),
