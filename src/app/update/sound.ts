@@ -26,13 +26,16 @@ import { maybeKitchenSound } from '../../features/kitchen/kitchenCall'
 import { STATION_SOUNDS } from '../../features/stations/stationView'
 import { strikesBetween } from '../../render/actionPose'
 import { mendedSpots } from '../../render/heroTells'
+import { maybeDripHeard } from '../../render/iso/leaks'
 import { didStrikeBetween } from '../../render/iso/mood'
 import type { Motion } from '../../render/renderSchema'
 import { PICKUPS } from '../../world/gear/powerups'
 import { TRAPS } from '../../world/gear/traps'
 import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
 import { PANTRY_SOUNDS } from '../../world/kitchen/pantry'
+import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
+import { isRoundActive } from '../../world/waves/waves'
 import { ZOMBIE_KINDS, isArmorShedAt } from '../../world/zombies/zombies'
 import {
   ApplicationBlock,
@@ -121,23 +124,21 @@ export const PlaySound = ApplicationBlock.makeCommand('PlaySound', {
 
 // NOTE: the music box's tune, placed by where it is from the player
 // (src/features/dare/musicBox.ts).
-export const PlayTune = ApplicationBlock.makeCommand('PlayTune', {
-  args: { volume: Schema.Finite, pan: Schema.Finite },
+// NOTE: a sound from a spot in the house, louder the nearer it is to the
+// player and panned to its side: the music box's tune, a roof leak's drip.
+export const PlayPlaced = ApplicationBlock.makeCommand('PlayPlaced', {
+  args: { sound: SoundEffect, volume: Schema.Finite, pan: Schema.Finite },
   messages: [Message.CompletedPlaySound, Message.FailedPlaySound],
   handler: function* () {
-    return ({ volume, pan }) =>
+    return ({ sound, volume, pan }) =>
       pipe(
         AudioEngineResource.get,
-        Effect.flatMap(engine =>
-          playSoundAt(engine, 'MusicBox', { volume, pan }),
-        ),
-        Effect.map(outcome =>
-          Message.CompletedPlaySound({ sound: 'MusicBox', outcome }),
-        ),
+        Effect.flatMap(engine => playSoundAt(engine, sound, { volume, pan })),
+        Effect.map(outcome => Message.CompletedPlaySound({ sound, outcome })),
         Effect.catch(error =>
           Effect.succeed(
             Message.FailedPlaySound({
-              sound: 'MusicBox',
+              sound,
               reason: audioFailureReason(error),
             }),
           ),
@@ -439,21 +440,44 @@ export const playSounds =
     }
   }
 
-// NOTE: the music box's tune between two frames, when it is due and heard.
-export const playTune: {
+// NOTE: a roof leak's drop landing between two frames near the focused
+// player (src/render/iso/leaks.ts), in a round, read off the World's clock.
+const maybeDripCue = (before: Model, after: Model) =>
+  isRoundActive(after.phase)
+    ? maybeDripHeard({
+        world: after,
+        level: levelOf(after),
+        listener: focusOf(after).player,
+        previousMs: before.elapsedMs,
+      })
+    : Option.none()
+
+// NOTE: the placed sounds between two frames, when they are due and heard:
+// the music box's tune and the nearest drip.
+export const playPlaced: {
   (after: Model): (before: Model) => UpdateStep
   (before: Model, after: Model): UpdateStep
 } = Function.dual(
   2,
   (before: Model, after: Model): UpdateStep =>
     stepModel =>
-      Option.match(maybeTuneCue(before, after), {
-        onNone: () => ({ model: stepModel }),
-        onSome: placement =>
-          isSoundAudible(stepModel)
-            ? { model: stepModel, commands: [PlayTune(placement)] }
-            : { model: stepModel },
-      }),
+      isSoundAudible(stepModel)
+        ? {
+            model: stepModel,
+            commands: [
+              ...Option.toArray(
+                Option.map(maybeTuneCue(before, after), placement =>
+                  PlayPlaced({ sound: 'MusicBox', ...placement }),
+                ),
+              ),
+              ...Option.toArray(
+                Option.map(maybeDripCue(before, after), placement =>
+                  PlayPlaced({ sound: 'Drip', ...placement }),
+                ),
+              ),
+            ],
+          }
+        : { model: stepModel },
 )
 
 export const uiCue = (sound: SoundEffect): SoundCue => ({ sound, variation: 0 })

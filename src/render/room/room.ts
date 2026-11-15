@@ -49,6 +49,7 @@ import {
 import {
   CHANDELIER_SPRITES,
   type ChandelierState,
+  DINING_RUGS,
   diningFloorShapes,
   diningRugShapes,
   diningWallDecorShapes,
@@ -67,6 +68,7 @@ import {
   openedExitShapes,
 } from './kitchenView'
 import {
+  LIBRARY_RUG,
   SHELF_SHAPES,
   ladderShapes,
   libraryFloorShadeShapes,
@@ -170,6 +172,30 @@ export const roomBoxOf: {
     })),
   ),
 )
+
+// NOTE: each room's rugs and runners, from its top left on its map.
+const RUGS_BY_ROOM: ReadonlyArray<
+  Readonly<{ roomId: string; rugs: ReadonlyArray<Box> }>
+> = [
+  { roomId: PARLOUR_ROOM_ID, rugs: [PARLOUR_RUG] },
+  { roomId: DINING_ROOM_ID, rugs: DINING_RUGS },
+  { roomId: LIBRARY_ROOM_ID, rugs: [LIBRARY_RUG] },
+]
+
+// NOTE: every rug and runner on the level, on the level's map, for what
+// must keep off them (a roof leak's puddle).
+export const rugsOf = (level: Level): ReadonlyArray<Box> =>
+  Array.flatMap(RUGS_BY_ROOM, ({ roomId, rugs }) =>
+    Option.match(roomBoxOf(level, roomId), {
+      onNone: () => [],
+      onSome: room =>
+        Array.map(rugs, rug => ({
+          ...rug,
+          x: room.x + rug.x,
+          y: room.y + rug.y,
+        })),
+    }),
+  )
 
 const inRoom = (
   level: Level,

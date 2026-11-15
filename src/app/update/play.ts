@@ -97,10 +97,10 @@ import {
   fridgeLandCues,
   kitchenCues,
   mendCues,
+  playPlaced,
   playSounds,
   playStartSoundWhen,
   playSwapSoundWhen,
-  playTune,
   pocketScratchCues,
   strikeCues,
   thunderCues,
@@ -437,7 +437,7 @@ export const tickFrame = (deltaTime: number) =>
           ...thunderCues(model, advanced),
           ...pocketScratchCues(model, advanced),
         ]),
-        playTune(model, advanced),
+        playPlaced(model, advanced),
         rumbleFor(advanced.frameEvents),
       ])
     } else if (isEndScreen(model.phase)) {

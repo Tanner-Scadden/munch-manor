@@ -53,7 +53,7 @@ import { ReadBeatLink } from '../app/update/beatMyRun'
 import { ReadRoomLink } from '../app/update/coop'
 import { CueMusic } from '../app/update/music'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
-import { PlaySound, PlayTune } from '../app/update/sound'
+import { PlayPlaced, PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
 import { Message as CoopMessage } from '../features/coop/message'
 import { ChangeLobby, FocusCoopElement } from '../features/coop/steps'
@@ -1040,12 +1040,12 @@ export const settleRunCommands = <StoryModel, StoryMessage, OutMessage>(
               Message.CompletedCueMusic({ mood: cue.mood }),
             )(current),
           onNone: () =>
-            Option.match(Story.Command.argsOf(PlayTune)(command), {
-              onSome: placement =>
+            Option.match(Story.Command.argsOf(PlayPlaced)(command), {
+              onSome: placed =>
                 Story.Command.resolve(
-                  PlayTune(placement),
+                  PlayPlaced(placed),
                   Message.CompletedPlaySound({
-                    sound: 'MusicBox',
+                    sound: placed.sound,
                     outcome: 'Played',
                   }),
                 )(current),
