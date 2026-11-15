@@ -39,7 +39,15 @@ const COMMAND = isFull ? 'bun run test:full' : 'bun run test'
 const runVitest = (extraArgs: ReadonlyArray<string>) =>
   Effect.gen(function* () {
     const exitCode = yield* runChild(
-      ['vitest', 'run', ...TIER_ARGUMENTS, ...extraArgs, ...passedOn],
+      [
+        'vitest',
+        'run',
+        '--configLoader',
+        'native',
+        ...TIER_ARGUMENTS,
+        ...extraArgs,
+        ...passedOn,
+      ],
       {},
     ).pipe(Effect.orDie)
     if (exitCode !== 0) {

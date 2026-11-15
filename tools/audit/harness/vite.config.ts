@@ -16,7 +16,7 @@ const settings = Effect.runSync(
     const path = yield* Path.Path
     const profile = yield* Config.String('PROFILE').pipe(Config.withDefault(''))
     return {
-      game: path.resolve(__dirname, '../../..'),
+      game: path.resolve(import.meta.dirname, '../../..'),
       isProfile: profile !== '',
     }
   }).pipe(Effect.provide(Path.layer)),
@@ -25,7 +25,7 @@ const GAME = settings.game
 const isProfile = settings.isProfile
 
 export default defineConfig({
-  root: __dirname,
+  root: import.meta.dirname,
   publicDir: `${GAME}/public`,
   plugins: [tailwindcss(), ...foldkitBrandingViews(), spriteAtlas()],
   define: {
@@ -33,14 +33,16 @@ export default defineConfig({
     'import.meta.env.VITE_COOP': encodeString('On'),
   },
   resolve: { alias: { '@game': `${GAME}/src` } },
-  server: { fs: { allow: [GAME, __dirname] } },
+  server: { fs: { allow: [GAME, import.meta.dirname] } },
   optimizeDeps: {
     entries: ['entry.ts'],
     exclude: ['@sqlite.org/sqlite-wasm'],
   },
   worker: { format: 'es' },
   build: {
-    outDir: isProfile ? `${__dirname}/dist-profile` : `${__dirname}/dist`,
+    outDir: isProfile
+      ? `${import.meta.dirname}/dist-profile`
+      : `${import.meta.dirname}/dist`,
     emptyOutDir: true,
     minify: !isProfile,
   },

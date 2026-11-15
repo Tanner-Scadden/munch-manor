@@ -216,6 +216,8 @@ const serve = Effect.gen(function* () {
       [
         'vite',
         'preview',
+        '--configLoader',
+        'native',
         '--port',
         globalThis.String(PREVIEW_PORT),
         '--strictPort',
