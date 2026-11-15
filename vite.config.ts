@@ -1,4 +1,5 @@
 import { Array, Option, Record, String } from 'effect'
+import { fileURLToPath } from 'node:url'
 import { type Plugin, type Rollup, defineConfig } from 'vite'
 
 import tailwindcss from '@tailwindcss/vite'
@@ -74,8 +75,14 @@ const earlyEntry = (): Plugin => ({
   },
 })
 
+// NOTE: the audit harness's own import root, so `bun dev` also serves the
+// harness at /tools/audit/harness/, which Munch Studio shows its live 3D
+// rooms through (tools/studio/README.md).
+const GAME_SOURCE = fileURLToPath(new URL('./src', import.meta.url))
+
 export default defineConfig({
   base: './',
+  resolve: { alias: { '@game': GAME_SOURCE } },
   plugins: [
     tailwindcss(),
     ...foldkitBrandingViews(),

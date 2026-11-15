@@ -39,10 +39,12 @@ import { view } from '@game/app/view'
 import { quietCoopNet } from '@game/features/coop/testing'
 import { quietLayer as quietInstallPrompt } from '@game/platform/install'
 import { layer as PlayerStoreLayer } from '@game/platform/store'
-import { defineWorldElement } from '@game/render/iso/element'
+import { worldCameraFor } from '@game/render/camera'
+import { defineWorldElement, snapshotWorld } from '@game/render/iso/element'
 import { screenOf } from '@game/render/screen'
 import { RATTLES_BOX, START_LEVEL } from '@game/world/level/arena'
 
+import { BRIDGE_KEY, type StudioBridge } from '../../studio/bridge.ts'
 import { cardShapes } from './cards'
 import { type HarnessConfig, decodeHarnessConfig } from './config'
 import * as Director from './director'
@@ -402,7 +404,16 @@ const recordUpdate = ({
 
 defineWorldElement()
 
-const startScene = () =>
+// NOTE: `nohud` hides what stands over the world (harness.css), per scene.
+const startScene = () => {
+  document.documentElement.toggleAttribute(
+    'data-nohud',
+    page.settings.config.nohud,
+  )
+  return embedScene()
+}
+
+const embedScene = () =>
   Runtime.embed(
     Program.make({
       block: ApplicationBlock,
@@ -484,6 +495,31 @@ const loadScene = (query: string) =>
   })
 
 window.__loadScene = query => Effect.runPromise(loadScene(query))
+
+// NOTE: what Munch Studio reads of the scene it shows in its frame
+// (tools/studio/bridge.ts): the world camera, the world view's box, and a
+// copy of the world's pixels for its loupe and a note's picture.
+const studioBridge: StudioBridge = {
+  view: () => {
+    const box = document.querySelector('.world-view')?.getBoundingClientRect()
+    if (box === undefined) {
+      return undefined
+    }
+    const camera = worldCameraFor(window.__model, screenOf(window.__model))
+    return {
+      cameraX: camera.x,
+      cameraY: camera.y,
+      viewWidth: camera.width,
+      viewHeight: camera.height,
+      left: box.left,
+      top: box.top,
+      width: box.width,
+      height: box.height,
+    }
+  },
+  snapshot: () => Option.getOrUndefined(snapshotWorld()),
+}
+Reflect.set(window, BRIDGE_KEY, studioBridge)
 
 window.__stall = RATTLES_BOX
 window.__doors = START_LEVEL.doors

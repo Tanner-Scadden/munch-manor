@@ -33,12 +33,14 @@ import {
   zoomed,
 } from './drawing'
 import { inspectorView } from './inspectorView'
+import { harnessQueryOf } from './liveScene'
 import type { Tile } from './notes'
 import { areaShapes, pinAt } from './pins'
 import { roomFrameOf, roomTargetOf, tileOfPin } from './room'
 import { sidebarView } from './sidebarView'
 import { stageView } from './stageView'
 import { pickedEntry } from './update'
+import { studioWorld } from './worldStage'
 
 // GALLERY
 
@@ -280,6 +282,54 @@ const roomView = (model: Model, h: StudioViewBuilder): Html => {
   )
 }
 
+// THE LIVE ROOM
+
+// NOTE: the manor through the game's own 3D renderer (./worldStage.ts): the
+// harness's scene in a frame, the Studio's marks over it, and the loupe.
+const liveView = (model: Model, h: StudioViewBuilder): Html => {
+  const world = studioWorld.withMessage(h)
+  return h.main(
+    [h.Class('middle')],
+    [
+      h.p(
+        [h.Class('gallery-hint')],
+        [
+          model.liveTool === 'Loupe'
+            ? '🔍 Hover the room to see its pixels up close.'
+            : '👆 Drag over the room to pick tiles for a note, or tap just one.',
+        ],
+      ),
+      world(
+        [
+          h.Key('live-world'),
+          h.Class('live-world'),
+          world.Query(
+            harnessQueryOf({ scene: model.live, house: model.house }),
+          ),
+          world.Marks({
+            tool: model.liveTool,
+            isGridOn: model.isGridOn,
+            hover: Option.getOrNull(model.maybeHoverTile),
+            draft: Option.getOrNull(model.maybeDraftArea),
+            areas: Array.flatMap(
+              notesFor(model, roomTargetOf(model.room)),
+              note =>
+                note.area === null
+                  ? []
+                  : [{ area: note.area, isDone: note.status === 'Done' }],
+            ),
+          }),
+          world.OnHoverTile(tile => Message.HoveredTile({ tile })),
+          world.OnPressTile(tile => Message.PressedRoomTile({ tile })),
+          world.OnReleaseTile(() => Message.ReleasedRoom()),
+          world.OnLeaveWorld(() => Message.LeftRoom()),
+        ],
+        [],
+      ),
+    ],
+  )
+}
+
 // NOTE: Foldkit knows a view by the very function makeView returns, so a
 // dual wrapper would be a view it does not know.
 // @effect-diagnostics-next-line missingPipeableSignature:off
@@ -295,7 +345,11 @@ export const view = StudioComposition.makeView((model, h) => ({
     [h.Class('studio')],
     [
       sidebarView(model, h),
-      model.tab === 'Rooms' ? roomView(model, h) : galleryView(model, h),
+      model.tab === 'Rooms'
+        ? model.room === 'Live'
+          ? liveView(model, h)
+          : roomView(model, h)
+        : galleryView(model, h),
       inspectorView(model, h),
     ],
   ),

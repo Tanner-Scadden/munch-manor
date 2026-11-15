@@ -370,6 +370,59 @@
       .room .pins {
         touch-action: none;
       }
+      studio-world {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .live-host {
+        position: relative;
+        width: 100%;
+        max-width: 1280px;
+        aspect-ratio: 16 / 9;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #000;
+        box-shadow:
+          0 0 0 1px var(--line-strong),
+          0 12px 32px rgba(0, 0, 0, 0.45);
+      }
+      .live-frame,
+      .live-marks {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+      }
+      .live-marks {
+        cursor: crosshair;
+        touch-action: none;
+      }
+      .live-loupe {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        image-rendering: pixelated;
+        pointer-events: none;
+        border-radius: 6px;
+        box-shadow:
+          0 0 0 2px #ff2fd6,
+          0 8px 24px rgba(0, 0, 0, 0.6);
+      }
+      .live-readout {
+        margin: 0;
+        font:
+          12px/1.4 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        color: var(--text-2);
+      }
+      .live-shot {
+        display: none;
+      }
       .toolbar {
         display: flex;
         flex-wrap: wrap;

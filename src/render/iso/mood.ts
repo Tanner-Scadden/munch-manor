@@ -148,6 +148,11 @@ const flashAt = (sinceMs: number): number => {
 const strikeStartIn = (window: number, windowMs: number): number =>
   window * windowMs + unitOf(window) * (windowMs - STRIKE_MS)
 
+// NOTE: the World's clock at a strike's brightest, in a wave's first
+// window but one, for the tools that stage one (Munch Studio's live rooms).
+export const strikeClockOf = (wave: number): number =>
+  strikeStartIn(1, windowMsOf(wave)) + 10
+
 // NOTE: how bright the lightning is now, 0 to 1. Only in a round: the
 // intro and the end card keep their own light.
 export const strikeOf = (world: World): number => {
