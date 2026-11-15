@@ -32,9 +32,9 @@ export const AMBIENT = 0.2 * Math.PI
 
 // NOTE: a view shades at most 32 lights. The rooms' own lights and the
 // cellar's dark always shine; the flames nearest the player take what is
-// left, less the four the scene keeps (the lamp, the muzzle flash, and two
-// to spare).
-const LIGHT_BUDGET = 32 - 4
+// left, less the five the scene keeps (the lamp, the muzzle flash, a
+// blast's flash, and two to spare).
+const LIGHT_BUDGET = 32 - 5
 
 // NOTE: each room's light: its color, and how bright its middle is, as a
 // share of the art's own color over the ambient.

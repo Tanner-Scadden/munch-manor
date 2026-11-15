@@ -47,6 +47,12 @@ export class Textures {
   private readonly normals = new Map<TextureSource, Texture>()
   // NOTE: the address each loaded source came from, to find its normal map.
   private readonly addresses = new Map<TextureSource, string>()
+  // NOTE: each loaded source's image and its whole texture, so a crop's
+  // pixels can be read and its voxels colored from the whole sheet.
+  private readonly images = new Map<TextureSource, HTMLImageElement>()
+  private readonly sheets = new Map<TextureSource, Texture>()
+  // NOTE: each crop's solid pixels (1) and clear ones (0), read once.
+  private readonly solids = new Map<Texture, Uint8Array>()
   // NOTE: the atlas's normal maps, loaded at a lit sprite's first draw, after
   // the splash; apart from `sources`, so they never hold the splash, take its
   // bandwidth, or repaint the floor.
@@ -91,6 +97,8 @@ export class Textures {
       const texture = Texture.from(image)
       this.sources.set(src, texture)
       this.addresses.set(texture.source, src)
+      this.images.set(texture.source, image)
+      this.sheets.set(texture.source, texture)
       this.pending -= 1
       this.loaded += 1
       this.onLoaded()
@@ -144,6 +152,42 @@ export class Textures {
     })
     this.crops.set(key, texture)
     return texture
+  }
+
+  // NOTE: the whole sheet a crop is cut from, or nothing for a texture the
+  // renderer drew itself.
+  sheetOf(texture: Texture): Texture | undefined {
+    return this.sheets.get(texture.source)
+  }
+
+  // NOTE: which of a crop's pixels are solid, row by row (an alpha of at
+  // least half), read off its image once, or nothing for a texture the
+  // renderer drew itself.
+  solidOf(texture: Texture): Uint8Array | undefined {
+    const known = this.solids.get(texture)
+    if (known !== undefined) {
+      return known
+    }
+    const image = this.images.get(texture.source)
+    const { x, y, width, height } = texture.frame
+    if (image === undefined || width < 1 || height < 1) {
+      return undefined
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (context === null) {
+      return undefined
+    }
+    context.drawImage(image, x, y, width, height, 0, 0, width, height)
+    const pixels = context.getImageData(0, 0, width, height).data
+    const solid = new Uint8Array(width * height)
+    for (let index = 0; index < solid.length; index += 1) {
+      solid[index] = (pixels[index * 4 + 3] ?? 0) >= 128 ? 1 : 0
+    }
+    this.solids.set(texture, solid)
+    return solid
   }
 
   // NOTE: a texture's shape in plain white, baked once, so a tint gives a
@@ -259,6 +303,9 @@ export class Textures {
     this.normals.clear()
     this.normalSheets.clear()
     this.addresses.clear()
+    this.images.clear()
+    this.sheets.clear()
+    this.solids.clear()
     this.silhouettes.clear()
     this.crops.clear()
     this.sources.clear()

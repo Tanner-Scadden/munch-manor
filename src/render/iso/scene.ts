@@ -45,8 +45,9 @@ import { type BrowserError, toBrowserError } from '../../shared/describeError'
 import type { Level } from '../../world/level/arena'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
+import type { Drawable } from '../depth'
 import {
-  airborneParticleShapes,
+  airborneParticlesOf,
   decalShapes,
   groundParticleShapes,
 } from '../effectsView'
@@ -57,6 +58,7 @@ import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { airOf } from './air'
 import { BillboardPool, BodyCasters, rimUp } from './billboards'
 import { crittersOf } from './critters'
+import { blastLightOf, blastPiecesOf } from './explosions'
 import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
@@ -75,9 +77,19 @@ import { AMBIENT, lightsFrameOf } from './lightSpecs'
 import { type HouseLights, houseLightsOf } from './lights'
 import { mixColor } from './mood'
 import { FloorLayer } from './painter'
+import {
+  auraCubesOf,
+  auraFeetOf,
+  auraFrameOf,
+  castingLeavesOf,
+  isPowerupImage,
+  pickupRingOf,
+  pickupSpinOf,
+} from './powerups'
 import { PITCH, STRETCH, UNIT, canvasStepOf, zOf } from './space'
 import { FAR_KEY, stormKeyOf, stormOf, stormTilesOf } from './storm'
-import { Textures } from './textures'
+import { Textures, colorOf } from './textures'
+import { VoxelBatch } from './voxels'
 import { chandelierSwayAt, windClockOf } from './wind'
 
 // NOTE: the lightning's flash: a cold white, at its peak four times
@@ -88,6 +100,25 @@ const STORM_LIFT = AMBIENT * 3
 const BACKGROUND = 0x16121c
 const CAMERA_DISTANCE = 80
 const TRACER_RADIUS = 0.05
+
+// NOTE: what stands as voxels (voxels.ts): whatever moves or is picked up.
+// The house's own pieces (furniture, Rattles, the fridge) stay billboards.
+const VOXEL_RANKS: ReadonlySet<Drawable['rank']> = new Set([
+  'Zombie',
+  'Player',
+  'Pickup',
+  'Trap',
+])
+
+// NOTE: `?billboards` in the address stands the bodies as flat billboards
+// again, to compare.
+const IS_VOXEL = !new URLSearchParams(window.location.search).has('billboards')
+
+// NOTE: a blast's flash of light: its color, its peak, and its reach, as
+// many times the blast's own radius.
+const BLAST_LIGHT_COLOR = 0xffa850
+const BLAST_LIGHT_PEAK = 60
+const BLAST_LIGHT_REACH = 2.5
 
 // NOTE: whatever floats overhead stands this far over its own bottom edge,
 // so it never sinks into what it hangs over.
@@ -179,6 +210,9 @@ export class IsoScene {
   private readonly glowing: BillboardPool
   private readonly rims: BillboardPool
   private readonly bodies: BodyCasters
+  private readonly voxels: VoxelBatch
+  // NOTE: the newest blast's flash over the room.
+  private readonly blastLight: PointLight
   private built: Built | undefined
   private casters: Container3D | undefined
   private casterTextures: ReadonlyArray<Texture> = []
@@ -213,7 +247,12 @@ export class IsoScene {
     root.addChild(this.ambient, this.storm)
     this.lamp = new PointLight({ color: 0xffc27a, intensity: 6, range: 6 })
     this.flash = new PointLight({ color: 0xffe08a, intensity: 0, range: 7 })
-    root.addChild(this.lamp, this.flash)
+    this.blastLight = new PointLight({
+      color: BLAST_LIGHT_COLOR,
+      intensity: 0,
+      range: 4,
+    })
+    root.addChild(this.lamp, this.flash, this.blastLight)
     this.tracerMaterial = new Material3D({
       baseColor: 0x000000,
       emissive: { color: 0xffb040, strength: 6 },
@@ -250,6 +289,7 @@ export class IsoScene {
     })
     this.rims = new BillboardPool({ parent: standing, textures, isLit: false })
     this.bodies = new BodyCasters({ parent: standing, textures })
+    this.voxels = new VoxelBatch({ parent: standing, textures })
   }
 
   draw(
@@ -367,21 +407,29 @@ export class IsoScene {
     this.glowing.begin()
     this.rims.begin()
     this.bodies.begin()
+    this.voxels.begin()
     for (const drawable of strata.standing) {
       const maybePiece = furnitureOf(built.furniture, drawable.shapes)
       if (Option.isSome(maybePiece)) {
         fades.set(maybePiece.value.piece, maybePiece.value.opacity)
       } else {
-        const leaves = flatten(drawable.shapes)
-        // NOTE: a hit flash glows white in any light, the cellar's dark too,
-        // so it stands with what glows of itself rather than what is lit.
-        const lit: Array<Leaf> = []
-        const flashing: Array<Leaf> = []
-        for (const leaf of leaves) {
-          ;(isFlashShape(leaf.shape) ? flashing : lit).push(leaf)
+        const flattened = flatten(drawable.shapes)
+        const isVoxel = IS_VOXEL && VOXEL_RANKS.has(drawable.rank)
+        const leaves = isVoxel ? castingLeavesOf(flattened) : flattened
+        if (isVoxel) {
+          this.standBody(flattened, drawable.footY, model.elapsedMs)
+        } else {
+          // NOTE: a hit flash glows white in any light, the cellar's dark
+          // too, so it stands with what glows of itself rather than what is
+          // lit.
+          const lit: Array<Leaf> = []
+          const flashing: Array<Leaf> = []
+          for (const leaf of leaves) {
+            ;(isFlashShape(leaf.shape) ? flashing : lit).push(leaf)
+          }
+          this.billboards.standLeaves(lit, drawable.footY, 0, 1)
+          this.glowing.standLeaves(flashing, drawable.footY, 0, 1)
         }
-        this.billboards.standLeaves(lit, drawable.footY, 0, 1)
-        this.glowing.standLeaves(flashing, drawable.footY, 0, 1)
         rimUp({
           pool: this.rims,
           textures: this.textures,
@@ -409,13 +457,41 @@ export class IsoScene {
     // NOTE: a rattle jolts the chandelier on its chain, a whole pixel at a
     // time.
     const sway = chandelierSwayAt(t) + Math.round(Math.sin(t * 38) * rattle * 3)
-    // NOTE: sparks, blood, and dust in the air are lit as the bodies are, so
-    // they vanish into the cellar's dark with them.
-    const airborne = rectKeysOf(
-      flatten(airborneParticleShapes(model.particles)),
-    )
+    // NOTE: sparks, blood, and gibs in the air stand as cubes, lit as the
+    // bodies are, so they vanish into the cellar's dark with them; one with
+    // a see-through color stays a lit billboard.
+    const airborne = new Set<string>()
+    const cubed = new Set<string>()
+    for (const particle of airborneParticlesOf(model.particles)) {
+      const { shape } = particle
+      if (shape._tag !== 'Rect') {
+        continue
+      }
+      const key = rectKey(shape)
+      airborne.add(key)
+      const look = colorOf(shape.fill ?? '#000')
+      if (
+        IS_VOXEL &&
+        look.alpha >= 0.98 &&
+        this.voxels.standCube({
+          x: particle.x,
+          footY: particle.footY,
+          rise: particle.rise,
+          width: shape.width,
+          height: shape.height,
+          color: look.color,
+          glow: 0,
+        })
+      ) {
+        cubed.add(key)
+      }
+    }
+    this.standBlasts(model)
     for (const leaf of flatten(strata.overhead)) {
       const { shape, matrix, alpha } = leaf
+      if (shape._tag === 'Rect' && cubed.has(rectKey(shape))) {
+        continue
+      }
       const isChandelier =
         shape._tag === 'Image' && chandelier.has(imageKey(shape, matrix))
       const isLitInAir =
@@ -457,6 +533,7 @@ export class IsoScene {
     this.glowing.end()
     this.rims.end()
     this.bodies.end()
+    this.voxels.end()
 
     // THE LIGHTS
     const px = player.x * UNIT
@@ -494,6 +571,118 @@ export class IsoScene {
     this.drawTracers(model)
 
     this.app.render()
+  }
+
+  // NOTE: a body's sprites as voxels, each part nudged ahead of the last as
+  // the 2D game drew it over; a hit flash's as glowing white blocks. A part
+  // that cannot stand as voxels stands as a billboard.
+  private standBody(
+    leaves: ReadonlyArray<Leaf>,
+    footY: number,
+    elapsedMs: number,
+  ): void {
+    const isPowerup = Array.some(
+      leaves,
+      ({ shape }) => shape._tag === 'Image' && isPowerupImage(shape),
+    )
+    let part = 0
+    for (const leaf of leaves) {
+      const { shape, matrix } = leaf
+      if (shape._tag === 'Image' && Option.isSome(auraFrameOf(shape))) {
+        this.standAura(shape, matrix)
+      } else if (isPowerup && shape._tag === 'Circle') {
+        this.standPickupRing(shape, matrix, footY, elapsedMs)
+      } else {
+        const isFlash = isFlashShape(shape)
+        const spin =
+          shape._tag === 'Image' && isPowerupImage(shape)
+            ? pickupSpinOf({ elapsedMs, x: matrix.e })
+            : undefined
+        if (
+          !this.voxels.standLeaf({
+            leaf,
+            footY,
+            part,
+            isFlash,
+            ...(spin === undefined ? {} : { spin }),
+          })
+        ) {
+          ;(isFlash ? this.glowing : this.billboards).standLeaf(
+            leaf,
+            footY,
+            part,
+          )
+        }
+      }
+      part += 1
+    }
+  }
+
+  // NOTE: a boost's aura as blocks round the feet, the frame the game drew.
+  private standAura(image: Canvas.Image, matrix: Leaf['matrix']): void {
+    Option.match(auraFrameOf(image), {
+      onNone: () => undefined,
+      onSome: ({ kind, frame }) => {
+        for (const cube of auraCubesOf({
+          kind,
+          frame,
+          feet: auraFeetOf({ image, matrix }),
+        })) {
+          this.voxels.standCube({ ...cube, width: 1, height: 1 })
+        }
+      },
+    })
+  }
+
+  // NOTE: a goodie's glow as a ring of lights on the floor under it.
+  private standPickupRing(
+    circle: Canvas.Circle,
+    matrix: Leaf['matrix'],
+    footY: number,
+    elapsedMs: number,
+  ): void {
+    if (circle.fill === undefined) {
+      return
+    }
+    const { color } = colorOf(circle.fill)
+    for (const cube of pickupRingOf({
+      x: matrix.a * circle.x + matrix.c * circle.y + matrix.e,
+      footY,
+      radius: circle.radius,
+      color,
+      elapsedMs,
+    })) {
+      this.voxels.standCube({ ...cube, width: 1, height: 1 })
+    }
+  }
+
+  // NOTE: every blast's blocks, and the newest one's flash of light over
+  // the room, the brightest while two go off together.
+  private standBlasts(model: Model): void {
+    let brightest = 0
+    for (const blast of model.blasts) {
+      for (const piece of blastPiecesOf(blast)) {
+        this.voxels.standCube({
+          x: piece.x,
+          footY: piece.footY,
+          rise: piece.rise,
+          width: piece.width,
+          height: piece.height,
+          color: piece.color,
+          glow: piece.glow,
+        })
+      }
+      const level = blastLightOf(blast)
+      if (level > brightest) {
+        brightest = level
+        this.blastLight.position.set(blast.x * UNIT, 1.2, zOf(blast.y))
+        this.blastLight.range = Math.max(
+          3,
+          blast.radius * UNIT * BLAST_LIGHT_REACH,
+        )
+      }
+    }
+    this.blastLight.intensity = BLAST_LIGHT_PEAK * brightest
   }
 
   // NOTE: each bullet glows as a tracer over the floor's own drawing.
@@ -661,6 +850,7 @@ export class IsoScene {
 
   destroy(): void {
     this.dropLevel()
+    this.voxels.destroy()
     this.textures.destroy()
     this.app.destroy(true, { children: true })
   }

@@ -564,6 +564,24 @@ const particleShape = (particle: Particle): Canvas.Shape => {
   )
 }
 
+// NOTE: each particle in the air as the 3D renderer stands it: its spot on
+// the floor, how high it flies, and the box the 2D game draws for it.
+export const airborneParticlesOf = (
+  particles: ReadonlyArray<Particle>,
+): ReadonlyArray<
+  Readonly<{ x: number; footY: number; rise: number; shape: Canvas.Shape }>
+> =>
+  Array.filterMap(particles, particle =>
+    isGround(particle)
+      ? Result.failVoid
+      : Result.succeed({
+          x: Math.round(particle.x),
+          footY: Math.round(particle.y),
+          rise: Math.round(particle.z),
+          shape: particleShape(particle),
+        }),
+  )
+
 const particleShapesWhere =
   (isInLayer: (particle: Particle) => boolean) =>
   (particles: ReadonlyArray<Particle>): ReadonlyArray<Canvas.Shape> =>
