@@ -150,7 +150,14 @@ export const releaseAll = (input: Input): Input =>
     moveStick: () => Stick.Idle(),
     aimStick: () => Stick.Idle(),
     holdButton: () => HoldButton.Released(),
+    firePress: () => 'Seen',
   })
+
+// NOTE: a step saw the trigger, so a fire press waiting for one is spent.
+export const seeFirePress = (input: Input): Input =>
+  input.firePress === 'Seen'
+    ? input
+    : modifyFields(input, { firePress: () => 'Seen' })
 
 // NOTE: how far a stick's last point may sit from a finger still on the
 // glass and stay held. A finger's last move can trail its touch a little;
@@ -253,6 +260,7 @@ const pressMouse = (
 ): Input =>
   modifyFields(input, {
     mouseButton: () => MouseButton.Held({ pointerId: press.pointerId }),
+    firePress: () => 'Waiting',
     maybeMouseInView: () =>
       clientToView(surface, { x: press.clientX, y: press.clientY }),
   })
@@ -298,6 +306,18 @@ const moveStickPointer = (stick: Stick, position: PointerPosition): Stick =>
         : stick,
   })
 
+// NOTE: an aim stick pushed into the fire zone is a fire press, which
+// waits for a step as a click does, so a flick in and out between two
+// steps still shoots.
+const pushAimStick = (input: Input, aimStick: Stick): Input =>
+  modifyFields(input, {
+    aimStick: () => aimStick,
+    firePress: firePress =>
+      isAimStickFiring(aimStick) && !isAimStickFiring(input.aimStick)
+        ? 'Waiting'
+        : firePress,
+  })
+
 const isMouseHeldBy = (input: Input, pointerId: number): boolean =>
   MouseButton.match(input.mouseButton, {
     Released: () => false,
@@ -326,10 +346,12 @@ export const movePointer: {
           x: position.clientX,
           y: position.clientY,
         })
-      : modifyFields(input, {
-          moveStick: stick => moveStickPointer(stick, position),
-          aimStick: stick => moveStickPointer(stick, position),
-        }),
+      : pushAimStick(
+          modifyFields(input, {
+            moveStick: stick => moveStickPointer(stick, position),
+          }),
+          moveStickPointer(input.aimStick, position),
+        ),
 )
 
 const releaseStickPointer = (stick: Stick, pointerId: number): Stick =>
@@ -486,6 +508,7 @@ const isAimStickFiring = (stick: Stick): boolean =>
   vectorLength(stickDeflection(stick)) >= STICK_FIRE_ZONE
 
 const triggerOf = (input: Input): Trigger =>
+  input.firePress === 'Waiting' ||
   isAimStickFiring(input.aimStick) ||
   MouseButton.isAnyOf(['Held'])(input.mouseButton) ||
   isPadFiring(input.maybeGamepad)

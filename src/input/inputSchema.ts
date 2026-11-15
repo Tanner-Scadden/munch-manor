@@ -67,6 +67,12 @@ export type Orientation = typeof Orientation.Type
 export const SlotClick = Schema.Literals(['Acts', 'PassesThrough'])
 export type SlotClick = typeof SlotClick.Type
 
+// NOTE: a fire press no game step has seen yet. A click let go before the
+// next step (a quick click on a slow frame) would leave the trigger
+// Released at every step, so the press waits here and holds the trigger for
+// the next step, which marks it Seen (src/app/frame.ts).
+const FirePress = Schema.Literals(['Seen', 'Waiting'])
+
 // NOTE: a controller as last polled (src/input/gamepad.ts): its index, its
 // four stick axes, and each button's value, all in 1/64 steps.
 export const Gamepad = Schema.Struct({
@@ -94,6 +100,7 @@ export const Input = Schema.Struct({
   aimStick: Stick,
   holdButton: HoldButton,
   slotClick: SlotClick,
+  firePress: FirePress,
   maybeGamepad: Schema.Option(Gamepad),
 })
 export type Input = typeof Input.Type
@@ -106,5 +113,6 @@ export const idleInput: Input = {
   aimStick: Stick.Idle(),
   holdButton: HoldButton.Released(),
   slotClick: 'Acts',
+  firePress: 'Seen',
   maybeGamepad: Option.none(),
 }

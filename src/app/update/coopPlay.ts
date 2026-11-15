@@ -41,6 +41,7 @@ import {
   endRoundOnClient,
   leanFor,
   refreshIntent,
+  withFirePressSeen,
 } from '../frame'
 import type { Model } from '../model'
 import { freshRun } from '../runReset'
@@ -383,9 +384,10 @@ export const playRoomFrame = (nowMs: number) =>
         onSome: room => nowMs - room.session.renderedMs,
       }),
     )
+    // NOTE: a fire press goes to the room held for one frame's controls.
     const intended = refreshIntent(stepModel)
     return Update.combineSteps([
-      toModel(intended),
+      toModel(withFirePressSeen(intended)),
       CoopBinding.requestTickRoom({
         controls: inputOfIntent(focusOf(intended).intent, 0),
         nowMs,
