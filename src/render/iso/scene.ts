@@ -29,6 +29,7 @@ import { Application, Texture } from 'pixi.js'
 import {
   AmbientLight,
   Container3D,
+  FlatMaterial,
   Material3D,
   Mesh3D as Mesh,
   type Mesh3D,
@@ -60,6 +61,7 @@ import { type Affine, type Leaf, flatten, rectKey } from './flatten'
 import type { IsoFrame } from './frame'
 import {
   type Plant,
+  buildTileQuads,
   buildWallTops,
   buildWalls,
   floorArtOf,
@@ -72,6 +74,7 @@ import { type HouseLights, houseLightsOf } from './lights'
 import { mixColor } from './mood'
 import { FloorLayer } from './painter'
 import { PITCH, STRETCH, UNIT, canvasStepOf, zOf } from './space'
+import { FAR_KEY, stormKeyOf, stormOf, stormTilesOf } from './storm'
 import { Textures } from './textures'
 import { chandelierSwayAt, windClockOf } from './wind'
 
@@ -97,6 +100,9 @@ type Built = Readonly<{
   // sinks into the cellar's dark where the glows and rings do not.
   landed: FloorLayer
   ground: FloorLayer
+  // NOTE: the storm at the windows (storm.ts), unlit, on its own quads over
+  // the glass and the floor it lights.
+  storm: FloorLayer
   floorArt: ReadonlyArray<Leaf>
   plants: ReadonlyArray<Plant>
   // NOTE: each tall piece by the shapes the game draws it with, to read the
@@ -175,6 +181,8 @@ export class IsoScene {
   private casters: Container3D | undefined
   private casterTextures: ReadonlyArray<Texture> = []
   private lastDecals: unknown
+  // NOTE: what the storm's layer was last painted for (storm.ts).
+  private stormKey: string | undefined
   private lastPreload: ReadonlyArray<string> = []
   private lastLoaded = -1
 
@@ -335,6 +343,19 @@ export class IsoScene {
           !(shape._tag === 'Rect' && landedKeys.has(rectKey(shape))),
       ),
     )
+    const stormKey = stormKeyOf({
+      world: model,
+      level: built.level,
+      viewer: player,
+    })
+    if (stormKey !== this.stormKey) {
+      this.stormKey = stormKey
+      built.storm.paint(
+        stormKey === FAR_KEY
+          ? []
+          : stormOf({ world: model, level: built.level }),
+      )
+    }
 
     // WHAT STANDS
     const flashLevel = muzzleFlashLevel(player)
@@ -524,6 +545,17 @@ export class IsoScene {
     const decals = layer(0.005, true)
     const landed = layer(0.008, true)
     const ground = layer(0.012, false)
+    // NOTE: the storm's picture shows only on its own quads, never on a
+    // plane over the whole level, so its layer's plane is left out.
+    const storm = layer(0, false)
+    const stormQuads = buildTileQuads({
+      level,
+      material: new FlatMaterial({
+        baseColorTexture: storm.texture,
+        alphaMode: 'blend',
+      }),
+      tiles: stormTilesOf(level),
+    })
     const walls = buildWalls({ level, material: this.wallMaterial })
     const wallTops = buildWallTops({
       level,
@@ -534,13 +566,21 @@ export class IsoScene {
         specular: { factor: 0 },
       }),
     })
-    holder.addChild(room.mesh, decals.mesh, landed.mesh, ground.mesh, wallTops)
+    holder.addChild(
+      room.mesh,
+      decals.mesh,
+      landed.mesh,
+      ground.mesh,
+      wallTops,
+      stormQuads,
+    )
     Array.forEach(walls, mesh => {
       holder.addChild(mesh)
     })
     const floorArt = floorArtOf(level)
     room.paintLeaves(floorArt)
     this.lastDecals = undefined
+    this.stormKey = undefined
     const built: Built = {
       level,
       holder,
@@ -548,6 +588,7 @@ export class IsoScene {
       decals,
       landed,
       ground,
+      storm,
       floorArt,
       plants: plantsOf({ app: this.app, level }),
       furniture: new Map(
@@ -594,7 +635,7 @@ export class IsoScene {
     this.rims.release()
     built.holder.destroy({ children: true })
     Array.forEach(
-      [built.room, built.decals, built.landed, built.ground],
+      [built.room, built.decals, built.landed, built.ground, built.storm],
       layer => {
         layer.destroy()
       },

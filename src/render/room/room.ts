@@ -155,7 +155,10 @@ const floorDetailShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
 
 // NOTE: a room's block of the map, where its hand-placed art goes, so the
 // art moves with the room wherever the plan puts it.
-const roomBoxOf = (level: Level, roomId: string): Option.Option<Box> =>
+export const roomBoxOf: {
+  (roomId: string): (level: Level) => Option.Option<Box>
+  (level: Level, roomId: string): Option.Option<Box>
+} = Function.dual(2, (level: Level, roomId: string): Option.Option<Box> =>
   pipe(
     level.rooms,
     Array.findFirst(({ id }) => id === roomId),
@@ -165,7 +168,8 @@ const roomBoxOf = (level: Level, roomId: string): Option.Option<Box> =>
       width: box.right - box.left,
       height: box.bottom - box.top,
     })),
-  )
+  ),
+)
 
 const inRoom = (
   level: Level,

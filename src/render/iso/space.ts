@@ -25,14 +25,14 @@ export const STRETCH = 1 / Math.sin(PITCH)
 
 export const zOf = (gameY: number): number => gameY * UNIT * STRETCH
 
-export const WALL_HEIGHT = 1.4
+const WALL_HEIGHT = 1.4
 
 // NOTE: a wall with floor just north of it, through at most its own two
 // tiles of thickness, stands between the lens and whoever is in that room,
 // so it is built low for good, as the 2D game drew a room's front wall. It
 // never moves: walls that dropped as the player walked by were not liked
 // (owner, 2026-11-14). The side walls and the house's back walls stand tall.
-export const FRONT_WALL_HEIGHT = 0.4
+const FRONT_WALL_HEIGHT = 0.4
 const FRONT_WALL_DEPTH = 2
 const OUTSIDE = ','
 
@@ -100,3 +100,16 @@ export const canvasStepOf = ({
     () => 1,
   )
 }
+
+// NOTE: how tall the wall on a tile is, 0 for no wall.
+export const wallHeightAt = (
+  at: Readonly<{ tiles: ReadonlyArray<string>; row: number; column: number }>,
+): number =>
+  !Option.exists(
+    String.charAt(at.tiles[at.row] ?? '', at.column),
+    symbol => symbol === WALL_SYMBOL,
+  )
+    ? 0
+    : isFrontWallAt(at)
+      ? FRONT_WALL_HEIGHT
+      : WALL_HEIGHT

@@ -1,0 +1,95 @@
+import { Array, Option } from 'effect'
+import { expect, test } from 'vitest'
+
+import type { Model } from '../../../app/model'
+import { atClock, quietWave } from '../../../test/model.fixture'
+import { rectsOf } from '../../../test/viewReading'
+import { levelOf } from '../../../world/level/arena'
+import type { Box } from '../../room/roomPalette'
+import { windowPanesOf } from '../../room/windows'
+import { strikeOf } from '../mood'
+import { FAR_KEY, stormKeyOf, stormOf } from '../storm'
+
+// The storm at the windows (src/render/iso/storm.ts): rain on every pane,
+// a flash on each strike, and its light thrown onto the floor, read off the
+// World's clock alone.
+
+const rainAt = (model: Model, ms: number) => {
+  const world = atClock(model, ms)
+  return rectsOf(stormOf({ world, level: levelOf(world) }), { x: 0, y: 0 })
+}
+
+const wave = quietWave(4)
+const level = levelOf(wave)
+const panes = windowPanesOf(level)
+
+const isInside = ({ x, y, width, height }: Box, box: Box): boolean =>
+  x >= box.x &&
+  y >= box.y &&
+  x + width <= box.x + box.width &&
+  y + height <= box.y + box.height
+
+const clocks = Array.makeBy(30_000 / 10, index => index * 10)
+const calm = Option.getOrThrow(
+  Array.findFirst(clocks, ms => strikeOf(atClock(wave, ms)) === 0),
+)
+const struck = Option.getOrThrow(
+  Array.findFirst(clocks, ms => strikeOf(atClock(wave, ms)) === 1),
+)
+
+test('every window the house draws has its glass, and its light falls below it', () => {
+  expect(panes.length).toBeGreaterThanOrEqual(3)
+  Array.forEach(panes, ({ glass, thrown }) => {
+    expect(glass.width * glass.height).toBeGreaterThan(0)
+    expect(thrown.width * thrown.height).toBeGreaterThan(0)
+  })
+})
+
+test('the rain runs down the glass alone, the same for the same clock', () => {
+  const rain = rainAt(wave, calm)
+  expect(rain.length).toBeGreaterThan(0)
+  expect(
+    Array.every(rain, streak =>
+      Array.some(panes, ({ glass }) => isInside(streak, glass)),
+    ),
+  ).toBe(true)
+  expect(rainAt(wave, calm)).toEqual(rain)
+  expect(rainAt(wave, calm + 100)).not.toEqual(rain)
+})
+
+test('a strike flashes the glass and throws its light on the floor', () => {
+  const flashed = rainAt(wave, struck)
+  Array.forEach(panes, ({ glass, thrown }) => {
+    expect(
+      Array.some(
+        flashed,
+        shape =>
+          shape.x === glass.x &&
+          shape.y === glass.y &&
+          shape.width === glass.width &&
+          shape.height === glass.height,
+      ),
+    ).toBe(true)
+    expect(
+      Array.some(
+        flashed,
+        shape => isInside(shape, thrown) && shape.y >= thrown.y,
+      ),
+    ).toBe(true)
+  })
+  expect(
+    Array.some(rainAt(wave, calm), shape =>
+      Array.some(panes, ({ thrown }) => isInside(shape, thrown)),
+    ),
+  ).toBe(false)
+})
+
+test('the rain keeps still while no window is near the viewer', () => {
+  const near = Option.getOrThrow(Array.head(panes)).glass
+  const keyAt = (ms: number, viewer: Readonly<{ x: number; y: number }>) =>
+    stormKeyOf({ world: atClock(wave, ms), level, viewer })
+  expect(keyAt(calm, near)).not.toBe(keyAt(calm + 100, near))
+  const far = { x: near.x + 2000, y: near.y }
+  expect(keyAt(calm, far)).toBe(FAR_KEY)
+  expect(keyAt(struck, far)).toBe(FAR_KEY)
+})

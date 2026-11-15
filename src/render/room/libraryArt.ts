@@ -200,14 +200,25 @@ const READER_PALETTE: Palette = {
   P: PAGE_COLOR,
 }
 
+const windowSpotOf = (room: Box): Readonly<{ x: number; y: number }> => ({
+  x: room.x + 44,
+  y: room.y + 4,
+})
+
+// NOTE: the glass of the library's arched window, below its arch, where the
+// storm rains and flashes (src/render/iso/storm.ts).
+export const libraryWindowPaneOf = (room: Box): Box => {
+  const { x, y } = windowSpotOf(room)
+  return { x: x + 1, y: y + 2, width: 10, height: 13 }
+}
+
 // NOTE: a tall arched window with the moon in it, between two stretches of
 // paper; a clock stopped at the party's hour; a map with a red X; and a
 // Munch who never looked up from her book.
 export const libraryWallDecorShapes = (
   room: Box,
 ): ReadonlyArray<Canvas.Shape> => {
-  const windowX = room.x + 44
-  const windowY = room.y + 4
+  const { x: windowX, y: windowY } = windowSpotOf(room)
   return [
     rect(windowX - 1, windowY, 14, 16, '#3a2616'),
     rect(windowX + 1, windowY + 2, 10, 13, NIGHT_COLOR),
