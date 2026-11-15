@@ -1,12 +1,4 @@
-import {
-  Array,
-  Config,
-  Console,
-  Effect,
-  FileSystem,
-  Schema,
-  String,
-} from 'effect'
+import { Config, Console, Effect, FileSystem, Schema, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 // The pixel pass: every menu and overlay screen on a 1280x720 desktop, an
@@ -55,8 +47,9 @@ type Scene = Readonly<{
 
 const MANOR = '#home-manor'
 const PLAY = '#home-play'
-const tab = (index: number) => `dialog[open] [role=tab] >> nth=${index}`
-const SHOP_TABS = Array.map([0, 1, 2], tab)
+// NOTE: the guide to the house's finds, a tile on the Munchopedia (the
+// shop counter it once sat on is gone).
+const FINDS = [MANOR, '#hand-card-munchopedia', 'button[aria-label^="Finds,"]']
 
 const SCENES: ReadonlyArray<Scene> = [
   { name: 'home', query: '' },
@@ -120,29 +113,19 @@ const SCENES: ReadonlyArray<Scene> = [
     query: FOUND,
     open: [MANOR, '#hand-card-munchopedia', '.munch-tile >> nth=0'],
   },
-  {
-    name: 'munch-shop',
-    query: FOUND,
-    open: [MANOR, '#hand-card-munchopedia', 'button[aria-label^="Shop,"]'],
-  },
+  { name: 'munch-shop', query: FOUND, open: FINDS },
   { name: 'whats-new', query: '', open: [MANOR, '#hand-card-whatsnew'] },
   { name: 'shop-guns', query: SHOP },
-  ...Array.map(SHOP_TABS.slice(1), (selector, index): Scene => ({
-    name: `shop-tab${index + 1}`,
-    query: SHOP,
-    open: [selector],
-  })),
   { name: 'shop-broke', query: 'wave=3&money=12&gun=shotgun&px=270&py=142' },
-  { name: 'shop-help', query: SHOP, open: ['button[aria-label="Shop guide"]'] },
   {
     name: 'shop-guide-traps',
-    query: SHOP,
-    open: ['button[aria-label="Shop guide"]', 'role=button[name="Traps"]'],
+    query: FOUND,
+    open: [...FINDS, 'role=button[name="Traps"]'],
   },
   {
     name: 'shop-guide-fridge',
-    query: `${SHOP}&prizes=Cooker,Freeze`,
-    open: ['button[aria-label="Shop guide"]', 'role=button[name="Fridge"]'],
+    query: `${FOUND}&prizes=Cooker,Freeze`,
+    open: [...FINDS, 'role=button[name="Fridge"]'],
   },
   {
     name: 'hud-wave',
