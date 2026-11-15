@@ -27,7 +27,7 @@ import {
   shotViewports,
 } from './lib'
 
-type Scene = Readonly<{ name: string; query: string }>
+type Scene = Readonly<{ name: string; query: (house: number) => string }>
 
 const WAVE = `${LEARNED_ALL}&wave=5&start=wave&elapsed=6000&god&crowd=12&${EVERY_EXIT_OPEN}`
 
@@ -35,7 +35,7 @@ const WAVE = `${LEARNED_ALL}&wave=5&start=wave&elapsed=6000&god&crowd=12&${EVERY
 // is 10): the dining room is columns 0 to 35 and rows 0 to 21, the kitchen
 // above it, the west slot at columns -32 to -1 from row 4, the east slot at
 // 36 to 67 and the far slot at 68 to 99, both from row 0.
-const SCENES: ReadonlyArray<Scene> = [
+const SEAMS: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'kitchen-seam', query: `${OPEN_BREAK}&px=100&py=30` },
   { name: 'kitchen-in', query: `${OPEN_BREAK}&px=100&py=-40` },
   { name: 'west-seam', query: `${OPEN_BREAK}&px=20&py=110` },
@@ -54,6 +54,31 @@ const SCENES: ReadonlyArray<Scene> = [
   { name: 'far-south', query: `${OPEN_BREAK}&px=860&py=150` },
   { name: 'wave-north', query: `${WAVE}&px=270&py=60&freeze=40` },
   { name: 'wave-west', query: `${WAVE}&px=-120&py=60&freeze=40` },
+]
+
+// NOTE: under the library's rose window, 232 pixels into its slot and high
+// on its north wall (src/render/room/roseWindowArt.ts), by the slot each
+// house puts the library in (ARRANGEMENTS): east in 0 and 5, far in 1 and
+// 4, west in 2 and 3.
+const ROSE_SPOTS: ReadonlyArray<string> = [
+  'px=592&py=60',
+  'px=912&py=60',
+  'px=-88&py=100',
+  'px=-88&py=100',
+  'px=912&py=60',
+  'px=592&py=60',
+]
+
+const SCENES: ReadonlyArray<Scene> = [
+  ...Array.map(SEAMS, ({ name, query }) => ({ name, query: () => query })),
+  {
+    name: 'library-rose',
+    query: house =>
+      `${OPEN_BREAK}&${Array.get(ROSE_SPOTS, house).pipe(Option.getOrElse(() => 'px=592&py=60'))}`,
+  },
+  // NOTE: the chandelier's winch on the dining room's west wall, the plan's
+  // `j` at column 1 and row 10, with its rope up to the ceiling's pulley.
+  { name: 'dining-winch', query: () => `${OPEN_BREAK}&px=50&py=120` },
 ]
 
 runHarnessAudit(
@@ -76,7 +101,7 @@ runHarnessAudit(
           const page = yield* pages.open(
             viewport,
             harnessQuery(
-              `${scene.query}&house=${house}`,
+              `${scene.query(house)}&house=${house}`,
               deviceQuery(viewport),
             ),
           )

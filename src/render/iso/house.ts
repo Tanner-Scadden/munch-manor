@@ -22,7 +22,6 @@ import type { Level } from '../../world/level/arena'
 import {
   COVER_SYMBOLS,
   type CoverKind,
-  OUTSIDE_SYMBOL,
   WALL_SYMBOL,
 } from '../../world/level/tileGrid'
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
@@ -317,21 +316,7 @@ type SideQuad = Readonly<{
 // tile's edge column and never its neighbor's.
 const EDGE_TEXEL = 0.5
 
-// NOTE: how high the side of a wall is hidden by what stands beside it: by
-// the floor (or a doorway), or by a lower wall (a room's low front wall
-// against a tall side wall); none out over the dark round the house.
-const coveredBeside = (
-  tiles: ReadonlyArray<string>,
-  row: number,
-  column: number,
-): Option.Option<number> =>
-  Option.map(
-    Option.filter(
-      String.charAt(tiles[row] ?? '', column),
-      symbol => symbol !== OUTSIDE_SYMBOL,
-    ),
-    () => wallHeightAt({ tiles, row, column }),
-  )
+const SIDE_IN = BLOCK_INSET / 2
 
 const sideFacesOf = (level: Level): ReadonlyArray<SideQuad> =>
   Array.flatMap(level.tiles, (line, row) =>
@@ -342,8 +327,16 @@ const sideFacesOf = (level: Level): ReadonlyArray<SideQuad> =>
       const top = wallHeightAt({ tiles: level.tiles, row, column })
       return Array.filterMap([true, false], isEast =>
         Option.match(
-          Option.filter(
-            coveredBeside(level.tiles, row, isEast ? column + 1 : column - 1),
+          // NOTE: what stands beside hides the side up to its own height:
+          // nothing over the floor, a doorway, or the dark round the house
+          // (a wall's end on the house's edge, which the lens sees past the
+          // turn), a lower wall's height beside a low front wall.
+          Option.liftPredicate(
+            wallHeightAt({
+              tiles: level.tiles,
+              row,
+              column: isEast ? column + 1 : column - 1,
+            }),
             bottom => bottom < top,
           ),
           {
@@ -369,7 +362,11 @@ export const buildWallSides = (
   Array.forEach(sides, ({ row, column, bottom, top, isEast }, index) => {
     const west = (level.left + column * TILE_SIZE) * UNIT
     const edge = isEast ? west + TILE_SIZE * UNIT : west
-    const x = isEast ? edge + FACE_LIFT : edge - FACE_LIFT
+    // NOTE: just inside its own tile, between the tile's edge and the inset
+    // block (BLOCK_INSET), so the look pass colors it by its own room's
+    // ramp (look.ts reads the room off the tile under a fragment), never
+    // the next room's or the black round the house.
+    const x = isEast ? edge - SIDE_IN : edge + SIDE_IN
     // NOTE: the side's top edge meets the top's edge exactly, at its lift,
     // leaning in the lift's width, so no line of the block shows between
     // them along a wall's top.
