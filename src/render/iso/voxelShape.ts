@@ -1,35 +1,22 @@
-// A sprite as voxels: each solid pixel of its art a little block, deepest
-// down the middle of each row and thin at its edges, so a body is round. The
-// front of every block lies on the sprite's own plane, where its billboard
-// stood, so the art from the front is exactly the 2D art; the depth runs
-// north along the floor, which the camera sees as each block's top, one
-// screen pixel per pixel of depth. So a body shows its thickness as a lit
-// band over every edge that faces up, and the light rounds it with its true
-// faces, with no art redrawn.
+// A sprite as voxels: each solid pixel of its art a stack of little blocks,
+// carved round by `formOf` (src/art/carve.ts): a torso as deep as it is
+// wide, a limb thin. Each block one deeper sits one row lower, so a stack
+// runs back along the lens's ray and the art from the lens is exactly the
+// 2D art, its edges' tops folded in so it stands as tall as its art. The
+// light rounds it with its true faces, and a turn or a shadow shows its
+// volume, with no art redrawn.
 //
 // Plain data, no pixi: the geometry's arrays, and the matrix that stands a
 // sprite's blocks at its foot.
 
-import { Match } from 'effect'
-
+import { formOf } from '../../art/carve'
 import type { Affine } from './flatten'
 import { CAMERA_UP, PITCH, TOWARD_CAMERA, UNIT, zOf } from './space'
 
 // NOTE: one pixel of depth sinks this far toward the lens's back, in game
 // pixels along the camera's view, while it rises one along its up: together
 // one game pixel north along the floor.
-const DEPTH_BACK = Math.cos(PITCH) / Math.sin(PITCH)
-
-// NOTE: the deepest a sprite's blocks go, in pixels: a quarter of its
-// narrower side, at least one and at most three, so a gun is a sliver and a
-// body is chunky but never deeper than the wall it stands against allows.
-const MOST_DEPTH = 3
-
-export const maxDepthOf = ({
-  width,
-  height,
-}: Readonly<{ width: number; height: number }>): number =>
-  Math.max(1, Math.min(MOST_DEPTH, Math.floor(Math.min(width, height) / 4)))
+export const DEPTH_BACK = Math.cos(PITCH) / Math.sin(PITCH)
 
 // NOTE: the box of a sprite's solid pixels: a gun turned in its big square
 // cell is only as thick as its own art. `top` and `bottom` are its highest
@@ -68,66 +55,6 @@ export const solidBoundsOf = ({
     top,
     bottom,
   }
-}
-
-// NOTE: how far a pixel sits in from the nearer end of its run of solid
-// pixels, along a row (`step` 1) or a column (`step` the width).
-const inwardOf = (
-  solid: Uint8Array,
-  start: number,
-  count: number,
-  step: number,
-  into: Uint8Array,
-): void => {
-  let runStart = 0
-  for (let at = 0; at <= count; at += 1) {
-    if (at < count && solid[start + at * step] === 1) {
-      continue
-    }
-    for (let inside = runStart; inside < at; inside += 1) {
-      const index = start + inside * step
-      into[index] = Math.min(
-        into[index] ?? 0,
-        Math.min(inside - runStart, at - 1 - inside),
-      )
-    }
-    runStart = at + 1
-  }
-}
-
-// NOTE: each solid pixel's depth: one at the art's edge, then two more for
-// each pixel in from the nearest edge, across or down, up to the most for
-// the art's own size. So a body rounds and a thin gun or arm stays thin.
-// Zero where the art is clear.
-export const depthsOf = ({
-  width,
-  height,
-  isSolid,
-}: Readonly<{
-  width: number
-  height: number
-  isSolid: (column: number, row: number) => boolean
-}>): Uint8Array => {
-  const most = maxDepthOf(solidBoundsOf({ width, height, isSolid }))
-  const solid = new Uint8Array(width * height)
-  for (let row = 0; row < height; row += 1) {
-    for (let column = 0; column < width; column += 1) {
-      solid[row * width + column] = isSolid(column, row) ? 1 : 0
-    }
-  }
-  const inward = new Uint8Array(width * height).fill(255)
-  for (let row = 0; row < height; row += 1) {
-    inwardOf(solid, row * width, width, 1, inward)
-  }
-  for (let column = 0; column < width; column += 1) {
-    inwardOf(solid, column, height, width, inward)
-  }
-  const depths = new Uint8Array(width * height)
-  for (let index = 0; index < depths.length; index += 1) {
-    depths[index] =
-      solid[index] === 1 ? Math.min(most, 1 + 2 * (inward[index] ?? 0)) : 0
-  }
-  return depths
 }
 
 // NOTE: whether a solid pixel lies on the art's edge: a clear pixel or the
@@ -262,9 +189,100 @@ const SHADE_RISE = 6
 export const sideShadeOf = (height: number): number =>
   FOOT_SHADE + (1 - FOOT_SHADE) * Math.min(1, Math.max(0, height / SHADE_RISE))
 
-// NOTE: where a sprite's foot lies in its blocks' rows: past its last solid
-// row, before its first, or nowhere (it is not on the floor).
-export type Ground = 'Below' | 'Above' | 'None'
+// NOTE: a sprite's carved form (`formOf`, src/art/carve.ts) set for the
+// lens, per pixel:
+// - near and back: the depths its stack of blocks runs over, `back` past
+//   its last. Each block one deeper sits one row lower too, along the lens's
+//   ray, so the stack shows from the lens as exactly its one pixel.
+// - folded: a pixel with nothing over it and a solid pixel under it stands
+//   as the tops of the stack under it, in its own color, rather than as
+//   blocks with a row of tops over them, so the body is as tall as its art.
+// Down each column a stack never starts nearer the lens than the one over
+// it, or its top would show in front of that pixel in the wrong color.
+// `lift` is how many blocks the whole form moves toward the lens, along the
+// ray, so its lowest block stands on the floor at the art's foot.
+export type LensForm = Readonly<{
+  width: number
+  height: number
+  depth: number
+  near: Uint8Array
+  back: Uint8Array
+  folded: Uint8Array
+  lift: number
+}>
+
+export const lensFormOf = ({
+  width,
+  height,
+  isSolid,
+  most,
+}: Readonly<{
+  width: number
+  height: number
+  isSolid: (column: number, row: number) => boolean
+  most?: number
+}>): LensForm => {
+  const form = formOf({
+    width,
+    height,
+    isSolid,
+    ...(most === undefined ? {} : { most }),
+  })
+  const count = width * height
+  const near = new Uint8Array(count)
+  const back = new Uint8Array(count)
+  const folded = new Uint8Array(count)
+  const isSolidAt = (column: number, row: number): boolean =>
+    row >= 0 && row < height && (form.thick[row * width + column] ?? 0) > 0
+  let shallowest = 255
+  for (let column = 0; column < width; column += 1) {
+    let over = -1
+    for (let row = 0; row < height; row += 1) {
+      const index = row * width + column
+      if (!isSolidAt(column, row)) {
+        over = -1
+        continue
+      }
+      if (!isSolidAt(column, row - 1) && isSolidAt(column, row + 1)) {
+        folded[index] = 1
+        continue
+      }
+      const ownNear = form.near[index] ?? 0
+      const ownBack = ownNear + (form.thick[index] ?? 1)
+      const start = Math.max(ownNear, over)
+      near[index] = start
+      back[index] = Math.max(start + 1, ownBack)
+      over = start
+      shallowest = Math.min(shallowest, start)
+    }
+  }
+  // NOTE: the nearest stack starts at depth 0, the sprite's own plane.
+  const shift = shallowest === 255 ? 0 : shallowest
+  let lowest = -1
+  let bottom = -1
+  for (let index = 0; index < count; index += 1) {
+    if ((back[index] ?? 0) > 0) {
+      near[index] = (near[index] ?? 0) - shift
+      back[index] = (back[index] ?? 0) - shift
+      const row = Math.floor(index / width)
+      lowest = Math.max(lowest, row + (back[index] ?? 0))
+      bottom = Math.max(bottom, row)
+    }
+  }
+  let depth = 1
+  for (let index = 0; index < count; index += 1) {
+    depth = Math.max(depth, back[index] ?? 0)
+  }
+  return {
+    width,
+    height,
+    depth,
+    near,
+    back,
+    folded,
+    lift: Math.max(0, lowest - (bottom + 1)),
+  }
+}
 
 export type VoxelMeshData = Readonly<{
   positions: Float32Array
@@ -280,7 +298,9 @@ type Point = readonly [number, number, number]
 
 // NOTE: a point of the blocks, from its column, its row (down), and its
 // depth, in the geometry's own space: x across, y up (the depth lifts it),
-// z toward the lens (the depth sinks it).
+// z toward the lens (the depth sinks it). A step of depth alone runs north
+// along the floor; a block of a pixel's stack one deeper is also one row
+// lower (`lensFormOf`), so together they run back along the lens's ray.
 const pointOf = (x: number, y: number, d: number): Point => [
   x,
   d - y,
@@ -334,145 +354,202 @@ class Builder {
   }
 }
 
-// NOTE: the blocks of a sprite: a front face for every solid pixel, its back,
-// and the sides, top, and bottom where its neighbor is shallower, each
-// colored by the middle of its pixel (`uvOf`). The front wears the pixel's
-// own color; the rest wear the color inside a dark outline pixel (`isDark`,
-// `sideSourcesOf`), and on a body standing on the floor darken toward the
-// solid row at its foot: its last row (`ground` Below), or its first where
-// its rows are reversed and run up from the foot (Above).
+// NOTE: one face of a block: the neighbor whose block hides it, and its
+// corners as offsets in the grid (column, grid row, depth).
+type FaceSpec = Readonly<{
+  normal: Point
+  neighbor: readonly [number, number, number]
+  corners: readonly [Point, Point, Point, Point]
+}>
+
+const SIDE_FACES: ReadonlyArray<FaceSpec> = [
+  {
+    normal: BACK,
+    neighbor: [0, 0, 1],
+    corners: [
+      [0, 0, 1],
+      [1, 0, 1],
+      [1, 1, 1],
+      [0, 1, 1],
+    ],
+  },
+  {
+    normal: TOP,
+    neighbor: [0, -1, 0],
+    corners: [
+      [0, 0, 0],
+      [1, 0, 0],
+      [1, 0, 1],
+      [0, 0, 1],
+    ],
+  },
+  {
+    normal: BOTTOM,
+    neighbor: [0, 1, 0],
+    corners: [
+      [0, 1, 0],
+      [1, 1, 0],
+      [1, 1, 1],
+      [0, 1, 1],
+    ],
+  },
+  {
+    normal: LEFT,
+    neighbor: [-1, 0, 0],
+    corners: [
+      [0, 0, 0],
+      [0, 1, 0],
+      [0, 1, 1],
+      [0, 0, 1],
+    ],
+  },
+  {
+    normal: RIGHT,
+    neighbor: [1, 0, 0],
+    corners: [
+      [1, 0, 0],
+      [1, 1, 0],
+      [1, 1, 1],
+      [1, 0, 1],
+    ],
+  },
+]
+
+const FRONT_FACE: FaceSpec = {
+  normal: FRONT,
+  neighbor: [0, 0, -1],
+  corners: [
+    [0, 0, 0],
+    [0, 1, 0],
+    [1, 1, 0],
+    [1, 0, 0],
+  ],
+}
+
+// NOTE: the blocks of a sprite's carve (`lensFormOf`): a face for every side
+// of a block that meets no other, each colored by the middle of a pixel
+// (`uvOf`). A front wears its own pixel's color, and a folded pixel's color
+// lies on the tops under it; every other face wears the color inside a dark
+// outline pixel (`isDark`, `sideSourcesOf`), so the outline shows on the
+// front alone, and on a body standing on the floor (`isGrounded`) darkens
+// toward it.
 export const voxelMeshOf = ({
   width,
   height,
   isSolid,
   uvOf,
   isDark = () => false,
-  ground = 'None',
+  isGrounded = false,
+  most,
 }: Readonly<{
   width: number
   height: number
   isSolid: (column: number, row: number) => boolean
   uvOf: (column: number, row: number) => readonly [number, number]
   isDark?: (column: number, row: number) => boolean
-  ground?: Ground
-}>): VoxelMeshData => {
-  const depths = depthsOf({ width, height, isSolid })
+  isGrounded?: boolean
+  most?: number
+}>): VoxelMeshData & Readonly<{ lift: number }> => {
+  const form = lensFormOf({
+    width,
+    height,
+    isSolid,
+    ...(most === undefined ? {} : { most }),
+  })
+  const { depth } = form
   const sources = sideSourcesOf({ width, height, isSolid, isDark })
-  const { top, bottom } = solidBoundsOf({ width, height, isSolid })
+  // NOTE: the grid: a block of pixel (column, row) at depth d sits on grid
+  // row row + d.
+  const rows = height + depth
+  const filled = new Uint8Array(width * rows * depth)
+  const cellOf = (column: number, gridRow: number, d: number): number =>
+    column + width * (gridRow + rows * d)
+  let floor = 0
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      const index = row * width + column
+      for (let d = form.near[index] ?? 0; d < (form.back[index] ?? 0); d += 1) {
+        filled[cellOf(column, row + d, d)] = 1
+        floor = Math.max(floor, row + d + 1)
+      }
+    }
+  }
+  const isFilled = (column: number, gridRow: number, d: number): boolean =>
+    column >= 0 &&
+    column < width &&
+    gridRow >= 0 &&
+    gridRow < rows &&
+    d >= 0 &&
+    d < depth &&
+    filled[cellOf(column, gridRow, d)] === 1
   const sideUvOf = (column: number, row: number): readonly [number, number] => {
     const source = sources[row * width + column] ?? row * width + column
     const sourceColumn = source % width
     return uvOf(sourceColumn, (source - sourceColumn) / width)
   }
-  const shadeOf = (row: number): number =>
-    Match.value(ground).pipe(
-      Match.when('Below', () => sideShadeOf(bottom - row + 0.5)),
-      Match.when('Above', () => sideShadeOf(row - top + 0.5)),
-      Match.orElse(() => 1),
-    )
-  const depthAt = (column: number, row: number): number =>
-    column < 0 || row < 0 || column >= width || row >= height
-      ? 0
-      : (depths[row * width + column] ?? 0)
+  const isFoldedAt = (column: number, row: number): boolean =>
+    row >= 0 && form.folded[row * width + column] === 1
+  const shadeOf = (gridRow: number): number =>
+    isGrounded ? sideShadeOf(floor - gridRow - 0.5) : 1
   const out = new Builder()
+  const faceOf = (
+    spec: FaceSpec,
+    at: readonly [number, number, number],
+    uv: readonly [number, number],
+    shade: number,
+  ): void => {
+    const [column, gridRow, d] = at
+    const [c0, c1, c2, c3] = spec.corners
+    const corner = ([x, y, z]: Point): Point =>
+      pointOf(column + x, gridRow + y, d + z)
+    out.quad([corner(c0), corner(c1), corner(c2), corner(c3)], spec.normal, uv, shade)
+  }
+  const isOpen = (
+    spec: FaceSpec,
+    column: number,
+    gridRow: number,
+    d: number,
+  ): boolean => {
+    const [dx, dy, dz] = spec.neighbor
+    return !isFilled(column + dx, gridRow + dy, d + dz)
+  }
   // NOTE: every front face first, so a fading body, drawn blended with its
   // depth written (voxels.ts), hides the tops and sides behind its own front
   // rather than showing its insides through it.
-  for (let row = 0; row < height; row += 1) {
-    for (let column = 0; column < width; column += 1) {
-      if (depthAt(column, row) === 0) {
-        continue
+  for (let d = 0; d < depth; d += 1) {
+    for (let gridRow = d; gridRow < d + height; gridRow += 1) {
+      for (let column = 0; column < width; column += 1) {
+        if (
+          isFilled(column, gridRow, d) &&
+          isOpen(FRONT_FACE, column, gridRow, d)
+        ) {
+          faceOf(FRONT_FACE, [column, gridRow, d], uvOf(column, gridRow - d), 1)
+        }
       }
-      out.quad(
-        [
-          pointOf(column, row, 0),
-          pointOf(column, row + 1, 0),
-          pointOf(column + 1, row + 1, 0),
-          pointOf(column + 1, row, 0),
-        ],
-        FRONT,
-        uvOf(column, row),
-      )
     }
   }
-  for (let row = 0; row < height; row += 1) {
-    for (let column = 0; column < width; column += 1) {
-      const depth = depthAt(column, row)
-      if (depth === 0) {
-        continue
-      }
-      const uv = sideUvOf(column, row)
-      const shade = shadeOf(row)
-      const x0 = column
-      const x1 = column + 1
-      const y0 = row
-      const y1 = row + 1
-      out.quad(
-        [
-          pointOf(x0, y0, depth),
-          pointOf(x1, y0, depth),
-          pointOf(x1, y1, depth),
-          pointOf(x0, y1, depth),
-        ],
-        BACK,
-        uv,
-        shade,
-      )
-      const above = depthAt(column, row - 1)
-      if (above < depth) {
-        out.quad(
-          [
-            pointOf(x0, y0, above),
-            pointOf(x1, y0, above),
-            pointOf(x1, y0, depth),
-            pointOf(x0, y0, depth),
-          ],
-          TOP,
-          uv,
-          shade,
-        )
-      }
-      const below = depthAt(column, row + 1)
-      if (below < depth) {
-        out.quad(
-          [
-            pointOf(x0, y1, below),
-            pointOf(x1, y1, below),
-            pointOf(x1, y1, depth),
-            pointOf(x0, y1, depth),
-          ],
-          BOTTOM,
-          uv,
-          shade,
-        )
-      }
-      const left = depthAt(column - 1, row)
-      if (left < depth) {
-        out.quad(
-          [
-            pointOf(x0, y0, left),
-            pointOf(x0, y1, left),
-            pointOf(x0, y1, depth),
-            pointOf(x0, y0, depth),
-          ],
-          LEFT,
-          uv,
-          shade,
-        )
-      }
-      const right = depthAt(column + 1, row)
-      if (right < depth) {
-        out.quad(
-          [
-            pointOf(x1, y0, right),
-            pointOf(x1, y1, right),
-            pointOf(x1, y1, depth),
-            pointOf(x1, y0, depth),
-          ],
-          RIGHT,
-          uv,
-          shade,
-        )
+  for (let d = 0; d < depth; d += 1) {
+    for (let gridRow = d; gridRow < d + height; gridRow += 1) {
+      for (let column = 0; column < width; column += 1) {
+        if (!isFilled(column, gridRow, d)) {
+          continue
+        }
+        const row = gridRow - d
+        const shade = shadeOf(gridRow)
+        for (const spec of SIDE_FACES) {
+          if (!isOpen(spec, column, gridRow, d)) {
+            continue
+          }
+          // NOTE: a folded pixel's tops stand for its front: its own
+          // color, unshaded, as the art draws it.
+          const isFoldTop = spec.normal === TOP && isFoldedAt(column, row - 1)
+          faceOf(
+            spec,
+            [column, gridRow, d],
+            isFoldTop ? uvOf(column, row - 1) : sideUvOf(column, row),
+            isFoldTop ? 1 : shade,
+          )
+        }
       }
     }
   }
@@ -482,6 +559,7 @@ export const voxelMeshOf = ({
     uvs: Float32Array.from(out.uvs),
     colors: Float32Array.from(out.colors),
     indices: Uint32Array.from(out.indices),
+    lift: form.lift,
   }
 }
 
@@ -556,9 +634,23 @@ export const isGroundedOf = (
 // shapes' own matrix, so a lean, a turn, and a squash all show; and the
 // depth straight toward the lens's back, whatever the sprite's turn, so the
 // light sees true faces (the renderer's normals want its columns square to
-// one another). `isFlipped` says the art is mirrored top to bottom by its
-// matrix, so the blocks are built with their rows reversed and the matrix
-// keeps a positive turn, or the renderer would cull their fronts.
+// one another). `isFlipped` says the art is mirrored by its matrix (a body
+// facing west), so the blocks are built with their columns reversed and the
+// matrix keeps a positive turn, or the renderer would cull their fronts.
+// NOTE: whether a sprite's matrix mirrors its art (a body facing west), as
+// `slabMatrixOf` stands it.
+export const isFlippedOf = (
+  input: Readonly<{
+    matrix: Affine
+    box: Readonly<{ width: number; height: number }>
+  }>,
+): boolean => {
+  const { matrix, box } = input
+  return (
+    (matrix.a * matrix.d - matrix.b * matrix.c) * box.width * box.height < 0
+  )
+}
+
 export const slabMatrixOf = (
   placement: SlabPlacement,
 ): Readonly<{ elements: ReadonlyArray<number>; isFlipped: boolean }> => {
@@ -570,15 +662,13 @@ export const slabMatrixOf = (
   const uy = matrix.b * across
   const vx = matrix.c * down
   const vy = matrix.d * down
-  const isFlipped = ux * vy - uy * vx < 0
-  const originX =
-    matrix.a * box.x +
-    matrix.c * (isFlipped ? box.y + box.height : box.y) +
-    matrix.e
-  const originY =
-    matrix.b * box.x +
-    matrix.d * (isFlipped ? box.y + box.height : box.y) +
-    matrix.f
+  const isFlipped = isFlippedOf(placement)
+  // NOTE: a mirrored sprite's blocks are built with their columns reversed
+  // and stand from its other side, so its rows still run down and its depth
+  // north.
+  const left = isFlipped ? box.x + box.width : box.x
+  const originX = matrix.a * left + matrix.c * box.y + matrix.e
+  const originY = matrix.b * left + matrix.d * box.y + matrix.f
   const sign = isFlipped ? -1 : 1
   // NOTE: whole game pixels, as the billboards snap, unless the sprite is
   // turned, when its corner falls where its turn puts it.
@@ -589,12 +679,12 @@ export const slabMatrixOf = (
   const rise = (foot - y + Math.round(hover)) * UNIT
   // NOTE: a step across the sprite in the world, and a step up it (the
   // geometry's y runs up, the sprite's rows down).
-  const column = [ux * UNIT, -uy * UNIT * CAMERA_UP.y, -uy * UNIT * CAMERA_UP.z]
-  const up = [
-    -vx * sign * UNIT,
-    vy * sign * UNIT * CAMERA_UP.y,
-    vy * sign * UNIT * CAMERA_UP.z,
+  const column = [
+    ux * sign * UNIT,
+    -uy * sign * UNIT * CAMERA_UP.y,
+    -uy * sign * UNIT * CAMERA_UP.z,
   ]
+  const up = [-vx * UNIT, vy * UNIT * CAMERA_UP.y, vy * UNIT * CAMERA_UP.z]
   const toward = [
     TOWARD_CAMERA.x * UNIT * depth,
     TOWARD_CAMERA.y * UNIT * depth,

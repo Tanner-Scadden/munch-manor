@@ -14,7 +14,7 @@ import {
   Sprite3D,
 } from '@pixi/3d'
 
-import { type Leaf, flatten } from './flatten'
+import type { Leaf } from './flatten'
 import { CAMERA_UP, TOWARD_CAMERA, UNIT, zOf } from './space'
 import { type Textures, colorOf } from './textures'
 
@@ -149,14 +149,6 @@ export class BillboardPool {
         sprite.texture = Texture.WHITE
       }
     }
-  }
-
-  standUp(
-    shapes: ReadonlyArray<Canvas.Shape>,
-    footY: number,
-    opacity: number = 1,
-  ): void {
-    this.standLeaves(flatten(shapes), footY, 0, opacity)
   }
 
   standLeaves(

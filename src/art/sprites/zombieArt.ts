@@ -1,5 +1,6 @@
 import { Array, Option, String } from 'effect'
 
+import { type CarvedModel, carveSprite } from '../carve'
 import { type Palette, TRANSPARENT, padRow } from '../sprite'
 import {
   type FramePixels,
@@ -114,6 +115,16 @@ export const groanerWalkPixels = (stage: number): FramePixels => {
     [...swayRows(low, -1), ...ZOMBIE_LEGS_BACK_DRAG],
   ]
 }
+
+// NOTE: the Groaner's walk carved into real volumes (src/art/carve.ts),
+// each frame the default form off its own art, carved on first use. The
+// 3D batch does not stand them yet.
+export const groanerWalkForms = (
+  stage: number,
+): Array.NonEmptyReadonlyArray<CarvedModel> =>
+  Array.map(groanerWalkPixels(stage), pixels =>
+    carveSprite({ pixels, palette: ZOMBIE_PALETTE }),
+  )
 
 // NOTE: the Hotfoot was the fastest kid in school, dared to run straight
 // through the house in 1984: a red sweatband, a gold track singlet with a

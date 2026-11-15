@@ -42,6 +42,7 @@ import { BloomEffect, OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 import type { Model } from '../../app/model'
 import { isFlashShape } from '../../art/sprite'
 import { type BrowserError, toBrowserError } from '../../shared/describeError'
+import { isChandelierDown } from '../../world/dining/chandelier'
 import type { Level } from '../../world/level/arena'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
@@ -90,6 +91,7 @@ import {
   pickupRingOf,
   pickupSpinOf,
 } from './powerups'
+import { type Chandelier, chandelierOf, isChandelierSprite } from './showpieces'
 import {
   OVERHEAD_FOOT_PX,
   PITCH,
@@ -100,7 +102,7 @@ import {
 } from './space'
 import { FAR_KEY, stormKeyOf, stormOf, stormTilesOf } from './storm'
 import { Textures, colorOf } from './textures'
-import { VoxelBatch } from './voxels'
+import { VoxelBatch, newReach } from './voxels'
 import { chandelierSwayAt, windClockOf } from './wind'
 
 // NOTE: the lightning's flash: a cold white, at its peak four times
@@ -113,18 +115,20 @@ const BACKGROUND = 0x000000
 const CAMERA_DISTANCE = 80
 const TRACER_RADIUS = 0.05
 
-// NOTE: what stands as voxels (voxels.ts): whatever moves or is picked up.
-// The house's own pieces (furniture, Rattles, the fridge) stay billboards.
-const VOXEL_RANKS: ReadonlySet<Drawable['rank']> = new Set([
-  'Zombie',
-  'Player',
-  'Pickup',
-  'Trap',
-])
+// NOTE: what stands carved (voxels.ts), by its rank, and the most blocks
+// deep each is carved: a body as deep as it is wide, up to a big zombie's
+// belly; the house's pieces, the traps, and the pickups flatter, so a wide
+// table or a barricade does not swell into a ball. A wall's face over a
+// doorway stays flat.
+const MOST_DEPTH: Readonly<Partial<Record<Drawable['rank'], number>>> = {
+  Zombie: 16,
+  Player: 16,
+  Pickup: 8,
+  Trap: 6,
+  Prop: 6,
+}
 
-// NOTE: `?billboards` in the address stands the bodies as flat billboards
-// again, to compare.
-const IS_VOXEL = !new URLSearchParams(window.location.search).has('billboards')
+const FURNITURE_MOST = 6
 
 // NOTE: a blast's flash of light: its color, its peak, and its reach, as
 // many times the blast's own radius.
@@ -171,6 +175,9 @@ type Built = Readonly<{
   // fade the game gives one while someone stands behind it.
   furniture: ReadonlyMap<ReadonlyArray<Canvas.Shape>, TallCover>
   lights: HouseLights
+  // NOTE: the dining room's carved chandelier (showpieces.ts), where the
+  // level has one.
+  chandelier: Option.Option<Chandelier>
 }>
 
 const imageKey = (shape: Leaf['shape'], matrix: Affine): string =>
@@ -219,6 +226,18 @@ const lookLightsOf = (frame: LightsFrame, level: Level): LightsFrame => ({
     }),
   ),
 })
+
+// NOTE: whether a drawable is the 2D sprite of a carved showpiece the house
+// stands for it.
+const isCarved = (built: Built, drawable: Drawable): boolean => {
+  const [first] = drawable.shapes
+  return (
+    Option.isSome(built.chandelier) &&
+    drawable.shapes.length === 1 &&
+    first?._tag === 'Image' &&
+    isChandelierSprite(first.src)
+  )
+}
 
 const rectKeysOf = (leaves: ReadonlyArray<Leaf>): ReadonlySet<string> =>
   new Set(
@@ -440,13 +459,18 @@ export class IsoScene {
       built.floor.picture.render()
     }
     this.wasLanded = isLanded
-    built.ground.paintLeaves(
-      Array.filter(
+    const isDown = isChandelierDown(model)
+    built.ground.paintLeaves([
+      ...Option.match(built.chandelier, {
+        onNone: () => [],
+        onSome: chandelier => chandelier.floorMarks(isDown),
+      }),
+      ...Array.filter(
         flatten(strata.ground),
         ({ shape }) =>
           !(shape._tag === 'Rect' && landedKeys.has(rectKey(shape))),
       ),
-    )
+    ])
     const stormKey = stormKeyOf({
       world: model,
       level: built.level,
@@ -471,15 +495,24 @@ export class IsoScene {
     this.bodies.begin()
     this.voxels.begin()
     for (const drawable of strata.standing) {
+      if (isCarved(built, drawable)) {
+        continue
+      }
       const maybePiece = furnitureOf(built.furniture, drawable.shapes)
       if (Option.isSome(maybePiece)) {
         fades.set(maybePiece.value.piece, maybePiece.value.opacity)
       } else {
         const flattened = flatten(drawable.shapes)
-        const isVoxel = IS_VOXEL && VOXEL_RANKS.has(drawable.rank)
-        const leaves = isVoxel ? castingLeavesOf(flattened) : flattened
-        if (isVoxel) {
-          this.standBody(flattened, drawable.footY, model.elapsedMs)
+        const most = MOST_DEPTH[drawable.rank]
+        const leaves =
+          most === undefined ? flattened : castingLeavesOf(flattened)
+        if (most !== undefined) {
+          this.standBody({
+            leaves: flattened,
+            footY: drawable.footY,
+            elapsedMs: model.elapsedMs,
+            most,
+          })
         } else {
           // NOTE: a hit flash glows white in any light, the cellar's dark
           // too, so it stands with what glows of itself rather than what is
@@ -519,11 +552,16 @@ export class IsoScene {
           view,
         )
       ) {
-        this.billboards.standUp(
-          piece.shapes,
-          piece.footY,
-          fades.get(piece) ?? 1,
-        )
+        const opacity = fades.get(piece) ?? 1
+        this.standBody({
+          leaves: Array.map(flatten(piece.shapes), leaf => ({
+            ...leaf,
+            alpha: leaf.alpha * opacity,
+          })),
+          footY: piece.footY,
+          elapsedMs: model.elapsedMs,
+          most: FURNITURE_MOST,
+        })
       }
     }
     for (const { mesh, box } of this.furnitureCasters) {
@@ -545,6 +583,9 @@ export class IsoScene {
     // NOTE: a rattle jolts the chandelier on its chain, a whole pixel at a
     // time.
     const sway = chandelierSwayAt(t) + Math.round(Math.sin(t * 38) * rattle * 3)
+    Option.map(built.chandelier, carved => {
+      carved.apply({ isDown, sway, view })
+    })
     // NOTE: sparks, blood, and gibs in the air stand as cubes, lit as the
     // bodies are, so they vanish into the cellar's dark with them; one with
     // a see-through color stays a lit billboard.
@@ -559,7 +600,6 @@ export class IsoScene {
       airborne.add(key)
       const look = colorOf(shape.fill ?? '#000')
       if (
-        IS_VOXEL &&
         look.alpha >= 0.98 &&
         this.voxels.standCube({
           x: particle.x,
@@ -582,6 +622,9 @@ export class IsoScene {
       }
       const isChandelier =
         shape._tag === 'Image' && chandelier.has(imageKey(shape, matrix))
+      if (isChandelier && Option.isSome(built.chandelier)) {
+        continue
+      }
       const isLitInAir =
         isChandelier || (shape._tag === 'Rect' && airborne.has(rectKey(shape)))
       const pool = isLitInAir ? this.billboards : this.glowing
@@ -666,14 +709,20 @@ export class IsoScene {
     this.app.render()
   }
 
-  // NOTE: a body's sprites as voxels, each part nudged ahead of the last as
-  // the 2D game drew it over; a hit flash's as glowing white blocks. A part
-  // that cannot stand as voxels stands as a billboard.
+  // NOTE: what stands as its carved sprites, each part in front of the
+  // parts before it as the 2D game drew it over them; a hit flash's as
+  // glowing white blocks. A part that cannot stand carved stands as a
+  // billboard.
   private standBody(
-    leaves: ReadonlyArray<Leaf>,
-    footY: number,
-    elapsedMs: number,
+    input: Readonly<{
+      leaves: ReadonlyArray<Leaf>
+      footY: number
+      elapsedMs: number
+      most: number
+    }>,
   ): void {
+    const { leaves, footY, elapsedMs, most } = input
+    const reach = newReach()
     const isPowerup = Array.some(
       leaves,
       ({ shape }) => shape._tag === 'Image' && isPowerupImage(shape),
@@ -697,6 +746,8 @@ export class IsoScene {
             footY,
             part,
             isFlash,
+            most,
+            reach,
             ...(spin === undefined ? {} : { spin }),
           })
         ) {
@@ -882,6 +933,7 @@ export class IsoScene {
         Array.map(tallCoverOf(level), piece => [piece.shapes, piece] as const),
       ),
       lights: houseLightsOf({ level, parent: holder }),
+      chandelier: chandelierOf({ level, parent: holder }),
     }
     this.built = built
     this.castFurniture(built)
@@ -923,6 +975,9 @@ export class IsoScene {
     this.billboards.release()
     this.glowing.release()
     this.rims.release()
+    Option.map(built.chandelier, chandelier => {
+      chandelier.destroy()
+    })
     built.holder.destroy({ children: true })
     Array.forEach(
       [built.room, built.floor, built.ground, built.storm],

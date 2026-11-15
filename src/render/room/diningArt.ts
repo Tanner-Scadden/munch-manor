@@ -931,11 +931,11 @@ export const frontDoorShapes = (door: Box): ReadonlyArray<Canvas.Shape> => {
 
 export type ChandelierState = 'Hung' | 'Fallen'
 
-const CHAIN_COLOR = '#8a8a96'
-const CHAIN_DARK_COLOR = '#4a4a56'
-const CRYSTAL_COLOR = '#bfe3f0'
-const CRYSTAL_LIGHT_COLOR = '#f2fbff'
-const STREAMER_COLOR = '#c86a8a'
+export const CHAIN_COLOR = '#8a8a96'
+export const CHAIN_DARK_COLOR = '#4a4a56'
+export const CRYSTAL_COLOR = '#bfe3f0'
+export const CRYSTAL_LIGHT_COLOR = '#f2fbff'
+export const STREAMER_COLOR = '#c86a8a'
 const RING_HALF_WIDTH = 12
 const RING_HALF_HEIGHT = 3
 // NOTE: how far over the floor the hung chandelier's hub is drawn, so it

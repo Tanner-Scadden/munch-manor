@@ -42,7 +42,6 @@ export const LiveScene = Schema.Struct({
   bodies: LiveBodies,
   isStrike: Schema.Boolean,
   isFallen: Schema.Boolean,
-  isBillboards: Schema.Boolean,
   isStill: Schema.Boolean,
   isHudOn: Schema.Boolean,
 })
@@ -54,7 +53,6 @@ export const DEFAULT_LIVE: LiveScene = {
   bodies: 'Crowd',
   isStrike: false,
   isFallen: false,
-  isBillboards: false,
   isStill: true,
   isHudOn: false,
 }
@@ -136,7 +134,6 @@ export const harnessQueryOf = ({
       ...bodyKeys(scene.bodies, box),
       ...(scene.isStrike ? [`clock=${strikeClockOf(WAVE)}`] : []),
       ...(scene.isFallen ? ['fallen'] : []),
-      ...(scene.isBillboards ? ['billboards'] : []),
       ...(scene.isStill ? [`freeze=${STILL_FRAMES}`] : []),
       ...(scene.isHudOn ? [] : ['nohud']),
     ],

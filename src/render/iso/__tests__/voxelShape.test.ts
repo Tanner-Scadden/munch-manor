@@ -1,10 +1,9 @@
-import { Array, Option } from 'effect'
+import { Array, Option, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
-  depthsOf,
   isGroundedOf,
-  maxDepthOf,
+  lensFormOf,
   sideShadeOf,
   sideSourcesOf,
   slabMatrixOf,
@@ -12,9 +11,10 @@ import {
   voxelMeshOf,
 } from '../voxelShape'
 
-// A sprite's pixels as blocks (src/render/iso/voxelShape.ts): how deep each
-// one goes, the faces it shows, whose color their sides wear and how dark
-// toward the foot, and the matrix that stands it where its billboard stood.
+// A sprite's pixels as carved blocks (src/render/iso/voxelShape.ts): how
+// deep each stack goes, that the lens sees exactly the art, the faces it
+// shows, whose color their sides wear and how dark toward the foot, and the
+// matrix that stands it where its billboard stood.
 
 const rows = (art: ReadonlyArray<string>) => ({
   width: art[0]?.length ?? 0,
@@ -69,33 +69,152 @@ const determinantOf = (elements: ReadonlyArray<number>): number => {
   )
 }
 
-describe('voxel depths', () => {
-  test('a body is deepest down its middle and one deep at its edges', () => {
-    const body = rows(Array.makeBy(12, () => '############'))
-    const depths = depthsOf(body)
-    expect(depths[6 * 12 + 6]).toBe(3)
-    expect(depths[6 * 12]).toBe(1)
-    expect(depths[6]).toBe(1)
+// NOTE: what the lens sees of a mesh: for each screen pixel (column, row
+// of the art) the uv of the nearest front or top face over its middle. In
+// the geometry, a point's screen row is minus its y, and nearer the lens is
+// a larger z.
+const lensPictureOf = (
+  mesh: ReturnType<typeof voxelMeshOf>,
+): ReadonlyMap<string, readonly [number, number]> => {
+  const nearest = new Map<
+    string,
+    Readonly<{ z: number; uv: readonly [number, number] }>
+  >()
+  const faces = mesh.positions.length / (FACE_CORNERS * 3)
+  for (let face = 0; face < faces; face += 1) {
+    const normalZ = mesh.normals[face * FACE_CORNERS * 3 + 2] ?? 0
+    if (normalZ <= 0) {
+      continue
+    }
+    const corner = (at: number, axis: number) =>
+      mesh.positions[(face * FACE_CORNERS + at) * 3 + axis] ?? 0
+    const xs = Array.makeBy(FACE_CORNERS, at => corner(at, 0))
+    const ys = Array.makeBy(FACE_CORNERS, at => -corner(at, 1))
+    const zs = Array.makeBy(FACE_CORNERS, at => corner(at, 2))
+    const column = Math.min(...xs)
+    const top = Math.min(...ys)
+    const bottom = Math.max(...ys)
+    if (bottom - top < 0.5) {
+      continue
+    }
+    const row = Math.round(top)
+    const z = (Math.min(...zs) + Math.max(...zs)) / 2
+    const key = `${column},${row}`
+    const known = nearest.get(key)
+    if (known === undefined || z > known.z) {
+      nearest.set(key, {
+        z,
+        uv: [
+          mesh.uvs[face * FACE_CORNERS * 2] ?? -1,
+          mesh.uvs[face * FACE_CORNERS * 2 + 1] ?? -1,
+        ],
+      })
+    }
+  }
+  return new Map(Array.map([...nearest], ([key, { uv }]) => [key, uv]))
+}
+
+// NOTE: the art as the lens should see its carve: every pixel its own, and
+// over a pixel with nothing over it and nothing under it (a toe, a barrel
+// one pixel thick) its own top, the one row a carve stands taller.
+const artPictureOf = (
+  art: ReadonlyArray<string>,
+): ReadonlyMap<string, readonly [number, number]> => {
+  const isSolid = (column: number, row: number) =>
+    (art[row]?.[column] ?? '.') !== '.'
+  return new Map(
+    Array.flatMap(art, (line, row) =>
+      Array.flatMap(Array.makeBy(line.length, column => column), column => [
+        ...(isSolid(column, row)
+          ? [[`${column},${row}`, [column, row]] as const]
+          : []),
+        ...(isSolid(column, row) &&
+        !isSolid(column, row - 1) &&
+        !isSolid(column, row + 1)
+          ? [[`${column},${row - 1}`, [column, row]] as const]
+          : []),
+      ]),
+    ),
+  )
+}
+
+const thicknessAt = (
+  form: ReturnType<typeof lensFormOf>,
+  column: number,
+  row: number,
+) =>
+  (form.back[row * form.width + column] ?? 0) -
+  (form.near[row * form.width + column] ?? 0)
+
+describe('carved form', () => {
+  const square = rows(Array.makeBy(12, () => '############'))
+
+  test('a body is deeper down its middle than at its edges', () => {
+    const form = lensFormOf(square)
+    expect(thicknessAt(form, 6, 6)).toBeGreaterThan(thicknessAt(form, 0, 6))
+    expect(form.depth).toBeGreaterThan(4)
   })
 
-  test('a thin gun in a big square cell stays one deep', () => {
+  test('a thin gun in a big square cell stays thin', () => {
     const cell = Array.makeBy(20, row =>
       row === 9 || row === 10 ? '....##########......' : '....................',
     )
-    const depths = depthsOf(rows(cell))
-    expect(Math.max(...depths)).toBe(1)
+    expect(lensFormOf(rows(cell)).depth).toBeLessThanOrEqual(2)
   })
 
-  test('clear pixels have no depth', () => {
-    const depths = depthsOf(rows(['#.#', '...', '#.#']))
-    expect(Array.fromIterable(depths)).toEqual([1, 0, 1, 0, 0, 0, 1, 0, 1])
+  test('the most caps how deep it is carved', () => {
+    expect(lensFormOf({ ...square, most: 3 }).depth).toBeLessThanOrEqual(3)
   })
 
-  test('the most depth follows the art, from one to three', () => {
-    expect(maxDepthOf({ width: 2, height: 30 })).toBe(1)
-    expect(maxDepthOf({ width: 8, height: 9 })).toBe(2)
-    expect(maxDepthOf({ width: 40, height: 40 })).toBe(3)
+  test("a top edge folds into the tops of the row under it", () => {
+    const form = lensFormOf(square)
+    expect(form.folded[3]).toBe(1)
+    expect(form.folded[12 + 3]).toBe(0)
+    expect(thicknessAt(form, 3, 0)).toBe(0)
   })
+
+  test('its lowest block stands on the floor at the foot', () => {
+    const form = lensFormOf(square)
+    const lowest = Math.max(
+      ...Array.makeBy(12 * 12, index =>
+        (form.back[index] ?? 0) > 0
+          ? Math.floor(index / 12) + (form.back[index] ?? 0)
+          : 0,
+      ),
+    )
+    expect(lowest - form.lift).toBe(12)
+  })
+})
+
+describe('from the lens', () => {
+  const ART: Readonly<{ [name: string]: ReadonlyArray<string> }> = {
+    square: Array.makeBy(10, () => '##########'),
+    body: [
+      '...####...',
+      '..######..',
+      '..######..',
+      '...####...',
+      '.########.',
+      '##########',
+      '#.######.#',
+      '..######..',
+      '..##..##..',
+      '..##..##..',
+      '.###..###.',
+    ],
+    gun: ['..........', '.########.', '.###......', '.##.......'],
+  }
+
+  test.each(Record.keys(ART))(
+    'the %s carved shows exactly its art',
+    name => {
+      const art = ART[name] ?? []
+      const picture = lensPictureOf(
+        voxelMeshOf({ ...rows(art), uvOf: uvByPixel }),
+      )
+      expect(picture).toEqual(artPictureOf(art))
+    },
+  )
 })
 
 describe('voxel mesh', () => {
@@ -119,20 +238,22 @@ describe('voxel mesh', () => {
   test('every front face comes first, so a fading body hides its insides', () => {
     const body = rows(Array.makeBy(8, () => '########'))
     const mesh = voxelMeshOf({ ...body, uvOf: () => [0.5, 0.5] })
-    const fronts = 8 * 8
     const normalZOf = (face: number) => mesh.normals[face * 4 * 3 + 2] ?? 0
     const faces = mesh.normals.length / (4 * 3)
-    const firstOthers = Array.findFirstIndex(
-      Array.makeBy(faces, face => normalZOf(face)),
-      z => z !== 1,
+    const firstOther = Option.getOrElse(
+      Array.findFirstIndex(
+        Array.makeBy(faces, face => normalZOf(face)),
+        z => z !== 1,
+      ),
+      () => faces,
     )
-    expect(Option.getOrUndefined(firstOthers)).toBe(fronts)
+    expect(firstOther).toBeGreaterThanOrEqual(7 * 8)
     expect(
-      Array.every(
-        Array.makeBy(fronts, face => normalZOf(face)),
+      Array.some(
+        Array.makeBy(faces - firstOther, at => normalZOf(firstOther + at)),
         z => z === 1,
       ),
-    ).toBe(true)
+    ).toBe(false)
   })
 })
 
@@ -165,13 +286,16 @@ describe('outline once', () => {
     expect(Array.fromIterable(sources)).toEqual([0, 1, 2, 3])
   })
 
-  test('the front shows the ink and no side does', () => {
-    const faces = facesOf(voxelMeshOf({ ...inked(RING), uvOf: uvByPixel }))
+  test('the lens shows the ink and no side does', () => {
+    const mesh = voxelMeshOf({ ...inked(RING), uvOf: uvByPixel })
     const isInk = ([column, row]: readonly [number, number]) =>
       column === 0 || row === 0 || column === 4 || row === 4
-    const fronts = Array.filter(faces, isFront)
-    const sides = Array.filter(faces, face => !isFront(face))
-    expect(Array.filter(fronts, ({ uv }) => isInk(uv)).length).toBe(16)
+    const seen = [...lensPictureOf(mesh).values()]
+    expect(Array.filter(seen, isInk).length).toBe(16)
+    const sides = Array.filter(
+      facesOf(mesh),
+      face => !isFront(face) && face.normalZ <= 0,
+    )
     expect(Array.filter(sides, ({ uv }) => isInk(uv))).toEqual([])
   })
 })
@@ -187,7 +311,7 @@ describe('darker near the floor', () => {
 
   test("a standing body's sides darken toward its foot, its front never", () => {
     const faces = facesOf(
-      voxelMeshOf({ ...body, uvOf: uvByPixel, ground: 'Below' }),
+      voxelMeshOf({ ...body, uvOf: uvByPixel, isGrounded: true }),
     )
     expect(Array.every(Array.filter(faces, isFront), f => f.shade === 1)).toBe(
       true,
@@ -200,19 +324,7 @@ describe('darker near the floor', () => {
           ({ shade }) => shade,
         ),
       )
-    expect(shadeAt(15)).toBeLessThan(shadeAt(12))
-    expect(shadeAt(1)).toBe(1)
-  })
-
-  test('reversed rows darken toward their first row', () => {
-    const faces = facesOf(
-      voxelMeshOf({ ...body, uvOf: uvByPixel, ground: 'Above' }),
-    )
-    const sides = Array.filter(faces, face => !isFront(face))
-    const footSide = Array.filter(sides, ({ uv }) => uv[1] === 0)
-    const headSide = Array.filter(sides, ({ uv }) => uv[1] === 15)
-    expect(Array.every(footSide, ({ shade }) => shade < 1)).toBe(true)
-    expect(Array.every(headSide, ({ shade }) => shade === 1)).toBe(true)
+    expect(shadeAt(15)).toBeLessThan(shadeAt(10))
   })
 
   test('art off the floor keeps its own colors', () => {
