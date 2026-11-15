@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 15, 2026: Leaky roof
+
+- 💧 The old roof leaks: drips fall into puddles all over the manor, and the puddles shine with the candlelight and flash when lightning strikes. Listen close and you'll hear them plink.
+
 ## November 14, 2026: The manor in 3D
 
 - 🏚️ The manor stands up in 3D: walls with real depth, candlelight and flickering flames in every room that wrap round every body, shadows under everyone, ferns and the chandelier swaying in a draft, every room glowing in its own spooky colors with its light falling off in chunky pixel bands into deep shadow, a cellar so dark only your flashlight cuts through it, and a storm outside: the lights cool and dim as a wave heats up, burn red when the house gets hungry, rain runs down the windows and lightning flashes through them, throwing its light across the floor, with thunder rolling after, dust drifts in the candlelight, embers float up off the fire, moths flutter round the candles, and every blast and stomp makes the candles gutter, the chandelier jolt, and dust rain off the ceiling. (Older devices without WebGL2 can't run the manor anymore, sorry!)
