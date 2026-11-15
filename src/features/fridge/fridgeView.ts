@@ -2,7 +2,7 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
-import { prizeSprite } from '../../art/prizeArt'
+import { prizeOnPaperSprite } from '../../art/prizeArt'
 import {
   type Sprite,
   bakeShapes,
@@ -172,7 +172,6 @@ const PIP_COLORS: Readonly<Record<Rarity, string>> = {
 const ODDS_CARD: Sprite = bakeShapes([
   rect(-1, -1, ODDS_WIDTH + 2, ODDS_HEIGHT + 2, '#140c10'),
   rect(0, 0, ODDS_WIDTH, ODDS_HEIGHT, '#efe6c8'),
-  rect(ODDS_WIDTH - 9, ODDS_HEIGHT - 6, 5, 4, 'rgba(160, 120, 40, 0.35)'),
   rect(ODDS_WIDTH - 3, -2, 4, 3, 'rgba(230, 230, 210, 0.8)'),
 ])
 
@@ -218,7 +217,7 @@ const oddsRow = (
     placeAt(
       left + ODDS_PAD_PX + Math.floor(ODDS_ICON_PX / 2),
       middle,
-      prizeSprite(prize),
+      prizeOnPaperSprite(prize),
     ),
     placeAt(
       left + ODDS_PIP_LEFT,

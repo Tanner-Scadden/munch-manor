@@ -14,10 +14,25 @@ const SANDWICH: Sprite = spriteShapes(
   { k: '#140c10', y: '#e0c070', g: '#7aa04a', G: '#4e6a2a', r: '#c8343c' },
 )
 
-const FISH_BONES: Sprite = spriteShapes(
-  ['k.......kk.', 'kk.w.w.kwwk', '.wwwwwwwwkw', 'kk.w.w.kwwk', 'k.......kk.'],
-  { k: '#140c10', w: '#e8e2cc' },
-)
+const FISH_BONES_PIXELS: ReadonlyArray<string> = [
+  'k.......kk.',
+  'kk.w.w.kwwk',
+  '.wwwwwwwwkw',
+  'kk.w.w.kwwk',
+  'k.......kk.',
+]
+
+const FISH_BONES: Sprite = spriteShapes(FISH_BONES_PIXELS, {
+  k: '#140c10',
+  w: '#e8e2cc',
+})
+
+// NOTE: the same bones inked dark for the fridge's odds note, whose cream
+// paper would swallow the pale ones whole.
+const FISH_BONES_ON_PAPER: Sprite = spriteShapes(FISH_BONES_PIXELS, {
+  k: '#140c10',
+  w: '#7a6a52',
+})
 
 export const prizeSprite = (prize: FridgePrize): Sprite =>
   prize === 'Sandwich'
@@ -25,6 +40,11 @@ export const prizeSprite = (prize: FridgePrize): Sprite =>
     : prize === 'Dud'
       ? FISH_BONES
       : gunIcon(prize, 0)
+
+// NOTE: a prize drawn on paper (the odds note): the dud's bones inked dark,
+// the rest as they are.
+export const prizeOnPaperSprite = (prize: FridgePrize): Sprite =>
+  prize === 'Dud' ? FISH_BONES_ON_PAPER : prizeSprite(prize)
 
 // THE GRAB
 

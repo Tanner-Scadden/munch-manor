@@ -3,11 +3,12 @@ import type { Canvas } from 'foldkit'
 
 import { describe, expect, test } from '@effect/vitest'
 
+import { prizeOnPaperSprite, prizeSprite } from '../../../art/prizeArt'
 import { cameraOf } from '../../../render/camera'
 import { clearWindowOf } from '../../../render/hudLayout'
 import { screenOf } from '../../../render/screen'
 import { atFridge } from '../../../test/model.fixture'
-import { drawnBoxesOf, isOverBox } from '../../../test/viewReading'
+import { drawnBoxesOf, imagesIn, isOverBox } from '../../../test/viewReading'
 import { PRIZE_ORDER } from '../../../world/fridge/leftovers'
 import {
   fridgeOddsKeepoutsOf,
@@ -104,5 +105,20 @@ describe('the fridge odds note', () => {
     }
     expect(fridgeOddsShapes(model, camera, [everywhere])).toEqual([])
     expect(fridgeOddsKeepoutsOf(model, camera, [everywhere])).toEqual([])
+  })
+
+  test('inks the dud bones dark, never pale on its cream paper', () => {
+    const drawn = Array.map(
+      imagesIn(fridgeOddsShapes(model, camera, [])),
+      ({ src }) => src,
+    )
+    const srcOf = (sprite: ReadonlyArray<Canvas.Shape>) =>
+      Array.map(imagesIn(sprite), ({ src }) => src)
+    expect(drawn).toEqual(
+      expect.arrayContaining(srcOf(prizeOnPaperSprite('Dud'))),
+    )
+    Array.forEach(srcOf(prizeSprite('Dud')), pale => {
+      expect(drawn).not.toContain(pale)
+    })
   })
 })
