@@ -1,6 +1,9 @@
-// A plinth: one sprite carved into blocks (voxels.ts), standing upright on a
-// small lit plinth and turning slowly on it, drawn by a camera of its own
-// into a picture one canvas pixel to a game pixel. The Munchopedia's
+// A plinth: one sprite carved into blocks (voxels.ts), standing on a small
+// lit plinth and swinging a little to each side on it, drawn by a camera of
+// its own into a picture one canvas pixel to a game pixel. The body stands
+// and turns exactly as play stands and spins it (`standLeaf`), and the
+// camera looks down play's own 49 degrees, so the carve, made to be seen
+// from there, reads as one whole body at every pose. The Munchopedia's
 // entries show each zombie this way, and Uncle Chunk in his hero shot.
 //
 // It draws with the world's own renderer and textures (scene.ts), into a
@@ -22,35 +25,36 @@ import {
 import { OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 
 import { IDENTITY } from './flatten'
+import { FLAME_TUNING } from './lightSpecs'
+import { LOOK_TUNING } from './lookSpecs'
 import {
   PLINTH_BASE_PX,
   PLINTH_TOP_PX,
   type PlinthLight,
   type PlinthPose,
-  plinthSizeOf,
-  plinthTopOf,
+  plinthFrameOf,
 } from './plinthPose'
-import { PITCH, UNIT } from './space'
+import { UNIT, standingPointOf } from './space'
 import type { Textures } from './textures'
-import { snappedSpinOf } from './voxelShape'
 import { VoxelBatch, newReach } from './voxels'
 
-// NOTE: the plinth's camera looks down at this angle, lower than play's,
-// so a zombie shows its face and the plinth its top.
-const PLINTH_PITCH = (24 * Math.PI) / 180
+// NOTE: how far the camera stands from the figure's middle, in world units,
+// toward play's lens.
 const CAMERA_DISTANCE = 30
 
-// NOTE: one turn in this long, shown in the carved bodies' snapped steps
-// (voxelShape.ts), so each pose is crisp; a still plinth (reduced motion)
-// rests turned a little to show the body's depth.
-const TURN_MS = 12_000
+// NOTE: the body swings this far to each side and back, once in this long,
+// shown in the carved bodies' snapped steps (voxelShape.ts: a sixteenth of
+// a turn), so it shows its front and a sliver of each side and never turns
+// edge on, where a carve made to face the lens reads as a sliver. A still
+// plinth (reduced motion) rests on the first step to one side.
+const SWING = Math.PI / 6
+const SWING_MS = 6_000
 const REST_TURN = -Math.PI / 8
 
 // NOTE: a body as deep as play carves a zombie.
 const MOST_DEPTH = 16
 
-// NOTE: the plinth stands still, corner on to the camera; only the body
-// turns on it.
+// NOTE: the plinth stands still, corner on to the camera.
 const PLINTH_TURN = Math.PI / 4
 
 const BACKGROUND = 0x0c0810
@@ -58,7 +62,8 @@ const BACKGROUND = 0x0c0810
 type LightSet = Readonly<{
   ambient: number
   key: Readonly<{
-    color: number
+    // NOTE: the shipped flame whose color the key takes (lightSpecs.ts).
+    flame: 'Candle' | 'Hearth'
     intensity: number
     at: Readonly<{ x: number; y: number; z: number }>
   }>
@@ -71,12 +76,14 @@ type LightSet = Readonly<{
 }>
 
 // NOTE: where each light stands, in sprite heights from the body's foot:
-// the key in front and to the left, the rim behind and to the right.
+// the key in front and to the left, the rim behind and to the right. The
+// keys take a flame's color and the ambient the look's, as Munch Studio's
+// lab slides them (tunable.ts).
 const LIGHTS: Readonly<Record<PlinthLight, LightSet>> = {
   Candle: {
-    ambient: 1.1,
+    ambient: 2,
     key: {
-      color: 0xffc27a,
+      flame: 'Candle',
       intensity: 18,
       at: { x: -0.8, y: 1.1, z: 1.1 },
     },
@@ -87,12 +94,12 @@ const LIGHTS: Readonly<Record<PlinthLight, LightSet>> = {
     },
     flicker: 0.06,
   },
-  // NOTE: Uncle Chunk lit from below like a ghost story, in the house's
+  // NOTE: Uncle Chunk lit from below like a ghost story, in the hearth's
   // red, a cold rim cutting him out of the dark behind.
   Villain: {
-    ambient: 0.35,
+    ambient: 0.9,
     key: {
-      color: 0xff5a2e,
+      flame: 'Hearth',
       intensity: 30,
       at: { x: -0.35, y: 0.1, z: 0.9 },
     },
@@ -116,7 +123,6 @@ export class PlinthStage {
   private readonly app: Application
   private readonly view: View3D
   private readonly stand: Container3D
-  private readonly turntable: Container3D
   private readonly voxels: VoxelBatch
   private readonly base: Mesh3D
   private readonly top: Mesh3D
@@ -145,13 +151,7 @@ export class PlinthStage {
     root.addChild(this.ambient, this.key, this.rim)
     this.stand = new Container3D()
     root.addChild(this.stand)
-    this.turntable = new Container3D()
-    this.stand.addChild(this.turntable)
-    // NOTE: a carved body stands facing the play lens, leaning back with
-    // it; tipped forward by the lens's own pitch it stands upright.
-    const body = new Container3D({ rotation: { x: PITCH, y: 0, z: 0 } })
-    this.turntable.addChild(body)
-    this.voxels = new VoxelBatch({ parent: body, textures })
+    this.voxels = new VoxelBatch({ parent: this.stand, textures })
     const block = new CubeGeometry()
     this.base = new Mesh3D({
       geometry: block,
@@ -197,15 +197,16 @@ export class PlinthStage {
     const { pose, at, isStill } = input
     const { image, clockMs, light } = pose
     this.stand.position.set(at.x, 0, at.z)
-    const size = plinthSizeOf(image)
+    const frame = plinthFrameOf(image)
+    const { size } = frame
+    // NOTE: the body stands on the plinth's top as play stands it on the
+    // floor: the sprite's own box is drawn about its foot, at the stand's
+    // middle, and swings as play spins a
+    // body, about its own upright.
     this.voxels.begin()
     const isStanding = this.voxels.standLeaf({
       leaf: {
-        shape: {
-          ...image,
-          x: -Math.round(image.width / 2),
-          y: -image.height,
-        },
+        shape: image,
         matrix: IDENTITY,
         alpha: 1,
       },
@@ -214,32 +215,39 @@ export class PlinthStage {
       isFlash: false,
       most: MOST_DEPTH,
       reach: newReach(),
+      spin: isStill
+        ? REST_TURN
+        : SWING * Math.sin((2 * Math.PI * clockMs) / SWING_MS),
     })
     this.voxels.end()
     if (!isStanding) {
       return Option.none()
     }
 
-    const top = plinthTopOf(image) * UNIT
+    const top = frame.top * UNIT
     this.top.scale.set(top, PLINTH_TOP_PX * UNIT, top)
     this.top.position.set(0, (-PLINTH_TOP_PX / 2) * UNIT, 0)
     const base = top + 2 * UNIT
     this.base.scale.set(base, PLINTH_BASE_PX * UNIT, base)
     this.base.position.set(0, (-PLINTH_TOP_PX - PLINTH_BASE_PX / 2) * UNIT, 0)
-    this.turntable.rotation.y = isStill
-      ? REST_TURN
-      : snappedSpinOf((2 * Math.PI * clockMs) / TURN_MS)
 
-    // NOTE: the camera looks at the middle of the body and its plinth, one
+    // NOTE: the camera looks down play's lens at the frame's middle, one
     // game pixel to a canvas pixel.
-    const middle = ((image.height - PLINTH_TOP_PX - PLINTH_BASE_PX) / 2) * UNIT
+    const middle = standingPointOf({
+      x: 0,
+      footY: 0,
+      atY: -frame.middle,
+      out: 0,
+    })
+    const eye = standingPointOf({
+      x: 0,
+      footY: 0,
+      atY: -frame.middle,
+      out: CAMERA_DISTANCE,
+    })
     const { camera } = this.view
-    camera.position.set(
-      at.x,
-      middle + Math.sin(PLINTH_PITCH) * CAMERA_DISTANCE,
-      at.z + Math.cos(PLINTH_PITCH) * CAMERA_DISTANCE,
-    )
-    camera.lookAt({ x: at.x, y: middle, z: at.z })
+    camera.position.set(at.x + eye.x, eye.y, at.z + eye.z)
+    camera.lookAt({ x: at.x + middle.x, y: middle.y, z: at.z + middle.z })
     camera.orthographicSize = (size * UNIT) / 2
 
     const lights = LIGHTS[light]
@@ -248,8 +256,8 @@ export class PlinthStage {
       1 +
       lights.flicker *
         (Math.sin(clockMs / 170) * 0.6 + Math.sin(clockMs / 53) * 0.4)
-    this.ambient.intensity = lights.ambient
-    this.key.color.setValue(lights.key.color)
+    this.ambient.intensity = lights.ambient * LOOK_TUNING.now.ambient
+    this.key.color.setValue(FLAME_TUNING.now[lights.key.flame].color)
     this.key.intensity = lights.key.intensity * flicker
     this.key.position.set(
       at.x + lights.key.at.x * tall,

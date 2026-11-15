@@ -1,5 +1,5 @@
-// What a plinth shows (plinth.ts): one sprite carved into blocks, turning
-// slowly on its lit plinth by the clock it is handed, in its light. The
+// What a plinth shows (plinth.ts): one sprite carved into blocks, swinging
+// a little on its lit plinth by the clock it is handed, in its light. The
 // Munchopedia's entries hand one to `<munch-plinth>` each render
 // (plinthElement.ts).
 
@@ -11,7 +11,8 @@ import type { Canvas } from 'foldkit'
 export type PlinthLight = 'Candle' | 'Villain'
 
 export type PlinthPose = Readonly<{
-  // NOTE: the sprite as the game draws it, its foot at its bottom edge.
+  // NOTE: the sprite as the game draws it, its box about its foot (0, 0),
+  // as play draws a body's sprite in a group translated to its foot.
   image: Canvas.Image
   clockMs: number
   light: PlinthLight
@@ -27,25 +28,45 @@ const isPlinthPose = (value: unknown): value is PlinthPose =>
 // it, so a declared Schema only names its type.
 export const PlinthPoseSchema = Schema.declare(isPlinthPose)
 
-// NOTE: the plinth in game pixels: a square top as wide as most of the
-// sprite is tall, a brass slab over a stone base.
+// NOTE: the plinth in game pixels: a square top a little narrower than the
+// sprite is wide, a brass slab over a stone base, turned corner on.
 export const PLINTH_BASE_PX = 4
 export const PLINTH_TOP_PX = 2
 
-export const plinthTopOf = (image: Canvas.Image): number =>
-  Math.max(8, Math.round(image.height * 0.7))
-
-// NOTE: the plinth's picture in game pixels, square: tall enough for the
-// sprite on its plinth, wide enough for the plinth turned corner on, and
-// even, so the middle falls on a whole pixel.
+// NOTE: room round the figure, in game pixels.
 const MARGIN = 4
 
-export const plinthSizeOf = (image: Canvas.Image): number => {
+// NOTE: how much of the plinth the frame shows below the foot, in game
+// pixels: its top and the start of its side, cut off by the frame's bottom
+// edge like a hero shot, so the figure fills the frame.
+const PLINTH_SHOWN_PX = 7
+
+export type PlinthFrame = Readonly<{
+  // NOTE: the square picture's side, even, so its middle falls on a whole
+  // pixel.
+  size: number
+  // NOTE: the plinth top's side.
+  top: number
+  // NOTE: the picture's middle, in game pixels up the screen from the
+  // sprite's foot.
+  middle: number
+}>
+
+export const plinthFrameOf = (image: Canvas.Image): PlinthFrame => {
+  const top = Math.max(8, Math.round(image.width * 0.7))
+  // NOTE: how far the sprite's box reaches up from its foot, and to either
+  // side of it.
+  const above = Math.max(1, -image.y)
+  const across = 2 * Math.max(-image.x, image.x + image.width)
   const side = Math.ceil(
-    Math.max(
-      image.height + PLINTH_BASE_PX + PLINTH_TOP_PX,
-      plinthTopOf(image) * Math.SQRT2,
-    ) + MARGIN,
+    Math.max(above + PLINTH_SHOWN_PX, across, top * Math.SQRT2) + MARGIN,
   )
-  return side + (side % 2)
+  const size = side + (side % 2)
+  return {
+    size,
+    top,
+    // NOTE: the plinth's shown part at the frame's bottom edge, the figure
+    // over it.
+    middle: size / 2 - PLINTH_SHOWN_PX - MARGIN / 2,
+  }
 }

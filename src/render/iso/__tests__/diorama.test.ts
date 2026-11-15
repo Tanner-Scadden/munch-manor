@@ -2,7 +2,7 @@ import { Canvas } from 'foldkit'
 import { describe, expect, test } from 'vitest'
 
 import { dioramaCameraOf, dioramaStepOf } from '../diorama'
-import { plinthSizeOf } from '../plinthPose'
+import { plinthFrameOf } from '../plinthPose'
 import { PITCH, UNIT } from '../space'
 
 // The title's diorama (src/render/iso/diorama.ts) and the Munchopedia's
@@ -64,19 +64,27 @@ describe('the plinth', () => {
   const image = (width: number, height: number) =>
     Canvas.Image({
       src: 'a.png',
-      x: 0,
-      y: 0,
+      x: -width / 2,
+      y: -height,
       width,
       height,
       rendering: 'Pixelated',
     })
 
   test('its picture is square, even, and holds the sprite on its plinth', () => {
-    const tall = plinthSizeOf(image(10, 14))
-    expect(tall % 2).toBe(0)
-    expect(tall).toBeGreaterThanOrEqual(14 + 6)
-    const boss = plinthSizeOf(image(30, 40))
-    expect(boss % 2).toBe(0)
-    expect(boss).toBeGreaterThan(tall)
+    const tall = plinthFrameOf(image(10, 14))
+    expect(tall.size % 2).toBe(0)
+    expect(tall.size).toBeGreaterThanOrEqual(14 + 6)
+    const boss = plinthFrameOf(image(30, 40))
+    expect(boss.size % 2).toBe(0)
+    expect(boss.size).toBeGreaterThan(tall.size)
+  })
+
+  test('the figure fills most of its frame, the plinth below it', () => {
+    const boss = plinthFrameOf(image(30, 40))
+    expect(40 / boss.size).toBeGreaterThan(0.75)
+    // NOTE: the figure's top inside the frame, the foot near its bottom.
+    expect(boss.middle + boss.size / 2).toBeGreaterThanOrEqual(40)
+    expect(boss.size / 2 - boss.middle).toBeLessThan(12)
   })
 })

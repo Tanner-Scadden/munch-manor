@@ -139,6 +139,11 @@ const SCENES: ReadonlyArray<Scene> = [
     isAnimated: true,
   },
   {
+    name: 'entry-small',
+    query: FOUND,
+    open: [MANOR, '#hand-card-munchopedia', '.munch-tile >> nth=1'],
+  },
+  {
     name: 'entry-locked',
     query: FOUND,
     open: [MANOR, '#hand-card-munchopedia', '.munch-tile >> nth=5'],
