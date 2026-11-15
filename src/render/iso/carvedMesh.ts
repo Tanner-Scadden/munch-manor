@@ -6,6 +6,9 @@
 // floor, so its fronts face the lens and its tops lie flat, and from the
 // lens its front is exactly the art it was carved from.
 //
+// A piece set upright in a wall (the library's secret shelf) stands
+// square to the wall instead, facing the room (`uprightMeshOf`).
+//
 // The glowing colors (a candle's flame) go in a geometry of their own, drawn
 // unlit, so a flame burns in any light.
 //
@@ -21,7 +24,14 @@ import {
   voxelsOf,
 } from '../../art/carve'
 import { parseColor } from '../../art/png'
-import { TOWARD_CAMERA, UNIT, standingPointOf } from './space'
+import {
+  TOWARD_CAMERA,
+  UNIT,
+  UP_NORMAL,
+  WALL_ROW,
+  standingPointOf,
+  zOf,
+} from './space'
 import { DEPTH_BACK } from './voxelShape'
 
 // NOTE: a geometry's arrays, its colors four floats a corner, 0 to 1 as
@@ -44,7 +54,7 @@ export type CarvedPlacement = Readonly<{
 
 type Point = readonly [number, number, number]
 
-const TOP: Point = [0, 1, 0]
+const TOP: Point = UP_NORMAL
 const BOTTOM: Point = [0, -1, 0]
 const FRONT: Point = [TOWARD_CAMERA.x, TOWARD_CAMERA.y, TOWARD_CAMERA.z]
 const BACK: Point = [-TOWARD_CAMERA.x, -TOWARD_CAMERA.y, -TOWARD_CAMERA.z]
@@ -191,14 +201,17 @@ const channelsOf = (color: string): readonly [number, number, number] =>
     onSome: ({ r, g, b }) => [r / 255, g / 255, b / 255],
   })
 
-// NOTE: the piece's faces in the world, those of a glowing color apart.
-export const carvedMeshOf = ({
+// NOTE: a model's faces in the world, those of a glowing color apart: a
+// corner of the grid at `pointOf`, each face facing `normalOf`.
+const facesOf = ({
   model,
-  placement,
+  pointOf,
+  normalOf,
   isGlowing,
 }: Readonly<{
   model: CarvedModel
-  placement: CarvedPlacement
+  pointOf: (corner: Point) => Point
+  normalOf: (spec: FaceSpec) => Point
   isGlowing: (color: string) => boolean
 }>): Readonly<{ lit: CarvedMeshData; glowing: CarvedMeshData }> => {
   const lit = new ColoredBuilder()
@@ -206,6 +219,7 @@ export const carvedMeshOf = ({
   // NOTE: every front first, then the tops and sides, as a sprite's blocks
   // are built (voxelShape.ts).
   for (const spec of FACES) {
+    const normal = normalOf(spec)
     for (const voxel of voxelsOf(model)) {
       const [dx, dy, dz] = spec.neighbor
       if (
@@ -219,14 +233,79 @@ export const carvedMeshOf = ({
       Option.map(faceColorOf({ model, voxel, face: spec.face }), color => {
         const [c0, c1, c2, c3] = spec.corners
         const at = ([x, y, z]: Point): Point =>
-          worldPointOf(placement, [voxel.x + x, voxel.y + y, voxel.z + z])
+          pointOf([voxel.x + x, voxel.y + y, voxel.z + z])
         ;(isGlowing(color) ? glowing : lit).face(
           [at(c0), at(c1), at(c2), at(c3)],
-          spec.normal,
+          normal,
           channelsOf(color),
         )
       })
     }
   }
   return { lit: lit.data(), glowing: glowing.data() }
+}
+
+// NOTE: the piece's faces in the world, leaned along the lens.
+export const carvedMeshOf = ({
+  model,
+  placement,
+  isGlowing,
+}: Readonly<{
+  model: CarvedModel
+  placement: CarvedPlacement
+  isGlowing: (color: string) => boolean
+}>): Readonly<{ lit: CarvedMeshData; glowing: CarvedMeshData }> =>
+  facesOf({
+    model,
+    pointOf: corner => worldPointOf(placement, corner),
+    normalOf: ({ normal }) => normal,
+    isGlowing,
+  })
+
+// NOTE: a piece set upright in a side wall, facing the room east or west of
+// it, in game pixels: the wall's face's x, the floor row its grid's first
+// column stands at (its south end facing east, its north end facing west,
+// so it reads left to right from the room), and how many pixels its first
+// row's top stands over the floor, in rows of a wall's face. Its rows go
+// down the plumb line a screen pixel each, as a wall's face does
+// (space.ts `WALL_ROW`), and its depth into the wall.
+export type UprightPlacement = Readonly<{
+  face: number
+  end: number
+  height: number
+  facing: 'East' | 'West'
+}>
+
+export const uprightMeshOf = ({
+  model,
+  placement,
+  isGlowing,
+}: Readonly<{
+  model: CarvedModel
+  placement: UprightPlacement
+  isGlowing: (color: string) => boolean
+}>): Readonly<{ lit: CarvedMeshData; glowing: CarvedMeshData }> => {
+  const { face, end, height, facing } = placement
+  const out = facing === 'East' ? 1 : -1
+  // NOTE: a step along the grid's columns is a floor row south facing
+  // west, north facing east.
+  const along = -out
+  const normals: Readonly<Record<Face, Point>> = {
+    Front: [out, 0, 0],
+    Back: [-out, 0, 0],
+    Top: [0, 1, 0],
+    Bottom: [0, -1, 0],
+    Left: [0, 0, -along],
+    Right: [0, 0, along],
+  }
+  return facesOf({
+    model,
+    pointOf: ([x, y, z]) => [
+      (face + out * (model.depth - z)) * UNIT,
+      (height - y) * WALL_ROW,
+      zOf(end + along * x),
+    ],
+    normalOf: spec => normals[spec.face],
+    isGlowing,
+  })
 }

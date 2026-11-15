@@ -22,10 +22,10 @@ import { heartJarGlowShapes } from '../room/cellarArt'
 import { isRoomOpen, roomBoxOf } from '../room/room'
 import type { Box } from '../room/roomPalette'
 import { roseGlowShapes } from '../room/roseWindowArt'
-import { buildTileQuads } from './house'
+import { buildArtQuads } from './house'
 import { FloorPicture } from './painter'
-import { tileQuadsOver } from './storm'
 import type { Textures } from './textures'
+import { artQuadsOver } from './wallQuads'
 
 // THE HOUSE'S GLOWS
 
@@ -85,13 +85,13 @@ export class HouseGlows {
     }
     this.picture.paint(shapes)
     this.holder.addChild(
-      buildTileQuads({
+      buildArtQuads({
         level,
         material: new FlatMaterial({
           baseColorTexture: this.picture.texture,
           alphaMode: 'blend',
         }),
-        tiles: tileQuadsOver({
+        quads: artQuadsOver({
           level,
           boxes: boxesOf(shapes),
           overWall: OVER_WALL,

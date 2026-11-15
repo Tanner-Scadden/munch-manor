@@ -82,11 +82,10 @@ import { GodRays, shaftMotesOf } from './godRays'
 import {
   type Caster,
   type Plant,
+  buildArtQuads,
   buildLintels,
-  buildTileQuads,
-  buildWallFaces,
-  buildWallSides,
-  buildWallTops,
+  buildWallArt,
+  buildWallDark,
   buildWalls,
   cutoutBoxOf,
   floorArtOf,
@@ -115,10 +114,16 @@ import {
 import type { QualityTier } from './quality'
 import { WorldQuality } from './qualityControl'
 import { ShadowWatch } from './shadowWatch'
-import { type Chandelier, chandelierOf, isChandelierSprite } from './showpieces'
+import {
+  type Chandelier,
+  type Shelf,
+  chandelierOf,
+  isChandelierSprite,
+  shelfOf,
+} from './showpieces'
 import { SoupLayer } from './soupLayer'
 import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space'
-import { FAR_KEY, stormKeyOf, stormOf, stormTilesOf } from './storm'
+import { FAR_KEY, stormKeyOf, stormOf, stormQuadsOf } from './storm'
 import { Textures, colorOf } from './textures'
 import { VoxelBatch, newReach } from './voxels'
 import { chandelierSwayAt, windClockOf } from './wind'
@@ -209,6 +214,9 @@ type Built = Readonly<{
   // NOTE: the dining room's carved chandelier (showpieces.ts), where the
   // level has one.
   chandelier: Option.Option<Chandelier>
+  // NOTE: the library's shut secret shelf carved in its wall
+  // (showpieces.ts), where the level has one shut.
+  shelf: Option.Option<Shelf>
 }>
 
 const bottomOf = ({ shape, matrix }: Leaf): number =>
@@ -638,6 +646,9 @@ export class IsoScene {
     Option.map(built.chandelier, carved => {
       this.shadowWatch.note(carved.apply({ isDown, sway, view }))
     })
+    Option.map(built.shelf, shelf => {
+      shelf.apply(view)
+    })
     // NOTE: sparks, blood, and gibs in the air stand as cubes, lit as the
     // bodies are, so they vanish into the cellar's dark with them; one with
     // a see-through color (or with no cube left) stays a lit billboard. A
@@ -969,13 +980,13 @@ export class IsoScene {
     // NOTE: the storm's picture shows only on its own quads, never on a
     // plane over the whole level.
     const storm = new FloorPicture({ app, textures, level })
-    const stormQuads = buildTileQuads({
+    const stormQuads = buildArtQuads({
       level,
       material: new FlatMaterial({
         baseColorTexture: storm.texture,
         alphaMode: 'blend',
       }),
-      tiles: stormTilesOf(level),
+      quads: stormQuadsOf(level),
     })
     const walls = [
       ...buildWalls({ level, material: this.wallMaterial }),
@@ -988,9 +999,8 @@ export class IsoScene {
       specular: { factor: 0 },
       ...textures.lookOptions('House'),
     })
-    const wallTops = buildWallTops({ level, material: wallArt })
-    const wallFaces = buildWallFaces({ level, material: wallArt })
-    const wallSides = buildWallSides({ level, material: wallArt })
+    const wallQuads = buildWallArt({ level, material: wallArt })
+    const wallDark = buildWallDark(level)
     const leaks = new LeakLayer({ app, textures, level })
     const soup = new SoupLayer({ app, textures, level })
     holder.addChild(
@@ -999,9 +1009,8 @@ export class IsoScene {
       leaks.body,
       leaks.glints,
       soup.mesh,
-      wallTops,
-      wallFaces,
-      wallSides,
+      wallQuads,
+      wallDark,
       stormQuads,
     )
     Array.forEach(walls, mesh => {
@@ -1029,6 +1038,7 @@ export class IsoScene {
       rays: new GodRays({ level, parent: holder }),
       glows: new HouseGlows({ app, textures, level, parent: holder }),
       chandelier: chandelierOf({ level, parent: holder }),
+      shelf: shelfOf({ level, parent: holder }),
     }
     this.built = built
     this.castPlants(built)
@@ -1063,6 +1073,9 @@ export class IsoScene {
     this.rims.release()
     Option.map(built.chandelier, chandelier => {
       chandelier.destroy()
+    })
+    Option.map(built.shelf, shelf => {
+      shelf.destroy()
     })
     built.rays.destroy()
     built.glows.destroy()

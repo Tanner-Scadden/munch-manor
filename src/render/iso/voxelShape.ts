@@ -11,7 +11,14 @@
 
 import { type SpriteForm, formOf } from '../../art/carve'
 import type { Affine } from './flatten'
-import { CAMERA_UP, PITCH, TOWARD_CAMERA, UNIT, standingPointOf } from './space'
+import {
+  CAMERA_UP,
+  PITCH,
+  SOUTH_NORMAL,
+  TOWARD_CAMERA,
+  UNIT,
+  standingPointOf,
+} from './space'
 
 // NOTE: one pixel of depth sinks this far toward the lens's back, in game
 // pixels along the camera's view, while it rises one along its up: together
@@ -356,7 +363,7 @@ const pointOf = (x: number, y: number, d: number): Point => [
 ]
 
 const TOP_LENGTH = Math.hypot(DEPTH_BACK, 1)
-const FRONT: Point = [0, 0, 1]
+const FRONT: Point = SOUTH_NORMAL
 const BACK: Point = [0, 0, -1]
 const TOP: Point = [0, DEPTH_BACK / TOP_LENGTH, 1 / TOP_LENGTH]
 const BOTTOM: Point = [0, -DEPTH_BACK / TOP_LENGTH, -1 / TOP_LENGTH]

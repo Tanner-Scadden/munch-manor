@@ -7,7 +7,6 @@
 import { Array, Order, Result } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { TILE_SIZE } from '../../shared/constants'
 import { unitOf } from '../../shared/prng'
 import type { Level } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/entitySchema'
@@ -15,9 +14,8 @@ import type { World } from '../../world/schema/worldSchema'
 import { rect } from '../drawing'
 import type { Box } from '../room/roomPalette'
 import { type Pane, windowPanesOf } from '../room/windows'
-import type { TileQuad } from './house'
 import { strikeOf } from './mood'
-import { wallHeightAt } from './space'
+import { type ArtQuad, artQuadsOver } from './wallQuads'
 
 // RAIN
 
@@ -227,58 +225,23 @@ export const stormOf = ({
 
 // WHERE IT SHOWS
 
-// NOTE: the storm's quads sit just over what they lie on: a wall's top
-// (over its art, at 0.002) or the floor (over the ground's glows, at 0.012).
+// NOTE: the storm's quads sit just over what they lie on: a wall's art
+// (over it, at 0.002 up a face or over a top) or the floor (over the
+// ground's glows, at 0.012).
 const OVER_WALL = 0.006
 const OVER_FLOOR = 0.014
 
-// NOTE: a quad over every tile any of `boxes` touches, once each, lying
-// just over what it lies on: a wall's top or the floor.
-export const tileQuadsOver = (
-  input: Readonly<{
-    level: Level
-    boxes: ReadonlyArray<Box>
-    overWall: number
-    overFloor: number
-  }>,
-): ReadonlyArray<TileQuad> => {
-  const { level, boxes, overWall, overFloor } = input
-  const keys = new Set<number>()
-  const tiles: Array<TileQuad> = []
-  Array.forEach(boxes, ({ x, y, width, height }) => {
-    const left = Math.floor((x - level.left) / TILE_SIZE)
-    const right = Math.floor((x + width - 1 - level.left) / TILE_SIZE)
-    const top = Math.floor((y - level.top) / TILE_SIZE)
-    const bottom = Math.floor((y + height - 1 - level.top) / TILE_SIZE)
-    for (let row = top; row <= bottom; row += 1) {
-      for (let column = left; column <= right; column += 1) {
-        const key = row * level.columns + column
-        if (!keys.has(key)) {
-          keys.add(key)
-          const wall = wallHeightAt({ tiles: level.tiles, row, column })
-          tiles.push({
-            row,
-            column,
-            y: wall > 0 ? wall + overWall : overFloor,
-          })
-        }
-      }
-    }
-  })
-  return tiles
-}
+const builtQuads = new WeakMap<Level, ReadonlyArray<ArtQuad>>()
 
-const builtTiles = new WeakMap<Level, ReadonlyArray<TileQuad>>()
-
-// NOTE: every tile the storm can show on, a quad each: the glass and the
-// floor its light falls on, and nowhere else, so the layer costs the screen
-// next to nothing.
-export const stormTilesOf = (level: Level): ReadonlyArray<TileQuad> => {
-  const cached = builtTiles.get(level)
+// NOTE: every quad the storm can show on: the walls' art the glass is in,
+// up a face or over a top, and the floor its light falls on, and nowhere
+// else, so the layer costs the screen next to nothing.
+export const stormQuadsOf = (level: Level): ReadonlyArray<ArtQuad> => {
+  const cached = builtQuads.get(level)
   if (cached !== undefined) {
     return cached
   }
-  const tiles = tileQuadsOver({
+  const quads = artQuadsOver({
     level,
     boxes: Array.flatMap(windowPanesOf(level), ({ glass, thrown }) => [
       glass,
@@ -287,6 +250,6 @@ export const stormTilesOf = (level: Level): ReadonlyArray<TileQuad> => {
     overWall: OVER_WALL,
     overFloor: OVER_FLOOR,
   })
-  builtTiles.set(level, tiles)
-  return tiles
+  builtQuads.set(level, quads)
+  return quads
 }

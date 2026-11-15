@@ -62,7 +62,10 @@ import {
 } from '../../src/features/rattles/rattlesSpot'
 import { CELLAR_BULB_SPRITE } from '../../src/render/room/cellarArt'
 import { CHANDELIER_SPRITES } from '../../src/render/room/diningArt'
-import { SHELF_SPRITES } from '../../src/render/room/libraryArt'
+import {
+  SHELF_SPRITES,
+  SWUNG_SHELF_SPRITES,
+} from '../../src/render/room/libraryArt'
 import { MasterySkin } from '../../src/shared/masteryData'
 import { Hat, Outfit, PropStyle } from '../../src/shared/playerData'
 import { DareKind } from '../../src/world/dare/dareSchema'
@@ -466,6 +469,12 @@ const itemsSections = (): ReadonlyArray<Section> => [
           'src/render/room/libraryArt.ts',
           sprite,
         ),
+      ),
+      stillEntry(
+        'piece/SecretShelf/Swung',
+        'Secret shelf, swung',
+        'src/render/room/libraryArt.ts',
+        SWUNG_SHELF_SPRITES.West,
       ),
       stillEntry(
         'piece/CellarBulb',

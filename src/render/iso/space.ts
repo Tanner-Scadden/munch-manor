@@ -1,6 +1,6 @@
 // The 3D world's space: how the game's 2D world maps onto 3D units.
 
-import { Array, Option, String } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { OUTSIDE_SYMBOL, WALL_SYMBOL } from '../../world/level/tileGrid'
@@ -25,11 +25,28 @@ export const STRETCH = 1 / Math.sin(PITCH)
 
 export const zOf = (gameY: number): number => gameY * UNIT * STRETCH
 
+// NOTE: the world's axes a face is turned to, as normals: straight up, and
+// south, out of a north wall toward the lens.
+export const UP_NORMAL: readonly [number, number, number] = [0, 1, 0]
+export const SOUTH_NORMAL: readonly [number, number, number] = [0, 0, 1]
+
 // NOTE: what floats overhead (the hung chandelier, sparks) stands on the
 // floor this many game pixels south of its own bottom edge.
 export const OVERHEAD_FOOT_PX = 2
 
-const WALL_HEIGHT = 1.4
+// NOTE: how tall one row of a wall's art stands on an upright face, so it
+// is one game pixel on the screen as the floor's and a sprite's are: a face
+// stands plumb, and the lens sees cos(PITCH) of its height.
+export const WALL_ROW = UNIT / Math.cos(PITCH)
+
+// NOTE: how many rows of a wall's art a tall wall's face stands, a row a
+// screen pixel: the house's height, tall enough that the walls read as
+// walls and low enough that the mantels and the shelves against them show
+// whole (owner, 2026-11-15: a wall as tall as all its art hid them). The
+// art over it runs on up its top as the 2D game drew it (wallQuads.ts).
+export const WALL_FACE_ROWS = 9
+
+const WALL_HEIGHT = WALL_FACE_ROWS * WALL_ROW
 
 // NOTE: a wall with floor just north of it, through at most its own two
 // tiles of thickness, stands between the lens and whoever is in that room,
@@ -39,19 +56,35 @@ const WALL_HEIGHT = 1.4
 // a side wall all the way down past its doorways: the floor north of a side
 // wall's tile under a doorway is the doorway, wall again a tile or two up,
 // not a room, so that tile is no front wall and the side wall keeps one
-// height with one top where two rooms' walls meet.
-const FRONT_WALL_HEIGHT = 0.4
+// height with one top where two rooms' walls meet. A front wall's face is
+// its skirting's two rows.
+export const FRONT_WALL_ROWS = 2
+const FRONT_WALL_HEIGHT = FRONT_WALL_ROWS * WALL_ROW
 const FRONT_WALL_DEPTH = 2
 // NOTE: the most rows a doorway in a side wall opens (the ports and the
 // spawn doors are two). A room's floor runs far longer north of its front
 // wall.
 const DOORWAY_ROWS = 2
 
-const symbolAt = (
-  tiles: ReadonlyArray<string>,
-  row: number,
-  column: number,
-): Option.Option<string> => String.charAt(tiles[row] ?? '', column)
+// NOTE: the symbol of a tile of the map, by its row and column.
+export const symbolAt: {
+  (
+    row: number,
+    column: number,
+  ): (tiles: ReadonlyArray<string>) => Option.Option<string>
+  (
+    tiles: ReadonlyArray<string>,
+    row: number,
+    column: number,
+  ): Option.Option<string>
+} = Function.dual(
+  3,
+  (
+    tiles: ReadonlyArray<string>,
+    row: number,
+    column: number,
+  ): Option.Option<string> => String.charAt(tiles[row] ?? '', column),
+)
 
 export const isFrontWallAt = ({
   tiles,

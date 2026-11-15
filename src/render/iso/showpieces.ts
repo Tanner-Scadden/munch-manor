@@ -2,9 +2,10 @@
 // level as real volumes, never through the per-frame batch, and only shown,
 // hidden, or swung each frame. The first is the dining room's chandelier,
 // hung over the table's gap or lying in it, with the cracks its fall left on
-// the floor, and its rope from the winch, taut or slack.
+// the floor, and its rope from the winch, taut or slack. The second is the
+// library's secret shelf, carved in its wall while it is shut.
 
-import { Array, Option, Result, String } from 'effect'
+import { Array, Option, Result, String, pipe } from 'effect'
 
 import {
   type Container3D,
@@ -16,8 +17,11 @@ import {
 } from '@pixi/3d'
 
 import { cropSetOf, placeAt } from '../../art/sprite'
+import { TILE_SIZE } from '../../shared/constants'
 import { gapBoxOf } from '../../world/dining/chandelier'
 import type { Level } from '../../world/level/arena'
+import { SECRET_EXIT } from '../../world/level/plan'
+import { secretShelfOf } from '../../world/library/secretShelf'
 import {
   type CarvedShowpiece,
   carvedChandelierOf,
@@ -29,7 +33,8 @@ import {
   type ChandelierState,
 } from '../room/diningArt'
 import { FLAME_COLOR, FLAME_TIP_COLOR } from '../room/roomPalette'
-import { type CarvedMeshData, carvedMeshOf } from './carvedMesh'
+import { SHELF_CARVES, isShelfGlint } from '../room/shelfCarve'
+import { type CarvedMeshData, carvedMeshOf, uprightMeshOf } from './carvedMesh'
 import { type ViewBox, isNearView } from './cull'
 import { type Leaf, flatten } from './flatten'
 import { UNIT } from './space'
@@ -55,26 +60,20 @@ type Built = Readonly<{
   box: ViewBox
 }>
 
-const buildPiece = (
+// NOTE: a piece's two geometries as meshes under `parent`, hidden until
+// shown.
+const meshesOf = (
   input: Readonly<{
-    piece: CarvedShowpiece
-    anchor: Readonly<{ x: number; y: number }>
+    data: Readonly<{ lit: CarvedMeshData; glowing: CarvedMeshData }>
     parent: Container3D
     materials: Readonly<{ lit: Material3D; glowing: FlatMaterial }>
     castsShadow: boolean
   }>,
-): Built => {
-  const { piece, anchor, parent, materials, castsShadow } = input
-  const placement = {
-    left: anchor.x + piece.left,
-    footY: anchor.y + piece.foot,
-    rise: piece.rise,
-  }
-  const data = carvedMeshOf({
-    model: piece.model,
-    placement,
-    isGlowing: color => GLOWING.has(color),
-  })
+): Readonly<{
+  meshes: ReadonlyArray<Mesh3D>
+  geometries: ReadonlyArray<Geometry3D>
+}> => {
+  const { data, parent, materials, castsShadow } = input
   const geometries = Array.map([data.lit, data.glowing], geometryOf)
   const [litGeometry, glowingGeometry] = geometries
   const meshes = Array.filterMap(
@@ -106,9 +105,35 @@ const buildPiece = (
     mesh.visible = false
     parent.addChild(mesh)
   })
+  return { meshes, geometries }
+}
+
+const buildPiece = (
+  input: Readonly<{
+    piece: CarvedShowpiece
+    anchor: Readonly<{ x: number; y: number }>
+    parent: Container3D
+    materials: Readonly<{ lit: Material3D; glowing: FlatMaterial }>
+    castsShadow: boolean
+  }>,
+): Built => {
+  const { piece, anchor, parent, materials, castsShadow } = input
+  const placement = {
+    left: anchor.x + piece.left,
+    footY: anchor.y + piece.foot,
+    rise: piece.rise,
+  }
   return {
-    meshes,
-    geometries,
+    ...meshesOf({
+      data: carvedMeshOf({
+        model: piece.model,
+        placement,
+        isGlowing: color => GLOWING.has(color),
+      }),
+      parent,
+      materials,
+      castsShadow,
+    }),
     box: {
       left: placement.left,
       top: placement.footY - piece.rise - piece.model.depth,
@@ -252,3 +277,65 @@ export const chandelierOf = (
       },
     }
   })
+
+// THE SECRET SHELF
+
+// NOTE: the library's shut secret shelf, carved in its wall (shelfCarve.ts),
+// while the level has it shut. Swung open, its tiles are a passage and the
+// swung case stands with the furniture (src/render/room/tallCover.ts). A
+// level is built again when it opens, so the carve is only ever shown or
+// hidden by the view.
+export type Shelf = Readonly<{
+  apply: (view: ViewBox) => void
+  destroy: () => void
+}>
+
+export const shelfOf = (
+  input: Readonly<{ level: Level; parent: Container3D }>,
+): Option.Option<Shelf> =>
+  pipe(
+    secretShelfOf(input.level),
+    Option.filter(() => !Array.contains(input.level.openExits, SECRET_EXIT)),
+    Option.map(({ tile, side }) => {
+      const model = SHELF_CARVES[side]
+      const isEast = side === 'West'
+      const north = tile.row * TILE_SIZE
+      const built = meshesOf({
+        data: uprightMeshOf({
+          model,
+          placement: {
+            face: (isEast ? tile.column + 1 : tile.column) * TILE_SIZE,
+            end: isEast ? north + model.width : north,
+            height: model.height,
+            facing: isEast ? 'East' : 'West',
+          },
+          isGlowing: isShelfGlint,
+        }),
+        parent: input.parent,
+        materials: {
+          lit: lit(),
+          glowing: new FlatMaterial({ vertexColors: true }),
+        },
+        castsShadow: true,
+      })
+      const box: ViewBox = {
+        left: tile.column * TILE_SIZE - model.depth,
+        top: north - model.height,
+        right: (tile.column + 1) * TILE_SIZE + model.depth,
+        bottom: north + model.width,
+      }
+      return {
+        apply: view => {
+          const isShown = isNearView(box, view)
+          Array.forEach(built.meshes, mesh => {
+            mesh.visible = isShown
+          })
+        },
+        destroy: () => {
+          Array.forEach(built.geometries, geometry => {
+            geometry.destroy()
+          })
+        },
+      }
+    }),
+  )
