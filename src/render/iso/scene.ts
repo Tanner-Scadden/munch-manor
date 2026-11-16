@@ -82,9 +82,11 @@ import { Furniture } from './furniture'
 import { GodRays, shaftMotesOf } from './godRays'
 import { GroundRects, splitGround } from './groundRects'
 import {
+  type ArtMesh,
   type Caster,
   type Plant,
   buildArtQuads,
+  buildFannedBlocks,
   buildLintels,
   buildWallArt,
   buildWallDark,
@@ -217,6 +219,10 @@ type Built = Readonly<{
   // emissives.ts).
   rays: GodRays
   glows: HouseGlows
+  // NOTE: the art quads whose wall tops fan from the lens's eye each frame
+  // (house.ts `ArtMesh`): the walls', the night behind them, the storm's,
+  // and the fanned walls' plain blocks drawn in the real blocks' place.
+  fans: ReadonlyArray<ArtMesh>
   // NOTE: the dining room's carved chandelier (showpieces.ts), where the
   // level has one.
   chandelier: Option.Option<Chandelier>
@@ -474,6 +480,17 @@ export class IsoScene {
         return diorama.view
       },
     })
+
+    // NOTE: the wall tops fan from the play lens's eye; the diorama's
+    // camera sees along parallel rays, so they lie as built under it.
+    const fanEye = IsoLens.match(frame.lens, {
+      Play: () => Option.some(lens.eye),
+      Diorama: () => Option.none(),
+    })
+    Array.forEach(built.fans, fan => {
+      fan.fanFrom(fanEye)
+    })
+    built.glows.fanFrom(fanEye)
 
     const { player } = focusOf(model)
     const rattle = houseRattleOf(model.shake.trauma)
@@ -971,6 +988,10 @@ export class IsoScene {
     })
     const wallQuads = buildWallArt({ level, material: wallArt })
     const wallDark = buildWallDark(level)
+    const fannedBlocks = buildFannedBlocks({
+      level,
+      material: this.wallMaterial,
+    })
     const leaks = new LeakLayer({ app, textures, level })
     const soup = new SoupLayer({ app, textures, level })
     holder.addChild(
@@ -979,9 +1000,10 @@ export class IsoScene {
       leaks.body,
       leaks.glints,
       soup.mesh,
-      wallQuads,
-      wallDark,
-      stormQuads,
+      wallQuads.mesh,
+      wallDark.mesh,
+      stormQuads.mesh,
+      fannedBlocks.mesh,
     )
     Array.forEach(walls, mesh => {
       holder.addChild(mesh)
@@ -1010,6 +1032,7 @@ export class IsoScene {
       lights: houseLightsOf({ level, parent: holder, watch: this.shadowWatch }),
       rays: new GodRays({ level, parent: holder }),
       glows: new HouseGlows({ app, textures, level, parent: holder }),
+      fans: [wallQuads, wallDark, stormQuads, fannedBlocks],
       chandelier: chandelierOf({ level, parent: holder }),
       shelf: shelfOf({ level, parent: holder }),
     }
