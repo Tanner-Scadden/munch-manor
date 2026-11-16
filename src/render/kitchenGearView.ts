@@ -248,46 +248,43 @@ const valveDrawables = (model: World): ReadonlyArray<Drawable> =>
 
 // NOTE: the lit valve's fire fills the fireplace: two frames as wide as the
 // firebox's 28 pixel opening (src/render/room/roomCover.ts), wider than the
-// hearth's own little fire, standing in front of it, glowing of itself.
+// hearth's own little fire, standing upright in front of it on the carved
+// hearth's face, a block deep, glowing of itself.
+const roarSprite = (pixels: ReadonlyArray<string>): Sprite =>
+  glowingSprite(
+    deepSprite(spriteShapes(pixels, FIRE_PALETTE, TOP_LEFT), {
+      most: 1,
+      isUpright: true,
+    }),
+  )
+
 const ROAR_FRAMES: Array.NonEmptyReadonlyArray<Sprite> = [
-  glowingSprite(
-    spriteShapes(
-      [
-        '.Y.......Y.........Y.......Y',
-        'YO......YO....Y...YO......YO',
-        'OO..Y...OR...YO...OR..Y...OR',
-        'OR.YO..YRR..YOO..YRR.YO..YRR',
-        'ORRYOY.ORRYOORRY.ORROOOY.ORR',
-        'RRRORROORRORRRRROORRRRRORRRR',
-        'RWRRRRRRRRRRWWRRRRRRWRRRRRRW',
-        'WWWRRDRRWWWWWWWRRDRWWWWRRDRW',
-        'WWRRDDDRRWWWWRRDDDRRWWRDDDRR',
-        'RRDDDDDDDRRRRDDDDDDDRRDDDDDD',
-        '.DDDDDDDDDDDDDDDDDDDDDDDDDD.',
-      ],
-      FIRE_PALETTE,
-      TOP_LEFT,
-    ),
-  ),
-  glowingSprite(
-    spriteShapes(
-      [
-        '......Y........Y.......Y....',
-        '.....YO....Y..YO...Y...OY...',
-        'Y..Y.OR...YO..RO..YO...ROY..',
-        'O..OYRR..YOR.YRR..OR..YRRO..',
-        'Y.YORRROYORRYORRYOORYOORRRY.',
-        'ROORRRRRORRRRRRRROORRRRRRRRO',
-        'RRRRRWWRRRRRWRRRRRRRWWRRRRRR',
-        'WRRDRWWWWWRRWWWRRDRWWWWWRRDR',
-        'RRDDDRWWWRRDDWRRDDDRRWWRRDDD',
-        'RRDDDDDDDRRDDDDDDDDDRRDDDDDD',
-        '.DDDDDDDDDDDDDDDDDDDDDDDDDD.',
-      ],
-      FIRE_PALETTE,
-      TOP_LEFT,
-    ),
-  ),
+  roarSprite([
+    '.Y.......Y.........Y.......Y',
+    'YO......YO....Y...YO......YO',
+    'OO..Y...OR...YO...OR..Y...OR',
+    'OR.YO..YRR..YOO..YRR.YO..YRR',
+    'ORRYOY.ORRYOORRY.ORROOOY.ORR',
+    'RRRORROORRORRRRROORRRRRORRRR',
+    'RWRRRRRRRRRRWWRRRRRRWRRRRRRW',
+    'WWWRRDRRWWWWWWWRRDRWWWWRRDRW',
+    'WWRRDDDRRWWWWRRDDDRRWWRDDDRR',
+    'RRDDDDDDDRRRRDDDDDDDRRDDDDDD',
+    '.DDDDDDDDDDDDDDDDDDDDDDDDDD.',
+  ]),
+  roarSprite([
+    '......Y........Y.......Y....',
+    '.....YO....Y..YO...Y...OY...',
+    'Y..Y.OR...YO..RO..YO...ROY..',
+    'O..OYRR..YOR.YRR..OR..YRRO..',
+    'Y.YORRROYORRYORRYOORYOORRRY.',
+    'ROORRRRRORRRRRRRROORRRRRRRRO',
+    'RRRRRWWRRRRRWRRRRRRRWWRRRRRR',
+    'WRRDRWWWWWRRWWWRRDRWWWWWRRDR',
+    'RRDDDRWWWRRDDWRRDDDRRWWRRDDD',
+    'RRDDDDDDDRRDDDDDDDDDRRDDDDDD',
+    '.DDDDDDDDDDDDDDDDDDDDDDDDDD.',
+  ]),
 ]
 
 const ROAR_WIDTH = 28

@@ -538,11 +538,15 @@ export const isGlowingShape = (shape: Canvas.Shape): boolean =>
 // reads wrong, set beside its pixel map: `most`, its depth cap; `isBox`,
 // every pixel the cap deep with its front flush, as a fridge or a stove
 // is; `rows`, a hand drawn depth map over the pixel map, a digit a pixel
-// (how many blocks deep, flush), `.` for the round default.
+// (how many blocks deep, flush), `.` for the round default; `isUpright`,
+// a piece of the house standing straight up on its foot rather than leaned
+// square to the pitch, a box `most` game pixels deep north along the floor,
+// so it fills its own tiles and stands against the wall behind them.
 export type SpriteDepth = Readonly<{
   most?: number
   isBox?: boolean
   rows?: ReadonlyArray<string>
+  isUpright?: boolean
 }>
 
 const SPRITE_DEPTHS = makeCropTable<SpriteDepth>()

@@ -29,9 +29,7 @@ import { COVER_DRAWINGS, coverBlocks } from './roomCover'
 // nobody loses themselves or a threat behind a china cabinet or a stack.
 
 // NOTE: the kinds whose art rises a body's height or so above the floor
-// they stand on. What is drawn on one every frame (the hearth's fire, the
-// stove's window, the fridge's door) stands in front of it, `IN_FRONT_PX`
-// nearer than its foot.
+// they stand on.
 const TALL_KINDS: ReadonlyArray<CoverKind> = [
   'Piano',
   'Bookshelf',
@@ -47,9 +45,25 @@ const TALL_KINDS: ReadonlyArray<CoverKind> = [
   'Fridge',
 ]
 
-// NOTE: the pieces that are boxes, a flat front as deep as a piece goes,
-// not the round default: masonry and iron and enamel.
-const BOX_KINDS: ReadonlyArray<CoverKind> = ['Hearth', 'Oven', 'Fridge']
+// NOTE: the pieces against a wall whose art is their front, standing
+// upright on their own tiles, a box as deep as the tiles go, so they read
+// as standing against the wall and nobody looks for a way behind them: the
+// cabinets, shelves, and racks, and the hearth, stove, and fridge. What is
+// drawn on one every frame (the hearth's fire, the stove's window, the
+// fridge's door) stands upright on its front (`ON_FRONT_PX`). The others
+// lean square to the pitch as every sprite does: a library stack's art is
+// its whole length seen from the room, which its lean already lays over
+// its tiles.
+const UPRIGHT_KINDS: ReadonlyArray<CoverKind> = [
+  'Piano',
+  'Bookshelf',
+  'Pantry',
+  'Hutch',
+  'WineRack',
+  'Hearth',
+  'Oven',
+  'Fridge',
+]
 
 export type TallCover = Readonly<{
   left: number
@@ -113,7 +127,7 @@ const tallCoverOfKind = (
   symbol: string,
   kind: CoverKind,
 ): ReadonlyArray<TallCover> => {
-  const isBox = Array.contains(BOX_KINDS, kind)
+  const isUpright = Array.contains(UPRIGHT_KINDS, kind)
   return Array.filterMap(coverBlocks(level, symbol), box => {
     const art = Array.filter(
       drawingOf(kind)(box, level),
@@ -127,8 +141,11 @@ const tallCoverOfKind = (
           right,
           artTop: top,
           footY: box.y + box.height,
-          shapes: isBox
-            ? deepSprite(bakeShapes(art), { isBox: true })
+          shapes: isUpright
+            ? deepSprite(bakeShapes(art), {
+                most: box.height,
+                isUpright: true,
+              })
             : bakeShapes(art),
         }),
     })

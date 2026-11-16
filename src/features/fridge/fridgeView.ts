@@ -6,12 +6,13 @@ import { prizeOnPaperSprite } from '../../art/prizeArt'
 import {
   type Sprite,
   bakeShapes,
+  deepSprite,
   group,
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
 import { type Camera, worldToView } from '../../render/camera'
-import { type Drawable, IN_FRONT_PX } from '../../render/depth'
+import { type Drawable, ON_FRONT_PX } from '../../render/depth'
 import { rect } from '../../render/drawing'
 import { clearWindowOf } from '../../render/hudLayout'
 import { type Keepout, maybeClearOfKeepouts } from '../../render/keepout'
@@ -59,10 +60,13 @@ const MAIN_DOOR_PX = FRIDGE_RISE_PX + TILE_SIZE * 2 - FREEZER_PX - 2
 // THE DOOR
 
 // NOTE: the main door swung open toward the viewer's left, a dark inside
-// lit sick green, shelves of things best not named.
-const OPEN_DOOR: Sprite = bakeShapes([
+// lit sick green, shelves of things best not named, and its pulse: the
+// inside's top lit brighter on every other beat. Each stands upright on the
+// carved fridge's front (`ON_FRONT_PX`), a block deep.
+const doorShapes = (inside: string): ReadonlyArray<Canvas.Shape> => [
   rect(1, FREEZER_PX + 1, FRIDGE_WIDTH - 3, MAIN_DOOR_PX - 1, '#14200e'),
   rect(1, FREEZER_PX + 1, FRIDGE_WIDTH - 3, 2, '#9be36a'),
+  rect(2, FREEZER_PX + 3, FRIDGE_WIDTH - 5, 4, inside),
   rect(2, FREEZER_PX + 9, FRIDGE_WIDTH - 5, 1, '#4a5a3a'),
   rect(2, FREEZER_PX + 16, FRIDGE_WIDTH - 5, 1, '#4a5a3a'),
   rect(3, FREEZER_PX + 6, 3, 3, '#a04a5a'),
@@ -72,24 +76,34 @@ const OPEN_DOOR: Sprite = bakeShapes([
   rect(-5, FREEZER_PX - 1, 1, MAIN_DOOR_PX + 2, '#6e6648'),
   rect(-2, FREEZER_PX + 4, 1, 10, '#c9ced6'),
   rect(-4, FREEZER_PX + 2, 2, MAIN_DOOR_PX - 4, '#7aa04a'),
-])
+]
+
+const ON_FRONT = { most: 1, isUpright: true }
+
+const OPEN_DOOR: Sprite = deepSprite(
+  bakeShapes(doorShapes('#14200e')),
+  ON_FRONT,
+)
+
+// NOTE: the green glow over the dark inside, mixed solid (a pixel under half
+// opacity carves to nothing).
+const LIT_DOOR: Sprite = deepSprite(bakeShapes(doorShapes('#517837')), ON_FRONT)
 
 const GLOW_PULSE_MS = 140
 
-const GLOW: Sprite = bakeShapes([
-  rect(2, FREEZER_PX + 3, FRIDGE_WIDTH - 5, 4, 'rgba(155, 227, 106, 0.45)'),
-])
-
 // NOTE: a chain across the shut door with a padlock, while it rests after
 // a slam.
-const CHAIN: Sprite = bakeShapes([
-  ...Array.makeBy(6, index =>
-    rect(1 + index * 3, FREEZER_PX + 6 + (index % 2), 2, 1, '#8a8a96'),
-  ),
-  rect(FRIDGE_WIDTH / 2 - 3, FREEZER_PX + 7, 6, 5, '#e0b040'),
-  rect(FRIDGE_WIDTH / 2 - 2, FREEZER_PX + 5, 4, 2, '#140c10'),
-  rect(FRIDGE_WIDTH / 2 - 1, FREEZER_PX + 9, 2, 2, '#140c10'),
-])
+const CHAIN: Sprite = deepSprite(
+  bakeShapes([
+    ...Array.makeBy(6, index =>
+      rect(1 + index * 3, FREEZER_PX + 6 + (index % 2), 2, 1, '#8a8a96'),
+    ),
+    rect(FRIDGE_WIDTH / 2 - 3, FREEZER_PX + 7, 6, 5, '#e0b040'),
+    rect(FRIDGE_WIDTH / 2 - 2, FREEZER_PX + 5, 4, 2, '#140c10'),
+    rect(FRIDGE_WIDTH / 2 - 1, FREEZER_PX + 9, 2, 2, '#140c10'),
+  ]),
+  ON_FRONT,
+)
 
 const SLAM_SHAKE_MS = 500
 
@@ -104,19 +118,22 @@ const maybeFridgeSpot = (model: Model): Option.Option<FridgeSpot> =>
 
 const openDoor = (model: Model, spot: FridgeSpot): ReadonlyArray<Drawable> => [
   {
-    footY: spot.bottom + IN_FRONT_PX,
+    footY: spot.bottom + ON_FRONT_PX,
     rank: 'Prop',
     shapes: [
-      placeAt(spot.left, spot.top, OPEN_DOOR),
-      ...(Math.floor(model.elapsedMs / GLOW_PULSE_MS) % 2 === 0
-        ? [placeAt(spot.left, spot.top, GLOW)]
-        : []),
+      placeAt(
+        spot.left,
+        spot.top,
+        Math.floor(model.elapsedMs / GLOW_PULSE_MS) % 2 === 0
+          ? LIT_DOOR
+          : OPEN_DOOR,
+      ),
     ],
   },
 ]
 
 // NOTE: the door's state, standing in front of the carved fridge
-// (`IN_FRONT_PX`).
+// (`ON_FRONT_PX`).
 export const fridgeDrawables = (model: Model): ReadonlyArray<Drawable> =>
   isKitchenShown(model)
     ? Option.match(maybeFridgeSpot(model), {
@@ -135,7 +152,7 @@ export const fridgeDrawables = (model: Model): ReadonlyArray<Drawable> =>
                   : 0
               return [
                 {
-                  footY: spot.bottom + IN_FRONT_PX,
+                  footY: spot.bottom + ON_FRONT_PX,
                   rank: 'Prop',
                   shapes: [placeAt(spot.left + shake, spot.top, CHAIN)],
                 },

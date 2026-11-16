@@ -1,6 +1,7 @@
 import { Array, Option, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
+import { PITCH, UNIT, zOf } from '../space'
 import {
   type VoxelMeshData,
   isGroundedOf,
@@ -9,6 +10,8 @@ import {
   sideSourcesOf,
   slabMatrixOf,
   snappedSpinOf,
+  uprightLeanOf,
+  uprightMatrixOf,
   voxelMeshOf,
 } from '../voxelShape'
 
@@ -513,6 +516,112 @@ describe('slab matrix', () => {
     expect(dot(column(0), column(2))).toBeCloseTo(0, 9)
     expect(dot(column(1), column(2))).toBeCloseTo(0, 9)
     expect(dot(column(0), column(1))).toBeCloseTo(0, 9)
+  })
+})
+
+describe('standing upright', () => {
+  // NOTE: a china cabinet's art, 6 wide and 12 tall, standing upright on 4
+  // pixels of floor, as src/render/iso/voxels.ts carves one: as deep as its
+  // tiles, the stacks near the foot shallower so none goes under the floor.
+  const ART = rows(Array.makeBy(12, () => '######'))
+  const MOST = 4
+  const mesh = voxelMeshOf({
+    ...ART,
+    uvOf: uvByPixel,
+    most: MOST,
+    depthOf: (_column, row) => Math.max(1, Math.min(MOST, 12 - row)),
+    isUpright: true,
+  })
+  const lean = uprightLeanOf({ rows: 12, most: MOST })
+  const placement = {
+    box: { x: 0, y: -12, width: 6, height: 12 },
+    texels: { width: 6, height: 12 },
+    matrix: { a: 1, b: 0, c: 0, d: 1, e: 50, f: 100 },
+    footY: 100,
+    hover: 0,
+    nudge: 0,
+    depth: 1,
+    lean,
+  }
+  const { elements } = uprightMatrixOf(placement)
+  // NOTE: each corner of the blocks where the matrix stands it.
+  const corners = Array.makeBy(mesh.positions.length / 3, corner => {
+    const local = Array.makeBy(
+      3,
+      axis => mesh.positions[corner * 3 + axis] ?? 0,
+    )
+    return Array.makeBy(3, axis =>
+      Array.reduce(
+        local,
+        elements[12 + axis] ?? 0,
+        (sum, part, index) => sum + part * (elements[index * 4 + axis] ?? 0),
+      ),
+    )
+  })
+  const heights = Array.map(corners, ([, y]) => y ?? 0)
+  const depths = Array.map(corners, ([, , z]) => z ?? 0)
+  const tallest = Math.max(...heights)
+
+  test('its carve and its matrix lean back alike', () => {
+    expect(mesh.lean).toBeCloseTo(lean, 9)
+  })
+
+  test('it stands on the floor, never under it', () => {
+    expect(Math.min(...heights)).toBeCloseTo(0, 6)
+  })
+
+  test('its front is on its foot', () => {
+    expect(Math.max(...depths)).toBeCloseTo(zOf(100), 6)
+  })
+
+  // NOTE: up the camera's up, as many game pixels as its art: its top row
+  // folds into the tops of the row under it, a row on screen, as every
+  // carve's does. A step back along the lens's ray moves no point up the
+  // screen.
+  test('it is as tall on screen as its art', () => {
+    const rises = Array.map(
+      corners,
+      ([, y, z]) =>
+        (y ?? 0) * Math.cos(PITCH) - ((z ?? 0) - zOf(100)) * Math.sin(PITCH),
+    )
+    expect(Math.max(...rises)).toBeCloseTo(12 * UNIT, 6)
+  })
+
+  test('its front leans back until its top is over the back of its tiles', () => {
+    const top = Math.max(
+      ...Array.filter(
+        depths,
+        (_, index) => Math.abs((heights[index] ?? 0) - tallest) < 1e-6,
+      ),
+    )
+    expect(top).toBeCloseTo(zOf(100 - (MOST * (12 - 1)) / 12), 6)
+  })
+})
+
+describe('leaning upright', () => {
+  test('a tall piece leans its top over the back of its tiles', () => {
+    Array.forEach(
+      [
+        { tall: 29, most: 10 },
+        { tall: 40, most: 20 },
+      ],
+      ({ tall, most }) => {
+        const lean = uprightLeanOf({ rows: tall, most })
+        expect(
+          (tall * Math.sin(lean) * Math.sin(PITCH)) / Math.cos(PITCH - lean),
+        ).toBeCloseTo(most, 9)
+      },
+    )
+  })
+
+  test('the taller a piece is for its depth, the straighter it stands', () => {
+    expect(uprightLeanOf({ rows: 40, most: 10 })).toBeLessThan(
+      uprightLeanOf({ rows: 29, most: 10 }),
+    )
+  })
+
+  test('a squat piece leans no further than the lens', () => {
+    expect(uprightLeanOf({ rows: 10, most: 10 })).toBeCloseTo(PITCH, 9)
   })
 })
 

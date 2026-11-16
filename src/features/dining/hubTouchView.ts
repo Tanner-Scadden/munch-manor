@@ -10,7 +10,7 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
-import { type Drawable, IN_FRONT_PX } from '../../render/depth'
+import { type Drawable, ON_FRONT_PX } from '../../render/depth'
 import { rect } from '../../render/drawing'
 import { TILE_SIZE } from '../../shared/constants'
 import { type Level, type Room, levelOf } from '../../world/level/arena'
@@ -47,8 +47,8 @@ import { distanceBetween } from '../../world/step/geometry'
 // NOTE: where the touches stand, in pixels from the dining room's top left
 // (src/world/level/plan.ts, DINING_MAP). The sideboard runs along the north
 // wall, columns 13 to 22 of row 2, its foot on row 3's top edge
-// (src/render/room/diningArt.ts): the hatch sits on its face over its
-// second door, nearer than its carve reaches (`IN_FRONT_PX`), and the
+// (src/render/room/diningArt.ts): the hatch stands upright on its face
+// over its second door (`ON_FRONT_PX`), and the
 // borrowed books stand in a pile on the floor just past its east end, clear
 // of the silver on its top and Uncle Chunk's portrait over it. The cobweb
 // hangs high in the north-east corner, against the east wall: a standing
@@ -57,7 +57,7 @@ import { distanceBetween } from '../../world/step/geometry'
 // enough south (row 33) that even that top row stands just in front of the
 // face. The cellar's dust comes in at its side's boards, in the air.
 const SIDEBOARD_FOOT_Y = 3 * TILE_SIZE
-const HATCH_SPOT = { x: 155, y: 19, footY: SIDEBOARD_FOOT_Y + IN_FRONT_PX }
+const HATCH_SPOT = { x: 155, y: 19, footY: SIDEBOARD_FOOT_Y + ON_FRONT_PX }
 const BOOKS_HEIGHT = 11
 const BOOKS_SPOT = {
   x: 233,
@@ -109,7 +109,7 @@ const HATCH: Sprite = deepSprite(
     rect(3, 0, 2, 1, '#d8b04a'),
     rect(8, 1, 1, 8, '#c9a66b'),
   ]),
-  { most: 1 },
+  { most: 1, isUpright: true },
 )
 
 // NOTE: four library books piled crooked, their pages' edges showing.
