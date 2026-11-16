@@ -42,6 +42,7 @@ import {
   PITCH,
   STRETCH,
   UNIT,
+  WALL_ROW,
   standingPointOf,
   wallHeightAt,
   zOf,
@@ -312,16 +313,26 @@ const heightOver = (level: Level, glass: Box): number => {
   return wallHeightAt({ tiles: level.tiles, row, column })
 }
 
-// NOTE: a shaft leaves the wall's top front edge under its glass, the
-// glass's own width, and comes down in the middle of the patch of floor its
-// light falls on, so the two overlap only by half.
+// NOTE: a shaft leaves the foot of its glass, the glass's own width, and
+// comes down in the middle of the patch of floor its light falls on, so the
+// two overlap only by half. A back wall's glass stands up its face, a row
+// a screen pixel over the sill (wallQuads.ts); a side window's lies on its
+// wall's top, and its shaft leaves just under the top's front edge.
 const SHAFT_TOP_DROP = 0.02
 
-const shaftOf = (level: Level, { glass, sill, thrown }: Pane): RayQuad =>
-  slopeQuadOf({
+const shaftFootOf = (level: Level, { kind, glass, sill }: Pane): number => {
+  const top = heightOver(level, glass)
+  return kind === 'Side'
+    ? top - SHAFT_TOP_DROP
+    : Math.min(top, (sill - (glass.y + glass.height)) * WALL_ROW)
+}
+
+const shaftOf = (level: Level, pane: Pane): RayQuad => {
+  const { glass, sill, thrown } = pane
+  return slopeQuadOf({
     from: {
       x: glass.x * UNIT,
-      y: Math.max(0, heightOver(level, glass) - SHAFT_TOP_DROP),
+      y: Math.max(0, shaftFootOf(level, pane)),
       z: zOf(sill),
     },
     to: {
@@ -331,6 +342,7 @@ const shaftOf = (level: Level, { glass, sill, thrown }: Pane): RayQuad =>
     },
     width: glass.width,
   })
+}
 
 type Windows = Readonly<{
   shafts: ReadonlyArray<RayQuad>

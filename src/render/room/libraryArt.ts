@@ -6,6 +6,7 @@ import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
 import { LIBRARY_RUG } from '../../world/level/rugs'
 import { pixelArt, rect } from '../drawing'
+import { WALL_FACE_ROWS } from '../iso/space'
 import {
   BOOK_COLORS,
   SHELF_BACK_COLOR,
@@ -17,13 +18,15 @@ import {
   type Box,
   CANDLE_COLOR,
   CHAIR_RAIL_Y,
-  EXIT_GAP_COLOR,
   FACE_TOP,
   FLAME_COLOR,
   GOLD_COLOR,
   GOLD_DARK_COLOR,
   GOLD_LIGHT_COLOR,
   INK_COLOR,
+  PLANK_HEIGHT,
+  PLANK_JOINT_COLOR,
+  PLANK_SEAM_COLOR,
   PLANK_SHADES,
   pick,
   roll,
@@ -492,29 +495,41 @@ const bookTops = (seed: number): ReadonlyArray<Canvas.Shape> =>
           ),
   )
 
-// NOTE: shut, the shelf is built into the wall: its books' tops show from
-// above, and one red book sticks out into the room, glinting.
+// NOTE: shut, the shelf is built into the wall, as tall as the wall it is
+// set in: its books' tops show from above, as any wall's top wears its art.
+// Its face, the red book sticking out of it, stands carved
+// (src/render/room/shelfCarve.ts).
 const shutShapes = (): ReadonlyArray<Canvas.Shape> => [
   rect(0, -1, TILE_SIZE, SHELF_LENGTH + 2, SHELF_WOOD_COLOR),
   rect(1, 0, TILE_SIZE - 2, SHELF_LENGTH, SHELF_BACK_COLOR),
   ...bookTops(3),
   rect(1, 9, TILE_SIZE - 2, 1, SHELF_EDGE_COLOR),
   rect(TILE_SIZE - 1, -1, 1, SHELF_LENGTH + 2, SHELF_EDGE_COLOR),
-  rect(TILE_SIZE - 3, 6, 5, 2, ODD_BOOK_COLOR),
-  rect(TILE_SIZE + 1, 6, 1, 2, ODD_BOOK_LIGHT_COLOR),
-  rect(TILE_SIZE + 1, 6, 1, 1, BOOK_GLINT_COLOR),
+  rect(TILE_SIZE - 3, 6, 3, 2, ODD_BOOK_COLOR),
 ]
 
 // NOTE: open, the shelf has swung into the room on its hinge at the north
-// end and stands across the floor with its books to the south, the wall
-// behind it a dark gap with the next room's floor showing through, its arc
-// scraped in the dust, and two books shaken loose.
+// end and stands across the floor with its books to the south (the swung
+// case, `SWUNG_SHELF_SPRITES`), its arc scraped in the dust and two books
+// shaken loose. The wall it stood in is a passage, planks running through
+// it from the room next door, the library's shade over its own half.
 const openShapes = (): ReadonlyArray<Canvas.Shape> => [
-  rect(0, 0, TILE_SIZE, SHELF_LENGTH, EXIT_GAP_COLOR),
-  ...Array.makeBy(4, index =>
-    rect(0, 1 + index * 5, 3, 4, pick(PLANK_SHADES, roll(index, 880))),
+  ...Array.flatMap(
+    Array.makeBy(SHELF_LENGTH / PLANK_HEIGHT, row => row * PLANK_HEIGHT),
+    y => [
+      rect(-TILE_SIZE, y, SHELF_LENGTH, 1, PLANK_SEAM_COLOR),
+      rect(
+        -TILE_SIZE,
+        y + 1,
+        SHELF_LENGTH,
+        PLANK_HEIGHT - 1,
+        pick(PLANK_SHADES, roll(y, 880)),
+      ),
+    ],
   ),
-  rect(3, 0, 1, SHELF_LENGTH, '#0a0708'),
+  rect(-3, 1, 1, PLANK_HEIGHT - 1, PLANK_JOINT_COLOR),
+  rect(4, 11, 1, PLANK_HEIGHT - 1, PLANK_JOINT_COLOR),
+  rect(0, 0, TILE_SIZE, SHELF_LENGTH, FLOOR_SHADE_COLOR),
   ...Array.makeBy(14, index => {
     const angle = (index / 13) * (Math.PI / 2)
     return rect(
@@ -525,34 +540,95 @@ const openShapes = (): ReadonlyArray<Canvas.Shape> => [
       DUST_COLOR,
     )
   }),
-  rect(TILE_SIZE, -6, SHELF_LENGTH, 13, SHELF_WOOD_COLOR),
-  rect(TILE_SIZE - 1, -7, SHELF_LENGTH + 2, 2, SHELF_EDGE_COLOR),
-  rect(TILE_SIZE + 1, -4, SHELF_LENGTH - 2, 9, SHELF_BACK_COLOR),
-  ...Array.flatMap([-4, 1], shelfY =>
-    Array.filterMap(
-      Array.makeBy(Math.floor((SHELF_LENGTH - 2) / 2), index => index),
-      index =>
-        roll(shelfY + 20, index + 890) < 0.15
-          ? Result.failVoid
-          : Result.succeed(
-              rect(
-                TILE_SIZE + 1 + index * 2,
-                shelfY + Math.floor(roll(shelfY + 20, index + 895) * 2),
-                2,
-                4,
-                pick(BOOK_COLORS, roll(shelfY + 20, index + 900)),
-              ),
-            ),
-    ),
-  ),
-  rect(TILE_SIZE + 1, 0, SHELF_LENGTH - 2, 1, SHELF_EDGE_COLOR),
-  rect(TILE_SIZE + 1, 5, SHELF_LENGTH - 2, 1, SHELF_EDGE_COLOR),
-  rect(TILE_SIZE, 6, SHELF_LENGTH, 1, '#1a110a'),
-  rect(TILE_SIZE + 9, -4, 2, 4, ODD_BOOK_COLOR),
   rect(TILE_SIZE + 4, 12, 4, 2, '#3d4f7a'),
   rect(TILE_SIZE + 4, 12, 4, 1, '#5a6f9a'),
   rect(TILE_SIZE + 11, 15, 3, 2, '#b8813f'),
 ]
+
+// NOTE: the case seen square from its books' side, as long as the shelf and
+// as tall as the wall it is set in (a tall wall's rows of face,
+// src/render/iso/space.ts): its rim, two rows of books on a ledge, its
+// base, and the red book `oddBookX` from its left on the top row.
+export const SHELF_CASE_HEIGHT = WALL_FACE_ROWS
+
+export const SHELF_CASE_LENGTH = SHELF_LENGTH
+
+const CASE_BASE_COLOR = '#1a110a'
+
+// NOTE: how tall a book stands, the ledge between the two rows of books,
+// and each row's top.
+const BOOK_PX = 3
+const LEDGE_ROW = 1 + BOOK_PX
+const BOOK_ROWS: ReadonlyArray<number> = [1, LEDGE_ROW + 1]
+
+export const shelfCaseShapes = (
+  oddBookX: number,
+): ReadonlyArray<Canvas.Shape> => [
+  rect(0, 0, SHELF_LENGTH, SHELF_CASE_HEIGHT, SHELF_WOOD_COLOR),
+  rect(0, 0, SHELF_LENGTH, 1, SHELF_EDGE_COLOR),
+  rect(1, 1, SHELF_LENGTH - 2, SHELF_CASE_HEIGHT - 2, SHELF_BACK_COLOR),
+  ...Array.flatMap(BOOK_ROWS, row =>
+    Array.filterMap(
+      Array.makeBy(Math.floor((SHELF_LENGTH - 2) / 2), index => index),
+      index => {
+        if (roll(row + 13, index + 890) < 0.15) {
+          return Result.failVoid
+        }
+        const sunk = Math.floor(roll(row + 13, index + 895) * 2)
+        return Result.succeed(
+          rect(
+            1 + index * 2,
+            row + sunk,
+            2,
+            BOOK_PX - sunk,
+            pick(BOOK_COLORS, roll(row + 13, index + 900)),
+          ),
+        )
+      },
+    ),
+  ),
+  rect(1, LEDGE_ROW, SHELF_LENGTH - 2, 1, SHELF_EDGE_COLOR),
+  rect(0, SHELF_CASE_HEIGHT - 1, SHELF_LENGTH, 1, CASE_BASE_COLOR),
+  rect(oddBookX, 1, 2, BOOK_PX, ODD_BOOK_COLOR),
+]
+
+// NOTE: the colors of the case's frame: its wood, rim, ledges, and base,
+// which stand a pixel prouder than its books where it is carved.
+export const SHELF_FRAME_COLORS: ReadonlySet<string> = new Set([
+  SHELF_WOOD_COLOR,
+  SHELF_EDGE_COLOR,
+  CASE_BASE_COLOR,
+])
+
+export const SHELF_BOOK_COLORS = {
+  odd: ODD_BOOK_COLOR,
+  light: ODD_BOOK_LIGHT_COLOR,
+  glint: BOOK_GLINT_COLOR,
+} as const
+
+const shifted = (
+  shapes: ReadonlyArray<Canvas.Shape>,
+  dx: number,
+  dy: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Array.map(shapes, shape =>
+    shape._tag === 'Rect'
+      ? { ...shape, x: shape.x + dx, y: shape.y + dy }
+      : shape,
+  )
+
+// NOTE: swung open, the case stands across the floor east of the west
+// wall's tile, its books to the south and its hinge at the wall, its foot
+// 7 pixels below the shelf's top: drawn as if in the west wall, flipped for
+// the east, as the shelf's own art is.
+export const SWUNG_SHELF_FOOT_PX = 7
+
+const swungShapes = (): ReadonlyArray<Canvas.Shape> =>
+  shifted(
+    shelfCaseShapes(9),
+    TILE_SIZE,
+    SWUNG_SHELF_FOOT_PX - SHELF_CASE_HEIGHT,
+  )
 
 // NOTE: each state's pixels on each wall as rectangles, drawn at the top
 // left corner of the shelf's two wall tiles, for a room image that bakes
@@ -565,6 +641,15 @@ export const SHELF_SHAPES: Readonly<
     Shut: flipped(shutShapes(), 'East'),
     Open: flipped(openShapes(), 'East'),
   },
+}
+
+// NOTE: the swung case on each wall, built once: it stands carved in the
+// room (src/render/room/tallCover.ts).
+export const SWUNG_SHELF_SPRITES: Readonly<
+  Record<ShelfWall, ReadonlyArray<Canvas.Shape>>
+> = {
+  West: bakeShapes(swungShapes()),
+  East: bakeShapes(flipped(swungShapes(), 'East')),
 }
 
 // NOTE: each state's sprite on each wall, built once.

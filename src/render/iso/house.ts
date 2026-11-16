@@ -3,14 +3,14 @@
 // up, the ferns cut into clumps for the wind, and the hidden stand-ins the
 // furniture's shadows are cast through.
 
-import { Array, Option, Record, Result, String, pipe } from 'effect'
+import { Array, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 import { type Application, Graphics, Rectangle } from 'pixi.js'
 
 import {
   type Container3D,
   CubeGeometry,
-  type FlatMaterial,
+  FlatMaterial,
   Geometry3D,
   Material3D,
   Mesh3D,
@@ -33,30 +33,31 @@ import { type Leaf, flatten, rectKey } from './flatten'
 import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
 import { STRETCH, UNIT, wallHeightAt, zOf } from './space'
 import { colorOf } from './textures'
+import {
+  type ArtQuad,
+  BLOCK_INSET,
+  standingTilesOf,
+  wallQuadsOf,
+} from './wallQuads'
 import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
 
 // WALLS
 
 const WALL_GEOMETRY = new CubeGeometry({ width: 1, height: 1, depth: 1 })
 
-// NOTE: each block stands this far inside its tile, across and along, so
-// the art over its front and its open sides, lifted off its tile's edges
-// (FACE_LIFT), closes round it: no sliver of the plain block shows at a
-// corner where two of them meet, as one did down every doorway's jambs.
-const BLOCK_INSET = 0.003
-
 export const buildWalls = (
   input: Readonly<{ level: Level; material: ToonMaterial }>,
 ): ReadonlyArray<Mesh3D> => {
   const { level, material } = input
-  return Array.flatMap(level.tiles, (line, row) =>
+  const tiles = standingTilesOf(level)
+  return Array.flatMap(tiles, (line, row) =>
     Array.filterMap(Array.fromIterable(line), (symbol, column) => {
       if (symbol !== WALL_SYMBOL) {
         return Result.failVoid
       }
       const x = (level.left + column * TILE_SIZE) * UNIT + 0.5
       const z = zOf(level.top + (row + 0.5) * TILE_SIZE)
-      const height = wallHeightAt({ tiles: level.tiles, row, column })
+      const height = wallHeightAt({ tiles, row, column })
       return Result.succeed(
         new Mesh3D({
           geometry: WALL_GEOMETRY,
@@ -75,42 +76,74 @@ export const buildWalls = (
   )
 }
 
-// NOTE: every wall tile's top as one mesh, wearing the room's art as the 2D
-// game drew it from above: the wallpaper, the trim, the portraits. Each top
-// is a quad over its tile, its texture coordinates on the floor's own
-// picture of the level, so a game pixel on a wall's top is the same size as
-// one on the floor and the art repaints with it. The block below stays the
-// plain toon wall that gives it its height (owner, 2026-11-14: the walls
-// were grey blobs).
-export const buildWallTops = (
-  input: Readonly<{ level: Level; material: Material3D }>,
+// NOTE: every quad of the walls (wallQuads.ts) as one mesh wearing the
+// room's art, its texture coordinates on the floor's own picture of the
+// level, one texel a game pixel: a north wall's face and top wear the 2D
+// game's wallpaper, portraits, trim, and wainscot where the lens sees them,
+// a row a screen pixel, lit alike as one wall (`shade`). The blocks
+// below stay the plain toon walls that give them their height (owner,
+// 2026-11-15: the top wall was folded in).
+export const buildArtQuads = (
+  input: Readonly<{
+    level: Level
+    material: Material3D | FlatMaterial
+    quads: ReadonlyArray<ArtQuad>
+  }>,
 ): Mesh3D => {
-  const { level, material } = input
-  const tiles = Array.flatMap(level.tiles, (line, row) =>
-    Array.filterMap(Array.fromIterable(line), (symbol, column) =>
-      symbol === WALL_SYMBOL
-        ? Result.succeed({
-            row,
-            column,
-            y: wallHeightAt({ tiles: level.tiles, row, column }) + TOP_LIFT,
-          })
-        : Result.failVoid,
-    ),
-  )
-  return buildTileQuads({
-    level,
+  const { level, material, quads } = input
+  const positions = new Float32Array(quads.length * 12)
+  const normals = new Float32Array(quads.length * 12)
+  const uvs = new Float32Array(quads.length * 8)
+  const indices = new Uint32Array(quads.length * 6)
+  Array.forEach(quads, ({ corners, art, shade }, index) => {
+    positions.set(Array.flatten(corners), index * 12)
+    normals.set([...shade, ...shade, ...shade, ...shade], index * 12)
+    // NOTE: the picture is rendered to its texture upside down, so its rows
+    // count up from the bottom.
+    uvs.set(
+      Array.flatMap(art, ([u, v]) => [u / level.width, 1 - v / level.height]),
+      index * 8,
+    )
+    const first = index * 4
+    indices.set(
+      [first, first + 2, first + 1, first, first + 3, first + 2],
+      index * 6,
+    )
+  })
+  return new Mesh3D({
+    geometry: new Geometry3D({ positions, normals, uvs, indices }),
     material,
-    tiles: [...tiles, ...lintelTopsOf(level)],
+    castShadow: false,
+    receiveShadow: true,
   })
 }
 
+export const buildWallArt = (
+  input: Readonly<{ level: Level; material: Material3D }>,
+): Mesh3D =>
+  buildArtQuads({
+    ...input,
+    quads: Array.filter(
+      wallQuadsOf(input.level),
+      ({ wears }) => wears !== 'Night',
+    ),
+  })
+
+// NOTE: the tops behind the tall walls' caps (wallQuads.ts), flat black, as
+// dark as the night round the house, so a wall ends at its slim lit cap.
+export const buildWallDark = (level: Level): Mesh3D =>
+  buildArtQuads({
+    level,
+    material: new FlatMaterial({ baseColor: 0x000000 }),
+    quads: Array.filter(wallQuadsOf(level), ({ wears }) => wears === 'Night'),
+  })
+
 // NOTE: a tile of the level by its row and column, and the height its quad
-// lies at. It wears the picture over its own tile, or over `art`'s.
+// lies at. It wears the picture over its own tile.
 export type TileQuad = Readonly<{
   row: number
   column: number
   y: number
-  art?: Readonly<{ row: number; column: number }>
 }>
 
 // NOTE: a flat quad over each tile, its texture coordinates on a picture of
@@ -127,21 +160,19 @@ export const buildTileQuads = (
   const normals = new Float32Array(tiles.length * 12)
   const uvs = new Float32Array(tiles.length * 8)
   const indices = new Uint32Array(tiles.length * 6)
-  Array.forEach(tiles, ({ row, column, y, art }, index) => {
+  Array.forEach(tiles, ({ row, column, y }, index) => {
     const left = column * TILE_SIZE
     const top = row * TILE_SIZE
     const x0 = (level.left + left) * UNIT
     const x1 = x0 + TILE_SIZE * UNIT
     const z0 = zOf(level.top + top)
     const z1 = zOf(level.top + top + TILE_SIZE)
-    const artLeft = (art?.column ?? column) * TILE_SIZE
-    const artTop = (art?.row ?? row) * TILE_SIZE
-    const u0 = artLeft / level.width
-    const u1 = (artLeft + TILE_SIZE) / level.width
+    const u0 = left / level.width
+    const u1 = (left + TILE_SIZE) / level.width
     // NOTE: the picture is rendered to its texture upside down, so its rows
     // count up from the bottom.
-    const v0 = 1 - artTop / level.height
-    const v1 = 1 - (artTop + TILE_SIZE) / level.height
+    const v0 = 1 - top / level.height
+    const v1 = 1 - (top + TILE_SIZE) / level.height
     positions.set([x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1], index * 12)
     normals.set([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], index * 12)
     uvs.set([u0, v0, u1, v0, u1, v1, u0, v1], index * 8)
@@ -159,15 +190,12 @@ export const buildTileQuads = (
   })
 }
 
-// NOTE: just over the block's own top, so the two never fight.
-const TOP_LIFT = 0.002
-
 // DOORWAYS
 
 // NOTE: a block over each tile a lintel spans (lintels.ts), from the
 // lintel's floor to the wall's top, so a doorway reads as cut through the
-// wall rather than a gap in it. Its top wears the wall's art beside it
-// (`lintelTopsOf`).
+// wall rather than a gap in it. Its face and top are among the wall's art
+// quads (wallQuads.ts).
 export const buildLintels = (
   input: Readonly<{ level: Level; material: ToonMaterial }>,
 ): ReadonlyArray<Mesh3D> => {
@@ -184,231 +212,6 @@ export const buildLintels = (
       castShadow: true,
       receiveShadow: true,
     })
-  })
-}
-
-const lintelTopsOf = (level: Level): ReadonlyArray<TileQuad> =>
-  Array.map(lintelTilesOf(level), ({ row, column, height, art }) => ({
-    row,
-    column,
-    y: height + TOP_LIFT,
-    art,
-  }))
-
-// WALL FACES
-
-// NOTE: the rows at the foot of a wall tile's art that its face wears: the
-// wainscot and the skirting the 2D game drew at the bottom of a top wall.
-const FACE_ART_PX = 6
-// NOTE: just in front of the block's own face, so the two never fight.
-const FACE_LIFT = 0.003
-
-type FaceQuad = Readonly<{
-  row: number
-  column: number
-  bottom: number
-  top: number
-  art: Readonly<{ row: number; column: number }>
-}>
-
-const isWallTile = (
-  tiles: ReadonlyArray<string>,
-  row: number,
-  column: number,
-) =>
-  Option.exists(
-    String.charAt(tiles[row] ?? '', column),
-    symbol => symbol === WALL_SYMBOL,
-  )
-
-// NOTE: every wall face the lens sees: a wall tile's south side over floor,
-// from the floor to its top, and a lintel's from its floor to its top.
-const wallFacesOf = (level: Level): ReadonlyArray<FaceQuad> => [
-  ...Array.flatMap(level.tiles, (line, row) =>
-    Array.filterMap(Array.fromIterable(line), (symbol, column) =>
-      symbol === WALL_SYMBOL && !isWallTile(level.tiles, row + 1, column)
-        ? Result.succeed({
-            row,
-            column,
-            bottom: 0,
-            top: wallHeightAt({ tiles: level.tiles, row, column }),
-            art: { row, column },
-          })
-        : Result.failVoid,
-    ),
-  ),
-  ...Array.map(lintelTilesOf(level), ({ row, column, height, art }) => ({
-    row,
-    column,
-    bottom: LINTEL_FLOOR,
-    top: height,
-    art,
-  })),
-]
-
-// NOTE: every wall's south face as one mesh, wearing the foot of its own
-// art stretched down it, so the 2D game's wainscot runs down to the floor
-// instead of a plain grey band under every wall.
-export const buildWallFaces = (
-  input: Readonly<{ level: Level; material: Material3D }>,
-): Mesh3D => {
-  const { level, material } = input
-  const faces = wallFacesOf(level)
-  const positions = new Float32Array(faces.length * 12)
-  const normals = new Float32Array(faces.length * 12)
-  const uvs = new Float32Array(faces.length * 8)
-  const indices = new Uint32Array(faces.length * 6)
-  Array.forEach(faces, ({ row, column, bottom, top, art }, index) => {
-    // NOTE: run out past the tile's ends to the sides' plane (FACE_LIFT),
-    // its art run on with it, so a jamb's corner closes with no notch.
-    const x0 = (level.left + column * TILE_SIZE) * UNIT - FACE_LIFT
-    const x1 = x0 + TILE_SIZE * UNIT + FACE_LIFT * 2
-    // NOTE: its top edge meets the top's edge exactly, at the top's lift,
-    // leaning in the lift's depth, as a side's does (buildWallSides).
-    const edge = zOf(level.top + (row + 1) * TILE_SIZE)
-    const z = edge + FACE_LIFT
-    const lid = top + TOP_LIFT
-    const lip = FACE_LIFT / UNIT / level.width
-    const u0 = (art.column * TILE_SIZE) / level.width - lip
-    const u1 = ((art.column + 1) * TILE_SIZE) / level.width + lip
-    // NOTE: the picture is upside down in its texture (buildTileQuads).
-    const foot = (art.row + 1) * TILE_SIZE
-    const vTop = 1 - (foot - FACE_ART_PX) / level.height
-    const vFoot = 1 - foot / level.height
-    positions.set(
-      [x0, lid, edge, x1, lid, edge, x1, bottom, z, x0, bottom, z],
-      index * 12,
-    )
-    normals.set([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], index * 12)
-    uvs.set([u0, vTop, u1, vTop, u1, vFoot, u0, vFoot], index * 8)
-    const first = index * 4
-    indices.set(
-      [first, first + 2, first + 1, first, first + 3, first + 2],
-      index * 6,
-    )
-  })
-  return new Mesh3D({
-    geometry: new Geometry3D({ positions, normals, uvs, indices }),
-    material,
-    castShadow: false,
-    receiveShadow: true,
-  })
-}
-
-// SIDE FACES
-
-// NOTE: the lens is turned a little off north (src/render/lens.ts) and sees
-// through a slight perspective, so beside a wall's front it sees one of its
-// sides: a doorway's jambs, the end of a wall, a side wall's face. Each
-// wears the column of its own tile's art on that edge, run from the tile's
-// back to its front and stood up the wall, as a wall's front wears the foot
-// of its art: a doorway's casing down its jamb, a wall's dark edge down its
-// end, where the plain block showed slivers of grey.
-type SideQuad = Readonly<{
-  row: number
-  column: number
-  bottom: number
-  top: number
-  isEast: boolean
-}>
-
-// NOTE: half a texel in from the tile's edge, so a side samples its own
-// tile's edge column and never its neighbor's.
-const EDGE_TEXEL = 0.5
-
-const SIDE_IN = BLOCK_INSET / 2
-
-const sideFacesOf = (level: Level): ReadonlyArray<SideQuad> =>
-  Array.flatMap(level.tiles, (line, row) =>
-    Array.flatMap(Array.fromIterable(line), (symbol, column) => {
-      if (symbol !== WALL_SYMBOL) {
-        return []
-      }
-      const top = wallHeightAt({ tiles: level.tiles, row, column })
-      return Array.filterMap([true, false], isEast =>
-        Option.match(
-          // NOTE: what stands beside hides the side up to its own height:
-          // nothing over the floor, a doorway, or the dark round the house
-          // (a wall's end on the house's edge, which the lens sees past the
-          // turn), a lower wall's height beside a low front wall.
-          Option.liftPredicate(
-            wallHeightAt({
-              tiles: level.tiles,
-              row,
-              column: isEast ? column + 1 : column - 1,
-            }),
-            bottom => bottom < top,
-          ),
-          {
-            onNone: () => Result.failVoid,
-            onSome: bottom =>
-              Result.succeed({ row, column, bottom, top, isEast }),
-          },
-        ),
-      )
-    }),
-  )
-
-// NOTE: every wall's east and west sides the lens can see as one mesh.
-export const buildWallSides = (
-  input: Readonly<{ level: Level; material: Material3D }>,
-): Mesh3D => {
-  const { level, material } = input
-  const sides = sideFacesOf(level)
-  const positions = new Float32Array(sides.length * 12)
-  const normals = new Float32Array(sides.length * 12)
-  const uvs = new Float32Array(sides.length * 8)
-  const indices = new Uint32Array(sides.length * 6)
-  Array.forEach(sides, ({ row, column, bottom, top, isEast }, index) => {
-    const west = (level.left + column * TILE_SIZE) * UNIT
-    const edge = isEast ? west + TILE_SIZE * UNIT : west
-    // NOTE: just inside its own tile, between the tile's edge and the inset
-    // block (BLOCK_INSET), so the look pass colors it by its own room's
-    // ramp (look.ts reads the room off the tile under a fragment), never
-    // the next room's or the black round the house.
-    const x = isEast ? edge - SIDE_IN : edge + SIDE_IN
-    // NOTE: the side's top edge meets the top's edge exactly, at its lift,
-    // leaning in the lift's width, so no line of the block shows between
-    // them along a wall's top.
-    const lip = top + TOP_LIFT
-    // NOTE: run on to the front's plane (FACE_LIFT), its art with it, to
-    // meet a wall's front face at the corner.
-    const back = zOf(level.top + row * TILE_SIZE)
-    const front = zOf(level.top + (row + 1) * TILE_SIZE) + FACE_LIFT
-    const u =
-      (column * TILE_SIZE + (isEast ? TILE_SIZE - EDGE_TEXEL : EDGE_TEXEL)) /
-      level.width
-    // NOTE: the picture is upside down in its texture (buildTileQuads).
-    const vBack = 1 - (row * TILE_SIZE) / level.height
-    const vFront =
-      1 - ((row + 1) * TILE_SIZE + FACE_LIFT / UNIT / STRETCH) / level.height
-    // NOTE: corners in the order a front face takes them, its top left
-    // first as the side is seen from out in the room: the front first on an
-    // east side, the back first on a west one.
-    const [nearZ, farZ, nearV, farV] = isEast
-      ? [front, back, vFront, vBack]
-      : [back, front, vBack, vFront]
-    const normal = isEast ? 1 : -1
-    positions.set(
-      [edge, lip, nearZ, edge, lip, farZ, x, bottom, farZ, x, bottom, nearZ],
-      index * 12,
-    )
-    normals.set(
-      [normal, 0, 0, normal, 0, 0, normal, 0, 0, normal, 0, 0],
-      index * 12,
-    )
-    uvs.set([u, nearV, u, farV, u, farV, u, nearV], index * 8)
-    const first = index * 4
-    indices.set(
-      [first, first + 2, first + 1, first, first + 3, first + 2],
-      index * 6,
-    )
-  })
-  return new Mesh3D({
-    geometry: new Geometry3D({ positions, normals, uvs, indices }),
-    material,
-    castShadow: false,
-    receiveShadow: true,
   })
 }
 

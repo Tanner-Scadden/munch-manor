@@ -29,6 +29,7 @@ import {
 } from '../../src/render/room/escapeCover'
 import {
   SHELF_SHAPES,
+  SWUNG_SHELF_SPRITES,
   ladderShapes,
   libraryFloorShadeShapes,
   libraryRugShapes,
@@ -341,6 +342,15 @@ const libraryShapes = (isOpen: boolean): ReadonlyArray<Canvas.Shape> => {
           row * TILE_SIZE,
           SHELF_SHAPES.West[isOpen ? 'Open' : 'Shut'],
         ),
+        ...(isOpen
+          ? [
+              placeAt(
+                column * TILE_SIZE,
+                row * TILE_SIZE,
+                SWUNG_SHELF_SPRITES.West,
+              ),
+            ]
+          : []),
       ],
     }),
     ...Option.match(eastTop, {

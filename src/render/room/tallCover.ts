@@ -1,14 +1,23 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { bakeShapes, deepSprite, group } from '../../art/sprite'
+import { bakeShapes, deepSprite, group, placeAt } from '../../art/sprite'
+import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
+import { SECRET_EXIT } from '../../world/level/plan'
 import { COVER_SYMBOLS, type CoverKind } from '../../world/level/tileGrid'
+import { secretShelfOf } from '../../world/library/secretShelf'
 import type { Player, Zombie } from '../../world/schema/entitySchema'
 import type { Drawable } from '../depth'
 import { playerFootY } from '../playerView'
 import { zombieFootY } from '../zombieGroundView'
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from './escapeCover'
+import {
+  SHELF_CASE_HEIGHT,
+  SHELF_CASE_LENGTH,
+  SWUNG_SHELF_FOOT_PX,
+  SWUNG_SHELF_SPRITES,
+} from './libraryArt'
 import { COVER_DRAWINGS, coverBlocks } from './roomCover'
 
 // NOTE: the room image is baked flat on the floor canvas, under everyone, so
@@ -126,6 +135,33 @@ const tallCoverOfKind = (
   })
 }
 
+// NOTE: the library's secret shelf swung open stands across the floor as
+// a piece of furniture does (src/render/room/libraryArt.ts), drawn as if in
+// the west wall from the shelf's tile and flipped for the east.
+const swungShelfOf = (level: Level): ReadonlyArray<TallCover> =>
+  Array.contains(level.openExits, SECRET_EXIT)
+    ? Option.match(secretShelfOf(level), {
+        onNone: () => [],
+        onSome: ({ tile, side }) => {
+          const x = tile.column * TILE_SIZE
+          const y = tile.row * TILE_SIZE
+          const [left, right] =
+            side === 'West'
+              ? [x + TILE_SIZE, x + TILE_SIZE + SHELF_CASE_LENGTH]
+              : [x - SHELF_CASE_LENGTH, x]
+          return [
+            {
+              left,
+              right,
+              artTop: y + SWUNG_SHELF_FOOT_PX - SHELF_CASE_HEIGHT,
+              footY: y + SWUNG_SHELF_FOOT_PX,
+              shapes: [placeAt(x, y, SWUNG_SHELF_SPRITES[side])],
+            },
+          ]
+        },
+      })
+    : []
+
 const builtTallCover = new WeakMap<Level, ReadonlyArray<TallCover>>()
 
 // NOTE: built once for each level and kept, like the room images. The
@@ -142,6 +178,7 @@ export const tallCoverOf = (level: Level): ReadonlyArray<TallCover> => {
     // oxlint-disable-next-line munch/no-nested-scan
     Array.filter(([, kind]) => Array.contains(TALL_KINDS, kind)),
     Array.flatMap(([symbol, kind]) => tallCoverOfKind(level, symbol, kind)),
+    Array.appendAll(swungShelfOf(level)),
   )
   builtTallCover.set(level, pieces)
   return pieces
