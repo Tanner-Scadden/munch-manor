@@ -16,7 +16,7 @@ import { AmbientLight, Container3D, View3D } from '@pixi/3d'
 import { BloomEffect, OutlinePass } from '@pixi/3d/extras'
 
 import { isFlashShape } from '../../src/art/sprite'
-import { viewBoxOf } from '../../src/render/iso/cull'
+import { viewFloorOf } from '../../src/render/iso/cull'
 import { type Leaf, flatten } from '../../src/render/iso/flatten'
 import { floorArtOf } from '../../src/render/iso/house'
 import { AMBIENT } from '../../src/render/iso/lightSpecs'
@@ -520,7 +520,7 @@ class StageRenderer {
         y: setup.viewer.y,
         facing: setup.facing,
       },
-      view: viewBoxOf({
+      floor: viewFloorOf({
         x: setup.spot.x - lens.width,
         y: setup.spot.y - lens.height,
         width: lens.width * 2,

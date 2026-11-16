@@ -67,7 +67,7 @@ import { type TallCover, tallCoverOf } from '../room/tallCover'
 import { airOf } from './air'
 import { BillboardPool, rimUp } from './billboards'
 import { crittersOf } from './critters'
-import { isNearView, viewBoxOf } from './cull'
+import { boxFloorOf, isNearView, viewBoxOf, viewFloorOf } from './cull'
 import {
   DIORAMA_AMBIENT,
   IsoLens,
@@ -749,7 +749,14 @@ export class IsoScene {
       }),
       built.level,
     )
-    built.lights.apply({ frame: lights, player, view })
+    built.lights.apply({
+      frame: lights,
+      player,
+      floor: IsoLens.match(frame.lens, {
+        Play: () => viewFloorOf(lens.frame),
+        Diorama: () => boxFloorOf(view),
+      }),
+    })
     this.textures.lookAt(built.level, lights.isDark)
     built.rays.apply({ world: model, player, isInDark: lights.isInDark })
     const { mood } = lights
