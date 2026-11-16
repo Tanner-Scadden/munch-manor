@@ -91,8 +91,13 @@ const triggerHitStop = (
           blasts > 0 && cooledMs <= 0 ? HIT_STOP_BLAST_MS : 0,
         ),
       )
-      return freezeMs > 0
-        ? HitStop.Frozen({ remainingMs: freezeMs })
+      // NOTE: a cooled hit-stop with nothing to freeze keeps its reference,
+      // so a quiet tick does not copy the World for it.
+      if (freezeMs > 0) {
+        return HitStop.Frozen({ remainingMs: freezeMs })
+      }
+      return Object.is(cooledMs, cooldownMs)
+        ? hitStop
         : HitStop.Running({ cooldownMs: cooledMs })
     },
   })

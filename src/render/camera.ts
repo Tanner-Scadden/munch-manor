@@ -382,9 +382,16 @@ export const leanCamera: {
       x: lean.x + (target.x - lean.x) * share,
       y: lean.y + (target.y - lean.y) * share,
     }
-    return Math.abs(next.x - target.x) < LEAN_SETTLE_PX &&
+    // NOTE: a settled lean keeps its reference, so a still camera copies
+    // no Model.
+    if (
+      Math.abs(next.x - target.x) < LEAN_SETTLE_PX &&
       Math.abs(next.y - target.y) < LEAN_SETTLE_PX
-      ? target
-      : next
+    ) {
+      return Object.is(lean.x, target.x) && Object.is(lean.y, target.y)
+        ? lean
+        : target
+    }
+    return next
   },
 )

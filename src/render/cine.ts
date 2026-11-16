@@ -157,12 +157,21 @@ export const glideCamera: {
       Math.abs(x.offset - pull.x) < SETTLE_PX &&
       Math.abs(y.offset - pull.y) < SETTLE_PX &&
       Math.hypot(x.velocity, y.velocity) < SETTLE_PX_PER_SECOND
-    return isSettled
-      ? { offset: pull, velocity: ZERO_VECTOR }
-      : {
-          offset: { x: x.offset, y: y.offset },
-          velocity: { x: x.velocity, y: y.velocity },
-        }
+    // NOTE: a glide settled on its pull keeps its reference, so a still
+    // camera copies no Model.
+    const isAtRest =
+      isSettled &&
+      Object.is(glide.offset.x, pull.x) &&
+      Object.is(glide.offset.y, pull.y) &&
+      glide.velocity === ZERO_VECTOR
+    return isAtRest
+      ? glide
+      : isSettled
+        ? { offset: pull, velocity: ZERO_VECTOR }
+        : {
+            offset: { x: x.offset, y: y.offset },
+            velocity: { x: x.velocity, y: y.velocity },
+          }
   },
 )
 

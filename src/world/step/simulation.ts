@@ -7,6 +7,7 @@ import {
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
 } from '../../shared/constants'
+import { emptied, sameIfUnchanged } from '../../shared/sameList'
 import { rollBarrel } from '../cellar/barrels'
 import { advanceDare, isWorkingFind } from '../dare/dare'
 import { advanceFinale } from '../dare/finale'
@@ -141,11 +142,17 @@ const movePlayer = (
       clamp(moved.x, bounds.left + PLAYER_RADIUS, bounds.right - PLAYER_RADIUS),
     y: () =>
       clamp(moved.y, bounds.top + PLAYER_RADIUS, bounds.bottom - PLAYER_RADIUS),
-    knockback: knockback =>
-      addVectors(
+    knockback: knockback => {
+      const next = addVectors(
         decayKnockback(knockback, PLAYER_KNOCKBACK_DECAY_PER_SECOND, seconds),
         soupSkid(level, player, move, seconds),
-      ),
+      )
+      // NOTE: a player at rest keeps their knockback's reference, so the
+      // seat and the World are not copied for a vector that stayed put.
+      return Object.is(next.x, knockback.x) && Object.is(next.y, knockback.y)
+        ? knockback
+        : next
+    },
     invulnerability: invulnerability =>
       tickInvulnerability(invulnerability, deltaMs),
     recoilRemainingMs: remainingMs => countDown(remainingMs, deltaMs),
@@ -426,7 +433,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   const moved = forEachSeat(
     modifyFields(model, {
       elapsedMs: elapsedMs => elapsedMs + deltaMs,
-      frameEvents: () => [],
+      frameEvents: emptied,
     }),
     moveSeat(level, blockers, seconds, deltaMs),
   )
@@ -435,7 +442,8 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   const armed = forEachSeat(advanceStations(routed, deltaMs), armSeat(deltaMs))
 
   const advanced = modifyFields(advanceBullets(armed, seconds, deltaMs), {
-    zombies: () => advanceZombies(armed, seconds, deltaMs),
+    zombies: zombies =>
+      sameIfUnchanged(zombies, advanceZombies(armed, seconds, deltaMs)),
   })
 
   const fought = pipe(
@@ -503,7 +511,7 @@ export const advanceTick = (world: World): Tick => {
   const thaw = thawTick(world.hitStop, FIXED_STEP_MS)
   const thawed = modifyFields(world, {
     hitStop: () => thaw.hitStop,
-    frameEvents: () => [],
+    frameEvents: emptied,
   })
   const stepped = thaw.worldMs > 0 ? advanceWorld(thawed, thaw.worldMs) : thawed
   return {

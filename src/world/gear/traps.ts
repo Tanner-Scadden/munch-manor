@@ -11,6 +11,7 @@ import {
   TURRET_PLACE_REACH_PX,
   TURRET_RANGE_PX,
 } from '../../shared/constants'
+import { appendOrSame, sameIfUnchanged } from '../../shared/sameList'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { mendSpeedScaleOf, trapHealthScaleOf } from '../heroes/calling'
 import { type Level, TILE_OUTSIDE, hasTileFlag, levelOf } from '../level/arena'
@@ -515,8 +516,8 @@ const runTurrets = (model: World, deltaMs: number): World => {
   return modifyFields(model, {
     traps: () => traps,
     nextEntityId: () => volley.nextEntityId,
-    bullets: bullets => [...bullets, ...volley.bullets],
-    frameEvents: frameEvents => [...frameEvents, ...volley.events],
+    bullets: bullets => appendOrSame(bullets, volley.bullets),
+    frameEvents: frameEvents => appendOrSame(frameEvents, volley.events),
   })
 }
 
@@ -527,7 +528,8 @@ export const advanceTraps: {
   runTurrets(
     chewTraps(
       modifyFields(model, {
-        traps: Array.map(tickHit(deltaMs)),
+        traps: traps =>
+          sameIfUnchanged(traps, Array.map(traps, tickHit(deltaMs))),
       }),
       seconds,
     ),

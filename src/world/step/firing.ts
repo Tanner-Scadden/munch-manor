@@ -13,6 +13,7 @@ import {
   generateMany,
   nextRandom,
 } from '../../shared/prng'
+import { appendOrSame, sameIfUnchanged } from '../../shared/sameList'
 import {
   dropCharge,
   fireFridgeWeapon,
@@ -472,8 +473,9 @@ export const advanceBullets: {
       flyBullet(levelOf(model), seconds, deltaMs),
     )
     return modifyFields(model, {
-      bullets: () => flying,
-      frameEvents: frameEvents => [...frameEvents, ...Array.getSomes(stopped)],
+      bullets: bullets => sameIfUnchanged(bullets, flying),
+      frameEvents: frameEvents =>
+        appendOrSame(frameEvents, Array.getSomes(stopped)),
     })
   },
 )

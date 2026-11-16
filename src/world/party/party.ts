@@ -2,6 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
+import { sameIfUnchanged } from '../../shared/sameList'
 import { activeModifiersOf } from '../run/dareLadder'
 import { GLASS_START_HEARTS } from '../run/modifiers'
 import { type World, modifyWorldFields } from '../schema/world'
@@ -178,8 +179,11 @@ export const atSeatBy: {
   2,
   (slot: PlayerSlot, change: (state: SeatState) => SeatState) =>
     (seats: Seats): Seats =>
-      Array.map(seats, state =>
-        state.seat.slot === slot ? change(state) : state,
+      sameIfUnchanged(
+        seats,
+        Array.map(seats, state =>
+          state.seat.slot === slot ? change(state) : state,
+        ),
       ),
 )
 

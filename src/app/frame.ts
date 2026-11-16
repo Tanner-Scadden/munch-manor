@@ -38,6 +38,7 @@ import {
   STEP_EPSILON_MS,
 } from '../shared/constants'
 import { isObjectSecond } from '../shared/dualArgs'
+import { emptied } from '../shared/sameList'
 import {
   CALLOUT_LIFETIME_MS,
   LEVEL_CALLOUT_LIFETIME_MS,
@@ -46,10 +47,11 @@ import { TRAP_KIND_ORDER } from '../world/gear/traps'
 import { levelOf } from '../world/level/arena'
 import { focusOf, modifyFocus } from '../world/party/party'
 import { isArriving, isRunUnderway } from '../world/run/arrival'
-import { withWorld, worldOf } from '../world/schema/world'
+import { type World, withWorld, worldOf } from '../world/schema/world'
 import { clamp } from '../world/step/geometry'
 import {
   type InputsByPlayer,
+  keptIntent,
   soloInputs,
   stepWorld,
 } from '../world/step/stepWorld'
@@ -113,14 +115,14 @@ const withAimAssist = (model: Model, intent: Intent): Intent =>
 
 // NOTE: the client turns raw input into intent: aim goes through the
 // camera, which only this device knows.
+const intentOf = (model: Model): Intent =>
+  withAimAssist(
+    model,
+    deriveIntent(model.input, focusOf(model).player, screenCameraOf(model)),
+  )
+
 export const refreshIntent = (model: Model): Model =>
-  modifyFocus(model, {
-    intent: () =>
-      withAimAssist(
-        model,
-        deriveIntent(model.input, focusOf(model).player, screenCameraOf(model)),
-      ),
-  })
+  modifyFocus(model, { intent: () => intentOf(model) })
 
 // NOTE: a recorded run (src/platform/recording.ts) notes each tick: the
 // World before the client's intent went in, every seat's intent, and the
@@ -152,22 +154,34 @@ export const withFirePressSeen = (model: Model): Model =>
 
 // NOTE: every seat's intent for a tick: the human's from the client, the
 // couch players' from their keys, and each teammate bot's from its brain
-// (src/features/bots/teammateBot.ts).
-const inputsOf = (model: Model): InputsByPlayer => {
-  const players = isCouchPlay(model)
-    ? couchInputs(model, focusOf(model).intent)
-    : soloInputs(focusOf(model).intent)
-  return isBotCrew(model)
-    ? new Map([...players, ...botInputs(model, crewBotSlots(model))])
+// (src/features/bots/teammateBot.ts). Single player reads only the World
+// the intent went into, so it builds no Model for the tick; a couch or a
+// bot crew reads the Model, with that World in it.
+const inputsOf = (model: Model, intended: World): InputsByPlayer => {
+  if (!isCouchPlay(model) && !isBotCrew(model)) {
+    return soloInputs(focusOf(intended).intent)
+  }
+  const seen = withWorld(model, () => intended)
+  const players = isCouchPlay(seen)
+    ? couchInputs(seen, focusOf(seen).intent)
+    : soloInputs(focusOf(seen).intent)
+  return isBotCrew(seen)
+    ? new Map([...players, ...botInputs(seen, crewBotSlots(seen))])
     : players
 }
 
-// NOTE: the bots' presses for the tick, as their seats' own actions, before
-// the step: a reload in a lull, buying at the stall, READY.
-const botsPressed = (model: Model): Model =>
-  isBotCrew(model)
-    ? withWorld(model, world => applyBotPresses(world, crewBotSlots(model)))
-    : model
+// NOTE: the World a tick steps: the client's intent in its own seat, then
+// the bots' presses as their seats' own actions (a reload in a lull,
+// buying at the stall, READY). It changes the World alone, a far narrower
+// copy than the Model.
+const intendedWorldOf = (model: Model): World => {
+  const intended = modifyFocus(worldOf(model), {
+    intent: intent => keptIntent(intent, intentOf(model)),
+  })
+  return isBotCrew(model)
+    ? applyBotPresses(intended, crewBotSlots(model))
+    : intended
+}
 
 // NOTE: a 60 Hz frame on an empty carry is exactly one tick and leaves
 // exactly zero, so a 60 Hz display steps as it did before the fixed step.
@@ -198,16 +212,18 @@ const runTicks = (stepped: Stepped, count: number): Stepped => {
   } else if (count <= 0) {
     return stepped
   }
-  const intended = botsPressed(refreshIntent(stepped.model))
-  const inputs = inputsOf(intended)
-  const ticked = stepWorld(worldOf(intended), inputs)
+  const intendedWorld = intendedWorldOf(stepped.model)
+  const inputs = inputsOf(stepped.model, intendedWorld)
+  const ticked = stepWorld(intendedWorld, inputs)
   const next = {
     model: recordedTick(
-      withFirePressSeen(withWorld(intended, () => ticked.world)),
+      withFirePressSeen(withWorld(stepped.model, () => ticked.world)),
       stepped.model,
       inputs,
     ),
-    events: [...stepped.events, ...ticked.events],
+    events: Array.isReadonlyArrayEmpty(stepped.events)
+      ? ticked.events
+      : [...stepped.events, ...ticked.events],
     worldMs: stepped.worldMs + ticked.worldMs,
   }
   return hasSlammed(stepped.model.phase, ticked.world.phase)
@@ -503,12 +519,14 @@ export const advanceGame: {
 } = Function.dual(2, (model: Model, deltaTime: number): Model => {
   const frameMs = clampFrameDelta(deltaTime)
   const ticks = ticksIn(model.stepCarryMs + frameMs)
+  // NOTE: each tick clears the World's events as it starts, so the frame
+  // need not; a recording notes the World before its first tick with them
+  // cleared, as it always has (src/platform/recording.ts).
   const stepped = runTicks(
     {
-      model: modifyFields(model, {
-        stepCarryMs: () => ticks.carryMs,
-        frameEvents: () => [],
-      }),
+      model: RunRecorder.isAnyOf(['Recording'])(model.recorder)
+        ? modifyFields(model, { frameEvents: emptied })
+        : model,
       events: [],
       worldMs: 0,
     },
@@ -522,7 +540,10 @@ export const advanceGame: {
         leanFor(
           followRound(
             model,
-            modifyFields(stepped.model, { frameEvents: () => stepped.events }),
+            modifyFields(stepped.model, {
+              stepCarryMs: () => ticks.carryMs,
+              frameEvents: () => stepped.events,
+            }),
           ),
           frameMs,
         ),

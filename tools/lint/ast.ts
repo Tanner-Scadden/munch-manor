@@ -71,3 +71,13 @@ export const mentions: {
     return key !== 'parent' && mentions(child, name)
   })
 })
+
+const WORLD_NAME = /^world$|World$/
+
+// NOTE: a value named as a World: `world`, `nextWorld`, `x.world`.
+export const isWorldNamed = (node: ESTree.Node): boolean =>
+  (node.type === 'Identifier' && WORLD_NAME.test(node.name)) ||
+  (node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.type === 'Identifier' &&
+    WORLD_NAME.test(node.property.name))

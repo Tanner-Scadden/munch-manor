@@ -19,6 +19,7 @@ import {
   importSource,
   importedName,
   isStringLiteral,
+  isWorldNamed,
   mentions,
   propertyName,
 } from './ast.ts'
@@ -328,16 +329,6 @@ const noConditionalStep = defineRule({
     }
   },
 })
-
-const WORLD_NAME = /^world$|World$/
-
-// NOTE: a value named as a World: `world`, `nextWorld`, `x.world`.
-const isWorldNamed = (node: ESTree.Expression): boolean =>
-  (node.type === 'Identifier' && WORLD_NAME.test(node.name)) ||
-  (node.type === 'MemberExpression' &&
-    !node.computed &&
-    node.property.type === 'Identifier' &&
-    WORLD_NAME.test(node.property.name))
 
 const noWorldSpread = defineRule({
   meta: {
