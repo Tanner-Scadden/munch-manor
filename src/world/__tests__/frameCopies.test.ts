@@ -11,7 +11,14 @@ import { Story } from 'foldkit'
 import { describe, expect, it } from '@effect/vitest'
 
 import type { Model } from '../../app/model'
-import { armedBreak, quietWave, withActors } from '../../test/model.fixture'
+import { DareHintCall } from '../../domain/clientSchema'
+import {
+  armedBreak,
+  hidingSpotIn,
+  quietWave,
+  withActors,
+  withDareThings,
+} from '../../test/model.fixture'
 import {
   APPLICATION,
   FRAME_MS,
@@ -20,6 +27,9 @@ import {
   ticks,
   zombieAt,
 } from '../../test/testing'
+import { DareThingState } from '../dare/dareSchema'
+import { levelOf } from '../level/arena'
+import { LIBRARY_ROOM_ID } from '../level/plan'
 import { focusOf } from '../party/party'
 
 const FRAMES = 240
@@ -115,17 +125,49 @@ const fightingWave = (): Model => {
   )
 }
 
+// NOTE: the same break with a thing on the dare's list, so Rattles calls
+// his hint on the first frame and it stays up through the rest.
+const hintedBreak = (): Model => {
+  const { x, y } = hidingSpotIn(levelOf(armedBreak), LIBRARY_ROOM_ID)
+  return withDareThings(armedBreak, [
+    {
+      id: 0,
+      kind: 'ButlersBell',
+      state: DareThingState.Hidden({ x, y, workedMs: 0 }),
+    },
+  ])
+}
+
 describe('the frame copies', () => {
   it.effect('a quiet break writes only what moves', () =>
     Effect.gen(function* () {
       const frames = yield* framesFrom(armedBreak, false)
       const { written, needless } = rewritesOver(frames)
       expect(needless).toEqual([])
-      // NOTE: the break clock, the World's clock, the run's stats, and the
-      // idle clock once a frame, and now and then the seat and a cosmetic:
-      // 1125 fields over 240 frames (3,107 before the copies were cut).
-      expect(written).toBeLessThanOrEqual(FRAMES * 5)
+      // NOTE: the break clock, the World's clock, and the run's stats once
+      // a frame, and now and then the seat and a cosmetic: 886 fields over
+      // 240 frames (3,107 before the copies were cut, 1,125 while the idle
+      // clock counted up each frame).
+      expect(written).toBeLessThanOrEqual(890)
     }),
+  )
+
+  it.effect(
+    "a break with Rattles' hint up writes no more than a quiet one",
+    () =>
+      Effect.gen(function* () {
+        const frames = yield* framesFrom(hintedBreak(), false)
+        const { written, needless } = rewritesOver(frames)
+        expect(
+          Array.every(frames, ({ dareHint }) =>
+            DareHintCall.isAnyOf(['Calling'])(dareHint.call),
+          ),
+        ).toBe(true)
+        expect(needless).toEqual([])
+        // NOTE: the hint keeps the time it ends, so a frame of it writes
+        // nothing (it counted down each frame before: 1,125 fields).
+        expect(written).toBeLessThanOrEqual(890)
+      }),
   )
 
   it.effect('a wave under fire writes nothing it had already', () =>
@@ -139,7 +181,9 @@ describe('the frame copies', () => {
       ).toBe(true)
       expect(needless).toEqual([])
       // NOTE: 2125 fields over 240 frames (3,459 before the copies were cut).
-      expect(written).toBeLessThanOrEqual(FRAMES * 9)
+      // What is left moves every tick (the zombies, the bullets, the clocks,
+      // the stats, the particles).
+      expect(written).toBeLessThanOrEqual(2125)
     }),
   )
 })

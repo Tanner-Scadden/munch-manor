@@ -364,7 +364,7 @@ export const Model = Schema.Struct({
   shake: Shake,
   streak: Streak,
   bestStreak: Schema.Finite,
-  breakIdleMs: Schema.Finite,
+  maybeBreakIdleSinceMs: Schema.Option(Schema.Finite),
   trapHint: TrapHint,
   // NOTE: whether this device has watched the intro whole, saved, so later
   // runs open on the knock (src/world/run/arrival.ts).
@@ -566,7 +566,7 @@ export const initialModel: OwnModel = {
   traps: [],
   pickups: [],
   loot: freshLoot(DEFAULT_SEED),
-  breakIdleMs: 0,
+  maybeBreakIdleSinceMs: Option.none(),
   trapHint: TrapHint.Unseen(),
   introSeen: 'Unseen',
   introSkip: 'Watching',

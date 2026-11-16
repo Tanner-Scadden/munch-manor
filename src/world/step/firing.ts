@@ -462,23 +462,39 @@ const flyBullet =
     })
   }
 
-export const advanceBullets: {
-  (seconds: number, deltaMs: number): (model: World) => World
-  (model: World, seconds: number, deltaMs: number): World
+type BulletChanges = Readonly<{
+  bullets: (bullets: ReadonlyArray<Bullet>) => ReadonlyArray<Bullet>
+  frameEvents: (
+    frameEvents: ReadonlyArray<GameEvent>,
+  ) => ReadonlyArray<GameEvent>
+}>
+
+// NOTE: one tick of the bullets as the World's field changes, so the tick
+// can write them in the same copy as its other fields (the zombies' steps,
+// src/world/step/simulation.ts).
+export const bulletFlightOf: {
+  (seconds: number, deltaMs: number): (model: World) => BulletChanges
+  (model: World, seconds: number, deltaMs: number): BulletChanges
 } = Function.dual(
   3,
-  (model: World, seconds: number, deltaMs: number): World => {
+  (model: World, seconds: number, deltaMs: number): BulletChanges => {
     const [flying, stopped] = Array.partition(
       model.bullets,
       flyBullet(levelOf(model), seconds, deltaMs),
     )
-    return modifyFields(model, {
+    return {
       bullets: bullets => sameIfUnchanged(bullets, flying),
       frameEvents: frameEvents =>
         appendOrSame(frameEvents, Array.getSomes(stopped)),
-    })
+    }
   },
 )
+
+const advanceBullets = (
+  model: World,
+  seconds: number,
+  deltaMs: number,
+): World => modifyFields(model, bulletFlightOf(model, seconds, deltaMs))
 
 // LAG COMPENSATION
 

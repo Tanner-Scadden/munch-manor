@@ -75,7 +75,7 @@ export const FIELD_CLASSES = {
   bestStreak: 'Cosmetic',
   kitchenCall: 'Cosmetic',
   dareHint: 'Cosmetic',
-  breakIdleMs: 'Cosmetic',
+  maybeBreakIdleSinceMs: 'Cosmetic',
   maybeCarLine: 'Cosmetic',
   // NOTE: the frame's cosmetics nested into one group to keep the Model's
   // key count low. `trapNotice`, a Client field before it moved, joins them:
@@ -229,9 +229,12 @@ const LEGACY_CLIENT_FIELDS = [
 ] as const
 
 // NOTE: the cosmetic fields at the root of a Model before they moved into
-// `cosmetics`. A run before that change hashes them as the cosmetics they
-// are, so it and a run after it hash alike.
+// `cosmetics`, and `breakIdleMs`, the idle clock before it kept the time
+// its quiet began (`maybeBreakIdleSinceMs`). A run before those changes
+// hashes them as the cosmetics they are, so it and a run after it hash
+// alike.
 const LEGACY_COSMETIC_FIELDS = [
+  'breakIdleMs',
   'particles',
   'decals',
   'dustCooldownMs',

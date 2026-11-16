@@ -267,7 +267,8 @@ export const KitchenCall = defineTaggedUnion({
 export type KitchenCall = typeof KitchenCall.Type
 
 // NOTE: Rattles' hints about the dare (src/features/dare/rattlesHint.ts): a
-// line in his bubble for a few seconds, pointing at a thing on the list by
+// line in his bubble for a few seconds (until `endsAtMs` on the World's
+// clock, so a frame of it writes nothing), pointing at a thing on the list by
 // its id or hanging from his spot. `calledWave` is the last break he called
 // in, `restMs` Easy's wait before the next call in the same break, and
 // `lastLine` what the player saw last, so it never comes twice in a row,
@@ -280,7 +281,7 @@ export const DareHintCall = defineTaggedUnion({
     maybeThingId: Schema.Option(Schema.Finite),
     wave: Schema.Finite,
     isBreak: Schema.Boolean,
-    remainingMs: MillisNumber,
+    endsAtMs: Schema.Finite,
   },
 })
 export type DareHintCall = typeof DareHintCall.Type

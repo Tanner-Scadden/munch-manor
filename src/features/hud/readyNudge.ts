@@ -1,4 +1,4 @@
-import { Array, Function } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
@@ -42,18 +42,29 @@ const isActive = (model: Model): boolean => {
 
 // NOTE: one frame of the idle clock: it counts world time in a break while
 // the player does nothing, and any move, shot, or buy starts it over. Outside a break it rests at 0.
+// It keeps the World's time the quiet began, not a count, so a quiet frame
+// writes nothing and the Model is not copied for it: only the frame the
+// quiet begins or ends does.
 export const advanceBreakIdle: {
   (worldMs: number): (model: Model) => Model
   (model: Model, worldMs: number): Model
 } = Function.dual(2, (model: Model, worldMs: number): Model => {
-  const idleMs =
-    Phase.isAnyOf(['Preparation'])(model.phase) && !isActive(model)
-      ? model.breakIdleMs + worldMs
-      : 0
-  return idleMs === model.breakIdleMs
-    ? model
-    : modifyFields(model, { breakIdleMs: () => idleMs })
+  const isIdle = Phase.isAnyOf(['Preparation'])(model.phase) && !isActive(model)
+  if (isIdle === Option.isSome(model.maybeBreakIdleSinceMs)) {
+    return model
+  }
+  return modifyFields(model, {
+    maybeBreakIdleSinceMs: () =>
+      isIdle ? Option.some(model.elapsedMs - worldMs) : Option.none(),
+  })
 })
+
+// NOTE: how long the player has done nothing in this break, in world time.
+export const breakIdleMsOf = (model: Model): number =>
+  Option.match(model.maybeBreakIdleSinceMs, {
+    onNone: () => 0,
+    onSome: sinceMs => model.elapsedMs - sinceMs,
+  })
 
 const isWaitingOnClock = (model: Model): boolean =>
   model.phase._tag === 'Preparation' &&
@@ -86,10 +97,10 @@ export const isWaitingOnYou = (model: Model): boolean => {
     return false
   }
   if (!isCoop(model)) {
-    return model.breakIdleMs >= SOLO_NUDGE_MS
+    return breakIdleMsOf(model) >= SOLO_NUDGE_MS
   }
   return (
-    model.breakIdleMs >=
+    breakIdleMsOf(model) >=
     (isLastOneIn(model) ? LAST_ONE_NUDGE_MS : CREW_NUDGE_MS)
   )
 }
