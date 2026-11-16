@@ -36,6 +36,9 @@ import { colorOf } from './textures'
 import {
   type ArtQuad,
   BLOCK_INSET,
+  NEAREST_SEAM,
+  fannedBlocksOf,
+  isFannedAt,
   standingTilesOf,
   wallQuadsOf,
 } from './wallQuads'
@@ -58,22 +61,96 @@ export const buildWalls = (
       const x = (level.left + column * TILE_SIZE) * UNIT + 0.5
       const z = zOf(level.top + (row + 0.5) * TILE_SIZE)
       const height = wallHeightAt({ tiles, row, column })
-      return Result.succeed(
-        new Mesh3D({
-          geometry: WALL_GEOMETRY,
-          material,
-          position: { x, y: height / 2, z },
-          scale: {
-            x: 1 - BLOCK_INSET * 2,
-            y: height,
-            z: STRETCH - BLOCK_INSET * 2,
-          },
-          castShadow: true,
-          receiveShadow: true,
-        }),
-      )
+      const block = new Mesh3D({
+        geometry: WALL_GEOMETRY,
+        material,
+        position: { x, y: height / 2, z },
+        scale: {
+          x: 1 - BLOCK_INSET * 2,
+          y: height,
+          z: STRETCH - BLOCK_INSET * 2,
+        },
+        castShadow: true,
+        receiveShadow: true,
+      })
+      // NOTE: under a fanned top only its shadow shows (wallQuads.ts
+      // `isFannedAt`).
+      if (isFannedAt({ level, row, column })) {
+        block.disablePass('opaque')
+      }
+      return Result.succeed(block)
     }),
   )
+}
+
+// NOTE: mutable on purpose: a mesh of art quads (`buildArtQuads`) and the
+// corners of it that fan (wallQuads.ts `Fan`), slid across along the
+// lens's rays as its eye moves, so a face's upright lines run on straight
+// over its top. Each corner keeps where it was built.
+export class ArtMesh {
+  readonly mesh: Mesh3D
+  // NOTE: per fanned corner: its x's index in the positions, its x and z
+  // as built, and its face's plane.
+  private readonly at: Uint32Array
+  private readonly xs: Float64Array
+  private readonly zs: Float64Array
+  private readonly seams: Float64Array
+  private eye: Option.Option<Readonly<{ x: number; z: number }>> = Option.none()
+
+  constructor(mesh: Mesh3D, quads: ReadonlyArray<ArtQuad>) {
+    this.mesh = mesh
+    const fanned = Array.flatMap(quads, ({ corners, fan }, index) =>
+      Option.match(fan, {
+        onNone: () => [],
+        onSome: ({ seam, corners: which }) =>
+          Array.map(which, corner => {
+            const [x, , z] = corners[corner] ?? [0, 0, 0]
+            return { at: (index * 4 + corner) * 3, x, z, seam }
+          }),
+      }),
+    )
+    this.at = Uint32Array.from(fanned, ({ at }) => at)
+    this.xs = Float64Array.from(fanned, ({ x }) => x)
+    this.zs = Float64Array.from(fanned, ({ z }) => z)
+    this.seams = Float64Array.from(fanned, ({ seam }) => seam)
+  }
+
+  // NOTE: fans the corners from the lens's eye (in the world, across and
+  // along the floor), or lays them back as built for none (the title's
+  // diorama, whose camera sees along parallel rays). A corner at depth z
+  // over a face whose top edge lies at `seam` moves to where the eye's ray
+  // through that edge's point plumb below it passes at z, so the face's
+  // column and the top's meet in one screen line.
+  fanFrom(eye: Option.Option<Readonly<{ x: number; z: number }>>): void {
+    const isSame = Option.match(eye, {
+      onNone: () => Option.isNone(this.eye),
+      onSome: ({ x, z }) =>
+        Option.exists(this.eye, last => last.x === x && last.z === z),
+    })
+    if (isSame || this.at.length === 0) {
+      return
+    }
+    this.eye = Option.map(eye, ({ x, z }) => ({ x, z }))
+    const { geometry } = this.mesh
+    const positions = geometry.positions
+    if (Option.isNone(eye)) {
+      for (let index = 0; index < this.at.length; index += 1) {
+        positions[this.at[index] ?? 0] = this.xs[index] ?? 0
+      }
+    } else {
+      // NOTE: `fannedX` written out, so the loop builds no record a corner.
+      const { x: eyeX, z: eyeZ } = eye.value
+      for (let index = 0; index < this.at.length; index += 1) {
+        const x = this.xs[index] ?? 0
+        const reach = eyeZ - (this.seams[index] ?? 0)
+        positions[this.at[index] ?? 0] =
+          reach < NEAREST_SEAM
+            ? x
+            : eyeX + ((x - eyeX) * (eyeZ - (this.zs[index] ?? 0))) / reach
+      }
+    }
+    geometry.attributes['aPosition']?.buffer.update()
+  }
 }
 
 // NOTE: every quad of the walls (wallQuads.ts) as one mesh wearing the
@@ -86,10 +163,10 @@ export const buildWalls = (
 export const buildArtQuads = (
   input: Readonly<{
     level: Level
-    material: Material3D | FlatMaterial
+    material: Material3D | FlatMaterial | ToonMaterial
     quads: ReadonlyArray<ArtQuad>
   }>,
-): Mesh3D => {
+): ArtMesh => {
   const { level, material, quads } = input
   const positions = new Float32Array(quads.length * 12)
   const normals = new Float32Array(quads.length * 12)
@@ -110,17 +187,20 @@ export const buildArtQuads = (
       index * 6,
     )
   })
-  return new Mesh3D({
-    geometry: new Geometry3D({ positions, normals, uvs, indices }),
-    material,
-    castShadow: false,
-    receiveShadow: true,
-  })
+  return new ArtMesh(
+    new Mesh3D({
+      geometry: new Geometry3D({ positions, normals, uvs, indices }),
+      material,
+      castShadow: false,
+      receiveShadow: true,
+    }),
+    quads,
+  )
 }
 
 export const buildWallArt = (
   input: Readonly<{ level: Level; material: Material3D }>,
-): Mesh3D =>
+): ArtMesh =>
   buildArtQuads({
     ...input,
     quads: Array.filter(
@@ -129,9 +209,15 @@ export const buildWallArt = (
     ),
   })
 
+// NOTE: the blocks under the fanned tops, fanning with them, in the walls'
+// own material (wallQuads.ts `fannedBlocksOf`).
+export const buildFannedBlocks = (
+  input: Readonly<{ level: Level; material: ToonMaterial }>,
+): ArtMesh => buildArtQuads({ ...input, quads: fannedBlocksOf(input.level) })
+
 // NOTE: the tops behind the tall walls' caps (wallQuads.ts), flat black, as
 // dark as the night round the house, so a wall ends at its slim lit cap.
-export const buildWallDark = (level: Level): Mesh3D =>
+export const buildWallDark = (level: Level): ArtMesh =>
   buildArtQuads({
     level,
     material: new FlatMaterial({ baseColor: 0x000000 }),

@@ -5,12 +5,12 @@
 // The storm and the house's glows lie over the same quads (`artQuadsOver`),
 // so they land on the art wherever it stands.
 
-import { Array, Option, Order, Record, Result, pipe } from 'effect'
+import { Array, Option, Order, Result, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { type Level, closedExits } from '../../world/level/arena'
 import { SECRET_EXIT } from '../../world/level/plan'
-import { DOOR_SYMBOLS, WALL_SYMBOL } from '../../world/level/tileGrid'
+import { WALL_SYMBOL } from '../../world/level/tileGrid'
 import { secretShelfOf } from '../../world/library/secretShelf'
 import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
 import {
@@ -19,6 +19,7 @@ import {
   UNIT,
   UP_NORMAL,
   WALL_ROW,
+  isNorthFaceAt,
   symbolAt,
   wallHeightAt,
   zOf,
@@ -114,29 +115,16 @@ export const artAt = ({
   row,
   column,
 }: Readonly<{ level: Level; row: number; column: number }>): Spot =>
-  standingOf(level).borrowed.get(spotKey(level, row, column)) ?? { row, column }
+  standingOf(level).borrowed.get(spotKey(level, row, column)) ?? {
+    row,
+    column,
+  }
 
 const isWallTile = (
   tiles: ReadonlyArray<string>,
   row: number,
   column: number,
 ): boolean => Option.contains(symbolAt(tiles, row, column), WALL_SYMBOL)
-
-const DOORS: ReadonlyArray<string> = Record.values(DOOR_SYMBOLS)
-
-// NOTE: where the 2D game drew a north wall's face, papered and paneled,
-// over the two tiles of wall above it (roomWalls.ts `isNorthFace`): a wall
-// tile over any tile of the map that is not wall or a doorway.
-const isNorthFaceAt = (
-  tiles: ReadonlyArray<string>,
-  row: number,
-  column: number,
-): boolean =>
-  isWallTile(tiles, row, column) &&
-  Option.exists(
-    symbolAt(tiles, row + 1, column),
-    symbol => symbol !== WALL_SYMBOL && !Array.contains(DOORS, symbol),
-  )
 
 // THE ART'S ROWS
 
@@ -166,9 +154,10 @@ const faceArtOf = (
   row: number,
   column: number,
 ): Option.Option<FaceArt> => {
-  const faceRow = isNorthFaceAt(tiles, row, column)
+  const faceRow = isNorthFaceAt({ tiles, row, column })
     ? Option.some(row)
-    : isWallTile(tiles, row, column) && isNorthFaceAt(tiles, row + 1, column)
+    : isWallTile(tiles, row, column) &&
+        isNorthFaceAt({ tiles, row: row + 1, column })
       ? Option.some(row + 1)
       : Option.none()
   return Option.map(faceRow, face => ({
@@ -198,7 +187,50 @@ export type ArtQuad = Readonly<{
   normal: Point
   shade: Point
   wears: Wears
+  fan: Option.Option<Fan>
 }>
+
+// NOTE: a wall's top runs north from its face's top edge, and the face's
+// upright lines stand plumb, so through the lens's perspective the two met
+// in a crease, a portrait's side or a wall's end kinking at the seam
+// (owner, 2026-11-15). A top run on from a north face, and the top corners
+// of a side under its end, carry the face's plane (`seam`, the z its top
+// edge lies at), and the house slides those corners across along the
+// lens's rays each frame (house.ts `fanQuads`), so a column of the art
+// runs on from the face over the top in one straight line. Only across:
+// the top keeps its height and depth, so it hides no more than it did.
+type Fan = Readonly<{
+  seam: number
+  // NOTE: the corners that lie on the top, by their index.
+  corners: ReadonlyArray<number>
+}>
+
+// NOTE: the nearest a fanned top's face may stand to the lens, across the
+// floor, before it is left as built: a wall that near is behind the view.
+export const NEAREST_SEAM = 1
+
+// NOTE: where a fanned corner lies across for an eye (in the world, across
+// and along the floor): on the eye's ray through the point of its face's
+// top edge plumb below it, at its own depth, so that point, the corner,
+// and the eye stand in one upright plane and the lens sees the face's
+// column and the top's as one line. A face at the eye or past it is left.
+export const fannedX = (
+  input: Readonly<{
+    x: number
+    z: number
+    seam: number
+    eyeX: number
+    eyeZ: number
+  }>,
+): number => {
+  const { x, z, seam, eyeX, eyeZ } = input
+  const reach = eyeZ - seam
+  return reach < NEAREST_SEAM ? x : eyeX + ((x - eyeX) * (eyeZ - z)) / reach
+}
+
+const NO_FAN: Option.Option<Fan> = Option.none()
+const ALL_CORNERS: ReadonlyArray<number> = Array.makeBy(4, corner => corner)
+const TOP_CORNERS: ReadonlyArray<number> = [0, 1]
 
 type Wears = 'Art' | 'Cap' | 'Night'
 
@@ -238,6 +270,7 @@ const topQuad = (
     artTo: number
     wears: Wears
     shade: Point
+    seam: Option.Option<number>
   }>,
 ): ArtQuad => {
   const { level, column, height, from, to, artFrom, artTo, wears } = input
@@ -265,6 +298,7 @@ const topQuad = (
     normal: UP,
     shade: input.shade,
     wears,
+    fan: Option.map(input.seam, seam => ({ seam, corners: ALL_CORNERS })),
   }
 }
 
@@ -306,6 +340,51 @@ const besideFaceOf = (
   )
 }
 
+// NOTE: the north face a wall tile's top runs on from: its own, or the one
+// beside it along the row through the wall as tall.
+const faceOrBesideOf = (
+  input: Readonly<{
+    tiles: ReadonlyArray<string>
+    row: number
+    column: number
+    height: number
+  }>,
+): Option.Option<FaceArt> =>
+  Option.orElse(faceArtOf(input.tiles, input.row, input.column), () =>
+    besideFaceOf(input),
+  )
+
+// NOTE: the plane of the face a wall tile's top runs on from, which its
+// top fans about (`Fan`): every top over the same face fans alike, so the
+// edges between them stay shut.
+const seamOf = (
+  input: Readonly<{
+    level: Level
+    tiles: ReadonlyArray<string>
+    row: number
+    column: number
+    height: number
+  }>,
+): Option.Option<number> =>
+  Option.map(faceOrBesideOf(input), ({ foot }) => zAtRow(input.level, foot))
+
+// NOTE: whether a standing wall tile's top fans (`Fan`): its block then
+// stands for its shadow alone, since the art quads round it (its fanned
+// top, its face, its sides) are all the lens sees of it, and the plain
+// block showed past a top fanned in off its edge (house.ts `buildWalls`).
+export const isFannedAt = (
+  input: Readonly<{ level: Level; row: number; column: number }>,
+): boolean => {
+  const tiles = standingTilesOf(input.level)
+  return Option.isSome(
+    seamOf({
+      ...input,
+      tiles,
+      height: wallHeightAt({ tiles, row: input.row, column: input.column }),
+    }),
+  )
+}
+
 // NOTE: a wall tile's top: its own art, or over a north face (its own or
 // the one south of it) the face's picture run on, each floor row wearing
 // the row the lens sees there, the wall's height in rows higher, and plain
@@ -325,16 +404,16 @@ const topQuadsOf = (
   const from = row * TILE_SIZE
   const to = from + TILE_SIZE
   const art = artAt({ level, row, column })
-  const at = { level, column, height, artColumn: art.column }
+  const at = {
+    level,
+    column,
+    height,
+    artColumn: art.column,
+    seam: seamOf({ level, tiles, row, column, height }),
+  }
   const own = faceArtOf(tiles, row, column)
-  const capOf = Option.match(own, {
-    onSome: ({ cap }) => Option.some(cap),
-    onNone: () =>
-      Option.map(
-        besideFaceOf({ tiles, row, column, height }),
-        ({ cap }) => cap,
-      ),
-  })
+  const face = faceOrBesideOf({ tiles, row, column, height })
+  const capOf = Option.map(face, ({ cap }) => cap)
   // NOTE: the floor row whose top the lens sees where the cap's first row
   // is: the wall's height in rows south of the cap.
   const rows = Math.round(height / WALL_ROW)
@@ -343,6 +422,26 @@ const topQuadsOf = (
     onSome: cap => Math.min(to, Math.max(from, cap + rows)),
   })
   const plainRow = Option.getOrElse(capOf, () => from) + MID_ROW
+  // NOTE: a low tile behind a taller north face (the dining room's top
+  // wall, the kitchen's front wall behind it) lies under that face's top,
+  // which wears the art: it shows only a sliver past it, its cap's color.
+  const isBehindTaller =
+    Option.isSome(own) &&
+    !isNorthFaceAt({ tiles, row, column }) &&
+    wallHeightAt({ tiles, row: row + 1, column }) > height
+  if (isBehindTaller) {
+    return [
+      topQuad({
+        ...at,
+        from,
+        to,
+        artFrom: plainRow,
+        artTo: plainRow,
+        wears: 'Cap',
+        shade: UP,
+      }),
+    ]
+  }
   const isRunOn = Option.isSome(own)
   return [
     ...(split > from
@@ -435,6 +534,7 @@ const faceQuad = (
     normal: SOUTH,
     shade: UP,
     wears: 'Art',
+    fan: NO_FAN,
   }
 }
 
@@ -504,6 +604,7 @@ const sideQuadsOf = (level: Level): ReadonlyArray<ArtQuad> => {
       const top = wallHeightAt({ tiles, row, column })
       const art = artAt({ level, row, column })
       const face = faceArtOf(tiles, row, column)
+      const seam = seamOf({ level, tiles, row, column, height: top })
       return Array.filterMap([true, false], isEast => {
         // NOTE: what stands beside hides the side up to its own height:
         // nothing over the floor, a doorway, or the dark round the house
@@ -576,7 +677,137 @@ const sideQuadsOf = (level: Level): ReadonlyArray<ArtQuad> => {
           normal: [isEast ? 1 : -1, 0, 0],
           shade: [isEast ? 1 : -1, 0, 0],
           wears: 'Art',
+          fan: Option.map(seam, at => ({ seam: at, corners: TOP_CORNERS })),
         })
+      })
+    }),
+  )
+}
+
+// NOTE: a lintel's top fans about the face of the wall it is set in, the
+// nearest wall tile along its row, so it meets the tops beside it with no
+// step: the wall's face, not the lintel's own a tile back.
+const lintelSeamOf = (
+  input: Readonly<{
+    level: Level
+    tiles: ReadonlyArray<string>
+    row: number
+    column: number
+  }>,
+): Option.Option<number> => {
+  const { level, tiles, row, column } = input
+  const seamToward = (way: number): Option.Option<number> => {
+    for (
+      let at = column + way;
+      Option.isSome(symbolAt(tiles, row, at));
+      at += way
+    ) {
+      if (isWallTile(tiles, row, at)) {
+        return seamOf({
+          level,
+          tiles,
+          row,
+          column: at,
+          height: wallHeightAt({ tiles, row, column: at }),
+        })
+      }
+    }
+    return Option.none()
+  }
+  return Option.orElse(seamToward(-1), () => seamToward(1))
+}
+
+// NOTE: the block under each fanned top (`isFannedAt`) as five plain
+// quads, its top corners fanning with the top's, so the lens never sees
+// the plain block past a fanned top nor the floor under it where the top
+// fanned off (the block itself stands for its shadow alone, house.ts
+// `buildWalls`). Each wears no art: it takes the walls' own material.
+export const fannedBlocksOf = (level: Level): ReadonlyArray<ArtQuad> => {
+  const tiles = standingTilesOf(level)
+  return Array.flatMap(tiles, (line, row) =>
+    Array.flatMap(Array.fromIterable(line), (symbol, column) => {
+      if (symbol !== WALL_SYMBOL) {
+        return []
+      }
+      const height = wallHeightAt({ tiles, row, column })
+      return Option.match(seamOf({ level, tiles, row, column, height }), {
+        onNone: () => [],
+        onSome: seam => {
+          const x0 = xOf(level, column * TILE_SIZE) + BLOCK_INSET
+          const x1 = xOf(level, (column + 1) * TILE_SIZE) - BLOCK_INSET
+          const z0 = zAtRow(level, row * TILE_SIZE) + BLOCK_INSET
+          const z1 = zAtRow(level, (row + 1) * TILE_SIZE) - BLOCK_INSET
+          const h = height
+          const plain = (
+            corners: readonly [Point, Point, Point, Point],
+            normal: Point,
+            fanned: ReadonlyArray<number>,
+          ): ArtQuad => ({
+            corners,
+            art: [
+              [0, 0],
+              [0, 0],
+              [0, 0],
+              [0, 0],
+            ],
+            normal,
+            shade: normal,
+            wears: 'Cap',
+            fan: Option.some({ seam, corners: fanned }),
+          })
+          return [
+            plain(
+              [
+                [x0, h, z0],
+                [x1, h, z0],
+                [x1, h, z1],
+                [x0, h, z1],
+              ],
+              UP,
+              ALL_CORNERS,
+            ),
+            plain(
+              [
+                [x0, h, z1],
+                [x1, h, z1],
+                [x1, 0, z1],
+                [x0, 0, z1],
+              ],
+              SOUTH,
+              TOP_CORNERS,
+            ),
+            plain(
+              [
+                [x1, h, z0],
+                [x0, h, z0],
+                [x0, 0, z0],
+                [x1, 0, z0],
+              ],
+              [0, 0, -1],
+              TOP_CORNERS,
+            ),
+            plain(
+              [
+                [x1, h, z1],
+                [x1, h, z0],
+                [x1, 0, z0],
+                [x1, 0, z1],
+              ],
+              [1, 0, 0],
+              TOP_CORNERS,
+            ),
+            plain(
+              [
+                [x0, h, z0],
+                [x0, h, z1],
+                [x0, 0, z1],
+                [x0, 0, z0],
+              ],
+              [-1, 0, 0],
+              TOP_CORNERS,
+            ),
+          ]
+        },
       })
     }),
   )
@@ -620,6 +851,7 @@ export const wallQuadsOf = (level: Level): ReadonlyArray<ArtQuad> => {
         artTo: row * TILE_SIZE + MID_ROW,
         wears: 'Night',
         shade: UP,
+        seam: lintelSeamOf({ level, tiles, row, column }),
       }),
     ),
     ...faceQuadsOf(level),
@@ -736,6 +968,7 @@ export const artQuadsOver = (
         artTo: (row + 1) * TILE_SIZE,
         wears: 'Art',
         shade: UP,
+        seam: Option.none(),
       })
       return isOver(level, quad, keys) ? Result.succeed(quad) : Result.failVoid
     }),

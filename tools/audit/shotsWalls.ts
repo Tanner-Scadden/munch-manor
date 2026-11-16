@@ -192,6 +192,14 @@ const ROOM_TOPS: ReadonlyArray<Readonly<{ name: string; spot: string }>> = [
   { name: 'kitchen-edge', spot: 'px=110&py=-65' },
   { name: 'library-edge', spot: 'px=540&py=85' },
   { name: 'cellar-edge', spot: 'px=780&py=85&tool=Bulb&firedms=200' },
+  // NOTE: a room's top wall at the screen's left and right sides, where
+  // the turn and the perspective lean its upright lines the most.
+  { name: 'dining-left', spot: 'px=150&py=60' },
+  { name: 'dining-right', spot: 'px=220&py=60' },
+  { name: 'parlour-left', spot: 'px=-150&py=95' },
+  { name: 'parlour-right', spot: 'px=-250&py=95' },
+  { name: 'kitchen-left', spot: 'px=150&py=-95' },
+  { name: 'kitchen-right', spot: 'px=40&py=-95' },
 ]
 
 const ALL_SHUT = `${LEARNED_ALL}&wave=3&break=open`

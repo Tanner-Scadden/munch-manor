@@ -10,7 +10,7 @@
 // the cellar's dark where the rest of the body does not.
 // The sparks stand with the glowing billboards (scene.ts, `isGlowShape`).
 
-import { Array, Result } from 'effect'
+import { Array, Option, Result } from 'effect'
 import type { Canvas } from 'foldkit'
 import type { Application } from 'pixi.js'
 
@@ -22,7 +22,7 @@ import { heartJarGlowShapes } from '../room/cellarArt'
 import { isRoomOpen, roomBoxOf } from '../room/room'
 import type { Box } from '../room/roomPalette'
 import { roseGlowShapes } from '../room/roseWindowArt'
-import { buildArtQuads } from './house'
+import { type ArtMesh, buildArtQuads } from './house'
 import { FloorPicture } from './painter'
 import type { Textures } from './textures'
 import { artQuadsOver } from './wallQuads'
@@ -67,6 +67,7 @@ const OVER_FLOOR = 0.013
 export class HouseGlows {
   private readonly picture: FloorPicture
   private readonly holder = new Container3D()
+  private art: Option.Option<ArtMesh> = Option.none()
 
   constructor(
     input: Readonly<{
@@ -84,21 +85,28 @@ export class HouseGlows {
       return
     }
     this.picture.paint(shapes)
-    this.holder.addChild(
-      buildArtQuads({
-        level,
-        material: new FlatMaterial({
-          baseColorTexture: this.picture.texture,
-          alphaMode: 'blend',
-        }),
-        quads: artQuadsOver({
-          level,
-          boxes: boxesOf(shapes),
-          overWall: OVER_WALL,
-          overFloor: OVER_FLOOR,
-        }),
+    const art = buildArtQuads({
+      level,
+      material: new FlatMaterial({
+        baseColorTexture: this.picture.texture,
+        alphaMode: 'blend',
       }),
-    )
+      quads: artQuadsOver({
+        level,
+        boxes: boxesOf(shapes),
+        overWall: OVER_WALL,
+        overFloor: OVER_FLOOR,
+      }),
+    })
+    this.art = Option.some(art)
+    this.holder.addChild(art.mesh)
+  }
+
+  // NOTE: the glows over a wall's top fan with it (house.ts `ArtMesh`).
+  fanFrom(eye: Option.Option<Readonly<{ x: number; z: number }>>): void {
+    if (Option.isSome(this.art)) {
+      this.art.value.fanFrom(eye)
+    }
   }
 
   destroy(): void {

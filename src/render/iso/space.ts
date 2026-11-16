@@ -1,9 +1,13 @@
 // The 3D world's space: how the game's 2D world maps onto 3D units.
 
-import { Array, Function, Option, String } from 'effect'
+import { Array, Function, Option, Record, String } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
-import { OUTSIDE_SYMBOL, WALL_SYMBOL } from '../../world/level/tileGrid'
+import {
+  DOOR_SYMBOLS,
+  OUTSIDE_SYMBOL,
+  WALL_SYMBOL,
+} from '../../world/level/tileGrid'
 
 // NOTE: one world unit is one tile. A game pixel is a tenth of a unit, x runs
 // east and z runs south (the game's y), and y is up.
@@ -86,6 +90,33 @@ export const symbolAt: {
   ): Option.Option<string> => String.charAt(tiles[row] ?? '', column),
 )
 
+const DOORS: ReadonlyArray<string> = Record.values(DOOR_SYMBOLS)
+
+// NOTE: where the 2D game drew a north wall's face, papered and paneled,
+// over the two tiles of wall above it (roomWalls.ts `isNorthFace`): a wall
+// tile over any tile of the map that is not wall or a doorway.
+export const isNorthFaceAt = ({
+  tiles,
+  row,
+  column,
+}: Readonly<{
+  tiles: ReadonlyArray<string>
+  row: number
+  column: number
+}>): boolean =>
+  Option.contains(symbolAt(tiles, row, column), WALL_SYMBOL) &&
+  Option.exists(
+    symbolAt(tiles, row + 1, column),
+    symbol => symbol !== WALL_SYMBOL && !Array.contains(DOORS, symbol),
+  )
+
+// NOTE: a front wall two tiles thick that is also the back wall of the room
+// south of it (the kitchen's, the dining room's top wall) stands its south
+// tile, the face the room south of it sees, as tall as every top wall, so
+// its paper and portraits stand up its face and do not lie folded over a
+// low top (owner, 2026-11-15). Only its north tile stays low: the tall
+// tile's top reaches back no further than that tile, so it hides none of
+// the room behind.
 export const isFrontWallAt = ({
   tiles,
   row,
@@ -95,6 +126,12 @@ export const isFrontWallAt = ({
   row: number
   column: number
 }>): boolean => {
+  if (
+    isNorthFaceAt({ tiles, row, column }) &&
+    Option.contains(symbolAt(tiles, row - 1, column), WALL_SYMBOL)
+  ) {
+    return false
+  }
   for (let step = 1; step <= FRONT_WALL_DEPTH; step += 1) {
     const north = symbolAt(tiles, row - step, column)
     if (north._tag === 'None' || north.value === OUTSIDE_SYMBOL) {

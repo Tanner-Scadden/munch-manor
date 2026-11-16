@@ -22,6 +22,7 @@ import {
   type ArtQuad,
   artAt,
   artQuadsOver,
+  fannedX,
   standingTilesOf,
   wallQuadsOf,
 } from '../wallQuads'
@@ -143,9 +144,16 @@ describe('the walls', () => {
     const tiles = standingTilesOf(level)
     return Array.map(northFacesOf(level), tile => {
       const isThick = symbolAt(tiles, tile.row - 1, tile.column) === WALL_SYMBOL
+      const height = wallHeightAt({ tiles, ...tile })
       return {
         tile,
-        rows: Math.round(wallHeightAt({ tiles, ...tile }) / WALL_ROW),
+        rows: Math.round(height / WALL_ROW),
+        // NOTE: a tall face with a low front wall behind it (the dining
+        // room's top wall under the kitchen): the low tile wears its cap's
+        // color, the cap's row.
+        isStepped:
+          isThick &&
+          wallHeightAt({ tiles, ...tile, row: tile.row - 1 }) < height,
         foot: (tile.row + 1) * TILE_SIZE,
         // NOTE: the wall's first row, the cap's: its two tiles' first, or
         // its one's.
@@ -167,7 +175,7 @@ describe('the walls', () => {
       expect(new Set(Array.map(walls, ({ rows }) => rows))).toEqual(
         new Set([WALL_FACE_ROWS, FRONT_WALL_ROWS]),
       )
-      Array.forEach(walls, ({ tile, rows, foot, cap, tops }) => {
+      Array.forEach(walls, ({ tile, rows, isStepped, foot, cap, tops }) => {
         const face = Option.getOrThrow(Array.head(quadsAt(level, tile, isFace)))
         // NOTE: the face and the tops' art together run from the cap to
         // the foot with no row left out: the trim, the paper, and the
@@ -176,10 +184,14 @@ describe('the walls', () => {
           [rowsOf(face), ...Array.map(Array.filter(tops, isArt), rowsOf)],
           Order.Tuple([Order.Number, Order.Number]),
         )
-        const reach = Array.reduce(spans, cap, (most, [from, to]) => {
-          expect(from).toBeLessThanOrEqual(most + 1e-6)
-          return Math.max(most, to)
-        })
+        const reach = Array.reduce(
+          spans,
+          cap + (isStepped ? 1 : 0),
+          (most, [from, to]) => {
+            expect(from).toBeLessThanOrEqual(most + 1e-6)
+            return Math.max(most, to)
+          },
+        )
         expect(reach).toBeCloseTo(foot, 6)
         // NOTE: and lit as one, so no crease shows where the face meets
         // its top.
@@ -191,7 +203,9 @@ describe('the walls', () => {
         Array.forEach(
           Array.filter(tops, top => !isArt(top)),
           ({ wears }) => {
-            expect(wears).toBe(rows === FRONT_WALL_ROWS ? 'Cap' : 'Night')
+            expect(wears).toBe(
+              rows === FRONT_WALL_ROWS || isStepped ? 'Cap' : 'Night',
+            )
           },
         )
       })
@@ -373,4 +387,68 @@ describe('where a low front wall meets a tall wall', () => {
     // NOTE: a face beside floor still runs out, closing on the jamb.
     expect(Array.some(faces, face => runsOf(face).east > 0.001)).toBe(true)
   })
+})
+
+// NOTE: the lens sees a north face's upright lines plumb and its top's run
+// north, so the two met in a crease at the seam through its perspective
+// (owner, 2026-11-15). A fanned corner of a top's art (`fannedX`) lies in
+// the upright plane through the eye and the face's column wearing the same
+// column of the picture, so the lens sees the face's column and the top's
+// as one straight line, from an eye off to either side.
+describe('a north wall seen through the lens', () => {
+  const EYE_HEIGHT = 30
+  const EYE_BACK = 25
+  const EYE_ASIDE = [-18, 18]
+
+  test.each(HOUSES)(
+    'house %i: each upright line of a face runs straight on over its top',
+    (_house, level) => {
+      const quads = wallQuadsOf(level)
+      const faces = Array.filter(quads, quad => isFace(quad) && isArt(quad))
+      const fannedTops = Array.filter(
+        quads,
+        quad => isTop(quad) && isArt(quad) && Option.isSome(quad.fan),
+      )
+      expect(fannedTops.length).toBeGreaterThan(0)
+      const offs: Array<number> = []
+      Array.forEach(fannedTops, top => {
+        const { seam, corners } = Option.getOrThrow(top.fan)
+        Array.forEach(corners, corner => {
+          const [x, , z] = top.corners[corner] ?? [0, 0, 0]
+          const [u] = top.art[corner] ?? [0, 0]
+          // NOTE: the face whose top edge lies on the seam and that wears
+          // this column of the picture, and where across it stands.
+          const face = Array.findFirst(faces, ({ corners: at, art }) => {
+            const [[x0, , z0], [x1]] = at
+            const [[u0], [u1]] = art
+            return (
+              Math.abs(z0 - seam) < 1e-9 &&
+              u >= u0 - 1e-9 &&
+              u <= u1 + 1e-9 &&
+              x >= x0 - 1e-9 &&
+              x <= x1 + 1e-9
+            )
+          })
+          if (Option.isSome(face)) {
+            const { corners: at, art } = face.value
+            const [[x0], [x1]] = at
+            const [[u0], [u1]] = art
+            const faceX = x0 + ((x1 - x0) * (u - u0)) / (u1 - u0)
+            Array.forEach(EYE_ASIDE, aside => {
+              const eyeX = faceX + aside
+              const eyeZ = seam + EYE_BACK
+              const fanned = fannedX({ x, z, seam, eyeX, eyeZ })
+              // NOTE: the corner, the face's column, and the eye in one
+              // upright plane: across over along, measured from the eye.
+              const off =
+                (faceX - eyeX) * (z - eyeZ) - (seam - eyeZ) * (fanned - eyeX)
+              offs.push(Math.abs(off))
+            })
+          }
+        })
+      })
+      expect(offs.length).toBeGreaterThan(0)
+      expect(Math.max(...offs)).toBeLessThan(1e-6 * EYE_HEIGHT)
+    },
+  )
 })
