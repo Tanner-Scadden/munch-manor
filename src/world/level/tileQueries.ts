@@ -220,6 +220,37 @@ export const findReach: {
   return to
 })
 
+// NOTE: whether any tile in the box of columns and rows (inclusive, clipped
+// to the map) is solid, in four reads of the level's sums.
+const isAnySolidIn = (
+  level: Level,
+  firstColumn: number,
+  firstRow: number,
+  lastColumn: number,
+  lastRow: number,
+): boolean => {
+  const width = level.columns + 1
+  const left = Math.max(0, firstColumn - level.leftColumn)
+  const top = Math.max(0, firstRow - level.topRow)
+  const right = Math.min(level.columns, lastColumn - level.leftColumn + 1)
+  const bottom = Math.min(level.rows, lastRow - level.topRow + 1)
+  if (left >= right || top >= bottom) {
+    return false
+  }
+  const sums = level.solidSums
+  return (
+    (sums[bottom * width + right] ?? 0) -
+      (sums[top * width + right] ?? 0) -
+      (sums[bottom * width + left] ?? 0) +
+      (sums[top * width + left] ?? 0) >
+    0
+  )
+}
+
+// NOTE: a lane whose tiles, a tile past each end, hold nothing solid is
+// clear whatever its samples say, so most lanes in open floor read four
+// numbers. The tile past each end covers a sample a rounding step past
+// its end. Otherwise each sample looks up its tile, once per tile it enters.
 const isLaneClear = (
   level: Level,
   fromX: number,
@@ -227,21 +258,47 @@ const isLaneClear = (
   toX: number,
   toY: number,
 ): boolean => {
+  const fromColumn = tileCoordinate(fromX)
+  const fromRow = tileCoordinate(fromY)
+  const toColumn = tileCoordinate(toX)
+  const toRow = tileCoordinate(toY)
+  if (
+    !isAnySolidIn(
+      level,
+      Math.min(fromColumn, toColumn) - 1,
+      Math.min(fromRow, toRow) - 1,
+      Math.max(fromColumn, toColumn) + 1,
+      Math.max(fromRow, toRow) + 1,
+    )
+  ) {
+    return true
+  }
   const steps = Math.max(
     1,
     Math.ceil(Math.hypot(toX - fromX, toY - fromY) / LINE_OF_SIGHT_STEP_PX),
   )
   const dx = toX - fromX
   const dy = toY - fromY
+  // NOTE: isSolidTile's test written out on the map's own numbers, since
+  // this loop is the hottest tile lookup of a tick.
+  const { leftColumn, topRow, columns, rows, tileFlags } = level
+  let lastColumn = Number.NaN
+  let lastRow = Number.NaN
   for (let index = 0; index <= steps; index++) {
-    if (
-      isSolidPoint(
-        level,
-        fromX + (dx * index) / steps,
-        fromY + (dy * index) / steps,
-      )
-    ) {
-      return false
+    const column = tileCoordinate(fromX + (dx * index) / steps) - leftColumn
+    const row = tileCoordinate(fromY + (dy * index) / steps) - topRow
+    if (column !== lastColumn || row !== lastRow) {
+      if (
+        column >= 0 &&
+        column < columns &&
+        row >= 0 &&
+        row < rows &&
+        ((tileFlags[row * columns + column] ?? 0) & TILE_SOLID) !== 0
+      ) {
+        return false
+      }
+      lastColumn = column
+      lastRow = row
     }
   }
   return true

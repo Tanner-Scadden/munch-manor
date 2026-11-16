@@ -12,6 +12,10 @@ import {
 } from '../schema/worldSchema'
 import { isFloorKind, isWalking } from './zombies'
 
+// NOTE: the tag checks this module runs per zombie per tick, built once.
+const isFrenziedOrFading = Frenzy.isAnyOf(['Frenzied', 'Fading'])
+const isFrenziedFrenzy = Frenzy.isAnyOf(['Frenzied'])
+
 // RULES
 
 type FrenzyRules = {
@@ -87,7 +91,7 @@ export const frenzyOnArrival: {
 // PACE
 
 export const isFrenzied = (zombie: Zombie): boolean =>
-  Frenzy.isAnyOf(['Frenzied'])(zombie.frenzy)
+  isFrenziedFrenzy(zombie.frenzy)
 
 export const frenzyPace = (zombie: Zombie): number =>
   Frenzy.match(zombie.frenzy, {
@@ -120,7 +124,7 @@ const hasPackmateNear = (
     other =>
       other.id !== zombie.id &&
       isWalking(other) &&
-      Frenzy.isAnyOf(['Frenzied'])(other.frenzy) &&
+      isFrenziedFrenzy(other.frenzy) &&
       other.frenzy.pack === pack &&
       Math.hypot(other.x - zombie.x, other.y - zombie.y) <=
         FRENZY_RULES.togetherPx,
@@ -150,9 +154,7 @@ const nextFrenzy =
     })
 
 const hasAnyFrenzy = (zombies: ReadonlyArray<Zombie>): boolean =>
-  Array.some(zombies, zombie =>
-    Frenzy.isAnyOf(['Frenzied', 'Fading'])(zombie.frenzy),
-  )
+  Array.some(zombies, zombie => isFrenziedOrFading(zombie.frenzy))
 
 export const advanceFrenzy: {
   (deltaMs: number): (model: World) => World

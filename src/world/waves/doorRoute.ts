@@ -103,26 +103,28 @@ const volleyOf = (pack: number): number =>
 // NOTE: the door each warned pack took, by its pack and planned door, the
 // first entry winning as a scan would. It is read for every planned spawn,
 // so each list gets its index once; the list is replaced, never changed.
-const enteredIndexes = new WeakMap<
-  ReadonlyArray<PackDoor>,
-  ReadonlyMap<string, DoorId>
->()
+// It is keyed by the pack's number and then its door, so a lookup builds no
+// string.
+type EnteredIndex = ReadonlyMap<number, ReadonlyMap<DoorId, DoorId>>
 
-const enteredKey = (pack: number, planned: DoorId): string =>
-  `${pack}|${planned}`
+const enteredIndexes = new WeakMap<ReadonlyArray<PackDoor>, EnteredIndex>()
 
-const enteredIndexOf = (
-  packDoors: ReadonlyArray<PackDoor>,
-): ReadonlyMap<string, DoorId> => {
+const NO_ENTRIES: EnteredIndex = new Map()
+
+const enteredIndexOf = (packDoors: ReadonlyArray<PackDoor>): EnteredIndex => {
+  if (Array.isReadonlyArrayEmpty(packDoors)) {
+    return NO_ENTRIES
+  }
   const cached = enteredIndexes.get(packDoors)
   if (cached !== undefined) {
     return cached
   }
-  const index = new Map<string, DoorId>()
+  const index = new Map<number, Map<DoorId, DoorId>>()
   for (const { pack, planned, door } of packDoors) {
-    const key = enteredKey(pack, planned)
-    if (!index.has(key)) {
-      index.set(key, door)
+    const byDoor = index.get(pack) ?? new Map<DoorId, DoorId>()
+    index.set(pack, byDoor)
+    if (!byDoor.has(planned)) {
+      byDoor.set(planned, door)
     }
   }
   enteredIndexes.set(packDoors, index)
@@ -134,7 +136,7 @@ const maybeEnteredDoor = (
   spawn: Readonly<{ pack: number; door: DoorId }>,
 ): Option.Option<DoorId> =>
   Option.fromNullishOr(
-    enteredIndexOf(packDoors).get(enteredKey(spawn.pack, spawn.door)),
+    enteredIndexOf(packDoors).get(spawn.pack)?.get(spawn.door),
   )
 
 const isVolleyMate =

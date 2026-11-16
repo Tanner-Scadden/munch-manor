@@ -20,6 +20,7 @@ import {
   RESTLESS_QUIET_MAX_MS,
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
+import { sameIfUnchanged } from '../../shared/sameList'
 import { type Level, levelOf } from '../level/arena'
 import { boxCenter, distanceToBox } from '../level/tileGrid'
 import type { World } from '../schema/world'
@@ -376,10 +377,22 @@ export const warningPoint: {
   boxCenter(level.thresholds[door].box),
 )
 
+// NOTE: the first spawn of each pack, in order, as Array.dedupeWith on the
+// pack would keep, in one pass with a Set rather than a pass per spawn kept:
+// the packs held while the house is full are due to warn on every tick.
 const firstOfEachPack = (
   spawns: ReadonlyArray<PlannedSpawn>,
-): ReadonlyArray<PlannedSpawn> =>
-  Array.dedupeWith(spawns, (first, second) => first.pack === second.pack)
+): ReadonlyArray<PlannedSpawn> => {
+  const seen = new Set<number>()
+  const firsts: Array<PlannedSpawn> = []
+  for (const spawn of spawns) {
+    if (!seen.has(spawn.pack)) {
+      seen.add(spawn.pack)
+      firsts.push(spawn)
+    }
+  }
+  return firsts
+}
 
 const warnedEvent =
   (level: Level) =>
@@ -457,10 +470,13 @@ export const keepWarnedOnTime: {
   ): ReadonlyArray<PlannedSpawn> =>
     stalledMs <= 0 || Array.isReadonlyArrayEmpty(warnedPacks)
       ? spawns
-      : Array.map(spawns, spawn =>
-          isThroughDoor(spawn) && isWarned(warnedPacks)(spawn)
-            ? modifyFields(spawn, { atMs: atMs => atMs - stalledMs })
-            : spawn,
+      : sameIfUnchanged(
+          spawns,
+          Array.map(spawns, spawn =>
+            isThroughDoor(spawn) && isWarned(warnedPacks)(spawn)
+              ? modifyFields(spawn, { atMs: atMs => atMs - stalledMs })
+              : spawn,
+          ),
         ),
 )
 
@@ -516,14 +532,16 @@ export const packsWaitingToWarn: {
       }
       sizes.set(spawn.pack, (sizes.get(spawn.pack) ?? 0) + 1)
     }
-    return Array.reduce(
-      packs,
-      { places: ZOMBIE_ALIVE_MAX - zombieCount - coming, waiting: noPacks },
-      ({ places, waiting }, { pack }) =>
-        places > 0
-          ? { places: places - (sizes.get(pack) ?? 0), waiting }
-          : { places, waiting: Array.append(waiting, pack) },
-    ).waiting
+    let places = ZOMBIE_ALIVE_MAX - zombieCount - coming
+    const waiting: Array<number> = []
+    for (const { pack } of packs) {
+      if (places > 0) {
+        places -= sizes.get(pack) ?? 0
+      } else {
+        waiting.push(pack)
+      }
+    }
+    return waiting.length === 0 ? noPacks : waiting
   },
 )
 
@@ -551,27 +569,32 @@ export const delayWaitingPacks: {
       return spawns
     }
     // NOTE: how far each waiting pack shifts, found once in one pass over the
-    // spawns: its first zombie's time decides it.
-    const firsts = Array.map(waiting, () => Number.POSITIVE_INFINITY)
-    Array.forEach(spawns, spawn => {
-      // NOTE: the packs held back while the house is full, a few.
-      // oxlint-disable-next-line munch/no-nested-scan
-      const at = waiting.indexOf(spawn.pack)
-      if (at >= 0) {
-        firsts[at] = Math.min(firsts[at] ?? spawn.atMs, spawn.atMs)
+    // spawns: its first zombie's time decides it. Every pack due may wait
+    // while the house is full, so each is found by its number in a Map.
+    const firsts = new Map<number, number>()
+    for (const pack of waiting) {
+      firsts.set(pack, Number.POSITIVE_INFINITY)
+    }
+    for (const spawn of spawns) {
+      const first = firsts.get(spawn.pack)
+      if (first !== undefined) {
+        firsts.set(spawn.pack, Math.min(first, spawn.atMs))
       }
-    })
-    return Array.map(spawns, spawn => {
-      // NOTE: the packs held back while the house is full, a few.
-      // oxlint-disable-next-line munch/no-nested-scan
-      const at = waiting.indexOf(spawn.pack)
-      if (at < 0) {
-        return spawn
-      }
-      const firstMs = firsts[at] ?? spawn.atMs
-      const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
-      return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
-    })
+    }
+    // NOTE: a pack already a warning away shifts by 0 and stays the spawn it
+    // was, so the list stays the one it was too, and the route kept for it
+    // (src/world/waves/doorRoute.ts) still holds.
+    return sameIfUnchanged(
+      spawns,
+      Array.map(spawns, spawn => {
+        const firstMs = firsts.get(spawn.pack)
+        if (firstMs === undefined) {
+          return spawn
+        }
+        const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
+        return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
+      }),
+    )
   },
 )
 
@@ -599,14 +622,14 @@ export const warnPacks: {
     waiting: ReadonlyArray<number>,
   ): World => {
     const warnedPacks = model.pacing.warnedPacks
+    // NOTE: every pack due may wait while the house is full, so they are
+    // looked up in a Set, not scanned for each spawn.
+    const held: ReadonlySet<number> = new Set(waiting)
     const fresh = pipe(
       routed,
       Array.filter(
         spawn =>
-          isDueToWarn(warnedPacks, clockMs)(spawn) &&
-          // NOTE: the packs held back while the house is full, a few.
-          // oxlint-disable-next-line munch/no-nested-scan
-          !Array.contains(waiting, spawn.pack),
+          isDueToWarn(warnedPacks, clockMs)(spawn) && !held.has(spawn.pack),
       ),
       firstOfEachPack,
     )
@@ -711,27 +734,23 @@ export const delayCampedPacks: {
     worldMs: number,
     players: ReadonlyArray<Vector>,
   ): ReadonlyArray<PlannedSpawn> => {
-    const campedPacks = pipe(
-      routed,
-      Array.filter(
-        spawn =>
-          isDue(clockMs)(spawn) &&
-          isThroughDoor(spawn) &&
-          // NOTE: at most 4 players.
-          // oxlint-disable-next-line munch/no-nested-scan
-          Array.some(players, player =>
-            isCampingDoor(level, player, spawn.door),
-          ),
-      ),
-      Array.map(({ pack }) => pack),
-      Array.dedupe,
-    )
-    return Array.isReadonlyArrayEmpty(campedPacks)
+    // NOTE: a Set, since every pack held at a camped door is due at once.
+    const campedPacks = new Set<number>()
+    for (const spawn of routed) {
+      if (
+        isDue(clockMs)(spawn) &&
+        isThroughDoor(spawn) &&
+        // NOTE: at most 4 players.
+        // oxlint-disable-next-line munch/no-nested-scan
+        Array.some(players, player => isCampingDoor(level, player, spawn.door))
+      ) {
+        campedPacks.add(spawn.pack)
+      }
+    }
+    return campedPacks.size === 0
       ? spawns
       : Array.map(spawns, spawn =>
-          // NOTE: the packs camped this tick, a few.
-          // oxlint-disable-next-line munch/no-nested-scan
-          Array.contains(campedPacks, spawn.pack)
+          campedPacks.has(spawn.pack)
             ? modifyFields(spawn, { atMs: atMs => atMs + worldMs })
             : spawn,
         )

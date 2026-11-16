@@ -557,11 +557,15 @@ export const deathState: {
     }),
 )
 
-export const isWalking = (zombie: Zombie): boolean =>
-  ZombieState.isAnyOf(['Walking'])(zombie.state)
+// NOTE: the checks are built once, not on every call: these run for every
+// zombie many times a tick.
+const isWalkingState = ZombieState.isAnyOf(['Walking'])
+const isFusingState = ZombieState.isAnyOf(['Fusing'])
 
-export const isFusing = (zombie: Zombie): boolean =>
-  ZombieState.isAnyOf(['Fusing'])(zombie.state)
+export const isWalking = (zombie: Zombie): boolean =>
+  isWalkingState(zombie.state)
+
+export const isFusing = (zombie: Zombie): boolean => isFusingState(zombie.state)
 
 const isOnTheFloor = ZombieAction.isAnyOf([
   'Roaming',
@@ -576,6 +580,9 @@ const isOnTheFloor = ZombieAction.isAnyOf([
 ])
 
 const isOnItsFeet = ZombieAction.isAnyOf(['Roaming', 'Winded', 'Chilled'])
+
+// NOTE: a zombie doing nothing but walking after the players.
+export const isRoamingAction = ZombieAction.isAnyOf(['Roaming'])
 
 // NOTE: a grounded zombie is alive and standing in the room, so bullets,
 // bursts, traps, and the crowd can reach it. One Burrowed under the floor,
