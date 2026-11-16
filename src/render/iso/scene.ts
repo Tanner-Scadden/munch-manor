@@ -80,6 +80,7 @@ import { IDENTITY, type Leaf, flatten } from './flatten'
 import type { IsoFrame } from './frame'
 import { Furniture } from './furniture'
 import { GodRays, shaftMotesOf } from './godRays'
+import { GroundRects, splitGround } from './groundRects'
 import {
   type Caster,
   type Plant,
@@ -136,6 +137,9 @@ export const STORM_LIFT = AMBIENT * 3
 
 // NOTE: the void behind the house: black, as shut rooms and the yard draw.
 const BACKGROUND = 0x000000
+// NOTE: the ground's picture and its rectangles lie at 0.012, under the
+// puddles (0.013, leakLayer.ts).
+const GROUND_LIFT = 0.012
 // NOTE: the lens's depth range, in world units from the lens: it stands 36
 // to 46 tiles from the floor it looks at by the view's height
 // (src/render/lens.ts), and the house is about three screens wide.
@@ -192,7 +196,11 @@ type Built = Readonly<{
   // and not three, since every pixel of a lit plane is shaded for every
   // light that reaches it.
   floor: FloorLayer
+  // NOTE: what lies on the ground, unlit: its flat rectangles as quads
+  // (groundRects.ts), the rest (images, paths, rings) in a picture drawn
+  // again only when it changes.
   ground: FloorLayer
+  groundRects: GroundRects
   // NOTE: the storm at the windows (storm.ts), unlit, on its own quads over
   // the glass and the floor it lights.
   storm: FloorPicture
@@ -481,13 +489,15 @@ export class IsoScene {
     }
     this.wasLanded = isLanded
     const isDown = isChandelierDown(model)
-    built.ground.paintLeaves([
+    const ground = splitGround([
       ...Option.match(built.chandelier, {
         onNone: () => [],
         onSome: chandelier => chandelier.floorMarks(isDown),
       }),
       ...flatten(strata.ground),
     ])
+    built.ground.paintLeaves(ground.rest)
+    built.groundRects.draw(ground.rects)
     const stormKey = stormKeyOf({
       world: model,
       level: built.level,
@@ -934,7 +944,7 @@ export class IsoScene {
       app,
       textures,
       level,
-      lift: 0.012,
+      lift: GROUND_LIFT,
       isLit: false,
     })
     // NOTE: the storm's picture shows only on its own quads, never on a
@@ -986,6 +996,11 @@ export class IsoScene {
       room,
       floor,
       ground,
+      groundRects: new GroundRects({
+        parent: holder,
+        lift: GROUND_LIFT,
+        under: ground.mesh.position,
+      }),
       storm,
       leaks,
       soup,
@@ -1038,6 +1053,7 @@ export class IsoScene {
     built.rays.destroy()
     built.glows.destroy()
     built.furniture.destroy()
+    built.groundRects.destroy()
     built.holder.destroy({ children: true })
     Array.forEach(
       [

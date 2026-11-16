@@ -126,6 +126,54 @@ const SHADOW_BUDGETS: Readonly<Record<string, number>> = {
   allRooms: 2.1,
 }
 
+// NOTE: a level-sized picture's pass (the ground's, the room's, the
+// storm's, the puddles'): neither a shadow map nor the screen's own shape,
+// which the screen and the bloom's halvings all keep (16:9 on the desktop
+// page every scenario opens).
+const SCREEN_SHAPE = 16 / 9
+
+const isPicturePass = (row: PassRow): boolean =>
+  !isShadowPass(row) && Math.abs(row.width / row.height - SCREEN_SHAPE) > 0.2
+
+// NOTE: the most level-sized pictures each scenario may draw a frame,
+// counted by their passes. Kept apart from SHADOW_BUDGETS. The ground's
+// picture was drawn every frame, its shadows, bullets, and the kitchen's
+// steam moving on it (1.30 a frame idle, 2.38 in a wave in every room); its
+// rectangles are quads now and the picture is drawn only when the rest
+// changes (src/render/iso/groundRects.ts): 0.31 and 1.50.
+const PICTURE_BUDGETS: Readonly<Record<string, number>> = {
+  idle: 0.45,
+  allRooms: 1.8,
+}
+
+const perFrameOf = (
+  rows: ReadonlyArray<PassRow>,
+  isCounted: (row: PassRow) => boolean,
+  countOf: (row: PassRow) => number,
+  frames: number,
+): number =>
+  Array.reduce(
+    Array.filter(rows, isCounted),
+    0,
+    (sum, row) => sum + countOf(row),
+  ) / frames
+
+const overBudget = (
+  input: Readonly<{
+    budgets: Readonly<Record<string, number>>
+    name: string
+    count: number
+    what: string
+  }>,
+): Option.Option<string> =>
+  Option.flatMap(Option.fromUndefinedOr(input.budgets[input.name]), budget =>
+    input.count > budget
+      ? Option.some(
+          `${input.name}: ${input.count.toFixed(2)} ${input.what} a frame, past ${budget}`,
+        )
+      : Option.none(),
+  )
+
 const passRowsOf = (
   input: Readonly<{
     browser: Browser
@@ -209,24 +257,38 @@ runHarnessAudit(
       Effect.gen(function* () {
         const rows = yield* passRowsOf({ browser, name, frames, warmMs })
         yield* report({ name, frames, rows })
-        const shadowMaps =
-          Array.reduce(
-            Array.filter(rows, isShadowPass),
-            0,
-            (sum, row) => sum + row.clears,
-          ) / frames
-        return Option.flatMap(
-          Option.fromUndefinedOr(SHADOW_BUDGETS[name]),
-          budget =>
-            shadowMaps > budget
-              ? Option.some(
-                  `${name}: ${shadowMaps.toFixed(2)} shadow maps drawn a frame, past ${budget}`,
-                )
-              : Option.none(),
+        const shadowMaps = perFrameOf(
+          rows,
+          isShadowPass,
+          row => row.clears,
+          frames,
         )
+        const pictures = perFrameOf(
+          rows,
+          isPicturePass,
+          row => row.passes,
+          frames,
+        )
+        yield* Console.log(
+          `${name}: ${pictures.toFixed(2)} level-sized pictures drawn a frame\n`,
+        )
+        return [
+          overBudget({
+            budgets: SHADOW_BUDGETS,
+            name,
+            count: shadowMaps,
+            what: 'shadow maps drawn',
+          }),
+          overBudget({
+            budgets: PICTURE_BUDGETS,
+            name,
+            count: pictures,
+            what: 'level-sized pictures drawn',
+          }),
+        ]
       }),
     )
-    const failures = Array.getSomes(over)
+    const failures = Array.getSomes(Array.flatten(over))
     if (failures.length > 0) {
       return yield* failWith(
         `GPU work over budget: ${Array.join(failures, '; ')}`,

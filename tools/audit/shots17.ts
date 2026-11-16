@@ -24,6 +24,7 @@ import { encodeJson } from '../json'
 import { runHarnessAuditWith } from './harnessServer'
 import {
   DESKTOP_1280,
+  OPEN_BREAK,
   PHONE_667,
   SHOTS_DIR,
   type Viewport,
@@ -108,6 +109,16 @@ const SCENES: ReadonlyArray<Scene> = [
       'wave=6&start=wave&god&gun=smg&fill&gasroom=16&aim=160,40&freeze=150',
   },
   { name: 'looks', query: 'looksheet&freeze=10' },
+  // NOTE: the ground's pulsing and moving parts: the boarded kitchen's
+  // light and steam in a break, the open kitchen's oven glow and soup in a
+  // wave, and the cellar in a break with every room open.
+  { name: 'kitchen-shut', query: 'wave=2&prep=60000&freeze=40' },
+  {
+    name: 'kitchen-wave',
+    query:
+      'wave=8&start=wave&god&gun=smg&kitchen&fill&crowd=30&px=96&py=-46&ovens=belch&slip&freeze=90',
+  },
+  { name: 'cellar', query: `${OPEN_BREAK}&px=840&py=130&freeze=30` },
 ]
 
 const shotName = (tag: string, viewport: Viewport, scene: Scene) =>

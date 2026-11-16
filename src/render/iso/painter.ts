@@ -22,7 +22,7 @@ import {
 } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
-import { type Affine, type Leaf, flatten } from './flatten'
+import { type Affine, type Leaf, flatten, isSameLeaves } from './flatten'
 import { STRETCH, UNIT, zOf } from './space'
 import { type Textures, colorOf } from './textures'
 
@@ -264,6 +264,12 @@ export class FloorPicture {
 export class FloorLayer {
   readonly mesh: Mesh3D
   readonly picture: FloorPicture
+  private readonly textures: Textures
+  // NOTE: what the picture shows now, and how many sources had loaded when
+  // it was drawn: an image still loading draws nothing, so a source come in
+  // since draws the same leaves again.
+  private shown: ReadonlyArray<Leaf> | undefined
+  private shownLoaded = -1
 
   constructor(
     input: Readonly<{
@@ -277,6 +283,7 @@ export class FloorLayer {
     }>,
   ) {
     const { level, lift, isLit, textures } = input
+    this.textures = textures
     this.picture = new FloorPicture(input)
     const texture = this.picture.texture
     const material = isLit
@@ -306,7 +313,24 @@ export class FloorLayer {
     })
   }
 
+  // NOTE: the picture is the size of the whole level, so it is drawn again
+  // only when what it shows changes: a break where nothing on the ground
+  // moves draws it never, where drawing it each frame cleared and filled a
+  // level-sized texture for nothing.
   paintLeaves(leaves: ReadonlyArray<Leaf>): void {
+    const loaded = this.textures.loaded
+    if (
+      loaded === this.shownLoaded &&
+      this.shown !== undefined &&
+      isSameLeaves(this.shown, leaves)
+    ) {
+      return
+    }
+    this.shown = leaves
+    this.shownLoaded = loaded
+    // NOTE: an empty picture's plane is left out of the frame, where it
+    // was blended over every pixel of floor in view for nothing.
+    this.mesh.visible = leaves.length > 0
     this.picture.paintLeaves(leaves)
   }
 
