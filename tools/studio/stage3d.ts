@@ -13,9 +13,10 @@ import { CustomElement } from 'foldkit'
 import { Application } from 'pixi.js'
 
 import { AmbientLight, Container3D, View3D } from '@pixi/3d'
-import { BloomEffect, OutlinePass } from '@pixi/3d/extras'
+import { OutlinePass } from '@pixi/3d/extras'
 
 import { isFlashShape } from '../../src/art/sprite'
+import { worldBloomOf } from '../../src/render/iso/bloom'
 import { viewFloorOf } from '../../src/render/iso/cull'
 import { type Leaf, flatten } from '../../src/render/iso/flatten'
 import { floorArtOf } from '../../src/render/iso/house'
@@ -422,7 +423,7 @@ class StageRenderer {
       environment: { skyColor: 0x9db4ff, groundColor: 0x3a2a30, intensity: 0 },
       passes: [
         new OutlinePass({ width: 0.04, color: 0x1a1220 }),
-        new BloomEffect({ threshold: 2, intensity: 1.1, radius: 0.6 }),
+        worldBloomOf(0.5),
       ],
     })
     app.stage.addChild(this.view)

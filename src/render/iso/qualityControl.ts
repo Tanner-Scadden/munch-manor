@@ -7,9 +7,9 @@ import { Option } from 'effect'
 import type { Application } from 'pixi.js'
 
 import type { View3D } from '@pixi/3d'
-import { BloomEffect } from '@pixi/3d/extras'
 
 import { isCineOn } from '../cine'
+import { type CheapBloomEffect, worldBloomOf } from './bloom'
 import { IsoLens } from './diorama'
 import type { IsoFrame } from './frame'
 import { FrameProbe } from './frameProbe'
@@ -25,17 +25,10 @@ import { canvasStepOf, scaledStepOf } from './space'
 
 // NOTE: the bloom at a tier's resolution, or none. Its resolution is fixed
 // when it is made, so a tier change makes a new one.
-const bloomPassesOf = (spec: TierSpec): ReadonlyArray<BloomEffect> =>
+const bloomPassesOf = (spec: TierSpec): ReadonlyArray<CheapBloomEffect> =>
   Option.match(spec.bloomResolution, {
     onNone: () => [],
-    onSome: resolution => [
-      new BloomEffect({
-        threshold: 2,
-        intensity: 1.1,
-        radius: 0.6,
-        resolution,
-      }),
-    ],
+    onSome: resolution => [worldBloomOf(resolution)],
   })
 
 const glOf = (app: Application): Option.Option<WebGL2RenderingContext> => {
@@ -75,7 +68,7 @@ export class WorldQuality {
   // NOTE: the view's options for the tier it starts at.
   get viewOptions(): Readonly<{
     shadowQuality: ReturnType<typeof shadowQualityOf>
-    passes: ReadonlyArray<BloomEffect>
+    passes: ReadonlyArray<CheapBloomEffect>
   }> {
     return {
       shadowQuality: shadowQualityOf(this.tier),

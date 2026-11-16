@@ -12,6 +12,7 @@ import type { Browser } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
 import {
+  DESKTOP_1280,
   closePage,
   desktop,
   harnessUrl,
@@ -146,6 +147,28 @@ const PICTURE_BUDGETS: Readonly<Record<string, number>> = {
   allRooms: 1.8,
 }
 
+// NOTE: the bloom's levels are the screen's shape and smaller than it (the
+// `desktop` page's); its combine draws at the screen's own size.
+const isBloomPass = (row: PassRow): boolean =>
+  !isShadowPass(row) && !isPicturePass(row) && row.width < DESKTOP_1280.width
+
+// NOTE: the most bloom level passes each scenario may draw a frame. Its
+// five halvings drew nine a frame (8.91), each a pass a phone's tiled GPU
+// loads and stores whatever its size; three levels a quarter apart draw
+// five (4.95, src/render/iso/bloom.ts).
+const BLOOM_BUDGETS: Readonly<Record<string, number>> = {
+  idle: 5.2,
+  allRooms: 5.2,
+}
+
+// NOTE: the most render passes of any kind each scenario may draw a frame:
+// 12.64 idle and 15.37 in a wave in every room before the cheaper bloom,
+// 8.68 and 11.51 after.
+const PASS_BUDGETS: Readonly<Record<string, number>> = {
+  idle: 9.3,
+  allRooms: 12.3,
+}
+
 const perFrameOf = (
   rows: ReadonlyArray<PassRow>,
   isCounted: (row: PassRow) => boolean,
@@ -269,8 +292,20 @@ runHarnessAudit(
           row => row.passes,
           frames,
         )
+        const bloomPasses = perFrameOf(
+          rows,
+          isBloomPass,
+          row => row.passes,
+          frames,
+        )
+        const passes = perFrameOf(
+          rows,
+          () => true,
+          row => row.passes,
+          frames,
+        )
         yield* Console.log(
-          `${name}: ${pictures.toFixed(2)} level-sized pictures drawn a frame\n`,
+          `${name}: ${pictures.toFixed(2)} level-sized pictures, ${bloomPasses.toFixed(2)} bloom level passes drawn a frame\n`,
         )
         return [
           overBudget({
@@ -284,6 +319,18 @@ runHarnessAudit(
             name,
             count: pictures,
             what: 'level-sized pictures drawn',
+          }),
+          overBudget({
+            budgets: BLOOM_BUDGETS,
+            name,
+            count: bloomPasses,
+            what: 'bloom level passes drawn',
+          }),
+          overBudget({
+            budgets: PASS_BUDGETS,
+            name,
+            count: passes,
+            what: 'render passes drawn',
           }),
         ]
       }),
