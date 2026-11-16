@@ -667,6 +667,31 @@ index 7a1badf..7b26281 100644
              `  Second registration: ${newCallSite}\n` +
              `Each h.block call inside the same parent boundary must use a unique \`slotId\`. ` +
              `The slotId is DOM-slot identity, not model identity. If the same model is ` +
+diff --git a/dist/runtime/compositionRuntime.js b/dist/runtime/compositionRuntime.js
+index 4795205..75e7826 100644
+--- a/dist/runtime/compositionRuntime.js
++++ b/dist/runtime/compositionRuntime.js
+@@ -165,6 +165,12 @@ export const makeCompositionRuntime = ({ block, initModel, context, runtimeScope
+                     enqueueMessage(node.toRootMessage(message), () => node.isActive);
+                 }
+             });
++            // NOTE: the root's static entries (no dependencies, no gate) start
++            // once; a child's gate reads its parent's Model, so none of its
++            // entries is static.
++            const staticKeys = new Set(node.parent === undefined
++                ? Object.keys(channels.subscriptions).filter(name => Subscription.__isStatic(channels.subscriptions[name]))
++                : []);
+             return Effect.gen(function* () {
+                 yield* forkManagedResourceFibers({
+                     managedResourceRefs: node.managedResourceRefs,
+@@ -177,6 +183,7 @@ export const makeCompositionRuntime = ({ block, initModel, context, runtimeScope
+                 });
+                 yield* forkSubscriptionFibers({
+                     subscriptions,
++                    staticKeys,
+                     initModel: snapshot(node),
+                     modelPubSub: node.modelPubSub,
+                     runtimeScope: node.scope,
 diff --git a/dist/runtime/messageQueue.d.ts b/dist/runtime/messageQueue.d.ts
 index 03cb951..bdc8beb 100644
 --- a/dist/runtime/messageQueue.d.ts
@@ -814,6 +839,38 @@ index b180e6d..80e50c6 100644
          requestAnimationFrame(renderFramePlain);
      };
      const devToolsRenderBridge = {
+diff --git a/dist/runtime/subscriptionFibers.js b/dist/runtime/subscriptionFibers.js
+index 77f5958..fc8b7db 100644
+--- a/dist/runtime/subscriptionFibers.js
++++ b/dist/runtime/subscriptionFibers.js
+@@ -9,7 +9,7 @@ import { measureSlowPhase, reportSlowPhase, } from './slowPhase.js';
+  * A defect anywhere in that pipeline crashes the runtime instead of dying
+  * silently in the fiber.
+  */
+-export const forkSubscriptionFibers = ({ subscriptions, initModel, modelPubSub, runtimeScope, maybeSlowSubscriptionDependencies, enqueueMessageEffect, provideAllResources, crashWith, }) => pipe(subscriptions, Record.toEntries, Effect.forEach(([key, subscription]) => Effect.gen(function* () {
++export const forkSubscriptionFibers = ({ subscriptions, staticKeys, initModel, modelPubSub, runtimeScope, maybeSlowSubscriptionDependencies, enqueueMessageEffect, provideAllResources, crashWith, }) => pipe(subscriptions, Record.toEntries, Effect.forEach(([key, subscription]) => Effect.gen(function* () {
+     const { dependenciesSchema, keepAliveEquivalence, dependenciesToStream, } = subscription;
+     const equivalence = Option.makeEquivalence(keepAliveEquivalence ?? Schema.toEquivalence(dependenciesSchema));
+     const modelToMaybeDependencies = (model) => maybeActiveDependencies(subscription, model);
+@@ -22,6 +22,18 @@ export const forkSubscriptionFibers = ({ subscriptions, initModel, modelPubSub,
+         thresholdMs,
+     }));
+     const latestDependenciesRef = yield* Ref.make(maybeInitDependencies);
++    // NOTE: a static entry's dependencies never change, so its fiber reads
++    // no Model: waking it on every change cost a Stream step and a Schema
++    // equivalence each, every frame of a game.
++    if (staticKeys?.has(key) === true) {
++        yield* Effect.forkIn(runtimeScope)(Option.match(maybeInitDependencies, {
++            onNone: () => Stream.empty,
++            onSome: dependencies => dependenciesToStream(dependencies, () => dependencies),
++        }).pipe(Stream.runForEach(message => 
++        /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
++        enqueueMessageEffect(message)), provideAllResources, Effect.catchCause(cause => crashWith(cause, Option.none()))));
++        return;
++    }
+     const modelSubscription = yield* PubSub.subscribe(modelPubSub).pipe(Effect.provideService(Scope.Scope, runtimeScope));
+     const modelChangesStream = Stream.fromSubscription(modelSubscription).pipe(
+     // NOTE: Ref.set runs upstream of Stream.changesWith on
 diff --git a/dist/schema/index.js b/dist/schema/index.js
 index fa19443..0dce512 100644
 --- a/dist/schema/index.js
@@ -963,3 +1020,29 @@ index ba9a9ce..f23de13 100644
  };
  /**
   * Immutably modifies fields of a struct by applying transform functions. Each
+diff --git a/dist/subscription/subscription.js b/dist/subscription/subscription.js
+index 75ce312..fed8097 100644
+--- a/dist/subscription/subscription.js
++++ b/dist/subscription/subscription.js
+@@ -62,6 +62,13 @@ export const __selectedKeyIsPresent = (entry, model) => {
+ /** @internal Retains the entry record behind an owned Subscription registry. */
+ export const RegistryEntriesTypeId = Symbol('foldkit/Subscription/RegistryEntries');
+ const ActivationTypeId = Symbol('foldkit/Subscription/Activation');
++const StaticTypeId = Symbol('foldkit/Subscription/Static');
++/**
++ * @internal Whether an entry's dependencies can never change: one made with
++ * no dependency Schema and no `when` gate. Its Stream starts once and runs
++ * for the runtime's life, so its fiber need not read any Model.
++ */
++export const __isStatic = (entry) => Reflect.get(entry, StaticTypeId) === true;
+ const toActivation = (when, modelToDependencies) => {
+     if (when === undefined) {
+         return {};
+@@ -139,6 +146,7 @@ export const make = () => (build) => {
+                 dependenciesToStream: handler.toStream,
+                 toLayer: handler.toLayer,
+                 ...toActivation(config.when, modelToDependencies),
++                ...(config.when === undefined ? { [StaticTypeId]: true } : {}),
+             };
+             registerIdentity(entry, handler.identity);
+             if (Predicate.isUndefined(config.handler)) {
