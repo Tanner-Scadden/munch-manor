@@ -50,6 +50,25 @@ tester.run('no-raw-json', ruleOf('no-raw-json'), {
   invalid: [one('JSON.parse(text)'), one('globalThis.JSON.stringify(value)')],
 })
 
+tester.run('stable-math', ruleOf('stable-math'), {
+  valid: [
+    'const length = DetMath.hypot(x, y)',
+    'const root = Math.sqrt(x * x + y * y)',
+    'const near = Math.round(Math.abs(x) + Math.floor(y))',
+    'const span = 2 ** bits',
+    'const angle = Math.PI / 2',
+  ],
+  invalid: [
+    one('const length = Math.hypot(x, y)'),
+    one('const angle = Math.atan2(y, x)'),
+    one('const decay = globalThis.Math.exp(-rate)'),
+    one('const turn = Math.sin(a) + 1'),
+    one('const square = x ** 2'),
+    one('const scale = 10 ** places'),
+    one('scale **= 2'),
+  ],
+})
+
 tester.run('no-conditional-step', ruleOf('no-conditional-step'), {
   valid: ['const result = stepWhen(isDue, step)(model)'],
   invalid: [

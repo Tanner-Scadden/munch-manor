@@ -11,6 +11,7 @@ import {
   STICK_FIRE_ZONE,
   STICK_RADIUS_PX,
 } from '../shared/constants'
+import * as DetMath from '../shared/detMath'
 import type {
   Intent,
   Player,
@@ -177,7 +178,7 @@ const keepIfTouched = (
       Array.some(
         points,
         point =>
-          Math.hypot(
+          DetMath.hypot(
             point.clientX - active.currentX,
             point.clientY - active.currentY,
           ) <= STICK_TOUCH_REACH_PX,
@@ -229,7 +230,7 @@ const takeStick = (stick: Stick, press: PointerPress): Stick => {
   return Stick.match(stick, {
     Idle: () => pressed,
     Active: active =>
-      Math.hypot(
+      DetMath.hypot(
         press.clientX - active.originX,
         press.clientY - active.originY,
       ) <= STICK_RADIUS_PX

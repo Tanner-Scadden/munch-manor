@@ -11,6 +11,7 @@ import {
   TURRET_PLACE_REACH_PX,
   TURRET_RANGE_PX,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { appendOrSame, sameIfUnchanged } from '../../shared/sameList'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { mendSpeedScaleOf, trapHealthScaleOf } from '../heroes/calling'
@@ -379,7 +380,7 @@ const maybeTurretTarget = (
   pipe(
     zombies,
     Array.filterMap(zombie => {
-      const distance = Math.hypot(zombie.x - from.x, zombie.y - from.y)
+      const distance = DetMath.hypot(zombie.x - from.x, zombie.y - from.y)
       return isGrounded(zombie) &&
         isInsideRoomAt(level, zombie) &&
         distance <= TURRET_RANGE_PX
@@ -813,7 +814,7 @@ const nearbyFloorTiles = (
   const frontRow = tileCoordinate(front.y)
   const distanceFromFront = ({ column, row }: FloorTile): number => {
     const center = boxCenter(tileBox({ column, row }))
-    return Math.hypot(center.x - front.x, center.y - front.y)
+    return DetMath.hypot(center.x - front.x, center.y - front.y)
   }
   const isAhead = ({ column, row }: FloorTile): boolean => {
     const center = boxCenter(tileBox({ column, row }))

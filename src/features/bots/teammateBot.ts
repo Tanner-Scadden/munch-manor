@@ -1,6 +1,7 @@
 import { Array, Function, Option, Order, Result, pipe } from 'effect'
 
 import { PLAYER_RADIUS, PLAYER_SPEED } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { frontDoorSillOf, isFrontDoorOpen } from '../../world/dare/finale'
 import { PAN_RULES } from '../../world/fridge/fridgeWeapons'
 import { KNIFE_RULES } from '../../world/gear/knife'
@@ -506,8 +507,8 @@ const wanderedAim = (
   const turn =
     (handRoll(slot, zombieId, window) / HASH_SCALE - 0.5) * 2 * AIM_WANDER_RAD
   return {
-    x: aim.x * Math.cos(turn) - aim.y * Math.sin(turn),
-    y: aim.x * Math.sin(turn) + aim.y * Math.cos(turn),
+    x: aim.x * DetMath.cos(turn) - aim.y * DetMath.sin(turn),
+    y: aim.x * DetMath.sin(turn) + aim.y * DetMath.cos(turn),
   }
 }
 

@@ -7,6 +7,7 @@ import {
   IDLE_RELOAD_MS,
   MS_PER_SECOND,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import {
   type Seeded,
   between,
@@ -85,11 +86,11 @@ const pelletVelocity = (
   speedRoll: number,
 ): Vector => {
   const angle =
-    Math.atan2(facing.y, facing.x) + (angleRoll - 0.5) * stats.spread
+    DetMath.atan2(facing.y, facing.x) + (angleRoll - 0.5) * stats.spread
   const speed =
     stats.bulletSpeed *
     between(speedRoll, 1 - stats.speedJitter, 1 + stats.speedJitter)
-  return { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }
+  return { x: DetMath.cos(angle) * speed, y: DetMath.sin(angle) * speed }
 }
 
 const aimPellets = (
@@ -661,7 +662,7 @@ export const flyTracers: {
               zombies,
               zombie =>
                 isFree(zombie) &&
-                Math.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
+                DetMath.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
                   radiusOf(zombie),
             )
           ) {

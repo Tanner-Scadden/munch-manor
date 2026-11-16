@@ -7,6 +7,7 @@ import {
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { countWork } from '../../shared/workCount'
 import type { DoorId, Vector } from '../schema/entitySchema'
 import type { Toll } from '../schema/worldSchema'
@@ -618,7 +619,7 @@ const insideSteering = (
     directionBetween(position, target),
     () => ZERO_VECTOR,
   )
-  const distance = Math.hypot(target.x - position.x, target.y - position.y)
+  const distance = DetMath.hypot(target.x - position.x, target.y - position.y)
   return Option.match(
     flowDirection(level, flowField, position, halfWidth, clearance),
     {
@@ -1049,7 +1050,7 @@ const isByOpenYardDoor = (
     yardDoorsOf(level),
     id =>
       !Array.contains(barricaded, id) &&
-      Math.hypot(
+      DetMath.hypot(
         position.x - level.doors[id].edge.x,
         position.y - level.doors[id].edge.y,
       ) <= YARD_DOOR_REACH_PX,

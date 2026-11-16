@@ -10,6 +10,7 @@ import {
   CAMERA_LEAN_RETURN_RATE,
   MS_PER_SECOND,
 } from '../shared/constants'
+import * as DetMath from '../shared/detMath'
 import { Finale } from '../world/dare/dareSchema'
 import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
@@ -352,7 +353,7 @@ const easeShareOf: {
 } = Function.dual(
   2,
   (ratePerSecond: number, deltaMs: number): number =>
-    1 - Math.exp((-ratePerSecond * Math.max(0, deltaMs)) / MS_PER_SECOND),
+    1 - DetMath.exp((-ratePerSecond * Math.max(0, deltaMs)) / MS_PER_SECOND),
 )
 
 // NOTE: the camera leans toward where the player aims, by how hard they

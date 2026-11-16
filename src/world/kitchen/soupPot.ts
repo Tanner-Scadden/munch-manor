@@ -1,5 +1,6 @@
 import { Function, Option } from 'effect'
 
+import * as DetMath from '../../shared/detMath'
 import { levelOf } from '../level/arena'
 import { boxCenter } from '../level/tileGrid'
 import type { World } from '../schema/world'
@@ -35,6 +36,6 @@ export const isInPuddle: {
 } = Function.dual(2, (point: Vector, puddle: Option.Option<Puddle>): boolean =>
   Option.exists(
     puddle,
-    ({ x, y, radius }) => Math.hypot(point.x - x, point.y - y) < radius,
+    ({ x, y, radius }) => DetMath.hypot(point.x - x, point.y - y) < radius,
   ),
 )

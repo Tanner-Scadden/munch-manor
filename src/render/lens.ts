@@ -19,6 +19,7 @@
 // asking for many points allocates nothing.
 
 import { TILE_SIZE } from '../shared/constants'
+import * as DetMath from '../shared/detMath'
 import type { Vector } from '../world/schema/entitySchema'
 import { PITCH, STRETCH, UNIT, type Vec3 } from './iso/space'
 
@@ -40,19 +41,19 @@ const FIELD_OF_VIEW = (28 * Math.PI) / 180
 // lens stands this far off in game pixels (36 tiles on the desktop's 180
 // rows, 46 on a phone held upright).
 const focalFor = (rows: number): number =>
-  rows / 2 / Math.tan(FIELD_OF_VIEW / 2)
+  rows / 2 / DetMath.tan(FIELD_OF_VIEW / 2)
 
 // NOTE: from the floor toward the lens, and the screen's right and up in
 // the world: the right lies flat on the floor, the up leans back with the
 // pitch.
-const TOWARD_X = Math.sin(YAW) * Math.cos(PITCH)
-const TOWARD_Y = Math.sin(PITCH)
-const TOWARD_Z = Math.cos(YAW) * Math.cos(PITCH)
-const RIGHT_X = Math.cos(YAW)
-const RIGHT_Z = -Math.sin(YAW)
-const UP_X = -Math.sin(YAW) * Math.sin(PITCH)
-const UP_Y = Math.cos(PITCH)
-const UP_Z = -Math.cos(YAW) * Math.sin(PITCH)
+const TOWARD_X = DetMath.sin(YAW) * DetMath.cos(PITCH)
+const TOWARD_Y = DetMath.sin(PITCH)
+const TOWARD_Z = DetMath.cos(YAW) * DetMath.cos(PITCH)
+const RIGHT_X = DetMath.cos(YAW)
+const RIGHT_Z = -DetMath.sin(YAW)
+const UP_X = -DetMath.sin(YAW) * DetMath.sin(PITCH)
+const UP_Y = DetMath.cos(PITCH)
+const UP_Z = -DetMath.cos(YAW) * DetMath.sin(PITCH)
 
 // NOTE: a game pixel on the map in world units, across and down.
 const PER_X = UNIT
@@ -135,7 +136,7 @@ const buildLens = (frame: LensFrame): Lens => {
     eye: { x: eyeX, y: eyeY, z: eyeZ },
     lookedAt: { x: lookX, y: 0, z: lookZ },
     fieldOfViewFor: canvasHeightPx =>
-      (2 * Math.atan(canvasHeightPx / 2 / focal) * 180) / Math.PI,
+      (2 * DetMath.atan(canvasHeightPx / 2 / focal) * 180) / Math.PI,
     screenX,
     screenY,
     projectInto: (mapX, mapY, out) => {
@@ -217,12 +218,12 @@ const keptPlaces = (value: number): number =>
 // screen, and a half-pushed stick walks at half speed whichever way. A
 // fixed map, the same on every device and every frame.
 export const screenToFloorDirection = (direction: Vector): Vector => {
-  const length = Math.hypot(direction.x, direction.y)
+  const length = DetMath.hypot(direction.x, direction.y)
   const floorX =
     (DOWN_OF_Y * direction.x - ACROSS_OF_Y * direction.y) / DETERMINANT
   const floorY =
     (-DOWN_OF_X * direction.x + ACROSS_OF_X * direction.y) / DETERMINANT
-  const floorLength = Math.hypot(floorX, floorY)
+  const floorLength = DetMath.hypot(floorX, floorY)
   return length === 0 || floorLength === 0
     ? { x: 0, y: 0 }
     : {

@@ -2,6 +2,7 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { WEAPONS, statsAt } from '../gear/weapons'
 import type { WeaponKind } from '../schema/worldSchema'
+import { hundredths } from '../step/geometry'
 
 // What a gun's new tier changes, in a few words for the level-up callout
 // (src/world/gear/gunLevels.ts): a gun's numbers before and after, and the
@@ -12,9 +13,6 @@ const changeText = (
   after: number,
   describe: (from: number, to: number) => string,
 ): ReadonlyArray<string> => (before === after ? [] : [describe(before, after)])
-
-const roundTo = (value: number, places: number): number =>
-  Math.round(value * 10 ** places) / 10 ** places
 
 // NOTE: the fridge weapons' tiers change what their own table holds
 // (src/world/fridge/fridgeWeapons.ts), so each says it in a few words, by
@@ -64,8 +62,8 @@ const gunChange = (weapon: WeaponKind, tier: number): string => {
         () => 'Faster fire',
       ),
       ...changeText(
-        roundTo(before.spread, 2),
-        roundTo(after.spread, 2),
+        hundredths(before.spread),
+        hundredths(after.spread),
         (from, to) => (to < from ? 'Tighter aim' : 'Wider spray'),
       ),
       ...changeText(

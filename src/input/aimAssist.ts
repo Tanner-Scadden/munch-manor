@@ -1,6 +1,7 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
 
 import { type Camera, isInView } from '../render/camera'
+import * as DetMath from '../shared/detMath'
 import type { Level } from '../world/level/arena'
 import { hasLineOfSight } from '../world/level/tileQueries'
 import type { Vector, Zombie } from '../world/schema/worldSchema'
@@ -43,7 +44,7 @@ const byPull: Order.Order<Pull> = Order.combine(
 )
 
 const angleBetween = (from: number, to: number): number =>
-  Math.atan2(Math.sin(to - from), Math.cos(to - from))
+  DetMath.atan2(DetMath.sin(to - from), DetMath.cos(to - from))
 
 const pullOf = (offset: number, strength: AimAssistStrength): number => {
   const size = Math.abs(offset)
@@ -80,7 +81,7 @@ export const assistAim: {
     aim: Vector,
     strength: AimAssistStrength,
   ): Vector => {
-    const aimAngle = Math.atan2(aim.y, aim.x)
+    const aimAngle = DetMath.atan2(aim.y, aim.x)
     return pipe(
       zombies,
       Array.filter(
@@ -93,9 +94,9 @@ export const assistAim: {
         zombie,
         offset: angleBetween(
           aimAngle,
-          Math.atan2(zombie.y - from.y, zombie.x - from.x),
+          DetMath.atan2(zombie.y - from.y, zombie.x - from.x),
         ),
-        distance: Math.hypot(zombie.x - from.x, zombie.y - from.y),
+        distance: DetMath.hypot(zombie.x - from.x, zombie.y - from.y),
       })),
       Array.filter(
         ({ offset, distance }) =>
@@ -108,7 +109,7 @@ export const assistAim: {
         onNone: () => aim,
         onSome: ({ offset }) => {
           const angle = aimAngle + pullOf(offset, strength)
-          return { x: Math.cos(angle), y: Math.sin(angle) }
+          return { x: DetMath.cos(angle), y: DetMath.sin(angle) }
         },
       }),
     )

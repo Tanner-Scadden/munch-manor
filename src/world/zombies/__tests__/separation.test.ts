@@ -1,6 +1,7 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
+import * as DetMath from '../../../shared/detMath'
 import { randoms, zombieOf } from '../../../test/testing'
 import type { Vector, Zombie, ZombieKind } from '../../schema/worldSchema'
 import { separationPushes } from '../zombieMotion'
@@ -11,7 +12,7 @@ import { bodyRadiusOf, isGrounded, statsOf } from '../zombies'
 const pushApart = (zombie: Zombie, other: Zombie): Vector | undefined => {
   const deltaX = zombie.x - other.x
   const deltaY = zombie.y - other.y
-  const distance = Math.hypot(deltaX, deltaY)
+  const distance = DetMath.hypot(deltaX, deltaY)
   const reach = bodyRadiusOf(zombie) + bodyRadiusOf(other)
   if (other.id === zombie.id || distance >= reach) {
     return undefined
