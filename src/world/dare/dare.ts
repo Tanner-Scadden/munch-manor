@@ -408,9 +408,12 @@ export const isWorkingFind: {
   (slot: PlayerSlot): (world: World) => boolean
   (world: World, slot: PlayerSlot): boolean
 } = Function.dual(2, (world: World, slot: PlayerSlot): boolean => {
+  // NOTE: only a still player works a find (isWorkingAt), so a moving one
+  // is turned down before each thing's spot, room, and style are read.
   if (
     !Array.isReadonlyArrayNonEmpty(world.dareThings) ||
-    !isHunting(world.phase)
+    !isHunting(world.phase) ||
+    !isStill(world, slot)
   ) {
     return false
   }
@@ -447,7 +450,8 @@ export const maybeFindWorkOf: {
   > => {
     if (
       !Array.isReadonlyArrayNonEmpty(world.dareThings) ||
-      !isHunting(world.phase)
+      !isHunting(world.phase) ||
+      !isStill(world, slot)
     ) {
       return Option.none()
     }

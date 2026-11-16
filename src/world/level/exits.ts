@@ -2,6 +2,7 @@ import { Array, Function, Option, Order, Record, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
+import { countWork } from '../../shared/workCount'
 import { heldKeys, spendKeys } from '../keys/keys'
 import { markedPadlockKeys } from '../run/dareLadder'
 import { isKitchenTourOn } from '../run/tutorialRules'
@@ -94,7 +95,28 @@ export const exitBoxOf: {
 // NOTE: the boarded exits still shut, the ones a player can buy: a secret
 // shelf is never for sale (src/world/library/secretShelf.ts), and boards
 // behind a shut room, such as the far slot's in the east room, wait for it.
+// Each seat asks on every tick for its offers, and the answer moves only
+// with the level (a new Level whenever an exit opens), so each level keeps
+// its own.
+const closedExitsKept = new WeakMap<
+  Level,
+  ReadonlyArray<Readonly<{ exit: ExitId; box: Box }>>
+>()
+
 const closedExitBoxes = (
+  level: Level,
+): ReadonlyArray<Readonly<{ exit: ExitId; box: Box }>> => {
+  const kept = closedExitsKept.get(level)
+  if (kept !== undefined) {
+    return kept
+  }
+  countWork('LevelTable')
+  const closed = closedExitBoxesOn(level)
+  closedExitsKept.set(level, closed)
+  return closed
+}
+
+const closedExitBoxesOn = (
   level: Level,
 ): ReadonlyArray<Readonly<{ exit: ExitId; box: Box }>> =>
   Array.filterMap(level.exits, ({ id, isOpen, opener, requires }) =>

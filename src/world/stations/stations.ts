@@ -94,15 +94,19 @@ const STATION_RULES: Readonly<Record<StationId, StationRules>> = {
 const isWorkable = (world: World, id: StationId): boolean =>
   world.stations[id].cooldownMs <= 0 && STATION_RULES[id].isReady(world)
 
+// NOTE: every seat asks of every station every tick, and the client asks
+// again for its work motions, so the cheap tests go first: a player away
+// from a station is turned down by its box alone, before its rules look at
+// the rooms and the phase. Each test is pure, so the order changes nothing.
 const isWorkingOn = (world: World, slot: PlayerSlot, id: StationId): boolean =>
   isStill(world, slot) &&
-  isWorkable(world, id) &&
   Option.exists(
     stationBoxOf(levelOf(world), id),
     box =>
       distanceToBox(seatStateAt(world, slot).player, box) <=
       TOOL_RULES[id].reachPx,
-  )
+  ) &&
+  isWorkable(world, id)
 
 // NOTE: a player at work on a station holds their fire.
 export const isWorkingStation: {

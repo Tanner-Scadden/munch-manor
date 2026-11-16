@@ -1,6 +1,7 @@
 import { Array, Function, Option, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
+import { countWork } from '../../shared/workCount'
 import { type Level, maybeExit } from '../level/arena'
 import {
   CELLAR_ROOM_ID,
@@ -16,7 +17,7 @@ import {
 } from '../level/plan'
 import { type Box, boxCenter, tileBox } from '../level/tileGrid'
 import { secretShelfOf } from '../library/secretShelf'
-import type { StationId } from '../schema/worldSchema'
+import { StationId } from '../schema/worldSchema'
 
 // Where each work station stands on a level, read off the rooms' maps: the
 // cleat's `j` against the dining room's west wall, and each other room's `*` marks in
@@ -108,10 +109,7 @@ export const stationBoxOf: {
 
 // NOTE: a station stands where the crew can reach it: in an open room, and
 // the shelf once it has swung open.
-export const isStationOpen: {
-  (id: StationId): (level: Level) => boolean
-  (level: Level, id: StationId): boolean
-} = Function.dual(2, (level: Level, id: StationId): boolean =>
+const isOpenOn = (level: Level, id: StationId): boolean =>
   id === 'Shelf'
     ? Option.exists(maybeExit(level, SECRET_EXIT), ({ isOpen }) => isOpen)
     : Option.exists(stationBoxOf(level, id), box => {
@@ -125,8 +123,28 @@ export const isStationOpen: {
             y >= room.box.top &&
             y < room.box.bottom,
         )
-      }),
-)
+      })
+
+// NOTE: every station's rules ask this on every tick, for every seat, and
+// the answer moves only with the level (a new Level whenever an exit
+// opens), so each level keeps the stations standing open on it.
+const openStations = new WeakMap<Level, ReadonlySet<StationId>>()
+
+export const isStationOpen: {
+  (id: StationId): (level: Level) => boolean
+  (level: Level, id: StationId): boolean
+} = Function.dual(2, (level: Level, id: StationId): boolean => {
+  const kept = openStations.get(level)
+  if (kept !== undefined) {
+    return kept.has(id)
+  }
+  countWork('LevelTable')
+  const open = new Set(
+    Array.filter(StationId.literals, station => isOpenOn(level, station)),
+  )
+  openStations.set(level, open)
+  return open.has(id)
+})
 
 // NOTE: where a station's tool acts from: the middle of its box.
 export const stationCenterOf: {
