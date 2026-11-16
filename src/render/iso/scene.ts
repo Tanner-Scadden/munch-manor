@@ -55,7 +55,7 @@ import { puddleOf } from '../../world/kitchen/soupPot'
 import type { Level } from '../../world/level/arena'
 import { levelOf, standingLevelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
-import { type Drawable, TALL_MOST } from '../depth'
+import type { Drawable } from '../depth'
 import {
   airborneParticlesOf,
   decalShapes,
@@ -63,7 +63,7 @@ import {
 } from '../effectsView'
 import { houseRattleOf } from '../juice'
 import { muzzleFlashLevel, muzzlePointOf, playerFootY } from '../playerView'
-import { type TallCover, tallCoverOf } from '../room/tallCover'
+import type { TallCover } from '../room/tallCover'
 import { airOf } from './air'
 import { BillboardPool, rimUp } from './billboards'
 import { crittersOf } from './critters'
@@ -78,6 +78,7 @@ import { HouseGlows } from './emissives'
 import { ballMiddleOf, blastLightOf, blastPiecesOf } from './explosions'
 import { IDENTITY, type Leaf, flatten } from './flatten'
 import type { IsoFrame } from './frame'
+import { Furniture } from './furniture'
 import { GodRays, shaftMotesOf } from './godRays'
 import {
   type Caster,
@@ -154,8 +155,6 @@ const MOST_DEPTH: Readonly<Partial<Record<Drawable['rank'], number>>> = {
   Prop: 6,
 }
 
-const FURNITURE_MOST = TALL_MOST
-
 // NOTE: a blast's flash of light: its color, its peak, and its reach, as
 // many times the blast's own radius.
 const BLAST_LIGHT_COLOR = 0xffa850
@@ -203,9 +202,8 @@ type Built = Readonly<{
   soup: SoupLayer
   floorArt: ReadonlyArray<Leaf>
   plants: ReadonlyArray<Plant>
-  // NOTE: each tall piece by the shapes the game draws it with, to read the
-  // fade the game gives one while someone stands behind it.
-  furniture: ReadonlyMap<ReadonlyArray<Canvas.Shape>, TallCover>
+  // NOTE: the tall pieces, carved once for the level (furniture.ts).
+  furniture: Furniture
   lights: HouseLights
   // NOTE: the god rays and what glows in the dark (godRays.ts,
   // emissives.ts).
@@ -223,29 +221,6 @@ const bottomOf = ({ shape, matrix }: Leaf): number =>
   shape._tag === 'Image' || shape._tag === 'Rect'
     ? matrix.b * shape.x + matrix.d * (shape.y + shape.height) + matrix.f
     : 0
-
-// NOTE: the game hands a tall piece back as its shapes, or as one group of
-// them at its fade.
-const furnitureOf = (
-  furniture: Built['furniture'],
-  shapes: ReadonlyArray<Canvas.Shape>,
-): Option.Option<Readonly<{ piece: TallCover; opacity: number }>> => {
-  const whole = furniture.get(shapes)
-  if (whole !== undefined) {
-    return Option.some({ piece: whole, opacity: 1 })
-  }
-  const [first] = shapes
-  if (shapes.length !== 1 || first?._tag !== 'Group') {
-    return Option.none()
-  }
-  return Option.map(
-    Option.fromUndefinedOr(furniture.get(first.shapes)),
-    piece => ({
-      piece,
-      opacity: first.opacity ?? 1,
-    }),
-  )
-}
 
 // NOTE: a shut room's fill is put out (it draws black anyway) and an open
 // room's is turned down, so the flames and the lamp carry the picture
@@ -558,9 +533,9 @@ export class IsoScene {
       if (isCarved(built, drawable)) {
         continue
       }
-      const maybePiece = furnitureOf(built.furniture, drawable.shapes)
+      const maybePiece = built.furniture.fadeOf(drawable.shapes)
       if (Option.isSome(maybePiece)) {
-        fades.set(maybePiece.value.piece, maybePiece.value.opacity)
+        fades.set(maybePiece.value.cover, maybePiece.value.opacity)
       } else {
         const leaves = flatten(drawable.shapes)
         const most = MOST_DEPTH[drawable.rank]
@@ -598,32 +573,10 @@ export class IsoScene {
         }
       }
     }
-    // NOTE: the house's own pieces stand only near the view: the rest of a
-    // house three screens wide would cost every pass, the shadows' too.
-    for (const piece of built.furniture.values()) {
-      if (
-        isNearView(
-          {
-            left: piece.left,
-            top: piece.artTop,
-            right: piece.right,
-            bottom: piece.footY,
-          },
-          view,
-        )
-      ) {
-        const opacity = fades.get(piece) ?? 1
-        this.standBody({
-          leaves: Array.map(flatten(piece.shapes), leaf => ({
-            ...leaf,
-            alpha: leaf.alpha * opacity,
-          })),
-          footY: piece.footY,
-          elapsedMs: model.elapsedMs,
-          most: FURNITURE_MOST,
-        })
-      }
-    }
+    // NOTE: the house's own pieces, built once for the level, shown only
+    // near the view (the rest of a house three screens wide would cost
+    // every pass, the shadows' too) and faded; which cast is noted.
+    this.shadowWatch.note(built.furniture.apply({ fades, view }))
     // NOTE: which ferns cast, culled to the view, noted as the voxels' own
     // casters are (shadowWatch.ts).
     let plantsShown = 0
@@ -1031,9 +984,7 @@ export class IsoScene {
       soup,
       floorArt,
       plants: plantsOf({ app: this.app, level }),
-      furniture: new Map(
-        Array.map(tallCoverOf(level), piece => [piece.shapes, piece] as const),
-      ),
+      furniture: new Furniture({ level, parent: holder, voxels: this.voxels }),
       lights: houseLightsOf({ level, parent: holder, watch: this.shadowWatch }),
       rays: new GodRays({ level, parent: holder }),
       glows: new HouseGlows({ app, textures, level, parent: holder }),
@@ -1079,6 +1030,7 @@ export class IsoScene {
     })
     built.rays.destroy()
     built.glows.destroy()
+    built.furniture.destroy()
     built.holder.destroy({ children: true })
     Array.forEach(
       [

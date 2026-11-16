@@ -1,8 +1,10 @@
 // What stands stands carved: zombies, players, their guns and props, traps,
-// pickups, the house's furniture and set pieces, each sprite carved into
+// pickups, and the house's set pieces, each sprite carved into
 // blocks (voxelShape.ts), lit by the room with their true faces; the blast's
 // glowing blocks and the debris in the air as cubes. All of it in one batch,
-// its slots pooled frame to frame, each carve built once and kept. Each
+// its slots pooled frame to frame, each carve built once and kept. The
+// house's furniture is carved here too, but stands in its own batch, built
+// once per level (furniture.ts). Each
 // carve casts its shadow through its own blocks, merged into a few quads
 // (`casterOf`), from a second batch the shadow pass alone draws.
 
@@ -48,6 +50,13 @@ const SLOTS = 2048
 // material; under the first step it is gone.
 const FADE_STEPS = 8
 const OPAQUE_ALPHA = 0.98
+
+// NOTE: the fade step a body's alpha stands at: under 1 it is gone.
+export const fadeStepOf = (alpha: number): number =>
+  Math.min(FADE_STEPS, Math.floor(alpha * FADE_STEPS))
+
+// NOTE: whether a body this faded stands in the opaque pass.
+export const isOpaqueAt = (alpha: number): boolean => alpha >= OPAQUE_ALPHA
 // NOTE: how small the warm-up copy stands (see `isBlendWarm`).
 const WARM_SCALE = 1e-4
 
@@ -104,7 +113,7 @@ export type Carved = Readonly<{
 }>
 
 // NOTE: a body more faded than this casts no shadow.
-const CASTING_ALPHA = 0.5
+export const CASTING_ALPHA = 0.5
 
 // NOTE: where a drawable's parts stand along the lens's ray: each part in
 // front of every part before it, as the 2D game painted it over them, in
@@ -160,10 +169,17 @@ export type Cube = Readonly<{
   glow: number
 }>
 
+// NOTE: what the batch reads of the renderer's textures: a crop, its sheet,
+// its pixel masks, and the look pass's options (a test hands its own).
+export type VoxelTextures = Pick<
+  Textures,
+  'imageOf' | 'sheetOf' | 'masksOf' | 'lookOptions'
+>
+
 // NOTE: every material here takes the blocks' vertex colors: white on the
 // fronts, darker toward the foot on a standing body's sides (voxelShape.ts).
 const lit = (
-  textures: Textures,
+  textures: VoxelTextures,
   options: ConstructorParameters<typeof Material3D>[0],
   look: StandLook,
 ) =>
@@ -185,7 +201,7 @@ type StandLook = 'Standing' | 'Upright'
 // behind them and it fades as the flat sprite did, never showing its insides.
 const fadedOf = (
   input: Readonly<{
-    textures: Textures
+    textures: VoxelTextures
     sheet: Texture
     alpha: number
     look: StandLook
@@ -247,7 +263,7 @@ const depthOfSprite = (
 export class VoxelBatch {
   private readonly batch: BatchedMesh3D
   private readonly casters: BatchedMesh3D
-  private readonly textures: Textures
+  private readonly textures: VoxelTextures
   private readonly scratch = new Matrix4()
   private readonly watch: ShadowWatch | undefined
   private used = 0
@@ -294,7 +310,7 @@ export class VoxelBatch {
   constructor(
     input: Readonly<{
       parent: Container3D
-      textures: Textures
+      textures: VoxelTextures
       // NOTE: the scene's watch on its fills' casters; a plinth has none.
       watch?: ShadowWatch
     }>,
@@ -341,7 +357,7 @@ export class VoxelBatch {
     if (shape._tag !== 'Image' || this.used >= SLOTS) {
       return false
     }
-    const step = Math.min(FADE_STEPS, Math.floor(alpha * FADE_STEPS))
+    const step = fadeStepOf(alpha)
     if (step < 1) {
       return true
     }
@@ -352,18 +368,12 @@ export class VoxelBatch {
     }
     const { carved, sheet, elements, blocks, isUpright } = placement
     reach.blocks = blocks
-    const isOpaque = isFlash || alpha >= OPAQUE_ALPHA
+    const isOpaque = isFlash || isOpaqueAt(alpha)
     this.fill({
       geometry: carved.geometry,
       material: isFlash
         ? this.flash
-        : isGlowing
-          ? this.glowMaterialOf(sheet)
-          : this.sheetMaterialOf({
-              sheet,
-              step: isOpaque ? FADE_STEPS : step,
-              look: isUpright ? 'Upright' : 'Standing',
-            }),
+        : this.materialOf({ sheet, alpha, isUpright, isGlowing }),
       elements,
       passes: isOpaque ? RenderPassBit.OPAQUE : RenderPassBit.TRANSPARENT,
     })
@@ -398,6 +408,26 @@ export class VoxelBatch {
       })
     }
     return true
+  }
+
+  // NOTE: the material a carve of `sheet` stands in at `alpha` (at least
+  // the first fade step): glowing its own colors, opaque, or at its step.
+  materialOf(
+    input: Readonly<{
+      sheet: Texture
+      alpha: number
+      isUpright: boolean
+      isGlowing: boolean
+    }>,
+  ): Material3D {
+    const { sheet, alpha, isUpright, isGlowing } = input
+    return isGlowing
+      ? this.glowMaterialOf(sheet)
+      : this.sheetMaterialOf({
+          sheet,
+          step: isOpaqueAt(alpha) ? FADE_STEPS : fadeStepOf(alpha),
+          look: isUpright ? 'Upright' : 'Standing',
+        })
   }
 
   // NOTE: the caster summed into each fill's cone it reaches
@@ -708,7 +738,8 @@ export class VoxelBatch {
     return steps[step] ?? lit(this.textures, { baseColorTexture: sheet }, look)
   }
 
-  private glowMaterialOf(sheet: Texture): Material3D {
+  // NOTE: what glows of itself on a carve of `sheet`: its eyes, a flame.
+  glowMaterialOf(sheet: Texture): Material3D {
     const known = this.glowMaterials.get(sheet)
     if (known !== undefined) {
       return known

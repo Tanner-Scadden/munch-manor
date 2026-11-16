@@ -416,7 +416,7 @@ export type Caster = Readonly<{ mesh: Mesh3D; box: ViewBox }>
 // NOTE: a fern turns to the lens and bends in the wind, so it casts through
 // a stand-in: the whole fern baked into one texture (`plantsOf`) and cut out
 // upright on a plain mesh at its foot. Furniture is carved and casts
-// through its own blocks (voxels.ts).
+// through its own blocks, set once per level (furniture.ts).
 export const plantCastersOf = (
   input: Readonly<{ parent: Container3D; plants: ReadonlyArray<Plant> }>,
 ): ReadonlyArray<Caster> =>
