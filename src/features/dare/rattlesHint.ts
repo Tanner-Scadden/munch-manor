@@ -277,7 +277,7 @@ const startCall = (model: Model, hint: Hint, change: HintChange): Model => {
             maybeThingId: hint.maybeThingId,
             wave: roundWaveOf(model.phase),
             isBreak: isBreak(model.phase),
-            remainingMs: HINT_MS,
+            endsAtMs: model.elapsedMs + HINT_MS,
           }),
       }),
     cosmetics: modifyFields({ cosmeticRngState: () => state }),
@@ -296,38 +296,34 @@ const isThingGone = (model: Model, maybeThingId: Option.Option<number>) =>
       ),
   })
 
-const advanceCalling = (
-  model: Model,
-  call: DareHintCalling,
-  frameMs: number,
-): Model => {
-  const remainingMs = call.remainingMs - frameMs
+const advanceCalling = (model: Model, call: DareHintCalling): Model => {
   const isOver =
-    remainingMs <= 0 ||
+    model.elapsedMs >= call.endsAtMs ||
     isBreak(model.phase) !== call.isBreak ||
     roundWaveOf(model.phase) !== call.wave ||
     isThingGone(model, call.maybeThingId)
-  return withHint(
-    model,
-    isOver
-      ? {
-          lastLine: () => call.line,
-          restMs: () => EASY_REST_MS,
-          call: () => DareHintCall.Quiet(),
-        }
-      : { call: () => DareHintCall.Calling({ ...call, remainingMs }) },
-  )
+  return isOver
+    ? withHint(model, {
+        lastLine: () => call.line,
+        restMs: () => EASY_REST_MS,
+        call: () => DareHintCall.Quiet(),
+      })
+    : model
 }
 
 const callInBreak = (model: Model, wave: number, frameMs: number): Model => {
   const hint = model.dareHint
   const isFirst = hint.calledWave < wave
-  const isAgain =
-    !isFirst && runDifficultyOf(model) === 'Easy' && hint.restMs - frameMs <= 0
+  const isEasy = runDifficultyOf(model) === 'Easy'
+  const isAgain = !isFirst && isEasy && hint.restMs - frameMs <= 0
+  // NOTE: only Easy calls again after a rest, so only Easy counts it down;
+  // a break on any other step writes nothing once it has been called.
   if (!isFirst && !isAgain) {
-    return withHint(model, {
-      restMs: restMs => Math.max(0, restMs - frameMs),
-    })
+    return isEasy
+      ? withHint(model, {
+          restMs: restMs => Math.max(0, restMs - frameMs),
+        })
+      : model
   }
   const [state, maybeHint] = breakHint(model, model.cosmetics.cosmeticRngState)
   return Option.match(maybeHint, {
@@ -458,7 +454,7 @@ export const advanceDareHint: {
     return noticed.model
   }
   return DareHintCall.match(noticed.model.dareHint.call, {
-    Calling: call => advanceCalling(noticed.model, call, frameMs),
+    Calling: call => advanceCalling(noticed.model, call),
     Quiet: () =>
       Phase.isAnyOf(['Preparation', 'Wave'])(noticed.model.phase)
         ? advanceQuiet(noticed.model, frameMs)

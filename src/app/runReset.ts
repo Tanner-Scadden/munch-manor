@@ -84,7 +84,7 @@ export type RunFields = Pick<
   | 'stepCarryMs'
   | 'kitchenCall'
   | 'dareHint'
-  | 'breakIdleMs'
+  | 'maybeBreakIdleSinceMs'
   | 'level'
   | 'introSkip'
   | 'pocketCard'
@@ -139,7 +139,7 @@ export const freshRun = (model: Model): RunFields => ({
   stepCarryMs: 0,
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   dareHint: quietDareHint,
-  breakIdleMs: 0,
+  maybeBreakIdleSinceMs: Option.none(),
   level: freshLevel(model.rngState),
   introSkip: 'Watching',
   pocketCard: PocketCard.Pocketed(),

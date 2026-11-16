@@ -1004,7 +1004,12 @@ export const roomModel = (settings: SceneSettings): Model => {
       ),
     )
   }
-  model = modifyFields(model, { breakIdleMs: () => config.idle })
+  model = modifyFields(model, {
+    maybeBreakIdleSinceMs: () =>
+      config.idle > 0
+        ? Option.some(model.elapsedMs - config.idle)
+        : Option.none(),
+  })
   const phase = config.phase
   const beforeEnd = model
   if (phase === 'escaped' || phase === 'victory') {

@@ -24,6 +24,7 @@ import {
   LAST_ONE_NUDGE_MS,
   SOLO_NUDGE_MS,
   advanceBreakIdle,
+  breakIdleMsOf,
   isWaitingOnYou,
 } from '../readyNudge'
 
@@ -53,7 +54,13 @@ const soloBreak = (
 const crewBreak = (): Model =>
   withWorld(crewInWave(2), world => beginPreparation(world, 4, 20_000))
 
-const idleFor = (start: Model, ms: number): Model => advanceBreakIdle(start, ms)
+// NOTE: the World's clock runs on by `ms` and the idle clock reads it, as a
+// frame does.
+const idleFor = (start: Model, ms: number): Model =>
+  advanceBreakIdle(
+    modifyFields(start, { elapsedMs: elapsedMs => elapsedMs + ms }),
+    ms,
+  )
 
 const crewReadied = (start: Model, slot: number): Model =>
   withWorld(start, world => applySeatAction(world, slot, SeatAction.Ready()))
@@ -130,7 +137,7 @@ describe('the nudge', () => {
       }),
       FRAME_MS,
     )
-    expect(moving.breakIdleMs).toBe(0)
+    expect(breakIdleMsOf(moving)).toBe(0)
     expect(isWaitingOnYou(moving)).toBe(false)
   })
 
@@ -155,7 +162,7 @@ describe('the nudge', () => {
         }),
         tick(50),
         Story.model(current => {
-          expect(current.breakIdleMs).toBe(0)
+          expect(breakIdleMsOf(current)).toBe(0)
         }),
       ),
   )

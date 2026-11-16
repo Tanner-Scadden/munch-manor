@@ -83,7 +83,7 @@ import { advanceZombies, recordFootfalls } from '../zombies/zombieMotion'
 import { wearOf } from '../zombies/zombies'
 import { moveCircle } from './collision'
 import { resolveBlasts } from './combat'
-import { advanceBullets, fire, tickReload } from './firing'
+import { bulletFlightOf, fire, tickReload } from './firing'
 import {
   OUTWARD,
   addVectors,
@@ -441,7 +441,9 @@ const advanceWorld = (model: World, deltaMs: number): World => {
 
   const armed = forEachSeat(advanceStations(routed, deltaMs), armSeat(deltaMs))
 
-  const advanced = modifyFields(advanceBullets(armed, seconds, deltaMs), {
+  // NOTE: the bullets and the zombies in one copy of the World.
+  const advanced = modifyFields(armed, {
+    ...bulletFlightOf(armed, seconds, deltaMs),
     zombies: zombies =>
       sameIfUnchanged(zombies, advanceZombies(armed, seconds, deltaMs)),
   })
