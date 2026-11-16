@@ -118,10 +118,12 @@ const isShadowPass = ({ width, height }: PassRow): boolean =>
 // nothing moves under the lights but the players, so the fills keep their
 // maps (src/render/iso/shadowWatch.ts): 0.16 when the watch came in, 0.99
 // before, a map drawn again every frame. A wave in every room moves bodies
-// under each lit fill, at most the four fills near the view (3.53).
+// under each lit fill, the four fills on the view (3.53), so at most two
+// maps are drawn a frame, the player's room's and one other in turn
+// (src/render/iso/shadowBudget.ts): 1.97 when the budget came in.
 const SHADOW_BUDGETS: Readonly<Record<string, number>> = {
   idle: 0.35,
-  allRooms: 4.2,
+  allRooms: 2.1,
 }
 
 const passRowsOf = (

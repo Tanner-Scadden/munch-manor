@@ -2,7 +2,13 @@ import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { EVERY_LEVEL } from '../../../test/model.fixture'
-import { isNearView, viewBoxOf } from '../cull'
+import {
+  boxFloorOf,
+  isNearView,
+  isOnFloorSeen,
+  viewBoxOf,
+  viewFloorOf,
+} from '../cull'
 import { fillSpecOf } from '../lightSpecs'
 
 // What the camera sees of the house (src/render/iso/cull.ts): what lies far
@@ -61,6 +67,92 @@ describe('the view', () => {
           ...ON_ITS_CANVAS,
         })
         expect(isNearView(pool, corner)).toBe(true)
+      },
+    )
+  })
+})
+
+// NOTE: the same view as the floor it truly shows, a quad the lens widens
+// away from the camera.
+const FLOOR = viewFloorOf({
+  x: 100,
+  y: 50,
+  width: 400,
+  height: 220,
+  ...ON_ITS_CANVAS,
+})
+
+describe('the floor seen', () => {
+  test('takes in the floor the view shows', () => {
+    expect(
+      isOnFloorSeen({ left: 280, top: 140, right: 320, bottom: 160 }, FLOOR),
+    ).toBe(true)
+    expect(
+      isOnFloorSeen({ left: 0, top: 100, right: 600, bottom: 110 }, FLOOR),
+    ).toBe(true)
+  })
+
+  test('takes in the floor just south of the view, where what stands rises into it', () => {
+    expect(
+      isOnFloorSeen({ left: 290, top: 262, right: 310, bottom: 268 }, FLOOR),
+    ).toBe(true)
+  })
+
+  test('leaves out what its box takes in but no pixel shows', () => {
+    const nearCorner = { left: 40, top: 230, right: 80, bottom: 260 }
+    const overTop = { left: 290, top: -20, right: 310, bottom: 10 }
+    expect([isNearView(nearCorner, VIEW), isNearView(overTop, VIEW)]).toEqual([
+      true,
+      true,
+    ])
+    expect([
+      isOnFloorSeen(nearCorner, FLOOR),
+      isOnFloorSeen(overTop, FLOOR),
+    ]).toEqual([false, false])
+  })
+
+  test('as a box, reads as the box near the view', () => {
+    const boxed = boxFloorOf(VIEW)
+    expect(
+      Array.map(
+        [
+          { left: 520, top: 60, right: 540, bottom: 90 },
+          { left: 700, top: 60, right: 740, bottom: 90 },
+          { left: 120, top: 290, right: 140, bottom: 300 },
+        ],
+        box => [isOnFloorSeen(box, boxed), isNearView(box, VIEW)],
+      ),
+    ).toEqual([
+      [true, true],
+      [false, false],
+      [true, true],
+    ])
+  })
+
+  test("takes in a room's pool while the camera looks at any of its room", () => {
+    Array.forEach(
+      Array.flatMap(EVERY_LEVEL, ({ rooms }) => rooms),
+      room => {
+        const { pool } = fillSpecOf(room)
+        const { left, top, right, bottom } = room.box
+        Array.forEach(
+          [
+            { x: left, y: top },
+            { x: right, y: top },
+            { x: left, y: bottom },
+            { x: right, y: bottom },
+          ],
+          corner => {
+            const floor = viewFloorOf({
+              x: corner.x - 200,
+              y: corner.y - 110,
+              width: 400,
+              height: 220,
+              ...ON_ITS_CANVAS,
+            })
+            expect(isOnFloorSeen(pool, floor)).toBe(true)
+          },
+        )
       },
     )
   })

@@ -10,7 +10,7 @@ import { Container3D, PointLight, SpotLight } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
 import type { Player } from '../../world/schema/entitySchema'
-import { type ViewBox, isNearView } from './cull'
+import { type ViewBox, type ViewFloor, isOnFloorSeen } from './cull'
 import {
   DARK_DEPTH,
   DARK_HEIGHT,
@@ -21,6 +21,7 @@ import {
   flameSpecsOf,
 } from './lightSpecs'
 import { mixColor } from './mood'
+import { ShadowBudget } from './shadowBudget'
 import type { ShadowWatch } from './shadowWatch'
 import { STRETCH, UNIT, zOf } from './space'
 
@@ -41,11 +42,24 @@ const hungSpot = (
   return light
 }
 
-export type HouseLights = Readonly<{
-  apply: (
-    input: Readonly<{ frame: LightsFrame; player: Player; view: ViewBox }>,
-  ) => void
+type LightsInput = Readonly<{
+  frame: LightsFrame
+  player: Player
+  // NOTE: the floor the camera shows (cull.ts).
+  floor: ViewFloor
 }>
+
+export type HouseLights = Readonly<{
+  apply: (input: LightsInput) => void
+}>
+
+// NOTE: how far a point on the map lies from a box, in game pixels: none
+// inside it.
+const distanceToBox = (box: ViewBox, x: number, y: number): number =>
+  Math.hypot(
+    Math.max(box.left - x, 0, x - box.right),
+    Math.max(box.top - y, 0, y - box.bottom),
+  )
 
 export const houseLightsOf = (
   input: Readonly<{ level: Level; parent: Container3D; watch: ShadowWatch }>,
@@ -74,6 +88,9 @@ export const houseLightsOf = (
   // layers by order among the casting lights, so when one starts or stops,
   // every casting fill draws its map again into the layer it now has.
   let lastCasting: ReadonlyArray<boolean> = []
+  // NOTE: which fills' maps are drawn this frame, at most two in a wave
+  // (shadowBudget.ts).
+  const budget = new ShadowBudget()
   const specs = flameSpecsOf(level)
   const flames = Array.map(specs, spec => {
     const { color, range } = FLAME_TUNING.now[spec.kind]
@@ -104,11 +121,7 @@ export const houseLightsOf = (
   // the renderer new ones.
   let lastTint = Number.NaN
   let lastLooks: FlameLooks = FLAME_TUNING.now
-  const apply = ({
-    frame,
-    player,
-    view,
-  }: Readonly<{ frame: LightsFrame; player: Player; view: ViewBox }>): void => {
+  const apply = ({ frame, player, floor }: LightsInput): void => {
     const { tint, tintShare } = frame.mood
     const tintKey = tint + tintShare
     const isTintChanged = tintKey !== lastTint
@@ -118,23 +131,40 @@ export const houseLightsOf = (
     )
     // NOTE: a fill off screen keeps its light (the screen's tiles drop it
     // for free), but a casting light draws the whole house into its
-    // shadow map, seen or not.
+    // shadow map, seen or not. Its cone lights only its pool, so it casts
+    // only while its pool lies on the floor seen.
     const casting = Array.map(
       fills,
       ({ spec }, index) =>
-        (shares[index] ?? 0) > 0 && isNearView(spec.pool, view),
+        (shares[index] ?? 0) > 0 && isOnFloorSeen(spec.pool, floor),
     )
     const isCastingChanged =
       casting.length !== lastCasting.length ||
       !Array.every(casting, (isOn, index) => isOn === lastCasting[index])
     lastCasting = casting
+    // NOTE: the casting fill whose pool lies nearest the player draws on
+    // every frame it changes; the rest wait their turn.
+    let first = -1
+    let nearest = Number.POSITIVE_INFINITY
+    Array.forEach(fills, ({ spec }, index) => {
+      const distance = distanceToBox(spec.pool, player.x, player.y)
+      if (casting[index] === true && distance < nearest) {
+        first = index
+        nearest = distance
+      }
+    })
+    const drawn = budget.pick({
+      casting,
+      isChanged: index => watch.isChanged(index),
+      first,
+      isEvery: isCastingChanged,
+    })
     Array.forEach(fills, ({ fill, spec }, index) => {
       const share = shares[index] ?? 0
       fill.intensity = share * spec.fullIntensity
       fill.visible = share > 0
-      const isCasting = casting[index] === true
-      fill.castShadow = isCasting
-      if (isCasting && (isCastingChanged || watch.isChanged(index))) {
+      fill.castShadow = casting[index] === true
+      if (drawn[index] === true) {
         fill.refreshShadows()
       }
       if (isTintChanged) {
