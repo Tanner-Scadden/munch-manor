@@ -143,9 +143,16 @@ describe('the walls', () => {
     const tiles = standingTilesOf(level)
     return Array.map(northFacesOf(level), tile => {
       const isThick = symbolAt(tiles, tile.row - 1, tile.column) === WALL_SYMBOL
+      const height = wallHeightAt({ tiles, ...tile })
       return {
         tile,
-        rows: Math.round(wallHeightAt({ tiles, ...tile }) / WALL_ROW),
+        rows: Math.round(height / WALL_ROW),
+        // NOTE: a tall face with a low front wall behind it (the dining
+        // room's top wall under the kitchen): the low tile wears its cap's
+        // color, the cap's row.
+        isStepped:
+          isThick &&
+          wallHeightAt({ tiles, ...tile, row: tile.row - 1 }) < height,
         foot: (tile.row + 1) * TILE_SIZE,
         // NOTE: the wall's first row, the cap's: its two tiles' first, or
         // its one's.
@@ -167,7 +174,7 @@ describe('the walls', () => {
       expect(new Set(Array.map(walls, ({ rows }) => rows))).toEqual(
         new Set([WALL_FACE_ROWS, FRONT_WALL_ROWS]),
       )
-      Array.forEach(walls, ({ tile, rows, foot, cap, tops }) => {
+      Array.forEach(walls, ({ tile, rows, isStepped, foot, cap, tops }) => {
         const face = Option.getOrThrow(Array.head(quadsAt(level, tile, isFace)))
         // NOTE: the face and the tops' art together run from the cap to
         // the foot with no row left out: the trim, the paper, and the
@@ -176,10 +183,14 @@ describe('the walls', () => {
           [rowsOf(face), ...Array.map(Array.filter(tops, isArt), rowsOf)],
           Order.Tuple([Order.Number, Order.Number]),
         )
-        const reach = Array.reduce(spans, cap, (most, [from, to]) => {
-          expect(from).toBeLessThanOrEqual(most + 1e-6)
-          return Math.max(most, to)
-        })
+        const reach = Array.reduce(
+          spans,
+          cap + (isStepped ? 1 : 0),
+          (most, [from, to]) => {
+            expect(from).toBeLessThanOrEqual(most + 1e-6)
+            return Math.max(most, to)
+          },
+        )
         expect(reach).toBeCloseTo(foot, 6)
         // NOTE: and lit as one, so no crease shows where the face meets
         // its top.
@@ -191,7 +202,9 @@ describe('the walls', () => {
         Array.forEach(
           Array.filter(tops, top => !isArt(top)),
           ({ wears }) => {
-            expect(wears).toBe(rows === FRONT_WALL_ROWS ? 'Cap' : 'Night')
+            expect(wears).toBe(
+              rows === FRONT_WALL_ROWS || isStepped ? 'Cap' : 'Night',
+            )
           },
         )
       })

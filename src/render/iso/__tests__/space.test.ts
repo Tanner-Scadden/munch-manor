@@ -28,10 +28,13 @@ describe('the walls', () => {
     expect(isFront(3, 5)).toBe(false)
   })
 
-  test('build a front wall low, both tiles of a thick one', () => {
+  test('build a front wall low', () => {
     expect(isFront(4, 2)).toBe(true)
-    expect(isFront(5, 2)).toBe(true)
     expect(isFront(7, 3)).toBe(true)
+  })
+
+  test("stand a thick front wall's south tile tall where it is the back wall of the room south of it", () => {
+    expect(isFront(5, 2)).toBe(false)
   })
 
   test('keep a corner tall: wall all the way up', () => {

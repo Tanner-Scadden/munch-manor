@@ -5,12 +5,12 @@
 // The storm and the house's glows lie over the same quads (`artQuadsOver`),
 // so they land on the art wherever it stands.
 
-import { Array, Option, Order, Record, Result, pipe } from 'effect'
+import { Array, Option, Order, Result, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { type Level, closedExits } from '../../world/level/arena'
 import { SECRET_EXIT } from '../../world/level/plan'
-import { DOOR_SYMBOLS, WALL_SYMBOL } from '../../world/level/tileGrid'
+import { WALL_SYMBOL } from '../../world/level/tileGrid'
 import { secretShelfOf } from '../../world/library/secretShelf'
 import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
 import {
@@ -19,6 +19,7 @@ import {
   UNIT,
   UP_NORMAL,
   WALL_ROW,
+  isNorthFaceAt,
   symbolAt,
   wallHeightAt,
   zOf,
@@ -122,22 +123,6 @@ const isWallTile = (
   column: number,
 ): boolean => Option.contains(symbolAt(tiles, row, column), WALL_SYMBOL)
 
-const DOORS: ReadonlyArray<string> = Record.values(DOOR_SYMBOLS)
-
-// NOTE: where the 2D game drew a north wall's face, papered and paneled,
-// over the two tiles of wall above it (roomWalls.ts `isNorthFace`): a wall
-// tile over any tile of the map that is not wall or a doorway.
-const isNorthFaceAt = (
-  tiles: ReadonlyArray<string>,
-  row: number,
-  column: number,
-): boolean =>
-  isWallTile(tiles, row, column) &&
-  Option.exists(
-    symbolAt(tiles, row + 1, column),
-    symbol => symbol !== WALL_SYMBOL && !Array.contains(DOORS, symbol),
-  )
-
 // THE ART'S ROWS
 
 // NOTE: the picture's rows, a game pixel each from the level's top left
@@ -166,9 +151,10 @@ const faceArtOf = (
   row: number,
   column: number,
 ): Option.Option<FaceArt> => {
-  const faceRow = isNorthFaceAt(tiles, row, column)
+  const faceRow = isNorthFaceAt({ tiles, row, column })
     ? Option.some(row)
-    : isWallTile(tiles, row, column) && isNorthFaceAt(tiles, row + 1, column)
+    : isWallTile(tiles, row, column) &&
+        isNorthFaceAt({ tiles, row: row + 1, column })
       ? Option.some(row + 1)
       : Option.none()
   return Option.map(faceRow, face => ({
@@ -343,6 +329,26 @@ const topQuadsOf = (
     onSome: cap => Math.min(to, Math.max(from, cap + rows)),
   })
   const plainRow = Option.getOrElse(capOf, () => from) + MID_ROW
+  // NOTE: a low tile behind a taller north face (the dining room's top
+  // wall, the kitchen's front wall behind it) lies under that face's top,
+  // which wears the art: it shows only a sliver past it, its cap's color.
+  const isBehindTaller =
+    Option.isSome(own) &&
+    !isNorthFaceAt({ tiles, row, column }) &&
+    wallHeightAt({ tiles, row: row + 1, column }) > height
+  if (isBehindTaller) {
+    return [
+      topQuad({
+        ...at,
+        from,
+        to,
+        artFrom: plainRow,
+        artTo: plainRow,
+        wears: 'Cap',
+        shade: UP,
+      }),
+    ]
+  }
   const isRunOn = Option.isSome(own)
   return [
     ...(split > from
