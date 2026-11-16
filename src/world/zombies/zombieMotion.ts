@@ -8,6 +8,7 @@ import {
   ZOMBIE_ENTRY_SPEED,
   ZOMBIE_KNOCKBACK_DECAY_PER_SECOND,
 } from '../../shared/constants'
+import { appendOrSame } from '../../shared/sameList'
 import { darkBoxOf, darkPaceAt } from '../cellar/bulb'
 import { chillPace } from '../fridge/fridgeWeapons'
 import {
@@ -476,18 +477,19 @@ export const recordFootfalls: {
   (model: World, deltaMs: number): World
 } = Function.dual(2, (model: World, deltaMs: number): World =>
   modifyFields(model, {
-    frameEvents: frameEvents => [
-      ...frameEvents,
-      ...Array.getSomes(
-        Array.map(
-          model.zombies,
-          maybeFootfall(
-            focusOf(model).player,
-            model.elapsedMs - deltaMs,
-            model.elapsedMs,
+    frameEvents: frameEvents =>
+      appendOrSame(
+        frameEvents,
+        Array.getSomes(
+          Array.map(
+            model.zombies,
+            maybeFootfall(
+              focusOf(model).player,
+              model.elapsedMs - deltaMs,
+              model.elapsedMs,
+            ),
           ),
         ),
       ),
-    ],
   }),
 )

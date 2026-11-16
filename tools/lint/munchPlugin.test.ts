@@ -574,6 +574,7 @@ tester.run('step-world-alone', ruleOf('step-world-alone'), {
   valid: [
     'const ticked = stepWorld(worldOf(intended), inputs)',
     'const ticked = withWorld(model, world => stepWorld(worldOf(model), inputs).world)',
+    'const ticked = stepWorld(intendedWorld, inputs)',
   ],
   invalid: [
     one('const ticked = stepWorld(intended, inputs)'),

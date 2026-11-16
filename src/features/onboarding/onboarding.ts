@@ -72,10 +72,17 @@ const hasOwnGunLeveled = (model: Model): boolean =>
       event.slot === focusSlotOf(model),
   )
 
-const practise = (before: Model, after: Model): Practice => ({
-  movedPx: after.practice.movedPx + distanceWalked(before, after),
-  aimedShots: after.practice.aimedShots + (hasFiredWhileAiming(after) ? 1 : 0),
-})
+// NOTE: a frame with no practice in it keeps the record's reference, so
+// the Model is not copied for it.
+const practise = (before: Model, after: Model): Practice => {
+  const movedPx = after.practice.movedPx + distanceWalked(before, after)
+  const aimedShots =
+    after.practice.aimedShots + (hasFiredWhileAiming(after) ? 1 : 0)
+  return Object.is(movedPx, after.practice.movedPx) &&
+    aimedShots === after.practice.aimedShots
+    ? after.practice
+    : { movedPx, aimedShots }
+}
 
 // NOTE: the lessons keep their reference on a frame that learns nothing, so
 // the save check sees at a glance that nothing saved changed.

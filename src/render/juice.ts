@@ -26,6 +26,7 @@ import {
   TRAP_CRACK_TRAUMA,
 } from '../shared/constants'
 import { type Seeded, between, generateMany, nextRandom } from '../shared/prng'
+import { sameIfUnchanged } from '../shared/sameList'
 import { TRAPS } from '../world/gear/traps'
 import { WEAPONS } from '../world/gear/weapons'
 import { DOOR_OUTWARD } from '../world/level/tileGrid'
@@ -452,9 +453,11 @@ const advanceStreak = (
   return Streak.match(streak, {
     Cold: () => streak,
     Hot: ({ count, remainingMs }) =>
-      remainingMs > worldMs
-        ? Streak.Hot({ count, remainingMs: remainingMs - worldMs })
-        : Streak.Cold(),
+      worldMs === 0
+        ? streak
+        : remainingMs > worldMs
+          ? Streak.Hot({ count, remainingMs: remainingMs - worldMs })
+          : Streak.Cold(),
   })
 }
 
@@ -512,13 +515,16 @@ export const advanceJuice: {
                 deltaMs,
               ),
         popups: popups =>
-          keepNewestHorde(
-            Array.takeRight(
-              [
-                ...agePopups(popups, seconds, deltaMs),
-                ...Array.flatten(popupBatches),
-              ],
-              POPUP_MAX,
+          sameIfUnchanged(
+            popups,
+            keepNewestHorde(
+              Array.takeRight(
+                [
+                  ...agePopups(popups, seconds, deltaMs),
+                  ...Array.flatten(popupBatches),
+                ],
+                POPUP_MAX,
+              ),
             ),
           ),
         cosmeticRngState: () => popupState,

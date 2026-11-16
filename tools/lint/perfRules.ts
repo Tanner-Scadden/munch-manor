@@ -13,6 +13,7 @@ import {
   hasName,
   isFunctionNode,
   isStringLiteral,
+  isWorldNamed,
   mentions,
   propertyName,
 } from './ast.ts'
@@ -469,13 +470,15 @@ export const noNestedScan = defineRule({
 // NOTE: `stepWorld(model, inputs)` in client code hands the step the whole
 // Model, so every World write inside it copies the Model's hundred-odd
 // fields. Narrowed to its World first, `stepWorld(worldOf(model), inputs)`,
-// each write copies only the World's.
+// each write copies only the World's. A value named as a World
+// (`intendedWorld`) is one already.
 const isWorldOfCall = (node: Node): boolean => {
   const inner = unwrap(node)
   return (
-    inner.type === 'CallExpression' &&
-    inner.callee.type === 'Identifier' &&
-    inner.callee.name === 'worldOf'
+    (inner.type === 'CallExpression' &&
+      inner.callee.type === 'Identifier' &&
+      inner.callee.name === 'worldOf') ||
+    isWorldNamed(inner)
   )
 }
 

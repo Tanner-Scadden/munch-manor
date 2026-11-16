@@ -29,6 +29,7 @@ import {
   ZOMBIE_FOOT_OFFSET,
 } from '../../shared/constants'
 import { type Seeded, generateMany } from '../../shared/prng'
+import { sameIfUnchanged } from '../../shared/sameList'
 import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
 import { levelOf } from '../../world/level/arena'
 import { isWadingAt } from '../../world/level/leaks'
@@ -463,10 +464,17 @@ export const advanceParticles: {
 
     return modifyFields(model, {
       cosmetics: modifyFields({
-        particles: () =>
-          keepNewest(
-            [...stillFlying, ...Array.flatten(eventBatches), ...dust.particles],
-            PARTICLE_MAX,
+        particles: particles =>
+          sameIfUnchanged(
+            particles,
+            keepNewest(
+              [
+                ...stillFlying,
+                ...Array.flatten(eventBatches),
+                ...dust.particles,
+              ],
+              PARTICLE_MAX,
+            ),
           ),
         decals: decals =>
           Array.isReadonlyArrayEmpty(landed)

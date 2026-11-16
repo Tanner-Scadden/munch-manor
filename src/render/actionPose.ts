@@ -4,6 +4,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import type { ActStance } from '../art/appearance'
 import type { Facing } from '../art/sprite'
 import { PLAYER_RADIUS } from '../shared/constants'
+import { sameIfUnchanged } from '../shared/sameList'
 import { maybeFindWorkOf } from '../world/dare/dare'
 import { DareKind } from '../world/dare/dareSchema'
 import type { FindStyle } from '../world/dare/finds'
@@ -584,13 +585,52 @@ export const nextActionWatch: {
     ...fresh,
   ]
   const next = {
-    beats,
-    held,
-    trapIds: Array.map(world.traps, ({ id }) => id),
+    beats: sameIfUnchanged(watch.beats, beats),
+    held:
+      held.length === watch.held.length &&
+      Array.every(held, (row, index) => isSameHeld(watch.held[index], row))
+        ? watch.held
+        : held,
+    trapIds: sameIfUnchanged(
+      watch.trapIds,
+      Array.map(world.traps, ({ id }) => id),
+    ),
     working: watch.working,
   }
-  return { ...next, working: workingOf(world, next) }
+  const working = workingOf(world, next)
+  const keptWorking =
+    working.length === watch.working.length &&
+    Array.every(working, (row, index) =>
+      isSameWorking(watch.working[index], row),
+    )
+      ? watch.working
+      : working
+  // NOTE: a frame that changed nothing the watch sees hands back the watch
+  // itself, so the cosmetics and the Model are not copied for it.
+  return next.beats === watch.beats &&
+    next.held === watch.held &&
+    next.trapIds === watch.trapIds &&
+    keptWorking === watch.working
+    ? watch
+    : { ...next, working: keptWorking }
 })
+
+const isSameHeld = (
+  seen: ActionWatch['held'][number] | undefined,
+  row: ActionWatch['held'][number],
+): boolean =>
+  seen !== undefined && seen.slot === row.slot && seen.weapon === row.weapon
+
+const isSameWorking = (
+  seen: ActionWatch['working'][number] | undefined,
+  row: ActionWatch['working'][number],
+): boolean =>
+  seen !== undefined &&
+  seen.slot === row.slot &&
+  seen.motion === row.motion &&
+  Object.is(seen.frame, row.frame) &&
+  Object.is(seen.x, row.x) &&
+  Object.is(seen.y, row.y)
 
 // NOTE: the payoffs that started between two watches, for their dust.
 export const freshBeats: {

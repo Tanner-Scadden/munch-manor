@@ -88,6 +88,30 @@ const intentFor = (world: World, slot: PlayerSlot, intent: Intent): Intent => {
   })
 }
 
+const isSameHeading = (
+  first: Readonly<{ x: number; y: number }>,
+  second: Readonly<{ x: number; y: number }>,
+): boolean => Object.is(first.x, second.x) && Object.is(first.y, second.y)
+
+// NOTE: `next`, or the seat's `current` intent itself when it says the same,
+// so a player holding still (or holding the same aim) leaves the seat, and
+// so the World, uncopied for it.
+export const keptIntent: {
+  (next: Intent): (current: Intent) => Intent
+  (current: Intent, next: Intent): Intent
+} = Function.dual(2, (current: Intent, next: Intent): Intent => {
+  const isSameAim =
+    Option.isNone(current.maybeAim) || Option.isNone(next.maybeAim)
+      ? Option.isNone(current.maybeAim) && Option.isNone(next.maybeAim)
+      : isSameHeading(current.maybeAim.value, next.maybeAim.value)
+  return isSameAim &&
+    isSameHeading(current.move, next.move) &&
+    current.trigger === next.trigger &&
+    current.interact === next.interact
+    ? current
+    : next
+})
+
 export const stepWorld: {
   (inputsByPlayer: InputsByPlayer): (world: World) => Stepped
   (world: World, inputsByPlayer: InputsByPlayer): Stepped
@@ -96,7 +120,11 @@ export const stepWorld: {
   (world: World, inputsByPlayer: InputsByPlayer): Stepped => {
     const intended = forEachSeat(world, (current, slot) =>
       modifySeat(current, slot, {
-        intent: () => intentFor(current, slot, inputOf(inputsByPlayer, slot)),
+        intent: intent =>
+          keptIntent(
+            intent,
+            intentFor(current, slot, inputOf(inputsByPlayer, slot)),
+          ),
       }),
     )
     const ticked = advanceTick(intended)

@@ -7,6 +7,7 @@ import {
   PLAYER_RADIUS,
   ZOMBIE_BUMP_SPEED,
 } from '../../shared/constants'
+import { sameIfUnchanged } from '../../shared/sameList'
 import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
 import { TURRET_WEAPON } from '../gear/traps'
 import {
@@ -501,7 +502,11 @@ const popOnContact =
 
 const popBombers = (model: World, slot: PlayerSlot): World =>
   modifyFields(model, {
-    zombies: Array.map(popOnContact(seatStateAt(model, slot).player)),
+    zombies: zombies =>
+      sameIfUnchanged(
+        zombies,
+        Array.map(zombies, popOnContact(seatStateAt(model, slot).player)),
+      ),
   })
 
 // NOTE: in co-op a zombie must keep touching a player for their seat's
