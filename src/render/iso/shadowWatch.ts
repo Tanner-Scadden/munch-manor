@@ -30,6 +30,8 @@ type Cone = Readonly<{
   axisY: number
   axisZ: number
   halfAngle: number
+  cosHalf: number
+  sinHalf: number
   range: number
 }>
 
@@ -41,6 +43,7 @@ const coneOf = ({ from, to, coneAngle, range }: ShadowCone): Cone => {
   const dy = to.y - from.y
   const dz = to.z - from.z
   const length = Math.hypot(dx, dy, dz) || 1
+  const halfAngle = (coneAngle * Math.PI) / 180 + SPARE_RADIANS
   return {
     x: from.x,
     y: from.y,
@@ -48,7 +51,9 @@ const coneOf = ({ from, to, coneAngle, range }: ShadowCone): Cone => {
     axisX: dx / length,
     axisY: dy / length,
     axisZ: dz / length,
-    halfAngle: (coneAngle * Math.PI) / 180 + SPARE_RADIANS,
+    halfAngle,
+    cosHalf: Math.cos(halfAngle),
+    sinHalf: Math.sin(halfAngle),
     range,
   }
 }
@@ -56,7 +61,11 @@ const coneOf = ({ from, to, coneAngle, range }: ShadowCone): Cone => {
 // NOTE: whether a sphere at `x, y, z` of `radius` reaches into the cone: a
 // point a light lights lies inside its cone, and so does anything between
 // the light and that point, so a caster outside the cone never shows in its
-// shadow.
+// shadow. The sphere reaches in when the angle off the axis is at most the
+// half angle and the angle the sphere fills, `asin(radius / distance)`. Each
+// caster is tested against every cone every frame, so this compares cosines
+// (`cos(a + b) = cos a cos b - sin a sin b`, the half angle's read once per
+// level) and squared distances rather than calling acos, asin, and hypot.
 const isInCone = (
   cone: Cone,
   x: number,
@@ -67,16 +76,27 @@ const isInCone = (
   const dx = x - cone.x
   const dy = y - cone.y
   const dz = z - cone.z
-  const distance = Math.hypot(dx, dy, dz)
-  if (distance <= radius) {
+  const squared = dx * dx + dy * dy + dz * dz
+  if (squared <= radius * radius) {
     return true
   }
-  if (distance - radius > cone.range) {
+  const reach = cone.range + radius
+  if (squared > reach * reach) {
     return false
   }
-  const cos = (dx * cone.axisX + dy * cone.axisY + dz * cone.axisZ) / distance
-  const angle = Math.acos(Math.max(-1, Math.min(1, cos)))
-  return angle <= cone.halfAngle + Math.asin(radius / distance)
+  const distance = Math.sqrt(squared)
+  const along = dx * cone.axisX + dy * cone.axisY + dz * cone.axisZ
+  const filled = radius / distance
+  // NOTE: past a straight angle the cosine no longer orders the angles,
+  // which only a cone wider than a right angle reaches; no fill's is.
+  if (
+    cone.halfAngle >= Math.PI / 2 &&
+    cone.halfAngle + Math.asin(filled) >= Math.PI
+  ) {
+    return true
+  }
+  const cosFilled = Math.sqrt(1 - filled * filled)
+  return along >= distance * (cone.cosHalf * cosFilled - cone.sinHalf * filled)
 }
 
 // NOTE: the matrix's turn, lean, and scale, without its move.
