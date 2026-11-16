@@ -22,7 +22,6 @@ export const EngineRequest = Schema.Struct({
   mode: ScriptMode,
   pattern: StepPattern,
   every: Schema.Finite,
-  detMath: Schema.Boolean,
   // NOTE: clear hit-stop after every frame, so no freeze or slow motion
   // ever runs. Hit-stop counts whole ticks since the fixed step, where it
   // cut a frame's world time before, so this compares everything else.
@@ -37,7 +36,6 @@ export const DEFAULT_REQUEST: EngineRequest = {
   mode: 'Campaign',
   pattern: 'Fixed60',
   every: 1,
-  detMath: false,
   noHitStop: false,
   dump: undefined,
 }
@@ -52,7 +50,6 @@ export const requestOf = (params: URLSearchParams): EngineRequest => ({
   mode: params.get('mode') === 'Endless' ? 'Endless' : 'Campaign',
   pattern: params.get('pattern') === 'Mixed' ? 'Mixed' : 'Fixed60',
   every: numberOr(params.get('every'), DEFAULT_REQUEST.every),
-  detMath: params.get('detMath') === '1',
   noHitStop: params.get('noHitStop') === '1',
   dump: params.has('dump') ? Number(params.get('dump')) : undefined,
 })
@@ -64,7 +61,6 @@ export const paramsOf = (request: EngineRequest): string =>
     mode: request.mode,
     pattern: request.pattern,
     every: String(request.every),
-    detMath: request.detMath ? '1' : '0',
     noHitStop: request.noHitStop ? '1' : '0',
     ...(request.dump === undefined ? {} : { dump: String(request.dump) }),
   }).toString()

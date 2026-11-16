@@ -7,6 +7,7 @@ The game's `update` must be deterministic: the same seed and the same Messages g
 | Same engine      | `bun run test:full` (`determinism.sim.test.ts`) | Two runs in one engine hash the same on every frame. A few seconds, runs in CI on every push |
 | Before and after | `bun run determinism:diff -- [ref]`             | A refactor changed no gameplay: the working tree plays exactly like where it left `ref`      |
 | Cross engine     | `bun run determinism`                           | Bun, Node, headless Chrome, and workerd play the same run bit for bit                        |
+| Cross engine, CI | `bun run determinism:ci` (CI's build leg only)  | Bun, Node, and workerd play a campaign and an Endless run bit for bit, on every push         |
 
 The two heavy ones play whole runs, so they go through the guard like every heavy job (see `tools/heavy/README.md`).
 
@@ -45,34 +46,39 @@ Since each side has its own `node_modules`, a change to a dependency, to a patch
 - **Chrome** (V8, a browser): `out/page.html` from a file URL with `--headless --dump-dom` and a throwaway profile. Set `CHROME` to use another binary.
 - **workerd** (V8, the Durable Object runtime): `out/worker.js` served by `infra/node_modules/.bin/workerd` (from this checkout or the main one), or `WORKERD`.
 
-For every pair that disagrees it finds the first frame, asks both engines for their state at that frame, and prints the fields that differ and the first path inside them. Options: `--frames N` (default 18,000, five minutes), `--seed`, `--mode Endless`, `--pattern Mixed`, `--every N`, `--det-math` (swap in `detMath.ts` first), `--engines bun,node`, `--no-build`, `--json`. It exits 1 when any two engines disagree.
+For every pair that disagrees it finds the first frame, asks both engines for their state at that frame, and prints the fields that differ and the first path inside them. Options: `--frames N` (default 18,000, five minutes), `--seed`, `--mode Endless`, `--pattern Mixed`, `--every N`, `--engines bun,node`, `--no-build`, `--json`. It exits 1 when any two engines disagree.
 
-### Today's result (2026-10-29, seed 1, 18,000 frames)
+`determinism:ci` runs it in CI's build leg without the guard (a runner is no shared laptop), over Bun, Node, and workerd: JavaScriptCore against V8, and the co-op room's runtime. Chrome is V8 as Node is, and left to the local run.
 
-| Math             | Bun vs the V8s                                | Node 24 vs Chrome 156 and workerd                | Chrome vs workerd |
-| ---------------- | --------------------------------------------- | ------------------------------------------------ | ----------------- |
-| The engine's own | Frame 95, `intent.maybeAim.value.x`, last bit | Frame 188, `zombies[0].knockback.x` (`Math.exp`) | None              |
-| `detMath.ts`     | None                                          | None                                             | None              |
+### The engines' own Math
 
-So the game is deterministic in each engine, and across engines only the transcendental Math differs. Co-op does not need cross-engine agreement (the room is the only place the world runs); replays and verified boards would.
+`+`, `-`, `*`, `/`, `Math.sqrt`, and the rounding functions are exact in every engine, but JavaScript leaves the last bit of `sin`, `cos`, `atan2`, `hypot`, `exp`, `pow` (`**`), and the rest to the engine, and JavaScriptCore and V8 (and even two V8 builds) round some inputs differently. So the game takes them from `src/shared/detMath.ts`, built from the exact operations, everywhere `update` reaches: the World, the input, the update, the features' rules, and the lens's turn of a stick onto the floor. `munch/stable-math` fails Math's own there.
+
+Until November 2026 the harness swapped these in over `Math` (`--det-math`) and the game called Math's own, so the engines disagreed by frame 95, and with the swap they agreed. The lens turned 5 degrees (#261) computed its turn from `sin` and `cos` as its module loaded, before the swap, and every walk ran through it, so even `--det-math` parted at frame 84, and nothing in CI ran the check. Now the game calls `detMath.ts` itself and CI runs it.
+
+### Today's result (2026-11-15)
+
+| Run                                      | Bun, Node 24, Chrome 157, workerd |
+| ---------------------------------------- | --------------------------------- |
+| Seed 1, Campaign, Fixed60, 18,000 frames | Agree on every frame              |
+| Seed 7, Endless, Mixed, 18,000 frames    | Agree on every frame              |
 
 ## The World in workerd
 
-`bun run world:check` (`worldCheck.ts`, in CI) bundles `worldWorker.ts`, which holds only `stepWorld`, its wire, and `detMath.ts`, and fails if the bundle pulls in a client, UI, art, audio, camera, input, store, or sync module. It lists the files infra's typecheck reads (infra's own `effect-tsgo tsrs --listFilesOnly`) and fails on the same modules there, since an `import type` the bundle drops still pulls the client into the Worker's types. Then it plays a World mid-wave 600 ticks in Bun and in a local workerd (`worldWorkerd.capnp`), both with `detMath.ts`, with 1, 2, and 4 players (teammates seated mid-wave, each walking and firing their own way), and fails unless the two Worlds are the same.
+`bun run world:check` (`worldCheck.ts`, in CI) bundles `worldWorker.ts`, which holds only `stepWorld` and its wire, and fails if the bundle pulls in a client, UI, art, audio, camera, input, store, or sync module. It lists the files infra's typecheck reads (infra's own `effect-tsgo tsrs --listFilesOnly`) and fails on the same modules there, since an `import type` the bundle drops still pulls the client into the Worker's types. Then it plays a World mid-wave 600 ticks in Bun and in a local workerd (`worldWorkerd.capnp`), with 1, 2, and 4 players (teammates seated mid-wave, each walking and firing their own way), and fails unless the two Worlds are the same.
 
 ## Files
 
-| File                                              | What it holds                                                        |
-| ------------------------------------------------- | -------------------------------------------------------------------- |
-| `fields.ts`                                       | The Model field classes: the World and client split as data          |
-| `hash.ts`                                         | The gameplay hash                                                    |
-| `script.ts`                                       | The scripted player and the frame patterns                           |
-| `run.ts`                                          | Plays the script and records checkpoints                             |
-| `diff.ts`                                         | First divergent checkpoint, first differing path, exact JSON         |
-| `request.ts`, `engine.ts`                         | What an engine is asked and what it answers                          |
-| `cli.ts`, `page.ts`, `worker.ts`                  | The engine entries for Bun and Node, Chrome, and workerd             |
-| `build.ts`, `workerd.capnp`                       | The bundles in `out/` and the workerd config                         |
-| `crossEngine.ts`, `beforeAfter.ts`                | The two heavy checks                                                 |
-| `detMath.ts`                                      | Deterministic `hypot`, `sin`, `cos`, `atan2`, and `exp`, for replays |
-| `determinism.sim.test.ts`                         | The same engine check and the hash's rules                           |
-| `worldCheck.ts`, `worldPlay.ts`, `worldWorker.ts` | The World's bundle check and its play in workerd                     |
+| File                                              | What it holds                                                |
+| ------------------------------------------------- | ------------------------------------------------------------ |
+| `fields.ts`                                       | The Model field classes: the World and client split as data  |
+| `hash.ts`                                         | The gameplay hash                                            |
+| `script.ts`                                       | The scripted player and the frame patterns                   |
+| `run.ts`                                          | Plays the script and records checkpoints                     |
+| `diff.ts`                                         | First divergent checkpoint, first differing path, exact JSON |
+| `request.ts`, `engine.ts`                         | What an engine is asked and what it answers                  |
+| `cli.ts`, `page.ts`, `worker.ts`                  | The engine entries for Bun and Node, Chrome, and workerd     |
+| `build.ts`, `workerd.capnp`                       | The bundles in `out/` and the workerd config                 |
+| `crossEngine.ts`, `beforeAfter.ts`                | The two heavy checks                                         |
+| `determinism.sim.test.ts`                         | The same engine check and the hash's rules                   |
+| `worldCheck.ts`, `worldPlay.ts`, `worldWorker.ts` | The World's bundle check and its play in workerd             |

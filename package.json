@@ -22,6 +22,7 @@
     "determinism": "bun tools/heavy/main.ts -- bun tools/determinism/crossEngine.ts",
     "learn:replay": "bun tools/heavy/main.ts -- bun tools/learn/replay.ts",
     "mp:e2e": "bun tools/heavy/main.ts -- --shared bun tools/mp-dev/e2e.ts",
+    "determinism:ci": "bun tools/determinism/crossEngine.ts --engines bun,node,workerd && bun tools/determinism/crossEngine.ts --engines bun,node,workerd --no-build --mode Endless --pattern Mixed --seed 7",
     "determinism:diff": "bun tools/heavy/main.ts -- bun tools/determinism/beforeAfter.ts",
     "world:check": "bun tools/determinism/worldCheck.ts",
     "balance": "bun tools/heavy/main.ts -- bun tools/balance/simulate.ts",

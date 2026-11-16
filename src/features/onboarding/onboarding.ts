@@ -7,6 +7,7 @@ import { type HintBand, QuestTour, Tour } from '../../domain/clientSchema'
 import { type InputDevice, Stick } from '../../input/inputSchema'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { landscapeFrameOffset, screenOf } from '../../render/screen'
+import * as DetMath from '../../shared/detMath'
 import { maybeLevelProgress } from '../../world/gear/gunLevels'
 import { TURRET_WEAPON, maybeSelectedKind } from '../../world/gear/traps'
 import { heldGun, isWieldingMelee } from '../../world/gear/weapons'
@@ -49,7 +50,7 @@ export const LESSON_MIN_SHOWN_MS = 2500
 
 const distanceWalked = (before: Model, after: Model): number =>
   vectorLength(focusOf(after).intent.move) > 0
-    ? Math.hypot(
+    ? DetMath.hypot(
         focusOf(after).player.x - focusOf(before).player.x,
         focusOf(after).player.y - focusOf(before).player.y,
       )

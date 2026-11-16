@@ -15,6 +15,7 @@ import {
   raiseDebutCardFrom,
 } from '../../features/onboarding/onboarding'
 import { crewRunKeyOf } from '../../platform/analyticsRun'
+import * as DetMath from '../../shared/detMath'
 import { TURRET_WEAPON } from '../../world/gear/traps'
 import { levelOf } from '../../world/level/arena'
 import { inputOfIntent, ownWorldOf } from '../../world/net/roomWorld'
@@ -149,7 +150,7 @@ const heardBy = (
           ...event,
           nearness: footfallNearness(
             event.kind,
-            Math.hypot(event.x - listener.x, event.y - listener.y),
+            DetMath.hypot(event.x - listener.x, event.y - listener.y),
           ),
         })
       : event,

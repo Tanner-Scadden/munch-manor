@@ -1,6 +1,7 @@
 import { Function } from 'effect'
 
 import { COLLISION_STEP_PX } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { type Level, TILE_PLAYER_SOLID, TILE_SOLID } from '../level/arena'
 import { type Box, tileBox } from '../level/tileGrid'
 import { tileCoordinate } from '../level/tileQueries'
@@ -14,7 +15,7 @@ const pushOutOfBox = (position: Vector, radius: number, box: Box): Vector => {
   const { left, top, right, bottom } = box
   const deltaX = position.x - clamp(position.x, left, right)
   const deltaY = position.y - clamp(position.y, top, bottom)
-  const distance = Math.hypot(deltaX, deltaY)
+  const distance = DetMath.hypot(deltaX, deltaY)
 
   if (distance >= radius) {
     return position

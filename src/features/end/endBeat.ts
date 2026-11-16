@@ -112,12 +112,16 @@ export const progressOf: {
   Math.min(1, Math.max(0, (ms - startMs) / spanMs)),
 )
 
-export const easeOut = (t: number): number => 1 - (1 - t) ** 3
+export const easeOut = (t: number): number => {
+  const left = 1 - t
+  return 1 - left * left * left
+}
 
 // NOTE: overshoots a little and settles, for the stamp and the trophy.
 export const easeOutBack = (t: number): number => {
   const overshoot = 1.7
-  return 1 + (overshoot + 1) * (t - 1) ** 3 + overshoot * (t - 1) ** 2
+  const past = t - 1
+  return 1 + (overshoot + 1) * past * past * past + overshoot * past * past
 }
 
 // TALLY

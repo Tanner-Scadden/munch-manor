@@ -6,6 +6,7 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { atSeat, seatStateAt } from '../party/party'
 import { bossAttackPace } from '../run/difficulty'
 import type { World } from '../schema/world'
@@ -106,7 +107,7 @@ export const paceOf: {
 
   const rage = boss.mood === 'Enraged' ? BOSS_RULES.enrageSpeedScale : 1
   const chase =
-    Math.hypot(player.x - zombie.x, player.y - zombie.y) > BOSS_RULES.farPx
+    DetMath.hypot(player.x - zombie.x, player.y - zombie.y) > BOSS_RULES.farPx
       ? BOSS_RULES.farPace
       : 1
   return rage * chase

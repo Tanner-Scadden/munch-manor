@@ -4,7 +4,7 @@
 // what Bun plays.
 //
 // 1. Bundles worldWorker.ts (stepWorld, the co-op room's adapter and binary
-//    wire, and detMath) into out/ and fails on any forbidden module the
+//    wire) into out/ and fails on any forbidden module the
 //    bundle pulls in, or on any runtime code of the netcode package.
 // 2. Lists the files infra's typecheck sees (its own effect-tsgo, with
 //    --listFilesOnly) and fails on any of the same game modules there: an

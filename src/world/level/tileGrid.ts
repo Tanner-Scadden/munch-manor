@@ -1,6 +1,7 @@
 import { Array, Function, Option, type Record, String, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { countWork } from '../../shared/workCount'
 import type { DoorId, Vector } from '../schema/entitySchema'
 import { clamp } from '../step/geometry'
@@ -274,7 +275,7 @@ export const distanceToBox: {
   (box: Box): (position: Vector) => number
   (position: Vector, box: Box): number
 } = Function.dual(2, (position: Vector, box: Box): number =>
-  Math.hypot(
+  DetMath.hypot(
     position.x - clamp(position.x, box.left, box.right),
     position.y - clamp(position.y, box.top, box.bottom),
   ),

@@ -2,6 +2,7 @@ import { Array, Option, Order } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS, TILE_SIZE } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { type Level, levelOf, maybeExit, openExitIn } from '../level/arena'
 import { LIBRARY_ROOM_ID, SECRET_EXIT, type Side } from '../level/plan'
 import type { Tile } from '../level/tileGrid'
@@ -92,7 +93,7 @@ const isShelfShut = (level: Level): boolean =>
   )
 
 const isAtBook = (book: Vector, player: Vector): boolean =>
-  Math.hypot(player.x - book.x, player.y - book.y) <=
+  DetMath.hypot(player.x - book.x, player.y - book.y) <=
   PLAYER_RADIUS + SHELF_RULES.reachPx
 
 // NOTE: a standing player at the book in a round swings the shelf open.

@@ -9,7 +9,6 @@
 
 import { Function } from 'effect'
 
-import { installDeterministicMath } from './detMath'
 import { exactJson } from './diff'
 import { gameplayOf, unclassifiedFieldsOf } from './fields'
 import { makeGameplayHasher } from './hash'
@@ -27,9 +26,6 @@ export const answer: {
   (request: EngineRequest): (engine: string) => string
   (engine: string, request: EngineRequest): string
 } = Function.dual(2, (engine: string, request: EngineRequest): string => {
-  if (request.detMath) {
-    installDeterministicMath()
-  }
   const options: RunOptions = {
     seed: request.seed,
     frames: request.frames,

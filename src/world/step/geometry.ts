@@ -1,6 +1,7 @@
 import { Function, Option } from 'effect'
 
 import { KNOCKBACK_REST_SPEED } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import type { Vector } from '../schema/entitySchema'
 
 export const ZERO_VECTOR: Vector = { x: 0, y: 0 }
@@ -19,7 +20,7 @@ export const SCREEN_STEPS: Readonly<Record<ScreenDirection, Vector>> = {
 // NOTE: the way to push when two things sit on the same spot.
 export const OUTWARD: Vector = { x: 1, y: 0 }
 
-export const vectorLength = ({ x, y }: Vector): number => Math.hypot(x, y)
+export const vectorLength = ({ x, y }: Vector): number => DetMath.hypot(x, y)
 
 export const scaleVector: {
   (factor: number): (self: Vector) => Vector
@@ -69,8 +70,13 @@ export const distanceBetween: {
   (to: Vector): (from: Vector) => number
   (from: Vector, to: Vector): number
 } = Function.dual(2, (from: Vector, to: Vector): number =>
-  Math.hypot(to.x - from.x, to.y - from.y),
+  DetMath.hypot(to.x - from.x, to.y - from.y),
 )
+
+// NOTE: a number kept to two places: a gun's spread compared, a color's
+// alpha written.
+export const hundredths = (value: number): number =>
+  Math.round(value * 100) / 100
 
 // NOTE: the point `t` of the way from `from` to `to`.
 export const lerp: {
@@ -156,7 +162,10 @@ export const decayKnockback: {
 } = Function.dual(
   3,
   (knockback: Vector, decayPerSecond: number, seconds: number): Vector => {
-    const decayed = scaleVector(knockback, Math.exp(-decayPerSecond * seconds))
+    const decayed = scaleVector(
+      knockback,
+      DetMath.exp(-decayPerSecond * seconds),
+    )
     if (vectorLength(decayed) < KNOCKBACK_REST_SPEED) {
       return ZERO_VECTOR
     } else {

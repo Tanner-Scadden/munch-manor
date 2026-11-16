@@ -15,14 +15,12 @@
 //   --mode Endless       endless instead of the campaign
 //   --pattern Mixed      variable frame lengths instead of a fixed 60 Hz step
 //   --every N            hash every N frames (default 1)
-//   --det-math           swap in the deterministic Math of detMath.ts first
 //   --engines a,b        any of bun,node,chrome,workerd (default all four)
 //   --no-build           reuse out/ from the last build
 //   --json               print the report as JSON
 //
-// It exits 1 when any two engines disagree. Today the engines' own Math
-// makes JavaScriptCore and V8 disagree within the first two seconds, so
-// without --det-math that is expected (see README.md).
+// It exits 1 when any two engines disagree. The game takes its
+// transcendental math from src/shared/detMath.ts, so they never should.
 
 import {
   Array,
@@ -109,7 +107,6 @@ const request: EngineRequest = {
   mode: option('--mode') === 'Endless' ? 'Endless' : 'Campaign',
   pattern: option('--pattern') === 'Mixed' ? 'Mixed' : 'Fixed60',
   every: Number(option('--every') ?? DEFAULT_REQUEST.every),
-  detMath: flag('--det-math'),
 }
 const engines = Array.flatMap(
   String.split(',')(option('--engines') ?? Array.join(ALL_ENGINES, ',')),
@@ -429,7 +426,7 @@ const report = (
       return
     }
     yield* Console.log(
-      `Seed ${request.seed}, ${request.mode}, ${request.pattern} steps, ${request.frames} frames, hashed every ${request.every}, ${request.detMath ? 'deterministic Math' : "the engines' own Math"}`,
+      `Seed ${request.seed}, ${request.mode}, ${request.pattern} steps, ${request.frames} frames, hashed every ${request.every}`,
     )
     yield* Effect.forEach(runs, ([, run]) =>
       Console.log(

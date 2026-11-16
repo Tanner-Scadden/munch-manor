@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
 
+import * as DetMath from '../../shared/detMath'
 import { type Level, levelOf } from '../level/arena'
 import { PARLOUR_ROOM_ID } from '../level/plan'
 import { type Box, boxCenter } from '../level/tileGrid'
@@ -82,12 +83,12 @@ export const danceVelocity: {
     const sway = speed * RULES.danceScale
     const deltaX = floor.center.x - zombie.x
     const deltaY = floor.center.y - zombie.y
-    const distance = Math.hypot(deltaX, deltaY)
+    const distance = DetMath.hypot(deltaX, deltaY)
     const drift =
       distance > RULES.floorPx ? (speed * RULES.driftScale) / distance : 0
     return {
-      x: Math.cos(angle) * sway + deltaX * drift,
-      y: Math.sin(angle) * sway + deltaY * drift,
+      x: DetMath.cos(angle) * sway + deltaX * drift,
+      y: DetMath.sin(angle) * sway + deltaY * drift,
     }
   },
 )

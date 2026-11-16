@@ -3,6 +3,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS, PLAYER_SPEED } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { nextRandom } from '../../shared/prng'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { maxHpOf, speedScaleOf } from '../heroes/calling'
@@ -416,7 +417,7 @@ const agePickups = (model: World, deltaMs: number): World => {
 const isWithinGrab =
   (player: Player) =>
   (pickup: Pickup): boolean =>
-    Math.hypot(pickup.x - player.x, pickup.y - player.y) <= PICKUP_GRAB_PX
+    DetMath.hypot(pickup.x - player.x, pickup.y - player.y) <= PICKUP_GRAB_PX
 
 const burpAt = (model: World, at: Vector): World => {
   const blast: BlastSpec = {

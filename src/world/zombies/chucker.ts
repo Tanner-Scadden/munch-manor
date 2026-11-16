@@ -6,6 +6,7 @@ import {
   PLAYER_RADIUS,
   ZOMBIE_HIT_PULSE_MS,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { type Level, levelOf } from '../level/arena'
 import { hasLineOfSight } from '../level/tileQueries'
 import {
@@ -379,8 +380,10 @@ const holdUp = (zombies: ReadonlyArray<Zombie>, victim: Zombie): Zombie => {
           onNone: () => victim,
           onSome: aim =>
             modifyFields(victim, {
-              x: () => carrier.x + Math.cos(aim) * CHUCKER_RULES.shieldHoldPx,
-              y: () => carrier.y + Math.sin(aim) * CHUCKER_RULES.shieldHoldPx,
+              x: () =>
+                carrier.x + DetMath.cos(aim) * CHUCKER_RULES.shieldHoldPx,
+              y: () =>
+                carrier.y + DetMath.sin(aim) * CHUCKER_RULES.shieldHoldPx,
               knockback: () => ({ x: 0, y: 0 }),
             }),
         }),
@@ -527,7 +530,7 @@ const byShieldPreference = (from: Vector) =>
   )
 
 const angleBetween = (from: Vector, to: Vector): number =>
-  Math.atan2(to.y - from.y, to.x - from.x)
+  DetMath.atan2(to.y - from.y, to.x - from.x)
 
 const isUnderThreat = (chucker: Zombie, player: Player): boolean =>
   distanceBetween(chucker, player) <= CHUCKER_RULES.shieldTriggerPx ||
@@ -622,7 +625,10 @@ const dropShield = (model: World, chucker: Zombie): World =>
   })
 
 const turnToward = (aim: number, target: number, maxTurn: number): number => {
-  const gap = Math.atan2(Math.sin(target - aim), Math.cos(target - aim))
+  const gap = DetMath.atan2(
+    DetMath.sin(target - aim),
+    DetMath.cos(target - aim),
+  )
   return aim + Math.max(-maxTurn, Math.min(maxTurn, gap))
 }
 
@@ -680,8 +686,8 @@ export const maybeShieldFor: {
   2,
   (zombie: Zombie, direction: Vector): Option.Option<number> =>
     ZombieAction.isAnyOf(['Shielding'])(zombie.action) &&
-    direction.x * Math.cos(zombie.action.aim) +
-      direction.y * Math.sin(zombie.action.aim) <
+    direction.x * DetMath.cos(zombie.action.aim) +
+      direction.y * DetMath.sin(zombie.action.aim) <
       -CHUCKER_RULES.shieldArcCos
       ? Option.some(zombie.action.victimId)
       : Option.none(),

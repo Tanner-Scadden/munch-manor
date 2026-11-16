@@ -386,6 +386,35 @@
       }
     },
     {
+      // NOTE: the World, the input and update that feed its intent, the
+      // features' rules update runs (the lessons, the bots), and the lens
+      // that turns a stick onto the floor must give the same bits in Bun,
+      // Node, Chrome, and workerd (AGENTS.md "Keep the game
+      // deterministic"), so they take their transcendental math from
+      // src/shared/detMath.ts (munch/stable-math). Tests read what the step
+      // left, and a feature's drawing only draws, so they may use Math's
+      // own.
+      "files": [
+        "src/world/**/*.ts",
+        "src/shared/**/*.ts",
+        "src/input/**/*.ts",
+        "src/app/**/*.ts",
+        "src/domain/**/*.ts",
+        "src/features/**/*.ts",
+        "src/render/lens.ts",
+        "src/render/camera.ts"
+      ],
+      "rules": { "munch/stable-math": "error" }
+    },
+    {
+      "files": [
+        "src/**/__tests__/**/*.ts",
+        "src/features/**/*View.ts",
+        "src/features/**/*Art.ts"
+      ],
+      "rules": { "munch/stable-math": "off" }
+    },
+    {
       // NOTE: the World's per-tick rules and the per-frame drawing scan no
       // list inside a loop over another; a bounded list (at most 4 seats)
       // says its bound in a NOTE on the disable (AGENTS.md "Keep the frame

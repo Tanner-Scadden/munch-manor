@@ -6,6 +6,7 @@ import {
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import type { DoorId, Vector } from '../schema/entitySchema'
 import { clamp } from '../step/geometry'
 import {
@@ -133,8 +134,11 @@ export const doorSpawnPoint: {
   }
 })
 
-const distanceSquared = (first: Vector, second: Vector): number =>
-  (first.x - second.x) ** 2 + (first.y - second.y) ** 2
+const distanceSquared = (first: Vector, second: Vector): number => {
+  const dx = first.x - second.x
+  const dy = first.y - second.y
+  return dx * dx + dy * dy
+}
 
 export const nearestDoor: {
   (position: Vector): (level: Level) => Door
@@ -158,7 +162,7 @@ export const nearestDoor: {
 // NOTE: a ray is sampled at `steps + 1` evenly spaced points, the first on
 // `from` and the last on `to`. Rays walk the samples as plain numbers.
 const stepsAlong = (from: Vector, to: Vector, stepPx: number): number =>
-  Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / stepPx))
+  Math.max(1, Math.ceil(DetMath.hypot(to.x - from.x, to.y - from.y) / stepPx))
 
 const isSolidPoint = (level: Level, x: number, y: number): boolean =>
   isSolidTile(level, tileCoordinate(x), tileCoordinate(y))
@@ -275,7 +279,7 @@ const isLaneClear = (
   }
   const steps = Math.max(
     1,
-    Math.ceil(Math.hypot(toX - fromX, toY - fromY) / LINE_OF_SIGHT_STEP_PX),
+    Math.ceil(DetMath.hypot(toX - fromX, toY - fromY) / LINE_OF_SIGHT_STEP_PX),
   )
   const dx = toX - fromX
   const dy = toY - fromY
@@ -317,7 +321,7 @@ export const hasClearPath: {
 } = Function.dual(
   4,
   (level: Level, from: Vector, to: Vector, halfWidth: number): boolean => {
-    const length = Math.hypot(to.x - from.x, to.y - from.y)
+    const length = DetMath.hypot(to.x - from.x, to.y - from.y)
     if (length <= 0) {
       return !isSolidAt(level, from)
     }

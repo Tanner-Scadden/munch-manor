@@ -2,6 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS, ZOMBIE_HIT_PULSE_MS } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
 import {
   type Blow,
@@ -336,7 +337,7 @@ const launch = (
   )
   const durationMs = Math.max(
     1,
-    (Math.hypot(to.x - from.x, to.y - from.y) / COOKER_RULES.speedPx) * 1000,
+    (DetMath.hypot(to.x - from.x, to.y - from.y) / COOKER_RULES.speedPx) * 1000,
   )
   const lob: Lob = {
     id: world.nextEntityId,
@@ -613,7 +614,7 @@ const smash = (world: World, slot: PlayerSlot): Swing => {
   const { player } = seatStateAt(world, slot)
   const isNear = (zombie: Zombie): boolean =>
     isGrounded(zombie) &&
-    Math.hypot(zombie.x - player.x, zombie.y - player.y) -
+    DetMath.hypot(zombie.x - player.x, zombie.y - player.y) -
       bodyRadiusOf(zombie) <=
       PAN_RULES.smashRadius
   const swing = swingAt(
@@ -920,7 +921,7 @@ const isSplashedBy =
     zombie.id !== source.id &&
     isGrounded(zombie) &&
     isSmallKind(zombie.kind) &&
-    Math.hypot(zombie.x - source.x, zombie.y - source.y) -
+    DetMath.hypot(zombie.x - source.x, zombie.y - source.y) -
       bodyRadiusOf(zombie) <=
       FREEZE_RULES.splashPx
 

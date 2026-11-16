@@ -1,8 +1,6 @@
 // The harness inside workerd, the runtime of Workers and Durable Objects.
 // build.ts bundles it to out/worker.js and crossEngine.ts serves it with the
 // workerd binary from infra/. GET /?<request> answers with the engine's JSON.
-// A request with detMath=1 swaps Math functions for the rest of the
-// isolate's life, so crossEngine.ts starts one workerd per request.
 
 import './globals'
 import { answer } from './engine'

@@ -23,7 +23,7 @@ import {
 import { CELLAR_ROOM_ID } from '../../world/level/plan'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
-import { clamp, distanceBetween } from '../../world/step/geometry'
+import { clamp, distanceBetween, hundredths } from '../../world/step/geometry'
 import { beamReach } from '../cellarDark'
 import { rect } from '../drawing'
 import type { Mote } from './air'
@@ -239,9 +239,6 @@ export const mirrorOf = (spec: FlameSpec): Mirror => {
     coreRgb: rgbOf(mixColor({ from: color, to: 0xffffff, share: 0.55 })),
   }
 }
-
-export const hundredths = (value: number): number =>
-  Math.round(value * 100) / 100
 
 const boxOfRows = (rows: Array.NonEmptyReadonlyArray<PuddleRow>) => ({
   top: Array.headNonEmpty(rows).y,

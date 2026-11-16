@@ -8,6 +8,7 @@ import {
   ZOMBIE_ENTRY_SPEED,
   ZOMBIE_KNOCKBACK_DECAY_PER_SECOND,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { appendOrSame } from '../../shared/sameList'
 import { darkBoxOf, darkPaceAt } from '../cellar/bulb'
 import { chillPace } from '../fridge/fridgeWeapons'
@@ -123,7 +124,7 @@ export const separationPushes = (
       if (
         (ids[other] ?? 0) !== id &&
         !(deltaX * deltaX + deltaY * deltaY > farSquared) &&
-        !(Math.hypot(deltaX, deltaY) >= reach)
+        !(DetMath.hypot(deltaX, deltaY) >= reach)
       ) {
         inReach[kept] = other
         kept++
@@ -143,7 +144,7 @@ export const separationPushes = (
       const deltaX = x - (xs[other] ?? 0)
       const deltaY = y - (ys[other] ?? 0)
       const reach = radius + (radii[other] ?? 0)
-      const distance = Math.hypot(deltaX, deltaY)
+      const distance = DetMath.hypot(deltaX, deltaY)
       const otherMass = masses[other] ?? 1
       const share = (2 * otherMass) / (mass + otherMass)
       const strength = ((reach - distance) / reach) * share
@@ -497,7 +498,7 @@ const maybeFootfall =
         return Option.none()
       }
 
-      const distance = Math.hypot(zombie.x - player.x, zombie.y - player.y)
+      const distance = DetMath.hypot(zombie.x - player.x, zombie.y - player.y)
       return Option.some(
         GameEvent.Footfall({
           x: zombie.x,

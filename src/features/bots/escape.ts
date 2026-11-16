@@ -1,6 +1,7 @@
 import { Array, Function, Option } from 'effect'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import {
   type Level,
   TILE_PLAYER_SOLID,
@@ -53,7 +54,7 @@ export type Threat = Readonly<{ at: Vector; radius: number }>
 
 const unitAt = (index: number, count: number): Vector => {
   const angle = (index / count) * Math.PI * 2
-  return { x: Math.cos(angle), y: Math.sin(angle) }
+  return { x: DetMath.cos(angle), y: DetMath.sin(angle) }
 }
 
 const HEADING_UNITS: ReadonlyArray<Vector> = Array.map(

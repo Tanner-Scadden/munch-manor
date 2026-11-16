@@ -14,6 +14,7 @@ import type {
 } from '@munch/netcode'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { type Calling, callingOfCode } from '../../shared/playerData'
 import { rollDare } from '../dare/dare'
 import type { DareKind } from '../dare/dareSchema'
@@ -776,7 +777,7 @@ export const predictOwn: {
 )
 
 const gapOf = (a: OwnSeat, b: OwnSeat): number =>
-  Math.hypot(a.player.x - b.player.x, a.player.y - b.player.y)
+  DetMath.hypot(a.player.x - b.player.x, a.player.y - b.player.y)
 
 const blendOwn = (from: OwnSeat, to: OwnSeat, t: number): OwnSeat => ({
   ...to,

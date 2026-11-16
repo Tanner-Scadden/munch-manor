@@ -266,6 +266,90 @@ const noRawJson = defineRule({
   },
 })
 
+// NOTE: the Math functions whose last bit each engine rounds its own way
+// (src/shared/detMath.ts), and `Math` or `globalThis.Math` they hang off.
+const UNSTABLE_MATH: ReadonlySet<string> = new Set([
+  'acos',
+  'acosh',
+  'asin',
+  'asinh',
+  'atan',
+  'atan2',
+  'atanh',
+  'cbrt',
+  'cos',
+  'cosh',
+  'exp',
+  'expm1',
+  'hypot',
+  'log',
+  'log10',
+  'log1p',
+  'log2',
+  'pow',
+  'sin',
+  'sinh',
+  'tan',
+  'tanh',
+])
+
+const isMathObject = (node: ESTree.Expression): boolean =>
+  (node.type === 'Identifier' && node.name === 'Math') ||
+  (node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.object.type === 'Identifier' &&
+    node.object.name === 'globalThis' &&
+    node.property.type === 'Identifier' &&
+    node.property.name === 'Math')
+
+// NOTE: `2 ** n` is exact on every engine, a power of two being exactly a
+// double; any other base goes through the engine's own pow.
+const isLiteralTwo = (node: ESTree.Node): boolean =>
+  node.type === 'Literal' && node.value === 2
+
+const stableMath = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Use src/shared/detMath.ts, not Math functions or `**` whose last bit differs between engines, where the World and the intent it reads are stepped.',
+    },
+  },
+  create(context) {
+    return {
+      MemberExpression(node) {
+        if (
+          isMathObject(node.object) &&
+          hasName(UNSTABLE_MATH, propertyName(node))
+        ) {
+          context.report({
+            node,
+            message: `Math.${propertyName(node) ?? ''} rounds its last bit differently in JavaScriptCore and V8, so the step plays differently on each engine: use DetMath from src/shared/detMath.ts (AGENTS.md "Keep the game deterministic").`,
+          })
+        }
+      },
+      BinaryExpression(node) {
+        if (node.operator === '**' && !isLiteralTwo(node.left)) {
+          context.report({
+            node,
+            message:
+              '`**` is the engine\'s own pow, which rounds its last bit differently in JavaScriptCore and V8: multiply, or raise the literal 2 (AGENTS.md "Keep the game deterministic").',
+          })
+        }
+      },
+      AssignmentExpression(node) {
+        if (node.operator === '**=') {
+          context.report({
+            node,
+            message:
+              '`**=` is the engine\'s own pow, which rounds its last bit differently in JavaScriptCore and V8: multiply instead (AGENTS.md "Keep the game deterministic").',
+          })
+        }
+      },
+    }
+  },
+})
+
 // NOTE: the name m in `{ model: m }`, `{ model }`, or `unchanged(m)`: a
 // Step's result that changes nothing. Anything else has no name.
 const bareModelName = (node: ESTree.Expression): string | undefined => {
@@ -1075,5 +1159,6 @@ export default definePlugin({
     'no-string-key-per-frame': noStringKeyPerFrame,
     'no-nested-scan': noNestedScan,
     'step-world-alone': stepWorldAlone,
+    'stable-math': stableMath,
   },
 })

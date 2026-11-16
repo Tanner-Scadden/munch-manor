@@ -2,6 +2,7 @@ import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { BULLET_STEP_PX } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { type Level, levelOf, maybeExit } from '../level/arena'
 import { KITCHEN_EXIT, boxAround } from '../level/exits'
 import {
@@ -280,7 +281,7 @@ const canSlip = (zombie: Zombie): boolean =>
 const skidOf = (zombie: Zombie, before: Vector): Vector => {
   const deltaX = zombie.x - before.x
   const deltaY = zombie.y - before.y
-  const length = Math.hypot(deltaX, deltaY)
+  const length = DetMath.hypot(deltaX, deltaY)
   const speed = SOUP_RULES.skidSpeed * statsOf(zombie).knockbackScale
   return length > 0
     ? { x: (deltaX / length) * speed, y: (deltaY / length) * speed }

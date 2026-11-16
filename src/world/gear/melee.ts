@@ -2,6 +2,7 @@ import { Array, Function, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { isCoop, modifySeatRecord } from '../party/party'
 import type { World } from '../schema/world'
 import {
@@ -37,12 +38,12 @@ export const isSmallKind = (kind: ZombieKind): boolean =>
   Array.contains(SMALL_KINDS, kind)
 
 const angleBetween = (facing: Vector, to: Vector): number => {
-  const length = Math.hypot(to.x, to.y)
+  const length = DetMath.hypot(to.x, to.y)
   if (length === 0) {
     return 0
   }
   const dot = (facing.x * to.x + facing.y * to.y) / length
-  return Math.acos(Math.max(-1, Math.min(1, dot)))
+  return DetMath.acos(Math.max(-1, Math.min(1, dot)))
 }
 
 // NOTE: whether a zombie's body is within `reachPx` of the player's edge
@@ -63,7 +64,7 @@ export const isInArc: {
   (player: Player, reachPx: number, halfArc: number) =>
     (zombie: Zombie): boolean => {
       const offset = { x: zombie.x - player.x, y: zombie.y - player.y }
-      const distance = Math.hypot(offset.x, offset.y)
+      const distance = DetMath.hypot(offset.x, offset.y)
       return (
         distance - bodyRadiusOf(zombie) - PLAYER_RADIUS <= reachPx &&
         (distance <= PLAYER_RADIUS + bodyRadiusOf(zombie) ||
@@ -197,7 +198,7 @@ export const maybeNearest: {
             Array.min(
               met,
               Order.mapInput(Order.Number, (zombie: Zombie) =>
-                Math.hypot(zombie.x - player.x, zombie.y - player.y),
+                DetMath.hypot(zombie.x - player.x, zombie.y - player.y),
               ),
             ),
           ),

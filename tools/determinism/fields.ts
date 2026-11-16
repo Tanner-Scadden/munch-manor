@@ -94,6 +94,8 @@ export const FIELD_CLASSES = {
   kitchenTour: 'Client',
   maybeOpenHelpCard: 'Client',
   lastDevice: 'Client',
+  missedKeyDowns: 'Client',
+  updateGreeting: 'Client',
   recordUnlock: 'Client',
   recorder: 'Client',
   touchControls: 'Client',

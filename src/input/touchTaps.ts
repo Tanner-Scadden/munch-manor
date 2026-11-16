@@ -1,4 +1,6 @@
 import { Function } from 'effect'
+
+import * as DetMath from '../shared/detMath'
 // NOTE: taps on touch screens, made from each finger's own pointer events
 // instead of the browser's click.
 //
@@ -82,7 +84,8 @@ export const listenForTouchTaps: {
     }
     const isHeld = event.timeStamp - press.timeStamp > TAP_MAX_MS
     const isDragged =
-      Math.hypot(event.clientX - press.x, event.clientY - press.y) > TAP_SLOP_PX
+      DetMath.hypot(event.clientX - press.x, event.clientY - press.y) >
+      TAP_SLOP_PX
     if (isHeld || isDragged) {
       return
     }

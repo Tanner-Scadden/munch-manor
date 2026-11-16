@@ -126,7 +126,8 @@ const puddleRowsOf = (
   const halfDepth = 3 + Math.floor(tileRoll(column, row, 4) * 2)
   const rowAt = (index: number): PuddleRow => {
     const dy = index - halfDepth
-    const share = Math.sqrt(1 - (dy / (halfDepth + 0.5)) ** 2)
+    const across = dy / (halfDepth + 0.5)
+    const share = Math.sqrt(1 - across * across)
     const half = Math.max(1, Math.round(halfWidth * share))
     const nibble = (side: number): number =>
       tileRoll(column, row, 10 + index * 2 + side) < 0.35 ? 1 : 0

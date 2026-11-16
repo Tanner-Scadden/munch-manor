@@ -1,6 +1,7 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import * as DetMath from '../../shared/detMath'
 import { KEY_RULES, grantKeys } from '../keys/keys'
 import type { World } from '../schema/world'
 import {
@@ -126,7 +127,7 @@ const hasPackmateNear = (
       isWalking(other) &&
       isFrenziedFrenzy(other.frenzy) &&
       other.frenzy.pack === pack &&
-      Math.hypot(other.x - zombie.x, other.y - zombie.y) <=
+      DetMath.hypot(other.x - zombie.x, other.y - zombie.y) <=
         FRENZY_RULES.togetherPx,
   )
 

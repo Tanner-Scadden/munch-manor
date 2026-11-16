@@ -9,6 +9,7 @@ import {
   PLAYER_RADIUS,
   ZOMBIE_HIT_PULSE_MS,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { trapBlastTarget } from '../gear/traps'
 import { woundGraceScaleOf } from '../heroes/calling'
 import { levelOf } from '../level/arena'
@@ -399,7 +400,7 @@ const nearestStandingSlot = (
     Array.filter(({ seat }) => isStanding(seat)),
     Array.map(({ seat, player }) => ({
       slot: seat.slot,
-      distance: Math.hypot(player.x - at.x, player.y - at.y),
+      distance: DetMath.hypot(player.x - at.x, player.y - at.y),
     })),
     Array.match({
       onEmpty: () => Option.none(),

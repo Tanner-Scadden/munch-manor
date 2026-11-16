@@ -7,6 +7,7 @@ import {
   PLAYER_RADIUS,
   ZOMBIE_BUMP_SPEED,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { sameIfUnchanged } from '../../shared/sameList'
 import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
 import { TURRET_WEAPON } from '../gear/traps'
@@ -83,7 +84,7 @@ const maybeContact = (
     ? Option.some({
         zombie,
         point,
-        reach: Math.hypot(point.x - from.x, point.y - from.y),
+        reach: DetMath.hypot(point.x - from.x, point.y - from.y),
       })
     : Option.none()
 }

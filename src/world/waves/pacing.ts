@@ -20,6 +20,7 @@ import {
   RESTLESS_QUIET_MAX_MS,
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
+import * as DetMath from '../../shared/detMath'
 import { sameIfUnchanged } from '../../shared/sameList'
 import { type Level, levelOf } from '../level/arena'
 import { boxCenter, distanceToBox } from '../level/tileGrid'
@@ -763,7 +764,8 @@ const isClose =
   (player: Vector) =>
   (zombie: Zombie): boolean =>
     isFree(zombie) &&
-    Math.hypot(zombie.x - player.x, zombie.y - player.y) <= INTENSITY_CLOSE_PX
+    DetMath.hypot(zombie.x - player.x, zombie.y - player.y) <=
+      INTENSITY_CLOSE_PX
 
 // NOTE: Intensity is a hidden measure of how hard the last few seconds were.
 // It never draws from the seeded generator and never changes which zombie
@@ -800,7 +802,8 @@ export const advanceIntensity: {
       // oxlint-disable-next-line munch/no-nested-scan
       Array.some(players, player => isClose(player)(zombie)),
     ).length
-    const decayed = intensity * Math.exp(-INTENSITY_DECAY_PER_SECOND * seconds)
+    const decayed =
+      intensity * DetMath.exp(-INTENSITY_DECAY_PER_SECOND * seconds)
     return Math.min(
       INTENSITY_MAX,
       decayed +

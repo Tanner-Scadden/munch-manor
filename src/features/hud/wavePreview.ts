@@ -10,6 +10,7 @@ import { BOSS_ICON } from '../../art/sprites/zombies'
 import { type Camera, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { type Box, screenOf } from '../../render/screen'
+import * as DetMath from '../../shared/detMath'
 import { type Level, levelOf } from '../../world/level/arena'
 import { exitBoxOf } from '../../world/level/exits'
 import { DOOR_OUTWARD } from '../../world/level/tileGrid'
@@ -105,7 +106,7 @@ const arrowShapes = (
 const markerEdgeOpacity = (elapsedMs: number): number =>
   DOOR_MARKER_EDGE_DIM +
   (1 - DOOR_MARKER_EDGE_DIM) *
-    (0.5 + 0.5 * Math.sin((FULL_TURN * elapsedMs) / DOOR_MARKER_PULSE_MS))
+    (0.5 + 0.5 * DetMath.sin((FULL_TURN * elapsedMs) / DOOR_MARKER_PULSE_MS))
 
 // NOTE: where a door's marker goes. A marker shows only for a door whose
 // spot is on the screen, never one above or below the window, so nothing

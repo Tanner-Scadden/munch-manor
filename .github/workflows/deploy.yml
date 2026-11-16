@@ -50,9 +50,12 @@ jobs:
             run: bun run test:full -- --shard=4/4
           # NOTE: world:check bundles the co-op room's step with no UI, art,
           # audio, or store module and plays it in workerd exactly as in Bun
-          # (MULTIPLAYER.md, Phase 0).
+          # (MULTIPLAYER.md, Phase 0). determinism:ci plays a scripted
+          # campaign and an Endless run in Bun (JavaScriptCore), Node, and
+          # workerd (V8) and fails on the first bit they disagree on, which
+          # a Math function rounded by the engine causes (src/shared/detMath.ts).
           - name: build
-            run: bun run world:check && bun run build && cd infra && bun run test
+            run: bun run world:check && bun run determinism:ci && bun run build && cd infra && bun run test
     name: check (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4

@@ -27,7 +27,7 @@ import {
 import type { World } from '../../world/schema/worldSchema'
 import { stationBoxOf } from '../../world/stations/stationSpots'
 import { TOOL_RULES } from '../../world/stations/toolRules'
-import { clamp } from '../../world/step/geometry'
+import { clamp, hundredths } from '../../world/step/geometry'
 import { rect } from '../drawing'
 import { isRoomOpen } from '../room/room'
 import type { Mote } from './air'
@@ -37,7 +37,6 @@ import {
   type Mirror,
   STRIKE_RGB,
   STRIKE_STEPS,
-  hundredths,
   mirrorOf,
 } from './leaks'
 import { type FlameKind, flameSpecsOf } from './lightSpecs'
