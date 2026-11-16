@@ -1,5 +1,4 @@
 import { Function, Option, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
 import {
   BLOOD_DRAG_PER_SECOND,
@@ -268,95 +267,113 @@ const DECAL_HEIGHT: Readonly<Record<DecalKind, (size: number) => number>> = {
   StockPot: () => 4,
 }
 
-type ParticleStep = Result.Result<Particle, Option.Option<Decal>>
-
-const flying = (particle: Particle): ParticleStep => Result.succeed(particle)
-
-const LEFT_NOTHING: ParticleStep = Result.fail(Option.none())
-
-const leftDecal = (decal: Decal): ParticleStep =>
-  Result.fail(Option.some(decal))
-
 const isOnFloor = (level: Level, x: number, y: number): boolean =>
   isInsideRoomAt(level, { x, y }) && !isSolidAt(level, { x, y })
 
-const land = (
+// NOTE: the decal a particle leaves where it lands, if its kind leaves one
+// and it lands on the floor.
+const landedDecal = (
   level: Level,
   particle: Particle,
   x: number,
   y: number,
-): ParticleStep => {
+): Option.Option<Decal> => {
   const floorX = Math.round(x)
   const floorY = Math.round(y)
-  return Option.match(PHYSICS[particle.kind].maybeDecalKind, {
-    onNone: () => LEFT_NOTHING,
-    onSome: kind =>
-      isOnFloor(level, floorX, floorY)
-        ? leftDecal({
-            kind,
-            x: floorX,
-            y: floorY,
-            width: particle.size,
-            height: DECAL_HEIGHT[kind](particle.size),
-          })
-        : LEFT_NOTHING,
-  })
+  return Option.filterMap(PHYSICS[particle.kind].maybeDecalKind, kind =>
+    isOnFloor(level, floorX, floorY)
+      ? Result.succeed({
+          kind,
+          x: floorX,
+          y: floorY,
+          width: particle.size,
+          height: DECAL_HEIGHT[kind](particle.size),
+        })
+      : Result.failVoid,
+  )
 }
 
-export const stepParticle: {
+// NOTE: the particles still flying after a step, in order, and the decals
+// the ones that landed left.
+export type SteppedParticles = Readonly<{
+  flying: ReadonlyArray<Particle>
+  decals: ReadonlyArray<Decal>
+}>
+
+// NOTE: every particle steps on every frame, up to PARTICLE_MAX of them, so
+// the step is one loop that builds each moved particle as one object: no
+// Result per particle to partition and no closure per field. Each kind's
+// drag for the step's time is worked out once. A moved particle keeps its
+// fields in their order, as a field copy would.
+export const stepParticles: {
   (
     seconds: number,
     deltaMs: number,
-  ): (level: Level) => (particle: Particle) => ParticleStep
+    particles: ReadonlyArray<Particle>,
+  ): (level: Level) => SteppedParticles
   (
     level: Level,
     seconds: number,
     deltaMs: number,
-  ): (particle: Particle) => ParticleStep
+    particles: ReadonlyArray<Particle>,
+  ): SteppedParticles
 } = Function.dual(
-  3,
-  (level: Level, seconds: number, deltaMs: number) =>
-    (particle: Particle): ParticleStep => {
+  4,
+  (
+    level: Level,
+    seconds: number,
+    deltaMs: number,
+    particles: ReadonlyArray<Particle>,
+  ): SteppedParticles => {
+    const flying: Array<Particle> = []
+    const decals: Array<Decal> = []
+    const drags = new Map<ParticleKind, number>()
+    for (const particle of particles) {
       const physics = PHYSICS[particle.kind]
       const remainingMs = particle.remainingMs - deltaMs
       if (remainingMs <= 0) {
-        return LEFT_NOTHING
+        continue
       }
-
-      const drag = Math.exp(-physics.dragPerSecond * seconds)
       const velocityZ = particle.velocityZ - physics.gravity * seconds
       const x = particle.x + particle.velocityX * seconds
       const y = particle.y + particle.velocityY * seconds
       const z = particle.z + velocityZ * seconds
       const isTouchingDown = z <= 0 && velocityZ < 0
       const reboundSpeed = -velocityZ * physics.restitution
-
       if (!isTouchingDown) {
-        return flying(
-          modifyFields(particle, {
-            x: () => x,
-            y: () => y,
-            z: () => z,
-            velocityX: velocityX => velocityX * drag,
-            velocityY: velocityY => velocityY * drag,
-            velocityZ: () => velocityZ,
-            remainingMs: () => remainingMs,
-          }),
-        )
+        const knownDrag = drags.get(particle.kind)
+        const drag = knownDrag ?? Math.exp(-physics.dragPerSecond * seconds)
+        if (knownDrag === undefined) {
+          drags.set(particle.kind, drag)
+        }
+        flying.push({
+          ...particle,
+          x,
+          y,
+          z,
+          velocityX: particle.velocityX * drag,
+          velocityY: particle.velocityY * drag,
+          velocityZ,
+          remainingMs,
+        })
       } else if (reboundSpeed > PARTICLE_BOUNCE_MIN_SPEED) {
-        return flying(
-          modifyFields(particle, {
-            x: () => x,
-            y: () => y,
-            z: () => 0,
-            velocityX: velocityX => velocityX * PARTICLE_BOUNCE_FRICTION,
-            velocityY: velocityY => velocityY * PARTICLE_BOUNCE_FRICTION,
-            velocityZ: () => reboundSpeed,
-            remainingMs: () => remainingMs,
-          }),
-        )
+        flying.push({
+          ...particle,
+          x,
+          y,
+          z: 0,
+          velocityX: particle.velocityX * PARTICLE_BOUNCE_FRICTION,
+          velocityY: particle.velocityY * PARTICLE_BOUNCE_FRICTION,
+          velocityZ: reboundSpeed,
+          remainingMs,
+        })
       } else {
-        return land(level, particle, x, y)
+        const landed = landedDecal(level, particle, x, y)
+        if (Option.isSome(landed)) {
+          decals.push(landed.value)
+        }
       }
-    },
+    }
+    return { flying, decals }
+  },
 )

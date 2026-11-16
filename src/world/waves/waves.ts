@@ -533,11 +533,15 @@ const releaseDue = (
   routed: ReadonlyArray<PlannedSpawn>,
   clockMs: number,
 ): Readonly<{ model: World; pending: ReadonlyArray<PlannedSpawn> }> => {
-  const paired = Array.zip(spawns, routed)
-  const due = Array.filter(paired, ([spawn]) => spawn.atMs <= clockMs)
-  if (Array.isReadonlyArrayEmpty(due)) {
+  // NOTE: most ticks nothing is due, so the plan is checked before it is
+  // paired with its routes.
+  if (!Array.some(spawns, spawn => spawn.atMs <= clockMs)) {
     return { model, pending: spawns }
   }
+  const due = Array.filter(
+    Array.zip(spawns, routed),
+    ([spawn]) => spawn.atMs <= clockMs,
+  )
 
   const later = Array.filter(spawns, spawn => spawn.atMs > clockMs)
   const room = Math.max(0, ZOMBIE_ALIVE_MAX - model.zombies.length)

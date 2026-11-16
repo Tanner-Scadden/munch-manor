@@ -43,6 +43,9 @@ describe('the work budget', () => {
       const counts = workCounts()
       expect(counts.MapScan).toBe(0)
       expect(counts.FlowField).toBeLessThanOrEqual(1)
+      // NOTE: the exits for sale and the stations open are read off the
+      // level once, never again while it stands.
+      expect(counts.LevelTable).toBe(0)
     }),
   )
 
@@ -69,6 +72,7 @@ describe('the work budget', () => {
       expect(counts.MapScan).toBe(0)
       expect(counts.FlowField).toBeLessThanOrEqual(Math.ceil(tilesCrossed) + 2)
       expect(counts.FlowField).toBeLessThan(FRAMES / 4)
+      expect(counts.LevelTable).toBe(0)
     }),
   )
 })

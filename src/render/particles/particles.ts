@@ -110,7 +110,7 @@ import {
   woodBits,
   zombieGround,
 } from './particleBursts'
-import { stepParticle } from './particlePhysics'
+import { stepParticles } from './particlePhysics'
 
 // NOTE: keys found (src/world/keys/keys.ts) throw a few gold glints and
 // sparks where they came from, on their way to the ring.
@@ -446,13 +446,16 @@ export const advanceParticles: {
 } = Function.dual(
   3,
   (model: Model, seconds: number, deltaMs: number): Model => {
-    const [stillFlying, leftBehind] = Array.partition(
+    const stepped = stepParticles(
+      levelOf(model),
+      seconds,
+      deltaMs,
       model.cosmetics.particles,
-      stepParticle(levelOf(model), seconds, deltaMs),
     )
+    const stillFlying = stepped.flying
     const landed = [
       ...Array.flatMap(model.frameEvents, scorchDecals),
-      ...Array.getSomes(leftBehind),
+      ...stepped.decals,
     ]
 
     const [eventState, eventBatches] = Array.mapAccum(

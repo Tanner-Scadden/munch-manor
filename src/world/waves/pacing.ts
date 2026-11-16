@@ -356,8 +356,15 @@ export const waitingCount: {
   (spawns: ReadonlyArray<PlannedSpawn>, clockMs: number): number
 } = Function.dual(
   2,
-  (spawns: ReadonlyArray<PlannedSpawn>, clockMs: number): number =>
-    Array.filter(spawns, isDue(clockMs)).length,
+  (spawns: ReadonlyArray<PlannedSpawn>, clockMs: number): number => {
+    let waiting = 0
+    for (const spawn of spawns) {
+      if (spawn.atMs <= clockMs) {
+        waiting++
+      }
+    }
+    return waiting
+  },
 )
 
 // TELEGRAPHS
@@ -495,25 +502,26 @@ export const packsWaitingToWarn: {
     )
     if (isHeld) {
       return Array.map(packs, ({ pack }) => pack)
+    } else if (Array.isReadonlyArrayEmpty(packs)) {
+      return noPacks
     }
 
-    const coming = Array.filter(
-      spawns,
-      spawn => isThroughDoor(spawn) && isWarned(warnedPacks)(spawn),
-    ).length
+    // NOTE: one pass over the plan counts the warned zombies still to come
+    // and each pack's size, rather than a pass for each pack due.
+    let coming = 0
+    const sizes = new Map<number, number>()
+    for (const spawn of spawns) {
+      if (isThroughDoor(spawn) && isWarned(warnedPacks)(spawn)) {
+        coming++
+      }
+      sizes.set(spawn.pack, (sizes.get(spawn.pack) ?? 0) + 1)
+    }
     return Array.reduce(
       packs,
       { places: ZOMBIE_ALIVE_MAX - zombieCount - coming, waiting: noPacks },
       ({ places, waiting }, { pack }) =>
         places > 0
-          ? {
-              places:
-                places -
-                // NOTE: only the packs due to warn on this tick, a few.
-                // oxlint-disable-next-line munch/no-nested-scan
-                Array.filter(spawns, spawn => spawn.pack === pack).length,
-              waiting,
-            }
+          ? { places: places - (sizes.get(pack) ?? 0), waiting }
           : { places, waiting: Array.append(waiting, pack) },
     ).waiting
   },
