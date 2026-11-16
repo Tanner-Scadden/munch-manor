@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest'
+import { Array } from 'effect'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { ShadowWatch } from '../shadowWatch'
 
@@ -131,5 +132,89 @@ describe('the shadow watch', () => {
     expect([watch.isChanged(0), watch.isChanged(1)]).toEqual([true, true])
     expect(frame(watch, [{ shape: ZOMBIE, x: 1 }])).toEqual([true, true])
     expect(frame(watch, [{ shape: ZOMBIE, x: 1 }])).toEqual([false, false])
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  // NOTE: the cone as the plain angles say it: the angle off its axis at
+  // most its half angle (with the spare) and the angle the sphere fills.
+  const isInConePlainly = (
+    cone: (typeof CONES)[number],
+    x: number,
+    y: number,
+    z: number,
+    radius: number,
+  ): boolean => {
+    const axis = {
+      x: cone.to.x - cone.from.x,
+      y: cone.to.y - cone.from.y,
+      z: cone.to.z - cone.from.z,
+    }
+    const length = Math.hypot(axis.x, axis.y, axis.z)
+    const dx = x - cone.from.x
+    const dy = y - cone.from.y
+    const dz = z - cone.from.z
+    const distance = Math.hypot(dx, dy, dz)
+    if (distance <= radius) {
+      return true
+    }
+    if (distance - radius > cone.range) {
+      return false
+    }
+    const cos = (dx * axis.x + dy * axis.y + dz * axis.z) / (distance * length)
+    const angle = Math.acos(Math.max(-1, Math.min(1, cos)))
+    const half = ((cone.coneAngle + 2) * Math.PI) / 180
+    return angle <= half + Math.asin(radius / distance)
+  }
+
+  test('a cone holds the casters the plain angles put in it', () => {
+    const watch = watching()
+    // NOTE: a sweep across both cones, near and far, low and high, small
+    // and big, steering clear of the edge itself, where rounding decides.
+    for (let x = -12; x <= 52; x += 1.37) {
+      for (let y = -4; y <= 26; y += 2.9) {
+        for (const radius of [0.4, 1.5, 4]) {
+          const elements = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, 0.3, 1]
+          watch.begin()
+          watch.end()
+          watch.begin()
+          watch.cast({
+            shape: ZOMBIE,
+            elements,
+            center: { x: 0, y: 0, z: 0 },
+            radius,
+          })
+          watch.end()
+          const seen = [watch.isChanged(0), watch.isChanged(1)]
+          // NOTE: the watch grows a sphere by the matrix's whole size, the
+          // root of its nine turn and scale terms squared: here three ones.
+          const grown = radius * Math.sqrt(3)
+          expect(seen, `${x}, ${y}, ${radius}`).toEqual(
+            Array.map(CONES, cone => isInConePlainly(cone, x, y, 0.3, grown)),
+          )
+        }
+      }
+    }
+  })
+
+  // NOTE: every caster is tested against every fill's cone every frame, so
+  // the test compares cosines and squares, never the trigonometry and roots
+  // that once cost about 1.5% of a busy frame at 4x throttle.
+  test('a cast calls no acos, asin, or hypot', () => {
+    const watch = watching()
+    const calls = [
+      vi.spyOn(Math, 'acos'),
+      vi.spyOn(Math, 'asin'),
+      vi.spyOn(Math, 'hypot'),
+    ]
+    frame(watch, [
+      { shape: ZOMBIE, x: 1 },
+      { shape: CRATE, x: 7 },
+      { shape: ZOMBIE, x: 39 },
+      { shape: CRATE, x: 20 },
+    ])
+    expect(Array.map(calls, call => call.mock.calls.length)).toEqual([0, 0, 0])
   })
 })

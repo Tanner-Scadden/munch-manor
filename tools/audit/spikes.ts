@@ -1,5 +1,6 @@
 import { Array, Config, Console, Effect, Option, Schema, String } from 'effect'
 
+import { encodeJson } from '../json'
 import { runHarnessAudit } from './harnessServer'
 import { desktop, harnessUrl, openBrowser, sceneReady, wait } from './lib'
 import { type TraceEvent, collectTrace } from './measure'
@@ -84,6 +85,13 @@ runHarnessAudit(
     )
     yield* wait(MS)
     const { profile } = yield* attempt(() => cdp.send('Profiler.stop'))
+    // NOTE: `DUMP=path` saves the raw CPU profile, as profile.ts does, for a
+    // closer read (or Chrome's Performance panel).
+    const dump = yield* Config.String('DUMP').pipe(Config.withDefault(''))
+    if (dump !== '') {
+      const text = encodeJson(Schema.Unknown)(profile)
+      yield* attempt(() => Bun.write(dump, text))
+    }
     yield* attempt(() =>
       page.evaluate(() => {
         window.__frameStamps = [...(window.__frameStamps ?? [])]
