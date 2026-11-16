@@ -36,7 +36,13 @@ import { DARE_LIST_BUTTON_CLASS } from '../screens/game/dareListButton'
 import { isRunUnderway } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
 import { makeSubscriptions } from './definition'
-import { OPEN_GATE, gateFrame } from './frameGate'
+import {
+  FramePace,
+  OPEN_GATE,
+  framePaceOf,
+  gateFor,
+  gateFrame,
+} from './frameGate'
 import {
   type BlurredWindow,
   type CancelledPointer,
@@ -367,34 +373,36 @@ const syncMessageOf = (event: StoreEvent) =>
 // while the round or an end screen is moving, through the frame gate
 // (src/app/frameGate.ts): a fast screen's frames that owe no sim tick are
 // held and sent with the next, so the game draws at most about 60 a
-// second. A hidden tab gets no frames,
-// so the first delta after it comes back can be seconds long: the update
-// clamps it (clampFrameDelta in src/app/frame.ts).
-const animationFrames = Stream.callback<TickedFrame>(queue =>
-  Effect.acquireRelease(
-    Effect.sync(() => {
-      const state = {
-        frameId: 0,
-        lastTime: performance.now(),
-        gate: OPEN_GATE,
-      }
-      const tick = (now: number) => {
-        const gated = gateFrame(state.gate, now - state.lastTime)
-        state.lastTime = now
-        state.gate = gated.gate
-        Option.match(gated.sendMs, {
-          onNone: () => {},
-          onSome: deltaTime =>
-            Queue.offerUnsafe(queue, Message.TickedFrame({ deltaTime })),
-        })
+// second, and on the title and its menus at most 30. A hidden tab gets no
+// frames, so the first delta after it comes back can be seconds long: the
+// update clamps it (clampFrameDelta in src/app/frame.ts).
+const animationFrames = (pace: FramePace) =>
+  Stream.callback<TickedFrame>(queue =>
+    Effect.acquireRelease(
+      Effect.sync(() => {
+        const state = {
+          frameId: 0,
+          lastTime: performance.now(),
+          gate: OPEN_GATE,
+        }
+        const gate = gateFor(pace)
+        const tick = (now: number) => {
+          const gated = gate(state.gate, now - state.lastTime)
+          state.lastTime = now
+          state.gate = gated.gate
+          Option.match(gated.sendMs, {
+            onNone: () => {},
+            onSome: deltaTime =>
+              Queue.offerUnsafe(queue, Message.TickedFrame({ deltaTime })),
+          })
+          state.frameId = requestAnimationFrame(tick)
+        }
         state.frameId = requestAnimationFrame(tick)
-      }
-      state.frameId = requestAnimationFrame(tick)
-      return state
-    }),
-    state => Effect.sync(() => cancelAnimationFrame(state.frameId)),
-  ).pipe(Effect.flatMap(() => Effect.never)),
-)
+        return state
+      }),
+      state => Effect.sync(() => cancelAnimationFrame(state.frameId)),
+    ).pipe(Effect.flatMap(() => Effect.never)),
+  )
 
 type GamepadMessage = PolledGamepad | DisconnectedGamepad
 
@@ -500,7 +508,10 @@ const padRepeats = Stream.callback<RepeatedPadDirection>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 )
 
-const FrameActivity = Schema.Struct({ isActive: Schema.Boolean })
+const FrameActivity = Schema.Struct({
+  isActive: Schema.Boolean,
+  pace: FramePace,
+})
 
 // NOTE: the co-op room's frame clock, while its game is playing: the time
 // of each animation frame. The root ticks the room with it through the
@@ -561,11 +572,14 @@ export const subscriptions = makeSubscriptions(entry => ({
 
   frame: entry('Frame', FrameActivity.fields, {
     messages: [Message.TickedFrame],
-    modelToDependencies: model => ({ isActive: isFrameActive(model) }),
+    modelToDependencies: model => ({
+      isActive: isFrameActive(model),
+      pace: framePaceOf(model),
+    }),
     handler: function* () {
-      return ({ isActive }) =>
+      return ({ isActive, pace }) =>
         Stream.when(
-          animationFrames,
+          animationFrames(pace),
           Effect.sync(() => isActive),
         )
     },

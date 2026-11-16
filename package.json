@@ -17,6 +17,7 @@
     "test:full": "bun tools/heavy/testRun.ts --full",
     "perf:check": "bun tools/heavy/main.ts -- bun tools/audit/perf-check.ts",
     "perf:gpu": "bun tools/heavy/main.ts -- --shared bun tools/audit/gpuWork.ts",
+    "perf:menus": "bun tools/heavy/main.ts -- --shared bun tools/audit/menuWork.ts",
     "heavy": "bun tools/heavy/main.ts --",
     "determinism": "bun tools/heavy/main.ts -- bun tools/determinism/crossEngine.ts",
     "learn:replay": "bun tools/heavy/main.ts -- bun tools/learn/replay.ts",

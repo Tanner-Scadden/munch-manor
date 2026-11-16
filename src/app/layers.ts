@@ -37,6 +37,7 @@ import { cineBarShapes } from '../render/cine'
 import { IsoLens } from '../render/iso/diorama'
 import { worldElement } from '../render/iso/element'
 import type { IsoFrame } from '../render/iso/frame'
+import { holdKeyOf } from '../render/iso/hold'
 import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
 import { everyRoomImage } from '../render/room/room'
 import { FLOOR_COLOR } from '../render/room/roomPalette'
@@ -245,16 +246,20 @@ const preloadSourcesOf = (spec: LevelSpec): ReadonlyArray<string> => {
   return sources
 }
 
-const isoFrameOf = (model: Model, camera: Camera): IsoFrame => ({
-  model,
-  strata: worldStrataOf(model, camera),
-  camera,
-  lens: Phase.isAnyOf(['Ready'])(model.phase)
-    ? IsoLens.Diorama({ clockMs: model.screenMs })
-    : IsoLens.Play(),
-  shake: shakeOffset(model),
-  preload: preloadSourcesOf(levelOf(model).spec),
-})
+const isoFrameOf = (model: Model, camera: Camera): IsoFrame => {
+  const shake = shakeOffset(model)
+  return {
+    model,
+    strata: worldStrataOf(model, camera),
+    camera,
+    lens: Phase.isAnyOf(['Ready'])(model.phase)
+      ? IsoLens.Diorama({ clockMs: model.screenMs })
+      : IsoLens.Play(),
+    shake,
+    preload: preloadSourcesOf(levelOf(model).spec),
+    hold: holdKeyOf({ model, camera, shake }),
+  }
+}
 
 const worldView = (
   model: Model,
