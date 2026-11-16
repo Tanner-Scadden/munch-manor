@@ -363,30 +363,44 @@ const pointOf = (x: number, y: number, d: number): Point => [
   -d * DEPTH_BACK,
 ]
 
-// NOTE: a point of the blocks of a piece standing upright (`isUpright`),
-// in game pixels with no lean: x across, y straight up, z south. A grid row
-// of its art is 1 / cos PITCH tall, so its upright front shows the lens
-// the art's own rows, and a step of depth runs one game pixel north along
-// the floor. A block one deeper still sits one row lower, so each stack
-// runs back along the lens's ray as a leaning body's does.
-const UPRIGHT_ROW = 1 / Math.cos(PITCH)
+// NOTE: how far a piece standing upright (`isUpright`) leans back, in
+// radians from straight up: until the top of its front stands over the back
+// of its own blocks, `most` game pixels north of its foot, and never past
+// the lens's own lean. A front straight up is nearer the lens at its top
+// than at its foot, so the lens's slight perspective drew it wider at the
+// top, a cabinet tipping over; leaning back puts the top as far off as the
+// piece's own tiles allow, and a tall, deep cabinet stands nearly square to
+// the lens. Its top stays over its own tiles, so it reads as standing there
+// against its wall, never as lying back over the floor behind.
+export const uprightLeanOf = (
+  input: Readonly<{ rows: number; most: number }>,
+): number =>
+  Math.min(
+    PITCH,
+    Math.atan2(
+      input.most * Math.cos(PITCH),
+      Math.max(0, input.rows - input.most) * Math.sin(PITCH),
+    ),
+  )
+
+// NOTE: the points of the blocks of a piece standing upright, leaning back
+// (`uprightLeanOf`), in game pixels: x across, y up, z south. A grid row of
+// its art runs up its front, 1 / cos(PITCH - lean) long, so its front shows
+// the lens the art's own rows, and a step of depth runs one game pixel
+// north along the floor. A block one deeper still sits one row lower, so
+// each stack runs back along the lens's ray as a leaning body's does.
 const UPRIGHT_DEPTH = 1 / Math.sin(PITCH)
 
-const uprightPointOf = (x: number, y: number, d: number): Point => [
-  x,
-  -y * UPRIGHT_ROW,
-  -d * UPRIGHT_DEPTH,
-]
+const uprightPointsOf = (lean: number): PointAt => {
+  const row = 1 / Math.cos(PITCH - lean)
+  const up = Math.cos(lean) * row
+  const back = Math.sin(lean) * row
+  return (x, y, d) => [x, -y * up, y * back - d * UPRIGHT_DEPTH]
+}
 
 type PointAt = (x: number, y: number, d: number) => Point
 
 export const STRAIGHT_DOWN: Point = [0, -1, 0]
-
-// NOTE: an upright front is shaded as the floor it stands on, facing up
-// rather than straight out: the room's lights hang over the middle of the
-// room and on the walls behind the pieces, so a straight-out front would
-// catch little of them, and a piece by the south wall, facing it, none.
-const UPRIGHT_FRONT = UP_NORMAL
 
 const TOP_LENGTH = Math.hypot(DEPTH_BACK, 1)
 const FRONT: Point = SOUTH_NORMAL
@@ -439,15 +453,16 @@ class Builder {
 // corners as offsets in the grid (column, grid row, depth).
 type FaceSpec = Readonly<{
   normal: Point
-  // NOTE: the face's normal for a piece standing upright (`isUpright`).
-  uprightNormal: Point
+  // NOTE: the face's normal for a piece standing upright (`isUpright`),
+  // leaning back this far (`uprightLeanOf`).
+  uprightNormalOf: (lean: number) => Point
   neighbor: readonly [number, number, number]
   corners: readonly [Point, Point, Point, Point]
 }>
 
 const TOP_FACE: FaceSpec = {
   normal: TOP,
-  uprightNormal: UP_NORMAL,
+  uprightNormalOf: () => UP_NORMAL,
   neighbor: [0, -1, 0],
   corners: [
     [0, 0, 0],
@@ -460,7 +475,7 @@ const TOP_FACE: FaceSpec = {
 const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   {
     normal: BACK,
-    uprightNormal: BACK,
+    uprightNormalOf: lean => [0, -Math.sin(lean), -Math.cos(lean)],
     neighbor: [0, 0, 1],
     corners: [
       [0, 0, 1],
@@ -472,7 +487,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   TOP_FACE,
   {
     normal: BOTTOM,
-    uprightNormal: STRAIGHT_DOWN,
+    uprightNormalOf: () => STRAIGHT_DOWN,
     neighbor: [0, 1, 0],
     corners: [
       [0, 1, 0],
@@ -483,7 +498,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   },
   {
     normal: LEFT,
-    uprightNormal: LEFT,
+    uprightNormalOf: () => LEFT,
     neighbor: [-1, 0, 0],
     corners: [
       [0, 0, 0],
@@ -494,7 +509,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
   },
   {
     normal: RIGHT,
-    uprightNormal: RIGHT,
+    uprightNormalOf: () => RIGHT,
     neighbor: [1, 0, 0],
     corners: [
       [1, 0, 0],
@@ -507,7 +522,7 @@ const SIDE_FACES: ReadonlyArray<FaceSpec> = [
 
 const FRONT_FACE: FaceSpec = {
   normal: FRONT,
-  uprightNormal: UPRIGHT_FRONT,
+  uprightNormalOf: lean => [0, Math.sin(lean), Math.cos(lean)],
   neighbor: [0, 0, -1],
   corners: [
     [0, 0, 0],
@@ -516,6 +531,8 @@ const FRONT_FACE: FaceSpec = {
     [1, 0, 0],
   ],
 }
+
+const ALL_FACES: ReadonlyArray<FaceSpec> = [FRONT_FACE, ...SIDE_FACES]
 
 // NOTE: the blocks of a sprite's carve (`lensFormOf`): a face for every side
 // of a block that meets no other, each colored by the middle of a pixel
@@ -553,6 +570,9 @@ export const voxelMeshOf = ({
 }>): VoxelMeshData &
   Readonly<{
     lift: number
+    // NOTE: how far a piece standing upright leans back (`uprightLeanOf`),
+    // which its matrix stands it at too; 0 for the rest.
+    lean: number
     caster: CasterMeshData
     glow: VoxelMeshData | undefined
   }> => {
@@ -602,9 +622,10 @@ export const voxelMeshOf = ({
     row >= 0 && form.folded[row * width + column] === 1
   const shadeOf = (gridRow: number): number =>
     isGrounded ? sideShadeOf(floor - gridRow - 0.5) : 1
-  const pointAt: PointAt = isUpright ? uprightPointOf : pointOf
+  const lean = isUpright ? uprightLeanOf({ rows: height, most: depth }) : 0
+  const pointAt: PointAt = isUpright ? uprightPointsOf(lean) : pointOf
   const normalOf = (spec: FaceSpec): Point =>
-    isUpright ? spec.uprightNormal : spec.normal
+    isUpright ? spec.uprightNormalOf(lean) : spec.normal
   const out = new Builder()
   const glowOut = new Builder()
   const faceOf = (
@@ -683,10 +704,20 @@ export const voxelMeshOf = ({
           // NOTE: a folded pixel's tops stand for its front: its own
           // color, unshaded, as the art draws it.
           const isFoldTop = spec.normal === TOP && isFoldedAt(column, row - 1)
+          // NOTE: a side of a piece standing upright wears the front's
+          // color at its own height, so it shows level rows running back
+          // to the wall, not the art's rows slanting down the lens's ray.
+          const isUprightSide =
+            isUpright &&
+            spec.neighbor[0] !== 0 &&
+            gridRow < height &&
+            isSolid(column, gridRow)
           faceOf(
             spec,
             [column, gridRow, d],
-            isFoldTop ? uvOf(column, row - 1) : sideUvOf(column, row),
+            isFoldTop
+              ? uvOf(column, row - 1)
+              : sideUvOf(column, isUprightSide ? gridRow : row),
             isFoldTop ? 1 : shade,
           )
         }
@@ -696,6 +727,7 @@ export const voxelMeshOf = ({
   return {
     ...meshDataOf(out),
     lift: form.lift,
+    lean,
     caster: casterOf({
       size: [width, rows, depth],
       isFilled,
@@ -705,8 +737,6 @@ export const voxelMeshOf = ({
     glow: glowOut.indices.length === 0 ? undefined : meshDataOf(glowOut),
   }
 }
-
-const ALL_FACES: ReadonlyArray<FaceSpec> = [FRONT_FACE, ...SIDE_FACES]
 
 // NOTE: the outer faces of a grid of blocks merged greedily: in each slice
 // across a face's normal, the open faces are taken as the widest runs, then
@@ -1003,14 +1033,14 @@ export const slabMatrixOf = (
 }
 
 // NOTE: the matrix that stands a piece's upright blocks (`isUpright`) at
-// its foot: its art's top left corner straight over the foot, on the very
-// ray `slabMatrixOf` puts it on, so the lens sees the same pixels, and its
-// front square to the floor on the foot's row, its depth running north from
-// there. A piece of the house stands straight, never turned or spun.
+// its foot: its art's top left corner up its front from the foot, leaning
+// back (`uprightLeanOf`), on the very ray `slabMatrixOf` puts it on, so the
+// lens sees the same pixels, its depth running north from there. A piece of
+// the house stands as it leans, never turned or spun.
 export const uprightMatrixOf = (
-  placement: SlabPlacement,
+  placement: SlabPlacement & Readonly<{ lean: number }>,
 ): Readonly<{ elements: ReadonlyArray<number>; isFlipped: boolean }> => {
-  const { matrix, box, texels, footY, nudge, depth } = placement
+  const { matrix, box, texels, footY, nudge, depth, lean } = placement
   const across = box.width / texels.width
   const down = box.height / texels.height
   const isFlipped = isFlippedOf(placement)
@@ -1018,13 +1048,14 @@ export const uprightMatrixOf = (
   const x = Math.round(matrix.a * left + matrix.c * box.y + matrix.e)
   const y = Math.round(matrix.b * left + matrix.d * box.y + matrix.f)
   const foot = Math.round(footY)
-  // NOTE: up the camera's up from the foot, then along the ray to straight
-  // over it: a rise of r up the pitch is r / cos PITCH straight up.
+  // NOTE: up the camera's up from the foot, then along the ray to the
+  // front: a rise of r up the camera's up is r / cos(PITCH - lean) up a
+  // front leaning back that far, and r tan(PITCH - lean) toward the lens.
   const at = standingPointOf({
     x,
     footY: foot,
     atY: y,
-    out: nudge + (foot - y) * UNIT * Math.tan(PITCH),
+    out: nudge + (foot - y) * UNIT * Math.tan(PITCH - lean),
   })
   return {
     isFlipped,

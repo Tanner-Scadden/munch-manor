@@ -116,7 +116,7 @@ const glCut = (glow: string, look: Look): string => {
   float lookCut = lookP0.b * ${c.cutRange};
   float lookBright = max(lookP1.g * ${c.brightRange}, lookCut + 0.01);
   vec2 lookPixel = vec2(vPosition.x, vPosition.z * ${c.sinPitch} - vPosition.y * ${c.cosPitch}) / ${c.unit};
-  float lookShift = mix(0.5, lookBayer4(lookPixel) + 0.03125, lookP0.g);
+  float lookShift = ${look.foot === 'BehindTheFront' ? 'abs(normal.x) > 0.5 ? 0.5 : ' : ''}mix(0.5, lookBayer4(lookPixel) + 0.03125, lookP0.g);
   float lookP = sqrt(clamp((lookLevel - lookCut) / (lookBright - lookCut), 0.0, 1.0));
   float lookBand = lookLevel < lookCut ? 0.0 : clamp(floor(lookP * lookSteps + lookShift), 0.0, lookSteps);
   vec3 lookRamp = sampleLookRampsDirect(vec2((lookBand + 0.5) / ${c.columns}, (lookSlot + 1.5) / ${c.rows})).rgb;
@@ -149,7 +149,7 @@ const gpuCut = (glow: string, look: Look): string => {
   let lookCut = lookP0.b * ${c.cutRange};
   let lookBright = max(lookP1.g * ${c.brightRange}, lookCut + 0.01);
   let lookPixel = vec2<f32>(lookAt.x, lookAt.z * ${c.sinPitch} - lookAt.y * ${c.cosPitch}) / ${c.unit};
-  let lookShift = mix(0.5, lookBayer4(lookPixel) + 0.03125, lookP0.g);
+  let lookShift = ${look.foot === 'BehindTheFront' ? 'select(mix(0.5, lookBayer4(lookPixel) + 0.03125, lookP0.g), 0.5, abs(normal.x) > 0.5)' : 'mix(0.5, lookBayer4(lookPixel) + 0.03125, lookP0.g)'};
   let lookP = sqrt(clamp((lookLevel - lookCut) / (lookBright - lookCut), 0.0, 1.0));
   let lookBand = select(clamp(floor(lookP * lookSteps + lookShift), 0.0, lookSteps), 0.0, lookLevel < lookCut);
   let lookRaw = sampleLookRampsDirect(vec2<f32>((lookBand + 0.5) / ${c.columns}, (lookSlot + 1.5) / ${c.rows})).rgb;
@@ -171,7 +171,10 @@ type Look = Readonly<{ isStanding: boolean; foot: Foot }>
 // NOTE: where a pixel's foot is, the tile it reads its room from: slid down
 // the camera's view (a leaning billboard or body), straight under it (the
 // house's planes), or straight under it and a little behind (a piece
-// standing upright, whose front is on the very edge of its tiles).
+// standing upright, whose front is on the very edge of its tiles). A side
+// of a piece standing upright is not dithered: the dither's whole pixels
+// are counted up the lens's view, which runs slanting along that side, so
+// it showed as stripes; the side's band is cut clean at the halfway mark.
 type Foot = 'DownTheView' | 'Under' | 'BehindTheFront'
 
 const footOf = (at: string, foot: Foot): string => {

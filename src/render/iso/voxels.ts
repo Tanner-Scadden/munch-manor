@@ -53,6 +53,7 @@ const WARM_SCALE = 1e-4
 
 const {
   lift: _cubeLift,
+  lean: _cubeLean,
   caster: _cubeCaster,
   glow: _cubeGlow,
   ...UNIT_CUBE
@@ -97,6 +98,8 @@ export type Carved = Readonly<{
   caster: Geometry3D
   eyes: Geometry3D | undefined
   lift: number
+  // NOTE: how far a piece standing upright leans back (`uprightLeanOf`).
+  lean: number
   depthOf?: DepthOf
 }>
 
@@ -494,7 +497,7 @@ export class VoxelBatch {
       isGrounded && !isUpright ? carved.lift : 0,
       reach.blocks,
     )
-    const { elements } = (isUpright ? uprightMatrixOf : slabMatrixOf)({
+    const slab = {
       matrix,
       box: shape,
       texels,
@@ -503,7 +506,10 @@ export class VoxelBatch {
       nudge: part * PART_BIAS + blocks * DEPTH_BACK * UNIT,
       depth: 1,
       ...(spin === undefined ? {} : { spin }),
-    })
+    }
+    const { elements } = isUpright
+      ? uprightMatrixOf({ ...slab, lean: carved.lean })
+      : slabMatrixOf(slab)
     if (into === undefined) {
       return {
         carved,
@@ -648,7 +654,7 @@ export class VoxelBatch {
       columnOf,
       bottom: this.solidBottomOf(texture, masks),
     })
-    const { lift, caster, glow, ...mesh } = voxelMeshOf({
+    const { lift, lean, caster, glow, ...mesh } = voxelMeshOf({
       width,
       height,
       isSolid: (column, row) =>
@@ -674,6 +680,7 @@ export class VoxelBatch {
       caster: new Geometry3D({ ...caster }),
       eyes: glow === undefined ? undefined : new Geometry3D({ ...glow }),
       lift,
+      lean,
       ...hand,
     }
     shapes.set(shapeKey, carved)

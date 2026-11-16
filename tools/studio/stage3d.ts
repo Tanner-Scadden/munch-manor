@@ -246,6 +246,7 @@ const pickMeshOf = (placement: VoxelPlacement, most: number): VoxelMeshData => {
   const { depthOf } = placement.carved
   const {
     lift: _lift,
+    lean: _lean,
     caster: _caster,
     ...mesh
   } = voxelMeshOf({
