@@ -484,16 +484,39 @@ const isOriginOf = (flowField: FlowField, index: number): boolean =>
 
 // STEERING
 
-// NOTE: the tile a zombie at this position steps to, the neighbor with the
-// shortest distance when that is shorter than its own, or -1. The first of
-// the eight steps wins a tie.
-const downhillTile = (
+// NOTE: the step off each tile, read the first time a walker of a
+// clearance stands on it and kept beside its field: it depends on the tile,
+// the field, and the clearance alone, and a crowd stands on few tiles. Each
+// entry is the tile stepped to plus 2 (so -1, no step, is 1), or 0 when not
+// yet read. A field is dropped with its level, and its steps with it.
+const downhillSteps = new WeakMap<FlowField, Map<Clearance, Int32Array>>()
+
+const downhillStepsOf = (
   level: Level,
   flowField: FlowField,
-  position: Vector,
+  clearance: Clearance,
+): Int32Array => {
+  const kept = downhillSteps.get(flowField)
+  const byClearance = kept ?? new Map<Clearance, Int32Array>()
+  if (kept === undefined) {
+    downhillSteps.set(flowField, byClearance)
+  }
+  const known = byClearance.get(clearance)
+  if (known !== undefined) {
+    return known
+  }
+  const made = new Int32Array(level.tileCount)
+  byClearance.set(clearance, made)
+  return made
+}
+
+// NOTE: the step off one tile, worked out (see downhillTile).
+const downhillFrom = (
+  level: Level,
+  flowField: FlowField,
+  index: number,
   clearance: Clearance,
 ): number => {
-  const index = tileIndexAt(level, position)
   const column = (index % level.columns) + level.leftColumn
   const row = Math.floor(index / level.columns) + level.topRow
   let best = -1
@@ -521,6 +544,29 @@ const downhillTile = (
       bestDistance = distance
     }
   }
+  return best
+}
+
+// NOTE: the tile a zombie at this position steps to, the neighbor with the
+// shortest distance when that is shorter than its own, or -1. The first of
+// the eight steps wins a tie.
+const downhillTile = (
+  level: Level,
+  flowField: FlowField,
+  position: Vector,
+  clearance: Clearance,
+): number => {
+  const index = tileIndexAt(level, position)
+  if (index < 0 || index >= level.tileCount) {
+    return downhillFrom(level, flowField, index, clearance)
+  }
+  const steps = downhillStepsOf(level, flowField, clearance)
+  const known = steps[index] ?? 0
+  if (known !== 0) {
+    return known - 2
+  }
+  const best = downhillFrom(level, flowField, index, clearance)
+  steps[index] = best + 2
   return best
 }
 

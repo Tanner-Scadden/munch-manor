@@ -3,7 +3,13 @@ import { describe, expect, test } from 'vitest'
 
 import { randoms } from '../../../test/testing'
 import type { Vector } from '../../schema/worldSchema'
-import { buildGrid, queryAround, queryBox, queryBuffer } from '../grid'
+import {
+  buildGrid,
+  queryAround,
+  queryBox,
+  queryBuffer,
+  sortAscending,
+} from '../grid'
 
 const scatter = (
   seed: number,
@@ -92,6 +98,7 @@ describe('grid', () => {
       expect(globalThis.Array.from(out.subarray(0, count))).toContain(index)
     }
     const count = queryAround(grid, out, { x: 24, y: 24 }, 30)
+    sortAscending(out, count)
     expect(globalThis.Array.from(out.subarray(0, count))).toEqual([0, 1, 2, 3])
   })
 

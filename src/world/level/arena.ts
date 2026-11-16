@@ -156,6 +156,10 @@ export type Level = Readonly<{
   thresholds: Readonly<Record<DoorId, Threshold>>
   doorTileIndices: Readonly<Record<DoorId, ReadonlyArray<number>>>
   tileFlags: Uint8Array
+  // NOTE: how many solid tiles lie above and left of each tile corner, one
+  // row and column wider than the map, so a box of tiles says in four reads
+  // whether any is solid (`isAnySolidIn` in tileQueries.ts).
+  solidSums: Int32Array
   hasSoup: boolean
   start: Vector
 }>
@@ -434,6 +438,17 @@ const buildLevel = (
     }
   }
 
+  const solidSums = new Int32Array((columns + 1) * (grid.rows + 1))
+  for (let row = 0; row < grid.rows; row++) {
+    let inRow = 0
+    for (let column = 0; column < columns; column++) {
+      inRow +=
+        ((tileFlags[row * columns + column] ?? 0) & TILE_SOLID) !== 0 ? 1 : 0
+      solidSums[(row + 1) * (columns + 1) + column + 1] =
+        (solidSums[row * (columns + 1) + column + 1] ?? 0) + inRow
+    }
+  }
+
   const doors = byDoor((id): Door => {
     const tiles = tilesWithSymbol(grid, DOOR_SYMBOLS[id])
     const center = averagePoint(Array.map(tiles, tileCenter))
@@ -515,6 +530,7 @@ const buildLevel = (
     thresholds,
     doorTileIndices,
     tileFlags,
+    solidSums,
     hasSoup,
     start: spec.start,
   }

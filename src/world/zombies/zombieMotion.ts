@@ -58,7 +58,7 @@ import {
   directionBetween,
   scaleVector,
 } from '../step/geometry'
-import { queryAround, queryBuffer } from '../step/grid'
+import { queryAround, queryBuffer, sortAscending } from '../step/grid'
 import { isRooted, paceOf } from './bossFight'
 import { maybeChuckerHeading } from './chucker'
 import { frenzyPace, isFrenzied } from './frenzy'
@@ -93,50 +93,69 @@ const SURELY_APART = 1 + 1e-9
 // in ascending list order, the order the all-pairs loop used, so the sum is
 // the same to the last bit. One out of reach of every body pushes nothing.
 // The loop reads the step's columns (src/world/zombies/zombieGrid.ts), not the zombies.
+// The grid hands back its candidates cell by cell: the few in reach are
+// kept first and only they are put in order, since sorting every candidate
+// of a dense crowd cost more than the pushes.
 export const separationPushes = (
   zombies: ReadonlyArray<Zombie>,
 ): ReadonlyArray<Vector> => {
   const { grid, xs, ys, radii, masses, ids } = groundedColumns(zombies)
   const near = queryBuffer(grid)
+  const inReach = queryBuffer(grid)
   return Array.map(zombies, (zombie, row) => {
     if (!isGrounded(zombie)) {
       return ZERO_VECTOR
     }
 
-    const count = queryAround(grid, near, zombie, 2 * MAX_BODY_RADIUS_PX)
     const x = xs[row] ?? 0
     const y = ys[row] ?? 0
     const radius = radii[row] ?? 0
-    const mass = masses[row] ?? 1
     const id = ids[row] ?? 0
-    let pushX = 0
-    let pushY = 0
-    let isPushed = false
+    // NOTE: no body reaches farther than its own radius and the widest.
+    const count = queryAround(grid, near, zombie, radius + MAX_BODY_RADIUS_PX)
+    let kept = 0
     for (let at = 0; at < count; at++) {
       const other = near[at] ?? 0
-      const otherId = ids[other] ?? 0
       const deltaX = x - (xs[other] ?? 0)
       const deltaY = y - (ys[other] ?? 0)
       const reach = radius + (radii[other] ?? 0)
       const farSquared = reach * reach * SURELY_APART
-      if (otherId !== id && !(deltaX * deltaX + deltaY * deltaY > farSquared)) {
-        const distance = Math.hypot(deltaX, deltaY)
-        if (!(distance >= reach)) {
-          const otherMass = masses[other] ?? 1
-          const share = (2 * otherMass) / (mass + otherMass)
-          const strength = ((reach - distance) / reach) * share
-          if (distance > 0) {
-            pushX += (deltaX / distance) * strength
-            pushY += (deltaY / distance) * strength
-          } else {
-            pushX += id < otherId ? -strength : strength
-            pushY += 0
-          }
-          isPushed = true
-        }
+      if (
+        (ids[other] ?? 0) !== id &&
+        !(deltaX * deltaX + deltaY * deltaY > farSquared) &&
+        !(Math.hypot(deltaX, deltaY) >= reach)
+      ) {
+        inReach[kept] = other
+        kept++
       }
     }
-    return isPushed ? { x: pushX, y: pushY } : ZERO_VECTOR
+    if (kept === 0) {
+      return ZERO_VECTOR
+    }
+
+    sortAscending(inReach, kept)
+    const mass = masses[row] ?? 1
+    let pushX = 0
+    let pushY = 0
+    for (let at = 0; at < kept; at++) {
+      const other = inReach[at] ?? 0
+      const otherId = ids[other] ?? 0
+      const deltaX = x - (xs[other] ?? 0)
+      const deltaY = y - (ys[other] ?? 0)
+      const reach = radius + (radii[other] ?? 0)
+      const distance = Math.hypot(deltaX, deltaY)
+      const otherMass = masses[other] ?? 1
+      const share = (2 * otherMass) / (mass + otherMass)
+      const strength = ((reach - distance) / reach) * share
+      if (distance > 0) {
+        pushX += (deltaX / distance) * strength
+        pushY += (deltaY / distance) * strength
+      } else {
+        pushX += id < otherId ? -strength : strength
+        pushY += 0
+      }
+    }
+    return { x: pushX, y: pushY }
   })
 }
 
@@ -352,6 +371,17 @@ const holdOffPlayer = (
   )
 }
 
+// NOTE: a knockback at rest stays the one ZERO_VECTOR, as decayKnockback
+// would hand back, with nothing scaled.
+const decayedKnockback = (knockback: Vector, seconds: number): Vector =>
+  knockback === ZERO_VECTOR
+    ? ZERO_VECTOR
+    : decayKnockback(knockback, ZOMBIE_KNOCKBACK_DECAY_PER_SECOND, seconds)
+
+// NOTE: the velocity is summed in the order the vector helpers summed it
+// (steering, then knockback, then separation, then scaled to the step), as
+// plain numbers, so the zombie moves exactly as before with no vector made
+// on the way. A zombie the step leaves as it was is the same object.
 const advanceZombie = (
   zombie: Zombie,
   separation: Vector,
@@ -361,40 +391,49 @@ const advanceZombie = (
   seconds: number,
   deltaMs: number,
 ): Zombie => {
-  const velocity = addVectors(
-    addVectors(
-      steeringVelocity(
-        zombie,
-        flowFields,
-        target,
-        obstacles,
-        isRooted(obstacles.boss, zombie),
-        paceOf(obstacles.boss, zombie, target),
-      ),
-      zombie.knockback,
-    ),
-    scaleVector(separation, SEPARATION_SPEED),
+  const steering = steeringVelocity(
+    zombie,
+    flowFields,
+    target,
+    obstacles,
+    isRooted(obstacles.boss, zombie),
+    paceOf(obstacles.boss, zombie, target),
   )
+  const { knockback } = zombie
+  const step = {
+    x: (steering.x + knockback.x + separation.x * SEPARATION_SPEED) * seconds,
+    y: (steering.y + knockback.y + separation.y * SEPARATION_SPEED) * seconds,
+  }
   const moved = holdOffPlayer(
     zombie,
     moveCircle(
       obstacles.level,
       zombie,
-      scaleVector(velocity, seconds),
+      step,
       radiusOf(zombie),
       obstacles.blockers,
     ),
     target,
     obstacles,
   )
-  return modifyFields(zombie, {
-    x: () => moved.x,
-    y: () => moved.y,
-    knockback: knockback =>
-      decayKnockback(knockback, ZOMBIE_KNOCKBACK_DECAY_PER_SECOND, seconds),
-    hitRemainingMs: remainingMs => countDown(remainingMs, deltaMs),
-    state: state => tickZombieState(state, deltaMs),
-  })
+  const nextKnockback = decayedKnockback(knockback, seconds)
+  const hitRemainingMs = countDown(zombie.hitRemainingMs, deltaMs)
+  const state = tickZombieState(zombie.state, deltaMs)
+  // NOTE: Object.is, as modifyFields compares, so a -0 is a change.
+  return Object.is(moved.x, zombie.x) &&
+    Object.is(moved.y, zombie.y) &&
+    nextKnockback === knockback &&
+    Object.is(hitRemainingMs, zombie.hitRemainingMs) &&
+    state === zombie.state
+    ? zombie
+    : {
+        ...zombie,
+        x: moved.x,
+        y: moved.y,
+        knockback: nextKnockback,
+        hitRemainingMs,
+        state,
+      }
 }
 
 export const advanceZombies: {

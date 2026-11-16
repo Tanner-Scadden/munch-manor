@@ -49,5 +49,15 @@ export const groundedColumns = (
       ids[index] = zombie.id
     }
   }
-  return { grid: groundedGrid(zombies), xs, ys, radii, masses, ids }
+  // NOTE: cells as wide as the widest body, not twice it: a crowd's query
+  // reaches its own radius and the widest, so finer cells hand it about half
+  // the candidates to test.
+  return {
+    grid: buildGrid(zombies, isGrounded, MAX_BODY_RADIUS_PX),
+    xs,
+    ys,
+    radii,
+    masses,
+    ids,
+  }
 }

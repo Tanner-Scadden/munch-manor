@@ -1,13 +1,8 @@
 import { Function } from 'effect'
 
 import { COLLISION_STEP_PX } from '../../shared/constants'
-import {
-  type Level,
-  TILE_PLAYER_SOLID,
-  TILE_SOLID,
-  hasTileFlag,
-} from '../level/arena'
-import { type Box, isInsideRoom, tileBox, tileIndex } from '../level/tileGrid'
+import { type Level, TILE_PLAYER_SOLID, TILE_SOLID } from '../level/arena'
+import { type Box, tileBox } from '../level/tileGrid'
 import { tileCoordinate } from '../level/tileQueries'
 import type { Vector } from '../schema/entitySchema'
 import { clamp, vectorLength } from './geometry'
@@ -67,12 +62,21 @@ const resolveCircleIn = (
   const firstColumn = tileCoordinate(position.x - radius)
   const lastColumn = tileCoordinate(position.x + radius)
   const lastRow = tileCoordinate(position.y + radius)
+  // NOTE: isInsideRoom and hasTileFlag written out on the map's own
+  // numbers, since every walker runs this a few times a tick.
+  const { leftColumn, topRow, columns, rows, tileFlags } = level
   let resolved = position
   for (let row = tileCoordinate(position.y - radius); row <= lastRow; row++) {
+    const mapRow = row - topRow
+    if (mapRow < 0 || mapRow >= rows) {
+      continue
+    }
     for (let column = firstColumn; column <= lastColumn; column++) {
+      const mapColumn = column - leftColumn
       if (
-        isInsideRoom(level, column, row) &&
-        hasTileFlag(level, tileIndex(level, column, row), flag)
+        mapColumn >= 0 &&
+        mapColumn < columns &&
+        ((tileFlags[mapRow * columns + mapColumn] ?? 0) & flag) !== 0
       ) {
         resolved = pushOutOfBox(resolved, radius, tileBox({ column, row }))
       }

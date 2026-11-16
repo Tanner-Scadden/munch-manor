@@ -18,7 +18,11 @@ import {
   ZombieAction,
 } from '../schema/worldSchema'
 import { circlesOverlap, distanceBetween } from '../step/geometry'
-import { bodyRadiusOf, isFree, isWalking } from './zombies'
+import { bodyRadiusOf, isFree, isRoamingAction, isWalking } from './zombies'
+
+// NOTE: the tag checks this module runs per zombie per tick, built once.
+const isBurrowedZombieAction = ZombieAction.isAnyOf(['Burrowed'])
+const isClingingZombieAction = ZombieAction.isAnyOf(['Clinging'])
 
 // RULES
 
@@ -190,7 +194,7 @@ const withAction = (zombie: Zombie, action: ZombieAction): Zombie =>
   modifyFields(zombie, { action: () => action })
 
 const surface = (zombie: Zombie, player: Vector, deltaMs: number): Step => {
-  if (!ZombieAction.isAnyOf(['Burrowed'])(zombie.action)) {
+  if (!isBurrowedZombieAction(zombie.action)) {
     return stay(zombie)
   }
 
@@ -230,7 +234,7 @@ const isTouchingPlayer = (zombie: Zombie, player: Vector): boolean =>
   circlesOverlap(zombie, bodyRadiusOf(zombie), player, PLAYER_RADIUS)
 
 const cling = (zombie: Zombie, player: Vector, deltaMs: number): Step => {
-  if (ZombieAction.isAnyOf(['Clinging'])(zombie.action)) {
+  if (isClingingZombieAction(zombie.action)) {
     const { remainingMs } = zombie.action
     const held = modifyFields(zombie, {
       x: () => player.x + ANKLE_OFFSET.x,
@@ -249,7 +253,7 @@ const cling = (zombie: Zombie, player: Vector, deltaMs: number): Step => {
           ),
     )
   } else if (
-    ZombieAction.isAnyOf(['Roaming'])(zombie.action) &&
+    isRoamingAction(zombie.action) &&
     isFree(zombie) &&
     isTouchingPlayer(zombie, player)
   ) {
@@ -310,8 +314,7 @@ export const advanceCrawlers: {
 export const ankleSlowAt = (zombies: ReadonlyArray<Zombie>): number =>
   Array.some(
     zombies,
-    zombie =>
-      isWalking(zombie) && ZombieAction.isAnyOf(['Clinging'])(zombie.action),
+    zombie => isWalking(zombie) && isClingingZombieAction(zombie.action),
   )
     ? CRAWLER_RULES.clingSlow
     : 1
@@ -329,7 +332,7 @@ export const ankleSlowNear: {
       zombies,
       zombie =>
         isWalking(zombie) &&
-        ZombieAction.isAnyOf(['Clinging'])(zombie.action) &&
+        isClingingZombieAction(zombie.action) &&
         circlesOverlap(
           zombie,
           bodyRadiusOf(zombie) + ANKLE_REACH_PX,
@@ -342,6 +345,6 @@ export const ankleSlowNear: {
 )
 
 export const surfacingProgress = (zombie: Zombie): number =>
-  ZombieAction.isAnyOf(['Burrowed'])(zombie.action)
+  isBurrowedZombieAction(zombie.action)
     ? 1 - zombie.action.remainingMs / Math.max(1, zombie.action.durationMs)
     : 1

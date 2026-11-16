@@ -11,8 +11,10 @@ import type { Vector } from '../schema/worldSchema'
 // at once, or the room steps while a test still holds one) with nothing to
 // clear or to get stale. Each is private to the step that built it.
 //
-// NOTE: a query hands back the original list's indices in ASCENDING order,
-// exactly the order a loop over the whole list visits them. Summing floats and
+// NOTE: `queryBox` hands back the original list's indices in ASCENDING order,
+// exactly the order a loop over the whole list visits them (`queryAround`
+// leaves them in cell order, for a caller that keeps a few and sorts those
+// with `sortAscending`). Summing floats and
 // "who is first" (the lowest index wins a tie) therefore come out bit for bit
 // as the all-pairs loops did. A query returns a superset of what is in reach
 // (whole cells): the caller keeps its exact test.
@@ -130,6 +132,55 @@ export const queryBuffer = (grid: Grid): Int32Array =>
 const INSERTION_SORT_MAX = 24
 
 // NOTE: writes into `out` the indices of every included point in the cells
+// that touch the box, cell by cell, and returns how many.
+const gatherBox = (
+  grid: Grid,
+  out: Int32Array,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+): number => {
+  const { minX, minY, inverseCellPx, cols, rows, starts, items } = grid
+  const firstCol = cellAt(fromX, minX, inverseCellPx, cols)
+  const lastCol = cellAt(toX, minX, inverseCellPx, cols)
+  const firstRow = cellAt(fromY, minY, inverseCellPx, rows)
+  const lastRow = cellAt(toY, minY, inverseCellPx, rows)
+  let count = 0
+  for (let row = firstRow; row <= lastRow; row++) {
+    for (let col = firstCol; col <= lastCol; col++) {
+      const cell = row * cols + col
+      const end = starts[cell + 1] ?? 0
+      for (let at = starts[cell] ?? 0; at < end; at++) {
+        out[count] = items[at] ?? 0
+        count++
+      }
+    }
+  }
+  return count
+}
+
+// NOTE: puts the first `count` indices of `out` in ascending order.
+export const sortAscending: {
+  (count: number): (out: Int32Array) => void
+  (out: Int32Array, count: number): void
+} = Function.dual(2, (out: Int32Array, count: number): void => {
+  if (count > INSERTION_SORT_MAX) {
+    out.subarray(0, count).sort()
+  } else {
+    for (let next = 1; next < count; next++) {
+      const value = out[next] ?? 0
+      let at = next - 1
+      while (at >= 0 && (out[at] ?? 0) > value) {
+        out[at + 1] = out[at] ?? 0
+        at--
+      }
+      out[at + 1] = value
+    }
+  }
+})
+
+// NOTE: writes into `out` the indices of every included point in the cells
 // that touch the box, in ascending order, and returns how many.
 export const queryBox: {
   (
@@ -157,47 +208,22 @@ export const queryBox: {
     toX: number,
     toY: number,
   ): number => {
-    const { minX, minY, inverseCellPx, cols, rows, starts, items } = grid
-    const firstCol = cellAt(fromX, minX, inverseCellPx, cols)
-    const lastCol = cellAt(toX, minX, inverseCellPx, cols)
-    const firstRow = cellAt(fromY, minY, inverseCellPx, rows)
-    const lastRow = cellAt(toY, minY, inverseCellPx, rows)
-    let count = 0
-    for (let row = firstRow; row <= lastRow; row++) {
-      for (let col = firstCol; col <= lastCol; col++) {
-        const cell = row * cols + col
-        const end = starts[cell + 1] ?? 0
-        for (let at = starts[cell] ?? 0; at < end; at++) {
-          out[count] = items[at] ?? 0
-          count++
-        }
-      }
-    }
-    if (count > INSERTION_SORT_MAX) {
-      out.subarray(0, count).sort()
-    } else {
-      for (let next = 1; next < count; next++) {
-        const value = out[next] ?? 0
-        let at = next - 1
-        while (at >= 0 && (out[at] ?? 0) > value) {
-          out[at + 1] = out[at] ?? 0
-          at--
-        }
-        out[at + 1] = value
-      }
-    }
+    const count = gatherBox(grid, out, fromX, fromY, toX, toY)
+    sortAscending(out, count)
     return count
   },
 )
 
-// NOTE: the same, for the cells within `reachPx` of a point.
+// NOTE: the indices in the cells within `reachPx` of a point, cell by cell
+// and NOT ascending: a caller that keeps a few of many candidates sorts only
+// those it keeps (`sortAscending`), which costs far less than sorting all.
 export const queryAround: {
   (out: Int32Array, center: Vector, reachPx: number): (grid: Grid) => number
   (grid: Grid, out: Int32Array, center: Vector, reachPx: number): number
 } = Function.dual(
   4,
   (grid: Grid, out: Int32Array, center: Vector, reachPx: number): number =>
-    queryBox(
+    gatherBox(
       grid,
       out,
       center.x - reachPx,

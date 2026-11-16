@@ -15,7 +15,7 @@ import {
 } from '../schema/worldSchema'
 import { hitEvent, killEvent, strikeZombie } from '../step/combat'
 import { directionBetween } from '../step/geometry'
-import { bodyRadiusOf } from '../zombies/zombies'
+import { bodyRadiusOf, isRoamingAction } from '../zombies/zombies'
 
 // Melee: a blow in front of the player at the zombies within reach, with no
 // bullet. The knife every player carries (src/world/gear/knife.ts) and the Clang Pan
@@ -72,8 +72,6 @@ export const isInArc: {
     },
 )
 
-const isRoaming = ZombieAction.isAnyOf(['Roaming'])
-
 // NOTE: one blow's weight. `maybeDazeMs` dazes a small zombie that was
 // roaming; `struck` is the event the views and sounds read for a hit.
 export type Blow = Readonly<{
@@ -106,7 +104,9 @@ export const strikeInMelee: {
   const dazed = Option.match(blow.maybeDazeMs, {
     onNone: () => struck,
     onSome: dazeMs =>
-      struck.hp > 0 && isSmallKind(zombie.kind) && isRoaming(struck.action)
+      struck.hp > 0 &&
+      isSmallKind(zombie.kind) &&
+      isRoamingAction(struck.action)
         ? modifyFields(struck, {
             action: () =>
               ZombieAction.Reeling({

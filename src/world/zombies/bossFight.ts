@@ -28,6 +28,13 @@ import {
 } from '../step/geometry'
 import { BOSS_RULES } from './bossRules'
 
+// NOTE: the tag checks this module runs per zombie per tick, built once.
+const isDazedBossMove = BossMove.isAnyOf(['Dazed'])
+const isFightingBoss = Boss.isAnyOf(['Fighting'])
+const isPooledGlob = Glob.isAnyOf(['Pooled'])
+const isStalkingBossMove = BossMove.isAnyOf(['Stalking'])
+const isVulnerableState = Invulnerability.isAnyOf(['Vulnerable'])
+
 // FIGHT
 
 export type Fight = typeof Boss.Fighting.Type
@@ -37,7 +44,7 @@ export const modifyFight: {
   (model: World, change: (fight: Fight) => Fight): World
 } = Function.dual(2, (model: World, change: (fight: Fight) => Fight): World =>
   modifyFields(model, {
-    boss: boss => (Boss.isAnyOf(['Fighting'])(boss) ? change(boss) : boss),
+    boss: boss => (isFightingBoss(boss) ? change(boss) : boss),
   }),
 )
 
@@ -54,7 +61,7 @@ export const emit =
     modifyFields(model, { frameEvents: Array.append(event) })
 
 export const isEnraged = (boss: Boss): boolean =>
-  Boss.isAnyOf(['Fighting'])(boss) && boss.mood === 'Enraged'
+  isFightingBoss(boss) && boss.mood === 'Enraged'
 
 // NOTE: the gap between attacks, never a tell's wind-up: rage and the
 // difficulty's pace both shorten how long he rests, so a faster boss gives
@@ -75,18 +82,16 @@ export const isRooted: {
 } = Function.dual(
   2,
   (boss: Boss, zombie: Zombie): boolean =>
-    Boss.isAnyOf(['Fighting'])(boss) &&
+    isFightingBoss(boss) &&
     boss.id === zombie.id &&
-    !BossMove.isAnyOf(['Stalking'])(boss.move),
+    !isStalkingBossMove(boss.move),
 )
 
 export const woundScaleOf: {
   (zombie: Zombie): (boss: Boss) => number
   (boss: Boss, zombie: Zombie): number
 } = Function.dual(2, (boss: Boss, zombie: Zombie): number =>
-  Boss.isAnyOf(['Fighting'])(boss) &&
-  boss.id === zombie.id &&
-  BossMove.isAnyOf(['Dazed'])(boss.move)
+  isFightingBoss(boss) && boss.id === zombie.id && isDazedBossMove(boss.move)
     ? BOSS_RULES.dazedWoundScale
     : 1,
 )
@@ -95,7 +100,7 @@ export const paceOf: {
   (zombie: Zombie, player: Vector): (boss: Boss) => number
   (boss: Boss, zombie: Zombie, player: Vector): number
 } = Function.dual(3, (boss: Boss, zombie: Zombie, player: Vector): number => {
-  if (!Boss.isAnyOf(['Fighting'])(boss) || boss.id !== zombie.id) {
+  if (!isFightingBoss(boss) || boss.id !== zombie.id) {
     return 1
   }
 
@@ -118,9 +123,7 @@ export const isVulnerable: {
   (slot: PlayerSlot): (model: World) => boolean
   (model: World, slot: PlayerSlot): boolean
 } = Function.dual(2, (model: World, slot: PlayerSlot): boolean =>
-  Invulnerability.isAnyOf(['Vulnerable'])(
-    seatStateAt(model, slot).player.invulnerability,
-  ),
+  isVulnerableState(seatStateAt(model, slot).player.invulnerability),
 )
 
 // NOTE: hurting a player by the boss's hand: the wound, its knockback
@@ -263,11 +266,11 @@ export const puddleSlowAt: {
   (at: Vector): (boss: Boss) => number
   (boss: Boss, at: Vector): number
 } = Function.dual(2, (boss: Boss, at: Vector): number =>
-  Boss.isAnyOf(['Fighting'])(boss) &&
+  isFightingBoss(boss) &&
   Array.some(
     boss.globs,
     glob =>
-      Glob.isAnyOf(['Pooled'])(glob) &&
+      isPooledGlob(glob) &&
       distanceBetween(glob.at, at) <= BOSS_RULES.puddleRadius,
   )
     ? BOSS_RULES.puddleSlow
