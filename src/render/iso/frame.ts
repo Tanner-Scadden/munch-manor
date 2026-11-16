@@ -2,7 +2,7 @@
 // the game's own camera it locks to. The view builds one each render and
 // hands it to the world's element (src/render/iso/element.ts).
 
-import { Predicate, Schema } from 'effect'
+import { type Option, Predicate, Schema } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
@@ -10,6 +10,7 @@ import type { Vector } from '../../world/schema/entitySchema'
 import type { Camera } from '../camera'
 import type { Drawable } from '../depth'
 import type { IsoLens } from './diorama'
+import type { HoldKey } from './hold'
 
 // NOTE: the world's three strata kept apart: what lies on the floor, what
 // stands up at its feet, and what floats over both. In the cellar's dark a
@@ -30,6 +31,10 @@ export type IsoFrame = Readonly<{
   shake: Vector
   // NOTE: sprite sources the run may show soon, loaded ahead.
   preload: ReadonlyArray<string>
+  // NOTE: while the World stands still, the inputs its picture is drawn
+  // from: a frame whose key matches the last drawn one is not drawn again
+  // (hold.ts).
+  hold: Option.Option<HoldKey>
 }>
 
 const isIsoFrame = (value: unknown): value is IsoFrame =>

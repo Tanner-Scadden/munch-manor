@@ -11,6 +11,7 @@ import { CustomElement } from 'foldkit'
 import { toBrowserError } from '../../shared/describeError'
 import { DIORAMA_FRAME_MS, IsoLens } from './diorama'
 import { type IsoFrame, IsoFrameSchema } from './frame'
+import { type HoldKey, isHeldOver } from './hold'
 import type { PlinthPicture } from './plinth'
 import type { PlinthPose } from './plinthPose'
 import type { IsoScene } from './scene'
@@ -33,6 +34,11 @@ const startScene = (host: HTMLElement, onLoaded: () => void) =>
     return yield* createIsoScene({ host, onLoaded })
   })
 
+// NOTE: a diorama frame a little short of DIORAMA_FRAME_MS still draws: the
+// menu's frames come about that far apart (src/app/frameGate.ts), and a
+// display's jitter round it would otherwise skip every other one.
+const DIORAMA_EARLY_MS = 4
+
 const lengthOr = (length: string, fallback: number): number => {
   const pixels = Number.parseFloat(length)
   return Number.isFinite(pixels) && pixels > 0 ? pixels : fallback
@@ -54,7 +60,9 @@ const worldElementClass = () =>
     }
 
     set frame(next: IsoFrame) {
-      const isDue = this.isDueAt(next.lens)
+      const isDue =
+        this.isDueAt(next.lens) &&
+        !isHeldOver({ drawn: this.drawnHold, next: next.hold })
       this.latest = Option.some(next)
       if (isDue) {
         this.draw()
@@ -63,8 +71,12 @@ const worldElementClass = () =>
 
     // NOTE: the title's diorama draws at most DIORAMA_FPS frames a second
     // by its own clock, so a phone resting on the menu does half the work.
-    // The play camera draws every frame it is handed.
+    // The play camera draws every frame it is handed but a held one, the
+    // World standing still behind a menu (hold.ts).
     private lastDioramaMs = Number.NEGATIVE_INFINITY
+
+    // NOTE: the hold key of the frame last drawn, none if it was not held.
+    private drawnHold: Option.Option<HoldKey> = Option.none()
 
     private isDueAt(lens: IsoLens): boolean {
       return IsoLens.match(lens, {
@@ -74,7 +86,7 @@ const worldElementClass = () =>
         },
         Diorama: ({ clockMs }) => {
           const since = clockMs - this.lastDioramaMs
-          if (since >= 0 && since < DIORAMA_FRAME_MS) {
+          if (since >= 0 && since < DIORAMA_FRAME_MS - DIORAMA_EARLY_MS) {
             return false
           }
           this.lastDioramaMs = clockMs
@@ -188,6 +200,7 @@ const worldElementClass = () =>
         },
         { isStill: this.reducedMotion.matches },
       )
+      this.drawnHold = this.latest.value.hold
       // NOTE: the audits wait for it before they take a picture.
       this.dataset['drawn'] = 'true'
       // NOTE: the quality tier the world draws at (quality.ts), for the
