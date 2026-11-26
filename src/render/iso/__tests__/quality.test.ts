@@ -11,9 +11,6 @@ import {
   shadowQualityOf,
 } from '../quality'
 
-// The 3D world's quality tiers and the governor that steps between them from
-// measured frame times (src/render/iso/quality.ts).
-
 const FRAME_MS = 1000 / 60
 
 type Feed = Readonly<{
@@ -26,8 +23,6 @@ type Feed = Readonly<{
   isCounted?: boolean
 }>
 
-// NOTE: a stretch of frames at 60 fps, each costing `costMs`; every tier
-// the governor steps to on the way, and the time the stretch ends.
 const feed = (
   input: Feed,
 ): Readonly<{
@@ -57,8 +52,6 @@ const feed = (
 const adaptive = () => new QualityGovernor(Option.none())
 
 describe('the tiers', () => {
-  // NOTE: what each tier costs, pinned: a change here changes the look a
-  // device gets, so it is made on purpose.
   test.each([
     { tier: 'Full', shadow: 2048, bloom: 0.5, scale: undefined },
     { tier: 'Light', shadow: 1024, bloom: 0.25, scale: undefined },
@@ -147,8 +140,6 @@ describe('the governor', () => {
   test('judges nothing in the second after a change', () => {
     const governor = adaptive()
     governor.holdFrom(0)
-    // NOTE: the hold's second, then two windows of 2 s, the second not yet
-    // full.
     const { steps } = feed({ governor, fromMs: 0, seconds: 4.9, costMs: 30 })
     expect(steps).toEqual([])
     expect(
@@ -160,7 +151,6 @@ describe('the governor', () => {
     const governor = adaptive()
     const first = feed({ governor, fromMs: 0, seconds: 4.1, costMs: 30 })
     expect(first.steps).toEqual(['Light'])
-    // NOTE: a step's hold, then two whole windows, before the next step.
     const held = feed({
       governor,
       fromMs: first.endMs,
@@ -193,7 +183,6 @@ describe('the governor', () => {
     const governor = adaptive()
     const slow = feed({ governor, fromMs: 0, seconds: 4.1, costMs: 20 })
     expect(slow.steps).toEqual(['Light'])
-    // NOTE: middling frames, neither slow nor roomy, never step up.
     const middling = feed({
       governor,
       fromMs: slow.endMs,
@@ -201,7 +190,6 @@ describe('the governor', () => {
       costMs: 10,
     })
     expect(middling.steps).toEqual([])
-    // NOTE: Full proved slow once, so it takes twice the stretch back.
     const stretchSeconds =
       (GOVERNOR.holdMs + 2 * GOVERNOR.upWindows * GOVERNOR.windowMs) / 1000
     const early = feed({
@@ -235,7 +223,6 @@ describe('the governor', () => {
       return [...slow.steps, ...roomy.steps]
     }
     expect(slowThenRoomy(45)).toEqual(['Light', 'Full'])
-    // NOTE: twice slow now: 20 s times 4.
     expect(slowThenRoomy(70)).toEqual(['Light'])
     expect(
       feed({ governor, fromMs: atMs, seconds: 15, costMs: 3 }).steps,

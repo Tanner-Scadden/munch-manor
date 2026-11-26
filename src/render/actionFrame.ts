@@ -19,11 +19,6 @@ import {
 } from './particles/particleBursts'
 import { keepNewest } from './particles/particles'
 
-// The hands-on actions' frame (src/render/actionPose.ts): the watch read
-// on to the next frame, a puff of dust where a trap was just set down, and
-// splinters off a board each time a hammer lands. Only the client's
-// cosmetic stream is spent, so the World and its wire never see any of it.
-
 const SET_DUST_PUFFS = 5
 const HAMMER_SPLINTERS = 2
 
@@ -44,9 +39,6 @@ const setDust = (model: Model, slot: number): Batch => {
     )
 }
 
-// NOTE: after the frame's ticks: the payoffs that began and the blows that
-// landed against what the watch saw last frame, their dust and splinters,
-// then the new watch. A frame with no tick changes nothing but the watch.
 export const advanceActions = (model: Model): Model => {
   const actionWatch = nextActionWatch(model, model.cosmetics.actionWatch)
   const batches: ReadonlyArray<Batch> = [

@@ -3,13 +3,7 @@ import { Array } from 'effect'
 import type { SoundEffect } from '../shared/soundEffect'
 import { type Recipe, at, delayedEnvelope, envelope } from './soundRecipe'
 
-// NOTE: the room tools' own sounds (src/world/stations/), joined into
-// RECIPES: the gramophone's waltz and the soup pot's splosh. The other
-// tools reuse sounds the game has (src/features/stations/stationView.ts).
 export const ROOM_TOOL_RECIPES = {
-  // NOTE: the parlour's gramophone wound up (a room tool,
-  // src/world/parlour/gramophone.ts): a scratchy oom-pah-pah in three, two
-  // bars of a waltz through a tin horn, with the needle's hiss under it.
   Waltz: {
     variationCents: 0,
     tones: Array.flatMap(
@@ -38,9 +32,6 @@ export const ROOM_TOOL_RECIPES = {
       },
     ],
   },
-  // NOTE: the kitchen's soup pot tipped (a room tool,
-  // src/world/kitchen/soupPot.ts): a clang of the pot, then the soup's
-  // wet slap and a gurgle as it spreads.
   Splosh: {
     variationCents: 120,
     tones: [

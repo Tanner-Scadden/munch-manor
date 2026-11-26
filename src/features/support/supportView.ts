@@ -10,8 +10,6 @@ import { COFFEE_ICON } from '../../art/icons'
 import { RESTART_GRACE_MS } from '../../shared/constants'
 import { Phase } from '../../world/schema/worldSchema'
 
-// VIEW
-
 const SUPPORT_LABEL = 'Buy Rattles a coffee: support the game'
 
 const isEscapeShown = (model: Model): boolean =>
@@ -41,8 +39,6 @@ const supportLinkView = (
         ),
     )
 
-// NOTE: on the escape's card it waits out the restart grace like the end buttons, so a
-// tap meant for the last zombie never lands on it.
 export const escapeSupportView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml

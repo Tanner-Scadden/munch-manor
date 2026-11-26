@@ -1,21 +1,9 @@
-// The end of a run pass: a real death played tick by tick (the bite, the
-// fall, the stamp, the card), the Game Over card with a NEW BEST, Victory
-// with its trophy and confetti, and co-op's party wipe and win with the MVP
-// crown, on a 1280x720 desktop, an 844x390 phone on its side, and a 390x844
-// phone held upright, as `s43-<TAG>-<viewport>-<scene>.png`. The death is
-// played with the harness's director (tools/audit/harness/director.ts), so
-// its frames are the same on every run: it steps until the player falls,
-// then shoots the beat at fixed ticks after. It checks that the end card
-// shows its RETRY, HOME, and SHARE buttons once the beat is over, all one
-// size, that a tap on SHARE opens the share sheet (or copies the post and
-// flashes COPIED!) in the tap itself, and exits with 1 on any miss.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots43.ts
-// ONLY picks scenes, such as `ONLY=death`, and VIEWPORTS picks screens.
 import { Array, Console, Effect, Option, Schema, String } from 'effect'
 import type { Browser, Page } from 'playwright-core'
 
 import { encodeJson } from '../json'
 import { runHarnessAudit } from './harnessServer'
+import { shareClicks } from './inPage/shots43'
 import {
   type Viewport,
   auditTag,
@@ -66,8 +54,6 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'victory-confetti',
     query: `wave=10&phase=escaped&stats&difficulty=Hard&${LEARNED}&tick=90`,
   },
-  // NOTE: the rank strip: a bar part way through a rank, mid fill into a new
-  // rank, the finished rank up, a win into the next badge, and a crew's.
   {
     name: 'gameover-rank',
     query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=162&rankgain=60&tick=400`,
@@ -121,14 +107,11 @@ const SCENES: ReadonlyArray<Scene> = [
   { name: 'coop-result', query: `coop=result&${LEARNED}&tick=30` },
 ]
 
-// NOTE: the death beat's ticks after the fall, shot one by one.
 const DEATH_TICKS = [0, 4, 12, 24, 40, 60, 80, 100, 130, 170, 400]
 const DEATH_SCENE = `wave=4&start=wave&elapsed=9000&crowd=40&seen=all&seed=7&${LEARNED}`
 const STEP = 6
 const MAX_TICKS = 60 * 40
 
-// NOTE: a plan with no input, so the player stands and the crowd comes.
-// The harness decodes it with its own Plan Schema (harness/director.ts).
 const IDLE_PLAN = encodeJson(
   Schema.Struct({
     segments: Schema.Array(Schema.Unknown),
@@ -195,8 +178,6 @@ const shootDeath = (
       yield* closePage(page)
       return
     }
-    // NOTE: back up to the last alive frame and walk to the fall tick by
-    // tick.
     yield* startDeath(page, viewport)
     yield* stepTo(page, lastAlive)
     let fall = lastAlive
@@ -213,14 +194,6 @@ const shootDeath = (
     yield* closePage(page)
   })
 
-// NOTE: headless Chrome has no share sheet, so SHARE is checked on fresh
-// pages with stand-ins. `Sheet` gives the page a navigator.share, `Refused`
-// one that throws NotAllowedError as a browser that will not share does,
-// and `Copy` none at all, so SHARE copies the post. Each stand-in records
-// what it was handed, whether the tap's user activation was live, and
-// whether the click was still being dispatched (window.event), as iOS
-// Safari's share sheet needs. A tap on a phone goes through the game's own
-// touch taps (src/input/touchTaps.ts); a desktop clicks.
 const ShareMode = Schema.Literals(['Sheet', 'Refused', 'Copy'])
 type ShareMode = typeof ShareMode.Type
 
@@ -316,8 +289,6 @@ const checkShareMode = (
       return
     }
     const [first, last] = ends.value
-    // NOTE: a refused sheet copies after the refusal, so only the first
-    // call must come in the tap.
     if (!first.isInClick || !first.isActive) {
       problems.push(`${label}: shared outside the tap: ${sharedJson(first)}`)
     }
@@ -336,15 +307,7 @@ const checkShareMode = (
     if (!String.includes(expected.label)(shown)) {
       problems.push(`${label}: SHARE reads ${shown}, not ${expected.label}`)
     }
-    const shares = yield* attempt(() =>
-      page.evaluate(
-        () =>
-          // NOTE: runs in the page, which has no effect module.
-          // @effect-diagnostics-next-line preferEffectArray:off
-          window.__messages.filter(message => message === 'ClickedShareButton')
-            .length,
-      ),
-    )
+    const shares = yield* attempt(() => page.evaluate(shareClicks))
     if (shares !== 1) {
       problems.push(`${label}: ${shares} ClickedShareButton, not 1`)
     }
@@ -369,8 +332,6 @@ const checkShare = (
     { discard: true },
   )
 
-// NOTE: every end button is one size: the same width and height, to the
-// pixel.
 const checkEqualButtons = (
   page: Page,
   label: string,

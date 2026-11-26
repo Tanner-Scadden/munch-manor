@@ -2,11 +2,6 @@ import { Array, Console, Effect } from 'effect'
 
 import { SITE_INPUTS } from './siteInputs'
 
-// NOTE: whether a push leaves the game's site as it was. Takes the files a
-// `git diff --name-only` names and exits 0 when none is an input of the
-// site's build, so the deploy's check knows the build already live is
-// current: the memoized site is not rebuilt for such a push, and its
-// version.json keeps the commit that last changed it.
 const patterns = Array.map(
   [...SITE_INPUTS, 'bun.lock'],
   pattern => new Bun.Glob(pattern),

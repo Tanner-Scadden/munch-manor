@@ -1,16 +1,9 @@
 import { Array } from 'effect'
 import { deflateSync, inflateSync } from 'node:zlib'
 
-// A compressed PNG writer for the sprite atlas, and the reader that checks
-// it. The game's own writer (src/art/png.ts) stores scanlines uncompressed, which
-// is fine for one small sprite at runtime; a file shipped with the build is
-// worth compressing. Pixels with alpha 0 are written as transparent black,
-// as the game's writer leaves them.
-
 export type Raster = Readonly<{
   width: number
   height: number
-  // RGBA, row after row
   pixels: Uint8Array
 }>
 
@@ -86,8 +79,6 @@ const filtered = (
   return Buffer.concat(lines)
 }
 
-// NOTE: the smallest of the three simple filters for the whole image, at
-// zlib's best level. Deterministic for one zlib.
 const imageData = (
   rows: ReadonlyArray<Uint8Array>,
   bytesPerPixel: number,
@@ -115,8 +106,6 @@ const rowsOf = (
 
 const PALETTE_MAX = 256
 
-// NOTE: every distinct color, transparent pixels as one, in order of first
-// appearance, or undefined past 256.
 const paletteOf = (
   raster: Raster,
 ):
@@ -151,8 +140,6 @@ const clearedRgba = (raster: Raster): Uint8Array => {
   return pixels
 }
 
-// NOTE: an indexed PNG when the image has 256 colors or fewer, which is
-// about a third smaller for pixel art, else RGBA.
 export const encodePng = (raster: Raster): Buffer => {
   const { width, height } = raster
   const palette = paletteOf(raster)
@@ -185,8 +172,6 @@ export const encodePng = (raster: Raster): Buffer => {
     end,
   ])
 }
-
-// READING
 
 type Chunks = Readonly<Record<string, Buffer>>
 
@@ -241,8 +226,6 @@ const unfiltered = (
   return out
 }
 
-// NOTE: reads back what encodePng writes, to check the atlas before it
-// ships.
 export const decodePng = (png: Buffer): Raster => {
   const chunks = chunksOf(png)
   const ihdr = chunks['IHDR']

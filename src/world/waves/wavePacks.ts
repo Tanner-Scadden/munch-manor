@@ -23,11 +23,6 @@ import {
   pickOne,
 } from './wavePlans'
 
-// PACKS
-
-// NOTE: the parlour's pairs come first and in their old order, so a run that
-// never opens the kitchen draws the same pairs it always did. No pair names
-// the front door, which is never a spawn door.
 const DOOR_PAIRS: Array.NonEmptyReadonlyArray<
   Array.NonEmptyReadonlyArray<DoorId>
 > = [
@@ -49,12 +44,12 @@ const DOOR_PAIRS: Array.NonEmptyReadonlyArray<
   ['FarBottom', 'West'],
 ]
 
-const isPairWithin =
-  (doors: ReadonlyArray<DoorId>) =>
-  (pair: ReadonlyArray<DoorId>): boolean =>
-    // NOTE: a door pair by at most 13 doors.
-    // oxlint-disable-next-line munch/no-nested-scan
-    Array.every(pair, door => Array.contains(doors, door))
+const isPairWithin = (
+  doors: ReadonlyArray<DoorId>,
+): ((pair: ReadonlyArray<DoorId>) => boolean) => {
+  const open: ReadonlySet<DoorId> = new Set(doors)
+  return pair => Array.every(pair, door => open.has(door))
+}
 
 export const pairsWithin = (
   doors: ReadonlyArray<DoorId>,
@@ -81,12 +76,6 @@ const pincerPairs = (
   })
 }
 
-// NOTE: the doors a wave weights 2:1 (src/world/waves/doorWeights.ts): those
-// in a standing player's room or a room beside it, fixed when the wave is
-// rolled at its break. Every draw lists a near door twice, so a near door is
-// twice as likely as a far one. Only a proper part of the candidates is
-// weighted: with none near, or all of them, the list and its draws are the
-// same as with no weights at all.
 export type SpawnDoors = Readonly<{
   all: Array.NonEmptyReadonlyArray<DoorId>
   near: ReadonlyArray<DoorId>
@@ -157,21 +146,24 @@ const DOOR_PATTERNS: Readonly<Record<DoorPattern, PatternRules>> = {
   },
 }
 
+const isDoorIn = (
+  doors: ReadonlyArray<DoorId>,
+): ((door: DoorId) => boolean) => {
+  const set: ReadonlySet<DoorId> = new Set(doors)
+  return door => set.has(door)
+}
+
 const groupDoors = (
   group: SpawnGroup,
   levelDoors: Array.NonEmptyReadonlyArray<DoorId>,
 ): Array.NonEmptyReadonlyArray<DoorId> =>
   group.isAnyDoor
     ? levelDoors
-    : Array.match(
-        // NOTE: a group's few doors by at most 13.
-        // oxlint-disable-next-line munch/no-nested-scan
-        Array.filter(group.doors, door => Array.contains(levelDoors, door)),
-        { onEmpty: () => levelDoors, onNonEmpty: doors => doors },
-      )
+    : Array.match(Array.filter(group.doors, isDoorIn(levelDoors)), {
+        onEmpty: () => levelDoors,
+        onNonEmpty: doors => doors,
+      })
 
-// NOTE: a near door listed twice is drawn first more often; the dedupe keeps
-// each door once, in its first place.
 const drawDoors = (
   state: number,
   group: SpawnGroup,
@@ -328,9 +320,6 @@ export const rollGroup: {
     },
 )
 
-// NOTE: a Big Leaguer never comes alone: three Groaners walk in right behind
-// him in his pack, so he always has something to throw. They take no draws
-// from the generator, so every other spawn of the wave rolls as before.
 export const CHUCKER_ESCORT_SIZE = 3
 const CHUCKER_ESCORT_GAP_MS = 280
 const CHUCKER_ESCORT_KIND: ZombieKind = 'Shambler'

@@ -47,8 +47,6 @@ import {
 } from './drawing'
 import { MUZZLE_FLASHES, flashPointOf } from './playerView'
 
-// TRAPS
-
 const LAYS: Readonly<Record<DoorId, Lay>> = {
   North: 'Across',
   South: 'Across',
@@ -147,7 +145,6 @@ const turretHealthBar = (
   ]
 }
 
-// NOTE: the gnome's gun is held by this pixel, its art turned about it.
 const turretHoldOf = (center: Vector, jolt: number): Vector => ({
   x: turretFoot(center).x + jolt,
   y: Math.round(center.y),
@@ -202,9 +199,6 @@ export const trapOverheadShapes: {
   }),
 )
 
-// NOTE: the gnome's muzzle flash stands on the gnome's own plane, as its gun
-// does, centered just past the gun's drawn tip (`flashPointOf`), so in 3D it
-// moves with the gnome at any angle.
 const turretFlashShapes = (
   level: Level,
   turret: Turret,
@@ -340,24 +334,42 @@ const outlineShape = (box: Box, color: string): Draw.Shape =>
     lineWidth: 1,
   })
 
-const openDoorwayHints = (model: World): ReadonlyArray<Draw.Shape> => {
-  const boarded = barricadedDoors(model.traps)
-  const level = levelOf(model)
-  const isLit = Math.floor(model.elapsedMs / DOORWAY_HINT_PULSE_MS) % 2 === 0
-  return isLit
-    ? Array.filterMap(level.doorIds, door =>
-        // NOTE: at most 13 doors by at most 8 traps.
-        // oxlint-disable-next-line munch/no-nested-scan
-        Array.contains(boarded, door)
-          ? Result.failVoid
-          : Result.succeed(
-              outlineShape(level.thresholds[door].box, DOORWAY_HINT_COLOR),
-            ),
-      )
-    : []
+const DOOR_BITS: Readonly<Record<DoorId, number>> = {
+  North: 1 << 0,
+  West: 1 << 1,
+  East: 1 << 2,
+  South: 1 << 3,
+  Back: 1 << 4,
+  Window: 1 << 5,
+  WestTop: 1 << 6,
+  WestBottom: 1 << 7,
+  EastTop: 1 << 8,
+  EastBottom: 1 << 9,
+  FarTop: 1 << 10,
+  FarBottom: 1 << 11,
+  Front: 1 << 12,
 }
 
-// NOTE: the spot the placement ghost stands on, in a break only.
+const openDoorwayHints = (model: World): ReadonlyArray<Draw.Shape> => {
+  const isLit = Math.floor(model.elapsedMs / DOORWAY_HINT_PULSE_MS) % 2 === 0
+  if (!isLit) {
+    return []
+  }
+  const boarded = Array.reduce(
+    barricadedDoors(model.traps),
+    0,
+    (mask, door) => mask | DOOR_BITS[door],
+  )
+  const level = levelOf(model)
+  return Array.filterMap(level.doorIds, door =>
+    (boarded & DOOR_BITS[door]) !== 0
+      ? Result.failVoid
+      : Result.succeed(
+          outlineShape(level.thresholds[door].box, DOORWAY_HINT_COLOR),
+        ),
+  )
+}
+
 const ghostSpotOf = (model: World): Option.Option<TrapSpot> =>
   isBreak(model)
     ? Option.flatMap(
@@ -366,8 +378,6 @@ const ghostSpotOf = (model: World): Option.Option<TrapSpot> =>
       )
     : Option.none()
 
-// NOTE: on the floor: the ghost's footprint, green where it may go and red
-// where it may not, or the open doorways' hints while no spot is picked.
 export const ghostShapes = (model: World): ReadonlyArray<Draw.Shape> =>
   isBreak(model)
     ? Option.match(maybePlacement(model, focusSlotOf(model)), {
@@ -387,7 +397,6 @@ export const ghostShapes = (model: World): ReadonlyArray<Draw.Shape> =>
       })
     : []
 
-// NOTE: the trap itself, standing carved as a placed one does, see-through.
 export const ghostDrawables = (model: World): ReadonlyArray<Drawable> =>
   Option.match(ghostSpotOf(model), {
     onNone: () => [],

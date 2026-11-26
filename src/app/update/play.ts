@@ -116,10 +116,6 @@ import {
 import { nextTrap, placeSelectedTrap, trapFromKey } from './traps'
 import { checkForUpdate } from './version'
 
-// The Steps the root's handlers (src/app/update/input.ts, src/app/main.ts)
-// are made of: the frame, the keys and pointers, the guns and traps,
-// pausing, and the build check.
-
 export const useDevice: {
   (device: InputDevice): (model: Model) => Model
   (model: Model, device: InputDevice): Model
@@ -158,8 +154,6 @@ const learnStartWaveWhen = (before: Model, after: Model): Model =>
 const learnSwapWhen = (before: Model, after: Model): Model =>
   changedWeapon(before, after) ? learnSwap(after) : after
 
-// NOTE: whether the key presses one of these seat actions, read from the
-// one key table (src/input/keyActions.ts).
 const isKeyFor = (
   model: Model,
   code: string,
@@ -177,30 +171,20 @@ const preparationFromKey = (model: Model, code: string): Model => {
   }
 }
 
-// NOTE: Start with the leave panel up answers the panel (leaveRunFromPad
-// in src/app/update/home.ts), never the round under it. A key never gets
-// here then: the panel's Dialog has the keyboard.
 const resumeFromKey = (model: Model, code: string): Model =>
   isPauseKey(code) && !isPanelOpen(model, 'LeaveRun')
     ? startWhenAllowed(model, model.mode)
     : model
 
-// NOTE: a press of the hand, unless a card holds the game: the new zombie
-// card or the display case's (src/features/onboarding/caseCard.ts). The
-// rule is the seat action's (src/world/step/stepWorld.ts).
 const actInHand =
   (action: SeatAction) =>
   (model: Model): Model =>
     isCardHolding(model) ? model : actAsLead(model, action)
 
-// NOTE: Q switches guns, or with the knife out goes back to the last gun.
 const swapGun = actInHand(SeatAction.Swap())
 
-// NOTE: F, or a tap on the knife slot: the knife in hand (GAME_DESIGN.md,
-// "The knife and two gun slots").
 const equipMelee = actInHand(SeatAction.Melee())
 
-// NOTE: Q, F, and the number keys: 1 and 2 draw that gun, 3 the melee slot.
 const swapFromKey = (model: Model, code: string): Model =>
   Option.match(playerKeyAction(model, code), {
     onNone: () => model,
@@ -221,26 +205,15 @@ const changedWeapon = (before: Model, after: Model): boolean =>
 
 const isFighting = Phase.isAnyOf(['Wave'])
 
-// NOTE: in co-op the new zombie card shows without stopping the game
-// (decided row 9), so only single player waits on it.
 export const isDebutCardBlocking = (model: Model): boolean =>
   isFighting(model.phase) && isDebutCardUp(model) && !isCoop(model)
 
 export const skipDebutCardWhenUp = (model: Model): Model =>
   isDebutCardBlocking(model) ? skipDebutCard(model) : model
 
-// NOTE: a card that holds the round's buttons: the new zombie card in a
-// wave, or the display case's in a break.
 export const isCardHolding = (model: Model): boolean =>
   isDebutCardBlocking(model) || isCaseCardBlocking(model)
 
-// THE DARE CARD FROM THE HUD
-
-// NOTE: the HUD's dare list opens the card again by its button, Tab, or a
-// controller's Select, and puts it away the same way
-// (src/features/dare/pocketCard.ts), unless another card holds the round.
-// Alone the run waits under it as under the pause menu, so whatever was
-// held lets go; in co-op the room never waits.
 const isDareListTaking = (model: Model): boolean =>
   !isCardHolding(model) && isDareCardToggling(model)
 
@@ -308,10 +281,6 @@ const phaseFromKey = (model: Model, code: string): Model =>
 const hasResumed = (before: Model, after: Model): boolean =>
   isPaused(before.phase) && !isPaused(after.phase)
 
-// MENU TAPS
-
-// RELOAD
-
 const hasBegunReload = (before: Model, after: Model): boolean =>
   !isReloading(focusOf(before).player) && isReloading(focusOf(after).player)
 
@@ -329,7 +298,6 @@ const dropMagazine: UpdateStep = $ =>
     ]),
   )
 
-// NOTE: with the knife out, R puts the last gun back in hand to reload it.
 const reloadHeldGun: UpdateStep = $ => {
   const reloaded = actInHand(SeatAction.Reload())($.model)
   return hasBegunReload($.model, reloaded)
@@ -340,10 +308,6 @@ const reloadHeldGun: UpdateStep = $ => {
 const reloadFromKey = (code: string): UpdateStep =>
   stepWhen((model: Model) => isKeyFor(model, code, ['Reload']), reloadHeldGun)
 
-// MEDIC
-
-// NOTE: MEDIC! from a downed player (src/world/party/medic.ts): the interact key or a
-// tap on the red cross. The tick after it sounds the shout.
 const callMedic = modelStep(actInHand(SeatAction.CallMedic()))
 
 const callMedicFromKey = (code: string): UpdateStep =>
@@ -351,13 +315,10 @@ const callMedicFromKey = (code: string): UpdateStep =>
 
 export const clickMedic: UpdateStep = combine([unlockAudio, callMedic])
 
-// PAUSE
-
 const pauseRound = modelStep(model =>
   withInput(pause(closeDareCard(model)), releaseAll),
 )
 
-// NOTE: the pause button pauses a round under way and does nothing else.
 export const clickPause: UpdateStep = stepWhen(
   (model: Model) => isRoundActive(model.phase),
   combine([unlockAudio, pauseRound]),
@@ -366,8 +327,6 @@ export const clickPause: UpdateStep = stepWhen(
 export const pauseWhenAway: UpdateStep = $ =>
   isRoundActive($.model.phase) ? pauseRound($) : releaseInput($)
 
-// NOTE: a hidden page pauses the round; a page shown again checks for a
-// newer build.
 export const notePageVisibility =
   (visibility: PageVisibility): UpdateStep =>
   $ =>
@@ -378,10 +337,6 @@ export const notePageVisibility =
       visibility === 'Hidden' ? pauseWhenAway : checkForUpdate,
     )
 
-// FRAME
-
-// NOTE: one frame of single player. An online run's room runs the World,
-// so there its frames are TickedRoomFrame (orInRun in src/app/update/coopRun.ts).
 export const tickFrame =
   (deltaTime: number): UpdateStep =>
   $ => {
@@ -452,10 +407,6 @@ export const tickFrame =
     }
   }
 
-// KEYS
-
-// NOTE: a key, or a controller's button by its code (src/input/gamepad.ts),
-// pressed on the device it came from.
 type ButtonPress = Readonly<{ code: string; device: InputDevice }>
 
 const pressedButton =
@@ -567,16 +518,9 @@ const pressedButton =
 export const pressedKey = (code: string): UpdateStep =>
   pressedButton({ code, device: 'KeyboardMouse' })
 
-// NOTE: a key a controller stands in for in a menu (src/app/update/padMenu.ts),
-// pressed as the pad's, so the pad stays the device.
 export const pressedPadKey = (code: string): UpdateStep =>
   pressedButton({ code, device: 'Gamepad' })
 
-// CONTROLLERS
-
-// NOTE: a polled controller is kept in the input, and once stirred it is
-// the device, with the mouse's spot forgotten so a resting right stick
-// never aims at a cursor left behind. Moving the mouse takes it back.
 export const notePad: {
   (pad: Gamepad): (model: Model) => Model
   (model: Model, pad: Gamepad): Model
@@ -591,7 +535,6 @@ export const notePad: {
     : noted
 })
 
-// NOTE: the buttons this poll pressed, read before the pad is kept.
 export const padPresses: {
   (pad: Gamepad): (model: Model) => ReadonlyArray<string>
   (model: Model, pad: Gamepad): ReadonlyArray<string>
@@ -599,9 +542,6 @@ export const padPresses: {
   newlyPressed(model.input.maybeGamepad, pad),
 )
 
-// NOTE: each new press goes the keys' way, as the pad's: the key table
-// (src/input/keyActions.ts) turns it into the seat's action. A release
-// needs nothing: what is held is read off the kept pad.
 export const polledPad =
   (pad: Gamepad): UpdateStep =>
   $ =>
@@ -620,8 +560,6 @@ export const forgetPad = (model: Model): Model =>
     UiStruct.evolve(input, { maybeGamepad: () => Option.none() }),
   )
 
-// NOTE: a controller unplugged, or out of battery, mid-round pauses it, as
-// a blur does; plugged back in, its first poll is a fresh pad.
 export const padGone = (index: number): UpdateStep =>
   stepWhen(
     (model: Model) => isPadAt(model, index),
@@ -637,8 +575,6 @@ export const releasedKey =
       : released
   }
 
-// GUNS AND TRAPS
-
 const drawFromButton =
   (draw: (model: Model) => Model): UpdateStep =>
   $ => {
@@ -652,8 +588,6 @@ const drawFromButton =
 
 export const swapFromButton: UpdateStep = drawFromButton(swapGun)
 
-// NOTE: a tap on the held gun reloads it; on the other gun, or on either
-// with the knife out, it puts that gun in hand.
 export const pressGunSlot = (slot: GunSlot): UpdateStep =>
   stepWhen(
     (model: Model) => !isCardHolding(model),
@@ -665,17 +599,11 @@ export const pressGunSlot = (slot: GunSlot): UpdateStep =>
     },
   )
 
-// NOTE: the touch HUD's reload button: R's reload, so with the knife out
-// it puts the last gun back in hand and reloads that.
 export const reloadFromButton: UpdateStep = stepWhen(
   (model: Model) => !isCardHolding(model),
   combine([unlockAudio, reloadHeldGun]),
 )
 
-// NOTE: a press on a HUD gun or knife slot. With a mouse mid-wave it is a
-// shot at the world beneath, like a click anywhere else, so a zombie behind
-// the slots still gets shot; keyboard players swap with Q, F, and R. A
-// touch, or a mouse in a break, leaves the slot's click to act.
 export const isSlotPressAShot: {
   (device: PointerDevice): (model: Model) => boolean
   (model: Model, device: PointerDevice): boolean
@@ -697,15 +625,12 @@ export const withSlotClick: {
 export const isSlotClickPassingThrough = (model: Model): boolean =>
   model.input.slotClick === 'PassesThrough'
 
-// NOTE: a tap on the knife slot draws the knife; on the knife in hand it
-// does nothing.
 export const pressMeleeSlot: UpdateStep = stepWhen(
   (model: Model) =>
     !isCardHolding(model) && !isWieldingMelee(focusOf(model).player),
   drawFromButton(equipMelee),
 )
 
-// NOTE: the new zombie card and the display case's hold the round's buttons.
 const isTrapButtonHeld = (model: Model): boolean => isCardHolding(model)
 
 const startWaveFromButton = modelStep(model =>
@@ -714,8 +639,6 @@ const startWaveFromButton = modelStep(model =>
 
 const isTrapButtonFree = (model: Model): boolean => !isTrapButtonHeld(model)
 
-// NOTE: START WAVE and the trap buttons wait while a card holds the
-// round's buttons.
 export const clickStartWave: UpdateStep = stepWhen(
   isTrapButtonFree,
   combine([startWaveFromButton, unlockAudio]),

@@ -7,9 +7,6 @@ import { levelOf } from '../level/arena'
 import { isInsideRoomAt, isSolidAt } from '../level/tileQueries'
 import { focusOf } from '../party/party'
 
-// NOTE: open floor around the player, a body's width apart and clear of
-// their reach, in reading order, so a crowd of any size stands spread out
-// as a wave's would, rather than in one heap.
 const SPACING_PX = 22
 const CLEAR_OF_PLAYER_PX = 70
 const REACH_PX = 260
@@ -37,8 +34,6 @@ const openSpotsAround = (
   )
 }
 
-// NOTE: a quiet wave 3 with `count` Groaners on the open floor around the
-// player, nothing else coming in.
 export const crowdOf: {
   (count: number): (base: Model) => Model
   (base: Model, count: number): Model

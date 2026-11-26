@@ -19,14 +19,6 @@ import {
 import * as Draw from '../../render/draw'
 import { RATTLES_BOX } from '../../world/level/arena'
 
-// Rattles' spot in the dining room (docs/ESCAPE_PLAN.md, layer 7): the
-// first daredevil, from 1924, sits on an old steamer trunk just east of the
-// front door he never got out of, awake and swaying in a break, dozing
-// through a wave. He says hello once (src/features/onboarding/rattlesIntro.ts),
-// and his speech bubble of hints hangs over him (src/screens/game/stallBubble.ts).
-
-// PALETTE
-
 const TRUNK_TOP_COLOR = '#6b4423'
 const TRUNK_LID_EDGE_COLOR = '#8a5a2b'
 const TRUNK_FRONT_COLOR = '#4f311a'
@@ -56,8 +48,6 @@ const width = RATTLES_BOX.right - RATTLES_BOX.left
 const height = RATTLES_BOX.bottom - RATTLES_BOX.top
 const centerX = left + Math.floor(width / 2)
 
-// THE TRUNK
-
 const TRUNK_TOP = top + 6
 
 const TRUNK: ReadonlyArray<Draw.Shape> = [
@@ -70,8 +60,6 @@ const TRUNK: ReadonlyArray<Draw.Shape> = [
 ]
 
 const SHADOW = rect(left + 2, top + height, width - 2, 2, SHADOW_COLOR)
-
-// RATTLES
 
 const RATTLES_WIDTH = 9
 const RATTLES_LEFT = centerX - Math.floor(RATTLES_WIDTH / 2)
@@ -89,13 +77,11 @@ const RATTLES_BLINK: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: his bony hands rest on the trunk's lid, in front of him.
 const HANDS: ReadonlyArray<Draw.Shape> = [
   rect(left + 5, TRUNK_TOP - 1, 3, 2, BONE_COLOR),
   rect(left + width - 8, TRUNK_TOP - 1, 3, 2, BONE_COLOR),
 ]
 
-// NOTE: the trunk and his hands never move, so they are one baked image.
 const TRUNK_FRONT = bakeShapes([...TRUNK, ...HANDS])
 
 const awake = (elapsedMs: number): ReadonlyArray<Draw.Shape> => {
@@ -124,8 +110,6 @@ const dozing = (elapsedMs: number): ReadonlyArray<Draw.Shape> => {
     }),
   ]
 }
-
-// SCENE
 
 export type RattlesLook = 'Awake' | 'Dozing'
 

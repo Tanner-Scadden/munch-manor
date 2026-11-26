@@ -23,21 +23,6 @@ import {
   type WeaponKind,
 } from '../../world/schema/worldSchema'
 
-// The Mystery Leftovers reveal: what a pull looks and sounds like, so the
-// prize reads at a glance in the middle of a fight. The door's own clock
-// (`FridgeDoor.Open`, 1.1 s, in src/world/fridge/leftovers.ts) drives it, so a co-op
-// teammate sees the same reveal from the room's World and nothing here
-// changes the game:
-//
-// - a slot machine spin in the doorway: the five prizes cycle fast, slow
-//   down, and land on the real one 0.7 s in, with a thunk;
-// - a color for how good it is: a common Cooker or Pan, the rare Brain
-//   Freeze, a snack, or a sad grey dud;
-// - a sting for each, a big chunky icon that pops with squash and stretch,
-//   and one punch word;
-// - a weapon then waits on offer; taking it flies its icon into its HUD
-//   gun slot, which pulses.
-
 export type Rarity = 'Common' | 'Rare' | 'Snack' | 'Dud'
 
 export type PrizeReveal = Readonly<{
@@ -93,10 +78,6 @@ const SPIN_STARTS_MS: ReadonlyArray<number> = Array.scan(
   (at, stepMs) => at + stepMs,
 )
 
-// NOTE: where the reveal stands `elapsedMs` into the door's opening: a
-// face of the spin, or the prize landed `sinceMs` ago. The faces walk the
-// prizes in order so the last one before the landing is the prize's
-// neighbor, like a reel clicking into place.
 export type RevealStage =
   | Readonly<{ _tag: 'Spinning'; face: FridgePrize; step: number }>
   | Readonly<{ _tag: 'Landed'; sinceMs: number }>
@@ -123,9 +104,6 @@ export const revealStageAt: {
   }
 })
 
-// NOTE: the reveal the door shows right now, if it shows one: the prize,
-// who pulled it, and how long since the door opened. A weapon on offer has
-// long since landed.
 export type DoorReveal = Readonly<{
   prize: FridgePrize
   slot: number
@@ -158,9 +136,6 @@ export const doorRevealOf = (door: FridgeDoor): Option.Option<DoorReveal> =>
 const isLanded = (reveal: DoorReveal): boolean =>
   reveal.elapsedMs >= REVEAL_RULES.landMs
 
-// NOTE: the prize whose spin stopped between two frames, for its sting.
-// A door that opens already landed (a co-op client that caught up late)
-// still stings once.
 export const maybeLandedBetween: {
   (after: FridgeDoor): (before: FridgeDoor) => Option.Option<FridgePrize>
   (before: FridgeDoor, after: FridgeDoor): Option.Option<FridgePrize>
@@ -175,11 +150,6 @@ export const maybeLandedBetween: {
     ),
 )
 
-// THE SPOT
-
-// NOTE: the middle of the fridge's door, in the world, where the prize
-// spins and lands: low on the door, so on a landscape screen it stays
-// clear of the HUD strip over the back wall.
 const PRIZE_DOOR_DROP_PX = 9
 
 export const prizeSpotOf = (world: World): Option.Option<Vector> =>
@@ -188,10 +158,6 @@ export const prizeSpotOf = (world: World): Option.Option<Vector> =>
     y: box.top + PRIZE_DOOR_DROP_PX,
   }))
 
-// THE TAKE
-
-// NOTE: the player took the weapon on offer this frame: its icon starts
-// for the HUD slot. Only the puller sees it, since only they took it.
 export const launchPrize: {
   (after: Model): (before: World) => Model
   (before: World, after: Model): Model

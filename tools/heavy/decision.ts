@@ -24,38 +24,19 @@ export const BUDGET_WARN_AT = 3
 export const BUDGET_REFUSE_AT = 6
 export const REPORT_EVERY_MS = 30_000
 
-// NOTE: the guard aims to keep the 1 minute load near 70% of the cores.
 const TARGET_SHARE = 0.7
-// NOTE: the load average lags, so a job started in the last minute counts
-// at its estimated cost on top of the load.
 const RECENT_MS = 60_000
 const MAX_SHARED_JOBS = 4
 export const MAX_CPU_WORKERS = 8
 const MIN_TEST_WORKERS = 2
-// NOTE: the cap for the WORKERS a Timing or Shared job is given. Neither
-// uses it much; only CPU jobs size it to the budget.
 export const MAX_OTHER_WORKERS = 4
 
-// NOTE: a hold of the solo lock is a lease. A job past it is not stopped,
-// but its guard says so loudly, and every waiting job names it.
 export const DEFAULT_LEASE_MS = 10 * 60_000
 export const LEASE_REMIND_MS = 5 * 60_000
-// NOTE: a worktree whose job held a file this recently goes behind waiting
-// jobs from other worktrees, so turns go round by worktree.
 export const RECENT_TURN_MS = 5 * 60_000
-// NOTE: a chunked CPU job plays about this many runs a turn, rounded up to
-// a whole number of rounds of its workers. A campaign run takes about 3.5 s
-// of one worker, so a chunk is well under 2 minutes even with 1 worker.
 export const DEFAULT_CHUNK_RUNS = 25
-// NOTE: how long a later Shared job may start ahead of an earlier Timing or
-// CPU waiter that a running CPU job holds up anyway (backfill). After this
-// the waiter is due at the CPU job's next chunk boundary, so no more Shared
-// jobs pass it, and only the ones already running stand in its way.
 export const BACKFILL_GRACE_MS = 2 * 60_000
 
-// DECISION
-
-// NOTE: one Shared slot file as the guard found it, numbered from 1.
 export type SharedSlot = Readonly<{
   slot: number
   lock: LockState
@@ -88,9 +69,6 @@ export const LockAction = Schema.TaggedUnion({
 })
 export type LockAction = typeof LockAction.Type
 
-// NOTE: which file the job holds while it runs: the solo lock, whose name
-// every guard knows and which a Timing or a CPU job holds, or one Shared
-// slot.
 export const Hold = Schema.TaggedUnion({
   Solo: {},
   Shared: { slot: Schema.Finite },
@@ -123,7 +101,6 @@ export const targetLoad: {
 
 const isOverloaded = (load: number, cores: number): boolean => load > cores
 
-// NOTE: the old cap for jobs that do not size to the budget.
 export const allowedWorkers: {
   (load: number, cores: number): (requested: number) => number
   (requested: number, load: number, cores: number): number
@@ -175,8 +152,6 @@ const describeHolder = (holder: LockHolder): string =>
 const describeHolders = (holders: ReadonlyArray<LockHolder>): string =>
   Array.join(Array.map(holders, describeHolder), '; ')
 
-// LEASE
-
 const leaseOf = (holder: LockHolder): number =>
   holder.leaseMs ?? DEFAULT_LEASE_MS
 
@@ -201,8 +176,6 @@ const leaseOverText = (holder: LockHolder, now: number): string =>
 const pastLeasePart = (holder: LockHolder, now: number): string =>
   `${describeHolder(holder)} ${leaseOverText(holder, now)}`
 
-// NOTE: what the guard holding the solo lock prints once its lease is up,
-// and again every LEASE_REMIND_MS while it runs on.
 export const maybeLeaseWarning = (
   warning: Readonly<{
     holder: LockHolder
@@ -227,8 +200,6 @@ export const maybeLeaseWarning = (
   )
 }
 
-// NOTE: a solo lock without a class came from an older guard, which ran
-// everything alone, so it counts as Timing.
 const soloClassOf = (holder: LockHolder): JobClass =>
   jobClassOfName(holder.jobClass ?? 'Timing')
 
@@ -250,8 +221,6 @@ const liveHolders = (snapshot: Snapshot): ReadonlyArray<LockHolder> => [
   ...snapshot.extraRecent,
 ]
 
-// NOTE: the estimated cost of the jobs that started within the last
-// minute, which the 1 minute load does not show yet.
 export const recentCost = (snapshot: Snapshot): number =>
   pipe(
     liveHolders(snapshot),
@@ -266,10 +235,6 @@ export const headroom = (snapshot: Snapshot): number =>
 const waiterClassOf = (waiter: LockHolder): JobClass =>
   jobClassOfName(waiter.jobClass ?? 'Timing')
 
-// QUEUE ORDER
-
-// NOTE: when the worktree last let go of a file within RECENT_TURN_MS, or
-// 0 when it has not.
 export const lastTurnAt: {
   (cwd: string, now: number): (turns: ReadonlyArray<HeldTurn>) => number
   (turns: ReadonlyArray<HeldTurn>, cwd: string, now: number): number
@@ -297,12 +262,6 @@ const queueKeyOf = (
 const compareKeys = (first: QueueKey, second: QueueKey): number =>
   first[0] - second[0] || first[1] - second[1] || first[2] - second[2]
 
-// NOTE: the queue goes round by worktree, then by arrival. A worktree that
-// let go of a file in the last RECENT_TURN_MS goes behind waiting jobs from
-// worktrees that did not, and of two that did, the one whose turn ended
-// first goes first. Within a worktree, or between worktrees with no recent
-// turn, the job that arrived first goes first. A chunked job that yields
-// arrives again, so it goes behind every job that arrived while it ran.
 export const isAheadInQueue: {
   (waiter: LockHolder): (snapshot: Snapshot) => boolean
   (snapshot: Snapshot, waiter: LockHolder): boolean
@@ -322,17 +281,6 @@ export const isAheadInQueue: {
 const earlierWaiters = (snapshot: Snapshot): ReadonlyArray<LockHolder> =>
   Array.filter(snapshot.waiters, waiter => isAheadInQueue(snapshot, waiter))
 
-// NOTE: queue fairness by turn and arrival (see isAheadInQueue). A Timing or CPU job that started waiting
-// first blocks every later arrival. A Shared job that started waiting first
-// blocks later Shared jobs of equal or larger cost and Timing jobs, so a
-// small job may slip into a gap a big one cannot use. A later CPU job is
-// not blocked by it, but leaves its cost free (see reservedCost).
-// NOTE: backfill. A Shared job may start ahead of an earlier Timing or CPU
-// waiter while a CPU job holds the solo lock: that waiter cannot start
-// before the CPU job lets go, and the Shared job only uses budget left
-// beside the CPU job. It stops once the waiter has waited
-// BACKFILL_GRACE_MS, and never applies when the waiter waits only for
-// Shared jobs to drain, so it cannot starve the waiter.
 const canBackfillPast = (snapshot: Snapshot, waiter: LockHolder): boolean =>
   JobClass.isAnyOf(['Shared'])(snapshot.jobClass) &&
   !JobClass.isAnyOf(['Shared'])(waiterClassOf(waiter)) &&
@@ -359,12 +307,6 @@ const blockingWaiters = (snapshot: Snapshot): ReadonlyArray<LockHolder> =>
     }),
   )
 
-// NOTE: what a CPU job leaves free for Shared jobs that were waiting first:
-// the cost of the one at the head of the queue, at most the target. Keeping
-// the cost of every one of them free once held back 16 cores' worth on a
-// 12 core laptop and starved balance batches. The rest are not delayed long:
-// a CPU job yields at each chunk boundary, well within BACKFILL_GRACE_MS,
-// and then queues again behind them.
 const reservedCost = (snapshot: Snapshot): number =>
   pipe(
     earlierWaiters(snapshot),
@@ -386,9 +328,6 @@ const reservedCost = (snapshot: Snapshot): number =>
     }),
   )
 
-// NOTE: a CPU job takes what is left of the budget, after the load, the
-// jobs started in the last minute, and the Shared jobs that were waiting
-// first. A WORKERS the caller set is a ceiling.
 const cpuWorkers = (snapshot: Snapshot): number =>
   Math.min(
     MAX_CPU_WORKERS,
@@ -439,8 +378,6 @@ const maybeSoloBlocker = (snapshot: Snapshot): Option.Option<string> => {
       )
 }
 
-// NOTE: a waiting job names a solo holder past its lease, whatever else
-// keeps it waiting, and says only how long when the reason named it.
 const withLeasePart = (snapshot: Snapshot, reason: string): string => {
   if (
     !LockState.isAnyOf(['Held'])(snapshot.lock) ||
@@ -520,8 +457,6 @@ const lockActionOf = (lock: LockState, what: string): LockAction =>
       }),
   })
 
-// NOTE: the lowest numbered slot not held by a live job. A missing slot file
-// is free, and a stale or corrupt one is taken over.
 export const freeSlot = (
   shared: ReadonlyArray<SharedSlot>,
 ): Option.Option<SharedSlot> =>
@@ -626,10 +561,6 @@ export const decide = (snapshot: Snapshot): Decision =>
       }),
   })
 
-// NOTE: two guards can each see the other's file missing and both take
-// theirs. Each one looks again after taking its own and backs off when it
-// finds a job it must not run beside, so at worst both back off and retry,
-// never both run. A CPU job and Shared jobs may run together.
 export const maybeConflictAfterTaking: {
   (
     self: LockHolder,
@@ -674,12 +605,6 @@ export const maybeConflictAfterTaking: {
     }),
 )
 
-// HANDOVER
-
-// NOTE: a job that yields between parts (see turn.ts) asks its guard at
-// each boundary. While any other job waits, the guard lets go of its file
-// and queues again as a new arrival; otherwise the job keeps its turn and
-// goes on at once, so a lone job loses nothing to chunking.
 export const Handover = Schema.TaggedUnion({
   Keep: {},
   HandOver: { reason: Schema.String },
@@ -701,8 +626,6 @@ export const decideHandover: {
   },
 )
 
-// NOTE: the runs a chunk plays: HEAVY_CHUNK_RUNS when set (0 means no
-// chunks), or DEFAULT_CHUNK_RUNS rounded up to whole rounds of the workers.
 export const chunkRunsOf: {
   (maybeChunkRuns: Option.Option<number>): (workers: number) => number
   (workers: number, maybeChunkRuns: Option.Option<number>): number
@@ -715,8 +638,6 @@ export const chunkRunsOf: {
     }),
 )
 
-// NOTE: the next part of `total` to play after `done`, with `size` runs a
-// chunk. A size of 0 or less plays the rest at once.
 export const nextChunk: {
   (total: number, size: number): (done: number) => readonly [number, number]
   (done: number, total: number, size: number): readonly [number, number]
@@ -728,11 +649,6 @@ export const nextChunk: {
   ],
 )
 
-// TEST WORKERS
-
-// NOTE: `bun run test` does not queue. It reads the budget once and runs
-// vitest with what is left, at least MIN_TEST_WORKERS and at most one less
-// than the cores, vitest's own default.
 export const testWorkers = (
   snapshot: Pick<
     Snapshot,
@@ -761,7 +677,6 @@ export const testWorkers = (
       maximum: Math.max(MIN_TEST_WORKERS, snapshot.cores - 1),
     },
   )
-// REPORTING
 
 export const shouldReport: {
   (now: number): (maybeLastReportAt: Option.Option<number>) => boolean

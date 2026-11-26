@@ -67,23 +67,8 @@ import { PLAYER_MIGRATIONS } from './playerMigrations'
 import { Count, PLAYER_SCOPE_KIND, toRejected } from './playerScopeParts'
 import { PROOF_TABLE, seedProofRows, shelveRow } from './proofScope'
 
-// NOTE: the player scope, `player:<playerId>`: one player's settings, look,
-// name, difficulty, onboarding, bests, home menu, power-ups seen, and
-// rotation, rumble, synced
-// between that player's devices.
-// Shared with the sync Worker in infra/worker, so it imports only `effect`,
-// the sync engine, and src/shared/ (playerData.ts, dayStamp.ts,
-// missionData.ts, rankCurve.ts), and its migrations
-// (src/platform/playerMigrations.ts).
-// The tables are the ones the game
-// already kept on the device (src/platform/storeSqlite.ts made `player` and
-// `kills_by_kind` first, so the view tables exist with IF NOT EXISTS), plus
-// `linked_devices`, which only the server writes.
-
 export const playerScopeId = (playerId: string): string =>
   scopeId(PLAYER_SCOPE_KIND, playerId)
-
-// ROWS
 
 const EscapedOn = Schema.Array(Difficulty)
 
@@ -249,27 +234,6 @@ const updatePlayer = (
     yield* sql`UPDATE ${context.table('player')} SET ${sql.update(columns)} WHERE id = 1`
   })
 
-// MUTATIONS
-
-// NOTE: the first thing a device writes to its scope: its whole save, from
-// before sync. It only seeds an empty scope. On a scope that already has a
-// player (a device that linked to another device's player) it does nothing,
-// so linking never overwrites the player it joined. Version 8 is the save
-// with the simple look (save version 11), and 9 the save with the run
-// records (save version 12), 10 the save with rank (save version 13), 11
-// the save with the calling (save version 14), 12 the save with hats
-// (save version 15), 13 the save with gun skins (save version 16), and 14
-// the save with no ammo tip (save version 17), 15 the save with the
-// rumble (save version 18), 16 the save with RECORD MY RUNS (save
-// version 19), 17 the save with its unlock (save version 20), and 18 the
-// save with the Bones bonuses and the best runs (save version 21), 19
-// the save with the last run's ending (save version 22), and 20 the save
-// with the daily missions (save version 23), 21 the save with the Proof
-// Shelf (save version 24), 22 the save with the Dare Journal (save
-// version 25), 23 the save with the rank purses (save version 26), 24
-// the save with hero and gun mastery (save version 27), and 25 the save
-// with the dare ladder (save version 28).
-/** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
   version: 25,
@@ -308,8 +272,6 @@ export const SeededPlayer = defineMutation({
     }),
 })
 
-// NOTE: version 2 carries the cursor setting.
-/** @stability unstable */
 export const ChangedSettings = defineMutation({
   name: 'ChangedSettings',
   version: 2,
@@ -326,12 +288,6 @@ export const ChangedSettings = defineMutation({
     }),
 })
 
-// NOTE: version 6 carries the prop style, version 5 the gun skin (version 4 the hat, 3 the simple
-// look, 2 the many-part one). The row may still hold an older look until the
-// first change, so it is read as StoredAppearance. A look worn but not owned
-// is not checked against what the player owns here: it is shown as stock
-// (lookInOwned in src/domain/closet.ts).
-/** @stability unstable */
 export const ChangedAppearance = defineMutation({
   name: 'ChangedAppearance',
   version: 6,
@@ -350,9 +306,6 @@ export const ChangedAppearance = defineMutation({
 
 const NightmareRow = Schema.Struct({ nightmare: SavedNightmare })
 
-// NOTE: Nightmare can only be chosen once it is unlocked in this scope, so
-// a device that never won Hard cannot pick it by editing its own save.
-/** @stability unstable */
 export const ChangedDifficulty = defineMutation({
   name: 'ChangedDifficulty',
   version: 1,
@@ -383,9 +336,6 @@ export const ChangedDifficulty = defineMutation({
     }),
 })
 
-// NOTE: trusted for now. Once runs are verified on the server, this becomes
-// a server mutation made when a Hard campaign win checks out.
-/** @stability unstable */
 export const UnlockedNightmare = defineMutation({
   name: 'UnlockedNightmare',
   version: 1,
@@ -395,8 +345,6 @@ export const UnlockedNightmare = defineMutation({
   apply: (_, context) => updatePlayer(context, { nightmare: 'Unlocked' }),
 })
 
-// NOTE: version 2 carries no ammo tip (save version 17).
-/** @stability unstable */
 export const ChangedOnboarding = defineMutation({
   name: 'ChangedOnboarding',
   version: 2,
@@ -420,9 +368,6 @@ export const ChangedOnboarding = defineMutation({
     ),
 })
 
-// NOTE: the home menu's newest What's New day seen and the Munchopedia
-// entries opened, written whole like the onboarding.
-/** @stability unstable */
 export const ChangedHome = defineMutation({
   name: 'ChangedHome',
   version: 1,
@@ -439,9 +384,6 @@ export const ChangedHome = defineMutation({
     ),
 })
 
-// NOTE: how an installed phone app turns. The last device to change it
-// wins, like the other settings.
-/** @stability unstable */
 export const ChangedRotation = defineMutation({
   name: 'ChangedRotation',
   version: 1,
@@ -451,9 +393,6 @@ export const ChangedRotation = defineMutation({
   apply: ({ rotation }, context) => updatePlayer(context, { rotation }),
 })
 
-// NOTE: whether a controller rumbles. The last device to change it wins,
-// like the rotation.
-/** @stability unstable */
 export const ChangedRumble = defineMutation({
   name: 'ChangedRumble',
   version: 1,
@@ -463,9 +402,6 @@ export const ChangedRumble = defineMutation({
   apply: ({ rumble }, context) => updatePlayer(context, { rumble }),
 })
 
-// NOTE: RECORD MY RUNS. The last device to change it wins, like the
-// settings.
-/** @stability unstable */
 export const ChangedRecordRuns = defineMutation({
   name: 'ChangedRecordRuns',
   version: 1,
@@ -476,10 +412,6 @@ export const ChangedRecordRuns = defineMutation({
     updatePlayer(context, { record_runs: recordRuns }),
 })
 
-// NOTE: RECORD MY RUNS shows on every device once any device opens the
-// game with `?record=1`. It only ever unlocks, so two devices agree in any
-// order.
-/** @stability unstable */
 export const UnlockedRecording = defineMutation({
   name: 'UnlockedRecording',
   version: 1,
@@ -489,9 +421,6 @@ export const UnlockedRecording = defineMutation({
   apply: (_, context) => updatePlayer(context, { record_unlock: 'Unlocked' }),
 })
 
-// NOTE: how the last run ended, for the friends in the car. The last
-// device to end a run wins, like the settings.
-/** @stability unstable */
 export const EndedRun = defineMutation({
   name: 'EndedRun',
   version: 1,
@@ -501,11 +430,6 @@ export const EndedRun = defineMutation({
   apply: ({ lastRun }, context) => updatePlayer(context, { last_run: lastRun }),
 })
 
-// NOTE: the calling picked for the next run. The last device to change it
-// wins, like the settings. Whether it is owned is not checked here: a run
-// starts YOU for a calling its player has not bought
-// (callingForRun in src/world/heroes/calling.ts), so a pick never skips a purchase.
-/** @stability unstable */
 export const ChangedCalling = defineMutation({
   name: 'ChangedCalling',
   version: 1,
@@ -515,9 +439,6 @@ export const ChangedCalling = defineMutation({
   apply: ({ calling }, context) => updatePlayer(context, { calling }),
 })
 
-// NOTE: the display name, already cleaned by the device that set it. The
-// last device to change it wins, like the settings.
-/** @stability unstable */
 export const ChangedName = defineMutation({
   name: 'ChangedName',
   version: 1,
@@ -533,10 +454,6 @@ const PowerUpsRow = Schema.Struct({
 
 const encodePowerUps = Schema.encodeEffect(Schema.fromJsonString(SavedPowerUps))
 
-// NOTE: the power-up kinds a device saw, added to the ones the player has
-// seen on any device. A union, so two devices offline at once both keep
-// what they saw, in whatever order the server gets them.
-/** @stability unstable */
 export const SawPowerUps = defineMutation({
   name: 'SawPowerUps',
   version: 1,
@@ -572,12 +489,6 @@ const encodeUnlocks = Schema.encodeEffect(
   Schema.fromJsonString(SavedSeenUnlocks),
 )
 
-// NOTE: the unlocks a device saw (src/domain/unlocks.ts), added to the ones the
-// player has seen on any device. A union, so two devices offline at once
-// both keep what they saw, in whatever order the server gets them. The
-// baseline mark of a row from before NEW badges goes, as the ids it stood for
-// come with the first load.
-/** @stability unstable */
 export const SawUnlocks = defineMutation({
   name: 'SawUnlocks',
   version: 1,
@@ -610,8 +521,6 @@ export const SawUnlocks = defineMutation({
     }),
 })
 
-// NOTE: the tutorial reset, which explains every power-up again.
-/** @stability unstable */
 export const ForgotPowerUps = defineMutation({
   name: 'ForgotPowerUps',
   version: 1,
@@ -652,12 +561,6 @@ const mergeBestsByDifficulty = (
   Nightmare: mergeBests(kept.Nightmare, reached.Nightmare),
 })
 
-// NOTE: a finished run, as increments: the runs and kills it adds, and the
-// bests it reached, merged as the faster win and the deeper wave. Adding,
-// not overwriting, is what lets two devices record runs offline and both
-// count. Applied once per mutation id, so a retry never counts a run twice.
-// The server refuses a run with more kills than a run can have.
-/** @stability unstable */
 export const RecordedRun = defineMutation({
   name: 'RecordedRun',
   version: 1,
@@ -752,11 +655,6 @@ export const mergeRunRecords: {
   }),
 )
 
-// NOTE: the run records a device reached, merged into the player's as the
-// larger of each, never written over, so two devices that set records
-// offline both keep their best, in whatever order the server gets them.
-// Version 2 carries each difficulty's best run, merged as the better run.
-/** @stability unstable */
 export const ReachedRecords = defineMutation({
   name: 'ReachedRecords',
   version: 2,
@@ -793,11 +691,6 @@ const Points = Count.check(Schema.isLessThanOrEqualTo(MAX_POINTS_PER_RUN))
 
 const Bones = Count.check(Schema.isLessThanOrEqualTo(MAX_BONES_PER_RUN))
 
-// NOTE: a finished run's rank points and Bones, as increments, applied once
-// per mutation id, so runs on two linked devices both count and a retry
-// never counts one twice. The server refuses a run that pays more than a
-// run can.
-/** @stability unstable */
 export const EarnedRank = defineMutation({
   name: 'EarnedRank',
   version: 1,
@@ -816,11 +709,6 @@ export const EarnedRank = defineMutation({
 
 const MAX_VETERAN_POINTS = 1800
 
-// NOTE: the veteran start for a player from before rank, from the kills
-// their save held. It is merged as the larger of each, never added, so two
-// devices that both grant it (each from the same kills) leave one grant,
-// and the player is marked granted for good. Capped at rank 10's points.
-/** @stability unstable */
 export const GrantedVeteranRank = defineMutation({
   name: 'GrantedVeteranRank',
   version: 1,
@@ -843,14 +731,6 @@ export const GrantedVeteranRank = defineMutation({
 
 const BalanceRow = Schema.Struct({ balance: Schema.Finite })
 
-// NOTE: a cosmetic bought with Bones, by id (a look, or a hero as `hero:Handyman`). The apply reads
-// the price from the catalog (HAT_PRICES in src/shared/playerData.ts), never from
-// the args, and does nothing unless the id is for sale, not owned yet, and
-// the Bones balance (earned + veteran - spent) covers it. So two devices
-// that buy the same hat offline spend once, and two that buy different hats
-// with Bones for one keep whichever applies first. A gift hat is owned by
-// rank and is not for sale, so it does nothing here.
-/** @stability unstable */
 export const BoughtCosmetic = defineMutation({
   name: 'BoughtCosmetic',
   version: 1,
@@ -906,11 +786,6 @@ const readBonuses = (context: ApplyContext) =>
     )
   })
 
-// NOTE: the day's first run paid twice: its Bones again, added only when
-// the day is later than the last doubled day, so two linked devices that
-// both double the same day offline are paid once, whichever the server
-// gets first. Days sort as strings (DayStamp).
-/** @stability unstable */
 export const DoubledFirstRun = defineMutation({
   name: 'DoubledFirstRun',
   version: 1,
@@ -937,11 +812,6 @@ export const DoubledFirstRun = defineMutation({
 
 const encodeEscapedOn = Schema.encodeEffect(Schema.fromJsonString(EscapedOn))
 
-// NOTE: the first escape on a difficulty: FIRST_ESCAPE_BONES, read here and
-// never from the args, added only when the difficulty is not escaped on
-// yet, which it then is. A union, so two devices escaping offline on the
-// same difficulty are paid once.
-/** @stability unstable */
 export const EscapedFirst = defineMutation({
   name: 'EscapedFirst',
   version: 1,
@@ -976,12 +846,6 @@ const PurseRow = Schema.Struct({
 
 const encodePurses = Schema.encodeEffect(Schema.fromJsonString(PurseRanks))
 
-// NOTE: a rank's Bones purse (src/shared/rankCurve.ts): its Bones, read
-// there and never from the args, added only when the rank has a purse, is
-// not paid yet, and is reached by the points the scope holds, and the rank
-// is then paid. A union, so two devices reaching the rank offline are paid
-// once, and a purse for a rank not reached is never paid.
-/** @stability unstable */
 export const PaidRankPurse = defineMutation({
   name: 'PaidRankPurse',
   version: 1,
@@ -1019,9 +883,6 @@ export const PaidRankPurse = defineMutation({
     }),
 })
 
-// NOTE: a thing brought out, on the Proof Shelf (src/platform/proofScope.ts):
-// the first stamp kept, an earlier day's taking its place.
-/** @stability unstable */
 export const ShelvedProof = defineMutation({
   name: 'ShelvedProof',
   version: 1,
@@ -1039,13 +900,6 @@ const JournalRow = Schema.Struct({
 
 const encodeJournal = Schema.encodeEffect(Schema.fromJsonString(SavedJournal))
 
-// NOTE: what a run added to the Dare Journal (src/shared/journalData.ts):
-// the milestones reached, the rooms opened and found in, and the hero
-// played, each a union, and the things found, an increment, so two
-// devices that play offline both keep what they did. Applied once per
-// mutation id, so a retry never counts a run's things twice. The server
-// refuses a run with more things than a list can hold.
-/** @stability unstable */
 export const KeptJournal = defineMutation({
   name: 'KeptJournal',
   version: 1,
@@ -1078,9 +932,6 @@ export const KeptJournal = defineMutation({
     }),
 })
 
-// NOTE: written by the server when a device links to this player, so every
-// device can say how many are linked.
-/** @stability unstable */
 export const LinkedDevices = defineMutation({
   name: 'LinkedDevices',
   version: 1,
@@ -1095,9 +946,6 @@ export const LinkedDevices = defineMutation({
     }),
 })
 
-// SCOPE
-
-/** @stability unstable */
 export const PlayerScope = defineScope({
   kind: PLAYER_SCOPE_KIND,
   tables: [

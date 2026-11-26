@@ -29,11 +29,6 @@ import {
 import { tileCenter } from '../tileGrid'
 import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
 
-// The rolled rooms (layer 11 of docs/ESCAPE_PLAN.md): each run rolls which
-// of the parlour, library, and cellar stands in each of the house's three
-// slots, from the run's seed. Every one of the six houses must build, path,
-// and spawn the way the fixed one did.
-
 const EVERY_EXIT = ['Kitchen', 'West', 'East', 'Far', SECRET_EXIT]
 
 const nameOf = ({ West, East, Far }: Arrangement): string =>
@@ -42,7 +37,6 @@ const nameOf = ({ West, East, Far }: Arrangement): string =>
 const wholeHouse = (arrangement: Arrangement): Level =>
   levelFor(manorSpecFor(arrangement), EVERY_EXIT)
 
-// NOTE: a spot on each slot room's top aisle, open in every room's map.
 const aisleOf = (slot: keyof typeof SLOTS) => ({
   column: SLOTS[slot].origin.column + 6,
   row: SLOTS[slot].origin.row + 3,

@@ -1,8 +1,3 @@
-// Cosmetics never steer gameplay (MULTIPLAYER.md, Phase 0, step 1). Two runs
-// replay the same script; the second throws away every cosmetic after each
-// frame, as a room that makes no particles or a phone that makes fewer would.
-// The gameplay hash must agree on every frame.
-
 import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'

@@ -1,8 +1,5 @@
 import { Schema } from 'effect'
 
-// NOTE: the game's sound effects by name, apart from the audio engine
-// (src/audio/audio.ts), so the World's tables can name a sound without the
-// step importing the Web Audio code.
 export const SoundEffect = Schema.Literals([
   'Shot',
   'ShotgunBlast',

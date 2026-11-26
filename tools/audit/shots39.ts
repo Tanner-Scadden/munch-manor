@@ -1,17 +1,3 @@
-// The Mystery Leftovers pass: the fridge in the open kitchen with its price
-// tag lit and the hold's ring part filled, the reveal (its spin, and each
-// prize landed: Cooker, Pan, Brain Freeze, Sandwich, Dud), a weapon on
-// offer with its TAKE tag and the gun it would replace, the take's flight
-// and the slot's pulse, the fridge chained shut after a slam,
-// the Pressure Cooker charging with lids in the air and one bursting, the
-// Clang Pan mid-swing with zombies reeling, Brain Freeze spraying with
-// zombies frozen and chilled, and the pause screen's control cards, on a
-// 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
-// upright, as `s39-<TAG>-<viewport>-<scene>.png`. It checks that a hold at
-// the fridge pulls it and that the control cards fit without scrolling, and
-// exits with 1 on any miss.
-//   TAG=after bun run heavy -- bun tools/audit/shots39.ts
-// ONLY picks scenes, such as `ONLY=tag,pull`, and VIEWPORTS picks screens.
 import { Array, Console, Effect, Record } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -35,9 +21,6 @@ import { BREAK, IN_KITCHEN, LEARNED } from './scenes'
 type Scene = Readonly<{
   name: string
   query: string
-  // NOTE: a control card's frames take turns through a looping animation,
-  // which a shot with animations off holds at a hidden frame, so the pause
-  // shot lets them run.
   isAnimated?: boolean
   act?: (
     page: Page,
@@ -46,17 +29,8 @@ type Scene = Readonly<{
   ) => Effect.Effect<void, AuditFailed>
 }>
 
-// NOTE: every scene plays its frames at once with `tick=N` (N frames of
-// 1/60 s) and holds there, so each picture is the same on every run. The
-// fridge stands in the kitchen's north-east corner, tiles 17 and 18 of rows
-// -13 and -12, so (180, -102) is just in reach below its door. The weapon
-// scenes stand at (40, -12), on the open floor at the kitchen's foot.
 const AT_FRIDGE = 'px=180&py=-102'
 
-// NOTE: the fridge seed that draws each prize on a first pull, for a player
-// holding the Chatterbox. The hold pays on tick 30, so tick 45 is a quarter
-// of a second into the reveal's spin, tick 85 shows the prize landed, and
-// tick 130 the weapon on offer (the key still held, so it is not taken).
 const PRIZE_SEEDS = {
   cooker: 7,
   pan: 1,
@@ -86,8 +60,6 @@ const PULL_SCENES: ReadonlyArray<Scene> = Array.map(
   }),
 )
 
-// NOTE: runs in the page, which has no Effect: plain loops, so no native
-// Array method is left for the Effect rules to flag.
 const readFit = () => {
   const cards = document.querySelectorAll('.help-card')
   let scrolls = 0
@@ -125,8 +97,6 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'tag',
     query: `${BREAK}&${AT_FRIDGE}&hold&tick=17`,
   },
-  // NOTE: standing still with no key held: the ring fills at half the
-  // key's speed, so tick 40 shows it about two thirds round.
   {
     name: 'stand-fridge',
     query: `${BREAK}&${AT_FRIDGE}&tick=40`,

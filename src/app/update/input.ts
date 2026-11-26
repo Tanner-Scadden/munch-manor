@@ -85,12 +85,8 @@ const pressedPointer =
     )
   }
 
-// NOTE: the click after a mouse's shot through a slot (PressedHudSlot) is
-// spent, and the next click on a slot acts again.
 const passSlotClick = modelStep(model => withSlotClick(model, 'Acts'))
 
-// NOTE: the keyboard, the mouse, touch, and the game surface
-// (src/input/message.ts).
 export const inputHandlers = defineHandlers({
   PressedKey: ($, message) => orInRun(message, pressedKey(message.code))($),
 
@@ -136,11 +132,8 @@ export const inputHandlers = defineHandlers({
 
   SuppressedContextMenu: $ => $.model,
 
-  // NOTE: the touch tap listener (src/input/touchTaps.ts) reports each tap it
-  // made. The tapped button's own Message did the work.
   TappedWithTouch: $ => $.model,
 
-  // NOTE: turning the phone while the turn hint is up is the hint done.
   MeasuredGameSurface: ($, message) => {
     const measured = UiStruct.evolve($.model, {
       maybeSurface: () => Option.some(Struct.omit(message, ['_tag'])),
@@ -157,8 +150,6 @@ export const inputHandlers = defineHandlers({
       touchControls === 'Allowed' ? 'Touch' : 'KeyboardMouse',
     ),
 
-  // NOTE: the pad's own presses first, then its menu presses, routed by
-  // the menu that was up before this poll (src/app/update/padMenu.ts).
   PolledGamepad: ($, message) => {
     const pad = {
       index: message.index,
@@ -175,10 +166,7 @@ export const inputHandlers = defineHandlers({
     orInRun(message, padGone(message.index))($),
 })
 
-// NOTE: the run's buttons (src/input/message.ts), each sent to the room in
-// an online run.
 export const runButtonHandlers = defineHandlers({
-  // NOTE: the finger holds the interact until it lifts.
   PressedHoldButton: ($, message) =>
     $.combine(
       modelStep(held =>
@@ -205,24 +193,17 @@ export const runButtonHandlers = defineHandlers({
       ? passSlotClick($)
       : orInRun(message, pressMeleeSlot)($),
 
-  // NOTE: on touch the reload button is a tap like any button, made into a
-  // click by src/input/touchTaps.ts even with a thumb on the move stick.
   ClickedReloadButton: ($, message) => orInRun(message, reloadFromButton)($),
 
-  // NOTE: MEDIC! from a downed player, a tap on the red cross.
   ClickedMedicButton: ($, message) => orInRun(message, clickMedic)($),
 
   ClickedPlaceTrapButton: ($, message) => orInRun(message, clickPlaceTrap)($),
 
   ClickedNextTrapButton: ($, message) => orInRun(message, clickNextTrap)($),
 
-  // NOTE: the HUD's dare list opens the dare card again, alone or online:
-  // this client's own (src/app/update/play.ts).
   ClickedDareList: $ => clickDareList($),
 })
 
-// NOTE: the page's focus, visibility, and a restore from the cache
-// (src/platform/message.ts).
 export const pageHandlers = defineHandlers({
   BlurredWindow: ($, message) => orInRun(message, pauseWhenAway)($),
 

@@ -80,7 +80,6 @@ const isInsideDialog = (target: EventTarget | null): boolean =>
 
 const BUTTON_ACTIVATION_KEYS: ReadonlyArray<string> = ['Enter', 'Space']
 
-// NOTE: Enter on a focused link opens it, so it is no game key either.
 const isActivatingButton = (
   target: EventTarget | null,
   code: string,
@@ -98,8 +97,6 @@ export type KeyDown = Readonly<{
   altKey?: boolean
 }>
 
-// NOTE: Ctrl, Command, and Alt with a key are the browser's and the
-// system's shortcuts (Ctrl+D bookmarks, Command+R reloads), never a move.
 const isModified = ({ ctrlKey, metaKey, altKey }: KeyDown): boolean =>
   ctrlKey === true || metaKey === true || altKey === true
 
@@ -144,17 +141,11 @@ const BROWSER_DEFAULT_KEYS: ReadonlyArray<string> = [
   'Comma',
 ]
 
-// NOTE: a game key never does the browser's own thing as well: arrows and
-// Space scroll, and Firefox opens its quick find on / and '. Held keys
-// repeat, so a repeat is kept from the browser too.
 export const isKeptFromBrowser = (keyDown: KeyDown): boolean =>
   (isLetterKeyCode(keyDown.code) ||
     Array.contains(BROWSER_DEFAULT_KEYS, keyDown.code)) &&
   !isLeftToPage(keyDown)
 
-// NOTE: Tab opens and puts away the dare card while the HUD's dare list
-// is there to open (src/screens/game/dareListButton.ts), so then it never
-// moves the page's focus as well. Anywhere else Tab is the browser's.
 const isDareListTab = (event: KeyboardEvent): boolean =>
   event.code === 'Tab' &&
   !isLeftToPage(event) &&
@@ -198,9 +189,6 @@ export const updateCheckActivity = (model: Model): Activity =>
     ? 'Active'
     : 'Idle'
 
-// NOTE: a stream of one event on the document or the window, each event
-// read in its own listener, so a handler that calls `preventDefault` does
-// so before the browser acts on the event.
 const listenerStream = <Msg>(
   attach: (emit: (maybeMessage: Option.Option<Msg>) => void) => () => void,
 ): Stream.Stream<Msg> =>
@@ -250,10 +238,6 @@ const keyboardMessages = Stream.merge(
   ),
 )
 
-// NOTE: the watch for a browser extension that grabs keys (src/input/keyGrab.ts).
-// It listens on the window in the capture phase, ahead of anything in the
-// page, so only an extension, which listens there first, can hide a keydown
-// from it. Everything it sees is forgotten when the page loses focus.
 const keyWatchMessages = Stream.suspend(() => {
   const seenKeys = new Set<string>()
   let quietUntilMs = performance.now() + KEY_WATCH_QUIET_MS
@@ -310,8 +294,6 @@ const pointerMoveMessages = documentEvents('pointermove', event =>
       ),
 )
 
-// NOTE: the fingers on the glass, so a stick held by a finger whose lift
-// never came (iOS Safari loses one now and then) lets go at the next touch.
 const touchesMessage = (event: TouchEvent): ChangedTouches =>
   Message.ChangedTouches({
     points: Array.map(Array.fromIterable(event.touches), touch => ({
@@ -320,10 +302,6 @@ const touchesMessage = (event: TouchEvent): ChangedTouches =>
     })),
   })
 
-// NOTE: releases listen all the time, not only while a pointer is tracked.
-// A quick tap can lift its finger before a tracking-only listener is
-// attached, and a missed release leaves the stick held forever. Releasing a
-// pointer that is not tracked changes nothing.
 const someTouches = (event: TouchEvent): Option.Option<ChangedTouches> =>
   Option.some(touchesMessage(event))
 
@@ -357,9 +335,6 @@ const mouseMessages = documentEvents('pointermove', event =>
     : Option.none(),
 )
 
-// NOTE: what the store hears from sync: a save another device or the
-// server changed, the status line for SETTINGS, and how far the player
-// scope has loaded.
 const syncMessageOf = (event: StoreEvent) =>
   StoreEvent.match(event, {
     SyncedSave: ({ save }) => Message.UpdatedSyncedSave({ save }),
@@ -367,13 +342,6 @@ const syncMessageOf = (event: StoreEvent) =>
     ScopeStatus: ({ status }) => Message.UpdatedPlayerScopeStatus({ status }),
   })
 
-// NOTE: requestAnimationFrame's ticks with the time since the last one,
-// while the round or an end screen is moving, through the frame gate
-// (src/app/frameGate.ts): a fast screen's frames that owe no sim tick are
-// held and sent with the next, so the game draws at most about 60 a
-// second, and on the title and its menus at most 30. A hidden tab gets no
-// frames, so the first delta after it comes back can be seconds long: the
-// update clamps it (clampFrameDelta in src/app/frame.ts).
 const animationFrames = (pace: FramePace) =>
   Stream.callback<TickedFrame>(queue =>
     Effect.acquireRelease(
@@ -406,12 +374,6 @@ type GamepadMessage = PolledGamepad | DisconnectedGamepad
 
 const hasGamepads = (): boolean => typeof navigator.getGamepads === 'function'
 
-// NOTE: the controller, polled once an animation frame while one is
-// plugged in (a pad that was in before the page loaded shows itself on its
-// first press, with `gamepadconnected`). Only a change is sent, the axes
-// already quantized (src/input/gamepad.ts), so a resting pad sends nothing
-// and `update` never reads the pad itself. When the pad goes, the root
-// hears DisconnectedGamepad and the loop stops until the next one comes.
 const gamepadMessages = Stream.callback<GamepadMessage>(queue =>
   Effect.acquireRelease(
     Effect.sync(() => {
@@ -464,11 +426,6 @@ const gamepadMessages = Stream.callback<GamepadMessage>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 )
 
-// NOTE: a direction held on the pad while a menu is up steps again, as a
-// held arrow key repeats: first after MENU_REPEAT_DELAY_MS, then every
-// MENU_REPEAT_MS. The first step is the poll's own (newDirection in
-// src/input/gamepad.ts); this sends only the repeats, so a pad resting or
-// pointing nowhere sends nothing.
 const padRepeats = Stream.callback<RepeatedPadDirection>(queue =>
   Effect.acquireRelease(
     Effect.sync(() => {
@@ -506,9 +463,6 @@ const padRepeats = Stream.callback<RepeatedPadDirection>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 )
 
-// NOTE: the co-op room's frame clock, while its game is playing: the time
-// of each animation frame. The root ticks the room with it through the
-// co-op Binding (src/app/update/coop.ts).
 const roomFrameTimes: Stream.Stream<number> = Stream.callback<number>(queue =>
   Effect.acquireRelease(
     Effect.sync(() => {
@@ -529,10 +483,6 @@ const roomFrameTimes: Stream.Stream<number> = Stream.callback<number>(queue =>
   ).pipe(Effect.flatMap(() => Effect.never)),
 ).pipe(Stream.mapEffect(() => Clock.currentTimeMillis))
 
-// THE SUBSCRIPTIONS
-
-// NOTE: what the store hears from sync, today's day, and what the browser
-// offers to install, each for the life of the page.
 const playerSync = Subscription.make(
   'PlayerSync',
   Stream.unwrap(
@@ -543,14 +493,11 @@ const playerSync = Subscription.make(
   ),
 )
 
-// NOTE: today's day in UTC, from start, then each new day.
 const today = Subscription.make(
   'Today',
   Stream.map(todays, day => Message.ChangedToday({ day })),
 )
 
-// NOTE: what the browser offers to install, held by the InstallPrompt
-// service from the moment the runtime starts.
 const installOffers = Subscription.make(
   'InstallOffers',
   Stream.unwrap(
@@ -563,8 +510,6 @@ const installOffers = Subscription.make(
   ),
 )
 
-// NOTE: one Subscription per pace, keyed by it, so a change of pace closes
-// the old frame loop before the new one starts.
 const frames: {
   readonly [Pace in FramePace]: Subscription.Subscription<TickedFrame>
 } = {
@@ -658,13 +603,6 @@ const ALWAYS: ReadonlyArray<AppSubscription> = [
   fullscreenChanges,
 ]
 
-// NOTE: the Subscriptions the Model asks for, each gated on it: the frame
-// while a round or a screen moves (at its pace), the room's frame while its
-// game plays, the pad's repeats while a menu is up, the update check in its
-// window, the mouse's aim while a round is on, and a tracked pointer's
-// moves. `subscriptions` runs after every Message, every frame too, so each
-// list of gates is built once and kept by its gates' bits: a frame builds
-// no Subscription and no list.
 const listsByGates = new Map<number, ReadonlyArray<AppSubscription>>()
 
 const listFor = (
@@ -706,9 +644,6 @@ export const subscriptions = ({
     ...(isAimOn ? [mouseAim] : []),
     ...(isTrackOn ? [trackedPointers] : []),
   ])
-  // NOTE: co-op's own (QUICK PLAY's queue, a room's lobby and socket), keyed
-  // by the room's code, so they join the list only while co-op has one: a
-  // frame in single player builds no list.
   const coop = Array.filter(
     coopSubscriptions(model.coop),
     (entry): entry is Exclude<typeof entry, false> => entry !== false,

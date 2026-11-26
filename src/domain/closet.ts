@@ -15,21 +15,11 @@ import {
 } from '../shared/playerData'
 import { bonesBalanceOf } from '../world/heroes/rank'
 
-// The closet (GAME_DESIGN.md, "Rank and Bones"): the pure rules for the
-// earned looks, hats, shirt colors, prints, and gun skins, which the Look
-// tab's rows show. A gift is free at its rank and owned by rank alone, so a
-// rank up writes nothing. A sold look is bought once with Bones and kept in
-// the save. Anything with neither a rank nor a price is free. Nothing here
-// reads the Model.
-
-// SOURCES
-
 export type LookSource =
   | Readonly<{ kind: 'Free' }>
   | Readonly<{ kind: 'Gift'; rank: number }>
   | Readonly<{ kind: 'Sold'; price: number }>
 
-// NOTE: where a look comes from, by its kind and name (`Hat`, `Fez`).
 export const sourceOf: {
   (name: string): (kind: CosmeticKind) => LookSource
   (kind: CosmeticKind, name: string): LookSource
@@ -44,8 +34,6 @@ export const sourceOf: {
       }),
   })
 })
-
-// OWNING
 
 export const isOwned: {
   (
@@ -76,10 +64,6 @@ export const isOwned: {
   },
 )
 
-// NOTE: the look wearing only what the player owns: a hat, shirt color,
-// print, or gun skin that is not owned (a purchase another device's Bones
-// outran) goes back to bare headed, blue, plain, and stock. The same look
-// comes back when nothing is off.
 export const lookInOwned: {
   (bought: SavedBoughtCosmetics, rank: number): (look: Appearance) => Appearance
   (look: Appearance, bought: SavedBoughtCosmetics, rank: number): Appearance
@@ -109,8 +93,6 @@ export const lookInOwned: {
   },
 )
 
-// GIFTS
-
 export type Gift = Readonly<{ kind: CosmeticKind; name: string; rank: number }>
 
 const giftsOf = (
@@ -122,7 +104,6 @@ const giftsOf = (
     return source.kind === 'Gift' ? [{ kind, name, rank: source.rank }] : []
   })
 
-// NOTE: every gift, lowest rank first.
 export const GIFTS: ReadonlyArray<Gift> = Array.sort(
   [
     ...giftsOf('Hat', GiftHat.literals),
@@ -133,8 +114,6 @@ export const GIFTS: ReadonlyArray<Gift> = Array.sort(
   Order.mapInput(Order.Number, (gift: Gift) => gift.rank),
 )
 
-// NOTE: the gifts a rank up from `rankBefore` to `rankAfter` opened, lowest
-// rank first.
 export const giftsOpenedBy: {
   (rankAfter: number): (rankBefore: number) => ReadonlyArray<Gift>
   (rankBefore: number, rankAfter: number): ReadonlyArray<Gift>
@@ -143,8 +122,6 @@ export const giftsOpenedBy: {
   (rankBefore: number, rankAfter: number): ReadonlyArray<Gift> =>
     Array.filter(GIFTS, ({ rank }) => rank > rankBefore && rank <= rankAfter),
 )
-
-// A LOOK'S STANDING
 
 export type Standing = 'Worn' | 'Owned' | 'ForSale' | 'Locked'
 
@@ -180,9 +157,6 @@ export const standingOf: {
           : 'ForSale',
 )
 
-// BUYING
-
-// NOTE: whether the Bones cover a look for sale.
 export const canAfford: {
   (kind: CosmeticKind, name: string): (rank: SavedRank) => boolean
   (rank: SavedRank, kind: CosmeticKind, name: string): boolean
@@ -194,9 +168,6 @@ export const canAfford: {
   },
 )
 
-// NOTE: what picking a look does, read from its standing: nothing for the
-// one worn, put on one owned, try on one for sale (bought by its BUY pill,
-// not by the pick), and nothing for a locked gift.
 export type GearTap = 'Stay' | 'Wear' | 'Preview' | 'Locked'
 
 export const gearTapOf: {
@@ -233,7 +204,6 @@ export const gearTapOf: {
   },
 )
 
-// NOTE: the price of a look for sale, none for any other.
 export const priceOf: {
   (name: string): (kind: CosmeticKind) => Option.Option<number>
   (kind: CosmeticKind, name: string): Option.Option<number>

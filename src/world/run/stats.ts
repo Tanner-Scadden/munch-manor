@@ -12,8 +12,6 @@ import {
   type ZombieKind,
 } from '../schema/worldSchema'
 
-// TALLY
-
 const addKill = (kills: KillCounts, kind: ZombieKind): KillCounts =>
   UiStruct.evolve(kills, {
     Shambler: count => (kind === 'Shambler' ? count + 1 : count),
@@ -92,8 +90,6 @@ export const countHits: {
 export const countTrapPlaced = (stats: RunStats): RunStats =>
   UiStruct.evolve(stats, { trapsPlaced: placed => placed + 1 })
 
-// READING
-
 export const killTotal = (kills: KillCounts): number =>
   kills.Shambler +
   kills.Runner +
@@ -105,7 +101,6 @@ export const killTotal = (kills: KillCounts): number =>
 
 export const totalKills = ({ kills }: RunStats): number => killTotal(kills)
 
-// NOTE: every kill scores the same, so the score is read from the kills.
 export const scoreOf = (stats: RunStats): number =>
   totalKills(stats) * SCORE_PER_ZOMBIE
 
@@ -170,8 +165,6 @@ export const defeatVerdict: {
   }
 })
 
-// NOTE: Rattles' word on the end card. The wave is on the card already, so
-// the quip never says it.
 const DEFEAT_QUIPS: ReadonlyArray<string> = [
   'Rattles will miss your money',
   'Tasted like chicken, they say',

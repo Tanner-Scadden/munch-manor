@@ -1,9 +1,3 @@
-// The light and color lab's panel (./lab.ts): every value of the 3D look,
-// the flames, and the moods' ambient as a slider or a color picker, grouped
-// as in code (each group's count of slid values on its fold), with the slid ones marked and their shipped value beside them;
-// RESET puts every value back, and PROPOSE sends the slid values as a note
-// for an agent to land. It shows under the live room and the 3D stage, which
-// both take its edits as they move.
 import { Array, Function, Option, Record } from 'effect'
 
 import { Message, type Model, type StudioH, type StudioHtml } from './block'
@@ -67,8 +61,6 @@ const groupView = (h: StudioH, model: Model, group: string): StudioHtml => {
   const slid = Array.filter(controls, control =>
     Record.has(model.labEdits, control.id),
   ).length
-  // NOTE: the browser keeps a group open or shut: the view sets no `open`, so
-  // a patch never shuts one, and the page draws every frame.
   return h.details
     .key(group)
     .class('lab-group')
@@ -128,7 +120,6 @@ export const labView: {
   (h: StudioH, model: Model): StudioHtml
 } = Function.dual(2, labBody)
 
-// NOTE: the toolbar's switch that opens the lab under the picture.
 const labToggleBody = (h: StudioH, model: Model): StudioHtml =>
   h.button
     .class(model.isLabOpen ? 'tool-toggle on' : 'tool-toggle')

@@ -23,11 +23,6 @@ import {
 } from './Protocol'
 import { describeError } from './describeError'
 
-// ENGINE
-
-// NOTE: the engine is the database itself, synchronous, owned by one
-// thread. In the browser that thread is the Web Worker. In Node it is the
-// test process, on an in-memory database.
 export interface Engine {
   readonly persistence: Persistence
   readonly execute: (
@@ -71,15 +66,9 @@ const failureOf = (sqlite3: Sqlite3Static, error: unknown): DatabaseFailure =>
       }
     : { code: 'SQLITE_ERROR', message: describeError(error) }
 
-// PERSISTENCE
-
 const OPFS_INSTALL_ATTEMPTS = 8
 const OPFS_INSTALL_SPACING = '250 millis'
 
-// NOTE: these are what OPFS throws while another context still holds the
-// pool's access handles, such as the tab that just reloaded. They clear on
-// their own, so they are retried. Anything else means OPFS will not work
-// here, and the engine falls back to memory at once.
 const HANDLE_BUSY_ERRORS: ReadonlyArray<string> = [
   'NoModificationAllowedError',
   'InvalidStateError',
@@ -116,8 +105,6 @@ class OpfsAttemptError extends Schema.TaggedError<
 const attemptFailed = (cause: unknown): OpfsAttemptError =>
   OpfsAttemptError.make({ cause })
 
-// NOTE: forceReinitIfPreviouslyFailed is read by sqlite-wasm 3.54 but is
-// missing from its types, so the options are built apart from the call.
 const poolOptions = (options: OpenOptions) => {
   const pool = {
     directory: options.directory,
@@ -169,8 +156,6 @@ const openMemory = (
       }),
   })
 
-// CHANGES
-
 const operationOf = (sqlite3: Sqlite3Static, op: number): ChangeOperation =>
   op === sqlite3.capi.SQLITE_INSERT
     ? 'Insert'
@@ -189,10 +174,6 @@ const addChange = (
     ? changes
     : Array.append(changes, change)
 
-// NOTE: the update hook records each row change while a transaction is
-// open. The commit hook moves them to committed and the rollback hook drops
-// them, so a change is only ever reported once it is durable. The hook only
-// sees rowid tables, not WITHOUT ROWID ones.
 const watchChanges = (
   sqlite3: Sqlite3Static,
   db: Database,
@@ -233,8 +214,6 @@ const watchChanges = (
     return changes
   }
 }
-
-// OPEN
 
 const makeEngine = (
   sqlite3: Sqlite3Static,
@@ -279,9 +258,6 @@ const WARM = 'warm'
 
 const warmModules = new Map<typeof WARM, Promise<Sqlite3Static>>()
 
-// NOTE: starts fetching and compiling the wasm before the first open request
-// arrives, so a worker started early has it ready. The first open takes this
-// module; any later open loads its own, as before.
 export const warmEngine = (): void => {
   if (warmModules.has(WARM)) {
     return
@@ -306,8 +282,6 @@ const loadSqlite: Effect.Effect<Sqlite3Static, EngineOpenError> =
       }),
   })
 
-// NOTE: OPFS first. When it is missing or refuses, the engine still opens,
-// in memory, and says why in its Persistence, so the app can keep a fallback.
 export const openEngine = (
   options: OpenOptions,
 ): Effect.Effect<Engine, EngineOpenError> =>

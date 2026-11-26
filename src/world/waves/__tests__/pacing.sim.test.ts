@@ -1,7 +1,3 @@
-// The pacing sim tests: whole waves played for several seeds, as a player
-// who kills every zombie the moment it walks in. They take seconds, so they
-// run in `bun run test:full` and CI, not in `bun run test`. The pacing rules
-// themselves are in pacing.story.test.ts.
 import { Array, Effect, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -52,15 +48,8 @@ const isAnnounced = (current: Model): boolean =>
 
 const WAVE_FRAMES = 6000
 
-// NOTE: how often the sounds the frames raise are completed, so the pending
-// list stays short.
 const SETTLE_EVERY = 60
 
-// NOTE: one frame of the wave from `start`, while it is on: the frame, each
-// zombie it brings in noted where and when it came, whether the room was
-// left empty and unannounced, and then every zombie killed, as the player
-// kills each the frame it walks in. Once the wave is over, a frame sends
-// nothing and notes nothing.
 const killingFrame = (
   frame: number,
   arrivals: Array<Arrival>,
@@ -90,9 +79,6 @@ const killingFrame = (
     ...(frame % SETTLE_EVERY === 0 ? [settleRunCommands] : []),
   )
 
-// NOTE: the wave from `started` played out as `killingFrame` plays a frame,
-// what came in and the quiet frames gathered in arrays the Story alone
-// fills, as `recordTicks` gathers its Models.
 const killEverything = (started: Model) =>
   Effect.suspend(() => {
     const arrivals: Array<Arrival> = []
@@ -108,10 +94,6 @@ const killEverything = (started: Model) =>
     ).pipe(Effect.as({ arrivals, quietFrames }))
   })
 
-// NOTE: This plays a wave as a player who kills every zombie the moment it
-// walks in, the worst case for an empty room. A frame is quiet when the room
-// is empty and no warned pack waits at a door. The player has met every kind,
-// so a new zombie intro does not hold the wave clock.
 const playKillingEverything = (wave: number, seed: number) => {
   const [rngState, rolled] = rollWave(seed, wave)
   const preparing = UiStruct.evolve(asVeteran(initialModel), {
@@ -206,8 +188,6 @@ describe('dead air', () => {
             }),
           ),
       ),
-    // NOTE: about 40 s on CI's runner beside the other sims, and up to 85 s
-    // when it shares the runner with the busiest of them.
     150_000,
   )
 })

@@ -11,6 +11,7 @@ import type { Browser, CDPSession, Page } from 'playwright-core'
 
 import { Vector } from '@game/world/schema/entitySchema'
 
+import { sampleFrames } from './inPage/measure'
 import { canvasRect, closePage, desktop, modelAs, toClient, wait } from './lib'
 import {
   type AuditFailed,
@@ -41,19 +42,13 @@ export const FrameRow = Schema.Struct({
   particles: Schema.String,
   phase: Schema.String,
   decals: Schema.Finite,
-  // NOTE: optional, so rows recorded before they were measured still read.
-  // Animation frames per second that drew, frame ticks per drawn frame, and
-  // the share of frames with a tick that also drew in that frame.
   drawnFps: Schema.optionalKey(Schema.Finite),
   ticksPerDraw: Schema.optionalKey(Schema.Finite),
   drawnTickShare: Schema.optionalKey(Schema.Finite),
-  // NOTE: the calibration a row was recorded with, when it differs from the
-  // baseline's own (a row recorded alone, perf-check.ts).
   calibrationMs: Schema.optionalKey(Schema.Finite),
 })
 export type FrameRow = typeof FrameRow.Type
 
-// NOTE: the fields of a Chrome trace event the audits read.
 export const TraceEvent = Schema.Struct({
   name: Schema.String,
   ph: Schema.String,
@@ -67,9 +62,6 @@ export const TraceEvent = Schema.Struct({
 })
 export type TraceEvent = typeof TraceEvent.Type
 
-// NOTE: collects the trace events of one `Tracing.start` to `Tracing.end`
-// pass, listening before the pass starts. `done` waits for them, decoded,
-// once Chrome says the trace is complete.
 export const collectTrace = (cdp: CDPSession) => {
   const raw: Array<unknown> = []
   cdp.on('Tracing.dataCollected', ({ value }) => {
@@ -107,10 +99,6 @@ const FrameData = Schema.Struct({
   shapes: Schema.Finite,
 })
 
-// NOTE: how the frames that ticked were drawn: the frames that drew, frame
-// ticks per drawn frame, and the share of ticked frames that drew in the
-// same animation frame. A render a frame late shows as ticks per draw near
-// 2 and a share near half.
 const cadenceOf = (
   viewFrames: ReadonlyArray<number>,
   tickFrames: ReadonlyArray<number>,
@@ -141,8 +129,6 @@ const stats = (xs: ReadonlyArray<number>) => {
 
 const round = (value: number, digits: number) => +value.toFixed(digits)
 
-// NOTE: the nearest zombie still standing, found in the page so the bot
-// reads two numbers each step instead of the whole Model.
 const aimTarget = (page: Page) =>
   evaluateAs(page, Schema.UndefinedOr(Vector), () => {
     const m = window.__model
@@ -263,45 +249,7 @@ export const measureScenario: {
         }),
       )
       const data = yield* decodedFrom(FrameData, () =>
-        page.evaluate(
-          // NOTE: runs in the page, where frames are waited on by a promise.
-          // @effect-diagnostics-next-line asyncFunction:off
-          async (durationSeconds: number) => {
-            window.__timings.update.length = 0
-            window.__timings.view.length = 0
-            window.__timings.viewFrames.length = 0
-            window.__timings.tickFrames.length = 0
-            const deltas: Array<number> = []
-            const start = performance.now()
-            let last = start
-            // NOTE: runs in the page: it waits on the browser's own frames, which
-            // only `requestAnimationFrame` gives.
-            // @effect-diagnostics-next-line newPromise:off
-            await new Promise<void>(resolve => {
-              const end = last + durationSeconds * 1000
-              const tick = (t: number) => {
-                deltas.push(t - last)
-                last = t
-                if (t < end) {
-                  requestAnimationFrame(tick)
-                } else {
-                  resolve()
-                }
-              }
-              requestAnimationFrame(tick)
-            })
-            return {
-              deltas,
-              elapsedMs: last - start,
-              update: [...window.__timings.update],
-              view: [...window.__timings.view],
-              viewFrames: [...window.__timings.viewFrames],
-              tickFrames: [...window.__timings.tickFrames],
-              shapes: window.__countShapes(),
-            }
-          },
-          seconds,
-        ),
+        page.evaluate(sampleFrames, seconds),
       )
       yield* attempt(() => cdp.send('Tracing.end'))
       const traceEvents = yield* trace.done

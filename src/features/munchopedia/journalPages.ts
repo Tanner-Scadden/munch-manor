@@ -20,15 +20,6 @@ import {
   PARLOUR_ROOM_ID,
 } from '../../world/level/plan'
 
-// The Dare Journal's pages past the zombies (docs/PROGRESSION_PLAN.md,
-// pillar B): the things, the rooms, the story, and the heroes, each filled
-// in by doing, read off the saved journal (src/shared/journalData.ts) and
-// the Proof Shelf. The story is guest book pages and Rattles' notes from
-// 1924, a page per milestone (src/world/dare/milestones.ts) in its
-// table's order, telling why the party never ended (LORE.md).
-
-// THE TABS
-
 export const JournalTab = Schema.Literals([
   'Zombies',
   'Things',
@@ -49,11 +40,6 @@ export const JOURNAL_TAB_NAMES: Readonly<Record<JournalTab, string>> = {
 export const journalTabId = (tab: JournalTab): string =>
   `journal-tab-${String.toLowerCase(tab)}`
 
-// THINGS
-
-// NOTE: where a thing stands for the player: brought out (on the shelf at
-// any difficulty), on the list but not found yet, or still locked behind
-// the milestone that opens it.
 export const ThingStanding = UiSchema.TaggedEnum({
   Found: {},
   Open: {},
@@ -91,12 +77,8 @@ export const thingStanding: {
         }),
 )
 
-// ROOMS
-
 type JournalRoom = Readonly<{ id: string; name: string; line: string }>
 
-// NOTE: the house's rooms in the order a run meets them. The dining room
-// is where every run starts, so its page is always filled.
 export const JOURNAL_ROOMS: Array.NonEmptyReadonlyArray<JournalRoom> = [
   {
     id: DINING_ROOM_ID,
@@ -134,8 +116,6 @@ export const isRoomKnown: {
     id === DINING_ROOM_ID || Array.contains(journal.roomsOpened, id),
 )
 
-// STORY
-
 type StoryPage = Readonly<{
   source: string
   lines: Array.NonEmptyReadonlyArray<string>
@@ -144,8 +124,6 @@ type StoryPage = Readonly<{
 const GUEST_BOOK = 'Guest book'
 const RATTLES_NOTE = "Rattles' note, 1924"
 
-// NOTE: goofy-gory and short, plain sentences: what a guest or Rattles
-// would scrawl. The last page waits behind an escape on Triple Dog Dare.
 export const STORY_PAGES: Readonly<Record<MilestoneId, StoryPage>> = {
   FirstFind: {
     source: GUEST_BOOK,
@@ -231,8 +209,6 @@ export const isPageOpen: {
   Array.contains(journal.milestones, id),
 )
 
-// NOTE: the page the Story tab opens on: the first one new since the
-// journal last opened, or else the first.
 export const firstStoryPage = (fresh: ReadonlyArray<string>): MilestoneId =>
   Option.getOrElse(
     Array.findFirst(STORY_ORDER, id =>
@@ -263,8 +239,6 @@ const TAB_FRESHNESS: Readonly<
   Heroes: () => false,
 }
 
-// NOTE: whether a tab has something new: a story page on Story, a thing a
-// new milestone opened on Things.
 export const isTabFresh: {
   (tab: JournalTab): (fresh: ReadonlyArray<string>) => boolean
   (fresh: ReadonlyArray<string>, tab: JournalTab): boolean
@@ -272,10 +246,6 @@ export const isTabFresh: {
   TAB_FRESHNESS[tab](fresh),
 )
 
-// HEROES
-
-// NOTE: each hero's reason for taking the dare (LORE.md, "Heroes and
-// bots"), shown once the player has played a run as them.
 export const HERO_REASONS: Readonly<Record<Calling, string>> = {
   You: 'Your friends dared you. That is the whole reason.',
   Handyman: 'The town paid him to board the place up. From the inside.',
@@ -284,9 +254,6 @@ export const HERO_REASONS: Readonly<Record<Calling, string>> = {
   LineCook: "Wants Grandma Munch's soup recipe. Will not say why.",
 }
 
-// NOTE: each hero's second page (hero mastery's level 3,
-// src/domain/mastery.ts): what they found out in the manor, under the
-// reason they came.
 export const HERO_STORIES: Readonly<Record<Calling, string>> = {
   You: 'The friends never came in after you. The door locked from their side.',
   Handyman:

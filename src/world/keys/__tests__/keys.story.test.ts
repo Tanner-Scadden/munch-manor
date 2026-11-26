@@ -42,14 +42,8 @@ import { EXIT_RULES, KITCHEN_EXIT, exitKeysOf } from '../../level/exits'
 import { maybePlayerAt, modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 
-// Skeleton keys (src/world/keys/keys.ts): zombies drop them by kind onto
-// the crew's one ring, and they open the padlocked boards and pull the
-// fridge.
-
 const FRAME_MS = FIXED_STEP_MS
 
-// NOTE: zombies at one hit point, each with a bullet in it, mid-wave in the
-// parlour with the kitchen open, so the next frame kills them all.
 const shotDown = (
   victims: ReadonlyArray<Zombie>,
   base: Model = atFridge(0),

@@ -44,8 +44,6 @@ import { RUNNING_BUILD } from '../version'
 
 const greeting = HtmlLocator.role('dialog', { name: 'Updated!' })
 const newsButton = HtmlLocator.role('button', { name: "WHAT'S NEW" })
-// NOTE: a build check is a Command's result, which no Subscription emits,
-// so a Story delivers it and the Scene starts from the Model it leaves.
 const foundMidWave = modelAfter(
   fighting,
   send(Message.CompletedFetchBuild({ build: 'newer-build' })),
@@ -68,8 +66,6 @@ const SCREENS_WITHOUT_THE_CHIP: ReadonlyArray<readonly [string, Model]> = [
   ['a wave', withNewerBuild(fighting)],
 ]
 
-// NOTE: the surface measured, the HUD's gun slots acknowledged, and the
-// pause screen's press on the surface too where it is up.
 const settleOn = (model: Model): SceneStep =>
   isPausedPhase(model)
     ? s => measureHud(s).expectMount(PressGameSurface())
@@ -145,9 +141,6 @@ const newestHeadline = Option.match(maybeNewestNewsDay, {
   onSome: day => newsHeadline(day.bullets[0].text),
 })
 
-// NOTE: the update marker is read by a Command at boot, so a Story
-// delivers what it read and a Scene starts from the Model it leaves: with
-// the build that is running, the greeting already opening.
 const afterMarker = (maybeBuild: Option.Option<string>) =>
   modelAfter(
     initialModel,

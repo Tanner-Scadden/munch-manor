@@ -1,6 +1,3 @@
-// NOTE: where a file of `src` may sit (AGENTS.md "Folders"), read by
-// tools/lint/folders.ts and its test.
-
 import { Array, Option, String } from 'effect'
 
 const LAYERS: ReadonlyArray<string> = [
@@ -34,7 +31,6 @@ const parentOf = (file: string): string =>
 
 const isInTests = (file: string): boolean => parentOf(file) === '__tests__'
 
-// NOTE: what is wrong with one file's place, if anything.
 export const problemOf = (file: string): Option.Option<string> => {
   const segments = String.split('/')(file)
   const layer = Option.getOrElse(Array.head(segments), () => '')

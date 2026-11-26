@@ -14,30 +14,15 @@ import { CALLINGS } from '../world/heroes/calling'
 import type { WeaponKind } from '../world/schema/worldSchema'
 import { MasteryUnlock } from './clientSchema'
 
-// Hero and gun mastery's client rules (docs/PROGRESSION_PLAN.md, pillar D):
-// what a hero's points and a gun's kills (src/shared/masteryData.ts) reach,
-// what each level opens, and what a run's payout opened. Read by the
-// payout (src/features/end/masteryRun.ts), the Profile's MASTERY tab, the
-// end card's flips, the Dare Journal's hero pages, and the drawing.
-
-// HEROES
-
-// NOTE: what a run pays its hero's track: every wave cleared and every
-// dare thing found, never a win itself, so a run that goes badly still
-// counts (owner brief, 2026-11-13).
 export const POINTS_PER_WAVE = 10
 export const POINTS_PER_THING = 25
 
-// NOTE: the points each level asks, in all. About a run's worth for the
-// first, then a dozen or so runs on one hero for the gold prop.
 const HERO_LEVEL_POINTS: Array.NonEmptyReadonlyArray<number> = [
   100, 300, 600, 1000, 1500,
 ]
 
 export const MAX_HERO_LEVEL = HERO_LEVEL_POINTS.length
 
-// NOTE: what each level opens: a prop style to wear, or the hero's second
-// page in the Dare Journal (Story) at level 3, between the styles.
 export type HeroReward = PropStyle | 'Story'
 
 const HERO_REWARDS: Array.NonEmptyReadonlyArray<HeroReward> = [
@@ -61,7 +46,6 @@ export const heroLevelIn: {
 export const heroRewardAt = (level: number): Option.Option<HeroReward> =>
   Array.get(HERO_REWARDS, level - 1)
 
-// NOTE: the level a prop style opens at, 0 for Stock.
 const STYLE_LEVELS: Readonly<Record<PropStyle, number>> = {
   Stock: 0,
   Silver: 1,
@@ -80,7 +64,6 @@ export const PROP_STYLES: Array.NonEmptyReadonlyArray<PropStyle> = [
 
 export const styleLevelOf = (style: PropStyle): number => STYLE_LEVELS[style]
 
-// NOTE: whether a hero's track has opened a prop style.
 export const isStyleOpen: {
   (calling: Calling, style: PropStyle): (mastery: SavedMastery) => boolean
   (mastery: SavedMastery, calling: Calling, style: PropStyle): boolean
@@ -92,7 +75,6 @@ export const isStyleOpen: {
 
 const HERO_STORY_LEVEL = 3
 
-// NOTE: whether the hero's second Journal page is open.
 export const isHeroStoryOpen: {
   (calling: Calling): (mastery: SavedMastery) => boolean
   (mastery: SavedMastery, calling: Calling): boolean
@@ -102,9 +84,6 @@ export const isHeroStoryOpen: {
     heroLevelIn(mastery, calling) >= HERO_STORY_LEVEL,
 )
 
-// NOTE: a track's bar: its count, the count the next step asks (or the
-// last step's, once done), the share of the way there from the step
-// before, and the reward next, or none once the track is full.
 export type TrackProgress<Reward> = Readonly<{
   count: number
   level: number
@@ -139,10 +118,6 @@ export const heroProgressOf: {
     progressOf(heroPointsOf(mastery, calling), HERO_LEVEL_POINTS, heroRewardAt),
 )
 
-// NOTE: the look's prop style kept to what the hero picked has opened:
-// a style its track has not reached goes back to Stock, after any change
-// (picking another hero, a synced save, a save read). The same Model
-// comes back when it fits, which is nearly always.
 export const fitPropStyle = (model: Model): Model => {
   const style = model.appearance.propStyle
   return style === 'Stock' || isStyleOpen(model.mastery, model.calling, style)
@@ -152,11 +127,6 @@ export const fitPropStyle = (model: Model): Model => {
       })
 }
 
-// GUNS
-
-// NOTE: a gun's skins by its lifetime kills: a Gilded gun at 1,000, then
-// Diamond at 2,500 (owner brief, 2026-11-13: a Gold-type skin at 1,000
-// and one more step).
 const GUN_SKIN_KILLS: Array.NonEmptyReadonlyArray<
   readonly [number, MasterySkin]
 > = [
@@ -172,7 +142,6 @@ const GUN_KILL_STEPS: Array.NonEmptyReadonlyArray<number> = Array.map(
 const gunRewardAt = (level: number): Option.Option<MasterySkin> =>
   Option.map(Array.get(GUN_SKIN_KILLS, level - 1), ([, skin]) => skin)
 
-// NOTE: the best skin a gun's kills have opened, or none yet.
 export const masterySkinOf = (kills: number): Option.Option<MasterySkin> =>
   gunRewardAt(Array.length(Array.filter(GUN_KILL_STEPS, at => kills >= at)))
 
@@ -194,8 +163,6 @@ export const gunProgressOf: {
     progressOf(gunKillsOf(mastery, kind), GUN_KILL_STEPS, gunRewardAt),
 )
 
-// WHAT A PAYOUT OPENED
-
 const levelsCrossed = (
   steps: ReadonlyArray<number>,
   before: number,
@@ -207,8 +174,6 @@ const levelsCrossed = (
     ),
   )
 
-// NOTE: every hero level and gun skin `after` reached that `before` had
-// not, heroes first, then guns by the kills they reached.
 export const unlocksBetween: {
   (after: SavedMastery): (before: SavedMastery) => ReadonlyArray<MasteryUnlock>
   (before: SavedMastery, after: SavedMastery): ReadonlyArray<MasteryUnlock>

@@ -26,11 +26,6 @@ import {
 } from '../../world/net/roomWorld'
 import { CoopNet } from './net'
 
-// NOTE: co-op without a network, for tests and the audit harness. The fake
-// answers each room request from `answer`, never streams anything, and
-// records every Command's call, so a test can run a Command's Effect and
-// read what it asked for.
-
 export type FakeCall =
   | Readonly<{
       _tag: 'RequestRoom'
@@ -94,7 +89,6 @@ export const makeFakeCoopNet = (
     }
   })
 
-// NOTE: the harness's CoopNet: a staged screen stays as it was staged.
 export const quietCoopNet: Layer.Layer<CoopNet> = Layer.succeed(
   CoopNet,
   CoopNet.of({
@@ -111,11 +105,8 @@ export const quietCoopNet: Layer.Layer<CoopNet> = Layer.succeed(
   }),
 )
 
-// FIXTURES
-
 export const CODE = 'MNCH7'
 
-// NOTE: data first when the slot leads: a slot is a number, a name is not.
 export const memberOf: {
   (
     name: string,
@@ -159,7 +150,6 @@ export const memberOf: {
   }),
 )
 
-// NOTE: data first when the members lead: they are an array, a status is not.
 export const lobbyOf: {
   (
     status?: RoomStatus,
@@ -197,8 +187,6 @@ export const lobbyOf: {
 
 const STAGED_TICKS = 50
 
-// NOTE: a stand-in world a few seconds into a run, players spread out. The
-// lobby's `members` give each seat its calling, as a room starts them.
 type StagedMember = Readonly<{ slot: number; calling: string }>
 
 export const stagedWorld: {

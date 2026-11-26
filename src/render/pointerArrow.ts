@@ -12,13 +12,6 @@ import type * as Draw from './draw'
 import { type ClearWindow, clearWindowOf } from './hudLayout'
 import type { Screen } from './screen'
 
-// NOTE: the big gold arrow that shows the way to a spot, in the overlay
-// canvas's pixels. Out of sight (up under the HUD's top rows or past the
-// window's edge), it waits at the window's edge pointing the way, bobbing
-// toward it: the guided tours' next spot (src/features/onboarding/
-// questEdgeView.ts) and the dare's things (src/features/dare/darePointer.ts).
-// In sight, the dare's arrow bobs right over the spot, pointing down.
-
 type Pointing = ScreenDirection
 
 const UP_PIXELS: ReadonlyArray<string> = [
@@ -65,8 +58,6 @@ const ARROWS: Readonly<Record<Pointing, Sprite>> = {
 
 const UNDER: readonly [Pointing, number] = ['Up', 0]
 
-// NOTE: the edge the spot lies past the furthest, so a spot up and a
-// little left reads as up.
 const pointingOf = (
   at: Vector,
   clear: ClearWindow,
@@ -89,9 +80,6 @@ const pointingOf = (
 const bobOf = (elapsedMs: number): number =>
   (Math.floor(elapsedMs / BOB_MS) % 2) * BOB_PX
 
-// NOTE: the spot on the floor, and how far over it the tip goes, in game
-// pixels straight up the screen: a thing's height stands up the screen
-// through the lens, not up the map (src/render/lens.ts).
 export type PointerAt = Readonly<{
   mark: Vector
   liftPx: number
@@ -124,8 +112,6 @@ const edgeShapesAt = (
   ]
 }
 
-// NOTE: only while the spot is out of sight; in sight, the caller draws its
-// own mark over it.
 export const edgeArrowShapes = ({
   mark,
   liftPx,
@@ -141,13 +127,8 @@ export const edgeArrowShapes = ({
   })
 }
 
-// NOTE: the arrow's tip sits this far over the spot, so it clears a thing
-// standing there.
 const POINTER_LIFT = 2
 
-// NOTE: a spot the world window shows with room over it for the arrow,
-// even up under the HUD's top rows, where an edge arrow would sit on the
-// thing itself.
 const isOverInWindow = (at: Vector, screen: Screen): boolean => {
   const window = screen.world
   return (
@@ -169,8 +150,6 @@ const overShapes = (
   ),
 ]
 
-// NOTE: at the edge while the spot is out of sight, and in sight right over
-// it, pointing down, its tip just above the spot.
 export const pointerArrowShapes = ({
   mark,
   liftPx,

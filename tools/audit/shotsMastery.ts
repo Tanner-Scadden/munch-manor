@@ -1,15 +1,3 @@
-// The hero and gun mastery pass: every hero in every prop style (YOU with
-// its medal) and every mastery gun in its Gilded and Diamond skins, drawn
-// from the game's own pixel maps, big; then the Profile's MASTERY tab with
-// the tracks at every stage, and a run wearing a style with a Gilded
-// pistol, on a 1280x720 desktop, an 844x390 phone on its side, and a
-// 390x844 phone held upright, as `s51-<TAG>-props.png`,
-// `s51-<TAG>-skins.png`, and `s51-<TAG>-<viewport>-<scene>.png`. It exits
-// with 1 when the MASTERY tab runs past its panel or a swatch is under
-// 22 px.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsMastery.ts
-// ONLY picks scenes (`sheets` for the two sheets), and VIEWPORTS picks
-// screens.
 import { Array, Effect } from 'effect'
 import type { Browser, Page } from 'playwright-core'
 
@@ -42,8 +30,6 @@ const LEARNED =
 
 type Scene = Readonly<{ name: string; query: string; isTab?: boolean }>
 
-// NOTE: 1,500 points to the last hero and 2,600 kills to the last gun, each
-// before a share less, so the rows stand at every level and skin.
 const TRACKS = 'heropoints=1500&gunmastery=2600'
 
 const SCENES: ReadonlyArray<Scene> = [
@@ -68,8 +54,6 @@ const SCENES: ReadonlyArray<Scene> = [
 ]
 
 const problems: Array<string> = []
-
-// THE SHEETS
 
 const SCALE = 8
 
@@ -130,8 +114,6 @@ const shootSheets = (browser: Browser, tag: string) =>
       yield* attempt(() => page.close())
     }
   })
-
-// CHECKS
 
 const checkTab = (page: Page, where: string) =>
   Effect.gen(function* () {

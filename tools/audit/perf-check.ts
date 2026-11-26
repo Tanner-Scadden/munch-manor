@@ -29,7 +29,6 @@ const BASELINE_PATH = `${import.meta.dir}/frame-baseline.json`
 const numberOr = (key: string, fallback: number) =>
   Config.String(key).pipe(Config.withDefault(`${fallback}`), Config.map(Number))
 
-// NOTE: the variables this script reads (see tools/audit/README.md).
 const Settings = Config.all({
   maybePort: Config.String('PORT').pipe(
     Config.option,
@@ -51,9 +50,6 @@ const Settings = Config.all({
   busyTolerance: numberOr('BUSY_TOLERANCE', 0.25),
   fpsTolerance: numberOr('FPS_TOLERANCE', 0.15),
   p95Tolerance: numberOr('P95_TOLERANCE', 0.3),
-  // NOTE: at 1x, nearly every animation frame with a frame tick must draw in
-  // that same frame, whatever the baseline says: a render scheduled a frame
-  // late draws only every other frame.
   drawnShareFloor: numberOr('DRAWN_SHARE_FLOOR', 0.9),
   maybeBase: Config.String('BASE').pipe(Config.option),
 })
@@ -67,8 +63,6 @@ const scenarioNamesOf = (settings: Settings) =>
     ),
   )
 
-// NOTE: `UPDATE=1` with `SCENARIOS` records only those scenarios' rows and
-// keeps the baseline's others.
 const isRecordingSome = (settings: Settings) =>
   Option.exists(settings.scenarios, value => value !== '')
 
@@ -81,9 +75,6 @@ const Baseline = Schema.Struct({
 })
 type Baseline = typeof Baseline.Type
 
-// NOTE: a port no server holds now, from the system, so two worktrees'
-// perf checks never share one harness (a second one on a fixed port timed
-// the first one's build).
 const freePort = Effect.callback<number>(resume => {
   const probe = createServer()
   probe.once('error', () => resume(Effect.succeed(4179)))
@@ -105,8 +96,6 @@ const isPortTaken = (port: number) =>
     socket.once('error', () => resume(Effect.succeed(false)))
   })
 
-// NOTE: whether `url` answers with a 2xx status, false when it does not
-// answer at all.
 const isServerUp = (url: string) =>
   HttpClient.get(url).pipe(
     Effect.map(response => response.status >= 200 && response.status < 300),
@@ -169,7 +158,6 @@ const stopPreview = (server: Subprocess) => {
   }
 }
 
-// NOTE: the first trial's row with each timing at its best over all trials.
 const bestOf = (trials: ReadonlyArray<FrameRow>) => {
   const [first] = trials
   if (first === undefined) {
@@ -219,7 +207,6 @@ const measureAll = (base: string, settings: Settings) =>
       const names = scenarioNamesOf(settings)
       const rows: Array<FrameRow> = []
       for (const [index, name] of names.entries()) {
-        // NOTE: under the heavy guard, other jobs may go between scenarios.
         if (index > 0) {
           yield* attempt(() =>
             yieldTurnAsync(`the ${names[index - 1]} scenario`, 1),
@@ -382,8 +369,6 @@ const compare = (
     return true
   })
 
-// NOTE: the baseline with the measured scenarios' rows recorded again, each
-// with the calibration it was recorded with, and every other row kept.
 const withRows = (
   baseline: Baseline,
   measured: Readonly<{ calibration: number; rows: ReadonlyArray<FrameRow> }>,
@@ -401,7 +386,6 @@ const withRows = (
   }
 }
 
-// NOTE: the baseline file, decoded.
 const readBaseline = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
   const text = yield* fs.readFileString(BASELINE_PATH)

@@ -48,14 +48,12 @@ const homeCoffee = HtmlLocator.role('link', {
   name: /^Buy Rattles a coffee/,
 })
 
-// NOTE: the coffee drawn as a link, the old `a.home-support`.
 const supportAnchor: Locator.Locator = {
   description: 'a.home-support',
   all: root =>
     Array.filter(byClass('home-support').all(root), node => node.tag === 'a'),
 }
 
-// NOTE: the `index`th match of `locator`, the old `Scene.nth`.
 const nthOf = (locator: Locator.Locator, index: number): Locator.Locator => ({
   description: `${locator.description} #${index}`,
   all: root => Array.take(Array.drop(locator.all(root), index), 1),
@@ -100,9 +98,6 @@ const NEVER_ON: ReadonlyArray<readonly [string, Model]> = [
   ],
 ]
 
-// NOTE: the Mounts a Scene of `model` acknowledges: the surface's, the
-// HUD's gun slots in a wave, the pause screen's press on the surface, and
-// SHARE's on an end screen with its buttons up.
 const settleScene = (model: Model): SceneStep =>
   Phase.matchOrElse(
     model.phase,
@@ -156,11 +151,8 @@ describe('the coffee button', () => {
   )
 })
 
-// THE HOME CORNER
-
 const MIN_TAP_PX = 48
 
-// NOTE: the body of the first rule for exactly this selector in menu.css.
 const ruleOf = (selectorText: string): string => {
   const maybeStart = String.indexOf(`\n${selectorText} {`)(menuCss)
   vitestExpect(Option.isSome(maybeStart), `${selectorText} has a rule`).toBe(
@@ -173,8 +165,6 @@ const ruleOf = (selectorText: string): string => {
 const pxOf = (rule: string, property: string): number =>
   Number(new RegExp(`${property}:\\s*(\\d+)px`).exec(rule)?.[1] ?? 'NaN')
 
-// NOTE: the whole corner showing: full screen, the coffee, the gear, the
-// update gift, and the install tile.
 const fullCorner = (model: Model): Model =>
   UiStruct.evolve(withNewerBuild(withLink(model)), {
     release: UiStruct.evolve({ installOffer: () => 'Ready' }),
@@ -258,13 +248,6 @@ describe('the coffee in the home corner', () => {
     }),
   )
 
-  // NOTE: Scene's page has no layout engine, so the sizes are read from
-  // menu.css and the places from the DOM: every corner control is a
-  // `.home-corner-button` at least 48 px square, the coffee sits just left
-  // of the gear in the top row, and the gift and the install tile in the
-  // row under it, rows stacked in a column. A flex row and a column never
-  // overlap their children. tools/audit/taps.ts, shots33.ts, and shots34.ts
-  // check the same in a real browser.
   test('the corner buttons are at least 48 px', () => {
     const root = String.slice(
       Option.getOrThrow(String.indexOf(':root {')(menuCss)),

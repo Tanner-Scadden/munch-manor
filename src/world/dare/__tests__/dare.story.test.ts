@@ -46,11 +46,6 @@ import {
 } from '../dare'
 import { type DareKind, type DareThing, DareThingState } from '../dareSchema'
 
-// The dare's list and its things (src/world/dare/dare.ts): the roll at a
-// run's start, one thing to a room behind boards, found by opening the room
-// and walking onto it or working at it (each room's own way, in
-// finds.story.test.ts), the crew's one list, and none in Endless.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const DIFFICULTIES: ReadonlyArray<Difficulty> = [
@@ -153,8 +148,6 @@ describe('the list', () => {
       ),
   )
 
-  // NOTE: fully random (owner, 2026-11-10): any thing may lie in any room,
-  // so over a few seeds one room holds things no theme would put there.
   it.effect('any thing may lie in any room, by seed', () =>
     Effect.gen(function* () {
       const pairs = yield* Effect.forEach(Array.range(0, 19), seed =>

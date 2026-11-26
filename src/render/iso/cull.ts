@@ -1,14 +1,7 @@
-// What the camera sees of the house, and whether a thing lies near enough to
-// it to matter this frame. The house is about three screens wide once every
-// room is open, and pixi draws whatever is in its scene into every casting
-// light's shadow map whether the camera sees it or not, so what lies well
-// off screen is left out of the frame.
-
 import { Function } from 'effect'
 
 import { type LensFrame, lensOf } from '../lens'
 
-// NOTE: a box on the game's map, in game pixels.
 export type ViewBox = Readonly<{
   left: number
   top: number
@@ -16,15 +9,8 @@ export type ViewBox = Readonly<{
   bottom: number
 }>
 
-// NOTE: how far past the view a thing still shows or darkens it, in game
-// pixels: what stands below the view's south edge rises into it (a wall, a
-// tall piece), and a shadow falls a little way from what casts it.
 const VIEW_MARGIN = 48
 
-// NOTE: the floor the camera shows, boxed on the game's map: the floor
-// points under the view's four corners through the lens
-// (src/render/lens.ts), which turns the view and widens it away from the
-// camera.
 export const viewBoxOf = (frame: LensFrame): ViewBox => {
   const lens = lensOf(frame)
   const left = frame.left
@@ -43,7 +29,6 @@ export const viewBoxOf = (frame: LensFrame): ViewBox => {
   }
 }
 
-// NOTE: whether a box lies on the view or within its margin.
 export const isNearView: {
   (view: ViewBox): (box: ViewBox) => boolean
   (box: ViewBox, view: ViewBox): boolean
@@ -56,13 +41,6 @@ export const isNearView: {
     box.bottom >= view.top - VIEW_MARGIN,
 )
 
-// THE FLOOR SEEN
-
-// NOTE: the floor the camera shows as its true shape on the game's map, a
-// convex quad of four corners in turn: the lens widens it away from the
-// camera and turns it, so its box above takes in floor at its near corners
-// that no pixel shows. Its near edge is pushed south by `VIEW_MARGIN`
-// screen rows, since what stands there rises into the view.
 export type ViewFloor = ReadonlyArray<Readonly<{ x: number; y: number }>>
 
 export const viewFloorOf = (frame: LensFrame): ViewFloor => {
@@ -79,8 +57,6 @@ export const viewFloorOf = (frame: LensFrame): ViewFloor => {
   ]
 }
 
-// NOTE: a box's floor with `VIEW_MARGIN` all round, as `isNearView` reads
-// it: for a camera with no lens of the game's (the title's diorama).
 export const boxFloorOf = (view: ViewBox): ViewFloor => [
   { x: view.left - VIEW_MARGIN, y: view.top - VIEW_MARGIN },
   { x: view.right + VIEW_MARGIN, y: view.top - VIEW_MARGIN },
@@ -88,9 +64,6 @@ export const boxFloorOf = (view: ViewBox): ViewFloor => [
   { x: view.left - VIEW_MARGIN, y: view.bottom + VIEW_MARGIN },
 ]
 
-// NOTE: whether a box and the floor seen overlap: no line between them,
-// along the box's own sides or the quad's (two convex shapes overlap
-// unless one of their sides parts them).
 const isPartedAlong = (
   box: ViewBox,
   floor: ViewFloor,

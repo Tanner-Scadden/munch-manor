@@ -101,7 +101,6 @@ class WaitTimedOut extends Schema.TaggedError<
   maybeLastReason: Schema.Option(Schema.String),
 }) {}
 
-/** @stability unstable */
 export class CommandFailedToStart extends Schema.TaggedError<
   CommandFailedToStart,
   { readonly brand: unique symbol }
@@ -110,8 +109,6 @@ export class CommandFailedToStart extends Schema.TaggedError<
   cause: Schema.instanceOf(PlatformError),
 }) {}
 
-// NOTE: the guard exits with the child's code, and every message it fails
-// with is printed before it fails, so the runtime reports nothing more.
 export class GuardExit extends Schema.TaggedError<
   GuardExit,
   { readonly brand: unique symbol }
@@ -131,9 +128,6 @@ class NotYet extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-// NOTE: the solo lock keeps the name every guard has used, so guards in
-// worktrees that have not rebased still see it. The directory beside it
-// holds the Shared slots and the markers.
 const LOCK_FILE = 'munch-manor-heavy.lock'
 const LOCK_DIRECTORY = 'munch-manor-heavy.d'
 const LEDGER_FILE = 'munch-manor-heavy-budget.json'
@@ -150,8 +144,6 @@ const GuardConfig = Config.all({
   stateDirectory: Config.String('HEAVY_STATE_DIR').pipe(
     Config.withDefault(Os.tmpdir()),
   ),
-  // NOTE: for trying the guard: a fixed 1 minute load instead of the real
-  // one, so a scratch run can check the budget on any machine.
   maybeFakeLoad: Config.Number('HEAVY_FAKE_LOAD').pipe(Config.option),
 })
 
@@ -168,8 +160,6 @@ export type Context = Readonly<{
   leaseMs: number
 }>
 
-// NOTE: who this guard is while it waits: its pid, its command, its class
-// and cost, and when it arrived, which orders it against other waiters.
 type Arrival = Readonly<{
   command: Array.NonEmptyReadonlyArray<string>
   jobClass: JobClass
@@ -191,8 +181,6 @@ type Plan = Readonly<{
   holder: LockHolder
 }>
 
-// NOTE: the turn a running job holds now. Each turn holds its file in its
-// own scope, so a handover closes it and the next turn opens another.
 type CurrentTurn = Readonly<{
   scope: Scope.Closeable
   plan: Plan
@@ -228,7 +216,6 @@ const gitLine = (
       .pipe(Effect.map(String.trim), Effect.option)
   })
 
-/** @stability unstable */
 export const makeContext = Effect.gen(function* () {
   const config = yield* GuardConfig
   const path = yield* Path.Path
@@ -272,9 +259,6 @@ export type Budget = Readonly<{
   extraRecent: ReadonlyArray<LockHolder>
 }>
 
-// NOTE: what the budget reads, for a guard and for `bun run test`: the
-// load, the target, the running jobs, and the test runs.
-/** @stability unstable */
 export const readBudget = (
   context: Context,
 ): Effect.Effect<Budget, PlatformError, FileSystem.FileSystem> =>
@@ -390,8 +374,6 @@ const takeTheLock = (
       yield* releaseLock(path, holder)
       return yield* NotYet.make({ reason: maybeConflict.value })
     }
-    // NOTE: when the turn ends, the worktree's turn is recorded, so its
-    // next job goes behind other worktrees' waiting jobs for a while.
     yield* Effect.addFinalizer(() =>
       Clock.currentTimeMillis.pipe(
         Effect.flatMap(at =>
@@ -432,10 +414,6 @@ const execute = (
       }),
   })
 
-// NOTE: every job marks itself as waiting, so jobs that arrive after it
-// queue behind it by the fairness rule in `blockingWaiters`. A first turn
-// gives up after HEAVY_WAIT_MINUTES; a job that yielded mid-run waits for
-// as long as it takes, since giving up would throw its work away.
 type WaitLimit = 'GivesUp' | 'WaitsOn'
 
 const waitForTurn = (
@@ -491,8 +469,6 @@ const waitForTurn = (
     return yield* whileWaiting(context.lockDirectory, arrival.waiter, limited)
   })
 
-// NOTE: waits for a turn and holds its file in a fresh scope, which the
-// caller closes to let go of it.
 const takeTurn = (
   context: Context,
   arrival: Arrival,
@@ -529,7 +505,6 @@ const countBatch = (
       ),
   })
 
-/** @stability unstable */
 export const runChild: {
   (
     env: Readonly<Record<string, string>>,
@@ -594,7 +569,6 @@ const describeHold = (hold: Hold, jobClass: JobClass): string =>
     Shared: ({ slot }) => `in shared slot ${slot}`,
   })
 
-// NOTE: the variables a Shared script's cost reads, read once per job.
 const readParallelEnv = Effect.gen(function* () {
   const entries = yield* Effect.forEach(PARALLEL_ENV_KEYS, key =>
     Effect.gen(function* () {
@@ -634,10 +608,6 @@ const makeArrival = (
 
 const REQUEST_POLL = Duration.millis(500)
 
-// NOTE: answers one yield request from the job. When another job waits,
-// the turn's file is let go and the job queues again as a new arrival (as
-// another kind of job, so its batch is not counted or refused twice), and
-// the grant waits until it holds a file again.
 const answerRequest = (
   context: Context,
   arrival: Arrival,
@@ -672,7 +642,6 @@ const answerRequest = (
         `Back after ${formatDuration(backAt - queuedAt)}, ${describeHold(next.plan.hold, arrival.jobClass)} with WORKERS=${next.plan.workers}.`,
       )
     })
-    // NOTE: a job that offers to yield and keeps its turn renews its lease.
     const renewLease = Effect.gen(function* () {
       if (!Hold.isAnyOf(['Solo'])(turn.plan.hold)) {
         return
@@ -686,8 +655,6 @@ const answerRequest = (
         maybeLastWarnedAt: Option.none(),
       })
     })
-    // NOTE: a turn let go of by an earlier answer that then failed is
-    // queued for again, whoever waits.
     yield* Handover.match(decideHandover(process.pid, waiters), {
       Keep: () => (turn.isReleased ? queueAgain : renewLease),
       HandOver: ({ reason }) =>
@@ -728,12 +695,9 @@ const serveTurns = (
     Effect.repeat(Schedule.spaced(REQUEST_POLL)),
   )
 
-// NOTE: a solo turn past its lease is not stopped. Its guard says so on
-// stderr, once and then every few minutes, naming who waits.
 const watchLease = (context: Context, current: Ref.Ref<CurrentTurn>) =>
   Effect.gen(function* () {
     const turn = yield* Ref.get(current)
-    // NOTE: a turn handed over holds no file while it queues again.
     if (!Hold.isAnyOf(['Solo'])(turn.plan.hold) || turn.isReleased) {
       return
     }
@@ -853,7 +817,6 @@ const failWith = (message: string): Effect.Effect<never, GuardExit> =>
     Effect.andThen(Effect.fail(GuardExit.make({ code: FAILURE_EXIT_CODE }))),
   )
 
-/** @stability unstable */
 export const program = Effect.suspend(() =>
   Invocation.match(parseArguments(Array.drop(process.argv, 2)), {
     ShowUsage: ({ problem }) => failWith(`${problem}\n${USAGE}`),

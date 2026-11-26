@@ -18,20 +18,11 @@ import { MunchopediaEvents } from '../message'
 import { MunchopediaPage } from '../model'
 import { munchopediaPropsOf } from './munchopedia.fixture'
 
-// The Dare Journal's pages past the zombies, from the MANOR hand: the
-// things (found, open, or locked behind a milestone's few words), the
-// rooms opened, the story's pages, and the heroes played. The root opens
-// it from the hand (marking its pages seen); the Journal is drawn here on
-// its own with the props the root hands it, and a tab asks the root for
-// its page.
-
 const tab = (name: string) =>
   HtmlLocator.role('button', { name: new RegExp(`^${name}`) })
 
 const listNamed = (name: string) => HtmlLocator.role('list', { name })
 
-// NOTE: a player who found the spoon on Normal, escaped once (so the napkin
-// ring is open but not found), opened the kitchen, and played as YOU.
 const veteran: Model = UiStruct.evolve(home, {
   journal: () => ({
     ...noJournal,
@@ -50,8 +41,6 @@ const veteran: Model = UiStruct.evolve(home, {
   seenUnlocks: seen => [...seen, milestoneUnlockId('FirstFind')],
 })
 
-// NOTE: the MANOR hand dealt and its Dare Journal card picked, on the root:
-// the Model the Journal's props are read from.
 const openedJournal: Effect.Effect<Model> = modelAfter(
   veteran,
   steps(
@@ -65,8 +54,6 @@ const propsOn = (model: Model, page: MunchopediaPage) => ({
   page,
 })
 
-// NOTE: the Journal as the root draws it, and a tab tapped: it asks for its
-// page, and the root hands it down.
 const journalScene = Effect.gen(function* () {
   const model = yield* openedJournal
   const s = yield* HtmlScene.make(Munchopedia, munchopediaPropsOf(model))

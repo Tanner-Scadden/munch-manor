@@ -37,23 +37,11 @@ import { focusOf, leadSeatOf } from '../../world/party/party'
 import { CaseState, GameEvent, Phase } from '../../world/schema/worldSchema'
 import type { MissionGain, MissionRun } from './missionSchema'
 
-// Daily missions (docs/PROGRESSION_PLAN.md, pillar C): the day's three,
-// rolled from the UTC day so everyone gets the same ones, the one free
-// reroll, what a run counts toward them, and the payout when a run ends.
-// The pool, goals, and Bones are src/shared/missionData.ts's, so the player
-// scope pays a claim the same way.
-
-// ROLLING
-
 const { hashValue } = makeValueHasher({ cached: false })
 
 const poolOf = (size: MissionSize): ReadonlyArray<MissionId> =>
   Array.filter(MissionIds.literals, id => MISSION_RULES[id].size === size)
 
-// NOTE: who may roll a mission. A co-op mission waits for a player who has
-// played an online co-op run (saved and synced as `hasPlayedCoop`), and the
-// Handyman's for one who owns him; everyone else gets the next one in the
-// day's order instead, so only a gated slot differs between players.
 const isEligible = (model: Model, id: MissionId): boolean => {
   switch (MISSION_RULES[id].gate) {
     case 'Anyone':
@@ -65,8 +53,6 @@ const isEligible = (model: Model, id: MissionId): boolean => {
   }
 }
 
-// NOTE: one size's pool in the day's order: shuffled from a seed of the
-// day and the size alone, so every device and every player agrees.
 const dayOrderOf = (
   day: DayStamp,
   size: MissionSize,
@@ -89,9 +75,6 @@ const maybeRerollOn = (
 ): Option.Option<MissionReroll> =>
   saved.day === day ? Option.fromNullishOr(saved.reroll) : Option.none()
 
-// NOTE: the day's three as first rolled: frozen in the record once the day
-// is known (`freezeMissionsFrom`), so a gate the player passes later that
-// day (a first co-op run, the Handyman bought) changes none of them.
 const rolledOn = (
   model: Model,
   day: DayStamp,
@@ -105,8 +88,6 @@ const rolledOn = (
     : Array.map(MISSION_SIZES, size => rolledFor(model, day, size))
 }
 
-// NOTE: the day's three, a Small, a Medium, and a Large, with the day's
-// reroll in its slot.
 export const missionsOn: {
   (day: DayStamp): (model: Model) => ReadonlyArray<MissionId>
   (model: Model, day: DayStamp): ReadonlyArray<MissionId>
@@ -128,11 +109,6 @@ export const missionsOn: {
   },
 )
 
-// NOTE: the day's three frozen in the record, saved and synced
-// (src/platform/playerSync.ts's RolledMissions), once the save is read and
-// the day is known. Rolled from the Model before the Message, so a Message
-// that passes a gate (a co-op run's payout, a hero bought) freezes the
-// three as they stood before it.
 export const freezeMissionsFrom: {
   (before: Model): (model: Model) => Model
   (model: Model, before: Model): Model
@@ -162,7 +138,6 @@ export const maybeTodaysMissions = (
 ): Option.Option<ReadonlyArray<MissionId>> =>
   Option.map(model.maybeToday, day => missionsOn(model, day))
 
-// NOTE: the record as of today, a new day's afresh.
 const todaysRecordOf = (model: Model): SavedMissions =>
   Option.match(model.maybeToday, {
     onNone: () => model.missions,
@@ -184,17 +159,11 @@ export const isAllThreeDone = (model: Model): boolean =>
     Array.contains(model.missions.stampedDays, day),
   )
 
-// REROLL
-
 export const isRerollUsed = (model: Model): boolean =>
   Option.isSome(
     Option.flatMap(model.maybeToday, day => maybeRerollOn(model.missions, day)),
   )
 
-// NOTE: the day's one free reroll, of one mission not done yet: another
-// of its size the player may roll, drawn from a seed of the day, the slot,
-// and the player's own seeded generator (read, not advanced), so it is
-// deterministic. None once used, or with nothing else to roll.
 export const maybeRerollFor: {
   (slot: number): (model: Model) => Option.Option<MissionReroll>
   (model: Model, slot: number): Option.Option<MissionReroll>
@@ -223,12 +192,6 @@ export const maybeRerollFor: {
     }),
 )
 
-// COUNTING
-
-// NOTE: what a run's frame says toward the missions the World does not
-// keep: a chandelier drop's crush is the kills that follow its fall in the
-// same tick (src/world/dining/chandelier.ts), a gun's tier comes in the
-// player's own GunLeveled, and each fridge pull opens it.
 type FrameTally = Readonly<{
   crushBest: number
   topTier: number
@@ -242,7 +205,6 @@ const tallyEvents = (
   events: ReadonlyArray<GameEvent>,
   slot: number,
 ): FrameTally => {
-  // NOTE: a plain loop: this runs once a frame over the frame's events.
   let crush: Crush = { isCrushing: false, count: 0 }
   let crushBest = run.crushBest
   let topTier = run.topTier
@@ -266,9 +228,6 @@ const tallyEvents = (
   return { crushBest, topTier, fridgePulls }
 }
 
-// NOTE: the frame's events tallied into the run's missions, only when a
-// frame brought new events and only a changed tally makes a new record, so
-// a quiet frame costs one comparison.
 export const tallyMissionsFrom: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model
@@ -320,10 +279,6 @@ const isCellarOpen = (run: Model): boolean =>
 
 const toCount = (isDone: boolean): number => (isDone ? 1 : 0)
 
-// NOTE: each mission's count so far in the run, read off the World and the
-// run's tally: the player's own seat's kills and cases, the crew's dare
-// things, rooms, tools, and fridge. Escape on Double Dare counts an escape
-// on Double Dare or harder.
 const MEASURES: Readonly<
   Record<MissionId, (run: Model, tally: MissionRun) => number>
 > = {
@@ -361,8 +316,6 @@ const measureOf: {
   MEASURES[id](run, run.runGains.missionRun),
 )
 
-// PAYING
-
 type Paid = Readonly<{ saved: SavedMissions; bones: number }>
 
 const claimEach = (
@@ -389,14 +342,6 @@ const stampOf = (paid: Paid, day: DayStamp): Paid =>
     }),
   })
 
-// NOTE: pays the run that just ended, or that the player just left, into
-// the day's missions, at the moments its rank is paid (earnRank in
-// src/features/end/rankRun.ts): each of the day's three gets what the run
-// added since it was last paid, capped at its goal; one that meets its goal
-// pays its Bones once; all three pay the bonus and stamp the day. An online
-// co-op run marks the player as one who has played co-op. A guided run, or
-// a day not known yet, pays nothing. At the end screen it also sets the end
-// card's mission bars.
 export const payMissions: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model
@@ -486,8 +431,6 @@ const payOn = (
     : paidModel
 }
 
-// NOTE: the day's reroll made on one slot, saved and synced
-// (src/platform/playerSync.ts's RerolledMission); nothing once used.
 export const rerollMission: {
   (slot: number): (model: Model) => Model
   (model: Model, slot: number): Model
@@ -501,11 +444,6 @@ export const rerollMission: {
   }),
 )
 
-// VIEW
-
-// NOTE: one of the day's three as the card and the panel draw it: its
-// count toward its goal, whether it is done, its Bones, and whether its
-// dice may spend the day's reroll.
 export type MissionRow = Readonly<{
   mission: MissionId
   slot: number

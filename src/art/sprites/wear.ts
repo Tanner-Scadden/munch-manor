@@ -1,7 +1,5 @@
 import { Array, Function, Option, String, pipe } from 'effect'
 
-// WEAR PATCHES
-
 export type Patch = Readonly<{
   x: number
   y: number
@@ -10,8 +8,6 @@ export type Patch = Readonly<{
   symbol: string
 }>
 
-// NOTE: a call is data-first when its third argument is the symbol; in the
-// data-last form it is the width, a number or missing.
 const isPatchDataFirst = (args: IArguments): boolean =>
   typeof args[2] === 'string'
 

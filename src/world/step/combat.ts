@@ -50,17 +50,12 @@ import {
   scaleVector,
 } from './geometry'
 
-// STRIKES
-
 type Strike = Readonly<{
   damage: number
   direction: Vector
   knockbackSpeed: number
 }>
 
-// NOTE: a zombie Brain Freeze iced solid shatters at the next hit of any
-// kind: it takes SHATTER_SCALE times the damage and the ice is gone. Only
-// Brain Freeze freezes (src/world/fridge/fridgeWeapons.ts).
 export const SHATTER_SCALE = 4
 
 export const isIcedSolid = ZombieAction.isAnyOf(['Frozen'])
@@ -107,7 +102,6 @@ export const hitEvent: {
     maybeShooter?: Option.Option<number>,
   ): GameEvent
 } = Function.dual(
-  // NOTE: data-first has the damage fourth; data-last has the shooter there or nothing.
   (args: IArguments): boolean => typeof args[3] === 'number',
   (
     zombie: Zombie,
@@ -126,9 +120,6 @@ export const hitEvent: {
     }),
 )
 
-// NOTE: a kill names no killer and no source until the rule that made it
-// credits it (creditKillEvents), so the feats (src/world/feats/feats.ts)
-// read who did it and with what off the event.
 export const killEvent: {
   (direction: Vector): (zombie: Zombie) => GameEvent
   (zombie: Zombie, direction: Vector): GameEvent
@@ -143,8 +134,6 @@ export const killEvent: {
   }),
 )
 
-// NOTE: the kills among `events`, credited to the seat that made them (or
-// to nobody) and to what they were made with.
 export const creditKillEvents: {
   (
     maybeKiller: Option.Option<PlayerSlot>,
@@ -172,9 +161,6 @@ export const creditKillEvents: {
 const invulnerableMsAt = (hp: number): number =>
   hp === 1 ? LAST_HEART_INVULNERABLE_MS : PLAYER_INVULNERABLE_MS
 
-// NOTE: graceScale stretches the blink after the wound; a bite passes the
-// level's (src/world/run/difficulty.ts), so Easy and Normal forgive a crowd's bites
-// longer.
 export const woundPlayer: {
   (
     damage: number,
@@ -188,7 +174,6 @@ export const woundPlayer: {
     graceScale?: number,
   ): Player
 } = Function.dual(
-  // NOTE: data-first has the damage second; data-last has the direction there.
   (args: IArguments): boolean => typeof args[1] === 'number',
   (
     player: Player,
@@ -208,8 +193,6 @@ export const woundPlayer: {
   },
 )
 
-// BLASTS
-
 export type BlastSpec = Readonly<{
   x: number
   y: number
@@ -222,8 +205,6 @@ export type BlastSpec = Readonly<{
 
 type Blasted<A> = Readonly<{ target: A; events: ReadonlyArray<GameEvent> }>
 
-// NOTE: an interface, not a Readonly alias, so the checker can match
-// blastAll's two call signatures over its type parameter.
 export interface BlastTarget<A> {
   readonly center: (target: A) => Vector
   readonly radius: (target: A) => number
@@ -232,7 +213,6 @@ export interface BlastTarget<A> {
   readonly hurt: (target: A, strike: Strike) => Blasted<A>
 }
 
-// NOTE: the way a bullet flies, or none for a bullet that stands still.
 export const bulletDirection = (bullet: Bullet): Vector =>
   Option.getOrElse(
     normalize({ x: bullet.velocityX, y: bullet.velocityY }),
@@ -310,8 +290,6 @@ export const ZOMBIE_BLAST_TARGET: BlastTarget<Zombie> = {
   },
 }
 
-// NOTE: only an Exploder's blast reaches the player, so its hurt names the
-// Exploder as the source.
 const PLAYER_BLAST_TARGET: BlastTarget<Player> = {
   center: player => player,
   radius: () => PLAYER_RADIUS,
@@ -331,7 +309,6 @@ const PLAYER_BLAST_TARGET: BlastTarget<Player> = {
   }),
 }
 
-// NOTE: a blast on every standing player it reaches.
 const blastSeated = (
   model: World,
   slot: PlayerSlot,
@@ -352,9 +329,6 @@ const blastPlayers = (model: World, blast: BlastSpec): World =>
     blastSeated(current, slot, blast),
   )
 
-// NOTE: a player's own blast on every standing teammate it reaches, never
-// on the player who set it off (the owner, 2026-11-02: "it sucks that it
-// hurts you").
 export const blastTeammates: {
   (thrower: PlayerSlot, blast: BlastSpec): (model: World) => World
   (model: World, thrower: PlayerSlot, blast: BlastSpec): World
@@ -389,9 +363,6 @@ const maybeBlastOf = (zombie: Zombie): Option.Option<BlastSpec> =>
     Crawler: () => Option.none(),
   })
 
-// NOTE: a Kaboomer's blast is credited, for the feats only, to the standing
-// player nearest it: the one who drew it in or shot it there, and its
-// keys drop for that player's hero (src/world/keys/keys.ts).
 const nearestStandingSlot = (
   model: World,
   at: Vector,

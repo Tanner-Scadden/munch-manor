@@ -56,10 +56,6 @@ import { Arsenal } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
 import { STOVE_RULES, maybeStoveLock, rollStove } from '../stove'
 
-// The kitchen's stove bench (src/world/kitchen/stove.ts): a perk cooked into the gun in
-// hand, one a round (its break and its wave), free once its feat (kitchen kills) is done, and what
-// each perk does.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const COOK_TICKS = Math.ceil(STOVE_RULES.holdMs / FRAME_MS) + 3
@@ -94,8 +90,6 @@ const withPistolOf = (base: Model, pistol: CarriedGun): Model =>
       UiStruct.evolve(player, { arsenal: () => pistolOnly(pistol) }),
   })
 
-// NOTE: a wave under way in a veteran's run, on a measured surface, so a
-// thumb on the aim stick fires.
 const midWave: Model = UiStruct.evolve(freshRunModel(), {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
 })
@@ -103,8 +97,6 @@ const midWave: Model = UiStruct.evolve(freshRunModel(), {
 const withCooking = (base: Model, cooks: number, lastWave = 0): Model =>
   modifyFocus(base, { cooking: () => ({ cooks, lastWave }) })
 
-// NOTE: the stove's roll, made in place, so a test can start from any
-// perk on offer.
 const offering = (base: Model, perk: GunPerk): Model =>
   UiStruct.evolve(base, {
     stove: stove => UiStruct.evolve(stove, { perk: () => perk, wave: () => 5 }),

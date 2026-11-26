@@ -1,11 +1,5 @@
 import { Array, String } from 'effect'
-// The app icon's art: the palette and the big Groaner head, mid-chomp.
-// icons.ts draws the icons and the loading splash from it, og.ts the link
-// card, and the video tool's end card (harness/cards.ts) chomps with it.
 
-// PALETTE
-
-// The greens, the drip red, and the MANOR purple come from the title logo.
 export const PALETTE: Readonly<Record<string, string>> = {
   o: '#140c10',
   g: '#8fdc5a',
@@ -26,11 +20,6 @@ export const PALETTE: Readonly<Record<string, string>> = {
   s: '#c39be8',
 }
 
-// PIXEL MAPS
-
-// Groaner mid-chomp, drawn as the left half and mirrored. The right side is
-// shaded by the mirror pass, then the patches below add his brain, the
-// sleepy eye, and the drip.
 const BIG_HEAD_LEFT: ReadonlyArray<string> = [
   '.......oooo',
   '.....oollll',

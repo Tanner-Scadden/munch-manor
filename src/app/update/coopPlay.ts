@@ -29,7 +29,11 @@ import { inputOfIntent, ownWorldOf } from '../../world/net/roomWorld'
 import { focusOf } from '../../world/party/party'
 import { isArriving, isRunUnderway } from '../../world/run/arrival'
 import { tallyFrame } from '../../world/run/stats'
-import { type World, withWorld } from '../../world/schema/world'
+import {
+  type World,
+  modifyWorldFields,
+  withWorld,
+} from '../../world/schema/world'
 import {
   type Bullet,
   GameEvent,
@@ -69,23 +73,6 @@ import {
 } from './sound'
 import { type UpdateStep, toModel } from './step'
 
-// The root's half of an online co-op run (MULTIPLAYER.md, Phase 2): the
-// game's own scene, HUD, and touch controls drawn from the room's
-// World. Each frame the client derives its intent from its own input and
-// camera, co-op's room (the root's `coop` field) sends it with any press and hands back the
-// World to draw (everyone else 100 ms behind, its own player predicted)
-// and the events the drawing reached. The root puts its own seat in the
-// World's player fields (focusSeat), so every view draws it as the player,
-// then makes particles, shake, popups, and sounds from the events with its
-// own cosmetic stream, and freezes its own picture for hit-stop. The room
-// alone decides hits, keys, and deaths.
-
-// CO-OP'S RULES IN THE ROOT
-
-// NOTE: one of co-op's rules run on the root's `coop` field: its next Model
-// put in, and its Commands run. Its notice is the caller's to answer
-// (src/app/update/coop.ts, runCoop); the room's frame and its tracers
-// never give one.
 export const applyCoop =
   (result: CoopResult): UpdateStep =>
   $ =>
@@ -96,10 +83,6 @@ const inCoop =
   $ =>
     applyCoop(asRequest(rule)($.model.coop))($)
 
-// THE ROOM'S WORLD IN THE ROOT
-
-// NOTE: the room's seats, with this client's own (the first) keeping what
-// the client owns: its intent and its purchase hold.
 const takeOwnSeat = (own: SeatState, seats: World['seats']): World['seats'] => {
   const [first, ...rest] = seats
   return [
@@ -111,16 +94,26 @@ const takeOwnSeat = (own: SeatState, seats: World['seats']): World['seats'] => {
   ]
 }
 
-// NOTE: the fields the room owns, from the World with this client's own
-// seat in the player fields, and the room's difficulty beside the save's,
-// for the run's summary. The rest stay the client's: its intent and hold,
-// the run's stats and the gates, and the save's difficulty.
 const takeRoomWorld = (
   model: Model,
   world: World,
   events: ReadonlyArray<GameEvent>,
 ): Model =>
-  UiStruct.evolve(model, {
+  UiStruct.evolve(takeRoomFields(model, world, events), {
+    seats: () => takeOwnSeat(focusOf(model), world.seats),
+    roomRun: UiStruct.evolve({
+      maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
+      maybeRoomModifiers: () => Option.some(world.modifiers),
+      maybeRoomDareMark: () => Option.some(world.dareMark),
+    }),
+  })
+
+const takeRoomFields = (
+  model: Model,
+  world: World,
+  events: ReadonlyArray<GameEvent>,
+): Model =>
+  modifyWorldFields(model, {
     phase: () => world.phase,
     pacing: () => world.pacing,
     boss: () => world.boss,
@@ -132,8 +125,6 @@ const takeRoomWorld = (
     lobs: () => world.lobs,
     elapsedMs: () => world.elapsedMs,
     frameEvents: () => events,
-    // NOTE: the room's traps, taken as the room decided them.
-    // oxlint-disable-next-line munch/seat-action-once
     traps: () => world.traps,
     pickups: () => world.pickups,
     level: () => world.level,
@@ -149,18 +140,10 @@ const takeRoomWorld = (
     gasValve: () => world.gasValve,
     stations: () => world.stations,
     party: () => world.party,
-    seats: () => takeOwnSeat(focusOf(model), world.seats),
-    roomRun: UiStruct.evolve({
-      maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
-      maybeRoomModifiers: () => Option.some(world.modifiers),
-      maybeRoomDareMark: () => Option.some(world.dareMark),
-    }),
   })
 
 const isFrozen = HitStop.isAnyOf(['Frozen'])
 
-// NOTE: the room scores a footstep against its lead seat; this client hears
-// it, and shakes for it, by how near it is to its own player.
 const heardBy = (
   listener: Vector,
   events: ReadonlyArray<GameEvent>,
@@ -187,12 +170,6 @@ const maybeDrawnOf = (model: Model): Option.Option<Drawn> =>
     })),
   )
 
-// OWN TRACERS
-
-// NOTE: your own gun's bullets are drawn from your own shots, the instant
-// they fire (src/world/step/simulation.ts, aimTracers), so the room's copy of them,
-// a round trip later, is not drawn too. A gnome's peas, and everyone
-// else's bullets, come from the room.
 const isOwnGunBullet = (bullet: Bullet, ownSlot: number): boolean =>
   bullet.shooter === ownSlot && bullet.weapon !== TURRET_WEAPON
 
@@ -232,9 +209,6 @@ const traceOwnShots = (
   }
 }
 
-// NOTE: a room that opens on the whole intro counts as this player having
-// watched it, as a run alone does (src/app/runFlow.ts), so their next room
-// may skip the drive up. A short cut leaves the save as it was.
 const markIntroSeen = (model: Model, world: World): Model =>
   Phase.matchOrElse(
     world.phase,
@@ -247,10 +221,6 @@ const markIntroSeen = (model: Model, world: World): Model =>
     () => model,
   )
 
-// NOTE: the drawing of one frame. A run starting (or the next one after the
-// end screen) resets the client's run fields first. This frame's own
-// tracers are kept in co-op's room for the next. While the client's own
-// hit-stop holds, the picture stays, and the events wait in the session.
 const drawRoom =
   (frameMs: number): UpdateStep =>
   $ => {
@@ -312,7 +282,6 @@ type Traced = Readonly<{
   isStart: boolean
 }>
 
-// NOTE: the rest of the frame, once co-op's room keeps the tracers.
 const drawTraced =
   ({
     frameMs,
@@ -406,8 +375,6 @@ const drawTraced =
     )
   }
 
-// NOTE: one frame of an online run: the controls go to the room through
-// co-op's `tickRoom`, then the root draws what came back.
 export const playRoomFrame =
   (nowMs: number): UpdateStep =>
   $ => {
@@ -419,7 +386,6 @@ export const playRoomFrame =
         onSome: room => nowMs - room.session.renderedMs,
       }),
     )
-    // NOTE: a fire press goes to the room held for one frame's controls.
     const intended = refreshIntent(stepModel)
     return $.combine(
       toModel(withFirePressSeen(intended)),

@@ -98,11 +98,6 @@ import {
 import { GROUP_ID_STRIDE, PACK_ID_STRIDE, bySpawnTime } from './wavePacks'
 import { FINAL_WAVE, planFor } from './wavePlans'
 
-// JOINING DOORS
-
-// NOTE: a pack due at least this long from now may move to a door that has
-// just opened. Anything sooner keeps its door, so a door never fills the
-// moment it opens, and a pack that has already rattled keeps its door too.
 export const JOIN_LEAD_MS = PACK_WARNING_MS + 1500
 
 type DoorMove = Readonly<{ pack: number; door: DoorId }>
@@ -111,8 +106,6 @@ const groupOfPack = (pack: number): number => Math.floor(pack / GROUP_ID_STRIDE)
 
 const volleyOfPack = (pack: number): number => Math.floor(pack / PACK_ID_STRIDE)
 
-// NOTE: a group that names its doors keeps them, as the roll does. Endless
-// groups all draw from the level's doors.
 const canPackMove = (wave: number, pack: number): boolean =>
   wave > FINAL_WAVE ||
   Option.exists(
@@ -120,11 +113,9 @@ const canPackMove = (wave: number, pack: number): boolean =>
     ({ isAnyDoor }) => isAnyDoor,
   )
 
-// NOTE: the doors a pack's volley mates come through, so a pincer's two
-// packs stay at two doors when one moves.
 const mateDoorsOf = (
   spawns: ReadonlyArray<PlannedSpawn>,
-  moves: ReadonlyArray<DoorMove>,
+  moved: ReadonlyMap<number, DoorId>,
   pack: number,
 ): ReadonlyArray<DoorId> =>
   pipe(
@@ -133,20 +124,29 @@ const mateDoorsOf = (
       spawn =>
         spawn.pack !== pack && volleyOfPack(spawn.pack) === volleyOfPack(pack),
     ),
-    Array.map(spawn =>
-      Option.getOrElse(
-        Option.map(
-          // NOTE: only when a room opens mid-wave: a wave's spawns by the few packs moved.
-          // oxlint-disable-next-line munch/no-nested-scan
-          Array.findFirst(moves, move => move.pack === spawn.pack),
-          ({ door }) => door,
-        ),
-        () => spawn.door,
-      ),
-    ),
+    Array.map(spawn => moved.get(spawn.pack) ?? spawn.door),
   )
 
-const noMoves = (state: number): Seeded<ReadonlyArray<DoorMove>> => [state, []]
+const pickDoor = (
+  doors: Array.NonEmptyReadonlyArray<DoorId>,
+  mask: number,
+  draw: number,
+): DoorId => {
+  const choices: Array<DoorId> = []
+  let bit = 1
+  for (const door of doors) {
+    if ((mask & bit) !== 0) {
+      choices.push(door)
+    }
+    bit <<= 1
+  }
+  return Option.getOrElse(
+    Option.orElse(Array.get(choices, Math.floor(draw * choices.length)), () =>
+      Array.head(choices),
+    ),
+    () => Array.headNonEmpty(doors),
+  )
+}
 
 const drawMoves = (
   state: number,
@@ -154,36 +154,44 @@ const drawMoves = (
   packs: ReadonlyArray<PlannedSpawn>,
   newDoors: Array.NonEmptyReadonlyArray<DoorId>,
   share: number,
-): Seeded<ReadonlyArray<DoorMove>> =>
-  Array.reduce(
-    packs,
-    noMoves(state),
-    ([drawState, moves], { pack }): Seeded<ReadonlyArray<DoorMove>> => {
-      const moveDraw = nextRandom(drawState)
-      if (moveDraw.value >= share) {
-        return [moveDraw.nextState, moves]
-      }
+): Seeded<ReadonlyArray<DoorMove>> => {
+  const bitsOf = new Map<DoorId, number>()
+  Array.forEach(newDoors, (door, index) => {
+    bitsOf.set(door, (bitsOf.get(door) ?? 0) | (1 << index))
+  })
+  const everyDoor = (1 << newDoors.length) - 1
+  const moves: Array<DoorMove> = []
+  const moved = new Map<number, DoorId>()
+  let drawState = state
+  for (const { pack } of packs) {
+    const moveDraw = nextRandom(drawState)
+    drawState = moveDraw.nextState
+    if (moveDraw.value < share) {
       const doorDraw = nextRandom(moveDraw.nextState)
-      const mates = mateDoorsOf(spawns, moves, pack)
-      const choices = Array.match(
-        // NOTE: only when a room opens mid-wave: at most 13 doors.
-        // oxlint-disable-next-line munch/no-nested-scan
-        Array.filter(newDoors, door => !Array.contains(mates, door)),
-        { onEmpty: () => newDoors, onNonEmpty: doors => doors },
+      drawState = doorDraw.nextState
+      let mates = 0
+      for (const door of mateDoorsOf(spawns, moved, pack)) {
+        mates |= bitsOf.get(door) ?? 0
+      }
+      const free = everyDoor & ~mates
+      const door = pickDoor(
+        newDoors,
+        free === 0 ? everyDoor : free,
+        doorDraw.value,
       )
-      const door = Option.getOrElse(
-        Array.get(choices, Math.floor(doorDraw.value * choices.length)),
-        () => Array.headNonEmpty(choices),
-      )
-      return [doorDraw.nextState, [...moves, { pack, door }]]
-    },
-  )
+      moves.push({ pack, door })
+      if (!moved.has(pack)) {
+        moved.set(pack, door)
+      }
+    }
+  }
+  return [drawState, moves]
+}
 
 const movedSpawns = (
   spawns: ReadonlyArray<PlannedSpawn>,
   moves: ReadonlyArray<DoorMove>,
 ): ReadonlyArray<PlannedSpawn> => {
-  // NOTE: each pack's first move, found once rather than for every spawn.
   const doors = new Map<number, DoorId>()
   for (const { pack, door } of moves) {
     if (!doors.has(pack)) {
@@ -198,13 +206,6 @@ const movedSpawns = (
   })
 }
 
-// NOTE: doors that open while a wave is shown or under way join it at once.
-// Each pack still to come, through a door, from a group free to pick its
-// door, and due JOIN_LEAD_MS or more from now (any pack, in the break),
-// moves to one of the new doors with the share of the doors they now are,
-// drawn from the run's generator. Only doors change: every zombie, its kind,
-// and its time stay, so the wave's count and pacing hold, and the door
-// preview reads the new doors at once.
 export const joinNewDoors: {
   (newDoors: ReadonlyArray<DoorId>): (model: World) => World
   (model: World, newDoors: ReadonlyArray<DoorId>): World
@@ -245,19 +246,11 @@ export const joinNewDoors: {
   })
 })
 
-// PHASES
-
-// NOTE: held beside the Phase in src/world/schema/worldSchema.ts, so the
-// rules waves.ts reads (the traps' mending) can read it too.
 export { isRoundActive } from '../schema/worldSchema'
 
 export const isBreak = (model: World): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase)
 
-// NOTE: a break waits for READY, with no clock, only in the lesson's open
-// break (wave 2); every later one counts down its difficulty's breakMs
-// (owner, 2026-11-10). The first break of a run is the short get-ready beat
-// before wave 1: it always counts.
 const breakClockFor = (wave: number): BreakClock =>
   wave === OPEN_BREAK_WAVE
     ? BreakClock.Waiting({ elapsedMs: 0 })
@@ -271,7 +264,6 @@ export const beginPreparation: {
   ): (model: World) => World
   (model: World, wave: number, durationMs: number, clock?: BreakClock): World
 } = Function.dual(
-  // NOTE: data-first has the duration third; data-last has the clock there or nothing.
   (args: IArguments): boolean => typeof args[2] === 'number',
   (
     model: World,
@@ -300,9 +292,6 @@ export const beginPreparation: {
         activeModifiersOf(model),
       ),
     )
-    // NOTE: Uncle Chunk comes every tenth wave only in Endless; an escape
-    // run sends him to the front door once its list is done
-    // (src/world/dare/finale.ts).
     const [rngState, boss] = isEndless(model)
       ? planBoss(
           levelOf(model).doorIds,
@@ -360,9 +349,6 @@ export const pause = <M extends World>(model: M): M =>
       }),
   })
 
-// NOTE: a run saved before every break counted (2026-11-10) may hold the
-// kitchen tour's break waiting for READY, so leaving it, timed or not, learns the timed breaks lesson that holds the tour
-// (src/world/run/tutorialRules.ts): it plays once per save.
 const learnFromBreak = (model: World, wave: number, clock: BreakClock) =>
   BreakClock.match(clock, {
     Waiting: () =>
@@ -373,10 +359,6 @@ const learnFromBreak = (model: World, wave: number, clock: BreakClock) =>
       isTimedBreak(wave, clock) ? learnTimedBreaks(model) : model,
   })
 
-// NOTE: READY with time left on a counting break pays rank points
-// (src/world/heroes/rank.ts, readyPointsFor), shown as a RushedIn pop over
-// the player. The open break has no clock to beat, and the kitchen tour
-// holds its clock, so neither pays.
 const payReadyEarly = (
   model: World,
   clock: BreakClock,
@@ -415,8 +397,6 @@ export const startWaveEarly = (model: World): World =>
     LeftEarly: () => model,
     GameOver: () => model,
   })
-
-// SPAWNING
 
 type Arrival = Readonly<{
   at: Vector
@@ -492,7 +472,6 @@ const isWaveCleared = (
   !isBossOutside(model.boss) &&
   !Array.some(model.zombies, zombie => isAlive(zombie) || isBoss(zombie))
 
-// NOTE: a cleared wave adds a key to the crew's ring (src/world/keys/keys.ts).
 const keyForClear = (model: World): World => {
   const at = { x: focusOf(model).player.x, y: focusOf(model).player.y }
   return grantKeys(
@@ -506,11 +485,6 @@ const keyForClear = (model: World): World => {
   )
 }
 
-// NOTE: a run never ends by its wave count: past the tuned waves the
-// Endless generator rolls them (src/world/waves/endlessWaves.ts), and an
-// escape ends at the front door (src/world/dare/finale.ts).
-// Dare's break counts the lobby's pick, or with none waits for READY
-// (owner, 2026-11-12).
 const clearWave = (model: World, wave: number): World =>
   Option.match(breakClockMsOf(model), {
     onNone: () =>
@@ -523,17 +497,12 @@ const clearWave = (model: World, wave: number): World =>
     onSome: breakMs => beginPreparation(keyForClear(model), wave + 1, breakMs),
   })
 
-// NOTE: spawns stay with their planned doors, so a door whose plank breaks
-// is a spawn point again. routed is the same list with each door rerouted
-// around the boarded ones, index for index.
 const releaseDue = (
   model: World,
   spawns: ReadonlyArray<PlannedSpawn>,
   routed: ReadonlyArray<PlannedSpawn>,
   clockMs: number,
 ): Readonly<{ model: World; pending: ReadonlyArray<PlannedSpawn> }> => {
-  // NOTE: most ticks nothing is due, so the plan is checked before it is
-  // paired with its routes.
   if (!Array.some(spawns, spawn => spawn.atMs <= clockMs)) {
     return { model, pending: spawns }
   }
@@ -707,15 +676,11 @@ export const roundWave = (phase: Phase): number =>
     GameOver: ({ wave }) => wave,
   })
 
-// NOTE: in co-op the run ends when everyone is down (decided row 4).
 const isDefeated = (model: World): boolean =>
   isCoop(model)
     ? !Array.some(playersOf(model), ({ seat }) => isStanding(seat))
     : focusOf(model).player.hp <= 0
 
-// NOTE: a crew whose last ones in the house go down after a teammate has
-// stepped out through the front door escapes (src/world/dare/finale.ts,
-// isCrewOut): the downed are carried out with them.
 export const endWhenDefeated = (model: World): World => {
   if (isCrewOut(model)) {
     return UiStruct.evolve(model, {

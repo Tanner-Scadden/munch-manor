@@ -14,11 +14,8 @@ import {
 } from '../schema/worldSchema'
 import { isFloorKind, isWalking } from './zombies'
 
-// NOTE: the tag checks this module runs per zombie per tick, built once.
 const isFrenziedOrFading = Frenzy.isAnyOf(['Frenzied', 'Fading'])
 const isFrenziedFrenzy = Frenzy.isAnyOf(['Frenzied'])
-
-// RULES
 
 type FrenzyRules = {
   packMin: number
@@ -36,18 +33,11 @@ export const FRENZY_RULES: FrenzyRules = {
   fadeMs: 1000,
 }
 
-// PLANNING
-
 const packOf = (spawn: PlannedSpawn): number => spawn.pack
 
-// NOTE: a pack that comes up through the floor never comes in together, so
-// only packs that walk in through a door can frenzy. A Big Leaguer's pack
-// never frenzies either: his Groaners are there to be thrown.
 export const frenzyPacksOf = (
   spawns: ReadonlyArray<PlannedSpawn>,
 ): ReadonlyArray<FrenzyPack> => {
-  // NOTE: each pack's size and whether a Big Leaguer is in it, counted in
-  // one pass over the spawns rather than once for each pack.
   const sizes = new Map<number, number>()
   const thrown = new Set<number>()
   for (const { pack, kind } of spawns) {
@@ -90,8 +80,6 @@ export const frenzyOnArrival: {
       : Frenzy.Calm(),
 )
 
-// PACE
-
 export const isFrenzied = (zombie: Zombie): boolean =>
   isFrenziedFrenzy(zombie.frenzy)
 
@@ -105,8 +93,6 @@ export const frenzyPace = (zombie: Zombie): number =>
         Math.max(1, FRENZY_RULES.fadeMs),
     Spent: () => 1,
   })
-
-// TOGETHERNESS
 
 const packIdOf = (zombie: Zombie): Option.Option<number> =>
   Frenzy.match(zombie.frenzy, {
@@ -177,11 +163,6 @@ export const advanceFrenzy: {
       })
     : model,
 )
-
-// BONUS
-
-// NOTE: a frenzied pack wiped out adds keys to the crew's ring where its
-// last zombie fell (src/world/keys/keys.ts).
 
 type Kill = Readonly<{ pack: number; x: number; y: number }>
 

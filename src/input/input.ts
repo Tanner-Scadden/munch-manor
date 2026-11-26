@@ -49,8 +49,6 @@ import {
 } from './inputSchema'
 import { INTERACT_KEY } from './keyActions'
 
-// KEYS
-
 const UP_KEY = 'KeyW'
 const DOWN_KEY = 'KeyS'
 const LEFT_KEY = 'KeyA'
@@ -64,7 +62,6 @@ const LOBBY_KEY = 'KeyL'
 const PREVIOUS_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowLeft', 'ArrowUp']
 const NEXT_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowRight', 'ArrowDown']
 
-// NOTE: where an arrow key moves a menu's focus: back or on.
 export type FocusStep = 'Previous' | 'Next'
 
 export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
@@ -77,14 +74,11 @@ export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
   }
 }
 
-// NOTE: how far an arrow key moves focus along a menu's buttons.
 export const FOCUS_STEP_OFFSET: Readonly<Record<FocusStep, number>> = {
   Previous: -1,
   Next: 1,
 }
 
-// NOTE: a controller's Select (View, Share) is H: from pause it asks to
-// leave the run, as the MENU pill does.
 export const isMenuKey = (code: string): boolean =>
   code === MENU_KEY || code === PAD_SELECT
 
@@ -96,7 +90,6 @@ export const isEndlessKey = (code: string): boolean => code === ENDLESS_KEY
 
 export const isCharacterKey = (code: string): boolean => code === CHARACTER_KEY
 
-// NOTE: a controller's Start (Menu, Options) pauses and resumes, as Escape.
 export const isPauseKey = (code: string): boolean =>
   code === PAUSE_KEY || code === PAD_START
 
@@ -116,8 +109,6 @@ const keyboardMove = (pressedKeys: ReadonlyArray<string>): Vector =>
     Option.getOrElse(() => ZERO_VECTOR),
   )
 
-// NOTE: a controller's buttons are held in its own polled record
-// (maybeGamepad), never as keys, so a pad's press holds no key here.
 export const pressKey: {
   (code: string): (input: Input) => Input
   (input: Input, code: string): Input
@@ -141,8 +132,6 @@ export const releaseKey: {
   }),
 )
 
-// NOTE: macOS sends no keyup for a key released while Command is down, so
-// Command lets go of every key rather than leave one held for good.
 export const releaseKeys = (input: Input): Input =>
   UiStruct.evolve(input, { pressedKeys: () => [] })
 
@@ -156,15 +145,11 @@ export const releaseAll = (input: Input): Input =>
     firePress: () => 'Seen',
   })
 
-// NOTE: a step saw the trigger, so a fire press waiting for one is spent.
 export const seeFirePress = (input: Input): Input =>
   input.firePress === 'Seen'
     ? input
     : UiStruct.evolve(input, { firePress: () => 'Seen' })
 
-// NOTE: how far a stick's last point may sit from a finger still on the
-// glass and stay held. A finger's last move can trail its touch a little;
-// the two thumbs sit far apart, on their own halves.
 const STICK_TOUCH_REACH_PX = 96
 
 type TouchPoint = Readonly<{ clientX: number; clientY: number }>
@@ -188,9 +173,6 @@ const keepIfTouched = (
         : Stick.Idle(),
   })
 
-// NOTE: a stick lets go when no finger on the glass is near it, so one whose
-// lift never came (iOS Safari loses one now and then) never walks the
-// player on alone. No finger left lets go of both.
 export const keepTouchedSticks: {
   (points: ReadonlyArray<TouchPoint>): (input: Input) => Input
   (input: Input, points: ReadonlyArray<TouchPoint>): Input
@@ -200,8 +182,6 @@ export const keepTouchedSticks: {
     aimStick: stick => keepIfTouched(stick, points),
   }),
 )
-
-// POINTERS
 
 export type PointerPress = Readonly<{
   pointerId: number
@@ -216,10 +196,6 @@ type PointerPosition = Readonly<{
   clientY: number
 }>
 
-// NOTE: a held stick stays its finger's against a stray touch on its half
-// (a palm, a third finger), but a thumb landing on the stick itself takes
-// it: no second finger lands there while a thumb holds it, so the stick's
-// own finger must be gone, its lift lost.
 const takeStick = (stick: Stick, press: PointerPress): Stick => {
   const pressed = Stick.Active({
     pointerId: press.pointerId,
@@ -309,9 +285,6 @@ const moveStickPointer = (stick: Stick, position: PointerPosition): Stick =>
         : stick,
   })
 
-// NOTE: an aim stick pushed into the fire zone is a fire press, which
-// waits for a step as a click does, so a flick in and out between two
-// steps still shoots.
 const pushAimStick = (input: Input, aimStick: Stick): Input =>
   UiStruct.evolve(input, {
     aimStick: () => aimStick,
@@ -395,9 +368,6 @@ export const releasePointer: {
   }),
 )
 
-// NOTE: a finger on the touch HUD's hold button. The button sits outside
-// the game surface, so the finger never starts a stick, and the sticks'
-// own fingers keep their sticks.
 export const pressHoldButton: {
   (pointerId: number): (input: Input) => Input
   (input: Input, pointerId: number): Input
@@ -442,8 +412,6 @@ export const isTrackingPointer = (input: Input): boolean =>
   Stick.isAnyOf(['Active'])(input.aimStick) ||
   MouseButton.isAnyOf(['Held'])(input.mouseButton)
 
-// INTENT
-
 const stickDeflection = (stick: Stick): Vector =>
   Stick.match(stick, {
     Idle: () => ZERO_VECTOR,
@@ -472,12 +440,6 @@ const mouseAim = (
     directionBetween(player, viewToWorld(camera, mouseInView)),
   )
 
-// NOTE: how hard the player aims, a vector of length 0 to 1 in the aim's
-// direction, which the camera leans by (src/render/camera.ts): a stick by
-// how far it is pushed, the mouse by how far the cursor sits from the
-// window's middle. The middle, not the player, so the lean moving the
-// player on the screen never feeds back into it. Each reaches across the
-// screen, so it is turned onto the floor under it (src/render/lens.ts).
 export const aimReachOf: {
   (camera: Camera): (input: Input) => Option.Option<Vector>
   (input: Input, camera: Camera): Option.Option<Vector>
@@ -506,9 +468,6 @@ export const aimReachOf: {
   ),
 )
 
-// NOTE: a thumb on the aim stick pulls the trigger only once it is pushed
-// past the fire zone. At the moment it lands the stick has no direction, so
-// a shot then flew where the player last faced, not where they meant to aim.
 const isAimStickFiring = (stick: Stick): boolean =>
   vectorLength(stickDeflection(stick)) >= STICK_FIRE_ZONE
 
@@ -527,11 +486,6 @@ const interactOf = (input: Input): Trigger =>
     ? 'Held'
     : 'Released'
 
-// NOTE: the client turns what the player pushes across the screen (the
-// keys, a stick, a pad) onto the floor under it, so up walks up the screen
-// whichever way the lens is turned (src/render/lens.ts). The mouse's aim
-// casts its ray onto the floor instead. The World reads only the floor's
-// directions, so the bots and the co-op room need nothing of the lens.
 export const deriveIntent: {
   (player: Player, camera: Camera): (input: Input) => Intent
   (input: Input, player: Player, camera: Camera): Intent

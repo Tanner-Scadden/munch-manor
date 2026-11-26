@@ -1,7 +1,3 @@
-// The escape's rooms one at a time for the Rooms tab: each room's map from
-// src/world/level/plan.ts, laid out alone with the game's own wall, door,
-// and exit drawing and the room's art (src/render/room/), so the owner can
-// review a room's shape up close.
 import { Array, Function, Option, String, pipe } from 'effect'
 
 import { bakeShapes, placeAt } from '../../src/art/sprite'
@@ -65,10 +61,6 @@ import { tilesWithSymbol } from '../../src/world/level/tileGrid'
 
 export type DraftRoomId = 'Dining' | 'Parlour' | 'Library' | 'Cellar'
 
-// MAPS
-
-// NOTE: what each drafted symbol is drawn as. The digits, `@`, and `^` are
-// review marks on bare floor.
 const DINING_COVER: Readonly<Record<string, EscapeCoverKind>> = {
   '=': 'PartyTable',
   H: 'Hutch',
@@ -97,12 +89,6 @@ const CELLAR_COVER: Readonly<Record<string, EscapeCoverKind>> = {
   t: 'TrapCrate',
 }
 
-// NOTE: the drafted map as the game's walls and doors read it: a slot
-// room's spawn doors drawn as the parlour's North and South, the front door
-// and the secret shelves as wall (their art goes over it), and the review
-// marks as floor (`*`, a room tool's tile, and `j`, the chandelier's winch,
-// too). The chandelier's gap, `^`, stays: the party table finds its halves
-// by it, and it is floor while the chandelier hangs.
 const WALL_MARKS = new Set(['M', '%', '?'])
 const FLOOR_MARKS = new Set(['@', '1', '2', '3', '4', '*', 'j'])
 
@@ -125,7 +111,6 @@ const engineMapOf = (map: ReadonlyArray<string>): ReadonlyArray<string> =>
     ),
   )
 
-// NOTE: the boarded exits, shut, as the room's walls draw them.
 const specOf = (
   id: DraftRoomId,
   map: ReadonlyArray<string>,
@@ -170,14 +155,10 @@ const CELLAR_SPEC = specOf('Cellar', CELLAR_MAP, [
   ['East', ')'],
 ])
 
-// ROOMS
-
 export type DraftRoom = Readonly<{
   id: DraftRoomId
   title: string
   map: ReadonlyArray<string>
-  // NOTE: the toggle's name and its two words, when the room has a twist to
-  // show both ways.
   maybeTwist: Option.Option<
     Readonly<{ label: string; off: string; on: string }>
   >
@@ -241,7 +222,6 @@ const cornerCobwebs = (room: Box): ReadonlyArray<Draw.Shape> => [
   ),
 ]
 
-// NOTE: the box a symbol's tiles cover on the drafted map, in world pixels.
 const symbolBoxOf = (
   map: ReadonlyArray<string>,
   symbol: string,
@@ -397,8 +377,6 @@ const ROOM_DRAWINGS: Readonly<
 
 const builtRooms = new Map<string, ReadonlyArray<Draw.Shape>>()
 
-// NOTE: a drafted room as one baked image, with its twist one way or the
-// other, built once and kept.
 export const draftRoomShapes: {
   (isTwistOn: boolean): (room: DraftRoom) => ReadonlyArray<Draw.Shape>
   (room: DraftRoom, isTwistOn: boolean): ReadonlyArray<Draw.Shape>

@@ -5,13 +5,6 @@ import { type Level, TILE_DOOR, hasTileFlag } from '../world/level/arena'
 import { type Tile, tileIndex } from '../world/level/tileGrid'
 import { isWalkableTile } from '../world/level/tileQueries'
 
-// NOTE: the doorways in the house's top walls. The 3D house builds a lintel
-// over each one's back row (src/render/iso/lintels.ts), and whatever still
-// stands in one is behind that lintel, so its health bar waits until it
-// steps into the room.
-
-// NOTE: a doorway in a top wall: the row it opens onto the room from, and
-// its first and last columns.
 export type Opening = Readonly<{ row: number; first: number; last: number }>
 
 export const isPassage: {
@@ -32,8 +25,6 @@ export const isPassage: {
     ),
 )
 
-// NOTE: a doorway in a top wall is a passage tile, a door or an open exit,
-// right above walkable floor that is not a passage too.
 const isOpeningTile = (level: Level, column: number, row: number): boolean =>
   isWalkableTile(level, column, row) &&
   isPassage(level, column, row) &&
@@ -72,7 +63,6 @@ const openingsOf = (level: Level): ReadonlyArray<Opening> =>
 
 const builtOpenings = new WeakMap<Level, ReadonlyArray<Opening>>()
 
-// NOTE: every doorway in a top wall, built once for each level.
 export const doorwaysOf = (level: Level): ReadonlyArray<Opening> => {
   const cached = builtOpenings.get(level)
   if (cached !== undefined) {
@@ -83,16 +73,10 @@ export const doorwaysOf = (level: Level): ReadonlyArray<Opening> => {
   return openings
 }
 
-// NOTE: a top wall is two tiles deep, and what stands in its doorway may be
-// as wide as Uncle Chunk, so the span reaches two tiles past the opening on
-// each side. Feet far above the wall's floor line stand in the room on the
-// other side of it, such as the kitchen above the dining room, not in it.
 const WALL_DEPTH_PX = TILE_SIZE * 2
 const BESIDE_PX = TILE_SIZE * 2
 const BEYOND_PX = WALL_DEPTH_PX + TILE_SIZE
 
-// NOTE: feet above a doorway's floor line and inside its span stand in the
-// doorway, behind the wall.
 export const isBehindWall =
   (level: Level) =>
   (x: number, footY: number): boolean =>

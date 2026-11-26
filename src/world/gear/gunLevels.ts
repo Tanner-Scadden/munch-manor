@@ -22,7 +22,6 @@ import {
   tierOf,
 } from './weapons'
 
-// NOTE: a gun's name as the player at `slot` reads it, with its tier word.
 export const gunName: {
   (slot: PlayerSlot, weapon: WeaponKind): (model: World) => string
   (model: World, slot: PlayerSlot, weapon: WeaponKind): string
@@ -31,15 +30,6 @@ export const gunName: {
   (model: World, slot: PlayerSlot, weapon: WeaponKind): string =>
     tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon)),
 )
-
-// Guns level up with kills (docs/ESCAPE_PLAN.md, "Guns level up with
-// kills"): each carried gun counts the kills it made, and its tier is the
-// number of thresholds in UPGRADE_TIERS (src/world/gear/weapons.ts) those
-// kills have passed. The knife never levels; a gun's own kills stay with it
-// while it is carried, swapped out or not, and go with it when it is
-// dropped or replaced.
-
-// THE LADDER
 
 export const tierForKills: {
   (kills: number): (kind: WeaponKind) => number
@@ -50,9 +40,6 @@ export const tierForKills: {
     Array.filter(UPGRADE_TIERS[kind], tier => kills >= tier.kills).length,
 )
 
-// NOTE: how far a gun is from its last tier to its next, 0 to 1, for the
-// HUD slot's bar. None once it is at its top tier, or for a gun with no
-// tiers (Brain Freeze, the gnome's pea shooter).
 export const maybeLevelProgress = (gun: CarriedGun): Option.Option<number> =>
   pipe(
     Array.get(UPGRADE_TIERS[gun.kind], gun.tier),
@@ -68,18 +55,12 @@ export const maybeLevelProgress = (gun: CarriedGun): Option.Option<number> =>
     }),
   )
 
-// NOTE: the kills a gun's next tier asks for, counted from its first kill:
-// none at its top tier, or for a gun with no tiers. The pause screen shows a
-// gun's kills against it.
 export const maybeNextLevelKills = (gun: CarriedGun): Option.Option<number> =>
   pipe(
     Array.get(UPGRADE_TIERS[gun.kind], gun.tier),
     Option.map(({ kills }) => kills),
   )
 
-// NOTE: a gun at a new tier holds the extra rounds its bigger magazine
-// brings (the Pan its deeper dent meter), so a level up never reads as a
-// magazine gone short.
 const levelGun = (gun: CarriedGun, calling: Player['calling']): CarriedGun => {
   const kills = gun.kills
   const tier = Math.min(maxTier(gun.kind), tierForKills(gun.kind, kills))
@@ -100,11 +81,6 @@ const tierCarried = (player: Player, kind: WeaponKind): number =>
     onSome: gun => gun.tier,
   })
 
-// CREDIT
-
-// NOTE: `kills` more kills for the gun of `kind` the seat at `slot`
-// carries, in either gun slot or the melee slot. A gun no longer carried
-// (dropped while its bullet flew) gets nothing.
 export const creditGunKills: {
   (slot: PlayerSlot, kind: WeaponKind, kills: number): (world: World) => World
   (world: World, slot: PlayerSlot, kind: WeaponKind, kills: number): World
@@ -143,8 +119,6 @@ export const creditGunKills: {
         }),
 )
 
-// NOTE: the killer of a kill: the seat a shot or strike names, or single
-// player's one seat when it names none.
 export const killerSlotOf: {
   (maybeSlot: Option.Option<PlayerSlot>): (world: World) => PlayerSlot
   (world: World, maybeSlot: Option.Option<PlayerSlot>): PlayerSlot

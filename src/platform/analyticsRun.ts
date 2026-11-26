@@ -41,8 +41,6 @@ import {
 } from './analytics'
 import type { ScreenFit } from './deviceSchema'
 
-// FRAME TIME
-
 const SMOOTH_MS = 10
 const SIXTY_MS = 17
 const FORTY_MS = 25
@@ -73,11 +71,6 @@ export const frameTimeBucket = ({
 const summaryScreenFit = (screenFit: ScreenFit): SummaryScreenFit =>
   screenFit === 'Installed' ? 'Installed' : 'Browser'
 
-// RUN END
-
-// NOTE: a run ends at Game Over, at an escape, or when the player leaves
-// it: from the pause MENU, or, online, by leaving the room or losing it,
-// which goes home (src/app/update/coop.ts, leftRoom).
 export const maybeRunOutcome: {
   (after: Model): (before: Model) => Option.Option<RunOutcome>
   (before: Model, after: Model): Option.Option<RunOutcome>
@@ -109,18 +102,12 @@ export const maybeRunOutcome: {
   },
 )
 
-// NOTE: leaving a run resets the Model's run, so a Quit is read from the
-// Model just before it. Game Over and an escape keep the run until the next.
 const finalRun = (before: Model, after: Model, outcome: RunOutcome): Model =>
   outcome._tag === 'Quit' ? before : after
-
-// CREW RUN KEY
 
 const HALF_KEY_LENGTH = CREW_RUN_KEY_LENGTH / 2
 const HEX = 16
 
-// NOTE: a deterministic 64 bit string hash (two 32 bit lanes, mixed at the
-// end), not cryptographic: it only has to keep different runs apart.
 const hashKey = (text: string): string => {
   let first = 0xdeadbeef
   let second = 0x41c6ce57
@@ -138,28 +125,15 @@ const hashKey = (text: string): string => {
   return `${lane(second)}${lane(first)}`
 }
 
-// NOTE: one online co-op run's key, alike on every client in it, from the
-// room's lobby as its replica has it: the code, when the room was made,
-// and the round, which each start (PLAY AGAIN and KEEP GOING too) counts
-// up. A code used again later is another room made at another time. Only
-// the hash is sent, so a summary names no room. A run is drawn only once
-// the lobby has left its Lobby status for the round (src/domain/onlineRun.ts,
-// maybeRunRoom), so a replica a round behind never keys it.
 export const crewRunKeyOf = (lobby: Lobby): string =>
   hashKey(`${lobby.code}:${lobby.createdMs}:${lobby.round}`)
 
-// NOTE: a crew run that never drew a room's lobby (couch play, `?local=N`)
-// is keyed by its own visit and length, so the report counts it alone.
 const ownRunKey = (visitId: string, run: Model): string =>
   hashKey(`visit:${visitId}:${run.stats.runMs}`)
 
-// NOTE: a number past the summary's bounds (a link down for minutes) is
-// sent at the top rather than failing the whole summary.
 const atMost = (most: number, value: number): number =>
   Math.min(most, Math.max(0, Math.round(value)))
 
-// NOTE: the run's network numbers from the room, or none measured for a
-// crew that never drew a room (couch play).
 const networkOf = (run: Model): CrewNetwork => {
   const report = NetStats.clientNetReportOf(
     Option.getOrElse(run.roomRun.maybeRunNet, () => NetStats.emptyClientNet),
@@ -175,12 +149,6 @@ const networkOf = (run: Model): CrewNetwork => {
   }
 }
 
-// NOTE: a run with teammate bots reports as Solo: it is one human's run, and
-// the crew numbers are for humans (a bot count in the summary would be a
-// RUN_SUMMARY_VERSION bump and a D1 migration, left for later). An online co-op run's own seat is the lead in the Model (the
-// client draws it as the player, src/app/update/coopPlay.ts), so its numbers are this
-// player's. The crew's size counts every seat in the run, one who dropped
-// out too.
 const partyOf = (run: Model, visitId: string): SummaryParty => {
   if (!isCoop(run) || isBotCrew(run)) {
     return SOLO_PARTY
@@ -199,9 +167,6 @@ const partyOf = (run: Model, visitId: string): SummaryParty => {
   }
 }
 
-// NOTE: an online run plays on the room's difficulty, kept with the run
-// (maybeRoomDifficulty) so a LEAVE, which drops the room, still has it.
-// NOTE: the display cases the run's feats sprang open, taken or not.
 const casesOpenedOf = (run: Model): number =>
   Array.filter(run.cases, ({ state }) =>
     CaseState.isAnyOf(['Opened', 'Emptied'])(state),
@@ -261,8 +226,6 @@ export const runSummaryOf: {
   },
 )
 
-// SHARE
-
 type ShareEnding = 'Escaped' | 'LeftEarly' | 'Death'
 
 const SHARE_SCREENS: Readonly<
@@ -288,9 +251,6 @@ const shareScreenOf = (phase: Phase, isCrew: boolean): ShareScreen => {
   return isCrew ? screens.crew : screens.solo
 }
 
-// NOTE: a tap on SHARE as its event: which end screen, a crew's or one
-// player's, and the run's mode and difficulty. `played` is the run's
-// difficulty, the room's in an online co-op run.
 export const shareEventOf: {
   (
     visitId: string,

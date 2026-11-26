@@ -50,15 +50,6 @@ import {
   TALLY_ICONS,
 } from './tallyIcons'
 
-// The crew board on a co-op end card (MULTIPLAYER.md, "The crew board"):
-// the run's line (the wave or the time, and the crew's kills), then a
-// column for each player, their own look and name over their kills,
-// revives, downs, aim, and keys found, counted up a row at a time like the solo
-// tally. Then the awards stamp: the crown drops on the MVP, each winner's
-// number turns gold, and each player's best award lands as a title under
-// their column, with its badge beside them. Icons over words: each row is
-// its icon, and each award wears the icon of the row it was won on.
-
 const PAD = 4
 const GUTTER = 12
 const COLUMN = 54
@@ -70,17 +61,12 @@ const STATS_Y = 29
 const TITLE_Y = STATS_Y + 5 * ROW + 1
 const BOTTOM = TITLE_Y + GLYPH_HEIGHT + 1
 const BADGE_STRIDE = 8
-// NOTE: badges go right of the player, two to a row.
 const BADGE_SIDE_PX = 10
 
 export const PANEL_FILL = 'rgba(24, 14, 22, 0.94)'
 export const PANEL_EDGE = '#5a3a4a'
 const OWN_FILL = 'rgba(255, 240, 200, 0.07)'
 
-// NOTE: upright, the frame shows only 180 of the board's width (the end
-// card is drawn in the landscape frame), so three or four players sit two
-// to a row, a row of columns under another. A row is BLOCK_STEP below the
-// one above.
 const PORTRAIT_COLUMNS = 2
 const BLOCK_STEP = BOTTOM + 4
 
@@ -94,7 +80,6 @@ export const crewBoardColumns: {
 const rowsOf = (count: number, columns: number): number =>
   Math.max(1, Math.ceil(count / Math.max(1, columns)))
 
-// NOTE: the board's height below its top, from the panel's edge to edge.
 export const crewBoardHeightPx = (model: Model): number => {
   const count = crewOf(model).length
   return (
@@ -104,11 +89,8 @@ export const crewBoardHeightPx = (model: Model): number => {
   )
 }
 
-// NOTE: the board's width, so a test can hold it inside the screen.
 export const crewBoardWidthPx = (model: Model): number =>
   crewBoardWidth(crewBoardColumns(model, crewOf(model).length))
-
-// THE ROWS
 
 type StatRow = Readonly<{
   icon: Sprite
@@ -167,8 +149,6 @@ const TITLES: Readonly<Record<CrewAward, BakedText>> = Record.map(
   name => bakeText(String.toUpperCase(name), 'Victory'),
 )
 
-// SPARKS
-
 const SPARKS = 8
 const SPARK_MS = 420
 const SPARK_REACH = 16
@@ -197,8 +177,6 @@ export const sparkShapes: {
   },
 )
 
-// LAYOUT
-
 const ROW_SLIDE_PX = 8
 
 const slideOf = (kind: EndKind, index: number, ms: number): number =>
@@ -206,7 +184,6 @@ const slideOf = (kind: EndKind, index: number, ms: number): number =>
     ROW_SLIDE_PX * (1 - easeOut(progressOf(ms, rowStartMs(kind, index), 120))),
   )
 
-// NOTE: a name too wide for its column loses letters from its end.
 const fitted = (name: string, width: number): string =>
   textWidth(name) <= width || name.length <= 1
     ? name
@@ -225,8 +202,6 @@ type Board = Readonly<{
 const rowOf = (board: Board, index: number): number =>
   Math.floor(index / board.columns)
 
-// NOTE: a short last row (three players held upright: two, then one) sits
-// centered under the full row above it, not at its left.
 const rowInsetOf = (board: Board, index: number): number => {
   const inRow = Math.min(
     board.columns,
@@ -245,14 +220,9 @@ const columnX = (board: Board, index: number): number =>
       COLUMN / 2,
   )
 
-// NOTE: where a player's block starts: the top of their column.
 const blockTopOf = (board: Board, index: number): number =>
   board.top + CREW_TOP + rowOf(board, index) * BLOCK_STEP
 
-// THE RUN'S LINE
-
-// NOTE: the crew's kills are the sum of its columns, read off the World,
-// so every player's card says the same.
 const crewKillsOf = (crew: ReadonlyArray<CrewMember>): number =>
   Array.reduce(crew, 0, (sum, member) => sum + member.kills)
 
@@ -301,15 +271,9 @@ const runLineShapes = (
   ]
 }
 
-// THE COLUMNS
-
 const isAwarded = (board: Board, ms: number): boolean =>
   ms >= awardsAtMs(board.kind)
 
-// NOTE: a player's badge and rank number at the top left of their column,
-// beside the figure, so the board is no taller for it. The rank is the one
-// they joined the room with, so every card shows the same. Award badges
-// stack on the right.
 const BADGE_WIDTH = 13
 const BADGE_GAP = 2
 const RANK_LEFT_PX = 29
@@ -337,7 +301,6 @@ const rankShapes = (
   ]
 }
 
-// NOTE: a teammate bot has no rank, so BOT stands where the badge would.
 const botMarkShapes = (x: number, centerY: number): ReadonlyArray<Draw.Shape> =>
   textShapes(
     'BOT',
@@ -388,7 +351,6 @@ const headShapes = (
   ]
 }
 
-// NOTE: your own column is a shade lighter, so you find yourself first.
 const ownPlateShapes = (
   model: Model,
   board: Board,
@@ -513,8 +475,6 @@ const awardShapes = (
   ]
 }
 
-// THE BOARD
-
 const winnersOf = (
   crew: ReadonlyArray<CrewMember>,
 ): ReadonlyMap<CrewAward, number> =>
@@ -531,8 +491,6 @@ const winnersOf = (
 const crewBoardWidth = (count: number): number =>
   PAD * 2 + GUTTER + count * COLUMN
 
-// NOTE: where the board stands across the frame, so the rank strip under it
-// is exactly as wide.
 export const crewBoardSpan: {
   (centerX: number): (model: Model) => Readonly<{ left: number; width: number }>
   (model: Model, centerX: number): Readonly<{ left: number; width: number }>
@@ -547,10 +505,6 @@ export const crewBoardSpan: {
   },
 )
 
-// NOTE: the panel and what stands on it, from `top`, centered on `centerX`
-// of the landscape frame the end card is drawn in (src/features/end/endView.ts). The panel fades and
-// rises with the rest of the card (src/features/end/endView.ts); the rows and awards
-// land on their own beats.
 export const crewBoardShapes: {
   (
     kind: EndKind,
@@ -597,8 +551,6 @@ export const crewBoardShapes: {
         ...ownPlateShapes(model, board),
         rect(left + PAD, top + CREW_TOP - 5, width - PAD * 2, 1, PANEL_EDGE),
         ...Array.map(
-          // NOTE: makeBy and range never make fewer than one, so a board of
-          // one row asks for none itself.
           rowsOf(crew.length, columns) > 1
             ? Array.makeBy(rowsOf(crew.length, columns) - 1, row => row + 1)
             : [],

@@ -4,15 +4,8 @@ import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '../world/level/plan'
 import type { SlotRoomId } from '../world/schema/entitySchema'
 import { type Sprite, spriteShapes } from './sprite'
 
-// Each room's icon, centered on its spot: what the cloche lifts off a room
-// as it opens (src/features/cloche/clocheView.ts), and where a dare thing
-// lies under its outline on the opened dare card
-// (src/features/dare/satchelView.ts).
-
 const OUTLINE = '#140c10'
 
-// NOTE: each room's icon: the parlour's hearth, the library's red book,
-// the cellar's bottle.
 export const ROOM_ICONS: Readonly<Record<SlotRoomId, Sprite>> = {
   Parlour: spriteShapes(
     [
@@ -63,8 +56,6 @@ export const ROOM_ICONS: Readonly<Record<SlotRoomId, Sprite>> = {
   ),
 }
 
-// NOTE: the rooms with no slot of their own: the kitchen's soup pot and
-// the dining room's place setting.
 const KITCHEN_ICON: Sprite = spriteShapes(
   [
     '...kkk...',
@@ -100,6 +91,5 @@ const ICONS_BY_ROOM: Readonly<Record<string, Sprite>> = {
   [DINING_ROOM_ID]: DINING_ICON,
 }
 
-// NOTE: a room's icon by its id (src/world/level/plan.ts), if it has one.
 export const maybeRoomIcon = (roomId: string): Option.Option<Sprite> =>
   Record.get(ICONS_BY_ROOM, roomId)

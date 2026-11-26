@@ -29,14 +29,6 @@ import { Events, Message as ProfileMessage } from '../message'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from '../profile'
 import { profileOpenOn } from './profile.fixture'
 
-// The Profile on its own and the root's rules behind it. The Profile
-// component keeps no state: every click and field change goes up as an
-// event (src/features/profile/block.ts). The root owns the panel's state
-// (`profile`) and judges each event (src/app/update/profile.ts): the tab,
-// the name kept, the dice, the tutorial reset, the try-on, and the link
-// flow. The root's side of the name saved and the look is in
-// profile.story.test.ts.
-
 const PROPS = profilePropsOf(profileOpenOn('Settings'))
 
 const focused =

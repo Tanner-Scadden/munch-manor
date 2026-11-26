@@ -12,9 +12,6 @@ import { ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
 
 const learned = (): Lesson => Lesson.Learned({ atMs: 0 })
 
-// NOTE: a player past every lesson and first-time tip, as the balance bot
-// plays: no guided first break and no free Plank Pile, so the tutorial
-// never moves the balance numbers.
 export const asTutorialDone = (model: Model): Model =>
   UiStruct.evolve(model, {
     lessons: () => ({

@@ -55,11 +55,6 @@ import {
   pullFridge,
 } from '../leftovers'
 
-// The kitchen is worth the walk (owner, 2026-11-02): the fridge's odds on
-// its door (src/world/fridge/leftovers.ts), the pantry's stash
-// (src/world/kitchen/pantry.ts), and better key odds on its tiles
-// (src/world/kitchen/kitchenKeys.ts).
-
 const FRAME_MS = FIXED_STEP_MS
 
 const fridgePriceOf = (current: Model): Option.Option<number> =>
@@ -155,8 +150,6 @@ describe('the fridge is worth a pull', () => {
 })
 
 describe('a prize starts fresh in place of the gun it replaces', () => {
-  // NOTE: the fridge's prize taken with a Chatterbox of `smgTier` in hand,
-  // checked against the arsenal it should leave.
   const takeWith = (
     smgTier: number,
     prize: 'Cooker' | 'Freeze',
@@ -195,8 +188,6 @@ describe('a prize starts fresh in place of the gun it replaces', () => {
   )
 })
 
-// THE PANTRY
-
 const PANTRY_SPOT = Option.getOrThrow(pantrySpotOf(levelOf(atFridge(0))))
 
 const atPantry = (current: Model): Model =>
@@ -208,7 +199,6 @@ const atPantry = (current: Model): Model =>
       }),
   })
 
-// NOTE: the Model one fixed-step frame leaves.
 const afterFrame = (current: Model): Effect.Effect<Model> =>
   playedThrough(current, [FIXED_FRAME])
 
@@ -388,8 +378,6 @@ describe('the pantry stash', () => {
       }),
   )
 })
-
-// KITCHEN KEY ODDS
 
 describe('kitchen key odds', () => {
   const KITCHEN_SPOT = { x: 35, y: -55 }

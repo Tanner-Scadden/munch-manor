@@ -25,8 +25,6 @@ import {
 } from './analytics'
 import { API_ORIGIN } from './apiOrigin'
 
-// API ORIGIN
-
 const maybeApiUrl = (path: string, origin: string): Option.Option<string> =>
   origin === ''
     ? Option.none()
@@ -37,8 +35,6 @@ export const maybeRunsUrl = (origin: string): Option.Option<string> =>
 
 const maybeSharesUrl = (origin: string): Option.Option<string> =>
   maybeApiUrl(SHARES_PATH, origin)
-
-// VISIT
 
 const HEX_DIGITS_PER_PART = 4
 const PART_LIMIT = 16 ** HEX_DIGITS_PER_PART
@@ -55,8 +51,6 @@ export const generateVisitId: Effect.Effect<string> = pipe(
   Effect.map(parts => Array.join(Array.map(parts, hexPart), '')),
 )
 
-// SEND
-
 const SummaryTransport = Schema.Literals(['Beacon', 'Fetch', 'Unconfigured'])
 type SummaryTransport = typeof SummaryTransport.Type
 
@@ -70,8 +64,6 @@ class SummarySendError extends Schema.TaggedError<
 const toSendError = (error: unknown): SummarySendError =>
   SummarySendError.make({ reason: describeError(error) })
 
-// NOTE: text/plain keeps both requests "simple", so the browser sends them
-// cross-origin with no preflight. The Worker decodes the body as JSON anyway.
 const SUMMARY_CONTENT_TYPE = 'text/plain;charset=UTF-8'
 
 const queueBeacon = (url: string, body: string) =>
@@ -84,9 +76,6 @@ const queueBeacon = (url: string, body: string) =>
     catch: toSendError,
   })
 
-// NOTE: the fallback when the browser will not queue a beacon. no-cors
-// answers with an opaque response, so only a request that never went out
-// counts as a failure. Trace headers stay off: they are not CORS-safelisted.
 const postKeepalive = (url: string, body: string) =>
   pipe(
     Layer.build(FetchHttpClient.layer),
@@ -157,7 +146,6 @@ export const sendRunSummary: {
     }),
 )
 
-// NOTE: a tap on SHARE, sent the same way as a run summary.
 export const sendShareEvent: {
   (
     origin?: string,

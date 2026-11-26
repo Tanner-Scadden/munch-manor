@@ -39,11 +39,6 @@ import { LeaveRoom, RememberRoom } from '../../coop/update'
 import { isRunCardHeld } from '../../end/endBeat'
 import { coopScreen } from './onlineRun.fixture'
 
-// An online co-op run's end card (src/screens/game/menus.ts, src/app/update/end.ts): the
-// tally stays sharp with no co-op scrim over it, and its buttons are the
-// room's: LEAVE, PLAY AGAIN (this player's READY, with the crew's heads),
-// LOBBY, and SHARE.
-
 const OWN_SLOT = 1
 
 const onRoomCard = (
@@ -94,7 +89,6 @@ const readyUp =
       Component.noop,
     )
 
-// NOTE: LEAVE done: co-op remembers no room and focuses its hub.
 const leaveDone: RootStep = s =>
   resolveFocusCoop(
     s

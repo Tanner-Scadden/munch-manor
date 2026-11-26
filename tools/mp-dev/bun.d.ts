@@ -1,5 +1,3 @@
-// NOTE: the root package has no Bun types, so this declares the slice of
-// the Bun globals the dev page's scripts use.
 declare namespace Bun {
   type BuildOutput = {
     success: boolean

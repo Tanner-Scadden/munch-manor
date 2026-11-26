@@ -21,18 +21,11 @@ import { focusOf, modifyFocus } from '../../../world/party/party'
 import { unlocksOf } from '../endBeat'
 import { checkSavedChanges, diesOnWave7, frame, leave } from './rank.fixture'
 
-// Hero and gun mastery (src/domain/mastery.ts, ./masteryRun.ts): a run
-// pays its hero 10 points a wave cleared and 25 a dare thing found, and
-// each gun its kills, at the moments it pays rank; a level opens a prop
-// style the Profile's MASTERY tab wears, and a gun's 1,000th kill opens
-// its Gilded skin, both flipped on the end card.
-
 const withMastery = (model: Model, mastery: SavedMastery): Model =>
   UiStruct.evolve(model, { mastery: () => mastery })
 
 const callingOf = (model: Model) => focusOf(model).player.calling
 
-// NOTE: the run's own seat with `kills` Pistol kills in its tally.
 const withPistolKills = (model: Model, kills: number): Model =>
   modifyFocus(model, {
     feats: feats =>

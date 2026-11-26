@@ -1,10 +1,3 @@
-// The roof leaks' puddles in the 3D scene (leaks.ts): two pictures of the
-// level on quads over the puddles' tiles alone. The water's body is lit by
-// the room as the floor is, cut into its bands, so it shows blue-grey in the
-// light and is lost in the cellar's dark; it is painted once. The glints
-// and rings over it are light of their own, unlit, painted again only when
-// what they show changes.
-
 import type { Application } from 'pixi.js'
 
 import { FlatMaterial, Material3D, type Mesh3D } from '@pixi/3d'
@@ -18,13 +11,9 @@ import { leakTilesOf, puddleGlintsOf, puddleKeyOf, puddlesOf } from './leaks'
 import { FloorPicture } from './painter'
 import type { Textures } from './textures'
 
-// NOTE: the puddles' bodies sit over the ground's glows (0.012), their
-// glints over them, and both under the storm's thrown light (0.014).
 const BODY_LIFT = 0.013
 const GLINT_LIFT = 0.0135
 
-// NOTE: mutable on purpose: it owns the pictures' textures and remembers
-// what the glints were last painted for.
 export class LeakLayer {
   readonly body: Mesh3D
   readonly glints: Mesh3D

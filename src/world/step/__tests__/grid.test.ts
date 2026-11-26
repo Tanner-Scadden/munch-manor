@@ -59,7 +59,6 @@ describe('grid', () => {
       const out = queryBuffer(grid)
       const next = randoms(count)
       for (let probe = 0; probe < 200; probe++) {
-        // boxes that sit inside, straddle an edge, or lie wholly outside
         const x = (next() - 0.5) * spread * 1.6
         const y = (next() - 0.5) * spread * 1.6
         const box: Box = [x, y, x + next() * 60, y + next() * 60]
@@ -71,7 +70,6 @@ describe('grid', () => {
         const wanted = Array.flatMap(points, (point, index) =>
           isIncluded(index) && isInBox(point, box) ? [index] : [],
         )
-        // whole cells come back, so the caller's exact test trims them
         expect(found).toEqual(expect.arrayContaining(wanted))
         expect(
           Array.filter(found, index => {

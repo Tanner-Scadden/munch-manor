@@ -1,20 +1,3 @@
-// Pacing: plays campaign runs with the balance bot and reads its World
-// every frame, for docs/PACING_REPORT.md. Per wave: its length, the time
-// with fewer than 3 zombies alive, the time with nothing in the 320 by 180
-// view, the first arrival, the gaps between packs, the kill rate, and the
-// tail; per break, the bot's time against the clock; per run, when each
-// room opened, when the list was done, and the run's length.
-//
-// Run it through the guard, one difficulty a job, as `bun run heavy -- --cpu
-// sh tools/balance/pacing.sh <runs>` with DIFFICULTY= and AIM= as for the
-// bot: it plays `run <count> <from>` slices in rounds of WORKERS processes,
-// each writing tools/balance/reports/pacing-<difficulty>-<from>.json
-// (gitignored), and `bun tools/balance/pacing.ts report` prints the tables.
-// A run takes about a minute, so a round of 2 run slices is a couple of
-// minutes, and between rounds the script calls `yield <workers>`, which
-// yields the guard's turn (yieldTurn) and prints the WORKERS for the next
-// round. Clear the old slices before a new measurement.
-
 import {
   Array,
   Config,
@@ -54,8 +37,6 @@ const { killTotal } = await import('../../src/world/run/stats')
 const { aliveCount, isAlive } = await import('../../src/world/waves/pacing')
 const { DIFFICULTY_ORDER, breakMsOf } =
   await import('../../src/world/run/difficulty')
-
-// WHAT ONE RUN RECORDS
 
 const WaveStat = Schema.Struct({
   wave: Schema.Finite,
@@ -110,8 +91,6 @@ const PacingFile = Schema.Struct({
   runs: Schema.Array(RunStat),
 })
 
-// NOTE: a zombie this near the player counts as arrived: a 120 px ring is
-// about two seconds of a Groaner's walk on Normal.
 const NEAR_PX = 120
 const FEW_ALIVE = 3
 const STRAGGLERS = 2
@@ -284,8 +263,6 @@ const recorder = () => {
   return { onFrame, finish }
 }
 
-// SUMMARY
-
 const median = (values: ReadonlyArray<number>): number => {
   const sorted = Array.sort(values, Order.Number)
   if (sorted.length === 0) {
@@ -394,12 +371,8 @@ const reportOf = (
   return Array.join(lines, '\n')
 }
 
-// THE PROGRAM
-
 const REPORTS = 'tools/balance/reports'
 
-// `run <runs> <from>` plays runs from..from+runs-1 and writes one slice;
-// `report` reads every slice and prints the tables by difficulty.
 const playSlice = (runCount: number, from: number) =>
   Effect.gen(function* () {
     const maybeDifficulty = yield* Config.String('DIFFICULTY').pipe(
@@ -452,8 +425,6 @@ const printReport = Effect.gen(function* () {
   })
 })
 
-// NOTE: the boundary between rounds of slices: prints the WORKERS the guard
-// grants for the next round, or the ones it had outside the guard.
 const yieldBetweenRounds = (workers: number) =>
   yieldTurn('the next round of pacing slices').pipe(
     Effect.map(Option.getOrElse(() => workers)),

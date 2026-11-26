@@ -25,15 +25,7 @@ import type { Vector } from '../../schema/worldSchema'
 import { distanceBetween } from '../../step/geometry'
 import { COOP_RULES, maybePlayerAt } from '../party'
 
-// CPR at the body's side (owner, 2026-11-12, src/world/party/revive.ts): a
-// teammate who stands still in reach of a downed player slides over a few
-// frames to kneel a body's width to their left or right, the nearer side
-// first, then the other, then where they stand. The revive's reach, its
-// clock, and a held stick's cancel are as they were.
-
 const TICK_MS = FIXED_STEP_MS
-// NOTE: the open floor north of the dining room's table, clear for a
-// body's width and more on every side.
 const BODY: Vector = { x: 180, y: 84 }
 const IN_FRONT: Vector = { x: BODY.x, y: BODY.y + 12 }
 const FRONT_LEFT: Vector = { x: BODY.x - 6, y: BODY.y + 11 }
@@ -66,8 +58,6 @@ const expectAt = (current: World, slot: number, spot: Vector): void => {
   expect(distanceBetween(positionOf(current, slot), spot)).toBeLessThan(0.01)
 }
 
-// NOTE: a pea gnome standing on the tile at `column`, `row` (10 px tiles):
-// a solid box the reviver cannot kneel in.
 const gnomeAt = (id: number, column: number, row: number): Trap =>
   Trap.Turret({
     id,
@@ -85,7 +75,6 @@ const withTraps =
   (current: Model): Model =>
     UiStruct.evolve(current, { traps: () => traps })
 
-// NOTE: seat 1 down on BODY, the lead seat at `reviver`.
 const downedWith = (reviver: Vector, count = 2): Model =>
   pipeline(
     placeSeat(0, reviver.x, reviver.y),

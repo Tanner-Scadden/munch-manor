@@ -13,8 +13,6 @@ import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http'
 import { describeError } from '../shared/describeError'
 import { Phase } from '../world/schema/worldSchema'
 
-// BUILD
-
 export const DEV_BUILD = 'dev'
 
 export const RUNNING_BUILD: string = __BUILD_ID__
@@ -31,8 +29,6 @@ export const maybeNewerBuild: {
     remoteBuild === runningBuild ? Option.none() : Option.some(remoteBuild),
 )
 
-// NOTE: checks run on any quiet screen so a newer build is already known
-// when the player reaches the home menu, the only screen with the chip.
 export const isUpdateCheckWindow = Phase.isAnyOf([
   'Ready',
   'Preparation',
@@ -43,8 +39,6 @@ export const isUpdateCheckWindow = Phase.isAnyOf([
 ])
 
 export const UPDATE_CHECK_INTERVAL = Duration.minutes(5)
-
-// FETCH
 
 const VERSION_FILE = 'version.json'
 const FETCH_TIMEOUT = Duration.seconds(10)
@@ -64,9 +58,6 @@ const versionUrl = (stamp: number): string => {
   return url.href
 }
 
-// NOTE: no-store and the time query both keep a stale copy from answering,
-// whatever the browser or a proxy in between would cache. Trace headers stay
-// off so the request is the same plain GET it always was.
 const fetchVersionFile = (stamp: number) =>
   pipe(
     Layer.build(FetchHttpClient.layer),
@@ -96,13 +87,6 @@ export const fetchRemoteBuild: Effect.Effect<string, VersionCheckError> = pipe(
   }),
 )
 
-// UPDATE MARKER
-
-// NOTE: the gift reloads with the build it unwrapped in the address, so the
-// page that loads can tell it was just updated, and onto which build. The
-// greeting shows only when that build is the one running: a reload that
-// still landed on the old build greets nobody. The marker leaves the address
-// at once, so a later reload never greets again.
 const UPDATE_MARKER_PARAM = 'updated'
 
 const markedUrl = (build: string): string => {

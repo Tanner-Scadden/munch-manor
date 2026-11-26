@@ -39,16 +39,11 @@ import {
   missionsOn,
 } from '../missions'
 
-// The daily missions (src/features/missions/missions.ts): the day's three,
-// the same for every player, the day's one free reroll, what a run counts
-// toward them, and their Bones when the run ends.
-
 const TODAY = '2026-11-12'
 
 const withMissions = (model: Model, missions: SavedMissions): Model =>
   UiStruct.evolve(model, { missions: () => missions })
 
-// NOTE: the 28 first days of December and of January.
 const DAYS = Array.flatMap(['2026-12', '2027-01'], month =>
   Array.makeBy(
     28,
@@ -96,7 +91,6 @@ describe('rolling the day', () => {
       UiStruct.evolve(model, {
         missions: missions => ({ ...missions, hasPlayedCoop: true }),
       })
-    // NOTE: a day a co-op player rolls ReviveFriend and a new one does not.
     const day = Option.getOrThrow(
       Array.findFirst(DAYS, candidate =>
         Array.contains(
@@ -117,8 +111,6 @@ describe('rolling the day', () => {
             rolled: before,
           })
         }),
-        // NOTE: the day's roll saved before the gate passes, as a change to
-        // the Model mid-Story leaves no write pending.
         writeSave,
         changeModel(asCoop),
         send(Message.ChangedToday({ day })),
@@ -212,8 +204,6 @@ describe("the day's reroll", () => {
   )
 })
 
-// NOTE: the day's Large slot rerolled to Splat 150 zombies, and the other
-// two already done, so a run's kills decide the day.
 const splatDay = (model: Model, others: ReadonlyArray<MissionId>): Model =>
   withMissions(knowingDay(model, TODAY), {
     ...noMissions,
@@ -272,8 +262,6 @@ describe('a run pays the missions', () => {
             expect(after.missions.progress['SplatZombies']).toBe(150)
             expect(isClaimed(after, 'SplatZombies')).toBe(true)
             expect(after.missions.stampedDays).toEqual([TODAY])
-            // NOTE: the run's own 6 Bones, doubled as the day's first, then
-            // 20 for the Large and 25 for all three.
             expect(after.rank.earnedBones).toBe(
               start.rank.earnedBones + 12 + 20 + ALL_THREE_BONES,
             )

@@ -2,10 +2,6 @@ import { describe, expect, test } from 'vitest'
 
 import { bloomSharesOf } from '../bloom'
 
-// The cheap bloom's three levels stand for @pixi/3d's five halvings
-// (src/render/iso/bloom.ts): each level's share of the glow is the share
-// of the halvings it stands for.
-
 const sharesOf = (radius: number) => {
   const { fine, coarse } = bloomSharesOf(radius)
   return {
@@ -22,7 +18,6 @@ describe('bloomSharesOf', () => {
   })
 
   test("the world's radius gives each level the halvings' share", () => {
-    // NOTE: the halvings' shares at 0.6: 0.4, 0.24, 0.144, 0.0864, 0.1296.
     const { largest, middle, smallest } = sharesOf(0.6)
     expect(largest).toBeCloseTo(0.4 + 0.12, 10)
     expect(middle).toBeCloseTo(0.12 + 0.144 + 0.0432, 10)

@@ -1,13 +1,3 @@
-// The house's mood: how its light follows the run. A break is warm and calm.
-// A wave cools toward moonlight as it starts, and dims, cools, and flickers
-// harder as its intensity climbs. The hungrier house (the finale, as the
-// music hears it) and the boss on the floor turn it red. A
-// storm rolls outside the whole run, its lightning striking at moments read
-// off the World's clock, oftener as the waves climb.
-//
-// Everything is read off the World alone, so a replay and every player in a
-// co-op room see the same mood and the same strikes.
-
 import { unitOf } from '../../shared/prng'
 import { isHouseHungry } from '../../world/dare/finale'
 import { Boss, Phase, type World } from '../../world/schema/worldSchema'
@@ -15,29 +5,19 @@ import { lerp } from '../../world/step/geometry'
 import { Tunable } from './tunable'
 
 export type Mood = Readonly<{
-  // NOTE: a share of each room's own light, 1 in a break.
   fill: number
-  // NOTE: a share of the ambient light.
   ambient: number
-  // NOTE: the color the rooms' light and the ambient lean toward, and how far.
   tint: number
   tintShare: number
-  // NOTE: how hard the flames flicker, 1 in a break.
   flicker: number
-  // NOTE: the lightning's flash, 0 to 1.
   strike: number
 }>
 
 const MOONLIGHT = 0x9fb4ff
 const BLOOD = 0xff5a48
 
-// NOTE: how long the light takes to turn as a wave or a break begins.
 const TURN_MS = 3000
 
-// NOTE: the ambient light's share in each mood: a break's, a wave's at the
-// start and how far it drops as the wave's intensity climbs to 1, and the
-// dread's. As the renderer reads them (./tunable.ts): as shipped, unless
-// Munch Studio's lab is sliding them.
 export type MoodAmbients = Readonly<{
   calm: number
   wave: number
@@ -61,7 +41,6 @@ export const calmMood = (): Mood => ({
   strike: 0,
 })
 
-// NOTE: a wave's mood at full turn, by its intensity (0 to 1).
 export const waveMood = (intensity: number): Mood => ({
   fill: 0.85 - 0.2 * intensity,
   ambient: MOOD_AMBIENT.now.wave - MOOD_AMBIENT.now.waveDrop * intensity,
@@ -71,7 +50,6 @@ export const waveMood = (intensity: number): Mood => ({
   strike: 0,
 })
 
-// NOTE: the hungrier house, or the boss on the floor.
 export const dreadMood = (): Mood => ({
   fill: 0.7,
   ambient: MOOD_AMBIENT.now.dread,
@@ -81,9 +59,6 @@ export const dreadMood = (): Mood => ({
   strike: 0,
 })
 
-// NOTE: one mood eased into another. Only the calm's and a wave's are
-// eased, and the calm leans toward no color, so the tint is the one that
-// leans further.
 const between = (from: Mood, to: Mood, share: number): Mood => ({
   fill: lerp(from.fill, to.fill, share),
   ambient: lerp(from.ambient, to.ambient, share),
@@ -99,7 +74,6 @@ const turned = (elapsedMs: number): number =>
 const isDreadful = (world: World): boolean =>
   isHouseHungry(world) || Boss.isAnyOf(['Arriving', 'Fighting'])(world.boss)
 
-// NOTE: the mood before the storm: the round's, eased in as it turns.
 const roundMood = (world: World): Mood => {
   if (isDreadful(world)) {
     return dreadMood()
@@ -118,7 +92,6 @@ const roundMood = (world: World): Mood => {
   )
 }
 
-// NOTE: a color leaned toward another, channel by channel, as 0xRRGGBB.
 export const mixColor = ({
   from,
   to,
@@ -130,16 +103,11 @@ export const mixColor = ({
   return channel(16) | channel(8) | channel(0)
 }
 
-// LIGHTNING
-
-// NOTE: the storm's beat: one strike in each window, at a spot in it rolled
-// from the window's number, the window shortening as the waves climb.
 const windowMsOf = (wave: number): number =>
   Math.max(11_000, 26_000 - wave * 1500)
 
 const STRIKE_MS = 900
 
-// NOTE: the flash's shape: a bright flick, a dip, a second flick, a fade.
 const flashAt = (sinceMs: number): number => {
   if (sinceMs < 0 || sinceMs >= STRIKE_MS) {
     return 0
@@ -156,17 +124,12 @@ const flashAt = (sinceMs: number): number => {
   return 0.75 * (1 - (sinceMs - 220) / (STRIKE_MS - 220)) ** 2
 }
 
-// NOTE: the World's clock at which a window's strike begins.
 const strikeStartIn = (window: number, windowMs: number): number =>
   window * windowMs + unitOf(window) * (windowMs - STRIKE_MS)
 
-// NOTE: the World's clock at a strike's brightest, in a wave's first
-// window but one, for the tools that stage one (Munch Studio's live rooms).
 export const strikeClockOf = (wave: number): number =>
   strikeStartIn(1, windowMsOf(wave)) + 10
 
-// NOTE: how bright the lightning is now, 0 to 1. Only in a round: the
-// intro and the end card keep their own light.
 export const strikeOf = (world: World): number => {
   if (!Phase.isAnyOf(['Preparation', 'Wave'])(world.phase)) {
     return 0
@@ -176,8 +139,6 @@ export const strikeOf = (world: World): number => {
   return flashAt(world.elapsedMs - strikeStartIn(window, windowMs))
 }
 
-// NOTE: whether a strike began between two readings of the World's clock,
-// for the thunder.
 export const didStrikeBetween = ({
   world,
   previousMs,

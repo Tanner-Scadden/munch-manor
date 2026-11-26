@@ -10,8 +10,6 @@ type FakeScope = WorkerScope & {
   readonly posted: Array<unknown>
 }
 
-// NOTE: a worker's global scope as the browser runs it: a message goes to
-// whatever listens when it arrives, and is gone if nothing does.
 const fakeScope = (): FakeScope => {
   const listeners: Array<(event: MessageEvent) => void> = []
   const posted: Array<unknown> = []
@@ -48,8 +46,6 @@ const waitForReply = (scope: FakeScope) =>
   })
 
 describe('the worker', () => {
-  // NOTE: it.live, since the server opens SQLite on real time and the test
-  // polls for its reply.
   it.live('answers a request that came before its server listened', () =>
     Effect.gen(function* () {
       const scope = fakeScope()

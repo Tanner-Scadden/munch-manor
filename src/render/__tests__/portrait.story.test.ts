@@ -80,9 +80,6 @@ const fightingInLandscape: Model = UiStruct.evolve(fightingInPortrait, {
   maybeSurface: () => Option.some(PHONE_LANDSCAPE),
 })
 
-// NOTE: on a phone on its side the HUD strip covers the window's top rows,
-// so at the top of the house the camera follows on past the house by them,
-// keeping the north wall's top under the strip, not behind it.
 const STRIP_ROWS = Math.ceil(HUD_STRIP_HEIGHT / (4 / 3))
 
 const standingAt = (base: Model, x: number, y: number): Model =>
@@ -208,8 +205,6 @@ describe('the landscape phone screen', () => {
   test('widens by whole steps of 4 to the phone, from 320 up to 388', () => {
     const widthAt = (width: number, height: number): number =>
       landscapeWidthFor({ left: 0, top: 0, width, height })
-    // NOTE: 16:9, a little wider, iPhone 15 (19.5:9), 20:9, 21:9, and a
-    // window narrower than 16:9.
     expect(widthAt(1280, 720)).toBe(320)
     expect(widthAt(1300, 720)).toBe(324)
     expect(widthAt(852, 393)).toBe(388)
@@ -222,9 +217,7 @@ describe('the landscape phone screen', () => {
       expect(wide % 4).toBe(0)
       expect(wide).toBeGreaterThanOrEqual(320)
       expect(wide).toBeLessThanOrEqual(LANDSCAPE_MAX_WIDTH)
-      // NOTE: never wider than the phone, so the rows still fill it.
       expect(wide / 180).toBeLessThanOrEqual(Math.max(width / 360, 16 / 9))
-      // NOTE: the window shows whole columns of the room at the 4/3 zoom.
       expect(
         Number.isInteger(worldWindowOf(landscapeTouchScreen(wide)).width),
       ).toBe(true)
@@ -247,8 +240,6 @@ describe('the landscape phone screen', () => {
   })
 
   test('keeps a whole screen of the room at zoom 1 on a keyboard and mouse, in any window', () => {
-    // NOTE: the dining room is bigger than one screen, so even at zoom 1
-    // the camera follows the player from the start spot, inside the room.
     const { bounds } = levelOf(fightingInLandscape)
     const { player } = focusOf(fightingInLandscape)
     Array.forEach(['Landscape', 'Portrait'] as const, orientation => {
@@ -295,8 +286,6 @@ describe('the portrait camera', () => {
       x: bounds.right - 120,
       y: rowY,
     })
-    // NOTE: at the top and front walls, the lens shows the wall's row at
-    // the view's edge, to the rounding of a whole pixel.
     expect(
       floorSeenOf(cameraOf(standingAt(fightingInPortrait, 160, 10))).top,
     ).toBeCloseTo(bounds.top, -0.5)

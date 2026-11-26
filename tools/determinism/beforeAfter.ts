@@ -1,31 +1,3 @@
-// Before and after: plays the same script on another commit's game and on
-// the working tree's, in Bun, and reports the first frame and field where
-// the gameplay differs. A refactor that means to change no behavior (each
-// step of the World split in MULTIPLAYER.md) must report no difference.
-//
-// It checks the base commit out into a temporary git worktree, copies this
-// harness over it (so both sides hash with the same code), installs the
-// base's own dependencies from its lockfile and patches, and removes the
-// worktree after. So a change to a dependency, a patch in patches/, or a
-// workspace package in packages/ shows up as a difference too.
-//
-// The base installs with its own Bun cache, kept between runs, whose
-// patched packages are deleted before each install: Bun names a patched
-// copy by a hash that does not follow the patch's content, so a shared
-// cache could hand the base the working tree's patched copy (see
-// patches/README.md). Each side's patched packages are then checked
-// against its patches before anything plays.
-//
-// Heavy (two whole runs), so run it through the guard:
-//   bun run determinism:diff -- [ref] [options]
-//
-// ref defaults to origin/main. The base is where HEAD branched from ref
-// (`git merge-base HEAD ref`), so commits that landed on ref since then do
-// not read as a difference; --tip compares against ref's tip instead.
-// Options: --frames N (default 7200, two minutes), --seed S, --mode Endless,
-// --pattern Mixed, --every N, --no-hit-stop (clear hit-stop after every
-// frame on both sides). It exits 1 when the two differ.
-
 import {
   Array,
   Console,
@@ -109,15 +81,12 @@ const rootOf = Effect.gen(function* () {
   return path.resolve(here, '../..')
 })
 
-// INSTALL
-
 const PATCHED_COPY = /_patch_hash=/
 
 const installBase = (cwd: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
-    // NOTE: kept between runs so only the first one downloads every package.
     const cache = path.resolve(tmpdir(), 'munch-determinism-bun-cache')
     yield* fs.makeDirectory(cache, { recursive: true })
     const entries = yield* fs.readDirectory(cache)
@@ -135,7 +104,6 @@ const installBase = (cwd: string) =>
     )
   })
 
-// NOTE: `patchedDependencies` maps `name@version` to the patch file.
 const PackageManifest = Schema.Struct({
   patchedDependencies: Schema.Record(Schema.String, Schema.Unknown),
 })
@@ -166,8 +134,6 @@ const patchesOf = (cwd: string) =>
     )
   })
 
-// NOTE: a patch that reverses cleanly is applied in full, so the installed
-// package is the one the patch describes and not an older patched copy.
 const checkPatches = (cwd: string, side: string) =>
   Effect.gen(function* () {
     const path = yield* Path.Path
@@ -224,8 +190,6 @@ const askDump = (cwd: string, frame: number) =>
     ),
   )
 
-// NOTE: the base commit checked out in a temporary worktree for as long as
-// the scope lasts.
 const baseWorktree = (root: string, baseCommit: string) =>
   Effect.acquireRelease(
     Effect.gen(function* () {
@@ -246,8 +210,6 @@ const baseWorktree = (root: string, baseCommit: string) =>
       ),
   )
 
-// NOTE: the old harness goes first, and out/ stays behind, as this harness
-// is copied over it.
 const copyHarness = (base: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -260,9 +222,6 @@ const copyHarness = (base: string) =>
       Array.filter(entries, entry => entry !== 'out'),
       entry => fs.copy(path.resolve(here, entry), path.resolve(target, entry)),
     )
-    // NOTE: a base from before src/ was in folders (November 2026) has every
-    // module flat in src/: each module the harness imports by its folder
-    // path gets a shim there that re-exports the flat one.
     const harnessFiles = yield* Effect.forEach(
       Array.filter(entries, entry => String.endsWith('.ts')(entry)),
       entry => fs.readFileString(path.resolve(here, entry)),
@@ -292,9 +251,6 @@ const copyHarness = (base: string) =>
         )
       }),
     )
-    // NOTE: the harness plays the game through src/app/pureApp.ts. A base from
-    // before the Block preview (Foldkit 0.170) has none; its update was callable and
-    // its initialModel whole, so a shim there hands both out the same way.
     const pureApp = path.resolve(base, 'src/app/pureApp.ts')
     if (!(yield* fs.exists(pureApp))) {
       yield* fs.makeDirectory(path.dirname(pureApp), { recursive: true })
@@ -305,8 +261,6 @@ const copyHarness = (base: string) =>
     }
   })
 
-// NOTE: the exact first frame the two differ on, played again hashing
-// every frame up to the checkpoint.
 const exactFrame = (
   base: string,
   root: string,
@@ -324,9 +278,6 @@ const exactFrame = (
 
 const compare = Effect.gen(function* () {
   const root = yield* rootOf
-  // NOTE: the merge base, not ref's tip: when ref has moved on since HEAD
-  // branched (or was rebased onto), its new commits would read as this
-  // change's.
   const baseCommit = isTip
     ? ref
     : yield* Effect.map(
@@ -396,7 +347,6 @@ const compare = Effect.gen(function* () {
       )
     }
   }
-  // NOTE: exits 1 when the two differ.
   return yield* RunsDiffer.make({ frame })
 })
 

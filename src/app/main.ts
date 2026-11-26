@@ -1,3 +1,5 @@
+import { Function } from 'effect'
+
 import { UiStruct } from '@effect/ui'
 
 import { bootCommands } from './boot'
@@ -26,11 +28,6 @@ import { type App$, type UpdateReturn, defineHandlers } from './update/step'
 import { todayHandlers } from './update/today'
 import { versionHandlers } from './update/version'
 
-// INIT
-
-// NOTE: every LoadStep must finish before the splash goes. A step that
-// fails still counts as finished, so a missing font never holds the game.
-// New assets join LOAD_STEPS with a Command that loads them.
 export const init = ApplicationDef.init($ =>
   $.set(
     UiStruct.evolve(initialModel, {
@@ -41,7 +38,6 @@ export const init = ApplicationDef.init($ =>
   ).run(...bootCommands()),
 )
 
-// NOTE: the root's own frame and seed handlers, beside every group's.
 const frameHandlers = defineHandlers({
   TickedFrame: ($, message) =>
     orInRun(message, tickFrame(message.deltaTime))($),
@@ -58,10 +54,6 @@ const frameHandlers = defineHandlers({
     $.evolve({ localPlayers: () => count }),
 })
 
-// NOTE: the one exhaustive handler record. Each group of the root's
-// Messages has its handlers beside the Steps they call (AGENTS.md
-// "Folders"), so a Message with no handler fails here. Each handler holds
-// only its own change; `update` below settles every dispatch once after it.
 const handle = ApplicationDef.update({
   ...frameHandlers,
   ...dialogHandlers,
@@ -85,25 +77,20 @@ const handle = ApplicationDef.update({
   ...profileHandlers,
 })
 
-// SETTLING
-
-// NOTE: the after-message Steps (src/app/update/settle.ts) run once after
-// every dispatch, a child's event included, against the Model from before
-// it. A synced save is already in the store, so its Messages settle
-// without writing it back.
 const SYNCED_SAVES: ReadonlySet<Message['_tag']> = new Set([
   'UpdatedSyncedSave',
   'CompletedReloadSyncedSave',
 ])
 
-// NOTE: Effect UI calls `update` with the Step and the Message, a signature
-// it fixes, so it has no data-last form.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const update = ($: App$, message: Message): UpdateReturn =>
+export const update: {
+  (message: Message): ($: App$) => UpdateReturn
+  ($: App$, message: Message): UpdateReturn
+} = Function.dual(2, ($: App$, message: Message): UpdateReturn =>
   $.combine(
     handle,
     ...afterMessage(
       $.model,
       SYNCED_SAVES.has(message._tag) ? 'Synced' : 'Write',
     ),
-  )
+  ),
+)

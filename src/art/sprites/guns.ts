@@ -13,8 +13,6 @@ import {
   spriteWidth,
 } from '../sprite'
 
-// GUNS
-
 const GUN_PALETTE: Palette = {
   K: '#26262e',
   G: '#8d96a3',
@@ -52,9 +50,6 @@ const GUN_PIXELS: Readonly<Record<WeaponKind, GunPixels>> = {
     pixels: ['.PPPPQQ', 'VPQQQPQ', 'VPPPPQQ'],
     pivot: { x: 1, y: 1 },
   },
-  // NOTE: the fridge's prizes. The Cooker is a dented pot with its lid
-  // clamped on, held by the side handle; the Pan a black skillet on a
-  // wooden handle; Brain Freeze a slushie tank with a pink straw nozzle.
   Cooker: {
     pixels: ['....KHK..', '..KGGGGGK', 'RRKMMMMMK', '..KMGGGMK', '...KKKKK.'],
     pivot: { x: 1, y: 2 },
@@ -80,9 +75,6 @@ const GUN_PIXELS: Readonly<Record<WeaponKind, GunPixels>> = {
     ],
     pivot: { x: 1, y: 3 },
   },
-  // NOTE: the display cases' two. Old Thunder is a long hunting rifle, a
-  // walnut stock under a long barrel with a brass band; the Big Blunder a
-  // stubby stock and a fat brass barrel flaring to a bell.
   Rifle: {
     pixels: ['.....KKGGGGGGGGH', 'VWWWWWWWWYWWK...', 'VVW.K...........'],
     pivot: { x: 4, y: 1 },
@@ -114,13 +106,6 @@ export const GUN_TIER_TRIMS: ReadonlyArray<Palette> = [
   { G: '#e0a92e', H: '#fff3a0', M: '#a8741a' },
 ]
 
-// NOTE: a gun skin (the Look tab's gear row) swaps the guns' body colors:
-// the metal (G, H, M), the wood (W, V), the Peashooter's green (P, Q), and
-// the Pan's black (D). The outline (K), the shotgun's red tip, and the
-// old guns' brass (Y, J) stay. A
-// tier's trim lies over a skin, so a skinned gun still shows its tier.
-// NOTE: a skin as a gun is drawn: the look's, or a gun's mastery skin
-// (src/domain/mastery.ts), which that gun wears in its master's hands.
 export type DrawnGunSkin = GunSkin | MasterySkin
 
 type SkinnedGunSkin = Exclude<DrawnGunSkin, 'Stock'>
@@ -196,9 +181,6 @@ const GUN_SKIN_TRIMS: Readonly<Record<SkinnedGunSkin, Palette>> = {
     Q: '#ffd36b',
     D: '#8a2410',
   },
-  // NOTE: the mastery skins (drafts pinned in Munch Studio): Gilded is
-  // bright gold metal on dark ebony wood, richer than the gift's Gold;
-  // Diamond is pale ice with white facets.
   Gilded: {
     G: '#f0c43a',
     H: '#fffbe0',
@@ -233,9 +215,6 @@ const gunPalette = (tier: number, skin: DrawnGunSkin = 'Stock'): Palette =>
     onSome: trim => withTrim(skinPalette(skin), trim),
   })
 
-// NOTE: a gun's pixel map turned to `angle` about its pivot, on a square
-// whose middle pixel (`reach`, `reach`) is the pivot: what its sprite bakes,
-// and where its barrel's tip lands (`gunTipOf`).
 type TurnedGun = Readonly<{ rows: ReadonlyArray<string>; reach: number }>
 
 const turnedGun = ({ pixels, pivot }: GunPixels, angle: number): TurnedGun => {
@@ -294,8 +273,6 @@ const GUN_SPRITES: Readonly<
   Array.map(GUN_TIERS, tier => gunTurns(gun, gunPalette(tier))),
 )
 
-// NOTE: the knife in hand, the third slot (GAME_DESIGN.md, "The knife and
-// two gun slots"): a wooden grip and a short pale blade, turned as a gun is.
 const KNIFE_IN_HAND: GunPixels = {
   pixels: ['VWGGH'],
   pivot: { x: 1, y: 0 },
@@ -309,7 +286,6 @@ const turnIndexOf = (angle: number): number =>
   ((Math.round(angle / TURN_STEP) % GUN_DIRECTIONS) + GUN_DIRECTIONS) %
   GUN_DIRECTIONS
 
-// NOTE: the angle a gun aimed at `angle` is drawn at: one of its turns.
 export const turnAngleOf = (angle: number): number =>
   turnIndexOf(angle) * TURN_STEP
 
@@ -321,12 +297,6 @@ const turnAt = (
     Array.headNonEmpty(turns),
   )
 
-// THE BARREL'S TIP
-
-// NOTE: the pixel of a turned gun that reaches farthest along its turn, the
-// nearest the barrel's line on a tie: as its column and row from the pixel
-// the gun is held by. Read off the very rows its sprite bakes, so the muzzle
-// flash sits on the tip the art draws, whatever the gun's length or pivot.
 const tipOf = (gun: GunPixels, angle: number): Vector => {
   const { rows, reach } = turnedGun(gun, angle)
   const cos = Math.cos(angle)
@@ -352,8 +322,6 @@ const tipOf = (gun: GunPixels, angle: number): Vector => {
   return { x: best.x, y: best.y }
 }
 
-// NOTE: every gun's tip at each of its turns, worked out once as the module
-// loads: a lookup on the frame.
 const GUN_TIPS: Readonly<Record<WeaponKind, ReadonlyArray<Vector>>> =
   Record.map(GUN_PIXELS, gun =>
     Array.makeBy(GUN_DIRECTIONS, index => tipOf(gun, index * TURN_STEP)),
@@ -369,9 +337,6 @@ export const gunTipOf: {
   ),
 )
 
-// NOTE: a skinned gun's turns are built the first time they are held, as the
-// player's own look is. The stock guns are built when this module loads, so
-// the sprite atlas has them.
 const skinnedTurns = new Map<string, Array.NonEmptyReadonlyArray<Sprite>>()
 
 const skinnedTurnsOf = (
@@ -385,8 +350,6 @@ const skinnedTurnsOf = (
     return built
   })
 
-// NOTE: a call is data-first when it starts with the angle (a number); the
-// data-last form starts with the skin (a string, or missing).
 const isAngleFirst = (args: IArguments): boolean => typeof args[0] === 'number'
 
 export const knifeSprite: {
@@ -408,11 +371,8 @@ const GUN_ICONS: Readonly<Record<WeaponKind, ReadonlyArray<Sprite>>> =
     Array.map(GUN_TIERS, tier => spriteShapes(pixels, gunPalette(tier))),
   )
 
-// NOTE: a gun's icon, flat: the stock one is made as the module loads.
 const skinnedIcons = new Map<string, Sprite>()
 
-// NOTE: a call is data-first when it starts with the gun's kind (a
-// string); the data-last form starts with the tier (a number).
 const isKindFirst = (args: IArguments): boolean => typeof args[0] === 'string'
 
 export const gunIcon: {
@@ -477,8 +437,6 @@ export const gunSprite: {
   },
 )
 
-// NOTE: a gun as pixels and colors, for the Look tab's option: the Pop
-// Pistol in a skin.
 export const gunPictureOf: {
   (
     skin: DrawnGunSkin,

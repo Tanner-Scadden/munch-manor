@@ -7,8 +7,6 @@ import type { Vector, Zombie, ZombieKind } from '../../schema/worldSchema'
 import { separationPushes } from '../zombieMotion'
 import { bodyRadiusOf, isGrounded, statsOf } from '../zombies'
 
-// The all-pairs rule the crowd's columns replaced, written out plainly: every
-// grounded zombie sums the pushes of every grounded zombie in list order.
 const pushApart = (zombie: Zombie, other: Zombie): Vector | undefined => {
   const deltaX = zombie.x - other.x
   const deltaY = zombie.y - other.y

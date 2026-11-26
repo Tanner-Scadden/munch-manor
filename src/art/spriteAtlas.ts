@@ -1,12 +1,5 @@
 import { Array, Option, String } from 'effect'
 
-// The prebuilt sprite images (docs/IMAGES_PLAN.md). A production build packs
-// every sprite the game builds as it loads into a few PNG files and a
-// manifest that finds a sprite by its content key, so the game draws a
-// cropped region of a prebuilt file instead of encoding a PNG for each
-// sprite. A key the manifest does not hold is encoded as before.
-
-// NOTE: where a sprite sits: which source file, and its box in it.
 export type AtlasEntry = readonly [
   source: number,
   x: number,
@@ -15,11 +8,6 @@ export type AtlasEntry = readonly [
   height: number,
 ]
 
-// NOTE: a key that maps to null is a sprite that draws nothing. `normals`
-// holds each source's normal map, in the same order (null for a room's),
-// baked with the atlas so the game reads no pixels back. `levels` names, for
-// each level spec's id, the files holding its room images, so a run preloads
-// its own house without building its art.
 export type SpriteAtlas = Readonly<{
   sources: ReadonlyArray<string>
   normals: ReadonlyArray<string | null>
@@ -27,10 +15,6 @@ export type SpriteAtlas = Readonly<{
   levels: Readonly<Record<string, ReadonlyArray<number>>>
 }>
 
-// NOTE: `Encode` builds a PNG data URL for every sprite the atlas lacks, as
-// the browser needs. `StandIn` builds none: each sprite gets a placeholder
-// source named by its key, and its content is kept so tests and the atlas
-// generator can read its pixels.
 export type SpriteMode = 'Encode' | 'StandIn'
 
 const EMPTY_ATLAS: SpriteAtlas = {
@@ -45,8 +29,6 @@ const state: { atlas: SpriteAtlas; mode: SpriteMode } = {
   mode: 'Encode',
 }
 
-// NOTE: both must run before any module that builds sprites, since most
-// sprites are built as their modules load.
 export const useSpriteAtlas = (atlas: SpriteAtlas): void => {
   state.atlas = atlas
 }
@@ -57,8 +39,6 @@ export const useSpriteMode = (mode: SpriteMode): void => {
 
 export const spriteMode = (): SpriteMode => state.mode
 
-// NOTE: the prebuilt files holding a level spec's room images, or None when
-// the atlas does not know the spec (no atlas: a dev server, tests).
 export const atlasRoomSources = (
   specId: string,
 ): Option.Option<ReadonlyArray<string>> =>
@@ -68,8 +48,6 @@ export const atlasRoomSources = (
     ),
   )
 
-// NOTE: the prebuilt normal map of a source file, or None for a source the
-// atlas does not hold (a sprite encoded on its own, a stand-in) or a room's.
 export const atlasNormalOf = (src: string): Option.Option<string> =>
   Option.flatMap(
     Array.findFirstIndex(state.atlas.sources, s => s === src),
@@ -84,8 +62,6 @@ export type AtlasHit = Readonly<{
   height: number
 }>
 
-// NOTE: Some with Some for a prebuilt sprite, Some with None for one that
-// draws nothing, None for a key the atlas does not hold.
 export const atlasLookup = (
   key: string,
 ): Option.Option<Option.Option<AtlasHit>> => {
@@ -102,10 +78,6 @@ export const atlasLookup = (
   )
 }
 
-// KEYS
-
-// NOTE: cyrb53, a 53 bit string hash, as 11 base 36 digits. 1,500 keys
-// collide with a chance near one in ten billion, and the generator checks.
 export const spriteKeyOf = (text: string): string => {
   let first = 0xdeadbeef
   let second = 0x41c6ce57
@@ -124,12 +96,8 @@ export const spriteKeyOf = (text: string): string => {
   return String.padStart(11, '0')(hash.toString(36))
 }
 
-// STAND-INS
-
 const STAND_IN_PREFIX = 'data:image/x-sprite;key='
 
-// NOTE: a data URL, so happy-dom loads it at once as it does the real ones,
-// and the painter draws it.
 export const standInSource = (key: string): string =>
   `${STAND_IN_PREFIX}${key},`
 

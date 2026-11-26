@@ -9,8 +9,6 @@ import {
 } from '../world/schema/entitySchema'
 import { Boss } from '../world/schema/worldSchema'
 
-// BOSS POSES
-
 const BOSS_RISE_STRETCH = 0.16
 const BOSS_CROUCH_SQUASH = 0.12
 const BOSS_BELCH_SWELL = 0.18

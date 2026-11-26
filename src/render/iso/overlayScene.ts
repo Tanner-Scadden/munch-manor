@@ -1,9 +1,3 @@
-// The overlay's renderer: the HUD, the banners, and the cards, painted flat
-// by Pixi (painter.ts) on a WebGL canvas of one canvas pixel to a game pixel,
-// stretched over the stage by CSS, pixelated. It never runs a ticker: the
-// overlay's element (overlayElement.ts) paints each picture it is handed,
-// and only one that differs from the last painted.
-
 import { Effect } from 'effect'
 import { Application } from 'pixi.js'
 
@@ -12,23 +6,16 @@ import type * as Draw from '../draw'
 import { FlatPainter } from './painter'
 import { Textures } from './textures'
 
-// NOTE: what the overlay shows: its shapes on a picture of `width` by
-// `height` game pixels, the screen's size.
 export type OverlayPicture = Readonly<{
   width: number
   height: number
   shapes: ReadonlyArray<Draw.Shape>
 }>
 
-// NOTE: mutable on purpose: it holds pixi's own objects for the life of the
-// overlay's element.
 export class OverlayScene {
   private readonly app: Application
   private readonly textures: Textures
   private readonly painter: FlatPainter
-  // NOTE: what was painted last, and how many sources had loaded then: an
-  // image still loading draws nothing, so a source come in since paints the
-  // same picture again.
   private shown: OverlayPicture | undefined
   private shownLoaded = -1
 
@@ -63,10 +50,6 @@ export class OverlayScene {
   }
 }
 
-// NOTE: the overlay's own small WebGL2 canvas in `host`. It sits outside the
-// world's lens (its CSS zoom and color drain at a run's end), so it cannot
-// share the world's canvas, and copying a picture from the world's context
-// each frame would stall on its GPU work.
 export const createOverlayScene = ({
   host,
   picture,

@@ -9,161 +9,9 @@ import {
   tryWrite,
 } from './Wire'
 
-// NOTE: the realtime channel between a player and a GameRoom, in binary
-// WebSocket frames. Every message is described by a Schema below; the
-// codec writes it compactly by hand. The room decodes what a client sends
-// in three steps: a size cap, the binary reader, then the Schema, which
-// clamps what a player may claim (move length, finite aim, known buttons,
-// how many samples). What the room sends is decoded with the reader's
-// bounds checks only: it is trusted.
-
-// VERSIONS
-
-// NOTE: a client says the range it speaks and the room picks the newest
-// both know, or refuses with its own range so the client can say "update".
-// Version 2 (2026-10-30): the room's lobby carries picks, looks, and the
-// Nightmare unlock, and a run can close as Won; a version 1 client is
-// refused rather than handed messages it cannot read. Version 3: an Input
-// says which room tick its player was looking at (`seen`) and its round
-// trip, and a Delta can carry everyone's round trips (`pings`). Version 4:
-// the World holds each seat's hold-to-buy (src/world/shop/purchase.ts), the interact
-// hold rides as button bit 2, and the BuyExit seat action is gone, which
-// moved the codes of LeaveCounter and Ready (src/world/net/roomWorld.ts pins them).
-// Version 5: the Mystery Leftovers fridge and its weapons. The World holds
-// the fridge, the Cooker's lids in flight, each player's charge, and the
-// new zombie actions; the shop sells the fridge weapons' upgrades and
-// lids, whose codes follow the old ones. Version 6: take it or leave it,
-// the fridge's door can hold a weapon on Offering, taken with a hold.
-// Version 7: the knife and two gun slots. Each player's guns are two
-// slots with the pistol a gun like any other, the player carries the
-// knife's cooldown, the knife rides as button bit 4, and the shop sells
-// the pistol back, whose code follows the old ones.
-// Version 8: the boss's brace target and rush length go as positions, not
-// unit values, so a client draws the charge lane where the room aims it.
-// Version 9: standing still buys as the hold does (src/world/shop/purchase.ts), and a
-// seat's purchase can be Spent, waiting for its player to move before
-// standing buys again; a version 8 client cannot read it.
-// Version 10: the ammo window mid-wave, a seat's purchase can target the
-// stall's Ammo.
-// Version 11: the knife is a third slot. Each player holds a gun or the
-// knife (`wield`), the knife is drawn by a press (a new action code, as is
-// drawing a gun by its slot) and stabs on the fire button, and button bit
-// 4 no longer holds it.
-// Version 12: the Clang Pan takes the knife's place. Each player carries
-// what is in the melee slot (`melee`, the knife or the Pan with its dents
-// and tier), the Pan no longer takes a gun slot, and the action that drew
-// the knife draws the melee slot, whatever is in it.
-// Version 13: the idle reload below Hard. Each player carries how long
-// the trigger has rested with the gun in hand (`triggerRestMs`).
-// Version 14: a tap buys at the ammo window. A new action code (BuyAmmo)
-// marks a seat's purchase Tapped, a new case the next tick buys.
-// Version 15: the crew board on the end card. Each seat carries its own
-// revives, downs, and shots fired and landed beside its kills.
-// Version 16: callings. Each player carries the calling they brought to the
-// run (`calling`, YOU or one of the four that rank unlocks), and every quirk
-// reads it. The room seats every player as YOU until the lobby carries a
-// calling.
-// Version 17: seats by slot. The World holds every player in `seats`, in
-// slot order, each with the player's own fields, in place of a lead's fields
-// at its root and the others as mates; a party is only Solo or Crew.
-// Version 18: run modifiers. The World holds the run's `modifiers` (Friendly
-// Fire, Big Crowd, Broke, Glass), and the room's lobby carries the host's
-// pick as a mask.
-// Version 19: the kitchen is worth the walk. The fridge holds the round
-// whose cheap first pulls its seats have spent (`cheapRound`,
-// `cheapSlots`), the World holds the pantry's stash (`pantry`), the
-// stove's offer (`stove`), and the valve (`gasValve`), each seat its
-// cooking (`cooking`), a carried gun may carry a `perk`, a seat's purchase
-// can target the Stove or the Valve, and a new event, PantryTaken, says
-// who took the stash and what it gave. The MEDIC call: a downed life
-// carries `callMs`, how long ago the player last shouted, a new action code
-// (CallMedic) shouts again, and two new events: MedicCalled and
-// TeammateSaved (SAVED! or CLUTCH!).
-// Version 20: the escape the manor rework (docs/ESCAPE_PLAN.md), from its
-// first layer, endless ammo. A carried gun holds only its magazine
-// (`rounds` is gone), the ammo window is gone with its purchasable
-// (Ammo), its seat action (BuyAmmo, so CallMedic's code and the shop's
-// moved), and a purchase's Tapped, the shop sells no ammo (the item codes
-// after it moved), the RanDry event is gone, and the pantry holds no lids.
-// Guns level up with kills: a carried gun carries its `kills`, the shop
-// sells no upgrades (the item codes after the first moved), and a new
-// event, GunLeveled, says whose gun reached which tier.
-// Display cases and feats: the World holds the run's `cases` (keyed by id:
-// a spot, a prize, a feat, and Locked, Opened, or Emptied by a slot), each
-// seat its feats' tally (`feats`), a seat's purchase can target a Case, a
-// ZombieKilled event names its killer and what made the kill
-// (`maybeKiller`, `source`), and a new event, CaseOpened, says which seat
-// a case opened for and what it held.
-// Traps are found in trap crates (`crates`, a new World field, whose find
-// is a heart while someone is hurt) and mended for free in a break, so a
-// trap carries its `maxHp`, Rattles no longer sells traps, hearts, or
-// repairs (their item codes and the repair codes are gone, and the items
-// after them moved up), the shop has one category, and two new events:
-// CrateTaken and TrapMended.
-// Skeleton keys and no shop: a seat has no `wallet`, `shop`, or
-// `shopCategory`, the World holds the crew's one key ring (`keys`), a
-// seat's record its `keysFound`, the fridge no cheap pulls, the Buy and
-// LeaveCounter action codes are gone (the draws and CallMedic moved up), a
-// ZombieKilled event no `bounty`, a PackWiped no `bonus`, a WaveCleared its
-// `keys`, the pantry's goodie is a Key, and a new event, KeysFound.
-// The house as rooms on a grid, with the dining room the start: door ids
-// for the front door and the west slot's two doors (WestTop, WestBottom),
-// the level's drops (`dropped`, the dining room's chandelier lying in the
-// table's gap), a new event, ChandelierFell, and a trap crate's room may
-// be the Dining room.
-// The library and the cellar join the house: door ids for the east and far
-// slots' doors (EastTop, EastBottom, FarTop, FarBottom), a new event,
-// ShelfSwung, the library's secret shelf, and a trap crate's room may be
-// the Library or the Cellar.
-// Rolled rooms: the level carries its `arrangement`, which of the parlour,
-// library, and cellar the run's seed rolled into each slot.
-// The dare: the World holds the run's dare (`dare`: its own generator and
-// the list) and the house's things (`dareThings`, keyed by id, each hidden
-// in its room or found), and two new events say what happened to them:
-// DareFound and DareListDone.
-// The finale: the dare holds its `finale` (hunting, Uncle Chunk summoned,
-// his big key flying for the lock, or open), a seat that stepped out
-// through it is Out (a new Life), with three events, BigKeyBurst,
-// FrontDoorOpened, and SteppedOut, and a won run ends
-// in an Escaped phase, with its wave, in place of Victory.
-// The intro: a run starts Arriving, a new phase that holds the intro's
-// clock (`elapsedMs`) and its cut (`cut`, Full or Short), before the
-// first break; the room's clock sets the slam for every player.
-// The last zombie: the pacing holds `loneMs`, how long the wave's last
-// zombie has been hurrying in.
-// Work stations: the World holds its room tools' set-up (`stations`, the
-// cleat's worked time, cooldown, and count), with a new event,
-// StationWorked, and the rooms reshaped inside their slots.
-// Room finds: a hidden dare thing carries the work put into finding it
-// (Hidden's `workedMs`), as each room finds its thing its own way. A room's
-// wake-up rush rides the round's planned spawns, so it adds nothing more.
-// Uncle Chunk's last fight: the boss carries his guests' health scale
-// (`guestHpScale`) from Waiting through Fighting and has a fifth attack
-// (Slam), the finale's Unlocking is KeyFlying (his big key in the air, from
-// where he fell, with a BigKeyBurst event), and the party hat, the Dropped
-// thing, DareDropped, and FrontDoorUnlocking are gone.
-// Every room tool a station: `stations` holds seven more (the parlour's
-// Gramophone, the library's NorthStack, SouthStack, and Shelf, the cellar's
-// Barrels and Bulb, and the kitchen's SoupPot), each with its own clock;
-// what a tool does is read off that clock, and a toppled stack lies in the
-// level's drops (NorthStack, SouthStack), so nothing else rides the wire.
-// Later layers change the World again under this same version, since the
-// whole stack ships as one.
-// Version 21, leaving early: a run can end LeftEarly (a new phase, with its
-// wave) out the kitchen's back door, held as a new purchasable (BackDoor).
-// The room closes such a run with a reason of its own, LeftEarly, so the
-// lobby's last result can say so.
-// Version 22, the Dare Journal: four new dare things (NapkinRing, DareNote,
-// FalseTeeth, Invitation) may be on the list and in the house, opened by
-// the host's milestones, which the room reads from the host's own scope.
-// Version 23, the dare ladder: the World carries `dareMark`, the mark the
-// host picked (held to their own best on the difficulty, read from their
-// scope), and its rules: the marked modifiers, Hotfoots faster, dearer
-// padlocks, a shorter break clock, and Uncle Chunk tougher.
 export const PROTOCOL_VERSION = 23
 export const MIN_PROTOCOL_VERSION = 23
 
-// NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000
 
 export interface VersionRange {
@@ -189,8 +37,6 @@ export const negotiateVersion: {
   },
 )
 
-// LIMITS
-
 export const MAX_CLIENT_FRAME_BYTES = 1024
 export const MAX_TOKEN_LENGTH = 1024
 export const MAX_SAMPLES_PER_INPUT = 64
@@ -198,14 +44,6 @@ export const MAX_TICKS_PER_SAMPLE = 600
 export const MAX_SLOTS = 4
 export const MAX_WORLD_BYTES = 256 * 1024
 
-// INPUT
-
-// NOTE: one player's controls for one tick, made on the client from its
-// own keys, sticks, and camera, never raw DOM events: move as a vector
-// whose components run from -127 to 127, aim as a point in world pixels,
-// held buttons as bits, and a world-defined action such as buying an item
-// (0 is none). A held state, not an event: the room sees a press as a
-// button bit that was clear on the tick before.
 export const MOVE_SCALE = 127
 
 const MoveComponent = Schema.Int.check(
@@ -251,8 +89,6 @@ export const inputsEqual: {
     a.action === b.action,
 )
 
-// NOTE: a move vector longer than 1 is scaled back onto the unit circle,
-// so a hand-made input never walks faster than a stick.
 export const moveOf = (
   input: PlayerInput,
 ): Readonly<{ x: number; y: number }> => {
@@ -270,8 +106,6 @@ export const Sample = Schema.Struct({
 })
 export type Sample = typeof Sample.Type
 
-// FRAMES
-
 const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const Slot = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: MAX_SLOTS - 1 }),
@@ -284,14 +118,6 @@ export const ClientFrame = Schema.TaggedUnion({
     maxVersion: Version,
     token: Schema.String.check(Schema.isMaxLength(MAX_TOKEN_LENGTH)),
   },
-  // NOTE: the samples since the last Input, in tick order, from `tick`
-  // on. Inputs go out when they change, at most 10 a second, and at least
-  // once a second as a heartbeat.
-  // NOTE: `seen` is the room tick the player's picture showed when the
-  // newest sample was taken (everyone else is drawn behind the room's
-  // clock), so the room can check that player's shots against what they
-  // saw (MULTIPLAYER.md, "Latency"). `rttMs` is the player's own round
-  // trip, so the room can share it.
   Input: {
     seq: Count,
     tick: Count,
@@ -332,8 +158,6 @@ export const ClosedReason = Schema.Literals([
 ])
 export type ClosedReason = typeof ClosedReason.Type
 
-// NOTE: how a run the room played to its end closed: won, left early out a
-// back door, or lost.
 export type RunEndReason = 'GameOver' | 'Won' | 'LeftEarly'
 
 export const RoomState = Schema.Literals(['Waiting', 'Playing'])
@@ -346,13 +170,7 @@ export const ServerFrame = Schema.TaggedUnion({
     minVersion: Version,
     maxVersion: Version,
   },
-  // NOTE: the whole world, on join, on rejoin, and on game start. `ack` is
-  // the newest Input seq of this player the room has applied.
   Snapshot: { tick: Count, ack: Count, world: Schema.Uint8Array },
-  // NOTE: the change since this player's previous message, which the
-  // ordered WebSocket guarantees it has, as of `base`.
-  // NOTE: `pings` is every seat's round trip, sent every couple of seconds
-  // and otherwise empty, for the ping bars.
   Delta: {
     tick: Count,
     base: Count,
@@ -367,8 +185,6 @@ export const ServerFrame = Schema.TaggedUnion({
   RoomClosed: { reason: ClosedReason },
 })
 export type ServerFrame = typeof ServerFrame.Type
-
-// TAGS
 
 const CLIENT_TAGS: ReadonlyArray<ClientFrame['_tag']> = [
   'Hello',
@@ -403,10 +219,6 @@ const pick = <A extends string>(list: ReadonlyArray<A>, index: number): A => {
   return value
 }
 
-// INPUT CODEC
-
-// NOTE: a mask byte says which parts are not neutral, so a player standing
-// still with nothing held is one byte.
 const MOVE_BIT = 1
 const AIM_BIT = 2
 const BUTTONS_BIT = 4
@@ -456,8 +268,6 @@ const readInput = (reader: Reader): PlayerInput => {
   }
 }
 
-// CLIENT FRAMES
-
 const writeClientFrame = (writer: Writer, frame: ClientFrame) => {
   writer.u8(indexOf(CLIENT_TAGS, frame._tag))
   ClientFrame.match(frame, {
@@ -485,9 +295,6 @@ const writeClientFrame = (writer: Writer, frame: ClientFrame) => {
   })
 }
 
-// NOTE: plain objects in the frame's encoded shape, for the Schema to
-// check. Counts are read before their items so a short frame fails fast.
-// NOTE: each tag's reader, exhaustive over the union's tags.
 const CLIENT_READERS: {
   readonly [Tag in ClientFrame['_tag']]: (reader: Reader) => unknown
 } = {
@@ -550,8 +357,6 @@ export const decodeClientFrame = (
         ),
       )
 
-// SERVER FRAMES
-
 const writeServerFrame = (writer: Writer, frame: ServerFrame) => {
   writer.u8(indexOf(SERVER_TAGS, frame._tag))
   ServerFrame.match(frame, {
@@ -571,7 +376,6 @@ const writeServerFrame = (writer: Writer, frame: ServerFrame) => {
       writer.varint(snapshot.ack)
       writer.raw(snapshot.world)
     },
-    // NOTE: `base` goes as how far back it is, which is one byte at 20 Hz.
     Delta: delta => {
       writer.varint(delta.tick)
       writer.varint(delta.tick - delta.base)
@@ -594,7 +398,6 @@ const writeServerFrame = (writer: Writer, frame: ServerFrame) => {
   })
 }
 
-// NOTE: each tag's reader, exhaustive over the union's tags.
 const SERVER_READERS: {
   readonly [Tag in ServerFrame['_tag']]: (reader: Reader) => ServerFrame
 } = {
@@ -669,8 +472,6 @@ export const decodeServerFrame = (
     ? Result.fail(WireError.make({ reason: `${bytes.length} bytes` }))
     : readAll(bytes, readServerFrame)
 
-// NOTE: a WebSocket frame adds 2 bytes of header under 126 bytes of
-// payload and 4 up to 64 KB. A client's frames are masked, 4 bytes more.
 export const webSocketBytes: {
   (masked: boolean): (payload: number) => number
   (payload: number, masked: boolean): number

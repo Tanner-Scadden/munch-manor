@@ -41,8 +41,6 @@ import { breakMsOf } from '../../run/difficulty'
 import { Arsenal } from '../../schema/worldSchema'
 
 const TICK_MS = 50
-// NOTE: a 50 ms frame is three 60 Hz ticks; the moment a wave clears is
-// checked after a single tick, before the break's clock has run.
 
 const clearingWave = (wave: number): Model =>
   UiStruct.evolve(home, {
@@ -175,11 +173,6 @@ describe('the first break waits', () => {
   )
 })
 
-// NOTE: owner, 2026-11-10: with the shop gone every break counts down,
-// Normal too (2026-11-01 had none below Hard), and 2026-11-12 takes the
-// clock off Easy again. READY still starts the wave early. Running out is
-// the same countdown on every difficulty, so only the 20 s ones are played
-// through.
 describe('the break clock by difficulty', () => {
   it.effect('Easy has no countdown, and the wave waits for READY', () =>
     modelAfter(

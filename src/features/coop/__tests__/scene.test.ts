@@ -56,20 +56,12 @@ import {
 } from '../update'
 import { coopAt, lobbyChanged } from './story.fixture'
 
-// Co-op's screens as the root draws them (src/app/coopView.ts): the root
-// with co-op open on a screen, the player in the default look on a touch
-// screen, so no key caps show. The hero picker is a child, a leaf in the
-// root's Scene: its cards are read in a Scene of their own, with the props
-// co-op hands it, and a tap on a card is its event.
-
 const at = (screen: Screen): Model =>
   UiStruct.evolve(coopAt(screen), {
     appearance: () => defaultAppearance,
     lastDevice: () => 'Touch',
   })
 
-// NOTE: a Scene of the root as `model` leaves it, the game surface's
-// Mounts under co-op acknowledged.
 const coopSceneOf = (
   model: Model,
 ): Effect.Effect<AppScene, never, Scope.Scope> =>
@@ -91,8 +83,6 @@ const quickPlayButton = button('Quick play: join players anywhere')
 
 const findingRoom = HtmlLocator.role('status', { name: 'Finding the room' })
 
-// NOTE: an element by its aria-label, and what sits inside it wearing a
-// class: the old `[aria-label="..."] .name`.
 const inLabelled = (label: string, name: string): Locator.Locator =>
   Locator.inside(Locator.attr('aria-label', label), byClass(name))
 
@@ -109,14 +99,10 @@ const ask = (request: RoomRequest) =>
     introSeen: false,
   })
 
-// THE HERO PICKER, A CHILD
-
 const PICKER_KEY = 'coop-hero-picker'
 
 const isPickerProps = Schema.is(HeroPickerProps)
 
-// NOTE: the props co-op's lobby hands the hero picker, or none while it is
-// shut.
 const pickerPropsIn = (s: AppScene): Option.Option<HeroPickerProps> =>
   Array.findFirst(childrenOf(s.view), node =>
     Match.value(node).pipe(
@@ -405,8 +391,6 @@ describe('the lobby', () => {
       }),
   )
 
-  // NOTE: the taps on a pick that is not yours are Story tests
-  // (lobbyEdits.story.test.ts); this is the note they leave.
   it.effect('a tap on a pick that is not yours leaves a note in place', () =>
     Effect.gen(function* () {
       const guest = (reason: 'HostPicks' | 'Locked') =>
@@ -606,8 +590,6 @@ describe('the lobby', () => {
           )
           .expect(inLabelled('Dee, rank 7', 'coop-calling'))
           .toBeAbsent()
-          // NOTE: the portrait wears the prop too; a word that is no calling
-          // does not.
           .pipe(
             expectStyle(
               inLabelled('Bo, rank 4, Handyman', 'coop-seat-head'),
@@ -902,8 +884,6 @@ describe('the arena', () => {
             }),
         })
         const mvp = 'Bo: rank 1, Track Star, 9, MVP'
-        // NOTE: the end card holds the run while the root's World stands on
-        // its end (src/features/end/endBeat.ts, `isRunCardHeld`).
         const card = yield* coopSceneOf(
           UiStruct.evolve(back, { phase: () => Phase.GameOver({ wave: 1 }) }),
         )

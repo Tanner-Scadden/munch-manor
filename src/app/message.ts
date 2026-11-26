@@ -28,9 +28,6 @@ import {
 } from '../platform/message'
 import { ZombieKind } from '../world/schema/worldSchema'
 
-// NOTE: the root's own Messages: the frames, the seed, the couch's players,
-// and a room link and a SHARE link read at start. Their handlers are in
-// src/app/main.ts, src/app/update/coop.ts, and src/app/update/beatMyRun.ts.
 export const frameCases = {
   TickedFrame: { deltaTime: Schema.Finite },
   TickedRoomFrame: { nowMs: Schema.Finite },
@@ -40,11 +37,6 @@ export const frameCases = {
   CompletedReadBeatLink: { maybeDare: Schema.Option(FriendsDare) },
 }
 
-// NOTE: the root's own dialogs, native `<dialog>`s its Model opens
-// (src/ui/dialog.ts): a close asked for by Escape, the backdrop, or the
-// browser, and the Munchopedia's page and an entry it opened in the menu
-// panel. Their
-// handlers are in src/app/update/dialog.ts.
 export const DialogName = Schema.Literals([
   'Profile',
   'Panel',
@@ -60,10 +52,6 @@ export const dialogCases = {
   ChangedMunchopediaPage: { page: MunchopediaPage },
 }
 
-// NOTE: the root's Message union is the one flat join of every group, each
-// declared by the feature that sends it (AGENTS.md "Folders"), so
-// `Message.X(...)` and the generated `Got*` envelopes stay as they were. No
-// two groups may name the same tag (src/app/__tests__/message.test.ts).
 export const Message = UiSchema.TaggedEnum({
   ...frameCases,
   ...dialogCases,

@@ -23,13 +23,6 @@ import {
   thingsOpenedBy,
 } from '../milestones'
 
-// The milestones (src/world/dare/milestones.ts): what each one reads, the
-// things four of them open, and the pool the list rolls from. With nothing
-// opened the pool is the house's six in their old order, so every seed
-// rolls the list it rolled before the journal; with things opened the
-// list may ask for them. In co-op the room rolls from its host's things,
-// handed in as the room's settings.
-
 const ALL_THING_MILESTONES = [
   'FirstEscape',
   'ThingInEveryRoom',
@@ -141,8 +134,6 @@ describe('the pool the list rolls from', () => {
     ])
   })
 
-  // NOTE: pinned from the build before the journal (the same seeds rolled
-  // in a checkout of its commit), so a pool that moves fails here.
   test('old seeds roll the lists they always did', () => {
     expect(listOf(1, DEFAULT_ROOM_SETTINGS)).toEqual([
       'GrandmasRecipe',

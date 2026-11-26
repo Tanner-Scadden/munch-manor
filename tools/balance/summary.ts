@@ -1,7 +1,3 @@
-// Compact summaries of the bot's runs, written as JSON by
-// `simulate.ts --json` and read back by the nightly suite. The Schemas are
-// the boundary: the nightly decodes every file it reads with them.
-
 import {
   Array,
   Function,
@@ -17,8 +13,6 @@ import {
 import { Difficulty, HomeMode } from '../../src/app/model'
 import type { Kind } from './bot/basics'
 import { Counts, type RunResult, type WaveRun } from './bot/results'
-
-// SCHEMAS
 
 const BotStyle = Schema.Literals(['Default', 'SwapsBack'])
 type BotStyle = typeof BotStyle.Type
@@ -78,8 +72,6 @@ export type WavePassSummary = typeof WavePassSummary.Type
 export const Summary = Schema.Union([CampaignSummary, WavePassSummary])
 export type Summary = typeof Summary.Type
 
-// STATISTICS
-
 export const mean = (values: ReadonlyArray<number>): number =>
   values.length === 0 ? 0 : Number.sumAll(values) / values.length
 
@@ -119,8 +111,6 @@ const hurtShares = (
   const all = Number.sumAll(Record.values(totals))
   return Record.map(totals, value => shareOf(value, all))
 }
-
-// CAMPAIGN
 
 export type CampaignMeta = Readonly<{
   difficulty: Difficulty
@@ -190,9 +180,6 @@ export const summarizeCampaign: {
   },
 )
 
-// NOTE: the shop visits before `wave` over a batch: the money each visit
-// arrived with, in run order, how many runs visited, and how many of those
-// visits bought each item, most first (ties in the order first bought).
 type ShopTally = Readonly<{
   money: ReadonlyArray<number>
   visits: number
@@ -221,8 +208,6 @@ export const tallyShopVisits: {
     }
   },
 )
-
-// WAVE SNAPSHOTS
 
 export const summarizeWave: {
   (runs: ReadonlyArray<WaveRun>): (wave: number) => WaveSummary
@@ -308,8 +293,6 @@ export const summarizeWavePass: {
     ),
   }),
 )
-
-// PRINTING
 
 const percent = (share: number) => `${(100 * share).toFixed(0)}%`
 

@@ -89,15 +89,8 @@ import {
 } from './rankStripView'
 import { ICON_SHIFT, TALLY_ICONS, type TallyIcon } from './tallyIcons'
 
-// The end of a run on the overlay canvas, in the landscape frame: the flash,
-// the stamp, the trophy and skulls, the tally card (a crew's board in
-// co-op, src/features/end/crewBoardView.ts), and confetti. Every piece is placed by the end screen's clock
-// (src/features/end/endBeat.ts), so a frame is a pure function of the Model.
-
 const CENTER_X = VIEW_WIDTH / 2
 const TITLE_SCALE = 2
-
-// ART
 
 const TROPHY = spriteShapes(TROPHY_PIXELS, TROPHY_PALETTE)
 const TROPHY_SCALE = 2
@@ -116,8 +109,6 @@ const SKULL_OFF = spriteShapes(SKULL_OFF_ART.pixels, SKULL_OFF_ART.palette)
 const MODIFIER_SPRITES = Record.map(MODIFIER_PIXELS, pixels =>
   spriteShapes(pixels, MODIFIER_PALETTE),
 )
-
-// TEXT
 
 const TITLES: Readonly<Record<EndKind, BakedText>> = {
   Munched: bakeText('MUNCHED!', 'Defeat'),
@@ -140,8 +131,6 @@ const FEEDBACK = bakeText(String.toUpperCase(FEEDBACK_LINE), 'Hint')
 const UNLOCKED_NAME = String.toUpperCase(DIFFICULTIES.Nightmare.name)
 const NIGHTMARE_UNLOCKED = bakeText(`${UNLOCKED_NAME} UNLOCKED!`, 'Victory')
 const NIGHTMARE_UNLOCKED_DIM = bakeText(`${UNLOCKED_NAME} UNLOCKED!`, 'Alert')
-
-// LAYOUT
 
 type Layout = Readonly<{
   trophyX: number
@@ -179,10 +168,6 @@ const LAYOUTS: Readonly<Record<EndKind, Layout>> = {
   },
 }
 
-// NOTE: a crew's card is the tallest, with the board and the rank strip
-// under it, so on a phone on its side the stack has to end above the buttons.
-// Its title rides the top edge with the trophy beside it, and the board
-// starts right under (CREW_BOARD_TOP_PX).
 const CREW_LAYOUT: Layout = {
   trophyX: -74,
   trophyY: 3,
@@ -200,16 +185,12 @@ const PANEL_LEFT = 82
 const PANEL_RIGHT = VIEW_WIDTH - PANEL_LEFT
 const PANEL_PAD = 5
 const ROW_PX = 10
-// NOTE: with the rank strip in the panel the rows sit a pixel closer, so
-// the card still ends above the buttons on a phone on its side.
 const STRIPPED_ROW_PX = 9
 const STRIP_GAP_PX = 2
 const KINDS_PX = 11
 const SKULL_STRIDE = 12
 const SKULL_SLOTS = 4
 
-// NOTE: reaches well past the landscape screen, so in portrait it covers
-// the HUD band and the thumb area too. The canvas clips the rest.
 const wash = (fill: string, opacity: number): Draw.Shape =>
   group({
     opacity,
@@ -223,8 +204,6 @@ const wash = (fill: string, opacity: number): Draw.Shape =>
       ),
     ],
   })
-
-// FLASH AND DIM
 
 const FLASHES: Readonly<
   Record<EndKind, Readonly<{ fill: string; opacity: number }>>
@@ -248,8 +227,6 @@ const dimShapes = (kind: EndKind, ms: number): ReadonlyArray<Draw.Shape> => {
   return opacity > 0 ? [wash('#080a0c', opacity)] : []
 }
 
-// STAMP
-
 const stampShapes = (
   kind: EndKind,
   ms: number,
@@ -272,17 +249,12 @@ const stampShapes = (
   ]
 }
 
-// THE CHICKEN
-
 const CHICKEN_SCALE = 2
 const CHICKEN_GAP_PX = 6
 const FLAP_MS = 140
 const FEATHERS = 5
 const FEATHER_MS = 1600
 
-// NOTE: a run left early: a big chicken flaps beside CHICKEN! as it stamps,
-// hopping on each flap, and a few feathers drift off it and fade. Every
-// piece is placed by the end clock, so it needs no state.
 const chickenShapes = (
   kind: EndKind,
   ms: number,
@@ -326,8 +298,6 @@ const chickenShapes = (
   ]
 }
 
-// TROPHY AND SKULLS
-
 const trophyShapes = (
   kind: EndKind,
   ms: number,
@@ -349,8 +319,6 @@ const trophyShapes = (
   ]
 }
 
-// NOTE: the difficulty as the home menu's skull meter: its skulls lit in
-// its own look, the rest dark. On a win they pop in one by one.
 const skullShapes = (
   model: Model,
   kind: EndKind,
@@ -378,9 +346,6 @@ const skullShapes = (
   })
 }
 
-// NOTE: the run modifiers that were on, as small pictures to the right of the
-// skulls, popping in after the last of them (the bonus itself is the rank
-// strip's gold chip).
 const MODIFIER_STRIDE = 13
 const MODIFIERS_GAP_PX = 22
 
@@ -415,8 +380,6 @@ const modifierShapes = (
   )
 }
 
-// NOTE: the dare ladder's mark the run was played at, its seal to the left
-// of the skulls, popping in with the first of them.
 const markShapes = (
   model: Model,
   kind: EndKind,
@@ -442,8 +405,6 @@ const markShapes = (
     }),
   ]
 }
-
-// TALLY
 
 const ROW_SLIDE_PX = 8
 const BLINK_MS = 600
@@ -551,8 +512,6 @@ const kindShapes = (model: Model, y: number): ReadonlyArray<Draw.Shape> => {
   })
 }
 
-// THE CARD
-
 const QUIPS: Readonly<Record<EndKind, (model: Model) => string>> = {
   Munched: model => defeatQuip(roundWave(model.phase), model.stats),
   Chicken: () => CHICKEN_QUIP,
@@ -562,13 +521,9 @@ const QUIPS: Readonly<Record<EndKind, (model: Model) => string>> = {
 const quipOf = (model: Model, kind: EndKind): string =>
   String.toUpperCase(QUIPS[kind](model))
 
-// NOTE: the bar a crew's rank strip sits in, under the board.
 const crewStripTop = (model: Model): number =>
   CREW_BOARD_TOP_PX + crewBoardHeightPx(model) + STRIP_GAP_PX + 1
 
-// NOTE: where a crew's card ends in the 180 high frame: the board, and the
-// strip's bar under it when there is one. A phone on its side puts the
-// buttons' tops at about 133 (END_BUTTONS_TOP_PX), so this stays above.
 export const crewCardBottomPx: {
   (hasStrip: boolean): (model: Model) => number
   (model: Model, hasStrip: boolean): number
@@ -588,10 +543,6 @@ const crewStripPanel = (
   rect(span.left, top, span.width, STRIP_PX + 2, PANEL_FILL),
 ]
 
-// NOTE: where an unlock card goes, clear of the card's numbers (`card`, its
-// edges in the frame): beside it on a screen with room at its left, under
-// it upright, and otherwise compact under it at the left, beside the
-// buttons, which sit in the middle.
 const UNLOCK_GAP_PX = 4
 
 type CardEdges = Readonly<{ left: number; top: number; bottom: number }>
@@ -621,8 +572,6 @@ export const unlockSpotOf: {
   }
 })
 
-// NOTE: a lone player's card: the tally's rows, the kinds' footer under
-// them, and the rank strip under that when there is one.
 const soloFooterTop = (model: Model, layout: Layout): number =>
   layout.panelTop +
   PANEL_PAD +
@@ -636,8 +585,6 @@ const soloCardBottom = (model: Model, layout: Layout): number =>
   2 +
   (hasRankStrip(model) ? STRIP_PX + 2 : 0)
 
-// NOTE: the end card's edges in the frame, its border too, for what the
-// screen sets beside or under it (the day's missions).
 export type EndCardEdges = Readonly<{
   left: number
   right: number
@@ -689,10 +636,7 @@ const cardShapes = (
       shapes,
     })
   if (isCoop(model)) {
-    // NOTE: a crew's board takes the quip's line too, so it fits above the
-    // buttons on a phone on its side.
     const hasStrip = hasRankStrip(model)
-    // NOTE: the strip sits in its own bar under the board.
     const boardTop = CREW_BOARD_TOP_PX
     const board = crewBoardShapes(model, kind, ms, boardTop, CENTER_X)
     const stripTop = crewStripTop(model)
@@ -784,9 +728,6 @@ const cardShapes = (
   ]
 }
 
-// NOTE: the best run's ghost on the wave's row, once the row lands, or a
-// friend's dare's result in its place (src/features/end/beatRunView.ts), on
-// the time's row when an escape's tally has no wave row.
 const ghostRowShapes = (
   model: Model,
   kind: EndKind,
@@ -827,11 +768,6 @@ const ghostRowShapes = (
 
 const UNLOCK_BLINK_MS = 400
 
-// NOTE: the line over the tally is a friend's dare's verdict, or the quip,
-// or, when there is news (Nightmare unlocked, or the first runs' ask for
-// feedback), the news in its place, or
-// on a loss Rattles' death tip (src/features/end/deathTip.ts). Under the card
-// there is no room: on a phone on its side the buttons start there.
 const lineShapes = (
   model: Model,
   kind: EndKind,
@@ -877,8 +813,6 @@ const noteShapes = (
   }
 }
 
-// CONFETTI
-
 const CONFETTI = 40
 const CONFETTI_MS = 6000
 const CONFETTI_FADE_MS = 900
@@ -893,7 +827,6 @@ const CONFETTI_COLORS: ReadonlyArray<string> = [
   '#f4f1de',
 ]
 
-// NOTE: a fixed scatter from each piece's index, so confetti needs no state.
 const scatter = (index: number, salt: number): number => {
   const wave = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453
   return wave - Math.floor(wave)
@@ -939,10 +872,6 @@ const confettiShapes = (
   ]
 }
 
-// IN THE WORLD
-
-// NOTE: on a loss the player topples onto their back, pivoting on their
-// feet with a little bounce, the way they face.
 export const toppleShapes: {
   (
     shapes: ReadonlyArray<Draw.Shape>,
@@ -976,8 +905,6 @@ export const toppleShapes: {
   },
 )
 
-// NOTE: the fallen player is drawn in their own colors once the flash of
-// the last bite is over, not frozen white mid blink.
 export const fallenOf = (model: Model): Model =>
   Phase.isAnyOf(['GameOver'])(model.phase) && model.screenMs >= FLASH_MS
     ? modifyFocus(model, {
@@ -992,8 +919,6 @@ const CHOMP_REACH_PX = 30
 const CHOMP_LEAN_PX = 3
 const CHOMP_MS = 180
 
-// NOTE: on a loss the zombies close by lunge at the fallen player in turn,
-// chomp, chomp, a few pixels each, as a picture only.
 export const chompShapes: {
   (
     zombie: Zombie,
@@ -1032,8 +957,6 @@ export const chompShapes: {
 )
 
 export const isChomping = Phase.isAnyOf(['GameOver'])
-
-// THE END
 
 export const endOverlayShapes: {
   (screen: Screen): (model: Model) => ReadonlyArray<Draw.Shape>

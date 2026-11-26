@@ -1,14 +1,3 @@
-// The bloom: the bright parts of the frame glowing outward, cheap on the
-// GPU (owner, 2026-11-15: phones that do not get hot). @pixi/3d's own
-// BloomEffect blurs through five levels, each half the last, a pass down
-// and a pass up each: ten passes a frame, nine of them small, and on a
-// phone's tiled GPU every pass pays to load and store its target whatever
-// its size. This one keeps its bright pass, its tent upsample, and its
-// combine, and steps down four times a level instead of two, so three
-// levels reach the same coarsest size (a 32nd of the largest) in six
-// passes. Each coarser level's share of the glow is the share the five
-// levels it stands for had, so the glow keeps its core and its reach.
-
 import { UniformGroup } from 'pixi.js'
 
 import {
@@ -20,8 +9,6 @@ import {
   floatRgbFormat,
 } from '@pixi/3d'
 
-// NOTE: @pixi/3d's own bright pass: four taps averaged, then the soft knee
-// above the threshold.
 const BRIGHT_FRAGMENT: EffectFragment = {
   gpu: `
 fn effect(uv: vec2<f32>) -> vec4<f32> {
@@ -53,11 +40,6 @@ vec4 effect(vec2 uv) {
 `,
 }
 
-// NOTE: a quarter the size in one pass: a 4 by 4 grid of bilinear taps,
-// each the average of 2 by 2 texels, weighted 1 3 3 1 a side, so each
-// texel's weight is a tent over 8 texels (two of @pixi/3d's halvings blur
-// about as wide). The output texel's middle sits on a texel corner, so a
-// tap at an odd offset lands on a corner too.
 const DOWN4_FRAGMENT: EffectFragment = {
   gpu: `
 fn effect(uv: vec2<f32>) -> vec4<f32> {
@@ -91,10 +73,6 @@ vec4 effect(vec2 uv) {
 `,
 }
 
-// NOTE: four times the size: a 3 by 3 tent of bilinear taps a coarse texel
-// apart, weighted 1 2 1 a side, smooth where four bilinear taps alone show
-// the coarse grid. It writes its share to alpha, so the 'normal' blend its
-// pass sets gives mix(finer, coarser, share), as @pixi/3d's upsample does.
 const UP4_FRAGMENT: EffectFragment = {
   gpu: `
 fn effect(uv: vec2<f32>) -> vec4<f32> {
@@ -126,8 +104,6 @@ vec4 effect(vec2 uv) {
 `,
 }
 
-// NOTE: @pixi/3d's own combine: the glow added to the frame's colour,
-// keeping its alpha.
 const COMBINE_FRAGMENT: EffectFragment = {
   gpu: `
 fn effect(uv: vec2<f32>) -> vec4<f32> {
@@ -143,11 +119,6 @@ vec4 effect(vec2 uv) {
 `,
 }
 
-// NOTE: @pixi/3d's five halvings, levels 0 to 4, end with level k's share
-// of the glow (1 - radius) radius^k, the last radius^4. Ours stand at
-// levels 0, 2, and 4; level 1 lies between the first two and level 3
-// between the last two, so each gives half its share to either side.
-// Each upsample's share is the coarser part of what is left there.
 export const bloomSharesOf = (
   radius: number,
 ): Readonly<{ fine: number; coarse: number }> => {
@@ -158,14 +129,12 @@ export const bloomSharesOf = (
   return { fine: 1 - first, coarse: last / (1 - first) }
 }
 
-// NOTE: a level is a quarter the size of the one before it.
 const STEP = 4
 
 export type CheapBloomOptions = Readonly<{
   threshold: number
   intensity: number
   radius: number
-  // NOTE: texels per logical pixel of the largest level.
   resolution: number
 }>
 
@@ -177,8 +146,6 @@ const vec4Uniform = (name: string, first: number, second = 0): UniformGroup =>
     },
   })
 
-// NOTE: its uniforms are fixed once made: a tier change makes a new one
-// (qualityControl.ts).
 export class CheapBloomEffect extends PostEffect {
   readonly resolution: number
   private readonly brightUniforms: UniformGroup
@@ -275,8 +242,6 @@ export class CheapBloomEffect extends PostEffect {
   }
 }
 
-// NOTE: the world's bloom at a level's resolution: only what is brighter
-// than 2 (the flames, the eyes, the blasts) glows, in its own colour.
 export const worldBloomOf = (resolution: number): CheapBloomEffect =>
   new CheapBloomEffect({
     threshold: 2,

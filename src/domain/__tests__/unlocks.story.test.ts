@@ -17,10 +17,6 @@ import {
 import { noRank, pointsForRank } from '../../world/heroes/rank'
 import { callingUnlocksAt, hasUnseenLook, lookUnlocksAt } from '../unlocks'
 
-// NEW badges (src/domain/unlocks.ts): what a rank reached and the player has not
-// seen wears a badge while the Look tab or the picker is open, and is marked
-// seen on opening, with no click on the item.
-
 const reached = UiStruct.evolve(homeAfterRead, {
   rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),
   seenUnlocks: () => ['hat:PartyHat'],

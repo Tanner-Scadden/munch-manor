@@ -1,13 +1,3 @@
-// What still lay flat or stood as a flat cutout in 3D, stood up: the
-// dining room's hub touches (the dumbwaiter's hatch, the borrowed books, the
-// parlour's notes, the cellar's cobweb and dust), the gas valve on the
-// kitchen wall, the roaring hearth and its floor flames, and the house's
-// other fixed sprites (the pickups, the pantry's goodie, the crates and
-// their finds, the cases, the dare things in plain sight, the traps, the
-// back door's EXIT sign, and Rattles' trunk), as
-// `stand-<TAG>-<viewport>-<scene>.png`. Set beside an earlier TAG for a
-// before and after, and zoom in on each to look for flat cutouts and seams.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsStand.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -29,11 +19,6 @@ const LEARNED =
 const HOUSE = `god&nodev&seen=all&wave=3&openexits=West,East,Far,Kitchen&kitchen&${LEARNED}`
 const BREAK = `${HOUSE}&break=open&nohud&tick=240`
 
-// NOTE: the parlour's notes on their way from the gramophone to the
-// dining room, from inside the parlour, at its doorway, and from the
-// dining room, in a house (src/world/level/plan.ts ARRANGEMENTS) with the
-// parlour west of the dining room (0), just east of it (2), and in the far
-// slot, crossing the cellar (3) or the library (5).
 const notesIn = (house: number, x: number, y: number) =>
   `${BREAK}&house=${house}&px=${x}&py=${y}`
 

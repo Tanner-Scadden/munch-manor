@@ -31,13 +31,6 @@ const measure = (element: Element): MeasuredGameSurface => {
   })
 }
 
-// NOTE: the measurement to send, if any. While a text field is focused,
-// the keyboard is up: it overlays the page (`interactive-widget` in
-// index.html), but iOS shrinks the visual viewport, and a browser that
-// ignores the viewport tag shrinks the page. A change of height alone is
-// that keyboard, so the game keeps its size, its layout, and its portrait
-// or landscape, and the field's panel never squishes. A new width (the
-// phone turned) still measures.
 export const steadyMeasurement: {
   (
     next: MeasuredGameSurface,
@@ -60,12 +53,6 @@ export const steadyMeasurement: {
       : next,
 )
 
-// NOTE: the game surface's place on the page, measured when it mounts and
-// again whenever it or the window resizes, so pointer input maps onto it.
-// While a text field is focused, the page lifts it over the phone's
-// keyboard (src/platform/keyboard.ts). When it lets go of focus, iOS can
-// leave the page scrolled where it showed the field, so it goes back to
-// the top.
 const measurements = (element: Element): Stream.Stream<MeasuredGameSurface> =>
   Stream.callback<MeasuredGameSurface>(queue =>
     Effect.acquireRelease(
@@ -119,9 +106,6 @@ const measurements = (element: Element): Stream.Stream<MeasuredGameSurface> =>
 
 const PRIMARY_MOUSE_BUTTON = 0
 
-// NOTE: a press on the game surface, by its finger's own pointer id, so two
-// thumbs work at once. A Mount, as the element's `pointerdown` payload
-// carries no pointer id. A mouse presses with its primary button alone.
 const presses = (element: Element): Stream.Stream<PressedPointer> =>
   Stream.fromEventListener<PointerEvent>(element, 'pointerdown').pipe(
     Stream.filter(
@@ -138,25 +122,18 @@ const presses = (element: Element): Stream.Stream<PressedPointer> =>
     ),
   )
 
-// NOTE: the game surface: its place on the page and the presses on it.
 export const WatchGameSurface = Mount.makeStream(
   'WatchGameSurface',
   { args: {} },
   (element: Element) => Stream.merge(measurements(element), presses(element)),
 )
 
-// NOTE: a press on the pause screen's help card, which sits over the game
-// surface, as a press on the surface.
 export const PressGameSurface = Mount.makeStream(
   'PressGameSurface',
   { args: {} },
   (element: Element) => presses(element),
 )
 
-// NOTE: taps on touch screens come from each finger's own pointer events,
-// so a button works with another finger on the glass (src/input/touchTaps.ts).
-// The tapped button's own OnClick sends its Message; this Mount only says a
-// finger tapped.
 export const ListenForTouchTaps = Mount.makeStream(
   'ListenForTouchTaps',
   { args: {} },
@@ -175,17 +152,9 @@ export const ListenForTouchTaps = Mount.makeStream(
     ),
 )
 
-// SHARE
-
-// NOTE: the end screen's SHARE button carries its post's words and link
-// here, read at the tap, so the post is always the run on screen
-// (`data-share-text`, `data-share-url`).
-
 const isAbort = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError'
 
-// NOTE: no share sheet, or one the browser refused: the post goes to the
-// clipboard. A browser with no clipboard (an insecure page) throws.
 const copyPost = (post: SharePost): Promise<ShareOutcome> => {
   try {
     return navigator.clipboard.writeText(copiedLineOf(post)).then(
@@ -197,9 +166,6 @@ const copyPost = (post: SharePost): Promise<ShareOutcome> => {
   }
 }
 
-// NOTE: the share sheet where the browser has one, else the clipboard. A
-// player who closes the sheet is Cancelled; a sheet the browser refuses
-// (NotAllowedError) or that fails copies instead.
 const sharePost = (post: SharePost): Promise<ShareOutcome> =>
   typeof navigator.share === 'function'
     ? navigator.share(post).then(
@@ -209,14 +175,6 @@ const sharePost = (post: SharePost): Promise<ShareOutcome> =>
       )
     : copyPost(post)
 
-// NOTE: listens on SHARE until the returned function is called, and calls
-// `onSettled` with how each tap ended. navigator.share and the clipboard
-// both need the tap's user activation, and iOS Safari, the owner's phone
-// and installed app, refused navigator.share from the Command that ran a
-// microtask after update. So the call is made here, on the click's own
-// stack: the tap (src/input/touchTaps.ts makes it a click), a mouse click, or
-// Enter on the focused button. The button's OnClick still sends
-// ClickedShareButton, which counts the share.
 export const listenForShareClicks: {
   (onSettled: (outcome: ShareOutcome) => void): (element: Element) => () => void
   (element: Element, onSettled: (outcome: ShareOutcome) => void): () => void

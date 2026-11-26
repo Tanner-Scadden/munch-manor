@@ -86,13 +86,6 @@ import {
 import { isStartWaveBeckoning } from '../onboarding'
 import { questEdgeShapes } from '../questEdgeView'
 
-// NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts):
-// a new player learns the dare by doing it. Grab the key on the floor, walk
-// up to the cheapest padlock, take the prize from the case that opened in
-// the practice wave, look at the dare card, and start the wave. Rattles' hello, which comes
-// first in a new save, has its own tests (rattlesIntro.story.test.ts), so
-// these saves have met him.
-
 const FRAME_MS = FIXED_STEP_MS
 const TICK_MS = 50
 const LOOK_FRAMES = Math.ceil(2600 / FRAME_MS) + 1
@@ -100,14 +93,10 @@ const CASE_CARD_FRAMES = Math.ceil(CASE_CARD_MIN_MS / FRAME_MS) + 1
 
 const frame = tick(FRAME_MS)
 
-// NOTE: the wave's clearing blow holds the world still a moment
-// (src/world/step/hitStop.ts) before the break's first step.
 const throughClearingBlow = steps(
   ticks(Math.ceil(HIT_STOP_WAVE_CLEAR_MS / FRAME_MS), FRAME_MS),
 )
 
-// NOTE: a new save on a measured surface, its zombies all met so no new
-// zombie card holds the practice wave.
 const newSave: Model = UiStruct.evolve(newPlayerCardSeen, {
   introducedKinds: () => ZOMBIE_KIND_ORDER,
   lessons: lessons =>
@@ -122,14 +111,11 @@ const standAt =
         UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y }),
     })
 
-// NOTE: where a player stands at the cheapest padlock: just below its
-// boards.
 const belowPadlock = (current: Model): Vector => {
   const { box } = Option.getOrThrow(maybeQuestPadlock(current))
   return { x: (box.left + box.right) / 2, y: box.bottom + 6 }
 }
 
-// NOTE: where a player stands to take the tour's case: just below its box.
 const belowTutorialCase = (current: Model): Vector => {
   const box = caseBoxOf(
     levelOf(current),
@@ -138,8 +124,6 @@ const belowTutorialCase = (current: Model): Vector => {
   return { x: (box.left + box.right) / 2, y: box.bottom + 8 }
 }
 
-// NOTE: the sim's own rule for the practice wave: the player has made 5
-// kills, and every zombie of the wave is gone.
 const wonPracticeWave = (current: Model): Model =>
   UiStruct.evolve(
     modifySeat(current, 0, {
@@ -154,7 +138,6 @@ const wonPracticeWave = (current: Model): Model =>
     },
   )
 
-// NOTE: moving and shooting in the practice wave's break, as the hints ask.
 const practise = steps(
   press('KeyD'),
   ticks(10, TICK_MS),
@@ -168,7 +151,6 @@ const practise = steps(
 const stepOf = (current: Model): Option.Option<QuestStep> =>
   questStepOf(current)
 
-// NOTE: the break before wave 2, a frame in, with the case already sprung.
 const reachFirstBreak = steps(
   tap('Enter'),
   throughIntro,
@@ -180,7 +162,6 @@ const reachFirstBreak = steps(
   throughClearingBlow,
 )
 
-// NOTE: the tour's break set straight, for the checks that need no run.
 const tourBreak = (base: Model): Model =>
   UiStruct.evolve(base, {
     phase: () =>
@@ -283,8 +264,6 @@ describe('the guided first break', () => {
             changeModel(current =>
               standAt(belowTutorialCase(current))(current),
             ),
-            // NOTE: the case's first-time card comes up at the tour's Case step
-            // (src/features/onboarding/caseCard.ts), and is put away first.
             frame,
             checkModel(current => {
               expect(isCaseCardUp(current)).toBe(true)
@@ -423,8 +402,6 @@ describe('the guided first break', () => {
     }),
   )
 
-  // NOTE: the tour hands the player a Plank Pile, so a new save's dining
-  // room crate holds one whatever the run's seed.
   it.effect('the dining room crate holds a Plank Pile in the tour', () =>
     Effect.forEach([1, 2, 3, 4, 5, 6], seed =>
       Effect.gen(function* () {
@@ -525,9 +502,6 @@ describe('the guided first break', () => {
   )
 })
 
-// NOTE: the tour's last step: START WAVE glows with an arrow over it, and
-// starting the wave, by the button, the key, or a tap
-// (firstBreakQuest.scene.test.ts), ticks every step off.
 describe('the START WAVE step', () => {
   const onStart: Model = UiStruct.evolve(tourBreak(newSave), {
     firstBreakQuest: () => QuestTour.Starting(),
@@ -558,8 +532,6 @@ describe('the START WAVE step', () => {
     }),
   )
 
-  // NOTE: the tour's break is the open break, whose clock waits, so the
-  // step waits on the player as long as they like.
   it.effect('never rushes the player: the break waits', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(onStart)
@@ -634,7 +606,6 @@ describe('the START WAVE step', () => {
   )
 })
 
-// NOTE: a break past the tour, the ring holding `keys`.
 const laterBreak = (keys: number): Model =>
   UiStruct.evolve(asTutorialDone(asVeteran(newSave)), {
     keys: ring => UiStruct.evolve(ring, { held: () => keys }),
@@ -648,8 +619,6 @@ const laterBreak = (keys: number): Model =>
       }),
   })
 
-// NOTE: outside the tour, a player who holds the keys for the cheapest
-// padlock and has opened no boards this run sees an arrow pulse over it.
 describe('the padlock nudge', () => {
   const cheapestPrice = (model: Model): number =>
     Option.getOrThrow(maybeQuestPadlock(model)).price
@@ -716,11 +685,7 @@ describe('the padlock nudge', () => {
   )
 })
 
-// NOTE: in any solo break the ring can open a padlock, boards opened or
-// not, the tours' edge arrow points to the cheapest one while it is out of
-// sight, until the player walks up to it.
 describe('the padlock pointer', () => {
-  // NOTE: the level's corner furthest from the padlock, a little in.
   const farFromPadlock = (current: Model): Vector => {
     const level = levelOf(current)
     const { box } = Option.getOrThrow(maybeQuestPadlock(current))

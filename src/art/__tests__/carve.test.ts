@@ -18,10 +18,6 @@ import {
 } from '../carve'
 import { ZOMBIE_PALETTE, groanerWalkForms } from '../sprites/zombieArt'
 
-// Carving a piece from its views (src/art/carve.ts): the visual hull, its
-// parts, the hand fixes, each face's color, and a sprite's default form off
-// its front art alone.
-
 const PALETTE = { a: '#aa0000', b: '#00bb00', c: '#0000cc', o: '#111111' }
 
 const view = (rows: ReadonlyArray<string>): PixelView => ({

@@ -19,8 +19,6 @@ import { PICKUP_SPRITES } from '../sprites/pickups'
 import { BARRICADE_SPRITES } from '../sprites/traps'
 import { ZOMBIE_SPRITES } from '../sprites/zombies'
 
-// PIXEL MAPS
-
 const PALETTE: Palette = { R: '#e8333a', W: '#ff8a8f', K: '#2a1418' }
 
 const PIXELS: ReadonlyArray<string> = [
@@ -167,8 +165,6 @@ describe('sprite images', () => {
   })
 })
 
-// PREBUILT SPRITES
-
 const keyOf = (shapes: ReadonlyArray<Draw.Shape>): string =>
   Option.getOrThrow(standInKeyOf(onlyImage(shapes).src))
 
@@ -257,8 +253,6 @@ describe('prebuilt sprites', () => {
     )
   })
 })
-
-// DRAW SHAPES
 
 describe('Draw.Image', () => {
   test('builds an image shape', () => {

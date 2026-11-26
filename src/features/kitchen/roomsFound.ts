@@ -11,11 +11,6 @@ import { placeSprite, rect } from '../../render/drawing'
 import { levelOf } from '../../world/level/arena'
 import { Phase } from '../../world/schema/worldSchema'
 
-// NOTE: from the owner (2026-11-01), players were not finding the kitchen.
-// In a break, a small house and "1/5" says there is more to the map: the
-// rooms opened out of the rooms on it (roomsOf, src/domain/run.ts). It
-// turns gold with a sparkle when the last one opens. It is only a readout,
-// never a button.
 const isRoomsCounterShown = (model: Model): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&
   roomsOf(levelOf(model)).total > 1
@@ -54,8 +49,6 @@ const sparklesOf = (
       )
 }
 
-// NOTE: laid out from the right edge: the icon, then "1/2" in gold once
-// every room is found. `right` is the text's right edge, `y` its top.
 export const roomsCounterShapes: {
   (right: number, y: number): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, right: number, y: number): ReadonlyArray<Draw.Shape>

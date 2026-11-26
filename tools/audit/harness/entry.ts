@@ -1,10 +1,3 @@
-// NOTE: the audit harness's page: it boots the game's own init, update,
-// and view at a scene chosen by query string (config.ts), and swaps
-// scenes in place (`window.__loadScene`). The scene's Model is built in
-// scenario.ts and room.ts, the update around the game's in sceneUpdate.ts.
-
-// NOTE: next, so the build's prebuilt sprite atlas is in place before any
-// game module builds a sprite, as in the game's own entry.
 import '@game/art/spriteAtlasBoot'
 import './harness.css'
 import {
@@ -85,9 +78,6 @@ const readConfig = (): HarnessConfig =>
     throw error
   })
 
-// NOTE: the page's state across scenes (settings.ts). `window.__loadScene`
-// swaps in another scene without reloading the page, so the scene's
-// settings live here, not in constants.
 const page: HarnessPage = {
   settings: settingsOf(readConfig()),
   framesSent: 0,
@@ -109,15 +99,6 @@ window.__countShapes = () => countShapes(sceneShapes(window.__model))
 window.__timings = emptyTimings()
 window.__messages = []
 
-// THE READY SIGNAL
-
-// NOTE: `window.__harnessReady` (and `data-harness-ready` on the root
-// element, with the scene's number) is set once the scene has rendered with
-// every image decoded, once the boot has read the save (a save read later
-// could change the scene), and, with `freeze`, once the frozen frame is
-// reached.
-// Scripts wait for it instead of sleeping. Loading another scene clears it.
-// NOTE: the frames a scene plays before it holds: `tick`'s, or `freeze`'s.
 const framesWanted = ({ config, freezeAfter }: SceneSettings): number =>
   config.tick ?? (Number.isFinite(freezeAfter) ? freezeAfter : 0)
 
@@ -125,8 +106,6 @@ const clearReady = () => {
   window.__harnessReady = false
   delete document.documentElement.dataset['harnessReady']
 }
-// NOTE: `looksection` taps the Look tab's little tab once the Profile is
-// drawn, since the Look tab keeps which one shows in its own component.
 const tapLookSection = (maybeSection: Option.Option<string>) =>
   Option.match(maybeSection, {
     onNone: () => Effect.void,
@@ -169,8 +148,6 @@ const markReadyWhenSettled = (
   )
 }
 
-// SCENE SWITCHING
-
 const decodeScene = (query: string): HarnessConfig | undefined =>
   Result.match(decodeHarnessConfig(query), {
     onSuccess: config => config,
@@ -180,13 +157,6 @@ const decodeScene = (query: string): HarnessConfig | undefined =>
     },
   })
 
-// NOTE: a fresh page's boot, minus what a page does once. The Model comes
-// from the query as in init. The surface's measurement carries over, since
-// the page and its size are the same. The save counts as read and empty, as
-// in a fresh browser context, whatever earlier scenes wrote to storage, so
-// init's Commands run again without LoadSave: the seed and the device,
-// screen fit, and orientation lock checks. The load steps they finish are
-// already done.
 const nextSceneOf = (model: Model): Scene =>
   sceneOf(
     page.settings,
@@ -197,12 +167,6 @@ const nextSceneOf = (model: Model): Scene =>
     }),
   )
 
-// THE DIRECTOR
-
-// NOTE: a director step is the game's own update, with what the scene adds.
-// A shot plays on the game's pure update (src/app/pureApp.ts), so the sounds and
-// music each tick asks for are logged by tick, and the runtime takes the
-// Model it reaches. The other Commands a shot's ticks give do not run.
 const directorStep = (model: Model, message: Message): Director.Return => {
   const result = pureUpdate(model, message)
   return { ...result, model: keepScene(page.settings, result.model, message) }
@@ -218,11 +182,6 @@ type DirectorRequest =
   | Readonly<{ _tag: 'Start'; plan: string }>
   | Readonly<{ _tag: 'Step'; ticks: number }>
 
-// NOTE: the video tool's requests, waiting for the runtime to carry them in.
-// The harness has no Message of its own (the root is the game's Block), so
-// a request rides on the page-restore Subscription: with `director` it is
-// the harness's (handlers.ts), and the RestoredPageFromCache it raises runs
-// the waiting requests.
 const directorRequests: Array<DirectorRequest> = []
 const directorWake: DirectorWake = { raise: () => false }
 
@@ -240,10 +199,6 @@ const runDirectorRequests = (model: Model): Model =>
     ),
   )
 
-// NOTE: the video tool's controls (tools/video, with `director` in the
-// query). `start` takes the shot's script as JSON, `step(n)` plays n fixed
-// ticks; each sets `window.__directedTick` once the Model holds them, and
-// `audio()` is the sound and music log so far.
 window.__director = {
   start: (plan: string) => {
     window.__directedTick = undefined
@@ -254,9 +209,6 @@ window.__director = {
   seats: () => Director.seatsOnScreen(window.__model),
 }
 
-// NOTE: a director shot's card (cards.ts) as a picture the screen's size in
-// game pixels, painted by Pixi over the game. The wrapper has no box of its
-// own, so the game's root lays out as it always does.
 const withDirectorCard = (
   model: Model,
   body: ApplicationHtml,
@@ -299,9 +251,6 @@ const harnessView = (
   return config.director ? withDirectorCard(model, out, h) : out
 }
 
-// NOTE: the services are built once for the page and shared by every
-// scene: the player store keeps one SQLite worker, and the audio engine one
-// AudioContext.
 const harnessServices = Effect.runSync(
   Effect.flatMap(Scope.make(), scope =>
     Layer.buildWithScope(
@@ -321,9 +270,6 @@ const harnessServices = Effect.runSync(
   ),
 )
 
-// NOTE: `instrument` records each frame's update time: TickedFrame, or in
-// an online run the room's TickedRoomFrame, which is the one that changes
-// the Model there.
 const recordUpdate = ({
   message,
   previousModel,
@@ -345,11 +291,6 @@ const recordUpdate = ({
   }
 }
 
-// NOTE: the scene's root: the game's own init, update, view, and
-// Subscriptions with the scene's around them, and the game's Command
-// services with the scene's in front (handlers.ts). The scene's init is the
-// game's boot with the scene's Model: its Commands, without LoadSave after
-// the first scene, as the scene answers them.
 const sceneRoot = (scene: Scene, isFirst: boolean) => {
   const swapCommands = sceneCommands(page)
   const swapSubscriptions = sceneSubscriptions({ page, wake: directorWake })
@@ -357,9 +298,6 @@ const sceneRoot = (scene: Scene, isFirst: boolean) => {
     bootCommands(),
     command => isFirst || command.name !== Command.nameOf(LoadSave),
   )
-  // NOTE: the harness's update is the game's, then the director's requests,
-  // then what the scene keeps (keepScene), with the Message logged, the
-  // Model kept on the window, and the update timed with `instrument`.
   const harnessUpdate = ($: App$, message: Message) => {
     const t0 = performance.now()
     const next = ApplicationNoDeps.update($.model, message, {})
@@ -404,14 +342,10 @@ const sceneRoot = (scene: Scene, isFirst: boolean) => {
 
 const container = document.getElementById('root')
 
-// NOTE: the harness's root element is gone, so no scene can start.
 const missingContainer = (): never => {
   throw new globalThis.Error('the harness page has no #root')
 }
 
-// NOTE: a scene's first Model: the first boots as a page does; each later
-// one boots from the Model the last scene left (see nextSceneOf).
-// `nohud` hides what stands over the world (harness.css), per scene.
 const startScene = () => {
   document.documentElement.toggleAttribute(
     'data-nohud',
@@ -440,12 +374,6 @@ definePlinthElement()
 
 let running = startScene()
 
-// NOTE: `window.__loadScene('wave=3&start=wave')` swaps the scene in place:
-// the root unmounts, as a page leaving would, and mounts again on the new
-// scene's Model. It resets what a new page would: focus, full screen, and
-// scroll; the unmount closes the dialogs and lets go of what they hold.
-// Wait for the ready signal afterwards. `nodev` belongs to the page, not
-// the scene.
 const loadScene = (query: string) =>
   Effect.gen(function* () {
     const next = decodeScene(String.replace(/^\?/, '')(query))
@@ -477,9 +405,6 @@ const loadScene = (query: string) =>
 
 window.__loadScene = query => Effect.runPromise(loadScene(query))
 
-// NOTE: what Munch Studio reads of the scene it shows in its frame
-// (tools/studio/bridge.ts): the world camera, the world view's box, and a
-// copy of the world's pixels for its loupe and a note's picture.
 const studioBridge: StudioBridge = {
   view: () => {
     const box = document.querySelector('.world-view')?.getBoundingClientRect()
@@ -509,6 +434,4 @@ Reflect.set(window, BRIDGE_KEY, studioBridge)
 window.__stall = RATTLES_BOX
 window.__doors = START_LEVEL.doors
 
-// NOTE: for scripts after a click or a key: resolves once the page has
-// rendered and every image it asked for has decoded.
 window.__whenSettled = () => Effect.runPromise(settle(() => true))

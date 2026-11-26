@@ -2,7 +2,7 @@ import { Array, Effect, Function, type Scope } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 import { RadioGroup, RadioGroupEvents } from '@effect/ui-kit'
-import { HtmlScene } from '@effect/ui/html/testing'
+import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import type { Locator } from '@effect/ui/testing'
 
 import { Message } from '../../../app/message'
@@ -25,21 +25,12 @@ import type { CharacterProps } from '../blocks/look/model'
 import { Events } from '../message'
 import type { ProfileTab } from '../model'
 
-// The Profile and its Look tab as the root draws them, for the tests in
-// this folder and in blocks/look/__tests__/. Both are children, leaves in
-// the root's Scene, so their insides are drawn in a Scene of their own. A
-// desk pairs that Scene with a Story of the root: each event the child
-// sends goes up as the root's Message (as the views' `onEmit` maps it), and
-// the child is drawn again with the props the root's Model then hands it.
-
-// NOTE: the Model with the Profile already open on `tab`.
 export const profileOpenOn = (tab: ProfileTab): Model =>
   UiStruct.evolve(readyAfterRead, {
     profile: profile => UiStruct.evolve(profile, { tab: () => tab }),
     profileDialog: dialog => UiStruct.evolve(dialog, { isOpen: () => true }),
   })
 
-// NOTE: the Profile's events as the root hears them (src/app/profileView.ts).
 const rootMessageOf = (event: Events): Message =>
   Events.match(event, {
     SwitchedTab: ({ tab }) => Message.SwitchedProfileTab({ tab }),
@@ -67,8 +58,6 @@ const rootMessageOf = (event: Events): Message =>
       Message.ClickedBuyProfileLook({ part, value }),
   })
 
-// NOTE: the Look tab's events as the root hears them, through the Profile
-// (src/features/profile/view.ts, then src/app/profileView.ts).
 const rootMessageOfLook = (event: LookEvents): Message =>
   LookEvents.match(event, {
     ChoseLook: ({ part, value }) => Message.ChoseProfileLook({ part, value }),
@@ -78,7 +67,6 @@ const rootMessageOfLook = (event: LookEvents): Message =>
       Message.ClickedBuyProfileLook({ part, value }),
   })
 
-// NOTE: the Look tab's props as the Profile hands them down.
 export const characterPropsOf = (model: Model): CharacterProps => {
   const props = profilePropsOf(model)
   return {
@@ -105,7 +93,6 @@ export type ProfileDesk = Desk<ProfileScene>
 
 export type LookDesk = Desk<LookScene>
 
-// NOTE: the root's Story from `model`, with the Profile drawn from it.
 export const profileDeskOf = (
   model: Model,
 ): Effect.Effect<ProfileDesk, never, Scope.Scope> =>
@@ -115,7 +102,6 @@ export const profileDeskOf = (
     return { root, scene }
   })
 
-// NOTE: the same for the Look tab.
 export const lookDeskOf = (
   model: Model,
 ): Effect.Effect<LookDesk, never, Scope.Scope> =>
@@ -125,8 +111,6 @@ export const lookDeskOf = (
     return { root, scene }
   })
 
-// NOTE: what the child sent since the last relay, taken up to the root, and
-// the child drawn again from the root's Model.
 const relayProfile = (desk: ProfileDesk): ProfileDesk => {
   const events = desk.scene.current.emitted
   if (Array.isReadonlyArrayNonEmpty(events)) {
@@ -151,9 +135,6 @@ const relayLook = (desk: LookDesk): LookDesk => {
   return desk
 }
 
-// NOTE: a step on the child's Scene, then its events relayed: one thing a
-// player does in the panel, as a step over the desk:
-// `inPanel(s => s.click(tab('Name')))(desk)`.
 export const inPanel =
   (step: (scene: ProfileScene) => ProfileScene) =>
   (desk: ProfileDesk): ProfileDesk => {
@@ -168,7 +149,6 @@ export const inLook =
     return relayLook(desk)
   }
 
-// NOTE: a step on the root's Story, then the child drawn again.
 export const atRoot =
   (step: (root: AppStory) => AppStory) =>
   (desk: ProfileDesk): ProfileDesk => {
@@ -185,13 +165,12 @@ export const atLookRoot =
     return desk
   }
 
+export const profileTab = (name: string) => HtmlLocator.role('tab', { name })
+
 export const characterButton = button('Your character: change how you look')
 
-// NOTE: a check on the Look tab's Scene, as a step over the desk.
 export const seeLook = (check: (scene: LookScene) => LookScene) => inLook(check)
 
-// NOTE: a little tab picked, as the kit's RadioGroup says it: a Scene runs
-// no child's update.
 export const openLookSection = (value: string) =>
   inLook(s =>
     s.childEmit(
@@ -201,8 +180,6 @@ export const openLookSection = (value: string) =>
     ),
   )
 
-// NOTE: an option in a row of earned looks, by the look it picks: its name
-// is read with its spoken standing ("Blue worn").
 export const lookOption: {
   (value: string): (part: LookPart) => Locator.Locator
   (part: LookPart, value: string): Locator.Locator
@@ -210,11 +187,8 @@ export const lookOption: {
   withAttrs({ 'data-look-option': `${part}.${value}` })(byClass('look-option')),
 )
 
-// NOTE: the Look tab's root Commands settled.
 export const settleLook = atLookRoot(settleRunCommands)
 
-// NOTE: a part picked in the Look tab's radio group, as the root hears it:
-// the Look tab says ChoseLook, the Profile passes it up as ChoseProfileLook.
 export const pickLook: {
   (value: string): (part: LookPart) => StoryStep
   (part: LookPart, value: string): StoryStep

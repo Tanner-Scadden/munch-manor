@@ -28,9 +28,6 @@ import { focusOf, modifyFocus } from '../../world/party/party'
 import { Arsenal } from '../../world/schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 
-// A controller in a run, driven by PolledGamepad as the Subscription sends
-// it: one Message per change, the buttons in the standard layout's order.
-
 const FRAME_MS = 50
 
 const BUTTON_COUNT = 17
@@ -155,7 +152,6 @@ describe('a controller in a run', () => {
     }),
   )
 
-  // NOTE: owner, 2026-11-12: one button cycles the weapons, one way only.
   it.effect('Y cycles gun, gun, knife, and round, once a press', () => {
     const holds = (tag: 'First' | 'Second' | 'Knife') =>
       checkModel(current => {
@@ -288,13 +284,9 @@ describe('pausing and leaving by controller', () => {
   )
 })
 
-// RUMBLE
-
 const PLAYER_X = 180
 const PLAYER_Y = 130
 
-// NOTE: a Runner at full speed just off the player on the open dining
-// room floor, so a bite comes in the first second.
 const bitten = (model: Model): Model =>
   modifyFocus(
     UiStruct.evolve(model, {
@@ -318,7 +310,6 @@ const biteBase: Model = openFloorWave
 
 type RumbleArgs = Command.Definition.Args<typeof Rumble>
 
-// NOTE: resolves every pending Rumble, handing its args to `into`.
 const takeRumbles =
   (into: Array<RumbleArgs>): StoryStep =>
   s => {

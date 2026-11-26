@@ -32,9 +32,6 @@ import { ClosetCue, LookPreview, ProfileFx } from './blocks/look/model'
 
 const TutorialReset = Schema.Literals(['Idle', 'Asking', 'Done'])
 
-// NOTE: the Profile's tabs, in order. A new tab, such as Cosmetics or
-// Stats, is one more literal here and one more entry in PROFILE_TABS
-// (src/features/profile/profile.ts).
 export const ProfileTab = Schema.Literals([
   'Look',
   'Name',
@@ -44,9 +41,6 @@ export const ProfileTab = Schema.Literals([
 ])
 export type ProfileTab = typeof ProfileTab.Type
 
-// NOTE: what the root made of a Look tab pick (src/app/update/profile.ts):
-// left as it was, worn, tried on, refused as a gift not reached yet, bought,
-// or wanted with too few Bones. Each plays its own try-on, poof, or cue.
 export const LookOutcome = Schema.Literals([
   'Stay',
   'Wear',
@@ -57,14 +51,6 @@ export const LookOutcome = Schema.Literals([
 ])
 export type LookOutcome = typeof LookOutcome.Type
 
-// NOTE: the Profile panel's state, on the root's Model (`profile`): the open
-// tab, the name as it is being typed, the last effect and the Look tab's cue
-// and try-on, the device link flow with the times its code was copied, and
-// the tutorial reset's question. The root owns it, since its rules, its
-// menu state, and the dialog's close read it, and the link flow outlives the
-// panel being drawn; the Profile component draws it from its props. The
-// view reads fxCount only for its parity, so the same effect twice in a row
-// still replays.
 export const Model = Schema.Struct({
   tab: ProfileTab,
   nameDraft: Schema.String,
@@ -78,7 +64,6 @@ export const Model = Schema.Struct({
 })
 export type Model = typeof Model.Type
 
-// NOTE: the Profile as a game starts, closed on Look.
 export const initialModel: Model = {
   tab: 'Look',
   nameDraft: '',
@@ -91,8 +76,6 @@ export const initialModel: Model = {
   tutorialReset: 'Idle',
 }
 
-// NOTE: the settings the Settings tab's tiles show, and what this device can
-// do (a controller, full screen, turning with the phone, RECORD).
 const ProfileSettings = Schema.Struct({
   sound: SoundSetting,
   music: MusicSetting,
@@ -109,11 +92,6 @@ const ProfileSettings = Schema.Struct({
   orientationLock: OrientationLock,
 })
 
-// NOTE: what the root hands the Profile component: the panel's state, and
-// the root's fields its tabs show: the look worn with the hero, the clock,
-// what is owned and new; whether the Look tab holds something new; the
-// MASTERY tab's tracks; the layout and the device; sync's state for the
-// Account tab; and the settings.
 export const ProfileProps = Schema.Struct({
   state: Model,
   appearance: Appearance,

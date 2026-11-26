@@ -83,16 +83,9 @@ import { POPUP_LIFETIME_MS } from './juice'
 import { lensOf } from './lens'
 import type { Decal, DecalKind, Particle } from './renderSchema'
 
-// BULLETS
-
 const BULLET_SIZE = 2
 const BULLET_COLOR = '#ffe066'
 
-// NOTE: a boosted shot wears what the player grabbed: a brass slug that
-// rattles out of a wound-up gun (Wind-Up Key), a silver streak with a bright
-// head (Family Silver), and a long hat pin with a red pearl head (Hat Pins).
-// A look's segments run from the tail up to the head along the shot's
-// path, two squares each, as the frame's budget allows.
 type BulletSegment = Readonly<{ backPx: number; color: string }>
 
 type BulletLook = Readonly<{
@@ -131,9 +124,6 @@ const BULLET_LOOKS: Readonly<Record<BulletGlaze, BulletLook>> = {
   },
 }
 
-// NOTE: a plain shot from the display cases' two guns has its own look: Old
-// Thunder's a white-hot streak, the Big Blunder's a short gray lead shot. A
-// boost's or a perk's glaze shows over it.
 const OLD_GUN_LOOKS: Readonly<Partial<Record<WeaponKind, BulletLook>>> = {
   Rifle: {
     size: BULLET_SIZE,
@@ -177,8 +167,6 @@ export const bulletShapes = ({
     }),
   )
 }
-
-// DECALS AND PARTICLES
 
 type PartLook = Readonly<{
   particle: string
@@ -566,10 +554,6 @@ const particleShape = (particle: Particle): Draw.Shape => {
   )
 }
 
-// NOTE: each particle in the air as the 3D renderer stands it: its spot on
-// the floor, how high it flies, the box the 2D game draws for it, and
-// whether it keeps its own color in any light (a wading splash's water
-// reads blue-white even by candlelight, never as warm dust).
 export const airborneParticlesOf = (
   particles: ReadonlyArray<Particle>,
 ): ReadonlyArray<
@@ -603,8 +587,6 @@ const particleShapesWhere =
     )
 
 export const groundParticleShapes = particleShapesWhere(isGround)
-
-// POPUPS
 
 type PopupLook = Readonly<{
   text: string
@@ -703,9 +685,6 @@ const popupLook = (popup: Popup): PopupLook => {
   }
 }
 
-// NOTE: a popup's floor spot held inside the view's left and right edges by
-// half its width, across the screen through the lens (src/render/lens.ts),
-// so a kill at the edge still reads.
 const keptOnScreen = (
   camera: Camera,
   spot: Vector,
@@ -743,8 +722,6 @@ export const popupShape =
       shapes: centeredGlyphs(look.text, look.tone),
     })
   }
-
-// DOOR RATTLE
 
 const RATTLE_EYE_COLOR = '#ff4a4f'
 const RATTLE_SLAT_COLOR = '#8a5a2b'

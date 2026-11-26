@@ -1,8 +1,3 @@
-// The manor's windows as the storm sees them: the glass of each one the
-// room art draws (the library's rose window too), and the patch of floor a
-// lightning strike throws its light on. The boxes come from the art's own
-// modules, so the storm always lands on the glass (src/render/iso/storm.ts).
-
 import { Array, Option } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
@@ -19,32 +14,19 @@ import type { Box } from './roomPalette'
 import { PARLOUR_WINDOW_GAPS, doorBox } from './roomWalls'
 import { roseGlassOf, roseLightsOf } from './roseWindowArt'
 
-// NOTE: a window high in a back wall, one in a side wall's gap, or the
-// library's rose window.
 type PaneKind = 'High' | 'Side' | 'Rose'
 
 export type Pane = Readonly<{
   kind: PaneKind
-  // NOTE: the room it lights, by id.
   roomId: string
-  // NOTE: the glass, in game pixels.
   glass: Box
-  // NOTE: the glass a strike lights and the rain runs over, in game pixels:
-  // the whole glass, or the rose window's colored glass between its lead.
   lights: ReadonlyArray<Box>
-  // NOTE: where the wall under the glass meets the floor, in game pixels
-  // down the map: the front edge a shaft of its light leaves the wall at.
   sill: number
-  // NOTE: the floor a strike lights through this glass.
   thrown: Box
 }>
 
-// NOTE: how much longer a patch of light is than its glass, and how far
-// out of the wall the light from high glass lands, as a share of its height
-// over the sill.
 const THROW_STRETCH = 1.5
 const THROW_REACH = 0.6
-// NOTE: how far into the room a side window's light reaches.
 const SIDE_THROW = 16
 
 const isWallAt = (level: Level, x: number, y: number): boolean =>
@@ -53,7 +35,6 @@ const isWallAt = (level: Level, x: number, y: number): boolean =>
     symbol => symbol === WALL_SYMBOL,
   )
 
-// NOTE: the top of the first floor tile below a back wall's glass.
 const sillBelow = (level: Level, glass: Box): number => {
   const x = glass.x + Math.floor(glass.width / 2)
   const start = Math.floor((glass.y + glass.height) / TILE_SIZE) * TILE_SIZE
@@ -88,8 +69,6 @@ const wallPane = (
   }
 }
 
-// NOTE: a window in a side wall's gap throws its light across the floor,
-// away from the wall it sits in.
 const sidePane = (level: Level, glass: Box): Pane => {
   const isWallEast = isWallAt(
     level,

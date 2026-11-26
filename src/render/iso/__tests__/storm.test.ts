@@ -10,10 +10,6 @@ import { windowPanesOf } from '../../room/windows'
 import { strikeOf } from '../mood'
 import { FAR_KEY, stormKeyOf, stormOf } from '../storm'
 
-// The storm at the windows (src/render/iso/storm.ts): rain on every pane,
-// a flash on each strike, and its light thrown onto the floor, read off the
-// World's clock alone.
-
 const rainAt = (model: Model, ms: number) => {
   const world = atClock(model, ms)
   return rectsOf(stormOf({ world, level: levelOf(world) }), { x: 0, y: 0 })
@@ -72,8 +68,6 @@ test('a strike flashes the glass and throws its light on the floor', () => {
         ),
       ).toBe(true),
     )
-    // NOTE: the rose window throws its strike in its own colors, as a god
-    // ray (godRays.ts), not as the storm's white.
     expect(
       Array.some(
         flashed,

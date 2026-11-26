@@ -75,8 +75,6 @@ import {
   placementOf,
 } from './zombiePlacement'
 
-// ZOMBIES
-
 const zombieHitTone = (hitRemainingMs: number): Tone =>
   hitRemainingMs > 0 &&
   ZOMBIE_HIT_PULSE_MS - hitRemainingMs < ZOMBIE_HIT_FLASH_MS
@@ -115,9 +113,6 @@ const WEAR_URGENCY = 0.35
 const distanceBetween = (first: Vector, second: Vector): number =>
   Math.hypot(first.x - second.x, first.y - second.y)
 
-// NOTE: a Kaboomer's fuse burns shorter and sparks faster as he closes in and
-// each time he is shot. Urgency is stepped so the fuse drops in a few clean
-// jumps instead of jittering every frame as the distance changes.
 const fuseUrgency = (zombie: Zombie, player: Player, stage: number): number => {
   const tellPx = GAITS[zombie.kind].fuseTellPx
   if (tellPx <= 0) {
@@ -128,8 +123,6 @@ const fuseUrgency = (zombie: Zombie, player: Player, stage: number): number => {
   const urgency = clamp(nearness + WEAR_URGENCY * stage, 0, 1)
   return Math.round(urgency * URGENCY_STEPS) / URGENCY_STEPS
 }
-
-// KABOOMER FUSE
 
 const SPARK_SLOW_MS = 180
 const SPARK_FAST_MS = 50
@@ -254,8 +247,6 @@ export const zombieHealthBarShapes = (
   )
 }
 
-// FRENZY
-
 const STEAM_RISE_PX = 6
 const STEAM_CYCLE_MS = 520
 const STEAM_COLOR = 'rgba(244, 241, 222, 0.6)'
@@ -282,11 +273,6 @@ const steamShapes = (
   ]
 }
 
-// ICE
-
-// NOTE: a zombie Brain Freeze froze solid stands in a block of ice baked
-// once per kind, which blinks as it is about to melt; a Chilled one only
-// sparkles with frost.
 const ICE_EDGE = '#e8fbff'
 const ICE_FACE = 'rgba(150, 220, 255, 0.5)'
 const ICE_SHINE = 'rgba(255, 255, 255, 0.75)'
@@ -372,7 +358,6 @@ const dazeStarShapes = (
   if (!ZombieAction.isAnyOf(['Dazed', 'Reeling'])(zombie.action)) {
     return []
   }
-  // NOTE: the Clang Pan's ring is louder: three bigger stars.
   const isRung = ZombieAction.isAnyOf(['Reeling'])(zombie.action)
   const stars = isRung ? 3 : 2
   const size = isRung ? 2 : 1

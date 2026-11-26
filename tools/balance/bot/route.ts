@@ -11,14 +11,6 @@ import {
 import { hasClearPath, tileIndexAt } from '../../../src/world/level/tileQueries'
 import { type Vector } from './basics'
 
-// THE WAY THERE
-
-// The bot walks straight lines where it can. Where furniture or a wall is in
-// the way (the dining room's party table, the kitchen's doorway), it walks
-// to the next tile on the shortest way over the floor a player can stand on,
-// never the yard, found by a search out from the goal. Each search is kept
-// for its level and goal tile, so a bot walking to one spot searches once.
-
 export const isInKitchen = (point: Vector) => point.y < -2
 
 const UNREACHED = -1
@@ -37,8 +29,6 @@ const STEPS: ReadonlyArray<readonly [number, number]> = [
   [-1, -1],
 ]
 
-// NOTE: a diagonal step only where both tiles beside it are floor too, so
-// the bot never cuts a corner it would catch on.
 const canStep = (
   level: Level,
   column: number,
@@ -81,7 +71,6 @@ const searchFrom = (level: Level, goalIndex: number): Int32Array => {
   return steps
 }
 
-// The next point to walk to on the way to goal.
 export const routeTo: {
   (from: Vector, goal: Vector): (level: Level) => Vector
   (level: Level, from: Vector, goal: Vector): Vector

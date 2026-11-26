@@ -1,13 +1,3 @@
-// The dare ladder pass: the single player lobby with marks opened (the pick
-// at none, and at mark 6 with every modifier tile on and locked), the co-op
-// lobby as the host at mark 5, the solo end card of an escape at mark 6,
-// and the Proof Shelf with each difficulty's badge on its row, on a
-// 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
-// upright, as `dare-marks-<viewport>-<scene>.png` in DARE_MARK_SHOTS
-// (default /tmp/dare-mark-shots). It exits with 1 when a lobby shows no
-// mark pick, a held tile is not locked on, or the shelf shows no badge.
-//   bun run heavy -- --shared bun tools/audit/shotsDareMarks.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Config, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -32,8 +22,6 @@ const LEARNED =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
 const LOBBY = `${LEARNED}&rank=4200&calling=Handyman&difficulty=Easy&marks=8`
 
-// NOTE: what a scene must show: the lobby's pick, a count of tiles locked
-// on, or the shelf's badges.
 type Expect = Readonly<{ pick?: boolean; locked?: number; badges?: number }>
 
 type Scene = Readonly<{
@@ -83,7 +71,6 @@ const SCENES: ReadonlyArray<Scene> = [
 
 type Found = Readonly<{ picks: number; locked: number; badges: number }>
 
-// NOTE: runs in the page, which has no Effect: plain DOM counts.
 const readMarks = (page: Page) =>
   attempt((): Promise<Found> =>
     page.evaluate(() => ({

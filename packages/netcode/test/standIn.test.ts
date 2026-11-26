@@ -23,8 +23,6 @@ const here = (slot: number, input: PlayerInput): PlayerTick => ({
   rttMs: 0,
 })
 
-// NOTE: inputs that change every so often, from a small seeded counter, so
-// dots wander, meet walkers, and tag them.
 const wander = (slot: number, tick: number): PlayerInput => {
   const phase = Math.floor((tick + slot * 37) / 40) % 8
   const angle = (phase / 8) * Math.PI * 2

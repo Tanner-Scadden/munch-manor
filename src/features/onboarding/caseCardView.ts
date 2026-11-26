@@ -36,13 +36,6 @@ import { clamp } from '../../world/step/geometry'
 import { CASE_CARD_MS, canSkipCaseCard, maybeCardCase } from './caseCard'
 import { OnboardingMessage } from './message'
 
-// The display case's first-time card (src/features/onboarding/caseCard.ts)
-// on screen, in the new zombie card's style: a band across the landscape
-// frame with DISPLAY CASE over the case's own feat lock, filled to the
-// player's progress with its count, an arrow, and the case itself drawn
-// big with its prize behind the glass, then one short line. Show, don't
-// explain: do this, win that. Its button is HTML, over the band.
-
 const CENTER_X = LANDSCAPE_SIZE.width / 2
 const CARD_TOP = 40
 const CARD_BOTTOM = 136
@@ -68,9 +61,6 @@ const TITLE: BakedText = bakeText(
 )
 const LINE: BakedText = bakeText("DO THE DEED. WIN WHAT'S INSIDE.", 'Plain')
 
-// NOTE: the feat in a few words under its lock, so a lock with no count
-// (open a room, light the fire) still says what to do, and every icon gets
-// its words once, on the card, while the lock in the room stays wordless.
 const plural = (count: number, one: string, many: string): string =>
   `${count} ${count === 1 ? one : many}`
 
@@ -104,8 +94,6 @@ export const featLabelOf = (feat: Feat): string =>
 const centered = (baked: BakedText, y: number, scale = 1): Draw.Shape =>
   placeBaked(baked, { x: CENTER_X, y, align: 'Center', scale })
 
-// NOTE: a dim over the whole screen, past the landscape frame, as the new
-// zombie card's, so it dims the HUD band in portrait too.
 const DIM = Draw.Rect({
   x: -LANDSCAPE_SIZE.width,
   y: -LANDSCAPE_SIZE.height * 2,
@@ -151,7 +139,6 @@ const timerShapes = (ageMs: number): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the case as it stands, locked: its body, its prize, and its glass.
 const bigCaseShapes = (model: Model, displayCase: DisplayCase): Draw.Shape => {
   const art = CASE_ART[caseLookOf(levelOf(model), displayCase)]
   return group({
@@ -207,7 +194,6 @@ const cardShapes = (
   ...timerShapes(ageMs),
 ]
 
-// NOTE: in the landscape frame, over the round's overlay.
 export const caseCardShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   CaseCard.match(model.caseCard, {
     Hidden: () => [],
@@ -217,8 +203,6 @@ export const caseCardShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
         onSome: displayCase => cardShapes(model, displayCase, ageMs),
       }),
   })
-
-// THE BUTTON
 
 const CASE_TITLE_ID = 'case-card-title'
 const CASE_BODY_ID = 'case-card-body'
@@ -247,8 +231,6 @@ const buttonView = (
         )
     : null
 
-// NOTE: the card's button and what it says for a screen reader, in the new
-// zombie card's place and style.
 export const caseCardView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml

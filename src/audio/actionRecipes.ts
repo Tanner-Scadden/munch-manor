@@ -1,10 +1,7 @@
 import type { SoundEffect } from '../shared/soundEffect'
 import { type Recipe, at, envelope } from './soundRecipe'
 
-// NOTE: the hands-on actions' own sounds (src/render/actionPose.ts), joined
-// into RECIPES, each soft and short so a long revive or mend never nags.
 export const ACTION_RECIPES = {
-  // NOTE: one push of CPR on a downed teammate's chest: a low, soft thump.
   ChestPush: {
     variationCents: 60,
     tones: [
@@ -23,8 +20,6 @@ export const ACTION_RECIPES = {
       },
     ],
   },
-  // NOTE: a hammer coming down on a board: a woody knock with a little
-  // ring of the nail.
   HammerTap: {
     variationCents: 140,
     tones: [

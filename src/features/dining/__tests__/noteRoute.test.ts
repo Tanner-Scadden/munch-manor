@@ -15,19 +15,12 @@ import type { Vector } from '../../../world/schema/worldSchema'
 import { stationCenterOf } from '../../../world/stations/stationSpots'
 import { type NoteRoute, noteRouteOf } from '../hubTouchView'
 
-// The parlour's notes drift off the gramophone, out through the parlour's
-// doorway, and a few tiles into the dining room, in every house the slots
-// can make: through the middle of each doorway, clear of the walls, the
-// furniture, and the display cases.
-
 const EVERY_EXIT = ['West', 'East', 'Far', 'Kitchen'] as const
 
 const houses = Array.map(ARRANGEMENTS, arrangement =>
   levelFor(manorSpecFor(arrangement), EVERY_EXIT),
 )
 
-// NOTE: past the gramophone itself, which stands among the parlour's
-// furniture, every couple of pixels to the route's end.
 const SKIP_PX = 10
 const STEP_PX = 2
 

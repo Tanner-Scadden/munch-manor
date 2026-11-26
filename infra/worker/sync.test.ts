@@ -323,8 +323,6 @@ describe('the sync Worker', () => {
   )
 })
 
-// NOTE: a SQLite layer whose first build fails, as a Durable Object's
-// storage can on a cold start, and whose later builds work.
 const flakySql = () => {
   const counts = { builds: 0 }
   const layer = Layer.unwrap(

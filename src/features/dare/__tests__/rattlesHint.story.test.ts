@@ -60,11 +60,6 @@ import {
   maybeHintCall,
 } from '../rattlesHint'
 
-// Rattles' hints about the dare (src/features/dare/rattlesHint.ts), drawn
-// in his bubble (src/screens/game/stallBubble.ts): how often each step of
-// the difficulty dial hollers, a line never twice in a row, Uncle Chunk's
-// big key and the door once the list is done, and the arrow toward a thing out of view.
-
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50
 const FRAMES_PAST_CALL = Math.ceil(HINT_MS / LONG_FRAME_MS) + 4
@@ -84,7 +79,6 @@ const isInView = (model: Model, point: { x: number; y: number }): boolean => {
 
 const base = freshRunModel()
 
-// NOTE: a hiding spot in a room behind boards, out of the window.
 const BOARDED_SPOTS: ReadonlyArray<Vector> = Array.flatMap(
   roomSpotsOf(levelOf(base).spec),
   ({ room, hiding }): ReadonlyArray<Vector> =>
@@ -97,7 +91,6 @@ const FAR_SPOT: Vector = Option.getOrThrow(
   Array.findFirst(BOARDED_SPOTS, point => !isInView(base, point)),
 )
 
-// NOTE: a spot in view a few steps from the player, out of reach.
 const NEAR_SPOT = {
   x: focusOf(base).player.x + 30,
   y: focusOf(base).player.y,
@@ -122,19 +115,15 @@ const withList = (model: Model, things: ReadonlyArray<DareThing>): Model =>
     dareThings: () => things,
   })
 
-// NOTE: the butler's bell in a room behind boards, out of the window.
 const BELL = hidden(0, 'ButlersBell', FAR_SPOT)
 const BELL_FAR = [BELL]
 
-// NOTE: the room the bell lies in, in Rattles' words.
 const BELL_ROOM_WORD = Option.getOrThrow(
   Option.map(maybeThingRoom(BELL, levelOf(base)), ({ id }) =>
     String.toUpperCase(id),
   ),
 )
 
-// NOTE: the break before wave 2, long, before the kitchen goes on sale, so
-// its holler never takes the bubble, with the guided first break over.
 const breakOn = (
   difficulty: Difficulty,
   things: ReadonlyArray<DareThing> = BELL_FAR,
@@ -180,7 +169,6 @@ const arrowsOf = (shapes: ReadonlyArray<Draw.Shape>): number =>
 const drawn = (model: Model): ReadonlyArray<Draw.Shape> =>
   dareHintShapes(model, camera(model))
 
-// NOTE: a break already called in, so the next call waits on Easy's rest.
 const calledAlready = (model: Model, line: string, restMs: number): Model =>
   UiStruct.evolve(model, {
     dareHint: hint =>
@@ -456,12 +444,9 @@ describe('a line never twice in a row', () => {
   })
 })
 
-// THE THINGS IN SIGHT AND THE ARROW
-
 const pointerShapesOf = (model: Model): ReadonlyArray<Draw.Shape> =>
   darePointerShapes(model, screenOf(model), screenCameraOf(model))
 
-// NOTE: where a drawn arrow sits in the overlay's pixels.
 const originOf = (shape: Draw.Shape): Vector =>
   Match.value(shape).pipe(
     Match.tag('Image', ({ x, y }) => ({ x, y })),
@@ -482,8 +467,6 @@ const isInClearWindow = (model: Model, at: Vector): boolean => {
   )
 }
 
-// NOTE: the far spot's room with its boards down, so a thing there lies
-// in an open room out of the window.
 const FAR_EXIT: ExitId = Option.getOrThrow(
   Option.flatMap(maybeThingRoom(BELL, levelOf(base)), ({ id }) =>
     Option.flatMap(
@@ -502,8 +485,6 @@ const withFarRoomOpen = (model: Model): Model =>
       }),
   })
 
-// NOTE: a break with the hint already called, so only the things and Easy's
-// own arrow show.
 const quietBreakOn = (
   difficulty: Difficulty,
   things: ReadonlyArray<DareThing>,

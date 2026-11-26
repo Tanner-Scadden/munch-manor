@@ -1,6 +1,3 @@
-// What the art studio shows: the game's own sprites, built by the same
-// modules the game draws with, grouped by tab. Each entry names where its
-// pixels live, so a note about it says which file to change.
 import {
   Array,
   Function,
@@ -91,8 +88,6 @@ import {
   ZombieKind,
 } from '../../src/world/schema/entitySchema'
 
-// TABS AND LOOKS
-
 export const Tab = Schema.Literals([
   'Zombies',
   'Heroes',
@@ -108,8 +103,6 @@ export type Tone = typeof Tone.Type
 
 export const FacingChoice = Schema.Literals(['Right', 'Left'])
 
-// NOTE: what every entry is drawn with: the controls over the gallery and the
-// clock the animation runs on.
 export type Look = Readonly<{ facing: Facing; tone: Tone; clockMs: number }>
 
 export type Entry = Readonly<{
@@ -118,8 +111,6 @@ export type Entry = Readonly<{
   source: string
   frameMs: number
   frames: (look: Look) => Array.NonEmptyReadonlyArray<Sprite>
-  // NOTE: drawn from the clock itself (the stall's glow and dozing), not
-  // stepped frame by frame.
   isClockDriven?: boolean
 }>
 
@@ -131,8 +122,6 @@ export type Section = Readonly<{
 const WALK_FRAME_MS = 160
 const STILL_MS = 1
 
-// NOTE: a set's sprite as the controls ask: Flash swaps the palette to the
-// hit flash, any other tone keeps the set's own colors.
 const setSprite = (set: SpriteSet, look: Look): Sprite =>
   set[look.tone === 'Flash' ? 'Flash' : 'Normal'][look.facing]
 
@@ -143,8 +132,6 @@ const framesSprites = (
   Array.map(frames, set => setSprite(set, look))
 
 const still = (sprite: Sprite): Array.NonEmptyReadonlyArray<Sprite> => [sprite]
-
-// ZOMBIES
 
 const ZOMBIE_SOURCE = 'src/art/sprites/zombieArt.ts (boss: bossArt.ts)'
 
@@ -196,8 +183,6 @@ const zombieSection = (kind: ZombieKind): Section => {
   }
 }
 
-// HEROES AND LOOKS
-
 const PLAYER_SOURCE = 'src/art/appearance.ts'
 
 const heroesSections = (): ReadonlyArray<Section> =>
@@ -238,8 +223,6 @@ const lookEntry = (
   frames: look => framesSprites(playerSprites(appearance).walk, look),
 })
 
-// NOTE: the mastery prop styles (src/art/sprites/propStyles.ts), drafts
-// for review: each hero in each style past Stock, YOU in its medal.
 const MASTERY_SOURCE = 'src/art/sprites/propStyles.ts'
 
 const masterySections = (): ReadonlyArray<Section> => [
@@ -313,8 +296,6 @@ const looksSections = (): ReadonlyArray<Section> => [
   ...masterySections(),
 ]
 
-// RATTLES
-
 const MOODS: Array.NonEmptyReadonlyArray<Mood> = [
   'Grinning',
   'Delighted',
@@ -351,8 +332,6 @@ const rattlesSections = (): ReadonlyArray<Section> => [
     })),
   },
 ]
-
-// ITEMS
 
 const TIERS: Array.NonEmptyReadonlyArray<number> = [0, 1, 2, 3]
 
@@ -485,9 +464,6 @@ const itemsSections = (): ReadonlyArray<Section> => [
     ],
   },
   {
-    // NOTE: every thing the dare can ask for, the last four opened by the
-    // Dare Journal's milestones (src/world/dare/milestones.ts), big as the
-    // satchel and the journal draw them and small as on the HUD's list.
     title: 'Dare things',
     entries: [
       ...Array.flatMap(DareKind.literals, kind => [
@@ -508,8 +484,6 @@ const itemsSections = (): ReadonlyArray<Section> => [
     ],
   },
   {
-    // NOTE: the dare ladder's badges (src/world/run/dareLadder.ts): red wax
-    // for marks 1 to 4, black wax in gold for the house rules of 5 to 8.
     title: 'Dare marks',
     entries: Array.map(MARKS, mark =>
       stillEntry(
@@ -569,9 +543,6 @@ const buildSections = (tab: Tab): ReadonlyArray<Section> =>
 
 const sectionCache = new Map<Tab, ReadonlyArray<Section>>()
 
-// NOTE: each tab's sections are built once and kept, so an entry is the same
-// object on every render and the gallery's lazy cards can skip it. The Rooms
-// tab draws the level itself (see ./room.ts), not a gallery.
 export const sectionsOf = (tab: Tab): ReadonlyArray<Section> =>
   Option.getOrElse(Option.fromNullishOr(sectionCache.get(tab)), () => {
     const built = buildSections(tab)
@@ -587,7 +558,6 @@ export const entryById = (id: string): Option.Option<Entry> =>
     Array.findFirst(entry => entry.id === id),
   )
 
-// NOTE: the tab an entry sits in, for a note that opens it.
 export const tabOfEntry = (id: string): Option.Option<Tab> =>
   Array.findFirst(Tab.literals, tab =>
     Array.some(sectionsOf(tab), section =>
@@ -595,15 +565,8 @@ export const tabOfEntry = (id: string): Option.Option<Tab> =>
     ),
   )
 
-// BOUNDS
-
-// NOTE: the box a sprite covers, measured by `boundsOf` in src/art/sprite.ts.
 export type Bounds = Box
 
-// THE CREW
-
-// NOTE: who stands beside a sprite in the big view's "next to the crew", so
-// its size reads against the player and the plainest zombie, frame for frame.
 export const crewOf: {
   (frame: number): (look: Look) => ReadonlyArray<Sprite>
   (look: Look, frame: number): ReadonlyArray<Sprite>
@@ -631,9 +594,6 @@ export const crewOf: {
   ]
 })
 
-// TAB ICONS
-
-// NOTE: a little house for the Rooms tab, which has no sprite of its own.
 const HOUSE_PIXELS: ReadonlyArray<string> = [
   '....RR....',
   '...RRRR...',
@@ -654,7 +614,6 @@ const HOUSE_PALETTE = {
   D: '#6b4a32',
 }
 
-// NOTE: each tab's icon in the sidebar, drawn from the game's own art.
 export const tabIconOf = (tab: Tab): Sprite =>
   Match.value(tab).pipe(
     Match.when('Zombies', () => ZOMBIE_SPRITES.Shambler.icon),

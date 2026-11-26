@@ -6,13 +6,6 @@ import type { Html } from '@effect/ui/html'
 import { markIcon } from '../art/markArt'
 import { iconView } from './menuParts'
 
-// The parts of the dare ladder's pick that the single player lobby
-// (src/features/lobby/view.ts) and the co-op lobby
-// (src/features/coop/picksView.ts) share: the mark's seal and its number.
-// Each lobby builds its own button, as it does Dare's break clock. A press
-// steps to the next mark opened, round to none (nextMarkOf in
-// src/domain/dareMarks.ts).
-
 export const dareMarkLabel = (mark: number): string =>
   mark > 0 ? `Dare mark ${mark}` : 'Dare mark: none'
 
@@ -38,8 +31,6 @@ export const dareMarkFaceView: {
   ],
 )
 
-// NOTE: a mark's seal alone, small, beside a name: the Proof Shelf's row
-// and the co-op host's seat. Mark 0 shows nothing.
 export const dareMarkBadgeView: {
   <Message>(
     className: string,

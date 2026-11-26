@@ -28,21 +28,6 @@ import {
   noCooking,
 } from '../schema/worldSchema'
 
-// The players of a World (MULTIPLAYER.md, Phase 1). Every player has a
-// SeatState in the World's `seats`, in slot order, and a per-player system
-// reads and writes its player by slot. Single player is one seat at
-// SOLO_SLOT; a Party of Crew plays by co-op's rules, bots included.
-//
-// A client draws its own seat first (`focusSeat`), so `focusOf` is the
-// player a screen is about: the only seat in single player, your own in a
-// room. The room's own World is always in slot order.
-
-// RULES
-
-// NOTE: co-op's crowd (MULTIPLAYER.md, "Decided"), for the multi-bot
-// balance pass to tune. Index 0 is one player. Eased on 2026-11-14 (owner:
-// the extra zombies per player made a crew run much, much harder) from
-// counts of 1.6, 2.2, 2.8 and health of 1.1, 1.2, 1.3.
 export const COOP_RULES = {
   waveCountScale: [1, 1.35, 1.7, 2.05],
   healthScale: [1, 1.05, 1.1, 1.15],
@@ -57,13 +42,8 @@ export const COOP_RULES = {
   maxPlayers: 4,
 } as const
 
-// SEATS
-
 export const isCoop = (world: World): boolean => world.party._tag === 'Crew'
 
-// NOTE: the Friendly Fire modifier (src/world/run/modifiers.ts): teammates' bullets
-// and lid blasts hurt each other. It bites only with a teammate to hit, a
-// player or a bot, so alone it does nothing and pays nothing.
 export const isFriendlyFireOn = (world: World): boolean =>
   activeModifiersOf(world).friendlyFire && world.seats.length > 1
 
@@ -83,7 +63,6 @@ export const soloSeat: Seat = {
   touchedMs: 0,
 }
 
-// NOTE: the one seat single player starts a run with.
 export const soloState: SeatState = {
   seat: soloSeat,
   player: initialPlayer,
@@ -99,16 +78,12 @@ export const soloState: SeatState = {
 
 const MAX_BITE_GRACE_MS = 100
 
-// NOTE: the bite grace for a round trip, in whole ticks so it only
-// changes when it matters.
 export const biteGraceFor = (rttMs: number): number =>
   Math.min(
     MAX_BITE_GRACE_MS,
     Math.floor(rttMs / 2 / FIXED_STEP_MS) * FIXED_STEP_MS,
   )
 
-// NOTE: the seat a screen is about: the first in `seats`, which is the only
-// one in single player and your own in a co-op client's drawn World.
 export const focusOf = (world: World): SeatState => world.seats[0]
 
 export const leadSeatOf = (world: World): Seat => focusOf(world).seat
@@ -122,8 +97,6 @@ const modifySeatState: {
   <M extends SeatState>(state: M, transforms: SeatTransforms): M
 } = Function.dual(2, modifySeatFields)
 
-// NOTE: where the seat at `slot` sits in `seats`, or -1. A room's seats are
-// in slot order and dense, so the slot is usually the index.
 const seatIndexOf = (world: World, slot: PlayerSlot): number => {
   const { seats } = world
   if (seats[slot]?.seat.slot === slot) {
@@ -143,9 +116,6 @@ const maybeSeatState = (
 ): Option.Option<SeatState> =>
   Option.fromNullishOr(world.seats[seatIndexOf(world, slot)])
 
-// NOTE: the state of the seat at `slot`. A slot the World has no seat for
-// reads the focused seat, so callers check `maybePlayerAt` for a slot they were
-// handed; the systems only ever ask for slots they got from the World.
 export const seatStateAt: {
   (slot: PlayerSlot): (world: World) => SeatState
   (world: World, slot: PlayerSlot): SeatState
@@ -165,10 +135,6 @@ export const playerAt: {
 
 type Seats = World['seats']
 
-// NOTE: the `seats` transform that changes the seat at `slot` and leaves
-// the others, for a `UiStruct.evolve` that also changes other World fields:
-// `UiStruct.evolve(world, { bullets: ..., seats: atSeat(slot, { player: ... }) })`.
-// A slot not in the World changes nothing.
 export const atSeatBy: {
   (
     change: (state: SeatState) => SeatState,
@@ -198,7 +164,6 @@ export const atSeat: {
     atSeatBy(slot, state => modifySeatState(state, changes)),
 )
 
-// NOTE: a change to the seat at `slot`, the rest of the World as it was.
 export const updateSeat: {
   <M extends World>(
     slot: PlayerSlot,
@@ -227,7 +192,6 @@ export const modifySeat: {
     modifyWorldFields(world, { seats: atSeat(slot, changes) }),
 )
 
-// NOTE: the same for the seat a screen is about.
 export const modifyFocus: {
   <M extends World>(changes: SeatTransforms): (world: M) => M
   <M extends World>(world: M, changes: SeatTransforms): M
@@ -235,9 +199,6 @@ export const modifyFocus: {
   modifySeat(world, focusOf(world).seat.slot, changes),
 )
 
-// NOTE: puts the seat at `slot` first, the others in the order they were,
-// for a client that draws its own player. A slot not in the World leaves
-// it as it is.
 export const focusSeat: {
   (slot: PlayerSlot): (world: World) => World
   (world: World, slot: PlayerSlot): World
@@ -256,9 +217,6 @@ export const focusSeat: {
 
 export const playerCountOf = (world: World): number => world.seats.length
 
-// NOTE: every seat in the order it sits (slot order in a room), each with
-// `step`, which gets the World as the seats before it left it. Single
-// player is one call.
 export const forEachSeat: {
   (step: (current: World, slot: PlayerSlot) => World): (world: World) => World
   (world: World, step: (current: World, slot: PlayerSlot) => World): World
@@ -276,7 +234,6 @@ export const forEachSeat: {
   },
 )
 
-// NOTE: a change to the seat's record at `slot`.
 export const modifySeatRecord: {
   <M extends World>(
     slot: PlayerSlot,
@@ -293,8 +250,6 @@ export const modifySeatRecord: {
     updateSeat(world, slot, state => UiStruct.evolve(state, { seat: change })),
 )
 
-// NOTE: a step for each seat that `isIncluded` lets in, the rest left as
-// they are.
 export const forEachSeatWhere: {
   (
     isIncluded: (seat: Seat) => boolean,
@@ -319,8 +274,6 @@ export const forEachSeatWhere: {
     ),
 )
 
-// READING THE PLAYERS
-
 export const playersOf = (world: World): ReadonlyArray<SeatState> => world.seats
 
 export const maybePlayerAt: {
@@ -338,14 +291,10 @@ export const isDowned = (seat: Seat): boolean => seat.life._tag === 'Downed'
 
 export const isBledOut = (seat: Seat): boolean => seat.life._tag === 'BledOut'
 
-// NOTE: stepped out through the open front door: hidden, never hunted,
-// bitten, or blocking, and counted toward the walk out.
 export const isOut = (seat: Seat): boolean => seat.life._tag === 'Out'
 
 export const isHere = (seat: Seat): boolean => seat.presence === 'Here'
 
-// NOTE: who the zombies hunt: every standing player, here or away. Single
-// player is always its one player, as before.
 export const targetsOf = (
   world: World,
 ): Array.NonEmptyReadonlyArray<Player> => {
@@ -362,7 +311,6 @@ export const targetsOf = (
 const distanceSquared = (from: Vector, to: Vector): number =>
   (from.x - to.x) * (from.x - to.x) + (from.y - to.y) * (from.y - to.y)
 
-// NOTE: the nearest of the targets to a point, the first on a tie.
 export const nearestOf: {
   <A extends Vector>(at: Vector): (targets: Array.NonEmptyReadonlyArray<A>) => A
   <A extends Vector>(targets: Array.NonEmptyReadonlyArray<A>, at: Vector): A
@@ -379,8 +327,6 @@ export const nearestOf: {
     ),
 )
 
-// NOTE: the slot of the standing player nearest a point, for the systems
-// that fight one player at a time (the boss, a Big Leaguer, an Ankle Biter).
 const nearestStandingSlot = (world: World, at: Vector): PlayerSlot => {
   let best = focusOf(world).seat.slot
   let bestDistance = Number.POSITIVE_INFINITY
@@ -396,8 +342,6 @@ const nearestStandingSlot = (world: World, at: Vector): PlayerSlot => {
   return best
 }
 
-// NOTE: runs a system that fights one player with the standing player
-// nearest `at`.
 export const facingNearest: {
   (
     at: Vector,
@@ -421,9 +365,6 @@ export const facingNearest: {
     ),
 )
 
-// NOTE: the Glass modifier (src/world/run/modifiers.ts): every player starts the run on
-// one heart, whatever their hero's hearts. Run once, after the crew is seated
-// and made over as their heroes.
 export const withStartingHearts = (world: World): World =>
   activeModifiersOf(world).glass
     ? forEachSeat(world, (current, slot) =>
@@ -436,8 +377,6 @@ export const withStartingHearts = (world: World): World =>
       )
     : world
 
-// NOTE: a change to the seat's record at `slot`, in co-op only: single
-// player counts its own in the run stats.
 const modifyCrewSeat = (
   world: World,
   slot: PlayerSlot,
@@ -464,8 +403,6 @@ export const creditRevive: {
   ),
 )
 
-// NOTE: shots fired and landed by the seat at `slot`, for its aim on the
-// crew board. Single player counts its own in the run stats.
 export const creditShots: {
   (slot: PlayerSlot, fired: number, hit: number): (world: World) => World
   (world: World, slot: PlayerSlot, fired: number, hit: number): World
@@ -482,16 +419,11 @@ export const creditShots: {
       : world,
 )
 
-// CREW
-
 const MATE_SPACING_PX = 14
 
 const freshSeat = (slot: PlayerSlot): Seat =>
   UiStruct.evolve(soloSeat, { slot: () => slot })
 
-// NOTE: a new run's crew: the lead at slot 0 where single player starts,
-// and each teammate beside them, with their own copy of every per-player
-// field as the lead has it.
 export const seatCrew: {
   (count: number): (world: World) => World
   (world: World, count: number): World
@@ -535,8 +467,6 @@ export const presenceOf: {
   }),
 )
 
-// NOTE: the room marks a player Away after 3 s with no input and Here again
-// once they send one (decided row 10).
 export const setPresence: {
   (slot: PlayerSlot, presence: Presence): (world: World) => World
   (world: World, slot: PlayerSlot, presence: Presence): World
@@ -548,9 +478,6 @@ export const setPresence: {
     ),
 )
 
-// CREDIT
-
-// NOTE: marks a bullet with who fired it. Single player leaves it unmarked.
 export const firedBy: {
   (maybeSlot: Option.Option<PlayerSlot>): (bullet: Bullet) => Bullet
   (bullet: Bullet, maybeSlot: Option.Option<PlayerSlot>): Bullet
@@ -591,6 +518,5 @@ export const trapOwnerOf: {
       : Option.none(),
 )
 
-// NOTE: the slot of the seat a screen is about.
 export const focusSlotOf = (world: World): PlayerSlot =>
   focusOf(world).seat.slot

@@ -19,10 +19,6 @@ import {
   webSocketBytes,
 } from '../src/index'
 
-// NOTE: a room and several sessions over a fake network with a fixed
-// one-way delay, every frame encoded to bytes and decoded on the far side,
-// as the Durable Object and the browser do.
-
 type ClientSession = Session.Session<StandInWorld, Dot>
 
 interface InFlight {
@@ -44,14 +40,10 @@ interface Client {
   pingedMs: number
 }
 
-// NOTE: the socket's free ping, which the room's Durable Object answers by
-// itself, every 2 s.
 const PING_EVERY_MS = 2000
 
 const T0 = 5_000_000
 
-// NOTE: each player walks a square, turning every 0.7 s, slot by slot out
-// of step.
 const scripted = (slot: number, nowMs: number): PlayerInput => {
   const leg = Math.floor((nowMs - T0 + slot * 300) / 700) % 4
   const moves: ReadonlyArray<readonly [number, number]> = [
@@ -70,8 +62,6 @@ const simulate = (options: {
   readonly seconds: number
   readonly muteSlotAfterMs?: number
   readonly jitterMs?: number
-  // NOTE: every this many messages each way is held 200 ms, as a lost TCP
-  // segment's resend holds it, and everything behind it waits in order.
   readonly holdEvery?: number
 }) => {
   const heldMs = (count: number) =>
@@ -270,8 +260,6 @@ describe('sessions and a room over a 60 ms round trip', () => {
     })
   })
 
-  // NOTE: the first turn can land a few ticks late while the round trip
-  // is still unknown; after that the room applies every turn on its tick.
   test('own prediction agrees with the room once the clock settles', () => {
     Array.forEach(run.clients, client => {
       expect(client.session.stats.corrections).toBeLessThanOrEqual(3)
@@ -393,9 +381,6 @@ describe('a link that holds messages up behind a resend', () => {
     })
   })
 
-  // NOTE: the message a resend held up arrives late, which once jumped the
-  // clock back: everyone drawn ran backwards and your own inputs stopped
-  // until the clock passed them again.
   test('the picture never runs backwards', () => {
     Array.forEach(held.clients, client => {
       const backwards = Array.reduce(client.viewTicks, 0, (most, tick, index) =>
@@ -421,21 +406,13 @@ describe('a message that cannot apply', () => {
   )
   const framesOf = (out: ReadonlyArray<Room.Out>): Array<ServerFrame> =>
     Array.flatMap(out, item => (item._tag === 'Send' ? [item.frame] : []))
-  const deltas = Array.reduce<
-    number,
-    {
-      readonly room: Room.Room<StandInWorld>
-      readonly frames: ReadonlyArray<ServerFrame>
-    }
-  >([1, 2, 3], { room: started.room, frames: [] }, (at, step) => {
-    const advanced = Room.advance(StandIn, at.room, T0 + step * 50 + 1)
-    return {
-      room: advanced.room,
-      // NOTE: three steps.
-      // oxlint-disable-next-line munch/no-append-in-reduce
-      frames: [...at.frames, ...framesOf(advanced.out)],
-    }
-  }).frames
+  const deltas: Array<ServerFrame> = []
+  let room: Room.Room<StandInWorld> = started.room
+  for (const step of [1, 2, 3]) {
+    const advanced = Room.advance(StandIn, room, T0 + step * 50 + 1)
+    room = advanced.room
+    deltas.push(...framesOf(advanced.out))
+  }
   const receiveAll = (
     session: ClientSession,
     frames: ReadonlyArray<ServerFrame>,

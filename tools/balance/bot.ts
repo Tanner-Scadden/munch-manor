@@ -1,13 +1,3 @@
-// The balance bot: a fair, simple player that drives the game's own init
-// model and update. tools/balance/simulate.ts runs it for the campaign
-// reports, and the wave snapshot pass replays single waves from a typical
-// run state. Nothing here ships with the game. Install a DOM (happy-dom)
-// before importing this module, as simulate.ts and vitest do.
-//
-// This module plays a run: the frame loop, and what it logs. The bot's
-// parts live in tools/balance/bot/, and the run's state they share is one
-// BotState (bot/state.ts) made fresh for each run.
-
 import { Array, Function, Option, Record } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -127,9 +117,6 @@ import {
 } from './bot/shopping'
 import { GUN_PLAN, freshState } from './bot/state'
 
-// RUN
-
-// NOTE: adds a fresh log entry and hands it back to fill in.
 const pushed = <A>(log: Array<A>, entry: A): A => {
   log.push(entry)
   return entry
@@ -165,7 +152,6 @@ const blamedKind = (before: Model, after: Model): Kind | undefined => {
   if (burst) {
     return 'Exploder'
   }
-  // NOTE: only a landing on the player, not one anywhere in the house.
   if (
     Array.some(
       after.frameEvents,
@@ -189,7 +175,6 @@ const blamedKind = (before: Model, after: Model): Kind | undefined => {
   )[0]?.kind
 }
 
-// Charges the hearts lost this frame to a kind and returns that kind.
 const blame = (
   before: Model,
   after: Model,
@@ -206,14 +191,8 @@ const blame = (
   return kind
 }
 
-// NOTE: points enough for any calling's rank, and the calling it plays
-// bought, so the bot starts it.
 const BOT_RANK_POINTS = 100_000
 
-// NOTE: a run opens on its intro (src/world/run/arrival.ts): the bot skips
-// it with a key, the slam's frames play out to the first break, and a key
-// puts the dare card that comes out on the slam away
-// (src/features/dare/pocketCard.ts) once it has opened.
 const pastIntro = (model: Model): Model =>
   model.phase._tag === 'Arriving'
     ? pastIntro(
@@ -231,8 +210,6 @@ const pastIntro = (model: Model): Model =>
         )
       : model
 
-// The model of a fresh run on the title, already started and past its
-// intro: Enter opens the lobby, E picks endless there, and Enter starts.
 export const startedRun: {
   (options: BotOptions): (seed: number) => Model
   (seed: number, options: BotOptions): Model
@@ -263,18 +240,13 @@ export const startedRun: {
   )
 })
 
-// How far play goes: to the end of the run, to the end of the wave it
-// starts in, or to the start of a wave's Preparation.
 type Stop =
   | { _tag: 'RunEnd' }
   | { _tag: 'WaveEnd' }
   | { _tag: 'WaveStart'; wave: number }
 
-// Called with the model on the first frame of each wave's Preparation,
-// before the bot shops, which is where a wave snapshot is taken.
 type OnPreparation = (wave: number, model: Model) => void
 
-// NOTE: where each step of the break plan walks the bot.
 const PREP_TARGETS: {
   readonly [Plan in PrepPlan]: (
     model: Model,
@@ -379,8 +351,6 @@ export const play: {
         model = holdFire(model)
         const plan = prepPlan(state, model)
         const escapeTo = escapeTarget(model)
-        // NOTE: with a thing of the dare's list to fetch, or the front door
-        // open, the bot walks there before it starts the wave.
         if (
           plan === 'Go' &&
           (escapeTo === undefined || isBreakOverdue(state))
@@ -422,8 +392,6 @@ export const play: {
             prize === undefined || prize === 'LaserSight'
               ? model
               : holdToReplace(model, weakerGun(model))
-          // NOTE: the hold lets go once a take is done, so the next starts
-          // fresh, as at the fridge.
           model = pressKeys(
             ready,
             focusOf(ready).purchase._tag === 'Done'
@@ -431,8 +399,6 @@ export const play: {
               : new Set([KEYS.interact]),
           )
         } else if (plan === 'Stove' && isAtStove(model)) {
-          // NOTE: the stronger gun in hand, then the interact key held as
-          // at the boards, let go once the cook is done.
           const ready = holdToReplace(model, gunToCook(model))
           model = pressKeys(
             ready,
@@ -446,7 +412,6 @@ export const play: {
           (plan === 'Go' || plan === 'Fetch') &&
           isWorkingForEscape(model)
         ) {
-          // NOTE: a room's find is worked by keeping still in reach.
           model = pressKeys(model, new Set())
         } else if (plan === 'Mend' && isAtMend(model)) {
           model = pressKeys(model, new Set())
@@ -849,8 +814,6 @@ export const play: {
       if (
         Array.some(model.frameEvents, event => event._tag === 'WaveCleared')
       ) {
-        // NOTE: the keys found so far, where the money earned was before
-        // the keys (docs/ESCAPE_PLAN.md, layer 7).
         moneyAfterWave.push(model.keys.found)
       }
     }
@@ -911,8 +874,6 @@ export const runOnce: {
   ),
 )
 
-// SEEDS
-
 export const seedAt: {
   (index: number): (firstSeed: number) => number
   (firstSeed: number, index: number): number
@@ -921,9 +882,6 @@ export const seedAt: {
   (firstSeed: number, index: number): number => firstSeed + index * 7919,
 )
 
-// NOTE: a wave run's roll and the bot's hand both come from this seed, kept
-// apart from the campaign seeds so a replayed wave never repeats the roll
-// its snapshot was taken with.
 export const waveSeedAt: {
   (index: number): (firstSeed: number) => number
   (firstSeed: number, index: number): number

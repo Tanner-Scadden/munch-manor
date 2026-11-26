@@ -16,15 +16,6 @@ import { isPracticeGateHeld } from '../../world/run/lessons'
 import { isKitchenTourOn } from '../../world/run/tutorialRules'
 import { Phase } from '../../world/schema/worldSchema'
 
-// The nudge for a break that waits on the player (owner, 2026-11-01: "nudge
-// players when they need to ready up"). The open break before wave 2, which
-// has no clock, or a crew's break, ends when this player presses READY, so
-// after a quiet moment READY pulses and the HUD says WAITING ON YOU. A solo
-// break with a clock (every later one since 2026-11-10) gets no nudge. It is
-// a cosmetic of the client: the World never reads it.
-
-// NOTE: how long the player has done nothing in the break. In a crew the
-// wait is short when everyone else is READY and longer when they are not.
 export const SOLO_NUDGE_MS = 15_000
 export const CREW_NUDGE_MS = 8_000
 export const LAST_ONE_NUDGE_MS = 2_500
@@ -41,11 +32,6 @@ const isActive = (model: Model): boolean => {
   )
 }
 
-// NOTE: one frame of the idle clock: it counts world time in a break while
-// the player does nothing, and any move, shot, or buy starts it over. Outside a break it rests at 0.
-// It keeps the World's time the quiet began, not a count, so a quiet frame
-// writes nothing and the Model is not copied for it: only the frame the
-// quiet begins or ends does.
 export const advanceBreakIdle: {
   (worldMs: number): (model: Model) => Model
   (model: Model, worldMs: number): Model
@@ -60,7 +46,6 @@ export const advanceBreakIdle: {
   })
 })
 
-// NOTE: how long the player has done nothing in this break, in world time.
 export const breakIdleMsOf = (model: Model): number =>
   Option.match(model.maybeBreakIdleSinceMs, {
     onNone: () => 0,
@@ -71,8 +56,6 @@ const isWaitingOnClock = (model: Model): boolean =>
   model.phase._tag === 'Preparation' &&
   (isCoop(model) || model.phase.clock._tag === 'Waiting')
 
-// NOTE: every other player who is here and standing has pressed READY, so
-// this player is the one the room waits on.
 const isLastOneIn = (model: Model): boolean =>
   isCoop(model) &&
   Array.every(

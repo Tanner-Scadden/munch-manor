@@ -25,20 +25,14 @@ import { focusOf, modifyFocus } from '../../world/party/party'
 import { AIM_ASSIST } from '../aimAssist'
 import { MouseButton, Stick } from '../inputSchema'
 
-// NOTE: the start spot, with open floor east of it to the candelabra.
 const PLAYER = START_SPOT
 const ZOMBIE_DISTANCE_PX = 40
 
-// NOTE: straight right on the screen, as the floor angle under it: the lens
-// turns the stick onto the floor (src/render/lens.ts).
 const RIGHT_ON_SCREEN = (() => {
   const { x, y } = screenToFloorDirection({ x: 1, y: 0 })
   return Math.atan2(y, x)
 })()
 
-// NOTE: the right thumb holds the aim stick straight right, so the raw aim
-// is RIGHT_ON_SCREEN and the trigger is held. The zombie stands this many
-// radians off it.
 const aimingRight = (
   orientation: 'Portrait' | 'Landscape',
   offAim: number,
@@ -84,8 +78,6 @@ const aimAngleOf = (current: Model): number =>
     onSome: ({ x, y }) => Math.atan2(y, x),
   })
 
-// NOTE: the same zombie and the same aim, with a mouse held on the
-// zombie's side of the player instead of a thumb on the stick.
 const mouseAimingRight = (zombieAngle: number): Model => {
   const touching = aimingRight('Landscape', zombieAngle)
   const mousing = UiStruct.evolve(touching, {

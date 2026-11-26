@@ -38,7 +38,6 @@ import {
 import { asVeteran } from '../../../test/veteran'
 import { SHARE_COPIED_MS } from '../endBeat'
 
-// NOTE: `count` frames of 50 ms through the frame Subscription.
 const frames = (count: number): SceneStep =>
   steps(...Array.makeBy(count, () => emitFrame(50)))
 
@@ -221,9 +220,6 @@ describe('the end screens', () => {
       }),
   )
 
-  // NOTE: the newer build arrives as FetchBuild's result, which a Scene
-  // cannot send by itself: the Story sends it and checks the focus, and the
-  // Scene draws the Model it left.
   it.effect('a new version found on Game Over swaps the choices for MENU', () =>
     Effect.gen(function* () {
       const found = Message.CompletedFetchBuild({ build: 'newer-build' })

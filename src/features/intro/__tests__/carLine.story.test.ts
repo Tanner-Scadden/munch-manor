@@ -30,18 +30,12 @@ import { DareThingState } from '../../../world/dare/dareSchema'
 import { FRIEND_LINES } from '../../../world/names'
 import { QUICK_DEATH_WAVE } from '../carLine'
 
-// Your friends in the car (src/features/intro/carLine.ts): how a run ends
-// is noted on the frame it ends, and the next intro opens with a line from
-// the friends for that ending, never the one they said last.
-
 const inWave = (wave: number): Model =>
   UiStruct.evolve(readyAfterRead, {
     mode: () => RunMode.Campaign(),
     phase: () => Phase.Wave({ wave, elapsedMs: 4000, spawns: [] }),
   })
 
-// NOTE: wave 10, the list done, the front door open, and the player on
-// its sill: the next frame walks out.
 const walkingOut: Model = escaping(
   withDareThings(
     UiStruct.evolve(readyAfterRead, {
@@ -69,7 +63,6 @@ const isLineFor = (ending: RunEnding, model: Model): boolean =>
     Array.contains(FRIEND_LINES[ending], line),
   )
 
-// NOTE: RETRY from an end screen, `model` with its run ended so.
 const retriedAfter = (model: Model) =>
   modelAfter(model, send(Message.ClickedRetryButton()))
 

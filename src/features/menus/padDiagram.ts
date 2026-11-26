@@ -8,15 +8,6 @@ import { pixelIconUrl } from '../../art/icons'
 import { iconView } from '../../ui/menuParts'
 import { KNIFE_NAME } from '../../world/names'
 
-// THE CONTROLLER DIAGRAM
-
-// NOTE: How to play with a controller in hand shows the pad itself, each
-// button a run uses named beside it, the left side's on the left and the
-// right side's on the right (owner, 2026-11-12: "we should have a diagram
-// with which button does which"). The buttons are the ones
-// src/input/keyActions.ts and src/input/gamepad.ts read; the face buttons
-// wear the standard layout's colors, so a chip matches its button on the pad.
-
 const PAD_PIXELS: ReadonlyArray<string> = [
   '....OTTTTTTTTO............OTTTTTTTTO....',
   '....OTTTTTTTTO............OTTTTTTTTO....',
@@ -76,7 +67,6 @@ const button = (
   face: 'Plain' | FaceColor = 'Plain',
 ): PadButton => ({ glyph, action, face })
 
-// NOTE: top to bottom as they sit on the pad.
 const LEFT_BUTTONS: Array.NonEmptyReadonlyArray<PadButton> = [
   button('LT', 'trap'),
   button('LB', 'next trap'),

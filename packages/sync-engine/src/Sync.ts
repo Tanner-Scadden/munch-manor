@@ -23,8 +23,6 @@ import {
 import { Receipt, type Replica } from './Replica'
 import { mutationVersions } from './Scope'
 
-// TRANSPORT
-
 export class TransportError extends Schema.TaggedError<
   TransportError,
   { readonly brand: unique symbol }
@@ -32,9 +30,6 @@ export class TransportError extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-// NOTE: one open connection to a scope's authority. A WebSocket is one; the
-// HTTP fallback emulates one by posting batches. `messages` ends or fails
-// when the connection is gone.
 export interface Channel {
   readonly send: (message: ClientMessage) => Effect.Effect<void, TransportError>
   readonly messages: Stream.Stream<ServerMessage, TransportError>
@@ -52,8 +47,6 @@ export interface Credentials {
   readonly clientId: string
 }
 
-// STATUS
-
 export const SyncStatus = Schema.TaggedUnion({
   Following: {},
   Connecting: { attempt: Schema.Finite },
@@ -62,9 +55,6 @@ export const SyncStatus = Schema.TaggedUnion({
 })
 export type SyncStatus = typeof SyncStatus.Type
 
-// OPTIONS
-
-/** @stability unstable */
 export interface SyncOptions {
   readonly replica: Replica
   readonly transports: Array.NonEmptyReadonlyArray<Transport>
@@ -85,8 +75,6 @@ export interface Sync {
   readonly reconnect: Effect.Effect<void>
 }
 
-// NOTE: half a second, doubling, never more than 15 seconds apart, with
-// jitter so a fleet of clients does not reconnect in step after an outage.
 export const DEFAULT_BACKOFF: Schedule.Schedule<unknown> = Schedule.jittered(
   Schedule.min([
     Schedule.exponential('500 millis'),
@@ -110,17 +98,6 @@ class Dropped extends Schema.TaggedError<
 const fromSql = (error: SqlError.SqlError) =>
   TransportError.make({ reason: `Local database: ${error.message}` })
 
-// SYNC
-
-// NOTE: the client's side of the connection, in the leader tab only. A
-// follower tab writes its mutations through the leader's database, and the
-// leader's loop sees them in `localChanges` and pushes them. Each session:
-// credentials, open a channel, Hello with the confirmed seq, then apply
-// whatever comes back while pushing pending mutations. A session that got
-// online and then dropped reconnects at once; one that never got online
-// waits out the backoff. After `fallbackAfter` failures in a row on the
-// first transport (the WebSocket) the next one (HTTP) is tried.
-/** @stability unstable */
 export const startSync = (
   options: SyncOptions,
 ): Effect.Effect<Sync, never, Scope.Scope> =>
@@ -151,10 +128,6 @@ export const startSync = (
     ): Effect.Effect<void, TransportError | Dropped> =>
       Effect.scoped(
         Effect.gen(function* () {
-          // NOTE: subscribed before the scope is read. A device linked while
-          // this session connects switches its scope and kicks; a kick sent
-          // before the watch below started would be lost, and the session
-          // would stay on the old scope until the next reconnect.
           const kicked = yield* PubSub.subscribe(kicks)
           const credentials = yield* options.credentials
           const scope = yield* Effect.mapError(replica.scope, fromSql)
@@ -267,8 +240,6 @@ export const startSync = (
             Effect.repeat(Schedule.spaced(Duration.millis(silenceMs / 4))),
           )
 
-          // NOTE: checks once at the start too, for a switch another tab
-          // made before the watch subscribed to the database's changes.
           const scopeWatch = pipe(
             Stream.mergeAll(
               [

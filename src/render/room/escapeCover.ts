@@ -15,13 +15,6 @@ import {
   INK_COLOR,
 } from './roomPalette'
 
-// NOTE: the cover the escape's rooms add (docs/ROOM_DRAFTS.md), drawn the
-// way src/render/room/roomCover.ts draws the parlour's: one drawing for each
-// block of a symbol on the map. They are keyed by name, not by map symbol:
-// CoverKind and COVER_SYMBOLS in src/world/level/arena.ts are the level
-// engine's, which the room layers change, so the layer that wires these
-// rooms into levels maps its symbols to these names (and makes them solid).
-
 export type EscapeCoverKind =
   | 'PartyTable'
   | 'Hutch'
@@ -33,8 +26,6 @@ export type EscapeCoverKind =
   | 'Globe'
   | 'WineRack'
   | 'Barrels'
-
-// SHARED COVER
 
 const CASE_WOOD_COLOR = '#4a2a18'
 const CASE_WOOD_LIGHT_COLOR = '#6b4423'
@@ -48,8 +39,6 @@ const CRATE_DARK_COLOR = '#5c3a1a'
 const STENCIL_COLOR = '#3a2412'
 const IRON_COLOR = '#4a4a56'
 
-// NOTE: a display case: a glass box on a wooden stand, an empty velvet
-// cushion inside waiting for the proof that goes in it, a brass plaque.
 const displayCaseShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const middle = x + Math.floor(width / 2)
   return [
@@ -72,8 +61,6 @@ const displayCaseShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the trap crate: a slatted crate with a bear trap stenciled on it,
-// a red gnome hat poking out under the lid, and a spring.
 const trapCrateShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const middle = x + Math.floor(width / 2)
   return [
@@ -118,7 +105,6 @@ export const ESCAPE_COVER_DRAWINGS: Readonly<
   Barrels: barrelsShapes,
 }
 
-// NOTE: whether a level engine cover kind is one drawn here.
 const ESCAPE_COVER_KINDS: ReadonlyArray<string> = Record.keys(
   ESCAPE_COVER_DRAWINGS,
 )
@@ -131,8 +117,6 @@ const byFoot = Order.mapInput(
   ({ box }: Readonly<{ box: Box }>) => box.y + box.height,
 )
 
-// NOTE: every block of each symbol a map gives one of these kinds, with its
-// shadow, the nearer blocks (lower on the map) over the farther ones.
 export const escapeCoverShapes: {
   (
     symbols: Readonly<Record<string, EscapeCoverKind>>,

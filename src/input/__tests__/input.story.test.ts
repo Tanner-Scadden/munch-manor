@@ -37,7 +37,6 @@ const RIGHT_THUMB = 12
 const STRAY_POINTER = 99
 const MOUSE_POINTER = 1
 
-// NOTE: up on the screen, as the floor way under it.
 const UP_ON_SCREEN = screenToFloorDirection({ x: 0, y: -1 })
 
 describe('touch sticks', () => {
@@ -232,8 +231,6 @@ describe('touch sticks', () => {
 })
 
 describe('mouse', () => {
-  // NOTE: a release with no step since the press keeps the trigger Held
-  // until one sees it (FirePress), then it lets go.
   it.effect(
     'aims at the pointer through the letterboxed canvas and fires while held',
     () => {
@@ -241,9 +238,6 @@ describe('mouse', () => {
         maybeSurface: () =>
           Option.some({ left: 0, top: 0, width: 640, height: 480 }),
       })
-      // NOTE: the canvas is drawn twice as big, 60 px below the top. The
-      // dining room is bigger than a screen, so the camera follows the
-      // player, and the player's row on the screen is read off it.
       const camera = cameraOf(letterboxedModel)
       const player = focusOf(letterboxedModel).player
       const playerView = worldToView(camera, player)

@@ -1,9 +1,3 @@
-// The game's drawing vocabulary as plain data, owned by the game: rects,
-// circles, paths, images, and groups, one for one with the canvas shapes
-// they replaced. The art modules build them, and Pixi alone draws
-// them (the world's planes in iso/painter.ts, the overlay in
-// iso/overlayScene.ts). Nothing here touches a 2D canvas.
-
 type Point = Readonly<{ x: number; y: number }>
 
 export type MoveTo = Readonly<{ _tag: 'MoveTo'; x: number; y: number }>
@@ -74,7 +68,6 @@ export type Group = Readonly<{
 
 export type Shape = Rect | Circle | Path | Image | Group
 
-// NOTE: each constructor adds its tag to the fields, one spread a shape.
 export const MoveTo = (fields: Omit<MoveTo, '_tag'>): MoveTo => ({
   _tag: 'MoveTo',
   ...fields,

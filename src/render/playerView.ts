@@ -86,8 +86,6 @@ import {
   squashPulse,
 } from './drawing'
 
-// PLAYER
-
 export const maybeMsSinceHurt = (player: Player): Option.Option<number> =>
   Invulnerability.match(player.invulnerability, {
     Vulnerable: () => Option.none(),
@@ -233,21 +231,16 @@ const muzzleFlashShapes = (
 
 export const GUN_HOLD_PX = 2
 
-// NOTE: the pixel a gun is held by, ahead of the body: where its sprite's
-// pivot is drawn, and where the muzzle flash reads the barrel's tip from.
 const gunHoldOf = (player: Player, body: Vector): Vector => ({
   x: Math.round(body.x + player.facing.x * GUN_HOLD_PX),
   y: Math.round(body.y + player.facing.y * GUN_HOLD_PX),
 })
 
-// NOTE: the Clang Pan sweeps across the front as it swings: from one side
-// to the other over the swing, then back at rest.
 const SWING_TURN = 1.3
 
 const swingTurn = (weapon: WeaponKind, recoil: number): number =>
   weapon === 'Pan' && recoil > 0 ? (recoil - 0.5) * 2 * SWING_TURN : 0
 
-// NOTE: the Cooker's lid rattles as the pressure builds, harder near full.
 const RATTLE_MS = 50
 
 const lidRattlePx = (player: Player, elapsedMs: number): number => {
@@ -269,8 +262,6 @@ type PlayerPose = Readonly<{
   bodyY: number
 }>
 
-// NOTE: the Pan drawn from the melee slot is held and swung as a gun in
-// hand is; with the knife out the last gun's pose stays.
 const playerPose = (player: Player): PlayerPose => {
   const { kind: weapon, tier } = Option.getOrElse(maybeWieldedPan(player), () =>
     heldGun(player.arsenal),
@@ -287,10 +278,6 @@ const playerPose = (player: Player): PlayerPose => {
   }
 }
 
-// NOTE: the player on their feet: at work or in a payoff, their action
-// (src/render/actionView.ts) in place of the body and gun; otherwise the
-// standing frames and the gun in hand, with a reload drawn on the gun and
-// a swapped gun tossed and caught.
 export const playerShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   const { player, seat } = focusOf(model)
   const pose = poseOf(model, model.cosmetics.actionWatch, seat.slot)
@@ -349,7 +336,6 @@ const standingShapes = (
     Option.filter(reloadShareOf(player), () => !isWieldingKnife(player)),
     reloadMotionOf,
   )
-  // NOTE: a tilt turns the muzzle toward the floor on either side.
   const tilt =
     Option.match(reload, { onNone: () => 0, onSome: motion => motion.tilt }) *
     (facing === 'Left' ? -1 : 1)
@@ -395,15 +381,8 @@ const standingShapes = (
     : [body, gun, ...magazine]
 }
 
-// KNOCKED OVER
-
-// NOTE: how a co-op player who is out of the fight lies on the floor:
-// Downed, crawling on (decided row 4), or BledOut, a still body until the
-// break brings them back.
 export type Lying = 'Downed' | 'BledOut'
 
-// NOTE: the body's middle over its feet, and how far it drops once turned
-// a quarter, so the lying body rests on the floor where the player stood.
 const BODY_MIDDLE_PX = 6
 const LYING_DROP_PX = BODY_MIDDLE_PX - PLAYER_WIDTH / 2
 const CRAWL_FRAME_MS = PLAYER_WALK_FRAME_MS * 2
@@ -416,10 +395,6 @@ const lyingFrames = (model: Model, lying: Lying): SpriteSet => {
     : frameAt(sprites.idle, 0)
 }
 
-// NOTE: the player's own sprites turned a quarter about the body's middle,
-// head toward where they face, with no gun in hand: the same images, so
-// nothing new is baked. Crawling plays the walk slower; a bled-out body
-// lies still and faded.
 export const lyingShapes: {
   (lying: Lying): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, lying: Lying): ReadonlyArray<Draw.Shape>
@@ -455,8 +430,6 @@ export const lyingShapes: {
   },
 )
 
-// NOTE: a downed body gives under each CPR push (src/render/actionPose.ts):
-// a pixel down on the push, on the reviver's own beat.
 const compressionPx = (model: Model, lying: Lying): number =>
   lying === 'Downed' &&
   Option.exists(
@@ -470,9 +443,6 @@ const compressionPx = (model: Model, lying: Lying): number =>
     ? 1
     : 0
 
-// NOTE: a player who is down swings their melee slot (swingWhileDown in
-// src/world/step/simulation.ts): the knife's slash, or the Clang Pan over the body for
-// as long as its swing lasts. Nothing shows between swings.
 const downSwingShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   const { player } = focusOf(model)
   return Option.match(maybePanOf(player), {
@@ -498,12 +468,6 @@ const downSwingShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   })
 }
 
-// NOTE: the knife in hand rests where the gun would; mid-slash the thrust
-// blade (knifeSlashShapes) takes its place.
-// NOTE: the skin a gun wears in this seat's hands: its mastery skin once
-// its kills have opened one (src/domain/mastery.ts), else the look's. A
-// teammate's or a bot's seat Model holds no mastery, so theirs wear their
-// look's skin.
 const drawnSkinOf = (model: Model, kind: WeaponKind): DrawnGunSkin =>
   Option.getOrElse(
     masterySkinIn(model.mastery, kind),
@@ -524,11 +488,6 @@ const heldSprite = (
   return Option.isSome(maybeSlashShare(player)) ? [] : knifeSprite(angle, skin)
 }
 
-// THE KNIFE
-
-// NOTE: a stab thrusts the blade out past the body and pulls it back, and a
-// thin white crescent sweeps across the arc it reaches, fading as it goes.
-// They change every frame of the slash, so they stay plain pixels.
 const BLADE_COLOR = '#d9dde6'
 const BLADE_TIP_COLOR = '#ffffff'
 const HANDLE_COLOR = '#7a4a2a'
@@ -612,15 +571,8 @@ const knifeSlashShapes = (player: Player): ReadonlyArray<Draw.Shape> =>
     ],
   })
 
-// NOTE: how far past the barrel's tip pixel the flash's middle pixel sits,
-// along the way the gun is drawn turned.
 const FLASH_PAST_TIP_PX = 2
 
-// NOTE: the pixel a muzzle flash centers on for a gun held by pixel `hold`
-// and aimed at `angle`: just past the tip of the gun as its art draws it at
-// that turn (`gunTipOf`), whatever the gun's length. Bullets leave from
-// `muzzleReach` (src/world/step/firing.ts), a rule of play the art never
-// moves.
 export const flashPointOf = ({
   hold,
   kind,
@@ -634,7 +586,6 @@ export const flashPointOf = ({
   }
 }
 
-// NOTE: the pixel a player's muzzle flash centers on, on their own plane.
 export const muzzlePointOf = (player: Player): Vector => {
   const { weapon, bodyX, bodyY } = playerPose(player)
   return flashPointOf({
@@ -653,16 +604,12 @@ const playerFlashShapes = (player: Player): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the flash and the slash stand on the player's own plane, as the gun
-// does, so in 3D they sit on the gun's tip at any angle.
 export const playerFlashDrawable = (player: Player): Drawable =>
   glowOn({
     bodyFootY: playerFootY(player),
     shapes: playerFlashShapes(player),
   })
 
-// NOTE: how bright the muzzle's flash is now, 1 the moment a shot leaves and
-// 0 once the flash the 2D art draws is gone, for the light it throws.
 export const muzzleFlashLevel = (player: Player): number => {
   const { stats } = playerPose(player)
   const msSinceShot = stats.recoilMs - player.recoilRemainingMs
@@ -677,7 +624,6 @@ export const playerFootY = (player: Player): number =>
 export const playerShadow = (player: Player): Draw.Shape =>
   footShadow(player, PLAYER_FOOT_OFFSET, PLAYER_SHADOW_WIDTH, SHADOW_COLOR)
 
-// NOTE: `rise` lifts the bar over a hat (hatRiseOf in src/art/sprites/hatArt.ts).
 export const reloadBarShapes: {
   (rise?: number): (player: Player) => ReadonlyArray<Draw.Shape>
   (player: Player, rise?: number): ReadonlyArray<Draw.Shape>

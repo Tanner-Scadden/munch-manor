@@ -42,8 +42,6 @@ import type { Decal, Particle } from '../renderSchema'
 import { zombieHealthBarShapes } from '../zombieView'
 
 const FRAME_MS = FIXED_STEP_MS
-// NOTE: a zombie well east of the player, on the open row north of the
-// start spot (row 12, clear wall to wall).
 const FAR_X = START_LEVEL.start.x + 60
 const ROW_Y = START_LEVEL.start.y - 20
 

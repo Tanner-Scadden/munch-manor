@@ -7,10 +7,6 @@ import { jsonOf } from '../../test/testing'
 import { type PlayerSave, decodeSave, restoreSave, saveOf } from '../save'
 import { learnedSave } from './save.fixture'
 
-// The Bones bonuses and the best runs in the save (version 21): a version
-// 20 save loads with no bonus claimed and no best run, both round trip, and
-// a synced save keeps the bonuses this device already claimed.
-
 const claimed: PlayerSave = {
   ...learnedSave,
   bonuses: {

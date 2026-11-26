@@ -23,8 +23,6 @@ import { closeButtonView } from '../../ui/cornerButtons'
 import type { DialogParts } from '../../ui/dialog'
 import { isUpdateGiftShown } from './home'
 
-// ART
-
 const layerView = (
   className: string,
   icon: string,
@@ -32,8 +30,6 @@ const layerView = (
 ): ApplicationHtml =>
   h.span.class(className).attr('aria-hidden', 'true').style(pixelArtStyle(icon))
 
-// NOTE: the Groaner hides in the box, under the lid, until the unwrap pops
-// it out. Two sparkles twinkle around it while it waits.
 const giftArtView = (h: ApplicationViewBuilder): ApplicationHtml =>
   h.span
     .class('gift-art')
@@ -46,13 +42,8 @@ const giftArtView = (h: ApplicationViewBuilder): ApplicationHtml =>
       layerView('gift-lid', GIFT_LID_ICON, h),
     )
 
-// GIFT
-
 const UPDATE_GIFT_LABEL = 'Update ready: tap to get it'
 
-// NOTE: a wrapped present under the gear on the home menu, with a little
-// paper NEW! tag on a string tied to its bow. It rattles now and then, the tag
-// swinging with it; a tap unwraps it and reloads onto the new build.
 export const updateGiftView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml
@@ -77,8 +68,6 @@ export const updateGiftView: {
           )
       : null,
 )
-
-// GREETING
 
 const CONFETTI_PIECES = 14
 const GREETING_BULLETS = 3
@@ -161,7 +150,6 @@ const greetingPanelView = (
   ),
 ]
 
-// NOTE: the greeting's insides, for the root's Dialog (src/app/dialogs.ts).
 export const updateGreetingInsidesView: {
   (
     h: ApplicationViewBuilder,

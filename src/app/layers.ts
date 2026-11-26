@@ -68,8 +68,6 @@ import { isRoundActive } from '../world/waves/waves'
 import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
 import { type Model, Phase, defaultAppearance } from './model'
 
-// OVERLAY
-
 const calloutLayerShapes = (
   model: Model,
   camera: Camera,
@@ -84,8 +82,6 @@ const calloutLayerShapes = (
       ]
     : []
 
-// NOTE: one gold arrow at a time: the tours' (and the padlock's) first,
-// else the dare's.
 const pointerShapes = (
   model: Model,
   screen: Screen,
@@ -128,8 +124,6 @@ const roundOverlayShapes = (
   ...inLandscapeFrame(screen, caseCardShapes(model)),
 ]
 
-// NOTE: the intro covers the whole screen while the crew arrives, the HUD
-// too (src/features/intro/introView.ts).
 const overlayLayerShapes = (
   model: Model,
   screen: Screen,
@@ -148,19 +142,8 @@ export const sceneShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// OVERLAY LAYER
-
 type LastShapes = { current: ReadonlyArray<Draw.Shape> }
 
-// NOTE: h.lazy compares its arguments by reference, and the HUD and screen
-// overlays are rebuilt as new arrays every frame. This hands back the
-// previous array while the new one is structurally equal, so the overlay's
-// node is kept, its picture is the one written last, and the overlay
-// repaints only on frames where what it shows has changed.
-// NOTE: shapes are plain data, so equal shapes have the same keys and equal
-// values. This walks both trees and stops at the first difference; it never
-// hashes, which Equal.equals does to every node of both trees every frame.
-// A sprite shared by reference is equal at once.
 const isSameData = (left: unknown, right: unknown): boolean => {
   if (left === right) {
     return true
@@ -196,8 +179,6 @@ const keepWhileEqual =
 
 const stableOverlayShapes = keepWhileEqual({ current: [] })
 
-// NOTE: the element itself stands over the stage, the canvas it holds
-// filling it (.overlay-layer-canvas in styles.css).
 const OVERLAY_BOX = {
   position: 'absolute',
   inset: '0',
@@ -205,8 +186,6 @@ const OVERLAY_BOX = {
   pointerEvents: 'none',
 } as const
 
-// NOTE: the shapes first, so h.lazy keys the call by them: a new picture
-// object only when the shapes, or the screen's size, change.
 const overlayLayerView = (
   h: ApplicationViewBuilder,
   shapes: ReadonlyArray<Draw.Shape>,
@@ -220,19 +199,6 @@ const overlayLayerView = (
     .style(OVERLAY_BOX)
     .picture({ width, height, shapes })
 
-// THE WORLD
-
-// NOTE: an Image draws nothing until its source has loaded, so a sprite
-// shown for the first time mid-fight would be missing for a frame. The
-// renderer starts loading every sprite built as the game loaded, the classic
-// look's frames, and every room image of the house the run stands in (every
-// set of its exits, so opening a room never shows a bare floor). A
-// production build's atlas names the files holding a house's room images,
-// so the list is those, with no room art built: building every room image
-// of every set of exits froze a phone's first frame for seconds. With no
-// atlas (a dev server) they are built. The list is made once per house, and read at the
-// first render rather than when this module loads, so it holds the sprites
-// of modules loaded after it.
 const preloads = new WeakMap<LevelSpec, ReadonlyArray<string>>()
 
 const preloadSourcesOf = (spec: LevelSpec): ReadonlyArray<string> => {
@@ -276,18 +242,12 @@ const worldView = (
     .key('world-view')
     .class('world-view')
     .attr('aria-hidden', 'true')
-    // NOTE: the world pixels it shows, for the audits that measure the zoom.
     .attr('data-view-width', `${camera.width}`)
     .attr('data-view-height', `${camera.height}`)
     .frame(isoFrameOf(model, camera))
 
-// LENS
-
 const NO_LENS: Readonly<Record<string, string>> = {}
 
-// NOTE: the end of a run's camera punch and color drain (src/features/end/endBeat.ts),
-// as a CSS transform and filter on the world alone, so the card and the HUD
-// on the overlay stay sharp and the frame draws nothing more.
 const lensStyle = (
   model: Model,
   camera: Camera,
@@ -301,13 +261,8 @@ const lensStyle = (
     }),
   })
 
-// STAGE
-
 const STAGE_BACKDROP = '#140c10'
 
-// NOTE: the stage's box on the measured surface (src/render/screen.ts), on
-// whole device pixels where that keeps the art crisp; before the surface is
-// measured, centered at the plain fit.
 const stageBoxStyle = (
   model: Model,
   screen: Screen,

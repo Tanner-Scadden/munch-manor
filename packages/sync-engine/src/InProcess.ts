@@ -33,16 +33,6 @@ import {
 } from './Server'
 import { type Channel, type Transport, TransportError } from './Sync'
 
-// NOTE: an in-process authority and a fake network, for tests. The host
-// keeps one ScopeServer per scope, each over its own database as a Durable
-// Object would, handles one message at a time per scope, and fans deltas
-// out to every joined connection. Each client gets its own Network, which
-// can go offline and, from a seed, drop (closing the connection, as a lost
-// socket does), duplicate, and delay messages. Delays reorder what the
-// server sends; what a client sends keeps its order, as a WebSocket does.
-
-// RANDOM
-
 const mulberry32 = (seed: number): number => {
   const t = (seed + 0x6d2b79f5) | 0
   const a = Math.imul(t ^ (t >>> 15), t | 1)
@@ -55,9 +45,6 @@ const makeRandom = (seed: number) =>
     Ref.modify(state, current => [mulberry32(current), current + 1]),
   )
 
-// HOST
-
-/** @stability unstable */
 export interface HostOptions {
   readonly definitions: ReadonlyArray<ScopeDefinition>
   readonly openDatabase: (
@@ -80,7 +67,6 @@ interface Scoped {
   readonly lock: Semaphore.Semaphore
 }
 
-/** @stability unstable */
 export interface Host {
   readonly server: (
     scope: string,
@@ -107,17 +93,11 @@ export interface Faults {
   readonly duplicated: number
 }
 
-/** @stability unstable */
 export const makeHost = (
   options: HostOptions,
 ): Effect.Effect<Host, never, Scope.Scope> =>
   Effect.gen(function* () {
     const scope_1 = yield* Effect.scope
-    // NOTE: the host's own child scope, made now, so what it opens later
-    // (each scope's database, opened on its first message) closes when the
-    // host does: after every client that connected since. Opened straight
-    // into the caller's scope, a database closed before the clients using it,
-    // and a client mid-message at the end waited out its request timeout.
     const outer = yield* Scope.fork(scope_1)
     const servers = yield* Ref.make<ReadonlyMap<string, Scoped>>(new Map())
     const creating = yield* Semaphore.make(1)

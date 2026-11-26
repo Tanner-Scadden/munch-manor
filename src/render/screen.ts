@@ -8,8 +8,6 @@ import type { Vector } from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
 import type * as Draw from './draw'
 
-// LAYOUT
-
 export type Layout = 'Landscape' | 'Portrait'
 
 export type Box = Readonly<{
@@ -35,11 +33,6 @@ export const LANDSCAPE_SCREEN: Screen = {
   zoom: 1,
 }
 
-// NOTE: a phone on its side draws the world 4/3 bigger than a desktop, so a
-// zombie reads at a glance while a thumb steers (owner, 2026-10-30). The
-// window shows 240 by 135 of the room, whole pixels, stretched over the same
-// 320 by 180 screen, so the HUD on it keeps its size. A keyboard and mouse
-// keep the whole 320 by 180 in any window.
 const LANDSCAPE_TOUCH_ZOOM = 4 / 3
 
 export const LANDSCAPE_TOUCH_SCREEN: Screen = {
@@ -47,15 +40,6 @@ export const LANDSCAPE_TOUCH_SCREEN: Screen = {
   zoom: LANDSCAPE_TOUCH_ZOOM,
 }
 
-// NOTE: a phone on its side wider than 16:9 (most are about 19.5:9) widens
-// the screen to its shape rather than leaving bars at the sides (owner,
-// 2026-11-11). It keeps 180 rows and the 4/3 zoom, so everything stays the
-// size it was and the world window shows more of the room's columns. The
-// width is the surface's aspect times 180, rounded down to a multiple of 4,
-// so the window (three quarters of it) is a whole number of the room's
-// columns and the camera and zoom stay exact. It stops at 388, about 21:9;
-// a wider surface keeps thin bars. Portrait mirrors this with its height
-// (`portraitHeightFor`). A keyboard and mouse keep 320 by 180 in any window.
 const WIDE_STEP_PX = 4
 export const LANDSCAPE_MAX_WIDTH = 388
 
@@ -76,11 +60,6 @@ export const landscapeTouchScreen = (width: number): Screen => ({
   world: { ...LANDSCAPE_TOUCH_SCREEN.world, width },
 })
 
-// NOTE: a portrait screen is as many arena pixels wide as a landscape phone
-// is tall, so the HUD, the banners, and the cards keep the scale they have
-// when the phone is turned. Its height follows the phone's shape, the HUD
-// band sits on top, the world window under it, and the rest below is the
-// thumb area.
 export const PORTRAIT_WIDTH = 180
 export const PORTRAIT_HUD_PX = 44
 const PORTRAIT_MIN_THUMB_PX = 76
@@ -90,18 +69,6 @@ const PORTRAIT_MIN_HEIGHT =
 const PORTRAIT_MAX_HEIGHT = 440
 const PORTRAIT_DEFAULT_HEIGHT = 390
 
-// NOTE: the world window shows the room up to 160 rows high, across
-// 180 * 160 / height of its width, and never zooms out past a phone on its
-// side (4/3), so a short window shows fewer rows instead. Changed on
-// 2026-10-31 at the owner's request, from 128 rows: the upright view zoomed
-// in so far (15/8) that the balance bot won about half as often upright as
-// on a desktop, and a Groaner at 3/2 still reads bigger than on the same
-// phone turned sideways. These are the window heights, shortest first. Each
-// one shows a whole number of the room's columns and rows (135 by 135, 135
-// by 144, and 120 by 160), so the window, the camera, and the zoom stay
-// exact. A 256 pixel window had 128 rows; at 160 rows it would show half
-// columns, so the tallest phones keep the 240 pixel one and a taller thumb
-// area.
 export const PORTRAIT_VIEW_ROWS = 160
 
 const PORTRAIT_WINDOW_HEIGHTS: Array.NonEmptyReadonlyArray<number> = [
@@ -114,11 +81,6 @@ const fitsThumbs = (screenHeight: number, windowHeight: number): boolean =>
   screenHeight - PORTRAIT_HUD_PX - windowHeight >= PORTRAIT_MIN_THUMB_PX &&
   windowHeight <= screenHeight * PORTRAIT_MAX_WORLD_SHARE
 
-// NOTE: the tallest window that still leaves a thumb area at least 76
-// pixels tall and keeps the world window under two thirds of the screen. A
-// 390 or 400 pixel screen (390x844, 430x932, 360x800) gets a 240 pixel
-// window, which shows 120 by 160 of the room at 3/2, and a 320 pixel one
-// (375x667) a 192 pixel window, 135 by 144 at 4/3.
 const portraitWindowFor = (screenHeight: number): number =>
   Array.reduce(
     PORTRAIT_WINDOW_HEIGHTS,
@@ -179,14 +141,6 @@ const screenBeforeSnapOf = (model: Model): Screen => {
   }
 }
 
-// NOTE: every game pixel the same whole number of device pixels (owner,
-// 2026-11-14, from a pixel-perfect settings guide): a zoom of 4/3 on a stage
-// of 4 device pixels per screen pixel would draw game pixels 5 and 6 device
-// pixels wide by turns. So the zoom becomes the nearest whole number of
-// device pixels per game pixel over the stage's (8/6 stays 4/3; 4 per
-// screen pixel at 4/3 becomes 5/4), and the window shows a little more or
-// less of the room. Without the device's pixel ratio (tests, the tools) the
-// zoom stays as laid out.
 const SNAP_TOLERANCE = 1e-6
 
 const onWholeGamePixels = (
@@ -212,20 +166,11 @@ export const screenOf = (model: Model): Screen =>
 export const thumbAreaTop = (screen: Screen): number =>
   screen.world.y + screen.world.height
 
-// NOTE: banners, cards, and the end screens are laid out on the 320 by 180
-// landscape screen. On a wider screen or in portrait they are drawn centered
-// on the world window instead, which keeps anything narrower than the window
-// whole.
 export const landscapeFrameOffset = (screen: Screen): Vector => ({
   x: screen.world.x + Math.round((screen.world.width - VIEW_WIDTH) / 2),
   y: screen.world.y + Math.round((screen.world.height - VIEW_HEIGHT) / 2),
 })
 
-// NOTE: the part of the 320 by 180 frame's columns art that runs edge to
-// edge must cover (confetti, the parade, the new zombie card's band): the
-// frame itself and, on a wider screen, the screen's columns beside it, in
-// the frame's own pixels. In portrait the screen is narrower than the frame,
-// so this is the frame.
 export type FrameSpan = Readonly<{ left: number; width: number }>
 
 export const frameSpanOf = (screen: Screen): FrameSpan => {
@@ -254,8 +199,6 @@ export const inLandscapeFrame: {
       : [group({ translate: landscapeFrameOffset(screen), shapes })],
 )
 
-// SCREEN TO VIEW
-
 type ScreenSize = Readonly<{ width: number; height: number }>
 
 export const LANDSCAPE_SIZE: ScreenSize = {
@@ -263,20 +206,6 @@ export const LANDSCAPE_SIZE: ScreenSize = {
   height: VIEW_HEIGHT,
 }
 
-// NOTE: a pixel-art canvas stretched by a fraction of a device pixel draws
-// its lines 4 or 5 device pixels wide by turns (a 390 wide phone at 3x fits
-// one screen pixel in 6.5). So the stage shrinks to the largest whole number
-// of device pixels per screen pixel, and a dark border takes the rest, in
-// any window (owner, 2026-11-14: a small desktop window at 1x goes from 1.9
-// down to 1 rather than drawing uneven pixels). Only a surface too small for
-// one device pixel per screen pixel keeps the fractional fit.
-// NOTE: where the stage sits on the surface, in CSS pixels: its scale (CSS
-// pixels per screen pixel) and its left and top edges. When the surface says
-// its devicePixelRatio, the scale is snapped as above and the centered edges
-// are rounded to whole device pixels, so the canvas's pixels meet the
-// device's (a 2.625x phone would center it on a half pixel). The root view
-// places the stage here and hands the scale to CSS as `--pixel`, so the
-// canvases, the HTML over them, and the pointer agree.
 export type StagePlacement = Readonly<{
   scale: number
   left: number
@@ -298,7 +227,6 @@ export const stagePlacement: {
     )
     const ratio = surface.pixelRatio ?? 0
     const devicePixels = fit * ratio
-    // NOTE: the small nudge keeps an exact fit (4 at 1x) from flooring to 3.
     const whole = Math.floor(devicePixels + 1e-6)
     const isSnapped = whole >= 1
     const scale = isSnapped ? whole / ratio : fit
@@ -323,7 +251,6 @@ export const clientToView: {
     screen?: ScreenSize,
   ): Option.Option<Vector>
 } = Function.dual(
-  // NOTE: data-first starts with the surface; data-last with the client point.
   (args: IArguments): boolean =>
     typeof args[0] === 'object' && 'width' in args[0],
   (

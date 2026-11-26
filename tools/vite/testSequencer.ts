@@ -1,21 +1,8 @@
-// How vitest splits the test files into CI's shards, and the order a run
-// starts them in. Vitest's own shards split by file count, and its own order
-// runs each project's files apart and an unknown file by its size, so one
-// shard drew the 77 s pacing replay and started it last. Here a shard takes
-// files by their time, and a run starts its slowest file first.
-
 import { Array, Option, Order, Record, String } from 'effect'
 import { BaseSequencer, type TestSpecification } from 'vitest/node'
 
 import { shuffle } from '../../src/shared/prng.ts'
 
-// NOTE: each file's time in milliseconds, from a CI run's per-file times
-// (run 43182183425: each test job's log, the `✓ <project> <file> (n tests)
-// <time>` lines), for files of 2 s or more. They are times on a busy runner,
-// beside the shard's other files, which is how a shard runs them. A file
-// not listed counts as DEFAULT_FILE_MS. Refresh it when a shard runs much
-// longer than the others: an old time only makes the shards uneven, never
-// skips a file.
 const FILE_MS: Readonly<Record<string, number>> = {
   'src/world/level/__tests__/pathing.flat.narrow.sim.test.ts': 59_000,
   'src/world/level/__tests__/pathing.flat.wide.sim.test.ts': 59_000,
@@ -28,10 +15,10 @@ const FILE_MS: Readonly<Record<string, number>> = {
   'tools/determinism/determinism.sim.test.ts': 11_300,
   'src/features/home/__tests__/menu.scene.test.ts': 8_400,
   'src/features/dare/__tests__/pocketCard.scene.test.ts': 7_300,
-  'src/platform/__tests__/store.test.ts': 7_300,
+  'src/platform/__tests__/store.dom.test.ts': 7_300,
   'src/world/zombies/__tests__/crawler.sim.test.ts': 7_000,
   'src/world/gear/__tests__/traps.story.test.ts': 6_700,
-  'src/features/profile/blocks/look/__tests__/closetSync.test.ts': 6_600,
+  'src/features/profile/blocks/look/__tests__/closetSync.dom.test.ts': 6_600,
   'src/app/__tests__/scene.test.ts': 6_300,
   'src/world/waves/__tests__/waves.sim.test.ts': 6_000,
   'src/world/run/__tests__/difficulty.sim.test.ts': 5_800,
@@ -66,7 +53,6 @@ const FILE_MS: Readonly<Record<string, number>> = {
   'src/render/__tests__/juice.story.test.ts': 2_000,
 }
 
-// NOTE: about the mean of the files under 2 s in the same run.
 const DEFAULT_FILE_MS = 400
 
 export const fileMsOf = (file: string): number =>
@@ -74,8 +60,6 @@ export const fileMsOf = (file: string): number =>
 
 type Timed = Readonly<{ file: string; ms: number }>
 
-// NOTE: slowest first, then by path, so every runner orders the same files
-// the same way.
 const slowestFirst: Order.Order<Timed> = Order.combine(
   Order.mapInput(Order.flip(Order.Number), ({ ms }: Timed) => ms),
   Order.mapInput(Order.String, ({ file }: Timed) => file),
@@ -87,9 +71,6 @@ const timedOf = (files: ReadonlyArray<string>): ReadonlyArray<Timed> =>
     slowestFirst,
   )
 
-// NOTE: the longest first, each onto the shard with the least time so far
-// (the lowest index on a tie). Each runner computes the whole split from the
-// same file list and keeps its own shard, so every file lands in exactly one.
 export const shardFiles = (
   split: Readonly<{
     files: ReadonlyArray<string>
@@ -126,11 +107,6 @@ type ProjectGroup = Readonly<{
   slowest: number
 }>
 
-// NOTE: each project's files stay together, as in vitest's own order, since a
-// worker that moves between projects loads their modules again (the fast tier
-// ran a third slower interleaved). The project holding the slowest file goes
-// first, so the sim replays start at once rather than after every other
-// project, and within a project the slowest file goes first.
 export const runOrder = (
   placed: ReadonlyArray<Placed>,
 ): ReadonlyArray<string> => {
@@ -176,9 +152,6 @@ const inOrder = (
     Array.filter(specs, spec => relativeFile(root, spec.moduleId) === file),
   )
 
-// NOTE: vitest's `sequence.sequencer` (vitest.config.ts). `--sequence.shuffle`
-// still shuffles the files, from `--sequence.seed`, as the nightly asks:
-// with a sequencer of its own vitest no longer picks its RandomSequencer.
 export class TimedSequencer extends BaseSequencer {
   override shard(specs: Array<TestSpecification>) {
     const { root, shard } = this.ctx.config

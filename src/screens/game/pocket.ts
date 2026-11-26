@@ -34,13 +34,6 @@ import { focusOf } from '../../world/party/party'
 import { Phase } from '../../world/schema/worldSchema'
 import { maybeBannerBand } from './overlay'
 
-// NOTE: whether the HUD's dare pocket (src/features/dare/dareCard.ts) is
-// open on the whole list. It opens in a break, when the house is there to
-// search, once the card from the slam is put away (it folds into the shut
-// chip), and only while no banner (WAVE CLEARED, GET READY, a new zombie)
-// is in the rows the open list would cover. Through a wave it stays shut.
-// It opens as the card folds, a banner or not, so each picture flies into
-// its own slot, and then shuts again if a banner is there.
 export const pocketOf = (model: Model): DarePocket => {
   if (
     !Phase.isAnyOf(['Preparation'])(model.phase) ||
@@ -62,8 +55,6 @@ export const pocketOf = (model: Model): DarePocket => {
   return isUnderBanner ? 'Shut' : 'Open'
 }
 
-// NOTE: what the pocket covers as it is drawn, for the art pinned over the
-// world to keep out of. Endless has no pocket.
 const maybePocketKeepout = (model: Model): Option.Option<PocketBox> => {
   if (dareCardOf(model).length === 0) {
     return Option.none()
@@ -73,10 +64,6 @@ const maybePocketKeepout = (model: Model): Option.Option<PocketBox> => {
   )
 }
 
-// NOTE: the crew's key ring under the hearts (src/screens/game/hud.ts), a
-// skeleton key and its count (the font draws `$` as the key) at twice the
-// font's size, and what it covers, for the art pinned over the world to
-// keep out of.
 export const KEY_RING_SCALE = 2
 
 export const keyRingLabelOf = (model: Model): string => `$${heldKeys(model)}`
@@ -98,8 +85,6 @@ const keepoutOf = (box: Box): Keepout => ({
   bottom: box.y + box.height,
 })
 
-// NOTE: the hearts in the top left (src/screens/game/hud.ts), each drawn
-// round its spot three pixels past the last, over the key ring.
 const HEART_REACH = 4
 
 const heartsBoxOf = (model: Model, layout: HudLayout): Keepout => ({
@@ -113,8 +98,6 @@ const heartsBoxOf = (model: Model, layout: HudLayout): Keepout => ({
   bottom: layout.keysTop - 1,
 })
 
-// NOTE: the corner button and, in a break, START WAVE are HTML buttons the
-// canvas cannot draw over, placed by the stage's fit in the game surface.
 const surfaceKeepouts = (
   model: Model,
   screen: Screen,
@@ -133,12 +116,8 @@ const surfaceKeepouts = (
     ],
   })
 
-// NOTE: the slots' key caps stand this far over the slots.
 const CLUSTER_CAP_RISE = 3
 
-// NOTE: the gun slots and their key caps over the window's bottom in
-// landscape (under it, in the thumb area, in portrait, where this is out of
-// the window's reach anyway).
 const clusterKeepout = (screen: Screen): Keepout => {
   const cluster = gunClusterBox(screen)
   return {
@@ -149,12 +128,6 @@ const clusterKeepout = (screen: Screen): Keepout => {
   }
 }
 
-// NOTE: every HUD button and panel over the world window, in screen pixels,
-// for the art pinned over the world to keep out of: the dare pocket, the
-// key ring and the hearts over it, the corner button, START WAVE in a
-// break, and the gun slots.
-// NOTE: the rows a banner takes while one shows (WAVE CLEARED, the break's
-// clock), across the whole screen, in screen pixels.
 const bannerKeepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
   const screen = screenOf(model)
   const frame = landscapeFrameOffset(screen)
@@ -171,8 +144,6 @@ const bannerKeepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
   })
 }
 
-// NOTE: what the price tags and the feat locks keep out of: the HUD's
-// buttons and panels, and a banner's rows.
 export const hudAndBannerKeepoutsOf = (
   model: Model,
 ): ReadonlyArray<Keepout> => [
@@ -180,9 +151,6 @@ export const hudAndBannerKeepoutsOf = (
   ...bannerKeepoutsOf(model),
 ]
 
-// NOTE: what the notes pinned over the world keep out of: those, and the
-// price tags as they are pinned. The fridge's odds note keeps out of these,
-// and Rattles' bubbles of these and the note.
 export const pinnedKeepoutsOf: {
   (camera: Camera): (model: Model) => ReadonlyArray<Keepout>
   (model: Model, camera: Camera): ReadonlyArray<Keepout>

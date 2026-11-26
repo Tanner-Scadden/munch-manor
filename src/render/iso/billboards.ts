@@ -1,8 +1,3 @@
-// What stands up: every drawable the game draws above its foot becomes
-// billboards at that foot, as tall as it is drawn; the lamp's rim on what
-// stands near the player; and the hidden stand-ins its shadow is cast
-// through.
-
 import { Texture } from 'pixi.js'
 
 import {
@@ -18,11 +13,8 @@ import type { Leaf } from './flatten'
 import { UNIT, standingPointOf, zOf } from './space'
 import { type Textures, colorOf } from './textures'
 
-// NOTE: parts later in a drawable win ties, nudged this far toward the lens.
 export const PART_BIAS = 0.002
 
-// NOTE: a leaf as it is drawn: its texture (a white quad for a Rect), the
-// middle of its bottom edge, its size, and its tint.
 type DrawnLeaf = Readonly<{
   texture: Texture
   centerX: number
@@ -52,8 +44,6 @@ const textureAndTint = (
     : { texture: Texture.WHITE, ...colorOf(shape.fill) }
 }
 
-// NOTE: an Image or a filled Rect as it is drawn, or nothing when it draws
-// nothing standing (an outline, a path, an image still loading).
 const drawnLeafOf = ({
   textures,
   leaf: { shape, matrix, alpha },
@@ -61,9 +51,6 @@ const drawnLeafOf = ({
   if (shape._tag !== 'Image' && shape._tag !== 'Rect') {
     return undefined
   }
-  // NOTE: the drawn size from the matrix's own scales, and the spot from the
-  // shape's middle, so a turned sprite (a running Hotfoot's lean, a falling
-  // zombie) keeps its size rather than squashing to its turned width.
   const middleX = shape.x + shape.width / 2
   const middleY = shape.y + shape.height / 2
   const centerX = matrix.a * middleX + matrix.c * middleY + matrix.e
@@ -88,8 +75,6 @@ const drawnLeafOf = ({
       }
 }
 
-// NOTE: whether lit sprites wear their sheet's normal map, so the light
-// rounds their bodies. `?flat` in the address turns it off, to compare.
 const IS_SHADED = !new URLSearchParams(window.location.search).has('flat')
 
 const litMaterial = (textures: Textures): Material3D =>
@@ -101,12 +86,8 @@ const litMaterial = (textures: Textures): Material3D =>
     ...textures.lookOptions('Standing'),
   })
 
-// NOTE: a pool of billboards, lit (Material3D, so the room's light, the lamp,
-// and the muzzle flash fall on them) or flat, for what glows of itself
-// (flashes, bars, rims). Mutable on purpose: it pools pixi's own objects.
 export class BillboardPool {
   private readonly sprites: Array<Sprite3D> = []
-  // NOTE: each lit sprite's own material, beside it, to swap its normal map.
   private readonly materials: Array<Material3D | undefined> = []
   private used = 0
   private readonly parent: Container3D
@@ -138,10 +119,6 @@ export class BillboardPool {
     }
   }
 
-  // NOTE: every sprite let go of what it wore, before a level's own textures
-  // (the ferns' clumps) are destroyed. The renderer still reads a hidden
-  // sprite's material, and a destroyed texture there crashed the first frame
-  // of the next level (MENU off an end card).
   release(): void {
     for (const sprite of this.sprites) {
       sprite.visible = false
@@ -173,8 +150,6 @@ export class BillboardPool {
     }
   }
 
-  // NOTE: one leaf as its own part of a drawable, or nothing when it draws
-  // nothing standing.
   standLeaf(leaf: Leaf, footY: number, part: number): void {
     const drawn = drawnLeafOf({ textures: this.textures, leaf })
     if (drawn !== undefined) {
@@ -188,8 +163,6 @@ export class BillboardPool {
     if (sprite.texture !== p.texture) {
       sprite.texture = p.texture
     }
-    // NOTE: asked every placement, not only on a new texture, since a
-    // sheet's normal map may arrive after its first frame.
     const material = this.materials[index]
     if (material !== undefined && IS_SHADED) {
       const normal = this.textures.normalOf(p.texture)
@@ -197,9 +170,6 @@ export class BillboardPool {
         material.textures.normal = normal
       }
     }
-    // NOTE: each set only when it changes: a tint runs through pixi's Color
-    // and writes the material's uniforms, about 0.3 ms a frame over the
-    // pool at 4x throttle when set on every sprite every frame.
     const pixel = p.drawnHeight / p.texture.frame.height
     const pixelSize = pixel * UNIT
     if (sprite.pixelSize !== pixelSize) {
@@ -219,9 +189,6 @@ export class BillboardPool {
     if (sprite.alphaMode !== mode) {
       sprite.alphaMode = mode
     }
-    // NOTE: every edge on a whole game pixel, so a sprite moves a whole
-    // pixel at a time and never lands between two (pixel-perfect settings,
-    // owner, 2026-11-14).
     const left = Math.round(p.centerX - p.drawnWidth / 2)
     const at = standingPointOf({
       x: left + p.drawnWidth / 2,
@@ -258,19 +225,12 @@ export class BillboardPool {
   }
 }
 
-// RIMS
-
-// NOTE: how far from the player its lamp draws a rim on what stands, in game
-// pixels, and the rim's color, whiter in a muzzle flash.
 const RIM_REACH = 80
 const RIM_COLOR = 0xffd7a0
 const RIM_FLASH_COLOR = 0xfff4e0
 
 export type Lamp = Readonly<{ x: number; y: number; flash: number }>
 
-// NOTE: the lamp's rim on a standing drawable near the player: its shape in
-// the lamp's color, one game pixel toward the player and just behind it, so
-// only the lit edge shows, fading with distance.
 export const rimUp = (
   input: Readonly<{
     pool: BillboardPool
@@ -320,13 +280,6 @@ export const rimUp = (
   }
 }
 
-// SHADOW STAND-INS
-
-// NOTE: a billboard turns to the lens, and the shadow pass does not turn it
-// (nor draws a sprite kept out of the opaque pass), so a fern casts through
-// a stand-in: its art cut out upright on a plain mesh at its foot, in no
-// pass but the shadow's. What is carved casts through its own blocks
-// (voxels.ts).
 const CASTER_GEOMETRY = new PlaneGeometry({ width: 1, height: 1 })
 
 export type Cutout = Readonly<{
@@ -353,7 +306,6 @@ export const standCutout = (
     receiveShadow: false,
   })
   mesh.disablePass('opaque')
-  // NOTE: a plane's v runs up and a texture's rows run down: turn it over.
   mesh.rotation.z = Math.PI
   mesh.rotation.y = Math.PI
   placeCutout(mesh, cutout)

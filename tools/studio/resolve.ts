@@ -1,6 +1,3 @@
-// Marks an art studio note done (./README.md), with a short reply the page
-// shows beside it, so the person who wrote it sees it was handled.
-//   bun tools/studio/resolve.ts <note id> "<reply>"
 import {
   Array,
   Clock,

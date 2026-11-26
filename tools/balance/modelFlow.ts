@@ -12,8 +12,6 @@ import {
 import { BOSS_RULES } from '../../src/world/zombies/bossRules'
 import type { Assumptions } from './modelAssumptions'
 
-// THE WAVE AS A FLOW
-
 export type FlowRules = Readonly<{
   stepMs: number
   aliveCap: number
@@ -40,8 +38,6 @@ export const flowRules = (assumptions: Assumptions): FlowRules => ({
   maxWaveMs: assumptions.maxWaveMs,
 })
 
-// NOTE: a Straggler is a lone Shambler, Runner, or Kaboomer, the kind a
-// quiet relax may pull in early, as the trickle in src/world/waves/pacing.ts does.
 export type Arrival = 'Straggler' | 'Pack'
 
 export type Incoming = Readonly<{ atMs: number; hp: number; arrival: Arrival }>
@@ -152,8 +148,6 @@ type Clock = Readonly<{
   pending: ReadonlyArray<Incoming>
 }>
 
-// NOTE: a quiet relax pulls the soonest straggler in now, up to trickleMax,
-// then ends, as the trickle in src/world/waves/pacing.ts does.
 const trickled = (
   flow: Flow,
   beat: Readonly<{ _tag: 'Resting'; remainingMs: number; trickled: number }>,
@@ -239,8 +233,6 @@ const advanceClock = (flow: Flow, waiting: number, rules: FlowRules): Clock => {
   })
 }
 
-// NOTE: after a quiet stretch the wave clock skips to the next pack's
-// warning, never past a hold, as QUIET_HURRY_MS does in src/world/waves/pacing.ts.
 const hurried = (flow: Flow, rules: FlowRules): number =>
   flow.beat._tag === 'Flowing' && flow.quietMs >= rules.quietHurryMs
     ? pipe(
@@ -342,9 +334,6 @@ const peakWindowRate = (
   )
 }
 
-// Plays a wave as a flow of health: zombies walk in on the wave clock, the
-// player's damage a second drains them in arrival order, holds wait for the
-// room to thin, rests rest, and a quiet room hurries the next pack.
 export const flowWave: {
   (
     holds: ReadonlyArray<Hold>,

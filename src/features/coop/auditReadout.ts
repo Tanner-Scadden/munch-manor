@@ -5,19 +5,12 @@ import { RATTLES_BOX } from '../../world/level/arena'
 import { playersOf } from '../../world/party/party'
 import { AUDIT_PARAM, ReadoutJson } from './readout'
 
-// The room's World read out for the co-op audit (tools/audit/coop.ts), on
-// the arena's page when the audit asks for it.
-
 const encodeReadout = Schema.encodeOption(ReadoutJson)
 
-// NOTE: read once, when the page loads (the room link drops the param
-// after joining), so a frame never asks. Nothing is encoded without it.
 const IS_AUDITED =
   typeof location !== 'undefined' &&
   new URLSearchParams(location.search).has(AUDIT_PARAM)
 
-// NOTE: the World as the audit's readout, through its Schema
-// (src/features/coop/readout.ts), or nothing when the page was not asked for one.
 export const readoutOf = (room: WorldState): string =>
   IS_AUDITED
     ? Option.getOrElse(encodeReadout(readoutFields(room)), () => '')

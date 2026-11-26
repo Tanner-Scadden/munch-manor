@@ -34,16 +34,8 @@ import {
   isWaitingOnYou,
 } from '../readyNudge'
 
-// Breaks that wait on a player (owner, 2026-11-01): the open break before
-// wave 2 waits for READY, a crew's break waits for everyone's READY or its
-// clock, and after a quiet moment READY pulses and the HUD says WAITING ON
-// YOU. Every later solo break counts down (owner, 2026-11-10), so its clock
-// does the nudging.
-
 const FRAME_MS = 100
 
-// NOTE: past the guided first break, whose tracker is its own nudge, in
-// the open break that waits for READY.
 const soloBreak = (
   wave: number = OPEN_BREAK_WAVE,
   difficulty: Difficulty = 'Normal',
@@ -60,8 +52,6 @@ const soloBreak = (
 const crewBreak = (): Model =>
   withWorld(crewInWave(2), world => beginPreparation(world, 4, 20_000))
 
-// NOTE: the World's clock runs on by `ms` and the idle clock reads it, as a
-// frame does.
 const idleFor = (start: Model, ms: number): Model =>
   advanceBreakIdle(
     UiStruct.evolve(start, { elapsedMs: elapsedMs => elapsedMs + ms }),

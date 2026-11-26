@@ -31,16 +31,6 @@ import {
   withInput,
 } from './step'
 
-// The Messages an online co-op run handles its own way (MULTIPLAYER.md,
-// Phase 2). The room runs the World, so nothing here steps it: a press
-// (swap, the knife, reload, a trap, READY, MEDIC!) goes
-// to the room as a seat action, the frame comes from the room, and there
-// is no pause (decided 7). Everything else (moving, aiming, the dialogs,
-// the menus, audio, the save) runs as it does in single player. Each
-// of these handlers (src/app/update/input.ts, and the frame's in
-// src/app/main.ts) wraps its single player Step in
-// `orInRun`, which checks isRunOn once and matches the Message.
-
 const pressInRun = (action: SeatAction): UpdateStep =>
   combine([unlockAudio, pressInRoom(action)])
 
@@ -54,12 +44,6 @@ const holdKey =
       input => (isPauseKey(code) ? input : pressKey(input, code)),
     )
 
-// NOTE: a press key goes to the room, and every key is held in the input
-// for walking. In the intro any key skips this player's drawing to the
-// door (src/app/update/intro.ts). After the slam any key folds this
-// player's dare card away, and the room never waits for it. Tab or a
-// controller's Select opens the card again over the live room, and puts
-// it away. A controller's button goes the same way, from its own device.
 const keyInRun =
   (code: string, device: InputDevice): UpdateStep =>
   $ => {
@@ -86,10 +70,6 @@ const keyInRun =
     }
   }
 
-// NOTE: a controller in an online run: its sticks and held buttons ride in
-// the intent the client sends, and each new press goes to the room as the
-// key table's seat action. Unplugged, it lets go of everything; an online
-// run has no pause (decided 7).
 const padInRun =
   (pad: Gamepad): UpdateStep =>
   $ =>
@@ -110,8 +90,6 @@ const pageVisibilityInRun = (visibility: PageVisibility) =>
     ),
   )
 
-// THE RUN'S MESSAGES
-
 const RunMessage = Schema.Union([
   Message.cases.TickedFrame,
   Message.cases.PressedKey,
@@ -131,7 +109,6 @@ const RunMessage = Schema.Union([
 ])
 type RunMessage = typeof RunMessage.Type
 
-// NOTE: exhaustive over just these Messages.
 const inRun = (model: Model, message: RunMessage): UpdateStep =>
   Match.valueTags(message, {
     TickedFrame: () => unchanged,
@@ -153,8 +130,6 @@ const inRun = (model: Model, message: RunMessage): UpdateStep =>
     ClickedMedicButton: () => pressInRun(SeatAction.CallMedic()),
   })
 
-// NOTE: the Message's Step in an online run, or the single player Step
-// given here: `orInRun(message, swapFromButton)`.
 export const orInRun: {
   (offline: UpdateStep): (message: RunMessage) => UpdateStep
   (message: RunMessage, offline: UpdateStep): UpdateStep

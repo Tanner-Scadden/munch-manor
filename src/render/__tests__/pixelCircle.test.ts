@@ -4,10 +4,6 @@ import { expect, test } from 'vitest'
 import { rectsOf } from '../../test/viewReading'
 import { pixelDiscSpans, pixelRingSpans } from '../pixelCircle'
 
-// Circles on the game's pixel grid (src/render/pixelCircle.ts): every ring
-// a closed loop of whole pixels, never loose dots, every disc solid, and
-// both even on every side, so a tell ring sits square on its zombie.
-
 type Pixel = readonly [x: number, y: number]
 
 const pixelsOf = (
@@ -49,7 +45,6 @@ const isEven = (pixels: ReadonlyArray<Pixel>): boolean => {
   )
 }
 
-// NOTE: past the widest ring baked, the boss's slam.
 const RADII = Array.range(1, 64)
 
 test('a ring is one closed loop of whole pixels, even on every side', () => {

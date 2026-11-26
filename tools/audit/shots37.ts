@@ -1,14 +1,8 @@
-// The Profile pass: each tab of the Profile (Look, Name, Account in each link
-// step, Settings and its reset question) on a desktop, a landscape phone, and
-// upright phones (390, 360, and 375 wide), as `s37-<TAG>-<viewport>-<scene>.png`. It exits with 1 on
-// a phone button under 48 px, a text field under 16 px (iOS zooms in on
-// those), a row of Look options that leaves one alone on a line or runs
-// past its page, or the Profile past the screen's edge.
-//   TAG=after bun run heavy -- bun tools/audit/shots37.ts
 import { Array, Effect, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
+import { readProfile } from './inPage/shots37'
 import {
   DESKTOP_1280,
   PHONE_844,
@@ -51,7 +45,6 @@ const SCENES: ReadonlyArray<Scene> = [
     name: `look-${String.toLowerCase(section)}`,
     query: `profile=look&looksection=${section}&${LOOK}`,
   })),
-  // NOTE: the first option of every row chosen, at the page's left edge.
   {
     name: 'look-first',
     query: 'profile=look&look=Slim,Short,Black,Fair,Blue',
@@ -80,7 +73,6 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'account-failed',
     query: 'profile=account&sync=synced&link=failed',
   },
-  // NOTE: rank on the plate: a Wood badge part way up, then a long way up.
   { name: 'look-rank', query: `profile=look&${LOOK}&rank=1850` },
   { name: 'name-rank-high', query: 'profile=name&name=Dr. Chomp&rank=52000' },
   { name: 'settings', query: 'profile=settings&fit=full&rotate' },
@@ -90,97 +82,6 @@ const SCENES: ReadonlyArray<Scene> = [
     click: ['#reset-tutorial'],
   },
 ]
-
-// NOTE: runs in the page, which has no Effect: plain loops, so no native
-// Array method is left for the Effect rules to flag.
-const readProfile = () => {
-  const panel = document.querySelector('.profile')
-  const box = panel?.getBoundingClientRect()
-  const buttons: Array<{
-    label: string
-    width: number
-    height: number
-    isShown: boolean
-  }> = []
-  for (const button of document.querySelectorAll('.profile-dialog button')) {
-    const rect = button.getBoundingClientRect()
-    buttons.push({
-      // NOTE: runs in the page, where effect's String is not loaded.
-      // @effect-diagnostics-next-line preferEffectString:off
-      label: button.getAttribute('aria-label') ?? button.textContent.trim(),
-      width: rect.width,
-      height: rect.height,
-      isShown: rect.width > 0 && rect.height > 0,
-    })
-  }
-  const fields: Array<{ id: string; size: number }> = []
-  for (const input of document.querySelectorAll('.profile-dialog input')) {
-    fields.push({
-      id: input.id,
-      size: Number.parseFloat(getComputedStyle(input).fontSize),
-    })
-  }
-  const labelOf = (row: Element) =>
-    row.querySelector('.look-row-label')?.textContent ?? '?'
-  const wrappedRows: Array<string> = []
-  const clippedRows: Array<string> = []
-  for (const row of document.querySelectorAll('.look-row')) {
-    // NOTE: the chosen option grows a little, so only a whole line of
-    // difference is a wrap. A long list takes even lines (balancedColumns in
-    // src/features/profile/blocks/look/view.ts); what must never happen is an option left on a
-    // line of its own, or a line not much more than half as full as the
-    // first.
-    const lines = new Map<number, number>()
-    for (const button of row.querySelectorAll('button')) {
-      const top = button.getBoundingClientRect().top
-      let line = top
-      for (const seen of lines.keys()) {
-        if (Math.abs(seen - top) <= 20) {
-          line = seen
-          break
-        }
-      }
-      lines.set(line, (lines.get(line) ?? 0) + 1)
-    }
-    const counts: Array<number> = []
-    for (const top of [...lines.keys()].sort((a, b) => a - b)) {
-      counts.push(lines.get(top) ?? 0)
-    }
-    const first = counts[0] ?? 0
-    for (const count of counts) {
-      if ((count === 1 && first > 1) || count * 2 < first) {
-        wrappedRows.push(labelOf(row))
-        break
-      }
-    }
-    const pageBox = row.closest('.profile-page')?.getBoundingClientRect()
-    if (pageBox !== undefined) {
-      for (const button of row.querySelectorAll('button')) {
-        if (button.getBoundingClientRect().right > pageBox.right + 1) {
-          clippedRows.push(labelOf(row))
-          break
-        }
-      }
-    }
-  }
-  return {
-    wrappedRows,
-    clippedRows,
-    box:
-      box !== undefined
-        ? {
-            left: box.left,
-            top: box.top,
-            right: box.right,
-            bottom: box.bottom,
-          }
-        : null,
-    buttons,
-    fields,
-    width: innerWidth,
-    height: innerHeight,
-  }
-}
 
 const checkLayout = (
   page: Page,

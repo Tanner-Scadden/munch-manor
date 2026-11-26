@@ -1,6 +1,3 @@
-// How the balance bot fights: the Pan's stance, the knife, where it walks
-// in a wave, and how it aims and fires like a fair player.
-
 import { Array, Function, Option } from 'effect'
 
 import { Message } from '../../../src/app/message'
@@ -68,8 +65,6 @@ import { isKnobSet, knobNumber } from './knobs'
 import { isInKitchen, routeTo } from './route'
 import { type BotState, type Zombie } from './state'
 
-// The Pan dazes and knocks back the small kinds; it keeps its distance
-// from an Exploder, which would burst in its face, and from the big ones.
 export const isPannable = (zombie: Zombie) =>
   isSmallKind(zombie.kind) && zombie.kind !== 'Exploder'
 
@@ -111,13 +106,6 @@ const panStance = (state: BotState, model: Model): Vector | undefined => {
   return { x: 0, y: 0 }
 }
 
-// THE KNIFE
-
-// The knife is the third slot: F draws it and the trigger then stabs. The
-// bot draws it while a zombie is within the knife's reach and its gun
-// cannot shoot (mid-reload, or empty). A reload carries on while the knife
-// is out, so it goes back to its last gun (Q) as soon as that gun can shoot
-// again.
 const STAB_SLACK_PX = 1
 
 export const isGunIdle = (model: Model): boolean => {
@@ -135,8 +123,6 @@ const isWithinKnife = (model: Model): boolean =>
       KNIFE_RULES.reachPx - STAB_SLACK_PX,
   )
 
-// With the Pan in the melee slot the same rules draw it, and while its
-// plan swings it the bot keeps it out.
 export const handleKnife: {
   (model: Model): (state: BotState) => Model
   (state: BotState, model: Model): Model
@@ -151,13 +137,6 @@ export const handleKnife: {
     : model
 })
 
-// NOTE: how many of the nearest zombies it has noticed the bot runs from at
-// once: a person keeps an eye on the one closing in and the one behind it.
-// In Uncle Chunk's fight it watches only the nearest: watching two there let
-// him close in (his bites took 50 hearts in 100 Normal runs, against 35,
-// and he fell in 6 fights of 53, 2026-11-11), while outside it two cut the
-// deaths on the hunt from 48 to 44. WATCHED=1 is the bot that watches only
-// the nearest everywhere.
 const WATCHED = knobNumber('WATCHED', 2)
 
 export const kite: {
@@ -177,8 +156,6 @@ export const kite: {
     distance(player, zombie) -
     (zombie.kind === 'Boss' ? BOSS_BERTH_PX : 0) -
     (zombie.frenzy._tag === 'Frenzied' ? frenzyBerthPx() : 0)
-  // A zombie frozen solid by Brain Freeze cannot bite, so it is not fled,
-  // and the human bot flees only what it has noticed: in view, or heard.
   const fled = Array.filter(
     Array.filter(
       Array.filter(
@@ -189,11 +166,6 @@ export const kite: {
     ),
     zombie => isNoticed(state, model, zombie),
   ).sort((a, b) => reach(a) - reach(b))
-  // It runs the way a person does: away from the zombies it is watching,
-  // along a wall and out of corners (src/features/bots/escape.ts), but blind to the rest
-  // of the crowd. It watches the WATCHED nearest it has noticed: weaving
-  // through every gap, as the teammate bots do, won Normal 40% and Hard 49%
-  // on 2026-11-03, far past what people manage.
   const watched = Array.map(
     Array.filter(
       Array.take(fled, model.boss._tag === 'Fighting' ? 1 : WATCHED),
@@ -227,23 +199,12 @@ export const kite: {
     : { x: 0, y: 0 }
 })
 
-// The bot is a fair player, not an aimbot: it re-aims only every few
-// frames and its hand shakes. The human bot (bot/hand.ts) also reacts late,
-// trails and overshoots its target, and steps a little less often; AIM=sharp
-// is the old bot, whose only miss is AIM_NOISE.
 export const AIM_EVERY_FRAMES = knobNumber('AIM_EVERY', 5)
 const AIM_NOISE_RADIANS = knobNumber('AIM_NOISE', 0.22)
 export const MOVE_EVERY_FRAMES = knobNumber('MOVE_EVERY', IS_SHARP ? 4 : 6)
 
-// It shoots the nearest zombie it can see, but while the boss stands it
-// shoots him unless something else is within FOCUS_PX, and it always shoots
-// him while he is dazed.
-// NO_FOCUS=1 always shoots the nearest.
 const FOCUSES_BOSS = !isKnobSet('NO_FOCUS')
 const FOCUS_PX = knobNumber('FOCUS_PX', 60)
-// A Big Leaguer holding his shield toward the bot, and the zombie he holds,
-// only soak up shots, so the bot shoots something else while there is
-// anything else to shoot.
 const isBehindShield = (model: Model, zombie: Model['zombies'][number]) => {
   if (zombie.action._tag === 'Shielded') {
     return true
@@ -282,9 +243,6 @@ export const nearestVisible = (model: Model) => {
     : nearest
 }
 
-// Reloads when nothing is in sight and the magazine is under half, or when
-// the room is empty, the way a player tops off between fights instead of
-// every time a zombie ducks behind cover. An empty gun reloads on its own.
 export const topOff = (model: Model): Model => {
   const isLow =
     heldLoaded(focusOf(model).player) <
@@ -295,11 +253,6 @@ export const topOff = (model: Model): Model => {
     : model
 }
 
-// VIEW=portrait and VIEW=touch also get the touch aim assist
-// (src/input/aimAssist.ts) the way the game gives it to a phone: every tick the
-// trigger is held, the aim from where the bot last pointed bends onto the
-// zombie it is almost on, in view of the phone's window. NO_ASSIST=1 plays
-// either without it.
 const maybeAssistScreen = !isKnobSet('NO_ASSIST')
   ? maybeWindowScreen
   : undefined
@@ -344,9 +297,6 @@ export const holdAssistedAim: {
   return send(model, Message.MovedMouse({ clientX: point.x, clientY: point.y }))
 })
 
-// Points the mouse at target, with the sharp hand's shake or the human
-// hand's error, and returns the screen point it aimed at.
-// humanError is the human hand's miss; undefined shakes the sharp hand.
 export const aimAt: {
   (
     model: Model,
@@ -375,8 +325,6 @@ export const aimAt: {
       (humanError ??
         (nextBotRandom(state) + nextBotRandom(state) - 1) * AIM_NOISE_RADIANS)
     state.maybeAimAngle = angle
-    // The mouse lives in screen pixels, so the aim point goes through the
-    // camera, which scrolls once the kitchen is open.
     const rawPoint = worldToView(screenCameraOf(model), {
       x: focusOf(model).player.x + Math.cos(angle) * AIM_REACH_PX,
       y: focusOf(model).player.y + Math.sin(angle) * AIM_REACH_PX,
@@ -415,12 +363,6 @@ export const holdFire = (model: Model): Model =>
     ? send(model, Message.ReleasedPointer({ pointerId: 1 }))
     : model
 
-// THE ROOM TOOLS
-
-// With a crowd in the dining table's gap under the hung chandelier, it
-// shoots the chandelier down on them (THE ROOM TOOLS in
-// src/features/bots/dareSearch.ts), with a gun in hand that can shoot.
-// Undefined when there is no such shot.
 export const shootChandelier: {
   (model: Model): (state: BotState) => Model | undefined
   (state: BotState, model: Model): Model | undefined
@@ -442,7 +384,6 @@ export const shootChandelier: {
   })
 })
 
-// maybeTarget is the zombie to shoot; undefined picks the nearest in view.
 export const aimAndFire: {
   (
     model: Model,
@@ -475,8 +416,6 @@ export const aimAndFire: {
   },
 )
 
-// Aims at target and pulls the trigger, once the human hand has reacted to
-// it; until then the trigger rests.
 export const aimAndShoot: {
   (model: Model, target: Zombie, frame: number): (state: BotState) => Model
   (state: BotState, model: Model, target: Zombie, frame: number): Model

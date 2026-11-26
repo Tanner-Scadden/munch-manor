@@ -65,24 +65,14 @@ import {
   crewCardBottomPx,
 } from '../endView'
 
-// The crew board on a co-op end card (MULTIPLAYER.md, "The crew board"):
-// each seat's run counted in the World, the awards those numbers win, and
-// the card's beat and post.
-
 const TICK_MS = FIXED_STEP_MS
-// NOTE: the shortest phone held upright puts its buttons about here in the
-// 180 high frame the card is drawn in (the strip's bar must end above).
 const UPRIGHT_BUTTONS_TOP_PX = 203
 const LEFT_X = 60
 const RIGHT_X = 240
-// NOTE: the dining room's open aisle south of the party table, clear wall
-// to wall.
 const ROW_Y = 130
 
 const seatOf = (current: Model, slot: number): Seat =>
   Option.getOrThrow(maybePlayerAt(current, slot)).seat
-
-// THE WORLD COUNTS
 
 describe("each seat's run in the World", () => {
   it.effect(
@@ -186,8 +176,6 @@ describe("each seat's run in the World", () => {
   )
 })
 
-// THE AWARDS
-
 const member = (
   slot: number,
   fields: Partial<CrewMember> = {},
@@ -233,8 +221,6 @@ describe('the awards', () => {
   })
 })
 
-// THE CARD
-
 const seatRun =
   (slot: number, change: (seat: Seat) => Seat) =>
   (current: Model): Model =>
@@ -257,7 +243,6 @@ const crewCard = pipeline(
     }),
 )(crewInWave(2))
 
-// NOTE: the lobby's ranks, as each player sent them when they joined.
 const withLobbyRanks = (current: Model): Model =>
   UiStruct.evolve(current, {
     coop: coop =>

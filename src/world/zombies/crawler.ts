@@ -21,11 +21,8 @@ import {
 import { circlesOverlap, distanceBetween } from '../step/geometry'
 import { bodyRadiusOf, isFree, isRoamingAction, isWalking } from './zombies'
 
-// NOTE: the tag checks this module runs per zombie per tick, built once.
 const isBurrowedZombieAction = ZombieAction.isAnyOf(['Burrowed'])
 const isClingingZombieAction = ZombieAction.isAnyOf(['Clinging'])
-
-// RULES
 
 type CrawlerRules = {
   surfaceMs: number
@@ -55,16 +52,11 @@ export const CRAWLER_RULES: CrawlerRules = {
 
 const CRAWLER_KIND = 'Crawler'
 
-// WHERE IT COMES UP
-
 const FLOOR_LEFT = 16
 const FLOOR_RIGHT = 304
 const FLOOR_TOP = 28
 const FLOOR_BOTTOM = 164
 
-// NOTE: the fallback spots are open floor in every corner and along every
-// wall, so when no draw lands on good floor the one farthest from the player
-// is still a fair place to come up.
 const FALLBACK_SPOTS: Array.NonEmptyReadonlyArray<Vector> = [
   { x: 40, y: 60 },
   { x: 120, y: 30 },
@@ -150,9 +142,6 @@ const searchSpot = (
     : searchSpot(level, yDraw.nextState, player, traps, drawsLeft - 1)
 }
 
-// NOTE: the spot is drawn from the seeded generator when the Ankle Biter is
-// due, never planned in Preparation, since it must stay clear of wherever
-// the player stands by then. The door preview counts it as FLOOR.
 export const drawSurfacingSpot: {
   (
     state: number,
@@ -181,8 +170,6 @@ export const burrowed = (): ZombieAction =>
     remainingMs: CRAWLER_RULES.surfaceMs,
     durationMs: CRAWLER_RULES.surfaceMs,
   })
-
-// SURFACING
 
 type Step = Readonly<{
   zombie: Zombie
@@ -226,8 +213,6 @@ const surface = (zombie: Zombie, player: Vector, deltaMs: number): Step => {
     }
   }
 }
-
-// CLINGING
 
 const ANKLE_OFFSET: Vector = { x: -5, y: 4 }
 
@@ -310,8 +295,6 @@ export const advanceCrawlers: {
   })
 })
 
-// THE PLAYER'S ANKLES
-
 export const ankleSlowAt = (zombies: ReadonlyArray<Zombie>): number =>
   Array.some(
     zombies,
@@ -322,7 +305,6 @@ export const ankleSlowAt = (zombies: ReadonlyArray<Zombie>): number =>
 
 const ANKLE_REACH_PX = 4
 
-// NOTE: in co-op an Ankle Biter slows only the player whose ankles it holds.
 export const ankleSlowNear: {
   (player: Vector): (zombies: ReadonlyArray<Zombie>) => number
   (zombies: ReadonlyArray<Zombie>, player: Vector): number

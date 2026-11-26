@@ -15,10 +15,6 @@ import {
 } from '../../../test/testing'
 import { isJustLeveled, maybeLevelBarOf } from '../hud'
 
-// The gun slots on the HUD (src/screens/game/hud.ts): a bar under each gun
-// fills with its kills toward the next level, full and orange at the top,
-// and the slot flashes as the gun levels up under the big pop.
-
 describe("a gun slot's level bar", () => {
   test('fills from the last tier to the next, full once maxed', () => {
     expect(maybeLevelBarOf(gunAt('Smg', 0, 0))).toEqual(

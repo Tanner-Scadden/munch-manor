@@ -90,11 +90,25 @@ const maybeContact = (
     : Option.none()
 }
 
-const struckBy = (bullet: Bullet): ReadonlyArray<number> =>
-  Pierce.match(bullet.pierce, {
-    Stops: () => [],
-    Skewers: ({ struck }) => struck,
-  })
+const NO_STRUCK: ReadonlySet<number> = new Set()
+
+const isSkewer = Pierce.isAnyOf(['Skewers'])
+
+const struckSets = new WeakMap<ReadonlyArray<number>, ReadonlySet<number>>()
+
+const struckBy = (bullet: Bullet): ReadonlySet<number> => {
+  const pierce = bullet.pierce
+  if (!isSkewer(pierce) || Array.isReadonlyArrayEmpty(pierce.struck)) {
+    return NO_STRUCK
+  }
+  const cached = struckSets.get(pierce.struck)
+  if (cached !== undefined) {
+    return cached
+  }
+  const struck: ReadonlySet<number> = new Set(pierce.struck)
+  struckSets.set(pierce.struck, struck)
+  return struck
+}
 
 const shieldedTarget = (bullet: Bullet, zombie: Zombie): number =>
   Pierce.isAnyOf(['Stops'])(bullet.pierce)
@@ -104,9 +118,6 @@ const shieldedTarget = (bullet: Bullet, zombie: Zombie): number =>
       )
     : zombie.id
 
-// NOTE: the player's shots fired this frame. Their sweep starts at the
-// player's center, not the muzzle, so a zombie hugging the player, closer than
-// the muzzle, is still the first thing a point-blank shot hits.
 type FreshShots = Readonly<{
   firstId: number
   endId: number
@@ -125,9 +136,6 @@ const sweepStart = (
         y: bullet.y - bullet.velocityY * seconds,
       }
 
-// NOTE: a bullet only meets the grounded zombies in the cells its sweep (grown
-// by the widest reach) crosses, taken in list order, so the first nearest
-// contact wins a tie as it did over the whole list.
 const findBulletHits = (
   bullets: ReadonlyArray<Bullet>,
   zombies: ReadonlyArray<Zombie>,
@@ -157,9 +165,7 @@ const findBulletHits = (
     let nearest: Contact | undefined = undefined
     for (let at = 0; at < count; at++) {
       const zombie = zombies[near[at] ?? 0]
-      // NOTE: the zombies one bullet already struck, a few (its pierce).
-      // oxlint-disable-next-line munch/no-nested-scan
-      if (zombie !== undefined && !Array.contains(struck, zombie.id)) {
+      if (zombie !== undefined && !struck.has(zombie.id)) {
         const contact = maybeContact(from, bullet, zombie)
         if (
           Option.isSome(contact) &&
@@ -192,9 +198,6 @@ const totalDamage = (hits: ReadonlyArray<BulletHit>): number =>
 const strongestKnockback = (hits: ReadonlyArray<BulletHit>): number =>
   Array.reduce(hits, 0, (strongest, hit) => Math.max(strongest, hit.knockback))
 
-// NOTE: a frame's hits by the zombie they land on, and each bullet's first,
-// in the order they were found. Every zombie, kill, and bullet reads them,
-// so each frame's hits are grouped once rather than scanned for each.
 type HitIndex = Readonly<{
   byZombie: ReadonlyMap<number, ReadonlyArray<BulletHit>>
   firstByBullet: ReadonlyMap<number, BulletHit>
@@ -266,8 +269,6 @@ const hitEventOn =
     )
   }
 
-// NOTE: a bullet's kill is the last hit's: its shooter (none for a gnome's
-// pea) and its gun.
 const killEventsOn =
   (hits: ReadonlyArray<BulletHit>) =>
   (zombie: Zombie): ReadonlyArray<GameEvent> =>
@@ -357,8 +358,6 @@ export const resolveBulletHits: {
   },
 )
 
-// NOTE: in co-op a shot's sweep starts at its shooter's center, and a kill
-// pays the player whose shot landed last (decided 5).
 const freshShotsOf = (model: World, firstFreshId: number): FreshShots => ({
   firstId: firstFreshId,
   endId: model.nextEntityId,
@@ -376,24 +375,21 @@ const freshShotsOf = (model: World, firstFreshId: number): FreshShots => ({
     : () => focusOf(model).player,
 })
 
-// NOTE: each shooter's shots that landed, for their aim on the crew
-// board. A gnome's peas are its owner's trap, not their aim.
 const creditLanded = (model: World, hits: ReadonlyArray<BulletHit>): World => {
   const shooters = Array.filterMap(hits, ({ weapon, maybeShooter }) =>
     weapon === TURRET_WEAPON
       ? Result.failVoid
       : Result.fromOption(maybeShooter, () => undefined),
   )
-  return Array.reduce(Array.dedupe(shooters), model, (current, slot) =>
-    creditShots(
-      current,
-      slot,
-      0,
-      // NOTE: at most 4 shooting seats.
-      // oxlint-disable-next-line munch/no-nested-scan
-      Array.filter(shooters, shooter => shooter === slot).length,
-    ),
-  )
+  const landed = new Map<PlayerSlot, number>()
+  for (const slot of shooters) {
+    landed.set(slot, (landed.get(slot) ?? 0) + 1)
+  }
+  let current = model
+  for (const [slot, count] of landed) {
+    current = creditShots(current, slot, 0, count)
+  }
+  return current
 }
 
 const creditKillers = (
@@ -412,8 +408,6 @@ const creditKillers = (
     })
   })
 
-// NOTE: each kill levels the gun whose shot landed last on it, in its
-// shooter's hands (src/world/gear/gunLevels.ts). A gnome's peas level nothing.
 const creditGuns = (
   model: World,
   hits: ReadonlyArray<BulletHit>,
@@ -511,8 +505,6 @@ const popBombers = (model: World, slot: PlayerSlot): World =>
       ),
   })
 
-// NOTE: in co-op a zombie must keep touching a player for their seat's
-// bite grace before it bites (see Seat); single player bites at once.
 const biteOnContact = (model: World, slot: PlayerSlot): World => {
   const { player, seat } = seatStateAt(model, slot)
   if (Invulnerability.isAnyOf(['Invulnerable'])(player.invulnerability)) {

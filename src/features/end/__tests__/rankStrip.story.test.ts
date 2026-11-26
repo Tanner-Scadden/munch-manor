@@ -36,10 +36,6 @@ import {
 import { endOverlayShapes, unlockSpotOf } from '../endView'
 import { unlockCardBox } from '../rankStripView'
 
-// The rank strip on the end card (src/features/end/endBeat.ts, src/features/end/rankStripView.ts):
-// it comes after the tally, fills its bar, and on a rank up pops with a
-// fanfare. A press skips to its end.
-
 type Gain = Model['runGains']['maybeRankGain']
 
 const ended = (gain: Gain, screenMs = 0): Model =>
@@ -51,7 +47,6 @@ const ended = (gain: Gain, screenMs = 0): Model =>
   })
 
 const noGain: Gain = Option.none()
-// NOTE: 20 points is rank 1 with 30 to go, so 40 more reach rank 2.
 const rankUp: Gain = Option.some({
   pointsBefore: 20,
   gained: 40,
@@ -74,7 +69,6 @@ describe('the end card beat with a rank strip', () => {
     expect(rankDoneMs(ended(sameRank), 'Munched')).toBe(
       stripAt(sameRank) + RANK_FILL_MS,
     )
-    // NOTE: rank 2 gifts the Party Hat, whose card flips after the pop.
     expect(rankDoneMs(ended(rankUp), 'Munched')).toBe(
       stripAt(rankUp) + RANK_FILL_MS + RANK_POP_MS + CALLING_FLIP_MS,
     )
@@ -94,7 +88,6 @@ describe('the end card beat with a rank strip', () => {
 })
 
 describe('the strip draws', () => {
-  // NOTE: every shape, groups opened, since the strip is drawn in one.
   const count = (shapes: ReadonlyArray<Draw.Shape>): number =>
     Array.reduce(
       shapes,
@@ -108,7 +101,6 @@ describe('the strip draws', () => {
 
   test('nothing before its turn, then the badge, number, bar, and Bones', () => {
     const start = stripAt(rankUp)
-    // NOTE: the badge, number, bar (back, fill, shine, edge), bone, and text.
     expect(
       shapesAt(rankUp, start + RANK_FILL_MS) - shapesAt(rankUp, start - 10),
     ).toBeGreaterThan(6)
@@ -165,10 +157,7 @@ describe('the strip sounds', () => {
 })
 
 describe('the cards a rank up flips', () => {
-  // NOTE: rank 1 to 2 gifts the Party Hat.
   const hatGift: Gain = rankUp
-  // NOTE: 600 points is rank 7: the Handyman (rank 3) and the Track Star
-  // (rank 6) open, and the hats gifted at ranks 2, 4, 5, and 7.
   const several: Gain = Option.some({
     pointsBefore: 0,
     gained: 600,
@@ -204,7 +193,6 @@ describe('the cards a rank up flips', () => {
   })
 
   test('a rank with no other gift flips its Bones purse, after the gifts', () => {
-    // NOTE: rank 20 to 24: purses at 21, 23, and 24, the Slime gun at 22.
     const purses: Gain = Option.some({
       pointsBefore: pointsForRank(20),
       gained: pointsForRank(24) - pointsForRank(20),
@@ -246,7 +234,6 @@ describe('the cards a rank up flips', () => {
     const settled = CALLING_FLIP_MS + 10
     expect(at(0, settled)).not.toBe(at(1, settled))
     expect(at(2, settled)).not.toBe(at(3, settled))
-    // NOTE: before the first card flips there is none to show.
     expect(at(0, -10)).not.toBe(at(0, settled))
   })
 
@@ -279,12 +266,9 @@ describe('the cards a rank up flips', () => {
     const drawn = (screenMs: number) =>
       shapesOf(endOverlayShapes(LANDSCAPE_SCREEN)(ended(rankUp, screenMs)))
     expect(goneAt).toBe(doneAt + UNLOCK_LINGER_MS)
-    // NOTE: the card, its tab, and its timer are dozens of shapes; once its
-    // time is up none of them is drawn.
     expect(drawn(doneAt + 10) - drawn(goneAt + 10)).toBeGreaterThan(20)
     expect(drawn(goneAt + 10)).toBe(drawn(goneAt + 500))
     expect(dismissUnlock(ended(rankUp, doneAt + 100)).screenMs).toBe(goneAt)
-    // NOTE: a tap mid-beat is the skip's, and no card means nothing to put away.
     expect(dismissUnlock(ended(rankUp, 500)).screenMs).toBe(500)
     expect(dismissUnlock(ended(sameRank, doneAt + 100)).screenMs).toBe(
       doneAt + 100,
@@ -293,8 +277,6 @@ describe('the cards a rank up flips', () => {
 })
 
 describe('where the unlock card goes', () => {
-  // NOTE: the solo tally's panel and a crew's board as wide as the frame
-  // leaves, in the frame's pixels.
   const SOLO_CARD = { left: 81, top: 61, bottom: 150 }
   const CREW_CARD = { left: 40, top: 18, bottom: 124 }
   const SCREENS: ReadonlyArray<readonly [string, Screen]> = [

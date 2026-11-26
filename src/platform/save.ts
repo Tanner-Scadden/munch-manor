@@ -79,14 +79,6 @@ export {
   SavedTrapHint,
 } from '../shared/playerData'
 
-// SAVE
-
-// NOTE: the PlayerSave is one record per player, plain data, shaped like the
-// player scope in PLATFORM.md. It is stored as the player row in on-device
-// SQLite (see src/platform/store.ts). SAVE_KEY is the localStorage copy it used to
-// live in: imported into SQLite once, then kept read-only as a fallback for
-// one release. A new field goes in here with a version bump, and decodeSave
-// migrates or drops the older version.
 export const SAVE_KEY = 'munch-manor:save'
 
 const saveEquivalence = Schema.toEquivalence(PlayerSave)
@@ -97,8 +89,6 @@ export const isSameSave: {
 } = Function.dual(2, (self: PlayerSave, that: PlayerSave): boolean =>
   saveEquivalence(self, that),
 )
-
-// FROM THE MODEL
 
 const savedLesson = (lesson: Lesson): SavedLesson =>
   Lesson.isAnyOf(['Learned'])(lesson) ? 'Learned' : 'Pending'
@@ -138,17 +128,12 @@ const savedBests = (bests: PlayerBests): SavedBests => ({
   },
 })
 
-// NOTE: every Model field saveOf reads. Most Messages, every frame among
-// them, leave all of these as the same references, so the save needs no
-// rebuilding or comparing. Keep this in step with saveOf.
 export const SAVED_FIELDS = [
   'lessons',
   'trapHint',
   'introSeen',
   'introducedKinds',
   'homeScreenTip',
-  // NOTE: the whole group, though saveOf reads only some of it: a change to
-  // the screen's fit or full screen builds a save that isSameSave drops.
   'settings',
   'appearance',
   'difficulty',
@@ -242,8 +227,6 @@ export const saveOf = (model: Model): PlayerSave => ({
   recordUnlock: model.recordUnlock,
 })
 
-// INTO THE MODEL
-
 const restoreLesson =
   (saved: SavedLesson) =>
   (lesson: Lesson): Lesson =>
@@ -268,8 +251,6 @@ const restoreLessons = (lessons: Lessons, saved: SavedLessons): Lessons =>
 
 const isZombieKind = Schema.is(ZombieKind)
 
-// NOTE: kinds are kept as strings in the save, so a renamed or removed kind
-// is dropped here instead of throwing the whole save away.
 const knownKinds = (kinds: ReadonlyArray<string>): ReadonlyArray<ZombieKind> =>
   Array.filterMap(kinds, kind =>
     isZombieKind(kind) ? Result.succeed(kind) : Result.failVoid,
@@ -286,8 +267,6 @@ const knownPowerUps = (
 
 const isDareKind = Schema.is(DareKind)
 
-// NOTE: things are kept as strings in the save, as kinds are, so a renamed
-// thing drops out of the best run instead of throwing the save away.
 const restoreBestRun = (saved: SavedBestRun): BestRun => ({
   wave: saved.wave,
   things: Array.filterMap(saved.things, thing =>
@@ -314,8 +293,6 @@ const savedKillsOf =
   (kind: ZombieKind): number =>
     Option.getOrElse(Record.get(killsByKind, kind), () => 0)
 
-// NOTE: only the known kinds are read back, the same way, so the count of a
-// renamed or removed kind is dropped. The total stays as it was saved.
 const restoreKills = (
   killsByKind: Readonly<Record<string, number>>,
 ): KillCounts => {
@@ -349,8 +326,6 @@ const restoreBests = (
   },
 })
 
-// NOTE: a day doubled or a difficulty escaped on, on any device or this
-// one, stays so: the later day, and every difficulty.
 const mergeBonuses = (
   kept: SavedBonuses,
   saved: SavedBonuses,
@@ -361,9 +336,6 @@ const mergeBonuses = (
       ? saved.doubledDay
       : kept.doubledDay,
   escapedOn: Array.union(kept.escapedOn, saved.escapedOn),
-  // NOTE: the purses paid go with the Bones the saved rank holds, so they
-  // are the save's, never a union: a purse the scope did not pay is paid
-  // again (src/app/update/purses.ts).
   purses: saved.purses,
 })
 
@@ -391,8 +363,6 @@ export const restoreSave: {
         rumbleSetting: () => save.rumble,
         recordRuns: () => save.recordRuns,
       }),
-      // NOTE: a look worn but not owned (a purchase another device's Bones
-      // outran) comes off.
       appearance: () =>
         lookInOwned(
           save.appearance,
@@ -418,7 +388,6 @@ export const restoreSave: {
           isTurnHintSeen: isSeen => isSeen || save.home.turnHintSeen === true,
         }),
       seenPowerUps: seen => Array.union(seen, knownPowerUps(save.seenPowerUps)),
-      // NOTE: unlocked on any device, or on this one, stays unlocked.
       recordUnlock: unlock =>
         save.recordUnlock === 'Unlocked' ? 'Unlocked' : unlock,
       playerName: () => cleanName(save.name),
@@ -432,8 +401,6 @@ export const restoreSave: {
       dareMarks: marks => mergeDareMarks(marks, save.dareMarks),
       calling: () => save.calling,
       boughtCosmetics: () => save.boughtCosmetics,
-      // NOTE: unlocks seen on any device stay seen. The baseline mark of a row
-      // from before NEW badges stands for every unlock reached now.
       seenUnlocks: seen =>
         Array.union(
           seen,
@@ -446,8 +413,6 @@ export const restoreSave: {
         ),
     }),
     {
-      // NOTE: the player at home wears the calling the next run starts with.
-      // A save that syncs in mid-run leaves the run's player alone.
       player: player =>
         model.phase._tag === 'Ready'
           ? playerOfCalling(callingForRun(save.calling, save.boughtCosmetics))
@@ -456,11 +421,6 @@ export const restoreSave: {
   ),
 )
 
-// RESET
-
-// NOTE: the reset forgets only the tutorial: the lessons, the zombie cards,
-// and the power-ups explained. The look, the settings, the difficulty, and
-// the bests and kills are kept.
 export const forgetTutorial = (model: Model): Model =>
   UiStruct.evolve(model, {
     lessons: () => freshLessons,
@@ -476,8 +436,6 @@ export const forgetTutorial = (model: Model): Model =>
     seenPowerUps: () => [],
   })
 
-// LEGACY STORAGE
-
 export class SaveStorageError extends Schema.TaggedError<
   SaveStorageError,
   { readonly brand: unique symbol }
@@ -488,16 +446,6 @@ export class SaveStorageError extends Schema.TaggedError<
 const toStorageError = (error: unknown): SaveStorageError =>
   SaveStorageError.make({ reason: String(error) })
 
-// NOTE: the localStorage copy of the save, from before SQLite. Only
-// src/platform/store.ts calls these: once to import it, and as the fallback when
-// SQLite cannot keep the save. A save that is absent, corrupted, or from
-// another version reads as no save.
-//
-// NOTE: kept for one release only. SQLite on OPFS shipped to production on
-// 2026-10-29, so any release from 2026-10-30 on may remove these two, the
-// SAVE_KEY import, and the localStorage backend in src/platform/store.ts. Without
-// them a browser that opens SQLite in memory keeps the save for the tab
-// only. PLATFORM.md ("The fallback, for one release") says the same.
 export const readLegacySave: Effect.Effect<
   Option.Option<PlayerSave>,
   SaveStorageError

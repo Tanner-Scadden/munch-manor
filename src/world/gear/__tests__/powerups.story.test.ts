@@ -81,11 +81,7 @@ import {
   TUTORIAL_DROP_KILL,
 } from '../powerups'
 
-// SETUP
-
 const FRAME_MS = 50
-// NOTE: a 50 ms frame is three 60 Hz ticks. A kill freezes the rest of its
-// frame's ticks, so the tests that check one moment step a single tick.
 const TICK_MS = FIXED_STEP_MS
 
 const fightingWave = (wave: number): Model =>
@@ -158,8 +154,6 @@ type Drop = Readonly<{ kind: PickupKind; x: number; y: number }>
 
 const dropsOf = (pickups: ReadonlyArray<Pickup>): ReadonlyArray<Drop> =>
   Array.map(pickups, ({ kind, x, y }) => ({ kind, x, y }))
-
-// DROPS
 
 describe('drops', () => {
   const tankRoom = (rngState: number): Model =>
@@ -369,8 +363,6 @@ describe('drops', () => {
   )
 })
 
-// GRABBING
-
 describe('grabbing', () => {
   it.effect('walking over a pickup grabs it and announces its name', () => {
     const { x, y } = focusOf(fighting).player
@@ -549,8 +541,6 @@ describe('explaining a power-up once', () => {
   )
 })
 
-// EFFECTS
-
 describe('effects', () => {
   it.effect(
     'the Wind-Up Key tops off the magazine, fires faster, spends no rounds, and never reloads',
@@ -620,8 +610,6 @@ describe('effects', () => {
   )
 
   it.effect('Dancing Shoes make the player run faster', () => {
-    // NOTE: a step up from the start spot, onto the open floor below the
-    // table, so the run east meets no candelabra.
     const onOpenFloor = modifyFocus(withBoost(fighting, 'Speed', 5000), {
       player: player => UiStruct.evolve(player, { y: () => 130 }),
     })
@@ -748,8 +736,6 @@ describe('effects', () => {
     }),
   )
 })
-
-// TIMERS
 
 describe('timers', () => {
   it.effect('a boost counts down and runs out after its duration', () => {
@@ -927,8 +913,6 @@ describe('timers', () => {
   )
 })
 
-// FLOOR
-
 describe('the floor', () => {
   const isDimmed = (pickup: Pickup): boolean =>
     Array.some(
@@ -958,8 +942,7 @@ describe('the floor', () => {
           checkModel(({ pickups }) => {
             expect(pickups).toHaveLength(1)
             expect(pickups[0]?.ageMs).toBeCloseTo(PICKUP_LIFETIME_MS - FRAME_MS)
-          }), // NOTE: summed 60 Hz ticks land a hair short of the lifetime, so it
-          // fizzles within one tick of it.
+          }),
           tick(FRAME_MS),
           tick(TICK_MS),
           checkModel(({ pickups, frameEvents }) => {

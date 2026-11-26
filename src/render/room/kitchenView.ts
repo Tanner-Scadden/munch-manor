@@ -27,11 +27,6 @@ import * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import { mixColor } from '../iso/mood'
 
-// NOTE: the kitchen is drawn like the parlour: everything that never moves
-// is part of the room's one baked image, and only the ovens' glow and their
-// flames are drawn each frame. A few rectangles a frame for two ovens, and a
-// flame image while one belches.
-
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
 const KITCHEN_SEED = 0x6b17c3e5
@@ -39,8 +34,6 @@ const KITCHEN_SEED = 0x6b17c3e5
 const roll = (first: number, second: number): number =>
   nextRandom(KITCHEN_SEED ^ Math.imul(first, 0x9e3779b1) ^ (second * 7919))
     .value
-
-// PALETTE
 
 const TILE_LIGHT_COLOR = '#5e5a4e'
 const TILE_DARK_COLOR = '#37353c'
@@ -86,8 +79,6 @@ const SIGN_COLOR = '#e8c040'
 const SIGN_DARK_COLOR = '#8a6a1a'
 const COBWEB_COLOR = 'rgba(220, 220, 235, 0.45)'
 
-// FLOOR
-
 const kitchenBox = (level: Level): Option.Option<Box> =>
   pipe(
     level.rooms,
@@ -102,8 +93,6 @@ const kitchenBox = (level: Level): Option.Option<Box> =>
 
 const CHECKER_PX = 5
 
-// NOTE: the floor under the kitchen's walls is drawn too and the walls cover
-// it, so the floor is only the light checks laid on a dark fill.
 const checkerShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const columns = Math.floor(box.width / CHECKER_PX)
   const rows = Math.floor(box.height / CHECKER_PX)
@@ -145,9 +134,6 @@ const checkerShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the yard is outside the house, in the dark. Zombies cross it on the
-// way to the parlour's north door, and nothing out here is drawn but grass
-// and a path.
 const GRAVESTONE_PIXELS: ReadonlyArray<string> = [
   '..sss..',
   '.sSSSs.',
@@ -191,10 +177,6 @@ const FENCE_TIP_COLOR = '#2c2a34'
 const MOON_COLOR = 'rgba(160, 190, 220, 0.035)'
 const STEP_COLOR = '#2a2a30'
 
-// NOTE: the yard is the manor's garden edge at night, outside the house:
-// moonlit grass, an iron fence along the top, gravestones, dead bushes, and
-// stepping stones to the parlour's north door. Zombies cross it on the way
-// to that door, and no actor out here is drawn.
 const yardShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   const right = box.x + box.width
   const fenceY = box.y + 6
@@ -252,8 +234,6 @@ const yardShapes = (box: Box): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the WET FLOOR sign by the spilled soup, standing on its two legs
-// (the soup itself stands in 3D, src/render/iso/soup.ts).
 const WET_FLOOR_SIGN: Sprite = spriteShapes(
   ['..dd..', '.dyyd.', '.dykd.', 'dyyyyd', 'dykkyd', 'dyyyyd', 'd....d'],
   { d: SIGN_DARK_COLOR, y: SIGN_COLOR, k: INK_COLOR },
@@ -288,8 +268,6 @@ export const kitchenFloorShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
       ]
     },
   })
-
-// WALL DECOR
 
 const FACE_TOP = 3
 const FACE_HEIGHT = TILE_SIZE * 2 - FACE_TOP
@@ -353,8 +331,6 @@ const HANGING_PALETTE: Palette = {
   s: '#b8b8c4',
 }
 
-// NOTE: a rail of hanging pots, a pan, and a ladle in the gaps between the
-// pantry, the ovens, the back door, and the sink.
 const hangingPots = (rail: Span, top: number): ReadonlyArray<Draw.Shape> => {
   const middle = Math.floor((rail.left + rail.right) / 2)
   return [
@@ -408,11 +384,6 @@ export const kitchenWallShapes = (level: Level): ReadonlyArray<Draw.Shape> =>
     },
   })
 
-// COVER
-
-// NOTE: a cast iron stove against the wall, its back plate and stove pipe up
-// the tiles, a pot of the same green soup on the top, and an oven door whose
-// little window glows while the oven is ready to belch.
 export const ovenShapes = ({
   x,
   y,
@@ -445,8 +416,6 @@ export const ovenShapes = ({
   ]
 }
 
-// NOTE: a long butcher's table with the night's menu on it: a green ham, a
-// picked fish, a cleaver, a jar of eyeballs, and a pie with a hand in it.
 export const prepTableShapes = ({
   x,
   y,
@@ -488,8 +457,6 @@ export const prepTableShapes = ({
   ]
 }
 
-// NOTE: a porcelain sink of grey water with a zombie's hand bobbing in it,
-// dirty plates stacked beside it, and a tap that never stops dripping.
 export const sinkShapes = ({
   x,
   y,
@@ -525,8 +492,6 @@ const JAR_COLORS: Array.NonEmptyReadonlyArray<string> = [
   '#d8c070',
 ]
 
-// NOTE: the pantry cupboard stands open up the wall: shelves of pickled
-// things, a jar of brains, and a string of garlic for all the good it does.
 export const pantryShapes = ({
   x,
   y,
@@ -561,10 +526,6 @@ export const pantryShapes = ({
   ]
 }
 
-// NOTE: Mystery Leftovers: a grimy old fridge against the back wall, its
-// cream gone yellow, rust round the feet, mold creeping out of the door
-// seal, a smiley magnet, and a padlocked chain hanging loose. Its door
-// opening is drawn over it (src/features/fridge/fridgeView.ts).
 const FRIDGE_COLOR = '#d6cfa4'
 const FRIDGE_SHADE_COLOR = '#a89f74'
 const FRIDGE_DARK_COLOR = '#6e6648'
@@ -628,8 +589,6 @@ export const sacksShapes = ({
   ]
 }
 
-// DOORS
-
 const splinters = (
   x: number,
   y: number,
@@ -645,8 +604,6 @@ const splinters = (
     ),
   )
 
-// NOTE: the kitchen's back door: the frame with a screen door torn half off
-// its hinge, the night showing through.
 export const backDoorShapes = ({
   x,
   y,
@@ -674,8 +631,6 @@ export const backDoorShapes = ({
   ]
 }
 
-// NOTE: the kitchen's broken window: shards left in the frame, a torn
-// curtain, and the glass all over the floor inside.
 export const windowShapes = ({
   x,
   y,
@@ -708,8 +663,6 @@ export const windowShapes = ({
   ]
 }
 
-// NOTE: an exit bought open is a doorway with its casing still up and the
-// smashed boards lying on both sides of it.
 export const openedExitShapes = ({
   x,
   y,
@@ -737,11 +690,6 @@ export const openedExitShapes = ({
   ]
 }
 
-// PADLOCK
-
-// NOTE: before the kitchen's first break a padlock hangs at the foot of the
-// boards. From then on the price tag is the purchasable's
-// (src/features/shop/purchaseView.ts), the same padlock with its keys.
 export const PADLOCK_SPRITE: Sprite = spriteShapes(
   [
     '...c...',
@@ -771,8 +719,6 @@ export const padlockShapes = (model: World): ReadonlyArray<Draw.Shape> =>
       ),
     ],
   })
-
-// OVENS
 
 export const isKitchenShown = (model: World): boolean =>
   Array.some(
@@ -855,8 +801,6 @@ type OvenBox = Readonly<{
   bottom: number
 }>
 
-// NOTE: the oven's window on the stove's face, inset from its sides; an
-// oven is always two tiles wide.
 const WINDOW_INSET_PX = 6
 const WINDOW_TOP_PX = 10
 const WINDOW_WIDTH = TILE_SIZE * 2 - WINDOW_INSET_PX * 2
@@ -869,17 +813,12 @@ const READY_GLOW = 0xffe066
 const hexOf = (color: number): string =>
   `#${pipe(color.toString(16), String.padStart(6, '0'))}`
 
-// NOTE: each window stands upright on the carved stove's face
-// (`ON_FRONT_PX`), a block deep.
 const windowSprite = (shapes: ReadonlyArray<Draw.Shape>): Sprite =>
   deepSprite(bakeShapes(shapes), { most: 1, isUpright: true })
 
 const plainWindow = (color: string): Sprite =>
   windowSprite([rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, color)])
 
-// NOTE: a ready oven's glass with its pulse over the middle rows, mixed
-// solid at each tenth of the pulse (a pixel under half opacity carves to
-// nothing).
 const READY_WINDOWS: Array.NonEmptyReadonlyArray<Sprite> = [
   plainWindow(hexOf(READY_GLASS)),
   ...Array.makeBy(GLOW_STEPS, step =>
@@ -905,7 +844,6 @@ const BELCHING_WINDOW = plainWindow('#fff2a0')
 const COOLING_WINDOW = plainWindow('#5a1a10')
 const COOLED_WINDOW = plainWindow('#3a120c')
 
-// NOTE: the oven's window, on the carved stove's face.
 const windowGlowShapes = (
   oven: Oven,
   box: OvenBox,
@@ -934,7 +872,6 @@ const pulseAt = (elapsedMs: number): number =>
     (0.55 + 0.45 * Math.sin((Math.PI * 2 * elapsedMs) / GLOW_PULSE_MS)) * 10,
   ) / 10
 
-// NOTE: the warm light a ready oven throws on the floor in front of it.
 const floorGlowShapes = (
   oven: Oven,
   box: OvenBox,
@@ -973,8 +910,6 @@ const flameShapes = (
       ]
     : []
 
-// NOTE: on the ground under the actors: the light a ready oven throws on
-// the floor.
 export const ovenGlowShapes = (model: World): ReadonlyArray<Draw.Shape> => {
   if (!isKitchenShown(model)) {
     return []
@@ -989,9 +924,6 @@ export const ovenGlowShapes = (model: World): ReadonlyArray<Draw.Shape> => {
   )
 }
 
-// NOTE: each oven's window, standing upright on the carved stove's face
-// (`ON_FRONT_PX`): glowing while it is ready to belch, white hot while it
-// does, and banked down to embers while it cools.
 export const ovenWindowDrawables = (model: World): ReadonlyArray<Drawable> => {
   if (!isKitchenShown(model)) {
     return []
@@ -1012,8 +944,6 @@ export const ovenWindowDrawables = (model: World): ReadonlyArray<Drawable> => {
   )
 }
 
-// NOTE: drawn over the actors, so a zombie caught in a belch stands in the
-// fire.
 export const ovenFlameShapes = (model: World): ReadonlyArray<Draw.Shape> => {
   if (!isKitchenShown(model)) {
     return []

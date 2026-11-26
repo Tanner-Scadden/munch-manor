@@ -32,8 +32,6 @@ import {
   pixelRing,
 } from './pixelCircle'
 
-// STOMP AND SLAM RINGS
-
 const RING_FILL_FAINT = 0.12
 const RING_FILL_STRONG = 0.34
 const RING_EDGE_COLOR = '#ff4a4f'
@@ -44,8 +42,6 @@ const RING_FILL_COLOR = 'rgb(255, 58, 63)'
 const progressOf = (remainingMs: number, durationMs: number): number =>
   clamp(1 - remainingMs / Math.max(1, durationMs), 0, 1)
 
-// NOTE: a planted attack's ring on the floor, filling as it winds up: the
-// stomp's, and the wider slam's in his second phase.
 const ringShapes = (
   boss: Zombie,
   ringRadius: number,
@@ -69,15 +65,11 @@ const ringShapes = (
   ]
 }
 
-// NOTE: the stomp's and the slam's rings baked as the module loads, each
-// with its fill and its sweep.
 Array.forEach([BOSS_RULES.stompRadius, BOSS_RULES.slamRadius], radius => {
   bakeDiscs(radius - 1, radius - 1, RING_FILL_COLOR)
   bakeRings(radius, radius, 1, RING_EDGE_COLOR)
   bakeRings(1, radius, 2, RING_SWEEP_COLOR)
 })
-
-// CHARGE LANE
 
 const LANE_HALF_WIDTH = 12
 const BOSS_WALK_RADIUS = ZOMBIE_KINDS.Boss.radius
@@ -154,8 +146,6 @@ const chargeLaneShapes = (
   ]
 }
 
-// NOTE: the lane stops where he would slam into a wall or a crate, so the
-// arrow shows where he will stop.
 const clippedLane = (
   level: Level,
   from: Vector,
@@ -192,8 +182,6 @@ const bracingLane = (level: Level, boss: Zombie, target: Vector): Lane => {
   )
 }
 
-// GLOBS
-
 const GLOB_EDGE = '#b6f24a'
 const GLOB_FILL = '#6fbf3a'
 const GLOB_SHINE = '#d9ff8a'
@@ -209,8 +197,6 @@ const GLOB_SHADOW_COLOR = 'rgba(0, 0, 0, 0.35)'
 const GLOB_SHADOW_RADIUS = 2
 const GOO_COLOR = 'rgb(84, 150, 44)'
 
-// NOTE: the pooled goo as one baked shape, three overlapping blobs, so
-// where they overlap is no darker than the rest as it fades.
 const GOO_PUDDLE: Sprite = bakeShapes(
   Array.flatMap(
     [
@@ -306,8 +292,6 @@ const flyingGlobShapes = (glob: Glob): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// GROUND
-
 const RING_RADII: Readonly<Partial<Record<BossAttack, number>>> = {
   Stomp: BOSS_RULES.stompRadius,
   Slam: BOSS_RULES.slamRadius,
@@ -356,8 +340,6 @@ export const bossGroundShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
         }),
       ]
     : []
-
-// OVERHEAD
 
 const STAR_COLOR = '#ffe066'
 const STAR_COUNT = 3
@@ -438,8 +420,6 @@ export const bossOverheadShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
       ]
     : []
 
-// HEALTH BAR
-
 const BAR_NAME = bakeText(String.toUpperCase(ZOMBIE_KINDS.Boss.name), 'Defeat')
 const ENRAGED = bakeText('ENRAGED', 'Alert')
 const BAR_GAP = 4
@@ -483,10 +463,6 @@ export const bossBarShapes: {
   },
 )
 
-// ENTRANCE BAND
-
-// NOTE: the top band starts below the hearts, the keys, the round text,
-// and the dare card with its unlock bar, so it never covers the HUD.
 const BAND_TOPS: Readonly<Record<HintBand, number>> = { Top: 39, Bottom: 100 }
 const BAND_HEIGHT = 30
 const BAND_LIFT = 3

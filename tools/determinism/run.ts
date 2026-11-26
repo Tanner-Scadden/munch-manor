@@ -1,6 +1,3 @@
-// Plays the script and records the gameplay hash every N frames. Pure apart
-// from the optional callback, so it runs in every engine the harness checks.
-
 import { UiStruct } from '@effect/ui'
 
 import { type Model, initialHitStop } from '../../src/app/model'
@@ -19,14 +16,11 @@ export type RunOptions = Readonly<{
   frames: number
   mode: ScriptMode
   pattern: StepPattern
-  // Hash after every this many frames, and always after the last.
   every: number
   cached: boolean
   noHitStop?: boolean
 }>
 
-// NOTE: a call after each frame, and a change made to the Model after each
-// frame, before it is hashed, such as throwing the cosmetics away.
 type RunHooks = Readonly<{
   onFrame?: (frame: number, model: Model) => void
   afterFrame?: (model: Model) => Model
@@ -47,15 +41,11 @@ const waveOf = (model: Model): number =>
     ? model.phase.wave
     : 0
 
-// Frames are numbered from 0; checkpoint frame f is the state after frame f.
 export const runScript = (options: RunOptions & RunHooks): RunReport => {
   const { onFrame, afterFrame = (model: Model): Model => model } = options
   const hasher = makeGameplayHasher({ cached: options.cached })
   const start = startedRun(options.seed, options.mode)
   const checkpoints: Array<Checkpoint> = [[-1, hasher.hashModel(start)]]
-  // NOTE: a loop with an early exit, since a run can end at Game Over (or
-  // an escape) before the frame budget runs out. A campaign has no last
-  // wave, so a run that lives stops at the budget.
   let model = start
   let frame = 0
   for (; frame < options.frames && isPlaying(model); frame++) {

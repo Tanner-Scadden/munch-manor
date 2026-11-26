@@ -34,7 +34,6 @@ import { learnedSave } from './save.fixture'
 
 const VISIT_ID = '0123456789abcdef'
 
-// NOTE: a run one bite from Game Over, recording since its first tick.
 const recordingLastHeart = (recordRuns: 'On' | 'Off'): Model => {
   const run = lastHeart(
     UiStruct.evolve(veteranFighting, {

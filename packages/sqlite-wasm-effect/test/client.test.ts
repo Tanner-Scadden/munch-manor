@@ -260,8 +260,6 @@ describe('SqliteClient over the in-process hub', () => {
 })
 
 describe('two sessions on one database, like two tabs', () => {
-  // NOTE: it.live where sessions race on real time: one sleeps inside a
-  // transaction while another waits, or the idle timeout rolls one back.
   it.live('a write from another session waits for an open transaction', () =>
     withHub(hub =>
       Effect.gen(function* () {
@@ -304,7 +302,6 @@ describe('two sessions on one database, like two tabs', () => {
     ),
   )
 
-  // NOTE: real time: the idle timeout rolls the open transaction back.
   it.live('a transaction left idle is rolled back so others can go on', () =>
     withHub(
       hub =>
@@ -368,7 +365,6 @@ describe('two sessions on one database, like two tabs', () => {
       ),
   )
 
-  // NOTE: real time: the call waits in line behind a transaction that sleeps.
   it.live('an interrupted call waiting in line is cancelled', () =>
     withHub(
       hub =>

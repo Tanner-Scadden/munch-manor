@@ -7,9 +7,6 @@ import { Matchmaking, RoomRefusal, type RoomTicket } from '@munch/netcode'
 
 import { type MatchmakerIo, makeMatchmakerHost } from './matchmakerCore.ts'
 
-// NOTE: the Matchmaker core with fake rooms and sockets: what it sends, who
-// it seats where, and the rooms it makes.
-
 interface Fake {
   state: Matchmaking.Matchmaker
   readonly sent: Array<[string, Matchmaking.QuickServer]>

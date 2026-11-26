@@ -40,32 +40,11 @@ import {
   Payoff,
 } from './renderSchema'
 
-// The hands-on actions (owner, 2026-11-11: "It would be cool if the
-// character interacted a lot more than just sitting there with a timer"):
-// what a player's body is doing this frame, read off the World. A player
-// at work loops a motion of two to four frames that quickens as the work
-// fills: CPR on a downed teammate, rummaging a trunk, yanking the hollow
-// book, hauling the dumbwaiter, cranking, pulling, pushing, or shoving a
-// room tool, hammering a board, stirring at the stove, and prying a case.
-// A short payoff plays when a thing is done (the find held up overhead, a
-// fist pump for a revive, the revived springing up, a gun tossed in a
-// swap, a trap set down, a pickup grabbed), read from the frame's events
-// and from what the client saw last frame (`ActionWatch`).
-//
-// All of it is the client's own: nothing rides the wire, nothing touches
-// the World, and the player keeps control throughout.
-
-// MOTIONS
-
-// NOTE: one frame of a motion: the body's stance and how far it leans,
-// forward (`dx`, toward the work) and down (`dy`).
 export type Keyframe = Readonly<{ stance: ActStance; dx: number; dy: number }>
 
 type MotionArt = Readonly<{
   frames: Array.NonEmptyReadonlyArray<Keyframe>
   frameMs: number
-  // NOTE: the frame that lands a blow (a push, a hammer's strike), where
-  // the thump, the splinters, and the downed body's bounce go.
   maybeStrike: Option.Option<number>
 }>
 
@@ -175,9 +154,6 @@ const PURCHASE_MOTIONS: Readonly<Record<Purchasable['_tag'], Motion>> = {
   BackDoor: 'Push',
 }
 
-// NOTE: a motion quickens as its work fills: a third faster past half way,
-// two thirds faster near done. Stepped, not smooth, so a frame never
-// jumps back as the pace changes.
 export const paceOf = (share: number): number => {
   if (share >= 0.8) {
     return 1.65
@@ -185,7 +161,6 @@ export const paceOf = (share: number): number => {
   return share >= 0.5 ? 1.3 : 1
 }
 
-// NOTE: which frame of its motion a worker is on, by the World's clock.
 export const motionFrameOf: {
   (share: number, elapsedMs: number): (motion: Motion) => number
   (motion: Motion, share: number, elapsedMs: number): number
@@ -216,8 +191,6 @@ export const isStrikeFrame: {
   Option.contains(MOTIONS[motion].maybeStrike, index),
 )
 
-// PAYOFFS
-
 export const PAYOFF_MS: Readonly<Record<Payoff, number>> = {
   HoldUp: 850,
   FistPump: 620,
@@ -227,8 +200,6 @@ export const PAYOFF_MS: Readonly<Record<Payoff, number>> = {
   Grab: 280,
   PryOpen: 360,
 }
-
-// THE POSE
 
 export const ActionPose = UiSchema.TaggedEnum({
   Ready: {},
@@ -256,8 +227,6 @@ type Work = Readonly<{ motion: Motion; target: Vector; share: number }>
 const facingTo = (from: Vector, to: Vector): Facing =>
   to.x < from.x ? 'Left' : 'Right'
 
-// NOTE: the work a still player is at, first match wins: a teammate picked
-// up, a room's find, a room tool, a board mended, then a hold to buy.
 const maybeWorkOf = (world: World, slot: PlayerSlot): Option.Option<Work> => {
   const { seat, player, purchase } = seatStateAt(world, slot)
   if (!isStanding(seat)) {
@@ -331,8 +300,6 @@ const maybeBeatOf = (
       }),
   )
 
-// NOTE: what the player at `slot` is doing this frame: at work (it always
-// wins, since the hands are busy), playing a payoff, or ready, as usual.
 export const poseOf: {
   (watch: ActionWatch, slot: PlayerSlot): (world: World) => ActionPose
   (world: World, watch: ActionWatch, slot: PlayerSlot): ActionPose
@@ -360,8 +327,6 @@ export const poseOf: {
 
 const isWorkingPose = ActionPose.isAnyOf(['Working'])
 
-// NOTE: the motion a downed player is being picked up with, for the
-// bounce of their body under each push: the first reviver's.
 export const maybeCompressedOf: {
   (
     watch: ActionWatch,
@@ -384,10 +349,6 @@ export const maybeCompressedOf: {
     }),
 )
 
-// THE WATCH
-
-// NOTE: the events a payoff comes from, each with the seat it goes to: the
-// standing player nearest the spot, within `reachPx`.
 const isDareFound = GameEvent.isAnyOf(['DareFound'])
 const isRevived = GameEvent.isAnyOf(['PlayerRevived'])
 const isGrabbed = GameEvent.isAnyOf([
@@ -428,6 +389,32 @@ const nearestStanding = (
     Option.map(({ slot }) => slot),
   )
 
+const seatOnSpot = (world: World, spot: Vector): Option.Option<PlayerSlot> =>
+  Option.map(
+    Array.findFirst(
+      playersOf(world),
+      ({ player }) => distanceBetween(player, spot) < 1,
+    ),
+    ({ seat }) => seat.slot,
+  )
+
+const bySlot = <Row extends Readonly<{ slot: number }>>(
+  rows: ReadonlyArray<Row>,
+): ReadonlyMap<number, ReadonlyArray<Row>> => {
+  const index = new Map<number, Array<Row>>()
+  for (const row of rows) {
+    const bucket = index.get(row.slot)
+    if (bucket === undefined) {
+      index.set(row.slot, [row])
+    } else {
+      bucket.push(row)
+    }
+  }
+  return index
+}
+
+const NO_ROWS: ReadonlyArray<never> = []
+
 const beat = (
   slot: PlayerSlot,
   payoff: Payoff,
@@ -446,15 +433,7 @@ const eventBeats = (world: World): ReadonlyArray<ActionBeat> =>
       )
     }
     if (isRevived(event)) {
-      const risen = Option.map(
-        // NOTE: at most 4 seats.
-        // oxlint-disable-next-line munch/no-nested-scan
-        Array.findFirst(
-          playersOf(world),
-          ({ player }) => distanceBetween(player, event) < 1,
-        ),
-        ({ seat }) => seat.slot,
-      )
+      const risen = seatOnSpot(world, event)
       return [
         ...Option.toArray(
           Option.map(risen, slot => beat(slot, 'SpringUp', now)),
@@ -500,33 +479,32 @@ const heldOf = (world: World): ActionWatch['held'] =>
     weapon: `${player.wield}:${heldWeapon(player.arsenal)}`,
   }))
 
-// NOTE: a seat whose weapon in hand changed since last frame swapped it.
 const swapBeats = (
   world: World,
   watch: ActionWatch,
   held: ActionWatch['held'],
-): ReadonlyArray<ActionBeat> =>
-  Array.filterMap(held, ({ slot, weapon }) =>
-    // NOTE: at most 4 seats, each holding one weapon.
-    // oxlint-disable-next-line munch/no-nested-scan
+): ReadonlyArray<ActionBeat> => {
+  const seenBySlot = bySlot(watch.held)
+  return Array.filterMap(held, ({ slot, weapon }) =>
     Array.some(
-      watch.held,
-      seen => seen.slot === slot && seen.weapon !== weapon,
+      seenBySlot.get(slot) ?? NO_ROWS,
+      seen => seen.weapon !== weapon,
     ) && isStanding(seatStateAt(world, slot).seat)
       ? Result.succeed(beat(slot, 'Swap', world.elapsedMs))
       : Result.failVoid,
   )
+}
 
-// NOTE: a trap that was not standing last frame was just set down, by its
-// owner in co-op, or by the one player.
 const trapBeats = (
   world: World,
   watch: ActionWatch,
-): ReadonlyArray<ActionBeat> =>
-  Array.filterMap(world.traps, trap =>
-    // NOTE: at most 8 traps (2 a kind alone, 1 a kind a seat in co-op).
-    // oxlint-disable-next-line munch/no-nested-scan
-    Array.contains(watch.trapIds, trap.id)
+): ReadonlyArray<ActionBeat> => {
+  if (Array.isReadonlyArrayEmpty(world.traps)) {
+    return []
+  }
+  const seenIds: ReadonlySet<number> = new Set(watch.trapIds)
+  return Array.filterMap(world.traps, trap =>
+    seenIds.has(trap.id)
       ? Result.failVoid
       : pipe(
           trapOwnerOf(world, trap.id),
@@ -541,15 +519,13 @@ const trapBeats = (
           Result.fromOption(() => undefined),
         ),
   )
+}
 
 const isPlaying =
   (now: number) =>
   ({ payoff, startMs }: ActionBeat): boolean =>
     now >= startMs && now - startMs < PAYOFF_MS[payoff]
 
-// NOTE: each seat at work this frame: its motion, the frame it is on, and
-// where the work is, kept so the next frame can tell a blow that just
-// landed from one already seen.
 const workingOf = (world: World, watch: ActionWatch): ActionWatch['working'] =>
   Array.filterMap(playersOf(world), ({ seat }) => {
     const pose = poseOf(world, watch, seat.slot)
@@ -564,10 +540,6 @@ const workingOf = (world: World, watch: ActionWatch): ActionWatch['working'] =>
       : Result.failVoid
   })
 
-// NOTE: the watch after a frame: the new payoffs from its events and from
-// what changed, the old ones that are still playing, and what the frame
-// saw. The first frame of a run sees every trap and weapon as they stand,
-// so nothing plays for what was already there.
 export const nextActionWatch: {
   (watch: ActionWatch): (world: World) => ActionWatch
   (world: World, watch: ActionWatch): ActionWatch
@@ -606,8 +578,6 @@ export const nextActionWatch: {
     )
       ? watch.working
       : working
-  // NOTE: a frame that changed nothing the watch sees hands back the watch
-  // itself, so the cosmetics and the Model are not copied for it.
   return next.beats === watch.beats &&
     next.held === watch.held &&
     next.trapIds === watch.trapIds &&
@@ -633,49 +603,45 @@ const isSameWorking = (
   Object.is(seen.x, row.x) &&
   Object.is(seen.y, row.y)
 
-// NOTE: the payoffs that started between two watches, for their dust.
 export const freshBeats: {
   (after: ActionWatch): (before: ActionWatch) => ReadonlyArray<ActionBeat>
   (before: ActionWatch, after: ActionWatch): ReadonlyArray<ActionBeat>
 } = Function.dual(
   2,
-  (before: ActionWatch, after: ActionWatch): ReadonlyArray<ActionBeat> =>
-    Array.filter(
+  (before: ActionWatch, after: ActionWatch): ReadonlyArray<ActionBeat> => {
+    if (after.beats === before.beats) {
+      return []
+    }
+    const seenBySlot = bySlot(before.beats)
+    return Array.filter(
       after.beats,
       next =>
-        // NOTE: at most one payoff a seat, 4 seats.
-        // oxlint-disable-next-line munch/no-nested-scan
         !Array.some(
-          before.beats,
-          seen =>
-            seen.slot === next.slot &&
-            seen.payoff === next.payoff &&
-            seen.startMs === next.startMs,
+          seenBySlot.get(next.slot) ?? NO_ROWS,
+          seen => seen.payoff === next.payoff && seen.startMs === next.startMs,
         ),
-    ),
+    )
+  },
 )
 
-// NOTE: the blows that landed between two watches: a push on a chest, a
-// hammer on a board, a shove, a pry, each once as its strike frame comes
-// round.
 export const strikesBetween: {
   (after: ActionWatch): (before: ActionWatch) => ActionWatch['working']
   (before: ActionWatch, after: ActionWatch): ActionWatch['working']
 } = Function.dual(
   2,
-  (before: ActionWatch, after: ActionWatch): ActionWatch['working'] =>
-    Array.filter(
+  (before: ActionWatch, after: ActionWatch): ActionWatch['working'] => {
+    if (after.working === before.working) {
+      return []
+    }
+    const seenBySlot = bySlot(before.working)
+    return Array.filter(
       after.working,
       now =>
         isStrikeFrame(now.motion, now.frame) &&
-        // NOTE: at most one action a seat, 4 seats.
-        // oxlint-disable-next-line munch/no-nested-scan
         !Array.some(
-          before.working,
-          seen =>
-            seen.slot === now.slot &&
-            seen.motion === now.motion &&
-            seen.frame === now.frame,
+          seenBySlot.get(now.slot) ?? NO_ROWS,
+          seen => seen.motion === now.motion && seen.frame === now.frame,
         ),
-    ),
+    )
+  },
 )

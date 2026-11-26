@@ -1,39 +1,20 @@
-// The lintels over the doorways in the house's tall top walls: which tiles
-// a lintel spans, how tall it stands, and whose art its face wears. Plain
-// data off the level, so the 3D house builds them (house.ts) and tests read
-// them without a renderer.
-
 import { Array } from 'effect'
 
 import type { Level } from '../../world/level/arena'
 import { doorwaysOf, isPassage } from '../doorways'
 import { WALL_ROW, wallHeightAt } from './space'
 
-// NOTE: how high a lintel starts: seven of a tall wall's nine rows
-// (space.ts), so the tallest zombie walks under it and its face shows the
-// cap's band run on over the opening.
 export const LINTEL_FLOOR = 7 * WALL_ROW
 
 type LintelTile = Readonly<{
-  // NOTE: the tile, in rows and columns of `level.tiles`.
   row: number
   column: number
-  // NOTE: the top of the wall beside it, which the lintel's top meets.
   height: number
-  // NOTE: the wall tile whose art its face wears.
   art: Readonly<{ row: number; column: number }>
 }>
 
 const builtLintels = new WeakMap<Level, ReadonlyArray<LintelTile>>()
 
-// NOTE: a lintel spans a doorway's back row, the top wall's far tile, so
-// the wall's cap runs on over the opening and the lintel's face shows over
-// it, while the near row stays open and the doorway's own art shows through
-// it. (Spanning both rows hid the doorway: the steep lens sees a wall's
-// top far more than its face.) Its face and top wear the wall's art as far
-// east of it as the doorway is wide, where the lens sees them, the cap's
-// band (wallQuads.ts). A doorway in a low wall (the kitchen's, seen over
-// from the dining room) gets none.
 export const lintelTilesOf = (level: Level): ReadonlyArray<LintelTile> => {
   const cached = builtLintels.get(level)
   if (cached !== undefined) {

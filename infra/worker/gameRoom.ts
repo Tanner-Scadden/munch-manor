@@ -8,6 +8,7 @@ import * as Match from 'effect/Match'
 import * as Option from 'effect/Option'
 import * as Result from 'effect/Result'
 import * as Schema from 'effect/Schema'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Semaphore from 'effect/Semaphore'
 
 import type {
@@ -79,22 +80,6 @@ import {
   tryCall,
 } from './syncCore.ts'
 
-// NOTE: one co-op room per Durable Object, named `room:<code>`. It holds
-// the room's lobby scope (its SQLite storage, through the sync engine) and,
-// while a game runs, the game itself in memory: the pure Room from
-// @munch/netcode, stepped by a timer loop about every 50 ms, which keeps
-// the object awake. In the lobby there is no timer, so it hibernates with
-// its sockets open. An alarm is the watchdog: it restarts a stalled loop,
-// records a game the object lost to a restart as Interrupted, and deletes
-// a room a day after its last change. The run starts when the lobby's last
-// READY makes it Playing. A public room tells the Matchmaker (matchmaker.ts)
-// whenever its lobby changes. See MULTIPLAYER.md, Phase 2 and 3.
-//
-// The world is the game's own (src/world/net/roomWorld.ts): `stepWorld` over the
-// lobby's seats, with the mode and difficulty the host picked. A won run is
-// an escape and is never kept: a kept World a room stored before the escape
-// is forgotten as the next run starts.
-
 export type GameRoomBindings = SyncBindings
 
 type GameWorld = RoomWorld
@@ -102,10 +87,6 @@ type GameRules = RoomWorldOf<GameWorld, OwnSeat>
 
 const KEPT_KEY = 'kept-world'
 
-// NOTE: the run in progress, written every few seconds, so a restart of the
-// object (a deploy of new code drops every socket and loses the memory)
-// resumes the run from the last checkpoint instead of ending it. The World
-// is the room's own binary snapshot, a few KB.
 const CHECKPOINT_KEY = 'run-checkpoint'
 const CHECKPOINT_EVERY_MS = 3000
 
@@ -142,8 +123,6 @@ type GameAttachment = typeof GameAttachment.Type
 
 const decodeAttachment = Schema.decodeUnknownOption(Attachment)
 
-// NOTE: an attachment is built here from its own Schema, so its encode
-// cannot fail; if it did, it would be a defect.
 const encodeAttachment = (attachment: Attachment) =>
   Effect.orDie(Schema.encodeEffect(Attachment)(attachment))
 
@@ -176,10 +155,6 @@ const sendFrame = (socket: WorkersWebSocket, frame: ServerFrame) =>
     },
   })
 
-// NOTE: the end of a game as one object, so Workers Logs indexes each
-// field (PLATFORM.md, "Reading the room's logs"): per seat its round trip,
-// jitter, late and dropped inputs, and reconnects; the room's own loop lag;
-// and where the lag came from. It names seats by slot, never a player.
 const ROOM_GAME_ENDED = 'RoomGameEnded'
 
 const gameEndLog = ({
@@ -218,10 +193,6 @@ export class GameRoom {
     )
   }
 
-  // SETUP
-
-  // NOTE: the room's code is in its own table once created, so the alarm
-  // can find its scope with no socket open.
   private storedScope(): Effect.Effect<Option.Option<string>> {
     return Effect.try({
       try: () =>
@@ -258,8 +229,6 @@ export class GameRoom {
     const rooms = this.env.GAME_ROOMS
     return rooms !== undefined && this.ctx.id.equals(rooms.idFromName(scope))
   }
-
-  // SOCKETS
 
   private syncSockets(): ReadonlyArray<
     Socket & {
@@ -333,8 +302,6 @@ export class GameRoom {
       return new Response(null, { status: 101, webSocket: client })
     })
   }
-
-  // GAME
 
   private apply(
     out: ReadonlyArray<Room.Out>,
@@ -578,8 +545,6 @@ export class GameRoom {
     )
   }
 
-  // NOTE: a public room tells the Matchmaker how it stands after a change,
-  // without waiting: the Matchmaker may call back to seat someone.
   private list(host: RoomHost): Effect.Effect<void> {
     const matchmakers = this.env.MATCHMAKER
     return Effect.flatMap(host.lobby, maybeLobby =>
@@ -593,13 +558,6 @@ export class GameRoom {
     )
   }
 
-  // NIGHTMARE
-
-  // NOTE: read from the player's own scope on the server each time it
-  // matters: when the room seats them and when a run starts, so a
-  // Nightmare run or a kept Nightmare run never rests on a client's word.
-  // The host's milestones are read the same way as a run starts, for the
-  // new dare things they open (src/world/dare/milestones.ts).
   private factsOf(playerId: string): Effect.Effect<PlayerFacts> {
     const scopes = this.env.SYNC_SCOPES
     return readPlayerFacts(
@@ -612,8 +570,6 @@ export class GameRoom {
   private nightmareOf(playerId: string): Effect.Effect<boolean> {
     return Effect.map(this.factsOf(playerId), facts => facts.unlocked)
   }
-
-  // CHECKPOINT
 
   private checkpoint(game: Game): Effect.Effect<void> {
     return tryCall('write the checkpoint', () =>
@@ -641,10 +597,6 @@ export class GameRoom {
     ).pipe(Effect.ignore)
   }
 
-  // NOTE: a lobby still Playing with no game in memory was cut off by a
-  // restart. If the last checkpoint is of this round, the run goes on from
-  // it with every seat Away, and each player's reconnect snaps them back
-  // in. Returns whether a run is going again.
   private resume(host: RoomHost): Effect.Effect<boolean> {
     return Effect.gen({ self: this }, function* () {
       const maybeLobby = yield* host.lobby
@@ -703,15 +655,11 @@ export class GameRoom {
     })
   }
 
-  // KEPT RUN
-
   private get forgetKept(): Effect.Effect<void> {
     return tryCall('forget the kept run', () =>
       this.ctx.storage.delete(KEPT_KEY),
     ).pipe(Effect.ignore)
   }
-
-  // HTTP
 
   private handle(
     request: Request,
@@ -739,9 +687,7 @@ export class GameRoom {
         return yield* this.accept(GAME_TAG, {
           _tag: 'GameOpened',
           scope,
-          // NOTE: a socket's id needs no Effect service.
-          // @effect-diagnostics-next-line cryptoRandomUUIDInEffect:off
-          socket: crypto.randomUUID(),
+          socket: yield* Effect.sync(() => SecureRandom.uuidV4Unsafe()),
         })
       }
       if (url.pathname === IDENTITY_PATHS.exchange) {
@@ -812,8 +758,6 @@ export class GameRoom {
   fetch(request: Request): Promise<Response> {
     return this.handle(request).pipe(syncErrorResponse, Effect.runPromise)
   }
-
-  // MESSAGES
 
   private onSync(
     socket: WorkersWebSocket,
@@ -888,9 +832,6 @@ export class GameRoom {
           return yield* this.apply(linked.value.out, host)
         }
         const maybeLobby = yield* host.lobby
-        // NOTE: the lobby says Playing but no run is in memory and none could
-        // be resumed: tell them now, plainly, and send the crew back to the
-        // lobby, instead of leaving them waiting for the watchdog.
         if (
           Option.exists(maybeLobby, lobby => lobby.status === 'Playing') &&
           Option.isNone(this.game)
@@ -924,8 +865,6 @@ export class GameRoom {
     })
   }
 
-  // NOTE: every socket of this object belongs to its one room, and each
-  // attachment names its scope.
   private scopeOfObject(): Effect.Effect<Option.Option<string>> {
     const fromSockets = Option.map(
       Array.head(
@@ -1009,9 +948,6 @@ export class GameRoom {
     return this.webSocketClose(socket, 1011, 'Error')
   }
 
-  // ALARM
-
-  // NOTE: a game whose loop stopped advancing gets a new loop.
   private checkLoop(
     maybeHost: Option.Option<RoomHost>,
     nowMs: number,
@@ -1030,8 +966,6 @@ export class GameRoom {
     })
   }
 
-  // NOTE: a lobby still Playing with no game running was cut off: record
-  // the round as Interrupted and tell anyone still linked.
   private interrupted(
     maybeHost: Option.Option<RoomHost>,
     lobby: Option.Option<Lobby>,
@@ -1060,8 +994,6 @@ export class GameRoom {
     })
   }
 
-  // NOTE: only an empty, unchanged room gets here, or an object that never
-  // held one. A sync scope rebuilds its tables on next use.
   private deleteRoom(): Effect.Effect<void> {
     return Effect.gen({ self: this }, function* () {
       this.host = Option.none()
@@ -1151,8 +1083,6 @@ const ticketResponse = (
     onFailure: refusalResponse,
   })
 
-// NOTE: the sync paths of a room scope go to its GameRoom, which hosts the
-// scope beside the game.
 export const roomScopeStub: {
   (
     scope: string,

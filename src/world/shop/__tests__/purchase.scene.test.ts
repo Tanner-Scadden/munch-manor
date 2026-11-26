@@ -70,16 +70,11 @@ const holdButton = HtmlLocator.role('button', {
   name: `Hold to open the kitchen for ${EXIT_RULES.kitchenKeys} keys`,
 })
 
-// NOTE: fixed-step frames through the root's frame Subscription, each
-// acknowledging the HUD's gun slots, which mount anew when a prize taken
-// fills one.
 const frames = (count: number): SceneStep =>
   steps(
     ...Array.makeBy(count, () => steps(emitFrame(FIXED_STEP_MS), ackHudSlots)),
   )
 
-// NOTE: a finger landing on the hold button, as its Mount reports the
-// pointerdown, and lifting, through the root's pointer releases.
 const fingerDown: SceneStep = s =>
   s.mounted(
     PressHoldButton,
@@ -218,8 +213,6 @@ describe('taking a fridge prize on touch', () => {
 describe('the price tag in a zoomed phone window', () => {
   const tagsFor = (model: Model) =>
     purchaseOverlayShapes(model, screenCameraOf(model), hudKeepoutsOf(model))
-  // NOTE: the side rooms' boards are open, so the kitchen's are the only
-  // ones with a tag.
   const upright = (y: number): Model =>
     inPortrait(
       modifyFocus(

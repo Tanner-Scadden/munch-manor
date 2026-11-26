@@ -1,5 +1,3 @@
-// NOTE: the root package has no Bun types, so this declares the slice of
-// the Bun global that the harness uses.
 declare namespace Bun {
   type OnResolveArgs = { path: string; importer: string }
   type OnLoadArgs = { path: string }

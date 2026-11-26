@@ -12,9 +12,6 @@ import { withWorld } from '../../../world/schema/world'
 import { Message } from '../../message'
 import { DebutCard } from '../../model'
 
-// Where single player's own copy of a player action disagreed with the
-// co-op room's, before both ran the one rule in src/world/step/stepWorld.ts.
-
 describe('the rules single player now shares with the room', () => {
   it.effect(
     'at a shared keyboard, the new zombie card holds no hand, as in a room',

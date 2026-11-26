@@ -10,12 +10,6 @@ import { Message, MunchopediaEvents } from '../message'
 import { MunchopediaPage } from '../model'
 import { HOME_PROPS } from './munchopedia.fixture'
 
-// The Munchopedia component on its own: the pages it asks the root for,
-// the shop guide it holds for its Shop page, and the entry it reports
-// opened. The root owns the page and hands it down; the root's side, which
-// saves the entry and clears its NEW ENTRY, is in
-// src/features/home/__tests__/home.story.test.ts.
-
 type MunchopediaStory = Story.Steps<typeof Munchopedia>
 
 const openShop = (s: MunchopediaStory): MunchopediaStory =>

@@ -32,11 +32,6 @@ import {
   roomOf,
 } from './story.fixture'
 
-// The lobby's own edits in the root: the hero picker, the picks, and your
-// name. What co-op tells the root is checked by what the root does with it
-// (the hero or name kept and saved, the Bones spent); where the root does
-// nothing, on co-op's rule alone.
-
 const tapCard = (calling: Calling): StoryStep =>
   send(Message.PickedCoopHero({ calling }))
 
@@ -44,15 +39,10 @@ const tapBuy: StoryStep = send(
   Message.RequestedBuyCoopHero({ calling: 'TrackStar' }),
 )
 
-// NOTE: the picker's close button, Escape, and Y come up from the picker
-// itself (src/features/heroes/block.ts, its own Subscription) as its
-// RequestedClose event, which co-op's view maps to this Message.
 const closePicker: StoryStep = send(Message.RequestedCloseCoopHeroPicker())
 
 const isUp = (current: Model): boolean => current.coop.heroPick.isOpen
 
-// NOTE: co-op's rule for a Message on co-op as the Story left it tells the
-// root nothing.
 const tellsNothing =
   (message: CoopMessage): StoryStep =>
   s => {
@@ -78,7 +68,6 @@ describe('picking a hero in the lobby', () => {
         checkModel(current => {
           expect(isUp(current)).toBe(true)
         }),
-        // NOTE: Y again is the picker's own close key: the root's key waits.
         press('KeyY'),
         checkModel(current => {
           expect(isUp(current)).toBe(true)
@@ -211,12 +200,8 @@ describe('picking a hero in the lobby', () => {
 })
 
 describe('buying a hero in the lobby', () => {
-  // NOTE: rank 7 has reached the Track Star (rank 6, 100 Bones), not the
-  // Penny Pincher (rank 10).
   const ANA = memberOf(0, 'Ana', false, '', false, 7)
   const lobbyAt = lobbyOf([ANA, memberOf(1, 'Bo')])
-  // NOTE: the root's rank and purse, and co-op's copy of the purse, alike:
-  // co-op checks its copy before it asks, the root its own before it buys.
   const withBones = (bones: number): Model =>
     UiStruct.evolve(inRoom(0), {
       coop: () => UiStruct.evolve(inRoomCoop(0), { bones: () => bones }),

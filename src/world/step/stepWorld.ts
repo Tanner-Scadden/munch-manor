@@ -39,14 +39,6 @@ import { isRoundActive, startWaveEarly } from '../waves/waves'
 import { ZERO_VECTOR } from './geometry'
 import { advanceTick } from './simulation'
 
-// The pure 60 Hz tick a co-op room runs (MULTIPLAYER.md, Phase 0): the
-// World and each player's intent in, the next World and the tick's events
-// out. No UI, art, audio, camera, or store: `tools/world/bundle.ts` checks
-// that its imports stay that way, and the determinism harness runs it in
-// workerd.
-
-// NOTE: players are keyed by their room slot. Single player is the one
-// entry at SOLO_SLOT, and a missing entry intends nothing.
 export { type PlayerSlot }
 
 export type InputsByPlayer = ReadonlyMap<PlayerSlot, Intent>
@@ -54,7 +46,6 @@ export type InputsByPlayer = ReadonlyMap<PlayerSlot, Intent>
 export type Stepped = Readonly<{
   world: World
   events: ReadonlyArray<GameEvent>
-  // NOTE: how much world time the tick ran: none while hit-stop holds it.
   worldMs: number
 }>
 
@@ -67,10 +58,6 @@ const inputOf = (inputsByPlayer: InputsByPlayer, slot: PlayerSlot): Intent =>
     () => idleIntent,
   )
 
-// NOTE: an away player stands frozen (decided row 10). A downed one crawls
-// (decided row 4) and a bled-out one lies still; both aim, and their
-// trigger swings the melee slot, never the gun (swingWhileDown in
-// src/world/step/simulation.ts).
 const intentFor = (world: World, slot: PlayerSlot, intent: Intent): Intent => {
   if (!isCoop(world)) {
     return intent
@@ -93,9 +80,6 @@ const isSameHeading = (
   second: Readonly<{ x: number; y: number }>,
 ): boolean => Object.is(first.x, second.x) && Object.is(first.y, second.y)
 
-// NOTE: `next`, or the seat's `current` intent itself when it says the same,
-// so a player holding still (or holding the same aim) leaves the seat, and
-// so the World, uncopied for it.
 export const keptIntent: {
   (next: Intent): (current: Intent) => Intent
   (current: Intent, next: Intent): Intent
@@ -136,16 +120,6 @@ export const stepWorld: {
   },
 )
 
-// ACTIONS
-
-// NOTE: a player's presses, as actions on their own seat (MULTIPLAYER.md,
-// Phase 1): swapping, drawing the knife or a gun by its slot, reloading,
-// traps, and READY (decided 7). Each action's rule lives here once. The room applies a
-// seat's presses between ticks; single player applies its own presses to
-// its lead seat (src/app/update/action.ts) and wraps its cues around them.
-// A purchasable in the world is no press: it is bought by holding the
-// intent's interact, in the tick (src/world/shop/purchase.ts). CallMedic is
-// the one press a downed player has: MEDIC! (src/world/party/medic.ts).
 export const SeatAction = UiSchema.TaggedEnum({
   Swap: {},
   Melee: {},
@@ -158,10 +132,6 @@ export const SeatAction = UiSchema.TaggedEnum({
 })
 export type SeatAction = typeof SeatAction.Type
 
-// NOTE: why an action left the World as it was. NotNow is no moment for
-// it (out of the fight, nothing to place): the client stays quiet. Refused
-// is a try the game turns down, with the reason a client can show (the
-// trap notice).
 export const ActionRefusal = UiSchema.TaggedEnum({
   NotNow: {},
   Refused: { reason: Schema.String },
@@ -192,8 +162,6 @@ const swap = inHand(swapInHand)
 
 const melee = inHand(drawMelee)
 
-// NOTE: a slot with no gun, or the gun already in hand, draws nothing: 1
-// and 2 on the keyboard press it whatever the arsenal holds.
 const canDraw = (player: Player, gun: GunSlot): boolean =>
   (gun === 'First' || !Arsenal.isAnyOf(['OneGun'])(player.arsenal)) &&
   (isWieldingMelee(player) || heldSlotOf(player.arsenal) !== gun)
@@ -203,8 +171,6 @@ const draw = (world: World, slot: PlayerSlot, gun: GunSlot): ActionResult =>
     ? inHand(player => drawSlot(player, gun))(world, slot)
     : notNow
 
-// NOTE: with the knife out, a reload puts the last gun back in hand first,
-// even when that gun cannot reload.
 const reload = (world: World, slot: PlayerSlot): ActionResult => {
   const { player } = seatStateAt(world, slot)
   const drawn = isWieldingMelee(player)
@@ -217,7 +183,6 @@ const reload = (world: World, slot: PlayerSlot): ActionResult => {
     : drawn
 }
 
-// NOTE: with no trap in stock there is nothing to try.
 const placeTrap = whenFighting((world, slot) =>
   Option.isNone(maybeSelectedKind(world, slot))
     ? notNow
@@ -231,8 +196,6 @@ const nextTrap = whenFighting((world, slot) =>
   Result.succeed(cycleTrap(world, slot)),
 )
 
-// NOTE: READY in single player starts the wave at once, as START WAVE
-// always has; in co-op it waits for everyone. Only a break has one.
 const ready = (world: World, slot: PlayerSlot): ActionResult =>
   Phase.isAnyOf(['Preparation'])(world.phase)
     ? Result.succeed(
@@ -240,16 +203,12 @@ const ready = (world: World, slot: PlayerSlot): ActionResult =>
       )
     : notNow
 
-// NOTE: MEDIC! from a downed player whose last shout has cooled down
-// (src/world/party/medic.ts). Standing, or too soon, there is nothing to shout.
 const callMedic = (world: World, slot: PlayerSlot): ActionResult =>
   Option.match(shoutMedic(world, slot), {
     onNone: () => notNow,
     onSome: Result.succeed,
   })
 
-// NOTE: an action by the seat at `slot`: the World it makes, or why it made
-// none.
 export const trySeatAction: {
   (slot: PlayerSlot, action: SeatAction): (world: World) => ActionResult
   (world: World, slot: PlayerSlot, action: SeatAction): ActionResult
@@ -277,11 +236,6 @@ export const applySeatAction: {
     Result.getOrElse(trySeatAction(world, slot, action), () => world),
 )
 
-// NOTE: a controller's Y (Triangle) cycles one way through the three
-// slots, first gun, second gun, knife, and round again (owner, 2026-11-12:
-// "one button to cycle through the weapons ... it just cycles one way").
-// With one gun it goes gun, knife, gun. It is made of Draw and Melee, so
-// the room needs nothing new.
 export const cycleWeaponAction = (player: Player): SeatAction =>
   isWieldingMelee(player)
     ? SeatAction.Draw({ slot: 'First' })
@@ -291,8 +245,6 @@ export const cycleWeaponAction = (player: Player): SeatAction =>
         HoldingSecond: () => SeatAction.Melee(),
       })
 
-// NOTE: a tap on a HUD gun slot. On the gun in hand it reloads it; any
-// other tap draws that gun, from the knife too.
 export const gunSlotAction: {
   (slot: GunSlot): (player: Player) => SeatAction
   (player: Player, slot: GunSlot): SeatAction

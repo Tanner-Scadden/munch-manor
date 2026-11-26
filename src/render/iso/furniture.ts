@@ -1,12 +1,3 @@
-// The house's furniture in 3D (src/render/room/tallCover.ts): every tall
-// piece's carved blocks set in their own batch once per level, as a game
-// engine builds its static geometry, never stood again frame by frame. Each
-// frame only shows or hides a piece by the view, and fades one while someone
-// stands behind it; a still frame writes nothing. Its shadows cast from a
-// second batch the shadow pass alone draws, and the shadow watch is handed a
-// key of which pieces cast, so a fill draws its map again only when a piece
-// culls in or out or fades past casting (shadowWatch.ts).
-
 import { Array, Option } from 'effect'
 import type { Texture } from 'pixi.js'
 
@@ -34,21 +25,17 @@ import {
   newReach,
 } from './voxels'
 
-// NOTE: one carved part of a piece, as `standLeaf` would stand it.
 type Carving = Readonly<{
   geometry: Geometry3D
   eyes: Geometry3D | undefined
   caster: Geometry3D | undefined
   sheet: Texture
   elements: ReadonlyArray<number>
-  // NOTE: the part's own alpha in the piece's art, before any fade.
   alpha: number
   isUpright: boolean
   isGlowing: boolean
 }>
 
-// NOTE: a part's slots in the batches (`NO_SLOT` for none) and what its
-// material is picked by.
 type Part = Readonly<{
   sheet: Texture
   alpha: number
@@ -59,8 +46,6 @@ type Part = Readonly<{
   casterSlot: number
 }>
 
-// NOTE: mutable on purpose: what each piece last showed, so a frame that
-// changes nothing writes nothing.
 type Piece = {
   readonly cover: TallCover
   readonly box: ViewBox
@@ -72,12 +57,9 @@ type Piece = {
 
 const NO_SLOT = -1
 
-// NOTE: a piece's image leaves; the art is baked, so every leaf is one.
 const imageLeavesOf = (cover: TallCover): ReadonlyArray<Leaf> =>
   Array.filter(flatten(cover.shapes), ({ shape }) => shape._tag === 'Image')
 
-// NOTE: a piece's parts carved as `standLeaf` would stand them, each in
-// front of the parts before it, or none while a sprite still loads.
 const partsOf = (
   voxels: VoxelBatch,
   cover: TallCover,
@@ -104,8 +86,6 @@ const partsOf = (
     parts.push({
       geometry: carved.geometry,
       eyes: carved.eyes,
-      // NOTE: a piece standing upright, or a light of itself, casts
-      // nothing, as `standLeaf` has it.
       caster: isGlowing || isUpright ? undefined : carved.caster,
       sheet,
       elements,
@@ -117,7 +97,6 @@ const partsOf = (
   return Option.some(parts)
 }
 
-// NOTE: mutable on purpose: it owns its batches' slots for the level's life.
 export class Furniture {
   private readonly level: Level
   private readonly parent: Container3D
@@ -126,8 +105,6 @@ export class Furniture {
   private pieces: ReadonlyArray<Piece> | undefined = undefined
   private batch: BatchedMesh3D | undefined = undefined
   private casters: BatchedMesh3D | undefined = undefined
-  // NOTE: the shadow pass draws depth alone, so every caster shares one
-  // plain material.
   private readonly casterMaterial = new Material3D({})
 
   constructor(
@@ -141,9 +118,6 @@ export class Furniture {
     )
   }
 
-  // NOTE: the game hands a tall piece back as its shapes, or as one group of
-  // them at its fade, while someone stands behind it: the piece and its
-  // opacity.
   fadeOf(
     shapes: ReadonlyArray<Draw.Shape>,
   ): Option.Option<Readonly<{ cover: TallCover; opacity: number }>> {
@@ -161,9 +135,6 @@ export class Furniture {
     )
   }
 
-  // NOTE: shows the pieces near the view, each at its fade (1 for none),
-  // and hands back a key of which parts cast, which changes when the
-  // shadows do. Before every sprite has loaded it shows nothing.
   apply(
     input: Readonly<{
       fades: ReadonlyMap<TallCover, number>
@@ -188,8 +159,6 @@ export class Furniture {
     return key
   }
 
-  // NOTE: the slots of a piece set to how it shows now; how many of its
-  // parts cast.
   private show(piece: Piece): number {
     const { batch, casters } = this
     if (batch === undefined || casters === undefined) {
@@ -210,8 +179,6 @@ export class Furniture {
           }),
         )
       }
-      // NOTE: a hidden slot leaves the transparent pass, which sorts hidden
-      // slots too.
       batch.setPassesAt(
         part.slot,
         isVisible && !isOpaqueAt(alpha)
@@ -231,8 +198,6 @@ export class Furniture {
     return casts
   }
 
-  // NOTE: every piece carved into slots set once, or none while a sprite
-  // still loads (asking for them starts their loads).
   private build(): ReadonlyArray<Piece> | undefined {
     const carved = Array.map(tallCoverOf(this.level), cover =>
       Option.map(partsOf(this.voxels, cover), parts => ({ cover, parts })),
@@ -322,8 +287,6 @@ export class Furniture {
     return pieces
   }
 
-  // NOTE: the batches go with the level's holder; the carves are the voxel
-  // batch's, kept for the next level.
   destroy(): void {
     this.casterMaterial.destroy()
   }

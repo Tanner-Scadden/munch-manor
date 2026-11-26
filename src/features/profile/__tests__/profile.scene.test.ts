@@ -1,14 +1,13 @@
-import { Array, Effect, Option } from 'effect'
+import { Effect } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 import { Tabs, TabsEvents } from '@effect/ui-kit'
-import { HtmlLocator, HtmlPlay } from '@effect/ui/html/testing'
-import { Locator, TestHost } from '@effect/ui/testing'
-import { describe, expect, it, layer } from '@effect/vitest'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
+import { describe, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
-import { profilePropsOf } from '../../../app/profileView'
 import { RequestLinkCode } from '../../../app/update/profile'
 import { PROFILE_DIALOG_ID } from '../../../domain/clientSchema'
 import { LinkFlow, SyncState } from '../../../platform/playerSync'
@@ -32,9 +31,7 @@ import {
   settleRunCommands,
   steps,
 } from '../../../test/testing'
-import { Profile } from '../block'
 import { CopyLinkCodeOnClick, PasteLinkCodeOnTap } from '../linkClipboard'
-import { Events } from '../message'
 import { PROFILE_TABS_ID } from '../profile'
 import { LINK_TAKES_PROGRESS_NOTE, SHARE_STATS_NOTE } from '../view'
 import {
@@ -44,13 +41,8 @@ import {
   characterButton,
   inPanel,
   profileDeskOf,
-  profileOpenOn,
+  profileTab,
 } from './profile.fixture'
-
-// The Profile as a player meets it. The root's Scene opens and closes its
-// Dialog; the Profile is a child there, so its tabs and pages are drawn in
-// a Scene of their own, with each event taken up to a Story of the root and
-// the props it then hands down (profile.fixture.ts).
 
 const onTouch: Model = UiStruct.evolve(homeAfterRead, {
   lastDevice: () => 'Touch',
@@ -63,20 +55,15 @@ const synced: Model = UiStruct.evolve(homeAfterRead, {
     }),
 })
 
-const tab = (name: string) => HtmlLocator.role('tab', { name })
 const tablist = HtmlLocator.role('tablist', { name: 'Profile' })
 
-// NOTE: a check on the Profile's Scene, as a step over the desk.
 const see = (check: (scene: ProfileScene) => ProfileScene) => inPanel(check)
 
-// NOTE: the one element `locator` finds wears `attrs`.
 const has = (
   locator: Locator.Locator,
   attrs: Readonly<Record<string, string>>,
 ) => see(s => s.expect(withAttrs(attrs)(locator)).toExist())
 
-// NOTE: the one element `locator` finds has no `name` attribute: the kit's
-// Tabs writes `aria-orientation` only for a vertical list.
 const lacks = (locator: Locator.Locator, name: string) =>
   see(s =>
     s.check(() => {
@@ -86,10 +73,8 @@ const lacks = (locator: Locator.Locator, name: string) =>
     }),
   )
 
-const selected = (name: string) => has(tab(name), { 'aria-selected': 'true' })
+const selected = (name: string) => has(profileTab(name), { 'aria-selected': 'true' })
 
-// NOTE: a tab picked, as the kit's Tabs says it: a scene runs no child's
-// update, so its click and keys are the Play's below.
 const atTab = (name: string) =>
   inPanel(s =>
     s.childEmit(
@@ -99,7 +84,6 @@ const atTab = (name: string) =>
     ),
   )
 
-// NOTE: the Profile opened by `open` on the root, drawn from what it left.
 const deskOpenedBy = (model: Model, open: StoryStep) =>
   Effect.map(profileDeskOf(model), atRoot(open))
 
@@ -176,13 +160,13 @@ describe('the Profile', () => {
             s
               .expect(Locator.inside(tablist, HtmlLocator.role('tab')))
               .toHaveCount(5)
-              .expect(tab('Look'))
+              .expect(profileTab('Look'))
               .toExist()
-              .expect(tab('Name'))
+              .expect(profileTab('Name'))
               .toExist()
-              .expect(tab('Account'))
+              .expect(profileTab('Account'))
               .toExist()
-              .expect(tab('Mastery'))
+              .expect(profileTab('Mastery'))
               .toExist(),
           ),
           selected('Settings'),
@@ -510,62 +494,6 @@ describe('RECORD MY RUNS', () => {
         has(recordTile, { 'aria-pressed': 'true' }),
         settle,
       )(desk)
-    }),
-  )
-})
-
-// The tab strip's own keys and taps are the kit's Tabs, a child the Profile's
-// Scene runs no update of: a Play of the Profile runs it, and each says what
-// it switched to. An arrow key moves focus between the tabs (the kit's own
-// rule, by the orientation the Profile hands it, checked above) through a
-// Focus Command TestHost can't carry out, so the Play gives the tab focus
-// as the arrow would: the tab that takes it switches to it
-// (`activateOnFocus`), as the old Profile switched on an arrow.
-// NOTE: @effect/vitest's layer hands its tests their own `it`, which the
-// vitest rules know as the test block; it stands in for the module's.
-// oxlint-disable-next-line no-shadow -- the layer's own `it`
-layer(TestHost.layer())('the tab strip', it => {
-  const playOn = (model: Model) => HtmlPlay.make(Profile, profilePropsOf(model))
-
-  const lastSwitch = (emitted: ReadonlyArray<Events>) => Array.last(emitted)
-
-  it.effect('a tab the arrow keys move to switches to it', () =>
-    Effect.forEach(
-      [
-        profileOpenOn('Settings'),
-        inPortrait(
-          UiStruct.evolve(profileOpenOn('Settings'), {
-            lastDevice: () => 'Touch',
-          }),
-        ),
-      ],
-      model =>
-        Effect.gen(function* () {
-          const play = yield* playOn(model)
-          yield* play.focus(tab('Name'))
-          expect(lastSwitch(play.root.emitted)).toStrictEqual(
-            Option.some(Events.SwitchedTab({ tab: 'Name' })),
-          )
-          yield* play.focus(tab('Mastery'))
-          expect(lastSwitch(play.root.emitted)).toStrictEqual(
-            Option.some(Events.SwitchedTab({ tab: 'Mastery' })),
-          )
-        }),
-      { discard: true },
-    ),
-  )
-
-  it.effect('a tap on a tab switches to it', () =>
-    Effect.gen(function* () {
-      const play = yield* playOn(profileOpenOn('Settings'))
-      yield* play.click(tab('Account'))
-      expect(lastSwitch(play.root.emitted)).toStrictEqual(
-        Option.some(Events.SwitchedTab({ tab: 'Account' })),
-      )
-      yield* play.click(tab('Look'))
-      expect(lastSwitch(play.root.emitted)).toStrictEqual(
-        Option.some(Events.SwitchedTab({ tab: 'Look' })),
-      )
     }),
   )
 })

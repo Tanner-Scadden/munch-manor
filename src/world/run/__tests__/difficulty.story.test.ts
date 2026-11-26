@@ -244,8 +244,6 @@ describe('difficulty in the lobby', () => {
   )
 })
 
-// NOTE: a wave with the front door open and the player on its sill: the
-// next frame is an escape.
 const winning = (base: Model): Model =>
   escaping(
     UiStruct.evolve(base, {

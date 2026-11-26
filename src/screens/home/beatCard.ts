@@ -21,14 +21,6 @@ import { iconView } from '../../ui/menuParts'
 import { CALLING_NAMES, DARE_NAMES } from '../../world/names'
 import { DIFFICULTIES } from '../../world/run/difficulty'
 
-// BEAT MY RUN on the home menu (src/domain/beatMyRun.ts): a friend's SHARE
-// link opened offers their dare as a card, their result in pictures (how it
-// ended, the stakes, the wave, the things they found, and the things their
-// list rolls from that this player has not opened). A tap takes it into the
-// lobby with the picks held to the friend's; the x lets it go.
-
-// NOTE: a player still in the tutorial's practice gate, or not yet asked
-// the difficulty, plays the tutorial first: the card waits until then.
 export const isBeatCardShown = (model: Model): boolean =>
   isOnHome(model.phase) &&
   Option.isSome(maybeShownDareOf(model)) &&
@@ -50,7 +42,6 @@ const OUTCOME_WORDS: Readonly<Record<DareOutcome, string>> = {
   Munched: 'got munched',
 }
 
-// NOTE: what a screen reader hears for the card's pictures.
 const dareLabel = (dare: FriendsDare): string =>
   `Beat my run: a friend ${OUTCOME_WORDS[dare.outcome]} on wave ${dare.wave}, ${DIFFICULTIES[dare.difficulty].name}, as the ${CALLING_NAMES[dare.hero]}, with ${dare.found.length} of the dare's things. Play their house`
 
@@ -74,8 +65,6 @@ const thingsView = (
         ),
   })
 
-// NOTE: a thing the friend's list rolls from that this player has not
-// opened: its silhouette with a ?, since the dare plays it anyway.
 const unopenedView = (
   model: Model,
   dare: FriendsDare,
@@ -154,8 +143,6 @@ export const beatCardView: {
                 ),
               closeButtonView(
                 {
-                  // NOTE: a sibling of the take button, not inside it, so
-                  // its click never reaches the take's.
                   button: h.button.on(
                     'click',
                     HomeMessage.ClickedDismissBeatMyRunButton(),

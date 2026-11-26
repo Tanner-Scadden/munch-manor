@@ -66,16 +66,10 @@ import {
 
 type H = Html.H<Message>
 type Content = View.Content<Message>
-// NOTE: a child that may draw nothing.
 type MaybeContent = Content | null
-
-// TABS
 
 type TabLook = Readonly<{ word: string; icon: string }>
 
-// NOTE: each tab is one word and one icon. Its color comes from
-// [data-tab] in src/features/profile/profile.css: pink Look, gold Mastery,
-// yellow Name, teal Account, and grey Settings.
 const TAB_LOOKS: Readonly<Record<ProfileTab, TabLook>> = {
   Look: { word: 'Look', icon: CHARACTER_ICON },
   Mastery: { word: 'Mastery', icon: TROPHY_ICON },
@@ -88,8 +82,6 @@ const TAB_ITEMS = Array.map(PROFILE_TABS, value => ({ value }))
 
 type TabsParts = Parameters<NonNullable<Parameters<typeof Tabs>[1]['view']>>[0]
 
-// NOTE: the open tab takes the focus when the Dialog opens: the Dialog
-// focuses the element marked `autofocus`.
 const tabButtonView = (
   tabs: TabsParts,
   tab: ProfileTab,
@@ -112,8 +104,6 @@ const tabButtonView = (
       h.span.class('profile-tab-word').children(TAB_LOOKS[tab].word),
       props.isLookNew && tab === 'Look' && newPipView(h),
     )
-
-// LOOK
 
 const lookTabView = (props: ProfileProps, h: H): Content =>
   Character(h, {
@@ -138,8 +128,6 @@ const lookTabView = (props: ProfileProps, h: H): Content =>
     },
   })
 
-// NAME
-
 const nameLettersView = (name: string, h: H): Content =>
   h.span
     .class('name-stone-name')
@@ -153,9 +141,6 @@ const nameLettersView = (name: string, h: H): Content =>
       ),
     )
 
-// NOTE: the name is carved on a tombstone, live as it is typed. A dice roll
-// swaps the stone (its key turns with the effect's count), so its letters
-// spin in like a slot machine each time.
 const stoneView = (model: Model, h: H): Content =>
   h.div
     .key(`name-stone-${model.fxCount % 2}`)
@@ -232,8 +217,6 @@ const nameTabView = (model: Model, h: H): Content =>
       namePipsView(model, h),
     )
 
-// ACCOUNT
-
 type DeviceKind = 'Phone' | 'Laptop'
 
 const DEVICE_ICONS: Readonly<Record<DeviceKind, string>> = {
@@ -253,8 +236,6 @@ const deviceCount = (state: SyncState): number =>
 
 type SyncDot = 'Local' | 'Syncing' | 'Synced' | 'Broken'
 
-// NOTE: a dot on every device: grey on this device only, yellow while it
-// connects or waits offline, green once synced, red when sync is broken.
 const syncDot = (state: SyncState, scope: PlayerScopeStatus): SyncDot =>
   scope._tag === 'Failed'
     ? 'Broken'
@@ -265,8 +246,6 @@ const syncDot = (state: SyncState, scope: PlayerScopeStatus): SyncDot =>
         Offline: (): SyncDot => 'Syncing',
       })
 
-// NOTE: this device is drawn as what it is. The others are unknown, so they
-// take turns as the other kind.
 const hereOf = (device: InputDevice): DeviceKind =>
   device === 'Touch' ? 'Phone' : 'Laptop'
 
@@ -323,9 +302,6 @@ const devicesView = (props: ProfileProps, h: H): Content => {
     )
 }
 
-// NOTE: linking never merges. The device that types the code takes on the
-// other device's player, and what it had saved is left behind (see
-// "Device linking" in PLATFORM.md), so the form says so before Link.
 export const LINK_TAKES_PROGRESS_NOTE =
   "This device will use the other device's progress. What was saved here is replaced, not merged."
 
@@ -380,9 +356,6 @@ const portalView = (spin: 'Spinning' | 'Open', h: H): Content =>
 
 const LINK_CODE_COPIED = 'COPIED!'
 
-// NOTE: a tap on the code copies it (CopyLinkCodeOnClick), and COPIED!
-// flashes over it, afresh for each copy (keyed by the count), fading in
-// place, so the button never moves.
 const codeView = (code: string, copies: number, h: H): Content =>
   h.button
     .attrs({
@@ -628,8 +601,6 @@ const accountTabView = (props: ProfileProps, h: H): Content =>
       shareStatsView(props, h),
     )
 
-// SETTINGS
-
 type Toggle = Readonly<{
   label: string
   shortLabel: string
@@ -646,12 +617,6 @@ const ON_OFF = { on: 'ON', off: 'OFF' } as const
 const shownWhen = (isShown: boolean, toggle: Toggle): ReadonlyArray<Toggle> =>
   isShown ? [toggle] : []
 
-// NOTE: the quick toggles are icon tiles: sound, music, shake, the big
-// cursor on a mouse, full screen where the browser can do it, and, on a
-// phone that can lock how it turns, ROTATE: off keeps it sideways, on lets
-// it follow the phone. RUMBLE shows once a controller is plugged in.
-// RECORD shows once any of the player's devices opened `?record=1`
-// (src/platform/recording.ts).
 const settingTiles = ({
   device,
   settings,
@@ -732,7 +697,6 @@ const settingTiles = ({
   }),
 ]
 
-// NOTE: the key a tile answers to, shown only to a keyboard player.
 const keyCapOf = (
   device: InputDevice,
   maybeKey: Option.Option<string>,
@@ -790,7 +754,6 @@ const resetTutorialButtonView = (h: H): Content =>
         .children('TUTORIAL'),
     )
 
-// NOTE: the confirm wobbles in, so it reads as "are you sure?" at a glance.
 const askResetTutorialView = (h: H): Content =>
   h.div
     .class('setting-confirm')
@@ -840,8 +803,6 @@ const settingsTabView = (props: ProfileProps, h: H): Content =>
         ),
   )
 
-// PANEL
-
 const PAGE_VIEWS: Readonly<
   Record<ProfileTab, (props: ProfileProps, h: H) => Content>
 > = {
@@ -856,11 +817,6 @@ const PAGE_VIEWS: Readonly<
   Settings: settingsTabView,
 }
 
-// NOTE: the Profile's body inside the root's Dialog (src/app/profileView.ts):
-// the tab strip, down the side or across the top in portrait, and the open
-// tab's page. Only the open page is drawn, each keyed by its tab, so
-// switching tabs swaps the page element and its flip-in animation plays
-// again.
 export const profileView: {
   (h: H): (props: ProfileProps) => Content
   (props: ProfileProps, h: H): Content

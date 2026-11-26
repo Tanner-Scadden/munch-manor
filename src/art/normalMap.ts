@@ -1,31 +1,11 @@
-// A sprite sheet's normal map, read off its own pixels, so the lamp, the
-// flames, and the muzzle flash shade a body's sides and not only its middle,
-// with no art redrawn.
-//
-// Each opaque pixel gets a height: a dome from how far it sits inside its
-// shape (an outline pixel low, the middle high), lowered a little where the
-// art is dark (the outline and the shading the artist drew) and raised where
-// it is light. The normal is the slope of that height, in the tangent space
-// glTF uses (x right, y up the image, z out of it), packed as RGB. A clear
-// pixel faces straight out. A sheet holds many sprites side by side; the
-// clear pixels between them keep each its own dome.
-
-// NOTE: how deep the dome goes, in pixels in from the edge: a pixel this far
-// in or more is on the top.
 const DOME_DEPTH = 3
 
-// NOTE: how much a pixel's lightness lifts it, against the dome's one.
 const SHADE_WEIGHT = 0.6
 
-// NOTE: how steep the slopes read; higher bends the light harder at the edge.
 const STEEPNESS = 4
 
-// NOTE: x and y are packed in steps this many levels apart, z worked out
-// from them: the light lands on whole pixels, so finer steps show nothing,
-// and the sheet packs about a third smaller.
 const STEP = 16
 
-// NOTE: one component in -1 to 1 packed as a byte, in whole steps.
 const steppedByte = (component: number): number =>
   Math.min(255, Math.round((component * 127.5) / STEP) * STEP + 128)
 
@@ -38,9 +18,6 @@ const lightnessOf = (pixels: Uint8ClampedArray, offset: number): number =>
     0.114 * (pixels[offset + 2] ?? 0)) /
   255
 
-// NOTE: each opaque pixel's steps to the nearest clear one (the sheet's own
-// border counts as clear), capped at the dome's depth: one pass from each
-// corner, the four sides only, so a diagonal counts two.
 const depthsOf = (
   pixels: Uint8ClampedArray,
   width: number,
@@ -75,7 +52,6 @@ const depthsOf = (
   return depths
 }
 
-// NOTE: a pixel's height: the dome's rounded profile, plus its lightness.
 const heightsOf = (
   pixels: Uint8ClampedArray,
   width: number,
@@ -95,7 +71,6 @@ const heightsOf = (
   return heights
 }
 
-// NOTE: the sheet's normal map, as RGBA pixels the same size as the sheet.
 export const normalPixelsOf = (
   sheet: Readonly<{
     pixels: Uint8ClampedArray
@@ -119,7 +94,6 @@ export const normalPixelsOf = (
         normals[offset + 1] = FLAT[1]
         normals[offset + 2] = FLAT[2]
       } else {
-        // NOTE: the image's rows run down, the normal's y up.
         const slopeX = (at(x + 1, y) - at(x - 1, y)) / 2
         const slopeDown = (at(x, y + 1) - at(x, y - 1)) / 2
         const nx = -slopeX * STEEPNESS

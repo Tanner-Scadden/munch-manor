@@ -1,17 +1,3 @@
-// The dare card pass: the single player lobby as a card that unfolds out of
-// PLAY over the home menu. On a 1280x720 desktop, an 844x390 phone on its
-// side, and a 390x844 phone held upright it shoots the card open, a frame
-// mid-unfold, and a frame mid-fold back into PLAY, as
-// `lobby-card-<TAG>-<viewport>-<frame>.png`. It exits with 1 when the card
-// runs past the screen, SHAKE ON IT cannot be scrolled to, the fold does
-// not start on PLAY or end on the card, any hero's name does not fit on
-// the hero card (each name is tried in every card, yours and a bot's), or
-// focus is not on START once it is open and on PLAY once it is gone.
-// FRAMES=1 also films the fold both ways, a still every `FRAME_MS` from
-// its first frame to its last, as `lobby-card-<TAG>-<viewport>-<way>-<ms>.png`
-// (`way` is `open` or `fold`).
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsLobbyCard.ts
-// VIEWPORTS picks screens.
 import { Config, Effect, Option, Record, Schema, String } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -36,7 +22,6 @@ import {
 } from './lib'
 import { attempt, decodedFrom, evaluateAs } from './page'
 
-// NOTE: d1280, p844 (a phone on its side), and u390 (one held upright).
 const VIEWPORTS = pickViewports([DESKTOP_1280, PHONE_844, UPRIGHT_390])
 
 const LOBBY =
@@ -62,7 +47,6 @@ const Measured = Schema.Struct({
   height: Schema.Finite,
 })
 
-// NOTE: the boxes of the card, PLAY, the fold, and START, and who has focus.
 const measure = (page: Page) =>
   evaluateAs(page, Measured, () => {
     const boxOf = (selector: string) => {
@@ -87,7 +71,6 @@ const measure = (page: Page) =>
     }
   })
 
-// NOTE: every running animation held at `ms` into it, for a still frame.
 const holdAt = (page: Page, ms: number) =>
   attempt(() =>
     page.evaluate(at => {
@@ -98,7 +81,6 @@ const holdAt = (page: Page, ms: number) =>
     }, ms),
   )
 
-// NOTE: every held animation runs on from where it was held.
 const releaseAnimations = (page: Page) =>
   attempt(() =>
     page.evaluate(() => {
@@ -108,8 +90,6 @@ const releaseAnimations = (page: Page) =>
     }),
   )
 
-// NOTE: when the fold's and the card's last animation ends, in ms from its
-// start, past the home menu's own and the card's idle loops, which never end.
 const lastEndMs = (page: Page) =>
   evaluateAs(page, Schema.Finite, () => {
     let last = 0
@@ -127,9 +107,6 @@ const lastEndMs = (page: Page) =>
     return last
   })
 
-// NOTE: the lobby goes FOLD_MS after it starts folding, sooner than a film
-// of stills takes, so the fold back is filmed on a copy of the folding layer
-// laid beside it, which nothing takes away, the lobby itself hidden.
 const stillCopy = (page: Page) =>
   attempt(() =>
     page.evaluate(() => {
@@ -152,8 +129,6 @@ const dropStillCopy = (page: Page) =>
     }),
   )
 
-// NOTE: a still every FRAME_MS from the first frame to the last, each
-// animation held there, then let run on.
 const FRAME_MS = 40
 
 const film = (page: Page, name: (frame: string) => string, way: string) =>
@@ -175,8 +150,6 @@ const Clipped = Schema.Array(
   }),
 )
 
-// NOTE: each hero's name tried in every hero card on the card, put back as
-// it was: the ones that do not fit, with the room each needs and has.
 const clippedNames = (page: Page) =>
   decodedFrom(Clipped, () =>
     page.evaluate(names => {
@@ -229,7 +202,6 @@ runHarnessAudit(
       )
       yield* settleAnimations(page)
 
-      // NOTE: the first frame: the fold sits on PLAY.
       yield* attempt(() => page.click('#home-play'))
       yield* attempt(() =>
         page.locator('.dare-fold').waitFor({ state: 'attached' }),
@@ -274,7 +246,6 @@ runHarnessAudit(
         `${where}: card ${Math.round(open.card.right - open.card.left)}x${Math.round(open.card.bottom - open.card.top)} at ${Math.round(open.card.left)},${Math.round(open.card.top)}`,
       )
 
-      // NOTE: every hero's name fits, on your hero card and on a bot's.
       yield* attempt(() => page.locator('.lobby-add-bot').first().click())
       yield* attempt(() =>
         page.locator('.lobby-hero-bot').waitFor({ state: 'attached' }),
@@ -288,9 +259,6 @@ runHarnessAudit(
         )
       }
 
-      // NOTE: the fold back: Escape on a desktop, a tap on CHICKEN OUT on a
-      // phone (a key there makes the last device the keyboard, and the
-      // layout turns), then a frame halfway into PLAY.
       yield* viewport.isPhone
         ? attempt(() => page.locator('.lobby-chicken').tap())
         : attempt(() => page.keyboard.press('Escape'))

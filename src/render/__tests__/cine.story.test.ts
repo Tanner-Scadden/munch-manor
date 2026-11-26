@@ -31,10 +31,6 @@ import {
 } from '../cine'
 import { STILL_GLIDE } from '../renderSchema'
 
-// The camera's big moments (src/render/cine.ts): it springs partway toward
-// the moment and back, never taking the player out of the window, while
-// letterbox bars slide in.
-
 const ENTRANCE_MS = 2600
 
 const arrivingAt = (model: Model, remainingMs: number): Model =>
@@ -49,8 +45,6 @@ const arrivingAt = (model: Model, remainingMs: number): Model =>
       }),
   })
 
-// NOTE: the player mid-room with the camera at the level's top, so it has
-// room to glide south toward the front door before meeting the bottom.
 const midRoom = withPlayerAt(playingModel, 180, 90)
 
 const centerOf = (model: Model) => {

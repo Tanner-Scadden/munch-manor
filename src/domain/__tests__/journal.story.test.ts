@@ -33,11 +33,6 @@ import {
   openedThingsOf,
 } from '../journal'
 
-// The Dare Journal's root side (src/domain/journal.ts): what a run adds to
-// the journal as it reaches its end screen, the milestones that reaches,
-// their unlock cards on the end card, the things they open for the next
-// run, and the journal's NEW pip.
-
 const TODAY = '2026-11-13'
 
 const PAGE: DareThing = {
@@ -46,7 +41,6 @@ const PAGE: DareThing = {
   state: DareThingState.Found({ slot: 0 }),
 }
 
-// NOTE: a Normal run about to die on wave 7 with one thing found.
 const munchedWithPage = knowingDay(withDareThings(diesOnWave7, [PAGE]), TODAY)
 
 const escapingToday = knowingDay(lastWave, TODAY)

@@ -43,10 +43,6 @@ import { CASE_SPOTS } from '../caseSpots'
 import { rollCases, takeCase } from '../cases'
 import { goalOf } from '../feats'
 
-// Display cases (src/world/feats/cases.ts): each run rolls its prizes and
-// feats over the case spots; a case springs open for whoever first does its
-// feat, and only they take what it holds.
-
 const FRAME_MS = FIXED_STEP_MS
 
 const ONE_KILL = Feat.Kills({ count: 1 })
@@ -129,7 +125,6 @@ describe('the roll', () => {
   })
 })
 
-// NOTE: a 1-hp Groaner just east of the player at the case, standing still.
 const besideCase = zombieOf('Shambler', 900, AT_CASE.x + 10, AT_CASE.y, {
   hp: 1,
   speed: 0,
@@ -164,7 +159,7 @@ describe('one player', () => {
             ).toBe(true)
             expect(caseOffered(current, 0)).toBe(true)
           }),
-          releaseFire, // NOTE: the kill's hit-stop holds the world a few frames first.
+          releaseFire,
           holdEnter(HOLD_TICKS + 10),
           checkModel(current => {
             expect(firstCase(current).state).toEqual(
@@ -250,8 +245,6 @@ describe('one player', () => {
     })
   })
 })
-
-// CO-OP
 
 const crewBullet = (id: number, shooter: number, x: number, y: number) =>
   ({

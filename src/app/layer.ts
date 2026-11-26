@@ -29,10 +29,6 @@ import {
 } from './update/sound'
 import { FetchBuild } from './update/version'
 
-// NOTE: the root's Command services (Effect UI, "Put I/O behind a
-// Service"): each Command that needs a service (the store, the audio
-// engine, co-op's network, the install prompt) sits beside the update that
-// issues it, and its `.layer` joins this list. A `Command.make` needs none.
 export const CommandsLayer = Layer.mergeAll(
   LoadSave.layer,
   StartSummaryQueue.layer,

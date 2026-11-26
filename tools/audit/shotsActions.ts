@@ -1,14 +1,3 @@
-// The hands-on actions pass (src/render/actionPose.ts): each action a
-// player's body does, stepped tick by tick with the harness's director
-// (harness/director.ts) and cropped close round the player, so a strip of
-// its frames shows the motion: CPR on a downed teammate and the fist pump,
-// rummaging the parlour's trunk, the library's hollow book, hauling the
-// dumbwaiter, cranking the gramophone, shoving the stacks, pushing the
-// shelf, the barrels, pulling the bulb's chain, stirring the soup pot, a
-// hold at the fridge, a swap's toss, a reload, and a trap set down. On a
-// 1280x720 desktop, as `actions-<TAG>-<scene>-<frame>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsActions.ts
-// ONLY picks scenes.
 import { Array, Effect, Schema, String } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -31,8 +20,6 @@ import {
 import { attempt, evaluateAs } from './page'
 
 const VIEWPORT = { ...DESKTOP_1280, name: 'd1280' }
-// NOTE: the page draws a game pixel as 4 of its own at 1280x720, and the
-// crop is 64 by 48 game pixels round the player's feet.
 const PAGE_SCALE = 4
 const CROP_WIDTH = 64
 const CROP_HEIGHT = 48
@@ -54,7 +41,6 @@ type Revive = Readonly<{
 type Scene = Readonly<{
   name: string
   query: string
-  // NOTE: the ticks each frame is shot on, and the seat followed.
   ticks: ReadonlyArray<number>
   slot?: number
   taps?: ReadonlyArray<Tap>
@@ -135,8 +121,6 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-// NOTE: the harness decodes the plan with its own Schema
-// (harness/director.ts); this one only writes it.
 const PlanJson = Schema.Struct({
   segments: Schema.Array(Schema.Unknown),
   taps: Schema.Array(Schema.Struct({ at: Schema.Finite, key: Schema.String })),

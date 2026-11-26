@@ -1,9 +1,3 @@
-// What the end report (tools/balance/endReport.ts) reads of a run: where
-// it stopped, read off its last frame, and the trace of each Uncle Chunk
-// fight: the bot's hearts and its distance to him each second, the time in
-// his slam's reach, the time crowded by other zombies, and the hearts the
-// crowd took while he stood.
-
 import { Array, Function, Option } from 'effect'
 
 import {
@@ -25,7 +19,6 @@ import type { RunEnd } from './results'
 
 type BossFight = BossLog[number]
 
-// NOTE: other zombies this close count as a crowd in his fight.
 const CROWD = 3
 
 export const emptyBossFight = (wave: number): BossFight => ({
@@ -56,7 +49,6 @@ export const emptyBossFight = (wave: number): BossFight => ({
 
 const isUp = (zombie: Model['zombies'][number]) => zombie.state._tag !== 'Dying'
 
-// NOTE: Uncle Chunk himself, in view or not.
 const chunkOf = (model: Model) => {
   const { boss } = model
   return boss._tag === 'Fighting'
@@ -66,9 +58,6 @@ const chunkOf = (model: Model) => {
     : undefined
 }
 
-// Adds one frame of his fight, after its fightMs has counted it. `blamed`
-// is the kind charged with the hearts lost this frame, and `byBoss` whether
-// one of his attacks or his bite took them.
 export const traceChunk = ({
   fight,
   model,
@@ -107,7 +96,6 @@ export const traceChunk = ({
   }
 }
 
-// NOTE: where the run stopped, from its last frame.
 export const runEndOf: {
   (maxRunMs: number): (model: Model) => RunEnd
   (model: Model, maxRunMs: number): RunEnd

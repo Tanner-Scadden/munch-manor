@@ -1,10 +1,5 @@
 import { Cause, Effect, Queue, Schema, type Scope, Stream, pipe } from 'effect'
 
-// NOTE: one WebSocket as an Effect resource: text and binary messages in
-// a Stream that fails when the socket closes, and a send that fails once it
-// has. Closing the Scope closes the socket. It uses only the global
-// WebSocket, so it runs in a browser and in Bun alike.
-
 export class SocketError extends Schema.TaggedError<
   SocketError,
   { readonly brand: unique symbol }
@@ -12,8 +7,6 @@ export class SocketError extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-// NOTE: the session token a socket's Hello carries could not be had, such
-// as when signing in failed. The client tries again later.
 export class TokenUnavailable extends Schema.TaggedError<
   TokenUnavailable,
   { readonly brand: unique symbol }
@@ -28,8 +21,6 @@ export type SocketData = string | Uint8Array
 export interface OpenSocket {
   readonly send: (data: SocketData) => Effect.Effect<void, SocketError>
   readonly messages: Stream.Stream<SocketData, SocketError>
-  // NOTE: ends `messages` at once with `reason`, without waiting for the
-  // closing handshake a dead link may never finish, and closes the socket.
   readonly drop: (reason: string) => Effect.Effect<void>
 }
 

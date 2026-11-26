@@ -49,9 +49,6 @@ import {
   freshRunGains,
 } from './model'
 
-// NOTE: every field that belongs to one run, set as a new run starts. Starting
-// a run and going home both spread this record, so neither can leave a stale
-// field behind. The phase, the mode, and the lessons are each caller's own.
 export type RunFields = Pick<
   Model,
   | 'pacing'
@@ -154,8 +151,6 @@ export const freshRun = (model: Model): RunFields => ({
   runGains: freshRunGains,
   roomRun: freshRoomRun,
   screenMs: 0,
-  // NOTE: SHARE's sheet and the death tip outlive a run; the rest of the end
-  // card starts fresh.
   endCard: UiStruct.evolve(model.endCard, {
     maybeShareCopiedAtMs: () => Option.none(),
     isRunCardDropped: () => false,
@@ -180,7 +175,6 @@ export const freshRun = (model: Model): RunFields => ({
   }),
 })
 
-// NOTE: going home ends the run, so every run field goes back to a fresh start.
 export const returnHome = (model: Model): Model => ({
   ...model,
   ...freshRun(model),

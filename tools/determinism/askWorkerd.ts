@@ -5,10 +5,6 @@ import {
   type HttpClientRequest,
 } from 'effect/http'
 
-// NOTE: a local workerd takes a moment to listen after it spawns, so a
-// request that finds nobody there is sent again every 200 ms, up to 50 more
-// times. Succeeds with the answer's text.
-/** @stability unstable */
 export const askWorkerd = (
   request: HttpClientRequest.HttpClientRequest,
 ): Effect.Effect<

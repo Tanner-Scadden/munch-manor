@@ -46,8 +46,6 @@ import {
   turnFileKey,
 } from './records'
 
-// TURNS: round robin, handover, leases, and the max wait
-
 const OTHER_TREE = '/other-tree'
 const THIRD_TREE = '/third-tree'
 
@@ -57,8 +55,6 @@ const turnAt = (cwd: string, agoMs: number): HeldTurn => ({
 })
 
 describe('round robin by worktree', () => {
-  // NOTE: a Timing job from another worktree arrived 1 second ago. A perf
-  // run from /repo has waited for 5 seconds more.
   const LATER_FROM_OTHER: Snapshot = {
     ...TIMING,
     cwd: OTHER_TREE,
@@ -77,7 +73,6 @@ describe('round robin by worktree', () => {
     }
     expect(isAheadInQueue(snapshot, waiting(PERF, 5000))).toBe(false)
     expect(isRun(decide(snapshot))).toBe(true)
-    // NOTE: and from /repo's side, its own job now waits.
     expect(
       isWait(
         decide({
@@ -124,8 +119,6 @@ describe('round robin by worktree', () => {
   })
 
   test('alternates worktrees instead of running one worktree back to back', () => {
-    // NOTE: /repo queued two perf runs before /other-tree queued one. Its
-    // first ran; the other worktree goes next, then /repo again.
     const second = waiting(PERF, 60_000)
     const fromOther = {
       ...PERF,
@@ -182,8 +175,6 @@ describe('chunk handover and re-queue order', () => {
     )
   })
 
-  // NOTE: a balance batch from /repo yielded half a second ago and queued
-  // again; its worktree's turn ended then.
   const REQUEUED: Snapshot = {
     ...CPU,
     arrivedAt: NOW - 500,
@@ -239,7 +230,6 @@ describe('leases', () => {
       false,
     )
     expect(isPastLease({ ...LONG_PERF, leaseMs: 15 * 60_000 }, NOW)).toBe(false)
-    // NOTE: a chunked job that offered to yield 2 minutes ago renewed it.
     expect(
       isPastLease({ ...LONG_PERF, leaseFrom: NOW - 2 * 60_000 }, NOW),
     ).toBe(false)
@@ -316,12 +306,6 @@ describe('leases', () => {
     )
   })
 })
-
-// THE MAX WAIT
-// A small model of the queue over time: solo jobs from several worktrees
-// arrive, wait by `decide`, and a chunked job asks `decideHandover` at each
-// boundary. It checks what chunking is for: no job waits long on one long
-// holder.
 
 type ModelJob = Readonly<{
   pid: number
@@ -405,8 +389,6 @@ const runQueue = (jobs: ReadonlyArray<ModelJob>): Waits => {
         running = { ...running, partEndsAt: now + partMs, partMs }
       }
     }
-    // NOTE: every waiting job asks, in an order unrelated to the queue, so
-    // only `decide` picks who goes.
     const askers = Array.filter(jobs, job =>
       waitingSince.has(job.pid),
     ).reverse()
@@ -462,9 +444,6 @@ const allWaits = (waits: Waits): ReadonlyArray<number> =>
   Array.flatten(globalThis.Array.from(waits.values()))
 
 describe('the max wait', () => {
-  // NOTE: /repo starts an hour of balance runs in 2 minute chunks. Other
-  // worktrees arrive while it runs: timing audits, another chunked batch,
-  // and /repo's own perf run.
   const BUSY_HOUR: ReadonlyArray<ModelJob> = [
     {
       pid: 1,
@@ -518,7 +497,6 @@ describe('the max wait', () => {
 
   test('a job that arrives mid-chunk starts at the next chunk boundary', () => {
     const waits = runQueue(BUSY_HOUR)
-    // NOTE: pid 2 arrived 1 minute into a 2 minute chunk.
     expect(waits.get(2)?.[0]).toBe(1 * MINUTE)
   })
 
@@ -541,9 +519,6 @@ describe('the max wait', () => {
 })
 
 describe('backfill', () => {
-  // NOTE: a nightly balance batch holds the solo lock with 4 workers, and a
-  // splash timing run has waited 30 seconds for it. A screenshot job
-  // arrives now.
   const NIGHTLY: LockHolder = {
     ...BALANCE,
     command: 'bun tools/balance/nightly.ts',
@@ -593,8 +568,6 @@ describe('backfill', () => {
   })
 
   test('never passes a waiter that waits only for Shared jobs to drain', () => {
-    // NOTE: the batch yielded; the splash run now waits for the shots that
-    // backfilled, and later shots queue behind it.
     expect(
       isWait(
         decide({
@@ -634,10 +607,6 @@ describe('backfill', () => {
 })
 
 describe('screenshot waits in a typical mix', () => {
-  // NOTE: the nightly suite runs for an hour in 30 second chunks. A splash
-  // timing run arrives at 1 minute and yields between its three 1 minute
-  // profiles. Two worktrees queue a 1 minute screenshot job every 2
-  // minutes.
   const shots = (
     cwd: string,
     firstPid: number,
@@ -682,8 +651,6 @@ describe('screenshot waits in a typical mix', () => {
       ],
     )
     expect(shotWaits).toHaveLength(50)
-    // NOTE: a shot that arrives as a timing profile starts waits out that
-    // minute alone; every other wait is far shorter.
     expect(Math.max(...shotWaits)).toBeLessThanOrEqual(MINUTE + TICK_MS)
     expect(Number.sumAll(shotWaits) / shotWaits.length).toBeLessThan(15_000)
     expect(waits.get(2)).toHaveLength(3)

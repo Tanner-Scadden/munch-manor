@@ -2,13 +2,6 @@ import { Array, Function, Option, Record, String, pipe } from 'effect'
 
 import type { PropStyle } from '../../shared/playerData'
 
-// A hero's prop in a mastery style (src/domain/mastery.ts): a palette swap
-// of the prop the hero wears, its headgear and its body prop. Each pixel
-// of the prop takes the style's light, middle, or dark shade by how light
-// its stock color is, so a prop keeps its shading in any style. YOU, who
-// wears no prop, wears a small medal on the chest once a style is on.
-// Drafts pinned in Munch Studio (tools/studio/) for the owner's review.
-
 type StyledProp = Exclude<PropStyle, 'Stock'>
 
 export type PropRamp = Readonly<{ light: string; mid: string; dark: string }>
@@ -20,14 +13,10 @@ export const PROP_STYLE_RAMPS: Readonly<Record<StyledProp, PropRamp>> = {
   Gold: { light: '#fff1a8', mid: '#e8b830', dark: '#a8741a' },
 }
 
-// NOTE: the symbols a styled prop is drawn in, apart from every other
-// symbol of the figure (the Rainbow print's are 0 to 5).
 const LIGHT = '6'
 const MID = '7'
 const DARK = '8'
 
-// NOTE: the style's three shades under their symbols, for the figure's
-// palette. Stock adds none.
 export const propStylePalette = (
   style: PropStyle,
 ): Readonly<Record<string, string>> =>
@@ -39,7 +28,6 @@ export const propStylePalette = (
         [DARK]: PROP_STYLE_RAMPS[style].dark,
       }
 
-// NOTE: one channel of a `#rrggbb` color, 0 to 255.
 export const channelOf: {
   (index: number): (color: string) => number
   (color: string, index: number): number
@@ -47,7 +35,6 @@ export const channelOf: {
   Number.parseInt(String.slice(1 + index * 2, 3 + index * 2)(color), 16),
 )
 
-// NOTE: how light a color is, 0 to 1, by the usual weights of the eye.
 const lightnessOf = (color: string): number =>
   (channelOf(color, 0) * 0.299 +
     channelOf(color, 1) * 0.587 +
@@ -59,9 +46,6 @@ const toneOf = (color: string): string => {
   return lightness > 0.7 ? LIGHT : lightness > 0.4 ? MID : DARK
 }
 
-// NOTE: a prop's rows in a style: each colored pixel takes the style's
-// shade for its stock color (read from the figure's palette), and `.`
-// stays clear. Stock leaves the rows as they are.
 export const styledProp: {
   (
     style: PropStyle,
@@ -95,8 +79,6 @@ export const styledProp: {
         ),
 )
 
-// NOTE: YOU's medal, on the torso's rows like a body prop: a ribbon over
-// a round medal on the chest's left, in the style's colors.
 export const YOU_MEDAL: ReadonlyArray<string> = [
   '..r.....',
   '.yzy....',

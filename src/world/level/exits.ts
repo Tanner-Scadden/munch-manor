@@ -23,18 +23,6 @@ import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from './plan'
 import { type Box, tileBox } from './tileGrid'
 import { wakeRoom } from './wakeUp'
 
-// THE EXIT
-
-// NOTE: a boarded exit is padlocked, and opens for skeleton keys off the
-// crew's ring (src/world/keys/keys.ts), by how deep its room is: the
-// kitchen 8, the rooms off the dining room (the west and east slots) 40
-// for the first one opened and 75 for the second, and the far slot, beyond
-// the east room, 90 (docs/ESCAPE_PLAN.md, "Key costs and drops"). Each
-// room holds one thing on the dare's list, so the prices pace the hunt.
-// They were 8, 55, 55, 90 until the pacing report (docs/PACING_REPORT.md,
-// owner's pick 5b, 2026-11-10) moved the rooms closer: on Double Dare
-// about waves 3, 4, 6, and 8 instead of 3, 5, 7, and 9. The kitchen opens
-// from the wave 3 break on.
 export const KITCHEN_EXIT: ExitId = 'Kitchen'
 
 type ExitRules = Readonly<{
@@ -46,9 +34,6 @@ type ExitRules = Readonly<{
   tagDropPx: number
 }>
 
-// NOTE: `tagDropPx` is how far below the top of the boards the price tag
-// hangs: on the boards themselves, so a player standing at them is never
-// hidden behind it.
 export const EXIT_RULES: ExitRules = {
   kitchenKeys: 8,
   roomKeys: [40, 75],
@@ -58,8 +43,6 @@ export const EXIT_RULES: ExitRules = {
   tagDropPx: 7,
 }
 
-// NOTE: the room behind a slot's boards rolls each run, so its boards keep
-// it a secret until they come down and the cloche lifts.
 const EXIT_NAMES: Readonly<Record<ExitId, string>> = {
   [KITCHEN_EXIT]: 'THE KITCHEN',
   [WEST_EXIT]: 'THE BOARDS',
@@ -93,12 +76,6 @@ export const exitBoxOf: {
   ),
 )
 
-// NOTE: the boarded exits still shut, the ones a player can buy: a secret
-// shelf is never for sale (src/world/library/secretShelf.ts), and boards
-// behind a shut room, such as the far slot's in the east room, wait for it.
-// Each seat asks on every tick for its offers, and the answer moves only
-// with the level (a new Level whenever an exit opens), so each level keeps
-// its own.
 const closedExitsKept = new WeakMap<
   Level,
   ReadonlyArray<Readonly<{ exit: ExitId; box: Box }>>
@@ -136,15 +113,10 @@ const closedExitBoxesOn = (
     ),
   )
 
-// NOTE: from the kitchen's first break on, an exit is for sale any time the
-// round runs, mid-wave too (owner, 2026-10-30).
 export const isExitOfferOpenFor = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) &&
   phase.wave >= EXIT_RULES.firstWave
 
-// NOTE: the keys an exit's padlock asks, shown on the lock, by how deep
-// its room is, and for a room off the dining room by how many of those
-// are open already.
 const ROOM_EXITS: ReadonlyArray<ExitId> = [WEST_EXIT, EAST_EXIT]
 
 const roomKeysAfter = (opened: number): number =>
@@ -168,8 +140,6 @@ export const exitKeysOf: {
   )
 })
 
-// NOTE: the kitchen tour gives the kitchen away (src/world/run/tutorialRules.ts);
-// every other room's boards keep their padlock.
 export const exitPriceFor: {
   (exit: ExitId): (model: World) => number
   (model: World, exit: ExitId): number
@@ -179,8 +149,6 @@ export const exitPriceFor: {
     : markedPadlockKeys(model.dareMark, exitKeysOf(levelOf(model), exit)),
 )
 
-// NOTE: each boarded exit for sale, as a purchasable: walk up and hold the
-// interact key beside its boards (src/world/shop/purchase.ts).
 export const exitOffers = (model: World): ReadonlyArray<Offer> =>
   isExitOfferOpenFor(model.phase)
     ? Array.map(closedExitBoxes(levelOf(model)), ({ exit, box }) => ({
@@ -196,17 +164,12 @@ export const exitOffers = (model: World): ReadonlyArray<Offer> =>
       }))
     : []
 
-// THE PADLOCKS THE TUTORIAL POINTS AT
-
 export type Padlock = Readonly<{
   exit: ExitId
   price: number
   box: Box
 }>
 
-// NOTE: the boarded exits a player could open, sale or not, each with what
-// its padlock asks now (exitPriceFor, so a retune of the prices flows
-// through).
 const padlocksOf = (model: World): ReadonlyArray<Padlock> =>
   Array.map(closedExitBoxes(levelOf(model)), ({ exit, box }) => ({
     exit,
@@ -219,8 +182,6 @@ const boxCenterOf = (box: Box): Vector => ({
   y: (box.top + box.bottom) / 2,
 })
 
-// NOTE: the padlock asking the fewest keys, the nearest to `from` among
-// those asking as few: the one the tutorial points a new player at.
 export const maybeCheapestPadlock: {
   (from: Vector): (model: World) => Option.Option<Padlock>
   (model: World, from: Vector): Option.Option<Padlock>
@@ -239,36 +200,23 @@ export const maybeCheapestPadlock: {
   ),
 )
 
-// NOTE: whether any boarded exit has been opened this run, by keys or by
-// the kitchen tour's free boards. A secret shelf is not boards.
 export const hasOpenedBoards = (model: World): boolean =>
   Array.some(
     levelOf(model).exits,
     ({ isOpen, opener }) => isOpen && opener === 'Boards',
   )
 
-// NOTE: where the tutorial's arrow bobs for a padlock: over the middle of
-// its boards' top.
 export const padlockMarkOf = ({ box }: Padlock): Vector => ({
   x: Math.round((box.left + box.right) / 2),
   y: box.top,
 })
 
-// NOTE: in the breaks before the kitchen's first, a padlock hangs on the
-// boards. From then on the price tag is the purchasable's (src/world/shop/purchase.ts),
-// and mid-wave before then the boards are bare.
 export const maybePadlockedExit = (model: World): Option.Option<Box> =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&
   !isExitOfferOpenFor(model.phase)
     ? Option.map(Array.head(closedExitBoxes(levelOf(model))), ({ box }) => box)
     : Option.none()
 
-// NOTE: buying the exit opens it for the rest of the run, and its spawn
-// doors join the wave shown or under way at once (joinNewDoors in
-// src/world/waves/waves.ts), drawn from the run's generator, and the room
-// wakes (src/world/level/wakeUp.ts). The boards smash where
-// the doorway meets the parlour floor.
-// The keys come off the crew's one ring, whoever holds at the boards.
 export const buyExit: {
   (exit: ExitId, price: number): (model: World) => Option.Option<World>
   (model: World, exit: ExitId, price: number): Option.Option<World>

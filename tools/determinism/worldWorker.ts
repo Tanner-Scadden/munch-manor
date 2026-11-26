@@ -1,8 +1,3 @@
-// The World inside workerd, the runtime of Durable Objects. worldCheck.ts
-// bundles it to out/worldWorker.js and serves it with infra's workerd binary.
-// POST a PlayRequest as JSON to / for the World after its ticks, or a
-// RoomPlayRequest to /room for a co-op room's World after its ticks.
-
 import { Effect, Schema } from 'effect'
 
 import {
@@ -12,7 +7,6 @@ import {
   playWorld,
 } from './worldPlay'
 
-// NOTE: the check sends these itself, so a shallow look is enough.
 const isObject = (body: unknown): body is Record<string, unknown> =>
   typeof body === 'object' && body !== null
 

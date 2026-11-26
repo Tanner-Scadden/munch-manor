@@ -41,35 +41,12 @@ import { TOOL_RULES } from '../../world/stations/toolRules'
 import { distanceBetween } from '../../world/step/geometry'
 import { bodyRadiusOf, isGrounded } from '../../world/zombies/zombies'
 
-// How a bot searches for the dare's list (src/world/dare/dare.ts), read off
-// the World alone and shared by the teammate bots
-// (src/features/bots/teammateBot.ts) and the balance bot
-// (tools/balance/bot/escape.ts). It goes for the nearest thing lying in an
-// open room, finds it the way its room asks (src/world/dare/finds.ts):
-// walks onto it, or keeps still in reach of a worked one (the trunk, the
-// hollow book, the dumbwaiter), and leaves it for the fight with a zombie
-// close. The cellar's thing hides in the dark until the bulb's chain is
-// yanked (src/world/cellar/bulb.ts), which only a wave allows, so in a
-// break the bot leaves it, and in a wave it goes to the chain first. It
-// spends no keys: a thing behind boards waits for the player. Besides the
-// list, a bot takes the pantry's goodie each round (src/world/kitchen/
-// pantry.ts), free for the walk.
-
-// NOTE: how close a zombie may be before a bot leaves a thing for the
-// fight, in a wave.
 const SAFE_PX = 45
 
-// NOTE: how far inside a reach a bot keeps still, so a step of drift does
-// not put it out.
 const REACH_SLACK_PX = 2
 
-// NOTE: how far outside a box a bot stands to reach it.
 const BESIDE_PX = 5
 
-// STANDING ROOM
-
-// NOTE: a tile a player could stand on: inside the map and not solid to
-// players.
 export const isStandableTile: {
   (column: number, row: number): (level: Level) => boolean
   (level: Level, column: number, row: number): boolean
@@ -80,14 +57,11 @@ export const isStandableTile: {
     !hasTileFlag(level, tileIndex(level, column, row), TILE_PLAYER_SOLID),
 )
 
-// NOTE: whether a player could stand on the tile under a point.
 const isStandableAt = (level: Level, point: Vector): boolean => {
   const { column, row } = tileOfIndex(level, tileIndexAt(level, point))
   return isStandableTile(level, column, row)
 }
 
-// NOTE: a floor point beside a box, below it first, then its sides, then
-// above, so a bot never pushes into the wall a station or case hangs on.
 export const besideBox: {
   (box: Box): (level: Level) => Vector
   (level: Level, box: Box): Vector
@@ -108,9 +82,6 @@ export const besideBox: {
   )
 })
 
-// THE THINGS ON THE FLOOR
-
-// NOTE: a thing lying in an open room, with how its room finds it.
 type Lying = Readonly<{
   spot: Vector
   reachPx: number
@@ -135,7 +106,6 @@ const lyingThings = (world: World): ReadonlyArray<Lying> => {
   )
 }
 
-// NOTE: one pass, no sorting: this runs for every bot on every tick.
 const nearestLit = (
   from: Vector,
   things: ReadonlyArray<Lying>,
@@ -148,8 +118,6 @@ const nearestLit = (
       : nearest,
   )
 
-// NOTE: the cellar bulb's station while its chain could be yanked now: off
-// its cooldown (the game also asks for a wave).
 const maybeBulbBox = (world: World): Option.Option<Box> =>
   world.stations.Bulb.cooldownMs > 0
     ? Option.none()
@@ -158,9 +126,6 @@ const maybeBulbBox = (world: World): Option.Option<Box> =>
 const isDarkThingLeft = (things: ReadonlyArray<Lying>): boolean =>
   Array.some(things, ({ isDark }) => isDark)
 
-// NOTE: where a bot at `from` goes to search: the nearest lit thing, or in
-// a wave with the cellar's thing still dark, beside the bulb's chain.
-// Nothing once the front door is open: the way out comes first.
 export const searchSpot: {
   (from: Vector): (world: World) => Vector | undefined
   (world: World, from: Vector): Vector | undefined
@@ -180,8 +145,6 @@ export const searchSpot: {
     : undefined
 })
 
-// NOTE: whether a bot at `at` may leave the fight to search: no zombie on
-// its feet within SAFE_PX.
 export const isSafeToSearch: {
   (at: Vector): (world: World) => boolean
   (world: World, at: Vector): boolean
@@ -194,9 +157,6 @@ export const isSafeToSearch: {
     ),
 )
 
-// NOTE: whether a bot at `at` should keep still where it stands: in reach
-// of a lit thing its room finds by work, or, in a wave with the cellar's
-// thing still dark, beside the bulb's chain.
 export const isWorkingSearch: {
   (at: Vector): (world: World) => boolean
   (world: World, at: Vector): boolean
@@ -224,25 +184,13 @@ export const isWorkingSearch: {
   )
 })
 
-// THE PANTRY
-
-// NOTE: where the pantry's goodie waits this round, for a bot to walk onto:
-// a key for the crew's ring, or a heart for a hurt taker.
 export const pantryErrand = (world: World): Vector | undefined =>
   Option.getOrUndefined(
     Option.flatMap(maybeStash(world), () => pantrySpotOf(levelOf(world))),
   )
 
-// THE ROOM TOOLS
-
-// Each room tool a bot uses as a person does, one skill each.
-
-// NOTE: the zombies in the table's gap under the hung chandelier that make
-// it worth a shot (src/world/dining/chandelier.ts): it crushes them all.
 export const CHANDELIER_CROWD = 3
 
-// NOTE: where a bot at `at` shoots to drop the chandelier: in a wave, while
-// it hangs with a crowd under it, and in its sight.
 export const chandelierShot: {
   (at: Vector): (world: World) => Option.Option<Vector>
   (world: World, at: Vector): Option.Option<Vector>
@@ -270,15 +218,6 @@ export const chandelierShot: {
   })
 })
 
-// THE PLAN
-
-// The hunt planned backward from the list, as a player plans it: with the
-// front door open, out; with a thing lying lit in an open room, fetch it;
-// with only the cellar's left in the dark, light it in a wave; otherwise
-// the next thing behind boards, the padlock in its way (the nearest shut
-// boards on the way to its room), and the keys that padlock asks: open it
-// with them in hand, or save up the keys it is short. With nothing left on
-// the list, the list is done and Uncle Chunk comes.
 export const HuntStep = UiSchema.TaggedEnum({
   Leave: {},
   Fetch: {},
@@ -295,7 +234,6 @@ const roomExitOf = (level: Level, roomId: string): Option.Option<ExitId> =>
     room => room.maybeExit,
   )
 
-// NOTE: an exit and every shut exit its boards wait on, the nearest first.
 const withRequired = (level: Level, exit: ExitId): ReadonlyArray<ExitId> =>
   Option.match(
     Array.findFirst(level.exits, ({ id }) => id === exit),
@@ -314,8 +252,6 @@ const withRequired = (level: Level, exit: ExitId): ReadonlyArray<ExitId> =>
     },
   )
 
-// NOTE: for each thing still behind boards, the shut exits on the way to
-// its room, the nearest first.
 const shutWays = (world: World): ReadonlyArray<ReadonlyArray<ExitId>> => {
   const level = levelOf(world)
   return Array.flatMap(world.dareThings, thing =>
@@ -331,12 +267,9 @@ const shutWays = (world: World): ReadonlyArray<ReadonlyArray<ExitId>> => {
   )
 }
 
-// NOTE: every shut exit on the way to a thing on the list.
 export const shutExitsOnTheList = (world: World): ReadonlyArray<ExitId> =>
   Array.dedupe(Array.flatten(shutWays(world)))
 
-// NOTE: the padlock first in the way of a thing on the list, the one
-// asking fewest keys, with its price.
 export const maybeNextPadlock = (
   world: World,
 ): Option.Option<Readonly<{ exit: ExitId; price: number }>> =>

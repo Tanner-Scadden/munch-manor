@@ -1,5 +1,3 @@
-// The drawing the studio's pictures share: a sprite's frames scaled up on a
-// backdrop, with its box and the frame the clock is on.
 import { Array, Function, Option, pipe } from 'effect'
 
 import { type Sprite, boundsOf, group } from '../../src/art/sprite'
@@ -22,7 +20,6 @@ export const lookOf = (model: Model): Look => ({
   clockMs: model.clockMs,
 })
 
-// NOTE: a box grown to whole pixels and `pad` more on every side.
 export const paddedBy =
   (pad: number) =>
   (bounds: Bounds): Bounds => ({
@@ -37,7 +34,6 @@ export const padded = paddedBy(PAD)
 export const spritesBounds = (sprites: ReadonlyArray<Sprite>): Bounds =>
   boundsOf(Array.map(sprites, shapes => group({ shapes })))
 
-// NOTE: which of an entry's frames the clock is on.
 export const frameIndexOf: {
   (clockMs: number, count: number): (entry: Entry) => number
   (entry: Entry, clockMs: number, count: number): number
@@ -60,9 +56,6 @@ export const frameOf: {
     ),
 )
 
-// NOTE: world shapes scaled by the zoom, with `bounds`' top left at the
-// canvas's top left. Two groups, so the order of a group's own translate and
-// scale never matters.
 export const zoomed: {
   (
     bounds: Bounds,

@@ -39,11 +39,6 @@ import { modifyFocus } from '../../../world/party/party'
 import { CALL_MS, maybeKitchenSound } from '../kitchenCall'
 import { roomsCounterShapes } from '../roomsFound'
 
-// NOTE: finding the kitchen (src/features/kitchen/kitchenCall.ts, src/render/room/kitchenLeak.ts,
-// src/features/kitchen/roomsFound.ts): Rattles hollers about the boards once in each break
-// until they are open, the boards leak light and steam, and a counter in
-// the break shows how many rooms are found.
-
 const breakAt = (wave: number): Model =>
   UiStruct.evolve(pastTimedBreaks(freshRunModel()), {
     phase: () =>
@@ -265,10 +260,6 @@ describe('the smell of soup', () => {
 })
 
 describe('the holler beside the price tags', () => {
-  // NOTE: the boards' tag pinned to the window's edge on a phone on its
-  // side (2026-11-15 shots) slid under the holler: the bubble keeps off
-  // every tag as it is drawn, wherever the player stands in the dining
-  // room, on every layout.
   const LAYOUTS: ReadonlyArray<Readonly<[string, (model: Model) => Model]>> = [
     [
       'a phone on its side',

@@ -41,9 +41,6 @@ const barOf = (found: GuideEntry, stat: string) =>
   Option.getOrThrow(Array.findFirst(found.bars, bar => bar.stat === stat))
 
 describe('the Munchopedia Finds page', () => {
-  // NOTE: the root opens the panel on the Dare Journal; the guide is the
-  // Journal's own, so its taps are read in the Journal's Story, with the
-  // props the root hands it.
   it.effect(
     'the Finds tile opens the guide on Guns, and a section button turns it',
     () =>

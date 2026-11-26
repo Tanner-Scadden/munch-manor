@@ -17,14 +17,6 @@ import type * as Draw from './draw'
 import { rect, ringPixels } from './drawing'
 import type { Keepout as Box } from './keepout'
 
-// A feat's lock (src/world/feats/feats.ts), hung over what it opens: a
-// display case, the stove, or the gas valve. The feat's icon sits in a dark
-// disc with a ring round it that fills gold with the player's own progress,
-// and the count beside it: always over a display case, so what opens it
-// reads from across the room (owner's playtest, 2026-11-10), and over the
-// stove and the valve once the player walks up. No words: the icon says
-// what to do and the numbers how far there is to go.
-
 const RING_RADIUS = 7
 const RING_STEPS = 24
 const COUNT_GAP_PX = 3
@@ -32,8 +24,6 @@ const COUNT_NEAR_PX = 56
 
 const ringPixelsAt = ringPixels(RING_RADIUS)
 
-// NOTE: the dark disc and the ring in one image, so a lock is three
-// shapes and its count.
 const ringSprite = (filled: number): Sprite =>
   bakeShapes([
     rect(-5, -6, 11, 13, 'rgba(20, 12, 16, 0.8)'),
@@ -44,13 +34,11 @@ const ringSprite = (filled: number): Sprite =>
     ),
   ])
 
-// NOTE: a ring for each step of progress, baked as the module loads.
 const RINGS: Array.NonEmptyReadonlyArray<Sprite> = [
   ringSprite(0),
   ...Array.makeBy(RING_STEPS, step => ringSprite((step + 1) / RING_STEPS)),
 ]
 
-// NOTE: who is looking: their own tally, and where they stand.
 type Viewer = Readonly<{ feats: FeatTally; player: Vector }>
 
 const armamentIcon = (armament: Armament): Sprite => {
@@ -82,9 +70,6 @@ const ringOf = (progress: number, goal: number): Sprite =>
     () => RINGS[0],
   )
 
-// NOTE: where a lock hangs, the side its count goes (toward the middle of
-// the house, so a lock by an east wall keeps its count on the screen), and
-// whether the count shows always or only to a player near it.
 type LockSpot = Readonly<{
   x: number
   y: number
@@ -103,8 +88,6 @@ export const lockSpotIn: {
   countShows: 'Near',
 }))
 
-// NOTE: how far a player has gone toward a feat, as its lock's count reads
-// (`4/10`); a feat done once shows no count, only its ring.
 export const featCountOf: {
   (tally: FeatTally): (feat: Feat) => Option.Option<string>
   (feat: Feat, tally: FeatTally): Option.Option<string>
@@ -115,9 +98,6 @@ export const featCountOf: {
     : Option.none()
 })
 
-// NOTE: what a lock covers round `at`, in the game's pixels: its ring, and
-// its count's side as wide as the count's goal, so the box holds still as
-// the count climbs.
 export const featLockBoxOf: {
   (at: LockSpot): (feat: Feat) => Box
   (feat: Feat, at: LockSpot): Box
@@ -132,7 +112,6 @@ export const featLockBoxOf: {
   }
 })
 
-// NOTE: a lock centred on `at`, filled to the player's own tally.
 export const featLockShapes: {
   (viewer: Viewer, at: LockSpot): (feat: Feat) => ReadonlyArray<Draw.Shape>
   (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Draw.Shape>

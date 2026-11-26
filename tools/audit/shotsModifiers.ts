@@ -1,15 +1,3 @@
-// The run modifiers pass: the single player lobby with none on, with some on,
-// and with a bot and all four on (Friendly Fire is dim until a bot sits
-// in the crew), the co-op lobby as the host and as a guest, the shop's
-// HEALTH shelf under Glass, and the end cards that show the bonus (alone,
-// and with a crew), on a 1280x720
-// desktop, an 844x390 phone on its side, and a 390x844 phone held upright,
-// as `modifiers-<viewport>-<scene>.png` in MODIFIER_SHOTS (default
-// /tmp/modifier-shots). It exits with 1 when a modifier tile is under 48 px
-// on a phone, the tiles or the lobby run past the screen, or the tiles
-// cover a button.
-//   bun run heavy -- --shared bun tools/audit/shotsModifiers.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Config, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -33,7 +21,6 @@ const LEARNED =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,rattles'
 const LOBBY = `${LEARNED}&rank=4200&calling=Handyman`
 
-// NOTE: the lobby's mask: Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8.
 type Scene = Readonly<{
   name: string
   query: string
@@ -77,7 +64,6 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-// NOTE: the Glass shop's HEALTH shelf, whose one item is marked done.
 function openHealthTab(page: Page) {
   return Effect.andThen(
     attempt(() =>
@@ -117,8 +103,6 @@ const checkTiles = (page: Page) =>
           }
         },
       )
-      // NOTE: this runs in the page, where Effect's modules are not loaded, so
-      // it finds the first covered button with a plain loop.
       let covers: Element | undefined
       for (const button of document.querySelectorAll('.coop button')) {
         if (button.classList.contains('modifier-pick')) {

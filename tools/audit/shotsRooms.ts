@@ -1,14 +1,3 @@
-// The rooms rework pass (docs/ESCAPE_PLAN.md, layer 19): each room's new
-// shape in a quiet break with every exit open, the player in its middle
-// (the dining room, the parlour's dance floor, the library's stacks and
-// its nook, the cellar's lanes, the kitchen), and the dining room's
-// chandelier winch mid-wave: taut over the hung chandelier, slack and
-// waiting to be worked the first time once it is down, and being worked,
-// its crank turning and its gold ring filling. On a 1280x720 desktop, an 844x390
-// phone on its side, and a 390x844 phone held upright, as
-// `rooms-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsRooms.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -32,8 +21,6 @@ type Scene = Readonly<{ name: string; query: string }>
 const WAVE = `${LEARNED_ALL}&wave=3&start=wave&elapsed=0&${EVERY_EXIT_OPEN}`
 const FALLEN = `${WAVE}&fallen`
 
-// NOTE: the first house (src/world/level/plan.ts, ARRANGEMENTS): the
-// parlour west of the dining room, the library east, and the cellar beyond.
 const SCENES: ReadonlyArray<Scene> = [
   { name: 'dining', query: `${OPEN_BREAK}&px=180&py=150` },
   { name: 'parlour', query: `${OPEN_BREAK}&px=-160&py=130` },

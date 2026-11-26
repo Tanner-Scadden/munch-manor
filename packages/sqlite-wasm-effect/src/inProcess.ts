@@ -32,14 +32,6 @@ import {
   openThrough,
 } from './SqliteClient'
 
-// IN PROCESS
-
-// NOTE: the same server and protocol as the worker, run in this thread on
-// an in-memory database. Every message is encoded, structured-cloned, and
-// decoded on the way, as it would be crossing to a worker. Each `layer` is a
-// session of its own over one shared server, like tabs sharing a leader, so
-// tests can open two and watch them take turns.
-/** @stability unstable */
 export interface Hub {
   readonly layer: (
     options?: ClientOptions,
@@ -63,7 +55,6 @@ const cross = <A>(
     Effect.orDie,
   )
 
-/** @stability unstable */
 export const makeHub = (
   options: HubOptions = {},
 ): Effect.Effect<Hub, never, Scope.Scope> =>
@@ -125,5 +116,4 @@ export const makeHub = (
     return { layer, crossings: Ref.get(crossings) }
   })
 
-/** @stability unstable */
 export { SqliteClient }

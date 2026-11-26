@@ -1,12 +1,3 @@
-// The guided tutorial pass: each step of the tour a new player gets in the
-// break before wave 2 (walk to Rattles, buy a free Plank Pile, place it in a
-// doorway, done) and of the kitchen tour before wave 3 (the free boards, the
-// free pull, take it or leave it, done), on a 1280x720 desktop, an 844x390
-// phone on its side, and a 390x844 phone held
-// upright, as `s42-<TAG>-<viewport>-<scene>.png`. It checks that the
-// tracker shows on every step, that the Plank Pile is FREE, and that the
-// tracker's skip button is big enough to tap, and exits with 1 on a miss.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots42.ts
 import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -45,8 +36,6 @@ const hasTracker = (page: Page, problems: Array<string>, label: string) =>
     }
   })
 
-// NOTE: chapter 2, the kitchen tour: a new save in the break before wave 3,
-// past the first break but not the timed breaks.
 const KITCHEN_BREAK =
   'wave=3&prep=15000&money=5&seen=all&learned=move,fire,startWave,swap,pickup,openBreak'
 

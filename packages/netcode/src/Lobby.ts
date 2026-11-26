@@ -24,31 +24,10 @@ import {
 
 import { ClosedReason } from './Protocol'
 
-// NOTE: a co-op room's lobby and record, the `room:<code>` sync scope
-// (MULTIPLAYER.md, "How it fits the sync engine"). Members read it and
-// write their own READY; when everyone is READY the run starts, in the same
-// mutation, and after a run everyone presses READY again to keep going
-// (decision 12). The host, the room's creator, may kick and may end a run
-// early. The room itself (the GameRoom Durable Object) creates it, seats
-// joiners while it is in its lobby (no late join, decision 11), and
-// records each run's result. A room is Private (joined by code or link) or
-// Public (made by QUICK PLAY, which fills its free seats). The realtime
-// game is not here: it is the binary channel in Protocol.ts, in the same
-// Durable Object.
-//
-// Every mutation a player writes names the player it acts for in `by`, and
-// `authorize` checks that is the sender, so the apply can check the rest
-// (is `by` the host, is the room in the lobby) against the rows alone and
-// replay the same on every side.
-
 export const ROOM_SCOPE_KIND = 'room'
 export const ROOM_CODE_LENGTH = 5
 export const MAX_PLAYERS = 4
 
-// CODES
-
-// NOTE: five symbols from the pairing alphabet (no 0, O, 1, or I), about
-// 33 million codes. A byte maps to a symbol with `& 31` without bias.
 export const RoomCode = Schema.String.check(
   Schema.isPattern(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/),
 )
@@ -70,8 +49,6 @@ export const makeRoomCode: Effect.Effect<string> = Effect.sync(() =>
   roomCodeFromBytes(crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH))),
 )
 
-// NOTE: what a player types or a link carries: any case, spaces and dashes
-// ignored.
 export const normalizeRoomCode = (input: string): Option.Option<RoomCode> => {
   const cleaned = pipe(
     input,
@@ -94,20 +71,10 @@ export const roomCodeOfScope = (scope: string): Option.Option<RoomCode> =>
     ),
   )
 
-// NAMES
-
-// NOTE: a player's display name: up to 12 characters, not unique, shown in
-// lobbies, the Quick Play queue, and above teammates. Whatever a client
-// sends is cleaned the same way on every side: control characters out,
-// spaces trimmed and collapsed, cut to 12 characters (code points, so an
-// emoji is not split). An empty name becomes "Player N" by seat.
 export const MAX_NAME_LENGTH = 12
 export const MAX_NAME_INPUT = 64
 
-const CONTROL =
-  // NOTE: matching control characters is the point: they are cleaned out.
-  // oxlint-disable-next-line no-control-regex
-  /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2064\ufeff]/g
+const CONTROL = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu
 
 export const defaultName = (slot: number): string => `Player ${slot + 1}`
 
@@ -133,14 +100,6 @@ export const displayName: {
 
 export const NameInput = Schema.String.check(Schema.isMaxLength(MAX_NAME_INPUT))
 
-// LOOKS
-
-// NOTE: a player's look as the game writes it (src/shared/lookCodes.ts,
-// lookCodeOf): a few words joined by dots, such as
-// `Female.Ponytail.Ginger.Tan.Teal`. The scope keeps it as text and knows
-// nothing of what the words mean; anything else becomes '', which the game
-// draws as the seat's own look. The Worker checks the words before it
-// seats anyone.
 export const MAX_LOOK_INPUT = 64
 const LOOK_PATTERN = /^[A-Za-z]{1,12}(\.[A-Za-z]{1,12}){0,8}$/
 
@@ -149,13 +108,6 @@ export const LookInput = Schema.String.check(Schema.isMaxLength(MAX_LOOK_INPUT))
 export const cleanLook = (raw: string): string =>
   raw.length <= MAX_LOOK_INPUT && LOOK_PATTERN.test(raw) ? raw : ''
 
-// RANKS
-
-// NOTE: a player's rank as the game works it out from their points
-// (src/world/heroes/rank.ts): a whole number from 1. The scope keeps what the client
-// says and cannot check it, so it clamps nonsense: a missing, fractional,
-// or non-finite number reads as 1, and nothing goes above MAX_RANK_INPUT.
-// It is for show beside a name: QUICK PLAY never groups by it.
 export const MAX_RANK_INPUT = 999
 
 export const RankInput = Schema.Finite
@@ -165,14 +117,6 @@ export const cleanRank = (raw: number): number =>
     ? Math.min(MAX_RANK_INPUT, Math.max(1, Math.floor(raw)))
     : 1
 
-// CALLINGS
-
-// NOTE: a player's calling as the game writes it (src/shared/lookCodes.ts,
-// `Calling`): one short word, such as `Handyman`. Like a look, the scope
-// keeps it as text and knows nothing of what the words mean; anything that
-// is not a short word becomes DEFAULT_CALLING, which the game plays as no
-// calling. The Worker checks the word against the game's callings before
-// it seats anyone, and cannot check the player's rank reached it.
 export const DEFAULT_CALLING = 'You'
 export const MAX_CALLING_INPUT = 24
 const CALLING_PATTERN = /^[A-Za-z]{1,24}$/
@@ -186,20 +130,12 @@ export const cleanCalling = (raw: string): string =>
     ? raw
     : DEFAULT_CALLING
 
-// ROWS
-
 export const RoomStatus = Schema.Literals(['Lobby', 'Playing', 'Closed'])
 export type RoomStatus = typeof RoomStatus.Type
 
 export const RoomVisibility = Schema.Literals(['Private', 'Public'])
 export type RoomVisibility = typeof RoomVisibility.Type
 
-// NOTE: what the room plays next, picked by the host in the lobby: the
-// campaign or endless, or KeepGoing, which carries a won campaign's run on
-// into endless (GAME_DESIGN.md, "Keep going"). KeepGoing is offered only
-// while the room keeps that run: from a won campaign until the crew
-// changes. StandIn is the dev page's stand-in world. A new room plays a
-// Normal campaign.
 export const RoomMode = Schema.Literals([
   'StandIn',
   'Campaign',
@@ -222,26 +158,14 @@ export type RoomDifficulty = typeof RoomDifficulty.Type
 export const DEFAULT_MODE: PickedMode = 'Campaign'
 export const DEFAULT_DIFFICULTY: RoomDifficulty = 'Normal'
 
-// NOTE: the run modifiers the host picked (src/world/run/modifiers.ts in the game), as
-// a mask with a bit for each: Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8.
-// The room does not read them, it hands the mask to the game's rules when it
-// starts the run. 0 is none.
 export const MAX_MODIFIER_MASK = 15
 export const ModifierMask = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: MAX_MODIFIER_MASK }),
 )
 
-// NOTE: Dare's break clock in seconds that the host picked
-// (EASY_BREAK_CHOICES in the game's src/world/run/difficulty.ts), 0 for
-// none: the break waits for READY. The room hands it to the game's rules
-// as it does the modifiers; it means nothing above Dare.
 export const EASY_BREAK_SECONDS = [0, 20, 30, 60] as const
 export const EasyBreakSeconds = Schema.Literals(EASY_BREAK_SECONDS)
 
-// NOTE: the dare ladder's mark the host picked (src/world/run/dareLadder.ts
-// in the game), 0 for none. The scope keeps what the host asks; the room
-// holds it to the host's own best on the difficulty, read from their
-// scope, as the run starts, as it does Nightmare.
 export const MAX_DARE_MARK = 8
 export const DareMark = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: MAX_DARE_MARK }),
@@ -299,17 +223,9 @@ export type MemberRow = typeof MemberRow.Type
 
 const decodeRoomRows = Schema.decodeUnknownEffect(Schema.Array(RoomRow))
 const decodeMemberRows = Schema.decodeUnknownEffect(Schema.Array(MemberRow))
-// NOTE: a RoomResult always encodes; a failure is a bug, so it dies.
 const encodeResult = (result: RoomResult): Effect.Effect<string> =>
   Effect.orDie(Schema.encodeEffect(RoomResultJson)(result))
 
-// LOBBY
-
-// NOTE: `canNightmare` is whether the player had unlocked Nightmare when the
-// room seated them, as the room read it from their own scope on the server.
-// `hasSeenIntro` is whether they had watched the whole intro (their save's
-// onboarding `intro`), as their client said when it asked for the seat: the
-// room plays the whole drive up only for a crew with a newcomer in it.
 export const LobbyMember = Schema.Struct({
   playerId: Schema.String,
   name: Schema.String,
@@ -320,8 +236,6 @@ export const LobbyMember = Schema.Struct({
   hasSeenIntro: Schema.Boolean,
   slot: Schema.Finite,
   ready: Schema.Boolean,
-  // NOTE: the round trip the player last measured, sent with their READY
-  // (so it costs no message of its own); 0 until then.
   pingMs: Schema.Finite,
   joinedMs: Schema.Finite,
 })
@@ -396,8 +310,6 @@ const decodeSnapshotMembers = Schema.decodeUnknownOption(
   Schema.Array(MemberRow),
 )
 
-// NOTE: the lobby from a scope Snapshot's tables, for a client that follows
-// the scope without a local database (the dev page).
 export const lobbyOfSnapshot = (
   tables: Readonly<Record<string, ReadonlyArray<Row>>>,
 ): Option.Option<Lobby> =>
@@ -409,7 +321,6 @@ export const lobbyOfSnapshot = (
     ),
   )
 
-/** @stability unstable */
 export const readLobby = (
   context: ApplyContext,
 ): Effect.Effect<
@@ -435,8 +346,6 @@ const rejectBadRows = <A>(effect: Effect.Effect<A, Schema.SchemaError>) =>
     MutationRejected.make({ reason: error.message }),
   )
 
-// RULES
-
 export const freeSlot = (lobby: Lobby): Option.Option<number> =>
   Array.findFirst(
     Array.range(0, MAX_PLAYERS - 1),
@@ -454,11 +363,9 @@ export const everyoneReady = (lobby: Lobby): boolean =>
   Array.isReadonlyArrayNonEmpty(lobby.members) &&
   Array.every(lobby.members, member => member.ready)
 
-// NOTE: only a room in its lobby seats players: no late join.
 export const canJoin = (lobby: Lobby): boolean =>
   lobby.status === 'Lobby' && lobby.members.length < MAX_PLAYERS
 
-// NOTE: what a public room tells QUICK PLAY: open while it seats players.
 export const isOpenToQuickPlay = (lobby: Lobby): boolean =>
   lobby.visibility === 'Public' && canJoin(lobby)
 
@@ -474,8 +381,6 @@ const requireLobby = (context: ApplyContext) =>
     }),
   )
 
-// NOTE: Nightmare is the host's to pick only when the room found it
-// unlocked in their own scope.
 export const canHostPickNightmare = (lobby: Lobby): boolean =>
   Array.some(
     lobby.members,
@@ -511,9 +416,6 @@ const clearReady = (context: ApplyContext) =>
     sql => sql`UPDATE ${context.table('members')} SET ready = 0`,
   )
 
-// NOTE: a kept run plays on only with the crew that won it, so a change of
-// crew lets it go: a KeepGoing pick becomes Endless, and everyone READY
-// says yes again to the new pick.
 const forgetKept = (context: ApplyContext, lobby: Lobby) =>
   lobby.canKeepGoing
     ? Effect.andThen(
@@ -525,18 +427,11 @@ const forgetKept = (context: ApplyContext, lobby: Lobby) =>
       )
     : touch(context, {})
 
-// NOTE: what a run's result leaves for the next one: no kept run. A won
-// campaign is an escape from the house (docs/ESCAPE_PLAN.md), and nobody
-// goes back in after it: Endless is its own pick. A KeepGoing pick left
-// from an older room becomes Endless.
 const picksAfter = (lobby: Lobby): Record<string, string | number> => ({
   kept: 0,
   mode: lobby.mode === 'KeepGoing' ? 'Endless' : lobby.mode,
 })
 
-// MUTATIONS
-
-/** @stability unstable */
 export const CreatedRoom = defineMutation({
   name: 'CreatedRoom',
   version: 6,
@@ -607,7 +502,6 @@ export const CreatedRoom = defineMutation({
     }),
 })
 
-/** @stability unstable */
 export const JoinedRoom = defineMutation({
   name: 'JoinedRoom',
   version: 6,
@@ -657,7 +551,6 @@ export const JoinedRoom = defineMutation({
     }),
 })
 
-/** @stability unstable */
 export const ChangedReady = defineMutation({
   name: 'ChangedReady',
   version: 2,
@@ -699,10 +592,6 @@ export const ChangedReady = defineMutation({
     }),
 })
 
-// NOTE: the host picks what the room plays next while it is in its lobby.
-// A change takes back everyone's READY, so nobody starts a run they did not
-// say yes to; picking what is already picked changes nothing.
-/** @stability unstable */
 export const ChangedPicks = defineMutation({
   name: 'ChangedPicks',
   version: 1,
@@ -731,8 +620,6 @@ export const ChangedPicks = defineMutation({
         return
       }
       yield* clearReady(context)
-      // NOTE: a mark is opened per difficulty, so a new difficulty starts
-      // the ladder's pick at none.
       yield* touch(
         context,
         difficulty === lobby.difficulty
@@ -742,10 +629,6 @@ export const ChangedPicks = defineMutation({
     }),
 })
 
-// NOTE: the host picks the run's modifiers while the room is in its lobby,
-// as they pick the difficulty: a change takes back everyone's READY, and
-// picking what is already picked changes nothing.
-/** @stability unstable */
 export const ChangedModifiers = defineMutation({
   name: 'ChangedModifiers',
   version: 1,
@@ -768,9 +651,6 @@ export const ChangedModifiers = defineMutation({
     }),
 })
 
-// NOTE: the host picks Dare's break clock as they pick the modifiers: a
-// change takes back everyone's READY, and the same pick changes nothing.
-/** @stability unstable */
 export const ChangedEasyBreak = defineMutation({
   name: 'ChangedEasyBreak',
   version: 1,
@@ -793,9 +673,6 @@ export const ChangedEasyBreak = defineMutation({
     }),
 })
 
-// NOTE: the host picks the dare ladder's mark as they pick the modifiers:
-// a change takes back everyone's READY, and the same pick changes nothing.
-/** @stability unstable */
 export const ChangedDareMark = defineMutation({
   name: 'ChangedDareMark',
   version: 1,
@@ -818,12 +695,6 @@ export const ChangedDareMark = defineMutation({
     }),
 })
 
-// NOTE: a player picks their own calling while the room is in its lobby. The
-// scope keeps the word as text (cleanCalling): the game decodes it against
-// its own callings when the host starts, and the Worker cannot check the
-// rank reached it, as with the rank itself. Nobody's READY changes: the pick
-// is the player's own and takes nothing back from the others.
-/** @stability unstable */
 export const ChangedMemberCalling = defineMutation({
   name: 'ChangedMemberCalling',
   version: 1,
@@ -855,11 +726,6 @@ export const ChangedMemberCalling = defineMutation({
     }),
 })
 
-// NOTE: a player renames themselves while the room is in its lobby, the
-// same name the Profile keeps (src/features/profile/profile.ts). The room cleans it as it
-// cleans a joining name (displayName), so an empty one becomes "Player N" by
-// seat. Nobody's READY changes: the name is the player's own.
-/** @stability unstable */
 export const ChangedMemberName = defineMutation({
   name: 'ChangedMemberName',
   version: 1,
@@ -896,7 +762,6 @@ export const ChangedMemberName = defineMutation({
     }),
 })
 
-/** @stability unstable */
 export const EndedGame = defineMutation({
   name: 'EndedGame',
   version: 1,
@@ -915,9 +780,6 @@ export const EndedGame = defineMutation({
     }),
 })
 
-// NOTE: written by the room when a run ends, however it ended. The room is
-// back in its lobby, where everyone presses READY to keep going.
-/** @stability unstable */
 export const RecordedRoomResult = defineMutation({
   name: 'RecordedRoomResult',
   version: 1,
@@ -939,7 +801,6 @@ export const RecordedRoomResult = defineMutation({
     }),
 })
 
-/** @stability unstable */
 export const KickedPlayer = defineMutation({
   name: 'KickedPlayer',
   version: 1,
@@ -961,10 +822,6 @@ export const KickedPlayer = defineMutation({
     }),
 })
 
-// NOTE: a player leaving, or the room freeing a seat that was Away too
-// long. A host who leaves hands the room to the lowest slot left; the last
-// one out closes it.
-/** @stability unstable */
 export const LeftRoom = defineMutation({
   name: 'LeftRoom',
   version: 1,
@@ -990,8 +847,6 @@ export const LeftRoom = defineMutation({
     }),
 })
 
-// NOTE: a new host who has not unlocked Nightmare cannot keep it picked:
-// the room steps down to Hard, and everyone says READY again.
 const handOver = (context: ApplyContext, lobby: Lobby, next: LobbyMember) =>
   lobby.difficulty === 'Nightmare' && !next.canNightmare
     ? Effect.andThen(
@@ -1000,9 +855,6 @@ const handOver = (context: ApplyContext, lobby: Lobby, next: LobbyMember) =>
       )
     : touch(context, { host: next.playerId })
 
-// SCOPE
-
-/** @stability unstable */
 export const RoomScope = defineScope({
   kind: ROOM_SCOPE_KIND,
   tables: ['room', 'members'],
@@ -1091,8 +943,6 @@ export const RoomScope = defineScope({
         yield* sql`ALTER TABLE ${sql(table('room'))}
           ADD COLUMN modifiers INTEGER NOT NULL DEFAULT 0`
       }),
-    // NOTE: a member seated before it reads as a newcomer, so a room open
-    // across the change still plays the whole intro on its first run.
     '0009_intro': table =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient
@@ -1114,10 +964,6 @@ export const RoomScope = defineScope({
   },
 })
 
-// HTTP
-
-// NOTE: the Worker's room routes. Create and join take the sync session
-// token as a bearer; the socket's Hello carries it instead.
 export const ROOM_PATHS = {
   create: '/room/create',
   join: '/room/join',

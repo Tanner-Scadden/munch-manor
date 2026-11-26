@@ -18,11 +18,6 @@ import {
   tableName,
 } from './Mutation'
 
-// SCOPE IDS
-
-// NOTE: a scope id is `<kind>:<key>`, such as `player:3f9a...` or
-// `leaderboard:campaign:2026-w44`. The kind picks the definition; the key
-// picks the one instance, and for an Owner scope it is the owner's player id.
 export const SCOPE_ID_PATTERN = /^[a-z][a-z0-9-]*:[A-Za-z0-9:_-]{1,128}$/
 
 export const ScopeId = Schema.String.check(Schema.isPattern(SCOPE_ID_PATTERN))
@@ -46,23 +41,16 @@ export const parseScopeId = (id: string): Option.Option<ScopeAddress> =>
       }))
     : Option.none()
 
-// DEFINITION
-
 export const Readers = Schema.Literals(['Owner', 'Members', 'Everyone'])
 export type Readers = typeof Readers.Type
 
-// NOTE: ReadWrite replicas keep confirmed tables and a view and replay
-// pending mutations. ReadOnly replicas (a leaderboard a client only watches)
-// apply deltas straight to the view and never rebuild.
 export const ReplicaMode = Schema.Literals(['ReadWrite', 'ReadOnly'])
 export type ReplicaMode = typeof ReplicaMode.Type
 
-/** @stability unstable */
 export type ScopeMigration = (
   table: (name: string) => string,
 ) => Effect.Effect<void, SqlError.SqlError, SqlClient.SqlClient>
 
-/** @stability unstable */
 export interface ScopeDefinition {
   readonly kind: string
   readonly tables: ReadonlyArray<string>
@@ -72,13 +60,9 @@ export interface ScopeDefinition {
   readonly replica: ReplicaMode
 }
 
-/** @stability unstable */
 export const defineScope = (definition: ScopeDefinition): ScopeDefinition =>
   definition
 
-// NOTE: every mutation a scope lists must allow the scope's kind. The server
-// refuses to start a scope whose definition breaks this.
-/** @stability unstable */
 export const outOfScopeMutations = (
   definition: ScopeDefinition,
 ): ReadonlyArray<string> =>
@@ -88,7 +72,6 @@ export const outOfScopeMutations = (
     Array.map(mutation => mutation.name),
   )
 
-/** @stability unstable */
 export const findMutation: {
   (name: string): (definition: ScopeDefinition) => Option.Option<AnyMutation>
   (definition: ScopeDefinition, name: string): Option.Option<AnyMutation>
@@ -98,7 +81,6 @@ export const findMutation: {
     Array.findFirst(definition.mutations, mutation => mutation.name === name),
 )
 
-/** @stability unstable */
 export const mutationVersions = (
   definition: ScopeDefinition,
 ): Record<string, number> =>
@@ -109,12 +91,6 @@ export const mutationVersions = (
     ]),
   )
 
-// MIGRATIONS
-
-// NOTE: each scope migration runs once per target: once on the server, and
-// once for the confirmed tables and once for the view on a client. They are
-// recorded in sync_migrations by kind, target, and id, and run in id order.
-/** @stability unstable */
 export const runScopeMigrations: {
   (
     target: Target,
@@ -174,8 +150,6 @@ const withTransactionOf = <A, E>(
 ): Effect.Effect<A, E | SqlError.SqlError, SqlClient.SqlClient> =>
   Effect.flatMap(SqlClient.SqlClient, sql => sql.withTransaction(effect))
 
-// PERMISSIONS
-
 export const Permission = Schema.TaggedUnion({
   Allowed: {},
   Forbidden: { reason: Schema.String },
@@ -217,7 +191,6 @@ const checkParty = (
   )
 }
 
-/** @stability unstable */
 export const checkRead: {
   (
     actor: Actor,
@@ -242,7 +215,6 @@ export const checkRead: {
       : checkParty(definition.readers, actor, address),
 )
 
-/** @stability unstable */
 export const checkWrite: {
   (
     actor: Actor,

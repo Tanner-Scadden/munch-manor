@@ -30,8 +30,6 @@ import {
   ZombieState,
 } from '../schema/worldSchema'
 
-// BEHAVIOR
-
 export const Behavior = UiSchema.TaggedEnum({
   Brawler: {},
   Bomber: {
@@ -55,8 +53,6 @@ export type Arrival = 'Door' | 'Floor'
 
 type HealthBar = 'Shown' | 'Hidden'
 
-// NOTE: a Drawn kind near a standing Plank Pile walks over and chews it
-// instead of chasing the player. Only the slow kinds are that dim.
 type BaitPull = 'Drawn' | 'Ignores'
 
 type Gibs = Readonly<{ kind: ParticleKind; count: number }>
@@ -69,9 +65,6 @@ export type Footfall = Readonly<{
   maybeSound: Option.Option<SoundEffect>
 }>
 
-// NOTE: A wear stage comes off once health falls to its share of the most
-// health, so a zombie's wear is read from hp and maxHp alone and each part
-// comes off exactly once.
 export type WearStage = Readonly<{
   below: number
   part: ParticleKind
@@ -110,8 +103,6 @@ type ZombieKindStats = Readonly<{
   arrival: Arrival
   bait: BaitPull
 }>
-
-// KINDS
 
 export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
   Shambler: {
@@ -331,8 +322,6 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     hp: 2,
     contactDamage: 0,
     trapBitePerSecond: 2,
-    // NOTE: the spider's body (abdomen, eyes, and fangs) takes hits; its
-    // legs do not. Its bodyRadius, and so its grab reach, is the old one.
     radius: 5,
     bodyRadius: 3.5,
     footOffset: 5,
@@ -417,9 +406,6 @@ export const ZOMBIE_KIND_ORDER: ReadonlyArray<ZombieKind> = [
   'Crawler',
 ]
 
-// NOTE: a kind's number, for the tables hot code reads by index. The World
-// keeps the kind as its Schema literal. A lookup by string key costs several
-// times as much in V8. zombies.test.ts checks every kind.
 const KINDS_BY_INDEX: ReadonlyArray<ZombieKind> = [
   'Shambler',
   'Runner',
@@ -430,8 +416,6 @@ const KINDS_BY_INDEX: ReadonlyArray<ZombieKind> = [
   'Boss',
 ]
 
-// NOTE: a switch over the literals, in KINDS_BY_INDEX's order, which V8
-// and JavaScriptCore compare as fast as the first letter's code.
 const kindIndex = (kind: ZombieKind): number => {
   switch (kind) {
     case 'Shambler':
@@ -467,8 +451,6 @@ const BODY_RADIUS_BY_INDEX = Float64Array.from(
 export const statsOf = (zombie: Zombie): ZombieKindStats =>
   STATS_BY_INDEX[kindIndex(zombie.kind)] ?? ZOMBIE_KINDS[zombie.kind]
 
-// NOTE: how near a footstep sounds to a listener, 1 underfoot to 0 at its
-// kind's range; a kind with no range is never heard.
 export const footfallNearness: {
   (distance: number): (kind: ZombieKind) => number
   (kind: ZombieKind, distance: number): number
@@ -487,8 +469,6 @@ export const bodyRadiusOf = (zombie: Zombie): number =>
   BODY_RADIUS_BY_INDEX[kindIndex(zombie.kind)] ?? statsOf(zombie).bodyRadius
 
 export const isBoss = (zombie: Zombie): boolean => zombie.kind === 'Boss'
-
-// WEAR
 
 const WEAR_TOLERANCE = 1e-9
 
@@ -525,8 +505,6 @@ export const isArmorShedAt: {
 export const wearOf = (zombie: Zombie): number =>
   wearAt(zombie.kind, zombie.hp, zombie.maxHp)
 
-// STATE
-
 export type DeathCause = 'Shot' | 'Blast'
 
 export const deathState: {
@@ -558,8 +536,6 @@ export const deathState: {
     }),
 )
 
-// NOTE: the checks are built once, not on every call: these run for every
-// zombie many times a tick.
 const isWalkingState = ZombieState.isAnyOf(['Walking'])
 const isFusingState = ZombieState.isAnyOf(['Fusing'])
 
@@ -582,17 +558,11 @@ const isOnTheFloor = ZombieAction.isAnyOf([
 
 const isOnItsFeet = ZombieAction.isAnyOf(['Roaming', 'Winded', 'Chilled'])
 
-// NOTE: a zombie doing nothing but walking after the players.
 export const isRoamingAction = ZombieAction.isAnyOf(['Roaming'])
 
-// NOTE: a grounded zombie is alive and standing in the room, so bullets,
-// bursts, traps, and the crowd can reach it. One Burrowed under the floor,
-// Carried overhead, or Flying through the air is out of reach.
 export const isGrounded = (zombie: Zombie): boolean =>
   isWalking(zombie) && isOnTheFloor(zombie.action)
 
-// NOTE: a free zombie walks after the player and can bite. One busy heaving,
-// dazed, or clinging stands still.
 export const isFree = (zombie: Zombie): boolean =>
   isWalking(zombie) && isOnItsFeet(zombie.action)
 
@@ -601,8 +571,6 @@ export const arrivalOf = (kind: ZombieKind): Arrival =>
 
 export const isFloorKind = (kind: ZombieKind): boolean =>
   arrivalOf(kind) === 'Floor'
-
-// ARRIVAL
 
 export const scaledHp: {
   (hpScale: number): (hp: number) => number
@@ -650,8 +618,6 @@ export const arrivingZombie = ({
     frenzy,
   }
 }
-
-// STRIDE
 
 export const strideAt: {
   (elapsedMs: number): (zombie: Zombie) => number

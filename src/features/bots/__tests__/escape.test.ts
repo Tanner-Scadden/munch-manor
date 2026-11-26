@@ -3,9 +3,6 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR } from '../../../world/level/arena'
 import { escapeHeading } from '../escape'
 
-// Which way a bot runs from zombies (src/features/bots/escape.ts): never into the wall or
-// the corner behind it.
-
 const dot = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   a.x * b.x + a.y * b.y
 

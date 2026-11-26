@@ -1,18 +1,8 @@
-// Checks the on-device save in SQLite on OPFS, in headless Chrome, against
-// the production build or a deployed copy:
-// 1. An older localStorage save is imported into SQLite on the first load.
-// 2. A setting changed after that lasts across a reload while localStorage
-//    stays untouched, so it came back from SQLite, and the database file
-//    is in OPFS.
-// 3. A second tab follows the first, its change goes through the leader,
-//    and when the leader closes the second tab takes over the database.
-//    Every reload after that still reads one whole, current save.
-// Run it through the heavy guard:
-//   BASE=http://localhost:4173/ bun run heavy -- bun tools/audit/sqlite.ts
 import { Array, Clock, Config, Console, Effect, Schema, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { encodeJson } from '../json'
+import { opfsFileList } from './inPage/sqlite'
 import { GAME, awaitGame, openBrowser, runAudit, wait } from './lib'
 import { attempt } from './page'
 
@@ -46,9 +36,6 @@ const legacySave = {
   difficulty: { chosen: 'Normal', card: 'Seen', nightmare: 'Locked' },
 }
 
-// NOTE: the gear on the home menu (#home-settings) opens the Profile on its
-// Settings tab, a list named "Game settings" of toggle buttons named by
-// their setting, with aria-pressed. It is opened once per page load.
 const settingsList = (page: Page) =>
   page.getByRole('list', { name: 'Game settings' })
 
@@ -85,29 +72,7 @@ const isMusicOn = (page: Page) => setting(page, 'Music')
 const legacyInStorage = (page: Page) =>
   attempt(() => page.evaluate(key => localStorage.getItem(key), SAVE_KEY))
 
-const opfsFiles = (page: Page) =>
-  attempt(() =>
-    page.evaluate(
-      // NOTE: runs in the page, where OPFS answers only by promises.
-      // @effect-diagnostics-next-line asyncFunction:off
-      async () => {
-        const found: Array<string> = []
-        // NOTE: runs in the page, where OPFS answers only by promises.
-        // @effect-diagnostics-next-line asyncFunction:off
-        const walk = async (dir: FileSystemDirectoryHandle, path: string) => {
-          for await (const [name, handle] of dir.entries()) {
-            if (handle instanceof FileSystemDirectoryHandle) {
-              await walk(handle, `${path}${name}/`)
-            } else {
-              found.push(`${path}${name}`)
-            }
-          }
-        }
-        await walk(await navigator.storage.getDirectory(), '/')
-        return found
-      },
-    ),
-  )
+const opfsFiles = (page: Page) => attempt(() => page.evaluate(opfsFileList))
 
 const both = <E>(
   first: Effect.Effect<boolean, E>,

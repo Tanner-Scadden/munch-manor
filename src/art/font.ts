@@ -22,8 +22,6 @@ import {
   spriteWidth,
 } from './sprite'
 
-// GLYPHS
-
 const GLYPH_PIXELS = {
   '0': ['###', '#.#', '#.#', '#.#', '###'],
   '1': ['.#.', '##.', '.#.', '.#.', '###'],
@@ -85,19 +83,12 @@ const SPACE_WIDTH = 2
 const GLYPH_FILL = '#'
 const GLYPH_SHADOW = 'S'
 
-// NOTE: the table read by any string, so a symbol it lacks can be asked.
 const GLYPHS_BY_SYMBOL: Readonly<Record<string, ReadonlyArray<string>>> =
   GLYPH_PIXELS
 
 const isGlyph = (symbol: string): symbol is Glyph =>
   Record.has(GLYPHS_BY_SYMBOL, symbol)
 
-// KEY
-
-// NOTE: `$` in any baked text draws a skeleton key, the crew's currency
-// (src/world/keys/keys.ts): a popup's `+$1`, the HUD's ring, a padlock's
-// price. It drew a coin until the keys took money's place
-// (docs/ESCAPE_PLAN.md, layer 7).
 export const KEY_SYMBOL = '$'
 
 const KEY_OUTLINE_COLOR = '#5a3510'
@@ -120,8 +111,6 @@ const KEY_COLORS: Palette = {
 }
 
 export const KEY_WIDTH = 7
-// NOTE: the key is two rows shorter than a glyph cell, so it sits one row
-// down to center on the line.
 const KEY_LIFT = -1
 
 export const KEY_SPRITE: Sprite = spriteShapes(KEY_PIXELS, KEY_COLORS, TOP_LEFT)
@@ -238,8 +227,6 @@ const withDropShadow = (
   )
 }
 
-// TONES
-
 export type TextTone =
   | 'Damage'
   | 'Kill'
@@ -271,10 +258,6 @@ const TONE_COLORS: Readonly<Record<TextTone, string>> = {
   Ink: '#140c10',
 }
 
-// NOTE: ink is written on paper (a bubble, the dare card, a tab), where the
-// drop shadow's near black would run into the strokes and thicken every
-// letter by a row (a K read as an H, a ? as a 7), so its shadow is the
-// faint press of the pen instead.
 const INK_SHADOW_COLOR = 'rgba(42, 29, 20, 0.22)'
 
 const tonePalette = (tone: TextTone) => ({
@@ -290,8 +273,6 @@ const glyphSprites = (tone: TextTone): Readonly<Record<Glyph, Sprite>> =>
 export const GLYPH_SPRITES: Readonly<
   Record<TextTone, Readonly<Record<Glyph, Sprite>>>
 > = Record.map(TONE_COLORS, (_color, tone) => glyphSprites(tone))
-
-// TEXT
 
 type Align = 'Left' | 'Center' | 'Right'
 
@@ -390,8 +371,6 @@ export const placeBaked: {
         })
   },
 )
-
-// COUNTS
 
 const COUNT_SPRITE_MAX = 40
 

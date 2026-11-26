@@ -19,8 +19,6 @@ import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
 import { type Model, Phase, TrapNotice, freshLevel, freshLoot } from '../model'
 
-// NOTE: listed here by hand, not read from the reset itself, so a field the
-// reset forgets shows up as a difference.
 const RUN_FIELDS = [
   'pacing',
   'boss',

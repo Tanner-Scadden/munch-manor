@@ -7,11 +7,6 @@ import * as Semaphore from 'effect/Semaphore'
 
 import { Matchmaking, type RoomRefusal, type RoomTicket } from '@munch/netcode'
 
-// NOTE: the Matchmaker's logic apart from the Workers runtime: it runs the
-// pure Quick Play rules (Matchmaking in @munch/netcode) one event at a
-// time, keeps their state, and carries out what they ask through `io`, so
-// `bun test` drives it with fake rooms and sockets.
-
 export interface Made {
   readonly code: string
   readonly tickets: ReadonlyArray<{
@@ -68,10 +63,6 @@ const refused = (io: MatchmakerIo, socket: string, refusal: RoomRefusal) =>
     io.close(socket),
   )
 
-// NOTE: carries out a step's actions in order and returns the matchmaker
-// they leave. A seat that fails puts the player back at the front and
-// forgets the room; a room that cannot be made tells its players so, and
-// they can press QUICK PLAY again.
 const carryOut = (
   io: MatchmakerIo,
   stepped: Matchmaking.Stepped,

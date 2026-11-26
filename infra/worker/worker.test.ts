@@ -84,7 +84,6 @@ const summary: RunSummary = {
   dareMark: 0,
 }
 
-// NOTE: a co-op crew as a build before the run key sent it.
 const crewPartyV2 = {
   _tag: 'Crew',
   size: 3,
@@ -95,7 +94,6 @@ const crewPartyV2 = {
 
 const CREW_KEY = '00ff00ff00ff00ff'
 
-// NOTE: one player's link over an online run (RunSummary version 7 on).
 const NETWORK = {
   rttP50Ms: 62,
   rttP95Ms: 140,
@@ -114,15 +112,12 @@ type CrewNetwork = typeof NETWORK
 
 const crewPartyV6 = { ...crewPartyV2, runKey: CREW_KEY }
 
-// NOTE: one player's own summary of an online co-op run.
 const crewSummary: RunSummary = {
   ...summary,
   difficulty: 'Hard',
   party: { ...crewPartyV6, network: NETWORK },
 }
 
-// NOTE: the shop's purchases, in a summary from a build before the keys
-// and the escape.
 const {
   keysSpent: _keysSpent,
   casesOpened: _casesOpened,
@@ -133,7 +128,6 @@ const shopFields = { ...withoutKeys, purchases: 4 }
 
 const { modifiers: _modifiers, ...beforeModifiers } = shopFields
 
-// NOTE: a summary from a build before the keys (version 4).
 const versionFourSummaryJson = toJson({ ...shopFields, version: 4 })
 
 const crewV2SummaryJson = toJson({
@@ -142,10 +136,8 @@ const crewV2SummaryJson = toJson({
   party: crewPartyV2,
 })
 
-// NOTE: a summary from a build before the run modifiers.
 const versionThreeSummaryJson = toJson({ ...beforeModifiers, version: 3 })
 
-// NOTE: a summary from a build before co-op summaries: no party.
 const {
   party: _party,
   modifiers: _soloModifiers,
@@ -161,8 +153,6 @@ const encodeSummary = (posted: RunSummary): string =>
 
 const summaryJson = encodeSummary(summary)
 
-// FAKES
-
 const isComment = (line: string): boolean =>
   String.startsWith('--')(String.trim(line))
 
@@ -177,7 +167,6 @@ const migrationStatements = (sql: string): ReadonlyArray<string> => {
   )
 }
 
-// NOTE: every D1 migration's statements, in the order D1 applies them.
 const migrations = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
@@ -194,8 +183,6 @@ const migrations = Effect.gen(function* () {
   return Array.flatMap(texts, text => migrationStatements(text))
 }).pipe(Effect.orDie)
 
-// NOTE: D1 is SQLite, so an in-memory SQLite database with the real
-// migration stands in for it, through Effect SQL like the Worker's own.
 const memoryDatabase = Effect.gen(function* () {
   const sql = yield* memory
   const platform = yield* Layer.build(NodeServices.layer)
@@ -235,7 +222,6 @@ const setUp = (visitLimit = 5, addressLimit = 20) =>
 
 const { handler } = makeHandler()
 
-// NOTE: the Worker's own fetch handler, a Promise as Cloudflare calls it.
 const fetchFrom = (setup: Setup, request: Request) =>
   Effect.promise(() => handler(request, setup.context))
 
@@ -264,8 +250,6 @@ const countOf = (setup: Setup, table: string) =>
   )
 
 const rowCount = (setup: Setup) => countOf(setup, 'runs')
-
-// RULES
 
 describe('the rules', () => {
   it('the size cap reads the header and then the body', () => {
@@ -331,8 +315,6 @@ describe('the rules', () => {
       }),
   )
 })
-
-// HANDLER
 
 describe('POST /api/runs', () => {
   it.effect('a valid summary is stored and answers 202', () =>
@@ -885,8 +867,6 @@ describe('GET /api/health', () => {
   )
 })
 
-// RETENTION
-
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const insertRowAt = (setup: Setup, atMs: number) =>
@@ -969,10 +949,6 @@ describe('the 90 day retention', () => {
   )
 })
 
-// THE REPORT
-
-// NOTE: a co-op game is one row per player who shares, so the report's
-// per game tables count one crew_key once (tools/analytics/queries.ts).
 const crewRowJson = (
   runKey: string | null,
   outcome: RunSummary['outcome'],

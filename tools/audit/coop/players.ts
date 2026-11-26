@@ -1,6 +1,3 @@
-// Co-op audit (tools/audit/coop.ts): each player's own browser page: the save it
-// starts with (rank, look), the viewport, checks, and waiting.
-
 import {
   Array,
   Config,
@@ -15,9 +12,10 @@ import type { Browser, BrowserContext, Page } from 'playwright-core'
 import { pointsForRank } from '@game/world/heroes/rank'
 
 import { encodeJson } from '../../json'
+import { slowSockets } from '../inPage/slowSockets'
 import { SHOTS_DIR, pollUntil } from '../lib'
 import { type AuditFailed, attempt } from '../page'
-import { coopConfig, slowSockets } from './config'
+import { coopConfig } from './config'
 
 const SAVE_KEY = 'munch-manor:save'
 
@@ -65,9 +63,6 @@ const GRADUATE_SAVE = {
   difficulty: { chosen: 'Normal', card: 'Seen', nightmare: 'Locked' },
 }
 
-// NOTE: each page plays at its own rank, so every page can check that it
-// reads the others' in the lobby. The save holds a kill for each point the
-// veteran grant pays (src/world/heroes/rank.ts), up to rank 10.
 export const RANKS = [6, 8, 10]
 
 const bestsOfRank = (rank: number) => ({
@@ -82,8 +77,6 @@ const bestsOfRank = (rank: number) => ({
   ),
 })
 
-// NOTE: each player wears their own look, so every page can check that it
-// draws the others in theirs.
 const LOOKS = [
   {
     body: 'Female',
@@ -124,8 +117,6 @@ export const check: {
   ),
 )
 
-// NOTE: polls `holds` (a failure counts as not yet) until it holds or
-// `timeoutMs` has passed, and logs the step as ok or a problem.
 export const untilWithin: {
   <E>(
     holds: Effect.Effect<boolean, E>,
@@ -160,7 +151,6 @@ export const untilWithin: {
     }),
 )
 
-// NOTE: `untilWithin` with 20 s.
 export const until: {
   <E>(
     holds: Effect.Effect<boolean, E>,

@@ -7,13 +7,6 @@ import { CoopMessage } from './message'
 import { type Model } from './model'
 import { CoopNet } from './net'
 
-// NOTE: co-op's streams, the root's Subscriptions while co-op needs them:
-// the QUICK PLAY socket while queued, and the lobby and the game socket
-// while in a room. Ending a stream closes its socket. The room's frame clock
-// is the root's own (src/app/subscriptions.ts, TickedRoomFrame). The root
-// lists them as `...coopSubscriptions(model.coop)`.
-
-// NOTE: a stream over the CoopNet service, the root's (src/app/services.ts).
 const overNet = <A>(
   toStream: (net: CoopNet['Service']) => Stream.Stream<A>,
 ): Stream.Stream<A, never, CoopNet> =>

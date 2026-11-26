@@ -33,23 +33,6 @@ import { isBoss } from '../zombies/zombies'
 import { dareItemsFoundOf, isDareListDone } from './dare'
 import { Finale } from './dareSchema'
 
-// The finale (docs/ESCAPE_PLAN.md, "The finale"; LORE.md, "The house gets
-// hungrier"): once the list is done, the house presses harder and Uncle
-// Chunk comes through the front door at the start of the next wave: the
-// run's last fight, his health that wave's (src/world/zombies/boss.ts,
-// `bossHp`) times the finale's own scale for the difficulty and the crew.
-// He is no thing on the list. When he falls, his big key bursts out of him
-// and flies into the front door's lock (owner, 2026-11-10: "a big key that
-// is dropped that unlocks the front door on death"), and the door swings
-// open as it lands, with no clock and nothing to pick up. A player who
-// steps out through it is Out: safe outside, out of the fight. The run is
-// an escape once no one stands in the house and one at least is out: a
-// downed teammate is carried out with the crew. What is left of the wave
-// chases the crew to the door. Endless has no list, so its finale never
-// leaves Hunting.
-
-// RULES
-
 type FinaleRules = Readonly<{
   keyFlightMs: number
   chunkHealthScale: Readonly<Record<Difficulty, number>>
@@ -58,18 +41,6 @@ type FinaleRules = Readonly<{
   doorReachPx: number
 }>
 
-// NOTE: his big key flies to the lock in under a second, so the door is
-// open almost the moment he falls. His health is the wave's boss health
-// times `chunkHealthScale` (owner, 2026-11-10: "make the uncle zombie
-// soooooo much more hard"), so the fight runs a minute or two on Double
-// Dare, and times `chunkCrewScale` by the players in the run, since a crew
-// shoots him together (the wave's own co-op toughness rides in already).
-// Once the list is done every wave rolled holds a quarter more zombies. A player steps out
-// within a few pixels of the door's inside face, anywhere along its width.
-// Uncle Chunk comes at the start of the wave after the list is done, on
-// every difficulty, whether it was done in a break or mid-wave (owner,
-// 2026-11-10: a wave floor held him back with nothing on screen to say
-// why, and a Triple Dare player who had found everything waited for him).
 export const FINALE_RULES: FinaleRules = {
   keyFlightMs: 0.9 * MS_PER_SECOND,
   chunkHealthScale: { Easy: 3, Normal: 3.5, Hard: 1.5, Nightmare: 1.25 },
@@ -78,18 +49,10 @@ export const FINALE_RULES: FinaleRules = {
   doorReachPx: PLAYER_RADIUS + 4,
 }
 
-// READING
-
-// NOTE: the house is hungrier from the moment the list is done to the end:
-// Uncle Chunk's wave and the walk out. On Triple Dog
-// Dare it is hungrier from the first thing found (docs/ESCAPE_PLAN.md,
-// layer 12, the difficulty dial). The music stampedes then
-// (src/app/update/music.ts).
 export const isHouseHungry = (world: World): boolean =>
   !Finale.isAnyOf(['Hunting'])(world.dare.finale) ||
   (world.difficulty.chosen === 'Nightmare' && dareItemsFoundOf(world) > 0)
 
-// NOTE: a wave's spawns, a quarter more of them once the house is hungrier.
 export const hungrierSpawns: {
   (
     spawns: ReadonlyArray<PlannedSpawn>,
@@ -113,8 +76,6 @@ export const hungrierSpawns: {
       : spawns,
 )
 
-// NOTE: how far his big key has flown to the lock, 0 to 1: 0 before he
-// falls, 1 once the door is open. What the key's flight draws.
 export const keyFlightShareOf = (world: World): number =>
   Finale.match(world.dare.finale, {
     Hunting: () => 0,
@@ -127,22 +88,14 @@ export const keyFlightShareOf = (world: World): number =>
 export const isFrontDoorOpen = (world: World): boolean =>
   Finale.isAnyOf(['Open'])(world.dare.finale)
 
-// NOTE: Uncle Chunk in the house: his body among the zombies, or his fight
-// begun. The kitchen's back door shuts for good then (../kitchen/backDoor.ts).
 export const hasChunkInHouse = (world: World): boolean =>
   Array.some(world.zombies, isBoss) || !Boss.isAnyOf(['Absent'])(world.boss)
 
-// NOTE: Uncle Chunk is due at the front door once the list is done, at the
-// start of the next wave (the only place `summonAtFrontDoor` runs), until
-// he has come and fallen (the finale moves on then).
 const isChunkDue = (world: World): boolean =>
   Finale.isAnyOf(['Summoned'])(world.dare.finale) &&
   Phase.isAnyOf(['Wave'])(world.phase) &&
   !hasChunkInHouse(world)
 
-// NOTE: his health for a crew of `crew` on `difficulty` at a wave of these
-// spawns: the wave's boss health, times the finale's scale for the
-// difficulty and the crew. The balance model reads it too.
 export const chunkHpFor = ({
   difficulty,
   crew,
@@ -163,8 +116,6 @@ export const chunkHpFor = ({
       ),
   )
 
-// NOTE: the dare ladder's mark 8 makes him tougher (src/world/run/dareLadder.ts),
-// and nothing below it changes him.
 const chunkHp = (world: World, spawns: ReadonlyArray<PlannedSpawn>): number =>
   Math.round(
     chunkHpFor({
@@ -174,11 +125,6 @@ const chunkHp = (world: World, spawns: ReadonlyArray<PlannedSpawn>): number =>
     }) * chunkHealthScaleOf(world.dareMark),
   )
 
-// SUMMONING
-
-// NOTE: at a wave's start, with Uncle Chunk due, he waits at the front door
-// and comes in at once, with his finale health. Called by the wave's start
-// (src/world/waves/waves.ts, `startWaveEarly`).
 export const summonAtFrontDoor: {
   (spawns: ReadonlyArray<PlannedSpawn>): (world: World) => World
   (world: World, spawns: ReadonlyArray<PlannedSpawn>): World
@@ -198,8 +144,6 @@ export const summonAtFrontDoor: {
       : world,
 )
 
-// THE STEP
-
 const setFinale = (world: World, finale: Finale): World =>
   modifyWorldFields(world, {
     dare: dare => UiStruct.evolve(dare, { finale: () => finale }),
@@ -210,10 +154,6 @@ const frontDoorOf = (level: Level): Vector => level.doors.Front.center
 const withEvent = (world: World, event: GameEvent): World =>
   modifyWorldFields(world, { frameEvents: Array.append(event) })
 
-// NOTE: the frame Uncle Chunk starts to die, his big key bursts out of him
-// where he falls and flies for the front door's lock. Hit-stop's slow
-// motion is his fall's own (src/world/step/hitStop.ts); the burst's chime,
-// coins, and shake are the client's, off BigKeyBurst.
 const burstKeyWhereChunkFalls = (world: World): World =>
   Option.match(
     Array.findFirst(
@@ -237,8 +177,6 @@ const burstKeyWhereChunkFalls = (world: World): World =>
     },
   )
 
-// NOTE: the key in the air; it lands in the lock and the door swings open,
-// in a break or a wave alike.
 const flyKey = (
   world: World,
   flight: typeof Finale.cases.KeyFlying.Type,
@@ -257,8 +195,6 @@ const flyKey = (
         GameEvent.FrontDoorOpened(frontDoorOf(levelOf(world))),
       )
 
-// NOTE: a point at the front door's inside face, along its width, close
-// enough to step out through it.
 export const isAtFrontDoor: {
   (point: Vector): (level: Level) => boolean
   (level: Level, point: Vector): boolean
@@ -272,8 +208,6 @@ export const isAtFrontDoor: {
   )
 })
 
-// NOTE: the middle of the sill just inside the front door: where a player
-// (or a bot) walks to step out.
 export const frontDoorSillOf = (level: Level): Vector => {
   const { box } = level.thresholds.Front
   return {
@@ -282,8 +216,6 @@ export const frontDoorSillOf = (level: Level): Vector => {
   }
 }
 
-// NOTE: a standing player at the sill steps out: Out, safe and out of the
-// fight (src/world/schema/worldSchema.ts, Life), drawn as waiting outside.
 const stepOutFor = (world: World, slot: PlayerSlot): World => {
   const { seat, player } = seatStateAt(world, slot)
   return isStanding(seat) && isAtFrontDoor(levelOf(world), player)
@@ -296,10 +228,6 @@ const stepOutFor = (world: World, slot: PlayerSlot): World => {
     : world
 }
 
-// NOTE: the walk out. The crew is out once no player still stands in the
-// house and one at least has stepped out: the downed go out with them, so a
-// crew whose last ones in go down after a teammate stepped out escapes too
-// (src/world/waves/waves.ts, endWhenDefeated, for a fall the same tick).
 export const isCrewOut = (world: World): boolean => {
   const seats = Array.map(playersOf(world), ({ seat }) => seat)
   return Array.some(seats, isOut) && !Array.some(seats, isStanding)
@@ -312,7 +240,6 @@ const escapeWhenOut = (world: World): World =>
       })
     : world
 
-// NOTE: one tick of the finale, in a break or a wave of a run with a list.
 export const advanceFinale: {
   (worldMs: number): (world: World) => World
   (world: World, worldMs: number): World

@@ -85,12 +85,8 @@ import {
 import { isRoundActive } from '../../world/waves/waves'
 import { secondsLeft } from './hud'
 
-// ICON BUTTONS
-
-// NOTE: an icon button's side, as .icon-button in src/app/styles.css.
 const ICON_BUTTON_PX = 48
 
-// NOTE: the gap between the row and the buttons stacked over it.
 const SIDE_GAP_PX = 4
 
 type IconButton = Readonly<{
@@ -102,8 +98,6 @@ type IconButton = Readonly<{
   maybePressed?: boolean
 }>
 
-// NOTE: a call is data-first when its second argument is the view builder;
-// in the data-last form it is the children (an array), or missing.
 const isButtonFirst = (args: IArguments): boolean =>
   args.length >= 2 && !Array.isArray(args[1])
 
@@ -165,12 +159,6 @@ const keyBadgeView = (
     ? h.span.class('key-badge').attr('aria-hidden', 'true').children(key)
     : null
 
-// NOTE: a key's cap shows to a keyboard player only: a touch player taps
-// and a controller player's buttons get their own pictures later
-// (docs/INPUT_PLAN.md, phase 3).
-
-// NOTE: the number key that picks a slot, a small cap in the slot's
-// corner on a keyboard only (src/input/keyActions.ts).
 const slotNumberView = (
   model: Model,
   number: string,
@@ -182,8 +170,6 @@ const slotNumberView = (
 
 const keyShortcuts = (keys: ReadonlyArray<string>): string =>
   Array.join(keys, ' ')
-
-// GUN SLOTS
 
 type SlotGun = Readonly<{ slot: GunSlot; name: string }>
 
@@ -210,11 +196,6 @@ const MELEE_NUMBER = '3'
 
 const PRIMARY_MOUSE_BUTTON = 0
 
-// NOTE: every press on a slot, by its pointer's type, before its click. A
-// mouse press mid-wave is a shot at the world beneath and its click passes
-// through (isSlotPressAShot in src/app/update/play.ts); a touch keeps the tap.
-// A Mount, as the element's own `pointerdown` carries no pointer id, and a
-// mouse shot is released by its id (ReleasedPointer).
 const pressedHudSlotOf = (
   event: PointerEvent,
 ): Option.Option<PressedHudSlot> =>
@@ -229,8 +210,6 @@ const pressedHudSlotOf = (
         }),
       )
 
-// NOTE: each slot's Mount names its slot, so a Scene can tell them apart
-// (src/features/hud/__tests__/mobileHud.scene.test.ts).
 export const PressHudSlot = Mount.makeStream(
   'PressHudSlot',
   { args: { slot: Schema.Literals(['First', 'Second', 'Melee']) } },
@@ -242,8 +221,6 @@ export const PressHudSlot = Mount.makeStream(
     ),
 )
 
-// NOTE: the key that reaches a gun slot: R reloads the held gun, Q swaps
-// to the other; with the knife out, Q goes back to the last gun held.
 const gunSlotKey = (model: Model, slot: GunSlot): Option.Option<string> => {
   const isLastHeld = slot === heldSlotOf(focusOf(model).player.arsenal)
   if (isWieldingMelee(focusOf(model).player)) {
@@ -302,8 +279,6 @@ const gunSlotButtonView = (
     )
 }
 
-// NOTE: the melee slot, right of the guns: a tap draws the knife or the
-// Pan, and a tap on the one in hand does nothing.
 const meleeSlotButtonView = (
   model: Model,
   screen: Screen,
@@ -349,23 +324,11 @@ const gunSlotsView = (
       meleeSlotButtonView(model, screen, h),
     )
 
-// RELOAD
-
-// NOTE: on touch the reload button is always in the row, past the melee
-// slot. Its face is one more slot in the HUD's own pixels (--hud-px): a
-// short one in landscape, a square the row's height in portrait, where the
-// row stacks to fit four on a phone held upright (SLOT_SIZES in src/screens/game/hud.ts).
-// Its target is at least a thumb wide. It reloads the held gun, or with the
-// knife or the Pan out puts the last gun back and reloads it, as R does. It
-// dims when a reload would load nothing: a full magazine, the Pan, or a
-// reload going.
 const hudPixels = (count: number): string => `calc(${count} * var(--hud-px))`
 
 const reloadWidth = (screen: Screen): string =>
   `max(${ICON_BUTTON_PX}px, ${hudPixels(reloadFaceOf(screen).width)})`
 
-// NOTE: from the right of the row's cluster (guns and melee) to the reload
-// button's right edge.
 const pastReload = (screen: Screen): string =>
   `calc(-${percentOf(SLOT_GAP, gunClusterBox(screen).width)} - ${reloadWidth(screen)})`
 
@@ -419,8 +382,6 @@ const reloadView = (
   h: ApplicationViewBuilder,
 ): ApplicationHtml | null =>
   isOnTouch(model) ? reloadButtonView(model, screen, h) : null
-
-// UTILITY ICONS
 
 const PLACE_REASON_ID = 'place-trap-reason'
 
@@ -501,16 +462,6 @@ const trapIconsView = (
       })
     : []
 
-// NOTE: the hold-to-buy and trap buttons sit over the row, right-aligned,
-// and wrap upward, so they never cover a slot, the reload button, or the
-// start wave button centered over the guns. Mid-wave (only hold-to-buy) they
-// end over the melee slot. In a landscape break they run from the start wave
-// button to a right edge 90 pixels past the screen's middle, where the
-// stall's left side once stood on a 320 pixel screen. In portrait they end
-// over the reload button, and in a break, when the start wave button takes
-// the band over the row, one band higher. The touch pill is exactly
-// START_WAVE_PX wide, room for START WAVE in its bold monospace with the
-// border and a margin, so the column starts one gap past its right edge.
 const START_WAVE_PX = 148
 
 const SIDE_RIGHT_PAST_MIDDLE_PX = 90
@@ -548,11 +499,6 @@ const sideStyle = (
   }
 }
 
-// MEDIC
-
-// NOTE: a downed player's MEDIC! (src/world/party/medic.ts): a red cross over the row,
-// there only while they are down. It glows while the last shout still
-// rings, and a tap while it cools does nothing.
 const medicButtonView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -590,10 +536,6 @@ const clusterSideView = (
       ...trapIconsView(model, h),
     )
 
-// START WAVE
-
-// NOTE: in co-op the button is the player's READY, and it says so once
-// pressed while the others still choose (decided 7).
 const startWaveWord = (model: Model): string => {
   if (!isCoop(model)) {
     return 'START WAVE'
@@ -610,9 +552,6 @@ const startWaveLabel = (model: Model, wave: number): string => {
     : `Ready for wave ${wave}`
 }
 
-// NOTE: the first break tour's last step (src/features/onboarding/firstBreakQuest.ts):
-// a big gold arrow bobs over START WAVE, wherever the layout puts it, with
-// the key's cap beside it for a keyboard player. No words.
 const startWavePointView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -670,8 +609,6 @@ const startWaveButtonView = (
     GameOver: () => null,
   })
 
-// GUN CLUSTER
-
 const clusterView = (
   model: Model,
   screen: Screen,
@@ -712,8 +649,6 @@ export const gunClusterView: {
     isClusterUp(model) ? clusterView(model, screenOf(model), h) : null,
 )
 
-// STICKS
-
 export const stickView: {
   (label: string, h: ApplicationViewBuilder): (stick: Stick) => ApplicationHtml
   (stick: Stick, label: string, h: ApplicationViewBuilder): ApplicationHtml
@@ -746,8 +681,6 @@ export const stickView: {
       },
     }),
 )
-
-// PREPARATION
 
 const preparationTimerView = (
   wave: number,
@@ -787,8 +720,6 @@ export const preparationControlsView: {
       GameOver: () => null,
     }),
 )
-
-// GHOST STICKS
 
 const GHOST_LABELS: Readonly<Record<GhostStick, string>> = {
   Move: 'MOVE',

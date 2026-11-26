@@ -1,16 +1,3 @@
-// The co-op pass: the CO-OP tile on the home menu (a new player's, open from
-// the first visit, and a staged one), the hub and its problem line, the
-// code entry, asking, the QUICK PLAY queue,
-// the offer to start with fewer and its accepted look, the lobby (with a
-// host's kicks, READY stamps, and the last run's result), and the in-room
-// arena (playing, away, and ended), on a 1280x720 desktop, an 844x390
-// phone held sideways, and a 390x844 phone held upright, as
-// `coop-<TAG>-<viewport>-<scene>.png`. Every screen is staged by the
-// harness's `coop=` key with a network that never answers. It exits with 1
-// on a phone button under 48 px, a button covered at its center or off
-// screen, or a page that scrolls.
-//   TAG=after BASE=http://localhost:4174/ bun tools/audit/shotsCoop.ts
-// ONLY picks scenes, such as `ONLY=hub,lobby`, and VIEWPORTS picks screens.
 import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -79,7 +66,6 @@ const checkButtons = (
     const found = yield* attempt(() =>
       page.evaluate(
         ({ minTap, isPhone }) => {
-          // NOTE: the hero picker covers the lobby, so only its own buttons count.
           const scope =
             document.querySelector('.coop-calling-picker') ??
             document.querySelector('.coop-name-picker') ??
@@ -147,8 +133,6 @@ runHarnessAudit(
         )
         yield* attempt(() => page.waitForSelector('canvas'))
         yield* wait(900)
-        // NOTE: a shot shows an ended animation at its end, and the note's end
-        // is gone, so hold it at its start.
         yield* attempt(() =>
           page.addStyleTag({
             content: '.coop-nudge { animation: none !important; opacity: 1; }',

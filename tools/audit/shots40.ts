@@ -1,18 +1,3 @@
-// The knife and two gun slots pass: the knife in hand mid-slash into a
-// Groaner, the HUD's slots with the pistol traded for a Pressure Cooker and
-// the melee slot on their right (with a gun in hand, and with the knife),
-// the Clang Pan in the melee slot, the row in a break with the trap and
-// hold-to-buy buttons up and mid-wave at the stall, and the shop's GUNS tab
-// offering the Pop Pistol back for $0, on a 1280x720 desktop, an 844x390
-// phone on its side, and 360x800, 390x844, and 430x932 phones held upright,
-// as `s40-<TAG>-<viewport>-<scene>.png`. It checks that the knife in hand
-// stabs on the trigger, that the guns are centered with the melee slot on
-// their right and on touch the reload button past it, all in one row (the
-// reload button square in portrait), each a thumb wide, none covering
-// another or the buttons over the row, all on screen, and that the shop
-// offers the pistol for $0. Exits with 1 on any miss.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots40.ts
-// ONLY picks scenes, such as `ONLY=slash`, and VIEWPORTS picks screens.
 import { Array, Console, Effect, Option, String } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -38,8 +23,6 @@ import {
 import { type AuditFailed, attempt } from './page'
 import { FIGHTING, LEARNED } from './scenes'
 
-// NOTE: the shot screens plus the narrowest and widest phones held
-// upright, where the portrait row is tightest and loosest.
 const VIEWPORTS = pickViewports([
   { ...DESKTOP_1280, name: 'd1280' },
   { ...PHONE_844, name: 'l844' },
@@ -88,12 +71,6 @@ const overlaps = (a: Edges, b: Edges): boolean =>
   a.top < b.bottom - 1 &&
   a.bottom > b.top + 1
 
-// NOTE: the HUD row (changed at the owner's request on 2026-10-30): the two
-// guns centered on the screen, the melee slot on their right, and on touch
-// the reload button past it, all in one row (in portrait the slots stack
-// and the reload button is square). Every target is a thumb wide, none
-// covers another, and all are on screen. A desktop has no reload button: R
-// reloads.
 const checkSlots = (
   page: Page,
   problems: Array<string>,

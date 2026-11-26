@@ -128,13 +128,6 @@ import { Phase } from '../../world/schema/worldSchema'
 import { ZERO_VECTOR } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
 
-// OFFSET
-
-// NOTE: the shake moves the world by whole pixels, rounded here at draw time
-// and never in the World. A fractional shake left the floor canvases (moved
-// by CSS) between device pixels while the painter put each sprite on whole
-// ones, so the floor slid under the sprites and the canvas blended the edges
-// of every rectangle into its neighbours.
 export const shakeOffset = (model: Model): Vector =>
   isRoundActive(model.phase) && model.settings.shakeSetting === 'On'
     ? {
@@ -150,20 +143,9 @@ const worldOffset: {
   sceneOffset(camera, shakeOffset(model)),
 )
 
-// RATTLES
-
-// NOTE: Rattles is up for the breaks and dozes through a wave.
 const rattlesLook = (model: Model): RattlesLook =>
   Phase.isAnyOf(['Preparation'])(model.phase) ? 'Awake' : 'Dozing'
 
-// CULLING
-
-// NOTE: on a map bigger than the window, a zombie out of the camera's view
-// costs nothing to draw, and one outside the house, in the yard or past the
-// map's edge, is never drawn at all. The margin keeps a zombie that still
-// shows drawn: half the widest body (18 pixels) and its health bar at the
-// sides, the tallest body under the bottom edge, and its shadow and the
-// rings round its feet over the top.
 const CULL_MARGIN: ViewMargin = { side: 12, above: 6, below: 24 }
 
 const isOnCamera =
@@ -179,8 +161,6 @@ const shownZombies = (model: Model, camera: Camera): ReadonlyArray<Zombie> => {
     zombie => onCamera(zombie) && isInsideRoomAt(level, zombie),
   )
 }
-
-// GROUND
 
 const groundShapes = (
   model: Model,
@@ -210,13 +190,8 @@ const groundShapes = (
   ...stationGroundShapes(model, isOnCamera(camera)),
 ]
 
-// STANDING
-
-// NOTE: how much of a zombie shows: all of it, but in the cellar's dark.
 const WHOLE = (_zombie: Zombie): number => 1
 
-// NOTE: a zombie's shapes at its share of the dark's fade, as one group
-// only while it fades.
 const fadedBy =
   (fadeOf: (zombie: Zombie) => number) =>
   (
@@ -311,10 +286,6 @@ const standingDrawables = (
   ]
 }
 
-// OVERHEAD
-
-// NOTE: a zombie still in a doorway behind the wall's face is covered by the
-// lintel, so its bar would float over the wall. It shows once it steps in.
 const isClearOfWall =
   (level: Level) =>
   (zombie: Zombie): boolean =>
@@ -357,10 +328,6 @@ const overheadShapes = (
   ...padlockShapes(model),
 ]
 
-// WORLD
-
-// NOTE: the title screen's house: the hearth, Rattles dozing on his trunk,
-// and the chandelier, by the screen's own clock.
 const titleStrataOf = (model: Model): WorldStrata => ({
   ground: RATTLES_GROUND_SHAPES,
   standing: [
@@ -374,10 +341,6 @@ const titleStrataOf = (model: Model): WorldStrata => ({
   overhead: hungChandelierShapes(model),
 })
 
-// NOTE: a playing world's strata. In the cellar's dark a zombie shows only
-// close to the viewing player, fading in over the last tile, with its shadow
-// and bar (src/render/cellarDark.ts); the 3D renderer darkens the cellar
-// itself.
 const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
   const look = rattlesLook(model)
   const onCamera = shownZombies(model, camera)
@@ -428,9 +391,6 @@ const playStrataOf = (model: Model, camera: Camera): WorldStrata => {
   })
 }
 
-// NOTE: the world's three strata kept apart, for the 3D renderer
-// (src/render/iso/scene.ts): what lies on the floor, what stands up at its
-// feet, and what floats over both.
 export const worldStrataOf: {
   (camera: Camera): (model: Model) => WorldStrata
   (model: Model, camera: Camera): WorldStrata
@@ -440,9 +400,6 @@ export const worldStrataOf: {
     : playStrataOf(model, camera),
 )
 
-// NOTE: the strata as one flat list in draw order, moved by the shake: what
-// a frame shows, as plain data for the tests and the tools (the sprite atlas,
-// the audit harness) that read the world's shapes.
 export const worldLayerShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>

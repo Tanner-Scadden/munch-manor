@@ -14,18 +14,9 @@ import { type SavedMastery, addToMastery } from '../../shared/masteryData'
 import { dareItemsFoundOf } from '../../world/dare/dare'
 import { focusOf } from '../../world/party/party'
 
-// Reading a run into hero and gun mastery (src/domain/mastery.ts has the
-// numbers). A run pays its mastery at the same moments it pays its rank
-// (earnRank in ./rankRun.ts): when it ends, and when the player leaves it
-// for the menu. A guided run pays nothing, as it pays no rank.
-
 const paidCount = (counts: Readonly<Record<string, number>>, key: string) =>
   Option.getOrElse(Record.get(counts, key), () => 0)
 
-// NOTE: what the run has earned past what it was paid already: points
-// for its hero (the player's own seat's, in co-op too) from the waves it
-// cleared and the dare things it found, and each gun's kills from the
-// seat's own tally.
 const earnedOf = (run: Model): SavedMastery => {
   const seat = focusOf(run)
   const waves = Math.max(
@@ -63,10 +54,6 @@ const killsPaidBy = (run: Model): Readonly<Record<string, number>> => {
   )
 }
 
-// NOTE: pays the run into the saved mastery, remembers what it paid, and,
-// at the end screen, keeps what the payout opened for the end card's
-// flips. Runs before earnRank in the after-message Steps, which both read
-// the same moment.
 export const earnMastery: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model

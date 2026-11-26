@@ -4,9 +4,6 @@ import { describe, expect, test } from 'vitest'
 import { BLAST_FLASH_MS } from '../../../shared/constants'
 import { blastLightOf, blastPiecesOf } from '../explosions'
 
-// The KABOOM in 3D (src/render/iso/explosions.ts): read off the blast alone,
-// a ball of glowing blocks, a ring of sparks, smoke, and a flash of light.
-
 const blastAt = (ageMs: number) => ({ x: 200, y: 140, radius: 28, ageMs })
 
 const sparksOf = (ageMs: number) =>

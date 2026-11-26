@@ -1,14 +1,3 @@
-// The house's light as plain numbers: each room's own colored fill, the
-// flames (candelabras, the hearth and its sconces, the ovens, the chandelier,
-// the cellar's bulb), and how much the cellar's dark takes away.
-// src/render/iso/lights.ts hangs them in the 3D view; the dark itself is cut
-// on the cellar's tiles by the look pass (src/render/iso/look.ts).
-//
-// Light follows the game's state and nothing else: which rooms are open,
-// whether the chandelier hangs, whether the cellar's bulb burns, where the
-// player stands and faces. The flicker is a sum of sines over elapsedMs, so a
-// replay flickers the same.
-
 import { Array, Function, Option, Order, pipe } from 'effect'
 
 import { isCellarLit } from '../../world/cellar/bulb'
@@ -28,19 +17,10 @@ import { type Mood, moodOf } from './mood'
 import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space'
 import { Tunable } from './tunable'
 
-// NOTE: what lights a spot where no lamp reaches, as a share of the art's own
-// color (lit surfaces divide light by pi). Low, so each room's light and
-// each flame reads as a pool.
 export const AMBIENT = 0.2 * Math.PI
 
-// NOTE: a view shades at most 32 lights. The rooms' own lights and the
-// cellar's dark always shine; the flames nearest the player take what is
-// left, less the five the scene keeps (the lamp, the muzzle flash, a
-// blast's flash, and two to spare).
 const LIGHT_BUDGET = 32 - 5
 
-// NOTE: each room's light: its color, and how bright its middle is, as a
-// share of the art's own color over the ambient.
 const ROOM_TINTS: Readonly<Record<string, number>> = {
   Parlour: 0xffd6a0,
   Dining: 0xffe2b4,
@@ -52,42 +32,20 @@ const DEFAULT_TINT = 0xffe2b4
 export const OPEN_FILL = 0.4
 const SHUT_FILL = 0.08
 
-// NOTE: how much light the cellar's dark takes away: the ambient and the
-// room's own light, and a third more, so it stays black past the edges of
-// the player's lights.
 export const DARK_DEPTH = (AMBIENT / Math.PI + OPEN_FILL) * 1.35
 
-// NOTE: the player's pool hangs this high, so it falls as an even disc.
 export const DARK_HEIGHT = 30
 
-// NOTE: what the dark takes off the light falling down on the cellar's
-// floor, in the look pass's units (a share of the art's own color): the
-// dark's depth, less the window a light's range puts on it at half its
-// reach, as it does on the pool hung DARK_HEIGHT up with twice that range,
-// so the pool still lifts the floor its share over the dark.
 const HALF_RANGE_WINDOW = (1 - 0.5 ** 4) ** 2
 export const DARK_TAKES = DARK_DEPTH * HALF_RANGE_WINDOW
 
-// NOTE: what the dark takes off every face alike, however it turns: the
-// ambient's share of it, since the ambient falls on a side as on a top. A
-// face of what stands loses this much at least, so the side of a wine rack
-// seen edge on stays as black as the dark round it.
 export const DARK_EVEN = (AMBIENT / Math.PI) * 1.35
 
-// NOTE: a room's light hangs high over its middle and a little to the
-// north-west, as if through a skylight, so it falls nearly even across the
-// floor and each piece of furniture casts a short shadow south-east,
-// toward the lens, where it shows.
 const fillHeightOf = (halfDiagonal: number): number =>
   Math.max(8, halfDiagonal * 1.6)
 const FILL_FROM = { x: -0.1, z: -0.2 }
 
-// NOTE: a spot's floor lands about a third as bright as the inverse square
-// says (its cone's falloff and the range's window), measured off the screen
-// in linear color, so the fill is scaled up to the share it is meant to give.
 const FILL_GAIN = 3.2
-
-// FLAMES
 
 export type FlameKind =
   | 'Candle'
@@ -99,23 +57,14 @@ export type FlameKind =
 
 export type FlameSpec = Readonly<{
   kind: FlameKind
-  // NOTE: where it stands on the game's map, in game pixels.
   spot: Vector
-  // NOTE: where its light hangs, in world units. Its color, intensity, and
-  // range are its kind's, read off FLAME_TUNING as it burns.
   x: number
   y: number
   z: number
   seed: number
-  // NOTE: where its mirror image shows in water on the floor, in game
-  // pixels: as far under its foot on the screen as its flame draws over it,
-  // which on the floor is as many pixels south (a roof leak's puddle).
   reflection: Vector
 }>
 
-// NOTE: a flame's light stands `out` world units toward the lens from the
-// pixel it burns on (`FlameSpot`), which only brings it nearer the front it
-// lights.
 type FlameLook = Readonly<{
   out: number
   color: number
@@ -144,23 +93,12 @@ const FLAME_LOOKS: FlameLooks = {
   Bulb: { out: 1.94, color: 0xfff0c8, intensity: 36, range: 12 },
 }
 
-// NOTE: the flames' looks as the renderer reads them (./tunable.ts): as
-// shipped, unless Munch Studio's lab is sliding their light. Where a flame
-// hangs (`rise`, `out`) is read once for each level.
 export const FLAME_TUNING = new Tunable<FlameLooks>(FLAME_LOOKS)
 
-// NOTE: the hung chandelier's sprite's bottom edge under the gap's top: the
-// row it stands on overhead, less OVERHEAD_FOOT_PX.
 const HUNG_BOTTOM = Array.reduce(CHANDELIER_SHAPES.Hung, 0, (most, shape) =>
   shape._tag === 'Rect' ? Math.max(most, shape.y + shape.height) : most,
 )
 
-// NOTE: `spot` is where it burns on the game's map; `footY` the row its
-// sprite stands on, and `flame` the pixel the 2D game draws its flame on,
-// where its light stands (`standingPointOf`). A candelabra's is read off its
-// art. The others' art hangs on a wall's top, lies on the floor, or floats
-// overhead rather than standing, so theirs are still the heights placed by
-// eye over their foot, in game pixels (`FLAME_RISE_PX`).
 type FlameSpot = Readonly<{
   kind: FlameKind
   spot: Vector
@@ -203,7 +141,6 @@ const flameSpotsOf = (level: Level): ReadonlyArray<FlameSpot> => [
       { x: box.x + box.width / 2, y: box.y + box.height + 4 },
       box.y + box.height,
     ),
-    // NOTE: the sconces either side of the hearth (`hearthShapes`).
     placedByEye('Sconce', { x: box.x - 15, y: box.y + 2 }, box.y + box.height),
     placedByEye(
       'Sconce',
@@ -261,7 +198,6 @@ export const flameSpecsOf = (level: Level): ReadonlyArray<FlameSpec> => {
   return specs
 }
 
-// NOTE: `strength` scales the flicker's swing: the mood's, harder in a wave.
 const flickerAt = (t: number, seed: number, strength: number): number =>
   1 +
   strength *
@@ -269,13 +205,9 @@ const flickerAt = (t: number, seed: number, strength: number): number =>
       0.07 * Math.sin(t * 15.7 + seed * 2.3) +
       0.05 * Math.sin(t * 27.3 + seed * 4.1))
 
-// NOTE: a flame guttering as the house rattles: dipping hard and fast, the
-// bulb swinging on its cord too.
 const guttered = (t: number, seed: number, rattle: number): number =>
   1 - rattle * (0.35 + 0.3 * Math.sin(t * 41 + seed * 3.7))
 
-// NOTE: whether a flame burns now (the chandelier's and the bulb's change),
-// how far it sways off its spot in units, and whether it flickers.
 export const isFlameLit: {
   (kind: FlameKind): (world: World) => boolean
   (world: World, kind: FlameKind): boolean
@@ -300,8 +232,6 @@ type FlameFrame = Readonly<{
   intensity: number
 }>
 
-// A ROOM'S FILL
-
 export type FillSpec = Readonly<{
   roomId: string
   from: Readonly<{ x: number; y: number; z: number }>
@@ -309,23 +239,16 @@ export type FillSpec = Readonly<{
   color: number
   coneAngle: number
   range: number
-  // NOTE: bright at its middle at a share of 1.
   fullIntensity: number
-  // NOTE: the floor its cone can reach, in game pixels: the room, and the
-  // little its cone's spare degrees spill past the walls.
   pool: RoomBox
 }>
 
 type RoomBox = Level['rooms'][number]['box']
 
-// NOTE: the cone takes in the room's corners and this many degrees more.
 const FILL_SPARE_DEGREES = 6
 
 const toDegrees = (radians: number): number => (radians * 180) / Math.PI
 
-// NOTE: how far past the room's corners the cone's spare degrees reach on
-// the floor, in game pixels, from a corner as far as `slant`: the arc they
-// sweep there, doubled for the slant it strikes the floor at.
 const spillOf = (slant: number): number =>
   (2 * slant * Math.tan((FILL_SPARE_DEGREES * Math.PI) / 180)) / UNIT
 
@@ -345,7 +268,6 @@ export const fillSpecOf = (room: Level['rooms'][number]): FillSpec => {
   }
   const axis = { x: x - from.x, y: -from.y, z: z - from.z }
   const reach = Math.hypot(axis.x, axis.y, axis.z)
-  // NOTE: the cone just takes in the room's four corners.
   const corners = Array.map(
     [
       { x: left * UNIT, z: zOf(top) },
@@ -375,8 +297,6 @@ export const fillSpecOf = (room: Level['rooms'][number]): FillSpec => {
     color: ROOM_TINTS[room.id] ?? DEFAULT_TINT,
     coneAngle: toDegrees(widest) + FILL_SPARE_DEGREES,
     range: farthest * 1.4,
-    // NOTE: share * pi * distance squared, over the slant it strikes the
-    // floor at.
     fullIntensity: (FILL_GAIN * Math.PI * reach * reach * reach) / height,
     pool: {
       left: left - spill,
@@ -387,35 +307,22 @@ export const fillSpecOf = (room: Level['rooms'][number]): FillSpec => {
   }
 }
 
-// THE FRAME
-
 export type LightsFrame = Readonly<{
-  // NOTE: each room's fill share, in the level's room order.
   fillShares: ReadonlyArray<number>
-  // NOTE: whether the open cellar is dark, its bulb out: the look pass
-  // darkens its tiles (src/render/iso/look.ts).
   isDark: boolean
-  // NOTE: whether the viewing player stands in the cellar's dark, and so
-  // carries the flashlight and the pool.
   isInDark: boolean
   flames: ReadonlyArray<FlameFrame>
-  // NOTE: the house's mood (src/render/iso/mood.ts): the fills above are
-  // already scaled by it; the tint, the ambient, and the storm are not.
   mood: Mood
 }>
 
 const isInBox = (box: RoomBox, { x, y }: Vector): boolean =>
   x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
 
-// NOTE: every light's part this frame: the rooms' fills (none in the dark
-// cellar), whether the dark is down, the flashlight, and the burning flames
-// nearest the viewer, as many as the budget has left.
 export const lightsFrameOf = (
   input: Readonly<{
     world: World
     level: Level
     viewer: Vector
-    // NOTE: how hard the house rattles (houseRattleOf), 0 to 1.
     rattle: number
   }>,
 ): LightsFrame => {
@@ -442,7 +349,6 @@ export const lightsFrameOf = (
     (isInDark ? 2 : 0)
   const specs = flameSpecsOf(level)
   const looks = FLAME_TUNING.now
-  // NOTE: by the game's map, where the flames burn.
   const nearest = pipe(
     Array.map(specs, (spec, index) => ({
       index,

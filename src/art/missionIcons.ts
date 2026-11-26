@@ -5,12 +5,6 @@ import type { MissionId } from '../shared/missionData'
 import { pixelIconUrl } from './icons'
 import { type Palette, spriteShapes } from './sprite'
 
-// The daily missions' pixel art (src/features/missions/), one picture each,
-// as an icon for the home menu's card and its panel, and as a sprite for the
-// end card's bars. Show,
-// don't explain: the picture is the mission, its name is for a screen
-// reader and the panel.
-
 const MISSION_PALETTE: Palette = {
   o: '#140c10',
   w: '#f4f1de',
@@ -29,7 +23,6 @@ const MISSION_PALETTE: Palette = {
 type Pixels = ReadonlyArray<string>
 
 const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
-  // NOTE: a Hotfoot's green foot, on fire.
   HotfootKills: [
     '.....f....',
     '....fyf...',
@@ -41,7 +34,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '.ogGgGgggo',
     '.oooooooo.',
   ],
-  // NOTE: the fridge, its handle red.
   PullFridge: [
     '.oooooooo.',
     '.owwwwwwo.',
@@ -54,7 +46,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '.owwwwwwo.',
     '.oooooooo.',
   ],
-  // NOTE: a teammate bot's tin head.
   RunWithBot: [
     '....r.....',
     '....o.....',
@@ -67,7 +58,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '.oooooooo.',
     '..oo..oo..',
   ],
-  // NOTE: the Handyman's hammer.
   PlayHandyman: [
     '.oooooo...',
     'osssssoo..',
@@ -79,7 +69,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '...obo....',
     '...ooo....',
   ],
-  // NOTE: a heart with a white cross: a friend got up.
   ReviveFriend: [
     '.oo...oo.',
     'orro.orro',
@@ -91,7 +80,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '...oro...',
     '....o....',
   ],
-  // NOTE: a magnifying glass over a gold glint: the dare's things.
   FindDareThings: [
     '..oooo....',
     '.owwwwo...',
@@ -104,7 +92,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '........bo',
     '.........o',
   ],
-  // NOTE: the cellar's bare bulb on its chain.
   OpenCellar: [
     '....o.....',
     '....o.....',
@@ -116,7 +103,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '..oyyyo...',
     '...ooo....',
   ],
-  // NOTE: a cog: the room tools that set up and fire.
   WorkRoomTools: [
     '...o..o...',
     '..osooso..',
@@ -129,7 +115,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '..osooso..',
     '...o..o...',
   ],
-  // NOTE: a display case, its prize gold behind glass.
   OpenCase: [
     'oooooooooo',
     'obbbbbbbbo',
@@ -142,7 +127,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     'oooooooooo',
     '.o......o.',
   ],
-  // NOTE: the chandelier, candles lit, coming down.
   ChandelierCrush: [
     '....oo....',
     '....oo....',
@@ -155,7 +139,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '.r..r...r.',
     'r.r...r..r',
   ],
-  // NOTE: the Barn Buster's double barrel and stock.
   BarnBusterKills: [
     '..........',
     'oooooooo..',
@@ -167,7 +150,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '....obbo..',
     '....ooo...',
   ],
-  // NOTE: a gold star with a 2 on it: a gun to its second tier, DELUXE.
   GunToDeluxe: [
     '....o.....',
     '...oyo....',
@@ -179,7 +161,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '.oyo..oyo.',
     '.oo....oo.',
   ],
-  // NOTE: the front door open, the night outside.
   EscapeDoubleDare: [
     '.oooooooo.',
     '.obbbbbbo.',
@@ -191,7 +172,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '.obkkkkbo.',
     'oooooooooo',
   ],
-  // NOTE: a chicken running off: out the back door early.
   LeaveEarly: [
     '...rr.....',
     '..owwo....',
@@ -203,7 +183,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
     '....f..f..',
     '...ff.ff..',
   ],
-  // NOTE: a Groaner's head: zombies, any kind.
   SplatZombies: [
     '..ooooo...',
     '.oggggggo.',
@@ -217,7 +196,6 @@ const MISSION_PIXELS: Readonly<Record<MissionId, Pixels>> = {
   ],
 }
 
-// NOTE: the three of a day done: a gold rosette, for the bonus.
 const ALL_THREE_PIXELS: Pixels = [
   '..oooooo..',
   '.oyyyyyyo.',
@@ -231,7 +209,6 @@ const ALL_THREE_PIXELS: Pixels = [
   '..oo...oo.',
 ]
 
-// NOTE: a done mission's check, over its picture.
 const DONE_PIXELS: Pixels = [
   '.......oo',
   '......ogo',
@@ -254,7 +231,6 @@ export const MISSION_ICONS: Readonly<Record<MissionId, string>> = Record.map(
 export const ALL_THREE_ICON = icon(ALL_THREE_PIXELS)
 export const MISSION_DONE_ICON = icon(DONE_PIXELS)
 
-// NOTE: the same pictures on the end card's canvas, centered on their spot.
 export const MISSION_SPRITES: Readonly<
   Record<MissionId, ReadonlyArray<Draw.Shape>>
 > = Record.map(MISSION_PIXELS, sprite)

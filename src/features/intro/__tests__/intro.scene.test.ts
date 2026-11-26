@@ -20,10 +20,6 @@ import {
 import { sceneOf } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 
-// The intro on screen (src/features/intro/introView.ts): nothing of the
-// run's HUD or its buttons while the crew arrives, a tap skips to the slam,
-// and the run's first break comes up after it.
-
 const ARRIVING_STATUS = 'Arriving at the manor. Press any key or tap to skip.'
 const startWave = HtmlLocator.role('button', { name: 'Start wave 1 now' })
 

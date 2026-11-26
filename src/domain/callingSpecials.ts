@@ -16,10 +16,6 @@ import {
 } from '../world/heroes/calling'
 import { SPECIAL_LINES } from '../world/names'
 
-// What each hero does, as short lines for the picker's cards and the
-// words a screen reader gets. Every number is read off the rules in
-// src/world/heroes/calling.ts, never copied, so a balance change moves the text too.
-
 export type Special = Readonly<{
   isPerk: boolean
   art: string
@@ -38,7 +34,6 @@ const drawback = (art: string, line: string): Special => ({
   line,
 })
 
-// NOTE: a share of 100 the rules took off or added, as a whole percent.
 const percentLess = (of100: number): number => 100 - of100
 const percentMore = (of100: number): number => of100 - 100
 
@@ -113,8 +108,6 @@ const SPECIALS: Readonly<Record<Calling, ReadonlyArray<Special>>> = {
 export const specialsOf = (calling: Calling): ReadonlyArray<Special> =>
   SPECIALS[calling]
 
-// NOTE: the specials as one sentence for a screen reader: each line says
-// whether it helps or costs.
 export const specialsNoteOf = (calling: Calling): string =>
   Array.isReadonlyArrayEmpty(SPECIALS[calling])
     ? SPECIAL_LINES.noSpecials

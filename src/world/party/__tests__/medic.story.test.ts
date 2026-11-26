@@ -27,11 +27,6 @@ import { SeatAction, trySeatAction } from '../../step/stepWorld'
 import { MEDIC_RULES, isCallFresh } from '../medic'
 import { COOP_RULES, seatStateAt } from '../party'
 
-// The MEDIC call (src/world/party/medic.ts, MULTIPLAYER.md "Life"): a downed player
-// falls with 20 s to bleed (played out whole in medic.sim.test.ts), shouts MEDIC! as they fall and again on a press
-// every 4 s, the bots answer a fresh shout first, and a revive pays off
-// with SAVED!, or CLUTCH! when the bleed was nearly out.
-
 const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60
 const RIGHT_X = 240
@@ -45,7 +40,6 @@ const callMsOf = (current: World, slot: number): number => {
   return life._tag === 'Downed' ? life.callMs : -1
 }
 
-// NOTE: the lead downed alone on the left, a teammate far off on the right.
 const leadDown = (callMs: number) =>
   pipeline(
     placeSeat(0, LEFT_X, ROW_Y, 0),

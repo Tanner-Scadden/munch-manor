@@ -4,23 +4,14 @@ import type { Vector } from '../world/schema/entitySchema'
 import { GameEvent } from '../world/schema/worldSchema'
 import { distanceBetween } from '../world/step/geometry'
 
-// A controller's rumble, read off a frame's events: a bite on your own
-// player, Uncle Chunk's stomp, and a blast, weaker the farther away. One
-// rumble a frame, the strongest; the Rumble Command plays it
-// (src/app/update/rumble.ts). Pure, so the frame stays deterministic.
-
 export type RumbleCue = Readonly<{
   strong: number
   weak: number
   durationMs: number
 }>
 
-// NOTE: a bite lands where the bitten player stood, so one within this of
-// your own player is yours, and a teammate's bite elsewhere is not.
 const OWN_BITE_REACH = 12
 
-// NOTE: a stomp or a blast is felt out to this many times its radius,
-// fading to nothing at the edge.
 const FELT_RADII = 3
 
 const BITE: RumbleCue = { strong: 0.5, weak: 0.9, durationMs: 160 }

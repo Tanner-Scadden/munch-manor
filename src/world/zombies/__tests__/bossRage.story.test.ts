@@ -30,10 +30,6 @@ import {
   sturdy,
 } from './boss.fixture'
 
-// Uncle Chunk's second phase: at half health he roars, party crashers pour
-// in through the doors, and he fights harder: a wide belly slam up close,
-// plates thrown three at a time, and a belch of three guests.
-
 const framesOf = (ms: number): number => Math.ceil(ms / FRAME_MS)
 
 const ready = BossMove.Stalking({ cooldownMs: 0 })
@@ -97,7 +93,6 @@ describe('half health', () => {
 })
 
 describe('the belly slam', () => {
-  // NOTE: past the stomp's reach and inside the slam's.
   const SLAM_X = CENTER_X + 52
 
   it.effect('enraged, he winds up a slam where a calm Chunk would wait', () =>
@@ -178,7 +173,6 @@ describe('the belly slam', () => {
 
 describe('his raging throws and belches', () => {
   const FAR_X = CENTER_X + 90
-  // NOTE: inside the belch's middle distance and outside the slam's reach.
   const NEAR_X = CENTER_X + 68
 
   const flyingGlobs = (current: Model) =>

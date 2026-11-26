@@ -45,16 +45,9 @@ import {
 import { gunValue } from './bot/guns'
 import { pantryTarget, roomTarget, stoveTarget } from './bot/shopping'
 
-// The balance bot's hunt (tools/balance/bot/escape.ts): the room holding a
-// thing on the list gets bought open in a break, once the crew's ring holds
-// the padlock's keys. Its keys and errands (tools/balance/bot/shopping.ts):
-// keys go to the rooms that hold a thing on the list, and the pantry and
-// the stove are taken when they are there.
-
 const IN_KITCHEN = hidingSpotIn(levelOf(initialModel), KITCHEN_ROOM_ID)
 const IN_DINING_ROOM = hidingSpotIn(levelOf(initialModel), DINING_ROOM_ID)
 
-// NOTE: past the kitchen tour's break, so the boards keep their price.
 const WAVE_4_BREAK = Phase.Preparation({
   clock: BreakClock.Counting(),
   wave: 4,
@@ -119,9 +112,6 @@ describe('the bot takes from the display cases', () => {
   })
 })
 
-// NOTE: the kitchen hauls its thing up the dumbwaiter, worked by keeping
-// still in reach (src/world/dare/finds.ts); the dining room walks onto it;
-// the cellar's waits for the bulb's light, which only a wave can yank.
 describe("the bot works a room's find", () => {
   const kitchenOpen = (model: Model): Model =>
     UiStruct.evolve(model, { level: level => openExitIn(level, KITCHEN_EXIT) })
@@ -167,8 +157,6 @@ describe("the bot works a room's find", () => {
   })
 })
 
-// NOTE: a break with the kitchen open, the ring full, and the list's one
-// thing hidden in `room`.
 const kitchenOpenWithThingIn = (room: string): Model =>
   withKeys(
     withDareThings(

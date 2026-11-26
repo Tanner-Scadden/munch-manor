@@ -58,20 +58,12 @@ import {
 import { isLearned } from '../onboarding'
 import { isRattlesTalking } from '../rattlesIntro'
 
-// NOTE: the first-run card's TUTORIAL or SKIP IT (owner, 2026-11-07). SKIP
-// IT starts the run as a returning player's: no practice gate, no move or
-// aim hints, no guided first break, no kitchen tour, no hello from Rattles
-// (owner, 2026-11-10), kept in the save. The default still plays the tutorial, and Settings' Reset tutorial brings it
-// back.
-
 const firstVisit: Model = UiStruct.evolve(newPlayerReady, {
   saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
 })
 
 const expectWrite: StoryStep = s => s.expectHas(WriteSave)
 
-// NOTE: focus moved to the Profile's button left standing, which reports
-// nothing back.
 const resolveFocusProfile: StoryStep = s =>
   s.resolve(FocusProfileElement, Component.noop)
 
@@ -82,11 +74,6 @@ const pickNormal = send(
   Message.ClickedDifficultyCardButton({ difficulty: 'Normal' }),
 )
 
-// NOTE: whether the same player, at the break before the shop's first wave,
-// a frame in so the guided first break has had its chance to start, is
-// guided through it.
-// NOTE: Rattles' hello comes before the guided break; this asks only
-// about the break, so he has been met.
 const isGuidedFirstBreakOn = (current: Model) =>
   modelAfter(
     UiStruct.evolve(current, {
@@ -112,8 +99,6 @@ const isGuidedFirstBreakOn = (current: Model) =>
     ),
   )
 
-// NOTE: whether the same player, at the break where Rattles says hello, a
-// frame in, hears it.
 const isRattlesHelloOn = (current: Model) =>
   modelAfter(
     UiStruct.evolve(current, {
@@ -143,8 +128,6 @@ const isKitchenTourDue = (current: Model): boolean =>
     }),
   )
 
-// NOTE: the save the run wrote, through JSON and back into a fresh Model,
-// as the next visit reads it.
 const reloaded = (current: Model): Model =>
   restoreSave(
     newPlayerReady,
@@ -331,12 +314,7 @@ describe('the first-run card', () => {
   )
 })
 
-// NOTE: PLAY TUTORIAL on How to play (owner, 2026-11-10): a returning
-// player gets the whole tutorial again, at once, as a new player's first
-// run, and keeps everything they earned.
 describe('PLAY TUTORIAL', () => {
-  // NOTE: a returning player past every lesson, with rank, Bones spent on
-  // a look, a best, kills for the Munchopedia, a bot, and a modifier.
   const returning: Model = UiStruct.evolve(asTutorialDone(readyModel), {
     rank: rank =>
       UiStruct.evolve(rank, {

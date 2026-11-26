@@ -16,14 +16,6 @@ import { ALL_THREE_TAG } from '../../world/names'
 import { clamp, easeOut } from '../../world/step/geometry'
 import type { MissionGain, MovedMission } from './missionSchema'
 
-// The daily missions a run moved, on the end card's canvas in the landscape
-// frame: a small panel of a row each, its picture, a bar that fills from
-// the count before the run to the count after, and, for one the run
-// finished, its Bones popping in gold with a check over the picture. The
-// day's three done adds the rosette's row and its bonus. The end card's
-// clock places it (`startMs`, after the rank strip); the screen picks its
-// spot beside or under the card (src/screens/game/endMissions.ts).
-
 const ROW_PX = 12
 const PAD_PX = 3
 export const MISSION_PANEL_WIDTH = 72
@@ -44,7 +36,6 @@ const BAR_BACK = '#140c10'
 const BAR_FILL = '#5ee0d0'
 const BAR_DONE = '#9be36a'
 
-// NOTE: the panel's height for a gain, its rosette row too.
 const panelHeightOf = (gain: MissionGain): number =>
   PAD_PX * 2 + (gain.moved.length + (gain.isAllThree ? 1 : 0)) * ROW_PX
 
@@ -54,8 +45,6 @@ const shareOf = (ms: number, startMs: number, spanMs: number): number =>
 const rowAtMs = (startMs: number, index: number): number =>
   startMs + FADE_MS + index * ROW_STAGGER_MS
 
-// NOTE: a gold number over a pixel bone, popping as it lands, right-aligned
-// at `right`.
 const bonesShapes = (
   bones: number,
   right: number,
@@ -149,7 +138,6 @@ const rowShapes = (
   ]
 }
 
-// NOTE: when the rosette's row pops: after every row has landed.
 const allThreeAtMs = (startMs: number, rows: number): number =>
   rowAtMs(startMs, rows - 1) + FILL_MS + POP_MS
 
@@ -178,11 +166,8 @@ const allThreeShapes = (
   ]
 }
 
-// NOTE: the spot the screen picks: the panel's center and top.
 export type MissionSpot = Readonly<{ x: number; top: number }>
 
-// NOTE: the end card's mission panel from `startMs` on the end clock,
-// nothing when the run moved none.
 export const missionEndShapes: {
   (
     ms: number,

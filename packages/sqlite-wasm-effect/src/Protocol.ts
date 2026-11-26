@@ -1,7 +1,5 @@
 import { Schema } from 'effect'
 
-// VALUES
-
 export const SqlValue = Schema.Union([
   Schema.Null,
   Schema.Finite,
@@ -20,8 +18,6 @@ export const TableChange = Schema.Struct({
 })
 export type TableChange = typeof TableChange.Type
 
-// NOTE: Memory carries why the database could not live in OPFS, such as a
-// private window or a browser without sync access handles.
 export const Persistence = Schema.TaggedUnion({
   Opfs: {},
   Memory: { reason: Schema.String },
@@ -34,10 +30,6 @@ export const DatabaseFailure = Schema.Struct({
 })
 export type DatabaseFailure = typeof DatabaseFailure.Type
 
-// REQUESTS
-
-// NOTE: a session is one tab's connection. The worker lets one session at a
-// time hold an open transaction and queues the others behind it.
 export const Request = Schema.TaggedUnion({
   Open: {
     id: Schema.String,
@@ -58,8 +50,6 @@ export type Request = typeof Request.Type
 export type Execute = typeof Request.cases.Execute.Type
 export type Open = typeof Request.cases.Open.Type
 
-// RESPONSES
-
 export const Response = Schema.TaggedUnion({
   Opened: { id: Schema.String, persistence: Persistence },
   OpenFailed: { id: Schema.String, failure: DatabaseFailure },
@@ -73,11 +63,6 @@ export const Response = Schema.TaggedUnion({
 })
 export type Response = typeof Response.Type
 
-// BETWEEN TABS
-
-// NOTE: followers Ask the leader tab over a BroadcastChannel and read the
-// Answers whose ids they are waiting on. A new leader says LeaderChanged so
-// followers stop waiting on the old one.
 export const ChannelMessage = Schema.TaggedUnion({
   Ask: { request: Request },
   Answer: { response: Response },

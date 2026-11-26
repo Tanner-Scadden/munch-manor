@@ -19,14 +19,6 @@ import { type Box, boxCenter, tileBox } from '../level/tileGrid'
 import { secretShelfOf } from '../library/secretShelf'
 import { StationId } from '../schema/worldSchema'
 
-// Where each work station stands on a level, read off the rooms' maps: the
-// cleat's `j` against the dining room's west wall, and each other room's `*` marks in
-// reading order (src/world/level/plan.ts): the parlour's gramophone, the
-// library's north and south stacks, the cellar's bulb chain then its
-// barrels, the kitchen's soup pot. The revolving shelf is the library's
-// secret shelf, its two tiles in the wall. A spec keeps its boxes, so a
-// frame only reads them.
-
 type MarkedSpot = Readonly<{
   room: string
   pick: (spots: RoomSpots) => ReadonlyArray<SpotTile>
@@ -91,7 +83,6 @@ const markedBoxesOf = (
   return boxes
 }
 
-// NOTE: the secret shelf's two tiles in the library's wall.
 const shelfBox = (level: Level): Option.Option<Box> =>
   Option.map(secretShelfOf(level), ({ tile }) => ({
     left: tile.column * TILE_SIZE,
@@ -107,8 +98,6 @@ export const stationBoxOf: {
   id === 'Shelf' ? shelfBox(level) : markedBoxesOf(level.spec)[id],
 )
 
-// NOTE: a station stands where the crew can reach it: in an open room, and
-// the shelf once it has swung open.
 const isOpenOn = (level: Level, id: StationId): boolean =>
   id === 'Shelf'
     ? Option.exists(maybeExit(level, SECRET_EXIT), ({ isOpen }) => isOpen)
@@ -125,9 +114,6 @@ const isOpenOn = (level: Level, id: StationId): boolean =>
         )
       })
 
-// NOTE: every station's rules ask this on every tick, for every seat, and
-// the answer moves only with the level (a new Level whenever an exit
-// opens), so each level keeps the stations standing open on it.
 const openStations = new WeakMap<Level, ReadonlySet<StationId>>()
 
 export const isStationOpen: {
@@ -146,7 +132,6 @@ export const isStationOpen: {
   return open.has(id)
 })
 
-// NOTE: where a station's tool acts from: the middle of its box.
 export const stationCenterOf: {
   (
     id: StationId,

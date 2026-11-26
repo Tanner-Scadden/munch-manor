@@ -13,11 +13,6 @@ import {
   TouchControls,
 } from './inputSchema'
 
-// NOTE: the root's Messages from the keyboard, the mouse, touch, and a
-// controller, and the game surface they land on. A controller is polled
-// (src/app/subscriptions.ts): PolledGamepad comes only when it changed.
-// src/app/message.ts joins them into the root's Message union; their
-// handlers are in src/app/update/input.ts.
 export const inputCases = {
   PressedKey: { code: Schema.String },
   ReleasedKey: { code: Schema.String },
@@ -42,8 +37,6 @@ export const inputCases = {
   },
   ReleasedPointer: { pointerId: Schema.Finite },
   CancelledPointer: { pointerId: Schema.Finite },
-  // NOTE: every finger still on the glass, at each touch's start, lift,
-  // or cancel (src/app/subscriptions.ts).
   ChangedTouches: {
     points: Schema.Array(
       Schema.Struct({ clientX: Schema.Finite, clientY: Schema.Finite }),
@@ -68,10 +61,6 @@ export type DisconnectedGamepad =
 export type RepeatedPadDirection =
   typeof InputMessage.cases.RepeatedPadDirection.Type
 
-// NOTE: the run's buttons: the touch HUD's slots, reload, MEDIC, traps,
-// READY, the hold-to-buy button, and pause. Each goes to
-// the room in an online run (orInRun, src/app/update/coopRun.ts), but for
-// the HUD's dare list, which opens the dare card on this client alone.
 export const runButtonCases = {
   PressedHoldButton: { pointerId: Schema.Finite },
   ClickedPauseButton: {},

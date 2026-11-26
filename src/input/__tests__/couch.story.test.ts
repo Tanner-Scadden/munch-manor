@@ -29,10 +29,6 @@ import {
 } from '../../world/party/party'
 import { type World } from '../../world/schema/world'
 
-// Two to four players at one keyboard (MULTIPLAYER.md, Phase 1): a dev-only
-// `?local=N` link seats them, player 2 plays on IJKL with U to fire, and
-// the camera frames everyone.
-
 const TICK_MS = FIXED_STEP_MS
 
 const onTheCouch = (count: number): Model =>
@@ -135,8 +131,6 @@ describe('player 2 on IJKL', () => {
     }),
   )
 
-  // NOTE: player 3's block holds the numpad's 1 to 3, so they stay theirs
-  // and never draw player 1's guns; the top row's 1 to 3 are player 1's.
   it.effect("player 3's numpad 3 draws their knife, not player 1's", () =>
     Effect.gen(function* () {
       const before = yield* fighting(3)

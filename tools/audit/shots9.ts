@@ -28,7 +28,6 @@ import {
   tagOr,
 } from './lib'
 
-// NOTE: the Model's fields the log line reads.
 const SceneCounts = Schema.Struct({
   shake: Schema.Struct({ offset: Vector }),
   zombies: Schema.Array(Schema.Unknown),

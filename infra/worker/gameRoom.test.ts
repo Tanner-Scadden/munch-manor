@@ -57,8 +57,6 @@ const roomHost = Effect.flatMap(memory, sql =>
   Effect.provideService(makeRoomHost(SCOPE, SECRET), SqlClient.SqlClient, sql),
 )
 
-// NOTE: a token that runs out a minute after now, on the TestClock, or at
-// `expiresMs` when given.
 const tokenOf = (playerId: string, expiresMs?: number) =>
   Effect.flatMap(Clock.currentTimeMillis, nowMs =>
     signToken(SECRET, {
@@ -190,10 +188,6 @@ describe('the room host', () => {
     }),
   )
 
-  // NOTE: a calling is kept only when it reads back as one of the game's
-  // callings (src/shared/playerData.ts); a made-up word, a look code, a markup
-  // string, or nothing seats the player as YOU. The Worker cannot check the
-  // player's rank reached it.
   it.effect(
     'a sent calling is seated only when it is one of the callings',
     () =>
@@ -231,9 +225,6 @@ describe('the room host', () => {
       }),
   )
 
-  // NOTE: a calling changed in the lobby reaches the room's own members, and
-  // the start seats it only when it reads back as one of the game's callings
-  // (a made-up word is dropped, so that slot plays YOU), the same check a calling sent at create and join gets.
   it.effect('a calling changed in the lobby is seated at the start', () =>
     Effect.gen(function* () {
       const host = yield* roomHost
@@ -283,9 +274,6 @@ describe('the room host', () => {
     }),
   )
 
-  // NOTE: the dare ladder (GAME_DESIGN.md, "The dare ladder"): the host
-  // picks the room's mark, a guest cannot, a new difficulty starts the mark
-  // again at none, and the room's World plays the mark it starts with.
   it.effect("the host picks the room's dare mark, and the World plays it", () =>
     Effect.gen(function* () {
       const host = yield* roomHost
@@ -335,9 +323,6 @@ describe('the room host', () => {
     }),
   )
 
-  // NOTE: each member says whether they have watched the whole intro, and
-  // the room plays the drive up on its first run only for a crew with a
-  // newcomer in it (introForRound, as startGame calls it).
   it.effect(
     'a crew of veterans gets the short intro, a newcomer the whole',
     () =>
@@ -384,8 +369,6 @@ describe('the room host', () => {
       }),
   )
 
-  // NOTE: a rank is a claim the Worker cannot check, so it only keeps it in
-  // range: a whole number from 1 to 999.
   it.effect('a sent rank is clamped to a whole number from 1 to 999', () =>
     Effect.gen(function* () {
       const host = yield* roomHost
@@ -410,10 +393,6 @@ describe('the room host', () => {
     }),
   )
 
-  // NOTE: the look a player sends is kept only when it is one of the game's
-  // looks (src/shared/playerData.ts): the simple look, or an older code (five
-  // words from the first look, or the many-part look's five letters) read
-  // as its closest simple look. Anything else seats the player with none.
   it('a sent look is kept when it is a real look, and dropped when it is junk', () => {
     expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB')).toBe(
       'Slim.Mohawk.Pink.Deep.Teal.CCBB',
@@ -433,8 +412,6 @@ describe('the room host', () => {
     expect(lookOfRequest('Male.Curls.Black.Deep.Red')).toBe(
       'Broad.Curly.Black.Deep.Red.AAAA',
     )
-    // NOTE: a hat is one more word, the letter of its place in the game's
-    // hats (M is the Fez). Bare headed is the code it always was.
     expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.M')).toBe(
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.M',
     )
@@ -444,9 +421,6 @@ describe('the room host', () => {
     expect(lookOfRequest('Broad.Bald.Grey.Fair.Purple.DAAA.Q')).toBe(
       'Broad.Bald.Grey.Fair.Purple.DAAA.Q',
     )
-    // NOTE: a gun skin is an eighth word, the letter of its place in the
-    // game's skins (F is Neon), the seventh then being the hat's, A for
-    // none. Stock is left off, so the code stays the shortest it can be.
     expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.A.F')).toBe(
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.A.F',
     )
@@ -456,8 +430,6 @@ describe('the room host', () => {
     expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A')).toBe(
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.M',
     )
-    // NOTE: the earned shirt colors and prints are placed at the end of their
-    // lists, so an older code reads the same and a new one reads back whole.
     expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Midnight.CGBB.Q.D')).toBe(
       'Slim.Mohawk.Pink.Deep.Midnight.CGBB.Q.D',
     )

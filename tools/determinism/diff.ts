@@ -1,7 +1,3 @@
-// Comparing runs: the first checkpoint two runs disagree on, the first path
-// where two gameplay states differ, and JSON that keeps every number exact.
-// No game imports, so the orchestrator can load it without the game.
-
 import {
   Array,
   Function,
@@ -18,7 +14,6 @@ import { encodeJson } from '../json'
 
 export type Checkpoint = readonly [frame: number, hash: number]
 
-// The first checkpoint two runs disagree on, by frame.
 export const firstDivergentCheckpoint: {
   (
     b: ReadonlyArray<Checkpoint>,
@@ -58,14 +53,11 @@ export const firstDivergentCheckpoint: {
   },
 )
 
-// DIFF
-
 export type Difference = Readonly<{ path: string; a: unknown; b: unknown }>
 
 const sameNumber = (a: number, b: number): boolean =>
   Object.is(a, b) || (Number.isNaN(a) && Number.isNaN(b))
 
-// NOTE: an object that is not an array, read by its keys.
 const isRecordLike = (
   value: object,
 ): value is Readonly<Record<string, unknown>> => !Array.isArray(value)
@@ -119,8 +111,6 @@ const differenceAt = (
   )
 }
 
-// The first path, depth first in canonical key order, where two states
-// differ. Numbers compare by bits (0 and -0 differ).
 export const firstDifference: {
   (b: unknown): (a: unknown) => Difference | undefined
   (a: unknown, b: unknown): Difference | undefined
@@ -128,11 +118,6 @@ export const firstDifference: {
   differenceAt(a, b, ''),
 )
 
-// JSON that keeps every float64 exactly: -0, NaN, and the infinities become
-// tagged strings, which `revive` turns back.
-// NOTE: a Schema cannot replace numbers anywhere in a state of any shape, so
-// the replacer and reviver ride on the JSON transformation itself, and the
-// engines print these exact bytes.
 const ExactJson = Schema.String.pipe(
   Schema.decodeTo(
     Schema.Unknown,
@@ -159,13 +144,10 @@ const decodeExact = Schema.decodeResult(ExactJson)
 export const exactJson = (value: unknown): string =>
   Result.getOrThrowWith(encodeExact(value), throwIssue)
 
-// NOTE: the other way from exactJson, for a state of any shape.
 export const revive = (text: string): unknown =>
   Result.getOrThrowWith(decodeExact(text), throwIssue)
 
 const encodeAnyJson = encodeJson(Schema.Unknown)
 
-// NOTE: a value from a state as JSON text for a report: `undefined` when
-// it is missing, which JSON has no text for.
 export const jsonTextOf = (value: unknown): string =>
   value === undefined ? 'undefined' : encodeAnyJson(value)

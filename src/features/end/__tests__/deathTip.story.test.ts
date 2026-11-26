@@ -8,11 +8,6 @@ import type { DeathTip } from '../../../domain/clientSchema'
 import { DEATH_TIPS } from '../../../world/names'
 import { diesOnWave7, ended } from './rank.fixture'
 
-// Rattles' death tip (src/features/end/deathTip.ts): a lone player's loss
-// ends with a line about the zombie that landed the last bite (a Hotfoot,
-// in diesOnWave7), never the line shown last, and none once the player has
-// escaped on that difficulty.
-
 const tipOf = (model: Model): Option.Option<DeathTip> =>
   model.endCard.maybeDeathTip
 

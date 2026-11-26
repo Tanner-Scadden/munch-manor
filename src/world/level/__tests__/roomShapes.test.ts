@@ -16,11 +16,6 @@ import { tileCenter } from '../tileGrid'
 import { doorSpawnPoint, isWalkableTile, tileIndexAt } from '../tileQueries'
 import { EVERY_EXIT } from './exits.fixture'
 
-// The rooms rework, part 1 (docs/ROOM_RESEARCH.md, "Decided"): each room
-// reshaped inside its slot. In every arrangement, with every exit open,
-// zombies from every door reach every hiding spot and case, and each room
-// keeps a loop of its own: a ring of floor tiles round its cover.
-
 const HOUSES = Array.map(ARRANGEMENTS, arrangement => {
   const spec = manorSpecFor(arrangement)
   return { arrangement, spec, level: levelFor(spec, EVERY_EXIT) }
@@ -43,8 +38,6 @@ const isReachedFromEveryDoor = (level: Level, column: number, row: number) => {
   )
 }
 
-// NOTE: each room's loop, in tiles relative to its top-left corner: the
-// border of this box is all floor, and its inside holds the room's cover.
 type Loop = Readonly<{
   left: number
   top: number
@@ -53,13 +46,9 @@ type Loop = Readonly<{
 }>
 
 const LOOPS: Readonly<Record<string, Loop>> = {
-  // NOTE: round the party table and the chandelier's gap.
   [DINING_ROOM_ID]: { left: 7, top: 9, right: 28, bottom: 12 },
-  // NOTE: round the ring of furniture that holds the dance floor.
   [PARLOUR_ROOM_ID]: { left: 4, top: 3, right: 27, bottom: 15 },
-  // NOTE: round the reading desk in the nook.
   [LIBRARY_ROOM_ID]: { left: 18, top: 10, right: 27, bottom: 13 },
-  // NOTE: round the lopsided barrel block.
   [CELLAR_ROOM_ID]: { left: 17, top: 7, right: 22, bottom: 12 },
 }
 
@@ -104,8 +93,6 @@ describe('the reshaped rooms', () => {
         })
         Array.forEach(spots.cases, piece =>
           Array.forEach(piece, tile => {
-            // NOTE: a case stands against the wall, so it is reached from the
-            // tile in front of it, above or below.
             const front = Array.findFirst([tile.row - 1, tile.row + 1], row =>
               isWalkableTile(level, tile.column, row),
             )
@@ -164,7 +151,6 @@ describe('the reshaped rooms', () => {
         parlour.room.origin.column + column,
         parlour.room.origin.row + row,
       )
-    // NOTE: the ring's four sides are furniture but for a two tile gap.
     expect([at(14, 4), at(15, 4), at(16, 4), at(17, 4)]).toEqual([
       false,
       true,
@@ -189,7 +175,6 @@ describe('the reshaped rooms', () => {
       true,
       false,
     ])
-    // NOTE: the floor inside is open.
     expect(
       Array.every(
         Array.makeBy(16, step => 8 + step),
@@ -217,8 +202,6 @@ describe('the reshaped rooms', () => {
         cellar.room.origin.column + column,
         cellar.room.origin.row + row,
       )
-    // NOTE: under the chute, shut to the east and the south but for the
-    // two tiles by the west wall.
     expect(at(9, 2) && at(9, 3)).toBe(true)
     expect(at(10, 2) || at(10, 3)).toBe(false)
     expect(

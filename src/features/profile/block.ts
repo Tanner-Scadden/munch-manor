@@ -7,20 +7,9 @@ import { ProfileProps } from './model'
 import { PROFILE_TABS } from './profile'
 import { profileView } from './view'
 
-// The Profile panel's body: the tab strip and the open tab's page. The
-// root owns its state and every field its tabs show (they come in as
-// props), so it keeps no Model of its own, and every click, key, and
-// field change goes up as an event for the root to act on. The root's
-// Dialog around it is src/app/profileView.ts, and the root's handlers are
-// src/app/update/profile.ts.
-
-// NOTE: a tab as ui-kit's Tabs names it, read back to its literal.
 const tabNamed = (value: string) =>
   Array.findFirst(PROFILE_TABS, tab => tab === value)
 
-// NOTE: a component is called as `Profile(h, { props, onEmit })`, a
-// function Effect UI makes, with no data-last form to give it.
-// @effect-diagnostics-next-line missingPipeableSignature:off
 export const Profile = Html.component({
   name: 'Profile',
   props: ProfileProps,

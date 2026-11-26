@@ -1,12 +1,7 @@
 import type { SoundEffect } from '../shared/soundEffect'
 import { type Recipe, at, delayedEnvelope } from './soundRecipe'
 
-// NOTE: the storm outside the manor (src/render/iso/mood.ts), joined into
-// RECIPES: far off and soft, so it sets a mood under the fight without
-// covering it.
 export const WEATHER_RECIPES = {
-  // NOTE: thunder after a strike: a beat of quiet, then a low roll that
-  // swells and dies away, with a faint crackle on top.
   Thunder: {
     variationCents: 200,
     tones: [
@@ -31,8 +26,6 @@ export const WEATHER_RECIPES = {
       },
     ],
   },
-  // NOTE: a roof leak's drop landing in its puddle: a tiny plip that bends
-  // up, with a breath of water under it, quiet enough to sit under the rain.
   Drip: {
     variationCents: 300,
     tones: [
@@ -51,8 +44,6 @@ export const WEATHER_RECIPES = {
       },
     ],
   },
-  // NOTE: a foot through a roof leak's puddle: a short low slosh of water,
-  // soft, so a stride through it never covers the fight.
   Wade: {
     variationCents: 250,
     tones: [

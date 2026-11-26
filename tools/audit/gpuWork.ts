@@ -23,13 +23,6 @@ import {
 import { attempt, decodedFrom, failWith } from './page'
 import { SCENARIOS } from './scenarios'
 
-// NOTE: the GPU's work in a frame, counted on the WebGL2 context: every
-// render pass (a framebuffer bound and the viewport it draws), its draw
-// calls, its clears, and the pixels those clears cover, by the pass's size.
-// The CPU's side is in spikes.ts and profile.ts; this is the side that
-// heats a phone, where a whole-level texture drawn again each frame, or a
-// shadow map no light needs, costs fill and bandwidth that frame time on a
-// desktop hides. `FRAMES` says how many to count.
 const COUNTER = `(() => {
   const proto = WebGL2RenderingContext.prototype
   const state = { passes: [], current: undefined, w: 0, h: 0, frames: 0 }
@@ -108,62 +101,32 @@ const PassRow = Schema.Struct({
 
 type PassRow = typeof PassRow.Type
 
-// NOTE: a shadow map is a square pass of 512 or more a side: the screen,
-// the floor's pictures, and the bloom's halvings never are.
 const isShadowPass = ({ width, height }: PassRow): boolean =>
   width === height && width >= 512
 
-// NOTE: the most shadow maps a frame each scenario may draw, counted by
-// their clears: the maps are layers of one framebuffer, so one bind draws
-// several. In a break
-// nothing moves under the lights but the players, so the fills keep their
-// maps (src/render/iso/shadowWatch.ts): 0.16 when the watch came in, 0.99
-// before, a map drawn again every frame. A wave in every room moves bodies
-// under each lit fill, the four fills on the view (3.53), so at most two
-// maps are drawn a frame, the player's room's and one other in turn
-// (src/render/iso/shadowBudget.ts): 1.97 when the budget came in.
 const SHADOW_BUDGETS: Readonly<Record<string, number>> = {
   idle: 0.35,
   allRooms: 2.1,
 }
 
-// NOTE: a level-sized picture's pass (the ground's, the room's, the
-// storm's, the puddles'): neither a shadow map nor the screen's own shape,
-// which the screen and the bloom's halvings all keep (16:9 on the desktop
-// page every scenario opens).
 const SCREEN_SHAPE = 16 / 9
 
 const isPicturePass = (row: PassRow): boolean =>
   !isShadowPass(row) && Math.abs(row.width / row.height - SCREEN_SHAPE) > 0.2
 
-// NOTE: the most level-sized pictures each scenario may draw a frame,
-// counted by their passes. Kept apart from SHADOW_BUDGETS. The ground's
-// picture was drawn every frame, its shadows, bullets, and the kitchen's
-// steam moving on it (1.30 a frame idle, 2.38 in a wave in every room); its
-// rectangles are quads now and the picture is drawn only when the rest
-// changes (src/render/iso/groundRects.ts): 0.31 and 1.50.
 const PICTURE_BUDGETS: Readonly<Record<string, number>> = {
   idle: 0.45,
   allRooms: 1.8,
 }
 
-// NOTE: the bloom's levels are the screen's shape and smaller than it (the
-// `desktop` page's); its combine draws at the screen's own size.
 const isBloomPass = (row: PassRow): boolean =>
   !isShadowPass(row) && !isPicturePass(row) && row.width < DESKTOP_1280.width
 
-// NOTE: the most bloom level passes each scenario may draw a frame. Its
-// five halvings drew nine a frame (8.91), each a pass a phone's tiled GPU
-// loads and stores whatever its size; three levels a quarter apart draw
-// five (4.95, src/render/iso/bloom.ts).
 const BLOOM_BUDGETS: Readonly<Record<string, number>> = {
   idle: 5.2,
   allRooms: 5.2,
 }
 
-// NOTE: the most render passes of any kind each scenario may draw a frame:
-// 12.64 idle and 15.37 in a wave in every room before the cheaper bloom,
-// 8.68 and 11.51 after.
 const PASS_BUDGETS: Readonly<Record<string, number>> = {
   idle: 9.3,
   allRooms: 12.3,
@@ -257,8 +220,6 @@ const report = (
     )
   })
 
-// NOTE: `SCENARIOS` picks scenarios (`idle,allRooms` by default), and each
-// one with a budget fails the audit past it.
 runHarnessAudit(
   Effect.gen(function* () {
     const frames = yield* Config.String('FRAMES').pipe(

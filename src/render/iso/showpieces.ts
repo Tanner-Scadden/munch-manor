@@ -1,10 +1,3 @@
-// The house's carved showpieces in 3D (src/art/carve.ts): built once per
-// level as real volumes, never through the per-frame batch, and only shown,
-// hidden, or swung each frame. The first is the dining room's chandelier,
-// hung over the table's gap or lying in it, with the cracks its fall left on
-// the floor, and its rope from the winch, taut or slack. The second is the
-// library's secret shelf, carved in its wall while it is shut.
-
 import { Array, Option, Result, String, pipe } from 'effect'
 
 import {
@@ -41,7 +34,6 @@ import { UNIT } from './space'
 
 const GLOWING: ReadonlySet<string> = new Set([FLAME_COLOR, FLAME_TIP_COLOR])
 
-// NOTE: the colors in linear light, as the renderer works.
 const geometryOf = (data: CarvedMeshData): Geometry3D => {
   const colors = Float32Array.from(data.colors, (channel, index) =>
     index % 4 === 3 ? channel : srgbToLinear(channel),
@@ -60,8 +52,6 @@ type Built = Readonly<{
   box: ViewBox
 }>
 
-// NOTE: a piece's two geometries as meshes under `parent`, hidden until
-// shown.
 const meshesOf = (
   input: Readonly<{
     data: Readonly<{ lit: CarvedMeshData; glowing: CarvedMeshData }>
@@ -143,9 +133,6 @@ const buildPiece = (
   }
 }
 
-// NOTE: what the fall left on the floor under the fallen chandelier: the
-// 2D art's cracks and dust, its see-through rects, painted with the floor's
-// glows.
 const isSeeThrough = (fill: string | undefined): boolean =>
   String.startsWith('rgba')(fill ?? '')
 
@@ -164,20 +151,13 @@ const floorMarksOf = (
   ])
 
 export type Chandelier = Readonly<{
-  // NOTE: shows the state it is in, swung `sway` game pixels on its chain,
-  // and hidden while it lies far off screen.
-  // It hands back a key of what it shows, which changes when its shadow does.
   apply: (
     input: Readonly<{ isDown: boolean; sway: number; view: ViewBox }>,
   ) => number
-  // NOTE: the floor's marks for the state it is in.
   floorMarks: (isDown: boolean) => ReadonlyArray<Leaf>
   destroy: () => void
 }>
 
-// NOTE: the 2D sprite the carved chandelier stands in for, in either state,
-// so the scene leaves the sprite out. A sprite is known by its crop too:
-// in a production build the chandelier shares its atlas sheet with others.
 export const isChandelierSprite = cropSetOf([
   CHANDELIER_SPRITES.Hung,
   CHANDELIER_SPRITES.Fallen,
@@ -220,9 +200,6 @@ export const chandelierOf = (
       materials,
       castsShadow: true,
     })
-    // NOTE: the rope in each state, standing where its blocks are, from no
-    // anchor, shown while the chandelier is in that state. It casts no
-    // shadow: a thin line across the room's floor read as a crack.
     const ropes = Option.match(chandelierRopeOf(input.level), {
       onNone: () => [],
       onSome: pieces =>
@@ -278,13 +255,6 @@ export const chandelierOf = (
     }
   })
 
-// THE SECRET SHELF
-
-// NOTE: the library's shut secret shelf, carved in its wall (shelfCarve.ts),
-// while the level has it shut. Swung open, its tiles are a passage and the
-// swung case stands with the furniture (src/render/room/tallCover.ts). A
-// level is built again when it opens, so the carve is only ever shown or
-// hidden by the view.
 export type Shelf = Readonly<{
   apply: (view: ViewBox) => void
   destroy: () => void

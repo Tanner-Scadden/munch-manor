@@ -1,9 +1,3 @@
-// NOTE: the project's oxlint rules about work that grows faster than the
-// lists it walks: a reduce that copies its accumulator each step, deep
-// equality on every frame, and a scan of one list for each item of another.
-// Loaded through tools/lint/munchPlugin.ts, which names them; the config
-// scopes the last two to the code that runs every frame or tick.
-
 import { Array, Option } from 'effect'
 
 import { defineRule } from '@oxlint/plugins'
@@ -22,7 +16,6 @@ type Node = ESTree.Node
 
 type FunctionNode = ESTree.ArrowFunctionExpression | ESTree.Function
 
-// NOTE: the expression under `x as T`, `x!`, `(x)`, and `a?.b`.
 const unwrap = (node: Node): Node =>
   node.type === 'TSAsExpression' ||
   node.type === 'TSSatisfiesExpression' ||
@@ -32,7 +25,6 @@ const unwrap = (node: Node): Node =>
     ? unwrap(node.expression)
     : node
 
-// NOTE: `Array.name` off Effect's Array module.
 const effectArrayMethod = (callee: Node): string | undefined =>
   callee.type === 'MemberExpression' &&
   callee.object.type === 'Identifier' &&
@@ -40,15 +32,12 @@ const effectArrayMethod = (callee: Node): string | undefined =>
     ? propertyName(callee)
     : undefined
 
-// NOTE: `xs.name` on a value, not off a module (`Option.map`,
-// `Effect.forEach`, `String.includes`), whose names start in capitals.
 const nativeMethod = (callee: Node): string | undefined =>
   callee.type === 'MemberExpression' &&
   !(callee.object.type === 'Identifier' && /^[A-Z]/.test(callee.object.name))
     ? propertyName(callee)
     : undefined
 
-// NOTE: the name at the root of `acc`, `acc.list`, `zombie.parts[0]`.
 const rootName = (node: Node): string | undefined => {
   const inner = unwrap(node)
   return inner.type === 'Identifier'
@@ -67,9 +56,6 @@ const functionArgument = (
     ),
   )
 
-// NOTE: every return in a function's body, not in a function nested in it.
-// The walk reads each field of a node as unknown, skipping the link back
-// to its parent.
 const returnsIn = (value: unknown): ReadonlyArray<Node> => {
   if (Array.isArray(value)) {
     return Array.flatMap(value, (child: unknown) => returnsIn(child))
@@ -99,7 +85,6 @@ const returnedValues = (fn: FunctionNode): ReadonlyArray<Node> =>
       ? returnsIn(fn.body.body)
       : [fn.body]
 
-// NOTE: each value a conditional or a logical expression may give.
 const branches = (node: Node): ReadonlyArray<Node> => {
   const inner = unwrap(node)
   return inner.type === 'ConditionalExpression'
@@ -118,9 +103,6 @@ const LIST_COPIERS: ReadonlySet<string> = new Set([
   'prependAll',
 ])
 
-// NOTE: the copies of the accumulator (or a list on it) a returned value
-// makes: `Array.append(acc, x)`, `acc.concat(xs)`, `[...acc, x]`, and the
-// same on a field, `{ ...acc, list: [...acc.list, x] }`.
 const accumulatorCopies = (
   node: Node,
   accumulator: string,
@@ -196,8 +178,6 @@ export const noAppendInReduce = defineRule({
   },
 })
 
-// NOTE: deep equality, which hashes or walks both whole values: Equal's
-// `equals` and `equivalence`, and Schema's equivalences.
 const DEEP_EQUAL: Readonly<Record<string, ReadonlySet<string>>> = {
   Equal: new Set(['equals', 'equivalence']),
   Schema: new Set(['toEquivalence', 'equivalence']),
@@ -220,8 +200,6 @@ export const noDeepEqualPerFrame = defineRule({
     },
   },
   create(context) {
-    // NOTE: the local name of each module, by the module: `Equal` from
-    // `import { Equal } from 'effect'` or `import * as Eq from 'effect/Equal'`.
     const modules = new Map<string, string>()
     return {
       ImportSpecifier(node) {
@@ -267,7 +245,6 @@ export const noDeepEqualPerFrame = defineRule({
   },
 })
 
-// NOTE: the calls that run a callback once for each item of a list.
 const EFFECT_ITERATIONS: ReadonlySet<string> = new Set([
   'map',
   'filter',
@@ -308,8 +285,6 @@ const NATIVE_ITERATIONS: ReadonlySet<string> = new Set([
   'findLastIndex',
 ])
 
-// NOTE: Effect's linear scans, by the count of arguments their data-first
-// call takes, the one form whose list the rule can name.
 const EFFECT_SCANS: Readonly<Record<string, number>> = {
   contains: 2,
   findFirst: 2,
@@ -345,14 +320,12 @@ const isIteration = (call: Node): boolean =>
 const isTextLiteral = (node: Node): boolean =>
   isStringLiteral(node) || node.type === 'TemplateLiteral'
 
-// NOTE: the list a call scans, when the rule can name it.
 const scannedList = (call: ESTree.CallExpression): Node | undefined => {
   const effectName = effectArrayMethod(call.callee)
   const arity = effectName === undefined ? undefined : EFFECT_SCANS[effectName]
   if (arity !== undefined) {
     return call.arguments.length >= arity ? call.arguments[0] : undefined
   }
-  // NOTE: `Array.containsWith(isEquivalent)(list, item)`.
   if (
     call.callee.type === 'CallExpression' &&
     effectArrayMethod(call.callee.callee) === 'containsWith'
@@ -369,8 +342,6 @@ const scannedList = (call: ESTree.CallExpression): Node | undefined => {
   return undefined
 }
 
-// NOTE: every name a parameter or a loop variable binds:
-// `zombie`, `{ player, slot }`, `[key, value]`.
 const boundNames = (pattern: unknown): ReadonlyArray<string> => {
   if (!isNode(pattern)) {
     return []
@@ -402,9 +373,6 @@ const boundNames = (pattern: unknown): ReadonlyArray<string> => {
               : []
 }
 
-// NOTE: the names the iterations around a node bind for their current item,
-// or none when no iteration holds it: a callback to one, or a for...of
-// loop's body.
 const iterationNames = (
   node: Node,
 ): { readonly inside: boolean; readonly names: ReadonlyArray<string> } => {
@@ -448,8 +416,6 @@ export const noNestedScan = defineRule({
         if (list === undefined) {
           return
         }
-        // NOTE: a list read off the current item (`zombie.parts`,
-        // `drawingOf(kind)(box, level)`) is that item's own work.
         const around = iterationNames(node)
         if (
           !around.inside ||
@@ -467,11 +433,6 @@ export const noNestedScan = defineRule({
   },
 })
 
-// NOTE: `stepWorld(model, inputs)` in client code hands the step the whole
-// Model, so every World write inside it copies the Model's hundred-odd
-// fields. Narrowed to its World first, `stepWorld(worldOf(model), inputs)`,
-// each write copies only the World's. A value named as a World
-// (`intendedWorld`) is one already.
 const isWorldOfCall = (node: Node): boolean => {
   const inner = unwrap(node)
   return (
@@ -513,9 +474,6 @@ export const stepWorldAlone = defineRule({
   },
 })
 
-// NOTE: a key built as a string, `${a}|${b}`, allocates and hashes a new
-// string each time; on a frame that asks once for every body part, cube, or
-// rect it was a few percent of the frame and its garbage.
 const KEYED_METHODS: ReadonlySet<string> = new Set([
   'get',
   'has',

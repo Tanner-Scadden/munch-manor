@@ -36,10 +36,6 @@ import { modifyFocus } from '../../../world/party/party'
 import { isPending } from '../../../world/run/lessons'
 import { CASE_CARD_MIN_MS, CASE_CARD_MS } from '../caseCard'
 
-// The display case's first-time card (src/features/onboarding/caseCard.ts):
-// the first walk up to a case in a break raises it, the break waits under
-// it, and putting it away learns it for good.
-
 const TICK_MS = 50
 const MIN_TICKS = Math.ceil(CASE_CARD_MIN_MS / TICK_MS)
 
@@ -48,8 +44,6 @@ const withCaseLesson = (model: Model, lesson: Lesson): Model =>
     lessons: lessons => UiStruct.evolve(lessons, { displayCase: () => lesson }),
   })
 
-// NOTE: a returning player who has never met a display case, standing at
-// one in `phase`.
 const atCaseIn = (base: Model, phase: Phase): Model =>
   atCase(
     withCaseLesson(
@@ -61,7 +55,6 @@ const atCaseIn = (base: Model, phase: Phase): Model =>
     Feat.KillsWith({ armament: 'Knife', count: 10 }),
   )
 
-// NOTE: the save has been read, so a learned lesson is written back.
 const inBreak = atCaseIn(
   UiStruct.evolve(readyModel, {
     saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
@@ -99,7 +92,6 @@ describe('the display case card', () => {
           checkModel(current => {
             expect(remainingMs(current)).toBe(heldAt)
           }),
-          // NOTE: too soon to put away: a key meant for the game is not lost.
           tap('Enter'),
           checkModel(current => {
             expect(isShowing(current)).toBe(true)
@@ -139,7 +131,6 @@ describe('the display case card', () => {
     }),
   )
 
-  // NOTE: 6 s, the owner's pick (2026-11-10), down from 9.
   it.effect('left up, it puts itself away after 6 s, learned', () =>
     Effect.gen(function* () {
       expect(CASE_CARD_MS).toBe(6000)

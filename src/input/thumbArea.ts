@@ -5,14 +5,6 @@ import { type Palette, spriteDataUrl } from '../art/sprite'
 import { type Screen, thumbAreaTop } from '../render/screen'
 import { percentOf } from '../ui/menuParts'
 
-// ART
-
-// NOTE: the thumb area under a portrait world window is dressed as the
-// manor's wainscot, in the wall's own purples, so the wall at the bottom of
-// the room reads as running on down behind the sticks and the guns. A chair
-// rail along the top, then a row of sunken panels. It is two small PNG tiles
-// repeated by CSS, drawn once, so it costs nothing per frame. It stays dark,
-// so the gun slots and the sticks drawn over it keep their contrast.
 const WAINSCOT_PALETTE: Palette = {
   T: '#5a4668',
   F: '#3b2d46',
@@ -78,8 +70,6 @@ const cssUrl = (pixels: ReadonlyArray<string>): string =>
 const RAIL_URL = cssUrl(RAIL_PIXELS)
 const PANEL_URL = cssUrl(PANEL_PIXELS)
 
-// VIEW
-
 const thumbAreaBoxView = (
   h: ApplicationViewBuilder,
   width: number,
@@ -100,7 +90,6 @@ const thumbAreaBoxView = (
       backgroundSize: `${percentOf(1, width)} ${percentOf(RAIL_HEIGHT, height)}, ${percentOf(PANEL_WIDTH, width)} ${percentOf(PANEL_HEIGHT, height)}`,
     })
 
-// NOTE: built again only when the screen's size changes (`h.lazy`).
 export const thumbAreaView: {
   (h: ApplicationViewBuilder): (screen: Screen) => ApplicationHtml | null
   (screen: Screen, h: ApplicationViewBuilder): ApplicationHtml | null

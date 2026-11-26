@@ -95,8 +95,6 @@ import {
 import type { Particle } from '../renderSchema'
 import { LAUNCH_SIZE } from './particlePhysics'
 
-// SPAWNING
-
 type Launch = Readonly<{
   kind: ParticleKind
   ground: Vector
@@ -152,9 +150,6 @@ type Speed = Readonly<{ min: number; max: number }>
 export const BLOOD_SPEED: Speed = { min: BLOOD_SPEED_MIN, max: BLOOD_SPEED_MAX }
 export const GOO_BURST_SPEED: Speed = { min: GOO_SPEED_MIN, max: GOO_SPEED_MAX }
 
-// NOTE: water a wading foot kicks up: single pixels that leave the water's
-// surface, arc a few pixels up and out, and fall straight back into it
-// (Splash leaves no decal, so a drop is gone as it lands).
 const SPLASH_LIFT = { min: 40, max: 58 }
 const SPLASH_SPEED = { min: 6, max: 16 }
 
@@ -442,7 +437,6 @@ export const smokePuff =
     ]
   }
 
-// NOTE: the fridge's green fog, slow and low, and Brain Freeze's frost.
 const FOG_SPEED_MIN = 6
 const FOG_SPEED_MAX = 26
 const FOG_LIFETIME_MIN_MS = 600
@@ -575,8 +569,6 @@ export const coin =
     ]
   }
 
-// NOTE: a save's confetti (src/world/party/medic.ts): pink paper, gold sparks, and
-// pale blue flecks, thrown up over the reviver's head and floating down.
 export const CONFETTI_PER_SAVE = 14
 export const CONFETTI_PER_CLUTCH = 24
 const CONFETTI_KINDS: Array.NonEmptyReadonlyArray<ParticleKind> = [
@@ -989,8 +981,6 @@ const SMASH_SPLINTERS = 14
 const SMASH_PLANKS = 6
 const SMASH_DUST = 10
 
-// NOTE: the boards over an exit bought open burst into splinters and
-// planks with a cloud of dust.
 export const smashParticles: {
   (ground: Vector): (state: number) => Seeded<ReadonlyArray<Particle>>
   (state: number, ground: Vector): Seeded<ReadonlyArray<Particle>>

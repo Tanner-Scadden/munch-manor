@@ -1,7 +1,3 @@
-// The agent's side of the art studio (./README.md): every open note, oldest
-// first, with what it is about, where its pixels live, and its pin.
-//   bun tools/studio/inbox.ts          the open notes
-//   bun tools/studio/inbox.ts --all    every note, done ones with their reply
 import { Array, Console, Effect, FileSystem, Option } from 'effect'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'

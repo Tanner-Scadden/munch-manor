@@ -24,10 +24,6 @@ import { KITCHEN_EXIT } from '../../../world/level/exits'
 import { modifyFocus } from '../../../world/party/party'
 import { pause } from '../../../world/waves/waves'
 
-// The pause screen's progress (src/features/menus/pauseProgress.ts): the
-// dare's things found and not, the keys held, and the rooms
-// opened, read the same with keyboard and touch, in landscape and portrait.
-
 const onTheHunt = (device: Model['lastDevice']): Model =>
   withKeys(
     UiStruct.evolve(
@@ -57,7 +53,6 @@ const dareList = HtmlLocator.role('list', { name: 'The dare' })
 const gunList = HtmlLocator.role('list', { name: 'Your guns' })
 const inDare = (locator: Locator.Locator) => Locator.inside(dareList, locator)
 const inGuns = (locator: Locator.Locator) => Locator.inside(gunList, locator)
-// NOTE: the old `[data-found="true"] .pause-thing-check` selectors.
 const checkFor = (isFound: boolean) =>
   Locator.inside(
     Locator.attr('data-found', isFound ? 'true' : 'false'),

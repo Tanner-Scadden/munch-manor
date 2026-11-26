@@ -21,8 +21,6 @@ import {
 } from './arena'
 import { isInsideRoom, tileIndex } from './tileGrid'
 
-// TILES
-
 export const isWalkableTile: {
   (column: number, row: number): (level: Level) => boolean
   (level: Level, column: number, row: number): boolean
@@ -60,9 +58,6 @@ export const isSolidAt: {
 const isOutsideTile = (level: Level, column: number, row: number): boolean =>
   hasTileFlag(level, tileIndex(level, column, row), TILE_OUTSIDE)
 
-// NOTE: inside the house: on the map and not out in the yard. A zombie in the
-// yard is still outside, walking to its door the way one past the map's edge
-// does, and nothing out there is drawn.
 export const isInsideRoomAt: {
   (arg1: Vector): (level: Level) => boolean
   (level: Level, arg1: Vector): boolean
@@ -70,8 +65,6 @@ export const isInsideRoomAt: {
   isInsideRoomPoint(level, x, y),
 )
 
-// NOTE: out in the yard: on the map but outside the house. With the kitchen
-// boarded, its tiles count as yard too.
 export const isInYardAt: {
   (arg1: Vector): (level: Level) => boolean
   (level: Level, arg1: Vector): boolean
@@ -108,8 +101,6 @@ export const tileIndexAt: {
   ),
 )
 
-// DOORS
-
 export const isDoorTile: {
   (column: number, row: number): (level: Level) => boolean
   (level: Level, column: number, row: number): boolean
@@ -120,9 +111,6 @@ export const isDoorTile: {
     hasTileFlag(level, tileIndex(level, column, row), TILE_DOOR),
 )
 
-// NOTE: a zombie due at a door stands just past the door's own outer face,
-// which for the parlour's doors is the map's edge, and for the kitchen's
-// back door the top of the kitchen's wall.
 export const doorSpawnPoint: {
   (id: DoorId, offset: number): (level: Level) => Vector
   (level: Level, id: DoorId, offset: number): Vector
@@ -157,10 +145,6 @@ export const nearestDoor: {
   ),
 )
 
-// RAYS
-
-// NOTE: a ray is sampled at `steps + 1` evenly spaced points, the first on
-// `from` and the last on `to`. Rays walk the samples as plain numbers.
 const stepsAlong = (from: Vector, to: Vector, stepPx: number): number =>
   Math.max(1, Math.ceil(DetMath.hypot(to.x - from.x, to.y - from.y) / stepPx))
 
@@ -201,8 +185,6 @@ export const findStrike: {
   },
 )
 
-// NOTE: where a ray ends: the last point before a wall or before it leaves
-// the room through a doorway, or `to` when nothing is in the way.
 export const findReach: {
   (from: Vector, to: Vector): (level: Level) => Vector
   (level: Level, from: Vector, to: Vector): Vector
@@ -224,8 +206,6 @@ export const findReach: {
   return to
 })
 
-// NOTE: whether any tile in the box of columns and rows (inclusive, clipped
-// to the map) is solid, in four reads of the level's sums.
 const isAnySolidIn = (
   level: Level,
   firstColumn: number,
@@ -251,10 +231,6 @@ const isAnySolidIn = (
   )
 }
 
-// NOTE: a lane whose tiles, a tile past each end, hold nothing solid is
-// clear whatever its samples say, so most lanes in open floor read four
-// numbers. The tile past each end covers a sample a rounding step past
-// its end. Otherwise each sample looks up its tile, once per tile it enters.
 const isLaneClear = (
   level: Level,
   fromX: number,
@@ -283,8 +259,6 @@ const isLaneClear = (
   )
   const dx = toX - fromX
   const dy = toY - fromY
-  // NOTE: isSolidTile's test written out on the map's own numbers, since
-  // this loop is the hottest tile lookup of a tick.
   const { leftColumn, topRow, columns, rows, tileFlags } = level
   let lastColumn = Number.NaN
   let lastRow = Number.NaN

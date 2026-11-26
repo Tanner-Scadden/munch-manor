@@ -1,9 +1,4 @@
-// NOTE: the project's oxlint rules about tests: Effects run by it.effect,
-// a live test says why, and every Story, Scene, and Play runs to its end
-// check (Effect UI's testing guide, repos/effect-ui/ai-docs/src/10_ui/50_testing.ts).
-// Loaded through tools/lint/munchPlugin.ts, which names them.
-
-import { Array, String } from 'effect'
+import { Array } from 'effect'
 
 import { defineRule } from '@oxlint/plugins'
 import type { ESTree } from '@oxlint/plugins'
@@ -18,10 +13,6 @@ import {
 
 type Node = ESTree.Node
 
-// NOTE: the ways to run an Effect by hand: off `Effect`, a `Runtime`, or a
-// `ManagedRuntime` (`runtime.runPromise(...)`), or imported by name. A test
-// runs its Effect with `it.effect` from @effect/vitest instead, which gives
-// it a Scope and the TestClock.
 const RUN_METHODS: ReadonlySet<string> = new Set([
   'runPromise',
   'runPromiseExit',
@@ -59,7 +50,6 @@ export const noRunInTests = defineRule({
           context.report({ node, message: RUN_IN_TESTS_MESSAGE })
         }
       },
-      // NOTE: a runtime of the test's own: `ManagedRuntime.make(layer)`.
       CallExpression(node) {
         if (
           node.callee.type === 'MemberExpression' &&
@@ -74,52 +64,6 @@ export const noRunInTests = defineRule({
   },
 })
 
-// NOTE: `it.live(...)` runs a test on the real clock, which a loaded
-// machine can slow into a timeout. The TestClock is the default, so a live
-// test says why it needs real time in a NOTE right above it.
-const isItLive = (node: ESTree.Expression): boolean =>
-  node.type === 'MemberExpression' &&
-  !node.computed &&
-  node.object.type === 'Identifier' &&
-  node.object.name === 'it' &&
-  propertyName(node) === 'live'
-
-export const liveTestNote = defineRule({
-  meta: {
-    type: 'suggestion',
-    docs: {
-      description:
-        'A test on the real clock (it.live) says why in a NOTE right above it.',
-    },
-  },
-  create(context) {
-    return {
-      ExpressionStatement(node) {
-        const call = node.expression
-        if (call.type !== 'CallExpression' || !isItLive(call.callee)) {
-          return
-        }
-        const hasNote = Array.some(
-          context.sourceCode.getCommentsBefore(node),
-          comment => String.startsWith('NOTE:')(String.trim(comment.value)),
-        )
-        if (!hasNote) {
-          context.report({
-            node,
-            message:
-              'it.live runs on the real clock: use it.effect and the TestClock (settle, first), or say why this needs real time in a // NOTE: right above it (AGENTS.md "Code shape").',
-          })
-        }
-      },
-    }
-  },
-})
-
-// NOTE: Effect UI's `Story.make`, `Scene.make`, `HtmlScene.make`, and
-// `HtmlPlay.make` are scoped Effects: built and dropped, a Story never runs,
-// its steps never throw, and its end check (every Command resolved, every
-// event acknowledged) never fails. `start` gives the same cursor at once,
-// with no end check.
 const STORY_NAMESPACES: ReadonlySet<string> = new Set([
   'Story',
   'Scene',
@@ -127,15 +71,12 @@ const STORY_NAMESPACES: ReadonlySet<string> = new Set([
   'HtmlPlay',
 ])
 
-// NOTE: `Story.make(...)` and the like: a namespace above and `name`.
 const isStoryCall = (node: ESTree.CallExpression, name: string): boolean =>
   node.callee.type === 'MemberExpression' &&
   node.callee.object.type === 'Identifier' &&
   STORY_NAMESPACES.has(node.callee.object.name) &&
   propertyName(node.callee) === name
 
-// NOTE: a test runner that runs the Effect its callback returns. A plain
-// `test` or `it` takes the Effect as a value and never runs it.
 const EFFECT_RUNNERS: ReadonlySet<string> = new Set([
   'effect',
   'live',
@@ -144,9 +85,6 @@ const EFFECT_RUNNERS: ReadonlySet<string> = new Set([
   'flakyTest',
 ])
 
-// NOTE: calls that hand the Effect on, so where the call's own value goes
-// decides: Effect's, Layer's, and Stream's combinators, pipe, and a map
-// that makes a list of Effects (for Effect.all).
 const EFFECT_CARRIERS: ReadonlySet<string> = new Set([
   'Effect',
   'Layer',
@@ -157,8 +95,6 @@ const EFFECT_CARRIERS: ReadonlySet<string> = new Set([
 const FLOATING_STORY_MESSAGE =
   'Story.make, Scene.make, HtmlScene.make, and HtmlPlay.make are scoped Effects that run only when yielded (`const s = yield* Story.make(...)` in it.effect), returned from it.effect, or passed to an Effect combinator (Effect.forEach, Effect.all): in Array.forEach, a plain test, or a statement they never run (AGENTS.md "Every Story is yielded or returned").'
 
-// NOTE: the names along a callee: `it.effect.each(rows)` is it, effect,
-// each; `Effect.forEach` is Effect, forEach.
 const calleePath = (node: Node): ReadonlyArray<string> =>
   node.type === 'Identifier'
     ? [node.name]
@@ -200,16 +136,11 @@ const isArgumentOf = (
   parent.callee !== node &&
   Array.some(parent.arguments, argument => argument === node)
 
-// NOTE: whether the Effect a call makes reaches something that runs it.
 const callKeeps = (call: ESTree.CallExpression): boolean => {
   const role = callRole(call)
   return role === 'Runs' || (role === 'Carries' && isKept(call))
 }
 
-// NOTE: a function that returns or yields the Effect keeps it when its
-// caller does: a callback to a runner or an Effect combinator, or one held
-// by name. A callback to anything else (Array.forEach, a plain test)
-// drops what it returns.
 const returnKeeps = (fn: Node): boolean =>
   fn.parent === null || !isArgumentOf(fn, fn.parent) || callKeeps(fn.parent)
 
@@ -285,13 +216,6 @@ export const noFloatingStory = defineRule({
   },
 })
 
-// NOTE: a test drives the game as a Story, Scene, or Play over the root
-// component (`Application`, or `ApplicationNoDeps` with its Layers given) or
-// a child component, never the root's update, view, or init called by hand
-// (pureApp's, src/app/main.ts's), which skips the end check that every
-// Command a step runs is resolved. `start` makes a cursor with no end check,
-// for a step that must throw: it goes inside the assert that says so
-// (`assert.throws(() => HtmlScene.start(...).drop(...))`).
 const ROOT_RUNNERS = /(^|\/)app\/(pureApp|main)$/
 
 const PURE_RUNNERS: ReadonlySet<string> = new Set(['update', 'view', 'init'])
@@ -309,8 +233,6 @@ const PLAIN_STORY_MESSAGE =
 const START_MESSAGE =
   'A Story or Scene made with start has no end check, so a Command left pending passes: use make (`yield* Story.make(...)`), or keep start inside the assert that the step throws (AGENTS.md "Tests drive the root through Stories and Scenes").'
 
-// NOTE: inside an assert that something throws: `assert.throws(...)`,
-// `expect(() => ...).toThrow()`.
 const insideThrowAssert = (node: Node): boolean =>
   node.parent !== null &&
   ((node.parent.type === 'CallExpression' &&

@@ -24,13 +24,6 @@ import { focusOf, modifyFocus } from '../../src/world/party/party'
 import type { Zombie } from '../../src/world/schema/entitySchema'
 import { replayRecording } from './replayRun'
 
-// A scripted run recorded as a player's would be (src/platform/recording.ts),
-// sent through JSON as the upload is, and played back through the plain
-// step (tools/learn/replayRun.ts) to the same last World. The script walks,
-// aims at the nearest zombie and fires, reloads, presses READY, plays
-// beside a teammate bot, steps frames of mixed length, and refills its
-// hearts outside the step, so every kind of edit a recording keeps shows.
-
 const FRAMES = 900
 
 const FRAME_MS: ReadonlyArray<number> = [1000 / 60, 1000 / 30, 1000 / 120, 25]

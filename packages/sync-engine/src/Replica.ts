@@ -41,22 +41,14 @@ import {
 import { decodeRows, randomId } from './Rows'
 import { type ScopeDefinition, findMutation, runScopeMigrations } from './Scope'
 
-// DATABASE
-
-// NOTE: what a replica needs from the local database. The SqliteClient from
-// @munch/sqlite-wasm-effect fits it as is: `changes` carries every commit's
-// tables on every tab, and `role` says whether this tab leads.
 export const Role = Schema.Literals(['Leader', 'Follower'])
 export type Role = typeof Role.Type
 
-/** @stability unstable */
 export interface LocalDatabase {
   readonly sql: SqlClient.SqlClient
   readonly changes: Stream.Stream<ReadonlyArray<{ readonly table: string }>>
   readonly role: Effect.Effect<Role>
 }
-
-// RECEIPTS
 
 export const Receipt = Schema.TaggedUnion({
   Applied: { seq: Schema.Finite },
@@ -76,16 +68,6 @@ const applied = (seq: number): Receipt => Receipt.cases.Applied.make({ seq })
 const resync = (mode: HelloMode): Receipt => Receipt.cases.Resync.make({ mode })
 const ignored: Receipt = Receipt.cases.Ignored.make({})
 
-// STATUS
-
-// NOTE: how far a replica has got with its scope, apart from how the
-// connection is doing (that is SyncStatus). Idle has nothing from the server
-// and is not loading; Loading is joining for the first time; Ready holds
-// confirmed rows up to `seq`, `fresh` once this session has applied a
-// snapshot or deltas from the server, and not fresh when the rows are cached
-// from an earlier session. Failed is a scope the server refused before it
-// was ever ready. Once ready, a replica stays ready: a dropped connection or
-// a refusal shows in SyncStatus, not here.
 export const ScopeStatus = Schema.TaggedUnion({
   Idle: {},
   Loading: {},
@@ -94,8 +76,6 @@ export const ScopeStatus = Schema.TaggedUnion({
 })
 export type ScopeStatus = typeof ScopeStatus.Type
 
-// NOTE: Leading is the first session since this tab took the lead, and
-// Reconnecting every later one.
 export const SessionStart = Schema.Literals(['Leading', 'Reconnecting'])
 export type SessionStart = typeof SessionStart.Type
 
@@ -104,8 +84,6 @@ const loading: ScopeStatus = ScopeStatus.cases.Loading.make({})
 
 const sameStatus = Schema.toEquivalence(ScopeStatus)
 
-// NOTE: these refusals do not go away by retrying with the same device.
-// Unauthorized refreshes the token, and NotReady and Unavailable pass.
 const TERMINAL_FAILURES: ReadonlyArray<FailCode> = [
   'Forbidden',
   'VersionMismatch',
@@ -145,10 +123,6 @@ export const statusAtSessionStart: {
   }),
 )
 
-// NOTE: what a tab that opens the replica starts from. Rows the confirmed
-// tables already hold are ready, though not fresh, before any connection.
-// A receipt commits the confirmed seq before the status moves, so a tab
-// closed between the two left a stored seq behind: the larger one wins.
 const statusOnOpen = (
   stored: Option.Option<ScopeStatus>,
   confirmed: number,
@@ -162,22 +136,14 @@ const statusOnOpen = (
       ? ScopeStatus.cases.Ready.make({ seq: confirmed, fresh: false })
       : idle
 
-// SETTLED
-
-// NOTE: how a mutation this device made ended: confirmed at a seq of the
-// scope's log, or rejected by the server.
 export const Settled = Schema.TaggedUnion({
   Confirmed: { seq: Schema.Finite },
   Rejected: { code: RejectCode, reason: Schema.String },
 })
 export type Settled = typeof Settled.Type
 
-// NOTE: how many settled ids a kind remembers, so a tab that asks after the
-// fact still hears a rejection. An id older than these reads as confirmed.
 const SETTLED_KEPT = 200
 
-// NOTE: a tab that waits on a settlement also checks this often, in case
-// the outbox changed between its first look and its subscription.
 const SETTLED_RECHECK: Duration.Input = '5 seconds'
 
 export class ReplicaError extends Schema.TaggedError<
@@ -187,9 +153,6 @@ export class ReplicaError extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-// REPLICA
-
-/** @stability unstable */
 export interface Replica {
   readonly definition: ScopeDefinition
   readonly scope: Effect.Effect<string, SqlError.SqlError>
@@ -276,19 +239,13 @@ const SettledRow = Schema.Struct({
   outcome: Schema.fromJsonString(Settled),
 })
 
-// NOTE: a status and an outcome always encode; a failure is a bug, so it
-// dies.
 const encodeStatus = (status: ScopeStatus): Effect.Effect<string> =>
   Effect.orDie(Schema.encodeEffect(Schema.fromJsonString(ScopeStatus))(status))
 const encodeSettled = (settled: Settled): Effect.Effect<string> =>
   Effect.orDie(Schema.encodeEffect(Schema.fromJsonString(Settled))(settled))
 
-// NOTE: 16 random bytes from the platform's cryptographic source, so ids
-// made on two devices never meet. Only the replica draws them, never an
-// apply function.
 export const makeMutationId: Effect.Effect<string> = randomId(16)
 
-/** @stability unstable */
 export interface ReplicaOptions {
   readonly definition: ScopeDefinition
   readonly database: LocalDatabase
@@ -300,7 +257,6 @@ type DeltaStep = Readonly<{
   receipt: Option.Option<Receipt>
 }>
 
-/** @stability unstable */
 export const makeReplica = (
   options: ReplicaOptions,
 ): Effect.Effect<Replica, SqlError.SqlError> => {
@@ -334,9 +290,6 @@ export const makeReplica = (
     rows => decodeRows(OutboxRow, rows),
   )
 
-  // NOTE: a mutation leaving the outbox is remembered with how it ended, so
-  // awaitSettled can answer in any tab, and even after the fact. Only the
-  // newest SETTLED_KEPT per kind are kept.
   const recordSettled = (id: string, settled: Settled) =>
     Effect.andThen(
       Effect.flatMap(
@@ -386,10 +339,6 @@ export const makeReplica = (
         ),
     })
 
-  // NOTE: rebuild plus replay. The view is thrown away and copied from the
-  // confirmed tables, then every pending mutation is applied on top in the
-  // order it was made, each in its own savepoint. One that no longer applies
-  // is skipped in the view but kept in the outbox: the server decides.
   const rebuild = (scope: string) =>
     Effect.gen(function* () {
       yield* Effect.forEach(
@@ -504,10 +453,6 @@ export const makeReplica = (
       )
     }
 
-  // NOTE: deltas apply to the confirmed tables strictly in seq order. One
-  // already applied is skipped, so duplicates do nothing. A gap stops the
-  // batch and asks for a catch-up, and a delta this client cannot apply
-  // (a newer mutation version, or one that fails here) asks for a snapshot.
   const receiveDeltas = (message: DeltasMessage) =>
     sql.withTransaction(
       Effect.gen(function* () {
@@ -538,10 +483,6 @@ export const makeReplica = (
       }),
     )
 
-  // NOTE: an ack whose seq the confirmed tables already hold settles the
-  // mutation now, as when its delta was folded into a snapshot. An ack ahead
-  // of them keeps the mutation pending and asks for the missing deltas, so
-  // the view never loses a change it has not yet seen confirmed.
   const receiveAcked = (message: AckedMessage) =>
     sql.withTransaction(
       Effect.gen(function* () {
@@ -646,9 +587,6 @@ export const makeReplica = (
       return id
     })
 
-  // NOTE: switching scopes, as a device does when it links to another
-  // device's player, drops this kind's tables, confirmed seq, and pending
-  // mutations. The next sync joins the new scope with a snapshot.
   const switchScope = (scope: string) =>
     sql.withTransaction(
       Effect.gen(function* () {
@@ -686,11 +624,6 @@ export const makeReplica = (
       Stream.as<void>(undefined),
     )
 
-  // STATUS
-
-  // NOTE: the status lives in sync_status, so every tab reads the one the
-  // leader writes. The leader also holds it in a SubscriptionRef, so its own
-  // stream moves without waiting for the commit to come back.
   const readStatus = Effect.flatMap(
     sql`SELECT status FROM sync_status WHERE kind = ${definition.kind}`,
     rows =>
@@ -709,9 +642,6 @@ export const makeReplica = (
         })} ON CONFLICT (kind) DO UPDATE SET status = excluded.status`,
     )
 
-  // NOTE: settled ids and the outbox, read together: still pending is none.
-  // An id the outbox and the record have both forgotten was confirmed long
-  // ago, so it reads as confirmed at the seq the confirmed tables hold.
   const settledOf = (id: string) =>
     sql.withTransaction(
       Effect.gen(function* () {

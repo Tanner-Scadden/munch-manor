@@ -17,13 +17,6 @@ import {
 import { PlayerStore } from './store'
 import { isOnline } from './summaryQueue'
 
-// Sending a recorded run (src/platform/recording.ts) to the API Worker's
-// recordings endpoint (infra/worker/recordings.ts), signed with the sync
-// scope's token so the Worker files it under the player's id. A run that
-// ends with no network, or with no sync session yet, waits in the store
-// (device local, never synced) like a run summary (src/platform/summaryQueue.ts),
-// and goes out at the next start or after the next run is sent.
-
 class RecordingSendError extends Schema.TaggedError<
   RecordingSendError,
   { readonly brand: unique symbol }
@@ -36,8 +29,6 @@ const toSendError = (error: unknown): RecordingSendError =>
 
 type Packed = Readonly<{ body: Uint8Array; encoding: RecordingEncoding }>
 
-// NOTE: gzip where the browser has CompressionStream: a recording is mostly
-// repeated text, so it shrinks about tenfold.
 const pack = (json: string): Effect.Effect<Packed> =>
   typeof CompressionStream === 'undefined'
     ? Effect.succeed({
@@ -111,7 +102,6 @@ const tokenOf: Effect.Effect<string, RecordingSendError, PlayerStore> = pipe(
   ),
 )
 
-// NOTE: one queued or fresh body, sent. The body is the recording's JSON.
 const sendBody = (body: string, origin: string) =>
   pipe(
     Schema.decodeEffect(RunRecordingJson)(body),
@@ -135,11 +125,8 @@ const sendBody = (body: string, origin: string) =>
 const queueBody = (body: string) =>
   PlayerStore.use(store => store.queueRecording(body))
 
-// NOTE: the Worker takes 10 recordings a minute per player.
 const QUEUE_SPACING: Duration.Input = '7 seconds'
 
-// NOTE: taken out before it is sent, so two drains never send one twice;
-// one that fails goes back and stops the drain. Answers whether to go on.
 const sendNextQueued = (origin: string) =>
   pipe(
     isOnline,
@@ -179,8 +166,6 @@ const drainRecordingQueue = (origin: string) =>
 
 type UploadFailure = Readonly<{ reason: string }>
 
-// NOTE: a finished run, sent now when the game is online or queued when it
-// is not or the send fails. A build with no API origin keeps nothing.
 export const uploadRecording: {
   (
     origin?: string,
@@ -218,8 +203,6 @@ export const uploadRecording: {
         ),
 )
 
-// NOTE: at start, a player who has since turned recording off loses what
-// waited instead of sending it.
 export const startRecordingQueue = (origin: string = API_ORIGIN) =>
   pipe(
     PlayerStore.use(store => store.load),

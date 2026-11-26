@@ -8,9 +8,6 @@ import { atClock, quietWave } from '../../../test/model.fixture'
 import { Phase } from '../../../world/schema/worldSchema'
 import { didStrikeBetween, mixColor, moodOf, strikeOf } from '../mood'
 
-// The house's mood (src/render/iso/mood.ts): the light follows the round,
-// and the storm's lightning strikes on the World's clock alone.
-
 const waveAt = (elapsedMs: number, intensity: number): Model =>
   UiStruct.evolve(quietWave(3), {
     phase: () => Phase.Wave({ wave: 3, elapsedMs, spawns: [] }),

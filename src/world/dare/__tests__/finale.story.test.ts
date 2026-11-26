@@ -48,11 +48,6 @@ import {
 } from '../dareSchema'
 import { FINALE_RULES, isAtFrontDoor, isHouseHungry } from '../finale'
 
-// The finale (src/world/dare/finale.ts): the list done, Uncle Chunk at the
-// front door at the next wave with the finale's health, his big key bursting
-// out of him as he falls and flying into the lock, the door open at once,
-// then out through it.
-
 const FRAME_MS = 1000 / 60
 
 const found = (id: number, kind: DareThing['kind']): DareThing => ({
@@ -72,8 +67,6 @@ const LIST_DONE: ReadonlyArray<DareThing> = [
   found(1, 'MusicBox'),
 ]
 
-// NOTE: a campaign break before `wave`, its spawns rolled as the game rolls
-// them, with these things in the house.
 const breakBefore = (wave: number, things: ReadonlyArray<DareThing>): Model =>
   withWorld(withDareThings(asVeteran(quietWave(wave - 1)), things), world =>
     beginPreparation(world, wave, PREPARATION_MS),
@@ -85,8 +78,6 @@ const maybeWaiting = (model: Model) =>
 const spawnsOf = (model: Model) =>
   Phase.isAnyOf(['Wave', 'Preparation'])(model.phase) ? model.phase.spawns : []
 
-// NOTE: a wave early in the run: with no wave floor, he comes the wave
-// after the list is done, however early that is.
 const EARLY_WAVE = 4
 
 describe('Uncle Chunk at the front door', () => {
@@ -432,8 +423,6 @@ describe('walking out', () => {
       }),
   )
 
-  // NOTE: a crew of three in an open-door wave, the lead stepped out where
-  // a Shambler stands on them, the other two inside.
   const leadOut = (): Model =>
     withZombies(
       withSeatLife(

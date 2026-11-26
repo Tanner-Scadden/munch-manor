@@ -16,26 +16,16 @@ import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 import type { BrowserContext, Page } from 'playwright-core'
 
-// Plays the game with no network, the way it is played on an airplane, in
-// headless Chrome against a real production build with its service worker.
-//
-// 1. Online, a first visit boots and the service worker precaches the game.
-// 2. Offline (the browser offline and, locally, the server stopped too): a
-//    reload and a cold start in a fresh page of the same browser both show
-//    the splash and boot. A run starts and plays, the sound is muted in
-//    settings, and after another offline reload it is still muted.
-// 3. Back online, locally only: dist is rebuilt with a new BUILD_ID under
-//    the open page, the update chip appears, tapping it lands on the new
-//    build, and the old build's cache is gone. An offline start afterwards
-//    runs the new build.
-//
-// Run it from the repo root through the guard, with its own preview port:
-//   bun run heavy -- bun tools/audit/offline.ts
-// Against a deployed copy (steps 1 and 2 only, nothing is built):
-//   BASE=https://munchmanor.com/ bun run heavy -- bun tools/audit/offline.ts
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { decodeJson, encodeJson } from '../json'
+import {
+  cacheEntries,
+  fetchVersion,
+  framesWithin,
+  scriptSources,
+  workerStateOf,
+} from './inPage/offline'
 import { PHONE_844, openBrowser, runAuditWith, wait } from './lib'
 import {
   type AuditFailed,
@@ -49,7 +39,6 @@ const PREVIEW_PORT = 4297
 const LOCAL = `http://localhost:${PREVIEW_PORT}/`
 const CACHE_PREFIX = 'munch-manor-'
 
-// NOTE: where the game is played: `BASE`, or this script's own preview.
 const Base = Config.String('BASE').pipe(Config.withDefault(LOCAL))
 
 const failures: Array<string> = []
@@ -60,8 +49,6 @@ const check = (isOk: boolean, label: string) =>
       failures.push(label)
     }
   })
-
-// BUILD AND SERVE
 
 const rootDir = Effect.gen(function* () {
   const path = yield* Path.Path
@@ -90,8 +77,6 @@ const build = (id: string) =>
 
 const VersionFile = Schema.Struct({ build: Schema.optional(Schema.String) })
 
-// NOTE: the build the preview port serves, or nothing when nobody answers
-// with a version file.
 const servedBuild = HttpClient.get(`${LOCAL}version.json`).pipe(
   Effect.flatMap(HttpClientResponse.schemaBodyJson(VersionFile)),
   Effect.map(body => body.build),
@@ -100,8 +85,6 @@ const servedBuild = HttpClient.get(`${LOCAL}version.json`).pipe(
   Effect.orElseSucceed(() => undefined),
 )
 
-// NOTE: other worktrees run their own servers, so the port must be free
-// first, and the server that answers must serve this dist.
 const serve = Effect.gen(function* () {
   const taken = yield* servedBuild
   if (taken !== undefined) {
@@ -149,7 +132,6 @@ const serve = Effect.gen(function* () {
   return yield* failWith(`vite preview never served ${expected} on ${LOCAL}`)
 })
 
-// NOTE: the whole process group, so vite itself stops and not only bunx.
 const killGroup = (server: Subprocess) => {
   try {
     process.kill(-server.pid)
@@ -178,42 +160,14 @@ const precacheCount = Effect.gen(function* () {
   ).length
 })
 
-// THE PAGE
-
 const Caches = Schema.Array(
   Schema.Struct({ name: Schema.String, entries: Schema.Finite }),
 )
 const encodeCaches = encodeJson(Caches)
 
 const gameCaches = (page: Page) =>
-  decodedFrom(Caches, () =>
-    page.evaluate(
-      // NOTE: runs in the page, where the Cache API answers by promises.
-      // @effect-diagnostics-next-line asyncFunction:off
-      async (prefix: string) => {
-        // NOTE: runs in the page, which has no Effect.
-        // @effect-diagnostics-next-line preferEffectArray:off
-        const names = (await caches.keys()).filter(name =>
-          // NOTE: runs in the page, which has no Effect.
-          // @effect-diagnostics-next-line preferEffectString:off
-          name.startsWith(prefix),
-        )
-        // NOTE: runs in the page, where the Cache API answers by promises.
-        // @effect-diagnostics-next-line asyncFunction:off
-        const entriesOf = async (name: string) => ({
-          name,
-          entries: (await (await caches.open(name)).keys()).length,
-        })
-        // NOTE: runs in the page, which has no Effect.
-        // @effect-diagnostics-next-line preferEffectArray:off
-        return Promise.all(names.map(entriesOf))
-      },
-      CACHE_PREFIX,
-    ),
-  )
+  decodedFrom(Caches, () => page.evaluate(cacheEntries, CACHE_PREFIX))
 
-// NOTE: a page with no service worker support counts as controlled here, as
-// it always has: the checks after it report the missing worker.
 const isControlled = (page: Page) =>
   attempt(() =>
     page.evaluate(
@@ -231,26 +185,7 @@ const WorkerState = Schema.Struct({
   active: Schema.optional(Schema.NullOr(Schema.String)),
 })
 
-const workerState = (page: Page) =>
-  evaluateAs(
-    page,
-    WorkerState,
-    // NOTE: runs in the page, where the worker registration is a promise.
-    // @effect-diagnostics-next-line asyncFunction:off
-    async () => {
-      if (!('serviceWorker' in navigator)) {
-        return { support: false }
-      }
-      const registration = await navigator.serviceWorker.getRegistration()
-      return {
-        support: true,
-        registered: registration !== undefined,
-        installing: registration?.installing?.state ?? null,
-        waiting: registration?.waiting?.state ?? null,
-        active: registration?.active?.state ?? null,
-      }
-    },
-  )
+const workerState = (page: Page) => evaluateAs(page, WorkerState, workerStateOf)
 
 const awaitSplashGone = (page: Page) =>
   attempt(() =>
@@ -259,8 +194,6 @@ const awaitSplashGone = (page: Page) =>
     }),
   )
 
-// NOTE: the splash is in index.html itself, so a shell from the cache shows
-// it at once. It is looked for as soon as the document is parsed.
 const openGame = (page: Page, how: Effect.Effect<unknown, AuditFailed>) =>
   Effect.gen(function* () {
     yield* how
@@ -277,20 +210,8 @@ const reload = (page: Page) =>
   attempt(() => page.reload({ waitUntil: 'domcontentloaded' }))
 
 const runningScript = (page: Page) =>
-  attempt(() =>
-    page.evaluate(() =>
-      globalThis.Array.from(document.querySelectorAll('script[src]'), script =>
-        script.getAttribute('src'),
-      )
-        // NOTE: runs in the page, which has no Effect.
-        // @effect-diagnostics-next-line preferEffectArray:off
-        .join(' '),
-    ),
-  )
+  attempt(() => page.evaluate(scriptSources))
 
-// NOTE: the gear on the home menu (#home-settings) opens the Profile on its
-// Settings tab, a list named "Game settings" of toggle buttons named by
-// their setting, with aria-pressed.
 const soundToggle = (page: Page) =>
   page
     .getByRole('list', { name: 'Game settings' })
@@ -312,28 +233,7 @@ const isMuted = (page: Page) =>
   })
 
 const frameCount = (page: Page, ms: number) =>
-  attempt(() =>
-    page.evaluate(
-      duration =>
-        // NOTE: counts the page's own animation frames, which only the
-        // browser's callback API hands out.
-        // @effect-diagnostics-next-line newPromise:off
-        new Promise<number>(done => {
-          const start = performance.now()
-          let frames = 0
-          const step = (now: number) => {
-            frames += 1
-            if (now - start < duration) {
-              requestAnimationFrame(step)
-            } else {
-              done(frames)
-            }
-          }
-          requestAnimationFrame(step)
-        }),
-      ms,
-    ),
-  )
+  attempt(() => page.evaluate(framesWithin, ms))
 
 const status = (page: Page) =>
   attempt(() =>
@@ -343,8 +243,6 @@ const status = (page: Page) =>
     ),
   )
 
-// NOTE: touch phone, so the run starts from the PLAY button and the first
-// visit picks a difficulty. The player then walks and fires for a while.
 const playARun = (page: Page) =>
   Effect.gen(function* () {
     yield* attempt(() => page.locator('#home-play').tap())
@@ -377,8 +275,6 @@ const goOffline = (context: BrowserContext, server: Subprocess | undefined) =>
     attempt(() => context.setOffline(true)),
     stop(server),
   )
-
-// THE AUDIT
 
 const offlinePart = (page: Page, base: string) =>
   Effect.gen(function* () {
@@ -420,7 +316,6 @@ const offlinePart = (page: Page, base: string) =>
     return firstCaches
   })
 
-// NOTE: the preview server this script started, stopped when it ends.
 const servers: { current: Subprocess | undefined } = { current: undefined }
 
 const audit = (base: string, isLocal: boolean) =>
@@ -463,24 +358,7 @@ const audit = (base: string, isLocal: boolean) =>
 
       yield* goOffline(context, servers.current)
       servers.current = undefined
-      // NOTE: the page's own fetch, through its service worker, with a fresh
-      // query so nothing but the network could answer.
-      /* oxlint-disable no-restricted-globals, no-restricted-properties */
-      const versionOffline = yield* attempt(() =>
-        page.evaluate(() =>
-          // @effect-diagnostics-next-line globalFetch:off
-          fetch(
-            // NOTE: runs in the page, where the clock is the page's own.
-            // @effect-diagnostics-next-line globalDate:off
-            `version.json?at=${Date.now()}`,
-            { cache: 'no-store' },
-          ).then(
-            () => 'answered',
-            () => 'failed',
-          ),
-        ),
-      )
-      /* oxlint-enable no-restricted-globals, no-restricted-properties */
+      const versionOffline = yield* attempt(() => page.evaluate(fetchVersion))
       yield* check(
         versionOffline === 'failed',
         'offline: version.json is not cached',
@@ -544,9 +422,6 @@ const audit = (base: string, isLocal: boolean) =>
     yield* Console.log('all clear')
   })
 
-// NOTE: like PART=e2e in shots26.ts, but with the worker in the loop: the
-// new build's worker installs in the background, the chip asks it to take
-// over, and the old cache goes with the reload.
 const updatePart = (
   context: BrowserContext,
   page: Page,

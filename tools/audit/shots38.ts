@@ -1,17 +1,8 @@
-// The sprites in HTML pass: How to play, the pause screen, the Munchopedia,
-// and the home corner with the update gift and the install tile, on a
-// desktop, a landscape phone, and an upright phone, as
-// `s38-<TAG>-<viewport>-<scene>.png`. The harness is a production build, so
-// every sprite is a region of the prebuilt atlas. It exits with 1 on an
-// <img> or a CSS background that shows a whole atlas sheet (an <img> cannot
-// crop, so it must take `standaloneSource`), a control card frame wider
-// than a sprite, a gift under 48 px, or a gift tag that runs into the
-// corner's other buttons or off the screen.
-//   TAG=after bun run heavy -- bun tools/audit/shots38.ts
 import { Console, Effect, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
+import { readSprites } from './inPage/shots38'
 import {
   SHOTS_DIR,
   type Viewport,
@@ -60,47 +51,7 @@ const SCENES: ReadonlyArray<Scene> = [
   { name: 'gift-install', query: 'newer=next&install' },
 ]
 
-// NOTE: a hint icon frame is at most a few dozen pixels; the atlas sheet is
-// 1024 wide.
 const MAX_SPRITE_PX = 128
-
-// NOTE: runs in the page, which has no Effect: plain loops, so no native
-// Array or String method is left for the Effect rules to flag.
-const readSprites = (maxPx: number) => {
-  // NOTE: the files the canvases draw sprites from: any URL the page loaded
-  // that is not a data URL and names a sprite sheet.
-  const isSheet = (url: string) =>
-    // NOTE: runs in the page, where effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    !url.startsWith('data:') && /sprite/i.test(url)
-  const bad: Array<string> = []
-  const images = document.querySelectorAll('img')
-  for (const image of images) {
-    if (isSheet(image.currentSrc || image.src)) {
-      bad.push(`<img class="${image.className}"> ${image.src}`)
-    }
-  }
-  for (const element of document.querySelectorAll('*')) {
-    const background = getComputedStyle(element).backgroundImage
-    // NOTE: runs in the page, where effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    for (const match of background.matchAll(/url\("?([^")]+)"?\)/g)) {
-      const url = match[1] ?? ''
-      if (isSheet(url)) {
-        bad.push(`${element.className} background ${url}`)
-      }
-    }
-  }
-  for (const frame of document.querySelectorAll('.help-card-frame')) {
-    if (
-      frame instanceof HTMLImageElement &&
-      (frame.naturalWidth === 0 || frame.naturalWidth > maxPx)
-    ) {
-      bad.push(`frame ${frame.naturalWidth} px wide`)
-    }
-  }
-  return { bad, images: images.length }
-}
 
 const checkSprites = (page: Page, where: string, problems: Array<string>) =>
   Effect.gen(function* () {
@@ -120,7 +71,6 @@ type Box = Readonly<{
   bottom: number
 }>
 
-// NOTE: runs in the page, which has no Effect: a plain loop.
 const readGift = () => {
   const boxOf = (element: Element | null) => {
     if (element === null) {
@@ -213,9 +163,6 @@ runHarnessAudit(
         if (String.startsWith('gift')(scene.name)) {
           yield* checkGift(page, viewport, where, problems)
         }
-        // NOTE: a card's frames take turns through a looping animation,
-        // which a shot with animations off holds at a hidden frame, so these
-        // run.
         yield* attempt(() =>
           page.screenshot({
             path: `${SHOTS_DIR}/s38-${tag}-${viewport.name}-${scene.name}.png`,

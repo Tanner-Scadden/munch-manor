@@ -27,31 +27,6 @@ import {
 import { FIND_RULES, type FindStyle, findStyleOfRoom } from './finds'
 import { dareThingPool } from './milestones'
 
-// The dare (LORE.md, "What the dare asks for changes every run"): your
-// friends' card asks you to bring things out of the house. One rule finds
-// them all (owner, 2026-11-10): each room holds one thing. The list rolls
-// as a campaign run starts, from the dare's own salted generator
-// (`freshDare`): which rooms behind boards hold a thing, as many as the
-// difficulty asks for, and which thing lies in each, any thing in any room
-// (owner, 2026-11-10: "fully random"), on one of the room's hand-picked
-// spots (roomSpotsOf in src/world/level/plan.ts).
-// So the loop is the same for every thing: survive the waves, earn keys,
-// open a room, find its thing in it. The list is only the rooms' things:
-// Uncle Chunk is no slot on it, just the fight once it is done
-// (src/world/dare/finale.ts).
-//
-// Each room finds its thing its own way (src/world/dare/finds.ts): a walk
-// onto it, or work at it, a rummage, a hollow book, the dumbwaiter. Either
-// way it is found for the whole crew; the seat only says who. The finale
-// waits on `isDareListDone` and the DareListDone event.
-
-// NOTE: how many things a list asks for, by difficulty
-// (Dare, Double Dare, Triple Dare, Triple Dog Dare). The house has four
-// rooms behind boards (the kitchen and the three slot rooms), so even
-// Triple Dog Dare's list has a room of its own for each thing, and the
-// dining room, where the run starts, holds none: a thing there would be
-// found before the first wave. A list longer than the rooms behind boards
-// (a test's level) spills into the rooms with none.
 export const LIST_LENGTHS: Readonly<Record<Difficulty, number>> = {
   Easy: 2,
   Normal: 3,
@@ -63,19 +38,12 @@ type DareRules = Readonly<{ reachPx: number }>
 
 const DARE_RULES: DareRules = { reachPx: 10 }
 
-// THE ROOMS' THINGS
-
-// NOTE: the things a room may still hold, in the pool's order: any but
-// those `taken`. Any of them may lie in any room (owner, 2026-11-10: "fully
-// random"), so a room draws from all of them but those the list already
-// holds, and a run's things never repeat.
 const thingsLeft = (
   pool: ReadonlyArray<DareKind>,
   taken: ReadonlyArray<DareKind>,
 ): ReadonlyArray<DareKind> =>
   Array.filter(pool, kind => !Array.contains(taken, kind))
 
-// NOTE: a draw from the dare's stream as one of `items`.
 const drawOne = <A>(
   state: number,
   items: ReadonlyArray<A>,
@@ -93,9 +61,6 @@ const hasExit = (spec: LevelSpec, room: string): boolean =>
     ({ id, maybeExit }) => id === room && Option.isSome(maybeExit),
   )
 
-// NOTE: the rooms a list may fill, in the order it fills them: the rooms
-// behind boards shuffled, then those with none in the level's order, each
-// with a hiding spot at least.
 const roomOrder = (
   state: number,
   level: Level,
@@ -118,7 +83,6 @@ type Placing = Readonly<{
   taken: ReadonlyArray<DareKind>
 }>
 
-// NOTE: a room's thing, drawn from those left, on one of its hiding spots.
 const placeIn = (
   placing: Placing,
   { hiding }: RoomSpots,
@@ -186,10 +150,6 @@ const rolledThings = (
   }
 }
 
-// NOTE: rolls the run's list and lays each thing in its room, as a run
-// starts, from the house's six and the things `opened` for the run (the
-// milestones of its player, or its room's host: src/world/dare/milestones.ts).
-// Endless ("stay the night") has no list.
 export const rollDare =
   (opened: ReadonlyArray<DareKind>) =>
   <M extends World>(world: M): M => {
@@ -206,26 +166,18 @@ export const rollDare =
     })
   }
 
-// READING
-
 const isFound = (thing: DareThing): boolean =>
   DareThingState.isAnyOf(['Found'])(thing.state)
 
-// NOTE: whether the run has a list at all: a campaign run's, never Endless.
 const hasDare = (world: World): boolean =>
   Array.isReadonlyArrayNonEmpty(world.dare.list)
 
-// NOTE: every thing on the list found: the finale's cue.
 export const isDareListDone = (world: World): boolean =>
   hasDare(world) && Array.every(world.dareThings, isFound)
 
-// NOTE: how many things on the list the crew has found: each pays rank
-// (src/world/heroes/rank.ts) and rides the run's summary.
 export const dareItemsFoundOf = (world: World): number =>
   Array.filter(world.dareThings, isFound).length
 
-// NOTE: the list in order with whether each is found yet: what the dare
-// card draws, only the rooms' things.
 export const dareCardOf = (
   world: World,
 ): ReadonlyArray<Readonly<{ kind: DareKind; isFound: boolean }>> =>
@@ -245,8 +197,6 @@ const isInBox = (point: Vector, { box }: Room): boolean =>
   point.y >= box.top &&
   point.y < box.bottom
 
-// NOTE: a point in a room the crew can walk in: one with no exit, or one
-// whose exit is open.
 export const isInOpenRoom: {
   (point: Vector): (level: Level) => boolean
   (level: Level, point: Vector): boolean
@@ -254,9 +204,6 @@ export const isInOpenRoom: {
   Array.some(level.rooms, room => room.isOpen && isInBox(point, room)),
 )
 
-// NOTE: the room a thing lies in, open or shut, by its id: what Rattles
-// names in a hint (src/features/dare/rattlesHint.ts) and the boards the
-// balance bot buys.
 export const maybeThingRoom: {
   (level: Level): (thing: DareThing) => Option.Option<Room>
   (thing: DareThing, level: Level): Option.Option<Room>
@@ -271,8 +218,6 @@ export const maybeThingRoom: {
   ),
 )
 
-// NOTE: where a thing lies on the floor to be walked onto: a hidden one's
-// spot in an open room.
 export const maybeLyingAt: {
   (level: Level): (thing: DareThing) => Option.Option<Vector>
   (thing: DareThing, level: Level): Option.Option<Vector>
@@ -287,16 +232,12 @@ export const maybeLyingAt: {
   ),
 )
 
-// NOTE: the music box's spot while it still lies there, for its tune: pure
-// flavor now, as each room's thing is found by opening the room.
 export const maybeTuneSpot = (world: World): Option.Option<Vector> =>
   Array.findFirst(world.dareThings, ({ kind, state }) =>
     kind === 'MusicBox' && DareThingState.isAnyOf(['Hidden'])(state)
       ? Option.some({ x: state.x, y: state.y })
       : Option.none(),
   )
-
-// THE STEP
 
 const setThing = (
   things: ReadonlyArray<DareThing>,
@@ -305,7 +246,6 @@ const setThing = (
 ): ReadonlyArray<DareThing> =>
   Array.map(things, thing => (thing.id === id ? { ...thing, state } : thing))
 
-// NOTE: the find style of the room a thing lies in.
 export const findStyleOf: {
   (level: Level): (thing: DareThing) => FindStyle
   (thing: DareThing, level: Level): FindStyle
@@ -316,17 +256,12 @@ export const findStyleOf: {
   }),
 )
 
-// NOTE: a lying thing found by walking onto it: a hidden one in an open
-// room that finds its thing that way.
 const maybeWalkOnto = (thing: DareThing, level: Level): Option.Option<Vector> =>
   Option.filter(
     maybeLyingAt(thing, level),
     () => FIND_RULES[findStyleOf(thing, level)].workMs <= 0,
   )
 
-// NOTE: the first standing player in slot order on a thing found by
-// walking finds it for the crew. The cellar's thing is found only while
-// the bulb lights the cellar (src/world/cellar/bulb.ts).
 const takeFor = (world: World, slot: PlayerSlot): World => {
   const { seat, player } = seatStateAt(world, slot)
   if (!isStanding(seat)) {
@@ -367,10 +302,6 @@ const finishList = (before: World, after: World): World =>
 
 const isHunting = Phase.isAnyOf(['Preparation', 'Wave'])
 
-// WORKED FINDS
-
-// NOTE: a hidden thing in an open room whose room finds it by work, with
-// the work it asks for, while its room says it can be worked.
 const maybeWorkSpot = (
   world: World,
   level: Level,
@@ -402,14 +333,10 @@ const isWorkingAt = (
   distanceBetween(seatStateAt(world, slot).player, spot) <=
     FIND_RULES[style].reachPx
 
-// NOTE: a player at work on a room's find holds their fire, as at a
-// station (src/world/step/simulation.ts).
 export const isWorkingFind: {
   (slot: PlayerSlot): (world: World) => boolean
   (world: World, slot: PlayerSlot): boolean
 } = Function.dual(2, (world: World, slot: PlayerSlot): boolean => {
-  // NOTE: only a still player works a find (isWorkingAt), so a moving one
-  // is turned down before each thing's spot, room, and style are read.
   if (
     !Array.isReadonlyArrayNonEmpty(world.dareThings) ||
     !isHunting(world.phase) ||
@@ -425,9 +352,6 @@ export const isWorkingFind: {
   )
 })
 
-// NOTE: the room's find the player at `slot` is working, with its style,
-// spot, and how far it has come, 0 to 1, for the client's motions
-// (src/render/actionPose.ts). A read, changing nothing.
 export const maybeFindWorkOf: {
   (
     slot: PlayerSlot,
@@ -471,9 +395,6 @@ export const maybeFindWorkOf: {
   },
 )
 
-// NOTE: one thing's work: each player at it adds their share, nobody at it
-// drains it at half pace, and full, it is found by the first worker in
-// slot order.
 const workThing =
   (deltaMs: number, level: Level) =>
   (world: World, thing: DareThing): World =>
@@ -525,8 +446,6 @@ const workThing =
 const workFinds = (world: World, deltaMs: number): World =>
   Array.reduce(world.dareThings, world, workThing(deltaMs, levelOf(world)))
 
-// NOTE: one tick of the dare: every standing player's walk onto a lying
-// thing, the work at each room's find, then the list's end.
 export const advanceDare: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World

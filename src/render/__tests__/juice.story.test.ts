@@ -86,9 +86,6 @@ describe('particles and decals', () => {
 
   const landingFrames = ticks(150, FRAME_MS)
 
-  // NOTE: the shot is fired across the front hall south of the start spot,
-  // between its candelabras, so every drop lands on open floor and leaves
-  // its decal.
   const HALL = { x: START_LEVEL.start.x - 30, y: START_LEVEL.start.y + 20 }
 
   const shotZombieModel = (hp: number): Model =>
@@ -341,8 +338,6 @@ describe('particles and decals', () => {
 const doomedZombieAt = (id: number, x: number, y: number): Zombie =>
   UiStruct.evolve(zombieAt(id, x, y, { speed: 0 }), { hp: () => 1 })
 
-// NOTE: a Big Lug on its last hit point always drops keys (its odds are a
-// whole number, src/world/keys/keys.ts), so its kill pops their count.
 const doomedLugAt = (id: number, x: number, y: number): Zombie =>
   UiStruct.evolve(zombieOf('Tank', id, x, y, { speed: 0 }), { hp: () => 1 })
 
@@ -360,7 +355,6 @@ const contactZombie = (id: number): Zombie =>
   zombieAt(id, START_LEVEL.start.x + 2, START_LEVEL.start.y, { speed: 0 })
 
 const BYSTANDER_ID = 401
-// NOTE: west of the player on the start row, between the candelabras.
 const BYSTANDER_X = START_LEVEL.start.x - 40
 const BYSTANDER_SPEED = 20
 const STRAY_BULLET: Bullet = {
@@ -468,8 +462,6 @@ describe('screen shake', () => {
         }),
     })
 
-  // NOTE: the shake on every frame, kept from the Story's per-frame
-  // asserts: Story compares no more than two Models.
   const shakeWhileFiring = (base: Model) =>
     Effect.gen(function* () {
       const frames: Array<Readonly<{ trauma: number; x: number; y: number }>> =
@@ -529,8 +521,6 @@ describe('screen shake', () => {
     'trauma is capped, stays on whole pixels within the max, and decays to rest',
     () =>
       Effect.gen(function* () {
-        // NOTE: one tick more than the exact decay, since whole ticks of
-        // 1000/60 ms sum a hair short of it.
         const decayFrames =
           Math.ceil(
             SHAKE_TRAUMA_MAX / SHAKE_DECAY_PER_SECOND / (FRAME_MS / 1000),
@@ -912,8 +902,6 @@ describe('juice determinism', () => {
       kind: () => 'Tank',
     })
 
-  // NOTE: every frame's Model, kept from the Story's per-frame asserts:
-  // Story compares no more than two Models.
   const playJuiceSession = Effect.fnUntraced(function* (seed: number) {
     const frames: Array<Model> = []
     const record = checkModel((frame: Model) => {

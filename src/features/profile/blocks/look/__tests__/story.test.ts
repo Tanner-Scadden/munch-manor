@@ -90,8 +90,6 @@ const fills = (shapes: ReadonlyArray<Draw.Shape>): ReadonlyArray<string> =>
     ),
   )
 
-// NOTE: every option of every part as a list of looks: the classic look
-// with that one option in it.
 type PartOptions = Readonly<{
   part: LookPart | LookToggle
   looks: ReadonlyArray<Appearance>
@@ -127,8 +125,6 @@ const optionsOfEveryPart = (base: Appearance): ReadonlyArray<PartOptions> => [
   },
 ]
 
-// NOTE: a frame as the colors it paints, so two looks compare by what the
-// player sees, not by the symbols that draw it.
 const painted = (appearance: Appearance): string => {
   const palette = playerPalette(appearance)
   const { walk, idle } = playerPixels(appearance)
@@ -410,11 +406,6 @@ describe('Character', () => {
     )
   })
 
-  // NOTE: decided with the owner on 2026-10-30: nothing is tied to a body.
-  // Every option of every part, on every body, in a tee and in the outfit
-  // with the most going on, draws whole: the same frame sizes as the
-  // classic look, every pixel a color, and each option of a part looking
-  // different from the others.
   describe.each(BODIES)('on a %s body', body => {
     const bases: ReadonlyArray<Appearance> = [
       { ...defaultAppearance, body },
@@ -497,7 +488,6 @@ const classicFrameWidths = () =>
     ),
   )
 
-// NOTE: the one field a part names, taken from a look.
 const pickPart = (
   part: LookPart | LookToggle,
   look: Appearance,

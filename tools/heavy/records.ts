@@ -11,12 +11,6 @@ import {
 
 import { encodeJson } from '../json'
 
-// JOB CLASS
-
-// NOTE: Timing jobs run alone, since load skews their numbers. A CPU job,
-// such as the balance bot, runs beside Shared jobs when the budget allows,
-// one at a time. Shared jobs, such as screenshot and tap audits, run up to
-// MAX_SHARED_JOBS at once within the budget.
 export const JobClass = Schema.TaggedUnion({
   Timing: {},
   Cpu: {},
@@ -35,11 +29,6 @@ export const jobClassOfName = (name: ClassName): JobClass =>
     Match.exhaustive,
   )
 
-// LOCK
-
-// NOTE: `jobClass` and `cost` are new. A file without them was written by
-// an older guard: in the solo lock it counts as Timing, and in a slot its
-// cost is estimated from its command.
 export const LockHolder = Schema.Struct({
   pid: Schema.Int.check(Schema.isGreaterThan(0)),
   command: Schema.String,
@@ -48,8 +37,6 @@ export const LockHolder = Schema.Struct({
   jobClass: Schema.optionalKey(ClassName),
   cost: Schema.optionalKey(Schema.Finite),
   leaseMs: Schema.optionalKey(Schema.Finite),
-  // NOTE: when the lease last began: the start, or the last boundary where
-  // a chunked job offered to yield and nobody was waiting.
   leaseFrom: Schema.optionalKey(Schema.Finite),
 })
 export type LockHolder = typeof LockHolder.Type
@@ -119,10 +106,6 @@ export const isSameHolder: {
     ),
 )
 
-// TURNS
-
-// NOTE: when a worktree's job last let go of a file. One file a worktree,
-// named by `turnFileKey`, so two worktrees never write the same file.
 export const HeldTurn = Schema.Struct({
   cwd: Schema.String,
   at: Schema.Finite,
@@ -137,7 +120,6 @@ export const decodeHeldTurn = (text: string): Option.Option<HeldTurn> =>
 export const encodeHeldTurn = (turn: HeldTurn): string =>
   `${encodeJson(HeldTurn)(turn)}\n`
 
-// NOTE: FNV-1a over the path, so the file name is short and safe.
 export const turnFileKey = (cwd: string): string =>
   pipe(
     Array.fromIterable(cwd),
@@ -149,8 +131,6 @@ export const turnFileKey = (cwd: string): string =>
     ),
     hash => String.padStart(8, '0')((hash >>> 0).toString(16)),
   )
-
-// BUDGET LEDGER
 
 export const Ledger = Schema.Record(
   Schema.String,
@@ -201,8 +181,6 @@ export const resetBudget: {
   Record.remove(ledger, key),
 )
 
-// INVOCATION
-
 export const BudgetPolicy = Schema.TaggedUnion({
   Enforced: {},
   AllowMore: {},
@@ -225,7 +203,6 @@ const ALLOW_MORE = '--allow-more'
 const RESET_BUDGET = '--reset-budget'
 const CLASS_FLAGS: ReadonlyArray<readonly [string, JobClass]> = [
   ['--timing', JobClass.cases.Timing.make({})],
-  // NOTE: kept from the two class guard, where Exclusive meant alone.
   ['--exclusive', JobClass.cases.Timing.make({})],
   ['--cpu', JobClass.cases.Cpu.make({})],
   ['--shared', JobClass.cases.Shared.make({})],

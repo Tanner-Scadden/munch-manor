@@ -1,18 +1,3 @@
-// God rays: the moonlight through the storm's windows as shafts down to the
-// floor and the pools they leave there (the library's rose window's in its
-// own colors), the flare on a lightning strike, the cone of light under
-// the dining room's chandelier, and the flashlight's beam in the cellar's
-// dark, with lit dust drifting in the shafts.
-//
-// Each is a flat quad, built once per level (the flashlight's moved each
-// frame), drawn unlit and added to what is under it at a low level, so the
-// planks show through. No volume is traced: a quad's light is worked out in
-// its own texture coordinates at each game pixel's middle and cut into a few
-// bands, as the look pass cuts the rooms' light (look.ts), so it lands on the
-// art's pixels as soft steps that brighten toward the light, never a smooth
-// gradient, never a scatter of specks, and never half a pixel. A quad reaches
-// a few pixels past what it lights, so its edges land between game pixels.
-
 import { Array, Option } from 'effect'
 import type { ColorSource, Texture } from 'pixi.js'
 
@@ -50,12 +35,6 @@ import {
 import { paneBoxesOf } from './storm'
 import { colorOf } from './textures'
 
-// THE SHADER
-
-// NOTE: how a quad's light falls off across it, by `rayUv`, its texture
-// coordinates at the game pixel's middle: a shaft fades down its length and
-// softens at its sides, a pool softens at its edges, a cone narrows to its
-// top and fades down, and a round pool fades from its middle.
 type RayShape = 'Shaft' | 'Pool' | 'Cone' | 'Round'
 
 const DENSITY: Readonly<Record<RayShape, string>> = {
@@ -66,8 +45,6 @@ const DENSITY: Readonly<Record<RayShape, string>> = {
   Round: 'clamp((1.0 - length((rayUv - vec2(0.5)) * 2.0)) * 2.5, 0.0, 1.0)',
 }
 
-// NOTE: the light is cut into this many bands, each pixel rounded to the
-// nearest, so a band's edge is a whole game pixel's step.
 const STEPS = 4
 
 const C = {
@@ -77,8 +54,6 @@ const C = {
   steps: glFloat(STEPS),
 }
 
-// NOTE: GLSL and WGSL share every line but their declarations and their
-// names for the inputs and derivatives.
 type Dialect = Readonly<{
   vec2: string
   float: string
@@ -112,10 +87,6 @@ const GPU: Dialect = {
 const declare = (d: Dialect, type: string, name: string): string =>
   d === GL ? `${type} ${name}` : `let ${name}: ${type}`
 
-// NOTE: the game pixel on screen a fragment lies in (look.ts counts the
-// same grid), its texture coordinates moved to that pixel's middle along
-// the quad's own slope (the derivatives' 2x2 inverse), then the light there,
-// cut into bands.
 const rayCode = (
   d: Dialect,
   input: Readonly<{ shape: RayShape; isTextured: boolean }>,
@@ -142,8 +113,6 @@ const rayCode = (
 }`
 }
 
-// NOTE: `select1(isTrue, then, else)`, which GLSL writes as a ternary and
-// WGSL as `select` with its arguments the other way round.
 const GL_SELECT = `
 float select1(bool isTrue, float whenTrue, float whenFalse) {
   return isTrue ? whenTrue : whenFalse;
@@ -170,8 +139,6 @@ const rayBitOf = (
   },
 })
 
-// NOTE: unlit, added to what is under it, writing no depth, so it lights
-// what it passes over and hides nothing.
 const rayMaterial = (
   input: Readonly<{
     shape: RayShape
@@ -194,14 +161,8 @@ const rayMaterial = (
   return material
 }
 
-// THE QUADS
-
 type Vec3 = Readonly<{ x: number; y: number; z: number }>
 
-// NOTE: a flat four-sided quad: its corner where its light's texture
-// coordinates are 0, 0, and its two edges from there, across (u) and along
-// (v). `across` and `along` are its size on screen in game pixels, for the
-// few pixels it reaches past what it lights.
 type RayQuad = Readonly<{
   corner: Vec3
   u: Vec3
@@ -273,7 +234,6 @@ const quadsMesh = (
   })
 }
 
-// NOTE: a floor quad over a box of game pixels, its v down the map.
 const FLOOR_LIFT = 0.016
 
 const floorQuadOf = (box: Box): RayQuad => ({
@@ -284,12 +244,9 @@ const floorQuadOf = (box: Box): RayQuad => ({
   along: box.height,
 })
 
-// NOTE: a game pixel's height up the screen, for a quad's size there.
 const screenRiseOf = (point: Vec3): number =>
   (point.z * Math.sin(PITCH) - point.y * Math.cos(PITCH)) / UNIT
 
-// NOTE: a quad from a line `from` (across by `width` game pixels) to a
-// line `to`, the same width, so it is flat.
 const slopeQuadOf = (
   input: Readonly<{ from: Vec3; to: Vec3; width: number }>,
 ): RayQuad => {
@@ -303,8 +260,6 @@ const slopeQuadOf = (
   }
 }
 
-// THE WINDOWS
-
 const heightOver = (level: Level, glass: Box): number => {
   const row = Math.floor((glass.y + glass.height / 2 - level.top) / TILE_SIZE)
   const column = Math.floor(
@@ -313,11 +268,6 @@ const heightOver = (level: Level, glass: Box): number => {
   return wallHeightAt({ tiles: level.tiles, row, column })
 }
 
-// NOTE: a shaft leaves the foot of its glass, the glass's own width, and
-// comes down in the middle of the patch of floor its light falls on, so the
-// two overlap only by half. A back wall's glass stands up its face, a row
-// a screen pixel over the sill (wallQuads.ts); a side window's lies on its
-// wall's top, and its shaft leaves just under the top's front edge.
 const SHAFT_TOP_DROP = 0.02
 
 const shaftFootOf = (level: Level, { kind, glass, sill }: Pane): number => {
@@ -352,8 +302,6 @@ type Windows = Readonly<{
 
 const builtWindows = new WeakMap<Level, Windows>()
 
-// NOTE: the windows' light in every open room, built once per level (a new
-// Level each time an exit opens).
 const windowRaysOf = (level: Level): Windows => {
   const cached = builtWindows.get(level)
   if (cached !== undefined) {
@@ -381,11 +329,6 @@ const windowRaysOf = (level: Level): Windows => {
   return windows
 }
 
-// NOTE: the rose's light on the floor as a texture: the window's own shape
-// reduced to a few panes, its gold heart and a ring of colored wedges round
-// it, a texel a block of game pixels once it is stretched over its pool, so
-// it lands as a soft rosette of colored light and never as single specks.
-// Each pane's color is eased toward white, as light through glass reads.
 const ROSETTE_SIZE = 5
 const ROSETTE_WEDGES: ReadonlyArray<string> = ['r', 'b', 'p', 'r', 'b', 'g']
 const ROSETTE_HEART = 'y'
@@ -421,16 +364,10 @@ const roseTextureOf = (): Texture => {
   return dataTexture({ data: bytes, width: ROSETTE_SIZE, height: ROSETTE_SIZE })
 }
 
-// THE DUST
-
-// NOTE: motes drifting slowly down each shaft, lit by it.
 const MOTES_PER_SHAFT = 5
 const MOTE_DRIFT_MS = 9000
 const MOTE_COLOR = 0xdfe8ff
 
-// NOTE: a point in the world as a mote's spot on the floor and its height,
-// in game pixels, as a billboard stands (billboards.ts): `standingPointOf`
-// read backward, with nothing toward the lens.
 const moteAt = (
   point: Vec3,
 ): Readonly<{ x: number; y: number; hover: number }> => {
@@ -442,8 +379,6 @@ const moteAt = (
   }
 }
 
-// NOTE: a shaft this far from the viewer, in game pixels each way, is off
-// every screen the game has, so its dust need not stand.
 const NEAR_X = 360
 const NEAR_Y = 260
 
@@ -477,10 +412,6 @@ export const shaftMotesOf = (
   })
 }
 
-// THE LIGHTS
-
-// NOTE: each light's color and how strong it is between strikes, and how
-// much a strike adds to the windows' light.
 const MOON_COLOR = 0xb8c8ff
 const STRIKE_COLOR = 0xf2f6ff
 const SHAFT_LEVEL = 0.03
@@ -494,9 +425,6 @@ const CANDLE_POOL_LEVEL = 0.04
 const BEAM_COLOR = 0xfff2d0
 const BEAM_LEVEL = 0.08
 
-// NOTE: the chandelier's cone, from its candles down into the table's gap,
-// as wide as the gap at the floor (the table hides any wider), and the pool
-// it leaves there a little wider.
 const CONE_INSET_PX = 2
 const POOL_REACH_PX = 6
 
@@ -526,8 +454,6 @@ const coneOf = (level: Level): Option.Option<ReadonlyArray<RayQuad>> =>
     ),
   )
 
-// NOTE: the flashlight's beam: from the hand down to the floor ahead, as
-// long as the light it shows (lights.ts) reaches brightly.
 const BEAM_LENGTH_PX = 72
 const BEAM_WIDTH_PX = 34
 const HAND_AT = { above: 5, out: 0.8 }
@@ -569,9 +495,6 @@ const beamOf = (
   }
 }
 
-// NOTE: mutable on purpose: it owns the level's ray meshes and their
-// materials, built once per level, and the flashlight's beam, moved each
-// frame.
 export class GodRays {
   private readonly holder = new Container3D()
   private readonly moon = rayMaterial({ shape: 'Shaft', color: MOON_COLOR })

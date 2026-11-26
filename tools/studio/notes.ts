@@ -2,12 +2,6 @@ import { Array, Schema, String, pipe } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-// NOTE: the notes between the art studio's page and the agent, as a log of
-// events in NOTES_FILE, one JSON object a line: a note asked for (Noted) and
-// a note done (Resolved). The page posts a draft to NOTES_PATH and reads the
-// folded list back from it; tools/vite/studioNotes.ts writes the log, and
-// ./inbox.ts and ./resolve.ts are the agent's side. A note's picture from
-// before the change is a PNG in BEFORE_DIR, served under BEFORE_PATH.
 export const NOTES_PATH = '/__studio/notes'
 
 export const BEFORE_PATH = '/__studio/before/'
@@ -22,8 +16,6 @@ export type NoteKind = typeof NoteKind.Type
 export const Tile = Schema.Struct({ column: Schema.Finite, row: Schema.Finite })
 export type Tile = typeof Tile.Type
 
-// NOTE: a block of room tiles, both corners included: what a drag over the
-// room picks. One tile is an area with the same corners.
 export const TileArea = Schema.Struct({
   left: Schema.Finite,
   top: Schema.Finite,
@@ -32,9 +24,6 @@ export const TileArea = Schema.Struct({
 })
 export type TileArea = typeof TileArea.Type
 
-// NOTE: a spot on a picked sprite, in its pixels from its anchor. The same
-// shape as the World's Vector, declared here since the Vite config loads this
-// module natively, and src's imports there carry no file extensions.
 export const Pin = Schema.Struct({ x: Schema.Finite, y: Schema.Finite })
 export type Pin = typeof Pin.Type
 
@@ -49,8 +38,6 @@ const NoteFields = {
   note: Schema.String,
 }
 
-// NOTE: what the page sends: the note, and the picture of the thing as it
-// looked, a PNG data URL, if the page could take one.
 export const NoteDraft = Schema.Struct({
   ...NoteFields,
   before: Schema.NullOr(Schema.String),
@@ -93,8 +80,6 @@ export const StoredNotesJson = Schema.fromJsonString(Schema.Array(StoredNote))
 
 const decodeEvent = Schema.decodeOption(NoteEventJson)
 
-// NOTE: the log's lines that read as events. A line that does not (a hand
-// edit gone wrong) is skipped rather than losing every note after it.
 export const eventsOf = (text: string): ReadonlyArray<NoteEvent> =>
   pipe(
     String.split(text, '\n'),
@@ -119,7 +104,6 @@ const openNote = (event: Noted): StoredNote => ({
   reply: '',
 })
 
-// NOTE: the notes the log holds, oldest first, each with its last reply.
 export const notesOf = (
   events: ReadonlyArray<NoteEvent>,
 ): ReadonlyArray<StoredNote> =>
@@ -135,6 +119,5 @@ export const notesOf = (
     }),
   )
 
-// NOTE: the next note's id: n1, n2, and on, one past the notes so far.
 export const nextNoteId = (events: ReadonlyArray<NoteEvent>): string =>
   `n${Array.filter(events, NoteEvent.isAnyOf(['Noted'])).length + 1}`

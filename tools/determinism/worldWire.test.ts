@@ -1,8 +1,3 @@
-// The World on the binary wire (src/world/net/worldCodec.ts), in single player: a
-// snapshot reads back as the World, and a client that applies every diff
-// holds what a snapshot of the room's World gives. The co-op room's own
-// round trips are in src/world/net/__tests__/roomWorld.test.ts.
-
 import { Array, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 

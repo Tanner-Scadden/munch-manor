@@ -1,7 +1,3 @@
-// The boss tests' shared setup: the final wave's boss at a spot, the wave
-// he fights in, and his events. src/world/zombies/__tests__/boss.story.test.ts and
-// src/world/zombies/__tests__/bossAttacks.story.test.ts start from it.
-
 import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -24,10 +20,6 @@ import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
 import { freshFight } from '../boss'
 import { ZOMBIE_KINDS, scaledHp } from '../zombies'
 
-// NOTE: the fight's middle: in the dining room's open aisle just south of
-// the party table, rows 12 and 13, which runs wall to wall with nothing in
-// it, a tile and a half north of the start spot. inWave stands the player
-// there.
 export const CENTER_X = START_LEVEL.start.x
 export const CENTER_Y = START_LEVEL.start.y - 15
 export const BOSS_ID = 777
@@ -48,7 +40,6 @@ export const spawnAt: {
   formation: 'Squad',
 }))
 
-// NOTE: data first when the wave leads: a wave is a number, spawns are not.
 export const inWave: {
   (
     spawns: ReadonlyArray<PlannedSpawn>,
@@ -82,7 +73,6 @@ export const inWave: {
     ),
 )
 
-// NOTE: the boss at full health, out of BOSS_HP.
 export const bossAt: {
   (y: number): (x: number) => Zombie
   (x: number, y: number): Zombie
@@ -92,7 +82,6 @@ export const bossAt: {
   }),
 )
 
-// NOTE: the boss with `hp` left, out of BOSS_HP.
 export const bossWithHpAt: {
   (x: number, y: number): (hp: number) => Zombie
   (hp: number, x: number, y: number): Zombie
@@ -100,8 +89,6 @@ export const bossWithHpAt: {
   UiStruct.evolve(bossAt(x, y), { hp: () => hp }),
 )
 
-// NOTE: the fight a Model's boss stands in, failing the test when he is
-// not fighting.
 export const fightOf = (current: Model): typeof Boss.cases.Fighting.Type =>
   Option.getOrThrow(Option.liftPredicate(current.boss, Boss.guards.Fighting))
 

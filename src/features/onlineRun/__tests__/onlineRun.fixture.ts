@@ -10,10 +10,6 @@ import {
   startRoomWorld,
 } from '../../../world/net/roomWorld'
 
-// What this folder's online run tests start from: a veteran past the open
-// break lesson, and a two seat room's World past its intro, this player in
-// slot 1.
-
 export const OWN_SLOT = 1
 
 export const graduated: Model = UiStruct.evolve(asVeteran(initialModel), {
@@ -25,6 +21,5 @@ export const roomWorld = pastArrival(
   startRoomWorld([0, OWN_SLOT], 7, DEFAULT_ROOM_SETTINGS),
 )
 
-// NOTE: co-op's own screen, by its name, as the root draws it.
 export const coopScreen = (screen: string) =>
   withAttrs({ 'data-screen': screen })(byClass('coop'))

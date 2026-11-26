@@ -1,23 +1,8 @@
-// The menus polish pass: the home menu (fresh, with bests, the corner with
-// the gift and the install tile, Endless), the iPhone guide, the update
-// greeting, the MORE hand, the daily missions panel, every menu panel (How
-// to play and a flipped card, What's New and an older day, the difficulty
-// question, LEAVE), the Munchopedia (empty, found, its entries, the Shop
-// page), the Dare Journal's pages and the shelf with its opened things, and every tab of the Profile, on a 1280x720 desktop, an 852x393
-// phone on its side, a 393x852 phone held upright, a small 360x740 Android,
-// and a 1024x768 tablet, as `menus-<TAG>-<viewport>-<scene>.png`.
-// It prints a phone button under 44 px, a button past the screen's edge,
-// text cut off in its box, and a page that scrolls, and exits with 1 on any.
-// FRAMES=1 also steps each opening animation (the hand's deal, a panel, the
-// Profile, a page turn, the gift) through `FRAME_STEPS` paused frames, as
-// `menus-<TAG>-<viewport>-<scene>-f<n>.png`, to catch a jump or a first
-// frame in the wrong place.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsMenus.ts
-// ONLY picks scenes and VIEWPORTS viewports (`d1280,l852,p393,a360,t1024`).
 import { Array, Config, Effect, Option } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
+import { readLayout } from './inPage/shotsMenus'
 import {
   type Log,
   type ScenePages,
@@ -55,7 +40,6 @@ type Scene = Readonly<{
   name: string
   query: string
   open?: ReadonlyArray<string>
-  // NOTE: the last opener's animation is stepped frame by frame with FRAMES.
   isAnimated?: boolean
 }>
 
@@ -263,84 +247,6 @@ const tapAt = (page: Page, viewport: Viewport, selector: string) =>
     return true
   })
 
-// NOTE: runs in the page, which has no Effect: plain loops, so no native
-// Array method is left for the Effect rules to flag.
-const readLayout = ({
-  minSide,
-  isPhone,
-}: Readonly<{ minSide: number; isPhone: boolean }>) => {
-  const openDialog = document.querySelector('dialog[open]')
-  const scope: ParentNode = openDialog ?? document
-  const width = window.innerWidth
-  const height = window.innerHeight
-  const small: Array<string> = []
-  const outside: Array<string> = []
-  for (const button of scope.querySelectorAll('button, a[href]')) {
-    if (openDialog === null && button.closest('dialog') !== null) {
-      continue
-    }
-    const box = button.getBoundingClientRect()
-    if (box.width === 0 || box.height === 0) {
-      continue
-    }
-    // NOTE: runs in the page, where effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    const label = button.getAttribute('aria-label') ?? button.textContent.trim()
-    if (isPhone && (box.width < minSide - 0.5 || box.height < minSide - 0.5)) {
-      small.push(`${label} ${Math.round(box.width)}x${Math.round(box.height)}`)
-    }
-    if (
-      box.left < -0.5 ||
-      box.top < -0.5 ||
-      box.right > width + 0.5 ||
-      box.bottom > height + 0.5
-    ) {
-      outside.push(
-        `${label} ${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}x${Math.round(box.height)}`,
-      )
-    }
-  }
-  const clipped: Array<string> = []
-  for (const element of scope.querySelectorAll('*')) {
-    if (
-      !(element instanceof HTMLElement) ||
-      element.children.length > 0 ||
-      element.closest('.sr-only') !== null
-    ) {
-      continue
-    }
-    // NOTE: runs in the page, where effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    const text = element.textContent.trim()
-    if (text === '' || element.offsetWidth === 0) {
-      continue
-    }
-    const style = getComputedStyle(element)
-    if (style.overflow === 'visible' && style.textOverflow !== 'ellipsis') {
-      continue
-    }
-    if (
-      element.scrollWidth > element.clientWidth + 1 ||
-      element.scrollHeight > element.clientHeight + 1
-    ) {
-      // NOTE: runs in the page, where effect's String is not loaded.
-      // @effect-diagnostics-next-line preferEffectString:off
-      const head = text.slice(0, 24)
-      clipped.push(
-        `${element.className} "${head}" ${element.scrollWidth}x${element.scrollHeight} in ${element.clientWidth}x${element.clientHeight}`,
-      )
-    }
-  }
-  return {
-    small,
-    outside,
-    clipped,
-    pageScroll: document.documentElement.scrollHeight - window.innerHeight,
-  }
-}
-
-// NOTE: every running animation paused and stepped from its start to its
-// end, a shot at each step.
 const stepFrames = (page: Page, name: string) =>
   Effect.gen(function* () {
     for (let step = 0; step <= FRAME_STEPS; step++) {

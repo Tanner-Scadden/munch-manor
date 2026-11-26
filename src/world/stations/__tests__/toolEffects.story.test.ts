@@ -41,10 +41,6 @@ import {
   toolBoxOf,
 } from './roomTools.fixture'
 
-// What each room tool does once it fires (src/world/stations/toolRules.ts):
-// the gramophone's waltz, the leaning stacks' heap, the revolving shelf's
-// spin, the barrel's roll, the bulb's light, and the soup pot's spill.
-
 const FRAME_MS = FIXED_STEP_MS
 const WALK_SPEED = 30
 
@@ -53,7 +49,6 @@ const onlyZombie = (model: Model): Zombie =>
 
 const isDazed = (zombie: Zombie): boolean => zombie.action._tag === 'Dazed'
 
-// NOTE: where the one zombie stands after `count` frames from `model`.
 const zombieAfter = (model: Model, count: number) =>
   modelAfter(model, ticks(count, FRAME_MS)).pipe(Effect.map(onlyZombie))
 
@@ -260,9 +255,6 @@ describe('the soup pot', () => {
   const pot = boxCenter(toolBoxOf(houseWave, 'SoupPot'))
   const puddle = { x: pot.x, y: pot.y + TOOL_RULES.SoupPot.spillDownPx }
   const edge = TOOL_RULES.SoupPot.radiusPx
-  // NOTE: a zombie east of the puddle, on dry floor, walking west through
-  // it at the player on its far side. The kitchen's old soup lies west of
-  // the pot.
   const crossing = withPlayerAt(
     withZombies(houseWave, [
       zombieAt(1, puddle.x + edge + 4, puddle.y, { speed: WALK_SPEED }),

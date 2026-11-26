@@ -54,8 +54,6 @@ import {
   statsAt,
 } from './weapons'
 
-// BOOSTS
-
 export type Ammo = 'Spent' | 'Free'
 
 type BoostStats = Readonly<{
@@ -118,8 +116,6 @@ const GLAZE_ORDER: ReadonlyArray<BoostKind> = ['Pierce', 'Damage', 'RapidFire']
 
 export const BOOST_STACK_MAX = 1.5
 export const BOOST_WARNING_MS = 2000
-
-// PICKUPS
 
 const PickupEffect = UiSchema.TaggedEnum({
   Boost: { boost: BoostKind },
@@ -199,15 +195,11 @@ export const CALLOUT_LIFETIME_MS: Readonly<Record<CalloutLook, number>> = {
   Named: 1000,
 }
 
-// NOTE: a gun's level up (src/world/gear/gunLevels.ts) pops big and short,
-// as long as a first grab, so its name and change line can be read.
 export const LEVEL_CALLOUT_LIFETIME_MS = 1600
 
 export const BURP_RADIUS = 110
 export const BURP_DAMAGE = 5
 const BURP_KNOCKBACK = 260
-
-// DROPS
 
 export const DROP_CHANCE: Readonly<Record<ZombieKind, number>> = {
   Shambler: 0.03,
@@ -235,8 +227,6 @@ export const DROP_RULES: DropRules = {
 const TUTORIAL_WAVE = 1
 export const TUTORIAL_DROP_KILL = 3
 export const TUTORIAL_DROP: PickupKind = 'RapidFire'
-
-// EFFECTIVE STATS
 
 const isOn = BoostTimer.isAnyOf(['On'])
 
@@ -285,10 +275,6 @@ export const firingStats: {
     boostWeapon(statsAt(kind, tier), boosts),
 )
 
-// NOTE: the Laser Sight steadies the hand (owner, 2026-11-14): a gun that
-// scatters throws its pellets in a cone this much narrower, and the fan it
-// draws narrows with it. A gun that shoots straight already goes where the
-// line points.
 export const LASER_SPREAD_SCALE = 0.55
 
 export const withLaserSight = (stats: WeaponStats): WeaponStats =>
@@ -338,8 +324,6 @@ export const keepTopped: {
     : player,
 )
 
-// TIMERS
-
 const tickTimer = (timer: BoostTimer, deltaMs: number): BoostTimer =>
   BoostTimer.match(timer, {
     Off: () => timer,
@@ -360,8 +344,6 @@ const extendTimer = (timer: BoostTimer, durationMs: number): BoostTimer => {
   return BoostTimer.On({ remainingMs, durationMs: remainingMs })
 }
 
-// NOTE: a boost's clock runs only while a wave is on, so one grabbed late in
-// a wave carries over the break to the next (owner, 2026-11-02).
 const tickBoosts = (model: World, slot: PlayerSlot, deltaMs: number): World => {
   const { boosts: before, player } = seatStateAt(model, slot)
   if (
@@ -387,8 +369,6 @@ const tickBoosts = (model: World, slot: PlayerSlot, deltaMs: number): World => {
   })
 }
 
-// FLOOR
-
 const agePickups = (model: World, deltaMs: number): World => {
   if (Array.isReadonlyArrayEmpty(model.pickups)) {
     return model
@@ -411,8 +391,6 @@ const agePickups = (model: World, deltaMs: number): World => {
     ],
   })
 }
-
-// GRABBING
 
 const isWithinGrab =
   (player: Player) =>
@@ -501,15 +479,11 @@ const grabPickups = (model: World, slot: PlayerSlot): World => {
   )
 }
 
-// DROPPING
-
 const SPOT_LEFT = 16
 const SPOT_TOP = 26
 const SPOT_EDGE = 16
 const SPOT_STEPS = 24
 
-// NOTE: a drop settles inside the room it fell in, so one in the kitchen
-// stays in the kitchen and one in the parlour lands where it always did.
 const roomMiddleOf = ({ box }: Room): Vector => ({
   x: (box.left + box.right) / 2,
   y: (box.top + box.bottom) / 2 + 5,
@@ -552,8 +526,6 @@ const settleSpot = (
   )
 }
 
-// NOTE: a heart drops only for a player who has lost one, and never in a
-// Glass run (src/world/run/modifiers.ts), where hearts come from Rattles alone.
 const eligibleKinds = (
   player: Player,
   modifiers: Modifiers,
@@ -742,11 +714,6 @@ const dropLoot = (before: World, model: World, worldMs: number): World =>
     GameOver: () => model,
   })
 
-// FRAME
-
-// NOTE: a player at the stall's counter or an exit's offer holds still: in
-// single player the whole world does, in co-op only their own boosts and
-// grabs (decided row 8).
 export const advancePowerUps: {
   (model: World, worldMs: number): (before: World) => World
   (before: World, model: World, worldMs: number): World

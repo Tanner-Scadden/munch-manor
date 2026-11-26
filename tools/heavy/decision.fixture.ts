@@ -1,7 +1,3 @@
-// The guard's decision tests' shared setup: the clock, lock holders of each
-// class, waiting jobs, and checks on a Decision. tools/heavy/decision.test.ts
-// and tools/heavy/queue.test.ts start from it.
-
 import { Function, Option } from 'effect'
 
 import { Decision, type SharedSlot, type Snapshot } from './decision'
@@ -60,7 +56,6 @@ export const waiting: {
   }),
 )
 
-// NOTE: 12 cores, a target of 8.4, a load of 2, nothing running.
 export const BASE: Snapshot = {
   pid: 7000,
   cwd: '/repo',
@@ -86,10 +81,11 @@ export const TIMING: Snapshot = {
   jobClass: JobClass.cases.Timing.make({}),
   job: JobKind.cases.Other.make({}),
 }
-// NOTE: a CPU job's snapshot is the base one; tests name it CPU when the
-// class is the point. `@alias` tells knip the second name is on purpose.
-/** @alias */
-export const CPU = BASE
+export const CPU: Snapshot = {
+  ...BASE,
+  jobClass: JobClass.cases.Cpu.make({}),
+  job: JobKind.cases.Balance.make({}),
+}
 export const SHARED: Snapshot = {
   ...BASE,
   jobClass: JobClass.cases.Shared.make({}),

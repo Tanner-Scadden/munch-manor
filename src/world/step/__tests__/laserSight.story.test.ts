@@ -10,9 +10,6 @@ import { holdFire, modelAfter, steps, tick } from '../../../test/testing'
 import { LASER_SPREAD_SCALE } from '../../gear/powerups'
 import { modifyFocus } from '../../party/party'
 
-// The Laser Sight steadies the hand: the same shotgun blast, from the same
-// seed, throws its pellets in a cone LASER_SPREAD_SCALE times as wide.
-
 const shotgunReady = (laserSight: 'None' | 'Fitted'): Model =>
   modifyFocus(withArsenal(quietWave(2), holdingSecond(SHOTGUN)), {
     laserSight: () => laserSight,

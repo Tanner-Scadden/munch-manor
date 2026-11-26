@@ -85,17 +85,11 @@ import {
   targetsOf,
 } from '../party'
 
-// NOTE: enough keys for the kitchen's padlock, with two to spare.
 const KEYS = EXIT_RULES.kitchenKeys + 2
-
-// Co-op's World rules (MULTIPLAYER.md, Phase 1), played through the root's Story
-// with two and four players in one World.
 
 const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60
 const RIGHT_X = 240
-// NOTE: the dining room's open aisle south of the party table, clear wall
-// to wall.
 const ROW_Y = 130
 
 const act = (current: Model, slot: number, action: SeatAction): Model =>
@@ -328,8 +322,6 @@ describe("the crew's key ring", () => {
   const DOOR_Y = 26
   const HOLD_TICKS = Math.ceil(PURCHASE_RULES.holdMs / TICK_MS) + 2
 
-  // NOTE: the seats in `firing` shoot the whole time, so standing at the
-  // door does not buy for them (src/world/shop/purchase.ts).
   const holding = (
     slots: ReadonlyArray<number>,
     firing: ReadonlyArray<number> = [],

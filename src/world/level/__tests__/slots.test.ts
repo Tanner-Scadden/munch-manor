@@ -19,10 +19,6 @@ import { DOOR_SYMBOLS, tilesWithSymbol } from '../tileGrid'
 import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
 import { EVERY_EXIT } from './exits.fixture'
 
-// The house's slots (docs/ROOM_DRAFTS.md): the parlour west of the dining
-// room, the library east of it, and the cellar beyond the library, each on
-// the slot's footprint, with slot-relative doors and exits.
-
 const WHOLE_HOUSE = levelFor(MANOR_SPEC, EVERY_EXIT)
 
 const boxOf = (level: Level, id: string) =>
@@ -87,12 +83,10 @@ describe('the whole house', () => {
   })
 
   test('keeps a slot room port that faces outside, and the shelves no library swings, as wall', () => {
-    // NOTE: the parlour's west port and the cellar's east port.
     Array.forEach([8, 9], row => {
       expect(isWalkableTile(WHOLE_HOUSE, -32, row + 4)).toBe(false)
       expect(isWalkableTile(WHOLE_HOUSE, 99, row)).toBe(false)
     })
-    // NOTE: the library's east shelf and the cellar's west wall behind it.
     Array.forEach([13, 14], row => {
       expect(isWalkableTile(WHOLE_HOUSE, 67, row)).toBe(false)
       expect(isWalkableTile(WHOLE_HOUSE, 68, row)).toBe(false)
@@ -114,9 +108,6 @@ describe('the whole house', () => {
 })
 
 describe('another arrangement', () => {
-  // NOTE: what layer 11 will roll: the library west swings its east shelf
-  // into the dining room's west wall; in the far slot, its west shelf into
-  // the east room.
   test('swings the library shelf toward the room it is entered from', () => {
     const libraryWest = manorSpecFor({
       West: LIBRARY_ROOM_ID,

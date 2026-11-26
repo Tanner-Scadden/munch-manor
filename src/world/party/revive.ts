@@ -52,17 +52,9 @@ import {
   seatStateAt,
 } from './party'
 
-// Co-op's life and death (MULTIPLAYER.md, decided row 4): downed players,
-// revives, bleeding out, coming back at the break, READY, and friendly fire
-// with the Friendly Fire modifier. Single player never reaches any of it.
-
-// DOWNED AND REVIVED
-
 const isStill = ({ intent }: SeatState): boolean =>
   intent.move.x === 0 && intent.move.y === 0
 
-// NOTE: a teammate revives a downed player by standing still beside them:
-// standing, here, not moving, within reach.
 const isReviver =
   (downed: Readonly<{ slot: number; player: Vector }>) =>
   (mate: SeatState): boolean =>
@@ -99,7 +91,6 @@ const fall = (world: World, slot: PlayerSlot): World => {
   })
 }
 
-// NOTE: a Glass run (src/world/run/modifiers.ts) gets up on one heart, as it started.
 const reviveHeartsOf = (world: World): number =>
   activeModifiersOf(world).glass ? 1 : COOP_RULES.reviveHearts
 
@@ -124,8 +115,6 @@ const standUp = (world: World, slot: PlayerSlot, hearts: number): World => {
   })
 }
 
-// NOTE: every teammate standing still beside a player when they get up
-// counts the revive, for the crew board.
 const bleed = (
   world: World,
   slot: PlayerSlot,
@@ -177,13 +166,6 @@ const advanceSeat =
     })
   }
 
-// KNEELING FOR CPR
-
-// NOTE: a reviver kneels at the downed player's side (owner, 2026-11-12),
-// so the CPR pose (src/render/actionPose.ts) reads beside the body rather
-// than on top of it. The spot is a body's width to the left or right, the
-// nearer side first, then the other, then where they stand. It sits well
-// inside the revive's reach, and the slide is a few frames long.
 const KNEEL_SIDE_PX = PLAYER_RADIUS * 2 + 1
 const KNEEL_SLIDE_PX_PER_SECOND = 90
 const OPEN_SPOT_SLACK_PX = 0.01
@@ -192,8 +174,6 @@ type Kneel = Readonly<{ slot: PlayerSlot; body: Vector; spot: Vector }>
 
 type Ground = Readonly<{ level: Level; blockers: ReadonlyArray<Box> }>
 
-// NOTE: a spot is open when the level would not push a player standing
-// there anywhere: no wall, prop, or trap under it, and inside the bounds.
 const isOpenSpot = ({ level, blockers }: Ground, spot: Vector): boolean => {
   const { bounds } = level
   return (
@@ -208,43 +188,38 @@ const isOpenSpot = ({ level, blockers }: Ground, spot: Vector): boolean => {
   )
 }
 
-const sidesOf = (body: Vector, mate: Vector): ReadonlyArray<Vector> => {
-  const left = { x: body.x - KNEEL_SIDE_PX, y: body.y }
-  const right = { x: body.x + KNEEL_SIDE_PX, y: body.y }
-  return mate.x < body.x ? [left, right] : [right, left]
-}
-
 const isSameSpot = (first: Vector, second: Vector): boolean =>
   first.x === second.x && first.y === second.y
 
-// NOTE: each reviver of one body, in seat order, takes the nearer open
-// side no one has taken yet, or stays where they are.
 const kneelsAround = (
   ground: Ground,
   body: Vector,
   revivers: ReadonlyArray<SeatState>,
 ): ReadonlyArray<Kneel> => {
+  const left = { x: body.x - KNEEL_SIDE_PX, y: body.y }
+  const right = { x: body.x + KNEEL_SIDE_PX, y: body.y }
+  let isLeftTaken = false
+  let isRightTaken = false
+  const isTaken = (side: Vector): boolean =>
+    (isLeftTaken && isSameSpot(side, left)) ||
+    (isRightTaken && isSameSpot(side, right))
   const kneels: Array<Kneel> = []
   for (const mate of revivers) {
-    const spot = pipe(
-      sidesOf(body, mate.player),
-      Array.findFirst(
-        side =>
-          isOpenSpot(ground, side) &&
-          // NOTE: at most 4 seats kneel, so a few spots to check.
-          // oxlint-disable-next-line munch/no-nested-scan
-          !Array.some(kneels, kneel => isSameSpot(kneel.spot, side)),
-      ),
-      Option.getOrElse(() => ({ x: mate.player.x, y: mate.player.y })),
-    )
+    const [first, second] =
+      mate.player.x < body.x ? [left, right] : [right, left]
+    const spot =
+      isOpenSpot(ground, first) && !isTaken(first)
+        ? first
+        : isOpenSpot(ground, second) && !isTaken(second)
+          ? second
+          : { x: mate.player.x, y: mate.player.y }
     kneels.push({ slot: mate.seat.slot, body, spot })
+    isLeftTaken = isLeftTaken || isSameSpot(spot, left)
+    isRightTaken = isRightTaken || isSameSpot(spot, right)
   }
   return kneels
 }
 
-// NOTE: who kneels where, read off one World before anyone moves, so the
-// order of the seats never matters. A reviver beside two bodies kneels by
-// the first in seat order.
 const kneelsOf = (world: World, ground: Ground): ReadonlyArray<Kneel> => {
   const players = playersOf(world)
   const kneels: Array<Kneel> = []
@@ -253,14 +228,16 @@ const kneelsOf = (world: World, ground: Ground): ReadonlyArray<Kneel> => {
     if (!isDowned(downed.seat)) {
       continue
     }
-    // NOTE: at most 4 seats, each downed body checked against the others.
-    // oxlint-disable-next-line munch/no-nested-scan
-    const revivers = Array.filter(
-      players,
-      mate =>
-        isReviver({ slot: downed.seat.slot, player: downed.player })(mate) &&
-        !kneeling.has(mate.seat.slot),
-    )
+    const isDownedReviver = isReviver({
+      slot: downed.seat.slot,
+      player: downed.player,
+    })
+    const revivers: Array<SeatState> = []
+    for (const mate of players) {
+      if (isDownedReviver(mate) && !kneeling.has(mate.seat.slot)) {
+        revivers.push(mate)
+      }
+    }
     for (const kneel of kneelsAround(ground, downed.player, revivers)) {
       kneels.push(kneel)
       kneeling.add(kneel.slot)
@@ -269,8 +246,6 @@ const kneelsOf = (world: World, ground: Ground): ReadonlyArray<Kneel> => {
   return kneels
 }
 
-// NOTE: a step toward the spot through the level's collision, kept only
-// while it stays in reach, so the slide never ends a revive.
 const slideTo = (
   ground: Ground,
   from: Vector,
@@ -315,11 +290,6 @@ const kneelRevivers = (world: World, deltaMs: number): World => {
   )
 }
 
-// NOTE: after the tick's hurts: a player at zero hearts goes down, and a
-// downed one bleeds, or is revived by a teammate who stood still beside
-// them for COOP_RULES.reviveMs. Who stood still is read before anyone
-// changes, so the order of the seats never matters. A reviver whose
-// teammate is still down then slides toward their side to kneel.
 export const advanceParty: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World
@@ -333,9 +303,6 @@ export const advanceParty: {
   )
 })
 
-// NOTE: the downed teammate the player at `slot` is picking up, with how
-// far the revive has come, 0 to 1, for the client's CPR
-// (src/render/actionPose.ts). A read of the rule above, changing nothing.
 export const maybeRevivingOf: {
   (
     slot: PlayerSlot,
@@ -368,11 +335,6 @@ export const maybeRevivingOf: {
   },
 )
 
-// THE BREAK
-
-// NOTE: downed and bled-out players come back free at the next break
-// (decided row 4), with the revive's hearts, and every player's READY
-// clears for it. One who stepped out stays out.
 export const returnFallen = (world: World): World =>
   isCoop(world)
     ? forEachSeat(world, (current, slot) => {
@@ -386,9 +348,6 @@ export const returnFallen = (world: World): World =>
       })
     : world
 
-// NOTE: READY from one player (decided 7, row 12): the break ends once
-// everyone who is here and standing has pressed it, or when its clock runs
-// out. An away player, or one who stepped out, never holds it up.
 export const markReady: {
   (slot: PlayerSlot): (world: World) => World
   (world: World, slot: PlayerSlot): World
@@ -410,12 +369,6 @@ export const isEveryoneReady = (world: World): boolean =>
   isCoop(world) &&
   !Array.some(playersOf(world), ({ seat }) => isHoldingBreak(seat))
 
-// FRIENDLY FIRE
-
-// NOTE: off on every difficulty, Nightmare included (decided row 6,
-// changed with the owner on 2026-11-01 and again on 2026-11-02). It is the
-// Friendly Fire run modifier, which pays extra (isFriendlyFireOn,
-// src/world/party/party.ts), the only way teammates hurt each other.
 const isTeammateShot =
   (slot: number) =>
   (bullet: Bullet): boolean =>
@@ -440,9 +393,6 @@ const sweepHits =
     return circlesOverlap(point, BULLET_RADIUS, target, PLAYER_RADIUS)
   }
 
-// NOTE: with friendly fire on, a teammate's shot that reaches a standing
-// player wounds them and stops there. Gnome peas never do. With it off, and
-// in single player, shots pass through teammates.
 export const resolveFriendlyFire: {
   (
     seconds: number,

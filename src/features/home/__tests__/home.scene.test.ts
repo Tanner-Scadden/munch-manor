@@ -36,11 +36,6 @@ import { MunchopediaEvents } from '../../munchopedia/message'
 import { MunchopediaPage } from '../../munchopedia/model'
 import { NEWS_DAYS } from '../../whatsNew/changelog'
 
-// The home menu's What's New and Dare Journal (src/screens/home/homeView.ts,
-// src/features/munchopedia/): the hand, its cards, and the panel they open.
-// The Dare Journal is a child component, a leaf in the root's Scene: its
-// pages are drawn here on their own from the props the root hands it.
-
 const withKills = (
   base: Model,
   kills: Partial<Record<ZombieKind, number>>,
@@ -77,10 +72,8 @@ const newerArrow = button('Newer news')
 const inNews = (locator: Locator.Locator) =>
   Locator.inside(whatsNewDialog, locator)
 
-// NOTE: the MANOR hand dealt, and its dialog shown.
 const openHand: SceneStep = steps(openHandInScene, showDialog(HAND_DIALOG_ID))
 
-// NOTE: a card of the hand picked, and the menu panel it opens shown.
 const pickCard = (name: string): SceneStep =>
   steps(pickCardInScene(name), showDialog(PANEL_DIALOG_ID))
 
@@ -168,8 +161,6 @@ describe("What's New", () => {
   )
 })
 
-// NOTE: the Dare Journal as the root draws it from `model`, on `page`.
-// Mounted on an entry, it says so first (its init), acknowledged here.
 const journalOf = (
   model: Model,
   page: MunchopediaPage,
@@ -287,7 +278,6 @@ describe('the Munchopedia', () => {
             }),
           )
           .toExist()
-          // NOTE: a found zombie stands carved on its plinth, not a picture.
           .expect(byClass('munch-plinth'))
           .toExist()
           .expect(Locator.inside(byClass('munch-entry'), Locator.tag('img')))
@@ -354,7 +344,6 @@ describe('the Munchopedia', () => {
         .pipe(showDialog(PANEL_DIALOG_ID))
         .expect(munchopediaDialog)
         .toExist()
-        // NOTE: the journal, mounted on the entry, says it is opened.
         .childEmit(
           Munchopedia,
           'munchopedia',
@@ -366,7 +355,6 @@ describe('the Munchopedia', () => {
         fresh,
         steps(
           send(Message.ClickedNewEntryButton({ kind: 'Runner' })),
-          // NOTE: the journal mounted on the entry says it is opened.
           send(Message.OpenedMunchopediaEntry({ kind: 'Runner' })),
         ),
       )

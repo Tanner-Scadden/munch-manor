@@ -9,14 +9,6 @@ import { exitBoxOf } from '../../world/level/exits'
 import { slotOfExit } from '../../world/level/plan'
 import type { World } from '../../world/schema/world'
 
-// The cloche reveal: the room behind each of the house's three slots rolls
-// every run, so the boards keep it a secret. When a slot's boards come
-// down, a silver cloche over the doorway rattles, lifts, and shows the
-// room's icon: a hearth for the parlour, a book for the library, a bottle
-// for the cellar. It is read off the level's open exits, so a co-op
-// teammate sees the same reveal from the room's World, and nothing here
-// changes the game.
-
 type ClocheRules = Readonly<{
   rattleMs: number
   liftMs: number
@@ -37,9 +29,6 @@ export const CLOCHE_TOTAL_MS =
   CLOCHE_RULES.holdMs +
   CLOCHE_RULES.fadeMs
 
-// NOTE: a slot's boards came down this frame: its cloche starts to lift
-// over the doorway's middle. The kitchen's boards and the secret shelf open
-// no slot, so they raise none.
 export const raiseCloche: {
   (after: Model): (before: World) => Model
   (before: World, after: Model): Model

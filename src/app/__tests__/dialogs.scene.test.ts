@@ -27,17 +27,6 @@ import { modifyFocus } from '../../world/party/party'
 import { BreakClock, type Model, Phase } from '../model'
 import { initialModel } from '../pureApp'
 
-// NOTE: every menu dialog is drawn on every frame, as ui-kit's Dialog,
-// keyed on its id. Unkeyed siblings pair by position, so when co-op opened
-// (the home menu left the front of the page's list and the co-op screen
-// joined its end) an unkeyed dialog could pair with a new element, leave the
-// old one in the page, and the shop (since gone) then opened as a second
-// `<dialog id="shop">` under an empty one that took every click. These
-// tests hold the two things that keep it from coming back: every dialog is
-// keyed on its id, and no id is used twice. A shut dialog draws no
-// `<dialog>` element at all (src/ui/dialog.ts), so only the open one is in
-// the page.
-
 const DIALOG_IDS = [
   HOME_SCREEN_STEPS_ID,
   UPDATE_GREETING_ID,
@@ -65,8 +54,6 @@ const duplicateIds = (root: ViewNode): ReadonlyArray<string> => {
 const dialogIdsOf = (root: ViewNode): ReadonlyArray<string> =>
   idsOf(Array.filter(nodesOf(root), node => node.tag === 'dialog'))
 
-// NOTE: each Dialog child found at its id's key, once (a Scene refuses a
-// key two children share), and the open one shown, as its Mount would.
 const findsEachDialog =
   (openId: Option.Option<string>): SceneStep =>
   s =>
@@ -74,7 +61,6 @@ const findsEachDialog =
       current.givenChild(Dialog, id, dialogModel(Option.contains(openId, id))),
     )
 
-// NOTE: a break in a run, the player in the parlour.
 const inBreak: Model = modifyFocus(
   UiStruct.evolve(initialModel, {
     maybeSurface: () =>

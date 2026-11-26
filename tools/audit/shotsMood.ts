@@ -1,10 +1,3 @@
-// The mood light and the air (src/render/iso/mood.ts, air.ts): the same
-// room in a calm break, a wave at full heat, and a lightning strike, then
-// the parlour's hearth and the kitchen's ovens with their embers, and the
-// storm at the windows, as
-// `mood-<TAG>-<viewport>-<scene>.png`, so the light's turn and the air can
-// be judged.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsMood.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -21,8 +14,6 @@ import {
   shotViewports,
 } from './lib'
 
-// NOTE: wave 5's first strike lands at about 2020 ms on the World's clock,
-// so a clock of 1770 frozen 20 frames on lands in its first flick.
 const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'break', query: 'wave=5&seen=all&god&freeze=20' },
   {
@@ -43,8 +34,6 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
     name: 'ovens',
     query: 'wave=5&seen=all&god&openexits=Kitchen&px=90&py=-70&freeze=60',
   },
-  // NOTE: the storm at each window (src/render/iso/storm.ts): the rain in a
-  // break, then each window in a strike's first flick.
   {
     name: 'rain',
     query: 'wave=5&seen=all&god&openexits=East&px=410&py=60&freeze=20',

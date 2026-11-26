@@ -1,10 +1,3 @@
-// The client's own Schemas beside the World's that no one feature owns: the
-// home menu's state, loading, the bests, hints, the tours, and the dialog
-// ids. A feature's own Schemas live in its folder (the input's in
-// src/input/inputSchema.ts, the home menu's in
-// src/features/home/homeSchema.ts, ...).
-// src/app/model.ts re-exports them; the co-op room never imports this module.
-
 import { Option, Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
@@ -28,18 +21,12 @@ import {
   ZombieKind,
 } from '../world/schema/worldSchema'
 
-// NOTE: a cosmetic: a fridge weapon the player just took, flying from the
-// fridge's door (`from`, in the world) into its HUD gun slot, which then
-// pulses (src/features/fridge/fridgeReveal.ts). Never part of the World.
 export const PrizeFlight = UiSchema.TaggedEnum({
   Grounded: {},
   Flying: { prize: WeaponKind, from: Vector, ageMs: Schema.Finite },
 })
 export type PrizeFlight = typeof PrizeFlight.Type
 
-// NOTE: a cosmetic: the player's gun just reached a new tier on its kills
-// (src/world/gear/gunLevels.ts), its new name and what changed popping over
-// where the player stood (src/render/powerupView.ts). Never part of the World.
 export const LevelCallout = Schema.Struct({
   weapon: WeaponKind,
   tier: Schema.Finite,
@@ -49,10 +36,6 @@ export const LevelCallout = Schema.Struct({
 })
 export type LevelCallout = typeof LevelCallout.Type
 
-// NOTE: a cosmetic: the cloche over a slot's doorway lifting as its boards
-// come down, showing which room rolled in behind it (`at`, the doorway's
-// middle in the world; src/features/cloche/clocheReveal.ts). Never part of
-// the World.
 export const ClocheLift = UiSchema.TaggedEnum({
   Resting: {},
   Lifting: { room: SlotRoomId, at: Vector, ageMs: Schema.Finite },
@@ -68,15 +51,9 @@ export const AudioState = UiSchema.TaggedEnum({
 })
 export type AudioState = typeof AudioState.Type
 
-// NOTE: the update gift on the home menu, wrapped until a tap unwraps it
-// and the page reloads onto the newer build.
 export const UpdateGift = Schema.Literals(['Wrapped', 'Unwrapping'])
 export type UpdateGift = typeof UpdateGift.Type
 
-// NOTE: the bests are kept in the on-device save (src/platform/save.ts): one set for
-// each difficulty, plus the runs played and the zombies splatted in all and
-// per kind. They are plain data on purpose: they move into the SQLite player
-// scope from PLATFORM.md as personal bests.
 export const PlayerBests = Schema.Struct({
   runsPlayed: Schema.Finite,
   totalKills: Schema.Finite,
@@ -90,19 +67,12 @@ export const PlayerBests = Schema.Struct({
 })
 export type PlayerBests = typeof PlayerBests.Type
 
-// NOTE: a run is added to the bests when it ends. Counted holds the kills
-// already added, so a win that goes on into endless adds only its new kills
-// when it ends again.
 export const RunTally = UiSchema.TaggedEnum({
   Uncounted: {},
   Counted: { kills: KillCounts },
 })
 export type RunTally = typeof RunTally.Type
 
-// NOTE: what a run has already been paid in rank (src/features/end/rankRun.ts): the
-// waves cleared, bosses felled, READY points, awards won, and revives made
-// so far. A win that keeps going into
-// endless is paid again when it ends, and only for what it did after.
 export const RankPaid = Schema.Struct({
   wavesPaid: Schema.Finite,
   bossesPaid: Schema.Finite,
@@ -120,41 +90,26 @@ export const noRankPaid: RankPaid = {
   revivesPaid: 0,
 }
 
-// NOTE: what lifted a run's Bones (src/world/heroes/rank.ts, bonesForRun):
-// the floor every run that ends pays, the day's first run doubled, and the
-// first escape on a difficulty. The end card tags each one.
 const BoneBonus = Schema.Literals(BONE_BONUSES)
 
-// NOTE: what the run on the end card paid, for its rank strip: the total
-// points before it (so the bar fills from there), the points it paid, and
-// the Bones, its bonuses counted in.
 export const RankGain = Schema.Struct({
   pointsBefore: Schema.Finite,
   gained: Schema.Finite,
   bonesGained: Schema.Finite,
-  // NOTE: the run modifiers' bonus in percent, 0 with none (src/world/run/modifiers.ts).
   bonusPercent: Schema.Finite,
   bonuses: Schema.Array(BoneBonus),
 })
 export type RankGain = typeof RankGain.Type
 
-// NOTE: Rattles' tip on the end card after a death (src/features/end/deathTip.ts):
-// the zombie that landed the last bite and his line about it. Kept after
-// the run, so the next tip is never the same line twice in a row.
 export const DeathTip = Schema.Struct({
   kind: ZombieKind,
   line: Schema.String,
 })
 export type DeathTip = typeof DeathTip.Type
 
-// HOME MENU
-
 export const HomeMode = Schema.Literals(['Campaign', 'Endless'])
 export type HomeMode = typeof HomeMode.Type
 
-// NOTE: a teammate bot of the single player lobby (src/domain/bots.ts): a goofy
-// name, the hero it plays, and the look it wears. Bots are seats in the
-// run's World, driven by src/features/bots/teammateBot.ts.
 export const Bot = Schema.Struct({
   name: Schema.String,
   calling: Calling,
@@ -162,16 +117,8 @@ export const Bot = Schema.Struct({
 })
 export type Bot = typeof Bot.Type
 
-// NOTE: the home menu's own state. The mode toggle and the What's New page
-// last for the page session (the Munchopedia's page is its own Block's,
-// src/features/munchopedia/). The newest What's New day seen and the Munchopedia
-// entries opened are kept in the on-device save (src/platform/save.ts). newEntries are
-// the kinds unlocked by the last counted run, for the NEW ENTRY pop.
 export const HomeMenu = Schema.Struct({
   mode: HomeMode,
-  // NOTE: the bots the lobby seats, kept for the page session: the lobby
-  // (src/features/lobby/) hands them back when it closes, and a run seats
-  // them.
   bots: Schema.Array(Bot),
   maybeSeenNewsDay: Schema.Option(Schema.String),
   newsPage: Schema.Finite,
@@ -206,20 +153,12 @@ export const Loading = UiSchema.TaggedEnum({
 })
 export type Loading = typeof Loading.Type
 
-// NOTE: nothing is written until the save has been read, so the defaults
-// from before the load never overwrite a player's save.
 export const SaveStatus = Schema.Literals(['Unread', 'Read'])
 export type SaveStatus = typeof SaveStatus.Type
 
-// NOTE: a save from sync that arrived while this device was still writing
-// its own change is Stale: taking it would undo that change for a moment.
-// The store's view is read again once the writes land.
 export const SyncedSaveState = Schema.Literals(['Current', 'Stale'])
 export type SyncedSaveState = typeof SyncedSaveState.Type
 
-// NOTE: the first PLAY or ENDLESS of the session asks for a difficulty.
-// Asking holds the mode to start once one is picked, and whether to play
-// the tutorial.
 export const DifficultyCard = UiSchema.TaggedEnum({
   Unseen: {},
   Asking: { mode: RunMode, tutorial: TutorialChoice },
@@ -227,11 +166,6 @@ export const DifficultyCard = UiSchema.TaggedEnum({
 })
 export type DifficultyCard = typeof DifficultyCard.Type
 
-// NOTE: the dare card in your pocket after the slam
-// (src/features/dare/pocketCard.ts): in the pocket, out and being read, or
-// folding itself into the HUD's dare card; or Opened again from the HUD's
-// list, with its satchel, where `fresh` are the things found since it was
-// last looked at, dropping in.
 export const PocketCard = UiSchema.TaggedEnum({
   Pocketed: {},
   Reading: { ageMs: Schema.Finite },
@@ -240,26 +174,15 @@ export const PocketCard = UiSchema.TaggedEnum({
 })
 export type PocketCard = typeof PocketCard.Type
 
-// NOTE: the card a display case raises the first time a player walks up to
-// one in a break (src/features/onboarding/caseCard.ts): put away, or up
-// over the case with the id `caseId`.
 export const CaseCard = UiSchema.TaggedEnum({
   Hidden: {},
   Showing: { caseId: Schema.Finite, ageMs: Schema.Finite },
 })
 export type CaseCard = typeof CaseCard.Type
 
-// NOTE: the intro's skip in this run (src/features/intro/introBeat.ts): in
-// co-op only the client's drawing skips, to the knock, and waits there for
-// the room's slam.
 export const IntroSkip = Schema.Literals(['Watching', 'Skipped'])
 export type IntroSkip = typeof IntroSkip.Type
 
-// NOTE: Rattles' holler about the boarded kitchen (src/features/kitchen/kitchenCall.ts):
-// once a break, until the boards are open, a bubble points at them for a
-// few seconds. `Quiet` remembers the last break it called in, so a break is
-// never called twice. `Opened` is the kitchen found, aging for the rooms
-// counter's sparkle (src/features/kitchen/roomsFound.ts). Never saved.
 export const KitchenCall = UiSchema.TaggedEnum({
   Quiet: { calledWave: Schema.Finite },
   Calling: { wave: Schema.Finite, remainingMs: MillisNumber },
@@ -267,14 +190,6 @@ export const KitchenCall = UiSchema.TaggedEnum({
 })
 export type KitchenCall = typeof KitchenCall.Type
 
-// NOTE: Rattles' hints about the dare (src/features/dare/rattlesHint.ts): a
-// line in his bubble for a few seconds (until `endsAtMs` on the World's
-// clock, so a frame of it writes nothing), pointing at a thing on the list by
-// its id or hanging from his spot. `calledWave` is the last break he called
-// in, `restMs` Easy's wait before the next call in the same break, and
-// `lastLine` what the player saw last, so it never comes twice in a row,
-// and `maybeOpenRooms` the rooms seen open last frame, so a room's boards
-// coming down show its thing (none until the run's first frame). Never saved.
 export const DareHintCall = UiSchema.TaggedEnum({
   Quiet: {},
   Calling: {
@@ -305,10 +220,6 @@ export const quietDareHint: DareHint = {
   maybeOpenRooms: Option.none(),
 }
 
-// NOTE: a chapter of the guided tutorial (src/features/onboarding/firstBreakQuest.ts, the
-// first break, and src/features/onboarding/kitchenTour.ts, the kitchen and the fridge): waiting
-// for its break, running through its steps, done with its tick shown for a
-// moment, or over for this session.
 export const Tour = UiSchema.TaggedEnum({
   Waiting: {},
   Running: {},
@@ -317,12 +228,6 @@ export const Tour = UiSchema.TaggedEnum({
 })
 export type Tour = typeof Tour.Type
 
-// NOTE: the guided first break (src/features/onboarding/firstBreakQuest.ts),
-// a Tour with two more stretches: once the key, the padlock, and the case
-// are done, it points at the dare card on the HUD for a moment (`Looking`),
-// then at START WAVE (`Starting`) until the player starts the wave, and
-// ticks off. `isLockSeen` keeps the padlock step done once the player has
-// walked up to it, wherever they go after.
 export const QuestTour = UiSchema.TaggedEnum({
   Waiting: {},
   Running: { isLockSeen: Schema.Boolean },
@@ -333,9 +238,6 @@ export const QuestTour = UiSchema.TaggedEnum({
 })
 export type QuestTour = typeof QuestTour.Type
 
-// NOTE: Rattles' hello (src/features/onboarding/rattlesIntro.ts): waiting
-// for the break he meets a player in, talking through his few lines from
-// his trunk by the front door, or over for this run.
 export const RattlesIntro = UiSchema.TaggedEnum({
   Waiting: {},
   Talking: { ageMs: MillisNumber },
@@ -372,10 +274,6 @@ export const freshLessons: Lessons = {
   gunLevel: Lesson.Pending(),
 }
 
-// NOTE: particles, shake, popups, coin bursts, trap dust, and the random
-// look draw from their own stream, never from `rngState`, so how many
-// cosmetics a frame makes never changes what spawns next. A room that makes
-// none and a phone that makes fewer play the same game (MULTIPLAYER.md).
 const COSMETIC_SEED_SALT = 0x0c05e71c
 
 export const cosmeticSeedOf = (seed: number): number =>
@@ -398,14 +296,9 @@ export const defaultAppearance: Appearance = {
 
 export { TutorialChoice }
 
-// NOTE: a record the run that just ended broke, for its NEW BEST: the
-// deepest endless wave, or the fastest win (src/features/end/endBeat.ts).
 export const RunRecord = Schema.Literals(['Wave', 'Time', 'Kills'])
 export type RunRecord = typeof RunRecord.Type
 
-// NOTE: what a run gathers for the Dare Journal (src/domain/journal.ts):
-// the rooms a thing was found in this run, tallied from its frames, and the
-// milestones its payout reached, which the end card flips a card for.
 export const JournalRun = Schema.Struct({
   foundIn: Schema.Array(Schema.String),
   reached: Schema.Array(MilestoneId),
@@ -414,18 +307,12 @@ export type JournalRun = typeof JournalRun.Type
 
 export const noJournalRun: JournalRun = { foundIn: [], reached: [] }
 
-// NOTE: what a run's mastery payout opened, for the end card's unlock
-// flips: a hero's new level, or a gun's new skin.
 export const MasteryUnlock = UiSchema.TaggedEnum({
   HeroLevel: { calling: Calling, level: Schema.Finite },
   GunMastery: { kind: WeaponKind, skin: MasterySkin },
 })
 export type MasteryUnlock = typeof MasteryUnlock.Type
 
-// NOTE: what a run has paid into mastery so far (the waves cleared, the
-// dare things found, each gun's kills), so a run that keeps going pays only
-// what is new when it ends again, as `rankPaid` does for rank; and what its
-// last payout opened.
 export const MasteryRun = Schema.Struct({
   wavesPaid: Schema.Finite,
   thingsPaid: Schema.Finite,

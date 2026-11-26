@@ -50,11 +50,6 @@ import { endKindOf } from '../../end/endBeat'
 import { maybeIntroFrameOf } from '../../intro/introBeat'
 import { OWN_SLOT, graduated, roomWorld } from './onlineRun.fixture'
 
-// An online co-op run in the root (src/app/update/coopPlay.ts): the room's World drawn
-// as the game, this player's own seat as the player, presses sent to the
-// room as seat actions, the crew's one key ring, and no pause. The room and its network are the co-op Block's, faked here
-// with a session already holding a World.
-
 const inRun = (world: RoomWorld, isAnchored = false): Model =>
   UiStruct.evolve(graduated, {
     coop: coop =>
@@ -87,8 +82,6 @@ const countOf = (
   sound: SoundEffect,
 ): number => Array.filter(sounds, heard => heard === sound).length
 
-// NOTE: the run with the room's session swapped for one holding `world`,
-// as a new World arriving from the room would leave it.
 const showing = (current: Model, world: RoomWorld): Model =>
   UiStruct.evolve(current, {
     coop: coop =>
@@ -104,7 +97,6 @@ const showing = (current: Model, world: RoomWorld): Model =>
       }),
   })
 
-// NOTE: an anchored room's frame sends this player's input to the room.
 const sendFrames: StoryStep = s =>
   s.resolve(SendRoomFrames, Message.CompletedSendRoomFrames({ bytes: [] }))
 
@@ -171,8 +163,6 @@ describe("an online co-op run's intro", () => {
       ),
   )
 
-  // NOTE: a first-timer's card too: alone it would wait past a gate for a
-  // key, but the room never waits, so a key folds it once it has opened.
   it.effect(
     "the dare card comes out on the room's slam, and the room never waits for it",
     () =>
@@ -202,8 +192,6 @@ describe("an online co-op run's intro", () => {
       ),
   )
 
-  // NOTE: a newcomer who sits through the room's whole intro has seen it,
-  // so their next room may skip the drive up; a short cut proves nothing.
   const newcomer = (world: RoomWorld): Model =>
     UiStruct.evolve(inRun(world), { introSeen: () => 'Unseen' })
 
@@ -589,8 +577,6 @@ describe('an online co-op run', () => {
     ),
   )
 
-  // NOTE: the HUD's list opens the dare card over the live room: a key
-  // past its gate puts it away and still goes to the room.
   it.effect('Tab opens the dare card, and the room never waits for it', () =>
     modelAfter(
       inRun(roomWorld),

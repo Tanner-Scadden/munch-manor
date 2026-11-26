@@ -76,13 +76,8 @@ import {
 
 type H = Html.H<Message>
 type Content = View.Content<Message>
-// NOTE: a child that may draw nothing.
 type MaybeContent = Content | null
 
-// PARTS
-
-// NOTE: how an option shows: the character in it (the whole figure, or the
-// head and shoulders), or a swatch of its color or print.
 type OptionLook = 'Figure' | 'Head' | 'Swatch' | 'Flag' | 'Hat' | 'Gun'
 
 type PartView = Readonly<{
@@ -102,8 +97,6 @@ const isPrint = (value: string): value is Print =>
 const isSkin = (value: string): value is GunSkin =>
   Array.some(GunSkin.literals, skin => skin === value)
 
-// NOTE: a print's flag, 30 by 18, so its 1, 3, or 6 stripes and a pixel
-// print's 6 by 3 each take whole CSS px.
 const FLAG_WIDTH = 30
 const FLAG_HEIGHT = 18
 
@@ -126,8 +119,6 @@ const RAINBOW_SWATCH = stripesUrl(RAINBOW_STRIPES)
 
 const swatchCache = new Map<string, string>()
 
-// NOTE: a print as its swatch, in the shirt's own color: plain, a white
-// band across it, or the rainbow flag as it is flown.
 const printSwatch = (print: Print, appearance: Appearance): string => {
   if (print === 'Rainbow') {
     return RAINBOW_SWATCH
@@ -159,7 +150,6 @@ const swatchOf =
       () => 'none',
     )
 
-// NOTE: the Pop Pistol held large, in a skin: what a gun skin option shows.
 const gunOptionUrl = (skin: GunSkin): string => {
   const { rows, palette } = gunPictureOf('Pistol', skin)
   return pixelIconUrl(rows, palette)
@@ -263,20 +253,12 @@ const lookDescription = (appearance: Appearance): string =>
     ),
   )
 
-// PART ICONS
-
-// NOTE: the option's own pixels: the standing frame of the look with that
-// option in it, the whole figure or the head and shoulders. Each is drawn
-// once, and the cache is emptied when it grows past a few hundred, as the
-// dice can try a great many looks.
 const ICON_CACHE_LIMIT = 400
 const HEAD_ROWS = { from: 1, to: 9 }
 
 const iconCache = new Map<string, string>()
 
 const partIconOf = (worn: Appearance, crop: 'Figure' | 'Head'): string => {
-  // NOTE: the options are drawn bare headed: a hat changes the rows the
-  // crop counts, and the Look tab is not about hats (the closet is).
   const look: Appearance = { ...worn, hat: 'None' }
   const key = `${crop}.${appearanceKey(look)}`
   return Option.getOrElse(Option.fromNullishOr(iconCache.get(key)), () => {
@@ -293,7 +275,6 @@ const partIconOf = (worn: Appearance, crop: 'Figure' | 'Head'): string => {
   })
 }
 
-// NOTE: a hat option's picture: the head under that hat, drawn the same way.
 const hatIconOf = (worn: Appearance): string => {
   const key = `Hat.${appearanceKey(worn)}`
   return Option.getOrElse(Option.fromNullishOr(iconCache.get(key)), () => {
@@ -306,12 +287,6 @@ const hatIconOf = (worn: Appearance): string => {
   })
 }
 
-// PREVIEW
-
-// NOTE: the figure is 20 game pixels square, drawn as plain elements: each
-// sprite image and rectangle the walk frame is made of, placed by the
-// matrix its groups give it, in a box CSS scales by a whole number
-// (src/features/profile/profile.css), so every pixel takes whole CSS px.
 const PREVIEW_SIZE = 20
 const PREVIEW_FOOT_Y = 18
 const PREVIEW_TURN_MS = 2400
@@ -359,9 +334,6 @@ const previewShapes = (
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
-// NOTE: a leaf's box placed by its matrix, the box's own corner folded into
-// the matrix's move, so the element sits at the top left of the figure and
-// turns about its own corner as the painter would.
 const placed = ({ matrix, alpha }: Leaf, box: Box) => ({
   width: `${box.width}px`,
   height: `${box.height}px`,
@@ -412,18 +384,12 @@ const previewView = (
         ),
     )
 
-// STAGE
-
-// NOTE: the look on the figure: the worn one, or with the look being tried
-// on over it. The worn look never changes.
 const shownLookOf = (props: CharacterProps): Appearance =>
   Option.match(props.maybePreview, {
     onNone: () => props.appearance,
     onSome: ({ part, value }) => chooseLook(props.appearance, part, value),
   })
 
-// NOTE: the BUY pill with the price, while a look for sale is tried on.
-// Short of Bones it stays, red, and shakes when pressed.
 const buyPillOf = (props: CharacterProps, h: H): MaybeContent =>
   Option.match(props.maybePreview, {
     onNone: (): MaybeContent => null,
@@ -447,10 +413,6 @@ const buyPillOf = (props: CharacterProps, h: H): MaybeContent =>
       ),
   })
 
-// NOTE: the character walks on the spot in a spotlight with a little idle
-// bounce, all CSS. A new part puffs a poof, and the dice spins the stage
-// like a slot machine: the stage's key turns with the effect's count, so
-// each one swaps the element and its animation starts over.
 const stageView = (props: CharacterProps, h: H): Content =>
   h.div
     .key(`look-stage-${props.fxCount % 2}`)
@@ -477,8 +439,6 @@ const stageView = (props: CharacterProps, h: H): Content =>
             .style(pixelArtStyle(DICE_ICON)),
         ),
     )
-
-// SECTIONS
 
 const SECTION_ICON_PALETTE = { X: '#f4f1de', O: '#140c10' }
 
@@ -547,8 +507,6 @@ const SECTION_LOOKS: Readonly<Record<LookSection, SectionLook>> = {
   },
 }
 
-// NOTE: a little tab wears a dot while a look inside it is new, so the
-// player knows which tab to open.
 const hasNewLook = (
   section: LookSection,
   fresh: ReadonlyArray<string>,
@@ -601,12 +559,6 @@ const sectionsView = (
         ),
   })
 
-// ROWS
-
-// NOTE: a list takes as few lines as it needs, filled as evenly as it can
-// be: up to seven options across, or six on a phone under 380 px wide,
-// where seven at the full tap size crowd their price and lock chips, so the
-// prints there take a line of four and a line of three.
 const MOST_COLUMNS = 7
 const MOST_NARROW_COLUMNS = 6
 
@@ -654,15 +606,12 @@ const optionFace = (
     )
 }
 
-// NOTE: what an option of an earned part is, for the standing it shows.
 type GearOption = Readonly<{
   kind: CosmeticKind
   standing: Standing
   isNew: boolean
 }>
 
-// NOTE: the id of an earned option's spoken note, which the screen reader
-// hears after its name.
 const noteIdOf = (part: LookPart, value: string): string =>
   `look-note-${part}-${value}`
 
@@ -724,9 +673,6 @@ const optionView = (
   })
 }
 
-// NOTE: a part's options as a radio group. A free part picks by the group;
-// an earned part's group is read only, and each option picks by its own
-// click, so walking a row with the arrows never tries on or buys.
 const lookRowView = (part: LookPart, props: CharacterProps, h: H): Content => {
   const { appearance } = props
   const partView = PART_VIEWS[part]
@@ -789,15 +735,11 @@ const lookRowView = (part: LookPart, props: CharacterProps, h: H): Content => {
     )
 }
 
-// TOGGLES
-
 const TOGGLE_LABELS: Readonly<Record<LookToggle, string>> = {
   Beard: 'Beard',
   Glasses: 'Glasses',
 }
 
-// NOTE: an on and off part is one button showing the head with it on,
-// pressed while it is worn.
 const toggleView = (
   toggle: LookToggle,
   appearance: Appearance,
@@ -846,10 +788,6 @@ const togglesView = (
         ),
   })
 
-// LOOK TAB
-
-// NOTE: the Look tab: the stage, its little tabs, and the open one's rows.
-// The rows' box is keyed by the little tab, so a switch swaps it.
 export const lookTabView: {
   (props: CharacterProps, h: H): (model: Model) => Content
   (model: Model, props: CharacterProps, h: H): Content

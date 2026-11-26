@@ -4,11 +4,6 @@ import type { Calling } from '../shared/playerData'
 import { pixelIconUrl } from './icons'
 import type { Palette } from './sprite'
 
-// The callings' pixel art for the menus (src/features/heroes/callingView.ts): each calling's
-// prop, and the little pictures that say its quirk with no words. They are
-// SVG icons from pixel maps, like the menus' other icons. The prop on the
-// player in play is part of the player's own sprite (src/art/appearance.ts).
-
 const PALETTE: Palette = {
   X: '#f4f1de',
   O: '#140c10',
@@ -32,8 +27,6 @@ const PALETTE: Palette = {
 
 const icon = (pixels: ReadonlyArray<string>): string =>
   pixelIconUrl(pixels, PALETTE)
-
-// THE PROPS
 
 export const PROP_ICONS: Readonly<Record<Calling, string>> = {
   You: icon([
@@ -80,8 +73,6 @@ export const PROP_ICONS: Readonly<Record<Calling, string>> = {
   ]),
 }
 
-// THE QUIRKS
-
 const HEART_ICON = icon([
   '.RR.RR.',
   'RWRRRRR',
@@ -93,8 +84,6 @@ const HEART_ICON = icon([
 
 const PLANK_ICON = icon(['PPPPPPPPP', 'PNPPPPPNP', 'PPPPPPPPP', 'DDDDDDDDD'])
 
-// NOTE: a shield for the Handyman's longer breather after a bite: the
-// flash that keeps the zombies off him lasts half again as long.
 const SHIELD_ICON = icon([
   'bbbbbbbbb',
   'bXBBBBBBb',
@@ -125,7 +114,6 @@ const MAGAZINE_ICON = icon([
   '.MMM.',
 ])
 
-// NOTE: a skeleton key, the crew's currency (src/world/keys/keys.ts).
 const KEY_ICON = icon(['.YYY...', 'YXXY...', 'YX.YYYY', 'YYYY.Yy', '.yy..y.'])
 
 const TAG_ICON = icon([
@@ -145,7 +133,6 @@ const POT_ICON = icon([
   '.MMMMMMM.',
 ])
 
-// NOTE: a pistol with a red slash through it.
 const PISTOL_PIXELS = [
   '.MMMMMMM.',
   '.MMMMMMMM',
@@ -165,10 +152,6 @@ const crossedOut = (pixels: ReadonlyArray<string>): ReadonlyArray<string> =>
 
 const NO_PISTOL_ICON = icon(crossedOut(PISTOL_PIXELS))
 
-// NOTE: the picture beside each special's line on a card (src/features/heroes/callingView.ts,
-// src/domain/callingSpecials.ts): a heart, a plank, a shield for the longer
-// breather, a shoe, a magazine, a price tag, a coin, the pot, and a pistol
-// crossed out.
 export const QUIRK_ICONS = {
   Heart: HEART_ICON,
   Plank: PLANK_ICON,

@@ -1,32 +1,3 @@
-// The gameplay hash's core: one 32 bit number for any value, equal in two
-// runs exactly when the values are equal bit for bit, in any engine. The
-// determinism tools (tools/determinism/hash.ts) hash a Model's gameplay
-// fields with it, and a recorded run (src/platform/recording.ts) its last
-// World.
-//
-// The canonical form, walked depth first:
-// - A number hashes its float64 bits, so 0.1 + 0.2 and 0.3 differ, as do
-//   0 and -0. Every NaN hashes the same, since engines may differ in the
-//   payload of a NaN and no game rule can tell them apart.
-// - A string hashes its length and UTF-16 code units.
-// - An array hashes its length and its items in order: the order of
-//   zombies and bullets is part of the state.
-// - An object hashes its `_tag` (Option keeps it on the prototype), then its
-//   own keys sorted by code unit with their values. A key whose value is
-//   undefined counts as absent, as in JSON. So two objects with the same
-//   fields built in a different order hash the same.
-// - A Map or Set hashes its entries in iteration order, which the language
-//   fixes as insertion order, so a change in that order is a divergence.
-//
-// Each value is mixed in as tagged 32 bit words with the MurmurHash3 block
-// step, using Math.imul, so every engine computes the same bits.
-//
-// Cheap per tick: state shares structure, so an object that did not change
-// since the last hash is the same reference. A cached hasher keeps a hash
-// for every object it has seen in a WeakMap and skips unchanged subtrees, so
-// a tick rehashes only what it touched. That cache trusts the state to be
-// immutable; `cached: false` walks everything.
-
 import { Array, Option, Record, String } from 'effect'
 
 const C1 = 0xcc9e2d51
@@ -66,10 +37,7 @@ const isRecord = (value: object): value is Record<string, unknown> =>
   !Array.isArray(value)
 
 export type ValueHasher = Readonly<{
-  // The hash of any value in the canonical form.
   hashValue: (value: unknown) => number
-  // One hash of named hashes, in the order given: a state's fields, sorted
-  // by name, each hashed with hashValue.
   hashNamed: (named: ReadonlyArray<readonly [string, number]>) => number
 }>
 
@@ -79,8 +47,6 @@ export const makeValueHasher = (
   const cache = new WeakMap<object, number>()
   const bits = new DataView(new ArrayBuffer(8))
 
-  // NOTE: each string's UTF-16 code units, read once: the keys and tags of
-  // a state repeat on every hashed tick.
   const codeUnits = new Map<string, ReadonlyArray<number>>()
   const codeUnitsOf = (text: string): ReadonlyArray<number> => {
     const known = codeUnits.get(text)
@@ -95,8 +61,6 @@ export const makeValueHasher = (
   }
 
   const hashString = (hash: number, text: string): number => {
-    // NOTE: a plain loop, since this runs for every key of every changed
-    // object on every hashed tick.
     const units = codeUnitsOf(text)
     let next = mix(mix(hash, TAG_STRING), text.length)
     for (let index = 0; index < units.length; index++) {

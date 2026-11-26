@@ -17,13 +17,6 @@ import type { Drawable } from './depth'
 import type * as Draw from './draw'
 import { rect } from './drawing'
 
-// The kitchen's back door to the garden (src/world/kitchen/backDoor.ts),
-// set in the east wall's south corner: a plank door in its frame with a
-// little EXIT sign over it. Shut and the sign dark while there is no way
-// out; once a thing on the list is found, in a break, the sign glows green
-// and the door stands ajar on a slice of moonlight. Fixed art is sprites
-// built once here; only the sign's glow breathes, so it stays a rectangle.
-
 const DOOR_PALETTE: Palette = {
   K: '#140c10',
   F: '#4a2c18',
@@ -35,13 +28,9 @@ const DOOR_PALETTE: Palette = {
   m: '#6a8ab8',
 }
 
-// NOTE: the door stands carved as a slab in its frame, the sign as a thin
-// plate.
 const DOOR_DEPTH = { most: 2 }
 const SIGN_DEPTH = { most: 1 }
 
-// NOTE: 10 by 20, the wall tile's width and two rows tall: the frame, the
-// planks run down, and the knob on the room's side.
 const DOOR_SHUT: Sprite = deepSprite(
   spriteShapes(
     [
@@ -72,8 +61,6 @@ const DOOR_SHUT: Sprite = deepSprite(
   DOOR_DEPTH,
 )
 
-// NOTE: swung out a little: the leaf narrows and moonlight from the garden
-// shows between it and the frame.
 const DOOR_AJAR: Sprite = deepSprite(
   spriteShapes(
     [
@@ -112,8 +99,6 @@ const SIGN_PALETTE: Palette = {
   d: '#2a6a3a',
 }
 
-// NOTE: a little running figure on a green plate, 9 by 6, the way every
-// exit in the world says EXIT without a word.
 const SIGN_LIT: Sprite = glowingSprite(
   deepSprite(
     spriteShapes(
@@ -173,10 +158,6 @@ const glowShapes = (
   }),
 ]
 
-// NOTE: the door's tile is the east wall's own, which the 3D wall fills, so
-// the door stands on the floor just inside it, its frame's east edge on the
-// wall's inner face, at its tiles' foot, with the sign over it. The sign's
-// breathing glow stands a pixel behind it, so the lit sign shows in front.
 export const backDoorDrawables = (world: World): ReadonlyArray<Drawable> =>
   Option.match(backDoorBoxOf(levelOf(world)), {
     onNone: () => [],

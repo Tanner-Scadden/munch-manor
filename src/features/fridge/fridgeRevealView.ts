@@ -42,15 +42,6 @@ import {
   revealStageAt,
 } from './fridgeReveal'
 
-// What a fridge pull looks like (src/features/fridge/fridgeReveal.ts), drawn on the overlay
-// over the actors and the HUD strip so the prize is never lost behind a
-// zombie: the spin in the doorway, the landing's burst in the prize's
-// color, the big icon popping with squash and stretch, its punch word, the
-// countdown ring while a weapon waits, and the icon flying into its HUD
-// slot once taken.
-
-// THE COLORS
-
 type RarityLook = Readonly<{ ray: string; ring: string }>
 
 const RARITY_LOOKS: Readonly<Record<Rarity, RarityLook>> = {
@@ -78,8 +69,6 @@ const PUNCH_TEXTS: Readonly<Record<FridgePrize, BakedText>> = {
 
 const REFUND_TEXT: BakedText = bakeText(`+$${FRIDGE_RULES.dudRefund}`, 'Coin')
 
-// NOTE: a burst of rays round the landed prize, in two turns that take
-// turns so it twinkles; the dud gets a sad grey cloud instead.
 const RAY_COUNT = 8
 const RAY_INNER_PX = 7
 const RAY_OUTER_PX = 11
@@ -105,8 +94,6 @@ const raySprite = (color: string, turn: number): Sprite =>
     ),
   )
 
-// NOTE: the spin's reel window: a dark slot with a gold rim, the faces
-// flicking past a pale glow inside it.
 const REEL_WINDOW: Sprite = bakeShapes([
   rect(-13, -8, 26, 16, '#140c10'),
   rect(-12, -7, 24, 14, '#e0b040'),
@@ -155,10 +142,6 @@ const RAYS: Readonly<Record<Rarity, RaySet>> = {
 
 const RAY_TWINKLE_MS = 120
 
-// THE COUNTDOWN
-
-// NOTE: a ring round a weapon on offer that empties as its time runs out,
-// in its rarity's color, and blinks near the end.
 const COUNTDOWN_RADIUS = 11
 const COUNTDOWN_STEPS = 16
 
@@ -213,10 +196,6 @@ const OFFER_BOB_MS = 300
 const OFFER_BLINK_MS = 120
 const OFFER_WARN_MS = 1500
 
-// THE POP
-
-// NOTE: the prize is drawn twice its size. On landing it squashes wide,
-// stretches tall, and settles, all within `popMs`.
 const PRIZE_SCALE = 2
 
 const popScale = (sinceMs: number): Readonly<{ x: number; y: number }> => {
@@ -238,16 +217,12 @@ const BURST_TO_PX = 22
 const DUD_DROOP_PX = 3
 const DUD_DROOP_MS = 500
 
-// THE PLACE
-
 type RevealFrame = Readonly<{
   at: Vector
   viewLeft: number
   viewRight: number
 }>
 
-// NOTE: the prize sits on the fridge's door, nudged down if a landscape
-// screen's HUD strip would cover it.
 const revealFrameOf = (
   screen: Screen,
   camera: Camera,
@@ -271,8 +246,6 @@ const revealFrameOf = (
   }
 }
 
-// NOTE: the word goes to the right of the fridge, over the wall, and to
-// its left when that would leave the screen.
 const WORD_GAP_PX = 16
 const WORD_SCALE = 2
 
@@ -340,7 +313,6 @@ const burstShapes = (
   ]
 }
 
-// NOTE: a Dud bursts no ring.
 Array.forEach(
   [RARITY_LOOKS.Common, RARITY_LOOKS.Rare, RARITY_LOOKS.Snack],
   ({ ring }) => {
@@ -361,8 +333,6 @@ const raysShapes = (
     : [placeAt(frame.at.x, frame.at.y, turn)]
 }
 
-// NOTE: a snack or a dud, once shown, drops to the puller as the door
-// shuts, shrinking back to its own size.
 const gagFlightAt = (
   model: Model,
   frame: RevealFrame,
@@ -480,8 +450,6 @@ const revealShapes = (
     : landedShapes(model, frame, reveal, stage.sinceMs)
 }
 
-// NOTE: the reveal for everyone in the room, placed in the world by the
-// screen camera like the purchase tags.
 export const fridgeRevealShapes: {
   (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
@@ -508,8 +476,6 @@ export const fridgeRevealShapes: {
       },
     ),
 )
-
-// THE TAKE
 
 const PULSE_COLOR = '#ffffff'
 const PULSE_FLASH = 'rgba(255, 255, 255, 0.55)'
@@ -540,8 +506,6 @@ const pulseShapes = (
   ]
 }
 
-// NOTE: the taken weapon's icon flies from the fridge into the gun slot
-// that now holds it, shrinking to the slot's size, and the slot pulses.
 export const prizeFlightShapes: {
   (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>

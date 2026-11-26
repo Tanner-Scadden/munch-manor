@@ -28,28 +28,13 @@ import {
 } from '../../world/heroes/calling'
 import { CALLING_NAMES, SPECIAL_LINES } from '../../world/names'
 
-// The picker's cards, one per hero (GAME_DESIGN.md, "Rank and Bones"),
-// shared by the solo lobby's picker and co-op's lobby picker: the player's
-// own look wearing the hero's prop, its name, and each special as a picture
-// with a short line, perks in green with a plus and drawbacks in red with a
-// minus. A locked card shows the same lines dimmed, with the padlock and the
-// rank that opens it, so a player knows what they are working toward. A
-// card for sale (its rank reached, not bought) shows its price in Bones.
-
-// NOTE: an object type, not Readonly<...>, so the pipeable check matches the
-// view's two signatures.
 export type CardsInput<Message> = {
   readonly look: Appearance
   readonly chosen: Calling
   readonly rank: number
-  // NOTE: the heroes bought (the save's bought ids), and the one for sale
-  // being tried on.
   readonly bought: SavedBoughtCosmetics
   readonly trying: Calling | null
-  // NOTE: the unlock ids that wear a NEW badge (src/domain/unlocks.ts).
   readonly fresh: ReadonlyArray<string>
-  // NOTE: the chosen card takes focus as the Dialog it stands in opens
-  // (ui-kit's Dialog focuses the `autofocus` element inside it).
   readonly isChosenFocused: boolean
   readonly onCard: (calling: Calling) => Message
 }
@@ -176,8 +161,6 @@ export const callingCardsView: {
       .children(Array.map(CALLINGS, calling => cardView(input, calling, h))),
 )
 
-// NOTE: the player's Bones by the title, so a price has its context. Shared
-// by the solo lobby's picker and co-op's lobby picker.
 export const callingBalanceView: {
   <Message>(h: Html.H<Message>): (bones: number) => View.Content<Message>
   <Message>(bones: number, h: Html.H<Message>): View.Content<Message>
@@ -196,9 +179,6 @@ type BuyInput<Message> = Readonly<{
   onBuy: Message
 }>
 
-// NOTE: the BUY button: a bright gold arcade button when the Bones cover
-// the hero, dim and red with how many more it needs when they do not. The
-// caller says what a tap sends.
 export const callingBuyView: {
   <Message>(
     h: Html.H<Message>,

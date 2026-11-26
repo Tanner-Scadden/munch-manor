@@ -11,7 +11,9 @@
   },
   "rules": {
     "effecttsgo/any-unknown-in-error-context": "error",
-    "effecttsgo/api-stability-leak": "error",
+    // NOTE: the API stability leak guards a published package's API, and
+    // the game, its tools, its private packages, and infra publish none.
+    "effecttsgo/api-stability-leak": "off",
     "effecttsgo/async-function": "error",
     "effecttsgo/crypto-random-uuid": "error",
     "effecttsgo/crypto-random-uuid-in-effect": "error",
@@ -62,23 +64,52 @@
   },
   "overrides": [
     {
-      // NOTE: the game is an app on Effect UI's preview, which marks its
-      // whole surface experimental, so every module of the game's own code
-      // hands out its types (the same exception as tsconfig.base.json). The
-      // packages, which are packages, keep the rule.
-      "files": ["src/**", "tools/**"],
+      // NOTE: a component Effect UI makes (Html.component, a definition's
+      // make) is a callable whose signature Effect UI fixes, with no
+      // data-last form (the same exception as tsconfig.base.json).
+      "files": [
+        "src/app/block.ts",
+        "src/features/heroes/block.ts",
+        "src/features/lobby/block.ts",
+        "src/features/munchopedia/block.ts",
+        "src/features/profile/block.ts",
+        "src/features/profile/blocks/look/block.ts",
+        "src/features/proof/block.ts"
+      ],
       "rules": {
-        "effecttsgo/api-stability-leak": "off"
+        "effecttsgo/missing-pipeable-signature": "off"
       }
     },
     {
-      // NOTE: the service worker runs outside the Effect runtime and speaks
-      // the Fetch API (the same exception as tsconfig.base.json).
+      // NOTE: the service worker loads no modules, so it runs without Effect:
+      // the Fetch API, promises, and native arrays and strings (the same
+      // exception as tsconfig.base.json).
       "files": ["src/platform/sw/worker.ts"],
       "rules": {
+        "effecttsgo/async-function": "off",
         "effecttsgo/global-fetch": "off",
         "effecttsgo/global-timers": "off",
-        "effecttsgo/new-promise": "off"
+        "effecttsgo/new-promise": "off",
+        "effecttsgo/prefer-effect-array": "off",
+        "effecttsgo/prefer-effect-string": "off"
+      }
+    },
+    {
+      // NOTE: the audits' and the videos' page functions run inside the browser page, where
+      // Effect is not loaded: Playwright sends each one's source alone, so it
+      // speaks the DOM with promises, timers, and native arrays and strings
+      // (the same exception as tsconfig.base.json).
+      "files": ["tools/*/inPage/*.ts"],
+      "rules": {
+        "effecttsgo/async-function": "off",
+        "effecttsgo/global-date": "off",
+        "effecttsgo/global-fetch": "off",
+        "effecttsgo/global-random": "off",
+        "effecttsgo/global-timers": "off",
+        "effecttsgo/new-promise": "off",
+        "effecttsgo/prefer-effect-array": "off",
+        "effecttsgo/prefer-effect-string": "off",
+        "effecttsgo/prefer-effect-record": "off"
       }
     }
   ]

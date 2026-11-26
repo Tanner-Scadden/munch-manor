@@ -1,9 +1,3 @@
-// Bundles a tool's entry for an engine Bun cannot run its TypeScript in
-// (Node, a page, workerd), with the game's Vite-only imports made plain:
-// CHANGELOG.md's ?raw import becomes a string module, and import.meta.env
-// gets what Vite would give a build with no sync server. The determinism
-// harness (build.ts) and the recorded run's replay (tools/learn) use it.
-
 import { Console, Effect, Path, Schema, String } from 'effect'
 
 import { encodeJson } from '../json'
@@ -13,8 +7,6 @@ class BuildFailed extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()('BuildFailed', { message: Schema.String }) {}
 
-// NOTE: Bun's `define` takes each value as source text, so strings and the
-// env object go in as JSON.
 const stringSource = encodeJson(Schema.String)
 const envSource = encodeJson(
   Schema.Struct({
@@ -45,8 +37,6 @@ const rawPlugin = (path: Path.Path): Bun.BunPlugin => ({
   },
 })
 
-// NOTE: `entry` is an absolute path; answers the bundle's path.
-/** @stability unstable */
 export const bundle = ({
   outdir,
   entry,
@@ -76,9 +66,6 @@ export const bundle = ({
               PROD: true,
               MODE: 'production',
             }),
-            // NOTE: a classic script cannot name import.meta at all. Only
-            // the on-device store's worker URL reads it, and the harness
-            // never runs a Command.
             ...(format === 'iife'
               ? { 'import.meta.url': stringSource('file:///determinism/') }
               : {}),

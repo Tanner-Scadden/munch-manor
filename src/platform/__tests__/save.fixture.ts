@@ -3,8 +3,6 @@ import { noJournal } from '../../shared/journalData'
 import { noMastery } from '../../shared/masteryData'
 import { noMissions } from '../../shared/missionData'
 import { noProof } from '../../shared/proofData'
-// The save a returning player's device holds, every field set, which the
-// save tests load, write, and migrate from.
 import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
 import { type PlayerSave, SAVE_VERSION } from '../save'
 

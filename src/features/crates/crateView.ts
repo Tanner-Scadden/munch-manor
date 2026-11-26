@@ -26,11 +26,6 @@ import {
 import { levelOf } from '../../world/level/arena'
 import type { Crate, CrateRoom, Trap } from '../../world/schema/worldSchema'
 
-// The trap crates (src/world/gear/crates.ts) in the world, and the ring a
-// trap wears while someone mends it. Show, don't explain: a shut crate in a
-// wave, an open one in a break with its find (a trap or a heart) bobbing in it, an open empty
-// one once it is taken, and a green ring filling round a trap as it mends.
-
 const BOB_MS = 320
 const BOB_PX = 1
 
@@ -53,7 +48,6 @@ const findShapes = (
     },
   })
 
-// NOTE: a crate sorts with what stands around it, by the floor it sits on.
 export const crateDrawables = (model: Model): ReadonlyArray<Drawable> =>
   Array.map(crateRoomsOf(model), (room): Drawable => {
     const spot = crateSpotOf(levelOf(model), room)
@@ -71,8 +65,6 @@ export const crateDrawables = (model: Model): ReadonlyArray<Drawable> =>
       ],
     }
   })
-
-// MENDING
 
 const MEND_RING_RADIUS = 9
 const MEND_RING_STEPS = 12
@@ -111,8 +103,6 @@ const mendRingShapes = (model: Model, trap: Trap): Draw.Shape => {
   )
 }
 
-// NOTE: over everything: a ring round each trap a player is mending, filled
-// as far as the trap is whole.
 export const mendRingsOf = (model: Model): ReadonlyArray<Draw.Shape> =>
   Array.map(
     Array.dedupeWith(

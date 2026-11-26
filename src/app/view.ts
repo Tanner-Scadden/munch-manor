@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 
 import {
   isPocketCardOpened,
@@ -83,16 +83,12 @@ import {
 import { profileDialogView } from './profileView'
 import { isCoopOpen } from './update/coop'
 
-// STATUS
-
 const statusWave = (model: Model, wave: number): string =>
   RunMode.match(model.mode, {
     Campaign: () => `wave ${wave}`,
     Endless: () => `endless wave ${wave}`,
   })
 
-// NOTE: the crew's keys, read out in a break, since the key ring on the
-// HUD is a picture.
 const keysHint = (model: Model): string =>
   ` Keys on the ring: ${heldKeys(model)}.`
 
@@ -170,13 +166,9 @@ const practiceGateNote = (model: Model): string =>
     ? ' The wave waits until you try moving, aiming, and firing.'
     : ''
 
-// NOTE: the dare card in your pocket, open after the slam
-// (src/features/dare/pocketCardView.ts).
 const POCKET_CARD_STATUS =
   "Your friends' dare card: find the things they drew, then get out the front door. Press any key or tap to put it away."
 
-// NOTE: the dare card opened again from the HUD, with its satchel: the
-// things found, each with its line, and the ones still to find.
 const openedCardStatus = (model: Model): string => {
   const card = dareCardOf(model)
   const found = Array.filter(card, ({ isFound }) => isFound)
@@ -272,11 +264,6 @@ const loadoutView = (
         )
     : null
 
-// NOTE: the home menu stays in sight, dimmed, around the dare card, since
-// the card unfolds out of its PLAY (src/features/lobby/lobby.css), but it is
-// inert while the card is up: no tap, Tab, or screen reader reaches it. The
-// wrapper takes no room and is always there, so the menu is never drawn
-// afresh (its deal-in art would play again) when the card opens or closes.
 const homeUnderLobbyView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -289,8 +276,6 @@ const homeUnderLobbyView = (
     .children(homeMenuView(model, h))
 }
 
-// VIEW
-
 const rootStyle = (model: Model): Record<string, string> => {
   const screen = screenOf(model)
   return {
@@ -302,8 +287,6 @@ const rootStyle = (model: Model): Record<string, string> => {
       onNone: () => ({}),
       onSome: surface => ({
         '--pixel': `${stagePlacement(surface, screen).scale}px`,
-        // NOTE: one device pixel, for pixel art in HTML drawn at whole
-        // device pixels (src/art/artSize.ts).
         ...(surface.pixelRatio !== undefined && surface.pixelRatio > 0
           ? { '--dpx': `${1 / surface.pixelRatio}px` }
           : {}),
@@ -312,8 +295,6 @@ const rootStyle = (model: Model): Record<string, string> => {
   }
 }
 
-// NOTE: the game surface: the world, its overlay, and the sticks. Its Mount
-// measures it and sends each finger's press by its own pointer id.
 const gameSurfaceView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -332,44 +313,44 @@ const gameSurfaceView = (
       stickView(model.input.aimStick, 'aim', h),
     )
 
-// NOTE: the root's view (Effect UI's `view: (h, model)`), a signature the
-// component fixes, so it has no data-last form.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const view = (
-  h: ApplicationViewBuilder,
-  model: Model,
-): ApplicationHtml =>
-  h.main
-    .class('game-root')
-    .onMount(ListenForTouchTaps())
-    .attr('data-layout', screenOf(model).layout)
-    .attr('data-cursor', model.settings.cursorSetting)
-    .attr('data-device', model.lastDevice)
-    .style(rootStyle(model))
-    .children(
-      h.h1.class('sr-only').children(GAME_TITLE),
-      h.p.class('sr-only').attr('role', 'status').children(statusText(model)),
-      purchaseAnnouncementView(model, h),
-      gameSurfaceView(model, h),
-      loadoutView(model, h),
-      pauseHelpView(model, PressGameSurface(), h),
-      isCoopOpen(model) ? null : homeUnderLobbyView(model, h),
-      preparationControlsView(model, h),
-      gunClusterView(model, h),
-      dareListButtonView(model, h),
-      debutCardView(model, h),
-      caseCardView(model, h),
-      questTrackerView(model, h),
-      modeChoiceView(model, ShareFromClick(), h),
-      escapeSupportView(model, h),
-      newEntryNoticeView(model, h),
-      isProfileOpen(model) ? null : cornerButtonsView(model, h),
-      keyGrabToastView(model, h),
-      homeScreenGuideView(model, h),
-      updateGreetingView(model, h),
-      manorHandView(model, h),
-      menuPanelView(model, h),
-      profileDialogView(model, h),
-      lobbyView(model, h),
-      coopView(model, h),
-    )
+export const view: {
+  (model: Model): (h: ApplicationViewBuilder) => ApplicationHtml
+  (h: ApplicationViewBuilder, model: Model): ApplicationHtml
+} = Function.dual(
+  2,
+  (h: ApplicationViewBuilder, model: Model): ApplicationHtml =>
+    h.main
+      .class('game-root')
+      .onMount(ListenForTouchTaps())
+      .attr('data-layout', screenOf(model).layout)
+      .attr('data-cursor', model.settings.cursorSetting)
+      .attr('data-device', model.lastDevice)
+      .style(rootStyle(model))
+      .children(
+        h.h1.class('sr-only').children(GAME_TITLE),
+        h.p.class('sr-only').attr('role', 'status').children(statusText(model)),
+        purchaseAnnouncementView(model, h),
+        gameSurfaceView(model, h),
+        loadoutView(model, h),
+        pauseHelpView(model, PressGameSurface(), h),
+        isCoopOpen(model) ? null : homeUnderLobbyView(model, h),
+        preparationControlsView(model, h),
+        gunClusterView(model, h),
+        dareListButtonView(model, h),
+        debutCardView(model, h),
+        caseCardView(model, h),
+        questTrackerView(model, h),
+        modeChoiceView(model, ShareFromClick(), h),
+        escapeSupportView(model, h),
+        newEntryNoticeView(model, h),
+        isProfileOpen(model) ? null : cornerButtonsView(model, h),
+        keyGrabToastView(model, h),
+        homeScreenGuideView(model, h),
+        updateGreetingView(model, h),
+        manorHandView(model, h),
+        menuPanelView(model, h),
+        profileDialogView(model, h),
+        lobbyView(model, h),
+        coopView(model, h),
+      ),
+)

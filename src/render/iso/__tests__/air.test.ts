@@ -10,9 +10,6 @@ import { WEST_EXIT } from '../../../world/level/plan'
 import { houseRattleOf } from '../../juice'
 import { airOf } from '../air'
 
-// The air in the manor (src/render/iso/air.ts): dust in the open rooms and
-// embers off the fires, read off the World's clock alone.
-
 const airAt = (model: Model, ms: number) => {
   const world = atClock(model, ms)
   return airOf({

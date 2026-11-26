@@ -3,13 +3,6 @@ import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 
 import { FRAMES_PER_SECOND } from './shotList'
 
-// ASSEMBLY
-//
-// NOTE: ffmpeg only encodes: the frames are finished (captions and fades
-// are drawn in the page) and the soundtrack is mixed. The MP4 is H.264 in
-// yuv420p with AAC sound and the index up front, what X takes. The GIF is
-// half size at 30 frames a second, scaled by whole pixels, one palette.
-
 class EncodeFailed extends Schema.TaggedError<
   EncodeFailed,
   { readonly brand: unique symbol }
@@ -26,7 +19,6 @@ export const INSTALL_FFMPEG = Array.join(
   '\n',
 )
 
-/** @stability unstable */
 export const hasFfmpeg: Effect.Effect<
   boolean,
   never,
@@ -68,8 +60,6 @@ const ffmpeg = (args: ReadonlyArray<string>) =>
     }
   })
 
-// NOTE: bitexact and no metadata, so the same frames and sound encode to
-// the same file.
 const REPEATABLE = [
   '-fflags',
   '+bitexact',
@@ -81,7 +71,6 @@ const REPEATABLE = [
   '-1',
 ]
 
-/** @stability unstable */
 export const encodeMp4 = ({
   frames,
   wav,
@@ -125,7 +114,6 @@ export const encodeMp4 = ({
     Console.log(`  wrote ${out}`),
   )
 
-/** @stability unstable */
 export const encodeGif = ({
   frames,
   out,

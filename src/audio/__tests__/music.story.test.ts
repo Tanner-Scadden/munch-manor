@@ -91,17 +91,14 @@ const fighting = (wave: number, audio: AudioState): Model =>
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [FAR_AWAY_SPAWN] }),
   })
 
-// NOTE: the walk out: the list done and the front door open.
 const holdingOut = (audio: AudioState): Model =>
   withFinale(fighting(4, audio), Finale.Open())
 
-// NOTE: a tune cued reports nothing; `_mood` names the one the test means.
 const resolveCue =
   (_mood: MusicMood): StoryStep =>
   s =>
     s.resolve(CueMusic, Component.noop)
 
-// NOTE: the slam's frames, each frame's sounds played and kept in `heard`.
 const slamHeard =
   (heard: Array<SoundEffect>): StoryStep =>
   s => {
@@ -116,8 +113,6 @@ const slamHeard =
     return s
   }
 
-// NOTE: a cleared wave's payday, and the ching of the key it adds to the
-// ring (src/world/keys/keys.ts), sound in the same frame.
 const resolvePaydayAndKey: StoryStep = resolveAll(PlaySound)(Component.noop)
 
 describe('music follows the phase', () => {
@@ -175,8 +170,6 @@ describe('music follows the phase', () => {
             ),
           resolvePlayed,
           resolveCue('Silence'),
-          // NOTE: a skip lands on the slam, whose frames slam the door and
-          // open the first break, and the creep comes back.
           press('Escape'),
           slamHeard(heard),
           c => {

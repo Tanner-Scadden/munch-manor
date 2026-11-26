@@ -1,10 +1,3 @@
-// The built harness: `vite build tools/audit/harness` once into a cache
-// folder named by a hash of everything the build reads, served by a small
-// static server on a free port of the script's own. A script that finds the
-// folder for today's hash skips the build, so only a change to the game, the
-// harness, or the dependencies costs a build (about 2 s).
-// It also holds where the harness runs, and the runners of the scripts that
-// shoot it.
 import { type Server, spawn } from 'bun'
 import {
   Array,
@@ -34,8 +27,6 @@ export const HARNESS = 'http://localhost:4174/'
 const ROOT = `${import.meta.dir}/../..`
 const VITE = `${ROOT}/node_modules/.bin/vite`
 
-// NOTE: the folders and files the harness build reads. `public` is copied
-// into the build, and `tools/sprites` builds the sprite atlas.
 const INPUT_DIRS = [
   'src',
   'tools/audit/harness',
@@ -46,8 +37,6 @@ const INPUT_DIRS = [
 const INPUT_FILES = ['package.json', 'bun.lock', 'tsconfig.json']
 const SKIPPED_DIRS = new Set(['dist', 'dist-profile', 'node_modules'])
 
-// NOTE: the cache is shared by every worktree, since the folder name is the
-// content's hash. Only the newest few builds are kept.
 const KEPT_BUILDS = 8
 
 class HarnessBuildFailed extends Schema.TaggedError<
@@ -106,8 +95,6 @@ const harnessHash = Effect.gen(function* () {
     Order.String,
   )
   const hasher = new Bun.CryptoHasher('sha256')
-  // NOTE: the profiling build (`PROFILE` set, unminified, so a profile names
-  // its functions) is cached apart from the minified one.
   const profile = yield* Config.String('PROFILE').pipe(Config.withDefault(''))
   hasher.update(profile === '' ? 'minified\0' : 'profile\0')
   for (const file of paths) {
@@ -180,8 +167,6 @@ const runBuild = (draft: string) =>
     catch: error => HarnessBuildFailed.make({ message: describeError(error) }),
   })
 
-// NOTE: builds into a folder of its own and renames it into place, so two
-// scripts building the same hash at once both end with one whole build.
 const buildInto = (outDir: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -263,7 +248,6 @@ const respond = (path: Path.Path, dir: string, request: Request) =>
       ),
   })
 
-// NOTE: serves a folder on a free port. Any path that is not a file gets 404.
 const serveDir = (
   dir: string,
 ): Effect.Effect<Server<undefined>, never, Path.Path> =>
@@ -278,12 +262,6 @@ const serveDir = (
     })
   })
 
-// WHERE THE HARNESS RUNS
-
-// NOTE: where the harness runs. `BASE` names a server you started, and
-// `HARNESS_DEV=1` uses the dev server on 4174 for live editing. Otherwise
-// `harness` builds the harness once per content hash and serves it on a
-// free port of this script's own.
 let harnessBase = HARNESS
 
 export const harnessBaseUrl = () => harnessBase
@@ -302,14 +280,9 @@ const harness = Effect.gen(function* () {
   return harnessBase
 })
 
-// NOTE: `harness` for tools/video, which waits on a promise.
 export const useHarness = (): Promise<string> =>
   Effect.runPromise(harness.pipe(Effect.provide(NodeServices.layer)))
 
-// THE RUNNERS
-
-// NOTE: `runAudit` and `runAuditWith` (lib.ts) for a script that shoots the
-// harness: they build and serve it first, so `harnessUrl` points at it.
 export const runHarnessAudit = <A, E>(
   program: Effect.Effect<A, E, Scope.Scope>,
 ) => {

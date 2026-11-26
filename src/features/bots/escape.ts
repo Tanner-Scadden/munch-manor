@@ -23,17 +23,6 @@ import {
 } from '../../world/step/geometry'
 import { BOSS_RULES } from '../../world/zombies/bossRules'
 
-// Where a bot runs when zombies come close: the way a smart player would,
-// not straight back into a wall. It tries headings all round and scores
-// each by how far it can really walk that way, how far the spot it lands on
-// is from every zombie near it, whether the way brushes past one, and how
-// open that spot is (a corner is not). So a bot with its back to a wall
-// slides along it, and a bot in a corner slips out through the widest gap
-// in the crowd instead of sitting there. Pure and without dice, shared by
-// the teammate bots (src/features/bots/teammateBot.ts) and the balance bot.
-
-// TUNING
-
 const HEADINGS = 16
 const LOOK_PX = 40
 const PROBE_STEP_PX = 4
@@ -41,9 +30,6 @@ const OPEN_LOOK_PX = 20
 const OPEN_HEADINGS = 8
 const PASS_MARGIN_PX = 3
 
-// NOTE: how much each part of a heading's score counts: the room it lands
-// in, the way on from there, how far it gets, and a little for keeping on straight away from the
-// danger, so the pick holds steady from frame to frame.
 const OPEN_WEIGHT = 24
 const ONWARD_WEIGHT = 30
 const REACH_WEIGHT = 0.3
@@ -76,8 +62,6 @@ const isBlocked = (level: Level, x: number, y: number): boolean => {
   )
 }
 
-// NOTE: how far a player's body can walk from `from` along `unit`, up to
-// `limit`: the center and both shoulders must stay off solid tiles.
 const freeLength = (
   level: Level,
   from: Vector,
@@ -106,11 +90,6 @@ const freeLength = (
   return reached
 }
 
-// NOTE: what the spot a heading lands on leaves the bot. `open` is the
-// share of directions it could walk a little way from there: 1 in the open,
-// about a quarter in a corner. `onward` is how well it could keep running
-// from there, away from the zombie nearest that spot: near 1 with a clear
-// way on, below 0 in a dead end, where every way out leads back toward it.
 const prospectAt = (
   level: Level,
   at: Vector,
@@ -130,8 +109,6 @@ const prospectAt = (
 const gapTo = (at: Vector, threat: Threat): number =>
   distanceBetween(at, threat.at) - threat.radius
 
-// NOTE: the heading to run with zombies close: a unit vector, or zero with
-// no threats.
 export const escapeHeading: {
   (from: Vector, threats: ReadonlyArray<Threat>): (level: Level) => Vector
   (level: Level, from: Vector, threats: ReadonlyArray<Threat>): Vector
@@ -178,8 +155,6 @@ export const escapeHeading: {
           closestPointOnSegment(threat.at, from, landing),
           threat.at,
         )
-        // NOTE: a zombie the bot is already touching does not block the way
-        // out; one it would walk into does.
         if (
           passing - threat.radius < PLAYER_RADIUS + PASS_MARGIN_PX &&
           gapTo(from, threat) > PLAYER_RADIUS + PASS_MARGIN_PX
@@ -208,26 +183,10 @@ export const escapeHeading: {
   },
 )
 
-// UNCLE CHUNK
-
-// How a bot reads Uncle Chunk's tells the way a player who has learned
-// them does: out of a stomp's or slam's ring once he winds up, still just
-// outside it, sideways off a charge's lane, off a glob's mark and out of a
-// puddle. Shared by the teammate bots and the balance bot
-// (tools/balance/bot/dodging.ts).
-
-// NOTE: how far a teammate bot keeps from him: inside his far range
-// (farPx), past which he spits volleys and charges, and as far out as
-// that allows, so his slam's wind-up is a step from clear. Keeping 80 px
-// off cost the balance bot escapes (Normal 12 of 100 to 8, 2026-11-11: his
-// bites fell from 35 hearts to 3, his globs rose from 8 to 28 and his
-// charges from 2 to 11), and 62 px still did (9 of 100), so the balance
-// bot keeps its own 52 px.
 export const CHUNK_KEEP_PX = BOSS_RULES.farPx - 8
 const DODGE_MARGIN_PX = 10
 const CHUNK_BODY_PX = 12
 
-// NOTE: Uncle Chunk on his feet, while his fight is on.
 const maybeChunk = (world: World): Option.Option<Zombie> => {
   const { boss } = world
   return boss._tag === 'Fighting'
@@ -241,7 +200,6 @@ const maybeChunk = (world: World): Option.Option<Zombie> => {
 const awayFrom = (from: Vector, at: Vector): Vector =>
   Option.getOrElse(directionBetween(from, at), () => unitAt(0, 1))
 
-// NOTE: square to a line from `from` along `direction`, on `at`'s side.
 const offLine = (from: Vector, direction: Vector, at: Vector): Vector => {
   const side =
     direction.x * (at.y - from.y) - direction.y * (at.x - from.x) >= 0 ? 1 : -1
@@ -279,9 +237,6 @@ const globMarkAt = (world: World, at: Vector): Vector | undefined => {
   )
 }
 
-// NOTE: the step a bot at `at` takes off one of his tells, or none with
-// no tell on it. Standing still is a step: outside a winding ring it waits
-// there rather than walk in.
 export const chunkDodge: {
   (at: Vector): (world: World) => Vector | undefined
   (world: World, at: Vector): Vector | undefined
@@ -306,8 +261,6 @@ export const chunkDodge: {
   return BossMove.matchOrElse(
     world.boss.move,
     {
-      // NOTE: only a stomp or a slam is a ring on the floor. Through a
-      // belch's or a spit's wind-up the bot keeps fighting.
       WindingUp: move =>
         move.attack === 'Stomp' || move.attack === 'Slam'
           ? distanceBetween(at, chunk) <

@@ -1,8 +1,3 @@
-// The normal map pass: lit sprites with their sheets' normal maps and
-// without (`flat`), so the light rounding a body can be judged side by side,
-// as `normals-<TAG>-<viewport>-<scene>-<shaded|flat>.png`: every kind in a
-// row, a crowd under the muzzle flash, and the boss.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsNormals.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

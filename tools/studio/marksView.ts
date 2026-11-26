@@ -1,7 +1,3 @@
-// The marks over a flat picture as HTML: the notes' pins and areas, the tile
-// grid, the hovered tile, and the pointer on it. A Mount reads the pointer,
-// since an element's own `pointerdown` payload carries no place on the
-// element, and there is no `pointermove` or `pointerup` handler.
 import { Array, Function, Option, Schema, Stream } from 'effect'
 
 import { type Component, Mount } from '@effect/ui'
@@ -9,12 +5,9 @@ import { type Component, Mount } from '@effect/ui'
 import type { Message, StudioH, StudioHtml } from './block'
 import type { AreaMark, PinMark } from './pins'
 
-// THE POINTER
-
 export const PointerKind = Schema.Literals(['Move', 'Down', 'Up', 'Leave'])
 export type PointerKind = typeof PointerKind.Type
 
-// NOTE: what the pointer did on the layer, in its own screen pixels.
 export type PointerOnPicture = Readonly<{
   kind: PointerKind
   x: number
@@ -41,9 +34,6 @@ const pointerEvents = (
     Stream.map(event => placeOn(element, kind, event)),
   )
 
-// NOTE: the pointer over a picture's marks: moving, pressed (a mouse by its
-// primary button alone), let go, gone. A let go ends a drag, never a tap's
-// act: the tap acted on its press.
 const WatchPicturePointer = Mount.makeStream(
   'WatchPicturePointer',
   { args: {} },
@@ -66,8 +56,6 @@ const WatchPicturePointer = Mount.makeStream(
     ),
 )
 
-// NOTE: the pointer Mount with what each move means to the studio, read off
-// the render it was placed in.
 export type PictureMount = Mount.Issued<
   Message | Component.Noop,
   never,
@@ -79,16 +67,12 @@ export const picturePointer = (
   toMessage: (pointer: PointerOnPicture) => Message | Component.Noop,
 ): PictureMount => WatchPicturePointer().pipe(Mount.map(toMessage))
 
-// THE MARKS
-
-// NOTE: the tile grid as two repeating lines, its first lines `offset` in.
 type GridLines = Readonly<{
   step: number
   offsetX: number
   offsetY: number
 }>
 
-// NOTE: the hovered tile's box, in screen pixels.
 type HoverBox = Readonly<{
   x: number
   y: number
@@ -135,7 +119,6 @@ export type MarksInput = Readonly<{
   pointer: PictureMount
 }>
 
-// NOTE: the layer over a picture, its own size, taking the pointer.
 export const marksView: {
   (input: MarksInput): (h: StudioH) => StudioHtml
   (h: StudioH, input: MarksInput): StudioHtml

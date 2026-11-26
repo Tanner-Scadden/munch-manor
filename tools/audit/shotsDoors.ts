@@ -1,8 +1,3 @@
-// The doorways in the house's back walls in 3D (src/render/iso/house.ts):
-// the dining room's yard door, the kitchen's, and the parlour's, each from
-// the room below it, as `doors-<TAG>-<viewport>-<scene>.png`, so the
-// opening's depth through the wall can be judged.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsDoors.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

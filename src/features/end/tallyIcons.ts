@@ -3,10 +3,6 @@ import { type Sprite, spriteShapes } from '../../art/sprite'
 import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
 import type { CrewAward } from '../../world/names'
 
-// The end card's pixel icons: the solo tally's rows (src/features/end/endView.ts), and
-// the crew board's rows and award badges (src/features/end/crewBoardView.ts). Built once
-// at module scope.
-
 export type TallyIcon = 'Wave' | 'Time' | 'Kills' | 'Streak' | 'Aim' | 'Keys'
 
 const PALETTE = {
@@ -60,7 +56,6 @@ const PIXELS = {
     '.RRRRR.',
     '...R...',
   ],
-  // NOTE: a teammate picked up off the floor: a first aid cross.
   Revive: [
     '.WWWWW.',
     'WWWRWWW',
@@ -70,7 +65,6 @@ const PIXELS = {
     'WWWRWWW',
     '.WWWWW.',
   ],
-  // NOTE: going down: a heart with a bite out of it.
   Down: [
     '.RR.R..',
     'RRRR...',
@@ -80,7 +74,6 @@ const PIXELS = {
     '..RRR..',
     '...R...',
   ],
-  // NOTE: Big Spender's money bag.
   Bag: [
     '..BBB..',
     '...B...',
@@ -105,7 +98,6 @@ export const TALLY_ICONS: Readonly<Record<TallyIcon, Sprite>> = {
   Keys: KEY_SPRITE,
 }
 
-// NOTE: the key is drawn from its top left, the rest from their middle.
 export const ICON_SHIFT: Readonly<Record<TallyIcon, number>> = {
   Wave: 0,
   Time: 0,
@@ -119,9 +111,6 @@ export const REVIVE_ICON = sprite(PIXELS.Revive)
 export const DOWN_ICON = sprite(PIXELS.Down)
 export const CROWN = sprite(PIXELS.Crown)
 
-// NOTE: each award's badge, the icon of the row it was won on, so a title
-// reads at a glance. Big Spender's bag is its own: the board shows money
-// earned, and the bag is money spent.
 export const AWARD_ICONS: Readonly<Record<CrewAward, Sprite>> = {
   Mvp: CROWN,
   Medic: REVIVE_ICON,

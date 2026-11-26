@@ -1,12 +1,3 @@
-// The tall furniture against a wall, carved in 3D, with the player standing
-// beside each piece and pressed up against the pantry's and a china
-// cabinet's fronts: the kitchen's pantry, ovens, sink, and fridge, the
-// parlour's bookshelf and piano, the dining room's china cabinets and
-// sideboard, and, standing free, the library's stacks and the cellar's wine
-// racks, as `shelves-<TAG>-<viewport>-<scene>.png`. A piece against a wall
-// should stand upright and shallow on its own tiles, so nobody expects to
-// walk behind it. Set beside an earlier TAG for a before and after.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsShelves.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -25,8 +16,6 @@ import {
 
 const LEARNED =
   'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey,displayCase,rattles'
-// NOTE: house 0 (src/world/level/plan.ts ARRANGEMENTS): the parlour west of
-// the dining room, the library east, and the cellar in the far slot.
 const BREAK = `god&nodev&seen=all&wave=3&openexits=West,East,Far,Kitchen&kitchen&${LEARNED}&house=0&break=open&nohud&tick=240`
 
 const beside = (x: number, y: number) => `${BREAK}&px=${x}&py=${y}`

@@ -38,20 +38,12 @@ import { HuntStep, huntPlan } from '../dareSearch'
 import { botInputs } from '../teammateBot'
 import { BOT, BREAK } from './bots.fixture'
 
-// A teammate bot searches for the dare's list (src/features/bots/dareSearch.ts),
-// the way the balance bot does: it walks to a thing in an open room and
-// keeps still to work a find, in the cellar it yanks the bulb's chain
-// first, and it never leaves a fight for it. Each test seats one bot in a
-// crew of two, the human idle far off.
-
 const QUIET_WAVE = Phase.Wave({
   wave: 3,
   elapsedMs: 0,
   spawns: [DISTANT_SPAWN],
 })
 
-// NOTE: a crew of the human and one bot, the room open and the dare's one
-// thing lying at its hiding spot.
 const searching = (
   phase: Phase,
   room: SlotRoomId,
@@ -75,7 +67,6 @@ const searching = (
   }
 }
 
-// NOTE: the slot that found the one thing, while it is found.
 const foundBy = (current: Model): number | undefined =>
   Option.getOrUndefined(
     Option.flatMap(Array.head(current.dareThings), ({ state }) =>
@@ -139,8 +130,6 @@ describe('a bot searches for the list', () => {
     expect(botInputs(inReach, [1]).get(1)?.move).toEqual({ x: 0, y: 0 })
   })
 
-  // NOTE: the zombie stands past SAFE_PX, so only the fight's priority
-  // keeps the bot from the thing.
   it.effect('it does not leave a fight to fetch a thing', () => {
     const { model, spot } = searching(QUIET_WAVE, 'Library', DINING_ROOM_ID)
     const start = { x: spot.x, y: spot.y + 60 }
@@ -170,8 +159,6 @@ describe('a bot searches for the list', () => {
   })
 })
 
-// NOTE: the pantry's goodie (src/world/kitchen/pantry.ts) is free for the
-// walk, so a bot with nothing on the list to fetch takes it in a break.
 describe('a bot runs its errands', () => {
   it.effect("in a break it takes the pantry's goodie", () => {
     const found = UiStruct.evolve(crewInWave(2), {
@@ -196,13 +183,9 @@ describe('a bot runs its errands', () => {
   })
 })
 
-// The hunt planned backward from the list: the thing, its room, the
-// padlock in the way, and the keys it asks.
 describe('the hunt plan', () => {
   const ROOMS: ReadonlyArray<SlotRoomId> = ['Parlour', 'Library', 'Cellar']
 
-  // NOTE: a break with every slot room boarded and one thing hidden in
-  // `room`, `keys` on the crew's ring.
   const boardedOn = (room: SlotRoomId, keys: number): Model => {
     const shut = UiStruct.evolve(crewInWave(2), {
       phase: () => BREAK,
@@ -223,7 +206,6 @@ describe('the hunt plan', () => {
 
   const FROM = { x: 40, y: 140 }
 
-  // NOTE: the slot room behind two sets of boards, the far slot's.
   const farRoom = Option.getOrThrow(
     Array.findFirst(
       ROOMS,

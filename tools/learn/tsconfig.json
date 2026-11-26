@@ -3,7 +3,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     "lib": ["ES2022", "DOM"]
   },
   "include": [

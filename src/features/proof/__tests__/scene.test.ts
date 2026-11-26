@@ -24,12 +24,6 @@ import { shelfThingsFor, slotCountOf } from '../proof'
 
 const SLOT_COUNT = slotCountOf(shelfThingsFor([]))
 
-// The Proof Shelf in its panel: opened from the MANOR hand's PROOF card, a
-// slot per thing per difficulty, the found ones filled, and a tapped slot's
-// stamp and line in the card beside the shelf. The shelf is a child
-// component, a leaf in the root's Scene: its insides are drawn on their own
-// from the props the root hands it.
-
 const TODAY = '2026-11-13'
 
 const shelved = UiStruct.evolve(knowingDay(home, TODAY), {
@@ -70,8 +64,6 @@ describe('the Proof Shelf panel', () => {
           )
           .expect(panel)
           .toExist()
-        // NOTE: the shelf as the panel draws it (src/app/dialogs.ts), from
-        // the Model opening PROOF leaves, which marks the new slots fresh.
         const opened = yield* modelAfter(
           shelved,
           send(Message.ClickedProofButton()),

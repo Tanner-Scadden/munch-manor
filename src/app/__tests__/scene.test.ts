@@ -69,12 +69,9 @@ const hasText =
   s =>
     s.expect(locator).toHaveText(text)
 
-// NOTE: a frame through the root's frame Subscription, its sounds played
-// and the HUD's gun slots acknowledged.
 const frame = (deltaTime: number): SceneStep =>
   steps(emitFrame(deltaTime), settleRunCommands, ackHudSlots)
 
-// NOTE: the pause screen's press on the surface, acknowledged running.
 const pausedSurface: SceneStep = steps(measureSurface, s =>
   s.expectMount(PressGameSurface()),
 )
@@ -238,7 +235,6 @@ describe('A break', () => {
       Effect.gen(function* () {
         const placeButton = role('button', { name: 'Place a Plank Pile' })
         const crate = crateSpotOf(START_LEVEL, 'Dining')
-        // NOTE: every heart, so the crate rolls a trap, not a heart.
         const s = yield* sceneOf(
           modifyFocus(atStall, {
             player: player =>
@@ -294,8 +290,6 @@ describe('Reload button', () => {
     },
   )
   const reloadButton = role('button', { name: 'Reload the Pop Pistol' })
-  // NOTE: on touch the reload button past the knife shares the held gun's
-  // name, so the held gun's slot is looked for among the slots.
   const touchReloadButton = Locator.inside(byClass('gun-slots'), reloadButton)
 
   it.effect('shows on touch and starts a reload when tapped', () =>
@@ -465,7 +459,6 @@ describe('Run stats', () => {
   const STATS =
     'Waves cleared: 3. Zombies splatted: 69 (41 Groaner, 17 Hotfoot, 9 Kaboomer, 2 Big Lug, 0 Big Leaguer, 0 Ankle Biter). Best streak 0. Run time 6:11. Accuracy 43 percent. Keys found 14.'
 
-  // NOTE: an end screen read out, its SHARE Mount acknowledged.
   const readsOut = (model: Model, text: string) =>
     Effect.gen(function* () {
       const s = yield* sceneOf(model)
@@ -514,8 +507,6 @@ describe('Run stats', () => {
 })
 
 describe('Title', () => {
-  // NOTE: the root's head names the document: `Story.head` reads what its
-  // `head` option returns for the Scene's record.
   it.effect(
     'the working title names the document, the page, and index.html',
     () =>

@@ -5,9 +5,6 @@ import { describe, expect, it } from '@effect/vitest'
 import { START_LEVEL } from '../../level/arena'
 import { rollWave } from '../endlessWaves'
 
-// Wave 1's two squads each come through a door drawn from the run's seed,
-// so the opening is not the same room every run (owner, 2026-11-14).
-
 const doorsOfWave1 = (seed: number): ReadonlyArray<string> =>
   Array.dedupe(
     Array.map(

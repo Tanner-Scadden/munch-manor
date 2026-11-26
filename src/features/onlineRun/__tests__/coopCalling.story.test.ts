@@ -37,9 +37,6 @@ import { freshRoom } from '../../coop/roomState'
 import { ChangeLobby } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf } from '../../coop/testing'
 
-// A co-op room seats each player as the calling they brought (the lobby's
-// member row, packages/netcode Lobby.ts): its hearts and its gun, per seat.
-
 const CREW = [0, 1, 2]
 
 const settingsWith = roomSettingsOf('Campaign', 'Normal', [
@@ -111,12 +108,8 @@ describe('seating the callings', () => {
   })
 })
 
-// NOTE: a hero's card tapped in the picker over co-op's lobby: the picker's
-// Picked event, as the root hears it.
 const tapCard = (calling: Calling) => send(Message.PickedCoopHero({ calling }))
 
-// NOTE: what a pick, a name, or a buy in the room asks for: the lobby's
-// change, co-op's focus, and the save.
 const expectLobbySaved: StoryStep = s =>
   s.expectExact(ChangeLobby, HtmlCommand.Focus, WriteSave)
 
@@ -217,7 +210,6 @@ describe('renaming yourself in the lobby', () => {
 })
 
 describe('buying a hero in the lobby', () => {
-  // NOTE: rank 7 has reached the Track Star (100 Bones); 150 are earned.
   const trying: Model = UiStruct.evolve(readyAfterRead, {
     rank: current => ({
       ...current,
@@ -244,7 +236,6 @@ describe('buying a hero in the lobby', () => {
       },
     }),
   })
-  // NOTE: BUY on the Track Star tried on: the picker's RequestedBuy event.
   const clickBuy = send(Message.RequestedBuyCoopHero({ calling: 'TrackStar' }))
 
   it.effect(
@@ -268,8 +259,6 @@ describe('buying a hero in the lobby', () => {
       }),
   )
 
-  // NOTE: co-op's screen put back as it was before the buy, so the second
-  // tap reaches the root again.
   it.effect('a second tap buys nothing more', () =>
     Effect.gen(function* () {
       const once = yield* modelAfter(trying, steps(clickBuy, settleLobbySaved))

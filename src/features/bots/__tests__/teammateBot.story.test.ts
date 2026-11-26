@@ -39,9 +39,6 @@ import { coopNameShapes } from '../../onlineRun/coopMarksView'
 import { botInputs } from '../teammateBot'
 import { BOT, BREAK } from './bots.fixture'
 
-// A teammate bot (src/features/bots/teammateBot.ts) plays its seat from the World: it
-// shoots, revives, and presses READY. Each test seats one bot in a crew of two.
-
 const TICK_MS = FIXED_STEP_MS
 
 const withBot = (base: Model): Model =>
@@ -374,8 +371,6 @@ describe('a bot run in the root', () => {
 })
 
 describe('at the back door', () => {
-  // NOTE: a campaign break with the kitchen open and a thing found, the
-  // human at the back door and the bot across the kitchen.
   const atBackDoor = (): Model => {
     const opened = withDareThings(
       UiStruct.evolve(withBot(crewInWave(2, kitchenBreak(4))), {

@@ -27,8 +27,6 @@ import { isInsideRoomAt, isSolidAt } from '../../world/level/tileQueries'
 import type { ParticleKind } from '../../world/schema/entitySchema'
 import type { Decal, DecalKind, Particle } from '../renderSchema'
 
-// PHYSICS
-
 const SMOKE_RISE = 30
 
 const partPhysics = (decalKind: DecalKind): ParticlePhysics => ({
@@ -181,15 +179,12 @@ const PHYSICS: Readonly<Record<ParticleKind, ParticlePhysics>> = {
     restitution: 0,
     maybeDecalKind: Option.none(),
   },
-  // NOTE: paper flutters: it falls slow and drifts to a stop.
   Confetti: {
     gravity: SPARK_GRAVITY / 2,
     dragPerSecond: DUST_DRAG_PER_SECOND,
     restitution: 0,
     maybeDecalKind: Option.none(),
   },
-  // NOTE: water kicked up wading through a puddle falls as blood does and
-  // leaves nothing behind: it lands back in the water.
   Splash: {
     gravity: BLOOD_GRAVITY,
     dragPerSecond: BLOOD_DRAG_PER_SECOND,
@@ -270,8 +265,6 @@ const DECAL_HEIGHT: Readonly<Record<DecalKind, (size: number) => number>> = {
 const isOnFloor = (level: Level, x: number, y: number): boolean =>
   isInsideRoomAt(level, { x, y }) && !isSolidAt(level, { x, y })
 
-// NOTE: the decal a particle leaves where it lands, if its kind leaves one
-// and it lands on the floor.
 const landedDecal = (
   level: Level,
   particle: Particle,
@@ -293,18 +286,11 @@ const landedDecal = (
   )
 }
 
-// NOTE: the particles still flying after a step, in order, and the decals
-// the ones that landed left.
 export type SteppedParticles = Readonly<{
   flying: ReadonlyArray<Particle>
   decals: ReadonlyArray<Decal>
 }>
 
-// NOTE: every particle steps on every frame, up to PARTICLE_MAX of them, so
-// the step is one loop that builds each moved particle as one object: no
-// Result per particle to partition and no closure per field. Each kind's
-// drag for the step's time is worked out once. A moved particle keeps its
-// fields in their order, as a field copy would.
 export const stepParticles: {
   (
     seconds: number,

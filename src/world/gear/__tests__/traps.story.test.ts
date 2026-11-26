@@ -72,8 +72,6 @@ const PLANNED_SPAWNS: ReadonlyArray<PlannedSpawn> = [
 
 const ROOM_MIDDLE: Vector = { x: 160, y: 95 }
 
-// NOTE: the dining room's doors the traps here are laid in: the North door
-// at the top right, and the West door at the top left.
 const NORTH_X = MANOR.doors.North.center.x
 const WEST_Y = MANOR.doors.West.center.y
 
@@ -374,8 +372,6 @@ describe('placing a turret', () => {
     'a blocked front tile falls back to the nearest free tile ahead',
     () =>
       Effect.gen(function* () {
-        // NOTE: where the new Gnome went: every Turret but the one placed
-        // before.
         const placedTile = (start: Model) =>
           modelAfter(start, press('KeyT')).pipe(
             Effect.map(({ traps }) =>
@@ -395,8 +391,6 @@ describe('placing a turret', () => {
             traps: () => [turret(1, 17, 9)],
           }),
         )
-        // NOTE: standing over Rattles' trunk, facing it: the tiles just in
-        // front of him stay clear.
         const besideStall = yield* placedTile(
           stocked(
             0,
@@ -514,8 +508,6 @@ describe('barricades and pathing', () => {
                 speed: 40,
               }),
             ],
-            // NOTE: by the West door, so the way round through the yard
-            // is shorter than chewing through the North door's planks.
             { x: 40, y: 45 },
           ),
           recordTicks(240, LONG_FRAME_MS, frames),
@@ -909,9 +901,6 @@ describe('turrets', () => {
     Effect.gen(function* () {
       const frames: Array<Model> = []
       yield* modelAfter(
-        // NOTE: on the open floor under the dining room's north wall,
-        // east of the sideboard: the Big Lug comes up at the player
-        // across the gnome.
         fightingWith(
           [turret(1, 25, 4)],
           [zombieOf('Tank', 76, 255, 57, { speed: 20 })],

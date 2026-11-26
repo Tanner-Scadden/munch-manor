@@ -50,13 +50,6 @@ import {
 import { breakClockMsOf } from '../difficulty'
 import { bonusPercentOf, noModifiers } from '../modifiers'
 
-// The dare ladder (src/world/run/dareLadder.ts; GAME_DESIGN.md, "The dare
-// ladder"): marks past the difficulties, each keeping the rules below it.
-// Marks 1 to 4 turn on Big Crowd, Broke, Glass, and Friendly Fire; marks 5
-// to 8 add the house rules. Mark 0 changes nothing, and Uncle Chunk never
-// changes below mark 5. An escape opens the next mark, and the co-op room
-// plays the mark its host picked.
-
 const atMark = (model: Model, mark: number): Model =>
   UiStruct.evolve(model, { dareMark: () => mark })
 

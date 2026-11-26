@@ -60,8 +60,6 @@ const bossIn = (current: Model): Zombie =>
 describe('telegraphed attacks', () => {
   const ready = BossMove.Stalking({ cooldownMs: 0 })
 
-  // NOTE: each frame's attack tags, gathered in an array only this Story
-  // fills.
   const attackLog = (start: Model, frames: number) =>
     Effect.suspend(() => {
       const log: Array<ReadonlyArray<GameEvent['_tag']>> = []
@@ -340,8 +338,6 @@ describe('far attacks', () => {
   const FAR_X = CENTER_X + 90
   const PLAYER = { x: CENTER_X, y: CENTER_Y }
 
-  // NOTE: each frame's event tags, gathered in an array only this Story
-  // fills.
   const tagsLog = (start: Model, frames: number) =>
     Effect.suspend(() => {
       const log: Array<ReadonlyArray<GameEvent['_tag']>> = []

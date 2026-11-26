@@ -16,49 +16,26 @@ import { type Rug, rugsOf } from './rugs'
 import { isInsideRoom, symbolAt, tileIndex } from './tileGrid'
 import { tileIndexAt } from './tileQueries'
 
-// The roof leaks: the storm finds a few holes over every open room, each
-// dripping into a puddle on the floor. The spots are rolled off each room's
-// map, on plain floor clear of cover, rugs, doorways, and narrow ways, the
-// same in every level the room is part of. Wading through one is slow: a
-// player or a zombie whose feet are in the water walks at WADE_PACE, so a
-// puddle is a place to kite. The drips, the water, and its glints are drawn
-// from these same puddles (src/render/iso/leaks.ts).
-
-// WHERE THEY ARE
-
 const FLOOR_SYMBOL = '.'
 
-// NOTE: a room's leaks: one for each this many floor tiles, two to three,
-// and never two closer than this many tiles.
 const TILES_PER_LEAK = 140
 const MOST_LEAKS = 3
 const LEAST_LEAKS = 2
 const LEAK_GAP_TILES = 5
-// NOTE: no leak this many tiles or nearer a doorway, so a puddle never sits
-// where the zombies come in.
 const DOOR_CLEARANCE = 2
-// NOTE: nothing solid this many tiles round a leak's tile, so the way past
-// a puddle is always wide enough to walk round it dry: never in a narrow
-// aisle, lane, or gap.
 const PATH_CLEARANCE = 2
 
 export type PuddleRow = Readonly<{ y: number; left: number; right: number }>
 
 export type Leak = Readonly<{
-  // NOTE: where the drop lands, in whole game pixels.
   spot: Vector
-  // NOTE: the water's pixels, row by row, far row first.
   rows: Array.NonEmptyReadonlyArray<PuddleRow>
   isUnderground: boolean
 }>
 
-// NOTE: a number from 0 to 1 for a tile and a use, the same on every engine
-// and in every level the tile is part of.
 const tileRoll = (column: number, row: number, use: number): number =>
   unitOf(column * 92821 + row * 68917 + use * 7)
 
-// NOTE: a leak's own roll for a use, for what the drawing rolls of it (the
-// drips' beat).
 export const leakRoll: {
   (use: number): (leak: Leak) => number
   (leak: Leak, use: number): number
@@ -78,7 +55,6 @@ const isFlaggedTile = (
   isInsideRoom(level, column, row) &&
   hasTileFlag(level, tileIndex(level, column, row), flags)
 
-// NOTE: is every tile within `reach` of this one true of `test`?
 const isAllAround = (
   column: number,
   row: number,
@@ -95,8 +71,6 @@ const isAllAround = (
   return true
 }
 
-// NOTE: plain floor all round, open floor further round, in reach of no
-// door.
 const isClearTile = (level: Level, column: number, row: number): boolean =>
   isAllAround(column, row, 1, (c, r) => isPlainFloor(level, c, r)) &&
   isAllAround(
@@ -114,9 +88,6 @@ const isClearTile = (level: Level, column: number, row: number): boolean =>
     (c, r) => !isFlaggedTile(level, c, r, TILE_DOOR),
   )
 
-// NOTE: a puddle's pixels, row by row: a squat blob, wider than it is deep
-// as the floor is drawn, its edge nibbled by rolls. Wide enough that wading
-// across one is felt, and never past the plain floor round its tile.
 const puddleRowsOf = (
   spot: Vector,
   column: number,
@@ -143,16 +114,12 @@ const puddleRowsOf = (
   )
 }
 
-// NOTE: a puddle keeps this many game pixels off a rug's edge, past its
-// fringe and tassels, so it never reads as lying half on one.
 const RUG_CLEARANCE = 4
 
 const isOffRugs = (
   rows: ReadonlyArray<PuddleRow>,
   rugs: ReadonlyArray<Rug>,
 ): boolean =>
-  // NOTE: once per level, a puddle's nine rows at most against a room's
-  // two rugs.
   Array.every(rows, ({ y, left, right }) =>
     Array.every(
       rugs,
@@ -209,7 +176,6 @@ const leaksIn = (
     if (picked.length >= wanted) {
       break
     }
-    // NOTE: once per level, against the three leaks a room picks at most.
     const isApart = Array.every(
       picked,
       other =>
@@ -234,7 +200,6 @@ const leaksIn = (
 
 const leakCache = new WeakMap<Level, ReadonlyArray<Leak>>()
 
-// NOTE: every open room's leaks, built once per level.
 export const leaksOf = (level: Level): ReadonlyArray<Leak> => {
   const cached = leakCache.get(level)
   if (cached !== undefined) {
@@ -251,25 +216,13 @@ export const leaksOf = (level: Level): ReadonlyArray<Leak> => {
   return leaks
 }
 
-// WADING
-
-// NOTE: feet in a puddle walk at this share of their pace, a player's and a
-// zombie's alike (owner, 2026-11-15: "The puddles should slow you down as
-// you go through them").
 export const WADE_PACE = 0.65
 
-// NOTE: the feet stand this far below a body's middle, a player's and a
-// zombie's alike, and reach this far either side of it, so a foot at the
-// water's edge is in.
 const FOOT_OFFSET = PLAYER_FOOT_OFFSET
 const FOOT_REACH_PX = 2
 
 const wadeCache = new WeakMap<Level, ReadonlyMap<number, Leak>>()
 
-// NOTE: each tile a body stands on with a foot in a puddle's water, keyed to
-// its puddle, built once per level, so a frame looks a walker up by the
-// tile it stands on with nothing made. The leaks lie five tiles apart, so a
-// tile has one puddle at most.
 const wadeTilesOf = (level: Level): ReadonlyMap<number, Leak> => {
   const cached = wadeCache.get(level)
   if (cached !== undefined) {
@@ -290,8 +243,6 @@ const wadeTilesOf = (level: Level): ReadonlyMap<number, Leak> => {
   return tiles
 }
 
-// NOTE: whether a body's feet are in a puddle's water. Read per walker per
-// frame: a lookup by tile, then its row.
 export const isWadingAt: {
   (body: Vector): (level: Level) => boolean
   (level: Level, body: Vector): boolean
@@ -309,8 +260,6 @@ export const isWadingAt: {
   )
 })
 
-// NOTE: a walker's pace for the ground under its feet: WADE_PACE in a
-// puddle, else 1.
 export const wadePaceAt: {
   (body: Vector): (level: Level) => number
   (level: Level, body: Vector): number

@@ -38,12 +38,6 @@ import { findStyleOf, isWorkingFind } from '../dare'
 import { DareThingState } from '../dareSchema'
 import { FIND_RULES, type FindStyle } from '../finds'
 
-// Each room finds its thing its own way (src/world/dare/finds.ts): in the
-// parlour a still player rummages a trunk about 1 s, in the library works a
-// hollow book out about 1 s, in the kitchen hauls the dumbwaiter up 2 s. A
-// player at work holds their fire, a step away drains the work, and two
-// players work it twice as fast. The dining room still walks onto its thing.
-
 const FRAME_MS = FIXED_STEP_MS
 
 type FindCase = Readonly<{
@@ -74,8 +68,6 @@ const CASES: ReadonlyArray<FindCase> = [
 
 const spotOf = (room: string) => hidingSpotIn(levelOf(quietWave(3)), room)
 
-// NOTE: the room open and its thing on its first hiding spot, the player
-// standing on it.
 const atFind = (findCase: FindCase, base: Model = quietWave(3)): Model => {
   const spot = spotOf(findCase.room)
   return withPlayerAt(

@@ -2,8 +2,6 @@ import { Array, Option, Schema, String, pipe } from 'effect'
 
 import changelogMarkdown from '../../../CHANGELOG.md?raw'
 
-// CHANGELOG
-
 export const NewsBullet = Schema.Struct({
   emoji: Schema.String,
   text: Schema.NonEmptyString,
@@ -29,8 +27,6 @@ const BULLET_PREFIX = '- '
 const isDayHeading = String.startsWith(DAY_PREFIX)
 const isBullet = String.startsWith(BULLET_PREFIX)
 
-// NOTE: each heading starts a day, and the lines up to the next are its
-// own; lines before the first heading belong to no day.
 const draftDays = (lines: ReadonlyArray<string>): ReadonlyArray<DraftDay> => {
   const days: Array<{ heading: string; lines: Array<string> }> = []
   for (const line of lines) {
@@ -84,10 +80,6 @@ const rawDay = (draft: DraftDay) => {
   }
 }
 
-// NOTE: CHANGELOG.md is the only source. Each `## <date>: <title>` heading
-// starts a day, its first plain line is the intro, and each `- <emoji>
-// <text>` line is a bullet. A day that does not decode, such as one with no
-// bullets, is skipped instead of breaking the menu.
 export const parseChangelog = (markdown: string): ReadonlyArray<NewsDay> =>
   pipe(
     draftDays(String.split(markdown, '\n')),
@@ -100,12 +92,8 @@ export const NEWS_DAYS: ReadonlyArray<NewsDay> =
 
 export const maybeNewestNewsDay: Option.Option<NewsDay> = Array.head(NEWS_DAYS)
 
-// HEADLINES
-
 const HEADLINE_MAX_WORDS = 7
 
-// NOTE: a bullet's first clause, seven words at most, for the greeting after
-// an update: "PLAY is one big arrow now" from the whole line.
 export const newsHeadline = (text: string): string => {
   const clause = pipe(
     String.split(text, /[:,.;!?](?:\s|$)/),

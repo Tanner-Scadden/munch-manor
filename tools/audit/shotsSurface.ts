@@ -1,13 +1,3 @@
-// The game surface's pixel pass: everything seen while playing, the 3D world
-// and the overlay canvas on it (the HUD, banners, callouts, health bars,
-// work rings, edge badges, the pocket, pause, the end card, the intro), in
-// every room, a wave and a break, the boss, the finale, a crowd under fire,
-// co-op marks, and effects at once. On a 1280x720 desktop, a wide 2560x1080
-// and a narrow 1024x768 one, a 1920x1080 one, an 844x390 phone on its side,
-// and a 390x844 phone held upright at 1x, 2x, and 3x, as
-// `surface-<TAG>-<viewport>-<scene>.png`. Crop and scale them up to read.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsSurface.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

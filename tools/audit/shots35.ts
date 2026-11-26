@@ -1,9 +1,3 @@
-// The doorway depth pass: zombies mid-entry at every door, so the north
-// wall's face and lintel must cover the ones still in the doorway, on a
-// desktop, a landscape phone, and an upright phone, as
-// `s35-<TAG>-<viewport>-<scene>.png`. An upright phone sees only part of the
-// room, so it takes the room once with the player by each door.
-//   TAG=after bun run heavy -- bun tools/audit/shots35.ts
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

@@ -16,17 +16,11 @@ import {
 } from '../../../test/testing'
 import { focusOf } from '../../../world/party/party'
 
-// The count on a display case's lock (src/render/featLockView.ts), read off
-// the focused seat's own feats: how far the player has gone toward the feat
-// that opens it.
-
-// NOTE: the case's count as the focused player reads it.
 const countOn = (model: Model): Option.Option<string> =>
   Option.flatMap(Array.head(model.cases), ({ feat }) =>
     featCountOf(feat, focusOf(model).feats),
   )
 
-// NOTE: a 1-hp Groaner a step east of the player at a case asking 3 kills.
 const threeKillCase = UiStruct.evolve(
   atCase(playingModel, 'Shotgun', CaseState.Locked(), Feat.Kills({ count: 3 })),
   {

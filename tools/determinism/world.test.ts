@@ -1,7 +1,3 @@
-// The World split (MULTIPLAYER.md, Phase 0, step 6). stepWorld must run on
-// a World alone, with no client field in it, the way a co-op room holds
-// it, and play exactly what the client's frame loop plays.
-
 import { Array, Record, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 

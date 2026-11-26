@@ -1,11 +1,5 @@
 import { type AtlasEntry, useSpriteAtlas } from '../art/spriteAtlas'
 
-// NOTE: the setup of src/art/__tests__/atlasHtml.scene.test.ts, which runs in a project of
-// its own (vitest.config.ts) so no other test sees this atlas. As in a
-// production build, every sprite is a cropped region of one shared sheet, so
-// HTML that shows a sprite by its own `src` shows the whole sheet instead.
-// The atlas must be in place before any module builds a sprite, which most
-// do as they load, so it is set here and not in the test.
 export const ATLAS_SHEET = 'atlas-sheet.png'
 
 const places = new Map<string, AtlasEntry>()

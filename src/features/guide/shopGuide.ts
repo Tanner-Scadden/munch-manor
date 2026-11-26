@@ -44,15 +44,6 @@ import {
 } from '../../world/schema/worldSchema'
 import { SHATTER_SCALE } from '../../world/step/combat'
 
-// THE SHOP GUIDE
-
-// NOTE: a page for everything Rattles sells and the places around the house
-// where money changes hands. It reads every number from the tables the game
-// plays by (src/world/gear/weapons.ts, src/world/gear/traps.ts, src/world/shop/shop.ts, src/world/fridge/leftovers.ts,
-// src/world/level/exits.ts), so a bar moves when a table does. Each stat is a bar of
-// BAR_SEGMENTS, scaled against the best of its category, so the entries of a
-// section compare. Nothing here names a price or a stat by hand.
-
 export const SECTION_ORDER: Array.NonEmptyReadonlyArray<ShopGuideSection> = [
   'Guns',
   'Health',
@@ -64,10 +55,6 @@ export const SECTION_ORDER: Array.NonEmptyReadonlyArray<ShopGuideSection> = [
 export const sectionName = (section: ShopGuideSection): string =>
   SHOP_GUIDE_SECTION_NAMES[section]
 
-// ART
-
-// NOTE: which picture an entry, a ladder step, or a chip wears. The pixels
-// are in src/features/guide/shopGuideArt.ts.
 export const GuideArt = UiSchema.TaggedEnum({
   Gun: { weapon: WeaponKind, tier: Schema.Finite },
   Sight: {},
@@ -79,8 +66,6 @@ export const GuideArt = UiSchema.TaggedEnum({
   Key: {},
 })
 export type GuideArt = typeof GuideArt.Type
-
-// BARS
 
 export type GuideStat =
   | 'Power'
@@ -107,8 +92,6 @@ export const STAT_NAMES: Readonly<Record<GuideStat, string>> = {
   Odds: 'Odds',
 }
 
-// NOTE: `now` is the bar as bought, `best` the bar with every upgrade on, both
-// out of BAR_SEGMENTS. A bar with nothing to show is 0 and stays empty.
 export type GuideBar = Readonly<{
   stat: GuideStat
   now: number
@@ -122,8 +105,6 @@ const segmentsOf = (value: number, most: number): number =>
         1,
         Math.min(BAR_SEGMENTS, Math.round((value / most) * BAR_SEGMENTS)),
       )
-
-// ENTRIES
 
 export type LadderStep = Readonly<{ art: GuideArt; kills: number }>
 
@@ -141,8 +122,6 @@ export type GuideEntry = Readonly<{
   chips: ReadonlyArray<GuideChip>
   prize: Option.Option<FridgePrize>
 }>
-
-// GUNS
 
 type StatReader = (weapon: WeaponKind, tier: number) => number
 
@@ -175,9 +154,6 @@ const GUN_STATS: ReadonlyArray<readonly [GuideStat, StatReader]> = [
 const everyTier = (weapon: WeaponKind): ReadonlyArray<number> =>
   Array.makeBy(maxTier(weapon) + 1, tier => tier)
 
-// NOTE: the guns the guide lists: Rattles' three, then the old manor's
-// two. Only the pistol is sold; the rest sit in display cases
-// (src/world/feats/cases.ts).
 const CASE_GUNS: ReadonlyArray<WeaponKind> = ['Rifle', 'Blunderbuss']
 
 const GUIDE_GUNS: ReadonlyArray<WeaponKind> = [...SHOP_GUNS, ...CASE_GUNS]
@@ -205,8 +181,6 @@ const ladderOf = (weapon: WeaponKind): ReadonlyArray<LadderStep> =>
     kills: tier.kills,
   }))
 
-// NOTE: a gun: the Pop Pistol in hand from the start, every other in a
-// display case (src/world/feats/cases.ts). None wears a price.
 const caseGunEntry = (weapon: WeaponKind, line: string): GuideEntry => ({
   id: weapon,
   section: 'Guns',
@@ -240,10 +214,6 @@ const gunEntries = (): ReadonlyArray<GuideEntry> => [
   },
 ]
 
-// HEALTH
-
-// NOTE: Rattles sells no hearts: a Pickled Heart drops from zombies, and
-// the pantry and the fridge's Sandwich hold one too.
 const healthEntries = (): ReadonlyArray<GuideEntry> => [
   {
     id: 'Heart',
@@ -258,8 +228,6 @@ const healthEntries = (): ReadonlyArray<GuideEntry> => [
     prize: Option.none(),
   },
 ]
-
-// TRAPS
 
 const mostOf = (read: (kind: TrapKind) => number): number =>
   Math.max(...Array.map(TRAP_KIND_ORDER, read))
@@ -279,8 +247,6 @@ const trapBars = (kind: TrapKind): ReadonlyArray<GuideBar> => {
   ]
 }
 
-// NOTE: traps are found in the trap crates (src/world/gear/crates.ts), so
-// they wear no price.
 const trapEntry = (kind: TrapKind, line: string): GuideEntry => ({
   id: kind,
   section: 'Traps',
@@ -315,8 +281,6 @@ const trapEntries = (): ReadonlyArray<GuideEntry> => [
     prize: Option.none(),
   },
 ]
-
-// THE FRIDGE
 
 type FridgeStats = Readonly<{ power: number; reach: number; shove: number }>
 
@@ -408,8 +372,6 @@ const prizeEntry = (prize: FridgePrize): GuideEntry => {
 const fridgeEntries = (): ReadonlyArray<GuideEntry> =>
   Array.map(PRIZE_ORDER, prizeEntry)
 
-// THE HOUSE
-
 const houseEntry = (
   spot: HouseSpot,
   line: string,
@@ -452,8 +414,6 @@ const houseEntries = (): ReadonlyArray<GuideEntry> => [
   ),
 ]
 
-// NOTE: built on each call, from the tables as they stand, so a bar or a
-// price moves the moment a table does.
 const ENTRY_BUILDERS: Readonly<
   Record<ShopGuideSection, () => ReadonlyArray<GuideEntry>>
 > = {
@@ -468,11 +428,6 @@ export const entriesOf = (
   section: ShopGuideSection,
 ): ReadonlyArray<GuideEntry> => ENTRY_BUILDERS[section]()
 
-// DISCOVERY
-
-// NOTE: a fridge prize shows as ??? until it has been pulled once. Pulls are
-// kept in the unlocks seen (SavedSeenUnlocks), a set that already saves and
-// syncs, under ids such as `prize:Cooker`.
 export const prizeUnlockId = (prize: FridgePrize): string => `prize:${prize}`
 
 const isPrizeKnown = (
@@ -492,8 +447,6 @@ export const isEntryKnown: {
     }),
 )
 
-// NOTE: the fridge's door open on a prize is a pull. Run after every
-// Message, it adds that prize to the ones seen.
 export const notePulledPrize = (model: Model): Model =>
   FridgeDoor.matchOrElse(
     model.fridge.door,

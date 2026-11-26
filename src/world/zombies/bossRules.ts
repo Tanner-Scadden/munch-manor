@@ -1,10 +1,4 @@
-// Uncle Chunk's numbers: his entrance, each attack's reach, wind-up,
-// rest, and harm, his second phase, and his guests. Read by his fight
-// (src/world/zombies/boss.ts, bossFight.ts), the drawing, and the bot.
-
 import type { BossAttack } from '../schema/worldSchema'
-
-// RULES
 
 export type BossRules = {
   everyWaves: number

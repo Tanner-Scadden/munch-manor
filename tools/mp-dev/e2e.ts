@@ -1,12 +1,3 @@
-// The co-op plumbing end to end, with real sockets: three players sign in
-// with device keys, one creates a room and two join by code, they follow
-// the lobby scope, the run starts when the last of them presses READY, all
-// three play the stand-in world through the GameRoom, one drops and
-// rejoins, and the host ends the run. Then four more press QUICK PLAY and
-// the Matchmaker puts them in one public room. With no argument it runs the API Worker in a local workerd; with an
-// origin it runs against that deploy (a preview's API Worker).
-//   bun run heavy -- bun tools/mp-dev/e2e.ts
-//   bun run heavy -- bun tools/mp-dev/e2e.ts https://munch-manor-api-pr-12.tanner-scadden.workers.dev
 import {
   Array,
   Clock,
@@ -82,7 +73,6 @@ interface Player {
   lobbyClient: Option.Option<LobbyClient>
 }
 
-// NOTE: the deploy named on the command line, else the local workerd.
 const originOf = Effect.map(localOrigin, local => process.argv[2] ?? local)
 
 const check = (name: string, holds: boolean) =>
@@ -90,7 +80,6 @@ const check = (name: string, holds: boolean) =>
     ? Console.log(`  ok  ${name}`)
     : Effect.fail(CheckFailed.make({ check: name }))
 
-// NOTE: polls until the condition holds, or fails the check after a while.
 const eventually = (
   name: string,
   condition: Effect.Effect<boolean>,
@@ -220,7 +209,6 @@ const dropGame = (player: Player) =>
     })
   })
 
-// NOTE: each player walks a square, turning every 0.8 s.
 const walk = (index: number, nowMs: number): PlayerInput => {
   const legs: ReadonlyArray<readonly [number, number]> = [
     [1, 0],
@@ -389,9 +377,6 @@ const program = Effect.gen(function* () {
       discard: true,
     },
   )
-  // NOTE: the room's first run opens on the whole intro
-  // (src/world/run/arrival.ts); the room's slam starts the first break for
-  // everyone.
   yield* eventually(
     "the room's slam starts the run for everyone",
     Effect.map(
@@ -447,10 +432,6 @@ const program = Effect.gen(function* () {
       ),
     ),
   )
-  // NOTE: a deploy of new Worker code restarts every Durable Object: the
-  // sockets drop and the run's memory is lost. The room checkpoints the run,
-  // so everyone reconnects by themselves, gets a Snapshot of the run a few
-  // seconds back, and plays on.
   if (Option.isSome(workerd)) {
     yield* Effect.sleep('4 seconds')
     const newestTick = (player: Player) =>
@@ -563,8 +544,6 @@ const program = Effect.gen(function* () {
   yield* Console.log('All co-op checks passed.')
 })
 
-// NOTE: sockets the browser client opened can keep Bun's loop alive after
-// the scope closes, so a passing run exits on its own.
 NodeRuntime.runMain(
   Effect.scoped(program).pipe(
     Effect.andThen(Effect.sync(() => process.exit(0))),

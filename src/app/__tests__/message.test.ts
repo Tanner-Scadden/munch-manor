@@ -54,8 +54,6 @@ const GROUPS = [
 const tagsOf = (group: object): ReadonlyArray<string> => Record.keys(group)
 
 describe("the root's Message union", () => {
-  // NOTE: the root union spreads its groups into one record, where a tag
-  // two groups both name would silently keep only the last.
   test('no two groups name the same tag', () => {
     const tags = Array.flatMap(GROUPS, tagsOf)
     expect(Array.dedupe(tags)).toEqual(tags)

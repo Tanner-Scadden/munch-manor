@@ -1,7 +1,3 @@
-// NOTE: the harness's CoopNet for `coop=live`: the room is a real room in a
-// Web Worker (liveRoom.worker.ts) and the page is its seat 0, through the
-// real wire, `Session`, and the game's co-op client. Nothing else answers.
-
 import {
   Array,
   Clock,
@@ -26,10 +22,7 @@ const decodeBytes = Schema.decodeUnknownOption(Schema.Uint8Array)
 const roomWorker = { maybe: Option.none<Worker>() }
 
 const post = (request: LiveRoomRequest) =>
-  Option.map(roomWorker.maybe, worker =>
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a Worker's postMessage takes no target origin
-    worker.postMessage(request),
-  )
+  Option.map(roomWorker.maybe, worker => worker.postMessage(request, []))
 
 const roomEvents = (seats: number, zombies: number) =>
   Stream.callback<Uint8Array>(queue =>

@@ -1,12 +1,3 @@
-// The phone zoom pass: the same mid-wave crowd, and the kitchen corner where
-// the camera stops at the level's edge, on 360x780, 390x844, and 430x932
-// phones held upright and on their sides, all with touch, and on a 1280x720
-// desktop with a mouse, as `s46-<TAG>-<viewport>-<scene>.png`. For each it
-// prints how many CSS pixels one world pixel takes and so how big a Groaner
-// (8 by 10 world pixels) and the player (8 by 11) are on the screen. Exits
-// with 1 when the world canvas is missing or the desktop is zoomed.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots46.ts
-// ONLY picks scenes (`wave`, `kitchen`) and VIEWPORTS picks screens.
 import { Array, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 

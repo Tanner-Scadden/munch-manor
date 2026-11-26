@@ -1,6 +1,3 @@
-// The build's own Vite plugins: the build id in version.json, and sw.js, the
-// service worker, with its precache list checked against dist.
-
 import {
   Array,
   Clock,
@@ -27,7 +24,6 @@ import {
 import { encodeJson } from '../json.ts'
 import { nodeRuntime } from '../node.ts'
 
-// NOTE: two folders up from this one, joined with `/` as Vite's own paths are.
 const ROOT = Array.join(
   Array.dropRight(String.split('/')(import.meta.dirname), 2),
   '/',
@@ -37,7 +33,6 @@ const WORKER_SOURCE = `${ROOT}/src/platform/sw/worker.ts`
 
 const DEV_BUILD = 'dev'
 
-// NOTE: a git command's trimmed output, or None when it fails.
 const git = (
   ...args: ReadonlyArray<string>
 ): Effect.Effect<
@@ -52,8 +47,6 @@ const git = (
       .pipe(Effect.map(String.trim), Effect.option)
   })
 
-// NOTE: a local deploy ships uncommitted changes, so a dirty tree gets a
-// timestamp after its commit. Two such builds of one commit still differ.
 const commitBuild = Effect.gen(function* () {
   const commit = yield* git('rev-parse', 'HEAD')
   if (Option.isNone(commit) || commit.value === '') {
@@ -67,7 +60,6 @@ const commitBuild = Effect.gen(function* () {
   return Option.some(`${commit.value}-dirty-${now}`)
 })
 
-// NOTE: an environment variable, or None when it is unset or empty.
 const nonEmptyEnv = (key: string) =>
   Effect.gen(function* () {
     const value = yield* Config.option(Config.String(key))
@@ -93,10 +85,6 @@ const resolveBuild = Effect.gen(function* () {
 
 const encodeVersion = encodeJson(Schema.Struct({ build: Schema.String }))
 
-// Stamps every production build with an id and writes it to version.json,
-// so an installed app can tell that a newer build is live.
-// NOTE: shared with the service worker plugin, which names its cache after
-// the build.
 const build = { id: DEV_BUILD }
 
 export const buildId = (): Plugin => ({
@@ -120,8 +108,6 @@ export const buildId = (): Plugin => ({
   },
 })
 
-// NOTE: every file under `directory`, as paths relative to it joined with
-// `/`, or none when it is not there.
 const filesUnder = (
   directory: string,
 ): Effect.Effect<
@@ -155,11 +141,6 @@ class PrecacheDrifted extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()('PrecacheDrifted', { message: Schema.String }) {}
 
-// Writes sw.js, the service worker that lets the game cold start offline
-// (src/platform/sw/worker.ts), with this build's id and its precache list: every file
-// Vite emitted and every file copied from public/, less NOT_PRECACHED. Once
-// dist is written it checks the list against the files on disk and fails the
-// build if they drift. KILL_SERVICE_WORKER=1 writes the kill switch instead.
 export const serviceWorker = (): Plugin => {
   const state: {
     root: string

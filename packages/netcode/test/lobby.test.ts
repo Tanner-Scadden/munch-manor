@@ -215,20 +215,15 @@ describe('the room scope', () => {
           '',
           '',
         ])
-        // NOTE: a rank is for show, so the scope only keeps it in range.
         expect(Array.map(lobby.members, member => member.rank)).toEqual([
           40, 12, 999, 3,
         ])
-        // NOTE: a calling is text the scope keeps when it is one short
-        // word; the Worker checks it against the game's callings.
         expect(Array.map(lobby.members, member => member.calling)).toEqual([
           'Handyman',
           'LineCook',
           'You',
           'TrackStar',
         ])
-        // NOTE: whether each watched the whole intro, as they said when
-        // seated, for the room's pick of the cut.
         expect(Array.map(lobby.members, member => member.hasSeenIntro)).toEqual(
           [true, true, false, false],
         )
@@ -257,9 +252,6 @@ describe('the room scope', () => {
     ).toEqual([1, 1, 1, 7, 999, 999, 1, 1])
   })
 
-  // NOTE: a member row written before the rank, calling, and intro columns
-  // (a room already open when the migrations ran) is seated as rank 1, YOU,
-  // and a newcomer to the intro by the columns' defaults.
   it.effect(
     'a member row from before ranks reads as rank 1, YOU, and new',
     () =>
@@ -547,12 +539,9 @@ describe('the room scope', () => {
         expect(value_15).toBe('Acked')
         const callings_1 = yield* callings
         expect(callings_1).toEqual(['Handyman', 'LineCook'])
-        // NOTE: the pick is the player's own, so nobody's READY goes.
         expect(
           Array.map((yield* lobbyOf(server)).members, member => member.ready),
         ).toEqual([false, true])
-        // NOTE: a word that is not one short word is cleaned to YOU, as at
-        // create and join; the Worker decodes the rest when the host starts.
         yield* push(server, BO, ChangedMemberCalling, {
           by: BO,
           calling: 'not a calling!',
@@ -595,11 +584,9 @@ describe('the room scope', () => {
         })
         expect(value_19).toBe('Acked')
         expect((yield* names)[1]).toBe('Gravy Dave')
-        // NOTE: the name is the player's own, so nobody's READY goes.
         expect(
           Array.map((yield* lobbyOf(server)).members, member => member.ready),
         ).toEqual([false, true])
-        // NOTE: too long is cut to the limit, as at join; empty is "Player N".
         yield* push(server, BO, ChangedMemberName, {
           by: BO,
           name: 'Extraordinarily Long Name',
@@ -809,7 +796,6 @@ describe('the room scope', () => {
       })
       yield* first(replica.status, status => status._tag === 'Ready')
       yield* replica.run(ChangedReady, { by: BO, ready: true })
-      // NOTE: the row reads ready on the device, then on the server.
       yield* first(
         Stream.filterEffect(
           Stream.concat(Stream.make(undefined), replica.remoteChanges),

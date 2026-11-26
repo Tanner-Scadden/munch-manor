@@ -88,8 +88,7 @@
     "munch/no-conditional-step": "error",
     "munch/no-world-spread": "error",
     "munch/tap-by-click": "error",
-    "munch/live-test-note": "error",
-    "munch/disable-needs-reason": "error",
+    "munch/no-comments": "error",
     // NOTE: a reduce that copies its accumulator list each step is
     // quadratic (AGENTS.md "Code shape").
     "munch/no-append-in-reduce": "error",
@@ -182,6 +181,35 @@
                 "group": ["**/constants", "./constants"],
                 "importNames": ["VIEW_WIDTH", "VIEW_HEIGHT"],
                 "message": "Overlay code reads the screen from screenOf(model)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // NOTE: the 3D scene stands the tall furniture only through
+      // furniture.ts, its own batch built once per level, never frame by frame.
+      "files": ["src/render/iso/scene.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/constants", "./constants"],
+                "importNames": ["VIEW_WIDTH", "VIEW_HEIGHT"],
+                "message": "Overlay code reads the screen from screenOf(model)."
+              },
+              {
+                "group": ["**/room/tallCover"],
+                "importNames": ["tallCoverOf"],
+                "message": "The scene stands the furniture only through furniture.ts."
+              },
+              {
+                "group": ["**/depth"],
+                "importNames": ["TALL_MOST"],
+                "message": "The scene stands the furniture only through furniture.ts."
               }
             ]
           }
@@ -285,6 +313,22 @@
       }
     },
     {
+      // NOTE: the SQLite package posts only to its worker and its broadcast
+      // channel, never to a window, so no post has a target origin to name.
+      "files": ["packages/sqlite-wasm-effect/src/**/*.ts"],
+      "rules": {
+        "unicorn/require-post-message-target-origin": "off"
+      }
+    },
+    {
+      // NOTE: Effect's Schema names its annotations interface after its
+      // namespace, and the wire packing adds to it under the same names.
+      "files": ["src/world/schema/wireNumber.ts"],
+      "rules": {
+        "no-shadow": ["error", { "allow": ["Annotations"] }]
+      }
+    },
+    {
       // NOTE: the service worker runs outside the game and the Effect runtime.
       "files": ["src/platform/sw/worker.ts"],
       "rules": {
@@ -361,6 +405,16 @@
             "message": "Request through Effect's HttpClient."
           }
         ]
+      }
+    },
+    {
+      // NOTE: the audits' page functions run inside the browser page, where
+      // Effect is not loaded, so its timers, fetch, clock, and randomness are
+      // the page's own (.oxlintrc.effect.json has the same exception).
+      "files": ["tools/*/inPage/*.ts"],
+      "rules": {
+        "no-restricted-globals": "off",
+        "no-restricted-properties": "off"
       }
     },
     {

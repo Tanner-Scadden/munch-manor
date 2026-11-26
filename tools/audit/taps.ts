@@ -1,25 +1,8 @@
-// Taps every visible button on the home menu (with the full screen icon, the
-// update chip, and a NEW ENTRY pop too), the MANOR hand, What's New, the Munchopedia list and
-// an entry, the difficulty picker, its other panels, the pause screen,
-// the Profile's tabs, the leave question, the gun cluster in a wave and a
-// break, the hold-to-buy button at the kitchen's boards in both, the shop (its cards, tabs, and the close X), Game Over, and Victory on
-// 667x375 and 844x390 phones, or with PORTRAIT=1 on 390x844, 430x932, and
-// 360x800 phones held upright, with touch. For each button it checks that the center and four points just
-// inside its edges hit that button (document.elementFromPoint), then taps the
-// center and a corner for real and checks that exactly one Message names the
-// tap, and that it is not a press on the game surface. Exits with 1 on any
-// miss.
-//   bun taps.ts
-//   PORTRAIT=1 bun taps.ts
-// VIEWPORTS picks phones by name, such as `VIEWPORTS=u390,u360`.
-// ONLY picks scenes, such as `ONLY=home,munchopedia`.
-// TAPS_PARALLEL sets how many scenes run at once, each in its own browser
-// context (3 by default, 1 for one after another). The report keeps the
-// order of a run one after another.
 import { Array, Config, Effect, Option } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
+import { placeTapTarget } from './inPage/taps'
 import {
   ANDROID_800,
   type Log,
@@ -44,8 +27,6 @@ import {
 } from './lib'
 import { attempt, failWith } from './page'
 
-// NOTE: a 2x pixel ratio on every phone keeps the many reloads quick. The hit
-// tests read CSS pixels, so the ratio does not change them.
 const LANDSCAPE: ReadonlyArray<Viewport> = [
   { ...PHONE_667, scale: 2 },
   { ...PHONE_844, scale: 2 },
@@ -58,7 +39,6 @@ const PORTRAIT: ReadonlyArray<Viewport> = [
   { ...UPRIGHT_360, scale: 2 },
 ]
 
-// NOTE: PORTRAIT=1 takes the upright phones.
 const pickedViewports = Effect.gen(function* () {
   const portrait = yield* Config.String('PORTRAIT').pipe(Config.option)
   return yield* pickViewports(Option.isNone(portrait) ? LANDSCAPE : PORTRAIT)
@@ -70,20 +50,12 @@ type Scene = Readonly<{
   open?: ReadonlyArray<string>
   opensDialog?: boolean
   fresh?: boolean
-  // NOTE: the first open step is PLAY, which opens the single player lobby
-  // (a screen, not a dialog), for a player who has learned to move and fire.
   opensLobby?: boolean
 }>
 
 const MANOR = '#home-manor'
 const LOBBY_QUERY = 'learned=move,fire&rank=300&calling=Handyman'
 
-// NOTE: the end screens show their buttons only once the restart grace
-// (RESTART_GRACE_MS, 900 ms) is over, and those buttons come before the
-// corner's Music and Mute in the page. On real frames a scene could be
-// measured inside the grace and tapped after it, so a button's index named
-// another button. 72 fixed frames (1.2 s), played at once and held, open
-// every end scene past the grace with all its buttons, on every run.
 const PAST_GRACE = 'tick=72'
 
 const SCENES: ReadonlyArray<Scene> = [
@@ -222,9 +194,6 @@ const AFTER_TAP_MS = 250
 
 const surfaceTags = new Set(['PressedPointer'])
 
-// NOTE: a form's submit button names its tap with a Submitted Message, the
-// hold-to-buy button its press with PressedHoldButton, and the link code,
-// which copies itself on its own click (a Mount), with SucceededCopyLinkCode.
 const TAP_LEAVES =
   /(^|:)(Clicked\w*|Submitted\w*|SelectedOption|SelectedTab|RequestedClose|PressedPointer|PressedHoldButton|SucceededCopyLinkCode)$/
 
@@ -232,9 +201,6 @@ const isTapMessage = (tag: string): boolean => TAP_LEAVES.test(tag)
 
 const OPEN_TIMEOUT_MS = 10_000
 
-// NOTE: the fixed waits are the least a scene needs. Each step also waits
-// for what it opens, so a busy machine, or several scenes at once, slows
-// the run instead of breaking it.
 const tapToOpen = (page: Page, scene: Scene, selector: string) =>
   Effect.gen(function* () {
     const locator = page.locator(selector).first()
@@ -265,13 +231,8 @@ const openScene = (page: Page, scene: Scene) =>
     }
   })
 
-// NOTE: what a tap can land on: every button, the end screens' SHARE, a
-// link so the browser opens X on the tap itself, and the home menu's coffee,
-// a link to the tip jar.
 const TAP_TARGETS = 'button, a.end-button, a.home-support'
 
-// NOTE: true once the scene shows a button at `index`, in the open dialog
-// when there is one.
 const hasButton = (page: Page, at: number, isInDialog: boolean) =>
   attempt(() =>
     page.waitForFunction(
@@ -294,9 +255,6 @@ const visibleTargets = (page: Page) =>
     page.evaluate(targets => {
       const openDialog = document.querySelector('dialog[open]')
       const scope: ParentNode = openDialog ?? document
-      // NOTE: a button no tap may reach is not a target: one inside an inert
-      // part of the page (the home menu under the lobby's card) and one that
-      // says it is disabled (What's New's arrow at the newest day).
       const isVisible = (button: Element) => {
         const box = button.getBoundingClientRect()
         const style = getComputedStyle(button)
@@ -322,8 +280,6 @@ const visibleTargets = (page: Page) =>
     }, TAP_TARGETS),
   )
 
-// NOTE: only a dialog's own panel counts. A list inside it, such as the
-// Munchopedia's tiles, may keep its place.
 const openedScroll = (page: Page) =>
   attempt(() =>
     page.evaluate(() =>
@@ -331,59 +287,14 @@ const openedScroll = (page: Page) =>
     ),
   )
 
-// NOTE: a panel that scrolls, such as Settings on a landscape phone, can
-// open with some buttons out of view. A player scrolls to them, so each
-// button is scrolled into view before it is measured, hit tested, and tapped.
 const placeTarget = (page: Page, at: number, isInDialog: boolean) =>
   attempt((): Promise<Target> =>
-    page.evaluate(
-      ({ index, hasDialog, inset, targets }) => {
-        const scope: ParentNode = hasDialog
-          ? (document.querySelector('dialog[open]') ?? document)
-          : document
-        const button = scope.querySelectorAll(targets)[index]
-        if (button === undefined) {
-          throw new Error(`No tap target at ${index}`)
-        }
-        button.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-        const box = button.getBoundingClientRect()
-        const center = {
-          x: box.x + box.width / 2,
-          y: box.y + box.height / 2,
-        }
-        return {
-          label:
-            button.getAttribute('aria-label') ??
-            // NOTE: runs in the page, which has no effect module.
-            // @effect-diagnostics-next-line preferEffectString:off
-            button.textContent.trim(),
-          index,
-          center,
-          width: box.width,
-          height: box.height,
-          points: [
-            { name: 'center', point: center },
-            { name: 'left', point: { x: box.left + inset, y: center.y } },
-            { name: 'right', point: { x: box.right - inset, y: center.y } },
-            { name: 'top', point: { x: center.x, y: box.top + inset } },
-            {
-              name: 'bottom',
-              point: { x: center.x, y: box.bottom - inset },
-            },
-            {
-              name: 'corner',
-              point: { x: box.left + inset * 4, y: box.top + inset * 4 },
-            },
-          ],
-        }
-      },
-      {
-        index: at,
-        hasDialog: isInDialog,
-        inset: EDGE_INSET,
-        targets: TAP_TARGETS,
-      },
-    ),
+    page.evaluate(placeTapTarget, {
+      index: at,
+      hasDialog: isInDialog,
+      inset: EDGE_INSET,
+      targets: TAP_TARGETS,
+    }),
   )
 
 const hitsButton = (
@@ -411,11 +322,6 @@ const hitsButton = (
     ),
   )
 
-// NOTE: a tap can change the scene, so every tap gets the scene again. It is
-// switched in on a page of the same screen, which starts from the query with
-// an empty save, whatever earlier taps wrote to storage. A scene marked
-// `fresh`, such as the iPhone tip, gets a new browser context instead, with
-// empty storage, as a first visit would.
 const openFreshScene = (pages: ScenePages, viewport: Viewport, scene: Scene) =>
   Effect.gen(function* () {
     const page = yield* pages.open(viewport, scene.query, {
@@ -425,8 +331,6 @@ const openFreshScene = (pages: ScenePages, viewport: Viewport, scene: Scene) =>
     return page
   })
 
-// NOTE: opens the scene fresh for one tap, once more if the button is not
-// there yet, and gives null when it is still missing.
 const openWithButton = (
   pages: ScenePages,
   viewport: Viewport,
@@ -517,9 +421,6 @@ const checkScene = (
             window.__messages.length = 0
           }),
         )
-        // NOTE: the end screens' SHARE is a link that opens X in a new tab,
-        // and the coffee one that opens the tip jar; x.com and Stripe are
-        // answered here, so a tap never reaches either.
         yield* attempt(() =>
           tapPage
             .context()
@@ -527,8 +428,6 @@ const checkScene = (
               route.fulfill({ status: 200, body: '' }),
             ),
         )
-        // NOTE: the link code copies itself to the clipboard on a tap, which
-        // a headless page refuses unless it may write there.
         yield* attempt(() =>
           tapPage.context().grantPermissions(['clipboard-write']),
         )
@@ -570,8 +469,6 @@ runHarnessAudit(
     const parallel = yield* parallelFrom('TAPS_PARALLEL')
     const browser = yield* openBrowser
     const pages = scenePages(browser, ['device=touch', 'nodev'])
-    // NOTE: each viewport and scene pair is one unit of work, so even the
-    // two landscape phones fill every context.
     const units = Array.flatMap(viewports, viewport =>
       Array.map(scenes, scene => ({ viewport, scene })),
     )

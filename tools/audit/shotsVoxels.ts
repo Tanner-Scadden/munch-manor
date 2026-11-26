@@ -1,8 +1,3 @@
-// The carved bodies and the 3D blasts (src/render/iso/voxels.ts,
-// explosions.ts): every kind in a row and at every wear stage, a crowd under
-// fire, guns aimed every way, the boss, power-ups, boosts, and Kaboomers
-// bursting, as `voxels-<TAG>-<viewport>-<scene>.png`.
-//   TAG=try bun run heavy -- --shared bun tools/audit/shotsVoxels.ts
 import { Array, Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

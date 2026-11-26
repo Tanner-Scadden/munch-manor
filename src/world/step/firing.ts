@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result } from 'effect'
+import { Array, Function, Option, Record, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
@@ -73,12 +73,11 @@ import {
   type WeaponKind,
   type Zombie,
 } from '../schema/worldSchema'
-import { isFree, radiusOf } from '../zombies/zombies'
+import { ZOMBIE_KINDS, isFree, radiusOf } from '../zombies/zombies'
 import { bulletDirection } from './combat'
 import { addVectors, scaleVector } from './geometry'
+import { buildGrid, queryAround, queryBuffer } from './grid'
 import { resolveBulletHits } from './hits'
-
-// FIRING
 
 const pelletVelocity = (
   facing: Vector,
@@ -142,9 +141,6 @@ const makeBullet = (
   pierce,
 })
 
-// NOTE: a cooked gun's perk (src/world/kitchen/stove.ts) rides on its load: Spicy hits
-// harder and glows hot when no boost tints the shot, and Crispy skewers one
-// zombie more. Old Thunder's own pierce adds on top.
 const withPierce = (pierce: Pierce, extra: number): Pierce =>
   extra <= 0
     ? pierce
@@ -245,8 +241,6 @@ const shoot = (
   })
 }
 
-// NOTE: no gun runs dry: an empty magazine reloads before the trigger is
-// pulled (fire, below), so an empty one here fires nothing.
 const pullTrigger = (
   model: World,
   slot: PlayerSlot,
@@ -297,8 +291,6 @@ const autoReload = (
   })
 }
 
-// NOTE: the trigger's rest starts over while fire is held or the melee
-// weapon is out, and otherwise counts up to IDLE_RELOAD_MS, where it stays.
 const restTrigger = (
   model: World,
   slot: PlayerSlot,
@@ -316,10 +308,6 @@ const restTrigger = (
   })
 }
 
-// NOTE: below Hard (src/world/run/difficulty.ts), a gun with room in its magazine
-// reloads by itself once the trigger has rested
-// IDLE_RELOAD_MS (GAME_DESIGN.md, "Reloading"). Hard and Nightmare wait
-// for an empty magazine or R.
 const isIdleReloadDue = (model: World, slot: PlayerSlot): boolean => {
   const { player } = seatStateAt(model, slot)
   return (
@@ -339,12 +327,6 @@ const withoutCharge = (model: World, slot: PlayerSlot): World =>
     ? model
     : modifySeat(model, slot, { player: dropCharge })
 
-// NOTE: a fridge weapon fires no bullets, so its trigger is its own
-// (src/world/fridge/fridgeWeapons.ts). The stall and a reload let go of a charge. With
-// the knife in hand the trigger stabs (src/world/gear/knife.ts) and the gun rests;
-// with the Clang Pan drawn from the melee slot it swings, and a reload of
-// the last gun carries on meanwhile. Below Hard a rested trigger reloads
-// a gun that has room for more (isIdleReloadDue).
 export const fire: {
   (slot: PlayerSlot, deltaMs: number): (stocked: World) => World
   (stocked: World, slot: PlayerSlot, deltaMs: number): World
@@ -387,8 +369,6 @@ export const fire: {
   },
 )
 
-// RELOADING
-
 export const tickReload: {
   (slot: PlayerSlot, deltaMs: number): (model: World) => World
   (model: World, slot: PlayerSlot, deltaMs: number): World
@@ -424,10 +404,6 @@ export const tickReload: {
   },
 )
 
-// BULLETS
-
-// NOTE: a bullet flies on until it leaves the house: past the map's edge or
-// out a door into the yard, where nothing is drawn.
 const isInsideArena = (level: Level, point: Vector): boolean =>
   isInsideRoomAt(level, point)
 
@@ -471,9 +447,6 @@ type BulletChanges = Readonly<{
   ) => ReadonlyArray<GameEvent>
 }>
 
-// NOTE: one tick of the bullets as the World's field changes, so the tick
-// can write them in the same copy as its other fields (the zombies' steps,
-// src/world/step/simulation.ts).
 export const bulletFlightOf: {
   (seconds: number, deltaMs: number): (model: World) => BulletChanges
   (model: World, seconds: number, deltaMs: number): BulletChanges
@@ -498,21 +471,11 @@ const advanceBullets = (
   deltaMs: number,
 ): World => UiStruct.evolve(model, bulletFlightOf(model, seconds, deltaMs))
 
-// LAG COMPENSATION
-
-// NOTE: where each zombie stood after one tick, for the room's history.
 export type ZombieAt = Readonly<{ id: number; x: number; y: number }>
 
 export const zombiesAt = (model: World): ReadonlyArray<ZombieAt> =>
   Array.map(model.zombies, ({ id, x, y }) => ({ id, x, y }))
 
-// NOTE: favor the shooter (MULTIPLAYER.md, "Latency"). A shot fired by a
-// player who saw the room `pasts.length` ticks ago flies those ticks now,
-// one tick against each past, oldest first, with every zombie where it
-// stood then, so it lands where the player aimed. Its hits apply to the
-// zombies as they are now (hearts, deaths, money, events); only the
-// positions are rewound, then put back. Pure, so the room replays the
-// same everywhere.
 export const catchUpShots: {
   (
     bulletIds: ReadonlySet<number>,
@@ -574,12 +537,6 @@ export const catchUpShots: {
     }),
 )
 
-// TRACERS
-
-// NOTE: a co-op client's own shot, drawn the instant it fires (src/app/update/coopPlay.ts):
-// the pellets the gun it holds would fire from where it stands, aimed as
-// it aims, with the client's cosmetic stream for the spread. They hurt
-// nothing; the room's own copy of the shot decides every hit.
 export const aimTracers: {
   (
     slot: PlayerSlot,
@@ -618,11 +575,10 @@ export const aimTracers: {
   },
 )
 
-// NOTE: tracers fly as bullets do and stop at a wall, the arena's edge, the
-// end of their life, or the first zombie they touch; a zombie the room says
-// was missed is simply not hurt, and nothing is rewound.
-// NOTE: `struck` counts the tracers that stopped on a zombie: the hits a
-// player saw, which the audit sets beside the hits the room confirmed.
+const MAX_HIT_RADIUS_PX = Math.max(
+  ...Array.map(Record.values(ZOMBIE_KINDS), ({ radius }) => radius),
+)
+
 export type FlownTracers = Readonly<{
   tracers: ReadonlyArray<Bullet>
   struck: number
@@ -648,25 +604,27 @@ export const flyTracers: {
     tracers: ReadonlyArray<Bullet>,
     deltaMs: number,
   ): FlownTracers => {
-    // NOTE: one pass, gathered in place: appending to a fresh copy for each
-    // tracer would copy the list once per tracer.
     const flown: Array<Bullet> = []
     let struck = 0
+    if (Array.isReadonlyArrayEmpty(tracers)) {
+      return { tracers: flown, struck }
+    }
+    const grid = buildGrid(zombies, isFree, 2 * MAX_HIT_RADIUS_PX)
+    const near = queryBuffer(grid)
     for (const tracer of tracers) {
       Result.match(flyBullet(level, deltaMs / MS_PER_SECOND, deltaMs)(tracer), {
         onFailure: () => undefined,
         onSuccess: moved => {
-          if (
-            // NOTE: TODO: at most BULLET_MAX (48) tracers by ZOMBIE_ALIVE_MAX (20) zombies; the grounded grid hits.ts queries would cut it.
-            // oxlint-disable-next-line munch/no-nested-scan
-            Array.some(
-              zombies,
-              zombie =>
-                isFree(zombie) &&
-                DetMath.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
-                  radiusOf(zombie),
-            )
-          ) {
+          const count = queryAround(grid, near, moved, MAX_HIT_RADIUS_PX)
+          let isHit = false
+          for (let at = 0; at < count && !isHit; at++) {
+            const zombie = zombies[near[at] ?? 0]
+            isHit =
+              zombie !== undefined &&
+              DetMath.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
+                radiusOf(zombie)
+          }
+          if (isHit) {
             struck++
           } else {
             flown.push(moved)

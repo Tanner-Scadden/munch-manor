@@ -1,14 +1,3 @@
-// The scripted player: the same input Messages for the same frame of the
-// same Model, so two runs fed by it see the same inputs. It moves in a fixed
-// pattern, aims straight at the nearest walking zombie every fourth frame,
-// holds the trigger, presses Enter through each Preparation, and closes the
-// stall if it opens. It uses no trig of its own, so a divergence between
-// engines comes from the game, not from the script. God mode refills the
-// hearts, so a weak pistol-only player lets the room fill to the alive cap.
-//
-// It imports only the game, effect, and Effect UI's struct helpers: no DOM, no Node, no Bun, so
-// it runs the same in Bun, Node, Chrome, and workerd.
-
 import { Array, Function, Predicate } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -38,8 +27,6 @@ const stepMsOf = (pattern: StepPattern, frame: number): number =>
     ? FIXED_STEP_MS
     : (MIXED_STEPS_MS[frame % MIXED_STEPS_MS.length] ?? FIXED_STEP_MS)
 
-// NOTE: the landscape view, measured at its own size (the balance bot
-// plays on it too).
 export const SURFACE = { left: 0, top: 0, width: 320, height: 180 }
 
 const MOVE_PATTERN: ReadonlyArray<ReadonlyArray<string>> = [
@@ -92,8 +79,6 @@ const nearestZombie = (model: Model): Target | undefined =>
     },
   )
 
-// Through Preparation: let go of the trigger, close the stall, and start
-// the wave.
 const prepareFrame = (model: Model): Model => {
   const still = holdKeys(model, [])
   const released =
@@ -105,7 +90,6 @@ const prepareFrame = (model: Model): Model => {
     : tapKey(released, 'Enter')
 }
 
-// In a wave: walk the pattern, and aim and fire at the nearest zombie.
 const fightFrame = (model: Model, frame: number): Model => {
   const moved = holdKeys(
     model,
@@ -136,7 +120,6 @@ const fightFrame = (model: Model, frame: number): Model => {
       )
 }
 
-// The input Messages for one frame, sent before the frame ticks.
 const driveFrame = (model: Model, frame: number): Model =>
   Phase.matchOrElse(
     model.phase,
@@ -147,9 +130,6 @@ const driveFrame = (model: Model, frame: number): Model =>
     () => model,
   )
 
-// NOTE: every lesson learned, written out here rather than imported, since
-// this harness is copied over an older commit to play it the same way: the
-// script plays a save past the tutorial, with no guided first break.
 const pastTutorial = (model: Model): Model =>
   UiStruct.evolve(model, {
     lessons: lessons =>
@@ -169,16 +149,10 @@ const pastTutorial = (model: Model): Model =>
       }),
   })
 
-// NOTE: the dare card that comes out on the slam
-// (src/features/dare/pocketCard.ts), read by its tag as a string where it
-// exists, since this harness also plays commits from before it.
 const isCardReading = (model: Model): boolean =>
   Predicate.hasProperty(model, 'pocketCard') &&
   model.pocketCard._tag === 'Reading'
 
-// NOTE: the intro (src/world/run/arrival.ts): a key skips it to the slam,
-// and the slam's frames play out until the first break. Read by its tag as a
-// string, since this harness also plays commits from before the intro.
 const throughIntro = (model: Model): Model =>
   model.phase._tag === 'Arriving'
     ? throughIntro(
@@ -196,8 +170,6 @@ const throughIntro = (model: Model): Model =>
         )
       : model
 
-// A returning player's Model, seeded, measured, and started into a run: Enter
-// opens the lobby, E picks endless there, and Enter starts.
 export const startedRun: {
   (mode: ScriptMode): (seed: number) => Model
   (seed: number, mode: ScriptMode): Model
@@ -225,7 +197,6 @@ const godMode = (model: Model): Model =>
 export const isPlaying = (model: Model): boolean =>
   model.phase._tag === 'Preparation' || model.phase._tag === 'Wave'
 
-// One whole frame: the script's inputs, then the tick, then god mode.
 export const playFrame: {
   (frame: number, pattern: StepPattern): (model: Model) => Model
   (model: Model, frame: number, pattern: StepPattern): Model

@@ -17,11 +17,6 @@ import {
 } from '../shared/missionData'
 import { Count, PLAYER_SCOPE_KIND, toRejected } from './playerScopeParts'
 
-// The daily missions' mutations in the player scope
-// (src/platform/playerScope.ts), apart from the scope so its file stays one
-// job. Shared with the sync Worker, like the scope, so it imports only
-// `effect`, the sync engine, and src/shared/.
-
 const MissionsRow = Schema.Struct({
   missions: Schema.fromJsonString(SavedMissions),
 })
@@ -56,12 +51,6 @@ const writeMissions = (
 
 const MAX_MISSION_COUNT = 1000
 
-// NOTE: a run's progress on a day's missions (src/shared/missionData.ts),
-// as increments by mission, each capped at its goal, so runs on two linked
-// devices the same day add up. A later day starts the record afresh; a
-// count for a day older than the record's adds nothing. `coop` marks the
-// player as one who has played an online co-op run, for good.
-/** @stability unstable */
 export const ProgressedMissions = defineMutation({
   name: 'ProgressedMissions',
   version: 1,
@@ -90,9 +79,6 @@ export const ProgressedMissions = defineMutation({
     }),
 })
 
-// NOTE: the day's three as first rolled. The first device's stand, so a
-// gate the player passes later that day changes no device's three.
-/** @stability unstable */
 export const RolledMissions = defineMutation({
   name: 'RolledMissions',
   version: 1,
@@ -109,8 +95,6 @@ export const RolledMissions = defineMutation({
     }),
 })
 
-// NOTE: the day's one free reroll. The first device's stands.
-/** @stability unstable */
 export const RerolledMission = defineMutation({
   name: 'RerolledMission',
   version: 1,
@@ -127,10 +111,6 @@ export const RerolledMission = defineMutation({
     }),
 })
 
-// NOTE: a mission done on `day` pays its Bones (MISSION_BONES, read here
-// and never from the args) once, and only once its count has met its
-// goal in this scope, so two devices that both finish it are paid once.
-/** @stability unstable */
 export const ClaimedMission = defineMutation({
   name: 'ClaimedMission',
   version: 1,
@@ -148,9 +128,6 @@ export const ClaimedMission = defineMutation({
     }),
 })
 
-// NOTE: all three of a day's missions done: ALL_THREE_BONES once, and the
-// day stamped for the Proof Shelf, once three claims stand in this scope.
-/** @stability unstable */
 export const StampedMissionDay = defineMutation({
   name: 'StampedMissionDay',
   version: 1,

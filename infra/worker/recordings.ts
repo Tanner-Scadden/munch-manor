@@ -26,13 +26,6 @@ import {
   tryCall,
 } from './syncCore.ts'
 
-// RECORD MY RUNS (src/platform/recording.ts): a player who turned it on
-// posts each finished run here, signed with their sync token. The run goes
-// into the R2 bucket under the player's id from the token, as it came
-// (gzip or plain JSON), never read or decoded here. Nothing else about the
-// request is kept: no address, no headers.
-
-// NOTE: the slice of the R2 binding this route uses, so a test hands a fake.
 export type RecordingBucket = Readonly<{
   put: (
     key: string,
@@ -57,7 +50,6 @@ const CONTENT_TYPES: { readonly [Encoding in RecordingEncoding]: string } = {
   Plain: JSON_CONTENT_TYPE,
 }
 
-// NOTE: the media type alone, without a charset or other parameters.
 const encodingOf = (request: Request): Option.Option<RecordingEncoding> =>
   Option.flatMap(
     Array.head(String.split(request.headers.get('content-type') ?? '', ';')),
@@ -68,8 +60,6 @@ const isDeclaredTooLarge = (request: Request): boolean =>
   globalThis.Number(request.headers.get('content-length') ?? '0') >
   MAX_RECORDING_BYTES
 
-// NOTE: a limiter that cannot answer lets the run through, as the room
-// routes do: a lost recording costs more than one over the limit.
 const isWithinRate = (env: RecordingBindings, playerId: string) =>
   tryCall('check the recordings rate limit', () =>
     env.RECORDINGS_BY_PLAYER.limit({ key: `recording:${playerId}` }),
@@ -136,7 +126,6 @@ const routeRecordingPath = (
     return json(202, '{}')
   })
 
-// NOTE: the recordings path. Every failure is answered here.
 export const routeRecording: {
   (
     env: RecordingBindings,

@@ -10,11 +10,6 @@ import {
   rankOf,
 } from '../rankCurve'
 
-// The front-loaded curve and the purses: no save's rank ever drops on the
-// new curve, and each rank with no other gift pays a purse.
-
-// NOTE: the curve before it was front-loaded, 100 points from rank 1 to 2
-// and 25 more each rank, read the slow way.
 const oldRankOf = (points: number): number => {
   const step = (rank: number, spent: number): number => {
     const cost = 100 + 25 * (rank - 1)

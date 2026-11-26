@@ -12,10 +12,6 @@ import {
   pickupSpinOf,
 } from '../powerups'
 
-// The power-ups in 3D (src/render/iso/powerups.ts): an aura's frame known by
-// its image and stood as blocks round the feet, a goodie's spin and its ring
-// of light.
-
 const FEET = { x: 160, y: 120 }
 
 const imageOf = (

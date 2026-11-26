@@ -15,13 +15,6 @@ import type { PadDirection } from './gamepad'
 import { FOCUS_STEP_OFFSET } from './input'
 import type { PadClick, PadScope } from './inputSchema'
 
-// A controller in the menus, on the page: moving focus to the nearest
-// control the way the stick points, clicking what has focus, turning a
-// tab strip or a page, and backing out of a dialog as Escape does. The
-// Commands in src/app/update/padMenu.ts run these; `update` only decides
-// which, from menuState, so it stays pure.
-
-// NOTE: a control's box on screen, as getBoundingClientRect gives it.
 export type Box = Readonly<{
   left: number
   top: number
@@ -34,21 +27,14 @@ const centerOf = (box: Box): Vector => ({
   y: box.top + box.height / 2,
 })
 
-// NOTE: a control a pixel or two off the line still counts as level with
-// the one that has focus, so a row's buttons never read as a step down.
 const LEVEL_SLACK_PX = 2
 
-// NOTE: how much a step sideways costs against a step the way the stick
-// points: the nearest control along the line wins over a closer one off it.
 const ACROSS_WEIGHT = 2
 
 type Scored = Readonly<{ index: number; score: number }>
 
 const byScore = Order.mapInput(Number.Order, (scored: Scored) => scored.score)
 
-// NOTE: the box nearest `from` the way `direction` points, by its center:
-// only boxes ahead of it count, and a box off the line pays for the step
-// sideways. None when nothing is that way.
 export const nearestInDirection: {
   (
     from: Box,
@@ -88,15 +74,11 @@ export const nearestInDirection: {
   },
 )
 
-// THE PAGE
-
 const FOCUSABLE =
   "button:not([disabled]), a[href], input:not([disabled]):not([type='hidden']), " +
   "select:not([disabled]), textarea:not([disabled]), [role='tab'], " +
   "[role='radio'], [tabindex]:not([tabindex='-1'])"
 
-// NOTE: the game surface takes focus for the keys in a run; it is no menu
-// control.
 const GAME_SURFACE_CLASS = 'game-surface'
 
 const zIndexOf = (element: Element): number =>
@@ -145,16 +127,12 @@ const focusedIn = (root: Element): Option.Option<HTMLElement> => {
     : Option.none()
 }
 
-// NOTE: focusVisible asks for the ring even when the mouse was last on the
-// page; the stylesheet draws it for a pad anyway, where a browser ignores it.
 const focusControl = (element: HTMLElement): void => {
   element.focus({ focusVisible: true })
 }
 
 const boxOf = (element: Element): Box => element.getBoundingClientRect()
 
-// NOTE: the stick or d-pad: focus steps to the nearest control that way,
-// or, when nothing in the scope has focus yet, onto its first control.
 export const movePadFocus = ({
   scope,
   direction,
@@ -181,9 +159,6 @@ export const movePadFocus = ({
     }),
   )
 
-// NOTE: A presses the focused control, as Enter does. A dialog with
-// nothing focused gets its first control focused instead; elsewhere the
-// root hears NothingFocused and takes A as Enter.
 export const clickPadFocus = (scope: PadScope): Effect.Effect<PadClick> =>
   Effect.sync(() =>
     Option.match(scopeElement(scope), {
@@ -228,9 +203,6 @@ const stepTabs = (
   )
 }
 
-// NOTE: a bumper: the next or previous tab of the scope's tab strip, or,
-// with no strip, its page button (`data-pad-page`, What's New's Older and
-// Newer).
 export const stepPadTab = ({
   scope,
   step,
@@ -265,8 +237,6 @@ export const stepPadTab = ({
     }),
   )
 
-// NOTE: B in a dialog: an Escape on what has focus, which the dialog's own
-// keys and ui-kit's Dialog take as they take the keyboard's.
 export const escapePadDialog: Effect.Effect<void> = Effect.sync(() =>
   Option.map(topDialog(), dialog => {
     const target = Option.getOrElse(

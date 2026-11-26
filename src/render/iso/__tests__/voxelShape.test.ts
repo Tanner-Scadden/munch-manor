@@ -15,18 +15,12 @@ import {
   voxelMeshOf,
 } from '../voxelShape'
 
-// A sprite's pixels as carved blocks (src/render/iso/voxelShape.ts): how
-// deep each stack goes, that the lens sees exactly the art, the faces it
-// shows, whose color their sides wear and how dark toward the foot, and the
-// matrix that stands it where its billboard stood.
-
 const rows = (art: ReadonlyArray<string>) => ({
   width: art[0]?.length ?? 0,
   height: art.length,
   isSolid: (column: number, row: number) => art[row]?.[column] === '#',
 })
 
-// NOTE: art with ink: `#` solid and light, `k` solid and dark.
 const inked = (art: ReadonlyArray<string>) => ({
   width: art[0]?.length ?? 0,
   height: art.length,
@@ -37,8 +31,6 @@ const inked = (art: ReadonlyArray<string>) => ({
   isDark: (column: number, row: number) => art[row]?.[column] === 'k',
 })
 
-// NOTE: each corner's uv names its pixel, so a face tells whose color it
-// wears.
 const uvByPixel = (column: number, row: number): readonly [number, number] => [
   column,
   row,
@@ -73,10 +65,6 @@ const determinantOf = (elements: ReadonlyArray<number>): number => {
   )
 }
 
-// NOTE: what the lens sees of a mesh: for each screen pixel (column, row
-// of the art) the uv of the nearest front or top face over its middle. In
-// the geometry, a point's screen row is minus its y, and nearer the lens is
-// a larger z.
 const lensPictureOf = (
   mesh: ReturnType<typeof voxelMeshOf>,
 ): ReadonlyMap<string, readonly [number, number]> => {
@@ -118,8 +106,6 @@ const lensPictureOf = (
   return new Map(Array.map([...nearest], ([key, { uv }]) => [key, uv]))
 }
 
-// NOTE: the art as the lens should see its carve: every pixel its own and
-// nothing more, a toe or a barrel one pixel thick too.
 const artPictureOf = (
   art: ReadonlyArray<string>,
 ): ReadonlyMap<string, readonly [number, number]> =>
@@ -520,9 +506,6 @@ describe('slab matrix', () => {
 })
 
 describe('standing upright', () => {
-  // NOTE: a china cabinet's art, 6 wide and 12 tall, standing upright on 4
-  // pixels of floor, as src/render/iso/voxels.ts carves one: as deep as its
-  // tiles, the stacks near the foot shallower so none goes under the floor.
   const ART = rows(Array.makeBy(12, () => '######'))
   const MOST = 4
   const mesh = voxelMeshOf({
@@ -544,7 +527,6 @@ describe('standing upright', () => {
     lean,
   }
   const { elements } = uprightMatrixOf(placement)
-  // NOTE: each corner of the blocks where the matrix stands it.
   const corners = Array.makeBy(mesh.positions.length / 3, corner => {
     const local = Array.makeBy(
       3,
@@ -574,10 +556,6 @@ describe('standing upright', () => {
     expect(Math.max(...depths)).toBeCloseTo(zOf(100), 6)
   })
 
-  // NOTE: up the camera's up, as many game pixels as its art: its top row
-  // folds into the tops of the row under it, a row on screen, as every
-  // carve's does. A step back along the lens's ray moves no point up the
-  // screen.
   test('it is as tall on screen as its art', () => {
     const rises = Array.map(
       corners,

@@ -1,8 +1,3 @@
-// The house in 3D, built once per level: the walls as blocks wearing the
-// room's art, the room's art on the floor less the furniture that stands
-// up, the ferns cut into clumps for the wind, and the hidden stand-ins the
-// furniture's shadows are cast through.
-
 import { Array, Option, Record, Result, pipe } from 'effect'
 import { type Application, Graphics, Rectangle } from 'pixi.js'
 
@@ -29,7 +24,7 @@ import { roomArtOf } from '../room/room'
 import { COVER_DRAWINGS, coverBlocks } from '../room/roomCover'
 import { type BillboardPool, type Cutout, standCutout } from './billboards'
 import type { ViewBox } from './cull'
-import { type Leaf, flatten, rectKey } from './flatten'
+import { type Leaf, flatten, makeRectSet } from './flatten'
 import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
 import { STRETCH, UNIT, wallHeightAt, zOf } from './space'
 import { colorOf } from './textures'
@@ -43,8 +38,6 @@ import {
   wallQuadsOf,
 } from './wallQuads'
 import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
-
-// WALLS
 
 const WALL_GEOMETRY = new CubeGeometry({ width: 1, height: 1, depth: 1 })
 
@@ -73,8 +66,6 @@ export const buildWalls = (
         castShadow: true,
         receiveShadow: true,
       })
-      // NOTE: under a fanned top only its shadow shows (wallQuads.ts
-      // `isFannedAt`).
       if (isFannedAt({ level, row, column })) {
         block.disablePass('opaque')
       }
@@ -83,14 +74,8 @@ export const buildWalls = (
   )
 }
 
-// NOTE: mutable on purpose: a mesh of art quads (`buildArtQuads`) and the
-// corners of it that fan (wallQuads.ts `Fan`), slid across along the
-// lens's rays as its eye moves, so a face's upright lines run on straight
-// over its top. Each corner keeps where it was built.
 export class ArtMesh {
   readonly mesh: Mesh3D
-  // NOTE: per fanned corner: its x's index in the positions, its x and z
-  // as built, and its face's plane.
   private readonly at: Uint32Array
   private readonly xs: Float64Array
   private readonly zs: Float64Array
@@ -115,12 +100,6 @@ export class ArtMesh {
     this.seams = Float64Array.from(fanned, ({ seam }) => seam)
   }
 
-  // NOTE: fans the corners from the lens's eye (in the world, across and
-  // along the floor), or lays them back as built for none (the title's
-  // diorama, whose camera sees along parallel rays). A corner at depth z
-  // over a face whose top edge lies at `seam` moves to where the eye's ray
-  // through that edge's point plumb below it passes at z, so the face's
-  // column and the top's meet in one screen line.
   fanFrom(eye: Option.Option<Readonly<{ x: number; z: number }>>): void {
     const isSame = Option.match(eye, {
       onNone: () => Option.isNone(this.eye),
@@ -138,7 +117,6 @@ export class ArtMesh {
         positions[this.at[index] ?? 0] = this.xs[index] ?? 0
       }
     } else {
-      // NOTE: `fannedX` written out, so the loop builds no record a corner.
       const { x: eyeX, z: eyeZ } = eye.value
       for (let index = 0; index < this.at.length; index += 1) {
         const x = this.xs[index] ?? 0
@@ -153,13 +131,6 @@ export class ArtMesh {
   }
 }
 
-// NOTE: every quad of the walls (wallQuads.ts) as one mesh wearing the
-// room's art, its texture coordinates on the floor's own picture of the
-// level, one texel a game pixel: a north wall's face and top wear the 2D
-// game's wallpaper, portraits, trim, and wainscot where the lens sees them,
-// a row a screen pixel, lit alike as one wall (`shade`). The blocks
-// below stay the plain toon walls that give them their height (owner,
-// 2026-11-15: the top wall was folded in).
 export const buildArtQuads = (
   input: Readonly<{
     level: Level
@@ -175,8 +146,6 @@ export const buildArtQuads = (
   Array.forEach(quads, ({ corners, art, shade }, index) => {
     positions.set(Array.flatten(corners), index * 12)
     normals.set([...shade, ...shade, ...shade, ...shade], index * 12)
-    // NOTE: the picture is rendered to its texture upside down, so its rows
-    // count up from the bottom.
     uvs.set(
       Array.flatMap(art, ([u, v]) => [u / level.width, 1 - v / level.height]),
       index * 8,
@@ -209,14 +178,10 @@ export const buildWallArt = (
     ),
   })
 
-// NOTE: the blocks under the fanned tops, fanning with them, in the walls'
-// own material (wallQuads.ts `fannedBlocksOf`).
 export const buildFannedBlocks = (
   input: Readonly<{ level: Level; material: ToonMaterial }>,
 ): ArtMesh => buildArtQuads({ ...input, quads: fannedBlocksOf(input.level) })
 
-// NOTE: the tops behind the tall walls' caps (wallQuads.ts), flat black, as
-// dark as the night round the house, so a wall ends at its slim lit cap.
 export const buildWallDark = (level: Level): ArtMesh =>
   buildArtQuads({
     level,
@@ -224,16 +189,12 @@ export const buildWallDark = (level: Level): ArtMesh =>
     quads: Array.filter(wallQuadsOf(level), ({ wears }) => wears === 'Night'),
   })
 
-// NOTE: a tile of the level by its row and column, and the height its quad
-// lies at. It wears the picture over its own tile.
 export type TileQuad = Readonly<{
   row: number
   column: number
   y: number
 }>
 
-// NOTE: a flat quad over each tile, its texture coordinates on a picture of
-// the whole level, one texel a game pixel from its top left corner.
 export const buildTileQuads = (
   input: Readonly<{
     level: Level
@@ -255,8 +216,6 @@ export const buildTileQuads = (
     const z1 = zOf(level.top + top + TILE_SIZE)
     const u0 = left / level.width
     const u1 = (left + TILE_SIZE) / level.width
-    // NOTE: the picture is rendered to its texture upside down, so its rows
-    // count up from the bottom.
     const v0 = 1 - top / level.height
     const v1 = 1 - (top + TILE_SIZE) / level.height
     positions.set([x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1], index * 12)
@@ -276,12 +235,6 @@ export const buildTileQuads = (
   })
 }
 
-// DOORWAYS
-
-// NOTE: a block over each tile a lintel spans (lintels.ts), from the
-// lintel's floor to the wall's top, so a doorway reads as cut through the
-// wall rather than a gap in it. Its face and top are among the wall's art
-// quads (wallQuads.ts).
 export const buildLintels = (
   input: Readonly<{ level: Level; material: ToonMaterial }>,
 ): ReadonlyArray<Mesh3D> => {
@@ -301,11 +254,6 @@ export const buildLintels = (
   })
 }
 
-// FURNITURE
-
-// NOTE: the kinds the game draws over whoever stands behind them
-// (src/render/room/tallCover.ts), and the ferns, which sway. In 3D they
-// leave the floor and stand up for good, so nothing pops in or out.
 const STANDING_KINDS: ReadonlySet<CoverKind> = new Set<CoverKind>([
   'Piano',
   'Bookshelf',
@@ -339,17 +287,14 @@ const isFaint = (fill: string | undefined): boolean =>
     match => Number(match[1]) < 0.2,
   )
 
-// NOTE: the room's art with every standing piece taken out, rect by rect:
-// the pieces' own drawings give the rects to leave out (their faint floor
-// glows stay on the floor).
 export const floorArtOf = (level: Level): ReadonlyArray<Leaf> => {
-  const lifted = new Set<string>()
+  const lifted = makeRectSet()
   for (const [symbol, kind] of Record.toEntries(COVER_SYMBOLS)) {
     if (STANDING_KINDS.has(kind)) {
       for (const box of coverBlocks(level, symbol)) {
         for (const { shape } of flatten(drawingOf(kind)(box, level))) {
           if (shape._tag === 'Rect' && !isFaint(shape.fill)) {
-            lifted.add(rectKey(shape))
+            lifted.add(shape)
           }
         }
       }
@@ -357,11 +302,9 @@ export const floorArtOf = (level: Level): ReadonlyArray<Leaf> => {
   }
   return Array.filter(
     flatten(roomArtOf(level)),
-    ({ shape }) => shape._tag !== 'Rect' || !lifted.has(rectKey(shape)),
+    ({ shape }) => shape._tag !== 'Rect' || !lifted.has(shape),
   )
 }
-
-// PLANTS
 
 type Clump = Readonly<{
   texture: Cutout['texture']
@@ -376,7 +319,6 @@ export type Plant = Readonly<{
   footY: number
   spot: Readonly<{ x: number; y: number }>
   clumps: ReadonlyArray<Clump>
-  // NOTE: the whole fern in one texture, for its shadow, which stays still.
   caster: Cutout
 }>
 
@@ -479,8 +421,6 @@ export const standPlant = (
     pool.place({
       texture: clump.texture,
       centerX: clump.left + clump.width / 2 + sway.x,
-      // NOTE: sideways only: bands that rose and fell apart would open a
-      // pixel's gap between their rows.
       bottom: clump.top + clump.height,
       drawnWidth: clump.width,
       drawnHeight: clump.height,
@@ -493,16 +433,8 @@ export const standPlant = (
   })
 }
 
-// THE FERNS' SHADOWS
-
-// NOTE: a shadow stand-in and the box on the game's map it stands over, so
-// the scene can leave it out while it lies far off screen.
 export type Caster = Readonly<{ mesh: Mesh3D; box: ViewBox }>
 
-// NOTE: a fern turns to the lens and bends in the wind, so it casts through
-// a stand-in: the whole fern baked into one texture (`plantsOf`) and cut out
-// upright on a plain mesh at its foot. Furniture is carved and casts
-// through its own blocks, set once per level (furniture.ts).
 export const plantCastersOf = (
   input: Readonly<{ parent: Container3D; plants: ReadonlyArray<Plant> }>,
 ): ReadonlyArray<Caster> =>
@@ -520,7 +452,6 @@ export const plantCastersOf = (
     box: cutoutBoxOf(caster),
   }))
 
-// NOTE: where a cutout stands on the game's map, in game pixels.
 export const cutoutBoxOf = (cutout: Cutout): ViewBox => ({
   left: cutout.left,
   top: cutout.top,

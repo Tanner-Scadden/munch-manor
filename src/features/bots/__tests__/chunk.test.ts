@@ -10,11 +10,6 @@ import { freshFight } from '../../../world/zombies/boss'
 import { BOSS_RULES } from '../../../world/zombies/bossRules'
 import { chunkDodge } from '../escape'
 
-// How a bot reads Uncle Chunk (src/features/bots/escape.ts): out of a
-// winding ring, still outside it, and off a charge's lane and a glob's
-// mark. The bot stands in the dining room's open
-// aisle south of the party table, Chunk to its west.
-
 const BOSS_ID = 777
 const AT = { x: START_LEVEL.start.x, y: START_LEVEL.start.y - 15 }
 

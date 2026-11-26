@@ -12,19 +12,10 @@ import { DOOR_IDS } from '../level/tileGrid'
 import type { DoorId, Hold, ZombieKind } from '../schema/worldSchema'
 import { ZOMBIE_KIND_ORDER } from '../zombies/zombies'
 
-// SPAWN TABLES
-
 export type KindWeight = Readonly<{ kind: ZombieKind; weight: number }>
 
 export type DoorPattern = 'One' | 'Pincer' | 'All'
 
-// NOTE: A group's packs are its pack sizes. Their order is shuffled per run,
-// so a wave mixes singles, pairs, and squads differently every time while its
-// zombie count stays the same. doorDraw doors are drawn from doors once per
-// run, so a group's doors change from run to run too.
-// NOTE: a group that may use any door names no doors of its own. Its doors
-// are the level's spawn doors when the wave is rolled, so the kitchen's back
-// door and window join every such group once the kitchen is open.
 export type SpawnGroup = Readonly<{
   count: number
   packs: Array.NonEmptyReadonlyArray<number>
@@ -46,9 +37,6 @@ export type WavePlan = Readonly<{
   holds: ReadonlyArray<Hold>
 }>
 
-// NOTE: the spawn doors of the level a run starts on, before any exit is
-// open, which every run has. A wave rolled while the exits are shut uses
-// exactly these; in the manor they are the parlour's four.
 export const START_DOORS: Array.NonEmptyReadonlyArray<DoorId> = Array.match(
   START_LEVEL.doorIds,
   {
@@ -185,9 +173,6 @@ export const chuckers: {
     trickle({ count, mix: only('Thrower'), from, startMs: atMs, everyMs }),
 )
 
-// NOTE: an Ankle Biter comes up through the floor, so its door is never
-// used. It still gets one, drawn like a straggler's, so the plan stays one
-// shape. The door preview counts it as FLOOR instead.
 export const crawlers = (
   spec: Omit<TrickleSpec, 'from' | 'mix'>,
 ): SpawnGroup => ({
@@ -209,23 +194,8 @@ export const fadeThenRelax: {
 
 const MIXED = mixOf(3, 2, 1.5)
 
-// NOTE: wave 7 already brings Ankle Biters, Big Lugs, and a Big Leaguer, so
-// its mixed packs carry half the Kaboomers of the others.
 const WAVE_7_MIX = mixOf(3, 2, 0.75)
 
-// NOTE: Each wave is two or three cycles of Build, Peak, Fade, and Relax. A
-// hold stops the wave clock at its time until fewer than its threshold are
-// alive, then rests for its relax time, so the times of every later group
-// are on that paused clock. A kind's first wave brings it in a group of only
-// that kind, so the NEW card never promises a zombie the roll left out.
-// NOTE: waves 1 and 2 were tightened on 2026-11-10 after the pacing report
-// (docs/PACING_REPORT.md, owner's pick 3b): wave 1 is 8 Groaners in two
-// quick squads, done in about 15 s (6 over 23 s before), and wave 2 sends
-// its Groaners faster and fades at 12 s (17.5 before).
-// Since 2026-11-14 (owner: wave 1 always came from the same room) each of
-// wave 1's squads draws its own door, where it was always North.
-// The times written for waves 3 on are their old ones: HEAT packs them
-// tighter (see `hotter` below the table).
 const WAVE_TABLE: Array.NonEmptyReadonlyArray<WavePlan> = [
   {
     speedScale: 1.0,
@@ -496,13 +466,6 @@ const WAVE_TABLE: Array.NonEmptyReadonlyArray<WavePlan> = [
       { atMs: 45000, releaseBelow: 4, relaxMs: 2500 },
     ],
   },
-  // NOTE: waves 8 and 9 came with the kitchen. Their open groups draw from
-  // every spawn door the level has, so once the kitchen is open its back
-  // door and window send packs too, and a run that never opens it meets the
-  // same waves through the parlour's four doors. Wave 8 is a breather after
-  // the Ankle Biters: a long build of squads and lone stragglers from all
-  // over, no pincer until the end, and one Big Lug. Wave 9 tests everything
-  // before the finale.
   {
     speedScale: 1.4,
     hpScale: 1.1,
@@ -644,13 +607,6 @@ const WAVE_TABLE: Array.NonEmptyReadonlyArray<WavePlan> = [
   },
 ]
 
-// HEAT
-
-// NOTE: hotter, shorter waves (owner, 2026-11-10, the pacing report's pick
-// 2b): from wave 3 on every group's start and every pack's interval, and
-// every hold, comes at HEAT times its written time, so the same zombies
-// arrive in harder peaks and the wave is over sooner. The holds keep their
-// thresholds and rests, so each peak still fades before the next builds.
 export const HEAT = 0.75
 const FIRST_HOT_WAVE = 3
 
@@ -689,22 +645,27 @@ const kindsInPlan = (plan: WavePlan): ReadonlyArray<ZombieKind> =>
     Array.map(({ kind }) => kind),
   )
 
+const debutsByWave = new Map<number, ReadonlyArray<ZombieKind>>()
+
 export const debutKinds = (wave: number): ReadonlyArray<ZombieKind> => {
   if (wave > FINAL_WAVE) {
     return []
   }
+  const cached = debutsByWave.get(wave)
+  if (cached !== undefined) {
+    return cached
+  }
 
-  const earlier = Array.flatMap(
-    Array.take(WAVE_PLANS, Math.max(0, wave - 1)),
-    kindsInPlan,
+  const earlier: ReadonlySet<ZombieKind> = new Set(
+    Array.flatMap(Array.take(WAVE_PLANS, Math.max(0, wave - 1)), kindsInPlan),
   )
-  const present = kindsInPlan(planFor(wave))
-  return Array.filter(
+  const present: ReadonlySet<ZombieKind> = new Set(kindsInPlan(planFor(wave)))
+  const debuts = Array.filter(
     ZOMBIE_KIND_ORDER,
-    // NOTE: a few zombie kinds, once a wave.
-    // oxlint-disable-next-line munch/no-nested-scan
-    kind => Array.contains(present, kind) && !Array.contains(earlier, kind),
+    kind => present.has(kind) && !earlier.has(kind),
   )
+  debutsByWave.set(wave, debuts)
+  return debuts
 }
 
 export const pickOne: {

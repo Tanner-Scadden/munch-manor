@@ -1,7 +1,3 @@
-// NOTE: co-op staged at one screen for a scene (`coop=<stage>`): the hub,
-// the queue, a lobby, or a room's arena, with a fake network that never
-// answers.
-
 import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
@@ -24,8 +20,6 @@ import { Session } from '@munch/netcode'
 import { type HarnessConfig } from './config'
 import { LIVE_SEATS } from './liveRoom'
 
-// NOTE: co-op staged at one screen, with a fake network that never
-// answers, so the screen holds still for a screenshot.
 const coopRoom = (
   members: ReadonlyArray<ReturnType<typeof memberOf>>,
   status: 'Lobby' | 'Playing',
@@ -71,8 +65,6 @@ const coopRoom = (
 
 const COOP_NAMES = ['Tanner', 'Mo', 'Pip', 'Grumbles']
 
-// NOTE: each staged player's run for the end card's crew board: kills,
-// revives, downs, shots fired and landed, and keys found.
 const COOP_RUNS = [
   [212, 1, 2, 640, 410, 14],
   [148, 4, 1, 520, 230, 9],
@@ -98,8 +90,6 @@ const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
   ),
 })
 
-// NOTE: a run that just ended on the end card, the room's lobby still on
-// Playing, as the root sees it before LOBBY.
 const endedRoom = (
   members: ReadonlyArray<ReturnType<typeof memberOf>>,
   phase: Phase,
@@ -121,9 +111,6 @@ const endedRoom = (
   })
 }
 
-// NOTE: the looks the staged teammates sent with their joins; the first
-// seat is the page's own player, who wears the page's own look.
-// NOTE: each staged player's round trip: good, fair, poor, good.
 const COOP_PINGS = [48, 140, 260, 90]
 
 const COOP_LOOKS = [
@@ -133,12 +120,8 @@ const COOP_LOOKS = [
   'Broad.Short.Pink.Medium.Glow.CDAA.N.F',
 ]
 
-// NOTE: the ranks the staged teammates sent: wood, tin, silver, and the
-// golden drumstick, so the shots show the badges' tiers.
 const COOP_RANKS = [7, 18, 33, 62]
 
-// NOTE: and the callings, so the shots show a body prop for each hero and a
-// hero icon by each teammate's name tag.
 const COOP_CALLINGS = ['LineCook', 'Handyman', 'TrackStar', 'PennyPincher']
 
 const coopScreen = (
@@ -302,8 +285,6 @@ const coopScreen = (
     }
     case 'arena':
       return Screen.InRoom({ room: coopRoom(members(4), 'Playing') })
-    // NOTE: a room playing in a Worker (liveNet.ts), joined with no World
-    // yet: its snapshots bring the World in.
     case 'live':
       return Screen.InRoom({
         room: {
@@ -343,8 +324,6 @@ const coopScreen = (
   }
 }
 
-// NOTE: `mods` is the host's pick of run modifiers (a mask, as the lobby keeps
-// it), and `dmark` the dare mark, shown in a staged lobby.
 const withModifiersPicked = (
   screen: CoopModel.Screen,
   mask: number,
@@ -368,8 +347,6 @@ const withModifiersPicked = (
     () => screen,
   )
 
-// NOTE: the hero picker the lobby stages show open: shut, open on the cards,
-// or with the Track Star tried on (BUY lit or short of Bones).
 const pickerOf = (stage: HarnessConfig['coop']): CoopState['heroPick'] => {
   if (stage === 'heroes') {
     return { isOpen: true, maybeTrying: Option.none() }
@@ -380,8 +357,6 @@ const pickerOf = (stage: HarnessConfig['coop']): CoopState['heroPick'] => {
   }
 }
 
-// NOTE: a staged run draws its room's World as the game, one frame of it,
-// as an online run does (src/app/update/coopPlay.ts).
 export const withCoop: {
   (model: Model): (config: HarnessConfig) => Model
   (config: HarnessConfig, model: Model): Model

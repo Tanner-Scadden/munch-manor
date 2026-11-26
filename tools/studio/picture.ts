@@ -1,8 +1,3 @@
-// The studio's flat pictures, `<studio-picture>`: a sprite's frame on its
-// backdrop, a tab's icon, a whole room. Every one is painted by one shared
-// Pixi renderer (one WebGL context, however many cards the gallery shows)
-// with the game's own FlatPainter, then copied off its canvas as an
-// ImageBitmap onto the element's own `bitmaprenderer` canvas. No 2D canvas.
 import { Effect, Option, Predicate, Schema } from 'effect'
 import { Application } from 'pixi.js'
 
@@ -15,9 +10,6 @@ import { toBrowserError } from '../../src/shared/describeError'
 
 const TAG = 'studio-picture'
 
-// NOTE: what a picture shows. `key` names its content: two pictures with one
-// key are the same picture, so a render that hands the same one again paints
-// nothing.
 export type StudioPicture = Readonly<{
   key: string
   width: number
@@ -32,13 +24,11 @@ const isStudioPicture = (value: unknown): value is StudioPicture =>
   Predicate.hasProperty(value, 'height') &&
   Predicate.hasProperty(value, 'shapes')
 
-// NOTE: the element's one property, written as it is, never decoded.
 export const studioPicture = Html.customElement({
   tag: TAG,
   properties: { picture: Schema.declare(isStudioPicture) },
 })
 
-// NOTE: what a picture element offers the shared painter.
 type Paintable = Readonly<{
   pictureToPaint: () => Option.Option<StudioPicture>
   show: (bitmap: ImageBitmap, token: number, isSettled: boolean) => void
@@ -51,8 +41,6 @@ type Renderer = Readonly<{
   painter: FlatPainter
 }>
 
-// NOTE: mutable on purpose: the one renderer every picture shares, and the
-// pictures waiting on it, painted together on the next animation frame.
 class SharedPainter {
   private renderer: Option.Option<Renderer> = Option.none()
   private isStarting = false
@@ -99,7 +87,6 @@ class SharedPainter {
       }).pipe(
         Effect.match({
           onSuccess: () => {
-            // NOTE: a sprite sheet that loads paints every picture again.
             const textures = new Textures(app, () => {
               for (const element of this.live) {
                 this.due.add(element)
@@ -131,8 +118,6 @@ class SharedPainter {
     })
   }
 
-  // NOTE: each due picture painted in turn and copied off the canvas in the
-  // same task, before the next paint clears it.
   private pass(): void {
     if (Option.isNone(this.renderer)) {
       return
@@ -175,10 +160,6 @@ class SharedPainter {
 
 const SHARED = new SharedPainter()
 
-// NOTE: mutable on purpose: a custom element is the browser's own mutable
-// object. It holds the picture it was handed, the key it last painted, and
-// its canvas. Built only when it is defined, since HTMLElement exists only
-// in a browser.
 const pictureElementClass = () =>
   class PictureElement extends HTMLElement {
     private latest: Option.Option<StudioPicture> = Option.none()
@@ -221,7 +202,6 @@ const pictureElementClass = () =>
       SHARED.leave(this.paintable)
     }
 
-    // NOTE: only the newest paint lands, however the copies resolve.
     private show(bitmap: ImageBitmap, token: number, isSettled: boolean): void {
       const context = this.canvas.getContext('bitmaprenderer')
       if (token !== this.token || context === null) {
@@ -231,12 +211,10 @@ const pictureElementClass = () =>
       this.canvas.width = bitmap.width
       this.canvas.height = bitmap.height
       context.transferFromImageBitmap(bitmap)
-      // NOTE: an audit waits for it, once every sprite sheet is in.
       this.dataset['drawn'] = isSettled ? 'true' : 'loading'
     }
   }
 
-// NOTE: called once by the studio's entry.
 export const defineStudioPicture = (): void => {
   if (customElements.get(TAG) === undefined) {
     customElements.define(TAG, pictureElementClass())

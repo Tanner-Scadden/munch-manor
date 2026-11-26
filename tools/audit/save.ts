@@ -1,10 +1,5 @@
 import { Config, Console, Effect, String } from 'effect'
 
-// Plays past the wave 1 practice gate in headless Chrome, reloads, and checks
-// that the on-device save brought the player back with the gate open and
-// the sound still muted. The save lives in SQLite now (see sqlite.ts for the
-// storage itself), so this reads it back only through the game.
-//   BASE=http://localhost:4173/ bun save.ts
 import { GAME, desktop, openBrowser, runAudit, wait } from './lib'
 import { attempt } from './page'
 
@@ -33,7 +28,6 @@ runAudit(
       ),
     )
 
-    // NOTE: the Sound toggle in the home menu's settings shows the setting.
     const isMutedOnHome = Effect.gen(function* () {
       yield* attempt(() => page.click('#home-settings'))
       const sound = page.locator(
@@ -56,7 +50,6 @@ runAudit(
 
     yield* attempt(() => page.click('.home-play'))
     yield* wait(300)
-    // NOTE: a first visit asks for a difficulty before the first run.
     yield* attempt(() =>
       page.getByRole('button', { name: /^double dare/i }).click(),
     )
@@ -101,7 +94,6 @@ runAudit(
     yield* awaitSplashGone
     yield* attempt(() => page.click('.home-play'))
     yield* wait(300)
-    // NOTE: a player past the practice gate gets the lobby, and START plays.
     yield* attempt(() => page.click('#lobby-start'))
     yield* wait(300)
     const reloaded = yield* status

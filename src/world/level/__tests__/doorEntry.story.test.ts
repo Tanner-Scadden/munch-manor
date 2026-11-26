@@ -15,10 +15,6 @@ import { levelOf, openExitIn } from '../arena'
 import { KITCHEN_EXIT } from '../exits'
 import { doorSpawnPoint, isInsideRoomAt } from '../tileQueries'
 
-// NOTE: the kitchen open, the player inside its west window, and a zombie
-// due at the dining room's west door just below it. The flow field's way in
-// for that zombie runs out through the yard and in at the window, nearer the
-// player: steering by the field alone walked it there out of sight.
 const kitchenOpen: Model = UiStruct.evolve(quietWave(3), {
   level: state => openExitIn(state, KITCHEN_EXIT),
 })
@@ -31,8 +27,6 @@ const BY_THE_WINDOW = {
 }
 const AT_THE_WEST_DOOR = doorSpawnPoint(LEVEL, 'West', 0)
 
-// NOTE: the doorway's lane, from the door's outer face out past the spawn
-// point, no wider than the door and a little give.
 const LANE_HALF_WIDTH_PX = DOOR_HALF_WIDTH_PX + 5
 const LANE_OUT_PX = 25
 

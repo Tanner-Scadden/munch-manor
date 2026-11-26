@@ -11,8 +11,6 @@ import { iconView } from '../../ui/menuParts'
 import { NEWS_DAYS, type NewsBullet, type NewsDay } from './changelog'
 import { WhatsNewMessage } from './message'
 
-// WHAT'S NEW
-
 const maybeShownDay = (model: Model): Option.Option<NewsDay> =>
   Array.get(NEWS_DAYS, model.home.newsPage)
 
@@ -44,9 +42,6 @@ const bulletView = (
       h.span.class('news-text').children(bullet.text),
     )
 
-// NOTE: the day's bullets scroll on their own under the arrows and the
-// title, so a long day never pushes the arrows off a short screen.
-// Keyed by the page, so a turned page starts at its top.
 const dayView = (
   day: NewsDay,
   page: number,
@@ -74,8 +69,6 @@ type PageArrow = Readonly<{
   isOpen: boolean
 }>
 
-// NOTE: an arrow with no day past it stays in place, dimmed and inert, so the
-// title never shifts and focus stays on it at the last day.
 const pageArrowView = (
   arrow: PageArrow,
   h: ApplicationViewBuilder,
@@ -89,9 +82,6 @@ const pageArrowView = (
     .on('click', () => (arrow.isOpen ? arrow.message : undefined))
     .children(iconView('news-arrow-icon', arrow.icon, h))
 
-// NOTE: the day's title between its arrows, at the top where the arrows are
-// always in reach. It is a live region, so a screen reader says the new
-// day's title on a page turn.
 const dayHeaderView = (
   day: NewsDay,
   page: number,

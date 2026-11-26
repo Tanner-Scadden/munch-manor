@@ -14,7 +14,6 @@ import {
   unchanged,
 } from './step'
 
-// NOTE: the Model field each root dialog opens on.
 const FIELD_OF = {
   Profile: 'profileDialog',
   Panel: 'panelDialog',
@@ -23,18 +22,12 @@ const FIELD_OF = {
   UpdateGreeting: 'updateGreeting',
 } as const satisfies Record<DialogName, keyof Model>
 
-// NOTE: the name is kept, and so saved and synced, when the player is done
-// typing: leaving the field, another tab, or closing the Profile (Enter is
-// SubmittedProfileName, with its pop). Saving on every key would send a
-// sync mutation per letter.
 export const keepName = (model: Model): Model =>
   UiStruct.evolve(model, {
     playerName: () => keptName(model.profile),
     profile: withNameKept,
   })
 
-// NOTE: a Difficulty panel that asked before a run, closed without a pick,
-// asks again next time.
 const forgetAskedMode = (model: Model): Model =>
   DifficultyCard.isAnyOf(['Asking'])(model.difficultyCard)
     ? UiStruct.evolve(model, {
@@ -42,9 +35,6 @@ const forgetAskedMode = (model: Model): Model =>
       })
     : model
 
-// NOTE: what the root does as a dialog closes, past shutting it: the
-// Profile keeps the name being typed, and the menu panel forgets a
-// difficulty question left unanswered.
 const AFTER_CLOSE: Record<DialogName, UpdateStep> = {
   Profile: modelStep(keepName),
   Panel: modelStep(forgetAskedMode),
@@ -61,8 +51,6 @@ export const openRootDialog = (dialog: DialogName): UpdateStep =>
     UiStruct.evolve(model, { [FIELD_OF[dialog]]: () => openDialog }),
   )
 
-// NOTE: a close only acts on an open dialog, so the `close` event the
-// browser fires after the Model shut it does nothing a second time.
 export const closeRootDialog = (dialog: DialogName): UpdateStep =>
   stepWhen(
     (model: Model) => isDialogOpen(model, dialog),

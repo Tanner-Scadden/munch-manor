@@ -71,31 +71,12 @@ import {
 } from './dareSearch'
 import { CHUNK_KEEP_PX, type Threat, chunkDodge, escapeHeading } from './escape'
 
-// A teammate bot's brain (GAME_DESIGN.md, "Teammate bots"): the seat's
-// intent and its presses for a tick, read from the World alone. It plays
-// like a competent casual with a mind of its own: it holds its own post by a
-// door (a different one for each seat, moving on now and then), hunts the
-// zombies it hears but cannot see, shoots the nearest one it can, keeps
-// some distance from it and some room from its teammates, revives anyone
-// who is down (a fresh MEDIC! call first, over any power-up), grabs the
-// power-ups nobody nearer wants, searches for the dare's list the way the
-// balance bot does (src/features/bots/dareSearch.ts: in a break, and in a
-// wave with nothing to shoot and no zombie close), and presses READY when
-// the human does or after a short wait. There is no shop to visit: keys
-// are the crew's, and the human spends them, so a thing behind boards
-// waits for them. It
-// carries nothing between ticks and rolls no dice, so the same World gives
-// the same intent, and a replay holds.
-
-// TUNING
-
 const FIRE_RANGE_PX = 100
 const ELBOW_ROOM_PX = 18
 const HUNT_PX = 170
 const POST_INSET_PX = 30
 const POST_REACHED_PX = 10
 const POST_MS = 14_000
-// NOTE: near enough the back door's spot to stand in its reach.
 const BACK_DOOR_STOP_PX = 3
 const STRAFE_MS = 1300
 const RELOAD_QUIET_PX = 90
@@ -107,8 +88,6 @@ const HEART_SEEK_PX = 170
 const PICKUP_SAFE_PX = 28
 const LOW_HP = 2
 
-// NOTE: how close a zombie may come before the bot backs off it. The big
-// and the explosive ones get more room.
 const FLEE_PX: Readonly<Record<Zombie['kind'], number>> = {
   Shambler: 24,
   Runner: 26,
@@ -119,8 +98,6 @@ const FLEE_PX: Readonly<Record<Zombie['kind'], number>> = {
   Boss: CHUNK_KEEP_PX,
 }
 
-// WHAT IS IN THE ROOM
-
 const OUT_OF_REACH = ['Burrowed', 'Carried', 'Flying'] as const
 
 const isShootable = (zombie: Zombie): boolean =>
@@ -130,7 +107,6 @@ const isShootable = (zombie: Zombie): boolean =>
 const byDistanceFrom = (at: Vector) =>
   Order.mapInput(Order.Number, (zombie: Zombie) => distanceBetween(at, zombie))
 
-// NOTE: one pass, no sorting: this runs for every bot on every tick.
 const nearestShootable = (world: World, at: Vector): Option.Option<Zombie> =>
   Array.reduce(world.zombies, Option.none<Zombie>(), (nearest, zombie) =>
     isShootable(zombie) &&
@@ -142,7 +118,6 @@ const nearestShootable = (world: World, at: Vector): Option.Option<Zombie> =>
       : nearest,
   )
 
-// NOTE: a fresh MEDIC! call (src/world/party/medic.ts) comes first, then the nearest.
 const downedNear = (world: World, me: SeatState): Option.Option<SeatState> =>
   pipe(
     playersOf(world),
@@ -162,8 +137,6 @@ const downedNear = (world: World, me: SeatState): Option.Option<SeatState> =>
     ),
     Array.head,
   )
-
-// WALKING
 
 const walkToward = (world: World, from: Vector, to: Vector): Vector => {
   if (distanceBetween(from, to) < 2) {
@@ -186,8 +159,6 @@ const walkToward = (world: World, from: Vector, to: Vector): Vector => {
 const awayFrom = (from: Vector, danger: Vector): Vector =>
   Option.getOrElse(directionBetween(danger, from), () => ({ x: 1, y: 0 }))
 
-// NOTE: a step to the side of the danger, which side by the bot's seat and
-// the wave's clock, so a crew does not all circle the same way.
 const sideStep = (
   from: Vector,
   danger: Vector,
@@ -208,8 +179,6 @@ const mixed = (first: Vector, second: Vector, weight: number): Vector =>
     () => ZERO_VECTOR,
   )
 
-// NOTE: a bot's post: a spot inside the house a little way in from a door,
-// where it watches for what comes through. Built once for each Level.
 const postsByLevel = new WeakMap<Level, ReadonlyArray<Vector>>()
 
 const postsOf = (level: Level): ReadonlyArray<Vector> => {
@@ -241,9 +210,6 @@ const postsOf = (level: Level): ReadonlyArray<Vector> => {
   return posts
 }
 
-// NOTE: which post a seat holds: its own, by slot, moving on to the next
-// door every POST_MS of the clock, so a crew spreads over the house and
-// each bot wanders it in its own order.
 const postOf = (world: World, slot: PlayerSlot): Vector => {
   const posts = postsOf(levelOf(world))
   const turn = Math.floor(clockMsOf(world) / POST_MS)
@@ -253,8 +219,6 @@ const postOf = (world: World, slot: PlayerSlot): Vector => {
   )
 }
 
-// NOTE: a step away from the nearest teammate on their feet when they are
-// too close, so a crew does not walk in a clump.
 const elbowRoom = (world: World, me: SeatState): Option.Option<Vector> =>
   pipe(
     playersOf(world),
@@ -281,8 +245,6 @@ const toPost = (world: World, me: SeatState): Vector => {
     : walkToward(world, me.player, post)
 }
 
-// THE FIGHT
-
 const clockMsOf = (world: World): number =>
   Phase.match(world.phase, {
     Ready: () => 0,
@@ -299,8 +261,6 @@ const clockMsOf = (world: World): number =>
     GameOver: () => 0,
   })
 
-// NOTE: with the Friendly Fire modifier on a teammate's shot wounds, so
-// the bot holds fire with a teammate near the line.
 const isMateInLine = (world: World, me: SeatState, target: Vector): boolean =>
   isFriendlyFireOn(world) &&
   Array.some(
@@ -340,8 +300,6 @@ const fleeFrom = (me: SeatState, zombie: Zombie): Option.Option<Zombie> =>
     ? Option.some(zombie)
     : Option.none()
 
-// NOTE: every zombie close enough to matter when the bot runs, so it runs
-// clear of the crowd and not only of the nearest.
 const threatsNear = (world: World, me: SeatState): ReadonlyArray<Threat> =>
   Array.filterMap(world.zombies, zombie =>
     isShootable(zombie) &&
@@ -350,16 +308,9 @@ const threatsNear = (world: World, me: SeatState): ReadonlyArray<Threat> =>
       : Result.failVoid,
   )
 
-// POWER-UPS
-
-// NOTE: whether a player would want this pickup: a Heart only when hurt.
 const wants = (player: SeatState, pickup: Pickup): boolean =>
   pickup.kind !== 'Heart' || player.player.hp < maxHpOf(player.player)
 
-// NOTE: the pickup the bot goes for, the way a teammate would: one it can
-// reach before it vanishes, with no zombie standing on it, and that it is
-// the nearest of the players who want it to, so it never races the human
-// or another bot for it. It reaches further for a Heart when low.
 const maybePickupFor = (world: World, me: SeatState): Option.Option<Pickup> =>
   pipe(
     world.pickups,
@@ -402,11 +353,6 @@ const toPickup = (world: World, me: SeatState): Option.Option<Vector> =>
     walkToward(world, me.player, pickup),
   )
 
-// THE SEARCH
-
-// NOTE: the bot's step toward the dare's list, or none while it keeps
-// still to work a find or the bulb's chain (two at a find work it twice as
-// fast, so it may join the human there). Nothing with no thing to fetch.
 const searchMove = (world: World, me: SeatState): Option.Option<Vector> => {
   if (isWorkingSearch(world, me.player)) {
     return Option.some(ZERO_VECTOR)
@@ -432,8 +378,6 @@ const fightMove = (
     maybeDowned,
     downed => distanceBetween(me.player, downed.player) <= REVIVE_STOP_PX,
   )
-  // NOTE: Uncle Chunk's tells come first: a stomp's ring, a charge's lane,
-  // a glob's mark (src/features/bots/escape.ts).
   const dodge = chunkDodge(world, me.player)
   if (dodge !== undefined) {
     return dodge
@@ -450,8 +394,6 @@ const fightMove = (
   if (Option.isSome(maybeToPickup)) {
     return maybeToPickup.value
   }
-  // NOTE: the fight comes first: the bot searches only with nothing to
-  // shoot and no zombie close.
   const maybeSearch =
     Option.isNone(maybeTarget) && isSafeToSearch(world, me.player)
       ? searchMove(world, me)
@@ -483,10 +425,6 @@ const fightMove = (
   )
 }
 
-// NOTE: a casual hand, without dice: every quarter second the bot's aim
-// wanders a little off its target and it eases off the trigger one window
-// in four. The wander is a hash of the seat, the zombie, and the window, so
-// the same World gives the same shot.
 const HAND_WINDOW_MS = 250
 const AIM_WANDER_RAD = 0.2
 const EASE_OFF_EVERY = 4
@@ -516,8 +454,6 @@ const fightIntent = (world: World, me: SeatState): Intent => {
   const maybeNearest = nearestShootable(world, me.player)
   const maybeTarget = maybeTargetFor(world, me)
   const window = Math.floor(clockMsOf(world) / HAND_WINDOW_MS)
-  // NOTE: a crowd under the hung chandelier: it shoots it down on them
-  // (./dareSearch.ts, THE ROOM TOOLS).
   const maybeDrop = canShoot(me)
     ? Option.flatMap(chandelierShot(world, me.player), point =>
         directionBetween(me.player, point),
@@ -548,15 +484,9 @@ const fightIntent = (world: World, me: SeatState): Intent => {
   }
 }
 
-// THE BREAK
-
 const humanReady = (world: World): boolean =>
   leadSeatOf(world).readiness === 'Ready'
 
-// NOTE: a teammate holding the kitchen's back door (src/world/kitchen/
-// backDoor.ts) waits for the whole crew there, so the bot walks over and
-// stands with them. A bot never holds the door itself: leaving early is the
-// human's call.
 const toBackDoor = (world: World, me: SeatState): Option.Option<Vector> =>
   Array.some(
     playersOf(world),
@@ -601,10 +531,6 @@ const breakIntent = (world: World, me: SeatState): Intent => {
   return { ...idleIntent, move: withElbowRoom(world, me, toPost(world, me)) }
 }
 
-// INTENT
-
-// NOTE: a bot that is down lies where it fell and swings its knife or Pan
-// at any zombie in reach, as a player who is down can.
 const meleeReachOf = (me: SeatState, zombie: Zombie): number =>
   (hasPan(me.player) ? PAN_RULES.reachPx : KNIFE_RULES.reachPx) +
   bodyRadiusOf(zombie) +
@@ -626,8 +552,6 @@ const downIntent = (world: World, me: SeatState): Intent =>
     },
   )
 
-// NOTE: once the front door is open, a bot heads out through it, still
-// aiming and shooting as it would (src/world/dare/finale.ts).
 const outThroughFrontDoor = (
   world: World,
   me: SeatState,
@@ -664,8 +588,6 @@ const intentFor = (world: World, slot: PlayerSlot): Intent =>
     },
   )
 
-// NOTE: each bot's intent for the tick, keyed by its slot, to join the
-// human's in the step's inputs.
 export const botInputs: {
   (slots: ReadonlyArray<PlayerSlot>): (world: World) => InputsByPlayer
   (world: World, slots: ReadonlyArray<PlayerSlot>): InputsByPlayer
@@ -674,8 +596,6 @@ export const botInputs: {
   (world: World, slots: ReadonlyArray<PlayerSlot>): InputsByPlayer =>
     new Map(Array.map(slots, slot => [slot, intentFor(world, slot)] as const)),
 )
-
-// PRESSES
 
 const isNobodyClose = (world: World, me: SeatState): boolean =>
   Option.match(nearestShootable(world, me.player), {
@@ -721,8 +641,6 @@ const pressFor = (world: World, slot: PlayerSlot): Option.Option<SeatAction> =>
     },
   )
 
-// NOTE: the bots' presses for the tick (reload in a lull, READY), applied to their seats before the step, through the same
-// seat actions a player's presses are.
 export const applyBotPresses: {
   (slots: ReadonlyArray<PlayerSlot>): (world: World) => World
   (world: World, slots: ReadonlyArray<PlayerSlot>): World

@@ -31,11 +31,6 @@ import {
 import { MEDIC_RULES } from '../medic'
 import { COOP_RULES, focusOf, maybePlayerAt, modifyFocus } from '../party'
 
-// A co-op player out of the fight, as everyone sees them (MULTIPLAYER.md,
-// "Life"): downed, they lie on the floor with a bleed bar, a revive icon,
-// and a ring on the floor that fills while a teammate stands still in it;
-// bled out, they stay a body on the floor until the break.
-
 const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60
 const RIGHT_X = 240
@@ -48,7 +43,6 @@ const allShapes = (
     shape._tag === 'Group' ? [shape, ...allShapes(shape.shapes)] : [shape],
   )
 
-// NOTE: a lying body is the only group turned a quarter in a fight.
 const lyingBodies = (current: Model): ReadonlyArray<Draw.Group> =>
   Array.filter(
     allShapes(sceneShapes(current)),
@@ -69,7 +63,6 @@ const isDrawn = (current: Model, wanted: Draw.Shape): boolean => {
 const isImage = (shape: Draw.Shape): shape is Draw.Image =>
   shape._tag === 'Image'
 
-// NOTE: a full bleed bar is one baked image; another bar's image differs.
 const hasBleedBar = (current: Model): boolean => {
   const wanted = Array.filter(
     healthBarShapes('Small', 'Ally', 0, 0, 1),

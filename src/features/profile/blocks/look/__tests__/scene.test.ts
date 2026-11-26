@@ -49,12 +49,6 @@ import {
   settleLook,
 } from '../../../__tests__/profile.fixture'
 
-// The Look tab as a player meets it. The root's Scene opens the Profile on
-// it; the Look tab is a child there (of the Profile, of the root), so its
-// little tabs, rows, and preview are drawn in a Scene of their own, each
-// event taken up to a Story of the root and the props it then hands down
-// (profile.fixture.ts).
-
 const characterCard = button('Character: change how you look')
 const randomizeButton = button('Roll a random look')
 const beardButton = button('Beard')
@@ -83,20 +77,14 @@ const pressed = (locator: Locator.Locator, isPressed: boolean) =>
       .toExist(),
   )
 
-// NOTE: a free part picked in its radio group, by a click or an arrow key,
-// as the kit's RadioGroup says it: a Scene runs no child's update, so the
-// group's own press is the kit's to test.
 const pick = (part: LookPart, value: string) =>
   inLook(s =>
     s.childEmit(RadioGroup, `look-${part}`, RadioGroupEvents.Picked({ value })),
   )
 
-// NOTE: the rows of earned looks pick by a click of their own, as the
-// radio group is read only there.
 const pickGear = (part: LookPart, value: string) =>
   inLook(s => s.click(lookOption(part, value)))
 
-// NOTE: the Look tab of the Profile opened from `model` by `open`.
 const lookOpenedBy = (model: Model, open: StoryStep) =>
   Effect.map(lookDeskOf(model), atLookRoot(open))
 

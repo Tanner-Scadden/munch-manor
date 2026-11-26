@@ -1,12 +1,3 @@
-// One engine's side of the harness, shared by every runtime: Bun and Node
-// (cli.ts), headless Chrome (page.ts), and workerd (worker.ts). It reads the
-// request as plain parameters and answers with JSON text, so every engine
-// prints the same thing.
-//
-// - A run: the checkpoints of the script, every N frames.
-// - A dump (`dump` set): the gameplay state after that frame, with each
-//   field's hash, as exact JSON, for the orchestrator to diff.
-
 import { Function } from 'effect'
 
 import { exactJson } from './diff'

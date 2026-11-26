@@ -41,9 +41,6 @@ import {
 } from './Protocol'
 import { type Channel, type Transport, TransportError } from './Sync'
 
-// NOTE: the browser's transports and identity client. Only a resource or a
-// Command in the app should call these: they open sockets and fetch.
-
 const OPEN_TIMEOUT = '10 seconds'
 const HTTP_SESSION = '5 minutes'
 
@@ -60,11 +57,6 @@ const exchangeUrl = (origin: string, scope: string): string => {
   return url.toString()
 }
 
-// NOTE: every request goes through Effect's fetch client, built for the
-// request and closed after it. Trace headers stay off: the Worker's CORS
-// rules allow only content-type and authorization, so a traceparent header
-// would fail the preflight.
-/** @stability unstable */
 export const withFetch = <A, E>(
   effect: Effect.Effect<A, E, HttpClient.HttpClient>,
 ): Effect.Effect<A, E> =>
@@ -98,10 +90,6 @@ const closeQuietly = (socket: WebSocket) =>
     }
   })
 
-// WEBSOCKET
-
-// NOTE: a WebSocket to the scope's Durable Object. The browser going
-// offline closes it at once instead of waiting for the heartbeat to notice.
 export const webSocketTransport = (origin: string): Transport => ({
   name: 'WebSocket',
   open: (scope: string): Effect.Effect<Channel, TransportError, Scope.Scope> =>
@@ -182,13 +170,6 @@ export const webSocketTransport = (origin: string): Transport => ({
     }),
 })
 
-// HTTP
-
-// NOTE: the fallback when sockets keep failing. Each exchange posts the
-// Hello, with the newest seq this channel has seen, plus whatever was sent
-// since the last one, and feeds the replies back as if they came over a
-// socket. A heartbeat Ping becomes a pull. The channel ends after
-// HTTP_SESSION, so the sync loop tries the WebSocket again.
 export const httpTransport = (origin: string): Transport => ({
   name: 'Http',
   open: (scope: string): Effect.Effect<Channel, TransportError, Scope.Scope> =>
@@ -276,15 +257,11 @@ export const httpTransport = (origin: string): Transport => ({
     }),
 })
 
-// IDENTITY
-
 const unavailable = (): IdentityRefused =>
   IdentityRefused.make({
     failure: IdentityFailure.cases.Unavailable.make({}),
   })
 
-// NOTE: a refusal carries an IdentityFailure as its body. A body that does
-// not decode, like a proxy's error page, reads as Unavailable.
 const refusedFrom = (response: HttpClientResponse.HttpClientResponse) =>
   pipe(
     HttpClientResponse.schemaBodyJson(IdentityFailure)(response),
@@ -311,7 +288,6 @@ const call = <A, I, E>(
     withFetch,
   )
 
-// NOTE: an identity request, its body through its Schema.
 const post = <A, I>(
   url: string,
   schema: Schema.Codec<A, I>,

@@ -10,8 +10,6 @@ import { isDebutCardBlocking } from './play'
 import { unlockAudio } from './sound'
 import { combine, defineHandlers, modelStep } from './step'
 
-// NOTE: the new zombie card's button, the display case card's, and the
-// skips (src/features/onboarding/message.ts).
 export const onboardingHandlers = defineHandlers({
   ClickedDebutCardButton: stepWhen(
     isDebutCardBlocking,

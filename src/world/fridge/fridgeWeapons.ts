@@ -74,48 +74,12 @@ import {
 } from '../step/geometry'
 import { bodyRadiusOf, deathState, isGrounded } from '../zombies/zombies'
 
-// The Mystery Leftovers weapons (GAME_DESIGN.md, "Mystery Leftovers"): the
-// fridge's prizes, never sold. Each fires no bullets, so the step hands a
-// player holding one here instead of to the gun's trigger (fire in
-// src/world/step/simulation.ts):
-//
-// - The Pressure Cooker charges while fire is held, a dial filling over the
-//   player, and throws a lid along the aim when it is let go. The lid
-//   bursts where it lands or on the first zombie it meets; more charge
-//   throws it farther with a bigger blast. Held past full it pops in the
-//   player's hands: a shove and a lost lid. Any charge costs one lid. A
-//   press is never eaten: a new charge starts the moment fire is held, even
-//   right after a throw, and an empty pot reloads at once, as a gun does,
-//   rather than spending the next press on it (Brain Freeze too).
-// - The Clang Pan sits in the melee slot in place of the knife, drawn as
-//   the knife is (F or a tap on the slot), and swings on repeat while fire
-//   is held, a wide arc in front
-//   with huge knockback, scaled per kind as every knockback is. It dazes
-//   small zombies, which get up Winded so it cannot daze them again at
-//   once, and it swats a thrown Groaner out of the air. Each swing that
-//   connects dents it; fully dented it swings slower until Rattles bangs
-//   it flat at the next break.
-// - Brain Freeze sprays a cone of cold that stings every zombie in it for
-//   a point: small zombies freeze solid, and the next hit of any kind
-//   shatters one for SHATTER_SCALE times the damage (src/world/step/combat.ts), its
-//   shards splashing the small zombies beside it. A Big Lug is only
-//   slowed, but sprayed again while still slowed it freezes solid for a
-//   moment; Uncle Chunk is only ever slowed. Eighteen charges a load,
-//   reloaded like a gun's magazine.
-//
-// They never hurt their own player, on any setting: a lid's blast spares
-// its thrower and a pop only shoves (the owner, 2026-11-02). Only the
-// Friendly Fire modifier lets a lid's blast hurt teammates (MULTIPLAYER.md,
-// decided row 6).
-
 const FRIDGE_WEAPONS: ReadonlyArray<WeaponKind> = ['Cooker', 'Pan', 'Freeze']
 
 export const isFridgeWeapon = (kind: WeaponKind): boolean =>
   Array.contains(FRIDGE_WEAPONS, kind)
 
 export { isSmallKind }
-
-// RULES
 
 type CookerRules = Readonly<{
   fullMs: number
@@ -149,8 +113,6 @@ export const COOKER_RULES: CookerRules = {
   popShove: 150,
 }
 
-// NOTE: tier 1 (Beefy) blasts bigger, tier 2 (DELUXE) charges faster, and
-// tier 3 (3000) carries more lids (its magazine, in src/world/gear/weapons.ts).
 type CookerTier = Readonly<{ blastScale: number; fullMs: number }>
 
 const COOKER_TIERS: Array.NonEmptyReadonlyArray<CookerTier> = [
@@ -179,9 +141,6 @@ type PanRules = Readonly<{
   smashKnockback: number
 }>
 
-// NOTE: tier 1 (Beefy) swings wider, tier 2 (DELUXE) dents half as fast
-// (a magazine twice as deep, in src/world/gear/weapons.ts), and tier 3 (3000) turns a
-// long hold into an overhead ground smash all round.
 export const PAN_RULES: PanRules = {
   swingMs: 450,
   dentedSwingMs: 720,
@@ -214,8 +173,6 @@ type FreezeRules = Readonly<{
   splashKnockback: number
 }>
 
-// NOTE: splashShare of a shattering hit's damage reaches the small zombies
-// within splashPx of the one that shattered.
 export const FREEZE_RULES: FreezeRules = {
   intervalMs: 600,
   reachPx: 75,
@@ -230,11 +187,8 @@ export const FREEZE_RULES: FreezeRules = {
   splashKnockback: 120,
 }
 
-// NOTE: a Chilled zombie walks at this share of its pace.
 export const chillPace = (zombie: Zombie): number =>
   ZombieAction.isAnyOf(['Chilled'])(zombie.action) ? FREEZE_RULES.chillPace : 1
-
-// HELPERS
 
 const withPlayer = (
   world: World,
@@ -276,12 +230,8 @@ const coolDown = (player: Player, deltaMs: number): Player =>
     fireCooldownMs: cooldown => Math.max(0, cooldown - deltaMs),
   })
 
-// THE PRESSURE COOKER
-
 export const cookerFullMs = (tier: number): number => cookerTier(tier).fullMs
 
-// NOTE: how full the dial is, from 0 to 1, and past 1 while it is held
-// over full, up to the pop.
 export const chargeOf = (player: Player): number =>
   Charge.match(player.charge, {
     Idle: () => 0,
@@ -374,9 +324,6 @@ const launch = (
   )
 }
 
-// NOTE: held past full, the lid blows off in the player's hands: it shoves
-// them back, the lid is lost, and nothing builds until fire is let go. It
-// never hurts, on any setting (the owner, 2026-11-02).
 const pop = (world: World, slot: PlayerSlot): World => {
   const { player, boosts } = seatStateAt(world, slot)
   const back = scaleVector(player.facing, -1)
@@ -439,8 +386,6 @@ const fireCooker = (
   })
 }
 
-// THE LIDS
-
 const lidAt = (lob: Lob, remainingMs: number): Vector => {
   const share = 1 - Math.max(0, remainingMs) / Math.max(1, lob.durationMs)
   return {
@@ -455,11 +400,6 @@ const isLidOn =
     isGrounded(zombie) &&
     circlesOverlap(at, COOKER_RULES.lidRadius, zombie, bodyRadiusOf(zombie))
 
-// NOTE: who a lid's blast hurts: with the Friendly Fire modifier on, every
-// standing teammate it reaches, and never its own thrower. Otherwise no
-// player, on any difficulty (the owner, 2026-11-02: "Let's get rid of team
-// damage on nightmare"). No shooter is single player, whose one player
-// threw it, so no one else is there to hurt.
 const scorchPlayers = (
   world: World,
   maybeShooter: Option.Option<PlayerSlot>,
@@ -509,8 +449,6 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
   return scorchPlayers(credited, maybeShooter, blast)
 }
 
-// NOTE: each lid flies on toward where it was thrown and bursts there, or
-// on the first grounded zombie it touches on the way.
 export const advanceLobs: {
   (deltaMs: number): (world: World) => World
   (world: World, deltaMs: number): World
@@ -546,8 +484,6 @@ export const advanceLobs: {
   )
 })
 
-// THE CLANG PAN
-
 const panHalfArc = (tier: number): number =>
   tier >= 1 ? PAN_RULES.wideHalfArc : PAN_RULES.halfArc
 
@@ -563,8 +499,6 @@ const panBlow = (damage: number, knockback: number): Blow => ({
     GameEvent.PanClanged({ x: at.x, y: at.y, direction }),
 })
 
-// NOTE: a thrown Groaner the swing meets in the air is a home run: it is
-// knocked flying back the way the Pan swung, and that is the end of it.
 const swat = (player: Player, zombie: Zombie): Struck => {
   const direction = player.facing
   const struck = UiStruct.evolve(
@@ -609,8 +543,6 @@ const swingArc = (world: World, slot: PlayerSlot, spare: CarriedGun): Swing => {
   )
 }
 
-// NOTE: the 3000's overhead smash: the Pan comes down on the floor and
-// everything round the player is knocked away and dazed, the guard or not.
 const smash = (world: World, slot: PlayerSlot): Swing => {
   const { player } = seatStateAt(world, slot)
   const isNear = (zombie: Zombie): boolean =>
@@ -711,7 +643,6 @@ const firePan = (
   )
 }
 
-// NOTE: Rattles bangs a Pan flat, free, when a break begins.
 export const flattenPans: {
   (slot: PlayerSlot): (world: World) => World
   (world: World, slot: PlayerSlot): World
@@ -739,12 +670,8 @@ export const flattenPans: {
   )
 })
 
-// BRAIN FREEZE
-
 const isChilledNow = ZombieAction.isAnyOf(['Chilled'])
 
-// NOTE: the big kinds a second spray freezes solid while the first still
-// slows them. Uncle Chunk is not one: he is only ever slowed.
 const DOUBLE_CHILL_KINDS: ReadonlyArray<ZombieKind> = ['Tank']
 
 const iceFor = (zombie: Zombie, frozenMs: number): Zombie =>
@@ -771,10 +698,6 @@ const freezeOne = (zombie: Zombie): Zombie => {
     : zombie
 }
 
-// NOTE: the spray stings each zombie in the cone for FREEZE_RULES.damage,
-// then ices it. The sting is not a hit on the ice: it never shatters a
-// zombie frozen solid, by this spray or an earlier one, so a sprayed
-// zombie stays frozen.
 const sting = (zombie: Zombie, direction: Vector): Zombie => {
   const hp = Math.max(0, zombie.hp - FREEZE_RULES.damage)
   return UiStruct.evolve(zombie, {
@@ -862,10 +785,6 @@ const fireFreeze = (
   }
 }
 
-// THE TRIGGER
-
-// NOTE: the fridge weapon the player holds, if they hold one: the Cooker
-// or Brain Freeze in a gun slot, or the Pan drawn from the melee slot.
 export const maybeHeldFridgeWeapon = (
   player: Player,
 ): Option.Option<CarriedGun> =>
@@ -875,7 +794,6 @@ export const maybeHeldFridgeWeapon = (
         isFridgeWeapon(gun.kind),
       )
 
-// NOTE: one tick of the trigger for a player holding a fridge weapon.
 export const fireFridgeWeapon: {
   (
     slot: PlayerSlot,
@@ -901,13 +819,10 @@ export const fireFridgeWeapon: {
   },
 )
 
-// NOTE: a reload, a swap, or the stall lets go of the charge.
 export const dropCharge = (player: Player): Player =>
   Charge.isAnyOf(['Idle'])(player.charge)
     ? player
     : UiStruct.evolve(player, { charge: () => Charge.Idle() })
-
-// SHATTERS
 
 type Shatter = Readonly<{ zombie: Zombie; damage: number }>
 
@@ -926,10 +841,6 @@ const isSplashedBy =
       bodyRadiusOf(zombie) <=
       FREEZE_RULES.splashPx
 
-// NOTE: a shatter's shards: splashShare of the shattering hit's damage (the
-// health it took, at least 1) on every other grounded small zombie within
-// splashPx. One frozen solid shatters too, but its own shards go no
-// further.
 const splash = (splashed: Splashed, { zombie, damage }: Shatter): Splashed => {
   const shards = Math.max(1, Math.round(damage * FREEZE_RULES.splashShare))
   const isReached = isSplashedBy(zombie)
@@ -978,10 +889,6 @@ const shattersOf = (
       : Result.failVoid
   })
 
-// NOTE: a zombie that was frozen solid and has been hit since shatters into
-// ice: the event the views and sounds read, and the shards that splash its
-// small neighbors. Their kills have no one killer, so they pay shared, as a
-// Kaboomer's chain does.
 export const resolveShatters: {
   (after: World): (before: World) => World
   (before: World, after: World): World

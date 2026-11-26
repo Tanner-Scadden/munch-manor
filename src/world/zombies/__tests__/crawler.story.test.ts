@@ -33,9 +33,6 @@ import { doorCounts, floorCounts, rollSpawns } from '../../waves/endlessWaves'
 import { CRAWLER_RULES, drawSurfacingSpot } from '../crawler'
 
 const FRAME_MS = FIXED_STEP_MS
-// NOTE: the dining room's open aisle south of the party table, rows 12 and
-// 13, a tile and a half north of the start spot: clear wall to wall. The
-// player stands there.
 const CENTER_X = START_LEVEL.start.x
 const CENTER_Y = START_LEVEL.start.y - 15
 const CRAWLER_ID = 20

@@ -1,8 +1,4 @@
 import { Array, Function } from 'effect'
-// Shelf packing: the items go in order of height, tallest first, left to
-// right in rows as wide as the sheet, with a gutter between them. Sprites
-// here are small and close in height, so shelves waste little, and the
-// result depends only on the items' order, which the caller fixes.
 
 export type Box<A> = Readonly<{ item: A; width: number; height: number }>
 

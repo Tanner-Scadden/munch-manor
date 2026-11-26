@@ -1,11 +1,3 @@
-// The in-process determinism check, run by `bun run test:full` and CI: the
-// same script played twice in one engine must give the same gameplay hash on
-// every frame.
-// The second run sees a different Math.random and a clock a day later, so
-// an update that reads either diverges here at once. Iteration order of a
-// Map or Set built from data that differs run to run, or a Model mutated in
-// place, shows up too. The heavy cross-engine check is crossEngine.ts.
-
 import { Array, Option } from 'effect'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -27,10 +19,8 @@ const CAMPAIGN: RunOptions = {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// NOTE: a wall clock far from any real one, in May 2030.
 const SKEWED_NOW_MS = 1_905_000_000_000
 
-// A second run in a world whose clock and Math.random differ from the first.
 const inSkewedWorld = <A>(run: () => A): A => {
   const performanceNow = performance.now()
   const randoms = [0.91, 0.13, 0.57, 0.38, 0.74]

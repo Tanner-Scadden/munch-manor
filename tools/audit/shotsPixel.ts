@@ -1,20 +1,11 @@
 import { Config, Console, Effect, FileSystem, Schema, String } from 'effect'
 import type { Page } from 'playwright-core'
 
-// The pixel pass: every menu and overlay screen on a 1280x720 desktop, an
-// 844x390 phone on its side, and a 390x844 phone held upright, as
-// `<viewport>-<scene>.png` in PIXEL_SHOTS (default /tmp/pixel-shots), with
-// `<viewport>-<scene>.json` beside each: the computed style of every control
-// on screen (size, font, border, radius, shadow, colors) and of every image
-// (drawn size against its own, and its image-rendering), so a report can
-// compare like with like across screens. It exits with 1 on an image drawn at
-// a non-integer scale of its pixels without `pixelated` rendering.
-//   bun run heavy -- --shared bun tools/audit/shotsPixel.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { encodeJson } from '../json'
 import { runHarnessAuditWith } from './harnessServer'
+import { measurePixels } from './inPage/shotsPixel'
 import {
   deviceQuery,
   finish,
@@ -41,14 +32,11 @@ const MIXED =
 type Scene = Readonly<{
   name: string
   query: string
-  // NOTE: selectors clicked in order, each after the last has settled.
   open?: ReadonlyArray<string>
 }>
 
 const MANOR = '#home-manor'
 const PLAY = '#home-play'
-// NOTE: the guide to the house's finds, a tile on the Munchopedia (the
-// shop counter it once sat on is gone).
 const FINDS = [MANOR, '#hand-card-munchopedia', 'button[aria-label^="Finds,"]']
 
 const SCENES: ReadonlyArray<Scene> = [
@@ -167,336 +155,7 @@ const Metrics = Schema.Struct({
   images: Schema.Array(Control),
 })
 
-const measure = (page: Page) =>
-  evaluateAs(page, Metrics, () => {
-    // NOTE: this runs in the page, where Effect's modules are not loaded, so
-    // it reads the elements with plain loops and the page's own String.
-    const round = (value: number) => Math.round(value * 100) / 100
-    const visible = (element: Element) => {
-      const box = element.getBoundingClientRect()
-      return box.width > 0 && box.height > 0
-    }
-    // NOTE: runs in the page, where Effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    const cut = (text: string, length: number) => text.slice(0, length)
-    // NOTE: runs in the page, where Effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    const lower = (text: string) => text.toLowerCase()
-    // NOTE: runs in the page, where Effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    const trimmed = (text: string) => text.trim()
-    // NOTE: runs in the page, where Effect's String is not loaded.
-    // @effect-diagnostics-next-line preferEffectString:off
-    const isPercent = (text: string): boolean => text.endsWith('%')
-    // NOTE: the first layer of a CSS list, split into its words, keeping a
-    // function's own spaces and commas (`max(3px, round(down, 100%, 3px))`).
-    const firstLayer = (text: string) => {
-      const words: Array<string> = []
-      let word = ''
-      let depth = 0
-      for (const letter of text) {
-        if (depth === 0 && letter === ',') {
-          break
-        }
-        if (depth === 0 && letter === ' ') {
-          if (word !== '') {
-            words.push(word)
-          }
-          word = ''
-          continue
-        }
-        depth += letter === '(' ? 1 : letter === ')' ? -1 : 0
-        word += letter
-      }
-      if (word !== '') {
-        words.push(word)
-      }
-      return words
-    }
-    // NOTE: a CSS length as the browser lays it out, in CSS px before any
-    // transform, with any percent taken of `space`: a probe box `space` wide
-    // inside `host` (so it reads the host's own custom properties) holds a
-    // child whose width is the length.
-    const probe = document.createElement('div')
-    const probeChild = document.createElement('div')
-    probe.style.cssText =
-      'position:absolute;left:0;top:0;height:0;visibility:hidden;pointer-events:none'
-    probeChild.style.height = '1px'
-    probe.append(probeChild)
-    const laidOut = (text: string, space: number, host: Element) => {
-      host.append(probe)
-      probe.style.width = `${space}px`
-      probeChild.style.width = ''
-      probeChild.style.width = text
-      const width =
-        probeChild.style.width === ''
-          ? Number.NaN
-          : Number.parseFloat(getComputedStyle(probeChild).width)
-      probe.remove()
-      return width
-    }
-    const controls: Array<Record<string, string | number | boolean>> = []
-    for (const element of document.querySelectorAll(
-      'button, [role=tab], input, dialog[open], .coop, .profile, .panel, h1, h2, h3',
-    )) {
-      if (!visible(element)) {
-        continue
-      }
-      const box = element.getBoundingClientRect()
-      const style = getComputedStyle(element)
-      const dialog = element.closest('dialog')
-      const inset =
-        dialog === null
-          ? { right: 0, top: 0 }
-          : {
-              right: dialog.getBoundingClientRect().right - box.right,
-              top: box.top - dialog.getBoundingClientRect().top,
-            }
-      controls.push({
-        tag: lower(element.tagName),
-        cls: cut(element.className.toString(), 60),
-        label: cut(
-          trimmed(element.getAttribute('aria-label') ?? element.textContent),
-          28,
-        ),
-        x: round(box.left),
-        y: round(box.top),
-        w: round(box.width),
-        h: round(box.height),
-        fromDialogRight: round(inset.right),
-        fromDialogTop: round(inset.top),
-        fontSize: style.fontSize,
-        fontFamily: cut(style.fontFamily, 30),
-        fontWeight: style.fontWeight,
-        letterSpacing: style.letterSpacing,
-        lineHeight: style.lineHeight,
-        color: style.color,
-        background: style.backgroundColor,
-        borderWidth: style.borderTopWidth,
-        borderStyle: style.borderTopStyle,
-        borderColor: style.borderTopColor,
-        radius: style.borderTopLeftRadius,
-        shadow: cut(style.boxShadow, 80),
-        padding: style.padding,
-        opacity: style.opacity,
-        cursor: style.cursor,
-        isDisabled: element instanceof HTMLButtonElement && element.disabled,
-      })
-    }
-    // NOTE: every piece of pixel art on screen: an <img>, a canvas, or an
-    // element whose background is a picture (the SVG icons carry their size
-    // in their viewBox). For each, how many device pixels one art pixel
-    // takes across and down, and where its top left corner lands in device
-    // pixels. Art is whole only when both scales are whole numbers and the
-    // corner sits on a device pixel: anything else draws its pixels 2 and 3
-    // device pixels wide by turns, or blurs them.
-    const ratio = window.devicePixelRatio
-    // NOTE: an element's border box in CSS px before any transform, to the
-    // fraction (offsetWidth and clientWidth round to whole CSS px, which
-    // reads a 35.875 px box as a transform of 0.9965), or null for a box
-    // with no layout width of its own (an inline element).
-    const borderBoxOf = (element: Element) => {
-      const style = getComputedStyle(element)
-      const side = (name: string) =>
-        Number.parseFloat(style.getPropertyValue(name)) || 0
-      const extra =
-        style.boxSizing === 'border-box'
-          ? { width: 0, height: 0 }
-          : {
-              width:
-                side('padding-left') +
-                side('padding-right') +
-                side('border-left-width') +
-                side('border-right-width'),
-              height:
-                side('padding-top') +
-                side('padding-bottom') +
-                side('border-top-width') +
-                side('border-bottom-width'),
-            }
-      const width = Number.parseFloat(style.width) + extra.width
-      const height = Number.parseFloat(style.height) + extra.height
-      return Number.isFinite(width) && width > 0 && Number.isFinite(height)
-        ? { width, height }
-        : null
-    }
-    // NOTE: how much a transform on the way up scales the element: art in
-    // a box that is scaling (a card dealt in, a menu dimmed behind a
-    // dialog) is uneven only while it moves.
-    const zoomOf = (element: Element) => {
-      const own = borderBoxOf(element)
-      return own === null
-        ? 1
-        : element.getBoundingClientRect().width / own.width
-    }
-    const fraction = (value: number) =>
-      round(Math.abs(value - Math.round(value)))
-    const images: Array<Record<string, string | number | boolean>> = []
-    const pushArt = (
-      element: Element,
-      kind: string,
-      art: { width: number; height: number },
-      drawn: { left: number; top: number; width: number; height: number },
-    ) => {
-      if (art.width <= 0 || art.height <= 0 || drawn.width <= 0) {
-        return
-      }
-      const scaleX = (drawn.width * ratio) / art.width
-      const scaleY = (drawn.height * ratio) / art.height
-      const parentClass = element.parentElement?.className.toString()
-      const zoom = zoomOf(element)
-      images.push({
-        tag: lower(element.tagName),
-        kind,
-        zoom: round(zoom),
-        cls: cut(element.className.toString(), 60),
-        parent: parentClass === undefined ? '' : cut(parentClass, 40),
-        label: cut(
-          trimmed(
-            element.closest('[aria-label]')?.getAttribute('aria-label') ?? '',
-          ),
-          28,
-        ),
-        natural: art.width,
-        artHeight: art.height,
-        drawn: round(drawn.width),
-        scale: round(drawn.width / art.width),
-        deviceScaleX: round(scaleX),
-        deviceScaleY: round(scaleY),
-        offX: fraction(drawn.left * ratio),
-        offY: fraction(drawn.top * ratio),
-        isWhole:
-          fraction(scaleX) <= 0.02 &&
-          fraction(scaleY) <= 0.02 &&
-          fraction(drawn.left * ratio) <= 0.05 &&
-          fraction(drawn.top * ratio) <= 0.05,
-        rendering: getComputedStyle(element).imageRendering,
-      })
-    }
-    for (const element of document.querySelectorAll('img, canvas')) {
-      if (!visible(element)) {
-        continue
-      }
-      const box = element.getBoundingClientRect()
-      const art =
-        element instanceof HTMLImageElement
-          ? { width: element.naturalWidth, height: element.naturalHeight }
-          : element instanceof HTMLCanvasElement
-            ? { width: element.width, height: element.height }
-            : { width: 0, height: 0 }
-      pushArt(element, 'image', art, box)
-    }
-    // NOTE: the size an SVG data URL's viewBox gives, or nothing.
-    const svgSize = (url: string) => {
-      const match = /viewBox=['"]0 0 ([0-9.]+) ([0-9.]+)['"]/.exec(
-        decodeURIComponent(url),
-      )
-      return match === null
-        ? null
-        : { width: Number(match[1]), height: Number(match[2]) }
-    }
-    for (const element of document.querySelectorAll('*')) {
-      if (!(element instanceof HTMLElement) || !visible(element)) {
-        continue
-      }
-      const style = getComputedStyle(element)
-      const url = /url\("?(data:image\/svg\+xml[^")]*)"?\)/.exec(
-        style.backgroundImage,
-      )
-      const source = url?.[1]
-      if (source === undefined) {
-        continue
-      }
-      const art = svgSize(source)
-      if (art === null) {
-        continue
-      }
-      const box = element.getBoundingClientRect()
-      // NOTE: a transform on the way up scales the box, and the background
-      // with it; the background's room is the padding box.
-      const own = borderBoxOf(element) ?? {
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-      }
-      const zoom = own.width > 0 ? box.width / own.width : 1
-      const borders = {
-        left: Number.parseFloat(style.borderLeftWidth),
-        right: Number.parseFloat(style.borderRightWidth),
-        top: Number.parseFloat(style.borderTopWidth),
-        bottom: Number.parseFloat(style.borderBottomWidth),
-      }
-      const borderLeft = borders.left * zoom
-      const borderTop = borders.top * zoom
-      // NOTE: with background-origin: content-box the room leaves out the
-      // padding.
-      const isContent = style.backgroundOrigin === 'content-box'
-      const padding = (side: string) =>
-        isContent ? Number.parseFloat(style.getPropertyValue(side)) : 0
-      const padLeft = padding('padding-left') * zoom
-      const padTop = padding('padding-top') * zoom
-      const room = {
-        width:
-          (own.width -
-            borders.left -
-            borders.right -
-            padding('padding-left') -
-            padding('padding-right')) *
-          zoom,
-        height:
-          (own.height -
-            borders.top -
-            borders.bottom -
-            padding('padding-top') -
-            padding('padding-bottom')) *
-          zoom,
-      }
-      // NOTE: a background length laid out in the room it has, scaled by the
-      // zoom, or null for auto.
-      const length = (text: string | undefined, space: number) =>
-        text === undefined || text === 'auto'
-          ? null
-          : laidOut(text, space / zoom, element) * zoom
-      const [sizeX, sizeY] = firstLayer(style.backgroundSize)
-      const aspect = art.width / art.height
-      const fit =
-        sizeX === 'contain' || sizeX === 'cover'
-          ? (sizeX === 'cover' ? Math.max : Math.min)(
-              room.width / art.width,
-              room.height / art.height,
-            )
-          : null
-      const givenX = length(sizeX, room.width)
-      const givenY = length(sizeY, room.height)
-      const width =
-        fit !== null
-          ? art.width * fit
-          : (givenX ??
-            (givenY === null
-              ? Math.min(room.width, room.height * aspect)
-              : givenY * aspect))
-      const height =
-        fit !== null ? art.height * fit : (givenY ?? width / aspect)
-      const [positionX, positionY] = firstLayer(style.backgroundPosition)
-      const place = (text: string | undefined, free: number) =>
-        text === undefined
-          ? 0
-          : isPercent(text)
-            ? (Number.parseFloat(text) / 100) * free
-            : Number.parseFloat(text) * zoom
-      pushArt(element, 'background', art, {
-        left:
-          box.left +
-          borderLeft +
-          padLeft +
-          place(positionX, room.width - width),
-        top:
-          box.top + borderTop + padTop + place(positionY, room.height - height),
-        width,
-        height,
-      })
-    }
-    return { controls, images }
-  })
+const measure = (page: Page) => evaluateAs(page, Metrics, measurePixels)
 
 const problems: Array<string> = []
 
@@ -516,8 +175,6 @@ runHarnessAuditWith(
           continue
         }
         const where = `${viewport.name}-${scene.name}`
-        // NOTE: a scene whose query the harness refuses, or whose control is
-        // missing, is a problem to report, never a reason to stop the pass.
         yield* Effect.gen(function* () {
           const page = yield* pages.open(
             viewport,

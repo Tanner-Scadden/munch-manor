@@ -28,11 +28,6 @@ import {
   notesOf,
 } from '../studio/notes.ts'
 
-// The art studio's notes (tools/studio/README.md), on the dev server only.
-// POST NOTES_PATH takes a note from the page, keeps its before picture in
-// BEFORE_DIR, and appends it to NOTES_FILE; GET NOTES_PATH answers every
-// note with its status; GET BEFORE_PATH<id>.png answers a before picture.
-
 class NoteRefused extends Schema.TaggedError<
   NoteRefused,
   { readonly brand: unique symbol }
@@ -44,7 +39,6 @@ const PNG_PREFIX = 'data:image/png;base64,'
 
 const NOTE_ID = /^n\d+$/
 
-// NOTE: the request body as text, read off Node's stream.
 const bodyOf = (request: Connect.IncomingMessage) =>
   textOf(
     Stream.filter(

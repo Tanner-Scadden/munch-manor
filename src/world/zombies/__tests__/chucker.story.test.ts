@@ -39,16 +39,11 @@ import { CHUCKER_RULES } from '../chucker'
 import { ZOMBIE_KINDS } from '../zombies'
 
 const FRAME_MS = FIXED_STEP_MS
-// NOTE: the dining room's open aisle south of the party table, rows 12 and
-// 13, a tile and a half north of the start spot: clear wall to wall.
 const CENTER_X = START_LEVEL.start.x
 const CENTER_Y = START_LEVEL.start.y - 15
 const CHUCKER_ID = 10
 const GROANER_ID = 11
 
-// NOTE: how many ticks a countdown of `ms` takes to run out. The float sum
-// of 1000/60 ms ticks can leave a hair of a whole number of ticks, so this
-// counts down the way the game does instead of dividing.
 const framesFor = (ms: number, count = 0): number =>
   ms > 0 ? framesFor(ms - FRAME_MS, count + 1) : count
 
@@ -307,7 +302,6 @@ describe('the Big Leaguer', () => {
   })
 
   it.effect('rested, he runs to a Groaner he can see across the room', () => {
-    // NOTE: 80 px off, past where he used to fetch, and away from the player.
     const far = zombieOf('Shambler', GROANER_ID, CHUCKER.x + 80, CENTER_Y, {
       hp: 3,
     })

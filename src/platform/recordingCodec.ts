@@ -3,16 +3,6 @@ import { Array, Number, Option, String } from 'effect'
 import type { Intent } from '../world/schema/entitySchema'
 import type { PlayerSlot } from '../world/schema/worldSchema'
 
-// A recorded run's ticks as text (src/platform/recording.ts): one line per
-// tick, each seat's intent as `slot:mx,my,ax,ay,T,I` joined by `;`, with no
-// aim written `_,_` and a trigger as H (held) or R (released). A line starts
-// with `!` when the client cleared the last tick's events before this one.
-// A chunk of lines is run-length coded: `count*line` per run, joined by new
-// lines, so a player standing still or holding a direction costs one line.
-//
-// Numbers are written exactly: JavaScript's shortest form reads back to the
-// same double, and -0 is written `-0`, which `${value}` would drop.
-
 export type TickInputs = Readonly<{
   isCleared: boolean
   inputs: ReadonlyArray<readonly [PlayerSlot, Intent]>
@@ -52,7 +42,6 @@ const seatText = ([slot, intent]: readonly [PlayerSlot, Intent]): string => {
 export const lineOfTick = ({ isCleared, inputs }: TickInputs): string =>
   `${isCleared ? CLEARED : ''}${Array.join(Array.map(inputs, seatText), SEATS)}`
 
-// NOTE: runs of equal lines as `count*line`.
 export const encodeChunk = (lines: ReadonlyArray<string>): string =>
   Array.join(
     Array.map(
@@ -61,8 +50,6 @@ export const encodeChunk = (lines: ReadonlyArray<string>): string =>
     ),
     LINES,
   )
-
-// DECODE
 
 const numberOf = (text: string): Option.Option<number> =>
   text === '-0'
@@ -81,8 +68,6 @@ const aimOf = (x: string, y: string): Option.Option<Intent['maybeAim']> =>
     ? Option.some(Option.none())
     : Option.map(Option.all({ x: numberOf(x), y: numberOf(y) }), Option.some)
 
-// NOTE: the text's pieces split by `separator`, when there are exactly
-// `count` of them.
 const piecesOf = (
   text: string,
   separator: string,
@@ -143,8 +128,6 @@ const runOf = (text: string): Option.Option<ReadonlyArray<string>> =>
     ),
   )
 
-// NOTE: every tick of a run's chunks in order, or none when any is
-// malformed.
 export const ticksOfChunks = (
   chunks: ReadonlyArray<string>,
 ): Option.Option<ReadonlyArray<TickInputs>> =>

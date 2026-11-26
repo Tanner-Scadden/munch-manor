@@ -15,10 +15,6 @@ import { sceneOf } from '../../../test/testing'
 import { MEDIC_RULES } from '../medic'
 import { COOP_RULES } from '../party'
 
-// The MEDIC button (src/screens/game/touchControls.ts): a red cross over the touch row
-// for your own downed player, and only then. A tap shouts, and the button
-// glows while the shout rings.
-
 const medicButton = byClass('medic-button')
 
 const onTouch = (base: Model): Model =>

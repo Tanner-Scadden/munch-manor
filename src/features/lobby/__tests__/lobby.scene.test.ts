@@ -45,13 +45,6 @@ import {
   lobbySceneIn,
 } from './lobby.fixture'
 
-// The single player lobby's view (src/features/lobby/view.ts): the dare card,
-// the co-op lobby's layout alone on a napkin, with one seat, three waiting,
-// the picks, and SHAKE ON IT. The Lobby is a child of the root, a leaf in
-// the root's Scene: its card is read in a Scene of its own, with the props
-// the root hands it at that step, and a tap on the card is its event, sent
-// up to the root as the root's view maps it.
-
 const handyman = UiStruct.evolve(home, {
   rank: current => ({ ...current, earnedPoints: pointsForRank(3) }),
   boughtCosmetics: () => heroesBoughtBy(3),
@@ -59,7 +52,6 @@ const handyman = UiStruct.evolve(home, {
   playerName: () => 'Mo',
 })
 
-// NOTE: PLAY sits in the home menu, which is aria-hidden under the lobby.
 const playUnderLobby = HtmlLocator.role('button', {
   name: 'Play',
   hidden: true,
@@ -67,7 +59,6 @@ const playUnderLobby = HtmlLocator.role('button', {
 
 const players = HtmlLocator.role('list', { name: 'Players' })
 
-// NOTE: the first + BOT tile, the one that wears B.
 const addBot = firstOf(button('Add a bot teammate'))
 
 const removeBot = button(/^Remove /)
@@ -78,7 +69,6 @@ const friendlyFire = withAttrs({ 'data-modifier': 'FriendlyFire' })(
 
 const bonus = (text: string) => HtmlLocator.role('status', { name: text })
 
-// NOTE: the Lobby's event, as the root hears it.
 const lobbySays =
   (event: Events): SceneStep =>
   s =>

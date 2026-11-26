@@ -84,8 +84,6 @@ const sceneWith = (
 const blewUp = (current: Model): boolean =>
   Array.some(current.frameEvents, GameEvent.isAnyOf(['Exploded']))
 
-// NOTE: the radii of the whole-pixel rings and discs drawn, each a sprite
-// as wide as its two radii and its middle pixel.
 const circleRadii = (shapes: ReadonlyArray<Draw.Shape>) =>
   Array.map(imagesIn(shapes), ({ width }) => (width - 1) / 2)
 
@@ -129,7 +127,6 @@ describe('the Kaboomer', () => {
 
   it.effect('a shot Kaboomer pops a fifth of a second later', () => {
     expect(BOMBER?.shotFuseMs).toBe(200)
-    // NOTE: short of the candelabra east of the start spot.
     const gasbag = kaboomerAt(1, CENTER_X + 40, CENTER_Y, 3)
     const shotMs = BOMBER?.shotFuseMs ?? 0
 

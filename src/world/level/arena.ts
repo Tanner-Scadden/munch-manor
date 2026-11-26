@@ -95,10 +95,6 @@ const averagePoint = (points: ReadonlyArray<Vector>): Vector =>
     1 / Math.max(1, points.length),
   )
 
-// LEVEL
-
-// NOTE: edge is the middle of the door's outer face, where a zombie due at
-// the door stands before it walks in.
 export type Door = Readonly<{
   id: DoorId
   center: Vector
@@ -124,14 +120,6 @@ export type Exit = Readonly<{
 
 export type Room = Readonly<{ id: string; box: Box; isOpen: boolean }>
 
-// NOTE: a level is built once for each set of open exits and kept, so every
-// lookup a frame makes is a plain read. `key` names the spec and its open
-// exits, and the flow field and the floor canvases rebuild when it changes.
-// left and top are the world x and y of the map's first column and row,
-// below 0 when a room sits west of or above the parlour. bounds is the part the camera and the player may
-// reach: the rooms whose exits are open. outsideTiles are the yard, walkable
-// for zombies on their way to a door and solid for the player, who also
-// treats every solid tile as solid (playerSolidTiles).
 export type Level = Readonly<{
   key: string
   spec: LevelSpec
@@ -156,17 +144,11 @@ export type Level = Readonly<{
   thresholds: Readonly<Record<DoorId, Threshold>>
   doorTileIndices: Readonly<Record<DoorId, ReadonlyArray<number>>>
   tileFlags: Uint8Array
-  // NOTE: how many solid tiles lie above and left of each tile corner, one
-  // row and column wider than the map, so a box of tiles says in four reads
-  // whether any is solid (`isAnySolidIn` in tileQueries.ts).
   solidSums: Int32Array
   hasSoup: boolean
   start: Vector
 }>
 
-// NOTE: what a tile is, as bits of one byte per tile in `Level.tileFlags`,
-// indexed by `tileIndex`. Built once with the level, so every tile query in
-// a frame is one array read.
 export const TILE_SOLID = 1
 export const TILE_PLAYER_SOLID = 2
 export const TILE_OUTSIDE = 4
@@ -206,8 +188,6 @@ const keyOf = (
 ): string =>
   `${spec.id}:${Array.join(openExits, '+')}:${Array.join(dropped, '+')}`
 
-// NOTE: the room covering a tile of the plan, the last listed when two
-// overlap, and its symbol there.
 const roomSymbolAt = (
   rooms: ReadonlyArray<RoomSpec>,
   column: number,
@@ -233,8 +213,6 @@ const roomSymbolAt = (
     ),
   )
 
-// NOTE: the rooms laid on the plan as one map: the block they cover, with
-// any gap between them left as ground outside the house.
 const gridOf = (rooms: Array.NonEmptyReadonlyArray<RoomSpec>): Grid => {
   const leftColumn = Math.min(
     ...Array.map(rooms, ({ origin }) => origin.column),
@@ -289,10 +267,6 @@ const roomBoxOf = ({ tiles, origin }: RoomSpec): Box => ({
   bottom: (origin.row + tiles.length) * TILE_SIZE,
 })
 
-// NOTE: each tile of a spec's map, by index: its symbol ('' past a row's
-// end), and the rooms whose box holds its center, as bits by the room's
-// place in `spec.rooms`. Kept per spec, which never changes, so building
-// another level of it reads them instead of searching the map again.
 type TileTable = Readonly<{
   symbols: ReadonlyArray<string>
   roomMasks: Uint32Array
@@ -317,8 +291,6 @@ const tileTableOf = (spec: LevelSpec, grid: Grid): TileTable => {
     const x = column * TILE_SIZE + TILE_SIZE / 2
     const y = row * TILE_SIZE + TILE_SIZE / 2
     let mask = 0
-    // NOTE: a level has a handful of rooms (five in the manor), well under
-    // the 32 bits of a mask.
     for (let room = 0; room < boxes.length; room++) {
       const box = boxes[room]
       if (
@@ -367,9 +339,7 @@ const buildLevel = (
     ...Record.keys(COVER_SYMBOLS),
     ...Array.map(closed, ({ symbol }) => symbol),
     ...Array.map(heldDoors, id => DOOR_SYMBOLS[id]),
-    // NOTE: the front door stays locked: nothing walks through it yet.
     DOOR_SYMBOLS.Front,
-    // NOTE: a drop lying in its spot is cover, like the furniture.
     ...Array.filterMap(spec.drops, ({ id, symbol }) =>
       Array.contains(dropped, id) ? Result.succeed(symbol) : Result.failVoid,
     ),
@@ -382,10 +352,6 @@ const buildLevel = (
       onSome: exit => Array.contains(openExits, exit),
     }),
   }))
-  // NOTE: one pass over the map's tiles marks each with its flags, reading
-  // each tile's symbol and the rooms round it off the spec's table, so a
-  // new level (an exit opened, the chandelier dropped mid-wave) is built in
-  // a fraction of a frame.
   const { symbols, roomMasks } = tileTableOf(spec, grid)
   const openRooms = Array.reduce(rooms, 0, (mask, room, index) =>
     room.isOpen ? mask | (1 << index) : mask,
@@ -399,10 +365,6 @@ const buildLevel = (
   for (let index = 0; index < tileCount; index++) {
     const symbol = symbols[index] ?? ''
     const inRooms = roomMasks[index] ?? 0
-    // NOTE: a room behind a closed exit is not there yet. Its tiles are open
-    // ground outside the house, the way the space past the map's edge is,
-    // so a zombie walking around the parlour never bumps into the kitchen's
-    // walls.
     const isShutAway =
       (inRooms & ~openRooms) !== 0 && (inRooms & openRooms) === 0
     const isSolid = !isShutAway && solidSymbols.has(symbol)
@@ -420,8 +382,6 @@ const buildLevel = (
     ((tileFlags[tileIndex(grid, column, row)] ?? 0) & flag) !== 0
   const isWalkable = (column: number, row: number): boolean =>
     isInsideRoom(grid, column, row) && !isFlagged(column, row, TILE_SOLID)
-  // NOTE: a tile opens a block when it and the tiles east, south, and
-  // south-east of it are all on the map and none is solid.
   const isOpenAt = (index: number): boolean =>
     ((tileFlags[index] ?? TILE_SOLID) & TILE_SOLID) === 0
   for (let row = 0; row < grid.rows - 1; row++) {
@@ -538,7 +498,6 @@ const buildLevel = (
 
 const levelsBySpec = new WeakMap<LevelSpec, Map<string, Level>>()
 
-// NOTE: a level with these exits open and these drops lying in their spots.
 export const levelFor: {
   (
     openExits?: ReadonlyArray<ExitId>,
@@ -550,7 +509,6 @@ export const levelFor: {
     dropped?: ReadonlyArray<string>,
   ): Level
 } = Function.dual(
-  // NOTE: data-first starts with the spec; data-last with the open exits or nothing.
   (args: IArguments): boolean =>
     args[0] !== undefined && !Array.isArray(args[0]),
   (
@@ -575,13 +533,10 @@ export const levelFor: {
   },
 )
 
-// NOTE: a map with no exits, for tests and tools that need a level of a
-// different shape. It is built fresh, not kept.
 export const makeLevel: {
   (id?: string): (tiles: ReadonlyArray<string>) => Level
   (tiles: ReadonlyArray<string>, id?: string): Level
 } = Function.dual(
-  // NOTE: data-first starts with the tiles; data-last with the id or nothing.
   (args: IArguments): boolean => Array.isArray(args[0]),
   (tiles: ReadonlyArray<string>, id: string = 'Custom'): Level =>
     buildLevel(
@@ -609,7 +564,6 @@ export const PARLOUR: Level = levelFor(PARLOUR_SPEC)
 
 export const MANOR: Level = levelFor(MANOR_SPEC)
 
-// NOTE: the manor with its slots as a roll stands them, no exit open.
 export const startingLevelFor = (arrangement: Arrangement): LevelState => ({
   id: 'Manor',
   arrangement,
@@ -617,22 +571,13 @@ export const startingLevelFor = (arrangement: Arrangement): LevelState => ({
   dropped: [],
 })
 
-// NOTE: the house the home screen's World and the tests stand in, before a
-// run rolls its own (freshLevel in src/world/schema/worldSchema.ts).
 export const startingLevel: LevelState = startingLevelFor(DEFAULT_ARRANGEMENT)
 
-// NOTE: the level every run starts on, with no exit open yet. Every
-// arrangement's start is the same: the dining room and the kitchen are
-// fixed, and the slot rooms stand behind shut boards. What is baked once for
-// the start, such as Rattles' sprites, reads it.
 export const START_LEVEL: Level = levelFor(
   specOfState(startingLevel),
   startingLevel.openExits,
 )
 
-// NOTE: Rattles' trunk where the level a run starts on marks it; his
-// sprites are baked once for that spot. Opening an exit adds rooms around
-// it without moving it.
 const rattlesBox = (): Box => {
   const tiles = tilesWithSymbol(START_LEVEL, RATTLES_SYMBOL)
   const columns = Array.map(tiles, ({ column }) => column)
@@ -647,8 +592,6 @@ const rattlesBox = (): Box => {
 
 export const RATTLES_BOX: Box = rattlesBox()
 
-// NOTE: the open room a point stands in, or the first room when it stands in
-// none, such as in a doorway.
 export const roomAt: {
   (point: Vector): (level: Level) => Room
   (level: Level, point: Vector): Room
@@ -674,9 +617,6 @@ export const roomAt: {
 
 const levelsByState = new WeakMap<LevelState, Level>()
 
-// NOTE: the Model holds only which level and which exits are open. The
-// built level is looked up by that record, so a frame that has not opened
-// anything reads the same Level without building a key.
 export const levelOf = ({ level }: Readonly<{ level: LevelState }>): Level => {
   const cached = levelsByState.get(level)
   if (cached !== undefined) {
@@ -687,15 +627,10 @@ export const levelOf = ({ level }: Readonly<{ level: LevelState }>): Level => {
   return found
 }
 
-// NOTE: the same level with nothing dropped, the one cached record for its
-// open exits: what stands of the house is drawn from it, so a chandelier
-// falling keeps the drawn house instead of building it again.
 export const standingLevelOf = (level: Level): Level =>
   Array.isReadonlyArrayNonEmpty(level.dropped)
     ? levelFor(level.spec, level.openExits)
     : level
-
-// EXITS
 
 export const maybeExit: {
   (id: ExitId): (level: Level) => Option.Option<Exit>

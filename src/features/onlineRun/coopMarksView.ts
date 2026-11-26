@@ -32,22 +32,9 @@ import {
 import type { Seat } from '../../world/schema/worldSchema'
 import { isBreak } from '../../world/waves/waves'
 
-// What an online co-op run adds over the players (MULTIPLAYER.md, Phase
-// 2): each teammate's name over their head, READY over everyone who is
-// ready in a break, OUT at the front door over everyone who stepped out, and a teammate off screen as a small badge of their
-// seat's color at the screen's edge, toward them (decided 4, the one
-// exception to "No off-screen hints"). Zombies and doors get nothing.
-
 const isOnline = (model: Model): boolean =>
   isCoop(model) && (Option.isSome(maybeRoomOf(model.coop)) || isBotCrew(model))
 
-// NAME TAGS
-
-// NOTE: a teammate's name is a small tag tight over their head: a 3 by 4
-// pixel font, smaller than the game's own, light on a dark plate so it
-// reads on any floor, with a line of their seat's color under it. The
-// glyphs are sprites built once; only the plate and the line are drawn
-// each frame. A symbol the font lacks is left out.
 const TAG_PIXELS: Readonly<Record<string, ReadonlyArray<string>>> = {
   A: ['.#.', '#.#', '###', '#.#'],
   B: ['##.', '###', '#.#', '##.'],
@@ -124,10 +111,6 @@ const tagCellsOf = (name: string): ReadonlyArray<TagCell> =>
           }),
   )
 
-// NOTE: the hero's trade as a tiny picture before the name, so a crew can
-// tell who plays what at a glance (decided 2026-11-01): the Handyman's
-// hammer, the Track Star's sneaker, the Penny Pincher's coin, the Line
-// Cook's ladle. YOU gets none. Four rows tall, like the letters.
 type TagIcon = Readonly<{ width: number; sprite: ReadonlyArray<Draw.Shape> }>
 
 const tagIconOf = (pixels: ReadonlyArray<string>): TagIcon => ({
@@ -155,8 +138,6 @@ const TAG_ICONS: Readonly<Record<Calling, Option.Option<TagIcon>>> = {
   LineCook: Option.some(tagIconOf(['..t..', '..t..', '.eee.', '.eee.'])),
 }
 
-// NOTE: a teammate bot wears a tiny robot head before its hero's trade, so
-// no one takes it for a person. Four rows tall, like the letters.
 const BOT_TAG_ICON: TagIcon = {
   width: 5,
   sprite: spriteShapes(
@@ -173,7 +154,6 @@ const tagWidthOf = (cells: ReadonlyArray<TagCell>): number =>
       TAG_GAP,
   )
 
-// NOTE: `bottom` is the row just over the head; the tag sits on it.
 const nameTagShapes = (
   name: string,
   color: string,
@@ -239,13 +219,9 @@ const nameTagShapes = (
   ]
 }
 
-// NOTE: the tag's bottom sits a pixel or two over the head, or over the
-// revive icon while they are down, and READY stands over the tag.
 const NAME_BOTTOM_LIFT_PX = 8
 const READY_LIFT_PX = 21
 
-// NOTE: over the head, the revive icon, or a MEDIC! bubble. One who stepped
-// out has no body: their tag sits low at the front door's sill.
 const nameLiftOf = (model: Model, slot: number, seat: Seat): number => {
   if (isOut(seat)) {
     return NAME_BOTTOM_LIFT_PX
@@ -258,7 +234,6 @@ const nameLiftOf = (model: Model, slot: number, seat: Seat): number => {
     : NAME_BOTTOM_LIFT_PX + seatHatRiseOf(model, slot)
 }
 
-// NOTE: in the world's own pixels, drawn with the players' overheads.
 export const coopNameShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   if (!isOnline(model)) {
     return []
@@ -292,8 +267,6 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   )
 }
 
-// EDGE BADGES
-
 const EDGE_INSET_PX = 3
 
 const BADGES: ReadonlyArray<ReadonlyArray<Draw.Shape>> = Array.map(
@@ -301,9 +274,6 @@ const BADGES: ReadonlyArray<ReadonlyArray<Draw.Shape>> = Array.map(
   slot => edgeBadgeOf(seatColorOf(slot)),
 )
 
-// NOTE: a teammate off screen who just shouted MEDIC! (src/world/party/medic.ts): their
-// badge flashes between their own and a bright one, white edged with a red
-// cross, a ring of light round it, for as long as the shout is fresh.
 const CALL_FLASH_MS = 120
 const CALL_GLOW_PX = 2
 
@@ -346,7 +316,6 @@ const badgeShapeOf = (
 const clamp = (value: number, low: number, high: number): number =>
   Math.max(low, Math.min(high, value))
 
-// NOTE: in the overlay canvas's pixels, from the screen camera.
 export const coopEdgeShapes: {
   (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
   (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>

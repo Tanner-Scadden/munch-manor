@@ -10,13 +10,6 @@ import { iconView } from '../../../../ui/menuParts'
 import { boneCountView, rankMarkView } from '../../../../ui/rankBadgeView'
 import type { ClosetCueKind } from './model'
 
-// The earned looks in the Look tab's rows: a hat, shirt color, print, or gun
-// skin is worn (the selected one), owned (a pick wears it), for sale (a bone
-// and the price on it; a pick tries it on, and the BUY pill buys it), or a gift not reached yet
-// (dark, a padlock and the rank). Pictures and numbers only.
-
-// NOTE: the spoken note of an option, which the screen reader hears after
-// its name: what it is and what a pick does.
 const NOTES: Readonly<Record<Standing, string>> = {
   Worn: 'worn',
   Owned: 'tap to wear',
@@ -50,7 +43,6 @@ export const gearNote: {
   },
 )
 
-// NOTE: the price or the padlock and rank, stuck to the foot of an option.
 export const gearTagView: {
   <Message>(
     name: string,
@@ -93,9 +85,6 @@ export const gearTagView: {
   },
 )
 
-// NOTE: the BUY pill by the figure while a look for sale is tried on: BUY,
-// a bone, and the price. Short of Bones it is disabled and the price is red,
-// the same red as a short price in the rows.
 export const buyPillView: {
   <Message>(
     h: Html.H<Message>,
@@ -132,10 +121,6 @@ export const buyPillView: {
   },
 )
 
-// NOTE: the attributes that play what a pick did (ClosetCue, in this
-// folder's model.ts) on the one option it was for, for its builder's
-// `attrs`. Only the count's parity is read, so the same cue twice in a row
-// still plays; a still cue writes neither.
 export const cueAttrs = (
   cue: Readonly<{ kind: ClosetCueKind; count: number }>,
 ): Readonly<Record<string, string | undefined>> =>

@@ -1,9 +1,3 @@
-// The kitchen's goop in the 3D scene (soup.ts): one picture of the level,
-// as the roof leaks' (leakLayer.ts), on quads over the stew's tiles alone.
-// Its stew is painted again only as the soup pot's puddle comes and goes,
-// and its flames' streaks only as the flames or the lightning change; its
-// bubbles stand over it as motes, read off the World's clock.
-
 import { Option } from 'effect'
 import type { Application } from 'pixi.js'
 
@@ -34,8 +28,6 @@ import type { Textures } from './textures'
 
 const STEW_COAT = 0
 const GLINT_COAT = 1
-// NOTE: the near flames a repaint watches, nearest first, more than the
-// glints ever show.
 const KEYED_MIRRORS = 16
 
 type Pot = Readonly<{
@@ -50,8 +42,6 @@ const potOf = (level: Level, splat: Splat): Pot => ({
   bubbles: bubblesOfSplat(splat),
 })
 
-// NOTE: mutable on purpose: it owns the picture's texture, remembers what
-// it was last painted for, and which stew it shows.
 export class SoupLayer {
   readonly mesh: Mesh3D
   private readonly picture: FloorPicture
@@ -90,15 +80,11 @@ export class SoupLayer {
     })
   }
 
-  // NOTE: the stew alone, or with the pot's puddle while it lies there, and
-  // its glints, each painted again only when it changes.
   paint(input: Readonly<{ world: World; isSpilled: boolean }>): void {
     const { world, isSpilled } = input
     const pot = isSpilled ? this.spilled : this.soup
     const lit = litOf(world)
     const strikeStep = strikeStepOf(world)
-    // NOTE: one bit a near flame lit (the glints show the first three lit
-    // of the nearest few), the lightning's step, and the pot's puddle.
     let litBits = 0
     const keyed = Math.min(pot.mirrors.length, KEYED_MIRRORS)
     for (let index = 0; index < keyed; index += 1) {

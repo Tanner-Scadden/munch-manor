@@ -73,33 +73,16 @@ import {
   isLobbyShown,
 } from './model'
 
-// The single player lobby (GAME_DESIGN.md, "The single player lobby"),
-// dressed as the dare card your friends hand you (LORE.md, "PLAY is the
-// dare, the lobby is the dare card"): the co-op lobby's layout
-// (src/features/coop/view.ts) on a scrawled napkin. Each part is a line of
-// the card with a word or two in pencil: who is going in (your seat), coming
-// as (your hero), who you drag along (wind-up tin robots), out or stay (the
-// mode), the stakes, extra dares, which house, then SHAKE ON IT, and CHICKEN
-// OUT in the corner. Its classes are co-op's wherever the part is the same,
-// and `lobby.css` restyles them under `.lobby` alone, so co-op keeps its
-// own look.
-
 type LobbyH = Html.H<Message>
 type Content = View.Content<Message>
 
 const CREW_SEATS = 3
 
-// PIECES
-
-// NOTE: a key cap beside a control, on a keyboard only.
 const capView = (props: LobbyProps, cap: string, h: LobbyH): Content | null =>
   props.isKeyboard
     ? h.span.class('home-key').attr('aria-hidden', 'true').children(cap)
     : null
 
-// NOTE: every control is a button with an id for focus, and tells the root
-// when it takes or loses focus, so the arrow keys know where to step from.
-// Its builder is returned for the caller to finish.
 const controlButton = (control: LobbyControl, h: LobbyH) =>
   h.button
     .id(lobbyControlId(control))
@@ -107,8 +90,6 @@ const controlButton = (control: LobbyControl, h: LobbyH) =>
     .on('focus', Message.FocusedControl({ control }))
     .on('blur', Message.BlurredControl())
 
-// NOTE: a line's word or two, scrawled in pencil on the card. Read aloud
-// through the control or group it sits on, so it is hidden here.
 const scrawlView = (
   words: string,
   placement: 'Corner' | 'Inline',
@@ -119,8 +100,6 @@ const scrawlView = (
     .attrs({ 'data-place': placement, 'aria-hidden': 'true' })
     .children(words)
 
-// NOTE: BACK is CHICKEN OUT: a hen over the words, in the corner where
-// every screen keeps its way back.
 const lobbyBackView = (props: LobbyProps, h: LobbyH): Content =>
   controlButton('Back', h)
     .class('coop-back lobby-chicken')
@@ -138,8 +117,6 @@ const lobbyBackView = (props: LobbyProps, h: LobbyH): Content =>
       capView(props, LOBBY_KEYS.Back.cap, h),
     )
 
-// YOUR SEAT
-
 const specialChipView = (special: Special, h: LobbyH): Content =>
   h.span
     .class('lobby-special')
@@ -152,8 +129,6 @@ const specialChipView = (special: Special, h: LobbyH): Content =>
         .children(special.isPerk ? '+' : '-'),
     )
 
-// NOTE: a hero card's face: the hero's prop, its name, and each special as
-// a picture with a plus or a minus.
 const heroFaceViews = (calling: Bot['calling'], h: LobbyH) => [
   iconView('lobby-hero-prop', PROP_ICONS[calling], h),
   h.span
@@ -171,8 +146,6 @@ const heroFaceViews = (calling: Bot['calling'], h: LobbyH) => [
     ),
 ]
 
-// NOTE: the hero card. A tap opens the picker over the lobby, with the
-// lines (src/features/heroes/callingCards.ts).
 const heroCardView = (props: LobbyProps, h: LobbyH): Content => {
   const calling = props.calling
   const isNew = props.isHeroNew
@@ -228,21 +201,15 @@ const mySeatView = (props: LobbyProps, h: LobbyH): Content => {
     )
 }
 
-// TEAMMATE BOTS
-
 const seatControlsAt = (index: number): readonly [LobbyControl, LobbyControl] =>
   Option.getOrElse(
     Array.get(SEATS, index),
     (): readonly [LobbyControl, LobbyControl] => ['Bot1', 'Drop1'],
   )
 
-// NOTE: the crew's first seat carries the line's words, who you drag along.
 const dragAlongView = (seat: number, h: LobbyH): Content | null =>
   seat === 0 ? scrawlView('DRAG ALONG', 'Corner', h) : null
 
-// NOTE: an empty seat is a button you can see: a tin robot and + BOT.
-// A tap seats a bot there, with a goofy name and a hero picked from the
-// ones this player has unlocked. The first empty seat wears the key, B.
 const addBotTileView = (
   props: LobbyProps,
   seat: number,
@@ -277,8 +244,6 @@ const addBotTileView = (
     )
 }
 
-// NOTE: where teammates cannot sit: a dev link with players at the keyboard
-// leaves fewer seats. Faint, and pressed by nobody.
 const closedSeatView = (seat: number, h: LobbyH): Content =>
   h.li
     .key(`seat-${seat}`)
@@ -286,8 +251,6 @@ const closedSeatView = (seat: number, h: LobbyH): Content =>
     .attrs({ 'data-state': 'Empty', 'aria-hidden': 'true' })
     .children(dragAlongView(seat, h))
 
-// NOTE: a bot's hero card is the same card as yours, smaller: tap it for
-// the hero picker, which then chooses for this bot.
 const botHeroView = (bot: Bot, index: number, h: LobbyH): Content => {
   const [control] = seatControlsAt(index)
   return controlButton(control, h)
@@ -357,8 +320,6 @@ const seatsView = (props: LobbyProps, h: LobbyH): Content => {
     )
 }
 
-// PICKS
-
 const MODE_PICK_ICONS: Readonly<Record<HomeMode, string>> = {
   Campaign: CAMPAIGN_ICON,
   Endless: ENDLESS_ICON,
@@ -390,9 +351,6 @@ const skullIndexOf = (difficulty: Difficulty): number =>
     () => 0,
   )
 
-// NOTE: as many skulls lit as the level, as on the home menu used to show
-// it. Nightmare is a dim skull with a padlock badge until a Hard campaign
-// win, and says so, with its NEW pip on the run it opens.
 const skullPickView = (
   picks: LobbyPicks,
   difficulty: Difficulty,
@@ -429,9 +387,6 @@ const skullPickView = (
     )
 }
 
-// NOTE: a run modifier is a tile that turns on and off, lit when on. Friendly
-// Fire is dim until a bot sits in the crew, with nobody to hit before that.
-// One the picked mark turns on is lit and locked.
 const modifierPickView = (
   picks: LobbyPicks,
   modifier: Modifier,
@@ -459,8 +414,6 @@ const modifierPickView = (
     .children(modifierFaceView(modifier, h))
 }
 
-// NOTE: Dare's break clock, beside the skulls while Dare is picked: a
-// press steps it, ∞ (none) first.
 const easyBreakPickView = (picks: LobbyPicks, h: LobbyH): Content =>
   controlButton('EasyBreak', h)
     .class('coop-pick easy-break-pick')
@@ -471,8 +424,6 @@ const easyBreakPickView = (picks: LobbyPicks, h: LobbyH): Content =>
     .on('click', Message.ClickedEasyBreakButton())
     .children(easyBreakFaceView(picks.easyBreakSeconds, h))
 
-// NOTE: the dare ladder's mark, beside the skulls once one is opened on the
-// picked difficulty: a press steps it, none first.
 const markPickView = (picks: LobbyPicks, h: LobbyH): Content =>
   controlButton('Mark', h)
     .class('coop-pick dare-mark-pick')
@@ -484,9 +435,6 @@ const markPickView = (picks: LobbyPicks, h: LobbyH): Content =>
     .on('click', Message.ClickedMarkButton())
     .children(dareMarkFaceView(picks.dareMark, h))
 
-// NOTE: a map is a card with its picture and its name. With one map there
-// is nothing to pick, so it is shown chosen and takes no taps; a second map
-// makes this row a button group like the modes.
 const MAP_ICONS: Readonly<Record<MapId, string>> = {
   Manor: MANOR_ICON,
 }
@@ -508,8 +456,6 @@ const mapCardView = (map: MapId, h: LobbyH): Content =>
         .children(MAP_NAMES[map]),
     )
 
-// NOTE: a friend's dare holds the picks to its link's: they show, inert,
-// under a stamp, and the arrow keys skip them (src/features/lobby/lobby.ts).
 const heldStampView = (props: LobbyProps, h: LobbyH): Content | null =>
   isLockedByDare(props.picks)
     ? h.span
@@ -567,9 +513,6 @@ const picksView = (props: LobbyProps, h: LobbyH): Content => {
     )
 }
 
-// SHAKE ON IT
-
-// NOTE: START is the handshake that seals the dare.
 const startButtonView = (props: LobbyProps, h: LobbyH): Content =>
   controlButton('Start', h)
     .class('coop-ready lobby-start')
@@ -589,19 +532,11 @@ const startButtonView = (props: LobbyProps, h: LobbyH): Content =>
       capView(props, LOBBY_KEYS.Start.cap, h),
     )
 
-// THE HERO PICKER
-
-// NOTE: the bot whose hero the picker is choosing, when a bot's card
-// opened it.
 const maybePickingBotOf = (props: LobbyProps): Option.Option<Bot> =>
   Option.flatMap(props.lobby.maybePickingBot, index =>
     Array.get(props.picks.bots, index),
   )
 
-// NOTE: the picker in its Dialog over the lobby, as the menu panels look:
-// the title, the line (read aloud only), then the picker's cards, Bones,
-// and actions. Its cards wear the bot's look and hero when it chooses for
-// a bot.
 const heroPanelViews = (props: LobbyProps, parts: DialogParts, h: LobbyH) => {
   const maybeBot = maybePickingBotOf(props)
   return [
@@ -642,9 +577,6 @@ const heroPanelViews = (props: LobbyProps, parts: DialogParts, h: LobbyH) => {
   ]
 }
 
-// NOTE: ui-kit's Dialog over the lobby (src/ui/dialog.ts), open while the
-// root says so. Escape, a press outside, and the picker's close ask the
-// root to close it; the chosen card takes focus as it opens.
 const heroDialogView = (props: LobbyProps, h: LobbyH): Content =>
   dialogShellView({
     h,
@@ -659,13 +591,6 @@ const heroDialogView = (props: LobbyProps, h: LobbyH): Content =>
     insides: parts => heroPanelViews(props, parts, h),
   })
 
-// THE FOLD
-
-// NOTE: the paper the card unfolds from: a copy of the napkin, folded in
-// half, that grows out of PLAY, opens, and gives way to the card
-// (lobby.css, `dare-unfold`), and on CHICKEN OUT folds back into PLAY
-// (`dare-fold-back`). It is art alone, aria-hidden and taking no taps: the
-// card and its buttons never move, they fade in once it is open.
 const foldView = (h: LobbyH): Content =>
   h.div
     .class('dare-fold')
@@ -675,14 +600,6 @@ const foldView = (h: LobbyH): Content =>
       h.span.class('dare-fold-half').attr('data-half', 'Bottom'),
     )
 
-// VIEW
-
-// NOTE: the dare card over the home menu, sized to what it holds, with the
-// menu dimmed around it; a tap on the dim closes it as CHICKEN OUT does.
-// While it folds back into PLAY it is still drawn, so the fold has its
-// size, but inert and hidden: the home menu has the keys again. The hero
-// picker's Dialog opens over it. The root draws the Lobby only while it is
-// drawn (src/app/lobbyView.ts).
 const cardLayerView = (props: LobbyProps, h: LobbyH): Content => {
   const isOpen = isLobbyShown(props.lobby)
   return h.div.class('lobby-layer').children(

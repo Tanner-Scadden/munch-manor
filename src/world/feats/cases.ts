@@ -22,30 +22,15 @@ import type { Offer } from '../shop/purchase'
 import { CASE_SPOTS, caseBoxOf, caseFootOf, isCaseShown } from './caseSpots'
 import { hasDone } from './feats'
 
-// Display cases (owner, 2026-11-10, "No shop" in GAME_DESIGN.md): the guns
-// and the Laser Sight sit locked in cases about the house, each opened by a
-// feat (src/world/feats/feats.ts). Each run rolls which prize and which feat
-// go in which case, from its own generator, the easier feats in the cases
-// nearer the start and on the easier difficulties. A case in a room still
-// boarded shut waits for the room. When a player finishes its feat (the
-// first in slot order, if two finish on one tick) it springs open for them
-// alone, and they take the prize by the same stand or hold as the fridge's
-// (src/world/shop/purchase.ts). A gun from a case arrives fresh, at tier 0
-// with no kills, and levels on its own kills (src/world/gear/gunLevels.ts).
-
 type CaseRules = Readonly<{ reachPx: number; tagLiftPx: number }>
 
 const CASE_RULES: CaseRules = { reachPx: 10, tagLiftPx: 18 }
-
-// THE ROLL
 
 type FeatPick = Readonly<{
   feat: Feat
   from: Difficulty
 }>
 
-// NOTE: kill counts and streaks grow with the difficulty; a feat done once
-// (a clean wave, a room, the fire) stays one.
 const COUNT_SCALE: Readonly<Record<Difficulty, number>> = {
   Easy: 0.75,
   Normal: 1,
@@ -53,7 +38,6 @@ const COUNT_SCALE: Readonly<Record<Difficulty, number>> = {
   Nightmare: 1.5,
 }
 
-// NOTE: the feats a case by the start may ask, and from which difficulty.
 const NEAR_FEATS: Array.NonEmptyReadonlyArray<FeatPick> = [
   { feat: Feat.Kills({ count: 20 }), from: 'Easy' },
   { feat: Feat.KillsWith({ armament: 'Pistol', count: 15 }), from: 'Easy' },
@@ -64,7 +48,6 @@ const NEAR_FEATS: Array.NonEmptyReadonlyArray<FeatPick> = [
   { feat: Feat.NoHitWave({ count: 1 }), from: 'Normal' },
 ]
 
-// NOTE: the feats a case further in may ask.
 const FAR_FEATS: Array.NonEmptyReadonlyArray<FeatPick> = [
   { feat: Feat.Kills({ count: 50 }), from: 'Easy' },
   { feat: Feat.KillsOf({ kind: 'Exploder', count: 4 }), from: 'Easy' },
@@ -100,8 +83,6 @@ const scaleFeat = (feat: Feat, difficulty: Difficulty): Feat =>
 const rankOf = (difficulty: Difficulty): number =>
   DIFFICULTY_ORDER.indexOf(difficulty)
 
-// NOTE: a pool's feats for a difficulty; each pool's first feat is open
-// from Easy, so none is ever empty.
 const poolFor = (
   pool: Array.NonEmptyReadonlyArray<FeatPick>,
   difficulty: Difficulty,
@@ -117,8 +98,6 @@ const poolFor = (
     ({ feat }) => scaleFeat(feat, difficulty),
   )
 
-// NOTE: the prizes the near cases draw from; the one left over joins Old
-// Thunder, which only ever sits in a case further in, behind a harder feat.
 const NEAR_PRIZES: Array.NonEmptyReadonlyArray<CasePrize> = [
   'Shotgun',
   'Smg',
@@ -130,13 +109,6 @@ const FAR_PRIZES: Array.NonEmptyReadonlyArray<CasePrize> = ['Rifle']
 
 const CASES_SEED_SALT = 0xca5e5eed
 
-// NOTE: a run's cases, from its seed through their own salted generator,
-// so the roll moves no other. The near spots take the near prizes in a
-// shuffled order and the far ones the far prizes with whatever the near
-// spots left; the near spots take distinct feats from the near pool in
-// turn, the far ones from the far pool. Each prize sits in a case; with
-// more far cases than far prizes (a case in each room behind boards), the
-// far prizes go round again.
 export const rollCases: {
   (difficulty: Difficulty): (seed: number) => ReadonlyArray<DisplayCase>
   (seed: number, difficulty: Difficulty): ReadonlyArray<DisplayCase>
@@ -145,7 +117,6 @@ export const rollCases: {
   (seed: number, difficulty: Difficulty): ReadonlyArray<DisplayCase> => {
     const start = (seed ^ CASES_SEED_SALT) >>> 0
     const nearSpots = Array.filter(CASE_SPOTS, spot => spot.isNear)
-    const farSpots = Array.filter(CASE_SPOTS, spot => !spot.isNear)
     const [nearPrizeState, nearPrizes] = shuffle(start, NEAR_PRIZES)
     const [prizeState, farPrizes] = shuffle(
       nearPrizeState,
@@ -157,13 +128,12 @@ export const rollCases: {
     )
     const [, far] = shuffle(nearState, poolFor(FAR_FEATS, difficulty))
     const draws = { near, far }
+    let nearPlace = 0
+    let farPlace = 0
     return Array.map(CASE_SPOTS, (spot, index): DisplayCase => {
       const pool = spot.isNear ? draws.near : draws.far
       const prizes = spot.isNear ? nearPrizes : farPrizes
-      // NOTE: a few case spots, once a run.
-      const spots = spot.isNear ? nearSpots : farSpots
-      // oxlint-disable-next-line munch/no-nested-scan
-      const place = spots.indexOf(spot)
+      const place = spot.isNear ? nearPlace++ : farPlace++
       return {
         id: index,
         spot: index,
@@ -181,9 +151,6 @@ export const rollCases: {
   },
 )
 
-// OPENING
-
-// NOTE: a case springs open for the seat at `slot` once its feat is done.
 const openCaseFor: {
   (displayCase: DisplayCase, slot: PlayerSlot): (world: World) => World
   (world: World, displayCase: DisplayCase, slot: PlayerSlot): World
@@ -222,14 +189,10 @@ const tryOpen = (world: World, slot: PlayerSlot): World =>
       : current,
   )
 
-// NOTE: one tick of the cases: each locked case in an open room opens for
-// the first seat, in slot order, that has done its feat.
 export const advanceCases = (world: World): World =>
   Array.some(world.cases, ({ state }) => CaseState.isAnyOf(['Locked'])(state))
     ? forEachSeat(world, tryOpen)
     : world
-
-// TAKING
 
 const isOpenedFor = (displayCase: DisplayCase, slot: PlayerSlot): boolean =>
   CaseState.isAnyOf(['Opened'])(displayCase.state) &&
@@ -272,7 +235,6 @@ const givePrize = (world: World, slot: PlayerSlot, prize: CasePrize): World =>
         seats: atSeat(slot, { player: player => giveWeapon(player, prize) }),
       })
 
-// NOTE: the opener takes what the case held, and the case stands empty.
 export const takeCase: {
   (slot: PlayerSlot, id: number): (world: World) => Option.Option<World>
   (world: World, slot: PlayerSlot, id: number): Option.Option<World>

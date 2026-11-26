@@ -4,14 +4,6 @@ import { MARKS } from '../world/run/dareLadder'
 import { pixelIconUrl } from './icons'
 import { type Palette, type Sprite, spriteShapes } from './sprite'
 
-// The dare ladder's marks as badges (GAME_DESIGN.md, "The dare ladder"),
-// original to the game: a wax seal pressed on the dare card, scratched with
-// a tally for each mark. Marks 1 to 4, the extra dares, are red wax with
-// bone strokes; marks 5 to 8, the house rules, are black wax with a gold rim
-// and gold strokes, so the two halves read apart at a glance. Shown on the
-// lobby's pick, the end card, the Proof Shelf's rows, and the co-op host's
-// seat. Built once at module scope.
-
 const SEAL = [
   '...OOOOO...',
   '..OLLLLLO..',
@@ -26,8 +18,6 @@ const SEAL = [
   '...OOOOO...',
 ]
 
-// NOTE: the tally's columns for one to four strokes, centered in the seal,
-// down its middle five rows.
 const STROKE_COLUMNS: ReadonlyArray<ReadonlyArray<number>> = [
   [5],
   [4, 6],
@@ -58,7 +48,6 @@ const markPixels = (mark: number): ReadonlyArray<string> => {
 
 const OUTLINE = '#140c10'
 
-// NOTE: red wax and bone for the extra dares.
 const DARE_PALETTE: Palette = {
   O: OUTLINE,
   L: '#ef7a68',
@@ -67,7 +56,6 @@ const DARE_PALETTE: Palette = {
   S: '#f4f1de',
 }
 
-// NOTE: black wax in a gold rim for the house rules.
 const HOUSE_PALETTE: Palette = {
   O: OUTLINE,
   L: '#ffe066',
@@ -87,7 +75,6 @@ const MARK_ICONS: ReadonlyArray<string> = Array.map(MARKS, mark =>
   pixelIconUrl(markPixels(mark), markPaletteOf(mark)),
 )
 
-// NOTE: the seal with no mark, dim, for the lobby's pick at none.
 const NONE_PALETTE: Palette = {
   O: '#3a2c30',
   L: '#5a4a50',
@@ -97,10 +84,8 @@ const NONE_PALETTE: Palette = {
 
 const NO_MARK_ICON = pixelIconUrl(SEAL, NONE_PALETTE)
 
-// NOTE: a mark's badge on the canvas; mark 0 has none.
 export const markSprite = (mark: number): Sprite =>
   Option.getOrElse(Array.get(MARK_SPRITES, mark - 1), (): Sprite => [])
 
-// NOTE: a mark's badge for HTML; mark 0 is the dim seal.
 export const markIcon = (mark: number): string =>
   Option.getOrElse(Array.get(MARK_ICONS, mark - 1), () => NO_MARK_ICON)

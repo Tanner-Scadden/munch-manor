@@ -2,38 +2,6 @@ import { Schema } from 'effect'
 
 import { Difficulty } from '../shared/playerData'
 
-// NOTE: this file is shared with the analytics Worker in infra/worker, which
-// bundles it against its own, newer Effect. It imports nothing but `effect`
-// and src/shared/playerData.ts, which is shared the same way, and uses only Schema
-// APIs both versions have. The literal lists the game keeps outside
-// playerData.ts (ZombieKind, HomeMode, InputDevice) are repeated here so the
-// Worker never pulls in the game, and src/platform/__tests__/analytics.story.test.ts checks that
-// they still match.
-
-// RUN SUMMARY
-
-// NOTE: version 2 adds `party`: single player, or an online co-op crew with
-// its size and this player's own seat's kills, downs, and revives. Version
-// 3 adds the crew's `runKey`, the same on every client in one co-op run, so
-// a report counts a game once. The Worker still takes version 1 from a
-// build cached before co-op, as Solo, and version 2 with no key. Version 4
-// adds `modifiers`, the run modifiers that bit, as a mask; the Worker still
-// takes version 3 with none. Version 5 is the escape (docs/ESCAPE_PLAN.md):
-// `keysSpent` and `casesOpened` in place of `purchases` (keys and no
-// shop), a won run ends `Escaped` in place of `Victory`, and
-// `dareItemsFound` counts the things on the dare's list the run found. The
-// Worker still takes version 4 and older, with their purchases, their wins
-// as Victory, and none found. Version 6 adds 'Gamepad' to `device`, a run
-// played on a controller; the Worker still takes version 5 and older, on a
-// keyboard or touch. Version 7 adds a crew's `network`: how this player's
-// link to the room did over the run (round trips, jitter, late
-// snapshots, reconnects, prediction corrections); the Worker still takes
-// version 6 and older, with none. Version 8 adds the `LeftEarly` outcome, a
-// run the crew left by the kitchen's back door in a break
-// (src/world/kitchen/backDoor.ts); the Worker still takes version 7 and
-// older, with no such run. Version 9 adds `dareMark`, the dare ladder's mark
-// the run was played at (src/world/run/dareLadder.ts), 0 for none; the
-// Worker still takes version 8 and older, at mark 0.
 export const RUN_SUMMARY_VERSION = 9
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
@@ -59,14 +27,11 @@ export const SummaryDevice = Schema.Literals([
 ])
 export type SummaryDevice = typeof SummaryDevice.Type
 
-// NOTE: the devices of a summary from a build before controllers.
 const SummaryDeviceV5 = Schema.Literals(['KeyboardMouse', 'Touch'])
 
 export const SummaryScreenFit = Schema.Literals(['Browser', 'Installed'])
 export type SummaryScreenFit = typeof SummaryScreenFit.Type
 
-// NOTE: the average frame time of the run's active frames, bucketed so a
-// summary says how smooth the game felt without fingerprinting the device.
 export const FrameTimeBucket = Schema.Literals([
   'Unmeasured',
   'Under10Ms',
@@ -93,7 +58,6 @@ export const UNKNOWN_CAUSE: CauseOfDeath = 'Unknown'
 
 export const EscapedRun = Schema.TaggedStruct('Escaped', {})
 
-// NOTE: a won campaign before the escape, from version 4 and older.
 const WonRun = Schema.TaggedStruct('Victory', {})
 
 export const LostRun = Schema.TaggedStruct('GameOver', {
@@ -102,7 +66,6 @@ export const LostRun = Schema.TaggedStruct('GameOver', {
 
 export const QuitRun = Schema.TaggedStruct('Quit', {})
 
-// NOTE: left by the kitchen's back door, from version 8.
 export const LeftEarlyRun = Schema.TaggedStruct('LeftEarly', {})
 
 export const RunOutcome = Schema.Union([
@@ -113,7 +76,6 @@ export const RunOutcome = Schema.Union([
 ])
 export type RunOutcome = typeof RunOutcome.Type
 
-// NOTE: the outcomes of a summary from a build before the back door.
 const RunOutcomeV7 = Schema.Union([EscapedRun, LostRun, QuitRun])
 
 const RunOutcomeV4 = Schema.Union([WonRun, LostRun, QuitRun])
@@ -148,16 +110,10 @@ const BuildId = Schema.String.check(
   Schema.isMaxLength(MAX_BUILD_LENGTH),
 )
 
-// NOTE: the most players a co-op room seats, MAX_PLAYERS in
-// packages/netcode, repeated so the Worker never pulls in the netcode.
 export const MAX_CREW_SIZE = 4
 
 const SoloParty = Schema.TaggedStruct('Solo', {})
 
-// NOTE: an online co-op run, from this player's own client: the seats in
-// the run (a crew of one is a room played alone), and the kills credited
-// to their own seat, the times they went down, and the teammates they
-// revived. The summary's `kills` are the crew's, by kind.
 const crewFields = {
   size: Schema.Int.check(
     Schema.isBetween({ minimum: 1, maximum: MAX_CREW_SIZE }),
@@ -169,9 +125,6 @@ const crewFields = {
 
 export const CREW_RUN_KEY_LENGTH = 16
 
-// NOTE: a hash every client in one co-op run makes alike, from the room's
-// lobby (src/platform/analyticsRun.ts, crewRunKeyOf): it groups a game's summaries
-// and names no room or player.
 const CrewRunKey = Schema.String.check(Schema.isPattern(/^[0-9a-f]{16}$/))
 
 const CrewPartyV6 = Schema.TaggedStruct('Crew', {
@@ -179,12 +132,9 @@ const CrewPartyV6 = Schema.TaggedStruct('Crew', {
   runKey: CrewRunKey,
 })
 
-// NOTE: a party from a build before the crew's network numbers.
 const SummaryPartyV6 = Schema.Union([SoloParty, CrewPartyV6])
 export type SummaryPartyV6 = typeof SummaryPartyV6.Type
 
-// NOTE: the network numbers' bounds; the client sends a freak number (a
-// link down for minutes) at the top (src/platform/analyticsRun.ts).
 export const MAX_NET_MS = 60_000
 export const MAX_CORRECTION_PX = 100_000
 
@@ -192,14 +142,6 @@ const NetMs = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: MAX_NET_MS }),
 )
 
-// NOTE: this player's link to the room over one online run, measured on
-// their own client (packages/netcode NetStats.ts): the median and 95th
-// percentile round trip of the socket's pings (`rttSamples` of them, 0 when
-// none came back), the mean jitter in the spacing of the room's snapshots,
-// the snapshots timed and those a whole send or more late (with the mean
-// and most by which they were), the reconnects, and the times the room's
-// word moved the player's own predicted position (and the biggest move, in
-// world pixels). Numbers only: nothing in it names the player or the room.
 export const CrewNetwork = Schema.Struct({
   rttP50Ms: NetMs,
   rttP95Ms: NetMs,
@@ -226,7 +168,6 @@ const CrewParty = Schema.TaggedStruct('Crew', {
 export const SummaryParty = Schema.Union([SoloParty, CrewParty])
 export type SummaryParty = typeof SummaryParty.Type
 
-// NOTE: a version 2 crew, from a build before the run key.
 const CrewPartyV2 = Schema.TaggedStruct('Crew', crewFields)
 
 const SummaryPartyV2 = Schema.Union([SoloParty, CrewPartyV2])
@@ -234,9 +175,6 @@ export type SummaryPartyV2 = typeof SummaryPartyV2.Type
 
 export const SOLO_PARTY: SummaryParty = SoloParty.make({})
 
-// NOTE: nothing in a summary identifies a person. visitId is random per page
-// visit, made in a Command, and only groups one visit's runs. A co-op
-// summary names no teammate and no room: its run key is a hash.
 const baseFields = {
   visitId: VisitId,
   build: BuildId,
@@ -256,20 +194,12 @@ const baseFields = {
   frameTime: FrameTimeBucket,
 }
 
-// NOTE: the fields of a summary from a build with a shop (version 4 and
-// older), its purchases counted.
 const runFields = { ...baseFields, purchases: Count }
 
-// NOTE: the run modifiers that bit (src/world/run/modifiers.ts), a bit for each:
-// Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8. Repeated here so the Worker
-// never pulls in the game; src/platform/__tests__/analytics.story.test.ts checks the width.
 const ModifierMask = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: 15 }),
 )
 
-// NOTE: the skeleton keys the crew spent on boards and fridge pulls
-// (src/world/keys/keys.ts), the display cases the run opened, and the
-// things on the dare's list it found (src/world/dare/dare.ts).
 const escapeFields = {
   ...baseFields,
   outcome: RunOutcomeV7,
@@ -280,8 +210,6 @@ const escapeFields = {
   modifiers: ModifierMask,
 }
 
-// NOTE: the dare ladder's mark, 0 to the ladder's top (TOP_MARK in
-// src/shared/dareMarkData.ts, repeated here so the Worker reads nothing more).
 const SummaryDareMark = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: 8 }),
 )
@@ -296,7 +224,6 @@ export const RunSummary = Schema.Struct({
 })
 export type RunSummary = typeof RunSummary.Type
 
-// NOTE: a summary from a build before the dare ladder.
 const RunSummaryV8 = Schema.Struct({
   version: Schema.Literal(8),
   ...escapeFields,
@@ -305,7 +232,6 @@ const RunSummaryV8 = Schema.Struct({
   party: SummaryParty,
 })
 
-// NOTE: a summary from a build before the back door.
 const RunSummaryV7 = Schema.Struct({
   version: Schema.Literal(7),
   ...escapeFields,
@@ -313,21 +239,17 @@ const RunSummaryV7 = Schema.Struct({
   party: SummaryParty,
 })
 
-// NOTE: a summary from a build before the crew's network numbers.
 const RunSummaryV6 = Schema.Struct({
   version: Schema.Literal(6),
   ...escapeFields,
   device: SummaryDevice,
 })
 
-// NOTE: a summary from a build before controllers.
 const RunSummaryV5 = Schema.Struct({
   version: Schema.Literal(5),
   ...escapeFields,
 })
 
-// NOTE: a summary from a build before the escape: its shop purchases, and
-// a won run as Victory.
 const RunSummaryV4 = Schema.Struct({
   version: Schema.Literal(4),
   ...runFields,
@@ -335,7 +257,6 @@ const RunSummaryV4 = Schema.Struct({
   modifiers: ModifierMask,
 })
 
-// NOTE: a summary from a build before the run modifiers.
 const RunSummaryV3 = Schema.Struct({
   version: Schema.Literal(3),
   ...runFields,
@@ -343,7 +264,6 @@ const RunSummaryV3 = Schema.Struct({
 })
 type RunSummaryV3 = typeof RunSummaryV3.Type
 
-// NOTE: a summary from a build before the crew's run key.
 export const RunSummaryV2 = Schema.Struct({
   version: Schema.Literal(2),
   ...runFields,
@@ -351,15 +271,12 @@ export const RunSummaryV2 = Schema.Struct({
 })
 export type RunSummaryV2 = typeof RunSummaryV2.Type
 
-// NOTE: a summary from a build before co-op sent them: every one was solo.
 export const RunSummaryV1 = Schema.Struct({
   version: Schema.Literal(1),
   ...runFields,
 })
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
-// NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 8, 7, 6, 5, 4, 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
   RunSummaryV8,
@@ -379,20 +296,8 @@ export const RunSummaryJson = Schema.fromJsonString(RunSummary)
 
 export const RUNS_PATH = '/api/runs'
 
-// SHARE EVENT
-
-// NOTE: a tap on SHARE, counted apart from the run, since the run's
-// summary is sent the moment it ends, before the end card shows. It says
-// which end screen it came from and what the run was, and nothing about
-// who: the same visitId as the summaries, and no text of the post.
-// NOTE: version 2 adds `path`: the share sheet, the clipboard, or (from
-// older builds) X's intent link. The Worker still takes version 1 from a
-// build cached before it.
 export const SHARE_EVENT_VERSION = 2
 
-// NOTE: a win's screen is Escaped (CoopEscaped for a crew). Victory and
-// CoopVictory were the tenth wave cleared, before the escape; a cached
-// build may still send them, and D1 keeps the rows it stored.
 export const ShareScreen = Schema.Literals([
   'Death',
   'Escaped',
@@ -405,8 +310,6 @@ export const ShareScreen = Schema.Literals([
 ])
 export type ShareScreen = typeof ShareScreen.Type
 
-// NOTE: Link was X's intent link, sent by builds before SHARE copied the
-// post where there is no share sheet; a cached build may still send it.
 export const SharePath = Schema.Literals(['Sheet', 'Copy', 'Link'])
 export type SharePath = typeof SharePath.Type
 
@@ -433,7 +336,6 @@ export type ShareEventV1 = typeof ShareEventV1.Type
 
 export const ShareEventJson = Schema.fromJsonString(ShareEvent)
 
-// NOTE: what the Worker takes: this version, or version 1 with no path.
 export const PostedShareJson = Schema.fromJsonString(
   Schema.Union([ShareEvent, ShareEventV1]),
 )

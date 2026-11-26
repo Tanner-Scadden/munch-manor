@@ -13,9 +13,6 @@ import { modifyFocus } from '../../../world/party/party'
 import { LAST_ZOMBIE_RULES } from '../../../world/zombies/lastZombie'
 import { stragglerEdgeShapes } from '../stragglerEdge'
 
-// NOTE: the wave's last zombies, once they hurry, get a red badge at the
-// window's edge when they are out of it (src/features/hud/stragglerEdge.ts).
-
 const HURRYING_MS = LAST_ZOMBIE_RULES.delayMs + 100
 
 const lastFew = (zombies: ReadonlyArray<Zombie>, loneMs: number): Model =>

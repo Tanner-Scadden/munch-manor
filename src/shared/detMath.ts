@@ -1,15 +1,5 @@
 import { Function } from 'effect'
 
-// Engine-stable stand-ins for the Math functions whose last bits differ
-// between engines (hypot, sin, cos, tan, atan, atan2, acos, exp): JavaScript
-// leaves their rounding to the engine, so JavaScriptCore (Bun, Safari) and V8
-// (Node, Chrome, workerd) can disagree in the last bit, and a step that reads
-// one plays differently in each. These use only +, -, *, /, Math.sqrt,
-// Math.round, and Math.abs, which IEEE 754 and the spec fix exactly, so every
-// engine gets the same bits. They are accurate to a few ulps, plenty for a
-// pixel game. The World, the input that feeds its intent, and the lens's turn
-// call these, never Math's own (`munch/stable-math`).
-
 const HALF_PI_HIGH = 1.5707963267341256
 const HALF_PI_LOW = 6.077100506506192e-11
 const TWO_OVER_PI = 0.6366197723675814
@@ -17,8 +7,6 @@ const LN2_HIGH = 0.6931471803691238
 const LN2_LOW = 1.9082149292705877e-10
 const INV_LN2 = 1.4426950408889634
 
-// NOTE: sin and cos on [-pi/4, pi/4] by their Taylor series in Horner form,
-// to x^17 and x^18, where the next term is under a part in 1e17.
 const sinKernel = (x: number): number => {
   const x2 = x * x
   return (
@@ -66,8 +54,6 @@ const cosKernel = (x: number): number => {
   )
 }
 
-// NOTE: Cody and Waite's reduction by pi/2 in two parts: the quadrant, 0 to
-// 3, and what is left, within pi/4 of it.
 const quadrantOf = (x: number): number => {
   const n = Math.round(x * TWO_OVER_PI)
   return ((n % 4) + 4) % 4
@@ -110,8 +96,6 @@ export const cos = (x: number): number => {
 
 export const tan = (x: number): number => sin(x) / cos(x)
 
-// NOTE: atan on [0, 1]: halve the angle twice with the half-angle identity,
-// then a series that converges fast below tan(pi/16).
 const atanUnit = (x: number): number => {
   const once = x / (1 + Math.sqrt(1 + x * x))
   const twice = once / (1 + Math.sqrt(1 + once * once))
@@ -147,8 +131,6 @@ export const atan2: {
   return y < 0 ? -Math.PI / 2 : 0
 })
 
-// NOTE: acos as the angle of the point (x, its sine) on the unit circle,
-// with x held to [-1, 1].
 export const acos = (x: number): number => {
   const held = Math.max(-1, Math.min(1, x))
   return atan2(Math.sqrt((1 - held) * (1 + held)), held)
@@ -177,9 +159,6 @@ export const exp = (x: number): number => {
   return sum * scale
 }
 
-// NOTE: the length of (x, y) as one root of the sum of squares, which IEEE
-// rounds the same everywhere (Math.hypot scales its arguments in an order
-// each engine picks).
 export const hypot: {
   (y: number): (x: number) => number
   (x: number, y: number): number

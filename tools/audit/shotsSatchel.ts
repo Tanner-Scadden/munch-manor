@@ -1,12 +1,3 @@
-// The dare satchel pass: the dare card opened again from the HUD's list
-// (src/features/dare/pocketCard.ts), with things found in its satchel and
-// the rest dim with their rooms' icons, a new find dropping in, the whole
-// list found, Triple Dare's card with no rooms shown, and a list rolled
-// with the Dare Journal's new things. On a 1280x720
-// desktop, an 844x390 phone on its side, and a 390x844 phone held upright,
-// as `satchel-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsSatchel.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'

@@ -1,9 +1,5 @@
 import { Effect } from 'effect'
 
-// NOTE: iOS Safari ignores user-scalable=no, so a pinch or a quick double
-// tap can still zoom the page mid-run. Safari fires its own gesture events
-// for a pinch, and a two finger touchmove carries a scale: cancelling both
-// keeps the game at its size. The listeners live for the page's life.
 const cancel = (event: Event): void => {
   event.preventDefault()
 }

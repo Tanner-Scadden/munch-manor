@@ -9,16 +9,6 @@ import { logoShapes } from '@game/screens/game/overlay'
 import * as Draw from '../../../src/render/draw'
 import { BIG_HEAD, PALETTE } from '../zombieHead'
 
-// THE DIRECTOR'S CARDS
-//
-// NOTE: the pixel art the launch video draws that the game never shows
-// (RELEASE_VIDEO.md): the title slammed over the room with its drips
-// running, the end card with the logo and the chomping Groaner from the app
-// icon, and four players squished on a couch with their phones. Each is
-// shapes on a canvas the screen's size in game pixels, drawn over the game
-// by the harness view while a director shot holds the card, on the shot's
-// own clock, so a card is the same picture on every render.
-
 export type CardName = 'Title' | 'End' | 'Couch'
 
 export type CardScreen = Readonly<{ width: number; height: number }>
@@ -27,9 +17,6 @@ const LOGO_CENTER_X = 160
 const LOGO_MIDDLE_Y = 36
 const MS_PER_TICK = 1000 / 60
 
-// NOTE: the logo from the title screen, centered on (x, y), scaled about
-// its middle, with shapes of its own (its drips) drawn under it, placed
-// from its middle.
 const logoAt = (
   x: number,
   y: number,
@@ -49,8 +36,6 @@ const logoAt = (
     ],
   })
 
-// TITLE
-
 const SLAM_TICKS = 7
 const TITLE_SCALE_WIDE = 2
 const TITLE_SCALE_UPRIGHT = 1.5
@@ -68,8 +53,6 @@ const DIM = 'rgba(14, 8, 20, 0.55)'
 const DRIP = '#c4232b'
 const DRIP_DARK = '#8c1f24'
 
-// NOTE: where the drips run from, as offsets from the logo's middle: the
-// foot of a letter on each line, and how fast each one runs.
 const DRIPS: ReadonlyArray<
   Readonly<{ x: number; y: number; speed: number; delay: number }>
 > = [
@@ -92,7 +75,6 @@ const dripShapes = (age: number): ReadonlyArray<Draw.Shape> =>
     }
     const left = drip.x
     const top = drip.y
-    // NOTE: a bead swells at the tip, and once the run is full it falls.
     const fall = Math.max(0, runs - DRIP_MAX)
     return [
       rect(left, top, 2, length, DRIP),
@@ -140,8 +122,6 @@ const titleShapes = (
   ]
 }
 
-// END CARD
-
 const END_BACK = '#160b24'
 const GLOW_RINGS: ReadonlyArray<readonly [number, string]> = [
   [92, '#1d0f30'],
@@ -155,9 +135,6 @@ const JAW_ROW = 15
 const JAW_DROP = 2
 const CHOMP_TICKS = 12
 
-// NOTE: the app icon's Groaner head, its jaw dropping and snapping shut:
-// the rows from the lower teeth down move, and the gap they leave is his
-// mouth.
 const headShapes = (
   left: number,
   top: number,
@@ -210,7 +187,6 @@ const endShapes = (
   age: number,
 ): ReadonlyArray<Draw.Shape> => {
   const isWide = screen.width > screen.height
-  // NOTE: side by side on a wide frame, the logo over the head upright.
   const headScale = 3
   const headWidth = (BIG_HEAD[0]?.length ?? 0) * headScale
   const headHeight = BIG_HEAD.length * headScale
@@ -230,8 +206,6 @@ const endShapes = (
   ]
 }
 
-// COUCH
-
 const WALL = '#2b1749'
 const WALL_STRIPE = '#331c55'
 const SKIRTING = '#140c10'
@@ -248,7 +222,6 @@ const BEAT_TICKS = 3600 / 152
 
 type Mood = 'Tapping' | 'Flinching' | 'Cheering'
 
-// NOTE: on the clip's beat: two beats of tapping, a flinch, then a cheer.
 const moodAt = (age: number): Mood =>
   age < BEAT_TICKS * 2
     ? 'Tapping'
@@ -334,7 +307,6 @@ const couchShapes = (
     rect(0, floorY - 3, screen.width, 3, SKIRTING),
     rect(0, floorY, screen.width, screen.height - floorY, FLOOR),
     ...boards,
-    // NOTE: the couch's back, behind the four of them.
     rect(
       left - scale,
       seatY - 12 * scale,
@@ -345,7 +317,6 @@ const couchShapes = (
     rect(left, seatY - 11 * scale, couchWidth, 11 * scale, COUCH),
     rect(left, seatY - 11 * scale, couchWidth, scale, COUCH_LIGHT),
     ...sitters,
-    // NOTE: the seat and the arms, over their legs.
     rect(
       left - 4 * scale,
       seatY - scale,

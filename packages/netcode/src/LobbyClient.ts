@@ -53,13 +53,6 @@ import * as Matchmaking from './Matchmaking'
 import { type Ended, backoffUpTo, reconnecting } from './Reconnect'
 import { SocketError, type TokenUnavailable, openSocket } from './Socket'
 
-// NOTE: the lobby from a client with no local database: the dev page, and
-// tests. It follows the `room:<code>` scope over the sync engine's own
-// protocol, asking for a Snapshot on join and again whenever Deltas say it
-// changed (a lobby is a few rows and changes a few times a minute), and
-// pushes mutations as envelopes. The game, which keeps SQLite already, can
-// follow the same scope with a Replica instead.
-
 export class RoomRequestFailed extends Schema.TaggedError<
   RoomRequestFailed,
   { readonly brand: unique symbol }
@@ -74,10 +67,6 @@ export class LobbyOffline extends Schema.TaggedError<
   reason: Schema.String,
 }) {}
 
-// IDENTITY
-
-// NOTE: the device key sign-in of the sync engine (Device.ts), for a page
-// that keeps its key somewhere other than SQLite.
 export const signInDevice: {
   (
     key: StoredKey,
@@ -111,8 +100,6 @@ export const signInDevice: {
     }),
 )
 
-// ROOMS
-
 const unavailable = () =>
   RoomRequestFailed.make({ refusal: RoomRefusal.cases.Unavailable.make({}) })
 
@@ -145,9 +132,6 @@ const roomCall = <A, I>(
     withFetch,
   )
 
-// NOTE: who asks for a room, and where. A missing look, rank, or calling
-// takes the default; a missing `introSeen` reads as a newcomer, who gets the
-// whole intro.
 export interface RoomEntry {
   readonly origin: string
   readonly token: string
@@ -224,8 +208,6 @@ const scopeSocketUrl = (origin: string, scope: string): string => {
   return url.toString()
 }
 
-// LOBBY
-
 export const LobbyEvent = Schema.TaggedUnion({
   Connecting: { attempt: Schema.Finite },
   Updated: { lobby: Lobby },
@@ -243,7 +225,6 @@ export interface LobbyClientOptions {
   readonly token: Effect.Effect<string, TokenUnavailable>
 }
 
-/** @stability unstable */
 export interface LobbyClient {
   readonly events: Stream.Stream<LobbyEvent>
   readonly write: <A, I>(
@@ -255,7 +236,6 @@ export interface LobbyClient {
 const HEARTBEAT = '25 seconds'
 const MAX_BACKOFF_MS = 5000
 
-/** @stability unstable */
 export const followLobby = (
   options: LobbyClientOptions,
 ): Effect.Effect<LobbyClient, never, Scope.Scope> =>
@@ -412,8 +392,6 @@ export const followLobby = (
     return { events: Stream.fromQueue(events), write }
   })
 
-// QUICK PLAY
-
 export const QuickPlayEvent = Schema.TaggedUnion({
   Connecting: {},
   Heard: { message: Matchmaking.QuickServer },
@@ -437,8 +415,6 @@ export interface QuickPlay {
   readonly cancel: Effect.Effect<void>
 }
 
-// NOTE: a message the client builds always encodes; a failure is a bug, so
-// it dies.
 const encodeQuick = (message: Matchmaking.QuickClient): Effect.Effect<string> =>
   Effect.orDie(Schema.encodeEffect(Matchmaking.QuickClientJson)(message))
 const decodeQuick = Schema.decodeUnknownOption(Matchmaking.QuickServerJson)
@@ -449,11 +425,6 @@ const quickSocketUrl = (origin: string): string => {
   return url.toString()
 }
 
-// NOTE: one press of QUICK PLAY: a socket to the Matchmaker that says Hello
-// and reports each Waiting (the queue screen, and any offer to start with
-// fewer) until Matched or Refused, after which the socket ends. It does
-// not reconnect: a dropped socket leaves the queue, and the player presses
-// again. Closing the Scope, or `cancel`, leaves the queue.
 export const startQuickPlay = (
   options: QuickPlayOptions,
 ): Effect.Effect<QuickPlay, never, Scope.Scope> =>

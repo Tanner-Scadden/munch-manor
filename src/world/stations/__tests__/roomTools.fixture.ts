@@ -14,10 +14,6 @@ import type { StationId, Vector } from '../../schema/worldSchema'
 import { stationBoxOf } from '../stationSpots'
 import { TOOL_RULES } from '../toolRules'
 
-// What the room tools' Stories start from: a quiet wave with every room and
-// the secret shelf open, a spot on clear floor in reach of a tool, and a
-// tool fired a while ago.
-
 const EXITS = [KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT, SECRET_EXIT]
 
 export const openHouse = (model: Model): Model =>
@@ -60,8 +56,6 @@ const isClearAt = (model: Model, point: Vector): boolean =>
     isSolidAt(levelOf(model), { x: point.x + edge.x, y: point.y + edge.y }),
   )
 
-// NOTE: a spot on clear floor a step from a tool's tile: below it, above
-// it, then west, then east.
 export const spotAtTool: {
   (id: StationId): (model: Model) => Vector
   (model: Model, id: StationId): Vector
@@ -90,8 +84,6 @@ export const atTool: {
   return withPlayerAt(model, x, y)
 })
 
-// NOTE: a tool fired `agoMs` ago, so its effect is on for what is left of
-// its `activeMs`.
 export const firedAgo: {
   (id: StationId, agoMs: number): (model: Model) => Model
   (model: Model, id: StationId, agoMs: number): Model

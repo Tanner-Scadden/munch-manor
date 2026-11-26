@@ -26,7 +26,6 @@ const shakeBy = (model: Model, trauma: number): Model =>
       }),
   })
 
-// NOTE: a trap placed settles its hint and quiets the notice.
 const notePlacement = (model: Model): Model =>
   UiStruct.evolve(model, {
     trapHint: () => TrapHint.Seen(),
@@ -41,8 +40,6 @@ const refusePlacement = (model: Model, reason: string): Model =>
     }),
   })
 
-// NOTE: a placed trap stamps its dust and thunk where it landed; a refused
-// one says why in the trap notice.
 export const placeSelectedTrap: UpdateStep = $ =>
   Result.match(tryAsLead($.model, SeatAction.PlaceTrap()), {
     onFailure: refusal =>
@@ -81,8 +78,6 @@ export const nextTrap: UpdateStep = $ => {
   )
 }
 
-// NOTE: T places the selected trap and G picks the next, read from the one
-// key table (src/input/keyActions.ts).
 export const trapFromKey: (code: string) => UpdateStep = code => $ =>
   Option.match(playerKeyAction($.model, code), {
     onNone: () => $.model,

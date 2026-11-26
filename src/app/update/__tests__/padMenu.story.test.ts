@@ -36,9 +36,6 @@ import {
   StepPadTab,
 } from '../padMenu'
 
-// A controller in every menu: each menu by its state, the stick and d-pad
-// moving focus, A pressing, B backing out, the bumpers turning tabs.
-
 const BUTTON_COUNT = 17
 const A = 0
 const B = 1
@@ -68,11 +65,8 @@ const poll = (reading: Parameters<typeof padOf>[0]): StoryStep =>
 
 const rest = poll({})
 
-// NOTE: a button pressed. A Command it issues is settled before the
-// thumb lets go (`rest`), since a Story sends nothing while one is pending.
 const pressPad = (button: number): StoryStep => poll({ held: [button] })
 
-// NOTE: a pad already in hand and resting, so the first press is an edge.
 const withPad = (model: Model): Model =>
   UiStruct.evolve(model, {
     input: input =>

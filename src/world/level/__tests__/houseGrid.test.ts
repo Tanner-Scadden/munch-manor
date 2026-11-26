@@ -9,12 +9,6 @@ import { type LevelSpec } from '../plan'
 import { symbolAt, tileIndex, tileOfIndex } from '../tileGrid'
 import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
 
-// NOTE: a made-up house on the plan: a hall at the origin, and a study west
-// of it, at negative columns, behind a boarded exit in the wall they share.
-// The study's spawn door is drawn as a neutral `n` that its placement renames
-// to the back door's symbol, as a rolled room's doors will be named by slot.
-// The hall's front door, `M`, is never a spawn door. Row 0 west of the hall
-// is covered by no room, so it is yard.
 const HALL_TILES: ReadonlyArray<string> = [
   '####NN####',
   '#........#',

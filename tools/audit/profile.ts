@@ -109,8 +109,6 @@ runAudit(
 
     yield* Console.log(`scenario ${SCENARIO} at ${RATE}x, ${MS}ms per pass`)
 
-    // TRACE: main thread time by top-level event kind
-
     type TimedEvent = TraceEvent & Readonly<{ dur: number }>
     const isTimed = (e: TraceEvent): e is TimedEvent =>
       e.ph === 'X' && e.dur !== undefined
@@ -202,8 +200,6 @@ runAudit(
     yield* Console.log(
       `rAF callbacks: ${frames.length}, mean ${(sumByName(['FireAnimationFrame']) / Math.max(1, frames.length)).toFixed(2)}ms`,
     )
-
-    // CPU PROFILE: self time bucketed by the nearest named ancestor
 
     type ProfileNode = (typeof profile.nodes)[number]
     const nodes = new Map(Array.map(profile.nodes, n => [n.id, n]))

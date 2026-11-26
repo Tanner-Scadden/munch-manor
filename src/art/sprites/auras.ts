@@ -4,17 +4,6 @@ import { FULL_TURN } from '../../render/drawing'
 import type { BoostKind } from '../../world/schema/entitySchema'
 import { type Palette, type Sprite, TRANSPARENT, spriteShapes } from '../sprite'
 
-// AURAS
-
-// NOTE: a boost's aura says what you grabbed with no words, in the house's
-// own things: brass gears ticking round a wound-up toy (the Wind-Up Key), a
-// silver gleam sweeping a ring with a twinkle at the shoulders (Family
-// Silver), music notes rising over sparkling footprints (Dancing Shoes), and
-// a ring of hat pins circling (Hat Pins). Each is a few frames baked once
-// here, laid around the player's feet, so the frame draws one image. The 3D
-// renderer reads the same frames as their stamps (`AURA_STAMPS`), standing
-// what rings the feet on the floor round the player and floating the rest.
-
 const AURA_WIDTH = 29
 const AURA_HEIGHT = 26
 const CENTER = { x: 14, y: 20 }
@@ -27,9 +16,6 @@ export const AURA_FRAME_MS = 90
 
 type Point = Readonly<{ x: number; y: number }>
 
-// NOTE: a little picture in an aura's frame: its pixels from its top left,
-// and whether it rings the feet on the floor (`isAloft` false) or hangs in
-// the air over them (notes, twinkles).
 export type Stamp = Readonly<{
   left: number
   top: number
@@ -85,14 +71,10 @@ const offset = (dx: number, dy: number): Point => ({
 
 const FRAMES = Array.makeBy(AURA_FRAME_COUNT, frame => frame)
 
-// NOTE: a ring of three things (gears, or pins in three colors) comes back
-// to the same picture after a third of a turn, so its frames loop on that.
 const THIRD_TURN = 1 / 3
 
 const spinOf = (frame: number): number =>
   (frame / AURA_FRAME_COUNT) * THIRD_TURN
-
-// WIND-UP KEY
 
 const GEAR_STRAIGHT: ReadonlyArray<string> = [
   '..y..',
@@ -119,8 +101,6 @@ const gearFrame = (frame: number): ReadonlyArray<Stamp> =>
       frame % 2 === 0 ? GEAR_STRAIGHT : GEAR_TURNED,
     ),
   )
-
-// FAMILY SILVER
 
 const RING_DOTS = 28
 const GLEAM_LENGTH = 4
@@ -154,8 +134,6 @@ const silverFrame = (frame: number): ReadonlyArray<Stamp> => {
     aloft(stampAt(offset(8, -9), twinkleAt(frame + 4))),
   ]
 }
-
-// DANCING SHOES
 
 const NOTE: ReadonlyArray<string> = ['.Nn', '.N.', 'NN.']
 const NOTE_FADED: ReadonlyArray<string> = ['.mm', '.m.', 'mm.']
@@ -201,8 +179,6 @@ const danceFrame = (frame: number): ReadonlyArray<Stamp> => [
   noteAt((frame + AURA_FRAME_COUNT / 2) % AURA_FRAME_COUNT, 1),
 ]
 
-// HAT PINS
-
 const PINS = 6
 const PIN_HEADS: ReadonlyArray<string> = ['R', 'P', 'B']
 
@@ -225,8 +201,6 @@ const PIN_PALETTE: Palette = {
 const pinFrame = (frame: number): ReadonlyArray<Stamp> =>
   Array.makeBy(PINS, index => pinAt(frame, index))
 
-// SPRITES
-
 const FRAME_STAMPS: Readonly<
   Record<BoostKind, (frame: number) => ReadonlyArray<Stamp>>
 > = {
@@ -236,13 +210,11 @@ const FRAME_STAMPS: Readonly<
   Pierce: pinFrame,
 }
 
-// NOTE: every aura frame's pixel map.
 const auraPixels = (
   kind: BoostKind,
 ): Array.NonEmptyReadonlyArray<ReadonlyArray<string>> =>
   Array.map(FRAMES, frame => rasterOf(FRAME_STAMPS[kind](frame)))
 
-// NOTE: every aura frame's stamps, for the 3D renderer.
 export const AURA_STAMPS: Readonly<
   Record<BoostKind, Array.NonEmptyReadonlyArray<ReadonlyArray<Stamp>>>
 > = {

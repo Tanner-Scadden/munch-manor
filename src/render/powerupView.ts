@@ -38,8 +38,6 @@ import * as Draw from './draw'
 import { FULL_TURN } from './drawing'
 import { pixelRingSpans } from './pixelCircle'
 
-// COLORS
-
 const HEX_RED = 1
 const HEX_GREEN = 3
 const HEX_BLUE = 5
@@ -52,8 +50,6 @@ const channel = (hex: string, start: number): number =>
 const translucent = (hex: string, alpha: number): string =>
   `rgba(${channel(hex, HEX_RED)}, ${channel(hex, HEX_GREEN)}, ${channel(hex, HEX_BLUE)}, ${alpha})`
 
-// FLOOR
-
 const PICKUP_BOB_MS = 900
 const PICKUP_BOB_PX = 1.5
 const PICKUP_LIFT_PX = 4
@@ -65,8 +61,6 @@ const PICKUP_BLINK_SLOW_MS = 180
 const PICKUP_BLINK_FAST_MS = 80
 const PICKUP_URGENT_MS = 1000
 const PICKUP_DIM_OPACITY = 0.2
-// NOTE: a goodie's foot, a little under its spot: it stands carved there
-// and casts its own shadow, so it draws none.
 const PICKUP_FOOT_DROP = 4
 
 const PICKUP_GLOWS: Readonly<Record<PickupKind, string>> = Record.map(
@@ -125,8 +119,6 @@ export const pickupShapes = (pickup: Pickup): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: until the player has grabbed a goodie, each one on the floor wears
-// a bouncing arrow, in place of a GRAB IT label in the room.
 const GOODIE_ARROW = spriteShapes(
   ['ooooooo', 'owwwwwo', '.owwwo.', '..owo..', '...o...'],
   { o: '#140c10', w: '#f4f1de' },
@@ -148,8 +140,6 @@ export const goodieArrowShapes = (
   ),
 ]
 
-// NOTE: the guided first break's arrow over the doorway where the first
-// Plank Pile goes (src/features/onboarding/firstBreakQuest.ts).
 export const doorArrowShapes: {
   (
     elapsedMs: number,
@@ -174,8 +164,6 @@ export const doorArrowShapes: {
   ],
 )
 
-// NOTE: what the door arrow covers over `point` through its bounce, for a
-// bubble to keep out of (src/screens/game/stallBubble.ts).
 const DOOR_ARROW_WIDTH = 7
 const DOOR_ARROW_HEIGHT = 5
 const DOOR_ARROW_BOUNCE_PX = 2
@@ -192,8 +180,6 @@ export const doorArrowBox = (
     bottom: top + DOOR_ARROW_HEIGHT + DOOR_ARROW_BOUNCE_PX,
   }
 }
-
-// CALLOUTS
 
 type CalloutText = Readonly<{ title: BakedText; blurb: BakedText }>
 
@@ -282,9 +268,6 @@ const explainedShapes = (
   ]
 }
 
-// NOTE: a kind the player has grabbed before pops its icon and its name
-// only, a beat quicker. The sound, sparks, shake, aura, and HUD chip are the
-// same as the first time.
 const namedShapes = (
   frame: CalloutFrame,
   kind: PickupKind,
@@ -315,9 +298,6 @@ const namedShapes = (
   ]
 }
 
-// NOTE: callouts live on the overlay canvas, which repaints only when what it
-// shows changes. So a callout holds still after its pop and fades in a few
-// whole steps instead of drifting every frame.
 export const calloutShapes =
   (camera: Camera) =>
   (callout: Callout): ReadonlyArray<Draw.Shape> => {
@@ -332,10 +312,6 @@ export const calloutShapes =
       : explainedShapes(frame, texts)
   }
 
-// NOTE: a gun's level up pops big and short over the player: its tier word
-// (BEEFY!), then its new name and what changed (src/world/shop/shopUpgrades.ts),
-// baked once for every gun and tier. The font has capitals only, so every
-// line is upper-cased.
 type LevelText = Readonly<{
   word: BakedText
   name: BakedText
@@ -438,10 +414,6 @@ export const burpRingShapes = (callout: Callout): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// AURA
-
-// NOTE: the aura's frames turn on the clock, and with more than one boost
-// running it cycles between them. In a boost's last two seconds it blinks.
 const AURA_CYCLE_MS = 300
 const AURA_FOOT_DROP = 4
 const WARNING_BLINK_MS = 250
@@ -515,8 +487,6 @@ export const auraShapes: {
     )
   },
 )
-
-// HUD
 
 const CHIP_WIDTH = 13
 const CHIP_HEIGHT = 12

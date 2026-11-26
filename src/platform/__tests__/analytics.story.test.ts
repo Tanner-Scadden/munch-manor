@@ -6,6 +6,7 @@ import { Story } from '@effect/ui/testing'
 import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
 import { MAX_PLAYERS } from '@munch/netcode'
 
+import { ApplicationNoDeps } from '../../app/block'
 import { GenerateVisitId } from '../../app/boot'
 import { Message } from '../../app/message'
 import {
@@ -31,7 +32,6 @@ import {
   withDareThings,
 } from '../../test/model.fixture'
 import {
-  APPLICATION,
   SURFACE,
   type StoryStep,
   bootWithoutVisitId,
@@ -119,8 +119,6 @@ const lastHeart: Model = modifyFocus(
   { player: player => UiStruct.evolve(player, { hp: () => 1 }) },
 )
 
-// NOTE: the tenth wave with the front door open and the player on its
-// sill: the next frame walks out.
 const finalWave: Model = escaping(
   UiStruct.evolve(midRun, {
     phase: () =>
@@ -192,8 +190,6 @@ describe('the run summary schema', () => {
     outcome: { _tag: 'GameOver', killedBy: 'Runner' },
     wave: 4,
   })
-  // NOTE: the same run as a build before the dare ladder sent it, with no
-  // mark.
   const { dareMark: _mark, ...unmarked } = summary
 
   test('a summary round trips through JSON and fits the size cap', () => {
@@ -312,8 +308,6 @@ describe('the run summary schema', () => {
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
 
-  // NOTE: a summary from a build with a shop counts its purchases, and has
-  // no keys, cases, or dare things.
   const {
     keysSpent: _keysSpent,
     casesOpened: _casesOpened,
@@ -407,11 +401,8 @@ describe('the run summary schema', () => {
   })
 })
 
-// NOTE: one frame of the run, the one that ends it or not.
 const frame: StoryStep = send(Message.TickedFrame({ deltaTime: FRAME_MS }))
 
-// NOTE: a run's end, `model` one frame before it, sending exactly
-// `summary`, with the end's sounds, cues, and save settled.
 const sends = (model: Model, summary: RunSummary, check?: StoryStep) =>
   Effect.gen(function* () {
     const s = yield* storyOf(model)
@@ -527,8 +518,6 @@ describe('sending at the end of a run', () => {
       }),
   )
 
-  // NOTE: a send that fails is logged in the Command itself, which reports
-  // nothing back, as a send that goes out does.
   it.effect('a failed send changes nothing', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(lastHeart)
@@ -543,8 +532,6 @@ describe('sending at the end of a run', () => {
     }),
   )
 
-  // NOTE: the frame's other Commands (its sounds, cues, and save) settled,
-  // nothing is left: no summary.
   const sendsNothing = (model: Model, check: StoryStep) =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -612,7 +599,7 @@ describe('the sharing setting', () => {
 
   it.effect('the visit id comes from a Command at start', () =>
     Effect.gen(function* () {
-      const s = yield* Story.make(APPLICATION, {})
+      const s = yield* Story.make(ApplicationNoDeps, {})
       expect(s.model.maybeVisitId).toEqual(Option.none())
       s.expectHas(GenerateVisitId.make())
         .resolve(

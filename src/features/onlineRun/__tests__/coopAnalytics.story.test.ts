@@ -38,11 +38,6 @@ import { focusCoop } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom } from '../../coop/update'
 
-// An online co-op run's summary (src/platform/analyticsRun.ts): each player's own
-// client sends one when the run ends, from its own seat, on the room's
-// difficulty, by its own sharing setting. The room is faked with a
-// session already holding a World, as in src/features/onlineRun/__tests__/coopPlay.story.test.ts.
-
 const VISIT_ID = '0123456789abcdef'
 
 const OWN_SLOT = 1
@@ -78,8 +73,6 @@ const endedAs = (phase: Phase): RoomWorld => ({
   world: UiStruct.evolve(fighting.world, { phase: () => phase }),
 })
 
-// NOTE: a player whose own difficulty is not the room's, so the summary
-// shows which it read.
 const player: Model = UiStruct.evolve(asVeteran(initialModel), {
   lessons: lessons =>
     UiStruct.evolve(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
@@ -126,26 +119,20 @@ const inRoom = (
 
 const roomFrame = (nowMs: number) => send(Message.TickedRoomFrame({ nowMs }))
 
-// NOTE: the run under way, drawn from the room once: the Model the next
-// Story starts from, once the room has moved on.
 const midRun = (model: Model = player, seated: Seated = OWN_SEAT) =>
   modelAfter(inRoom(model, fighting, seated), roomFrame(100))
 
-// NOTE: the room's last frame of a run, as the seat's client draws it.
 const endedIn = (phase: Phase, seated: Seated = OWN_SEAT) =>
   Effect.map(midRun(player, seated), running =>
     inRoom(running, endedAs(phase), seated),
   )
 
-// NOTE: LEAVE done: co-op remembers no room and focuses its hub.
 const leaveRoom = steps(
   send(Message.CompletedLeaveRoom()),
   resolveRememberRoom,
   resolveFocusCoop,
 )
 
-// NOTE: a room faked with no pings back and no Deltas timed measured
-// nothing.
 const unmeasured: CrewNetwork = {
   rttP50Ms: 0,
   rttP95Ms: 0,
@@ -170,9 +157,6 @@ const crewOfThree = {
   network: unmeasured,
 } as const
 
-// NOTE: a laggy link's run, as this client's session tallied it: four
-// pings back, one slow; three Deltas timed, one 120 ms late; one
-// reconnect; three corrections, the biggest 12.4 px.
 const laggyNet: NetStats.ClientNet = {
   ...Array.reduce([5, -5, 120], NetStats.emptyClientNet, (net, offMs) =>
     NetStats.arrivedOff(net, offMs),
@@ -206,8 +190,6 @@ const withRoomNet = (model: Model, net: NetStats.ClientNet): Model =>
       }),
   })
 
-// NOTE: the summary this player's client sends: the room's difficulty
-// (Hard), its own seat's stats, the crew's run key.
 const crewSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
@@ -414,7 +396,6 @@ describe("an online co-op run's summary", () => {
     }),
   )
 
-  // NOTE: a seat other than this player's has its own stats, none here.
   it.effect('every client in one run sends the same run key', () =>
     Effect.forEach([0, OWN_SLOT, 2], slot =>
       Effect.gen(function* () {
@@ -487,19 +468,12 @@ describe("an online co-op run's summary", () => {
   )
 })
 
-// NOTE: rank (src/features/end/rankRun.ts): each client pays its own seat. The crew's
-// waves are the run's, on the room's difficulty (Hard here); the awards and
-// revives are the player's own. Seat 1 has the most kills, the revive, and
-// the most downs, so it wins the MVP, Medic, and Most Munched awards.
 describe("an online co-op run's rank", () => {
-  // NOTE: the client tallies its own stats from the room's events, so the
-  // four waves cleared are on its Model.
   const clearedFour = (model: Model): Model =>
     UiStruct.evolve(model, {
       stats: stats => UiStruct.evolve(stats, { wavesCleared: () => 4 }),
     })
 
-  // NOTE: the run's end drawn, its summary sent: the Model it leaves.
   const endWith = (start: Model, world: RoomWorld, nowMs: number) =>
     modelAfter(
       inRoom(start, world),
@@ -516,7 +490,6 @@ describe("an online co-op run's rank", () => {
           endedAs(Phase.GameOver({ wave: 5 })),
           200,
         )
-        // NOTE: 4 waves x 10 x 1.5 = 60, 3 awards x 10, 1 revive x 5.
         expect(ended.rank).toMatchObject({ earnedPoints: 95, earnedBones: 9 })
         expect(ended.runGains.maybeRankGain).toEqual(
           Option.some({

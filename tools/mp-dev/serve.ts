@@ -1,7 +1,3 @@
-// Serves the co-op dev page locally, pointed at any API origin: a local
-// workerd (see e2e.ts) or a preview's API Worker.
-//   bun tools/mp-dev/serve.ts https://munch-manor-api-pr-12.tanner-scadden.workers.dev [port]
-// then open http://localhost:4180/ in two to four tabs.
 import { Console, Effect, Path, String } from 'effect'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
@@ -11,7 +7,6 @@ import { buildPage } from './build'
 
 const here = import.meta.dirname
 
-// NOTE: the page is served for as long as the scope lasts.
 const servePage = (apiOrigin: string, port: number) =>
   Effect.gen(function* () {
     const path = yield* Path.Path

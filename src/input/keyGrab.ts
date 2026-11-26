@@ -7,20 +7,10 @@ import type { Model } from '../app/model'
 import { pixelArtStyle } from '../art/artSize'
 import { pixelIconUrl } from '../art/icons'
 
-// KEYS A BROWSER EXTENSION GRABS
-
-// NOTE: Vimium and its kin listen on the window ahead of the page and
-// swallow the keydown of every letter they bind (d scrolls, t opens a tab,
-// r reloads, H goes back), so the game never sees the press. The keyup
-// still reaches the page, and a keyup with no keydown before it is the tell.
-// Letters only: those are what such extensions bind, and what the game
-// binds most.
 const LETTER_KEY = /^Key[A-Z]$/
 
 export const isLetterKeyCode = (code: string): boolean => LETTER_KEY.test(code)
 
-// NOTE: a key held down while the page loads or gets focus back sends its
-// keyup with no keydown here, so the watch keeps quiet for a moment after.
 export const KEY_WATCH_QUIET_MS = 1000
 
 export type KeyUp = Readonly<{
@@ -46,7 +36,6 @@ export const isGrabbedKeyUp = ({
   nowMs >= quietUntilMs &&
   isLetterKeyCode(code)
 
-// NOTE: two misses before the toast, so one stray keyup never shows it.
 const MISSES_TO_WARN = 2
 
 export const noteMissedKeyDown = (model: Model): Model =>
@@ -56,8 +45,6 @@ export const noteMissedKeyDown = (model: Model): Model =>
 
 export const isKeyGrabToastShown = (model: Model): boolean =>
   model.missedKeyDowns >= MISSES_TO_WARN
-
-// TOAST
 
 const KEYBOARD_ICON = pixelIconUrl(
   [
@@ -93,9 +80,6 @@ const NO_EXTENSION_ICON = pixelIconUrl(
   { P: '#7fd1ff', R: '#ff6b5e' },
 )
 
-// NOTE: shown once, over everything but never in the way: its own
-// animation fades it out, and it takes no pointer. It sits at the root, so
-// moving between screens never plays it again.
 export const keyGrabToastView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null

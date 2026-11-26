@@ -5,27 +5,9 @@ import { acquireAudioEngine, playMusic, playSound } from '../../src/audio/audio'
 import type {} from '../audit/page'
 import { type Cue, SoundtrackRequestJson } from './soundtrackRequest'
 
-// THE SOUNDTRACK, OFFLINE
-//
-// NOTE: runs in headless Chrome (bundled by soundtrack.ts). The game's own
-// audio engine (src/audio/audio.ts) is built around an OfflineAudioContext
-// instead of a live one, and its music scheduler runs on a test clock that
-// this file moves on in 40 ms steps, as the real one ticks. The context's
-// clock is moved to each step and each cue in turn, so every sound starts
-// on its frame and the music is the tune the game plays, all scheduled
-// before one render pass.
-//
-// Chrome sums a node's inputs in an order of its own, so a mix can differ
-// from another render of it in the last bit of a few samples.
-
 const SCHEDULER_SECONDS = 0.04
 const CHANNELS = 2
 
-// NOTE: the engine asks for `new AudioContext()`. It gets the offline one,
-// reading as running, with its clock at `clock.now`: every sound and note
-// is scheduled at its moment before the render starts, so the render is
-// one pass over a finished graph and the same every time. The engine only
-// reads what the two contexts share.
 const liveLike = (
   context: OfflineAudioContext,
   clock: { now: number },
@@ -98,8 +80,6 @@ const render = (
       const isStep = new Set(steps)
       for (const at of moments) {
         clock.now = at
-        // NOTE: no voice limit offline: which voices have ended is the
-        // render's to say, and every voice is already scheduled before it.
         MutableRef.set(engine.activeVoices, 0)
         for (const cue of Array.filter(cues, each => each.seconds === at)) {
           if (cue._tag === 'Sound') {
@@ -118,10 +98,6 @@ const render = (
     }),
   )
 
-// NOTE: the engine disconnects a voice's nodes once its source ends. That
-// lands on the page's thread whenever the event arrives, so it would cut a
-// filter's last, tiny tail at a different sample on every render. Offline
-// the nodes stay connected; an ended voice is silent all the same.
 AudioNode.prototype.disconnect = () => undefined
 
 window.__renderAudio = (json: string): Promise<string> =>

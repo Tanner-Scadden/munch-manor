@@ -1,6 +1,5 @@
 import {
   Array,
-  Data,
   Duration,
   Effect,
   Option,
@@ -15,14 +14,6 @@ import {
 import type { Engine, EngineOpenError, OpenOptions } from './Engine'
 import { type Execute, type Open, Request, Response } from './Protocol'
 
-// SERVER
-
-// NOTE: the server is the worker side. It owns the engine, takes requests
-// one at a time from one queue, and answers each by id. A session that opens
-// a transaction holds the database until it commits or rolls back, and
-// requests from other sessions wait in line behind it. A transaction left
-// idle past `transactionIdleTimeout`, such as by a tab that closed mid-way,
-// is rolled back so the line can move.
 export interface Server {
   readonly offer: (request: Request) => Effect.Effect<void>
 }
@@ -37,14 +28,6 @@ export interface ServerOptions {
 
 const DEFAULT_TRANSACTION_IDLE_TIMEOUT: Duration.Input = '10 seconds'
 
-type EngineState = Data.TaggedEnum<{
-  Closed: {}
-  Ready: { readonly engine: Engine }
-}>
-// NOTE: Ready holds the live engine, a handle no Schema can describe.
-// oxlint-disable-next-line no-restricted-properties
-const EngineState = Data.taggedEnum<EngineState>()
-
 const Owner = Schema.Struct({
   session: Schema.String,
   epoch: Schema.Finite,
@@ -52,7 +35,7 @@ const Owner = Schema.Struct({
 type Owner = typeof Owner.Type
 
 interface State {
-  readonly engine: EngineState
+  readonly maybeEngine: Option.Option<Engine>
   readonly waiting: ReadonlyArray<Execute>
   readonly owner: Option.Option<Owner>
   readonly epoch: number
@@ -82,7 +65,7 @@ export const makeServer = (
     const scope = yield* Effect.scope
     const inbox = yield* Queue.unbounded<Inbound>()
     const state = yield* Ref.make<State>({
-      engine: EngineState.Closed(),
+      maybeEngine: Option.none(),
       waiting: [],
       owner: Option.none(),
       epoch: 0,
@@ -142,7 +125,7 @@ export const makeServer = (
       const maybeNext = Array.findFirstIndex(current.waiting, request =>
         isOwnedBy(current.owner, request.session),
       )
-      if (Option.isNone(maybeNext) || current.engine._tag !== 'Ready') {
+      if (Option.isNone(maybeNext) || Option.isNone(current.maybeEngine)) {
         return
       }
       const index = maybeNext.value
@@ -154,14 +137,14 @@ export const makeServer = (
         ...current,
         waiting: Array.remove(current.waiting, index),
       })
-      yield* run(current.engine.engine, request)
+      yield* run(current.maybeEngine.value, request)
       yield* drain
     })
 
     const execute = (request: Execute): Effect.Effect<void> =>
       Effect.gen(function* () {
         const current = yield* Ref.get(state)
-        if (current.engine._tag !== 'Ready') {
+        if (Option.isNone(current.maybeEngine)) {
           return yield* options.respond(
             Response.cases.Failed.make({ id: request.id, failure: NOT_OPEN }),
           )
@@ -172,18 +155,18 @@ export const makeServer = (
             waiting: Array.append(current.waiting, request),
           })
         }
-        yield* run(current.engine.engine, request)
+        yield* run(current.maybeEngine.value, request)
         yield* drain
       })
 
     const open = (request: Open): Effect.Effect<void> =>
       Effect.gen(function* () {
         const current = yield* Ref.get(state)
-        if (current.engine._tag === 'Ready') {
+        if (Option.isSome(current.maybeEngine)) {
           return yield* options.respond(
             Response.cases.Opened.make({
               id: request.id,
-              persistence: current.engine.engine.persistence,
+              persistence: current.maybeEngine.value.persistence,
             }),
           )
         }
@@ -201,7 +184,7 @@ export const makeServer = (
               Effect.andThen(
                 Ref.update(state, next => ({
                   ...next,
-                  engine: EngineState.Ready({ engine }),
+                  maybeEngine: Option.some(engine),
                 })),
                 options.respond(
                   Response.cases.Opened.make({
@@ -222,8 +205,8 @@ export const makeServer = (
           current.owner,
           owner => owner.session === session,
         )
-        if (isOwner && current.engine._tag === 'Ready') {
-          current.engine.engine.rollback()
+        if (isOwner && Option.isSome(current.maybeEngine)) {
+          current.maybeEngine.value.rollback()
         }
         yield* Ref.set(state, {
           ...current,

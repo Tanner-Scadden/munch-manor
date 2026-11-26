@@ -1,10 +1,3 @@
-// The KABOOM in 3D: a blast as a ball of glowing blocks that bursts out and
-// up, cools from white through yellow and orange to red, and rolls off as
-// smoke, a ring of sparks racing out along the floor, and a flash of light
-// over the room. Read off the blast alone (its spot, its size, its age), with
-// no state, so the same frame draws the same blast, and every player in a
-// co-op room sees the same one.
-
 import { Array, Option } from 'effect'
 
 import { BLAST_FLASH_MS } from '../../shared/constants'
@@ -12,10 +5,6 @@ import { unitOf } from '../../shared/prng'
 import type { Blast } from '../../world/schema/worldSchema'
 import { easeOut } from '../../world/step/geometry'
 
-// NOTE: one block of the blast: its spot on the floor, how high it hangs, its
-// width and height, in whole game pixels (as deep as it is wide), its color,
-// and how brightly it glows (0 for smoke, which the room's light falls on
-// instead).
 export type BlastPiece = Readonly<{
   x: number
   footY: number
@@ -26,20 +15,14 @@ export type BlastPiece = Readonly<{
   glow: number
 }>
 
-// NOTE: the fireball's blocks, the smoke's, and the ring's sparks.
 const FIRE_COUNT = 40
 const SMOKE_COUNT = 12
 const RING_COUNT = 24
 
-// NOTE: the flash's first beat, white hot, as the 2D game drew it.
 const FLASH_MS = 60
 
-// NOTE: the fireball's reach at its widest, as a share of the blast's radius:
-// the blocks fill the ring the blast hurts, not past it.
 const BALL_REACH = 0.8
 
-// NOTE: from hottest to coolest, each with its glow. The bloom picks up a
-// glow over 2.
 const HEAT: ReadonlyArray<
   Readonly<{ above: number; color: number; glow: number }>
 > = [
@@ -58,20 +41,13 @@ const heatOf = (heat: number): Readonly<{ color: number; glow: number }> =>
     () => ({ color: SMOKE_COLOR, glow: 0 }),
   )
 
-// NOTE: a blast's own rolls: the same spot rolls the same blocks.
 const seedOf = (blast: Blast): number =>
   Math.imul(Math.round(blast.x), 73856093) ^
   Math.imul(Math.round(blast.y), 19349663)
 
-// NOTE: how far through its life a blast is, 0 to 1.
 const progressOf = (blast: Blast): number =>
   Math.min(1, Math.max(0, blast.ageMs / BLAST_FLASH_MS))
 
-// NOTE: a block placed by where it shows on screen: `across` and `up` from
-// the ball's middle, which hangs `middle` pixels over the floor. A block's
-// top shows as tall as its front, so it hangs by its middle. Its foot stays
-// on the blast's own row, a pixel or two either way, so the ball reads round
-// rather than as a column climbing north.
 const placed = (
   input: Readonly<{
     blast: Blast
@@ -90,8 +66,6 @@ const placed = (
   }
 }
 
-// NOTE: how high the fireball's middle hangs over the blast's row, in game
-// pixels: low, climbing a little as it burns. Its light stands there too.
 export const ballMiddleOf = (blast: Blast): number =>
   blast.radius * BALL_REACH * 0.45 + progressOf(blast) * 6
 
@@ -107,7 +81,6 @@ export const blastPiecesOf = (blast: Blast): ReadonlyArray<BlastPiece> => {
   const fire = Array.makeBy(FIRE_COUNT, (index): BlastPiece => {
     const turn = roll(index, 1) * Math.PI * 2
     const out = Math.sqrt(roll(index, 2)) * reach * (0.25 + 0.75 * spread)
-    // NOTE: the middle burns longest, the rim cools first.
     const rim = out / Math.max(1, reach)
     const heat = isFlash
       ? 1
@@ -132,8 +105,6 @@ export const blastPiecesOf = (blast: Blast): ReadonlyArray<BlastPiece> => {
       glow,
     }
   })
-  // NOTE: the smoke rolls up off the top of the fire once it has cooled a
-  // little, growing as it climbs, then thinning to nothing.
   const smoke =
     progress < 0.35
       ? []
@@ -160,8 +131,6 @@ export const blastPiecesOf = (blast: Blast): ReadonlyArray<BlastPiece> => {
             glow: 0,
           }
         })
-  // NOTE: the shockwave, flat sparks racing out along the floor, gone by
-  // halfway.
   const ring =
     progress > 0.5
       ? []
@@ -181,8 +150,6 @@ export const blastPiecesOf = (blast: Blast): ReadonlyArray<BlastPiece> => {
   return [...fire, ...smoke, ...ring]
 }
 
-// NOTE: how bright a blast lights the room, 0 to 1: everything at once,
-// then gone fast.
 export const blastLightOf = (blast: Blast): number => {
   const fade = 1 - progressOf(blast)
   return fade * fade

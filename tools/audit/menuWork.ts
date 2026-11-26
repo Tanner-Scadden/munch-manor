@@ -1,12 +1,3 @@
-// What the page does each second while a player sits in a menu, which is
-// what heats a phone left on one: frames the game's update changes, view
-// renders, frames the 3D world draws, and the GPU's render passes and draw
-// calls (counted on the WebGL2 context, as gpuWork.ts counts them). Each
-// menu is measured as it rests, after its opening animations, for
-// `SECONDS`, and again with reduced motion (`MOTION=0` skips that). A menu
-// with a budget fails the audit past it.
-//   bun run perf:menus
-// ONLY picks menus (`home,lobby,profile,munchopedia,pause,end,coopLobby`).
 import {
   Array,
   Config,
@@ -32,8 +23,6 @@ import {
 } from './lib'
 import { attempt, decodedFrom, failWith } from './page'
 
-// NOTE: every draw call and render pass on the WebGL2 context, and how
-// many animation frames drew anything at all.
 const COUNTER = `(() => {
   const proto = WebGL2RenderingContext.prototype
   const state = { passes: 0, draws: 0, drewThisFrame: false, drawnFrames: 0, frames: 0 }
@@ -132,15 +121,6 @@ const MENUS: Readonly<Record<string, Menu>> = {
   coopLobby: { query: 'coop=lobby', open: [], isDialog: false, isLobby: false },
 }
 
-// NOTE: the most frames a second each menu may draw the 3D world, and the
-// most frames its update may change, as it rests, with motion and without.
-// The title and every menu and lobby over it go at a menu's 30 frames a
-// second (src/app/frameGate.ts), the diorama drawn on each
-// (src/render/iso/diorama.ts). A menu over a World that stands still holds
-// its picture (src/render/iso/hold.ts): the pause screen draws nothing, and
-// the end card nothing once its beat's particles have landed, while its own
-// animations go on at play's pace. Before: the title's menus updated 60
-// times a second, and the end card drew the world 60.
 type Budget = Readonly<{ drawn: number; updates: number }>
 
 const MENU_PACE: Budget = { drawn: 31, updates: 31 }
@@ -198,7 +178,6 @@ const countsOf = (
     if (menu.isLobby) {
       yield* waitForLobby(page)
     }
-    // NOTE: the opening animations and any sprite still loading done.
     yield* wait(2500)
     yield* attempt(() => page.evaluate(RESET))
     yield* wait(seconds * 1000)

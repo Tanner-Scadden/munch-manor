@@ -24,8 +24,6 @@ import { debutKinds } from '../../world/waves/wavePlans'
 import { maybeBossDoor } from '../../world/zombies/boss'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 
-// MARKER SPOTS
-
 const DOOR_MARKER_INSET = 20
 const DOOR_MARKER_PULSE_MS = 1400
 const DOOR_MARKER_ROW_PX = 9
@@ -49,10 +47,6 @@ const markerAnchor = (
     : inside
 }
 
-// NOTE: in portrait the world window shows only part of the room, so a
-// marker whose door is out of view is pinned to the window's edge with an
-// arrow toward the door. This is the preview between waves, not a warning
-// during one.
 type Side = 'Left' | 'Inside' | 'Right'
 
 type Pinned = Readonly<{ point: Vector; side: Side }>
@@ -61,8 +55,6 @@ const EDGE_MARGIN_PX = 5
 const ARROW_GAP_PX = 2
 const ARROW_LENGTH_PX = 3
 
-// NOTE: a zoomed portrait window puts world points between screen pixels,
-// so the anchor is rounded to keep the marker's edges crisp.
 const pinToWindow = (
   window: Box,
   { x: anchorX, y: anchorY }: Vector,
@@ -110,11 +102,6 @@ const markerEdgeOpacity = (elapsedMs: number): number =>
   (1 - DOOR_MARKER_EDGE_DIM) *
     (0.5 + 0.5 * DetMath.sin((FULL_TURN * elapsedMs) / DOOR_MARKER_PULSE_MS))
 
-// NOTE: where a door's marker goes. A marker shows only for a door whose
-// spot is on the screen, never one above or below the window, so nothing
-// points at a door out of view. A door behind an open exit that is out of
-// view counts at that exit's doorway instead when the doorway is in view,
-// since that is where its zombies come into the room the player is in.
 type MarkerSpot = Readonly<{ key: string; anchor: Vector; outward: Vector }>
 
 const isRowInWindow = (window: Box, y: number): boolean =>
@@ -155,8 +142,6 @@ const markerSpotOf = (
     ? Option.some(own)
     : Option.filter(exitSpotOf(level, door), isShown)
 }
-
-// BOSS MARKER
 
 const BOSS_TAG = bakeText('BOSS', 'Defeat')
 const BOSS_MARKER_WIDTH = 30
@@ -233,10 +218,6 @@ export const wavePreviewShapes: {
     Phase.match(model.phase, {
       Ready: () => [],
       Arriving: () => [],
-      // NOTE: only Uncle Chunk's marker, at his door. The doors' zombie
-      // counts went on 2026-11-14 (owner): the spawn doors weight toward
-      // where the players stand, so a count by a door promised what the wave
-      // did not keep.
       Preparation: () =>
         bossMarkerShapes(
           levelOf(model),
@@ -252,8 +233,6 @@ export const wavePreviewShapes: {
       GameOver: () => [],
     }),
 )
-
-// SCREEN READER
 
 const bossLabel = (boss: Boss): string =>
   Option.match(maybeBossDoor(boss), {

@@ -23,10 +23,6 @@ import { sceneOf } from '../../../test/testing'
 import { MISSIONS_TITLE, MISSION_NAMES } from '../../../world/names'
 import { missionsOn } from '../missions'
 
-// The home menu's mission card (src/features/missions/missionCard.ts): the
-// day's three as pictures with bars, which open the panel of rows with the
-// day's reroll.
-
 const TODAY = '2026-11-12'
 
 const rolled = missionsOn(knowingDay(home, TODAY), TODAY)
@@ -39,7 +35,6 @@ const large = idAt(2)
 const untouched = (id: MissionId): string =>
   `${MISSION_NAMES[id]}: 0 of ${MISSION_RULES[id].goal}`
 
-// NOTE: the day's Medium done, the other two untouched.
 const started = UiStruct.evolve(knowingDay(home, TODAY), {
   missions: () => ({
     ...noMissions,

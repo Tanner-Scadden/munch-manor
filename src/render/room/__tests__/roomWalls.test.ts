@@ -8,8 +8,6 @@ import type { DoorId } from '../../../world/schema/entitySchema'
 import { DOOR_DARK_COLOR, DOOR_DIM_COLOR } from '../roomPalette'
 import { doorBox, doorwayShapes } from '../roomWalls'
 
-// NOTE: every spawn doorway the manor opens, every exit open; the kitchen's
-// window and back door draw their own art.
 const LEVEL = levelFor(MANOR_SPEC, ['Kitchen', 'West', 'East', 'Far'])
 const DOORWAYS: ReadonlyArray<DoorId> = Array.filter(
   LEVEL.doorIds,
@@ -23,9 +21,6 @@ describe('the doorways in 3D', () => {
     )
   })
 
-  // NOTE: the walls stand round a doorway in 3D, so a door's leaves, head,
-  // or nail drawn front-on would lie flat on its floor: only the dark floor
-  // and its dim threshold lie in the opening.
   test('nothing but the dark floor lies in a doorway', () => {
     const rects = rectsOf(doorwayShapes(LEVEL), { x: 0, y: 0 })
     Array.forEach(DOORWAYS, id => {

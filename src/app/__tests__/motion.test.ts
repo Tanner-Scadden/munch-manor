@@ -12,19 +12,6 @@ import profileCss from '../../features/profile/profile.css?raw'
 import proofCss from '../../features/proof/proof.css?raw'
 import stylesCss from '../styles.css?raw'
 
-// NOTE: a press lands where a button is when the finger goes down and
-// comes up. A button that slides, grows, or spins into place while a player
-// taps it is somewhere else by then, so the press missed or hit what was
-// behind it. So an animation that moves an element (transform, translate,
-// scale, rotate, or its insets) may only run on art: an icon or a face inside a
-// button, a badge, a particle, a sprite. A button, and anything holding
-// one, comes in by fading, glowing, or flashing, with its box in place
-// from the first frame.
-//
-// Every keyframe that moves is listed here with what it moves, and each of
-// those was checked to be art. A new one fails this test until it is added
-// with what it moves.
-
 const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/app/styles.css', stylesCss],
   ['src/features/home/menu.css', menuCss],
@@ -39,7 +26,6 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const MOVING_ART: Readonly<Record<string, string>> = {
-  // styles.css
   'hold-buy-shake':
     'the hold-to-buy button, which acts on pointerdown and its release, never on a click',
   'ghost-drag': 'the ghost stick thumb, a picture',
@@ -48,7 +34,6 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'quest-confetti': 'confetti',
   'start-wave-point-bob':
     'the arrow over START WAVE, aria-hidden art beside the button, never inside or holding it',
-  // menu.css
   'play-shine': "the PLAY face's shine, a pseudo-element",
   'home-coop-bob': 'the CO-OP icon inside its button',
   'manor-pip-bob': 'the MORE badge',
@@ -76,7 +61,6 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'turn-phone': 'the turn-the-phone icon',
   'end-button-pop': "an end button's icon and words, inside the button",
   'end-retry-spin': "RETRY's icon",
-  // profile.css
   'tab-icon-pop': "a tab's icon, inside the tab",
   'dice-wiggle': "the dice's icon, inside its button",
   'look-bounce': 'the character preview sprite',
@@ -95,12 +79,10 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'zap-right': 'the link animation',
   'zap-strike': 'the link animation',
   'confirm-wobble': "the reset question's text, beside its buttons",
-  // closet.css
   'closet-hop-a': "a bought look's face, inside its option",
   'closet-hop-b': "a bought look's face, inside its option",
   'closet-shake-a': "an option's price or padlock, inside its option",
   'closet-shake-b': "an option's price or padlock, inside its option",
-  // coop/coop.css
   'coop-wobble': 'the co-op problem line, text and an icon',
   'coop-bob': "players' heads and icons",
   'coop-hop': "players' heads",
@@ -118,7 +100,6 @@ const MOVING_ART: Readonly<Record<string, string>> = {
     "the room code's symbols, aria-hidden art inside the code button",
   'coop-poof': 'a dust puff in a lobby seat, aria-hidden art',
   'coop-poof-out': 'a dust puff in a lobby seat, aria-hidden art',
-  // lobby/lobby.css
   'dare-unfold':
     "the dare card's fold, aria-hidden paper over the card: the card and its buttons stay put and fade in once it is open",
   'dare-fold-back':

@@ -9,9 +9,6 @@ import {
   windOffsetAt,
 } from '../wind'
 
-// The draft through the manor (src/render/iso/wind.ts): read off the World's
-// clock alone, in whole pixels, posed ten times a second.
-
 const TIMES = Array.map(Array.range(0, 400), step => step * 0.05)
 
 describe('the wind', () => {

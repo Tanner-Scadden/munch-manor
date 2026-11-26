@@ -102,11 +102,6 @@ import { homeButton, homeFocusAttrs, keyBadgeView } from './homeAttributes'
 import { installTileView } from './installView'
 import { updateGiftView } from './updateGift'
 
-// PLAY
-
-// NOTE: show, don't explain. PLAY is the dare your friends hand you, a
-// folded napkin card with I DARE YOU scrawled over the play mark, and the
-// lobby it opens (src/features/lobby/view.ts) is the card you fill in.
 const playButtonView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -129,9 +124,6 @@ const playButtonView = (
       ...keyBadgeView(model, 'Play', h),
     )
 
-// NOTE: a difficulty reads as a row of four skulls: as many lit as the
-// level, each in that level's color and face, and the fourth dim with a
-// padlock badge while Nightmare is locked.
 const skullMeterView = (
   model: Model,
   difficulty: Difficulty,
@@ -165,8 +157,6 @@ const skullMeterView = (
     )
 }
 
-// NOTE: CO-OP is two heads, pink and teal, by PLAY, open from the first
-// visit (MULTIPLAYER.md, decision 14).
 const coopButtonView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -193,8 +183,6 @@ const playClusterView = (
       playButtonView(model, h),
       IS_COOP_RELEASED ? coopButtonView(model, h) : null,
     )
-
-// THE MANOR HAND
 
 type CardLook = Readonly<{
   title: string
@@ -235,8 +223,6 @@ const CARD_LOOKS: Readonly<Record<HandCard, CardLook>> = {
   },
 }
 
-// NOTE: show, don't explain. A card is its picture and its name. Only the
-// Munchopedia adds a tally, since it changes as the player finds zombies.
 const maybeCardTally = (model: Model, card: HandCard): Option.Option<string> =>
   card === 'Munchopedia'
     ? Option.some(
@@ -294,9 +280,6 @@ const manorAriaLabel = (model: Model): string =>
       )}`,
   })
 
-// NOTE: the badges of the cards inside bubble up to the closed MANOR button
-// as little pips, each the card's own icon with a red dot, so What's New and
-// the Munchopedia still show their news without opening the hand.
 const manorPipsView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -350,8 +333,6 @@ const handKeyMessage = (
       )
 }
 
-// NOTE: the card button stays square to the screen so a tap anywhere in it
-// lands, and only its face tilts into the fan. The face takes no taps.
 const cardBodyView = (
   model: Model,
   card: HandCard,
@@ -389,10 +370,6 @@ const LINK_CARD_URLS: Readonly<Record<LinkHandCard, string>> = {
   Code: SOURCE_URL,
 }
 
-// NOTE: what a hand card wears, a button or the CODE link: its id, its
-// place in the fan, its label and key as attributes, and the arrow keys
-// stepping focus between the cards (the browser's own scroll held back only
-// for those). Each card chains them on its own concrete builder.
 const handCardAttrs = (
   model: Model,
   card: HandCard,
@@ -477,12 +454,6 @@ const handView = (
   ]
 }
 
-// STAGE
-
-// NOTE: the player walks on the spot in the middle of the stage, drawn on
-// the canvas by screens.ts. This button sits over them, so a tap on your
-// character opens the picker. The hand's Character card is the one a
-// keyboard or a screen reader reaches.
 const heroButtonView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -495,8 +466,6 @@ const heroButtonView = (
     .attr('aria-haspopup', 'dialog')
     .on('click', HomeMessage.ClickedCharacterButton())
     .children(rankChipView(model, h))
-
-// CORNER
 
 const fullscreenButtonView = (
   model: Model,
@@ -515,8 +484,6 @@ const fullscreenButtonView = (
         .children(iconView('home-corner-icon', FULLSCREEN_ICON, h))
     : null
 
-// NOTE: the gear sits in the corner itself, the coffee just inside it, and
-// full screen, where the browser can do it, inside that.
 const settingsButtonView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -531,10 +498,6 @@ const settingsButtonView = (
       ...keyBadgeView(model, 'Settings', h),
     )
 
-// NOTE: Buy Rattles a coffee, just left of the gear: a pixel mug with
-// steam rising from it. It is a real link, so the browser opens the tip
-// jar from the tap itself and no popup blocker stops it. Its click still
-// sends ClickedSupportButton for the tap sound, and never prevents the link.
 const COFFEE_LABEL = 'Buy Rattles a coffee'
 
 const STEAM_WISPS = 2
@@ -572,8 +535,6 @@ const supportButtonView = (
         ),
   })
 
-// NEW ENTRY
-
 const newEntryText = (model: Model): Option.Option<string> =>
   Option.map(Array.head(model.home.newEntries), kind =>
     model.home.newEntries.length > 1
@@ -604,7 +565,6 @@ const newEntryButtonView = (
         ),
   })
 
-// NOTE: the end screens only tell. The entry opens from the menu.
 export const newEntryNoticeView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
@@ -629,15 +589,8 @@ export const newEntryNoticeView: {
       : null,
 )
 
-// TURN HINT
-
 export const TURN_HINT_TEXT = 'Turn sideways to see more'
 
-// NOTE: portrait zooms in on part of the room, so the first time a phone
-// held upright is on the home menu it gets a nudge to turn: the tipping
-// phone and a short line. A tap on it, or turning the phone, dismisses it
-// for good (the save keeps that). Only the pill takes taps, so it never
-// blocks a button. isPortrait is false on a keyboard and mouse.
 const turnHintView = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -654,8 +607,6 @@ const turnHintView = (
           h.span.class('home-turn-text').children(TURN_HINT_TEXT),
         )
     : null
-
-// HOME MENU
 
 export const homeMenuView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
@@ -700,8 +651,6 @@ export const homeMenuView: {
           )
       : null,
 )
-
-// PANELS
 
 const MENU_KEYS_TITLE_ID = 'menu-keys-title'
 
@@ -753,8 +702,6 @@ const menuKeysView = (h: ApplicationViewBuilder): ApplicationHtml =>
         ),
       ),
     )
-
-// DIFFICULTY
 
 const freshBadgeView = (
   model: Model,
@@ -819,10 +766,6 @@ const difficultyChoiceView = (
     )
 }
 
-// NOTE: the first-run card's TUTORIAL or SKIP IT (owner, 2026-11-07): the
-// tutorial's aim icon or a skip arrow, each one or two words. TUTORIAL is
-// lit until SKIP IT is tapped, and the pick holds until a difficulty starts
-// the run.
 const TUTORIAL_CHOICES: ReadonlyArray<TutorialChoice> = ['Tutorial', 'Skip']
 
 const TUTORIAL_CHOICE_ICONS: Readonly<Record<TutorialChoice, string>> = {
@@ -835,8 +778,6 @@ const TUTORIAL_CHOICE_LABELS: Readonly<Record<TutorialChoice, string>> = {
   Skip: 'Skip the tutorial',
 }
 
-// NOTE: a tap on TUTORIAL or SKIP IT hands focus back to the difficulty
-// tile the card opened on, so Enter still picks it.
 const tutorialChoiceView = (
   chosen: TutorialChoice,
   choice: TutorialChoice,
@@ -881,8 +822,6 @@ const tutorialChoicesView = (
 
 type PanelText = Readonly<{ title: string; blurb: string }>
 
-// NOTE: the shelf speaks through its pictures, so its blurb is only read
-// aloud.
 const PROOF_TEXT: PanelText = {
   title: PROOF_NAME,
   blurb:
@@ -939,9 +878,6 @@ const doneButtonView = (
     h,
   )
 
-// NOTE: PLAY TUTORIAL, for a player who wants the lessons again: it starts
-// the tutorial's practice run at once, so it asks nothing first. Only at
-// home, never over a paused run.
 const playTutorialButtonView = (h: ApplicationViewBuilder): ApplicationHtml =>
   h.button
     .attr('type', 'button')
@@ -952,8 +888,6 @@ const playTutorialButtonView = (h: ApplicationViewBuilder): ApplicationHtml =>
       h.span.children('Play tutorial'),
     )
 
-// NOTE: under How to play's cards: the menu's keys on a keyboard, the pad
-// and its buttons with a controller in hand.
 const howToPlayUnder = (
   model: Model,
   h: ApplicationViewBuilder,
@@ -1035,10 +969,6 @@ const panelBodyView = (
   }
 }
 
-// NOTE: show, don't explain. How to play and the difficulty
-// picker by PLAY speak through their icons, so their blurb is only read
-// aloud, as is the journal's tally past its Zombies tab. What's New shows its day's title between its page arrows instead.
-// NOTE: the Dare Journal's zombie tally shows over its Zombies tab only.
 const isBlurbShown = (model: Model): boolean =>
   (model.panel === 'Munchopedia' &&
     tabOfPage(model.munchopediaPage) === 'Zombies') ||
@@ -1062,10 +992,6 @@ const panelView = (
   ]
 }
 
-// NOTE: the components inside the menu panel, the Munchopedia and the
-// Proof Shelf. The root draws them with its props, so it hands their views
-// in (src/app/dialogs.ts), each given the panel's Done button for its
-// `done` slot.
 type PanelChildView = (
   model: Model,
   done: ApplicationHtml,
@@ -1077,8 +1003,6 @@ export type PanelChildViews = Readonly<{
   proof: PanelChildView
 }>
 
-// NOTE: the menu panel's insides, for the root's panel Dialog
-// (src/app/dialogs.ts).
 export const menuPanelInsidesView: {
   (
     parts: DialogParts,
@@ -1093,8 +1017,6 @@ export const menuPanelInsidesView: {
   ): ReadonlyArray<ApplicationHtml>
 } = Function.dual(4, panelView)
 
-// NOTE: the MANOR hand's insides, for the root's hand Dialog
-// (src/app/dialogs.ts).
 export const manorHandInsidesView: {
   (
     parts: DialogParts,

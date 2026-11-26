@@ -1,21 +1,3 @@
-// The Phase 0 exit check (MULTIPLAYER.md): the World's step bundles alone,
-// with no UI, art, audio, camera, input, store, or sync module in it, and
-// it runs in workerd, the runtime of Durable Objects, playing bit for bit
-// what Bun plays.
-//
-// 1. Bundles worldWorker.ts (stepWorld, the co-op room's adapter and binary
-//    wire) into out/ and fails on any forbidden module the
-//    bundle pulls in, or on any runtime code of the netcode package.
-// 2. Lists the files infra's typecheck sees (its own effect-tsgo, with
-//    --listFilesOnly) and fails on any of the same game modules there: an
-//    `import type` the bundle drops still pulls the client into the
-//    Worker's types.
-// 3. Plays a World 600 ticks in Bun and in a local workerd from infra's
-//    binary (or WORKERD), and fails unless both give the same World.
-// 4. Plays a co-op room's World from its seats the same way.
-//
-//   bun run world:check
-
 import './globals'
 import {
   Array,
@@ -66,19 +48,11 @@ const rootOf = Effect.gen(function* () {
   return path.resolve(here, '../..')
 })
 
-// NOTE: the game modules a room may carry: the World's own folder and the
-// small helpers under it (AGENTS.md "Folders"), but none of their tests.
-// munch/folder-imports keeps src/world/ importing only those, so a client
-// module here means that rule was silenced or bypassed.
 const ROOM_FOLDERS = /^src\/(world|shared)\//
 
 const isRoomModule = (path: string): boolean =>
   ROOM_FOLDERS.test(path) && !String.includes('/__tests__/')(path)
 
-// NOTE: what infra's typecheck may see that a room may not carry: the
-// player scope the sync Worker serves and its migrations, the run summary
-// the analytics Worker decodes, and the recorded runs' endpoint it keeps in
-// R2 (infra/tsconfig.json includes them).
 const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
   /^src\/platform\/playerScope\.ts$/,
   /^src\/platform\/playerMigrations\.ts$/,
@@ -133,9 +107,6 @@ const bundle = Effect.gen(function* () {
   )
 })
 
-// NOTE: a package other than Effect and Effect UI's pure modules, any of the
-// netcode package's runtime code, or a game module outside the room's
-// folders.
 const problemsOf = (inputs: ReadonlyArray<string>): ReadonlyArray<string> =>
   Array.filter(inputs, path =>
     String.includes('node_modules/')(path)
@@ -144,7 +115,6 @@ const problemsOf = (inputs: ReadonlyArray<string>): ReadonlyArray<string> =>
         (String.startsWith('src/')(path) && !isRoomModule(path)),
   )
 
-// NOTE: a binary from infra's packages, or the run fails with `reason`.
 const infraBinaryOr = (
   name: string,
   override: Option.Option<string>,
@@ -158,8 +128,6 @@ const infraBinaryOr = (
     )
   })
 
-// NOTE: every file of the repo infra's typecheck reads, by type or at run
-// time, from its own TypeScript and tsconfig.
 const infraTypeFiles = Effect.gen(function* () {
   const path = yield* Path.Path
   const root = yield* rootOf
@@ -199,8 +167,6 @@ const infraTypeProblemsOf = (
       !Array.some(INFRA_OWN_MODULES, own => own.test(path)),
   )
 
-// NOTE: the requests as JSON for the worker, which reads them back
-// (worldWorker.ts).
 const encodePlayRequest = encodeJson(
   Schema.Struct({
     world: Schema.String,
@@ -217,7 +183,6 @@ const encodeRoomPlayRequest = encodeJson(
   }),
 )
 
-// NOTE: a local workerd for this one request, gone once it answers.
 const playInWorkerd = (body: string, route: string) =>
   Effect.scoped(
     Effect.gen(function* () {
@@ -274,7 +239,6 @@ const checkInfraTypes = Effect.gen(function* () {
   yield* Console.log('No client module in its types either.')
 })
 
-// NOTE: a World mid-wave, with zombies about, from the scripted player.
 const played = Array.reduce(
   globalThis.Array.from({ length: 900 }),
   startedRun(7, 'Campaign'),
@@ -283,9 +247,6 @@ const played = Array.reduce(
 )
 const intended = refreshIntent(played)
 
-// NOTE: co-op's crew joins the same World mid-wave (Phase 1): teammates who
-// walk, aim, fire, and stab their own way, so the bundle plays every seat:
-// the last teammate holds the knife, so its trigger stabs.
 const MATE_INTENTS: ReadonlyArray<Intent> = [
   {
     move: { x: -0.6, y: 0.8 },
@@ -344,8 +305,6 @@ const checkPlayers = (players: number) =>
     )
   })
 
-// NOTE: a co-op room's World from its seats (src/world/net/roomWorld.ts): the lobby's
-// players walking and firing their own ways from the start of the run.
 const ROOM_INPUTS: ReadonlyArray<RoomPlayRequest['inputs'][number]> = [
   [0, { moveX: 90, moveY: -90, aimX: 0, aimY: -1024, buttons: 1, action: 0 }],
   [1, { moveX: -127, moveY: 0, aimX: 0, aimY: 0, buttons: 1, action: 0 }],

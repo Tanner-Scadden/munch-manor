@@ -26,18 +26,6 @@ import { isCardHolding, pressedPadKey } from './play'
 import { isPaused } from './run'
 import { type UpdateStep, defineHandlers, unchanged } from './step'
 
-// A controller in every menu (docs/INPUT_PLAN.md, phase 2): the d-pad and
-// the left stick move focus, A presses what has focus, B backs out as
-// Escape does, and the bumpers turn tabs. Which way each goes is read off
-// menuState: a screen that steps its own focus by arrows (the home menu,
-// the lobby) gets the arrow key, a dialog gets its focus moved on the page
-// and an Escape of its own, and the rest move focus on the page and read
-// Enter and Escape as keys. Update only picks the Command, so it stays pure.
-
-// COMMANDS
-
-// NOTE: a move, a tab turned, or a dialog's Escape on the page changes
-// nothing the Model holds, so it reports nothing.
 export const MovePadFocus = Command.make(
   'MovePadFocus',
   { args: { scope: PadScope, direction: PadDirection } },
@@ -66,11 +54,6 @@ export const EscapePadDialog = Command.make(
   () => Effect.as(escapePadDialog, Component.noop),
 )
 
-// ROUTES
-
-// NOTE: how a menu takes a pad. `Arrows`: it steps its own focus by arrow
-// keys, as the keyboard does. `Page`: focus moves on the page in the scope.
-// Back is Escape: a dialog's own (`Dialog`) or the root's key (`Key`).
 type DirectionRoute = 'Arrows' | 'Page'
 type BackRoute = 'Dialog' | 'Key'
 
@@ -86,9 +69,6 @@ const DIALOG: MenuRoute = {
   back: 'Dialog',
 }
 
-// NOTE: every menu by its state, so a new one fails typecheck until it says
-// how a pad drives it. Playing is no menu: the run's own buttons have the
-// pad there (src/input/keyActions.ts).
 const MENU_ROUTES: {
   readonly [Tag in MenuState['_tag']]: Option.Option<MenuRoute>
 } = {
@@ -106,17 +86,12 @@ const MENU_ROUTES: {
   EndScreen: Option.some({ scope: 'Page', direction: 'Page', back: 'Key' }),
 }
 
-// NOTE: the leave panel over pause is answered by the pad itself, A to
-// leave and B to stay (leaveRunFromPad in src/app/update/home.ts), so a
-// player never has to find the right button to get out of a run.
 const isAnsweredByPad = (model: Model): boolean =>
   isPaused(model.phase) && isPanelOpen(model, 'LeaveRun')
 
 const menuRouteOf = (model: Model): Option.Option<MenuRoute> =>
   isAnsweredByPad(model) ? Option.none() : MENU_ROUTES[menuState(model)._tag]
 
-// NOTE: a pad's menus are up: what the PadRepeat Subscription watches, so
-// a stick held in a run sends nothing.
 export const isPadMenuUp = (model: Model): boolean =>
   Option.isSome(model.input.maybeGamepad) &&
   (Option.isSome(menuRouteOf(model)) || isCardHolding(model))
@@ -159,15 +134,9 @@ const pressStep = (route: MenuRoute, press: PadMenuPress): UpdateStep => {
   }
 }
 
-// NOTE: a card that holds the run (the new zombie card, the display
-// case's) is no menu, but A answers it as Enter does.
 const cardStep = (press: PadMenuPress): UpdateStep =>
   press === 'Accept' ? pressedPadKey(ACCEPT_KEY) : unchanged
 
-// NOTE: the menu presses of one poll, read against the Model before it: a
-// newly pointed direction and each newly pressed menu button. The route is
-// picked from that Model too, so a press that leaves a menu (A leaving a
-// run) never presses the screen it lands on as well.
 export const padMenuSteps = ({
   model,
   pad,
@@ -187,7 +156,6 @@ export const padMenuSteps = ({
   })
 }
 
-// NOTE: a direction held past the repeat delay steps again.
 const repeatedDirection =
   (direction: PadDirection): UpdateStep =>
   $ =>
@@ -196,8 +164,6 @@ const repeatedDirection =
       onSome: route => directionStep(route, direction)($),
     })
 
-// NOTE: A found nothing with focus: a screen that reads keys takes it as
-// Enter (PLAY on the home menu, START in the lobby), as a key would.
 const clickedNothing = (scope: PadScope, outcome: PadClick): UpdateStep =>
   outcome === 'NothingFocused' && scope !== 'TopDialog'
     ? pressedPadKey(ACCEPT_KEY)

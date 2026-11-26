@@ -1,14 +1,3 @@
-// The live room's element, `<studio-world>`: the audit harness in a frame,
-// showing the scene its `query` names through the game's own 3D renderer,
-// with Munch Studio's marks over it (the tile grid, the hovered tile, the
-// notes' areas) and the pixel loupe. The harness says where its camera is and
-// hands over the world's pixels through its bridge (./bridge.ts), so a press
-// lands on the world tile under it and the loupe reads the very pixels drawn.
-// It keeps a copy of the frame around the picked tiles in `.live-shot`, the
-// picture a note sends. The marks and the loupe's grid are SVG, the loupe's
-// pixels and the shot are ImageBitmaps on `bitmaprenderer` canvases, and the
-// pixels are read off the world's own WebGL context: no 2D canvas. The light and color lab's edits (`tuning`) reach the
-// harness's renderer through the same bridge, so the room shows them live.
 import { Array, Effect, Option, Record, Schema, String } from 'effect'
 
 import { Html } from '@effect/ui/html'
@@ -51,15 +40,10 @@ export const studioWorld = Html.customElement({
   },
 })
 
-// THE LOUPE
-
-// NOTE: the loupe's window in game pixels, and how big each one is drawn.
 const LOUPE_COLUMNS = 32
 const LOUPE_ROWS = 20
 const LOUPE_CELL = 8
 
-// NOTE: a game pixel whose screen pixels differ by more than this in any
-// channel is mixed: a half-pixel edge, a soft rim, or a smear.
 const MIXED_SPREAD = 40
 
 const GRID_COLOR = 'rgba(255, 255, 255, 0.16)'
@@ -71,7 +55,6 @@ const AREA_COLORS = {
   Draft: { line: '#4fa3ff', fill: 'rgba(79, 163, 255, 0.22)' },
 }
 
-// NOTE: the view's pixels around a picked area, in game pixels.
 const SHOT_MARGIN = 40
 
 type Cell = Readonly<{
@@ -87,11 +70,8 @@ const hexPart = (channel: number): string =>
 const hexOf = (cell: Cell): string =>
   `#${hexPart(cell.red)}${hexPart(cell.green)}${hexPart(cell.blue)}`
 
-// NOTE: pixels read off the frame, four bytes each, rows top first.
 type Pixels = Readonly<{ data: Uint8Array; width: number; height: number }>
 
-// NOTE: one game pixel read off the frame's pixels: its middle's color, and
-// whether the screen pixels wholly inside it disagree.
 const cellAt = (
   data: Pixels,
   left: number,
@@ -134,16 +114,9 @@ const cellAt = (
   }
 }
 
-// THE PIXELS
-
-// NOTE: a framebuffer binding read back; the binding is the world's own
-// realm's object (the harness is a frame), so it is told by its shape.
 const isFramebuffer = (value: unknown): value is WebGLFramebuffer | null =>
   value === null || typeof value === 'object'
 
-// NOTE: a box of the world's frame, read straight off its WebGL context with
-// readPixels, rows turned top first. Called in the same task as the bridge's
-// snapshot, while the frame it drew is still in the drawing buffer.
 const readFrame = (
   frame: HTMLCanvasElement,
   box: Readonly<{ left: number; top: number; width: number; height: number }>,
@@ -182,7 +155,6 @@ const readFrame = (
   return Option.some({ data, width, height })
 }
 
-// NOTE: shows a bitmap on a `bitmaprenderer` canvas at its own size.
 const showBitmap = (canvas: HTMLCanvasElement, bitmap: ImageBitmap): void => {
   const context = canvas.getContext('bitmaprenderer')
   if (context === null) {
@@ -194,8 +166,6 @@ const showBitmap = (canvas: HTMLCanvasElement, bitmap: ImageBitmap): void => {
   context.transferFromImageBitmap(bitmap)
 }
 
-// NOTE: makes a bitmap and shows it once made, unless a newer one was asked
-// for by then.
 const showWhenMade = (
   canvas: HTMLCanvasElement,
   make: () => Promise<ImageBitmap>,
@@ -230,7 +200,6 @@ const svgOf = <K extends keyof SVGElementTagNameMap>(
   return element
 }
 
-// NOTE: a path through points, each list one closed shape.
 const polygonsPath = (shapes: ReadonlyArray<ReadonlyArray<Point>>): string =>
   Array.join(
     Array.map(shapes, corners =>
@@ -248,7 +217,6 @@ const polygonsPath = (shapes: ReadonlyArray<ReadonlyArray<Point>>): string =>
     ' ',
   )
 
-// NOTE: the lines between the loupe's cells, in its own pixels.
 const loupeGridPath = (): string =>
   Array.join(
     [
@@ -264,12 +232,8 @@ const loupeGridPath = (): string =>
     ' ',
   )
 
-// THE ELEMENT
-
 type Point = Readonly<{ x: number; y: number }>
 
-// NOTE: the camera the harness reports, as the lens's frame in the view's
-// own game pixels.
 const lensViewOf = (view: BridgeView): LensFrame => ({
   x: view.cameraX,
   y: view.cameraY,
@@ -280,20 +244,14 @@ const lensViewOf = (view: BridgeView): LensFrame => ({
   top: 0,
 })
 
-// NOTE: a floor point in the view's game pixels, through the lens.
 const floorToLens = (frame: LensFrame, point: Point): Point =>
   lensOf(frame).projectInto(point.x, point.y, { x: 0, y: 0 })
 
-// NOTE: a point on the frame (CSS pixels of the harness's page) in the
-// view's own game pixels, from its top left corner.
 const viewPointAt = (view: BridgeView, point: Point): Point => ({
   x: ((point.x - view.left) / view.width) * view.viewWidth,
   y: ((point.y - view.top) / view.height) * view.viewHeight,
 })
 
-// NOTE: the part of the view a note's picture takes, in the view's game
-// pixels: the box around the picked tiles through the lens, with a margin,
-// or the whole view with none.
 const shotBoxOf = (
   view: BridgeView,
   draft: TileArea | null,
@@ -346,13 +304,8 @@ const NO_MARKS: Marks = {
   areas: [],
 }
 
-// NOTE: how often a live (not still) scene's loupe and picture read the
-// frame again, in animation frames.
 const LIVE_READ_FRAMES = 12
 
-// NOTE: mutable on purpose: a custom element is the browser's own mutable
-// object, holding its frame and canvases while it is on the page. Built only
-// when it is defined, since HTMLElement exists only in a browser.
 const studioWorldClass = () =>
   class StudioWorldElement extends HTMLElement {
     private latestQuery = ''
@@ -520,7 +473,6 @@ const studioWorldClass = () =>
           this.emit('press-tile', this.lastTile)
         }
       })
-      // NOTE: a let go ends a drag over the tiles; the press acted already.
       this.marksLayer.addEventListener('pointerup', () => {
         this.emit('release-tile', {})
         this.isShotDue = true
@@ -549,9 +501,6 @@ const studioWorldClass = () =>
       )
     }
 
-    // NOTE: a point on the frame (CSS pixels of the harness's page) as the
-    // floor point it looks at, through the game's lens on the camera the
-    // harness reports (src/render/lens.ts).
     private worldAt(view: BridgeView, point: Point): Point {
       const at = viewPointAt(view, point)
       return lensOf(lensViewOf(view)).unprojectInto(at.x, at.y, { x: 0, y: 0 })
@@ -613,7 +562,6 @@ const studioWorldClass = () =>
       requestAnimationFrame(() => this.tick())
     }
 
-    // NOTE: the marks' SVG in the layer's own CSS pixels.
     private fitMarks(): void {
       const width = Math.max(1, this.marksLayer.clientWidth)
       const height = Math.max(1, this.marksLayer.clientHeight)
@@ -677,8 +625,6 @@ const studioWorldClass = () =>
           ' ',
         ),
       )
-      // NOTE: an area's outline on the floor, its four corners through the
-      // lens.
       const outline = (area: TileArea): ReadonlyArray<Point> => {
         const left = area.left * TILE_SIZE
         const top = area.top * TILE_SIZE
@@ -749,15 +695,12 @@ const studioWorldClass = () =>
       })
     }
 
-    // NOTE: the world's frame copied, or none before the renderer is in.
     private snapshot(): Option.Option<HTMLCanvasElement> {
       return Option.flatMap(this.bridge(), bridge =>
         Option.fromNullishOr(bridge.snapshot()),
       )
     }
 
-    // NOTE: the picture a note sends: the frame around the picked tiles, or
-    // the whole frame with none; whether it could be taken yet.
     private takeShot(view: BridgeView): boolean {
       return Option.match(this.snapshot(), {
         onNone: () => false,
@@ -771,8 +714,6 @@ const studioWorldClass = () =>
           const height = Math.max(1, Math.round((bottom - top) * ratio))
           this.shotToken += 1
           const token = this.shotToken
-          // NOTE: createImageBitmap copies the frame as it is called, in this
-          // task, while the snapshot is still drawn.
           const bitmap = createImageBitmap(
             frame,
             Math.round(left * ratio),
@@ -790,9 +731,6 @@ const studioWorldClass = () =>
       })
     }
 
-    // NOTE: the loupe over the game pixels around the pointer, each a big
-    // square with the grid between them, mixed ones ringed in magenta; and
-    // the readout under the room. Whether it could be drawn yet.
     private drawLoupe(view: BridgeView): boolean {
       if (Option.isNone(this.maybePointer)) {
         this.loupeToken += 1
@@ -855,8 +793,6 @@ const studioWorldClass = () =>
       })
     }
 
-    // NOTE: the loupe's game pixels as a bitmap a cell a game pixel, its
-    // mixed ones ringed, and the readout.
     private showLoupe(
       view: BridgeView,
       pointer: Point,

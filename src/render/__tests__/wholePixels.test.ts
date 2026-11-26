@@ -8,10 +8,6 @@ import { initialModel } from '../../app/pureApp'
 import type { SurfaceRectangle } from '../../input/inputSchema'
 import { screenOf, stagePlacement } from '../screen'
 
-// Every game pixel the same whole number of device pixels (src/render/
-// screen.ts): the stage is snapped to whole device pixels per screen pixel,
-// and the world's zoom to whole device pixels per game pixel over it.
-
 type Phone = Readonly<{
   name: string
   surface: SurfaceRectangle

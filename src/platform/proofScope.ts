@@ -12,12 +12,6 @@ import {
   isEarlierStamp,
 } from '../shared/proofData'
 
-// The Proof Shelf's rows in the player scope (src/platform/playerScope.ts):
-// the `proof` table, one row per thing per difficulty, and the rule its
-// mutation applies, apart from the scope so its file stays one job. Shared
-// with the sync Worker, like the scope, so it imports only `effect`, the
-// sync engine, and src/shared/.
-
 export const PROOF_TABLE = 'proof'
 
 export const ProofRow = Schema.Struct({
@@ -53,7 +47,6 @@ const encodeProofRows = Schema.encodeEffect(Schema.Array(ProofRow))
 
 const decodeProofRow = Schema.decodeUnknownOption(ProofRow)
 
-// NOTE: a shelf's rows as the scope's SQL writes them, the crew as JSON.
 export const encodedProofRows = (proof: SavedProof) =>
   Effect.mapError(encodeProofRows(Array.map(proof, rowOfProof)), error =>
     MutationRejected.make({ reason: error.message }),
@@ -93,10 +86,6 @@ const insertRows = (context: ApplyContext, proof: SavedProof) =>
     })
   })
 
-// NOTE: a find put on the shelf (`shelve` in src/shared/proofData.ts): an
-// empty slot takes it, and a filled one keeps its stamp unless the find's
-// is from an earlier day, so two devices end on the same first stamp.
-/** @stability unstable */
 export const shelveRow: {
   (
     entry: ProofEntry,
@@ -128,8 +117,6 @@ export const shelveRow: {
   }),
 )
 
-// NOTE: a whole shelf written into an empty scope (SeededPlayer).
-/** @stability unstable */
 export const seedProofRows: {
   (
     proof: SavedProof,

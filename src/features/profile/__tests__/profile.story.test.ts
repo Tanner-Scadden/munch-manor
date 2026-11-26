@@ -38,10 +38,6 @@ import { type ProfileTab } from '../model'
 import { PROFILE_TABS } from '../profile'
 import { profileOpenOn } from './profile.fixture'
 
-// The root's side of the Profile: what opens it, the tab, the name kept,
-// saved, and synced, the dice's generator, and the look. The Profile
-// component's own events are in story.test.ts.
-
 const selectTab = (tab: ProfileTab): StoryStep =>
   send(Message.SwitchedProfileTab({ tab }))
 
@@ -290,8 +286,6 @@ describe('the name', () => {
 })
 
 describe('the name dice', () => {
-  // NOTE: the Model the dice leaves; its save is written last and changes
-  // none of what the tests read.
   const rollFrom = (seed: number, name = '') =>
     modelAfter(
       UiStruct.evolve(profileOpenOn('Name'), {

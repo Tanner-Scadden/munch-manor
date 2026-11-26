@@ -64,14 +64,6 @@ import {
   unlocksOf,
 } from './endBeat'
 
-// The rank strip on the end card, in the landscape frame: the badge, the
-// rank number, a bar that fills from the points before the run to the points
-// after, and the Bones counting up beside a pixel bone. It reads everything
-// from the points it is showing, so a bar that fills past the end of a rank
-// carries on in the next one, the number ticks, and the badge changes. On a
-// rank up the badge pops with sparks once the bar is full. Timing is
-// src/features/end/endBeat.ts's; the panel behind it is the caller's.
-
 export const STRIP_PX = 11
 
 const BAR_EDGE = '#5a3a4a'
@@ -82,7 +74,6 @@ const BADGE_X = 6
 const NUMBER_X = 15
 const BAR_X = 34
 const BAR_WIDTH = 68
-// NOTE: with a modifier bonus the bar gives up room for the gold "+115%".
 const BONUS_BAR_WIDTH = 48
 const BONUS_GAP_PX = 4
 const BONES_GAP_PX = 4
@@ -95,7 +86,6 @@ const POP_SCALE = 1.2
 const FADE_MS = 120
 const SHINE_FRAME_MS = 45
 
-// NOTE: a bonus's tag, a small gold pill, from its left edge.
 const tagWidth = (text: string): number => textWidth(text) + TAG_PAD_PX * 2
 
 const tagShapes = (
@@ -110,7 +100,6 @@ const tagShapes = (
   ]
 }
 
-// NOTE: the run's bonus tags in a row ending at `right`.
 const tagsShapes = (
   tags: ReadonlyArray<string>,
   right: number,
@@ -153,9 +142,6 @@ const CARD_WIDTH = 62
 const CARD_EDGE = '#ffd23f'
 const CARD_FILL = '#2a1a2e'
 
-// NOTE: a card is full, the figure at twice its size, or compact, at its
-// own size, for an end card with no room for the full one beside or under
-// it (a crew's board on a screen as wide as the frame).
 export type UnlockCardSize = 'Full' | 'Compact'
 
 const CARD_SIZES: Readonly<
@@ -168,17 +154,12 @@ const CARD_SIZES: Readonly<
   Compact: { height: 40, footY: 29, figureScale: 1 },
 }
 
-// NOTE: where the end card puts the unlock card: `x` its middle, `top` the
-// top of its tab, in the landscape frame (src/features/end/endView.ts).
 export type UnlockSpot = Readonly<{
   x: number
   top: number
   size: UnlockCardSize
 }>
 
-// NOTE: the figure a card shows and what it is called: the player in the
-// calling's prop, or in the gift hat. The hat reaches above the head, so the
-// card is tall enough for the tallest.
 const unlockFigureOf = (
   model: Model,
   unlock: EndUnlock,
@@ -273,8 +254,6 @@ const unlockFigureOf = (
       }),
   })
 
-// NOTE: a milestone's card stands its big icon on the figure's foot, as a
-// player stands, at its own size inside the figure's scale.
 const standingIcon = (icon: ReadonlyArray<Draw.Shape>): Draw.Shape =>
   group({
     translate: {
@@ -284,8 +263,6 @@ const standingIcon = (icon: ReadonlyArray<Draw.Shape>): Draw.Shape =>
     shapes: icon,
   })
 
-// NOTE: a purse's card stands the sack on the figure's foot the same way;
-// a sprite is drawn about its middle, so it rises by half its height.
 const standingSprite = (
   sprite: ReadonlyArray<Draw.Shape>,
   size: Readonly<{ width: number; height: number }>,
@@ -295,9 +272,6 @@ const standingSprite = (
     shapes: sprite,
   })
 
-// NOTE: a hero's card is for sale, not given: a pixel bone and its price in
-// Bones across the card's top, so the tag says what the rank opened. A
-// purse's card says the Bones it pays the same way, as +N.
 const PRICE_TAG_Y = 6
 const PRICE_TAG_GAP_PX = 2
 
@@ -316,11 +290,6 @@ const boneTagShapes = (text: string): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: a gold tab over the card says what the rank did: a hero for sale
-// is NOW PURCHASABLE, a gift look NOW AVAILABLE; and what a milestone did:
-// a thing NEW ON THE LIST, a NEW STORY PAGE in the journal; a purse
-// BONUS BONES; and a hero's or a gun's mastery level MASTERY UP (a hero's
-// story level a NEW STORY PAGE too).
 const FOR_SALE_TAB = 'NOW PURCHASABLE'
 const GIFT_TAB = 'NOW AVAILABLE'
 const PURSE_TAB = 'BONUS BONES'
@@ -337,7 +306,6 @@ const TAB_WIDTH_PX = Math.max(
   ),
 )
 
-// NOTE: the room a card takes, its tab and edge included.
 export const unlockCardBox = (
   size: UnlockCardSize,
 ): Readonly<{ width: number; height: number }> => ({
@@ -356,7 +324,6 @@ const tabShapes = (text: string): ReadonlyArray<Draw.Shape> => {
   ]
 }
 
-// NOTE: the last card's timer drains along its foot until it goes away.
 const timerShapes = (
   left: number,
   cardHeight: number,
@@ -384,11 +351,6 @@ const timerShapes = (
   ]
 }
 
-// NOTE: each card a rank up opened flips over in turn, once the tally and
-// the strip have counted, where the end card has room clear of the numbers
-// (`spot`): the player in the prop or the hat, and its name. It narrows to
-// a line and opens again, as a card turns; the next one flips over it. The
-// last one lingers with its timer, then fades away.
 export const unlockCardShapes: {
   (
     kind: EndKind,
@@ -485,7 +447,6 @@ export const unlockCardShapes: {
   },
 )
 
-// NOTE: `left` and `width` are the strip's room, `centerY` its middle.
 export const rankStripShapes: {
   (
     kind: EndKind,

@@ -3,13 +3,6 @@ import { Array, Function } from 'effect'
 import { bakeShapes, placeAt } from '../art/sprite'
 import * as Draw from './draw'
 
-// NOTE: the family of health bars: zombies, the boss, and a downed teammate's
-// bleed bar. Each is a dark outline around a dark track, a fill in chunks cut
-// by thin dark ticks, and a lighter highlight along the top of the fill. A
-// small bar is baked whole, once for every width of fill, so it is one image
-// in every frame. The large bar, the boss's, bakes its outline and ticks over
-// a track and a fill drawn each frame.
-
 export type BarSize = 'Small' | 'Large'
 export type BarTone = 'Zombie' | 'Ally' | 'Rage'
 
@@ -43,8 +36,6 @@ const solid = (
   fill: string,
 ) => Draw.Rect({ x, y, width, height, fill })
 
-// NOTE: a tick sits on the last column of each chunk but the final one, so
-// every chunk is at least two pixels wide.
 const outlineShapes = ({ width, height, segments }: BarSpec) => [
   solid(-1, -1, width + 2, 1, BAR_OUTLINE),
   solid(-1, height, width + 2, 1, BAR_OUTLINE),
@@ -99,8 +90,6 @@ const LARGE_CAGE = bakeShapes(outlineShapes(LARGE))
 
 export const barWidthOf = (size: BarSize): number => BAR_SPECS[size].width
 
-// NOTE: `left` and `top` are the inside of the bar; the outline is one pixel
-// outside them. A bar with any health left shows at least one pixel of fill.
 export const healthBarShapes: {
   (
     tone: BarTone,

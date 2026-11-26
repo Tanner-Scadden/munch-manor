@@ -11,11 +11,6 @@ import {
 } from '../cull'
 import { fillSpecOf } from '../lightSpecs'
 
-// What the camera sees of the house (src/render/iso/cull.ts): what lies far
-// off screen is left out of the frame, its shadows too, and what lies on the
-// view or just past it never is.
-
-// NOTE: a view on its own canvas, a game pixel to a pixel.
 const ON_ITS_CANVAS = { scale: 1, left: 0, top: 0 }
 
 const VIEW = viewBoxOf({
@@ -72,8 +67,6 @@ describe('the view', () => {
   })
 })
 
-// NOTE: the same view as the floor it truly shows, a quad the lens widens
-// away from the camera.
 const FLOOR = viewFloorOf({
   x: 100,
   y: 50,

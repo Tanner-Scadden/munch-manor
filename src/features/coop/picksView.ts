@@ -57,18 +57,12 @@ import {
   pickedModeOf,
 } from './roomState'
 
-// PICKS
-
 const MODE_PICK_ICONS: Readonly<Record<PickedMode, string>> = {
   Campaign: CAMPAIGN_ICON,
   Endless: ENDLESS_ICON,
   KeepGoing: ENDLESS_ICON,
 }
 
-// NOTE: a pick the host can change is a button; everyone else sees the
-// same icons, still, with the picked one lit.
-// A pick that is not yours to change still answers a tap: it says why
-// (the host picks, or Nightmare is locked), in place.
 const pickClick = (
   canPick: boolean,
   message: CoopMessage,
@@ -163,8 +157,6 @@ const skullPickView = (
     )
 }
 
-// NOTE: Dare's break clock beside the skulls, on Dare alone: the host's
-// press steps it, ∞ (none) first; a guest's tap says the host picks.
 const easyBreakPickView = (
   room: Room,
   lobby: Lobby,
@@ -187,10 +179,6 @@ const easyBreakPickView = (
     )
     .children(easyBreakFaceView(lobby.easyBreakSeconds, h))
 
-// NOTE: the dare ladder's mark beside the skulls: the host's press steps it
-// through the marks they have opened on the room's difficulty, round to
-// none; a guest sees the room's mark, and a tap says the host picks. It
-// shows once the host has a mark to pick, or the room has one.
 const markPickView = (
   room: Room,
   lobby: Lobby,
@@ -220,9 +208,6 @@ const markPickView = (
 const isMarkPickShown = (room: Room, lobby: Lobby, bestMark: number) =>
   lobby.dareMark > 0 || (isPicking(room) && bestMark > 0)
 
-// NOTE: a run modifier is a tile the host turns on and off, lit when on. A
-// guest sees the same tiles, still, and a tap says the host picks. One the
-// room's mark turns on is lit and locked.
 const modifierPickView = (
   room: Room,
   lobby: Lobby,
@@ -258,8 +243,6 @@ const modifierPickView = (
     .children(modifierFaceView(modifier, h))
 }
 
-// NOTE: the note a tap on a pick that is not yours leaves: it fades in
-// place over the picks (no movement), and a new tap starts it again.
 const nudgeView = (
   room: Room,
   h: ApplicationViewBuilder,
@@ -284,10 +267,6 @@ const nudgeView = (
         ),
   })
 
-// NOTE: the hero pill beside the mode and difficulty picks: the player's own
-// hero, which opens the hero picker over the lobby (src/features/heroes/),
-// so a hero can change while the room waits. Every member has one, as the
-// host alone picks the mode and difficulty.
 const callingPillView = (
   room: Room,
   isPickerOpen: boolean,
@@ -319,8 +298,6 @@ const callingPillView = (
     },
   })
 
-// NOTE: an object type, not Readonly<...>, so the pipeable check matches the
-// view's two signatures.
 type PicksInput = {
   readonly lobby: Lobby
   readonly bestMark: number
@@ -332,9 +309,6 @@ type HeroPickInput = {
   readonly keyCapView: (key: string) => ApplicationHtml | null
 }
 
-// NOTE: the hero pill in a group of its own, which the lobby sets beside
-// READY rather than among the room's picks: it is every member's, and held
-// upright it would otherwise take a row alone.
 export const heroPickView: {
   (
     input: HeroPickInput,

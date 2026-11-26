@@ -12,12 +12,6 @@ import { isFrontDoorOpen } from '../../world/dare/finale'
 import { levelOf } from '../../world/level/arena'
 import { clamp } from '../../world/step/geometry'
 
-// The front door in the finale (src/world/dare/finale.ts), over its baked
-// art (src/render/room/diningArt.ts): while Uncle Chunk's big key flies at
-// it the padlock blinks gold; once the key lands it is open, the leaves
-// gone and the night outside showing through, with a warm spill on the
-// sill.
-
 const BLINK_MS = 120
 const LOCK_RISE = 7
 const FILL_COLOR = '#ffd23f'
@@ -53,15 +47,6 @@ export const frontDoorShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
     ),
   ]
 }
-
-// THE DOOR'S MARKER
-
-// NOTE: from the moment Uncle Chunk falls, a door out of sight (in another
-// room, past the window's edge, or under the gun slots) gets a marker
-// pinned to the window's edge toward it: the door with its padlock, or
-// open on the night, and an arrow at the door. It
-// points at the way out, never at a zombie (GAME_DESIGN.md, "No off-screen
-// hints").
 
 const MARKER_OUTLINE = '#140c10'
 const MARKER_PALETTE = {
@@ -128,8 +113,6 @@ const MARKER_HEIGHT = ICON_SIZE + MARKER_PAD * 2
 const MARKER_EDGE_GAP = 2
 const ARROW_GAP = 1
 const MARKER_BACK_COLOR = 'rgba(14, 8, 12, 0.86)'
-// NOTE: the door is in sight while its padlock is: the rows from just
-// over the lintel down to the padlock's foot, either side of its middle.
 const PADLOCK_ROWS = 6
 const PADLOCK_HALF_WIDTH = 4
 

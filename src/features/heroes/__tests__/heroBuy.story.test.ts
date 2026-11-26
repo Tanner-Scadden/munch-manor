@@ -35,11 +35,6 @@ import { isHeroPickerUp } from '../../lobby/model'
 import { HeroPicker } from '../block'
 import { startingCallingOf } from '../callingPick'
 
-// Buying a hero with Bones (src/features/heroes/callingPick.ts,
-// src/app/update/lobby.ts): a rank opens a hero for sale, a tap tries it
-// on, BUY pays, and a pick that is not bought starts YOU. The picker and
-// the lobby hold no state: their taps reach the root as LobbyMessages.
-
 const player = (
   rank: number,
   bones: number,
@@ -54,18 +49,14 @@ const player = (
     boughtCosmetics: () => bought,
   })
 
-// NOTE: PLAY, then the hero card: the picker opens in the lobby.
 const openPicker: StoryStep = steps(
   send(Message.ClickedPlayButton()),
   resolveFocusLobby(),
   send(LobbyMessage.RequestedLobbyHeroPicker()),
 )
 
-// NOTE: the picker opened at a rank that has reached a hero: the heroes
-// reached are marked seen, and saved.
 const openPickerWithUnlocks: StoryStep = steps(openPicker, writeSave)
 
-// NOTE: the BUY pill on the hero tried on.
 const clickBuy = (calling: Calling): StoryStep =>
   send(LobbyMessage.RequestedBuyLobbyHero({ calling }))
 
@@ -160,9 +151,6 @@ describe('a hero for sale', () => {
     }),
   )
 
-  // NOTE: the picker shows BUY only on a try-on, so with none there is no
-  // BUY to tap. A child is a leaf in the root's Scene, so this is a Scene
-  // of the picker itself, with the props the lobby hands it.
   it.effect('with no try-on, the picker offers no BUY', () =>
     Effect.gen(function* () {
       const open = yield* modelAfter(player(3, 500), openPickerWithUnlocks)
@@ -183,8 +171,6 @@ describe('a hero for sale', () => {
     }),
   )
 
-  // NOTE: a BUY that reaches the root for a hero already owned: the root
-  // checks what is owned itself.
   it.effect('a hero already owned is not paid for again', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(player(3, 500, ['hero:Handyman']))

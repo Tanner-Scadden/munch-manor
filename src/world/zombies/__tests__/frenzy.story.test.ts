@@ -171,8 +171,6 @@ describe('horde frenzy', () => {
             UiStruct.evolve(player, { x: () => CENTER_X, y: () => CENTER_Y }),
         },
       )
-      // NOTE: the ticks to drift apart, one that starts the fade, and one
-      // into it, so the pace has begun to drop.
       const apartFrames = Math.ceil(FRENZY_RULES.apartMs / FRAME_MS) + 2
       const fadeFrames = Math.ceil(FRENZY_RULES.fadeMs / FRAME_MS) + 1
 

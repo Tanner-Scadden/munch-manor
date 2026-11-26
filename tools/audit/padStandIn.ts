@@ -1,14 +1,9 @@
-// A stand-in controller for the audits: a script run in the page before
-// the game's modules replaces `navigator.getGamepads` with one pad in the
-// standard layout, read off `window.__pad`, so the game's own gamepad
-// Subscription polls it (tools/audit/pad.ts, tools/audit/padMenus.ts).
 import { Array, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { wait } from './lib'
 import { attempt } from './page'
 
-// NOTE: the standard layout's buttons the audits press, by index.
 const BUTTON_COUNT = 17
 export const A = 0
 export const B = 1
@@ -19,8 +14,6 @@ export const DPAD_UP = 12
 export const DPAD_DOWN = 13
 export const DPAD_RIGHT = 15
 
-// NOTE: runs in the page before the game's modules: a controller in slot 0
-// read off `window.__pad`, with a rumble motor that counts its rumbles.
 export const padStandIn = () => {
   window.__pad = {
     isPlugged: true,
@@ -94,7 +87,6 @@ export const setPad = ({
     ),
   )
 
-// NOTE: a button pressed and let go, as a thumb does, a few frames each.
 export const pressPad = ({
   page,
   button,

@@ -30,8 +30,6 @@ import { vectorLength } from '../../world/step/geometry'
 import { isBreak } from '../../world/waves/waves'
 import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
 
-// LESSONS
-
 const learnWhen = (isDone: boolean, atMs: number) => (lesson: Lesson) =>
   isDone ? learn(lesson, atMs) : lesson
 
@@ -64,8 +62,6 @@ const hasFiredWhileAiming = (model: Model): boolean =>
 const hasGrabbedPickup = (events: ReadonlyArray<GameEvent>): boolean =>
   Array.some(events, GameEvent.isAnyOf(['PickupGrabbed']))
 
-// NOTE: the player's own gun reached a new level this frame, which learns
-// the gun level hint.
 const hasOwnGunLeveled = (model: Model): boolean =>
   Array.some(
     model.frameEvents,
@@ -74,8 +70,6 @@ const hasOwnGunLeveled = (model: Model): boolean =>
       event.slot === focusSlotOf(model),
   )
 
-// NOTE: a frame with no practice in it keeps the record's reference, so
-// the Model is not copied for it.
 const practise = (before: Model, after: Model): Practice => {
   const movedPx = after.practice.movedPx + distanceWalked(before, after)
   const aimedShots =
@@ -86,8 +80,6 @@ const practise = (before: Model, after: Model): Practice => {
     : { movedPx, aimedShots }
 }
 
-// NOTE: the lessons keep their reference on a frame that learns nothing, so
-// the save check sees at a glance that nothing saved changed.
 const learnFromPractice = (
   lessons: Lessons,
   practice: Practice,
@@ -129,10 +121,6 @@ export const learnFromFrame: {
   })
 })
 
-// PRACTICE GATE
-
-// DEBUT CARD
-
 export const DEBUT_CARD_MIN_MS = 1500
 export const DEBUT_CARD_MS = 5500
 
@@ -154,9 +142,6 @@ const maybeNewKindIn = (model: Model): Option.Option<ZombieKind> =>
     GameOver: () => Option.none(),
   })
 
-// NOTE: never in a crew's run (owner, 2026-11-01: "don't show new zombie info
-// in multiplayer"), a run with teammate bots too, which plays by co-op's
-// rules. Nothing is marked introduced, so the card waits for a solo run.
 const maybeDebutKind = (model: Model): Option.Option<ZombieKind> =>
   isCoop(model) ? Option.none() : maybeNewKindIn(model)
 
@@ -169,8 +154,6 @@ export const raiseDebutCard = (model: Model): Model =>
       }),
   })
 
-// NOTE: a wave that just started raises the card for any kind in it the
-// player has not met yet.
 export const raiseDebutCardFrom: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model
@@ -257,20 +240,8 @@ export const settleLessons = (lessons: Lessons): Lessons =>
     gunLevel: settle,
   })
 
-// SKIPPING
-
 const skipped = (lesson: Lesson): Lesson => learn(lesson, 0)
 
-// NOTE: SKIP IT on the first-run card (owner, 2026-11-07), the other way
-// from Settings' Reset tutorial (`forgetTutorial` in src/platform/save.ts). It learns
-// the lessons that hold the guided chapters: move and fire (their hints, the
-// touch ghost sticks, and the practice gate), the open break (the free Plank
-// Pile, NO TIMER, and the guided first break), and the timed breaks (the
-// kitchen tour's held clock and free boards and pull), and Rattles' hello
-// by the front door (owner, 2026-11-10). All are saved, so the run starts
-// as a returning player's and stays so. What is taught at the thing itself
-// stays (GAME_DESIGN.md, "Teach where the player acts"): START WAVE, the
-// swap and goodie pulses, the trap hint, and the new zombie cards.
 export const skipTutorial = (model: Model): Model =>
   UiStruct.evolve(model, {
     lessons: lessons =>
@@ -287,8 +258,6 @@ export const skipTutorial = (model: Model): Model =>
     kitchenTour: () => Tour.Over(),
   })
 
-// BAND
-
 const TOP_BAND_LEAVE_Y = 70
 const BOTTOM_BAND_LEAVE_Y = 86
 
@@ -302,8 +271,6 @@ const followPlayer = (band: HintBand, playerY: number): HintBand => {
   }
 }
 
-// NOTE: the bands are drawn in the landscape frame, so the player is
-// measured there too, whatever the window's zoom.
 export const moveHintBand = (model: Model): Model =>
   UiStruct.evolve(model, {
     hintBand: band =>
@@ -314,15 +281,6 @@ export const moveHintBand = (model: Model): Model =>
       ),
   })
 
-// HINTS
-
-// NOTE: hints float only for the controls themselves: moving and aiming in
-// wave 1 on a keyboard, and the key that places a trap once one is bought.
-// Everything else is taught where the player acts, never as a label in the
-// middle of the room, which a playtester took for a place to walk to: the
-// stall waves and calls with a bubble (src/screens/game/stallBubble.ts), START WAVE and
-// the other gun pulse (src/screens/game/touchControls.ts, src/screens/game/hud.ts), a goodie wears a
-// bouncing arrow (src/render/powerupView.ts), and the break's countdown blinks.
 export const HintId = Schema.Literals([
   'Move',
   'Fire',
@@ -455,17 +413,9 @@ const isTrapHintFor = (model: Model, kind: 'Barricade' | 'Turret'): boolean =>
   TrapHint.isAnyOf(['Showing'])(model.trapHint) &&
   Option.contains(maybeSelectedKind(model, focusSlotOf(model)), kind)
 
-// NOTE: on touch the ghost sticks, drawn where the thumbs go, teach moving
-// and shooting, so the center hints for them show only with a keyboard or
-// a controller.
 const isFirstWaveOnKeyboard = (model: Model): boolean =>
   isFirstWave(model.phase) && model.lastDevice !== 'Touch'
 
-// NOTE: the first time a gun in the player's hands gets halfway to its
-// first level, a hint shows that its kills level it up (owner, 2026-11-10:
-// "I am also very confused on how I do the upgrades for the weapon now."),
-// with its bar filling under its slot, until that first level up learns it.
-// Saved, so a player sees it once. Mid-wave or in a break alike.
 const GUN_LEVEL_HINT_SHARE = 0.5
 
 const isGunLevelNear = (model: Model): boolean => {
@@ -519,8 +469,6 @@ const HINT_RULES: ReadonlyArray<HintRule> = [
   },
 ]
 
-// NOTE: START WAVE pulses once the player has moved and fired, until they
-// first start a wave themselves, and on the first break tour's last step.
 export const isStartWaveBeckoning = ({
   phase,
   lessons,
@@ -532,15 +480,11 @@ export const isStartWaveBeckoning = ({
     isLearned(lessons.fire)) ||
     QuestTour.isAnyOf(['Starting'])(firstBreakQuest))
 
-// NOTE: the first timed break's countdown blinks, so the player sees the
-// clock is running.
 export const isCountdownBeckoning = (model: Model): boolean =>
   isLaterTimedBreak(model) &&
   isPending(model.lessons.timedBreaks) &&
   !isKitchenTourOn(model)
 
-// NOTE: a goodie on the floor wears a bouncing arrow until the player has
-// grabbed one.
 export const isGoodieBeckoning = (model: Model): boolean =>
   isPending(model.lessons.pickup)
 
@@ -557,8 +501,6 @@ export const shownHints = (model: Model): ReadonlyArray<ShownHint> =>
         ),
         Array.take(MAX_HINTS),
       )
-
-// GHOST STICKS
 
 export const GhostStick = Schema.Literals(['Move', 'Aim'])
 export type GhostStick = typeof GhostStick.Type

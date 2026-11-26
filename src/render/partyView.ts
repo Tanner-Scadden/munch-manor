@@ -53,16 +53,6 @@ import {
 } from './playerView'
 import { auraShapes } from './powerupView'
 
-// Teammates in the world view (MULTIPLAYER.md, Phase 1): each other player
-// drawn as the player is, a marker of their seat's color over their head,
-// and a player who is out of the fight lying on the floor: downed, with
-// their bleed bar, a revive icon, and the ring a teammate stands in to
-// pick them up; bled out, a still body until the break.
-
-// LYING DOWN
-
-// NOTE: how a seat is drawn: standing in single player and while standing
-// in co-op, lying once downed or bled out.
 const maybeLyingOf = (seat: Seat): Option.Option<Lying> => {
   if (isDowned(seat)) {
     return Option.some('Downed')
@@ -73,19 +63,12 @@ const maybeLyingOf = (seat: Seat): Option.Option<Lying> => {
 const maybeLeadLyingOf = (model: Model): Option.Option<Lying> =>
   isCoop(model) ? maybeLyingOf(leadSeatOf(model)) : Option.none()
 
-// NOTE: a player who stepped out through the front door is gone from the
-// house: no body, shadow, or marks, only the tag waiting at the door
-// (src/features/onlineRun/coopMarksView.ts).
 export const isLeadInHouse = (model: Model): boolean =>
   !isOut(leadSeatOf(model))
 
-// NOTE: whether the lead holds a gun up: always in single player, and in
-// co-op while standing. Their muzzle flash, reload bar, and laser sight
-// show only then.
 export const isLeadArmed = (model: Model): boolean =>
   isLeadInHouse(model) && Option.isNone(maybeLeadLyingOf(model))
 
-// NOTE: the lead's body: on its feet as `standing` draws it, or lying.
 export const leadBodyShapes: {
   (
     standing: () => ReadonlyArray<Draw.Shape>,
@@ -108,15 +91,8 @@ export const leadBodyShapes: {
       : [],
 )
 
-// TEAMMATES
-
 export type MateModel = Readonly<{ model: Model; seat: Seat }>
 
-// NOTE: the client Model as each teammate's seat would show it, so the
-// player's own views draw them. Only co-op pays for it, and a frame builds
-// them once for the views that need them. Online, each teammate wears their
-// own look from the lobby (src/art/seatLooks.ts). One who stepped out is
-// not in the house to draw.
 export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
   if (!isCoop(model)) {
     return []
@@ -138,8 +114,6 @@ export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
   )
 }
 
-// NOTE: the look a seat wears: online, the one it brought to the lobby; a
-// bot, its own; otherwise the player's.
 const lookOfSeat = (model: Model, slot: PlayerSlot): Appearance => {
   const maybeRoom = maybeRoomOf(model.coop)
   return Option.isSome(maybeRoom)
@@ -160,8 +134,6 @@ export const mateShadowShapes = (
 ): ReadonlyArray<Draw.Shape> =>
   Array.map(mates, mate => playerShadow(focusOf(mate.model).player))
 
-// NOTE: the pixels a seat's hat stands over its head, from the look it
-// wears (a teammate's from the lobby), for the marks drawn over it.
 export const seatHatRiseOf: {
   (slot: PlayerSlot): (model: Model) => number
   (model: Model, slot: PlayerSlot): number
@@ -198,8 +170,6 @@ export const mateDrawables = (
       ? [playerFlashDrawable(focusOf(mate.model).player)]
       : []),
   ])
-
-// SEAT MARKS
 
 const SEAT_COLORS: ReadonlyArray<string> = [
   '#ffd23f',
@@ -239,8 +209,6 @@ const markShapes = (slot: PlayerSlot, x: number, y: number, rise: number) => {
   ]
 }
 
-// NOTE: a downed player's bleed bar sits just over the lying body,
-// draining red as they bleed out.
 const BLEED_BAR_LIFT_PX = 7
 
 const bleedBarShapes = (x: number, y: number, share: number) =>
@@ -252,11 +220,6 @@ const bleedBarShapes = (x: number, y: number, share: number) =>
     share,
   )
 
-// THE REVIVE ICON
-
-// NOTE: over a downed player, a plus on a plate edged in their seat's
-// color: help me up. It bobs, and its plus turns green while a teammate
-// is picking them up. Built once per seat, as the module loads.
 const ICON_PX = 7
 const ICON_LIFT_PX = 17
 const ICON_BOB_MS = 300
@@ -302,8 +265,6 @@ const reviveIconShapes = (
     ],
   })
 
-// NOTE: how far over a player a name tag's bottom sits: over the head, or
-// over the revive icon while they are down.
 export const NAME_LIFT_DOWNED_PX = ICON_LIFT_PX + 2
 
 const isDownedLife = Life.isAnyOf(['Downed'])
@@ -311,12 +272,6 @@ const isDownedLife = Life.isAnyOf(['Downed'])
 const maybeDownedOf = (seat: Seat): Option.Option<DownedLife> =>
   isDownedLife(seat.life) ? Option.some(seat.life) : Option.none()
 
-// THE REVIVE RING
-
-// NOTE: on the floor around a downed player, the ring a teammate stands in
-// to pick them up (COOP_RULES.reviveReachPx past the players' own radius):
-// faint while nobody is in it, filling green round from the top as the
-// revive fills. Every step is built once, as the module loads.
 const RING_RADIUS = PLAYER_RADIUS + COOP_RULES.reviveReachPx
 const RING_STEPS = 16
 const RING_EMPTY = '#e8dcc8'
@@ -358,7 +313,6 @@ const reviveRingShapes = (
   })
 }
 
-// NOTE: on the floor, under everyone: each downed player's revive ring.
 export const reviveRingGroundShapes = (
   model: Model,
 ): ReadonlyArray<Draw.Shape> =>
@@ -373,12 +327,6 @@ export const reviveRingGroundShapes = (
       )
     : []
 
-// THE MEDIC BUBBLE
-
-// NOTE: while a downed player's MEDIC! shout is fresh (src/world/party/medic.ts), a
-// speech bubble with a red cross pops over the body in place of the revive
-// icon: it jumps up as it pops, then shakes a pixel side to side. Its tail
-// points down at the body. Built once, as the module loads.
 const MEDIC_BUBBLE: Sprite = spriteShapes(
   [
     '.ooooooooooo.',
@@ -406,8 +354,6 @@ const MEDIC_POP_MS = 150
 const MEDIC_POP_PX = 3
 const MEDIC_SHAKE_MS = 90
 
-// NOTE: how far over a calling player a name tag's bottom sits: over the
-// bubble.
 export const NAME_LIFT_CALLING_PX =
   MEDIC_BUBBLE_TIP_LIFT_PX + MEDIC_BUBBLE_HEIGHT + MEDIC_POP_PX
 
@@ -429,9 +375,6 @@ export const medicBubbleShape: {
   )
 })
 
-// NOTE: over every player's head in co-op: their seat's mark while they
-// stand; while they are down, the bleed bar and the revive icon. A
-// bled-out body gets nothing.
 const seatMarkShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   isCoop(model)
     ? Array.flatMap(playersOf(model), ({ seat: { slot }, seat, player }) => {
@@ -486,8 +429,6 @@ export const mateOverheadShapes: {
       : [],
 )
 
-// NOTE: every player, the lead too, as their own seat's Model, for the end
-// card's crew: each wears their own look, as in the world.
 export const seatModelsOf = (
   model: Model,
 ): ReadonlyArray<Readonly<{ slot: PlayerSlot; model: Model }>> =>

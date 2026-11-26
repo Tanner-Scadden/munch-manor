@@ -35,11 +35,6 @@ import {
 import { noProof } from '../shared/proofData'
 import { noRank, rankOf, totalPointsOf } from '../world/heroes/rank'
 
-// The save's older versions and how each is brought to the current one,
-// apart from the save's mapping to and from the Model (src/platform/save.ts).
-// A new field in PlayerSave (src/shared/playerData.ts) bumps SAVE_VERSION;
-// the version before it gets its Schema and its migration here.
-
 const SavedSettingsV2 = Schema.Struct({
   sound: SoundSetting,
   music: MusicSetting,
@@ -47,7 +42,6 @@ const SavedSettingsV2 = Schema.Struct({
 })
 type SavedSettingsV2 = typeof SavedSettingsV2.Type
 
-// NOTE: the settings from version 5 to 6: sharing, and no cursor yet.
 const SavedSettingsV5 = Schema.Struct({
   sound: SoundSetting,
   music: MusicSetting,
@@ -86,8 +80,6 @@ const PlayerSaveV3 = Schema.Struct({
 })
 type PlayerSaveV3 = typeof PlayerSaveV3.Type
 
-// NOTE: version 4 is the save the live game keeps in localStorage: the home
-// menu's fields, and no shareStats yet.
 const PlayerSaveV4 = Schema.Struct({
   version: Schema.Literal(4),
   onboarding: SavedOnboarding,
@@ -100,10 +92,6 @@ const PlayerSaveV4 = Schema.Struct({
 })
 type PlayerSaveV4 = typeof PlayerSaveV4.Type
 
-// NOTE: the pull request preview of local SQLite numbered its save 4 too,
-// before the home menu: shareStats and no home. Only the preview ever wrote
-// it, to localStorage in a private window. It reads as version 4 with the
-// home menu unvisited.
 const PlayerSavePreviewV4 = Schema.Struct({
   version: Schema.Literal(4),
   onboarding: SavedOnboarding,
@@ -115,8 +103,6 @@ const PlayerSavePreviewV4 = Schema.Struct({
 })
 type PlayerSavePreviewV4 = typeof PlayerSavePreviewV4.Type
 
-// NOTE: version 5 is the save before the power-ups seen: the home menu and
-// shareStats.
 const PlayerSaveV5 = Schema.Struct({
   version: Schema.Literal(5),
   onboarding: SavedOnboarding,
@@ -129,8 +115,6 @@ const PlayerSaveV5 = Schema.Struct({
 })
 type PlayerSaveV5 = typeof PlayerSaveV5.Type
 
-// NOTE: version 6 is the save before the cursor setting: the power-ups seen,
-// and the thin system crosshair for everyone.
 const PlayerSaveV6 = Schema.Struct({
   version: Schema.Literal(6),
   onboarding: SavedOnboarding,
@@ -144,7 +128,6 @@ const PlayerSaveV6 = Schema.Struct({
 })
 type PlayerSaveV6 = typeof PlayerSaveV6.Type
 
-// NOTE: version 7 is the save before the rotation: the cursor setting.
 const PlayerSaveV7 = Schema.Struct({
   version: Schema.Literal(7),
   onboarding: SavedOnboarding,
@@ -158,7 +141,6 @@ const PlayerSaveV7 = Schema.Struct({
 })
 type PlayerSaveV7 = typeof PlayerSaveV7.Type
 
-// NOTE: version 8 is the save before the display name: the rotation.
 const PlayerSaveV8 = Schema.Struct({
   version: Schema.Literal(8),
   onboarding: SavedOnboarding,
@@ -173,10 +155,6 @@ const PlayerSaveV8 = Schema.Struct({
 })
 type PlayerSaveV8 = typeof PlayerSaveV8.Type
 
-// NOTE: versions 9 and 10 are the saves before the simple look, with the
-// display name: 9 with a Female or Male body, and 10 with the many-part
-// look that shipped for a few hours on 2026-10-30. Their fields are the
-// same; StoredAppearance reads either look.
 const PlayerSaveV9 = Schema.Struct({
   version: Schema.Literals([9, 10]),
   onboarding: SavedOnboarding,
@@ -192,7 +170,6 @@ const PlayerSaveV9 = Schema.Struct({
 })
 type PlayerSaveV9 = typeof PlayerSaveV9.Type
 
-// NOTE: version 11 is the save before the run records.
 const PlayerSaveV11 = Schema.Struct({
   version: Schema.Literal(11),
   onboarding: SavedOnboarding,
@@ -208,96 +185,78 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
-// NOTE: version 27 is the save before the dare ladder.
 const PlayerSaveV27 = Schema.Struct({
   ...Struct.omit(PlayerSave.fields, ['dareMarks']),
   version: Schema.Literal(27),
 })
 type PlayerSaveV27 = typeof PlayerSaveV27.Type
 
-// NOTE: version 26 is the save before hero and gun mastery. Its look reads
-// with the stock prop (Appearance's default).
 const PlayerSaveV26 = Schema.Struct({
   ...Struct.omit(PlayerSaveV27.fields, ['mastery']),
   version: Schema.Literal(26),
 })
 type PlayerSaveV26 = typeof PlayerSaveV26.Type
 
-// NOTE: version 25 is the save before the rank purses. Its bonuses read
-// with no purse paid (SavedBonuses' default); they are paid at load.
 const PlayerSaveV25 = Schema.Struct({
   ...PlayerSaveV26.fields,
   version: Schema.Literal(25),
 })
 type PlayerSaveV25 = typeof PlayerSaveV25.Type
 
-// NOTE: version 24 is the save before the Dare Journal.
 const PlayerSaveV24 = Schema.Struct({
   ...Struct.omit(PlayerSaveV25.fields, ['journal']),
   version: Schema.Literal(24),
 })
 type PlayerSaveV24 = typeof PlayerSaveV24.Type
 
-// NOTE: version 23 is the save before the Proof Shelf.
 const PlayerSaveV23 = Schema.Struct({
   ...Struct.omit(PlayerSaveV24.fields, ['proof']),
   version: Schema.Literal(23),
 })
 type PlayerSaveV23 = typeof PlayerSaveV23.Type
 
-// NOTE: version 22 is the save before the daily missions.
 const PlayerSaveV22 = Schema.Struct({
   ...Struct.omit(PlayerSaveV23.fields, ['missions']),
   version: Schema.Literal(22),
 })
 type PlayerSaveV22 = typeof PlayerSaveV22.Type
 
-// NOTE: version 21 is the save before the last run's ending.
 const PlayerSaveV21 = Schema.Struct({
   ...Struct.omit(PlayerSaveV22.fields, ['lastRun']),
   version: Schema.Literal(21),
 })
 type PlayerSaveV21 = typeof PlayerSaveV21.Type
 
-// NOTE: version 20 is the save before the Bones bonuses. Its records read
-// with no best run (SavedRunRecord's default).
 const PlayerSaveV20 = Schema.Struct({
   ...Struct.omit(PlayerSaveV21.fields, ['bonuses']),
   version: Schema.Literal(20),
 })
 type PlayerSaveV20 = typeof PlayerSaveV20.Type
 
-// NOTE: version 19 is the save before the RECORD MY RUNS unlock synced.
 const PlayerSaveV19 = Schema.Struct({
   ...Struct.omit(PlayerSaveV20.fields, ['recordUnlock']),
   version: Schema.Literal(19),
 })
 type PlayerSaveV19 = typeof PlayerSaveV19.Type
 
-// NOTE: version 18 is the save before RECORD MY RUNS.
 const PlayerSaveV18 = Schema.Struct({
   ...Struct.omit(PlayerSaveV19.fields, ['recordRuns']),
   version: Schema.Literal(18),
 })
 type PlayerSaveV18 = typeof PlayerSaveV18.Type
 
-// NOTE: version 17 is the save before controllers: no rumble.
 const PlayerSaveV17 = Schema.Struct({
   ...Struct.omit(PlayerSaveV18.fields, ['rumble']),
   version: Schema.Literal(17),
 })
 type PlayerSaveV17 = typeof PlayerSaveV17.Type
 
-// NOTE: version 16 is the save before endless ammo: its onboarding also
-// held the ammo tip, which decoding drops.
 const PlayerSaveV16 = Schema.Struct({
   ...PlayerSaveV17.fields,
   version: Schema.Literal(16),
 })
 type PlayerSaveV16 = typeof PlayerSaveV16.Type
 
-// NOTE: version 15 is the save before gun skins and the other earned looks:
-// its look has a hat and no skin, and its bought list is the hats.
 const PlayerSaveV15 = Schema.Struct({
   version: Schema.Literal(15),
   onboarding: SavedOnboarding,
@@ -317,7 +276,6 @@ const PlayerSaveV15 = Schema.Struct({
 })
 type PlayerSaveV15 = typeof PlayerSaveV15.Type
 
-// NOTE: version 14 is the save before hats.
 const PlayerSaveV14 = Schema.Struct({
   version: Schema.Literal(14),
   onboarding: SavedOnboarding,
@@ -336,7 +294,6 @@ const PlayerSaveV14 = Schema.Struct({
 })
 type PlayerSaveV14 = typeof PlayerSaveV14.Type
 
-// NOTE: version 13 is the save before callings.
 const PlayerSaveV13 = Schema.Struct({
   version: Schema.Literal(13),
   onboarding: SavedOnboarding,
@@ -354,7 +311,6 @@ const PlayerSaveV13 = Schema.Struct({
 })
 type PlayerSaveV13 = typeof PlayerSaveV13.Type
 
-// NOTE: version 12 is the save before rank.
 const PlayerSaveV12 = Schema.Struct({
   version: Schema.Literal(12),
   onboarding: SavedOnboarding,
@@ -450,8 +406,6 @@ const sharingSettings = (settings: SavedSettingsV2): SavedSettingsV5 => ({
   shareStats: 'On',
 })
 
-// NOTE: a save from before the cursor setting gets the bold cursor, the
-// default for a new player too, since the thin one was hard to see.
 const boldCursorSettings = (settings: SavedSettingsV5): SavedSettings => ({
   sound: settings.sound,
   music: settings.music,
@@ -536,7 +490,6 @@ const migrateV6 = (save: PlayerSaveV6): PlayerSaveV7 => ({
   seenPowerUps: save.seenPowerUps,
 })
 
-// NOTE: every save from before the rotation turns as before: landscape.
 const migrateV7 = (save: PlayerSaveV7): PlayerSaveV8 => ({
   version: 8,
   onboarding: save.onboarding,
@@ -550,8 +503,6 @@ const migrateV7 = (save: PlayerSaveV7): PlayerSaveV8 => ({
   rotation: 'Landscape',
 })
 
-// NOTE: a save from before the display name has no name yet, and shows the
-// placeholder until the player picks one.
 const migrateV8 = (save: PlayerSaveV8): PlayerSaveV9 => ({
   version: 9,
   onboarding: save.onboarding,
@@ -566,9 +517,6 @@ const migrateV8 = (save: PlayerSaveV8): PlayerSaveV9 => ({
   name: '',
 })
 
-// NOTE: a save from before the simple look keeps its look: every older
-// version reads it through StoredAppearance (src/shared/playerData.ts) as the
-// closest current one, so only the version number moves on.
 const migrateV9 = (save: PlayerSaveV9): PlayerSaveV11 => ({
   version: 11,
   onboarding: save.onboarding,
@@ -583,31 +531,24 @@ const migrateV9 = (save: PlayerSaveV9): PlayerSaveV11 => ({
   name: save.name,
 })
 
-// NOTE: a save from before the run records has none yet, so its first
-// records are set without a NEW BEST.
 const migrateV11 = (save: PlayerSaveV11): PlayerSaveV12 => ({
   ...save,
   version: 12,
   records: noSavedRunRecords,
 })
 
-// NOTE: a save from before rank has earned none and has not been granted
-// the veteran start yet: the first load after the update grants it from the
-// kills the save holds (grantVeteranFrom in src/features/end/rankRun.ts), once.
 const migrateV12 = (save: PlayerSaveV12): PlayerSaveV13 => ({
   ...save,
   version: 13,
   rank: noRank,
 })
 
-// NOTE: a save from before callings picks YOU, the calling with no quirk.
 const migrateV13 = (save: PlayerSaveV13): PlayerSaveV14 => ({
   ...save,
   version: 14,
   calling: 'You',
 })
 
-// NOTE: a save from before hats is bare headed and has bought none.
 const migrateV14 = (save: PlayerSaveV14): PlayerSaveV15 => ({
   ...save,
   version: 15,
@@ -615,9 +556,6 @@ const migrateV14 = (save: PlayerSaveV14): PlayerSaveV15 => ({
   boughtHats: [],
 })
 
-// NOTE: a save from before gun skins has the stock guns, and its bought
-// hats are the first of the cosmetics bought. It has seen every unlock it
-// had reached, so NEW badges start fresh from here.
 const migrateV15 = ({ boughtHats, ...save }: PlayerSaveV15): PlayerSaveV16 => ({
   ...save,
   version: 16,
@@ -626,94 +564,70 @@ const migrateV15 = ({ boughtHats, ...save }: PlayerSaveV15): PlayerSaveV16 => ({
   seenUnlocks: unlocksAt(rankOf(totalPointsOf(save.rank))),
 })
 
-// NOTE: a save from before endless ammo loses only its ammo tip, which
-// decoding already dropped.
 const migrateV16 = (save: PlayerSaveV16): PlayerSaveV17 => ({
   ...save,
   version: 17,
 })
 
-// NOTE: a save from before controllers rumbles, as a new player's does.
 const migrateV17 = (save: PlayerSaveV17): PlayerSaveV18 => ({
   ...save,
   version: 18,
   rumble: 'On',
 })
 
-// NOTE: a save from before RECORD MY RUNS records nothing.
 const migrateV18 = (save: PlayerSaveV18): PlayerSaveV19 => ({
   ...save,
   version: 19,
   recordRuns: 'Off',
 })
 
-// NOTE: a save from before the unlock synced reads it as locked. A device
-// that unlocked it still holds its own mark, read at boot, which unlocks
-// the save then (ReadRecordUnlock in src/app/boot.ts).
 const migrateV19 = (save: PlayerSaveV19): PlayerSaveV20 => ({
   ...save,
   version: 20,
   recordUnlock: 'Locked',
 })
 
-// NOTE: a save from before the Bones bonuses has had none: its next run of
-// the day pays double, and its first escape on each difficulty pays the
-// bonus, an escape from before included.
 const migrateV20 = (save: PlayerSaveV20): PlayerSaveV21 => ({
   ...save,
   version: 21,
   bonuses: noBonuses,
 })
 
-// NOTE: a save from before the friends in the car remembered reads as no
-// run yet, so the first intro after the update says nothing new.
 const migrateV21 = (save: PlayerSaveV21): PlayerSaveV22 => ({
   ...save,
   version: 22,
   lastRun: 'NoRunYet',
 })
 
-// NOTE: a save from before the daily missions has none yet and has played
-// no co-op as far as the missions know: its first online run says so.
 const migrateV22 = (save: PlayerSaveV22): PlayerSaveV23 => ({
   ...save,
   version: 23,
   missions: noMissions,
 })
 
-// NOTE: a save from before the Proof Shelf has an empty shelf: what it
-// brought out before then left no stamp.
 const migrateV23 = (save: PlayerSaveV23): PlayerSaveV24 => ({
   ...save,
   version: 24,
   proof: noProof,
 })
 
-// NOTE: a save from before the Dare Journal starts it empty: the
-// milestones it already meets are reached at the next run's end.
 const migrateV24 = (save: PlayerSaveV24): PlayerSaveV25 => ({
   ...save,
   version: 25,
   journal: noJournal,
 })
 
-// NOTE: a save from before the rank purses has none paid: the purses its
-// rank has reached are paid at load, once (src/app/update/purses.ts).
 const migrateV25 = (save: PlayerSaveV25): PlayerSaveV26 => ({
   ...save,
   version: 26,
 })
 
-// NOTE: a save from before mastery starts every hero's track and every
-// gun's kills at none: kills were never kept by gun before.
 const migrateV26 = (save: PlayerSaveV26): PlayerSaveV27 => ({
   ...save,
   version: 27,
   mastery: noMastery,
 })
 
-// NOTE: a save from before the dare ladder has no mark opened. An escape it
-// made already does not count: the ladder starts at the next one.
 const migrateV27 = (save: PlayerSaveV27): PlayerSave => ({
   ...save,
   version: SAVE_VERSION,
@@ -768,12 +682,6 @@ const fromV3 = (save: PlayerSaveV3): PlayerSave => fromV4(migrateV3(save))
 
 const fromV2 = (save: PlayerSaveV2): PlayerSave => fromV3(migrateV2(save))
 
-// NOTE: the one list of save versions this build reads, newest first, each
-// with its way to the current save. A new version goes at the top, with its
-// number in SAVE_VERSION (src/shared/playerData.ts). Renumbering versions after a
-// merge happens here and there only. The sync scope's SeededPlayer carries
-// the current PlayerSave, so a new version also bumps its mutation version
-// in src/platform/playerScope.ts.
 const SAVE_VERSIONS: ReadonlyArray<
   Readonly<{
     version: number

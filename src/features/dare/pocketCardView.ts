@@ -40,17 +40,6 @@ import {
   thingAtMs,
 } from './pocketCard'
 
-// The dare card in your pocket on screen (src/features/dare/pocketCard.ts):
-// a napkin card rises out of your pocket and opens in your friends' pencil
-// scrawl: I DARE YOU TO FIND:, this run's room things popping on one at a
-// time, each in a pencil box with a ? for still to find, then THEN GET OUT!
-// by a doodle of the front door. Then it
-// folds itself up into the HUD's dare pocket, which opens, and each picture
-// flies into its own slot there. Show, don't explain: pictures, and a few
-// scrawled words. Only art moves; the card has no buttons, and a key or a
-// tap folds it. While it waits (the first time alone), a key cap or TAP
-// pulses under it.
-
 const CARD_HEIGHT = 80
 const CARD_MAX_WIDTH = 180
 const CARD_SIDE_GAP = 10
@@ -72,14 +61,11 @@ const BACKDROP = 'rgba(10, 6, 14, 0.55)'
 const PROMPT_FILL = 'rgba(18, 13, 22, 0.94)'
 const PROMPT_RIM = '#ffe066'
 
-// THE SCRAWL
-
 type Word = Readonly<{ text: BakedText; lift: number }>
 
 const BIG = 2
 const WORD_GAP = 6
 
-// NOTE: each word a pixel off the last, as a hand writes.
 const wordsOf = (words: ReadonlyArray<string>): ReadonlyArray<Word> =>
   Array.map(words, (word, index) => ({
     text: bakeText(word, 'Ink'),
@@ -96,7 +82,6 @@ const wordsWidth = (words: ReadonlyArray<Word>): number =>
 
 const QUESTION: BakedText = bakeText('?', 'Ink')
 
-// NOTE: a chicken in pencil, for no chickening out.
 const CHICKEN: Sprite = spriteShapes(
   [
     '....PP.......',
@@ -116,8 +101,6 @@ const CHICKEN: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: the manor's front door in pencil, arched, with its knob, and a
-// pencil arrow running out of it: the way out once the list is done.
 const DOOR: Sprite = spriteShapes(
   [
     '...PPPP.......',
@@ -137,8 +120,6 @@ const DOOR: Sprite = spriteShapes(
   TOP_LEFT,
 )
 const DOOR_WIDTH = 14
-
-// LAYOUT
 
 type CardBox = Readonly<{ x: number; y: number; width: number }>
 
@@ -161,8 +142,6 @@ const FIND_Y = 19
 const THINGS_Y = 35
 const OUT_Y = 63
 
-// NOTE: where each thing's box sits on the card, card-local: this run's
-// things in a row, in the HUD card's order.
 const boxSpotsOf = (count: number, width: number): ReadonlyArray<Vector> => {
   const rowWidth = count * BOX_STRIDE - (BOX_STRIDE - BOX)
   const rowLeft = Math.round((width - rowWidth) / 2)
@@ -171,8 +150,6 @@ const boxSpotsOf = (count: number, width: number): ReadonlyArray<Vector> => {
     y: THINGS_Y,
   }))
 }
-
-// THE CARD
 
 const paperShapes = (
   width: number,
@@ -214,7 +191,6 @@ const centeredWords = (
 
 const OUT_GAP = 5
 
-// NOTE: THEN GET OUT! with the door doodle after it, centered as one line.
 const outShapes = (
   width: number,
   y: number = OUT_Y,
@@ -233,8 +209,6 @@ const outShapes = (
   ]
 }
 
-// NOTE: a pencil box with its corners cut, drawn twice a pixel apart at a
-// corner as a hand goes round, and a ? on its top right: still to find.
 const thingBoxShapes = (): ReadonlyArray<Draw.Shape> => [
   rect(1, 0, BOX - 2, 1, PENCIL),
   rect(1, BOX - 1, BOX - 2, 1, PENCIL),
@@ -255,7 +229,6 @@ const iconShapes = (
     shapes: DARE_ICONS[kind],
   })
 
-// NOTE: a thing in its box, popping on from big as the pencil scratches.
 const boxedThingShapes = (
   kind: DareKind,
   spot: Vector,
@@ -273,7 +246,6 @@ const boxedThingShapes = (
   })
 }
 
-// NOTE: the card's words and its paper, card-local, written on by `ageMs`.
 const scrawlShapes = (
   width: number,
   count: number,
@@ -286,14 +258,11 @@ const scrawlShapes = (
   ...(ageMs >= outAtMs(count) ? outShapes(width) : []),
 ]
 
-// NOTE: the card rising out of your pocket, from below the screen.
 const riseOf = (screen: Screen, box: CardBox, ageMs: number): number =>
   Math.round(
     lerp(screen.height - box.y, 0, easeOut(clamp(ageMs / UNFOLD_MS, 0, 1))),
   )
 
-// NOTE: under a waiting card once it takes a key: a key cap on a keyboard,
-// TAP on touch, pulsing.
 const PROMPT_BLINK_MS = 450
 const PROMPT_PAD = 2
 const PROMPT_GAP = 3
@@ -359,10 +328,6 @@ const readingShapes = (
   ]
 }
 
-// NOTE: the card shrinks toward the HUD's pocket and fades in the first
-// part of the fold, and each picture flies on into its own slot, one a
-// little after another, landing at the slot's size, then fades to the
-// slot's outline beneath: the card is now the list.
 const PAPER_SHARE = 0.5
 const FLIGHT_STAGGER_MS = 90
 const LAND_FADE_SHARE = 0.25
@@ -429,17 +394,6 @@ const foldingShapes = (
   ]
 }
 
-// THE CARD OPENED AGAIN, WITH ITS SATCHEL
-
-// NOTE: the card opened from the HUD's list (Demi and the owner,
-// 2026-11-11), the same napkin with I DARE YOU: the things still missing
-// in their pencil boxes, dim, each with where it lies under it once that
-// is known (`maybeClueRoom`: its room's icon and an eye for plain sight);
-// THEN GET OUT! once none is missing; a satchel at the foot holding every
-// thing found, each poking out of its top on its gold rim; and under it a
-// line of the Munches' story for each thing found. A thing found since the
-// card was last looked at drops into the satchel with a bounce. Only art
-// moves, and the card has no buttons.
 const OPENED_MAX_WIDTH = 184
 const OPENED_SIDE_GAP = 6
 const OPENED_PAD = 5
@@ -500,7 +454,6 @@ const openedBoxOf = (screen: Screen, foundCount: number): CardBox => {
   }
 }
 
-// NOTE: where a thing lies, under its box: its room's icon, then the eye.
 const clueShapes = (
   model: Model,
   kind: DareKind,
@@ -549,16 +502,12 @@ const missingShapes = (
         ],
       )
 
-// NOTE: how far a thing dropping in is still above its spot, by the share
-// of its drop: it falls, then bounces once.
 const dropLiftAt = (share: number): number =>
   share < DROP_FALL_SHARE
     ? -DROP_HEIGHT * (1 - (share / DROP_FALL_SHARE) ** 2)
     : -DROP_BOUNCE_PX *
       Math.sin((Math.PI * (share - DROP_FALL_SHARE)) / (1 - DROP_FALL_SHARE))
 
-// NOTE: the share of a thing's drop, or 1 for a thing already in the
-// satchel; below 0 before its drop starts.
 const dropShareOf = (
   fresh: ReadonlyArray<DareKind>,
   kind: DareKind,
@@ -611,8 +560,6 @@ const satchelShapes = (
   ]
 }
 
-// NOTE: a line for each thing found, its picture before it; a thing still
-// dropping in gets its line once it lands.
 const linesShapes = (
   found: ReadonlyArray<DareKind>,
   fresh: ReadonlyArray<DareKind>,
@@ -659,8 +606,6 @@ const openedShapes = (
   ]
 }
 
-// NOTE: over everything else on the overlay while the card is out.
-// `pocket` is how the HUD's pocket is drawn, so the pictures land there.
 export const pocketCardShapes: {
   (
     screen: Screen,

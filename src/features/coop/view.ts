@@ -70,9 +70,6 @@ import {
   meIn,
 } from './roomState'
 
-// INPUTS
-
-// NOTE: what co-op reads of the root, built by src/app/coopView.ts.
 export type ViewInputs = Readonly<{
   look: Appearance
   isKeyboard: boolean
@@ -85,15 +82,8 @@ export type ViewInputs = Readonly<{
 
 type HeroPick = Model['heroPick']
 
-// NOTE: `isRunCardUp` while the root's end card shows a run's end, so the
-// lobby waits behind it until the player picks one of the card's buttons.
-// `isRunEndComing` while the room is back in its lobby but the root has not
-// drawn the run's end yet, so the arena stays up until the card comes.
-
 const lookOf = (inputs: ViewInputs, room: Room, seat: number) =>
   seatLookOf(inputs.look, room.slot, seat, room.maybeLobby)
-
-// PIECES
 
 const keyCapView = (
   inputs: ViewInputs,
@@ -177,10 +167,6 @@ const problemView = (
         ),
   })
 
-// PING
-
-// NOTE: a player's link as three bars: green and full under 100 ms, yellow
-// and two under 200, red and one above; the number is for screen readers.
 const PING_GOOD_MS = 100
 const PING_OK_MS = 200
 
@@ -202,8 +188,6 @@ const pingView = (
         .children(iconView('coop-ping-icon', WIFI_ICONS[pingGrade(rttMs)], h))
 
 const ownPingOf = (room: Room): number => Math.round(room.session.rttMs)
-
-// HUB
 
 const quickHeadsView = (h: ApplicationViewBuilder): ApplicationHtml | null =>
   h.span
@@ -272,8 +256,6 @@ const hubView = (
       ),
       problemView(maybeProblem, h),
     )
-
-// CODE
 
 const slotState = (typed: string, index: number): string => {
   if (index < typed.length) {
@@ -347,8 +329,6 @@ const codeView = (
       problemView(maybeProblem, h),
     )
 
-// QUEUE
-
 const queueSeatView = (
   queue: Queue,
   inputs: ViewInputs,
@@ -358,8 +338,6 @@ const queueSeatView = (
   const isFilled = seat < queue.waiting
   const isMe = seat === queue.position - 1
   const name = Option.getOrElse(Array.get(queue.names, seat), () => '')
-  // NOTE: keyed by whether it is filled, so a player who arrives lands
-  // afresh: the seat flashes and their head drops in.
   return h.li
     .key(`seat-${seat}-${isFilled ? 'Filled' : 'Empty'}`)
     .class('coop-queue-seat')
@@ -462,12 +440,8 @@ const queueView = (
       offerView(queue, inputs, h),
     )
 
-// LOBBY
-
 const ROOM_CODE_COPIED = 'COPIED!'
 
-// NOTE: a tap on the code copies it, and COPIED! flashes over it, afresh
-// for each copy (keyed by the count), fading in place.
 const roomCodeView = (
   room: Room,
   h: ApplicationViewBuilder,
@@ -561,8 +535,6 @@ const seatView = (
     },
   )
 
-// NOTE: a seat read aloud: who, their rank, their hero (nothing for
-// YOU), and READY. The prop and the badge are pictures.
 const seatLabelOf = (
   member: LobbyMember,
   { isMe, isTheHost }: Readonly<{ isMe: boolean; isTheHost: boolean }>,
@@ -581,8 +553,6 @@ const seatLabelOf = (
   )
 }
 
-// NOTE: the host's crown flashes in place when a guest taps a pick. The flash
-// alternates between two same-looking animations so each tap starts it over.
 const crownClassOf = (room: Room): string =>
   Option.match(room.maybeNudge, {
     onNone: () => 'coop-crown',
@@ -665,8 +635,6 @@ const memberSeatView = (
     )
 }
 
-// NOTE: the last run's icon by how the room closed: a trophy for an
-// escape, the chicken for a crew out the back door, a skull for the rest.
 const RESULT_ICONS: Readonly<Record<ClosedReason, string>> = {
   Won: TROPHY_ICON,
   LeftEarly: MISSION_ICONS.LeaveEarly,
@@ -730,8 +698,6 @@ const resultView = (
         ),
   })
 
-// NOTE: a score read aloud: who, their rank, their hero (nothing for
-// YOU), the points, and the MVP.
 const scoreLabelOf = (
   lobby: Lobby,
   score: RoomScore,
@@ -758,14 +724,12 @@ const nameAt = (lobby: Lobby, slot: number): string =>
     { onNone: () => `Player ${slot + 1}`, onSome: member => member.name },
   )
 
-// NOTE: a seat's rank from the lobby; a seat that left reads as 1.
 const rankAt = (lobby: Lobby, slot: number): number =>
   Option.match(
     Array.findFirst(lobby.members, member => member.slot === slot),
     { onNone: () => 1, onSome: member => member.rank },
   )
 
-// NOTE: a seat's calling from the lobby; a seat that left has none.
 const callingAt = (lobby: Lobby, slot: number): Calling =>
   Option.match(
     Array.findFirst(lobby.members, member => member.slot === slot),
@@ -887,8 +851,6 @@ const lobbyView = (
       namePickerView(room, h),
     )
 
-// ARENA
-
 const countdownView = (
   room: Room,
   h: ApplicationViewBuilder,
@@ -909,8 +871,6 @@ const countdownView = (
       ),
     )
 
-// NOTE: Zz while the link tries again; past 20 seconds it says LOST THE ROOM
-// and offers the way out, with the tries going on behind it.
 const awayView = (
   room: Room,
   h: ApplicationViewBuilder,
@@ -950,8 +910,6 @@ const lostView = (
       ),
   )
 
-// NOTE: the link's numbers, for the audit harness and the curious: the
-// round trip, what came down, and how far your own player was corrected.
 const netView = (
   room: Room,
   h: ApplicationViewBuilder,
@@ -984,12 +942,6 @@ const netView = (
     )
 }
 
-// NOTE: the run itself is the game's own scene under this overlay
-// (src/app/update/coopPlay.ts), drawn from the room's World with the game's views.
-// Co-op adds only what the room is: LEAVE, the countdown, Away while the
-// socket reconnects, and the trophy when the run ends.
-// NOTE: every player's bars in their seat's color, your own from your
-// own pings and the rest as the room last shared them.
 const arenaPingsView = (
   room: Room,
   h: ApplicationViewBuilder,
@@ -1049,10 +1001,6 @@ const arenaView = (
       netView(room, h),
     )
 
-// NOTE: while the root's end card is up the room's choices are its buttons
-// (PLAY AGAIN, LOBBY, LEAVE in src/screens/game/menus.ts), so co-op draws nothing over
-// it: no scrim, and nothing to take a tap. A room back in its lobby before
-// the root has drawn the run's end keeps the arena up until the card comes.
 const roomView = (
   room: Room,
   heroPick: HeroPick,
@@ -1067,8 +1015,6 @@ const roomView = (
     return lobbyView(room, heroPick, inputs, h)
   }
 }
-
-// VIEW
 
 const roomScreenName = (room: Room, inputs: ViewInputs): string => {
   if (inputs.isRunCardUp) {
@@ -1088,7 +1034,6 @@ const screenName = (model: Model, inputs: ViewInputs): string =>
     InRoom: ({ room }) => roomScreenName(room, inputs),
   })
 
-// NOTE: co-op over the game, drawn by the root (src/app/coopView.ts).
 export const coopScreenView: {
   (
     inputs: ViewInputs,

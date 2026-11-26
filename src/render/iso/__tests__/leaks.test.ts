@@ -18,12 +18,7 @@ import {
 } from '../leaks'
 import { strikeOf } from '../mood'
 
-// The roof leaks drawn (src/render/iso/leaks.ts): the World's puddles in
-// whole pixels, drips off the World's clock, and glints mirrored from the
-// flames and the lightning.
-
 const wave = atClock(quietWave(5), 0)
-// NOTE: the house a run starts in, the dining room open.
 const manor = levelOf(wave)
 
 test('the puddles lie in whole pixels', () => {
@@ -114,8 +109,6 @@ test('the flashlight catches a cellar puddle in the dark', () => {
   expect(keyFacing(1)).not.toBe(keyFacing(-1))
 })
 
-// NOTE: the pixels a ring covers around its landing, read as what a viewer
-// near the puddle sees that one far off does not.
 const ringPixelsAt = (ms: number, spot: Readonly<{ x: number; y: number }>) => {
   const keyOf = ({ x, y, width, height, fill }: Draw.Rect) =>
     `${x},${y},${width},${height},${fill}`

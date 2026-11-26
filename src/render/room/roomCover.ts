@@ -36,8 +36,6 @@ import {
   roll,
 } from './roomPalette'
 
-// COVER
-
 const isSymbolAt = (
   level: Level,
   symbol: string,
@@ -84,8 +82,6 @@ const blockAt = (level: Level, symbol: string, { column, row }: Tile): Box => ({
 export const coverShadow = ({ x, y, width, height }: Box): Draw.Shape =>
   rect(x + 2, y + height, width - 2, 2, COVER_SHADOW_COLOR)
 
-// NOTE: west of the middle of the room the box stands in, or of the whole
-// map when it stands in none.
 const isWestHalf = ({ x, y, width, height }: Box, level: Level): boolean => {
   const centerX = x + width / 2
   const centerY = y + height / 2
@@ -106,8 +102,6 @@ const isWestHalf = ({ x, y, width, height }: Box, level: Level): boolean => {
   return centerX < middle
 }
 
-// NOTE: an upright piano against the wall, its back rising up the wallpaper,
-// with a candelabra on top and one key bitten off.
 const pianoShapes = ({
   x,
   y,
@@ -149,7 +143,6 @@ const pianoShapes = ({
     rect(x + 1, bottom - 4, 3, 2, '#140f12'),
     rect(x + width - 4, bottom - 4, 3, 2, '#140f12'),
     rect(x + 12, bottom - 4, 6, 1, GOLD_COLOR),
-    // NOTE: the candelabra on top.
     rect(x + width - 10, y - 15, 7, 1, GOLD_COLOR),
     rect(x + width - 7, y - 17, 1, 2, GOLD_COLOR),
     rect(x + width - 10, y - 18, 1, 3, CANDLE_COLOR),
@@ -161,7 +154,6 @@ const pianoShapes = ({
   ]
 }
 
-// NOTE: a sconce on the hearth's wall, y the top of that wall.
 const sconce = (x: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(x - 4, y + 4, 10, 11, 'rgba(255, 200, 90, 0.08)'),
   rect(x - 2, y + 5, 6, 8, 'rgba(255, 200, 90, 0.1)'),
@@ -173,9 +165,6 @@ const sconce = (x: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(x, y + 12, 2, 2, GOLD_DARK_COLOR),
 ]
 
-// NOTE: the fireplace: a stone chimney breast up the wall, a mantel with a
-// skull, a clock, and a candle, a firebox whose flames the scene draws, and
-// a sconce either side, so the whole hearth stands carved as one piece.
 const hearthShapes = ({
   x,
   y,
@@ -184,8 +173,6 @@ const hearthShapes = ({
 }: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = x + width / 2
   const bottom = y + height
-  // NOTE: the hearth stands against its room's north wall, so its chimney
-  // breast and mantel are drawn from the top of that wall, two rows above.
   const wallTop = y - TILE_SIZE * 2
   const faceTop = wallTop + FACE_TOP
   const breastX = x - 6
@@ -237,7 +224,6 @@ const hearthShapes = ({
     rect(x - 10, mantelY, width + 20, 3, '#5a3a22'),
     rect(x - 10, mantelY, width + 20, 1, '#7a5232'),
     rect(x - 9, mantelY + 3, width + 18, 1, '#2a1a10'),
-    // NOTE: the mantel's knickknacks.
     rect(x - 7, mantelY - 4, 2, 4, CANDLE_COLOR),
     rect(x - 7, mantelY - 6, 2, 2, FLAME_COLOR),
     rect(x - 8, mantelY - 1, 4, 1, GOLD_COLOR),
@@ -252,7 +238,6 @@ const hearthShapes = ({
     rect(x + width + 4, mantelY - 3, 2, 1, INK_COLOR),
     rect(x + 6, mantelY - 3, 3, 3, '#3f7a3a'),
     rect(x + 7, mantelY - 4, 1, 1, '#7fbf5a'),
-    // NOTE: the andirons and logs the flames sit on.
     rect(opening.x + 2, bottom - 7, 2, 4, '#2a2228'),
     rect(opening.x + opening.width - 4, bottom - 7, 2, 4, '#2a2228'),
     rect(opening.x + 3, bottom - 7, opening.width - 6, 3, '#5a3a22'),
@@ -260,7 +245,6 @@ const hearthShapes = ({
     rect(opening.x + 3, bottom - 6, 1, 1, '#c9a06a'),
     rect(opening.x + opening.width - 4, bottom - 6, 1, 1, '#c9a06a'),
     rect(opening.x + 3, bottom - 4, opening.width - 6, 1, '#c84a1a'),
-    // NOTE: the hearth slab out on the floor.
     rect(x - 4, bottom - 3, width + 8, 3, '#7d7384'),
     rect(x - 4, bottom - 3, width + 8, 1, '#968ca0'),
     rect(x - 4, bottom - 1, width + 8, 1, '#5e5568'),
@@ -326,8 +310,6 @@ const bookshelfShapes = ({
   width,
   height,
 }: Box): ReadonlyArray<Draw.Shape> => {
-  // NOTE: the bookshelf stands against its room's north wall and rises up
-  // it, so it is drawn from the top of that wall, two rows above.
   const wallTop = y - TILE_SIZE * 2
   const top = wallTop + 2
   const bottom = y + height
@@ -349,7 +331,6 @@ const bookshelfShapes = ({
       rect(innerLeft, floorY, innerRight - innerLeft, 2, SHELF_EDGE_COLOR),
     ]),
     rect(middle - 1, top + 2, 2, 22, SHELF_WOOD_COLOR),
-    // NOTE: a skull bookend, a jar with an eye in it, and a candle.
     rect(middle + 8, wallTop + 5, 5, 4, BONE_COLOR),
     rect(middle + 9, wallTop + 6, 1, 1, INK_COLOR),
     rect(middle + 11, wallTop + 6, 1, 1, INK_COLOR),
@@ -410,8 +391,6 @@ const armchairShapes = (box: Box, level: Level): ReadonlyArray<Draw.Shape> =>
     ARMCHAIR_PALETTE,
   )
 
-// NOTE: the sofa faces the fire, so the room sees its tufted back, with a
-// pillow and a rip that spills stuffing.
 const couchShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const cushion = Math.floor((width - 8) / 3)
   return [
@@ -522,7 +501,6 @@ const FERN_PALETTE: Palette = {
 const fernShapes = ({ x, y }: Box): ReadonlyArray<Draw.Shape> =>
   pixelArt(x, y - 2, FERN_PIXELS, FERN_PALETTE)
 
-// NOTE: the coffin's lid has slid down, and something inside is peeking out.
 const COFFIN_PIXELS: ReadonlyArray<string> = [
   '..aaaaaa..',
   '.aKKKKKKa.',
@@ -599,7 +577,6 @@ const crateShapes = ({
       ]
     },
   ),
-  // NOTE: the shopkeeper's stock pokes out of the top.
   rect(x + 2, y - 3, 2, 4, '#3f7a3a'),
   rect(x + 2, y - 4, 2, 1, '#c9a06a'),
   rect(x + 5, y - 2, 3, 3, '#c8343c'),
@@ -627,8 +604,6 @@ export const COVER_DRAWINGS: Readonly<
   Pantry: pantryShapes,
   Sacks: sacksShapes,
   Fridge: fridgeShapes,
-  // NOTE: the escape rooms' cover is drawn by src/render/room/escapeCover.ts,
-  // nearest last, after the rest (room.ts), so here it draws nothing.
   PartyTable: () => [],
   Hutch: () => [],
   Candelabra: () => [],
@@ -639,12 +614,8 @@ export const COVER_DRAWINGS: Readonly<
   Barrels: () => [],
 }
 
-// NOTE: every block of a cover symbol on the map, each the box from its top
-// left corner across and down the symbol's run.
 const coverBlocksKept = new WeakMap<Level, Map<string, ReadonlyArray<Box>>>()
 
-// NOTE: kept per level and symbol: the tall cover and the room image ask
-// for them, and the map's cover never changes within a level.
 export const coverBlocks: {
   (symbol: string): (level: Level) => ReadonlyArray<Box>
   (level: Level, symbol: string): ReadonlyArray<Box>

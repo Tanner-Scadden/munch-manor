@@ -34,15 +34,8 @@ import {
   steps,
 } from '../../test/testing'
 
-// NOTE: a production build draws every sprite as a cropped region of the
-// atlas sheet (src/test/atlasHtml.setup.ts stands one in). A canvas crops it, but
-// an <img> or a CSS background cannot, so HTML that shows a sprite by its
-// own source shows the whole sheet squashed into the box. HTML must take
-// `standaloneSource(image)` instead.
 const BAGS = ['attrs', 'props'] as const
 
-// NOTE: every attribute, property, and style of the page (an <img> src, a
-// CSS background) that names the atlas sheet.
 const sheetUsesIn = (node: Locator.Node): ReadonlyArray<string> =>
   Array.flatMap(Locator.elements(node), element =>
     Array.flatMap(BAGS, bag => {
@@ -62,7 +55,6 @@ const noSheetInHtml: SceneStep = s =>
     vitestExpect(sheetUsesIn(s.root)).toEqual([])
   })
 
-// NOTE: what `locator` finds whose src is an image of its own.
 const withOwnSource = (locator: Locator.Locator): Locator.Locator => ({
   description: `${locator.description}[src^=data:image/png]`,
   all: root =>
@@ -71,7 +63,6 @@ const withOwnSource = (locator: Locator.Locator): Locator.Locator => ({
     ),
 })
 
-// NOTE: an image of its own, encoded from the sprite's pixels.
 const ownImages =
   (locator: Locator.Locator, count: number): SceneStep =>
   s =>
@@ -92,7 +83,6 @@ const pausedOn = (device: Model['lastDevice']): Model =>
 
 const HELP_FRAMES = byClass('help-card-frame')
 
-// NOTE: every frame of the twelve control cards' moving pictures.
 const FRAMES_BY_DEVICE: Readonly<Record<Model['lastDevice'], number>> = {
   KeyboardMouse: 50,
   Touch: 49,
@@ -140,9 +130,6 @@ describe('sprites in HTML', () => {
       }),
   )
 
-  // NOTE: the root opens the Dare Journal from the hand; the Journal is a
-  // child, a leaf in the root's Scene, so its list is drawn on its own with
-  // the props the root hands it.
   it.effect('the Munchopedia list shows each zombie its own image', () =>
     Effect.gen(function* () {
       const s = yield* sceneOf(home)

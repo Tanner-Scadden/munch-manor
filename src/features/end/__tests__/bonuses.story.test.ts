@@ -19,16 +19,8 @@ import {
   wave,
 } from './rank.fixture'
 
-// The Bones bonuses (src/world/heroes/rank.ts, src/features/end/rankRun.ts):
-// a run that ends on the end card pays at least 3 Bones, the day's first
-// one pays its Bones twice, and the first escape on a difficulty pays 50
-// once. Each goes up to the player's other devices as its own change, so
-// the server pays it once (src/platform/playerScope.ts). A rank with no
-// other gift pays its purse once, the run that reaches it.
-
 const TODAY = '2026-11-12'
 
-// NOTE: a death on wave 2 with one wave cleared: 10 points, 1 Bone.
 const diesOnWave2 = lastHeart(runAt(wave(2), 1, 0))
 
 const today = (model: Model, day: string = TODAY): Model =>
@@ -98,7 +90,6 @@ describe("the day's first run", () => {
       const s = yield* storyOf(diesOnWave7)
       s.pipe(
         send(Message.ChangedToday({ day: TODAY })),
-        // NOTE: the day's three frozen as the day comes in.
         writeSave,
         frame,
         checkModel(after => {
@@ -208,8 +199,6 @@ describe('the first escape on a difficulty', () => {
   it.effect("stacks on the day's first run, which doubles only the run", () =>
     Effect.gen(function* () {
       const won = yield* ended(today(lastWave))
-      // NOTE: a known day pays the day's missions too (an escape may finish
-      // one), apart from the bonuses (src/features/missions/missions.ts).
       const missionBones = Option.match(won.runGains.maybeMissionGain, {
         onNone: () => 0,
         onSome: ({ bones }) => bones,
@@ -222,8 +211,6 @@ describe('the first escape on a difficulty', () => {
   )
 })
 
-// NOTE: a death on wave 7 (60 points, 6 Bones) that starts `short` points
-// below rank 21, with purses paid at `paid`.
 const nearRank21 = (short: number, paid: ReadonlyArray<number>): Model =>
   UiStruct.evolve(diesOnWave7, {
     rank: rank =>
@@ -256,8 +243,6 @@ describe('the rank purses', () => {
 
   it.effect('a purse paid once is never paid again', () =>
     Effect.gen(function* () {
-      // NOTE: the purse paid on another run, or another device, that ended
-      // short of the rank's points; this run reaches them again.
       const after = yield* ended(nearRank21(30, [21]))
       expect(after.rank.earnedBones).toBe(6)
       expect(after.bonuses.purses).toEqual([21])

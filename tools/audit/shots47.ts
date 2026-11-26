@@ -1,12 +1,3 @@
-// The callings pass: the calling pill on the home menu, the picker with
-// locked and unlocked callings, the Profile's Look preview holding each
-// calling's gun, each calling's prop on the player in play,
-// and the end card that unlocks a calling, on a 1280x720 desktop, an 844x390
-// phone on its side, and a 390x844 phone held upright, as
-// `s47-<TAG>-<viewport>-<scene>.png`. It exits with 1 on a card past the
-// picker's edge, the picker past the screen, or a phone card under 48 px.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shots47.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Array, Effect, String } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -45,9 +36,7 @@ type Scene = Readonly<{
   query: string
   open?: string
   isPicker?: boolean
-  // NOTE: selectors clicked in order once the picker is open.
   clicks?: ReadonlyArray<string>
-  // NOTE: a shot after each click, named `<scene>-<n>`.
   isFlow?: boolean
 }>
 
@@ -79,8 +68,6 @@ const SCENES: ReadonlyArray<Scene> = [
     open: '#lobby-hero',
     isPicker: true,
   },
-  // NOTE: heroes are bought with Bones: locked below the rank, for sale at
-  // it with a price, tried on with a BUY pill, and owned once bought.
   {
     name: 'buy-forsale',
     query: `${LEARNED}&rank=1000&bones=220`,

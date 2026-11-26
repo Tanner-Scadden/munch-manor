@@ -13,10 +13,6 @@ import type { HouseSpot, ShopGuideSection } from '../../shared/nameKeys'
 import type { FridgePrize } from '../../world/schema/worldSchema'
 import { GuideArt } from './shopGuide'
 
-// NOTE: the shop guide's pictures. Guns, goods, and traps are the shop's own
-// art (src/art/shopArt.ts); the fridge's gags and the places around the house are
-// drawn here, as pixel maps turned into SVG once at module scope.
-
 const INK = '#140c10'
 
 const FRIDGE_ART = artOf(
@@ -101,8 +97,6 @@ const PRIZE_ART: Readonly<Record<FridgePrize, ShopArt>> = {
   Dud: DUD_ART,
 }
 
-// NOTE: the stove bench, a cast iron stove with a chili over its pot, and
-// the gas valve's red wheel on its pipe.
 const STOVE_ART = artOf(
   [
     '.....RR.......',

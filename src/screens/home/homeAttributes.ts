@@ -10,9 +10,6 @@ import { HomeMessage } from '../../features/home/message'
 import { keyCapView } from '../../ui/menuParts'
 import { HOME_KEYS, homeButtonId } from './home'
 
-// What every home menu button wears: its key's cap for a keyboard player,
-// its id, its key, and focus for the arrow keys.
-
 export const keyBadgeView: {
   (
     button: HomeButton,
@@ -33,13 +30,8 @@ export const keyBadgeView: {
     keyCapView(model, HOME_KEYS[button].cap, h),
 )
 
-// NOTE: a home button's builder. Effect UI's PartTarget types `attr`
-// loosely, so a helper chains on the concrete builder, typed, and applies
-// any part last (Effect UI's "Headless parts").
 type HomeButtonBuilder = ReturnType<ApplicationViewBuilder['button']['attr']>
 
-// NOTE: what every home control shares, a link like the coffee too: its id
-// and its key, as attributes for `.attrs`, beside its focus Messages.
 export const homeFocusAttrs = (
   button: HomeButton,
 ): Readonly<Record<string, string>> => ({

@@ -17,15 +17,11 @@ import {
   type SummaryPartyV6,
 } from '../../src/platform/analytics.ts'
 
-// BODY SIZE
-
 export type BodySize = 'Fits' | 'TooLarge'
 
 const sizeOf = (bytes: number): BodySize =>
   bytes > MAX_SUMMARY_BYTES ? 'TooLarge' : 'Fits'
 
-// NOTE: a missing or unreadable Content-Length is not trusted either way. The
-// body is still measured after it is read.
 export const declaredSize = (contentLength: string | undefined): BodySize =>
   Option.match(Option.fromNullishOr(contentLength), {
     onNone: () => 'Fits',
@@ -38,10 +34,6 @@ export const declaredSize = (contentLength: string | undefined): BodySize =>
 export const bodySize = (body: string): BodySize =>
   sizeOf(new TextEncoder().encode(body).byteLength)
 
-// DECODING
-
-// NOTE: this version, or version 1 from a build cached before co-op
-// summaries, stored as a solo run.
 const decodePostedRun = Schema.decodeUnknownEffect(PostedRunJson)
 
 export const decodeSummary = (input: unknown) => decodePostedRun(input)
@@ -49,8 +41,6 @@ export const decodeSummary = (input: unknown) => decodePostedRun(input)
 const decodePostedShare = Schema.decodeUnknownEffect(PostedShareJson)
 
 export const decodeShare = (input: unknown) => decodePostedShare(input)
-
-// RATE LIMITS
 
 export type RateOutcome = 'Allowed' | 'Limited'
 
@@ -81,12 +71,6 @@ const isoOf = (nowMs: number): string =>
 export const utcDay = (nowMs: number): string =>
   String.slice(0, DAY_LENGTH)(isoOf(nowMs))
 
-// RETENTION
-
-// NOTE: run rows are kept for 90 days, then the daily cleanup (api.ts,
-// scheduled from main.ts) deletes them. A row is kept while its received
-// day is on or after the day 90 days before now, so a row lives for 90 to
-// 91 days depending on the hour it came in.
 export const RETENTION_DAYS = 90
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -94,9 +78,6 @@ const DAY_MS = 24 * 60 * 60 * 1000
 export const retentionCutoffDay = (nowMs: number): string =>
   utcDay(nowMs - RETENTION_DAYS * DAY_MS)
 
-// NOTE: the address bucket is a hash of the IP with a secret salt and the UTC
-// day, so it changes every day and cannot be reversed without the salt. It is
-// only ever a rate limit key: it is never stored or logged.
 export const addressHashInput: {
   (day: string, address: string): (salt: string) => string
   (salt: string, day: string, address: string): string
@@ -110,8 +91,6 @@ export const visitRateKey = (visitId: string): string => `visit:${visitId}`
 
 export const addressRateKey = (addressHash: string): string =>
   `address:${addressHash}`
-
-// ROWS
 
 const encodeKills = Schema.encodeEffect(Schema.fromJsonString(SummaryKills))
 
@@ -174,7 +153,6 @@ type NetColumns = Pick<
   | 'net_correction_px_max'
 >
 
-// NOTE: a solo run, or a crew from before version 7, has no network.
 const NO_NET_COLUMNS: NetColumns = {
   net_rtt_p50_ms: null,
   net_rtt_p95_ms: null,
@@ -229,8 +207,6 @@ const netColumnsOf = (
       }
     : NO_NET_COLUMNS
 
-// NOTE: a version 2 crew came before the run key, so its key is NULL and
-// the report counts its row as a game of its own.
 const partyColumnsOf = (
   party: SummaryParty | SummaryPartyV6 | SummaryPartyV2,
 ): PartyColumns =>
@@ -246,13 +222,9 @@ const partyColumnsOf = (
         ...netColumnsOf(party),
       }
 
-// NOTE: a version 1 summary came before co-op sent any, so it was solo.
 const summaryPartyColumns = (summary: PostedRunSummary): PartyColumns =>
   summary.version === 1 ? SOLO_COLUMNS : partyColumnsOf(summary.party)
 
-// NOTE: a version 5 to 9 summary spends keys and opens cases, with no shop
-// to buy from (its purchases are 0); an older one bought from the shop, and
-// has no keys or cases (NULL).
 const shopColumnsOf = (
   summary: PostedRunSummary,
 ): Pick<RunRow, 'purchases' | 'keys_spent' | 'cases_opened'> =>
@@ -268,8 +240,6 @@ const shopColumnsOf = (
       }
     : { purchases: summary.purchases, keys_spent: null, cases_opened: null }
 
-// NOTE: the kills go in as JSON text. They were decoded from the same
-// Schema, so the encode cannot fail; if it did, the request dies as before.
 export const rowOf: {
   (nowMs: number): (summary: PostedRunSummary) => Effect.Effect<RunRow>
   (summary: PostedRunSummary, nowMs: number): Effect.Effect<RunRow>
@@ -317,8 +287,6 @@ export type ShareRow = Readonly<{
   path: string
 }>
 
-// NOTE: a version 1 event came before the share sheet, so its path was the
-// link.
 export const shareRowOf: {
   (nowMs: number): (event: ShareEvent | ShareEventV1) => ShareRow
   (event: ShareEvent | ShareEventV1, nowMs: number): ShareRow

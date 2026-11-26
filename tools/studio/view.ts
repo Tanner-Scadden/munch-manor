@@ -1,6 +1,4 @@
-// The art studio's page: the controls down the left, the big view and the
-// gallery (or the room) in the middle, and the notes on the right.
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import type { Facing } from '../../src/art/sprite'
 import { TILE_SIZE } from '../../src/shared/constants'
@@ -43,12 +41,8 @@ import { stageView } from './stageView'
 import { pickedEntry } from './update'
 import { studioWorld } from './worldStage'
 
-// GALLERY
-
 const CLOCK_STEP_MS = 100
 
-// NOTE: one card, built only from its arguments, so the lazy card below can
-// hand back the same card while none of them changed.
 const cardView = (
   h: StudioH,
   entry: Entry,
@@ -93,9 +87,6 @@ const cardView = (
     )
 }
 
-// NOTE: the card redraws only when what it shows changes: its frame, the
-// controls, or its badges. A clock-driven card (the stall) steps every
-// CLOCK_STEP_MS; any other holds its clock at zero and steps by frame.
 const card = (h: StudioH, entry: Entry, model: Model): StudioHtml => {
   const count = entry.frames(lookOf(model)).length
   const index = frameIndexOf(entry, model.clockMs, count)
@@ -144,10 +135,6 @@ const galleryView = (h: StudioH, model: Model): StudioHtml =>
       ),
   )
 
-// ROOMS
-
-// NOTE: the first grid lines in from the picture's top left, and their
-// step, in screen pixels.
 const gridOf = ({ bounds, zoom }: PictureFrame) => ({
   step: TILE_SIZE * zoom,
   offsetX:
@@ -161,8 +148,6 @@ const hoverBoxOf = (tile: Tile, { bounds, zoom }: PictureFrame) => ({
   size: TILE_SIZE * zoom,
 })
 
-// NOTE: what the pointer on the room means: a hover, a tile pressed to
-// start a pick, the drag let go, or gone.
 const ROOM_POINTER: {
   readonly [Kind in PointerKind]: (tile: Tile) => Message
 } = {
@@ -177,7 +162,6 @@ const roomPointerMessage =
   (pointer: PointerOnPicture): Message =>
     ROOM_POINTER[pointer.kind](tileOfPin(pinAt(frame)(pointer)))
 
-// NOTE: what the room's picture shows, as one key.
 const roomKeyOf = (model: Model): string =>
   `${model.room}|${model.house}|${model.isKitchenOpen}|${model.isTwistOn}|${model.zoom}|${model.backdrop}`
 
@@ -227,10 +211,6 @@ const roomView = (h: StudioH, model: Model): StudioHtml => {
   )
 }
 
-// THE LIVE ROOM
-
-// NOTE: the manor through the game's own 3D renderer (./worldStage.ts): the
-// harness's scene in a frame, the Studio's marks over it, and the loupe.
 const liveView = (h: StudioH, model: Model): StudioHtml =>
   h.main.class('middle').children(
     h.p
@@ -267,7 +247,6 @@ const liveView = (h: StudioH, model: Model): StudioHtml =>
     model.isLabOpen && labView(h, model),
   )
 
-// NOTE: the page's title names what is open.
 export const titleOf = (model: Model): string =>
   `Munch Studio: ${Option.match(
     Option.flatMap(model.maybeSelectedId, entryById),
@@ -277,10 +256,7 @@ export const titleOf = (model: Model): string =>
     },
   )}`
 
-// NOTE: a view is a function Effect UI calls with `h` and the Model, with
-// no data-last form to give it.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const view = StudioDef.view((h, model) =>
+const drawn = StudioDef.view((h, model) =>
   h.div
     .class('studio')
     .children(
@@ -293,3 +269,11 @@ export const view = StudioDef.view((h, model) =>
       inspectorView(h, model),
     ),
 )
+
+type DrawnH = Parameters<typeof drawn>[0]
+type Drawn = ReturnType<typeof drawn>
+
+export const view: {
+  (model: Model): (h: DrawnH) => Drawn
+  (h: DrawnH, model: Model): Drawn
+} = Function.dual(2, (h: DrawnH, model: Model): Drawn => drawn(h, model))

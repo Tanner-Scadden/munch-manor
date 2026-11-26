@@ -29,8 +29,6 @@ import {
 import { playerOfCalling } from '../../../world/heroes/callingPlayer'
 import { initialPlayer } from '../../../world/schema/worldSchema'
 
-// The callings' rules (src/world/heroes/calling.ts), each a pure function of a calling.
-
 describe('unlocking', () => {
   test('YOU is open at rank 1, the rest at 3, 6, 10, and 15', () => {
     expect(Array.map(CALLINGS, calling => UNLOCK_RANKS[calling])).toEqual([

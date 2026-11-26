@@ -1,8 +1,3 @@
-// The flat flow field's tests' shared setup: the search it replaced, kept as
-// the oracle, and the check that a field matches it. pathing.flat.test.ts
-// runs it on a few levels, and the two pathing.flat.*.sim.test.ts files on
-// every one, a clearance each.
-
 import { Array, Equivalence, Function, Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 
@@ -19,10 +14,6 @@ import {
 import { tileCenter, tileIndex, tileOfIndex } from '../tileGrid'
 import { isOpenBlock, isWalkableTile } from '../tileQueries'
 
-// NOTE: the search the flat one replaced, kept as the oracle: neighbors in
-// arrays of arrays, buckets in a Map, one ring settled after another. The
-// yard is one way, as in pathing.ts: a yard tile never hands its distance
-// to a house tile, since no zombie steps from the house out into the yard.
 const STRAIGHT = [
   [1, 0],
   [-1, 0],
@@ -149,9 +140,6 @@ export const TOLL_SETS = [
 
 const SAME_DISTANCES = Array.makeEquivalence(Equivalence.strictEqual<number>())
 
-// NOTE: the origins, every `stride`th tile, whose flat field differs from
-// the oracle's: a field that starts on another tile, or any distance that
-// differs. A test expects none.
 export const mismatchedOrigins: {
   (
     stride: number,
@@ -188,10 +176,6 @@ export const mismatchedOrigins: {
     ),
 )
 
-// NOTE: every level, each house with its exits shut and open, from every
-// seventh tile, for one clearance. A full house takes about 9 s over both
-// clearances and both toll sets, so each pair is its own test, well inside
-// the timeout on a busy CI runner, and the files run in the full tier only.
 export const checkEveryLevel = (clearance: Clearance): void => {
   const cases = Array.flatMap(EVERY_LEVEL, level =>
     Array.map(

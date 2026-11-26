@@ -28,8 +28,6 @@ import {
   screenToFloorDirection,
 } from '../lens'
 
-// NOTE: the desktop's view on its own canvas, and a phone held upright with
-// its view zoomed in under the HUD band.
 const DESKTOP: LensFrame = {
   x: 240,
   y: 60,
@@ -94,8 +92,6 @@ describe('the lens', () => {
       y: DESKTOP.y + DESKTOP.height / 2,
     }
     expect(nearly(onScreen(DESKTOP, middle))).toEqual({ x: 160, y: 90 })
-    // NOTE: a game pixel east shows a hair under a pixel, as the turn tips
-    // it a little into the floor's stretched north to south.
     const east = onScreen(DESKTOP, { x: middle.x + 1, y: middle.y })
     expect(Math.hypot(east.x - 160, east.y - 90)).toBeCloseTo(1, 1)
     const portraitMiddle = onScreen(PORTRAIT, {
@@ -153,7 +149,6 @@ describe('the lens', () => {
   })
 })
 
-// NOTE: a run under way on a window four times the game's size.
 const fighting = UiStruct.evolve(playingModel, {
   maybeSurface: () => Option.some(WIDE_SURFACE),
 })
@@ -170,8 +165,6 @@ describe('input through the lens', () => {
           const before = worldToView(camera, focusOf(fighting).player)
           const after = worldToView(camera, focusOf(current).player)
           expect(after.y).toBeLessThan(before.y - 5)
-          // NOTE: up is the lens's up at the view's middle; off the middle the
-          // floor's lines run a hair toward the far vanishing point.
           expect(Math.abs(after.x - before.x)).toBeLessThan(0.25)
         }),
       ),

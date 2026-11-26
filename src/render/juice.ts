@@ -43,8 +43,6 @@ import {
 import { countWhere } from '../world/step/hitStop'
 import { ZOMBIE_KINDS } from '../world/zombies/zombies'
 
-// SHAKE
-
 const BOSS_PART_TRAUMA = 0.35
 const EXIT_SMASH_TRAUMA = 0.7
 const BOSS_ROAR_TRAUMA = 0.6
@@ -165,10 +163,6 @@ const eventTrauma = (event: GameEvent): number =>
     SteppedOut: () => 0,
   })
 
-// NOTE: how hard the house itself rattles, 0 to 1: the shake past what
-// gunfire alone can reach, so a blast, a stomp, or a slam rattles it and a
-// held trigger never does. The 3D house reads it (src/render/iso/): the
-// flames gutter, the chandelier jolts, dust sifts off the ceiling.
 export const houseRattleOf = (trauma: number): number =>
   Math.min(
     1,
@@ -216,15 +210,12 @@ const advanceShake = (
   ]
 }
 
-// POPUPS
-
 const HORDE_POPUP_LIFETIME_MS = 1400
 const HORDE_POPUP_INSET_PX = 22
 const KABOOM_POPUP_LIFETIME_MS = 600
 const SAVE_POPUP_LIFETIME_MS = 1300
 const SAVE_POPUP_LIFT_PX = 18
 const OPENED_POPUP_LIFETIME_MS = 1300
-// NOTE: OPEN! rises from over the case's lock, which hangs above its top.
 const OPENED_POPUP_LIFT_PX = 34
 
 export const POPUP_LIFETIME_MS: Readonly<Record<PopupKind, number>> = {
@@ -263,8 +254,6 @@ const popup =
 
 const noPopups = (state: number): Seeded<ReadonlyArray<Popup>> => [state, []]
 
-// NOTE: keys found pop up as `+$1` where they came from, the `$` drawn
-// as a skeleton key (src/art/font.ts), on their way to the ring.
 const eventPopups = (
   state: number,
   event: GameEvent,
@@ -402,8 +391,6 @@ const agePopups = (
       : Result.failVoid
   })
 
-// NOTE: packs that frenzy at once share one HORDE! callout, the newest, so
-// a horde from every door does not stack four of them.
 const keepNewestHorde = (popups: ReadonlyArray<Popup>): ReadonlyArray<Popup> =>
   Option.match(
     Array.findLastIndex(popups, ({ kind }) => kind === 'Horde'),
@@ -416,8 +403,6 @@ const keepNewestHorde = (popups: ReadonlyArray<Popup>): ReadonlyArray<Popup> =>
         ),
     },
   )
-
-// BLASTS
 
 const ageBlasts = (
   blasts: ReadonlyArray<Blast>,
@@ -433,8 +418,6 @@ const ageBlasts = (
         })
       : Result.failVoid,
   )
-
-// STREAK
 
 const advanceStreak = (
   streak: Streak,
@@ -462,22 +445,14 @@ const advanceStreak = (
   })
 }
 
-// NOTE: the run's best streak, for the end card's tally.
 const streakCount = (streak: Streak): number =>
   Streak.isAnyOf(['Hot'])(streak) ? streak.count : 0
 
-// FRAME
-
-// NOTE: a Kaboomer's burst, a Cooker lid's, and the Pan's ground smash
-// each flash a ring.
 const blastOf = (event: GameEvent): ReadonlyArray<Blast> =>
   GameEvent.isAnyOf(['Exploded', 'LidBlasted', 'PanSmashed'])(event)
     ? [{ x: event.x, y: event.y, radius: event.radius, ageMs: 0 }]
     : []
 
-// NOTE: the juice runs once a frame, after the step, on the events of all
-// its ticks: shake, popups, blast flashes, and the streak. `deltaMs` is the frame's real time and `worldMs` the world time
-// its ticks ran.
 export const advanceJuice: {
   (deltaMs: number, worldMs: number): (model: Model) => Model
   (model: Model, deltaMs: number, worldMs: number): Model

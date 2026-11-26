@@ -1,20 +1,3 @@
-// Which Model fields the gameplay hash covers. This is the field list of the
-// World and client Model split planned in MULTIPLAYER.md (Phase 0), kept here
-// as data until the split gives the World its own schema in src.
-//
-// - World: gameplay state the room owns and every client must agree on.
-// - Gate: client state that steers gameplay in single player today (it
-//   freezes the world, blocks firing, or feeds aim). The split turns each one
-//   into a per-player input or a World field. Hashed until then.
-// - Derived: recomputed from the World (none today: the flow fields are built on the frame). Not hashed: it is
-//   costly, and a divergence there shows up in the World a frame later.
-// - Cosmetic: made from frame events, never read by the simulation.
-// - Client: UI, menus, dialogs, audio, settings, save and sync, devices.
-//
-// A Model field missing from this table is hashed as World, the safe side,
-// and the cross-engine report lists it, so a new field never hides a
-// divergence. Classify it here when it lands.
-
 import { Array, Option, Record } from 'effect'
 
 import type { Model } from '../../src/app/model'
@@ -77,9 +60,6 @@ export const FIELD_CLASSES = {
   dareHint: 'Cosmetic',
   maybeBreakIdleSinceMs: 'Cosmetic',
   maybeCarLine: 'Cosmetic',
-  // NOTE: the frame's cosmetics nested into one group to keep the Model's
-  // key count low. `trapNotice`, a Client field before it moved, joins them:
-  // neither class is hashed.
   cosmetics: 'Cosmetic',
 
   difficultyCard: 'Client',
@@ -128,9 +108,6 @@ export const FIELD_CLASSES = {
   seenUnlocks: 'Client',
   freshUnlocks: 'Client',
   home: 'Client',
-  // NOTE: client fields nested into groups to keep the Model's key count
-  // low. `endCard` holds `maybeDeathTip`, a Cosmetic field before it moved:
-  // neither class is hashed, so it is Client with the rest.
   saving: 'Client',
   roomRun: 'Client',
   runGains: 'Client',
@@ -151,9 +128,6 @@ export const FIELD_CLASSES = {
   beatMyRun: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>
 
-// NOTE: the player fields at the root of a Model before seats by slot. A
-// Model's first seat hashes under these names (legacyEntriesOf), so a run
-// before that change and a run after it hash alike.
 const LEGACY_SEAT_FIELDS = [
   'player',
   'intent',
@@ -167,18 +141,6 @@ const LEGACY_SEAT_FIELDS = [
   'purchase',
 ] as const
 
-// NOTE: client fields at the root of a Model before their feature became a
-// Block: the Profile's (src/features/profile/), now inside `profile`, and
-// the shop dialog's tabs and guide (src/features/shop/), inside
-// `shopDialog` until the shop went (docs/ESCAPE_PLAN.md, layer 7), which
-// hashes as a client field too. Then the fields nested into the Model's
-// groups (`saving`, `roomRun`, `runGains`, `endCard`, `release`,
-// `runStart`, and `settings`), and `trapNotice`, now in `cosmetics`, at the
-// root before them. The Munchopedia's and the Proof Shelf's Block models
-// (`munchopedia`, `proofShelf`) sat at the root until the Effect UI port,
-// where the root keeps only the Munchopedia's page. A run before those
-// changes hashes them as the client fields they are, so it and a run after
-// it hash alike.
 const LEGACY_CLIENT_FIELDS = [
   'munchopedia',
   'proofShelf',
@@ -234,11 +196,6 @@ const LEGACY_CLIENT_FIELDS = [
   'trapNotice',
 ] as const
 
-// NOTE: the cosmetic fields at the root of a Model before they moved into
-// `cosmetics`, and `breakIdleMs`, the idle clock before it kept the time
-// its quiet began (`maybeBreakIdleSinceMs`). A run before those changes
-// hashes them as the cosmetics they are, so it and a run after it hash
-// alike.
 const LEGACY_COSMETIC_FIELDS = [
   'breakIdleMs',
   'particles',
@@ -282,9 +239,6 @@ const byField = (
   [b]: readonly [string, unknown],
 ): number => (a < b ? -1 : a > b ? 1 : 0)
 
-// NOTE: the split plans to move the World fields under `model.world`. Its
-// fields are read as if they were still top level, so a split that changes
-// no behavior keeps the same names, the same record, and the same hash.
 const flatEntriesOf = (
   model: object,
 ): ReadonlyArray<readonly [string, unknown]> =>
@@ -304,11 +258,6 @@ const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
 const isList = (value: unknown): value is ReadonlyArray<unknown> =>
   Array.isArray(value)
 
-// NOTE: seats by slot read as the Model before them: the first seat's player
-// fields at the root, and a Crew with its lead seat and the other seats as
-// mates (a Mate was a seat's whole state). before and after (beforeAfter.ts)
-// plays this against a base with the old shape, so both sides hash the same
-// state under the same names.
 const legacyEntriesOf = (
   entries: ReadonlyArray<readonly [string, unknown]>,
 ): ReadonlyArray<readonly [string, unknown]> => {
@@ -337,10 +286,6 @@ const legacyEntriesOf = (
   ]
 }
 
-// NOTE: fields the World gained for co-op hash only once they hold more
-// than single player's value, so a single player run hashes exactly as it
-// did before them, and before and after (beforeAfter.ts) compares a solo
-// run across the change.
 const isSoloDefault = (field: string, value: unknown): boolean =>
   field === 'party' &&
   typeof value === 'object' &&
@@ -348,8 +293,6 @@ const isSoloDefault = (field: string, value: unknown): boolean =>
   '_tag' in value &&
   value._tag === 'Solo'
 
-// The hashed fields of a Model with their values, sorted by name, so the
-// order never depends on how the Model was built.
 export const gameplayEntriesOf = (
   model: Model,
 ): ReadonlyArray<readonly [string, unknown]> =>
@@ -362,13 +305,11 @@ export const gameplayEntriesOf = (
 export const hashedFieldsOf = (model: Model): ReadonlyArray<string> =>
   Array.map(gameplayEntriesOf(model), ([field]) => field)
 
-// Model fields this table does not classify yet.
 export const unclassifiedFieldsOf = (model: Model): ReadonlyArray<string> =>
   Array.filter(
     Array.map(flatEntriesOf(model), ([field]) => field),
     field => classOf(field) === undefined,
   ).sort()
 
-// The gameplay part of a Model as a plain record, for dumps and diffs.
 export const gameplayOf = (model: Model): Readonly<Record<string, unknown>> =>
   Record.fromEntries(gameplayEntriesOf(model))

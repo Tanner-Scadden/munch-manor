@@ -1,7 +1,3 @@
-// The balance targets from GAME_DESIGN.md, as data. The nightly suite and
-// the model's tests both read them. Change a target here and in the design
-// doc together.
-
 import { Array, Option } from 'effect'
 
 export type Target = Readonly<{
@@ -42,22 +38,12 @@ const atMost = (
 const TARGETS_SECTION = 'How balance is checked: the targets'
 const PRINCIPLES = 'Difficulty principles: sawtooth intensity'
 
-// NOTE: the incoming health a second at a peak, against the player's damage
-// a second, as the analytical model measures it on Hard. Since 2026-10-31
-// Easy and Normal scale the waves down for the human bot, whose misses the
-// model's hit shares leave out, so the waves' sawtooth is held on Hard.
 export const PEAK_RATIO_TARGET: Readonly<{ min: number; max: number }> = {
   min: 1.5,
   max: 2.5,
 }
-// Since the kitchen made the campaign ten waves long, wave 8 is a breather
-// after the Ankle Biters and wave 9 a test before the finale, so the peaks
-// are held on waves 5 to 7 and the finale.
 export const PEAK_RATIO_WAVES: ReadonlyArray<number> = [5, 6, 7, 10]
 
-// NOTE: the longest a wave should run, in seconds of the bot's median time
-// in the snapshot pass. The model plays faster than the bot, so its own
-// wave lengths are held to the same ceilings.
 export type WaveLengthTarget = Readonly<{ wave: number; maxSeconds: number }>
 
 export const WAVE_LENGTH_TARGETS: ReadonlyArray<WaveLengthTarget> = [
@@ -73,9 +59,6 @@ export const WAVE_LENGTH_TARGETS: ReadonlyArray<WaveLengthTarget> = [
   { wave: 10, maxSeconds: 120 },
 ]
 
-// NOTE: dead air: the seconds a wave leaves the room empty with nothing at
-// a door while spawns are still to come, on the mean run, and the longest
-// such stretch in any snapshot run.
 const QUIET_TARGET: Readonly<{
   meanMaxSeconds: number
   longestMaxSeconds: number
@@ -86,13 +69,6 @@ const QUIET_TARGET: Readonly<{
 
 const PORTRAIT = 'Portrait play: Balance'
 
-// NOTE: each portrait pass plays a landscape job's bot in the 390x844
-// phone's window (135 by 180 of the room), so it is held to that job's win
-// target and compared with that job's numbers. Normal is the level the
-// targets are tuned on, and Easy covers the gentlest level. SWAP=1,
-// Hard, and Nightmare stay landscape only to keep the nightly short: each
-// pass costs over two minutes, and the Hard and Nightmare win shares sit
-// near the noise of 200 runs, so a gap there would say little.
 export type PortraitPair = Readonly<{
   portraitId: string
   landscapeId: string
@@ -112,19 +88,8 @@ export const PORTRAIT_PAIRS: ReadonlyArray<PortraitPair> = [
   },
 ]
 
-// NOTE: how far a portrait pass's wins may fall from, or rise above, its
-// landscape twin's before the report calls out the gap. Two shares of 200
-// runs near 20% differ by about 4 points from noise alone, so 8 is about
-// two of those.
 export const PORTRAIT_GAP_TOLERANCE = 0.08
 
-// NOTE: a win is an escape (docs/ESCAPE_PLAN.md, layer 17, set with the
-// owner's intent on 2026-11-10): Normal winnable by a decent person, about a
-// third of the human bot's runs; Easy escaped most runs; Hard a real step up
-// for a player who aims well; Nightmare a Halo Legendary achievement, a few
-// percent of the sharp bot's runs. Easy and Normal are held on the human
-// bot, Hard and Nightmare on AIM=sharp (decided 2026-10-31, see suite.ts's
-// jobs).
 const WIN_TARGETS: ReadonlyArray<Target> = [
   between(
     'normal.wins',
@@ -151,12 +116,6 @@ const WIN_TARGETS: ReadonlyArray<Target> = [
   ),
 ]
 
-// NOTE: how long an escape takes, the median escaped run in minutes and the
-// wave it walks out on: long enough that the hunt and the ramp both bite,
-// short enough for one sitting. Hard's breaks run on a clock, so its
-// escape a wave later than Normal's takes about as long. Uncle Chunk
-// comes the wave after the list is done (src/world/dare/finale.ts), so how
-// fast the hunt goes sets most of it.
 const ESCAPE_LENGTH_TARGETS: ReadonlyArray<Target> = [
   between(
     'easy.medianWin',
@@ -188,10 +147,6 @@ const ESCAPE_LENGTH_TARGETS: ReadonlyArray<Target> = [
   ),
 ]
 
-// NOTE: past the ten tuned waves an escape (and Endless) plays the Endless
-// generator's waves, the ramp. Each is held to two minutes at most on the
-// Endless job, the campaign bot's mean length of the wave, and at least 40
-// seconds, so the ramp keeps climbing rather than thinning out.
 const RAMP_WAVES: ReadonlyArray<number> = [11, 12, 13, 14, 15]
 
 const RAMP_TARGETS: ReadonlyArray<Target> = Array.map(RAMP_WAVES, wave =>
@@ -204,7 +159,6 @@ const RAMP_TARGETS: ReadonlyArray<Target> = Array.map(RAMP_WAVES, wave =>
   ),
 )
 
-// NOTE: portrait is judged against the same win targets as landscape.
 const portraitWinTargets: ReadonlyArray<Target> = Array.flatMap(
   PORTRAIT_PAIRS,
   ({ portraitId, landscapeId }) =>
@@ -231,11 +185,6 @@ export const TARGETS: ReadonlyArray<Target> = [
     0.03,
     TARGETS_SECTION,
   ),
-  // NOTE: restated for the escape on 2026-11-10. With no shop the run
-  // fights on the pistol until its first case opens (about wave 3), so waves
-  // 3 and 4 take a little more than the old 10%, and waves 5 and 6 (the
-  // Big Lug and the Big Leaguer, the house hungrier once the list is done)
-  // are the main wall before Uncle Chunk, who comes from wave 8.
   atMost(
     'normal.died.w3-4',
     'Normal deaths in waves 3 and 4',
@@ -256,9 +205,6 @@ export const TARGETS: ReadonlyArray<Target> = [
     9,
     TARGETS_SECTION,
   ),
-  // NOTE: restated for the escape on 2026-11-10 from 40 to 65%: the crates'
-  // hearts while hurt and the fridge's Sandwich carry more runs out with
-  // hearts to spare. The ceiling keeps Normal from turning into a coin flip.
   between(
     'normal.closeCalls',
     'Normal close calls (share of escapes at 1 heart)',

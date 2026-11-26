@@ -6,8 +6,6 @@ import { type LevelSpec, MANOR_SPEC } from '../../../world/level/plan'
 import type * as Draw from '../../draw'
 import { everyRoomImage, roomShapes } from '../room'
 
-// NOTE: a hall with a study west of it and a den east of it, each behind its
-// own boarded exit, far enough apart that neither exit reaches the other room.
 const HOUSE: LevelSpec = {
   id: 'TestImages',
   rooms: [
@@ -85,11 +83,6 @@ describe('room images', () => {
   test('the manor is one image a room, five rooms in each state', () => {
     expect(imagesOf(roomShapes(MANOR))).toHaveLength(5)
     expect(imagesOf(roomShapes(openExit(MANOR, 'Kitchen')))).toHaveLength(5)
-    // NOTE: the dining room with its four exits (the secret shelf only with
-    // the east boards open: 16 sets less the 4 with the shelf alone), the
-    // kitchen and the parlour each with its own, the library with the east
-    // boards and then the far boards and the shelf (5), and the cellar with
-    // its own.
     expect(imagesOf(everyRoomImage(MANOR_SPEC))).toHaveLength(
       12 + 2 + 2 + 5 + 2,
     )
@@ -99,8 +92,6 @@ describe('room images', () => {
     const kitchenOpen = roomShapes(openExit(MANOR, 'Kitchen'))
     const westOpen = roomShapes(openExit(MANOR, 'West'))
     const shut = roomShapes(MANOR)
-    // NOTE: the parlour sits at x -320, the dining room at 0, the kitchen
-    // at 0 too but above it, so they are told apart by their y.
     const imageAt = (
       shapes: ReadonlyArray<Draw.Shape>,
       x: number,

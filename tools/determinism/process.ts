@@ -1,7 +1,3 @@
-// The child processes the determinism tools run: a command's output, a
-// binary from infra's packages, and a local workerd for the length of a
-// request.
-
 import {
   Array,
   Effect,
@@ -22,8 +18,6 @@ class CommandFailed extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()('CommandFailed', { message: Schema.String }) {}
 
-// NOTE: a command's whole stdout, failing with its stderr unless it exits 0.
-/** @stability unstable */
 export const commandOutput = ({
   command,
   args,
@@ -33,7 +27,6 @@ export const commandOutput = ({
   command: string
   args: ReadonlyArray<string>
   cwd: string
-  // NOTE: added to this process's own environment.
   env?: Readonly<Record<string, string>>
 }>): Effect.Effect<
   string,
@@ -77,9 +70,6 @@ const fileExists = (
     return yield* fs.exists(path).pipe(Effect.orElseSucceed(() => false))
   })
 
-// NOTE: a binary from infra's packages, in this checkout or, from a
-// worktree with none installed, in the main one. `override` comes first.
-/** @stability unstable */
 export const infraBinary = ({
   root,
   name,
@@ -115,9 +105,6 @@ export const infraBinary = ({
     return yield* Effect.findFirst(candidates, fileExists)
   })
 
-// NOTE: workerd serving `config` from `cwd` for as long as the scope lasts,
-// its stderr passed through.
-/** @stability unstable */
 export const serveWorkerd = ({
   binary,
   config,

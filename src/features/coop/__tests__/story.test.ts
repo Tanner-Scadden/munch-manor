@@ -80,12 +80,6 @@ import {
   withCoop,
 } from './story.fixture'
 
-// Co-op in the root: its Messages are the root's, and its rules run as the
-// root's Steps (src/app/update/coop.ts). What co-op tells the root (a
-// notice) is checked by what the root does with it, or, where the root does
-// nothing in its lobby (LeftRoom), on the rule's own result.
-
-// NOTE: the mode and difficulty a key or tap sent the room's lobby.
 const picksSent =
   (
     mode: 'Campaign' | 'Endless' | 'KeepGoing',
@@ -99,14 +93,10 @@ const picksSent =
       Component.noop,
     )
 
-// NOTE: each room frame sends what the session owes; the sends pending are
-// answered as sent, with nothing to count.
 const framesSent: StoryStep = resolveAll(SendRoomFrames)(
   CoopMessage.CompletedSendRoomFrames({ bytes: [] }),
 )
 
-// NOTE: one frame of the room on the root's clock, in its lobby: the root
-// ticks it with no controls, and what it owes the room is sent.
 const tickAt = (nowMs: number): StoryStep =>
   steps(send(Message.TickedRoomFrame({ nowMs })), framesSent)
 
@@ -421,7 +411,6 @@ describe('the lobby', () => {
       }),
   )
 
-  // NOTE: owner, 2026-11-12: on Dare the host picks the break's clock.
   it.effect(
     'on Dare the host steps the break clock; above Dare and for a guest it sends nothing',
     () =>
@@ -521,8 +510,6 @@ describe('the lobby', () => {
           expect(roomOf(current).departure).toBe('Leaving')
         }),
       )
-      // NOTE: co-op tells the root the room is gone (LeftRoom), which the
-      // root answers only for a run it holds.
       expect(
         updateCoop(CoopMessage.CompletedLeaveRoom())(s.model.coop).notice,
       ).toEqual(CoopNotice.LeftRoom())
@@ -568,7 +555,6 @@ const welcomeMessage = (tick: number, atMs: number) =>
 const welcome = (tick: number, atMs: number): StoryStep =>
   send(welcomeMessage(tick, atMs))
 
-// NOTE: the room says Welcome and sends its first Snapshot: a run under way.
 const online: StoryStep = steps(
   welcome(0, 1000),
   send(received(snapshotFrame(10), 1010)),
@@ -590,11 +576,6 @@ it.effect('a second LEAVE while leaving sends nothing more', () =>
   }),
 )
 
-// CO-OP'S RULES ALONE
-
-// NOTE: the root's requests a run in the root makes (src/app/update/
-// coopPlay.ts): a room frame with this client's controls, held for
-// hit-stop or not, and a press. Played on co-op's rules alone.
 const tickWith =
   (nowMs: number, controls: typeof NEUTRAL_INPUT, isPictureHeld = false) =>
   (driven: Driven): Driven =>
@@ -617,7 +598,6 @@ const run = (
   ...each: ReadonlyArray<(driven: Driven) => Driven>
 ): Driven => Array.reduce(each, start, (driven, step) => step(driven))
 
-// NOTE: the Input frames the SendRoomFrames issued carry.
 const sentInputs = (driven: Driven): ReadonlyArray<InputFrame> =>
   Array.flatMap(argsIssued(SendRoomFrames)(driven), ({ frames }) =>
     Array.filter(
@@ -626,7 +606,6 @@ const sentInputs = (driven: Driven): ReadonlyArray<InputFrame> =>
     ),
   )
 
-// NOTE: the room online in its run, as the root's messages leave it.
 const live: Driven = run(
   drivenFrom(inRoomCoop(0)),
   byMessage(welcomeMessage(0, 1000)),
@@ -636,8 +615,6 @@ const live: Driven = run(
 describe('predicted shots', () => {
   const TRIGGER = { ...NEUTRAL_INPUT, aimX: AIM_REACH, buttons: FIRE_BUTTON }
 
-  // NOTE: the shots predicted over `frames` frames of 16 ms from `fromMs`,
-  // each frame's count read as the drawing reads it, and co-op after.
   const shotsOver = (
     start: CoopModel,
     controls: typeof NEUTRAL_INPUT,
@@ -827,7 +804,6 @@ describe('the room', () => {
             checkModel(lost => {
               expect(roomOf(lost).link).toBe('Lost')
             }),
-            // NOTE: the room answers again: back Online, the clock cleared.
             send(received(snapshotFrame(30), 24_000)),
             checkModel(back => {
               expect(roomOf(back).link).toBe('Online')
@@ -894,7 +870,6 @@ describe('the room', () => {
         Option.some(SeatAction.Ready()),
       )
       const third = tickWith(1300, NEUTRAL_INPUT)(second)
-      // NOTE: both held presses rode the inputs the three frames sent.
       const actions = Array.flatMap(sentInputs(third), input =>
         Array.map(input.samples, sample =>
           seatActionOf(world, sample.input.action),
@@ -909,7 +884,6 @@ describe('the room', () => {
     'a new run in the same room takes presses from its first tick, however late the last run pressed',
     () =>
       Effect.sync(() => {
-        // NOTE: the first run: a press 60 seconds in, so its heldFrom is far out.
         const late = run(
           live,
           tickWith(61_000, NEUTRAL_INPUT),
@@ -917,7 +891,6 @@ describe('the room', () => {
           tickWith(61_100, NEUTRAL_INPUT),
         )
         expect(roomIn(late).presses.held).not.toBe(0)
-        // NOTE: the second run: the room says Welcome at tick 0 again.
         const again = run(
           late,
           byMessage(welcomeMessage(0, 70_000)),
@@ -1047,7 +1020,6 @@ describe('the room', () => {
   )
 })
 
-// NOTE: element operations with no elements to reach, as on a server.
 const NO_ELEMENTS: Context.Service.Shape<typeof Html.Host> = {
   focus: Function.constVoid,
   blur: Function.constVoid,
@@ -1073,9 +1045,6 @@ describe('the network service', () => {
     () =>
       Effect.gen(function* () {
         const fake = yield* makeFakeCoopNet(() => Effect.fail('Full'))
-        // NOTE: a Command's body may read what the runtime provides as it
-        // runs (Effect UI's framework services): none here, so the refs
-        // find nothing, the cache is a fresh one, and no element is there.
         const handlers = yield* Layer.build(
           Layer.mergeAll(
             Layer.provide(RequestRoom.layer, fake.layer),

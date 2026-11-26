@@ -1,23 +1,9 @@
-// The 3D world's quality tiers, and the governor that picks one from how
-// long frames take on this device (owner, 2026-11-15: a steady 60 fps, and
-// phones that do not get hot). A device whose GPU cannot keep up steps down:
-// first the shadow maps and the bloom, which nobody sees go, then the render
-// scale, the biggest fill cost, then the floor. A strong GPU keeps the full
-// look. It reads only measured frame times, never the device's kind, its
-// touch, its layout, or its user agent.
-//
-// This is render state: the renderer (scene.ts) holds the governor and feeds
-// it its own frame times (frameProbe.ts). Nothing here is in the Model or the
-// World, nothing touches update, and nothing is saved, so the game plays the
-// same at every tier and each session starts at Full.
-
 import { Array, Option, Order, String } from 'effect'
 
 import type { ShadowQuality } from '@pixi/3d'
 
 export type QualityTier = 'Full' | 'Light' | 'Scaled' | 'Floor'
 
-// NOTE: best first; a step down is one place on.
 export const TIERS: ReadonlyArray<QualityTier> = [
   'Full',
   'Light',
@@ -26,12 +12,8 @@ export const TIERS: ReadonlyArray<QualityTier> = [
 ]
 
 export type TierSpec = Readonly<{
-  // NOTE: each casting light's shadow map, texels a side.
   shadowMapPx: 512 | 1024 | 2048
-  // NOTE: the bloom's largest blur level, texels per pixel, or no bloom.
   bloomResolution: Option.Option<number>
-  // NOTE: the most canvas pixels drawn to a game pixel, or as many as the
-  // device's ratio allows (space.ts, `canvasStepOf`).
   canvasPerGamePixel: Option.Option<number>
 }>
 
@@ -69,8 +51,6 @@ const SHADOW_QUALITY: {
 export const shadowQualityOf = (tier: QualityTier): ShadowQuality =>
   SHADOW_QUALITY[TIER_SPECS[tier].shadowMapPx]
 
-// PINNING
-
 const PIN_PARAM = 'quality'
 
 const PINS: Readonly<Record<string, Option.Option<QualityTier>>> = {
@@ -81,11 +61,6 @@ const PINS: Readonly<Record<string, Option.Option<QualityTier>>> = {
   auto: Option.none(),
 }
 
-// NOTE: `?quality=full|light|scaled|floor` pins a tier, so audits and
-// screenshots are the same each time; `?quality=auto` adapts. A browser
-// driven by automation (the audits' headless Chrome, whose software GL is
-// slow) is pinned at Full unless it asks for `auto`, so no audit's picture
-// changes with the machine's load.
 export const qualityPinOf = (
   input: Readonly<{ search: string; isAutomated: boolean }>,
 ): Option.Option<QualityTier> => {
@@ -94,15 +69,6 @@ export const qualityPinOf = (
   return pin ?? (input.isAutomated ? Option.some('Full') : Option.none())
 }
 
-// THE GOVERNOR
-
-// NOTE: how frames are judged. A window of 2 s of play is read at once:
-// slow when its 75th percentile frame takes over 14 ms (of the 16.7 a frame
-// at 60 fps has) or over a tenth of its frames are dropped; roomy when that
-// frame takes under 7 ms and almost none drop. Two slow windows in a row
-// step down a tier, so one hitch (a crowd spawning) never does. Ten roomy
-// windows in a row (20 s) step back up a tier, twice as many each time that
-// tier proved slow, so it never flaps between two.
 export const GOVERNOR = {
   windowMs: 2000,
   holdMs: 1000,
@@ -111,9 +77,6 @@ export const GOVERNOR = {
   roomyMs: 7,
   slowDropShare: 0.1,
   roomyDropShare: 0.02,
-  // NOTE: a gap between two drawn frames longer than this is a dropped
-  // frame at 60 fps; one longer than `pauseMs` is the page put away, not a
-  // slow frame.
   dropGapMs: 25,
   pauseMs: 250,
   slowWindows: 2,
@@ -121,16 +84,9 @@ export const GOVERNOR = {
 } as const
 
 export type FrameSample = Readonly<{
-  // NOTE: when the frame started, on the page's clock.
   atMs: number
-  // NOTE: whether the frame counts: play on screen with no cine. A frame
-  // that does not count starts a hold.
   isCounted: boolean
-  // NOTE: what the frame cost: the GPU's time for it where the context can
-  // time the GPU, else the draw's own time on the main thread.
   costMs: Option.Option<number>
-  // NOTE: the gap since the frame drawn before it, where that one counted
-  // too; read only where the GPU's time is not known.
   gapMs: Option.Option<number>
   hasGpuTimer: boolean
 }>
@@ -146,8 +102,6 @@ const percentileOf = (values: ReadonlyArray<number>, share: number): number => {
   )
 }
 
-// NOTE: mutable on purpose: the renderer's own state, fed once a frame;
-// each window's costs are gathered in place and dropped as it is read.
 export class QualityGovernor {
   private index = 0
   private readonly pin: Option.Option<QualityTier>
@@ -158,7 +112,6 @@ export class QualityGovernor {
   private drops = 0
   private roomyWindows = 0
   private slowWindows = 0
-  // NOTE: how many times each tier stepped down for being slow.
   private readonly slowCounts: Array<number> = Array.map(TIERS, () => 0)
 
   constructor(pin: Option.Option<QualityTier>) {
@@ -177,19 +130,15 @@ export class QualityGovernor {
     return Option.getOrElse(Array.get(TIERS, this.index), () => 'Full')
   }
 
-  // NOTE: a pinned tier never steps, so its frames need no measuring.
   get isPinned(): boolean {
     return Option.isSome(this.pin)
   }
 
-  // NOTE: a change on screen (a level built, the canvas resized, a tier
-  // stepped): nothing is judged for a second after it.
   holdFrom(atMs: number): void {
     this.holdUntilMs = atMs + GOVERNOR.holdMs
     this.windowStartMs = undefined
   }
 
-  // NOTE: one frame in; a new tier when its window decides on one.
   observe(sample: FrameSample): Option.Option<QualityTier> {
     if (Option.isSome(this.pin)) {
       return Option.none()

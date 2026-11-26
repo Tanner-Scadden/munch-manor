@@ -9,10 +9,6 @@ import { DISTANT_SPAWN, quietWave } from '../../../test/model.fixture'
 import { imagesIn, rectsOf } from '../../../test/viewReading'
 import { overlayShapes } from '../overlay'
 
-// The overlay's banners (src/screens/game/overlay.ts): each on a dark plate
-// of whole pixels, so WAVE reads over the chandelier and the table's
-// candles, never sitting on a half pixel.
-
 const PLATE_COLOR = 'rgba(8, 10, 12, 0.55)'
 
 const waveStart = UiStruct.evolve(quietWave(4), {

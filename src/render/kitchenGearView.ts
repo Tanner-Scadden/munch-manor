@@ -18,20 +18,8 @@ import type { Drawable } from './depth'
 import * as Draw from './draw'
 import { FIRE_WIDTH, type FireSpot, fireSpotOf } from './room/room'
 
-// The art of the kitchen's stove bench and gas valve (src/world/kitchen/stove.ts,
-// src/world/kitchen/gasValve.ts): the perks' little icons, which the stove's tag and a
-// cooked gun's HUD slot wear; the valve wheel on its pipe against the
-// kitchen's east wall; and the roaring hearth the lit valve feeds, its
-// flames leaping off the floor in front of it. Every fixed picture is a
-// sprite built once here, standing carved in the 3D world; the flames off the
-// floor change every frame, so they stay rectangles, standing as they glow.
-
 const INK = '#140c10'
 
-// THE PERKS
-
-// NOTE: a chili for Spicy, a curl of crispy bacon for Crispy, and a
-// drumstick for Hearty, each 7 by 7.
 const PERK_PIXELS: Readonly<Record<GunPerk, ReadonlyArray<string>>> = {
   Spicy: [
     '.....g.',
@@ -81,9 +69,6 @@ export const PERK_ICONS: Readonly<Record<GunPerk, Sprite>> = {
   Hearty: spriteShapes(PERK_PIXELS.Hearty, PERK_PALETTE, TOP_LEFT),
 }
 
-// NOTE: the stove's tag shows what cooking does in a picture: a gun wearing
-// the perk as a sticker on its grip, just as a cooked gun's HUD slot wears
-// it (src/screens/game/hud.ts).
 const COOKED_GUN_PIXELS: ReadonlyArray<string> = [
   '..............',
   '..............',
@@ -145,8 +130,6 @@ const FIRE_PALETTE: Palette = {
   D: '#a02818',
 }
 
-// THE VALVE
-
 const VALVE_PALETTE: Palette = {
   K: INK,
   P: '#6a6a74',
@@ -159,10 +142,6 @@ const VALVE_PALETTE: Palette = {
   b: '#c8ecff',
 }
 
-// NOTE: a red wheel on the gas pipe that rises out of the floor against the
-// wall, shut; turned, it goes green and a blue pilot flame burns beside it.
-// The pipe runs down to a flange on the floor, so the wheel stands about
-// chest high.
 const PIPE_ROWS: ReadonlyArray<string> = Array.makeBy(8, () => '.....PP.....')
 const FLANGE_ROWS: ReadonlyArray<string> = ['....KpPK....', '...KPPPPK...']
 
@@ -214,16 +193,12 @@ const VALVE_LIT: Sprite = deepSprite(
 
 const VALVE_HEIGHT = 21
 
-// NOTE: the valve's tag leads with a flame, what it buys.
 export const FLAME_ICON: Sprite = spriteShapes(
   ['...Y...', '..YO...', '..YOY..', '.YORO..', '.ORROY.', 'YORWROY', '.ORRRO.'],
   FIRE_PALETTE,
   TOP_LEFT,
 )
 
-// NOTE: the valve's tile is the east wall's own, which the 3D wall fills, so
-// the valve stands on the floor just inside it, its wheel's east edge on the
-// wall's inner face (the column before the art's last), at the tile's foot.
 const VALVE_FACE_COLUMN = 10
 
 const valveDrawables = (model: World): ReadonlyArray<Drawable> =>
@@ -244,12 +219,6 @@ const valveDrawables = (model: World): ReadonlyArray<Drawable> =>
     ],
   })
 
-// THE ROARING HEARTH
-
-// NOTE: the lit valve's fire fills the fireplace: two frames as wide as the
-// firebox's 28 pixel opening (src/render/room/roomCover.ts), wider than the
-// hearth's own little fire, standing upright in front of it on the carved
-// hearth's face, a block deep, glowing of itself.
 const roarSprite = (pixels: ReadonlyArray<string>): Sprite =>
   glowingSprite(
     deepSprite(spriteShapes(pixels, FIRE_PALETTE, TOP_LEFT), {
@@ -290,11 +259,6 @@ const ROAR_FRAMES: Array.NonEmptyReadonlyArray<Sprite> = [
 const ROAR_WIDTH = 28
 const ROAR_FRAME_MS = 110
 
-// NOTE: the flames that lick the floor in front of the hearth, where the
-// fire burns: each tongue leaps up off its own spot on the floor and fades
-// over its own beat, its spot spread across the zone by its index and its
-// round, so the zone reads as fire without a word. Each stands in the depth
-// sort at its spot, glowing of itself.
 const TONGUES = 14
 const TONGUE_MS = 520
 const TONGUE_RISE_PX = 9
@@ -339,9 +303,6 @@ const tongueDrawables = (
   })
 }
 
-// NOTE: the roar stands where the hearth's own fire does (src/render/room/room.ts),
-// centered on it, its bottom row on the fire's, a pixel nearer so it burns
-// in front of it.
 const roarDrawable = (spot: FireSpot, elapsedMs: number): Drawable => ({
   footY: spot.footY + 1,
   rank: 'Prop',
@@ -375,8 +336,6 @@ const roarDrawables = (model: World): ReadonlyArray<Drawable> =>
       })
     : []
 
-// NOTE: on the ground, under the actors: the lit valve's fire light over
-// the floor in front of the hearth.
 export const kitchenGearGroundShapes = (
   model: World,
 ): ReadonlyArray<Draw.Shape> =>
@@ -395,8 +354,6 @@ export const kitchenGearGroundShapes = (
       })
     : []
 
-// NOTE: standing in the depth sort: the valve against its wall and, once it
-// is turned, the roar in the hearth and the flames leaping off its floor.
 export const kitchenGearDrawables = (model: World): ReadonlyArray<Drawable> => [
   ...valveDrawables(model),
   ...roarDrawables(model),

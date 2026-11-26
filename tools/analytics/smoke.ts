@@ -12,13 +12,6 @@ import {
   SOLO_PARTY,
 } from '../../src/platform/analytics'
 
-// Posts one made-up run summary to a deployed analytics Worker, the way the
-// game's beacon does, and checks /api/health. The run is marked with the
-// build "smoke-test" so the report can tell it apart:
-//
-//   bun tools/analytics/smoke.ts https://munch-manor-api-pr-42.tanner-scadden.workers.dev
-//   bun tools/analytics/smoke.ts https://api.munchmanor.com   # production
-
 const USAGE = 'Usage: bun tools/analytics/smoke.ts <api origin>'
 
 class SmokeError extends Schema.TaggedError<

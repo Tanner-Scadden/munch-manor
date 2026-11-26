@@ -1,14 +1,3 @@
-// The balance bot's human limits: how long it takes to react to a zombie it
-// has just picked, how its aim trails a moving target and overshoots before
-// it settles, how reluctantly it switches targets, and which zombies it
-// notices while it looks down its sights. AIM=sharp plays the old bot,
-// which re-aims at every target at once with only a little shake and knows
-// where every zombie in the room is.
-//
-// Decided on 2026-10-31 (the owner: Easy and Normal are too hard, and the
-// balance bot has aim bot): the targets are for this bot, which loses
-// early waves to Groaners and Hotfoots the way real players do.
-
 import { Array, Function, Option } from 'effect'
 
 import { levelOf } from '../../../src/world/level/arena'
@@ -28,48 +17,28 @@ import { type BotState, type Zombie } from './state'
 
 export const IS_SHARP = knobText('AIM') === 'sharp'
 
-// The hand's random stream, seeded per run, so a run replays exactly.
 export const nextBotRandom = (state: BotState) => {
   state.botRandom = (state.botRandom * 1103515245 + 12345) >>> 0
   return state.botRandom / 0xffffffff
 }
 
-// A shake from -1 to 1, most often near 0.
 const shake = (state: BotState) =>
   nextBotRandom(state) + nextBotRandom(state) - 1
 
-// THE HUMAN NUMBERS
-
-// About a third of a second from picking a new target to the first shot.
 const REACTION_FRAMES = Math.round(knobNumber('REACTION_MS', 300) / FRAME_MS)
-// The steady shake once it has settled on a target, in radians.
 const SHAKE_RADIANS = knobNumber('HUMAN_SHAKE', 0.2)
-// The first flick at a new target lands up to this far off and settles.
 const OVERSHOOT_RADIANS = knobNumber('OVERSHOOT', 0.35)
-// How many frames the flick's miss and the aim's lag take to settle by
-// about two thirds.
 const SETTLE_FRAMES = knobNumber('SETTLE_FRAMES', 12)
-// The hand aims where it saw the target this many frames ago, and catches
-// up to half of that while it tracks. Fast sideways movers (Hotfoots) are
-// missed the most.
 const LAG_FRAMES = knobNumber('LAG_FRAMES', 6)
 const TRACKED_LAG_SHARE = 0.5
-// It switches to a nearer zombie only when that one is much nearer than its
-// target, or about to bite.
 const SWITCH_RATIO = knobNumber('SWITCH_RATIO', 0.6)
 const PANIC_PX = knobNumber('PANIC_PX', 22)
-// While it aims it notices a zombie inside a cone around its aim, or one
-// close enough to hear. The rest of the room creeps up on it.
 const NOTICE_PX = knobNumber('NOTICE_PX', 24)
 const NOTICE_RADIANS = knobNumber('NOTICE_DEGREES', 75) * (Math.PI / 180)
-
-// THE TARGET IT HOLDS
 
 const isInSight = (model: Model, zombie: Zombie) =>
   hasLineOfSight(levelOf(model), focusOf(model).player, zombie)
 
-// Keeps its target while it stands and is in sight, unless the nearest is
-// much nearer or about to bite.
 export const stickyTarget: {
   (
     model: Model,
@@ -115,8 +84,6 @@ export const stickyTarget: {
 
 export type Sight = Readonly<{ at: Vector; error: number }>
 
-// Where the hand points at target this frame and how far off it is, or
-// undefined while it is still reacting to a target it has just picked.
 export const humanSight: {
   (target: Zombie, frame: number): (state: BotState) => Sight | undefined
   (state: BotState, target: Zombie, frame: number): Sight | undefined
@@ -165,10 +132,6 @@ export const humanSight: {
   },
 )
 
-// WHAT IT NOTICES
-
-// The sharp bot notices every zombie. The human one, once it has aimed,
-// notices only those near its aim or within earshot.
 export const isNoticed: {
   (model: Model, zombie: Zombie): (state: BotState) => boolean
   (state: BotState, model: Model, zombie: Zombie): boolean
@@ -193,9 +156,6 @@ export const isNoticed: {
   },
 )
 
-// What it may flee: the zombies in its view, and any close enough to hear
-// even out of a phone's window, where the screen's edge sits nearer than
-// earshot behind a leaning camera.
 export const withinSenses = (model: Model): ReadonlyArray<Zombie> =>
   Array.filter(
     standing(model),

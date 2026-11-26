@@ -76,14 +76,9 @@ import { FINAL_WAVE, debutKinds } from '../../world/waves/wavePlans'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 import { endMissionShapes } from './endMissions'
 
-// SHARED
-
 const CENTER_X = VIEW_WIDTH / 2
 const TITLE_SCALE = 2
 
-// NOTE: a backdrop reaches well past the landscape screen, so in portrait,
-// where these screens are drawn over the world window, it still dims the
-// HUD band and the thumb area. The canvas clips what is past its edges.
 const backdrop = (fill: string): Draw.Shape =>
   Draw.Rect({
     x: -VIEW_WIDTH,
@@ -116,8 +111,6 @@ export const waveLabel: {
 
 const isBlinkOn = (ms: number): boolean => ms % 1000 < 700
 
-// DEVICE PROMPTS
-
 type DeviceText = Readonly<Record<InputDevice, BakedText>>
 
 const deviceText = (
@@ -133,8 +126,6 @@ const RESUME_PROMPT = deviceText(
   },
   'Prompt',
 )
-
-// BANDS
 
 const BAND_TOP: Readonly<Record<HintBand, number>> = { Top: 21, Bottom: 84 }
 const SUBTITLE_OFFSET = 15
@@ -259,7 +250,6 @@ const hintRowShapes = (
   ]
 }
 
-// NOTE: where each shown hint's row sits, top down under the banner's rows.
 type HintPlacement = Readonly<{
   row: BakedHintRow
   top: number
@@ -282,9 +272,6 @@ const hintShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
     hintRowShapes(row, top, ageMs),
   )
 
-// NOTE: each shown hint's row with its backing, in the landscape frame (the
-// tours' BLOCK DOOR and the like). A bubble keeps out of them
-// (src/screens/game/stallBubble.ts).
 export type HintBox = Readonly<{
   left: number
   top: number
@@ -303,8 +290,6 @@ export const hintBoxesOf = (model: Model): ReadonlyArray<HintBox> =>
     }
   })
 
-// BANNERS
-
 const GET_READY = bakeText('GET READY', 'Title')
 const WAVE_CLEARED = bakeText('WAVE CLEARED', 'Victory')
 const HERE_THEY_COME = bakeText('HERE THEY COME', 'Prompt')
@@ -317,8 +302,6 @@ const WAVE_TITLES: ReadonlyArray<BakedText> = Array.makeBy(
   wave => bakeText(`WAVE ${wave}`, 'Defeat'),
 )
 
-// NOTE: a cleared wave adds a key to the ring (src/world/keys/keys.ts),
-// the `$` drawn as a skeleton key.
 const CLEARED_SUBTITLE: BakedText = bakeText(
   `+$${KEY_RULES.perWaveCleared}`,
   'Prompt',
@@ -350,10 +333,6 @@ const NEW_KIND_SHIFT = Math.round(
   (NEW_KIND_ICON_GAP + (NEW_KIND_ICON_SCALE * NEW_KIND_ICON_PX) / 2) / 2,
 )
 
-// NOTE: a banner stands on a dark plate as wide as its widest line, so it
-// reads over anything the room holds under it (the chandelier, the table,
-// a crowd). The plate meets the HUD strip over it and the hint rows under
-// it rather than overlapping them.
 const BANNER_PLATE_COLOR = 'rgba(8, 10, 12, 0.55)'
 const BANNER_PLATE_PAD_X = 4
 const BANNER_PLATE_PAD_Y = 1
@@ -383,7 +362,6 @@ const bannerPlate = (
   })
 }
 
-// NOTE: the columns a line centered on the frame takes.
 const centeredSpan = (width: number): readonly [number, number] => {
   const left = Math.round(CENTER_X - width / 2)
   return [left, left + width]
@@ -432,8 +410,6 @@ const iconBanner = (
     shownMs < NEW_KIND_HOP_MS
       ? 1 + 0.5 * Math.sin((Math.PI * shownMs) / NEW_KIND_HOP_MS)
       : 1
-  // NOTE: the hop steps in whole pixels, 2 then 3 then 2, never a scale
-  // between, which would draw the icon's pixels uneven.
   const scale = Math.round(NEW_KIND_ICON_SCALE * hop)
   const titleX = CENTER_X + NEW_KIND_SHIFT
   const titleLeft = Math.round(titleX - (title.width * TITLE_SCALE) / 2)
@@ -490,8 +466,6 @@ const newKindBanner = (
   )
 }
 
-// NOTE: the first endless wave of a run says the zombies got tougher. Every
-// later one shows only its number beside the beefy heart.
 export type EndlessBanner = 'None' | 'Explained' | 'Pip'
 
 export const endlessBannerOf = (wave: number): EndlessBanner => {
@@ -535,8 +509,6 @@ const beefierBanner = (
   }
 }
 
-// NOTE: a crew never reads about a new zombie (owner, 2026-11-01: "don't show
-// new zombie info in multiplayer"), so its break shows no NEW banner.
 const debutBanner = (
   band: HintBand,
   wave: number,
@@ -589,9 +561,6 @@ const waveBanner = (
       )
     : alarmBanner(model)
 
-// NOTE: the rows a banner takes while one shows, in the landscape frame:
-// its title and its subtitle's line. A bubble keeps out of them
-// (src/screens/game/stallBubble.ts).
 const BANNER_BAND_PAD = 2
 
 export type BannerBand = Readonly<{ top: number; bottom: number }>
@@ -615,8 +584,6 @@ export const maybeBannerBand = (model: Model): Option.Option<BannerBand> => {
         bottom: top + SUBTITLE_OFFSET + GLYPH_HEIGHT + BANNER_BAND_PAD,
       })
 }
-
-// DEBUT CARD
 
 const CARD_TOP = 40
 const CARD_BOTTOM = 136
@@ -750,8 +717,6 @@ const debutCardOverlay = (
     Hidden: () => [],
     Showing: ({ kind, ageMs }) => debutCardShapes(span, kind, ageMs),
   })
-
-// LOGO
 
 const LOGO_PIXEL = 4
 const LOGO_GAP = 1
@@ -955,8 +920,6 @@ const logoLineShapes =
 export const logoShapes = (screenMs: number): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(LOGO_LINES, logoLineShapes(screenMs))
 
-// ALPHA CHIP
-
 const ALPHA = bakeText('ALPHA', 'Plain')
 const ALPHA_PAD_X = 3
 const ALPHA_PAD_Y = 2
@@ -989,8 +952,6 @@ const alphaChipShapes = (): ReadonlyArray<Draw.Shape> => {
 }
 
 const ALPHA_CHIP: ReadonlyArray<Draw.Shape> = alphaChipShapes()
-
-// PARADE
 
 type Marcher = Readonly<{
   kind: ZombieKind
@@ -1047,11 +1008,6 @@ const paradeShapes = (
 ): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(PARADE, marcherShapes(span, screenMs))
 
-// READY
-
-// NOTE: the player walks on the spot at center stage, twice the room's size,
-// facing the Groaners that come in from the left with the pistol up. The home
-// menu puts a button over them that opens the character picker.
 const HERO_X = 160
 const HERO_FEET_Y = 150
 const HERO_SCALE = 2
@@ -1086,7 +1042,6 @@ const runnerShapes = (
   }),
 ]
 
-// NOTE: the logo and the room speak for themselves, so there is no tagline.
 const readyShapes = (
   model: Model,
   span: FrameSpan,
@@ -1102,8 +1057,6 @@ const readyShapes = (
   ...logoShapes(model.screenMs),
   ...ALPHA_CHIP,
 ]
-
-// PAUSED
 
 const PAUSED = bakeText('PAUSED', 'Title')
 const PAUSED_Y = 9
@@ -1127,12 +1080,8 @@ const pausedShapes = (
   centered(RESUME_PROMPT[model.lastDevice], resumeY),
 ]
 
-// OVERLAY
-
 const PORTRAIT_RESUME_LIFT = 34
 
-// NOTE: in portrait the pause panel fills the world window, so the resume
-// prompt drops to the thumb area, just above the gun slots.
 const resumeYFor = (screen: Screen): number =>
   screen.layout === 'Landscape'
     ? RESUME_Y

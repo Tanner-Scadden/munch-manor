@@ -19,12 +19,6 @@ import {
 } from '../lightSpecs'
 import { LOOK } from '../lookSpecs'
 
-// The house's light as plain data (src/render/iso/lightSpecs.ts): every
-// room's fill, the cellar's dark, and the flames nearest the viewer, held
-// to what the renderer can light at once.
-
-// NOTE: pixi 3D lights at most 32; the ambient, the lamp, the muzzle flash,
-// and one spare are always there.
 const LIGHTS_LEFT = 32 - 4
 
 const everyRoomOpen = (model: Model): Model =>

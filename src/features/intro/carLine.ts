@@ -9,21 +9,8 @@ import { FRIEND_LINES } from '../../world/names'
 import { isArriving } from '../../world/run/arrival'
 import { Phase } from '../../world/schema/worldSchema'
 
-// Your friends in the car (docs/PROGRESSION_PLAN.md, pillar F): the intro's
-// car beat carries one short line from them, by how your last run ended.
-// The ending is saved and synced (`lastRunEnding`), so they remember across
-// reloads and devices. The line is picked from the cosmetic stream as the
-// intro starts, never the one said last, and drawn by the intro
-// (src/features/intro/introView.ts). Client only: in co-op each player's
-// own friends speak, and nothing rides the wire.
-
-// NOTE: a death on these waves or sooner is a quick one: "Brave or dumb?".
 export const QUICK_DEATH_WAVE = 2
 
-// NOTE: how a run that just ended ended, read off the phase it ends on:
-// munched, escaped, or left early by the kitchen's back door (pillar A,
-// src/world/kitchen/backDoor.ts). A run left from the pause MENU is not an
-// ending: the friends remember the run before it.
 const maybeEndingOf = (phase: Phase): Option.Option<RunEnding> =>
   Phase.matchOrElse(
     phase,
@@ -36,7 +23,6 @@ const maybeEndingOf = (phase: Phase): Option.Option<RunEnding> =>
     () => Option.none(),
   )
 
-// NOTE: on the frame a run ends, how it ended, for the next intro.
 export const noteRunEnding: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model
@@ -55,7 +41,6 @@ export const noteRunEnding: {
 const lastLineOf = (model: Model): string =>
   Option.getOrElse(model.maybeCarLine, () => '')
 
-// NOTE: on the frame the intro starts, the line the friends say in it.
 export const pickCarLine: {
   (after: Model): (before: Model) => Model
   (before: Model, after: Model): Model

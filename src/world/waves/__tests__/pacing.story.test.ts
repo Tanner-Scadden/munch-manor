@@ -166,8 +166,6 @@ describe('packs', () => {
     return modelAfter(
       waveModel(squad),
       steps(
-        // NOTE: a frame past the second, as sixty 1000/60 ms ticks sum to a
-        // hair under it.
         ticksFor(1000 + FRAME_MS, FRAME_MS),
         checkModel(current => {
           expect(arrivedDoors(current)).toEqual(['West'])
@@ -358,8 +356,6 @@ describe('telegraphs', () => {
   )
 })
 
-// NOTE: a warned zombie stands in its doorway no later than this after its
-// warning ends, whatever its kind and door.
 const ARRIVAL_BEAT_MS = 300
 
 const kindAt = (
@@ -521,8 +517,6 @@ describe('sawtooth', () => {
           beat: () =>
             Beat.Resting({ remainingMs: 500, extendedMs: 0, trickled: 0 }),
         })
-        // NOTE: the frames the wave clock stands at 0, gathered in an
-        // array the Story alone fills, as `recordTicks` gathers Models.
         const restLength = (intensity: number) =>
           Effect.suspend(() => {
             const clocks: Array<number> = []
@@ -561,7 +555,6 @@ describe('sawtooth', () => {
 
 describe('mercy', () => {
   const biter = standingZombie(900, MANOR.start.x + 2, MANOR.start.y)
-  // NOTE: the Model one frame of a bite leaves, at `hp` hearts.
   const bittenAt = (hp: number) =>
     modelAfter(
       modifyFocus(
@@ -629,9 +622,6 @@ const frameOf = (next: Model): Frame => ({
   arrived: Array.map(next.zombies, zombie => nearestDoor(MANOR, zombie).id),
 })
 
-// NOTE: plays `ms` of frames as a player who kills each zombie the frame
-// it walks in (`changeModel`), and notes the doors the new ones came
-// through, gathered in an array the Story alone fills.
 const playEmptied = (start: Model, ms: number) =>
   Effect.suspend(() => {
     const frames: Array<Frame> = []
@@ -703,8 +693,6 @@ describe('dead air', () => {
           { atMs: holdAtMs, releaseBelow: FADE_RELEASE_BELOW, relaxMs: 20_000 },
         ],
       })
-      // NOTE: read on the tick the hold's fade begins, since a relax that
-      // starts quiet trickles its straggler in a few ticks later.
       const fadeStarts: Array<Model> = []
       yield* modelAfter(
         waveModel([spawnAt(holdAtMs + 3000, 'West', 2)], holding),

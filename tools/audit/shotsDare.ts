@@ -1,10 +1,3 @@
-// The "find the dare's things" pass: a thing in plain sight in its open room
-// on Dare and Double Dare (and hidden on Triple Dare), Rattles' hint with
-// the gold arrow over a thing in view and at the window's edge toward one
-// out of view, on a 1280x720 desktop, an 844x390 phone on its side, and a
-// 390x844 phone held upright, as `dare-<TAG>-<viewport>-<scene>.png`.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsDare.ts
-// ONLY picks scenes, and VIEWPORTS picks screens.
 import { Effect } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -28,8 +21,6 @@ const LEARNED =
 const OPEN = 'openexits=West,East,Far,Kitchen'
 const BREAK = `wave=3&break=open&breakMs=8000&${LEARNED}&${OPEN}`
 
-// NOTE: 360 frames is past the first hint's 5 s, so only the things (and
-// Dare's own arrow) show; 30 frames is in the hint.
 const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   {
     name: 'easy-in-sight',

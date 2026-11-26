@@ -115,10 +115,6 @@ const makeTestHost = (
     ...options,
   })
 
-// NOTE: waits until every device has nothing pending and has confirmed
-// the server's head. Every test runs on it.effect's TestClock: settle
-// moves it, so the network's delays, heartbeats, and resends elapse only as
-// the test waits, and a loaded machine cannot time a session out.
 const settled = (host: Host, devices: ReadonlyArray<Device>) =>
   settle(
     Effect.gen(function* () {

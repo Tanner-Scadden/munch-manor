@@ -1,8 +1,3 @@
-// The muzzle flash on the gun's tip in 3D: the Pop Pistol, the shotgun, and
-// Old Thunder (the longest gun) fired at six angles, each shot on the frame
-// right after a shot leaves, as `muzzle-<TAG>-<gun>-<aim>.png` at three times
-// the pixels, so the flash can be checked zoomed in against the barrel.
-//   TAG=after bun run heavy -- --shared bun tools/audit/shotsMuzzle.ts
 import { Array, Effect, Schema } from 'effect'
 
 import { runHarnessAudit } from './harnessServer'
@@ -30,7 +25,6 @@ const GUNS: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'rifle', query: 'gun=rifle' },
 ]
 
-// NOTE: where each aims, from the player at 180,150.
 const AIMS: ReadonlyArray<Readonly<{ name: string; at: string }>> = [
   { name: 'right', at: '260,150' },
   { name: 'left', at: '100,150' },
@@ -40,7 +34,6 @@ const AIMS: ReadonlyArray<Readonly<{ name: string; at: string }>> = [
   { name: 'upleft', at: '120,90' },
 ]
 
-// NOTE: the frames tried for the one right after a shot, its recoil fullest.
 const FRAMES = Array.makeBy(10, index => index + 1)
 
 const Recoil = Schema.Struct({

@@ -41,8 +41,6 @@ import { isFrenzyPack } from '../zombies/frenzy'
 import { isFloorKind, isFree, isFusing, isWalking } from '../zombies/zombies'
 import { bySpawnTime } from './wavePacks'
 
-// CROWD
-
 export const isAlive = (zombie: Zombie): boolean =>
   isWalking(zombie) || isFusing(zombie)
 
@@ -53,8 +51,6 @@ export const aliveCount = (zombies: ReadonlyArray<Zombie>): number =>
 
 const isDue = (clockMs: number) => (spawn: PlannedSpawn) =>
   spawn.atMs <= clockMs
-
-// BEATS
 
 type Paced = Readonly<{
   pacing: Pacing
@@ -128,9 +124,6 @@ const fade = (
     ? Beat.Resting({ remainingMs: relaxMs, extendedMs: 0, trickled: 0 })
     : Beat.Fading({ releaseBelow, relaxMs, waitedMs })
 
-// NOTE: the warned packs grow by a few a wave and are read for every planned
-// spawn several times a tick, so each list's packs are kept as a Set beside
-// it. The list is replaced, never changed, when a pack is warned.
 const warnedSets = new WeakMap<ReadonlyArray<number>, ReadonlySet<number>>()
 
 export const isPackWarned: {
@@ -163,8 +156,6 @@ const isRoomQuiet = (
 ): boolean =>
   crowd.alive === 0 && crowd.waiting === 0 && !isAnnounced(pacing, spawns)
 
-// NOTE: a pack through a door rattles it PACK_WARNING_MS before it walks
-// in, and an Ankle Biter has no door, so the hurry leads each by its own tell.
 const leadMs = (spawn: PlannedSpawn): number =>
   isThroughDoor(spawn) ? spawn.atMs - PACK_WARNING_MS : spawn.atMs
 
@@ -210,8 +201,6 @@ const hurry = (clocked: Clocked, spawns: ReadonlyArray<PlannedSpawn>): Paced =>
       }
     : { ...clocked, spawns }
 
-// TRICKLE
-
 export const STRAGGLER_KINDS: ReadonlyArray<ZombieKind> = [
   'Shambler',
   'Runner',
@@ -245,10 +234,6 @@ const pulledTo =
       ? UiStruct.evolve(spawn, { atMs: () => clockMs })
       : spawn
 
-// NOTE: a relax in an empty room lets in a straggler or two instead of
-// sitting silent: the soonest lone Shambler, Runner, or Kaboomer of the plan
-// walks in now. Once RELAX_TRICKLE_MAX have come, or none is left, a quiet
-// room ends the relax instead.
 const trickle = (
   pacing: Pacing,
   rest: Rest,
@@ -291,16 +276,6 @@ const rest = (
         spawns,
       }
 
-// NOTE: The wave clock only runs while the beat is Flowing. Fading and
-// Resting stop it, so every planned spawn after a hold waits out the fade and
-// the relax on top of its planned time, but for a pack already warned,
-// which keeps its time (keepWarnedOnTime). A fade gives up after FADE_MAX_MS so
-// a zombie stuck out of reach cannot stall the wave. An empty room with no
-// pack at a door is quiet. A relax that turns quiet for RELAX_QUIET_MAX_MS
-// trickles in a straggler, then ends, and once the clock flows after
-// QUIET_HURRY_MS of quiet it skips ahead to the next pack's warning, never
-// past a hold. Only timing changes, never a door or a kind, so the preview
-// stays exact.
 export const stepBeat: {
   (
     clockMs: number,
@@ -370,8 +345,6 @@ export const waitingCount: {
   },
 )
 
-// TELEGRAPHS
-
 export const warningPoint: {
   (door: DoorId): (level: Level) => Vector
   (level: Level, door: DoorId): Vector
@@ -379,9 +352,6 @@ export const warningPoint: {
   boxCenter(level.thresholds[door].box),
 )
 
-// NOTE: the first spawn of each pack, in order, as Array.dedupeWith on the
-// pack would keep, in one pass with a Set rather than a pass per spawn kept:
-// the packs held while the house is full are due to warn on every tick.
 const firstOfEachPack = (
   spawns: ReadonlyArray<PlannedSpawn>,
 ): ReadonlyArray<PlannedSpawn> => {
@@ -449,10 +419,6 @@ const isDueToWarn =
     isThroughDoor(spawn) &&
     !isWarned(warnedPacks)(spawn)
 
-// NOTE: a warned pack keeps its time while the wave clock stands still for
-// a fade, a relax, or the boss's entrance: its spawns come stalledMs sooner
-// on the clock, so it walks in when its warning ends. Only timing changes,
-// never a door or a kind, so the preview stays exact.
 export const keepWarnedOnTime: {
   (
     warnedPacks: ReadonlyArray<number>,
@@ -484,11 +450,6 @@ export const keepWarnedOnTime: {
 
 const noPacks: ReadonlyArray<number> = []
 
-// NOTE: the packs due to warn that may not warn yet. While the boss holds
-// the wave, none may: he has the floor. Otherwise the alive cap decides:
-// every zombie in the room and every one of a warned pack still to come
-// takes a place, and a pack warns, in time order, while one is left for its
-// first zombie. So a door only rattles for a pack that can come in.
 export const packsWaitingToWarn: {
   (
     warnedPacks: ReadonlyArray<number>,
@@ -524,8 +485,6 @@ export const packsWaitingToWarn: {
       return noPacks
     }
 
-    // NOTE: one pass over the plan counts the warned zombies still to come
-    // and each pack's size, rather than a pass for each pack due.
     let coming = 0
     const sizes = new Map<number, number>()
     for (const spawn of spawns) {
@@ -547,9 +506,6 @@ export const packsWaitingToWarn: {
   },
 )
 
-// NOTE: a pack waiting to warn stays a whole warning away on the clock, its
-// first zombie PACK_WARNING_MS ahead and the rest at their gaps behind it,
-// so once it may warn it walks in when the warning ends.
 export const delayWaitingPacks: {
   (
     waiting: ReadonlyArray<number>,
@@ -570,9 +526,6 @@ export const delayWaitingPacks: {
     if (Array.isReadonlyArrayEmpty(waiting)) {
       return spawns
     }
-    // NOTE: how far each waiting pack shifts, found once in one pass over the
-    // spawns: its first zombie's time decides it. Every pack due may wait
-    // while the house is full, so each is found by its number in a Map.
     const firsts = new Map<number, number>()
     for (const pack of waiting) {
       firsts.set(pack, Number.POSITIVE_INFINITY)
@@ -583,9 +536,6 @@ export const delayWaitingPacks: {
         firsts.set(spawn.pack, Math.min(first, spawn.atMs))
       }
     }
-    // NOTE: a pack already a warning away shifts by 0 and stays the spawn it
-    // was, so the list stays the one it was too, and the route kept for it
-    // (src/world/waves/doorRoute.ts) still holds.
     return sameIfUnchanged(
       spawns,
       Array.map(spawns, spawn => {
@@ -624,8 +574,6 @@ export const warnPacks: {
     waiting: ReadonlyArray<number>,
   ): World => {
     const warnedPacks = model.pacing.warnedPacks
-    // NOTE: every pack due may wait while the house is full, so they are
-    // looked up in a Set, not scanned for each spawn.
     const held: ReadonlySet<number> = new Set(waiting)
     const fresh = pipe(
       routed,
@@ -705,8 +653,6 @@ export const rattlingDoors: {
     ),
 )
 
-// DOORWAY CAMPING
-
 const isCampingDoor = (level: Level, player: Vector, door: DoorId): boolean =>
   distanceToBox(player, level.thresholds[door].box) <= DOOR_CAMP_REACH_PX
 
@@ -736,17 +682,31 @@ export const delayCampedPacks: {
     worldMs: number,
     players: ReadonlyArray<Vector>,
   ): ReadonlyArray<PlannedSpawn> => {
-    // NOTE: a Set, since every pack held at a camped door is due at once.
-    const campedPacks = new Set<number>()
+    const isDueNow = isDue(clockMs)
+    const dueDoors = new Set<DoorId>()
     for (const spawn of routed) {
-      if (
-        isDue(clockMs)(spawn) &&
-        isThroughDoor(spawn) &&
-        // NOTE: at most 4 players.
-        // oxlint-disable-next-line munch/no-nested-scan
-        Array.some(players, player => isCampingDoor(level, player, spawn.door))
-      ) {
-        campedPacks.add(spawn.pack)
+      if (isDueNow(spawn) && isThroughDoor(spawn)) {
+        dueDoors.add(spawn.door)
+      }
+    }
+    const campedDoors = new Set<DoorId>()
+    for (const player of players) {
+      for (const door of dueDoors) {
+        if (isCampingDoor(level, player, door)) {
+          campedDoors.add(door)
+        }
+      }
+    }
+    const campedPacks = new Set<number>()
+    if (campedDoors.size > 0) {
+      for (const spawn of routed) {
+        if (
+          isDueNow(spawn) &&
+          isThroughDoor(spawn) &&
+          campedDoors.has(spawn.door)
+        ) {
+          campedPacks.add(spawn.pack)
+        }
       }
     }
     return campedPacks.size === 0
@@ -759,21 +719,27 @@ export const delayCampedPacks: {
   },
 )
 
-// INTENSITY
+const countClose = (
+  zombies: ReadonlyArray<Zombie>,
+  players: ReadonlyArray<Vector>,
+): number => {
+  let close = 0
+  for (const zombie of zombies) {
+    if (isFree(zombie)) {
+      for (const player of players) {
+        if (
+          DetMath.hypot(zombie.x - player.x, zombie.y - player.y) <=
+          INTENSITY_CLOSE_PX
+        ) {
+          close += 1
+          break
+        }
+      }
+    }
+  }
+  return close
+}
 
-const isClose =
-  (player: Vector) =>
-  (zombie: Zombie): boolean =>
-    isFree(zombie) &&
-    DetMath.hypot(zombie.x - player.x, zombie.y - player.y) <=
-      INTENSITY_CLOSE_PX
-
-// NOTE: Intensity is a hidden measure of how hard the last few seconds were.
-// It never draws from the seeded generator and never changes which zombie
-// comes or from which door. It only lengthens a Relax while it is high.
-// NOTE: in co-op, `heartsLost` is the whole crew's and a zombie counts as
-// close when it is close to any player, so the music rises for everyone
-// when anyone is in trouble. One player counts exactly as before.
 export const advanceIntensity: {
   (
     heartsLost: number,
@@ -798,11 +764,7 @@ export const advanceIntensity: {
     deltaMs: number,
   ): number => {
     const seconds = deltaMs / MS_PER_SECOND
-    const close = Array.filter(zombies, zombie =>
-      // NOTE: at most 4 players.
-      // oxlint-disable-next-line munch/no-nested-scan
-      Array.some(players, player => isClose(player)(zombie)),
-    ).length
+    const close = countClose(zombies, players)
     const decayed =
       intensity * DetMath.exp(-INTENSITY_DECAY_PER_SECOND * seconds)
     return Math.min(

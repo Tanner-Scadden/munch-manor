@@ -15,10 +15,6 @@ import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
 import { Message } from './message'
 import type { Model } from './model'
 
-// NOTE: the root's fields the Profile's tabs show, and no more, with the
-// panel's own state, which the root keeps (`profile`).
-// Exported for a Scene of the Profile drawn as the root would draw it
-// (src/features/hud/__tests__/mobileHud.scene.test.ts).
 export const profilePropsOf = (model: Model): ProfileProps => ({
   state: model.profile,
   appearance: model.appearance,
@@ -94,10 +90,6 @@ const profileComponentView = (
     },
   })
 
-// NOTE: the Profile's Dialog is the root's (menuState reads it, and a close
-// keeps the name, src/app/update/dialog.ts); the Profile component draws
-// the tabs and pages inside it, and the root the rank plate. It opens with
-// `openRootDialog('Profile')` (`openProfile`, src/app/update/profile.ts).
 export const profileDialogView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
   (model: Model, h: ApplicationViewBuilder): ApplicationHtml

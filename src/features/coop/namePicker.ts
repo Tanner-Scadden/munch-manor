@@ -18,10 +18,6 @@ import {
   NAME_INPUT_ID,
 } from './roomState'
 
-// Your own name in co-op's lobby is a button with a pencil, and a tap opens
-// this small field over the lobby: the Profile's name rules and dice
-// (src/features/profile/profile.ts). Enter or OK keeps it, Esc or the X leaves it as it was.
-
 export const nameButtonView: {
   (h: ApplicationViewBuilder): (name: string) => ApplicationHtml
   (name: string, h: ApplicationViewBuilder): ApplicationHtml
@@ -45,9 +41,6 @@ export const nameButtonView: {
       ),
 )
 
-// NOTE: over the top of the lobby, not centered, so a phone's keyboard in
-// landscape leaves it in sight. The field is 16 px or more, or iOS zooms.
-// A form's submit is always cancelled, so Enter keeps the name in place.
 export const namePickerView: {
   (h: ApplicationViewBuilder): (room: Room) => ApplicationHtml | null
   (room: Room, h: ApplicationViewBuilder): ApplicationHtml | null

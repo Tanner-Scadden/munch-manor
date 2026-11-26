@@ -5,12 +5,6 @@ import type { Browser } from 'playwright-core'
 import { FRAMES_PER_SECOND } from './shotList'
 import { type ClipCue, SoundtrackRequestJson, cueAt } from './soundtrackRequest'
 
-// THE SOUNDTRACK
-//
-// NOTE: renders a clip's sound and music cues with the game's own audio
-// engine in headless Chrome (audioPage.ts, bundled here), offline, and
-// writes the mix as a 16 bit stereo WAV.
-
 class SoundtrackFailed extends Schema.TaggedError<
   SoundtrackFailed,
   { readonly brand: unique symbol }
@@ -24,8 +18,6 @@ const CHANNELS = 2
 const BYTES_PER_SAMPLE = 2
 const TAIL_FADE_SECONDS = 0.25
 
-// NOTE: what Vite gives a production build, which the bundled game code
-// reads.
 const PRODUCTION_ENV = '{"DEV":false,"PROD":true,"MODE":"production"}'
 
 const bundleAudioPage = Effect.gen(function* () {
@@ -84,7 +76,6 @@ const wavHeader = (dataBytes: number): Uint8Array => {
   return new Uint8Array(header.buffer)
 }
 
-// NOTE: the last quarter second fades out, so a clip never ends on a click.
 const fadeTail = (pcm: Int16Array): Int16Array => {
   const frames = pcm.length / CHANNELS
   const fadeFrames = Math.min(
@@ -103,7 +94,6 @@ const fadeTail = (pcm: Int16Array): Int16Array => {
   return faded
 }
 
-// NOTE: one page in its own context for the render, closed after.
 const renderInPage = (browser: Browser, script: string, request: string) =>
   Effect.acquireUseRelease(
     Effect.tryPromise({ try: () => browser.newContext(), catch: failedWith }),
@@ -130,7 +120,6 @@ const renderInPage = (browser: Browser, script: string, request: string) =>
     context => Effect.promise(() => context.close()),
   )
 
-/** @stability unstable */
 export const renderSoundtrack = ({
   browser,
   cues,

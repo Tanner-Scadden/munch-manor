@@ -75,8 +75,6 @@ import {
   strideAt,
 } from './zombies'
 
-// ZOMBIES
-
 const isFinishedDying = (zombie: Zombie): boolean =>
   ZombieState.match(zombie.state, {
     Walking: () => false,
@@ -84,20 +82,8 @@ const isFinishedDying = (zombie: Zombie): boolean =>
     Dying: ({ remainingMs }) => remainingMs <= 0,
   })
 
-// SEPARATION
-
-// NOTE: two bodies farther apart than this share of their reach are surely
-// out of it, whatever the last bit of Math.hypot says, so the pair is skipped
-// before the root is taken.
 const SURELY_APART = 1 + 1e-9
 
-// NOTE: each grounded zombie sums the pushes of the grounded zombies near it
-// in ascending list order, the order the all-pairs loop used, so the sum is
-// the same to the last bit. One out of reach of every body pushes nothing.
-// The loop reads the step's columns (src/world/zombies/zombieGrid.ts), not the zombies.
-// The grid hands back its candidates cell by cell: the few in reach are
-// kept first and only they are put in order, since sorting every candidate
-// of a dense crowd cost more than the pushes.
 export const separationPushes = (
   zombies: ReadonlyArray<Zombie>,
 ): ReadonlyArray<Vector> => {
@@ -113,7 +99,6 @@ export const separationPushes = (
     const y = ys[row] ?? 0
     const radius = radii[row] ?? 0
     const id = ids[row] ?? 0
-    // NOTE: no body reaches farther than its own radius and the widest.
     const count = queryAround(grid, near, zombie, radius + MAX_BODY_RADIUS_PX)
     let kept = 0
     for (let at = 0; at < count; at++) {
@@ -161,9 +146,6 @@ export const separationPushes = (
   })
 }
 
-// NOTE: the field a walker of a clearance follows, laid out the first time a
-// zombie of that clearance asks for it this tick: a break, or a wave with
-// no Tank or boss, builds no Wide field.
 type FlowFields = (clearance: Clearance) => FlowField
 
 type Obstacles = Readonly<{
@@ -173,8 +155,6 @@ type Obstacles = Readonly<{
   boss: Boss
   zombies: ReadonlyArray<Zombie>
   loneMs: number
-  // NOTE: the parlour's dance floor while the gramophone plays, and the
-  // cellar while it is dark in a wave (the room tools, src/world/stations/).
   danceFloor: Option.Option<DanceFloor>
   dark: Option.Option<Box>
 }>
@@ -197,8 +177,6 @@ const flowHeading = (
   )
 }
 
-// NOTE: a Big Leaguer keeps his distance to throw his Groaners. Left last,
-// with none to throw, he comes straight in like the rest.
 const chaseHeading = (
   zombie: Zombie,
   flowFields: FlowFields,
@@ -212,9 +190,6 @@ const chaseHeading = (
       )
     : flowHeading(zombie, flowFields, target, obstacles)
 
-// NOTE: a slow zombie in the room goes for a standing Plank Pile within
-// BAIT_RULES.pullPx of walking when the plank is nearer than the player. A
-// frenzied one only has eyes for the player.
 const maybeBaitDoor = (
   level: Level,
   zombie: Zombie,
@@ -273,13 +248,6 @@ const heading = (
     },
   )
 
-// NOTE: a zombie still outside the room is not drawn, so it walks at least
-// ZOMBIE_ENTRY_SPEED until it reaches its doorway: it shows up a beat after
-// its door's warning ends, whatever its own pace. In the room it walks at
-// its own. The wave's last zombie hurries up to the players' walk
-// (src/world/zombies/lastZombie.ts) before the boss's pace and a chill,
-// walks a little faster in the cellar's dark (src/world/cellar/bulb.ts),
-// and wades slower through a roof leak's puddle (src/world/level/leaks.ts).
 const walkingSpeed = (
   zombie: Zombie,
   obstacles: Obstacles,
@@ -313,9 +281,7 @@ const steeringVelocity = (
     Walking: () =>
       isHeld || !isFree(zombie)
         ? ZERO_VECTOR
-        : // NOTE: a plain check, so no handler is built per zombie per
-          // frame (AGENTS.md, "Keep the frame cheap").
-          Option.isSome(obstacles.danceFloor) &&
+        : Option.isSome(obstacles.danceFloor) &&
             isDancing(zombie, obstacles.danceFloor.value)
           ? danceVelocity(
               zombie,
@@ -339,12 +305,6 @@ const tickZombieState = (state: ZombieState, deltaMs: number): ZombieState =>
       ZombieState.Dying({ remainingMs: remainingMs - deltaMs, direction }),
   })
 
-// NOTE: a free zombie stops at the player's body, at most
-// CONTACT_ALLOWANCE_PX deep, so it bites from the edge instead of standing on
-// the player where a shot cannot find it. Only the zombie moves, out along
-// the line from the player to where it stood before this step, so one fast
-// enough to cross the player's center lands back on the side it came from.
-// It moves through moveCircle, so walls and traps still hold it.
 const holdOffPlayer = (
   zombie: Zombie,
   moved: Vector,
@@ -373,17 +333,11 @@ const holdOffPlayer = (
   )
 }
 
-// NOTE: a knockback at rest stays the one ZERO_VECTOR, as decayKnockback
-// would hand back, with nothing scaled.
 const decayedKnockback = (knockback: Vector, seconds: number): Vector =>
   knockback === ZERO_VECTOR
     ? ZERO_VECTOR
     : decayKnockback(knockback, ZOMBIE_KNOCKBACK_DECAY_PER_SECOND, seconds)
 
-// NOTE: the velocity is summed in the order the vector helpers summed it
-// (steering, then knockback, then separation, then scaled to the step), as
-// plain numbers, so the zombie moves exactly as before with no vector made
-// on the way. A zombie the step leaves as it was is the same object.
 const advanceZombie = (
   zombie: Zombie,
   separation: Vector,
@@ -421,7 +375,6 @@ const advanceZombie = (
   const nextKnockback = decayedKnockback(knockback, seconds)
   const hitRemainingMs = countDown(zombie.hitRemainingMs, deltaMs)
   const state = tickZombieState(zombie.state, deltaMs)
-  // NOTE: Object.is, as UiStruct.evolve compares, so a -0 is a change.
   return Object.is(moved.x, zombie.x) &&
     Object.is(moved.y, zombie.y) &&
     nextKnockback === knockback &&
@@ -483,8 +436,6 @@ export const advanceZombies: {
     )
   },
 )
-
-// FOOTFALLS
 
 const maybeFootfall =
   (player: Player, previousMs: number, elapsedMs: number) =>

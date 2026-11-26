@@ -63,7 +63,6 @@ const diffOf = (prev: RoomWorld, next: RoomWorld): Uint8Array => {
   return writer.finish()
 }
 
-// NOTE: wave 1 underway: its first zombies in, both players shooting.
 const WAVE_TICKS = 600
 
 type Followed = Readonly<{
@@ -210,11 +209,6 @@ describe('inputs and presses', () => {
     })
   })
 
-  // NOTE: these codes are the wire. A client and a room on the same
-  // protocol must agree on them, so removing or reordering an action moves
-  // the codes after it and needs a PROTOCOL_VERSION bump
-  // (packages/netcode/src/Protocol.ts). New actions and shop items go at
-  // the end, where they leave every code here alone.
   test('every action keeps its wire code', () => {
     const pinned: ReadonlyArray<readonly [SeatAction, number]> = [
       [SeatAction.Swap(), 1],
@@ -485,8 +479,6 @@ describe('the lobby picks', () => {
 
 describe('the crew in the music', () => {
   test('a zombie close to any teammate, or a bitten teammate, raises the intensity', () => {
-    // NOTE: the teammate stands in the open aisle south of the party table,
-    // well east of the lead on the start spot.
     const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
       modifyFocus(seatWorld, {
         player: player =>

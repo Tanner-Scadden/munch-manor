@@ -52,8 +52,6 @@ const TICKS_PER_SHOT = countdownTicks(FIRE_INTERVAL_MS)
 const PISTOL_RELOAD_TICKS = countdownTicks(PISTOL_RELOAD_MS)
 const SMG_FIRING_TICKS = countdownTicks(3000)
 
-// NOTE: a countdown of whole ticks of 1000/60 ms lands a hair off the
-// round number.
 const aboutMs = (ms: number) => Option.some(expect.closeTo(ms, 6))
 
 const fighting: Model = UiStruct.evolve(initialModel, {

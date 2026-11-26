@@ -1,7 +1,4 @@
 import { Function } from 'effect'
-// NOTE: how a sound is written: tone and noise layers, each with its pitch
-// points and envelope. src/audio/audioRecipes.ts and src/audio/zombieRecipes.ts write
-// the game's sounds in it, and src/audio/audio.ts plays them.
 
 export type PitchPoint = Readonly<{ atSeconds: number; frequency: number }>
 
@@ -31,8 +28,6 @@ export type Recipe = Readonly<{
   noises: ReadonlyArray<NoiseLayer>
 }>
 
-// NOTE: a layer's envelope that starts with the sound, and one that waits
-// `delaySeconds` first.
 export const envelope: {
   (attackSeconds: number, decaySeconds: number): (peak: number) => Envelope
   (peak: number, attackSeconds: number, decaySeconds: number): Envelope

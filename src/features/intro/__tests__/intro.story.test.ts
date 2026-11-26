@@ -28,11 +28,6 @@ import { focusOf } from '../../../world/party/party'
 import { ARRIVAL_MS, SLAM_MS, slamAtMs } from '../../../world/run/arrival'
 import { KNOCK_BACK_MS, maybeIntroFrameOf } from '../introBeat'
 
-// The intro in single player (src/features/intro/introBeat.ts, the clock in
-// src/world/run/arrival.ts): START opens on it, the whole drive up the first
-// time and the knock after, a press skips to the slam, the slam is never
-// skipped, and the run starts on it.
-
 const firstTimer: Model = UiStruct.evolve(readyModel, {
   introSeen: () => 'Unseen',
 })
@@ -51,8 +46,6 @@ const arrivalMsOf = (current: Model): number =>
 
 const framesFor = (ms: number): StoryStep => ticksFor(ms, MAX_FRAME_DELTA_MS)
 
-// NOTE: the frames that play `ms`, each frame's sounds played as it plays
-// them (a Story waits on a pending sound), and every sound they played.
 const heardOver =
   (ms: number, heard: ReadonlyArray<SoundEffect>): StoryStep =>
   s => {

@@ -26,10 +26,6 @@ import { Phase } from '../../world/schema/worldSchema'
 import { Message } from '../message'
 import type { Model } from '../model'
 
-// The world's picture held behind a menu (src/render/iso/hold.ts): while
-// the World stands still, a frame a menu renders hands the world's element
-// the key of the picture it last drew, so the element draws nothing.
-
 const keyOf = (model: Model): Option.Option<HoldKey> =>
   holdKeyOf({
     model,
@@ -51,8 +47,6 @@ const lastHeart = withZombies(
   ],
 )
 
-// NOTE: the end card's beat lands its particles and settles its shake in
-// slow motion within this long.
 const SETTLE_FRAMES = 240
 
 describe('the world held behind a menu', () => {

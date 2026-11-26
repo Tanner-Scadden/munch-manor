@@ -34,14 +34,6 @@ import {
 import type { WeaponKind } from '../../world/schema/worldSchema'
 import { Message } from './message'
 
-// The Profile's MASTERY tab (docs/PROGRESSION_PLAN.md, pillar D): a row
-// per hero, its figure in the best prop style its track has opened, a bar
-// to the next level and what that level opens, and the hero picked's
-// style swatches to wear one; then a row per gun, its picture in the best
-// skin its kills have opened, a kills bar, and the next skin. The rules
-// are src/domain/mastery.ts's; the styles are in
-// src/features/profile/mastery.css.
-
 type ProfileViewBuilder = Html.H<Message>
 type ProfileContent = View.Content<Message>
 
@@ -69,7 +61,6 @@ const barView = <Reward>(
       h.span.class('mastery-fill').style({ width: percentOf(progress.share) }),
     )
 
-// NOTE: the next step's reward and the count it asks, or a gold MAX.
 const nextView = <Reward>(
   progress: TrackProgress<Reward>,
   nameOf: (reward: Reward) => string,
@@ -86,14 +77,11 @@ const nextView = <Reward>(
         ),
   })
 
-// HEROES
-
 const heroRewardName = (reward: HeroReward): string =>
   reward === 'Story'
     ? HERO_STORY_NAME
     : `${PROP_STYLE_NAMES[reward]} ${PROP_WORD}`
 
-// NOTE: the best style a hero's track has opened, for its figure.
 const bestStyleOf = (mastery: SavedMastery, calling: Calling): PropStyle =>
   Option.getOrElse(
     Array.findLast(PROP_STYLES, style => isStyleOpen(mastery, calling, style)),
@@ -103,8 +91,6 @@ const bestStyleOf = (mastery: SavedMastery, calling: Calling): PropStyle =>
 const swatchColor = (style: PropStyle): string =>
   style === 'Stock' ? 'var(--menu-line)' : PROP_STYLE_RAMPS[style].mid
 
-// NOTE: the hero picked's styles are buttons: an open one is worn, a shut
-// one shakes its padlock. Another hero's are dots, lit when open.
 const swatchView = (
   inputs: MasteryInputs,
   calling: Calling,
@@ -186,8 +172,6 @@ const heroRowView = (
         ),
     )
 }
-
-// GUNS
 
 const gunPictureUrl = (
   kind: WeaponKind,

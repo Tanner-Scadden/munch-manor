@@ -17,22 +17,8 @@ import {
 } from './callingCards'
 import { Events, Message } from './message'
 
-// The hero picker (GAME_DESIGN.md, "Rank and Bones"): five cards, each the
-// player's own look wearing the hero's prop, with its specials, the Bones,
-// and BUY for a hero being tried on. Bound twice: in the solo lobby's
-// Dialog (src/features/lobby/view.ts) and over co-op's lobby. The parent
-// owns all its state: whether it is drawn, the hero tried on, and every
-// rule a tap meets. It holds none, and its close keys are its own
-// Subscription.
-
-// NOTE: where the picker stands. `Panel` is inside the solo lobby's Dialog,
-// which draws the title; `Overlay` is over co-op's lobby, with its own head.
 const PickerLayout = Schema.Literals(['Panel', 'Overlay'])
 
-// NOTE: what a parent hands the picker: the look its cards wear, the hero
-// worn, the hero for sale being tried on (its BUY pill buys it), the rank
-// and the heroes bought (each card's standing), the Bones (the balance and
-// BUY), the unlocks that wear a NEW badge, and where it stands.
 export const HeroPickerProps = Schema.Struct({
   look: Appearance,
   chosen: Calling,
@@ -45,14 +31,11 @@ export const HeroPickerProps = Schema.Struct({
 })
 export type HeroPickerProps = typeof HeroPickerProps.Type
 
-// NOTE: Escape and Y, the key that opened it, close the picker.
 const CLOSE_KEYS = [
   { key: 'Escape', message: Message.PressedCloseKey() },
   { key: 'y', message: Message.PressedCloseKey() },
 ] as const
 
-// NOTE: the menus' corner close button (src/ui/cornerButtons.ts's look):
-// a red pixel X on a 32 px face in a bigger see-through button.
 const closeView = (h: Html.H<Message>): View.Content<Message> =>
   h.button
     .attrs({
@@ -71,8 +54,6 @@ const closeView = (h: Html.H<Message>): View.Content<Message> =>
         ),
     )
 
-// NOTE: the cards, the Bones, and the actions, the same in both parents so
-// the picker looks and lays out alike.
 const bodyView = (props: HeroPickerProps, h: Html.H<Message>) => [
   callingCardsView(
     {
@@ -102,9 +83,6 @@ const bodyView = (props: HeroPickerProps, h: Html.H<Message>) => [
   ),
 ]
 
-// NOTE: a component is called as `HeroPicker(h, { props, onEmit })`, a
-// function Effect UI makes, with no data-last form to give it.
-// @effect-diagnostics-next-line missingPipeableSignature:off
 export const HeroPicker = Html.component({
   name: 'HeroPicker',
   props: HeroPickerProps,
@@ -121,9 +99,6 @@ export const HeroPicker = Html.component({
     PressedCloseKey: $ => $.emit(Events.RequestedClose()),
   },
   subscriptions: () => [HtmlSubscription.shortcuts(CLOSE_KEYS)],
-  // NOTE: inside the solo lobby's Dialog, under the title it draws, its box
-  // taking no room of its own; over co-op's lobby while the room still
-  // waits, the same panel, title and all, on a dim of its own.
   view: h =>
     h.props.layout === 'Panel'
       ? h.div.class('calling-picker').children(bodyView(h.props, h))

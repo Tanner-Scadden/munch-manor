@@ -73,7 +73,6 @@ const pitched = (recipe: Recipe, cents: number): Recipe => {
   }
 }
 
-// NOTE: the zombies' and the boss's sounds, joined into RECIPES.
 export const ZOMBIE_RECIPES = {
   ZombieHit: ZOMBIE_HIT_RECIPE,
   ZombieDeath: ZOMBIE_DEATH_RECIPE,

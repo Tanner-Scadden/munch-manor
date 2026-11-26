@@ -120,17 +120,8 @@ import {
   takeStoreWorker,
 } from './storeEarly'
 
-// NOTE: this module, the SQLite package, and the sync engine load in their
-// own chunk, behind the splash, from src/platform/storeEarly.ts. Nothing in the game's
-// bundle imports it.
-
 export { KillsRow, PlayerRow, killsRowsOfSave, rowOfSave }
 
-// SCHEMA
-
-// NOTE: the tables the game made before sync. The player scope's view
-// tables are these same `player` and `kills_by_kind` (see
-// src/platform/playerScope.ts), so a device that already had a save keeps it.
 const PLAYER_MIGRATIONS = {
   '0001_create_player': Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -159,9 +150,6 @@ const PLAYER_MIGRATIONS = {
       value TEXT NOT NULL
     )`
   }),
-  // NOTE: run summaries finished with no network, waiting to be sent. This
-  // table is this device's alone: it is not in the player scope, so it never
-  // syncs and a linked device never sees it.
   '0002_create_queued_summaries': Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     yield* sql`CREATE TABLE queued_summaries (
@@ -169,9 +157,6 @@ const PLAYER_MIGRATIONS = {
       body TEXT NOT NULL
     )`
   }),
-  // NOTE: recorded runs (src/platform/recording.ts) finished with no
-  // network, waiting to be sent, kept on this device alone like the
-  // summaries.
   '0003_create_queued_recordings': Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
     yield* sql`CREATE TABLE queued_recordings (
@@ -181,7 +166,6 @@ const PLAYER_MIGRATIONS = {
   }),
 }
 
-// NOTE: a long trip offline keeps this many runs. The oldest go first.
 const MAX_QUEUED_SUMMARIES = 20
 
 const QueuedSummaryRow = Schema.Struct({
@@ -189,13 +173,8 @@ const QueuedSummaryRow = Schema.Struct({
   body: Schema.String,
 })
 
-// NOTE: a recorded run is far bigger than a summary, so a trip offline
-// keeps only the last few.
 const MAX_QUEUED_RECORDINGS = 4
 
-// NOTE: this device was opened with `?record=1` before the unlock synced
-// with the player (save version 20). Only read now: the boot moves it into
-// the save, which syncs it to every linked device.
 const RECORD_UNLOCK_KEY = 'record-unlock'
 const RECORD_UNLOCKED = 'Unlocked'
 
@@ -285,14 +264,10 @@ const saveOfRow = (
   mastery: masteryOfRows(mastery),
 })
 
-// LEGACY
-
 export interface LegacySave {
   readonly read: Effect.Effect<Option.Option<PlayerSave>, SaveStorageError>
   readonly write: (save: PlayerSave) => Effect.Effect<void, SaveStorageError>
 }
-
-// DATABASE
 
 export interface PlayerDatabase {
   readonly persistence: Persistence
@@ -436,8 +411,6 @@ const readDevices = (client: SqliteClientService) =>
     Effect.orElseSucceed(() => 1),
   )
 
-// NOTE: the row as it was written before sync, for the one-time import and
-// the seed. The view is overwritten whole, in one transaction.
 const writeWhole = (
   sql: SqlClient.SqlClient,
   save: PlayerSave,
@@ -506,10 +479,6 @@ const markMeta = (client: SqliteClientService, key: string, value: string) =>
   client.sql`INSERT INTO store_meta ${client.sql.insert({ key, value })}
     ON CONFLICT (key) DO UPDATE SET value = excluded.value`
 
-// QUEUED SUMMARIES
-
-// NOTE: a queue of bodies waiting for the network: the run summaries, and
-// the recorded runs.
 type QueueTable = Readonly<{ table: string; limit: number }>
 
 const SUMMARY_QUEUE: QueueTable = {
@@ -540,8 +509,6 @@ const queueRow = (
     Effect.mapError(toDatabaseError),
   )
 
-// NOTE: the oldest body is deleted as it is taken, in one transaction, so
-// two tabs or two drains never send the same one twice.
 const takeRow = (client: SqliteClientService, { table }: QueueTable) =>
   pipe(
     Effect.gen(function* () {
@@ -569,11 +536,6 @@ const clearRows = (client: SqliteClientService, { table }: QueueTable) =>
     Effect.mapError(toDatabaseError),
   )
 
-// NOTE: the first load on a device finds no player row and no import mark,
-// so it reads the localStorage save, writes it as the row, and marks the
-// import done, all in one transaction. Every later load reads the row and
-// never looks at localStorage again, even if the row is gone. A row that no
-// longer decodes reads as no save, as a corrupted localStorage save did.
 const importLegacy = (client: SqliteClientService, legacy: LegacySave) =>
   pipe(
     Effect.gen(function* () {
@@ -611,11 +573,6 @@ const importLegacy = (client: SqliteClientService, legacy: LegacySave) =>
     Effect.mapError(toDatabaseError),
   )
 
-// SYNC
-
-// NOTE: where sync goes, when the build has a server. Without one the
-// mutations still go through the outbox, and sync catches up whenever a
-// build with a server opens the same database.
 export interface SyncSetup {
   readonly identityApi: IdentityApi
   readonly transports: Array.NonEmptyReadonlyArray<Transport>
@@ -727,7 +684,6 @@ const stateOf = (status: SyncStatus, devices: number): SyncState =>
     Offline: (): SyncState => SyncState.Offline({ devices }),
   })
 
-/** @stability unstable */
 export const makePlayerDatabase: {
   (
     legacy: LegacySave,
@@ -741,8 +697,6 @@ export const makePlayerDatabase: {
     maybeSetup?: Option.Option<SyncSetup>,
   ): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope>
 } = Function.dual(
-  // NOTE: data-first starts with the client, the only argument that can
-  // migrate.
   (args: IArguments): boolean => Predicate.hasProperty(args[0], 'migrate'),
   (
     client: SqliteClientService,
@@ -782,8 +736,6 @@ export const makePlayerDatabase: {
         Effect.mapError(toDatabaseError),
       )
 
-      // NOTE: once per device, the save from before sync seeds the player
-      // scope as a pending SeededPlayer, so the server gets it on first sync.
       yield* pipe(
         Effect.gen(function* () {
           const seeded = yield* readMeta(client, SYNC_SEED_KEY)
@@ -809,11 +761,6 @@ export const makePlayerDatabase: {
         ),
       )
 
-      // NOTE: the changes go in one transaction, so a write that fails leaves
-      // nothing behind and the game can send the same changes again. A change
-      // the scope's own rules reject would be rejected on every retry, so it is
-      // logged and dropped on its own, and the rest still go in. A recorded
-      // run's mutation id comes back when there is a server to confirm it.
       const write = (save: PlayerSave, changes: ReadonlyArray<PlayerChange>) =>
         pipe(
           Effect.gen(function* () {
@@ -983,8 +930,6 @@ export const makePlayerDatabase: {
     }),
 )
 
-// BROWSER
-
 const browserSetup = (origin: string): Effect.Effect<SyncSetup> =>
   Effect.map(
     Effect.promise(() => import('@munch/sync-engine/browser')),
@@ -1043,8 +988,6 @@ export const openPlayerDatabase: {
     }),
 )
 
-// OPEN ONCE
-
 const LEGACY_SAVE: LegacySave = {
   read: readLegacySave,
   write: writeLegacySave,
@@ -1064,9 +1007,6 @@ const runNextMicrotask = (callback: () => void): (() => void) => {
   }
 }
 
-// NOTE: microtask scheduling for the open's fibers. Effect's default
-// yields with setTimeout, which the browser clamps to at least 4 ms, and the
-// open yields often enough that the clamps added up to a tenth of a second.
 const OPEN_SCHEDULER = new Scheduler.MixedScheduler('async', runNextMicrotask)
 
 const opens = new Map<
@@ -1074,11 +1014,6 @@ const opens = new Map<
   Promise<Exit.Exit<PlayerDatabase, PlayerDatabaseError>>
 >()
 
-// NOTE: the page's one open of the player database. src/platform/storeEarly.ts starts
-// it before the game's modules run, and the PlayerStore awaits the same
-// promise, so the database opens alongside the game's first render instead
-// of after it. The database lasts as long as the page, so its scope is never
-// closed.
 export const openPlayerDatabaseOnce = (): Promise<
   Exit.Exit<PlayerDatabase, PlayerDatabaseError>
 > => {
