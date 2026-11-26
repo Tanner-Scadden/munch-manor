@@ -11,6 +11,7 @@ import {
   positionVariation,
   resumeAudio,
 } from '../../audio/audio'
+import { AudioEvent, stepAudio } from '../../audio/audioFlow'
 import { SoundMessage } from '../../audio/message'
 import { maybeTuneCue } from '../../features/dare/musicBox'
 import { scratchesBetween } from '../../features/dare/pocketCard'
@@ -38,7 +39,13 @@ import { vectorLength } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
 import { ZOMBIE_KINDS, isArmorShedAt } from '../../world/zombies/zombies'
 import { AudioState, GameEvent, type Model, Phase, type Player } from '../model'
-import { type UpdateStep, defineHandlers, modelStep } from './step'
+import {
+  type UpdateStep,
+  combine,
+  defineHandlers,
+  modelStep,
+  unchanged,
+} from './step'
 
 export class AcquireAudioEngine extends Command.Service<AcquireAudioEngine>()(
   'app/AcquireAudioEngine',
@@ -141,8 +148,7 @@ const MUTE_KEY = 'KeyM'
 const MUSIC_KEY = 'KeyN'
 
 export const isSoundAudible = (model: Model): boolean =>
-  AudioState.isAnyOf(['Ready'])(model.audio) &&
-  model.settings.soundSetting === 'On'
+  AudioState.$is('Ready')(model.audio) && model.settings.soundSetting === 'On'
 
 export type SoundCue = Readonly<{ sound: SoundEffect; variation: number }>
 
@@ -470,22 +476,34 @@ export const playStartSoundWhen = (isRoundStart: boolean): UpdateStep =>
 export const playSwapSoundWhen = (isSwap: boolean): UpdateStep =>
   playSounds(isSwap ? [uiCue('Swap')] : [])
 
-const notePlayOutcome =
-  (outcome: PlayOutcome): UpdateStep =>
-  $ =>
-    outcome === 'DroppedWhileSuspended' &&
-    AudioState.isAnyOf(['Ready'])($.model.audio)
-      ? $.evolve({ audio: AudioState.Suspended() })
-      : $.model
+const moveAudio =
+  (event: AudioEvent, onMoved: UpdateStep = unchanged): UpdateStep =>
+  $ => {
+    const after = stepAudio($.model.audio, event)
+    const moved = combine([
+      modelStep(model => UiStruct.evolve(model, { audio: () => after })),
+      onMoved,
+    ])
+    return (after === $.model.audio ? unchanged : moved)($)
+  }
+
+const askToResume: UpdateStep = $ => $.run(ResumeAudio.make())
+
+const askForEngine: UpdateStep = $ => $.run(AcquireAudioEngine.make())
+
+const playStartSoundOnResume: UpdateStep = $ =>
+  playStartSoundWhen(isFreshRun($.model))($)
+
+const notePlayOutcome = (outcome: PlayOutcome): UpdateStep =>
+  outcome === 'DroppedWhileSuspended'
+    ? moveAudio(AudioEvent.WentQuiet)
+    : unchanged
 
 export const unlockAudio: UpdateStep = $ =>
-  AudioState.match($.model.audio, {
-    Locked: () =>
-      $.evolve({ audio: AudioState.Unlocking() }).run(
-        AcquireAudioEngine.make(),
-      ),
+  AudioState.$match($.model.audio, {
+    Locked: () => moveAudio(AudioEvent.Unlocked, askForEngine)($),
     Unlocking: () => $.model,
-    Suspended: () => $.run(ResumeAudio.make()),
+    Suspended: () => askToResume($),
     Ready: () => $.model,
     Unavailable: () => $.model,
   })
@@ -534,23 +552,16 @@ export const soundHandlers = defineHandlers({
 
   ClickedMusicButton: $ => $.combine(modelStep(toggleMusic), unlockAudio),
 
-  SucceededAcquireAudioEngine: $ =>
-    $.evolve({ audio: AudioState.Suspended() }).run(ResumeAudio.make()),
+  SucceededAcquireAudioEngine: moveAudio(AudioEvent.GotEngine, askToResume),
 
-  FailedAcquireAudioEngine: $ => $.evolve({ audio: AudioState.Unavailable() }),
+  FailedAcquireAudioEngine: moveAudio(AudioEvent.FailedToGetEngine),
 
-  CompletedResumeAudio: ($, { playback }) => {
-    if (playback === 'Running') {
-      const ready = UiStruct.evolve($.model, {
-        audio: () => AudioState.Ready(),
-      })
-      return $.combine(() => ready, playStartSoundWhen(isFreshRun(ready)))
-    } else {
-      return $.evolve({ audio: AudioState.Suspended() })
-    }
-  },
+  CompletedResumeAudio: ($, { playback }) =>
+    playback === 'Running'
+      ? moveAudio(AudioEvent.Resumed, playStartSoundOnResume)($)
+      : moveAudio(AudioEvent.WentQuiet)($),
 
-  FailedResumeAudio: $ => $.evolve({ audio: AudioState.Suspended() }),
+  FailedResumeAudio: $ => $.model,
 
   CompletedPlaySound: ($, { outcome }) => notePlayOutcome(outcome)($),
 })

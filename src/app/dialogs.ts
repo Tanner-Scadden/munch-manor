@@ -21,6 +21,7 @@ import { dialogShellView } from '../ui/dialog'
 import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
 import { Message } from './message'
 import type { Model } from './model'
+import { isRootDialogOpen } from './rootDialog'
 
 const munchopediaView: PanelChildViews['munchopedia'] = (model, done, h) =>
   Munchopedia(h, {
@@ -71,7 +72,7 @@ export const manorHandView: {
     dialogShellView({
       h,
       id: HAND_DIALOG_ID,
-      isOpen: model.handDialog.isOpen,
+      isOpen: isRootDialogOpen(model, 'Hand'),
       dialogClass: 'hand-dialog',
       backdropClass: 'hand-backdrop',
       panelClass: 'hand',
@@ -91,7 +92,7 @@ export const menuPanelView: {
     dialogShellView({
       h,
       id: PANEL_DIALOG_ID,
-      isOpen: model.panelDialog.isOpen,
+      isOpen: isRootDialogOpen(model, 'Panel'),
       dialogClass: 'panel-dialog',
       backdropClass: 'panel-backdrop',
       panelClass: 'panel',
@@ -112,7 +113,7 @@ export const homeScreenGuideView: {
     dialogShellView({
       h,
       id: HOME_SCREEN_STEPS_ID,
-      isOpen: model.homeScreenSteps.isOpen,
+      isOpen: isRootDialogOpen(model, 'HomeScreenSteps'),
       dialogClass: 'panel-dialog',
       backdropClass: 'panel-backdrop',
       panelClass: 'panel install-guide',
@@ -132,7 +133,7 @@ export const updateGreetingView: {
     dialogShellView({
       h,
       id: UPDATE_GREETING_ID,
-      isOpen: model.updateGreeting.isOpen,
+      isOpen: isRootDialogOpen(model, 'UpdateGreeting'),
       dialogClass: 'panel-dialog',
       backdropClass: 'panel-backdrop',
       panelClass: 'panel greeting-panel',

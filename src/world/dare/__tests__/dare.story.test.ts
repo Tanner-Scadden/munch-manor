@@ -303,7 +303,7 @@ describe('finding a thing', () => {
           UiStruct.evolve(
             withDareThings(quietWave(3), [hiddenAt(0, 'MusicBox', box)]),
             {
-              audio: () => AudioState.Ready(),
+              audio: () => AudioState.Ready,
               elapsedMs: () => BEAT_EDGE_MS,
               settings: UiStruct.evolve({ musicSetting: () => 'Off' }),
             },

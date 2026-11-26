@@ -62,7 +62,7 @@ import { FINAL_WAVE } from '../wavePlans'
 const FRAME_MS = 50
 const GRACE_TICK_MS = 50
 const readyModel: Model = UiStruct.evolve(initialModel, {
-  difficultyCard: () => DifficultyCard.Seen(),
+  difficultyCard: () => DifficultyCard.Seen,
   maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
 })
 

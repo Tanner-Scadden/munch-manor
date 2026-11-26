@@ -120,7 +120,7 @@ describe('the link', () => {
           }),
         ),
         checkModel(({ beatMyRun }) => {
-          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+          expect(BeatMyRun.$is('None')(beatMyRun)).toBe(true)
         }),
       ),
     ),
@@ -203,7 +203,7 @@ describe('BEAT MY RUN', () => {
         s =>
           s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop),
         checkModel(({ beatMyRun, difficulty }) => {
-          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+          expect(BeatMyRun.$is('None')(beatMyRun)).toBe(true)
           expect(difficulty.chosen).toBe('Normal')
         }),
       ),
@@ -218,7 +218,7 @@ describe('BEAT MY RUN', () => {
         s =>
           s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop),
         checkModel(({ beatMyRun, difficulty }) => {
-          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+          expect(BeatMyRun.$is('None')(beatMyRun)).toBe(true)
           expect(difficulty.chosen).toBe('Normal')
         }),
       ),

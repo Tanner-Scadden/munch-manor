@@ -1,11 +1,10 @@
 import { UiStruct } from '@effect/ui'
 
+import { CardEvent, stepDifficultyCard } from '../../domain/difficultyCard'
 import { keptName, withNameKept } from '../../features/profile/steps'
 import { openedEntry } from '../../screens/home/home'
-import { stepWhen } from '../../shared/stepWhen'
-import { closedDialog, openDialog } from '../../ui/dialog'
-import type { DialogName } from '../message'
-import { DifficultyCard, type Model } from '../model'
+import type { Model } from '../model'
+import { DialogEvent, type DialogName, stepRootDialog } from '../rootDialog'
 import {
   type UpdateStep,
   combine,
@@ -14,14 +13,6 @@ import {
   unchanged,
 } from './step'
 
-const FIELD_OF = {
-  Profile: 'profileDialog',
-  Panel: 'panelDialog',
-  Hand: 'handDialog',
-  HomeScreenSteps: 'homeScreenSteps',
-  UpdateGreeting: 'updateGreeting',
-} as const satisfies Record<DialogName, keyof Model>
-
 export const keepName = (model: Model): Model =>
   UiStruct.evolve(model, {
     playerName: () => keptName(model.profile),
@@ -29,11 +20,9 @@ export const keepName = (model: Model): Model =>
   })
 
 const forgetAskedMode = (model: Model): Model =>
-  DifficultyCard.isAnyOf(['Asking'])(model.difficultyCard)
-    ? UiStruct.evolve(model, {
-        difficultyCard: () => DifficultyCard.Unseen(),
-      })
-    : model
+  UiStruct.evolve(model, {
+    difficultyCard: card => stepDifficultyCard(card, CardEvent.WentBack),
+  })
 
 const AFTER_CLOSE: Record<DialogName, UpdateStep> = {
   Profile: modelStep(keepName),
@@ -43,24 +32,22 @@ const AFTER_CLOSE: Record<DialogName, UpdateStep> = {
   UpdateGreeting: unchanged,
 }
 
-const isDialogOpen = (model: Model, dialog: DialogName): boolean =>
-  model[FIELD_OF[dialog]].isOpen
+const moveDialog =
+  (event: DialogEvent, onMoved: UpdateStep): UpdateStep =>
+  $ => {
+    const after = stepRootDialog($.model.rootDialog, event)
+    const moved = combine([
+      modelStep(model => UiStruct.evolve(model, { rootDialog: () => after })),
+      onMoved,
+    ])
+    return (after === $.model.rootDialog ? unchanged : moved)($)
+  }
 
 export const openRootDialog = (dialog: DialogName): UpdateStep =>
-  modelStep(model =>
-    UiStruct.evolve(model, { [FIELD_OF[dialog]]: () => openDialog }),
-  )
+  moveDialog(DialogEvent.Opened({ dialog }), unchanged)
 
 export const closeRootDialog = (dialog: DialogName): UpdateStep =>
-  stepWhen(
-    (model: Model) => isDialogOpen(model, dialog),
-    combine([
-      modelStep(model =>
-        UiStruct.evolve(model, { [FIELD_OF[dialog]]: () => closedDialog }),
-      ),
-      AFTER_CLOSE[dialog],
-    ]),
-  )
+  moveDialog(DialogEvent.Closed({ dialog }), AFTER_CLOSE[dialog])
 
 export const dialogHandlers = defineHandlers({
   ClosedDialog: ($, { dialog }) => closeRootDialog(dialog)($),

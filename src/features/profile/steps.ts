@@ -6,6 +6,7 @@ import type { LookPart } from '../../domain/looks'
 import { cleanName } from '../../domain/playerName'
 import type { ClosetCueKind, ProfileFx } from './blocks/look/model'
 import type { LookOutcome, Model, ProfileTab } from './model'
+import { ResetEvent, stepReset } from './resetFlow'
 
 export const withFx: {
   (fx: ProfileFx): (model: Model) => Model
@@ -38,7 +39,7 @@ export const showTab: {
   (model: Model, tab: ProfileTab): Model
 } = Function.dual(2, (model: Model, tab: ProfileTab): Model =>
   UiStruct.evolve(model, {
-    tutorialReset: () => 'Idle',
+    tutorialReset: reset => stepReset(reset, ResetEvent.LeftTab),
     tab: () => tab,
     fx: () => 'Still',
     maybePreview: () => Option.none(),

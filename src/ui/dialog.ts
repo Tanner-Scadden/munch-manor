@@ -1,14 +1,8 @@
-import { Record, Schema } from 'effect'
+import { Record } from 'effect'
 
 import type { Component, View } from '@effect/ui'
 import { Dialog } from '@effect/ui-kit'
 import type { Html } from '@effect/ui/html'
-
-export const DialogState = Schema.Struct({ isOpen: Schema.Boolean })
-export type DialogState = typeof DialogState.Type
-
-export const closedDialog: DialogState = { isOpen: false }
-export const openDialog: DialogState = { isOpen: true }
 
 export type DialogParts = Component.Headless.Parts<typeof Dialog>
 

@@ -9,6 +9,7 @@ import { ProfileTab } from '../features/profile/model'
 import { tabOf } from '../features/profile/profile'
 import { RESTART_GRACE_MS } from '../shared/constants'
 import { type Model, Phase } from './model'
+import { RootDialog } from './rootDialog'
 
 export const MenuState = UiSchema.TaggedEnum({
   Profile: { tab: ProfileTab },
@@ -44,18 +45,18 @@ const phaseState = (model: Model): MenuState =>
       MenuState.EndScreen({ isPastGrace: isPastRestartGrace(model) }),
   })
 
-export const menuState = (model: Model): MenuState => {
-  if (model.profileDialog.isOpen) {
-    return MenuState.Profile({ tab: tabOf(model.profile) })
-  } else if (model.panelDialog.isOpen) {
-    return MenuState.Panel({ panel: model.panel })
-  } else if (model.handDialog.isOpen) {
-    return MenuState.Hand()
-  } else if (model.homeScreenSteps.isOpen) {
-    return MenuState.InstallSteps()
-  } else if (model.updateGreeting.isOpen) {
-    return MenuState.UpdateGreeting()
-  } else if (isHeroPickerUp(model.lobby)) {
+export const menuState = (model: Model): MenuState =>
+  RootDialog.$match(model.rootDialog, {
+    Shut: () => belowDialogs(model),
+    Profile: () => MenuState.Profile({ tab: tabOf(model.profile) }),
+    Panel: () => MenuState.Panel({ panel: model.panel }),
+    Hand: () => MenuState.Hand(),
+    HomeScreenSteps: () => MenuState.InstallSteps(),
+    UpdateGreeting: () => MenuState.UpdateGreeting(),
+  })
+
+const belowDialogs = (model: Model): MenuState => {
+  if (isHeroPickerUp(model.lobby)) {
     return MenuState.HeroPicker()
   } else if (isLobbyUp(model)) {
     return MenuState.Lobby()

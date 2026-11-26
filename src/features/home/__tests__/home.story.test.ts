@@ -83,7 +83,7 @@ const dyingWith = (
 
 const expectPanel = (panel: MenuPanel): StoryStep =>
   checkModel(current => {
-    expect(current.panelDialog.isOpen).toBe(true)
+    expect(current.rootDialog._tag).toBe('Panel')
     expect(current.panel).toBe(panel)
   })
 
@@ -211,7 +211,7 @@ describe('the home menu keys', () => {
           readyModel,
           press('KeyC'),
           checkModel(current => {
-            expect(current.profileDialog.isOpen).toBe(true)
+            expect(current.rootDialog._tag).toBe('Profile')
             expect(current.profile.tab).toBe('Look')
           }),
         )
@@ -219,9 +219,9 @@ describe('the home menu keys', () => {
           readyModel,
           press('KeyO'),
           checkModel(current => {
-            expect(current.profileDialog.isOpen).toBe(true)
+            expect(current.rootDialog._tag).toBe('Profile')
             expect(current.profile.tab).toBe('Settings')
-            expect(current.panelDialog.isOpen).toBe(false)
+            expect(current.rootDialog._tag).not.toBe('Panel')
           }),
         )
       }),
@@ -238,8 +238,8 @@ describe('the home menu keys', () => {
           fighting,
           press(code),
           checkModel(current => {
-            expect(current.panelDialog.isOpen).toBe(false)
-            expect(current.profileDialog.isOpen).toBe(false)
+            expect(current.rootDialog._tag).not.toBe('Panel')
+            expect(current.rootDialog._tag).not.toBe('Profile')
             expect(current.home.mode).toBe('Campaign')
           }),
         ),

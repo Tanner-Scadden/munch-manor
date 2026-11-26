@@ -22,10 +22,10 @@ import {
 } from '../../test/sceneTesting'
 import { type SceneStep, sceneOf } from '../../test/testing'
 import { type ViewNode, nodesOf } from '../../test/viewReading'
-import { openDialog } from '../../ui/dialog'
 import { modifyFocus } from '../../world/party/party'
 import { BreakClock, type Model, Phase } from '../model'
 import { initialModel } from '../pureApp'
+import { RootDialog } from '../rootDialog'
 
 const DIALOG_IDS = [
   HOME_SCREEN_STEPS_ID,
@@ -108,35 +108,37 @@ const OPEN_CASES: ReadonlyArray<OpenCase> = [
   { name: 'a break in a run', model: inBreak, openId: Option.none() },
   {
     name: 'the MORE hand',
-    model: UiStruct.evolve(homeAfterRead, { handDialog: () => openDialog }),
+    model: UiStruct.evolve(homeAfterRead, {
+      rootDialog: () => RootDialog.Hand,
+    }),
     openId: Option.some(HAND_DIALOG_ID),
   },
   {
     name: 'a menu panel',
     model: UiStruct.evolve(homeAfterRead, {
       panel: () => 'HowToPlay',
-      panelDialog: () => openDialog,
+      rootDialog: () => RootDialog.Panel,
     }),
     openId: Option.some(PANEL_DIALOG_ID),
   },
   {
     name: 'the Profile',
     model: UiStruct.evolve(homeAfterRead, {
-      profileDialog: () => openDialog,
+      rootDialog: () => RootDialog.Profile,
     }),
     openId: Option.some(PROFILE_DIALOG_ID),
   },
   {
     name: 'the Home Screen steps',
     model: UiStruct.evolve(homeAfterRead, {
-      homeScreenSteps: () => openDialog,
+      rootDialog: () => RootDialog.HomeScreenSteps,
     }),
     openId: Option.some(HOME_SCREEN_STEPS_ID),
   },
   {
     name: 'the update greeting',
     model: UiStruct.evolve(homeAfterRead, {
-      updateGreeting: () => openDialog,
+      rootDialog: () => RootDialog.UpdateGreeting,
     }),
     openId: Option.some(UPDATE_GREETING_ID),
   },

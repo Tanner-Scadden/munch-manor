@@ -81,7 +81,7 @@ describe('the first-time difficulty card', () => {
           checkModel(current => {
             expect(Phase.guards.Ready(current.phase)).toBe(true)
             expect(current.panel).toBe('Difficulty')
-            expect(current.panelDialog.isOpen).toBe(true)
+            expect(current.rootDialog._tag).toBe('Panel')
             expect(current.difficultyCard).toEqual(
               DifficultyCard.Asking({
                 mode: RunMode.Campaign(),
@@ -95,8 +95,8 @@ describe('the first-time difficulty card', () => {
             expect(Phase.guards.Preparation(current.phase)).toBe(true)
             expect(current.mode).toEqual(RunMode.Campaign())
             expect(current.difficulty.chosen).toBe('Easy')
-            expect(current.difficultyCard).toEqual(DifficultyCard.Seen())
-            expect(current.panelDialog.isOpen).toBe(false)
+            expect(current.difficultyCard).toEqual(DifficultyCard.Seen)
+            expect(current.rootDialog._tag).not.toBe('Panel')
           }),
         ),
       ),
@@ -112,12 +112,12 @@ describe('the first-time difficulty card', () => {
           send(Message.ClosedDialog({ dialog: 'Panel' })),
           checkModel(current => {
             expect(Phase.guards.Ready(current.phase)).toBe(true)
-            expect(current.difficultyCard).toEqual(DifficultyCard.Unseen())
+            expect(current.difficultyCard).toEqual(DifficultyCard.Unseen)
           }),
           press('Enter'),
           checkModel(current => {
             expect(current.panel).toBe('Difficulty')
-            expect(current.panelDialog.isOpen).toBe(true)
+            expect(current.rootDialog._tag).toBe('Panel')
           }),
         ),
       ),
@@ -130,13 +130,13 @@ describe('the first-time difficulty card', () => {
         openLobbyByKey,
         checkModel(current => {
           expect(Phase.guards.Ready(current.phase)).toBe(true)
-          expect(current.panelDialog.isOpen).toBe(false)
+          expect(current.rootDialog._tag).not.toBe('Panel')
         }),
         press('Enter'),
         throughIntro,
         checkModel(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
-          expect(current.panelDialog.isOpen).toBe(false)
+          expect(current.rootDialog._tag).not.toBe('Panel')
         }),
       ),
     ),
@@ -151,7 +151,7 @@ describe('the first-time difficulty card', () => {
         checkModel(current => {
           expect(Phase.guards.Ready(current.phase)).toBe(true)
           expect(current.difficulty.chosen).toBe('Normal')
-          expect(current.panelDialog.isOpen).toBe(true)
+          expect(current.rootDialog._tag).toBe('Panel')
         }),
       ),
     ),
@@ -222,7 +222,7 @@ describe('difficulty in the lobby', () => {
       steps(
         press('KeyX'),
         checkModel(current => {
-          expect(current.panelDialog.isOpen).toBe(false)
+          expect(current.rootDialog._tag).not.toBe('Panel')
           expect(current.lobby.status).toBe('Closed')
         }),
       ),

@@ -723,7 +723,7 @@ const difficultyLabel = (model: Model, difficulty: Difficulty): string =>
     : `${DIFFICULTIES[difficulty].name}: ${DIFFICULTIES[difficulty].blurb}`
 
 const isAskingFirst = (model: Model): boolean =>
-  DifficultyCard.isAnyOf(['Asking'])(model.difficultyCard)
+  DifficultyCard.$is('Asking')(model.difficultyCard)
 
 const difficultyChoiceView = (
   model: Model,
@@ -802,23 +802,21 @@ const tutorialChoicesView = (
   model: Model,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<ApplicationHtml> =>
-  DifficultyCard.matchOrElse(
-    model.difficultyCard,
-    {
-      Asking: ({ tutorial }) => [
-        h.div
-          .class('tutorial-choices')
-          .attr('role', 'group')
-          .attr('aria-label', 'Tutorial')
-          .children(
-            Array.map(TUTORIAL_CHOICES, choice =>
-              tutorialChoiceView(tutorial, choice, h),
-            ),
+  DifficultyCard.$match(model.difficultyCard, {
+    Unseen: () => [],
+    Seen: () => [],
+    Asking: ({ tutorial }) => [
+      h.div
+        .class('tutorial-choices')
+        .attr('role', 'group')
+        .attr('aria-label', 'Tutorial')
+        .children(
+          Array.map(TUTORIAL_CHOICES, choice =>
+            tutorialChoiceView(tutorial, choice, h),
           ),
-      ],
-    },
-    () => [],
-  )
+        ),
+    ],
+  })
 
 type PanelText = Readonly<{ title: string; blurb: string }>
 

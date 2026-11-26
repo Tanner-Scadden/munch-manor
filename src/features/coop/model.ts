@@ -21,7 +21,7 @@ export const Model = Schema.Struct({
 export type Model = typeof Model.Type
 
 export const initialModel: Model = {
-  screen: Screen.Closed(),
+  screen: Screen.Closed,
   name: '',
   look: '',
   rank: 1,

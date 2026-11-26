@@ -47,7 +47,7 @@ const SHOT_X = START_LEVEL.start.x + 6
 const SHOT_Y = START_LEVEL.start.y
 
 const readyScreen: Model = UiStruct.evolve(initialModel, {
-  difficultyCard: () => DifficultyCard.Seen(),
+  difficultyCard: () => DifficultyCard.Seen,
   maybeSurface: () => Option.some(SURFACE),
   settings: UiStruct.evolve({ musicSetting: () => 'Off' }),
 })
@@ -134,19 +134,19 @@ describe('audio unlock', () => {
         const s = yield* exactStoryOf(readyScreen)
         s.pipe(
           checkModel(current => {
-            expect(current.audio).toEqual(AudioState.Locked())
+            expect(current.audio).toEqual(AudioState.Locked)
           }),
           c => c.expectNone(),
           press('Enter'),
           checkModel(current => {
-            expect(current.audio).toEqual(AudioState.Unlocking())
+            expect(current.audio).toEqual(AudioState.Unlocking)
           }),
           c => c.expectExact(AcquireAudioEngine),
           engineBuilt,
           c => c.expectExact(ResumeAudio),
           resumed('Running'),
           checkModel(({ audio }) => {
-            expect(audio).toEqual(AudioState.Ready())
+            expect(audio).toEqual(AudioState.Ready)
           }),
           c => c.expectExact(PlaySound.make({ sound: 'Start', variation: 0 })),
           resolvePlayed,
@@ -161,7 +161,7 @@ describe('audio unlock', () => {
         send(MOUSE_PRESS),
         c => c.expectExact(AcquireAudioEngine),
         checkModel(({ audio }) => {
-          expect(audio).toEqual(AudioState.Unlocking())
+          expect(audio).toEqual(AudioState.Unlocking)
         }),
         engineMissing,
       )
@@ -176,18 +176,18 @@ describe('audio unlock', () => {
         s.pipe(
           send(TOUCH_PRESS),
           checkModel(({ audio }) => {
-            expect(audio).toEqual(AudioState.Unlocking())
+            expect(audio).toEqual(AudioState.Unlocking)
           }),
           engineBuilt,
           resumed('Suspended'),
           checkModel(({ audio }) => {
-            expect(audio).toEqual(AudioState.Suspended())
+            expect(audio).toEqual(AudioState.Suspended)
           }),
           send(Message.ReleasedPointer({ pointerId: 7 })),
           c => c.expectExact(ResumeAudio),
           resumed('Running'),
           checkModel(({ audio }) => {
-            expect(audio).toEqual(AudioState.Ready())
+            expect(audio).toEqual(AudioState.Ready)
           }),
           c => c.expectNone(),
         )
@@ -201,7 +201,7 @@ describe('audio unlock', () => {
         press('Enter'),
         engineMissing,
         checkModel(current => {
-          expect(current.audio).toEqual(AudioState.Unavailable())
+          expect(current.audio).toEqual(AudioState.Unavailable)
         }),
         c => c.expectNone(),
         holdFire,
@@ -218,7 +218,7 @@ describe('frame sounds', () => {
     () =>
       Effect.gen(function* () {
         const s = yield* storyOf(
-          withOneHitZombieInFront(playing(AudioState.Ready())),
+          withOneHitZombieInFront(playing(AudioState.Ready)),
         )
         s.pipe(
           pressFire,
@@ -239,7 +239,7 @@ describe('frame sounds', () => {
   it.effect('a frame where the player is touched plays the hurt sound', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(
-        UiStruct.evolve(playing(AudioState.Ready()), {
+        UiStruct.evolve(playing(AudioState.Ready), {
           zombies: () => [
             zombieAt(100, START_LEVEL.start.x + 2, START_LEVEL.start.y),
           ],
@@ -273,7 +273,7 @@ describe('frame sounds', () => {
         pierce: Pierce.Stops(),
       }))
       const s = yield* storyOf(
-        UiStruct.evolve(playingWave(AudioState.Ready(), 2), {
+        UiStruct.evolve(playingWave(AudioState.Ready, 2), {
           zombies: () => victims,
           bullets: () => killingBullets,
           cases: () => [],
@@ -296,10 +296,10 @@ describe('frame sounds', () => {
     () =>
       Effect.gen(function* () {
         const silentStates = [
-          AudioState.Locked(),
-          AudioState.Unlocking(),
-          AudioState.Suspended(),
-          AudioState.Unavailable(),
+          AudioState.Locked,
+          AudioState.Unlocking,
+          AudioState.Suspended,
+          AudioState.Unavailable,
         ]
         yield* Effect.forEach(silentStates, audio =>
           Effect.gen(function* () {
@@ -326,7 +326,7 @@ describe('frame sounds', () => {
   it.effect('a muted game plays no sounds', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(
-        withOneHitZombieInFront(playing(AudioState.Ready())),
+        withOneHitZombieInFront(playing(AudioState.Ready)),
       )
       s.pipe(
         pressMute,
@@ -346,7 +346,7 @@ describe('frame sounds', () => {
   it.effect('M turns a muted game back on', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(
-        UiStruct.evolve(withOneHitZombieInFront(playing(AudioState.Ready())), {
+        UiStruct.evolve(withOneHitZombieInFront(playing(AudioState.Ready)), {
           settings: UiStruct.evolve({ soundSetting: () => 'Muted' }),
         }),
       )
@@ -364,12 +364,12 @@ describe('frame sounds', () => {
 
   it.effect('the mute button toggles the setting and unlocks audio', () =>
     Effect.gen(function* () {
-      const s = yield* exactStoryOf(playing(AudioState.Locked()))
+      const s = yield* exactStoryOf(playing(AudioState.Locked))
       s.pipe(
         send(Message.ClickedMuteButton()),
         checkModel(({ settings: { soundSetting }, audio }) => {
           expect(soundSetting).toBe('Muted')
-          expect(audio).toEqual(AudioState.Unlocking())
+          expect(audio).toEqual(AudioState.Unlocking)
         }),
         c => c.expectExact(AcquireAudioEngine),
         c => c.keepPending(AcquireAudioEngine),
@@ -387,10 +387,9 @@ describe('frame sounds', () => {
     () =>
       Effect.gen(function* () {
         const s = yield* storyOf(
-          UiStruct.evolve(
-            withOneHitZombieInFront(playing(AudioState.Ready())),
-            { elapsedMs: () => MID_GAME_MS },
-          ),
+          UiStruct.evolve(withOneHitZombieInFront(playing(AudioState.Ready)), {
+            elapsedMs: () => MID_GAME_MS,
+          }),
         )
         s.pipe(pressFire, tick(FRAME_MS))
         Array.forEach(COMBAT_SOUNDS, sound => {
@@ -398,13 +397,13 @@ describe('frame sounds', () => {
         })
         s.pipe(
           checkModel(({ audio }) => {
-            expect(audio).toEqual(AudioState.Suspended())
+            expect(audio).toEqual(AudioState.Suspended)
           }),
           press('KeyW'),
           c => c.expectExact(ResumeAudio),
           resumed('Running'),
           checkModel(({ audio }) => {
-            expect(audio).toEqual(AudioState.Ready())
+            expect(audio).toEqual(AudioState.Ready)
           }),
         )
       }),

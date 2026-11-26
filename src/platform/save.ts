@@ -23,6 +23,7 @@ import {
   freshLessons,
 } from '../domain/clientSchema'
 import { lookInOwned } from '../domain/closet'
+import { CardEvent, stepDifficultyCard } from '../domain/difficultyCard'
 import { cleanName } from '../domain/playerName'
 import { unlocksAt } from '../domain/unlocks'
 import { mergeDareMarks } from '../shared/dareMarkData'
@@ -196,9 +197,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   appearance: model.appearance,
   difficulty: {
     chosen: savedDifficultyOf(model),
-    card: DifficultyCard.isAnyOf(['Seen'])(model.difficultyCard)
-      ? 'Seen'
-      : 'Unseen',
+    card: DifficultyCard.$is('Seen')(model.difficultyCard) ? 'Seen' : 'Unseen',
     nightmare: model.difficulty.nightmare === 'Locked' ? 'Locked' : 'Unlocked',
   },
   bests: savedBests(model.bests),
@@ -378,7 +377,9 @@ export const restoreSave: {
               : nightmare,
         }),
       difficultyCard: card =>
-        save.difficulty.card === 'Seen' ? DifficultyCard.Seen() : card,
+        save.difficulty.card === 'Seen'
+          ? stepDifficultyCard(card, CardEvent.Remembered)
+          : card,
       bests: () => restoreBests(save.bests, save.records),
       home: home =>
         UiStruct.evolve(home, {

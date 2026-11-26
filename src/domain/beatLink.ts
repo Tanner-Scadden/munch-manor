@@ -1,6 +1,5 @@
 import { Array, Function, Option, Schema, SchemaGetter } from 'effect'
-
-import { UiSchema } from '@effect/ui'
+import { State } from 'effect-machine'
 
 import { Calling, Difficulty } from '../shared/playerData'
 import { DareKind } from '../world/dare/dareSchema'
@@ -41,14 +40,14 @@ export const OwnPicks = Schema.Struct({
 })
 export type OwnPicks = typeof OwnPicks.Type
 
-export const BeatMyRun = UiSchema.TaggedEnum({
+export const BeatMyRun = State({
   None: {},
   Offered: { dare: FriendsDare },
   Taken: { dare: FriendsDare, own: OwnPicks },
 })
 export type BeatMyRun = typeof BeatMyRun.Type
 
-export const noBeatMyRun: BeatMyRun = BeatMyRun.None()
+export const noBeatMyRun: BeatMyRun = BeatMyRun.None
 
 export const BEAT_PARAM = 'dare'
 

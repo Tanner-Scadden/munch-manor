@@ -1025,7 +1025,7 @@ const roomScreenName = (room: Room, inputs: ViewInputs): string => {
 }
 
 const screenName = (model: Model, inputs: ViewInputs): string =>
-  Screen.match(model.screen, {
+  Screen.$match(model.screen, {
     Closed: () => 'Closed',
     Hub: () => 'Hub',
     Code: () => 'Code',
@@ -1051,14 +1051,14 @@ export const coopScreenView: {
     inputs: ViewInputs,
     h: ApplicationViewBuilder,
   ): ApplicationHtml | null =>
-    Screen.isAnyOf(['Closed'])(model.screen)
+    Screen.$is('Closed')(model.screen)
       ? null
       : h.section
           .class('coop')
           .attr('data-screen', screenName(model, inputs))
           .attr('aria-label', 'Co-op')
           .children(
-            Screen.match(model.screen, {
+            Screen.$match(model.screen, {
               Closed: () => null,
               Hub: ({ maybeProblem }) => hubView(maybeProblem, inputs, h),
               Code: ({ typed, maybeProblem }) =>

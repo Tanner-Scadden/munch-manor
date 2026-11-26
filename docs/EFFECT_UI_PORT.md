@@ -80,7 +80,7 @@ No 2D canvas anywhere. The world is the 3D `<munch-world>`; the HUD and overlay 
 
 ## Dialogs
 
-A root menu dialog is ui-kit's `Dialog` through `dialogShellView` (`src/ui/dialog.ts`), open on a `DialogState` field of the root's Model (`handDialog`, `panelDialog`, `profileDialog`, `homeScreenSteps`, `updateGreeting`). Open one with `openRootDialog(name)` and close it with `closeRootDialog(name)` from `src/app/update/dialog.ts`; a close the dialog asks for arrives as `ClosedDialog({ dialog })`. Its insides take the kit's parts, `DialogParts`, in place of Foldkit's `Dialog.RenderInfo`:
+A root menu dialog is ui-kit's `Dialog` through `dialogShellView` (`src/ui/dialog.ts`), open while the root's `rootDialog` machine (`src/app/rootDialog.ts`) holds it: Shut, or the one dialog up. Open one with `openRootDialog(name)` and close it with `closeRootDialog(name)` from `src/app/update/dialog.ts`; a close the dialog asks for arrives as `ClosedDialog({ dialog })`. Its insides take the kit's parts, `DialogParts`, in place of Foldkit's `Dialog.RenderInfo`:
 
 | Foldkit `renderInfo`                       | ui-kit part                   |
 | ------------------------------------------ | ----------------------------- |

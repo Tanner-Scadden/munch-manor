@@ -5,6 +5,7 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../../../app/message'
 import { type Model, Reload, defaultAppearance } from '../../../../../app/model'
+import { RootDialog } from '../../../../../app/rootDialog'
 import { FocusProfileElement } from '../../../../../app/update/profile'
 import { WriteSave } from '../../../../../app/update/save'
 import { playerPixels, randomAppearance } from '../../../../../art/appearance'
@@ -66,7 +67,7 @@ const closetWith = (
     boughtCosmetics: () => bought,
     appearance: current => ({ ...current, ...look }),
     profile: profile => UiStruct.evolve(profile, { tab: () => 'Look' }),
-    profileDialog: dialog => UiStruct.evolve(dialog, { isOpen: () => true }),
+    rootDialog: () => RootDialog.Profile,
   })
 
 const rankPoints = (rank: number): Partial<SavedRank> => ({

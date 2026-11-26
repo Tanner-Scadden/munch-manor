@@ -7,6 +7,7 @@ import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
 import type { Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { RootDialog } from '../../../app/rootDialog'
 import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '../../../domain/clientSchema'
 import type { InputDevice } from '../../../input/inputSchema'
 import {
@@ -142,7 +143,7 @@ describe('the controller diagram', () => {
   const panelOpenOn = (device: InputDevice): Model =>
     UiStruct.evolve(homeOn(device), {
       panel: () => 'HowToPlay',
-      panelDialog: dialog => ({ ...dialog, isOpen: true }),
+      rootDialog: () => RootDialog.Panel,
     })
 
   const diagram = HtmlLocator.role('region', { name: 'Controller buttons' })

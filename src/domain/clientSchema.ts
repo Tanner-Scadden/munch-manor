@@ -1,4 +1,5 @@
 import { Option, Schema } from 'effect'
+import { State } from 'effect-machine'
 
 import { UiSchema } from '@effect/ui'
 
@@ -42,7 +43,7 @@ export const ClocheLift = UiSchema.TaggedEnum({
 })
 export type ClocheLift = typeof ClocheLift.Type
 
-export const AudioState = UiSchema.TaggedEnum({
+export const AudioState = State({
   Locked: {},
   Unlocking: {},
   Suspended: {},
@@ -51,7 +52,7 @@ export const AudioState = UiSchema.TaggedEnum({
 })
 export type AudioState = typeof AudioState.Type
 
-export const UpdateGift = Schema.Literals(['Wrapped', 'Unwrapping'])
+export const UpdateGift = State({ Wrapped: {}, Unwrapping: {} })
 export type UpdateGift = typeof UpdateGift.Type
 
 export const PlayerBests = Schema.Struct({
@@ -147,7 +148,7 @@ export const LoadStep = Schema.Literals([
 ])
 export type LoadStep = typeof LoadStep.Type
 
-export const Loading = UiSchema.TaggedEnum({
+export const Loading = State({
   Loading: { pending: Schema.Array(LoadStep) },
   Loaded: {},
 })
@@ -159,7 +160,7 @@ export type SaveStatus = typeof SaveStatus.Type
 export const SyncedSaveState = Schema.Literals(['Current', 'Stale'])
 export type SyncedSaveState = typeof SyncedSaveState.Type
 
-export const DifficultyCard = UiSchema.TaggedEnum({
+export const DifficultyCard = State({
   Unseen: {},
   Asking: { mode: RunMode, tutorial: TutorialChoice },
   Seen: {},

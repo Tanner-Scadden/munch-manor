@@ -2,6 +2,7 @@ import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
+import { LoadEvent, stepLoading } from '../../domain/loadFlow'
 import { grantVeteran, payPurses } from '../../features/end/rankRun'
 import { LoadMessage, SaveMessage } from '../../platform/message'
 import {
@@ -90,26 +91,28 @@ export class ReloadSyncedSave extends Command.Service<ReloadSyncedSave>()(
 
 const finishLoading =
   (step: LoadStep): UpdateStep =>
-  $ =>
-    Loading.match($.model.saving.loading, {
-      Loaded: () => $.model,
-      Loading: ({ pending }) => {
-        const remaining = Array.filter(pending, waiting => waiting !== step)
-        const progress = ShowLoadProgress.make({
-          loaded: LOAD_STEPS.length - remaining.length,
-          total: LOAD_STEPS.length,
-        })
-        return Array.isReadonlyArrayEmpty(remaining)
-          ? $.evolve({
-              saving: UiStruct.evolve({ loading: Loading.Loaded() }),
-            }).run(progress, HideSplash.make())
-          : $.evolve({
-              saving: UiStruct.evolve({
-                loading: Loading.Loading({ pending: remaining }),
-              }),
-            }).run(progress)
-      },
+  $ => {
+    const after = stepLoading(
+      $.model.saving.loading,
+      LoadEvent.Finished({ step }),
+    )
+    const pendingCount = Loading.$match(after, {
+      Loaded: () => 0,
+      Loading: ({ pending }) => pending.length,
     })
+    const progress = ShowLoadProgress.make({
+      loaded: LOAD_STEPS.length - pendingCount,
+      total: LOAD_STEPS.length,
+    })
+    const moved = $.evolve({
+      saving: UiStruct.evolve({ loading: () => after }),
+    })
+    return after === $.model.saving.loading
+      ? $.model
+      : Loading.$is('Loaded')(after)
+        ? moved.run(progress, HideSplash.make())
+        : moved.run(progress)
+  }
 
 const loadSave =
   (maybeSave: Option.Option<PlayerSave>): UpdateStep =>

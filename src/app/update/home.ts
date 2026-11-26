@@ -2,6 +2,9 @@ import { Array, Duration, Effect, Function, Option, Schema, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
+import { UpdateGift } from '../../domain/clientSchema'
+import { CardEvent, stepDifficultyCard } from '../../domain/difficultyCard'
+import { GiftEvent, stepGift } from '../../domain/giftFlow'
 import { markJournalSeen } from '../../domain/journal'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import { isEndScreen, isOnHome } from '../../domain/run'
@@ -337,16 +340,23 @@ export const homeFromKey =
   }
 
 export const isAskingDifficultyFirst = (model: Model): boolean =>
-  DifficultyCard.isAnyOf(['Unseen'])(model.difficultyCard) &&
-  isOnHome(model.phase)
+  DifficultyCard.$is('Unseen')(model.difficultyCard) && isOnHome(model.phase)
+
+const moveCard =
+  (event: CardEvent, onMoved: UpdateStep = unchanged): UpdateStep =>
+  $ => {
+    const after = stepDifficultyCard($.model.difficultyCard, event)
+    const moved = combine([
+      modelStep(model =>
+        UiStruct.evolve(model, { difficultyCard: () => after }),
+      ),
+      onMoved,
+    ])
+    return (after === $.model.difficultyCard ? unchanged : moved)($)
+  }
 
 const markAsking = (mode: RunMode): UpdateStep =>
-  modelStep(model =>
-    UiStruct.evolve(model, {
-      difficultyCard: () =>
-        DifficultyCard.Asking({ mode, tutorial: 'Tutorial' }),
-    }),
-  )
+  moveCard(CardEvent.Asked({ mode }))
 
 const askDifficulty = (mode: RunMode): UpdateStep =>
   stepWhen(
@@ -381,35 +391,21 @@ const chooseFromCard = (
     UiStruct.evolve(
       TUTORIAL_PICKS[tutorial](chooseDifficulty(model, difficulty)),
       {
-        difficultyCard: () => DifficultyCard.Seen(),
+        difficultyCard: card => stepDifficultyCard(card, CardEvent.Chose),
       },
     ),
   )
 
-const pickTutorialChoice =
-  (choice: TutorialChoice): UpdateStep =>
-  $ =>
-    DifficultyCard.match($.model.difficultyCard, {
-      Unseen: () => $.model,
-      Seen: () => $.model,
-      Asking: ({ mode, tutorial }) =>
-        (tutorial === choice
-          ? unchanged
-          : combine([
-              modelStep(model =>
-                UiStruct.evolve(model, {
-                  difficultyCard: () =>
-                    DifficultyCard.Asking({ mode, tutorial: choice }),
-                }),
-              ),
-              playSounds([uiCue('Pop')]),
-            ]))($),
-    })
+const pickTutorialChoice = (choice: TutorialChoice): UpdateStep =>
+  moveCard(
+    CardEvent.PickedTutorial({ tutorial: choice }),
+    playSounds([uiCue('Pop')]),
+  )
 
 const pickFromCard =
   (difficulty: Difficulty): UpdateStep =>
   $ =>
-    DifficultyCard.match($.model.difficultyCard, {
+    DifficultyCard.$match($.model.difficultyCard, {
       Unseen: () => $.model,
       Seen: () => $.model,
       Asking: ({ mode, tutorial }) =>
@@ -483,28 +479,44 @@ const settleInstallPrompt: {
   }),
 )
 
+const moveGift =
+  (event: GiftEvent, onMoved: UpdateStep): UpdateStep =>
+  $ => {
+    const after = stepGift($.model.release.updateGift, event)
+    const moved = combine([
+      modelStep(model =>
+        UiStruct.evolve(model, {
+          release: UiStruct.evolve({ updateGift: () => after }),
+        }),
+      ),
+      onMoved,
+    ])
+    return (after === $.model.release.updateGift ? unchanged : moved)($)
+  }
+
 export const unwrapUpdateGift: UpdateStep = stepWhen(
-  (model: Model) =>
-    isUpdateGiftShown(model) && model.release.updateGift === 'Wrapped',
-  combine([
-    $ =>
-      $.evolve({
-        release: UiStruct.evolve({ updateGift: () => 'Unwrapping' }),
-      }).run(WaitForUnwrap.make()),
-    playSounds([uiCue('LootPop')]),
-  ]),
+  isUpdateGiftShown,
+  moveGift(
+    GiftEvent.Unwrapped,
+    combine([$ => $.run(WaitForUnwrap.make()), playSounds([uiCue('LootPop')])]),
+  ),
 )
 
-export const rewrapUpdateGift = (model: Model): Model =>
-  UiStruct.evolve(model, {
-    release: UiStruct.evolve({ updateGift: () => 'Wrapped' }),
-  })
+export const rewrapUpdateGift: UpdateStep = moveGift(
+  GiftEvent.Rewrapped,
+  unchanged,
+)
 
-export const reloadOntoNewerBuild: UpdateStep = $ =>
+const reloadOrRewrap: UpdateStep = $ =>
   Option.match($.model.release.maybeNewerBuild, {
-    onNone: () => rewrapUpdateGift($.model),
+    onNone: () => rewrapUpdateGift($),
     onSome: build => $.run(ReloadPage.make({ build })),
   })
+
+export const reloadOntoNewerBuild: UpdateStep = stepWhen(
+  (model: Model) => UpdateGift.$is('Unwrapping')(model.release.updateGift),
+  reloadOrRewrap,
+)
 
 export const greetUpdate = (isDue: boolean): UpdateStep =>
   stepWhen(

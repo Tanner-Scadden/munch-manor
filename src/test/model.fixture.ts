@@ -183,7 +183,7 @@ export const newPlayerReady: Model = UiStruct.evolve(initialModel, {
 })
 
 export const newPlayerCardSeen: Model = UiStruct.evolve(initialModel, {
-  difficultyCard: () => DifficultyCard.Seen(),
+  difficultyCard: () => DifficultyCard.Seen,
   maybeSurface: () => Option.some(SURFACE),
 })
 
@@ -789,10 +789,6 @@ export const atOpenedCase: {
     CaseState.Opened({ by: focusSlotOf(model) }),
   ),
 )
-
-export const openedDialog = (
-  dialog: Model['panelDialog'],
-): Model['panelDialog'] => UiStruct.evolve(dialog, { isOpen: () => true })
 
 export const withoutSupportLink = (model: Model): Model =>
   UiStruct.evolve(model, {

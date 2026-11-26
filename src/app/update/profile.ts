@@ -1,4 +1,4 @@
-import { Effect, Function, Option, Schema, String, pipe } from 'effect'
+import { Effect, Function, Option, Schema, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
@@ -37,6 +37,7 @@ import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
 } from '../../features/profile/profile'
+import { ResetEvent, stepReset } from '../../features/profile/resetFlow'
 import {
   opened,
   showTab,
@@ -46,7 +47,7 @@ import {
   withoutPreview,
 } from '../../features/profile/steps'
 import { isCharacterKey } from '../../input/input'
-import { LinkFlow, normalizeCode } from '../../platform/playerSync'
+import { LinkEvent, LinkFlow, stepLink } from '../../platform/linkFlow'
 import { forgetTutorial } from '../../platform/save'
 import { PlayerStore } from '../../platform/store'
 import {
@@ -216,63 +217,38 @@ const switchTab = (tab: ProfileTab): UpdateStep =>
 const withLinkFlow = (linkFlow: LinkFlow) =>
   inProfile(profile => UiStruct.evolve(profile, { linkFlow: () => linkFlow }))
 
-const requestLinkCode: UpdateStep = $ =>
-  $.combine(withLinkFlow(LinkFlow.Requesting()), next =>
-    next.run(RequestLinkCode.make({})),
-  )
+const resetLinkCodeCopies = inProfile(profile =>
+  UiStruct.evolve(profile, { linkCodeCopies: () => 0 }),
+)
 
-const startLinking: UpdateStep = $ =>
-  LinkFlow.match($.model.profile.linkFlow, {
-    Requesting: () => $.model,
-    Redeeming: () => $.model,
-    Idle: () => requestLinkCode($),
-    Showing: () => requestLinkCode($),
-    Entering: () => requestLinkCode($),
-    Linked: () => requestLinkCode($),
-    Failed: () => requestLinkCode($),
+const enterLinkState = (entered: LinkFlow): UpdateStep =>
+  LinkFlow.$match(entered, {
+    Idle: () => unchanged,
+    Requesting: () => $ => $.run(RequestLinkCode.make({})),
+    Showing: () =>
+      combine([resetLinkCodeCopies, playSounds([uiCue('Whoosh')])]),
+    Entering: () => unchanged,
+    Redeeming:
+      ({ code }) =>
+      $ =>
+        $.run(RedeemLinkCode.make({ code })),
+    Linked: () => playSounds([uiCue('PowerUp')]),
+    Failed: () => unchanged,
   })
 
-const typeLinkCode = (value: string): UpdateStep =>
-  stepWhen(
-    (model: Model) =>
-      LinkFlow.isAnyOf(['Entering', 'Failed'])(model.profile.linkFlow),
-    withLinkFlow(
-      LinkFlow.Entering({
-        code: String.slice(0, 7)(String.toUpperCase(value)),
-      }),
-    ),
-  )
-
-const pasteLinkCode =
-  (text: string, typed: string): UpdateStep =>
-  $ =>
-    LinkFlow.matchOrElse(
-      $.model.profile.linkFlow,
-      {
-        Entering: ({ code }) =>
-          Option.match(
-            Option.filter(normalizeCode(text), () => code === typed),
-            {
-              onNone: () => $.model,
-              onSome: pasted =>
-                withLinkFlow(LinkFlow.Entering({ code: pasted }))($),
-            },
-          ),
-      },
-      () => $.model,
-    )
-
-const submitLinkCode: UpdateStep = $ =>
-  LinkFlow.matchOrElse(
-    $.model.profile.linkFlow,
-    {
-      Entering: ({ code }) =>
-        $.combine(withLinkFlow(LinkFlow.Redeeming({ code })), next =>
-          next.run(RedeemLinkCode.make({ code })),
-        ),
-    },
-    () => $.model,
-  )
+const sendLink =
+  (event: LinkEvent): UpdateStep =>
+  $ => {
+    const before = $.model.profile.linkFlow
+    const after = stepLink(before, event)
+    if (after === before) {
+      return $.model
+    } else if (after._tag === before._tag) {
+      return withLinkFlow(after)($)
+    } else {
+      return $.combine(withLinkFlow(after), enterLinkState(after))
+    }
+  }
 
 const toggleShake = (model: Model): Model =>
   UiStruct.evolve(model, {
@@ -326,32 +302,35 @@ const SETTING_TILES: Readonly<Record<SettingTile, UpdateStep>> = {
   RecordRuns: modelStep(toggleRecordRuns),
 }
 
-const withTutorialReset = (reset: ProfileModel['tutorialReset']) =>
-  inProfile(profile => UiStruct.evolve(profile, { tutorialReset: () => reset }))
+const moveReset =
+  (event: ResetEvent, onMoved: UpdateStep): UpdateStep =>
+  $ => {
+    const after = stepReset($.model.profile.tutorialReset, event)
+    const moved = combine([
+      inProfile(profile =>
+        UiStruct.evolve(profile, { tutorialReset: () => after }),
+      ),
+      onMoved,
+    ])
+    return (after === $.model.profile.tutorialReset ? unchanged : moved)($)
+  }
 
 const askToResetTutorial: UpdateStep = stepWhen(
   (model: Model) => model.profile.tab === 'Settings',
-  combine([
-    withTutorialReset('Asking'),
-    focusProfile(`#${KEEP_TUTORIAL_BUTTON_ID}`),
-  ]),
+  moveReset(ResetEvent.Asked, focusProfile(`#${KEEP_TUTORIAL_BUTTON_ID}`)),
 )
 
-const confirmTutorialReset: UpdateStep = stepWhen(
-  (model: Model) => model.profile.tutorialReset === 'Asking',
+const confirmTutorialReset: UpdateStep = moveReset(
+  ResetEvent.Confirmed,
   combine([
-    withTutorialReset('Done'),
     focusProfile(`#${RESET_TUTORIAL_BUTTON_ID}`),
     modelStep(forgetTutorial),
   ]),
 )
 
-const cancelTutorialReset: UpdateStep = stepWhen(
-  (model: Model) => model.profile.tutorialReset === 'Asking',
-  combine([
-    withTutorialReset('Idle'),
-    focusProfile(`#${RESET_TUTORIAL_BUTTON_ID}`),
-  ]),
+const cancelTutorialReset: UpdateStep = moveReset(
+  ResetEvent.Cancelled,
+  focusProfile(`#${RESET_TUTORIAL_BUTTON_ID}`),
 )
 
 const wearing = (model: Model, part: LookPart, value: string): Model =>
@@ -506,32 +485,25 @@ export const profileHandlers = defineHandlers({
     $.combine(modelStep(keepName), playSounds([uiCue('Pop')])),
   BlurredProfileName: $ => keepName($.model),
   RolledProfileNameDice: $ => rollNameDice($),
-  ClickedLinkDevice: $ => startLinking($),
-  ClickedUseLinkCode: $ => withLinkFlow(LinkFlow.Entering({ code: '' }))($),
-  UpdatedLinkCode: ($, { value }) => typeLinkCode(value)($),
-  SubmittedLinkCode: $ => submitLinkCode($),
-  ClickedCancelLink: $ => withLinkFlow(LinkFlow.Idle())($),
+  ClickedLinkDevice: sendLink(LinkEvent.AskedForCode),
+  ClickedUseLinkCode: sendLink(LinkEvent.ChoseToEnterCode),
+  UpdatedLinkCode: ($, { value }) =>
+    sendLink(LinkEvent.TypedCode({ value }))($),
+  SubmittedLinkCode: sendLink(LinkEvent.SubmittedCode),
+  ClickedCancelLink: sendLink(LinkEvent.Cancelled),
   CopiedLinkCode: $ =>
     inProfile(profile =>
       UiStruct.evolve(profile, { linkCodeCopies: count => count + 1 }),
     )($),
-  ReadLinkClipboard: ($, { text, typed }) => pasteLinkCode(text, typed)($),
+  ReadLinkClipboard: ($, { text, typed }) =>
+    sendLink(LinkEvent.PastedCode({ text, typed }))($),
   SucceededRequestLinkCode: ($, { code }) =>
-    $.combine(
-      inProfile(profile =>
-        UiStruct.evolve(profile, {
-          linkFlow: () => LinkFlow.Showing({ code }),
-          linkCodeCopies: () => 0,
-        }),
-      ),
-      playSounds([uiCue('Whoosh')]),
-    ),
+    sendLink(LinkEvent.GotCode({ code }))($),
   FailedRequestLinkCode: ($, { problem }) =>
-    withLinkFlow(LinkFlow.Failed({ problem }))($),
-  SucceededRedeemLinkCode: $ =>
-    $.combine(withLinkFlow(LinkFlow.Linked()), playSounds([uiCue('PowerUp')])),
+    sendLink(LinkEvent.FailedToGetCode({ problem }))($),
+  SucceededRedeemLinkCode: sendLink(LinkEvent.Redeemed),
   FailedRedeemLinkCode: ($, { problem }) =>
-    withLinkFlow(LinkFlow.Failed({ problem }))($),
+    sendLink(LinkEvent.FailedToRedeem({ problem }))($),
   ClickedProfileSetting: ($, { setting }) => SETTING_TILES[setting]($),
   ClickedResetTutorial: $ => askToResetTutorial($),
   ConfirmedTutorialReset: $ => confirmTutorialReset($),

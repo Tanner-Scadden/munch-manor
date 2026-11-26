@@ -1,4 +1,5 @@
 import { Option, Schema, SchemaTransformation } from 'effect'
+import { State } from 'effect-machine'
 
 import { UiSchema } from '@effect/ui'
 import {
@@ -159,7 +160,7 @@ export const Room = Schema.Struct({
 })
 export type Room = typeof Room.Type
 
-export const Screen = UiSchema.TaggedEnum({
+export const Screen = State({
   Closed: {},
   Hub: { maybeProblem: Schema.Option(CoopProblem) },
   Code: { typed: Schema.String, maybeProblem: Schema.Option(CoopProblem) },
@@ -178,11 +179,6 @@ export const isInLobby = (room: Room): boolean =>
 export const maybeRoomOf = (
   model: Readonly<{ screen: Screen }>,
 ): Option.Option<Room> =>
-  Screen.match(model.screen, {
-    Closed: () => Option.none(),
-    Hub: () => Option.none(),
-    Code: () => Option.none(),
-    Asking: () => Option.none(),
-    Queue: () => Option.none(),
-    InRoom: ({ room }) => Option.some(room),
-  })
+  Screen.$is('InRoom')(model.screen)
+    ? Option.some(model.screen.room)
+    : Option.none()

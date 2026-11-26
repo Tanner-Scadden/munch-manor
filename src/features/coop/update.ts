@@ -31,7 +31,7 @@ import { Calling, type SavedBoughtCosmetics } from '../../shared/playerData'
 import { eventsBetween } from '../../world/net/roomWorld'
 import { DIFFICULTY_ORDER } from '../../world/run/difficulty'
 import { CoopMessage, CoopNotice } from './message'
-import { type Model, emptyQueue } from './model'
+import { type Model } from './model'
 import { CoopNet } from './net'
 import {
   CALLING_KEY,
@@ -45,8 +45,6 @@ import {
   canPickDifficulty,
   canPickMode,
   cleanCode,
-  freshRoom,
-  hub,
   isHost,
   isKickedFrom,
   isPicking,
@@ -61,6 +59,7 @@ import {
   withRoom,
   withScreen,
 } from './roomState'
+import { ScreenEvent, stepScreen } from './screenFlow'
 import {
   ChangeLobby,
   type CoopResultOf,
@@ -245,32 +244,50 @@ export type CoopResult = CoopResultOf<CoopCommand>
 
 const kept = (model: Model): CoopResult => ({ model })
 
-const enterRoom = (model: Model, code: string, slot: number): CoopResult => ({
-  model: withScreen(model, Screen.InRoom({ room: freshRoom(code, slot) })),
-  commands: [
-    RememberRoom.make({ maybeCode: Option.some(code) }),
-    focusCoop('Ready'),
-  ],
-})
+const moveScreen = (
+  model: Model,
+  event: ScreenEvent,
+  onMoved: (moved: Model) => CoopResult = kept,
+): CoopResult => {
+  const after = stepScreen(model.screen, event)
+  return after === model.screen
+    ? kept(model)
+    : onMoved(withScreen(model, after))
+}
 
-const ask = (model: Model, request: RoomRequest): CoopResult => ({
-  model: withScreen(model, Screen.Asking({ request })),
-  commands: [
-    RequestRoom.make({
-      request,
-      name: model.name,
-      look: model.look,
-      rank: model.rank,
-      calling: model.calling,
-      introSeen: model.introSeen,
-    }),
-  ],
-})
+const forgetRoom = () => RememberRoom.make({ maybeCode: Option.none() })
 
-const leaveFor = (model: Model, problem: CoopProblem): CoopResult => ({
-  model: hub(model, Option.some(problem)),
-  commands: [RememberRoom.make({ maybeCode: Option.none() })],
-})
+const roomEntered =
+  (code: string) =>
+  (moved: Model): CoopResult => ({
+    model: moved,
+    commands: [
+      RememberRoom.make({ maybeCode: Option.some(code) }),
+      focusCoop('Ready'),
+    ],
+  })
+
+const ask = (model: Model, request: RoomRequest): CoopResult =>
+  moveScreen(model, ScreenEvent.AskedForRoom({ request }), moved => ({
+    model: moved,
+    commands: [
+      RequestRoom.make({
+        request,
+        name: moved.name,
+        look: moved.look,
+        rank: moved.rank,
+        calling: moved.calling,
+        introSeen: moved.introSeen,
+      }),
+    ],
+  }))
+
+const leaveFor = (model: Model, problem: CoopProblem): CoopResult =>
+  moveScreen(
+    model,
+    ScreenEvent.LeftRoom({ maybeProblem: Option.some(problem) }),
+    moved => ({ model: moved, commands: [forgetRoom()] }),
+  )
 
 const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): CoopResult => {
   const learned = learnLobby(room, lobby)
@@ -316,11 +333,15 @@ const receiveServerFrame = (
         ),
       Refused: refused =>
         refused.reason === 'VersionMismatch'
-          ? {
-              model: hub(model, Option.some('Outdated')),
-              commands: [RememberRoom.make({ maybeCode: Option.none() })],
-              notice: CoopNotice.NeededNewerBuild(),
-            }
+          ? moveScreen(
+              model,
+              ScreenEvent.LeftRoom({ maybeProblem: Option.some('Outdated') }),
+              moved => ({
+                model: moved,
+                commands: [forgetRoom()],
+                notice: CoopNotice.NeededNewerBuild(),
+              }),
+            )
           : receiveSessionFrame(model, room, refused, bytes, atMs),
     },
     other => receiveSessionFrame(model, room, other, bytes, atMs),
@@ -487,10 +508,11 @@ const leave = (model: Model, room: Room): CoopResult =>
         commands: [LeaveRoom.make()],
       }
 
-const close = (model: Model): CoopResult => ({
-  model: withScreen(model, Screen.Closed()),
-  notice: CoopNotice.ClosedCoop(),
-})
+const close = (model: Model): CoopResult =>
+  moveScreen(model, ScreenEvent.ClosedCoop, moved => ({
+    model: moved,
+    notice: CoopNotice.ClosedCoop(),
+  }))
 
 const pick = (
   model: Model,
@@ -545,28 +567,23 @@ const pickFromKey = (model: Model, room: Room, code: string): CoopResult =>
   })
 
 const keyOnScreen = (model: Model, code: string): CoopResult =>
-  Screen.match(model.screen, {
+  Screen.$match(model.screen, {
     Closed: () => ({ model }),
     Hub: () => {
       if (code === ESCAPE) {
         return close(model)
       } else if (code === ENTER) {
-        return {
-          model: withScreen(model, Screen.Queue({ queue: emptyQueue })),
-        }
+        return moveScreen(model, ScreenEvent.ChoseQuickPlay)
       } else {
         return { model }
       }
     },
     Code: () =>
-      code === ESCAPE ? { model: hub(model, Option.none()) } : { model },
+      code === ESCAPE ? moveScreen(model, ScreenEvent.WentBack) : { model },
     Asking: () => ({ model }),
     Queue: ({ queue }) => {
       if (code === ESCAPE) {
-        return {
-          model: hub(model, Option.none()),
-          commands: [CancelQuickPlay.make()],
-        }
+        return leaveQueue(model)
       } else if (code === ENTER && queue.offerPlayers > 0) {
         return answer(model, queue, true)
       } else {
@@ -586,15 +603,20 @@ const keyOnScreen = (model: Model, code: string): CoopResult =>
     },
   })
 
-const answer = (model: Model, queue: Queue, accept: boolean): CoopResult => ({
-  model: withScreen(
+const leaveQueue = (model: Model): CoopResult =>
+  moveScreen(model, ScreenEvent.LeftQueue, moved => ({
+    model: moved,
+    commands: [CancelQuickPlay.make()],
+  }))
+
+const answer = (model: Model, queue: Queue, accept: boolean): CoopResult =>
+  moveScreen(
     model,
-    Screen.Queue({
+    ScreenEvent.HeardQueue({
       queue: { ...queue, answer: accept ? 'Accepted' : 'Waiting' },
     }),
-  ),
-  commands: [AnswerOffer.make({ accept })],
-})
+    moved => ({ model: moved, commands: [AnswerOffer.make({ accept })] }),
+  )
 
 const heardInQueue = (
   model: Model,
@@ -602,16 +624,23 @@ const heardInQueue = (
   event: QuickPlayEvent,
 ): CoopResult =>
   QuickPlayEvent.match(event, {
-    Dropped: () => ({ model: hub(model, Option.some('Dropped')) }),
+    Dropped: () =>
+      moveScreen(model, ScreenEvent.LostQueue({ problem: 'Dropped' })),
     Connecting: () => ({ model }),
     Heard: ({ message }) =>
       Matchmaking.QuickServer.match(message, {
-        Matched: matched => enterRoom(model, matched.code, matched.slot),
-        Refused: () => ({ model: hub(model, Option.some('Busy')) }),
-        Waiting: waiting => ({
-          model: withScreen(
+        Matched: matched =>
+          moveScreen(
             model,
-            Screen.Queue({
+            ScreenEvent.Matched({ code: matched.code, slot: matched.slot }),
+            roomEntered(matched.code),
+          ),
+        Refused: () =>
+          moveScreen(model, ScreenEvent.LostQueue({ problem: 'Busy' })),
+        Waiting: waiting =>
+          moveScreen(
+            model,
+            ScreenEvent.HeardQueue({
               queue: {
                 names: waiting.names,
                 waiting: waiting.waiting,
@@ -623,7 +652,6 @@ const heardInQueue = (
               },
             }),
           ),
-        }),
       }),
   })
 
@@ -658,16 +686,17 @@ export const open =
       bones: () => joiner.bones,
     })
     return Option.match(joiner.maybeCode, {
-      onNone: () => ({
-        model: hub(named, Option.none()),
-        commands: [focusCoop('QuickPlay')],
-      }),
+      onNone: () =>
+        moveScreen(named, ScreenEvent.Opened, moved => ({
+          model: moved,
+          commands: [focusCoop('QuickPlay')],
+        })),
       onSome: code => ask(named, RoomRequest.Join({ code })),
     })
   }
 
 export const isOpen = (model: Model): boolean =>
-  !Screen.isAnyOf(['Closed'])(model.screen)
+  !Screen.$is('Closed')(model.screen)
 
 const inRoom = (
   model: Model,
@@ -688,90 +717,58 @@ const inQueue = (
   model: Model,
   toReturn: (queue: Queue) => CoopResult,
 ): CoopResult =>
-  Screen.matchOrElse(
-    model.screen,
-    { Queue: ({ queue }) => toReturn(queue) },
-    () => ({ model }),
-  )
+  Screen.$is('Queue')(model.screen) ? toReturn(model.screen.queue) : kept(model)
 
 const submitCode = (model: Model, typed: string): CoopResult =>
   Option.match(normalizeRoomCode(typed), {
-    onNone: () => ({
-      model: withScreen(
-        model,
-        Screen.Code({ typed, maybeProblem: Option.some('NotACode') }),
-      ),
-    }),
+    onNone: () => moveScreen(model, ScreenEvent.RefusedCode({ typed })),
     onSome: code => ask(model, RoomRequest.Join({ code })),
   })
 
 const failedRequest = (model: Model, problem: CoopProblem): CoopResult =>
-  Screen.matchOrElse(
-    model.screen,
-    {
-      Asking: ({ request }) =>
-        RoomRequest.match(request, {
-          Create: () => ({ model: hub(model, Option.some(problem)) }),
-          Join: ({ code }) => ({
-            model: withScreen(
-              model,
-              Screen.Code({ typed: code, maybeProblem: Option.some(problem) }),
-            ),
-            commands: [RememberRoom.make({ maybeCode: Option.none() })],
-          }),
-        }),
-    },
-    () => ({ model }),
+  moveScreen(model, ScreenEvent.FailedToGetRoom({ problem }), moved =>
+    Screen.$is('Code')(moved.screen)
+      ? { model: moved, commands: [forgetRoom()] }
+      : { model: moved },
   )
 
 const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
   CoopMessage.match(message, {
-    ClickedCoopQuickPlayButton: () => ({
-      model: withScreen(model, Screen.Queue({ queue: emptyQueue })),
-    }),
+    ClickedCoopQuickPlayButton: () =>
+      moveScreen(model, ScreenEvent.ChoseQuickPlay),
 
-    ClickedCoopCodeButton: () => ({
-      model: withScreen(
-        model,
-        Screen.Code({ typed: '', maybeProblem: Option.none() }),
-      ),
-      commands: [focusCoop('Code')],
-    }),
+    ClickedCoopCodeButton: () =>
+      moveScreen(model, ScreenEvent.ChoseCode, moved => ({
+        model: moved,
+        commands: [focusCoop('Code')],
+      })),
 
     ClickedCoopCreateButton: () => ask(model, RoomRequest.Create()),
 
-    ClickedCoopBackButton: () => ({
-      model: hub(model, Option.none()),
-      commands: [focusCoop('QuickPlay')],
-    }),
+    ClickedCoopBackButton: () =>
+      moveScreen(model, ScreenEvent.WentBack, moved => ({
+        model: moved,
+        commands: [focusCoop('QuickPlay')],
+      })),
 
     ClickedCoopCloseButton: () => close(model),
 
     UpdatedCoopCode: ({ value }) => {
       const typed = cleanCode(value)
-      return typed.length === ROOM_CODE_LENGTH
-        ? submitCode(model, typed)
-        : {
-            model: withScreen(
-              model,
-              Screen.Code({ typed, maybeProblem: Option.none() }),
-            ),
-          }
+      return moveScreen(model, ScreenEvent.TypedCode({ typed }), moved =>
+        typed.length === ROOM_CODE_LENGTH
+          ? submitCode(moved, typed)
+          : kept(moved),
+      )
     },
 
     SubmittedCoopCode: () =>
-      Screen.matchOrElse(
-        model.screen,
-        { Code: ({ typed }) => submitCode(model, typed) },
-        () => kept(model),
-      ),
+      Screen.$is('Code')(model.screen)
+        ? submitCode(model, model.screen.typed)
+        : kept(model),
 
     SucceededRequestRoom: ({ code, slot }) =>
-      Screen.matchOrElse(
-        model.screen,
-        { Asking: () => enterRoom(model, code, slot) },
-        () => kept(model),
-      ),
+      moveScreen(model, ScreenEvent.GotRoom({ code, slot }), roomEntered(code)),
 
     FailedRequestRoom: ({ problem }) => failedRequest(model, problem),
 
@@ -784,10 +781,7 @@ const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
     ClickedCoopKeepWaitingButton: () =>
       inQueue(model, queue => answer(model, queue, false)),
 
-    ClickedCoopCancelQueueButton: () => ({
-      model: hub(model, Option.none()),
-      commands: [CancelQuickPlay.make()],
-    }),
+    ClickedCoopCancelQueueButton: () => leaveQueue(model),
 
     ReceivedLobbyEvent: ({ event }) =>
       inRoom(model, room =>
@@ -870,13 +864,15 @@ const updateMessage = (model: Model, message: CoopMessage): CoopResult =>
 
     ClickedCoopLeaveButton: () => leaveRoom(model),
 
-    CompletedLeaveRoom: () => ({
-      model: hub(model, Option.none()),
-      commands: [
-        RememberRoom.make({ maybeCode: Option.none() }),
-        focusCoop('QuickPlay'),
-      ],
-    }),
+    CompletedLeaveRoom: () =>
+      moveScreen(
+        model,
+        ScreenEvent.LeftRoom({ maybeProblem: Option.none() }),
+        moved => ({
+          model: moved,
+          commands: [forgetRoom(), focusCoop('QuickPlay')],
+        }),
+      ),
 
     ClickedCoopShareButton: () =>
       inRoom(model, room => ({

@@ -5,6 +5,7 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { AudioState, type Model } from '../../app/model'
+import { RootDialog } from '../../app/rootDialog'
 import { CueMusic } from '../../app/update/music'
 import { WriteSave } from '../../app/update/save'
 import { readyAfterRead } from '../../test/model.fixture'
@@ -43,13 +44,13 @@ const seesOn = (
 
 const laptopModel = (save: PlayerSave): Model =>
   UiStruct.evolve(restoreSave(readyAfterRead, save), {
-    audio: () => AudioState.Ready(),
+    audio: () => AudioState.Ready,
     profile: profile =>
       UiStruct.evolve(profile, {
         tab: () => 'Account',
         nameDraft: () => save.name,
       }),
-    profileDialog: dialog => UiStruct.evolve(dialog, { isOpen: () => true }),
+    rootDialog: () => RootDialog.Profile,
   })
 
 const writtenBack = (written: Array<ReadonlyArray<PlayerChange>>): StoryStep =>

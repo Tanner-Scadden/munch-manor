@@ -142,8 +142,8 @@ export const steps =
     Array.reduce(each, s, (current, step) => step(current))
 
 export const withAudioAsked = (model: Model): Model =>
-  AudioState.isAnyOf(['Locked'])(model.audio)
-    ? UiStruct.evolve(model, { audio: () => AudioState.Unlocking() })
+  AudioState.$is('Locked')(model.audio)
+    ? UiStruct.evolve(model, { audio: () => AudioState.Unlocking })
     : model
 
 export const exactStoryOf = (

@@ -49,6 +49,6 @@ export const asVeteran = (model: Model): Model =>
         gunLevel: () => Lesson.Learned({ atMs: 0 }),
       }),
     introducedKinds: () => ZOMBIE_KIND_ORDER,
-    difficultyCard: () => DifficultyCard.Seen(),
+    difficultyCard: () => DifficultyCard.Seen,
     introSeen: () => 'Seen',
   })

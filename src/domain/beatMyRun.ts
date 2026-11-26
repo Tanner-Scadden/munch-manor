@@ -1,4 +1,5 @@
 import { Array, Function, Option } from 'effect'
+import { Event, Machine } from 'effect-machine'
 
 import { UiStruct } from '@effect/ui'
 
@@ -6,26 +7,52 @@ import type { Model } from '../app/model'
 import type { Difficulty } from '../shared/playerData'
 import type { DareKind } from '../world/dare/dareSchema'
 import { thingsOpenedBy } from '../world/dare/milestones'
-import {
-  BeatMyRun,
-  type FriendsDare,
-  type OwnPicks,
-  noBeatMyRun,
-} from './beatLink'
+import { BeatMyRun, FriendsDare, OwnPicks, noBeatMyRun } from './beatLink'
+import { machineStepOf } from './machineStep'
+
+export const BeatEvent = Event({
+  Offered: { dare: FriendsDare },
+  Took: { own: OwnPicks },
+  Released: {},
+  Dismissed: {},
+})
+export type BeatEvent = typeof BeatEvent.Type
+
+export const beatMachine = Machine.make({
+  state: BeatMyRun,
+  event: BeatEvent,
+  initial: noBeatMyRun,
+})
+  .on(
+    [BeatMyRun.None, BeatMyRun.Offered, BeatMyRun.Taken],
+    BeatEvent.Offered,
+    ({ event }) => BeatMyRun.Offered({ dare: event.dare }),
+  )
+  .on(BeatMyRun.Offered, BeatEvent.Took, ({ state, event }) =>
+    BeatMyRun.Taken({ dare: state.dare, own: event.own }),
+  )
+  .on(BeatMyRun.Taken, BeatEvent.Released, ({ state }) =>
+    BeatMyRun.Offered({ dare: state.dare }),
+  )
+  .on(
+    [BeatMyRun.Offered, BeatMyRun.Taken],
+    BeatEvent.Dismissed,
+    () => noBeatMyRun,
+  )
+
+export const stepBeat = machineStepOf(beatMachine)
 
 export const maybeShownDareOf = (model: Model): Option.Option<FriendsDare> =>
-  BeatMyRun.match(model.beatMyRun, {
+  BeatMyRun.$match(model.beatMyRun, {
     None: () => Option.none(),
     Offered: ({ dare }) => Option.some(dare),
     Taken: ({ dare }) => Option.some(dare),
   })
 
 export const maybeTakenDareOf = (model: Model): Option.Option<FriendsDare> =>
-  BeatMyRun.matchOrElse(
-    model.beatMyRun,
-    { Taken: ({ dare }) => Option.some(dare) },
-    () => Option.none(),
-  )
+  BeatMyRun.$is('Taken')(model.beatMyRun)
+    ? Option.some(model.beatMyRun.dare)
+    : Option.none()
 
 export const isDareTaken = (model: Model): boolean =>
   Option.isSome(maybeTakenDareOf(model))
@@ -42,11 +69,9 @@ export const unopenedThingsOf: {
 )
 
 export const savedDifficultyOf = (model: Model): Difficulty =>
-  BeatMyRun.matchOrElse(
-    model.beatMyRun,
-    { Taken: ({ own }) => own.difficulty },
-    () => model.difficulty.chosen,
-  )
+  BeatMyRun.$is('Taken')(model.beatMyRun)
+    ? model.beatMyRun.own.difficulty
+    : model.difficulty.chosen
 
 const withPicks = (model: Model, picks: OwnPicks): Model =>
   UiStruct.evolve(model, {
@@ -87,38 +112,34 @@ export const withDarePicks: {
   withPicks(model, picksOfDare(dare)),
 )
 
+const picksLeaving = (model: Model, before: BeatMyRun): Model =>
+  BeatMyRun.$is('Taken')(before) ? withPicks(model, before.own) : model
+
+const picksEntering = (model: Model, after: BeatMyRun): Model =>
+  BeatMyRun.$is('Taken')(after) ? withDarePicks(model, after.dare) : model
+
+const moveBeat = (model: Model, event: BeatEvent): Model => {
+  const before = model.beatMyRun
+  const after = stepBeat(before, event)
+  return after === before
+    ? model
+    : UiStruct.evolve(picksEntering(picksLeaving(model, before), after), {
+        beatMyRun: () => after,
+      })
+}
+
 export const takeDare = (model: Model): Model =>
-  BeatMyRun.matchOrElse(
-    model.beatMyRun,
-    {
-      Offered: ({ dare }) =>
-        UiStruct.evolve(withDarePicks(model, dare), {
-          beatMyRun: () => BeatMyRun.Taken({ dare, own: ownPicksOf(model) }),
-        }),
-    },
-    () => model,
-  )
+  moveBeat(model, BeatEvent.Took({ own: ownPicksOf(model) }))
 
 export const releaseDare = (model: Model): Model =>
-  BeatMyRun.matchOrElse(
-    model.beatMyRun,
-    {
-      Taken: ({ dare, own }) =>
-        UiStruct.evolve(withPicks(model, own), {
-          beatMyRun: () => BeatMyRun.Offered({ dare }),
-        }),
-    },
-    () => model,
-  )
+  moveBeat(model, BeatEvent.Released)
 
 export const dismissDare = (model: Model): Model =>
-  UiStruct.evolve(releaseDare(model), { beatMyRun: () => noBeatMyRun })
+  moveBeat(model, BeatEvent.Dismissed)
 
 export const offerDare: {
   (dare: FriendsDare): (model: Model) => Model
   (model: Model, dare: FriendsDare): Model
 } = Function.dual(2, (model: Model, dare: FriendsDare): Model =>
-  UiStruct.evolve(releaseDare(model), {
-    beatMyRun: () => BeatMyRun.Offered({ dare }),
-  }),
+  moveBeat(model, BeatEvent.Offered({ dare })),
 )

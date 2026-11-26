@@ -10,7 +10,8 @@ import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
 import { RequestLinkCode } from '../../../app/update/profile'
 import { PROFILE_DIALOG_ID } from '../../../domain/clientSchema'
-import { LinkFlow, SyncState } from '../../../platform/playerSync'
+import { LinkFlow } from '../../../platform/linkFlow'
+import { SyncState } from '../../../platform/playerSync'
 import { homeAfterRead, inPortrait } from '../../../test/model.fixture'
 import {
   button,
@@ -428,7 +429,7 @@ describe('the Account tab', () => {
       const desk = yield* onAccount(
         UiStruct.evolve(synced, {
           profile: profile =>
-            UiStruct.evolve(profile, { linkFlow: () => LinkFlow.Linked() }),
+            UiStruct.evolve(profile, { linkFlow: () => LinkFlow.Linked }),
         }),
       )
       steps<ProfileDesk>(

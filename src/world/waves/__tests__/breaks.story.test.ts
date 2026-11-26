@@ -401,7 +401,7 @@ describe('the install tile', () => {
           s => s.expectExact(ShowInstallPrompt.make()),
           checkModel(current => {
             expect(current.homeScreenTip).toBe('Dismissed')
-            expect(current.homeScreenSteps.isOpen).toBe(false)
+            expect(current.rootDialog._tag).not.toBe('HomeScreenSteps')
           }),
           s =>
             s.resolve(
@@ -446,7 +446,7 @@ describe('the install tile', () => {
       steps(
         send(Message.ClickedInstallButton()),
         checkModel(current => {
-          expect(current.homeScreenSteps.isOpen).toBe(true)
+          expect(current.rootDialog._tag).toBe('HomeScreenSteps')
           expect(current.homeScreenTip).toBe('Dismissed')
         }),
       ),
@@ -456,7 +456,7 @@ describe('the install tile', () => {
   it.effect('the pulse outlives a run until the tile is used', () =>
     modelAfter(
       UiStruct.evolve(initialModel, {
-        difficultyCard: () => DifficultyCard.Seen(),
+        difficultyCard: () => DifficultyCard.Seen,
         settings: UiStruct.evolve({ screenFit: () => 'HomeScreen' }),
       }),
       steps(

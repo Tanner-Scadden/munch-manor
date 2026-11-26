@@ -1,16 +1,6 @@
-import {
-  Array,
-  Function,
-  Option,
-  Record,
-  Result,
-  Schema,
-  String,
-  pipe,
-} from 'effect'
+import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
 
 import { UiSchema } from '@effect/ui'
-import { CODE_ALPHABET } from '@munch/netcode'
 
 import { DayStamp } from '../shared/dayStamp'
 import { SavedJournal, journalAdded } from '../shared/journalData'
@@ -553,40 +543,5 @@ export const LinkProblem = Schema.Literals([
   'Unavailable',
 ])
 export type LinkProblem = typeof LinkProblem.Type
-
-export const LinkFlow = UiSchema.TaggedEnum({
-  Idle: {},
-  Requesting: {},
-  Showing: { code: Schema.String },
-  Entering: { code: Schema.String },
-  Redeeming: { code: Schema.String },
-  Linked: {},
-  Failed: { problem: LinkProblem },
-})
-export type LinkFlow = typeof LinkFlow.Type
-
-const LINK_CODE_LENGTH = 6
-
-const LINK_CODE_PATTERN = new RegExp(
-  `^[${CODE_ALPHABET}]{${LINK_CODE_LENGTH}}$`,
-)
-
-export const normalizeCode = (input: string): Option.Option<string> =>
-  Option.liftPredicate(
-    pipe(input, String.toUpperCase, String.replaceAll(/[\s-]/g, '')),
-    code => LINK_CODE_PATTERN.test(code),
-  )
-
-export const linkProblemText = (problem: LinkProblem): string => {
-  if (problem === 'WrongCode') {
-    return 'That code did not work. Check it and try again.'
-  } else if (problem === 'TooManyTries') {
-    return 'Too many tries. Wait a few minutes, then try again.'
-  } else if (problem === 'Offline') {
-    return 'Could not reach the server. Try again when you are online.'
-  } else {
-    return 'Linking is not available right now.'
-  }
-}
 
 export { PlayerSave }

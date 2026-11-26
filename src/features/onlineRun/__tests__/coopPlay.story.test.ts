@@ -261,7 +261,7 @@ describe('an online co-op run', () => {
         events: [{ tick: 1, events: [shot(OWN_SLOT, 40), shot(0, 200)] }],
       }
       const audible = UiStruct.evolve(inRun(withShots, true), {
-        audio: () => AudioState.Ready(),
+        audio: () => AudioState.Ready,
         settings: settings =>
           UiStruct.evolve(settings, { soundSetting: () => 'On' }),
       })
@@ -345,7 +345,7 @@ describe('an online co-op run', () => {
                 true,
               ),
               {
-                audio: () => AudioState.Ready(),
+                audio: () => AudioState.Ready,
                 settings: settings =>
                   UiStruct.evolve(settings, { soundSetting: () => 'On' }),
               },
