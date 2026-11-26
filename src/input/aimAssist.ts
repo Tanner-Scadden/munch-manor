@@ -1,11 +1,11 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
 
-import { type Camera, isInView } from '../render/camera'
-import * as DetMath from '../shared/detMath'
-import type { Level } from '../world/level/arena'
-import { hasLineOfSight } from '../world/level/tileQueries'
-import type { Vector, Zombie } from '../world/schema/worldSchema'
-import { ZombieAction, ZombieState } from '../world/schema/worldSchema'
+import { type Camera, isInView } from '#render/camera.ts'
+import * as DetMath from '#shared/detMath.ts'
+import type { Level } from '#world/level/arena.ts'
+import { hasLineOfSight } from '#world/level/tileQueries.ts'
+import type { Vector, Zombie } from '#world/schema/worldSchema.ts'
+import { ZombieAction, ZombieState } from '#world/schema/worldSchema.ts'
 
 export type AimAssistStrength = Readonly<{
   innerRadians: number

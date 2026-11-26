@@ -5,24 +5,20 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { BreakClock, FridgeDoor, type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { prizeSprite } from '../../../art/prizeArt'
-import { spriteImage } from '../../../art/sprite'
-import { PressHoldButton } from '../../../features/shop/purchaseHud'
-import { purchaseOverlayShapes } from '../../../features/shop/purchaseView'
-import type { InputDevice } from '../../../input/inputSchema'
-import { RunButtonMessage } from '../../../input/message'
-import { cameraOf, screenCameraOf } from '../../../render/camera'
-import { screenOf } from '../../../render/screen'
-import { hudKeepoutsOf } from '../../../screens/game/pocket'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import {
-  inPortrait,
-  pastTimedBreaks,
-  withKeys,
-} from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { BreakClock, FridgeDoor, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { prizeSprite } from '#art/prizeArt.ts'
+import { spriteImage } from '#art/sprite.ts'
+import { PressHoldButton } from '#features/shop/purchaseHud.ts'
+import { purchaseOverlayShapes } from '#features/shop/purchaseView.ts'
+import type { InputDevice } from '#input/inputSchema.ts'
+import { RunButtonMessage } from '#input/message.ts'
+import { cameraOf, screenCameraOf } from '#render/camera.ts'
+import { screenOf } from '#render/screen.ts'
+import { hudKeepoutsOf } from '#screens/game/pocket.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { inPortrait, pastTimedBreaks, withKeys } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   byClass,
@@ -31,7 +27,7 @@ import {
   expectClass,
   fromSubscription,
   measureHud,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   HOLD_TICKS,
   PHONE_LANDSCAPE,
@@ -39,14 +35,14 @@ import {
   type SceneStep,
   sceneOf,
   steps,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { drawnBoxesOf, isOverBox } from '../../../test/viewReading'
-import { FRIDGE_RULES, fridgeBoxOf } from '../../fridge/leftovers'
-import { levelOf, openExitIn } from '../../level/arena'
-import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
-import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from '../../level/plan'
-import { modifyFocus } from '../../party/party'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { drawnBoxesOf, isOverBox } from '#test/viewReading.ts'
+import { FRIDGE_RULES, fridgeBoxOf } from '#world/fridge/leftovers.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { EXIT_RULES, KITCHEN_EXIT } from '#world/level/exits.ts'
+import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from '#world/level/plan.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const atBoards = (device: InputDevice, keys: number): Model =>
   modifyFocus(

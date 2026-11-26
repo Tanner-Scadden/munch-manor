@@ -3,13 +3,14 @@ import { Array, Function, Option } from 'effect'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { NEWER_NEWS_ICON, OLDER_NEWS_ICON } from '../../art/icons'
-import type { TabStep } from '../../input/padFocus'
-import { iconView } from '../../ui/menuParts'
-import { NEWS_DAYS, type NewsBullet, type NewsDay } from './changelog'
-import { WhatsNewMessage } from './message'
+} from '#app/definition.ts'
+import type { Model } from '#app/model.ts'
+import { NEWER_NEWS_ICON, OLDER_NEWS_ICON } from '#art/icons.ts'
+import type { TabStep } from '#input/padFocus.ts'
+import { iconView } from '#ui/menuParts.ts'
+
+import { NEWS_DAYS, type NewsBullet, type NewsDay } from './changelog.ts'
+import { WhatsNewMessage } from './message.ts'
 
 const maybeShownDay = (model: Model): Option.Option<NewsDay> =>
   Array.get(NEWS_DAYS, model.home.newsPage)

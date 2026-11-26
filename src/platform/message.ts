@@ -2,8 +2,9 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { DayStamp } from '../shared/dayStamp'
-import { RecordUnlock } from '../shared/playerData'
+import { DayStamp } from '#shared/dayStamp.ts'
+import { RecordUnlock } from '#shared/playerData.ts'
+
 import {
   FullscreenSetting,
   InstallOffer,
@@ -11,9 +12,9 @@ import {
   OrientationLock,
   PageVisibility,
   ScreenFit,
-} from './deviceSchema'
-import { PlayerChange, SyncState } from './playerSync'
-import { PlayerSave } from './save'
+} from './deviceSchema.ts'
+import { PlayerChange, SyncState } from './playerSync.ts'
+import { PlayerSave } from './save.ts'
 
 export const pageCases = {
   BlurredWindow: {},

@@ -5,23 +5,24 @@ import {
   HOME_SCREEN_STEPS_ID,
   PANEL_DIALOG_ID,
   UPDATE_GREETING_ID,
-} from '../domain/clientSchema'
-import { openedThingsOf } from '../domain/journal'
-import { Munchopedia } from '../features/munchopedia/block'
-import { ProofShelf } from '../features/proof/block'
-import { shelfThingsFor } from '../features/proof/proof'
+} from '#domain/clientSchema.ts'
+import { openedThingsOf } from '#domain/journal.ts'
+import { Munchopedia } from '#features/munchopedia/block.ts'
+import { ProofShelf } from '#features/proof/block.ts'
+import { shelfThingsFor } from '#features/proof/proof.ts'
 import {
   type PanelChildViews,
   manorHandInsidesView,
   menuPanelInsidesView,
-} from '../screens/home/homeView'
-import { homeScreenGuideInsidesView } from '../screens/home/installView'
-import { updateGreetingInsidesView } from '../screens/home/updateGift'
-import { dialogShellView } from '../ui/dialog'
-import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
-import { Message } from './message'
-import type { Model } from './model'
-import { isRootDialogOpen } from './rootDialog'
+} from '#screens/home/homeView.ts'
+import { homeScreenGuideInsidesView } from '#screens/home/installView.ts'
+import { updateGreetingInsidesView } from '#screens/home/updateGift.ts'
+import { dialogShellView } from '#ui/dialog.ts'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from './definition.ts'
+import { Message } from './message.ts'
+import type { Model } from './model.ts'
+import { isRootDialogOpen } from './rootDialog.ts'
 
 const munchopediaView: PanelChildViews['munchopedia'] = (model, done, h) =>
   Munchopedia(h, {

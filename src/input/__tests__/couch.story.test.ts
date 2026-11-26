@@ -3,13 +3,13 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { localPlayersIn } from '../../app/boot'
-import { Message } from '../../app/message'
-import { BreakClock, type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { cameraFocus } from '../../render/camera'
-import { FIXED_STEP_MS } from '../../shared/constants'
-import { DISTANT_SPAWN, atSeat } from '../../test/model.fixture'
+import { localPlayersIn } from '#app/boot.ts'
+import { Message } from '#app/message.ts'
+import { BreakClock, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { cameraFocus } from '#render/camera.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { DISTANT_SPAWN, atSeat } from '#test/model.fixture.ts'
 import {
   SURFACE,
   checkModel,
@@ -19,15 +19,15 @@ import {
   startedRun,
   storyOf,
   ticks,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 import {
   focusOf,
   maybePlayerAt,
   modifyFocus,
   playersOf,
-} from '../../world/party/party'
-import { type World } from '../../world/schema/world'
+} from '#world/party/party.ts'
+import { type World } from '#world/schema/world.ts'
 
 const TICK_MS = FIXED_STEP_MS
 

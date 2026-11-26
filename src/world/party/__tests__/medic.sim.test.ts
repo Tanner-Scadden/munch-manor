@@ -2,16 +2,16 @@ import { Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import type { Model } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   crewInWave,
   pipeline,
   placeSeat,
   untouchableSeat,
-} from '../../../test/model.fixture'
-import { checkModel, modelAfter, steps, ticks } from '../../../test/testing'
-import { maybePlayerAt } from '../party'
+} from '#test/model.fixture.ts'
+import { checkModel, modelAfter, steps, ticks } from '#test/testing.ts'
+import { maybePlayerAt } from '#world/party/party.ts'
 
 const TICK_MS = FIXED_STEP_MS
 

@@ -2,24 +2,24 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS } from '../../shared/constants'
-import { type Level, levelOf } from '../level/arena'
-import { boxAround } from '../level/exits'
-import { type LevelSpec, STACK_DROPS } from '../level/plan'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { boxAround } from '#world/level/exits.ts'
+import { type LevelSpec, STACK_DROPS } from '#world/level/plan.ts'
 import {
   type Box,
   boxCenter,
   circleTouchesBox,
   tileBox,
   tilesWithSymbol,
-} from '../level/tileGrid'
-import { forEachSeat, modifySeat, seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
-import type { Vector } from '../schema/worldSchema'
-import { knockDownWhere } from '../stations/knockDown'
-import { TOOL_RULES, isToolActive } from '../stations/toolRules'
-import { ZERO_VECTOR, isInsideBox } from '../step/geometry'
-import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
+} from '#world/level/tileGrid.ts'
+import { forEachSeat, modifySeat, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { knockDownWhere } from '#world/stations/knockDown.ts'
+import { TOOL_RULES, isToolActive } from '#world/stations/toolRules.ts'
+import { ZERO_VECTOR, isInsideBox } from '#world/step/geometry.ts'
+import { bodyRadiusOf, isGrounded } from '#world/zombies/zombies.ts'
 
 export type StackId = keyof typeof STACK_DROPS
 

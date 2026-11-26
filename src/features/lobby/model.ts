@@ -2,14 +2,14 @@ import { Option, Schema } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { Bot, HomeMode } from '../../domain/clientSchema'
+import { Bot, HomeMode } from '#domain/clientSchema.ts'
 import {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '../../shared/playerData'
-import { Modifiers } from '../../world/run/modifiers'
-import { DifficultySetting } from '../../world/schema/worldSchema'
+} from '#shared/playerData.ts'
+import { Modifiers } from '#world/run/modifiers.ts'
+import { DifficultySetting } from '#world/schema/worldSchema.ts'
 
 export const LobbyControl = Schema.Literals([
   'Back',

@@ -10,16 +10,13 @@ import {
   RenderPassBit,
 } from '@pixi/3d'
 
-import {
-  type EyePixels,
-  type SpriteDepth,
-  spriteDepthOf,
-} from '../../art/sprite'
-import { PART_BIAS } from './billboards'
-import { IDENTITY, type Leaf } from './flatten'
-import type { ShadowWatch } from './shadowWatch'
-import { UNIT } from './space'
-import type { PixelMasks, Textures } from './textures'
+import { type EyePixels, type SpriteDepth, spriteDepthOf } from '#art/sprite.ts'
+
+import { PART_BIAS } from './billboards.ts'
+import { IDENTITY, type Leaf } from './flatten.ts'
+import type { ShadowWatch } from './shadowWatch.ts'
+import { UNIT } from './space.ts'
+import type { PixelMasks, Textures } from './textures.ts'
 import {
   DEPTH_BACK,
   type DepthOf,
@@ -29,7 +26,7 @@ import {
   solidBoundsOf,
   uprightMatrixOf,
   voxelMeshOf,
-} from './voxelShape'
+} from './voxelShape.ts'
 
 const SLOTS = 2048
 

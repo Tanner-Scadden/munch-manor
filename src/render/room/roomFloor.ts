@@ -1,12 +1,13 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 
-import { type Palette, mirrorRows } from '../../art/sprite'
-import { SHAKE_MAX_PX, TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
-import { PARLOUR_ROOM_ID } from '../../world/level/plan'
-import { RATTLES_SYMBOL, tilesWithSymbol } from '../../world/level/tileGrid'
-import type * as Draw from '../draw'
-import { pixelArt, rect } from '../drawing'
+import { type Palette, mirrorRows } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { pixelArt, rect } from '#render/drawing.ts'
+import { SHAKE_MAX_PX, TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
+import { PARLOUR_ROOM_ID } from '#world/level/plan.ts'
+import { RATTLES_SYMBOL, tilesWithSymbol } from '#world/level/tileGrid.ts'
+
 import {
   BLOOD_COLOR,
   type Box,
@@ -27,7 +28,7 @@ import {
   boundingBox,
   pick,
   roll,
-} from './roomPalette'
+} from './roomPalette.ts'
 
 export type Floor = Readonly<{
   x: number

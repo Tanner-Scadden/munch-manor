@@ -2,9 +2,9 @@ import { Array, Record } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { PICKUPS } from '../gear/powerups'
-import { PICKUP_NAMES } from '../names'
-import { DIFFICULTIES, NIGHTMARE_LOCK_NOTE } from '../run/difficulty'
+import { PICKUPS } from '#world/gear/powerups.ts'
+import { PICKUP_NAMES } from '#world/names.ts'
+import { DIFFICULTIES, NIGHTMARE_LOCK_NOTE } from '#world/run/difficulty.ts'
 
 describe('the names a player reads', () => {
   it('names the difficulties for the dare', () => {

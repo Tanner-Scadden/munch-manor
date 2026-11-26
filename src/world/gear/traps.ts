@@ -10,12 +10,17 @@ import {
   TRAP_REACH_PX,
   TURRET_PLACE_REACH_PX,
   TURRET_RANGE_PX,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { appendOrSame, sameIfUnchanged } from '../../shared/sameList'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { mendSpeedScaleOf, trapHealthScaleOf } from '../heroes/calling'
-import { type Level, TILE_OUTSIDE, hasTileFlag, levelOf } from '../level/arena'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { appendOrSame, sameIfUnchanged } from '#shared/sameList.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { mendSpeedScaleOf, trapHealthScaleOf } from '#world/heroes/calling.ts'
+import {
+  type Level,
+  TILE_OUTSIDE,
+  hasTileFlag,
+  levelOf,
+} from '#world/level/arena.ts'
 import {
   type Box,
   DOOR_OUTWARD,
@@ -26,15 +31,15 @@ import {
   tileBox,
   tileIndex,
   tilesWithSymbol,
-} from '../level/tileGrid'
+} from '#world/level/tileGrid.ts'
 import {
   hasLineOfSight,
   isDoorTile,
   isInsideRoomAt,
   isWalkableTile,
   tileCoordinate,
-} from '../level/tileQueries'
-import { TRAP_NAMES } from '../names'
+} from '#world/level/tileQueries.ts'
+import { TRAP_NAMES } from '#world/names.ts'
 import {
   COOP_RULES,
   atSeat,
@@ -46,9 +51,9 @@ import {
   seatStateAt,
   trapOwnerOf,
   updateSeat,
-} from '../party/party'
-import { countTrapPlaced } from '../run/stats'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import { countTrapPlaced } from '#world/run/stats.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Bullet,
   DoorId,
@@ -68,22 +73,23 @@ import {
   type Zombie,
   ZombieState,
   isRoundActive,
-} from '../schema/worldSchema'
-import type { BlastTarget } from '../step/combat'
+} from '#world/schema/worldSchema.ts'
+import type { BlastTarget } from '#world/step/combat.ts'
 import {
   addVectors,
   countDown,
   directionBetween,
   scaleVector,
-} from '../step/geometry'
+} from '#world/step/geometry.ts'
 import {
   Behavior,
   isFree,
   isGrounded,
   radiusOf,
   statsOf,
-} from '../zombies/zombies'
-import { WEAPONS } from './weapons'
+} from '#world/zombies/zombies.ts'
+
+import { WEAPONS } from './weapons.ts'
 
 type TrapStats = Readonly<{
   name: string

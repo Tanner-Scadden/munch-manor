@@ -5,25 +5,25 @@ import { Mount } from '@effect/ui'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
-import { GRAB_ICON, HOLD_ICON } from '../../art/icons'
-import { spriteImage } from '../../art/sprite'
-import { InputMessage, RunButtonMessage } from '../../input/message'
-import { iconView } from '../../ui/menuParts'
-import { isCrewAtBackDoor } from '../../world/kitchen/backDoor'
-import { maybeStovePerk } from '../../world/kitchen/stove'
-import { exitName } from '../../world/level/exits'
+} from '#app/definition.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/artSize.ts'
+import { GRAB_ICON, HOLD_ICON } from '#art/icons.ts'
+import { spriteImage } from '#art/sprite.ts'
+import { InputMessage, RunButtonMessage } from '#input/message.ts'
+import { iconView } from '#ui/menuParts.ts'
+import { isCrewAtBackDoor } from '#world/kitchen/backDoor.ts'
+import { maybeStovePerk } from '#world/kitchen/stove.ts'
+import { exitName } from '#world/level/exits.ts'
 import {
   BACK_DOOR_NAME,
   FRIDGE_NAME,
   GUN_PERK_NAMES,
   STOVE_NAME,
   VALVE_NAME,
-} from '../../world/names'
-import { focusOf, focusSlotOf } from '../../world/party/party'
-import { Purchasable, Purchase } from '../../world/schema/worldSchema'
+} from '#world/names.ts'
+import { focusOf, focusSlotOf } from '#world/party/party.ts'
+import { Purchasable, Purchase } from '#world/schema/worldSchema.ts'
 import {
   type Offer,
   PURCHASE_RULES,
@@ -32,8 +32,9 @@ import {
   maybeOfferInReach,
   maybeOfferOf,
   shortfallFor,
-} from '../../world/shop/purchase'
-import { maybeTakenIcon } from './purchaseView'
+} from '#world/shop/purchase.ts'
+
+import { maybeTakenIcon } from './purchaseView.ts'
 
 const keyWords = (count: number): string =>
   `${count} ${count === 1 ? 'key' : 'keys'}`

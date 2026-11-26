@@ -4,9 +4,10 @@ import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
   STEP_EPSILON_MS,
-} from '../shared/constants'
-import { Phase } from '../world/schema/worldSchema'
-import type { Model } from './model'
+} from '#shared/constants.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
+
+import type { Model } from './model.ts'
 
 const EARLY_MS = 1
 

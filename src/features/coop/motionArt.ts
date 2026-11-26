@@ -5,11 +5,11 @@ import { MAX_PLAYERS } from '@munch/netcode'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import { DOOR_ICON, POOF_ICON, portraitOf } from '../../art/coopIcons'
-import { seatLook } from '../../art/seatLooks'
-import { RoomRequest } from '../../domain/coopRoom'
-import { iconView } from '../../ui/menuParts'
+} from '#app/definition.ts'
+import { DOOR_ICON, POOF_ICON, portraitOf } from '#art/coopIcons.ts'
+import { seatLook } from '#art/seatLooks.ts'
+import { RoomRequest } from '#domain/coopRoom.ts'
+import { iconView } from '#ui/menuParts.ts'
 
 const headView = (
   className: string,

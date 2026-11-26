@@ -1,7 +1,7 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { SHADOW_MAPS_A_FRAME, ShadowBudget } from '../shadowBudget'
+import { SHADOW_MAPS_A_FRAME, ShadowBudget } from '#render/iso/shadowBudget.ts'
 
 const FOUR_CASTING = [true, true, true, true]
 

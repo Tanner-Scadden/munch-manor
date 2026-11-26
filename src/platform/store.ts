@@ -18,11 +18,11 @@ import {
   type PlayerChange,
   StoreEvent,
   SyncState,
-} from './playerSync'
-import type { RoomAccess } from './roomReplica'
-import { type PlayerSave, readLegacySave, writeLegacySave } from './save'
-import { loadStoreModule } from './storeEarly'
-import type { PlayerDatabase } from './storeSqlite'
+} from './playerSync.ts'
+import type { RoomAccess } from './roomReplica.ts'
+import { type PlayerSave, readLegacySave, writeLegacySave } from './save.ts'
+import { loadStoreModule } from './storeEarly.ts'
+import type { PlayerDatabase } from './storeSqlite.ts'
 
 const OpenDatabase = Schema.declare(
   (value: unknown): value is PlayerDatabase =>

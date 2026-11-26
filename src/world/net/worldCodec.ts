@@ -3,9 +3,9 @@ import { Array, Function, Match, Option, Record, Result, Struct } from 'effect'
 
 import type { Reader, Writer } from '@munch/netcode'
 
-import { settledLessons } from '../run/lessons'
-import { type WireHint, wireHintOf } from '../schema/wireNumber'
-import type { World } from '../schema/world'
+import { settledLessons } from '#world/run/lessons.ts'
+import { type WireHint, wireHintOf } from '#world/schema/wireNumber.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   DebutCard,
   GameEvent,
@@ -14,7 +14,7 @@ import {
   freshStats,
   initialHitStop,
   noPractice,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 type KeyOf = (item: unknown) => number
 

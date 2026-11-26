@@ -3,14 +3,14 @@ import { Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { SHOTGUN, holdingFirst } from '../../../test/arsenals'
-import { quietWave, withArsenal } from '../../../test/model.fixture'
-import { checkModel, send, storyOf } from '../../../test/testing'
-import { inHandOf } from '../../../world/gear/weapons'
-import { focusOf, seatCrew } from '../../../world/party/party'
-import { withWorld } from '../../../world/schema/world'
-import { Message } from '../../message'
-import { DebutCard } from '../../model'
+import { Message } from '#app/message.ts'
+import { DebutCard } from '#app/model.ts'
+import { SHOTGUN, holdingFirst } from '#test/arsenals.ts'
+import { quietWave, withArsenal } from '#test/model.fixture.ts'
+import { checkModel, send, storyOf } from '#test/testing.ts'
+import { inHandOf } from '#world/gear/weapons.ts'
+import { focusOf, seatCrew } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 
 describe('the rules single player now shares with the room', () => {
   it.effect(

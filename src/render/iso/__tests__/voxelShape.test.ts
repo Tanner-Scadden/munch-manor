@@ -1,7 +1,7 @@
 import { Array, Option, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { PITCH, UNIT, zOf } from '../space'
+import { PITCH, UNIT, zOf } from '#render/iso/space.ts'
 import {
   type VoxelMeshData,
   isGroundedOf,
@@ -13,7 +13,7 @@ import {
   uprightLeanOf,
   uprightMatrixOf,
   voxelMeshOf,
-} from '../voxelShape'
+} from '#render/iso/voxelShape.ts'
 
 const rows = (art: ReadonlyArray<string>) => ({
   width: art[0]?.length ?? 0,

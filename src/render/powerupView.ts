@@ -1,14 +1,19 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 
-import { type BakedText, GLYPH_HEIGHT, bakeText, placeBaked } from '../art/font'
-import { TOP_LEFT, group, placeAt, spriteShapes } from '../art/sprite'
+import {
+  type BakedText,
+  GLYPH_HEIGHT,
+  bakeText,
+  placeBaked,
+} from '#art/font.ts'
+import { TOP_LEFT, group, placeAt, spriteShapes } from '#art/sprite.ts'
 import {
   AURA_FRAME_COUNT,
   AURA_FRAME_MS,
   AURA_SPRITES,
-} from '../art/sprites/auras'
-import { PICKUP_SPRITES, PICKUP_TINTS } from '../art/sprites/pickups'
-import type { LevelCallout } from '../domain/clientSchema'
+} from '#art/sprites/auras.ts'
+import { PICKUP_SPRITES, PICKUP_TINTS } from '#art/sprites/pickups.ts'
+import type { LevelCallout } from '#domain/clientSchema.ts'
 import {
   BOOST_KIND_ORDER,
   BOOST_WARNING_MS,
@@ -18,9 +23,9 @@ import {
   PICKUPS,
   PICKUP_BLINK_MS,
   PICKUP_LIFETIME_MS,
-} from '../world/gear/powerups'
-import { UPGRADE_TIERS, tierName } from '../world/gear/weapons'
-import { maybeTierWord } from '../world/names'
+} from '#world/gear/powerups.ts'
+import { UPGRADE_TIERS, tierName } from '#world/gear/weapons.ts'
+import { maybeTierWord } from '#world/names.ts'
 import {
   type BoostKind,
   BoostTimer,
@@ -29,14 +34,15 @@ import {
   type Pickup,
   type PickupKind,
   type Player,
-} from '../world/schema/entitySchema'
-import type { WeaponKind } from '../world/schema/worldSchema'
-import { levelUpChange } from '../world/shop/shopUpgrades'
-import { clamp } from '../world/step/geometry'
-import { type Camera, viewBoxOf, worldToView } from './camera'
-import * as Draw from './draw'
-import { FULL_TURN } from './drawing'
-import { pixelRingSpans } from './pixelCircle'
+} from '#world/schema/entitySchema.ts'
+import type { WeaponKind } from '#world/schema/worldSchema.ts'
+import { levelUpChange } from '#world/shop/shopUpgrades.ts'
+import { clamp } from '#world/step/geometry.ts'
+
+import { type Camera, viewBoxOf, worldToView } from './camera.ts'
+import * as Draw from './draw.ts'
+import { FULL_TURN } from './drawing.ts'
+import { pixelRingSpans } from './pixelCircle.ts'
 
 const HEX_RED = 1
 const HEX_GREEN = 3

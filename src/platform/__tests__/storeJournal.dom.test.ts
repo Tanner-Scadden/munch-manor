@@ -3,31 +3,31 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { initialModel } from '../../app/pureApp'
-import {
-  type SavedJournal,
-  addToJournal,
-  journalAdded,
-  mergeJournal,
-  noJournal,
-} from '../../shared/journalData'
-import { readyAfterRead } from '../../test/model.fixture'
-import {
-  legacySave,
-  linkedPair,
-  synced,
-  until,
-  write,
-} from '../../test/store.fixture'
-import { jsonOf } from '../../test/testing'
-import { changesBetween } from '../playerSync'
+import { initialModel } from '#app/pureApp.ts'
+import { changesBetween } from '#platform/playerSync.ts'
 import {
   type PlayerSave,
   decodeSave,
   encodeSave,
   restoreSave,
   saveOf,
-} from '../save'
+} from '#platform/save.ts'
+import {
+  type SavedJournal,
+  addToJournal,
+  journalAdded,
+  mergeJournal,
+  noJournal,
+} from '#shared/journalData.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
+import {
+  legacySave,
+  linkedPair,
+  synced,
+  until,
+  write,
+} from '#test/store.fixture.ts'
+import { jsonOf } from '#test/testing.ts'
 
 const journalWith = (journal: Partial<SavedJournal>): SavedJournal => ({
   ...noJournal,

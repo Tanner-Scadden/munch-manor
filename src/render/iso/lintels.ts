@@ -1,8 +1,9 @@
 import { Array } from 'effect'
 
-import type { Level } from '../../world/level/arena'
-import { doorwaysOf, isPassage } from '../doorways'
-import { WALL_ROW, wallHeightAt } from './space'
+import { doorwaysOf, isPassage } from '#render/doorways.ts'
+import type { Level } from '#world/level/arena.ts'
+
+import { WALL_ROW, wallHeightAt } from './space.ts'
 
 export const LINTEL_FLOOR = 7 * WALL_ROW
 

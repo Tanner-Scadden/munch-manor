@@ -1,8 +1,8 @@
 import { Array } from 'effect'
 
-import type { Model } from '../../../app/model'
-import { focusSlotOf } from '../../party/party'
-import { offersOf } from '../../shop/purchase'
+import type { Model } from '#app/model.ts'
+import { focusSlotOf } from '#world/party/party.ts'
+import { offersOf } from '#world/shop/purchase.ts'
 
 export const isFridgeOffered = (current: Model): boolean =>
   Array.some(

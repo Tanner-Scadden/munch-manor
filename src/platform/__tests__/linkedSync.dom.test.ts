@@ -3,19 +3,16 @@ import { Array, Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { AudioState, type Model } from '../../app/model'
-import { RootDialog } from '../../app/rootDialog'
-import { CueMusic } from '../../app/update/music'
-import { WriteSave } from '../../app/update/save'
-import { readyAfterRead } from '../../test/model.fixture'
-import {
-  linkedPair,
-  muted,
-  synced,
-  until,
-  write,
-} from '../../test/store.fixture'
+import { Message } from '#app/message.ts'
+import { AudioState, type Model } from '#app/model.ts'
+import { RootDialog } from '#app/rootDialog.ts'
+import { CueMusic } from '#app/update/music.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { PlayerChange } from '#platform/playerSync.ts'
+import { type PlayerSave, restoreSave } from '#platform/save.ts'
+import type { PlayerDatabase } from '#platform/storeSqlite.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
+import { linkedPair, muted, synced, until, write } from '#test/store.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -25,10 +22,7 @@ import {
   resolveAll,
   send,
   steps,
-} from '../../test/testing'
-import { PlayerChange } from '../playerSync'
-import { type PlayerSave, restoreSave } from '../save'
-import type { PlayerDatabase } from '../storeSqlite'
+} from '#test/testing.ts'
 
 const loaded = (database: PlayerDatabase) =>
   Effect.map(database.load, Option.getOrThrow)

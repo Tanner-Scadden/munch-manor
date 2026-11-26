@@ -3,9 +3,17 @@ import { Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Lesson, type Model } from '../../../app/model'
-import { MAX_FRAME_DELTA_MS } from '../../../shared/constants'
-import { home } from '../../../test/model.fixture'
+import { Lesson, type Model } from '#app/model.ts'
+import {
+  FOLD_MS,
+  GATE_MS,
+  READ_MS,
+  UNFOLD_MS,
+} from '#features/dare/pocketCard.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { Events } from '#features/lobby/message.ts'
+import { MAX_FRAME_DELTA_MS } from '#shared/constants.ts'
+import { home } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   emitFrame,
@@ -18,7 +26,7 @@ import {
   statusLine,
   throughIntroByTapInScene,
   throughIntroInScene,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type SceneStep,
   checkModel,
@@ -27,10 +35,7 @@ import {
   startRunFromHome,
   steps,
   storyOf,
-} from '../../../test/testing'
-import { Lobby } from '../../lobby/block'
-import { Events } from '../../lobby/message'
-import { FOLD_MS, GATE_MS, READ_MS, UNFOLD_MS } from '../pocketCard'
+} from '#test/testing.ts'
 
 const CARD_STATUS = /Your friends' dare card/
 const BREAK_STATUS = /Get ready for wave 1\./

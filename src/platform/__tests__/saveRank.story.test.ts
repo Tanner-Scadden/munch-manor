@@ -3,10 +3,18 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { initialModel } from '../../app/pureApp'
-import { WriteSave } from '../../app/update/save'
-import { loadingSave } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { PlayerChange } from '#platform/playerSync.ts'
+import {
+  type PlayerSave,
+  SAVE_VERSION,
+  decodeSave,
+  restoreSave,
+  saveOf,
+} from '#platform/save.ts'
+import { loadingSave } from '#test/model.fixture.ts'
 import {
   checkModel,
   checkPendingArgs,
@@ -16,18 +24,11 @@ import {
   send,
   steps,
   writeSave,
-} from '../../test/testing'
-import { noRank, pointsForRank } from '../../world/heroes/rank'
-import { focusOf } from '../../world/party/party'
-import { PlayerChange } from '../playerSync'
-import {
-  type PlayerSave,
-  SAVE_VERSION,
-  decodeSave,
-  restoreSave,
-  saveOf,
-} from '../save'
-import { learnedSave } from './save.fixture'
+} from '#test/testing.ts'
+import { noRank, pointsForRank } from '#world/heroes/rank.ts'
+import { focusOf } from '#world/party/party.ts'
+
+import { learnedSave } from './save.fixture.ts'
 
 const loaded = (maybeSave: Option.Option<PlayerSave>) =>
   steps(send(Message.CompletedLoadSave({ maybeSave })), finishSplash)

@@ -1,8 +1,8 @@
 import { Function } from 'effect'
 
-import { ApplicationNoDeps } from './block'
-import type { Message } from './message'
-import type { Model } from './model'
+import { ApplicationNoDeps } from './block.ts'
+import type { Message } from './message.ts'
+import type { Model } from './model.ts'
 
 const updateOf = (model: Model, message: Message) =>
   ApplicationNoDeps.update(model, message, {})
@@ -12,6 +12,6 @@ export const update: {
   (model: Model, message: Message): ReturnType<typeof updateOf>
 } = Function.dual(2, updateOf)
 
-export { subscriptions } from './subscriptions'
+export { subscriptions } from './subscriptions.ts'
 
 export const initialModel: Model = ApplicationNoDeps.init({}).model

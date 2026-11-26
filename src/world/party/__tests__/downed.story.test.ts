@@ -3,33 +3,29 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { sceneShapes } from '../../../app/layers'
-import { Life, type Model, Reload } from '../../../app/model'
-import type * as Draw from '../../../render/draw'
-import { QUARTER_TURN } from '../../../render/drawing'
-import { healthBarShapes } from '../../../render/healthBarView'
-import {
-  medicBubbleShape,
-  reviveRingGroundShapes,
-} from '../../../render/partyView'
-import { reloadBarShapes } from '../../../render/playerView'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { sceneShapes } from '#app/layers.ts'
+import { Life, type Model, Reload } from '#app/model.ts'
+import type * as Draw from '#render/draw.ts'
+import { QUARTER_TURN } from '#render/drawing.ts'
+import { healthBarShapes } from '#render/healthBarView.ts'
+import { medicBubbleShape, reviveRingGroundShapes } from '#render/partyView.ts'
+import { reloadBarShapes } from '#render/playerView.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   atSeat,
   crewInWave,
   pipeline,
   placeSeat,
   withSeatLife,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
+import { checkModel, jsonOf, modelAfter, steps, ticks } from '#test/testing.ts'
+import { MEDIC_RULES } from '#world/party/medic.ts'
 import {
-  checkModel,
-  jsonOf,
-  modelAfter,
-  steps,
-  ticks,
-} from '../../../test/testing'
-import { MEDIC_RULES } from '../medic'
-import { COOP_RULES, focusOf, maybePlayerAt, modifyFocus } from '../party'
+  COOP_RULES,
+  focusOf,
+  maybePlayerAt,
+  modifyFocus,
+} from '#world/party/party.ts'
 
 const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60

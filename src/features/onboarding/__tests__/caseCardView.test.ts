@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
-import { Feat } from '../../../world/schema/worldSchema'
-import { featLabelOf } from '../caseCardView'
+import { featLabelOf } from '#features/onboarding/caseCardView.ts'
+import { Feat } from '#world/schema/worldSchema.ts'
 
 describe('featLabelOf', () => {
   test('says the deed in a few words, with the count', () => {

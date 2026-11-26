@@ -2,21 +2,22 @@ import { Array, Function, Option, String } from 'effect'
 
 import { type Lobby, NetStats } from '@munch/netcode'
 
-import type { Model } from '../app/model'
-import { isBotCrew } from '../domain/bots'
-import { effectiveModifiersOf, playedMarkOf } from '../domain/onlineRun'
-import { isInRun } from '../domain/run'
-import type { Difficulty } from '../shared/playerData'
-import { dareItemsFoundOf } from '../world/dare/dare'
-import { isCoop, leadSeatOf, playersOf } from '../world/party/party'
-import { maskOfModifiers } from '../world/run/modifiers'
+import type { Model } from '#app/model.ts'
+import { isBotCrew } from '#domain/bots.ts'
+import { effectiveModifiersOf, playedMarkOf } from '#domain/onlineRun.ts'
+import { isInRun } from '#domain/run.ts'
+import type { Difficulty } from '#shared/playerData.ts'
+import { dareItemsFoundOf } from '#world/dare/dare.ts'
+import { isCoop, leadSeatOf, playersOf } from '#world/party/party.ts'
+import { maskOfModifiers } from '#world/run/modifiers.ts'
 import {
   CaseState,
   Phase,
   RunMode,
   type RunStats,
-} from '../world/schema/worldSchema'
-import { roundWave } from '../world/waves/waves'
+} from '#world/schema/worldSchema.ts'
+import { roundWave } from '#world/waves/waves.ts'
+
 import {
   CREW_RUN_KEY_LENGTH,
   type CrewNetwork,
@@ -38,8 +39,8 @@ import {
   type SummaryParty,
   type SummaryScreenFit,
   UNKNOWN_CAUSE,
-} from './analytics'
-import type { ScreenFit } from './deviceSchema'
+} from './analytics.ts'
+import type { ScreenFit } from './deviceSchema.ts'
 
 const SMOOTH_MS = 10
 const SIXTY_MS = 17

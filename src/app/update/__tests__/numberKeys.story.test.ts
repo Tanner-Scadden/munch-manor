@@ -3,26 +3,18 @@ import { Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
+import type { Model } from '#app/model.ts'
 import {
   SHOTGUN,
   holdingFirst,
   holdingSecond,
   pistolOnly,
-} from '../../../test/arsenals'
-import {
-  quietWave,
-  withArsenal,
-  withKnifeOut,
-} from '../../../test/model.fixture'
-import { checkModel, modelAfter, steps, tap } from '../../../test/testing'
-import {
-  STARTING_PISTOL,
-  freshGun,
-  inHandOf,
-} from '../../../world/gear/weapons'
-import { focusOf, modifyFocus } from '../../../world/party/party'
-import { Arsenal, Melee, Reload } from '../../../world/schema/worldSchema'
-import type { Model } from '../../model'
+} from '#test/arsenals.ts'
+import { quietWave, withArsenal, withKnifeOut } from '#test/model.fixture.ts'
+import { checkModel, modelAfter, steps, tap } from '#test/testing.ts'
+import { STARTING_PISTOL, freshGun, inHandOf } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { Arsenal, Melee, Reload } from '#world/schema/worldSchema.ts'
 
 const bothGuns = withArsenal(quietWave(3), holdingFirst(SHOTGUN))
 

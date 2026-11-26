@@ -1,12 +1,10 @@
 import { Array, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import type { DoorId, Vector } from '../../../app/model'
-import { DOOR_HALF_WIDTH_PX, TILE_SIZE } from '../../../shared/constants'
-import { CELLAR_SPOT, CLEARANCES, START_SPOT } from '../../../test/testing'
-import { moveCircle, resolveCircle } from '../../step/collision'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
-import { type Level, levelFor } from '../arena'
+import type { DoorId, Vector } from '#app/model.ts'
+import { DOOR_HALF_WIDTH_PX, TILE_SIZE } from '#shared/constants.ts'
+import { CELLAR_SPOT, CLEARANCES, START_SPOT } from '#test/testing.ts'
+import { type Level, levelFor } from '#world/level/arena.ts'
 import {
   type Clearance,
   UNREACHED_DISTANCE,
@@ -14,15 +12,17 @@ import {
   isFieldTile,
   playerDistancePx,
   steerToward,
-} from '../pathing'
-import { KITCHEN_TOP_ROW, MANOR_SPEC } from '../plan'
-import { type Tile, tileCenter } from '../tileGrid'
+} from '#world/level/pathing.ts'
+import { KITCHEN_TOP_ROW, MANOR_SPEC } from '#world/level/plan.ts'
+import { type Tile, tileCenter } from '#world/level/tileGrid.ts'
 import {
   doorSpawnPoint,
   isInsideRoomAt,
   isOpenBlock,
   isWalkableTile,
-} from '../tileQueries'
+} from '#world/level/tileQueries.ts'
+import { moveCircle, resolveCircle } from '#world/step/collision.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const KITCHEN_SPOT: Vector = { x: 100, y: -80 }
 const FRIDGE_SPOT: Vector = { x: 180, y: -104 }

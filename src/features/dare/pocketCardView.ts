@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   DARE_FOUND_SLOTS,
   DARE_ICONS,
@@ -13,21 +13,22 @@ import {
   SATCHEL_FRONT_HEIGHT,
   SATCHEL_SCALE,
   SATCHEL_WIDTH,
-} from '../../art/dareArt'
-import { type BakedText, bakeText, placeBaked } from '../../art/font'
-import { maybeRoomIcon } from '../../art/roomIcons'
-import { type Sprite, TOP_LEFT, group, spriteShapes } from '../../art/sprite'
-import { PocketCard } from '../../domain/clientSchema'
-import type * as Draw from '../../render/draw'
-import { placeSprite, rect } from '../../render/drawing'
-import { hudLayoutFor } from '../../render/hudLayout'
-import type { Screen } from '../../render/screen'
-import { dareCardOf } from '../../world/dare/dare'
-import type { DareKind } from '../../world/dare/dareSchema'
-import { DARE_LINES } from '../../world/names'
-import type { Vector } from '../../world/schema/worldSchema'
-import { clamp, easeOut, lerp } from '../../world/step/geometry'
-import { type DarePocket, pocketSlotSpotsOf } from './dareCard'
+} from '#art/dareArt.ts'
+import { type BakedText, bakeText, placeBaked } from '#art/font.ts'
+import { maybeRoomIcon } from '#art/roomIcons.ts'
+import { type Sprite, TOP_LEFT, group, spriteShapes } from '#art/sprite.ts'
+import { PocketCard } from '#domain/clientSchema.ts'
+import type * as Draw from '#render/draw.ts'
+import { placeSprite, rect } from '#render/drawing.ts'
+import { hudLayoutFor } from '#render/hudLayout.ts'
+import type { Screen } from '#render/screen.ts'
+import { dareCardOf } from '#world/dare/dare.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import { DARE_LINES } from '#world/names.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { clamp, easeOut, lerp } from '#world/step/geometry.ts'
+
+import { type DarePocket, pocketSlotSpotsOf } from './dareCard.ts'
 import {
   FIND_AT_MS,
   FOLD_MS,
@@ -38,7 +39,7 @@ import {
   outAtMs,
   promptAtMs,
   thingAtMs,
-} from './pocketCard'
+} from './pocketCard.ts'
 
 const CARD_HEIGHT = 80
 const CARD_MAX_WIDTH = 180

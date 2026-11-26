@@ -9,11 +9,12 @@ import {
   pipe,
 } from 'effect'
 
-import type { Vector } from '../world/schema/entitySchema'
-import { SCREEN_STEPS } from '../world/step/geometry'
-import type { PadDirection } from './gamepad'
-import { FOCUS_STEP_OFFSET } from './input'
-import type { PadClick, PadScope } from './inputSchema'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import { SCREEN_STEPS } from '#world/step/geometry.ts'
+
+import type { PadDirection } from './gamepad.ts'
+import { FOCUS_STEP_OFFSET } from './input.ts'
+import type { PadClick, PadScope } from './inputSchema.ts'
 
 export type Box = Readonly<{
   left: number

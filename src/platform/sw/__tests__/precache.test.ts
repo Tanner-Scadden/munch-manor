@@ -8,7 +8,7 @@ import {
   precacheDrift,
   precacheList,
   serviceWorkerSource,
-} from '../precache'
+} from '#platform/sw/precache.ts'
 
 const EMITTED = [
   'index.html',

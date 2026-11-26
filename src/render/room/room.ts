@@ -10,9 +10,11 @@ import {
   group,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import { gapBoxOf, isChandelierDown } from '../../world/dining/chandelier'
+} from '#art/sprite.ts'
+import { type Drawable, ON_FRONT_PX } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { gapBoxOf, isChandelierDown } from '#world/dining/chandelier.ts'
 import {
   type Exit,
   type Level,
@@ -20,7 +22,7 @@ import {
   levelFor,
   levelOf,
   maybeExit,
-} from '../../world/level/arena'
+} from '#world/level/arena.ts'
 import {
   CELLAR_ROOM_ID,
   DINING_ROOM_ID,
@@ -28,19 +30,18 @@ import {
   type LevelSpec,
   PARLOUR_ROOM_ID,
   SECRET_EXIT,
-} from '../../world/level/plan'
-import { PARLOUR_RUG } from '../../world/level/rugs'
+} from '#world/level/plan.ts'
+import { PARLOUR_RUG } from '#world/level/rugs.ts'
 import {
   type Box as ArenaBox,
   COVER_SYMBOLS,
   DOOR_SYMBOLS,
   tilesWithSymbol,
-} from '../../world/level/tileGrid'
-import { secretShelfOf } from '../../world/library/secretShelf'
-import type { ExitId } from '../../world/schema/entitySchema'
-import type { World } from '../../world/schema/world'
-import { type Drawable, ON_FRONT_PX } from '../depth'
-import type * as Draw from '../draw'
+} from '#world/level/tileGrid.ts'
+import { secretShelfOf } from '#world/library/secretShelf.ts'
+import type { ExitId } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/world.ts'
+
 import {
   CELLAR_BULB_SHAPES,
   cellarFloorShapes,
@@ -49,7 +50,7 @@ import {
   heartJarShapes,
   looseStoneShapes,
   oddBottleShapes,
-} from './cellarArt'
+} from './cellarArt.ts'
 import {
   CHANDELIER_SPRITES,
   type ChandelierState,
@@ -59,17 +60,17 @@ import {
   diningWallShapes,
   frontDoorShapes,
   umbrellaStandShapes,
-} from './diningArt'
+} from './diningArt.ts'
 import {
   type EscapeCoverKind,
   escapeCoverShapes,
   isEscapeCoverKind,
-} from './escapeCover'
+} from './escapeCover.ts'
 import {
   kitchenFloorShapes,
   kitchenWallShapes,
   openedExitShapes,
-} from './kitchenView'
+} from './kitchenView.ts'
 import {
   SHELF_SHAPES,
   ladderShapes,
@@ -77,8 +78,8 @@ import {
   libraryRugShapes,
   libraryWallDecorShapes,
   libraryWallShapes,
-} from './libraryArt'
-import { allCoverShapes } from './roomCover'
+} from './libraryArt.ts'
+import { allCoverShapes } from './roomCover.ts'
 import {
   type Floor,
   bloodTrail,
@@ -91,8 +92,8 @@ import {
   slotBoardShapes,
   stallBox,
   stallMatShapes,
-} from './roomFloor'
-import { type Box, FACE_TOP, boundingBox, boxOfKind } from './roomPalette'
+} from './roomFloor.ts'
+import { type Box, FACE_TOP, boundingBox, boxOfKind } from './roomPalette.ts'
 import {
   PARLOUR_WALL_DECOR,
   closedExitShapes,
@@ -100,8 +101,8 @@ import {
   doorwayShapes,
   wallShadowShapes,
   wallShapes,
-} from './roomWalls'
-import { roseWindowShapes } from './roseWindowArt'
+} from './roomWalls.ts'
+import { roseWindowShapes } from './roseWindowArt.ts'
 
 const PARLOUR_STAINS: ReadonlyArray<Draw.Shape> = bloodTrail([
   [214, 21, 2, 5],

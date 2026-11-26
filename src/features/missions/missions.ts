@@ -2,11 +2,11 @@ import { Array, Function, Option, Record } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { isBotCrew, isHumanCrew } from '../../domain/bots'
-import { isEndScreen, isGuided, isInRun, isOnHome } from '../../domain/run'
-import { playedDifficultyOf } from '../../platform/analyticsRun'
-import type { DayStamp } from '../../shared/dayStamp'
+import type { Model } from '#app/model.ts'
+import { isBotCrew, isHumanCrew } from '#domain/bots.ts'
+import { isEndScreen, isGuided, isInRun, isOnHome } from '#domain/run.ts'
+import { playedDifficultyOf } from '#platform/analyticsRun.ts'
+import type { DayStamp } from '#shared/dayStamp.ts'
 import {
   ALL_THREE_BONES,
   CHANDELIER_CRUSH_GOAL,
@@ -26,16 +26,17 @@ import {
   progressOf,
   rerollOn,
   stampDay,
-} from '../../shared/missionData'
-import { drawIndex, shuffle } from '../../shared/prng'
-import { makeValueHasher } from '../../shared/valueHash'
-import { dareItemsFoundOf } from '../../world/dare/dare'
-import { isCallingOwned } from '../../world/heroes/calling'
-import { levelOf } from '../../world/level/arena'
-import { CELLAR_ROOM_ID } from '../../world/level/plan'
-import { focusOf, leadSeatOf } from '../../world/party/party'
-import { CaseState, GameEvent, Phase } from '../../world/schema/worldSchema'
-import type { MissionGain, MissionRun } from './missionSchema'
+} from '#shared/missionData.ts'
+import { drawIndex, shuffle } from '#shared/prng.ts'
+import { makeValueHasher } from '#shared/valueHash.ts'
+import { dareItemsFoundOf } from '#world/dare/dare.ts'
+import { isCallingOwned } from '#world/heroes/calling.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { CELLAR_ROOM_ID } from '#world/level/plan.ts'
+import { focusOf, leadSeatOf } from '#world/party/party.ts'
+import { CaseState, GameEvent, Phase } from '#world/schema/worldSchema.ts'
+
+import type { MissionGain, MissionRun } from './missionSchema.ts'
 
 const { hashValue } = makeValueHasher({ cached: false })
 

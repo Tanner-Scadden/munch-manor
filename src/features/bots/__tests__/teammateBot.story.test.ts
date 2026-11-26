@@ -3,11 +3,13 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Model, Phase, RunMode } from '../../../app/model'
-import { crewBotSlots } from '../../../domain/bots'
-import { isLeftFromRoom } from '../../../domain/onlineRun'
-import { cameraFocus } from '../../../render/camera'
-import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
+import { type Model, Phase, RunMode } from '#app/model.ts'
+import { crewBotSlots } from '#domain/bots.ts'
+import { isLeftFromRoom } from '#domain/onlineRun.ts'
+import { botInputs } from '#features/bots/teammateBot.ts'
+import { coopNameShapes } from '#features/onlineRun/coopMarksView.ts'
+import { cameraFocus } from '#render/camera.ts'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '#shared/constants.ts'
 import {
   crewInWave,
   kitchenBreak,
@@ -17,7 +19,7 @@ import {
   withPickups,
   withSeatLife,
   withZombies,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -28,16 +30,15 @@ import {
   storyOf,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { DareThingState } from '../../../world/dare/dareSchema'
-import { backDoorStandOf } from '../../../world/kitchen/backDoor'
-import { levelOf, openExitIn } from '../../../world/level/arena'
-import { KITCHEN_EXIT } from '../../../world/level/exits'
-import { maybePlayerAt, playersOf } from '../../../world/party/party'
-import { Life } from '../../../world/schema/worldSchema'
-import { coopNameShapes } from '../../onlineRun/coopMarksView'
-import { botInputs } from '../teammateBot'
-import { BOT, BREAK } from './bots.fixture'
+} from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { backDoorStandOf } from '#world/kitchen/backDoor.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { maybePlayerAt, playersOf } from '#world/party/party.ts'
+import { Life } from '#world/schema/worldSchema.ts'
+
+import { BOT, BREAK } from './bots.fixture.ts'
 
 const TICK_MS = FIXED_STEP_MS
 

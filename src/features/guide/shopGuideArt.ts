@@ -8,10 +8,11 @@ import {
   TRAP_ART,
   artOf,
   gunArt,
-} from '../../art/shopArt'
-import type { HouseSpot, ShopGuideSection } from '../../shared/nameKeys'
-import type { FridgePrize } from '../../world/schema/worldSchema'
-import { GuideArt } from './shopGuide'
+} from '#art/shopArt.ts'
+import type { HouseSpot, ShopGuideSection } from '#shared/nameKeys.ts'
+import type { FridgePrize } from '#world/schema/worldSchema.ts'
+
+import { GuideArt } from './shopGuide.ts'
 
 const INK = '#140c10'
 

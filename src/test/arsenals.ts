@@ -9,13 +9,13 @@ import {
   magazineOf,
   mapGuns,
   maybeCarried,
-} from '../world/gear/weapons'
+} from '#world/gear/weapons.ts'
 import {
   Arsenal,
   type CarriedGun,
   type Player,
   type WeaponKind,
-} from '../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export const pistolOnly = (pistol: CarriedGun = STARTING_PISTOL): Arsenal =>
   Arsenal.OneGun({ first: pistol })

@@ -2,26 +2,26 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { KitchenCall, Tour } from '../../domain/clientSchema'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { isKitchenOpen } from '../../world/kitchen/kitchen'
-import { levelOf } from '../../world/level/arena'
+import type { Model } from '#app/model.ts'
+import { KitchenCall, Tour } from '#domain/clientSchema.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { isKitchenOpen } from '#world/kitchen/kitchen.ts'
+import { levelOf } from '#world/level/arena.ts'
 import {
   KITCHEN_EXIT,
   exitBoxOf,
   isExitOfferOpenFor,
-} from '../../world/level/exits'
-import { focusOf } from '../../world/party/party'
+} from '#world/level/exits.ts'
+import { focusOf } from '#world/party/party.ts'
 import {
   Boss,
   GameEvent,
   Phase,
   type Vector,
   roundWaveOf,
-} from '../../world/schema/worldSchema'
-import { distanceBetween } from '../../world/step/geometry'
-import { isRoundActive } from '../../world/waves/waves'
+} from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
 
 export const CALL_MS = 6000
 

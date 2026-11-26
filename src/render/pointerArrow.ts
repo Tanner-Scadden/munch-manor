@@ -1,16 +1,17 @@
 import { Array, Option, String } from 'effect'
 
-import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '../art/sprite'
-import type { Vector } from '../world/schema/entitySchema'
+import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '#art/sprite.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
 import {
   SCREEN_STEPS,
   type ScreenDirection,
   clamp,
-} from '../world/step/geometry'
-import { type Camera, worldToView } from './camera'
-import type * as Draw from './draw'
-import { type ClearWindow, clearWindowOf } from './hudLayout'
-import type { Screen } from './screen'
+} from '#world/step/geometry.ts'
+
+import { type Camera, worldToView } from './camera.ts'
+import type * as Draw from './draw.ts'
+import { type ClearWindow, clearWindowOf } from './hudLayout.ts'
+import type { Screen } from './screen.ts'
 
 type Pointing = ScreenDirection
 

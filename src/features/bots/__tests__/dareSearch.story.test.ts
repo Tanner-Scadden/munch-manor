@@ -3,8 +3,10 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Model, Phase } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { type Model, Phase } from '#app/model.ts'
+import { HuntStep, huntPlan } from '#features/bots/dareSearch.ts'
+import { botInputs } from '#features/bots/teammateBot.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   crewInWave,
@@ -15,28 +17,23 @@ import {
   withDareThings,
   withKeys,
   withZombies,
-} from '../../../test/model.fixture'
-import { checkModel, storyOf, ticks, zombieOf } from '../../../test/testing'
-import { DareThingState } from '../../../world/dare/dareSchema'
-import { heldKeys } from '../../../world/keys/keys'
-import { maybeStash, pantrySpotOf } from '../../../world/kitchen/pantry'
-import {
-  levelOf,
-  openExitIn,
-  startingLevelFor,
-} from '../../../world/level/arena'
-import { KITCHEN_EXIT, exitPriceFor } from '../../../world/level/exits'
+} from '#test/model.fixture.ts'
+import { checkModel, storyOf, ticks, zombieOf } from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { heldKeys } from '#world/keys/keys.ts'
+import { maybeStash, pantrySpotOf } from '#world/kitchen/pantry.ts'
+import { levelOf, openExitIn, startingLevelFor } from '#world/level/arena.ts'
+import { KITCHEN_EXIT, exitPriceFor } from '#world/level/exits.ts'
 import {
   CELLAR_ROOM_ID,
   DEFAULT_ARRANGEMENT,
   DINING_ROOM_ID,
   LIBRARY_ROOM_ID,
-} from '../../../world/level/plan'
-import { maybePlayerAt } from '../../../world/party/party'
-import { Pantry, type SlotRoomId } from '../../../world/schema/worldSchema'
-import { HuntStep, huntPlan } from '../dareSearch'
-import { botInputs } from '../teammateBot'
-import { BOT, BREAK } from './bots.fixture'
+} from '#world/level/plan.ts'
+import { maybePlayerAt } from '#world/party/party.ts'
+import { Pantry, type SlotRoomId } from '#world/schema/worldSchema.ts'
+
+import { BOT, BREAK } from './bots.fixture.ts'
 
 const QUIET_WAVE = Phase.Wave({
   wave: 3,

@@ -3,7 +3,7 @@ import { Array, Effect, Option, Result } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Boss,
   type BossAttack,
@@ -12,12 +12,12 @@ import {
   Glob,
   type Model,
   type Zombie,
-} from '../../../app/model'
+} from '#app/model.ts'
 import {
   PLAYER_KNOCKBACK_SPEED,
   PLAYER_MAX_HP,
   ZOMBIE_ALIVE_MAX,
-} from '../../../shared/constants'
+} from '#shared/constants.ts'
 import {
   FRAME_MS,
   bulletInto,
@@ -28,13 +28,14 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { focusOf, modifyFocus } from '../../party/party'
-import { DIFFICULTIES } from '../../run/difficulty'
-import { FINAL_WAVE } from '../../waves/wavePlans'
-import { maybeBossBar } from '../boss'
-import { BOSS_RULES } from '../bossRules'
-import { ZOMBIE_KINDS, scaledHp } from '../zombies'
+} from '#test/testing.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { maybeBossBar } from '#world/zombies/boss.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
+import { ZOMBIE_KINDS, scaledHp } from '#world/zombies/zombies.ts'
+
 import {
   BOSS_HP,
   BOSS_ID,
@@ -50,7 +51,7 @@ import {
   inWave,
   spawnAt,
   sturdy,
-} from './boss.fixture'
+} from './boss.fixture.ts'
 
 const bossIn = (current: Model): Zombie =>
   Option.getOrThrow(

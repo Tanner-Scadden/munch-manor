@@ -1,14 +1,15 @@
 import { Array, Function, Option, Record, Result, String, pipe } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
+import { TILE_SIZE } from '#shared/constants.ts'
 import type {
   Arrangement,
   DoorId,
   ExitId,
   LevelState,
   Vector,
-} from '../schema/entitySchema'
-import { addVectors, scaleVector } from '../step/geometry'
+} from '#world/schema/entitySchema.ts'
+import { addVectors, scaleVector } from '#world/step/geometry.ts'
+
 import {
   DEFAULT_ARRANGEMENT,
   type ExitOpener,
@@ -19,7 +20,7 @@ import {
   middleOf,
   specOfState,
   widthOf,
-} from './plan'
+} from './plan.ts'
 import {
   type Box,
   COVER_SYMBOLS,
@@ -38,7 +39,7 @@ import {
   tileCenter,
   tileIndex,
   tilesWithSymbol,
-} from './tileGrid'
+} from './tileGrid.ts'
 
 const boundingBox = (tiles: ReadonlyArray<Tile>): Box =>
   Array.reduce(

@@ -1,13 +1,14 @@
 import { Array, Function, Option, Result } from 'effect'
 
-import { type Palette, bakeShapes } from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
-import { CHANDELIER_SYMBOL } from '../../world/level/plan'
-import { DINING_RUGS } from '../../world/level/rugs'
-import { symbolAt } from '../../world/level/tileGrid'
-import type * as Draw from '../draw'
-import { pixelArt, rect } from '../drawing'
+import { type Palette, bakeShapes } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { pixelArt, rect } from '#render/drawing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
+import { CHANDELIER_SYMBOL } from '#world/level/plan.ts'
+import { DINING_RUGS } from '#world/level/rugs.ts'
+import { symbolAt } from '#world/level/tileGrid.ts'
+
 import {
   BONE_COLOR,
   type Box,
@@ -26,8 +27,8 @@ import {
   ZOMBIE_SKIN_COLOR,
   pick,
   roll,
-} from './roomPalette'
-import { type Span, spansWithin } from './roomWalls'
+} from './roomPalette.ts'
+import { type Span, spansWithin } from './roomWalls.ts'
 
 const PARQUET_COLOR = '#4a3426'
 const PARQUET_SHADES: Array.NonEmptyReadonlyArray<string> = [

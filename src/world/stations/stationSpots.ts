@@ -1,8 +1,8 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { countWork } from '../../shared/workCount'
-import { type Level, maybeExit } from '../level/arena'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { countWork } from '#shared/workCount.ts'
+import { type Level, maybeExit } from '#world/level/arena.ts'
 import {
   CELLAR_ROOM_ID,
   DINING_ROOM_ID,
@@ -14,10 +14,10 @@ import {
   SECRET_EXIT,
   type SpotTile,
   roomSpotsOf,
-} from '../level/plan'
-import { type Box, boxCenter, tileBox } from '../level/tileGrid'
-import { secretShelfOf } from '../library/secretShelf'
-import { StationId } from '../schema/worldSchema'
+} from '#world/level/plan.ts'
+import { type Box, boxCenter, tileBox } from '#world/level/tileGrid.ts'
+import { secretShelfOf } from '#world/library/secretShelf.ts'
+import { StationId } from '#world/schema/worldSchema.ts'
 
 type MarkedSpot = Readonly<{
   room: string

@@ -1,24 +1,25 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
-import { bakeShapes, deepSprite, group, placeAt } from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
-import { SECRET_EXIT } from '../../world/level/plan'
-import { COVER_SYMBOLS, type CoverKind } from '../../world/level/tileGrid'
-import { secretShelfOf } from '../../world/library/secretShelf'
-import type { Player, Zombie } from '../../world/schema/entitySchema'
-import type { Drawable } from '../depth'
-import type * as Draw from '../draw'
-import { playerFootY } from '../playerView'
-import { zombieFootY } from '../zombieGroundView'
-import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from './escapeCover'
+import { bakeShapes, deepSprite, group, placeAt } from '#art/sprite.ts'
+import type { Drawable } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import { playerFootY } from '#render/playerView.ts'
+import { zombieFootY } from '#render/zombieGroundView.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
+import { SECRET_EXIT } from '#world/level/plan.ts'
+import { COVER_SYMBOLS, type CoverKind } from '#world/level/tileGrid.ts'
+import { secretShelfOf } from '#world/library/secretShelf.ts'
+import type { Player, Zombie } from '#world/schema/entitySchema.ts'
+
+import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from './escapeCover.ts'
 import {
   SHELF_CASE_HEIGHT,
   SHELF_CASE_LENGTH,
   SWUNG_SHELF_FOOT_PX,
   SWUNG_SHELF_SPRITES,
-} from './libraryArt'
-import { COVER_DRAWINGS, coverBlocks } from './roomCover'
+} from './libraryArt.ts'
+import { COVER_DRAWINGS, coverBlocks } from './roomCover.ts'
 
 const TALL_KINDS: ReadonlySet<CoverKind> = new Set<CoverKind>([
   'Piano',

@@ -1,9 +1,9 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import { TILE_SIZE } from '../shared/constants'
-import { type Level, TILE_DOOR, hasTileFlag } from '../world/level/arena'
-import { type Tile, tileIndex } from '../world/level/tileGrid'
-import { isWalkableTile } from '../world/level/tileQueries'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, TILE_DOOR, hasTileFlag } from '#world/level/arena.ts'
+import { type Tile, tileIndex } from '#world/level/tileGrid.ts'
+import { isWalkableTile } from '#world/level/tileQueries.ts'
 
 export type Opening = Readonly<{ row: number; first: number; last: number }>
 

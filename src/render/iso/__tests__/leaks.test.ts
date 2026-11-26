@@ -3,20 +3,20 @@ import { expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { atClock, quietWave } from '../../../test/model.fixture'
-import { rectsOf } from '../../../test/viewReading'
-import { levelOf, openExitIn } from '../../../world/level/arena'
-import { leaksOf } from '../../../world/level/leaks'
-import { EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
-import type * as Draw from '../../draw'
+import type * as Draw from '#render/draw.ts'
 import {
   dripsOf,
   maybeDripHeard,
   puddleGlintsOf,
   puddleKeyOf,
   puddlesOf,
-} from '../leaks'
-import { strikeOf } from '../mood'
+} from '#render/iso/leaks.ts'
+import { strikeOf } from '#render/iso/mood.ts'
+import { atClock, quietWave } from '#test/model.fixture.ts'
+import { rectsOf } from '#test/viewReading.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { leaksOf } from '#world/level/leaks.ts'
+import { EAST_EXIT, FAR_EXIT } from '#world/level/plan.ts'
 
 const wave = atClock(quietWave(5), 0)
 const manor = levelOf(wave)

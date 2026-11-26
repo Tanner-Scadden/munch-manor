@@ -2,10 +2,11 @@ import { Array } from 'effect'
 
 import { FlatMaterial, Geometry3D, Mesh3D, srgbToLinear } from '@pixi/3d'
 
-import type * as Draw from '../draw'
-import { type Leaf, isSameLeaves } from './flatten'
-import { UNIT, zOf } from './space'
-import { colorOf } from './textures'
+import type * as Draw from '#render/draw.ts'
+
+import { type Leaf, isSameLeaves } from './flatten.ts'
+import { UNIT, zOf } from './space.ts'
+import { colorOf } from './textures.ts'
 
 type RectLeaf = Leaf & Readonly<{ shape: Draw.Rect }>
 

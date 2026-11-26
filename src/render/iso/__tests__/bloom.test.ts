@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { bloomSharesOf } from '../bloom'
+import { bloomSharesOf } from '#render/iso/bloom.ts'
 
 const sharesOf = (radius: number) => {
   const { fine, coarse } = bloomSharesOf(radius)

@@ -2,8 +2,8 @@ import { Array, Function, Option, Record, String, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { isOwned } from '../domain/closet'
-import { isObjectFirst } from '../shared/dualArgs'
+import { isOwned } from '#domain/closet.ts'
+import { isObjectFirst } from '#shared/dualArgs.ts'
 import {
   type Appearance,
   Body,
@@ -17,8 +17,9 @@ import {
   type SavedBoughtCosmetics,
   ShirtColor,
   SkinTone,
-} from '../shared/playerData'
-import { type Seeded, nextRandom } from '../shared/prng'
+} from '#shared/playerData.ts'
+import { type Seeded, nextRandom } from '#shared/prng.ts'
+
 import {
   type Palette,
   type SpriteFrames,
@@ -28,14 +29,14 @@ import {
   recordedSpriteSources,
   spriteFrames,
   spriteSet,
-} from './sprite'
-import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './sprites/hatArt'
+} from './sprite.ts'
+import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './sprites/hatArt.ts'
 import {
   YOU_MEDAL,
   channelOf,
   propStylePalette,
   styledProp,
-} from './sprites/propStyles'
+} from './sprites/propStyles.ts'
 
 export const BODIES: Array.NonEmptyReadonlyArray<Body> = Body.literals
 

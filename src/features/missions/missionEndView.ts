@@ -1,20 +1,21 @@
 import { Array, Function, Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { GLYPH_HEIGHT, textShapes, textWidth } from '../../art/font'
+import type { Model } from '#app/model.ts'
+import { GLYPH_HEIGHT, textShapes, textWidth } from '#art/font.ts'
 import {
   ALL_THREE_SPRITE,
   MISSION_DONE_SPRITE,
   MISSION_SPRITES,
-} from '../../art/missionIcons'
-import { BONE, BONE_SIZE } from '../../art/rankArt'
-import { group, placeAt } from '../../art/sprite'
-import type * as Draw from '../../render/draw'
-import { rect } from '../../render/drawing'
-import { ALL_THREE_BONES, bonesOfMission } from '../../shared/missionData'
-import { ALL_THREE_TAG } from '../../world/names'
-import { clamp, easeOut } from '../../world/step/geometry'
-import type { MissionGain, MovedMission } from './missionSchema'
+} from '#art/missionIcons.ts'
+import { BONE, BONE_SIZE } from '#art/rankArt.ts'
+import { group, placeAt } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { ALL_THREE_BONES, bonesOfMission } from '#shared/missionData.ts'
+import { ALL_THREE_TAG } from '#world/names.ts'
+import { clamp, easeOut } from '#world/step/geometry.ts'
+
+import type { MissionGain, MovedMission } from './missionSchema.ts'
 
 const ROW_PX = 12
 const PAD_PX = 3

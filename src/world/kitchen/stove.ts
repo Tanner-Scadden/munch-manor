@@ -2,22 +2,22 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Calling } from '../../shared/playerData'
-import { nextRandom } from '../../shared/prng'
-import { type FeatLock, hasDone } from '../feats/feats'
+import type { Calling } from '#shared/playerData.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { type FeatLock, hasDone } from '#world/feats/feats.ts'
 import {
   carriedMagazine,
   heldGun,
   isCookable,
   isWieldingMelee,
   mapHeld,
-} from '../gear/weapons'
-import { stoveKillsFor } from '../heroes/calling'
-import { heldKeys, spendKeys } from '../keys/keys'
-import { levelOf } from '../level/arena'
-import type { Box } from '../level/tileGrid'
-import { atSeat, seatStateAt } from '../party/party'
-import { type World, modifyWorldFields } from '../schema/world'
+} from '#world/gear/weapons.ts'
+import { stoveKillsFor } from '#world/heroes/calling.ts'
+import { heldKeys, spendKeys } from '#world/keys/keys.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import { atSeat, seatStateAt } from '#world/party/party.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   type CarriedGun,
   Feat,
@@ -27,9 +27,10 @@ import {
   type PlayerSlot,
   Purchasable,
   type Vector,
-} from '../schema/worldSchema'
-import type { Offer } from '../shop/purchase'
-import { isKitchenOpen, ovenBoxesOf } from './kitchen'
+} from '#world/schema/worldSchema.ts'
+import type { Offer } from '#world/shop/purchase.ts'
+
+import { isKitchenOpen, ovenBoxesOf } from './kitchen.ts'
 
 type StoveRules = Readonly<{
   kitchenKills: number

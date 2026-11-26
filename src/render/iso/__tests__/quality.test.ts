@@ -9,7 +9,7 @@ import {
   TIER_SPECS,
   qualityPinOf,
   shadowQualityOf,
-} from '../quality'
+} from '#render/iso/quality.ts'
 
 const FRAME_MS = 1000 / 60
 

@@ -1,7 +1,7 @@
 import { Array } from 'effect'
 
-import { QUIRK_ICONS } from '../art/callingArt'
-import type { Calling } from '../shared/playerData'
+import { QUIRK_ICONS } from '#art/callingArt.ts'
+import type { Calling } from '#shared/playerData.ts'
 import {
   isPistolBarred,
   keyScaleOf,
@@ -13,8 +13,8 @@ import {
   stoveKillsFor,
   trapHealthScaleOf,
   woundGraceScaleOf,
-} from '../world/heroes/calling'
-import { SPECIAL_LINES } from '../world/names'
+} from '#world/heroes/calling.ts'
+import { SPECIAL_LINES } from '#world/names.ts'
 
 export type Special = Readonly<{
   isPerk: boolean

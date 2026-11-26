@@ -2,15 +2,15 @@ import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { DayStamp } from '../shared/dayStamp'
-import { SavedJournal, journalAdded } from '../shared/journalData'
-import { SavedMastery, masteryAdded } from '../shared/masteryData'
+import { DayStamp } from '#shared/dayStamp.ts'
+import { SavedJournal, journalAdded } from '#shared/journalData.ts'
+import { SavedMastery, masteryAdded } from '#shared/masteryData.ts'
 import {
   ALL_THREE_BONES,
   MissionReroll,
   type SavedMissions,
   bonesOfMission,
-} from '../shared/missionData'
+} from '#shared/missionData.ts'
 import {
   Appearance,
   Calling,
@@ -31,9 +31,9 @@ import {
   SavedRunRecords,
   SavedSeenUnlocks,
   SavedSettings,
-} from '../shared/playerData'
-import { ProofEntry, shelvedSince } from '../shared/proofData'
-import { purseBonesAt } from '../shared/rankCurve'
+} from '#shared/playerData.ts'
+import { ProofEntry, shelvedSince } from '#shared/proofData.ts'
+import { purseBonesAt } from '#shared/rankCurve.ts'
 
 export const PlayerChange = UiSchema.TaggedEnum({
   ChangedSettings: { settings: SavedSettings },

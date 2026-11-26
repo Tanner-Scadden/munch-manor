@@ -2,12 +2,12 @@ import { Duration, Effect, Schema } from 'effect'
 
 import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
 
-import { describeError } from '../../../shared/describeError'
 import {
   LINK_CODE_DATA,
   listenForCopyClicks,
   listenForPasteTaps,
-} from '../linkClipboard'
+} from '#features/profile/linkClipboard.ts'
+import { describeError } from '#shared/describeError.ts'
 
 type Call = Readonly<{ name: string; data: unknown; isInClick: boolean }>
 

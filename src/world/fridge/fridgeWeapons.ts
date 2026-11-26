@@ -2,9 +2,9 @@ import { Array, Function, Option, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS, ZOMBIE_HIT_PULSE_MS } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
+import { PLAYER_RADIUS, ZOMBIE_HIT_PULSE_MS } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { creditGunKills, killerSlotOf } from '#world/gear/gunLevels.ts'
 import {
   type Blow,
   type Struck,
@@ -15,8 +15,8 @@ import {
   isSmallKind,
   strikeInMelee,
   swingAt,
-} from '../gear/melee'
-import { isAmmoFree } from '../gear/powerups'
+} from '#world/gear/melee.ts'
+import { isAmmoFree } from '#world/gear/powerups.ts'
 import {
   beginReload,
   heldGun,
@@ -26,9 +26,9 @@ import {
   mapPan,
   maybePanOf,
   spendRound,
-} from '../gear/weapons'
-import { levelOf } from '../level/arena'
-import { findStrike } from '../level/tileQueries'
+} from '#world/gear/weapons.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { findStrike } from '#world/level/tileQueries.ts'
 import {
   COOP_RULES,
   atSeat,
@@ -37,8 +37,8 @@ import {
   modifySeat,
   seatStateAt,
   shooterOf,
-} from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Boosts,
   type CarriedGun,
@@ -52,7 +52,7 @@ import {
   type Zombie,
   ZombieAction,
   type ZombieKind,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 import {
   type BlastSpec,
   ZOMBIE_BLAST_TARGET,
@@ -63,7 +63,7 @@ import {
   isIcedSolid,
   killEvent,
   strikeZombie,
-} from '../step/combat'
+} from '#world/step/combat.ts'
 import {
   OUTWARD,
   ZERO_VECTOR,
@@ -71,8 +71,8 @@ import {
   circlesOverlap,
   directionBetween,
   scaleVector,
-} from '../step/geometry'
-import { bodyRadiusOf, deathState, isGrounded } from '../zombies/zombies'
+} from '#world/step/geometry.ts'
+import { bodyRadiusOf, deathState, isGrounded } from '#world/zombies/zombies.ts'
 
 const FRIDGE_WEAPONS: ReadonlyArray<WeaponKind> = ['Cooker', 'Pan', 'Freeze']
 

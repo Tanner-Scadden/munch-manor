@@ -3,19 +3,19 @@ import { Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { DebutCard, type Model, Phase, Reload, RunMode } from '../../app/model'
-import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
-import { screenToFloorDirection } from '../../render/lens'
-import { RESTART_GRACE_MS } from '../../shared/constants'
-import { SHOTGUN } from '../../test/arsenals'
+import { Message } from '#app/message.ts'
+import { DebutCard, type Model, Phase, Reload, RunMode } from '#app/model.ts'
+import { DEBUT_CARD_MIN_MS } from '#features/onboarding/onboarding.ts'
+import { screenToFloorDirection } from '#render/lens.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { SHOTGUN } from '#test/arsenals.ts'
 import {
   WAVE_2_BREAK,
   WAVE_2_FIGHT,
   armedBreak,
   armedFight,
   readyModel,
-} from '../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   isPausedPhase,
@@ -27,10 +27,10 @@ import {
   tap,
   throughIntro,
   tick,
-} from '../../test/testing'
-import { STARTING_PISTOL } from '../../world/gear/weapons'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { Arsenal } from '../../world/schema/worldSchema'
+} from '#test/testing.ts'
+import { STARTING_PISTOL } from '#world/gear/weapons.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
 
 const FRAME_MS = 50
 

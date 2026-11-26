@@ -1,7 +1,8 @@
 import { Function } from 'effect'
 
-import { evolveFor } from '../../shared/evolve'
-import { World } from './worldSchema'
+import { evolveFor } from '#shared/evolve.ts'
+
+import { World } from './worldSchema.ts'
 
 export { World }
 

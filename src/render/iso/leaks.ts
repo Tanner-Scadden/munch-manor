@@ -1,31 +1,32 @@
 import { Array, Option, Order, pipe } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { isCellarLit } from '../../world/cellar/bulb'
-import type { Level } from '../../world/level/arena'
+import { beamReach } from '#render/cellarDark.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { isCellarLit } from '#world/cellar/bulb.ts'
+import type { Level } from '#world/level/arena.ts'
 import {
   type Leak,
   type PuddleRow,
   leakRoll,
   leaksOf,
-} from '../../world/level/leaks'
-import { CELLAR_ROOM_ID } from '../../world/level/plan'
-import type { Vector } from '../../world/schema/entitySchema'
-import type { World } from '../../world/schema/worldSchema'
-import { clamp, distanceBetween, hundredths } from '../../world/step/geometry'
-import { beamReach } from '../cellarDark'
-import type * as Draw from '../draw'
-import { rect } from '../drawing'
-import type { Mote } from './air'
-import type { TileQuad } from './house'
+} from '#world/level/leaks.ts'
+import { CELLAR_ROOM_ID } from '#world/level/plan.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+import { clamp, distanceBetween, hundredths } from '#world/step/geometry.ts'
+
+import type { Mote } from './air.ts'
+import type { TileQuad } from './house.ts'
 import {
   FLAME_TUNING,
   type FlameKind,
   type FlameSpec,
   flameSpecsOf,
   isFlameLit,
-} from './lightSpecs'
-import { mixColor, strikeOf } from './mood'
+} from './lightSpecs.ts'
+import { mixColor, strikeOf } from './mood.ts'
 
 export const leakTilesOf = ({
   level,

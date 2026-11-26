@@ -2,30 +2,35 @@ import { Array, Function, Option, Record, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { nextRandom } from '../../shared/prng'
+import { nextRandom } from '#shared/prng.ts'
 import {
   freshGun,
   isCarrying,
   putGunInHand,
   takeGun,
   takePan,
-} from '../gear/weapons'
-import { maxHpOf } from '../heroes/calling'
-import { grantKeys, heldKeys, spendKeys } from '../keys/keys'
-import { isKitchenOpen } from '../kitchen/kitchen'
-import { type Level, levelOf } from '../level/arena'
-import { boxAround } from '../level/exits'
+} from '#world/gear/weapons.ts'
+import { maxHpOf } from '#world/heroes/calling.ts'
+import { grantKeys, heldKeys, spendKeys } from '#world/keys/keys.ts'
+import { isKitchenOpen } from '#world/kitchen/kitchen.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { boxAround } from '#world/level/exits.ts'
 import {
   type Box,
   COVER_SYMBOLS,
   distanceToBox,
   tileBox,
   tilesWithSymbol,
-} from '../level/tileGrid'
-import { atSeat, focusOf, maybePlayerAt, seatStateAt } from '../party/party'
-import { activeModifiersOf } from '../run/dareLadder'
-import { isKitchenTourOn } from '../run/tutorialRules'
-import type { World } from '../schema/world'
+} from '#world/level/tileGrid.ts'
+import {
+  atSeat,
+  focusOf,
+  maybePlayerAt,
+  seatStateAt,
+} from '#world/party/party.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
+import { isKitchenTourOn } from '#world/run/tutorialRules.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Fridge,
   FridgeDoor,
@@ -36,9 +41,10 @@ import {
   type PlayerSlot,
   Purchasable,
   type WeaponKind,
-} from '../schema/worldSchema'
-import type { Offer } from '../shop/purchase'
-import { dropCharge, isFridgeWeapon } from './fridgeWeapons'
+} from '#world/schema/worldSchema.ts'
+import type { Offer } from '#world/shop/purchase.ts'
+
+import { dropCharge, isFridgeWeapon } from './fridgeWeapons.ts'
 
 type FridgeRules = Readonly<{
   keys: number

@@ -4,9 +4,9 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { defaultAppearance } from '../../../domain/clientSchema'
-import { HeroPicker, type HeroPickerProps } from '../block'
-import { Events, Message } from '../message'
+import { defaultAppearance } from '#domain/clientSchema.ts'
+import { HeroPicker, type HeroPickerProps } from '#features/heroes/block.ts'
+import { Events, Message } from '#features/heroes/message.ts'
 
 const PROPS: HeroPickerProps = {
   look: defaultAppearance,

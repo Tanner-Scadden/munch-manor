@@ -1,8 +1,8 @@
 import { Array } from 'effect'
 import { Event, Machine } from 'effect-machine'
 
-import { LoadStep, Loading } from './clientSchema'
-import { machineStepOf } from './machineStep'
+import { LoadStep, Loading } from './clientSchema.ts'
+import { machineStepOf } from './machineStep.ts'
 
 export const LoadEvent = Event({
   Finished: { step: LoadStep },

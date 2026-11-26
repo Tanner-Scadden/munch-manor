@@ -6,7 +6,7 @@ import {
   flashPalette,
   isFlashShape,
   spriteShapes,
-} from '../sprite'
+} from '#art/sprite.ts'
 
 const PALETTE: Palette = { R: '#e8333a', K: '#2a1418' }
 

@@ -1,7 +1,8 @@
 import { Array, Function, Option } from 'effect'
 
-import { type Sprite, bakeShapes } from '../art/sprite'
-import { type RingPixel, rect, ringPixels } from './drawing'
+import { type Sprite, bakeShapes } from '#art/sprite.ts'
+
+import { type RingPixel, rect, ringPixels } from './drawing.ts'
 
 export const WORK_RING_RADIUS = 9
 const RING_STEPS = 12

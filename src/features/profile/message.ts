@@ -2,11 +2,12 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { LookPart } from '../../domain/looks'
-import { LinkProblem } from '../../platform/playerSync'
-import { PropStyle } from '../../shared/playerData'
-import { LookToggle } from './blocks/look/lookSchema'
-import { ProfileTab } from './model'
+import { LookPart } from '#domain/looks.ts'
+import { LinkProblem } from '#platform/playerSync.ts'
+import { PropStyle } from '#shared/playerData.ts'
+
+import { LookToggle } from './blocks/look/lookSchema.ts'
+import { ProfileTab } from './model.ts'
 
 export const SettingTile = Schema.Literals([
   'Sound',

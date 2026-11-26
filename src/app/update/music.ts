@@ -2,15 +2,16 @@ import { Effect } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { AudioEngine, playMusic } from '../../audio/audio'
-import { MusicLevel, MusicMood, MusicStinger } from '../../audio/music'
-import { isHouseHungry } from '../../world/dare/finale'
-import { Phase, Round } from '../../world/schema/worldSchema'
-import { FINAL_WAVE } from '../../world/waves/wavePlans'
-import { isEndless } from '../../world/waves/waves'
-import type { Model } from '../model'
-import { isSoundAudible } from './sound'
-import type { UpdateStep } from './step'
+import type { Model } from '#app/model.ts'
+import { AudioEngine, playMusic } from '#audio/audio.ts'
+import { MusicLevel, MusicMood, MusicStinger } from '#audio/music.ts'
+import { isHouseHungry } from '#world/dare/finale.ts'
+import { Phase, Round } from '#world/schema/worldSchema.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { isEndless } from '#world/waves/waves.ts'
+
+import { isSoundAudible } from './sound.ts'
+import type { UpdateStep } from './step.ts'
 
 export class CueMusic extends Command.Service<CueMusic>()('app/CueMusic', {
   args: { mood: MusicMood, level: MusicLevel, stinger: MusicStinger },

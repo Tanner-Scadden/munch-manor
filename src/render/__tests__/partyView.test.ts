@@ -2,15 +2,15 @@ import { Array } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { crewInWave, withSeatLife } from '../../test/model.fixture'
-import { Life } from '../../world/schema/worldSchema'
-import * as Draw from '../draw'
+import * as Draw from '#render/draw.ts'
 import {
   isLeadArmed,
   isLeadInHouse,
   leadBodyShapes,
   mateModelsOf,
-} from '../partyView'
+} from '#render/partyView.ts'
+import { crewInWave, withSeatLife } from '#test/model.fixture.ts'
+import { Life } from '#world/schema/worldSchema.ts'
 
 describe('a player who stepped out', () => {
   it('is not drawn as a teammate', () => {

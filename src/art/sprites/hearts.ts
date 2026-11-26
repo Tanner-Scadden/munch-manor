@@ -1,4 +1,4 @@
-import { type Palette, flashPalette, spriteShapes } from '../sprite'
+import { type Palette, flashPalette, spriteShapes } from '#art/sprite.ts'
 
 export const HEART_PALETTE: Palette = { R: '#e8333a', W: '#ff8a8f' }
 const EMPTY_HEART_PALETTE: Palette = { R: '#3a2328', W: '#3a2328' }

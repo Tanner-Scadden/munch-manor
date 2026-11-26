@@ -2,16 +2,16 @@ import { Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { callingUnlockId, withoutFresh } from '../../domain/unlocks'
-import { type Calling, heroIdOf } from '../../shared/playerData'
+import type { Model } from '#app/model.ts'
+import { callingUnlockId, withoutFresh } from '#domain/unlocks.ts'
+import { type Calling, heroIdOf } from '#shared/playerData.ts'
 import {
   callingForRun,
   callingPriceOf,
   isCallingOwned,
-} from '../../world/heroes/calling'
-import { playerOfCalling } from '../../world/heroes/callingPlayer'
-import { modifyFocus } from '../../world/party/party'
+} from '#world/heroes/calling.ts'
+import { playerOfCalling } from '#world/heroes/callingPlayer.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const isPickable = (model: Model, calling: Calling): boolean =>
   isCallingOwned(calling, model.boughtCosmetics)

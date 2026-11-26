@@ -1,8 +1,9 @@
 import { type Option, Record } from 'effect'
 
-import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '../world/level/plan'
-import type { SlotRoomId } from '../world/schema/entitySchema'
-import { type Sprite, spriteShapes } from './sprite'
+import { DINING_ROOM_ID, KITCHEN_ROOM_ID } from '#world/level/plan.ts'
+import type { SlotRoomId } from '#world/schema/entitySchema.ts'
+
+import { type Sprite, spriteShapes } from './sprite.ts'
 
 const OUTLINE = '#140c10'
 

@@ -36,13 +36,14 @@ import {
   SessionRefused,
   type SessionToken,
   playerStoreOf,
-} from '../shared/sessionApi'
-import { LinkProblem, SyncState } from './playerSync'
+} from '#shared/sessionApi.ts'
+
+import { LinkProblem, SyncState } from './playerSync.ts'
 import {
   type RoomSession,
   type Transport,
   browserTransports,
-} from './roomReplica'
+} from './roomReplica.ts'
 
 type PlayerRemoteClient = RpcClient.FromGroup<
   typeof PlayerLogRpcs,

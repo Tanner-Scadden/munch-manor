@@ -3,10 +3,10 @@ import { Array, Option, pipe } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { PROP_ICONS } from '../../art/callingArt'
-import { TIN_BOT_ICON } from '../../art/coopIcons'
-import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '../../art/dareArt'
-import { SKULL_ICONS, TROPHY_ICON } from '../../art/icons'
+import { PROP_ICONS } from '#art/callingArt.ts'
+import { TIN_BOT_ICON } from '#art/coopIcons.ts'
+import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '#art/dareArt.ts'
+import { SKULL_ICONS, TROPHY_ICON } from '#art/icons.ts'
 import {
   BIG_KEY_URL,
   BRACKET_URL,
@@ -14,12 +14,12 @@ import {
   HOOK_URL,
   PLANK_URL,
   STAMP_URLS,
-} from '../../art/proofArt'
-import type { DayStamp } from '../../shared/dayStamp'
-import { type Difficulty, callingOfCode } from '../../shared/playerData'
-import type { CrewMate, ProofStamp } from '../../shared/proofData'
-import { dareMarkBadgeView } from '../../ui/dareMarkView'
-import { iconView } from '../../ui/menuParts'
+} from '#art/proofArt.ts'
+import type { DayStamp } from '#shared/dayStamp.ts'
+import { type Difficulty, callingOfCode } from '#shared/playerData.ts'
+import type { CrewMate, ProofStamp } from '#shared/proofData.ts'
+import { dareMarkBadgeView } from '#ui/dareMarkView.ts'
+import { iconView } from '#ui/menuParts.ts'
 import {
   BIG_KEY_LINE,
   BIG_KEY_NAME,
@@ -27,10 +27,11 @@ import {
   DARE_LINES,
   DARE_NAMES,
   PROOF_ENDING_NAMES,
-} from '../../world/names'
-import { DIFFICULTIES } from '../../world/run/difficulty'
-import { Message } from './message'
-import type { Model, ProofShelfProps } from './model'
+} from '#world/names.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
+
+import { Message } from './message.ts'
+import type { Model, ProofShelfProps } from './model.ts'
 import {
   SHELF_ROWS,
   type ShelfSpot,
@@ -47,7 +48,7 @@ import {
   slotCountOf,
   slotId,
   spotUnlockId,
-} from './proof'
+} from './proof.ts'
 
 type H = Html.H<Message>
 type Content = View.Content<Message>

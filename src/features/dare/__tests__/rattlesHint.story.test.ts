@@ -12,25 +12,36 @@ import {
   Phase,
   Tour,
   type Vector,
-} from '../../../app/model'
+} from '#app/model.ts'
+import {
+  darePointerShapes,
+  maybeDarePointer,
+} from '#features/dare/darePointer.ts'
+import { dareDrawables } from '#features/dare/dareView.ts'
+import {
+  EASY_REST_MS,
+  HINT_LINES,
+  HINT_MS,
+  maybeHintCall,
+} from '#features/dare/rattlesHint.ts'
 import {
   cameraOf,
   screenCameraOf,
   viewBoxOf,
   worldToView,
-} from '../../../render/camera'
-import type * as Draw from '../../../render/draw'
-import { clearWindowOf } from '../../../render/hudLayout'
-import { screenOf } from '../../../render/screen'
-import { dareHintShapes, rattlesSpot } from '../../../screens/game/stallBubble'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { pickLine } from '../../../shared/prng'
+} from '#render/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import { clearWindowOf } from '#render/hudLayout.ts'
+import { screenOf } from '#render/screen.ts'
+import { dareHintShapes, rattlesSpot } from '#screens/game/stallBubble.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { pickLine } from '#shared/prng.ts'
 import {
   DISTANT_SPAWN,
   freshRunModel,
   onDifficulty,
   pastTimedBreaks,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -39,26 +50,18 @@ import {
   storyOf,
   tick,
   ticks,
-} from '../../../test/testing'
-import { maybeThingRoom } from '../../../world/dare/dare'
+} from '#test/testing.ts'
+import { maybeThingRoom } from '#world/dare/dare.ts'
 import {
   type DareKind,
   type DareThing,
   DareThingState,
-} from '../../../world/dare/dareSchema'
-import { levelOf } from '../../../world/level/arena'
-import { DINING_ROOM_ID, roomSpotsOf } from '../../../world/level/plan'
-import { tileCenter } from '../../../world/level/tileGrid'
-import { focusOf } from '../../../world/party/party'
-import type { ExitId } from '../../../world/schema/entitySchema'
-import { darePointerShapes, maybeDarePointer } from '../darePointer'
-import { dareDrawables } from '../dareView'
-import {
-  EASY_REST_MS,
-  HINT_LINES,
-  HINT_MS,
-  maybeHintCall,
-} from '../rattlesHint'
+} from '#world/dare/dareSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { DINING_ROOM_ID, roomSpotsOf } from '#world/level/plan.ts'
+import { tileCenter } from '#world/level/tileGrid.ts'
+import { focusOf } from '#world/party/party.ts'
+import type { ExitId } from '#world/schema/entitySchema.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50

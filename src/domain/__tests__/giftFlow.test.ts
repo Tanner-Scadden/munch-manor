@@ -2,8 +2,8 @@ import { Array } from 'effect'
 import { Machine } from 'effect-machine'
 import { describe, expect, test } from 'vitest'
 
-import { UpdateGift } from '../clientSchema'
-import { GiftEvent, giftMachine, stepGift } from '../giftFlow'
+import { UpdateGift } from '#domain/clientSchema.ts'
+import { GiftEvent, giftMachine, stepGift } from '#domain/giftFlow.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.flatMap(Machine.definition(giftMachine).states, state =>

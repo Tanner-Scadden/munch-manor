@@ -8,10 +8,11 @@ import {
   Sprite3D,
 } from '@pixi/3d'
 
-import type * as Draw from '../draw'
-import type { Leaf } from './flatten'
-import { UNIT, standingPointOf, zOf } from './space'
-import { type Textures, colorOf } from './textures'
+import type * as Draw from '#render/draw.ts'
+
+import type { Leaf } from './flatten.ts'
+import { UNIT, standingPointOf, zOf } from './space.ts'
+import { type Textures, colorOf } from './textures.ts'
 
 export const PART_BIAS = 0.002
 

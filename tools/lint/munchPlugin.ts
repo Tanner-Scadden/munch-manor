@@ -571,7 +571,7 @@ const SEAT_ACTION_STEPS: ReadonlySet<string> = new Set([
   'markReady',
 ])
 
-const SEAT_ACTION_MODULES = /(^|\/)(weapons|traps|waves|revive)$/
+const SEAT_ACTION_MODULES = /(^|\/)(weapons|traps|waves|revive)(\.ts)?$/
 
 const SEAT_ACTION_FIELDS: ReadonlySet<string> = new Set([
   'player',
@@ -771,7 +771,7 @@ const CONTRACT_FILES: ReadonlyArray<string> = ['block', 'model', 'message']
 const isTestPath = (path: string): boolean =>
   String.startsWith('test/')(path) || String.includes('__tests__/')(path)
 
-const resolveUnderSrc = (
+const resolveRelative = (
   importer: string,
   spec: string,
 ): Option.Option<string> =>
@@ -792,6 +792,18 @@ const resolveUnderSrc = (
     ),
     Array.join('/'),
   )
+
+const SUBPATH_IMPORT = /^#([a-z]+)\/(.+)$/
+
+const resolveUnderSrc = (
+  importer: string,
+  spec: string,
+): Option.Option<string> => {
+  const subpath = SUBPATH_IMPORT.exec(spec)
+  return subpath === null
+    ? resolveRelative(importer, spec)
+    : Option.some(`${subpath[1] ?? ''}/${subpath[2] ?? ''}`)
+}
 
 const folderOf = (path: string): string =>
   Option.getOrElse(Array.head(String.split('/')(path)), () => '')
@@ -892,7 +904,7 @@ const folderImports = defineRule({
         return
       }
       const spec = source.value
-      if (!String.startsWith('.')(spec)) {
+      if (!String.startsWith('.')(spec) && !SUBPATH_IMPORT.test(spec)) {
         if (
           allowed !== undefined &&
           !ROOM_PACKAGES.test(spec) &&
@@ -990,6 +1002,67 @@ const folderImports = defineRule({
   },
 })
 
+const SUBPATH_MESSAGE =
+  'An import in src that climbs out of its folder names the layer instead: #world/step/stepWorld.ts, not ../step/stepWorld (AGENTS.md "Folders").'
+
+const EXTENSION_MESSAGE =
+  'An import of a module in src names its file with its extension: ./keys.ts, #world/keys/keys.ts (AGENTS.md "Folders").'
+
+const HAS_EXTENSION = /\.(ts|css|md|html)(\?[a-z]+)?$/
+
+const subpathImports = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'In src, an import that climbs out of its folder goes through the layer\'s subpath (#world/...), and every relative or subpath import names its extension.',
+    },
+  },
+  create(context) {
+    const match = SRC_PATH.exec(String.replaceAll('\\', '/')(context.filename))
+    const importer = match?.[1]
+    if (importer === undefined) {
+      return {}
+    }
+    const check = (
+      node: Node,
+      source: ESTree.StringLiteral | ESTree.Expression | null | undefined,
+    ): void => {
+      if (!isStringLiteral(source)) {
+        return
+      }
+      const spec = source.value
+      if (!String.startsWith('.')(spec) && !SUBPATH_IMPORT.test(spec)) {
+        return
+      }
+      if (
+        String.startsWith('../')(spec) &&
+        Option.isSome(resolveRelative(importer, spec))
+      ) {
+        context.report({ node, message: SUBPATH_MESSAGE })
+        return
+      }
+      if (!HAS_EXTENSION.test(spec)) {
+        context.report({ node, message: EXTENSION_MESSAGE })
+      }
+    }
+    return {
+      ImportDeclaration(node) {
+        check(node, node.source)
+      },
+      ExportNamedDeclaration(node) {
+        check(node, node.source)
+      },
+      ExportAllDeclaration(node) {
+        check(node, node.source)
+      },
+      ImportExpression(node) {
+        check(node, node.source)
+      },
+    }
+  },
+})
+
 const noComments = defineRule({
   meta: {
     type: 'suggestion',
@@ -1038,6 +1111,7 @@ export default definePlugin({
     'no-dialog-field-write': noDialogFieldWrite,
     'no-comments': noComments,
     'folder-imports': folderImports,
+    'subpath-imports': subpathImports,
     'no-append-in-reduce': noAppendInReduce,
     'no-deep-equal-per-frame': noDeepEqualPerFrame,
     'no-string-key-per-frame': noStringKeyPerFrame,

@@ -1,9 +1,9 @@
 import { Array, Option, String } from 'effect'
 import { expect, test } from 'vitest'
 
-import { MANOR, openExit } from '../../../world/level/arena'
-import { WALL_SYMBOL } from '../../../world/level/tileGrid'
-import { LINTEL_FLOOR, lintelTilesOf } from '../lintels'
+import { LINTEL_FLOOR, lintelTilesOf } from '#render/iso/lintels.ts'
+import { MANOR, openExit } from '#world/level/arena.ts'
+import { WALL_SYMBOL } from '#world/level/tileGrid.ts'
 
 const symbolOf = (row: number, column: number): string =>
   Option.getOrElse(String.charAt(MANOR.tiles[row] ?? '', column), () => '')

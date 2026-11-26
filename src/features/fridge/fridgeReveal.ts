@@ -2,26 +2,26 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { PrizeFlight } from '../../domain/clientSchema'
-import { FRIDGE_SPIN_STEPS_MS } from '../../shared/constants'
-import type { SoundEffect } from '../../shared/soundEffect'
+import type { Model } from '#app/model.ts'
+import { PrizeFlight } from '#domain/clientSchema.ts'
+import { FRIDGE_SPIN_STEPS_MS } from '#shared/constants.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
 import {
   FRIDGE_RULES,
   PRIZE_ORDER,
   fridgeBoxOf,
-} from '../../world/fridge/leftovers'
-import { levelOf } from '../../world/level/arena'
-import { PRIZE_PUNCH_LINES } from '../../world/names'
-import { leadSeatOf } from '../../world/party/party'
-import type { World } from '../../world/schema/world'
+} from '#world/fridge/leftovers.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { PRIZE_PUNCH_LINES } from '#world/names.ts'
+import { leadSeatOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   FridgeDoor,
   type FridgePrize,
   GameEvent,
   type Vector,
   type WeaponKind,
-} from '../../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export type Rarity = 'Common' | 'Rare' | 'Snack' | 'Dud'
 

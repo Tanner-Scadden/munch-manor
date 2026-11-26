@@ -2,15 +2,15 @@ import { Array, Effect, Record, Result } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../app/model'
-import { DareHintCall } from '../../domain/clientSchema'
+import type { Model } from '#app/model.ts'
+import { DareHintCall } from '#domain/clientSchema.ts'
 import {
   armedBreak,
   hidingSpotIn,
   quietWave,
   withActors,
   withDareThings,
-} from '../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   holdFire,
@@ -19,11 +19,11 @@ import {
   steps,
   ticks,
   zombieAt,
-} from '../../test/testing'
-import { DareThingState } from '../dare/dareSchema'
-import { levelOf } from '../level/arena'
-import { LIBRARY_ROOM_ID } from '../level/plan'
-import { focusOf } from '../party/party'
+} from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { LIBRARY_ROOM_ID } from '#world/level/plan.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const FRAMES = 240
 const CHASE_SPEED = 40

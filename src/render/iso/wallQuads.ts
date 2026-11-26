@@ -1,11 +1,12 @@
 import { Array, Option, Order, Result, pipe } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { type Level, closedExits } from '../../world/level/arena'
-import { SECRET_EXIT } from '../../world/level/plan'
-import { WALL_SYMBOL } from '../../world/level/tileGrid'
-import { secretShelfOf } from '../../world/library/secretShelf'
-import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, closedExits } from '#world/level/arena.ts'
+import { SECRET_EXIT } from '#world/level/plan.ts'
+import { WALL_SYMBOL } from '#world/level/tileGrid.ts'
+import { secretShelfOf } from '#world/library/secretShelf.ts'
+
+import { LINTEL_FLOOR, lintelTilesOf } from './lintels.ts'
 import {
   FRONT_WALL_ROWS,
   SOUTH_NORMAL,
@@ -16,7 +17,7 @@ import {
   symbolAt,
   wallHeightAt,
   zOf,
-} from './space'
+} from './space.ts'
 
 export type Spot = Readonly<{ row: number; column: number }>
 

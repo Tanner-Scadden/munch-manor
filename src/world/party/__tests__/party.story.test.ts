@@ -18,15 +18,15 @@ import {
   type PlannedSpawn,
   Reload,
   Trap,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
   PISTOL_MAGAZINE,
   PLAYER_MAX_HP,
-} from '../../../shared/constants'
-import { withPistol } from '../../../test/arsenals'
+} from '#shared/constants.ts'
+import { withPistol } from '#test/arsenals.ts'
 import {
   atSeat,
   crewInWave,
@@ -35,7 +35,7 @@ import {
   placeSeat,
   withKeys,
   withSeatLife,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   countdownTicks,
@@ -43,37 +43,15 @@ import {
   steps,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { crateSpotOf } from '../../gear/crates'
-import { TRAPS, stockTrap } from '../../gear/traps'
-import { WEAPONS } from '../../gear/weapons'
-import { KEY_RULES } from '../../keys/keys'
-import { MANOR, START_LEVEL, levelOf } from '../../level/arena'
-import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
-import { flowFieldsToward } from '../../level/pathing'
-import { WAKE_RULES, isWakePack } from '../../level/wakeUp'
-import { type World, withWorld } from '../../schema/world'
-import {
-  CrateStock,
-  type Intent,
-  Purchasable,
-  Purchase,
-  type Seat,
-  type SeatState,
-  type TrapKind,
-  idleIntent,
-} from '../../schema/worldSchema'
-import { PURCHASE_RULES } from '../../shop/purchase'
-import { blastTeammates } from '../../step/combat'
-import {
-  SeatAction,
-  applySeatAction,
-  soloInputs,
-  stepWorld,
-} from '../../step/stepWorld'
-import { rollSpawns } from '../../waves/endlessWaves'
-import { beginPreparation } from '../../waves/waves'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
+} from '#test/testing.ts'
+import { crateSpotOf } from '#world/gear/crates.ts'
+import { TRAPS, stockTrap } from '#world/gear/traps.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
+import { KEY_RULES } from '#world/keys/keys.ts'
+import { MANOR, START_LEVEL, levelOf } from '#world/level/arena.ts'
+import { EXIT_RULES, KITCHEN_EXIT } from '#world/level/exits.ts'
+import { flowFieldsToward } from '#world/level/pathing.ts'
+import { WAKE_RULES, isWakePack } from '#world/level/wakeUp.ts'
 import {
   COOP_RULES,
   focusOf,
@@ -83,7 +61,29 @@ import {
   playersOf,
   setPresence,
   targetsOf,
-} from '../party'
+} from '#world/party/party.ts'
+import { type World, withWorld } from '#world/schema/world.ts'
+import {
+  CrateStock,
+  type Intent,
+  Purchasable,
+  Purchase,
+  type Seat,
+  type SeatState,
+  type TrapKind,
+  idleIntent,
+} from '#world/schema/worldSchema.ts'
+import { PURCHASE_RULES } from '#world/shop/purchase.ts'
+import { blastTeammates } from '#world/step/combat.ts'
+import {
+  SeatAction,
+  applySeatAction,
+  soloInputs,
+  stepWorld,
+} from '#world/step/stepWorld.ts'
+import { rollSpawns } from '#world/waves/endlessWaves.ts'
+import { beginPreparation } from '#world/waves/waves.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const KEYS = EXIT_RULES.kitchenKeys + 2
 

@@ -6,13 +6,13 @@ import {
   BULLET_RADIUS,
   MS_PER_SECOND,
   PLAYER_RADIUS,
-} from '../../shared/constants'
-import { trapBlockers } from '../gear/traps'
-import { maxHpOf } from '../heroes/calling'
-import { type Level, levelOf } from '../level/arena'
-import type { Box } from '../level/tileGrid'
-import { activeModifiersOf } from '../run/dareLadder'
-import type { World } from '../schema/world'
+} from '#shared/constants.ts'
+import { trapBlockers } from '#world/gear/traps.ts'
+import { maxHpOf } from '#world/heroes/calling.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Bullet,
   type DownedLife,
@@ -24,17 +24,18 @@ import {
   type Seat,
   type SeatState,
   type Vector,
-} from '../schema/worldSchema'
-import { moveCircle, resolveCircle } from '../step/collision'
-import { bulletDirection, woundPlayer } from '../step/combat'
+} from '#world/schema/worldSchema.ts'
+import { moveCircle, resolveCircle } from '#world/step/collision.ts'
+import { bulletDirection, woundPlayer } from '#world/step/combat.ts'
 import {
   ZERO_VECTOR,
   circlesOverlap,
   clampLength,
   closestPointOnSegment,
   distanceBetween,
-} from '../step/geometry'
-import { fallenLife, saved, sounded } from './medic'
+} from '#world/step/geometry.ts'
+
+import { fallenLife, saved, sounded } from './medic.ts'
 import {
   COOP_RULES,
   atSeat,
@@ -50,7 +51,7 @@ import {
   modifySeatRecord,
   playersOf,
   seatStateAt,
-} from './party'
+} from './party.ts'
 
 const isStill = ({ intent }: SeatState): boolean =>
   intent.move.x === 0 && intent.move.y === 0

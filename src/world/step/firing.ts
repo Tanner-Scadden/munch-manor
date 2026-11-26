@@ -7,20 +7,15 @@ import {
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
   MS_PER_SECOND,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import {
-  type Seeded,
-  between,
-  generateMany,
-  nextRandom,
-} from '../../shared/prng'
-import { appendOrSame, sameIfUnchanged } from '../../shared/sameList'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { type Seeded, between, generateMany, nextRandom } from '#shared/prng.ts'
+import { appendOrSame, sameIfUnchanged } from '#shared/sameList.ts'
 import {
   dropCharge,
   fireFridgeWeapon,
   maybeHeldFridgeWeapon,
-} from '../fridge/fridgeWeapons'
+} from '#world/fridge/fridgeWeapons.ts'
 import {
   bulletGlaze,
   bulletPierce,
@@ -28,7 +23,7 @@ import {
   isAmmoFree,
   keepTopped,
   withLaserSight,
-} from '../gear/powerups'
+} from '#world/gear/powerups.ts'
 import {
   type WeaponStats,
   beginReload,
@@ -44,9 +39,9 @@ import {
   perkDamage,
   perkPierce,
   spendRound,
-} from '../gear/weapons'
-import { type Level, levelOf } from '../level/arena'
-import { findStrike, isInsideRoomAt } from '../level/tileQueries'
+} from '#world/gear/weapons.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { findStrike, isInsideRoomAt } from '#world/level/tileQueries.ts'
 import {
   atSeat,
   creditShots,
@@ -54,10 +49,10 @@ import {
   modifySeat,
   seatStateAt,
   shooterOf,
-} from '../party/party'
-import { reloadsWhenIdle } from '../run/difficulty'
-import { countShots } from '../run/stats'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import { reloadsWhenIdle } from '#world/run/difficulty.ts'
+import { countShots } from '#world/run/stats.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Boosts,
   type Bullet,
@@ -72,12 +67,13 @@ import {
   type Vector,
   type WeaponKind,
   type Zombie,
-} from '../schema/worldSchema'
-import { ZOMBIE_KINDS, isFree, radiusOf } from '../zombies/zombies'
-import { bulletDirection } from './combat'
-import { addVectors, scaleVector } from './geometry'
-import { buildGrid, queryAround, queryBuffer } from './grid'
-import { resolveBulletHits } from './hits'
+} from '#world/schema/worldSchema.ts'
+import { ZOMBIE_KINDS, isFree, radiusOf } from '#world/zombies/zombies.ts'
+
+import { bulletDirection } from './combat.ts'
+import { addVectors, scaleVector } from './geometry.ts'
+import { buildGrid, queryAround, queryBuffer } from './grid.ts'
+import { resolveBulletHits } from './hits.ts'
 
 const pelletVelocity = (
   facing: Vector,

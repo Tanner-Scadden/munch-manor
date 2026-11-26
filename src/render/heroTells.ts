@@ -2,21 +2,22 @@ import { Array, Function, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
+import type { Model } from '#app/model.ts'
 import {
   DUST_SPEED_MAX,
   DUST_SPEED_MIN,
   PARTICLE_MAX,
   PLAYER_FOOT_OFFSET,
-} from '../shared/constants'
-import type { Calling } from '../shared/playerData'
-import { type Seeded, generateMany, nextRandom } from '../shared/prng'
-import { maybeMendingTrap, trapCenter } from '../world/gear/traps'
-import { heldWeapon } from '../world/gear/weapons'
-import { levelOf } from '../world/level/arena'
-import { focusOf, isCoop, isStanding, playersOf } from '../world/party/party'
-import { type SeatState, type Vector } from '../world/schema/worldSchema'
-import { vectorLength } from '../world/step/geometry'
+} from '#shared/constants.ts'
+import type { Calling } from '#shared/playerData.ts'
+import { type Seeded, generateMany, nextRandom } from '#shared/prng.ts'
+import { maybeMendingTrap, trapCenter } from '#world/gear/traps.ts'
+import { heldWeapon } from '#world/gear/weapons.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { focusOf, isCoop, isStanding, playersOf } from '#world/party/party.ts'
+import { type SeatState, type Vector } from '#world/schema/worldSchema.ts'
+import { vectorLength } from '#world/step/geometry.ts'
+
 import {
   angleOf,
   chain,
@@ -26,9 +27,9 @@ import {
   smokePuff,
   spark,
   sparks,
-} from './particles/particleBursts'
-import { keepNewest } from './particles/particles'
-import type { Particle, TellWatch } from './renderSchema'
+} from './particles/particleBursts.ts'
+import { keepNewest } from './particles/particles.ts'
+import type { Particle, TellWatch } from './renderSchema.ts'
 
 const RUN_PUFFS_PER_SECOND = 8
 const STEAM_WISPS_PER_SECOND = 1.6

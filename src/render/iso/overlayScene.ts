@@ -1,10 +1,11 @@
 import { Effect } from 'effect'
 import { Application } from 'pixi.js'
 
-import { type BrowserError, toBrowserError } from '../../shared/describeError'
-import type * as Draw from '../draw'
-import { FlatPainter } from './painter'
-import { Textures } from './textures'
+import type * as Draw from '#render/draw.ts'
+import { type BrowserError, toBrowserError } from '#shared/describeError.ts'
+
+import { FlatPainter } from './painter.ts'
+import { Textures } from './textures.ts'
 
 export type OverlayPicture = Readonly<{
   width: number

@@ -3,25 +3,22 @@ import { Array, Option, Result } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { BreakClock, GameEvent, type Model, Phase } from '../../../app/model'
+import { BreakClock, GameEvent, type Model, Phase } from '#app/model.ts'
+import { FIXED_STEP_MS, PLAYER_RADIUS, TILE_SIZE } from '#shared/constants.ts'
+import { DISTANT_SPAWN, quietWave, withPlayerAt } from '#test/model.fixture.ts'
+import { checkModel, modelAfter, steps, ticks } from '#test/testing.ts'
+import { levelFor, levelOf, openExitIn } from '#world/level/arena.ts'
+import { exitOffers } from '#world/level/exits.ts'
+import { flowFieldToward, playerDistancePx } from '#world/level/pathing.ts'
 import {
-  FIXED_STEP_MS,
-  PLAYER_RADIUS,
-  TILE_SIZE,
-} from '../../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  quietWave,
-  withPlayerAt,
-} from '../../../test/model.fixture'
-import { checkModel, modelAfter, steps, ticks } from '../../../test/testing'
-import { levelFor, levelOf, openExitIn } from '../../level/arena'
-import { exitOffers } from '../../level/exits'
-import { flowFieldToward, playerDistancePx } from '../../level/pathing'
-import { EAST_EXIT, FAR_EXIT, MANOR_SPEC, SECRET_EXIT } from '../../level/plan'
-import { tileCenter } from '../../level/tileGrid'
-import { isWalkableTile } from '../../level/tileQueries'
-import { SHELF_RULES, secretShelfOf } from '../secretShelf'
+  EAST_EXIT,
+  FAR_EXIT,
+  MANOR_SPEC,
+  SECRET_EXIT,
+} from '#world/level/plan.ts'
+import { tileCenter } from '#world/level/tileGrid.ts'
+import { isWalkableTile } from '#world/level/tileQueries.ts'
+import { SHELF_RULES, secretShelfOf } from '#world/library/secretShelf.ts'
 
 const LIBRARY_OPEN = levelFor(MANOR_SPEC, [EAST_EXIT])
 const SHELF = Option.getOrThrow(secretShelfOf(LIBRARY_OPEN))

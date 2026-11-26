@@ -2,7 +2,7 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { World } from '../schema/world'
+import type { World } from '#world/schema/world.ts'
 import {
   type DownedLife,
   GameEvent,
@@ -10,8 +10,9 @@ import {
   type PlayerSlot,
   type Seat,
   type SeatState,
-} from '../schema/worldSchema'
-import { modifySeatRecord, seatStateAt } from './party'
+} from '#world/schema/worldSchema.ts'
+
+import { modifySeatRecord, seatStateAt } from './party.ts'
 
 export const MEDIC_RULES = {
   cooldownMs: 4000,

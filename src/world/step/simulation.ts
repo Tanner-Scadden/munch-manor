@@ -7,41 +7,41 @@ import {
   MS_PER_SECOND,
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
-} from '../../shared/constants'
-import { emptied, sameIfUnchanged } from '../../shared/sameList'
-import { rollBarrel } from '../cellar/barrels'
-import { advanceDare, isWorkingFind } from '../dare/dare'
-import { advanceFinale } from '../dare/finale'
-import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
-import { advanceCases } from '../feats/cases'
-import { tallyFeats } from '../feats/feats'
+} from '#shared/constants.ts'
+import { emptied, sameIfUnchanged } from '#shared/sameList.ts'
+import { rollBarrel } from '#world/cellar/barrels.ts'
+import { advanceDare, isWorkingFind } from '#world/dare/dare.ts'
+import { advanceFinale } from '#world/dare/finale.ts'
+import { dropChandelier, rehangAtBreak } from '#world/dining/chandelier.ts'
+import { advanceCases } from '#world/feats/cases.ts'
+import { tallyFeats } from '#world/feats/feats.ts'
 import {
   advanceLobs,
   fireFridgeWeapon,
   flattenPans,
   resolveShatters,
-} from '../fridge/fridgeWeapons'
-import { advanceFridge } from '../fridge/leftovers'
-import { advanceCrates } from '../gear/crates'
-import { stabWithKnife } from '../gear/knife'
-import { advancePowerUps, playerSpeed } from '../gear/powerups'
+} from '#world/fridge/fridgeWeapons.ts'
+import { advanceFridge } from '#world/fridge/leftovers.ts'
+import { advanceCrates } from '#world/gear/crates.ts'
+import { stabWithKnife } from '#world/gear/knife.ts'
+import { advancePowerUps, playerSpeed } from '#world/gear/powerups.ts'
 import {
   advanceMending,
   advanceTraps,
   clearBrokenTraps,
   trapBlockers,
-} from '../gear/traps'
-import { maybePanOf } from '../gear/weapons'
-import { dropKeys } from '../keys/keys'
-import { burnHearth } from '../kitchen/gasValve'
-import { advanceKitchen, soupSkid } from '../kitchen/kitchen'
-import { advancePantry } from '../kitchen/pantry'
-import { rollStove } from '../kitchen/stove'
-import { type Level, levelOf } from '../level/arena'
-import { wadePaceAt } from '../level/leaks'
-import type { Box } from '../level/tileGrid'
-import { swingShelf } from '../library/secretShelf'
-import { shelveHeaps } from '../library/stacks'
+} from '#world/gear/traps.ts'
+import { maybePanOf } from '#world/gear/weapons.ts'
+import { dropKeys } from '#world/keys/keys.ts'
+import { burnHearth } from '#world/kitchen/gasValve.ts'
+import { advanceKitchen, soupSkid } from '#world/kitchen/kitchen.ts'
+import { advancePantry } from '#world/kitchen/pantry.ts'
+import { rollStove } from '#world/kitchen/stove.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { wadePaceAt } from '#world/level/leaks.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import { swingShelf } from '#world/library/secretShelf.ts'
+import { shelveHeaps } from '#world/library/stacks.ts'
 import {
   COOP_RULES,
   facingNearest,
@@ -54,11 +54,11 @@ import {
   modifySeat,
   playersOf,
   seatStateAt,
-} from '../party/party'
-import { advanceParty } from '../party/revive'
-import { advanceArrival, isArriving } from '../run/arrival'
-import { advanceTutorialKey } from '../run/tutorialRules'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import { advanceParty } from '#world/party/revive.ts'
+import { advanceArrival, isArriving } from '#world/run/arrival.ts'
+import { advanceTutorialKey } from '#world/run/tutorialRules.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   Invulnerability,
@@ -68,23 +68,28 @@ import {
   type PlayerSlot,
   type Vector,
   type Zombie,
-} from '../schema/worldSchema'
-import { advancePurchase } from '../shop/purchase'
-import { advanceStations, isWorkingStation } from '../stations/stations'
-import { advanceIntensity } from '../waves/pacing'
-import { advanceRound, endWhenDefeated } from '../waves/waves'
-import { recoverActions } from '../zombies/actions'
-import { advanceBossMoves } from '../zombies/boss'
-import { puddleSlowAt } from '../zombies/bossFight'
-import { advanceChuckers } from '../zombies/chucker'
-import { advanceCrawlers, ankleSlowAt, ankleSlowNear } from '../zombies/crawler'
-import { advanceFrenzy, keyWipedPacks } from '../zombies/frenzy'
-import { advanceLastZombie } from '../zombies/lastZombie'
-import { advanceZombies, recordFootfalls } from '../zombies/zombieMotion'
-import { wearOf } from '../zombies/zombies'
-import { moveCircle } from './collision'
-import { resolveBlasts } from './combat'
-import { bulletFlightOf, fire, tickReload } from './firing'
+} from '#world/schema/worldSchema.ts'
+import { advancePurchase } from '#world/shop/purchase.ts'
+import { advanceStations, isWorkingStation } from '#world/stations/stations.ts'
+import { advanceIntensity } from '#world/waves/pacing.ts'
+import { advanceRound, endWhenDefeated } from '#world/waves/waves.ts'
+import { recoverActions } from '#world/zombies/actions.ts'
+import { advanceBossMoves } from '#world/zombies/boss.ts'
+import { puddleSlowAt } from '#world/zombies/bossFight.ts'
+import { advanceChuckers } from '#world/zombies/chucker.ts'
+import {
+  advanceCrawlers,
+  ankleSlowAt,
+  ankleSlowNear,
+} from '#world/zombies/crawler.ts'
+import { advanceFrenzy, keyWipedPacks } from '#world/zombies/frenzy.ts'
+import { advanceLastZombie } from '#world/zombies/lastZombie.ts'
+import { advanceZombies, recordFootfalls } from '#world/zombies/zombieMotion.ts'
+import { wearOf } from '#world/zombies/zombies.ts'
+
+import { moveCircle } from './collision.ts'
+import { resolveBlasts } from './combat.ts'
+import { bulletFlightOf, fire, tickReload } from './firing.ts'
 import {
   OUTWARD,
   addVectors,
@@ -94,9 +99,9 @@ import {
   directionBetween,
   normalize,
   scaleVector,
-} from './geometry'
-import { stopForHits, thawTick } from './hitStop'
-import { resolveBulletHits, resolvePlayerContact } from './hits'
+} from './geometry.ts'
+import { stopForHits, thawTick } from './hitStop.ts'
+import { resolveBulletHits, resolvePlayerContact } from './hits.ts'
 
 const tickInvulnerability = (
   invulnerability: Invulnerability,

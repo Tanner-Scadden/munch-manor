@@ -1,13 +1,13 @@
 import { Function } from 'effect'
 
-import type { Tone } from '../art/sprite'
+import type { Tone } from '#art/sprite.ts'
 import {
   BossMove,
   type PlantedAttack,
   type Vector,
   type Zombie,
-} from '../world/schema/entitySchema'
-import { Boss } from '../world/schema/worldSchema'
+} from '#world/schema/entitySchema.ts'
+import { Boss } from '#world/schema/worldSchema.ts'
 
 const BOSS_RISE_STRETCH = 0.16
 const BOSS_CROUCH_SQUASH = 0.12

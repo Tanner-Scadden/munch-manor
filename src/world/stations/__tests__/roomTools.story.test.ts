@@ -2,26 +2,21 @@ import { Array, Effect } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { crewInWave, placeSeat, quietWave } from '../../../test/model.fixture'
-import {
-  checkModel,
-  modelAfter,
-  steps,
-  tagsOf,
-  ticks,
-} from '../../../test/testing'
-import type { StationId } from '../../schema/worldSchema'
-import { isWorkingStation } from '../stations'
-import { TOOL_RULES } from '../toolRules'
+import type { Model } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { crewInWave, placeSeat, quietWave } from '#test/model.fixture.ts'
+import { checkModel, modelAfter, steps, tagsOf, ticks } from '#test/testing.ts'
+import type { StationId } from '#world/schema/worldSchema.ts'
+import { isWorkingStation } from '#world/stations/stations.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
+
 import {
   atTool,
   firedAgo,
   houseWave,
   openHouse,
   spotAtTool,
-} from './roomTools.fixture'
+} from './roomTools.fixture.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

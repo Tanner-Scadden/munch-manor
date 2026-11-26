@@ -10,20 +10,21 @@ import {
   RenderPassBit,
 } from '@pixi/3d'
 
-import { eyePixelsOf, isGlowingShape } from '../../art/sprite'
-import type { Level } from '../../world/level/arena'
-import { TALL_MOST } from '../depth'
-import type * as Draw from '../draw'
-import { type TallCover, tallCoverOf } from '../room/tallCover'
-import { type ViewBox, isNearView } from './cull'
-import { type Leaf, flatten } from './flatten'
+import { eyePixelsOf, isGlowingShape } from '#art/sprite.ts'
+import { TALL_MOST } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import { type TallCover, tallCoverOf } from '#render/room/tallCover.ts'
+import type { Level } from '#world/level/arena.ts'
+
+import { type ViewBox, isNearView } from './cull.ts'
+import { type Leaf, flatten } from './flatten.ts'
 import {
   CASTING_ALPHA,
   type VoxelBatch,
   fadeStepOf,
   isOpaqueAt,
   newReach,
-} from './voxels'
+} from './voxels.ts'
 
 type Carving = Readonly<{
   geometry: Geometry3D

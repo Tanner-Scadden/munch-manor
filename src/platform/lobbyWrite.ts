@@ -15,7 +15,7 @@ import {
 } from '@munch/netcode'
 import type { Mutation } from '@munch/sync-engine'
 
-import { type CoopProblem, LobbyChange } from '../domain/coopRoom'
+import { type CoopProblem, LobbyChange } from '#domain/coopRoom.ts'
 
 export type LobbyWriter<E> = <A, I>(
   mutation: Mutation<string, A, I>,

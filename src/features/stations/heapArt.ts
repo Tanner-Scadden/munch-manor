@@ -1,12 +1,12 @@
 import { Array, Option, Record, String } from 'effect'
 
-import { type Sprite, TOP_LEFT, spriteShapes } from '../../art/sprite'
-import { BOOK_COLORS } from '../../render/room/roomCover'
-import { TILE_SIZE } from '../../shared/constants'
-import { unitOf } from '../../shared/prng'
-import { LIBRARY_MAP, STACK_DROPS } from '../../world/level/plan'
-import type { StackId } from '../../world/library/stacks'
-import { clamp } from '../../world/step/geometry'
+import { type Sprite, TOP_LEFT, spriteShapes } from '#art/sprite.ts'
+import { BOOK_COLORS } from '#render/room/roomCover.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { unitOf } from '#shared/prng.ts'
+import { LIBRARY_MAP, STACK_DROPS } from '#world/level/plan.ts'
+import type { StackId } from '#world/library/stacks.ts'
+import { clamp } from '#world/step/geometry.ts'
 
 const MAIN_LETTERS: ReadonlyArray<string> = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
 const SHADE_LETTERS: ReadonlyArray<string> = ['A', 'B', 'C', 'D', 'E', 'F', 'G']

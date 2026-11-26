@@ -9,20 +9,21 @@ import {
   type ShaderBit,
 } from '@pixi/3d'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { unitOf } from '../../shared/prng'
-import { gapBoxOf, isChandelierDown } from '../../world/dining/chandelier'
-import type { Level } from '../../world/level/arena'
-import type { Vector } from '../../world/schema/entitySchema'
-import type { World } from '../../world/schema/worldSchema'
-import { isRoomOpen } from '../room/room'
-import type { Box } from '../room/roomPalette'
-import { ROSE_PALETTE } from '../room/roseWindowArt'
-import { type Pane, windowPanesOf } from '../room/windows'
-import type { Mote } from './air'
-import { flameSpecsOf } from './lightSpecs'
-import { GL_HEADER, GPU_HEADER, dataTexture, glFloat } from './look'
-import { mixColor, strikeOf } from './mood'
+import { isRoomOpen } from '#render/room/room.ts'
+import type { Box } from '#render/room/roomPalette.ts'
+import { ROSE_PALETTE } from '#render/room/roseWindowArt.ts'
+import { type Pane, windowPanesOf } from '#render/room/windows.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { unitOf } from '#shared/prng.ts'
+import { gapBoxOf, isChandelierDown } from '#world/dining/chandelier.ts'
+import type { Level } from '#world/level/arena.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+
+import type { Mote } from './air.ts'
+import { flameSpecsOf } from './lightSpecs.ts'
+import { GL_HEADER, GPU_HEADER, dataTexture, glFloat } from './look.ts'
+import { mixColor, strikeOf } from './mood.ts'
 import {
   PITCH,
   STRETCH,
@@ -31,9 +32,9 @@ import {
   standingPointOf,
   wallHeightAt,
   zOf,
-} from './space'
-import { paneBoxesOf } from './storm'
-import { colorOf } from './textures'
+} from './space.ts'
+import { paneBoxesOf } from './storm.ts'
+import { colorOf } from './textures.ts'
 
 type RayShape = 'Shaft' | 'Pool' | 'Cone' | 'Round'
 

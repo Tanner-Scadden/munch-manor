@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Frenzy,
   type Model,
@@ -12,10 +12,10 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { withPlayerAt } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { withPlayerAt } from '#test/model.fixture.ts'
 import {
   bulletInto,
   checkModel,
@@ -25,12 +25,16 @@ import {
   steps,
   tick,
   ticks,
-} from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { isSolidAt } from '../../level/tileQueries'
-import { focusOf } from '../../party/party'
-import { doorCounts, floorCounts, rollSpawns } from '../../waves/endlessWaves'
-import { CRAWLER_RULES, drawSurfacingSpot } from '../crawler'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { isSolidAt } from '#world/level/tileQueries.ts'
+import { focusOf } from '#world/party/party.ts'
+import {
+  doorCounts,
+  floorCounts,
+  rollSpawns,
+} from '#world/waves/endlessWaves.ts'
+import { CRAWLER_RULES, drawSurfacingSpot } from '#world/zombies/crawler.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const CENTER_X = START_LEVEL.start.x

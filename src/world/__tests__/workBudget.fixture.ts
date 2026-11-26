@@ -1,11 +1,11 @@
 import { Array, Function, pipe } from 'effect'
 
-import type { Model, Zombie } from '../../app/model'
-import { withActors } from '../../test/model.fixture'
-import { zombieAt } from '../../test/testing'
-import { levelOf } from '../level/arena'
-import { isInsideRoomAt, isSolidAt } from '../level/tileQueries'
-import { focusOf } from '../party/party'
+import type { Model, Zombie } from '#app/model.ts'
+import { withActors } from '#test/model.fixture.ts'
+import { zombieAt } from '#test/testing.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { isInsideRoomAt, isSolidAt } from '#world/level/tileQueries.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const SPACING_PX = 22
 const CLEAR_OF_PLAYER_PX = 70

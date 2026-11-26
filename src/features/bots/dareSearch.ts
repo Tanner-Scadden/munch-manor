@@ -2,28 +2,24 @@ import { Array, Function, Option, Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { isHiddenInDark } from '../../world/cellar/bulb'
-import {
-  findStyleOf,
-  maybeLyingAt,
-  maybeThingRoom,
-} from '../../world/dare/dare'
-import { isFrontDoorOpen } from '../../world/dare/finale'
-import { FIND_RULES } from '../../world/dare/finds'
+import { isHiddenInDark } from '#world/cellar/bulb.ts'
+import { findStyleOf, maybeLyingAt, maybeThingRoom } from '#world/dare/dare.ts'
+import { isFrontDoorOpen } from '#world/dare/finale.ts'
+import { FIND_RULES } from '#world/dare/finds.ts'
 import {
   chandelierHitBox,
   gapBoxOf,
   isChandelierDown,
-} from '../../world/dining/chandelier'
-import { heldKeys } from '../../world/keys/keys'
-import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
+} from '#world/dining/chandelier.ts'
+import { heldKeys } from '#world/keys/keys.ts'
+import { maybeStash, pantrySpotOf } from '#world/kitchen/pantry.ts'
 import {
   type Level,
   TILE_PLAYER_SOLID,
   hasTileFlag,
   levelOf,
-} from '../../world/level/arena'
-import { exitPriceFor } from '../../world/level/exits'
+} from '#world/level/arena.ts'
+import { exitPriceFor } from '#world/level/exits.ts'
 import {
   type Box,
   circleTouchesBox,
@@ -31,15 +27,15 @@ import {
   isInsideRoom,
   tileIndex,
   tileOfIndex,
-} from '../../world/level/tileGrid'
-import { hasLineOfSight, tileIndexAt } from '../../world/level/tileQueries'
-import type { World } from '../../world/schema/world'
-import { ExitId, Phase, type Vector } from '../../world/schema/worldSchema'
-import { stationBoxOf } from '../../world/stations/stationSpots'
-import { isInWave } from '../../world/stations/stations'
-import { TOOL_RULES } from '../../world/stations/toolRules'
-import { distanceBetween } from '../../world/step/geometry'
-import { bodyRadiusOf, isGrounded } from '../../world/zombies/zombies'
+} from '#world/level/tileGrid.ts'
+import { hasLineOfSight, tileIndexAt } from '#world/level/tileQueries.ts'
+import type { World } from '#world/schema/world.ts'
+import { ExitId, Phase, type Vector } from '#world/schema/worldSchema.ts'
+import { stationBoxOf } from '#world/stations/stationSpots.ts'
+import { isInWave } from '#world/stations/stations.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+import { bodyRadiusOf, isGrounded } from '#world/zombies/zombies.ts'
 
 const SAFE_PX = 45
 

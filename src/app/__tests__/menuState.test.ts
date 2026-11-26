@@ -3,19 +3,19 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { Screen } from '../../domain/coopRoom'
-import { RESTART_GRACE_MS } from '../../shared/constants'
-import { home, veteranFighting } from '../../test/model.fixture'
-import { pause } from '../../world/waves/waves'
 import {
   MenuState,
   isOnHomeMenu,
   isPanelOpen,
   isProfileOpenOn,
   menuState,
-} from '../menuState'
-import { type Model, Phase } from '../model'
-import { RootDialog } from '../rootDialog'
+} from '#app/menuState.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { RootDialog } from '#app/rootDialog.ts'
+import { Screen } from '#domain/coopRoom.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { home, veteranFighting } from '#test/model.fixture.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const inCoop: Model = UiStruct.evolve(home, {
   coop: coop =>

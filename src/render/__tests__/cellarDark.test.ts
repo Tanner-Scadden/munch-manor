@@ -3,14 +3,14 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { quietWave, withPlayerAt } from '../../test/model.fixture'
-import { CELLAR_SPOT, zombieAt } from '../../test/testing'
-import { openExitIn } from '../../world/level/arena'
-import { EAST_EXIT, FAR_EXIT } from '../../world/level/plan'
-import { modifyFocus } from '../../world/party/party'
-import { TOOL_RULES } from '../../world/stations/toolRules'
-import { cellarDarkOf } from '../cellarDark'
+import type { Model } from '#app/model.ts'
+import { cellarDarkOf } from '#render/cellarDark.ts'
+import { quietWave, withPlayerAt } from '#test/model.fixture.ts'
+import { CELLAR_SPOT, zombieAt } from '#test/testing.ts'
+import { openExitIn } from '#world/level/arena.ts'
+import { EAST_EXIT, FAR_EXIT } from '#world/level/plan.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
 
 const inCellar = (model: Model): Model =>
   withPlayerAt(

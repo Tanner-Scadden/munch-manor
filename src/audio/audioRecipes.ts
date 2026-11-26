@@ -1,19 +1,20 @@
 import { Array } from 'effect'
 
-import { FRIDGE_SPIN_STEPS_MS, MS_PER_SECOND } from '../shared/constants'
-import type { SoundEffect } from '../shared/soundEffect'
-import { ACTION_RECIPES } from './actionRecipes'
-import { INTRO_RECIPES } from './introRecipes'
-import { ROOM_TOOL_RECIPES } from './roomToolRecipes'
+import { FRIDGE_SPIN_STEPS_MS, MS_PER_SECOND } from '#shared/constants.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+
+import { ACTION_RECIPES } from './actionRecipes.ts'
+import { INTRO_RECIPES } from './introRecipes.ts'
+import { ROOM_TOOL_RECIPES } from './roomToolRecipes.ts'
 import {
   type Recipe,
   type ToneLayer,
   at,
   delayedEnvelope,
   envelope,
-} from './soundRecipe'
-import { WEATHER_RECIPES } from './weatherRecipes'
-import { ZOMBIE_RECIPES } from './zombieRecipes'
+} from './soundRecipe.ts'
+import { WEATHER_RECIPES } from './weatherRecipes.ts'
+import { ZOMBIE_RECIPES } from './zombieRecipes.ts'
 
 const PICKUP_CHIRP: ReadonlyArray<ToneLayer> = [
   {

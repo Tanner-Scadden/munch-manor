@@ -5,10 +5,12 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Phase, RunMode } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { withBests } from '../../../domain/run'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
+import { Phase, RunMode } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { withBests } from '#domain/run.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { Events } from '#features/lobby/message.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
 import {
   ackHudSlots,
   byClass,
@@ -26,12 +28,11 @@ import {
   startRunInScene,
   statusLine,
   throughIntroInScene,
-} from '../../../test/sceneTesting'
-import { resolveFocusLobby, sceneOf, steps } from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { Lobby } from '../block'
-import { Events } from '../message'
-import { expectLobbyDrawn, lobbyAttr, lobbySceneIn } from './lobby.fixture'
+} from '#test/sceneTesting.ts'
+import { resolveFocusLobby, sceneOf, steps } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+
+import { expectLobbyDrawn, lobbyAttr, lobbySceneIn } from './lobby.fixture.ts'
 
 const endlessModeButton = HtmlLocator.role('button', { name: 'Endless' })
 const START_PROMPT =

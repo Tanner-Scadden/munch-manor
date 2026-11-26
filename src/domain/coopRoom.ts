@@ -11,13 +11,13 @@ import {
   type World,
 } from '@munch/netcode'
 
-import { Calling } from '../shared/playerData'
+import { Calling } from '#shared/playerData.ts'
 import {
   type OwnSeat,
   ROOM_WORLD,
   type RoomWorld,
-} from '../world/net/roomWorld'
-import { Bullet, GameEvent } from '../world/schema/worldSchema'
+} from '#world/net/roomWorld.ts'
+import { Bullet, GameEvent } from '#world/schema/worldSchema.ts'
 
 export type WorldState = RoomWorld
 export type OwnPlayer = OwnSeat

@@ -3,26 +3,26 @@ import { Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { LobbyChange, RoomRequest, Screen } from '../../../domain/coopRoom'
-import { CoopMessage } from '../../../features/coop/message'
-import { freshRoom } from '../../../features/coop/roomState'
-import { ChangeLobby } from '../../../features/coop/steps'
-import { CODE, lobbyOf, memberOf } from '../../../features/coop/testing'
-import { RememberRoom, RequestRoom } from '../../../features/coop/update'
-import { lookCodeOf } from '../../../shared/lookCodes'
-import type { Appearance } from '../../../shared/playerData'
-import { home, newPlayerReady } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { Lesson } from '#app/model.ts'
+import { FocusHomeButton } from '#app/update/home.ts'
+import { LobbyChange, RoomRequest, Screen } from '#domain/coopRoom.ts'
+import { CoopMessage } from '#features/coop/message.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
+import { CODE, lobbyOf, memberOf } from '#features/coop/testing.ts'
+import { RememberRoom, RequestRoom } from '#features/coop/update.ts'
+import { lookCodeOf } from '#shared/lookCodes.ts'
+import type { Appearance } from '#shared/playerData.ts'
+import { home, newPlayerReady } from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
   resolveFocusCoop,
   send,
   steps,
-} from '../../../test/testing'
-import { noRank, pointsForRank } from '../../../world/heroes/rank'
-import { Message } from '../../message'
-import { Lesson } from '../../model'
-import { FocusHomeButton } from '../home'
+} from '#test/testing.ts'
+import { noRank, pointsForRank } from '#world/heroes/rank.ts'
 
 const PICKED_LOOK: Appearance = {
   body: 'Slim',

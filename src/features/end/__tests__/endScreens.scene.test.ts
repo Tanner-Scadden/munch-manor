@@ -5,15 +5,16 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase } from '../../../app/model'
-import { ShareFromClick } from '../../../app/mount'
-import { initialModel } from '../../../app/pureApp'
-import { SendShareEvent } from '../../../app/update/end'
-import { FocusEndMenuButton } from '../../../app/update/home'
-import { shareTextOf } from '../../../screens/game/menus'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
-import { withNewerBuild } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { ShareFromClick } from '#app/mount.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { SendShareEvent } from '#app/update/end.ts'
+import { FocusEndMenuButton } from '#app/update/home.ts'
+import { SHARE_COPIED_MS } from '#features/end/endBeat.ts'
+import { shareTextOf } from '#screens/game/menus.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { withNewerBuild } from '#test/model.fixture.ts'
 import {
   byClass,
   emitFrame,
@@ -28,15 +29,9 @@ import {
   shareMountSettles,
   updateChip,
   withAttrs,
-} from '../../../test/sceneTesting'
-import {
-  type SceneStep,
-  modelAfter,
-  sceneOf,
-  steps,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { SHARE_COPIED_MS } from '../endBeat'
+} from '#test/sceneTesting.ts'
+import { type SceneStep, modelAfter, sceneOf, steps } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 
 const frames = (count: number): SceneStep =>
   steps(...Array.makeBy(count, () => emitFrame(50)))

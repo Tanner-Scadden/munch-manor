@@ -9,13 +9,14 @@ import {
   group,
   placeAt,
   spriteShapes,
-} from '../art/sprite'
-import { backDoorBoxOf, isBackDoorOpen } from '../world/kitchen/backDoor'
-import { levelOf } from '../world/level/arena'
-import type { World } from '../world/schema/world'
-import type { Drawable } from './depth'
-import type * as Draw from './draw'
-import { rect } from './drawing'
+} from '#art/sprite.ts'
+import { backDoorBoxOf, isBackDoorOpen } from '#world/kitchen/backDoor.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { World } from '#world/schema/world.ts'
+
+import type { Drawable } from './depth.ts'
+import type * as Draw from './draw.ts'
+import { rect } from './drawing.ts'
 
 const DOOR_PALETTE: Palette = {
   K: '#140c10',

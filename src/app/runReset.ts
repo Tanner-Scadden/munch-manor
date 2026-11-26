@@ -9,16 +9,16 @@ import {
   RattlesIntro,
   cosmeticSeedOf,
   quietDareHint,
-} from '../domain/clientSchema'
-import { startingCallingOf } from '../features/heroes/callingPick'
-import { deriveIntent } from '../input/input'
-import { cameraFor } from '../render/camera'
-import { STILL_GLIDE } from '../render/renderSchema'
-import { rollCases } from '../world/feats/cases'
-import { playerOfCalling } from '../world/heroes/callingPlayer'
-import { freshOvens } from '../world/kitchen/kitchen'
-import { START_LEVEL } from '../world/level/arena'
-import { soloState } from '../world/party/party'
+} from '#domain/clientSchema.ts'
+import { startingCallingOf } from '#features/heroes/callingPick.ts'
+import { deriveIntent } from '#input/input.ts'
+import { cameraFor } from '#render/camera.ts'
+import { STILL_GLIDE } from '#render/renderSchema.ts'
+import { rollCases } from '#world/feats/cases.ts'
+import { playerOfCalling } from '#world/heroes/callingPlayer.ts'
+import { freshOvens } from '#world/kitchen/kitchen.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { soloState } from '#world/party/party.ts'
 import {
   Boss,
   DebutCard,
@@ -40,14 +40,15 @@ import {
   shutFridge,
   shutValve,
   stillShake,
-} from '../world/schema/worldSchema'
-import { ZERO_VECTOR } from '../world/step/geometry'
+} from '#world/schema/worldSchema.ts'
+import { ZERO_VECTOR } from '#world/step/geometry.ts'
+
 import {
   type Model,
   freshCosmetics,
   freshRoomRun,
   freshRunGains,
-} from './model'
+} from './model.ts'
 
 export type RunFields = Pick<
   Model,

@@ -20,14 +20,6 @@ import {
   whenSettled,
 } from '../audit/lib'
 import {
-  type CameraKey,
-  type Caption,
-  type Format,
-  type Shot,
-  encodePlan,
-} from './shotList'
-import { type ClipCue, decodeAudioLog } from './soundtrackRequest'
-import {
   type Base,
   type Box,
   type CaptionDrawing,
@@ -35,6 +27,14 @@ import {
   type Overlay,
   paintOverlay,
 } from './inPage/paintOverlay'
+import {
+  type CameraKey,
+  type Caption,
+  type Format,
+  type Shot,
+  encodePlan,
+} from './shotList'
+import { type ClipCue, decodeAudioLog } from './soundtrackRequest'
 
 class PageFailed extends Schema.TaggedError<
   PageFailed,
@@ -115,7 +115,6 @@ const CAPTION_COLORS: Readonly<Record<string, string>> = {
 const CAPTION_OUTLINE = '#140c10'
 const CAPTION_SHADOW = '#2a1418'
 
-
 const captionDrawing = (
   caption: Caption,
   frameWidth: number,
@@ -139,7 +138,6 @@ const captionDrawing = (
     top: caption.top,
   }
 }
-
 
 const EMPTY_OVERLAY: Overlay = {
   base: undefined,

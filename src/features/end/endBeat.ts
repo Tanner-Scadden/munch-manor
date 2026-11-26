@@ -2,39 +2,40 @@ import { Array, Function, Option, Schema, String } from 'effect'
 
 import { UiSchema, UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import type { SoundEffect } from '../../audio/audio'
-import { isBotCrew } from '../../domain/bots'
-import { MasteryUnlock, type RunRecord } from '../../domain/clientSchema'
-import { giftsOpenedBy } from '../../domain/closet'
-import { isEndScreen, withBests } from '../../domain/run'
-import type { SharePath } from '../../platform/analytics'
-import { isObjectFirst, isObjectSecond } from '../../shared/dualArgs'
-import { MasterySkin } from '../../shared/masteryData'
+import type { Model } from '#app/model.ts'
+import type { SoundEffect } from '#audio/audio.ts'
+import { isBotCrew } from '#domain/bots.ts'
+import { MasteryUnlock, type RunRecord } from '#domain/clientSchema.ts'
+import { giftsOpenedBy } from '#domain/closet.ts'
+import { isEndScreen, withBests } from '#domain/run.ts'
+import type { SharePath } from '#platform/analytics.ts'
+import { isObjectFirst, isObjectSecond } from '#shared/dualArgs.ts'
+import { MasterySkin } from '#shared/masteryData.ts'
 import {
   Calling,
   CosmeticKind,
   type Difficulty,
   isBetterRun,
-} from '../../shared/playerData'
-import { purseBonesAt, purseRanksBetween } from '../../shared/rankCurve'
-import { dareCardOf } from '../../world/dare/dare'
-import { MilestoneId } from '../../world/dare/milestones'
-import { callingsOpenedBy } from '../../world/heroes/calling'
-import { isRankUp, rankOf } from '../../world/heroes/rank'
-import { isCoop, leadSeatOf } from '../../world/party/party'
-import { accuracyPercent, totalKills } from '../../world/run/stats'
+} from '#shared/playerData.ts'
+import { purseBonesAt, purseRanksBetween } from '#shared/rankCurve.ts'
+import { dareCardOf } from '#world/dare/dare.ts'
+import { MilestoneId } from '#world/dare/milestones.ts'
+import { callingsOpenedBy } from '#world/heroes/calling.ts'
+import { isRankUp, rankOf } from '#world/heroes/rank.ts'
+import { isCoop, leadSeatOf } from '#world/party/party.ts'
+import { accuracyPercent, totalKills } from '#world/run/stats.ts'
 import {
   type BestRun,
   type DifficultyBests,
   Phase,
   RunMode,
   WeaponKind,
-} from '../../world/schema/worldSchema'
-import { roundWave } from '../../world/waves/waves'
-import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
-import type { SharedRun } from './share'
-import type { TallyIcon } from './tallyIcons'
+} from '#world/schema/worldSchema.ts'
+import { roundWave } from '#world/waves/waves.ts'
+
+import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards.ts'
+import type { SharedRun } from './share.ts'
+import type { TallyIcon } from './tallyIcons.ts'
 
 export type EndKind = 'Munched' | 'Chicken' | 'Won'
 

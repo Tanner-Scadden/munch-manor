@@ -2,8 +2,8 @@ import { Array, Function, Option, Record, Result, String } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { CHICKEN_FRAMES, CHICKEN_WIDTH_PX, FEATHER } from '../../art/chickenArt'
+import type { Model } from '#app/model.ts'
+import { CHICKEN_FRAMES, CHICKEN_WIDTH_PX, FEATHER } from '#art/chickenArt.ts'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -12,7 +12,7 @@ import {
   placeBaked,
   textShapes,
   textWidth,
-} from '../../art/font'
+} from '#art/font.ts'
 import {
   MODIFIER_PALETTE,
   MODIFIER_PIXELS,
@@ -20,34 +20,35 @@ import {
   SKULL_OFF_ART,
   TROPHY_PALETTE,
   TROPHY_PIXELS,
-} from '../../art/icons'
-import { markSprite } from '../../art/markArt'
-import { type Sprite, group, placeAt, spriteShapes } from '../../art/sprite'
-import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
-import { effectiveModifiersOf, playedMarkOf } from '../../domain/onlineRun'
-import { isAskingForFeedback } from '../../domain/run'
-import type * as Draw from '../../render/draw'
-import { QUARTER_TURN, rect } from '../../render/drawing'
-import { playerFootY } from '../../render/playerView'
+} from '#art/icons.ts'
+import { markSprite } from '#art/markArt.ts'
+import { type Sprite, group, placeAt, spriteShapes } from '#art/sprite.ts'
+import { ZOMBIE_SPRITES } from '#art/sprites/zombies.ts'
+import { effectiveModifiersOf, playedMarkOf } from '#domain/onlineRun.ts'
+import { isAskingForFeedback } from '#domain/run.ts'
+import type * as Draw from '#render/draw.ts'
+import { QUARTER_TURN, rect } from '#render/drawing.ts'
+import { playerFootY } from '#render/playerView.ts'
 import {
   type FrameSpan,
   type Screen,
   frameSpanOf,
   landscapeFrameOffset,
-} from '../../render/screen'
-import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
-import type { Difficulty } from '../../shared/playerData'
-import { CHICKEN_QUIP, CHICKEN_WORD } from '../../world/names'
-import { focusOf, isCoop, modifyFocus } from '../../world/party/party'
-import { DIFFICULTIES } from '../../world/run/difficulty'
-import { modifiersOn } from '../../world/run/modifiers'
-import { defeatQuip, escapeVerdict } from '../../world/run/stats'
-import { Invulnerability, type Zombie } from '../../world/schema/entitySchema'
-import { Phase } from '../../world/schema/worldSchema'
-import { roundWave } from '../../world/waves/waves'
-import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
-import { maybeBeatComparisonOf } from './beatRun'
-import { beatVerdictShapes, friendRowShapes } from './beatRunView'
+} from '#render/screen.ts'
+import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from '#shared/constants.ts'
+import type { Difficulty } from '#shared/playerData.ts'
+import { CHICKEN_QUIP, CHICKEN_WORD } from '#world/names.ts'
+import { focusOf, isCoop, modifyFocus } from '#world/party/party.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
+import { modifiersOn } from '#world/run/modifiers.ts'
+import { defeatQuip, escapeVerdict } from '#world/run/stats.ts'
+import { Invulnerability, type Zombie } from '#world/schema/entitySchema.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
+import { roundWave } from '#world/waves/waves.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
+
+import { maybeBeatComparisonOf } from './beatRun.ts'
+import { beatVerdictShapes, friendRowShapes } from './beatRunView.ts'
 import {
   PANEL_EDGE,
   PANEL_FILL,
@@ -55,8 +56,8 @@ import {
   crewBoardShapes,
   crewBoardSpan,
   sparkShapes,
-} from './crewBoardView'
-import { deathTipShapes } from './deathTip'
+} from './crewBoardView.ts'
+import { deathTipShapes } from './deathTip.ts'
 import {
   BEST_POP_MS,
   type EndKind,
@@ -78,16 +79,16 @@ import {
   skullAtMs,
   skullCountOf,
   tallyRowsOf,
-} from './endBeat'
-import { ghostShapes, maybeGhostOf } from './ghostView'
+} from './endBeat.ts'
+import { ghostShapes, maybeGhostOf } from './ghostView.ts'
 import {
   STRIP_PX,
   type UnlockSpot,
   rankStripShapes,
   unlockCardBox,
   unlockCardShapes,
-} from './rankStripView'
-import { ICON_SHIFT, TALLY_ICONS, type TallyIcon } from './tallyIcons'
+} from './rankStripView.ts'
+import { ICON_SHIFT, TALLY_ICONS, type TallyIcon } from './tallyIcons.ts'
 
 const CENTER_X = VIEW_WIDTH / 2
 const TITLE_SCALE = 2

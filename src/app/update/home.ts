@@ -2,36 +2,47 @@ import { Array, Duration, Effect, Function, Option, Schema, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { UpdateGift } from '../../domain/clientSchema'
-import { CardEvent, stepDifficultyCard } from '../../domain/difficultyCard'
-import { GiftEvent, stepGift } from '../../domain/giftFlow'
-import { markJournalSeen } from '../../domain/journal'
-import { runDifficultyOf } from '../../domain/onlineRun'
-import { isEndScreen, isOnHome } from '../../domain/run'
-import { END_MENU_BUTTON_ID, endOffer } from '../../features/end/endOffer'
+import {
+  MenuState,
+  isAnyPanelOpen,
+  isHandOpen,
+  isOnHomeMenu,
+  isPanelOpen,
+  isPastRestartGrace,
+  menuState,
+} from '#app/menuState.ts'
+import { DifficultyCard, type Model } from '#app/model.ts'
+import { returnHome } from '#app/runReset.ts'
+import { UpdateGift } from '#domain/clientSchema.ts'
+import { CardEvent, stepDifficultyCard } from '#domain/difficultyCard.ts'
+import { GiftEvent, stepGift } from '#domain/giftFlow.ts'
+import { markJournalSeen } from '#domain/journal.ts'
+import { runDifficultyOf } from '#domain/onlineRun.ts'
+import { isEndScreen, isOnHome } from '#domain/run.ts'
+import { END_MENU_BUTTON_ID, endOffer } from '#features/end/endOffer.ts'
 import {
   HandCard,
   HomeButton,
   type MenuPanel,
-} from '../../features/home/homeSchema'
-import type { HelpCard } from '../../features/menus/message'
-import { MunchopediaPage } from '../../features/munchopedia/model'
-import { skipTutorial } from '../../features/onboarding/onboarding'
-import { markProofSeen } from '../../features/proof/proof'
-import { NEWS_DAYS } from '../../features/whatsNew/changelog'
-import { PAD_A, PAD_B, PAD_START } from '../../input/gamepad'
+} from '#features/home/homeSchema.ts'
+import type { HelpCard } from '#features/menus/message.ts'
+import { MunchopediaPage } from '#features/munchopedia/model.ts'
+import { skipTutorial } from '#features/onboarding/onboarding.ts'
+import { markProofSeen } from '#features/proof/proof.ts'
+import { NEWS_DAYS } from '#features/whatsNew/changelog.ts'
+import { PAD_A, PAD_B, PAD_START } from '#input/gamepad.ts'
 import {
   isMenuKey,
   isStartKey,
   maybeFocusStep,
   releaseAll,
-} from '../../input/input'
-import type { InstallOutcome } from '../../platform/deviceSchema'
-import { InstallPrompt } from '../../platform/install'
-import { InstallMessage, VersionMessage } from '../../platform/message'
-import { forgetTutorial } from '../../platform/save'
-import { activateNewBuild } from '../../platform/serviceWorker'
-import { reloadOnto } from '../../platform/version'
+} from '#input/input.ts'
+import type { InstallOutcome } from '#platform/deviceSchema.ts'
+import { InstallPrompt } from '#platform/install.ts'
+import { InstallMessage, VersionMessage } from '#platform/message.ts'
+import { forgetTutorial } from '#platform/save.ts'
+import { activateNewBuild } from '#platform/serviceWorker.ts'
+import { reloadOnto } from '#platform/version.ts'
 import {
   HAND_CARDS,
   type KeyedHandCard,
@@ -51,35 +62,30 @@ import {
   seeTurnHint,
   steppedHomeFocus,
   turnNewsPage,
-} from '../../screens/home/home'
-import type { TutorialChoice } from '../../shared/nameKeys'
-import type { Difficulty } from '../../shared/playerData'
-import { stepWhen } from '../../shared/stepWhen'
-import { clickById, focusById } from '../../ui/menuParts'
+} from '#screens/home/home.ts'
+import type { TutorialChoice } from '#shared/nameKeys.ts'
+import type { Difficulty } from '#shared/playerData.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+import { clickById, focusById } from '#ui/menuParts.ts'
 import {
   chooseDifficulty,
   isLocked,
   isNightmareUnlockedBy,
   settleNightmare,
   unlockNightmare,
-} from '../../world/run/difficulty'
-import { noModifiers } from '../../world/run/modifiers'
-import { RunMode } from '../../world/schema/worldSchema'
+} from '#world/run/difficulty.ts'
+import { noModifiers } from '#world/run/modifiers.ts'
+import { RunMode } from '#world/schema/worldSchema.ts'
+
+import { closeRootDialog, openRootDialog } from './dialog.ts'
+import { openProfile } from './profile.ts'
 import {
-  MenuState,
-  isAnyPanelOpen,
-  isHandOpen,
-  isOnHomeMenu,
-  isPanelOpen,
-  isPastRestartGrace,
-  menuState,
-} from '../menuState'
-import { DifficultyCard, type Model } from '../model'
-import { returnHome } from '../runReset'
-import { closeRootDialog, openRootDialog } from './dialog'
-import { openProfile } from './profile'
-import { isPaused, startFromButton, startWhenAllowed, startsRun } from './run'
-import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
+  isPaused,
+  startFromButton,
+  startWhenAllowed,
+  startsRun,
+} from './run.ts'
+import { playSounds, tapSound, uiCue, unlockAudio } from './sound.ts'
 import {
   type UpdateStep,
   combine,
@@ -88,7 +94,7 @@ import {
   releaseInput,
   unchanged,
   withInput,
-} from './step'
+} from './step.ts'
 
 export class ShowInstallPrompt extends Command.Service<ShowInstallPrompt>()(
   'app/ShowInstallPrompt',

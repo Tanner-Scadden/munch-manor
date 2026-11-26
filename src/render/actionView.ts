@@ -1,7 +1,7 @@
 import { Array, Function, Option, Record } from 'effect'
 
-import { type ActStance, frontHandOf } from '../art/appearance'
-import { DARE_ICONS } from '../art/dareArt'
+import { type ActStance, frontHandOf } from '#art/appearance.ts'
+import { DARE_ICONS } from '#art/dareArt.ts'
 import {
   CROWBAR,
   HAMMER_RAISED,
@@ -13,7 +13,7 @@ import {
   SPOON,
   SWEAT_DROP,
   type ToolSprite,
-} from '../art/handTools'
+} from '#art/handTools.ts'
 import {
   type Facing,
   type SpriteSet,
@@ -21,9 +21,10 @@ import {
   boundsOf,
   group,
   placeAt,
-} from '../art/sprite'
-import type { DareKind } from '../world/dare/dareSchema'
-import type { Vector } from '../world/schema/worldSchema'
+} from '#art/sprite.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+
 import {
   ActionPose,
   type BeatPose,
@@ -31,9 +32,9 @@ import {
   type WorkingPose,
   keyframeOf,
   paceOf,
-} from './actionPose'
-import type * as Draw from './draw'
-import type { Payoff } from './renderSchema'
+} from './actionPose.ts'
+import type * as Draw from './draw.ts'
+import type { Payoff } from './renderSchema.ts'
 
 export type BodyLook = Readonly<{
   foot: Vector

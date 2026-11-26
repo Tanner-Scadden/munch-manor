@@ -2,14 +2,15 @@ import { Effect, Option, Schedule, pipe } from 'effect'
 
 import { Html } from '@effect/ui/html'
 
-import { toBrowserError } from '../../shared/describeError'
-import { DIORAMA_FRAME_MS, IsoLens } from './diorama'
-import { type IsoFrame, IsoFrameSchema } from './frame'
-import { type HoldKey, isHeldOver } from './hold'
-import type { PlinthPicture } from './plinth'
-import type { PlinthPose } from './plinthPose'
-import type { IsoScene } from './scene'
-import { unsupportedNode } from './support'
+import { toBrowserError } from '#shared/describeError.ts'
+
+import { DIORAMA_FRAME_MS, IsoLens } from './diorama.ts'
+import { type IsoFrame, IsoFrameSchema } from './frame.ts'
+import { type HoldKey, isHeldOver } from './hold.ts'
+import type { PlinthPicture } from './plinth.ts'
+import type { PlinthPose } from './plinthPose.ts'
+import type { IsoScene } from './scene.ts'
+import { unsupportedNode } from './support.ts'
 
 const TAG = 'munch-world'
 
@@ -21,7 +22,7 @@ export const worldElement = Html.customElement({
 const startScene = (host: HTMLElement, onLoaded: () => void) =>
   Effect.gen(function* () {
     const { createIsoScene } = yield* Effect.tryPromise({
-      try: () => import('./scene'),
+      try: () => import('./scene.ts'),
       catch: toBrowserError,
     })
     return yield* createIsoScene({ host, onLoaded })

@@ -1,6 +1,6 @@
 import type { Array } from 'effect'
 
-import type { Model, ProfileTab } from './model'
+import type { Model, ProfileTab } from './model.ts'
 
 export const PROFILE_TABS_ID = 'profile-tabs'
 

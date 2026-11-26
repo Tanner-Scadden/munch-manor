@@ -1,12 +1,13 @@
 import { Array, Function, Record, pipe } from 'effect'
 
-import type { Difficulty } from '../shared/playerData'
-import type { Modifier } from '../world/run/modifiers'
-import type { TrapKind } from '../world/schema/entitySchema'
-import { noteArtSize } from './artSize'
-import { GRAB_PALETTE, GRAB_PIXELS } from './prizeArt'
-import { type Palette, pixelRuns } from './sprite'
-import { TRAP_ICON_PIXELS } from './sprites/traps'
+import type { Difficulty } from '#shared/playerData.ts'
+import type { Modifier } from '#world/run/modifiers.ts'
+import type { TrapKind } from '#world/schema/entitySchema.ts'
+
+import { noteArtSize } from './artSize.ts'
+import { GRAB_PALETTE, GRAB_PIXELS } from './prizeArt.ts'
+import { type Palette, pixelRuns } from './sprite.ts'
+import { TRAP_ICON_PIXELS } from './sprites/traps.ts'
 
 const LIGHT = '#f4f1de'
 const SHADE = '#140c10'

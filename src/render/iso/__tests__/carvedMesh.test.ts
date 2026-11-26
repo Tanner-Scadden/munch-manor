@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
-import { carve } from '../../../art/carve'
-import { carvedMeshOf } from '../carvedMesh'
+import { carve } from '#art/carve.ts'
+import { carvedMeshOf } from '#render/iso/carvedMesh.ts'
 
 const PALETTE = { a: '#ff0000', f: '#ffd23f' }
 

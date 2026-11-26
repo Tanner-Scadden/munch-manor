@@ -5,10 +5,11 @@ import {
   LINE_OF_SIGHT_STEP_PX,
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import type { DoorId, Vector } from '../schema/entitySchema'
-import { clamp } from '../step/geometry'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import type { DoorId, Vector } from '#world/schema/entitySchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
 import {
   type Door,
   type Level,
@@ -18,8 +19,8 @@ import {
   TILE_SOLID,
   TILE_SOUP,
   hasTileFlag,
-} from './arena'
-import { isInsideRoom, tileIndex } from './tileGrid'
+} from './arena.ts'
+import { isInsideRoom, tileIndex } from './tileGrid.ts'
 
 export const isWalkableTile: {
   (column: number, row: number): (level: Level) => boolean

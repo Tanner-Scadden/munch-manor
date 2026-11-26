@@ -4,8 +4,7 @@ import { TestClock } from 'effect/testing'
 import { UiStruct } from '@effect/ui'
 import { afterEach, describe, expect, it, vi } from '@effect/vitest'
 
-import { initialModel } from '../../app/pureApp'
-import { asVeteran } from '../../test/veteran'
+import { initialModel } from '#app/pureApp.ts'
 import {
   RUN_SUMMARY_VERSION,
   type RunSummary,
@@ -13,10 +12,14 @@ import {
   RunSummaryV1,
   RunSummaryV2,
   SOLO_PARTY,
-} from '../analytics'
-import { saveOf } from '../save'
-import { PlayerStore } from '../store'
-import { sendOrQueueRunSummary, startSummaryQueue } from '../summaryQueue'
+} from '#platform/analytics.ts'
+import { saveOf } from '#platform/save.ts'
+import { PlayerStore } from '#platform/store.ts'
+import {
+  sendOrQueueRunSummary,
+  startSummaryQueue,
+} from '#platform/summaryQueue.ts'
+import { asVeteran } from '#test/veteran.ts'
 
 const ORIGIN = 'https://api.example.test'
 

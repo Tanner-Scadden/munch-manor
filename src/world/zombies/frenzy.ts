@@ -2,17 +2,18 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import * as DetMath from '../../shared/detMath'
-import { KEY_RULES, grantKeys } from '../keys/keys'
-import type { World } from '../schema/world'
+import * as DetMath from '#shared/detMath.ts'
+import { KEY_RULES, grantKeys } from '#world/keys/keys.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Frenzy,
   type FrenzyPack,
   GameEvent,
   type PlannedSpawn,
   type Zombie,
-} from '../schema/worldSchema'
-import { isFloorKind, isWalking } from './zombies'
+} from '#world/schema/worldSchema.ts'
+
+import { isFloorKind, isWalking } from './zombies.ts'
 
 const isFrenziedOrFading = Frenzy.isAnyOf(['Frenzied', 'Fading'])
 const isFrenziedFrenzy = Frenzy.isAnyOf(['Frenzied'])

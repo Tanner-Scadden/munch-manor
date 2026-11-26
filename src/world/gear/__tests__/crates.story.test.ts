@@ -14,13 +14,9 @@ import {
   TrapHint,
   type TrapKind,
   type Vector,
-} from '../../../app/model'
-import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  breakBefore,
-  trapReady,
-} from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '#shared/constants.ts'
+import { DISTANT_SPAWN, breakBefore, trapReady } from '#test/model.fixture.ts'
 import {
   BELOW_NORTH_DOOR,
   checkModel,
@@ -29,12 +25,12 @@ import {
   steps,
   tick,
   ticks,
-} from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
-import { focusOf, modifyFocus } from '../../party/party'
-import { crateSpotOf } from '../crates'
-import { MEND_RULES, TRAPS } from '../traps'
+} from '#test/testing.ts'
+import { crateSpotOf } from '#world/gear/crates.ts'
+import { MEND_RULES, TRAPS } from '#world/gear/traps.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

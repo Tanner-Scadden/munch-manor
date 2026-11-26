@@ -2,22 +2,27 @@ import { Array, Option, Schema } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { Message } from '../../../app/message'
-import { type Model } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+import { Message } from '#app/message.ts'
+import { type Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   type LobbyChange,
   type Room,
   Screen,
   maybeRoomOf,
-} from '../../../domain/coopRoom'
-import { home } from '../../../test/model.fixture'
-import type { RootStep } from '../../../test/testing'
-import { type Model as CoopModel } from '../model'
-import { freshRoom } from '../roomState'
-import { ChangeLobby } from '../steps'
-import { CODE, type lobbyOf } from '../testing'
-import { type CoopCommand, type CoopResult, open, updateCoop } from '../update'
+} from '#domain/coopRoom.ts'
+import { type Model as CoopModel } from '#features/coop/model.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
+import { CODE, type lobbyOf } from '#features/coop/testing.ts'
+import {
+  type CoopCommand,
+  type CoopResult,
+  open,
+  updateCoop,
+} from '#features/coop/update.ts'
+import { home } from '#test/model.fixture.ts'
+import type { RootStep } from '#test/testing.ts'
 
 const startModel: CoopModel = initialModel.coop
 

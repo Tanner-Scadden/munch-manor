@@ -3,11 +3,11 @@ import { expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../../app/model'
-import { atClock, quietWave } from '../../../test/model.fixture'
-import { levelOf } from '../../../world/level/arena'
-import { CHANDELIER_DROP } from '../../../world/level/plan'
-import { crittersOf } from '../critters'
+import type { Model } from '#app/model.ts'
+import { crittersOf } from '#render/iso/critters.ts'
+import { atClock, quietWave } from '#test/model.fixture.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { CHANDELIER_DROP } from '#world/level/plan.ts'
 
 const mothsAt = (model: Model, ms: number) => {
   const world = atClock(model, ms)

@@ -216,7 +216,7 @@ export const noFloatingStory = defineRule({
   },
 })
 
-const ROOT_RUNNERS = /(^|\/)app\/(pureApp|main)$/
+const ROOT_RUNNERS = /(^|\/)app\/(pureApp|main)(\.ts)?$/
 
 const PURE_RUNNERS: ReadonlySet<string> = new Set(['update', 'view', 'init'])
 

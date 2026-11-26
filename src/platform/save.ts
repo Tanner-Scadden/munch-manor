@@ -11,8 +11,8 @@ import {
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
-import { savedDifficultyOf } from '../domain/beatMyRun'
+import type { Model } from '#app/model.ts'
+import { savedDifficultyOf } from '#domain/beatMyRun.ts'
 import {
   CaseCard,
   DifficultyCard,
@@ -21,15 +21,15 @@ import {
   RattlesIntro,
   Tour,
   freshLessons,
-} from '../domain/clientSchema'
-import { lookInOwned } from '../domain/closet'
-import { CardEvent, stepDifficultyCard } from '../domain/difficultyCard'
-import { cleanName } from '../domain/playerName'
-import { unlocksAt } from '../domain/unlocks'
-import { mergeDareMarks } from '../shared/dareMarkData'
-import { mergeJournal } from '../shared/journalData'
-import { mergeMastery } from '../shared/masteryData'
-import { mergeMissions } from '../shared/missionData'
+} from '#domain/clientSchema.ts'
+import { lookInOwned } from '#domain/closet.ts'
+import { CardEvent, stepDifficultyCard } from '#domain/difficultyCard.ts'
+import { cleanName } from '#domain/playerName.ts'
+import { unlocksAt } from '#domain/unlocks.ts'
+import { mergeDareMarks } from '#shared/dareMarkData.ts'
+import { mergeJournal } from '#shared/journalData.ts'
+import { mergeMastery } from '#shared/masteryData.ts'
+import { mergeMissions } from '#shared/missionData.ts'
 import {
   PlayerSave,
   SAVE_VERSION,
@@ -43,14 +43,14 @@ import {
   type SavedRunRecord,
   type SavedRunRecords,
   type SavedTrapHint,
-} from '../shared/playerData'
-import { mergeProof } from '../shared/proofData'
-import { DareKind } from '../world/dare/dareSchema'
-import { callingForRun } from '../world/heroes/calling'
-import { playerOfCalling } from '../world/heroes/callingPlayer'
-import { rankOf, totalPointsOf } from '../world/heroes/rank'
-import { modifyFocus } from '../world/party/party'
-import { PickupKind, ZombieKind } from '../world/schema/entitySchema'
+} from '#shared/playerData.ts'
+import { mergeProof } from '#shared/proofData.ts'
+import { DareKind } from '#world/dare/dareSchema.ts'
+import { callingForRun } from '#world/heroes/calling.ts'
+import { playerOfCalling } from '#world/heroes/callingPlayer.ts'
+import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { PickupKind, ZombieKind } from '#world/schema/entitySchema.ts'
 import {
   type BestRun,
   DebutCard,
@@ -60,15 +60,16 @@ import {
   type Lessons,
   TrapHint,
   noPractice,
-} from '../world/schema/worldSchema'
-import { decodeSave, encodeSave } from './saveVersions'
+} from '#world/schema/worldSchema.ts'
+
+import { decodeSave, encodeSave } from './saveVersions.ts'
 
 export {
   decodeSave,
   encodeSave,
   unpickedDifficulty,
   unvisitedHome,
-} from './saveVersions'
+} from './saveVersions.ts'
 
 export {
   PlayerSave,
@@ -78,7 +79,7 @@ export {
   SavedRunRecords,
   SavedTrapHint,
   noSavedBests,
-} from '../shared/playerData'
+} from '#shared/playerData.ts'
 
 export const SAVE_KEY = 'munch-manor:save'
 

@@ -1,8 +1,9 @@
 import { Array, Option, Record, String } from 'effect'
 
-import type { DareKind } from '../world/dare/dareSchema'
-import { pixelIconUrl } from './icons'
-import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+
+import { pixelIconUrl } from './icons.ts'
+import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite.ts'
 
 export const DARE_ICON_SIZE = 7
 

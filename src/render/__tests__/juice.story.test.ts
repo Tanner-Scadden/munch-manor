@@ -3,7 +3,7 @@ import { Array, Effect, Option, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
+import { Message } from '#app/message.ts'
 import {
   type Bullet,
   GameEvent,
@@ -13,8 +13,10 @@ import {
   Pierce,
   Streak,
   type Zombie,
-} from '../../app/model'
-import { initialModel } from '../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { screenToFloorDirection } from '#render/lens.ts'
+import type { Decal, Particle } from '#render/renderSchema.ts'
 import {
   BLOOD_PER_HIT,
   BLOOD_PER_KILL,
@@ -45,13 +47,9 @@ import {
   SHAKE_TRAUMA_WAVE_CLEAR,
   STREAK_WINDOW_MS,
   ZOMBIE_MAX_HP,
-} from '../../shared/constants'
-import { holdingSecond } from '../../test/arsenals'
-import {
-  playingModel,
-  withPlayerAt,
-  withZombies,
-} from '../../test/model.fixture'
+} from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
+import { playingModel, withPlayerAt, withZombies } from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   MUZZLE_X,
@@ -70,13 +68,11 @@ import {
   waitOutFreeze,
   zombieAt,
   zombieOf,
-} from '../../test/testing'
-import { keyOddsOf } from '../../world/keys/keys'
-import { START_LEVEL } from '../../world/level/arena'
-import { modifyFocus } from '../../world/party/party'
-import { scoreOf } from '../../world/run/stats'
-import { screenToFloorDirection } from '../lens'
-import type { Decal, Particle } from '../renderSchema'
+} from '#test/testing.ts'
+import { keyOddsOf } from '#world/keys/keys.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { scoreOf } from '#world/run/stats.ts'
 
 describe('particles and decals', () => {
   const countKind = (

@@ -3,38 +3,34 @@ import { Function, Option, String } from 'effect'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
+} from '#app/definition.ts'
+import type { Model } from '#app/model.ts'
 import {
   CARD_ARROW,
   CASE_ART,
   CASE_HEIGHT,
   CASE_WIDTH,
   PRIZE_SPRITES,
-} from '../../art/caseArt'
-import {
-  type BakedText,
-  bakeText,
-  placeBaked,
-  textShapes,
-} from '../../art/font'
-import { group, placeAt } from '../../art/sprite'
-import { CaseCard } from '../../domain/clientSchema'
-import * as Draw from '../../render/draw'
-import { featLockShapes } from '../../render/featLockView'
-import { LANDSCAPE_SIZE } from '../../render/screen'
-import { caseLookOf } from '../../world/feats/caseSpots'
-import { levelOf } from '../../world/level/arena'
-import { DISPLAY_CASE_NAME, GUN_NAMES } from '../../world/names'
-import { focusOf } from '../../world/party/party'
+} from '#art/caseArt.ts'
+import { type BakedText, bakeText, placeBaked, textShapes } from '#art/font.ts'
+import { group, placeAt } from '#art/sprite.ts'
+import { CaseCard } from '#domain/clientSchema.ts'
+import * as Draw from '#render/draw.ts'
+import { featLockShapes } from '#render/featLockView.ts'
+import { LANDSCAPE_SIZE } from '#render/screen.ts'
+import { caseLookOf } from '#world/feats/caseSpots.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { DISPLAY_CASE_NAME, GUN_NAMES } from '#world/names.ts'
+import { focusOf } from '#world/party/party.ts'
 import {
   type Armament,
   type DisplayCase,
   Feat,
-} from '../../world/schema/worldSchema'
-import { clamp } from '../../world/step/geometry'
-import { CASE_CARD_MS, canSkipCaseCard, maybeCardCase } from './caseCard'
-import { OnboardingMessage } from './message'
+} from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
+import { CASE_CARD_MS, canSkipCaseCard, maybeCardCase } from './caseCard.ts'
+import { OnboardingMessage } from './message.ts'
 
 const CENTER_X = LANDSCAPE_SIZE.width / 2
 const CARD_TOP = 40

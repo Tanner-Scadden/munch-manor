@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
 
-import { MissionId } from '../../shared/missionData'
+import { MissionId } from '#shared/missionData.ts'
 
 export const MissionRun = Schema.Struct({
   crushBest: Schema.Finite,

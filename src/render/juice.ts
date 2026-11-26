@@ -2,7 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
+import type { Model } from '#app/model.ts'
 import {
   BLAST_FLASH_MS,
   BLAST_MAX,
@@ -25,12 +25,12 @@ import {
   SHAKE_TRAUMA_WAVE_CLEAR,
   STREAK_WINDOW_MS,
   TRAP_CRACK_TRAUMA,
-} from '../shared/constants'
-import { type Seeded, between, generateMany, nextRandom } from '../shared/prng'
-import { sameIfUnchanged } from '../shared/sameList'
-import { TRAPS } from '../world/gear/traps'
-import { WEAPONS } from '../world/gear/weapons'
-import { DOOR_OUTWARD } from '../world/level/tileGrid'
+} from '#shared/constants.ts'
+import { type Seeded, between, generateMany, nextRandom } from '#shared/prng.ts'
+import { sameIfUnchanged } from '#shared/sameList.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
+import { DOOR_OUTWARD } from '#world/level/tileGrid.ts'
 import {
   type Blast,
   GameEvent,
@@ -39,9 +39,9 @@ import {
   type Shake,
   Streak,
   stillShake,
-} from '../world/schema/worldSchema'
-import { countWhere } from '../world/step/hitStop'
-import { ZOMBIE_KINDS } from '../world/zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { countWhere } from '#world/step/hitStop.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const BOSS_PART_TRAUMA = 0.35
 const EXIT_SMASH_TRAUMA = 0.7

@@ -2,7 +2,12 @@ import { Array } from 'effect'
 import { Machine } from 'effect-machine'
 import { describe, expect, test } from 'vitest'
 
-import { LinkEvent, LinkFlow, linkMachine, stepLink } from '../linkFlow'
+import {
+  LinkEvent,
+  LinkFlow,
+  linkMachine,
+  stepLink,
+} from '#platform/linkFlow.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.sort(

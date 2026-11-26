@@ -1,9 +1,5 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 
-import type { MasterySkin } from '../../shared/masteryData'
-import type { GunSkin } from '../../shared/playerData'
-import type { Vector, WeaponKind } from '../../world/schema/entitySchema'
-import { ZERO_VECTOR } from '../../world/step/geometry'
 import {
   type Anchor,
   type Palette,
@@ -11,7 +7,11 @@ import {
   TRANSPARENT,
   spriteShapes,
   spriteWidth,
-} from '../sprite'
+} from '#art/sprite.ts'
+import type { MasterySkin } from '#shared/masteryData.ts'
+import type { GunSkin } from '#shared/playerData.ts'
+import type { Vector, WeaponKind } from '#world/schema/entitySchema.ts'
+import { ZERO_VECTOR } from '#world/step/geometry.ts'
 
 const GUN_PALETTE: Palette = {
   K: '#26262e',

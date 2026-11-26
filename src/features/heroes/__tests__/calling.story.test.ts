@@ -3,12 +3,13 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Model } from '../../../app/model'
-import { WriteSave } from '../../../app/update/save'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { PLAYER_MAX_HP, PLAYER_SPEED } from '../../../shared/constants'
-import type { Calling } from '../../../shared/playerData'
-import { heroesBoughtBy, readyAfterRead } from '../../../test/model.fixture'
+import { type Model } from '#app/model.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { isHeroPickerUp } from '#features/lobby/model.ts'
+import { PLAYER_MAX_HP, PLAYER_SPEED } from '#shared/constants.ts'
+import type { Calling } from '#shared/playerData.ts'
+import { heroesBoughtBy, readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   modelAfter,
@@ -19,21 +20,20 @@ import {
   storyOf,
   tapLobbyHero,
   writeSave,
-} from '../../../test/testing'
-import { giveWeapon } from '../../../world/fridge/leftovers'
-import { playerSpeed } from '../../../world/gear/powerups'
-import { heldGun, maybeCarried } from '../../../world/gear/weapons'
-import { playerOfCalling } from '../../../world/heroes/callingPlayer'
-import { pointsForRank } from '../../../world/heroes/rank'
-import { dropKeys } from '../../../world/keys/keys'
-import { focusOf, modifyFocus } from '../../../world/party/party'
+} from '#test/testing.ts'
+import { giveWeapon } from '#world/fridge/leftovers.ts'
+import { playerSpeed } from '#world/gear/powerups.ts'
+import { heldGun, maybeCarried } from '#world/gear/weapons.ts'
+import { playerOfCalling } from '#world/heroes/callingPlayer.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
+import { dropKeys } from '#world/keys/keys.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 import {
   GameEvent,
   Invulnerability,
   idleBoosts,
-} from '../../../world/schema/worldSchema'
-import { woundPlayer } from '../../../world/step/combat'
-import { isHeroPickerUp } from '../../lobby/model'
+} from '#world/schema/worldSchema.ts'
+import { woundPlayer } from '#world/step/combat.ts'
 
 const ranked = (rank: number, calling: Calling): Model =>
   UiStruct.evolve(readyAfterRead, {

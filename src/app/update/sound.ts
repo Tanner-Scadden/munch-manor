@@ -3,6 +3,13 @@ import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
 import { Command, Component, UiStruct } from '@effect/ui'
 
 import {
+  AudioState,
+  GameEvent,
+  type Model,
+  Phase,
+  type Player,
+} from '#app/model.ts'
+import {
   AudioEngine,
   type PlayOutcome,
   SoundEffect,
@@ -10,42 +17,42 @@ import {
   playSoundAt,
   positionVariation,
   resumeAudio,
-} from '../../audio/audio'
-import { AudioEvent, stepAudio } from '../../audio/audioFlow'
-import { SoundMessage } from '../../audio/message'
-import { maybeTuneCue } from '../../features/dare/musicBox'
-import { scratchesBetween } from '../../features/dare/pocketCard'
+} from '#audio/audio.ts'
+import { AudioEvent, stepAudio } from '#audio/audioFlow.ts'
+import { SoundMessage } from '#audio/message.ts'
+import { maybeTuneCue } from '#features/dare/musicBox.ts'
+import { scratchesBetween } from '#features/dare/pocketCard.ts'
 import {
   maybeLandedBetween,
   prizeSpotOf,
   revealOf,
-} from '../../features/fridge/fridgeReveal'
-import { isTickingShot } from '../../features/hud/ammoWarning'
-import { maybeKitchenSound } from '../../features/kitchen/kitchenCall'
-import { STATION_SOUNDS } from '../../features/stations/stationView'
-import { strikesBetween } from '../../render/actionPose'
-import { mendedSpots } from '../../render/heroTells'
-import { maybeDripHeard } from '../../render/iso/leaks'
-import { didStrikeBetween } from '../../render/iso/mood'
-import type { Motion } from '../../render/renderSchema'
-import { PICKUPS } from '../../world/gear/powerups'
-import { TRAPS } from '../../world/gear/traps'
-import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
-import { PANTRY_SOUNDS } from '../../world/kitchen/pantry'
-import { levelOf } from '../../world/level/arena'
-import { isWadingAt } from '../../world/level/leaks'
-import { focusOf } from '../../world/party/party'
-import { vectorLength } from '../../world/step/geometry'
-import { isRoundActive } from '../../world/waves/waves'
-import { ZOMBIE_KINDS, isArmorShedAt } from '../../world/zombies/zombies'
-import { AudioState, GameEvent, type Model, Phase, type Player } from '../model'
+} from '#features/fridge/fridgeReveal.ts'
+import { isTickingShot } from '#features/hud/ammoWarning.ts'
+import { maybeKitchenSound } from '#features/kitchen/kitchenCall.ts'
+import { STATION_SOUNDS } from '#features/stations/stationView.ts'
+import { strikesBetween } from '#render/actionPose.ts'
+import { mendedSpots } from '#render/heroTells.ts'
+import { maybeDripHeard } from '#render/iso/leaks.ts'
+import { didStrikeBetween } from '#render/iso/mood.ts'
+import type { Motion } from '#render/renderSchema.ts'
+import { PICKUPS } from '#world/gear/powerups.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { WEAPONS, heldWeapon } from '#world/gear/weapons.ts'
+import { PANTRY_SOUNDS } from '#world/kitchen/pantry.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { isWadingAt } from '#world/level/leaks.ts'
+import { focusOf } from '#world/party/party.ts'
+import { vectorLength } from '#world/step/geometry.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
+import { ZOMBIE_KINDS, isArmorShedAt } from '#world/zombies/zombies.ts'
+
 import {
   type UpdateStep,
   combine,
   defineHandlers,
   modelStep,
   unchanged,
-} from './step'
+} from './step.ts'
 
 export class AcquireAudioEngine extends Command.Service<AcquireAudioEngine>()(
   'app/AcquireAudioEngine',

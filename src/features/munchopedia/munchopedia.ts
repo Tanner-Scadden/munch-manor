@@ -1,13 +1,13 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import { standaloneSource } from '../../art/sprite'
-import { type WornFrames, ZOMBIE_SPRITES } from '../../art/sprites/zombies'
-import type * as Draw from '../../render/draw'
-import { JOURNAL_NAME, ZOMBIE_NAMES } from '../../world/names'
-import type { ZombieKind } from '../../world/schema/entitySchema'
-import type { KillCounts } from '../../world/schema/worldSchema'
-import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
+import type { Model } from '#app/model.ts'
+import { standaloneSource } from '#art/sprite.ts'
+import { type WornFrames, ZOMBIE_SPRITES } from '#art/sprites/zombies.ts'
+import type * as Draw from '#render/draw.ts'
+import { JOURNAL_NAME, ZOMBIE_NAMES } from '#world/names.ts'
+import type { ZombieKind } from '#world/schema/entitySchema.ts'
+import type { KillCounts } from '#world/schema/worldSchema.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 export type MunchopediaEntry = Readonly<{
   kind: ZombieKind

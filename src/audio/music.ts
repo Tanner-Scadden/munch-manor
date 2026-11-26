@@ -12,7 +12,7 @@ import {
 
 import { UiSchema } from '@effect/ui'
 
-import { toBrowserError } from '../shared/describeError'
+import { toBrowserError } from '#shared/describeError.ts'
 
 export const MusicMood = Schema.Literals([
   'Silence',

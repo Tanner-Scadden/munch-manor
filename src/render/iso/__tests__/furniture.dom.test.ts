@@ -4,13 +4,13 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { BatchedMesh3D, Container3D } from '@pixi/3d'
 
-import { spriteDepthOf } from '../../../art/sprite'
-import { MANOR } from '../../../world/level/arena'
-import { tallCoverOf } from '../../room/tallCover'
-import type { ViewBox } from '../cull'
-import { flatten } from '../flatten'
-import { Furniture } from '../furniture'
-import { VoxelBatch, type VoxelTextures } from '../voxels'
+import { spriteDepthOf } from '#art/sprite.ts'
+import type { ViewBox } from '#render/iso/cull.ts'
+import { flatten } from '#render/iso/flatten.ts'
+import { Furniture } from '#render/iso/furniture.ts'
+import { VoxelBatch, type VoxelTextures } from '#render/iso/voxels.ts'
+import { tallCoverOf } from '#render/room/tallCover.ts'
+import { MANOR } from '#world/level/arena.ts'
 
 const SHEET = new TextureSource({ width: 512, height: 512 })
 

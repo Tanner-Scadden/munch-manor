@@ -1,8 +1,8 @@
 import { Array, Option, Schema } from 'effect'
 
-import type { Difficulty } from '../../shared/playerData'
-import type { DareKind } from '../../world/dare/dareSchema'
-import { CREW_AWARD_NAMES, type CrewAward, DARE_NAMES } from '../../world/names'
+import type { Difficulty } from '#shared/playerData.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import { CREW_AWARD_NAMES, type CrewAward, DARE_NAMES } from '#world/names.ts'
 
 export const ShareSheet = Schema.Literals(['Available', 'Unavailable'])
 export type ShareSheet = typeof ShareSheet.Type

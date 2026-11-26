@@ -1,13 +1,14 @@
 import { Function, Option, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
-import type { Camera } from '../../render/camera'
-import type * as Draw from '../../render/draw'
-import { edgeArrowShapes } from '../../render/pointerArrow'
-import type { Screen } from '../../render/screen'
-import type { Vector } from '../../world/schema/entitySchema'
-import { maybePadlockPointer, maybeQuestMark } from './firstBreakQuest'
-import { maybeKitchenMark } from './kitchenTour'
+import type { Model } from '#app/model.ts'
+import type { Camera } from '#render/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import { edgeArrowShapes } from '#render/pointerArrow.ts'
+import type { Screen } from '#render/screen.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+
+import { maybePadlockPointer, maybeQuestMark } from './firstBreakQuest.ts'
+import { maybeKitchenMark } from './kitchenTour.ts'
 
 export const maybeTourMark = (model: Model): Option.Option<Vector> =>
   pipe(

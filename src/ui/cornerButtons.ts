@@ -3,9 +3,9 @@ import { Function } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { pixelArtStyle } from '../art/artSize'
-import { BACK_ICON } from '../art/coopIcons'
-import { CLOSE_ICON } from '../art/icons'
+import { pixelArtStyle } from '#art/artSize.ts'
+import { BACK_ICON } from '#art/coopIcons.ts'
+import { CLOSE_ICON } from '#art/icons.ts'
 
 type ButtonBuilder<Message> = ReturnType<Html.H<Message>['button']['attr']>
 

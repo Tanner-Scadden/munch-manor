@@ -2,12 +2,12 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { shuffle } from '../../shared/prng'
-import { giveWeapon } from '../fridge/leftovers'
-import { levelOf } from '../level/arena'
-import { atSeat, forEachSeat } from '../party/party'
-import { DIFFICULTY_ORDER } from '../run/difficulty'
-import type { World } from '../schema/world'
+import { shuffle } from '#shared/prng.ts'
+import { giveWeapon } from '#world/fridge/leftovers.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { atSeat, forEachSeat } from '#world/party/party.ts'
+import { DIFFICULTY_ORDER } from '#world/run/difficulty.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type CasePrize,
   CaseState,
@@ -17,10 +17,11 @@ import {
   GameEvent,
   type PlayerSlot,
   Purchasable,
-} from '../schema/worldSchema'
-import type { Offer } from '../shop/purchase'
-import { CASE_SPOTS, caseBoxOf, caseFootOf, isCaseShown } from './caseSpots'
-import { hasDone } from './feats'
+} from '#world/schema/worldSchema.ts'
+import type { Offer } from '#world/shop/purchase.ts'
+
+import { CASE_SPOTS, caseBoxOf, caseFootOf, isCaseShown } from './caseSpots.ts'
+import { hasDone } from './feats.ts'
 
 type CaseRules = Readonly<{ reachPx: number; tagLiftPx: number }>
 

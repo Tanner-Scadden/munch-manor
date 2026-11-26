@@ -1,8 +1,10 @@
 import { Array, Option } from 'effect'
 import { expect, test } from 'vitest'
 
-import { TILE_SIZE } from '../../../shared/constants'
-import { levelFor } from '../../../world/level/arena'
+import { roomBoxOf } from '#render/room/room.ts'
+import { windowPanesOf } from '#render/room/windows.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { levelFor } from '#world/level/arena.ts'
 import {
   ARRANGEMENTS,
   EAST_EXIT,
@@ -10,13 +12,8 @@ import {
   LIBRARY_ROOM_ID,
   WEST_EXIT,
   manorSpecFor,
-} from '../../../world/level/plan'
-import {
-  isWalkableTile,
-  tileCoordinate,
-} from '../../../world/level/tileQueries'
-import { roomBoxOf } from '../room'
-import { windowPanesOf } from '../windows'
+} from '#world/level/plan.ts'
+import { isWalkableTile, tileCoordinate } from '#world/level/tileQueries.ts'
 
 test.each(Array.map(ARRANGEMENTS, arrangement => [arrangement]))(
   'the rose window lights the library wherever it stands: %o',

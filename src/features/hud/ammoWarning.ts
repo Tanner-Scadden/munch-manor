@@ -1,17 +1,13 @@
 import { Array, Function } from 'effect'
 
-import { isObjectFirst } from '../../shared/dualArgs'
-import type { Calling } from '../../shared/playerData'
-import {
-  carriedMagazine,
-  heldGun,
-  isReloadable,
-} from '../../world/gear/weapons'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+import type { Calling } from '#shared/playerData.ts'
+import { carriedMagazine, heldGun, isReloadable } from '#world/gear/weapons.ts'
 import {
   type CarriedGun,
   GameEvent,
   type Player,
-} from '../../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 const TICK_ROUNDS = 5
 

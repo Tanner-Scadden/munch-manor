@@ -11,9 +11,9 @@ import {
   Phase,
   type PlannedSpawn,
   type Zombie,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   bulletInto,
   checkModel,
@@ -22,12 +22,16 @@ import {
   tick,
   ticks,
   zombieAt,
-} from '../../../test/testing'
-import { KEY_RULES } from '../../keys/keys'
-import { START_LEVEL } from '../../level/arena'
-import { modifyFocus } from '../../party/party'
-import { rollSpawns } from '../../waves/endlessWaves'
-import { FRENZY_RULES, frenzyPace, frenzyPacksOf } from '../frenzy'
+} from '#test/testing.ts'
+import { KEY_RULES } from '#world/keys/keys.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { rollSpawns } from '#world/waves/endlessWaves.ts'
+import {
+  FRENZY_RULES,
+  frenzyPace,
+  frenzyPacksOf,
+} from '#world/zombies/frenzy.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const CENTER_X = START_LEVEL.start.x

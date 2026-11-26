@@ -1,6 +1,6 @@
 import { Effect, Function, Option, Schedule, pipe } from 'effect'
 
-import { type BrowserError, toBrowserError } from '../shared/describeError'
+import { type BrowserError, toBrowserError } from '#shared/describeError.ts'
 
 const SPLASH_ID = 'splash'
 const PROGRESS_PROPERTY = '--splash-progress'

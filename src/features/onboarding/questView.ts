@@ -3,39 +3,40 @@ import { Array, Function, Option, pipe } from 'effect'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
+} from '#app/definition.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/artSize.ts'
 import {
   TOUR_BOARDS_ICON,
   TOUR_FRIDGE_ICON,
   TOUR_PAUSED_ICON,
   TOUR_PRIZE_ICON,
-} from '../../art/icons'
+} from '#art/icons.ts'
 import {
   QUEST_CARD_ICON,
   QUEST_CASE_ICON,
   QUEST_KEY_ICON,
   QUEST_LOCK_ICON,
   QUEST_START_ICON,
-} from '../../art/questIcons'
-import { Tour } from '../../domain/clientSchema'
-import { cameraOf, viewBoxOf, worldToView } from '../../render/camera'
-import { fridgeBoxOf } from '../../world/fridge/leftovers'
-import { levelOf } from '../../world/level/arena'
-import type { Vector } from '../../world/schema/worldSchema'
+} from '#art/questIcons.ts'
+import { Tour } from '#domain/clientSchema.ts'
+import { cameraOf, viewBoxOf, worldToView } from '#render/camera.ts'
+import { fridgeBoxOf } from '#world/fridge/leftovers.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+
 import {
   QUEST_STEPS,
   isQuestDone,
   maybeQuestMark,
   questStepOf,
-} from './firstBreakQuest'
+} from './firstBreakQuest.ts'
 import {
   type KitchenStep,
   kitchenStepOf,
   maybeKitchenMark,
-} from './kitchenTour'
-import { OnboardingMessage } from './message'
+} from './kitchenTour.ts'
+import { OnboardingMessage } from './message.ts'
 
 type StepLook = Readonly<{ icon: string; word: string; spoken: string }>
 

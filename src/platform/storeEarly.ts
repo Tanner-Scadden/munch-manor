@@ -1,6 +1,6 @@
 import { Effect, Option } from 'effect'
 
-import type * as StoreSqlite from './storeSqlite'
+import type * as StoreSqlite from './storeSqlite.ts'
 
 const STORE_WORKER = 'store-worker'
 
@@ -17,7 +17,7 @@ export const loadStoreModule = (): Promise<StoreModule> => {
   if (maybeLoading !== undefined) {
     return maybeLoading
   }
-  const loading = import('./storeSqlite')
+  const loading = import('./storeSqlite.ts')
   storeModules.set(STORE_MODULE, loading)
   loading.catch(() => storeModules.delete(STORE_MODULE))
   return loading

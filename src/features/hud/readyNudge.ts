@@ -2,8 +2,8 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { QuestTour } from '../../domain/clientSchema'
+import type { Model } from '#app/model.ts'
+import { QuestTour } from '#domain/clientSchema.ts'
 import {
   focusOf,
   isCoop,
@@ -11,10 +11,10 @@ import {
   isHere,
   leadSeatOf,
   playersOf,
-} from '../../world/party/party'
-import { isPracticeGateHeld } from '../../world/run/lessons'
-import { isKitchenTourOn } from '../../world/run/tutorialRules'
-import { Phase } from '../../world/schema/worldSchema'
+} from '#world/party/party.ts'
+import { isPracticeGateHeld } from '#world/run/lessons.ts'
+import { isKitchenTourOn } from '#world/run/tutorialRules.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 export const SOLO_NUDGE_MS = 15_000
 export const CREW_NUDGE_MS = 8_000

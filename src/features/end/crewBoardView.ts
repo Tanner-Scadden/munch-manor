@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, String } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -10,24 +10,25 @@ import {
   placeBaked,
   textShapes,
   textWidth,
-} from '../../art/font'
-import { badgeSprite } from '../../art/rankArt'
-import { type Sprite, group, placeAt } from '../../art/sprite'
-import type * as Draw from '../../render/draw'
-import { rect } from '../../render/drawing'
-import { seatColorOf, seatModelsOf } from '../../render/partyView'
-import { playerShapes } from '../../render/playerView'
-import { isPortrait } from '../../render/screen'
-import { badgeTierOf } from '../../world/heroes/rank'
-import { CREW_AWARD_NAMES, type CrewAward } from '../../world/names'
-import { focusOf, leadSeatOf } from '../../world/party/party'
+} from '#art/font.ts'
+import { badgeSprite } from '#art/rankArt.ts'
+import { type Sprite, group, placeAt } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { seatColorOf, seatModelsOf } from '#render/partyView.ts'
+import { playerShapes } from '#render/playerView.ts'
+import { isPortrait } from '#render/screen.ts'
+import { badgeTierOf } from '#world/heroes/rank.ts'
+import { CREW_AWARD_NAMES, type CrewAward } from '#world/names.ts'
+import { focusOf, leadSeatOf } from '#world/party/party.ts'
+
 import {
   CREW_AWARDS,
   type CrewMember,
   awardsOf,
   crewOf,
   mvpOf,
-} from './crewAwards'
+} from './crewAwards.ts'
 import {
   AWARD_STAMP_MS,
   type EndKind,
@@ -40,7 +41,7 @@ import {
   progressOf,
   rowStartMs,
   tallyRowsOf,
-} from './endBeat'
+} from './endBeat.ts'
 import {
   AWARD_ICONS,
   CROWN,
@@ -48,7 +49,7 @@ import {
   ICON_SHIFT,
   REVIVE_ICON,
   TALLY_ICONS,
-} from './tallyIcons'
+} from './tallyIcons.ts'
 
 const PAD = 4
 const GUTTER = 12

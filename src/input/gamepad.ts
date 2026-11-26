@@ -1,6 +1,6 @@
 import { Array, Equal, Function, Option, Schema, String, pipe } from 'effect'
 
-import type { Vector } from '../world/schema/entitySchema'
+import type { Vector } from '#world/schema/entitySchema.ts'
 import {
   ZERO_VECTOR,
   addVectors,
@@ -8,8 +8,9 @@ import {
   normalize,
   scaleVector,
   vectorLength,
-} from '../world/step/geometry'
-import type { Gamepad } from './inputSchema'
+} from '#world/step/geometry.ts'
+
+import type { Gamepad } from './inputSchema.ts'
 
 const STANDARD_BUTTONS = [
   'GamepadA',

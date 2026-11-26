@@ -2,16 +2,17 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { PocketCard } from '../../domain/clientSchema'
-import { isRunOn, runDifficultyOf } from '../../domain/onlineRun'
-import { PAD_SELECT } from '../../input/gamepad'
-import { dareCardOf, maybeThingRoom } from '../../world/dare/dare'
-import type { DareKind } from '../../world/dare/dareSchema'
-import { levelOf } from '../../world/level/arena'
-import { isPending, learn } from '../../world/run/lessons'
-import { Phase, isRoundActive } from '../../world/schema/worldSchema'
-import { isThingShownOn } from './dareView'
+import type { Model } from '#app/model.ts'
+import { PocketCard } from '#domain/clientSchema.ts'
+import { isRunOn, runDifficultyOf } from '#domain/onlineRun.ts'
+import { PAD_SELECT } from '#input/gamepad.ts'
+import { dareCardOf, maybeThingRoom } from '#world/dare/dare.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { isPending, learn } from '#world/run/lessons.ts'
+import { Phase, isRoundActive } from '#world/schema/worldSchema.ts'
+
+import { isThingShownOn } from './dareView.ts'
 
 export const UNFOLD_MS = 400
 export const READ_MS = 4_500

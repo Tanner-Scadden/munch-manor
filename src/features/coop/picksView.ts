@@ -5,9 +5,9 @@ import type { Lobby, PickedMode, RoomDifficulty } from '@munch/netcode'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import { PROP_ICONS } from '../../art/callingArt'
-import { CROWN_ICON } from '../../art/coopIcons'
+} from '#app/definition.ts'
+import { PROP_ICONS } from '#art/callingArt.ts'
+import { CROWN_ICON } from '#art/coopIcons.ts'
 import {
   CAMPAIGN_ICON,
   ENDLESS_ICON,
@@ -15,37 +15,38 @@ import {
   SKULL_ICONS,
   SKULL_OFF_ICON,
   TROPHY_ICON,
-} from '../../art/icons'
-import { callingOfMember } from '../../art/seatLooks'
-import { specialsNoteOf } from '../../domain/callingSpecials'
-import type { NudgeReason, Room } from '../../domain/coopRoom'
-import { nextMarkOf } from '../../domain/dareMarks'
-import { dareMarkFaceView, dareMarkLabel } from '../../ui/dareMarkView'
-import { easyBreakFaceView, easyBreakLabel } from '../../ui/easyBreakView'
-import { iconView, skullFaceViews } from '../../ui/menuParts'
+} from '#art/icons.ts'
+import { callingOfMember } from '#art/seatLooks.ts'
+import { specialsNoteOf } from '#domain/callingSpecials.ts'
+import type { NudgeReason, Room } from '#domain/coopRoom.ts'
+import { nextMarkOf } from '#domain/dareMarks.ts'
+import { dareMarkFaceView, dareMarkLabel } from '#ui/dareMarkView.ts'
+import { easyBreakFaceView, easyBreakLabel } from '#ui/easyBreakView.ts'
+import { iconView, skullFaceViews } from '#ui/menuParts.ts'
 import {
   bonusChipView,
   modifierFaceView,
   modifierLabel,
-} from '../../ui/modifiersView'
-import { CALLING_NAMES, MODE_NAMES } from '../../world/names'
+} from '#ui/modifiersView.ts'
+import { CALLING_NAMES, MODE_NAMES } from '#world/names.ts'
 import {
   isCoveredByMark,
   runBonusPercentOf,
   withMarkModifiers,
-} from '../../world/run/dareLadder'
+} from '#world/run/dareLadder.ts'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
   NIGHTMARE_LOCK_NOTE,
-} from '../../world/run/difficulty'
+} from '#world/run/difficulty.ts'
 import {
   MODIFIER_ORDER,
   type Modifier,
   isModifierOn,
   modifiersOfMask,
-} from '../../world/run/modifiers'
-import { CoopMessage } from './message'
+} from '#world/run/modifiers.ts'
+
+import { CoopMessage } from './message.ts'
 import {
   CALLING_PILL,
   CALLING_PILL_ID,
@@ -55,7 +56,7 @@ import {
   isPicking,
   meIn,
   pickedModeOf,
-} from './roomState'
+} from './roomState.ts'
 
 const MODE_PICK_ICONS: Readonly<Record<PickedMode, string>> = {
   Campaign: CAMPAIGN_ICON,

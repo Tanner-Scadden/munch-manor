@@ -1,16 +1,7 @@
 import { Array, Option, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { TILE_SIZE } from '../../../shared/constants'
-import { EVERY_LEVEL } from '../../../test/model.fixture'
-import { MANOR, levelFor } from '../../../world/level/arena'
-import {
-  CELLAR_ROOM_ID,
-  EAST_EXIT,
-  FAR_EXIT,
-  MANOR_SPEC,
-} from '../../../world/level/plan'
-import { LOOK } from '../lookSpecs'
+import { LOOK } from '#render/iso/lookSpecs.ts'
 import {
   RAMP_COLUMNS,
   ROOM_MAP,
@@ -18,7 +9,16 @@ import {
   rampTexelsOf,
   roomTexelsOf,
   slotOf,
-} from '../lookTexels'
+} from '#render/iso/lookTexels.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { EVERY_LEVEL } from '#test/model.fixture.ts'
+import { MANOR, levelFor } from '#world/level/arena.ts'
+import {
+  CELLAR_ROOM_ID,
+  EAST_EXIT,
+  FAR_EXIT,
+  MANOR_SPEC,
+} from '#world/level/plan.ts'
 
 const byteAt = (
   texels: Uint8Array,

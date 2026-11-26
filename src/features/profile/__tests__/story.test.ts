@@ -4,16 +4,23 @@ import { Component, UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { profilePropsOf } from '../../../app/profileView'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { profilePropsOf } from '#app/profileView.ts'
 import {
   FocusProfileElement,
   RequestLinkCode,
   takeSyncedName,
-} from '../../../app/update/profile'
-import { LinkFlow } from '../../../platform/linkFlow'
-import { readyAfterRead } from '../../../test/model.fixture'
+} from '#app/update/profile.ts'
+import { Profile } from '#features/profile/block.ts'
+import { Events, Message as ProfileMessage } from '#features/profile/message.ts'
+import {
+  KEEP_TUTORIAL_BUTTON_ID,
+  RESET_TUTORIAL_BUTTON_ID,
+} from '#features/profile/profile.ts'
+import { TutorialReset } from '#features/profile/resetFlow.ts'
+import { LinkFlow } from '#platform/linkFlow.ts'
+import { readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -22,13 +29,10 @@ import {
   settleRunCommands,
   steps,
   storyOf,
-} from '../../../test/testing'
-import { noRank } from '../../../world/heroes/rank'
-import { Profile } from '../block'
-import { Events, Message as ProfileMessage } from '../message'
-import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from '../profile'
-import { TutorialReset } from '../resetFlow'
-import { profileOpenOn } from './profile.fixture'
+} from '#test/testing.ts'
+import { noRank } from '#world/heroes/rank.ts'
+
+import { profileOpenOn } from './profile.fixture.ts'
 
 const PROPS = profilePropsOf(profileOpenOn('Settings'))
 

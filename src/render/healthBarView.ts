@@ -1,7 +1,8 @@
 import { Array, Function } from 'effect'
 
-import { bakeShapes, placeAt } from '../art/sprite'
-import * as Draw from './draw'
+import { bakeShapes, placeAt } from '#art/sprite.ts'
+
+import * as Draw from './draw.ts'
 
 export type BarSize = 'Small' | 'Large'
 export type BarTone = 'Zombie' | 'Ally' | 'Rage'

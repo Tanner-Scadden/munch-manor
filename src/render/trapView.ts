@@ -1,20 +1,20 @@
 import { Array, Function, Option, Result } from 'effect'
 
-import { type Facing, type Sprite, type Tone, group } from '../art/sprite'
-import { gunSprite } from '../art/sprites/guns'
+import { type Facing, type Sprite, type Tone, group } from '#art/sprite.ts'
+import { gunSprite } from '#art/sprites/guns.ts'
 import {
   BARRICADE_SPRITES,
   GNOME_HEIGHT,
   GNOME_SPRITES,
   type Lay,
-} from '../art/sprites/traps'
+} from '#art/sprites/traps.ts'
 import {
   MUZZLE_FLASH_BIG_MS,
   MUZZLE_FLASH_MS,
   SHADOW_COLOR,
   TRAP_HIT_FLASH_MS,
   TRAP_HIT_PULSE_MS,
-} from '../shared/constants'
+} from '#shared/constants.ts'
 import {
   PlaceVerdict,
   TURRET_WEAPON,
@@ -26,17 +26,18 @@ import {
   stageOf,
   trapBox,
   trapCenter,
-} from '../world/gear/traps'
-import { WEAPONS } from '../world/gear/weapons'
-import { type Level, levelOf } from '../world/level/arena'
-import { type Box, boxCenter } from '../world/level/tileGrid'
-import { focusOf, focusSlotOf } from '../world/party/party'
-import type { DoorId, Vector } from '../world/schema/entitySchema'
-import type { World } from '../world/schema/world'
-import { Trap, type Turret, TurretGun } from '../world/schema/worldSchema'
-import { isBreak } from '../world/waves/waves'
-import { type Drawable, glowOn } from './depth'
-import * as Draw from './draw'
+} from '#world/gear/traps.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { type Box, boxCenter } from '#world/level/tileGrid.ts'
+import { focusOf, focusSlotOf } from '#world/party/party.ts'
+import type { DoorId, Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/world.ts'
+import { Trap, type Turret, TurretGun } from '#world/schema/worldSchema.ts'
+import { isBreak } from '#world/waves/waves.ts'
+
+import { type Drawable, glowOn } from './depth.ts'
+import * as Draw from './draw.ts'
 import {
   AIMING_UP,
   FULL_TURN,
@@ -44,8 +45,8 @@ import {
   HEALTH_BAR_GAP,
   footShadow,
   placeSprite,
-} from './drawing'
-import { MUZZLE_FLASHES, flashPointOf } from './playerView'
+} from './drawing.ts'
+import { MUZZLE_FLASHES, flashPointOf } from './playerView.ts'
 
 const LAYS: Readonly<Record<DoorId, Lay>> = {
   North: 'Across',

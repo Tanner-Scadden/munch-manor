@@ -2,10 +2,11 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { HomeMode } from '../../domain/clientSchema'
-import { Calling, Difficulty } from '../../shared/playerData'
-import { Modifier } from '../../world/run/modifiers'
-import { LobbyControl } from './model'
+import { HomeMode } from '#domain/clientSchema.ts'
+import { Calling, Difficulty } from '#shared/playerData.ts'
+import { Modifier } from '#world/run/modifiers.ts'
+
+import { LobbyControl } from './model.ts'
 
 export const Message = UiSchema.TaggedEnum({
   ClickedBackButton: {},

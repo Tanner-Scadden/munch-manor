@@ -3,21 +3,21 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../../app/model'
-import { quietWave, withPlayerAt } from '../../../test/model.fixture'
-import { CELLAR_SPOT } from '../../../test/testing'
-import { levelOf, openExitIn } from '../../../world/level/arena'
-import { EAST_EXIT, FAR_EXIT } from '../../../world/level/plan'
-import { focusOf } from '../../../world/party/party'
-import { TOOL_RULES } from '../../../world/stations/toolRules'
+import type { Model } from '#app/model.ts'
 import {
   AMBIENT,
   DARK_EVEN,
   DARK_TAKES,
   flameSpecsOf,
   lightsFrameOf,
-} from '../lightSpecs'
-import { LOOK } from '../lookSpecs'
+} from '#render/iso/lightSpecs.ts'
+import { LOOK } from '#render/iso/lookSpecs.ts'
+import { quietWave, withPlayerAt } from '#test/model.fixture.ts'
+import { CELLAR_SPOT } from '#test/testing.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { EAST_EXIT, FAR_EXIT } from '#world/level/plan.ts'
+import { focusOf } from '#world/party/party.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
 
 const LIGHTS_LEFT = 32 - 4
 

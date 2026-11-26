@@ -6,9 +6,9 @@ import { Story } from '@effect/ui/testing'
 import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
 import { MAX_PLAYERS } from '@munch/netcode'
 
-import { ApplicationNoDeps } from '../../app/block'
-import { GenerateVisitId } from '../../app/boot'
-import { Message } from '../../app/message'
+import { ApplicationNoDeps } from '#app/block.ts'
+import { GenerateVisitId } from '#app/boot.ts'
+import { Message } from '#app/message.ts'
 import {
   Frenzy,
   HomeMode,
@@ -20,36 +20,11 @@ import {
   ZombieState,
   freshStats,
   noKills,
-} from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { WriteSave } from '../../app/update/save'
-import { SendRunSummary } from '../../app/update/settle'
-import { InputDevice } from '../../input/inputSchema'
-import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  escaping,
-  withDareThings,
-} from '../../test/model.fixture'
-import {
-  SURFACE,
-  type StoryStep,
-  bootWithoutVisitId,
-  checkModel,
-  jsonOf,
-  resolveSentSummary,
-  send,
-  settleRunCommands,
-  storyOf,
-  writeSave,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { DareThingState } from '../../world/dare/dareSchema'
-import { START_LEVEL } from '../../world/level/arena'
-import { modifyFocus } from '../../world/party/party'
-import { type Modifiers, noModifiers } from '../../world/run/modifiers'
-import { FINAL_WAVE } from '../../world/waves/wavePlans'
-import { pause } from '../../world/waves/waves'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { SendRunSummary } from '#app/update/settle.ts'
+import { InputDevice } from '#input/inputSchema.ts'
 import {
   CauseOfDeath,
   MAX_CREW_SIZE,
@@ -61,15 +36,36 @@ import {
   SummaryDevice,
   SummaryKind,
   SummaryMode,
-} from '../analytics'
+} from '#platform/analytics.ts'
 import {
   generateVisitId,
   maybeRunsUrl,
   sendRunSummary,
-} from '../analyticsBeacon'
-import { frameTimeBucket } from '../analyticsRun'
-import { PlayerChange } from '../playerSync'
-import { saveOf } from '../save'
+} from '#platform/analyticsBeacon.ts'
+import { frameTimeBucket } from '#platform/analyticsRun.ts'
+import { PlayerChange } from '#platform/playerSync.ts'
+import { saveOf } from '#platform/save.ts'
+import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '#shared/constants.ts'
+import { DISTANT_SPAWN, escaping, withDareThings } from '#test/model.fixture.ts'
+import {
+  SURFACE,
+  type StoryStep,
+  bootWithoutVisitId,
+  checkModel,
+  jsonOf,
+  resolveSentSummary,
+  send,
+  settleRunCommands,
+  storyOf,
+  writeSave,
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { type Modifiers, noModifiers } from '#world/run/modifiers.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const VISIT_ID = '0123456789abcdef'
 

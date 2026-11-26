@@ -2,24 +2,25 @@ import { Effect, Option, Random, pipe } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { spriteWarmUpSources } from '../art/appearance'
-import { generateVisitId } from '../platform/analyticsBeacon'
-import type { ScreenFit } from '../platform/deviceSchema'
-import { startRecordingQueue } from '../platform/recordingUpload'
+import { spriteWarmUpSources } from '#art/appearance.ts'
+import { generateVisitId } from '#platform/analyticsBeacon.ts'
+import type { ScreenFit } from '#platform/deviceSchema.ts'
+import { startRecordingQueue } from '#platform/recordingUpload.ts'
 import {
   awaitFirstFrame,
   decodeImages,
   loadFonts,
   loadStyles,
   markLoadStep,
-} from '../platform/splash'
-import { PlayerStore } from '../platform/store'
-import { startSummaryQueue } from '../platform/summaryQueue'
-import { readUpdateMarker } from '../platform/version'
-import { awaitWorldReady } from '../render/iso/element'
-import { toBrowserError } from '../shared/describeError'
-import { Message } from './message'
-import { defaultAppearance } from './model'
+} from '#platform/splash.ts'
+import { PlayerStore } from '#platform/store.ts'
+import { startSummaryQueue } from '#platform/summaryQueue.ts'
+import { readUpdateMarker } from '#platform/version.ts'
+import { awaitWorldReady } from '#render/iso/element.ts'
+import { toBrowserError } from '#shared/describeError.ts'
+
+import { Message } from './message.ts'
+import { defaultAppearance } from './model.ts'
 
 const UINT32_MAX = 0xffffffff
 

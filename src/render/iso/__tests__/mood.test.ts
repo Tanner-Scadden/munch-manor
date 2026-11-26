@@ -3,10 +3,15 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../../app/model'
-import { atClock, quietWave } from '../../../test/model.fixture'
-import { Phase } from '../../../world/schema/worldSchema'
-import { didStrikeBetween, mixColor, moodOf, strikeOf } from '../mood'
+import type { Model } from '#app/model.ts'
+import {
+  didStrikeBetween,
+  mixColor,
+  moodOf,
+  strikeOf,
+} from '#render/iso/mood.ts'
+import { atClock, quietWave } from '#test/model.fixture.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const waveAt = (elapsedMs: number, intensity: number): Model =>
   UiStruct.evolve(quietWave(3), {

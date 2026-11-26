@@ -1,12 +1,12 @@
 import { Array, Function, Option } from 'effect'
 
-import { type Level, levelOf } from '../level/arena'
-import { CELLAR_ROOM_ID } from '../level/plan'
-import type { Box } from '../level/tileGrid'
-import type { World } from '../schema/world'
-import { Phase, type Vector } from '../schema/worldSchema'
-import { TOOL_RULES, isToolActive } from '../stations/toolRules'
-import { isInsideBox } from '../step/geometry'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { CELLAR_ROOM_ID } from '#world/level/plan.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import type { World } from '#world/schema/world.ts'
+import { Phase, type Vector } from '#world/schema/worldSchema.ts'
+import { TOOL_RULES, isToolActive } from '#world/stations/toolRules.ts'
+import { isInsideBox } from '#world/step/geometry.ts'
 
 const cellarBoxes = new WeakMap<Level, Option.Option<Box>>()
 

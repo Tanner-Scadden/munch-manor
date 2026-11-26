@@ -2,15 +2,16 @@ import { Function, Option, Schema } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { LookPart } from '../../../../domain/looks'
+import { LookPart } from '#domain/looks.ts'
 import {
   Appearance,
   Calling,
   type CosmeticKind,
   SavedBoughtCosmetics,
   SavedRank,
-} from '../../../../shared/playerData'
-import { LookSection, type LookToggle } from './lookSchema'
+} from '#shared/playerData.ts'
+
+import { LookSection, type LookToggle } from './lookSchema.ts'
 
 export const Model = Schema.Struct({ section: LookSection })
 export type Model = typeof Model.Type

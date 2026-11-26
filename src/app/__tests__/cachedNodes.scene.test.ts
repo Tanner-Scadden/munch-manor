@@ -3,12 +3,16 @@ import { Array, Effect } from 'effect'
 import { UiStruct, type View } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { FIXED_STEP_MS } from '../../shared/constants'
+import { ApplicationNoDeps } from '#app/block.ts'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   homeAfterRead,
   inPortrait,
-} from '../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
@@ -16,12 +20,8 @@ import {
   settleRunCommands,
   storyOf,
   tick,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { ApplicationNoDeps } from '../block'
-import { Message } from '../message'
-import { type Model, Phase } from '../model'
-import { initialModel } from '../pureApp'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 
 type NodeLike = Readonly<{
   _tag: string

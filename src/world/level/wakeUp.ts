@@ -2,17 +2,17 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { DOOR_SPAWN_SPREAD_PX, PACK_WARNING_MS } from '../../shared/constants'
-import { type Seeded, nextRandom } from '../../shared/prng'
-import { playerCountOf } from '../party/party'
-import type { World } from '../schema/world'
+import { DOOR_SPAWN_SPREAD_PX, PACK_WARNING_MS } from '#shared/constants.ts'
+import { type Seeded, nextRandom } from '#shared/prng.ts'
+import { playerCountOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   DoorId,
   Phase,
   type PlannedSpawn,
   evolveRoundSpawns,
-} from '../schema/worldSchema'
-import { isFloorKind } from '../zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { isFloorKind } from '#world/zombies/zombies.ts'
 
 type WakeRules = Readonly<{
   rushMs: number

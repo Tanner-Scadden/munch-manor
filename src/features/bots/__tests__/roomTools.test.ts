@@ -3,13 +3,13 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../../app/model'
-import { newPlayerReady, quietWave } from '../../../test/model.fixture'
-import { zombieOf } from '../../../test/testing'
-import { gapBoxOf } from '../../../world/dining/chandelier'
-import { levelOf } from '../../../world/level/arena'
-import { CHANDELIER_DROP } from '../../../world/level/plan'
-import { CHANDELIER_CROWD, chandelierShot } from '../dareSearch'
+import type { Model } from '#app/model.ts'
+import { CHANDELIER_CROWD, chandelierShot } from '#features/bots/dareSearch.ts'
+import { newPlayerReady, quietWave } from '#test/model.fixture.ts'
+import { zombieOf } from '#test/testing.ts'
+import { gapBoxOf } from '#world/dining/chandelier.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { CHANDELIER_DROP } from '#world/level/plan.ts'
 
 const gapOf = (model: Model) => Option.getOrThrow(gapBoxOf(levelOf(model)))
 

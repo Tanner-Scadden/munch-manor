@@ -3,12 +3,16 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Boss, type Model, Phase } from '../../app/model'
+import { Boss, type Model, Phase } from '#app/model.ts'
+import { cameraOf } from '#render/camera.ts'
 import {
-  playingModel,
-  withPlayerAt,
-  withZombies,
-} from '../../test/model.fixture'
+  FINISHER_CINE_MS,
+  cineBarShapes,
+  cineWeightOf,
+  glideCamera,
+} from '#render/cine.ts'
+import { STILL_GLIDE } from '#render/renderSchema.ts'
+import { playingModel, withPlayerAt, withZombies } from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   bulletInto,
@@ -19,17 +23,9 @@ import {
   tick,
   ticks,
   zombieAt,
-} from '../../test/testing'
-import { levelOf } from '../../world/level/arena'
-import { focusOf } from '../../world/party/party'
-import { cameraOf } from '../camera'
-import {
-  FINISHER_CINE_MS,
-  cineBarShapes,
-  cineWeightOf,
-  glideCamera,
-} from '../cine'
-import { STILL_GLIDE } from '../renderSchema'
+} from '#test/testing.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const ENTRANCE_MS = 2600
 

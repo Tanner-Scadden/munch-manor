@@ -13,13 +13,13 @@ import {
   Phase,
   RunMode,
   type Zombie,
-} from '../../../app/model'
-import { BOSS_ICON } from '../../../art/sprites/zombies'
-import { wavePreviewShapes } from '../../../features/hud/wavePreview'
-import { cameraOf } from '../../../render/camera'
-import type * as Draw from '../../../render/draw'
-import { PACK_WARNING_MS } from '../../../shared/constants'
-import { newPlayerReady, withPlayerAt } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { BOSS_ICON } from '#art/sprites/zombies.ts'
+import { wavePreviewShapes } from '#features/hud/wavePreview.ts'
+import { cameraOf } from '#render/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import { PACK_WARNING_MS } from '#shared/constants.ts'
+import { newPlayerReady, withPlayerAt } from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   bulletInto,
@@ -30,22 +30,23 @@ import {
   ticks,
   ticksFor,
   zombieOf,
-} from '../../../test/testing'
-import { START_LEVEL } from '../../level/arena'
-import { DOOR_IDS } from '../../level/tileGrid'
-import { doorSpawnPoint } from '../../level/tileQueries'
-import { DIFFICULTIES } from '../../run/difficulty'
-import { hpScaleFor, rollSpawns } from '../../waves/endlessWaves'
-import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
+} from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { DOOR_IDS } from '#world/level/tileGrid.ts'
+import { doorSpawnPoint } from '#world/level/tileQueries.ts'
+import { DIFFICULTIES } from '#world/run/difficulty.ts'
+import { hpScaleFor, rollSpawns } from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE, WAVE_PLANS } from '#world/waves/wavePlans.ts'
 import {
   freshFight,
   hasBoss,
   maybeBossBar,
   maybeBossDoor,
   planBoss,
-} from '../boss'
-import { BOSS_RULES } from '../bossRules'
-import { ZOMBIE_KINDS, scaledHp } from '../zombies'
+} from '#world/zombies/boss.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
+import { ZOMBIE_KINDS, scaledHp } from '#world/zombies/zombies.ts'
+
 import {
   BOSS_HP,
   CENTER_X,
@@ -58,7 +59,7 @@ import {
   inWave,
   spawnAt,
   sturdy,
-} from './boss.fixture'
+} from './boss.fixture.ts'
 
 const DOOMED: Zombie = zombieOf('Shambler', 100, CENTER_X + 30, CENTER_Y, {
   hp: 1,

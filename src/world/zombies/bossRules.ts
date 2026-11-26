@@ -1,4 +1,4 @@
-import type { BossAttack } from '../schema/worldSchema'
+import type { BossAttack } from '#world/schema/worldSchema.ts'
 
 export type BossRules = {
   everyWaves: number

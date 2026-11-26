@@ -1,6 +1,6 @@
 import { DateTime, Duration, Effect, Stream } from 'effect'
 
-import type { DayStamp } from '../shared/dayStamp'
+import type { DayStamp } from '#shared/dayStamp.ts'
 
 const TODAY_CHECK_INTERVAL = Duration.minutes(1)
 

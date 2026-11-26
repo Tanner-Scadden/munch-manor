@@ -1,12 +1,12 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { rectsOf } from '../../../test/viewReading'
-import { levelFor } from '../../../world/level/arena'
-import { MANOR_SPEC } from '../../../world/level/plan'
-import type { DoorId } from '../../../world/schema/entitySchema'
-import { DOOR_DARK_COLOR, DOOR_DIM_COLOR } from '../roomPalette'
-import { doorBox, doorwayShapes } from '../roomWalls'
+import { DOOR_DARK_COLOR, DOOR_DIM_COLOR } from '#render/room/roomPalette.ts'
+import { doorBox, doorwayShapes } from '#render/room/roomWalls.ts'
+import { rectsOf } from '#test/viewReading.ts'
+import { levelFor } from '#world/level/arena.ts'
+import { MANOR_SPEC } from '#world/level/plan.ts'
+import type { DoorId } from '#world/schema/entitySchema.ts'
 
 const LEVEL = levelFor(MANOR_SPEC, ['Kitchen', 'West', 'East', 'Far'])
 const DOORWAYS: ReadonlyArray<DoorId> = Array.filter(

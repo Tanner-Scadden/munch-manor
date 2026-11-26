@@ -3,12 +3,13 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase, RunMode } from '../../../app/model'
-import { WriteSave } from '../../../app/update/save'
-import { PlayerChange } from '../../../platform/playerSync'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import type { RunEnding } from '../../../shared/playerData'
+import { Message } from '#app/message.ts'
+import { type Model, Phase, RunMode } from '#app/model.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { QUICK_DEATH_WAVE } from '#features/intro/carLine.ts'
+import { PlayerChange } from '#platform/playerSync.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import type { RunEnding } from '#shared/playerData.ts'
 import {
   DISTANT_SPAWN,
   escaping,
@@ -16,7 +17,7 @@ import {
   readyAfterRead,
   readyModel,
   withDareThings,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkPendingArgs,
   modelAfter,
@@ -25,10 +26,9 @@ import {
   storyOf,
   tick,
   writeSave,
-} from '../../../test/testing'
-import { DareThingState } from '../../../world/dare/dareSchema'
-import { FRIEND_LINES } from '../../../world/names'
-import { QUICK_DEATH_WAVE } from '../carLine'
+} from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { FRIEND_LINES } from '#world/names.ts'
 
 const inWave = (wave: number): Model =>
   UiStruct.evolve(readyAfterRead, {

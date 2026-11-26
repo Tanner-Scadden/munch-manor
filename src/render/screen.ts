@@ -1,12 +1,13 @@
 import { Array, Function, Option } from 'effect'
 
-import type { Model } from '../app/model'
-import { group } from '../art/sprite'
-import type { SurfaceRectangle } from '../input/inputSchema'
-import { VIEW_HEIGHT, VIEW_WIDTH } from '../shared/constants'
-import type { Vector } from '../world/schema/entitySchema'
-import { clamp } from '../world/step/geometry'
-import type * as Draw from './draw'
+import type { Model } from '#app/model.ts'
+import { group } from '#art/sprite.ts'
+import type { SurfaceRectangle } from '#input/inputSchema.ts'
+import { VIEW_HEIGHT, VIEW_WIDTH } from '#shared/constants.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
+import type * as Draw from './draw.ts'
 
 export type Layout = 'Landscape' | 'Portrait'
 

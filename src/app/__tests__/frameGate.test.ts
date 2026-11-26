@@ -3,10 +3,15 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { FIXED_STEP_MS } from '../../shared/constants'
-import { home, playingModel, readyModel } from '../../test/model.fixture'
-import { Phase } from '../../world/schema/worldSchema'
-import { OPEN_GATE, framePaceOf, gateFrame, gateMenuFrame } from '../frameGate'
+import {
+  OPEN_GATE,
+  framePaceOf,
+  gateFrame,
+  gateMenuFrame,
+} from '#app/frameGate.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { home, playingModel, readyModel } from '#test/model.fixture.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 const sentOver = (
   hz: number,

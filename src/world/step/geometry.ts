@@ -1,8 +1,8 @@
 import { Function, Option } from 'effect'
 
-import { KNOCKBACK_REST_SPEED } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import type { Vector } from '../schema/entitySchema'
+import { KNOCKBACK_REST_SPEED } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
 
 export const ZERO_VECTOR: Vector = { x: 0, y: 0 }
 

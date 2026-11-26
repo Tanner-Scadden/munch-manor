@@ -6,9 +6,9 @@ import {
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
-} from '../level/plan'
-import type { World } from '../schema/world'
-import type { Vector } from '../schema/worldSchema'
+} from '#world/level/plan.ts'
+import type { World } from '#world/schema/world.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
 
 export type FindStyle = 'Walk' | 'Rummage' | 'HollowBook' | 'Dumbwaiter'
 

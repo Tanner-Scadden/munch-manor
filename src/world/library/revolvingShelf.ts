@@ -2,21 +2,21 @@ import { Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { TILE_PLAYER_SOLID, hasTileFlag, levelOf } from '../level/arena'
-import { boxCenter, distanceToBox } from '../level/tileGrid'
-import { tileIndexAt } from '../level/tileQueries'
+import { TILE_PLAYER_SOLID, hasTileFlag, levelOf } from '#world/level/arena.ts'
+import { boxCenter, distanceToBox } from '#world/level/tileGrid.ts'
+import { tileIndexAt } from '#world/level/tileQueries.ts'
 import {
   forEachSeat,
   isStanding,
   modifySeat,
   seatStateAt,
-} from '../party/party'
-import type { World } from '../schema/world'
-import { knockDownWhere } from '../stations/knockDown'
-import { stationBoxOf } from '../stations/stationSpots'
-import { TOOL_RULES } from '../stations/toolRules'
-import { directionBetween } from '../step/geometry'
-import { isGrounded } from '../zombies/zombies'
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import { knockDownWhere } from '#world/stations/knockDown.ts'
+import { stationBoxOf } from '#world/stations/stationSpots.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
+import { directionBetween } from '#world/step/geometry.ts'
+import { isGrounded } from '#world/zombies/zombies.ts'
 
 const RULES = TOOL_RULES.Shelf
 

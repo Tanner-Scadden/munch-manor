@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema } from 'effect'
 
-import { DayStamp } from './dayStamp'
+import { DayStamp } from './dayStamp.ts'
 
 export const BIG_KEY = 'BigKey' as const
 

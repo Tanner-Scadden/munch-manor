@@ -1,9 +1,10 @@
 import { Record } from 'effect'
 
-import type * as Draw from '../render/draw'
-import type { MissionId } from '../shared/missionData'
-import { pixelIconUrl } from './icons'
-import { type Palette, spriteShapes } from './sprite'
+import type * as Draw from '#render/draw.ts'
+import type { MissionId } from '#shared/missionData.ts'
+
+import { pixelIconUrl } from './icons.ts'
+import { type Palette, spriteShapes } from './sprite.ts'
 
 const MISSION_PALETTE: Palette = {
   o: '#140c10',

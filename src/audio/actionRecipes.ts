@@ -1,5 +1,6 @@
-import type { SoundEffect } from '../shared/soundEffect'
-import { type Recipe, at, envelope } from './soundRecipe'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+
+import { type Recipe, at, envelope } from './soundRecipe.ts'
 
 export const ACTION_RECIPES = {
   ChestPush: {

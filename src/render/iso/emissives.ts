@@ -3,17 +3,18 @@ import type { Application } from 'pixi.js'
 
 import { Container3D, FlatMaterial } from '@pixi/3d'
 
-import type { Level } from '../../world/level/arena'
-import { CELLAR_ROOM_ID, LIBRARY_ROOM_ID } from '../../world/level/plan'
-import type * as Draw from '../draw'
-import { heartJarGlowShapes } from '../room/cellarArt'
-import { isRoomOpen, roomBoxOf } from '../room/room'
-import type { Box } from '../room/roomPalette'
-import { roseGlowShapes } from '../room/roseWindowArt'
-import { type ArtMesh, buildArtQuads } from './house'
-import { FloorPicture } from './painter'
-import type { Textures } from './textures'
-import { artQuadsOver } from './wallQuads'
+import type * as Draw from '#render/draw.ts'
+import { heartJarGlowShapes } from '#render/room/cellarArt.ts'
+import { isRoomOpen, roomBoxOf } from '#render/room/room.ts'
+import type { Box } from '#render/room/roomPalette.ts'
+import { roseGlowShapes } from '#render/room/roseWindowArt.ts'
+import type { Level } from '#world/level/arena.ts'
+import { CELLAR_ROOM_ID, LIBRARY_ROOM_ID } from '#world/level/plan.ts'
+
+import { type ArtMesh, buildArtQuads } from './house.ts'
+import { FloorPicture } from './painter.ts'
+import type { Textures } from './textures.ts'
+import { artQuadsOver } from './wallQuads.ts'
 
 const inRoom = (
   level: Level,

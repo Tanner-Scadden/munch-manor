@@ -11,10 +11,11 @@ import {
   pipe,
 } from 'effect'
 
-import { describeError, toBrowserError } from '../shared/describeError'
-import { generateMany, nextRandom } from '../shared/prng'
-import type { SoundEffect } from '../shared/soundEffect'
-import { RECIPES } from './audioRecipes'
+import { describeError, toBrowserError } from '#shared/describeError.ts'
+import { generateMany, nextRandom } from '#shared/prng.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+
+import { RECIPES } from './audioRecipes.ts'
 import {
   type MusicCue,
   type MusicDeck,
@@ -22,16 +23,16 @@ import {
   cueMusic,
   makeMusicDeck,
   runMusicScheduler,
-} from './music'
+} from './music.ts'
 import type {
   Envelope,
   NoiseLayer,
   PitchPoint,
   Recipe,
   ToneLayer,
-} from './soundRecipe'
+} from './soundRecipe.ts'
 
-export { SoundEffect } from '../shared/soundEffect'
+export { SoundEffect } from '#shared/soundEffect.ts'
 
 export const Playback = Schema.Literals(['Running', 'Suspended'])
 export type Playback = typeof Playback.Type

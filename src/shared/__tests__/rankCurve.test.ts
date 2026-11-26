@@ -8,7 +8,7 @@ import {
   purseBonesAt,
   purseRanksBetween,
   rankOf,
-} from '../rankCurve'
+} from '#shared/rankCurve.ts'
 
 const oldRankOf = (points: number): number => {
   const step = (rank: number, spent: number): number => {

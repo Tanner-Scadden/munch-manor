@@ -1,7 +1,7 @@
 import { Array, Number, Option, String } from 'effect'
 
-import type { Intent } from '../world/schema/entitySchema'
-import type { PlayerSlot } from '../world/schema/worldSchema'
+import type { Intent } from '#world/schema/entitySchema.ts'
+import type { PlayerSlot } from '#world/schema/worldSchema.ts'
 
 export type TickInputs = Readonly<{
   isCleared: boolean

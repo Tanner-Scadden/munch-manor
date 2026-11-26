@@ -1,9 +1,10 @@
 import { UiSchema } from '@effect/ui'
 
-import { TutorialChoice } from '../../shared/nameKeys'
-import { Difficulty } from '../../shared/playerData'
-import { ZombieKind } from '../../world/schema/entitySchema'
-import { HandCard, HomeButton } from './homeSchema'
+import { TutorialChoice } from '#shared/nameKeys.ts'
+import { Difficulty } from '#shared/playerData.ts'
+import { ZombieKind } from '#world/schema/entitySchema.ts'
+
+import { HandCard, HomeButton } from './homeSchema.ts'
 
 export const homeCases = {
   ClickedCampaignButton: {},

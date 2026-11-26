@@ -1,18 +1,19 @@
 import { Array, Function, Result } from 'effect'
 
-import { type Palette, bakeShapes } from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
-import { LIBRARY_RUG } from '../../world/level/rugs'
-import type * as Draw from '../draw'
-import { pixelArt, rect } from '../drawing'
-import { WALL_FACE_ROWS } from '../iso/space'
+import { type Palette, bakeShapes } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { pixelArt, rect } from '#render/drawing.ts'
+import { WALL_FACE_ROWS } from '#render/iso/space.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
+import { LIBRARY_RUG } from '#world/level/rugs.ts'
+
 import {
   BOOK_COLORS,
   SHELF_BACK_COLOR,
   SHELF_EDGE_COLOR,
   SHELF_WOOD_COLOR,
-} from './roomCover'
+} from './roomCover.ts'
 import {
   BONE_COLOR,
   type Box,
@@ -30,8 +31,8 @@ import {
   PLANK_SHADES,
   pick,
   roll,
-} from './roomPalette'
-import { type Span, spansWithin } from './roomWalls'
+} from './roomPalette.ts'
+import { type Span, spansWithin } from './roomWalls.ts'
 
 const FLOOR_SHADE_COLOR = 'rgba(14, 8, 20, 0.38)'
 const PAPER_COLOR = '#1f3328'

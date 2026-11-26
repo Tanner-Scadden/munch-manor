@@ -2,7 +2,8 @@ import { Array, Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
+import type { Decal, Particle } from '#render/renderSchema.ts'
 import {
   BLOOD_PER_HIT,
   BLOOD_SPRAY_SPREAD,
@@ -28,17 +29,17 @@ import {
   SPARKS_PER_GRAB,
   SPLINTERS_PER_HIT,
   ZOMBIE_FOOT_OFFSET,
-} from '../../shared/constants'
-import { type Seeded, generateMany } from '../../shared/prng'
-import { sameIfUnchanged } from '../../shared/sameList'
-import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
-import { levelOf } from '../../world/level/arena'
-import { isWadingAt } from '../../world/level/leaks'
-import { focusOf } from '../../world/party/party'
-import { GameEvent } from '../../world/schema/worldSchema'
-import { ZERO_VECTOR, vectorLength } from '../../world/step/geometry'
-import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
-import type { Decal, Particle } from '../renderSchema'
+} from '#shared/constants.ts'
+import { type Seeded, generateMany } from '#shared/prng.ts'
+import { sameIfUnchanged } from '#shared/sameList.ts'
+import { WEAPONS, heldWeapon } from '#world/gear/weapons.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { isWadingAt } from '#world/level/leaks.ts'
+import { focusOf } from '#world/party/party.ts'
+import { GameEvent } from '#world/schema/worldSchema.ts'
+import { ZERO_VECTOR, vectorLength } from '#world/step/geometry.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
+
 import {
   BLOOD_SPEED,
   CLANG_SPARKS,
@@ -110,8 +111,8 @@ import {
   woodBit,
   woodBits,
   zombieGround,
-} from './particleBursts'
-import { stepParticles } from './particlePhysics'
+} from './particleBursts.ts'
+import { stepParticles } from './particlePhysics.ts'
 
 const KEY_GLINTS = 3
 const KEY_SPARKS = 2

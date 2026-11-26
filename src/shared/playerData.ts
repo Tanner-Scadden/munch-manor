@@ -1,11 +1,11 @@
 import { Array, Effect, Function, type Option, Record, Schema } from 'effect'
 
-import { SavedDareMarks } from './dareMarkData'
-import { DayStamp } from './dayStamp'
-import { SavedJournal } from './journalData'
-import { SavedMastery } from './masteryData'
-import { SavedMissions } from './missionData'
-import { SavedProof } from './proofData'
+import { SavedDareMarks } from './dareMarkData.ts'
+import { DayStamp } from './dayStamp.ts'
+import { SavedJournal } from './journalData.ts'
+import { SavedMastery } from './masteryData.ts'
+import { SavedMissions } from './missionData.ts'
+import { SavedProof } from './proofData.ts'
 
 export const SoundSetting = Schema.Literals(['On', 'Muted'])
 export type SoundSetting = typeof SoundSetting.Type

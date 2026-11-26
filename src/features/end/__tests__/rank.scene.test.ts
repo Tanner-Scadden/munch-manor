@@ -5,8 +5,8 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { PROFILE_DIALOG_ID } from '../../../domain/clientSchema'
-import { homeAfterRead } from '../../../test/model.fixture'
+import { PROFILE_DIALOG_ID } from '#domain/clientSchema.ts'
+import { homeAfterRead } from '#test/model.fixture.ts'
 import {
   byClass,
   expectAttr,
@@ -15,9 +15,9 @@ import {
   profileDialog,
   settingsButton,
   showDialog,
-} from '../../../test/sceneTesting'
-import { type SceneStep, sceneOf, steps } from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
+} from '#test/sceneTesting.ts'
+import { type SceneStep, sceneOf, steps } from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
 
 const ranked = UiStruct.evolve(homeAfterRead, {
   rank: rank => ({ ...rank, earnedPoints: 85, earnedBones: 16 }),

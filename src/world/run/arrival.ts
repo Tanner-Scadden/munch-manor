@@ -1,9 +1,9 @@
 import { Function } from 'effect'
 
-import { FIRST_PREPARATION_MS, STEP_EPSILON_MS } from '../../shared/constants'
-import { type World, modifyWorldFields } from '../schema/world'
-import { type IntroCut, Phase } from '../schema/worldSchema'
-import { beginPreparation } from '../waves/waves'
+import { FIRST_PREPARATION_MS, STEP_EPSILON_MS } from '#shared/constants.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
+import { type IntroCut, Phase } from '#world/schema/worldSchema.ts'
+import { beginPreparation } from '#world/waves/waves.ts'
 
 export const ARRIVAL_MS: Readonly<Record<IntroCut, number>> = {
   Full: 15_400,

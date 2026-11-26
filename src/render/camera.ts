@@ -1,30 +1,31 @@
 import { Function, Option } from 'effect'
 
-import type { Model } from '../app/model'
-import { group } from '../art/sprite'
-import { couchFocus } from '../input/couch'
+import type { Model } from '#app/model.ts'
+import { group } from '#art/sprite.ts'
+import { couchFocus } from '#input/couch.ts'
 import {
   CAMERA_LEAN_PX,
   CAMERA_LEAN_RATE,
   CAMERA_LEAN_RETURN_RATE,
   MS_PER_SECOND,
-} from '../shared/constants'
-import * as DetMath from '../shared/detMath'
-import { Finale } from '../world/dare/dareSchema'
-import { type Level, levelOf } from '../world/level/arena'
-import { focusOf } from '../world/party/party'
-import type { Vector } from '../world/schema/entitySchema'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { focusOf } from '#world/party/party.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
 import {
   ZERO_VECTOR,
   clamp,
   clampLength,
   scaleVector,
-} from '../world/step/geometry'
-import { glideFocus } from './cine'
-import type * as Draw from './draw'
-import { HUD_STRIP_HEIGHT, hudLayoutFor } from './hudLayout'
-import { floorRowsSeen, lensOf } from './lens'
-import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
+} from '#world/step/geometry.ts'
+
+import { glideFocus } from './cine.ts'
+import type * as Draw from './draw.ts'
+import { HUD_STRIP_HEIGHT, hudLayoutFor } from './hudLayout.ts'
+import { floorRowsSeen, lensOf } from './lens.ts'
+import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen.ts'
 
 export type Camera = Readonly<{
   x: number

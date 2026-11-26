@@ -1,9 +1,9 @@
 import { Array, Function } from 'effect'
 
-import type { Level } from '../level/arena'
-import { KITCHEN_ROOM_ID } from '../level/plan'
-import { isInYardAt } from '../level/tileQueries'
-import type { Vector } from '../schema/worldSchema'
+import type { Level } from '#world/level/arena.ts'
+import { KITCHEN_ROOM_ID } from '#world/level/plan.ts'
+import { isInYardAt } from '#world/level/tileQueries.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
 
 export const KITCHEN_KEY_SCALE = 1.25
 

@@ -41,6 +41,7 @@ import {
 } from '@munch/netcode/browser'
 import type { Mutation } from '@munch/sync-engine'
 
+import { newIdentity } from '../../src/shared/sessionApi'
 import {
   type OwnSeat,
   ROOM_WORLD,
@@ -48,7 +49,6 @@ import {
 } from '../../src/world/net/roomWorld'
 import { playersOf } from '../../src/world/party/party'
 import { localOrigin, startWorkerd } from './local'
-import { newIdentity } from '../../src/shared/sessionApi'
 import { mintSession } from './session'
 
 class CheckFailed extends Schema.TaggedError<

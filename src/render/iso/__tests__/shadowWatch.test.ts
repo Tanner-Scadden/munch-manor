@@ -1,7 +1,7 @@
 import { Array } from 'effect'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { ShadowWatch } from '../shadowWatch'
+import { ShadowWatch } from '#render/iso/shadowWatch.ts'
 
 const CONES = [
   {

@@ -1,10 +1,10 @@
 import { Schema, Struct } from 'effect'
 import { EventGroup, EventLog, EventRow } from 'effect/eventlog'
 
-import { DayStamp } from '../shared/dayStamp'
-import { SavedJournal } from '../shared/journalData'
-import { SavedMastery } from '../shared/masteryData'
-import { MissionReroll, SavedMissions } from '../shared/missionData'
+import { DayStamp } from '#shared/dayStamp.ts'
+import { SavedJournal } from '#shared/journalData.ts'
+import { SavedMastery } from '#shared/masteryData.ts'
+import { MissionReroll, SavedMissions } from '#shared/missionData.ts'
 import {
   Appearance,
   Calling,
@@ -29,8 +29,8 @@ import {
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
-} from '../shared/playerData'
-import { ProofEntry } from '../shared/proofData'
+} from '#shared/playerData.ts'
+import { ProofEntry } from '#shared/proofData.ts'
 
 export const PLAYER_ROW_KEY = 'me'
 

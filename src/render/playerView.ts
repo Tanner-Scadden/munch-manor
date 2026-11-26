@@ -1,7 +1,7 @@
 import { Array, Function, Option, Result } from 'effect'
 
-import type { Model } from '../app/model'
-import { PLAYER_WIDTH, playerSprites } from '../art/appearance'
+import type { Model } from '#app/model.ts'
+import { PLAYER_WIDTH, playerSprites } from '#art/appearance.ts'
 import {
   type Facing,
   type Sprite,
@@ -9,15 +9,15 @@ import {
   type Tone,
   frameAt,
   group,
-} from '../art/sprite'
+} from '#art/sprite.ts'
 import {
   type DrawnGunSkin,
   gunSprite,
   gunTipOf,
   knifeSprite,
   turnAngleOf,
-} from '../art/sprites/guns'
-import { masterySkinIn } from '../domain/mastery'
+} from '#art/sprites/guns.ts'
+import { masterySkinIn } from '#domain/mastery.ts'
 import {
   MUZZLE_FLASH_BIG_MS,
   MUZZLE_FLASH_CORE_COLOR,
@@ -38,11 +38,11 @@ import {
   RELOAD_BAR_LIFT_PX,
   RELOAD_BAR_WIDTH,
   SHADOW_COLOR,
-} from '../shared/constants'
-import { isObjectFirst } from '../shared/dualArgs'
-import type { GunSkin } from '../shared/playerData'
-import { chargeOf } from '../world/fridge/fridgeWeapons'
-import { KNIFE_RULES, maybeSlashShare } from '../world/gear/knife'
+} from '#shared/constants.ts'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+import type { GunSkin } from '#shared/playerData.ts'
+import { chargeOf } from '#world/fridge/fridgeWeapons.ts'
+import { KNIFE_RULES, maybeSlashShare } from '#world/gear/knife.ts'
 import {
   type MuzzleFlash,
   type WeaponStats,
@@ -51,30 +51,31 @@ import {
   maybePanOf,
   maybeWieldedPan,
   statsAt,
-} from '../world/gear/weapons'
-import { focusOf } from '../world/party/party'
+} from '#world/gear/weapons.ts'
+import { focusOf } from '#world/party/party.ts'
 import {
   Invulnerability,
   type Player,
   Reload,
   type Vector,
   type WeaponKind,
-} from '../world/schema/entitySchema'
-import { clamp, vectorLength } from '../world/step/geometry'
+} from '#world/schema/entitySchema.ts'
+import { clamp, vectorLength } from '#world/step/geometry.ts'
+
 import {
   ActionPose,
   isStrikeFrame,
   maybeCompressedOf,
   poseOf,
-} from './actionPose'
+} from './actionPose.ts'
 import {
   magazineShape,
   maybeActingShapes,
   reloadMotionOf,
   tossOf,
-} from './actionView'
-import { type Drawable, glowOn } from './depth'
-import * as Draw from './draw'
+} from './actionView.ts'
+import { type Drawable, glowOn } from './depth.ts'
+import * as Draw from './draw.ts'
 import {
   AIMING_UP,
   QUARTER_TURN,
@@ -84,7 +85,7 @@ import {
   footShadow,
   multiplyScales,
   squashPulse,
-} from './drawing'
+} from './drawing.ts'
 
 export const maybeMsSinceHurt = (player: Player): Option.Option<number> =>
   Invulnerability.match(player.invulnerability, {

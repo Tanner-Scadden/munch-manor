@@ -2,13 +2,13 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { Boss, BossMove, Glob, type Model } from '../../../app/model'
-import { newPlayerReady } from '../../../test/model.fixture'
-import { zombieOf } from '../../../test/testing'
-import { START_LEVEL } from '../../../world/level/arena'
-import { freshFight } from '../../../world/zombies/boss'
-import { BOSS_RULES } from '../../../world/zombies/bossRules'
-import { chunkDodge } from '../escape'
+import { Boss, BossMove, Glob, type Model } from '#app/model.ts'
+import { chunkDodge } from '#features/bots/escape.ts'
+import { newPlayerReady } from '#test/model.fixture.ts'
+import { zombieOf } from '#test/testing.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { freshFight } from '#world/zombies/boss.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
 
 const BOSS_ID = 777
 const AT = { x: START_LEVEL.start.x, y: START_LEVEL.start.y - 15 }

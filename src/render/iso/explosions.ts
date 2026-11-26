@@ -1,9 +1,9 @@
 import { Array, Option } from 'effect'
 
-import { BLAST_FLASH_MS } from '../../shared/constants'
-import { unitOf } from '../../shared/prng'
-import type { Blast } from '../../world/schema/worldSchema'
-import { easeOut } from '../../world/step/geometry'
+import { BLAST_FLASH_MS } from '#shared/constants.ts'
+import { unitOf } from '#shared/prng.ts'
+import type { Blast } from '#world/schema/worldSchema.ts'
+import { easeOut } from '#world/step/geometry.ts'
 
 export type BlastPiece = Readonly<{
   x: number

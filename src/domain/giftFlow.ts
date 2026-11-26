@@ -1,7 +1,7 @@
 import { Event, Machine } from 'effect-machine'
 
-import { UpdateGift } from './clientSchema'
-import { machineStepOf } from './machineStep'
+import { UpdateGift } from './clientSchema.ts'
+import { machineStepOf } from './machineStep.ts'
 
 export const GiftEvent = Event({
   Unwrapped: {},

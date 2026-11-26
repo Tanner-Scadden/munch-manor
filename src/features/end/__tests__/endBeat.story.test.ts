@@ -3,21 +3,39 @@ import { Array, Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { AudioState, type Model, Phase, RunMode } from '../../../app/model'
-import { SendShareEvent } from '../../../app/update/end'
-import { PlaySound } from '../../../app/update/sound'
-import { withBests } from '../../../domain/run'
-import { mergeRunRecords } from '../../../platform/playerProjection'
-import { RUNNING_BUILD } from '../../../platform/version'
-import { bestsFor } from '../../../screens/home/home'
+import { Message } from '#app/message.ts'
+import { AudioState, type Model, Phase, RunMode } from '#app/model.ts'
+import { SendShareEvent } from '#app/update/end.ts'
+import { PlaySound } from '#app/update/sound.ts'
+import { withBests } from '#domain/run.ts'
+import {
+  SHARE_COPIED_MS,
+  TIMELINES,
+  doneMs,
+  isShareCopied,
+  lensOf,
+  rowLandMs,
+  rowStartMs,
+  sharePathOf,
+  shownValue,
+  tallyRowsOf,
+} from '#features/end/endBeat.ts'
+import {
+  GAME_URL,
+  copiedLineOf,
+  sharePostOf,
+  shareText,
+} from '#features/end/share.ts'
+import { mergeRunRecords } from '#platform/playerProjection.ts'
+import { RUNNING_BUILD } from '#platform/version.ts'
+import { bestsFor } from '#screens/home/home.ts'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
   RESTART_GRACE_MS,
-} from '../../../shared/constants'
-import { noSavedRunRecords } from '../../../shared/playerData'
-import { lastHeart, readyModel, withKeys } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { noSavedRunRecords } from '#shared/playerData.ts'
+import { lastHeart, readyModel, withKeys } from '#test/model.fixture.ts'
 import {
   type AppStory,
   checkModel,
@@ -30,22 +48,9 @@ import {
   throughIntro,
   tick,
   ticks,
-} from '../../../test/testing'
-import { focusOf, seatCrew } from '../../../world/party/party'
-import { withWorld } from '../../../world/schema/world'
-import {
-  SHARE_COPIED_MS,
-  TIMELINES,
-  doneMs,
-  isShareCopied,
-  lensOf,
-  rowLandMs,
-  rowStartMs,
-  sharePathOf,
-  shownValue,
-  tallyRowsOf,
-} from '../endBeat'
-import { GAME_URL, copiedLineOf, sharePostOf, shareText } from '../share'
+} from '#test/testing.ts'
+import { focusOf, seatCrew } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 
 const midRun: Model = UiStruct.evolve(readyModel, {
   phase: () => Phase.Wave({ wave: 4, elapsedMs: 4000, spawns: [] }),

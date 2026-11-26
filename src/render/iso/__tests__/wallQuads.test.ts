@@ -1,15 +1,6 @@
 import { Array, Option, Order, Record, Result, String } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { TILE_SIZE } from '../../../shared/constants'
-import { type Level, closedExits, levelFor } from '../../../world/level/arena'
-import {
-  ARRANGEMENTS,
-  SECRET_EXIT,
-  manorSpecFor,
-} from '../../../world/level/plan'
-import { DOOR_SYMBOLS, WALL_SYMBOL } from '../../../world/level/tileGrid'
-import { secretShelfOf } from '../../../world/library/secretShelf'
 import {
   FRONT_WALL_ROWS,
   STRETCH,
@@ -17,7 +8,7 @@ import {
   WALL_FACE_ROWS,
   WALL_ROW,
   wallHeightAt,
-} from '../space'
+} from '#render/iso/space.ts'
 import {
   type ArtQuad,
   artAt,
@@ -25,7 +16,12 @@ import {
   fannedX,
   standingTilesOf,
   wallQuadsOf,
-} from '../wallQuads'
+} from '#render/iso/wallQuads.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, closedExits, levelFor } from '#world/level/arena.ts'
+import { ARRANGEMENTS, SECRET_EXIT, manorSpecFor } from '#world/level/plan.ts'
+import { DOOR_SYMBOLS, WALL_SYMBOL } from '#world/level/tileGrid.ts'
+import { secretShelfOf } from '#world/library/secretShelf.ts'
 
 const SLOTS_OPEN = ['Kitchen', 'West', 'East', 'Far']
 

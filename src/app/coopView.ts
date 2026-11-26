@@ -1,11 +1,12 @@
 import { Function } from 'effect'
 
-import { isRunEndComing } from '../domain/onlineRun'
-import { coopScreenView } from '../features/coop/view'
-import { isRunCardHeld } from '../features/end/endBeat'
-import { bonesBalanceOf } from '../world/heroes/rank'
-import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
-import type { Model } from './model'
+import { isRunEndComing } from '#domain/onlineRun.ts'
+import { coopScreenView } from '#features/coop/view.ts'
+import { isRunCardHeld } from '#features/end/endBeat.ts'
+import { bonesBalanceOf } from '#world/heroes/rank.ts'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from './definition.ts'
+import type { Model } from './model.ts'
 
 export const coopView: {
   (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null

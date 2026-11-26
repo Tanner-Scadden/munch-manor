@@ -7,7 +7,7 @@ import {
   RootDialog,
   rootDialogMachine,
   stepRootDialog,
-} from '../rootDialog'
+} from '#app/rootDialog.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.sort(

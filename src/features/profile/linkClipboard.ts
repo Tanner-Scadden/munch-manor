@@ -2,7 +2,7 @@ import { Effect, Function, Option, Queue, Stream } from 'effect'
 
 import { Mount } from '@effect/ui'
 
-import { copyToClipboard, readClipboard } from '../../platform/clipboard'
+import { copyToClipboard, readClipboard } from '#platform/clipboard.ts'
 
 export const LINK_CODE_DATA = 'link-code'
 

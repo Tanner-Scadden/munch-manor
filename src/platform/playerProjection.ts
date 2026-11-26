@@ -17,10 +17,10 @@ import {
   TOP_MARK,
   mergeDareMarks,
   noDareMarks,
-} from '../shared/dareMarkData'
-import { type DayStamp, laterDay } from '../shared/dayStamp'
-import { SavedJournal, addToJournal, noJournal } from '../shared/journalData'
-import { SavedMastery, addToMastery, noMastery } from '../shared/masteryData'
+} from '#shared/dareMarkData.ts'
+import { type DayStamp, laterDay } from '#shared/dayStamp.ts'
+import { SavedJournal, addToJournal, noJournal } from '#shared/journalData.ts'
+import { SavedMastery, addToMastery, noMastery } from '#shared/masteryData.ts'
 import {
   ALL_THREE_BONES,
   SavedMissions,
@@ -31,7 +31,7 @@ import {
   noMissions,
   onDay,
   rerollOn,
-} from '../shared/missionData'
+} from '#shared/missionData.ts'
 import {
   COSMETIC_PRICES,
   FIRST_ESCAPE_BONES,
@@ -54,16 +54,17 @@ import {
   noBonuses,
   noSavedBests,
   noSavedRunRecords,
-} from '../shared/playerData'
+} from '#shared/playerData.ts'
 import {
   type ProofEntry,
   type ProofStamp,
   SavedProof,
   isEarlierStamp,
   noProof,
-} from '../shared/proofData'
-import { purseBonesAt } from '../shared/rankCurve'
-import { noRank } from '../world/heroes/rank'
+} from '#shared/proofData.ts'
+import { purseBonesAt } from '#shared/rankCurve.ts'
+import { noRank } from '#world/heroes/rank.ts'
+
 import {
   EarnedEvents,
   MissionEvents,
@@ -72,7 +73,7 @@ import {
   PlayerRowFields,
   type SeedSave,
   SetEvents,
-} from './playerEvents'
+} from './playerEvents.ts'
 
 const ROW_TABLE = 'player_row'
 const FACTS_TABLE = 'player_facts'

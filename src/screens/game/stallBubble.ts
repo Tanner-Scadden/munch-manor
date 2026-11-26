@@ -1,8 +1,8 @@
 import { Array, Function, Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { DARE_BIG_ICONS, DARE_BIG_ICON_SIZE } from '../../art/dareArt'
-import { bakeText } from '../../art/font'
+import type { Model } from '#app/model.ts'
+import { DARE_BIG_ICONS, DARE_BIG_ICON_SIZE } from '#art/dareArt.ts'
+import { bakeText } from '#art/font.ts'
 import {
   type Palette,
   type Sprite,
@@ -10,37 +10,38 @@ import {
   bakeShapes,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { maybeDarePointer } from '../../features/dare/darePointer'
-import { isPocketCardOut } from '../../features/dare/pocketCard'
-import { HINT_LINES, maybeHintCall } from '../../features/dare/rattlesHint'
-import { fridgeOddsKeepoutsOf } from '../../features/fridge/fridgeView'
+} from '#art/sprite.ts'
+import { maybeDarePointer } from '#features/dare/darePointer.ts'
+import { isPocketCardOut } from '#features/dare/pocketCard.ts'
+import { HINT_LINES, maybeHintCall } from '#features/dare/rattlesHint.ts'
+import { fridgeOddsKeepoutsOf } from '#features/fridge/fridgeView.ts'
 import {
   CALL_LINES,
   callLineIndex,
   maybeCallTarget,
-} from '../../features/kitchen/kitchenCall'
-import { maybeQuestMark } from '../../features/onboarding/firstBreakQuest'
+} from '#features/kitchen/kitchenCall.ts'
+import { maybeQuestMark } from '#features/onboarding/firstBreakQuest.ts'
 import {
   kitchenStepOf,
   maybeKitchenMark,
-} from '../../features/onboarding/kitchenTour'
+} from '#features/onboarding/kitchenTour.ts'
 import {
   RATTLES_INTRO_LINES,
   maybeRattlesLine,
-} from '../../features/onboarding/rattlesIntro'
-import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
-import * as Draw from '../../render/draw'
-import { FULL_TURN, placeSprite } from '../../render/drawing'
-import { type Keepout, clearOfKeepouts } from '../../render/keepout'
-import { doorArrowBox } from '../../render/powerupView'
-import { landscapeFrameOffset, screenOf } from '../../render/screen'
-import type { DareKind } from '../../world/dare/dareSchema'
-import { fridgeBoxOf } from '../../world/fridge/leftovers'
-import { RATTLES_BOX, levelOf } from '../../world/level/arena'
-import type { Vector } from '../../world/schema/worldSchema'
-import { hintBoxesOf } from './overlay'
-import { pinnedKeepoutsOf } from './pocket'
+} from '#features/onboarding/rattlesIntro.ts'
+import { type Camera, viewBoxOf, worldToView } from '#render/camera.ts'
+import * as Draw from '#render/draw.ts'
+import { FULL_TURN, placeSprite } from '#render/drawing.ts'
+import { type Keepout, clearOfKeepouts } from '#render/keepout.ts'
+import { doorArrowBox } from '#render/powerupView.ts'
+import { landscapeFrameOffset, screenOf } from '#render/screen.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import { fridgeBoxOf } from '#world/fridge/leftovers.ts'
+import { RATTLES_BOX, levelOf } from '#world/level/arena.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+
+import { hintBoxesOf } from './overlay.ts'
+import { pinnedKeepoutsOf } from './pocket.ts'
 
 type BubbleKind = 'Gift' | 'Leave' | 'Soup0' | 'Soup1' | 'Soup2'
 

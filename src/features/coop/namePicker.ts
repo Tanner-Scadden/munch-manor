@@ -3,20 +3,21 @@ import { Function, Option } from 'effect'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import { PENCIL_ICON } from '../../art/coopIcons'
-import { DICE_ICON } from '../../art/icons'
-import { type Room, isInLobby } from '../../domain/coopRoom'
-import { DEFAULT_NAME, MAX_NAME_LENGTH } from '../../domain/playerName'
-import { closeButtonView } from '../../ui/cornerButtons'
-import { iconView } from '../../ui/menuParts'
-import { CoopMessage } from './message'
+} from '#app/definition.ts'
+import { PENCIL_ICON } from '#art/coopIcons.ts'
+import { DICE_ICON } from '#art/icons.ts'
+import { type Room, isInLobby } from '#domain/coopRoom.ts'
+import { DEFAULT_NAME, MAX_NAME_LENGTH } from '#domain/playerName.ts'
+import { closeButtonView } from '#ui/cornerButtons.ts'
+import { iconView } from '#ui/menuParts.ts'
+
+import { CoopMessage } from './message.ts'
 import {
   NAME_BUTTON,
   NAME_BUTTON_ID,
   NAME_INPUT,
   NAME_INPUT_ID,
-} from './roomState'
+} from './roomState.ts'
 
 export const nameButtonView: {
   (h: ApplicationViewBuilder): (name: string) => ApplicationHtml

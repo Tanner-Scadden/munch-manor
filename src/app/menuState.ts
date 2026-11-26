@@ -2,14 +2,15 @@ import { Function, Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { isOpen as isCoopScreenOpen } from '../features/coop/update'
-import { MenuPanel } from '../features/home/homeSchema'
-import { isHeroPickerUp, isLobbyShown } from '../features/lobby/model'
-import { ProfileTab } from '../features/profile/model'
-import { tabOf } from '../features/profile/profile'
-import { RESTART_GRACE_MS } from '../shared/constants'
-import { type Model, Phase } from './model'
-import { RootDialog } from './rootDialog'
+import { isOpen as isCoopScreenOpen } from '#features/coop/update.ts'
+import { MenuPanel } from '#features/home/homeSchema.ts'
+import { isHeroPickerUp, isLobbyShown } from '#features/lobby/model.ts'
+import { ProfileTab } from '#features/profile/model.ts'
+import { tabOf } from '#features/profile/profile.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+
+import { type Model, Phase } from './model.ts'
+import { RootDialog } from './rootDialog.ts'
 
 export const MenuState = UiSchema.TaggedEnum({
   Profile: { tab: ProfileTab },

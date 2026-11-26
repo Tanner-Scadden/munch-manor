@@ -1,20 +1,21 @@
 import { Option } from 'effect'
 
-import { MS_PER_SECOND } from '../shared/constants'
-import { firingStats, withLaserSight } from '../world/gear/powerups'
+import { MS_PER_SECOND } from '#shared/constants.ts'
+import { firingStats, withLaserSight } from '#world/gear/powerups.ts'
 import {
   type WeaponStats,
   heldTier,
   heldWeapon,
   isWieldingMelee,
-} from '../world/gear/weapons'
-import { type Level, levelOf } from '../world/level/arena'
-import { findReach } from '../world/level/tileQueries'
-import { focusOf } from '../world/party/party'
-import type { Vector } from '../world/schema/entitySchema'
-import type { World } from '../world/schema/world'
-import { addVectors, scaleVector } from '../world/step/geometry'
-import * as Draw from './draw'
+} from '#world/gear/weapons.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { findReach } from '#world/level/tileQueries.ts'
+import { focusOf } from '#world/party/party.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/world.ts'
+import { addVectors, scaleVector } from '#world/step/geometry.ts'
+
+import * as Draw from './draw.ts'
 
 const LASER_COLOR = 'rgba(255, 58, 63, 0.55)'
 const FAN_FILL = 'rgba(255, 58, 63, 0.12)'

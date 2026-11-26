@@ -3,27 +3,27 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { Loading, type Model } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { RedeemLinkCode, RequestLinkCode } from '../../app/update/profile'
-import { ReloadSyncedSave, WriteSave } from '../../app/update/save'
-import {
-  checkModel,
-  modelAfter,
-  send,
-  steps,
-  writeSave,
-} from '../../test/testing'
-import { LinkFlow } from '../linkFlow'
+import { Message } from '#app/message.ts'
+import { Loading, type Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { RedeemLinkCode, RequestLinkCode } from '#app/update/profile.ts'
+import { ReloadSyncedSave, WriteSave } from '#app/update/save.ts'
+import { LinkFlow } from '#platform/linkFlow.ts'
 import {
   PlayerChange,
   SyncState,
   changesBetween,
   syncStateText,
   withUnsavedChanges,
-} from '../playerSync'
-import { type PlayerSave, saveOf } from '../save'
+} from '#platform/playerSync.ts'
+import { type PlayerSave, saveOf } from '#platform/save.ts'
+import {
+  checkModel,
+  modelAfter,
+  send,
+  steps,
+  writeSave,
+} from '#test/testing.ts'
 
 const read: Model = UiStruct.evolve(initialModel, {
   saving: UiStruct.evolve({

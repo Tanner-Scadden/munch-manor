@@ -2,18 +2,19 @@ import { Array, Effect } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { FridgeDoor, type Model } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { atFridge } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { FridgeDoor, type Model } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { atFridge } from '#test/model.fixture.ts'
 import {
   FIXED_FRAME,
   FRIDGE_OPEN_TICKS,
   HOLD_TICKS,
   playedThrough,
-} from '../../../test/testing'
-import { FRIDGE_RULES } from '../leftovers'
-import { isFridgeOffered } from './leftovers.fixture'
+} from '#test/testing.ts'
+import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
+
+import { isFridgeOffered } from './leftovers.fixture.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

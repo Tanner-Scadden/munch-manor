@@ -1,9 +1,10 @@
 import { Array, Option, Schema } from 'effect'
 
-import type { WorldState } from '../../domain/coopRoom'
-import { RATTLES_BOX } from '../../world/level/arena'
-import { playersOf } from '../../world/party/party'
-import { AUDIT_PARAM, ReadoutJson } from './readout'
+import type { WorldState } from '#domain/coopRoom.ts'
+import { RATTLES_BOX } from '#world/level/arena.ts'
+import { playersOf } from '#world/party/party.ts'
+
+import { AUDIT_PARAM, ReadoutJson } from './readout.ts'
 
 const encodeReadout = Schema.encodeOption(ReadoutJson)
 

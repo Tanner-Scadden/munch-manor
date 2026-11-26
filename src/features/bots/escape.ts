@@ -1,27 +1,27 @@
 import { Array, Function, Option } from 'effect'
 
-import { PLAYER_RADIUS } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
 import {
   type Level,
   TILE_PLAYER_SOLID,
   hasTileFlag,
-} from '../../world/level/arena'
-import { isInsideRoom, tileIndex } from '../../world/level/tileGrid'
-import { tileCoordinate } from '../../world/level/tileQueries'
-import type { World } from '../../world/schema/world'
+} from '#world/level/arena.ts'
+import { isInsideRoom, tileIndex } from '#world/level/tileGrid.ts'
+import { tileCoordinate } from '#world/level/tileQueries.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   BossMove,
   type Vector,
   type Zombie,
-} from '../../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 import {
   ZERO_VECTOR,
   closestPointOnSegment,
   directionBetween,
   distanceBetween,
-} from '../../world/step/geometry'
-import { BOSS_RULES } from '../../world/zombies/bossRules'
+} from '#world/step/geometry.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
 
 const HEADINGS = 16
 const LOOK_PX = 40

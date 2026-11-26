@@ -8,7 +8,7 @@ import {
   mean,
   percentile,
   simulateRoom,
-} from '../../../test/roomTesting'
+} from '#test/roomTesting.ts'
 
 const PLAYERS = 4
 const SECONDS = 100

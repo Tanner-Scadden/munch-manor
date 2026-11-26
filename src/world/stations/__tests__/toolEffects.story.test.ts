@@ -2,15 +2,15 @@ import { Array, Effect, Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   hidingSpotIn,
   withDareThings,
   withPlayerAt,
   withZombies,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   changeModel,
   checkModel,
@@ -21,17 +21,18 @@ import {
   ticks,
   zombieAt,
   zombieOf,
-} from '../../../test/testing'
-import { DareThingState } from '../../dare/dareSchema'
-import { levelOf } from '../../level/arena'
-import { CELLAR_ROOM_ID, PARLOUR_ROOM_ID } from '../../level/plan'
-import { boxCenter } from '../../level/tileGrid'
-import { isSolidAt } from '../../level/tileQueries'
-import { heapBoxOf, isHeapDown } from '../../library/stacks'
-import { focusOf } from '../../party/party'
-import type { Vector, Zombie } from '../../schema/worldSchema'
-import { distanceBetween } from '../../step/geometry'
-import { TOOL_RULES } from '../toolRules'
+} from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { CELLAR_ROOM_ID, PARLOUR_ROOM_ID } from '#world/level/plan.ts'
+import { boxCenter } from '#world/level/tileGrid.ts'
+import { isSolidAt } from '#world/level/tileQueries.ts'
+import { heapBoxOf, isHeapDown } from '#world/library/stacks.ts'
+import { focusOf } from '#world/party/party.ts'
+import type { Vector, Zombie } from '#world/schema/worldSchema.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+
 import {
   atTool,
   firedAgo,
@@ -39,7 +40,7 @@ import {
   roomBoxOf,
   spotAtTool,
   toolBoxOf,
-} from './roomTools.fixture'
+} from './roomTools.fixture.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const WALK_SPEED = 30

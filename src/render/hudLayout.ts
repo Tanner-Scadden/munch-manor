@@ -1,8 +1,14 @@
 import { Function } from 'effect'
 
-import type { SurfaceRectangle } from '../input/inputSchema'
-import { PLAYER_MAX_HP } from '../shared/constants'
-import { type Box, type Screen, stagePlacement, thumbAreaTop } from './screen'
+import type { SurfaceRectangle } from '#input/inputSchema.ts'
+import { PLAYER_MAX_HP } from '#shared/constants.ts'
+
+import {
+  type Box,
+  type Screen,
+  stagePlacement,
+  thumbAreaTop,
+} from './screen.ts'
 
 export const HEART_SPACING = 9
 export const HUD_MARGIN = 5

@@ -1,4 +1,4 @@
-import { Tunable } from './tunable'
+import { Tunable } from './tunable.ts'
 
 export type RoomLook = Readonly<{
   shadow: number

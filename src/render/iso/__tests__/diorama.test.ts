@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import * as Draw from '../../draw'
-import { dioramaCameraOf, dioramaStepOf } from '../diorama'
-import { plinthFrameOf } from '../plinthPose'
-import { PITCH, UNIT } from '../space'
+import * as Draw from '#render/draw.ts'
+import { dioramaCameraOf, dioramaStepOf } from '#render/iso/diorama.ts'
+import { plinthFrameOf } from '#render/iso/plinthPose.ts'
+import { PITCH, UNIT } from '#render/iso/space.ts'
 
 const TARGET = { x: 10, y: 0, z: 20 }
 

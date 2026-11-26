@@ -1,11 +1,11 @@
 import { Array, Option, pipe } from 'effect'
 
-import { isCellarLit } from '../world/cellar/bulb'
-import { type Room, levelOf } from '../world/level/arena'
-import { CELLAR_ROOM_ID } from '../world/level/plan'
-import { focusOf } from '../world/party/party'
-import type { World } from '../world/schema/world'
-import type { Vector, Zombie } from '../world/schema/worldSchema'
+import { isCellarLit } from '#world/cellar/bulb.ts'
+import { type Room, levelOf } from '#world/level/arena.ts'
+import { CELLAR_ROOM_ID } from '#world/level/plan.ts'
+import { focusOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import type { Vector, Zombie } from '#world/schema/worldSchema.ts'
 
 const BEAM = { lengthPx: 120, halfAngle: Math.PI / 7 } as const
 const DIM = 0.8

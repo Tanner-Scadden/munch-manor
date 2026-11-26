@@ -2,10 +2,11 @@ import { Effect, Function, Layer, Option, Schedule, Schema, pipe } from 'effect'
 import type { Duration } from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 
-import { describeError } from '../shared/describeError'
-import { isObjectFirst } from '../shared/dualArgs'
-import { API_ORIGIN } from './apiOrigin'
-import { type RunRecording, RunRecordingJson } from './recording'
+import { describeError } from '#shared/describeError.ts'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+
+import { API_ORIGIN } from './apiOrigin.ts'
+import { type RunRecording, RunRecordingJson } from './recording.ts'
 import {
   GZIP_CONTENT_TYPE,
   JSON_CONTENT_TYPE,
@@ -13,9 +14,9 @@ import {
   RECORDINGS_PATH,
   RUN_ID_PARAM,
   type RecordingEncoding,
-} from './recordingApi'
-import { PlayerStore } from './store'
-import { isOnline } from './summaryQueue'
+} from './recordingApi.ts'
+import { PlayerStore } from './store.ts'
+import { isOnline } from './summaryQueue.ts'
 
 class RecordingSendError extends Schema.TaggedError<
   RecordingSendError,

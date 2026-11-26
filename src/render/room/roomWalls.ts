@@ -1,21 +1,22 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
-import { type Palette, pixelRuns } from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import { type Exit, type Level, closedExits } from '../../world/level/arena'
+import { type Palette, pixelRuns } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { pixelArt, rect } from '#render/drawing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Exit, type Level, closedExits } from '#world/level/arena.ts'
 import {
   DOOR_SYMBOLS,
   WALL_SYMBOL,
   isInsideRoom,
   symbolAt,
   tilesWithSymbol,
-} from '../../world/level/tileGrid'
-import { isWalkableTile } from '../../world/level/tileQueries'
-import type { DoorId } from '../../world/schema/entitySchema'
-import type * as Draw from '../draw'
-import { pixelArt, rect } from '../drawing'
-import { isFacedExit, leakSpillShapes, leakStillShapes } from './kitchenLeak'
-import { backDoorShapes, windowShapes } from './kitchenView'
+} from '#world/level/tileGrid.ts'
+import { isWalkableTile } from '#world/level/tileQueries.ts'
+import type { DoorId } from '#world/schema/entitySchema.ts'
+
+import { isFacedExit, leakSpillShapes, leakStillShapes } from './kitchenLeak.ts'
+import { backDoorShapes, windowShapes } from './kitchenView.ts'
 import {
   BASEBOARD_COLOR,
   BASEBOARD_Y,
@@ -57,7 +58,7 @@ import {
   ZOMBIE_SKIN_COLOR,
   boundingBox,
   roll,
-} from './roomPalette'
+} from './roomPalette.ts'
 
 const closedExitSymbols = (level: Level): ReadonlyArray<string> =>
   Array.map(closedExits(level), ({ symbol }) => symbol)

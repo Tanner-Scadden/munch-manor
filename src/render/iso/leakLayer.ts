@@ -2,14 +2,15 @@ import type { Application } from 'pixi.js'
 
 import { FlatMaterial, Material3D, type Mesh3D } from '@pixi/3d'
 
-import type { Level } from '../../world/level/arena'
-import type { Vector } from '../../world/schema/entitySchema'
-import type { World } from '../../world/schema/worldSchema'
-import { flatten } from './flatten'
-import { buildTileQuads } from './house'
-import { leakTilesOf, puddleGlintsOf, puddleKeyOf, puddlesOf } from './leaks'
-import { FloorPicture } from './painter'
-import type { Textures } from './textures'
+import type { Level } from '#world/level/arena.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+
+import { flatten } from './flatten.ts'
+import { buildTileQuads } from './house.ts'
+import { leakTilesOf, puddleGlintsOf, puddleKeyOf, puddlesOf } from './leaks.ts'
+import { FloorPicture } from './painter.ts'
+import type { Textures } from './textures.ts'
 
 const BODY_LIFT = 0.013
 const GLINT_LIFT = 0.0135

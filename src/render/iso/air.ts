@@ -1,12 +1,13 @@
 import { Array } from 'effect'
 
-import { unitOf } from '../../shared/prng'
-import type { Level } from '../../world/level/arena'
-import type { Box } from '../../world/level/tileGrid'
-import type { Vector } from '../../world/schema/entitySchema'
-import type { World } from '../../world/schema/worldSchema'
-import { type FlameKind, flameSpecsOf } from './lightSpecs'
-import { mixColor } from './mood'
+import { unitOf } from '#shared/prng.ts'
+import type { Level } from '#world/level/arena.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+
+import { type FlameKind, flameSpecsOf } from './lightSpecs.ts'
+import { mixColor } from './mood.ts'
 
 export type Mote = Readonly<{
   x: number

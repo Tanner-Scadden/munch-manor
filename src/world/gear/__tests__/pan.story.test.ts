@@ -4,7 +4,7 @@ import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   type CarriedGun,
   FridgeDoor,
@@ -14,18 +14,18 @@ import {
   type Model,
   Phase,
   type Zombie,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { gunIcon } from '../../../art/sprites/guns'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { gunIcon } from '#art/sprites/guns.ts'
 import {
   REPLACED_KNIFE,
   maybeReplacedIcon,
-} from '../../../features/shop/purchaseView'
-import { meleeSlotLook } from '../../../screens/game/hud'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { nextRandom } from '../../../shared/prng'
-import { holdingSecond } from '../../../test/arsenals'
-import { DISTANT_SPAWN, atFridge, withSeat } from '../../../test/model.fixture'
+} from '#features/shop/purchaseView.ts'
+import { meleeSlotLook } from '#screens/game/hud.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { holdingSecond } from '#test/arsenals.ts'
+import { DISTANT_SPAWN, atFridge, withSeat } from '#test/model.fixture.ts'
 import {
   FRIDGE_OPEN_TICKS,
   SURFACE,
@@ -39,15 +39,22 @@ import {
   tickCountFor,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { PAN_RULES } from '../../fridge/fridgeWeapons'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { PAN_RULES } from '#world/fridge/fridgeWeapons.ts'
 import {
   FRIDGE_RULES,
   PRIZE_ORDER,
   pickPrize,
   prizeWeights,
-} from '../../fridge/leftovers'
+} from '#world/fridge/leftovers.ts'
+import {
+  freshGun,
+  heldWeapon,
+  inHandOf,
+  maybePanOf,
+  takePan,
+} from '#world/gear/weapons.ts'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,
@@ -57,11 +64,10 @@ import {
   heldAction,
   startRoomWorld,
   stepRoomWorld,
-} from '../../net/roomWorld'
-import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
-import { Arsenal } from '../../schema/worldSchema'
-import { SeatAction } from '../../step/stepWorld'
-import { freshGun, heldWeapon, inHandOf, maybePanOf, takePan } from '../weapons'
+} from '#world/net/roomWorld.ts'
+import { focusOf, maybePlayerAt, modifyFocus } from '#world/party/party.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
+import { SeatAction } from '#world/step/stepWorld.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const ROW_Y = 130

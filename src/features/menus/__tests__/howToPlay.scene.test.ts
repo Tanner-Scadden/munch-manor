@@ -5,26 +5,26 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { RootDialog } from '../../../app/rootDialog'
-import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '../../../domain/clientSchema'
-import type { InputDevice } from '../../../input/inputSchema'
+import type { Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { RootDialog } from '#app/rootDialog.ts'
+import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '#domain/clientSchema.ts'
+import {
+  CONTROL_CARDS,
+  helpCardElementId,
+  helpLineElementId,
+  helpLineOf,
+} from '#features/menus/pauseHelp.ts'
+import type { InputDevice } from '#input/inputSchema.ts'
 import {
   expectAttr,
   measureSurface,
   openHandInScene,
   pickCardInScene,
   showDialog,
-} from '../../../test/sceneTesting'
-import { type SceneStep, sceneOf, steps } from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import {
-  CONTROL_CARDS,
-  helpCardElementId,
-  helpLineElementId,
-  helpLineOf,
-} from '../pauseHelp'
+} from '#test/sceneTesting.ts'
+import { type SceneStep, sceneOf, steps } from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 
 const homeOn = (device: InputDevice): Model =>
   UiStruct.evolve(asVeteran(initialModel), { lastDevice: () => device })

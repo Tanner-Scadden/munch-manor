@@ -42,6 +42,7 @@ import {
 } from '@munch/netcode/browser'
 
 import { nextAnimationFrame } from '../../src/platform/splash'
+import { newIdentity } from '../../src/shared/sessionApi'
 import { MANOR, levelOf } from '../../src/world/level/arena'
 import {
   type OwnSeat,
@@ -52,7 +53,6 @@ import {
 } from '../../src/world/net/roomWorld'
 import { playersOf } from '../../src/world/party/party'
 import { SeatAction } from '../../src/world/step/stepWorld'
-import { newIdentity } from '../../src/shared/sessionApi'
 import { type Identity, type MintedSession, mintSession } from './session'
 
 declare const __MP_API_ORIGIN__: string
@@ -133,7 +133,10 @@ const loadIdentity: Effect.Effect<Identity> = Effect.gen(function* () {
   }
   const identity = yield* newIdentity
   yield* Effect.sync(() =>
-    sessionStorage.setItem(IDENTITY_KEY, EventLog.encodeIdentityString(identity)),
+    sessionStorage.setItem(
+      IDENTITY_KEY,
+      EventLog.encodeIdentityString(identity),
+    ),
   )
   return identity
 })

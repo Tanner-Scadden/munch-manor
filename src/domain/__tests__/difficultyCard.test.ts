@@ -2,13 +2,13 @@ import { Array } from 'effect'
 import { Machine } from 'effect-machine'
 import { describe, expect, test } from 'vitest'
 
-import { RunMode } from '../../world/schema/worldSchema'
-import { DifficultyCard } from '../clientSchema'
+import { DifficultyCard } from '#domain/clientSchema.ts'
 import {
   CardEvent,
   difficultyCardMachine,
   stepDifficultyCard,
-} from '../difficultyCard'
+} from '#domain/difficultyCard.ts'
+import { RunMode } from '#world/schema/worldSchema.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.sort(

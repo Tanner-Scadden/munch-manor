@@ -3,18 +3,21 @@ import { Array, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { UploadRecording } from '../../app/update/recording'
-import { WriteSave } from '../../app/update/save'
-import { SendRunSummary } from '../../app/update/settle'
-import { FIXED_STEP_MS } from '../../shared/constants'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { UploadRecording } from '#app/update/recording.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { SendRunSummary } from '#app/update/settle.ts'
+import { PlayerChange } from '#platform/playerSync.ts'
+import { RunRecorder, beginRecording } from '#platform/recording.ts'
+import { saveOf } from '#platform/save.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   homeAfterRead,
   lastHeart,
   loadingSave,
   veteranFighting,
-} from '../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   SURFACE,
   checkModel,
@@ -25,12 +28,10 @@ import {
   settleRunCommands,
   steps,
   writeSave,
-} from '../../test/testing'
-import { focusOf } from '../../world/party/party'
-import { PlayerChange } from '../playerSync'
-import { RunRecorder, beginRecording } from '../recording'
-import { saveOf } from '../save'
-import { learnedSave } from './save.fixture'
+} from '#test/testing.ts'
+import { focusOf } from '#world/party/party.ts'
+
+import { learnedSave } from './save.fixture.ts'
 
 const VISIT_ID = '0123456789abcdef'
 

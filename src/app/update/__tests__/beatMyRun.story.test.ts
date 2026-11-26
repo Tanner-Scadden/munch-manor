@@ -3,19 +3,20 @@ import { Effect, Option, String } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { ForgetBeatLink } from '#app/update/beatMyRun.ts'
+import { FocusHomeButton } from '#app/update/home.ts'
 import {
   BeatMyRun,
   type FriendsDare,
   addressWithoutDare,
   dareCodeOf,
   readBeatLink,
-} from '../../../domain/beatLink'
-import {
-  maybeBeatComparisonOf,
-  shareUrlOf,
-} from '../../../features/end/beatRun'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { readyModel } from '../../../test/model.fixture'
+} from '#domain/beatLink.ts'
+import { maybeBeatComparisonOf, shareUrlOf } from '#features/end/beatRun.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { readyModel } from '#test/model.fixture.ts'
 import {
   checkModel,
   foldLobby,
@@ -26,13 +27,9 @@ import {
   startedRun,
   steps,
   throughIntro,
-} from '../../../test/testing'
-import { maybeOpenerOf } from '../../../world/dare/milestones'
-import { noModifiers } from '../../../world/run/modifiers'
-import { Message } from '../../message'
-import { type Model, Phase } from '../../model'
-import { ForgetBeatLink } from '../beatMyRun'
-import { FocusHomeButton } from '../home'
+} from '#test/testing.ts'
+import { maybeOpenerOf } from '#world/dare/milestones.ts'
+import { noModifiers } from '#world/run/modifiers.ts'
 
 const FRIEND_SEED = 1_234_567
 const OWN_SEED = 7_654_321

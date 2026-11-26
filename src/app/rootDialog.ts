@@ -1,7 +1,7 @@
 import { Function, Schema } from 'effect'
 import { Event, Machine, State } from 'effect-machine'
 
-import { machineStepOf } from '../domain/machineStep'
+import { machineStepOf } from '#domain/machineStep.ts'
 
 export const DialogName = Schema.Literals([
   'Profile',

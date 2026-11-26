@@ -3,10 +3,10 @@ import { Array } from 'effect'
 import { describe, expect, test } from '@effect/vitest'
 import { Camera3D, Matrix4, Vector3 } from '@pixi/3d'
 
-import type { Camera } from '../../camera'
-import { worldToView } from '../../camera'
-import { aimSceneCamera, sceneLensOf } from '../lensCamera'
-import { UNIT, zOf } from '../space'
+import type { Camera } from '#render/camera.ts'
+import { worldToView } from '#render/camera.ts'
+import { aimSceneCamera, sceneLensOf } from '#render/iso/lensCamera.ts'
+import { UNIT, zOf } from '#render/iso/space.ts'
 
 const CASES: ReadonlyArray<Readonly<{ camera: Camera; perGamePixel: number }>> =
   [

@@ -1,11 +1,12 @@
-import type { SoundEffect } from '../shared/soundEffect'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+
 import {
   type NoiseLayer,
   type Recipe,
   at,
   delayedEnvelope,
   envelope,
-} from './soundRecipe'
+} from './soundRecipe.ts'
 
 const KNOCK_RECIPE: Recipe = {
   variationCents: 60,

@@ -2,28 +2,28 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS } from '../../shared/constants'
-import { type Level, levelOf } from '../level/arena'
-import { boxAround } from '../level/exits'
-import { CHANDELIER_DROP, CHANDELIER_SYMBOL } from '../level/plan'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { boxAround } from '#world/level/exits.ts'
+import { CHANDELIER_DROP, CHANDELIER_SYMBOL } from '#world/level/plan.ts'
 import {
   type Box,
   DOOR_OUTWARD,
   circleTouchesBox,
   tileBox,
   tilesWithSymbol,
-} from '../level/tileGrid'
-import { forEachSeat, modifySeat, seatStateAt } from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/level/tileGrid.ts'
+import { forEachSeat, modifySeat, seatStateAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   Phase,
   type Vector,
   type Zombie,
-} from '../schema/worldSchema'
-import { ZOMBIE_BLAST_TARGET } from '../step/combat'
-import { isInsideBox } from '../step/geometry'
-import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { ZOMBIE_BLAST_TARGET } from '#world/step/combat.ts'
+import { isInsideBox } from '#world/step/geometry.ts'
+import { bodyRadiusOf, isGrounded } from '#world/zombies/zombies.ts'
 
 type ChandelierRules = Readonly<{
   hungRisePx: number

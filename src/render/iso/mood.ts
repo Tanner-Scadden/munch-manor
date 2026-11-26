@@ -1,8 +1,9 @@
-import { unitOf } from '../../shared/prng'
-import { isHouseHungry } from '../../world/dare/finale'
-import { Boss, Phase, type World } from '../../world/schema/worldSchema'
-import { lerp } from '../../world/step/geometry'
-import { Tunable } from './tunable'
+import { unitOf } from '#shared/prng.ts'
+import { isHouseHungry } from '#world/dare/finale.ts'
+import { Boss, Phase, type World } from '#world/schema/worldSchema.ts'
+import { lerp } from '#world/step/geometry.ts'
+
+import { Tunable } from './tunable.ts'
 
 export type Mood = Readonly<{
   fill: number

@@ -2,23 +2,23 @@ import { Array, Function, Option, Schema, String } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { milestoneUnlockId } from '../../domain/journal'
-import type { SavedJournal } from '../../shared/journalData'
-import type { Calling } from '../../shared/playerData'
-import type { SavedProof } from '../../shared/proofData'
-import { DareKind } from '../../world/dare/dareSchema'
+import { milestoneUnlockId } from '#domain/journal.ts'
+import type { SavedJournal } from '#shared/journalData.ts'
+import type { Calling } from '#shared/playerData.ts'
+import type { SavedProof } from '#shared/proofData.ts'
+import { DareKind } from '#world/dare/dareSchema.ts'
 import {
   MILESTONES,
   MilestoneId,
   maybeOpenerOf,
-} from '../../world/dare/milestones'
+} from '#world/dare/milestones.ts'
 import {
   CELLAR_ROOM_ID,
   DINING_ROOM_ID,
   KITCHEN_ROOM_ID,
   LIBRARY_ROOM_ID,
   PARLOUR_ROOM_ID,
-} from '../../world/level/plan'
+} from '#world/level/plan.ts'
 
 export const JournalTab = Schema.Literals([
   'Zombies',

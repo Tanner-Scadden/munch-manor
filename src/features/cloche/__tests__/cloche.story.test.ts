@@ -3,14 +3,15 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { BreakClock, ClocheLift, type Model, Phase } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { BreakClock, ClocheLift, type Model, Phase } from '#app/model.ts'
+import { CLOCHE_TOTAL_MS } from '#features/cloche/clocheReveal.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   freshRunModel,
   pastTimedBreaks,
   withKeys,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
@@ -19,13 +20,12 @@ import {
   release,
   storyOf,
   ticks,
-} from '../../../test/testing'
-import { startingLevelFor } from '../../../world/level/arena'
-import { EXIT_RULES } from '../../../world/level/exits'
-import { ARRANGEMENTS, WEST_EXIT } from '../../../world/level/plan'
-import { modifyFocus } from '../../../world/party/party'
-import type { Arrangement, Vector } from '../../../world/schema/worldSchema'
-import { CLOCHE_TOTAL_MS } from '../clocheReveal'
+} from '#test/testing.ts'
+import { startingLevelFor } from '#world/level/arena.ts'
+import { EXIT_RULES } from '#world/level/exits.ts'
+import { ARRANGEMENTS, WEST_EXIT } from '#world/level/plan.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import type { Arrangement, Vector } from '#world/schema/worldSchema.ts'
 
 const PLENTY = EXIT_RULES.farKeys
 

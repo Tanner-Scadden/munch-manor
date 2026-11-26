@@ -3,10 +3,10 @@ import { Array } from 'effect'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import { pixelIconUrl } from '../../art/icons'
-import { iconView } from '../../ui/menuParts'
-import { KNIFE_NAME } from '../../world/names'
+} from '#app/definition.ts'
+import { pixelIconUrl } from '#art/icons.ts'
+import { iconView } from '#ui/menuParts.ts'
+import { KNIFE_NAME } from '#world/names.ts'
 
 const PAD_PIXELS: ReadonlyArray<string> = [
   '....OTTTTTTTTO............OTTTTTTTTO....',

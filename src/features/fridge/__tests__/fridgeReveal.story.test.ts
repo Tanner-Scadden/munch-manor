@@ -3,16 +3,17 @@ import { Array, Effect, Option, Result } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
+import { AudioState, FridgeDoor, type Model, PrizeFlight } from '#app/model.ts'
+import type { SoundEffect } from '#audio/audio.ts'
 import {
-  AudioState,
-  FridgeDoor,
-  type Model,
-  PrizeFlight,
-} from '../../../app/model'
-import type { SoundEffect } from '../../../audio/audio'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { atFridge, fridgeSeededFor } from '../../../test/model.fixture'
+  REVEAL_RULES,
+  doorRevealOf,
+  revealOf,
+  revealStageAt,
+} from '#features/fridge/fridgeReveal.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { atFridge, fridgeSeededFor } from '#test/model.fixture.ts'
 import {
   FIXED_FRAME,
   HOLD_TICKS,
@@ -22,20 +23,10 @@ import {
   release,
   storyOf,
   ticks,
-} from '../../../test/testing'
-import { FRIDGE_RULES, PRIZE_ORDER } from '../../../world/fridge/leftovers'
-import {
-  freshGun,
-  maybeReplacedGun,
-  takeGun,
-} from '../../../world/gear/weapons'
-import { Arsenal } from '../../../world/schema/worldSchema'
-import {
-  REVEAL_RULES,
-  doorRevealOf,
-  revealOf,
-  revealStageAt,
-} from '../fridgeReveal'
+} from '#test/testing.ts'
+import { FRIDGE_RULES, PRIZE_ORDER } from '#world/fridge/leftovers.ts'
+import { freshGun, maybeReplacedGun, takeGun } from '#world/gear/weapons.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const audibleAtFridge = (balance: number): Model =>

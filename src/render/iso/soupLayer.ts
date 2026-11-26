@@ -3,13 +3,14 @@ import type { Application } from 'pixi.js'
 
 import { FlatMaterial, type Mesh3D } from '@pixi/3d'
 
-import type { Level } from '../../world/level/arena'
-import type { World } from '../../world/schema/worldSchema'
-import type { Mote } from './air'
-import { flatten } from './flatten'
-import { buildTileQuads } from './house'
-import { STRIKE_STEPS, litOf, strikeStepOf } from './leaks'
-import { FloorPicture } from './painter'
+import type { Level } from '#world/level/arena.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+
+import type { Mote } from './air.ts'
+import { flatten } from './flatten.ts'
+import { buildTileQuads } from './house.ts'
+import { STRIKE_STEPS, litOf, strikeStepOf } from './leaks.ts'
+import { FloorPicture } from './painter.ts'
 import {
   type Bubble,
   type SoupMirror,
@@ -23,8 +24,8 @@ import {
   splatOf,
   splatTilesOf,
   stewShapesOf,
-} from './soup'
-import type { Textures } from './textures'
+} from './soup.ts'
+import type { Textures } from './textures.ts'
 
 const STEW_COAT = 0
 const GLINT_COAT = 1

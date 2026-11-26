@@ -3,14 +3,14 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { freshRun } from '../../../app/runReset'
-import type * as Draw from '../../../render/draw'
-import { roomShapes } from '../../../render/room/room'
-import { MAX_FRAME_DELTA_MS } from '../../../shared/constants'
-import { imageColors } from '../../../test/testPng'
-import { checkModel, modelAfter, steps, ticks } from '../../../test/testing'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { freshRun } from '#app/runReset.ts'
+import type * as Draw from '#render/draw.ts'
+import { roomShapes } from '#render/room/room.ts'
+import { MAX_FRAME_DELTA_MS } from '#shared/constants.ts'
+import { imageColors } from '#test/testPng.ts'
+import { checkModel, modelAfter, steps, ticks } from '#test/testing.ts'
 import {
   MANOR,
   closedExits,
@@ -20,12 +20,16 @@ import {
   openExitIn,
   roomAt,
   startingLevel,
-} from '../arena'
-import { exitKeysOf } from '../exits'
-import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
-import { type LevelSpec } from '../plan'
-import { tileIndex } from '../tileGrid'
-import { isDoorTile, isWalkableTile } from '../tileQueries'
+} from '#world/level/arena.ts'
+import { exitKeysOf } from '#world/level/exits.ts'
+import {
+  UNREACHED_DISTANCE,
+  distanceAt,
+  flowFieldToward,
+} from '#world/level/pathing.ts'
+import { type LevelSpec } from '#world/level/plan.ts'
+import { tileIndex } from '#world/level/tileGrid.ts'
+import { isDoorTile, isWalkableTile } from '#world/level/tileQueries.ts'
 
 const HALL: LevelSpec = {
   id: 'TestHall',

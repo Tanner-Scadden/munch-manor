@@ -2,9 +2,10 @@ import { Array, Option } from 'effect'
 
 import { Container3D, PointLight, SpotLight } from '@pixi/3d'
 
-import type { Level } from '../../world/level/arena'
-import type { Player } from '../../world/schema/entitySchema'
-import { type ViewBox, type ViewFloor, isOnFloorSeen } from './cull'
+import type { Level } from '#world/level/arena.ts'
+import type { Player } from '#world/schema/entitySchema.ts'
+
+import { type ViewBox, type ViewFloor, isOnFloorSeen } from './cull.ts'
 import {
   DARK_DEPTH,
   DARK_HEIGHT,
@@ -13,11 +14,11 @@ import {
   type LightsFrame,
   fillSpecOf,
   flameSpecsOf,
-} from './lightSpecs'
-import { mixColor } from './mood'
-import { ShadowBudget } from './shadowBudget'
-import type { ShadowWatch } from './shadowWatch'
-import { STRETCH, UNIT, zOf } from './space'
+} from './lightSpecs.ts'
+import { mixColor } from './mood.ts'
+import { ShadowBudget } from './shadowBudget.ts'
+import type { ShadowWatch } from './shadowWatch.ts'
+import { STRETCH, UNIT, zOf } from './space.ts'
 
 const BEAM_LENGTH = 120 * UNIT
 const BEAM_CONE = 180 / 7

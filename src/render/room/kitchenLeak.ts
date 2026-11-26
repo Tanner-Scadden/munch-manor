@@ -1,12 +1,13 @@
 import { Array, Option } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { type Level, levelOf, maybeExit } from '../../world/level/arena'
-import { KITCHEN_EXIT } from '../../world/level/exits'
-import type { World } from '../../world/schema/world'
-import type * as Draw from '../draw'
-import { rect } from '../drawing'
-import { type Box, FACE_TOP, boundingBox } from './roomPalette'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { type Level, levelOf, maybeExit } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import type { World } from '#world/schema/world.ts'
+
+import { type Box, FACE_TOP, boundingBox } from './roomPalette.ts'
 
 export const isFacedExit = (box: Box): boolean =>
   box.y === 0 && box.height === TILE_SIZE * 2

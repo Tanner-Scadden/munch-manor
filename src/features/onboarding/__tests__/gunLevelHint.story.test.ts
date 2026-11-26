@@ -3,21 +3,21 @@ import { Array, Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Arsenal, Model } from '../../../app/model'
-import { saveOf } from '../../../platform/save'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { gunAt, holdingSecond } from '../../../test/arsenals'
-import { killShot } from '../../../test/model.fixture'
+import type { Arsenal, Model } from '#app/model.ts'
+import { saveOf } from '#platform/save.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { gunAt, holdingSecond } from '#test/arsenals.ts'
+import { killShot } from '#test/model.fixture.ts'
 import {
   changeModel,
   checkModel,
   hintIds,
   storyOf,
   tick,
-} from '../../../test/testing'
-import { modifyFocus } from '../../../world/party/party'
-import { settledLessons } from '../../../world/run/lessons'
-import { Lesson } from '../../../world/schema/worldSchema'
+} from '#test/testing.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { settledLessons } from '#world/run/lessons.ts'
+import { Lesson } from '#world/schema/worldSchema.ts'
 
 const hintPending = (arsenal: Arsenal): Model =>
   UiStruct.evolve(killShot(arsenal, 'Smg'), {

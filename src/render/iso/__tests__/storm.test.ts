@@ -1,14 +1,14 @@
 import { Array, Option } from 'effect'
 import { expect, test } from 'vitest'
 
-import type { Model } from '../../../app/model'
-import { atClock, quietWave } from '../../../test/model.fixture'
-import { rectsOf } from '../../../test/viewReading'
-import { levelOf } from '../../../world/level/arena'
-import type { Box } from '../../room/roomPalette'
-import { windowPanesOf } from '../../room/windows'
-import { strikeOf } from '../mood'
-import { FAR_KEY, stormKeyOf, stormOf } from '../storm'
+import type { Model } from '#app/model.ts'
+import { strikeOf } from '#render/iso/mood.ts'
+import { FAR_KEY, stormKeyOf, stormOf } from '#render/iso/storm.ts'
+import type { Box } from '#render/room/roomPalette.ts'
+import { windowPanesOf } from '#render/room/windows.ts'
+import { atClock, quietWave } from '#test/model.fixture.ts'
+import { rectsOf } from '#test/viewReading.ts'
+import { levelOf } from '#world/level/arena.ts'
 
 const rainAt = (model: Model, ms: number) => {
   const world = atClock(model, ms)

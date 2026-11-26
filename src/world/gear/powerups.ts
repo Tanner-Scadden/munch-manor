@@ -2,15 +2,15 @@ import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
 
 import { UiSchema, UiStruct } from '@effect/ui'
 
-import { PLAYER_RADIUS, PLAYER_SPEED } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { nextRandom } from '../../shared/prng'
-import type { SoundEffect } from '../../shared/soundEffect'
-import { maxHpOf, speedScaleOf } from '../heroes/calling'
-import { type Level, type Room, levelOf, roomAt } from '../level/arena'
-import { type Box, circleTouchesBox } from '../level/tileGrid'
-import { isSolidAt } from '../level/tileQueries'
-import { PICKUP_NAMES } from '../names'
+import { PLAYER_RADIUS, PLAYER_SPEED } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { nextRandom } from '#shared/prng.ts'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+import { maxHpOf, speedScaleOf } from '#world/heroes/calling.ts'
+import { type Level, type Room, levelOf, roomAt } from '#world/level/arena.ts'
+import { type Box, circleTouchesBox } from '#world/level/tileGrid.ts'
+import { isSolidAt } from '#world/level/tileQueries.ts'
+import { PICKUP_NAMES } from '#world/names.ts'
 import {
   atSeat,
   focusOf,
@@ -18,11 +18,11 @@ import {
   isCoop,
   isStanding,
   seatStateAt,
-} from '../party/party'
-import { activeModifiersOf } from '../run/dareLadder'
-import type { Modifiers } from '../run/modifiers'
-import { totalKills } from '../run/stats'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
+import type { Modifiers } from '#world/run/modifiers.ts'
+import { totalKills } from '#world/run/stats.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Beat,
   BoostKind,
@@ -43,16 +43,21 @@ import {
   type Vector,
   type WeaponKind,
   type ZombieKind,
-} from '../schema/worldSchema'
-import { type BlastSpec, ZOMBIE_BLAST_TARGET, blastAll } from '../step/combat'
-import { trapBlockers } from './traps'
+} from '#world/schema/worldSchema.ts'
+import {
+  type BlastSpec,
+  ZOMBIE_BLAST_TARGET,
+  blastAll,
+} from '#world/step/combat.ts'
+
+import { trapBlockers } from './traps.ts'
 import {
   type WeaponStats,
   canReload,
   finishReload,
   isReloading,
   statsAt,
-} from './weapons'
+} from './weapons.ts'
 
 export type Ammo = 'Spent' | 'Free'
 

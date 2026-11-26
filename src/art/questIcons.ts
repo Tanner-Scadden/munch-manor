@@ -1,5 +1,5 @@
-import { pixelIconUrl } from './icons'
-import type { Palette } from './sprite'
+import { pixelIconUrl } from './icons.ts'
+import type { Palette } from './sprite.ts'
 
 const LIGHT = '#f4f1de'
 const SHADE = '#140c10'

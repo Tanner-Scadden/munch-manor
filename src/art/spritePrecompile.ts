@@ -1,13 +1,14 @@
 import { Array } from 'effect'
 
-import { defaultAppearance } from '../domain/clientSchema'
-import { everyRoomImage } from '../render/room/room'
-import { tallCoverOf } from '../render/room/tallCover'
-import { CALLINGS } from '../world/heroes/calling'
-import { levelFor } from '../world/level/arena'
-import { EVERY_LEVEL_SPEC } from '../world/level/plan'
-import { playerSprites } from './appearance'
-import { SEAT_LOOKS } from './seatLooks'
+import { defaultAppearance } from '#domain/clientSchema.ts'
+import { everyRoomImage } from '#render/room/room.ts'
+import { tallCoverOf } from '#render/room/tallCover.ts'
+import { CALLINGS } from '#world/heroes/calling.ts'
+import { levelFor } from '#world/level/arena.ts'
+import { EVERY_LEVEL_SPEC } from '#world/level/plan.ts'
+
+import { playerSprites } from './appearance.ts'
+import { SEAT_LOOKS } from './seatLooks.ts'
 
 export const precompileSprites = (): void => {
   Array.forEach(CALLINGS, calling => playerSprites(defaultAppearance, calling))

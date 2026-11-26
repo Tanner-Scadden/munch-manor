@@ -1,6 +1,5 @@
 import { Array, Function, Option, Record, pipe } from 'effect'
 
-import type { ZombieKind } from '../../world/schema/entitySchema'
 import {
   type Facing,
   type Palette,
@@ -17,7 +16,9 @@ import {
   spriteSet,
   spriteShapes,
   spriteWidth,
-} from '../sprite'
+} from '#art/sprite.ts'
+import type { ZombieKind } from '#world/schema/entitySchema.ts'
+
 import {
   BOSS_DEPTH,
   BOSS_ENRAGED_PALETTE,
@@ -28,8 +29,8 @@ import {
   BOSS_WIDTH,
   bossPixels,
   bossWalkPixels,
-} from './bossArt'
-import { type FramePixels, firstFrame } from './wear'
+} from './bossArt.ts'
+import { type FramePixels, firstFrame } from './wear.ts'
 import {
   CHUCKER_ICON_PIXELS,
   CHUCKER_PALETTE,
@@ -62,7 +63,7 @@ import {
   groanerWalkPixels,
   runnerWalkPixels,
   tankWalkPixels,
-} from './zombieArt'
+} from './zombieArt.ts'
 
 const GROANER_ANCHOR_X = ZOMBIE_SWAY_ROOM + ZOMBIE_BODY_WIDTH / 2
 

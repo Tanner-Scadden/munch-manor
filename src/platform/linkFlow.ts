@@ -3,8 +3,9 @@ import { Event, Machine, State } from 'effect-machine'
 
 import { CODE_ALPHABET } from '@munch/netcode'
 
-import { machineStepOf } from '../domain/machineStep'
-import { LinkProblem } from './playerSync'
+import { machineStepOf } from '#domain/machineStep.ts'
+
+import { LinkProblem } from './playerSync.ts'
 
 export const LinkFlow = State({
   Idle: {},

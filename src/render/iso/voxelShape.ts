@@ -1,5 +1,6 @@
-import { type SpriteForm, formOf } from '../../art/carve'
-import type { Affine } from './flatten'
+import { type SpriteForm, formOf } from '#art/carve.ts'
+
+import type { Affine } from './flatten.ts'
 import {
   CAMERA_UP,
   PITCH,
@@ -8,7 +9,7 @@ import {
   UNIT,
   UP_NORMAL,
   standingPointOf,
-} from './space'
+} from './space.ts'
 
 export const DEPTH_BACK = Math.cos(PITCH) / Math.sin(PITCH)
 

@@ -1,18 +1,19 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { EVERY_LEVEL } from '../../../test/model.fixture'
-import { CLEARANCES } from '../../../test/testing'
-import type { Level } from '../arena'
-import { flowFieldsToward } from '../pathing'
-import { tileCenter, tileOfIndex } from '../tileGrid'
+import { EVERY_LEVEL } from '#test/model.fixture.ts'
+import { CLEARANCES } from '#test/testing.ts'
+import type { Level } from '#world/level/arena.ts'
+import { flowFieldsToward } from '#world/level/pathing.ts'
+import { tileCenter, tileOfIndex } from '#world/level/tileGrid.ts'
+
 import {
   TOLLS,
   TOLL_SETS,
   mismatchedOrigins,
   oracleSpread,
   readAll,
-} from './pathing.flat.fixture'
+} from './pathing.flat.fixture.ts'
 
 const SAMPLED: ReadonlyArray<Level> = [
   ...Array.take(EVERY_LEVEL, 2),

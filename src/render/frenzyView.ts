@@ -1,7 +1,7 @@
 import { Function } from 'effect'
 
-import { Frenzy, type Zombie } from '../world/schema/worldSchema'
-import { isLastZombie } from '../world/zombies/lastZombie'
+import { Frenzy, type Zombie } from '#world/schema/worldSchema.ts'
+import { isLastZombie } from '#world/zombies/lastZombie.ts'
 
 const FADE_BLINK_MS = 110
 

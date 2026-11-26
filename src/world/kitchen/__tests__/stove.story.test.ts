@@ -12,16 +12,16 @@ import {
   Phase,
   Pierce,
   Purchase,
-} from '../../../app/model'
+} from '#app/model.ts'
 import {
   FIXED_STEP_MS,
   PISTOL_DAMAGE,
   PISTOL_MAGAZINE,
   PISTOL_RELOAD_MS,
-} from '../../../shared/constants'
-import type { Calling } from '../../../shared/playerData'
-import { nextRandom } from '../../../shared/prng'
-import { holdingSecond, pistolOnly } from '../../../test/arsenals'
+} from '#shared/constants.ts'
+import type { Calling } from '#shared/playerData.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { holdingSecond, pistolOnly } from '#test/arsenals.ts'
 import {
   DISTANT_SPAWN,
   atFridge,
@@ -30,7 +30,7 @@ import {
   fridgeSeededFor,
   kitchenBreak,
   withFeatsOf,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   FRIDGE_OPEN_TICKS,
   HOLD_TICKS,
@@ -44,17 +44,17 @@ import {
   tick,
   ticks,
   ticksFor,
-} from '../../../test/testing'
+} from '#test/testing.ts'
 import {
   PERK_RULES,
   carriedMagazine,
   freshGun,
   heldGun,
-} from '../../gear/weapons'
-import { focusOf, focusSlotOf, modifyFocus } from '../../party/party'
-import { Arsenal } from '../../schema/worldSchema'
-import { offersOf } from '../../shop/purchase'
-import { STOVE_RULES, maybeStoveLock, rollStove } from '../stove'
+} from '#world/gear/weapons.ts'
+import { STOVE_RULES, maybeStoveLock, rollStove } from '#world/kitchen/stove.ts'
+import { focusOf, focusSlotOf, modifyFocus } from '#world/party/party.ts'
+import { Arsenal } from '#world/schema/worldSchema.ts'
+import { offersOf } from '#world/shop/purchase.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

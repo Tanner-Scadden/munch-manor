@@ -2,10 +2,11 @@ import { Clock, Effect, Option, Stream } from 'effect'
 
 import { Subscription } from '@effect/ui'
 
-import { Screen, maybeRoomOf } from '../../domain/coopRoom'
-import { CoopMessage } from './message'
-import { type Model } from './model'
-import { CoopNet } from './net'
+import { Screen, maybeRoomOf } from '#domain/coopRoom.ts'
+
+import { CoopMessage } from './message.ts'
+import { type Model } from './model.ts'
+import { CoopNet } from './net.ts'
 
 const overNet = <A>(
   toStream: (net: CoopNet['Service']) => Stream.Stream<A>,

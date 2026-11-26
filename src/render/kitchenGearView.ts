@@ -8,15 +8,16 @@ import {
   glowingSprite,
   placeAt,
   spriteShapes,
-} from '../art/sprite'
-import { flameZoneOf, isValveLit, valveBoxOf } from '../world/kitchen/gasValve'
-import { levelOf } from '../world/level/arena'
-import type { Box } from '../world/level/tileGrid'
-import type { World } from '../world/schema/world'
-import type { GunPerk } from '../world/schema/worldSchema'
-import type { Drawable } from './depth'
-import * as Draw from './draw'
-import { FIRE_WIDTH, type FireSpot, fireSpotOf } from './room/room'
+} from '#art/sprite.ts'
+import { flameZoneOf, isValveLit, valveBoxOf } from '#world/kitchen/gasValve.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import type { World } from '#world/schema/world.ts'
+import type { GunPerk } from '#world/schema/worldSchema.ts'
+
+import type { Drawable } from './depth.ts'
+import * as Draw from './draw.ts'
+import { FIRE_WIDTH, type FireSpot, fireSpotOf } from './room/room.ts'
 
 const INK = '#140c10'
 

@@ -6,12 +6,12 @@ import {
   DOOR_HALF_WIDTH_PX,
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { countWork } from '../../shared/workCount'
-import type { DoorId, Vector } from '../schema/entitySchema'
-import type { Toll } from '../schema/worldSchema'
-import { resolveCircle } from '../step/collision'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { countWork } from '#shared/workCount.ts'
+import type { DoorId, Vector } from '#world/schema/entitySchema.ts'
+import type { Toll } from '#world/schema/worldSchema.ts'
+import { resolveCircle } from '#world/step/collision.ts'
 import {
   ZERO_VECTOR,
   addVectors,
@@ -19,15 +19,16 @@ import {
   directionBetween,
   normalize,
   scaleVector,
-} from '../step/geometry'
+} from '#world/step/geometry.ts'
+
 import {
   type Level,
   TILE_OPEN_BLOCK,
   TILE_OUTSIDE,
   TILE_SOLID,
   hasTileFlag,
-} from './arena'
-import { byDoor, tileCenter, tileIndex, tileOfIndex } from './tileGrid'
+} from './arena.ts'
+import { byDoor, tileCenter, tileIndex, tileOfIndex } from './tileGrid.ts'
 import {
   doorSpawnPoint,
   hasClearPath,
@@ -37,7 +38,7 @@ import {
   isWalkableTile,
   nearestDoor,
   tileIndexAt,
-} from './tileQueries'
+} from './tileQueries.ts'
 
 const perLevel = <A>(build: (level: Level) => A): ((level: Level) => A) => {
   const built = new WeakMap<Level, A>()

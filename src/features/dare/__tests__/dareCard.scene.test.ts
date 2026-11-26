@@ -3,28 +3,32 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   DARE_CARD_ICON,
   DARE_CHECK,
   DARE_EMPTY_SLOTS,
   DARE_FOUND_SLOTS,
-} from '../../../art/dareArt'
-import { PocketCard } from '../../../domain/clientSchema'
-import { cameraOf } from '../../../render/camera'
-import type * as Draw from '../../../render/draw'
-import { HUD_STRIP_HEIGHT, hudLayoutFor } from '../../../render/hudLayout'
+} from '#art/dareArt.ts'
+import { PocketCard } from '#domain/clientSchema.ts'
+import {
+  type DarePocket,
+  dareCardShapes,
+  pocketBoxOf,
+} from '#features/dare/dareCard.ts'
+import { cameraOf } from '#render/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import { HUD_STRIP_HEIGHT, hudLayoutFor } from '#render/hudLayout.ts'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
   type Screen,
-} from '../../../render/screen'
-import { hudShapes } from '../../../screens/game/hud'
-import { pocketOf } from '../../../screens/game/pocket'
-import { quietWave } from '../../../test/model.fixture'
-import { type DareKind, DareThingState } from '../../../world/dare/dareSchema'
-import { BreakClock, Phase } from '../../../world/schema/worldSchema'
-import { type DarePocket, dareCardShapes, pocketBoxOf } from '../dareCard'
+} from '#render/screen.ts'
+import { hudShapes } from '#screens/game/hud.ts'
+import { pocketOf } from '#screens/game/pocket.ts'
+import { quietWave } from '#test/model.fixture.ts'
+import { type DareKind, DareThingState } from '#world/dare/dareSchema.ts'
+import { BreakClock, Phase } from '#world/schema/worldSchema.ts'
 
 const LIST: ReadonlyArray<DareKind> = [
   'SilverSpoon',

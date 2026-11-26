@@ -2,12 +2,12 @@ import { Array, Function, Option, Record, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { type FeatLock, hasDone } from '../feats/feats'
-import { countKills } from '../gear/melee'
-import { heldKeys, spendKeys } from '../keys/keys'
-import { type Level, levelOf } from '../level/arena'
-import { boxAround } from '../level/exits'
-import { KITCHEN_TOP_ROW } from '../level/plan'
+import { type FeatLock, hasDone } from '#world/feats/feats.ts'
+import { countKills } from '#world/gear/melee.ts'
+import { heldKeys, spendKeys } from '#world/keys/keys.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { boxAround } from '#world/level/exits.ts'
+import { KITCHEN_TOP_ROW } from '#world/level/plan.ts'
 import {
   type Box,
   COVER_SYMBOLS,
@@ -15,9 +15,9 @@ import {
   circleTouchesBox,
   tileBox,
   tilesWithSymbol,
-} from '../level/tileGrid'
-import { creditKills } from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/level/tileGrid.ts'
+import { creditKills } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Feat,
   GasValve,
@@ -26,11 +26,12 @@ import {
   Purchasable,
   type Vector,
   type Zombie,
-} from '../schema/worldSchema'
-import type { Offer } from '../shop/purchase'
-import { ZOMBIE_BLAST_TARGET, creditKillEvents } from '../step/combat'
-import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
-import { SCORCH_DIRECTION, isKitchenOpen } from './kitchen'
+} from '#world/schema/worldSchema.ts'
+import type { Offer } from '#world/shop/purchase.ts'
+import { ZOMBIE_BLAST_TARGET, creditKillEvents } from '#world/step/combat.ts'
+import { bodyRadiusOf, isGrounded } from '#world/zombies/zombies.ts'
+
+import { SCORCH_DIRECTION, isKitchenOpen } from './kitchen.ts'
 
 type ValveRules = Readonly<{
   standKills: number

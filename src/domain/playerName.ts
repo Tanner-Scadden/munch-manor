@@ -1,6 +1,6 @@
 import { Array, Function, Option, String, pipe } from 'effect'
 
-import { type Seeded, nextRandom } from '../shared/prng'
+import { type Seeded, nextRandom } from '#shared/prng.ts'
 
 export const MAX_NAME_LENGTH = 12
 

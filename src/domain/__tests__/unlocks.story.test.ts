@@ -3,19 +3,23 @@ import { Effect } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { chooseCalling } from '../../features/heroes/callingPick'
-import { LobbyMessage } from '../../features/lobby/message'
-import { homeAfterRead } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import {
+  callingUnlocksAt,
+  hasUnseenLook,
+  lookUnlocksAt,
+} from '#domain/unlocks.ts'
+import { chooseCalling } from '#features/heroes/callingPick.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { homeAfterRead } from '#test/model.fixture.ts'
 import {
   checkModel,
   resolveFocusLobby,
   send,
   storyOf,
   writeSave,
-} from '../../test/testing'
-import { noRank, pointsForRank } from '../../world/heroes/rank'
-import { callingUnlocksAt, hasUnseenLook, lookUnlocksAt } from '../unlocks'
+} from '#test/testing.ts'
+import { noRank, pointsForRank } from '#world/heroes/rank.ts'
 
 const reached = UiStruct.evolve(homeAfterRead, {
   rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),

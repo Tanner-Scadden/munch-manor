@@ -9,8 +9,8 @@ import {
   type Model,
   Phase,
   Purchase,
-} from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   atFridge,
@@ -18,7 +18,7 @@ import {
   fridgeSeededFor,
   pastTimedBreaks,
   withKeys,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
@@ -31,12 +31,12 @@ import {
   release,
   steps,
   ticks,
-} from '../../../test/testing'
-import { FRIDGE_RULES } from '../../fridge/leftovers'
-import { isCarrying } from '../../gear/weapons'
-import { EXIT_RULES } from '../../level/exits'
-import { focusOf, modifyFocus } from '../../party/party'
-import { PURCHASE_RULES, holdProgress } from '../purchase'
+} from '#test/testing.ts'
+import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
+import { isCarrying } from '#world/gear/weapons.ts'
+import { EXIT_RULES } from '#world/level/exits.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { PURCHASE_RULES, holdProgress } from '#world/shop/purchase.ts'
 
 const KEYS = EXIT_RULES.kitchenKeys + 2
 

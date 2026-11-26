@@ -1,21 +1,22 @@
 import { Array, Function, Option } from 'effect'
 
-import type { Model } from '../app/model'
-import { MS_PER_SECOND } from '../shared/constants'
-import { Finale } from '../world/dare/dareSchema'
-import { levelOf } from '../world/level/arena'
-import type { Vector } from '../world/schema/entitySchema'
-import { Boss } from '../world/schema/worldSchema'
+import type { Model } from '#app/model.ts'
+import { MS_PER_SECOND } from '#shared/constants.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import { Boss } from '#world/schema/worldSchema.ts'
 import {
   ZERO_VECTOR,
   addVectors,
   clamp,
   smoothStep,
-} from '../world/step/geometry'
-import type * as Draw from './draw'
-import { rect } from './drawing'
-import type { CameraGlide } from './renderSchema'
-import type { Box } from './screen'
+} from '#world/step/geometry.ts'
+
+import type * as Draw from './draw.ts'
+import { rect } from './drawing.ts'
+import type { CameraGlide } from './renderSchema.ts'
+import type { Box } from './screen.ts'
 
 export const FINISHER_CINE_MS = 1100
 

@@ -2,7 +2,8 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { Calling } from '../../shared/playerData'
+import { Calling } from '#shared/playerData.ts'
+
 import {
   Heading,
   MillisNumber,
@@ -10,7 +11,7 @@ import {
   PositionNumber,
   Push,
   VelocityNumber,
-} from './wireNumber'
+} from './wireNumber.ts'
 
 export const Vector = Schema.Struct({ x: Schema.Finite, y: Schema.Finite })
 export type Vector = typeof Vector.Type

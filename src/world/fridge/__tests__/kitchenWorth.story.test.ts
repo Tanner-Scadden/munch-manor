@@ -12,17 +12,17 @@ import {
   Phase,
   SOLO_SLOT,
   type Zombie,
-} from '../../../app/model'
-import { oddsPips } from '../../../features/fridge/fridgeView'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { holdingSecond } from '../../../test/arsenals'
+} from '#app/model.ts'
+import { oddsPips } from '#features/fridge/fridgeView.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
 import {
   DISTANT_SPAWN,
   atFridge,
   freshRunModel,
   fridgeSeededFor,
   withSeat,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   FIXED_FRAME,
   FRIDGE_OPEN_TICKS,
@@ -35,25 +35,29 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { freshGun } from '../../gear/weapons'
-import {
-  KITCHEN_KEY_SCALE,
-  isInKitchenAt,
-  kitchenKeyScale,
-} from '../../kitchen/kitchenKeys'
-import { PANTRY_RULES, maybeStash, pantrySpotOf } from '../../kitchen/pantry'
-import { levelOf, openExitIn } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
-import { focusOf, modifyFocus, seatCrew } from '../../party/party'
-import { withWorld } from '../../schema/world'
-import { offersOf } from '../../shop/purchase'
+} from '#test/testing.ts'
 import {
   FRIDGE_RULES,
   fridgePriceFor,
   prizeOddsFor,
   pullFridge,
-} from '../leftovers'
+} from '#world/fridge/leftovers.ts'
+import { freshGun } from '#world/gear/weapons.ts'
+import {
+  KITCHEN_KEY_SCALE,
+  isInKitchenAt,
+  kitchenKeyScale,
+} from '#world/kitchen/kitchenKeys.ts'
+import {
+  PANTRY_RULES,
+  maybeStash,
+  pantrySpotOf,
+} from '#world/kitchen/pantry.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { focusOf, modifyFocus, seatCrew } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
+import { offersOf } from '#world/shop/purchase.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

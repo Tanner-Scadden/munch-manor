@@ -3,7 +3,7 @@ import { Array, Effect, Option, Record } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Beat,
   type BoostKind,
@@ -24,13 +24,13 @@ import {
   type Zombie,
   type ZombieKind,
   idleBoosts,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   isGoodieBeckoning,
   shownHints,
-} from '../../../features/onboarding/onboarding'
-import { pickupShapes } from '../../../render/powerupView'
+} from '#features/onboarding/onboarding.ts'
+import { pickupShapes } from '#render/powerupView.ts'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
@@ -40,14 +40,10 @@ import {
   PLAYER_SPEED,
   PREPARATION_MS,
   ZOMBIE_KNOCKBACK_SPEED,
-} from '../../../shared/constants'
-import { pistolOf, withPistol } from '../../../test/arsenals'
-import { walkToward } from '../../../test/lensTesting'
-import {
-  DISTANT_SPAWN,
-  pickupAt,
-  withPickups,
-} from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { pistolOf, withPistol } from '#test/arsenals.ts'
+import { walkToward } from '#test/lensTesting.ts'
+import { DISTANT_SPAWN, pickupAt, withPickups } from '#test/model.fixture.ts'
 import {
   SURFACE,
   bulletInto,
@@ -65,10 +61,8 @@ import {
   ticks,
   ticksFor,
   zombieOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { MANOR } from '../../level/arena'
-import { focusOf, modifyFocus } from '../../party/party'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 import {
   BOOSTS,
   BOOST_STACK_MAX,
@@ -79,7 +73,9 @@ import {
   PICKUP_LIFETIME_MS,
   TUTORIAL_DROP,
   TUTORIAL_DROP_KILL,
-} from '../powerups'
+} from '#world/gear/powerups.ts'
+import { MANOR } from '#world/level/arena.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const FRAME_MS = 50
 const TICK_MS = FIXED_STEP_MS

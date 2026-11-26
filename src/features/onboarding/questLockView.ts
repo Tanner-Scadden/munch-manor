@@ -1,12 +1,13 @@
 import { Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { textShapes } from '../../art/font'
-import { group } from '../../art/sprite'
-import type * as Draw from '../../render/draw'
-import { FULL_TURN } from '../../render/drawing'
-import { doorArrowShapes } from '../../render/powerupView'
-import { maybeLockProgress, maybePadlockNudge } from './firstBreakQuest'
+import type { Model } from '#app/model.ts'
+import { textShapes } from '#art/font.ts'
+import { group } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { FULL_TURN } from '#render/drawing.ts'
+import { doorArrowShapes } from '#render/powerupView.ts'
+
+import { maybeLockProgress, maybePadlockNudge } from './firstBreakQuest.ts'
 
 const PROGRESS_RIGHT_PX = 6
 const PROGRESS_DROP_PX = 4

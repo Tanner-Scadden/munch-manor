@@ -3,23 +3,17 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { sceneShapes } from '../../../app/layers'
-import {
-  Boss,
-  BreakClock,
-  type Model,
-  Phase,
-  RunMode,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { startOrResume } from '../../../app/runFlow'
-import { cameraOf } from '../../../render/camera'
-import type * as Draw from '../../../render/draw'
-import { screenOf } from '../../../render/screen'
-import { hudStripShapes } from '../../../screens/game/hud'
-import { atClock } from '../../../test/model.fixture'
-import { rollSpawns } from '../../../world/waves/endlessWaves'
-import { wavePreviewShapes } from '../wavePreview'
+import { sceneShapes } from '#app/layers.ts'
+import { Boss, BreakClock, type Model, Phase, RunMode } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { startOrResume } from '#app/runFlow.ts'
+import { wavePreviewShapes } from '#features/hud/wavePreview.ts'
+import { cameraOf } from '#render/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import { screenOf } from '#render/screen.ts'
+import { hudStripShapes } from '#screens/game/hud.ts'
+import { atClock } from '#test/model.fixture.ts'
+import { rollSpawns } from '#world/waves/endlessWaves.ts'
 
 const CHUNK_WAITING = Boss.Waiting({
   door: 'South',

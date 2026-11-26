@@ -3,12 +3,12 @@ import { Array, Context, Effect, Layer, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { expect, layer } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { addBot } from '../../../domain/bots'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { atSeat } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { addBot } from '#domain/bots.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { atSeat } from '#test/model.fixture.ts'
 import {
   SURFACE,
   type StoryStep,
@@ -18,9 +18,9 @@ import {
   settleRunCommands,
   startedRun,
   steps,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { modifyFocus, playersOf } from '../../../world/party/party'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { modifyFocus, playersOf } from '#world/party/party.ts'
 
 const FRAMES = 60 * 90
 

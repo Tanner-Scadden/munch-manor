@@ -10,9 +10,9 @@ import {
   Phase,
   type Vector,
   type Zombie,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { DISTANT_SPAWN } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -20,11 +20,11 @@ import {
   ticks,
   westPlank,
   zombieOf,
-} from '../../../test/testing'
-import { MANOR } from '../../level/arena'
-import { modifyFocus } from '../../party/party'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
-import { TRAPS } from '../traps'
+} from '#test/testing.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { MANOR } from '#world/level/arena.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = 50
 const SPEED = 20

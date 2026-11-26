@@ -4,14 +4,9 @@ import { UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../../../app/message'
-import {
-  Appearance,
-  type Model,
-  Phase,
-  defaultAppearance,
-} from '../../../../../app/model'
-import { initialModel } from '../../../../../app/pureApp'
+import { Message } from '#app/message.ts'
+import { Appearance, type Model, Phase, defaultAppearance } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   BODIES,
   HAIR_COLORS,
@@ -29,14 +24,29 @@ import {
   playerPixels,
   playerSprites,
   randomAppearance,
-} from '../../../../../art/appearance'
-import type { LookPart } from '../../../../../domain/looks'
-import type * as Draw from '../../../../../render/draw'
-import { playerShapes } from '../../../../../render/playerView'
-import { RESTART_GRACE_MS } from '../../../../../shared/constants'
-import { FreePrint, FreeShirtColor } from '../../../../../shared/playerData'
-import { home } from '../../../../../test/model.fixture'
-import { imageColors } from '../../../../../test/testPng'
+} from '#art/appearance.ts'
+import type { LookPart } from '#domain/looks.ts'
+import {
+  characterPropsOf,
+  pickLook,
+  rollLookDice,
+} from '#features/profile/__tests__/profile.fixture.ts'
+import { Character } from '#features/profile/blocks/look/block.ts'
+import type { LookToggle } from '#features/profile/blocks/look/lookSchema.ts'
+import {
+  Events,
+  Message as LookMessage,
+} from '#features/profile/blocks/look/message.ts'
+import {
+  SECTION_PARTS,
+  SECTION_TOGGLES,
+} from '#features/profile/blocks/look/model.ts'
+import type * as Draw from '#render/draw.ts'
+import { playerShapes } from '#render/playerView.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { FreePrint, FreeShirtColor } from '#shared/playerData.ts'
+import { home } from '#test/model.fixture.ts'
+import { imageColors } from '#test/testPng.ts'
 import {
   type StoryStep,
   jsonOf,
@@ -46,16 +56,7 @@ import {
   steps,
   storyOf,
   throughIntro,
-} from '../../../../../test/testing'
-import {
-  characterPropsOf,
-  pickLook,
-  rollLookDice,
-} from '../../../__tests__/profile.fixture'
-import { Character } from '../block'
-import type { LookToggle } from '../lookSchema'
-import { Events, Message as LookMessage } from '../message'
-import { SECTION_PARTS, SECTION_TOGGLES } from '../model'
+} from '#test/testing.ts'
 
 const PICKED: Appearance = {
   body: 'Slim',

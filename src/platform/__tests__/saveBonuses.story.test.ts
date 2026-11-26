@@ -2,10 +2,16 @@ import { Option, Record } from 'effect'
 
 import { describe, expect, test } from '@effect/vitest'
 
-import { initialModel } from '../../app/pureApp'
-import { jsonOf } from '../../test/testing'
-import { type PlayerSave, decodeSave, restoreSave, saveOf } from '../save'
-import { learnedSave } from './save.fixture'
+import { initialModel } from '#app/pureApp.ts'
+import {
+  type PlayerSave,
+  decodeSave,
+  restoreSave,
+  saveOf,
+} from '#platform/save.ts'
+import { jsonOf } from '#test/testing.ts'
+
+import { learnedSave } from './save.fixture.ts'
 
 const claimed: PlayerSave = {
   ...learnedSave,

@@ -7,7 +7,7 @@ import {
   fernBandOf,
   windClockOf,
   windOffsetAt,
-} from '../wind'
+} from '#render/iso/wind.ts'
 
 const TIMES = Array.map(Array.range(0, 400), step => step * 0.05)
 

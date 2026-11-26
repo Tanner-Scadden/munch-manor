@@ -1,27 +1,27 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { type SavedJournal, noJournal } from '../../../shared/journalData'
-import { BIG_KEY, type ProofEntry } from '../../../shared/proofData'
-import {
-  CELLAR_ROOM_ID,
-  KITCHEN_ROOM_ID,
-  LIBRARY_ROOM_ID,
-  PARLOUR_ROOM_ID,
-} from '../../level/plan'
-import {
-  DEFAULT_ROOM_SETTINGS,
-  type RoomSettings,
-  startRoomWorld,
-} from '../../net/roomWorld'
-import { type DareKind, HOUSE_THINGS } from '../dareSchema'
+import { type SavedJournal, noJournal } from '#shared/journalData.ts'
+import { BIG_KEY, type ProofEntry } from '#shared/proofData.ts'
+import { type DareKind, HOUSE_THINGS } from '#world/dare/dareSchema.ts'
 import {
   type MilestoneFacts,
   dareThingPool,
   maybeOpenerOf,
   newMilestonesOf,
   thingsOpenedBy,
-} from '../milestones'
+} from '#world/dare/milestones.ts'
+import {
+  CELLAR_ROOM_ID,
+  KITCHEN_ROOM_ID,
+  LIBRARY_ROOM_ID,
+  PARLOUR_ROOM_ID,
+} from '#world/level/plan.ts'
+import {
+  DEFAULT_ROOM_SETTINGS,
+  type RoomSettings,
+  startRoomWorld,
+} from '#world/net/roomWorld.ts'
 
 const ALL_THING_MILESTONES = [
   'FirstEscape',

@@ -2,18 +2,24 @@ import { Effect, Option } from 'effect'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { initialModel } from '../../app/pureApp'
+import { initialModel } from '#app/pureApp.ts'
+import { changesBetween } from '#platform/playerSync.ts'
+import {
+  type PlayerSave,
+  decodeSave,
+  restoreSave,
+  saveOf,
+} from '#platform/save.ts'
 import {
   legacySave,
   linkedPair,
   synced,
   until,
   write,
-} from '../../test/store.fixture'
-import { jsonOf } from '../../test/testing'
-import { changesBetween } from '../playerSync'
-import { type PlayerSave, decodeSave, restoreSave, saveOf } from '../save'
-import { learnedSave } from './save.fixture'
+} from '#test/store.fixture.ts'
+import { jsonOf } from '#test/testing.ts'
+
+import { learnedSave } from './save.fixture.ts'
 
 const escaped: PlayerSave = { ...legacySave, lastRun: 'Escaped' }
 

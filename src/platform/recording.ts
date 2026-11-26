@@ -2,20 +2,21 @@ import { Array, Function, Option, Schema, String, Struct } from 'effect'
 
 import { UiSchema, UiStruct } from '@effect/ui'
 
-import { InputDevice } from '../input/inputSchema'
-import { Calling } from '../shared/playerData'
-import { hashWorld } from '../world/net/worldHash'
-import { focusOf, modifyFocus } from '../world/party/party'
-import { World } from '../world/schema/world'
-import { Phase, PlayerSlot, noPractice } from '../world/schema/worldSchema'
+import { InputDevice } from '#input/inputSchema.ts'
+import { Calling } from '#shared/playerData.ts'
+import { hashWorld } from '#world/net/worldHash.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { World } from '#world/schema/world.ts'
+import { Phase, PlayerSlot, noPractice } from '#world/schema/worldSchema.ts'
 import {
   type InputsByPlayer,
   SeatAction,
   applySeatAction,
-} from '../world/step/stepWorld'
-import { roundWave } from '../world/waves/waves'
-import { RunId } from './recordingApi'
-import { type TickInputs, encodeChunk, lineOfTick } from './recordingCodec'
+} from '#world/step/stepWorld.ts'
+import { roundWave } from '#world/waves/waves.ts'
+
+import { RunId } from './recordingApi.ts'
+import { type TickInputs, encodeChunk, lineOfTick } from './recordingCodec.ts'
 
 const WorldPatch = World.mapFields(Struct.map(Schema.optionalKey))
 type WorldPatch = typeof WorldPatch.Type

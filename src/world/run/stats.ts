@@ -2,15 +2,15 @@ import { Array, Function, Option, String, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { MS_PER_SECOND, SCORE_PER_ZOMBIE } from '../../shared/constants'
-import { focusOf } from '../party/party'
-import { type World, modifyWorldFields } from '../schema/world'
+import { MS_PER_SECOND, SCORE_PER_ZOMBIE } from '#shared/constants.ts'
+import { focusOf } from '#world/party/party.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   GameEvent,
   type KillCounts,
   type RunStats,
   type ZombieKind,
-} from '../schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 const addKill = (kills: KillCounts, kind: ZombieKind): KillCounts =>
   UiStruct.evolve(kills, {

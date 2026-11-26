@@ -6,7 +6,7 @@ import {
   MOOD_FACES,
   RATTLES_BUST_ROWS,
   rattlesPixels,
-} from '../rattlesArt'
+} from '#art/rattlesArt.ts'
 
 describe('Rattles', () => {
   const stall = rattlesPixels(AWAKE_FACE)

@@ -14,7 +14,7 @@ import {
   Print,
   ShirtColor,
   SkinTone,
-} from '../shared/playerData'
+} from '#shared/playerData.ts'
 
 export const LookPart = Schema.Literals([
   'Body',

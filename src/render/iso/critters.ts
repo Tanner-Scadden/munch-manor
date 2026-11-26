@@ -1,10 +1,11 @@
 import { Array } from 'effect'
 
-import { unitOf } from '../../shared/prng'
-import type { Level } from '../../world/level/arena'
-import type { World } from '../../world/schema/worldSchema'
-import type { Mote } from './air'
-import { type FlameKind, flameSpecsOf, isFlameLit } from './lightSpecs'
+import { unitOf } from '#shared/prng.ts'
+import type { Level } from '#world/level/arena.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+
+import type { Mote } from './air.ts'
+import { type FlameKind, flameSpecsOf, isFlameLit } from './lightSpecs.ts'
 
 const MOTHS: Readonly<
   Record<FlameKind, Readonly<{ count: number; reach: number; lift: number }>>

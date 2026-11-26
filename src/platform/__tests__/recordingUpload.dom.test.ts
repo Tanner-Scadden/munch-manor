@@ -4,19 +4,22 @@ import { FetchHttpClient } from 'effect/http'
 import { UiStruct } from '@effect/ui'
 import { afterEach, describe, expect, it, vi } from '@effect/vitest'
 
-import { initialModel } from '../../app/pureApp'
-import { asVeteran } from '../../test/veteran'
-import { focusOf } from '../../world/party/party'
+import { initialModel } from '#app/pureApp.ts'
 import {
   type RunRecording,
   beginRecording,
   finishRecording,
-} from '../recording'
-import { MAX_RECORDING_BYTES, RECORDINGS_PATH } from '../recordingApi'
-import { startRecordingQueue, uploadRecording } from '../recordingUpload'
-import type { RoomAccess } from '../roomReplica'
-import { saveOf } from '../save'
-import { PlayerStore } from '../store'
+} from '#platform/recording.ts'
+import { MAX_RECORDING_BYTES, RECORDINGS_PATH } from '#platform/recordingApi.ts'
+import {
+  startRecordingQueue,
+  uploadRecording,
+} from '#platform/recordingUpload.ts'
+import type { RoomAccess } from '#platform/roomReplica.ts'
+import { saveOf } from '#platform/save.ts'
+import { PlayerStore } from '#platform/store.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const ORIGIN = 'https://api.example.test'
 const TOKEN = 'signed-token'

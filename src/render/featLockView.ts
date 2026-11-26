@@ -1,21 +1,22 @@
 import { Array, Function, Option } from 'effect'
 
-import { FEAT_FLAME, FEAT_ICONS } from '../art/caseArt'
-import { textShapes, textWidth } from '../art/font'
-import { type Sprite, bakeShapes, placeAt } from '../art/sprite'
-import { gunIcon, knifeSprite } from '../art/sprites/guns'
-import { ZOMBIE_SPRITES } from '../art/sprites/zombies'
-import { goalOf, progressOf } from '../world/feats/feats'
-import type { Level } from '../world/level/arena'
+import { FEAT_FLAME, FEAT_ICONS } from '#art/caseArt.ts'
+import { textShapes, textWidth } from '#art/font.ts'
+import { type Sprite, bakeShapes, placeAt } from '#art/sprite.ts'
+import { gunIcon, knifeSprite } from '#art/sprites/guns.ts'
+import { ZOMBIE_SPRITES } from '#art/sprites/zombies.ts'
+import { goalOf, progressOf } from '#world/feats/feats.ts'
+import type { Level } from '#world/level/arena.ts'
 import {
   type Armament,
   Feat,
   type FeatTally,
   type Vector,
-} from '../world/schema/worldSchema'
-import type * as Draw from './draw'
-import { rect, ringPixels } from './drawing'
-import type { Keepout as Box } from './keepout'
+} from '#world/schema/worldSchema.ts'
+
+import type * as Draw from './draw.ts'
+import { rect, ringPixels } from './drawing.ts'
+import type { Keepout as Box } from './keepout.ts'
 
 const RING_RADIUS = 7
 const RING_STEPS = 24

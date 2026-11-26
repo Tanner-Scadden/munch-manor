@@ -3,16 +3,13 @@ import { Array, Clock, Effect, Order, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../app/model'
-import { ZOMBIE_ALIVE_MAX } from '../../shared/constants'
-import {
-  DISTANT_SPAWN,
-  plannedSpawn,
-  quietWave,
-} from '../../test/model.fixture'
-import { FRAME_MS, modelAfter, ticks } from '../../test/testing'
-import { Phase } from '../schema/worldSchema'
-import { crowdOf } from './workBudget.fixture'
+import type { Model } from '#app/model.ts'
+import { ZOMBIE_ALIVE_MAX } from '#shared/constants.ts'
+import { DISTANT_SPAWN, plannedSpawn, quietWave } from '#test/model.fixture.ts'
+import { FRAME_MS, modelAfter, ticks } from '#test/testing.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
+
+import { crowdOf } from './workBudget.fixture.ts'
 
 const SMALL = 20
 const LARGE = 80

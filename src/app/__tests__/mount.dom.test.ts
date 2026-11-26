@@ -2,11 +2,11 @@ import { Array, Effect, Schema } from 'effect'
 
 import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
 
-import { GAME_URL, type ShareOutcome } from '../../features/end/share'
-import { SHARE_TEXT_DATA } from '../../features/end/share'
-import { describeError } from '../../shared/describeError'
-import { Message } from '../message'
-import { listenForShareClicks, steadyMeasurement } from '../mount'
+import { Message } from '#app/message.ts'
+import { listenForShareClicks, steadyMeasurement } from '#app/mount.ts'
+import { GAME_URL, type ShareOutcome } from '#features/end/share.ts'
+import { SHARE_TEXT_DATA } from '#features/end/share.ts'
+import { describeError } from '#shared/describeError.ts'
 
 const TEXT = '💀 Got munched on wave 4 in Munch Manor. Your turn!'
 

@@ -2,25 +2,25 @@ import { Array, Function, Option, Result, Schema, pipe } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import type { ActStance } from '../art/appearance'
-import type { Facing } from '../art/sprite'
-import { PLAYER_RADIUS } from '../shared/constants'
-import { sameIfUnchanged } from '../shared/sameList'
-import { maybeFindWorkOf } from '../world/dare/dare'
-import { DareKind } from '../world/dare/dareSchema'
-import type { FindStyle } from '../world/dare/finds'
-import { maybeMendingTrap, trapCenter } from '../world/gear/traps'
-import { heldWeapon } from '../world/gear/weapons'
-import { levelOf } from '../world/level/arena'
+import type { ActStance } from '#art/appearance.ts'
+import type { Facing } from '#art/sprite.ts'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import { sameIfUnchanged } from '#shared/sameList.ts'
+import { maybeFindWorkOf } from '#world/dare/dare.ts'
+import { DareKind } from '#world/dare/dareSchema.ts'
+import type { FindStyle } from '#world/dare/finds.ts'
+import { maybeMendingTrap, trapCenter } from '#world/gear/traps.ts'
+import { heldWeapon } from '#world/gear/weapons.ts'
+import { levelOf } from '#world/level/arena.ts'
 import {
   COOP_RULES,
   isStanding,
   playersOf,
   seatStateAt,
   trapOwnerOf,
-} from '../world/party/party'
-import { maybeRevivingOf } from '../world/party/revive'
-import type { World } from '../world/schema/world'
+} from '#world/party/party.ts'
+import { maybeRevivingOf } from '#world/party/revive.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   type PlayerSlot,
@@ -28,17 +28,18 @@ import {
   type StationId,
   type Vector,
   isHolding,
-} from '../world/schema/worldSchema'
-import { holdProgress } from '../world/shop/purchase'
-import { maybeStationWorkOf } from '../world/stations/stations'
-import { isStill } from '../world/stations/work'
-import { distanceBetween } from '../world/step/geometry'
+} from '#world/schema/worldSchema.ts'
+import { holdProgress } from '#world/shop/purchase.ts'
+import { maybeStationWorkOf } from '#world/stations/stations.ts'
+import { isStill } from '#world/stations/work.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+
 import {
   type ActionBeat,
   type ActionWatch,
   Motion,
   Payoff,
-} from './renderSchema'
+} from './renderSchema.ts'
 
 export type Keyframe = Readonly<{ stance: ActStance; dx: number; dy: number }>
 

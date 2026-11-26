@@ -13,12 +13,25 @@ import type { SqlClient } from 'effect/sql'
 import { afterEach, describe, expect, it } from '@effect/vitest'
 import { makeHub } from '@munch/sqlite-wasm-effect/in-process'
 
-import { noDareMarks } from '../../shared/dareMarkData'
-import { noJournal } from '../../shared/journalData'
-import { noMastery } from '../../shared/masteryData'
-import { noMissions } from '../../shared/missionData'
-import { noBonuses, noSavedRunRecords } from '../../shared/playerData'
-import { noProof } from '../../shared/proofData'
+import {
+  PlayerChange,
+  StoreEvent,
+  changesBetween,
+} from '#platform/playerSync.ts'
+import {
+  type PlayerSave,
+  SAVE_KEY,
+  SAVE_VERSION,
+  readLegacySave,
+  writeLegacySave,
+} from '#platform/save.ts'
+import type { LegacySave } from '#platform/storeSqlite.ts'
+import { noDareMarks } from '#shared/dareMarkData.ts'
+import { noJournal } from '#shared/journalData.ts'
+import { noMastery } from '#shared/masteryData.ts'
+import { noMissions } from '#shared/missionData.ts'
+import { noBonuses, noSavedRunRecords } from '#shared/playerData.ts'
+import { noProof } from '#shared/proofData.ts'
 import {
   legacySave,
   linkedPair,
@@ -31,18 +44,9 @@ import {
   synced,
   until,
   write,
-} from '../../test/store.fixture'
-import { jsonOf } from '../../test/testing'
-import { grantedVeteran, noRank } from '../../world/heroes/rank'
-import { PlayerChange, StoreEvent, changesBetween } from '../playerSync'
-import {
-  type PlayerSave,
-  SAVE_KEY,
-  SAVE_VERSION,
-  readLegacySave,
-  writeLegacySave,
-} from '../save'
-import type { LegacySave } from '../storeSqlite'
+} from '#test/store.fixture.ts'
+import { jsonOf } from '#test/testing.ts'
+import { grantedVeteran, noRank } from '#world/heroes/rank.ts'
 
 const writeOldTables = (sql: SqlClient.SqlClient, save: PlayerSave) =>
   Effect.gen(function* () {

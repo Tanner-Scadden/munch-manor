@@ -1,4 +1,4 @@
-import { glowingEyes } from './sprite'
+import { glowingEyes } from './sprite.ts'
 
 export type Mood = 'Grinning' | 'Delighted' | 'Sad' | 'Shrugging'
 

@@ -1,7 +1,8 @@
 import { Array } from 'effect'
 
-import type { SoundEffect } from '../shared/soundEffect'
-import { type Recipe, at, delayedEnvelope, envelope } from './soundRecipe'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+
+import { type Recipe, at, delayedEnvelope, envelope } from './soundRecipe.ts'
 
 export const ROOM_TOOL_RECIPES = {
   Waltz: {

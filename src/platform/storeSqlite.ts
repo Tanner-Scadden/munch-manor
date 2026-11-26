@@ -35,10 +35,11 @@ import {
   type SqliteClientService,
 } from '@munch/sqlite-wasm-effect'
 
-import { PlayerSave } from '../shared/playerData'
-import { newIdentity, playerStoreOf } from '../shared/sessionApi'
-import { API_ORIGIN } from './apiOrigin'
-import { dropOldTables, readOldSave } from './legacyTables'
+import { PlayerSave } from '#shared/playerData.ts'
+import { newIdentity, playerStoreOf } from '#shared/sessionApi.ts'
+
+import { API_ORIGIN } from './apiOrigin.ts'
+import { dropOldTables, readOldSave } from './legacyTables.ts'
 import {
   type EarnedEvents,
   type MissionEvents,
@@ -47,7 +48,7 @@ import {
   PlayerRow,
   type PlayerRowFields,
   type SetEvents,
-} from './playerEvents'
+} from './playerEvents.ts'
 import {
   PROJECTION_TABLES,
   PlayerHandlers,
@@ -57,7 +58,7 @@ import {
   readPlayerRow,
   readPlayerSave,
   rowOfSave,
-} from './playerProjection'
+} from './playerProjection.ts'
 import {
   type LinkRefused,
   type PlayerRemote,
@@ -65,20 +66,29 @@ import {
   browserSetup,
   connectPlayerRemote,
   redeemWith,
-} from './playerRemote'
-import { LinkProblem, PlayerChange, StoreEvent, SyncState } from './playerSync'
+} from './playerRemote.ts'
+import {
+  LinkProblem,
+  PlayerChange,
+  StoreEvent,
+  SyncState,
+} from './playerSync.ts'
 import {
   type RoomAccess,
   type RoomSession,
   makeRoomAccess,
-} from './roomReplica'
-import { type SaveStorageError, readLegacySave, writeLegacySave } from './save'
+} from './roomReplica.ts'
+import {
+  type SaveStorageError,
+  readLegacySave,
+  writeLegacySave,
+} from './save.ts'
 import {
   STORE_NAME,
   releaseEarlyStoreWorker,
   takeLeaderLock,
   takeStoreWorker,
-} from './storeEarly'
+} from './storeEarly.ts'
 
 export type { SyncSetup }
 

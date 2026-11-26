@@ -3,10 +3,22 @@ import { Array, Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { BeatMyRun } from '../../../domain/beatLink'
-import { Screen } from '../../../domain/coopRoom'
-import type { ProfileTab } from '../../../features/profile/model'
-import { home, readyModel, veteranFighting } from '../../../test/model.fixture'
+import { menuState } from '#app/menuState.ts'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { RootDialog } from '#app/rootDialog.ts'
+import { FocusHomeButton } from '#app/update/home.ts'
+import { FocusLobbyControl } from '#app/update/lobby.ts'
+import {
+  ClickPadFocus,
+  EscapePadDialog,
+  MovePadFocus,
+  StepPadTab,
+} from '#app/update/padMenu.ts'
+import { BeatMyRun } from '#domain/beatLink.ts'
+import { Screen } from '#domain/coopRoom.ts'
+import type { ProfileTab } from '#features/profile/model.ts'
+import { home, readyModel, veteranFighting } from '#test/model.fixture.ts'
 import {
   type AppStory,
   type StoryStep,
@@ -16,21 +28,9 @@ import {
   resolveFocusLobby,
   send,
   steps,
-} from '../../../test/testing'
-import { DebutCard } from '../../../world/schema/worldSchema'
-import { pause } from '../../../world/waves/waves'
-import { menuState } from '../../menuState'
-import { Message } from '../../message'
-import { type Model, Phase } from '../../model'
-import { RootDialog } from '../../rootDialog'
-import { FocusHomeButton } from '../home'
-import { FocusLobbyControl } from '../lobby'
-import {
-  ClickPadFocus,
-  EscapePadDialog,
-  MovePadFocus,
-  StepPadTab,
-} from '../padMenu'
+} from '#test/testing.ts'
+import { DebutCard } from '#world/schema/worldSchema.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const BUTTON_COUNT = 17
 const A = 0

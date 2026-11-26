@@ -3,9 +3,9 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { type Bullet, type Model, Pierce } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { maybeSpareGun } from '../../../test/arsenals'
+import { type Bullet, type Model, Pierce } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { maybeSpareGun } from '#test/arsenals.ts'
 import {
   AT_CASE,
   atCase,
@@ -14,7 +14,7 @@ import {
   placeSeat,
   playingModel,
   withFeatsOf,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   HOLD_TICKS,
   checkModel,
@@ -25,23 +25,23 @@ import {
   steps,
   tick,
   zombieOf,
-} from '../../../test/testing'
-import { isCarrying } from '../../gear/weapons'
-import { openExitIn } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
-import { focusOf, maybePlayerAt } from '../../party/party'
-import type { World } from '../../schema/world'
+} from '#test/testing.ts'
+import { CASE_SPOTS } from '#world/feats/caseSpots.ts'
+import { rollCases, takeCase } from '#world/feats/cases.ts'
+import { goalOf } from '#world/feats/feats.ts'
+import { isCarrying } from '#world/gear/weapons.ts'
+import { openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { focusOf, maybePlayerAt } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   CaseState,
   type DisplayCase,
   Feat,
   GameEvent,
-} from '../../schema/worldSchema'
-import { offersOf } from '../../shop/purchase'
-import { stepWorld } from '../../step/stepWorld'
-import { CASE_SPOTS } from '../caseSpots'
-import { rollCases, takeCase } from '../cases'
-import { goalOf } from '../feats'
+} from '#world/schema/worldSchema.ts'
+import { offersOf } from '#world/shop/purchase.ts'
+import { stepWorld } from '#world/step/stepWorld.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

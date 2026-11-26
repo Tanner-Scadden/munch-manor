@@ -7,7 +7,7 @@ import {
   TutorialReset,
   resetMachine,
   stepReset,
-} from '../resetFlow'
+} from '#features/profile/resetFlow.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.sort(

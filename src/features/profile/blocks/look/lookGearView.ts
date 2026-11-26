@@ -3,12 +3,13 @@ import { Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { PADLOCK_ICON } from '../../../../art/icons'
-import { type Standing, sourceOf } from '../../../../domain/closet'
-import type { CosmeticKind } from '../../../../shared/playerData'
-import { iconView } from '../../../../ui/menuParts'
-import { boneCountView, rankMarkView } from '../../../../ui/rankBadgeView'
-import type { ClosetCueKind } from './model'
+import { PADLOCK_ICON } from '#art/icons.ts'
+import { type Standing, sourceOf } from '#domain/closet.ts'
+import type { CosmeticKind } from '#shared/playerData.ts'
+import { iconView } from '#ui/menuParts.ts'
+import { boneCountView, rankMarkView } from '#ui/rankBadgeView.ts'
+
+import type { ClosetCueKind } from './model.ts'
 
 const NOTES: Readonly<Record<Standing, string>> = {
   Worn: 'worn',

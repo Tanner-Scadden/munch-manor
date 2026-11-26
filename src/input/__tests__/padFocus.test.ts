@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { type Box, nearestInDirection } from '../padFocus'
+import { type Box, nearestInDirection } from '#input/padFocus.ts'
 
 const boxAt = (left: number, top: number): Box => ({
   left,

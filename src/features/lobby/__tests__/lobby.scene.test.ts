@@ -6,8 +6,11 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { specialsOf } from '../../../domain/callingSpecials'
-import { heroesBoughtBy, home } from '../../../test/model.fixture'
+import { specialsOf } from '#domain/callingSpecials.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { HERO_DIALOG_ID } from '#features/lobby/lobby.ts'
+import { Events } from '#features/lobby/message.ts'
+import { heroesBoughtBy, home } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   button,
@@ -27,23 +30,21 @@ import {
   statusLine,
   throughIntroInScene,
   withAttrs,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type SceneStep,
   foldLobby,
   resolveFocusLobby,
   sceneOf,
-} from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
-import { Lobby } from '../block'
-import { HERO_DIALOG_ID } from '../lobby'
-import { Events } from '../message'
+} from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
+
 import {
   expectLobbyDrawn,
   focusesPlay,
   lobbyAttr,
   lobbySceneIn,
-} from './lobby.fixture'
+} from './lobby.fixture.ts'
 
 const handyman = UiStruct.evolve(home, {
   rank: current => ({ ...current, earnedPoints: pointsForRank(3) }),

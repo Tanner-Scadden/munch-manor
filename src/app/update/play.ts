@@ -2,9 +2,13 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { positionVariation } from '../../audio/audio'
-import { isRunOn } from '../../domain/onlineRun'
-import { isEndScreen } from '../../domain/run'
+import { advanceGame, clampFrameDelta, refreshIntent } from '#app/frame.ts'
+import { isLobbyOpen, isPanelOpen } from '#app/menuState.ts'
+import { type GunSlot, type Model, Phase } from '#app/model.ts'
+import { startWave } from '#app/runFlow.ts'
+import { positionVariation } from '#audio/audio.ts'
+import { isRunOn } from '#domain/onlineRun.ts'
+import { isEndScreen } from '#domain/run.ts'
 import {
   agePocketCard,
   closeDareCard,
@@ -13,16 +17,16 @@ import {
   isDareCardToggling,
   isPocketCardBlocking,
   toggleDareCard,
-} from '../../features/dare/pocketCard'
-import { skipBeat } from '../../features/end/endBeat'
+} from '#features/dare/pocketCard.ts'
+import { skipBeat } from '#features/end/endBeat.ts'
 import {
   advanceCaseCard,
   ageCaseCard,
   isCaseCardBlocking,
   skipCaseCard,
-} from '../../features/onboarding/caseCard'
-import { advanceQuest } from '../../features/onboarding/firstBreakQuest'
-import { advanceKitchenTour } from '../../features/onboarding/kitchenTour'
+} from '#features/onboarding/caseCard.ts'
+import { advanceQuest } from '#features/onboarding/firstBreakQuest.ts'
+import { advanceKitchenTour } from '#features/onboarding/kitchenTour.ts'
 import {
   ageDebutCard,
   isDebutCardUp,
@@ -31,10 +35,10 @@ import {
   learnSwap,
   moveHintBand,
   skipDebutCard,
-} from '../../features/onboarding/onboarding'
-import { advanceRattlesIntro } from '../../features/onboarding/rattlesIntro'
-import { isCouchKey, pressCouchKey } from '../../input/couch'
-import { isPadStirred, newlyPressed } from '../../input/gamepad'
+} from '#features/onboarding/onboarding.ts'
+import { advanceRattlesIntro } from '#features/onboarding/rattlesIntro.ts'
+import { isCouchKey, pressCouchKey } from '#input/couch.ts'
+import { isPadStirred, newlyPressed } from '#input/gamepad.ts'
 import {
   type PointerPress,
   isPauseKey,
@@ -42,53 +46,56 @@ import {
   pressKey,
   releaseAll,
   releaseKey,
-} from '../../input/input'
+} from '#input/input.ts'
 import type {
   Gamepad,
   InputDevice,
   Orientation,
   PointerDevice,
   SlotClick,
-} from '../../input/inputSchema'
-import { playerKeyAction } from '../../input/keyActions'
-import type { PageVisibility } from '../../platform/deviceSchema'
-import { dropClip } from '../../render/particles/particles'
-import { stepWhen } from '../../shared/stepWhen'
+} from '#input/inputSchema.ts'
+import { playerKeyAction } from '#input/keyActions.ts'
+import type { PageVisibility } from '#platform/deviceSchema.ts'
+import { dropClip } from '#render/particles/particles.ts'
+import { stepWhen } from '#shared/stepWhen.ts'
+import { inHandOf, isReloading, isWieldingMelee } from '#world/gear/weapons.ts'
+import { focusOf, isCoop } from '#world/party/party.ts'
+import { isArriving } from '#world/run/arrival.ts'
+import { tallyFrame } from '#world/run/stats.ts'
+import { SeatAction, gunSlotAction } from '#world/step/stepWorld.ts'
+import { isRoundActive, pause } from '#world/waves/waves.ts'
+
+import { actAsLead } from './action.ts'
+import { beatCardFromKey } from './beatMyRun.ts'
 import {
-  inHandOf,
-  isReloading,
-  isWieldingMelee,
-} from '../../world/gear/weapons'
-import { focusOf, isCoop } from '../../world/party/party'
-import { isArriving } from '../../world/run/arrival'
-import { tallyFrame } from '../../world/run/stats'
-import { SeatAction, gunSlotAction } from '../../world/step/stepWorld'
-import { isRoundActive, pause } from '../../world/waves/waves'
-import { advanceGame, clampFrameDelta, refreshIntent } from '../frame'
-import { isLobbyOpen, isPanelOpen } from '../menuState'
-import { type GunSlot, type Model, Phase } from '../model'
-import { startWave } from '../runFlow'
-import { actAsLead } from './action'
-import { beatCardFromKey } from './beatMyRun'
-import { coopFromKey, isCoopOpen, pressCoopKey, releaseCoopKey } from './coop'
+  coopFromKey,
+  isCoopOpen,
+  pressCoopKey,
+  releaseCoopKey,
+} from './coop.ts'
 import {
   advanceEndScreen,
   endFromKey,
   isBeatSkipKey,
   isRunCardKey,
   runCardFromKey,
-} from './end'
+} from './end.ts'
 import {
   homeFocusFromKey,
   homeFromKey,
   leaveRunFromPad,
   menuFromKey,
-} from './home'
-import { advanceIntro, skipIntro } from './intro'
-import { lobbyFromKey, playFromKey } from './lobby'
-import { profileFromKey } from './profile'
-import { rumbleFor } from './rumble'
-import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
+} from './home.ts'
+import { advanceIntro, skipIntro } from './intro.ts'
+import { lobbyFromKey, playFromKey } from './lobby.ts'
+import { profileFromKey } from './profile.ts'
+import { rumbleFor } from './rumble.ts'
+import {
+  isPaused,
+  isScreenAnimated,
+  startWhenAllowed,
+  startsRun,
+} from './run.ts'
 import {
   ammoTickCues,
   frameSoundCues,
@@ -104,7 +111,7 @@ import {
   thunderCues,
   toggleAudioFromKey,
   unlockAudio,
-} from './sound'
+} from './sound.ts'
 import {
   type UpdateStep,
   combine,
@@ -112,9 +119,9 @@ import {
   releaseInput,
   toModel,
   withInput,
-} from './step'
-import { nextTrap, placeSelectedTrap, trapFromKey } from './traps'
-import { checkForUpdate } from './version'
+} from './step.ts'
+import { nextTrap, placeSelectedTrap, trapFromKey } from './traps.ts'
+import { checkForUpdate } from './version.ts'
 
 export const useDevice: {
   (device: InputDevice): (model: Model) => Model

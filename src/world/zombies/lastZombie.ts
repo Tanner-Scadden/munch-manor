@@ -2,12 +2,13 @@ import { Array, Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PLAYER_SPEED } from '../../shared/constants'
-import { Finale } from '../dare/dareSchema'
-import type { World } from '../schema/world'
-import { Boss, Phase, type Zombie } from '../schema/worldSchema'
-import { isAlive } from '../waves/pacing'
-import { isBoss } from './zombies'
+import { PLAYER_SPEED } from '#shared/constants.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import type { World } from '#world/schema/world.ts'
+import { Boss, Phase, type Zombie } from '#world/schema/worldSchema.ts'
+import { isAlive } from '#world/waves/pacing.ts'
+
+import { isBoss } from './zombies.ts'
 
 type LastZombieRules = Readonly<{
   stragglers: number

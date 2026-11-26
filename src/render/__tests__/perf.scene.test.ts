@@ -4,8 +4,8 @@ import { UiStruct } from '@effect/ui'
 import type { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { sceneShapes } from '../../app/layers'
-import { Message } from '../../app/message'
+import { sceneShapes } from '#app/layers.ts'
+import { Message } from '#app/message.ts'
 import {
   Alarm,
   type Blast,
@@ -39,9 +39,12 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-} from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { startOrResume } from '../../app/runFlow'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { startOrResume } from '#app/runFlow.ts'
+import type * as Draw from '#render/draw.ts'
+import { type Leaf, flatten } from '#render/iso/flatten.ts'
+import { type Decal, DecalKind, type Particle } from '#render/renderSchema.ts'
 import {
   BLAST_MAX,
   BULLET_MAX,
@@ -49,14 +52,14 @@ import {
   PARTICLE_MAX,
   POPUP_MAX,
   ZOMBIE_ALIVE_MAX,
-} from '../../shared/constants'
-import { holdingSecond } from '../../test/arsenals'
+} from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
 import {
   ackHudSlots,
   byClass,
   fromSubscription,
   measureSurfaceAs,
-} from '../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type AppScene,
   CELLAR_SPOT,
@@ -64,13 +67,13 @@ import {
   exactSceneOf,
   jsonOf,
   scoring,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { DROP_RULES } from '../../world/gear/powerups'
-import { TRAPS as TRAP_STATS } from '../../world/gear/traps'
-import { freshGun } from '../../world/gear/weapons'
-import { openExitIn, startingLevelFor } from '../../world/level/arena'
-import { KITCHEN_EXIT } from '../../world/level/exits'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { DROP_RULES } from '#world/gear/powerups.ts'
+import { TRAPS as TRAP_STATS } from '#world/gear/traps.ts'
+import { freshGun } from '#world/gear/weapons.ts'
+import { openExitIn, startingLevelFor } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
 import {
   CELLAR_ROOM_ID,
   EAST_EXIT,
@@ -79,16 +82,13 @@ import {
   PARLOUR_ROOM_ID,
   SECRET_EXIT,
   WEST_EXIT,
-} from '../../world/level/plan'
-import { DOOR_IDS } from '../../world/level/tileGrid'
-import { modifyFocus } from '../../world/party/party'
-import { rollSpawns } from '../../world/waves/endlessWaves'
-import { FINAL_WAVE } from '../../world/waves/wavePlans'
-import { BOSS_RULES } from '../../world/zombies/bossRules'
-import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
-import type * as Draw from '../draw'
-import { type Leaf, flatten } from '../iso/flatten'
-import { type Decal, DecalKind, type Particle } from '../renderSchema'
+} from '#world/level/plan.ts'
+import { DOOR_IDS } from '#world/level/tileGrid.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { rollSpawns } from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const cycle = <A>(items: Array.NonEmptyReadonlyArray<A>, index: number): A =>
   pipe(

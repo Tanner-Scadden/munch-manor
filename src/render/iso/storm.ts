@@ -1,15 +1,16 @@
 import { Array, Order, Result } from 'effect'
 
-import { unitOf } from '../../shared/prng'
-import type { Level } from '../../world/level/arena'
-import type { Vector } from '../../world/schema/entitySchema'
-import type { World } from '../../world/schema/worldSchema'
-import type * as Draw from '../draw'
-import { rect } from '../drawing'
-import type { Box } from '../room/roomPalette'
-import { type Pane, windowPanesOf } from '../room/windows'
-import { strikeOf } from './mood'
-import { type ArtQuad, artQuadsOver } from './wallQuads'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import type { Box } from '#render/room/roomPalette.ts'
+import { type Pane, windowPanesOf } from '#render/room/windows.ts'
+import { unitOf } from '#shared/prng.ts'
+import type { Level } from '#world/level/arena.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+
+import { strikeOf } from './mood.ts'
+import { type ArtQuad, artQuadsOver } from './wallQuads.ts'
 
 const GLASS_PER_STREAK = 24
 const STREAK_LENGTH = 3

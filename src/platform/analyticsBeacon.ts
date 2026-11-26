@@ -11,8 +11,9 @@ import {
 } from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 
-import { describeError } from '../shared/describeError'
-import { isObjectFirst } from '../shared/dualArgs'
+import { describeError } from '#shared/describeError.ts'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+
 import {
   MAX_SUMMARY_BYTES,
   PostedRunJson,
@@ -22,8 +23,8 @@ import {
   type ShareEvent,
   ShareEventJson,
   VISIT_ID_LENGTH,
-} from './analytics'
-import { API_ORIGIN } from './apiOrigin'
+} from './analytics.ts'
+import { API_ORIGIN } from './apiOrigin.ts'
 
 const maybeApiUrl = (path: string, origin: string): Option.Option<string> =>
   origin === ''

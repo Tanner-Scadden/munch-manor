@@ -2,8 +2,9 @@ import { Array, Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { LookPart } from '../../../../domain/looks'
-import { LookSection, LookToggle } from './lookSchema'
+import { LookPart } from '#domain/looks.ts'
+
+import { LookSection, LookToggle } from './lookSchema.ts'
 
 export const Message = UiSchema.TaggedEnum({
   PickedSection: { value: Schema.String },

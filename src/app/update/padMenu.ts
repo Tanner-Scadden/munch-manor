@@ -2,29 +2,30 @@ import { Array, Effect, Option } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { PadDirection, newDirection, newlyPressed } from '../../input/gamepad'
-import { PadScope } from '../../input/inputSchema'
-import type { Gamepad, PadClick } from '../../input/inputSchema'
+import { type MenuState, isPanelOpen, menuState } from '#app/menuState.ts'
+import type { Model } from '#app/model.ts'
+import { PadDirection, newDirection, newlyPressed } from '#input/gamepad.ts'
+import { PadScope } from '#input/inputSchema.ts'
+import type { Gamepad, PadClick } from '#input/inputSchema.ts'
 import {
   ACCEPT_KEY,
   BACK_KEY,
   DIRECTION_KEYS,
   type PadMenuPress,
   padMenuPressOf,
-} from '../../input/keyActions'
-import { InputMessage } from '../../input/message'
+} from '#input/keyActions.ts'
+import { InputMessage } from '#input/message.ts'
 import {
   TabStep,
   clickPadFocus,
   escapePadDialog,
   movePadFocus,
   stepPadTab,
-} from '../../input/padFocus'
-import { type MenuState, isPanelOpen, menuState } from '../menuState'
-import type { Model } from '../model'
-import { isCardHolding, pressedPadKey } from './play'
-import { isPaused } from './run'
-import { type UpdateStep, defineHandlers, unchanged } from './step'
+} from '#input/padFocus.ts'
+
+import { isCardHolding, pressedPadKey } from './play.ts'
+import { isPaused } from './run.ts'
+import { type UpdateStep, defineHandlers, unchanged } from './step.ts'
 
 export const MovePadFocus = Command.make(
   'MovePadFocus',

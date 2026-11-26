@@ -1,15 +1,15 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import * as Draw from '../../draw'
-import { flatten, isSameLeaves } from '../flatten'
+import * as Draw from '#render/draw.ts'
+import { flatten, isSameLeaves } from '#render/iso/flatten.ts'
 import {
   type GroundBox,
   groundBoxOf,
   splitGround,
   writeGroundBoxes,
-} from '../groundRects'
-import { UNIT, zOf } from '../space'
+} from '#render/iso/groundRects.ts'
+import { UNIT, zOf } from '#render/iso/space.ts'
 
 const shadow = (x: number) =>
   Draw.Rect({ x, y: 20, width: 8, height: 3, fill: 'rgba(0,0,0,0.4)' })

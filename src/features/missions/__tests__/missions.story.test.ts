@@ -3,24 +3,8 @@ import { Array, Effect, Option, Record, String } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import {
-  ALL_THREE_BONES,
-  MISSION_RULES,
-  type MissionId,
-  type SavedMissions,
-  noMissions,
-} from '../../../shared/missionData'
-import { knowingDay, readyAfterRead } from '../../../test/model.fixture'
-import {
-  changeModel,
-  checkModel,
-  send,
-  storyOf,
-  writeSave,
-} from '../../../test/testing'
-import { modifyFocus } from '../../../world/party/party'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
 import {
   checkSavedChanges,
   diesOnWave7,
@@ -29,15 +13,31 @@ import {
   leave,
   runAt,
   wave,
-} from '../../end/__tests__/rank.fixture'
-import { MissionMessage } from '../message'
+} from '#features/end/__tests__/rank.fixture.ts'
+import { MissionMessage } from '#features/missions/message.ts'
 import {
   isClaimed,
   isRerollUsed,
   maybeRerollFor,
   missionRowsOf,
   missionsOn,
-} from '../missions'
+} from '#features/missions/missions.ts'
+import {
+  ALL_THREE_BONES,
+  MISSION_RULES,
+  type MissionId,
+  type SavedMissions,
+  noMissions,
+} from '#shared/missionData.ts'
+import { knowingDay, readyAfterRead } from '#test/model.fixture.ts'
+import {
+  changeModel,
+  checkModel,
+  send,
+  storyOf,
+  writeSave,
+} from '#test/testing.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const TODAY = '2026-11-12'
 

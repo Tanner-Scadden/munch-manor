@@ -1,9 +1,10 @@
 import { Function } from 'effect'
 
-import type { Tone } from '../art/sprite'
-import { type Zombie, ZombieAction } from '../world/schema/entitySchema'
-import { CHUCKER_RULES, THROWER_KIND } from '../world/zombies/chucker'
-import { FULL_TURN, QUARTER_TURN } from './drawing'
+import type { Tone } from '#art/sprite.ts'
+import { type Zombie, ZombieAction } from '#world/schema/entitySchema.ts'
+import { CHUCKER_RULES, THROWER_KIND } from '#world/zombies/chucker.ts'
+
+import { FULL_TURN, QUARTER_TURN } from './drawing.ts'
 
 const HEFT_TELL_SLOW_MS = 200
 const HEFT_TELL_FAST_MS = 60

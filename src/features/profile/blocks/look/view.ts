@@ -23,32 +23,27 @@ import {
   playerPixels,
   playerSprites,
   printSwatchRows,
-} from '../../../../art/appearance'
-import { pixelArtStyle } from '../../../../art/artSize'
-import { DICE_ICON, pixelIconUrl } from '../../../../art/icons'
-import {
-  type Facing,
-  frameAt,
-  group,
-  standaloneSource,
-} from '../../../../art/sprite'
-import { gunPictureOf, gunSprite } from '../../../../art/sprites/guns'
+} from '#art/appearance.ts'
+import { pixelArtStyle } from '#art/artSize.ts'
+import { DICE_ICON, pixelIconUrl } from '#art/icons.ts'
+import { type Facing, frameAt, group, standaloneSource } from '#art/sprite.ts'
+import { gunPictureOf, gunSprite } from '#art/sprites/guns.ts'
 import {
   type Standing,
   canAfford,
   priceOf,
   standingOf,
-} from '../../../../domain/closet'
-import { type LookPart, chooseLook } from '../../../../domain/looks'
-import { lookUnlockId } from '../../../../domain/unlocks'
-import * as Draw from '../../../../render/draw'
-import { type Leaf, flatten } from '../../../../render/iso/flatten'
-import { GUN_HOLD_PX } from '../../../../render/playerView'
+} from '#domain/closet.ts'
+import { type LookPart, chooseLook } from '#domain/looks.ts'
+import { lookUnlockId } from '#domain/unlocks.ts'
+import * as Draw from '#render/draw.ts'
+import { type Leaf, flatten } from '#render/iso/flatten.ts'
+import { GUN_HOLD_PX } from '#render/playerView.ts'
 import {
   PLAYER_FOOT_OFFSET,
   PLAYER_WALK_FRAME_MS,
   SHADOW_COLOR,
-} from '../../../../shared/constants'
+} from '#shared/constants.ts'
 import {
   type Appearance,
   type Calling,
@@ -56,14 +51,15 @@ import {
   GunSkin,
   Hat,
   type Print,
-} from '../../../../shared/playerData'
-import { newBadgeView } from '../../../../ui/menuParts'
-import { startingGunKind } from '../../../../world/heroes/calling'
-import { rankOf, totalPointsOf } from '../../../../world/heroes/rank'
-import { HAT_NAMES, hatNameOf } from '../../../../world/names'
-import { buyPillView, cueAttrs, gearNote, gearTagView } from './lookGearView'
-import { LookSection, type LookToggle } from './lookSchema'
-import { Message } from './message'
+} from '#shared/playerData.ts'
+import { newBadgeView } from '#ui/menuParts.ts'
+import { startingGunKind } from '#world/heroes/calling.ts'
+import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
+import { HAT_NAMES, hatNameOf } from '#world/names.ts'
+
+import { buyPillView, cueAttrs, gearNote, gearTagView } from './lookGearView.ts'
+import { LookSection, type LookToggle } from './lookSchema.ts'
+import { Message } from './message.ts'
 import {
   type CharacterProps,
   type Model,
@@ -72,7 +68,7 @@ import {
   flipLook,
   gearOf,
   isToggleOn,
-} from './model'
+} from './model.ts'
 
 type H = Html.H<Message>
 type Content = View.Content<Message>

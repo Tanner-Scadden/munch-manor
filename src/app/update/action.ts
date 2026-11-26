@@ -2,17 +2,17 @@ import { Function, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { notePress } from '../../platform/recording'
-import { leadSeatOf } from '../../world/party/party'
-import { withWorld } from '../../world/schema/world'
+import type { Model } from '#app/model.ts'
+import { notePress } from '#platform/recording.ts'
+import { leadSeatOf } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 import {
   type ActionRefusal,
   type PlayerSlot,
   type SeatAction,
   applySeatAction,
   trySeatAction,
-} from '../../world/step/stepWorld'
-import type { Model } from '../model'
+} from '#world/step/stepWorld.ts'
 
 const pressed = (model: Model, slot: PlayerSlot, action: SeatAction): Model =>
   UiStruct.evolve(model, { recorder: notePress(slot, action) })

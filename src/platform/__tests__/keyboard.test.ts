@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { KEYBOARD_GAP_PX, keyboardLift } from '../keyboard'
+import { KEYBOARD_GAP_PX, keyboardLift } from '#platform/keyboard.ts'
 
 describe('lifting a field over the keyboard', () => {
   test('a field above the keyboard stays put', () => {

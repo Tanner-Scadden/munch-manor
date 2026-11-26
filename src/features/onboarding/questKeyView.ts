@@ -1,12 +1,12 @@
-import type { Model } from '../../app/model'
-import { KEY_SPRITE } from '../../art/font'
-import { placeAt } from '../../art/sprite'
-import type { Drawable } from '../../render/depth'
-import { GLINT, GOODIE_SHADOW } from '../../render/drawing'
+import type { Model } from '#app/model.ts'
+import { KEY_SPRITE } from '#art/font.ts'
+import { placeAt } from '#art/sprite.ts'
+import type { Drawable } from '#render/depth.ts'
+import { GLINT, GOODIE_SHADOW } from '#render/drawing.ts'
 import {
   isTutorialKeyOut,
   tutorialKeySpotOf,
-} from '../../world/run/tutorialRules'
+} from '#world/run/tutorialRules.ts'
 
 const BOB_MS = 280
 const BOB_PX = 1

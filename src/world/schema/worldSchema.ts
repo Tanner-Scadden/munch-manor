@@ -2,13 +2,14 @@ import { Function, Option, Schema } from 'effect'
 
 import { UiSchema, UiStruct } from '@effect/ui'
 
-import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '../../shared/constants'
-import { Difficulty } from '../../shared/playerData'
-import { nextRandom } from '../../shared/prng'
-import { Dare, DareKind, DareThing, Finale } from '../dare/dareSchema'
-import { START_LEVEL, startingLevelFor } from '../level/arena'
-import { arrangementAt } from '../level/plan'
-import { Modifiers } from '../run/modifiers'
+import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '#shared/constants.ts'
+import { Difficulty } from '#shared/playerData.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { Dare, DareKind, DareThing, Finale } from '#world/dare/dareSchema.ts'
+import { START_LEVEL, startingLevelFor } from '#world/level/arena.ts'
+import { arrangementAt } from '#world/level/plan.ts'
+import { Modifiers } from '#world/run/modifiers.ts'
+
 import {
   Arsenal,
   BoostKind,
@@ -53,15 +54,16 @@ import {
   WeaponKind,
   Zombie,
   ZombieKind,
-} from './entitySchema'
-import { Heading, MillisNumber, PositionNumber, UnitNumber } from './wireNumber'
+} from './entitySchema.ts'
+import {
+  Heading,
+  MillisNumber,
+  PositionNumber,
+  UnitNumber,
+} from './wireNumber.ts'
 
-export {
-  Appearance,
-  Difficulty,
-  RotationSetting,
-} from '../../shared/playerData'
-export * from './entitySchema'
+export { Appearance, Difficulty, RotationSetting } from '#shared/playerData.ts'
+export * from './entitySchema.ts'
 
 export const Armament = Schema.Literals([
   'Pistol',

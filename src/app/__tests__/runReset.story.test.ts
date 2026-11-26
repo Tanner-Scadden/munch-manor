@@ -3,7 +3,15 @@ import { Array, Effect, Record } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { readyModel } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import {
+  type Model,
+  Phase,
+  TrapNotice,
+  freshLevel,
+  freshLoot,
+} from '#app/model.ts'
+import { readyModel } from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -14,10 +22,8 @@ import {
   startRunFromHome,
   steps,
   ticks,
-} from '../../test/testing'
-import { modifyFocus } from '../../world/party/party'
-import { Message } from '../message'
-import { type Model, Phase, TrapNotice, freshLevel, freshLoot } from '../model'
+} from '#test/testing.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const RUN_FIELDS = [
   'pacing',

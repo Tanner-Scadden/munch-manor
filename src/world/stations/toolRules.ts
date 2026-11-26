@@ -1,7 +1,7 @@
 import { Function } from 'effect'
 
-import type { World } from '../schema/world'
-import type { StationId } from '../schema/worldSchema'
+import type { World } from '#world/schema/world.ts'
+import type { StationId } from '#world/schema/worldSchema.ts'
 
 const REACH_PX = 8
 

@@ -1,17 +1,18 @@
 import { Array, Function, Record } from 'effect'
 
-import type { TrapKind, WeaponKind } from '../world/schema/entitySchema'
-import { pixelIconUrl } from './icons'
+import type { TrapKind, WeaponKind } from '#world/schema/entitySchema.ts'
+
+import { pixelIconUrl } from './icons.ts'
 import {
   MOOD_FACES,
   type Mood,
   RATTLES_BUST_ROWS,
   RATTLES_PALETTE,
   rattlesPixels,
-} from './rattlesArt'
-import type { Palette } from './sprite'
-import { GUN_TIER_TRIMS } from './sprites/guns'
-import { HEART_PIXELS } from './sprites/hearts'
+} from './rattlesArt.ts'
+import type { Palette } from './sprite.ts'
+import { GUN_TIER_TRIMS } from './sprites/guns.ts'
+import { HEART_PIXELS } from './sprites/hearts.ts'
 
 export const BAR_SEGMENTS = 5
 

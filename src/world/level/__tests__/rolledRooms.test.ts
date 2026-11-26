@@ -1,23 +1,21 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { TILE_SIZE } from '../../../shared/constants'
-import { exitsToRoom } from '../../../test/model.fixture'
-import { CLEARANCES } from '../../../test/testing'
-import { secretShelfOf } from '../../library/secretShelf'
-import { type Arrangement, freshLevel } from '../../schema/worldSchema'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { exitsToRoom } from '#test/model.fixture.ts'
+import { CLEARANCES } from '#test/testing.ts'
 import {
   type Level,
   levelFor,
   levelOf,
   roomAt,
   startingLevelFor,
-} from '../arena'
+} from '#world/level/arena.ts'
 import {
   UNREACHED_DISTANCE,
   flowFieldToward,
   playerDistancePx,
-} from '../pathing'
+} from '#world/level/pathing.ts'
 import {
   ARRANGEMENTS,
   LIBRARY_ROOM_ID,
@@ -25,9 +23,15 @@ import {
   SLOTS,
   SLOT_IDS,
   manorSpecFor,
-} from '../plan'
-import { tileCenter } from '../tileGrid'
-import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
+} from '#world/level/plan.ts'
+import { tileCenter } from '#world/level/tileGrid.ts'
+import {
+  doorSpawnPoint,
+  isInsideRoomAt,
+  isWalkableTile,
+} from '#world/level/tileQueries.ts'
+import { secretShelfOf } from '#world/library/secretShelf.ts'
+import { type Arrangement, freshLevel } from '#world/schema/worldSchema.ts'
 
 const EVERY_EXIT = ['Kitchen', 'West', 'East', 'Far', SECRET_EXIT]
 

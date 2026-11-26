@@ -2,17 +2,18 @@ import { Array, Function, Option, String } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
-import { seatLook } from '../art/seatLooks'
-import type { Calling } from '../shared/playerData'
-import { nextRandom } from '../shared/prng'
-import { ownedCallings } from '../world/heroes/calling'
-import { seatedAs } from '../world/heroes/callingPlayer'
-import { BOT_NAMES } from '../world/names'
-import { COOP_RULES, isCoop, modifySeat } from '../world/party/party'
-import type { World } from '../world/schema/world'
-import type { PlayerSlot } from '../world/schema/worldSchema'
-import type { Bot } from './clientSchema'
+import type { Model } from '#app/model.ts'
+import { seatLook } from '#art/seatLooks.ts'
+import type { Calling } from '#shared/playerData.ts'
+import { nextRandom } from '#shared/prng.ts'
+import { ownedCallings } from '#world/heroes/calling.ts'
+import { seatedAs } from '#world/heroes/callingPlayer.ts'
+import { BOT_NAMES } from '#world/names.ts'
+import { COOP_RULES, isCoop, modifySeat } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
+import type { PlayerSlot } from '#world/schema/worldSchema.ts'
+
+import type { Bot } from './clientSchema.ts'
 
 const MAX_BOTS = COOP_RULES.maxPlayers - 1
 

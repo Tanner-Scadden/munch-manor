@@ -3,11 +3,11 @@ import { expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { Phase } from '../../../app/model'
-import { LANDSCAPE_SCREEN } from '../../../render/screen'
-import { DISTANT_SPAWN, quietWave } from '../../../test/model.fixture'
-import { imagesIn, rectsOf } from '../../../test/viewReading'
-import { overlayShapes } from '../overlay'
+import { Phase } from '#app/model.ts'
+import { LANDSCAPE_SCREEN } from '#render/screen.ts'
+import { overlayShapes } from '#screens/game/overlay.ts'
+import { DISTANT_SPAWN, quietWave } from '#test/model.fixture.ts'
+import { imagesIn, rectsOf } from '#test/viewReading.ts'
 
 const PLATE_COLOR = 'rgba(8, 10, 12, 0.55)'
 

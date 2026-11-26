@@ -2,20 +2,20 @@ import { Effect, Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { changesBetween } from '#platform/playerSync.ts'
+import { type PlayerSave } from '#platform/save.ts'
 import {
   type SavedMastery,
   mergeMastery,
   noMastery,
-} from '../../shared/masteryData'
+} from '#shared/masteryData.ts'
 import {
   legacySave,
   linkedPair,
   synced,
   until,
   write,
-} from '../../test/store.fixture'
-import { changesBetween } from '../playerSync'
-import { type PlayerSave } from '../save'
+} from '#test/store.fixture.ts'
 
 const withMastery = (mastery: SavedMastery): PlayerSave => ({
   ...legacySave,

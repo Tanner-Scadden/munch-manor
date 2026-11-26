@@ -1,31 +1,32 @@
 import { Array, Option, Order, Result } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { unitOf } from '../../shared/prng'
-import type { Level } from '../../world/level/arena'
-import { KITCHEN_ROOM_ID } from '../../world/level/plan'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { isRoomOpen } from '#render/room/room.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { unitOf } from '#shared/prng.ts'
+import type { Level } from '#world/level/arena.ts'
+import { KITCHEN_ROOM_ID } from '#world/level/plan.ts'
 import {
   SOUP_SYMBOL,
   boxCenter,
   tilesWithSymbol,
-} from '../../world/level/tileGrid'
-import type { World } from '../../world/schema/worldSchema'
-import { stationBoxOf } from '../../world/stations/stationSpots'
-import { TOOL_RULES } from '../../world/stations/toolRules'
-import { clamp, hundredths } from '../../world/step/geometry'
-import type * as Draw from '../draw'
-import { rect } from '../drawing'
-import { isRoomOpen } from '../room/room'
-import type { Mote } from './air'
-import type { TileQuad } from './house'
+} from '#world/level/tileGrid.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+import { stationBoxOf } from '#world/stations/stationSpots.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
+import { clamp, hundredths } from '#world/step/geometry.ts'
+
+import type { Mote } from './air.ts'
+import type { TileQuad } from './house.ts'
 import {
   MIRROR_REACH,
   type Mirror,
   STRIKE_RGB,
   STRIKE_STEPS,
   mirrorOf,
-} from './leaks'
-import { type FlameKind, flameSpecsOf } from './lightSpecs'
+} from './leaks.ts'
+import { type FlameKind, flameSpecsOf } from './lightSpecs.ts'
 
 type Pixel = Readonly<{ x: number; y: number }>
 

@@ -1,20 +1,20 @@
 import { Array, Function, Option } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   endKindOf,
   rankDoneMs,
   unlockGoneMs,
   unlocksOf,
-} from '../../features/end/endBeat'
-import { endCardEdgesOf } from '../../features/end/endView'
+} from '#features/end/endBeat.ts'
+import { endCardEdgesOf } from '#features/end/endView.ts'
 import {
   MISSION_PANEL_WIDTH,
   type MissionSpot,
   missionEndShapes,
-} from '../../features/missions/missionEndView'
-import type * as Draw from '../../render/draw'
-import { type Screen, landscapeFrameOffset } from '../../render/screen'
+} from '#features/missions/missionEndView.ts'
+import type * as Draw from '#render/draw.ts'
+import { type Screen, landscapeFrameOffset } from '#render/screen.ts'
 
 const GAP_PX = 3
 const BEAT_GAP_MS = 160

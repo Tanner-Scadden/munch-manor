@@ -1,14 +1,15 @@
 import { Array, Function, Option, Record } from 'effect'
 
-import { PLAYER_MAX_HP } from '../../shared/constants'
+import { PLAYER_MAX_HP } from '#shared/constants.ts'
 import {
   COSMETIC_PRICES,
   Calling,
   type SavedBoughtCosmetics,
   type SavedRank,
   heroIdOf,
-} from '../../shared/playerData'
-import { bonesBalanceOf } from './rank'
+} from '#shared/playerData.ts'
+
+import { bonesBalanceOf } from './rank.ts'
 
 export const CALLINGS: Array.NonEmptyReadonlyArray<Calling> = Calling.literals
 

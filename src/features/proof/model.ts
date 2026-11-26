@@ -1,9 +1,10 @@
 import { Option, Schema } from 'effect'
 
-import { SavedDareMarks } from '../../shared/dareMarkData'
-import { DayStamp } from '../../shared/dayStamp'
-import { SavedProof } from '../../shared/proofData'
-import { ShelfSpot, ShelfThing } from './proof'
+import { SavedDareMarks } from '#shared/dareMarkData.ts'
+import { DayStamp } from '#shared/dayStamp.ts'
+import { SavedProof } from '#shared/proofData.ts'
+
+import { ShelfSpot, ShelfThing } from './proof.ts'
 
 export const ProofShelfProps = Schema.Struct({
   proof: SavedProof,

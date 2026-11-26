@@ -2,8 +2,8 @@ import { Array, Function, Option, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
-import { seatLookOf } from '../art/seatLooks'
+import type { Model } from '#app/model.ts'
+import { seatLookOf } from '#art/seatLooks.ts'
 import {
   type Sprite,
   TOP_LEFT,
@@ -11,14 +11,14 @@ import {
   group,
   placeAt,
   spriteShapes,
-} from '../art/sprite'
-import { hatRiseOf } from '../art/sprites/hatArt'
-import { maybeCrewBotAt } from '../domain/bots'
-import { maybeRoomOf } from '../domain/coopRoom'
-import { PLAYER_RADIUS } from '../shared/constants'
-import { noMastery } from '../shared/masteryData'
-import type { Appearance } from '../shared/playerData'
-import { isCallFresh } from '../world/party/medic'
+} from '#art/sprite.ts'
+import { hatRiseOf } from '#art/sprites/hatArt.ts'
+import { maybeCrewBotAt } from '#domain/bots.ts'
+import { maybeRoomOf } from '#domain/coopRoom.ts'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import { noMastery } from '#shared/masteryData.ts'
+import type { Appearance } from '#shared/playerData.ts'
+import { isCallFresh } from '#world/party/medic.ts'
 import {
   COOP_RULES,
   focusOf,
@@ -30,18 +30,19 @@ import {
   isStanding,
   leadSeatOf,
   playersOf,
-} from '../world/party/party'
-import { withWorld } from '../world/schema/world'
+} from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 import {
   type DownedLife,
   Life,
   type PlayerSlot,
   type Seat,
-} from '../world/schema/worldSchema'
-import type { Drawable } from './depth'
-import * as Draw from './draw'
-import { rect, ringPixels } from './drawing'
-import { barWidthOf, healthBarShapes } from './healthBarView'
+} from '#world/schema/worldSchema.ts'
+
+import type { Drawable } from './depth.ts'
+import * as Draw from './draw.ts'
+import { rect, ringPixels } from './drawing.ts'
+import { barWidthOf, healthBarShapes } from './healthBarView.ts'
 import {
   type Lying,
   lyingShapes,
@@ -50,8 +51,8 @@ import {
   playerShadow,
   playerShapes,
   reloadBarShapes,
-} from './playerView'
-import { auraShapes } from './powerupView'
+} from './playerView.ts'
+import { auraShapes } from './powerupView.ts'
 
 const maybeLyingOf = (seat: Seat): Option.Option<Lying> => {
   if (isDowned(seat)) {

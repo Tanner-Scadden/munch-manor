@@ -3,7 +3,7 @@ import { Array, Effect, Option, Record, String } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { afterEach, describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   DebutCard,
@@ -17,37 +17,17 @@ import {
   freshLessons,
   noBests,
   noKills,
-} from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { FocusProfileElement } from '../../app/update/profile'
-import { WriteSave } from '../../app/update/save'
-import { LobbyMessage } from '../../features/lobby/message'
-import { shownHints } from '../../features/onboarding/onboarding'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { FocusProfileElement } from '#app/update/profile.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { shownHints } from '#features/onboarding/onboarding.ts'
 import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
-} from '../../features/profile/profile'
-import { FIXED_STEP_MS } from '../../shared/constants'
-import { noSavedRunRecords } from '../../shared/playerData'
-import { DISTANT_SPAWN, loadingSave, withKeys } from '../../test/model.fixture'
-import {
-  checkModel,
-  finishSplash,
-  jsonOf,
-  modelAfter,
-  resolveFocusLobby,
-  send,
-  steps,
-  throughIntro,
-  tick,
-  writeSave,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { grantedVeteran, noRank } from '../../world/heroes/rank'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { isPracticeGateHeld } from '../../world/run/lessons'
-import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
-import { PlayerChange, changesBetween } from '../playerSync'
+} from '#features/profile/profile.ts'
+import { PlayerChange, changesBetween } from '#platform/playerSync.ts'
 import {
   type PlayerSave,
   SAVED_FIELDS,
@@ -63,8 +43,29 @@ import {
   unpickedDifficulty,
   unvisitedHome,
   writeLegacySave,
-} from '../save'
-import { learnedSave } from './save.fixture'
+} from '#platform/save.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { noSavedRunRecords } from '#shared/playerData.ts'
+import { DISTANT_SPAWN, loadingSave, withKeys } from '#test/model.fixture.ts'
+import {
+  checkModel,
+  finishSplash,
+  jsonOf,
+  modelAfter,
+  resolveFocusLobby,
+  send,
+  steps,
+  throughIntro,
+  tick,
+  writeSave,
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { grantedVeteran, noRank } from '#world/heroes/rank.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { isPracticeGateHeld } from '#world/run/lessons.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
+
+import { learnedSave } from './save.fixture.ts'
 
 const LEGACY_LOOK = {
   body: 'Female',

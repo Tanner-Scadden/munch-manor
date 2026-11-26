@@ -15,8 +15,8 @@ import {
   viewColorsOf,
   voxelsOf,
   voxelsWithin,
-} from '../carve'
-import { ZOMBIE_PALETTE, groanerWalkForms } from '../sprites/zombieArt'
+} from '#art/carve.ts'
+import { ZOMBIE_PALETTE, groanerWalkForms } from '#art/sprites/zombieArt.ts'
 
 const PALETTE = { a: '#aa0000', b: '#00bb00', c: '#0000cc', o: '#111111' }
 

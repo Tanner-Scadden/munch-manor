@@ -1,8 +1,8 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { BLAST_FLASH_MS } from '../../../shared/constants'
-import { blastLightOf, blastPiecesOf } from '../explosions'
+import { blastLightOf, blastPiecesOf } from '#render/iso/explosions.ts'
+import { BLAST_FLASH_MS } from '#shared/constants.ts'
 
 const blastAt = (ageMs: number) => ({ x: 200, y: 140, radius: 28, ageMs })
 

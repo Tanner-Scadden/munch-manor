@@ -30,12 +30,12 @@ import {
   type LobbyChange,
   RoomRequest,
   type RoomTicket,
-} from '../../domain/coopRoom'
-import { API_ORIGIN } from '../../platform/apiOrigin'
-import { writeLobbyChange } from '../../platform/lobbyWrite'
-import type { RoomAccess } from '../../platform/roomReplica'
-import { PlayerStore } from '../../platform/store'
-import type { Calling } from '../../shared/playerData'
+} from '#domain/coopRoom.ts'
+import { API_ORIGIN } from '#platform/apiOrigin.ts'
+import { writeLobbyChange } from '#platform/lobbyWrite.ts'
+import type { RoomAccess } from '#platform/roomReplica.ts'
+import { PlayerStore } from '#platform/store.ts'
+import type { Calling } from '#shared/playerData.ts'
 
 export class CoopNet extends Context.Service<
   CoopNet,

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
 
+import type { Particle } from '#render/renderSchema.ts'
 import {
   BLOOD_LIFETIME_MS,
   BLOOD_LIFT_MAX,
@@ -70,30 +71,25 @@ import {
   SPLINTER_SPEED_MAX,
   SPLINTER_SPEED_MIN,
   ZOMBIE_FOOT_OFFSET,
-} from '../../shared/constants'
-import { isObjectFirst } from '../../shared/dualArgs'
-import {
-  type Seeded,
-  between,
-  generateMany,
-  nextRandom,
-} from '../../shared/prng'
-import { WEAPONS } from '../../world/gear/weapons'
+} from '#shared/constants.ts'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+import { type Seeded, between, generateMany, nextRandom } from '#shared/prng.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
 import type {
   ParticleKind,
   TrapKind,
   Vector,
   WeaponKind,
   ZombieKind,
-} from '../../world/schema/entitySchema'
-import { ZERO_VECTOR } from '../../world/step/geometry'
+} from '#world/schema/entitySchema.ts'
+import { ZERO_VECTOR } from '#world/step/geometry.ts'
 import {
   type WearStage,
   ZOMBIE_KINDS,
   isArmorPart,
-} from '../../world/zombies/zombies'
-import type { Particle } from '../renderSchema'
-import { LAUNCH_SIZE } from './particlePhysics'
+} from '#world/zombies/zombies.ts'
+
+import { LAUNCH_SIZE } from './particlePhysics.ts'
 
 type Launch = Readonly<{
   kind: ParticleKind

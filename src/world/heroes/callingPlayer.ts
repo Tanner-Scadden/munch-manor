@@ -2,10 +2,15 @@ import { Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Calling } from '../../shared/playerData'
-import { freshGun } from '../gear/weapons'
-import { Arsenal, type Player, initialPlayer } from '../schema/worldSchema'
-import { maxHpOf, startsWithCooker } from './calling'
+import type { Calling } from '#shared/playerData.ts'
+import { freshGun } from '#world/gear/weapons.ts'
+import {
+  Arsenal,
+  type Player,
+  initialPlayer,
+} from '#world/schema/worldSchema.ts'
+
+import { maxHpOf, startsWithCooker } from './calling.ts'
 
 export const seatedAs: {
   (calling: Calling): (player: Player) => Player

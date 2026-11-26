@@ -1,7 +1,11 @@
 import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { SUPPORT_URL, isSupportUrl, maybeSupportUrlOf } from '../support'
+import {
+  SUPPORT_URL,
+  isSupportUrl,
+  maybeSupportUrlOf,
+} from '#platform/support.ts'
 
 describe('the tip jar link', () => {
   test('SUPPORT_URL is empty or an https link on buy.stripe.com', () => {

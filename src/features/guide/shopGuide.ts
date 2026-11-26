@@ -2,32 +2,32 @@ import { Array, Function, Option, Record, Schema } from 'effect'
 
 import { UiSchema, UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { BAR_SEGMENTS } from '../../art/shopArt'
-import { TURRET_RANGE_PX } from '../../shared/constants'
-import { HouseSpot, type ShopGuideSection } from '../../shared/nameKeys'
+import type { Model } from '#app/model.ts'
+import { BAR_SEGMENTS } from '#art/shopArt.ts'
+import { TURRET_RANGE_PX } from '#shared/constants.ts'
+import { HouseSpot, type ShopGuideSection } from '#shared/nameKeys.ts'
 import {
   COOKER_RULES,
   FREEZE_RULES,
   PAN_RULES,
-} from '../../world/fridge/fridgeWeapons'
+} from '#world/fridge/fridgeWeapons.ts'
 import {
   FRIDGE_RULES,
   PRIZE_ORDER,
   PRIZE_WEIGHTS,
   refundOf,
-} from '../../world/fridge/leftovers'
-import { MEND_RULES, TRAPS, TRAP_KIND_ORDER } from '../../world/gear/traps'
+} from '#world/fridge/leftovers.ts'
+import { MEND_RULES, TRAPS, TRAP_KIND_ORDER } from '#world/gear/traps.ts'
 import {
   SHOP_GUNS,
   UPGRADE_TIERS,
   WEAPONS,
   maxTier,
   statsAt,
-} from '../../world/gear/weapons'
-import { VALVE_RULES } from '../../world/kitchen/gasValve'
-import { STOVE_RULES } from '../../world/kitchen/stove'
-import { EXIT_RULES, KITCHEN_EXIT, exitName } from '../../world/level/exits'
+} from '#world/gear/weapons.ts'
+import { VALVE_RULES } from '#world/kitchen/gasValve.ts'
+import { STOVE_RULES } from '#world/kitchen/stove.ts'
+import { EXIT_RULES, KITCHEN_EXIT, exitName } from '#world/level/exits.ts'
 import {
   FOUND_NAMES,
   HOUSE_NAMES,
@@ -35,14 +35,14 @@ import {
   PICKUP_NAMES,
   PRIZE_NAMES,
   SHOP_GUIDE_SECTION_NAMES,
-} from '../../world/names'
+} from '#world/names.ts'
 import {
   FridgeDoor,
   FridgePrize,
   TrapKind,
   WeaponKind,
-} from '../../world/schema/worldSchema'
-import { SHATTER_SCALE } from '../../world/step/combat'
+} from '#world/schema/worldSchema.ts'
+import { SHATTER_SCALE } from '#world/step/combat.ts'
 
 export const SECTION_ORDER: Array.NonEmptyReadonlyArray<ShopGuideSection> = [
   'Guns',

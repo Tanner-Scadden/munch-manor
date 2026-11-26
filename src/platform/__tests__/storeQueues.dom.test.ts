@@ -3,14 +3,14 @@ import { Effect, Array as EffectArray, Option } from 'effect'
 import { describe, expect, it } from '@effect/vitest'
 import { makeHub } from '@munch/sqlite-wasm-effect/in-process'
 
+import { type PlayerDatabase } from '#platform/storeSqlite.ts'
 import {
   legacySave,
   makeLegacy,
   openOn,
   sqlOn,
   write,
-} from '../../test/store.fixture'
-import { type PlayerDatabase } from '../storeSqlite'
+} from '#test/store.fixture.ts'
 
 describe('run summaries queued with no network', () => {
   const takeAll = (database: PlayerDatabase) =>

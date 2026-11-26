@@ -2,7 +2,7 @@ import { Function, Option, Result, Schema } from 'effect'
 
 import { UiSchema, UiStruct } from '@effect/ui'
 
-import { cycleTrap, maybeSelectedKind, placeTrapIn } from '../gear/traps'
+import { cycleTrap, maybeSelectedKind, placeTrapIn } from '#world/gear/traps.ts'
 import {
   beginReload,
   canReload,
@@ -11,8 +11,8 @@ import {
   heldSlotOf,
   isWieldingMelee,
   swapInHand,
-} from '../gear/weapons'
-import { shoutMedic } from '../party/medic'
+} from '#world/gear/weapons.ts'
+import { shoutMedic } from '#world/party/medic.ts'
 import {
   forEachSeat,
   isCoop,
@@ -21,9 +21,9 @@ import {
   isStanding,
   modifySeat,
   seatStateAt,
-} from '../party/party'
-import { markReady } from '../party/revive'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import { markReady } from '#world/party/revive.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Arsenal,
   type GameEvent,
@@ -34,10 +34,11 @@ import {
   type PlayerSlot,
   SOLO_SLOT,
   idleIntent,
-} from '../schema/worldSchema'
-import { isRoundActive, startWaveEarly } from '../waves/waves'
-import { ZERO_VECTOR } from './geometry'
-import { advanceTick } from './simulation'
+} from '#world/schema/worldSchema.ts'
+import { isRoundActive, startWaveEarly } from '#world/waves/waves.ts'
+
+import { ZERO_VECTOR } from './geometry.ts'
+import { advanceTick } from './simulation.ts'
 
 export { type PlayerSlot }
 

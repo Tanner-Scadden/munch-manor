@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, String, pipe } from 'effect'
 
-import { textPixels } from './font'
+import { textPixels } from './font.ts'
 import {
   type Palette,
   type Sprite,
@@ -8,8 +8,12 @@ import {
   bakeShapes,
   group,
   spriteRects,
-} from './sprite'
-import { GNOME_PALETTE, GNOME_PIXELS, TRAP_ICON_PIXELS } from './sprites/traps'
+} from './sprite.ts'
+import {
+  GNOME_PALETTE,
+  GNOME_PIXELS,
+  TRAP_ICON_PIXELS,
+} from './sprites/traps.ts'
 
 export const HintIcon = Schema.Literals([
   'Wasd',

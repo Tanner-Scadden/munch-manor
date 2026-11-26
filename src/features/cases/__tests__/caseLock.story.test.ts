@@ -3,18 +3,12 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { CaseState, Feat, type Model } from '../../../app/model'
-import { featCountOf } from '../../../render/featLockView'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { AT_CASE, atCase, playingModel } from '../../../test/model.fixture'
-import {
-  checkModel,
-  holdFire,
-  storyOf,
-  tick,
-  zombieOf,
-} from '../../../test/testing'
-import { focusOf } from '../../../world/party/party'
+import { CaseState, Feat, type Model } from '#app/model.ts'
+import { featCountOf } from '#render/featLockView.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { AT_CASE, atCase, playingModel } from '#test/model.fixture.ts'
+import { checkModel, holdFire, storyOf, tick, zombieOf } from '#test/testing.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const countOn = (model: Model): Option.Option<string> =>
   Option.flatMap(Array.head(model.cases), ({ feat }) =>

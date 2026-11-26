@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Frenzy,
   type Model,
@@ -12,10 +12,17 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-} from '../../../app/model'
-import { clientToView } from '../../../render/screen'
-import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../../shared/constants'
-import { DISTANT_SPAWN, newPlayerCardSeen } from '../../../test/model.fixture'
+} from '#app/model.ts'
+import {
+  hintIcons,
+  hintWords,
+  isStartWaveBeckoning,
+  shownGhostSticks,
+  shownHints,
+} from '#features/onboarding/onboarding.ts'
+import { clientToView } from '#render/screen.ts'
+import { FIXED_STEP_MS, RESTART_GRACE_MS } from '#shared/constants.ts'
+import { DISTANT_SPAWN, newPlayerCardSeen } from '#test/model.fixture.ts'
 import {
   SHOWN_TICKS,
   SURFACE,
@@ -33,17 +40,10 @@ import {
   throughIntroByTap,
   ticks,
   touchDown,
-} from '../../../test/testing'
-import { modifyFocus } from '../../../world/party/party'
-import { accuracyPercent, totalKills } from '../../../world/run/stats'
-import { ZOMBIE_KINDS } from '../../../world/zombies/zombies'
-import {
-  hintIcons,
-  hintWords,
-  isStartWaveBeckoning,
-  shownGhostSticks,
-  shownHints,
-} from '../onboarding'
+} from '#test/testing.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { accuracyPercent, totalKills } from '#world/run/stats.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const TICK_MS = 50

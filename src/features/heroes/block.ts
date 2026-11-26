@@ -3,19 +3,20 @@ import { Schema } from 'effect'
 import type { View } from '@effect/ui'
 import { Html, HtmlSubscription } from '@effect/ui/html'
 
-import { pixelArtStyle } from '../../art/artSize'
-import { CLOSE_ICON } from '../../art/icons'
+import { pixelArtStyle } from '#art/artSize.ts'
+import { CLOSE_ICON } from '#art/icons.ts'
 import {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '../../shared/playerData'
+} from '#shared/playerData.ts'
+
 import {
   callingBalanceView,
   callingBuyView,
   callingCardsView,
-} from './callingCards'
-import { Events, Message } from './message'
+} from './callingCards.ts'
+import { Events, Message } from './message.ts'
 
 const PickerLayout = Schema.Literals(['Panel', 'Overlay'])
 

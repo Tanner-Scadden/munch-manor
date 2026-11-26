@@ -4,42 +4,46 @@ import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT, type PlayerTick } from '@munch/netcode'
 
-import { type Model, Phase, RunMode } from '../../../app/model'
-import { endKindOf } from '../../../features/end/endBeat'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { type Model, Phase, RunMode } from '#app/model.ts'
+import { endKindOf } from '#features/end/endBeat.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   freshRunModel,
   kitchenBreak,
   withDareThings,
   withFinale,
-} from '../../../test/model.fixture'
-import { TWO_SEAT_ROOM } from '../../../test/roomTesting'
+} from '#test/model.fixture.ts'
+import { TWO_SEAT_ROOM } from '#test/roomTesting.ts'
 import {
   holdEnter,
   modelAfter,
   settleRunCommands,
   steps,
-} from '../../../test/testing'
-import { type DareThing, DareThingState, Finale } from '../../dare/dareSchema'
-import { pointsForRun } from '../../heroes/rank'
-import { levelOf, openExitIn } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
+} from '#test/testing.ts'
+import {
+  type DareThing,
+  DareThingState,
+  Finale,
+} from '#world/dare/dareSchema.ts'
+import { pointsForRun } from '#world/heroes/rank.ts'
+import { BACK_DOOR_RULES, backDoorStandOf } from '#world/kitchen/backDoor.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
 import {
   INTERACT_BUTTON,
   type RoomWorld,
   stepRoomWorld,
-} from '../../net/roomWorld'
+} from '#world/net/roomWorld.ts'
 import {
   focusSlotOf,
   modifyFocus,
   modifySeat,
   modifySeatRecord,
-} from '../../party/party'
-import { type World, modifyWorldFields } from '../../schema/world'
-import { Life, type Vector } from '../../schema/worldSchema'
-import { offersOf } from '../../shop/purchase'
-import { BACK_DOOR_RULES, backDoorStandOf } from '../backDoor'
+} from '#world/party/party.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
+import { Life, type Vector } from '#world/schema/worldSchema.ts'
+import { offersOf } from '#world/shop/purchase.ts'
 
 const HOLD_TICKS = Math.ceil(BACK_DOOR_RULES.holdMs / FIXED_STEP_MS) + 3
 

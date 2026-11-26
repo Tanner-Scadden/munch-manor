@@ -7,18 +7,22 @@ import {
   PLAYER_RADIUS,
   TILE_SIZE,
   ZOMBIE_ALIVE_MAX,
-} from '../../shared/constants'
-import { type Seeded, nextRandom } from '../../shared/prng'
-import { trapBlockers } from '../gear/traps'
-import { levelOf } from '../level/arena'
-import { doorSpawnPoint, hasClearPath, isSolidAt } from '../level/tileQueries'
-import { playerCountOf, seatStateAt } from '../party/party'
+} from '#shared/constants.ts'
+import { type Seeded, nextRandom } from '#shared/prng.ts'
+import { trapBlockers } from '#world/gear/traps.ts'
+import { levelOf } from '#world/level/arena.ts'
+import {
+  doorSpawnPoint,
+  hasClearPath,
+  isSolidAt,
+} from '#world/level/tileQueries.ts'
+import { playerCountOf, seatStateAt } from '#world/party/party.ts'
 import {
   bossAttackPace,
   bossHealthScale,
   difficultySpeedScale,
-} from '../run/difficulty'
-import type { World } from '../schema/world'
+} from '#world/run/difficulty.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Boss,
   type BossAttack,
@@ -32,10 +36,15 @@ import {
   type PlayerSlot,
   type Vector,
   type Zombie,
-} from '../schema/worldSchema'
-import { moveCircle } from '../step/collision'
-import { circlesOverlap, distanceBetween, scaleVector } from '../step/geometry'
-import { warningPoint } from '../waves/pacing'
+} from '#world/schema/worldSchema.ts'
+import { moveCircle } from '#world/step/collision.ts'
+import {
+  circlesOverlap,
+  distanceBetween,
+  scaleVector,
+} from '#world/step/geometry.ts'
+import { warningPoint } from '#world/waves/pacing.ts'
+
 import {
   type Fight,
   advanceGlobs,
@@ -48,8 +57,8 @@ import {
   isVulnerable,
   modifyFight,
   setMove,
-} from './bossFight'
-import { BOSS_RULES } from './bossRules'
+} from './bossFight.ts'
+import { BOSS_RULES } from './bossRules.ts'
 import {
   ZOMBIE_KINDS,
   arrivingZombie,
@@ -59,7 +68,7 @@ import {
   radiusOf,
   scaledHp,
   statsOf,
-} from './zombies'
+} from './zombies.ts'
 
 const BOSS_KIND = 'Boss'
 

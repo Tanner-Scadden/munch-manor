@@ -3,26 +3,22 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import {
-  Boss,
-  BreakClock,
-  KitchenCall,
-  type Model,
-  Phase,
-} from '../../../app/model'
-import { roomsOf } from '../../../domain/run'
-import { tagKeepoutsOf } from '../../../features/shop/purchaseView'
-import type { InputDevice } from '../../../input/inputSchema'
-import { cameraOf, screenCameraOf } from '../../../render/camera'
-import { kitchenLeakShapes } from '../../../render/room/kitchenLeak'
-import { hudKeepoutsOf } from '../../../screens/game/pocket'
-import { soupBubbleShapes } from '../../../screens/game/stallBubble'
+import { Boss, BreakClock, KitchenCall, type Model, Phase } from '#app/model.ts'
+import { roomsOf } from '#domain/run.ts'
+import { CALL_MS, maybeKitchenSound } from '#features/kitchen/kitchenCall.ts'
+import { roomsCounterShapes } from '#features/kitchen/roomsFound.ts'
+import { tagKeepoutsOf } from '#features/shop/purchaseView.ts'
+import type { InputDevice } from '#input/inputSchema.ts'
+import { cameraOf, screenCameraOf } from '#render/camera.ts'
+import { kitchenLeakShapes } from '#render/room/kitchenLeak.ts'
+import { hudKeepoutsOf } from '#screens/game/pocket.ts'
+import { soupBubbleShapes } from '#screens/game/stallBubble.ts'
 import {
   DISTANT_SPAWN,
   freshRunModel,
   inPortrait,
   pastTimedBreaks,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   FRAME_MS,
@@ -31,13 +27,11 @@ import {
   modelAfter,
   storyOf,
   ticks,
-} from '../../../test/testing'
-import { drawnBoxesOf, isOverBox } from '../../../test/viewReading'
-import { levelFor, levelOf, openExitIn } from '../../../world/level/arena'
-import { MANOR_SPEC } from '../../../world/level/plan'
-import { modifyFocus } from '../../../world/party/party'
-import { CALL_MS, maybeKitchenSound } from '../kitchenCall'
-import { roomsCounterShapes } from '../roomsFound'
+} from '#test/testing.ts'
+import { drawnBoxesOf, isOverBox } from '#test/viewReading.ts'
+import { levelFor, levelOf, openExitIn } from '#world/level/arena.ts'
+import { MANOR_SPEC } from '#world/level/plan.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const breakAt = (wave: number): Model =>
   UiStruct.evolve(pastTimedBreaks(freshRunModel()), {

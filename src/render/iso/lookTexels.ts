@@ -1,11 +1,12 @@
 import { Array, Option, Record } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
-import { CELLAR_ROOM_ID } from '../../world/level/plan'
-import type { LookSpecs, RoomLook } from './lookSpecs'
-import { NEUTRAL } from './lookSpecs'
-import { mixColor } from './mood'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
+import { CELLAR_ROOM_ID } from '#world/level/plan.ts'
+
+import type { LookSpecs, RoomLook } from './lookSpecs.ts'
+import { NEUTRAL } from './lookSpecs.ts'
+import { mixColor } from './mood.ts'
 
 export const RAMP_COLUMNS = 16
 

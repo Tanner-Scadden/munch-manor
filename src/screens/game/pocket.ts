@@ -1,15 +1,15 @@
 import { Function, Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { GLYPH_HEIGHT, textWidth } from '../../art/font'
-import { PocketCard } from '../../domain/clientSchema'
+import type { Model } from '#app/model.ts'
+import { GLYPH_HEIGHT, textWidth } from '#art/font.ts'
+import { PocketCard } from '#domain/clientSchema.ts'
 import {
   type DarePocket,
   type PocketBox,
   pocketBoxOf,
-} from '../../features/dare/dareCard'
-import { tagKeepoutsOf } from '../../features/shop/purchaseView'
-import type { Camera } from '../../render/camera'
+} from '#features/dare/dareCard.ts'
+import { tagKeepoutsOf } from '#features/shop/purchaseView.ts'
+import type { Camera } from '#render/camera.ts'
 import {
   HEART_SPACING,
   HUD_MARGIN,
@@ -18,21 +18,22 @@ import {
   gunClusterBox,
   hudLayoutFor,
   startWavePillBox,
-} from '../../render/hudLayout'
-import type { Keepout } from '../../render/keepout'
+} from '#render/hudLayout.ts'
+import type { Keepout } from '#render/keepout.ts'
 import {
   type Box,
   type Screen,
   landscapeFrameOffset,
   screenOf,
   stagePlacement,
-} from '../../render/screen'
-import { dareCardOf } from '../../world/dare/dare'
-import { maxHpOf } from '../../world/heroes/calling'
-import { heldKeys } from '../../world/keys/keys'
-import { focusOf } from '../../world/party/party'
-import { Phase } from '../../world/schema/worldSchema'
-import { maybeBannerBand } from './overlay'
+} from '#render/screen.ts'
+import { dareCardOf } from '#world/dare/dare.ts'
+import { maxHpOf } from '#world/heroes/calling.ts'
+import { heldKeys } from '#world/keys/keys.ts'
+import { focusOf } from '#world/party/party.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
+
+import { maybeBannerBand } from './overlay.ts'
 
 export const pocketOf = (model: Model): DarePocket => {
   if (

@@ -5,10 +5,12 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '../../../domain/clientSchema'
-import { openedThingsOf } from '../../../domain/journal'
-import { home, knowingDay } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '#domain/clientSchema.ts'
+import { openedThingsOf } from '#domain/journal.ts'
+import { ProofShelf } from '#features/proof/block.ts'
+import { shelfThingsFor, slotCountOf } from '#features/proof/proof.ts'
+import { home, knowingDay } from '#test/model.fixture.ts'
 import {
   byClass,
   measureSurface,
@@ -16,11 +18,9 @@ import {
   pickCardInScene,
   showDialog,
   withAttrs,
-} from '../../../test/sceneTesting'
-import { modelAfter, sceneOf, send } from '../../../test/testing'
-import { DARE_LINES } from '../../../world/names'
-import { ProofShelf } from '../block'
-import { shelfThingsFor, slotCountOf } from '../proof'
+} from '#test/sceneTesting.ts'
+import { modelAfter, sceneOf, send } from '#test/testing.ts'
+import { DARE_LINES } from '#world/names.ts'
 
 const SLOT_COUNT = slotCountOf(shelfThingsFor([]))
 

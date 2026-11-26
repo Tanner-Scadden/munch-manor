@@ -3,16 +3,29 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { isPanelOpen } from '../../../app/menuState'
-import { Message } from '../../../app/message'
-import { type Model, Phase } from '../../../app/model'
-import { BIG_KEY, type ProofStamp } from '../../../shared/proofData'
+import { isPanelOpen } from '#app/menuState.ts'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { BOT } from '#features/bots/__tests__/bots.fixture.ts'
+import {
+  checkSavedChanges,
+  diesOnWave7,
+  frame,
+  lastWave,
+} from '#features/end/__tests__/rank.fixture.ts'
+import {
+  type ShelfThing,
+  hasNewProof,
+  maybeStampAt,
+  shelveRun,
+} from '#features/proof/proof.ts'
+import { BIG_KEY, type ProofStamp } from '#shared/proofData.ts'
 import {
   crewInWave,
   knowingDay,
   readyAfterRead,
   withDareThings,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -20,17 +33,9 @@ import {
   steps,
   storyOf,
   writeSave,
-} from '../../../test/testing'
-import { type DareThing, DareThingState } from '../../../world/dare/dareSchema'
-import { focusOf } from '../../../world/party/party'
-import { BOT } from '../../bots/__tests__/bots.fixture'
-import {
-  checkSavedChanges,
-  diesOnWave7,
-  frame,
-  lastWave,
-} from '../../end/__tests__/rank.fixture'
-import { type ShelfThing, hasNewProof, maybeStampAt, shelveRun } from '../proof'
+} from '#test/testing.ts'
+import { type DareThing, DareThingState } from '#world/dare/dareSchema.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const TODAY = '2026-11-13'
 

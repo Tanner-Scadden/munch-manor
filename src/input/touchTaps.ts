@@ -1,6 +1,6 @@
 import { Function } from 'effect'
 
-import * as DetMath from '../shared/detMath'
+import * as DetMath from '#shared/detMath.ts'
 
 export const TAP_MAX_MS = 600
 export const TAP_SLOP_PX = 12

@@ -5,15 +5,23 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { Boss, BreakClock, type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { wavePreviewShapes } from '../../features/hud/wavePreview'
-import { restoreSave, saveOf } from '../../platform/save'
-import { hudShapes } from '../../screens/game/hud'
-import { isTurnHintShown } from '../../screens/home/home'
-import { TURN_HINT_TEXT } from '../../screens/home/homeView'
-import { DISTANT_SPAWN, inPortrait } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { Boss, BreakClock, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { wavePreviewShapes } from '#features/hud/wavePreview.ts'
+import { restoreSave, saveOf } from '#platform/save.ts'
+import { screenCameraOf } from '#render/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import {
+  MELEE_SLOT_INDEX,
+  gunSlotBox,
+  reloadFaceOf,
+} from '#render/hudLayout.ts'
+import { screenOf, thumbAreaTop } from '#render/screen.ts'
+import { hudShapes } from '#screens/game/hud.ts'
+import { isTurnHintShown } from '#screens/home/home.ts'
+import { TURN_HINT_TEXT } from '#screens/home/homeView.ts'
+import { DISTANT_SPAWN, inPortrait } from '#test/model.fixture.ts'
 import {
   ackHudSlots,
   byClass,
@@ -21,7 +29,7 @@ import {
   expectStyle,
   measureSurfaceAs,
   statusLine,
-} from '../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
@@ -31,14 +39,10 @@ import {
   modelAfterMessages,
   send,
   steps,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { rectsOf } from '../../test/viewReading'
-import { modifyFocus } from '../../world/party/party'
-import { screenCameraOf } from '../camera'
-import type * as Draw from '../draw'
-import { MELEE_SLOT_INDEX, gunSlotBox, reloadFaceOf } from '../hudLayout'
-import { screenOf, thumbAreaTop } from '../screen'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { rectsOf } from '#test/viewReading.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 

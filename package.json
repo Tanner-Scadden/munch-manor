@@ -3,6 +3,21 @@
   "license": "MIT",
   "version": "0.1.0",
   "type": "module",
+  "imports": {
+    "#app/*": "./src/app/*",
+    "#screens/*": "./src/screens/*",
+    "#features/*": "./src/features/*",
+    "#ui/*": "./src/ui/*",
+    "#domain/*": "./src/domain/*",
+    "#render/*": "./src/render/*",
+    "#art/*": "./src/art/*",
+    "#audio/*": "./src/audio/*",
+    "#input/*": "./src/input/*",
+    "#platform/*": "./src/platform/*",
+    "#world/*": "./src/world/*",
+    "#shared/*": "./src/shared/*",
+    "#test/*": "./src/test/*"
+  },
   "workspaces": [
     "packages/*"
   ],

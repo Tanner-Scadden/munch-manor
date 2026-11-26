@@ -2,11 +2,12 @@ import { Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { LookPart } from '../../domain/looks'
-import { cleanName } from '../../domain/playerName'
-import type { ClosetCueKind, ProfileFx } from './blocks/look/model'
-import type { LookOutcome, Model, ProfileTab } from './model'
-import { ResetEvent, stepReset } from './resetFlow'
+import type { LookPart } from '#domain/looks.ts'
+import { cleanName } from '#domain/playerName.ts'
+
+import type { ClosetCueKind, ProfileFx } from './blocks/look/model.ts'
+import type { LookOutcome, Model, ProfileTab } from './model.ts'
+import { ResetEvent, stepReset } from './resetFlow.ts'
 
 export const withFx: {
   (fx: ProfileFx): (model: Model) => Model

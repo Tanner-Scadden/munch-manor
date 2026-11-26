@@ -4,17 +4,28 @@ import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 import type { Lobby } from '@munch/netcode'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase } from '../../../app/model'
-import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
-import { isRoomFrameDue, isRunOn } from '../../../domain/onlineRun'
-import { fromSubscription, measureHud } from '../../../test/sceneTesting'
-import { modelAfter, sceneOf, send } from '../../../test/testing'
-import type { RoomWorld } from '../../../world/net/roomWorld'
-import { startWaveEarly } from '../../../world/waves/waves'
-import { freshRoom } from '../../coop/roomState'
-import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import { OWN_SLOT, coopScreen, graduated, roomWorld } from './onlineRun.fixture'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { Screen, maybeRoomOf } from '#domain/coopRoom.ts'
+import { isRoomFrameDue, isRunOn } from '#domain/onlineRun.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import {
+  CODE,
+  lobbyOf,
+  memberOf,
+  playingSession,
+} from '#features/coop/testing.ts'
+import { fromSubscription, measureHud } from '#test/sceneTesting.ts'
+import { modelAfter, sceneOf, send } from '#test/testing.ts'
+import type { RoomWorld } from '#world/net/roomWorld.ts'
+import { startWaveEarly } from '#world/waves/waves.ts'
+
+import {
+  OWN_SLOT,
+  coopScreen,
+  graduated,
+  roomWorld,
+} from './onlineRun.fixture.ts'
 
 const END_TICK = 6
 

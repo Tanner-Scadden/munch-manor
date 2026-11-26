@@ -1,5 +1,6 @@
-import { bakeShapes } from '../art/sprite'
-import * as Draw from './draw'
+import { bakeShapes } from '#art/sprite.ts'
+
+import * as Draw from './draw.ts'
 
 export const EDGE_BADGE_PX = 9
 export const EDGE_BADGE_INK = '#1a0f14'

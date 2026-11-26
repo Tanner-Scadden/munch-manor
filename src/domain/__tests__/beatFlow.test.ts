@@ -2,9 +2,9 @@ import { Array } from 'effect'
 import { Machine } from 'effect-machine'
 import { describe, expect, test } from 'vitest'
 
-import { noModifiers } from '../../world/run/modifiers'
-import { BeatMyRun, type FriendsDare, type OwnPicks } from '../beatLink'
-import { BeatEvent, beatMachine, stepBeat } from '../beatMyRun'
+import { BeatMyRun, type FriendsDare, type OwnPicks } from '#domain/beatLink.ts'
+import { BeatEvent, beatMachine, stepBeat } from '#domain/beatMyRun.ts'
+import { noModifiers } from '#world/run/modifiers.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.sort(

@@ -2,61 +2,62 @@ import { Array, Function, Option, Result } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { crewBotSlots, isBotCrew } from '../domain/bots'
-import { withBests } from '../domain/run'
-import { applyBotPresses, botInputs } from '../features/bots/teammateBot'
-import { ageCloche, raiseCloche } from '../features/cloche/clocheReveal'
-import { advanceDareHint } from '../features/dare/rattlesHint'
-import { ageFlight, launchPrize } from '../features/fridge/fridgeReveal'
-import { advanceBreakIdle } from '../features/hud/readyNudge'
-import { advanceKitchenCall } from '../features/kitchen/kitchenCall'
-import { raiseDebutCardFrom } from '../features/onboarding/onboarding'
+import { crewBotSlots, isBotCrew } from '#domain/bots.ts'
+import { withBests } from '#domain/run.ts'
+import { applyBotPresses, botInputs } from '#features/bots/teammateBot.ts'
+import { ageCloche, raiseCloche } from '#features/cloche/clocheReveal.ts'
+import { advanceDareHint } from '#features/dare/rattlesHint.ts'
+import { ageFlight, launchPrize } from '#features/fridge/fridgeReveal.ts'
+import { advanceBreakIdle } from '#features/hud/readyNudge.ts'
+import { advanceKitchenCall } from '#features/kitchen/kitchenCall.ts'
+import { raiseDebutCardFrom } from '#features/onboarding/onboarding.ts'
 import {
   AIM_ASSIST,
   type AimAssistStrength,
   assistAim,
-} from '../input/aimAssist'
-import { couchInputs, isCouchPlay } from '../input/couch'
-import { aimReachOf, deriveIntent, seeFirePress } from '../input/input'
-import { RunRecorder, noteTick } from '../platform/recording'
-import { advanceActions } from '../render/actionFrame'
+} from '#input/aimAssist.ts'
+import { couchInputs, isCouchPlay } from '#input/couch.ts'
+import { aimReachOf, deriveIntent, seeFirePress } from '#input/input.ts'
+import { RunRecorder, noteTick } from '#platform/recording.ts'
+import { advanceActions } from '#render/actionFrame.ts'
 import {
   cameraFocus,
   cameraOf,
   leanCamera,
   screenCameraOf,
   worldWindowOf,
-} from '../render/camera'
-import { FINISHER_CINE_MS, cinePullOf, glideCamera } from '../render/cine'
-import { advanceTells } from '../render/heroTells'
-import { advanceJuice } from '../render/juice'
-import { advanceParticles } from '../render/particles/particles'
-import { screenOf } from '../render/screen'
+} from '#render/camera.ts'
+import { FINISHER_CINE_MS, cinePullOf, glideCamera } from '#render/cine.ts'
+import { advanceTells } from '#render/heroTells.ts'
+import { advanceJuice } from '#render/juice.ts'
+import { advanceParticles } from '#render/particles/particles.ts'
+import { screenOf } from '#render/screen.ts'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
   MS_PER_SECOND,
   STEP_EPSILON_MS,
-} from '../shared/constants'
-import { isObjectSecond } from '../shared/dualArgs'
-import { emptied } from '../shared/sameList'
+} from '#shared/constants.ts'
+import { isObjectSecond } from '#shared/dualArgs.ts'
+import { emptied } from '#shared/sameList.ts'
 import {
   CALLOUT_LIFETIME_MS,
   LEVEL_CALLOUT_LIFETIME_MS,
-} from '../world/gear/powerups'
-import { TRAP_KIND_ORDER } from '../world/gear/traps'
-import { levelOf } from '../world/level/arena'
-import { focusOf, modifyFocus } from '../world/party/party'
-import { isArriving, isRunUnderway } from '../world/run/arrival'
-import { type World, withWorld, worldOf } from '../world/schema/world'
-import { clamp } from '../world/step/geometry'
+} from '#world/gear/powerups.ts'
+import { TRAP_KIND_ORDER } from '#world/gear/traps.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { isArriving, isRunUnderway } from '#world/run/arrival.ts'
+import { type World, withWorld, worldOf } from '#world/schema/world.ts'
+import { clamp } from '#world/step/geometry.ts'
 import {
   type InputsByPlayer,
   keptIntent,
   soloInputs,
   stepWorld,
-} from '../world/step/stepWorld'
-import { isEndless, isRoundActive, roundWave } from '../world/waves/waves'
+} from '#world/step/stepWorld.ts'
+import { isEndless, isRoundActive, roundWave } from '#world/waves/waves.ts'
+
 import {
   type Callout,
   type Difficulty,
@@ -69,7 +70,7 @@ import {
   type PickupKind,
   TrapHint,
   TrapNotice,
-} from './model'
+} from './model.ts'
 
 export const clampFrameDelta = (deltaTime: number): number =>
   clamp(deltaTime, 0, MAX_FRAME_DELTA_MS)

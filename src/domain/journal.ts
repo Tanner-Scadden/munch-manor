@@ -2,18 +2,19 @@ import { Array, Function, Result, String } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
-import { addToJournal } from '../shared/journalData'
-import { dareItemsFoundOf } from '../world/dare/dare'
+import type { Model } from '#app/model.ts'
+import { addToJournal } from '#shared/journalData.ts'
+import { dareItemsFoundOf } from '#world/dare/dare.ts'
 import {
   THING_ROOMS,
   newMilestonesOf,
   thingsOpenedBy,
-} from '../world/dare/milestones'
-import { levelOf, roomAt } from '../world/level/arena'
-import { focusOf } from '../world/party/party'
-import { GameEvent } from '../world/schema/worldSchema'
-import { isEndScreen, isInRun } from './run'
+} from '#world/dare/milestones.ts'
+import { levelOf, roomAt } from '#world/level/arena.ts'
+import { focusOf } from '#world/party/party.ts'
+import { GameEvent } from '#world/schema/worldSchema.ts'
+
+import { isEndScreen, isInRun } from './run.ts'
 
 const isThingRoom = (id: string): boolean => Array.contains(THING_ROOMS, id)
 

@@ -1,11 +1,12 @@
 import { Array, Function, Option, type Record, String, pipe } from 'effect'
 
-import { TILE_SIZE } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { countWork } from '../../shared/workCount'
-import type { DoorId, Vector } from '../schema/entitySchema'
-import { clamp } from '../step/geometry'
-import { SLOT_DOOR_SYMBOLS } from './plan'
+import { TILE_SIZE } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { countWork } from '#shared/workCount.ts'
+import type { DoorId, Vector } from '#world/schema/entitySchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+
+import { SLOT_DOOR_SYMBOLS } from './plan.ts'
 
 export type CoverKind =
   | 'Piano'

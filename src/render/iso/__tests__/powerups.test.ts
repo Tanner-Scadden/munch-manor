@@ -1,16 +1,16 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { AURA_FRAME_COUNT, AURA_SPRITES } from '../../../art/sprites/auras'
-import { PICKUP_SPRITES } from '../../../art/sprites/pickups'
-import type * as Draw from '../../draw'
+import { AURA_FRAME_COUNT, AURA_SPRITES } from '#art/sprites/auras.ts'
+import { PICKUP_SPRITES } from '#art/sprites/pickups.ts'
+import type * as Draw from '#render/draw.ts'
 import {
   auraCubesOf,
   auraFrameOf,
   isPowerupImage,
   pickupRingOf,
   pickupSpinOf,
-} from '../powerups'
+} from '#render/iso/powerups.ts'
 
 const FEET = { x: 160, y: 120 }
 

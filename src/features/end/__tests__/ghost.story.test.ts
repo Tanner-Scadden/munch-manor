@@ -3,11 +3,18 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import { lastHeart, withDareThings } from '../../../test/model.fixture'
-import type { BestRun } from '../../../world/schema/worldSchema'
-import { maybeGhostOf } from '../ghostView'
-import { FOUND_THINGS, diesOnWave7, ended, runAt, wave } from './rank.fixture'
+import type { Model } from '#app/model.ts'
+import { maybeGhostOf } from '#features/end/ghostView.ts'
+import { lastHeart, withDareThings } from '#test/model.fixture.ts'
+import type { BestRun } from '#world/schema/worldSchema.ts'
+
+import {
+  FOUND_THINGS,
+  diesOnWave7,
+  ended,
+  runAt,
+  wave,
+} from './rank.fixture.ts'
 
 const withBestRun = (model: Model, best: BestRun): Model =>
   UiStruct.evolve(model, {

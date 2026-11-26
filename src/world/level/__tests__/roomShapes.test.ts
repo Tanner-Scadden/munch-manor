@@ -1,8 +1,12 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { type Level, levelFor } from '../arena'
-import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
+import { type Level, levelFor } from '#world/level/arena.ts'
+import {
+  UNREACHED_DISTANCE,
+  distanceAt,
+  flowFieldToward,
+} from '#world/level/pathing.ts'
 import {
   ARRANGEMENTS,
   CELLAR_ROOM_ID,
@@ -11,10 +15,15 @@ import {
   PARLOUR_ROOM_ID,
   manorSpecFor,
   roomSpotsOf,
-} from '../plan'
-import { tileCenter } from '../tileGrid'
-import { doorSpawnPoint, isWalkableTile, tileIndexAt } from '../tileQueries'
-import { EVERY_EXIT } from './exits.fixture'
+} from '#world/level/plan.ts'
+import { tileCenter } from '#world/level/tileGrid.ts'
+import {
+  doorSpawnPoint,
+  isWalkableTile,
+  tileIndexAt,
+} from '#world/level/tileQueries.ts'
+
+import { EVERY_EXIT } from './exits.fixture.ts'
 
 const HOUSES = Array.map(ARRANGEMENTS, arrangement => {
   const spec = manorSpecFor(arrangement)

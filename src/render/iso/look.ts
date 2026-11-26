@@ -2,9 +2,10 @@ import { BufferImageSource, Texture } from 'pixi.js'
 
 import type { ShaderBit } from '@pixi/3d'
 
-import type { Level } from '../../world/level/arena'
-import { DARK_EVEN, DARK_TAKES } from './lightSpecs'
-import { LOOK, LOOK_TUNING, type LookSpecs } from './lookSpecs'
+import type { Level } from '#world/level/arena.ts'
+
+import { DARK_EVEN, DARK_TAKES } from './lightSpecs.ts'
+import { LOOK, LOOK_TUNING, type LookSpecs } from './lookSpecs.ts'
 import {
   BRIGHTEST_RANGE,
   CUT_RANGE,
@@ -13,8 +14,8 @@ import {
   rampRowsOf,
   rampTexelsOf,
   roomTexelsOf,
-} from './lookTexels'
-import { PITCH, STRETCH, UNIT } from './space'
+} from './lookTexels.ts'
+import { PITCH, STRETCH, UNIT } from './space.ts'
 
 export const glFloat = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(1) : `${value}`

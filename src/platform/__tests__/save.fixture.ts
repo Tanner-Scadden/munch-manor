@@ -1,10 +1,10 @@
-import { noDareMarks } from '../../shared/dareMarkData'
-import { noJournal } from '../../shared/journalData'
-import { noMastery } from '../../shared/masteryData'
-import { noMissions } from '../../shared/missionData'
-import { noProof } from '../../shared/proofData'
-import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
-import { type PlayerSave, SAVE_VERSION } from '../save'
+import { type PlayerSave, SAVE_VERSION } from '#platform/save.ts'
+import { noDareMarks } from '#shared/dareMarkData.ts'
+import { noJournal } from '#shared/journalData.ts'
+import { noMastery } from '#shared/masteryData.ts'
+import { noMissions } from '#shared/missionData.ts'
+import { noProof } from '#shared/proofData.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 export const learnedSave: PlayerSave = {
   version: SAVE_VERSION,

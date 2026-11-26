@@ -1,10 +1,10 @@
 import { Array, Option, Record, Result } from 'effect'
 
-import type { Model } from '../../app/model'
-import { isEndScreen } from '../../domain/run'
-import { worldOf } from '../../world/schema/world'
-import { Phase } from '../../world/schema/worldSchema'
-import type { Camera } from '../camera'
+import type { Model } from '#app/model.ts'
+import { isEndScreen } from '#domain/run.ts'
+import type { Camera } from '#render/camera.ts'
+import { worldOf } from '#world/schema/world.ts'
+import { Phase } from '#world/schema/worldSchema.ts'
 
 export type HoldKey = ReadonlyArray<unknown>
 

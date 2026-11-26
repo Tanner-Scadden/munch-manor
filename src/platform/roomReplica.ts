@@ -20,8 +20,9 @@ import {
   startSync,
 } from '@munch/sync-engine'
 
-import type { CoopProblem, LobbyChange } from '../domain/coopRoom'
-import { writeLobbyChange } from './lobbyWrite'
+import type { CoopProblem, LobbyChange } from '#domain/coopRoom.ts'
+
+import { writeLobbyChange } from './lobbyWrite.ts'
 
 class RoomAccessError extends Schema.TaggedError<
   RoomAccessError,

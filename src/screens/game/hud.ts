@@ -1,47 +1,47 @@
 import { Array, Function, Option, String, pipe } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   type TextTone,
   bakeText,
   placeBaked,
   textShapes,
   textWidth,
-} from '../../art/font'
+} from '#art/font.ts'
 import {
   type Palette,
   type Sprite,
   TOP_LEFT,
   group,
   spriteShapes,
-} from '../../art/sprite'
-import { gunIcon } from '../../art/sprites/guns'
+} from '#art/sprite.ts'
+import { gunIcon } from '#art/sprites/guns.ts'
 import {
   EMPTY_HEART_SPRITE,
   FLASH_HEART_SPRITE,
   HEART_SPRITE,
-} from '../../art/sprites/hearts'
-import { TRAP_ICONS } from '../../art/sprites/traps'
+} from '#art/sprites/hearts.ts'
+import { TRAP_ICONS } from '#art/sprites/traps.ts'
 import {
   type DarePocket,
   dareCardPointShapes,
   dareCardShapes,
   pocketBoxOf,
   pocketHeaderOf,
-} from '../../features/dare/dareCard'
-import { isOnLastShots } from '../../features/hud/ammoWarning'
-import { isWaitingOnYou } from '../../features/hud/readyNudge'
-import { roomsCounterShapes } from '../../features/kitchen/roomsFound'
-import { isQuestOnCard } from '../../features/onboarding/firstBreakQuest'
+} from '#features/dare/dareCard.ts'
+import { isOnLastShots } from '#features/hud/ammoWarning.ts'
+import { isWaitingOnYou } from '#features/hud/readyNudge.ts'
+import { roomsCounterShapes } from '#features/kitchen/roomsFound.ts'
+import { isQuestOnCard } from '#features/onboarding/firstBreakQuest.ts'
 import {
   isCountdownBeckoning,
   isOpenBreak,
-} from '../../features/onboarding/onboarding'
-import { isCouchPlay } from '../../input/couch'
-import { bossBarShapes } from '../../render/bossView'
-import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
-import * as Draw from '../../render/draw'
-import { FULL_TURN, centeredGlyphs, placeSprite } from '../../render/drawing'
+} from '#features/onboarding/onboarding.ts'
+import { isCouchPlay } from '#input/couch.ts'
+import { bossBarShapes } from '#render/bossView.ts'
+import { type Camera, viewBoxOf, worldToView } from '#render/camera.ts'
+import * as Draw from '#render/draw.ts'
+import { FULL_TURN, centeredGlyphs, placeSprite } from '#render/drawing.ts'
 import {
   HEART_SPACING,
   HUD_MARGIN,
@@ -56,13 +56,13 @@ import {
   hudLayoutFor,
   slotLeftOf,
   slotWidthOf,
-} from '../../render/hudLayout'
-import { PERK_ICONS } from '../../render/kitchenGearView'
-import { seatColorOf } from '../../render/partyView'
-import { maybeMsSinceHurt } from '../../render/playerView'
-import { boostChipShapes } from '../../render/powerupView'
-import { maybeLeakSpan } from '../../render/room/kitchenLeak'
-import type { Screen } from '../../render/screen'
+} from '#render/hudLayout.ts'
+import { PERK_ICONS } from '#render/kitchenGearView.ts'
+import { seatColorOf } from '#render/partyView.ts'
+import { maybeMsSinceHurt } from '#render/playerView.ts'
+import { boostChipShapes } from '#render/powerupView.ts'
+import { maybeLeakSpan } from '#render/room/kitchenLeak.ts'
+import type { Screen } from '#render/screen.ts'
 import {
   HEART_FLASH_MS,
   HEART_PULSE_GROWTH,
@@ -77,9 +77,9 @@ import {
   STREAK_PULSE_SCALE,
   STREAK_SCALE,
   STREAK_WINDOW_MS,
-} from '../../shared/constants'
-import { maybeLevelProgress } from '../../world/gear/gunLevels'
-import { TRAP_KIND_ORDER, maybeSelectedKind } from '../../world/gear/traps'
+} from '#shared/constants.ts'
+import { maybeLevelProgress } from '#world/gear/gunLevels.ts'
+import { TRAP_KIND_ORDER, maybeSelectedKind } from '#world/gear/traps.ts'
 import {
   gunsOf,
   heldSlotOf,
@@ -88,21 +88,21 @@ import {
   magazineOf,
   maxTier,
   maybePanOf,
-} from '../../world/gear/weapons'
-import { maxHpOf } from '../../world/heroes/calling'
+} from '#world/gear/weapons.ts'
+import { maxHpOf } from '#world/heroes/calling.ts'
 import {
   focusOf,
   focusSlotOf,
   leadSeatOf,
   playersOf,
-} from '../../world/party/party'
-import { isPending, isPracticeGateHeld } from '../../world/run/lessons'
+} from '#world/party/party.ts'
+import { isPending, isPracticeGateHeld } from '#world/run/lessons.ts'
 import type {
   CarriedGun,
   Player,
   TrapKind,
   WeaponKind,
-} from '../../world/schema/entitySchema'
+} from '#world/schema/entitySchema.ts'
 import {
   GameEvent,
   type GunPerk,
@@ -110,13 +110,14 @@ import {
   type SeatState,
   Streak,
   TrapNotice,
-} from '../../world/schema/worldSchema'
-import { clamp } from '../../world/step/geometry'
-import { isRoundActive, zombiesRemaining } from '../../world/waves/waves'
-import { maybeBossBar } from '../../world/zombies/boss'
-import { waveLabel } from './overlay'
-import { KEY_RING_SCALE, keyRingLabelOf, pocketOf } from './pocket'
-import { rattlesBubbleShapes } from './stallBubble'
+} from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+import { isRoundActive, zombiesRemaining } from '#world/waves/waves.ts'
+import { maybeBossBar } from '#world/zombies/boss.ts'
+
+import { waveLabel } from './overlay.ts'
+import { KEY_RING_SCALE, keyRingLabelOf, pocketOf } from './pocket.ts'
+import { rattlesBubbleShapes } from './stallBubble.ts'
 
 const streakShapes = (streak: Streak): ReadonlyArray<Draw.Shape> =>
   Streak.match(streak, {

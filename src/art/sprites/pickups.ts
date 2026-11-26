@@ -1,8 +1,9 @@
 import { Record } from 'effect'
 
-import type { PickupKind } from '../../world/schema/entitySchema'
-import { type Palette, type Sprite, spriteShapes } from '../sprite'
-import { HEART_PALETTE, HEART_PIXELS } from './hearts'
+import { type Palette, type Sprite, spriteShapes } from '#art/sprite.ts'
+import type { PickupKind } from '#world/schema/entitySchema.ts'
+
+import { HEART_PALETTE, HEART_PIXELS } from './hearts.ts'
 
 const PICKUP_OUTLINE = '#2a1418'
 

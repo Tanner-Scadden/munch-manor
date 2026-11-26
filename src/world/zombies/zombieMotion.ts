@@ -8,19 +8,19 @@ import {
   SEPARATION_SPEED,
   ZOMBIE_ENTRY_SPEED,
   ZOMBIE_KNOCKBACK_DECAY_PER_SECOND,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { appendOrSame } from '../../shared/sameList'
-import { darkBoxOf, darkPaceAt } from '../cellar/bulb'
-import { chillPace } from '../fridge/fridgeWeapons'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { appendOrSame } from '#shared/sameList.ts'
+import { darkBoxOf, darkPaceAt } from '#world/cellar/bulb.ts'
+import { chillPace } from '#world/fridge/fridgeWeapons.ts'
 import {
   BAIT_RULES,
   barricadedDoors,
   tollsOf,
   trapBlockers,
-} from '../gear/traps'
-import { type Level, levelOf } from '../level/arena'
-import { wadePaceAt } from '../level/leaks'
+} from '#world/gear/traps.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { wadePaceAt } from '#world/level/leaks.ts'
 import {
   type Clearance,
   type FlowField,
@@ -29,17 +29,17 @@ import {
   playerDistancePx,
   steerToBait,
   steerToward,
-} from '../level/pathing'
-import type { Box } from '../level/tileGrid'
-import { isInsideRoomAt } from '../level/tileQueries'
+} from '#world/level/pathing.ts'
+import type { Box } from '#world/level/tileGrid.ts'
+import { isInsideRoomAt } from '#world/level/tileQueries.ts'
 import {
   type DanceFloor,
   danceFloorOf,
   danceVelocity,
   isDancing,
-} from '../parlour/gramophone'
-import { focusOf, nearestOf, targetsOf } from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/parlour/gramophone.ts'
+import { focusOf, nearestOf, targetsOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   type Boss,
   type DoorId,
@@ -48,8 +48,8 @@ import {
   type Vector,
   type Zombie,
   ZombieState,
-} from '../schema/worldSchema'
-import { moveCircle } from '../step/collision'
+} from '#world/schema/worldSchema.ts'
+import { moveCircle } from '#world/step/collision.ts'
 import {
   OUTWARD,
   ZERO_VECTOR,
@@ -59,13 +59,14 @@ import {
   decayKnockback,
   directionBetween,
   scaleVector,
-} from '../step/geometry'
-import { queryAround, queryBuffer, sortAscending } from '../step/grid'
-import { isRooted, paceOf } from './bossFight'
-import { maybeChuckerHeading } from './chucker'
-import { frenzyPace, isFrenzied } from './frenzy'
-import { isLastZombie, lastZombieSpeed } from './lastZombie'
-import { MAX_BODY_RADIUS_PX, groundedColumns } from './zombieGrid'
+} from '#world/step/geometry.ts'
+import { queryAround, queryBuffer, sortAscending } from '#world/step/grid.ts'
+
+import { isRooted, paceOf } from './bossFight.ts'
+import { maybeChuckerHeading } from './chucker.ts'
+import { frenzyPace, isFrenzied } from './frenzy.ts'
+import { isLastZombie, lastZombieSpeed } from './lastZombie.ts'
+import { MAX_BODY_RADIUS_PX, groundedColumns } from './zombieGrid.ts'
 import {
   bodyRadiusOf,
   isFree,
@@ -73,7 +74,7 @@ import {
   radiusOf,
   statsOf,
   strideAt,
-} from './zombies'
+} from './zombies.ts'
 
 const isFinishedDying = (zombie: Zombie): boolean =>
   ZombieState.match(zombie.state, {

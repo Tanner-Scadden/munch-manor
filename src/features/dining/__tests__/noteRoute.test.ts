@@ -1,19 +1,19 @@
 import { Array, Option, Result } from 'effect'
 import { expect, test } from 'vitest'
 
-import { levelFor, roomAt } from '../../../world/level/arena'
+import { type NoteRoute, noteRouteOf } from '#features/dining/hubTouchView.ts'
+import { levelFor, roomAt } from '#world/level/arena.ts'
 import {
   ARRANGEMENTS,
   DINING_ROOM_ID,
   PARLOUR_ROOM_ID,
   manorSpecFor,
   roomSpotsOf,
-} from '../../../world/level/plan'
-import { distanceToBox, tileBox } from '../../../world/level/tileGrid'
-import { isSolidAt } from '../../../world/level/tileQueries'
-import type { Vector } from '../../../world/schema/worldSchema'
-import { stationCenterOf } from '../../../world/stations/stationSpots'
-import { type NoteRoute, noteRouteOf } from '../hubTouchView'
+} from '#world/level/plan.ts'
+import { distanceToBox, tileBox } from '#world/level/tileGrid.ts'
+import { isSolidAt } from '#world/level/tileQueries.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { stationCenterOf } from '#world/stations/stationSpots.ts'
 
 const EVERY_EXIT = ['West', 'East', 'Far', 'Kitchen'] as const
 

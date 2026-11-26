@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, Schema } from 'effect'
 
-import { DayStamp, laterDay } from './dayStamp'
+import { DayStamp, laterDay } from './dayStamp.ts'
 
 export const MissionId = Schema.Literals([
   'HotfootKills',

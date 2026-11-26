@@ -1,6 +1,6 @@
 import { Function } from 'effect'
 
-import type * as Draw from '../draw'
+import type * as Draw from '#render/draw.ts'
 
 export type Affine = Readonly<{
   a: number

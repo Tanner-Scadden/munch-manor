@@ -1,72 +1,73 @@
 import { Array, Function, Option, Predicate, Record, Result } from 'effect'
 
-import { spriteWarmUpSources } from '../art/appearance'
-import { atlasRoomSources } from '../art/spriteAtlas'
-import { clocheShapes } from '../features/cloche/clocheView'
-import { darePointerShapes } from '../features/dare/darePointer'
-import { frontDoorMarkerShapes } from '../features/dare/frontDoorView'
-import { pocketCardShapes } from '../features/dare/pocketCardView'
-import { lensOf } from '../features/end/endBeat'
+import { spriteWarmUpSources } from '#art/appearance.ts'
+import { atlasRoomSources } from '#art/spriteAtlas.ts'
+import { clocheShapes } from '#features/cloche/clocheView.ts'
+import { darePointerShapes } from '#features/dare/darePointer.ts'
+import { frontDoorMarkerShapes } from '#features/dare/frontDoorView.ts'
+import { pocketCardShapes } from '#features/dare/pocketCardView.ts'
+import { lensOf } from '#features/end/endBeat.ts'
 import {
   fridgeRevealShapes,
   prizeFlightShapes,
-} from '../features/fridge/fridgeRevealView'
-import { fridgeOddsShapes } from '../features/fridge/fridgeView'
-import { stragglerEdgeShapes } from '../features/hud/stragglerEdge'
-import { wavePreviewShapes } from '../features/hud/wavePreview'
-import { introShapes } from '../features/intro/introView'
-import { caseCardShapes } from '../features/onboarding/caseCardView'
+} from '#features/fridge/fridgeRevealView.ts'
+import { fridgeOddsShapes } from '#features/fridge/fridgeView.ts'
+import { stragglerEdgeShapes } from '#features/hud/stragglerEdge.ts'
+import { wavePreviewShapes } from '#features/hud/wavePreview.ts'
+import { introShapes } from '#features/intro/introView.ts'
+import { caseCardShapes } from '#features/onboarding/caseCardView.ts'
 import {
   maybeTourMark,
   questEdgeShapes,
-} from '../features/onboarding/questEdgeView'
-import { coopEdgeShapes } from '../features/onlineRun/coopMarksView'
-import { purchaseOverlayShapes } from '../features/shop/purchaseView'
-import { thumbAreaView } from '../input/thumbArea'
-import { bossBandShapes } from '../render/bossView'
+} from '#features/onboarding/questEdgeView.ts'
+import { coopEdgeShapes } from '#features/onlineRun/coopMarksView.ts'
+import { purchaseOverlayShapes } from '#features/shop/purchaseView.ts'
+import { thumbAreaView } from '#input/thumbArea.ts'
+import { bossBandShapes } from '#render/bossView.ts'
 import {
   type Camera,
   toScreenCamera,
   viewBoxOf,
   worldCameraFor,
   worldToView,
-} from '../render/camera'
-import { cineBarShapes } from '../render/cine'
-import type * as Draw from '../render/draw'
-import { IsoLens } from '../render/iso/diorama'
-import { worldElement } from '../render/iso/element'
-import type { IsoFrame } from '../render/iso/frame'
-import { holdKeyOf } from '../render/iso/hold'
-import { overlayElement } from '../render/iso/overlayElement'
-import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
-import { everyRoomImage } from '../render/room/room'
-import { FLOOR_COLOR } from '../render/room/roomPalette'
+} from '#render/camera.ts'
+import { cineBarShapes } from '#render/cine.ts'
+import type * as Draw from '#render/draw.ts'
+import { IsoLens } from '#render/iso/diorama.ts'
+import { worldElement } from '#render/iso/element.ts'
+import type { IsoFrame } from '#render/iso/frame.ts'
+import { holdKeyOf } from '#render/iso/hold.ts'
+import { overlayElement } from '#render/iso/overlayElement.ts'
+import { calloutShapes, levelCalloutShapes } from '#render/powerupView.ts'
+import { everyRoomImage } from '#render/room/room.ts'
+import { FLOOR_COLOR } from '#render/room/roomPalette.ts'
 import {
   type Screen,
   inLandscapeFrame,
   screenOf,
   stagePlacement,
-} from '../render/screen'
-import { hudShapes, hudStripShapes } from '../screens/game/hud'
-import { overlayShapes } from '../screens/game/overlay'
+} from '#render/screen.ts'
+import { hudShapes, hudStripShapes } from '#screens/game/hud.ts'
+import { overlayShapes } from '#screens/game/overlay.ts'
 import {
   hudAndBannerKeepoutsOf,
   pinnedKeepoutsOf,
   pocketOf,
-} from '../screens/game/pocket'
+} from '#screens/game/pocket.ts'
 import {
   shakeOffset,
   worldLayerShapes,
   worldStrataOf,
-} from '../screens/game/worldView'
-import { percentOf } from '../ui/menuParts'
-import { levelOf } from '../world/level/arena'
-import type { LevelSpec } from '../world/level/plan'
-import { focusOf } from '../world/party/party'
-import { isArriving } from '../world/run/arrival'
-import { isRoundActive } from '../world/waves/waves'
-import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
-import { type Model, Phase, defaultAppearance } from './model'
+} from '#screens/game/worldView.ts'
+import { percentOf } from '#ui/menuParts.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { LevelSpec } from '#world/level/plan.ts'
+import { focusOf } from '#world/party/party.ts'
+import { isArriving } from '#world/run/arrival.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from './definition.ts'
+import { type Model, Phase, defaultAppearance } from './model.ts'
 
 const calloutLayerShapes = (
   model: Model,

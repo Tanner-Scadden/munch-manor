@@ -1,16 +1,17 @@
 import { Array, Option, Record, String } from 'effect'
 
-import { cropSetOf, makeCropTable } from '../../art/sprite'
+import { cropSetOf, makeCropTable } from '#art/sprite.ts'
 import {
   AURA_CENTER,
   AURA_PALETTES,
   AURA_SPRITES,
   AURA_STAMPS,
-} from '../../art/sprites/auras'
-import { PICKUP_SPRITES } from '../../art/sprites/pickups'
-import type { BoostKind } from '../../world/schema/entitySchema'
-import type * as Draw from '../draw'
-import type { Affine } from './flatten'
+} from '#art/sprites/auras.ts'
+import { PICKUP_SPRITES } from '#art/sprites/pickups.ts'
+import type * as Draw from '#render/draw.ts'
+import type { BoostKind } from '#world/schema/entitySchema.ts'
+
+import type { Affine } from './flatten.ts'
 
 const AURA_FRAMES =
   makeCropTable<Readonly<{ kind: BoostKind; frame: number }>>()

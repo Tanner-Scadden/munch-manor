@@ -3,10 +3,18 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { STICK_RADIUS_PX } from '../../shared/constants'
-import { nearly } from '../../test/lensTesting'
-import { playingModel } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { cameraOf, worldToView } from '#render/camera.ts'
+import {
+  type LensFrame,
+  YAW,
+  floorToScreenDirection,
+  lensOf,
+  screenToFloorDirection,
+} from '#render/lens.ts'
+import { STICK_RADIUS_PX } from '#shared/constants.ts'
+import { nearly } from '#test/lensTesting.ts'
+import { playingModel } from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   WIDE_SURFACE,
@@ -17,16 +25,8 @@ import {
   ticks,
   touchDown,
   touchMove,
-} from '../../test/testing'
-import { focusOf } from '../../world/party/party'
-import { cameraOf, worldToView } from '../camera'
-import {
-  type LensFrame,
-  YAW,
-  floorToScreenDirection,
-  lensOf,
-  screenToFloorDirection,
-} from '../lens'
+} from '#test/testing.ts'
+import { focusOf } from '#world/party/party.ts'
 
 const DESKTOP: LensFrame = {
   x: 240,

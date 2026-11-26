@@ -1,7 +1,7 @@
-import { KEY_SPRITE } from '../../art/font'
-import { type Sprite, spriteShapes } from '../../art/sprite'
-import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
-import type { CrewAward } from '../../world/names'
+import { KEY_SPRITE } from '#art/font.ts'
+import { type Sprite, spriteShapes } from '#art/sprite.ts'
+import { ZOMBIE_SPRITES } from '#art/sprites/zombies.ts'
+import type { CrewAward } from '#world/names.ts'
 
 export type TallyIcon = 'Wave' | 'Time' | 'Kills' | 'Streak' | 'Aim' | 'Keys'
 

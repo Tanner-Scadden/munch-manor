@@ -1,10 +1,11 @@
 import { UiSchema } from '@effect/ui'
 
-import { ShopGuideSection } from '../../shared/nameKeys'
-import { MilestoneId } from '../../world/dare/milestones'
-import { ZombieKind } from '../../world/schema/entitySchema'
-import { JournalTab } from './journalPages'
-import { MunchopediaPage } from './model'
+import { ShopGuideSection } from '#shared/nameKeys.ts'
+import { MilestoneId } from '#world/dare/milestones.ts'
+import { ZombieKind } from '#world/schema/entitySchema.ts'
+
+import { JournalTab } from './journalPages.ts'
+import { MunchopediaPage } from './model.ts'
 
 export const Message = UiSchema.TaggedEnum({
   ClickedEntryButton: { kind: ZombieKind },

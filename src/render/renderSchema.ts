@@ -1,8 +1,8 @@
 import { Schema } from 'effect'
 
-import { DareKind } from '../world/dare/dareSchema'
-import { ParticleKind, Vector } from '../world/schema/entitySchema'
-import { MillisNumber } from '../world/schema/wireNumber'
+import { DareKind } from '#world/dare/dareSchema.ts'
+import { ParticleKind, Vector } from '#world/schema/entitySchema.ts'
+import { MillisNumber } from '#world/schema/wireNumber.ts'
 
 export const Particle = Schema.Struct({
   kind: ParticleKind,

@@ -1,8 +1,8 @@
 import type { Component, Mount, View } from '@effect/ui'
 import { Html } from '@effect/ui/html'
 
-import { Message } from './message'
-import { Model } from './model'
+import { Message } from './message.ts'
+import { Model } from './model.ts'
 
 export const ApplicationDef = Html.component({
   name: 'Application',

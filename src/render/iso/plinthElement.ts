@@ -2,9 +2,10 @@ import { Effect, Option } from 'effect'
 
 import { Html } from '@effect/ui/html'
 
-import { toBrowserError } from '../../shared/describeError'
-import { drawPlinthOnWorld } from './element'
-import { type PlinthPose, PlinthPoseSchema } from './plinthPose'
+import { toBrowserError } from '#shared/describeError.ts'
+
+import { drawPlinthOnWorld } from './element.ts'
+import { type PlinthPose, PlinthPoseSchema } from './plinthPose.ts'
 
 const TAG = 'munch-plinth'
 

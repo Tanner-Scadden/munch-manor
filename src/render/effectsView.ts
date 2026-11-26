@@ -1,7 +1,7 @@
 import { Array, Result } from 'effect'
 
-import { type TextTone, textWidth } from '../art/font'
-import { group } from '../art/sprite'
+import { type TextTone, textWidth } from '#art/font.ts'
+import { group } from '#art/sprite.ts'
 import {
   BLOOD_DECAL_COLOR,
   BLOOD_DECAL_FADED_COLOR,
@@ -59,9 +59,9 @@ import {
   SPLINTER_COLOR,
   WOOD_DECAL_COLOR,
   WOOD_DECAL_FADED_COLOR,
-} from '../shared/constants'
-import { type Level, levelOf } from '../world/level/arena'
-import { SAVE_WORDS } from '../world/names'
+} from '#shared/constants.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { SAVE_WORDS } from '#world/names.ts'
 import type {
   Bullet,
   BulletGlaze,
@@ -69,19 +69,20 @@ import type {
   ParticleKind,
   Vector,
   WeaponKind,
-} from '../world/schema/entitySchema'
-import type { World } from '../world/schema/world'
-import { Phase, type Popup } from '../world/schema/worldSchema'
-import { clamp } from '../world/step/geometry'
-import { routeSpawns } from '../world/waves/doorRoute'
-import { rattlingDoors } from '../world/waves/pacing'
-import { bossRattleDoors } from '../world/zombies/boss'
-import type { Camera } from './camera'
-import * as Draw from './draw'
-import { centeredGlyphs, centeredRect, progressBetween } from './drawing'
-import { POPUP_LIFETIME_MS } from './juice'
-import { lensOf } from './lens'
-import type { Decal, DecalKind, Particle } from './renderSchema'
+} from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/world.ts'
+import { Phase, type Popup } from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+import { routeSpawns } from '#world/waves/doorRoute.ts'
+import { rattlingDoors } from '#world/waves/pacing.ts'
+import { bossRattleDoors } from '#world/zombies/boss.ts'
+
+import type { Camera } from './camera.ts'
+import * as Draw from './draw.ts'
+import { centeredGlyphs, centeredRect, progressBetween } from './drawing.ts'
+import { POPUP_LIFETIME_MS } from './juice.ts'
+import { lensOf } from './lens.ts'
+import type { Decal, DecalKind, Particle } from './renderSchema.ts'
 
 const BULLET_SIZE = 2
 const BULLET_COLOR = '#ffe066'

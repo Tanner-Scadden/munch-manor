@@ -1,7 +1,5 @@
 import { Array, Option, Record, String, pipe } from 'effect'
 
-import type { TrapStage } from '../../world/gear/traps'
-import type { TrapKind } from '../../world/schema/entitySchema'
 import {
   type Palette,
   type Sprite,
@@ -12,7 +10,9 @@ import {
   spriteSet,
   spriteShapes,
   spriteWidth,
-} from '../sprite'
+} from '#art/sprite.ts'
+import type { TrapStage } from '#world/gear/traps.ts'
+import type { TrapKind } from '#world/schema/entitySchema.ts'
 
 export const GNOME_PALETTE: Palette = {
   R: '#d8423a',

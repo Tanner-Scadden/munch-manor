@@ -2,8 +2,9 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { SoundEffect } from '../shared/soundEffect'
-import { PlayOutcome, Playback } from './audio'
+import { SoundEffect } from '#shared/soundEffect.ts'
+
+import { PlayOutcome, Playback } from './audio.ts'
 
 export const soundCases = {
   ClickedMuteButton: {},

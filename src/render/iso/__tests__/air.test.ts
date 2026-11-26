@@ -3,12 +3,12 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../../app/model'
-import { atClock, quietWave } from '../../../test/model.fixture'
-import { levelOf, openExitIn } from '../../../world/level/arena'
-import { WEST_EXIT } from '../../../world/level/plan'
-import { houseRattleOf } from '../../juice'
-import { airOf } from '../air'
+import type { Model } from '#app/model.ts'
+import { airOf } from '#render/iso/air.ts'
+import { houseRattleOf } from '#render/juice.ts'
+import { atClock, quietWave } from '#test/model.fixture.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { WEST_EXIT } from '#world/level/plan.ts'
 
 const airAt = (model: Model, ms: number) => {
   const world = atClock(model, ms)

@@ -9,8 +9,9 @@ import {
   pipe,
 } from 'effect'
 
-import { toBrowserError } from '../shared/describeError'
-import type { InstallOffer, InstallOutcome } from './deviceSchema'
+import { toBrowserError } from '#shared/describeError.ts'
+
+import type { InstallOffer, InstallOutcome } from './deviceSchema.ts'
 
 export class InstallPrompt extends Context.Service<
   InstallPrompt,

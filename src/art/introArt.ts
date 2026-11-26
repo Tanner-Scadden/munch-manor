@@ -1,7 +1,8 @@
 import { Array } from 'effect'
 
-import * as Draw from '../render/draw'
-import { type Sprite, TOP_LEFT, bakeShapes, spriteShapes } from './sprite'
+import * as Draw from '#render/draw.ts'
+
+import { type Sprite, TOP_LEFT, bakeShapes, spriteShapes } from './sprite.ts'
 
 export const PICTURE_WIDTH = 160
 export const PICTURE_HEIGHT = 90

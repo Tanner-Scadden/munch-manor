@@ -1,6 +1,6 @@
 import { Array, Option, String } from 'effect'
 
-import { type Sprite, TOP_LEFT, spriteShapes } from './sprite'
+import { type Sprite, TOP_LEFT, spriteShapes } from './sprite.ts'
 
 const PALETTE = {
   o: '#140a04',

@@ -4,28 +4,24 @@ import { UiStruct } from '@effect/ui'
 import { Dialog } from '@effect/ui-kit'
 import { describe, expect, it } from '@effect/vitest'
 
+import { BreakClock, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { RootDialog } from '#app/rootDialog.ts'
 import {
   HAND_DIALOG_ID,
   HOME_SCREEN_STEPS_ID,
   PANEL_DIALOG_ID,
   PROFILE_DIALOG_ID,
   UPDATE_GREETING_ID,
-} from '../../domain/clientSchema'
-import * as Coop from '../../domain/coopRoom'
-import { PREPARATION_MS } from '../../shared/constants'
-import { holdingSecond } from '../../test/arsenals'
-import { homeAfterRead } from '../../test/model.fixture'
-import {
-  ackHudSlots,
-  dialogModel,
-  measureSurface,
-} from '../../test/sceneTesting'
-import { type SceneStep, sceneOf } from '../../test/testing'
-import { type ViewNode, nodesOf } from '../../test/viewReading'
-import { modifyFocus } from '../../world/party/party'
-import { BreakClock, type Model, Phase } from '../model'
-import { initialModel } from '../pureApp'
-import { RootDialog } from '../rootDialog'
+} from '#domain/clientSchema.ts'
+import * as Coop from '#domain/coopRoom.ts'
+import { PREPARATION_MS } from '#shared/constants.ts'
+import { holdingSecond } from '#test/arsenals.ts'
+import { homeAfterRead } from '#test/model.fixture.ts'
+import { ackHudSlots, dialogModel, measureSurface } from '#test/sceneTesting.ts'
+import { type SceneStep, sceneOf } from '#test/testing.ts'
+import { type ViewNode, nodesOf } from '#test/viewReading.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const DIALOG_IDS = [
   HOME_SCREEN_STEPS_ID,

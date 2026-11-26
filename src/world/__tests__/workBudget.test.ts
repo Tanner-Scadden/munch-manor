@@ -2,9 +2,9 @@ import { Effect } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { TILE_SIZE } from '../../shared/constants'
-import { resetWorkCounts, workCounts } from '../../shared/workCount'
-import { quietWave } from '../../test/model.fixture'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { resetWorkCounts, workCounts } from '#shared/workCount.ts'
+import { quietWave } from '#test/model.fixture.ts'
 import {
   FRAME_MS,
   modelAfter,
@@ -12,9 +12,10 @@ import {
   release,
   steps,
   ticks,
-} from '../../test/testing'
-import { focusOf } from '../party/party'
-import { crowdOf } from './workBudget.fixture'
+} from '#test/testing.ts'
+import { focusOf } from '#world/party/party.ts'
+
+import { crowdOf } from './workBudget.fixture.ts'
 
 const CROWD = 15
 const FRAMES = 240

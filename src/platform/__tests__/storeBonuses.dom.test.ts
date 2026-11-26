@@ -2,16 +2,16 @@ import { Effect, Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { changesBetween } from '#platform/playerSync.ts'
+import { type PlayerSave } from '#platform/save.ts'
 import {
   legacySave,
   linkedPair,
   synced,
   until,
   write,
-} from '../../test/store.fixture'
-import { noRank, pointsForRank } from '../../world/heroes/rank'
-import { changesBetween } from '../playerSync'
-import { type PlayerSave } from '../save'
+} from '#test/store.fixture.ts'
+import { noRank, pointsForRank } from '#world/heroes/rank.ts'
 
 const TODAY = '2026-11-12'
 

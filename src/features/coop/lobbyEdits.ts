@@ -7,19 +7,20 @@ import {
   type NudgeReason,
   type Room,
   isInLobby,
-} from '../../domain/coopRoom'
-import { cleanName, draftName, rollName } from '../../domain/playerName'
-import { clampMark, isCoveredByMark } from '../../world/run/dareLadder'
-import { nextEasyBreakOf } from '../../world/run/difficulty'
+} from '#domain/coopRoom.ts'
+import { cleanName, draftName, rollName } from '#domain/playerName.ts'
+import { clampMark, isCoveredByMark } from '#world/run/dareLadder.ts'
+import { nextEasyBreakOf } from '#world/run/difficulty.ts'
 import {
   type Modifier,
   maskOfModifiers,
   modifiersOfMask,
   toggledModifier,
-} from '../../world/run/modifiers'
-import { CoopNotice } from './message'
-import { type Model } from './model'
-import { type CoopFocus, isPicking, meIn, withRoom } from './roomState'
+} from '#world/run/modifiers.ts'
+
+import { CoopNotice } from './message.ts'
+import { type Model } from './model.ts'
+import { type CoopFocus, isPicking, meIn, withRoom } from './roomState.ts'
 
 export type EditCommands<C> = Readonly<{
   changeLobby: (change: LobbyChange) => C

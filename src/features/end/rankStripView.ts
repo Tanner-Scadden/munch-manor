@@ -1,13 +1,13 @@
 import { Array, Function, Option, String } from 'effect'
 
-import type { Model } from '../../app/model'
-import { playerSprites } from '../../art/appearance'
+import type { Model } from '#app/model.ts'
+import { playerSprites } from '#art/appearance.ts'
 import {
   DARE_BIG_ICONS,
   DARE_BIG_ICON_SIZE,
   JOURNAL_BIG_ICON,
-} from '../../art/dareArt'
-import { GLYPH_HEIGHT, textShapes, textWidth } from '../../art/font'
+} from '#art/dareArt.ts'
+import { GLYPH_HEIGHT, textShapes, textWidth } from '#art/font.ts'
 import {
   BONE,
   BONE_SIZE,
@@ -15,22 +15,22 @@ import {
   PURSE_SIZE,
   badgeSprite,
   shineSprite,
-} from '../../art/rankArt'
-import { frameAt, group, placeAt } from '../../art/sprite'
-import { gunIcon, gunSprite } from '../../art/sprites/guns'
-import { PART_OF_KIND, chooseLook } from '../../domain/looks'
-import { heroRewardAt } from '../../domain/mastery'
-import type * as Draw from '../../render/draw'
-import { rect } from '../../render/drawing'
-import { GUN_HOLD_PX } from '../../render/playerView'
-import { PLAYER_FOOT_OFFSET } from '../../shared/constants'
-import { milestoneOf } from '../../world/dare/milestones'
-import { callingPriceOf } from '../../world/heroes/calling'
+} from '#art/rankArt.ts'
+import { frameAt, group, placeAt } from '#art/sprite.ts'
+import { gunIcon, gunSprite } from '#art/sprites/guns.ts'
+import { PART_OF_KIND, chooseLook } from '#domain/looks.ts'
+import { heroRewardAt } from '#domain/mastery.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { GUN_HOLD_PX } from '#render/playerView.ts'
+import { PLAYER_FOOT_OFFSET } from '#shared/constants.ts'
+import { milestoneOf } from '#world/dare/milestones.ts'
+import { callingPriceOf } from '#world/heroes/calling.ts'
 import {
   badgeTierOf,
   rankProgressOf,
   shownPointsOf,
-} from '../../world/heroes/rank'
+} from '#world/heroes/rank.ts'
 import {
   BONE_BONUS_TAGS,
   CALLING_NAMES,
@@ -41,8 +41,9 @@ import {
   PURSE_NAME,
   STORY_TITLES,
   giftName,
-} from '../../world/names'
-import { sparkShapes } from './crewBoardView'
+} from '#world/names.ts'
+
+import { sparkShapes } from './crewBoardView.ts'
 import {
   CALLING_FLIP_MS,
   type EndKind,
@@ -62,7 +63,7 @@ import {
   unlockGoneMs,
   unlockStartMs,
   unlocksOf,
-} from './endBeat'
+} from './endBeat.ts'
 
 export const STRIP_PX = 11
 

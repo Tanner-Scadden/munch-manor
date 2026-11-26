@@ -5,40 +5,40 @@ import { Mount } from '@effect/ui'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/definition'
-import type { Model } from '../../app/model'
-import { pixelArtStyle } from '../../art/artSize'
+} from '#app/definition.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/artSize.ts'
 import {
   MEDIC_ICON,
   NEXT_TRAP_ICON,
   RELOAD_ICON,
   TRAP_BUTTON_ICONS,
-} from '../../art/icons'
-import { QUEST_START_ARROW_ICON } from '../../art/questIcons'
-import type { SoundMessage } from '../../audio/message'
+} from '#art/icons.ts'
+import { QUEST_START_ARROW_ICON } from '#art/questIcons.ts'
+import type { SoundMessage } from '#audio/message.ts'
 import {
   isPocketCardOpened,
   isPocketCardReading,
-} from '../../features/dare/pocketCard'
-import { isWaitingOnYou } from '../../features/hud/readyNudge'
-import { wavePreviewView } from '../../features/hud/wavePreview'
-import { isCaseCardUp } from '../../features/onboarding/caseCard'
-import { isQuestOnStart } from '../../features/onboarding/firstBreakQuest'
+} from '#features/dare/pocketCard.ts'
+import { isWaitingOnYou } from '#features/hud/readyNudge.ts'
+import { wavePreviewView } from '#features/hud/wavePreview.ts'
+import { isCaseCardUp } from '#features/onboarding/caseCard.ts'
+import { isQuestOnStart } from '#features/onboarding/firstBreakQuest.ts'
 import {
   type GhostStick,
   isDebutCardUp,
   isStartWaveBeckoning,
   shownGhostSticks,
-} from '../../features/onboarding/onboarding'
-import { holdButtonView } from '../../features/shop/purchaseHud'
-import { thumbOffset } from '../../input/input'
-import { Stick } from '../../input/inputSchema'
+} from '#features/onboarding/onboarding.ts'
+import { holdButtonView } from '#features/shop/purchaseHud.ts'
+import { thumbOffset } from '#input/input.ts'
+import { Stick } from '#input/inputSchema.ts'
 import {
   InputMessage,
   type PressedHudSlot,
   RunButtonMessage,
-} from '../../input/message'
-import type { DeviceMessage } from '../../platform/message'
+} from '#input/message.ts'
+import type { DeviceMessage } from '#platform/message.ts'
 import {
   MELEE_SLOT_INDEX,
   SLOT_GAP,
@@ -46,18 +46,18 @@ import {
   gunPairWidthOf,
   gunSlotBox,
   reloadFaceOf,
-} from '../../render/hudLayout'
-import { type Screen, screenOf } from '../../render/screen'
-import { STICK_RADIUS_PX } from '../../shared/constants'
-import { isKeyboard, percentOf } from '../../ui/menuParts'
-import { gunName } from '../../world/gear/gunLevels'
+} from '#render/hudLayout.ts'
+import { type Screen, screenOf } from '#render/screen.ts'
+import { STICK_RADIUS_PX } from '#shared/constants.ts'
+import { isKeyboard, percentOf } from '#ui/menuParts.ts'
+import { gunName } from '#world/gear/gunLevels.ts'
 import {
   PlaceVerdict,
   type Placement,
   TRAPS,
   maybeNextKind,
   maybePlacement,
-} from '../../world/gear/traps'
+} from '#world/gear/traps.ts'
 import {
   canReload,
   gunsOf,
@@ -66,24 +66,25 @@ import {
   isWieldingMelee,
   meleeNameOf,
   tierName,
-} from '../../world/gear/weapons'
-import { MEDIC_WORD } from '../../world/names'
-import { isCallFresh } from '../../world/party/medic'
+} from '#world/gear/weapons.ts'
+import { MEDIC_WORD } from '#world/names.ts'
+import { isCallFresh } from '#world/party/medic.ts'
 import {
   focusOf,
   focusSlotOf,
   isCoop,
   isDowned,
   leadSeatOf,
-} from '../../world/party/party'
+} from '#world/party/party.ts'
 import {
   BreakClock,
   GunSlot,
   Phase,
   TrapHint,
-} from '../../world/schema/worldSchema'
-import { isRoundActive } from '../../world/waves/waves'
-import { secondsLeft } from './hud'
+} from '#world/schema/worldSchema.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
+
+import { secondsLeft } from './hud.ts'
 
 const ICON_BUTTON_PX = 48
 

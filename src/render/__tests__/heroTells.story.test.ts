@@ -9,31 +9,28 @@ import {
   Phase,
   Trap,
   defaultAppearance,
-} from '../../app/model'
-import { mendCues } from '../../app/update/sound'
-import { BODIES, OUTFITS, playerPixels } from '../../art/appearance'
-import { HAT_ART } from '../../art/sprites/hatArt'
-import { Screen } from '../../domain/coopRoom'
-import { freshRoom } from '../../features/coop/roomState'
+} from '#app/model.ts'
+import { mendCues } from '#app/update/sound.ts'
+import { BODIES, OUTFITS, playerPixels } from '#art/appearance.ts'
+import { HAT_ART } from '#art/sprites/hatArt.ts'
+import { Screen } from '#domain/coopRoom.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
 import {
   CODE,
   lobbyOf,
   memberOf,
   playingSession,
-} from '../../features/coop/testing'
-import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
-import type { Appearance, Calling } from '../../shared/playerData'
-import { atSeat, crewInWave, playingModel } from '../../test/model.fixture'
-import { TRAPS } from '../../world/gear/traps'
-import { CALLINGS } from '../../world/heroes/calling'
-import { playerOfCalling } from '../../world/heroes/callingPlayer'
-import { START_LEVEL } from '../../world/level/arena'
-import {
-  DEFAULT_ROOM_SETTINGS,
-  startRoomWorld,
-} from '../../world/net/roomWorld'
-import { modifyFocus } from '../../world/party/party'
-import { advanceTells, mendedSpots } from '../heroTells'
+} from '#features/coop/testing.ts'
+import { coopNameShapes } from '#features/onlineRun/coopMarksView.ts'
+import { advanceTells, mendedSpots } from '#render/heroTells.ts'
+import type { Appearance, Calling } from '#shared/playerData.ts'
+import { atSeat, crewInWave, playingModel } from '#test/model.fixture.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { CALLINGS } from '#world/heroes/calling.ts'
+import { playerOfCalling } from '#world/heroes/callingPlayer.ts'
+import { START_LEVEL } from '#world/level/arena.ts'
+import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from '#world/net/roomWorld.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const HEROES: ReadonlyArray<Calling> = Array.filter(
   CALLINGS,

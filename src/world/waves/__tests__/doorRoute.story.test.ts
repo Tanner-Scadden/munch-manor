@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   type DoorId,
@@ -16,23 +16,17 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { PREPARATION_MS } from '../../../shared/constants'
-import {
-  checkModel,
-  modelAfter,
-  send,
-  steps,
-  ticks,
-} from '../../../test/testing'
-import { TRAPS, trapBox } from '../../gear/traps'
-import { MANOR, levelOf } from '../../level/arena'
-import { distanceToBox } from '../../level/tileGrid'
-import { isInsideRoomAt, nearestDoor } from '../../level/tileQueries'
-import { modifyFocus } from '../../party/party'
-import { drawSurfacingSpot } from '../../zombies/crawler'
-import { doorCounts } from '../endlessWaves'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { PREPARATION_MS } from '#shared/constants.ts'
+import { checkModel, modelAfter, send, steps, ticks } from '#test/testing.ts'
+import { TRAPS, trapBox } from '#world/gear/traps.ts'
+import { MANOR, levelOf } from '#world/level/arena.ts'
+import { distanceToBox } from '#world/level/tileGrid.ts'
+import { isInsideRoomAt, nearestDoor } from '#world/level/tileQueries.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import { doorCounts } from '#world/waves/endlessWaves.ts'
+import { drawSurfacingSpot } from '#world/zombies/crawler.ts'
 
 const FRAME_MS = 50
 

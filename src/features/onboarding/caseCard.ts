@@ -2,16 +2,17 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../app/model'
-import { CaseCard, PocketCard, QuestTour } from '../../domain/clientSchema'
-import { caseFootOf, isCaseShown } from '../../world/feats/caseSpots'
-import { levelOf } from '../../world/level/arena'
-import { focusOf, isCoop } from '../../world/party/party'
-import { isPending, isPracticeGateHeld, learn } from '../../world/run/lessons'
-import { isKitchenTourOn } from '../../world/run/tutorialRules'
-import { type DisplayCase, Phase } from '../../world/schema/worldSchema'
-import { distanceBetween } from '../../world/step/geometry'
-import { questStepOf } from './firstBreakQuest'
+import type { Model } from '#app/model.ts'
+import { CaseCard, PocketCard, QuestTour } from '#domain/clientSchema.ts'
+import { caseFootOf, isCaseShown } from '#world/feats/caseSpots.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { focusOf, isCoop } from '#world/party/party.ts'
+import { isPending, isPracticeGateHeld, learn } from '#world/run/lessons.ts'
+import { isKitchenTourOn } from '#world/run/tutorialRules.ts'
+import { type DisplayCase, Phase } from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
+
+import { questStepOf } from './firstBreakQuest.ts'
 
 export const CASE_CARD_MIN_MS = 700
 export const CASE_CARD_MS = 6000

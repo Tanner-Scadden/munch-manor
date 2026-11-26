@@ -1,9 +1,10 @@
 import { Function, Option } from 'effect'
 
-import { isObjectFirst } from '../shared/dualArgs'
-import type { Appearance, Calling } from '../shared/playerData'
-import { appearanceKey, playerPalette, playerPixels } from './appearance'
-import { pixelIconUrl } from './icons'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+import type { Appearance, Calling } from '#shared/playerData.ts'
+
+import { appearanceKey, playerPalette, playerPixels } from './appearance.ts'
+import { pixelIconUrl } from './icons.ts'
 
 const LIGHT = '#f4f1de'
 const SHADE = '#140c10'

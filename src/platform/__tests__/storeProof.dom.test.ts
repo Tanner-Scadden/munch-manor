@@ -2,22 +2,22 @@ import { Array, Effect, Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { changesBetween } from '#platform/playerSync.ts'
+import { type PlayerSave } from '#platform/save.ts'
 import {
   type ProofEntry,
   type ProofStamp,
   type SavedProof,
   mergeProof,
   shelve,
-} from '../../shared/proofData'
+} from '#shared/proofData.ts'
 import {
   legacySave,
   linkedPair,
   synced,
   until,
   write,
-} from '../../test/store.fixture'
-import { changesBetween } from '../playerSync'
-import { type PlayerSave } from '../save'
+} from '#test/store.fixture.ts'
 
 const stampOn = (day: string | null, wave: number): ProofStamp => ({
   wave,

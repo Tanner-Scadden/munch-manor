@@ -3,11 +3,12 @@ import type { Application } from 'pixi.js'
 
 import type { View3D } from '@pixi/3d'
 
-import { isCineOn } from '../cine'
-import { type CheapBloomEffect, worldBloomOf } from './bloom'
-import { IsoLens } from './diorama'
-import type { IsoFrame } from './frame'
-import { FrameProbe } from './frameProbe'
+import { isCineOn } from '#render/cine.ts'
+
+import { type CheapBloomEffect, worldBloomOf } from './bloom.ts'
+import { IsoLens } from './diorama.ts'
+import type { IsoFrame } from './frame.ts'
+import { FrameProbe } from './frameProbe.ts'
 import {
   QualityGovernor,
   type QualityTier,
@@ -15,8 +16,8 @@ import {
   type TierSpec,
   qualityPinOf,
   shadowQualityOf,
-} from './quality'
-import { canvasStepOf, scaledStepOf } from './space'
+} from './quality.ts'
+import { canvasStepOf, scaledStepOf } from './space.ts'
 
 const bloomPassesOf = (spec: TierSpec): ReadonlyArray<CheapBloomEffect> =>
   Option.match(spec.bloomResolution, {

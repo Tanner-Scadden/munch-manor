@@ -1,21 +1,22 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
 
-import { isCellarLit } from '../../world/cellar/bulb'
+import { CANDELABRA_FLAME, CHANDELIER_SHAPES } from '#render/room/diningArt.ts'
+import { coverBlocks } from '#render/room/roomCover.ts'
+import { isCellarLit } from '#world/cellar/bulb.ts'
 import {
   CHANDELIER_RULES,
   gapBoxOf,
   isChandelierDown,
-} from '../../world/dining/chandelier'
-import type { Level } from '../../world/level/arena'
-import { CELLAR_ROOM_ID } from '../../world/level/plan'
-import type { Vector } from '../../world/schema/entitySchema'
-import type { World } from '../../world/schema/worldSchema'
-import { stationCenterOf } from '../../world/stations/stationSpots'
-import { CANDELABRA_FLAME, CHANDELIER_SHAPES } from '../room/diningArt'
-import { coverBlocks } from '../room/roomCover'
-import { type Mood, moodOf } from './mood'
-import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space'
-import { Tunable } from './tunable'
+} from '#world/dining/chandelier.ts'
+import type { Level } from '#world/level/arena.ts'
+import { CELLAR_ROOM_ID } from '#world/level/plan.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import type { World } from '#world/schema/worldSchema.ts'
+import { stationCenterOf } from '#world/stations/stationSpots.ts'
+
+import { type Mood, moodOf } from './mood.ts'
+import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space.ts'
+import { Tunable } from './tunable.ts'
 
 export const AMBIENT = 0.2 * Math.PI
 

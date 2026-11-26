@@ -1,17 +1,22 @@
 import { UiStruct } from '@effect/ui'
 
-import { CardEvent, stepDifficultyCard } from '../../domain/difficultyCard'
-import { keptName, withNameKept } from '../../features/profile/steps'
-import { openedEntry } from '../../screens/home/home'
-import type { Model } from '../model'
-import { DialogEvent, type DialogName, stepRootDialog } from '../rootDialog'
+import type { Model } from '#app/model.ts'
+import {
+  DialogEvent,
+  type DialogName,
+  stepRootDialog,
+} from '#app/rootDialog.ts'
+import { CardEvent, stepDifficultyCard } from '#domain/difficultyCard.ts'
+import { keptName, withNameKept } from '#features/profile/steps.ts'
+import { openedEntry } from '#screens/home/home.ts'
+
 import {
   type UpdateStep,
   combine,
   defineHandlers,
   modelStep,
   unchanged,
-} from './step'
+} from './step.ts'
 
 export const keepName = (model: Model): Model =>
   UiStruct.evolve(model, {

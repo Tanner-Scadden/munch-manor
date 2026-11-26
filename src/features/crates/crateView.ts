@@ -1,30 +1,26 @@
 import { Array, Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
-import { PICKUP_SPRITES } from '../../art/sprites/pickups'
+import type { Model } from '#app/model.ts'
+import { type Sprite, bakeShapes, placeAt } from '#art/sprite.ts'
+import { PICKUP_SPRITES } from '#art/sprites/pickups.ts'
 import {
   CRATE_FIND_RISE,
   CRATE_SPRITES,
   TRAP_ICONS,
-} from '../../art/sprites/traps'
-import type { Drawable } from '../../render/depth'
-import type * as Draw from '../../render/draw'
-import { type RingPixel, rect, ringPixels } from '../../render/drawing'
+} from '#art/sprites/traps.ts'
+import type { Drawable } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import { type RingPixel, rect, ringPixels } from '#render/drawing.ts'
 import {
   type CrateFind,
   areCratesOpen,
   crateRoomsOf,
   crateSpotOf,
   maybeFindIn,
-} from '../../world/gear/crates'
-import {
-  healthShare,
-  maybeMendingTrap,
-  trapCenter,
-} from '../../world/gear/traps'
-import { levelOf } from '../../world/level/arena'
-import type { Crate, CrateRoom, Trap } from '../../world/schema/worldSchema'
+} from '#world/gear/crates.ts'
+import { healthShare, maybeMendingTrap, trapCenter } from '#world/gear/traps.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { Crate, CrateRoom, Trap } from '#world/schema/worldSchema.ts'
 
 const BOB_MS = 320
 const BOB_PX = 1

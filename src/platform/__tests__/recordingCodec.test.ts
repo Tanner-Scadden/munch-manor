@@ -7,7 +7,7 @@ import {
   lineOfTick,
   tickOfLine,
   ticksOfChunks,
-} from '../recordingCodec'
+} from '#platform/recordingCodec.ts'
 
 const aiming: TickInputs = {
   isCleared: false,

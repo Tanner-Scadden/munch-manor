@@ -2,23 +2,24 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { dareItemsFoundOf } from '../dare/dare'
-import { Finale } from '../dare/dareSchema'
-import { hasChunkInHouse } from '../dare/finale'
-import { type Level, levelOf } from '../level/arena'
-import { KITCHEN_TOP_ROW } from '../level/plan'
-import { type Box, distanceToBox, tileBox } from '../level/tileGrid'
-import { isHere, isStanding, playersOf } from '../party/party'
-import type { World } from '../schema/world'
+import { dareItemsFoundOf } from '#world/dare/dare.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import { hasChunkInHouse } from '#world/dare/finale.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { KITCHEN_TOP_ROW } from '#world/level/plan.ts'
+import { type Box, distanceToBox, tileBox } from '#world/level/tileGrid.ts'
+import { isHere, isStanding, playersOf } from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   Phase,
   Purchasable,
   RunMode,
   type Vector,
   roundWaveOf,
-} from '../schema/worldSchema'
-import type { Offer } from '../shop/purchase'
-import { isKitchenOpen } from './kitchen'
+} from '#world/schema/worldSchema.ts'
+import type { Offer } from '#world/shop/purchase.ts'
+
+import { isKitchenOpen } from './kitchen.ts'
 
 type BackDoorRules = Readonly<{
   holdMs: number

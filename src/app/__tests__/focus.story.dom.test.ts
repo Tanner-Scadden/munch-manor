@@ -3,15 +3,18 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { MouseButton, Stick } from '../../input/inputSchema'
-import { screenToFloorDirection } from '../../render/lens'
-import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
-import { holdingFirst } from '../../test/arsenals'
+import { Message } from '#app/message.ts'
+import { Arsenal, type Model, Phase, RunMode } from '#app/model.ts'
 import {
-  WAVE_2_BREAK,
-  WAVE_2_FIGHT,
-  readyModel,
-} from '../../test/model.fixture'
+  type KeyDown,
+  maybeKeyDownMessage,
+  maybeWindowBlurMessage,
+} from '#app/subscriptions.ts'
+import { MouseButton, Stick } from '#input/inputSchema.ts'
+import { screenToFloorDirection } from '#render/lens.ts'
+import { FIXED_STEP_MS, RESTART_GRACE_MS } from '#shared/constants.ts'
+import { holdingFirst } from '#test/arsenals.ts'
+import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -20,15 +23,8 @@ import {
   storyOf,
   throughIntro,
   tick,
-} from '../../test/testing'
-import { modifyFocus } from '../../world/party/party'
-import { Message } from '../message'
-import { Arsenal, type Model, Phase, RunMode } from '../model'
-import {
-  type KeyDown,
-  maybeKeyDownMessage,
-  maybeWindowBlurMessage,
-} from '../subscriptions'
+} from '#test/testing.ts'
+import { modifyFocus } from '#world/party/party.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const MOUSE_POINTER = 1

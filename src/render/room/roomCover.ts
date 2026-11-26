@@ -1,17 +1,18 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
-import { type Palette, mirrorRows } from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
+import { type Palette, mirrorRows } from '#art/sprite.ts'
+import type * as Draw from '#render/draw.ts'
+import { pixelArt, rect } from '#render/drawing.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
 import {
   COVER_SYMBOLS,
   type CoverKind,
   type Tile,
   symbolAt,
   tilesWithSymbol,
-} from '../../world/level/tileGrid'
-import type * as Draw from '../draw'
-import { pixelArt, rect } from '../drawing'
+} from '#world/level/tileGrid.ts'
+
 import {
   fridgeShapes,
   ovenShapes,
@@ -19,7 +20,7 @@ import {
   prepTableShapes,
   sacksShapes,
   sinkShapes,
-} from './kitchenView'
+} from './kitchenView.ts'
 import {
   BONE_COLOR,
   type Box,
@@ -34,7 +35,7 @@ import {
   INK_COLOR,
   pick,
   roll,
-} from './roomPalette'
+} from './roomPalette.ts'
 
 const isSymbolAt = (
   level: Level,

@@ -1,11 +1,11 @@
 import { Array, Effect, Option, Record, Schema, pipe } from 'effect'
 import { SqlClient } from 'effect/sql'
 
-import { SavedDareMarks } from '../shared/dareMarkData'
-import { DayStamp } from '../shared/dayStamp'
-import { SavedJournal } from '../shared/journalData'
-import { StoredAppearance } from '../shared/lookCodes'
-import { SavedMissions } from '../shared/missionData'
+import { SavedDareMarks } from '#shared/dareMarkData.ts'
+import { DayStamp } from '#shared/dayStamp.ts'
+import { SavedJournal } from '#shared/journalData.ts'
+import { StoredAppearance } from '#shared/lookCodes.ts'
+import { SavedMissions } from '#shared/missionData.ts'
 import {
   Calling,
   CursorSetting,
@@ -31,8 +31,8 @@ import {
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
-} from '../shared/playerData'
-import { CrewMate, ProofEnding, type ProofEntry } from '../shared/proofData'
+} from '#shared/playerData.ts'
+import { CrewMate, ProofEnding, type ProofEntry } from '#shared/proofData.ts'
 
 const OldPlayerRow = Schema.Struct({
   sound: SoundSetting,

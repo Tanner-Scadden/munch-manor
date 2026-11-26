@@ -1,12 +1,17 @@
 import { Function } from 'effect'
 
-import { COLLISION_STEP_PX } from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { type Level, TILE_PLAYER_SOLID, TILE_SOLID } from '../level/arena'
-import { type Box, tileBox } from '../level/tileGrid'
-import { tileCoordinate } from '../level/tileQueries'
-import type { Vector } from '../schema/entitySchema'
-import { clamp, vectorLength } from './geometry'
+import { COLLISION_STEP_PX } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import {
+  type Level,
+  TILE_PLAYER_SOLID,
+  TILE_SOLID,
+} from '#world/level/arena.ts'
+import { type Box, tileBox } from '#world/level/tileGrid.ts'
+import { tileCoordinate } from '#world/level/tileQueries.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+
+import { clamp, vectorLength } from './geometry.ts'
 
 const pushOutOfBox = (position: Vector, radius: number, box: Box): Vector => {
   const { left, top, right, bottom } = box

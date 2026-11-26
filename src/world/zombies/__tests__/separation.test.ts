@@ -1,11 +1,11 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import * as DetMath from '../../../shared/detMath'
-import { randoms, zombieOf } from '../../../test/testing'
-import type { Vector, Zombie, ZombieKind } from '../../schema/worldSchema'
-import { separationPushes } from '../zombieMotion'
-import { bodyRadiusOf, isGrounded, statsOf } from '../zombies'
+import * as DetMath from '#shared/detMath.ts'
+import { randoms, zombieOf } from '#test/testing.ts'
+import type { Vector, Zombie, ZombieKind } from '#world/schema/worldSchema.ts'
+import { separationPushes } from '#world/zombies/zombieMotion.ts'
+import { bodyRadiusOf, isGrounded, statsOf } from '#world/zombies/zombies.ts'
 
 const pushApart = (zombie: Zombie, other: Zombie): Vector | undefined => {
   const deltaX = zombie.x - other.x

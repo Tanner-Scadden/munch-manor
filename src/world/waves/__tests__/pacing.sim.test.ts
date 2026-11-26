@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   Alarm,
   BreakClock,
@@ -12,8 +12,8 @@ import {
   Phase,
   type PlannedSpawn,
   calmPacing,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
 import {
   changeModel,
   checkModel,
@@ -22,12 +22,12 @@ import {
   playedThrough,
   settleRunCommands,
   steps,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { PARLOUR } from '../../level/arena'
-import { nearestDoor } from '../../level/tileQueries'
-import { doorCounts, rollWave } from '../endlessWaves'
-import { FINAL_WAVE } from '../wavePlans'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { PARLOUR } from '#world/level/arena.ts'
+import { nearestDoor } from '#world/level/tileQueries.ts'
+import { doorCounts, rollWave } from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
 
 const FRAME_MS = 50
 

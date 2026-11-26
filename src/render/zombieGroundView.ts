@@ -1,26 +1,27 @@
 import { Array, Function, Record, Result } from 'effect'
 
-import { group } from '../art/sprite'
+import { group } from '#art/sprite.ts'
 import {
   SHADOW_COLOR,
   SHADOW_FADED_COLOR,
   SHADOW_FADE_START,
   SHADOW_HIDE_START,
   ZOMBIE_FOOT_OFFSET,
-} from '../shared/constants'
+} from '#shared/constants.ts'
 import {
   type Vector,
   type Zombie,
   ZombieAction,
   ZombieState,
-} from '../world/schema/entitySchema'
-import { clamp } from '../world/step/geometry'
-import { CHUCKER_RULES } from '../world/zombies/chucker'
-import { surfacingProgress } from '../world/zombies/crawler'
-import { Behavior, ZOMBIE_KINDS, statsOf } from '../world/zombies/zombies'
-import * as Draw from './draw'
-import { footShadow, tellAlpha } from './drawing'
-import { bakeDiscs, bakeRings, pixelDisc, pixelRing } from './pixelCircle'
+} from '#world/schema/entitySchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+import { CHUCKER_RULES } from '#world/zombies/chucker.ts'
+import { surfacingProgress } from '#world/zombies/crawler.ts'
+import { Behavior, ZOMBIE_KINDS, statsOf } from '#world/zombies/zombies.ts'
+
+import * as Draw from './draw.ts'
+import { footShadow, tellAlpha } from './drawing.ts'
+import { bakeDiscs, bakeRings, pixelDisc, pixelRing } from './pixelCircle.ts'
 
 const CARRIED_DEPTH_PX = 2
 const FLYING_DEPTH_PX = 1000

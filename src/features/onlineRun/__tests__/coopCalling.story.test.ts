@@ -5,13 +5,16 @@ import { HtmlCommand } from '@effect/ui/html'
 import { describe, expect, it, test } from '@effect/vitest'
 import { makeReader, makeWriter } from '@munch/netcode'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { WriteSave } from '../../../app/update/save'
-import { Screen as CoopScreen } from '../../../domain/coopRoom'
-import { PLAYER_MAX_HP } from '../../../shared/constants'
-import type { Calling } from '../../../shared/playerData'
-import { heroesBoughtBy, readyAfterRead } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { WriteSave } from '#app/update/save.ts'
+import { Screen as CoopScreen } from '#domain/coopRoom.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
+import { CODE, lobbyOf, memberOf } from '#features/coop/testing.ts'
+import { PLAYER_MAX_HP } from '#shared/constants.ts'
+import type { Calling } from '#shared/playerData.ts'
+import { heroesBoughtBy, readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   checkModel,
@@ -22,20 +25,17 @@ import {
   send,
   steps,
   writeSave,
-} from '../../../test/testing'
-import { heldGun } from '../../../world/gear/weapons'
-import { pointsForRank } from '../../../world/heroes/rank'
+} from '#test/testing.ts'
+import { heldGun } from '#world/gear/weapons.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
 import {
   DEFAULT_ROOM_SETTINGS,
   readRoomSnapshot,
   roomSettingsOf,
   startRoomWorld,
   writeRoomSnapshot,
-} from '../../../world/net/roomWorld'
-import { focusOf, maybePlayerAt } from '../../../world/party/party'
-import { freshRoom } from '../../coop/roomState'
-import { ChangeLobby } from '../../coop/steps'
-import { CODE, lobbyOf, memberOf } from '../../coop/testing'
+} from '#world/net/roomWorld.ts'
+import { focusOf, maybePlayerAt } from '#world/party/party.ts'
 
 const CREW = [0, 1, 2]
 

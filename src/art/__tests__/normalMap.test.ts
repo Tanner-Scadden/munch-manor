@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { normalPixelsOf } from '../normalMap'
+import { normalPixelsOf } from '#art/normalMap.ts'
 
 const SIZE = 9
 const GREY = 160

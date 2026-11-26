@@ -1,11 +1,12 @@
 import { Array, Function } from 'effect'
 
-import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
-import { textShapes, textWidth } from '../../art/font'
-import { group, placeAt } from '../../art/sprite'
-import type { DareOutcome } from '../../domain/beatLink'
-import type * as Draw from '../../render/draw'
-import type { BeatComparison, BeatVerdict } from './beatRun'
+import { DARE_ICONS, DARE_ICON_SIZE } from '#art/dareArt.ts'
+import { textShapes, textWidth } from '#art/font.ts'
+import { group, placeAt } from '#art/sprite.ts'
+import type { DareOutcome } from '#domain/beatLink.ts'
+import type * as Draw from '#render/draw.ts'
+
+import type { BeatComparison, BeatVerdict } from './beatRun.ts'
 
 const ICON_STRIDE = DARE_ICON_SIZE + 1
 const TEXT_GAP = 3

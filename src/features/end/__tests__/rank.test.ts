@@ -14,7 +14,7 @@ import {
   rankOf,
   rankProgressOf,
   veteranPointsOf,
-} from '../../../world/heroes/rank'
+} from '#world/heroes/rank.ts'
 
 const run = (change: Partial<RunPayInput>): RunPayInput => ({
   difficulty: 'Normal',

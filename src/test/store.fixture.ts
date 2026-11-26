@@ -20,40 +20,40 @@ import { CODE_ALPHABET } from '@munch/netcode'
 import { SqliteClient, type SqliteOpenError } from '@munch/sqlite-wasm-effect'
 import { type Hub, makeHub } from '@munch/sqlite-wasm-effect/in-process'
 
-import { defaultAppearance } from '../app/model'
-import { PlayerLogSchema } from '../platform/playerEvents'
+import { defaultAppearance } from '#app/model.ts'
+import { PlayerLogSchema } from '#platform/playerEvents.ts'
 import {
   PlayerHandlers,
   createPlayerTables,
-} from '../platform/playerProjection'
-import { changesBetween } from '../platform/playerSync'
-import type { Transport } from '../platform/roomReplica'
+} from '#platform/playerProjection.ts'
+import { changesBetween } from '#platform/playerSync.ts'
+import type { Transport } from '#platform/roomReplica.ts'
 import {
   type PlayerSave,
   SAVE_VERSION,
   noSavedBests,
   unpickedDifficulty,
-} from '../platform/save'
+} from '#platform/save.ts'
 import {
   type LegacySave,
   type PlayerDatabase,
   type SyncSetup,
   makePlayerDatabase,
-} from '../platform/storeSqlite'
-import { noDareMarks } from '../shared/dareMarkData'
-import { noJournal } from '../shared/journalData'
-import { noMastery } from '../shared/masteryData'
-import { noMissions } from '../shared/missionData'
-import { noBonuses, noSavedRunRecords } from '../shared/playerData'
-import { noProof } from '../shared/proofData'
+} from '#platform/storeSqlite.ts'
+import { noDareMarks } from '#shared/dareMarkData.ts'
+import { noJournal } from '#shared/journalData.ts'
+import { noMastery } from '#shared/masteryData.ts'
+import { noMissions } from '#shared/missionData.ts'
+import { noBonuses, noSavedRunRecords } from '#shared/playerData.ts'
+import { noProof } from '#shared/proofData.ts'
 import {
   PlayerLogRpcs,
   RedeemAnswer,
   SessionRefused,
   SessionRpcs,
   playerStoreOf,
-} from '../shared/sessionApi'
-import { noRank } from '../world/heroes/rank'
+} from '#shared/sessionApi.ts'
+import { noRank } from '#world/heroes/rank.ts'
 
 export const legacySave: PlayerSave = {
   version: SAVE_VERSION,

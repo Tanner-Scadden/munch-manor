@@ -3,10 +3,10 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { AudioState, type Model } from '../../../app/model'
-import { PlayPlaced } from '../../../app/update/sound'
-import { FIXED_STEP_MS, PLAYER_FOOT_OFFSET } from '../../../shared/constants'
-import { quietWave } from '../../../test/model.fixture'
+import { AudioState, type Model } from '#app/model.ts'
+import { PlayPlaced } from '#app/update/sound.ts'
+import { FIXED_STEP_MS, PLAYER_FOOT_OFFSET } from '#shared/constants.ts'
+import { quietWave } from '#test/model.fixture.ts'
 import {
   checkPendingArgs,
   modelAfter,
@@ -16,11 +16,11 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { focusOf, modifyFocus } from '../../party/party'
-import { distanceBetween } from '../../step/geometry'
-import { levelOf } from '../arena'
-import { WADE_PACE, leaksOf } from '../leaks'
+} from '#test/testing.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { WADE_PACE, leaksOf } from '#world/level/leaks.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const STEPS = 8

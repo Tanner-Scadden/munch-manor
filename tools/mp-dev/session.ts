@@ -40,11 +40,19 @@ const unavailable = (error: { readonly _tag: string }) =>
   SessionUnavailable.make({ reason: error._tag })
 
 export const mintSession: {
-  (identity: Identity): (origin: string) => Effect.Effect<MintedSession, SessionUnavailable>
-  (origin: string, identity: Identity): Effect.Effect<MintedSession, SessionUnavailable>
+  (
+    identity: Identity,
+  ): (origin: string) => Effect.Effect<MintedSession, SessionUnavailable>
+  (
+    origin: string,
+    identity: Identity,
+  ): Effect.Effect<MintedSession, SessionUnavailable>
 } = Function.dual(
   2,
-  (origin: string, identity: Identity): Effect.Effect<MintedSession, SessionUnavailable> =>
+  (
+    origin: string,
+    identity: Identity,
+  ): Effect.Effect<MintedSession, SessionUnavailable> =>
     Effect.gen(function* () {
       const protocol = yield* Layer.build(
         Layer.merge(

@@ -5,22 +5,19 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { PressGameSurface } from '../../app/mount'
-import { initialModel } from '../../app/pureApp'
-import { ReloadPage, WaitForUnwrap } from '../../app/update/home'
-import { PANEL_DIALOG_ID, UPDATE_GREETING_ID } from '../../domain/clientSchema'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { PressGameSurface } from '#app/mount.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { ReloadPage, WaitForUnwrap } from '#app/update/home.ts'
+import { PANEL_DIALOG_ID, UPDATE_GREETING_ID } from '#domain/clientSchema.ts'
 import {
   maybeNewestNewsDay,
   newsHeadline,
-} from '../../features/whatsNew/changelog'
-import { RESTART_GRACE_MS } from '../../shared/constants'
-import {
-  WAVE_3_BREAK,
-  fighting,
-  withNewerBuild,
-} from '../../test/model.fixture'
+} from '#features/whatsNew/changelog.ts'
+import { RUNNING_BUILD } from '#platform/version.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { WAVE_3_BREAK, fighting, withNewerBuild } from '#test/model.fixture.ts'
 import {
   emitPressedKey,
   expectAttr,
@@ -30,7 +27,7 @@ import {
   requestDialogClose,
   showDialog,
   updateChip,
-} from '../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type SceneStep,
   isPausedPhase,
@@ -38,9 +35,8 @@ import {
   sceneOf,
   send,
   steps,
-} from '../../test/testing'
-import { pause } from '../../world/waves/waves'
-import { RUNNING_BUILD } from '../version'
+} from '#test/testing.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const greeting = HtmlLocator.role('dialog', { name: 'Updated!' })
 const newsButton = HtmlLocator.role('button', { name: "WHAT'S NEW" })

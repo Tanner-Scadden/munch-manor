@@ -3,17 +3,13 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import type { Model } from '../../../app/model'
-import { DOOR_HALF_WIDTH_PX, FIXED_STEP_MS } from '../../../shared/constants'
-import {
-  quietWave,
-  withActors,
-  withPlayerAt,
-} from '../../../test/model.fixture'
-import { modelAfter, recordTicks, zombieAt } from '../../../test/testing'
-import { levelOf, openExitIn } from '../arena'
-import { KITCHEN_EXIT } from '../exits'
-import { doorSpawnPoint, isInsideRoomAt } from '../tileQueries'
+import type { Model } from '#app/model.ts'
+import { DOOR_HALF_WIDTH_PX, FIXED_STEP_MS } from '#shared/constants.ts'
+import { quietWave, withActors, withPlayerAt } from '#test/model.fixture.ts'
+import { modelAfter, recordTicks, zombieAt } from '#test/testing.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import { doorSpawnPoint, isInsideRoomAt } from '#world/level/tileQueries.ts'
 
 const kitchenOpen: Model = UiStruct.evolve(quietWave(3), {
   level: state => openExitIn(state, KITCHEN_EXIT),

@@ -17,14 +17,15 @@ import {
   type RoomTicket,
   type WorldState,
   coopWorld,
-} from '../../domain/coopRoom'
-import type { Calling } from '../../shared/playerData'
+} from '#domain/coopRoom.ts'
+import type { Calling } from '#shared/playerData.ts'
 import {
   pastArrival,
   roomSettingsOf,
   roomWorldFor,
-} from '../../world/net/roomWorld'
-import { CoopNet } from './net'
+} from '#world/net/roomWorld.ts'
+
+import { CoopNet } from './net.ts'
 
 export type FakeCall =
   | Readonly<{

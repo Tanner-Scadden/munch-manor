@@ -3,30 +3,30 @@ import { Array, Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { pixelArtStyle } from '../../art/artSize'
-import { portraitOf } from '../../art/coopIcons'
-import { PADLOCK_ICON } from '../../art/icons'
+import { pixelArtStyle } from '#art/artSize.ts'
+import { portraitOf } from '#art/coopIcons.ts'
+import { PADLOCK_ICON } from '#art/icons.ts'
 import {
   type Special,
   specialsNoteOf,
   specialsOf,
-} from '../../domain/callingSpecials'
-import { callingUnlockId } from '../../domain/unlocks'
+} from '#domain/callingSpecials.ts'
+import { callingUnlockId } from '#domain/unlocks.ts'
 import type {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '../../shared/playerData'
-import { iconView, newBadgeView } from '../../ui/menuParts'
-import { boneCountView, rankMarkView } from '../../ui/rankBadgeView'
+} from '#shared/playerData.ts'
+import { iconView, newBadgeView } from '#ui/menuParts.ts'
+import { boneCountView, rankMarkView } from '#ui/rankBadgeView.ts'
 import {
   CALLINGS,
   type CallingStanding,
   UNLOCK_RANKS,
   callingPriceOf,
   callingStandingOf,
-} from '../../world/heroes/calling'
-import { CALLING_NAMES, SPECIAL_LINES } from '../../world/names'
+} from '#world/heroes/calling.ts'
+import { CALLING_NAMES, SPECIAL_LINES } from '#world/names.ts'
 
 export type CardsInput<Message> = {
   readonly look: Appearance

@@ -4,21 +4,22 @@ import { Dialog, type DialogDismissReason, DialogEvents } from '@effect/ui-kit'
 import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 
-import { Message } from '../app/message'
-import type { Model } from '../app/model'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
 import {
   ListenForTouchTaps,
   PressGameSurface,
   ShareFromClick,
   WatchGameSurface,
-} from '../app/mount'
-import { endOffer } from '../features/end/endOffer'
-import type { ShareOutcome } from '../features/end/share'
-import { Lobby } from '../features/lobby/block'
-import { Events as LobbyEvents } from '../features/lobby/message'
-import { InputMessage } from '../input/message'
-import { PressHudSlot } from '../screens/game/touchControls'
-import { MAX_FRAME_DELTA_MS } from '../shared/constants'
+} from '#app/mount.ts'
+import { endOffer } from '#features/end/endOffer.ts'
+import type { ShareOutcome } from '#features/end/share.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { Events as LobbyEvents } from '#features/lobby/message.ts'
+import { InputMessage } from '#input/message.ts'
+import { PressHudSlot } from '#screens/game/touchControls.ts'
+import { MAX_FRAME_DELTA_MS } from '#shared/constants.ts'
+
 import {
   type AppScene,
   GATE_FRAMES,
@@ -28,7 +29,7 @@ import {
   type SceneStep,
   resolveFocusLobby,
   steps,
-} from './testing'
+} from './testing.ts'
 
 export const fromSubscription: {
   (message: Message): (name: string) => RootStep

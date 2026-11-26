@@ -1,6 +1,6 @@
 import { Predicate, Schema } from 'effect'
 
-import type * as Draw from '../draw'
+import type * as Draw from '#render/draw.ts'
 
 export type PlinthLight = 'Candle' | 'Villain'
 

@@ -13,7 +13,7 @@ import {
   PropStyle,
   ShirtColor,
   SkinTone,
-} from './playerData'
+} from './playerData.ts'
 
 type EncodedLook = typeof Appearance.Encoded
 

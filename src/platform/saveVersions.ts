@@ -1,11 +1,11 @@
 import { Array, Option, Schema, Struct } from 'effect'
 
-import { unlocksAt } from '../domain/unlocks'
-import { noDareMarks } from '../shared/dareMarkData'
-import { noJournal } from '../shared/journalData'
-import { StoredAppearance } from '../shared/lookCodes'
-import { noMastery } from '../shared/masteryData'
-import { noMissions } from '../shared/missionData'
+import { unlocksAt } from '#domain/unlocks.ts'
+import { noDareMarks } from '#shared/dareMarkData.ts'
+import { noJournal } from '#shared/journalData.ts'
+import { StoredAppearance } from '#shared/lookCodes.ts'
+import { noMastery } from '#shared/masteryData.ts'
+import { noMissions } from '#shared/missionData.ts'
 import {
   Calling,
   HomeScreenTip,
@@ -31,9 +31,9 @@ import {
   noBonuses,
   noSavedBests,
   noSavedRunRecords,
-} from '../shared/playerData'
-import { noProof } from '../shared/proofData'
-import { noRank, rankOf, totalPointsOf } from '../world/heroes/rank'
+} from '#shared/playerData.ts'
+import { noProof } from '#shared/proofData.ts'
+import { noRank, rankOf, totalPointsOf } from '#world/heroes/rank.ts'
 
 const SavedSettingsV2 = Schema.Struct({
   sound: SoundSetting,

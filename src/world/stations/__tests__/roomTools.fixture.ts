@@ -2,17 +2,22 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../../../app/model'
-import { PLAYER_RADIUS } from '../../../shared/constants'
-import { quietWave, withPlayerAt } from '../../../test/model.fixture'
-import { levelOf, openExitIn } from '../../level/arena'
-import { KITCHEN_EXIT } from '../../level/exits'
-import { EAST_EXIT, FAR_EXIT, SECRET_EXIT, WEST_EXIT } from '../../level/plan'
-import { type Box, boxCenter } from '../../level/tileGrid'
-import { isSolidAt } from '../../level/tileQueries'
-import type { StationId, Vector } from '../../schema/worldSchema'
-import { stationBoxOf } from '../stationSpots'
-import { TOOL_RULES } from '../toolRules'
+import type { Model } from '#app/model.ts'
+import { PLAYER_RADIUS } from '#shared/constants.ts'
+import { quietWave, withPlayerAt } from '#test/model.fixture.ts'
+import { levelOf, openExitIn } from '#world/level/arena.ts'
+import { KITCHEN_EXIT } from '#world/level/exits.ts'
+import {
+  EAST_EXIT,
+  FAR_EXIT,
+  SECRET_EXIT,
+  WEST_EXIT,
+} from '#world/level/plan.ts'
+import { type Box, boxCenter } from '#world/level/tileGrid.ts'
+import { isSolidAt } from '#world/level/tileQueries.ts'
+import type { StationId, Vector } from '#world/schema/worldSchema.ts'
+import { stationBoxOf } from '#world/stations/stationSpots.ts'
+import { TOOL_RULES } from '#world/stations/toolRules.ts'
 
 const EXITS = [KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT, SECRET_EXIT]
 

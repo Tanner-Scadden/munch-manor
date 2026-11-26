@@ -3,27 +3,31 @@ import { Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import type { ApplicationHtml, ApplicationViewBuilder } from '../app/definition'
-import type { Model } from '../app/model'
-import { pixelArtStyle } from '../art/artSize'
-import { PROP_ICONS } from '../art/callingArt'
-import { pixelIconUrl } from '../art/icons'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '#app/definition.ts'
+import type { Model } from '#app/model.ts'
+import { pixelArtStyle } from '#art/artSize.ts'
+import { PROP_ICONS } from '#art/callingArt.ts'
+import { pixelIconUrl } from '#art/icons.ts'
 import {
   BONE_IMAGE,
   GIFT_BOX_PALETTE,
   GIFT_BOX_PIXELS,
   PURSE_PALETTE,
   PURSE_PIXELS,
-} from '../art/rankArt'
-import { type RankGift, giftAtRank } from '../domain/unlocks'
+} from '#art/rankArt.ts'
+import { type RankGift, giftAtRank } from '#domain/unlocks.ts'
 import {
   badgeTierOf,
   bonesBalanceOf,
   rankProgressOf,
   totalPointsOf,
-} from '../world/heroes/rank'
-import { CALLING_NAMES, PURSE_NAME, giftName } from '../world/names'
-import { rankBadgeImgView } from './menuParts'
+} from '#world/heroes/rank.ts'
+import { CALLING_NAMES, PURSE_NAME, giftName } from '#world/names.ts'
+
+import { rankBadgeImgView } from './menuParts.ts'
 
 const ART_SCALE = 2
 

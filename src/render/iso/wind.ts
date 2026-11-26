@@ -1,6 +1,6 @@
 import { String } from 'effect'
 
-import type { Vector } from '../../world/schema/entitySchema'
+import type { Vector } from '#world/schema/entitySchema.ts'
 
 const GUST_LOOP_S = 20
 const POSE_HZ = 10

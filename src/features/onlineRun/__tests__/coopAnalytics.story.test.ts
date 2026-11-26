@@ -4,14 +4,23 @@ import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 import { type Lobby, NetStats } from '@munch/netcode'
 
-import { Message } from '../../../app/message'
-import { Lesson, type Model } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { SendRunSummary } from '../../../app/update/settle'
-import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
-import type { CrewNetwork, RunSummary } from '../../../platform/analytics'
-import { crewRunKeyOf } from '../../../platform/analyticsRun'
-import { modifyLeadSeat, withSeat } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { Lesson, type Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { SendRunSummary } from '#app/update/settle.ts'
+import { Screen, maybeRoomOf } from '#domain/coopRoom.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import { focusCoop } from '#features/coop/steps.ts'
+import {
+  CODE,
+  lobbyOf,
+  memberOf,
+  playingSession,
+} from '#features/coop/testing.ts'
+import { RememberRoom } from '#features/coop/update.ts'
+import type { CrewNetwork, RunSummary } from '#platform/analytics.ts'
+import { crewRunKeyOf } from '#platform/analyticsRun.ts'
+import { modifyLeadSeat, withSeat } from '#test/model.fixture.ts'
 import {
   type AppStory,
   checkModel,
@@ -23,20 +32,16 @@ import {
   resolveSentSummary,
   send,
   steps,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
 import {
   type RoomWorld,
   pastArrival,
   startRoomWorld,
-} from '../../../world/net/roomWorld'
-import { noModifiers } from '../../../world/run/modifiers'
-import { Phase, RunMode, noKills } from '../../../world/schema/worldSchema'
-import { startWaveEarly } from '../../../world/waves/waves'
-import { freshRoom } from '../../coop/roomState'
-import { focusCoop } from '../../coop/steps'
-import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import { RememberRoom } from '../../coop/update'
+} from '#world/net/roomWorld.ts'
+import { noModifiers } from '#world/run/modifiers.ts'
+import { Phase, RunMode, noKills } from '#world/schema/worldSchema.ts'
+import { startWaveEarly } from '#world/waves/waves.ts'
 
 const VISIT_ID = '0123456789abcdef'
 

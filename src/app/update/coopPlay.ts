@@ -2,49 +2,6 @@ import { Array, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Room as CoopRoom } from '../../domain/coopRoom'
-import { maybeRunRoom, runDifficultyOf } from '../../domain/onlineRun'
-import { raiseCloche } from '../../features/cloche/clocheReveal'
-import type { Model as CoopModel } from '../../features/coop/model'
-import { keepTracers } from '../../features/coop/roomState'
-import {
-  type CoopResult,
-  asRequest,
-  tickRoom,
-} from '../../features/coop/update'
-import {
-  agePocketCard,
-  raisePocketCardFrom,
-} from '../../features/dare/pocketCard'
-import { launchPrize } from '../../features/fridge/fridgeReveal'
-import {
-  ageDebutCard,
-  raiseDebutCardFrom,
-} from '../../features/onboarding/onboarding'
-import { crewRunKeyOf } from '../../platform/analyticsRun'
-import * as DetMath from '../../shared/detMath'
-import { TURRET_WEAPON } from '../../world/gear/traps'
-import { levelOf } from '../../world/level/arena'
-import { inputOfIntent, ownWorldOf } from '../../world/net/roomWorld'
-import { focusOf } from '../../world/party/party'
-import { isArriving, isRunUnderway } from '../../world/run/arrival'
-import { tallyFrame } from '../../world/run/stats'
-import {
-  type World,
-  modifyWorldFields,
-  withWorld,
-} from '../../world/schema/world'
-import {
-  type Bullet,
-  GameEvent,
-  HitStop,
-  Phase,
-  type SeatState,
-  type Vector,
-} from '../../world/schema/worldSchema'
-import { aimTracers, flyTracers } from '../../world/step/firing'
-import { stopForHits, thawTick } from '../../world/step/hitStop'
-import { footfallNearness } from '../../world/zombies/zombies'
 import {
   advanceCosmetics,
   clampFrameDelta,
@@ -52,11 +9,51 @@ import {
   leanFor,
   refreshIntent,
   withFirePressSeen,
-} from '../frame'
-import type { Model } from '../model'
-import { freshRun } from '../runReset'
-import { playIntroSounds } from './intro'
-import { rumbleFor } from './rumble'
+} from '#app/frame.ts'
+import type { Model } from '#app/model.ts'
+import { freshRun } from '#app/runReset.ts'
+import type { Room as CoopRoom } from '#domain/coopRoom.ts'
+import { maybeRunRoom, runDifficultyOf } from '#domain/onlineRun.ts'
+import { raiseCloche } from '#features/cloche/clocheReveal.ts'
+import type { Model as CoopModel } from '#features/coop/model.ts'
+import { keepTracers } from '#features/coop/roomState.ts'
+import { type CoopResult, asRequest, tickRoom } from '#features/coop/update.ts'
+import {
+  agePocketCard,
+  raisePocketCardFrom,
+} from '#features/dare/pocketCard.ts'
+import { launchPrize } from '#features/fridge/fridgeReveal.ts'
+import {
+  ageDebutCard,
+  raiseDebutCardFrom,
+} from '#features/onboarding/onboarding.ts'
+import { crewRunKeyOf } from '#platform/analyticsRun.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { TURRET_WEAPON } from '#world/gear/traps.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { inputOfIntent, ownWorldOf } from '#world/net/roomWorld.ts'
+import { focusOf } from '#world/party/party.ts'
+import { isArriving, isRunUnderway } from '#world/run/arrival.ts'
+import { tallyFrame } from '#world/run/stats.ts'
+import {
+  type World,
+  modifyWorldFields,
+  withWorld,
+} from '#world/schema/world.ts'
+import {
+  type Bullet,
+  GameEvent,
+  HitStop,
+  Phase,
+  type SeatState,
+  type Vector,
+} from '#world/schema/worldSchema.ts'
+import { aimTracers, flyTracers } from '#world/step/firing.ts'
+import { stopForHits, thawTick } from '#world/step/hitStop.ts'
+import { footfallNearness } from '#world/zombies/zombies.ts'
+
+import { playIntroSounds } from './intro.ts'
+import { rumbleFor } from './rumble.ts'
 import {
   frameSoundCues,
   fridgeLandCues,
@@ -70,8 +67,8 @@ import {
   shotSoundCue,
   strikeCues,
   thunderCues,
-} from './sound'
-import { type UpdateStep, toModel } from './step'
+} from './sound.ts'
+import { type UpdateStep, toModel } from './step.ts'
 
 export const applyCoop =
   (result: CoopResult): UpdateStep =>

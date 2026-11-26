@@ -3,12 +3,13 @@ import { Event, Machine } from 'effect-machine'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
-import type { Difficulty } from '../shared/playerData'
-import type { DareKind } from '../world/dare/dareSchema'
-import { thingsOpenedBy } from '../world/dare/milestones'
-import { BeatMyRun, FriendsDare, OwnPicks, noBeatMyRun } from './beatLink'
-import { machineStepOf } from './machineStep'
+import type { Model } from '#app/model.ts'
+import type { Difficulty } from '#shared/playerData.ts'
+import type { DareKind } from '#world/dare/dareSchema.ts'
+import { thingsOpenedBy } from '#world/dare/milestones.ts'
+
+import { BeatMyRun, FriendsDare, OwnPicks, noBeatMyRun } from './beatLink.ts'
+import { machineStepOf } from './machineStep.ts'
 
 export const BeatEvent = Event({
   Offered: { dare: FriendsDare },

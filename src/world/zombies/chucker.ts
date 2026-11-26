@@ -6,18 +6,18 @@ import {
   MS_PER_SECOND,
   PLAYER_RADIUS,
   ZOMBIE_HIT_PULSE_MS,
-} from '../../shared/constants'
-import * as DetMath from '../../shared/detMath'
-import { type Level, levelOf } from '../level/arena'
-import { hasLineOfSight } from '../level/tileQueries'
+} from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { hasLineOfSight } from '#world/level/tileQueries.ts'
 import {
   atSeat,
   facingNearest,
   forEachSeatWhere,
   isStanding,
   seatStateAt,
-} from '../party/party'
-import type { World } from '../schema/world'
+} from '#world/party/party.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   Invulnerability,
@@ -27,22 +27,23 @@ import {
   type Zombie,
   ZombieAction,
   type ZombieKind,
-} from '../schema/worldSchema'
-import { woundPlayer } from '../step/combat'
+} from '#world/schema/worldSchema.ts'
+import { woundPlayer } from '#world/step/combat.ts'
 import {
   OUTWARD,
   ZERO_VECTOR,
   directionBetween,
   distanceBetween,
   normalize,
-} from '../step/geometry'
+} from '#world/step/geometry.ts'
+
 import {
   ZOMBIE_KINDS,
   bodyRadiusOf,
   isFree,
   isWalking,
   wearOf,
-} from './zombies'
+} from './zombies.ts'
 
 type ChuckerRules = {
   grabReachPx: number

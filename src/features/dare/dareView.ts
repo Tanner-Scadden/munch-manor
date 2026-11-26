@@ -1,43 +1,43 @@
 import { Array, Option, Result, String } from 'effect'
 
-import type { Model } from '../../app/model'
+import type { Model } from '#app/model.ts'
 import {
   BIG_KEY_PALETTE,
   BIG_KEY_PIXELS,
   DARE_BIG_ICONS,
   DARE_BIG_ICON_SIZE,
-} from '../../art/dareArt'
+} from '#art/dareArt.ts'
 import {
   type Sprite,
   TOP_LEFT,
   bakeShapes,
   placeAt,
   spriteShapes,
-} from '../../art/sprite'
-import { runDifficultyOf } from '../../domain/onlineRun'
-import type { Drawable } from '../../render/depth'
-import type * as Draw from '../../render/draw'
-import { FULL_TURN, rect } from '../../render/drawing'
+} from '#art/sprite.ts'
+import { runDifficultyOf } from '#domain/onlineRun.ts'
+import type { Drawable } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import { FULL_TURN, rect } from '#render/drawing.ts'
 import {
   bakeDiscs,
   bakeRings,
   pixelDisc,
   pixelRing,
-} from '../../render/pixelCircle'
-import type { Difficulty } from '../../shared/playerData'
-import { isHiddenInDark } from '../../world/cellar/bulb'
-import { findStyleOf, isInOpenRoom, maybeLyingAt } from '../../world/dare/dare'
+} from '#render/pixelCircle.ts'
+import type { Difficulty } from '#shared/playerData.ts'
+import { isHiddenInDark } from '#world/cellar/bulb.ts'
+import { findStyleOf, isInOpenRoom, maybeLyingAt } from '#world/dare/dare.ts'
 import {
   type DareThing,
   DareThingState,
   Finale,
-} from '../../world/dare/dareSchema'
-import { keyFlightShareOf } from '../../world/dare/finale'
-import { isWorkedFind } from '../../world/dare/finds'
-import { levelOf } from '../../world/level/arena'
-import { focusOf } from '../../world/party/party'
-import { Phase, type Vector } from '../../world/schema/worldSchema'
-import { distanceBetween } from '../../world/step/geometry'
+} from '#world/dare/dareSchema.ts'
+import { keyFlightShareOf } from '#world/dare/finale.ts'
+import { isWorkedFind } from '#world/dare/finds.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { focusOf } from '#world/party/party.ts'
+import { Phase, type Vector } from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
 
 const BOB_MS = 300
 const BOB_PX = 1

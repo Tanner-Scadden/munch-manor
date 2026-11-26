@@ -2,19 +2,20 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { PREPARATION_MS } from '../../shared/constants'
-import { isObjectSecond } from '../../shared/dualArgs'
-import { COOP_RULES } from '../party/party'
-import { type World, modifyWorldFields } from '../schema/world'
+import { PREPARATION_MS } from '#shared/constants.ts'
+import { isObjectSecond } from '#shared/dualArgs.ts'
+import { COOP_RULES } from '#world/party/party.ts'
+import { type World, modifyWorldFields } from '#world/schema/world.ts'
 import {
   type Difficulty,
   type DifficultySetting,
   type Hold,
   Phase,
   type PlannedSpawn,
-} from '../schema/worldSchema'
-import { markedBreakClock } from './dareLadder'
-import { BIG_CROWD_SCALE, type Modifiers, noModifiers } from './modifiers'
+} from '#world/schema/worldSchema.ts'
+
+import { markedBreakClock } from './dareLadder.ts'
+import { BIG_CROWD_SCALE, type Modifiers, noModifiers } from './modifiers.ts'
 
 type DifficultyStats = Readonly<{
   name: string

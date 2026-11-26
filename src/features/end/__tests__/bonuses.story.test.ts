@@ -3,11 +3,12 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { knowingDay, lastHeart } from '../../../test/model.fixture'
-import { checkModel, send, storyOf, writeSave } from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { knowingDay, lastHeart } from '#test/model.fixture.ts'
+import { checkModel, send, storyOf, writeSave } from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
+
 import {
   checkSavedChanges,
   diesOnWave7,
@@ -17,7 +18,7 @@ import {
   leave,
   runAt,
   wave,
-} from './rank.fixture'
+} from './rank.fixture.ts'
 
 const TODAY = '2026-11-12'
 

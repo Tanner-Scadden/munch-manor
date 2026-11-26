@@ -2,14 +2,15 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { SavedJournal } from '../../shared/journalData'
-import { SavedMastery } from '../../shared/masteryData'
-import { SavedProof } from '../../shared/proofData'
-import { MilestoneId } from '../../world/dare/milestones'
-import { ZombieKind } from '../../world/schema/entitySchema'
-import { KillCounts } from '../../world/schema/worldSchema'
-import { GuideStatus } from '../guide/model'
-import type { JournalTab } from './journalPages'
+import { GuideStatus } from '#features/guide/model.ts'
+import { SavedJournal } from '#shared/journalData.ts'
+import { SavedMastery } from '#shared/masteryData.ts'
+import { SavedProof } from '#shared/proofData.ts'
+import { MilestoneId } from '#world/dare/milestones.ts'
+import { ZombieKind } from '#world/schema/entitySchema.ts'
+import { KillCounts } from '#world/schema/worldSchema.ts'
+
+import type { JournalTab } from './journalPages.ts'
 
 export const MunchopediaPage = UiSchema.TaggedEnum({
   List: {},

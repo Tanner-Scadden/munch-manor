@@ -2,7 +2,7 @@ import { Option, Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { Vector } from '../world/schema/entitySchema'
+import { Vector } from '#world/schema/entitySchema.ts'
 
 export const SurfaceRectangle = Schema.Struct({
   left: Schema.Finite,

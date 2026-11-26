@@ -1,11 +1,12 @@
 import { Effect, Function, Option, Schedule, Schema, pipe } from 'effect'
 import type { Duration } from 'effect'
 
-import { isObjectFirst } from '../shared/dualArgs'
-import { PostedRunJson, type RunSummary, RunSummaryJson } from './analytics'
-import { sendRunSummary } from './analyticsBeacon'
-import { API_ORIGIN } from './apiOrigin'
-import { PlayerStore } from './store'
+import { isObjectFirst } from '#shared/dualArgs.ts'
+
+import { PostedRunJson, type RunSummary, RunSummaryJson } from './analytics.ts'
+import { sendRunSummary } from './analyticsBeacon.ts'
+import { API_ORIGIN } from './apiOrigin.ts'
+import { PlayerStore } from './store.ts'
 
 const QUEUE_SPACING: Duration.Input = '11 seconds'
 

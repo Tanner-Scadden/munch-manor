@@ -11,49 +11,28 @@ import {
 } from '@munch/netcode'
 import { RoomEvent } from '@munch/netcode/browser'
 
-import { Message } from '../../../app/message'
-import { type Model } from '../../../app/model'
-import { FocusHomeButton } from '../../../app/update/home'
-import { FetchBuild } from '../../../app/update/version'
+import { Message } from '#app/message.ts'
+import { type Model } from '#app/model.ts'
+import { FocusHomeButton } from '#app/update/home.ts'
+import { FetchBuild } from '#app/update/version.ts'
 import {
   LobbyChange,
   RoomRequest,
   Screen,
   coopWorld,
   noPresses,
-} from '../../../domain/coopRoom'
-import { VersionMessage } from '../../../platform/message'
-import { playRoom } from '../../../test/roomTesting'
-import {
-  type StoryStep,
-  checkModel,
-  press,
-  resolveAll,
-  resolveFocusCoop,
-  resolveRememberRoom,
-  send,
-  steps,
-  storyOf,
-} from '../../../test/testing'
-import {
-  AIM_REACH,
-  FIRE_BUTTON,
-  actionCodeOf,
-  heldAction,
-  seatActionOf,
-} from '../../../world/net/roomWorld'
-import { SeatAction } from '../../../world/step/stepWorld'
-import { CoopMessage, CoopNotice } from '../message'
-import { type Model as CoopModel, emptyQueue } from '../model'
-import { cleanCode, freshRoom, pressAction } from '../roomState'
-import { ChangeLobby } from '../steps'
+} from '#domain/coopRoom.ts'
+import { CoopMessage, CoopNotice } from '#features/coop/message.ts'
+import { type Model as CoopModel, emptyQueue } from '#features/coop/model.ts'
+import { cleanCode, freshRoom, pressAction } from '#features/coop/roomState.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
 import {
   CODE,
   lobbyOf,
   makeFakeCoopNet,
   memberOf,
   stagedWorld,
-} from '../testing'
+} from '#features/coop/testing.ts'
 import {
   AnswerOffer,
   CancelQuickPlay,
@@ -64,7 +43,29 @@ import {
   asRequest,
   tickRoom,
   updateCoop,
-} from '../update'
+} from '#features/coop/update.ts'
+import { VersionMessage } from '#platform/message.ts'
+import { playRoom } from '#test/roomTesting.ts'
+import {
+  type StoryStep,
+  checkModel,
+  press,
+  resolveAll,
+  resolveFocusCoop,
+  resolveRememberRoom,
+  send,
+  steps,
+  storyOf,
+} from '#test/testing.ts'
+import {
+  AIM_REACH,
+  FIRE_BUTTON,
+  actionCodeOf,
+  heldAction,
+  seatActionOf,
+} from '#world/net/roomWorld.ts'
+import { SeatAction } from '#world/step/stepWorld.ts'
+
 import {
   type Driven,
   argsIssued,
@@ -78,7 +79,7 @@ import {
   onHub,
   roomOf,
   withCoop,
-} from './story.fixture'
+} from './story.fixture.ts'
 
 const picksSent =
   (

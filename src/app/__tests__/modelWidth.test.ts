@@ -1,8 +1,8 @@
 import { Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { World } from '../../world/schema/worldSchema'
-import { Model, initialModel } from '../model'
+import { Model, initialModel } from '#app/model.ts'
+import { World } from '#world/schema/worldSchema.ts'
 
 const MOST_FIELDS = 128
 

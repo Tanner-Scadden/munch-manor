@@ -3,10 +3,10 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { type Model, Phase } from '../../../app/model'
-import { PLAYER_MAX_HP } from '../../../shared/constants'
-import { releaseWalk, walkToward } from '../../../test/lensTesting'
-import { readyModel } from '../../../test/model.fixture'
+import { type Model, Phase } from '#app/model.ts'
+import { PLAYER_MAX_HP } from '#shared/constants.ts'
+import { releaseWalk, walkToward } from '#test/lensTesting.ts'
+import { readyModel } from '#test/model.fixture.ts'
 import {
   checkModel,
   holdFireToward,
@@ -17,9 +17,9 @@ import {
   steps,
   tick,
   ticks,
-} from '../../../test/testing'
-import { focusOf } from '../../party/party'
-import { scoreOf } from '../../run/stats'
+} from '#test/testing.ts'
+import { focusOf } from '#world/party/party.ts'
+import { scoreOf } from '#world/run/stats.ts'
 
 const FRAME_MS = 50
 

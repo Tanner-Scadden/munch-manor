@@ -3,7 +3,7 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   DebutCard,
@@ -11,15 +11,21 @@ import {
   Phase,
   RunMode,
   type ZombieKind,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import {
+  DEBUT_CARD_MIN_MS,
+  DEBUT_CARD_MS,
+  isLearned,
+  shownGhostSticks,
+} from '#features/onboarding/onboarding.ts'
 import {
   FIRST_PREPARATION_MS,
   FIXED_STEP_MS,
   HIT_STOP_WAVE_CLEAR_MS,
   PREPARATION_MS,
-} from '../../../shared/constants'
-import { newPlayerCardSeen, onHard } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { newPlayerCardSeen, onHard } from '#test/model.fixture.ts'
 import {
   SHOWN_TICKS,
   checkModel,
@@ -40,16 +46,10 @@ import {
   ticks,
   touchDown,
   touchMove,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import { focusOf } from '../../../world/party/party'
-import { rollSpawns } from '../../../world/waves/endlessWaves'
-import {
-  DEBUT_CARD_MIN_MS,
-  DEBUT_CARD_MS,
-  isLearned,
-  shownGhostSticks,
-} from '../onboarding'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { focusOf } from '#world/party/party.ts'
+import { rollSpawns } from '#world/waves/endlessWaves.ts'
 
 const TICK_MS = 50
 const CARD_TICKS = Math.ceil(DEBUT_CARD_MIN_MS / TICK_MS)

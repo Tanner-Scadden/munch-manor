@@ -2,8 +2,8 @@ import { Array } from 'effect'
 import { Machine } from 'effect-machine'
 import { describe, expect, test } from 'vitest'
 
-import { Loading } from '../clientSchema'
-import { LoadEvent, loadMachine, stepLoading } from '../loadFlow'
+import { Loading } from '#domain/clientSchema.ts'
+import { LoadEvent, loadMachine, stepLoading } from '#domain/loadFlow.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.flatMap(Machine.definition(loadMachine).states, state =>

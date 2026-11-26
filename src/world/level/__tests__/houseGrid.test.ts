@@ -1,13 +1,26 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { cameraFor } from '../../../render/camera'
-import { TILE_SIZE } from '../../../shared/constants'
-import { TILE_OUTSIDE, hasTileFlag, levelFor, roomAt } from '../arena'
-import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
-import { type LevelSpec } from '../plan'
-import { symbolAt, tileIndex, tileOfIndex } from '../tileGrid'
-import { doorSpawnPoint, isInsideRoomAt, isWalkableTile } from '../tileQueries'
+import { cameraFor } from '#render/camera.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import {
+  TILE_OUTSIDE,
+  hasTileFlag,
+  levelFor,
+  roomAt,
+} from '#world/level/arena.ts'
+import {
+  UNREACHED_DISTANCE,
+  distanceAt,
+  flowFieldToward,
+} from '#world/level/pathing.ts'
+import { type LevelSpec } from '#world/level/plan.ts'
+import { symbolAt, tileIndex, tileOfIndex } from '#world/level/tileGrid.ts'
+import {
+  doorSpawnPoint,
+  isInsideRoomAt,
+  isWalkableTile,
+} from '#world/level/tileQueries.ts'
 
 const HALL_TILES: ReadonlyArray<string> = [
   '####NN####',

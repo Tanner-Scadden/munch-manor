@@ -3,10 +3,10 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, test } from '@effect/vitest'
 
-import type { Model } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import type { SurfaceRectangle } from '../../input/inputSchema'
-import { screenOf, stagePlacement } from '../screen'
+import type { Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import type { SurfaceRectangle } from '#input/inputSchema.ts'
+import { screenOf, stagePlacement } from '#render/screen.ts'
 
 type Phone = Readonly<{
   name: string

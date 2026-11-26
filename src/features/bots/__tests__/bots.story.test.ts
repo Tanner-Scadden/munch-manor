@@ -3,11 +3,13 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { type Model, Phase } from '../../../app/model'
-import { LobbyMessage } from '../../../features/lobby/message'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
-import { heroesBoughtBy, readyModel } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { earnRank } from '#features/end/rankRun.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { isHeroPickerUp } from '#features/lobby/model.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { heroesBoughtBy, readyModel } from '#test/model.fixture.ts'
 import {
   checkModel,
   openLobbyByKey,
@@ -19,12 +21,10 @@ import {
   storyOf,
   tapLobbyHero,
   throughIntro,
-} from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
-import { atSeatBy, playersOf } from '../../../world/party/party'
-import { SOLO_SLOT } from '../../../world/schema/worldSchema'
-import { earnRank } from '../../end/rankRun'
-import { isHeroPickerUp } from '../../lobby/model'
+} from '#test/testing.ts'
+import { pointsForRank } from '#world/heroes/rank.ts'
+import { atSeatBy, playersOf } from '#world/party/party.ts'
+import { SOLO_SLOT } from '#world/schema/worldSchema.ts'
 
 const ranked = UiStruct.evolve(readyModel, {
   rank: rank => ({ ...rank, earnedPoints: pointsForRank(15) }),

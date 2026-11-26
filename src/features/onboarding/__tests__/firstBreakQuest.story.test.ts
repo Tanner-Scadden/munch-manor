@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   CaseState,
@@ -15,17 +15,34 @@ import {
   Phase,
   QuestTour,
   type Vector,
-} from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { forgetTutorial } from '../../../platform/save'
-import { screenCameraOf } from '../../../render/camera'
-import { screenOf } from '../../../render/screen'
+} from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import {
+  CASE_CARD_MIN_MS,
+  isCaseCardUp,
+} from '#features/onboarding/caseCard.ts'
+import {
+  type QuestStep,
+  isQuestOnCard,
+  isQuestOnStart,
+  maybeLockProgress,
+  maybePadlockNudge,
+  maybePadlockPointer,
+  maybeQuestMark,
+  maybeQuestPadlock,
+  questStepOf,
+} from '#features/onboarding/firstBreakQuest.ts'
+import { isStartWaveBeckoning } from '#features/onboarding/onboarding.ts'
+import { questEdgeShapes } from '#features/onboarding/questEdgeView.ts'
+import { forgetTutorial } from '#platform/save.ts'
+import { screenCameraOf } from '#render/camera.ts'
+import { screenOf } from '#render/screen.ts'
 import {
   FIXED_STEP_MS,
   HIT_STOP_WAVE_CLEAR_MS,
   PREPARATION_MS,
-} from '../../../shared/constants'
-import { DISTANT_SPAWN, newPlayerCardSeen } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { DISTANT_SPAWN, newPlayerCardSeen } from '#test/model.fixture.ts'
 import {
   type AppStory,
   HOLD_TICKS,
@@ -48,43 +65,29 @@ import {
   throughIntro,
   tick,
   ticks,
-} from '../../../test/testing'
-import { asTutorialDone, asVeteran } from '../../../test/veteran'
-import { caseBoxOf } from '../../../world/feats/caseSpots'
-import { heldKeys } from '../../../world/keys/keys'
-import { levelOf } from '../../../world/level/arena'
+} from '#test/testing.ts'
+import { asTutorialDone, asVeteran } from '#test/veteran.ts'
+import { caseBoxOf } from '#world/feats/caseSpots.ts'
+import { heldKeys } from '#world/keys/keys.ts'
+import { levelOf } from '#world/level/arena.ts'
 import {
   exitPriceFor,
   maybeCheapestPadlock,
   padlockMarkOf,
-} from '../../../world/level/exits'
+} from '#world/level/exits.ts'
 import {
   focusOf,
   modifyFocus,
   modifySeat,
   seatStateAt,
-} from '../../../world/party/party'
-import { isPending } from '../../../world/run/lessons'
+} from '#world/party/party.ts'
+import { isPending } from '#world/run/lessons.ts'
 import {
   DARE_TOUR_WAVE,
   maybeTutorialCase,
   tutorialKeySpotOf,
-} from '../../../world/run/tutorialRules'
-import { ZOMBIE_KIND_ORDER } from '../../../world/zombies/zombies'
-import { CASE_CARD_MIN_MS, isCaseCardUp } from '../caseCard'
-import {
-  type QuestStep,
-  isQuestOnCard,
-  isQuestOnStart,
-  maybeLockProgress,
-  maybePadlockNudge,
-  maybePadlockPointer,
-  maybeQuestMark,
-  maybeQuestPadlock,
-  questStepOf,
-} from '../firstBreakQuest'
-import { isStartWaveBeckoning } from '../onboarding'
-import { questEdgeShapes } from '../questEdgeView'
+} from '#world/run/tutorialRules.ts'
+import { ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const TICK_MS = 50

@@ -1,6 +1,6 @@
 import { Schema } from 'effect'
 
-import { Difficulty } from '../shared/playerData'
+import { Difficulty } from '#shared/playerData.ts'
 
 export const RUN_SUMMARY_VERSION = 9
 

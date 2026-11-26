@@ -1,10 +1,11 @@
 import { Option, Schema } from 'effect'
 import { Event, Machine } from 'effect-machine'
 
-import { CoopProblem, Queue, RoomRequest, Screen } from '../../domain/coopRoom'
-import { machineStepOf } from '../../domain/machineStep'
-import { emptyQueue } from './model'
-import { freshRoom } from './roomState'
+import { CoopProblem, Queue, RoomRequest, Screen } from '#domain/coopRoom.ts'
+import { machineStepOf } from '#domain/machineStep.ts'
+
+import { emptyQueue } from './model.ts'
+import { freshRoom } from './roomState.ts'
 
 export const ScreenEvent = Event({
   Opened: {},

@@ -3,12 +3,23 @@ import { Array, Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { AudioState, Lesson, type Model } from '../../../app/model'
-import { PlaySound } from '../../../app/update/sound'
-import { type SoundEffect, positionVariation } from '../../../audio/audio'
-import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
-import { withKeys } from '../../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { AudioState, Lesson, type Model } from '#app/model.ts'
+import { PlaySound } from '#app/update/sound.ts'
+import { type SoundEffect, positionVariation } from '#audio/audio.ts'
+import { Screen, maybeRoomOf } from '#domain/coopRoom.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import {
+  CODE,
+  lobbyOf,
+  memberOf,
+  playingSession,
+} from '#features/coop/testing.ts'
+import { RememberRoom, SendRoomFrames } from '#features/coop/update.ts'
+import { UNFOLD_MS, isPocketCardBlocking } from '#features/dare/pocketCard.ts'
+import { endKindOf } from '#features/end/endBeat.ts'
+import { maybeIntroFrameOf } from '#features/intro/introBeat.ts'
+import { withKeys } from '#test/model.fixture.ts'
 import {
   type StoryStep,
   changeModel,
@@ -20,8 +31,8 @@ import {
   send,
   settleRunCommands,
   steps,
-} from '../../../test/testing'
-import { heldKeys } from '../../../world/keys/keys'
+} from '#test/testing.ts'
+import { heldKeys } from '#world/keys/keys.ts'
 import {
   DEFAULT_ROOM_SETTINGS,
   type RoomWorld,
@@ -29,26 +40,21 @@ import {
   ownWorldOf,
   pastArrival,
   startRoomWorld,
-} from '../../../world/net/roomWorld'
-import { focusOf, leadSeatOf, maybePlayerAt } from '../../../world/party/party'
-import { slamAtMs } from '../../../world/run/arrival'
+} from '#world/net/roomWorld.ts'
+import { focusOf, leadSeatOf, maybePlayerAt } from '#world/party/party.ts'
+import { slamAtMs } from '#world/run/arrival.ts'
 import {
   type Bullet,
   GameEvent,
   Phase,
   Pierce,
   RunMode,
-} from '../../../world/schema/worldSchema'
-import { aimTracers } from '../../../world/step/firing'
-import { SeatAction } from '../../../world/step/stepWorld'
-import { startWaveEarly } from '../../../world/waves/waves'
-import { freshRoom } from '../../coop/roomState'
-import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import { RememberRoom, SendRoomFrames } from '../../coop/update'
-import { UNFOLD_MS, isPocketCardBlocking } from '../../dare/pocketCard'
-import { endKindOf } from '../../end/endBeat'
-import { maybeIntroFrameOf } from '../../intro/introBeat'
-import { OWN_SLOT, graduated, roomWorld } from './onlineRun.fixture'
+} from '#world/schema/worldSchema.ts'
+import { aimTracers } from '#world/step/firing.ts'
+import { SeatAction } from '#world/step/stepWorld.ts'
+import { startWaveEarly } from '#world/waves/waves.ts'
+
+import { OWN_SLOT, graduated, roomWorld } from './onlineRun.fixture.ts'
 
 const inRun = (world: RoomWorld, isAnchored = false): Model =>
   UiStruct.evolve(graduated, {

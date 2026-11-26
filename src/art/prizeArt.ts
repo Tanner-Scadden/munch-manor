@@ -1,6 +1,7 @@
-import type { FridgePrize } from '../world/schema/entitySchema'
-import { type Palette, type Sprite, spriteShapes } from './sprite'
-import { gunIcon } from './sprites/guns'
+import type { FridgePrize } from '#world/schema/entitySchema.ts'
+
+import { type Palette, type Sprite, spriteShapes } from './sprite.ts'
+import { gunIcon } from './sprites/guns.ts'
 
 const SANDWICH: Sprite = spriteShapes(
   ['.kkkkkk.', 'kyyyyyyk', 'kgGrgGgk', 'kyyyyyyk', '.kkkkkk.'],

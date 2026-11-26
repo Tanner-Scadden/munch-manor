@@ -3,11 +3,11 @@ import { Array, Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { pixelArtStyle } from '../../art/artSize'
-import { portraitOf } from '../../art/coopIcons'
-import { pixelIconUrl } from '../../art/icons'
-import { gunPictureOf } from '../../art/sprites/guns'
-import { PROP_STYLE_RAMPS } from '../../art/sprites/propStyles'
+import { pixelArtStyle } from '#art/artSize.ts'
+import { portraitOf } from '#art/coopIcons.ts'
+import { pixelIconUrl } from '#art/icons.ts'
+import { gunPictureOf } from '#art/sprites/guns.ts'
+import { PROP_STYLE_RAMPS } from '#art/sprites/propStyles.ts'
 import {
   type HeroReward,
   MASTERY_GUNS,
@@ -19,10 +19,10 @@ import {
   isStyleOpen,
   masterySkinIn,
   styleLevelOf,
-} from '../../domain/mastery'
-import type { MasterySkin, SavedMastery } from '../../shared/masteryData'
-import type { Appearance, Calling, PropStyle } from '../../shared/playerData'
-import { CALLINGS } from '../../world/heroes/calling'
+} from '#domain/mastery.ts'
+import type { MasterySkin, SavedMastery } from '#shared/masteryData.ts'
+import type { Appearance, Calling, PropStyle } from '#shared/playerData.ts'
+import { CALLINGS } from '#world/heroes/calling.ts'
 import {
   CALLING_NAMES,
   GUN_NAMES,
@@ -30,9 +30,10 @@ import {
   MASTERY_SKIN_NAMES,
   PROP_STYLE_NAMES,
   PROP_WORD,
-} from '../../world/names'
-import type { WeaponKind } from '../../world/schema/worldSchema'
-import { Message } from './message'
+} from '#world/names.ts'
+import type { WeaponKind } from '#world/schema/worldSchema.ts'
+
+import { Message } from './message.ts'
 
 type ProfileViewBuilder = Html.H<Message>
 type ProfileContent = View.Content<Message>

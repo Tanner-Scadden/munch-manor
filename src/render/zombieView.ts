@@ -11,14 +11,14 @@ import {
   glowing,
   group,
   placeAt,
-} from '../art/sprite'
+} from '#art/sprite.ts'
 import {
   KABOOMER_FUSE_MAX,
   ZOMBIE_SPRITES,
   kaboomerFuseSprite,
   kaboomerFuseTip,
   wornFramesAt,
-} from '../art/sprites/zombies'
+} from '#art/sprites/zombies.ts'
 import {
   ZOMBIE_DEATH_FADE_START,
   ZOMBIE_DEATH_FALL_END,
@@ -30,7 +30,7 @@ import {
   ZOMBIE_HIT_FLASH_MS,
   ZOMBIE_HIT_PULSE_MS,
   ZOMBIE_HIT_SQUASH,
-} from '../shared/constants'
+} from '#shared/constants.ts'
 import {
   Frenzy,
   type Player,
@@ -39,11 +39,11 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-} from '../world/schema/entitySchema'
-import type { Boss } from '../world/schema/worldSchema'
-import { clamp } from '../world/step/geometry'
-import { isEnraged } from '../world/zombies/bossFight'
-import { shieldAim } from '../world/zombies/chucker'
+} from '#world/schema/entitySchema.ts'
+import type { Boss } from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+import { isEnraged } from '#world/zombies/bossFight.ts'
+import { shieldAim } from '#world/zombies/chucker.ts'
 import {
   type DeathStyle,
   ZOMBIE_KINDS,
@@ -51,9 +51,10 @@ import {
   statsOf,
   strideAt,
   wearOf,
-} from '../world/zombies/zombies'
-import { STANDING_POSE, bossPose } from './bossPoseView'
-import * as Draw from './draw'
+} from '#world/zombies/zombies.ts'
+
+import { STANDING_POSE, bossPose } from './bossPoseView.ts'
+import * as Draw from './draw.ts'
 import {
   FULL_TURN,
   HEALTH_BAR_GAP,
@@ -63,9 +64,9 @@ import {
   multiplyScales,
   progressBetween,
   squashPulse,
-} from './drawing'
-import { isRaging } from './frenzyView'
-import { barWidthOf, healthBarShapes } from './healthBarView'
+} from './drawing.ts'
+import { isRaging } from './frenzyView.ts'
+import { barWidthOf, healthBarShapes } from './healthBarView.ts'
 import {
   DAZE_STAR_COLOR,
   DAZE_STAR_MS,
@@ -73,7 +74,7 @@ import {
   heftTone,
   isTauntingAt,
   placementOf,
-} from './zombiePlacement'
+} from './zombiePlacement.ts'
 
 const zombieHitTone = (hitRemainingMs: number): Tone =>
   hitRemainingMs > 0 &&

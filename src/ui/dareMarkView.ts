@@ -3,8 +3,9 @@ import { Function } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { markIcon } from '../art/markArt'
-import { iconView } from './menuParts'
+import { markIcon } from '#art/markArt.ts'
+
+import { iconView } from './menuParts.ts'
 
 export const dareMarkLabel = (mark: number): string =>
   mark > 0 ? `Dare mark ${mark}` : 'Dare mark: none'

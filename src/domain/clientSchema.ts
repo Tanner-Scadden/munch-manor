@@ -3,13 +3,13 @@ import { State } from 'effect-machine'
 
 import { UiSchema } from '@effect/ui'
 
-import { MasterySkin } from '../shared/masteryData'
-import { TutorialChoice } from '../shared/nameKeys'
-import { Appearance, Calling } from '../shared/playerData'
-import { DareKind } from '../world/dare/dareSchema'
-import { MilestoneId } from '../world/dare/milestones'
-import { BONE_BONUSES } from '../world/heroes/rank'
-import { MillisNumber } from '../world/schema/wireNumber'
+import { MasterySkin } from '#shared/masteryData.ts'
+import { TutorialChoice } from '#shared/nameKeys.ts'
+import { Appearance, Calling } from '#shared/playerData.ts'
+import { DareKind } from '#world/dare/dareSchema.ts'
+import { MilestoneId } from '#world/dare/milestones.ts'
+import { BONE_BONUSES } from '#world/heroes/rank.ts'
+import { MillisNumber } from '#world/schema/wireNumber.ts'
 import {
   DifficultyBests,
   KillCounts,
@@ -20,7 +20,7 @@ import {
   Vector,
   WeaponKind,
   ZombieKind,
-} from '../world/schema/worldSchema'
+} from '#world/schema/worldSchema.ts'
 
 export const PrizeFlight = UiSchema.TaggedEnum({
   Grounded: {},

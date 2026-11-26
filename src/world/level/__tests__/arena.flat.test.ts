@@ -5,11 +5,8 @@ import {
   BULLET_STEP_PX,
   COLLISION_STEP_PX,
   LINE_OF_SIGHT_STEP_PX,
-} from '../../../shared/constants'
-import { EVERY_LEVEL } from '../../../test/model.fixture'
-import type { Vector } from '../../schema/worldSchema'
-import { moveCircle, resolveCircle } from '../../step/collision'
-import { addVectors, scaleVector, vectorLength } from '../../step/geometry'
+} from '#shared/constants.ts'
+import { EVERY_LEVEL } from '#test/model.fixture.ts'
 import {
   type Level,
   TILE_DOOR,
@@ -18,13 +15,13 @@ import {
   TILE_PLAYER_SOLID,
   TILE_SOLID,
   hasTileFlag,
-} from '../arena'
+} from '#world/level/arena.ts'
 import {
   DOOR_SYMBOLS,
   isInsideRoom,
   tileIndex,
   tilesWithSymbol,
-} from '../tileGrid'
+} from '#world/level/tileGrid.ts'
 import {
   findReach,
   findStrike,
@@ -36,7 +33,10 @@ import {
   isOpenBlock,
   isSolidAt,
   isWalkableTile,
-} from '../tileQueries'
+} from '#world/level/tileQueries.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { moveCircle, resolveCircle } from '#world/step/collision.ts'
+import { addVectors, scaleVector, vectorLength } from '#world/step/geometry.ts'
 
 const pointsAlong = (
   from: Vector,

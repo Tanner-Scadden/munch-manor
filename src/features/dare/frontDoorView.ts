@@ -1,16 +1,16 @@
 import { Function } from 'effect'
 
-import type { Model } from '../../app/model'
-import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '../../art/sprite'
-import { type Camera, worldToView } from '../../render/camera'
-import type * as Draw from '../../render/draw'
-import { rect } from '../../render/drawing'
-import { clearWindowOf } from '../../render/hudLayout'
-import type { Screen } from '../../render/screen'
-import { Finale } from '../../world/dare/dareSchema'
-import { isFrontDoorOpen } from '../../world/dare/finale'
-import { levelOf } from '../../world/level/arena'
-import { clamp } from '../../world/step/geometry'
+import type { Model } from '#app/model.ts'
+import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '#art/sprite.ts'
+import { type Camera, worldToView } from '#render/camera.ts'
+import type * as Draw from '#render/draw.ts'
+import { rect } from '#render/drawing.ts'
+import { clearWindowOf } from '#render/hudLayout.ts'
+import type { Screen } from '#render/screen.ts'
+import { Finale } from '#world/dare/dareSchema.ts'
+import { isFrontDoorOpen } from '#world/dare/finale.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { clamp } from '#world/step/geometry.ts'
 
 const BLINK_MS = 120
 const LOCK_RISE = 7

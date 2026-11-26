@@ -6,8 +6,9 @@ import {
   faceColorOf,
   isSolidAt,
   voxelsOf,
-} from '../../art/carve'
-import { parseColor } from '../../art/png'
+} from '#art/carve.ts'
+import { parseColor } from '#art/png.ts'
+
 import {
   TOWARD_CAMERA,
   UNIT,
@@ -15,8 +16,8 @@ import {
   WALL_ROW,
   standingPointOf,
   zOf,
-} from './space'
-import { DEPTH_BACK, STRAIGHT_DOWN } from './voxelShape'
+} from './space.ts'
+import { DEPTH_BACK, STRAIGHT_DOWN } from './voxelShape.ts'
 
 export type CarvedMeshData = Readonly<{
   positions: Float32Array

@@ -1,15 +1,16 @@
 import { Array, Function, Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
-import { textShapes, textWidth } from '../../art/font'
-import { group, placeAt } from '../../art/sprite'
-import { runDifficultyOf } from '../../domain/onlineRun'
-import type * as Draw from '../../render/draw'
-import { isBetterRun } from '../../shared/playerData'
-import { isCoop } from '../../world/party/party'
-import { type BestRun, Phase, RunMode } from '../../world/schema/worldSchema'
-import { bestRunOf } from './endBeat'
+import type { Model } from '#app/model.ts'
+import { DARE_ICONS, DARE_ICON_SIZE } from '#art/dareArt.ts'
+import { textShapes, textWidth } from '#art/font.ts'
+import { group, placeAt } from '#art/sprite.ts'
+import { runDifficultyOf } from '#domain/onlineRun.ts'
+import type * as Draw from '#render/draw.ts'
+import { isBetterRun } from '#shared/playerData.ts'
+import { isCoop } from '#world/party/party.ts'
+import { type BestRun, Phase, RunMode } from '#world/schema/worldSchema.ts'
+
+import { bestRunOf } from './endBeat.ts'
 
 const GHOST_OPACITY = 0.55
 const ICON_STRIDE = DARE_ICON_SIZE + 1

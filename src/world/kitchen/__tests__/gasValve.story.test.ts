@@ -3,13 +3,8 @@ import { Array, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import {
-  type Arrangement,
-  GasValve,
-  type Model,
-  Phase,
-} from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { type Arrangement, GasValve, type Model, Phase } from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   atValve,
@@ -17,7 +12,7 @@ import {
   kitchenBreak,
   roomOpenIn,
   withFeatsOf,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   HOLD_TICKS,
   checkModel,
@@ -28,24 +23,28 @@ import {
   steps,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { levelOf, roomAt } from '../../level/arena'
+} from '#test/testing.ts'
+import {
+  VALVE_RULES,
+  flameZoneOf,
+  maybeValveLock,
+} from '#world/kitchen/gasValve.ts'
+import { levelOf, roomAt } from '#world/level/arena.ts'
 import {
   ARRANGEMENTS,
   DEFAULT_ARRANGEMENT,
   PARLOUR_ROOM_ID,
-} from '../../level/plan'
-import { type Box, boxCenter } from '../../level/tileGrid'
+} from '#world/level/plan.ts'
+import { type Box, boxCenter } from '#world/level/tileGrid.ts'
 import {
   focusOf,
   focusSlotOf,
   maybePlayerAt,
   seatCrew,
-} from '../../party/party'
-import { type World, withWorld } from '../../schema/world'
-import { freshTally } from '../../schema/worldSchema'
-import { offersOf } from '../../shop/purchase'
-import { VALVE_RULES, flameZoneOf, maybeValveLock } from '../gasValve'
+} from '#world/party/party.ts'
+import { type World, withWorld } from '#world/schema/world.ts'
+import { freshTally } from '#world/schema/worldSchema.ts'
+import { offersOf } from '#world/shop/purchase.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

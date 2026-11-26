@@ -10,15 +10,19 @@ import { TestClock } from 'effect/testing'
 import { describe, expect, it } from '@effect/vitest'
 import { type Hub, makeHub } from '@munch/sqlite-wasm-effect/in-process'
 
-import { legacySave } from '../../test/store.fixture'
-import { PLAYER_ROW_KEY, PlayerLogSchema, PlayerRow } from '../playerEvents'
+import {
+  PLAYER_ROW_KEY,
+  PlayerLogSchema,
+  PlayerRow,
+} from '#platform/playerEvents.ts'
 import {
   PlayerHandlers,
   createPlayerTables,
   readPlayerFacts,
   readPlayerSave,
   rowOfSave,
-} from '../playerProjection'
+} from '#platform/playerProjection.ts'
+import { legacySave } from '#test/store.fixture.ts'
 
 const identity: EventLog.Identity['Service'] = {
   publicKey: 'projection-test',

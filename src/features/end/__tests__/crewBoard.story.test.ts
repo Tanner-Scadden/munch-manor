@@ -3,12 +3,42 @@ import { Array, Effect, Match, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Life, type Model, Phase } from '../../../app/model'
-import { badgeSprite } from '../../../art/rankArt'
-import { Screen } from '../../../domain/coopRoom'
-import type * as Draw from '../../../render/draw'
-import { PORTRAIT_WIDTH } from '../../../render/screen'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { Life, type Model, Phase } from '#app/model.ts'
+import { badgeSprite } from '#art/rankArt.ts'
+import { Screen } from '#domain/coopRoom.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import { CODE, lobbyOf, memberOf } from '#features/coop/testing.ts'
+import {
+  type CrewMember,
+  SHARPSHOOTER_MIN_SHOTS,
+  awardsOf,
+  crewOf,
+  hasAwards,
+  mvpOf,
+} from '#features/end/crewAwards.ts'
+import {
+  crewBoardColumns,
+  crewBoardHeightPx,
+  crewBoardShapes,
+  crewBoardWidthPx,
+} from '#features/end/crewBoardView.ts'
+import {
+  awardsAtMs,
+  beatSounds,
+  crewDoneMs,
+  doneMs,
+  isBeatOver,
+  sharedRunOf,
+  skipBeat,
+} from '#features/end/endBeat.ts'
+import {
+  CREW_BOARD_TOP_PX,
+  END_BUTTONS_TOP_PX,
+  crewCardBottomPx,
+} from '#features/end/endView.ts'
+import type * as Draw from '#render/draw.ts'
+import { PORTRAIT_WIDTH } from '#render/screen.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   atSeat,
   crewInWave,
@@ -18,52 +48,18 @@ import {
   pipeline,
   placeSeat,
   withSeatLife,
-} from '../../../test/model.fixture'
-import { checkModel, storyOf, ticks, zombieOf } from '../../../test/testing'
-import { WEAPONS } from '../../../world/gear/weapons'
-import {
-  COOP_RULES,
-  maybePlayerAt,
-  playersOf,
-} from '../../../world/party/party'
-import { withWorld } from '../../../world/schema/world'
+} from '#test/model.fixture.ts'
+import { checkModel, storyOf, ticks, zombieOf } from '#test/testing.ts'
+import { WEAPONS } from '#world/gear/weapons.ts'
+import { COOP_RULES, maybePlayerAt, playersOf } from '#world/party/party.ts'
+import { withWorld } from '#world/schema/world.ts'
 import {
   type Intent,
   Pierce,
   type Seat,
   idleIntent,
-} from '../../../world/schema/worldSchema'
-import { stepWorld } from '../../../world/step/stepWorld'
-import { freshRoom } from '../../coop/roomState'
-import { CODE, lobbyOf, memberOf } from '../../coop/testing'
-import {
-  type CrewMember,
-  SHARPSHOOTER_MIN_SHOTS,
-  awardsOf,
-  crewOf,
-  hasAwards,
-  mvpOf,
-} from '../crewAwards'
-import {
-  crewBoardColumns,
-  crewBoardHeightPx,
-  crewBoardShapes,
-  crewBoardWidthPx,
-} from '../crewBoardView'
-import {
-  awardsAtMs,
-  beatSounds,
-  crewDoneMs,
-  doneMs,
-  isBeatOver,
-  sharedRunOf,
-  skipBeat,
-} from '../endBeat'
-import {
-  CREW_BOARD_TOP_PX,
-  END_BUTTONS_TOP_PX,
-  crewCardBottomPx,
-} from '../endView'
+} from '#world/schema/worldSchema.ts'
+import { stepWorld } from '#world/step/stepWorld.ts'
 
 const TICK_MS = FIXED_STEP_MS
 const UPRIGHT_BUTTONS_TOP_PX = 203

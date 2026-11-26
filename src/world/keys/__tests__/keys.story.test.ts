@@ -10,8 +10,8 @@ import {
   Pantry,
   Phase,
   type Zombie,
-} from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+} from '#app/model.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,
   atFridge,
@@ -20,7 +20,7 @@ import {
   fridgeSeededFor,
   pastTimedBreaks,
   withKeys,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
@@ -34,13 +34,13 @@ import {
   tick,
   ticks,
   zombieOf,
-} from '../../../test/testing'
-import { FRIDGE_RULES } from '../../fridge/leftovers'
-import { PANTRY_RULES, pantrySpotOf } from '../../kitchen/pantry'
-import { MANOR, levelOf } from '../../level/arena'
-import { EXIT_RULES, KITCHEN_EXIT, exitKeysOf } from '../../level/exits'
-import { maybePlayerAt, modifyFocus } from '../../party/party'
-import { ZOMBIE_KINDS } from '../../zombies/zombies'
+} from '#test/testing.ts'
+import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
+import { PANTRY_RULES, pantrySpotOf } from '#world/kitchen/pantry.ts'
+import { MANOR, levelOf } from '#world/level/arena.ts'
+import { EXIT_RULES, KITCHEN_EXIT, exitKeysOf } from '#world/level/exits.ts'
+import { maybePlayerAt, modifyFocus } from '#world/party/party.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 

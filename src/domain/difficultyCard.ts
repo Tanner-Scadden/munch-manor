@@ -1,9 +1,10 @@
 import { Event, Machine } from 'effect-machine'
 
-import { TutorialChoice } from '../shared/nameKeys'
-import { RunMode } from '../world/schema/worldSchema'
-import { DifficultyCard } from './clientSchema'
-import { machineStepOf } from './machineStep'
+import { TutorialChoice } from '#shared/nameKeys.ts'
+import { RunMode } from '#world/schema/worldSchema.ts'
+
+import { DifficultyCard } from './clientSchema.ts'
+import { machineStepOf } from './machineStep.ts'
 
 export const CardEvent = Event({
   Asked: { mode: RunMode },

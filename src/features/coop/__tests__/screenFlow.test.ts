@@ -2,9 +2,13 @@ import { Array, Option } from 'effect'
 import { Machine } from 'effect-machine'
 import { describe, expect, test } from 'vitest'
 
-import { RoomRequest, Screen } from '../../../domain/coopRoom'
-import { freshRoom } from '../roomState'
-import { ScreenEvent, screenMachine, stepScreen } from '../screenFlow'
+import { RoomRequest, Screen } from '#domain/coopRoom.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import {
+  ScreenEvent,
+  screenMachine,
+  stepScreen,
+} from '#features/coop/screenFlow.ts'
 
 const registered = (): ReadonlyArray<string> =>
   Array.sort(

@@ -1,13 +1,14 @@
 import { Array } from 'effect'
 
-import type { SoundEffect } from '../shared/soundEffect'
+import type { SoundEffect } from '#shared/soundEffect.ts'
+
 import {
   type PitchPoint,
   type Recipe,
   at,
   delayedEnvelope,
   envelope,
-} from './soundRecipe'
+} from './soundRecipe.ts'
 
 const ZOMBIE_HIT_RECIPE: Recipe = {
   variationCents: 160,

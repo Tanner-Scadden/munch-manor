@@ -1,36 +1,37 @@
 import { Array, Function, Option, String } from 'effect'
 
-import type { Model } from '../app/model'
-import { bakeText, placeBaked } from '../art/font'
-import { type Sprite, bakeShapes, group, placeAt } from '../art/sprite'
-import { BOSS_ICON } from '../art/sprites/zombies'
-import type { HintBand } from '../domain/clientSchema'
-import { VIEW_WIDTH } from '../shared/constants'
-import { type Level, levelOf } from '../world/level/arena'
-import { findStrike } from '../world/level/tileQueries'
+import type { Model } from '#app/model.ts'
+import { bakeText, placeBaked } from '#art/font.ts'
+import { type Sprite, bakeShapes, group, placeAt } from '#art/sprite.ts'
+import { BOSS_ICON } from '#art/sprites/zombies.ts'
+import type { HintBand } from '#domain/clientSchema.ts'
+import { VIEW_WIDTH } from '#shared/constants.ts'
+import { type Level, levelOf } from '#world/level/arena.ts'
+import { findStrike } from '#world/level/tileQueries.ts'
 import {
   type BossAttack,
   BossMove,
   Glob,
   type Vector,
   type Zombie,
-} from '../world/schema/entitySchema'
-import { Boss } from '../world/schema/worldSchema'
-import { clamp } from '../world/step/geometry'
-import { type BossBar, maybeStandingBoss } from '../world/zombies/boss'
-import { isEnraged } from '../world/zombies/bossFight'
-import { BOSS_RULES } from '../world/zombies/bossRules'
-import { ZOMBIE_KINDS } from '../world/zombies/zombies'
-import * as Draw from './draw'
-import { FULL_TURN, tellAlpha } from './drawing'
-import { barWidthOf, healthBarShapes } from './healthBarView'
+} from '#world/schema/entitySchema.ts'
+import { Boss } from '#world/schema/worldSchema.ts'
+import { clamp } from '#world/step/geometry.ts'
+import { type BossBar, maybeStandingBoss } from '#world/zombies/boss.ts'
+import { isEnraged } from '#world/zombies/bossFight.ts'
+import { BOSS_RULES } from '#world/zombies/bossRules.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
+
+import * as Draw from './draw.ts'
+import { FULL_TURN, tellAlpha } from './drawing.ts'
+import { barWidthOf, healthBarShapes } from './healthBarView.ts'
 import {
   bakeDiscs,
   bakeRings,
   pixelDisc,
   pixelDiscSpans,
   pixelRing,
-} from './pixelCircle'
+} from './pixelCircle.ts'
 
 const RING_FILL_FAINT = 0.12
 const RING_FILL_STRONG = 0.34

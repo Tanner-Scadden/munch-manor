@@ -3,7 +3,7 @@ import { Array, Effect, Option, Order, Result, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
+import { Message } from '#app/message.ts'
 import {
   BreakClock,
   type DoorId,
@@ -13,13 +13,13 @@ import {
   type Zombie,
   ZombieAction,
   type ZombieKind,
-} from '../../../app/model'
+} from '#app/model.ts'
 import {
   DOOR_HALF_WIDTH_PX,
   FIXED_STEP_MS,
   PLAYER_RADIUS,
-} from '../../../shared/constants'
-import { quietWave, withActors } from '../../../test/model.fixture'
+} from '#shared/constants.ts'
+import { quietWave, withActors } from '#test/model.fixture.ts'
 import {
   blastFrames,
   checkModel,
@@ -30,20 +30,28 @@ import {
   steps,
   tick,
   zombieOf,
-} from '../../../test/testing'
+} from '#test/testing.ts'
 import {
   type Level,
   PARLOUR,
   START_LEVEL,
   startingLevel,
-} from '../../level/arena'
-import { doorSpawnPoint, isSolidAt, nearestDoor } from '../../level/tileQueries'
-import { modifyFocus } from '../../party/party'
-import type { LevelState } from '../../schema/entitySchema'
-import { roundWaveOf } from '../../schema/worldSchema'
-import { doorCounts, floorCounts, rollSpawns } from '../../waves/endlessWaves'
-import { FINAL_WAVE } from '../../waves/wavePlans'
-import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../zombies'
+} from '#world/level/arena.ts'
+import {
+  doorSpawnPoint,
+  isSolidAt,
+  nearestDoor,
+} from '#world/level/tileQueries.ts'
+import { modifyFocus } from '#world/party/party.ts'
+import type { LevelState } from '#world/schema/entitySchema.ts'
+import { roundWaveOf } from '#world/schema/worldSchema.ts'
+import {
+  doorCounts,
+  floorCounts,
+  rollSpawns,
+} from '#world/waves/endlessWaves.ts'
+import { FINAL_WAVE } from '#world/waves/wavePlans.ts'
+import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const CENTER_X = START_LEVEL.start.x

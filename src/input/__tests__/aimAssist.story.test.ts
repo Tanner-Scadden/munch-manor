@@ -3,13 +3,15 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { screenCameraOf, worldToView } from '../../render/camera'
-import { screenToFloorDirection } from '../../render/lens'
-import { FIXED_STEP_MS, STICK_RADIUS_PX } from '../../shared/constants'
-import { DISTANT_SPAWN } from '../../test/model.fixture'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { AIM_ASSIST } from '#input/aimAssist.ts'
+import { MouseButton, Stick } from '#input/inputSchema.ts'
+import { screenCameraOf, worldToView } from '#render/camera.ts'
+import { screenToFloorDirection } from '#render/lens.ts'
+import { FIXED_STEP_MS, STICK_RADIUS_PX } from '#shared/constants.ts'
+import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
@@ -19,11 +21,9 @@ import {
   storyOf,
   tick,
   zombieOf,
-} from '../../test/testing'
-import { asVeteran } from '../../test/veteran'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { AIM_ASSIST } from '../aimAssist'
-import { MouseButton, Stick } from '../inputSchema'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const PLAYER = START_SPOT
 const ZOMBIE_DISTANCE_PX = 40

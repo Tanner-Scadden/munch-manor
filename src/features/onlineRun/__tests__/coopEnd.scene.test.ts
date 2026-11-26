@@ -5,11 +5,21 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { describe, expect as expectValue, it } from '@effect/vitest'
 import type { LobbyMember } from '@munch/netcode'
 
-import { Message } from '../../../app/message'
-import { Lesson, type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { LobbyChange, Screen, maybeRoomOf } from '../../../domain/coopRoom'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
+import { Message } from '#app/message.ts'
+import { Lesson, type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { LobbyChange, Screen, maybeRoomOf } from '#domain/coopRoom.ts'
+import { freshRoom } from '#features/coop/roomState.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
+import {
+  CODE,
+  lobbyOf,
+  memberOf,
+  playingSession,
+} from '#features/coop/testing.ts'
+import { LeaveRoom, RememberRoom } from '#features/coop/update.ts'
+import { isRunCardHeld } from '#features/end/endBeat.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
 import {
   byClass,
   endButtons,
@@ -18,7 +28,7 @@ import {
   measureSurface,
   shareMountSettles,
   withAttrs,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type RootStep,
   checkModel,
@@ -26,18 +36,11 @@ import {
   sceneOf,
   send,
   storyOf,
-} from '../../../test/testing'
-import { asVeteran } from '../../../test/veteran'
-import {
-  DEFAULT_ROOM_SETTINGS,
-  startRoomWorld,
-} from '../../../world/net/roomWorld'
-import { freshRoom } from '../../coop/roomState'
-import { ChangeLobby } from '../../coop/steps'
-import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import { LeaveRoom, RememberRoom } from '../../coop/update'
-import { isRunCardHeld } from '../../end/endBeat'
-import { coopScreen } from './onlineRun.fixture'
+} from '#test/testing.ts'
+import { asVeteran } from '#test/veteran.ts'
+import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from '#world/net/roomWorld.ts'
+
+import { coopScreen } from './onlineRun.fixture.ts'
 
 const OWN_SLOT = 1
 

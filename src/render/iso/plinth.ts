@@ -11,19 +11,19 @@ import {
 } from '@pixi/3d'
 import { OutlinePass, ToonMaterial } from '@pixi/3d/extras'
 
-import { IDENTITY } from './flatten'
-import { FLAME_TUNING } from './lightSpecs'
-import { LOOK_TUNING } from './lookSpecs'
+import { IDENTITY } from './flatten.ts'
+import { FLAME_TUNING } from './lightSpecs.ts'
+import { LOOK_TUNING } from './lookSpecs.ts'
 import {
   PLINTH_BASE_PX,
   PLINTH_TOP_PX,
   type PlinthLight,
   type PlinthPose,
   plinthFrameOf,
-} from './plinthPose'
-import { UNIT, standingPointOf } from './space'
-import type { Textures } from './textures'
-import { VoxelBatch, newReach } from './voxels'
+} from './plinthPose.ts'
+import { UNIT, standingPointOf } from './space.ts'
+import type { Textures } from './textures.ts'
+import { VoxelBatch, newReach } from './voxels.ts'
 
 const CAMERA_DISTANCE = 30
 

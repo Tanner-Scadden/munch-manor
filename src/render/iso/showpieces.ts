@@ -9,28 +9,33 @@ import {
   srgbToLinear,
 } from '@pixi/3d'
 
-import { cropSetOf, placeAt } from '../../art/sprite'
-import { TILE_SIZE } from '../../shared/constants'
-import { gapBoxOf } from '../../world/dining/chandelier'
-import type { Level } from '../../world/level/arena'
-import { SECRET_EXIT } from '../../world/level/plan'
-import { secretShelfOf } from '../../world/library/secretShelf'
+import { cropSetOf, placeAt } from '#art/sprite.ts'
 import {
   type CarvedShowpiece,
   carvedChandelierOf,
-} from '../room/chandelierCarve'
-import { chandelierRopeOf } from '../room/chandelierRope'
+} from '#render/room/chandelierCarve.ts'
+import { chandelierRopeOf } from '#render/room/chandelierRope.ts'
 import {
   CHANDELIER_SHAPES,
   CHANDELIER_SPRITES,
   type ChandelierState,
-} from '../room/diningArt'
-import { FLAME_COLOR, FLAME_TIP_COLOR } from '../room/roomPalette'
-import { SHELF_CARVES, isShelfGlint } from '../room/shelfCarve'
-import { type CarvedMeshData, carvedMeshOf, uprightMeshOf } from './carvedMesh'
-import { type ViewBox, isNearView } from './cull'
-import { type Leaf, flatten } from './flatten'
-import { UNIT } from './space'
+} from '#render/room/diningArt.ts'
+import { FLAME_COLOR, FLAME_TIP_COLOR } from '#render/room/roomPalette.ts'
+import { SHELF_CARVES, isShelfGlint } from '#render/room/shelfCarve.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { gapBoxOf } from '#world/dining/chandelier.ts'
+import type { Level } from '#world/level/arena.ts'
+import { SECRET_EXIT } from '#world/level/plan.ts'
+import { secretShelfOf } from '#world/library/secretShelf.ts'
+
+import {
+  type CarvedMeshData,
+  carvedMeshOf,
+  uprightMeshOf,
+} from './carvedMesh.ts'
+import { type ViewBox, isNearView } from './cull.ts'
+import { type Leaf, flatten } from './flatten.ts'
+import { UNIT } from './space.ts'
 
 const GLOWING: ReadonlySet<string> = new Set([FLAME_COLOR, FLAME_TIP_COLOR])
 

@@ -5,18 +5,19 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
-import { type Model, Phase } from '../../../app/model'
-import { PressGameSurface } from '../../../app/mount'
-import { ClickSupportLink } from '../../../app/update/home'
-import { HAND_DIALOG_ID } from '../../../domain/clientSchema'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
+import { type Model, Phase } from '#app/model.ts'
+import { PressGameSurface } from '#app/mount.ts'
+import { ClickSupportLink } from '#app/update/home.ts'
+import { HAND_DIALOG_ID } from '#domain/clientSchema.ts'
+import menuCss from '#features/home/menu.css?raw'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
 import {
   fighting,
   home,
   inPortrait,
   withNewerBuild,
   withoutSupportLink,
-} from '../../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   byClass,
   emitPressedKey,
@@ -29,7 +30,7 @@ import {
   settleEndShareOf,
   showDialog,
   withAttrs,
-} from '../../../test/sceneTesting'
+} from '#test/sceneTesting.ts'
 import {
   type AppScene,
   PHONE_LANDSCAPE,
@@ -37,9 +38,8 @@ import {
   type SceneStep,
   sceneOf,
   steps,
-} from '../../../test/testing'
-import { pause } from '../../../world/waves/waves'
-import menuCss from '../../home/menu.css?raw'
+} from '#test/testing.ts'
+import { pause } from '#world/waves/waves.ts'
 
 const TEST_LINK = 'https://buy.stripe.com/test_coffee'
 

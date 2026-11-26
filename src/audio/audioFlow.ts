@@ -1,7 +1,7 @@
 import { Event, Machine } from 'effect-machine'
 
-import { AudioState } from '../domain/clientSchema'
-import { machineStepOf } from '../domain/machineStep'
+import { AudioState } from '#domain/clientSchema.ts'
+import { machineStepOf } from '#domain/machineStep.ts'
 
 export const AudioEvent = Event({
   Unlocked: {},

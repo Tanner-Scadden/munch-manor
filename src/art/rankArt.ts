@@ -1,14 +1,15 @@
 import { Array, Function, Record, String, pipe } from 'effect'
 import type { Option } from 'effect'
 
-import type { BadgeTier } from '../world/heroes/rank'
+import type { BadgeTier } from '#world/heroes/rank.ts'
+
 import {
   type ArtImage,
   type Palette,
   type Sprite,
   spriteImage,
   spriteShapes,
-} from './sprite'
+} from './sprite.ts'
 
 const WOOD = [
   '.OOOOOOOOOOO.',

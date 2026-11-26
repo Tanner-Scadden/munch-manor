@@ -118,6 +118,7 @@
         "munch/stand-through-space": "error",
         "munch/no-dialog-field-write": "error",
         "munch/folder-imports": "error",
+        "munch/subpath-imports": "error",
         "no-restricted-properties": [
           "error",
           {

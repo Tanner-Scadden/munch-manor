@@ -1,12 +1,13 @@
 import { Function } from 'effect'
 
-import { endOffer } from '../../features/end/endOffer'
-import { releaseAll } from '../../input/input'
-import { isRoundActive } from '../../world/waves/waves'
-import { type Model, Phase, type RunMode } from '../model'
-import { startOrResume } from '../runFlow'
-import { playStartSoundWhen, unlockAudio } from './sound'
-import { type UpdateStep, toModel, withInput } from './step'
+import { type Model, Phase, type RunMode } from '#app/model.ts'
+import { startOrResume } from '#app/runFlow.ts'
+import { endOffer } from '#features/end/endOffer.ts'
+import { releaseAll } from '#input/input.ts'
+import { isRoundActive } from '#world/waves/waves.ts'
+
+import { playStartSoundWhen, unlockAudio } from './sound.ts'
+import { type UpdateStep, toModel, withInput } from './step.ts'
 
 export const isPaused = Phase.isAnyOf(['Paused'])
 

@@ -1,7 +1,8 @@
-import { TILE_SIZE } from '../shared/constants'
-import * as DetMath from '../shared/detMath'
-import type { Vector } from '../world/schema/entitySchema'
-import { PITCH, STRETCH, UNIT, type Vec3 } from './iso/space'
+import { TILE_SIZE } from '#shared/constants.ts'
+import * as DetMath from '#shared/detMath.ts'
+import type { Vector } from '#world/schema/entitySchema.ts'
+
+import { PITCH, STRETCH, UNIT, type Vec3 } from './iso/space.ts'
 
 export const YAW = (5 * Math.PI) / 180
 

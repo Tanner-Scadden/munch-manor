@@ -1,8 +1,8 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
 
-import type { Vector } from '../world/schema/entitySchema'
-import { GameEvent } from '../world/schema/worldSchema'
-import { distanceBetween } from '../world/step/geometry'
+import type { Vector } from '#world/schema/entitySchema.ts'
+import { GameEvent } from '#world/schema/worldSchema.ts'
+import { distanceBetween } from '#world/step/geometry.ts'
 
 export type RumbleCue = Readonly<{
   strong: number

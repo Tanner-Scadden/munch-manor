@@ -2,8 +2,8 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import type { ViewBox } from './cull'
-import { PITCH, UNIT, type Vec3 } from './space'
+import type { ViewBox } from './cull.ts'
+import { PITCH, UNIT, type Vec3 } from './space.ts'
 
 export const IsoLens = UiSchema.TaggedEnum({
   Play: {},

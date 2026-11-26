@@ -2,22 +2,23 @@ import { Array, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '../app/model'
+import type { Model } from '#app/model.ts'
 import {
   DUST_SPEED_MAX,
   DUST_SPEED_MIN,
   PARTICLE_MAX,
-} from '../shared/constants'
-import { generateMany } from '../shared/prng'
-import { seatStateAt } from '../world/party/party'
-import { freshBeats, nextActionWatch, strikesBetween } from './actionPose'
+} from '#shared/constants.ts'
+import { generateMany } from '#shared/prng.ts'
+import { seatStateAt } from '#world/party/party.ts'
+
+import { freshBeats, nextActionWatch, strikesBetween } from './actionPose.ts'
 import {
   chain,
   dustPuff,
   playerGround,
   woodBits,
-} from './particles/particleBursts'
-import { keepNewest } from './particles/particles'
+} from './particles/particleBursts.ts'
+import { keepNewest } from './particles/particles.ts'
 
 const SET_DUST_PUFFS = 5
 const HAMMER_SPLINTERS = 2

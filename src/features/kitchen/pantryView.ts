@@ -1,15 +1,15 @@
 import { Option } from 'effect'
 
-import type { Model } from '../../app/model'
-import { KEY_SPRITE } from '../../art/font'
-import { type Sprite, placeAt } from '../../art/sprite'
-import { HEART_SPRITE } from '../../art/sprites/hearts'
-import type { Drawable } from '../../render/depth'
-import { GLINT, GOODIE_SHADOW } from '../../render/drawing'
-import { isKitchenShown } from '../../render/room/kitchenView'
-import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
-import { levelOf } from '../../world/level/arena'
-import type { PantryGoodie } from '../../world/schema/entitySchema'
+import type { Model } from '#app/model.ts'
+import { KEY_SPRITE } from '#art/font.ts'
+import { type Sprite, placeAt } from '#art/sprite.ts'
+import { HEART_SPRITE } from '#art/sprites/hearts.ts'
+import type { Drawable } from '#render/depth.ts'
+import { GLINT, GOODIE_SHADOW } from '#render/drawing.ts'
+import { isKitchenShown } from '#render/room/kitchenView.ts'
+import { maybeStash, pantrySpotOf } from '#world/kitchen/pantry.ts'
+import { levelOf } from '#world/level/arena.ts'
+import type { PantryGoodie } from '#world/schema/entitySchema.ts'
 
 const BOB_MS = 280
 const BOB_PX = 1

@@ -4,33 +4,27 @@ import { Component, UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { afterEach, describe, expect, it, test } from '@effect/vitest'
 
-import { isPanelOpen } from '../../../app/menuState'
-import { Message } from '../../../app/message'
-import { FridgeDoor } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
-import { atFridgeOnWave, home } from '../../../test/model.fixture'
-import {
-  checkModel,
-  modelAfter,
-  send,
-  storyOf,
-  ticks,
-} from '../../../test/testing'
-import { FRIDGE_RULES } from '../../../world/fridge/leftovers'
-import { TRAPS } from '../../../world/gear/traps'
-import { UPGRADE_TIERS, WEAPONS } from '../../../world/gear/weapons'
-import { EXIT_RULES } from '../../../world/level/exits'
-import { LASER_SIGHT_NAME, PICKUP_NAMES } from '../../../world/names'
-import { munchopediaPropsOf } from '../../munchopedia/__tests__/munchopedia.fixture'
-import { FocusGuideControl, Munchopedia } from '../../munchopedia/block'
-import { Message as MunchopediaMessage } from '../../munchopedia/message'
-import { GuideStatus } from '../model'
+import { isPanelOpen } from '#app/menuState.ts'
+import { Message } from '#app/message.ts'
+import { FridgeDoor } from '#app/model.ts'
+import { GuideStatus } from '#features/guide/model.ts'
 import {
   type GuideEntry,
   entriesOf,
   isEntryKnown,
   prizeUnlockId,
-} from '../shopGuide'
+} from '#features/guide/shopGuide.ts'
+import { munchopediaPropsOf } from '#features/munchopedia/__tests__/munchopedia.fixture.ts'
+import { FocusGuideControl, Munchopedia } from '#features/munchopedia/block.ts'
+import { Message as MunchopediaMessage } from '#features/munchopedia/message.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
+import { atFridgeOnWave, home } from '#test/model.fixture.ts'
+import { checkModel, modelAfter, send, storyOf, ticks } from '#test/testing.ts'
+import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
+import { TRAPS } from '#world/gear/traps.ts'
+import { UPGRADE_TIERS, WEAPONS } from '#world/gear/weapons.ts'
+import { EXIT_RULES } from '#world/level/exits.ts'
+import { LASER_SIGHT_NAME, PICKUP_NAMES } from '#world/names.ts'
 
 const entry = (section: Parameters<typeof entriesOf>[0], id: string) =>
   Option.getOrThrow(

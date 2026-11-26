@@ -11,23 +11,27 @@ import {
 } from '@pixi/3d'
 import type { ToonMaterial } from '@pixi/3d/extras'
 
-import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
+import type * as Draw from '#render/draw.ts'
+import {
+  ESCAPE_COVER_DRAWINGS,
+  isEscapeCoverKind,
+} from '#render/room/escapeCover.ts'
+import { roomArtOf } from '#render/room/room.ts'
+import { COVER_DRAWINGS, coverBlocks } from '#render/room/roomCover.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import type { Level } from '#world/level/arena.ts'
 import {
   COVER_SYMBOLS,
   type CoverKind,
   WALL_SYMBOL,
-} from '../../world/level/tileGrid'
-import type * as Draw from '../draw'
-import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
-import { roomArtOf } from '../room/room'
-import { COVER_DRAWINGS, coverBlocks } from '../room/roomCover'
-import { type BillboardPool, type Cutout, standCutout } from './billboards'
-import type { ViewBox } from './cull'
-import { type Leaf, flatten, makeRectSet } from './flatten'
-import { LINTEL_FLOOR, lintelTilesOf } from './lintels'
-import { STRETCH, UNIT, wallHeightAt, zOf } from './space'
-import { colorOf } from './textures'
+} from '#world/level/tileGrid.ts'
+
+import { type BillboardPool, type Cutout, standCutout } from './billboards.ts'
+import type { ViewBox } from './cull.ts'
+import { type Leaf, flatten, makeRectSet } from './flatten.ts'
+import { LINTEL_FLOOR, lintelTilesOf } from './lintels.ts'
+import { STRETCH, UNIT, wallHeightAt, zOf } from './space.ts'
+import { colorOf } from './textures.ts'
 import {
   type ArtQuad,
   BLOCK_INSET,
@@ -36,8 +40,8 @@ import {
   isFannedAt,
   standingTilesOf,
   wallQuadsOf,
-} from './wallQuads'
-import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind'
+} from './wallQuads.ts'
+import { type Bounds, bendWeightOf, fernBandOf, windOffsetAt } from './wind.ts'
 
 const WALL_GEOMETRY = new CubeGeometry({ width: 1, height: 1, depth: 1 })
 

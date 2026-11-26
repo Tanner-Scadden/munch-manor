@@ -5,18 +5,22 @@ import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { milestoneUnlockId } from '../../../domain/journal'
-import { noJournal } from '../../../shared/journalData'
-import { home } from '../../../test/model.fixture'
-import { modelAfter, send, steps } from '../../../test/testing'
-import { DARE_LINES, DARE_NAMES, STORY_TITLES } from '../../../world/names'
-import { Munchopedia } from '../block'
-import { JOURNAL_ROOMS, STORY_PAGES } from '../journalPages'
-import { MunchopediaEvents } from '../message'
-import { MunchopediaPage } from '../model'
-import { munchopediaPropsOf } from './munchopedia.fixture'
+import { Message } from '#app/message.ts'
+import type { Model } from '#app/model.ts'
+import { milestoneUnlockId } from '#domain/journal.ts'
+import { Munchopedia } from '#features/munchopedia/block.ts'
+import {
+  JOURNAL_ROOMS,
+  STORY_PAGES,
+} from '#features/munchopedia/journalPages.ts'
+import { MunchopediaEvents } from '#features/munchopedia/message.ts'
+import { MunchopediaPage } from '#features/munchopedia/model.ts'
+import { noJournal } from '#shared/journalData.ts'
+import { home } from '#test/model.fixture.ts'
+import { modelAfter, send, steps } from '#test/testing.ts'
+import { DARE_LINES, DARE_NAMES, STORY_TITLES } from '#world/names.ts'
+
+import { munchopediaPropsOf } from './munchopedia.fixture.ts'
 
 const tab = (name: string) =>
   HtmlLocator.role('button', { name: new RegExp(`^${name}`) })

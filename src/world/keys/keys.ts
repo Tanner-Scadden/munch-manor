@@ -2,22 +2,22 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { nextRandom } from '../../shared/prng'
-import { killerOf } from '../feats/feats'
-import { keyScaleOf } from '../heroes/calling'
-import { kitchenKeyScale } from '../kitchen/kitchenKeys'
-import { levelOf } from '../level/arena'
-import { maybePlayerAt, modifySeatRecord } from '../party/party'
-import { activeModifiersOf } from '../run/dareLadder'
-import { brokeKeyScaleOf } from '../run/modifiers'
-import type { World } from '../schema/world'
+import { nextRandom } from '#shared/prng.ts'
+import { killerOf } from '#world/feats/feats.ts'
+import { keyScaleOf } from '#world/heroes/calling.ts'
+import { kitchenKeyScale } from '#world/kitchen/kitchenKeys.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { maybePlayerAt, modifySeatRecord } from '#world/party/party.ts'
+import { activeModifiersOf } from '#world/run/dareLadder.ts'
+import { brokeKeyScaleOf } from '#world/run/modifiers.ts'
+import type { World } from '#world/schema/world.ts'
 import {
   GameEvent,
   type KeyRing,
   type Vector,
   type ZombieKind,
-} from '../schema/worldSchema'
-import { ZOMBIE_KINDS } from '../zombies/zombies'
+} from '#world/schema/worldSchema.ts'
+import { ZOMBIE_KINDS } from '#world/zombies/zombies.ts'
 
 type KeyRules = Readonly<{ perWaveCleared: number; perPackWiped: number }>
 

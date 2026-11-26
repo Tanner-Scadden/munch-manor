@@ -1,14 +1,14 @@
 import { UiStruct } from '@effect/ui'
 
-import { Lesson, type Model } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { byClass, withAttrs } from '../../../test/sceneTesting'
-import { asVeteran } from '../../../test/veteran'
+import { Lesson, type Model } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { byClass, withAttrs } from '#test/sceneTesting.ts'
+import { asVeteran } from '#test/veteran.ts'
 import {
   DEFAULT_ROOM_SETTINGS,
   pastArrival,
   startRoomWorld,
-} from '../../../world/net/roomWorld'
+} from '#world/net/roomWorld.ts'
 
 export const OWN_SLOT = 1
 

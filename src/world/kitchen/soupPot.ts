@@ -1,12 +1,12 @@
 import { Function, Option } from 'effect'
 
-import * as DetMath from '../../shared/detMath'
-import { levelOf } from '../level/arena'
-import { boxCenter } from '../level/tileGrid'
-import type { World } from '../schema/world'
-import type { Vector } from '../schema/worldSchema'
-import { stationBoxOf } from '../stations/stationSpots'
-import { TOOL_RULES, isToolActive } from '../stations/toolRules'
+import * as DetMath from '#shared/detMath.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { boxCenter } from '#world/level/tileGrid.ts'
+import type { World } from '#world/schema/world.ts'
+import type { Vector } from '#world/schema/worldSchema.ts'
+import { stationBoxOf } from '#world/stations/stationSpots.ts'
+import { TOOL_RULES, isToolActive } from '#world/stations/toolRules.ts'
 
 const RULES = TOOL_RULES.SoupPot
 

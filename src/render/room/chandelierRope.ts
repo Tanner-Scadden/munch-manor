@@ -1,6 +1,6 @@
 import { Array, Option, String } from 'effect'
 
-import { blocksModelOf } from '../../art/carve'
+import { blocksModelOf } from '#art/carve.ts'
 import {
   BRASS_COLOR,
   BRASS_DARK_COLOR,
@@ -9,13 +9,14 @@ import {
   ROPE_LIGHT_COLOR,
   WINCH_HEIGHT_PX,
   WINCH_ROPE_COLUMN,
-} from '../../art/winchArt'
-import { TILE_SIZE } from '../../shared/constants'
-import { gapBoxOf } from '../../world/dining/chandelier'
-import type { Level } from '../../world/level/arena'
-import { stationCenterOf } from '../../world/stations/stationSpots'
-import type { CarvedShowpiece } from './chandelierCarve'
-import type { ChandelierState } from './diningArt'
+} from '#art/winchArt.ts'
+import { TILE_SIZE } from '#shared/constants.ts'
+import { gapBoxOf } from '#world/dining/chandelier.ts'
+import type { Level } from '#world/level/arena.ts'
+import { stationCenterOf } from '#world/stations/stationSpots.ts'
+
+import type { CarvedShowpiece } from './chandelierCarve.ts'
+import type { ChandelierState } from './diningArt.ts'
 
 type Block = Readonly<{ x: number; floor: number; h: number; color: string }>
 

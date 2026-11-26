@@ -3,17 +3,18 @@ import { Array, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { SHOP_TILE_ART } from '../../art/shopArt'
-import { plinthElement } from '../../render/iso/plinthElement'
-import { backButtonView } from '../../ui/cornerButtons'
-import { SHOP_GUIDE_NAME } from '../../world/names'
-import type { ZombieKind } from '../../world/schema/entitySchema'
-import type { KillCounts } from '../../world/schema/worldSchema'
-import { Guide } from '../guide/block'
-import { GUIDE_FOCUS_IDS, isGuideOpen } from '../guide/model'
-import { journalPageViews } from './journalView'
-import { Message } from './message'
-import { type Model, MunchopediaPage, type MunchopediaProps } from './model'
+import { SHOP_TILE_ART } from '#art/shopArt.ts'
+import { Guide } from '#features/guide/block.ts'
+import { GUIDE_FOCUS_IDS, isGuideOpen } from '#features/guide/model.ts'
+import { plinthElement } from '#render/iso/plinthElement.ts'
+import { backButtonView } from '#ui/cornerButtons.ts'
+import { SHOP_GUIDE_NAME } from '#world/names.ts'
+import type { ZombieKind } from '#world/schema/entitySchema.ts'
+import type { KillCounts } from '#world/schema/worldSchema.ts'
+
+import { journalPageViews } from './journalView.ts'
+import { Message } from './message.ts'
+import { type Model, MunchopediaPage, type MunchopediaProps } from './model.ts'
 import {
   BADGES,
   type EntryFrame,
@@ -26,7 +27,7 @@ import {
   isDiscovered,
   killsOf,
   plinthImageAt,
-} from './munchopedia'
+} from './munchopedia.ts'
 
 type H = Html.H<Message>
 type Content = View.Content<Message>

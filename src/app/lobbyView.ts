@@ -1,16 +1,17 @@
 import { Function } from 'effect'
 
-import { joinName } from '../domain/playerName'
-import { hasUnseenCalling } from '../domain/unlocks'
-import { startingCallingOf } from '../features/heroes/callingPick'
-import { Lobby } from '../features/lobby/block'
-import { LobbyMessage } from '../features/lobby/message'
-import { type LobbyProps, isLobbyDrawn } from '../features/lobby/model'
-import { lobbyPicksOf } from '../screens/home/home'
-import { isKeyboard } from '../ui/menuParts'
-import { bonesBalanceOf, rankOf, totalPointsOf } from '../world/heroes/rank'
-import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
-import type { Model } from './model'
+import { joinName } from '#domain/playerName.ts'
+import { hasUnseenCalling } from '#domain/unlocks.ts'
+import { startingCallingOf } from '#features/heroes/callingPick.ts'
+import { Lobby } from '#features/lobby/block.ts'
+import { LobbyMessage } from '#features/lobby/message.ts'
+import { type LobbyProps, isLobbyDrawn } from '#features/lobby/model.ts'
+import { lobbyPicksOf } from '#screens/home/home.ts'
+import { isKeyboard } from '#ui/menuParts.ts'
+import { bonesBalanceOf, rankOf, totalPointsOf } from '#world/heroes/rank.ts'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from './definition.ts'
+import type { Model } from './model.ts'
 
 const lobbyPropsOf = (model: Model): LobbyProps => {
   const rank = rankOf(totalPointsOf(model.rank))

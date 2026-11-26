@@ -3,25 +3,30 @@ import { Array, Option, String } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
-import { initialModel } from '../../app/pureApp'
-import { deriveIntent } from '../../input/input'
-import type { Input } from '../../input/inputSchema'
-import { VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
-import { floorSeenOf, nearly } from '../../test/lensTesting'
+import { Message } from '#app/message.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { initialModel } from '#app/pureApp.ts'
+import { deriveIntent } from '#input/input.ts'
+import type { Input } from '#input/inputSchema.ts'
+import {
+  cameraFor,
+  cameraOf,
+  viewToWorld,
+  worldToView,
+} from '#render/camera.ts'
+import { clientToView } from '#render/screen.ts'
+import { VIEW_HEIGHT, VIEW_WIDTH } from '#shared/constants.ts'
+import { floorSeenOf, nearly } from '#test/lensTesting.ts'
 import {
   WIDE_SURFACE,
   checkModel,
   modelAfter,
   send,
   steps,
-} from '../../test/testing'
-import { PARLOUR, makeLevel } from '../../world/level/arena'
-import { ROOM_MAP } from '../../world/level/plan'
-import { focusOf, modifyFocus } from '../../world/party/party'
-import { cameraFor, cameraOf, viewToWorld, worldToView } from '../camera'
-import { clientToView } from '../screen'
+} from '#test/testing.ts'
+import { PARLOUR, makeLevel } from '#world/level/arena.ts'
+import { ROOM_MAP } from '#world/level/plan.ts'
+import { focusOf, modifyFocus } from '#world/party/party.ts'
 
 const WIDE_LEVEL = makeLevel(Array.map(ROOM_MAP, line => line + line))
 

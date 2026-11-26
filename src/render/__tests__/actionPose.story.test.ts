@@ -3,9 +3,17 @@ import { Array, Effect, Option, Record } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { Message } from '../../app/message'
-import { Life, type Model } from '../../app/model'
-import { FIXED_STEP_MS } from '../../shared/constants'
+import { Message } from '#app/message.ts'
+import { Life, type Model } from '#app/model.ts'
+import {
+  ActionPose,
+  MOTIONS,
+  PAYOFF_MS,
+  motionFrameOf,
+  poseOf,
+} from '#render/actionPose.ts'
+import { noActionWatch } from '#render/renderSchema.ts'
+import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   armedBreak,
   crewInWave,
@@ -17,7 +25,7 @@ import {
   withDareThings,
   withPlayerAt,
   withSeatLife,
-} from '../../test/model.fixture'
+} from '#test/model.fixture.ts'
 import {
   checkModel,
   modelAfter,
@@ -25,25 +33,17 @@ import {
   settleRunCommands,
   steps,
   ticks,
-} from '../../test/testing'
-import { DareThingState } from '../../world/dare/dareSchema'
-import { FIND_RULES } from '../../world/dare/finds'
-import { levelOf } from '../../world/level/arena'
-import { DEFAULT_ARRANGEMENT, PARLOUR_ROOM_ID } from '../../world/level/plan'
-import { COOP_RULES, modifyFocus } from '../../world/party/party'
-import { Purchasable, Purchase } from '../../world/schema/worldSchema'
+} from '#test/testing.ts'
+import { DareThingState } from '#world/dare/dareSchema.ts'
+import { FIND_RULES } from '#world/dare/finds.ts'
+import { levelOf } from '#world/level/arena.ts'
+import { DEFAULT_ARRANGEMENT, PARLOUR_ROOM_ID } from '#world/level/plan.ts'
+import { COOP_RULES, modifyFocus } from '#world/party/party.ts'
+import { Purchasable, Purchase } from '#world/schema/worldSchema.ts'
 import {
   atTool,
   houseWave,
-} from '../../world/stations/__tests__/roomTools.fixture'
-import {
-  ActionPose,
-  MOTIONS,
-  PAYOFF_MS,
-  motionFrameOf,
-  poseOf,
-} from '../actionPose'
-import { noActionWatch } from '../renderSchema'
+} from '#world/stations/__tests__/roomTools.fixture.ts'
 
 const FRAME_MS = FIXED_STEP_MS
 const LEFT_X = 60
