@@ -271,6 +271,23 @@ const socketUrlOf = (origin: string, storeId: string): string => {
   return url.toString()
 }
 
+const OFFLINE_CLOSE_CODE = 4000
+
+const closedWhenOffline = Layer.effect(
+  Socket.WebSocketConstructor,
+  Effect.map(Socket.WebSocketConstructor, open => (url, options) => {
+    const socket = open(url, options)
+    const goOffline = () => socket.close(OFFLINE_CLOSE_CODE, 'Offline')
+    globalThis.addEventListener('offline', goOffline)
+    socket.addEventListener(
+      'close',
+      () => globalThis.removeEventListener('offline', goOffline),
+      { once: true },
+    )
+    return socket
+  }),
+).pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal))
+
 const socketProtocol = (
   url: string,
   hooks: RpcClient.ConnectionHooks['Service'],
@@ -281,7 +298,7 @@ const socketProtocol = (
   }).pipe(
     Layer.provide(Layer.succeed(RpcClient.ConnectionHooks, hooks)),
     Layer.provide(Socket.layerWebSocket(url)),
-    Layer.provide(Socket.layerWebSocketConstructorGlobal),
+    Layer.provide(closedWhenOffline),
     Layer.provide(RpcSerialization.layerSchemaBinary()),
   )
 
