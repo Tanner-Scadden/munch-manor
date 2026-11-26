@@ -16,7 +16,7 @@ import {
 } from '#app/model.ts'
 import { BOSS_ICON } from '#art/sprites/zombies.ts'
 import { wavePreviewShapes } from '#features/hud/wavePreview.ts'
-import { cameraOf } from '#render/camera.ts'
+import { cameraOf } from '#render/camera/camera.ts'
 import type * as Draw from '#render/draw.ts'
 import { PACK_WARNING_MS } from '#shared/constants.ts'
 import { newPlayerReady, withPlayerAt } from '#test/model.fixture.ts'

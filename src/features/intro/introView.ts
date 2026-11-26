@@ -38,8 +38,8 @@ import {
   speechBubble,
 } from '#art/introArt.ts'
 import { type Sprite, group, placeAt } from '#art/sprite.ts'
+import type { Screen } from '#render/camera/screen.ts'
 import * as Draw from '#render/draw.ts'
-import type { Screen } from '#render/screen.ts'
 import { FRIEND_LINES } from '#world/names.ts'
 import { ARRIVAL_MS } from '#world/run/arrival.ts'
 import type { Vector } from '#world/schema/worldSchema.ts'

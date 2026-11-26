@@ -1,18 +1,15 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
 import {
   GIFT_BOX_ICON,
   GIFT_LID_ICON,
   GIFT_ZOMBIE_ICON,
   NEWS_ICON,
   SPARKLE_ICON,
-} from '#art/icons.ts'
+} from '#art/icons/icons.ts'
 import { UpdateGift } from '#domain/clientSchema.ts'
 import {
   type NewsBullet,

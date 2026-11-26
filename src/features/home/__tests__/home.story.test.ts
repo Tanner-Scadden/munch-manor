@@ -27,7 +27,7 @@ import {
   newsHeadline,
   parseChangelog,
 } from '#features/whatsNew/changelog.ts'
-import { saveOf } from '#platform/save.ts'
+import { saveOf } from '#platform/save/save.ts'
 import { HOME_BUTTONS, HOME_KEYS, isNewsUnseen } from '#screens/home/home.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { DISTANT_SPAWN, readyModel } from '#test/model.fixture.ts'

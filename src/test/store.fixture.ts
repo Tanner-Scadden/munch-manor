@@ -21,38 +21,38 @@ import { SqliteClient, type SqliteOpenError } from '@munch/sqlite-wasm-effect'
 import { type Hub, makeHub } from '@munch/sqlite-wasm-effect/in-process'
 
 import { defaultAppearance } from '#app/model.ts'
-import { PlayerLogSchema } from '#platform/playerEvents.ts'
+import type { Transport } from '#platform/coop/roomReplica.ts'
+import { PlayerLogSchema } from '#platform/save/playerEvents.ts'
 import {
   PlayerHandlers,
   createPlayerTables,
-} from '#platform/playerProjection.ts'
-import { changesBetween } from '#platform/playerSync.ts'
-import type { Transport } from '#platform/roomReplica.ts'
+} from '#platform/save/playerProjection.ts'
+import { changesBetween } from '#platform/save/playerSync.ts'
 import {
   type PlayerSave,
   SAVE_VERSION,
   noSavedBests,
   unpickedDifficulty,
-} from '#platform/save.ts'
+} from '#platform/save/save.ts'
 import {
   type LegacySave,
   type PlayerDatabase,
   type SyncSetup,
   makePlayerDatabase,
-} from '#platform/storeSqlite.ts'
-import { noDareMarks } from '#shared/dareMarkData.ts'
-import { noJournal } from '#shared/journalData.ts'
-import { noMastery } from '#shared/masteryData.ts'
-import { noMissions } from '#shared/missionData.ts'
-import { noBonuses, noSavedRunRecords } from '#shared/playerData.ts'
-import { noProof } from '#shared/proofData.ts'
+} from '#platform/save/storeSqlite.ts'
+import { noDareMarks } from '#shared/records/dareMarkData.ts'
+import { noJournal } from '#shared/records/journalData.ts'
+import { noMastery } from '#shared/records/masteryData.ts'
+import { noMissions } from '#shared/records/missionData.ts'
+import { noBonuses, noSavedRunRecords } from '#shared/records/playerData.ts'
+import { noProof } from '#shared/records/proofData.ts'
 import {
   PlayerLogRpcs,
   RedeemAnswer,
   SessionRefused,
   SessionRpcs,
   playerStoreOf,
-} from '#shared/sessionApi.ts'
+} from '#shared/records/sessionApi.ts'
 import { noRank } from '#world/heroes/rank.ts'
 
 export const legacySave: PlayerSave = {

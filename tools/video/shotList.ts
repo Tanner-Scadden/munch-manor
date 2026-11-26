@@ -1,7 +1,7 @@
 import { type Effect, Schema } from 'effect'
 
 import { MusicLevel, MusicMood, MusicStinger } from '../../src/audio/music'
-import { Difficulty } from '../../src/shared/playerData'
+import { Difficulty } from '../../src/shared/records/playerData'
 
 const Ticks = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const Positive = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))

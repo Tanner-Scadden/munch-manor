@@ -17,7 +17,7 @@ import {
   lastWave,
 } from '#features/end/__tests__/rank.fixture.ts'
 import { EndUnlock, unlocksOf } from '#features/end/endBeat.ts'
-import { noJournal } from '#shared/journalData.ts'
+import { noJournal } from '#shared/records/journalData.ts'
 import { knowingDay, readyModel, withDareThings } from '#test/model.fixture.ts'
 import {
   checkModel,

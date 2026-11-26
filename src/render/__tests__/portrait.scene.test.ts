@@ -9,15 +9,15 @@ import { Message } from '#app/message.ts'
 import { Boss, BreakClock, type Model, Phase } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
 import { wavePreviewShapes } from '#features/hud/wavePreview.ts'
-import { restoreSave, saveOf } from '#platform/save.ts'
-import { screenCameraOf } from '#render/camera.ts'
+import { restoreSave, saveOf } from '#platform/save/save.ts'
+import { screenCameraOf } from '#render/camera/camera.ts'
+import { screenOf, thumbAreaTop } from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
 import {
   MELEE_SLOT_INDEX,
   gunSlotBox,
   reloadFaceOf,
-} from '#render/hudLayout.ts'
-import { screenOf, thumbAreaTop } from '#render/screen.ts'
+} from '#render/hud/hudLayout.ts'
 import { hudShapes } from '#screens/game/hud.ts'
 import { isTurnHintShown } from '#screens/home/home.ts'
 import { TURN_HINT_TEXT } from '#screens/home/homeView.ts'

@@ -3,9 +3,9 @@ import { State } from 'effect-machine'
 
 import { UiSchema } from '@effect/ui'
 
-import { MasterySkin } from '#shared/masteryData.ts'
 import { TutorialChoice } from '#shared/nameKeys.ts'
-import { Appearance, Calling } from '#shared/playerData.ts'
+import { MasterySkin } from '#shared/records/masteryData.ts'
+import { Appearance, Calling } from '#shared/records/playerData.ts'
 import { DareKind } from '#world/dare/dareSchema.ts'
 import { MilestoneId } from '#world/dare/milestones.ts'
 import { BONE_BONUSES } from '#world/heroes/rank.ts'

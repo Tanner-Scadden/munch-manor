@@ -6,9 +6,9 @@ import type { Model } from '#app/model.ts'
 import { maybeCrewBotAt } from '#domain/bots.ts'
 import { seatNamesOf } from '#domain/onlineRun.ts'
 import { isEndScreen } from '#domain/run.ts'
-import { playedDifficultyOf } from '#platform/analyticsRun.ts'
-import type { DayStamp } from '#shared/dayStamp.ts'
-import { Difficulty } from '#shared/playerData.ts'
+import { playedDifficultyOf } from '#platform/analytics/analyticsRun.ts'
+import type { DayStamp } from '#shared/records/dayStamp.ts'
+import { Difficulty } from '#shared/records/playerData.ts'
 import {
   BIG_KEY,
   type CrewMate,
@@ -17,7 +17,7 @@ import {
   type ProofStamp,
   type SavedProof,
   shelve,
-} from '#shared/proofData.ts'
+} from '#shared/records/proofData.ts'
 import {
   DareKind,
   DareThingState,

@@ -19,10 +19,13 @@ import {
   tallyMissionsFrom,
 } from '#features/missions/missions.ts'
 import { shelveRun } from '#features/proof/proof.ts'
-import { RunSummary } from '#platform/analytics.ts'
-import { maybeRunOutcome, runSummaryOf } from '#platform/analyticsRun.ts'
-import { PlayerStore } from '#platform/store.ts'
-import { sendOrQueueRunSummary } from '#platform/summaryQueue.ts'
+import { RunSummary } from '#platform/analytics/analytics.ts'
+import {
+  maybeRunOutcome,
+  runSummaryOf,
+} from '#platform/analytics/analyticsRun.ts'
+import { sendOrQueueRunSummary } from '#platform/analytics/summaryQueue.ts'
+import { PlayerStore } from '#platform/save/store.ts'
 import { RUNNING_BUILD } from '#platform/version.ts'
 import { countRunFrom, forgetNewEntriesFrom } from '#screens/home/home.ts'
 

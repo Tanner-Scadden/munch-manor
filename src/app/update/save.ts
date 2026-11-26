@@ -3,25 +3,25 @@ import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
 import { Command, Component, UiStruct } from '@effect/ui'
 
 import { LOAD_STEPS, type LoadStep, Loading, type Model } from '#app/model.ts'
-import { LoadEvent, stepLoading } from '#domain/loadFlow.ts'
+import { LoadEvent, stepLoading } from '#domain/machines/loadFlow.ts'
 import { grantVeteran, payPurses } from '#features/end/rankRun.ts'
 import { LoadMessage, SaveMessage } from '#platform/message.ts'
 import {
   PlayerChange,
   changesBetween,
   withUnsavedChanges,
-} from '#platform/playerSync.ts'
+} from '#platform/save/playerSync.ts'
 import {
   PlayerSave,
   hasSaveFieldsChanged,
   isSameSave,
   restoreSave,
   saveOf,
-} from '#platform/save.ts'
+} from '#platform/save/save.ts'
+import { PlayerStore } from '#platform/save/store.ts'
 import { hideSplash, showSplashProgress } from '#platform/splash.ts'
-import { PlayerStore } from '#platform/store.ts'
 import { RUNNING_BUILD } from '#platform/version.ts'
-import { SEEN_BASELINE } from '#shared/playerData.ts'
+import { SEEN_BASELINE } from '#shared/records/playerData.ts'
 
 import { askForBeatLink } from './beatMyRun.ts'
 import { askForRoomLink } from './coop.ts'

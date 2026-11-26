@@ -13,14 +13,14 @@ import { PROFILE_DIALOG_ID } from '#domain/clientSchema.ts'
 import {
   CopyLinkCodeOnClick,
   PasteLinkCodeOnTap,
-} from '#features/profile/linkClipboard.ts'
+} from '#features/profile/mounts/linkClipboard.ts'
 import { PROFILE_TABS_ID } from '#features/profile/profile.ts'
 import {
   LINK_TAKES_PROGRESS_NOTE,
   SHARE_STATS_NOTE,
 } from '#features/profile/view.ts'
-import { LinkFlow } from '#platform/linkFlow.ts'
-import { SyncState } from '#platform/playerSync.ts'
+import { LinkFlow } from '#platform/save/linkFlow.ts'
+import { SyncState } from '#platform/save/playerSync.ts'
 import { homeAfterRead, inPortrait } from '#test/model.fixture.ts'
 import {
   button,

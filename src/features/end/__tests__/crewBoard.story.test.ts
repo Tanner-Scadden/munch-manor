@@ -7,7 +7,7 @@ import { Life, type Model, Phase } from '#app/model.ts'
 import { badgeSprite } from '#art/rankArt.ts'
 import { Screen } from '#domain/coopRoom.ts'
 import { freshRoom } from '#features/coop/roomState.ts'
-import { CODE, lobbyOf, memberOf } from '#features/coop/testing.ts'
+import { CODE, lobbyOf, memberOf } from '#features/coop/services/testing.ts'
 import {
   type CrewMember,
   SHARPSHOOTER_MIN_SHOTS,
@@ -16,12 +16,6 @@ import {
   hasAwards,
   mvpOf,
 } from '#features/end/crewAwards.ts'
-import {
-  crewBoardColumns,
-  crewBoardHeightPx,
-  crewBoardShapes,
-  crewBoardWidthPx,
-} from '#features/end/crewBoardView.ts'
 import {
   awardsAtMs,
   beatSounds,
@@ -32,12 +26,18 @@ import {
   skipBeat,
 } from '#features/end/endBeat.ts'
 import {
+  crewBoardColumns,
+  crewBoardHeightPx,
+  crewBoardShapes,
+  crewBoardWidthPx,
+} from '#features/end/views/crewBoardView.ts'
+import {
   CREW_BOARD_TOP_PX,
   END_BUTTONS_TOP_PX,
   crewCardBottomPx,
-} from '#features/end/endView.ts'
+} from '#features/end/views/endView.ts'
+import { PORTRAIT_WIDTH } from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
-import { PORTRAIT_WIDTH } from '#render/screen.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   atSeat,

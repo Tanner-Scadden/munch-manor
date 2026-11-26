@@ -10,7 +10,7 @@ import {
 } from 'effect'
 import type { Page } from 'playwright-core'
 
-import { type Readout } from '@game/features/coop/readout'
+import { type Readout } from '@game/features/coop/audit/readout'
 
 import { coopConfig } from './coop/config'
 import { type Held, heldOf, playFor, stopAll } from './coop/controllers'

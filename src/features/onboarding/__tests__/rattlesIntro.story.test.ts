@@ -16,7 +16,7 @@ import {
   RATTLES_LINE_MS,
   maybeRattlesLine,
 } from '#features/onboarding/rattlesIntro.ts'
-import { forgetTutorial } from '#platform/save.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
 import { FIXED_STEP_MS, PLAYER_RADIUS } from '#shared/constants.ts'
 import {
   WAVE_2_BREAK,

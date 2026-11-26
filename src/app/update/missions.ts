@@ -1,6 +1,6 @@
 import { Option } from 'effect'
 
-import { isPanelOpen } from '#app/menuState.ts'
+import { isPanelOpen } from '#app/menus/menuState.ts'
 import type { Model } from '#app/model.ts'
 import { maybeRerollFor, rerollMission } from '#features/missions/missions.ts'
 import { stepWhen } from '#shared/stepWhen.ts'

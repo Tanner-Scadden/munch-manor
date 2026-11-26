@@ -91,7 +91,7 @@ Isaac's tinted rocks are "discernible but subtle", pushing players to check ever
 
 ### P12. Size the room to the screen and the speeds
 
-Brotato's small fixed arena lets you "have a good idea where enemies are"; Vampire Survivors' endless fields lose track of items. Zombie Estate 2's fans steer you to fight in the central hallway and outdoors, since in its small rooms "it is easier to get overwhelmed", and they split on whether newer maps are "too small, with few places to dodge". Our numbers: the landscape view is 320 by 180 (`src/shared/constants.ts`), exactly one slot room. The player runs 72 px a second, so a slot room is 4.4 s across and 2.5 s top to bottom. Groaners walk 16 to 28 px a second, Hotfoots 44 to 52. Portrait shows 180 px across (`src/render/screen.ts`), so every room scrolls sideways on a phone held upright.
+Brotato's small fixed arena lets you "have a good idea where enemies are"; Vampire Survivors' endless fields lose track of items. Zombie Estate 2's fans steer you to fight in the central hallway and outdoors, since in its small rooms "it is easier to get overwhelmed", and they split on whether newer maps are "too small, with few places to dodge". Our numbers: the landscape view is 320 by 180 (`src/shared/constants.ts`), exactly one slot room. The player runs 72 px a second, so a slot room is 4.4 s across and 2.5 s top to bottom. Groaners walk 16 to 28 px a second, Hotfoots 44 to 52. Portrait shows 180 px across (`src/render/camera/screen.ts`), so every room scrolls sideways on a phone held upright.
 
 - [Brotato vs Vampire Survivors](https://steamcommunity.com/app/1942280/discussions/0/3807278817571243827/), [Brotato analysis](https://note.com/kurisiro_tumugi/n/nb76d92dcabc7?hl=en)
 - [Estate map, ZE wiki](https://zombie-estate.fandom.com/wiki/Estate), [ZE2: A Master Class (Steam guide)](https://steamcommunity.com/sharedfiles/filedetails/?id=2553653365)
@@ -108,7 +108,7 @@ The numbers below are from the maps in `src/world/level/plan.ts`. "Cover" counts
 | Kitchen | 20 x 15 | 19%   | Back door, window         | Ovens belch when shot; soup skids zombies        | Any time (oven cooldown 8 s)                           |
 | Parlour | 32 x 18 | 12%   | `n` top, `s` bottom       | Hearth fire, lit by the kitchen's gas valve      | Only once someone turns the valve in another room      |
 | Library | 32 x 18 | 22%   | `n` top, `s` bottom       | Red book swings the shelf open                   | Once a run                                             |
-| Cellar  | 32 x 18 | 23%   | `n` top, `s` bottom       | Dark, pools of light                             | Always, but cosmetic only (`src/render/cellarDark.ts`) |
+| Cellar  | 32 x 18 | 23%   | `n` top, `s` bottom       | Dark, pools of light                             | Always, but cosmetic only (`src/render/bodies/cellarDark.ts`) |
 
 **1. One template for three rooms.** Every slot room is the same box: 32 by 18 tiles, ports in rows 8 and 9 of both side walls, `n` in the top wall, `s` in the bottom, rows 13 and 14 of the side walls kept clear for a shelf, two `cc` cases in the bottom corners, a `tt` crate, and four hiding spots (`PARLOUR_SLOT_MAP`, `LIBRARY_MAP`, `CELLAR_MAP`). The rolling rule ("Rooms that roll", `GAME_DESIGN.md`) needs every room to fit any slot, so the footprint and the edges were fixed first and each room filled in afterwards. That is the root of the sameness (P2).
 

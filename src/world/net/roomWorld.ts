@@ -15,7 +15,7 @@ import type {
 
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import * as DetMath from '#shared/detMath.ts'
-import { type Calling, callingOfCode } from '#shared/playerData.ts'
+import { type Calling, callingOfCode } from '#shared/records/playerData.ts'
 import { rollDare } from '#world/dare/dare.ts'
 import type { DareKind } from '#world/dare/dareSchema.ts'
 import { rollCases } from '#world/feats/cases.ts'

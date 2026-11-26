@@ -7,7 +7,7 @@ import { localPlayersIn } from '#app/boot.ts'
 import { Message } from '#app/message.ts'
 import { BreakClock, type Model, Phase } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
-import { cameraFocus } from '#render/camera.ts'
+import { cameraFocus } from '#render/camera/camera.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { DISTANT_SPAWN, atSeat } from '#test/model.fixture.ts'
 import {

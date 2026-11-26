@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { isPanelOpen } from '#app/menuState.ts'
+import { isPanelOpen } from '#app/menus/menuState.ts'
 import { Message } from '#app/message.ts'
 import { type Model, Phase } from '#app/model.ts'
 import { BOT } from '#features/bots/__tests__/bots.fixture.ts'
@@ -19,7 +19,7 @@ import {
   maybeStampAt,
   shelveRun,
 } from '#features/proof/proof.ts'
-import { BIG_KEY, type ProofStamp } from '#shared/proofData.ts'
+import { BIG_KEY, type ProofStamp } from '#shared/records/proofData.ts'
 import {
   crewInWave,
   knowingDay,

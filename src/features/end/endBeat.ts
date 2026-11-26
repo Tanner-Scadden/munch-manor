@@ -8,16 +8,16 @@ import { isBotCrew } from '#domain/bots.ts'
 import { MasteryUnlock, type RunRecord } from '#domain/clientSchema.ts'
 import { giftsOpenedBy } from '#domain/closet.ts'
 import { isEndScreen, withBests } from '#domain/run.ts'
-import type { SharePath } from '#platform/analytics.ts'
+import type { SharePath } from '#platform/analytics/analytics.ts'
 import { isObjectFirst, isObjectSecond } from '#shared/dualArgs.ts'
-import { MasterySkin } from '#shared/masteryData.ts'
+import { MasterySkin } from '#shared/records/masteryData.ts'
 import {
   Calling,
   CosmeticKind,
   type Difficulty,
   isBetterRun,
-} from '#shared/playerData.ts'
-import { purseBonesAt, purseRanksBetween } from '#shared/rankCurve.ts'
+} from '#shared/records/playerData.ts'
+import { purseBonesAt, purseRanksBetween } from '#shared/records/rankCurve.ts'
 import { dareCardOf } from '#world/dare/dare.ts'
 import { MilestoneId } from '#world/dare/milestones.ts'
 import { callingsOpenedBy } from '#world/heroes/calling.ts'
@@ -35,7 +35,7 @@ import { roundWave } from '#world/waves/waves.ts'
 
 import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards.ts'
 import type { SharedRun } from './share.ts'
-import type { TallyIcon } from './tallyIcons.ts'
+import type { TallyIcon } from './views/tallyIcons.ts'
 
 export type EndKind = 'Munched' | 'Chicken' | 'Won'
 

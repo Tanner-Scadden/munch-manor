@@ -9,16 +9,19 @@ import {
   dareDrawables,
   dareGroundShapes,
   dareOverheadShapes,
-} from '#features/dare/dareView.ts'
-import { findDrawables, findOverheadShapes } from '#features/dare/findView.ts'
-import { frontDoorShapes } from '#features/dare/frontDoorView.ts'
+} from '#features/dare/views/dareView.ts'
+import {
+  findDrawables,
+  findOverheadShapes,
+} from '#features/dare/views/findView.ts'
+import { frontDoorShapes } from '#features/dare/views/frontDoorView.ts'
 import { hubTouchDrawables } from '#features/dining/hubTouchView.ts'
 import {
   chompShapes,
   fallenOf,
   isChomping,
   toppleShapes,
-} from '#features/end/endView.ts'
+} from '#features/end/views/endView.ts'
 import {
   fridgeDrawables,
   fridgeOverheadShapes,
@@ -27,8 +30,8 @@ import {
 import { pantryDrawables } from '#features/kitchen/pantryView.ts'
 import { maybeQuestMark } from '#features/onboarding/firstBreakQuest.ts'
 import { isGoodieBeckoning } from '#features/onboarding/onboarding.ts'
-import { questKeyDrawables } from '#features/onboarding/questKeyView.ts'
-import { questLockShapes } from '#features/onboarding/questLockView.ts'
+import { questKeyDrawables } from '#features/onboarding/views/questKeyView.ts'
+import { questLockShapes } from '#features/onboarding/views/questLockView.ts'
 import { coopNameShapes } from '#features/onlineRun/coopMarksView.ts'
 import {
   RATTLES_FOOT_Y,
@@ -41,29 +44,11 @@ import {
   stationGroundShapes,
   stationOverheadShapes,
 } from '#features/stations/stationView.ts'
-import { backDoorDrawables } from '#render/backDoorView.ts'
-import { bossGroundShapes, bossOverheadShapes } from '#render/bossView.ts'
 import {
-  type Camera,
-  type ViewMargin,
-  isInView,
-  sceneOffset,
-} from '#render/camera.ts'
-import { cellarDarkOf } from '#render/cellarDark.ts'
-import { type Drawable, depthSortedShapes } from '#render/depth.ts'
-import { isBehindWall } from '#render/doorways.ts'
-import type * as Draw from '#render/draw.ts'
-import {
-  bulletShapes,
-  doorRattleShapes,
-  gibShadow,
-  popupShape,
-} from '#render/effectsView.ts'
-import type { WorldStrata } from '#render/iso/frame.ts'
-import {
-  kitchenGearDrawables,
-  kitchenGearGroundShapes,
-} from '#render/kitchenGearView.ts'
+  bossGroundShapes,
+  bossOverheadShapes,
+} from '#render/bodies/bossView.ts'
+import { cellarDarkOf } from '#render/bodies/cellarDark.ts'
 import {
   type MateModel,
   isLeadArmed,
@@ -74,14 +59,37 @@ import {
   mateOverheadShapes,
   mateShadowShapes,
   reviveRingGroundShapes,
-} from '#render/partyView.ts'
+} from '#render/bodies/partyView.ts'
 import {
   playerFlashDrawable,
   playerFootY,
   playerShadow,
   playerShapes,
   reloadBarShapes,
-} from '#render/playerView.ts'
+} from '#render/bodies/playerView.ts'
+import {
+  zombieFootY,
+  zombieGroundShapes,
+  zombieShadow,
+} from '#render/bodies/zombieGroundView.ts'
+import {
+  zombieHealthBarShapes,
+  zombieShapes,
+} from '#render/bodies/zombieView.ts'
+import {
+  type Camera,
+  type ViewMargin,
+  isInView,
+  sceneOffset,
+} from '#render/camera/camera.ts'
+import { type Drawable, depthSortedShapes } from '#render/depth.ts'
+import type * as Draw from '#render/draw.ts'
+import {
+  bulletShapes,
+  doorRattleShapes,
+  gibShadow,
+  popupShape,
+} from '#render/effects/effectsView.ts'
 import {
   auraShapes,
   burpRingShapes,
@@ -89,7 +97,24 @@ import {
   goodieArrowShapes,
   pickupFootY,
   pickupShapes,
-} from '#render/powerupView.ts'
+} from '#render/effects/powerupView.ts'
+import { aimSightShapes } from '#render/effects/sightView.ts'
+import {
+  ghostDrawables,
+  ghostShapes,
+  trapFootY,
+  trapGlowDrawables,
+  trapOverheadShapes,
+  trapShadow,
+  trapShapes,
+} from '#render/effects/trapView.ts'
+import type { WorldStrata } from '#render/iso/frame.ts'
+import { backDoorDrawables } from '#render/room/backDoorView.ts'
+import { isBehindWall } from '#render/room/doorways.ts'
+import {
+  kitchenGearDrawables,
+  kitchenGearGroundShapes,
+} from '#render/room/kitchenGearView.ts'
 import { kitchenLeakShapes } from '#render/room/kitchenLeak.ts'
 import {
   ovenFlameShapes,
@@ -104,22 +129,6 @@ import {
   hungChandelierShapes,
 } from '#render/room/room.ts'
 import { tallCoverDrawables } from '#render/room/tallCover.ts'
-import { aimSightShapes } from '#render/sightView.ts'
-import {
-  ghostDrawables,
-  ghostShapes,
-  trapFootY,
-  trapGlowDrawables,
-  trapOverheadShapes,
-  trapShadow,
-  trapShapes,
-} from '#render/trapView.ts'
-import {
-  zombieFootY,
-  zombieGroundShapes,
-  zombieShadow,
-} from '#render/zombieGroundView.ts'
-import { zombieHealthBarShapes, zombieShapes } from '#render/zombieView.ts'
 import { type Level, levelOf } from '#world/level/arena.ts'
 import { isInsideRoomAt } from '#world/level/tileQueries.ts'
 import { focusOf } from '#world/party/party.ts'

@@ -11,7 +11,7 @@ import {
   type Zombie,
   ZombieState,
 } from '#app/model.ts'
-import { screenToFloorDirection } from '#render/lens.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,

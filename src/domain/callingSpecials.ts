@@ -1,7 +1,7 @@
 import { Array } from 'effect'
 
 import { QUIRK_ICONS } from '#art/callingArt.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import {
   isPistolBarred,
   keyScaleOf,

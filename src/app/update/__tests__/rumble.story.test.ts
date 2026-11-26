@@ -5,7 +5,12 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '#app/message.ts'
 import { initialModel } from '#app/pureApp.ts'
-import { decodeSave, encodeSave, restoreSave, saveOf } from '#platform/save.ts'
+import {
+  decodeSave,
+  encodeSave,
+  restoreSave,
+  saveOf,
+} from '#platform/save/save.ts'
 import { readyAfterRead } from '#test/model.fixture.ts'
 import { checkModel, jsonOf, send, storyOf, writeSave } from '#test/testing.ts'
 

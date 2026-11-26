@@ -8,7 +8,7 @@ import { WriteSave } from '#app/update/save.ts'
 import { LobbyMessage } from '#features/lobby/message.ts'
 import { isHeroPickerUp } from '#features/lobby/model.ts'
 import { PLAYER_MAX_HP, PLAYER_SPEED } from '#shared/constants.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { heroesBoughtBy, readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,

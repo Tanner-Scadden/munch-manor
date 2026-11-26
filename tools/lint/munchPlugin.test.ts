@@ -333,11 +333,11 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       filename: '/repo/src/render/camera.ts',
     },
     {
-      code: "import { type ApplicationViewBuilder } from '../../app/definition'",
+      code: "import { type ApplicationViewBuilder } from '../../app/component'",
       filename: '/repo/src/features/hud/wavePreview.ts',
     },
     {
-      code: "import type { ApplicationHtml, ApplicationMount } from '../../app/definition'",
+      code: "import type { ApplicationHtml, ApplicationMount } from '../../app/component'",
       filename: '/repo/src/screens/game/hud.ts',
     },
     {

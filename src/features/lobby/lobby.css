@@ -913,7 +913,7 @@
 }
 
 /* BEAT MY RUN: a friend's dare holds the picks to its link's
-   (src/domain/beatMyRun.ts). A red stamp says so over the picks, which
+   (src/domain/machines/beatMyRun.ts). A red stamp says so over the picks, which
    show what the friend played, dimmed and inert. */
 
 .lobby-held-stamp {

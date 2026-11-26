@@ -22,19 +22,19 @@ import {
   isGlowShape,
   isGlowingShape,
 } from '#art/sprite.ts'
+import {
+  muzzleFlashLevel,
+  muzzlePointOf,
+  playerFootY,
+} from '#render/bodies/playerView.ts'
 import type { Drawable } from '#render/depth.ts'
 import type * as Draw from '#render/draw.ts'
 import {
   airborneParticlesOf,
   decalShapes,
   groundParticleShapes,
-} from '#render/effectsView.ts'
-import { houseRattleOf } from '#render/juice.ts'
-import {
-  muzzleFlashLevel,
-  muzzlePointOf,
-  playerFootY,
-} from '#render/playerView.ts'
+} from '#render/effects/effectsView.ts'
+import { houseRattleOf } from '#render/effects/juice.ts'
 import type { TallCover } from '#render/room/tallCover.ts'
 import { type BrowserError, toBrowserError } from '#shared/describeError.ts'
 import { isChandelierDown } from '#world/dining/chandelier.ts'
@@ -43,23 +43,26 @@ import type { Level } from '#world/level/arena.ts'
 import { levelOf, standingLevelOf } from '#world/level/arena.ts'
 import { focusOf } from '#world/party/party.ts'
 
-import { airOf } from './air.ts'
-import { BillboardPool, rimUp } from './billboards.ts'
-import { crittersOf } from './critters.ts'
-import { boxFloorOf, isNearView, viewBoxOf, viewFloorOf } from './cull.ts'
 import {
-  DIORAMA_AMBIENT,
-  IsoLens,
-  dioramaCameraOf,
-  dioramaStepOf,
-} from './diorama.ts'
-import { HouseGlows } from './emissives.ts'
-import { ballMiddleOf, blastLightOf, blastPiecesOf } from './explosions.ts'
+  ballMiddleOf,
+  blastLightOf,
+  blastPiecesOf,
+} from './bodies/explosions.ts'
+import {
+  auraCubesOf,
+  auraFeetOf,
+  auraFrameOf,
+  isPowerupImage,
+  pickupRingOf,
+  pickupSpinOf,
+} from './bodies/powerups.ts'
+import { VoxelBatch, newReach } from './bodies/voxels.ts'
+import { boxFloorOf, isNearView, viewBoxOf, viewFloorOf } from './cull.ts'
 import { IDENTITY, type Leaf, flatten } from './flatten.ts'
 import type { IsoFrame } from './frame.ts'
-import { Furniture } from './furniture.ts'
-import { GodRays, shaftMotesOf } from './godRays.ts'
-import { GroundRects, splitGround } from './groundRects.ts'
+import { BillboardPool, rimUp } from './house/billboards.ts'
+import { Furniture } from './house/furniture.ts'
+import { GroundRects, splitGround } from './house/groundRects.ts'
 import {
   type ArtMesh,
   type Caster,
@@ -75,41 +78,42 @@ import {
   plantCastersOf,
   plantsOf,
   standPlant,
-} from './house.ts'
-import { LeakLayer } from './leakLayer.ts'
-import { dripsOf } from './leaks.ts'
-import { aimSceneCamera, sceneLensOf } from './lensCamera.ts'
-import { AMBIENT, type LightsFrame, lightsFrameOf } from './lightSpecs.ts'
-import { type HouseLights, houseLightsOf } from './lights.ts'
-import { LOOK_TUNING } from './lookSpecs.ts'
-import { mixColor } from './mood.ts'
-import { FloorLayer, FloorPicture } from './painter.ts'
-import { type PlinthPicture, PlinthStage } from './plinth.ts'
-import type { PlinthPose } from './plinthPose.ts'
-import {
-  auraCubesOf,
-  auraFeetOf,
-  auraFrameOf,
-  isPowerupImage,
-  pickupRingOf,
-  pickupSpinOf,
-} from './powerups.ts'
-import type { QualityTier } from './quality.ts'
-import { WorldQuality } from './qualityControl.ts'
-import { ShadowWatch } from './shadowWatch.ts'
+} from './house/house.ts'
 import {
   type Chandelier,
   type Shelf,
   chandelierOf,
   isChandelierSprite,
   shelfOf,
-} from './showpieces.ts'
-import { SoupLayer } from './soupLayer.ts'
+} from './house/showpieces.ts'
+import { aimSceneCamera, sceneLensOf } from './lensCamera.ts'
+import { HouseGlows } from './light/emissives.ts'
+import { GodRays, shaftMotesOf } from './light/godRays.ts'
+import { AMBIENT, type LightsFrame, lightsFrameOf } from './light/lightSpecs.ts'
+import { type HouseLights, houseLightsOf } from './light/lights.ts'
+import { LOOK_TUNING } from './light/lookSpecs.ts'
+import { mixColor } from './light/mood.ts'
+import { FloorLayer, FloorPicture } from './painter.ts'
+import {
+  DIORAMA_AMBIENT,
+  IsoLens,
+  dioramaCameraOf,
+  dioramaStepOf,
+} from './plinth/diorama.ts'
+import { type PlinthPicture, PlinthStage } from './plinth/plinth.ts'
+import type { PlinthPose } from './plinth/plinthPose.ts'
+import type { QualityTier } from './quality/quality.ts'
+import { WorldQuality } from './quality/qualityControl.ts'
+import { ShadowWatch } from './quality/shadowWatch.ts'
 import { OVERHEAD_FOOT_PX, UNIT, standingPointOf, zOf } from './space.ts'
-import { FAR_KEY, stormKeyOf, stormOf, stormQuadsOf } from './storm.ts'
 import { Textures, colorOf } from './textures.ts'
-import { VoxelBatch, newReach } from './voxels.ts'
-import { chandelierSwayAt, windClockOf } from './wind.ts'
+import { airOf } from './weather/air.ts'
+import { crittersOf } from './weather/critters.ts'
+import { LeakLayer } from './weather/leakLayer.ts'
+import { dripsOf } from './weather/leaks.ts'
+import { SoupLayer } from './weather/soupLayer.ts'
+import { FAR_KEY, stormKeyOf, stormOf, stormQuadsOf } from './weather/storm.ts'
+import { chandelierSwayAt, windClockOf } from './weather/wind.ts'
 
 export const STORM_COLOR = 0xdce6ff
 export const STORM_LIFT = AMBIENT * 3

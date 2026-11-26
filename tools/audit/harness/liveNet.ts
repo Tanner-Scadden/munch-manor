@@ -11,7 +11,7 @@ import {
   Stream,
 } from 'effect'
 
-import { CoopNet } from '@game/features/coop/net'
+import { CoopNet } from '@game/features/coop/services/net'
 import { decodeServerFrame, encodeClientFrame } from '@munch/netcode'
 import { RoomEvent } from '@munch/netcode/browser'
 

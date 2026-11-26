@@ -12,7 +12,7 @@ import {
 import { ChildProcess } from 'effect/process'
 import type { Plugin, ViteDevServer } from 'vite'
 
-import type { SpriteAtlas } from '../../src/art/spriteAtlas.ts'
+import type { SpriteAtlas } from '../../src/art/atlas/spriteAtlas.ts'
 import { encodeJson, readJsonFile } from '../json.ts'
 import { nodeRuntime, textOf } from '../node.ts'
 import { AtlasEntries, AtlasLevels, SpriteAtlasManifest } from './manifest.ts'

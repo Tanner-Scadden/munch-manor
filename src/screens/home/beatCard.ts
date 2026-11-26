@@ -1,18 +1,18 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
 import { PROP_ICONS } from '#art/callingArt.ts'
 import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '#art/dareArt.ts'
-import { SKULL_ICONS } from '#art/icons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { SKULL_ICONS } from '#art/icons/icons.ts'
 import { markIcon } from '#art/markArt.ts'
 import type { DareOutcome, FriendsDare } from '#domain/beatLink.ts'
-import { maybeShownDareOf, unopenedThingsOf } from '#domain/beatMyRun.ts'
 import { DifficultyCard } from '#domain/clientSchema.ts'
+import {
+  maybeShownDareOf,
+  unopenedThingsOf,
+} from '#domain/machines/beatMyRun.ts'
 import { isOnHome } from '#domain/run.ts'
 import { HomeMessage } from '#features/home/message.ts'
 import { isLearned } from '#features/onboarding/onboarding.ts'

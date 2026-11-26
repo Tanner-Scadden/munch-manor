@@ -2,7 +2,7 @@ import { Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { freshGun } from '#world/gear/weapons.ts'
 import {
   Arsenal,

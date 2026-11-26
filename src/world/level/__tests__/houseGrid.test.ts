@@ -1,7 +1,7 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { cameraFor } from '#render/camera.ts'
+import { cameraFor } from '#render/camera/camera.ts'
 import { TILE_SIZE } from '#shared/constants.ts'
 import {
   TILE_OUTSIDE,

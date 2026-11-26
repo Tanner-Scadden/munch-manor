@@ -6,12 +6,12 @@ import {
   ALL_THREE_SPRITE,
   MISSION_DONE_SPRITE,
   MISSION_SPRITES,
-} from '#art/missionIcons.ts'
+} from '#art/icons/missionIcons.ts'
 import { BONE, BONE_SIZE } from '#art/rankArt.ts'
 import { group, placeAt } from '#art/sprite.ts'
 import type * as Draw from '#render/draw.ts'
 import { rect } from '#render/drawing.ts'
-import { ALL_THREE_BONES, bonesOfMission } from '#shared/missionData.ts'
+import { ALL_THREE_BONES, bonesOfMission } from '#shared/records/missionData.ts'
 import { ALL_THREE_TAG } from '#world/names.ts'
 import { clamp, easeOut } from '#world/step/geometry.ts'
 

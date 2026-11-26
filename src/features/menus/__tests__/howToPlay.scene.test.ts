@@ -5,9 +5,9 @@ import { HtmlLocator } from '@effect/ui/html/testing'
 import { Locator } from '@effect/ui/testing'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
+import { RootDialog } from '#app/menus/rootDialog.ts'
 import type { Model } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
-import { RootDialog } from '#app/rootDialog.ts'
 import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '#domain/clientSchema.ts'
 import {
   CONTROL_CARDS,

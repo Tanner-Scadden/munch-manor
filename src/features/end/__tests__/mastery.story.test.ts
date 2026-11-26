@@ -15,7 +15,7 @@ import {
   unlocksBetween,
 } from '#domain/mastery.ts'
 import { unlocksOf } from '#features/end/endBeat.ts'
-import { type SavedMastery, noMastery } from '#shared/masteryData.ts'
+import { type SavedMastery, noMastery } from '#shared/records/masteryData.ts'
 import { home } from '#test/model.fixture.ts'
 import { checkModel, send, storyOf, writeSave } from '#test/testing.ts'
 import { focusOf, modifyFocus } from '#world/party/party.ts'

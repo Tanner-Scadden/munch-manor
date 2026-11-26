@@ -7,7 +7,7 @@ import {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { Modifiers } from '#world/run/modifiers.ts'
 import { DifficultySetting } from '#world/schema/worldSchema.ts'
 

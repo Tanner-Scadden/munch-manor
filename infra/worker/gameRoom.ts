@@ -8,8 +8,8 @@ import * as Match from 'effect/Match'
 import * as Option from 'effect/Option'
 import * as Result from 'effect/Result'
 import * as Schema from 'effect/Schema'
-import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Semaphore from 'effect/Semaphore'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 
 import type {
   DurableObjectNamespace,

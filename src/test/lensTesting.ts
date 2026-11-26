@@ -4,7 +4,7 @@ import {
   floorToScreenDirection,
   lensOf,
   screenToFloorDirection,
-} from '#render/lens.ts'
+} from '#render/camera/lens.ts'
 import { STICK_RADIUS_PX } from '#shared/constants.ts'
 import { hypot } from '#shared/detMath.ts'
 import type { Vector } from '#world/schema/entitySchema.ts'

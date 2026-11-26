@@ -14,25 +14,25 @@ import {
   type Vector,
 } from '#app/model.ts'
 import {
-  darePointerShapes,
-  maybeDarePointer,
-} from '#features/dare/darePointer.ts'
-import { dareDrawables } from '#features/dare/dareView.ts'
-import {
   EASY_REST_MS,
   HINT_LINES,
   HINT_MS,
   maybeHintCall,
 } from '#features/dare/rattlesHint.ts'
 import {
+  darePointerShapes,
+  maybeDarePointer,
+} from '#features/dare/views/darePointer.ts'
+import { dareDrawables } from '#features/dare/views/dareView.ts'
+import {
   cameraOf,
   screenCameraOf,
   viewBoxOf,
   worldToView,
-} from '#render/camera.ts'
+} from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
-import { clearWindowOf } from '#render/hudLayout.ts'
-import { screenOf } from '#render/screen.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
 import { dareHintShapes, rattlesSpot } from '#screens/game/stallBubble.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { pickLine } from '#shared/prng.ts'

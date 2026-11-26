@@ -12,11 +12,11 @@ import type {
   WebSocket as WorkersWebSocket,
 } from '@cloudflare/workers-types'
 
-import { readPlayerFacts } from '../../src/platform/playerProjection.ts'
+import { readPlayerFacts } from '../../src/platform/save/playerProjection.ts'
 import {
   PLAYER_LOG_PATH,
   PlayerLogRpcs,
-} from '../../src/shared/sessionApi.ts'
+} from '../../src/shared/records/sessionApi.ts'
 import { type HibernatingTransport, makeTransport } from './doProtocol.ts'
 import { issueLinkCodeVia, linkStoreOf } from './linkCodes.ts'
 import {
@@ -101,9 +101,7 @@ export class PlayerLog {
     )
   }
 
-  private run(
-    use: (served: Served) => Effect.Effect<void>,
-  ): Promise<void> {
+  private run(use: (served: Served) => Effect.Effect<void>): Promise<void> {
     return Effect.runPromise(
       Effect.flatMap(this.served, use).pipe(
         Effect.catchTag('SyncSetupFailed', error =>

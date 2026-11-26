@@ -18,11 +18,11 @@ import {
   rollName,
   shownName,
 } from '#domain/playerName.ts'
+import { TutorialReset } from '#features/profile/machines/resetFlow.ts'
 import { type ProfileTab } from '#features/profile/model.ts'
 import { PROFILE_TABS } from '#features/profile/profile.ts'
-import { TutorialReset } from '#features/profile/resetFlow.ts'
-import { changesBetween } from '#platform/playerSync.ts'
-import { saveOf } from '#platform/save.ts'
+import { changesBetween } from '#platform/save/playerSync.ts'
+import { saveOf } from '#platform/save/save.ts'
 import { readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,

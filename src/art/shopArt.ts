@@ -2,7 +2,7 @@ import { Array, Function, Record } from 'effect'
 
 import type { TrapKind, WeaponKind } from '#world/schema/entitySchema.ts'
 
-import { pixelIconUrl } from './icons.ts'
+import { pixelIconUrl } from './icons/icons.ts'
 import {
   MOOD_FACES,
   type Mood,

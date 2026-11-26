@@ -3,9 +3,9 @@ import { Array, Function, Option, Schema, String } from 'effect'
 import { UiSchema } from '@effect/ui'
 
 import { milestoneUnlockId } from '#domain/journal.ts'
-import type { SavedJournal } from '#shared/journalData.ts'
-import type { Calling } from '#shared/playerData.ts'
-import type { SavedProof } from '#shared/proofData.ts'
+import type { SavedJournal } from '#shared/records/journalData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import type { SavedProof } from '#shared/records/proofData.ts'
 import { DareKind } from '#world/dare/dareSchema.ts'
 import {
   MILESTONES,

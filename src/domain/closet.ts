@@ -12,7 +12,7 @@ import {
   type SavedBoughtCosmetics,
   type SavedRank,
   cosmeticIdOf,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { bonesBalanceOf } from '#world/heroes/rank.ts'
 
 export type LookSource =

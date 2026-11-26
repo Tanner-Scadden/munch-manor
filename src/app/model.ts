@@ -69,8 +69,8 @@ import {
   PageVisibility,
   ScreenFit,
 } from '#platform/deviceSchema.ts'
-import { PlayerChange, SyncState } from '#platform/playerSync.ts'
-import { RunRecorder } from '#platform/recording.ts'
+import { RunRecorder } from '#platform/recording/recording.ts'
+import { PlayerChange, SyncState } from '#platform/save/playerSync.ts'
 import { SUPPORT_URL, maybeSupportUrlOf } from '#platform/support.ts'
 import {
   ActionWatch,
@@ -84,11 +84,11 @@ import {
   noTellWatch,
 } from '#render/renderSchema.ts'
 import { DEFAULT_SEED } from '#shared/constants.ts'
-import { SavedDareMarks, noDareMarks } from '#shared/dareMarkData.ts'
-import { DayStamp } from '#shared/dayStamp.ts'
-import { SavedJournal, noJournal } from '#shared/journalData.ts'
-import { SavedMastery, noMastery } from '#shared/masteryData.ts'
-import { SavedMissions, noMissions } from '#shared/missionData.ts'
+import { SavedDareMarks, noDareMarks } from '#shared/records/dareMarkData.ts'
+import { DayStamp } from '#shared/records/dayStamp.ts'
+import { SavedJournal, noJournal } from '#shared/records/journalData.ts'
+import { SavedMastery, noMastery } from '#shared/records/masteryData.ts'
+import { SavedMissions, noMissions } from '#shared/records/missionData.ts'
 import {
   Appearance,
   Calling,
@@ -111,8 +111,8 @@ import {
   ShareStatsSetting,
   SoundSetting,
   noBonuses,
-} from '#shared/playerData.ts'
-import { SavedProof, noProof } from '#shared/proofData.ts'
+} from '#shared/records/playerData.ts'
+import { SavedProof, noProof } from '#shared/records/proofData.ts'
 import { DareKind } from '#world/dare/dareSchema.ts'
 import { rollCases } from '#world/feats/cases.ts'
 import { noRank } from '#world/heroes/rank.ts'
@@ -154,7 +154,7 @@ import {
   stillShake,
 } from '#world/schema/worldSchema.ts'
 
-import { RootDialog } from './rootDialog.ts'
+import { RootDialog } from './menus/rootDialog.ts'
 
 export * from '#domain/clientSchema.ts'
 export * from '#world/schema/worldSchema.ts'

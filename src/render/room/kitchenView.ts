@@ -12,7 +12,7 @@ import {
 import { type Drawable, ON_FRONT_PX } from '#render/depth.ts'
 import * as Draw from '#render/draw.ts'
 import { pixelArt, rect } from '#render/drawing.ts'
-import { mixColor } from '#render/iso/mood.ts'
+import { mixColor } from '#render/iso/light/mood.ts'
 import { TILE_SIZE } from '#shared/constants.ts'
 import { nextRandom } from '#shared/prng.ts'
 import {

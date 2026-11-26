@@ -8,8 +8,8 @@ import {
   type SavedMastery,
   gunKillsOf,
   heroPointsOf,
-} from '#shared/masteryData.ts'
-import type { Calling, PropStyle } from '#shared/playerData.ts'
+} from '#shared/records/masteryData.ts'
+import type { Calling, PropStyle } from '#shared/records/playerData.ts'
 import { CALLINGS } from '#world/heroes/calling.ts'
 import type { WeaponKind } from '#world/schema/worldSchema.ts'
 

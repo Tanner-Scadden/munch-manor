@@ -15,7 +15,7 @@ import {
   PLAYER_RECOIL_SQUASH,
   ZOMBIE_KNOCKBACK_SPEED,
 } from '#shared/constants.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import type { SoundEffect } from '#shared/soundEffect.ts'
 import { magazineFor } from '#world/heroes/calling.ts'
 import { GUN_NAMES, KNIFE_NAME, gunTierName } from '#world/names.ts'

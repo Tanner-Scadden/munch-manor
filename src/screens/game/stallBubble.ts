@@ -11,9 +11,9 @@ import {
   placeAt,
   spriteShapes,
 } from '#art/sprite.ts'
-import { maybeDarePointer } from '#features/dare/darePointer.ts'
 import { isPocketCardOut } from '#features/dare/pocketCard.ts'
 import { HINT_LINES, maybeHintCall } from '#features/dare/rattlesHint.ts'
+import { maybeDarePointer } from '#features/dare/views/darePointer.ts'
 import { fridgeOddsKeepoutsOf } from '#features/fridge/fridgeView.ts'
 import {
   CALL_LINES,
@@ -29,12 +29,12 @@ import {
   RATTLES_INTRO_LINES,
   maybeRattlesLine,
 } from '#features/onboarding/rattlesIntro.ts'
-import { type Camera, viewBoxOf, worldToView } from '#render/camera.ts'
+import { type Camera, viewBoxOf, worldToView } from '#render/camera/camera.ts'
+import { landscapeFrameOffset, screenOf } from '#render/camera/screen.ts'
 import * as Draw from '#render/draw.ts'
 import { FULL_TURN, placeSprite } from '#render/drawing.ts'
-import { type Keepout, clearOfKeepouts } from '#render/keepout.ts'
-import { doorArrowBox } from '#render/powerupView.ts'
-import { landscapeFrameOffset, screenOf } from '#render/screen.ts'
+import { doorArrowBox } from '#render/effects/powerupView.ts'
+import { type Keepout, clearOfKeepouts } from '#render/hud/keepout.ts'
 import type { DareKind } from '#world/dare/dareSchema.ts'
 import { fridgeBoxOf } from '#world/fridge/leftovers.ts'
 import { RATTLES_BOX, levelOf } from '#world/level/arena.ts'

@@ -2,9 +2,9 @@ import { Array, Function, Option, pipe } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { type Camera, viewToWorld } from '#render/camera.ts'
-import { screenToFloorDirection } from '#render/lens.ts'
-import { clientToView, isLeftHalf } from '#render/screen.ts'
+import { type Camera, viewToWorld } from '#render/camera/camera.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
+import { clientToView, isLeftHalf } from '#render/camera/screen.ts'
 import {
   CAMERA_LEAN_PX,
   MOUSE_LEAN_SHARE,

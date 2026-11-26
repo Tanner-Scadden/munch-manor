@@ -6,8 +6,8 @@ import { describe, expect, it } from '@effect/vitest'
 import { Message } from '#app/message.ts'
 import { type Bullet, Phase } from '#app/model.ts'
 import { MouseButton, Stick } from '#input/inputSchema.ts'
-import { cameraOf, viewToWorld, worldToView } from '#render/camera.ts'
-import { screenToFloorDirection } from '#render/lens.ts'
+import { cameraOf, viewToWorld, worldToView } from '#render/camera/camera.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import {
   FIXED_STEP_MS,
   STICK_FIRE_ZONE,

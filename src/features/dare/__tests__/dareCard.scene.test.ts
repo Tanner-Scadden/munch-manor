@@ -16,14 +16,14 @@ import {
   dareCardShapes,
   pocketBoxOf,
 } from '#features/dare/dareCard.ts'
-import { cameraOf } from '#render/camera.ts'
-import type * as Draw from '#render/draw.ts'
-import { HUD_STRIP_HEIGHT, hudLayoutFor } from '#render/hudLayout.ts'
+import { cameraOf } from '#render/camera/camera.ts'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
   type Screen,
-} from '#render/screen.ts'
+} from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
+import { HUD_STRIP_HEIGHT, hudLayoutFor } from '#render/hud/hudLayout.ts'
 import { hudShapes } from '#screens/game/hud.ts'
 import { pocketOf } from '#screens/game/pocket.ts'
 import { quietWave } from '#test/model.fixture.ts'

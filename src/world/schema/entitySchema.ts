@@ -2,7 +2,7 @@ import { Schema } from 'effect'
 
 import { UiSchema } from '@effect/ui'
 
-import { Calling } from '#shared/playerData.ts'
+import { Calling } from '#shared/records/playerData.ts'
 
 import {
   Heading,

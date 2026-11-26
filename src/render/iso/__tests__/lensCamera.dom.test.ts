@@ -3,8 +3,8 @@ import { Array } from 'effect'
 import { describe, expect, test } from '@effect/vitest'
 import { Camera3D, Matrix4, Vector3 } from '@pixi/3d'
 
-import type { Camera } from '#render/camera.ts'
-import { worldToView } from '#render/camera.ts'
+import type { Camera } from '#render/camera/camera.ts'
+import { worldToView } from '#render/camera/camera.ts'
 import { aimSceneCamera, sceneLensOf } from '#render/iso/lensCamera.ts'
 import { UNIT, zOf } from '#render/iso/space.ts'
 

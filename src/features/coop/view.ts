@@ -8,10 +8,7 @@ import {
   type RoomScore,
 } from '@munch/netcode'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import {
   AWAY_ICON,
   CHECK_ICON,
@@ -27,9 +24,9 @@ import {
   WAIT_ICON,
   WIFI_ICONS,
   portraitOf,
-} from '#art/coopIcons.ts'
-import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '#art/icons.ts'
-import { MISSION_ICONS } from '#art/missionIcons.ts'
+} from '#art/icons/coopIcons.ts'
+import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '#art/icons/icons.ts'
+import { MISSION_ICONS } from '#art/icons/missionIcons.ts'
 import { callingOfMember, seatLook, seatLookOf } from '#art/seatLooks.ts'
 import {
   type CoopProblem,
@@ -41,24 +38,21 @@ import {
 } from '#domain/coopRoom.ts'
 import { bestMarkOn } from '#domain/dareMarks.ts'
 import { HeroPicker } from '#features/heroes/block.ts'
-import { seatColorOf } from '#render/partyView.ts'
-import type { SavedDareMarks } from '#shared/dareMarkData.ts'
+import { seatColorOf } from '#render/bodies/partyView.ts'
+import type { SavedDareMarks } from '#shared/records/dareMarkData.ts'
 import type {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { backButtonView, closeButtonView } from '#ui/cornerButtons.ts'
 import { dareMarkBadgeView } from '#ui/dareMarkView.ts'
 import { callingPropView, iconView, rankTagView } from '#ui/menuParts.ts'
 import { CALLING_NAMES } from '#world/names.ts'
 
-import { readoutOf } from './auditReadout.ts'
+import { readoutOf } from './audit/auditReadout.ts'
 import { CoopMessage } from './message.ts'
 import { type Model } from './model.ts'
-import { askingView, poofView, queueRollView } from './motionArt.ts'
-import { nameButtonView, namePickerView } from './namePicker.ts'
-import { heroPickView, picksView } from './picksView.ts'
 import {
   CODE_INPUT,
   CODE_INPUT_ID,
@@ -70,6 +64,9 @@ import {
   isHost,
   meIn,
 } from './roomState.ts'
+import { askingView, poofView, queueRollView } from './views/motionArt.ts'
+import { nameButtonView, namePickerView } from './views/namePicker.ts'
+import { heroPickView, picksView } from './views/picksView.ts'
 
 export type ViewInputs = Readonly<{
   look: Appearance

@@ -20,7 +20,12 @@ import { FocusProfileElement } from '#app/update/profile.ts'
 import { WriteSave } from '#app/update/save.ts'
 import { isLearned } from '#features/onboarding/onboarding.ts'
 import { isRattlesTalking } from '#features/onboarding/rattlesIntro.ts'
-import { decodeSave, encodeSave, restoreSave, saveOf } from '#platform/save.ts'
+import {
+  decodeSave,
+  encodeSave,
+  restoreSave,
+  saveOf,
+} from '#platform/save/save.ts'
 import {
   FIXED_STEP_MS,
   KITCHEN_FIRST_WAVE,

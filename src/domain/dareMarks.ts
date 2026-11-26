@@ -3,13 +3,13 @@ import { Function } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
-import { playedDifficultyOf } from '#platform/analyticsRun.ts'
-import type { SavedDareMarks } from '#shared/dareMarkData.ts'
-import type { Difficulty } from '#shared/playerData.ts'
+import { playedDifficultyOf } from '#platform/analytics/analyticsRun.ts'
+import type { SavedDareMarks } from '#shared/records/dareMarkData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import { MAX_MARK, clampMark } from '#world/run/dareLadder.ts'
 import { hasJustWon } from '#world/run/difficulty.ts'
 
-import { isDareTaken } from './beatMyRun.ts'
+import { isDareTaken } from './machines/beatMyRun.ts'
 import { playedMarkOf } from './onlineRun.ts'
 
 export const bestMarkOn: {

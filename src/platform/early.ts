@@ -1,3 +1,3 @@
-import { startStoreEarly } from './storeEarly.ts'
+import { startStoreEarly } from './save/storeEarly.ts'
 
 startStoreEarly()

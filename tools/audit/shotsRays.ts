@@ -1,6 +1,6 @@
 import { Array, Effect } from 'effect'
 
-import { strikeClockOf } from '../../src/render/iso/mood'
+import { strikeClockOf } from '../../src/render/iso/light/mood'
 import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,

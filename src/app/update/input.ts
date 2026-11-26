@@ -2,7 +2,7 @@ import { Option, Struct } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { refreshIntent } from '#app/frame.ts'
+import { refreshIntent } from '#app/frame/frame.ts'
 import { foldPocketCard } from '#features/dare/pocketCard.ts'
 import {
   type PointerPress,

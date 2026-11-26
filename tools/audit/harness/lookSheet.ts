@@ -4,7 +4,7 @@ import { UiStruct } from '@effect/ui'
 import type {
   ApplicationHtml,
   ApplicationViewBuilder,
-} from '@game/app/definition'
+} from '@game/app/component'
 import { type Appearance, defaultAppearance } from '@game/app/model'
 import {
   BODIES,

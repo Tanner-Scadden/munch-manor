@@ -2,6 +2,7 @@ import { Array, Duration, Effect, Function, Option, Schema, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
+import { returnHome } from '#app/frame/runReset.ts'
 import {
   MenuState,
   isAnyPanelOpen,
@@ -10,13 +11,15 @@ import {
   isPanelOpen,
   isPastRestartGrace,
   menuState,
-} from '#app/menuState.ts'
+} from '#app/menus/menuState.ts'
 import { DifficultyCard, type Model } from '#app/model.ts'
-import { returnHome } from '#app/runReset.ts'
 import { UpdateGift } from '#domain/clientSchema.ts'
-import { CardEvent, stepDifficultyCard } from '#domain/difficultyCard.ts'
-import { GiftEvent, stepGift } from '#domain/giftFlow.ts'
 import { markJournalSeen } from '#domain/journal.ts'
+import {
+  CardEvent,
+  stepDifficultyCard,
+} from '#domain/machines/difficultyCard.ts'
+import { GiftEvent, stepGift } from '#domain/machines/giftFlow.ts'
 import { runDifficultyOf } from '#domain/onlineRun.ts'
 import { isEndScreen, isOnHome } from '#domain/run.ts'
 import { END_MENU_BUTTON_ID, endOffer } from '#features/end/endOffer.ts'
@@ -40,7 +43,7 @@ import {
 import type { InstallOutcome } from '#platform/deviceSchema.ts'
 import { InstallPrompt } from '#platform/install.ts'
 import { InstallMessage, VersionMessage } from '#platform/message.ts'
-import { forgetTutorial } from '#platform/save.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
 import { activateNewBuild } from '#platform/serviceWorker.ts'
 import { reloadOnto } from '#platform/version.ts'
 import {
@@ -64,7 +67,7 @@ import {
   turnNewsPage,
 } from '#screens/home/home.ts'
 import type { TutorialChoice } from '#shared/nameKeys.ts'
-import type { Difficulty } from '#shared/playerData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import { stepWhen } from '#shared/stepWhen.ts'
 import { clickById, focusById } from '#ui/menuParts.ts'
 import {

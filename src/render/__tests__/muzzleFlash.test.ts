@@ -6,21 +6,21 @@ import { UiStruct } from '@effect/ui'
 import type { Model } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
 import { gunSprite } from '#art/sprites/guns.ts'
+import {
+  muzzlePointOf,
+  playerFlashDrawable,
+  playerFootY,
+  playerShapes,
+} from '#render/bodies/playerView.ts'
 import type * as Draw from '#render/draw.ts'
 import { type Leaf, flatten } from '#render/iso/flatten.ts'
-import { flameSpecsOf } from '#render/iso/lightSpecs.ts'
+import { flameSpecsOf } from '#render/iso/light/lightSpecs.ts'
 import {
   CAMERA_UP,
   UNIT,
   type Vec3,
   standingPointOf,
 } from '#render/iso/space.ts'
-import {
-  muzzlePointOf,
-  playerFlashDrawable,
-  playerFootY,
-  playerShapes,
-} from '#render/playerView.ts'
 import { candelabraShapes } from '#render/room/diningArt.ts'
 import { coverBlocks } from '#render/room/roomCover.ts'
 import { FLAME_COLOR } from '#render/room/roomPalette.ts'

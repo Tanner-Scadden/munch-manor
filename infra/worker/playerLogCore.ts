@@ -16,18 +16,18 @@ import {
 } from 'effect/eventlog'
 import type { Rpc } from 'effect/rpc'
 
-import { PlayerLogSchema } from '../../src/platform/playerEvents.ts'
+import { PlayerLogSchema } from '../../src/platform/save/playerEvents.ts'
 import {
   PlayerHandlers,
   createPlayerTables,
-} from '../../src/platform/playerProjection.ts'
+} from '../../src/platform/save/playerProjection.ts'
 import {
   type LinkCode,
   PlayerLogRpcs,
   SessionRefused,
   SessionRpcs,
   playerStoreOf,
-} from '../../src/shared/sessionApi.ts'
+} from '../../src/shared/records/sessionApi.ts'
 import { sessionUnavailable } from './linkCodes.ts'
 import { SESSION_TTL_MS, signToken } from './sessionToken.ts'
 

@@ -9,10 +9,10 @@ import { PlaySound } from '@game/app/update/sound'
 import * as CoopModel from '@game/domain/coopRoom'
 import { type WorldState, coopWorld } from '@game/domain/coopRoom'
 import { MouseButton, Stick } from '@game/input/inputSchema'
-import { cameraOf, screenCameraOf, worldToView } from '@game/render/camera'
-import { screenOf } from '@game/render/screen'
+import { cameraOf, screenCameraOf, worldToView } from '@game/render/camera/camera'
+import { screenOf } from '@game/render/camera/screen'
 import { PLAYER_MAX_HP, STICK_RADIUS_PX } from '@game/shared/constants'
-import { Difficulty } from '@game/shared/playerData'
+import { Difficulty } from '@game/shared/records/playerData'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,

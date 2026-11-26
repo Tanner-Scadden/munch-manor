@@ -1,6 +1,6 @@
 import { Array, Option, Schema } from 'effect'
 
-import { strikeClockOf } from '../../src/render/iso/mood'
+import { strikeClockOf } from '../../src/render/iso/light/mood'
 import { TILE_SIZE } from '../../src/shared/constants'
 import {
   ARRANGEMENTS,

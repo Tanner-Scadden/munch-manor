@@ -3,7 +3,7 @@ import { Function } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import { bootCommands } from './boot.ts'
-import { ApplicationDef } from './definition.ts'
+import { ApplicationDef } from './component.ts'
 import type { Message } from './message.ts'
 import { LOAD_STEPS, Loading, cosmeticSeedOf, initialModel } from './model.ts'
 import { beatMyRunHandlers } from './update/beatMyRun.ts'

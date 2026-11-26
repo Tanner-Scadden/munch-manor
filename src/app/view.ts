@@ -6,9 +6,9 @@ import {
 } from '#features/dare/pocketCard.ts'
 import { awardsOf, crewOf } from '#features/end/crewAwards.ts'
 import { pauseHelpView } from '#features/menus/pauseHelp.ts'
-import { caseCardView } from '#features/onboarding/caseCardView.ts'
 import { isOpenBreak } from '#features/onboarding/onboarding.ts'
-import { questTrackerView } from '#features/onboarding/questView.ts'
+import { caseCardView } from '#features/onboarding/views/caseCardView.ts'
+import { questTrackerView } from '#features/onboarding/views/questView.ts'
 import { purchaseAnnouncementView } from '#features/shop/purchaseHud.ts'
 import { escapeSupportView } from '#features/support/supportView.ts'
 import { keyGrabToastView } from '#input/keyGrab.ts'
@@ -16,7 +16,7 @@ import {
   landscapeFrameOffset,
   screenOf,
   stagePlacement,
-} from '#render/screen.ts'
+} from '#render/camera/screen.ts'
 import { dareListButtonView } from '#screens/game/dareListButton.ts'
 import {
   cornerButtonsView,
@@ -62,17 +62,14 @@ import {
 import { isRoundActive, roundWave } from '#world/waves/waves.ts'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '#world/zombies/zombies.ts'
 
-import { coopView } from './coopView.ts'
-import type { ApplicationHtml, ApplicationViewBuilder } from './definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from './component.ts'
 import {
   homeScreenGuideView,
   manorHandView,
   menuPanelView,
   updateGreetingView,
-} from './dialogs.ts'
-import { gameStageView } from './layers.ts'
-import { lobbyView } from './lobbyView.ts'
-import { isLobbyUp, isProfileOpen } from './menuState.ts'
+} from './menus/dialogs.ts'
+import { isLobbyUp, isProfileOpen } from './menus/menuState.ts'
 import { Message } from './message.ts'
 import {
   DebutCard,
@@ -87,8 +84,11 @@ import {
   ShareFromClick,
   WatchGameSurface,
 } from './mount.ts'
-import { profileDialogView } from './profileView.ts'
 import { isCoopOpen } from './update/coop.ts'
+import { coopView } from './views/coopView.ts'
+import { gameStageView } from './views/layers.ts'
+import { lobbyView } from './views/lobbyView.ts'
+import { profileDialogView } from './views/profileView.ts'
 
 const statusWave = (model: Model, wave: number): string =>
   RunMode.match(model.mode, {

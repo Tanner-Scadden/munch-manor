@@ -1,12 +1,15 @@
 import { UiStruct } from '@effect/ui'
 
-import type { Model } from '#app/model.ts'
 import {
   DialogEvent,
   type DialogName,
   stepRootDialog,
-} from '#app/rootDialog.ts'
-import { CardEvent, stepDifficultyCard } from '#domain/difficultyCard.ts'
+} from '#app/menus/rootDialog.ts'
+import type { Model } from '#app/model.ts'
+import {
+  CardEvent,
+  stepDifficultyCard,
+} from '#domain/machines/difficultyCard.ts'
 import { keptName, withNameKept } from '#features/profile/steps.ts'
 import { openedEntry } from '#screens/home/home.ts'
 

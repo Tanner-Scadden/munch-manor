@@ -19,8 +19,8 @@ import {
   PISTOL_MAGAZINE,
   PISTOL_RELOAD_MS,
 } from '#shared/constants.ts'
-import type { Calling } from '#shared/playerData.ts'
 import { nextRandom } from '#shared/prng.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { holdingSecond, pistolOnly } from '#test/arsenals.ts'
 import {
   DISTANT_SPAWN,

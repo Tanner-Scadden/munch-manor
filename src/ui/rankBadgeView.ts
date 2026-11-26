@@ -3,14 +3,11 @@ import { Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
 import { PROP_ICONS } from '#art/callingArt.ts'
-import { pixelIconUrl } from '#art/icons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { pixelIconUrl } from '#art/icons/icons.ts'
 import {
   BONE_IMAGE,
   GIFT_BOX_PALETTE,

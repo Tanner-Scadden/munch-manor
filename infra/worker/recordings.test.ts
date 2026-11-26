@@ -4,15 +4,15 @@ import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 
 import { describe, expect, it } from '@effect/vitest'
-import { signToken } from './sessionToken.ts'
 
 import {
   GZIP_CONTENT_TYPE,
   JSON_CONTENT_TYPE,
   MAX_RECORDING_BYTES,
-} from '../../src/platform/recordingApi.ts'
+} from '../../src/platform/recording/recordingApi.ts'
 import type { RateLimiter } from './api.ts'
 import { type RecordingBucket, routeRecording } from './recordings.ts'
+import { signToken } from './sessionToken.ts'
 
 const SECRET = 'recordings-secret'
 const PLAYER = 'AAAAAAAAAAAAAAAAAAAAAA'

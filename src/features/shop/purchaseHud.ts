@@ -2,13 +2,10 @@ import { Function, Option, Stream, String } from 'effect'
 
 import { Mount } from '@effect/ui'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
-import { GRAB_ICON, HOLD_ICON } from '#art/icons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { GRAB_ICON, HOLD_ICON } from '#art/icons/icons.ts'
 import { spriteImage } from '#art/sprite.ts'
 import { InputMessage, RunButtonMessage } from '#input/message.ts'
 import { iconView } from '#ui/menuParts.ts'

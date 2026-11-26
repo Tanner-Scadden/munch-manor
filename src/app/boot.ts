@@ -3,9 +3,11 @@ import { Effect, Option, Random, pipe } from 'effect'
 import { Command, Component } from '@effect/ui'
 
 import { spriteWarmUpSources } from '#art/appearance.ts'
-import { generateVisitId } from '#platform/analyticsBeacon.ts'
+import { generateVisitId } from '#platform/analytics/analyticsBeacon.ts'
+import { startSummaryQueue } from '#platform/analytics/summaryQueue.ts'
 import type { ScreenFit } from '#platform/deviceSchema.ts'
-import { startRecordingQueue } from '#platform/recordingUpload.ts'
+import { startRecordingQueue } from '#platform/recording/recordingUpload.ts'
+import { PlayerStore } from '#platform/save/store.ts'
 import {
   awaitFirstFrame,
   decodeImages,
@@ -13,8 +15,6 @@ import {
   loadStyles,
   markLoadStep,
 } from '#platform/splash.ts'
-import { PlayerStore } from '#platform/store.ts'
-import { startSummaryQueue } from '#platform/summaryQueue.ts'
 import { readUpdateMarker } from '#platform/version.ts'
 import { awaitWorldReady } from '#render/iso/element.ts'
 import { toBrowserError } from '#shared/describeError.ts'

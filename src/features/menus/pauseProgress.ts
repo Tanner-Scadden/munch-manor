@@ -1,13 +1,10 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
 import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '#art/dareArt.ts'
-import { FOUND_CHECK_ICON, ROOMS_ICON } from '#art/icons.ts'
-import { QUEST_KEY_ICON } from '#art/questIcons.ts'
+import { FOUND_CHECK_ICON, ROOMS_ICON } from '#art/icons/icons.ts'
+import { QUEST_KEY_ICON } from '#art/icons/questIcons.ts'
 import { gunArt } from '#art/shopArt.ts'
 import { roomsOf } from '#domain/run.ts'
 import { iconView } from '#ui/menuParts.ts'

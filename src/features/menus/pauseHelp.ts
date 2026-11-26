@@ -4,13 +4,13 @@ import type {
   ApplicationHtml,
   ApplicationMount,
   ApplicationViewBuilder,
-} from '#app/definition.ts'
+} from '#app/component.ts'
 import type { Model } from '#app/model.ts'
 import {
   HELP_DEMO_SPRITES,
   HINT_ICON_SPRITES,
   type HintIconSprites,
-} from '#art/hintIcons.ts'
+} from '#art/icons/hintIcons.ts'
 import { standaloneSource } from '#art/sprite.ts'
 import type { InputDevice } from '#input/inputSchema.ts'
 import { KNIFE_NAME } from '#world/names.ts'

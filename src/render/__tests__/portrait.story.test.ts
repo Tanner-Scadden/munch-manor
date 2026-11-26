@@ -3,7 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { refreshIntent } from '#app/frame.ts'
+import { refreshIntent } from '#app/frame/frame.ts'
 import { Message } from '#app/message.ts'
 import { type Model, Phase } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
@@ -17,13 +17,12 @@ import {
   viewToWorld,
   worldToView,
   worldWindowOf,
-} from '#render/camera.ts'
-import { HUD_STRIP_HEIGHT } from '#render/hudLayout.ts'
+} from '#render/camera/camera.ts'
 import {
   floorRowsSeen,
   floorToScreenDirection,
   screenToFloorDirection,
-} from '#render/lens.ts'
+} from '#render/camera/lens.ts'
 import {
   LANDSCAPE_MAX_WIDTH,
   LANDSCAPE_SCREEN,
@@ -39,7 +38,8 @@ import {
   portraitScreen,
   screenOf,
   thumbAreaTop,
-} from '#render/screen.ts'
+} from '#render/camera/screen.ts'
+import { HUD_STRIP_HEIGHT } from '#render/hud/hudLayout.ts'
 import {
   CAMERA_LEAN_PX,
   FIXED_STEP_MS,

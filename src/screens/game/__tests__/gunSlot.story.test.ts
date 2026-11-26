@@ -2,7 +2,7 @@ import { Array, Option, String } from 'effect'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { levelPopLines } from '#render/powerupView.ts'
+import { levelPopLines } from '#render/effects/powerupView.ts'
 import { isJustLeveled, maybeLevelBarOf } from '#screens/game/hud.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { gunAt, holdingSecond } from '#test/arsenals.ts'

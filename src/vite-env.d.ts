@@ -7,6 +7,6 @@ interface ImportMetaEnv {
 }
 
 declare module 'virtual:sprite-atlas' {
-  const atlas: import('./art/spriteAtlas.ts').SpriteAtlas
+  const atlas: import('./art/atlas/spriteAtlas.ts').SpriteAtlas
   export default atlas
 }

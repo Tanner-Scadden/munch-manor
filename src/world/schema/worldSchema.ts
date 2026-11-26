@@ -3,8 +3,8 @@ import { Function, Option, Schema } from 'effect'
 import { UiSchema, UiStruct } from '@effect/ui'
 
 import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '#shared/constants.ts'
-import { Difficulty } from '#shared/playerData.ts'
 import { nextRandom } from '#shared/prng.ts'
+import { Difficulty } from '#shared/records/playerData.ts'
 import { Dare, DareKind, DareThing, Finale } from '#world/dare/dareSchema.ts'
 import { START_LEVEL, startingLevelFor } from '#world/level/arena.ts'
 import { arrangementAt } from '#world/level/plan.ts'
@@ -62,7 +62,11 @@ import {
   UnitNumber,
 } from './wireNumber.ts'
 
-export { Appearance, Difficulty, RotationSetting } from '#shared/playerData.ts'
+export {
+  Appearance,
+  Difficulty,
+  RotationSetting,
+} from '#shared/records/playerData.ts'
 export * from './entitySchema.ts'
 
 export const Armament = Schema.Literals([

@@ -18,9 +18,9 @@ import {
   ZOMBIE_SPRITES,
   kaboomerFuseTip,
 } from '#art/sprites/zombies.ts'
-import { healthBarShapes } from '#render/healthBarView.ts'
+import { zombieHealthBarShapes } from '#render/bodies/zombieView.ts'
+import { healthBarShapes } from '#render/hud/healthBarView.ts'
 import type { Decal, Particle } from '#render/renderSchema.ts'
-import { zombieHealthBarShapes } from '#render/zombieView.ts'
 import { DECAL_MAX, FIXED_STEP_MS, PARTICLE_MAX } from '#shared/constants.ts'
 import type { SoundEffect } from '#shared/soundEffect.ts'
 import { quietWave } from '#test/model.fixture.ts'

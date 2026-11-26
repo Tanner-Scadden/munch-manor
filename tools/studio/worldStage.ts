@@ -2,8 +2,8 @@ import { Array, Effect, Option, Record, Schema, String } from 'effect'
 
 import { Html } from '@effect/ui/html'
 
+import { type LensFrame, lensOf } from '../../src/render/camera/lens'
 import { viewBoxOf as floorBoxOf } from '../../src/render/iso/cull'
-import { type LensFrame, lensOf } from '../../src/render/lens'
 import { TILE_SIZE } from '../../src/shared/constants'
 import { toBrowserError } from '../../src/shared/describeError'
 import { type BridgeView, type StudioBridge, bridgeOf } from './bridge'

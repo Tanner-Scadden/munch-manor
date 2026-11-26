@@ -41,7 +41,7 @@ import {
 } from '@munch/netcode/browser'
 import type { Mutation } from '@munch/sync-engine'
 
-import { newIdentity } from '../../src/shared/sessionApi'
+import { newIdentity } from '../../src/shared/records/sessionApi'
 import {
   type OwnSeat,
   ROOM_WORLD,

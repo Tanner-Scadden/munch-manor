@@ -3,7 +3,7 @@ import { Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { MenuState, isLobbyOpen, menuState } from '#app/menuState.ts'
+import { MenuState, isLobbyOpen, menuState } from '#app/menus/menuState.ts'
 import { Message } from '#app/message.ts'
 import { DifficultyCard, Lesson, Phase, RunMode } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'

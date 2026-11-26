@@ -6,9 +6,9 @@ import {
   OrientationLock,
   ScreenFit,
 } from '#platform/deviceSchema.ts'
-import { LinkFlow } from '#platform/linkFlow.ts'
-import { SyncState } from '#platform/playerSync.ts'
-import { SavedMastery } from '#shared/masteryData.ts'
+import { LinkFlow } from '#platform/save/linkFlow.ts'
+import { SyncState } from '#platform/save/playerSync.ts'
+import { SavedMastery } from '#shared/records/masteryData.ts'
 import {
   Appearance,
   Calling,
@@ -23,10 +23,10 @@ import {
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 
 import { ClosetCue, LookPreview, ProfileFx } from './blocks/look/model.ts'
-import { TutorialReset } from './resetFlow.ts'
+import { TutorialReset } from './machines/resetFlow.ts'
 
 export const ProfileTab = Schema.Literals([
   'Look',

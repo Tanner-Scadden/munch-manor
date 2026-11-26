@@ -5,7 +5,7 @@ import { Component, UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { ApplicationDef } from '#app/definition.ts'
+import { ApplicationDef } from '#app/component.ts'
 import { Message } from '#app/message.ts'
 import { type Model, Phase } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'

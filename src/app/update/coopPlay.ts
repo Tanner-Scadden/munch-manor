@@ -9,9 +9,9 @@ import {
   leanFor,
   refreshIntent,
   withFirePressSeen,
-} from '#app/frame.ts'
+} from '#app/frame/frame.ts'
+import { freshRun } from '#app/frame/runReset.ts'
 import type { Model } from '#app/model.ts'
-import { freshRun } from '#app/runReset.ts'
 import type { Room as CoopRoom } from '#domain/coopRoom.ts'
 import { maybeRunRoom, runDifficultyOf } from '#domain/onlineRun.ts'
 import { raiseCloche } from '#features/cloche/clocheReveal.ts'
@@ -27,7 +27,7 @@ import {
   ageDebutCard,
   raiseDebutCardFrom,
 } from '#features/onboarding/onboarding.ts'
-import { crewRunKeyOf } from '#platform/analyticsRun.ts'
+import { crewRunKeyOf } from '#platform/analytics/analyticsRun.ts'
 import * as DetMath from '#shared/detMath.ts'
 import { TURRET_WEAPON } from '#world/gear/traps.ts'
 import { levelOf } from '#world/level/arena.ts'

@@ -27,13 +27,16 @@ import {
   noPresses,
 } from '#domain/coopRoom.ts'
 import { toBrowserError } from '#shared/describeError.ts'
-import { Calling, type SavedBoughtCosmetics } from '#shared/playerData.ts'
+import {
+  Calling,
+  type SavedBoughtCosmetics,
+} from '#shared/records/playerData.ts'
 import { eventsBetween } from '#world/net/roomWorld.ts'
 import { DIFFICULTY_ORDER } from '#world/run/difficulty.ts'
 
+import { ScreenEvent, stepScreen } from './machines/screenFlow.ts'
 import { CoopMessage, CoopNotice } from './message.ts'
 import { type Model } from './model.ts'
-import { CoopNet } from './net.ts'
 import {
   CALLING_KEY,
   DIFFICULTY_KEY,
@@ -60,7 +63,7 @@ import {
   withRoom,
   withScreen,
 } from './roomState.ts'
-import { ScreenEvent, stepScreen } from './screenFlow.ts'
+import { CoopNet } from './services/net.ts'
 import {
   ChangeLobby,
   type CoopResultOf,

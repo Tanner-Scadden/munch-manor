@@ -3,15 +3,18 @@ import { describe, expect, test } from 'vitest'
 
 import { UiStruct } from '@effect/ui'
 
-import { sceneShapes } from '#app/layers.ts'
 import { type Model, Phase, type Zombie } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
+import { sceneShapes } from '#app/views/layers.ts'
 import { rattlesShapes } from '#features/rattles/rattlesSpot.ts'
+import { playerShapes } from '#render/bodies/playerView.ts'
+import {
+  zombieHealthBarShapes,
+  zombieShapes,
+} from '#render/bodies/zombieView.ts'
 import { type Drawable, depthSortedShapes } from '#render/depth.ts'
-import { doorwaysOf, isBehindWall } from '#render/doorways.ts'
 import * as Draw from '#render/draw.ts'
-import { playerShapes } from '#render/playerView.ts'
-import { zombieHealthBarShapes, zombieShapes } from '#render/zombieView.ts'
+import { doorwaysOf, isBehindWall } from '#render/room/doorways.ts'
 import { jsonOf, zombieOf } from '#test/testing.ts'
 import {
   type Level,

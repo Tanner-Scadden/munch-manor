@@ -24,8 +24,8 @@ import {
   playerSprites,
   printSwatchRows,
 } from '#art/appearance.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
-import { DICE_ICON, pixelIconUrl } from '#art/icons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { DICE_ICON, pixelIconUrl } from '#art/icons/icons.ts'
 import { type Facing, frameAt, group, standaloneSource } from '#art/sprite.ts'
 import { gunPictureOf, gunSprite } from '#art/sprites/guns.ts'
 import {
@@ -36,9 +36,9 @@ import {
 } from '#domain/closet.ts'
 import { type LookPart, chooseLook } from '#domain/looks.ts'
 import { lookUnlockId } from '#domain/unlocks.ts'
+import { GUN_HOLD_PX } from '#render/bodies/playerView.ts'
 import * as Draw from '#render/draw.ts'
 import { type Leaf, flatten } from '#render/iso/flatten.ts'
-import { GUN_HOLD_PX } from '#render/playerView.ts'
 import {
   PLAYER_FOOT_OFFSET,
   PLAYER_WALK_FRAME_MS,
@@ -51,7 +51,7 @@ import {
   GunSkin,
   Hat,
   type Print,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { newBadgeView } from '#ui/menuParts.ts'
 import { startingGunKind } from '#world/heroes/calling.ts'
 import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'

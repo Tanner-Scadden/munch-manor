@@ -2,7 +2,7 @@ import { Array, Effect, Option } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { type MenuState, isPanelOpen, menuState } from '#app/menuState.ts'
+import { type MenuState, isPanelOpen, menuState } from '#app/menus/menuState.ts'
 import type { Model } from '#app/model.ts'
 import { PadDirection, newDirection, newlyPressed } from '#input/gamepad.ts'
 import { PadScope } from '#input/inputSchema.ts'

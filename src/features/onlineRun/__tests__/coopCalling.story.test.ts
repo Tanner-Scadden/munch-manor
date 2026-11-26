@@ -10,10 +10,10 @@ import type { Model } from '#app/model.ts'
 import { WriteSave } from '#app/update/save.ts'
 import { Screen as CoopScreen } from '#domain/coopRoom.ts'
 import { freshRoom } from '#features/coop/roomState.ts'
+import { CODE, lobbyOf, memberOf } from '#features/coop/services/testing.ts'
 import { ChangeLobby } from '#features/coop/steps.ts'
-import { CODE, lobbyOf, memberOf } from '#features/coop/testing.ts'
 import { PLAYER_MAX_HP } from '#shared/constants.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { heroesBoughtBy, readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,

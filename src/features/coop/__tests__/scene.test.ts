@@ -6,7 +6,7 @@ import { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase, defaultAppearance } from '#app/model.ts'
-import { portraitOf } from '#art/coopIcons.ts'
+import { portraitOf } from '#art/icons/coopIcons.ts'
 import { badgeImage } from '#art/rankArt.ts'
 import { seatLook } from '#art/seatLooks.ts'
 import {
@@ -24,7 +24,7 @@ import {
   memberOf,
   playingSession,
   stagedWorld,
-} from '#features/coop/testing.ts'
+} from '#features/coop/services/testing.ts'
 import {
   AnswerOffer,
   CancelQuickPlay,
@@ -35,8 +35,8 @@ import {
 } from '#features/coop/update.ts'
 import { HeroPicker, HeroPickerProps } from '#features/heroes/block.ts'
 import { Events as HeroPickerEvents } from '#features/heroes/message.ts'
-import { lookCodeOf } from '#shared/lookCodes.ts'
-import type { Appearance } from '#shared/playerData.ts'
+import { lookCodeOf } from '#shared/records/lookCodes.ts'
+import type { Appearance } from '#shared/records/playerData.ts'
 import {
   button,
   byClass,

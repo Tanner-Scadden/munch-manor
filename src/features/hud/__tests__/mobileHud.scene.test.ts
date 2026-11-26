@@ -7,9 +7,9 @@ import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '#app/message.ts'
 import { BreakClock, type Model, Phase } from '#app/model.ts'
-import { profilePropsOf } from '#app/profileView.ts'
 import { initialModel } from '#app/pureApp.ts'
 import { ShowInstallPrompt } from '#app/update/home.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
 import {
   HOME_SCREEN_STEPS_ID,
   PROFILE_DIALOG_ID,

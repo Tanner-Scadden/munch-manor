@@ -7,12 +7,12 @@ import { type Model, Phase } from '#app/model.ts'
 import { PICTURE_HEIGHT, PICTURE_WIDTH } from '#art/introArt.ts'
 import { introFrameAt } from '#features/intro/introBeat.ts'
 import { introShapes, widestFriendBubble } from '#features/intro/introView.ts'
-import type * as Draw from '#render/draw.ts'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
   type Screen,
-} from '#render/screen.ts'
+} from '#render/camera/screen.ts'
+import type * as Draw from '#render/draw.ts'
 import { readyModel } from '#test/model.fixture.ts'
 import { FRIEND_LINES } from '#world/names.ts'
 import { ARRIVAL_MS } from '#world/run/arrival.ts'

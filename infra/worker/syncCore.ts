@@ -29,8 +29,11 @@ import {
   makeScopeServer,
 } from '@munch/sync-engine'
 
-import { SavedDareMarks, noDareMarks } from '../../src/shared/dareMarkData.ts'
-import { playerStoreOf } from '../../src/shared/sessionApi.ts'
+import {
+  SavedDareMarks,
+  noDareMarks,
+} from '../../src/shared/records/dareMarkData.ts'
+import { playerStoreOf } from '../../src/shared/records/sessionApi.ts'
 import { verifyToken } from './sessionToken.ts'
 
 const MAX_EXCHANGE_BYTES = 64 * 1024
@@ -60,7 +63,9 @@ const BadRequestJson = Schema.fromJsonString(
 
 const badRequestResponse = (reason: string): Effect.Effect<Response> =>
   Effect.map(
-    Effect.orDie(Schema.encodeEffect(BadRequestJson)({ _tag: 'BadRequest', reason })),
+    Effect.orDie(
+      Schema.encodeEffect(BadRequestJson)({ _tag: 'BadRequest', reason }),
+    ),
     text => json(400, text),
   )
 

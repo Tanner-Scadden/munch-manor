@@ -28,7 +28,7 @@ import {
 } from '#platform/message.ts'
 import { ZombieKind } from '#world/schema/worldSchema.ts'
 
-import { DialogName } from './rootDialog.ts'
+import { DialogName } from './menus/rootDialog.ts'
 
 export const frameCases = {
   TickedFrame: { deltaTime: Schema.Finite },

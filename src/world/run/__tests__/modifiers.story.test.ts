@@ -3,6 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { startOrResume } from '#app/frame/runFlow.ts'
 import {
   type Bullet,
   Life,
@@ -13,7 +14,6 @@ import {
   type Zombie,
 } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
-import { startOrResume } from '#app/runFlow.ts'
 import { addBot } from '#domain/bots.ts'
 import { effectiveModifiersOf } from '#domain/onlineRun.ts'
 import { LobbyMessage } from '#features/lobby/message.ts'

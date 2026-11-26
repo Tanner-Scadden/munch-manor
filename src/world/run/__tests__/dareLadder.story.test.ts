@@ -3,13 +3,16 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { startOrResume } from '#app/frame/runFlow.ts'
 import { Message } from '#app/message.ts'
 import { type Model, Phase, RunMode } from '#app/model.ts'
-import { startOrResume } from '#app/runFlow.ts'
 import { effectiveModifiersOf } from '#domain/onlineRun.ts'
 import { LobbyMessage } from '#features/lobby/message.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
-import { type SavedDareMarks, noDareMarks } from '#shared/dareMarkData.ts'
+import {
+  type SavedDareMarks,
+  noDareMarks,
+} from '#shared/records/dareMarkData.ts'
 import {
   DISTANT_SPAWN,
   escaping,

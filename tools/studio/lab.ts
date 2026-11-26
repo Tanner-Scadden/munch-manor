@@ -14,13 +14,16 @@ import {
   FLAME_TUNING,
   type FlameKind,
   type FlameLooks,
-} from '../../src/render/iso/lightSpecs'
+} from '../../src/render/iso/light/lightSpecs'
 import {
   LOOK_TUNING,
   type LookSpecs,
   type RoomLook,
-} from '../../src/render/iso/lookSpecs'
-import { MOOD_AMBIENT, type MoodAmbients } from '../../src/render/iso/mood'
+} from '../../src/render/iso/light/lookSpecs'
+import {
+  MOOD_AMBIENT,
+  type MoodAmbients,
+} from '../../src/render/iso/light/mood'
 
 const ValuePath = Schema.String.check(
   Schema.isPattern(/^(LOOK|FLAME_LOOKS|MOOD_AMBIENT)\./),
@@ -62,9 +65,9 @@ export type Control = Readonly<{
   write: (tables: LabTables, value: number) => LabTables
 }>
 
-const LOOK_FILE = 'src/render/iso/lookSpecs.ts'
-const LIGHT_FILE = 'src/render/iso/lightSpecs.ts'
-const MOOD_FILE = 'src/render/iso/mood.ts'
+const LOOK_FILE = 'src/render/iso/light/lookSpecs.ts'
+const LIGHT_FILE = 'src/render/iso/light/lightSpecs.ts'
+const MOOD_FILE = 'src/render/iso/light/mood.ts'
 
 type Range = Readonly<{ min: number; max: number; step: number }>
 

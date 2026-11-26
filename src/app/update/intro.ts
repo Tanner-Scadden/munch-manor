@@ -2,7 +2,7 @@ import { Array } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { advanceGame } from '#app/frame.ts'
+import { advanceGame } from '#app/frame/frame.ts'
 import type { Model } from '#app/model.ts'
 import { isRunOn } from '#domain/onlineRun.ts'
 import { raisePocketCardFrom } from '#features/dare/pocketCard.ts'

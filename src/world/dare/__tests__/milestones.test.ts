@@ -1,8 +1,8 @@
 import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { type SavedJournal, noJournal } from '#shared/journalData.ts'
-import { BIG_KEY, type ProofEntry } from '#shared/proofData.ts'
+import { type SavedJournal, noJournal } from '#shared/records/journalData.ts'
+import { BIG_KEY, type ProofEntry } from '#shared/records/proofData.ts'
 import { type DareKind, HOUSE_THINGS } from '#world/dare/dareSchema.ts'
 import {
   type MilestoneFacts,

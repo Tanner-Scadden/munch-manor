@@ -1,17 +1,14 @@
 import { Array, Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
 import {
   ADD_TO_HOME_SCREEN_ICON,
   HOME_SCREEN_APP_ICON,
   INSTALL_ICON,
   SHARE_ICON,
-} from '#art/icons.ts'
+} from '#art/icons/icons.ts'
 import { InstallMessage } from '#platform/message.ts'
 import { closeButtonView } from '#ui/cornerButtons.ts'
 import type { DialogParts } from '#ui/dialog.ts'

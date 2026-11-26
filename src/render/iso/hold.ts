@@ -2,7 +2,7 @@ import { Array, Option, Record, Result } from 'effect'
 
 import type { Model } from '#app/model.ts'
 import { isEndScreen } from '#domain/run.ts'
-import type { Camera } from '#render/camera.ts'
+import type { Camera } from '#render/camera/camera.ts'
 import { worldOf } from '#world/schema/world.ts'
 import { Phase } from '#world/schema/worldSchema.ts'
 

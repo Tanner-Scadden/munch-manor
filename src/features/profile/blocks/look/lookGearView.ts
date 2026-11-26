@@ -3,9 +3,9 @@ import { Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { PADLOCK_ICON } from '#art/icons.ts'
+import { PADLOCK_ICON } from '#art/icons/icons.ts'
 import { type Standing, sourceOf } from '#domain/closet.ts'
-import type { CosmeticKind } from '#shared/playerData.ts'
+import type { CosmeticKind } from '#shared/records/playerData.ts'
 import { iconView } from '#ui/menuParts.ts'
 import { boneCountView, rankMarkView } from '#ui/rankBadgeView.ts'
 

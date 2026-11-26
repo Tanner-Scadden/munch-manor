@@ -3,6 +3,7 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { freshRun } from '#app/frame/runReset.ts'
 import { Message } from '#app/message.ts'
 import {
   BreakClock,
@@ -15,9 +16,8 @@ import {
   Purchase,
   ZombieAction,
 } from '#app/model.ts'
-import { freshRun } from '#app/runReset.ts'
 import { Stick } from '#input/inputSchema.ts'
-import { cameraFor } from '#render/camera.ts'
+import { cameraFor } from '#render/camera/camera.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { floorSeenOf } from '#test/lensTesting.ts'
 import {

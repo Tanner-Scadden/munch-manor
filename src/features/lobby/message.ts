@@ -3,7 +3,7 @@ import { Schema } from 'effect'
 import { UiSchema } from '@effect/ui'
 
 import { HomeMode } from '#domain/clientSchema.ts'
-import { Calling, Difficulty } from '#shared/playerData.ts'
+import { Calling, Difficulty } from '#shared/records/playerData.ts'
 import { Modifier } from '#world/run/modifiers.ts'
 
 import { LobbyControl } from './model.ts'

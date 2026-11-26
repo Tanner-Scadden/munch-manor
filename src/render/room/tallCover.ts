@@ -1,10 +1,10 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
 import { bakeShapes, deepSprite, group, placeAt } from '#art/sprite.ts'
+import { playerFootY } from '#render/bodies/playerView.ts'
+import { zombieFootY } from '#render/bodies/zombieGroundView.ts'
 import type { Drawable } from '#render/depth.ts'
 import type * as Draw from '#render/draw.ts'
-import { playerFootY } from '#render/playerView.ts'
-import { zombieFootY } from '#render/zombieGroundView.ts'
 import { TILE_SIZE } from '#shared/constants.ts'
 import type { Level } from '#world/level/arena.ts'
 import { SECRET_EXIT } from '#world/level/plan.ts'

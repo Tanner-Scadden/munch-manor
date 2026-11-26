@@ -2,11 +2,11 @@ import { Array, Duration, Effect, Option } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { isOnHomeMenu } from '#app/menuState.ts'
+import { isOnHomeMenu } from '#app/menus/menuState.ts'
 import type { HomeMode, Model } from '#app/model.ts'
-import { isDareTaken, releaseDare } from '#domain/beatMyRun.ts'
 import { activeBots, addBot, removeBot, setBotCalling } from '#domain/bots.ts'
 import { fitDareMark, nextMarkOf } from '#domain/dareMarks.ts'
+import { isDareTaken, releaseDare } from '#domain/machines/beatMyRun.ts'
 import { isOnHome } from '#domain/run.ts'
 import { markCallingsSeen } from '#domain/unlocks.ts'
 import { buyCalling, chooseCalling } from '#features/heroes/callingPick.ts'
@@ -38,7 +38,7 @@ import {
 import { isLearned } from '#features/onboarding/onboarding.ts'
 import { isStartKey, maybeFocusStep, releaseAll } from '#input/input.ts'
 import { lobbyPicksOf, runModeOf, switchMode } from '#screens/home/home.ts'
-import type { Calling, Difficulty } from '#shared/playerData.ts'
+import type { Calling, Difficulty } from '#shared/records/playerData.ts'
 import { stepWhen } from '#shared/stepWhen.ts'
 import { focusById } from '#ui/menuParts.ts'
 import {

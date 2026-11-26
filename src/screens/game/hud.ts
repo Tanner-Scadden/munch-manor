@@ -38,10 +38,14 @@ import {
   isOpenBreak,
 } from '#features/onboarding/onboarding.ts'
 import { isCouchPlay } from '#input/couch.ts'
-import { bossBarShapes } from '#render/bossView.ts'
-import { type Camera, viewBoxOf, worldToView } from '#render/camera.ts'
+import { bossBarShapes } from '#render/bodies/bossView.ts'
+import { seatColorOf } from '#render/bodies/partyView.ts'
+import { maybeMsSinceHurt } from '#render/bodies/playerView.ts'
+import { type Camera, viewBoxOf, worldToView } from '#render/camera/camera.ts'
+import type { Screen } from '#render/camera/screen.ts'
 import * as Draw from '#render/draw.ts'
 import { FULL_TURN, centeredGlyphs, placeSprite } from '#render/drawing.ts'
+import { boostChipShapes } from '#render/effects/powerupView.ts'
 import {
   HEART_SPACING,
   HUD_MARGIN,
@@ -56,13 +60,9 @@ import {
   hudLayoutFor,
   slotLeftOf,
   slotWidthOf,
-} from '#render/hudLayout.ts'
-import { PERK_ICONS } from '#render/kitchenGearView.ts'
-import { seatColorOf } from '#render/partyView.ts'
-import { maybeMsSinceHurt } from '#render/playerView.ts'
-import { boostChipShapes } from '#render/powerupView.ts'
+} from '#render/hud/hudLayout.ts'
+import { PERK_ICONS } from '#render/room/kitchenGearView.ts'
 import { maybeLeakSpan } from '#render/room/kitchenLeak.ts'
-import type { Screen } from '#render/screen.ts'
 import {
   HEART_FLASH_MS,
   HEART_PULSE_GROWTH,

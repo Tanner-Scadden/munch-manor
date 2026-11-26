@@ -13,9 +13,9 @@ import {
 } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
 import { isOnLastShots } from '#features/hud/ammoWarning.ts'
-import { saveOf } from '#platform/save.ts'
+import { saveOf } from '#platform/save/save.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
-import { SavedOnboarding } from '#shared/playerData.ts'
+import { SavedOnboarding } from '#shared/records/playerData.ts'
 import { DISTANT_SPAWN } from '#test/model.fixture.ts'
 import {
   SURFACE,

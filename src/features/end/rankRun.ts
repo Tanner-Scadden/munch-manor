@@ -6,8 +6,8 @@ import type { Model } from '#app/model.ts'
 import { isHumanCrew } from '#domain/bots.ts'
 import { effectiveModifiersOf, playedMarkOf } from '#domain/onlineRun.ts'
 import { isEndScreen, isGuided, isInRun, isOnHome } from '#domain/run.ts'
-import { playedDifficultyOf } from '#platform/analyticsRun.ts'
-import { purseBonesAt, purseRanksBetween } from '#shared/rankCurve.ts'
+import { playedDifficultyOf } from '#platform/analytics/analyticsRun.ts'
+import { purseBonesAt, purseRanksBetween } from '#shared/records/rankCurve.ts'
 import { dareItemsFoundOf } from '#world/dare/dare.ts'
 import {
   type RunPayInput,

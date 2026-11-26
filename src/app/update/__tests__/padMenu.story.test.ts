@@ -3,10 +3,10 @@ import { Array, Effect, Option } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { menuState } from '#app/menuState.ts'
+import { menuState } from '#app/menus/menuState.ts'
+import { RootDialog } from '#app/menus/rootDialog.ts'
 import { Message } from '#app/message.ts'
 import { type Model, Phase } from '#app/model.ts'
-import { RootDialog } from '#app/rootDialog.ts'
 import { FocusHomeButton } from '#app/update/home.ts'
 import { FocusLobbyControl } from '#app/update/lobby.ts'
 import {

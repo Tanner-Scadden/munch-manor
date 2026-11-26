@@ -7,7 +7,7 @@ import {
   type SavedBoughtCosmetics,
   type SavedRank,
   heroIdOf,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 
 import { bonesBalanceOf } from './rank.ts'
 

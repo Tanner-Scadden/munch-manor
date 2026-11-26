@@ -2,6 +2,7 @@ import { Array, Function, Option, Order } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
+import { freshRun } from '#app/frame/runReset.ts'
 import {
   BreakClock,
   type Bullet,
@@ -17,12 +18,11 @@ import {
   type Zombie,
 } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
-import { freshRun } from '#app/runReset.ts'
 import { missionsOn } from '#features/missions/missions.ts'
 import { PLAYER_MAX_HP, PREPARATION_MS } from '#shared/constants.ts'
-import { freezeOn } from '#shared/missionData.ts'
-import { heroIdOf } from '#shared/playerData.ts'
 import { nextRandom } from '#shared/prng.ts'
+import { freezeOn } from '#shared/records/missionData.ts'
+import { heroIdOf } from '#shared/records/playerData.ts'
 import { type DareThing, Finale } from '#world/dare/dareSchema.ts'
 import { frontDoorSillOf } from '#world/dare/finale.ts'
 import { caseBoxOf } from '#world/feats/caseSpots.ts'

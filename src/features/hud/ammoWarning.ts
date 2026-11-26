@@ -1,7 +1,7 @@
 import { Array, Function } from 'effect'
 
 import { isObjectFirst } from '#shared/dualArgs.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { carriedMagazine, heldGun, isReloadable } from '#world/gear/weapons.ts'
 import {
   type CarriedGun,

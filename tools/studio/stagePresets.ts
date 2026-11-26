@@ -6,13 +6,13 @@ import {
   type LightsFrame,
   OPEN_FILL,
   flameSpecsOf,
-} from '../../src/render/iso/lightSpecs'
+} from '../../src/render/iso/light/lightSpecs'
 import {
   type Mood,
   calmMood,
   dreadMood,
   waveMood,
-} from '../../src/render/iso/mood'
+} from '../../src/render/iso/light/mood'
 import { type Level, levelFor } from '../../src/world/level/arena'
 import {
   ARRANGEMENTS,

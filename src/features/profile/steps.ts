@@ -6,8 +6,8 @@ import type { LookPart } from '#domain/looks.ts'
 import { cleanName } from '#domain/playerName.ts'
 
 import type { ClosetCueKind, ProfileFx } from './blocks/look/model.ts'
+import { ResetEvent, stepReset } from './machines/resetFlow.ts'
 import type { LookOutcome, Model, ProfileTab } from './model.ts'
-import { ResetEvent, stepReset } from './resetFlow.ts'
 
 export const withFx: {
   (fx: ProfileFx): (model: Model) => Model

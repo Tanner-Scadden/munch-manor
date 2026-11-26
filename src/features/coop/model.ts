@@ -1,7 +1,7 @@
 import { Option, Schema } from 'effect'
 
 import { type Queue, Screen } from '#domain/coopRoom.ts'
-import { Calling, SavedBoughtCosmetics } from '#shared/playerData.ts'
+import { Calling, SavedBoughtCosmetics } from '#shared/records/playerData.ts'
 
 export const Model = Schema.Struct({
   screen: Screen,

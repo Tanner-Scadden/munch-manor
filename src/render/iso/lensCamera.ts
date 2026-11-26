@@ -2,8 +2,8 @@ import { Function } from 'effect'
 
 import type { Camera3D } from '@pixi/3d'
 
-import type { Camera } from '#render/camera.ts'
-import { type Lens, type LensFrame, lensOf } from '#render/lens.ts'
+import type { Camera } from '#render/camera/camera.ts'
+import { type Lens, type LensFrame, lensOf } from '#render/camera/lens.ts'
 import type { Vector } from '#world/schema/entitySchema.ts'
 
 export type CanvasSize = Readonly<{ width: number; height: number }>

@@ -445,7 +445,7 @@ const noMenuField = defineRule({
           context.report({
             node,
             message:
-              'Which menu is up comes from menuState(model) in src/app/menuState.ts (or isCoopOpen for co-op), so every gate agrees (AGENTS.md "Code shape").',
+              'Which menu is up comes from menuState(model) in src/app/menus/menuState.ts (or isCoopOpen for co-op), so every gate agrees (AGENTS.md "Code shape").',
           })
         }
       },
@@ -515,7 +515,7 @@ const commandBesideUpdate = defineRule({
           command =>
             context.report({
               node: command,
-              message: `${command.name} is never issued here (${command.name}.make(...)): define a Command beside the update that runs it, and a Command.Service's .layer joins CommandsLayer in src/app/layer.ts (AGENTS.md "Code shape").`,
+              message: `${command.name} is never issued here (${command.name}.make(...)): define a Command beside the update that runs it, and a Command.Service's .layer joins CommandsLayer in src/app/commands.ts (AGENTS.md "Code shape").`,
             }),
         )
       },
@@ -753,7 +753,7 @@ const ROOM_TYPE_PACKAGES = /^@munch\/netcode$/
 
 const ROOT_TYPES: Readonly<Record<string, ReadonlyArray<string>>> = {
   'app/model': ['Model'],
-  'app/definition': [
+  'app/component': [
     'ApplicationViewBuilder',
     'ApplicationHtml',
     'ApplicationMount',
@@ -1015,7 +1015,7 @@ const subpathImports = defineRule({
     type: 'problem',
     docs: {
       description:
-        'In src, an import that climbs out of its folder goes through the layer\'s subpath (#world/...), and every relative or subpath import names its extension.',
+        "In src, an import that climbs out of its folder goes through the layer's subpath (#world/...), and every relative or subpath import names its extension.",
     },
   },
   create(context) {

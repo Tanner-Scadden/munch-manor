@@ -3,7 +3,7 @@ import { Array, Function, Match, Option, Record, String, pipe } from 'effect'
 import * as Draw from '#render/draw.ts'
 import { ZERO_VECTOR } from '#world/step/geometry.ts'
 
-import { type Fill, parseColor, pngDataUrl } from './png.ts'
+import { type Fill, parseColor, pngDataUrl } from './atlas/png.ts'
 import {
   type AtlasHit,
   atlasLookup,
@@ -11,7 +11,7 @@ import {
   spriteMode,
   standInKeyOf,
   standInSource,
-} from './spriteAtlas.ts'
+} from './atlas/spriteAtlas.ts'
 
 export type Palette = Readonly<Record<string, string>>
 

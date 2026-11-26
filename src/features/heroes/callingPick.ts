@@ -4,7 +4,7 @@ import { UiStruct } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
 import { callingUnlockId, withoutFresh } from '#domain/unlocks.ts'
-import { type Calling, heroIdOf } from '#shared/playerData.ts'
+import { type Calling, heroIdOf } from '#shared/records/playerData.ts'
 import {
   callingForRun,
   callingPriceOf,

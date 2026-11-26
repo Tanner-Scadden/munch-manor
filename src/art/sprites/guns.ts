@@ -8,8 +8,8 @@ import {
   spriteShapes,
   spriteWidth,
 } from '#art/sprite.ts'
-import type { MasterySkin } from '#shared/masteryData.ts'
-import type { GunSkin } from '#shared/playerData.ts'
+import type { MasterySkin } from '#shared/records/masteryData.ts'
+import type { GunSkin } from '#shared/records/playerData.ts'
 import type { Vector, WeaponKind } from '#world/schema/entitySchema.ts'
 import { ZERO_VECTOR } from '#world/step/geometry.ts'
 

@@ -1,11 +1,8 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { NEWER_NEWS_ICON, OLDER_NEWS_ICON } from '#art/icons.ts'
+import { NEWER_NEWS_ICON, OLDER_NEWS_ICON } from '#art/icons/icons.ts'
 import type { TabStep } from '#input/padFocus.ts'
 import { iconView } from '#ui/menuParts.ts'
 

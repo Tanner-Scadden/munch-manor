@@ -3,9 +3,9 @@ import { Array, Function, Option } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { pixelArtStyle } from '#art/artSize.ts'
-import { portraitOf } from '#art/coopIcons.ts'
-import { PADLOCK_ICON } from '#art/icons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { portraitOf } from '#art/icons/coopIcons.ts'
+import { PADLOCK_ICON } from '#art/icons/icons.ts'
 import {
   type Special,
   specialsNoteOf,
@@ -16,7 +16,7 @@ import type {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { iconView, newBadgeView } from '#ui/menuParts.ts'
 import { boneCountView, rankMarkView } from '#ui/rankBadgeView.ts'
 import {

@@ -4,11 +4,11 @@ import { Html } from '@effect/ui/html'
 
 import { toBrowserError } from '#shared/describeError.ts'
 
-import { DIORAMA_FRAME_MS, IsoLens } from './diorama.ts'
 import { type IsoFrame, IsoFrameSchema } from './frame.ts'
 import { type HoldKey, isHeldOver } from './hold.ts'
-import type { PlinthPicture } from './plinth.ts'
-import type { PlinthPose } from './plinthPose.ts'
+import { DIORAMA_FRAME_MS, IsoLens } from './plinth/diorama.ts'
+import type { PlinthPicture } from './plinth/plinth.ts'
+import type { PlinthPose } from './plinth/plinthPose.ts'
 import type { IsoScene } from './scene.ts'
 import { unsupportedNode } from './support.ts'
 

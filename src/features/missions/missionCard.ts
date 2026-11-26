@@ -1,17 +1,14 @@
 import { Array, Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { DICE_ICON } from '#art/icons.ts'
+import { DICE_ICON } from '#art/icons/icons.ts'
 import {
   ALL_THREE_ICON,
   MISSION_DONE_ICON,
   MISSION_ICONS,
-} from '#art/missionIcons.ts'
-import { ALL_THREE_BONES } from '#shared/missionData.ts'
+} from '#art/icons/missionIcons.ts'
+import { ALL_THREE_BONES } from '#shared/records/missionData.ts'
 import { iconView, percentOf } from '#ui/menuParts.ts'
 import { boneCountView } from '#ui/rankBadgeView.ts'
 import { ALL_THREE_TAG, MISSIONS_TITLE, MISSION_NAMES } from '#world/names.ts'

@@ -30,7 +30,7 @@ import {
   isGoodieBeckoning,
   shownHints,
 } from '#features/onboarding/onboarding.ts'
-import { pickupShapes } from '#render/powerupView.ts'
+import { pickupShapes } from '#render/effects/powerupView.ts'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,

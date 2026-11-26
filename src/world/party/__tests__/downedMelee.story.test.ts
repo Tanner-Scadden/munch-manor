@@ -5,7 +5,7 @@ import { UiStruct } from '@effect/ui'
 
 import { Life, Melee, type Model } from '#app/model.ts'
 import { botInputs } from '#features/bots/teammateBot.ts'
-import { lyingShapes } from '#render/playerView.ts'
+import { lyingShapes } from '#render/bodies/playerView.ts'
 import {
   atSeat,
   crewInWave,

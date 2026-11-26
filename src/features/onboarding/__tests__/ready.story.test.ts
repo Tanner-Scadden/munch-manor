@@ -20,7 +20,7 @@ import {
   shownGhostSticks,
   shownHints,
 } from '#features/onboarding/onboarding.ts'
-import { clientToView } from '#render/screen.ts'
+import { clientToView } from '#render/camera/screen.ts'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '#shared/constants.ts'
 import { DISTANT_SPAWN, newPlayerCardSeen } from '#test/model.fixture.ts'
 import {

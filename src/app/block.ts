@@ -4,8 +4,8 @@ import { Component, Head } from '@effect/ui'
 
 import { GAME_TITLE } from '#shared/constants.ts'
 
-import { ApplicationDef } from './definition.ts'
-import { CommandsLayer } from './layer.ts'
+import { CommandsLayer } from './commands.ts'
+import { ApplicationDef } from './component.ts'
 import { init, update } from './main.ts'
 import { ApplicationLayer } from './services.ts'
 import { subscriptions } from './subscriptions.ts'

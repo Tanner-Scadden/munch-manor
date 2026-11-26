@@ -1,6 +1,6 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
 
-import { type Camera, isInView } from '#render/camera.ts'
+import { type Camera, isInView } from '#render/camera/camera.ts'
 import * as DetMath from '#shared/detMath.ts'
 import type { Level } from '#world/level/arena.ts'
 import { hasLineOfSight } from '#world/level/tileQueries.ts'

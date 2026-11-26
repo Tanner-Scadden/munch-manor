@@ -41,10 +41,10 @@ import {
   SECTION_PARTS,
   SECTION_TOGGLES,
 } from '#features/profile/blocks/look/model.ts'
+import { playerShapes } from '#render/bodies/playerView.ts'
 import type * as Draw from '#render/draw.ts'
-import { playerShapes } from '#render/playerView.ts'
 import { RESTART_GRACE_MS } from '#shared/constants.ts'
-import { FreePrint, FreeShirtColor } from '#shared/playerData.ts'
+import { FreePrint, FreeShirtColor } from '#shared/records/playerData.ts'
 import { home } from '#test/model.fixture.ts'
 import { imageColors } from '#test/testPng.ts'
 import {

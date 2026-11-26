@@ -1,7 +1,7 @@
 import { Function } from 'effect'
 
 import type { Model } from '#app/model.ts'
-import { ROOM_ICONS } from '#art/roomIcons.ts'
+import { ROOM_ICONS } from '#art/icons/roomIcons.ts'
 import {
   type Palette,
   type Sprite,
@@ -11,7 +11,7 @@ import {
   spriteShapes,
 } from '#art/sprite.ts'
 import { ClocheLift } from '#domain/clientSchema.ts'
-import { type Camera, placedAt } from '#render/camera.ts'
+import { type Camera, placedAt } from '#render/camera/camera.ts'
 import type * as Draw from '#render/draw.ts'
 import type { SlotRoomId, Vector } from '#world/schema/entitySchema.ts'
 import { clamp, easeOut } from '#world/step/geometry.ts'

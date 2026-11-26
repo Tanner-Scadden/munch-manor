@@ -1,12 +1,9 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
-import { COOP_ICON } from '#art/coopIcons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { COOP_ICON } from '#art/icons/coopIcons.ts'
 import {
   AIM_ICON,
   CHARACTER_ICON,
@@ -25,7 +22,7 @@ import {
   SKULL_OFF_ICON,
   TROPHY_ICON,
   TURN_PHONE_ICON,
-} from '#art/icons.ts'
+} from '#art/icons/icons.ts'
 import { DifficultyCard } from '#domain/clientSchema.ts'
 import { hasNewJournalPage } from '#domain/journal.ts'
 import { isEndScreen, isOnHome } from '#domain/run.ts'
@@ -58,7 +55,7 @@ import {
 } from '#features/whatsNew/whatsNewView.ts'
 import { DeviceMessage } from '#platform/message.ts'
 import type { TutorialChoice } from '#shared/nameKeys.ts'
-import type { Difficulty } from '#shared/playerData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import { closeButtonView } from '#ui/cornerButtons.ts'
 import type { DialogParts } from '#ui/dialog.ts'
 import {

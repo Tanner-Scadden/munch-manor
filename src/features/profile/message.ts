@@ -3,8 +3,8 @@ import { Schema } from 'effect'
 import { UiSchema } from '@effect/ui'
 
 import { LookPart } from '#domain/looks.ts'
-import { LinkProblem } from '#platform/playerSync.ts'
-import { PropStyle } from '#shared/playerData.ts'
+import { LinkProblem } from '#platform/save/playerSync.ts'
+import { PropStyle } from '#shared/records/playerData.ts'
 
 import { LookToggle } from './blocks/look/lookSchema.ts'
 import { ProfileTab } from './model.ts'

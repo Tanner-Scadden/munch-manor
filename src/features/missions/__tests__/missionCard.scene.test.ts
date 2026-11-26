@@ -11,7 +11,7 @@ import {
   MISSION_RULES,
   type MissionId,
   noMissions,
-} from '#shared/missionData.ts'
+} from '#shared/records/missionData.ts'
 import { home, knowingDay } from '#test/model.fixture.ts'
 import {
   byClass,

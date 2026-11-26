@@ -8,21 +8,21 @@ This plan was written against the escape the manor stack (`docs/ESCAPE_PLAN.md`)
 
 ## What exists today
 
-- **Keys become intent in one place.** `src/input/input.ts` keeps `pressedKeys` (by `KeyboardEvent.code`) in the Model's `input`, and `deriveIntent` turns keys, the mouse, and the two touch sticks into one `Intent` (`move`, `maybeAim`, `trigger`, `interact`). `refreshIntent` in `src/app/frame.ts` runs it each frame and adds aim assist on touch.
+- **Keys become intent in one place.** `src/input/input.ts` keeps `pressedKeys` (by `KeyboardEvent.code`) in the Model's `input`, and `deriveIntent` turns keys, the mouse, and the two touch sticks into one `Intent` (`move`, `maybeAim`, `trigger`, `interact`). `refreshIntent` in `src/app/frame/frame.ts` runs it each frame and adds aim assist on touch.
 - **Keys become seat actions through one table.** `src/input/keyActions.ts` holds `ActionKeys` (swap, knife, reload, placeTrap, nextTrap, ready) and `PLAYER_ACTION_KEYS`. `keyActionOf(seat, keys, code)` already takes the keys as an argument, because the couch players each have their own block (`src/input/couch.ts`). Rebinding the actions is mostly passing the player's table instead of the constant.
 - **Movement keys are constants**: `UP_KEY` to `RIGHT_KEY` in `input.ts`, plus `START_KEY`, `PAUSE_KEY`, `MENU_KEY`, and the menu arrows.
 - **Touch already has twin sticks.** `Stick` and `stickDeflection` give a clamped deflection with a dead zone, and `stickAim` turns it into a direction. A gamepad stick is the same thing with no pointer, so the math is reused.
 - **Co-op sends intent, not keys.** `src/app/update/coopPlay.ts` sends `inputOfIntent(focusOf(model).intent)` to the room, and presses go through `orInRun` as `SeatAction`s. Anything that feeds the same intent and the same presses works online with no protocol change.
-- **The last device is known.** `model.lastDevice` is `'KeyboardMouse' | 'Touch'` (`InputDevice` in `src/input/inputSchema.ts`), read in 18 modules: key caps, help cards, hints, the purchase prompt, the touch controls, the phone's zoom (`src/render/screen.ts`), and the run summary.
+- **The last device is known.** `model.lastDevice` is `'KeyboardMouse' | 'Touch'` (`InputDevice` in `src/input/inputSchema.ts`), read in 18 modules: key caps, help cards, hints, the purchase prompt, the touch controls, the phone's zoom (`src/render/camera/screen.ts`), and the run summary.
 - **Menus already move by key.** Arrows step focus (`maybeFocusStep`), Enter activates the focused button (the browser does it, `BUTTON_ACTIVATION_KEYS` in `src/app/subscriptions.ts`), Escape goes back, and each menu has letter hotkeys with caps (`HOME_KEYS`, `HAND_KEYS`, `LOBBY_KEYS`, co-op's `MODE_KEY` and friends).
-- **Settings live in the save and sync.** `SavedSettings` in `src/shared/playerData.ts` (sound, music, shake, shareStats, cursor) syncs as one `ChangedSettings` change. Rotation is kept apart as its own last-write-wins `ChangedRotation` change (save version 8): the model for a new synced setting.
+- **Settings live in the save and sync.** `SavedSettings` in `src/shared/records/playerData.ts` (sound, music, shake, shareStats, cursor) syncs as one `ChangedSettings` change. Rotation is kept apart as its own last-write-wins `ChangedRotation` change (save version 8): the model for a new synced setting.
 - **A key-grabbing extension watch exists** (`src/input/keyGrab.ts`): Vimium-style extensions swallow letter keys. Rebinding is a real fix for those players.
 
 ## 1. Rebinding the keyboard
 
 ### What changes
 
-1. **A bindings Schema.** `KeyBindings` in `src/shared/playerData.ts`: one physical `code` per action. Actions: up, down, left, right, swap, knife, reload, placeTrap, nextTrap, interact (READY, hold to buy, MEDIC). Fire stays on the mouse, with an optional key as a stretch. `DEFAULT_KEY_BINDINGS` is today's table.
+1. **A bindings Schema.** `KeyBindings` in `src/shared/records/playerData.ts`: one physical `code` per action. Actions: up, down, left, right, swap, knife, reload, placeTrap, nextTrap, interact (READY, hold to buy, MEDIC). Fire stays on the mouse, with an optional key as a stretch. `DEFAULT_KEY_BINDINGS` is today's table.
 2. **The Model holds it.** A `keyBindings` field on the root Model, restored from the save.
 3. **`input.ts` reads it.** `keyboardMove` and `interactOf` take the bindings instead of the constants. `deriveIntent` gains one argument. `playerKeyAction` in `keyActions.ts` passes the player's bindings to `keyActionOf`.
 4. **Menu keys stay fixed.** Arrows, Enter, Escape, and the menus' letter hotkeys are not rebindable. They are a different context (no run is live), and moving them makes every menu's cap a variable for little gain.
@@ -34,7 +34,7 @@ This plan was written against the escape the manor stack (`docs/ESCAPE_PLAN.md`)
 | `src/input/input.ts`                                                                            | WASD, Enter, E, C, Escape, H, L, arrows                              | Movement and interact read bindings; menu keys stay                                     |
 | `src/input/keyActions.ts`                                                                       | Q, F, R, T, G, Enter                                                 | Defaults only; the table is passed in                                                   |
 | `src/features/menus/pauseHelp.ts`                                                               | "Walk with WASD", "Q switches guns, R reloads", "Press F", "press T" | Lines built from the bindings                                                           |
-| `src/art/hintIcons.ts`                                                                          | `keyIcon('T')`, `keyIcon('Q')`, the WASD picture                     | Key icons baked per letter; WASD picture per binding set or a plain "move keys" picture |
+| `src/art/icons/hintIcons.ts`                                                                          | `keyIcon('T')`, `keyIcon('Q')`, the WASD picture                     | Key icons baked per letter; WASD picture per binding set or a plain "move keys" picture |
 | `src/features/onboarding/onboarding.ts`                                                         | the trap hint's `KeyT` part                                          | Reads the bound key's icon                                                              |
 | `src/features/shop/purchaseHud.ts`                                                              | "hold Enter to buy"                                                  | Reads the interact key (or goes with the shop in the escape stack)                      |
 | `src/screens/game/hud.ts`                                                                       | the swap slot's Q badge                                              | Reads the swap key                                                                      |
@@ -72,7 +72,7 @@ Synced costs a little more and matches how every other setting works. Either way
 
 - One helper, `keyCapOf(bindings, action)`, returns the cap text from a code (`KeyQ` to `Q`, `Space` to `SPACE`, `ArrowUp` to an arrow glyph). Every run-time cap reads it.
 - The pixel font has letters; arrows and SPACE need a few glyphs.
-- Help lines become small functions of the bindings ("{swap} switches guns"). Hint pictures for keys are baked per letter on first use, so each such sprite joins `src/art/spritePrecompile.ts` or the atlas test fails.
+- Help lines become small functions of the bindings ("{swap} switches guns"). Hint pictures for keys are baked per letter on first use, so each such sprite joins `src/art/atlas/spritePrecompile.ts` or the atlas test fails.
 
 ### Effort and risks
 

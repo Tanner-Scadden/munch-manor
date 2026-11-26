@@ -9,7 +9,7 @@ import {
   type CosmeticKind,
   SavedBoughtCosmetics,
   SavedRank,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 
 import { LookSection, type LookToggle } from './lookSchema.ts'
 

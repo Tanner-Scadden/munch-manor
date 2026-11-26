@@ -14,8 +14,8 @@ import {
 } from '#domain/clientSchema.ts'
 import { runDifficultyOf } from '#domain/onlineRun.ts'
 import { evolveFor } from '#shared/evolve.ts'
-import type { Difficulty } from '#shared/playerData.ts'
 import { type Seeded, drawIndex, pickLine } from '#shared/prng.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import {
   isDareListDone,
   isInOpenRoom,
@@ -41,8 +41,8 @@ import {
   roundWaveOf,
 } from '#world/schema/worldSchema.ts'
 
-import { isThingShownOn } from './dareView.ts'
 import { isPocketCardOut } from './pocketCard.ts'
+import { isThingShownOn } from './views/dareView.ts'
 
 export const HINT_MS = 5000
 export const EASY_REST_MS = 15_000

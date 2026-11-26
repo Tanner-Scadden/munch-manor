@@ -17,7 +17,7 @@ import {
   type KitchenStep,
   kitchenStepOf,
 } from '#features/onboarding/kitchenTour.ts'
-import { forgetTutorial } from '#platform/save.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
 import { FIXED_STEP_MS, KITCHEN_FIRST_WAVE } from '#shared/constants.ts'
 import { nextRandom } from '#shared/prng.ts'
 import {

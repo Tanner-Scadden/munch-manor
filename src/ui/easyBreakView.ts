@@ -3,7 +3,7 @@ import { Function } from 'effect'
 import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
-import { CLOCK_ICON } from '#art/icons.ts'
+import { CLOCK_ICON } from '#art/icons/icons.ts'
 
 import { iconView } from './menuParts.ts'
 

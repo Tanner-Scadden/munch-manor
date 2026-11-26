@@ -4,6 +4,7 @@ import { UiStruct } from '@effect/ui'
 
 import { isOwned } from '#domain/closet.ts'
 import { isObjectFirst } from '#shared/dualArgs.ts'
+import { type Seeded, nextRandom } from '#shared/prng.ts'
 import {
   type Appearance,
   Body,
@@ -17,8 +18,7 @@ import {
   type SavedBoughtCosmetics,
   ShirtColor,
   SkinTone,
-} from '#shared/playerData.ts'
-import { type Seeded, nextRandom } from '#shared/prng.ts'
+} from '#shared/records/playerData.ts'
 
 import {
   type Palette,

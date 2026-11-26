@@ -1,7 +1,7 @@
 import { Array, Function, Option, Schema, SchemaGetter } from 'effect'
 import { State } from 'effect-machine'
 
-import { Calling, Difficulty } from '#shared/playerData.ts'
+import { Calling, Difficulty } from '#shared/records/playerData.ts'
 import { DareKind } from '#world/dare/dareSchema.ts'
 import { MAX_MARK } from '#world/run/dareLadder.ts'
 import {

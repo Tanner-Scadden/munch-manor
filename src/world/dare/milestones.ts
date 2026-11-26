@@ -1,8 +1,8 @@
 import { Array, Option, Result, Schema } from 'effect'
 
-import type { SavedJournal } from '#shared/journalData.ts'
-import type { Difficulty } from '#shared/playerData.ts'
-import { BIG_KEY, type SavedProof } from '#shared/proofData.ts'
+import type { SavedJournal } from '#shared/records/journalData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
+import { BIG_KEY, type SavedProof } from '#shared/records/proofData.ts'
 import {
   CELLAR_ROOM_ID,
   KITCHEN_ROOM_ID,

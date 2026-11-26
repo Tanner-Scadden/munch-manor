@@ -2,10 +2,14 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { advanceGame, clampFrameDelta, refreshIntent } from '#app/frame.ts'
-import { isLobbyOpen, isPanelOpen } from '#app/menuState.ts'
+import {
+  advanceGame,
+  clampFrameDelta,
+  refreshIntent,
+} from '#app/frame/frame.ts'
+import { startWave } from '#app/frame/runFlow.ts'
+import { isLobbyOpen, isPanelOpen } from '#app/menus/menuState.ts'
 import { type GunSlot, type Model, Phase } from '#app/model.ts'
-import { startWave } from '#app/runFlow.ts'
 import { positionVariation } from '#audio/audio.ts'
 import { isRunOn } from '#domain/onlineRun.ts'
 import { isEndScreen } from '#domain/run.ts'

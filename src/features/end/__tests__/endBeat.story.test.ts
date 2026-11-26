@@ -26,7 +26,7 @@ import {
   sharePostOf,
   shareText,
 } from '#features/end/share.ts'
-import { mergeRunRecords } from '#platform/playerProjection.ts'
+import { mergeRunRecords } from '#platform/save/playerProjection.ts'
 import { RUNNING_BUILD } from '#platform/version.ts'
 import { bestsFor } from '#screens/home/home.ts'
 import {
@@ -34,7 +34,7 @@ import {
   MAX_FRAME_DELTA_MS,
   RESTART_GRACE_MS,
 } from '#shared/constants.ts'
-import { noSavedRunRecords } from '#shared/playerData.ts'
+import { noSavedRunRecords } from '#shared/records/playerData.ts'
 import { lastHeart, readyModel, withKeys } from '#test/model.fixture.ts'
 import {
   type AppStory,

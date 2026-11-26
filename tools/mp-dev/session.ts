@@ -7,7 +7,7 @@ import {
   PLAYER_LOG_PATH,
   PlayerLogRpcs,
   playerStoreOf,
-} from '../../src/shared/sessionApi'
+} from '../../src/shared/records/sessionApi'
 
 export type Identity = EventLog.Identity['Service']
 

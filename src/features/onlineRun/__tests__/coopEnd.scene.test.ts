@@ -10,13 +10,13 @@ import { Lesson, type Model, Phase } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
 import { LobbyChange, Screen, maybeRoomOf } from '#domain/coopRoom.ts'
 import { freshRoom } from '#features/coop/roomState.ts'
-import { ChangeLobby } from '#features/coop/steps.ts'
 import {
   CODE,
   lobbyOf,
   memberOf,
   playingSession,
-} from '#features/coop/testing.ts'
+} from '#features/coop/services/testing.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
 import { LeaveRoom, RememberRoom } from '#features/coop/update.ts'
 import { isRunCardHeld } from '#features/end/endBeat.ts'
 import { RESTART_GRACE_MS } from '#shared/constants.ts'

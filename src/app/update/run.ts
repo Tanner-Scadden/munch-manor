@@ -1,7 +1,7 @@
 import { Function } from 'effect'
 
+import { startOrResume } from '#app/frame/runFlow.ts'
 import { type Model, Phase, type RunMode } from '#app/model.ts'
-import { startOrResume } from '#app/runFlow.ts'
 import { endOffer } from '#features/end/endOffer.ts'
 import { releaseAll } from '#input/input.ts'
 import { isRoundActive } from '#world/waves/waves.ts'

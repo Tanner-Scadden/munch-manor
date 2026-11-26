@@ -13,8 +13,8 @@ import {
 } from '#domain/coopRoom.ts'
 import { type Model as CoopModel } from '#features/coop/model.ts'
 import { freshRoom } from '#features/coop/roomState.ts'
+import { CODE, type lobbyOf } from '#features/coop/services/testing.ts'
 import { ChangeLobby } from '#features/coop/steps.ts'
-import { CODE, type lobbyOf } from '#features/coop/testing.ts'
 import {
   type CoopCommand,
   type CoopResult,

@@ -17,7 +17,7 @@ import {
   HINT_ICON_SPRITES,
   type HintIconSprites,
   hintIconFrame,
-} from '#art/hintIcons.ts'
+} from '#art/icons/hintIcons.ts'
 import {
   type Palette,
   type Sprite,
@@ -30,7 +30,7 @@ import {
 import { gunSprite } from '#art/sprites/guns.ts'
 import { ZOMBIE_SPRITES, showcaseWalk } from '#art/sprites/zombies.ts'
 import type { HintBand } from '#domain/clientSchema.ts'
-import { endOverlayShapes } from '#features/end/endView.ts'
+import { endOverlayShapes } from '#features/end/views/endView.ts'
 import {
   DEBUT_CARD_MS,
   HINT_PARTS,
@@ -41,13 +41,13 @@ import {
   shownHints,
 } from '#features/onboarding/onboarding.ts'
 import type { InputDevice } from '#input/inputSchema.ts'
-import * as Draw from '#render/draw.ts'
 import {
   type FrameSpan,
   type Screen,
   frameSpanOf,
   landscapeFrameOffset,
-} from '#render/screen.ts'
+} from '#render/camera/screen.ts'
+import * as Draw from '#render/draw.ts'
 import {
   GAME_TITLE,
   MS_PER_SECOND,
@@ -58,7 +58,7 @@ import {
   WAVE_BANNER_MS,
   WAVE_CLEARED_BANNER_MS,
 } from '#shared/constants.ts'
-import type { Appearance, Calling } from '#shared/playerData.ts'
+import type { Appearance, Calling } from '#shared/records/playerData.ts'
 import { heldGun } from '#world/gear/weapons.ts'
 import { KEY_RULES } from '#world/keys/keys.ts'
 import { focusOf, isCoop } from '#world/party/party.ts'

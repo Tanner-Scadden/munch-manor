@@ -3,10 +3,10 @@ import { Array, Function, Option, String, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
-import { isDareTaken } from '#domain/beatMyRun.ts'
 import { botSeatsFor } from '#domain/bots.ts'
 import { type HomeMode, RunTally } from '#domain/clientSchema.ts'
 import { bestMarkOn } from '#domain/dareMarks.ts'
+import { isDareTaken } from '#domain/machines/beatMyRun.ts'
 import {
   isAskingForFeedback,
   isEndScreen,
@@ -24,7 +24,7 @@ import {
 } from '#features/munchopedia/munchopedia.ts'
 import { maybeNewestNewsDay } from '#features/whatsNew/changelog.ts'
 import { FOCUS_STEP_OFFSET, type FocusStep } from '#input/input.ts'
-import { isPortrait } from '#render/screen.ts'
+import { isPortrait } from '#render/camera/screen.ts'
 import { FEEDBACK_LINE } from '#shared/constants.ts'
 import { isObjectSecond } from '#shared/dualArgs.ts'
 import { hasJustWon } from '#world/run/difficulty.ts'

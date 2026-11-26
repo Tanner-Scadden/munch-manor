@@ -1,0 +1,103 @@
+import { Option } from 'effect'
+import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
+
+import {
+  MenuState,
+  isOnHomeMenu,
+  isPanelOpen,
+  isProfileOpenOn,
+  menuState,
+} from '#app/menus/menuState.ts'
+import { RootDialog } from '#app/menus/rootDialog.ts'
+import { type Model, Phase } from '#app/model.ts'
+import { Screen } from '#domain/coopRoom.ts'
+import { RESTART_GRACE_MS } from '#shared/constants.ts'
+import { home, veteranFighting } from '#test/model.fixture.ts'
+import { pause } from '#world/waves/waves.ts'
+
+const inCoop: Model = UiStruct.evolve(home, {
+  coop: coop =>
+    UiStruct.evolve(coop, {
+      screen: () => Screen.Hub({ maybeProblem: Option.none() }),
+    }),
+})
+
+const tagOf = (model: Model): MenuState['_tag'] => menuState(model)._tag
+
+describe('menuState', () => {
+  test('follows the phase when nothing is open', () => {
+    expect(tagOf(home)).toBe('Home')
+    expect(tagOf(veteranFighting)).toBe('Playing')
+    expect(tagOf(pause(veteranFighting))).toBe('Paused')
+    expect(
+      menuState(
+        UiStruct.evolve(home, { phase: () => Phase.GameOver({ wave: 3 }) }),
+      ),
+    ).toEqual(MenuState.EndScreen({ isPastGrace: false }))
+    expect(
+      menuState(
+        UiStruct.evolve(home, {
+          phase: () => Phase.Escaped({ wave: 10 }),
+          screenMs: () => RESTART_GRACE_MS,
+        }),
+      ),
+    ).toEqual(MenuState.EndScreen({ isPastGrace: true }))
+  })
+
+  test('co-op covers the home menu', () => {
+    expect(tagOf(inCoop)).toBe('Coop')
+    expect(isOnHomeMenu(inCoop)).toBe(false)
+  })
+
+  test('every dialog covers the home menu, co-op, and the phase', () => {
+    expect(
+      tagOf(UiStruct.evolve(home, { rootDialog: () => RootDialog.Hand })),
+    ).toBe('Hand')
+    expect(
+      tagOf(
+        UiStruct.evolve(home, { rootDialog: () => RootDialog.HomeScreenSteps }),
+      ),
+    ).toBe('InstallSteps')
+    expect(
+      tagOf(
+        UiStruct.evolve(inCoop, {
+          rootDialog: () => RootDialog.UpdateGreeting,
+        }),
+      ),
+    ).toBe('UpdateGreeting')
+    expect(
+      tagOf(
+        UiStruct.evolve(veteranFighting, { rootDialog: () => RootDialog.Hand }),
+      ),
+    ).toBe('Hand')
+    expect(
+      isOnHomeMenu(
+        UiStruct.evolve(home, { rootDialog: () => RootDialog.UpdateGreeting }),
+      ),
+    ).toBe(false)
+  })
+
+  test('names the open panel and Profile tab', () => {
+    const asking = UiStruct.evolve(pause(veteranFighting), {
+      panel: () => 'LeaveRun',
+      rootDialog: () => RootDialog.Panel,
+    })
+    expect(isPanelOpen(asking, 'LeaveRun')).toBe(true)
+    expect(isPanelOpen(asking, 'HowToPlay')).toBe(false)
+    expect(
+      isPanelOpen(
+        UiStruct.evolve(pause(veteranFighting), { panel: () => 'LeaveRun' }),
+        'LeaveRun',
+      ),
+    ).toBe(false)
+
+    const settings = UiStruct.evolve(home, {
+      profile: profile => UiStruct.evolve(profile, { tab: () => 'Settings' }),
+      rootDialog: () => RootDialog.Profile,
+    })
+    expect(isProfileOpenOn(settings, 'Settings')).toBe(true)
+    expect(isProfileOpenOn(settings, 'Look')).toBe(false)
+  })
+})

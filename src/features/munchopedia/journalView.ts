@@ -9,11 +9,11 @@ import {
   DARE_SILHOUETTE_URLS,
   JOURNAL_ICON_URL,
 } from '#art/dareArt.ts'
-import { PADLOCK_ICON } from '#art/icons.ts'
-import { maybeRoomIcon } from '#art/roomIcons.ts'
+import { PADLOCK_ICON } from '#art/icons/icons.ts'
+import { maybeRoomIcon } from '#art/icons/roomIcons.ts'
 import { spriteImage } from '#art/sprite.ts'
 import { isHeroStoryOpen } from '#domain/mastery.ts'
-import { Calling } from '#shared/playerData.ts'
+import { Calling } from '#shared/records/playerData.ts'
 import { iconView } from '#ui/menuParts.ts'
 import type { DareKind } from '#world/dare/dareSchema.ts'
 import { type MilestoneId, maybeOpenerOf } from '#world/dare/milestones.ts'

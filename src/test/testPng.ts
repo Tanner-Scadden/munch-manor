@@ -1,7 +1,7 @@
 import { Array, Option, Result, String, pipe } from 'effect'
 import { Base64 } from 'effect/encoding'
 
-import { type Rgba, rasterOf } from '#art/png.ts'
+import { type Rgba, rasterOf } from '#art/atlas/png.ts'
 import { spriteContentOf } from '#art/sprite.ts'
 
 type DecodedPng = Readonly<{

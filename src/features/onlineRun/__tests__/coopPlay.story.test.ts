@@ -14,7 +14,7 @@ import {
   lobbyOf,
   memberOf,
   playingSession,
-} from '#features/coop/testing.ts'
+} from '#features/coop/services/testing.ts'
 import { RememberRoom, SendRoomFrames } from '#features/coop/update.ts'
 import { UNFOLD_MS, isPocketCardBlocking } from '#features/dare/pocketCard.ts'
 import { endKindOf } from '#features/end/endBeat.ts'

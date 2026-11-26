@@ -21,24 +21,24 @@ import {
   spriteShapes,
 } from '#art/sprite.ts'
 import { gunIcon } from '#art/sprites/guns.ts'
-import { type Camera, anchoredAt, placedAt } from '#render/camera.ts'
+import { type Camera, anchoredAt, placedAt } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
 import { type RingPixel, rect, ringPixels } from '#render/drawing.ts'
 import {
   featLockBoxOf,
   featLockShapes,
   lockSpotIn,
-} from '#render/featLockView.ts'
-import { clearWindowOf } from '#render/hudLayout.ts'
-import { type Keepout, clearOfKeepouts } from '#render/keepout.ts'
+} from '#render/hud/featLockView.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
+import { type Keepout, clearOfKeepouts } from '#render/hud/keepout.ts'
 import {
   COOKED_GUN_ICONS,
   COOKED_GUN_ICON_WIDTH,
   FLAME_ICON,
   PERK_ICON_SIZE,
-} from '#render/kitchenGearView.ts'
+} from '#render/room/kitchenGearView.ts'
 import { PADLOCK_SPRITE } from '#render/room/kitchenView.ts'
-import { screenOf } from '#render/screen.ts'
 import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
 import { hasPan, maybeReplacedGun } from '#world/gear/weapons.ts'
 import { crewAtBackDoorOf } from '#world/kitchen/backDoor.ts'

@@ -3,7 +3,7 @@ import { Array, Function, Option, pipe } from 'effect'
 import type { HomeMode } from '#domain/clientSchema.ts'
 import { FOCUS_STEP_OFFSET, type FocusStep } from '#input/input.ts'
 import type { MapId } from '#shared/nameKeys.ts'
-import type { Difficulty } from '#shared/playerData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import {
   isCoveredByMark,
   runBonusPercentOf,

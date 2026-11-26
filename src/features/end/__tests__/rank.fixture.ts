@@ -5,7 +5,7 @@ import { UiStruct } from '@effect/ui'
 import { Message } from '#app/message.ts'
 import { type Model, Phase, RunMode } from '#app/model.ts'
 import { WriteSave } from '#app/update/save.ts'
-import { type PlayerChange } from '#platform/playerSync.ts'
+import { type PlayerChange } from '#platform/save/playerSync.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   DISTANT_SPAWN,

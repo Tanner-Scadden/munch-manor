@@ -4,8 +4,8 @@ import {
   type Difficulty,
   FIRST_ESCAPE_BONES,
   type SavedRank,
-} from '#shared/playerData.ts'
-import { costOfRank, pointsForRank, rankOf } from '#shared/rankCurve.ts'
+} from '#shared/records/playerData.ts'
+import { costOfRank, pointsForRank, rankOf } from '#shared/records/rankCurve.ts'
 
 const POINTS_PER_WAVE = 10
 const POINTS_PER_DARE_ITEM = 25

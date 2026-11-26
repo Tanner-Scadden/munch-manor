@@ -3,9 +3,9 @@ import { Array, Effect, Option, Record, String, pipe } from 'effect'
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { RootDialog } from '#app/menus/rootDialog.ts'
 import { Message } from '#app/message.ts'
 import { type Model, Reload, defaultAppearance } from '#app/model.ts'
-import { RootDialog } from '#app/rootDialog.ts'
 import { FocusProfileElement } from '#app/update/profile.ts'
 import { WriteSave } from '#app/update/save.ts'
 import { playerPixels, randomAppearance } from '#art/appearance.ts'
@@ -29,9 +29,9 @@ import {
   pickLook,
   rollLookDice,
 } from '#features/profile/__tests__/profile.fixture.ts'
-import { PlayerChange } from '#platform/playerSync.ts'
-import { restoreSave, saveOf } from '#platform/save.ts'
-import { reloadBarShapes } from '#render/playerView.ts'
+import { PlayerChange } from '#platform/save/playerSync.ts'
+import { restoreSave, saveOf } from '#platform/save/save.ts'
+import { reloadBarShapes } from '#render/bodies/playerView.ts'
 import {
   type Appearance,
   COSMETIC_GIFT_RANKS,
@@ -39,7 +39,7 @@ import {
   GiftHat,
   type SavedRank,
   SoldHat,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,

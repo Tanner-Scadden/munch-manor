@@ -10,16 +10,16 @@ import { initialModel } from '#app/pureApp.ts'
 import { SendRunSummary } from '#app/update/settle.ts'
 import { Screen, maybeRoomOf } from '#domain/coopRoom.ts'
 import { freshRoom } from '#features/coop/roomState.ts'
-import { focusCoop } from '#features/coop/steps.ts'
 import {
   CODE,
   lobbyOf,
   memberOf,
   playingSession,
-} from '#features/coop/testing.ts'
+} from '#features/coop/services/testing.ts'
+import { focusCoop } from '#features/coop/steps.ts'
 import { RememberRoom } from '#features/coop/update.ts'
-import type { CrewNetwork, RunSummary } from '#platform/analytics.ts'
-import { crewRunKeyOf } from '#platform/analyticsRun.ts'
+import type { CrewNetwork, RunSummary } from '#platform/analytics/analytics.ts'
+import { crewRunKeyOf } from '#platform/analytics/analyticsRun.ts'
 import { modifyLeadSeat, withSeat } from '#test/model.fixture.ts'
 import {
   type AppStory,

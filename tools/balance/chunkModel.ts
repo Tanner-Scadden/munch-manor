@@ -1,6 +1,6 @@
 import { Array, Console, Effect, Number, Option, String } from 'effect'
 
-import type { Difficulty } from '../../src/shared/playerData'
+import type { Difficulty } from '../../src/shared/records/playerData'
 import { chunkHpFor } from '../../src/world/dare/finale'
 import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
 import { type BalanceModel, balanceModel, rolledWave } from './model'

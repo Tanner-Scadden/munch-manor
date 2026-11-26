@@ -16,9 +16,12 @@ import {
 import { initialModel } from '#app/pureApp.ts'
 import { KABOOMER_FUSE_MAX } from '#art/sprites/zombies.ts'
 import { wavePreviewLabel } from '#features/hud/wavePreview.ts'
+import { zombieGroundShapes } from '#render/bodies/zombieGroundView.ts'
+import {
+  kaboomerFuseLength,
+  kaboomerSparkMs,
+} from '#render/bodies/zombieView.ts'
 import type * as Draw from '#render/draw.ts'
-import { zombieGroundShapes } from '#render/zombieGroundView.ts'
-import { kaboomerFuseLength, kaboomerSparkMs } from '#render/zombieView.ts'
 import { debutPitch } from '#screens/game/menus.ts'
 import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '#shared/constants.ts'
 import { DISTANT_SPAWN } from '#test/model.fixture.ts'

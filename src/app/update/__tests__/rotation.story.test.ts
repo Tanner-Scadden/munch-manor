@@ -8,7 +8,12 @@ import { type Model } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
 import { ApplyRotation } from '#app/update/rotation.ts'
 import { FetchBuild } from '#app/update/version.ts'
-import { decodeSave, encodeSave, restoreSave, saveOf } from '#platform/save.ts'
+import {
+  decodeSave,
+  encodeSave,
+  restoreSave,
+  saveOf,
+} from '#platform/save/save.ts'
 import { loadingSave, readyAfterRead } from '#test/model.fixture.ts'
 import {
   type StoryStep,

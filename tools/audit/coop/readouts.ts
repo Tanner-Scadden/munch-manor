@@ -1,7 +1,7 @@
 import { Effect, Function, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
-import { type Readout, ReadoutJson } from '@game/features/coop/readout'
+import { type Readout, ReadoutJson } from '@game/features/coop/audit/readout'
 import { Vector } from '@game/world/schema/entitySchema'
 
 import { type AuditFailed, attempt, decodedFrom, evaluateAs } from '../page'

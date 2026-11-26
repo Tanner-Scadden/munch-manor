@@ -3,7 +3,7 @@ import { Array, Function, Result, String } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
-import { addToJournal } from '#shared/journalData.ts'
+import { addToJournal } from '#shared/records/journalData.ts'
 import { dareItemsFoundOf } from '#world/dare/dare.ts'
 import {
   THING_ROOMS,

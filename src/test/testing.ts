@@ -71,7 +71,7 @@ import {
   shownHints,
 } from '#features/onboarding/onboarding.ts'
 import { LoadMessage, SaveMessage } from '#platform/message.ts'
-import { floorToScreenDirection } from '#render/lens.ts'
+import { floorToScreenDirection } from '#render/camera/lens.ts'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -81,7 +81,7 @@ import {
   ZOMBIE_MAX_HP,
 } from '#shared/constants.ts'
 import { hypot } from '#shared/detMath.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { FRIDGE_RULES } from '#world/fridge/leftovers.ts'
 import { TRAPS } from '#world/gear/traps.ts'
 import { START_LEVEL, levelOf } from '#world/level/arena.ts'

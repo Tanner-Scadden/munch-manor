@@ -1,4 +1,4 @@
-import '@game/art/spriteAtlasBoot'
+import '@game/art/atlas/spriteAtlasBoot'
 import './harness.css'
 import {
   Array,
@@ -19,26 +19,26 @@ import {
   ApplicationDef,
   type ApplicationHtml,
   type ApplicationViewBuilder,
-} from '@game/app/definition'
-import { CommandsLayer } from '@game/app/layer'
-import { sceneShapes } from '@game/app/layers'
+} from '@game/app/component'
+import { CommandsLayer } from '@game/app/commands'
+import { sceneShapes } from '@game/app/views/layers'
 import type { Message } from '@game/app/message'
 import type { Model } from '@game/app/model'
 import { update as pureUpdate, subscriptions } from '@game/app/pureApp'
 import type { App$ } from '@game/app/update/step'
 import { view } from '@game/app/view'
 import { audioEngineLayer } from '@game/audio/audio'
-import { quietCoopNet } from '@game/features/coop/testing'
+import { quietCoopNet } from '@game/features/coop/services/testing'
 import { quietLayer as quietInstallPrompt } from '@game/platform/install'
-import { layer as PlayerStoreLayer } from '@game/platform/store'
-import { worldCameraFor } from '@game/render/camera'
+import { layer as PlayerStoreLayer } from '@game/platform/save/store'
+import { worldCameraFor } from '@game/render/camera/camera'
 import { defineWorldElement, snapshotWorld } from '@game/render/iso/element'
 import {
   defineOverlayElement,
   overlayElement,
 } from '@game/render/iso/overlayElement'
-import { definePlinthElement } from '@game/render/iso/plinthElement'
-import { screenOf } from '@game/render/screen'
+import { definePlinthElement } from '@game/render/iso/plinth/plinthElement'
+import { screenOf } from '@game/render/camera/screen'
 import { GAME_TITLE } from '@game/shared/constants'
 import { RATTLES_BOX, START_LEVEL } from '@game/world/level/arena'
 

@@ -4,7 +4,7 @@ import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import type { Arsenal, Model } from '#app/model.ts'
-import { saveOf } from '#platform/save.ts'
+import { saveOf } from '#platform/save/save.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { gunAt, holdingSecond } from '#test/arsenals.ts'
 import { killShot } from '#test/model.fixture.ts'

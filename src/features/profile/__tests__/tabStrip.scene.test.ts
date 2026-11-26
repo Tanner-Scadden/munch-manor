@@ -6,7 +6,7 @@ import { TestHost } from '@effect/ui/testing'
 import { expect, layer } from '@effect/vitest'
 
 import { type Model } from '#app/model.ts'
-import { profilePropsOf } from '#app/profileView.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
 import { Profile } from '#features/profile/block.ts'
 import { Events } from '#features/profile/message.ts'
 import { inPortrait } from '#test/model.fixture.ts'

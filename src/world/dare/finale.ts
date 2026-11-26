@@ -3,7 +3,7 @@ import { Array, Function, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import { MS_PER_SECOND, PLAYER_RADIUS } from '#shared/constants.ts'
-import type { Difficulty } from '#shared/playerData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import { type Level, levelOf } from '#world/level/arena.ts'
 import {
   forEachSeat,

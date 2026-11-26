@@ -25,14 +25,14 @@ import {
 import { CoopMessage, CoopNotice } from '#features/coop/message.ts'
 import { type Model as CoopModel, emptyQueue } from '#features/coop/model.ts'
 import { cleanCode, freshRoom, pressAction } from '#features/coop/roomState.ts'
-import { ChangeLobby } from '#features/coop/steps.ts'
 import {
   CODE,
   lobbyOf,
   makeFakeCoopNet,
   memberOf,
   stagedWorld,
-} from '#features/coop/testing.ts'
+} from '#features/coop/services/testing.ts'
+import { ChangeLobby } from '#features/coop/steps.ts'
 import {
   AnswerOffer,
   CancelQuickPlay,

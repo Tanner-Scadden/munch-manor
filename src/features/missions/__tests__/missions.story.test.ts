@@ -28,7 +28,7 @@ import {
   type MissionId,
   type SavedMissions,
   noMissions,
-} from '#shared/missionData.ts'
+} from '#shared/records/missionData.ts'
 import { knowingDay, readyAfterRead } from '#test/model.fixture.ts'
 import {
   changeModel,

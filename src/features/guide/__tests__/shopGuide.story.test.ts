@@ -4,7 +4,7 @@ import { Component, UiStruct } from '@effect/ui'
 import { Story } from '@effect/ui/testing'
 import { afterEach, describe, expect, it, test } from '@effect/vitest'
 
-import { isPanelOpen } from '#app/menuState.ts'
+import { isPanelOpen } from '#app/menus/menuState.ts'
 import { Message } from '#app/message.ts'
 import { FridgeDoor } from '#app/model.ts'
 import { GuideStatus } from '#features/guide/model.ts'

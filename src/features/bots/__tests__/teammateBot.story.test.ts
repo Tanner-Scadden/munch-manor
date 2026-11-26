@@ -8,7 +8,7 @@ import { crewBotSlots } from '#domain/bots.ts'
 import { isLeftFromRoom } from '#domain/onlineRun.ts'
 import { botInputs } from '#features/bots/teammateBot.ts'
 import { coopNameShapes } from '#features/onlineRun/coopMarksView.ts'
-import { cameraFocus } from '#render/camera.ts'
+import { cameraFocus } from '#render/camera/camera.ts'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '#shared/constants.ts'
 import {
   crewInWave,

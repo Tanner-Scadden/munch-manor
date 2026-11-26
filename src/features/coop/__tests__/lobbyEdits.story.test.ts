@@ -8,10 +8,10 @@ import { type Model } from '#app/model.ts'
 import { LobbyChange } from '#domain/coopRoom.ts'
 import { GOOFY_NAMES } from '#domain/playerName.ts'
 import { CoopMessage } from '#features/coop/message.ts'
-import { lobbyOf, memberOf } from '#features/coop/testing.ts'
+import { lobbyOf, memberOf } from '#features/coop/services/testing.ts'
 import { updateCoop } from '#features/coop/update.ts'
-import type { Calling } from '#shared/playerData.ts'
-import { pointsForRank } from '#shared/rankCurve.ts'
+import type { Calling } from '#shared/records/playerData.ts'
+import { pointsForRank } from '#shared/records/rankCurve.ts'
 import {
   type StoryStep,
   checkModel,

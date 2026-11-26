@@ -6,7 +6,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Message } from '#app/message.ts'
 import { type Model, Phase } from '#app/model.ts'
 import { Rumble } from '#app/update/rumble.ts'
-import { screenToFloorDirection } from '#render/lens.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { armedBreak, armedFight, openFloorWave } from '#test/model.fixture.ts'
 import {

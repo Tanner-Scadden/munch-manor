@@ -5,9 +5,9 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '#app/message.ts'
 import type { Model } from '#app/model.ts'
-import { worldCameraFor } from '#render/camera.ts'
+import { worldCameraFor } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
 import { type HoldKey, holdKeyOf, isHeldOver } from '#render/iso/hold.ts'
-import { screenOf } from '#render/screen.ts'
 import { shakeOffset } from '#screens/game/worldView.ts'
 import { playingModel, withZombies } from '#test/model.fixture.ts'
 import {

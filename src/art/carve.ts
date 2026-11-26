@@ -2,7 +2,7 @@ import { Array, Option, Record, String } from 'effect'
 
 import type * as Draw from '#render/draw.ts'
 
-import { parseColor } from './png.ts'
+import { parseColor } from './atlas/png.ts'
 import { type Palette, TRANSPARENT } from './sprite.ts'
 
 export type PixelView = Readonly<{

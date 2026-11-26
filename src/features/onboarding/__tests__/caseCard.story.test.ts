@@ -18,7 +18,7 @@ import {
   CASE_CARD_MIN_MS,
   CASE_CARD_MS,
 } from '#features/onboarding/caseCard.ts'
-import { restoreSave, saveOf } from '#platform/save.ts'
+import { restoreSave, saveOf } from '#platform/save/save.ts'
 import {
   atCase,
   breakBefore,

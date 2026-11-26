@@ -5,8 +5,6 @@ import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 import * as Result from 'effect/Result'
 
-import { verifyToken } from './sessionToken.ts'
-
 import {
   GZIP_CONTENT_TYPE,
   JSON_CONTENT_TYPE,
@@ -16,8 +14,9 @@ import {
   type RecordingEncoding,
   maybeRunId,
   recordingKey,
-} from '../../src/platform/recordingApi.ts'
+} from '../../src/platform/recording/recordingApi.ts'
 import type { RateLimiter } from './api.ts'
+import { verifyToken } from './sessionToken.ts'
 import {
   CORS_HEADERS,
   bearerOf,

@@ -9,7 +9,14 @@ import {
   pocketBoxOf,
 } from '#features/dare/dareCard.ts'
 import { tagKeepoutsOf } from '#features/shop/purchaseView.ts'
-import type { Camera } from '#render/camera.ts'
+import type { Camera } from '#render/camera/camera.ts'
+import {
+  type Box,
+  type Screen,
+  landscapeFrameOffset,
+  screenOf,
+  stagePlacement,
+} from '#render/camera/screen.ts'
 import {
   HEART_SPACING,
   HUD_MARGIN,
@@ -18,15 +25,8 @@ import {
   gunClusterBox,
   hudLayoutFor,
   startWavePillBox,
-} from '#render/hudLayout.ts'
-import type { Keepout } from '#render/keepout.ts'
-import {
-  type Box,
-  type Screen,
-  landscapeFrameOffset,
-  screenOf,
-  stagePlacement,
-} from '#render/screen.ts'
+} from '#render/hud/hudLayout.ts'
+import type { Keepout } from '#render/hud/keepout.ts'
 import { dareCardOf } from '#world/dare/dare.ts'
 import { maxHpOf } from '#world/heroes/calling.ts'
 import { heldKeys } from '#world/keys/keys.ts'

@@ -6,15 +6,15 @@ import type {
   ApplicationHtml,
   ApplicationMount,
   ApplicationViewBuilder,
-} from '#app/definition.ts'
+} from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
 import {
   CHECK_ICON,
   COOP_ICON,
   LEAVE_ICON,
   portraitOf,
-} from '#art/coopIcons.ts'
+} from '#art/icons/coopIcons.ts'
 import {
   ENDLESS_ICON,
   FULLSCREEN_ICON,
@@ -28,7 +28,7 @@ import {
   SHARE_ICON,
   SOUND_OFF_ICON,
   SOUND_ON_ICON,
-} from '#art/icons.ts'
+} from '#art/icons/icons.ts'
 import { callingOfMember, seatLookOf } from '#art/seatLooks.ts'
 import { SoundMessage } from '#audio/message.ts'
 import { type Room as CoopRoom, maybeRoomOf } from '#domain/coopRoom.ts'

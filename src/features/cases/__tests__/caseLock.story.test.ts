@@ -4,7 +4,7 @@ import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { CaseState, Feat, type Model } from '#app/model.ts'
-import { featCountOf } from '#render/featLockView.ts'
+import { featCountOf } from '#render/hud/featLockView.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import { AT_CASE, atCase, playingModel } from '#test/model.fixture.ts'
 import { checkModel, holdFire, storyOf, tick, zombieOf } from '#test/testing.ts'

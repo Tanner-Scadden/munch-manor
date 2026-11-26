@@ -2,7 +2,7 @@ import { Array, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { makeReader, makeWriter } from '../../packages/netcode/src/Wire'
-import { refreshIntent } from '../../src/app/frame'
+import { refreshIntent } from '../../src/app/frame/frame'
 import { WORLD_KEYS } from '../../src/test/testing'
 import {
   isSameOnWire,

@@ -2,7 +2,7 @@ import { Array, Function } from 'effect'
 
 import type { Model } from '#app/model.ts'
 import { textShapes, textWidth } from '#art/font.ts'
-import { HOUSE_PALETTE, HOUSE_PIXELS } from '#art/icons.ts'
+import { HOUSE_PALETTE, HOUSE_PIXELS } from '#art/icons/icons.ts'
 import { TOP_LEFT, spriteShapes } from '#art/sprite.ts'
 import { KitchenCall } from '#domain/clientSchema.ts'
 import { roomsOf } from '#domain/run.ts'

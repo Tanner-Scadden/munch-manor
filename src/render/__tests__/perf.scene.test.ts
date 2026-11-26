@@ -4,7 +4,7 @@ import { UiStruct } from '@effect/ui'
 import type { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { sceneShapes } from '#app/layers.ts'
+import { startOrResume } from '#app/frame/runFlow.ts'
 import { Message } from '#app/message.ts'
 import {
   Alarm,
@@ -41,7 +41,7 @@ import {
   ZombieState,
 } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
-import { startOrResume } from '#app/runFlow.ts'
+import { sceneShapes } from '#app/views/layers.ts'
 import type * as Draw from '#render/draw.ts'
 import { type Leaf, flatten } from '#render/iso/flatten.ts'
 import { type Decal, DecalKind, type Particle } from '#render/renderSchema.ts'

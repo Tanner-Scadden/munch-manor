@@ -3,14 +3,14 @@ import { Effect, Option, pipe } from 'effect'
 import { Command, Component } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
-import { maybeRunOutcome } from '#platform/analyticsRun.ts'
+import { maybeRunOutcome } from '#platform/analytics/analyticsRun.ts'
 import {
   RunRecorder,
   RunRecording,
   finishRecording,
-} from '#platform/recording.ts'
-import { uploadRecording } from '#platform/recordingUpload.ts'
-import { PlayerStore } from '#platform/store.ts'
+} from '#platform/recording/recording.ts'
+import { uploadRecording } from '#platform/recording/recordingUpload.ts'
+import { PlayerStore } from '#platform/save/store.ts'
 
 import { type UpdateStep, defineHandlers } from './step.ts'
 

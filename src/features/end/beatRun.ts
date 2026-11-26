@@ -8,8 +8,8 @@ import {
   dareCodeOf,
   isBeaten,
 } from '#domain/beatLink.ts'
-import { maybeTakenDareOf } from '#domain/beatMyRun.ts'
 import { isBotCrew } from '#domain/bots.ts'
+import { maybeTakenDareOf } from '#domain/machines/beatMyRun.ts'
 import { focusOf, isCoop } from '#world/party/party.ts'
 import { RunMode } from '#world/schema/worldSchema.ts'
 

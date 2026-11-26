@@ -3,13 +3,13 @@ import { Schema } from 'effect'
 import type { View } from '@effect/ui'
 import { Html, HtmlSubscription } from '@effect/ui/html'
 
-import { pixelArtStyle } from '#art/artSize.ts'
-import { CLOSE_ICON } from '#art/icons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { CLOSE_ICON } from '#art/icons/icons.ts'
 import {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 
 import {
   callingBalanceView,

@@ -11,13 +11,13 @@ import { WINCH_HEIGHT_PX, WINCH_SLACK, WINCH_TAUT } from '#art/winchArt.ts'
 import type { Drawable } from '#render/depth.ts'
 import type * as Draw from '#render/draw.ts'
 import { rect } from '#render/drawing.ts'
-import { doorArrowShapes } from '#render/powerupView.ts'
+import { doorArrowShapes } from '#render/effects/powerupView.ts'
 import {
   COOLDOWN_RINGS,
   SET_UP_RINGS,
   WORK_RING_RADIUS,
   ringStepOf,
-} from '#render/workRing.ts'
+} from '#render/hud/workRing.ts'
 import { TILE_SIZE } from '#shared/constants.ts'
 import type { SoundEffect } from '#shared/soundEffect.ts'
 import { barrelOf } from '#world/cellar/barrels.ts'

@@ -6,7 +6,7 @@ The spike's code is gone: it shipped as the player log. Its files live on in the
 
 | Spike file       | Now                                                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `mastery.ts`     | `src/platform/playerEvents.ts` and `src/platform/playerProjection.ts`, the whole save                                    |
+| `mastery.ts`     | `src/platform/save/playerEvents.ts` and `src/platform/save/playerProjection.ts`, the whole save                                    |
 | `serverParts.ts` | `infra/worker/playerLogCore.ts`: owner-only authorization, the store pinned to its object, the handlers, `Session.*`     |
 | `doProtocol.ts`  | `infra/worker/doProtocol.ts`                                                                                              |
 | `worker.ts`      | `infra/worker/playerLog.ts`, the `PlayerLog` Durable Object                                                              |

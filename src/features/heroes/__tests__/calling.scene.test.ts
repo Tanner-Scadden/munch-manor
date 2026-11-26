@@ -19,7 +19,7 @@ import {
   isHeroPickerUp,
   openedLobby,
 } from '#features/lobby/model.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { heroesBoughtBy, home } from '#test/model.fixture.ts'
 import { button, byClass, firstOf, withAttrs } from '#test/sceneTesting.ts'
 import {

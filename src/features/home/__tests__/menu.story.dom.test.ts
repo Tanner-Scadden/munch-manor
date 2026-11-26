@@ -23,10 +23,10 @@ import {
   StartRecordingQueue,
   StartSummaryQueue,
 } from '#app/boot.ts'
+import { returnHome } from '#app/frame/runReset.ts'
 import { Message } from '#app/message.ts'
 import { Loading, type Model, Phase, RunTally, noKills } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
-import { returnHome } from '#app/runReset.ts'
 import { maybeKeyDownMessage } from '#app/subscriptions.ts'
 import { ReadBeatLink } from '#app/update/beatMyRun.ts'
 import { ReadRoomLink } from '#app/update/coop.ts'

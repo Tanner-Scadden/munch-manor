@@ -31,7 +31,7 @@ import {
   TROPHY_ICON,
   TURN_PHONE_ICON,
   ZAP_ICON,
-} from '#art/icons.ts'
+} from '#art/icons/icons.ts'
 import {
   DEFAULT_NAME,
   MAX_NAME_LENGTH,
@@ -39,19 +39,19 @@ import {
   shownName,
 } from '#domain/playerName.ts'
 import type { InputDevice } from '#input/inputSchema.ts'
-import { LinkFlow, linkProblemText } from '#platform/linkFlow.ts'
-import { SyncState, syncStateText } from '#platform/playerSync.ts'
+import { LinkFlow, linkProblemText } from '#platform/save/linkFlow.ts'
+import { SyncState, syncStateText } from '#platform/save/playerSync.ts'
 import { iconView, newPipView } from '#ui/menuParts.ts'
 
 import { Character } from './blocks/look/block.ts'
+import { TutorialReset } from './machines/resetFlow.ts'
+import { Message, type SettingTile } from './message.ts'
+import type { Model, ProfileProps, ProfileTab } from './model.ts'
 import {
   CopyLinkCodeOnClick,
   LINK_CODE_DATA,
   PasteLinkCodeOnTap,
-} from './linkClipboard.ts'
-import { masteryTabView } from './masteryView.ts'
-import { Message, type SettingTile } from './message.ts'
-import type { Model, ProfileProps, ProfileTab } from './model.ts'
+} from './mounts/linkClipboard.ts'
 import {
   KEEP_TUTORIAL_BUTTON_ID,
   NAME_INPUT_ID,
@@ -59,7 +59,7 @@ import {
   PROFILE_TABS_ID,
   RESET_TUTORIAL_BUTTON_ID,
 } from './profile.ts'
-import { TutorialReset } from './resetFlow.ts'
+import { masteryTabView } from './views/masteryView.ts'
 
 type H = Html.H<Message>
 type Content = View.Content<Message>

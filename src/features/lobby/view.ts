@@ -9,7 +9,7 @@ import {
   SHAKE_ICON,
   TIN_BOT_ICON,
   portraitOf,
-} from '#art/coopIcons.ts'
+} from '#art/icons/coopIcons.ts'
 import {
   CAMPAIGN_ICON,
   CLOSE_ICON,
@@ -17,7 +17,7 @@ import {
   MANOR_ICON,
   SKULL_ICONS,
   SKULL_OFF_ICON,
-} from '#art/icons.ts'
+} from '#art/icons/icons.ts'
 import {
   type Special,
   specialsNoteOf,
@@ -26,7 +26,7 @@ import {
 import type { Bot, HomeMode } from '#domain/clientSchema.ts'
 import { HeroPicker } from '#features/heroes/block.ts'
 import type { MapId } from '#shared/nameKeys.ts'
-import type { Difficulty } from '#shared/playerData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import { dareMarkFaceView, dareMarkLabel } from '#ui/dareMarkView.ts'
 import { type DialogParts, dialogShellView } from '#ui/dialog.ts'
 import { easyBreakFaceView, easyBreakLabel } from '#ui/easyBreakView.ts'

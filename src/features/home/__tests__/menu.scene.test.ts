@@ -8,10 +8,10 @@ import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '#app/message.ts'
 import { type Model, Phase } from '#app/model.ts'
-import { profilePropsOf } from '#app/profileView.ts'
 import { FocusHandCard, FocusHomeButton } from '#app/update/home.ts'
 import { FocusProfileElement } from '#app/update/profile.ts'
 import { ApplyRotation } from '#app/update/rotation.ts'
+import { profilePropsOf } from '#app/views/profileView.ts'
 import {
   HAND_DIALOG_ID,
   PANEL_DIALOG_ID,
@@ -42,7 +42,7 @@ import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
 } from '#features/profile/profile.ts'
-import { noSavedBests, restoreSave, saveOf } from '#platform/save.ts'
+import { noSavedBests, restoreSave, saveOf } from '#platform/save/save.ts'
 import { RESTART_GRACE_MS } from '#shared/constants.ts'
 import { home, withoutSupportLink } from '#test/model.fixture.ts'
 import {

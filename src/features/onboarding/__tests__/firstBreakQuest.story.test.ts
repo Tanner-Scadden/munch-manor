@@ -33,10 +33,10 @@ import {
   questStepOf,
 } from '#features/onboarding/firstBreakQuest.ts'
 import { isStartWaveBeckoning } from '#features/onboarding/onboarding.ts'
-import { questEdgeShapes } from '#features/onboarding/questEdgeView.ts'
-import { forgetTutorial } from '#platform/save.ts'
-import { screenCameraOf } from '#render/camera.ts'
-import { screenOf } from '#render/screen.ts'
+import { questEdgeShapes } from '#features/onboarding/views/questEdgeView.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
+import { screenCameraOf } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
 import {
   FIXED_STEP_MS,
   HIT_STOP_WAVE_CLEAR_MS,

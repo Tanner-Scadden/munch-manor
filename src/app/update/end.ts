@@ -26,11 +26,11 @@ import {
   isMenuKey,
   isStartKey,
 } from '#input/input.ts'
-import { ShareEvent } from '#platform/analytics.ts'
-import { sendShareEvent } from '#platform/analyticsBeacon.ts'
-import { shareEventOf } from '#platform/analyticsRun.ts'
+import { ShareEvent } from '#platform/analytics/analytics.ts'
+import { sendShareEvent } from '#platform/analytics/analyticsBeacon.ts'
+import { shareEventOf } from '#platform/analytics/analyticsRun.ts'
 import { RUNNING_BUILD } from '#platform/version.ts'
-import { advanceJuice } from '#render/juice.ts'
+import { advanceJuice } from '#render/effects/juice.ts'
 import { advanceParticles } from '#render/particles/particles.ts'
 import { stepWhen } from '#shared/stepWhen.ts'
 import { RunMode } from '#world/schema/worldSchema.ts'

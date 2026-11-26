@@ -6,7 +6,7 @@ import { describe, expect, test } from '@effect/vitest'
 import type { Model } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
 import type { SurfaceRectangle } from '#input/inputSchema.ts'
-import { screenOf, stagePlacement } from '#render/screen.ts'
+import { screenOf, stagePlacement } from '#render/camera/screen.ts'
 
 type Phone = Readonly<{
   name: string

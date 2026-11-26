@@ -18,7 +18,7 @@ import { CueMusic } from '@game/app/update/music'
 import { PlaySound } from '@game/app/update/sound'
 import { FetchBuild } from '@game/app/update/version'
 import { ScreenFit } from '@game/platform/deviceSchema'
-import { PlayerStore } from '@game/platform/store'
+import { PlayerStore } from '@game/platform/save/store'
 import { RUNNING_BUILD } from '@game/platform/version'
 
 import * as Director from './director'

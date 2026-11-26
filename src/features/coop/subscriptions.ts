@@ -6,7 +6,7 @@ import { Screen, maybeRoomOf } from '#domain/coopRoom.ts'
 
 import { CoopMessage } from './message.ts'
 import { type Model } from './model.ts'
-import { CoopNet } from './net.ts'
+import { CoopNet } from './services/net.ts'
 
 const overNet = <A>(
   toStream: (net: CoopNet['Service']) => Stream.Stream<A>,

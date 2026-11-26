@@ -8,10 +8,10 @@ import {
   fridgeOddsShapes,
   fridgeOverheadShapes,
 } from '#features/fridge/fridgeView.ts'
-import { cameraOf } from '#render/camera.ts'
+import { cameraOf } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
-import { clearWindowOf } from '#render/hudLayout.ts'
-import { screenOf } from '#render/screen.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
 import { atFridge } from '#test/model.fixture.ts'
 import { drawnBoxesOf, imagesIn, isOverBox } from '#test/viewReading.ts'
 import { PRIZE_ORDER } from '#world/fridge/leftovers.ts'

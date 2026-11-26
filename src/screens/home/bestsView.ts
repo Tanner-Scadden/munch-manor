@@ -1,11 +1,13 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { CLOCK_ICON, KILLS_ICON, SKULL_ICONS, TROPHY_ICON } from '#art/icons.ts'
+import {
+  CLOCK_ICON,
+  KILLS_ICON,
+  SKULL_ICONS,
+  TROPHY_ICON,
+} from '#art/icons/icons.ts'
 import { HomeMessage } from '#features/home/message.ts'
 import { missionCardView } from '#features/missions/missionCard.ts'
 import { iconView } from '#ui/menuParts.ts'

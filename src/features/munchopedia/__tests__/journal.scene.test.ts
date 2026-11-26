@@ -15,7 +15,7 @@ import {
 } from '#features/munchopedia/journalPages.ts'
 import { MunchopediaEvents } from '#features/munchopedia/message.ts'
 import { MunchopediaPage } from '#features/munchopedia/model.ts'
-import { noJournal } from '#shared/journalData.ts'
+import { noJournal } from '#shared/records/journalData.ts'
 import { home } from '#test/model.fixture.ts'
 import { modelAfter, send, steps } from '#test/testing.ts'
 import { DARE_LINES, DARE_NAMES, STORY_TITLES } from '#world/names.ts'

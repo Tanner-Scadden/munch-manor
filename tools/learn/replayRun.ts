@@ -7,11 +7,11 @@ import {
   TickEdit,
   outcomeOf,
   recordedHashOf,
-} from '../../src/platform/recording'
+} from '../../src/platform/recording/recording'
 import {
   type TickInputs,
   ticksOfChunks,
-} from '../../src/platform/recordingCodec'
+} from '../../src/platform/recording/recordingCodec'
 import { modifyFocus } from '../../src/world/party/party'
 import type { World } from '../../src/world/schema/world'
 import { idleIntent } from '../../src/world/schema/worldSchema'

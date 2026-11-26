@@ -11,7 +11,7 @@ import {
   maybeWindowBlurMessage,
 } from '#app/subscriptions.ts'
 import { MouseButton, Stick } from '#input/inputSchema.ts'
-import { screenToFloorDirection } from '#render/lens.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '#shared/constants.ts'
 import { holdingFirst } from '#test/arsenals.ts'
 import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from '#test/model.fixture.ts'

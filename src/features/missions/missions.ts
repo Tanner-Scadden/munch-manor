@@ -5,8 +5,9 @@ import { UiStruct } from '@effect/ui'
 import type { Model } from '#app/model.ts'
 import { isBotCrew, isHumanCrew } from '#domain/bots.ts'
 import { isEndScreen, isGuided, isInRun, isOnHome } from '#domain/run.ts'
-import { playedDifficultyOf } from '#platform/analyticsRun.ts'
-import type { DayStamp } from '#shared/dayStamp.ts'
+import { playedDifficultyOf } from '#platform/analytics/analyticsRun.ts'
+import { drawIndex, shuffle } from '#shared/prng.ts'
+import type { DayStamp } from '#shared/records/dayStamp.ts'
 import {
   ALL_THREE_BONES,
   CHANDELIER_CRUSH_GOAL,
@@ -26,8 +27,7 @@ import {
   progressOf,
   rerollOn,
   stampDay,
-} from '#shared/missionData.ts'
-import { drawIndex, shuffle } from '#shared/prng.ts'
+} from '#shared/records/missionData.ts'
 import { makeValueHasher } from '#shared/valueHash.ts'
 import { dareItemsFoundOf } from '#world/dare/dare.ts'
 import { isCallingOwned } from '#world/heroes/calling.ts'

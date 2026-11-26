@@ -10,7 +10,7 @@ import {
   unlocksBetween,
 } from '#domain/mastery.ts'
 import { isEndScreen, isGuided, isInRun, isOnHome } from '#domain/run.ts'
-import { type SavedMastery, addToMastery } from '#shared/masteryData.ts'
+import { type SavedMastery, addToMastery } from '#shared/records/masteryData.ts'
 import { dareItemsFoundOf } from '#world/dare/dare.ts'
 import { focusOf } from '#world/party/party.ts'
 

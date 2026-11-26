@@ -1,6 +1,6 @@
 import { Array, Option, Schema } from 'effect'
 
-import type { Difficulty } from '#shared/playerData.ts'
+import type { Difficulty } from '#shared/records/playerData.ts'
 import type { DareKind } from '#world/dare/dareSchema.ts'
 import { CREW_AWARD_NAMES, type CrewAward, DARE_NAMES } from '#world/names.ts'
 

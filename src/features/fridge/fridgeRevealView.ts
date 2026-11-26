@@ -21,12 +21,12 @@ import {
   placedAt,
   viewBoxOf,
   worldToView,
-} from '#render/camera.ts'
+} from '#render/camera/camera.ts'
+import type { Screen } from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
 import { rect } from '#render/drawing.ts'
-import { HUD_STRIP_HEIGHT, gunSlotBox } from '#render/hudLayout.ts'
+import { HUD_STRIP_HEIGHT, gunSlotBox } from '#render/hud/hudLayout.ts'
 import { bakeRings, pixelRing } from '#render/pixelCircle.ts'
-import type { Screen } from '#render/screen.ts'
 import { FRIDGE_RULES, refundOf } from '#world/fridge/leftovers.ts'
 import { heldSlotOf } from '#world/gear/weapons.ts'
 import { focusOf, maybePlayerAt } from '#world/party/party.ts'

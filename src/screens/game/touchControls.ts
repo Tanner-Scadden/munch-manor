@@ -2,19 +2,16 @@ import { Array, Function, Option, Schema, Stream } from 'effect'
 
 import { Mount } from '@effect/ui'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
 import {
   MEDIC_ICON,
   NEXT_TRAP_ICON,
   RELOAD_ICON,
   TRAP_BUTTON_ICONS,
-} from '#art/icons.ts'
-import { QUEST_START_ARROW_ICON } from '#art/questIcons.ts'
+} from '#art/icons/icons.ts'
+import { QUEST_START_ARROW_ICON } from '#art/icons/questIcons.ts'
 import type { SoundMessage } from '#audio/message.ts'
 import {
   isPocketCardOpened,
@@ -39,6 +36,7 @@ import {
   RunButtonMessage,
 } from '#input/message.ts'
 import type { DeviceMessage } from '#platform/message.ts'
+import { type Screen, screenOf } from '#render/camera/screen.ts'
 import {
   MELEE_SLOT_INDEX,
   SLOT_GAP,
@@ -46,8 +44,7 @@ import {
   gunPairWidthOf,
   gunSlotBox,
   reloadFaceOf,
-} from '#render/hudLayout.ts'
-import { type Screen, screenOf } from '#render/screen.ts'
+} from '#render/hud/hudLayout.ts'
 import { STICK_RADIUS_PX } from '#shared/constants.ts'
 import { isKeyboard, percentOf } from '#ui/menuParts.ts'
 import { gunName } from '#world/gear/gunLevels.ts'

@@ -14,7 +14,7 @@ import {
   lobbyOf,
   memberOf,
   playingSession,
-} from '#features/coop/testing.ts'
+} from '#features/coop/services/testing.ts'
 import { fromSubscription, measureHud } from '#test/sceneTesting.ts'
 import { modelAfter, sceneOf, send } from '#test/testing.ts'
 import type { RoomWorld } from '#world/net/roomWorld.ts'

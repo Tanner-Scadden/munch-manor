@@ -3,6 +3,11 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import { defaultAppearance } from '#app/model.ts'
 import { playerSprites } from '#art/appearance.ts'
+import {
+  standInKeyOf,
+  useSpriteAtlas,
+  useSpriteMode,
+} from '#art/atlas/spriteAtlas.ts'
 import { GLYPH_SPRITES, KEY_SPRITE } from '#art/font.ts'
 import {
   type Palette,
@@ -11,11 +16,6 @@ import {
   spriteDataUrl,
   spriteShapes,
 } from '#art/sprite.ts'
-import {
-  standInKeyOf,
-  useSpriteAtlas,
-  useSpriteMode,
-} from '#art/spriteAtlas.ts'
 import { PICKUP_SPRITES } from '#art/sprites/pickups.ts'
 import { BARRICADE_SPRITES } from '#art/sprites/traps.ts'
 import { ZOMBIE_SPRITES } from '#art/sprites/zombies.ts'

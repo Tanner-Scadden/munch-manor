@@ -7,7 +7,7 @@ import { Message } from '#app/message.ts'
 import { AudioState, type Model, Phase } from '#app/model.ts'
 import type { SoundEffect } from '#audio/audio.ts'
 import { KNOCK_BACK_MS, maybeIntroFrameOf } from '#features/intro/introBeat.ts'
-import { saveOf } from '#platform/save.ts'
+import { saveOf } from '#platform/save/save.ts'
 import { MAX_FRAME_DELTA_MS } from '#shared/constants.ts'
 import { newPlayerCardSeen, readyModel } from '#test/model.fixture.ts'
 import {

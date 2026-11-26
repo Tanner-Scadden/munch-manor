@@ -4,9 +4,9 @@ import type { View } from '@effect/ui'
 import type { Html } from '@effect/ui/html'
 
 import { PROP_ICONS } from '#art/callingArt.ts'
-import { TIN_BOT_ICON } from '#art/coopIcons.ts'
 import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '#art/dareArt.ts'
-import { SKULL_ICONS, TROPHY_ICON } from '#art/icons.ts'
+import { TIN_BOT_ICON } from '#art/icons/coopIcons.ts'
+import { SKULL_ICONS, TROPHY_ICON } from '#art/icons/icons.ts'
 import {
   BIG_KEY_URL,
   BRACKET_URL,
@@ -15,9 +15,9 @@ import {
   PLANK_URL,
   STAMP_URLS,
 } from '#art/proofArt.ts'
-import type { DayStamp } from '#shared/dayStamp.ts'
-import { type Difficulty, callingOfCode } from '#shared/playerData.ts'
-import type { CrewMate, ProofStamp } from '#shared/proofData.ts'
+import type { DayStamp } from '#shared/records/dayStamp.ts'
+import { type Difficulty, callingOfCode } from '#shared/records/playerData.ts'
+import type { CrewMate, ProofStamp } from '#shared/records/proofData.ts'
 import { dareMarkBadgeView } from '#ui/dareMarkView.ts'
 import { iconView } from '#ui/menuParts.ts'
 import {

@@ -6,7 +6,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { Message } from '#app/message.ts'
 import { DebutCard, type Model, Phase, Reload, RunMode } from '#app/model.ts'
 import { DEBUT_CARD_MIN_MS } from '#features/onboarding/onboarding.ts'
-import { screenToFloorDirection } from '#render/lens.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import { RESTART_GRACE_MS } from '#shared/constants.ts'
 import { SHOTGUN } from '#test/arsenals.ts'
 import {

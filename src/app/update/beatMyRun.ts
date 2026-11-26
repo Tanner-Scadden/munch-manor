@@ -2,11 +2,11 @@ import { Effect, Option } from 'effect'
 
 import { Command, Component } from '@effect/ui'
 
-import { isOnHomeMenu } from '#app/menuState.ts'
+import { isOnHomeMenu } from '#app/menus/menuState.ts'
 import { Message } from '#app/message.ts'
 import type { Model } from '#app/model.ts'
 import { addressWithoutDare, readBeatLink } from '#domain/beatLink.ts'
-import { dismissDare, offerDare, takeDare } from '#domain/beatMyRun.ts'
+import { dismissDare, offerDare, takeDare } from '#domain/machines/beatMyRun.ts'
 import { isBeatCardShown } from '#screens/home/beatCard.ts'
 import { stepWhen } from '#shared/stepWhen.ts'
 

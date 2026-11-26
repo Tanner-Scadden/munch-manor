@@ -1,9 +1,6 @@
 import { Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
 import type { HomeButton } from '#features/home/homeSchema.ts'
 import { HomeMessage } from '#features/home/message.ts'

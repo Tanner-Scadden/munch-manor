@@ -3,8 +3,8 @@ import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
-import { notePress } from '#platform/recording.ts'
-import { screenToFloorDirection } from '#render/lens.ts'
+import { notePress } from '#platform/recording/recording.ts'
+import { screenToFloorDirection } from '#render/camera/lens.ts'
 import {
   focusSeat,
   isBledOut,

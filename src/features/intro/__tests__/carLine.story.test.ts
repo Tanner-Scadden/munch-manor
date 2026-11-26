@@ -7,9 +7,9 @@ import { Message } from '#app/message.ts'
 import { type Model, Phase, RunMode } from '#app/model.ts'
 import { WriteSave } from '#app/update/save.ts'
 import { QUICK_DEATH_WAVE } from '#features/intro/carLine.ts'
-import { PlayerChange } from '#platform/playerSync.ts'
+import { PlayerChange } from '#platform/save/playerSync.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
-import type { RunEnding } from '#shared/playerData.ts'
+import type { RunEnding } from '#shared/records/playerData.ts'
 import {
   DISTANT_SPAWN,
   escaping,

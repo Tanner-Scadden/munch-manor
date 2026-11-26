@@ -42,7 +42,7 @@ import {
 } from '@munch/netcode/browser'
 
 import { nextAnimationFrame } from '../../src/platform/splash'
-import { newIdentity } from '../../src/shared/sessionApi'
+import { newIdentity } from '../../src/shared/records/sessionApi'
 import { MANOR, levelOf } from '../../src/world/level/arena'
 import {
   type OwnSeat,

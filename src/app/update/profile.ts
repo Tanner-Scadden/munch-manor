@@ -2,7 +2,7 @@ import { Effect, Function, Option, Schema, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
 
-import { MenuState, menuState } from '#app/menuState.ts'
+import { MenuState, menuState } from '#app/menus/menuState.ts'
 import type { Model } from '#app/model.ts'
 import { randomAppearance } from '#art/appearance.ts'
 import { type GearTap, canAfford, gearTapOf, priceOf } from '#domain/closet.ts'
@@ -21,6 +21,7 @@ import {
   flipLook as flipped,
   gearOf,
 } from '#features/profile/blocks/look/model.ts'
+import { ResetEvent, stepReset } from '#features/profile/machines/resetFlow.ts'
 import { ProfileMessage, type SettingTile } from '#features/profile/message.ts'
 import type {
   LookOutcome,
@@ -31,7 +32,6 @@ import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
 } from '#features/profile/profile.ts'
-import { ResetEvent, stepReset } from '#features/profile/resetFlow.ts'
 import {
   opened,
   showTab,
@@ -41,14 +41,14 @@ import {
   withoutPreview,
 } from '#features/profile/steps.ts'
 import { isCharacterKey } from '#input/input.ts'
-import { LinkEvent, LinkFlow, stepLink } from '#platform/linkFlow.ts'
-import { forgetTutorial } from '#platform/save.ts'
-import { PlayerStore } from '#platform/store.ts'
+import { LinkEvent, LinkFlow, stepLink } from '#platform/save/linkFlow.ts'
+import { forgetTutorial } from '#platform/save/save.ts'
+import { PlayerStore } from '#platform/save/store.ts'
 import {
   type CosmeticKind,
   type PropStyle,
   cosmeticIdOf,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { stepWhen } from '#shared/stepWhen.ts'
 import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
 

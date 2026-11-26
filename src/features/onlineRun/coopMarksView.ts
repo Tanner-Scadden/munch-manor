@@ -6,20 +6,20 @@ import { TOP_LEFT, placeAt, spriteShapes } from '#art/sprite.ts'
 import { isBotCrew, maybeCrewBotAt } from '#domain/bots.ts'
 import { maybeRoomOf } from '#domain/coopRoom.ts'
 import { seatNamesOf } from '#domain/onlineRun.ts'
-import { type Camera, worldToView } from '#render/camera.ts'
-import * as Draw from '#render/draw.ts'
-import {
-  EDGE_BADGE_INK,
-  EDGE_BADGE_PX,
-  edgeBadgeOf,
-} from '#render/edgeBadge.ts'
 import {
   NAME_LIFT_CALLING_PX,
   NAME_LIFT_DOWNED_PX,
   seatColorOf,
   seatHatRiseOf,
-} from '#render/partyView.ts'
-import type { Calling } from '#shared/playerData.ts'
+} from '#render/bodies/partyView.ts'
+import { type Camera, worldToView } from '#render/camera/camera.ts'
+import * as Draw from '#render/draw.ts'
+import {
+  EDGE_BADGE_INK,
+  EDGE_BADGE_PX,
+  edgeBadgeOf,
+} from '#render/hud/edgeBadge.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { isCallFresh } from '#world/party/medic.ts'
 import {
   isBledOut,

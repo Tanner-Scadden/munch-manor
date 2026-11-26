@@ -3,13 +3,16 @@ import { Array, Effect, Option } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { sceneShapes } from '#app/layers.ts'
 import { Life, type Model, Reload } from '#app/model.ts'
+import { sceneShapes } from '#app/views/layers.ts'
+import {
+  medicBubbleShape,
+  reviveRingGroundShapes,
+} from '#render/bodies/partyView.ts'
+import { reloadBarShapes } from '#render/bodies/playerView.ts'
 import type * as Draw from '#render/draw.ts'
 import { QUARTER_TURN } from '#render/drawing.ts'
-import { healthBarShapes } from '#render/healthBarView.ts'
-import { medicBubbleShape, reviveRingGroundShapes } from '#render/partyView.ts'
-import { reloadBarShapes } from '#render/playerView.ts'
+import { healthBarShapes } from '#render/hud/healthBarView.ts'
 import { FIXED_STEP_MS } from '#shared/constants.ts'
 import {
   atSeat,

@@ -1,8 +1,8 @@
 import { Array, Option, String } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { ICON_PALETTE, keyPixels } from '#art/hintIcons.ts'
-import { parseColor } from '#art/png.ts'
+import { parseColor } from '#art/atlas/png.ts'
+import { ICON_PALETTE, keyPixels } from '#art/icons/hintIcons.ts'
 
 const lightnessOf = (symbol: string): number =>
   Option.match(

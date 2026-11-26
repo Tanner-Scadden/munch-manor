@@ -7,14 +7,14 @@ import {
   unlockGoneMs,
   unlocksOf,
 } from '#features/end/endBeat.ts'
-import { endCardEdgesOf } from '#features/end/endView.ts'
+import { endCardEdgesOf } from '#features/end/views/endView.ts'
 import {
   MISSION_PANEL_WIDTH,
   type MissionSpot,
   missionEndShapes,
 } from '#features/missions/missionEndView.ts'
+import { type Screen, landscapeFrameOffset } from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
-import { type Screen, landscapeFrameOffset } from '#render/screen.ts'
 
 const GAP_PX = 3
 const BEAT_GAP_MS = 160

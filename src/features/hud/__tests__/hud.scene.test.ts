@@ -6,13 +6,13 @@ import { UiStruct } from '@effect/ui'
 import { BoostTimer, type Model, Phase, idleBoosts } from '#app/model.ts'
 import { initialModel } from '#app/pureApp.ts'
 import { PICKUP_TINTS } from '#art/sprites/pickups.ts'
-import { cameraFor, cameraOf } from '#render/camera.ts'
-import { gunSlotBox } from '#render/hudLayout.ts'
+import { cameraFor, cameraOf } from '#render/camera/camera.ts'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
   type Screen,
-} from '#render/screen.ts'
+} from '#render/camera/screen.ts'
+import { gunSlotBox } from '#render/hud/hudLayout.ts'
 import { hudShapes, hudStripShapes } from '#screens/game/hud.ts'
 import { VIEW_HEIGHT } from '#shared/constants.ts'
 import { holdingSecond } from '#test/arsenals.ts'

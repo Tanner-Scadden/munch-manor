@@ -1,17 +1,14 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
 import { bakeText, placeBaked } from '#art/font.ts'
 import { group } from '#art/sprite.ts'
 import { BOSS_ICON } from '#art/sprites/zombies.ts'
-import { type Camera, worldToView } from '#render/camera.ts'
+import { type Camera, worldToView } from '#render/camera/camera.ts'
+import { type Box, screenOf } from '#render/camera/screen.ts'
 import * as Draw from '#render/draw.ts'
 import { FULL_TURN, placeSprite } from '#render/drawing.ts'
-import { type Box, screenOf } from '#render/screen.ts'
 import * as DetMath from '#shared/detMath.ts'
 import { type Level, levelOf } from '#world/level/arena.ts'
 import { exitBoxOf } from '#world/level/exits.ts'

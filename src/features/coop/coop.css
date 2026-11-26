@@ -500,7 +500,7 @@
 /* ASKING: the request in flight. A new room is a door swinging open with
    three heads hopping through it in turn; a code is its five tiles lit one
    after another as if being checked, over three heads hopping. All of it
-   is aria-hidden art in a box that stays put (src/features/coop/motionArt.ts). */
+   is aria-hidden art in a box that stays put (src/features/coop/views/motionArt.ts). */
 
 .coop-bounce {
   display: flex;
@@ -2046,7 +2046,7 @@
 }
 
 /* NAME: your own name in the lobby is a button with a pencil, and a tap
-   opens a small field at the top of the lobby (src/features/coop/namePicker.ts). */
+   opens a small field at the top of the lobby (src/features/coop/views/namePicker.ts). */
 
 .coop-name-button {
   position: relative;

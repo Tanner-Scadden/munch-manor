@@ -12,7 +12,7 @@ import { levelOf } from '#world/level/arena.ts'
 import { isPending, learn } from '#world/run/lessons.ts'
 import { Phase, isRoundActive } from '#world/schema/worldSchema.ts'
 
-import { isThingShownOn } from './dareView.ts'
+import { isThingShownOn } from './views/dareView.ts'
 
 export const UNFOLD_MS = 400
 export const READ_MS = 4_500

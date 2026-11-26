@@ -2,14 +2,17 @@ import { Array, Function, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
-import type { MasterySkin } from '#shared/masteryData.ts'
-import { CHANDELIER_CRUSH_GOAL, type MissionId } from '#shared/missionData.ts'
 import type {
   HouseSpot,
   MapId,
   ShopGuideSection,
   TutorialChoice,
 } from '#shared/nameKeys.ts'
+import type { MasterySkin } from '#shared/records/masteryData.ts'
+import {
+  CHANDELIER_CRUSH_GOAL,
+  type MissionId,
+} from '#shared/records/missionData.ts'
 import {
   type Calling,
   type CosmeticKind,
@@ -17,8 +20,8 @@ import {
   Hat,
   type PropStyle,
   type RunEnding,
-} from '#shared/playerData.ts'
-import type { ProofEnding } from '#shared/proofData.ts'
+} from '#shared/records/playerData.ts'
+import type { ProofEnding } from '#shared/records/proofData.ts'
 
 import type { DareKind } from './dare/dareSchema.ts'
 import type { MilestoneId } from './dare/milestones.ts'

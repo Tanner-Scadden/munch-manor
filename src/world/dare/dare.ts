@@ -1,7 +1,7 @@
 import { Array, Function, Option } from 'effect'
 
-import { type Difficulty } from '#shared/playerData.ts'
 import { type Seeded, nextRandom, shuffle } from '#shared/prng.ts'
+import { type Difficulty } from '#shared/records/playerData.ts'
 import { isHiddenInDark } from '#world/cellar/bulb.ts'
 import { type Level, type Room, levelOf } from '#world/level/arena.ts'
 import {

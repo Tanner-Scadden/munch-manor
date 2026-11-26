@@ -2,8 +2,8 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type { Calling } from '#shared/playerData.ts'
 import { nextRandom } from '#shared/prng.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import { type FeatLock, hasDone } from '#world/feats/feats.ts'
 import {
   carriedMagazine,

@@ -2,7 +2,7 @@ import { Array, Option, String } from 'effect'
 
 import { MARKS } from '#world/run/dareLadder.ts'
 
-import { pixelIconUrl } from './icons.ts'
+import { pixelIconUrl } from './icons/icons.ts'
 import { type Palette, type Sprite, spriteShapes } from './sprite.ts'
 
 const SEAL = [

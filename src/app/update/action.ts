@@ -3,7 +3,7 @@ import { Function, Result } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
-import { notePress } from '#platform/recording.ts'
+import { notePress } from '#platform/recording/recording.ts'
 import { leadSeatOf } from '#world/party/party.ts'
 import { withWorld } from '#world/schema/world.ts'
 import {

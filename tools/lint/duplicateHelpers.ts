@@ -90,19 +90,19 @@ const ALLOWED: ReadonlyArray<
       'the orchestrator loads request.ts without the game, and determinism:diff copies it into an older checkout',
   },
   {
-    file: 'src/platform/analytics.ts',
+    file: 'src/platform/analytics/analytics.ts',
     name: 'SummaryKind',
     reason:
       'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches ZombieKind',
   },
   {
-    file: 'src/platform/analytics.ts',
+    file: 'src/platform/analytics/analytics.ts',
     name: 'SummaryMode',
     reason:
       'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches HomeMode',
   },
   {
-    file: 'src/platform/analytics.ts',
+    file: 'src/platform/analytics/analytics.ts',
     name: 'SummaryDevice',
     reason:
       'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches InputDevice',
@@ -114,7 +114,7 @@ const ALLOWED: ReadonlyArray<
       'a list of strings that means sprite keys here and power-up ids in SavedPowerUps: the same shape, not one value',
   },
   {
-    file: 'src/shared/playerData.ts',
+    file: 'src/shared/records/playerData.ts',
     name: 'RecordUnlock',
     reason:
       'whether RECORD MY RUNS shows; SavedNightmare is a save field with the same two words, not one value',

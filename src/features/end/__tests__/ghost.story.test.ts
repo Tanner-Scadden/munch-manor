@@ -4,7 +4,7 @@ import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import type { Model } from '#app/model.ts'
-import { maybeGhostOf } from '#features/end/ghostView.ts'
+import { maybeGhostOf } from '#features/end/views/ghostView.ts'
 import { lastHeart, withDareThings } from '#test/model.fixture.ts'
 import type { BestRun } from '#world/schema/worldSchema.ts'
 

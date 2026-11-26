@@ -3,7 +3,7 @@ import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
 import { Subscription } from '@effect/ui'
 
 import { isRoomFrameDue } from '#domain/onlineRun.ts'
-import type { CoopNet } from '#features/coop/net.ts'
+import type { CoopNet } from '#features/coop/services/net.ts'
 import { coopSubscriptions } from '#features/coop/subscriptions.ts'
 import {
   MENU_REPEAT_DELAY_MS,
@@ -26,8 +26,8 @@ import type {
   RepeatedPadDirection,
 } from '#input/message.ts'
 import { InstallPrompt } from '#platform/install.ts'
-import { StoreEvent } from '#platform/playerSync.ts'
-import { PlayerStore } from '#platform/store.ts'
+import { StoreEvent } from '#platform/save/playerSync.ts'
+import { PlayerStore } from '#platform/save/store.ts'
 import { todays } from '#platform/today.ts'
 import {
   RUNNING_BUILD,
@@ -45,7 +45,7 @@ import {
   framePaceOf,
   gateFor,
   gateFrame,
-} from './frameGate.ts'
+} from './frame/frameGate.ts'
 import {
   type BlurredWindow,
   type CancelledPointer,

@@ -10,7 +10,7 @@ import {
   type RunSummary,
   RunSummaryJson,
   SOLO_PARTY,
-} from '../../src/platform/analytics'
+} from '../../src/platform/analytics/analytics'
 
 const USAGE = 'Usage: bun tools/analytics/smoke.ts <api origin>'
 

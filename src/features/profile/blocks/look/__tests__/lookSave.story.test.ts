@@ -12,9 +12,9 @@ import {
   decodeSave,
   restoreSave,
   saveOf,
-} from '#platform/save.ts'
-import { lookCodeOf, lookOfCode } from '#shared/lookCodes.ts'
-import { noMastery } from '#shared/masteryData.ts'
+} from '#platform/save/save.ts'
+import { lookCodeOf, lookOfCode } from '#shared/records/lookCodes.ts'
+import { noMastery } from '#shared/records/masteryData.ts'
 import {
   type Appearance,
   GunSkin,
@@ -23,7 +23,7 @@ import {
   PropStyle,
   SEEN_BASELINE,
   ShirtColor,
-} from '#shared/playerData.ts'
+} from '#shared/records/playerData.ts'
 import { legacySave } from '#test/store.fixture.ts'
 import { jsonOf } from '#test/testing.ts'
 import { pointsForRank } from '#world/heroes/rank.ts'

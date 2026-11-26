@@ -12,10 +12,13 @@ import {
   isPocketCardBlocking,
   maybeClueRoom,
 } from '#features/dare/pocketCard.ts'
-import { pocketCardShapes } from '#features/dare/pocketCardView.ts'
+import { pocketCardShapes } from '#features/dare/views/pocketCardView.ts'
 import { PAD_SELECT } from '#input/gamepad.ts'
+import {
+  DEFAULT_PORTRAIT_SCREEN,
+  LANDSCAPE_SCREEN,
+} from '#render/camera/screen.ts'
 import type * as Draw from '#render/draw.ts'
-import { DEFAULT_PORTRAIT_SCREEN, LANDSCAPE_SCREEN } from '#render/screen.ts'
 import { pocketOf } from '#screens/game/pocket.ts'
 import {
   hidingSpotIn,

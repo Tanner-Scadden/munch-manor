@@ -1,10 +1,7 @@
 import { Array } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
-import { pixelIconUrl } from '#art/icons.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
+import { pixelIconUrl } from '#art/icons/icons.ts'
 import { iconView } from '#ui/menuParts.ts'
 import { KNIFE_NAME } from '#world/names.ts'
 

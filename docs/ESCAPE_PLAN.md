@@ -95,7 +95,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 
 **Goal.** Players read the new difficulty and power-up names. No rule changes.
 
-- Difficulty labels and blurbs in `src/world/run/difficulty.ts` (`DIFFICULTIES[d].name`), the lock note, the home question (`src/screens/home/homeView.ts`), the co-op picks (`src/features/coop/picksView.ts`), the end card's unlock line, the status text (`src/app/view.ts`), and the share words (`SHOUTED` in `src/features/end/share.ts`).
+- Difficulty labels and blurbs in `src/world/run/difficulty.ts` (`DIFFICULTIES[d].name`), the lock note, the home question (`src/screens/home/homeView.ts`), the co-op picks (`src/features/coop/views/picksView.ts`), the end card's unlock line, the status text (`src/app/view.ts`), and the share words (`SHOUTED` in `src/features/end/share.ts`).
 - Power-up names and lines in `PICKUP_NAMES` (`src/world/names.ts`) and `PICKUPS` (`src/world/gear/powerups.ts`); the callouts bake from them.
 - Server messages that name Nightmare (`infra/worker/gameRoom.ts`).
 
@@ -107,7 +107,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 
 - `maybeRoundLimit` returns none for every gun (`src/world/gear/weapons.ts`); `hasEndlessRounds` and its callers simplify. Fridge weapons' charges and dents become magazines.
 - Remove the ammo window (`src/world/shop/ammoCounter.ts`, `Purchasable.Ammo`, `SeatAction.BuyAmmo`, the `CounterSale` cosmetic), the ammo shop rows, and the pantry's lids. The HUD shows the magazine only (`src/screens/game/hud.ts`); `src/features/hud/ammoWarning.ts` keeps the last-shots tick for a magazine and loses the rest.
-- Save version 17 drops `ammoTip` (`src/shared/playerData.ts`, `migrateV16` in `src/platform/save.ts`).
+- Save version 17 drops `ammoTip` (`src/shared/records/playerData.ts`, `migrateV16` in `src/platform/save/save.ts`).
 - Protocol 20 (action codes shift; `roomWorld.test.ts` pins them).
 
 **Checks.** `reload.story`, the ammo warning and HUD tests, `seatAction.parity`, a balance batch on wave snapshots to see the guns' power with free ammo.
@@ -118,7 +118,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 
 - `CarriedGun` gains a kill count; `UPGRADE_TIERS` trades `price` for a kill threshold (`src/world/gear/weapons.ts`); kills credit the gun that made them (`src/world/step/hits.ts`, `melee.ts` for the knife's own count if wanted).
 - The shop stops selling upgrades; `shopUpgrades.ts` text becomes the level-up callout.
-- A level-up fanfare and the gun slot's tier mark (`src/render/hudLayout.ts`, `hud.ts`).
+- A level-up fanfare and the gun slot's tier mark (`src/render/hud/hudLayout.ts`, `hud.ts`).
 
 **Checks.** Story: kills level a gun, a swapped gun keeps its level, a fridge weapon levels. Wire digest re-pinned.
 
@@ -177,7 +177,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 
 - `LevelSpec` rooms get an origin column and row (`src/world/level/arena.ts`), so a room can sit west of the start; `buildLevel` composes them; door ids grow a `Front` door (`DoorId`, `DOOR_SYMBOLS`, `DOOR_OUTWARD`, `doorRoute.ts`, `wavePacks.ts`, trap lays, door art).
 - Nothing reads `PARLOUR` directly: the start spot, the crew's seats, and `rollWave`'s default doors come from the level (`worldSchema.ts`, `party.ts`, `endlessWaves.ts`, `wavePlans.ts`).
-- Room art bakes per room, not per set of open exits (`src/render/room/`, `src/art/spritePrecompile.ts`), so rolled rooms do not multiply images.
+- Room art bakes per room, not per set of open exits (`src/render/room/`, `src/art/atlas/spritePrecompile.ts`), so rolled rooms do not multiply images.
 - `bun run perf:check` with the bigger map; the flow field and the alive cap measured again.
 
 **Checks.** `arena.story`, `pathing`, `exits.story`, the camera tests, `determinism:diff` shows no change in play.
@@ -207,7 +207,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 
 **Goal.** The parlour, library, and cellar roll into the three slots each run.
 
-- A house stream (a salted seed, like the fridge's) rolls the arrangement at run start (`src/app/runReset.ts`, `src/world/net/roomWorld.ts` `freshWorld`).
+- A house stream (a salted seed, like the fridge's) rolls the arrangement at run start (`src/app/frame/runReset.ts`, `src/world/net/roomWorld.ts` `freshWorld`).
 - A cloche over the doorway lifts as the boards come down.
 - `GAME_DESIGN.md`'s "Not now" moves "Procedurally generated manors" to say hand-made rooms roll.
 - The teammate bots and the balance bot route by the level, not by fixed spots.
@@ -219,7 +219,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 **Goal.** A run is an escape: find the dare list, then the finale.
 
 - The house's things (`src/world/dare/`, new folder): each room behind boards holds one thing on the list. The list rolls by difficulty from its own salted stream; the rooms and the hiding spots too.
-- The dare card in the HUD: empty outlines that fill (`src/render/hudLayout.ts`, `src/screens/game/hud.ts`), in portrait and landscape.
+- The dare card in the HUD: empty outlines that fill (`src/render/hud/hudLayout.ts`, `src/screens/game/hud.ts`), in portrait and landscape.
 - The escape ramp: a campaign run no longer ends at wave 10 (`clearWave` in `src/world/waves/waves.ts`); past it, waves come from the Endless generator. Uncle Chunk never comes by wave number in an escape.
 - The finale: with the list done, Uncle Chunk comes through the front door (`src/world/zombies/boss.ts`, a fixed door in place of `pickDoor`), his health from the wave he arrives on. He is the final boss and not on the list. His health is the boss's base health times a finale scale by difficulty (`FINALE_RULES.chunkHealthScale`) and a crew size scale (`chunkCrewScale`), and he has a second phase at half health with party crashers, a Belly Slam, a plate volley, and a quicker belch. When he falls a big gold key bursts out and flies into the front door's padlock in 0.9 s (`Finale.KeyFlying`); the door opens at once, with no hat and no hold-out, and the run ends when every standing player is through.
 - An `Escaped` phase in place of `Victory` for the campaign (`Phase`, `isWonRun`, `isRunOver`, the end card, share text, music); Triple Dog Dare unlocks with a Triple Dare escape (`NightmareLock`, `infra/worker/syncCore.ts`).
@@ -234,7 +234,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 
 **Goal.** The cutscene from the dare card to the slam.
 
-- An `Arriving` phase at run start in the World (`startRun` in `src/app/runFlow.ts`, `startRoomWorld` in `src/world/net/roomWorld.ts`), ending on the slam; the room sets it in co-op so every screen slams together.
+- An `Arriving` phase at run start in the World (`startRun` in `src/app/frame/runFlow.ts`, `startRoomWorld` in `src/world/net/roomWorld.ts`), ending on the slam; the room sets it in co-op so every screen slams together.
 - The beats drawn as a client cosmetic read off the phase's clock, like the end card's beat (`src/features/end/endBeat.ts`): the car, the chewed sign, the daredevils' cars, the party hat and flashlight, the knock and the knock back, the coats and the waving hand, HELLO? and the place card, the slam. Any press skips to the slam; full the first time, the knock and the slam after.
 - The dare card in your pocket opens after the slam and folds into the HUD; the first wave starts once it is read.
 - Its music and sounds (`src/app/update/music.ts`, `src/audio/`).
@@ -257,7 +257,7 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 **Goal.** The house's look, drafted for review in Munch Studio.
 
 - The zombies restyled as guests and daredevils, kind by kind, with their wear stages (`src/art/sprites/zombieArt.ts`, `bossArt.ts` for Uncle Chunk's tuxedo).
-- The power-ups' pickups and themed auras in place of today's colored circle (`src/art/sprites/pickups.ts`, `auraShapes` in `src/render/powerupView.ts`), and their bullet looks.
+- The power-ups' pickups and themed auras in place of today's colored circle (`src/art/sprites/pickups.ts`, `auraShapes` in `src/render/effects/powerupView.ts`), and their bullet looks.
 - Munchopedia bios for the new story; Rattles' hint lines.
 
 **Checks.** The atlas test, the perf scene budget, a Studio review round per kind.
@@ -308,8 +308,8 @@ Bottom to top, as planned, with notes on what was built. Each layer names its go
 
 **Goal.** From the owner's playtest on Dare (2026-11-10): "I bought all the rooms, but can't find anything. The hints also don't have a pointer on which way." Built on layer 18.
 
-- On Dare and Double Dare a thing in an open room is drawn on its spot, big, bobbing, in a pulsing gold glow (`src/features/dare/dareView.ts`); Dare keeps the gold sparkle, in waves too. Triple Dare and Triple Dog Dare keep the glint up close.
-- A gold arrow over the thing, or at the window's edge toward it, while a hint is up, and on Dare all break toward the nearest thing left (`src/features/dare/darePointer.ts`, over `src/render/pointerArrow.ts`, the tours' arrow moved down a layer).
+- On Dare and Double Dare a thing in an open room is drawn on its spot, big, bobbing, in a pulsing gold glow (`src/features/dare/views/dareView.ts`); Dare keeps the gold sparkle, in waves too. Triple Dare and Triple Dog Dare keep the glint up close.
+- A gold arrow over the thing, or at the window's edge toward it, while a hint is up, and on Dare all break toward the nearest thing left (`src/features/dare/views/darePointer.ts`, over `src/render/hud/pointerArrow.ts`, the tours' arrow moved down a layer).
 - Every hint line names its thing beside its icon, twice its size; a room opening shows its thing ("BELL! IN HERE!").
 - Client cosmetics only: the World and the co-op wire are unchanged.
 

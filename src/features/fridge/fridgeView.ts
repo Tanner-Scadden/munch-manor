@@ -10,14 +10,14 @@ import {
   placeAt,
   spriteShapes,
 } from '#art/sprite.ts'
-import { type Camera, worldToView } from '#render/camera.ts'
+import { type Camera, worldToView } from '#render/camera/camera.ts'
+import { screenOf } from '#render/camera/screen.ts'
 import { type Drawable, ON_FRONT_PX } from '#render/depth.ts'
 import type * as Draw from '#render/draw.ts'
 import { rect } from '#render/drawing.ts'
-import { clearWindowOf } from '#render/hudLayout.ts'
-import { type Keepout, maybeClearOfKeepouts } from '#render/keepout.ts'
+import { clearWindowOf } from '#render/hud/hudLayout.ts'
+import { type Keepout, maybeClearOfKeepouts } from '#render/hud/keepout.ts'
 import { FRIDGE_RISE_PX, isKitchenShown } from '#render/room/kitchenView.ts'
-import { screenOf } from '#render/screen.ts'
 import { TILE_SIZE } from '#shared/constants.ts'
 import {
   PAN_RULES,

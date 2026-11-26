@@ -1,8 +1,8 @@
 import { Option, Schema } from 'effect'
 
-import { SavedDareMarks } from '#shared/dareMarkData.ts'
-import { DayStamp } from '#shared/dayStamp.ts'
-import { SavedProof } from '#shared/proofData.ts'
+import { SavedDareMarks } from '#shared/records/dareMarkData.ts'
+import { DayStamp } from '#shared/records/dayStamp.ts'
+import { SavedProof } from '#shared/records/proofData.ts'
 
 import { ShelfSpot, ShelfThing } from './proof.ts'
 

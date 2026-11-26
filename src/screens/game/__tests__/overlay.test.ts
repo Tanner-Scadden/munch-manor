@@ -4,7 +4,7 @@ import { expect, test } from 'vitest'
 import { UiStruct } from '@effect/ui'
 
 import { Phase } from '#app/model.ts'
-import { LANDSCAPE_SCREEN } from '#render/screen.ts'
+import { LANDSCAPE_SCREEN } from '#render/camera/screen.ts'
 import { overlayShapes } from '#screens/game/overlay.ts'
 import { DISTANT_SPAWN, quietWave } from '#test/model.fixture.ts'
 import { imagesIn, rectsOf } from '#test/viewReading.ts'

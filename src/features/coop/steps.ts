@@ -5,7 +5,7 @@ import { HtmlCommand } from '@effect/ui/html'
 
 import { callingOfMember } from '#art/seatLooks.ts'
 import { LobbyChange, isInLobby, maybeRoomOf } from '#domain/coopRoom.ts'
-import type { Calling } from '#shared/playerData.ts'
+import type { Calling } from '#shared/records/playerData.ts'
 import {
   type CallingStanding,
   callingPriceOf,
@@ -16,7 +16,6 @@ import {
 import { makeEdits } from './lobbyEdits.ts'
 import { CoopNotice } from './message.ts'
 import { type Model } from './model.ts'
-import { CoopNet } from './net.ts'
 import {
   CALLING_PILL,
   CODE_INPUT,
@@ -27,6 +26,7 @@ import {
   READY_BUTTON,
   meIn,
 } from './roomState.ts'
+import { CoopNet } from './services/net.ts'
 
 export type CoopResultOf<C> = Readonly<{
   model: Model

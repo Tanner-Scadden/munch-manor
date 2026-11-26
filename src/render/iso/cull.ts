@@ -1,6 +1,6 @@
 import { Function } from 'effect'
 
-import { type LensFrame, lensOf } from '#render/lens.ts'
+import { type LensFrame, lensOf } from '#render/camera/lens.ts'
 
 export type ViewBox = Readonly<{
   left: number

@@ -15,7 +15,7 @@ import { bakeText, placeBaked, textShapes, textWidth } from '#art/font.ts'
 import { TOP_LEFT, group, spriteShapes } from '#art/sprite.ts'
 import type * as Draw from '#render/draw.ts'
 import { placeSprite, rect } from '#render/drawing.ts'
-import { type HudLayout, POCKET_CHIP_HEIGHT } from '#render/hudLayout.ts'
+import { type HudLayout, POCKET_CHIP_HEIGHT } from '#render/hud/hudLayout.ts'
 import { dareCardOf } from '#world/dare/dare.ts'
 import type { Vector } from '#world/schema/worldSchema.ts'
 

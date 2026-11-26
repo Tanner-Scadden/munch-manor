@@ -3,8 +3,8 @@ import { Array, Function, Option, String } from 'effect'
 import { UiStruct } from '@effect/ui'
 
 import type { Model } from '#app/model.ts'
-import type { Calling, SavedSeenUnlocks } from '#shared/playerData.ts'
-import { purseBonesAt } from '#shared/rankCurve.ts'
+import type { Calling, SavedSeenUnlocks } from '#shared/records/playerData.ts'
+import { purseBonesAt } from '#shared/records/rankCurve.ts'
 import { CALLINGS, UNLOCK_RANKS } from '#world/heroes/calling.ts'
 import { rankOf, totalPointsOf } from '#world/heroes/rank.ts'
 

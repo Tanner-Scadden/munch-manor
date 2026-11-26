@@ -2,7 +2,7 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import { TOP_MARK } from '#shared/dareMarkData.ts'
+import { TOP_MARK } from '#shared/records/dareMarkData.ts'
 import type { PlannedSpawn } from '#world/schema/worldSchema.ts'
 
 import { type Modifier, type Modifiers, bonusPercentOf } from './modifiers.ts'

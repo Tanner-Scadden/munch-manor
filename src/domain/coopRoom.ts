@@ -11,7 +11,7 @@ import {
   type World,
 } from '@munch/netcode'
 
-import { Calling } from '#shared/playerData.ts'
+import { Calling } from '#shared/records/playerData.ts'
 import {
   type OwnSeat,
   ROOM_WORLD,

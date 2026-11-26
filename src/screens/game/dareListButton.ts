@@ -1,9 +1,6 @@
 import { Function } from 'effect'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
 import { pocketBoxOf } from '#features/dare/dareCard.ts'
 import {
@@ -13,8 +10,8 @@ import {
 import { isCaseCardUp } from '#features/onboarding/caseCard.ts'
 import { isDebutCardUp } from '#features/onboarding/onboarding.ts'
 import { RunButtonMessage } from '#input/message.ts'
-import { hudLayoutFor } from '#render/hudLayout.ts'
-import { type Screen, screenOf } from '#render/screen.ts'
+import { type Screen, screenOf } from '#render/camera/screen.ts'
+import { hudLayoutFor } from '#render/hud/hudLayout.ts'
 import { percentOf } from '#ui/menuParts.ts'
 
 import { pocketOf } from './pocket.ts'

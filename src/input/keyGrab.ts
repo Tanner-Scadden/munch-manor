@@ -2,13 +2,10 @@ import { Function } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 
-import type {
-  ApplicationHtml,
-  ApplicationViewBuilder,
-} from '#app/definition.ts'
+import type { ApplicationHtml, ApplicationViewBuilder } from '#app/component.ts'
 import type { Model } from '#app/model.ts'
-import { pixelArtStyle } from '#art/artSize.ts'
-import { pixelIconUrl } from '#art/icons.ts'
+import { pixelArtStyle } from '#art/icons/artSize.ts'
+import { pixelIconUrl } from '#art/icons/icons.ts'
 
 const LETTER_KEY = /^Key[A-Z]$/
 
