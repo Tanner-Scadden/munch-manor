@@ -1,7 +1,9 @@
 import { Function } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pocketBoxOf } from '../../features/dare/dareCard'
 import {
@@ -56,58 +58,50 @@ const verticalSpan = (
 export const DARE_LIST_BUTTON_CLASS = 'dare-list-button'
 
 export const dareListButtonView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
-  if (
-    !isDareCardToggling(model) ||
-    isDebutCardUp(model) ||
-    isCaseCardUp(model)
-  ) {
-    return h.empty
-  }
-  const screen = screenOf(model)
-  const box = pocketBoxOf(model, hudLayoutFor(screen), pocketOf(model))
-  const left = Math.max(0, box.left - HIT_PAD)
-  const top = Math.max(0, box.top - HIT_PAD)
-  const width = percentOf(box.right + HIT_PAD - left, screen.width)
-  const height = percentOf(box.bottom + HIT_PAD - top, screen.height)
-  const span = verticalSpan(
-    screen.layout,
-    percentOf(top, screen.height),
-    percentOf(box.bottom + HIT_PAD, screen.height),
-    height,
-  )
-  return h.div(
-    [h.Class('hud-tap-frame')],
-    [
-      h.div(
-        [h.Class('hud-tap-stage')],
-        [
-          h.button([
-            h.Type('button'),
-            h.Class(DARE_LIST_BUTTON_CLASS),
-            h.AriaLabel(
-              isPocketCardOpened(model)
-                ? 'Put the dare card away'
-                : 'Open the dare card',
-            ),
-            h.AriaKeyshortcuts('Tab'),
-            // NOTE: never under a thumb's 48 px: centered across the drawn
-            // list and kept inside the screen's sides, its height as
-            // verticalSpan says; the art never moves.
-            h.Style({
-              left: `max(${percentOf(left, screen.width)} + ${width} / 2, max(${width}, ${TAP_PX}px) / 2)`,
-              width: `max(${width}, ${TAP_PX}px)`,
-              ...span,
-              translate: screen.layout === 'Portrait' ? '-50% 0' : '-50% -50%',
-            }),
-            h.OnClick(RunButtonMessage.ClickedDareList(), {
-              focusSelector: '.game-surface',
-            }),
-          ]),
-        ],
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null => {
+    if (
+      !isDareCardToggling(model) ||
+      isDebutCardUp(model) ||
+      isCaseCardUp(model)
+    ) {
+      return null
+    }
+    const screen = screenOf(model)
+    const box = pocketBoxOf(model, hudLayoutFor(screen), pocketOf(model))
+    const left = Math.max(0, box.left - HIT_PAD)
+    const top = Math.max(0, box.top - HIT_PAD)
+    const width = percentOf(box.right + HIT_PAD - left, screen.width)
+    const height = percentOf(box.bottom + HIT_PAD - top, screen.height)
+    const span = verticalSpan(
+      screen.layout,
+      percentOf(top, screen.height),
+      percentOf(box.bottom + HIT_PAD, screen.height),
+      height,
+    )
+    return h.div.class('hud-tap-frame').children(
+      h.div.class('hud-tap-stage').children(
+        h.button
+          .attr('type', 'button')
+          .class(DARE_LIST_BUTTON_CLASS)
+          .attr(
+            'aria-label',
+            isPocketCardOpened(model)
+              ? 'Put the dare card away'
+              : 'Open the dare card',
+          )
+          .attr('aria-keyshortcuts', 'Tab')
+          .style({
+            left: `max(${percentOf(left, screen.width)} + ${width} / 2, max(${width}, ${TAP_PX}px) / 2)`,
+            width: `max(${width}, ${TAP_PX}px)`,
+            ...span,
+            translate: screen.layout === 'Portrait' ? '-50% 0' : '-50% -50%',
+          })
+          .on('click', RunButtonMessage.ClickedDareList()),
       ),
-    ],
-  )
-})
+    )
+  },
+)

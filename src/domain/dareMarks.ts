@@ -1,13 +1,14 @@
 import { Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import { playedDifficultyOf } from '../platform/analyticsRun'
-import { isDareTaken } from './beatMyRun'
 import type { SavedDareMarks } from '../shared/dareMarkData'
 import type { Difficulty } from '../shared/playerData'
 import { MAX_MARK, clampMark } from '../world/run/dareLadder'
 import { hasJustWon } from '../world/run/difficulty'
+import { isDareTaken } from './beatMyRun'
 import { playedMarkOf } from './onlineRun'
 
 // The dare ladder as the player climbs it (docs/PROGRESSION_PLAN.md, pillar
@@ -41,7 +42,7 @@ export const fitDareMark = (model: Model): Model => {
   }
   const best = bestMarkOn(model.dareMarks, model.difficulty.chosen)
   return model.dareMark > best
-    ? modifyFields(model, { dareMark: () => best })
+    ? UiStruct.evolve(model, { dareMark: () => best })
     : model
 }
 
@@ -59,7 +60,7 @@ export const climbLadder: {
   const difficulty = playedDifficultyOf(after)
   const opened = Math.min(MAX_MARK, playedMarkOf(after) + 1)
   return opened > after.dareMarks[difficulty]
-    ? modifyFields(after, {
+    ? UiStruct.evolve(after, {
         dareMarks: marks => ({ ...marks, [difficulty]: opened }),
       })
     : after

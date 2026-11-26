@@ -1,7 +1,9 @@
 import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import {
   CLOCK_ICON,
@@ -15,7 +17,7 @@ import { iconView } from '../../ui/menuParts'
 import { DIFFICULTIES } from '../../world/run/difficulty'
 import { durationLabel } from '../../world/run/stats'
 import { bestsFor } from './home'
-import { homeButtonAttributes, keyBadgeView } from './homeAttributes'
+import { homeButton, keyBadgeView } from './homeAttributes'
 
 // The home menu's top left: the bests badge, and the day's mission card
 // under it (src/features/missions/missionCard.ts).
@@ -48,51 +50,46 @@ const shownBests = (model: Model): ReadonlyArray<Best> => [
     : []),
 ]
 
-const bestView = (best: Best, h: ApplicationViewBuilder): Html =>
-  h.span(
-    [h.Class('home-best')],
-    [
-      h.span(
-        [h.Class('home-best-label')],
-        [
+const bestView = (best: Best, h: ApplicationViewBuilder): ApplicationHtml =>
+  h.span
+    .class('home-best')
+    .children(
+      h.span
+        .class('home-best-label')
+        .children(
           iconView('home-best-icon', best.icon, h),
-          h.span([h.Class('sr-only')], [best.label]),
-        ],
-      ),
-      h.span([h.Class('home-best-value')], [best.value]),
-    ],
-  )
+          h.span.class('sr-only').children(best.label),
+        ),
+      h.span.class('home-best-value').children(best.value),
+    )
 
 // NOTE: a button of icons and big numbers, in the chosen level's color, that
 // opens the Munchopedia, and nothing at all until the player has a best.
-const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
+const bestsView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Array.match(shownBests(model), {
-    onEmpty: () => h.empty,
+    onEmpty: () => null,
     onNonEmpty: bests =>
-      h.button(
-        [
-          ...homeButtonAttributes('Bests', h),
-          h.Class('home-bests'),
-          h.DataAttribute('difficulty', model.difficulty.chosen),
-          h.AriaLabel(
-            `Your bests, ${DIFFICULTIES[model.difficulty.chosen].name}: ${Array.join(
-              Array.map(bests, best => `${best.label} ${best.value}`),
-              ', ',
-            )}. Opens the Munchopedia`,
-          ),
-          h.AriaHasPopup('dialog'),
-          h.OnClick(HomeMessage.ClickedMunchopediaButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
+      homeButton(h.button, 'Bests')
+        .class('home-bests')
+        .attr('data-difficulty', model.difficulty.chosen)
+        .attr(
+          'aria-label',
+          `Your bests, ${DIFFICULTIES[model.difficulty.chosen].name}: ${Array.join(
+            Array.map(bests, best => `${best.label} ${best.value}`),
+            ', ',
+          )}. Opens the Munchopedia`,
+        )
+        .attr('aria-haspopup', 'dialog')
+        .on('click', HomeMessage.ClickedMunchopediaButton())
+        .children(
           iconView('home-bests-level', SKULL_ICONS[model.difficulty.chosen], h),
-          h.span(
-            [h.Class('home-bests-list')],
-            Array.map(bests, best => bestView(best, h)),
-          ),
-        ],
-      ),
+          h.span
+            .class('home-bests-list')
+            .children(Array.map(bests, best => bestView(best, h))),
+        ),
   })
 
 // TOP LEFT
@@ -100,19 +97,20 @@ const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
 // NOTE: the bests badge over the mission card, in one column, so the card
 // takes the badge's place while a new player has no best.
 export const topLeftView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  h.div(
-    [h.Class('home-top-left')],
-    [
-      bestsView(model, h),
-      missionCardView(
-        model,
-        homeButtonAttributes('Missions', h),
-        keyBadgeView(model, 'Missions', h),
-        h,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml =>
+    h.div
+      .class('home-top-left')
+      .children(
+        bestsView(model, h),
+        missionCardView(
+          model,
+          homeButton(h.button, 'Missions'),
+          keyBadgeView(model, 'Missions', h),
+          h,
+        ),
       ),
-    ],
-  ),
 )

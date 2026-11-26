@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { TOP_MARK } from '../../shared/dareMarkData'
 import type { PlannedSpawn } from '../schema/worldSchema'
@@ -150,7 +151,7 @@ export const markSpawns: {
     isRuleOn(mark, 'FastHotfoots')
       ? Array.map(spawns, spawn =>
           spawn.kind === 'Runner'
-            ? modifyFields(spawn, {
+            ? UiStruct.evolve(spawn, {
                 speedScale: scale => scale * HOTFOOT_SPEED_SCALE,
               })
             : spawn,

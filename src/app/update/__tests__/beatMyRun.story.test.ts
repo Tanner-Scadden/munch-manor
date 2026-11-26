@@ -1,7 +1,6 @@
 import { Effect, Option, String } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import {
@@ -15,19 +14,21 @@ import {
   maybeBeatComparisonOf,
   shareUrlOf,
 } from '../../../features/end/beatRun'
-import { Message as LobbyMessage } from '../../../features/lobby/message'
-import { FoldLobby } from '../../../features/lobby/steps'
+import { LobbyMessage } from '../../../features/lobby/message'
 import { readyModel } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
+  foldLobby,
+  modelAfter,
   press,
   resolveFocusLobby,
+  send,
   startedRun,
+  steps,
   throughIntro,
 } from '../../../test/testing'
 import { maybeOpenerOf } from '../../../world/dare/milestones'
 import { noModifiers } from '../../../world/run/modifiers'
-import { LobbyBinding } from '../../bindings'
 import { Message } from '../../message'
 import { type Model, Phase } from '../../model'
 import { ForgetBeatLink } from '../beatMyRun'
@@ -44,19 +45,19 @@ const OWN_SEED = 7_654_321
 const NAPKIN_OPENER = Option.getOrElse(maybeOpenerOf('NapkinRing'), () => '')
 
 // NOTE: the friend, who has opened the napkin ring, on Hard with Broke on.
-const friendHome: Model = modifyFields(readyModel, {
+const friendHome: Model = UiStruct.evolve(readyModel, {
   rngState: () => FRIEND_SEED,
-  difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
+  difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Hard' }),
   modifiers: () => ({ ...noModifiers, broke: true }),
   journal: journal =>
-    modifyFields(journal, { milestones: () => [NAPKIN_OPENER] }),
+    UiStruct.evolve(journal, { milestones: () => [NAPKIN_OPENER] }),
 })
 
 // NOTE: this player, who has not, on Normal with nothing on, and their own
 // seed.
-const ownHome: Model = modifyFields(readyModel, {
+const ownHome: Model = UiStruct.evolve(readyModel, {
   rngState: () => OWN_SEED,
-  difficulty: setting => modifyFields(setting, { chosen: () => 'Normal' }),
+  difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Normal' }),
 })
 
 const DARE: FriendsDare = {
@@ -78,10 +79,10 @@ const linkOf = (dare: FriendsDare): string =>
   `?dare=${Option.getOrElse(dareCodeOf(dare), () => '')}`
 
 const offered = (model: Model, dare: FriendsDare = DARE): Model =>
-  modifyFields(model, { beatMyRun: () => BeatMyRun.Offered({ dare }) })
+  UiStruct.evolve(model, { beatMyRun: () => BeatMyRun.Offered({ dare }) })
 
-const takeFromCard = Story.steps(
-  Story.message(Message.ClickedBeatMyRunButton()),
+const takeFromCard = steps(
+  send(Message.ClickedBeatMyRunButton()),
   resolveFocusLobby(),
 )
 
@@ -120,38 +121,36 @@ describe('the link', () => {
   })
 
   it.effect('a bad link read at start offers nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      Story.message(
-        Message.CompletedReadBeatLink({
-          maybeDare: readBeatLink('?dare=garbage'),
+    modelAfter(
+      readyModel,
+      steps(
+        send(
+          Message.CompletedReadBeatLink({
+            maybeDare: readBeatLink('?dare=garbage'),
+          }),
+        ),
+        checkModel(({ beatMyRun }) => {
+          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
         }),
       ),
-      Story.model(({ beatMyRun }) => {
-        expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
-      }),
     ),
   )
 
   it.effect('a good link read at start offers its dare', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      Story.message(
-        Message.CompletedReadBeatLink({
-          maybeDare: readBeatLink(linkOf(DARE)),
-        }),
-      ),
-      Story.model(({ beatMyRun }) => {
-        expect(beatMyRun).toEqual(BeatMyRun.Offered({ dare: DARE }))
-      }),
-      // NOTE: and the dare comes off the address, so a reload never offers
-      // it again.
-      Story.Command.expectExact(ForgetBeatLink()),
-      Story.Command.resolve(
-        ForgetBeatLink(),
-        Message.CompletedForgetBeatLink(),
+    modelAfter(
+      readyModel,
+      steps(
+        send(
+          Message.CompletedReadBeatLink({
+            maybeDare: readBeatLink(linkOf(DARE)),
+          }),
+        ),
+        checkModel(({ beatMyRun }) => {
+          expect(beatMyRun).toEqual(BeatMyRun.Offered({ dare: DARE }))
+        }), // NOTE: and the dare comes off the address, so a reload never offers
+        // it again.
+        s => s.expectExact(ForgetBeatLink.make()),
+        s => s.resolve(ForgetBeatLink.make(), Component.noop),
       ),
     ),
   )
@@ -172,7 +171,7 @@ describe('the link', () => {
     () =>
       Effect.gen(function* () {
         const running = yield* startedRun(friendHome)
-        const munched = modifyFields(running, {
+        const munched = UiStruct.evolve(running, {
           phase: () => Phase.GameOver({ wave: 3 }),
         })
         const shared = readBeatLink(new URL(shareUrlOf(munched)).search).pipe(
@@ -190,74 +189,68 @@ describe('the link', () => {
 
 describe('BEAT MY RUN', () => {
   it.effect('the card takes the dare into the lobby, its picks held', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(offered(ownHome)),
-      takeFromCard,
-      Story.model(current => {
-        expect(current.lobby.status).toBe('Open')
-        expect(current.difficulty.chosen).toBe('Hard')
-        expect(current.modifiers.broke).toBe(true)
-      }),
-      // NOTE: a pick tapped on the held lobby changes nothing.
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedDifficultyButton({ difficulty: 'Easy' }),
+    modelAfter(
+      offered(ownHome),
+      steps(
+        takeFromCard,
+        checkModel(current => {
+          expect(current.lobby.status).toBe('Open')
+          expect(current.difficulty.chosen).toBe('Hard')
+          expect(current.modifiers.broke).toBe(true)
+        }), // NOTE: a pick tapped on the held lobby changes nothing.
+        send(LobbyMessage.PickedLobbyDifficulty({ difficulty: 'Easy' })),
+        checkModel(({ difficulty }) => {
+          expect(difficulty.chosen).toBe('Hard')
+        }),
       ),
-      Story.model(({ difficulty }) => {
-        expect(difficulty.chosen).toBe('Hard')
-      }),
     ),
   )
 
   it.effect('the x lets it go, and the own picks stay', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(offered(ownHome)),
-      Story.message(Message.ClickedDismissBeatMyRunButton()),
-      Story.Command.resolve(
-        FocusHomeButton({ button: 'Play' }),
-        Message.CompletedFocusHomeButton(),
+    modelAfter(
+      offered(ownHome),
+      steps(
+        send(Message.ClickedDismissBeatMyRunButton()),
+        s =>
+          s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop),
+        checkModel(({ beatMyRun, difficulty }) => {
+          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+          expect(difficulty.chosen).toBe('Normal')
+        }),
       ),
-      Story.model(({ beatMyRun, difficulty }) => {
-        expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
-        expect(difficulty.chosen).toBe('Normal')
-      }),
     ),
   )
 
   it.effect('Escape lets it go as the x does', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(offered(ownHome)),
-      press('Escape'),
-      Story.Command.resolve(
-        FocusHomeButton({ button: 'Play' }),
-        Message.CompletedFocusHomeButton(),
+    modelAfter(
+      offered(ownHome),
+      steps(
+        press('Escape'),
+        s =>
+          s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop),
+        checkModel(({ beatMyRun, difficulty }) => {
+          expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+          expect(difficulty.chosen).toBe('Normal')
+        }),
       ),
-      Story.model(({ beatMyRun, difficulty }) => {
-        expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
-        expect(difficulty.chosen).toBe('Normal')
-      }),
     ),
   )
 
   it.effect('BACK from a dare brings the own picks back', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(offered(ownHome)),
-      takeFromCard,
-      Story.messageIn(LobbyBinding, LobbyMessage.ClickedBackButton()),
-      Story.Command.resolve(
-        FocusHomeButton({ button: 'Play' }),
-        Message.CompletedFocusHomeButton(),
+    modelAfter(
+      offered(ownHome),
+      steps(
+        takeFromCard,
+        send(LobbyMessage.RequestedLeaveLobby()),
+        s =>
+          s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop),
+        foldLobby,
+        checkModel(({ beatMyRun, difficulty, modifiers }) => {
+          expect(beatMyRun).toEqual(BeatMyRun.Offered({ dare: DARE }))
+          expect(difficulty.chosen).toBe('Normal')
+          expect(modifiers.broke).toBe(false)
+        }),
       ),
-      Story.Command.resolve(FoldLobby(), LobbyMessage.CompletedFold()),
-      Story.model(({ beatMyRun, difficulty, modifiers }) => {
-        expect(beatMyRun).toEqual(BeatMyRun.Offered({ dare: DARE }))
-        expect(difficulty.chosen).toBe('Normal')
-        expect(modifiers.broke).toBe(false)
-      }),
     ),
   )
 
@@ -271,12 +264,13 @@ describe('BEAT MY RUN', () => {
           seed: friendRun.runStart.runSeed,
           pool: friendRun.runStart.runPool,
         }
-        const ownRun = yield* Story.story(
-          APPLICATION,
-          Story.given(offered(ownHome, dare)),
-          takeFromCard,
-          Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
-          throughIntro,
+        const ownRun = yield* modelAfter(
+          offered(ownHome, dare),
+          steps(
+            takeFromCard,
+            send(LobbyMessage.RequestedStartFromLobby()),
+            throughIntro,
+          ),
         )
         // NOTE: the napkin ring is not this player's, but it is the
         // friend's dare's, so the list rolls from it all the same.
@@ -290,7 +284,7 @@ describe('BEAT MY RUN', () => {
 
 describe('the end card', () => {
   const taken = (model: Model): Model =>
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       beatMyRun: () =>
         BeatMyRun.Taken({
           dare: DARE,
@@ -306,7 +300,7 @@ describe('the end card', () => {
     })
 
   it('a wave short of the friend is NOT YET', () => {
-    const munched = modifyFields(taken(readyModel), {
+    const munched = UiStruct.evolve(taken(readyModel), {
       phase: () => Phase.GameOver({ wave: 2 }),
     })
     expect(
@@ -315,7 +309,7 @@ describe('the end card', () => {
   })
 
   it('an escape BEATS IT', () => {
-    const escaped = modifyFields(taken(readyModel), {
+    const escaped = UiStruct.evolve(taken(readyModel), {
       phase: () => Phase.Escaped({ wave: 3 }),
     })
     expect(
@@ -326,7 +320,9 @@ describe('the end card', () => {
   it('a run that is no dare compares nothing', () => {
     expect(
       maybeBeatComparisonOf(
-        modifyFields(readyModel, { phase: () => Phase.GameOver({ wave: 9 }) }),
+        UiStruct.evolve(readyModel, {
+          phase: () => Phase.GameOver({ wave: 9 }),
+        }),
       ),
     ).toEqual(Option.none())
   })

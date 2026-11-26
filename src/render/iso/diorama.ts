@@ -4,14 +4,15 @@
 // north) is never moved for play: only the title asks for this lens.
 
 import { Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import type { ViewBox } from './cull'
 import { PITCH, UNIT, type Vec3 } from './space'
 
 // NOTE: which camera a frame is drawn by: the game's own, or the title's
 // diorama turning by the screen's clock.
-export const IsoLens = defineTaggedUnion({
+export const IsoLens = UiSchema.TaggedEnum({
   Play: {},
   Diorama: { clockMs: Schema.Finite },
 })

@@ -1,5 +1,4 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
 
 import { describe, expect, it } from '@effect/vitest'
 
@@ -13,9 +12,11 @@ import {
   withZombies,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   changeModel,
+  checkModel,
   eventsOver,
+  modelAfter,
+  steps,
   tagsOf,
   ticks,
   zombieAt,
@@ -54,9 +55,7 @@ const isDazed = (zombie: Zombie): boolean => zombie.action._tag === 'Dazed'
 
 // NOTE: where the one zombie stands after `count` frames from `model`.
 const zombieAfter = (model: Model, count: number) =>
-  Story.story(APPLICATION, Story.given(model), ...ticks(count, FRAME_MS)).pipe(
-    Effect.map(onlyZombie),
-  )
+  modelAfter(model, ticks(count, FRAME_MS)).pipe(Effect.map(onlyZombie))
 
 describe('the gramophone', () => {
   const center = boxCenter(roomBoxOf(houseWave, PARLOUR_ROOM_ID))
@@ -112,31 +111,33 @@ describe('the leaning stacks', () => {
   it.effect(
     'topple: the heap crushes the zombies under it and blocks the aisle',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(under),
-        ...ticks(setUpTicks, FRAME_MS),
-        Story.model(current => {
-          expect(isHeapDown(current, 'NorthStack')).toBe(true)
-          expect(isSolidAt(levelOf(current), inHeap)).toBe(true)
-          expect(Array.every(current.zombies, ({ hp }) => hp <= 0)).toBe(true)
-        }),
+      modelAfter(
+        under,
+        steps(
+          ticks(setUpTicks, FRAME_MS),
+          checkModel(current => {
+            expect(isHeapDown(current, 'NorthStack')).toBe(true)
+            expect(isSolidAt(levelOf(current), inHeap)).toBe(true)
+            expect(Array.every(current.zombies, ({ hp }) => hp <= 0)).toBe(true)
+          }),
+        ),
       ),
   )
 
   it.effect('the books are shelved again once their time is up', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(under),
-      ...ticks(setUpTicks, FRAME_MS),
-      changeModel(model =>
-        firedAgo(model, 'NorthStack', TOOL_RULES.NorthStack.activeMs),
+    modelAfter(
+      under,
+      steps(
+        ticks(setUpTicks, FRAME_MS),
+        changeModel(model =>
+          firedAgo(model, 'NorthStack', TOOL_RULES.NorthStack.activeMs),
+        ),
+        ticks(1, FRAME_MS),
+        checkModel(current => {
+          expect(isHeapDown(current, 'NorthStack')).toBe(false)
+          expect(isSolidAt(levelOf(current), inHeap)).toBe(false)
+        }),
       ),
-      ...ticks(1, FRAME_MS),
-      Story.model(current => {
-        expect(isHeapDown(current, 'NorthStack')).toBe(false)
-        expect(isSolidAt(levelOf(current), inHeap)).toBe(false)
-      }),
     ),
   )
 })
@@ -150,24 +151,23 @@ describe('the revolving shelf', () => {
   it.effect(
     'spins its worker through the wall and flings the zombies near it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          withZombies(atTool(houseWave, 'Shelf'), [
-            zombieAt(1, spot.x, spot.y + 22),
-          ]),
+      modelAfter(
+        withZombies(atTool(houseWave, 'Shelf'), [
+          zombieAt(1, spot.x, spot.y + 22),
+        ]),
+        steps(
+          ticks(setUpTicks, FRAME_MS),
+          checkModel(current => {
+            expect(current.stations.Shelf.timesWorked).toBe(1)
+            const { x } = focusOf(current).player
+            expect(Math.sign(x - wall.x)).toBe(-Math.sign(spot.x - wall.x))
+            const zombie = onlyZombie(current)
+            expect(isDazed(zombie)).toBe(true)
+            expect(distanceBetween(zombie, wall)).toBeGreaterThan(
+              distanceBetween({ x: spot.x, y: spot.y + 22 }, wall),
+            )
+          }),
         ),
-        ...ticks(setUpTicks, FRAME_MS),
-        Story.model(current => {
-          expect(current.stations.Shelf.timesWorked).toBe(1)
-          const { x } = focusOf(current).player
-          expect(Math.sign(x - wall.x)).toBe(-Math.sign(spot.x - wall.x))
-          const zombie = onlyZombie(current)
-          expect(isDazed(zombie)).toBe(true)
-          expect(distanceBetween(zombie, wall)).toBeGreaterThan(
-            distanceBetween({ x: spot.x, y: spot.y + 22 }, wall),
-          )
-        }),
       ),
   )
 })
@@ -240,7 +240,7 @@ describe('the bulb chain', () => {
     thingSpot.y,
   )
   const stateAfter = (model: Model) =>
-    Story.story(APPLICATION, Story.given(model), ...ticks(1, FRAME_MS)).pipe(
+    modelAfter(model, ticks(1, FRAME_MS)).pipe(
       Effect.map(({ dareThings }) =>
         Option.map(Array.head(dareThings), ({ state }) => state._tag),
       ),

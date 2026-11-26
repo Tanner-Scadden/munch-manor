@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiSchema, UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { BAR_SEGMENTS } from '../../art/shopArt'
@@ -68,7 +68,7 @@ export const sectionName = (section: ShopGuideSection): string =>
 
 // NOTE: which picture an entry, a ladder step, or a chip wears. The pixels
 // are in src/features/guide/shopGuideArt.ts.
-export const GuideArt = defineTaggedUnion({
+export const GuideArt = UiSchema.TaggedEnum({
   Gun: { weapon: WeaponKind, tier: Schema.Finite },
   Sight: {},
   Trap: { kind: TrapKind },
@@ -507,6 +507,6 @@ export const notePulledPrize = (model: Model): Model =>
 const withPrizeSeen = (model: Model, prize: FridgePrize): Model =>
   isPrizeKnown(model.seenUnlocks, prize)
     ? model
-    : modifyFields(model, {
+    : UiStruct.evolve(model, {
         seenUnlocks: seen => [...seen, prizeUnlockId(prize)],
       })

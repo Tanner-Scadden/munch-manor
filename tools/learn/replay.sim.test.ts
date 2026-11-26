@@ -1,7 +1,6 @@
 import { Array, Effect, Number, Option, Order, Result, Schema } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../src/app/message'
@@ -11,13 +10,14 @@ import { addBot } from '../../src/domain/bots'
 import { RunRecordingJson, finishRecording } from '../../src/platform/recording'
 import { PLAYER_MAX_HP } from '../../src/shared/constants'
 import {
-  APPLICATION,
   SURFACE,
   changeModel,
   isPlaying,
   messageIfAny,
+  modelAfter,
   settleRunCommands,
   startedRun,
+  steps,
 } from '../../src/test/testing'
 import { asVeteran } from '../../src/test/veteran'
 import { focusOf, modifyFocus } from '../../src/world/party/party'
@@ -38,11 +38,11 @@ const FRAME_MS: ReadonlyArray<number> = [1000 / 60, 1000 / 30, 1000 / 120, 25]
 const MOVES: ReadonlyArray<string> = ['KeyW', 'KeyD', 'KeyS', 'KeyA']
 
 const recordingStart = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     maybeSurface: () => Option.some(SURFACE),
     maybeVisitId: () => Option.some('0123456789abcdef'),
     recordUnlock: () => 'Unlocked',
-    settings: modifyFields({ recordRuns: () => 'On' }),
+    settings: UiStruct.evolve({ recordRuns: () => 'On' }),
   })
 
 const nearestZombie = (current: Model) => {
@@ -62,7 +62,7 @@ const keyFor = (frame: number): string =>
   MOVES[Math.floor(frame / 40) % MOVES.length] ?? 'KeyW'
 
 const scriptFrame = (frame: number) =>
-  Story.steps(
+  steps(
     messageIfAny(current =>
       frame % 40 === 0 && isPlaying(current)
         ? Option.some(Message.ReleasedKey({ code: keyFor(frame - 1) }))
@@ -119,7 +119,8 @@ const scriptFrame = (frame: number) =>
     changeModel(current =>
       focusOf(current).player.hp < PLAYER_MAX_HP / 2
         ? modifyFocus(current, {
-            player: player => modifyFields(player, { hp: () => PLAYER_MAX_HP }),
+            player: player =>
+              UiStruct.evolve(player, { hp: () => PLAYER_MAX_HP }),
           })
         : current,
     ),
@@ -130,11 +131,9 @@ const recordedRun = Effect.gen(function* () {
   const started = yield* startedRun(
     addBot(recordingStart(asVeteran(initialModel))),
   )
-  return yield* Story.story(
-    APPLICATION,
-    Story.given(started),
-    ...Array.makeBy(FRAMES, scriptFrame),
-    settleRunCommands,
+  return yield* modelAfter(
+    started,
+    steps(...Array.makeBy(FRAMES, scriptFrame), settleRunCommands),
   )
 })
 

@@ -1,13 +1,15 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { Canvas } from 'foldkit'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { bakeText, placeBaked } from '../../art/font'
 import { group } from '../../art/sprite'
 import { BOSS_ICON } from '../../art/sprites/zombies'
 import { type Camera, worldToView } from '../../render/camera'
+import * as Draw from '../../render/draw'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
 import { type Box, screenOf } from '../../render/screen'
 import * as DetMath from '../../shared/detMath'
@@ -85,7 +87,7 @@ const arrowShapes = (
   halfWidth: number,
   centerY: number,
   fill: string,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (side === 'Inside') {
     return []
   }
@@ -93,7 +95,7 @@ const arrowShapes = (
   const base = direction * (halfWidth + ARROW_GAP_PX)
   return Array.makeBy(ARROW_LENGTH_PX, step => {
     const reach = ARROW_LENGTH_PX - step
-    return Canvas.Rect({
+    return Draw.Rect({
       x: Math.round(base + direction * step - (direction < 0 ? 1 : 0)),
       y: Math.round(centerY) - reach + 1,
       width: 1,
@@ -169,7 +171,7 @@ const bossMarkerShapes = (
   camera: Camera,
   window: Box,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(
     Option.flatMap(maybeBossDoor(boss), door =>
       Option.map(markerSpotOf(level, camera, window, door), spot => ({
@@ -197,7 +199,7 @@ const bossMarkerShapes = (
               group({
                 opacity: Math.round(markerEdgeOpacity(elapsedMs) * 10) / 10,
                 shapes: [
-                  Canvas.Rect({
+                  Draw.Rect({
                     x: left - 1,
                     y: top - 1,
                     width: BOSS_MARKER_WIDTH + 2,
@@ -206,7 +208,7 @@ const bossMarkerShapes = (
                   }),
                 ],
               }),
-              Canvas.Rect({
+              Draw.Rect({
                 x: left,
                 y: top,
                 width: BOSS_MARKER_WIDTH,
@@ -223,11 +225,11 @@ const bossMarkerShapes = (
   )
 
 export const wavePreviewShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> =>
     Phase.match(model.phase, {
       Ready: () => [],
       Arriving: () => [],
@@ -276,10 +278,10 @@ export const wavePreviewLabel: {
 })
 
 export const wavePreviewView: {
-  (boss: Boss, h: ApplicationViewBuilder): (wave: number) => Html
-  (wave: number, boss: Boss, h: ApplicationViewBuilder): Html
+  (boss: Boss, h: ApplicationViewBuilder): (wave: number) => ApplicationHtml
+  (wave: number, boss: Boss, h: ApplicationViewBuilder): ApplicationHtml
 } = Function.dual(
   3,
-  (wave: number, boss: Boss, h: ApplicationViewBuilder): Html =>
-    h.p([h.Class('sr-only')], [wavePreviewLabel(wave, boss)]),
+  (wave: number, boss: Boss, h: ApplicationViewBuilder): ApplicationHtml =>
+    h.p.class('sr-only').children(wavePreviewLabel(wave, boss)),
 )

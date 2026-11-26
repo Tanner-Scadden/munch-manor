@@ -1,5 +1,4 @@
 import { Array, Option, Order, Record } from 'effect'
-import type { Canvas } from 'foldkit'
 import { describe, expect, test } from 'vitest'
 
 import { spriteDepthOf } from '../../../art/sprite'
@@ -12,6 +11,7 @@ import { isInsideRoomAt, isSolidAt } from '../../../world/level/tileQueries'
 import type { Player, Zombie } from '../../../world/schema/entitySchema'
 import { initialPlayer } from '../../../world/schema/worldSchema'
 import { depthSortedShapes } from '../../depth'
+import type * as Draw from '../../draw'
 import { type TallCover, tallCoverDrawables, tallCoverOf } from '../tallCover'
 
 const level = levelFor(MANOR_SPEC)
@@ -54,7 +54,7 @@ const playerOn = ({ x, footY }: Spot): Player => ({
 
 const zombieOn = ({ x, footY }: Spot): Zombie => zombieAt(1, x, footY - FOOT_PX)
 
-const opacityOf = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+const opacityOf = (shapes: ReadonlyArray<Draw.Shape>): number =>
   Option.getOrElse(
     Option.flatMap(Array.head(shapes), shape =>
       shape._tag === 'Group'
@@ -149,7 +149,7 @@ describe('tall cover', () => {
   })
 
   test('the piece draws over a body behind it and under one in front', () => {
-    const behindBody: Canvas.Shape = {
+    const behindBody: Draw.Shape = {
       _tag: 'Rect',
       x: middle,
       y: behindIt.footY - 20,
@@ -157,7 +157,7 @@ describe('tall cover', () => {
       height: 20,
       fill: 'red',
     }
-    const frontBody: Canvas.Shape = { ...behindBody, fill: 'blue' }
+    const frontBody: Draw.Shape = { ...behindBody, fill: 'blue' }
     const [drawn] = drawnFor([behindIt])
     const sorted = depthSortedShapes([
       ...Array.fromOption(Option.fromNullishOr(drawn)),

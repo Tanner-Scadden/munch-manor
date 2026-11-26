@@ -3,12 +3,12 @@
 // hands it to the world's element (src/render/iso/element.ts).
 
 import { type Option, Predicate, Schema } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { Camera } from '../camera'
 import type { Drawable } from '../depth'
+import type * as Draw from '../draw'
 import type { IsoLens } from './diorama'
 import type { HoldKey } from './hold'
 
@@ -16,9 +16,9 @@ import type { HoldKey } from './hold'
 // stands up at its feet, and what floats over both. In the cellar's dark a
 // zombie shows only close to the viewing player (src/render/cellarDark.ts).
 export type WorldStrata = Readonly<{
-  ground: ReadonlyArray<Canvas.Shape>
+  ground: ReadonlyArray<Draw.Shape>
   standing: ReadonlyArray<Drawable>
-  overhead: ReadonlyArray<Canvas.Shape>
+  overhead: ReadonlyArray<Draw.Shape>
 }>
 
 export type IsoFrame = Readonly<{
@@ -43,6 +43,6 @@ const isIsoFrame = (value: unknown): value is IsoFrame =>
   Predicate.hasProperty(value, 'strata') &&
   Predicate.hasProperty(value, 'camera')
 
-// NOTE: the element's one property. Foldkit sets it as it is, never decoding
+// NOTE: the element's one property. Effect UI's host sets it as it is, never decoding
 // it, so a declared Schema only names its type.
 export const IsoFrameSchema = Schema.declare(isIsoFrame)

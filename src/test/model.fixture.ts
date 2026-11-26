@@ -4,9 +4,11 @@
 // Steps and locators live in `testing.ts`.
 
 import { Array, Function, Option, Order } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
+  BreakClock,
   type Bullet,
   type CarriedGun,
   type Difficulty,
@@ -140,6 +142,7 @@ export const WAVE_2_FIGHT = Phase.Wave({
 })
 
 export const WAVE_2_BREAK = Phase.Preparation({
+  clock: BreakClock.Counting(),
   wave: 2,
   remainingMs: 15_000,
   durationMs: PREPARATION_MS,
@@ -148,6 +151,7 @@ export const WAVE_2_BREAK = Phase.Preparation({
 
 // NOTE: the break before wave 3, with nothing planned.
 export const WAVE_3_BREAK = Phase.Preparation({
+  clock: BreakClock.Counting(),
   wave: 3,
   remainingMs: 15_000,
   durationMs: PREPARATION_MS,
@@ -174,8 +178,8 @@ export const knowingDay: {
   (day: string): (model: Model) => Model
   (model: Model, day: string): Model
 } = Function.dual(2, (model: Model, day: string): Model => {
-  const known = modifyFields(model, { maybeToday: () => Option.some(day) })
-  return modifyFields(known, {
+  const known = UiStruct.evolve(model, { maybeToday: () => Option.some(day) })
+  return UiStruct.evolve(known, {
     missions: missions => freezeOn(missions, day, missionsOn(known, day)),
   })
 })
@@ -186,7 +190,8 @@ export const withKeys: {
   <M extends World>(base: M, keys: number): M
 } = Function.dual(2, <M extends World>(base: M, keys: number): M =>
   modifyWorldFields(base, {
-    keys: ring => modifyFields(ring, { held: () => keys, found: () => keys }),
+    keys: ring =>
+      UiStruct.evolve(ring, { held: () => keys, found: () => keys }),
   }),
 )
 
@@ -194,51 +199,51 @@ export const home: Model = asVeteran(initialModel)
 
 // NOTE: the home menu once the save has been read, so the menu's buttons are
 // up. A save that was read has been granted its veteran start (0 here).
-export const homeAfterRead: Model = modifyFields(home, {
+export const homeAfterRead: Model = UiStruct.evolve(home, {
   rank: rank => grantedVeteran(rank, 0),
-  saving: modifyFields({ saveStatus: () => 'Read' }),
+  saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
 })
 
 // NOTE: a returning player on a measured surface, ready to start a run.
-export const readyModel: Model = modifyFields(home, {
+export const readyModel: Model = UiStruct.evolve(home, {
   maybeSurface: () => Option.some(SURFACE),
 })
 
 // NOTE: a new player on a measured surface: the tutorial is still ahead.
-export const newPlayerReady: Model = modifyFields(initialModel, {
+export const newPlayerReady: Model = UiStruct.evolve(initialModel, {
   maybeSurface: () => Option.some(SURFACE),
 })
 
 // NOTE: a new player on a measured surface who has picked a difficulty, so
 // the card does not come up.
-export const newPlayerCardSeen: Model = modifyFields(initialModel, {
+export const newPlayerCardSeen: Model = UiStruct.evolve(initialModel, {
   difficultyCard: () => DifficultyCard.Seen(),
   maybeSurface: () => Option.some(SURFACE),
 })
 
 // NOTE: a returning player on a measured surface once the save has been
 // read.
-export const readyAfterRead: Model = modifyFields(home, {
+export const readyAfterRead: Model = UiStruct.evolve(home, {
   maybeSurface: () => Option.some(SURFACE),
   rank: rank => grantedVeteran(rank, 0),
-  saving: modifyFields({ saveStatus: () => 'Read' }),
+  saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
 })
 
 // NOTE: the boot splash, still reading the save.
-export const loadingSave: Model = modifyFields(initialModel, {
+export const loadingSave: Model = UiStruct.evolve(initialModel, {
   maybeSurface: () => Option.some(SURFACE),
-  saving: modifyFields({
+  saving: UiStruct.evolve({
     loading: () => Loading.Loading({ pending: ['Save'] }),
   }),
 })
 
 // FIGHTING
 
-export const fighting: Model = modifyFields(initialModel, {
+export const fighting: Model = UiStruct.evolve(initialModel, {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
 })
 
-export const veteranFighting: Model = modifyFields(home, {
+export const veteranFighting: Model = UiStruct.evolve(home, {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
 })
 
@@ -250,9 +255,9 @@ export const withDareThings: {
   (things: ReadonlyArray<DareThing>): (model: Model) => Model
   (model: Model, things: ReadonlyArray<DareThing>): Model
 } = Function.dual(2, (model: Model, things: ReadonlyArray<DareThing>): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     dare: dare =>
-      modifyFields(dare, {
+      UiStruct.evolve(dare, {
         list: () => Array.map(things, ({ kind }) => kind),
       }),
     dareThings: () => things,
@@ -283,8 +288,8 @@ export const withFinale: {
   (finale: Finale): (model: Model) => Model
   (model: Model, finale: Finale): Model
 } = Function.dual(2, (model: Model, finale: Finale): Model =>
-  modifyFields(model, {
-    dare: dare => modifyFields(dare, { finale: () => finale }),
+  UiStruct.evolve(model, {
+    dare: dare => UiStruct.evolve(dare, { finale: () => finale }),
   }),
 )
 
@@ -306,10 +311,10 @@ export const escaping = (model: Model): Model =>
 // on the back, so a swap, a reload, or a shot shows, for the key and
 // controller tests.
 export const armedFight: Model = modifyFocus(
-  modifyFields(readyModel, { phase: () => WAVE_2_FIGHT }),
+  UiStruct.evolve(readyModel, { phase: () => WAVE_2_FIGHT }),
   {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         arsenal: () =>
           Arsenal.HoldingFirst({
             first: { ...STARTING_PISTOL, loaded: 3 },
@@ -320,13 +325,13 @@ export const armedFight: Model = modifyFocus(
 )
 
 // NOTE: the same, in wave 2's break.
-export const armedBreak: Model = modifyFields(armedFight, {
+export const armedBreak: Model = UiStruct.evolve(armedFight, {
   phase: () => WAVE_2_BREAK,
 })
 
 // NOTE: a new player's first wave on a wide surface with nothing coming
 // in, for the contact and bite tests that stand zombies by hand.
-export const openFloorWave: Model = modifyFields(initialModel, {
+export const openFloorWave: Model = UiStruct.evolve(initialModel, {
   maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
   phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
 })
@@ -336,12 +341,12 @@ export const atClock: {
   (elapsedMs: number): (model: Model) => Model
   (model: Model, elapsedMs: number): Model
 } = Function.dual(2, (model: Model, elapsedMs: number): Model =>
-  modifyFields(model, { elapsedMs: () => elapsedMs }),
+  UiStruct.evolve(model, { elapsedMs: () => elapsedMs }),
 )
 
 // A wave in progress on a measured surface, with nothing coming in.
 export const quietWave = (wave: number): Model =>
-  modifyFields(initialModel, {
+  UiStruct.evolve(initialModel, {
     maybeSurface: () => Option.some(SURFACE),
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   })
@@ -354,11 +359,11 @@ export const killShot: {
   (arsenal: Arsenal, weapon: WeaponKind): Model
 } = Function.dual(2, (arsenal: Arsenal, weapon: WeaponKind): Model =>
   modifyFocus(
-    modifyFields(quietWave(3), {
+    UiStruct.evolve(quietWave(3), {
       zombies: () => [doomed],
       bullets: () => [{ ...bulletInto(500, doomed), weapon }],
     }),
-    { player: player => modifyFields(player, { arsenal: () => arsenal }) },
+    { player: player => UiStruct.evolve(player, { arsenal: () => arsenal }) },
   ),
 )
 
@@ -370,9 +375,9 @@ export const spareGunOf = (current: Model): CarriedGun =>
 // rolls its find (a new save's guided first break always holds a Plank
 // Pile, see src/world/gear/crates.ts) and no tour key lies on the floor.
 export const pastFirstBreak = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         openBreak: () => Lesson.Learned({ atMs: 0 }),
         dareTour: () => Lesson.Learned({ atMs: 0 }),
         dareKey: () => Lesson.Learned({ atMs: 0 }),
@@ -383,6 +388,7 @@ export const pastFirstBreak = (model: Model): Model =>
 // NOTE: a break before `wave` with nothing coming in for a long while.
 export const breakBefore = (wave: number): Phase =>
   Phase.Preparation({
+    clock: BreakClock.Counting(),
     wave,
     remainingMs: 15_000,
     durationMs: PREPARATION_MS,
@@ -391,7 +397,7 @@ export const breakBefore = (wave: number): Phase =>
 
 // NOTE: a returning player's start Model on a measured surface, past the
 // first break: where the trap tests start.
-export const trapReady: Model = modifyFields(pastFirstBreak(initialModel), {
+export const trapReady: Model = UiStruct.evolve(pastFirstBreak(initialModel), {
   maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
 })
 
@@ -399,15 +405,17 @@ export const trapReady: Model = modifyFields(pastFirstBreak(initialModel), {
 // down and the kitchen and the fridge have their prices (the tour holds the
 // clock and gives them away in a new save, see src/world/run/tutorialRules.ts).
 export const pastTimedBreaks = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, { timedBreaks: () => Lesson.Learned({ atMs: 0 }) }),
+      UiStruct.evolve(lessons, {
+        timedBreaks: () => Lesson.Learned({ atMs: 0 }),
+      }),
   })
 
 // NOTE: Hard, for a test of Hard's own rules (the default Model is Normal).
 export const onHard = (model: Model): Model =>
-  modifyFields(model, {
-    difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
+  UiStruct.evolve(model, {
+    difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Hard' }),
   })
 
 // NOTE: the run on `difficulty`, for a rule read off the dial.
@@ -415,8 +423,9 @@ export const onDifficulty: {
   (difficulty: Difficulty): (model: Model) => Model
   (model: Model, difficulty: Difficulty): Model
 } = Function.dual(2, (model: Model, difficulty: Difficulty): Model =>
-  modifyFields(model, {
-    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
+  UiStruct.evolve(model, {
+    difficulty: setting =>
+      UiStruct.evolve(setting, { chosen: () => difficulty }),
   }),
 )
 
@@ -438,7 +447,7 @@ export const withActors: {
     zombies: ReadonlyArray<Zombie>,
     bullets: ReadonlyArray<Bullet> = [],
   ): Model =>
-    modifyFields(base, {
+    UiStruct.evolve(base, {
       zombies: () => zombies,
       bullets: () => bullets,
     }),
@@ -449,14 +458,14 @@ export const withPlayerAt: {
   (base: Model, x: number, y: number): Model
 } = Function.dual(3, (base: Model, x: number, y: number): Model =>
   modifyFocus(base, {
-    player: player => modifyFields(player, { x: () => x, y: () => y }),
+    player: player => UiStruct.evolve(player, { x: () => x, y: () => y }),
   }),
 )
 
 // NOTE: the melee slot in hand, the knife or the Pan, with the guns kept.
 export const withKnifeOut = (base: Model): Model =>
   modifyFocus(base, {
-    player: player => modifyFields(player, { wield: () => 'Melee' }),
+    player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
   })
 
 export const withArsenal: {
@@ -464,7 +473,7 @@ export const withArsenal: {
   (base: Model, arsenal: Arsenal): Model
 } = Function.dual(2, (base: Model, arsenal: Arsenal): Model =>
   modifyFocus(base, {
-    player: player => modifyFields(player, { arsenal: () => arsenal }),
+    player: player => UiStruct.evolve(player, { arsenal: () => arsenal }),
   }),
 )
 
@@ -511,14 +520,14 @@ export const atSeat: {
 // SCREENS
 
 export const inPortrait = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     orientation: () => 'Portrait',
     maybeSurface: () => Option.some(PHONE_PORTRAIT),
   })
 
 export const withNewerBuild = (model: Model): Model =>
-  modifyFields(model, {
-    release: modifyFields({
+  UiStruct.evolve(model, {
+    release: UiStruct.evolve({
       maybeNewerBuild: () => Option.some('newer-build'),
     }),
   })
@@ -560,7 +569,7 @@ export const roomOpenIn: {
 // door in a break, for the fridge's Story tests.
 export function freshRunModel(): Model {
   const veteran = asVeteran(initialModel)
-  return modifyFields(
+  return UiStruct.evolve(
     { ...veteran, ...freshRun(veteran) },
     {
       maybeSurface: () =>
@@ -586,10 +595,11 @@ export const atFridgeOnWave: {
   (wave: number, keys: number): Model
 } = Function.dual(2, (wave: number, keys: number): Model =>
   modifyFocus(
-    modifyFields(withKeys(freshRunModel(), keys), {
+    UiStruct.evolve(withKeys(freshRunModel(), keys), {
       level: level => openExitIn(level, KITCHEN_EXIT),
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave,
           remainingMs: 120_000,
           durationMs: 120_000,
@@ -598,7 +608,7 @@ export const atFridgeOnWave: {
     }),
     {
       player: player =>
-        modifyFields(player, { x: () => AT_FRIDGE.x, y: () => AT_FRIDGE.y }),
+        UiStruct.evolve(player, { x: () => AT_FRIDGE.x, y: () => AT_FRIDGE.y }),
     },
   ),
 )
@@ -621,8 +631,8 @@ export const fridgeSeededFor: {
         ) === prize,
     ),
   )
-  return modifyFields(current, {
-    loot: loot => modifyFields(loot, { fridgeRngState: () => seed }),
+  return UiStruct.evolve(current, {
+    loot: loot => UiStruct.evolve(loot, { fridgeRngState: () => seed }),
   })
 })
 
@@ -634,7 +644,7 @@ export const FIGHTING_PHASE = Phase.Wave({
   spawns: [DISTANT_SPAWN],
 })
 
-export const playingModel: Model = modifyFields(readyModel, {
+export const playingModel: Model = UiStruct.evolve(readyModel, {
   phase: () => FIGHTING_PHASE,
 })
 
@@ -642,7 +652,7 @@ export const withZombies: {
   (zombies: ReadonlyArray<Zombie>): (base: Model) => Model
   (base: Model, zombies: ReadonlyArray<Zombie>): Model
 } = Function.dual(2, (base: Model, zombies: ReadonlyArray<Zombie>): Model =>
-  modifyFields(base, { zombies: () => zombies }),
+  UiStruct.evolve(base, { zombies: () => zombies }),
 )
 
 // CO-OP CREWS
@@ -663,7 +673,7 @@ export const crewInWave: {
   (args: IArguments) => typeof args[0] === 'number',
   (count: number, phase: Phase = CREW_WAVE): Model =>
     withWorld(
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         maybeSurface: () => Option.some(SURFACE),
         phase: () => phase,
       }),
@@ -687,7 +697,7 @@ export const placeSeat: {
     atSeat(current, slot, world =>
       modifyFocus(world, {
         player: player =>
-          modifyFields(player, { x: () => x, y: () => y, hp: () => hp }),
+          UiStruct.evolve(player, { x: () => x, y: () => y, hp: () => hp }),
       }),
     ),
 )
@@ -697,10 +707,10 @@ export const withSeatLife: {
   (current: Model, slot: number, life: Life): Model
 } = Function.dual(3, (current: Model, slot: number, life: Life): Model =>
   atSeat(current, slot, world =>
-    modifyFields(world, {
+    UiStruct.evolve(world, {
       seats: atSeatBy(slot, state =>
-        modifyFields(state, {
-          seat: seat => modifyFields(seat, { life: () => life }),
+        UiStruct.evolve(state, {
+          seat: seat => UiStruct.evolve(seat, { life: () => life }),
         }),
       ),
     }),
@@ -715,7 +725,7 @@ export const untouchableSeat =
     atSeat(current, slot, world =>
       modifyFocus(world, {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             invulnerability: () =>
               Invulnerability.Invulnerable({
                 remainingMs: 1e9,
@@ -733,12 +743,12 @@ export const pipeline =
 // NOTE: one heart left and a zombie on the player, so the next tick bites.
 export const lastHeart = (base: Model): Model =>
   modifyFocus(
-    modifyFields(base, {
+    UiStruct.evolve(base, {
       zombies: () => [
         zombieOf('Runner', 100, START_LEVEL.start.x + 2, START_LEVEL.start.y),
       ],
     }),
-    { player: player => modifyFields(player, { hp: () => 1 }) },
+    { player: player => UiStruct.evolve(player, { hp: () => 1 }) },
   )
 
 // PICKUPS
@@ -788,18 +798,19 @@ const inKitchen = (
   phase: Phase,
 ): Model =>
   modifyFocus(
-    modifyFields(withKeys(freshRunModel(), keys), {
+    UiStruct.evolve(withKeys(freshRunModel(), keys), {
       level: level => openExitIn(level, KITCHEN_EXIT),
       phase: () => phase,
     }),
     {
       player: player =>
-        modifyFields(player, { x: () => spot.x, y: () => spot.y }),
+        UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y }),
     },
   )
 
 export const kitchenBreak = (wave: number): Phase =>
   Phase.Preparation({
+    clock: BreakClock.Counting(),
     wave,
     remainingMs: 120_000,
     durationMs: 120_000,
@@ -829,7 +840,7 @@ export const withFeatsOf: {
 // NOTE: at the stove in a break, its feat (kitchen kills last wave) done.
 export const atStove = (balance: number): Model =>
   withFeatsOf(inKitchen(AT_STOVE, balance, kitchenBreak(5)), tally =>
-    modifyFields(tally, { kitchenKills: () => STOVE_RULES.kitchenKills }),
+    UiStruct.evolve(tally, { kitchenKills: () => STOVE_RULES.kitchenKills }),
   )
 
 const valveBox = Option.getOrThrow(
@@ -846,7 +857,7 @@ export const atValve: {
   (balance: number, phase: Phase): Model
 } = Function.dual(2, (balance: number, phase: Phase): Model =>
   withFeatsOf(inKitchen(AT_VALVE, balance, phase), tally =>
-    modifyFields(tally, { kitchenStandKills: () => VALVE_RULES.standKills }),
+    UiStruct.evolve(tally, { kitchenStandKills: () => VALVE_RULES.standKills }),
   ),
 )
 
@@ -881,12 +892,12 @@ export const atCase: {
     feat: Feat = Feat.Kills({ count: 1 }),
   ): Model =>
     modifyFocus(
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         cases: () => [{ id: 0, spot: 0, prize, feat, state }],
       }),
       {
         player: player =>
-          modifyFields(player, { x: () => AT_CASE.x, y: () => AT_CASE.y }),
+          UiStruct.evolve(player, { x: () => AT_CASE.x, y: () => AT_CASE.y }),
       },
     ),
 )
@@ -898,7 +909,7 @@ export const atOpenedCase: {
   (model: Model, prize: CasePrize): Model
 } = Function.dual(2, (model: Model, prize: CasePrize): Model =>
   atCase(
-    modifyFields(model, { phase: () => kitchenBreak(2) }),
+    UiStruct.evolve(model, { phase: () => kitchenBreak(2) }),
     prize,
     CaseState.Opened({ by: focusSlotOf(model) }),
   ),
@@ -908,4 +919,10 @@ export const atOpenedCase: {
 // without its show Command (`profileDialog: openedDialog`).
 export const openedDialog = (
   dialog: Model['panelDialog'],
-): Model['panelDialog'] => modifyFields(dialog, { isOpen: () => true })
+): Model['panelDialog'] => UiStruct.evolve(dialog, { isOpen: () => true })
+
+// NOTE: `model` on a build with no tip jar link, so no coffee shows.
+export const withoutSupportLink = (model: Model): Model =>
+  UiStruct.evolve(model, {
+    release: UiStruct.evolve({ maybeSupportUrl: () => Option.none() }),
+  })

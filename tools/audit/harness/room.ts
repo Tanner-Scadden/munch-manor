@@ -3,8 +3,8 @@
 // staged zombies, the HUD's extras, and a staged end screen).
 
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import {
   Arsenal,
   type Boosts,
@@ -122,7 +122,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     config.mode === 'endless' ? RunMode.Endless() : RunMode.Campaign()
   const begun = startOrResume(initialModel, mode)
   const started = config.kitchen
-    ? modifyFields(begun, {
+    ? UiStruct.evolve(begun, {
         level: level => openExitIn(level, KITCHEN_EXIT),
       })
     : begun
@@ -142,7 +142,7 @@ export const roomModel = (settings: SceneSettings): Model => {
           ? { ...freshGun('Shotgun'), tier: config.tier }
           : { ...freshGun(FRIDGE_GUNS[firstGun]), tier: config.tier }
   let model: Model = modifyFocus(
-    modifyFields(started, {
+    UiStruct.evolve(started, {
       // NOTE: `money` is the keys on the crew's ring since the keys took
       // money's place (docs/ESCAPE_PLAN.md, layer 7).
       keys: keys => ({ ...keys, held: config.money, found: config.money }),
@@ -166,7 +166,7 @@ export const roomModel = (settings: SceneSettings): Model => {
         config.trauma === undefined
           ? shake
           : { trauma: config.trauma, offset: { x: 0, y: 0 } },
-      cosmetics: modifyFields({
+      cosmetics: UiStruct.evolve({
         decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
       }),
     }),
@@ -273,7 +273,7 @@ export const roomModel = (settings: SceneSettings): Model => {
         frenzy: CALM,
       }
     })
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: () => zombies,
       nextEntityId: () => 2000,
     })
@@ -331,7 +331,7 @@ export const roomModel = (settings: SceneSettings): Model => {
           ),
       ),
     )
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: () => zombies,
       nextEntityId: () => 2000,
     })
@@ -348,7 +348,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     const zombies = Array.map(kinds, ([kind, maxHp], index) =>
       standing(1000 + index, kind, 70 + index * 24, 100, maxHp, 0),
     )
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: () => zombies,
       nextEntityId: () => 2000,
     })
@@ -362,9 +362,9 @@ export const roomModel = (settings: SceneSettings): Model => {
     const worn = globalThis.Array.from({ length: stages }, (_, stage) =>
       standing(1000 + stage, 'Tank', at(stage).x, at(stage).y, 36, stage),
     )
-    const before = modifyFields(model, { zombies: () => fresh })
-    const after = modifyFields(model, { zombies: () => worn })
-    model = modifyFields(
+    const before = UiStruct.evolve(model, { zombies: () => fresh })
+    const after = UiStruct.evolve(model, { zombies: () => worn })
+    model = UiStruct.evolve(
       advanceParticles(
         { ...after, ...shedParts(before, after) },
         1 / 60,
@@ -377,7 +377,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     const zombies = globalThis.Array.from({ length: 5 }, (_, stage) =>
       standing(1100 + stage, 'Boss', 48 + stage * 56, 80, 99, stage),
     )
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: () => zombies,
       nextEntityId: () => 2000,
     })
@@ -480,7 +480,7 @@ export const roomModel = (settings: SceneSettings): Model => {
             belchMs: 60_000,
             globs: [...puddles, ...flying],
           }
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       boss: () => bossState,
       zombies: zombies =>
         bossParam === 'arriving' ? zombies : [...zombies, bossZombie],
@@ -498,7 +498,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       planned,
       model.difficulty.chosen,
     )
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       boss: () => plannedBoss,
       rngState: () => bossRng,
     })
@@ -554,8 +554,8 @@ export const roomModel = (settings: SceneSettings): Model => {
         frenzy: { _tag: 'Fading', pack, remainingMs: 500 },
       }),
     )
-    model = modifyFields(model, {
-      cosmetics: modifyFields({
+    model = UiStruct.evolve(model, {
+      cosmetics: UiStruct.evolve({
         popups: () => [
           {
             kind: 'Horde' as const,
@@ -679,7 +679,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     )
   }
   if (staged.length > 0) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: zombies => [...zombies, ...staged],
       nextEntityId: () => 3000,
     })
@@ -702,22 +702,22 @@ export const roomModel = (settings: SceneSettings): Model => {
     runMs: 371_000,
   }
   if (config.stats) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       stats: s => ({ ...s, ...sampleStats }),
       keys: keys => ({ ...keys, found: 21 }),
     })
   }
   if (config.py !== undefined) {
     model = modifyFocus(
-      modifyFields(model, { hintBand: () => (py < 70 ? 'Bottom' : 'Top') }),
+      UiStruct.evolve(model, { hintBand: () => (py < 70 ? 'Bottom' : 'Top') }),
       { player: p => ({ ...p, x: config.px ?? p.x, y: py }) },
     )
   }
   if (config.blast !== undefined) {
     const blastAge = config.blast
     const { x, y } = focusOf(model).player
-    model = modifyFields(model, {
-      cosmetics: modifyFields({
+    model = UiStruct.evolve(model, {
+      cosmetics: UiStruct.evolve({
         blasts: () => [{ x: x + 48, y: y - 8, radius: 28, ageMs: blastAge }],
       }),
     })
@@ -741,7 +741,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   }
   if (aim !== undefined) {
     const [aimX, aimY] = aim
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       input: input => ({
         ...input,
         mouseButton: MouseButton.Held({ pointerId: 1 }),
@@ -761,7 +761,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       x: focusOf(model).player.x + dx,
       y: focusOf(model).player.y + dy,
     }
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       input: input =>
         config.device === 'touch'
           ? {
@@ -784,19 +784,19 @@ export const roomModel = (settings: SceneSettings): Model => {
     })
   }
   if (config.device === 'touch') {
-    model = modifyFields(model, { lastDevice: () => 'Touch' as const })
+    model = UiStruct.evolve(model, { lastDevice: () => 'Touch' as const })
   }
   const seen = config.seen
   if (seen !== undefined) {
     model = raiseDebutCard(
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         introducedKinds: () => (seen === 'all' ? ZOMBIE_KIND_ORDER : seen),
       }),
     )
   }
   const debutCard = model.debutCard
   if (card !== undefined && debutCard._tag === 'Showing') {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       debutCard: () => ({ ...debutCard, ageMs: card }),
     })
   }
@@ -815,7 +815,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   const pickupKinds = kindsOf(config.pickups)
   if (pickupKinds.length > 0) {
     const pickupY = config.pickupY
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       pickups: () =>
         Array.map(pickupKinds, (kind, index) => ({
           id: 3000 + index,
@@ -828,7 +828,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   }
   const seenPowerUps = kindsOf(config.seenpowerups)
   if (seenPowerUps.length > 0) {
-    model = modifyFields(model, { seenPowerUps: () => seenPowerUps })
+    model = UiStruct.evolve(model, { seenPowerUps: () => seenPowerUps })
   }
   const boostKinds = Array.filter(
     kindsOf(config.boosts),
@@ -897,8 +897,8 @@ export const roomModel = (settings: SceneSettings): Model => {
   const levelup = config.levelup
   if (levelup !== undefined) {
     const { player } = focusOf(model)
-    model = modifyFields(model, {
-      cosmetics: modifyFields({
+    model = UiStruct.evolve(model, {
+      cosmetics: UiStruct.evolve({
         levelCallouts: () => [
           {
             weapon: heldWeapon(player.arsenal),
@@ -913,8 +913,8 @@ export const roomModel = (settings: SceneSettings): Model => {
   }
   const calloutKind = config.callout
   if (calloutKind !== undefined) {
-    model = modifyFields(model, {
-      cosmetics: modifyFields({
+    model = UiStruct.evolve(model, {
+      cosmetics: UiStruct.evolve({
         callouts: () => [
           {
             kind: calloutKind,
@@ -928,8 +928,8 @@ export const roomModel = (settings: SceneSettings): Model => {
     })
   }
   if (config.bounty) {
-    model = modifyFields(model, {
-      cosmetics: modifyFields({
+    model = UiStruct.evolve(model, {
+      cosmetics: UiStruct.evolve({
         popups: () => [
           {
             kind: 'Kill' as const,
@@ -978,7 +978,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       addBot(seated),
     )
     const crewBots = activeBots(rostered)
-    model = modifyFields(
+    model = UiStruct.evolve(
       withWorld(rostered, world =>
         Array.reduce(
           Array.range(1, crewBots.length),
@@ -991,7 +991,7 @@ export const roomModel = (settings: SceneSettings): Model => {
         ),
       ),
       {
-        runStart: modifyFields({ crewBots: () => crewBots }),
+        runStart: UiStruct.evolve({ crewBots: () => crewBots }),
       },
     )
   }
@@ -1004,7 +1004,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       ),
     )
   }
-  model = modifyFields(model, {
+  model = UiStruct.evolve(model, {
     maybeBreakIdleSinceMs: () =>
       config.idle > 0
         ? Option.some(model.elapsedMs - config.idle)
@@ -1013,7 +1013,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   const phase = config.phase
   const beforeEnd = model
   if (phase === 'escaped' || phase === 'victory') {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       phase: () => Phase.Escaped({ wave: 10 }),
       stats: s => ({
         ...s,
@@ -1028,7 +1028,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   if (phase === 'arriving') {
     const carLine = config.carLine
     const lines = carLine === undefined ? [] : FRIEND_LINES[carLine]
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       phase: () =>
         Phase.Arriving({
           elapsedMs: config.introMs,
@@ -1038,7 +1038,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     })
   }
   if (phase === 'gameover') {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       phase: () => Phase.GameOver({ wave }),
       stats: s => ({
         ...s,
@@ -1047,7 +1047,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     })
   }
   if (phase === 'leftearly') {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       phase: () => Phase.LeftEarly({ wave }),
       stats: s => ({
         ...s,

@@ -5,8 +5,8 @@
 // to it through liveNet.ts.
 
 import { Array, Schema } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { freshGun } from '@game/world/gear/weapons'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -96,7 +96,7 @@ const crowdedRoom = (
   const firstId = seated.nextEntityId
   return {
     ...room,
-    world: modifyFields(seated, {
+    world: UiStruct.evolve(seated, {
       phase: () => Phase.Wave({ wave: 8, elapsedMs: 0, spawns: [NEVER_SPAWN] }),
       zombies: () =>
         Array.makeBy(zombies, index =>

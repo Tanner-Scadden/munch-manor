@@ -1,10 +1,10 @@
 import { Array, Function, Option, String } from 'effect'
-import type { Html } from 'foldkit/html'
 
 import type {
-  ApplicationAttribute,
+  ApplicationHtml,
+  ApplicationMount,
   ApplicationViewBuilder,
-} from '../../app/composition'
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import {
   HELP_DEMO_SPRITES,
@@ -288,36 +288,34 @@ const percent = (part: number, whole: number): string =>
 const movingView = (
   sprites: HintIconSprites,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const frames = framesOf(sprites)
-  return h.span(
-    [
-      h.Class('help-card-picture'),
-      h.AriaHidden(true),
-      h.Style({
-        '--pic-w': `${sprites.width}`,
-        '--pic-h': `${sprites.height}`,
-        '--frames': `${frames.length}`,
-        '--frame-ms': `${sprites.frameMs}ms`,
-      }),
-    ],
-    Array.map(frames, (frame, index) =>
-      h.img([
-        h.Class('help-card-frame'),
-        h.Src(frame.src),
-        h.Alt(''),
-        h.DataAttribute('frames', `${frames.length}`),
-        h.DataAttribute('frame', `${index}`),
-        h.Style({
-          left: percent(frame.x, sprites.width),
-          top: percent(frame.y, sprites.height),
-          width: percent(frame.width, sprites.width),
-          height: percent(frame.height, sprites.height),
-          '--frame': `${index}`,
-        }),
-      ]),
-    ),
-  )
+  return h.span
+    .class('help-card-picture')
+    .attr('aria-hidden', 'true')
+    .style({
+      '--pic-w': `${sprites.width}`,
+      '--pic-h': `${sprites.height}`,
+      '--frames': `${frames.length}`,
+      '--frame-ms': `${sprites.frameMs}ms`,
+    })
+    .children(
+      Array.map(frames, (frame, index) =>
+        h.img
+          .class('help-card-frame')
+          .attr('src', frame.src)
+          .attr('alt', '')
+          .attr('data-frames', `${frames.length}`)
+          .attr('data-frame', `${index}`)
+          .style({
+            left: percent(frame.x, sprites.width),
+            top: percent(frame.y, sprites.height),
+            width: percent(frame.width, sprites.width),
+            height: percent(frame.height, sprites.height),
+            '--frame': `${index}`,
+          }),
+      ),
+    )
 }
 
 // NOTE: How to play on the home menu lets a card show its line; the pause
@@ -328,15 +326,15 @@ const cardFaceView = (
   card: ControlCard,
   device: InputDevice,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => {
+): ReadonlyArray<ApplicationHtml> => {
   const { sprites, line } = inputOf(card, device)
   return [
     movingView(sprites, h),
-    h.span([h.Class('help-card-action')], [card.action]),
-    h.span(
-      [h.Id(helpLineElementId(card.id)), h.Class('help-card-line')],
-      [line],
-    ),
+    h.span.class('help-card-action').children(card.action),
+    h.span
+      .id(helpLineElementId(card.id))
+      .class('help-card-line')
+      .children(line),
   ]
 }
 
@@ -345,54 +343,48 @@ const interactiveCardView = (
   device: InputDevice,
   maybeOpen: Option.Option<HelpCard>,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const isOpen = Option.contains(maybeOpen, card.id)
-  return h.keyed('li')(
-    card.id,
-    [h.Class('help-card-slot')],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.Id(helpCardElementId(card.id)),
-          h.Class('help-card'),
-          h.DataAttribute('open', isOpen ? 'true' : 'false'),
-          h.AriaExpanded(isOpen),
-          h.AriaDescribedBy(helpLineElementId(card.id)),
-          h.OnFocus(HelpMessage.FocusedHelpCard({ card: card.id })),
-          h.OnClick(HelpMessage.ClickedHelpCard({ card: card.id })),
-        ],
-        cardFaceView(card, device, h),
-      ),
-    ],
-  )
+  return h.li
+    .key(card.id)
+    .class('help-card-slot')
+    .children(
+      h.button
+        .attr('type', 'button')
+        .id(helpCardElementId(card.id))
+        .class('help-card')
+        .attr('data-open', isOpen ? 'true' : 'false')
+        .attr('aria-expanded', isOpen ? 'true' : 'false')
+        .attr('aria-describedby', helpLineElementId(card.id))
+        .on('focus', HelpMessage.FocusedHelpCard({ card: card.id }))
+        .on('click', HelpMessage.ClickedHelpCard({ card: card.id }))
+        .children(cardFaceView(card, device, h)),
+    )
 }
 
 const staticCardView = (
   card: ControlCard,
   device: InputDevice,
   h: ApplicationViewBuilder,
-): Html =>
-  h.keyed('li')(
-    card.id,
-    [
-      h.Class('help-card'),
-      h.DataAttribute('open', 'false'),
-      h.AriaLabel(`${card.action}: ${inputOf(card, device).line}`),
-    ],
-    cardFaceView(card, device, h),
-  )
+): ApplicationHtml =>
+  h.li
+    .key(card.id)
+    .class('help-card')
+    .attr('data-open', 'false')
+    .attr('aria-label', `${card.action}: ${inputOf(card, device).line}`)
+    .children(cardFaceView(card, device, h))
 
-const extraKeysView = (h: ApplicationViewBuilder): Html =>
-  h.ul(
-    [h.Class('help-extra'), h.AriaLabel('More keys')],
-    Array.map(EXTRA_KEYS, ({ key, action }) =>
-      h.li(
-        [h.Class('help-extra-item')],
-        [h.kbd([h.Class('menu-key')], [key]), ` ${action}`],
+const extraKeysView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.ul
+    .class('help-extra')
+    .attr('aria-label', 'More keys')
+    .children(
+      Array.map(EXTRA_KEYS, ({ key, action }) =>
+        h.li
+          .class('help-extra-item')
+          .children(h.kbd.class('menu-key').children(key), ` ${action}`),
       ),
-    ),
-  )
+    )
 
 export const helpLabel = (device: InputDevice): string => DEVICE_LABELS[device]
 
@@ -402,39 +394,38 @@ export const howToPlayView: {
   (
     cards: HelpCards,
     h: ApplicationViewBuilder,
-    maybeUnder: Option.Option<Html>,
-  ): (model: Model) => ReadonlyArray<Html>
+    maybeUnder: Option.Option<ApplicationHtml>,
+  ): (model: Model) => ReadonlyArray<ApplicationHtml>
   (
     model: Model,
     cards: HelpCards,
     h: ApplicationViewBuilder,
-    maybeUnder: Option.Option<Html>,
-  ): ReadonlyArray<Html>
+    maybeUnder: Option.Option<ApplicationHtml>,
+  ): ReadonlyArray<ApplicationHtml>
 } = Function.dual(
   4,
   (
     model: Model,
     cards: HelpCards,
     h: ApplicationViewBuilder,
-    maybeUnder: Option.Option<Html>,
-  ): ReadonlyArray<Html> => [
-    h.ul(
-      [
-        h.Class('help-cards'),
-        h.DataAttribute('cards', cards),
-        h.AriaLabel('Controls'),
-      ],
-      Array.map(CONTROL_CARDS, card =>
-        cards === 'Interactive'
-          ? interactiveCardView(
-              card,
-              model.lastDevice,
-              model.maybeOpenHelpCard,
-              h,
-            )
-          : staticCardView(card, model.lastDevice, h),
+    maybeUnder: Option.Option<ApplicationHtml>,
+  ): ReadonlyArray<ApplicationHtml> => [
+    h.ul
+      .class('help-cards')
+      .attr('data-cards', cards)
+      .attr('aria-label', 'Controls')
+      .children(
+        Array.map(CONTROL_CARDS, card =>
+          cards === 'Interactive'
+            ? interactiveCardView(
+                card,
+                model.lastDevice,
+                model.maybeOpenHelpCard,
+                h,
+              )
+            : staticCardView(card, model.lastDevice, h),
+        ),
       ),
-    ),
     ...(model.lastDevice === 'KeyboardMouse' ? [extraKeysView(h)] : []),
     ...Option.toArray(maybeUnder),
   ],
@@ -443,53 +434,51 @@ export const howToPlayView: {
 const isPauseHelpUp = (model: Model): boolean =>
   Phase.isAnyOf(['Paused'])(model.phase)
 
+// NOTE: the game surface's press (PressGameSurface in src/app/mount.ts),
+// handed in by the root's view, since a feature imports nothing of `app/`:
+// a press on the help card is a press on the surface.
+type PressSurface = ApplicationMount
+
 export const pauseHelpView: {
   (
-    pressSurface: ApplicationAttribute,
+    pressSurface: PressSurface,
     h: ApplicationViewBuilder,
-  ): (model: Model) => Html
+  ): (model: Model) => ApplicationHtml | null
   (
     model: Model,
-    pressSurface: ApplicationAttribute,
+    pressSurface: PressSurface,
     h: ApplicationViewBuilder,
-  ): Html
+  ): ApplicationHtml | null
 } = Function.dual(
   3,
   (
     model: Model,
-    pressSurface: ApplicationAttribute,
+    pressSurface: PressSurface,
     h: ApplicationViewBuilder,
-  ): Html => {
+  ): ApplicationHtml | null => {
     if (!isPauseHelpUp(model)) {
-      return h.empty
+      return null
     }
 
-    return h.div(
-      [h.Class('pause-help-frame')],
-      [
-        h.section(
-          [
-            h.Class('pause-help'),
-            h.DataAttribute('device', model.lastDevice),
-            h.AriaLabelledBy(HELP_TITLE_ID),
-            pressSurface,
-          ],
-          [
-            pauseProgressView(model, h),
-            h.h2(
-              [h.Id(HELP_TITLE_ID), h.Class('pause-help-title')],
-              [
-                'How to play',
-                h.span(
-                  [h.Class('sr-only')],
-                  [` with ${helpLabel(model.lastDevice)}`],
-                ),
-              ],
+    return h.div.class('pause-help-frame').children(
+      h.section
+        .onMount(pressSurface)
+        .class('pause-help')
+        .attr('data-device', model.lastDevice)
+        .attr('aria-labelledby', HELP_TITLE_ID)
+        .children(
+          pauseProgressView(model, h),
+          h.h2
+            .id(HELP_TITLE_ID)
+            .class('pause-help-title')
+            .children(
+              'How to play',
+              h.span
+                .class('sr-only')
+                .children(` with ${helpLabel(model.lastDevice)}`),
             ),
-            ...howToPlayView(model, 'Static', h, Option.none()),
-          ],
+          ...howToPlayView(model, 'Static', h, Option.none()),
         ),
-      ],
     )
   },
 )

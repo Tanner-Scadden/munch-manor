@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { isHumanCrew } from '../../domain/bots'
@@ -112,14 +113,14 @@ export const earnRank: {
     isFirstEscape,
   })
   const pointsBefore = totalPointsOf(after.rank)
-  const paid = modifyFields(after, {
+  const paid = UiStruct.evolve(after, {
     rank: rank =>
-      modifyFields(rank, {
+      UiStruct.evolve(rank, {
         earnedPoints: earned => earned + points,
         earnedBones: earned => earned + bones,
       }),
     bonuses: saved =>
-      modifyFields(saved, {
+      UiStruct.evolve(saved, {
         doubledDay: day =>
           Array.contains(bonuses, 'Double')
             ? Option.getOrElse(maybeDoubleDay, () => day)
@@ -131,8 +132,8 @@ export const earnRank: {
       }),
   })
   return isEnded
-    ? modifyFields(paid, {
-        runGains: modifyFields({
+    ? UiStruct.evolve(paid, {
+        runGains: UiStruct.evolve({
           rankPaid: () => paidBy(run, true),
           maybeRankGain: () =>
             input.isGuided
@@ -161,7 +162,7 @@ const isFirstEscapeOn = (model: Model, input: RunPayInput): boolean =>
 export const grantVeteran = (model: Model): Model =>
   model.rank.isVeteranGranted
     ? model
-    : modifyFields(model, {
+    : UiStruct.evolve(model, {
         rank: rank => grantedVeteran(rank, killTotal(model.bests.killsByKind)),
       })
 
@@ -179,9 +180,9 @@ export const payPurses = (model: Model): Model => {
   )
   return Array.isReadonlyArrayEmpty(due)
     ? model
-    : modifyFields(model, {
+    : UiStruct.evolve(model, {
         rank: rank =>
-          modifyFields(rank, {
+          UiStruct.evolve(rank, {
             earnedBones: earned =>
               earned +
               Array.reduce(
@@ -192,7 +193,7 @@ export const payPurses = (model: Model): Model => {
               ),
           }),
         bonuses: bonuses =>
-          modifyFields(bonuses, {
+          UiStruct.evolve(bonuses, {
             purses: paid => [...paid, ...due],
           }),
       })

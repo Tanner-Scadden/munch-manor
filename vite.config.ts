@@ -7,7 +7,6 @@ import tailwindcss from '@tailwindcss/vite'
 import { spriteAtlas } from './tools/sprites/vitePlugin.ts'
 import { buildId, serviceWorker } from './tools/vite/buildPlugins.ts'
 import { studioNotes } from './tools/vite/studioNotes.ts'
-import { foldkitBrandingViews } from './tools/vite/viewIdentity.ts'
 
 const BUILT_STYLESHEET =
   /<link rel="stylesheet" crossorigin href="([^"]+\.css)">/
@@ -85,7 +84,6 @@ export default defineConfig({
   resolve: { alias: { '@game': GAME_SOURCE } },
   plugins: [
     tailwindcss(),
-    ...foldkitBrandingViews(),
     buildId(),
     loadStylesBehindSplash(),
     earlyEntry(),

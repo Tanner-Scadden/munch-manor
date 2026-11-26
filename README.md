@@ -48,7 +48,7 @@ Found a bug, have an idea, or just got munched in a funny way? [Open an issue](h
 
 ## For the curious
 
-Munch Manor is open source and built with [Foldkit](https://foldkit.dev) and [Effect](https://effect.website), and it runs on Cloudflare. Every game is replayable from its seed, co-op runs the same game on the server, and all the art is drawn in code as tiny pixel maps.
+Munch Manor is open source and built with [Effect UI](https://ui.effect.website) and [Effect](https://effect.website), and it runs on Cloudflare. Every game is replayable from its seed, co-op runs the same game on the server, and all the art is drawn in code as tiny pixel maps.
 
 Want to poke around or run it yourself?
 

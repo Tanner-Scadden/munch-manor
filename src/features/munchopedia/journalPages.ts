@@ -1,5 +1,6 @@
 import { Array, Function, Option, Schema, String } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { milestoneUnlockId } from '../../domain/journal'
 import type { SavedJournal } from '../../shared/journalData'
@@ -53,7 +54,7 @@ export const journalTabId = (tab: JournalTab): string =>
 // NOTE: where a thing stands for the player: brought out (on the shelf at
 // any difficulty), on the list but not found yet, or still locked behind
 // the milestone that opens it.
-export const ThingStanding = defineTaggedUnion({
+export const ThingStanding = UiSchema.TaggedEnum({
   Found: {},
   Open: {},
   Locked: { milestone: MilestoneId },

@@ -1,9 +1,9 @@
 import { Function } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type Sprite, TOP_LEFT, placeAt, spriteShapes } from '../../art/sprite'
 import { type Camera, worldToView } from '../../render/camera'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { clearWindowOf } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
@@ -26,7 +26,7 @@ const NIGHT_COLOR = '#0b0a1a'
 const STARLIGHT_COLOR = '#2a2850'
 const SPILL_COLOR = 'rgba(255, 210, 120, 0.35)'
 
-export const frontDoorShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+export const frontDoorShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   if (Finale.isAnyOf(['Hunting', 'Summoned'])(model.dare.finale)) {
     return []
   }
@@ -137,18 +137,11 @@ const isFinaleAtDoor = (model: Model): boolean =>
   Finale.isAnyOf(['KeyFlying', 'Open'])(model.dare.finale)
 
 export const frontDoorMarkerShapes: {
-  (
-    screen: Screen,
-    camera: Camera,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (
-    model: Model,
-    screen: Screen,
-    camera: Camera,
-  ): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape> => {
     if (!isFinaleAtDoor(model)) {
       return []
     }

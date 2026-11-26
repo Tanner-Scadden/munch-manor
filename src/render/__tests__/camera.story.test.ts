@@ -1,7 +1,6 @@
 import { Array, Option, String } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../app/message'
@@ -11,7 +10,13 @@ import { deriveIntent } from '../../input/input'
 import type { Input } from '../../input/inputSchema'
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
 import { floorSeenOf, nearly } from '../../test/lensTesting'
-import { APPLICATION, WIDE_SURFACE } from '../../test/testing'
+import {
+  WIDE_SURFACE,
+  checkModel,
+  modelAfter,
+  send,
+  steps,
+} from '../../test/testing'
 import { PARLOUR, makeLevel } from '../../world/level/arena'
 import { ROOM_MAP } from '../../world/level/plan'
 import { focusOf, modifyFocus } from '../../world/party/party'
@@ -29,7 +34,7 @@ const NARROW_LEVEL = makeLevel(
 // far off, than below it, near.
 const ONE_SCREEN_Y = cameraFor(PARLOUR, { x: 160, y: 90 }).y
 
-const playingModel: Model = modifyFields(initialModel, {
+const playingModel: Model = UiStruct.evolve(initialModel, {
   maybeSurface: () => Option.some(WIDE_SURFACE),
   phase: () =>
     Phase.Wave({
@@ -145,30 +150,29 @@ describe('camera', () => {
   })
 
   it.effect('in the arena, the mouse aims where it points on the screen', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFocus(playingModel, {
-          player: player => ({ ...player, x: 100, y: 90 }),
+    modelAfter(
+      modifyFocus(playingModel, {
+        player: player => ({ ...player, x: 100, y: 90 }),
+      }),
+      steps(
+        send(Message.MovedMouse({ clientX: 1000, clientY: 360 })),
+        checkModel(current => {
+          expect(cameraOf(current)).toMatchObject({ x: 0 })
+          expect(current.input.maybeMouseInView).toEqual(
+            Option.some({ x: 250, y: 90 }),
+          )
+          const target = viewToWorld(cameraOf(current), { x: 250, y: 90 })
+          const length = Math.hypot(target.x - 100, target.y - 90)
+          expect(
+            nearly(Option.getOrThrow(focusOf(current).intent.maybeAim)),
+          ).toEqual(
+            nearly({
+              x: (target.x - 100) / length,
+              y: (target.y - 90) / length,
+            }),
+          )
         }),
       ),
-      Story.message(Message.MovedMouse({ clientX: 1000, clientY: 360 })),
-      Story.model(current => {
-        expect(cameraOf(current)).toMatchObject({ x: 0 })
-        expect(current.input.maybeMouseInView).toEqual(
-          Option.some({ x: 250, y: 90 }),
-        )
-        const target = viewToWorld(cameraOf(current), { x: 250, y: 90 })
-        const length = Math.hypot(target.x - 100, target.y - 90)
-        expect(
-          nearly(Option.getOrThrow(focusOf(current).intent.maybeAim)),
-        ).toEqual(
-          nearly({
-            x: (target.x - 100) / length,
-            y: (target.y - 90) / length,
-          }),
-        )
-      }),
     ),
   )
 })

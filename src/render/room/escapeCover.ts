@@ -1,7 +1,7 @@
 import { Array, Function, Order, Record, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Level } from '../../world/level/arena'
+import type * as Draw from '../draw'
 import { rect } from '../drawing'
 import { barrelsShapes, wineRackShapes } from './cellarArt'
 import { candelabraShapes, hutchShapes, partyTableShapes } from './diningArt'
@@ -50,11 +50,7 @@ const IRON_COLOR = '#4a4a56'
 
 // NOTE: a display case: a glass box on a wooden stand, an empty velvet
 // cushion inside waiting for the proof that goes in it, a brass plaque.
-const displayCaseShapes = ({
-  x,
-  y,
-  width,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+const displayCaseShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const middle = x + Math.floor(width / 2)
   return [
     rect(x, y + 2, width, 8, CASE_WOOD_COLOR),
@@ -78,7 +74,7 @@ const displayCaseShapes = ({
 
 // NOTE: the trap crate: a slatted crate with a bear trap stenciled on it,
 // a red gnome hat poking out under the lid, and a spring.
-const trapCrateShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
+const trapCrateShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const middle = x + Math.floor(width / 2)
   return [
     rect(x, y - 3, width, 13, CRATE_COLOR),
@@ -108,10 +104,7 @@ const trapCrateShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
 }
 
 export const ESCAPE_COVER_DRAWINGS: Readonly<
-  Record<
-    EscapeCoverKind,
-    (box: Box, level: Level) => ReadonlyArray<Canvas.Shape>
-  >
+  Record<EscapeCoverKind, (box: Box, level: Level) => ReadonlyArray<Draw.Shape>>
 > = {
   PartyTable: partyTableShapes,
   Hutch: hutchShapes,
@@ -143,17 +136,17 @@ const byFoot = Order.mapInput(
 export const escapeCoverShapes: {
   (
     symbols: Readonly<Record<string, EscapeCoverKind>>,
-  ): (level: Level) => ReadonlyArray<Canvas.Shape>
+  ): (level: Level) => ReadonlyArray<Draw.Shape>
   (
     level: Level,
     symbols: Readonly<Record<string, EscapeCoverKind>>,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
   (
     level: Level,
     symbols: Readonly<Record<string, EscapeCoverKind>>,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     pipe(
       Record.toEntries(symbols),
       Array.flatMap(([symbol, kind]) =>

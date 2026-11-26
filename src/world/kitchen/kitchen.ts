@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { BULLET_STEP_PX } from '../../shared/constants'
 import * as DetMath from '../../shared/detMath'
@@ -143,7 +144,7 @@ const ignite = (model: World): World => {
   if (!Array.some(struck, isLit => isLit)) {
     return model
   }
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     ovens: () =>
       Array.map(boxes, (_, index) =>
         struck[index] === true ? belching() : ovenAt(model, index),
@@ -185,7 +186,7 @@ const scorch = (model: World, oven: Box): World => {
   const events = Array.flatMap(outcomes, outcome => outcome.events)
   return Array.isReadonlyArrayEmpty(events)
     ? model
-    : modifyFields(model, {
+    : UiStruct.evolve(model, {
         zombies: () => Array.map(outcomes, ({ target }) => target),
         frameEvents: frameEvents => [...frameEvents, ...events],
       })
@@ -236,7 +237,7 @@ const tickOvens = (model: World, deltaMs: number): World => {
   const heats = Array.map(boxes, (_, index) =>
     heatUp(ovenAt(model, index), deltaMs),
   )
-  const heated: World = modifyFields(model, {
+  const heated: World = UiStruct.evolve(model, {
     ovens: () => Array.map(heats, ({ oven }) => oven),
   })
   return Array.reduce(
@@ -289,7 +290,7 @@ const skidOf = (zombie: Zombie, before: Vector): Vector => {
 }
 
 const slip = (zombie: Zombie, before: Vector): Zombie =>
-  modifyFields(zombie, {
+  UiStruct.evolve(zombie, {
     action: () =>
       ZombieAction.Dazed({
         remainingMs: SOUP_RULES.slipMs,
@@ -326,7 +327,7 @@ const slipOnSoup = (before: World, model: World): World => {
   if (!Array.some(slipped, Option.isSome)) {
     return model
   }
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: zombies =>
       Array.map(zombies, (zombie, index) =>
         Option.match(Option.flatten(Option.fromNullishOr(slipped[index])), {

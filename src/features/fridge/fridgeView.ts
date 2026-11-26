@@ -1,5 +1,4 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { prizeOnPaperSprite } from '../../art/prizeArt'
@@ -13,6 +12,7 @@ import {
 } from '../../art/sprite'
 import { type Camera, worldToView } from '../../render/camera'
 import { type Drawable, ON_FRONT_PX } from '../../render/depth'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { clearWindowOf } from '../../render/hudLayout'
 import { type Keepout, maybeClearOfKeepouts } from '../../render/keepout'
@@ -63,7 +63,7 @@ const MAIN_DOOR_PX = FRIDGE_RISE_PX + TILE_SIZE * 2 - FREEZER_PX - 2
 // lit sick green, shelves of things best not named, and its pulse: the
 // inside's top lit brighter on every other beat. Each stands upright on the
 // carved fridge's front (`ON_FRONT_PX`), a block deep.
-const doorShapes = (inside: string): ReadonlyArray<Canvas.Shape> => [
+const doorShapes = (inside: string): ReadonlyArray<Draw.Shape> => [
   rect(1, FREEZER_PX + 1, FRIDGE_WIDTH - 3, MAIN_DOOR_PX - 1, '#14200e'),
   rect(1, FREEZER_PX + 1, FRIDGE_WIDTH - 3, 2, '#9be36a'),
   rect(2, FREEZER_PX + 3, FRIDGE_WIDTH - 5, 4, inside),
@@ -227,7 +227,7 @@ const oddsRow = (
   index: number,
   prize: FridgePrize,
   share: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const middle = top + ODDS_PAD_PX + index * ODDS_ROW_PX + 3
   const rows = PIP_ROWS[revealOf(prize).rarity]
   return [
@@ -340,19 +340,19 @@ export const fridgeOddsShapes: {
   (
     camera: Camera,
     keepouts: ReadonlyArray<Keepout>,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     camera: Camera,
     keepouts: ReadonlyArray<Keepout>,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     model: Model,
     camera: Camera,
     keepouts: ReadonlyArray<Keepout>,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     Option.match(maybePlacedOdds(model, camera, keepouts), {
       onNone: () => [],
       onSome: ({ anchor, translate, scale }) => [
@@ -477,7 +477,7 @@ const dialFor = (player: Player, elapsedMs: number): Option.Option<Sprite> =>
     }
   })
 
-const dialShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const dialShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Option.match(dialFor(focusOf(model).player, model.elapsedMs), {
     onNone: () => [],
     onSome: dial => [
@@ -514,12 +514,12 @@ const lidLift = (lob: Lob): number => {
   return 4 * LID_ARC_PX * progress * (1 - progress)
 }
 
-export const lidShadowShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+export const lidShadowShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Array.map(model.lobs, lob =>
     rect(Math.round(lob.x) - 2, Math.round(lob.y) + 2, 5, 1, LID_SHADOW_COLOR),
   )
 
-const lidShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const lidShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Array.map(model.lobs, lob =>
     placeAt(
       Math.round(lob.x),
@@ -538,4 +538,4 @@ const lidShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 // NOTE: what flies over the heads of everything standing.
 export const fridgeOverheadShapes = (
   model: Model,
-): ReadonlyArray<Canvas.Shape> => [...lidShapes(model), ...dialShapes(model)]
+): ReadonlyArray<Draw.Shape> => [...lidShapes(model), ...dialShapes(model)]

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../../app/model'
 import { PLAYER_RADIUS } from '../../../shared/constants'
@@ -20,7 +21,7 @@ import { TOOL_RULES } from '../toolRules'
 const EXITS = [KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT, SECRET_EXIT]
 
 export const openHouse = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     level: state =>
       Array.reduce(EXITS, state, (open, exit) => openExitIn(open, exit)),
   })
@@ -95,7 +96,7 @@ export const firedAgo: {
   (id: StationId, agoMs: number): (model: Model) => Model
   (model: Model, id: StationId, agoMs: number): Model
 } = Function.dual(3, (model: Model, id: StationId, agoMs: number): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     stations: stations => ({
       ...stations,
       [id]: {

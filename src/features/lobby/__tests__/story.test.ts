@@ -1,25 +1,48 @@
-import { Option, Tuple } from 'effect'
-import { Story } from 'foldkit'
+import { Array, Effect, Option } from 'effect'
 
+import { Component, UiStruct } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
-import { Dialog, DialogBlock } from '@foldkit/ui'
 
+import { Message } from '../../../app/message'
+import { type Model } from '../../../app/model'
+import { FocusHomeButton } from '../../../app/update/home'
+import { FocusLobbyControl } from '../../../app/update/lobby'
 import { defaultAppearance } from '../../../domain/clientSchema'
+import { heroesBoughtBy, readyModel } from '../../../test/model.fixture'
+import {
+  type StoryStep,
+  checkModel,
+  expectNoCommand,
+  foldLobby,
+  openLobbyByTap,
+  press,
+  resolveFocusLobby,
+  send,
+  storyOf,
+} from '../../../test/testing'
+import { pointsForRank } from '../../../world/heroes/rank'
 import { noModifiers } from '../../../world/run/modifiers'
-import { PickOutcome } from '../../heroes/inMessage'
-import { Message as HeroPickerMessage } from '../../heroes/message'
-import { HeroDialogBinding, HeroPickerBinding } from '../bindings'
-import { LobbyBlock } from '../block'
-import { InMessage } from '../inMessage'
-import { LobbyLayer } from '../layer'
-import { Message, OutMessage } from '../message'
-import { type LobbyPicks, isHeroPickerUp } from '../model'
-import { FocusLobbyControl, FoldLobby } from '../steps'
+import { Lobby } from '../block'
+import {
+  Events,
+  Message as LobbyComponentMessage,
+  LobbyMessage,
+} from '../message'
+import {
+  type LobbyPicks,
+  type LobbyProps,
+  initialLobby,
+  isHeroPickerUp,
+  openedLobby,
+} from '../model'
 
-// The single player lobby Block on its own: it opens on START, says each
-// pick for the root to make, opens the hero picker in its Dialog, and plays
-// the root's answer. The root's side (the picks kept, the run started, the
-// bot rolled, the hero judged) is in lobby.story.test.ts.
+// The single player lobby. The Lobby component holds no state: each tap
+// comes up as an event. The root judges and makes each one
+// (src/app/update/lobby.ts): it opens on PLAY, makes each pick and focuses
+// START, opens the hero picker in its Dialog, and plays the hero worn. The
+// root's side of starting a run, the bot rolled, and the hero bought is in
+// lobby.story.test.ts.
 
 const PICKS: LobbyPicks = {
   mode: 'Campaign',
@@ -33,343 +56,406 @@ const PICKS: LobbyPicks = {
   lock: 'Open',
 }
 
-const WITH_BOT: LobbyPicks = {
-  ...PICKS,
-  bots: [{ name: 'Gravy Dave', calling: 'You', look: defaultAppearance }],
+const PROPS: LobbyProps = {
+  lobby: openedLobby(initialLobby),
+  picks: PICKS,
+  name: 'Pal',
+  look: defaultAppearance,
+  rank: 1,
+  calling: 'You',
+  isHeroNew: false,
+  bought: [],
+  bones: 0,
+  fresh: [],
+  isKeyboard: true,
 }
 
-const lobbyWith = (picks: LobbyPicks) => ({
-  block: LobbyBlock,
-  layer: LobbyLayer,
-  updateContext: Tuple.make(picks),
-  inMessageContext: Tuple.make(picks),
+// NOTE: each of the component's Messages and the event it raises for the
+// root, one row each.
+const TAPS: ReadonlyArray<readonly [LobbyComponentMessage, Events]> = [
+  [LobbyComponentMessage.ClickedBackButton(), Events.RequestedLeave()],
+  [LobbyComponentMessage.ClickedBackdrop(), Events.RequestedLeave()],
+  [LobbyComponentMessage.ClickedStartButton(), Events.RequestedStart()],
+  [LobbyComponentMessage.ClickedHeroButton(), Events.RequestedHeroPicker()],
+  [LobbyComponentMessage.ClickedAddBotButton(), Events.RequestedAddBot()],
+  [
+    LobbyComponentMessage.ClickedDropBotButton({ index: 1 }),
+    Events.RequestedDropBot({ index: 1 }),
+  ],
+  [
+    LobbyComponentMessage.ClickedBotHeroButton({ index: 0 }),
+    Events.RequestedBotHeroPicker({ index: 0 }),
+  ],
+  [
+    LobbyComponentMessage.ClickedModeButton({ mode: 'Endless' }),
+    Events.PickedMode({ mode: 'Endless' }),
+  ],
+  [
+    LobbyComponentMessage.ClickedDifficultyButton({ difficulty: 'Hard' }),
+    Events.PickedDifficulty({ difficulty: 'Hard' }),
+  ],
+  [
+    LobbyComponentMessage.ClickedModifierButton({ modifier: 'Glass' }),
+    Events.ToggledModifier({ modifier: 'Glass' }),
+  ],
+  [LobbyComponentMessage.ClickedEasyBreakButton(), Events.SteppedEasyBreak()],
+  [LobbyComponentMessage.ClickedMarkButton(), Events.SteppedDareMark()],
+  [
+    LobbyComponentMessage.FocusedControl({ control: 'Mark' }),
+    Events.FocusedControl({ control: 'Mark' }),
+  ],
+  [LobbyComponentMessage.BlurredControl(), Events.BlurredControl()],
+  [
+    LobbyComponentMessage.PickedHeroCard({ calling: 'Handyman' }),
+    Events.PickedHero({ calling: 'Handyman' }),
+  ],
+  [
+    LobbyComponentMessage.RequestedBuyHero({ calling: 'Handyman' }),
+    Events.RequestedBuyHero({ calling: 'Handyman' }),
+  ],
+  [
+    LobbyComponentMessage.RequestedCloseHeroPicker(),
+    Events.RequestedCloseHeroPicker(),
+  ],
+]
+
+describe('the Lobby component', () => {
+  it.effect('says each tap for the root to judge', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Lobby, PROPS)
+      Array.forEach(TAPS, ([message, event]) => {
+        s.send(message).emitted(event)
+      })
+    }),
+  )
 })
 
-const LOBBY = lobbyWith(PICKS)
+// THE ROOT'S RULES
 
-const focusStart = Story.Command.resolve(
-  FocusLobbyControl({ control: 'Start' }),
-  Message.CompletedFocusControl(),
-)
+const ranked = (model: Model): Model =>
+  UiStruct.evolve(model, {
+    rank: UiStruct.evolve({ earnedPoints: () => pointsForRank(3) }),
+    boughtCosmetics: () => heroesBoughtBy(3),
+  })
 
-const opened = Story.steps(
-  Story.inMessage(InMessage.RequestedOpen()),
-  focusStart,
-)
+const withBot = (model: Model): Model =>
+  UiStruct.evolve(model, {
+    home: UiStruct.evolve({
+      bots: () => [
+        { name: 'Gravy Dave', calling: 'You', look: defaultAppearance },
+      ],
+    }),
+  })
 
-const showHeroDialog = Story.Command.resolve(
-  Dialog.test.ShowDialog,
-  DialogBlock.Message.SucceededShowDialog(),
-)
+const onDifficulty =
+  (chosen: 'Easy' | 'Normal' | 'Hard') =>
+  (model: Model): Model =>
+    UiStruct.evolve(model, {
+      difficulty: () => ({ chosen, nightmare: 'Locked' }),
+    })
 
-const closeHeroDialog = Story.Command.resolve(
-  Dialog.test.CloseDialog,
-  DialogBlock.Message.CompletedCloseDialog(),
-)
+// NOTE: a pick puts focus on START, so Enter plays next.
+const focusesStart: StoryStep = s =>
+  s
+    .expectExact(FocusLobbyControl.make({ control: 'Start' }))
+    .pipe(resolveFocusLobby())
 
-const pressed = (code: string) =>
-  Story.inMessage(InMessage.RequestedPressKey({ code }))
+const lobbyOf = (check: (model: Model) => void): StoryStep => checkModel(check)
 
-describe('the lobby Block', () => {
+describe("the lobby's rules on the root", () => {
   it.effect('opens with START focused', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      Story.inMessage(InMessage.RequestedOpen()),
-      Story.Command.expectExact(FocusLobbyControl({ control: 'Start' })),
-      focusStart,
-      Story.model(model => {
-        expect(model.status).toBe('Open')
-        expect(model.maybeFocus).toEqual(Option.some('Start'))
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        send(Message.ClickedPlayButton()),
+        focusesStart,
+        lobbyOf(model => {
+          expect(model.lobby.status).toBe('Open')
+          expect(model.lobby.maybeFocus).toEqual(Option.some('Start'))
+        }),
+      )
+    }),
   )
 
-  it.effect(
-    'a mode tile says the mode for the root to make, and focuses START',
-    () =>
-      Story.story(
-        LOBBY,
-        Story.init(),
-        opened,
-        Story.message(Message.ClickedModeButton({ mode: 'Endless' })),
-        Story.expectOutMessage(OutMessage.ChoseMode({ mode: 'Endless' })),
-        focusStart,
-      ),
+  it.effect('a mode tile makes the mode, and focuses START', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.PickedLobbyMode({ mode: 'Endless' })),
+        focusesStart,
+        lobbyOf(model => {
+          expect(model.home.mode).toBe('Endless')
+        }),
+      )
+    }),
   )
 
-  it.effect('a locked Nightmare says nothing; X steps past it', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      opened,
-      Story.message(
-        Message.ClickedDifficultyButton({ difficulty: 'Nightmare' }),
-      ),
-      Story.expectNoOutMessage(),
-      Story.Command.expectNone(),
-      pressed('KeyX'),
-      Story.expectOutMessage(
-        OutMessage.ChoseDifficulty({ difficulty: 'Hard' }),
-      ),
-      focusStart,
-    ),
+  it.effect('a locked Nightmare changes nothing; X steps past it', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.PickedLobbyDifficulty({ difficulty: 'Nightmare' })),
+        expectNoCommand,
+        lobbyOf(model => {
+          expect(model.difficulty.chosen).toBe('Normal')
+        }),
+        press('KeyX'),
+        focusesStart,
+        lobbyOf(model => {
+          expect(model.difficulty.chosen).toBe('Hard')
+        }),
+      )
+    }),
   )
 
   it.effect('Friendly Fire waits for a bot in the crew', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      opened,
-      Story.message(
-        Message.ClickedModifierButton({ modifier: 'FriendlyFire' }),
-      ),
-      Story.expectNoOutMessage(),
-      Story.message(Message.ClickedModifierButton({ modifier: 'Glass' })),
-      Story.expectOutMessage(OutMessage.ToggledModifier({ modifier: 'Glass' })),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'FriendlyFire' })),
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'Glass' })),
+        lobbyOf(model => {
+          expect(model.modifiers.friendlyFire).toBe(false)
+          expect(model.modifiers.glass).toBe(true)
+        }),
+      )
+    }),
   )
 
   it.effect('with a bot seated, Friendly Fire turns on', () =>
-    Story.story(
-      lobbyWith(WITH_BOT),
-      Story.init(),
-      opened,
-      Story.message(
-        Message.ClickedModifierButton({ modifier: 'FriendlyFire' }),
-      ),
-      Story.expectOutMessage(
-        OutMessage.ToggledModifier({ modifier: 'FriendlyFire' }),
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(withBot(readyModel))
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'FriendlyFire' })),
+        lobbyOf(model => {
+          expect(model.modifiers.friendlyFire).toBe(true)
+        }),
+      )
+    }),
   )
 
   // NOTE: owner, 2026-11-12: on Dare the lobby picks the break's clock,
   // none first; above Dare there is no pill to press.
   it.effect('on Dare the break clock steps to its next choice', () =>
-    Story.story(
-      lobbyWith({
-        ...PICKS,
-        difficulty: { chosen: 'Easy', nightmare: 'Locked' },
-        easyBreakSeconds: 0,
-      }),
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedEasyBreakButton()),
-      Story.expectOutMessage(OutMessage.ChoseEasyBreak({ seconds: 60 })),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(onDifficulty('Easy')(readyModel))
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.SteppedLobbyEasyBreak()),
+        lobbyOf(model => {
+          expect(model.easyBreakSeconds).toBe(60)
+        }),
+      )
+    }),
   )
 
   it.effect('on Dare the break clock goes round from 20 s to none', () =>
-    Story.story(
-      lobbyWith({
-        ...PICKS,
-        difficulty: { chosen: 'Easy', nightmare: 'Locked' },
-        easyBreakSeconds: 20,
-      }),
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedEasyBreakButton()),
-      Story.expectOutMessage(OutMessage.ChoseEasyBreak({ seconds: 0 })),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(onDifficulty('Easy')(readyModel), {
+          easyBreakSeconds: () => 20,
+        }),
+      )
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.SteppedLobbyEasyBreak()),
+        lobbyOf(model => {
+          expect(model.easyBreakSeconds).toBe(0)
+        }),
+      )
+    }),
   )
 
   it.effect('above Dare the break clock asks nothing', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedEasyBreakButton()),
-      Story.expectNoOutMessage(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.SteppedLobbyEasyBreak()),
+        lobbyOf(model => {
+          expect(model.easyBreakSeconds).toBe(readyModel.easyBreakSeconds)
+        }),
+      )
+    }),
   )
 
   // NOTE: the dare ladder (GAME_DESIGN.md, "The dare ladder"): the mark's
   // pick steps through the marks opened, round to none, and asks nothing
   // before an escape opens mark 1.
+  const markedAt = (dareMark: number, best: number): Model =>
+    UiStruct.evolve(readyModel, {
+      dareMark: () => dareMark,
+      dareMarks: marks => ({ ...marks, Normal: best }),
+    })
+
   it.effect('the mark steps to the next opened, round to none', () =>
-    Story.story(
-      lobbyWith({ ...PICKS, dareMark: 2, bestMark: 3 }),
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedMarkButton()),
-      Story.expectOutMessage(OutMessage.ChoseDareMark({ mark: 3 })),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(markedAt(2, 3))
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.SteppedLobbyDareMark()),
+        lobbyOf(model => {
+          expect(model.dareMark).toBe(3)
+        }),
+      )
+    }),
   )
 
   it.effect('past the best mark opened, the pick goes back to none', () =>
-    Story.story(
-      lobbyWith({ ...PICKS, dareMark: 3, bestMark: 3 }),
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedMarkButton()),
-      Story.expectOutMessage(OutMessage.ChoseDareMark({ mark: 0 })),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(markedAt(3, 3))
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.SteppedLobbyDareMark()),
+        lobbyOf(model => {
+          expect(model.dareMark).toBe(0)
+        }),
+      )
+    }),
   )
 
   it.effect('with no mark opened, the mark asks nothing', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedMarkButton()),
-      Story.expectNoOutMessage(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.SteppedLobbyDareMark()),
+        lobbyOf(model => {
+          expect(model.dareMark).toBe(0)
+        }),
+      )
+    }),
   )
 
   it.effect('a modifier the mark holds is locked on', () =>
-    Story.story(
-      lobbyWith({ ...PICKS, dareMark: 2, bestMark: 2 }),
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedModifierButton({ modifier: 'Broke' })),
-      Story.expectNoOutMessage(),
-      Story.message(Message.ClickedModifierButton({ modifier: 'Glass' })),
-      Story.expectOutMessage(OutMessage.ToggledModifier({ modifier: 'Glass' })),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(markedAt(2, 2))
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'Broke' })),
+        lobbyOf(model => {
+          expect(model.modifiers.broke).toBe(false)
+        }),
+        send(LobbyMessage.ToggledLobbyModifier({ modifier: 'Glass' })),
+        lobbyOf(model => {
+          expect(model.modifiers.glass).toBe(true)
+        }),
+      )
+    }),
   )
 
-  it.effect('+ BOT and B ask the root for a bot, and focus START', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedAddBotButton()),
-      Story.expectOutMessage(OutMessage.ClickedAddBot()),
-      focusStart,
-      pressed('KeyB'),
-      Story.expectOutMessage(OutMessage.ClickedAddBot()),
-      focusStart,
-    ),
+  it.effect('+ BOT and B seat a bot each, and focus START', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.RequestedAddLobbyBot()),
+        focusesStart,
+        press('KeyB'),
+        focusesStart,
+        lobbyOf(model => {
+          expect(model.home.bots.length).toBe(2)
+        }),
+      )
+    }),
   )
 
   it.effect(
     'Enter starts, closing the lobby at once, and Esc goes back, folding it away first',
     () =>
-      Story.story(
-        LOBBY,
-        Story.init(),
-        opened,
-        pressed('Enter'),
-        Story.expectOutMessage(OutMessage.Started()),
-        Story.model(model => {
-          expect(model.status).toBe('Closed')
-        }),
-        opened,
-        pressed('Escape'),
-        Story.expectOutMessage(OutMessage.Left()),
-        Story.model(model => {
-          expect(model.status).toBe('Folding')
-        }),
-        pressed('Enter'),
-        Story.expectNoOutMessage(),
-        Story.Command.resolve(FoldLobby(), Message.CompletedFold()),
-        Story.model(model => {
-          expect(model.status).toBe('Closed')
-        }),
-      ),
+      Effect.gen(function* () {
+        const ran = yield* storyOf(readyModel)
+        ran.pipe(
+          openLobbyByTap,
+          press('Enter'),
+          lobbyOf(model => {
+            expect(model.lobby.status).toBe('Closed')
+          }),
+        )
+        const left = yield* storyOf(readyModel)
+        left.pipe(
+          openLobbyByTap,
+          press('Escape'),
+          lobbyOf(model => {
+            expect(model.lobby.status).toBe('Folding')
+          }),
+          s => s.resolve(FocusHomeButton, Component.noop),
+
+          foldLobby,
+          lobbyOf(model => {
+            expect(model.lobby.status).toBe('Closed')
+          }),
+        )
+      }),
   )
 
   it.effect(
-    'the hero card opens the picker in its Dialog and tells the root',
+    'the hero card opens the picker in its Dialog, and a hero worn closes it',
     () =>
-      Story.story(
-        LOBBY,
-        Story.init(),
-        opened,
-        Story.message(Message.ClickedHeroButton()),
-        Story.expectOutMessage(OutMessage.OpenedHeroPicker()),
-        showHeroDialog,
-        Story.model(model => {
-          expect(isHeroPickerUp(model)).toBe(true)
-          expect(model.heroPicker.status).toBe('Open')
-        }),
-        pressed('Enter'),
-        Story.expectNoOutMessage(),
-        Story.messageIn(
-          HeroPickerBinding,
-          HeroPickerMessage.ClickedCard({ calling: 'Handyman' }),
-        ),
-        Story.expectOutMessage(
-          OutMessage.PickedHero({
-            calling: 'Handyman',
-            maybeBot: Option.none(),
+      Effect.gen(function* () {
+        const s = yield* storyOf(ranked(readyModel))
+        s.pipe(
+          openLobbyByTap,
+          send(LobbyMessage.RequestedLobbyHeroPicker()),
+          lobbyOf(model => {
+            expect(isHeroPickerUp(model.lobby)).toBe(true)
           }),
-        ),
-      ),
-  )
-
-  it.effect('a hero worn closes the picker and its Dialog', () =>
-    Story.story(
-      LOBBY,
-      Story.init(),
-      opened,
-      pressed('KeyY'),
-      Story.expectOutMessage(OutMessage.OpenedHeroPicker()),
-      showHeroDialog,
-      Story.inMessage(
-        InMessage.InformedOfHeroOutcome({
-          outcome: PickOutcome.Worn({ calling: 'Handyman' }),
-        }),
-      ),
-      closeHeroDialog,
-      Story.model(model => {
-        expect(isHeroPickerUp(model)).toBe(false)
-        expect(model.status).toBe('Open')
+          press('Enter'),
+          lobbyOf(model => {
+            expect(model.lobby.status).toBe('Open')
+            expect(isHeroPickerUp(model.lobby)).toBe(true)
+          }),
+          send(LobbyMessage.PickedLobbyHero({ calling: 'Handyman' })),
+          lobbyOf(model => {
+            expect(model.calling).toBe('Handyman')
+            expect(isHeroPickerUp(model.lobby)).toBe(false)
+            expect(model.lobby.status).toBe('Open')
+          }),
+        )
       }),
-    ),
   )
 
   it.effect(
     "a bot's card chooses for that bot, and BUY only ends its try-on",
     () =>
-      Story.story(
-        lobbyWith(WITH_BOT),
-        Story.init(),
-        opened,
-        Story.message(Message.ClickedBotHeroButton({ index: 0 })),
-        Story.expectOutMessage(OutMessage.OpenedHeroPicker()),
-        showHeroDialog,
-        Story.messageIn(
-          HeroPickerBinding,
-          HeroPickerMessage.ClickedCard({ calling: 'LineCook' }),
-        ),
-        Story.expectOutMessage(
-          OutMessage.PickedHero({
-            calling: 'LineCook',
-            maybeBot: Option.some(0),
+      Effect.gen(function* () {
+        const s = yield* storyOf(withBot(ranked(readyModel)))
+        s.pipe(
+          openLobbyByTap,
+          send(LobbyMessage.RequestedLobbyBotHeroPicker({ index: 0 })),
+          send(LobbyMessage.RequestedBuyLobbyHero({ calling: 'Handyman' })),
+          lobbyOf(model => {
+            expect(model.lobby.maybeTrying).toEqual(Option.none())
+            expect(model.lobby.maybePickingBot).toEqual(Option.some(0))
           }),
-        ),
-        Story.inMessage(
-          InMessage.InformedOfHeroOutcome({
-            outcome: PickOutcome.TriedOn({ calling: 'LineCook' }),
+          send(LobbyMessage.PickedLobbyHero({ calling: 'Handyman' })),
+          lobbyOf(model => {
+            expect(
+              Option.map(Array.head(model.home.bots), bot => bot.calling),
+            ).toEqual(Option.some('Handyman'))
+            expect(isHeroPickerUp(model.lobby)).toBe(false)
           }),
-        ),
-        Story.messageIn(
-          HeroPickerBinding,
-          HeroPickerMessage.ClickedBuyButton(),
-        ),
-        Story.expectNoOutMessage(),
-        Story.model(model => {
-          expect(model.heroPicker.maybeTrying).toEqual(Option.none())
-        }),
-      ),
+        )
+      }),
   )
 
   it.effect('the Dialog closing closes the picker and forgets the bot', () =>
-    Story.story(
-      lobbyWith(WITH_BOT),
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedBotHeroButton({ index: 0 })),
-      showHeroDialog,
-      Story.messageIn(HeroDialogBinding, DialogBlock.Message.CanceledDialog()),
-      closeHeroDialog,
-      Story.model(model => {
-        expect(model.heroPicker.status).toBe('Closed')
-        expect(model.maybePickingBot).toEqual(Option.none())
-        expect(isHeroPickerUp(model)).toBe(false)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(withBot(readyModel))
+      s.pipe(
+        openLobbyByTap,
+        send(LobbyMessage.RequestedLobbyBotHeroPicker({ index: 0 })),
+        send(LobbyMessage.RequestedCloseLobbyHeroPicker()),
+        lobbyOf(model => {
+          expect(model.lobby.isHeroPickerOpen).toBe(false)
+          expect(model.lobby.maybePickingBot).toEqual(Option.none())
+          expect(isHeroPickerUp(model.lobby)).toBe(false)
+        }),
+      )
+    }),
   )
 })

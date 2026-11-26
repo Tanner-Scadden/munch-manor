@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { FEAT_FLAME, FEAT_ICONS } from '../art/caseArt'
 import { textShapes, textWidth } from '../art/font'
@@ -14,6 +13,7 @@ import {
   type FeatTally,
   type Vector,
 } from '../world/schema/worldSchema'
+import type * as Draw from './draw'
 import { rect, ringPixels } from './drawing'
 import type { Keepout as Box } from './keepout'
 
@@ -134,11 +134,11 @@ export const featLockBoxOf: {
 
 // NOTE: a lock centred on `at`, filled to the player's own tally.
 export const featLockShapes: {
-  (viewer: Viewer, at: LockSpot): (feat: Feat) => ReadonlyArray<Canvas.Shape>
-  (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Canvas.Shape>
+  (viewer: Viewer, at: LockSpot): (feat: Feat) => ReadonlyArray<Draw.Shape>
+  (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Canvas.Shape> => {
+  (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Draw.Shape> => {
     const goal = goalOf(feat)
     const progress = progressOf(viewer.feats, feat)
     const isShown =

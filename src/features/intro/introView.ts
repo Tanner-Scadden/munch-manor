@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, Result } from 'effect'
-import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type BakedText, bakeText, placeBaked } from '../../art/font'
@@ -39,6 +38,7 @@ import {
   speechBubble,
 } from '../../art/introArt'
 import { type Sprite, group, placeAt } from '../../art/sprite'
+import * as Draw from '../../render/draw'
 import type { Screen } from '../../render/screen'
 import { FRIEND_LINES } from '../../world/names'
 import { ARRIVAL_MS } from '../../world/run/arrival'
@@ -70,7 +70,7 @@ const scaleFor = (screen: Screen): number =>
     ),
   )
 
-const at = (x: number, y: number, sprite: Sprite): Canvas.Shape =>
+const at = (x: number, y: number, sprite: Sprite): Draw.Shape =>
   placeAt(Math.round(x), Math.round(y), sprite)
 
 const frameOf = <A>(
@@ -152,7 +152,7 @@ const bubbleShapes = (
   text: BakedText,
   left: number,
   top: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   at(left, top, bubble),
   placeBaked(text, { x: left + BUBBLE_PAD, y: top + 3, align: 'Left' }),
 ]
@@ -167,7 +167,7 @@ const driveLineShapes = (
   maybeLine: MaybeLine,
   progress: number,
   bob: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   progress >= DRIVE_LINE_FROM
     ? Option.match(bubbleOf(maybeLine), {
         onNone: () => [],
@@ -184,7 +184,7 @@ const KNOCK_LINE_UNTIL_MS = 1_400
 const knockLineShapes = (
   { cut, beatMs }: IntroFrame,
   maybeLine: MaybeLine,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   cut === 'Short' &&
   beatMs >= KNOCK_LINE_FROM_MS &&
   beatMs < KNOCK_LINE_UNTIL_MS
@@ -285,7 +285,7 @@ const isNear = (ms: number, atMs: number, spanMs: number): boolean =>
 const doorShapes = (
   shiftX: number,
   openness: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const open = Math.round(openness * (DOOR_HALF_WIDTH - 4))
   const leftWidth = DOOR_HALF_WIDTH - open
   return [
@@ -392,8 +392,8 @@ const BOLT_AT_MS = 420
 const BOLT_SLIDE_MS = 160
 const SLAM_WOOD = '#3a2018'
 
-const fullRect = (fill: string): Canvas.Shape =>
-  Canvas.Rect({
+const fullRect = (fill: string): Draw.Shape =>
+  Draw.Rect({
     x: 0,
     y: 0,
     width: PICTURE_WIDTH,
@@ -416,14 +416,14 @@ const slamShapes = ({ beatMs }: IntroFrame) => {
       translate: { x: shake, y: 0 },
       shapes: [
         fullRect(NIGHT_BLACK),
-        Canvas.Rect({
+        Draw.Rect({
           x: 0,
           y: 0,
           width,
           height: PICTURE_HEIGHT,
           fill: SLAM_WOOD,
         }),
-        Canvas.Rect({
+        Draw.Rect({
           x: PICTURE_WIDTH - width,
           y: 0,
           width,
@@ -452,7 +452,7 @@ const slamShapes = ({ beatMs }: IntroFrame) => {
 const BEAT_SHAPES: Readonly<
   Record<
     IntroBeat,
-    (frame: IntroFrame, maybeLine: MaybeLine) => ReadonlyArray<Canvas.Shape>
+    (frame: IntroFrame, maybeLine: MaybeLine) => ReadonlyArray<Draw.Shape>
   >
 > = {
   Drive: driveShapes,
@@ -481,7 +481,7 @@ const pictureOrigin = (screen: Screen, scale: number): Vector => ({
 const letterboxShapes = (
   screen: Screen,
   scale: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const origin = pictureOrigin(screen, scale)
   const width = PICTURE_WIDTH * scale
   const height = PICTURE_HEIGHT * scale
@@ -504,7 +504,7 @@ const letterboxShapes = (
     ],
     bar =>
       bar.width > 0 && bar.height > 0
-        ? Result.succeed(Canvas.Rect({ ...bar, fill: NIGHT_BLACK }))
+        ? Result.succeed(Draw.Rect({ ...bar, fill: NIGHT_BLACK }))
         : Result.failVoid,
   )
 }
@@ -512,11 +512,11 @@ const letterboxShapes = (
 // NOTE: the intro over the whole screen while the crew arrives; nothing
 // else of the run shows under it.
 export const introShapes: {
-  (screen: Screen): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape>
+  (screen: Screen): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape> =>
     Option.match(maybeIntroFrameOf(model), {
       onNone: () => [],
       onSome: frame => {
@@ -526,7 +526,7 @@ export const introShapes: {
           group({
             opacity: fade > 0 ? 1 - fade : undefined,
             shapes: [
-              Canvas.Rect({
+              Draw.Rect({
                 x: 0,
                 y: 0,
                 width: screen.width,

@@ -1,9 +1,11 @@
-import { Array, Option } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
+import { PANEL_DIALOG_ID } from '../../../domain/clientSchema'
 import {
   MISSION_RULES,
   type MissionId,
@@ -11,10 +13,13 @@ import {
 } from '../../../shared/missionData'
 import { home, knowingDay } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  byClass,
+  expectAttr,
   measureSurface,
-  showDialogInScene,
-} from '../../../test/testing'
+  showDialog,
+  withAttrs,
+} from '../../../test/sceneTesting'
+import { sceneOf } from '../../../test/testing'
 import { MISSIONS_TITLE, MISSION_NAMES } from '../../../world/names'
 import { missionsOn } from '../missions'
 
@@ -35,7 +40,7 @@ const untouched = (id: MissionId): string =>
   `${MISSION_NAMES[id]}: 0 of ${MISSION_RULES[id].goal}`
 
 // NOTE: the day's Medium done, the other two untouched.
-const started = modifyFields(knowingDay(home, TODAY), {
+const started = UiStruct.evolve(knowingDay(home, TODAY), {
   missions: () => ({
     ...noMissions,
     day: TODAY,
@@ -44,54 +49,46 @@ const started = modifyFields(knowingDay(home, TODAY), {
   }),
 })
 
-const card = Scene.selector('.mission-card')
-const panel = Scene.role('dialog', { name: MISSIONS_TITLE })
+const card = byClass('mission-card')
+const panel = HtmlLocator.role('dialog', { name: MISSIONS_TITLE })
+const inPanel = (locator: Locator.Locator) => Locator.inside(panel, locator)
+const reroll = (id: MissionId) =>
+  inPanel(HtmlLocator.role('button', { name: `Reroll ${MISSION_NAMES[id]}` }))
 
 describe('the mission card', () => {
   it.effect('is not on the menu before the day is known', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      Scene.expect(card).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(measureSurface).expect(card).toBeAbsent()
+    }),
   )
 
   it.effect(
     'shows the three, the done one checked, and opens their panel',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(started),
-        measureSurface,
-        Scene.expectAll(Scene.all.selector('.mission-pip')).toHaveCount(3),
-        Scene.expectAll(
-          Scene.all.selector(".mission-pip[data-done='true']"),
-        ).toHaveCount(1),
-        Scene.expect(card).toHaveAttr(
-          'aria-label',
-          `${MISSIONS_TITLE}: ${untouched(small)}, ${MISSION_NAMES[medium]}: done, ${untouched(large)}`,
-        ),
-        Scene.click(card),
-        ...showDialogInScene(),
-        Scene.inside(
-          panel,
-          Scene.expectAll(Scene.all.selector('.mission-row')).toHaveCount(3),
-          Scene.expectAll(Scene.all.selector('.mission-reroll')).toHaveCount(2),
-          Scene.expect(
-            Scene.role('button', { name: `Reroll ${MISSION_NAMES[large]}` }),
-          ).not.toHaveAttr('aria-disabled', 'true'),
-          Scene.click(
-            Scene.role('button', {
-              name: `Reroll ${MISSION_NAMES[small]}`,
-            }),
-          ),
-          Scene.expect(
-            Scene.role('button', {
-              name: `Reroll ${MISSION_NAMES[large]}`,
-            }),
-          ).toHaveAttr('aria-disabled', 'true'),
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(started)
+        s.pipe(measureSurface)
+          .expect(byClass('mission-pip'))
+          .toHaveCount(3)
+          .expect(withAttrs({ 'data-done': 'true' })(byClass('mission-pip')))
+          .toHaveCount(1)
+          .pipe(
+            expectAttr(
+              card,
+              'aria-label',
+              `${MISSIONS_TITLE}: ${untouched(small)}, ${MISSION_NAMES[medium]}: done, ${untouched(large)}`,
+            ),
+          )
+          .click(card)
+          .pipe(showDialog(PANEL_DIALOG_ID))
+          .expect(inPanel(byClass('mission-row')))
+          .toHaveCount(3)
+          .expect(inPanel(byClass('mission-reroll')))
+          .toHaveCount(2)
+          .pipe(expectAttr(reroll(large), 'aria-disabled', undefined))
+          .click(reroll(small))
+          .pipe(expectAttr(reroll(large), 'aria-disabled', 'true'))
+      }),
   )
 })

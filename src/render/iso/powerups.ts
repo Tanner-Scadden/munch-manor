@@ -9,7 +9,6 @@
 // Plain data, no pixi.
 
 import { Array, Option, Record, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { cropSetOf, makeCropTable } from '../../art/sprite'
 import {
@@ -20,6 +19,7 @@ import {
 } from '../../art/sprites/auras'
 import { PICKUP_SPRITES } from '../../art/sprites/pickups'
 import type { BoostKind } from '../../world/schema/entitySchema'
+import type * as Draw from '../draw'
 import type { Affine } from './flatten'
 
 // NOTE: each aura frame's image, by where it is cut from.
@@ -33,7 +33,7 @@ Array.forEach(Record.toEntries(AURA_SPRITES), ([kind, sprites]) => {
 
 // NOTE: which boost's frame an image is, if it is one.
 export const auraFrameOf = (
-  image: Canvas.Image,
+  image: Draw.Image,
 ): Option.Option<Readonly<{ kind: BoostKind; frame: number }>> =>
   Option.fromUndefinedOr(AURA_FRAMES.get(image))
 
@@ -63,7 +63,7 @@ const hexOf = (css: string): number =>
 export const auraFeetOf = ({
   image,
   matrix,
-}: Readonly<{ image: Canvas.Image; matrix: Affine }>): Readonly<{
+}: Readonly<{ image: Draw.Image; matrix: Affine }>): Readonly<{
   x: number
   y: number
 }> => {

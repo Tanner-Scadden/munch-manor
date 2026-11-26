@@ -1,5 +1,4 @@
 import { Array, Option, Result, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -17,6 +16,7 @@ import {
 } from '../../art/sprite'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Drawable } from '../../render/depth'
+import type * as Draw from '../../render/draw'
 import { FULL_TURN, rect } from '../../render/drawing'
 import {
   bakeDiscs,
@@ -237,7 +237,7 @@ bakeRings(
 
 // NOTE: the glow on the floor under each thing in plain sight, pulsing, in
 // whole pixels on the floor itself.
-export const dareGroundShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+export const dareGroundShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   const radius = glowRadiusOf(model.elapsedMs)
   return Array.flatMap(shownThingSpots(model), ({ spot }) => {
     const x = Math.round(spot.x)
@@ -266,7 +266,7 @@ const sparkleSpots = (model: Model): ReadonlyArray<Vector> =>
     ? Array.map(shownThingSpots(model), ({ spot }) => spot)
     : []
 
-const sparkleShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const sparkleShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Math.floor(model.elapsedMs / SPARKLE_MS) % 3 === 2
     ? []
     : Array.map(sparkleSpots(model), spot =>
@@ -279,7 +279,7 @@ const sparkleShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: on Triple Dare and Triple Dog Dare, a hidden thing's spot glints
 // for a player walking near it.
-const nearGlintShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+const nearGlintShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   if (
     isThingShownOn(runDifficultyOf(model)) ||
     model.elapsedMs % GLINT_MS >= GLINT_ON_MS
@@ -300,9 +300,7 @@ const nearGlintShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
 
 // OVERHEAD
 
-export const dareOverheadShapes = (
-  model: Model,
-): ReadonlyArray<Canvas.Shape> => [
+export const dareOverheadShapes = (model: Model): ReadonlyArray<Draw.Shape> => [
   ...nearGlintShapes(model),
   ...sparkleShapes(model),
 ]

@@ -1,13 +1,13 @@
-import { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { UiStruct } from '@effect/ui'
 
 import { bootCommands } from './boot'
-import { ApplicationComposition } from './composition'
-import { makeStep } from './definition'
+import { ApplicationDef } from './definition'
+import type { Message } from './message'
 import { LOAD_STEPS, Loading, cosmeticSeedOf, initialModel } from './model'
 import { beatMyRunHandlers } from './update/beatMyRun'
 import { coopHandlers } from './update/coop'
 import { orInRun } from './update/coopRun'
+import { dialogHandlers } from './update/dialog'
 import { endHandlers } from './update/end'
 import { deviceHandlers } from './update/fullscreen'
 import { homeHandlers } from './update/home'
@@ -17,51 +17,54 @@ import { missionHandlers } from './update/missions'
 import { onboardingHandlers } from './update/onboarding'
 import { padMenuHandlers } from './update/padMenu'
 import { tickFrame } from './update/play'
+import { profileHandlers } from './update/profile'
 import { recordingHandlers } from './update/recording'
 import { saveHandlers } from './update/save'
 import { afterMessage } from './update/settle'
 import { soundHandlers } from './update/sound'
-import { combine } from './update/step'
+import { type App$, type UpdateReturn, defineHandlers } from './update/step'
 import { todayHandlers } from './update/today'
 import { versionHandlers } from './update/version'
+
 // INIT
 
 // NOTE: every LoadStep must finish before the splash goes. A step that
 // fails still counts as finished, so a missing font never holds the game.
-// New assets, such as images for Canvas.Image, join LOAD_STEPS with a
-// Command that loads them.
-export const init = ApplicationComposition.makeInit(() => ({
-  model: modifyFields(initialModel, {
-    saving: modifyFields({
-      loading: () => Loading.Loading({ pending: LOAD_STEPS }),
+// New assets join LOAD_STEPS with a Command that loads them.
+export const init = ApplicationDef.init($ =>
+  $.set(
+    UiStruct.evolve(initialModel, {
+      saving: UiStruct.evolve({
+        loading: () => Loading.Loading({ pending: LOAD_STEPS }),
+      }),
     }),
-  }),
-  commands: bootCommands(),
-}))
+  ).run(...bootCommands()),
+)
 
-const { makeUpdate } = ApplicationComposition
+// NOTE: the root's own frame and seed handlers, beside every group's.
+const frameHandlers = defineHandlers({
+  TickedFrame: ($, message) =>
+    orInRun(message, tickFrame(message.deltaTime))($),
+
+  CompletedGenerateSeed: ($, { seed }) =>
+    $.evolve({
+      rngState: () => seed,
+      cosmetics: UiStruct.evolve({
+        cosmeticRngState: () => cosmeticSeedOf(seed),
+      }),
+    }),
+
+  CompletedDetectLocalPlayers: ($, { count }) =>
+    $.evolve({ localPlayers: () => count }),
+})
 
 // NOTE: the one exhaustive handler record. Each group of the root's
 // Messages has its handlers beside the Steps they call (AGENTS.md
 // "Folders"), so a Message with no handler fails here. Each handler holds
 // only its own change; `update` below settles every dispatch once after it.
-const handlers = makeUpdate({
-  TickedFrame: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(orInRun(message, tickFrame(message.deltaTime))),
-    ]),
-
-  CompletedGenerateSeed: (model, { seed }) => ({
-    model: modifyFields(model, {
-      rngState: () => seed,
-      cosmetics: modifyFields({ cosmeticRngState: () => cosmeticSeedOf(seed) }),
-    }),
-  }),
-
-  CompletedDetectLocalPlayers: (model, { count }) => ({
-    model: modifyFields(model, { localPlayers: () => count }),
-  }),
-
+const handle = ApplicationDef.update({
+  ...frameHandlers,
+  ...dialogHandlers,
   ...inputHandlers,
   ...runButtonHandlers,
   ...pageHandlers,
@@ -79,24 +82,28 @@ const handlers = makeUpdate({
   ...onboardingHandlers,
   ...missionHandlers,
   ...padMenuHandlers,
+  ...profileHandlers,
 })
 
 // SETTLING
 
-// NOTE: the after-message Steps (src/app/update/settle.ts) run once after every
-// dispatch, a child's delivery and its OutMessage fold included, against
-// the Model from before it. A synced save is already in the store, so its
-// Messages settle without writing it back.
-const SYNCED_SAVES = ['UpdatedSyncedSave', 'CompletedReloadSyncedSave'] as const
+// NOTE: the after-message Steps (src/app/update/settle.ts) run once after
+// every dispatch, a child's event included, against the Model from before
+// it. A synced save is already in the store, so its Messages settle
+// without writing it back.
+const SYNCED_SAVES: ReadonlySet<Message['_tag']> = new Set([
+  'UpdatedSyncedSave',
+  'CompletedReloadSyncedSave',
+])
 
-const settleWritten = makeUpdate.except(SYNCED_SAVES)(
-  (model, _message, { before }) =>
-    combine(model, afterMessage(before, 'Write')),
-)
-
-const settleSynced = makeUpdate.on(SYNCED_SAVES)(
-  (model, _message, { before }) =>
-    combine(model, afterMessage(before, 'Synced')),
-)
-
-export const update = makeUpdate.compose(handlers, settleWritten, settleSynced)
+// NOTE: Effect UI calls `update` with the Step and the Message, a signature
+// it fixes, so it has no data-last form.
+// @effect-diagnostics-next-line missingPipeableSignature:off
+export const update = ($: App$, message: Message): UpdateReturn =>
+  $.combine(
+    handle,
+    ...afterMessage(
+      $.model,
+      SYNCED_SAVES.has(message._tag) ? 'Synced' : 'Write',
+    ),
+  )

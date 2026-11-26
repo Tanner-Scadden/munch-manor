@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "extends": ["./node_modules/@foldkit/oxlint-plugin/recommended.json"],
   // NOTE: the project's own rules (AGENTS.md "Code shape").
   "jsPlugins": ["./tools/lint/munchPlugin.ts"],
   // NOTE: naming plugins replaces oxlint's defaults, so the defaults are listed
@@ -41,15 +40,15 @@
     "eqeqeq": ["error", "always"],
     "no-shadow": "error",
     "unicorn/require-post-message-target-origin": "error",
-    // NOTE: a scene's tap step (`Scene.tap`) runs its expects, as do @effect/vitest's
-    // it.effect, it.effect.each, and it.live, and vitest takes a message as
-    // expect's second argument.
+    // NOTE: an Effect generator may yield nothing (a Command's body, a
+    // Layer's build), as Effect's own docs write them.
+    "require-yield": "off",
+    // NOTE: @effect/vitest's it.effect, it.effect.each, and it.live run
+    // their expects, and vitest takes a message as expect's second argument.
     "vitest/no-standalone-expect": [
       "error",
       {
         "additionalTestBlockFunctions": [
-          "tap",
-          "Scene.tap",
           "it.effect",
           "it.effect.each",
           "it.live"
@@ -57,7 +56,8 @@
       }
     ],
     "vitest/valid-expect": ["error", { "maxArgs": 2 }],
-    // NOTE: story() and scene() assert through their steps.
+    // NOTE: a Story, Scene, or Play asserts through its steps, and its end
+    // check fails on anything left pending (Effect UI's testing guide).
     "vitest/expect-expect": [
       "error",
       {
@@ -65,10 +65,12 @@
           "expect",
           "expect*",
           "vitestExpect",
-          "story",
-          "scene",
-          "Story.story",
-          "Scene.scene"
+          "assert",
+          "assert.*",
+          "Story.make",
+          "Scene.make",
+          "HtmlScene.make",
+          "HtmlPlay.make"
         ]
       }
     ],
@@ -115,7 +117,7 @@
         "munch/command-beside-update": "error",
         "munch/key-action-once": "error",
         "munch/stand-through-space": "error",
-        "munch/no-binding-field-write": "error",
+        "munch/no-dialog-field-write": "error",
         "munch/folder-imports": "error",
         "no-restricted-properties": [
           "error",
@@ -222,7 +224,7 @@
       "rules": {
         "no-restricted-imports": "off",
         "munch/no-menu-field": "off",
-        "munch/no-binding-field-write": "off",
+        "munch/no-dialog-field-write": "off",
         "no-restricted-properties": [
           "error",
           {
@@ -307,14 +309,10 @@
       }
     },
     {
-      // NOTE: tools and the build configs are host scripts, not Foldkit apps: the Foldkit rules do
-      // not apply, and they wait on browsers and child processes one at a time.
+      // NOTE: tools and the build configs are host scripts: they wait on
+      // browsers and child processes one at a time.
       "files": ["tools/**/*.ts", "vite.config.ts", "vitest.config.ts"],
       "rules": {
-        "foldkit/no-impure-call-at-decision-time": "off",
-        "foldkit/no-module-level-mutable-state": "off",
-        "foldkit/no-child-message-construction-in-root": "off",
-        "foldkit/no-spread-in-modify-fields": "off",
         "no-await-in-loop": "off"
       }
     },
@@ -460,8 +458,13 @@
     },
     {
       // NOTE: menuState derives which menu is up from these fields, so it is
-      // the one place that reads them (munch/no-menu-field).
-      "files": ["src/app/menuState.ts"],
+      // the one place that reads them to decide (munch/no-menu-field). The
+      // root's dialog views draw each dialog open on its own field.
+      "files": [
+        "src/app/menuState.ts",
+        "src/app/dialogs.ts",
+        "src/app/profileView.ts"
+      ],
       "rules": { "munch/no-menu-field": "off" }
     },
     {
@@ -486,9 +489,10 @@
     {
       // NOTE: tests and their shared setup run Effects with it.effect from
       // @effect/vitest, never by hand (munch/no-run-in-tests), and every
-      // Block-aware Story and Scene they build runs (munch/no-floating-story).
-      // They drive the game through Block-aware Stories and Scenes, not a
-      // plain one or pureApp's update, view, or init (munch/no-plain-story).
+      // Story, Scene, and Play they make runs (munch/no-floating-story).
+      // They drive the game through a Story or Scene over the root or a
+      // child component, not pureApp's update, view, or init
+      // (munch/no-plain-story).
       "files": [
         "**/*.test.ts",
         "**/test/**/*.ts",
@@ -503,13 +507,6 @@
         "munch/no-floating-story": "error",
         "munch/no-plain-story": "error"
       }
-    },
-    {
-      // NOTE: the patched Canvas painter checked on a bare canvas view: a
-      // plain Scene over a view of its own with no game and no Block, so
-      // there is no Block-aware form to drive (munch/no-plain-story).
-      "files": ["src/art/__tests__/sprite.scene.test.ts"],
-      "rules": { "munch/no-plain-story": "off" }
     },
     // NOTE: the files allowed raw JSON.parse and JSON.stringify, each with
     // its reason. Everything else reads and writes JSON through a Schema.

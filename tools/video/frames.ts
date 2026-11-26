@@ -206,7 +206,9 @@ type Overlay = Readonly<{
 }>
 
 // NOTE: runs in the page: the overlay with the shot's base, captions,
-// dissolve, and fade. Effect is not loaded there, so it speaks promises.
+// dissolve, and fade, as one SVG over the page in device pixels, so the
+// screenshot takes it a pixel for a pixel with no 2D canvas. Effect is not
+// loaded there, so it speaks promises.
 // @effect-diagnostics-next-line asyncFunction:off
 const paintOverlay = async ({
   base,
@@ -216,83 +218,147 @@ const paintOverlay = async ({
   outline,
   shadow,
 }: Overlay) => {
+  const SVG = 'http://www.w3.org/2000/svg'
   const ratio = window.devicePixelRatio
+  const width = Math.round(window.innerWidth * ratio)
+  const height = Math.round(window.innerHeight * ratio)
   const id = 'director-overlay'
   const existing = document.getElementById(id)
-  const canvas =
-    existing instanceof HTMLCanvasElement
+  const svg =
+    existing instanceof SVGSVGElement
       ? existing
-      : document.body.appendChild(document.createElement('canvas'))
-  canvas.id = id
-  canvas.style.cssText =
-    'position:fixed;inset:0;width:100vw;height:100vh;z-index:2147483647;pointer-events:none;image-rendering:pixelated'
-  canvas.width = Math.round(window.innerWidth * ratio)
-  canvas.height = Math.round(window.innerHeight * ratio)
-  const context = canvas.getContext('2d')
-  if (context === null) {
-    return
+      : document.body.appendChild(document.createElementNS(SVG, 'svg'))
+  svg.id = id
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
+  svg.setAttribute('preserveAspectRatio', 'none')
+  svg.setAttribute('shape-rendering', 'crispEdges')
+  svg.style.cssText = `position:fixed;left:0;top:0;width:${width / ratio}px;height:${height / ratio}px;z-index:2147483647;pointer-events:none`
+  const shapes: Array<SVGElement> = []
+  const loads: Array<Promise<void>> = []
+  const element = (
+    tag: string,
+    attributes: Readonly<Record<string, string | number>>,
+  ): SVGElement => {
+    const made = document.createElementNS(SVG, tag)
+    // NOTE: in the page, where Effect's Record is not loaded.
+    // @effect-diagnostics-next-line preferEffectRecord:off
+    for (const name of Object.keys(attributes)) {
+      made.setAttribute(name, `${attributes[name]}`)
+    }
+    return made
   }
-  // NOTE: in the page too, with no Effect.
+  // NOTE: in the page too, with no Effect: the picture's own size.
   // @effect-diagnostics-next-line asyncFunction:off
-  const load = async (src: string): Promise<HTMLImageElement> => {
+  const sizeOf = async (
+    src: string,
+  ): Promise<Readonly<{ width: number; height: number }>> => {
     const image = new Image()
     image.src = src
     await image.decode()
+    return { width: image.naturalWidth, height: image.naturalHeight }
+  }
+  // NOTE: an SVG image, its load awaited before the screenshot.
+  const imageOf = (
+    src: string,
+    attributes: Readonly<Record<string, string | number>>,
+  ): SVGElement => {
+    const image = element('image', attributes)
+    loads.push(
+      // NOTE: in the page, where an image's load is only an event.
+      // @effect-diagnostics-next-line newPromise:off
+      new Promise<void>(resolve => {
+        image.addEventListener('load', () => resolve(), { once: true })
+        image.addEventListener('error', () => resolve(), { once: true })
+      }),
+    )
+    image.setAttribute('href', src)
     return image
+  }
+  // NOTE: a crop of a picture stretched into a box, as drawImage's nine
+  // argument form drew it: a nested SVG whose view box is the crop.
+  const cropped = (
+    src: string,
+    size: Readonly<{ width: number; height: number }>,
+    crop: Box,
+    into: Box,
+    rendering: 'pixelated' | 'auto',
+  ): SVGElement => {
+    const view = element('svg', {
+      x: into.x,
+      y: into.y,
+      width: into.width,
+      height: into.height,
+      viewBox: `${crop.x} ${crop.y} ${crop.width} ${crop.height}`,
+      preserveAspectRatio: 'none',
+    })
+    view.append(
+      imageOf(src, {
+        x: 0,
+        y: 0,
+        width: size.width,
+        height: size.height,
+        preserveAspectRatio: 'none',
+        style: `image-rendering:${rendering}`,
+      }),
+    )
+    return view
   }
   const fill = (
     x: number,
     y: number,
-    width: number,
-    height: number,
+    boxWidth: number,
+    boxHeight: number,
     color: string,
   ) => {
-    context.fillStyle = color
-    context.fillRect(x, y, width, height)
+    shapes.push(
+      element('rect', {
+        x,
+        y,
+        width: boxWidth,
+        height: boxHeight,
+        fill: color,
+      }),
+    )
   }
-  context.clearRect(0, 0, canvas.width, canvas.height)
+  const whole: Box = { x: 0, y: 0, width, height }
   if (base !== undefined) {
-    const picture = await load(base.src)
+    const size = await sizeOf(base.src)
     switch (base.kind) {
       case 'Camera': {
-        context.imageSmoothingEnabled = false
-        context.drawImage(
-          picture,
-          base.crop.x,
-          base.crop.y,
-          base.crop.width,
-          base.crop.height,
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-        )
+        shapes.push(cropped(base.src, size, base.crop, whole, 'pixelated'))
         break
       }
       case 'Frame': {
-        context.drawImage(picture, 0, 0, canvas.width, canvas.height)
+        shapes.push(
+          cropped(
+            base.src,
+            size,
+            { x: 0, y: 0, width: size.width, height: size.height },
+            whole,
+            'auto',
+          ),
+        )
         break
       }
       case 'Devices': {
         // NOTE: the split screen: a dark room with a purple glow, and each
         // device drawn in blocks of its unit, its screen showing its crop.
-        fill(0, 0, canvas.width, canvas.height, '#160b24')
+        fill(0, 0, width, height, '#160b24')
         const rings: ReadonlyArray<readonly [number, string]> = [
           [0.56, '#1d0f30'],
           [0.42, '#24123a'],
           [0.3, '#2b1749'],
         ]
         for (const [share, color] of rings) {
-          context.fillStyle = color
-          context.beginPath()
-          context.arc(
-            canvas.width / 2,
-            canvas.height / 2,
-            Math.max(canvas.width, canvas.height) * share,
-            0,
-            Math.PI * 2,
+          shapes.push(
+            element('circle', {
+              cx: width / 2,
+              cy: height / 2,
+              r: Math.max(width, height) * share,
+              fill: color,
+              'shape-rendering': 'auto',
+            }),
           )
-          context.fill()
         }
         for (const device of base.devices) {
           const { outer, screen, unit } = device
@@ -340,19 +406,7 @@ const paintOverlay = async ({
             screen.height + unit * 2,
             outline,
           )
-          context.imageSmoothingEnabled = true
-          context.imageSmoothingQuality = 'high'
-          context.drawImage(
-            picture,
-            device.crop.x,
-            device.crop.y,
-            device.crop.width,
-            device.crop.height,
-            screen.x,
-            screen.y,
-            screen.width,
-            screen.height,
-          )
+          shapes.push(cropped(base.src, size, device.crop, screen, 'auto'))
           // NOTE: a glint across the glass.
           fill(
             screen.x + unit * 2,
@@ -369,20 +423,17 @@ const paintOverlay = async ({
   for (const caption of captions) {
     const { rows, pixel } = caption
     const columns = rows[0]?.length ?? 0
-    const left =
-      Math.round((canvas.width - columns * pixel) / 2 / pixel) * pixel
+    const left = Math.round((width - columns * pixel) / 2 / pixel) * pixel
     const textHeight = rows.length * pixel
     const top =
       caption.top !== undefined
-        ? Math.round(canvas.height * caption.top)
+        ? Math.round(height * caption.top)
         : caption.place === 'Top'
-          ? Math.round(canvas.height * 0.08)
+          ? Math.round(height * 0.08)
           : caption.place === 'Bottom'
-            ? Math.round(canvas.height * 0.86 - textHeight)
-            : Math.round((canvas.height - textHeight) / 2)
+            ? Math.round(height * 0.86 - textHeight)
+            : Math.round((height - textHeight) / 2)
     const filled = (x: number, y: number) => rows[y]?.[x] === '#'
-    const box = (x: number, y: number, color: string) =>
-      fill(left + x * pixel, top + y * pixel, pixel, pixel, color)
     // NOTE: a one pixel outline around the letters, and under it a one
     // pixel drop shadow, as the game's own text has.
     const inked = (x: number, y: number) =>
@@ -391,32 +442,59 @@ const paintOverlay = async ({
       filled(x + 1, y) ||
       filled(x, y - 1) ||
       filled(x, y + 1)
-    for (let y = -1; y <= rows.length + 1; y++) {
-      for (let x = -1; x <= columns; x++) {
-        if (inked(x, y)) {
-          box(x, y, outline)
-        } else if (inked(x, y - 1)) {
-          box(x, y, shadow)
+    // NOTE: each row's cells of one color as runs, one rect a run, so a
+    // caption is a few hundred rects and not thousands.
+    const runs = (
+      from: number,
+      to: number,
+      y: number,
+      colorAt: (x: number) => string | undefined,
+    ) => {
+      let start = from
+      while (start <= to) {
+        const color = colorAt(start)
+        let end = start
+        while (end + 1 <= to && colorAt(end + 1) === color) {
+          end++
         }
+        if (color !== undefined) {
+          fill(
+            left + start * pixel,
+            top + y * pixel,
+            (end - start + 1) * pixel,
+            pixel,
+            color,
+          )
+        }
+        start = end + 1
       }
     }
+    for (let y = -1; y <= rows.length + 1; y++) {
+      runs(-1, columns, y, x =>
+        inked(x, y) ? outline : inked(x, y - 1) ? shadow : undefined,
+      )
+    }
     for (let y = 0; y < rows.length; y++) {
-      for (let x = 0; x < columns; x++) {
-        if (filled(x, y)) {
-          box(x, y, caption.color)
-        }
-      }
+      runs(0, columns - 1, y, x => (filled(x, y) ? caption.color : undefined))
     }
   }
   if (dissolve !== undefined) {
-    const picture = await load(dissolve.src)
-    context.globalAlpha = dissolve.alpha
-    context.drawImage(picture, 0, 0, canvas.width, canvas.height)
-    context.globalAlpha = 1
+    const size = await sizeOf(dissolve.src)
+    const faded = cropped(
+      dissolve.src,
+      size,
+      { x: 0, y: 0, width: size.width, height: size.height },
+      whole,
+      'auto',
+    )
+    faded.setAttribute('opacity', `${dissolve.alpha}`)
+    shapes.push(faded)
   }
   if (fade > 0) {
-    fill(0, 0, canvas.width, canvas.height, `rgba(0, 0, 0, ${fade})`)
+    fill(0, 0, width, height, `rgba(0, 0, 0, ${fade})`)
   }
+  svg.replaceChildren(...shapes)
+  await Promise.all(loads)
 }
 
 const EMPTY_OVERLAY: Overlay = {

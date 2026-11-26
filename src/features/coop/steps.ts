@@ -1,6 +1,7 @@
-import { Effect, Option, Schema, pipe } from 'effect'
-import { Dom, Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect, Option, pipe } from 'effect'
+
+import { Command, Component, UiStruct } from '@effect/ui'
+import { HtmlCommand } from '@effect/ui/html'
 
 import { callingOfMember } from '../../art/seatLooks'
 import { LobbyChange, isInLobby, maybeRoomOf } from '../../domain/coopRoom'
@@ -11,53 +12,79 @@ import {
   callingStandingOf,
   isCallingOwned,
 } from '../../world/heroes/calling'
-import { PickOutcome } from '../heroes/inMessage'
-import { isPickerOpen } from '../heroes/model'
-import { HeroPickerBinding } from './bindings'
-import { CoopBlock, makeNoopStep, makeStep } from './block'
 import { makeEdits } from './lobbyEdits'
-import { Message, OutMessage } from './message'
+import { CoopNotice } from './message'
 import { type Model } from './model'
 import { CoopNet } from './net'
-import { CALLING_PILL_ID, meIn } from './roomState'
+import {
+  CALLING_PILL,
+  CODE_INPUT,
+  type CoopFocus,
+  NAME_BUTTON,
+  NAME_INPUT,
+  QUICK_PLAY_BUTTON,
+  READY_BUTTON,
+  meIn,
+} from './roomState'
 
-// Co-op's Steps that its update, its InMessages, and the hero picker's fold
-// share (FOLDKIT.md, "File organization"), with the two Commands they
-// return: focusing an element, and changing the room's lobby.
+// Co-op's rules that its update (src/features/coop/update.ts) and the
+// root's hero picker events share, with the two Commands they return:
+// focusing an element, and changing the room's lobby. Each rule is pure over
+// co-op's own Model and returns a `CoopResultOf`: the next Model, the
+// Commands to run, and a notice for the root (src/app/update/coop.ts).
+
+// RESULT
+
+export type CoopResultOf<C> = Readonly<{
+  model: Model
+  commands?: ReadonlyArray<C>
+  notice?: CoopNotice
+}>
 
 // COMMANDS
 
-export const FocusCoopElement = CoopBlock.makeCommand('FocusCoopElement', {
-  args: { id: Schema.String },
-  messages: [Message.CompletedFocusCoopElement],
-  handler: function* () {
-    return ({ id }) =>
-      Dom.focus(`#${id}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusCoopElement()),
-      )
-  },
-})
+const noFocusNews = () => Component.noop
 
-export const ChangeLobby = CoopBlock.makeCommand('ChangeLobby', {
-  args: { change: LobbyChange },
-  messages: [Message.CompletedChangeLobby, Message.FailedChangeLobby],
-  handler: function* () {
-    return ({ change }) =>
-      CoopNet.use(net => net.changeLobby(change)).pipe(
-        Effect.as(Message.CompletedChangeLobby()),
-        Effect.catch(problem =>
-          Effect.succeed(Message.FailedChangeLobby({ problem })),
-        ),
-      )
-  },
-})
+const FOCUS = {
+  QuickPlay: () => HtmlCommand.focus(QUICK_PLAY_BUTTON, noFocusNews),
+  Code: () => HtmlCommand.focus(CODE_INPUT, noFocusNews),
+  Ready: () => HtmlCommand.focus(READY_BUTTON, noFocusNews),
+  CallingPill: () => HtmlCommand.focus(CALLING_PILL, noFocusNews),
+  NameButton: () => HtmlCommand.focus(NAME_BUTTON, noFocusNews),
+  NameInput: () => HtmlCommand.focus(NAME_INPUT, noFocusNews),
+} satisfies Record<CoopFocus, unknown>
 
-export const edits = makeEdits<
-  ReturnType<typeof ChangeLobby> | ReturnType<typeof FocusCoopElement>
->({
-  changeLobby: change => ChangeLobby({ change }),
-  focus: id => FocusCoopElement({ id }),
+export const focusCoop = (target: CoopFocus) => FOCUS[target]()
+
+// NOTE: a lobby change goes to the room; the room's next lobby frame shows
+// it. A refused one changes nothing on screen, so it is logged.
+export class ChangeLobby extends Command.Service<ChangeLobby>()(
+  'coop/ChangeLobby',
+  { args: { change: LobbyChange }, success: Component.Noop },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const net = yield* CoopNet
+      return ({ change }) =>
+        net.changeLobby(change).pipe(
+          Effect.catch(problem =>
+            Effect.logWarning('change the co-op lobby', problem),
+          ),
+          Effect.as(Component.noop),
+        )
+    }),
+  )
+}
+
+export type LobbyCommand =
+  | ReturnType<typeof ChangeLobby.make>
+  | ReturnType<typeof focusCoop>
+
+type LobbyResult = CoopResultOf<LobbyCommand>
+
+export const edits = makeEdits<LobbyCommand>({
+  changeLobby: change => ChangeLobby.make({ change }),
+  focus: target => focusCoop(target),
 })
 
 // THE HERO PICKER
@@ -67,125 +94,127 @@ export const edits = makeEdits<
 export const lobbyMeOf = (model: Model) =>
   pipe(maybeRoomOf(model), Option.filter(isInLobby), Option.flatMap(meIn))
 
-const answer = (outcome: PickOutcome) =>
-  HeroPickerBinding.informOfOutcome({ outcome })
+const isHeroPickOpen = (model: Model): boolean => model.heroPick.isOpen
 
-const focusPill = (model: Model) => ({
-  model,
-  commands: [FocusCoopElement({ id: CALLING_PILL_ID })],
+// NOTE: opening or closing the picker ends any try-on.
+const withPickerOpen = (model: Model, isOpen: boolean): Model =>
+  UiStruct.evolve(model, {
+    heroPick: () => ({ isOpen, maybeTrying: Option.none() }),
+  })
+
+const withTrying = (model: Model, maybeTrying: Option.Option<Calling>): Model =>
+  UiStruct.evolve(model, {
+    heroPick: heroPick => ({ ...heroPick, maybeTrying }),
+  })
+
+export const closePicker = (model: Model): LobbyResult => ({
+  model: withPickerOpen(model, false),
 })
-
-// NOTE: co-op's Model as a Binding's operation runs on it, inside a handler
-// or a fold: a Step that adds an OutMessage to an operation's result takes
-// this one, as `makeStep`'s Model cannot run an operation.
-type Connected = Parameters<ReturnType<typeof HeroPickerBinding.requestOpen>>[0]
 
 // NOTE: the hero is the player's: sent to the room's lobby for the others to
 // see and to seat at the start, and the picker closes on the pill. Nobody's
 // READY changes.
-const wornLocally = (calling: Calling) => (model: Model) => ({
-  model: modifyFields(model, { calling: () => calling }),
+const wear = (model: Model, calling: Calling): LobbyResult => ({
+  model: withPickerOpen(
+    UiStruct.evolve(model, { calling: () => calling }),
+    false,
+  ),
   commands: [
-    ChangeLobby({ change: LobbyChange.ChangedMemberCalling({ calling }) }),
-    FocusCoopElement({ id: CALLING_PILL_ID }),
+    ChangeLobby.make({
+      change: LobbyChange.ChangedMemberCalling({ calling }),
+    }),
+    focusCoop('CallingPill'),
   ],
 })
 
-const wear = (calling: Calling) =>
-  Update.combineSteps([
-    wornLocally(calling),
-    answer(PickOutcome.Worn({ calling })),
-  ])
-
 // NOTE: the pill opens the picker, and closes it again.
-export const togglePicker = makeStep(model => {
-  if (Option.isNone(lobbyMeOf(model))) {
-    return makeNoopStep()
-  } else if (isPickerOpen(model.heroPicker)) {
-    return HeroPickerBinding.requestClose()
-  } else {
-    return HeroPickerBinding.requestOpen()
-  }
-})
+export const togglePicker = (model: Model): LobbyResult =>
+  Option.isNone(lobbyMeOf(model))
+    ? { model }
+    : { model: withPickerOpen(model, !isHeroPickOpen(model)) }
 
 // NOTE: a card in the picker. One the player owns is worn, and goes up to
-// the parent, which saves it as the player's pick at home too; the one
-// already worn only closes the picker. One for sale (the rank reached, not
-// bought) is tried on, as in the solo lobby's picker, and its BUY pill asks
-// the parent to spend the Bones. One below the rank stays shut.
+// the root, which saves it as the player's pick at home too; the one already
+// worn only closes the picker. One for sale (the rank reached, not bought)
+// is tried on, as in the solo lobby's picker, and its BUY pill asks the root
+// to spend the Bones. One below the rank stays shut.
 const CARD_TAPS = {
-  Owned: (model: Connected, calling: Calling, isWorn: boolean) =>
+  Owned: (model: Model, calling: Calling, isWorn: boolean): LobbyResult =>
     isWorn
-      ? Update.combineSteps(model, [
-          focusPill,
-          answer(PickOutcome.Worn({ calling })),
-        ])
-      : pipe(
-          wear(calling)(model),
-          Update.withOutMessage(OutMessage.ChoseCalling({ calling })),
-        ),
-  ForSale: (model: Connected, calling: Calling) =>
-    answer(PickOutcome.TriedOn({ calling }))(model),
-  Locked: (model: Connected) => makeNoopStep()(model),
+      ? {
+          model: withPickerOpen(model, false),
+          commands: [focusCoop('CallingPill')],
+        }
+      : {
+          ...wear(model, calling),
+          notice: CoopNotice.ChoseCalling({ calling }),
+        },
+  ForSale: (model: Model, calling: Calling): LobbyResult => ({
+    model: withTrying(model, Option.some(calling)),
+  }),
+  Locked: (model: Model): LobbyResult => ({ model }),
 } satisfies Record<CallingStanding, unknown>
 
-export const pickHero = (calling: Calling) => (model: Connected) =>
-  Option.match(lobbyMeOf(model), {
-    onNone: () => makeNoopStep()(model),
-    onSome: me =>
-      CARD_TAPS[callingStandingOf(calling, me.rank, model.bought)](
-        model,
-        calling,
-        callingOfMember(me) === calling,
-      ),
-  })
+export const pickHero =
+  (calling: Calling) =>
+  (model: Model): LobbyResult =>
+    Option.match(
+      Option.filter(lobbyMeOf(model), () => isHeroPickOpen(model)),
+      {
+        onNone: () => ({ model }),
+        onSome: me =>
+          CARD_TAPS[callingStandingOf(calling, me.rank, model.bought)](
+            model,
+            calling,
+            callingOfMember(me) === calling,
+          ),
+      },
+    )
 
 // NOTE: the BUY pill, for the hero being tried on while it is still for sale
-// and the Bones cover it. The parent spends them and answers with
-// `RequestedBoughtHero`, which makes the hero the pick; nothing is spent here.
-export const buyHero = (calling: Calling) => (model: Connected) =>
-  Option.exists(
-    lobbyMeOf(model),
-    me =>
-      callingStandingOf(calling, me.rank, model.bought) === 'ForSale' &&
-      model.bones >= Option.getOrElse(callingPriceOf(calling), () => 0),
-  )
-    ? pipe(
-        answer(PickOutcome.TryOnEnded())(model),
-        Update.withOutMessage(OutMessage.BoughtCalling({ calling })),
-      )
-    : makeNoopStep()(model)
+// and the Bones cover it. The root spends them and hands the purse back
+// through `boughtHero`, which makes the hero the pick; nothing is spent here.
+export const buyHero =
+  (calling: Calling) =>
+  (model: Model): LobbyResult =>
+    isHeroPickOpen(model) &&
+    Option.exists(
+      lobbyMeOf(model),
+      me =>
+        callingStandingOf(calling, me.rank, model.bought) === 'ForSale' &&
+        model.bones >= Option.getOrElse(callingPriceOf(calling), () => 0),
+    )
+      ? {
+          model: withTrying(model, Option.none()),
+          notice: CoopNotice.BoughtCalling({ calling }),
+        }
+      : { model }
 
-// NOTE: the parent bought the hero: the purse is updated, and the hero is
-// the player's pick, sent to the room like any other pick. The parent has
-// saved it already, so no ChoseCalling goes up.
-export const boughtHero = ({
-  calling,
-  bought,
-  bones,
-}: Readonly<{
-  calling: Calling
-  bought: Model['bought']
-  bones: number
-}>) =>
-  Update.combineSteps([
-    (model: Model) => ({
-      model: modifyFields(model, {
-        bought: () => bought,
-        bones: () => bones,
-      }),
-    }),
-    makeStep(model =>
-      Option.isSome(lobbyMeOf(model)) && isCallingOwned(calling, bought)
-        ? wear(calling)
-        : makeNoopStep(),
-    ),
-  ])
+// NOTE: the root bought the hero: the purse is updated, and the hero is the
+// player's pick, sent to the room like any other pick. The root has saved it
+// already, so no ChoseCalling goes up.
+export const boughtHero =
+  (
+    bought: Readonly<{
+      calling: Calling
+      bought: Model['bought']
+      bones: number
+    }>,
+  ) =>
+  (model: Model): LobbyResult => {
+    const paid = UiStruct.evolve(model, {
+      bought: () => bought.bought,
+      bones: () => bought.bones,
+    })
+    return Option.isSome(lobbyMeOf(paid)) &&
+      isCallingOwned(bought.calling, bought.bought)
+      ? wear(paid, bought.calling)
+      : { model: paid }
+  }
 
 // NOTE: the picker is the lobby's: once the room starts its run, or is left,
 // an open picker closes, so it never waits over the next lobby.
-export const closeStrayPicker = makeStep(model =>
-  isPickerOpen(model.heroPicker) && Option.isNone(lobbyMeOf(model))
-    ? HeroPickerBinding.requestClose()
-    : makeNoopStep(),
-)
+export const closeStrayPicker = (model: Model): Model =>
+  isHeroPickOpen(model) && Option.isNone(lobbyMeOf(model))
+    ? withPickerOpen(model, false)
+    : model

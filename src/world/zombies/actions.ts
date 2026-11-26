@@ -1,5 +1,6 @@
 import { Array, Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { World } from '../schema/world'
 import { type Zombie, ZombieAction } from '../schema/worldSchema'
@@ -23,14 +24,14 @@ const recover =
   (zombie: Zombie): Zombie => {
     const action = zombie.action
     if (ZombieAction.isAnyOf(['Winded'])(action)) {
-      return modifyFields(zombie, {
+      return UiStruct.evolve(zombie, {
         action: () =>
           action.remainingMs > deltaMs
             ? ZombieAction.Winded({ remainingMs: action.remainingMs - deltaMs })
             : ZombieAction.Roaming(),
       })
     } else if (ZombieAction.isAnyOf(['Dazed'])(action)) {
-      return modifyFields(zombie, {
+      return UiStruct.evolve(zombie, {
         action: () =>
           action.remainingMs > deltaMs
             ? ZombieAction.Dazed({
@@ -40,7 +41,7 @@ const recover =
             : ZombieAction.Roaming(),
       })
     } else if (ZombieAction.isAnyOf(['Frozen'])(action)) {
-      return modifyFields(zombie, {
+      return UiStruct.evolve(zombie, {
         action: () =>
           action.remainingMs > deltaMs
             ? ZombieAction.Frozen({
@@ -50,7 +51,7 @@ const recover =
             : ZombieAction.Roaming(),
       })
     } else if (ZombieAction.isAnyOf(['Chilled'])(action)) {
-      return modifyFields(zombie, {
+      return UiStruct.evolve(zombie, {
         action: () =>
           action.remainingMs > deltaMs
             ? ZombieAction.Chilled({
@@ -59,7 +60,7 @@ const recover =
             : ZombieAction.Roaming(),
       })
     } else if (ZombieAction.isAnyOf(['Reeling'])(action)) {
-      return modifyFields(zombie, {
+      return UiStruct.evolve(zombie, {
         action: () =>
           action.remainingMs > deltaMs
             ? ZombieAction.Reeling({
@@ -78,7 +79,7 @@ export const recoverActions: {
   (model: World, deltaMs: number): World
 } = Function.dual(2, (model: World, deltaMs: number): World =>
   Array.some(model.zombies, zombie => isRecovering(zombie.action))
-    ? modifyFields(model, {
+    ? UiStruct.evolve(model, {
         zombies: Array.map(recover(deltaMs)),
       })
     : model,

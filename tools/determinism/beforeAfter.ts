@@ -293,7 +293,7 @@ const copyHarness = (base: string) =>
       }),
     )
     // NOTE: the harness plays the game through src/app/pureApp.ts. A base from
-    // before the Foldkit 0.170 preview has none; its update was callable and
+    // before the Block preview (Foldkit 0.170) has none; its update was callable and
     // its initialModel whole, so a shim there hands both out the same way.
     const pureApp = path.resolve(base, 'src/app/pureApp.ts')
     if (!(yield* fs.exists(pureApp))) {

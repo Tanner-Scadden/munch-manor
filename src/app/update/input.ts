@@ -1,6 +1,6 @@
 import { Option, Struct } from 'effect'
-import { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { foldPocketCard } from '../../features/dare/pocketCard'
 import {
@@ -18,9 +18,7 @@ import { noteMissedKeyDown } from '../../input/keyGrab'
 import { isTurnHintShown, seeTurnHint } from '../../screens/home/home'
 import { isArriving } from '../../world/run/arrival'
 import { isRoundActive } from '../../world/waves/waves'
-import { makeStep } from '../definition'
 import { refreshIntent } from '../frame'
-import type { Model } from '../model'
 import { orInRun } from './coopRun'
 import { skipFromPointer } from './end'
 import { skipIntro } from './intro'
@@ -55,10 +53,10 @@ import {
 import { startsRun } from './run'
 import { playStartSoundWhen, unlockAudio } from './sound'
 import {
-  type UpdateReturn,
-  combine,
+  type UpdateStep,
   defineHandlers,
   modelStep,
+  toModel,
   withInput,
 } from './step'
 import { checkForUpdate } from './version'
@@ -66,197 +64,172 @@ import { checkForUpdate } from './version'
 const deviceOf = (device: PointerDevice): InputDevice =>
   device === 'Touch' ? 'Touch' : 'KeyboardMouse'
 
-const pressedPointer = (model: Model, pointer: PointerPress): UpdateReturn => {
-  const press = asAllowedPress(model, pointer)
-  const started = resumeFromPointer(useDevice(model, deviceOf(press.device)))
-  const pressed = isArriving(model.phase)
-    ? skipIntro(started)
-    : isRoundActive(model.phase)
-      ? withInput(
-          skipCaseCardWhenUp(skipDebutCardWhenUp(foldPocketCard(started))),
-          input => pressPointer(input, started.maybeSurface, press),
-        )
-      : refreshIntent(skipFromPointer(started))
-  return combine(pressed, [
-    unlockAudio,
-    playStartSoundWhen(startsRun(model, pressed)),
-  ])
-}
+const pressedPointer =
+  (pointer: PointerPress): UpdateStep =>
+  $ => {
+    const model = $.model
+    const press = asAllowedPress(model, pointer)
+    const started = resumeFromPointer(useDevice(model, deviceOf(press.device)))
+    const pressed = isArriving(model.phase)
+      ? skipIntro(started)
+      : isRoundActive(model.phase)
+        ? withInput(
+            skipCaseCardWhenUp(skipDebutCardWhenUp(foldPocketCard(started))),
+            input => pressPointer(input, started.maybeSurface, press),
+          )
+        : refreshIntent(skipFromPointer(started))
+    return $.combine(
+      toModel(pressed),
+      unlockAudio,
+      playStartSoundWhen(startsRun(model, pressed)),
+    )
+  }
 
 // NOTE: the click after a mouse's shot through a slot (PressedHudSlot) is
 // spent, and the next click on a slot acts again.
-const passSlotClick = (model: Model): UpdateReturn => ({
-  model: withSlotClick(model, 'Acts'),
-})
+const passSlotClick = modelStep(model => withSlotClick(model, 'Acts'))
 
 // NOTE: the keyboard, the mouse, touch, and the game surface
 // (src/input/message.ts).
 export const inputHandlers = defineHandlers({
-  PressedKey: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(orInRun(message, pressedKey(message.code))),
-    ]),
+  PressedKey: ($, message) => orInRun(message, pressedKey(message.code))($),
 
-  ReleasedKey: (model, { code }) =>
-    Update.combineSteps(model, [releasedKey(code)]),
+  ReleasedKey: ($, { code }) => releasedKey(code)($),
 
-  PressedMetaKey: model => ({ model: withInput(model, releaseKeys) }),
+  PressedMetaKey: $ => withInput($.model, releaseKeys),
 
-  MissedKeyDown: model => ({ model: noteMissedKeyDown(model) }),
+  MissedKeyDown: $ => noteMissedKeyDown($.model),
 
-  PressedPointer: (model, press) => pressedPointer(model, press),
+  PressedPointer: ($, press) => pressedPointer(press)($),
 
-  PressedHudSlot: (model, press) =>
-    isSlotPressAShot(model, press.device)
-      ? pressedPointer(withSlotClick(model, 'PassesThrough'), press)
-      : {
-          model: withSlotClick(
-            useDevice(model, deviceOf(press.device)),
-            'Acts',
-          ),
-        },
+  PressedHudSlot: ($, press) =>
+    isSlotPressAShot($.model, press.device)
+      ? $.combine(
+          modelStep(model => withSlotClick(model, 'PassesThrough')),
+          pressedPointer(press),
+        )
+      : withSlotClick(useDevice($.model, deviceOf(press.device)), 'Acts'),
 
-  MovedPointer: (model, { pointerId, clientX, clientY }) => ({
-    model: withInput(model, input =>
-      movePointer(input, model.maybeSurface, { pointerId, clientX, clientY }),
+  MovedPointer: ($, { pointerId, clientX, clientY }) =>
+    withInput($.model, input =>
+      movePointer(input, $.model.maybeSurface, { pointerId, clientX, clientY }),
     ),
-  }),
 
-  ReleasedPointer: (model, { pointerId }) =>
-    unlockAudio(withInput(model, input => releasePointer(input, pointerId))),
-
-  CancelledPointer: (model, { pointerId }) => ({
-    model: withInput(model, input => releasePointer(input, pointerId)),
-  }),
-
-  ChangedTouches: (model, { points }) => ({
-    model: withInput(model, input => keepTouchedSticks(input, points)),
-  }),
-
-  MovedMouse: (model, { clientX, clientY }) => ({
-    model: withInput(useDevice(model, 'KeyboardMouse'), input =>
-      moveMouse(input, model.maybeSurface, { x: clientX, y: clientY }),
+  ReleasedPointer: ($, { pointerId }) =>
+    $.combine(
+      modelStep(model =>
+        withInput(model, input => releasePointer(input, pointerId)),
+      ),
+      unlockAudio,
     ),
-  }),
 
-  SuppressedContextMenu: model => ({ model }),
+  CancelledPointer: ($, { pointerId }) =>
+    withInput($.model, input => releasePointer(input, pointerId)),
+
+  ChangedTouches: ($, { points }) =>
+    withInput($.model, input => keepTouchedSticks(input, points)),
+
+  MovedMouse: ($, { clientX, clientY }) =>
+    withInput(useDevice($.model, 'KeyboardMouse'), input =>
+      moveMouse(input, $.model.maybeSurface, { x: clientX, y: clientY }),
+    ),
+
+  SuppressedContextMenu: $ => $.model,
 
   // NOTE: the touch tap listener (src/input/touchTaps.ts) reports each tap it
   // made. The tapped button's own Message did the work.
-  TappedWithTouch: model => ({ model }),
+  TappedWithTouch: $ => $.model,
 
   // NOTE: turning the phone while the turn hint is up is the hint done.
-  MeasuredGameSurface: (model, message) => {
-    const measured = modifyFields(model, {
+  MeasuredGameSurface: ($, message) => {
+    const measured = UiStruct.evolve($.model, {
       maybeSurface: () => Option.some(Struct.omit(message, ['_tag'])),
       orientation: () => orientationOf(message.width, message.height),
     })
-    return {
-      model:
-        isTurnHintShown(model) && !isTurnHintShown(measured)
-          ? seeTurnHint(measured)
-          : measured,
-    }
+    return isTurnHintShown($.model) && !isTurnHintShown(measured)
+      ? seeTurnHint(measured)
+      : measured
   },
 
-  CompletedDetectInputDevice: (model, { touchControls }) => ({
-    model: useDevice(
-      modifyFields(model, { touchControls: () => touchControls }),
+  CompletedDetectInputDevice: ($, { touchControls }) =>
+    useDevice(
+      UiStruct.evolve($.model, { touchControls: () => touchControls }),
       touchControls === 'Allowed' ? 'Touch' : 'KeyboardMouse',
     ),
-  }),
 
   // NOTE: the pad's own presses first, then its menu presses, routed by
   // the menu that was up before this poll (src/app/update/padMenu.ts).
-  PolledGamepad: (model, message) => {
+  PolledGamepad: ($, message) => {
     const pad = {
       index: message.index,
       axes: message.axes,
       buttons: message.buttons,
     }
-    return Update.combineSteps(model, [
-      makeStep(orInRun(message, polledPad(pad))),
-      ...padMenuSteps({ model, pad }),
-    ])
+    return $.combine(
+      orInRun(message, polledPad(pad)),
+      ...padMenuSteps({ model: $.model, pad }),
+    )
   },
 
-  DisconnectedGamepad: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(orInRun(message, padGone(message.index))),
-    ]),
-
-  CompletedRumble: model => ({ model }),
+  DisconnectedGamepad: ($, message) =>
+    orInRun(message, padGone(message.index))($),
 })
 
 // NOTE: the run's buttons (src/input/message.ts), each sent to the room in
 // an online run.
 export const runButtonHandlers = defineHandlers({
   // NOTE: the finger holds the interact until it lifts.
-  PressedHoldButton: (model, message) =>
-    Update.combineSteps(model, [
+  PressedHoldButton: ($, message) =>
+    $.combine(
       modelStep(held =>
         withInput(useDevice(held, 'Touch'), input =>
           pressHoldButton(input, message.pointerId),
         ),
       ),
       unlockAudio,
-    ]),
+    ),
 
-  ClickedPauseButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickPause))]),
+  ClickedPauseButton: ($, message) => orInRun(message, clickPause)($),
 
-  ClickedStartWaveButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickStartWave))]),
+  ClickedStartWaveButton: ($, message) => orInRun(message, clickStartWave)($),
 
-  ClickedSwapButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, swapFromButton))]),
+  ClickedSwapButton: ($, message) => orInRun(message, swapFromButton)($),
 
-  ClickedGunSlot: (model, message) =>
-    isSlotClickPassingThrough(model)
-      ? passSlotClick(model)
-      : Update.combineSteps(model, [
-          makeStep(orInRun(message, pressGunSlot(message.slot))),
-        ]),
+  ClickedGunSlot: ($, message) =>
+    isSlotClickPassingThrough($.model)
+      ? passSlotClick($)
+      : orInRun(message, pressGunSlot(message.slot))($),
 
-  ClickedMeleeSlot: (model, message) =>
-    isSlotClickPassingThrough(model)
-      ? passSlotClick(model)
-      : Update.combineSteps(model, [
-          makeStep(orInRun(message, pressMeleeSlot)),
-        ]),
+  ClickedMeleeSlot: ($, message) =>
+    isSlotClickPassingThrough($.model)
+      ? passSlotClick($)
+      : orInRun(message, pressMeleeSlot)($),
 
   // NOTE: on touch the reload button is a tap like any button, made into a
   // click by src/input/touchTaps.ts even with a thumb on the move stick.
-  ClickedReloadButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, reloadFromButton))]),
+  ClickedReloadButton: ($, message) => orInRun(message, reloadFromButton)($),
 
   // NOTE: MEDIC! from a downed player, a tap on the red cross.
-  ClickedMedicButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickMedic))]),
+  ClickedMedicButton: ($, message) => orInRun(message, clickMedic)($),
 
-  ClickedPlaceTrapButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickPlaceTrap))]),
+  ClickedPlaceTrapButton: ($, message) => orInRun(message, clickPlaceTrap)($),
 
-  ClickedNextTrapButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickNextTrap))]),
+  ClickedNextTrapButton: ($, message) => orInRun(message, clickNextTrap)($),
 
   // NOTE: the HUD's dare list opens the dare card again, alone or online:
   // this client's own (src/app/update/play.ts).
-  ClickedDareList: model => Update.combineSteps(model, [clickDareList]),
+  ClickedDareList: $ => clickDareList($),
 })
 
 // NOTE: the page's focus, visibility, and a restore from the cache
 // (src/platform/message.ts).
 export const pageHandlers = defineHandlers({
-  BlurredWindow: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, pauseWhenAway))]),
+  BlurredWindow: ($, message) => orInRun(message, pauseWhenAway)($),
 
-  FocusedWindow: model => checkForUpdate(model),
+  FocusedWindow: $ => checkForUpdate($),
 
-  ChangedPageVisibility: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(orInRun(message, notePageVisibility(message.visibility))),
-    ]),
+  ChangedPageVisibility: ($, message) =>
+    orInRun(message, notePageVisibility(message.visibility))($),
 
-  RestoredPageFromCache: model => checkForUpdate(model),
+  RestoredPageFromCache: $ => checkForUpdate($),
 })

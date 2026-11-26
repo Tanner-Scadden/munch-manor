@@ -5,14 +5,18 @@
 // hands over the world's pixels through its bridge (./bridge.ts), so a press
 // lands on the world tile under it and the loupe reads the very pixels drawn.
 // It keeps a copy of the frame around the picked tiles in `.live-shot`, the
-// picture a note sends. The light and color lab's edits (`tuning`) reach the
+// picture a note sends. The marks and the loupe's grid are SVG, the loupe's
+// pixels and the shot are ImageBitmaps on `bitmaprenderer` canvases, and the
+// pixels are read off the world's own WebGL context: no 2D canvas. The light and color lab's edits (`tuning`) reach the
 // harness's renderer through the same bridge, so the room shows them live.
-import { Array, Option, Schema, String } from 'effect'
-import { CustomElement } from 'foldkit'
+import { Array, Effect, Option, Record, Schema, String } from 'effect'
+
+import { Html } from '@effect/ui/html'
 
 import { viewBoxOf as floorBoxOf } from '../../src/render/iso/cull'
 import { type LensFrame, lensOf } from '../../src/render/lens'
 import { TILE_SIZE } from '../../src/shared/constants'
+import { toBrowserError } from '../../src/shared/describeError'
 import { type BridgeView, type StudioBridge, bridgeOf } from './bridge'
 import { LabEdits, tablesOf } from './lab'
 import { HARNESS_PATH, LiveTool } from './liveScene'
@@ -36,7 +40,7 @@ type Marks = typeof Marks.Type
 
 const Nothing = Schema.Struct({})
 
-export const studioWorld = CustomElement.define({
+export const studioWorld = Html.customElement({
   tag: TAG,
   properties: { query: Schema.String, marks: Marks, tuning: LabEdits },
   events: {
@@ -83,10 +87,13 @@ const hexPart = (channel: number): string =>
 const hexOf = (cell: Cell): string =>
   `#${hexPart(cell.red)}${hexPart(cell.green)}${hexPart(cell.blue)}`
 
+// NOTE: pixels read off the frame, four bytes each, rows top first.
+type Pixels = Readonly<{ data: Uint8Array; width: number; height: number }>
+
 // NOTE: one game pixel read off the frame's pixels: its middle's color, and
 // whether the screen pixels wholly inside it disagree.
 const cellAt = (
-  data: ImageData,
+  data: Pixels,
   left: number,
   top: number,
   size: number,
@@ -126,6 +133,136 @@ const cellAt = (
     isMixed,
   }
 }
+
+// THE PIXELS
+
+// NOTE: a framebuffer binding read back; the binding is the world's own
+// realm's object (the harness is a frame), so it is told by its shape.
+const isFramebuffer = (value: unknown): value is WebGLFramebuffer | null =>
+  value === null || typeof value === 'object'
+
+// NOTE: a box of the world's frame, read straight off its WebGL context with
+// readPixels, rows turned top first. Called in the same task as the bridge's
+// snapshot, while the frame it drew is still in the drawing buffer.
+const readFrame = (
+  frame: HTMLCanvasElement,
+  box: Readonly<{ left: number; top: number; width: number; height: number }>,
+): Option.Option<Pixels> => {
+  const gl = frame.getContext('webgl2') ?? frame.getContext('webgl')
+  if (gl === null) {
+    return Option.none()
+  }
+  const { left, top, width, height } = box
+  const flipped = new Uint8Array(width * height * 4)
+  const bound: unknown = gl.getParameter(gl.FRAMEBUFFER_BINDING)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  gl.readPixels(
+    left,
+    frame.height - top - height,
+    width,
+    height,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    flipped,
+  )
+  if (isFramebuffer(bound)) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, bound)
+  }
+  const rowBytes = width * 4
+  const data = new Uint8Array(flipped.length)
+  for (let row = 0; row < height; row++) {
+    data.set(
+      flipped.subarray(
+        (height - 1 - row) * rowBytes,
+        (height - row) * rowBytes,
+      ),
+      row * rowBytes,
+    )
+  }
+  return Option.some({ data, width, height })
+}
+
+// NOTE: shows a bitmap on a `bitmaprenderer` canvas at its own size.
+const showBitmap = (canvas: HTMLCanvasElement, bitmap: ImageBitmap): void => {
+  const context = canvas.getContext('bitmaprenderer')
+  if (context === null) {
+    bitmap.close()
+    return
+  }
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  context.transferFromImageBitmap(bitmap)
+}
+
+// NOTE: makes a bitmap and shows it once made, unless a newer one was asked
+// for by then.
+const showWhenMade = (
+  canvas: HTMLCanvasElement,
+  make: () => Promise<ImageBitmap>,
+  isCurrent: () => boolean,
+): void => {
+  Effect.runFork(
+    Effect.tryPromise({ try: make, catch: toBrowserError }).pipe(
+      Effect.match({
+        onSuccess: bitmap => {
+          if (isCurrent()) {
+            showBitmap(canvas, bitmap)
+          } else {
+            bitmap.close()
+          }
+        },
+        onFailure: () => undefined,
+      }),
+    ),
+  )
+}
+
+const SVG = 'http://www.w3.org/2000/svg'
+
+const svgOf = <K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attributes: Readonly<Record<string, string>>,
+): SVGElementTagNameMap[K] => {
+  const element = document.createElementNS(SVG, tag)
+  for (const [name, value] of Record.toEntries(attributes)) {
+    element.setAttribute(name, value)
+  }
+  return element
+}
+
+// NOTE: a path through points, each list one closed shape.
+const polygonsPath = (shapes: ReadonlyArray<ReadonlyArray<Point>>): string =>
+  Array.join(
+    Array.map(shapes, corners =>
+      Array.isReadonlyArrayNonEmpty(corners)
+        ? `${Array.join(
+            Array.map(
+              corners,
+              (corner, index) =>
+                `${index === 0 ? 'M' : 'L'}${corner.x} ${corner.y}`,
+            ),
+            ' ',
+          )} Z`
+        : '',
+    ),
+    ' ',
+  )
+
+// NOTE: the lines between the loupe's cells, in its own pixels.
+const loupeGridPath = (): string =>
+  Array.join(
+    [
+      ...Array.map(
+        Array.range(1, LOUPE_COLUMNS - 1),
+        column => `M${column * LOUPE_CELL + 0.5} 0 V${LOUPE_ROWS * LOUPE_CELL}`,
+      ),
+      ...Array.map(
+        Array.range(1, LOUPE_ROWS - 1),
+        row => `M0 ${row * LOUPE_CELL + 0.5} H${LOUPE_COLUMNS * LOUPE_CELL}`,
+      ),
+    ],
+    ' ',
+  )
 
 // THE ELEMENT
 
@@ -231,10 +368,54 @@ const studioWorldClass = () =>
     private isTuneDue = false
     private readonly host = document.createElement('div')
     private readonly harness = document.createElement('iframe')
-    private readonly marksCanvas = document.createElement('canvas')
-    private readonly loupe = document.createElement('canvas')
+    private readonly marksLayer = svgOf('svg', { class: 'live-marks' })
+    private readonly gridPath = svgOf('path', {
+      fill: 'none',
+      stroke: GRID_COLOR,
+      'stroke-width': '1',
+    })
+    private readonly areaPaths = {
+      Open: svgOf('path', {
+        fill: AREA_COLORS.Open.fill,
+        stroke: AREA_COLORS.Open.line,
+        'stroke-width': '2',
+      }),
+      Done: svgOf('path', {
+        fill: AREA_COLORS.Done.fill,
+        stroke: AREA_COLORS.Done.line,
+        'stroke-width': '2',
+      }),
+      Draft: svgOf('path', {
+        fill: AREA_COLORS.Draft.fill,
+        stroke: AREA_COLORS.Draft.line,
+        'stroke-width': '2',
+      }),
+    }
+    private readonly hoverPath = svgOf('path', {
+      fill: 'none',
+      stroke: HOVER_COLOR,
+      'stroke-width': '2',
+    })
+    private readonly loupeBox = svgOf('rect', {
+      fill: 'none',
+      stroke: MIXED_COLOR,
+      'stroke-width': '1',
+    })
+    private readonly loupe = document.createElement('div')
+    private readonly loupePixels = document.createElement('canvas')
+    private readonly loupeMarks = svgOf('svg', {
+      class: 'live-loupe-marks',
+      viewBox: `0 0 ${LOUPE_COLUMNS * LOUPE_CELL} ${LOUPE_ROWS * LOUPE_CELL}`,
+    })
+    private readonly loupeMixed = svgOf('path', {
+      fill: 'none',
+      stroke: MIXED_COLOR,
+      'stroke-width': '2',
+    })
     private readonly readout = document.createElement('p')
     private readonly shot = document.createElement('canvas')
+    private shotToken = 0
+    private loupeToken = 0
 
     get query(): string {
       return this.latestQuery
@@ -296,33 +477,61 @@ const studioWorldClass = () =>
         this.isShotDue = true
         this.isTuneDue = true
       })
-      this.marksCanvas.className = 'live-marks'
+      this.marksLayer.append(
+        this.gridPath,
+        this.areaPaths.Open,
+        this.areaPaths.Done,
+        this.areaPaths.Draft,
+        this.hoverPath,
+        this.loupeBox,
+      )
       this.loupe.className = 'live-loupe'
-      this.loupe.width = LOUPE_COLUMNS * LOUPE_CELL
-      this.loupe.height = LOUPE_ROWS * LOUPE_CELL
+      this.loupePixels.className = 'live-loupe-pixels'
+      this.loupePixels.width = LOUPE_COLUMNS
+      this.loupePixels.height = LOUPE_ROWS
+      this.loupeMarks.append(
+        svgOf('path', {
+          fill: 'none',
+          stroke: 'rgba(0, 0, 0, 0.35)',
+          'stroke-width': '1',
+          d: loupeGridPath(),
+        }),
+        this.loupeMixed,
+        svgOf('rect', {
+          x: `${(LOUPE_COLUMNS / 2) * LOUPE_CELL}`,
+          y: `${(LOUPE_ROWS / 2) * LOUPE_CELL}`,
+          width: `${LOUPE_CELL}`,
+          height: `${LOUPE_CELL}`,
+          fill: 'none',
+          stroke: '#ffffff',
+          'stroke-width': '2',
+        }),
+      )
+      this.loupe.append(this.loupePixels, this.loupeMarks)
       this.readout.className = 'live-readout'
       this.shot.className = 'live-shot'
-      this.marksCanvas.addEventListener('pointermove', event => {
+      this.marksLayer.addEventListener('pointermove', event => {
         this.pointerAt(event)
       })
-      this.marksCanvas.addEventListener('pointerdown', event => {
+      this.marksLayer.addEventListener('pointerdown', event => {
         this.pointerAt(event)
         if (this.latestMarks.tool === 'Pin' && this.lastTile !== null) {
-          this.marksCanvas.setPointerCapture(event.pointerId)
+          this.marksLayer.setPointerCapture(event.pointerId)
           this.emit('press-tile', this.lastTile)
         }
       })
-      this.marksCanvas.addEventListener('pointerup', () => {
+      // NOTE: a let go ends a drag over the tiles; the press acted already.
+      this.marksLayer.addEventListener('pointerup', () => {
         this.emit('release-tile', {})
         this.isShotDue = true
       })
-      this.marksCanvas.addEventListener('pointerleave', () => {
+      this.marksLayer.addEventListener('pointerleave', () => {
         this.maybePointer = Option.none()
         this.lastTile = null
         this.isLoupeDue = true
         this.emit('leave-world', {})
       })
-      this.host.append(this.harness, this.marksCanvas, this.loupe)
+      this.host.append(this.harness, this.marksLayer, this.loupe)
       this.append(this.host, this.readout, this.shot)
     }
 
@@ -349,7 +558,7 @@ const studioWorldClass = () =>
     }
 
     private pointerAt(event: PointerEvent): void {
-      const box = this.marksCanvas.getBoundingClientRect()
+      const box = this.marksLayer.getBoundingClientRect()
       const point = { x: event.clientX - box.left, y: event.clientY - box.top }
       this.maybePointer = Option.some(point)
       this.isLoupeDue = true
@@ -404,136 +613,140 @@ const studioWorldClass = () =>
       requestAnimationFrame(() => this.tick())
     }
 
-    private fitMarks(): CanvasRenderingContext2D | null {
-      const ratio = window.devicePixelRatio
-      const width = Math.round(this.marksCanvas.clientWidth * ratio)
-      const height = Math.round(this.marksCanvas.clientHeight * ratio)
-      if (
-        this.marksCanvas.width !== width ||
-        this.marksCanvas.height !== height
-      ) {
-        this.marksCanvas.width = width
-        this.marksCanvas.height = height
+    // NOTE: the marks' SVG in the layer's own CSS pixels.
+    private fitMarks(): void {
+      const width = Math.max(1, this.marksLayer.clientWidth)
+      const height = Math.max(1, this.marksLayer.clientHeight)
+      const viewBox = `0 0 ${width} ${height}`
+      if (this.marksLayer.getAttribute('viewBox') !== viewBox) {
+        this.marksLayer.setAttribute('viewBox', viewBox)
       }
-      const context = this.marksCanvas.getContext('2d')
-      context?.setTransform(ratio, 0, 0, ratio, 0, 0)
-      return context
     }
 
     private clearMarks(): void {
-      this.fitMarks()?.clearRect(
-        0,
-        0,
-        this.marksCanvas.width,
-        this.marksCanvas.height,
-      )
+      this.fitMarks()
+      for (const path of [
+        this.gridPath,
+        this.areaPaths.Open,
+        this.areaPaths.Done,
+        this.areaPaths.Draft,
+        this.hoverPath,
+      ]) {
+        path.setAttribute('d', '')
+      }
+      this.loupeBox.setAttribute('visibility', 'hidden')
     }
 
     private drawMarks(view: BridgeView): void {
-      const context = this.fitMarks()
-      if (context === null) {
-        return
-      }
-      context.clearRect(0, 0, this.marksCanvas.width, this.marksCanvas.height)
+      this.fitMarks()
       const scale = view.width / view.viewWidth
       const lens = lensViewOf(view)
       const screenAt = (world: Point): Point => {
         const at = floorToLens(lens, world)
         return { x: view.left + at.x * scale, y: view.top + at.y * scale }
       }
-      const line = (from: Point, to: Point): void => {
-        const start = screenAt(from)
-        const end = screenAt(to)
-        context.beginPath()
-        context.moveTo(start.x, start.y)
-        context.lineTo(end.x, end.y)
-        context.stroke()
-      }
       const marks = this.latestMarks
+      const gridLines: Array<ReadonlyArray<Point>> = []
       if (marks.isGridOn) {
-        context.strokeStyle = GRID_COLOR
-        context.lineWidth = 1
         const floor = floorBoxOf(lens)
         const firstColumn = Math.ceil(floor.left / TILE_SIZE)
         const lastColumn = Math.floor(floor.right / TILE_SIZE)
         for (let column = firstColumn; column <= lastColumn; column++) {
-          line(
-            { x: column * TILE_SIZE, y: floor.top },
-            { x: column * TILE_SIZE, y: floor.bottom },
-          )
+          gridLines.push([
+            screenAt({ x: column * TILE_SIZE, y: floor.top }),
+            screenAt({ x: column * TILE_SIZE, y: floor.bottom }),
+          ])
         }
         const firstRow = Math.ceil(floor.top / TILE_SIZE)
         const lastRow = Math.floor(floor.bottom / TILE_SIZE)
         for (let row = firstRow; row <= lastRow; row++) {
-          line(
-            { x: floor.left, y: row * TILE_SIZE },
-            { x: floor.right, y: row * TILE_SIZE },
-          )
+          gridLines.push([
+            screenAt({ x: floor.left, y: row * TILE_SIZE }),
+            screenAt({ x: floor.right, y: row * TILE_SIZE }),
+          ])
         }
       }
+      this.gridPath.setAttribute(
+        'd',
+        Array.join(
+          Array.map(gridLines, ([from, to]) =>
+            from === undefined || to === undefined
+              ? ''
+              : `M${from.x} ${from.y} L${to.x} ${to.y}`,
+          ),
+          ' ',
+        ),
+      )
       // NOTE: an area's outline on the floor, its four corners through the
       // lens.
-      const outline = (area: TileArea): void => {
+      const outline = (area: TileArea): ReadonlyArray<Point> => {
         const left = area.left * TILE_SIZE
         const top = area.top * TILE_SIZE
         const right = (area.right + 1) * TILE_SIZE
         const bottom = (area.bottom + 1) * TILE_SIZE
-        const corners = [
+        return [
           screenAt({ x: left, y: top }),
           screenAt({ x: right, y: top }),
           screenAt({ x: right, y: bottom }),
           screenAt({ x: left, y: bottom }),
         ]
-        context.beginPath()
-        for (const corner of corners) {
-          context.lineTo(corner.x, corner.y)
-        }
-        context.closePath()
       }
-      const drawArea = (
-        area: TileArea,
-        colors: Readonly<{ line: string; fill: string }>,
-      ): void => {
-        outline(area)
-        context.fillStyle = colors.fill
-        context.fill()
-        context.strokeStyle = colors.line
-        context.lineWidth = 2
-        context.stroke()
-      }
-      for (const { area, isDone } of marks.areas) {
-        drawArea(area, isDone ? AREA_COLORS.Done : AREA_COLORS.Open)
-      }
-      if (marks.draft !== null) {
-        drawArea(marks.draft, AREA_COLORS.Draft)
-      }
-      if (marks.hover !== null && marks.tool === 'Pin') {
-        outline({
-          left: marks.hover.column,
-          top: marks.hover.row,
-          right: marks.hover.column,
-          bottom: marks.hover.row,
-        })
-        context.strokeStyle = HOVER_COLOR
-        context.lineWidth = 2
-        context.stroke()
-      }
-      if (marks.tool === 'Loupe') {
-        Option.map(this.maybePointer, pointer => {
-          const at = viewPointAt(view, pointer)
-          const left =
-            view.left + (Math.floor(at.x) - LOUPE_COLUMNS / 2) * scale
-          const top = view.top + (Math.floor(at.y) - LOUPE_ROWS / 2) * scale
-          context.strokeStyle = MIXED_COLOR
-          context.lineWidth = 1
-          context.strokeRect(
-            left,
-            top,
-            LOUPE_COLUMNS * scale,
-            LOUPE_ROWS * scale,
-          )
-        })
-      }
+      this.areaPaths.Open.setAttribute(
+        'd',
+        polygonsPath(
+          Array.map(
+            Array.filter(marks.areas, ({ isDone }) => !isDone),
+            ({ area }) => outline(area),
+          ),
+        ),
+      )
+      this.areaPaths.Done.setAttribute(
+        'd',
+        polygonsPath(
+          Array.map(
+            Array.filter(marks.areas, ({ isDone }) => isDone),
+            ({ area }) => outline(area),
+          ),
+        ),
+      )
+      this.areaPaths.Draft.setAttribute(
+        'd',
+        polygonsPath(marks.draft === null ? [] : [outline(marks.draft)]),
+      )
+      this.hoverPath.setAttribute(
+        'd',
+        polygonsPath(
+          marks.hover !== null && marks.tool === 'Pin'
+            ? [
+                outline({
+                  left: marks.hover.column,
+                  top: marks.hover.row,
+                  right: marks.hover.column,
+                  bottom: marks.hover.row,
+                }),
+              ]
+            : [],
+        ),
+      )
+      const maybeLoupe =
+        marks.tool === 'Loupe' ? this.maybePointer : Option.none()
+      this.loupeBox.setAttribute(
+        'visibility',
+        Option.isSome(maybeLoupe) ? 'visible' : 'hidden',
+      )
+      Option.map(maybeLoupe, pointer => {
+        const at = viewPointAt(view, pointer)
+        this.loupeBox.setAttribute(
+          'x',
+          `${view.left + (Math.floor(at.x) - LOUPE_COLUMNS / 2) * scale}`,
+        )
+        this.loupeBox.setAttribute(
+          'y',
+          `${view.top + (Math.floor(at.y) - LOUPE_ROWS / 2) * scale}`,
+        )
+        this.loupeBox.setAttribute('width', `${LOUPE_COLUMNS * scale}`)
+        this.loupeBox.setAttribute('height', `${LOUPE_ROWS * scale}`)
+      })
     }
 
     // NOTE: the world's frame copied, or none before the renderer is in.
@@ -556,21 +769,22 @@ const studioWorldClass = () =>
           )
           const width = Math.max(1, Math.round((right - left) * ratio))
           const height = Math.max(1, Math.round((bottom - top) * ratio))
-          this.shot.width = width
-          this.shot.height = height
-          this.shot
-            .getContext('2d')
-            ?.drawImage(
-              frame,
-              Math.round(left * ratio),
-              Math.round(top * ratio),
-              width,
-              height,
-              0,
-              0,
-              width,
-              height,
-            )
+          this.shotToken += 1
+          const token = this.shotToken
+          // NOTE: createImageBitmap copies the frame as it is called, in this
+          // task, while the snapshot is still drawn.
+          const bitmap = createImageBitmap(
+            frame,
+            Math.round(left * ratio),
+            Math.round(top * ratio),
+            width,
+            height,
+          )
+          showWhenMade(
+            this.shot,
+            () => bitmap,
+            () => token === this.shotToken,
+          )
           return true
         },
       })
@@ -580,12 +794,12 @@ const studioWorldClass = () =>
     // square with the grid between them, mixed ones ringed in magenta; and
     // the readout under the room. Whether it could be drawn yet.
     private drawLoupe(view: BridgeView): boolean {
-      const context = this.loupe.getContext('2d')
-      if (context === null) {
-        return true
-      }
       if (Option.isNone(this.maybePointer)) {
-        context.clearRect(0, 0, this.loupe.width, this.loupe.height)
+        this.loupeToken += 1
+        this.loupePixels
+          .getContext('bitmaprenderer')
+          ?.transferFromImageBitmap(null)
+        this.loupeMixed.setAttribute('d', '')
         this.readout.textContent =
           '🔍 Hover the room: each square is one game pixel, magenta ones are mixed.'
         return true
@@ -598,8 +812,14 @@ const studioWorldClass = () =>
           const at = viewPointAt(view, pointer)
           const sourceX = (Math.floor(at.x) - LOUPE_COLUMNS / 2) * ratio
           const sourceY = (Math.floor(at.y) - LOUPE_ROWS / 2) * ratio
-          const readLeft = Math.max(0, Math.floor(sourceX))
-          const readTop = Math.max(0, Math.floor(sourceY))
+          const readLeft = Math.min(
+            frame.width - 1,
+            Math.max(0, Math.floor(sourceX)),
+          )
+          const readTop = Math.min(
+            frame.height - 1,
+            Math.max(0, Math.floor(sourceY)),
+          )
           const readWidth = Math.max(
             1,
             Math.min(
@@ -611,83 +831,82 @@ const studioWorldClass = () =>
             1,
             Math.min(frame.height - readTop, Math.ceil(LOUPE_ROWS * ratio) + 2),
           )
-          const reader = document.createElement('canvas')
-          reader.width = readWidth
-          reader.height = readHeight
-          const readContext = reader.getContext('2d', {
-            willReadFrequently: true,
-          })
-          if (readContext === null) {
-            return true
-          }
-          readContext.drawImage(frame, -readLeft, -readTop)
-          const data = readContext.getImageData(0, 0, readWidth, readHeight)
-          context.clearRect(0, 0, this.loupe.width, this.loupe.height)
-          const cells: Array<
-            Readonly<{ column: number; row: number; cell: Cell }>
-          > = []
-          for (let row = 0; row < LOUPE_ROWS; row++) {
-            for (let column = 0; column < LOUPE_COLUMNS; column++) {
-              cells.push({
-                column,
-                row,
-                cell: cellAt(
+          return Option.match(
+            readFrame(frame, {
+              left: readLeft,
+              top: readTop,
+              width: readWidth,
+              height: readHeight,
+            }),
+            {
+              onNone: () => true,
+              onSome: data => {
+                this.showLoupe(view, pointer, {
                   data,
-                  sourceX - readLeft + column * ratio,
-                  sourceY - readTop + row * ratio,
+                  sourceX: sourceX - readLeft,
+                  sourceY: sourceY - readTop,
                   ratio,
-                ),
-              })
-            }
-          }
-          let mixedCount = 0
-          let middle: Cell = { red: 0, green: 0, blue: 0, isMixed: false }
-          for (const { column, row, cell } of cells) {
-            if (column === LOUPE_COLUMNS / 2 && row === LOUPE_ROWS / 2) {
-              middle = cell
-            }
-            context.fillStyle = hexOf(cell)
-            context.fillRect(
-              column * LOUPE_CELL,
-              row * LOUPE_CELL,
-              LOUPE_CELL,
-              LOUPE_CELL,
-            )
-          }
-          context.fillStyle = 'rgba(0, 0, 0, 0.35)'
-          for (let column = 1; column < LOUPE_COLUMNS; column++) {
-            context.fillRect(column * LOUPE_CELL, 0, 1, this.loupe.height)
-          }
-          for (let row = 1; row < LOUPE_ROWS; row++) {
-            context.fillRect(0, row * LOUPE_CELL, this.loupe.width, 1)
-          }
-          context.strokeStyle = MIXED_COLOR
-          context.lineWidth = 2
-          for (const { column, row, cell } of cells) {
-            if (cell.isMixed) {
-              mixedCount++
-              context.strokeRect(
-                column * LOUPE_CELL + 1,
-                row * LOUPE_CELL + 1,
-                LOUPE_CELL - 2,
-                LOUPE_CELL - 2,
-              )
-            }
-          }
-          context.strokeStyle = '#ffffff'
-          context.strokeRect(
-            (LOUPE_COLUMNS / 2) * LOUPE_CELL,
-            (LOUPE_ROWS / 2) * LOUPE_CELL,
-            LOUPE_CELL,
-            LOUPE_CELL,
+                })
+                return true
+              },
+            },
           )
-          const world = this.worldAt(view, pointer)
-          const x = Math.floor(world.x)
-          const y = Math.floor(world.y)
-          this.readout.textContent = `x ${x}  y ${y}  ·  tile ${Math.floor(x / TILE_SIZE)}, ${Math.floor(y / TILE_SIZE)}  ·  ${hexOf(middle)}${middle.isMixed ? ' (mixed)' : ''}  ·  ${mixedCount} mixed of ${LOUPE_COLUMNS * LOUPE_ROWS}  ·  ${Math.round(ratio * 100) / 100} screen px a game px`
-          return true
         },
       })
+    }
+
+    // NOTE: the loupe's game pixels as a bitmap a cell a game pixel, its
+    // mixed ones ringed, and the readout.
+    private showLoupe(
+      view: BridgeView,
+      pointer: Point,
+      read: Readonly<{
+        data: Pixels
+        sourceX: number
+        sourceY: number
+        ratio: number
+      }>,
+    ): void {
+      const { data, sourceX, sourceY, ratio } = read
+      const rgba = new Uint8ClampedArray(LOUPE_COLUMNS * LOUPE_ROWS * 4)
+      const rings: Array<string> = []
+      let middle: Cell = { red: 0, green: 0, blue: 0, isMixed: false }
+      for (let row = 0; row < LOUPE_ROWS; row++) {
+        for (let column = 0; column < LOUPE_COLUMNS; column++) {
+          const cell = cellAt(
+            data,
+            sourceX + column * ratio,
+            sourceY + row * ratio,
+            ratio,
+          )
+          const at = (row * LOUPE_COLUMNS + column) * 4
+          rgba[at] = cell.red
+          rgba[at + 1] = cell.green
+          rgba[at + 2] = cell.blue
+          rgba[at + 3] = 255
+          if (column === LOUPE_COLUMNS / 2 && row === LOUPE_ROWS / 2) {
+            middle = cell
+          }
+          if (cell.isMixed) {
+            rings.push(
+              `M${column * LOUPE_CELL + 1} ${row * LOUPE_CELL + 1} h${LOUPE_CELL - 2} v${LOUPE_CELL - 2} h${2 - LOUPE_CELL} Z`,
+            )
+          }
+        }
+      }
+      this.loupeMixed.setAttribute('d', Array.join(rings, ' '))
+      this.loupeToken += 1
+      const token = this.loupeToken
+      const pixels = new ImageData(rgba, LOUPE_COLUMNS, LOUPE_ROWS)
+      showWhenMade(
+        this.loupePixels,
+        () => createImageBitmap(pixels),
+        () => token === this.loupeToken,
+      )
+      const world = this.worldAt(view, pointer)
+      const x = Math.floor(world.x)
+      const y = Math.floor(world.y)
+      this.readout.textContent = `x ${x}  y ${y}  ·  tile ${Math.floor(x / TILE_SIZE)}, ${Math.floor(y / TILE_SIZE)}  ·  ${hexOf(middle)}${middle.isMixed ? ' (mixed)' : ''}  ·  ${rings.length} mixed of ${LOUPE_COLUMNS * LOUPE_ROWS}  ·  ${Math.round(ratio * 100) / 100} screen px a game px`
     }
   }
 

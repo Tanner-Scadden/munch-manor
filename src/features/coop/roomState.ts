@@ -1,10 +1,11 @@
 // The co-op Model's room, read and changed without a Command: element ids,
 // room links and codes, members and the host, presses and tracers, and the
-// lobby's picks. src/features/coop/update.ts wraps them in its Steps and Commands.
+// lobby's picks. src/features/coop/update.ts wraps them in its rules and Commands.
 
 import { Array, Function, Option, String, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
+import { Html } from '@effect/ui/html'
 import {
   type Lobby,
   type LobbyMember,
@@ -24,7 +25,6 @@ import {
   Screen,
   maybeRoomOf,
   noPresses,
-  screenInRoom,
 } from '../../domain/coopRoom'
 import { actionCodeOf, heldAction } from '../../world/net/roomWorld'
 import type { Bullet } from '../../world/schema/worldSchema'
@@ -40,6 +40,26 @@ export const CALLING_PILL_ID = 'coop-calling-pill'
 export const NAME_BUTTON_ID = 'coop-name-button'
 export const NAME_INPUT_ID = 'coop-name-input'
 export const ROOM_CODE_LENGTH = 5
+
+// NOTE: the elements co-op moves focus to, each worn by the element with its
+// id above (`.ref(...)`), so `HtmlCommand.focus` finds it once the render
+// that draws it is committed.
+export const QUICK_PLAY_BUTTON = Html.ref(QUICK_PLAY_BUTTON_ID, 'button')
+export const CODE_INPUT = Html.ref(CODE_INPUT_ID, 'input')
+export const READY_BUTTON = Html.ref(READY_BUTTON_ID, 'button')
+export const CALLING_PILL = Html.ref(CALLING_PILL_ID, 'button')
+export const NAME_BUTTON = Html.ref(NAME_BUTTON_ID, 'button')
+export const NAME_INPUT = Html.ref(NAME_INPUT_ID, 'input')
+
+// NOTE: those elements by name, so a rule names its target and never a
+// ref's element type (src/features/coop/steps.ts, focusCoop).
+export type CoopFocus =
+  | 'QuickPlay'
+  | 'Code'
+  | 'Ready'
+  | 'CallingPill'
+  | 'NameButton'
+  | 'NameInput'
 
 export const ROOM_PARAM = 'room'
 
@@ -66,7 +86,7 @@ export const withScreen: {
   (screen: Screen): (model: Model) => Model
   (model: Model, screen: Screen): Model
 } = Function.dual(2, (model: Model, screen: Screen): Model =>
-  modifyFields(model, { screen: () => screen }),
+  UiStruct.evolve(model, { screen: () => screen }),
 )
 
 export const hub: {
@@ -145,7 +165,7 @@ export const withRoom: {
   (room: Room): (model: Model) => Model
   (model: Model, room: Room): Model
 } = Function.dual(2, (model: Model, room: Room): Model =>
-  withScreen(model, screenInRoom(room)),
+  withScreen(model, Screen.InRoom({ room })),
 )
 
 export const learnLobby: {

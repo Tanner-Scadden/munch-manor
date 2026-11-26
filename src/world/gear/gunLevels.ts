@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { isCoop, maybePlayerAt, modifySeat, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
@@ -85,10 +86,10 @@ const levelGun = (gun: CarriedGun, calling: Player['calling']): CarriedGun => {
   if (tier <= gun.tier) {
     return gun
   }
-  const leveled = modifyFields(gun, { tier: () => tier })
+  const leveled = UiStruct.evolve(gun, { tier: () => tier })
   const grown =
     carriedMagazine(calling, leveled) - carriedMagazine(calling, gun)
-  return modifyFields(leveled, {
+  return UiStruct.evolve(leveled, {
     loaded: loaded => loaded + Math.max(0, grown),
   })
 }
@@ -118,7 +119,7 @@ export const creditGunKills: {
             const credited = mapCarried(player, gun =>
               gun.kind === kind
                 ? levelGun(
-                    modifyFields(gun, { kills: count => count + kills }),
+                    UiStruct.evolve(gun, { kills: count => count + kills }),
                     player.calling,
                   )
                 : gun,
@@ -126,7 +127,7 @@ export const creditGunKills: {
             const withGun = modifySeat(world, slot, { player: () => credited })
             const tier = tierCarried(credited, kind)
             return tier > tierCarried(player, kind)
-              ? modifyFields(withGun, {
+              ? UiStruct.evolve(withGun, {
                   frameEvents: Array.append(
                     GameEvent.GunLeveled({
                       x: player.x,

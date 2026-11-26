@@ -8,7 +8,8 @@ import {
   Schema,
   pipe,
 } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import { savedDifficultyOf } from '../domain/beatMyRun'
@@ -249,7 +250,7 @@ const restoreLesson =
     saved === 'Learned' ? Lesson.Learned({ atMs: 0 }) : lesson
 
 const restoreLessons = (lessons: Lessons, saved: SavedLessons): Lessons =>
-  modifyFields(lessons, {
+  UiStruct.evolve(lessons, {
     move: restoreLesson(saved.move),
     fire: restoreLesson(saved.fire),
     startWave: restoreLesson(saved.startWave),
@@ -371,7 +372,7 @@ export const restoreSave: {
   (model: Model, save: PlayerSave): Model
 } = Function.dual(2, (model: Model, save: PlayerSave): Model =>
   modifyFocus(
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       lessons: lessons => restoreLessons(lessons, save.onboarding.lessons),
       trapHint: hint =>
         save.onboarding.trapHint === 'Seen' ? TrapHint.Seen() : hint,
@@ -380,7 +381,7 @@ export const restoreSave: {
         Array.union(kinds, knownKinds(save.onboarding.introducedKinds)),
       homeScreenTip: tip =>
         save.homeScreenTip === 'Dismissed' ? 'Dismissed' : tip,
-      settings: modifyFields({
+      settings: UiStruct.evolve({
         soundSetting: () => save.settings.sound,
         musicSetting: () => save.settings.music,
         shakeSetting: () => save.settings.shake,
@@ -399,7 +400,7 @@ export const restoreSave: {
           rankOf(totalPointsOf(save.rank)),
         ),
       difficulty: setting =>
-        modifyFields(setting, {
+        UiStruct.evolve(setting, {
           chosen: () => save.difficulty.chosen,
           nightmare: nightmare =>
             save.difficulty.nightmare === 'Unlocked' && nightmare === 'Locked'
@@ -410,7 +411,7 @@ export const restoreSave: {
         save.difficulty.card === 'Seen' ? DifficultyCard.Seen() : card,
       bests: () => restoreBests(save.bests, save.records),
       home: home =>
-        modifyFields(home, {
+        UiStruct.evolve(home, {
           maybeSeenNewsDay: () => Option.fromNullishOr(save.home.seenNewsDay),
           openedEntries: opened =>
             Array.union(opened, knownKinds(save.home.openedEntries)),
@@ -461,7 +462,7 @@ export const restoreSave: {
 // and the power-ups explained. The look, the settings, the difficulty, and
 // the bests and kills are kept.
 export const forgetTutorial = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: () => freshLessons,
     practice: () => noPractice,
     trapHint: () => TrapHint.Unseen(),

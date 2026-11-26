@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -25,15 +24,18 @@ import {
 } from '../../../test/arsenals'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   FIRE_LIFT,
   FIRE_PRESS,
   FIRE_PUSH,
+  checkModel,
   eventsOver,
   holdFire,
+  modelAfter,
   playedThrough,
   releaseFire,
+  send,
   settleRunCommands,
+  steps,
   tick,
   tickCountFor,
   ticks,
@@ -65,7 +67,7 @@ const holding = (
   zombies: ReadonlyArray<Zombie> = [],
 ): Model =>
   modifyFocus(
-    modifyFields(asVeteran(initialModel), {
+    UiStruct.evolve(asVeteran(initialModel), {
       maybeSurface: () =>
         Option.some({ left: 0, top: 0, width: 800, height: 400 }),
       phase: () =>
@@ -74,7 +76,7 @@ const holding = (
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => PLAYER_X,
           y: () => ROW_Y,
           facing: () => ({ x: 1, y: 0 }),
@@ -86,9 +88,9 @@ const holding = (
   )
 
 const nightmare = (current: Model): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     difficulty: difficulty =>
-      modifyFields(difficulty, { chosen: () => 'Nightmare' }),
+      UiStruct.evolve(difficulty, { chosen: () => 'Nightmare' }),
   })
 
 const zombieIn = (current: Model, id: number): Option.Option<Zombie> =>
@@ -110,16 +112,17 @@ const firstModelWhere = (
 ): Effect.Effect<Model> =>
   Effect.suspend(() => {
     const seen: Array<Model> = [start]
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...Array.flatMap(messages, sent => [
-        Story.message(sent),
-        Story.model((current: Model) => {
-          seen.push(current)
-        }),
-      ]),
-      settleRunCommands,
+    return modelAfter(
+      start,
+      steps(
+        ...Array.flatMap(messages, sent => [
+          send(sent),
+          checkModel((current: Model) => {
+            seen.push(current)
+          }),
+        ]),
+        settleRunCommands,
+      ),
     ).pipe(
       Effect.map(last =>
         Option.getOrElse(Array.findFirst(seen, isDone), () => last),
@@ -140,27 +143,30 @@ describe('the Pressure Cooker', () => {
   it.effect(
     'holding builds pressure; lifting throws one lid along the aim',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(holding(freshGun('Cooker'))),
-        holdFire,
-        ...ticks(tickCountFor(COOKER_RULES.fullMs / 2), FRAME_MS),
-        Story.model(current => {
-          expect(
-            Charge.isAnyOf(['Building'])(focusOf(current).player.charge),
-          ).toBe(true)
-          expect(current.lobs).toEqual([])
-        }),
-        releaseFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).player.charge).toEqual(Charge.Idle())
-          expect(current.lobs.length).toBe(1)
-          expect(spareOf(current).loaded).toBe(magazineOf('Cooker', 0) - 1)
-          const lob = current.lobs[0]
-          expect(lob?.to.x).toBeGreaterThan(PLAYER_X + COOKER_RULES.minThrowPx)
-          expect(lob?.to.y).toBeCloseTo(ROW_Y, 5)
-        }),
+      modelAfter(
+        holding(freshGun('Cooker')),
+        steps(
+          holdFire,
+          ticks(tickCountFor(COOKER_RULES.fullMs / 2), FRAME_MS),
+          checkModel(current => {
+            expect(
+              Charge.isAnyOf(['Building'])(focusOf(current).player.charge),
+            ).toBe(true)
+            expect(current.lobs).toEqual([])
+          }),
+          releaseFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).player.charge).toEqual(Charge.Idle())
+            expect(current.lobs.length).toBe(1)
+            expect(spareOf(current).loaded).toBe(magazineOf('Cooker', 0) - 1)
+            const lob = current.lobs[0]
+            expect(lob?.to.x).toBeGreaterThan(
+              PLAYER_X + COOKER_RULES.minThrowPx,
+            )
+            expect(lob?.to.y).toBeCloseTo(ROW_Y, 5)
+          }),
+        ),
       ),
   )
 
@@ -209,27 +215,28 @@ describe('the Pressure Cooker', () => {
   it.effect(
     'held past full it pops in your hands: a shove and a lost lid, but no harm',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(holding(freshGun('Cooker'))),
-        holdFire,
-        ...ticks(
-          tickCountFor(COOKER_RULES.fullMs + COOKER_RULES.overMs) + 2,
-          FRAME_MS,
+      modelAfter(
+        holding(freshGun('Cooker')),
+        steps(
+          holdFire,
+          ticks(
+            tickCountFor(COOKER_RULES.fullMs + COOKER_RULES.overMs) + 2,
+            FRAME_MS,
+          ),
+          checkModel(current => {
+            expect(focusOf(current).player.charge).toEqual(Charge.Spent())
+            expect(spareOf(current).loaded).toBe(magazineOf('Cooker', 0) - 1)
+            expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+            expect(focusOf(current).player.x).toBeLessThan(PLAYER_X)
+            expect(current.lobs).toEqual([])
+          }),
+          releaseFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).player.charge).toEqual(Charge.Idle())
+            expect(current.lobs).toEqual([])
+          }),
         ),
-        Story.model(current => {
-          expect(focusOf(current).player.charge).toEqual(Charge.Spent())
-          expect(spareOf(current).loaded).toBe(magazineOf('Cooker', 0) - 1)
-          expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-          expect(focusOf(current).player.x).toBeLessThan(PLAYER_X)
-          expect(current.lobs).toEqual([])
-        }),
-        releaseFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).player.charge).toEqual(Charge.Idle())
-          expect(current.lobs).toEqual([])
-        }),
       ),
   )
 
@@ -254,7 +261,7 @@ describe('the Pressure Cooker', () => {
     Effect.gen(function* () {
       const chargeAfter = (tier: number, ms: number) =>
         playedThrough(
-          holding(modifyFields(freshGun('Cooker'), { tier: () => tier })),
+          holding(UiStruct.evolve(freshGun('Cooker'), { tier: () => tier })),
           [...press, ...frames(tickCountFor(ms)), FIRE_LIFT, ...frames(1)],
         ).pipe(
           Effect.map(
@@ -300,69 +307,73 @@ describe('the Pressure Cooker', () => {
   )
 
   it.effect('an empty pot reloads, four lids a load', () => {
-    const empty = modifyFields(freshGun('Cooker'), { loaded: () => 0 })
-    return Story.story(
-      APPLICATION,
-      Story.given(holding(empty)),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).player.reload._tag).toBe('Reloading')
-      }),
+    const empty = UiStruct.evolve(freshGun('Cooker'), { loaded: () => 0 })
+    return modelAfter(
+      holding(empty),
+      steps(
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(focusOf(current).player.reload._tag).toBe('Reloading')
+        }),
+      ),
     )
   })
 
   it.effect('a tap right after a throw throws again', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(holding(freshGun('Cooker'))),
-      Story.message(FIRE_PRESS),
-      Story.message(FIRE_PUSH),
-      ...ticks(3, FRAME_MS),
-      Story.message(FIRE_LIFT),
-      tick(FRAME_MS),
-      Story.message(FIRE_PRESS),
-      Story.message(FIRE_PUSH),
-      ...ticks(3, FRAME_MS),
-      Story.message(FIRE_LIFT),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(current.lobs.length).toBe(2)
-      }),
-      settleRunCommands,
+    modelAfter(
+      holding(freshGun('Cooker')),
+      steps(
+        send(FIRE_PRESS),
+        send(FIRE_PUSH),
+        ticks(3, FRAME_MS),
+        send(FIRE_LIFT),
+        tick(FRAME_MS),
+        send(FIRE_PRESS),
+        send(FIRE_PUSH),
+        ticks(3, FRAME_MS),
+        send(FIRE_LIFT),
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(current.lobs.length).toBe(2)
+        }),
+        settleRunCommands,
+      ),
     ),
   )
 
   it.effect('a click let go before the next frame still throws a lid', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(holding(freshGun('Cooker'))),
-      Story.message(FIRE_PRESS),
-      Story.message(FIRE_PUSH),
-      Story.message(FIRE_LIFT),
-      ...ticks(2, FRAME_MS),
-      Story.model(current => {
-        expect(current.lobs.length).toBe(1)
-      }),
-      settleRunCommands,
+    modelAfter(
+      holding(freshGun('Cooker')),
+      steps(
+        send(FIRE_PRESS),
+        send(FIRE_PUSH),
+        send(FIRE_LIFT),
+        ticks(2, FRAME_MS),
+        checkModel(current => {
+          expect(current.lobs.length).toBe(1)
+        }),
+        settleRunCommands,
+      ),
     ),
   )
 
   it.effect('the last lid thrown reloads the pot with no press', () => {
-    const lastLid = modifyFields(freshGun('Cooker'), { loaded: () => 1 })
-    return Story.story(
-      APPLICATION,
-      Story.given(holding(lastLid)),
-      Story.message(FIRE_PRESS),
-      Story.message(FIRE_PUSH),
-      ...ticks(3, FRAME_MS),
-      Story.message(FIRE_LIFT),
-      ...ticks(2, FRAME_MS),
-      Story.model(current => {
-        expect(current.lobs.length).toBe(1)
-        expect(focusOf(current).player.reload._tag).toBe('Reloading')
-      }),
-      settleRunCommands,
+    const lastLid = UiStruct.evolve(freshGun('Cooker'), { loaded: () => 1 })
+    return modelAfter(
+      holding(lastLid),
+      steps(
+        send(FIRE_PRESS),
+        send(FIRE_PUSH),
+        ticks(3, FRAME_MS),
+        send(FIRE_LIFT),
+        ticks(2, FRAME_MS),
+        checkModel(current => {
+          expect(current.lobs.length).toBe(1)
+          expect(focusOf(current).player.reload._tag).toBe('Reloading')
+        }),
+        settleRunCommands,
+      ),
     )
   })
 })
@@ -374,18 +385,19 @@ describe('the Clang Pan', () => {
       const groaner = zombieOf('Shambler', 900, PLAYER_X + 10, ROW_Y, {
         hp: 99,
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(holding(freshGun('Pan'), [groaner])),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          const hit = Option.getOrThrow(zombieIn(current, 900))
-          expect(hit.hp).toBe(99 - PAN_RULES.damage)
-          expect(hit.knockback.x).toBeGreaterThan(PAN_RULES.knockback * 0.7)
-          expect(ZombieAction.isAnyOf(['Reeling'])(hit.action)).toBe(true)
-          expect(spareOf(current).loaded).toBe(magazineOf('Pan', 0) - 1)
-        }),
+      return modelAfter(
+        holding(freshGun('Pan'), [groaner]),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            const hit = Option.getOrThrow(zombieIn(current, 900))
+            expect(hit.hp).toBe(99 - PAN_RULES.damage)
+            expect(hit.knockback.x).toBeGreaterThan(PAN_RULES.knockback * 0.7)
+            expect(ZombieAction.isAnyOf(['Reeling'])(hit.action)).toBe(true)
+            expect(spareOf(current).loaded).toBe(magazineOf('Pan', 0) - 1)
+          }),
+        ),
       )
     },
   )
@@ -406,10 +418,10 @@ describe('the Clang Pan', () => {
           true,
         )
         const later = yield* playedThrough(
-          modifyFields(swings, {
+          UiStruct.evolve(swings, {
             zombies: zombies =>
               Array.map(zombies, zombie =>
-                modifyFields(zombie, {
+                UiStruct.evolve(zombie, {
                   x: () => PLAYER_X + 10,
                   y: () => ROW_Y,
                   action: () =>
@@ -429,25 +441,26 @@ describe('the Clang Pan', () => {
     'a Big Lug takes the clang but barely budges and keeps its feet',
     () => {
       const lug = zombieOf('Tank', 900, PLAYER_X + 12, ROW_Y)
-      return Story.story(
-        APPLICATION,
-        Story.given(holding(freshGun('Pan'), [lug])),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          const hit = Option.getOrThrow(zombieIn(current, 900))
-          expect(hit.hp).toBeLessThan(lug.hp)
-          expect(hit.knockback.x).toBeLessThan(PAN_RULES.knockback * 0.2)
-          expect(ZombieAction.isAnyOf(['Roaming'])(hit.action)).toBe(true)
-        }),
-        settleRunCommands,
+      return modelAfter(
+        holding(freshGun('Pan'), [lug]),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            const hit = Option.getOrThrow(zombieIn(current, 900))
+            expect(hit.hp).toBeLessThan(lug.hp)
+            expect(hit.knockback.x).toBeLessThan(PAN_RULES.knockback * 0.2)
+            expect(ZombieAction.isAnyOf(['Roaming'])(hit.action)).toBe(true)
+          }),
+          settleRunCommands,
+        ),
       )
     },
   )
 
   it.effect('a thrown Groaner is swatted out of the air for a home run', () =>
     Effect.gen(function* () {
-      const flying = modifyFields(
+      const flying = UiStruct.evolve(
         zombieOf('Shambler', 900, PLAYER_X + 12, ROW_Y),
         {
           action: () =>
@@ -472,7 +485,7 @@ describe('the Clang Pan', () => {
     'each swing that lands dents it; fully dented it swings slower; the break bangs it flat',
     () =>
       Effect.gen(function* () {
-        const dented = modifyFields(freshGun('Pan'), { loaded: () => 0 })
+        const dented = UiStruct.evolve(freshGun('Pan'), { loaded: () => 0 })
         const target = zombieOf('Tank', 900, PLAYER_X + 12, ROW_Y, { hp: 999 })
         const swingsIn = (spare: CarriedGun, ms: number) =>
           eventsOver(holding(spare, [target]), [
@@ -487,7 +500,7 @@ describe('the Clang Pan', () => {
         const dentedSwings = yield* swingsIn(dented, 3000)
         const freshSwings = yield* swingsIn(freshGun('Pan'), 3000)
         expect(dentedSwings).toBeLessThan(freshSwings)
-        const breakStarts = modifyFields(holding(dented), {
+        const breakStarts = UiStruct.evolve(holding(dented), {
           phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [] }),
         })
         const flattened = yield* playedThrough(breakStarts, frames(240))
@@ -502,7 +515,7 @@ describe('the Clang Pan', () => {
         hp: 99,
       })
       const events = yield* eventsOver(
-        holding(modifyFields(freshGun('Pan'), { tier: () => 3 }), [behind]),
+        holding(UiStruct.evolve(freshGun('Pan'), { tier: () => 3 }), [behind]),
         [...press, ...frames(tickCountFor(PAN_RULES.smashHoldMs) + 30)],
       )
       expect(Array.some(events, GameEvent.isAnyOf(['PanSmashed']))).toBe(true)
@@ -516,24 +529,25 @@ describe('Brain Freeze', () => {
     () => {
       const groaner = zombieOf('Shambler', 900, PLAYER_X + 20, ROW_Y)
       const lug = zombieOf('Tank', 901, PLAYER_X + 30, ROW_Y + 6)
-      return Story.story(
-        APPLICATION,
-        Story.given(holding(freshGun('Freeze'), [groaner, lug])),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(
-            ZombieAction.isAnyOf(['Frozen'])(
-              Option.getOrThrow(zombieIn(current, 900)).action,
-            ),
-          ).toBe(true)
-          expect(
-            ZombieAction.isAnyOf(['Chilled'])(
-              Option.getOrThrow(zombieIn(current, 901)).action,
-            ),
-          ).toBe(true)
-          expect(spareOf(current).loaded).toBe(17)
-        }),
+      return modelAfter(
+        holding(freshGun('Freeze'), [groaner, lug]),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(
+              ZombieAction.isAnyOf(['Frozen'])(
+                Option.getOrThrow(zombieIn(current, 900)).action,
+              ),
+            ).toBe(true)
+            expect(
+              ZombieAction.isAnyOf(['Chilled'])(
+                Option.getOrThrow(zombieIn(current, 901)).action,
+              ),
+            ).toBe(true)
+            expect(spareOf(current).loaded).toBe(17)
+          }),
+        ),
       )
     },
   )
@@ -542,7 +556,7 @@ describe('Brain Freeze', () => {
     'any hit on a frozen zombie shatters it for four times the damage',
     () =>
       Effect.gen(function* () {
-        const frozen = modifyFields(
+        const frozen = UiStruct.evolve(
           zombieOf('Thrower', 900, PLAYER_X + 40, ROW_Y),
           {
             action: () =>
@@ -554,7 +568,7 @@ describe('Brain Freeze', () => {
         )
         const pistol = modifyFocus(holding(freshGun('Freeze'), [frozen]), {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               arsenal: () => holdingFirst(freshGun('Freeze')),
             }),
         })
@@ -579,25 +593,26 @@ describe('Brain Freeze', () => {
     'eighteen charges a load: empty, it reloads in hand and never runs dry',
     () =>
       Effect.gen(function* () {
-        const empty = modifyFields(freshGun('Freeze'), { loaded: () => 0 })
-        yield* Story.story(
-          APPLICATION,
-          Story.given(holding(empty)),
-          holdFire,
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(focusOf(current).player.reload._tag).toBe('Reloading')
-            expect(
-              Arsenal.isAnyOf(['HoldingSecond'])(
-                focusOf(current).player.arsenal,
-              ),
-            ).toBe(true)
-          }),
-          ...ticks(Math.ceil(WEAPONS.Freeze.reloadMs / FRAME_MS) + 1, FRAME_MS),
-          Story.model(current => {
-            expect(spareOf(current).kind).toBe('Freeze')
-            expect(spareOf(current).loaded).toBeGreaterThan(0)
-          }),
+        const empty = UiStruct.evolve(freshGun('Freeze'), { loaded: () => 0 })
+        yield* modelAfter(
+          holding(empty),
+          steps(
+            holdFire,
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(focusOf(current).player.reload._tag).toBe('Reloading')
+              expect(
+                Arsenal.isAnyOf(['HoldingSecond'])(
+                  focusOf(current).player.arsenal,
+                ),
+              ).toBe(true)
+            }),
+            ticks(Math.ceil(WEAPONS.Freeze.reloadMs / FRAME_MS) + 1, FRAME_MS),
+            checkModel(current => {
+              expect(spareOf(current).kind).toBe('Freeze')
+              expect(spareOf(current).loaded).toBeGreaterThan(0)
+            }),
+          ),
         )
         expect(magazineOf('Freeze', 0)).toBe(18)
       }),
@@ -634,19 +649,20 @@ describe('Brain Freeze', () => {
 
   it.effect('the spray reaches 75 px', () => {
     const far = zombieOf('Shambler', 900, PLAYER_X + 75, ROW_Y, { hp: 9 })
-    return Story.story(
-      APPLICATION,
-      Story.given(holding(freshGun('Freeze'), [far])),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(
-          ZombieAction.isAnyOf(['Frozen'])(
-            Option.getOrThrow(zombieIn(current, 900)).action,
-          ),
-        ).toBe(true)
-      }),
-      settleRunCommands,
+    return modelAfter(
+      holding(freshGun('Freeze'), [far]),
+      steps(
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(
+            ZombieAction.isAnyOf(['Frozen'])(
+              Option.getOrThrow(zombieIn(current, 900)).action,
+            ),
+          ).toBe(true)
+        }),
+        settleRunCommands,
+      ),
     )
   })
 
@@ -658,7 +674,7 @@ describe('Brain Freeze', () => {
           remainingMs: FREEZE_RULES.frozenMs,
           durationMs: FREEZE_RULES.frozenMs,
         })
-        const frozen = modifyFields(
+        const frozen = UiStruct.evolve(
           zombieOf('Shambler', 900, PLAYER_X + 40, ROW_Y, { hp: 99 }),
           { action: () => iced },
         )
@@ -675,7 +691,7 @@ describe('Brain Freeze', () => {
           holding(freshGun('Freeze'), [frozen, beside, lug, away]),
           {
             player: player =>
-              modifyFields(player, {
+              UiStruct.evolve(player, {
                 arsenal: () => holdingFirst(freshGun('Freeze')),
               }),
           },

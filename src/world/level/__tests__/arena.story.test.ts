@@ -1,7 +1,6 @@
 import { Array, Effect, Option, Result, pipe } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Bullet, type Model, Phase, Pierce } from '../../../app/model'
@@ -23,8 +22,10 @@ import {
   withPlayerAt,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
+  modelAfter,
   press,
+  steps,
   tick,
   ticks,
   zombieAt,
@@ -51,7 +52,7 @@ const COUCH_BOTTOM = 130
 // origin as it always did, rather than the manor that starts in the dining
 // room.
 const parlourWave = (): Model =>
-  modifyFields(quietWave(1), {
+  UiStruct.evolve(quietWave(1), {
     level: level => ({ ...level, id: 'Parlour' }),
   })
 
@@ -119,26 +120,28 @@ describe('player collision', () => {
     'the player stops at the top wall and at the underside of the piano',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withPlayerAt(parlourWave(), 125, 40)),
-          walkToward({ x: 0, y: -1 }),
-          ...ticks(40, MAX_FRAME_DELTA_MS),
-          Story.model(({ seats: [{ player }] }) => {
-            expect(player.y).toBeCloseTo(TOP_WALL_BOTTOM + PLAYER_RADIUS)
-            expect(player.x).toBeCloseTo(125)
-          }),
+        yield* modelAfter(
+          withPlayerAt(parlourWave(), 125, 40),
+          steps(
+            walkToward({ x: 0, y: -1 }),
+            ticks(40, MAX_FRAME_DELTA_MS),
+            checkModel(({ seats: [{ player }] }) => {
+              expect(player.y).toBeCloseTo(TOP_WALL_BOTTOM + PLAYER_RADIUS)
+              expect(player.x).toBeCloseTo(125)
+            }),
+          ),
         )
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(withPlayerAt(parlourWave(), 25, 70)),
-          walkToward({ x: 0, y: -1 }),
-          ...ticks(20, MAX_FRAME_DELTA_MS),
-          Story.model(({ seats: [{ player }] }) => {
-            expect(player.y).toBeCloseTo(PIANO_BOTTOM + PLAYER_RADIUS)
-            expect(player.x).toBeCloseTo(25)
-          }),
+        yield* modelAfter(
+          withPlayerAt(parlourWave(), 25, 70),
+          steps(
+            walkToward({ x: 0, y: -1 }),
+            ticks(20, MAX_FRAME_DELTA_MS),
+            checkModel(({ seats: [{ player }] }) => {
+              expect(player.y).toBeCloseTo(PIANO_BOTTOM + PLAYER_RADIUS)
+              expect(player.x).toBeCloseTo(25)
+            }),
+          ),
         )
       }),
   )
@@ -146,52 +149,53 @@ describe('player collision', () => {
   it.effect(
     'the player slides along cover when pushing into it at an angle',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withPlayerAt(parlourWave(), 20, 50)),
-        walkToward({ x: Math.SQRT1_2, y: -Math.SQRT1_2 }),
-        ...ticks(5, MAX_FRAME_DELTA_MS),
-        Story.model(({ seats: [{ player }] }) => {
-          expect(player.y).toBeGreaterThanOrEqual(
-            PIANO_BOTTOM + PLAYER_RADIUS - 0.01,
-          )
-          expect(player.x).toBeGreaterThan(30)
-        }),
-        ...ticks(20, MAX_FRAME_DELTA_MS),
-        Story.model(({ seats: [{ player }] }) => {
-          expect(player.x).toBeGreaterThan(PIANO_RIGHT + PLAYER_RADIUS)
-          expect(player.y).toBeLessThan(PIANO_BOTTOM)
-        }),
+      modelAfter(
+        withPlayerAt(parlourWave(), 20, 50),
+        steps(
+          walkToward({ x: Math.SQRT1_2, y: -Math.SQRT1_2 }),
+          ticks(5, MAX_FRAME_DELTA_MS),
+          checkModel(({ seats: [{ player }] }) => {
+            expect(player.y).toBeGreaterThanOrEqual(
+              PIANO_BOTTOM + PLAYER_RADIUS - 0.01,
+            )
+            expect(player.x).toBeGreaterThan(30)
+          }),
+          ticks(20, MAX_FRAME_DELTA_MS),
+          checkModel(({ seats: [{ player }] }) => {
+            expect(player.x).toBeGreaterThan(PIANO_RIGHT + PLAYER_RADIUS)
+            expect(player.y).toBeLessThan(PIANO_BOTTOM)
+          }),
+        ),
       ),
   )
 
   it.effect(
     'a hard knockback in a long frame does not tunnel through a one-tile armchair',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(withPlayerAt(parlourWave(), 100, ARMCHAIR_ROW_Y), {
-            player: player =>
-              modifyFields(player, { knockback: () => ({ x: 600, y: 0 }) }),
+      modelAfter(
+        modifyFocus(withPlayerAt(parlourWave(), 100, ARMCHAIR_ROW_Y), {
+          player: player =>
+            UiStruct.evolve(player, { knockback: () => ({ x: 600, y: 0 }) }),
+        }),
+        steps(
+          tick(5000),
+          checkModel(({ seats: [{ player }] }) => {
+            expect(player.x).toBeCloseTo(ARMCHAIR_LEFT - PLAYER_RADIUS)
           }),
         ),
-        tick(5000),
-        Story.model(({ seats: [{ player }] }) => {
-          expect(player.x).toBeCloseTo(ARMCHAIR_LEFT - PLAYER_RADIUS)
-        }),
       ),
   )
 
   it.effect('the player cannot leave the screen through a doorway', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withPlayerAt(parlourWave(), 30, PARLOUR.doors.West.center.y)),
-      press('KeyA'),
-      ...ticks(40, MAX_FRAME_DELTA_MS),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(player.x).toBe(PLAYER_RADIUS)
-      }),
+    modelAfter(
+      withPlayerAt(parlourWave(), 30, PARLOUR.doors.West.center.y),
+      steps(
+        press('KeyA'),
+        ticks(40, MAX_FRAME_DELTA_MS),
+        checkModel(({ seats: [{ player }] }) => {
+          expect(player.x).toBe(PLAYER_RADIUS)
+        }),
+      ),
     ),
   )
 })
@@ -215,66 +219,66 @@ describe('bullets and cover', () => {
   it.effect(
     'a bullet stops on cover, chips it, and never reaches the zombie behind',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(withPlayerAt(parlourWave(), 250, 150), {
-            bullets: () => [upwardBullet],
-            zombies: () => [hiddenZombie],
+      modelAfter(
+        UiStruct.evolve(withPlayerAt(parlourWave(), 250, 150), {
+          bullets: () => [upwardBullet],
+          zombies: () => [hiddenZombie],
+        }),
+        steps(
+          ticks(6, FRAME_MS),
+          checkModel(
+            ({ bullets, frameEvents, cosmetics: { particles }, zombies }) => {
+              expect(bullets).toEqual([])
+              const strike = Option.getOrThrow(Array.head(frameEvents))
+              expect(strike._tag).toBe('BulletStruck')
+              expect(strike.y).toBeGreaterThanOrEqual(COUCH_BOTTOM)
+              expect(strike.y).toBeLessThan(COUCH_BOTTOM + 3)
+              expect(Array.some(particles, ({ kind }) => kind === 'Chip')).toBe(
+                true,
+              )
+              expect(Array.map(zombies, ({ hp }) => hp)).toEqual([
+                ZOMBIE_MAX_HP,
+              ])
+            },
+          ),
+          ticks(10, FRAME_MS),
+          checkModel(({ zombies }) => {
+            expect(Array.map(zombies, ({ hp }) => hp)).toEqual([ZOMBIE_MAX_HP])
           }),
         ),
-        ...ticks(6, FRAME_MS),
-        Story.model(
-          ({ bullets, frameEvents, cosmetics: { particles }, zombies }) => {
-            expect(bullets).toEqual([])
-            const strike = Option.getOrThrow(Array.head(frameEvents))
-            expect(strike._tag).toBe('BulletStruck')
-            expect(strike.y).toBeGreaterThanOrEqual(COUCH_BOTTOM)
-            expect(strike.y).toBeLessThan(COUCH_BOTTOM + 3)
-            expect(Array.some(particles, ({ kind }) => kind === 'Chip')).toBe(
-              true,
-            )
-            expect(Array.map(zombies, ({ hp }) => hp)).toEqual([ZOMBIE_MAX_HP])
-          },
-        ),
-        ...ticks(10, FRAME_MS),
-        Story.model(({ zombies }) => {
-          expect(Array.map(zombies, ({ hp }) => hp)).toEqual([ZOMBIE_MAX_HP])
-        }),
       ),
   )
 
   it.effect(
     'a bullet that crosses an armchair in one long frame still stops on it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(withPlayerAt(parlourWave(), 250, 150), {
-            bullets: () => [
-              {
-                id: 902,
-                x: ARMCHAIR_LEFT - 1,
-                y: ARMCHAIR_ROW_Y,
-                velocityX: 240,
-                velocityY: 0,
-                remainingMs: 900,
-                weapon: 'Pistol',
-                damage: 1,
-                knockback: 110,
-                glaze: 'Plain',
-                pierce: Pierce.Stops(),
-              },
-            ],
+      modelAfter(
+        UiStruct.evolve(withPlayerAt(parlourWave(), 250, 150), {
+          bullets: () => [
+            {
+              id: 902,
+              x: ARMCHAIR_LEFT - 1,
+              y: ARMCHAIR_ROW_Y,
+              velocityX: 240,
+              velocityY: 0,
+              remainingMs: 900,
+              weapon: 'Pistol',
+              damage: 1,
+              knockback: 110,
+              glaze: 'Plain',
+              pierce: Pierce.Stops(),
+            },
+          ],
+        }),
+        steps(
+          tick(MAX_FRAME_DELTA_MS),
+          checkModel(({ bullets, frameEvents }) => {
+            expect(bullets).toEqual([])
+            expect(Array.map(frameEvents, ({ _tag }) => _tag)).toEqual([
+              'BulletStruck',
+            ])
           }),
         ),
-        tick(MAX_FRAME_DELTA_MS),
-        Story.model(({ bullets, frameEvents }) => {
-          expect(bullets).toEqual([])
-          expect(Array.map(frameEvents, ({ _tag }) => _tag)).toEqual([
-            'BulletStruck',
-          ])
-        }),
       ),
   )
 })
@@ -295,25 +299,24 @@ describe('particles and walls', () => {
   it.effect(
     'a drop that lands on a wall or on cover leaves no decal, one on the floor does',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(parlourWave(), {
-            cosmetics: modifyFields({
-              particles: () => [
-                fallingDrop(5, 50),
-                fallingDrop(25, 30),
-                fallingDrop(100, 100),
-              ],
-            }),
+      modelAfter(
+        UiStruct.evolve(parlourWave(), {
+          cosmetics: UiStruct.evolve({
+            particles: () => [
+              fallingDrop(5, 50),
+              fallingDrop(25, 30),
+              fallingDrop(100, 100),
+            ],
+          }),
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ cosmetics: { decals } }) => {
+            expect(Array.map(decals, ({ x, y }) => ({ x, y }))).toEqual([
+              { x: 100, y: 100 },
+            ])
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(({ cosmetics: { decals } }) => {
-          expect(Array.map(decals, ({ x, y }) => ({ x, y }))).toEqual([
-            { x: 100, y: 100 },
-          ])
-        }),
       ),
   )
 })
@@ -332,39 +335,38 @@ describe('pathing', () => {
     () =>
       Effect.gen(function* () {
         const frames: Array<Model> = []
-        const record = Story.model((frame: Model) => {
+        const record = checkModel((frame: Model) => {
           frames.push(frame)
         })
         const runSeconds = 25
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(
-              withPlayerAt(parlourWave(), behindCouch.x, behindCouch.y),
-              {
-                phase: () =>
-                  Phase.Wave({
-                    wave: 1,
-                    elapsedMs: 0,
-                    spawns: [
-                      {
-                        atMs: 0,
-                        kind: 'Shambler',
-                        door: 'North',
-                        offset: 0,
-                        speedScale: 1,
-                        hpScale: 1,
-                        pack: 0,
-                        formation: 'Squad',
-                      },
-                      DISTANT_SPAWN,
-                    ],
-                  }),
-              },
-            ),
+        yield* modelAfter(
+          UiStruct.evolve(
+            withPlayerAt(parlourWave(), behindCouch.x, behindCouch.y),
+            {
+              phase: () =>
+                Phase.Wave({
+                  wave: 1,
+                  elapsedMs: 0,
+                  spawns: [
+                    {
+                      atMs: 0,
+                      kind: 'Shambler',
+                      door: 'North',
+                      offset: 0,
+                      speedScale: 1,
+                      hpScale: 1,
+                      pack: 0,
+                      formation: 'Squad',
+                    },
+                    DISTANT_SPAWN,
+                  ],
+                }),
+            },
           ),
-          ...Array.flatMap(doorRun(runSeconds), frame => [frame, record]),
+          steps(
+            ...Array.flatMap(doorRun(runSeconds), frame => [frame, record]),
+          ),
         )
 
         const maybeHurtFrame = Array.findFirstIndex(
@@ -387,30 +389,29 @@ describe('pathing', () => {
   )
 
   it.effect('zombies that start on top of each other spread apart', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(withPlayerAt(parlourWave(), 280, 150), {
-          zombies: () => [
-            zombieAt(1, 100, 100),
-            zombieAt(2, 100, 100),
-            zombieAt(3, 101, 100),
-          ],
+    modelAfter(
+      UiStruct.evolve(withPlayerAt(parlourWave(), 280, 150), {
+        zombies: () => [
+          zombieAt(1, 100, 100),
+          zombieAt(2, 100, 100),
+          zombieAt(3, 101, 100),
+        ],
+      }),
+      steps(
+        ticks(30, FRAME_MS),
+        checkModel(({ zombies }) => {
+          const gaps = Array.flatMap(zombies, first =>
+            Array.filterMap(zombies, second =>
+              first.id < second.id
+                ? Result.succeed(
+                    Math.hypot(first.x - second.x, first.y - second.y),
+                  )
+                : Result.failVoid,
+            ),
+          )
+          expect(Array.every(gaps, gap => gap > ZOMBIE_RADIUS)).toBe(true)
         }),
       ),
-      ...ticks(30, FRAME_MS),
-      Story.model(({ zombies }) => {
-        const gaps = Array.flatMap(zombies, first =>
-          Array.filterMap(zombies, second =>
-            first.id < second.id
-              ? Result.succeed(
-                  Math.hypot(first.x - second.x, first.y - second.y),
-                )
-              : Result.failVoid,
-          ),
-        )
-        expect(Array.every(gaps, gap => gap > ZOMBIE_RADIUS)).toBe(true)
-      }),
     ),
   )
 })

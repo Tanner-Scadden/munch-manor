@@ -1,11 +1,13 @@
 import {
   Array,
+  Context,
   Effect,
   Function,
+  Layer,
   MutableRef,
   Option,
   Schema,
-  type Scope,
+  Scope,
   pipe,
 } from 'effect'
 
@@ -45,7 +47,7 @@ export type PlayOutcome = typeof PlayOutcome.Type
 
 // ENGINE
 
-export type AudioEngine = Readonly<{
+type Engine = Readonly<{
   context: AudioContext
   output: GainNode
   noise: AudioBuffer
@@ -79,7 +81,7 @@ const whiteNoise = (sampleCount: number): Float32Array<ArrayBuffer> => {
   return Float32Array.from(samples)
 }
 
-const buildEngine = (): AudioEngine => {
+const buildEngine = (): Engine => {
   const context = new AudioContext({ latencyHint: 'interactive' })
   const compressor = context.createDynamicsCompressor()
   compressor.threshold.value = -14
@@ -107,7 +109,7 @@ const buildEngine = (): AudioEngine => {
 }
 
 export const acquireAudioEngine: Effect.Effect<
-  AudioEngine,
+  Engine,
   AudioEngineError,
   Scope.Scope
 > = pipe(
@@ -118,7 +120,7 @@ export const acquireAudioEngine: Effect.Effect<
   Effect.tap(engine => Effect.forkScoped(runMusicScheduler(engine.music))),
 )
 
-export const releaseAudioEngine = (engine: AudioEngine): Effect.Effect<void> =>
+const releaseAudioEngine = (engine: Engine): Effect.Effect<void> =>
   pipe(
     Effect.tryPromise({
       try: () => engine.context.close(),
@@ -127,11 +129,40 @@ export const releaseAudioEngine = (engine: AudioEngine): Effect.Effect<void> =>
     Effect.ignore,
   )
 
-const currentPlayback = (engine: AudioEngine): Playback =>
+// SERVICE
+
+// NOTE: the audio engine as one service, built on its first use and closed
+// with the runtime. The first tap unlocks audio (src/app/update/sound.ts),
+// which asks for it through the AcquireAudioEngine Command, so no
+// AudioContext starts before a gesture; every later sound, tune, and resume
+// reuses the one engine, and a failed build stays failed.
+export class AudioEngine extends Context.Service<
+  AudioEngine,
+  { readonly engine: Effect.Effect<Engine, AudioEngineError> }
+>()('munch-manor/audio/audio/AudioEngine') {}
+
+export const audioEngineLayer: Layer.Layer<AudioEngine> = Layer.effect(
+  AudioEngine,
+  Effect.gen(function* () {
+    const scope = yield* Effect.scope
+    const engine = yield* Effect.cached(
+      pipe(
+        acquireAudioEngine,
+        Effect.tap(built =>
+          Scope.addFinalizer(scope, releaseAudioEngine(built)),
+        ),
+        Scope.provide(scope),
+      ),
+    )
+    return { engine }
+  }),
+)
+
+const currentPlayback = (engine: Engine): Playback =>
   engine.context.state === 'running' ? 'Running' : 'Suspended'
 
 export const resumeAudio = (
-  engine: AudioEngine,
+  engine: Engine,
 ): Effect.Effect<Playback, AudioEngineError> =>
   currentPlayback(engine) === 'Running'
     ? Effect.succeed(currentPlayback(engine))
@@ -189,7 +220,7 @@ const applyPitch = (
 }
 
 const toneChain = (
-  engine: AudioEngine,
+  engine: Engine,
   destination: AudioNode,
   startAt: number,
   detuneCents: number,
@@ -211,7 +242,7 @@ const toneChain = (
 }
 
 const noiseChain = (
-  engine: AudioEngine,
+  engine: Engine,
   destination: AudioNode,
   startAt: number,
   detuneCents: number,
@@ -242,7 +273,7 @@ const noiseChain = (
 type Placement = Readonly<{ volume: number; pan: number }>
 
 const destinationOf = (
-  engine: AudioEngine,
+  engine: Engine,
   maybePlacement: Option.Option<Placement>,
 ): Readonly<{ node: AudioNode; extra: ReadonlyArray<AudioNode> }> =>
   Option.match(maybePlacement, {
@@ -259,7 +290,7 @@ const destinationOf = (
   })
 
 const startVoice = (
-  engine: AudioEngine,
+  engine: Engine,
   recipe: Recipe,
   variation: number,
   maybePlacement: Option.Option<Placement>,
@@ -291,11 +322,11 @@ const startVoice = (
   })
 }
 
-const isAtVoiceLimit = (engine: AudioEngine): boolean =>
+const isAtVoiceLimit = (engine: Engine): boolean =>
   MutableRef.get(engine.activeVoices) >= MAX_VOICES
 
 const playVoice = (
-  engine: AudioEngine,
+  engine: Engine,
   sound: SoundEffect,
   variation: number,
   maybePlacement: Option.Option<Placement>,
@@ -320,16 +351,16 @@ export const playSound: {
   (
     sound: SoundEffect,
     variation: number,
-  ): (engine: AudioEngine) => Effect.Effect<PlayOutcome, AudioEngineError>
+  ): (engine: Engine) => Effect.Effect<PlayOutcome, AudioEngineError>
   (
-    engine: AudioEngine,
+    engine: Engine,
     sound: SoundEffect,
     variation: number,
   ): Effect.Effect<PlayOutcome, AudioEngineError>
 } = Function.dual(
   3,
   (
-    engine: AudioEngine,
+    engine: Engine,
     sound: SoundEffect,
     variation: number,
   ): Effect.Effect<PlayOutcome, AudioEngineError> =>
@@ -342,16 +373,16 @@ export const playSoundAt: {
   (
     sound: SoundEffect,
     placement: Placement,
-  ): (engine: AudioEngine) => Effect.Effect<PlayOutcome, AudioEngineError>
+  ): (engine: Engine) => Effect.Effect<PlayOutcome, AudioEngineError>
   (
-    engine: AudioEngine,
+    engine: Engine,
     sound: SoundEffect,
     placement: Placement,
   ): Effect.Effect<PlayOutcome, AudioEngineError>
 } = Function.dual(
   3,
   (
-    engine: AudioEngine,
+    engine: Engine,
     sound: SoundEffect,
     placement: Placement,
   ): Effect.Effect<PlayOutcome, AudioEngineError> =>
@@ -361,13 +392,11 @@ export const playSoundAt: {
 // MUSIC
 
 export const playMusic: {
-  (
-    cue: MusicCue,
-  ): (engine: AudioEngine) => Effect.Effect<void, AudioEngineError>
-  (engine: AudioEngine, cue: MusicCue): Effect.Effect<void, AudioEngineError>
+  (cue: MusicCue): (engine: Engine) => Effect.Effect<void, AudioEngineError>
+  (engine: Engine, cue: MusicCue): Effect.Effect<void, AudioEngineError>
 } = Function.dual(
   2,
-  (engine: AudioEngine, cue: MusicCue): Effect.Effect<void, AudioEngineError> =>
+  (engine: Engine, cue: MusicCue): Effect.Effect<void, AudioEngineError> =>
     Effect.try({
       try: () => cueMusic(engine.music, cue),
       catch: error => AudioEngineError.make({ reason: describeError(error) }),

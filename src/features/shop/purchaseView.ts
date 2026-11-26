@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { CASE_HEIGHT, PRIZE_SPRITES } from '../../art/caseArt'
@@ -23,6 +22,7 @@ import {
 } from '../../art/sprite'
 import { gunIcon } from '../../art/sprites/guns'
 import { type Camera, anchoredAt, placedAt } from '../../render/camera'
+import type * as Draw from '../../render/draw'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
 import {
   featLockBoxOf,
@@ -187,7 +187,7 @@ const takeTag = (item: Sprite): PriceTag => {
   )
   const placed = Array.reduce(
     Array.zip(parts, boxes),
-    { left: TAKE_PAD, shapes: Array.empty<Canvas.Shape>() },
+    { left: TAKE_PAD, shapes: Array.empty<Draw.Shape>() },
     ({ left, shapes }, [sprite, box]) => ({
       left: left + box.right - box.left + ICON_GAP,
       shapes: [
@@ -401,7 +401,7 @@ const promptShapes = (
   model: Model,
   offer: Offer,
   tag: PriceTag,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const bob = Math.floor(model.elapsedMs / PROMPT_BOB_MS) % 2
   return [
     placeAt(
@@ -433,7 +433,7 @@ const ringShapes = (
   offer: Offer,
   tag: PriceTag,
   progress: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const step = Math.min(RING_STEPS, Math.floor(progress * RING_STEPS))
   return [
     placeAt(
@@ -449,7 +449,7 @@ const refusedShapes = (
   tag: PriceTag,
   shortBy: number,
   sinceMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   sinceMs >= PURCHASE_RULES.refusedMs
     ? [placeAt(tagLeft(offer, tag), offer.spot.y, tag.plain)]
     : [
@@ -480,7 +480,7 @@ const uncookedShapes = (
   offer: Offer,
   tag: PriceTag,
   sinceMs: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   placeAt(tagLeft(offer, tag) + shakeOffset(sinceMs), offer.spot.y, tag.short),
   placeAt(
     offer.spot.x + Math.ceil(tag.width / 2) + PROMPT_GAP + CROSS_HALF,
@@ -600,7 +600,7 @@ const replacedShapes = (
   model: Model,
   offer: Offer,
   tag: PriceTag,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Purchasable.isAnyOf(['Prize'])(offer.target)
     ? Option.match(maybeReplacedIcon(model), {
         onNone: () => [],
@@ -621,7 +621,7 @@ const crewCountShapes = (
   model: Model,
   offer: Offer,
   tag: PriceTag,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (!Purchasable.isAnyOf(['BackDoor'])(offer.target) || offer.isFull) {
     return []
   }
@@ -649,7 +649,7 @@ const offerShapes = ({
   maybeInReach,
   offer,
   tag,
-}: TagDrawing): ReadonlyArray<Canvas.Shape> => {
+}: TagDrawing): ReadonlyArray<Draw.Shape> => {
   const replaced = replacedShapes(model, offer, tag)
   const isMine = (target: Purchasable) =>
     isSamePurchasable(target, offer.target)
@@ -782,7 +782,7 @@ const pinnedTagsOf = (
 
 const pinnedTagShapes = (model: Model, camera: Camera) => {
   const maybeInReach = maybeOfferInReach(model, focusSlotOf(model))
-  return ({ unplaced, offer, tag, shift }: PinnedTag): Canvas.Shape => {
+  return ({ unplaced, offer, tag, shift }: PinnedTag): Draw.Shape => {
     const tagShapes = placedAt(
       camera,
       unplaced.spot,
@@ -826,7 +826,7 @@ const lockShapes = (
   model: Model,
   camera: Camera,
   keepouts: ReadonlyArray<Keepout>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const clear = clearWindowOf(screenOf(model), EDGE_GAP)
   return Array.map(
     Array.getSomes([
@@ -874,19 +874,19 @@ export const purchaseOverlayShapes: {
   (
     camera: Camera,
     keepouts: ReadonlyArray<Keepout>,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     camera: Camera,
     keepouts: ReadonlyArray<Keepout>,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     model: Model,
     camera: Camera,
     keepouts: ReadonlyArray<Keepout>,
-  ): ReadonlyArray<Canvas.Shape> => [
+  ): ReadonlyArray<Draw.Shape> => [
     ...lockShapes(model, camera, keepouts),
     ...Array.map(
       pinnedTagsOf(model, camera, keepouts),

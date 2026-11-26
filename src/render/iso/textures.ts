@@ -3,7 +3,6 @@
 // the lamp's rim. One cache per renderer, emptied when it goes.
 
 import { Option } from 'effect'
-import type { Canvas } from 'foldkit'
 import {
   type Application,
   Color,
@@ -18,7 +17,13 @@ import {
 
 import { atlasNormalOf } from '../../art/spriteAtlas'
 import type { Level } from '../../world/level/arena'
-import { type LookKind, type LookOptions, LookTextures } from './look'
+import type * as Draw from '../draw'
+import {
+  type LookKind,
+  type LookOptions,
+  LookTextures,
+  dataTexture,
+} from './look'
 
 TextureSource.defaultOptions.scaleMode = 'nearest'
 
@@ -61,9 +66,8 @@ export class Textures {
   private readonly normals = new Map<TextureSource, Texture>()
   // NOTE: the address each loaded source came from, to find its normal map.
   private readonly addresses = new Map<TextureSource, string>()
-  // NOTE: each loaded source's image and its whole texture, so a crop's
-  // pixels can be read and its voxels colored from the whole sheet.
-  private readonly images = new Map<TextureSource, HTMLImageElement>()
+  // NOTE: each loaded source's whole texture, so a crop's pixels can be read
+  // and its voxels colored from the whole sheet.
   private readonly sheets = new Map<TextureSource, Texture>()
   // NOTE: each crop's solid pixels (1) and clear ones (0), read once.
   private readonly masks = new Map<Texture, PixelMasks>()
@@ -126,7 +130,6 @@ export class Textures {
       const texture = Texture.from(image)
       this.sources.set(src, texture)
       this.addresses.set(texture.source, src)
-      this.images.set(texture.source, image)
       this.sheets.set(texture.source, texture)
       this.pending -= 1
       this.loaded += 1
@@ -158,7 +161,7 @@ export class Textures {
 
   // NOTE: a cropped frame of an image, mirrored when the shape is drawn
   // flipped, or nothing while its source loads.
-  imageOf(image: Canvas.Image, isFlipped: boolean): Texture | undefined {
+  imageOf(image: Draw.Image, isFlipped: boolean): Texture | undefined {
     const base = this.sourceOf(image.src)
     if (base === undefined) {
       return undefined
@@ -212,36 +215,34 @@ export class Textures {
 
   // NOTE: which of a crop's pixels are solid (an alpha of at least half)
   // and which of those are dark enough to be an outline's ink, row by row,
-  // read off its image once, or nothing for a texture the renderer drew
-  // itself.
+  // read back once off the sheet's own texture on the GPU, or nothing for a
+  // texture the renderer drew itself.
   masksOf(texture: Texture): PixelMasks | undefined {
     const known = this.masks.get(texture)
     if (known !== undefined) {
       return known
     }
-    const image = this.images.get(texture.source)
-    const { x, y, width, height } = texture.frame
-    if (image === undefined || width < 1 || height < 1) {
+    const { width, height } = texture.frame
+    if (!this.sheets.has(texture.source) || width < 1 || height < 1) {
       return undefined
     }
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const context = canvas.getContext('2d', { willReadFrequently: true })
-    if (context === null) {
-      return undefined
-    }
-    context.drawImage(image, x, y, width, height, 0, 0, width, height)
-    const pixels = context.getImageData(0, 0, width, height).data
+    // NOTE: the crop's frame as stored, its rows top first; a mirrored
+    // crop's pixels are read unmirrored, as its image holds them.
+    const { pixels } = this.app.renderer.extract.pixels(texture)
     const solid = new Uint8Array(width * height)
     const dark = new Uint8Array(width * height)
     for (let index = 0; index < solid.length; index += 1) {
       const at = index * 4
-      solid[index] = (pixels[at + 3] ?? 0) >= 128 ? 1 : 0
+      const alpha = pixels[at + 3] ?? 0
+      solid[index] = alpha >= 128 ? 1 : 0
+      // NOTE: the sheet is uploaded with its alpha premultiplied, so a
+      // color reads back darker by its alpha: divided out again here.
+      const unmix = alpha === 0 ? 0 : 255 / alpha
       const luma =
-        0.299 * (pixels[at] ?? 0) +
-        0.587 * (pixels[at + 1] ?? 0) +
-        0.114 * (pixels[at + 2] ?? 0)
+        (0.299 * (pixels[at] ?? 0) +
+          0.587 * (pixels[at + 1] ?? 0) +
+          0.114 * (pixels[at + 2] ?? 0)) *
+        unmix
       dark[index] = solid[index] === 1 && luma < INK_LUMA ? 1 : 0
     }
     const masks = { solid, dark }
@@ -308,15 +309,11 @@ export class Textures {
     if (known !== undefined) {
       return known
     }
-    const canvas = document.createElement('canvas')
-    canvas.width = 1
-    canvas.height = 1
-    const context = canvas.getContext('2d')
-    if (context !== null) {
-      context.fillStyle = 'rgb(128, 128, 255)'
-      context.fillRect(0, 0, 1, 1)
-    }
-    const texture = Texture.from(canvas)
+    const texture = dataTexture({
+      data: new Uint8Array([128, 128, 255, 255]),
+      width: 1,
+      height: 1,
+    })
     this.normals.set(Texture.WHITE.source, texture)
     return texture
   }
@@ -350,7 +347,6 @@ export class Textures {
     this.normals.clear()
     this.normalSheets.clear()
     this.addresses.clear()
-    this.images.clear()
     this.sheets.clear()
     this.masks.clear()
     this.silhouettes.clear()

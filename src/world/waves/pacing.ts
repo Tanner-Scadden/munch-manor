@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   DINNER_BELL_MS,
@@ -69,7 +70,7 @@ const flow = (pacing: Pacing, clockMs: number, worldMs: number): Clocked =>
     onSome: hold =>
       hold.atMs <= clockMs + worldMs
         ? {
-            pacing: modifyFields(pacing, {
+            pacing: UiStruct.evolve(pacing, {
               holds: Array.drop(1),
               beat: () =>
                 Beat.Fading({
@@ -84,7 +85,7 @@ const flow = (pacing: Pacing, clockMs: number, worldMs: number): Clocked =>
   })
 
 const withBeat = (pacing: Pacing, beat: Beat): Pacing =>
-  modifyFields(pacing, { beat: () => beat })
+  UiStruct.evolve(pacing, { beat: () => beat })
 
 const quietCapMs = (intensity: number): number =>
   intensity >= INTENSITY_RESTLESS ? RESTLESS_QUIET_MAX_MS : RELAX_QUIET_MAX_MS
@@ -241,7 +242,7 @@ const pulledTo =
   (straggler: PlannedSpawn, clockMs: number) =>
   (spawn: PlannedSpawn): PlannedSpawn =>
     spawn.pack === straggler.pack
-      ? modifyFields(spawn, { atMs: () => clockMs })
+      ? UiStruct.evolve(spawn, { atMs: () => clockMs })
       : spawn
 
 // NOTE: a relax in an empty room lets in a straggler or two instead of
@@ -264,7 +265,7 @@ const trickle = (
         spawns,
       }),
       onSome: straggler => ({
-        pacing: modifyFields(pacing, {
+        pacing: UiStruct.evolve(pacing, {
           beat: () => Beat.Resting({ ...rest, trickled: rest.trickled + 1 }),
           quietMs: () => 0,
         }),
@@ -326,7 +327,7 @@ export const stepBeat: {
     intensity: number,
     spawns: ReadonlyArray<PlannedSpawn>,
   ): Paced => {
-    const quieted = modifyFields(pacing, {
+    const quieted = UiStruct.evolve(pacing, {
       quietMs: quietMs =>
         isRoomQuiet(pacing, crowd, spawns) ? quietMs + worldMs : 0,
     })
@@ -475,7 +476,7 @@ export const keepWarnedOnTime: {
           spawns,
           Array.map(spawns, spawn =>
             isThroughDoor(spawn) && isWarned(warnedPacks)(spawn)
-              ? modifyFields(spawn, { atMs: atMs => atMs - stalledMs })
+              ? UiStruct.evolve(spawn, { atMs: atMs => atMs - stalledMs })
               : spawn,
           ),
         ),
@@ -593,7 +594,7 @@ export const delayWaitingPacks: {
           return spawn
         }
         const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
-        return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
+        return UiStruct.evolve(spawn, { atMs: atMs => atMs + shiftMs })
       }),
     )
   },
@@ -641,9 +642,9 @@ export const warnPacks: {
       return model
     }
 
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       pacing: pacing =>
-        modifyFields(pacing, {
+        UiStruct.evolve(pacing, {
           warnedPacks: () => [
             ...warnedPacks,
             ...Array.map(fresh, ({ pack }) => pack),
@@ -752,7 +753,7 @@ export const delayCampedPacks: {
       ? spawns
       : Array.map(spawns, spawn =>
           campedPacks.has(spawn.pack)
-            ? modifyFields(spawn, { atMs: atMs => atMs + worldMs })
+            ? UiStruct.evolve(spawn, { atMs: atMs => atMs + worldMs })
             : spawn,
         )
   },

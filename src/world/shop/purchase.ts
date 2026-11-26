@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { caseOffers, takeCase } from '../feats/cases'
 import { fridgeOffers, pullFridge, takePrize } from '../fridge/leftovers'
@@ -231,7 +232,7 @@ const withPurchase = (
 ): World => modifySeat(world, slot, { purchase: () => purchase })
 
 const withEvent = (world: World, event: GameEvent): World =>
-  modifyFields(world, { frameEvents: events => [...events, event] })
+  UiStruct.evolve(world, { frameEvents: events => [...events, event] })
 
 const refuse = (world: World, slot: PlayerSlot, offer: Offer): World =>
   withEvent(

@@ -1,19 +1,22 @@
-import { Array, String } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, String } from 'effect'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
-import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import type { Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { HAND_DIALOG_ID, PANEL_DIALOG_ID } from '../../../domain/clientSchema'
 import type { InputDevice } from '../../../input/inputSchema'
 import {
-  APPLICATION,
+  expectAttr,
   measureSurface,
   openHandInScene,
   pickCardInScene,
-} from '../../../test/testing'
+  showDialog,
+} from '../../../test/sceneTesting'
+import { type SceneStep, sceneOf, steps } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import {
   CONTROL_CARDS,
@@ -27,23 +30,28 @@ import {
 // line shows on focus with a keyboard and on a tap on touch (hover is CSS).
 
 const homeOn = (device: InputDevice): Model =>
-  modifyFields(asVeteran(initialModel), { lastDevice: () => device })
+  UiStruct.evolve(asVeteran(initialModel), { lastDevice: () => device })
 
 const DEVICES: ReadonlyArray<InputDevice> = ['KeyboardMouse', 'Touch']
 
-const howToPlay = Scene.role('dialog', { name: 'How to play' })
+const howToPlay = HtmlLocator.role('dialog', { name: 'How to play' })
+
+const inHowToPlay = (locator: Locator.Locator) =>
+  Locator.inside(howToPlay, locator)
 
 const cardButton = (card: (typeof CONTROL_CARDS)[number]) =>
-  Scene.selector(`#${helpCardElementId(card.id)}`)
+  inHowToPlay(Locator.attr('id', helpCardElementId(card.id)))
 
 const lineOf = (card: (typeof CONTROL_CARDS)[number]) =>
-  Scene.selector(`#${helpLineElementId(card.id)}`)
+  inHowToPlay(Locator.attr('id', helpLineElementId(card.id)))
 
-const openHowToPlay = [
+const openHowToPlay: SceneStep = steps(
   measureSurface,
-  ...openHandInScene(),
-  ...pickCardInScene(/^How to play:/),
-]
+  openHandInScene,
+  showDialog(HAND_DIALOG_ID),
+  pickCardInScene(/^How to play:/),
+  showDialog(PANEL_DIALOG_ID),
+)
 
 describe('How to play lines', () => {
   test.each(DEVICES)(
@@ -68,59 +76,69 @@ describe('How to play lines', () => {
   )
 
   it.effect('a keyboard player focuses each card to read its line', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(homeOn('KeyboardMouse')),
-      ...openHowToPlay,
-      Scene.inside(
-        howToPlay,
-        ...Array.flatMap(CONTROL_CARDS, card => [
-          Scene.expect(cardButton(card)).toHaveAttr('aria-expanded', 'false'),
-          Scene.focus(cardButton(card)),
-          Scene.expect(cardButton(card)).toHaveAttr('aria-expanded', 'true'),
-          Scene.expect(cardButton(card)).toHaveAttr('data-open', 'true'),
-          Scene.expect(lineOf(card)).toHaveText(
-            helpLineOf(card.id, 'KeyboardMouse'),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(homeOn('KeyboardMouse'))
+      s.pipe(
+        openHowToPlay,
+        steps(
+          ...Array.map(
+            CONTROL_CARDS,
+            (card): SceneStep =>
+              current =>
+                current
+                  .pipe(expectAttr(cardButton(card), 'aria-expanded', 'false'))
+                  .focus(cardButton(card))
+                  .pipe(
+                    expectAttr(cardButton(card), 'aria-expanded', 'true'),
+                    expectAttr(cardButton(card), 'data-open', 'true'),
+                  )
+                  .expect(lineOf(card))
+                  .toHaveText(helpLineOf(card.id, 'KeyboardMouse')),
           ),
-        ]),
-      ),
-    ),
+        ),
+      )
+    }),
   )
 
   it.effect(
     'a touch player taps a card to read its line, and another to switch',
-    () => {
-      const first = Array.headNonEmpty(CONTROL_CARDS)
-      const second = Array.lastNonEmpty(CONTROL_CARDS)
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(homeOn('Touch')),
-        ...openHowToPlay,
-        Scene.inside(
-          howToPlay,
-          ...Array.flatMap(CONTROL_CARDS, card => [
-            Scene.click(cardButton(card)),
-            Scene.expect(cardButton(card)).toHaveAttr('aria-expanded', 'true'),
-            Scene.expect(lineOf(card)).toHaveText(helpLineOf(card.id, 'Touch')),
-          ]),
-          Scene.click(cardButton(first)),
-          Scene.expect(cardButton(first)).toHaveAttr('aria-expanded', 'true'),
-          Scene.expect(cardButton(second)).toHaveAttr('aria-expanded', 'false'),
-        ),
-      )
-    },
+    () =>
+      Effect.gen(function* () {
+        const first = Array.headNonEmpty(CONTROL_CARDS)
+        const second = Array.lastNonEmpty(CONTROL_CARDS)
+        const s = yield* sceneOf(homeOn('Touch'))
+        s.pipe(
+          openHowToPlay,
+          steps(
+            ...Array.map(
+              CONTROL_CARDS,
+              (card): SceneStep =>
+                current =>
+                  current
+                    .click(cardButton(card))
+                    .pipe(expectAttr(cardButton(card), 'aria-expanded', 'true'))
+                    .expect(lineOf(card))
+                    .toHaveText(helpLineOf(card.id, 'Touch')),
+            ),
+          ),
+        )
+          .click(cardButton(first))
+          .pipe(
+            expectAttr(cardButton(first), 'aria-expanded', 'true'),
+            expectAttr(cardButton(second), 'aria-expanded', 'false'),
+          )
+      }),
   )
 
   it.effect('PLAY TUTORIAL waits on How to play from home', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(homeOn('Touch')),
-      ...openHowToPlay,
-      Scene.inside(
-        howToPlay,
-        Scene.expect(Scene.role('button', { name: 'Play tutorial' })).toExist(),
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(homeOn('Touch'))
+      s.pipe(openHowToPlay)
+        .expect(
+          inHowToPlay(HtmlLocator.role('button', { name: 'Play tutorial' })),
+        )
+        .toExist()
+    }),
   )
 })
 
@@ -129,43 +147,35 @@ describe('How to play lines', () => {
 // Model, since a click to open it would make the mouse the last device.
 describe('the controller diagram', () => {
   const panelOpenOn = (device: InputDevice): Model =>
-    modifyFields(homeOn(device), {
+    UiStruct.evolve(homeOn(device), {
       panel: () => 'HowToPlay',
       panelDialog: dialog => ({ ...dialog, isOpen: true }),
     })
 
-  const diagram = Scene.role('region', { name: 'Controller buttons' })
+  const diagram = HtmlLocator.role('region', { name: 'Controller buttons' })
 
   it.effect('names every button a run uses beside the pad', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(panelOpenOn('Gamepad')),
-      measureSurface,
-      Scene.Mount.resolve(
-        Dialog.test.AcquireResources,
-        DialogBlock.Message.SucceededAcquireResources(),
-      ),
-      Scene.inside(
-        diagram,
-        ...Array.map(['LT', 'LB', 'RT', 'A', 'B', 'X', 'Y'], glyph =>
-          Scene.expect(Scene.text(glyph, { exact: true })).toExist(),
-        ),
-        Scene.expect(Scene.text('shoot')).toExist(),
-        Scene.expect(Scene.text('next weapon')).toExist(),
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(panelOpenOn('Gamepad'))
+      const inDiagram = (text: string, exact: boolean) =>
+        Locator.inside(diagram, Locator.text(text, { exact }))
+      s.pipe(measureSurface, showDialog(PANEL_DIALOG_ID))
+      Array.forEach(['LT', 'LB', 'RT', 'A', 'B', 'X', 'Y'], glyph => {
+        s.expect(inDiagram(glyph, true)).toExist()
+      })
+      s.expect(inDiagram('shoot', false))
+        .toExist()
+        .expect(inDiagram('next weapon', false))
+        .toExist()
+    }),
   )
 
   it.effect('is not drawn for a keyboard', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(panelOpenOn('KeyboardMouse')),
-      measureSurface,
-      Scene.Mount.resolve(
-        Dialog.test.AcquireResources,
-        DialogBlock.Message.SucceededAcquireResources(),
-      ),
-      Scene.expect(diagram).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(panelOpenOn('KeyboardMouse'))
+      s.pipe(measureSurface, showDialog(PANEL_DIALOG_ID))
+        .expect(diagram)
+        .toBeAbsent()
+    }),
   )
 })

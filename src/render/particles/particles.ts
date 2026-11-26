@@ -1,5 +1,6 @@
 import { Array, Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import {
@@ -465,8 +466,8 @@ export const advanceParticles: {
     )
     const dust = walkingDust(model, deltaMs, eventState)
 
-    return modifyFields(model, {
-      cosmetics: modifyFields({
+    return UiStruct.evolve(model, {
+      cosmetics: UiStruct.evolve({
         particles: particles =>
           sameIfUnchanged(
             particles,
@@ -501,8 +502,8 @@ export const puffDust: {
     { x, y },
     DUST_PER_PLACEMENT,
   )(model.cosmetics.cosmeticRngState)
-  return modifyFields(model, {
-    cosmetics: modifyFields({
+  return UiStruct.evolve(model, {
+    cosmetics: UiStruct.evolve({
       particles: particles =>
         keepNewest([...particles, ...puffs], PARTICLE_MAX),
       cosmeticRngState: () => rngState,
@@ -520,8 +521,8 @@ export const dropClip = (model: Model): Model => {
   )
   return Array.isReadonlyArrayEmpty(clips)
     ? model
-    : modifyFields(model, {
-        cosmetics: modifyFields({
+    : UiStruct.evolve(model, {
+        cosmetics: UiStruct.evolve({
           particles: particles =>
             keepNewest([...particles, ...clips], PARTICLE_MAX),
         }),

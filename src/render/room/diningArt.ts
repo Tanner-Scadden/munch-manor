@@ -1,5 +1,4 @@
 import { Array, Function, Option, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type Palette, bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
@@ -7,6 +6,7 @@ import type { Level } from '../../world/level/arena'
 import { CHANDELIER_SYMBOL } from '../../world/level/plan'
 import { DINING_RUGS } from '../../world/level/rugs'
 import { symbolAt } from '../../world/level/tileGrid'
+import type * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import {
   BONE_COLOR,
@@ -116,7 +116,7 @@ const parquetCell = (
   room: Box,
   column: number,
   row: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const x = room.x + column * PARQUET_CELL
   const y = room.y + row * PARQUET_CELL
   const half = PARQUET_CELL / 2
@@ -150,7 +150,7 @@ const parquetCell = (
       ]
 }
 
-export const diningFloorShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const diningFloorShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const columns = Math.ceil(room.width / PARQUET_CELL)
   const rows = Math.ceil(room.height / PARQUET_CELL)
   return [
@@ -190,7 +190,7 @@ const FRINGE_STEP = 2
 
 // NOTE: a long runner with a fringe at its two short ends, a border, and a
 // row of medallions down its middle, worn where a century of feet went.
-const runnerShapes = (rug: Box): ReadonlyArray<Canvas.Shape> => {
+const runnerShapes = (rug: Box): ReadonlyArray<Draw.Shape> => {
   const { x, y, width, height } = rug
   const isAcross = width >= height
   const length = isAcross ? width : height
@@ -212,7 +212,7 @@ const runnerShapes = (rug: Box): ReadonlyArray<Canvas.Shape> => {
           rect(x + 1 + index * FRINGE_STEP, y + height, 1, 2, FRINGE_COLOR),
         ],
       )
-  const motifAt = (index: number): ReadonlyArray<Canvas.Shape> => {
+  const motifAt = (index: number): ReadonlyArray<Draw.Shape> => {
     const along = 8 + 7 + index * 14
     const motifX = isAcross ? x + along : centerX
     const motifY = isAcross ? centerY : y + along
@@ -248,7 +248,7 @@ const runnerShapes = (rug: Box): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-export const diningRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => [
+export const diningRugShapes = (room: Box): ReadonlyArray<Draw.Shape> => [
   ...Array.flatMap(DINING_RUGS, rug =>
     runnerShapes({ ...rug, x: room.x + rug.x, y: room.y + rug.y }),
   ),
@@ -261,7 +261,7 @@ export const diningRugShapes = (room: Box): ReadonlyArray<Canvas.Shape> => [
 
 // WALLS
 
-const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
+const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   const top = y - TILE_SIZE * 2 + FACE_TOP + 2
   const railY = y - TILE_SIZE * 2 + CHAIR_RAIL_Y
   const columns = Array.makeBy(width, index => x + index)
@@ -289,7 +289,7 @@ const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: the party's bunting, a hundred years old, sagging along the top of
 // every stretch of wall, with a pennant gone here and there.
-const buntingShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
+const buntingShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   const stringY = y - TILE_SIZE * 2 + FACE_TOP + 3
   const count = Math.floor((width - 4) / 7)
   return [
@@ -324,9 +324,9 @@ const buntingShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
 // NOTE: burgundy damask over the parlour's wainscot, and the bunting, on
 // the stretches of north wall inside the dining room's block.
 export const diningWallShapes: {
-  (room: Box): (level: Level) => ReadonlyArray<Canvas.Shape>
-  (level: Level, room: Box): ReadonlyArray<Canvas.Shape>
-} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Canvas.Shape> =>
+  (room: Box): (level: Level) => ReadonlyArray<Draw.Shape>
+  (level: Level, room: Box): ReadonlyArray<Draw.Shape>
+} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(spansWithin(level, room), (span: Span) => [
     ...paperShapes(span),
     ...buntingShapes(span),
@@ -443,9 +443,7 @@ const MANOR_PAINTING_PALETTE: Palette = {
 // NOTE: the Munches, hung by hand between the drafted room's doors and
 // furniture: a lady in pearls, Uncle Chunk in his party hat over the
 // sideboard, the manor on its hill, and the family hound in a ruff.
-export const diningWallDecorShapes = (
-  room: Box,
-): ReadonlyArray<Canvas.Shape> => [
+export const diningWallDecorShapes = (room: Box): ReadonlyArray<Draw.Shape> => [
   ...pixelArt(room.x + 24, room.y + 5, LADY_PIXELS, LADY_PALETTE),
   ...pixelArt(
     room.x + 92,
@@ -470,7 +468,7 @@ export const diningWallDecorShapes = (
 
 // NOTE: the umbrella stand by the East door, a hiding spot: two black
 // umbrellas and a cane in a cracked china pot.
-export const umbrellaStandShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const umbrellaStandShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 342
   const y = room.y + 190
   return [
@@ -495,7 +493,7 @@ export const umbrellaStandShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
 
 const SEAT_STEP = 15
 
-const northChair = (seatX: number, y: number): ReadonlyArray<Canvas.Shape> => [
+const northChair = (seatX: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(seatX - 1, y - 9, 9, 2, CHAIR_LIGHT_COLOR),
   rect(seatX, y - 7, 7, 7, CHAIR_COLOR),
   rect(seatX + 2, y - 7, 3, 6, CHAIR_SEAT_COLOR),
@@ -506,7 +504,7 @@ const southChair = (
   seatX: number,
   y: number,
   isPulledOut: boolean,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const chairY = y + (isPulledOut ? 15 : 13)
   return [
     rect(seatX, chairY, 7, 7, CHAIR_COLOR),
@@ -523,7 +521,7 @@ const leftovers = (
   plateX: number,
   plateY: number,
   seed: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const kind = Math.floor(roll(seed, 730) * 4)
   return kind === 0
     ? [rect(plateX + 2, plateY + 1, 2, 1, MUSH_COLOR)]
@@ -541,7 +539,7 @@ const placeSetting = (
   plateX: number,
   plateY: number,
   seed: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(plateX, plateY, 6, 3, PLATE_COLOR),
   rect(plateX + 1, plateY + 1, 4, 1, PLATE_SHADE_COLOR),
   ...leftovers(plateX, plateY, seed),
@@ -558,7 +556,7 @@ const placeSetting = (
 const tableCandelabra = (
   centerX: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(centerX - 8, y - 6, 17, 10, 'rgba(255, 200, 90, 0.08)'),
   rect(centerX - 2, y + 7, 5, 2, GOLD_DARK_COLOR),
   rect(centerX, y + 1, 1, 6, GOLD_COLOR),
@@ -574,7 +572,7 @@ const tableCandelabra = (
 
 // NOTE: the birthday cake, a hundred years old, its candles somehow lit,
 // with Uncle Chunk's spare party hat beside it.
-const cakeShapes = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
+const cakeShapes = (x: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(x - 1, y + 9, 16, 2, SILVER_DARK_COLOR),
   rect(x, y + 8, 14, 2, SILVER_COLOR),
   rect(x + 1, y + 3, 12, 6, CAKE_COLOR),
@@ -606,7 +604,7 @@ const cakeShapes = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
 ]
 
 // NOTE: the roast: a picked turkey on a silver platter, and a green punch.
-const roastShapes = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
+const roastShapes = (x: number, y: number): ReadonlyArray<Draw.Shape> => [
   rect(x - 1, y + 2, 16, 7, SILVER_DARK_COLOR),
   rect(x, y + 2, 14, 6, SILVER_COLOR),
   rect(x + 1, y + 2, 12, 1, SILVER_LIGHT_COLOR),
@@ -629,9 +627,9 @@ const roastShapes = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
 // settings, candelabras, and the feast: the cake on the west half, the roast
 // on the east. The two halves meet at the gap under the chandelier.
 export const partyTableShapes: {
-  (level: Level): (box: Box) => ReadonlyArray<Canvas.Shape>
-  (box: Box, level: Level): ReadonlyArray<Canvas.Shape>
-} = Function.dual(2, (box: Box, level: Level): ReadonlyArray<Canvas.Shape> => {
+  (level: Level): (box: Box) => ReadonlyArray<Draw.Shape>
+  (box: Box, level: Level): ReadonlyArray<Draw.Shape>
+} = Function.dual(2, (box: Box, level: Level): ReadonlyArray<Draw.Shape> => {
   const { x, y, width } = box
   // NOTE: the west half is the one whose east end meets the gap.
   const isWest = Option.exists(
@@ -690,7 +688,7 @@ export const partyTableShapes: {
 // NOTE: the long sideboard against the north wall, its top crowded with
 // silver: candlesticks, a tea service, a cloche, plates, a fruit bowl gone
 // bad. Its left drawer is open a crack, with the silver spoon in it.
-const sideboardShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
+const sideboardShapes = ({ x, y, width }: Box): ReadonlyArray<Draw.Shape> => {
   const right = x + width
   const doors = Math.floor((width - 8) / 18)
   return [
@@ -763,7 +761,7 @@ const cabinetShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const top = height > TILE_SIZE ? y - 14 : y - 6
   const bottom = y + height
   const lowerTop = bottom - 7
@@ -803,7 +801,7 @@ const cabinetShapes = ({
 
 // NOTE: tall wood against a wall: the long one under the north wall's
 // paper is the sideboard, any shorter one a china cabinet.
-export const hutchShapes = (box: Box): ReadonlyArray<Canvas.Shape> =>
+export const hutchShapes = (box: Box): ReadonlyArray<Draw.Shape> =>
   box.width >= TILE_SIZE * 5 ? sideboardShapes(box) : cabinetShapes(box)
 
 // NOTE: a standing candelabra's middle flame, from its box's top left: the
@@ -811,10 +809,7 @@ export const hutchShapes = (box: Box): ReadonlyArray<Canvas.Shape> =>
 export const CANDELABRA_FLAME = { x: 4, y: -15 }
 
 // NOTE: a standing candelabra taller than a guest, its glow on the floor.
-export const candelabraShapes = ({
-  x,
-  y,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+export const candelabraShapes = ({ x, y }: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = x + CANDELABRA_FLAME.x
   return [
     rect(centerX - 8, y - 22, 17, 14, 'rgba(255, 200, 90, 0.07)'),
@@ -845,7 +840,7 @@ export const candelabraShapes = ({
 
 // THE FRONT DOOR
 
-const transomLight = (door: Box): ReadonlyArray<Canvas.Shape> => {
+const transomLight = (door: Box): ReadonlyArray<Draw.Shape> => {
   const centerX = door.x + Math.floor(door.width / 2)
   return Array.flatMap(
     Array.makeBy(26, row => row),
@@ -880,7 +875,7 @@ const transomLight = (door: Box): ReadonlyArray<Canvas.Shape> => {
 // iron, chained shut with a padlock the size of a fist. The fanlight over it
 // is lit from outside, so light fans across the front hall's floor and
 // leaks through the crack between the leaves. It opens only for the finale.
-export const frontDoorShapes = (door: Box): ReadonlyArray<Canvas.Shape> => {
+export const frontDoorShapes = (door: Box): ReadonlyArray<Draw.Shape> => {
   const { x, y, width, height } = door
   const right = x + width
   const middle = x + Math.floor(width / 2)
@@ -967,12 +962,12 @@ const ringShapes = (
   centerY: number,
   halfWidth: number,
   halfHeight: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(ringPoints(halfWidth, halfHeight, 48), ({ x, y }) =>
     rect(centerX + x, centerY + y, 2, 1, y < 0 ? GOLD_DARK_COLOR : GOLD_COLOR),
   )
 
-const standingCandle = ({ x, y }: Point): ReadonlyArray<Canvas.Shape> => [
+const standingCandle = ({ x, y }: Point): ReadonlyArray<Draw.Shape> => [
   rect(x - 1, y, 3, 1, GOLD_COLOR),
   rect(x, y - 4, 1, 4, CANDLE_COLOR),
   rect(x, y - 5, 1, 1, FLAME_COLOR),
@@ -983,7 +978,7 @@ const standingCandle = ({ x, y }: Point): ReadonlyArray<Canvas.Shape> => [
 // hub, a ring of eight candles with crystals dripping off its front, a party
 // streamer still caught on it, and its glow. Drawn about the hub; the sprite
 // lifts it over the middle of the table's gap.
-const hungShapes = (): ReadonlyArray<Canvas.Shape> => {
+const hungShapes = (): ReadonlyArray<Draw.Shape> => {
   const candles = ringPoints(RING_HALF_WIDTH, RING_HALF_HEIGHT, 8)
   const back = Array.filter(candles, ({ y }) => y < 0)
   const front = Array.filter(candles, ({ y }) => y >= 0)
@@ -1064,7 +1059,7 @@ const SNAPPED_CANDLES: ReadonlyArray<Strip> = [
   [-14, 1, 1, 3],
 ]
 
-const fallenShapes = (): ReadonlyArray<Canvas.Shape> => [
+const fallenShapes = (): ReadonlyArray<Draw.Shape> => [
   ...Array.map(FLOOR_CRACKS, ([x, y, width, height]) =>
     rect(x, y, width, height, 'rgba(0, 0, 0, 0.45)'),
   ),
@@ -1122,7 +1117,7 @@ const fallenShapes = (): ReadonlyArray<Canvas.Shape> => [
 ]
 
 // NOTE: the hung chandelier's shadow on the floor under it, wide and soft.
-const shadowShapes = (): ReadonlyArray<Canvas.Shape> => [
+const shadowShapes = (): ReadonlyArray<Draw.Shape> => [
   rect(-11, HUNG_RISE + 7, 23, 5, 'rgba(0, 0, 0, 0.14)'),
   rect(-8, HUNG_RISE + 6, 17, 7, 'rgba(0, 0, 0, 0.1)'),
 ]
@@ -1131,7 +1126,7 @@ const shadowShapes = (): ReadonlyArray<Canvas.Shape> => [
 // gap, for a room image that bakes the chandelier in with everything else
 // (the studio's preview).
 export const CHANDELIER_SHAPES: Readonly<
-  Record<ChandelierState, ReadonlyArray<Canvas.Shape>>
+  Record<ChandelierState, ReadonlyArray<Draw.Shape>>
 > = {
   Hung: [
     ...shadowShapes(),
@@ -1145,7 +1140,7 @@ export const CHANDELIER_SHAPES: Readonly<
 // NOTE: each state's sprite, built once, drawn about the middle of the
 // table's gap: hung from the ceiling over it, or lying in it.
 export const CHANDELIER_SPRITES: Readonly<
-  Record<ChandelierState, ReadonlyArray<Canvas.Shape>>
+  Record<ChandelierState, ReadonlyArray<Draw.Shape>>
 > = {
   Hung: bakeShapes(CHANDELIER_SHAPES.Hung),
   Fallen: bakeShapes(CHANDELIER_SHAPES.Fallen),

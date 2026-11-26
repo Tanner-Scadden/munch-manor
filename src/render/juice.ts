@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import {
@@ -501,11 +502,11 @@ export const advanceJuice: {
       eventPopups,
     )
 
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       shake: () => shake,
       streak: () => streak,
       bestStreak: best => Math.max(best, streakCount(streak)),
-      cosmetics: modifyFields({
+      cosmetics: UiStruct.evolve({
         blasts: current =>
           Array.isReadonlyArrayEmpty(current) &&
           Array.isReadonlyArrayEmpty(newBlasts)

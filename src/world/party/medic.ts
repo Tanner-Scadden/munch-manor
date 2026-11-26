@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { World } from '../schema/world'
 import {
@@ -58,7 +59,7 @@ export const shoutMedic: {
   canCallMedic(seatStateAt(world, slot).seat)
     ? Option.some(
         modifySeatRecord(world, slot, seat =>
-          modifyFields(seat, {
+          UiStruct.evolve(seat, {
             life: life =>
               Life.isAnyOf(['Downed'])(life)
                 ? Life.Downed({ ...life, callMs: 0 })
@@ -80,7 +81,7 @@ export const sounded: {
       return world
     }
     const { player } = seatStateAt(world, slot)
-    return modifyFields(world, {
+    return UiStruct.evolve(world, {
       frameEvents: Array.append(
         GameEvent.MedicCalled({ x: player.x, y: player.y }),
       ),
@@ -108,7 +109,7 @@ export const saved: {
     life: DownedLife,
   ): World => {
     const { player } = Array.headNonEmpty(revivers)
-    return modifyFields(world, {
+    return UiStruct.evolve(world, {
       frameEvents: Array.append(
         GameEvent.TeammateSaved({
           x: player.x,

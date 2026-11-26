@@ -1,25 +1,22 @@
-import { Schema } from 'effect'
+import { Function, Option, Schema } from 'effect'
+
+import { UiStruct } from '@effect/ui'
 
 import { LookPart } from '../../../../domain/looks'
-import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
-import { LookSection } from './lookSchema'
+import {
+  Appearance,
+  Calling,
+  type CosmeticKind,
+  SavedBoughtCosmetics,
+  SavedRank,
+} from '../../../../shared/playerData'
+import { LookSection, type LookToggle } from './lookSchema'
 
-// NOTE: the Look tab: which of its little tabs is showing, and a radio
-// group per part. Not saved: it opens on Body each time.
-export const CharacterPicker = Schema.Struct({
-  section: LookSection,
-  sections: SectionRadioGroupBlock.Model,
-  body: PartRadioGroupBlock.Model,
-  hairStyle: PartRadioGroupBlock.Model,
-  hairColor: PartRadioGroupBlock.Model,
-  skinTone: PartRadioGroupBlock.Model,
-  shirtColor: PartRadioGroupBlock.Model,
-  outfit: PartRadioGroupBlock.Model,
-  print: PartRadioGroupBlock.Model,
-  hat: PartRadioGroupBlock.Model,
-  gunSkin: PartRadioGroupBlock.Model,
-})
-export type CharacterPicker = typeof CharacterPicker.Type
+// NOTE: the Look tab's own state: which of its little tabs is showing. Not
+// saved, and nothing else reads it: it opens on Body each time the tab is
+// drawn. The look itself, and every pick's rules, are the root's.
+export const Model = Schema.Struct({ section: LookSection })
+export type Model = typeof Model.Type
 
 // NOTE: the last bit of juice the Profile played: a poof for a new look
 // part, a slot-machine spin for a dice roll, or nothing. The Profile keeps
@@ -54,3 +51,80 @@ export const LookPreview = Schema.Struct({
   value: Schema.String,
 })
 export type LookPreview = typeof LookPreview.Type
+
+// NOTE: what the Profile hands the Look tab: the look worn, the hero (the
+// figure's gun), the clock (its walk and turn), the Profile's effect and
+// its count, what is owned and new (the root's), the look being tried on,
+// and the last option's cue.
+export const CharacterProps = Schema.Struct({
+  appearance: Appearance,
+  calling: Calling,
+  screenMs: Schema.Finite,
+  fx: ProfileFx,
+  fxCount: Schema.Finite,
+  bought: SavedBoughtCosmetics,
+  rank: SavedRank,
+  fresh: Schema.Array(Schema.String),
+  maybePreview: Schema.Option(LookPreview),
+  cue: ClosetCue,
+})
+export type CharacterProps = typeof CharacterProps.Type
+
+// LOOK
+
+// NOTE: the parts on each of the Look tab's little tabs, in order.
+export const SECTION_PARTS: Readonly<
+  Record<LookSection, ReadonlyArray<LookPart>>
+> = {
+  Body: ['Body', 'SkinTone'],
+  Hair: ['HairStyle', 'HairColor'],
+  Outfit: ['Outfit', 'ShirtColor', 'Print'],
+  Gear: ['Hat', 'GunSkin'],
+}
+
+// NOTE: the on and off parts each little tab shows under its rows.
+export const SECTION_TOGGLES: Readonly<
+  Record<LookSection, ReadonlyArray<LookToggle>>
+> = {
+  Body: ['Beard', 'Glasses'],
+  Hair: [],
+  Outfit: [],
+  Gear: [],
+}
+
+export const isToggleOn: {
+  (toggle: LookToggle): (appearance: Appearance) => boolean
+  (appearance: Appearance, toggle: LookToggle): boolean
+} = Function.dual(2, (appearance: Appearance, toggle: LookToggle): boolean =>
+  toggle === 'Beard' ? appearance.beard : appearance.glasses,
+)
+
+export const flipLook: {
+  (toggle: LookToggle): (appearance: Appearance) => Appearance
+  (appearance: Appearance, toggle: LookToggle): Appearance
+} = Function.dual(
+  2,
+  (appearance: Appearance, toggle: LookToggle): Appearance =>
+    toggle === 'Beard'
+      ? UiStruct.evolve(appearance, { beard: isOn => !isOn })
+      : UiStruct.evolve(appearance, { glasses: isOn => !isOn }),
+)
+
+export type Gear = Readonly<{
+  kind: CosmeticKind
+  worn: (appearance: Appearance) => string
+}>
+
+// NOTE: the four parts that hold earned looks (src/domain/closet.ts), by the
+// kind of look and what each wears now. Their rows pick by a click and not
+// by the radio group, so a look not owned is never the selected one. Every
+// other part is free and is simply chosen.
+const GEAR: Readonly<Partial<Record<LookPart, Gear>>> = {
+  ShirtColor: { kind: 'Shirt', worn: appearance => appearance.shirtColor },
+  Print: { kind: 'Print', worn: appearance => appearance.print },
+  Hat: { kind: 'Hat', worn: appearance => appearance.hat },
+  GunSkin: { kind: 'Skin', worn: appearance => appearance.gunSkin },
+}
+
+export const gearOf = (part: LookPart): Option.Option<Gear> =>
+  Option.fromNullishOr(GEAR[part])

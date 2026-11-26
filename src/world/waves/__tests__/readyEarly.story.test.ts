@@ -1,7 +1,6 @@
 import { Array } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { BreakClock, type Model, type Phase } from '../../../app/model'
@@ -11,11 +10,11 @@ import {
   pastTimedBreaks,
   readyModel,
 } from '../../../test/model.fixture'
-import { APPLICATION, tap } from '../../../test/testing'
+import { checkModel, modelAfter, steps, tap } from '../../../test/testing'
 import { readyPointsFor } from '../../heroes/rank'
 
 const onBreak = (phase: Phase): Model =>
-  modifyFields(pastTimedBreaks(readyModel), { phase: () => phase })
+  UiStruct.evolve(pastTimedBreaks(readyModel), { phase: () => phase })
 
 const rushes = (model: Model) =>
   Array.filter(model.frameEvents, event => event._tag === 'RushedIn')
@@ -29,34 +28,36 @@ describe('READY before the clock', () => {
   })
 
   it.effect('15 seconds left pays 3 rank points, with a pop', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(onBreak(breakBefore(4))),
-      tap('Enter'),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('Wave')
-        expect(current.stats.readyPoints).toBe(3)
-        expect(Array.map(rushes(current), ({ points }) => points)).toEqual([3])
-      }),
+    modelAfter(
+      onBreak(breakBefore(4)),
+      steps(
+        tap('Enter'),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('Wave')
+          expect(current.stats.readyPoints).toBe(3)
+          expect(Array.map(rushes(current), ({ points }) => points)).toEqual([
+            3,
+          ])
+        }),
+      ),
     ),
   )
 
   it.effect('the open break has no clock to beat and pays nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        onBreak(
-          modifyFields(WAVE_2_BREAK, {
-            clock: () => BreakClock.Waiting({ elapsedMs: 0 }),
-          }),
-        ),
+    modelAfter(
+      onBreak(
+        UiStruct.evolve(WAVE_2_BREAK, {
+          clock: () => BreakClock.Waiting({ elapsedMs: 0 }),
+        }),
       ),
-      tap('Enter'),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('Wave')
-        expect(current.stats.readyPoints).toBe(0)
-        expect(rushes(current)).toEqual([])
-      }),
+      steps(
+        tap('Enter'),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('Wave')
+          expect(current.stats.readyPoints).toBe(0)
+          expect(rushes(current)).toEqual([])
+        }),
+      ),
     ),
   )
 })

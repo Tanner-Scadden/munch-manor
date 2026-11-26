@@ -1,13 +1,20 @@
 import { Array } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import { UiStruct } from '@effect/ui'
+
 import { sceneShapes } from '../../../app/layers'
-import { Boss, type Model, Phase, RunMode } from '../../../app/model'
+import {
+  Boss,
+  BreakClock,
+  type Model,
+  Phase,
+  RunMode,
+} from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { startOrResume } from '../../../app/runFlow'
 import { cameraOf } from '../../../render/camera'
+import type * as Draw from '../../../render/draw'
 import { screenOf } from '../../../render/screen'
 import { hudStripShapes } from '../../../screens/game/hud'
 import { atClock } from '../../../test/model.fixture'
@@ -25,10 +32,11 @@ const CHUNK_WAITING = Boss.Waiting({
 const preparing = (wave: number, boss: Boss = CHUNK_WAITING): Model => {
   const started = startOrResume(initialModel, RunMode.Campaign())
   const [rngState, spawns] = rollSpawns(started.rngState, wave)
-  return modifyFields(started, {
+  return UiStruct.evolve(started, {
     rngState: () => rngState,
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave,
         remainingMs: 15_000,
         durationMs: 20_000,
@@ -39,19 +47,19 @@ const preparing = (wave: number, boss: Boss = CHUNK_WAITING): Model => {
 }
 
 const shaken = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     shake: () => ({ trauma: 1, offset: { x: 3, y: -3 } }),
   })
 
-const withoutOpacity = (shape: Canvas.Shape): Canvas.Shape =>
+const withoutOpacity = (shape: Draw.Shape): Draw.Shape =>
   shape._tag === 'Group'
-    ? modifyFields(shape, {
+    ? UiStruct.evolve(shape, {
         opacity: () => undefined,
         shapes: shapes => Array.map(shapes, withoutOpacity),
       })
     : shape
 
-const isScaled = (shape: Canvas.Shape): boolean =>
+const isScaled = (shape: Draw.Shape): boolean =>
   shape._tag === 'Group' &&
   (shape.scale !== undefined || Array.some(shape.shapes, isScaled))
 

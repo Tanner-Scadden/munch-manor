@@ -1,5 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Update } from 'foldkit'
+
+import { Command, Component } from '@effect/ui'
 
 import { PadDirection, newDirection, newlyPressed } from '../../input/gamepad'
 import { PadScope } from '../../input/inputSchema'
@@ -19,7 +20,6 @@ import {
   movePadFocus,
   stepPadTab,
 } from '../../input/padFocus'
-import { ApplicationBlock, makeStep } from '../definition'
 import { type MenuState, isPanelOpen, menuState } from '../menuState'
 import type { Model } from '../model'
 import { isCardHolding, pressedPadKey } from './play'
@@ -36,46 +36,35 @@ import { type UpdateStep, defineHandlers, unchanged } from './step'
 
 // COMMANDS
 
-export const MovePadFocus = ApplicationBlock.makeCommand('MovePadFocus', {
-  args: { scope: PadScope, direction: PadDirection },
-  messages: [InputMessage.CompletedPadMenu],
-  handler: function* () {
-    return ({ scope, direction }) =>
-      movePadFocus({ scope, direction }).pipe(
-        Effect.as(InputMessage.CompletedPadMenu()),
-      )
-  },
-})
+// NOTE: a move, a tab turned, or a dialog's Escape on the page changes
+// nothing the Model holds, so it reports nothing.
+export const MovePadFocus = Command.make(
+  'MovePadFocus',
+  { args: { scope: PadScope, direction: PadDirection } },
+  ({ scope, direction }) =>
+    Effect.as(movePadFocus({ scope, direction }), Component.noop),
+)
 
-export const ClickPadFocus = ApplicationBlock.makeCommand('ClickPadFocus', {
-  args: { scope: PadScope },
-  messages: [InputMessage.ClickedPadFocus],
-  handler: function* () {
-    return ({ scope }) =>
-      Effect.map(clickPadFocus(scope), outcome =>
-        InputMessage.ClickedPadFocus({ scope, outcome }),
-      )
-  },
-})
+export const ClickPadFocus = Command.make(
+  'ClickPadFocus',
+  { args: { scope: PadScope } },
+  ({ scope }) =>
+    Effect.map(clickPadFocus(scope), outcome =>
+      InputMessage.ClickedPadFocus({ scope, outcome }),
+    ),
+)
 
-export const StepPadTab = ApplicationBlock.makeCommand('StepPadTab', {
-  args: { scope: PadScope, step: TabStep },
-  messages: [InputMessage.CompletedPadMenu],
-  handler: function* () {
-    return ({ scope, step }) =>
-      stepPadTab({ scope, step }).pipe(
-        Effect.as(InputMessage.CompletedPadMenu()),
-      )
-  },
-})
+export const StepPadTab = Command.make(
+  'StepPadTab',
+  { args: { scope: PadScope, step: TabStep } },
+  ({ scope, step }) => Effect.as(stepPadTab({ scope, step }), Component.noop),
+)
 
-export const EscapePadDialog = ApplicationBlock.makeCommand('EscapePadDialog', {
-  messages: [InputMessage.CompletedPadMenu],
-  handler: function* () {
-    return () =>
-      escapePadDialog.pipe(Effect.as(InputMessage.CompletedPadMenu()))
-  },
-})
+export const EscapePadDialog = Command.make(
+  'EscapePadDialog',
+  { args: {} },
+  () => Effect.as(escapePadDialog, Component.noop),
+)
 
 // ROUTES
 
@@ -132,29 +121,32 @@ export const isPadMenuUp = (model: Model): boolean =>
   Option.isSome(model.input.maybeGamepad) &&
   (Option.isSome(menuRouteOf(model)) || isCardHolding(model))
 
-const directionStep = (route: MenuRoute, direction: PadDirection) =>
+const directionStep = (
+  route: MenuRoute,
+  direction: PadDirection,
+): UpdateStep =>
   route.direction === 'Arrows'
     ? pressedPadKey(DIRECTION_KEYS[direction])
     : movedFocus(route.scope, direction)
 
 const movedFocus =
   (scope: PadScope, direction: PadDirection): UpdateStep =>
-  model => ({ model, commands: [MovePadFocus({ scope, direction })] })
+  $ =>
+    $.run(MovePadFocus.make({ scope, direction }))
 
 const clickedFocus =
   (scope: PadScope): UpdateStep =>
-  model => ({ model, commands: [ClickPadFocus({ scope })] })
+  $ =>
+    $.run(ClickPadFocus.make({ scope }))
 
 const steppedTab =
   (scope: PadScope, step: TabStep): UpdateStep =>
-  model => ({ model, commands: [StepPadTab({ scope, step })] })
+  $ =>
+    $.run(StepPadTab.make({ scope, step }))
 
-const escapedDialog: UpdateStep = model => ({
-  model,
-  commands: [EscapePadDialog()],
-})
+const escapedDialog: UpdateStep = $ => $.run(EscapePadDialog.make())
 
-const pressStep = (route: MenuRoute, press: PadMenuPress) => {
+const pressStep = (route: MenuRoute, press: PadMenuPress): UpdateStep => {
   switch (press) {
     case 'Accept':
       return clickedFocus(route.scope)
@@ -169,7 +161,7 @@ const pressStep = (route: MenuRoute, press: PadMenuPress) => {
 
 // NOTE: a card that holds the run (the new zombie card, the display
 // case's) is no menu, but A answers it as Enter does.
-const cardStep = (press: PadMenuPress) =>
+const cardStep = (press: PadMenuPress): UpdateStep =>
   press === 'Accept' ? pressedPadKey(ACCEPT_KEY) : unchanged
 
 // NOTE: the menu presses of one poll, read against the Model before it: a
@@ -179,7 +171,7 @@ const cardStep = (press: PadMenuPress) =>
 export const padMenuSteps = ({
   model,
   pad,
-}: Readonly<{ model: Model; pad: Gamepad }>) => {
+}: Readonly<{ model: Model; pad: Gamepad }>): ReadonlyArray<UpdateStep> => {
   const presses = Array.getSomes(
     Array.map(newlyPressed(model.input.maybeGamepad, pad), padMenuPressOf),
   )
@@ -196,29 +188,23 @@ export const padMenuSteps = ({
 }
 
 // NOTE: a direction held past the repeat delay steps again.
-const repeatedDirection = (direction: PadDirection) =>
-  makeStep(model =>
-    Option.match(menuRouteOf(model), {
-      onNone: () => unchanged,
-      onSome: route => directionStep(route, direction),
-    }),
-  )
+const repeatedDirection =
+  (direction: PadDirection): UpdateStep =>
+  $ =>
+    Option.match(menuRouteOf($.model), {
+      onNone: () => $.model,
+      onSome: route => directionStep(route, direction)($),
+    })
 
 // NOTE: A found nothing with focus: a screen that reads keys takes it as
 // Enter (PLAY on the home menu, START in the lobby), as a key would.
-const clickedNothing = (scope: PadScope, outcome: PadClick) =>
-  makeStep(() =>
-    outcome === 'NothingFocused' && scope !== 'TopDialog'
-      ? pressedPadKey(ACCEPT_KEY)
-      : unchanged,
-  )
+const clickedNothing = (scope: PadScope, outcome: PadClick): UpdateStep =>
+  outcome === 'NothingFocused' && scope !== 'TopDialog'
+    ? pressedPadKey(ACCEPT_KEY)
+    : unchanged
 
 export const padMenuHandlers = defineHandlers({
-  RepeatedPadDirection: (model, { direction }) =>
-    Update.combineSteps(model, [repeatedDirection(direction)]),
+  RepeatedPadDirection: ($, { direction }) => repeatedDirection(direction)($),
 
-  ClickedPadFocus: (model, { scope, outcome }) =>
-    Update.combineSteps(model, [clickedNothing(scope, outcome)]),
-
-  CompletedPadMenu: model => ({ model }),
+  ClickedPadFocus: ($, { scope, outcome }) => clickedNothing(scope, outcome)($),
 })

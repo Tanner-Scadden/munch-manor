@@ -1,5 +1,6 @@
 import { Array, Schema, String, pipe } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 // NOTE: the notes between the art studio's page and the agent, as a log of
 // events in NOTES_FILE, one JSON object a line: a note asked for (Noted) and
@@ -58,7 +59,7 @@ export type NoteDraft = typeof NoteDraft.Type
 
 export const NoteDraftJson = Schema.fromJsonString(NoteDraft)
 
-export const NoteEvent = defineTaggedUnion({
+export const NoteEvent = UiSchema.TaggedEnum({
   Noted: {
     ...NoteFields,
     noteId: Schema.String,
@@ -72,7 +73,7 @@ export const NoteEvent = defineTaggedUnion({
   },
 })
 export type NoteEvent = typeof NoteEvent.Type
-type Noted = typeof NoteEvent.Noted.Type
+type Noted = typeof NoteEvent.cases.Noted.Type
 
 export const NoteEventJson = Schema.fromJsonString(NoteEvent)
 

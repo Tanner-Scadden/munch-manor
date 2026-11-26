@@ -1,9 +1,9 @@
 import { Array, Function, Option, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { standaloneSource } from '../../art/sprite'
 import { type WornFrames, ZOMBIE_SPRITES } from '../../art/sprites/zombies'
+import type * as Draw from '../../render/draw'
 import { JOURNAL_NAME, ZOMBIE_NAMES } from '../../world/names'
 import type { ZombieKind } from '../../world/schema/entitySchema'
 import type { KillCounts } from '../../world/schema/worldSchema'
@@ -152,14 +152,14 @@ export type EntryFrame = Readonly<{
 }>
 
 const spriteImageOf = (
-  sprite: ReadonlyArray<Canvas.Shape>,
-): Option.Option<Canvas.Image> =>
+  sprite: ReadonlyArray<Draw.Shape>,
+): Option.Option<Draw.Image> =>
   Option.flatMap(Array.head(sprite), shape =>
     shape._tag === 'Image' ? Option.some(shape) : Option.none(),
   )
 
 const imageOf = (
-  sprite: ReadonlyArray<Canvas.Shape>,
+  sprite: ReadonlyArray<Draw.Shape>,
 ): Option.Option<EntryFrame> =>
   Option.map(spriteImageOf(sprite), shape => ({
     src: standaloneSource(shape),
@@ -201,7 +201,7 @@ const ENTRY_STRIDE_MS = 200
 // NOTE: a known entry walks through every wear stage in turn, a few strides
 // each, facing right like the new zombie card, carved into blocks on its
 // plinth by the world's renderer (src/render/iso/plinth.ts).
-const plinthImagesOf = (kind: ZombieKind): ReadonlyArray<Canvas.Image> =>
+const plinthImagesOf = (kind: ZombieKind): ReadonlyArray<Draw.Image> =>
   pipe(
     ZOMBIE_SPRITES[kind].stages,
     Array.flatMap(stage =>
@@ -212,14 +212,14 @@ const plinthImagesOf = (kind: ZombieKind): ReadonlyArray<Canvas.Image> =>
     Array.getSomes,
   )
 
-const plinthImagesByKind = new Map<ZombieKind, ReadonlyArray<Canvas.Image>>()
+const plinthImagesByKind = new Map<ZombieKind, ReadonlyArray<Draw.Image>>()
 
 export const plinthImageAt: {
-  (screenMs: number): (kind: ZombieKind) => Option.Option<Canvas.Image>
-  (kind: ZombieKind, screenMs: number): Option.Option<Canvas.Image>
+  (screenMs: number): (kind: ZombieKind) => Option.Option<Draw.Image>
+  (kind: ZombieKind, screenMs: number): Option.Option<Draw.Image>
 } = Function.dual(
   2,
-  (kind: ZombieKind, screenMs: number): Option.Option<Canvas.Image> => {
+  (kind: ZombieKind, screenMs: number): Option.Option<Draw.Image> => {
     const images = plinthImagesByKind.get(kind) ?? plinthImagesOf(kind)
     plinthImagesByKind.set(kind, images)
     return Array.get(

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
 import { type Level, levelOf } from '../level/arena'
@@ -104,10 +105,10 @@ const crush = (world: World, gap: Box): World => {
   const events = Array.flatMap(outcomes, outcome => outcome.events)
   // NOTE: its kills drop keys like any other, from the tick's ZombieKilled
   // events (src/world/keys/keys.ts).
-  return modifyFields(world, {
+  return UiStruct.evolve(world, {
     zombies: () =>
       Array.map(outcomes, ({ target }) =>
-        modifyFields(target, {
+        UiStruct.evolve(target, {
           y: () => yOutOfGap(gap, bodyRadiusOf(target), target),
         }),
       ),
@@ -122,7 +123,7 @@ const clearPlayers = (world: World, gap: Box): World =>
     isInsideBox(seatStateAt(current, slot).player, gap)
       ? modifySeat(current, slot, {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               y: () => yOutOfGap(gap, PLAYER_RADIUS, player),
             }),
         })
@@ -143,11 +144,11 @@ export const dropChandelier = (world: World): World => {
       if (!Array.some(world.bullets, bullet => isInsideBox(bullet, hit))) {
         return world
       }
-      const fallen = modifyFields(world, {
+      const fallen = UiStruct.evolve(world, {
         bullets: bullets =>
           Array.filter(bullets, bullet => !isInsideBox(bullet, hit)),
         level: state =>
-          modifyFields(state, {
+          UiStruct.evolve(state, {
             dropped: dropped => Array.append(dropped, CHANDELIER_DROP),
           }),
         frameEvents: frameEvents => [
@@ -166,9 +167,9 @@ export const dropChandelier = (world: World): World => {
 // NOTE: the chandelier back up over the gap, its tiles floor again: at a
 // break, or winched up mid-wave at the cleat (src/world/stations/).
 export const hoistChandelier = (world: World): World =>
-  modifyFields(world, {
+  UiStruct.evolve(world, {
     level: state =>
-      modifyFields(state, {
+      UiStruct.evolve(state, {
         dropped: dropped => Array.filter(dropped, id => id !== CHANDELIER_DROP),
       }),
   })

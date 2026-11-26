@@ -1,130 +1,62 @@
 import { Layer } from 'effect'
 
+import { ChangeLobby } from '../features/coop/steps'
 import {
-  AwaitFirstFrame,
-  DecodeSprites,
-  DetectInputDevice,
-  DetectLocalPlayers,
-  DetectOrientationLock,
-  DetectScreenFit,
-  DetectShareSheet,
-  GenerateSeed,
-  GenerateVisitId,
-  LoadFonts,
+  AnswerOffer,
+  CancelQuickPlay,
+  LeaveRoom,
+  RequestRoom,
+  ResyncRoom,
+  SendRoomFrames,
+} from '../features/coop/update'
+import {
   LoadSave,
-  LoadStyles,
   ReadRecordUnlock,
-  ReadUpdateMarker,
   StartRecordingQueue,
   StartSummaryQueue,
 } from './boot'
-import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
-import { subscriptions } from './subscriptions'
-import { ForgetBeatLink, ReadBeatLink } from './update/beatMyRun'
-import { ReadRoomLink } from './update/coop'
-import { SendShareEvent } from './update/end'
-import { SetFullscreen } from './update/fullscreen'
-import {
-  ClickSupportLink,
-  FocusEndMenuButton,
-  FocusHandCard,
-  FocusHomeButton,
-  ReloadPage,
-  ShowInstallPrompt,
-  WaitForUnwrap,
-} from './update/home'
+import { ShowInstallPrompt } from './update/home'
 import { CueMusic } from './update/music'
-import {
-  ClickPadFocus,
-  EscapePadDialog,
-  MovePadFocus,
-  StepPadTab,
-} from './update/padMenu'
+import { RedeemLinkCode, RequestLinkCode } from './update/profile'
 import { UploadRecording } from './update/recording'
-import { ApplyRotation } from './update/rotation'
-import { Rumble } from './update/rumble'
-import {
-  AwaitRunSettled,
-  HideSplash,
-  ReloadSyncedSave,
-  ShowLoadProgress,
-  WriteSave,
-} from './update/save'
+import { AwaitRunSettled, ReloadSyncedSave, WriteSave } from './update/save'
 import { SendRunSummary } from './update/settle'
 import {
+  AcquireAudioEngine,
   PlayPlaced,
   PlaySound,
   ResumeAudio,
-  managedResources,
 } from './update/sound'
-import {
-  FetchBuild,
-  RegisterServiceWorker,
-  UpdateServiceWorker,
-} from './update/version'
+import { FetchBuild } from './update/version'
 
-// NOTE: every root Command's handler and the audio resource's lifecycle. Each
-// Command sits beside the update that returns it; its `.layer` joins this
-// list, or the Block's assembly reports its handler missing.
+// NOTE: the root's Command services (Effect UI, "Put I/O behind a
+// Service"): each Command that needs a service (the store, the audio
+// engine, co-op's network, the install prompt) sits beside the update that
+// issues it, and its `.layer` joins this list. A `Command.make` needs none.
 export const CommandsLayer = Layer.mergeAll(
-  GenerateSeed.layer,
-  DetectInputDevice.layer,
-  DetectShareSheet.layer,
-  DetectScreenFit.layer,
-  ShowInstallPrompt.layer,
-  DetectLocalPlayers.layer,
-  DetectOrientationLock.layer,
-  ApplyRotation.layer,
-  SetFullscreen.layer,
-  ResumeAudio.layer,
-  PlaySound.layer,
-  PlayPlaced.layer,
-  Rumble.layer,
-  CueMusic.layer,
-  FetchBuild.layer,
-  WaitForUnwrap.layer,
-  ReloadPage.layer,
-  ReadUpdateMarker.layer,
-  RegisterServiceWorker.layer,
-  UpdateServiceWorker.layer,
-  FocusHomeButton.layer,
-  MovePadFocus.layer,
-  ClickPadFocus.layer,
-  StepPadTab.layer,
-  EscapePadDialog.layer,
-  FocusHandCard.layer,
-  FocusEndMenuButton.layer,
-  ClickSupportLink.layer,
-  SendShareEvent.layer,
-  LoadStyles.layer,
-  LoadFonts.layer,
-  AwaitFirstFrame.layer,
-  DecodeSprites.layer,
-  ShowLoadProgress.layer,
-  HideSplash.layer,
-  ReadRoomLink.layer,
-  ReadBeatLink.layer,
-  ForgetBeatLink.layer,
   LoadSave.layer,
+  StartSummaryQueue.layer,
+  ReadRecordUnlock.layer,
+  StartRecordingQueue.layer,
+  SendRunSummary.layer,
+  CueMusic.layer,
+  UploadRecording.layer,
+  RequestLinkCode.layer,
+  RedeemLinkCode.layer,
   WriteSave.layer,
   AwaitRunSettled.layer,
   ReloadSyncedSave.layer,
-  GenerateVisitId.layer,
-  StartSummaryQueue.layer,
-  SendRunSummary.layer,
-  ReadRecordUnlock.layer,
-  StartRecordingQueue.layer,
-  UploadRecording.layer,
-  managedResources.layer,
-)
-
-// NOTE: the root's own handlers: its Commands and the audio resource, its
-// Subscriptions, and its Mounts. Each child Block brings its own through its
-// Binding (src/app/composition.ts).
-export const EffectsLayer = Layer.mergeAll(
-  CommandsLayer,
-  subscriptions.layer,
-  MeasureGameSurface.layer,
-  ListenForTouchTaps.layer,
-  ShareFromClick.layer,
+  ShowInstallPrompt.layer,
+  AcquireAudioEngine.layer,
+  ResumeAudio.layer,
+  PlaySound.layer,
+  PlayPlaced.layer,
+  FetchBuild.layer,
+  ChangeLobby.layer,
+  RequestRoom.layer,
+  AnswerOffer.layer,
+  CancelQuickPlay.layer,
+  SendRoomFrames.layer,
+  LeaveRoom.layer,
+  ResyncRoom.layer,
 )

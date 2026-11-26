@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
 import { type Level, levelOf } from '../level/arena'
@@ -95,9 +96,9 @@ export const toppleStack: {
   Option.match(heapBoxOf(levelOf(world), id), {
     onNone: () => world,
     onSome: heap => {
-      const toppled = modifyFields(world, {
+      const toppled = UiStruct.evolve(world, {
         level: state =>
-          modifyFields(state, {
+          UiStruct.evolve(state, {
             dropped: dropped => Array.append(dropped, STACK_DROPS[id].id),
           }),
       })
@@ -112,13 +113,13 @@ export const toppleStack: {
             })
           : Option.none(),
       )
-      const zombiesOut = modifyFields(crushed, {
+      const zombiesOut = UiStruct.evolve(crushed, {
         zombies: zombies =>
           Array.map(zombies, zombie => {
             const out = outOfHeap(heap, bodyRadiusOf(zombie), zombie)
             return out === zombie
               ? zombie
-              : modifyFields(zombie, { x: () => out.x, y: () => out.y })
+              : UiStruct.evolve(zombie, { x: () => out.x, y: () => out.y })
           }),
       })
       return forEachSeat(zombiesOut, (current, slot) => {
@@ -128,7 +129,7 @@ export const toppleStack: {
           ? current
           : modifySeat(current, slot, {
               player: each =>
-                modifyFields(each, { x: () => out.x, y: () => out.y }),
+                UiStruct.evolve(each, { x: () => out.x, y: () => out.y }),
             })
       })
     },
@@ -144,9 +145,9 @@ export const shelveHeaps = (world: World): World => {
   )
   return Array.isReadonlyArrayEmpty(raised)
     ? world
-    : modifyFields(world, {
+    : UiStruct.evolve(world, {
         level: state =>
-          modifyFields(state, {
+          UiStruct.evolve(state, {
             dropped: dropped =>
               Array.filter(
                 dropped,

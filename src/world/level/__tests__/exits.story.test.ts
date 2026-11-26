@@ -1,16 +1,16 @@
 import { Array, Option } from 'effect'
-import { type Canvas, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { freshRun } from '../../../app/runReset'
+import type * as Draw from '../../../render/draw'
 import { roomShapes } from '../../../render/room/room'
 import { MAX_FRAME_DELTA_MS } from '../../../shared/constants'
 import { imageColors } from '../../../test/testPng'
-import { APPLICATION, ticks } from '../../../test/testing'
+import { checkModel, modelAfter, steps, ticks } from '../../../test/testing'
 import {
   MANOR,
   closedExits,
@@ -72,7 +72,7 @@ const BOARD_GAP_COLOR = '#140e0b'
 
 // NOTE: the room is baked into one image, so the boards are found among the
 // image's pixels.
-const drawsBoards = (shapes: ReadonlyArray<Canvas.Shape>): boolean =>
+const drawsBoards = (shapes: ReadonlyArray<Draw.Shape>): boolean =>
   Array.some(
     shapes,
     shape =>
@@ -259,18 +259,19 @@ describe('the manor', () => {
   })
 
   it.effect('keeps its level through a wave', () => {
-    const fighting: Model = modifyFields(initialModel, {
+    const fighting: Model = UiStruct.evolve(initialModel, {
       maybeSurface: () =>
         Option.some({ left: 0, top: 0, width: 800, height: 400 }),
       phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [] }),
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(fighting),
-      ...ticks(30, MAX_FRAME_DELTA_MS),
-      Story.model(current => {
-        expect(levelOf(current)).toBe(MANOR)
-      }),
+    return modelAfter(
+      fighting,
+      steps(
+        ticks(30, MAX_FRAME_DELTA_MS),
+        checkModel(current => {
+          expect(levelOf(current)).toBe(MANOR)
+        }),
+      ),
     )
   })
 })

@@ -1,5 +1,6 @@
 import { Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { callingUnlockId, withoutFresh } from '../../domain/unlocks'
@@ -32,7 +33,7 @@ export const chooseCalling: {
 } = Function.dual(2, (model: Model, calling: Calling): Model =>
   isPickable(model, calling)
     ? modifyFocus(
-        modifyFields(withoutFresh(model, callingUnlockId(calling)), {
+        UiStruct.evolve(withoutFresh(model, callingUnlockId(calling)), {
           calling: () => calling,
         }),
         { player: () => playerOfCalling(calling) },
@@ -51,9 +52,9 @@ export const buyCalling: {
   isCallingOwned(calling, model.boughtCosmetics)
     ? model
     : chooseCalling(
-        modifyFields(model, {
+        UiStruct.evolve(model, {
           rank: rank =>
-            modifyFields(rank, {
+            UiStruct.evolve(rank, {
               spentBones: spent =>
                 spent + Option.getOrElse(callingPriceOf(calling), () => 0),
             }),

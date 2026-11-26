@@ -1,9 +1,9 @@
 import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
-import { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
-import { cleanName } from '../../domain/playerName'
+import { Command, Component, UiStruct } from '@effect/ui'
+
 import { grantVeteran, payPurses } from '../../features/end/rankRun'
+import { LoadMessage, SaveMessage } from '../../platform/message'
 import {
   LastRunSync,
   PlayerChange,
@@ -22,166 +22,149 @@ import { hideSplash, showSplashProgress } from '../../platform/splash'
 import { PlayerStore } from '../../platform/store'
 import { RUNNING_BUILD } from '../../platform/version'
 import { SEEN_BASELINE } from '../../shared/playerData'
-import { ProfileBinding } from '../bindings'
-import { ApplicationBlock, makeStep } from '../definition'
-import { Message } from '../message'
 import { LOAD_STEPS, type LoadStep, Loading, type Model } from '../model'
 import { askForBeatLink } from './beatMyRun'
 import { askForRoomLink } from './coop'
+import { takeSyncedName } from './profile'
 import {
-  type UpdateReturn,
   type UpdateStep,
   combine,
   defineHandlers,
   modelStep,
-  unchanged,
+  toModel,
 } from './step'
 import { registerServiceWorkerAfterSplash } from './version'
 
 // COMMAND
 
-export const ShowLoadProgress = ApplicationBlock.makeCommand(
+// NOTE: the splash's bar changes nothing in the Model, so its failure is
+// ignored and nothing is reported.
+export const ShowLoadProgress = Command.make(
   'ShowLoadProgress',
-  {
-    args: { loaded: Schema.Finite, total: Schema.Finite },
-    messages: [Message.CompletedShowLoadProgress],
-    handler: function* () {
-      return ({ loaded, total }) =>
-        pipe(
-          showSplashProgress(loaded, total),
-          Effect.ignore,
-          Effect.as(Message.CompletedShowLoadProgress()),
-        )
-    },
-  },
+  { args: { loaded: Schema.Finite, total: Schema.Finite } },
+  ({ loaded, total }) =>
+    pipe(
+      showSplashProgress(loaded, total),
+      Effect.ignore,
+      Effect.as(Component.noop),
+    ),
 )
 
-export const HideSplash = ApplicationBlock.makeCommand('HideSplash', {
-  messages: [Message.CompletedHideSplash],
-  handler: function* () {
-    return () =>
-      pipe(hideSplash, Effect.ignore, Effect.as(Message.CompletedHideSplash()))
-  },
-})
+export const HideSplash = Command.make('HideSplash', { args: {} }, () =>
+  pipe(hideSplash, Effect.ignore, Effect.as(LoadMessage.CompletedHideSplash())),
+)
 
 // NOTE: the whole save goes along with what changed in it: the store runs
 // the changes as player scope mutations, and keeps the whole save only
-// where it still writes the localStorage copy.
-export const WriteSave = ApplicationBlock.makeCommand('WriteSave', {
+// where it still writes the localStorage copy. Writes go in order.
+export class WriteSave extends Command.Service<WriteSave>()('app/WriteSave', {
   args: { save: PlayerSave, changes: Schema.Array(PlayerChange) },
-  messages: [
-    Message.CompletedWriteSave,
-    Message.CompletedWriteSaveWithRun,
-    Message.FailedWriteSave,
-  ],
-  handler: function* () {
-    return ({ save, changes }) =>
-      pipe(
-        PlayerStore.use(store => store.write(save, changes)),
-        Effect.map(maybeRunId =>
-          Option.match(maybeRunId, {
-            onNone: () => Message.CompletedWriteSave(),
-            onSome: runId => Message.CompletedWriteSaveWithRun({ runId }),
+  success: SaveMessage,
+  mode: 'queue',
+}) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const store = yield* PlayerStore
+      return ({ save, changes }) =>
+        store.write(save, changes).pipe(
+          Effect.match({
+            onSuccess: maybeRunId =>
+              Option.match(maybeRunId, {
+                onNone: () => SaveMessage.CompletedWriteSave(),
+                onSome: runId =>
+                  SaveMessage.CompletedWriteSaveWithRun({ runId }),
+              }),
+            onFailure: error =>
+              SaveMessage.FailedWriteSave({ reason: error.reason, changes }),
           }),
-        ),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedWriteSave({ reason: error.reason, changes }),
-          ),
-        ),
-      )
-  },
-})
+        )
+    }),
+  )
+}
 
 // NOTE: waits for the server to confirm or reject a recorded run. Offline,
 // it waits until the device is back and the run goes out.
-export const AwaitRunSettled = ApplicationBlock.makeCommand('AwaitRunSettled', {
-  args: { runId: Schema.String },
-  messages: [Message.SettledRecordedRun, Message.FailedAwaitRunSettled],
-  handler: function* () {
-    return ({ runId }) =>
-      pipe(
-        PlayerStore.use(store => store.awaitSettled(runId)),
-        Effect.map(settled => Message.SettledRecordedRun({ runId, settled })),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedAwaitRunSettled({ runId, reason: error.reason }),
-          ),
-        ),
-      )
-  },
-})
+export class AwaitRunSettled extends Command.Service<AwaitRunSettled>()(
+  'app/AwaitRunSettled',
+  { args: { runId: Schema.String }, success: SaveMessage },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const store = yield* PlayerStore
+      return ({ runId }) =>
+        store.awaitSettled(runId).pipe(
+          Effect.match({
+            onSuccess: settled =>
+              SaveMessage.SettledRecordedRun({ runId, settled }),
+            onFailure: error =>
+              SaveMessage.FailedAwaitRunSettled({
+                runId,
+                reason: error.reason,
+              }),
+          }),
+        )
+    }),
+  )
+}
 
-export const ReloadSyncedSave = ApplicationBlock.makeCommand(
-  'ReloadSyncedSave',
-  {
-    messages: [Message.CompletedReloadSyncedSave],
-    handler: function* () {
+export class ReloadSyncedSave extends Command.Service<ReloadSyncedSave>()(
+  'app/ReloadSyncedSave',
+  { args: {}, success: SaveMessage },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const store = yield* PlayerStore
       return () =>
-        pipe(
-          PlayerStore.use(store => store.load),
+        store.load.pipe(
           Effect.map(maybeSave =>
-            Message.CompletedReloadSyncedSave({ maybeSave }),
+            SaveMessage.CompletedReloadSyncedSave({ maybeSave }),
           ),
           Effect.orElseSucceed(() =>
-            Message.CompletedReloadSyncedSave({ maybeSave: Option.none() }),
+            SaveMessage.CompletedReloadSyncedSave({ maybeSave: Option.none() }),
           ),
         )
-    },
-  },
-)
+    }),
+  )
+}
 
 // LOADING
 
-const finishLoading: {
-  (step: LoadStep): (model: Model) => UpdateReturn
-  (model: Model, step: LoadStep): UpdateReturn
-} = Function.dual(2, (model: Model, step: LoadStep): UpdateReturn =>
-  Loading.match(model.saving.loading, {
-    Loaded: () => ({ model }),
-    Loading: ({ pending }) => {
-      const remaining = Array.filter(pending, waiting => waiting !== step)
-      const progress = ShowLoadProgress({
-        loaded: LOAD_STEPS.length - remaining.length,
-        total: LOAD_STEPS.length,
-      })
-      if (Array.isReadonlyArrayEmpty(remaining)) {
-        return {
-          model: modifyFields(model, {
-            saving: modifyFields({ loading: () => Loading.Loaded() }),
-          }),
-          commands: [progress, HideSplash()],
-        }
-      } else {
-        return {
-          model: modifyFields(model, {
-            saving: modifyFields({
-              loading: () => Loading.Loading({ pending: remaining }),
-            }),
-          }),
-          commands: [progress],
-        }
-      }
-    },
-  }),
-)
+const finishLoading =
+  (step: LoadStep): UpdateStep =>
+  $ =>
+    Loading.match($.model.saving.loading, {
+      Loaded: () => $.model,
+      Loading: ({ pending }) => {
+        const remaining = Array.filter(pending, waiting => waiting !== step)
+        const progress = ShowLoadProgress.make({
+          loaded: LOAD_STEPS.length - remaining.length,
+          total: LOAD_STEPS.length,
+        })
+        return Array.isReadonlyArrayEmpty(remaining)
+          ? $.evolve({
+              saving: UiStruct.evolve({ loading: Loading.Loaded() }),
+            }).run(progress, HideSplash.make())
+          : $.evolve({
+              saving: UiStruct.evolve({
+                loading: Loading.Loading({ pending: remaining }),
+              }),
+            }).run(progress)
+      },
+    })
 
 // SAVE
 
-const loadSave: {
-  (maybeSave: Option.Option<PlayerSave>): (model: Model) => UpdateReturn
-  (model: Model, maybeSave: Option.Option<PlayerSave>): UpdateReturn
-} = Function.dual(
-  2,
-  (model: Model, maybeSave: Option.Option<PlayerSave>): UpdateReturn => {
+const loadSave =
+  (maybeSave: Option.Option<PlayerSave>): UpdateStep =>
+  $ => {
     const restored = Option.match(maybeSave, {
-      onNone: () => model,
-      onSome: save => restoreSave(model, save),
+      onNone: () => $.model,
+      onSome: save => restoreSave($.model, save),
     })
-    const granted = modifyFields(payPurses(grantVeteran(restored)), {
-      saving: modifyFields({ saveStatus: () => 'Read' }),
+    const granted = UiStruct.evolve(payPurses(grantVeteran(restored)), {
+      saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
     })
-    const loaded = finishLoading(granted, 'Save')
+    const loaded = $.combine(toModel(granted), finishLoading('Save'))
     // NOTE: a player with no save has nothing to write yet: their first write
     // seeds the store with the whole save, the grant in it. A save from before
     // rank writes the grant it was just given, as the change it is. A row from
@@ -205,13 +188,12 @@ const loadSave: {
         isBaseline ||
         isRecordUnlockNew ||
         isPursePaid)
-      ? {
-          model: modifyFields(loaded.model, {
-            saving: modifyFields({ writesInFlight: count => count + 1 }),
-          }),
-          commands: [
-            ...(loaded.commands ?? []),
-            WriteSave({
+      ? loaded
+          .evolve({
+            saving: UiStruct.evolve({ writesInFlight: count => count + 1 }),
+          })
+          .run(
+            WriteSave.make({
               save: saveOf(granted),
               changes: [
                 ...changesBetween(saveOf(restored), saveOf(granted)),
@@ -223,11 +205,9 @@ const loadSave: {
                   : []),
               ],
             }),
-          ],
-        }
+          )
       : loaded
-  },
-)
+  }
 
 // NOTE: a save that arrived from sync is already in the store, so taking
 // it into the Model writes nothing back. Every other change to the save is
@@ -238,217 +218,172 @@ export const writeSaveFrom: {
 } = Function.dual(
   2,
   (before: Model, saveWrite: 'Write' | 'Synced'): UpdateStep =>
-    stepModel => {
+    $ => {
+      const stepModel = $.model
       if (
         before.saving.saveStatus === 'Unread' ||
         stepModel.saving.saveStatus === 'Unread' ||
         saveWrite === 'Synced' ||
         !hasSaveFieldsChanged(before, stepModel)
       ) {
-        return { model: stepModel }
+        return $.model
       }
 
       const beforeSave = saveOf(before)
       const save = saveOf(stepModel)
       return isSameSave(beforeSave, save)
-        ? { model: stepModel }
-        : {
-            model: modifyFields(stepModel, {
-              saving: modifyFields({
-                writesInFlight: count => count + 1,
-                unsavedChanges: () => [],
-              }),
+        ? $.model
+        : $.evolve({
+            saving: UiStruct.evolve({
+              writesInFlight: count => count + 1,
+              unsavedChanges: [],
             }),
-            commands: [
-              WriteSave({
+          }).run(
+            WriteSave.make({
+              save,
+              changes: withUnsavedChanges(
+                stepModel.saving.unsavedChanges,
+                changesBetween(beforeSave, save),
                 save,
-                changes: withUnsavedChanges(
-                  stepModel.saving.unsavedChanges,
-                  changesBetween(beforeSave, save),
-                  save,
-                ),
-              }),
-            ],
-          }
+              ),
+            }),
+          )
     },
 )
 
 // NOTE: a save from another device, or from the server, replaces what this
 // device shows: its look, settings, difficulty, and bests. Lessons and
-// unlocks only ever move forward, as on load. The Profile hears of a new
-// name too, so a draft it holds from before never puts the old one back.
-const takeSyncedSave = (save: PlayerSave) =>
-  makeStep(model =>
-    model.saving.writesInFlight > 0
-      ? modelStep(stepModel =>
-          modifyFields(stepModel, {
-            saving: modifyFields({ syncedSave: () => 'Stale' }),
-          }),
-        )
-      : Update.combineSteps([
-          modelStep(stepModel => restoreSave(stepModel, save)),
-          ProfileBinding.informOfSyncedName({
-            was: model.playerName,
-            name: cleanName(save.name),
-          }),
-        ]),
-  )
+// unlocks only ever move forward, as on load. The Profile's name draft
+// follows the new name unless the player typed their own over it.
+const takeSyncedSave =
+  (save: PlayerSave): UpdateStep =>
+  $ =>
+    $.model.saving.writesInFlight > 0
+      ? $.evolve({ saving: UiStruct.evolve({ syncedSave: 'Stale' }) })
+      : takeSyncedName(restoreSave($.model, save), $.model.playerName)
 
 // NOTE: once this device's own writes have landed, a save from sync that
 // was held back is read again from the store, which by then has both.
-const finishWrite = (model: Model): UpdateReturn => {
-  const next: Model = modifyFields(model, {
-    saving: modifyFields({ writesInFlight: count => Math.max(count - 1, 0) }),
+const finishWrite: UpdateStep = $ => {
+  const next: Model = UiStruct.evolve($.model, {
+    saving: UiStruct.evolve({
+      writesInFlight: count => Math.max(count - 1, 0),
+    }),
   })
   return next.saving.writesInFlight === 0 && next.saving.syncedSave === 'Stale'
-    ? {
-        model: modifyFields(next, {
-          saving: modifyFields({ syncedSave: () => 'Current' }),
+    ? $.set(
+        UiStruct.evolve(next, {
+          saving: UiStruct.evolve({ syncedSave: () => 'Current' }),
         }),
-        commands: [ReloadSyncedSave()],
-      }
-    : { model: next }
+      ).run(ReloadSyncedSave.make())
+    : next
 }
 
 // NOTE: a write that recorded a run, on a build with a sync server, waits
 // for the server to settle it, so the Model knows the run reached it.
-const finishWriteWithRun: {
-  (runId: string): (model: Model) => UpdateReturn
-  (model: Model, runId: string): UpdateReturn
-} = Function.dual(2, (model: Model, runId: string): UpdateReturn => {
-  const finished = finishWrite(model)
-  return {
-    model: modifyFields(finished.model, {
-      saving: modifyFields({
-        lastRunSync: () => LastRunSync.Waiting({ id: runId }),
-      }),
-    }),
-    commands: [...(finished.commands ?? []), AwaitRunSettled({ runId })],
-  }
-})
+const finishWriteWithRun =
+  (runId: string): UpdateStep =>
+  $ =>
+    $.combine(finishWrite, waited =>
+      waited
+        .evolve({
+          saving: UiStruct.evolve({
+            lastRunSync: LastRunSync.Waiting({ id: runId }),
+          }),
+        })
+        .run(AwaitRunSettled.make({ runId })),
+    )
 
 const isWaitingFor = (model: Model, runId: string): boolean =>
   model.saving.lastRunSync._tag === 'Waiting' &&
   model.saving.lastRunSync.id === runId
 
-const settleRun: {
-  (runId: string, settled: RunSettled): (model: Model) => UpdateReturn
-  (model: Model, runId: string, settled: RunSettled): UpdateReturn
-} = Function.dual(
-  3,
-  (model: Model, runId: string, settled: RunSettled): UpdateReturn =>
-    isWaitingFor(model, runId)
-      ? {
-          model: modifyFields(model, {
-            saving: modifyFields({
-              lastRunSync: () =>
-                RunSettled.match(settled, {
-                  Confirmed: ({ seq }) => LastRunSync.Confirmed({ seq }),
-                  Rejected: ({ reason }) => LastRunSync.Rejected({ reason }),
-                }),
+const settleRun =
+  (runId: string, settled: RunSettled): UpdateStep =>
+  $ =>
+    isWaitingFor($.model, runId)
+      ? $.evolve({
+          saving: UiStruct.evolve({
+            lastRunSync: RunSettled.match(settled, {
+              Confirmed: ({ seq }) => LastRunSync.Confirmed({ seq }),
+              Rejected: ({ reason }) => LastRunSync.Rejected({ reason }),
             }),
           }),
-        }
-      : { model },
-)
+        })
+      : $.model
 
 // NOTE: the store could not tell, so the Model stops claiming to know.
-const forgetRunWait: {
-  (runId: string): (model: Model) => UpdateReturn
-  (model: Model, runId: string): UpdateReturn
-} = Function.dual(2, (model: Model, runId: string): UpdateReturn =>
-  isWaitingFor(model, runId)
-    ? {
-        model: modifyFields(model, {
-          saving: modifyFields({ lastRunSync: () => LastRunSync.NoRun() }),
-        }),
-      }
-    : { model },
-)
+const forgetRunWait =
+  (runId: string): UpdateStep =>
+  $ =>
+    isWaitingFor($.model, runId)
+      ? $.evolve({
+          saving: UiStruct.evolve({ lastRunSync: LastRunSync.NoRun() }),
+        })
+      : $.model
 
 // NOTE: the store logged why. The changes it could not write wait in the
 // Model and go out again with the next change to the save, so a run that
 // finished during a failed write still counts once.
-const failWrite: {
-  (changes: ReadonlyArray<PlayerChange>): (model: Model) => UpdateReturn
-  (model: Model, changes: ReadonlyArray<PlayerChange>): UpdateReturn
-} = Function.dual(
-  2,
-  (model: Model, changes: ReadonlyArray<PlayerChange>): UpdateReturn =>
-    finishWrite(
-      modifyFields(model, {
-        saving: modifyFields({
+const failWrite = (changes: ReadonlyArray<PlayerChange>): UpdateStep =>
+  combine([
+    modelStep(model =>
+      UiStruct.evolve(model, {
+        saving: UiStruct.evolve({
           unsavedChanges: unsaved => [...changes, ...unsaved],
         }),
       }),
     ),
-)
+    finishWrite,
+  ])
 
-// NOTE: the splash's load steps, the save and sync, and the run summaries
+// NOTE: the splash's load steps, the save and sync, and the visit id
 // (src/platform/message.ts).
 export const saveHandlers = defineHandlers({
-  CompletedLoadStyles: model => finishLoading(model, 'Styles'),
+  CompletedLoadStyles: finishLoading('Styles'),
 
-  CompletedLoadFonts: model => finishLoading(model, 'Fonts'),
+  CompletedLoadFonts: finishLoading('Fonts'),
 
-  FailedLoadFonts: model => finishLoading(model, 'Fonts'),
+  FailedLoadFonts: finishLoading('Fonts'),
 
-  CompletedAwaitFirstFrame: model => finishLoading(model, 'FirstFrame'),
+  CompletedAwaitFirstFrame: finishLoading('FirstFrame'),
 
-  CompletedDecodeSprites: model => finishLoading(model, 'Sprites'),
+  CompletedDecodeSprites: finishLoading('Sprites'),
 
-  CompletedShowLoadProgress: model => ({ model }),
+  CompletedHideSplash: combine([
+    registerServiceWorkerAfterSplash(RUNNING_BUILD),
+    askForRoomLink,
+    askForBeatLink,
+  ]),
 
-  CompletedHideSplash: model =>
-    combine(model, [
-      stepModel => registerServiceWorkerAfterSplash(stepModel, RUNNING_BUILD),
-      askForRoomLink,
-      askForBeatLink,
-    ]),
+  CompletedLoadSave: ($, { maybeSave }) => loadSave(maybeSave)($),
 
-  CompletedLoadSave: (model, { maybeSave }) => loadSave(model, maybeSave),
+  FailedLoadSave: loadSave(Option.none()),
 
-  FailedLoadSave: model => loadSave(model, Option.none()),
+  CompletedWriteSave: finishWrite,
 
-  CompletedWriteSave: model => finishWrite(model),
+  CompletedWriteSaveWithRun: ($, { runId }) => finishWriteWithRun(runId)($),
 
-  CompletedWriteSaveWithRun: (model, { runId }) =>
-    finishWriteWithRun(model, runId),
+  FailedWriteSave: ($, { changes }) => failWrite(changes)($),
 
-  FailedWriteSave: (model, { changes }) => failWrite(model, changes),
+  UpdatedSyncedSave: ($, { save }) => takeSyncedSave(save)($),
 
-  UpdatedSyncedSave: (model, { save }) => takeSyncedSave(save)(model),
-
-  CompletedReloadSyncedSave: (model, { maybeSave }) =>
+  CompletedReloadSyncedSave: ($, { maybeSave }) =>
     Option.match(maybeSave, {
-      onNone: () => unchanged(model),
-      onSome: save => takeSyncedSave(save)(model),
+      onNone: () => $.model,
+      onSome: save => takeSyncedSave(save)($),
     }),
 
-  UpdatedSyncStatus: (model, { state }) => ({
-    model: modifyFields(model, {
-      saving: modifyFields({ syncState: () => state }),
-    }),
-  }),
+  UpdatedSyncStatus: ($, { state }) =>
+    $.evolve({ saving: UiStruct.evolve({ syncState: state }) }),
 
-  UpdatedPlayerScopeStatus: (model, { status }) => ({
-    model: modifyFields(model, {
-      saving: modifyFields({ playerScopeStatus: () => status }),
-    }),
-  }),
+  UpdatedPlayerScopeStatus: ($, { status }) =>
+    $.evolve({ saving: UiStruct.evolve({ playerScopeStatus: status }) }),
 
-  SettledRecordedRun: (model, { runId, settled }) =>
-    settleRun(model, runId, settled),
+  SettledRecordedRun: ($, { runId, settled }) => settleRun(runId, settled)($),
 
-  FailedAwaitRunSettled: (model, { runId }) => forgetRunWait(model, runId),
+  FailedAwaitRunSettled: ($, { runId }) => forgetRunWait(runId)($),
 
-  CompletedGenerateVisitId: (model, { visitId }) => ({
-    model: modifyFields(model, { maybeVisitId: () => Option.some(visitId) }),
-  }),
-
-  CompletedStartSummaryQueue: model => ({ model }),
-
-  CompletedSendRunSummary: model => ({ model }),
-
-  FailedSendRunSummary: model => ({ model }),
+  CompletedGenerateVisitId: ($, { visitId }) =>
+    $.evolve({ maybeVisitId: Option.some(visitId) }),
 })

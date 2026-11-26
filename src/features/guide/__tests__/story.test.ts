@@ -1,122 +1,67 @@
-import { Story } from 'foldkit'
+import { Effect } from 'effect'
 
-import { describe, expect, it } from '@effect/vitest'
+import { Component } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
+import { describe, expect, it, test } from '@effect/vitest'
 
-import { GuideBlock } from '../block'
-import { InMessage } from '../inMessage'
-import { GuideLayer } from '../layer'
-import { Message } from '../message'
-import { GuideStatus } from '../model'
-import { FocusGuideControl } from '../steps'
+import { HOME_PROPS } from '../../munchopedia/__tests__/munchopedia.fixture'
+import { FocusGuideControl, Munchopedia } from '../../munchopedia/block'
+import { Message } from '../../munchopedia/message'
+import { GuideStatus, openedGuide, withSection } from '../model'
 
-// The shop guide Block on its own: it opens and closes when asked, turns
-// its sections, goes back, and moves focus between BACK and the button
-// that opened it, in each place it stands. The parents' sides are the
-// shop's and the Munchopedia's (shopGuide.story.test.ts beside this, and
-// src/features/munchopedia/__tests__/story.test.ts).
+// The shop guide on its own rules: it opens and goes back, turns its
+// sections, and moves focus between BACK and the Shop tile that opened it.
+// Its one parent is the Munchopedia, which holds its status as its own
+// Model and draws it on the Shop page (src/features/munchopedia/block.ts);
+// a fresh panel mounts it shut. The Munchopedia's other pages are in
+// src/features/munchopedia/__tests__/story.test.ts.
 
-const GUIDE = { block: GuideBlock, layer: GuideLayer }
-
-const focused = Story.Command.resolve(
-  FocusGuideControl,
-  Message.CompletedFocusControl(),
-)
-
-describe('the shop guide Block', () => {
+describe('the shop guide', () => {
   it.effect(
-    'starts shut where it is placed, and a section tap while shut does nothing',
+    'starts shut, and a section tap or BACK while shut does nothing',
     () =>
-      Story.story(
-        GUIDE,
-        Story.init('Shop'),
-        Story.model(model => {
-          expect(model.placement).toBe('Shop')
-          expect(model.status).toEqual(GuideStatus.Closed())
-        }),
-        Story.message(Message.ClickedSectionButton({ section: 'Fridge' })),
-        Story.message(Message.ClickedBackButton()),
-        Story.Command.expectNone(),
-        Story.model(model => {
-          expect(model.status).toEqual(GuideStatus.Closed())
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* Story.make(Munchopedia, HOME_PROPS)
+        expect(s.model.guide).toEqual(GuideStatus.Closed())
+        s.send(Message.ClickedGuideSectionButton({ section: 'Fridge' }))
+          .send(Message.ClickedGuideBackButton())
+          .expectNone()
+        expect(s.model.guide).toEqual(GuideStatus.Closed())
+        expect(s.current.emitted).toEqual([])
+      }),
   )
 
-  it.effect(
-    'opens on the section asked for and focuses BACK; a section button turns it',
-    () =>
-      Story.story(
-        GUIDE,
-        Story.init('Shop'),
-        Story.inMessage(InMessage.RequestedOpen({ section: 'Traps' })),
-        Story.Command.expectExact(
-          FocusGuideControl({ placement: 'Shop', target: 'Back' }),
-        ),
-        focused,
-        Story.message(Message.ClickedSectionButton({ section: 'House' })),
-        Story.Command.expectNone(),
-        Story.model(model => {
-          expect(model.status).toEqual(GuideStatus.Open({ section: 'House' }))
-        }),
-      ),
+  it.effect('opens on Guns and focuses BACK; a section button turns it', () =>
+    Effect.gen(function* () {
+      const s = yield* Story.make(Munchopedia, HOME_PROPS)
+      s.send(Message.ClickedShopButton())
+        .expectExact(FocusGuideControl.make({ target: 'Back' }))
+        .resolve(FocusGuideControl, Component.noop)
+        .send(Message.ClickedGuideSectionButton({ section: 'House' }))
+        .expectNone()
+      expect(s.model.guide).toEqual(GuideStatus.Open({ section: 'House' }))
+    }),
   )
 
   it.effect('BACK shuts it and gives focus back to what opened it', () =>
-    Story.story(
-      GUIDE,
-      Story.init('Munchopedia'),
-      Story.inMessage(InMessage.RequestedOpen({ section: 'Guns' })),
-      Story.Command.expectExact(
-        FocusGuideControl({ placement: 'Munchopedia', target: 'Back' }),
-      ),
-      focused,
-      Story.message(Message.ClickedBackButton()),
-      Story.Command.expectExact(
-        FocusGuideControl({ placement: 'Munchopedia', target: 'Opener' }),
-      ),
-      focused,
-      Story.model(model => {
-        expect(model.status).toEqual(GuideStatus.Closed())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* Story.make(Munchopedia, HOME_PROPS)
+      s.send(Message.ClickedShopButton())
+        .expectExact(FocusGuideControl.make({ target: 'Back' }))
+        .resolve(FocusGuideControl, Component.noop)
+        .send(Message.ClickedGuideBackButton())
+        .expectExact(FocusGuideControl.make({ target: 'Opener' }))
+        .resolve(FocusGuideControl, Component.noop)
+      expect(s.model.guide).toEqual(GuideStatus.Closed())
+    }),
   )
 
-  it.effect('the ? key toggles it, opening on the section asked for', () =>
-    Story.story(
-      GUIDE,
-      Story.init('Shop'),
-      Story.inMessage(InMessage.RequestedToggle({ section: 'Health' })),
-      Story.Command.expectExact(
-        FocusGuideControl({ placement: 'Shop', target: 'Back' }),
-      ),
-      focused,
-      Story.model(model => {
-        expect(model.status).toEqual(GuideStatus.Open({ section: 'Health' }))
-      }),
-      Story.inMessage(InMessage.RequestedToggle({ section: 'Guns' })),
-      Story.Command.expectExact(
-        FocusGuideControl({ placement: 'Shop', target: 'Opener' }),
-      ),
-      focused,
-      Story.model(model => {
-        expect(model.status).toEqual(GuideStatus.Closed())
-      }),
-    ),
-  )
-
-  it.effect(
-    'a plain close is quiet, so its parent can focus what comes next',
-    () =>
-      Story.story(
-        GUIDE,
-        Story.init('Shop'),
-        Story.inMessage(InMessage.RequestedOpen({ section: 'Fridge' })),
-        focused,
-        Story.inMessage(InMessage.RequestedClose()),
-        Story.Command.expectNone(),
-        Story.model(model => {
-          expect(model.status).toEqual(GuideStatus.Closed())
-        }),
-      ),
-  )
+  test('a section turns an open guide and leaves a shut one shut', () => {
+    expect(withSection('Traps')(openedGuide)).toEqual(
+      GuideStatus.Open({ section: 'Traps' }),
+    )
+    expect(withSection('Traps')(GuideStatus.Closed())).toEqual(
+      GuideStatus.Closed(),
+    )
+  })
 })

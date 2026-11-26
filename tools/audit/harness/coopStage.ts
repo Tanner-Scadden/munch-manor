@@ -3,12 +3,13 @@
 // answers.
 
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { Message } from '@game/app/message'
 import { type Model, Phase } from '@game/app/model'
 import { update } from '@game/app/pureApp'
 import * as CoopModel from '@game/domain/coopRoom'
+import type { Model as CoopState } from '@game/features/coop/model'
 import {
   CODE as COOP_CODE,
   lobbyOf,
@@ -16,7 +17,6 @@ import {
   playingSession,
   stagedWorld,
 } from '@game/features/coop/testing'
-import type { Model as HeroPickerModel } from '@game/features/heroes/model'
 import type { RoomWorld } from '@game/world/net/roomWorld'
 import { modifySeatRecord } from '@game/world/party/party'
 import { Session } from '@munch/netcode'
@@ -84,7 +84,7 @@ const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
   ...room,
   world: Array.reduce(
     COOP_RUNS,
-    modifyFields(room.world, { phase: () => phase }),
+    UiStruct.evolve(room.world, { phase: () => phase }),
     (world, [kills, revives, downs, fired, hit, keysFound], slot) =>
       modifySeatRecord(world, slot, seat => ({
         ...seat,
@@ -164,7 +164,7 @@ const coopScreen = (
     })
   const members = (count: number, readyCount = 0) =>
     Array.map(COOP_NAMES.slice(0, count), (name, slot) =>
-      modifyFields(
+      UiStruct.evolve(
         memberOf(
           slot,
           name,
@@ -247,7 +247,7 @@ const coopScreen = (
       const room = coopRoom(
         Array.map(members(2), member =>
           member.slot === 0
-            ? modifyFields(member, { canNightmare: () => true })
+            ? UiStruct.evolve(member, { canNightmare: () => true })
             : member,
         ),
         'Lobby',
@@ -272,7 +272,9 @@ const coopScreen = (
       return Screen.InRoom({
         room: coopRoom(
           Array.map(members(3, 3), (member, slot) =>
-            slot === 2 ? modifyFields(member, { ready: () => false }) : member,
+            slot === 2
+              ? UiStruct.evolve(member, { ready: () => false })
+              : member,
           ),
           'Lobby',
         ),
@@ -368,13 +370,13 @@ const withModifiersPicked = (
 
 // NOTE: the hero picker the lobby stages show open: shut, open on the cards,
 // or with the Track Star tried on (BUY lit or short of Bones).
-const pickerOf = (stage: HarnessConfig['coop']): HeroPickerModel => {
+const pickerOf = (stage: HarnessConfig['coop']): CoopState['heroPick'] => {
   if (stage === 'heroes') {
-    return { status: 'Open', maybeTrying: Option.none() }
+    return { isOpen: true, maybeTrying: Option.none() }
   } else if (stage === 'herosale' || stage === 'heroshort') {
-    return { status: 'Open', maybeTrying: Option.some('TrackStar') }
+    return { isOpen: true, maybeTrying: Option.some('TrackStar') }
   } else {
-    return { status: 'Closed', maybeTrying: Option.none() }
+    return { isOpen: false, maybeTrying: Option.none() }
   }
 }
 
@@ -388,7 +390,7 @@ export const withCoop: {
   if (stage === undefined) {
     return model
   }
-  const staged = modifyFields(model, {
+  const staged = UiStruct.evolve(model, {
     coop: coop => ({
       ...coop,
       screen: withModifiersPicked(
@@ -396,11 +398,11 @@ export const withCoop: {
         config.mods ?? 0,
         config.dmark ?? 0,
       ),
-      heroPicker: pickerOf(stage),
+      heroPick: pickerOf(stage),
     }),
   })
   const drawn = update(staged, Message.TickedRoomFrame({ nowMs: 0 })).model
   return stage === 'card' || stage === 'cardwon' || stage === 'cardduo'
-    ? modifyFields(drawn, { screenMs: () => 60_000 })
+    ? UiStruct.evolve(drawn, { screenMs: () => 60_000 })
     : drawn
 })

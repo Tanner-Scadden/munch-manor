@@ -13,7 +13,6 @@
 // Plain data, no pixi.
 
 import { Array, Option, Order, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { TILE_SIZE } from '../../shared/constants'
 import { unitOf } from '../../shared/prng'
@@ -28,6 +27,7 @@ import type { World } from '../../world/schema/worldSchema'
 import { stationBoxOf } from '../../world/stations/stationSpots'
 import { TOOL_RULES } from '../../world/stations/toolRules'
 import { clamp, hundredths } from '../../world/step/geometry'
+import type * as Draw from '../draw'
 import { rect } from '../drawing'
 import { isRoomOpen } from '../room/room'
 import type { Mote } from './air'
@@ -401,8 +401,8 @@ const chunksOf = (splat: Splat): ReadonlyArray<Spot> =>
 // NOTE: the stew's picture, which changes only as the pot's puddle comes
 // and goes: each row in runs of one color, the fat in a few glints, and
 // the chunks over it.
-export const stewShapesOf = (splat: Splat): ReadonlyArray<Canvas.Shape> => {
-  const shapes: Array<Canvas.Shape> = []
+export const stewShapesOf = (splat: Splat): ReadonlyArray<Draw.Shape> => {
+  const shapes: Array<Draw.Shape> = []
   for (let row = 0; row < splat.height; row += 1) {
     const y = splat.top + row
     let runStart = 0
@@ -494,9 +494,9 @@ const streakAt = (
     length: number
     color: string
   }>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { splat, x, y, length, color } = input
-  const shapes: Array<Canvas.Shape> = []
+  const shapes: Array<Draw.Shape> = []
   const start = x - Math.floor(length / 2)
   for (let at = start; at < start + length; at += 1) {
     if (depthAt(splat, at, y) >= 2) {
@@ -512,7 +512,7 @@ const flameStreaksOf = (
   splat: Splat,
   { mirror, x, gap }: SoupMirror,
   row: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const strength = clamp(mirror.weight * (1 - gap / MIRROR_REACH), 0, 1)
   if (strength <= 0) {
     return []
@@ -557,9 +557,9 @@ export const soupGlintsOf = (
     lit: ReadonlySet<FlameKind>
     strikeStep: number
   }>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { splat, mirrors, lit, strikeStep } = input
-  const shapes: Array<Canvas.Shape> = []
+  const shapes: Array<Draw.Shape> = []
   const rows: Array<number> = []
   Array.forEach(
     Array.take(

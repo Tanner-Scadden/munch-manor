@@ -1,14 +1,16 @@
 import { Effect, Option } from 'effect'
-import { Scene, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
-import { describe, it } from '@effect/vitest'
-import { Dialog, DialogBlock } from '@foldkit/ui'
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
+import { PressGameSurface } from '../../app/mount'
 import { initialModel } from '../../app/pureApp'
 import { ReloadPage, WaitForUnwrap } from '../../app/update/home'
+import { PANEL_DIALOG_ID, UPDATE_GREETING_ID } from '../../domain/clientSchema'
 import {
   maybeNewestNewsDay,
   newsHeadline,
@@ -20,36 +22,44 @@ import {
   withNewerBuild,
 } from '../../test/model.fixture'
 import {
-  APPLICATION,
-  SCENE_SUBSCRIPTIONS,
-  closeButton,
+  emitPressedKey,
+  expectAttr,
   manorButton,
+  measureHud,
   measureSurface,
+  requestDialogClose,
   showDialog,
   updateChip,
+} from '../../test/sceneTesting'
+import {
+  type SceneStep,
+  isPausedPhase,
+  modelAfter,
+  sceneOf,
+  send,
+  steps,
 } from '../../test/testing'
 import { pause } from '../../world/waves/waves'
 import { RUNNING_BUILD } from '../version'
 
-const greeting = Scene.role('dialog', { name: 'Updated!' })
-const newsButton = Scene.role('button', { name: "WHAT'S NEW" })
+const greeting = HtmlLocator.role('dialog', { name: 'Updated!' })
+const newsButton = HtmlLocator.role('button', { name: "WHAT'S NEW" })
 // NOTE: a build check is a Command's result, which no Subscription emits,
 // so a Story delivers it and the Scene starts from the Model it leaves.
-const foundMidWave = Story.story(
-  APPLICATION,
-  Story.given(fighting),
-  Story.message(Message.CompletedFetchBuild({ build: 'newer-build' })),
+const foundMidWave = modelAfter(
+  fighting,
+  send(Message.CompletedFetchBuild({ build: 'newer-build' })),
 )
 
 const onPhase = (phase: Phase): Model =>
-  withNewerBuild(modifyFields(initialModel, { phase: () => phase }))
+  withNewerBuild(UiStruct.evolve(initialModel, { phase: () => phase }))
 
 const SCREENS_WITHOUT_THE_CHIP: ReadonlyArray<readonly [string, Model]> = [
   ['the pause screen', withNewerBuild(pause(fighting))],
   ['Game Over', onPhase(Phase.GameOver({ wave: 3 }))],
   [
     'Game Over after the grace',
-    modifyFields(onPhase(Phase.GameOver({ wave: 3 })), {
+    UiStruct.evolve(onPhase(Phase.GameOver({ wave: 3 })), {
       screenMs: () => RESTART_GRACE_MS,
     }),
   ],
@@ -58,32 +68,33 @@ const SCREENS_WITHOUT_THE_CHIP: ReadonlyArray<readonly [string, Model]> = [
   ['a wave', withNewerBuild(fighting)],
 ]
 
+// NOTE: the surface measured, the HUD's gun slots acknowledged, and the
+// pause screen's press on the surface too where it is up.
+const settleOn = (model: Model): SceneStep =>
+  isPausedPhase(model)
+    ? s => measureHud(s).expectMount(PressGameSurface())
+    : measureHud
+
 describe('the update gift', () => {
   it.effect('shows on the home menu', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(withNewerBuild(initialModel)),
-      measureSurface,
-      Scene.expect(updateChip).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(withNewerBuild(initialModel))
+      s.pipe(measureHud).expect(updateChip).toExist()
+    }),
   )
 
   it.effect.each(SCREENS_WITHOUT_THE_CHIP)('waits off %s', ([, quiet]) =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(quiet),
-      measureSurface,
-      Scene.expect(updateChip).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(quiet)
+      s.pipe(settleOn(quiet)).expect(updateChip).toBeAbsent()
+    }),
   )
 
   it.effect('shows nothing when the live build is the one running', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(initialModel),
-      measureSurface,
-      Scene.expect(updateChip).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(initialModel)
+      s.pipe(measureHud).expect(updateChip).toBeAbsent()
+    }),
   )
 
   it.effect(
@@ -91,48 +102,41 @@ describe('the update gift', () => {
     () =>
       Effect.gen(function* () {
         const found = yield* foundMidWave
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(found),
-          measureSurface,
-          Scene.expect(updateChip).toBeAbsent(),
-          Scene.Subscription.emit(
-            SCENE_SUBSCRIPTIONS.keyboard,
-            Message.PressedKey({ code: 'Escape' }),
-          ),
-          Scene.expect(updateChip).toBeAbsent(),
-          Scene.expect(manorButton).toBeAbsent(),
+        const s = yield* sceneOf(found)
+        s.pipe(measureHud).expect(updateChip).toBeAbsent()
+        s.pipe(emitPressedKey('Escape'), sc =>
+          sc.expectMount(PressGameSurface()),
         )
+          .expect(updateChip)
+          .toBeAbsent()
+          .expect(manorButton)
+          .toBeAbsent()
       }),
   )
 
   it.effect('wears a little NEW! tag', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(withNewerBuild(initialModel)),
-      measureSurface,
-      Scene.expect(updateChip).toHaveText('NEW!'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(withNewerBuild(initialModel))
+      s.pipe(measureHud).expect(updateChip).toHaveText('NEW!')
+    }),
   )
 
   it.effect(
     'tapping it unwraps the gift, then reloads onto the new build',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(withNewerBuild(initialModel)),
-        measureSurface,
-        Scene.click(updateChip),
-        Scene.expect(updateChip).toHaveAttr('data-state', 'Unwrapping'),
-        Scene.Command.expectExact(WaitForUnwrap),
-        Scene.Command.resolve(WaitForUnwrap, Message.CompletedWaitForUnwrap()),
-        Scene.Command.expectExact(ReloadPage({ build: 'newer-build' })),
-        Scene.Command.resolve(
-          ReloadPage,
-          Message.FailedReloadPage({ reason: 'no' }),
-        ),
-        Scene.expect(updateChip).toHaveAttr('data-state', 'Wrapped'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(withNewerBuild(initialModel))
+        s.pipe(
+          measureSurface,
+          sc => sc.click(updateChip),
+          expectAttr(updateChip, 'data-state', 'Unwrapping'),
+        )
+          .expectExact(WaitForUnwrap.make())
+          .resolve(WaitForUnwrap, Message.CompletedWaitForUnwrap())
+          .expectExact(ReloadPage.make({ build: 'newer-build' }))
+          .resolve(ReloadPage, Message.FailedReloadPage({ reason: 'no' }))
+          .pipe(expectAttr(updateChip, 'data-state', 'Wrapped'))
+      }),
   )
 })
 
@@ -145,28 +149,20 @@ const newestHeadline = Option.match(maybeNewestNewsDay, {
 // delivers what it read and a Scene starts from the Model it leaves: with
 // the build that is running, the greeting already opening.
 const afterMarker = (maybeBuild: Option.Option<string>) =>
-  Story.story(
-    APPLICATION,
-    Story.given(initialModel),
-    Story.message(Message.CompletedReadUpdateMarker({ maybeBuild })),
+  modelAfter(
+    initialModel,
+    send(Message.CompletedReadUpdateMarker({ maybeBuild })),
   )
 
-const justUpdated = Story.story(
-  APPLICATION,
-  Story.given(initialModel),
-  Story.message(
-    Message.CompletedReadUpdateMarker({
-      maybeBuild: Option.some(RUNNING_BUILD),
-    }),
+const justUpdated = modelAfter(
+  initialModel,
+  steps(
+    send(
+      Message.CompletedReadUpdateMarker({
+        maybeBuild: Option.some(RUNNING_BUILD),
+      }),
+    ),
   ),
-  showDialog(),
-)
-
-// NOTE: a Dialog that is already open when the page draws takes its
-// resources through its Mount.
-const acquireGreeting = Scene.Mount.resolve(
-  Dialog.test.AcquireResources,
-  DialogBlock.Message.SucceededAcquireResources(),
 )
 
 describe('the greeting after an update', () => {
@@ -175,40 +171,35 @@ describe('the greeting after an update', () => {
     () =>
       Effect.gen(function* () {
         const updated = yield* justUpdated
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(updated),
-          measureSurface,
-          acquireGreeting,
-          Scene.expect(greeting).toExist(),
-          Scene.expect(greeting).toContainText(newestHeadline),
-          Scene.expect(newsButton).toExist(),
-          Scene.click(closeButton),
-          Scene.Command.resolve(
-            Dialog.test.CloseDialog,
-            DialogBlock.Message.CompletedCloseDialog(),
-          ),
-          Scene.expect(greeting).toBeAbsent(),
-        )
+        const s = yield* sceneOf(updated)
+        s.pipe(measureSurface, showDialog(UPDATE_GREETING_ID))
+          .expect(greeting)
+          .toExist()
+          .check(() => {
+            expect(Locator.textOf(s.get(greeting))).toContain(newestHeadline)
+          })
+          .expect(newsButton)
+          .toExist()
+          .pipe(requestDialogClose(UPDATE_GREETING_ID, 'close-press'))
+          .expect(greeting)
+          .toBeAbsent()
       }),
   )
 
   it.effect('the news button opens the full news', () =>
     Effect.gen(function* () {
       const updated = yield* justUpdated
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(updated),
-        measureSurface,
-        acquireGreeting,
-        Scene.click(newsButton),
-        Scene.Command.resolveAll(
-          [Dialog.test.CloseDialog, DialogBlock.Message.CompletedCloseDialog()],
-          [Dialog.test.ShowDialog, DialogBlock.Message.SucceededShowDialog()],
-        ),
-        Scene.expect(greeting).toBeAbsent(),
-        Scene.expect(Scene.role('dialog', { name: /^What's new/i })).toExist(),
-      )
+      const s = yield* sceneOf(updated)
+      s.pipe(measureSurface, showDialog(UPDATE_GREETING_ID))
+        .click(newsButton)
+        .pipe(
+          requestDialogClose(UPDATE_GREETING_ID, 'close-press'),
+          showDialog(PANEL_DIALOG_ID),
+        )
+        .expect(greeting)
+        .toBeAbsent()
+        .expect(HtmlLocator.role('dialog', { name: /^What's new/i }))
+        .toExist()
     }),
   )
 
@@ -218,14 +209,11 @@ describe('the greeting after an update', () => {
       Effect.forEach(
         [Option.none(), Option.some('an-older-build')],
         maybeBuild =>
-          Effect.flatMap(afterMarker(maybeBuild), loaded =>
-            Scene.scene(
-              APPLICATION,
-              Scene.given(loaded),
-              measureSurface,
-              Scene.expect(greeting).toBeAbsent(),
-            ),
-          ),
+          Effect.gen(function* () {
+            const loaded = yield* afterMarker(maybeBuild)
+            const s = yield* sceneOf(loaded)
+            s.pipe(measureHud).expect(greeting).toBeAbsent()
+          }),
       ),
   )
 })

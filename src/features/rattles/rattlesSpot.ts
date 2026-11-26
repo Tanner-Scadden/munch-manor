@@ -1,6 +1,5 @@
 import type { Array } from 'effect'
 import { Function } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { GLYPH_SPRITES } from '../../art/font'
 import {
@@ -17,6 +16,7 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
+import * as Draw from '../../render/draw'
 import { RATTLES_BOX } from '../../world/level/arena'
 
 // Rattles' spot in the dining room (docs/ESCAPE_PLAN.md, layer 7): the
@@ -49,7 +49,7 @@ const rect = (
   width: number,
   height: number,
   fill: string,
-): Canvas.Shape => Canvas.Rect({ x, y, width, height, fill })
+): Draw.Shape => Draw.Rect({ x, y, width, height, fill })
 
 const { left, top } = RATTLES_BOX
 const width = RATTLES_BOX.right - RATTLES_BOX.left
@@ -60,7 +60,7 @@ const centerX = left + Math.floor(width / 2)
 
 const TRUNK_TOP = top + 6
 
-const TRUNK: ReadonlyArray<Canvas.Shape> = [
+const TRUNK: ReadonlyArray<Draw.Shape> = [
   rect(left, TRUNK_TOP, width, 3, TRUNK_TOP_COLOR),
   rect(left, TRUNK_TOP, width, 1, TRUNK_LID_EDGE_COLOR),
   rect(left, TRUNK_TOP + 3, width, height - 9, TRUNK_FRONT_COLOR),
@@ -90,7 +90,7 @@ const RATTLES_BLINK: Sprite = spriteShapes(
 )
 
 // NOTE: his bony hands rest on the trunk's lid, in front of him.
-const HANDS: ReadonlyArray<Canvas.Shape> = [
+const HANDS: ReadonlyArray<Draw.Shape> = [
   rect(left + 5, TRUNK_TOP - 1, 3, 2, BONE_COLOR),
   rect(left + width - 8, TRUNK_TOP - 1, 3, 2, BONE_COLOR),
 ]
@@ -98,7 +98,7 @@ const HANDS: ReadonlyArray<Canvas.Shape> = [
 // NOTE: the trunk and his hands never move, so they are one baked image.
 const TRUNK_FRONT = bakeShapes([...TRUNK, ...HANDS])
 
-const awake = (elapsedMs: number): ReadonlyArray<Canvas.Shape> => {
+const awake = (elapsedMs: number): ReadonlyArray<Draw.Shape> => {
   const frame = Math.floor(elapsedMs / AWAKE_FRAME_MS) % AWAKE_FRAMES
   return [
     placeAt(
@@ -109,7 +109,7 @@ const awake = (elapsedMs: number): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const dozing = (elapsedMs: number): ReadonlyArray<Canvas.Shape> => {
+const dozing = (elapsedMs: number): ReadonlyArray<Draw.Shape> => {
   const breath = Math.floor(elapsedMs / SLEEP_FRAME_MS) % 2
   const snore = (elapsedMs % SNORE_CYCLE_MS) / SNORE_CYCLE_MS
   return [
@@ -136,14 +136,14 @@ export const RATTLES_LOOKS: Array.NonEmptyReadonlyArray<RattlesLook> = [
 
 export const RATTLES_FOOT_Y = RATTLES_BOX.bottom
 
-export const RATTLES_GROUND_SHAPES: ReadonlyArray<Canvas.Shape> = [SHADOW]
+export const RATTLES_GROUND_SHAPES: ReadonlyArray<Draw.Shape> = [SHADOW]
 
 export const rattlesShapes: {
-  (elapsedMs: number): (look: RattlesLook) => ReadonlyArray<Canvas.Shape>
-  (look: RattlesLook, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+  (elapsedMs: number): (look: RattlesLook) => ReadonlyArray<Draw.Shape>
+  (look: RattlesLook, elapsedMs: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (look: RattlesLook, elapsedMs: number): ReadonlyArray<Canvas.Shape> => [
+  (look: RattlesLook, elapsedMs: number): ReadonlyArray<Draw.Shape> => [
     ...(look === 'Awake' ? awake(elapsedMs) : dozing(elapsedMs)),
     ...TRUNK_FRONT,
   ],

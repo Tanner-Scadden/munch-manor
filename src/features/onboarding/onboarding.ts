@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result, Schema, String, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import type { HintIcon } from '../../art/hintIcons'
@@ -122,7 +123,7 @@ export const learnFromFrame: {
   (before: Model, after: Model): Model
 } = Function.dual(2, (before: Model, after: Model): Model => {
   const practice = practise(before, after)
-  return modifyFields(after, {
+  return UiStruct.evolve(after, {
     practice: () => practice,
     lessons: lessons => learnFromPractice(lessons, practice, after),
   })
@@ -160,7 +161,7 @@ const maybeDebutKind = (model: Model): Option.Option<ZombieKind> =>
   isCoop(model) ? Option.none() : maybeNewKindIn(model)
 
 export const raiseDebutCard = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     debutCard: () =>
       Option.match(maybeDebutKind(model), {
         onNone: () => DebutCard.Hidden(),
@@ -184,7 +185,9 @@ export const isDebutCardUp = (model: Model): boolean =>
   DebutCard.isAnyOf(['Showing'])(model.debutCard)
 
 const finishDebutCard = (model: Model, kind: ZombieKind): Model =>
-  raiseDebutCard(modifyFields(model, { introducedKinds: Array.append(kind) }))
+  raiseDebutCard(
+    UiStruct.evolve(model, { introducedKinds: Array.append(kind) }),
+  )
 
 export const ageDebutCard: {
   (deltaMs: number): (model: Model) => Model
@@ -195,7 +198,7 @@ export const ageDebutCard: {
     Showing: ({ kind, ageMs }) =>
       ageMs + deltaMs >= DEBUT_CARD_MS
         ? finishDebutCard(model, kind)
-        : modifyFields(model, {
+        : UiStruct.evolve(model, {
             debutCard: () =>
               DebutCard.Showing({ kind, ageMs: ageMs + deltaMs }),
           }),
@@ -216,17 +219,17 @@ export const skipDebutCard = (model: Model): Model =>
   })
 
 export const learnSwap = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         swap: lesson => learn(lesson, model.elapsedMs),
       }),
   })
 
 export const learnStartWave = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         startWave: lesson => learn(lesson, model.elapsedMs),
       }),
   })
@@ -238,7 +241,7 @@ const settle = (lesson: Lesson): Lesson =>
   })
 
 export const settleLessons = (lessons: Lessons): Lessons =>
-  modifyFields(lessons, {
+  UiStruct.evolve(lessons, {
     move: settle,
     fire: settle,
     startWave: settle,
@@ -269,9 +272,9 @@ const skipped = (lesson: Lesson): Lesson => learn(lesson, 0)
 // stays (GAME_DESIGN.md, "Teach where the player acts"): START WAVE, the
 // swap and goodie pulses, the trap hint, and the new zombie cards.
 export const skipTutorial = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         move: skipped,
         fire: skipped,
         openBreak: skipped,
@@ -302,7 +305,7 @@ const followPlayer = (band: HintBand, playerY: number): HintBand => {
 // NOTE: the bands are drawn in the landscape frame, so the player is
 // measured there too, whatever the window's zoom.
 export const moveHintBand = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     hintBand: band =>
       followPlayer(
         band,

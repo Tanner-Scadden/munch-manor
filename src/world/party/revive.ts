@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   BULLET_RADIUS,
@@ -78,16 +79,16 @@ const isReviver =
 
 const fall = (world: World, slot: PlayerSlot): World => {
   const { player: fallen } = seatStateAt(world, slot)
-  return modifyFields(world, {
+  return UiStruct.evolve(world, {
     seats: atSeat(slot, {
       seat: seat =>
-        modifyFields(seat, {
+        UiStruct.evolve(seat, {
           life: () => fallenLife(COOP_RULES.bleedOutMs),
           readiness: () => 'Waiting',
           downs: count => count + 1,
         }),
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           hp: () => 0,
           knockback: () => ZERO_VECTOR,
         }),
@@ -104,11 +105,11 @@ const reviveHeartsOf = (world: World): number =>
 
 const standUp = (world: World, slot: PlayerSlot, hearts: number): World => {
   const { player: risen } = seatStateAt(world, slot)
-  return modifyFields(world, {
+  return UiStruct.evolve(world, {
     seats: atSeat(slot, {
-      seat: seat => modifyFields(seat, { life: () => Life.Standing() }),
+      seat: seat => UiStruct.evolve(seat, { life: () => Life.Standing() }),
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           hp: () => Math.min(hearts, maxHpOf(player)),
           invulnerability: () =>
             Invulnerability.Invulnerable({
@@ -148,7 +149,7 @@ const bleed = (
   const bleedMs = life.bleedMs - deltaMs
   const callMs = life.callMs + deltaMs
   return modifySeatRecord(sounded(world, slot, life), slot, seat =>
-    modifyFields(seat, {
+    UiStruct.evolve(seat, {
       life: () =>
         bleedMs > 0
           ? Life.Downed({ bleedMs, reviveMs, callMs })
@@ -301,13 +302,13 @@ const kneelRevivers = (world: World, deltaMs: number): World => {
   const ground: Ground = { level, blockers: trapBlockers(level, world.traps) }
   const seconds = deltaMs / MS_PER_SECOND
   return Array.reduce(kneelsOf(world, ground), world, (current, kneel) =>
-    modifyFields(current, {
+    UiStruct.evolve(current, {
       seats: atSeat(kneel.slot, {
         player: player => {
           const { x, y } = slideTo(ground, player, kneel, seconds)
           return x === player.x && y === player.y
             ? player
-            : modifyFields(player, { x: () => x, y: () => y })
+            : UiStruct.evolve(player, { x: () => x, y: () => y })
         },
       }),
     }),
@@ -376,7 +377,7 @@ export const returnFallen = (world: World): World =>
   isCoop(world)
     ? forEachSeat(world, (current, slot) => {
         const waiting = modifySeatRecord(current, slot, seat =>
-          modifyFields(seat, { readiness: () => 'Waiting' }),
+          UiStruct.evolve(seat, { readiness: () => 'Waiting' }),
         )
         const { seat } = seatStateAt(waiting, slot)
         return isStanding(seat) || isOut(seat)
@@ -394,7 +395,7 @@ export const markReady: {
 } = Function.dual(2, (world: World, slot: PlayerSlot): World =>
   Phase.isAnyOf(['Preparation'])(world.phase)
     ? modifySeatRecord(world, slot, seat =>
-        modifyFields(seat, { readiness: () => 'Ready' }),
+        UiStruct.evolve(seat, { readiness: () => 'Ready' }),
       )
     : world,
 )
@@ -485,7 +486,7 @@ export const resolveFriendlyFire: {
           onNone: () => current,
           onSome: bullet => {
             const direction = bulletDirection(bullet)
-            return modifyFields(current, {
+            return UiStruct.evolve(current, {
               seats: atSeat(slot, {
                 player: player =>
                   woundPlayer(player, COOP_RULES.friendlyFireDamage, direction),

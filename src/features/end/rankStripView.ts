@@ -1,5 +1,4 @@
 import { Array, Function, Option, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { playerSprites } from '../../art/appearance'
@@ -21,6 +20,7 @@ import { frameAt, group, placeAt } from '../../art/sprite'
 import { gunIcon, gunSprite } from '../../art/sprites/guns'
 import { PART_OF_KIND, chooseLook } from '../../domain/looks'
 import { heroRewardAt } from '../../domain/mastery'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { GUN_HOLD_PX } from '../../render/playerView'
 import { PLAYER_FOOT_OFFSET } from '../../shared/constants'
@@ -102,7 +102,7 @@ const tagShapes = (
   text: string,
   left: number,
   centerY: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const top = centerY - Math.floor(GLYPH_HEIGHT / 2)
   return [
     rect(left, top - 1, tagWidth(text), GLYPH_HEIGHT + 1, TAG_FILL),
@@ -115,11 +115,11 @@ const tagsShapes = (
   tags: ReadonlyArray<string>,
   right: number,
   centerY: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const [, shapes] = Array.mapAccum(
     tags,
     right - tagsWidth(tags),
-    (left, text): readonly [number, ReadonlyArray<Canvas.Shape>] => [
+    (left, text): readonly [number, ReadonlyArray<Draw.Shape>] => [
       left + tagWidth(text) + TAG_GAP_PX,
       tagShapes(text, left, centerY),
     ],
@@ -135,7 +135,7 @@ const barShapes = (
   y: number,
   fraction: number,
   barWidth: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const filled = Math.round(barWidth * fraction)
   return [
     rect(x - 1, y - 3, barWidth + 2, 6, BAR_EDGE),
@@ -183,7 +183,7 @@ const unlockFigureOf = (
   model: Model,
   unlock: EndUnlock,
 ): Readonly<{
-  figure: ReadonlyArray<Canvas.Shape>
+  figure: ReadonlyArray<Draw.Shape>
   name: string
   maybeBoneTag: Option.Option<string>
   tab: string
@@ -275,7 +275,7 @@ const unlockFigureOf = (
 
 // NOTE: a milestone's card stands its big icon on the figure's foot, as a
 // player stands, at its own size inside the figure's scale.
-const standingIcon = (icon: ReadonlyArray<Canvas.Shape>): Canvas.Shape =>
+const standingIcon = (icon: ReadonlyArray<Draw.Shape>): Draw.Shape =>
   group({
     translate: {
       x: -Math.floor(DARE_BIG_ICON_SIZE / 2),
@@ -287,9 +287,9 @@ const standingIcon = (icon: ReadonlyArray<Canvas.Shape>): Canvas.Shape =>
 // NOTE: a purse's card stands the sack on the figure's foot the same way;
 // a sprite is drawn about its middle, so it rises by half its height.
 const standingSprite = (
-  sprite: ReadonlyArray<Canvas.Shape>,
+  sprite: ReadonlyArray<Draw.Shape>,
   size: Readonly<{ width: number; height: number }>,
-): Canvas.Shape =>
+): Draw.Shape =>
   group({
     translate: { x: 0, y: -Math.ceil(size.height / 2) - 1 },
     shapes: sprite,
@@ -301,7 +301,7 @@ const standingSprite = (
 const PRICE_TAG_Y = 6
 const PRICE_TAG_GAP_PX = 2
 
-const boneTagShapes = (text: string): ReadonlyArray<Canvas.Shape> => {
+const boneTagShapes = (text: string): ReadonlyArray<Draw.Shape> => {
   const width = BONE_SIZE.width + PRICE_TAG_GAP_PX + textWidth(text)
   const left = -Math.floor(width / 2)
   return [
@@ -348,7 +348,7 @@ const TIMER_HEIGHT = 1
 const TIMER_COLOR = '#ffd23f'
 const TIMER_BACK = '#140c10'
 
-const tabShapes = (text: string): ReadonlyArray<Canvas.Shape> => {
+const tabShapes = (text: string): ReadonlyArray<Draw.Shape> => {
   const width = TAB_WIDTH_PX
   return [
     rect(-width / 2, -TAB_HEIGHT - 1, width, TAB_HEIGHT, CARD_EDGE),
@@ -360,7 +360,7 @@ const tabShapes = (text: string): ReadonlyArray<Canvas.Shape> => {
 const timerShapes = (
   left: number,
   cardHeight: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const filled = Math.round(CARD_WIDTH * Math.max(0, Math.min(1, left)))
   return [
     rect(
@@ -394,13 +394,13 @@ export const unlockCardShapes: {
     kind: EndKind,
     ms: number,
     spot: UnlockSpot,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     kind: EndKind,
     ms: number,
     spot: UnlockSpot,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   4,
   (
@@ -408,7 +408,7 @@ export const unlockCardShapes: {
     kind: EndKind,
     ms: number,
     spot: UnlockSpot,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     if (!hasRankStrip(model)) {
       return []
     }
@@ -493,7 +493,7 @@ export const rankStripShapes: {
     left: number,
     centerY: number,
     width: number,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
     kind: EndKind,
@@ -501,7 +501,7 @@ export const rankStripShapes: {
     left: number,
     centerY: number,
     width: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   6,
   (
@@ -511,7 +511,7 @@ export const rankStripShapes: {
     left: number,
     centerY: number,
     width: number,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     Option.match(model.runGains.maybeRankGain, {
       onNone: () => [],
       onSome: ({

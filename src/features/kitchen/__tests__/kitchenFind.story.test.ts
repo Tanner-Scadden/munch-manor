@@ -1,10 +1,15 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Boss, KitchenCall, type Model, Phase } from '../../../app/model'
+import {
+  Boss,
+  BreakClock,
+  KitchenCall,
+  type Model,
+  Phase,
+} from '../../../app/model'
 import { roomsOf } from '../../../domain/run'
 import { tagKeepoutsOf } from '../../../features/shop/purchaseView'
 import type { InputDevice } from '../../../input/inputSchema'
@@ -19,10 +24,12 @@ import {
   pastTimedBreaks,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_KITCHEN_DOOR,
   FRAME_MS,
   PHONE_LANDSCAPE,
+  checkModel,
+  modelAfter,
+  storyOf,
   ticks,
 } from '../../../test/testing'
 import { drawnBoxesOf, isOverBox } from '../../../test/viewReading'
@@ -38,9 +45,10 @@ import { roomsCounterShapes } from '../roomsFound'
 // the break shows how many rooms are found.
 
 const breakAt = (wave: number): Model =>
-  modifyFields(pastTimedBreaks(freshRunModel()), {
+  UiStruct.evolve(pastTimedBreaks(freshRunModel()), {
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave,
         remainingMs: 600_000,
         durationMs: 600_000,
@@ -51,7 +59,7 @@ const breakAt = (wave: number): Model =>
 const FRAMES_PER_CALL = Math.ceil(CALL_MS / (1000 / 60)) + 20
 
 const withKitchenOpen = (current: Model): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     level: state => openExitIn(state, 'Kitchen'),
   })
 
@@ -63,57 +71,60 @@ const callDrawn = (current: Model): boolean =>
 
 describe('Rattles pointing at the boards', () => {
   it.effect('hollers in the first break the kitchen is on sale', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakAt(3)),
-      ...ticks(2, FRAME_MS),
-      Story.model(called => {
-        expect(isCalling(called)).toBe(true)
-        expect(callDrawn(called)).toBe(true)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakAt(3))
+      s.pipe(
+        ticks(2, FRAME_MS),
+        checkModel(called => {
+          expect(isCalling(called)).toBe(true)
+          expect(callDrawn(called)).toBe(true)
+        }),
+      )
+    }),
   )
 
   it.effect('says nothing before the kitchen is on sale', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakAt(2)),
-      ...ticks(2, FRAME_MS),
-      Story.model(early => {
-        expect(isCalling(early)).toBe(false)
-        expect(callDrawn(early)).toBe(false)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakAt(2))
+      s.pipe(
+        ticks(2, FRAME_MS),
+        checkModel(early => {
+          expect(isCalling(early)).toBe(false)
+          expect(callDrawn(early)).toBe(false)
+        }),
+      )
+    }),
   )
 
   it.effect('hollers once in a break, then hushes for the rest of it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakAt(3)),
-      ...ticks(FRAMES_PER_CALL, FRAME_MS),
-      Story.model(hushed => {
-        expect(isCalling(hushed)).toBe(false)
-        expect(callDrawn(hushed)).toBe(false)
-      }),
-      ...ticks(120, FRAME_MS),
-      Story.model(later => {
-        expect(isCalling(later)).toBe(false)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakAt(3))
+      s.pipe(
+        ticks(FRAMES_PER_CALL, FRAME_MS),
+        checkModel(hushed => {
+          expect(isCalling(hushed)).toBe(false)
+          expect(callDrawn(hushed)).toBe(false)
+        }),
+        ticks(120, FRAME_MS),
+        checkModel(later => {
+          expect(isCalling(later)).toBe(false)
+        }),
+      )
+    }),
   )
 
   it.effect('hollers again in the next break until the boards are open', () =>
     Effect.gen(function* () {
-      const hushed = yield* Story.story(
-        APPLICATION,
-        Story.given(breakAt(3)),
-        ...ticks(FRAMES_PER_CALL, FRAME_MS),
+      const hushed = yield* modelAfter(
+        breakAt(3),
+        ticks(FRAMES_PER_CALL, FRAME_MS),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(modifyFields(hushed, { phase: () => breakAt(4).phase })),
-        ...ticks(2, FRAME_MS),
-        Story.model(nextBreak => {
+      const s = yield* storyOf(
+        UiStruct.evolve(hushed, { phase: () => breakAt(4).phase }),
+      )
+      s.pipe(
+        ticks(2, FRAME_MS),
+        checkModel(nextBreak => {
           expect(isCalling(nextBreak)).toBe(true)
         }),
       )
@@ -121,29 +132,25 @@ describe('Rattles pointing at the boards', () => {
   )
 
   it.effect('stays quiet once the kitchen is open', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withKitchenOpen(breakAt(3))),
-      ...ticks(2, FRAME_MS),
-      Story.model(opened => {
-        expect(isCalling(opened)).toBe(false)
-        expect(callDrawn(opened)).toBe(false)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(withKitchenOpen(breakAt(3)))
+      s.pipe(
+        ticks(2, FRAME_MS),
+        checkModel(opened => {
+          expect(isCalling(opened)).toBe(false)
+          expect(callDrawn(opened)).toBe(false)
+        }),
+      )
+    }),
   )
 
   it.effect('stops when the boards open mid-holler', () =>
     Effect.gen(function* () {
-      const called = yield* Story.story(
-        APPLICATION,
-        Story.given(breakAt(3)),
-        ...ticks(2, FRAME_MS),
-      )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(withKitchenOpen(called)),
-        ...ticks(2, FRAME_MS),
-        Story.model(opened => {
+      const called = yield* modelAfter(breakAt(3), ticks(2, FRAME_MS))
+      const s = yield* storyOf(withKitchenOpen(called))
+      s.pipe(
+        ticks(2, FRAME_MS),
+        checkModel(opened => {
           expect(callDrawn(opened)).toBe(false)
         }),
       )
@@ -173,7 +180,7 @@ describe('the rooms counter', () => {
 
   test('shows in a break and not mid-wave', () => {
     const inBreak = breakAt(3)
-    const inWave = modifyFields(inBreak, {
+    const inWave = UiStruct.evolve(inBreak, {
       phase: () =>
         Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     })
@@ -184,7 +191,7 @@ describe('the rooms counter', () => {
   test('sparkles when the kitchen opens, then settles', () => {
     const settled = roomsCounterShapes(withKitchenOpen(breakAt(3)), 200, 14)
     const sparkling = roomsCounterShapes(
-      modifyFields(withKitchenOpen(breakAt(3)), {
+      UiStruct.evolve(withKitchenOpen(breakAt(3)), {
         kitchenCall: () => KitchenCall.Opened({ ageMs: 100 }),
       }),
       200,
@@ -201,7 +208,7 @@ describe('the boards leaking the kitchen', () => {
   })
 
   test('the steam moves on', () => {
-    const later = modifyFields(breakAt(3), { elapsedMs: () => 1500 })
+    const later = UiStruct.evolve(breakAt(3), { elapsedMs: () => 1500 })
     expect(kitchenLeakShapes(later)).not.toEqual(kitchenLeakShapes(breakAt(3)))
   })
 })
@@ -210,14 +217,14 @@ describe('the smell of soup', () => {
   const near = (current: Model): Model =>
     modifyFocus(current, {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
           y: () => BELOW_KITCHEN_DOOR.y,
         }),
     })
 
   const beat = (current: Model, elapsedMs: number): Model =>
-    modifyFields(current, { elapsedMs: () => elapsedMs })
+    UiStruct.evolve(current, { elapsedMs: () => elapsedMs })
 
   test('a pot clatters or simmers at a beat when the player is near', () => {
     const before = near(beat(breakAt(3), 6900))
@@ -229,7 +236,7 @@ describe('the smell of soup', () => {
   test('is silent when the player is far', () => {
     const before = beat(breakAt(3), 6900)
     const after = modifyFocus(beat(breakAt(3), 7100), {
-      player: player => modifyFields(player, { x: () => 300, y: () => 170 }),
+      player: player => UiStruct.evolve(player, { x: () => 300, y: () => 170 }),
     })
     expect(Option.isNone(maybeKitchenSound(before, after))).toBe(true)
   })
@@ -242,7 +249,7 @@ describe('the smell of soup', () => {
 
   test('is silent in a boss fight', () => {
     const bossed = (current: Model): Model =>
-      modifyFields(current, {
+      UiStruct.evolve(current, {
         boss: () =>
           Boss.Waiting({
             door: 'South',
@@ -266,7 +273,7 @@ describe('the holler beside the price tags', () => {
     [
       'a phone on its side',
       current =>
-        modifyFields(current, {
+        UiStruct.evolve(current, {
           lastDevice: (): InputDevice => 'Touch',
           maybeSurface: () => Option.some(PHONE_LANDSCAPE),
         }),
@@ -275,7 +282,7 @@ describe('the holler beside the price tags', () => {
       'a phone held upright',
       current =>
         inPortrait(
-          modifyFields(current, { lastDevice: (): InputDevice => 'Touch' }),
+          UiStruct.evolve(current, { lastDevice: (): InputDevice => 'Touch' }),
         ),
     ],
     ['a desktop', current => current],
@@ -283,49 +290,43 @@ describe('the holler beside the price tags', () => {
   const STRIDE = 12
 
   it.effect.each(LAYOUTS)('never covers a tag on %s', ([_name, layout]) =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakAt(3)),
-      ...ticks(2, FRAME_MS),
-      Story.model(called => {
-        const { bounds } = levelOf(called)
-        const misses = Array.flatMap(
-          Array.range(0, Math.floor((bounds.right - bounds.left) / STRIDE)),
-          column =>
-            Array.flatMap(
-              Array.range(0, Math.floor((bounds.bottom - bounds.top) / STRIDE)),
-              row => {
-                const spot = {
-                  x: bounds.left + column * STRIDE,
-                  y: bounds.top + row * STRIDE,
-                }
-                const current = layout(
-                  modifyFocus(called, {
-                    player: player =>
-                      modifyFields(player, {
-                        x: () => spot.x,
-                        y: () => spot.y,
-                      }),
-                  }),
-                )
-                const camera = screenCameraOf(current)
-                const tags = tagKeepoutsOf(
-                  current,
-                  camera,
-                  hudKeepoutsOf(current),
-                )
-                const bubble = drawnBoxesOf(soupBubbleShapes(current, camera))
-                return Array.some(bubble, box =>
-                  Array.some(tags, isOverBox(box)),
-                )
-                  ? [spot]
-                  : []
-              },
-            ),
-        )
-        expect(isCalling(called)).toBe(true)
-        expect(misses).toEqual([])
-      }),
-    ),
+    Effect.gen(function* () {
+      const called = yield* modelAfter(breakAt(3), ticks(2, FRAME_MS))
+      const { bounds } = levelOf(called)
+      const misses = Array.flatMap(
+        Array.range(0, Math.floor((bounds.right - bounds.left) / STRIDE)),
+        column =>
+          Array.flatMap(
+            Array.range(0, Math.floor((bounds.bottom - bounds.top) / STRIDE)),
+            row => {
+              const spot = {
+                x: bounds.left + column * STRIDE,
+                y: bounds.top + row * STRIDE,
+              }
+              const current = layout(
+                modifyFocus(called, {
+                  player: player =>
+                    UiStruct.evolve(player, {
+                      x: () => spot.x,
+                      y: () => spot.y,
+                    }),
+                }),
+              )
+              const camera = screenCameraOf(current)
+              const tags = tagKeepoutsOf(
+                current,
+                camera,
+                hudKeepoutsOf(current),
+              )
+              const bubble = drawnBoxesOf(soupBubbleShapes(current, camera))
+              return Array.some(bubble, box => Array.some(tags, isOverBox(box)))
+                ? [spot]
+                : []
+            },
+          ),
+      )
+      expect(isCalling(called)).toBe(true)
+      expect(misses).toEqual([])
+    }),
   )
 })

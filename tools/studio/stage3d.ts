@@ -9,9 +9,9 @@
 // from, so a pin here reads as a pin on the flat picture. The light and
 // color lab's edits (`tuning`) reach this page's renderer as they move.
 import { Array, Effect, Option, Schema } from 'effect'
-import { CustomElement } from 'foldkit'
 import { Application } from 'pixi.js'
 
+import { Html } from '@effect/ui/html'
 import { AmbientLight, Container3D, View3D } from '@pixi/3d'
 import { OutlinePass } from '@pixi/3d/extras'
 
@@ -72,7 +72,7 @@ const StagePin = Schema.Struct({
 })
 type StagePin = typeof StagePin.Type
 
-export const studioStage = CustomElement.define({
+export const studioStage = Html.customElement({
   tag: TAG,
   properties: {
     subject: Subject,
@@ -648,8 +648,11 @@ const studioStageClass = () =>
     private lastLens: Option.Option<Lens> = Option.none()
     private lastStood: ReadonlyArray<Stood> = []
     private readonly host = document.createElement('div')
-    private readonly marks = document.createElement('canvas')
+    private readonly marks = document.createElement('div')
     private readonly shot = document.createElement('canvas')
+    // NOTE: the pins' own elements, one a pin, kept from frame to frame.
+    private readonly pinMarks: Array<HTMLSpanElement> = []
+    private shotToken = 0
 
     get cameraResets(): number {
       return this.latestResets
@@ -855,42 +858,67 @@ const studioStageClass = () =>
       this.lastLens = Option.some(lens)
       this.lastStood = stood
       if (this.frameCount % SHOT_FRAMES === 0) {
-        this.shot.width = renderer.canvas.width
-        this.shot.height = renderer.canvas.height
-        this.shot.getContext('2d')?.drawImage(renderer.canvas, 0, 0)
+        this.takeShot(renderer.canvas)
       }
       this.drawPins(lens, stood)
     }
 
+    // NOTE: the frame just drawn, copied off the WebGL canvas in the same
+    // task (before the browser clears it) as an ImageBitmap, and shown on the
+    // shot's `bitmaprenderer` canvas: a note's before picture and the lab
+    // audit read it. No 2D canvas.
+    private takeShot(source: HTMLCanvasElement): void {
+      this.shotToken += 1
+      const token = this.shotToken
+      Effect.runFork(
+        Effect.tryPromise({
+          try: () => createImageBitmap(source),
+          catch: toBrowserError,
+        }).pipe(
+          Effect.match({
+            onSuccess: bitmap => {
+              const context = this.shot.getContext('bitmaprenderer')
+              if (token !== this.shotToken || context === null) {
+                bitmap.close()
+                return
+              }
+              this.shot.width = bitmap.width
+              this.shot.height = bitmap.height
+              context.transferFromImageBitmap(bitmap)
+            },
+            onFailure: () => undefined,
+          }),
+        ),
+      )
+    }
+
+    // NOTE: each pin an element over the stage, at its block's place in
+    // CSS pixels, shown or hidden as the camera sees it.
     private drawPins(lens: Lens, stood: ReadonlyArray<Stood>): void {
-      const ratio = window.devicePixelRatio
-      const width = Math.round(lens.width * ratio)
-      const height = Math.round(lens.height * ratio)
-      if (this.marks.width !== width || this.marks.height !== height) {
-        this.marks.width = width
-        this.marks.height = height
+      while (this.pinMarks.length < this.pins.length) {
+        const mark = document.createElement('span')
+        mark.className = 'pin'
+        mark.setAttribute('aria-hidden', 'true')
+        this.marks.append(mark)
+        this.pinMarks.push(mark)
       }
-      const context = this.marks.getContext('2d')
-      if (context === null) {
-        return
-      }
-      context.setTransform(ratio, 0, 0, ratio, 0, 0)
-      context.clearRect(0, 0, lens.width, lens.height)
-      Array.forEach(this.pins, ({ pin, label, color }) => {
-        Option.map(pinPointOf(lens, stood, pin), ({ x, y }) => {
-          context.beginPath()
-          context.arc(x, y, 11, 0, Math.PI * 2)
-          context.fillStyle = color
-          context.fill()
-          context.lineWidth = 2
-          context.strokeStyle = '#ffffff'
-          context.stroke()
-          context.fillStyle = '#14121a'
-          context.font = 'bold 12px ui-sans-serif, system-ui, sans-serif'
-          context.textAlign = 'center'
-          context.textBaseline = 'middle'
-          context.fillText(label, x, y + 1)
-        })
+      Array.forEach(this.pinMarks, (mark, index) => {
+        const maybePoint = Option.flatMap(
+          Array.get(this.pins, index),
+          ({ pin }) => pinPointOf(lens, stood, pin),
+        )
+        mark.hidden = Option.isNone(maybePoint)
+        Option.map(
+          Option.all({ point: maybePoint, pin: Array.get(this.pins, index) }),
+          ({ point, pin }) => {
+            mark.style.left = `${point.x}px`
+            mark.style.top = `${point.y}px`
+            mark.style.background = pin.color
+            if (mark.textContent !== pin.label) {
+              mark.textContent = pin.label
+            }
+          },
+        )
       })
     }
   }

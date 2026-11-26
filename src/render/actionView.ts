@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { type ActStance, frontHandOf } from '../art/appearance'
 import { DARE_ICONS } from '../art/dareArt'
@@ -33,6 +32,7 @@ import {
   keyframeOf,
   paceOf,
 } from './actionPose'
+import type * as Draw from './draw'
 import type { Payoff } from './renderSchema'
 
 // How a player at work or playing a payoff is drawn (src/render/actionPose.ts):
@@ -64,7 +64,7 @@ const bodyShape = (
   facing: Facing,
   dx: number,
   dy: number,
-): Canvas.Shape =>
+): Draw.Shape =>
   group({
     translate: {
       x: look.foot.x + dx * signOf(facing),
@@ -97,8 +97,7 @@ const toolAt = (
   at: Vector,
   facing: Facing,
   opacity: number,
-): Canvas.Shape =>
-  group({ opacity, shapes: [placeAt(at.x, at.y, tool[facing])] })
+): Draw.Shape => group({ opacity, shapes: [placeAt(at.x, at.y, tool[facing])] })
 
 // WORK
 
@@ -106,7 +105,7 @@ type Extras = (
   look: BodyLook,
   pose: WorkingPose,
   hand: Vector,
-) => ReadonlyArray<Canvas.Shape>
+) => ReadonlyArray<Draw.Shape>
 
 const NONE: Extras = () => []
 
@@ -240,7 +239,7 @@ const isAbove = (foot: Vector, pose: WorkingPose): boolean => {
 const workingShapes = (
   look: BodyLook,
   pose: WorkingPose,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const keyframe = keyframeOf(pose.motion, pose.frame)
   const { stance, dx, dy } = isAbove(look.foot, pose)
     ? {
@@ -314,12 +313,12 @@ const heldUpShapes = (
   look: BodyLook,
   maybeThing: Option.Option<DareKind>,
   lift: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const top = look.foot.y - lift + frontHandOf('BothUp').y
   const sparkle = Math.floor(look.elapsedMs / SPARKLE_MS) % 2 === 0
   const thingShapes = Option.match(maybeThing, {
     onNone: () => [],
-    onSome: (kind): ReadonlyArray<Canvas.Shape> => [
+    onSome: (kind): ReadonlyArray<Draw.Shape> => [
       placeAt(
         look.foot.x - Math.floor(THING_SIZES[kind].x / 2),
         top - THING_SIZES[kind].y - THING_GAP_PX,
@@ -345,7 +344,7 @@ const heldUpShapes = (
 const pryOpenShapes = (
   look: BodyLook,
   stance: ActStance,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   toolAt(
     CROWBAR,
     handAt(look, stance, look.facing, 0, 0),
@@ -359,7 +358,7 @@ const pryOpenShapes = (
 const beatShapes = (
   look: BodyLook,
   pose: BeatPose,
-): Option.Option<ReadonlyArray<Canvas.Shape>> => {
+): Option.Option<ReadonlyArray<Draw.Shape>> => {
   const art = PAYOFF_ART[pose.payoff]
   const lift = art.lift(pose.share)
   return Option.map(art.stance(pose.share), stance => [
@@ -376,14 +375,14 @@ const beatShapes = (
 export const maybeActingShapes: {
   (
     pose: ActionPose,
-  ): (look: BodyLook) => Option.Option<ReadonlyArray<Canvas.Shape>>
-  (look: BodyLook, pose: ActionPose): Option.Option<ReadonlyArray<Canvas.Shape>>
+  ): (look: BodyLook) => Option.Option<ReadonlyArray<Draw.Shape>>
+  (look: BodyLook, pose: ActionPose): Option.Option<ReadonlyArray<Draw.Shape>>
 } = Function.dual(
   2,
   (
     look: BodyLook,
     pose: ActionPose,
-  ): Option.Option<ReadonlyArray<Canvas.Shape>> =>
+  ): Option.Option<ReadonlyArray<Draw.Shape>> =>
     ActionPose.match(pose, {
       Ready: () => Option.none(),
       Working: working => Option.some(workingShapes(look, working)),
@@ -432,11 +431,11 @@ export const reloadMotionOf = (
 }
 
 export const magazineShape: {
-  (facing: Facing, opacity: number): (at: Vector) => Canvas.Shape
-  (at: Vector, facing: Facing, opacity: number): Canvas.Shape
+  (facing: Facing, opacity: number): (at: Vector) => Draw.Shape
+  (at: Vector, facing: Facing, opacity: number): Draw.Shape
 } = Function.dual(
   3,
-  (at: Vector, facing: Facing, opacity: number): Canvas.Shape =>
+  (at: Vector, facing: Facing, opacity: number): Draw.Shape =>
     toolAt(MAGAZINE, at, facing, opacity),
 )
 

@@ -2,9 +2,8 @@
 // about a second, so it runs in `bun run test:full` and CI, not in
 // `bun run test`. The wave rules are in waves.story.test.ts.
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase } from '../../../app/model'
@@ -12,11 +11,13 @@ import { PLAYER_MAX_HP } from '../../../shared/constants'
 import { releaseWalk, walkToward } from '../../../test/lensTesting'
 import { readyModel } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
   holdFireToward,
+  modelAfter,
   press,
   release,
   startRunFromHome,
+  steps,
   tick,
   ticks,
 } from '../../../test/testing'
@@ -44,28 +45,28 @@ describe('a full wave', () => {
   const playFirstWave = (seed: number) =>
     Effect.suspend(() => {
       const frames: Array<Model> = []
-      const record = Story.model((frame: Model) => {
+      const record = checkModel((frame: Model) => {
         frames.push(frame)
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(modifyFields(readyModel, { rngState: () => seed })),
-        startRunFromHome,
-        release('Enter'),
-        walkToward({ x: 0, y: -1 }),
-        ...ticks(STEP_UP_TICKS, FRAME_MS),
-        releaseWalk,
-        walkToward({ x: 1, y: 0 }),
-        ...ticks(STEP_RIGHT_TICKS, FRAME_MS),
-        releaseWalk,
-        walkToward({ x: 0, y: -1 }),
-        tick(FRAME_MS),
-        releaseWalk,
-        press('Enter'),
-        holdFireToward({ x: 0, y: -1 }),
-        ...Array.flatMap(
-          ticks((SECONDS_PER_RUN * 1000) / FRAME_MS, FRAME_MS),
-          frame => [frame, record],
+      return modelAfter(
+        UiStruct.evolve(readyModel, { rngState: () => seed }),
+        steps(
+          startRunFromHome,
+          release('Enter'),
+          walkToward({ x: 0, y: -1 }),
+          ticks(STEP_UP_TICKS, FRAME_MS),
+          releaseWalk,
+          walkToward({ x: 1, y: 0 }),
+          ticks(STEP_RIGHT_TICKS, FRAME_MS),
+          releaseWalk,
+          walkToward({ x: 0, y: -1 }),
+          tick(FRAME_MS),
+          releaseWalk,
+          press('Enter'),
+          holdFireToward({ x: 0, y: -1 }),
+          ...Array.makeBy((SECONDS_PER_RUN * 1000) / FRAME_MS, () =>
+            steps(tick(FRAME_MS), record),
+          ),
         ),
       ).pipe(Effect.as<ReadonlyArray<Model>>(frames))
     })

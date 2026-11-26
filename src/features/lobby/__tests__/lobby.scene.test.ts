@@ -1,17 +1,21 @@
 import { Effect } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
+import { Dialog } from '@effect/ui-kit'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it } from '@effect/vitest'
 
-import { Message } from '../../../app/message'
-import { FocusHomeButton } from '../../../app/update/home'
 import { specialsOf } from '../../../domain/callingSpecials'
 import { heroesBoughtBy, home } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  ackHudSlots,
+  button,
+  byClass,
+  dialogModel,
   emitPressedKey,
-  foldLobbyInScene,
+  expectAttr,
+  firstOf,
   homeUnderLobby,
   lobbyBackButton,
   lobbyScreen,
@@ -20,322 +24,412 @@ import {
   measureSurface,
   openLobbyInScene,
   playButton,
-  resolveFocusLobbyInScene,
-  showDialogInScene,
+  statusLine,
   throughIntroInScene,
+  withAttrs,
+} from '../../../test/sceneTesting'
+import {
+  type SceneStep,
+  foldLobby,
+  resolveFocusLobby,
+  sceneOf,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
+import { Lobby } from '../block'
+import { HERO_DIALOG_ID } from '../lobby'
+import { Events } from '../message'
+import {
+  expectLobbyDrawn,
+  focusesPlay,
+  lobbyAttr,
+  lobbySceneIn,
+} from './lobby.fixture'
 
 // The single player lobby's view (src/features/lobby/view.ts): the dare card,
 // the co-op lobby's layout alone on a napkin, with one seat, three waiting,
-// the picks, and SHAKE ON IT.
+// the picks, and SHAKE ON IT. The Lobby is a child of the root, a leaf in
+// the root's Scene: its card is read in a Scene of its own, with the props
+// the root hands it at that step, and a tap on the card is its event, sent
+// up to the root as the root's view maps it.
 
-const handyman = modifyFields(home, {
+const handyman = UiStruct.evolve(home, {
   rank: current => ({ ...current, earnedPoints: pointsForRank(3) }),
   boughtCosmetics: () => heroesBoughtBy(3),
   calling: () => 'Handyman',
   playerName: () => 'Mo',
 })
 
+// NOTE: PLAY sits in the home menu, which is aria-hidden under the lobby.
+const playUnderLobby = HtmlLocator.role('button', {
+  name: 'Play',
+  hidden: true,
+})
+
+const players = HtmlLocator.role('list', { name: 'Players' })
+
+// NOTE: the first + BOT tile, the one that wears B.
+const addBot = firstOf(button('Add a bot teammate'))
+
+const removeBot = button(/^Remove /)
+
+const friendlyFire = withAttrs({ 'data-modifier': 'FriendlyFire' })(
+  byClass('modifier-pick'),
+)
+
+const bonus = (text: string) => HtmlLocator.role('status', { name: text })
+
+// NOTE: the Lobby's event, as the root hears it.
+const lobbySays =
+  (event: Events): SceneStep =>
+  s =>
+    s.childEmit(Lobby, 'lobby', event)
+
 describe('the lobby', () => {
   it.effect(
     'unfolds from PLAY as a card over the home menu, which stays in sight but takes nothing',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(home),
-        measureSurface,
-        Scene.expect(lobbyScreen).toBeAbsent(),
-        Scene.expect(homeUnderLobby).not.toHaveAttr('inert'),
-        ...openLobbyInScene(),
-        Scene.expect(lobbyScreen).toExist(),
-        Scene.expect(lobbyScreen).toHaveAttr('data-state', 'Open'),
-        Scene.inside(
-          lobbyScreen,
-          Scene.expect(Scene.selector('.dare-card')).toExist(),
-        ),
-        Scene.expect(Scene.selector('.dare-fold')).toHaveAttr(
-          'aria-hidden',
-          'true',
-        ),
-        Scene.expect(playButton).toExist(),
-        Scene.expect(homeUnderLobby).toHaveAttr('inert'),
-        Scene.expect(homeUnderLobby).toHaveAttr('aria-hidden', 'true'),
-        Scene.expect(lobbyStartButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
-        Scene.expect(lobbyBackButton).toHaveAttr('aria-keyshortcuts', 'Escape'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(home)
+        s.pipe(
+          measureSurface,
+          expectLobbyDrawn(false),
+          expectAttr(homeUnderLobby, 'inert', undefined),
+          openLobbyInScene,
+          expectLobbyDrawn(true),
+          expectAttr(homeUnderLobby, 'inert', ''),
+          expectAttr(homeUnderLobby, 'aria-hidden', 'true'),
+        )
+          .expect(playUnderLobby)
+          .toExist()
+        const lobby = yield* lobbySceneIn(s)
+        lobby
+          .pipe(
+            lobbyAttr(lobbyScreen, 'data-state', 'Open'),
+            lobbyAttr(byClass('dare-fold'), 'aria-hidden', 'true'),
+            lobbyAttr(lobbyStartButton, 'aria-keyshortcuts', 'Enter'),
+            lobbyAttr(lobbyBackButton, 'aria-keyshortcuts', 'Escape'),
+          )
+          .expect(Locator.inside(lobbyScreen, byClass('dare-card')))
+          .toExist()
+      }),
   )
 
   it.effect(
     'reads as a dare card: a word or two a line, SHAKE ON IT, and CHICKEN OUT',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(handyman),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.inside(
-          lobbyScreen,
-          Scene.expect(Scene.text('GOING IN')).toExist(),
-          Scene.expect(Scene.text('COMING AS')).toExist(),
-          Scene.expect(Scene.text('DRAG ALONG')).toExist(),
-          Scene.expect(Scene.text('OUT OR STAY')).toExist(),
-          Scene.expect(Scene.text('STAKES')).toExist(),
-          Scene.expect(Scene.text('EXTRA DARES')).toExist(),
-          Scene.expect(Scene.text('WHICH HOUSE')).toExist(),
-          Scene.expectAll(Scene.all.selector('.dare-scrawl')).toHaveCount(7),
-        ),
-        Scene.expect(lobbyStartButton).toContainText('SHAKE ON IT'),
-        Scene.expect(lobbyBackButton).toContainText('CHICKEN OUT'),
-        Scene.expect(Scene.text('START')).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(handyman)
+        s.pipe(measureSurface, openLobbyInScene)
+        const lobby = yield* lobbySceneIn(s)
+        const line = (text: string) =>
+          Locator.inside(lobbyScreen, Locator.text(text))
+        lobby
+          .expect(line('GOING IN'))
+          .toExist()
+          .expect(line('COMING AS'))
+          .toExist()
+          .expect(line('DRAG ALONG'))
+          .toExist()
+          .expect(line('OUT OR STAY'))
+          .toExist()
+          .expect(line('STAKES'))
+          .toExist()
+          .expect(line('EXTRA DARES'))
+          .toExist()
+          .expect(line('WHICH HOUSE'))
+          .toExist()
+          .expect(Locator.inside(lobbyScreen, byClass('dare-scrawl')))
+          .toHaveCount(7)
+          .expect(lobbyStartButton)
+          .toHaveText(/SHAKE ON IT/)
+          .expect(lobbyBackButton)
+          .toHaveText(/CHICKEN OUT/)
+          .expect(Locator.text('START'))
+          .toBeAbsent()
+      }),
   )
 
   it.effect(
     'CHICKEN OUT by a tap folds the card back into PLAY and focuses PLAY',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(home),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.click(lobbyBackButton),
-        Scene.Command.resolve(
-          FocusHomeButton({ button: 'Play' }),
-          Message.CompletedFocusHomeButton(),
-        ),
-        Scene.expect(lobbyScreen).toBeAbsent(),
-        Scene.expect(Scene.selector('.lobby[data-state="Folding"]')).toHaveAttr(
-          'inert',
-        ),
-        Scene.expect(homeUnderLobby).not.toHaveAttr('inert'),
-        foldLobbyInScene(),
-        Scene.expect(Scene.selector('.lobby')).toBeAbsent(),
-        Scene.expect(playButton).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(home)
+        s.pipe(measureSurface, openLobbyInScene)
+        const open = yield* lobbySceneIn(s)
+        open.click(lobbyBackButton).emitted(Events.RequestedLeave())
+        s.pipe(
+          lobbySays(Events.RequestedLeave()),
+          focusesPlay,
+          expectAttr(homeUnderLobby, 'inert', undefined),
+        )
+        const folding = yield* lobbySceneIn(s)
+        folding
+          .pipe(
+            lobbyAttr(
+              withAttrs({ 'data-state': 'Folding' })(byClass('lobby')),
+              'inert',
+              '',
+            ),
+          )
+          .expect(lobbyScreen)
+          .toBeAbsent()
+        s.pipe(foldLobby, expectLobbyDrawn(false)).expect(playButton).toExist()
+      }),
   )
 
   it.effect('Escape folds the card back into PLAY and focuses PLAY', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      emitPressedKey('Escape'),
-      Scene.Command.resolve(
-        FocusHomeButton({ button: 'Play' }),
-        Message.CompletedFocusHomeButton(),
-      ),
-      Scene.expect(lobbyScreen).toBeAbsent(),
-      foldLobbyInScene(),
-      Scene.expect(Scene.selector('.lobby')).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(
+        measureSurface,
+        openLobbyInScene,
+        emitPressedKey('Escape'),
+        focusesPlay,
+      )
+      const folding = yield* lobbySceneIn(s)
+      folding.expect(lobbyScreen).toBeAbsent()
+      s.pipe(foldLobby, expectLobbyDrawn(false))
+    }),
   )
 
   it.effect('a tap on the dim around the card folds it back', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.click(Scene.selector('.lobby-backdrop')),
-      Scene.Command.resolve(
-        FocusHomeButton({ button: 'Play' }),
-        Message.CompletedFocusHomeButton(),
-      ),
-      Scene.expect(lobbyScreen).toBeAbsent(),
-      foldLobbyInScene(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(measureSurface, openLobbyInScene)
+      const open = yield* lobbySceneIn(s)
+      open.click(byClass('lobby-backdrop')).emitted(Events.RequestedLeave())
+      s.pipe(lobbySays(Events.RequestedLeave()), focusesPlay)
+      const folding = yield* lobbySceneIn(s)
+      folding.expect(lobbyScreen).toBeAbsent()
+      s.pipe(foldLobby)
+    }),
   )
 
   it.effect(
     'seats you with your name, rank, and hero card, and offers three + BOT seats',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(handyman),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.inside(
-          Scene.role('list', { name: 'Players' }),
-          Scene.expect(
-            Scene.role('listitem', { name: 'Mo, you, rank 3' }),
-          ).toExist(),
-          Scene.expect(Scene.selector('.lobby-seat .coop-nameplate')).toExist(),
-          Scene.expectAll(Scene.all.selector('.lobby-seat-empty')).toHaveCount(
-            3,
-          ),
-          Scene.expectAll(Scene.all.selector('.lobby-add-bot')).toHaveCount(3),
-          Scene.expect(
-            Scene.role('button', { name: 'Add a bot teammate' }),
-          ).toHaveAttr('aria-keyshortcuts', 'B'),
-        ),
-        Scene.expect(
-          Scene.role('button', {
-            name: /^Hero: Handyman\. Plus: Traps 50% sturdier/,
-          }),
-        ).toHaveAttr('aria-keyshortcuts', 'Y'),
-        Scene.expectAll(Scene.all.selector('.lobby-special')).toHaveCount(
-          specialsOf('Handyman').length,
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(handyman)
+        s.pipe(measureSurface, openLobbyInScene)
+        const lobby = yield* lobbySceneIn(s)
+        lobby
+          .pipe(
+            lobbyAttr(
+              Locator.inside(players, addBot),
+              'aria-keyshortcuts',
+              'B',
+            ),
+            lobbyAttr(
+              button(/^Hero: Handyman\. Plus: Traps 50% sturdier/),
+              'aria-keyshortcuts',
+              'Y',
+            ),
+          )
+          .expect(
+            Locator.inside(
+              players,
+              HtmlLocator.role('listitem', { name: 'Mo, you, rank 3' }),
+            ),
+          )
+          .toExist()
+          .expect(
+            Locator.inside(
+              players,
+              Locator.inside(byClass('lobby-seat'), byClass('coop-nameplate')),
+            ),
+          )
+          .toExist()
+          .expect(Locator.inside(players, byClass('lobby-seat-empty')))
+          .toHaveCount(3)
+          .expect(Locator.inside(players, byClass('lobby-add-bot')))
+          .toHaveCount(3)
+          .expect(byClass('lobby-special'))
+          .toHaveCount(specialsOf('Handyman').length)
+      }),
   )
 
   it.effect(
     'a tap on + BOT seats a bot with its name, hero card, and an x, and the x sends it home',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(home),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.click(Scene.role('button', { name: 'Add a bot teammate' })),
-        resolveFocusLobbyInScene(),
-        Scene.inside(
-          Scene.role('list', { name: 'Players' }),
-          Scene.expect(
-            Scene.role('listitem', { name: /, bot teammate, YOU$/ }),
-          ).toExist(),
-          Scene.expectAll(Scene.all.selector('.lobby-add-bot')).toHaveCount(2),
-          Scene.expectAll(Scene.all.selector('.lobby-hero-bot')).toHaveCount(1),
-          Scene.expect(Scene.role('button', { name: /^Remove / })).toExist(),
-        ),
-        Scene.click(Scene.role('button', { name: /^Remove / })),
-        resolveFocusLobbyInScene(),
-        Scene.expectAll(Scene.all.selector('.lobby-add-bot')).toHaveCount(3),
-        Scene.expect(Scene.selector('.lobby-seat-bot')).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(home)
+        s.pipe(measureSurface, openLobbyInScene)
+        const empty = yield* lobbySceneIn(s)
+        empty.click(addBot).emitted(Events.RequestedAddBot())
+        s.pipe(lobbySays(Events.RequestedAddBot()), resolveFocusLobby())
+        const seated = yield* lobbySceneIn(s)
+        seated
+          .expect(
+            Locator.inside(
+              players,
+              HtmlLocator.role('listitem', { name: /, bot teammate, YOU$/ }),
+            ),
+          )
+          .toExist()
+          .expect(Locator.inside(players, byClass('lobby-add-bot')))
+          .toHaveCount(2)
+          .expect(Locator.inside(players, byClass('lobby-hero-bot')))
+          .toHaveCount(1)
+          .expect(Locator.inside(players, removeBot))
+          .toExist()
+          .click(removeBot)
+          .emitted(Events.RequestedDropBot({ index: 0 }))
+        s.pipe(lobbySays(Events.RequestedDropBot({ index: 0 })))
+        const sentHome = yield* lobbySceneIn(s)
+        sentHome
+          .expect(byClass('lobby-add-bot'))
+          .toHaveCount(3)
+          .expect(byClass('lobby-seat-bot'))
+          .toBeAbsent()
+        s.pipe(resolveFocusLobby())
+      }),
   )
 
   it.effect('picks the mode, the difficulty, and the one map', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.expect(Scene.role('button', { name: 'Campaign' })).toHaveAttr(
-        'aria-pressed',
-        'true',
-      ),
-      Scene.expect(Scene.role('button', { name: 'Endless' })).toHaveAttr(
-        'aria-pressed',
-        'false',
-      ),
-      Scene.expectAll(Scene.all.selector('.coop-skull-pick')).toHaveCount(4),
-      Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-      Scene.expect(
-        Scene.selector("[data-difficulty='Nightmare'] .coop-pick-icon"),
-      ).toExist(),
-      Scene.expectAll(
-        Scene.all.selector('.coop-skull-pick .lock-badge'),
-      ).toHaveCount(1),
-      Scene.expect(
-        Scene.selector("[data-difficulty='Nightmare'] .lock-badge"),
-      ).toExist(),
-      Scene.expect(Scene.role('img', { name: 'Map: The Manor' })).toExist(),
-      Scene.expectAll(Scene.all.selector('.lobby-map')).toHaveCount(1),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(measureSurface, openLobbyInScene)
+      const nightmare = withAttrs({ 'data-difficulty': 'Nightmare' })(
+        Locator.attr('data-difficulty'),
+      )
+      const lobby = yield* lobbySceneIn(s)
+      lobby
+        .pipe(
+          lobbyAttr(button('Campaign'), 'aria-pressed', 'true'),
+          lobbyAttr(button('Endless'), 'aria-pressed', 'false'),
+          lobbyAttr(lockedNightmare, 'aria-disabled', 'true'),
+        )
+        .expect(byClass('coop-skull-pick'))
+        .toHaveCount(4)
+        .expect(Locator.inside(nightmare, byClass('coop-pick-icon')))
+        .toExist()
+        .expect(
+          Locator.inside(byClass('coop-skull-pick'), byClass('lock-badge')),
+        )
+        .toHaveCount(1)
+        .expect(Locator.inside(nightmare, byClass('lock-badge')))
+        .toExist()
+        .expect(HtmlLocator.role('img', { name: 'Map: The Manor' }))
+        .toExist()
+        .expect(byClass('lobby-map'))
+        .toHaveCount(1)
+    }),
   )
 
   it.effect('offers the four run modifiers as tiles with a total bonus', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.inside(
-        Scene.role('group', { name: 'Modifiers' }),
-        Scene.expectAll(Scene.all.selector('.modifier-pick')).toHaveCount(4),
-        Scene.expect(Scene.role('status', { name: 'Bonus +0%' })).toExist(),
-      ),
-      Scene.click(Scene.role('button', { name: 'Glass, +350%, off' })),
-      Scene.expect(
-        Scene.role('button', { name: 'Glass, +350%, on' }),
-      ).toHaveAttr('aria-pressed', 'true'),
-      Scene.click(Scene.role('button', { name: 'Big Crowd, +25%, off' })),
-      Scene.expect(Scene.role('status', { name: 'Bonus +375%' })).toExist(),
-      Scene.click(Scene.role('button', { name: 'Glass, +350%, on' })),
-      Scene.expect(Scene.role('status', { name: 'Bonus +25%' })).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(measureSurface, openLobbyInScene)
+      const modifiers = HtmlLocator.role('group', { name: 'Modifiers' })
+      const none = yield* lobbySceneIn(s)
+      none
+        .expect(Locator.inside(modifiers, byClass('modifier-pick')))
+        .toHaveCount(4)
+        .expect(Locator.inside(modifiers, bonus('Bonus +0%')))
+        .toExist()
+        .click(button('Glass, +350%, off'))
+        .emitted(Events.ToggledModifier({ modifier: 'Glass' }))
+      s.pipe(lobbySays(Events.ToggledModifier({ modifier: 'Glass' })))
+      const glass = yield* lobbySceneIn(s)
+      glass
+        .pipe(lobbyAttr(button('Glass, +350%, on'), 'aria-pressed', 'true'))
+        .click(button('Big Crowd, +25%, off'))
+        .emitted(Events.ToggledModifier({ modifier: 'BigCrowd' }))
+      s.pipe(lobbySays(Events.ToggledModifier({ modifier: 'BigCrowd' })))
+      const both = yield* lobbySceneIn(s)
+      both
+        .expect(bonus('Bonus +375%'))
+        .toExist()
+        .click(button('Glass, +350%, on'))
+        .emitted(Events.ToggledModifier({ modifier: 'Glass' }))
+      s.pipe(lobbySays(Events.ToggledModifier({ modifier: 'Glass' })))
+      const crowd = yield* lobbySceneIn(s)
+      crowd.expect(bonus('Bonus +25%')).toExist()
+    }),
   )
 
   it.effect(
     'Friendly Fire is dim until a bot sits in the crew, then it works',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(home),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.expect(
-          Scene.selector('.modifier-pick[data-modifier="FriendlyFire"]'),
-        ).toHaveAttr('data-available', 'No'),
-        Scene.expect(
-          Scene.selector('.modifier-pick[data-modifier="FriendlyFire"]'),
-        ).toHaveAttr('aria-disabled', 'true'),
-        Scene.click(Scene.role('button', { name: 'Add a bot teammate' })),
-        resolveFocusLobbyInScene(),
-        Scene.expect(
-          Scene.selector('.modifier-pick[data-modifier="FriendlyFire"]'),
-        ).toHaveAttr('data-available', 'Yes'),
-        Scene.click(Scene.role('button', { name: 'Friendly Fire, +15%, off' })),
-        Scene.expect(Scene.role('status', { name: 'Bonus +15%' })).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(home)
+        s.pipe(measureSurface, openLobbyInScene)
+        const alone = yield* lobbySceneIn(s)
+        alone.pipe(
+          lobbyAttr(friendlyFire, 'data-available', 'No'),
+          lobbyAttr(friendlyFire, 'aria-disabled', 'true'),
+        )
+        s.pipe(lobbySays(Events.RequestedAddBot()), resolveFocusLobby())
+        const crewed = yield* lobbySceneIn(s)
+        crewed
+          .pipe(lobbyAttr(friendlyFire, 'data-available', 'Yes'))
+          .click(button('Friendly Fire, +15%, off'))
+          .emitted(Events.ToggledModifier({ modifier: 'FriendlyFire' }))
+        s.pipe(lobbySays(Events.ToggledModifier({ modifier: 'FriendlyFire' })))
+        const on = yield* lobbySceneIn(s)
+        on.expect(bonus('Bonus +15%')).toExist()
+      }),
   )
 
   it.effect('shows key caps to a keyboard and none to a finger', () =>
     Effect.gen(function* () {
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(home),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.inside(
-          lobbyScreen,
-          Scene.expectAll(Scene.all.selector('.home-key')).toHaveCount(6),
-        ),
+      const keys = yield* sceneOf(home)
+      keys.pipe(measureSurface, openLobbyInScene)
+      const keyLobby = yield* lobbySceneIn(keys)
+      keyLobby
+        .expect(Locator.inside(lobbyScreen, byClass('home-key')))
+        .toHaveCount(6)
+      const touch = yield* sceneOf(
+        UiStruct.evolve(home, { lastDevice: () => 'Touch' }),
       )
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(modifyFields(home, { lastDevice: () => 'Touch' })),
-        measureSurface,
-        ...openLobbyInScene(),
-        Scene.inside(
-          lobbyScreen,
-          Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
-        ),
-      )
+      touch.pipe(measureSurface, openLobbyInScene)
+      const touchLobby = yield* lobbySceneIn(touch)
+      touchLobby
+        .expect(Locator.inside(lobbyScreen, byClass('home-key')))
+        .toBeAbsent()
     }),
   )
 
   it.effect('START plays, and the mode tile and the skulls only pick', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.click(Scene.role('button', { name: 'Endless' })),
-      resolveFocusLobbyInScene(),
-      Scene.expect(lobbyScreen).toExist(),
-      Scene.click(lobbyStartButton),
-      Scene.expect(lobbyScreen).toBeAbsent(),
-      ...throughIntroInScene(),
-      Scene.expect(Scene.role('status')).toContainText(
-        'Get ready for endless wave 1.',
-      ),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(home)
+      s.pipe(measureSurface, openLobbyInScene)
+      const campaign = yield* lobbySceneIn(s)
+      campaign
+        .click(button('Endless'))
+        .emitted(Events.PickedMode({ mode: 'Endless' }))
+      s.pipe(
+        lobbySays(Events.PickedMode({ mode: 'Endless' })),
+        resolveFocusLobby(),
+        expectLobbyDrawn(true),
+      )
+      const endless = yield* lobbySceneIn(s)
+      endless.click(lobbyStartButton).emitted(Events.RequestedStart())
+      s.pipe(
+        lobbySays(Events.RequestedStart()),
+        expectLobbyDrawn(false),
+        throughIntroInScene,
+        ackHudSlots,
+      )
+        .expect(statusLine)
+        .toHaveText(/Get ready for endless wave 1\./)
+    }),
   )
 
   it.effect('the hero card opens the picker over the lobby', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(handyman),
-      measureSurface,
-      ...openLobbyInScene(),
-      Scene.click(Scene.role('button', { name: /^Hero:/ })),
-      ...showDialogInScene(),
-      Scene.expect(Scene.role('dialog', { name: 'Hero' })).toExist(),
-      Scene.expect(lobbyScreen).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(handyman)
+      s.pipe(measureSurface, openLobbyInScene)
+      const lobby = yield* lobbySceneIn(s)
+      lobby.click(button(/^Hero:/)).emitted(Events.RequestedHeroPicker())
+      s.pipe(lobbySays(Events.RequestedHeroPicker()))
+      const picking = yield* lobbySceneIn(s)
+      picking
+        .givenChild(Dialog, HERO_DIALOG_ID, dialogModel(true))
+        .expect(HtmlLocator.role('dialog', { name: 'Hero' }))
+        .toExist()
+        .expect(HtmlLocator.role('region', { name: 'Lobby', hidden: true }))
+        .toExist()
+    }),
   )
 })

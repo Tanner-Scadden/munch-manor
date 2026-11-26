@@ -1,11 +1,10 @@
 import { Array, Effect, Match, Option, String } from 'effect'
-import type { Canvas } from 'foldkit'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
+  BreakClock,
   DareHintCall,
   type Difficulty,
   KitchenCall,
@@ -20,6 +19,7 @@ import {
   viewBoxOf,
   worldToView,
 } from '../../../render/camera'
+import type * as Draw from '../../../render/draw'
 import { clearWindowOf } from '../../../render/hudLayout'
 import { screenOf } from '../../../render/screen'
 import { dareHintShapes, rattlesSpot } from '../../../screens/game/stallBubble'
@@ -32,8 +32,11 @@ import {
   pastTimedBreaks,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
+  modelAfter,
   settleRunCommands,
+  steps,
+  storyOf,
   tick,
   ticks,
 } from '../../../test/testing'
@@ -111,9 +114,11 @@ const hidden = (
 })
 
 const withList = (model: Model, things: ReadonlyArray<DareThing>): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     dare: dare =>
-      modifyFields(dare, { list: () => Array.map(things, ({ kind }) => kind) }),
+      UiStruct.evolve(dare, {
+        list: () => Array.map(things, ({ kind }) => kind),
+      }),
     dareThings: () => things,
   })
 
@@ -136,10 +141,11 @@ const breakOn = (
 ): Model =>
   withList(
     onDifficulty(
-      modifyFields(pastTimedBreaks(base), {
+      UiStruct.evolve(pastTimedBreaks(base), {
         firstBreakQuest: () => Tour.Over(),
         phase: () =>
           Phase.Preparation({
+            clock: BreakClock.Counting(),
             wave: 2,
             remainingMs: 600_000,
             durationMs: 600_000,
@@ -168,17 +174,17 @@ const FINALE_LINES = ["CHUNK'S GOT THE BIG KEY.", 'BEAT HIM. THEN RUN!']
 const isFinaleLine = (line: string): boolean =>
   Array.contains(FINALE_LINES, line)
 
-const arrowsOf = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+const arrowsOf = (shapes: ReadonlyArray<Draw.Shape>): number =>
   Array.filter(shapes, shape => shape._tag === 'Rect').length
 
-const drawn = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const drawn = (model: Model): ReadonlyArray<Draw.Shape> =>
   dareHintShapes(model, camera(model))
 
 // NOTE: a break already called in, so the next call waits on Easy's rest.
 const calledAlready = (model: Model, line: string, restMs: number): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     dareHint: hint =>
-      modifyFields(hint, {
+      UiStruct.evolve(hint, {
         calledWave: () => 2,
         restMs: () => restMs,
         lastLine: () => line,
@@ -188,36 +194,38 @@ const calledAlready = (model: Model, line: string, restMs: number): Model =>
 describe("Rattles' hints, by the difficulty dial", () => {
   it.effect('Double Dare: one hint a break, at a thing on the list', () =>
     Effect.gen(function* () {
-      const called = yield* Story.story(
-        APPLICATION,
-        Story.given(breakOn('Normal')),
-        tick(FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(isCalling(current)).toBe(true)
-          expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
-            Option.some('ButlersBell'),
-          )
-          expect(
-            Option.exists(lineOf(current), line =>
-              String.includes(BELL_ROOM_WORD)(line),
-            ),
-          ).toBe(true)
-          expect(
-            Option.flatMap(maybeHintCall(current), call => call.maybeTarget),
-          ).toEqual(Option.some(FAR_SPOT))
-        }),
+      const called = yield* modelAfter(
+        breakOn('Normal'),
+        steps(
+          tick(FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(isCalling(current)).toBe(true)
+            expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
+              Option.some('ButlersBell'),
+            )
+            expect(
+              Option.exists(lineOf(current), line =>
+                String.includes(BELL_ROOM_WORD)(line),
+              ),
+            ).toBe(true)
+            expect(
+              Option.flatMap(maybeHintCall(current), call => call.maybeTarget),
+            ).toEqual(Option.some(FAR_SPOT))
+          }),
+        ),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(called),
-        ...ticks(FRAMES_PAST_CALL, LONG_FRAME_MS),
-        settleRunCommands,
-        Story.model(later => {
-          expect(isCalling(later)).toBe(false)
-          expect(later.dareHint.calledWave).toBe(2)
-          expect(later.dareHint.restMs).toBeLessThanOrEqual(EASY_REST_MS)
-        }),
+      return yield* modelAfter(
+        called,
+        steps(
+          ticks(FRAMES_PAST_CALL, LONG_FRAME_MS),
+          settleRunCommands,
+          checkModel(later => {
+            expect(isCalling(later)).toBe(false)
+            expect(later.dareHint.calledWave).toBe(2)
+            expect(later.dareHint.restMs).toBeLessThanOrEqual(EASY_REST_MS)
+          }),
+        ),
       )
     }),
   )
@@ -234,129 +242,137 @@ describe("Rattles' hints, by the difficulty dial", () => {
         ({ line }) => Option.some(line),
       ),
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(calledAlready(breakOn('Easy'), seen, 200)),
-      ...ticks(2, FRAME_MS),
-      settleRunCommands,
-      Story.model(early => {
-        expect(isCalling(early)).toBe(false)
-      }),
-      ...ticks(12, FRAME_MS),
-      settleRunCommands,
-      Story.model(again => {
-        expect(isCalling(again)).toBe(true)
-        expect(lineOf(again)).not.toEqual(Option.some(seen))
-        expect(Option.flatMap(lineOf(again), iconOf)).toEqual(
-          Option.some('ButlersBell'),
-        )
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(calledAlready(breakOn('Easy'), seen, 200))
+      s.pipe(
+        ticks(2, FRAME_MS),
+        settleRunCommands,
+        checkModel(early => {
+          expect(isCalling(early)).toBe(false)
+        }),
+        ticks(12, FRAME_MS),
+        settleRunCommands,
+        checkModel(again => {
+          expect(isCalling(again)).toBe(true)
+          expect(lineOf(again)).not.toEqual(Option.some(seen))
+          expect(Option.flatMap(lineOf(again), iconOf)).toEqual(
+            Option.some('ButlersBell'),
+          )
+        }),
+      )
+    })
   })
 
   it.effect('Double Dare never hollers twice in a break', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(calledAlready(breakOn('Normal'), '', 0)),
-      ...ticks(20, FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(false)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(calledAlready(breakOn('Normal'), '', 0))
+      s.pipe(
+        ticks(20, FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(false)
+        }),
+      )
+    }),
   )
 
   it.effect('Triple Dare: nothing in a break', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Hard')),
-      ...ticks(20, FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(false)
-        expect(current.dareHint.calledWave).toBe(2)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakOn('Hard'))
+      s.pipe(
+        ticks(20, FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(false)
+          expect(current.dareHint.calledWave).toBe(2)
+        }),
+      )
+    }),
   )
 
   it.effect('names the thing once its room is open', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)])),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(
-          Option.exists(lineOf(current), line =>
-            String.includes('TRY THE')(line),
-          ),
-        ).toBe(false)
-        expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
-          Option.some('SilverSpoon'),
-        )
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)]),
+      )
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(
+            Option.exists(lineOf(current), line =>
+              String.includes('TRY THE')(line),
+            ),
+          ).toBe(false)
+          expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
+            Option.some('SilverSpoon'),
+          )
+        }),
+      )
+    }),
   )
 
   it.effect('Triple Dog Dare: a heckle, never a hint', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Nightmare')),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(true)
-        expect(Option.flatMap(lineOf(current), iconOf)).toEqual(Option.none())
-        expect(
-          Option.flatMap(maybeHintCall(current), call => call.maybeTarget),
-        ).toEqual(Option.none())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakOn('Nightmare'))
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(true)
+          expect(Option.flatMap(lineOf(current), iconOf)).toEqual(Option.none())
+          expect(
+            Option.flatMap(maybeHintCall(current), call => call.maybeTarget),
+          ).toEqual(Option.none())
+        }),
+      )
+    }),
   )
 
   it.effect('waits while the kitchen holler has the bubble', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(breakOn('Normal'), {
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        UiStruct.evolve(breakOn('Normal'), {
           kitchenCall: () =>
             KitchenCall.Calling({ wave: 2, remainingMs: 600_000 }),
         }),
-      ),
-      ...ticks(3, FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(false)
-      }),
-    ),
+      )
+      s.pipe(
+        ticks(3, FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(false)
+        }),
+      )
+    }),
   )
 })
 
 describe('the list done', () => {
   it.effect('the last find gets the big key and the door, mid-wave too', () => {
-    const fight = modifyFields(
+    const fight = UiStruct.evolve(
       breakOn('Hard', [hidden(0, 'SilverSpoon', focusOf(base).player)]),
       {
         phase: () =>
           Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
       },
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(fight),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(true)
-        expect(Option.exists(lineOf(current), isFinaleLine)).toBe(true)
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(fight)
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(true)
+          expect(Option.exists(lineOf(current), isFinaleLine)).toBe(true)
+        }),
+      )
+    })
   })
 
   it.effect('in a break after, even Triple Dog Dare hears of the big key', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+    Effect.gen(function* () {
+      const s = yield* storyOf(
         breakOn('Nightmare', [
           {
             id: 0,
@@ -364,57 +380,64 @@ describe('the list done', () => {
             state: DareThingState.Found({ slot: 0 }),
           },
         ]),
-      ),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(Option.exists(lineOf(current), isFinaleLine)).toBe(true)
-      }),
-    ),
+      )
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(Option.exists(lineOf(current), isFinaleLine)).toBe(true)
+        }),
+      )
+    }),
   )
 })
 
 describe('where the bubble points', () => {
   it.effect('a thing out of view: a gold arrow at the edge, not its own', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Normal')),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isInView(current, FAR_SPOT)).toBe(false)
-        expect(drawn(current).length).toBeGreaterThan(0)
-        expect(arrowsOf(drawn(current))).toBe(0)
-        expect(pointerShapesOf(current).length).toBe(1)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakOn('Normal'))
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isInView(current, FAR_SPOT)).toBe(false)
+          expect(drawn(current).length).toBeGreaterThan(0)
+          expect(arrowsOf(drawn(current))).toBe(0)
+          expect(pointerShapesOf(current).length).toBe(1)
+        }),
+      )
+    }),
   )
 
   it.effect('a thing in view: over it, with no arrow', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)])),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(true)
-        expect(drawn(current).length).toBeGreaterThan(0)
-        expect(arrowsOf(drawn(current))).toBe(0)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)]),
+      )
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(true)
+          expect(drawn(current).length).toBeGreaterThan(0)
+          expect(arrowsOf(drawn(current))).toBe(0)
+        }),
+      )
+    }),
   )
 
   it.effect('a line about no thing hangs from his spot', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Nightmare')),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isInView(current, rattlesSpot())).toBe(true)
-        expect(arrowsOf(drawn(current))).toBe(0)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakOn('Nightmare'))
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isInView(current, rattlesSpot())).toBe(true)
+          expect(arrowsOf(drawn(current))).toBe(0)
+        }),
+      )
+    }),
   )
 })
 
@@ -435,11 +458,11 @@ describe('a line never twice in a row', () => {
 
 // THE THINGS IN SIGHT AND THE ARROW
 
-const pointerShapesOf = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const pointerShapesOf = (model: Model): ReadonlyArray<Draw.Shape> =>
   darePointerShapes(model, screenOf(model), screenCameraOf(model))
 
 // NOTE: where a drawn arrow sits in the overlay's pixels.
-const originOf = (shape: Canvas.Shape): Vector =>
+const originOf = (shape: Draw.Shape): Vector =>
   Match.value(shape).pipe(
     Match.tag('Image', ({ x, y }) => ({ x, y })),
     Match.tag('Group', ({ translate }) => translate ?? { x: 0, y: 0 }),
@@ -471,9 +494,9 @@ const FAR_EXIT: ExitId = Option.getOrThrow(
 )
 
 const withFarRoomOpen = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     level: level =>
-      modifyFields(level, {
+      UiStruct.evolve(level, {
         openExits: (exits): ReadonlyArray<ExitId> =>
           Array.append(exits, FAR_EXIT),
       }),
@@ -498,81 +521,88 @@ describe('a thing in an open room', () => {
           ['Nightmare', 0],
         ] as const,
         ([difficulty, shown]) =>
-          Story.story(
-            APPLICATION,
-            Story.given(
+          Effect.gen(function* () {
+            const s = yield* storyOf(
               quietBreakOn(difficulty, [hidden(0, 'SilverSpoon', NEAR_SPOT)]),
-            ),
-            tick(FRAME_MS),
-            settleRunCommands,
-            Story.model(current => {
-              expect(dareDrawables(current).length).toBe(shown)
-            }),
-          ),
+            )
+            s.pipe(
+              tick(FRAME_MS),
+              settleRunCommands,
+              checkModel(current => {
+                expect(dareDrawables(current).length).toBe(shown)
+              }),
+            )
+          }),
       ),
   )
 
   it.effect('a thing behind boards stays out of sight on Dare', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(quietBreakOn('Easy', BELL_FAR)),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(dareDrawables(current).length).toBe(0)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(quietBreakOn('Easy', BELL_FAR))
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(dareDrawables(current).length).toBe(0)
+        }),
+      )
+    }),
   )
 })
 
 describe('the gold arrow', () => {
   it.effect('bobs right over a hinted thing in view', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)])),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(true)
-        const mark = Option.getOrThrow(maybeDarePointer(current))
-        expect(mark).toEqual(NEAR_SPOT)
-        const at = arrowAt(current)
-        const thing = worldToView(screenCameraOf(current), NEAR_SPOT)
-        expect(Math.abs(at.x + 4 - thing.x)).toBeLessThanOrEqual(1)
-        expect(at.y).toBeLessThan(thing.y)
-        expect(isInClearWindow(current, at)).toBe(true)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(
+        breakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)]),
+      )
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(true)
+          const mark = Option.getOrThrow(maybeDarePointer(current))
+          expect(mark).toEqual(NEAR_SPOT)
+          const at = arrowAt(current)
+          const thing = worldToView(screenCameraOf(current), NEAR_SPOT)
+          expect(Math.abs(at.x + 4 - thing.x)).toBeLessThanOrEqual(1)
+          expect(at.y).toBeLessThan(thing.y)
+          expect(isInClearWindow(current, at)).toBe(true)
+        }),
+      )
+    }),
   )
 
   it.effect('waits at the window edge toward a hinted thing out of view', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(breakOn('Normal')),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        const far = worldToView(screenCameraOf(current), FAR_SPOT)
-        expect(isInClearWindow(current, far)).toBe(false)
-        expect(isInClearWindow(current, arrowAt(current))).toBe(true)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(breakOn('Normal'))
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          const far = worldToView(screenCameraOf(current), FAR_SPOT)
+          expect(isInClearWindow(current, far)).toBe(false)
+          expect(isInClearWindow(current, arrowAt(current))).toBe(true)
+        }),
+      )
+    }),
   )
 
   it.effect('shows nothing on Double Dare once the hint is over', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+    Effect.gen(function* () {
+      const s = yield* storyOf(
         quietBreakOn('Normal', [hidden(0, 'SilverSpoon', NEAR_SPOT)]),
-      ),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(false)
-        expect(maybeDarePointer(current)).toEqual(Option.none())
-        expect(pointerShapesOf(current).length).toBe(0)
-      }),
-    ),
+      )
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(false)
+          expect(maybeDarePointer(current)).toEqual(Option.none())
+          expect(pointerShapesOf(current).length).toBe(0)
+        }),
+      )
+    }),
   )
 
   it.effect(
@@ -580,38 +610,39 @@ describe('the gold arrow', () => {
     () => {
       const farThing = hidden(1, 'ButlersBell', FAR_SPOT)
       const nearThing = hidden(0, 'SilverSpoon', NEAR_SPOT)
-      return Story.story(
-        APPLICATION,
-        Story.given(
+      return Effect.gen(function* () {
+        const s = yield* storyOf(
           withFarRoomOpen(quietBreakOn('Easy', [farThing, nearThing])),
-        ),
-        tick(FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(isCalling(current)).toBe(false)
-          expect(Option.map(maybeDarePointer(current), ({ x }) => x)).toEqual(
-            Option.some(NEAR_SPOT.x),
-          )
-        }),
-        Story.model(current => {
-          const found = modifyFields(current, {
-            dareThings: () => [
-              farThing,
-              { ...nearThing, state: DareThingState.Found({ slot: 0 }) },
-            ],
-          })
-          expect(Option.map(maybeDarePointer(found), ({ x }) => x)).toEqual(
-            Option.some(FAR_SPOT.x),
-          )
-          expect(isInClearWindow(found, arrowAt(found))).toBe(true)
-          expect(
-            isInClearWindow(
-              found,
-              worldToView(screenCameraOf(found), FAR_SPOT),
-            ),
-          ).toBe(false)
-        }),
-      )
+        )
+        s.pipe(
+          tick(FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(isCalling(current)).toBe(false)
+            expect(Option.map(maybeDarePointer(current), ({ x }) => x)).toEqual(
+              Option.some(NEAR_SPOT.x),
+            )
+          }),
+          checkModel(current => {
+            const found = UiStruct.evolve(current, {
+              dareThings: () => [
+                farThing,
+                { ...nearThing, state: DareThingState.Found({ slot: 0 }) },
+              ],
+            })
+            expect(Option.map(maybeDarePointer(found), ({ x }) => x)).toEqual(
+              Option.some(FAR_SPOT.x),
+            )
+            expect(isInClearWindow(found, arrowAt(found))).toBe(true)
+            expect(
+              isInClearWindow(
+                found,
+                worldToView(screenCameraOf(found), FAR_SPOT),
+              ),
+            ).toBe(false)
+          }),
+        )
+      })
     },
   )
 })
@@ -620,27 +651,26 @@ describe('a room opening', () => {
   it.effect('shows its thing on Dare, named, with the arrow over it', () => {
     const bell = hidden(0, 'ButlersBell', FAR_SPOT)
     return Effect.gen(function* () {
-      const seen = yield* Story.story(
-        APPLICATION,
-        Story.given(quietBreakOn('Easy', [bell])),
-        tick(FRAME_MS),
-        settleRunCommands,
+      const seen = yield* modelAfter(
+        quietBreakOn('Easy', [bell]),
+        steps(tick(FRAME_MS), settleRunCommands),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(withFarRoomOpen(seen)),
-        tick(FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(isCalling(current)).toBe(true)
-          expect(lineOf(current)).toEqual(Option.some('BELL! IN HERE!'))
-          expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
-            Option.some('ButlersBell'),
-          )
-          expect(Option.map(maybeDarePointer(current), ({ x }) => x)).toEqual(
-            Option.some(FAR_SPOT.x),
-          )
-        }),
+      return yield* modelAfter(
+        withFarRoomOpen(seen),
+        steps(
+          tick(FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(isCalling(current)).toBe(true)
+            expect(lineOf(current)).toEqual(Option.some('BELL! IN HERE!'))
+            expect(Option.flatMap(lineOf(current), iconOf)).toEqual(
+              Option.some('ButlersBell'),
+            )
+            expect(Option.map(maybeDarePointer(current), ({ x }) => x)).toEqual(
+              Option.some(FAR_SPOT.x),
+            )
+          }),
+        ),
       )
     })
   })
@@ -648,33 +678,33 @@ describe('a room opening', () => {
   it.effect('says nothing on Triple Dare', () => {
     const bell = hidden(0, 'ButlersBell', FAR_SPOT)
     return Effect.gen(function* () {
-      const seen = yield* Story.story(
-        APPLICATION,
-        Story.given(quietBreakOn('Hard', [bell])),
-        tick(FRAME_MS),
-        settleRunCommands,
+      const seen = yield* modelAfter(
+        quietBreakOn('Hard', [bell]),
+        steps(tick(FRAME_MS), settleRunCommands),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(withFarRoomOpen(seen)),
-        tick(FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(isCalling(current)).toBe(false)
-        }),
+      return yield* modelAfter(
+        withFarRoomOpen(seen),
+        steps(
+          tick(FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(isCalling(current)).toBe(false)
+          }),
+        ),
       )
     })
   })
 
   it.effect('a run joined with rooms open says nothing of them', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withFarRoomOpen(quietBreakOn('Easy', BELL_FAR))),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isCalling(current)).toBe(false)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(withFarRoomOpen(quietBreakOn('Easy', BELL_FAR)))
+      s.pipe(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isCalling(current)).toBe(false)
+        }),
+      )
+    }),
   )
 })

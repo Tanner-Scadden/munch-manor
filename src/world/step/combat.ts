@@ -1,5 +1,6 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   LAST_HEART_INVULNERABLE_MS,
@@ -79,7 +80,7 @@ export const strikeZombie: {
       0,
       zombie.hp - (isIced ? damage * SHATTER_SCALE : damage),
     )
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       hp: () => hp,
       knockback: () =>
         scaleVector(direction, knockbackSpeed * statsOf(zombie).knockbackScale),
@@ -198,7 +199,7 @@ export const woundPlayer: {
     const hp = Math.max(0, player.hp - damage)
     const durationMs =
       invulnerableMsAt(hp) * graceScale * woundGraceScaleOf(player)
-    return modifyFields(player, {
+    return UiStruct.evolve(player, {
       hp: () => hp,
       knockback: () => scaleVector(direction, PLAYER_KNOCKBACK_SPEED),
       invulnerability: () =>
@@ -340,7 +341,7 @@ const blastSeated = (
     blast,
     PLAYER_BLAST_TARGET,
   )(seatStateAt(model, slot).player)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     seats: atSeat(slot, { player: () => playerOutcome.target }),
     frameEvents: frameEvents => [...frameEvents, ...playerOutcome.events],
   })
@@ -422,7 +423,7 @@ const detonate = (model: World, bomberId: number): World => {
     Option.flatMap(maybeBlastOf),
   )
   return Option.match(maybeBlast, {
-    onNone: () => modifyFields(model, { zombies: () => rest }),
+    onNone: () => UiStruct.evolve(model, { zombies: () => rest }),
     onSome: blast => {
       const zombieOutcome = blastAll(blast, rest, ZOMBIE_BLAST_TARGET)
       const zombieEvents = creditKillEvents(
@@ -436,7 +437,7 @@ const detonate = (model: World, bomberId: number): World => {
         trapBlastTarget(levelOf(model)),
       )
       const scorched = blastPlayers(
-        modifyFields(model, {
+        UiStruct.evolve(model, {
           frameEvents: Array.append(
             GameEvent.Exploded({
               x: blast.x,
@@ -447,7 +448,7 @@ const detonate = (model: World, bomberId: number): World => {
         }),
         blast,
       )
-      return modifyFields(scorched, {
+      return UiStruct.evolve(scorched, {
         zombies: () => zombieOutcome.targets,
         traps: () => trapOutcome.targets,
         frameEvents: frameEvents => [

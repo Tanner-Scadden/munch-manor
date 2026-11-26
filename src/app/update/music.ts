@@ -1,43 +1,39 @@
-import { Effect, pipe } from 'effect'
+import { Effect } from 'effect'
 
-import { playMusic } from '../../audio/audio'
-import { SoundMessage } from '../../audio/message'
+import { Command, Component } from '@effect/ui'
+
+import { AudioEngine, playMusic } from '../../audio/audio'
 import { MusicLevel, MusicMood, MusicStinger } from '../../audio/music'
 import { isHouseHungry } from '../../world/dare/finale'
 import { Phase, Round } from '../../world/schema/worldSchema'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import { isEndless } from '../../world/waves/waves'
-import { ApplicationBlock } from '../definition'
 import type { Model } from '../model'
-import {
-  AudioEngineResource,
-  audioFailureReason,
-  isSoundAudible,
-} from './sound'
+import { isSoundAudible } from './sound'
 import type { UpdateStep } from './step'
 
 // COMMAND
 
-export const CueMusic = ApplicationBlock.makeCommand('CueMusic', {
+// NOTE: a tune cued changes nothing on screen, so a failure is logged and
+// nothing is reported.
+export class CueMusic extends Command.Service<CueMusic>()('app/CueMusic', {
   args: { mood: MusicMood, level: MusicLevel, stinger: MusicStinger },
-  messages: [SoundMessage.CompletedCueMusic, SoundMessage.FailedCueMusic],
-  handler: function* () {
-    return cue =>
-      pipe(
-        AudioEngineResource.get,
-        Effect.flatMap(engine => playMusic(engine, cue)),
-        Effect.as(SoundMessage.CompletedCueMusic({ mood: cue.mood })),
-        Effect.catch(error =>
-          Effect.succeed(
-            SoundMessage.FailedCueMusic({
-              mood: cue.mood,
-              reason: audioFailureReason(error),
-            }),
+  success: Component.Noop,
+}) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const { engine } = yield* AudioEngine
+      return cue =>
+        engine.pipe(
+          Effect.flatMap(built => playMusic(built, cue)),
+          Effect.catch(error =>
+            Effect.logWarning('cue music', cue.mood, error.reason),
           ),
-        ),
-      )
-  },
-})
+          Effect.as(Component.noop),
+        )
+    }),
+  )
+}
 
 type MusicPlan = Readonly<{ mood: MusicMood; level: MusicLevel }>
 
@@ -115,7 +111,8 @@ const isSamePlan = (first: MusicPlan, second: MusicPlan): boolean =>
 
 export const cueMusicFrom =
   (before: Model): UpdateStep =>
-  stepModel => {
+  $ => {
+    const stepModel = $.model
     const plan = musicPlan(stepModel)
     const stinger = isMusicAudible(stepModel)
       ? phaseStinger(before.phase, stepModel.phase)
@@ -126,11 +123,10 @@ export const cueMusicFrom =
       stinger === 'None' &&
       !hasGoneQuiet
     ) {
-      return { model: stepModel }
+      return $.model
     } else {
-      return {
-        model: stepModel,
-        commands: [CueMusic({ mood: plan.mood, level: plan.level, stinger })],
-      }
+      return $.run(
+        CueMusic.make({ mood: plan.mood, level: plan.level, stinger }),
+      )
     }
   }

@@ -1,6 +1,7 @@
 import { Array } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../../app/model'
 import { quietWave, withPlayerAt } from '../../../test/model.fixture'
@@ -27,7 +28,7 @@ import { LOOK } from '../lookSpecs'
 const LIGHTS_LEFT = 32 - 4
 
 const everyRoomOpen = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     level: state => openExitIn(openExitIn(state, EAST_EXIT), FAR_EXIT),
   })
 
@@ -81,7 +82,7 @@ describe('the house lights', () => {
   })
 
   test('lift the dark while the bulb is lit', () => {
-    const lit = modifyFields(inCellar(quietWave(4)), {
+    const lit = UiStruct.evolve(inCellar(quietWave(4)), {
       stations: stations => ({
         ...stations,
         Bulb: {

@@ -1,6 +1,5 @@
 // @vitest-environment happy-dom
-import { Option } from 'effect'
-import { Story } from 'foldkit'
+import { Effect, Option } from 'effect'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
@@ -11,7 +10,7 @@ import {
   maybeKeyDownMessage,
 } from '../../app/subscriptions'
 import { fighting } from '../../test/model.fixture'
-import { APPLICATION } from '../../test/testing'
+import { checkModel, send, storyOf } from '../../test/testing'
 import {
   KEY_WATCH_QUIET_MS,
   type KeyUp,
@@ -85,15 +84,16 @@ describe('game keys and the browser', () => {
         keyDown('MetaLeft', { metaKey: true }),
       )
       expect(command).toEqual(Option.some(Message.PressedMetaKey()))
-      return Story.story(
-        APPLICATION,
-        Story.given(fighting),
-        Story.message(Message.PressedKey({ code: 'KeyD' })),
-        Story.message(Message.PressedMetaKey()),
-        Story.model(({ input }) => {
-          expect(input.pressedKeys).toEqual([])
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(fighting)
+        s.pipe(
+          send(Message.PressedKey({ code: 'KeyD' })),
+          send(Message.PressedMetaKey()),
+          checkModel(({ input }) => {
+            expect(input.pressedKeys).toEqual([])
+          }),
+        )
+      })
     },
   )
 })
@@ -124,33 +124,35 @@ describe('a browser extension grabbing keys', () => {
   })
 
   it.effect('the toast shows on the second grabbed key, never the first', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fighting),
-      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
-      Story.model(current => {
-        expect(isKeyGrabToastShown(current)).toBe(false)
-      }),
-      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
-      Story.model(current => {
-        expect(isKeyGrabToastShown(current)).toBe(true)
-      }),
-      Story.message(Message.MissedKeyDown({ code: 'KeyT' })),
-      Story.model(current => {
-        expect(current.missedKeyDowns).toBe(2)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(fighting)
+      s.pipe(
+        send(Message.MissedKeyDown({ code: 'KeyD' })),
+        checkModel(current => {
+          expect(isKeyGrabToastShown(current)).toBe(false)
+        }),
+        send(Message.MissedKeyDown({ code: 'KeyD' })),
+        checkModel(current => {
+          expect(isKeyGrabToastShown(current)).toBe(true)
+        }),
+        send(Message.MissedKeyDown({ code: 'KeyT' })),
+        checkModel(current => {
+          expect(current.missedKeyDowns).toBe(2)
+        }),
+      )
+    }),
   )
 
   it.effect('the toast never pauses or stops the wave', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fighting),
-      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
-      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(fighting.phase)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(fighting)
+      s.pipe(
+        send(Message.MissedKeyDown({ code: 'KeyD' })),
+        send(Message.MissedKeyDown({ code: 'KeyD' })),
+        checkModel(({ phase }) => {
+          expect(phase).toEqual(fighting.phase)
+        }),
+      )
+    }),
   )
 })

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PREPARATION_MS } from '../../shared/constants'
 import { isObjectSecond } from '../../shared/dualArgs'
@@ -161,7 +162,7 @@ export const toughenSpawns: {
     const { healthScale, speedScale, runnerSpeedScale } =
       DIFFICULTIES[difficulty]
     return Array.map(spawns, spawn =>
-      modifyFields(spawn, {
+      UiStruct.evolve(spawn, {
         speedScale: scale =>
           scale * speedScale * (spawn.kind === 'Runner' ? runnerSpeedScale : 1),
         hpScale: scale => scale * healthScale,
@@ -192,7 +193,7 @@ export const paceSpawns: {
     return tempo === 1
       ? spawns
       : Array.map(spawns, spawn =>
-          modifyFields(spawn, { atMs: atMs => Math.round(atMs * tempo) }),
+          UiStruct.evolve(spawn, { atMs: atMs => Math.round(atMs * tempo) }),
         )
   },
 )
@@ -207,7 +208,7 @@ export const paceHolds: {
     return tempo === 1 && lullScale === 1
       ? holds
       : Array.map(holds, hold =>
-          modifyFields(hold, {
+          UiStruct.evolve(hold, {
             atMs: atMs => Math.round(atMs * tempo),
             relaxMs: relaxMs => Math.round(relaxMs * lullScale),
           }),
@@ -277,13 +278,13 @@ export const spreadSpawns = ({
   Array.flatMap(spawns, (spawn, index) => {
     const copies =
       Math.floor((index + 1) * countScale) - Math.floor(index * countScale)
-    const tougher = modifyFields(spawn, {
+    const tougher = UiStruct.evolve(spawn, {
       hpScale: scale => scale * healthScale,
     })
     return Array.makeBy(copies, copy =>
       copy === 0
         ? tougher
-        : modifyFields(tougher, {
+        : UiStruct.evolve(tougher, {
             atMs: atMs => atMs + copy * CROWD_GAP_MS,
             offset: offset =>
               offset + (copy % 2 === 1 ? 1 : -1) * CROWD_OFFSET_PX,
@@ -360,7 +361,7 @@ export const chooseDifficulty: {
     ? model
     : modifyWorldFields(model, {
         difficulty: setting =>
-          modifyFields(setting, { chosen: () => difficulty }),
+          UiStruct.evolve(setting, { chosen: () => difficulty }),
       }),
 )
 
@@ -368,7 +369,7 @@ export const settleNightmare = <M extends World>(model: M): M =>
   model.difficulty.nightmare === 'JustUnlocked'
     ? modifyWorldFields(model, {
         difficulty: setting =>
-          modifyFields(setting, { nightmare: () => 'Unlocked' }),
+          UiStruct.evolve(setting, { nightmare: () => 'Unlocked' }),
       })
     : model
 
@@ -404,5 +405,5 @@ export const isNightmareUnlockedBy: {
 export const unlockNightmare = <M extends World>(model: M): M =>
   modifyWorldFields(model, {
     difficulty: setting =>
-      modifyFields(setting, { nightmare: () => 'JustUnlocked' }),
+      UiStruct.evolve(setting, { nightmare: () => 'JustUnlocked' }),
   })

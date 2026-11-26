@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import type { Difficulty } from '../shared/playerData'
@@ -65,14 +66,14 @@ export const savedDifficultyOf = (model: Model): Difficulty =>
 // NOTE: the lobby's picks set to the dare's. Bots stay home: the dare was
 // one player's, and a crew changes the waves.
 const withPicks = (model: Model, picks: OwnPicks): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         mode: () => picks.mode,
         bots: () => picks.bots,
       }),
     difficulty: setting =>
-      modifyFields(setting, { chosen: () => picks.difficulty }),
+      UiStruct.evolve(setting, { chosen: () => picks.difficulty }),
     modifiers: () => picks.modifiers,
     dareMark: () => picks.dareMark,
     easyBreakSeconds: () => picks.easyBreakSeconds,
@@ -101,10 +102,8 @@ const ownPicksOf = (model: Model): OwnPicks => ({
 export const withDarePicks: {
   (dare: FriendsDare): (model: Model) => Model
   (model: Model, dare: FriendsDare): Model
-} = Function.dual(
-  2,
-  (model: Model, dare: FriendsDare): Model =>
-    withPicks(model, picksOfDare(dare)),
+} = Function.dual(2, (model: Model, dare: FriendsDare): Model =>
+  withPicks(model, picksOfDare(dare)),
 )
 
 // NOTE: BEAT MY RUN on the card: the lobby's picks become the dare's, the
@@ -114,7 +113,7 @@ export const takeDare = (model: Model): Model =>
     model.beatMyRun,
     {
       Offered: ({ dare }) =>
-        modifyFields(withDarePicks(model, dare), {
+        UiStruct.evolve(withDarePicks(model, dare), {
           beatMyRun: () => BeatMyRun.Taken({ dare, own: ownPicksOf(model) }),
         }),
     },
@@ -127,7 +126,7 @@ export const releaseDare = (model: Model): Model =>
     model.beatMyRun,
     {
       Taken: ({ dare, own }) =>
-        modifyFields(withPicks(model, own), {
+        UiStruct.evolve(withPicks(model, own), {
           beatMyRun: () => BeatMyRun.Offered({ dare }),
         }),
     },
@@ -136,16 +135,14 @@ export const releaseDare = (model: Model): Model =>
 
 // NOTE: the card's x: the dare goes, and the player's own picks come back.
 export const dismissDare = (model: Model): Model =>
-  modifyFields(releaseDare(model), { beatMyRun: () => noBeatMyRun })
+  UiStruct.evolve(releaseDare(model), { beatMyRun: () => noBeatMyRun })
 
 // NOTE: a link read at start offers its dare, over any offered before.
 export const offerDare: {
   (dare: FriendsDare): (model: Model) => Model
   (model: Model, dare: FriendsDare): Model
-} = Function.dual(
-  2,
-  (model: Model, dare: FriendsDare): Model =>
-    modifyFields(releaseDare(model), {
-      beatMyRun: () => BeatMyRun.Offered({ dare }),
-    }),
+} = Function.dual(2, (model: Model, dare: FriendsDare): Model =>
+  UiStruct.evolve(releaseDare(model), {
+    beatMyRun: () => BeatMyRun.Offered({ dare }),
+  }),
 )

@@ -1,5 +1,4 @@
 import { Array, Option, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import {
   type Palette,
@@ -16,6 +15,7 @@ import type { Box } from '../world/level/tileGrid'
 import type { World } from '../world/schema/world'
 import type { GunPerk } from '../world/schema/worldSchema'
 import type { Drawable } from './depth'
+import * as Draw from './draw'
 import { FIRE_WIDTH, type FireSpot, fireSpotOf } from './room/room'
 
 // The art of the kitchen's stove bench and gas valve (src/world/kitchen/stove.ts,
@@ -324,7 +324,7 @@ const tongueDrawables = (
       footY,
       rank: 'Glow',
       shapes: [
-        Canvas.Rect({
+        Draw.Rect({
           x,
           y: footY - size - 1 - Math.round(age * TONGUE_RISE_PX),
           width: size,
@@ -379,12 +379,12 @@ const roarDrawables = (model: World): ReadonlyArray<Drawable> =>
 // the floor in front of the hearth.
 export const kitchenGearGroundShapes = (
   model: World,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   isValveLit(model)
     ? Option.match(flameZoneOf(levelOf(model)), {
         onNone: () => [],
         onSome: zone => [
-          Canvas.Rect({
+          Draw.Rect({
             x: zone.left,
             y: zone.top,
             width: zone.right - zone.left,

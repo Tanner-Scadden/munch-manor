@@ -1,5 +1,6 @@
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { Boss, BossMove, Glob, type Model } from '../../../app/model'
 import { newPlayerReady } from '../../../test/model.fixture'
@@ -22,7 +23,7 @@ const fightWith = (
   gap: number,
   globs: ReadonlyArray<Glob> = [],
 ): Model =>
-  modifyFields(newPlayerReady, {
+  UiStruct.evolve(newPlayerReady, {
     boss: () => {
       const fight = freshFight(BOSS_ID, move, 1)
       return Boss.isAnyOf(['Fighting'])(fight)

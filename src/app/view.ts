@@ -1,29 +1,18 @@
 import { Array, Option, Result, pipe } from 'effect'
-import type { Document, Html } from 'foldkit/html'
 
-import { isRunEndComing } from '../domain/onlineRun'
-import { joinName } from '../domain/playerName'
-import { hasUnseenCalling, hasUnseenLook } from '../domain/unlocks'
 import {
   isPocketCardOpened,
   isPocketCardReading,
 } from '../features/dare/pocketCard'
 import { awardsOf, crewOf } from '../features/end/crewAwards'
-import { isRunCardHeld } from '../features/end/endBeat'
-import { startingCallingOf } from '../features/heroes/callingPick'
-import type { ViewInputs as LobbyViewInputs } from '../features/lobby/block'
 import { pauseHelpView } from '../features/menus/pauseHelp'
 import { caseCardView } from '../features/onboarding/caseCardView'
 import { isOpenBreak } from '../features/onboarding/onboarding'
 import { questTrackerView } from '../features/onboarding/questView'
-import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
-import { tabOf } from '../features/profile/profile'
 import { purchaseAnnouncementView } from '../features/shop/purchaseHud'
 import { escapeSupportView } from '../features/support/supportView'
-import type { PointerDevice } from '../input/inputSchema'
 import { keyGrabToastView } from '../input/keyGrab'
 import {
-  isPortrait,
   landscapeFrameOffset,
   screenOf,
   stagePlacement,
@@ -42,12 +31,9 @@ import {
   preparationControlsView,
   stickView,
 } from '../screens/game/touchControls'
-import { bestsFor, feedbackSentence, lobbyPicksOf } from '../screens/home/home'
+import { bestsFor, feedbackSentence } from '../screens/home/home'
 import { homeMenuView, newEntryNoticeView } from '../screens/home/homeView'
 import { GAME_TITLE } from '../shared/constants'
-import { closeButtonView } from '../ui/cornerButtons'
-import { isKeyboard } from '../ui/menuParts'
-import { rankPlateView } from '../ui/rankBadgeView'
 import { dareCardOf, dareItemsFoundOf } from '../world/dare/dare'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '../world/gear/powerups'
 import { TRAPS, TRAP_KIND_ORDER } from '../world/gear/traps'
@@ -61,7 +47,6 @@ import {
   meleeNameOf,
   tierName,
 } from '../world/gear/weapons'
-import { bonesBalanceOf, rankOf, totalPointsOf } from '../world/heroes/rank'
 import { heldKeys } from '../world/keys/keys'
 import { CREW_AWARD_NAMES, DARE_LINES, DARE_NAMES } from '../world/names'
 import { focusOf } from '../world/party/party'
@@ -76,26 +61,26 @@ import {
 } from '../world/run/stats'
 import { isRoundActive, roundWave } from '../world/waves/waves'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
+import { coopView } from './coopView'
+import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
 import {
-  CoopBinding,
-  LobbyBinding,
-  ProfileBinding,
-  ProfileDialogBinding,
-} from './bindings'
-import {
-  type ApplicationAttribute,
-  ApplicationComposition,
-  type ApplicationViewBuilder,
-} from './composition'
-import { dialogShell } from './dialogs'
-import { manorHandView, menuPanelView } from './dialogs'
-import { homeScreenGuideView } from './dialogs'
-import { updateGreetingView } from './dialogs'
+  homeScreenGuideView,
+  manorHandView,
+  menuPanelView,
+  updateGreetingView,
+} from './dialogs'
 import { gameStageView } from './layers'
-import { isLobbyDrawn, isLobbyUp, isProfileOpen } from './menuState'
-import { Message, type PressedPointer } from './message'
+import { lobbyView } from './lobbyView'
+import { isLobbyUp, isProfileOpen } from './menuState'
+import { Message } from './message'
 import { DebutCard, type Model, Phase, RunMode, type RunStats } from './model'
-import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
+import {
+  ListenForTouchTaps,
+  PressGameSurface,
+  ShareFromClick,
+  WatchGameSurface,
+} from './mount'
+import { profileDialogView } from './profileView'
 import { isCoopOpen } from './update/coop'
 
 // STATUS
@@ -275,273 +260,116 @@ const boostLabel = (model: Model): string => {
     : ` Power-ups running: ${Array.join(running, ', ')}.`
 }
 
-const loadoutView = (model: Model, h: ApplicationViewBuilder): Html =>
+const loadoutView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   isRoundActive(model.phase)
-    ? h.p(
-        [h.Class('sr-only')],
-        [
+    ? h.p
+        .class('sr-only')
+        .children(
           `Keys on the ring: ${heldKeys(model)}. ${gunLabel(model)}${trapLabel(model)}${boostLabel(model)}`,
-        ],
-      )
-    : h.empty
-
-// POINTER
-
-const PRIMARY_MOUSE_BUTTON = 0
-
-const toPointerDevice = (pointerType: string): PointerDevice =>
-  pointerType === 'mouse' ? 'Mouse' : 'Touch'
-
-const toPressedPointer = (
-  pointerType: string,
-  button: number,
-  _screenX: number,
-  _screenY: number,
-  _timeStamp: number,
-  clientX: number,
-  clientY: number,
-  pointerId: number,
-): Option.Option<PressedPointer> => {
-  const device = toPointerDevice(pointerType)
-  if (device === 'Mouse' && button !== PRIMARY_MOUSE_BUTTON) {
-    return Option.none()
-  } else {
-    return Option.some(
-      Message.PressedPointer({ pointerId, device, clientX, clientY }),
-    )
-  }
-}
-
-// THE PROFILE
-
-// NOTE: the root's fields the Profile's tabs show, and no more.
-const profileInputs = (model: Model): ProfileViewInputs => ({
-  look: {
-    appearance: model.appearance,
-    calling: startingCallingOf(model),
-    screenMs: model.screenMs,
-    bought: model.boughtCosmetics,
-    rank: model.rank,
-    fresh: model.freshUnlocks,
-  },
-  isLookNew: hasUnseenLook(
-    rankOf(totalPointsOf(model.rank)),
-    model.seenUnlocks,
-  ),
-  mastery: {
-    mastery: model.mastery,
-    picked: model.calling,
-    look: model.appearance,
-  },
-  isPortrait: isPortrait(model),
-  device: model.lastDevice,
-  sync: {
-    state: model.saving.syncState,
-    scope: model.saving.playerScopeStatus,
-    lastRun: model.saving.lastRunSync,
-  },
-  settings: {
-    sound: model.settings.soundSetting,
-    music: model.settings.musicSetting,
-    shake: model.settings.shakeSetting,
-    cursor: model.settings.cursorSetting,
-    fullscreen: model.settings.fullscreen,
-    rotation: model.settings.rotationSetting,
-    rumble: model.settings.rumbleSetting,
-    hasPad:
-      model.lastDevice === 'Gamepad' || Option.isSome(model.input.maybeGamepad),
-    recordRuns: model.settings.recordRuns,
-    recordUnlock: model.recordUnlock,
-    shareStats: model.settings.shareStats,
-    screenFit: model.settings.screenFit,
-    orientationLock: model.orientationLock,
-  },
-})
-
-// NOTE: the Profile's Dialog is the root's (menuState reads it); the Profile
-// Block draws the tabs and pages inside it, and the root the rank plate.
-const profileDialogView = (model: Model, h: ApplicationViewBuilder): Html =>
-  dialogShell(
-    {
-      dialog: model.profileDialog,
-      dialogClass: 'profile-dialog',
-      backdropClass: 'profile-backdrop',
-      panelClass: 'profile',
-      dialogAttributes: [
-        h.DataAttribute('tab', tabOf(model.profile)),
-        h.DataAttribute('device', model.lastDevice),
-      ],
-      panelView: ({ title, description, closeButton }) => [
-        h.h2([...title, h.Class('sr-only')], ['Profile']),
-        h.p(
-          [...description, h.Class('sr-only')],
-          ['Your look, your name, your devices, and the settings.'],
-        ),
-        closeButtonView(
-          {
-            attributes: closeButton,
-            className: 'panel-close',
-            label: 'Close',
-          },
-          h,
-        ),
-        h.block(
-          ProfileBinding.embedView({
-            slotId: 'profile-panel',
-            model: model.profile,
-            viewInputs: profileInputs(model),
-          }),
-        ),
-        rankPlateView(model, h),
-      ],
-      binding: ProfileDialogBinding,
-    },
-    h,
-  )
-
-// THE LOBBY
-
-// NOTE: the root's fields the lobby shows: the player's seat, and what the
-// hero picker's cards read.
-const lobbyInputs = (model: Model): LobbyViewInputs => {
-  const rank = rankOf(totalPointsOf(model.rank))
-  return {
-    picks: lobbyPicksOf(model),
-    name: joinName(model),
-    look: model.appearance,
-    rank,
-    calling: startingCallingOf(model),
-    isHeroNew: hasUnseenCalling(rank, model.seenUnlocks),
-    bought: model.boughtCosmetics,
-    bones: bonesBalanceOf(model.rank),
-    fresh: model.freshUnlocks,
-    isKeyboard: isKeyboard(model),
-  }
-}
-
-// NOTE: the lobby is drawn only while it is up or folding back into PLAY,
-// so a closed one costs the frame nothing.
-const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
-  isLobbyDrawn(model)
-    ? h.block(
-        LobbyBinding.embedView({
-          slotId: 'lobby',
-          model: model.lobby,
-          viewInputs: lobbyInputs(model),
-        }),
-      )
-    : h.empty
+        )
+    : null
 
 // NOTE: the home menu stays in sight, dimmed, around the dare card, since
 // the card unfolds out of its PLAY (src/features/lobby/lobby.css), but it is
 // inert while the card is up: no tap, Tab, or screen reader reaches it. The
 // wrapper takes no room and is always there, so the menu is never drawn
 // afresh (its deal-in art would play again) when the card opens or closes.
-const homeUnderLobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.div(
-    [
-      h.Class('home-under-lobby'),
-      ...(isLobbyUp(model) ? [h.Inert(true), h.AriaHidden(true)] : []),
-    ],
-    [homeMenuView(model, h)],
-  )
+const homeUnderLobbyView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml => {
+  const isHidden = isLobbyUp(model)
+  return h.div
+    .class('home-under-lobby')
+    .attr('inert', isHidden ? '' : undefined)
+    .attr('aria-hidden', isHidden ? 'true' : undefined)
+    .children(homeMenuView(model, h))
+}
 
 // VIEW
 
-// NOTE: SHARE's Mount, made only when the end card draws SHARE.
-const shareMountOf = (h: ApplicationViewBuilder): ApplicationAttribute =>
-  h.OnMount(ShareFromClick())
-
-// NOTE: Foldkit knows a view by the very function makeView returns (its view
-// inputs are registered against it), so a dual wrapper would be a view it
-// does not know; the Block and the Scene tests need this one.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const view = ApplicationComposition.makeView((model, h): Document => {
+const rootStyle = (model: Model): Record<string, string> => {
   const screen = screenOf(model)
   return {
-    title: GAME_TITLE,
-    body: h.main(
-      [
-        h.Class('game-root'),
-        h.OnMount(ListenForTouchTaps()),
-        h.DataAttribute('layout', screen.layout),
-        h.DataAttribute('cursor', model.settings.cursorSetting),
-        h.DataAttribute('device', model.lastDevice),
-        h.Style({
-          '--screen-w': `${screen.width}`,
-          '--screen-h': `${screen.height}`,
-          '--world-top': `${screen.world.y}`,
-          '--frame-top': `${landscapeFrameOffset(screen).y}`,
-          ...Option.match(model.maybeSurface, {
-            onNone: () => ({}),
-            onSome: surface => ({
-              '--pixel': `${stagePlacement(surface, screen).scale}px`,
-              // NOTE: one device pixel, for pixel art in HTML drawn at whole
-              // device pixels (src/art/artSize.ts).
-              ...(surface.pixelRatio !== undefined && surface.pixelRatio > 0
-                ? { '--dpx': `${1 / surface.pixelRatio}px` }
-                : {}),
-            }),
-          }),
-        }),
-      ],
-      [
-        h.h1([h.Class('sr-only')], [GAME_TITLE]),
-        h.p([h.Class('sr-only'), h.Role('status')], [statusText(model)]),
-        purchaseAnnouncementView(model, h),
-        h.div(
-          [
-            h.Class('game-surface'),
-            h.Role('application'),
-            h.AriaLabel('Game surface'),
-            h.Tabindex(-1),
-            h.OnMount(MeasureGameSurface()),
-            h.OnPointerDown(toPressedPointer),
-            h.OnContextMenu(Message.SuppressedContextMenu()),
-          ],
-          [
-            gameStageView(model, h),
-            ghostSticksView(model, h),
-            stickView(model.input.moveStick, 'move', h),
-            stickView(model.input.aimStick, 'aim', h),
-          ],
-        ),
-        loadoutView(model, h),
-        pauseHelpView(model, h.OnPointerDown(toPressedPointer), h),
-        isCoopOpen(model) ? h.empty : homeUnderLobbyView(model, h),
-        preparationControlsView(model, h),
-        gunClusterView(model, h),
-        dareListButtonView(model, h),
-        debutCardView(model, h),
-        caseCardView(model, h),
-        questTrackerView(model, h),
-        modeChoiceView(model, shareMountOf, h),
-        escapeSupportView(model, h),
-        newEntryNoticeView(model, h),
-        isProfileOpen(model) ? h.empty : cornerButtonsView(model, h),
-        keyGrabToastView(model, h),
-        homeScreenGuideView(model, h),
-        updateGreetingView(model, h),
-        manorHandView(model, h),
-        menuPanelView(model, h),
-        profileDialogView(model, h),
-        lobbyView(model, h),
-        h.block(
-          CoopBinding.embedView({
-            slotId: 'coop',
-            model: model.coop,
-            viewInputs: {
-              look: model.appearance,
-              isKeyboard: model.lastDevice === 'KeyboardMouse',
-              isRunCardUp: isRunCardHeld(model),
-              isRunEndComing: isRunEndComing(model),
-              bought: model.boughtCosmetics,
-              bones: bonesBalanceOf(model.rank),
-              dareMarks: model.dareMarks,
-            },
-          }),
-        ),
-      ],
-    ),
+    '--screen-w': `${screen.width}`,
+    '--screen-h': `${screen.height}`,
+    '--world-top': `${screen.world.y}`,
+    '--frame-top': `${landscapeFrameOffset(screen).y}`,
+    ...Option.match(model.maybeSurface, {
+      onNone: () => ({}),
+      onSome: surface => ({
+        '--pixel': `${stagePlacement(surface, screen).scale}px`,
+        // NOTE: one device pixel, for pixel art in HTML drawn at whole
+        // device pixels (src/art/artSize.ts).
+        ...(surface.pixelRatio !== undefined && surface.pixelRatio > 0
+          ? { '--dpx': `${1 / surface.pixelRatio}px` }
+          : {}),
+      }),
+    }),
   }
-})
+}
+
+// NOTE: the game surface: the world, its overlay, and the sticks. Its Mount
+// measures it and sends each finger's press by its own pointer id.
+const gameSurfaceView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  h.div
+    .class('game-surface')
+    .attr('role', 'application')
+    .attr('aria-label', 'Game surface')
+    .attr('tabindex', '-1')
+    .onMount(WatchGameSurface())
+    .on('contextmenu', Message.SuppressedContextMenu())
+    .children(
+      gameStageView(model, h),
+      ghostSticksView(model, h),
+      stickView(model.input.moveStick, 'move', h),
+      stickView(model.input.aimStick, 'aim', h),
+    )
+
+// NOTE: the root's view (Effect UI's `view: (h, model)`), a signature the
+// component fixes, so it has no data-last form.
+// @effect-diagnostics-next-line missingPipeableSignature:off
+export const view = (
+  h: ApplicationViewBuilder,
+  model: Model,
+): ApplicationHtml =>
+  h.main
+    .class('game-root')
+    .onMount(ListenForTouchTaps())
+    .attr('data-layout', screenOf(model).layout)
+    .attr('data-cursor', model.settings.cursorSetting)
+    .attr('data-device', model.lastDevice)
+    .style(rootStyle(model))
+    .children(
+      h.h1.class('sr-only').children(GAME_TITLE),
+      h.p.class('sr-only').attr('role', 'status').children(statusText(model)),
+      purchaseAnnouncementView(model, h),
+      gameSurfaceView(model, h),
+      loadoutView(model, h),
+      pauseHelpView(model, PressGameSurface(), h),
+      isCoopOpen(model) ? null : homeUnderLobbyView(model, h),
+      preparationControlsView(model, h),
+      gunClusterView(model, h),
+      dareListButtonView(model, h),
+      debutCardView(model, h),
+      caseCardView(model, h),
+      questTrackerView(model, h),
+      modeChoiceView(model, ShareFromClick(), h),
+      escapeSupportView(model, h),
+      newEntryNoticeView(model, h),
+      isProfileOpen(model) ? null : cornerButtonsView(model, h),
+      keyGrabToastView(model, h),
+      homeScreenGuideView(model, h),
+      updateGreetingView(model, h),
+      manorHandView(model, h),
+      menuPanelView(model, h),
+      profileDialogView(model, h),
+      lobbyView(model, h),
+      coopView(model, h),
+    )

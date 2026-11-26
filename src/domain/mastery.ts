@@ -1,5 +1,6 @@
 import { Array, Function, Option, Order, Record } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import {
@@ -146,8 +147,8 @@ export const fitPropStyle = (model: Model): Model => {
   const style = model.appearance.propStyle
   return style === 'Stock' || isStyleOpen(model.mastery, model.calling, style)
     ? model
-    : modifyFields(model, {
-        appearance: look => modifyFields(look, { propStyle: () => 'Stock' }),
+    : UiStruct.evolve(model, {
+        appearance: look => UiStruct.evolve(look, { propStyle: () => 'Stock' }),
       })
 }
 

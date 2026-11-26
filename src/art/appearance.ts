@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { isOwned } from '../domain/closet'
 import { isObjectFirst } from '../shared/dualArgs'
@@ -957,7 +958,7 @@ export const randomAppearance: {
     return [
       afterGlasses,
       appearanceKey(rolled) === appearanceKey(current)
-        ? modifyFields(rolled, {
+        ? UiStruct.evolve(rolled, {
             shirtColor: () => nextOption(shirtColors, shirtColor),
           })
         : rolled,

@@ -1,16 +1,19 @@
-import { Array, Option } from 'effect'
-import { Scene } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
-import { FridgeDoor, type Model, Phase } from '../../../app/model'
+import { BreakClock, FridgeDoor, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { prizeSprite } from '../../../art/prizeArt'
 import { spriteImage } from '../../../art/sprite'
+import { PressHoldButton } from '../../../features/shop/purchaseHud'
 import { purchaseOverlayShapes } from '../../../features/shop/purchaseView'
 import type { InputDevice } from '../../../input/inputSchema'
+import { RunButtonMessage } from '../../../input/message'
 import { cameraOf, screenCameraOf } from '../../../render/camera'
 import { screenOf } from '../../../render/screen'
 import { hudKeepoutsOf } from '../../../screens/game/pocket'
@@ -21,12 +24,21 @@ import {
   withKeys,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  ackHudSlots,
+  byClass,
+  emitFrame,
+  expectAttr,
+  expectClass,
+  fromSubscription,
+  measureHud,
+} from '../../../test/sceneTesting'
+import {
   HOLD_TICKS,
   PHONE_LANDSCAPE,
-  SCENE_SUBSCRIPTIONS,
   SURFACE,
-  measureSurface,
+  type SceneStep,
+  sceneOf,
+  steps,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { drawnBoxesOf, isOverBox } from '../../../test/viewReading'
@@ -38,10 +50,11 @@ import { modifyFocus } from '../../party/party'
 
 const atBoards = (device: InputDevice, keys: number): Model =>
   modifyFocus(
-    modifyFields(withKeys(pastTimedBreaks(asVeteran(initialModel)), keys), {
+    UiStruct.evolve(withKeys(pastTimedBreaks(asVeteran(initialModel)), keys), {
       lastDevice: () => device,
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave: 3,
           remainingMs: 15_000,
           durationMs: 20_000,
@@ -49,63 +62,76 @@ const atBoards = (device: InputDevice, keys: number): Model =>
         }),
     }),
     {
-      player: player => modifyFields(player, { x: () => 70, y: () => 26 }),
+      player: player => UiStruct.evolve(player, { x: () => 70, y: () => 26 }),
     },
   )
 
-const holdButton = Scene.role('button', {
+const holdButton = HtmlLocator.role('button', {
   name: `Hold to open the kitchen for ${EXIT_RULES.kitchenKeys} keys`,
 })
 
-const frames = (count: number) =>
-  Array.makeBy(count, () =>
-    Scene.Subscription.emit(
-      SCENE_SUBSCRIPTIONS.frame,
-      Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-    ),
+// NOTE: fixed-step frames through the root's frame Subscription, each
+// acknowledging the HUD's gun slots, which mount anew when a prize taken
+// fills one.
+const frames = (count: number): SceneStep =>
+  steps(
+    ...Array.makeBy(count, () => steps(emitFrame(FIXED_STEP_MS), ackHudSlots)),
   )
+
+// NOTE: a finger landing on the hold button, as its Mount reports the
+// pointerdown, and lifting, through the root's pointer releases.
+const fingerDown: SceneStep = s =>
+  s.mounted(
+    PressHoldButton,
+    RunButtonMessage.PressedHoldButton({ pointerId: 4 }),
+  )
+
+const fingerUp: SceneStep = fromSubscription(
+  'PointerReleases',
+  Message.ReleasedPointer({ pointerId: 4 }),
+)
 
 describe('holding to buy on touch', () => {
   it.effect(
     'at the boards a hold button sits by the guns, and holding it buys the kitchen',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atBoards('Touch', EXIT_RULES.kitchenKeys + 2)),
-        measureSurface,
-        Scene.expect(holdButton).toExist(),
-        Scene.expect(holdButton).toHaveAttr('data-short', 'false'),
-        Scene.pointerDown(holdButton, { pointerType: 'touch', pointerId: 4 }),
-        ...frames(HOLD_TICKS - 8),
-        Scene.expect(holdButton).toExist(),
-        ...frames(8),
-        Scene.expect(holdButton).toBeAbsent(),
-        Scene.Subscription.emit(
-          SCENE_SUBSCRIPTIONS.pointerReleases,
-          Message.ReleasedPointer({ pointerId: 4 }),
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(atBoards('Touch', EXIT_RULES.kitchenKeys + 2))
+        s.pipe(measureHud)
+          .expect(holdButton)
+          .toExist()
+          .pipe(
+            expectAttr(holdButton, 'data-short', 'false'),
+            fingerDown,
+            frames(HOLD_TICKS - 8),
+          )
+          .expect(holdButton)
+          .toExist()
+          .pipe(frames(8))
+          .expect(holdButton)
+          .toBeAbsent()
+          .pipe(fingerUp)
+      }),
   )
 
   it.effect(
     'short of the price the button says so, and a hold only shakes it',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atBoards('Touch', EXIT_RULES.kitchenKeys - 1)),
-        measureSurface,
-        Scene.expect(holdButton).toHaveAttr('data-short', 'true'),
-        Scene.expect(holdButton).toHaveAttr('aria-disabled', 'true'),
-        Scene.pointerDown(holdButton, { pointerType: 'touch', pointerId: 4 }),
-        ...frames(2),
-        Scene.expect(Scene.selector('.hold-buy-button.is-refused')).toExist(),
-        ...frames(HOLD_TICKS),
-        Scene.expect(holdButton).toExist(),
-        Scene.Subscription.emit(
-          SCENE_SUBSCRIPTIONS.pointerReleases,
-          Message.ReleasedPointer({ pointerId: 4 }),
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(atBoards('Touch', EXIT_RULES.kitchenKeys - 1))
+        s.pipe(
+          measureHud,
+          expectAttr(holdButton, 'data-short', 'true'),
+          expectAttr(holdButton, 'aria-disabled', 'true'),
+          fingerDown,
+          frames(2),
+          expectClass(holdButton, 'is-refused'),
+          frames(HOLD_TICKS),
+        )
+          .expect(holdButton)
+          .toExist()
+          .pipe(fingerUp)
+      }),
   )
 })
 
@@ -113,17 +139,20 @@ describe('holding to buy on a keyboard', () => {
   it.effect(
     'no button shows, and a screen reader hears the price and the key',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atBoards('KeyboardMouse', EXIT_RULES.kitchenKeys + 2)),
-        measureSurface,
-        Scene.expect(holdButton).toBeAbsent(),
-        Scene.expect(
-          Scene.text(
-            `the kitchen, ${EXIT_RULES.kitchenKeys} keys. Stand still or hold Enter to buy.`,
-          ),
-        ).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(
+          atBoards('KeyboardMouse', EXIT_RULES.kitchenKeys + 2),
+        )
+        s.pipe(measureHud)
+          .expect(holdButton)
+          .toBeAbsent()
+          .expect(
+            Locator.text(
+              `the kitchen, ${EXIT_RULES.kitchenKeys} keys. Stand still or hold Enter to buy.`,
+            ),
+          )
+          .toExist()
+      }),
   )
 })
 
@@ -132,10 +161,10 @@ describe('taking a fridge prize on touch', () => {
     const kitchen = openExitIn(asVeteran(initialModel).level, KITCHEN_EXIT)
     const box = Option.getOrThrow(fridgeBoxOf(levelOf({ level: kitchen })))
     return modifyFocus(
-      modifyFields(atBoards('Touch', 0), {
+      UiStruct.evolve(atBoards('Touch', 0), {
         level: () => kitchen,
         fridge: fridge =>
-          modifyFields(fridge, {
+          UiStruct.evolve(fridge, {
             door: () =>
               FridgeDoor.Offering({
                 prize: 'Freeze',
@@ -147,7 +176,7 @@ describe('taking a fridge prize on touch', () => {
       }),
       {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             x: () => (box.left + box.right) / 2,
             y: () => box.bottom + 8,
           }),
@@ -155,32 +184,34 @@ describe('taking a fridge prize on touch', () => {
     )
   }
 
-  const takeButton = Scene.role('button', {
+  const takeButton = HtmlLocator.role('button', {
     name: 'Hold to take the prize from the fridge',
   })
 
   it.effect(
     'the hold button shows a hand and the prize, no word, and holding it takes the prize',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(offered()),
-        measureSurface,
-        Scene.expect(takeButton).toExist(),
-        Scene.expect(Scene.selector('.hold-buy-take-hand')).toExist(),
-        Scene.expect(Scene.selector('.hold-buy-take-item')).toHaveAttr(
-          'src',
-          Option.getOrThrow(spriteImage(prizeSprite('Freeze'))).src,
-        ),
-        Scene.expect(Scene.selector('.hold-buy-price')).toHaveText(''),
-        Scene.pointerDown(takeButton, { pointerType: 'touch', pointerId: 4 }),
-        ...frames(HOLD_TICKS),
-        Scene.expect(takeButton).toBeAbsent(),
-        Scene.Subscription.emit(
-          SCENE_SUBSCRIPTIONS.pointerReleases,
-          Message.ReleasedPointer({ pointerId: 4 }),
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(offered())
+        s.pipe(
+          measureHud,
+          expectAttr(
+            byClass('hold-buy-take-item'),
+            'src',
+            Option.getOrThrow(spriteImage(prizeSprite('Freeze'))).src,
+          ),
+        )
+          .expect(takeButton)
+          .toExist()
+          .expect(byClass('hold-buy-take-hand'))
+          .toExist()
+          .expect(byClass('hold-buy-price'))
+          .toHaveText('')
+          .pipe(fingerDown, frames(HOLD_TICKS))
+          .expect(takeButton)
+          .toBeAbsent()
+          .pipe(fingerUp)
+      }),
   )
 })
 
@@ -192,11 +223,11 @@ describe('the price tag in a zoomed phone window', () => {
   const upright = (y: number): Model =>
     inPortrait(
       modifyFocus(
-        modifyFields(atBoards('Touch', EXIT_RULES.kitchenKeys + 2), {
+        UiStruct.evolve(atBoards('Touch', EXIT_RULES.kitchenKeys + 2), {
           level: level =>
             Array.reduce([WEST_EXIT, EAST_EXIT, FAR_EXIT], level, openExitIn),
         }),
-        { player: player => modifyFields(player, { y: () => y }) },
+        { player: player => UiStruct.evolve(player, { y: () => y }) },
       ),
     )
 
@@ -212,11 +243,11 @@ describe('the price tag in a zoomed phone window', () => {
 
 describe('a price tag at the edge of the window', () => {
   const sideways = (model: Model): Model =>
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       maybeSurface: () => Option.some(PHONE_LANDSCAPE),
     })
   const onDesktop = (model: Model): Model =>
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       lastDevice: (): InputDevice => 'KeyboardMouse',
       maybeSurface: () => Option.some(SURFACE),
     })
@@ -247,7 +278,7 @@ describe('a price tag at the edge of the window', () => {
         const model = layout(
           modifyFocus(start, {
             player: player =>
-              modifyFields(player, { x: () => spot.x, y: () => spot.y }),
+              UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y }),
           }),
         )
         const window = screenOf(model).world

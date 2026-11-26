@@ -1,6 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import type { Model } from '../../../app/model'
@@ -38,12 +38,14 @@ describe("Rattles' death tip", () => {
         const last = DEATH_TIPS.Runner[seed % DEATH_TIPS.Runner.length] ?? ''
         return Effect.map(
           ended(
-            modifyFields(diesOnWave7, {
-              endCard: modifyFields({
+            UiStruct.evolve(diesOnWave7, {
+              endCard: UiStruct.evolve({
                 maybeDeathTip: () =>
                   Option.some({ kind: 'Runner' as const, line: last }),
               }),
-              cosmetics: modifyFields({ cosmeticRngState: () => seed * 7919 }),
+              cosmetics: UiStruct.evolve({
+                cosmeticRngState: () => seed * 7919,
+              }),
             }),
           ),
           after => {
@@ -60,19 +62,19 @@ describe("Rattles' death tip", () => {
   it.effect('keeps quiet once the player has escaped on the difficulty', () =>
     Effect.gen(function* () {
       const escaped = yield* ended(
-        modifyFields(diesOnWave7, {
+        UiStruct.evolve(diesOnWave7, {
           bonuses: bonuses => ({ ...bonuses, escapedOn: ['Normal'] }),
         }),
       )
       expect(tipOf(escaped)).toEqual(Option.none())
       const won = yield* ended(
-        modifyFields(diesOnWave7, {
+        UiStruct.evolve(diesOnWave7, {
           bests: bests =>
-            modifyFields(bests, {
+            UiStruct.evolve(bests, {
               byDifficulty: byDifficulty =>
-                modifyFields(byDifficulty, {
+                UiStruct.evolve(byDifficulty, {
                   Normal: normal =>
-                    modifyFields(normal, {
+                    UiStruct.evolve(normal, {
                       maybeFastestWinMs: () => Option.some(600_000),
                     }),
                 }),

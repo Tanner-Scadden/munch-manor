@@ -3,7 +3,8 @@
 // record.
 
 import { Option, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { Vector } from '../world/schema/entitySchema'
 
@@ -19,7 +20,7 @@ export const SurfaceRectangle = Schema.Struct({
 })
 export type SurfaceRectangle = typeof SurfaceRectangle.Type
 
-export const Stick = defineTaggedUnion({
+export const Stick = UiSchema.TaggedEnum({
   Idle: {},
   Active: {
     pointerId: Schema.Finite,
@@ -31,7 +32,7 @@ export const Stick = defineTaggedUnion({
 })
 export type Stick = typeof Stick.Type
 
-export const MouseButton = defineTaggedUnion({
+export const MouseButton = UiSchema.TaggedEnum({
   Released: {},
   Held: { pointerId: Schema.Finite },
 })
@@ -39,7 +40,7 @@ export type MouseButton = typeof MouseButton.Type
 
 // NOTE: a finger holding the touch HUD's hold-to-buy button, by its pointer,
 // so lifting that finger lets go and no other finger does.
-export const HoldButton = defineTaggedUnion({
+export const HoldButton = UiSchema.TaggedEnum({
   Released: {},
   Held: { pointerId: Schema.Finite },
 })

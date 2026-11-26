@@ -6,7 +6,8 @@
 // src/app/model.ts re-exports them; the co-op room never imports this module.
 
 import { Option, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { MasterySkin } from '../shared/masteryData'
 import { TutorialChoice } from '../shared/nameKeys'
@@ -30,7 +31,7 @@ import {
 // NOTE: a cosmetic: a fridge weapon the player just took, flying from the
 // fridge's door (`from`, in the world) into its HUD gun slot, which then
 // pulses (src/features/fridge/fridgeReveal.ts). Never part of the World.
-export const PrizeFlight = defineTaggedUnion({
+export const PrizeFlight = UiSchema.TaggedEnum({
   Grounded: {},
   Flying: { prize: WeaponKind, from: Vector, ageMs: Schema.Finite },
 })
@@ -52,13 +53,13 @@ export type LevelCallout = typeof LevelCallout.Type
 // come down, showing which room rolled in behind it (`at`, the doorway's
 // middle in the world; src/features/cloche/clocheReveal.ts). Never part of
 // the World.
-export const ClocheLift = defineTaggedUnion({
+export const ClocheLift = UiSchema.TaggedEnum({
   Resting: {},
   Lifting: { room: SlotRoomId, at: Vector, ageMs: Schema.Finite },
 })
 export type ClocheLift = typeof ClocheLift.Type
 
-export const AudioState = defineTaggedUnion({
+export const AudioState = UiSchema.TaggedEnum({
   Locked: {},
   Unlocking: {},
   Suspended: {},
@@ -92,7 +93,7 @@ export type PlayerBests = typeof PlayerBests.Type
 // NOTE: a run is added to the bests when it ends. Counted holds the kills
 // already added, so a win that goes on into endless adds only its new kills
 // when it ends again.
-export const RunTally = defineTaggedUnion({
+export const RunTally = UiSchema.TaggedEnum({
   Uncounted: {},
   Counted: { kills: KillCounts },
 })
@@ -199,7 +200,7 @@ export const LoadStep = Schema.Literals([
 ])
 export type LoadStep = typeof LoadStep.Type
 
-export const Loading = defineTaggedUnion({
+export const Loading = UiSchema.TaggedEnum({
   Loading: { pending: Schema.Array(LoadStep) },
   Loaded: {},
 })
@@ -219,7 +220,7 @@ export type SyncedSaveState = typeof SyncedSaveState.Type
 // NOTE: the first PLAY or ENDLESS of the session asks for a difficulty.
 // Asking holds the mode to start once one is picked, and whether to play
 // the tutorial.
-export const DifficultyCard = defineTaggedUnion({
+export const DifficultyCard = UiSchema.TaggedEnum({
   Unseen: {},
   Asking: { mode: RunMode, tutorial: TutorialChoice },
   Seen: {},
@@ -231,7 +232,7 @@ export type DifficultyCard = typeof DifficultyCard.Type
 // folding itself into the HUD's dare card; or Opened again from the HUD's
 // list, with its satchel, where `fresh` are the things found since it was
 // last looked at, dropping in.
-export const PocketCard = defineTaggedUnion({
+export const PocketCard = UiSchema.TaggedEnum({
   Pocketed: {},
   Reading: { ageMs: Schema.Finite },
   Folding: { ageMs: Schema.Finite },
@@ -242,7 +243,7 @@ export type PocketCard = typeof PocketCard.Type
 // NOTE: the card a display case raises the first time a player walks up to
 // one in a break (src/features/onboarding/caseCard.ts): put away, or up
 // over the case with the id `caseId`.
-export const CaseCard = defineTaggedUnion({
+export const CaseCard = UiSchema.TaggedEnum({
   Hidden: {},
   Showing: { caseId: Schema.Finite, ageMs: Schema.Finite },
 })
@@ -259,7 +260,7 @@ export type IntroSkip = typeof IntroSkip.Type
 // few seconds. `Quiet` remembers the last break it called in, so a break is
 // never called twice. `Opened` is the kitchen found, aging for the rooms
 // counter's sparkle (src/features/kitchen/roomsFound.ts). Never saved.
-export const KitchenCall = defineTaggedUnion({
+export const KitchenCall = UiSchema.TaggedEnum({
   Quiet: { calledWave: Schema.Finite },
   Calling: { wave: Schema.Finite, remainingMs: MillisNumber },
   Opened: { ageMs: MillisNumber },
@@ -274,7 +275,7 @@ export type KitchenCall = typeof KitchenCall.Type
 // `lastLine` what the player saw last, so it never comes twice in a row,
 // and `maybeOpenRooms` the rooms seen open last frame, so a room's boards
 // coming down show its thing (none until the run's first frame). Never saved.
-export const DareHintCall = defineTaggedUnion({
+export const DareHintCall = UiSchema.TaggedEnum({
   Quiet: {},
   Calling: {
     line: Schema.String,
@@ -285,7 +286,7 @@ export const DareHintCall = defineTaggedUnion({
   },
 })
 export type DareHintCall = typeof DareHintCall.Type
-export type DareHintCalling = typeof DareHintCall.Calling.Type
+export type DareHintCalling = typeof DareHintCall.cases.Calling.Type
 
 export const DareHint = Schema.Struct({
   calledWave: Schema.Finite,
@@ -308,7 +309,7 @@ export const quietDareHint: DareHint = {
 // first break, and src/features/onboarding/kitchenTour.ts, the kitchen and the fridge): waiting
 // for its break, running through its steps, done with its tick shown for a
 // moment, or over for this session.
-export const Tour = defineTaggedUnion({
+export const Tour = UiSchema.TaggedEnum({
   Waiting: {},
   Running: {},
   Done: { ageMs: MillisNumber },
@@ -322,7 +323,7 @@ export type Tour = typeof Tour.Type
 // then at START WAVE (`Starting`) until the player starts the wave, and
 // ticks off. `isLockSeen` keeps the padlock step done once the player has
 // walked up to it, wherever they go after.
-export const QuestTour = defineTaggedUnion({
+export const QuestTour = UiSchema.TaggedEnum({
   Waiting: {},
   Running: { isLockSeen: Schema.Boolean },
   Looking: { ageMs: MillisNumber },
@@ -335,7 +336,7 @@ export type QuestTour = typeof QuestTour.Type
 // NOTE: Rattles' hello (src/features/onboarding/rattlesIntro.ts): waiting
 // for the break he meets a player in, talking through his few lines from
 // his trunk by the front door, or over for this run.
-export const RattlesIntro = defineTaggedUnion({
+export const RattlesIntro = UiSchema.TaggedEnum({
   Waiting: {},
   Talking: { ageMs: MillisNumber },
   Over: {},
@@ -415,7 +416,7 @@ export const noJournalRun: JournalRun = { foundIn: [], reached: [] }
 
 // NOTE: what a run's mastery payout opened, for the end card's unlock
 // flips: a hero's new level, or a gun's new skin.
-export const MasteryUnlock = defineTaggedUnion({
+export const MasteryUnlock = UiSchema.TaggedEnum({
   HeroLevel: { calling: Calling, level: Schema.Finite },
   GunMastery: { kind: WeaponKind, skin: MasterySkin },
 })

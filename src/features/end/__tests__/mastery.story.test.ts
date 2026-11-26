@@ -1,10 +1,9 @@
-import { Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { ProfileBinding } from '../../../app/bindings'
+import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
 import { MasteryUnlock } from '../../../domain/clientSchema'
 import {
@@ -17,9 +16,8 @@ import {
 } from '../../../domain/mastery'
 import { type SavedMastery, noMastery } from '../../../shared/masteryData'
 import { home } from '../../../test/model.fixture'
-import { APPLICATION, writeSave } from '../../../test/testing'
+import { checkModel, send, storyOf, writeSave } from '../../../test/testing'
 import { focusOf, modifyFocus } from '../../../world/party/party'
-import { Message as ProfileMessage } from '../../profile/message'
 import { unlocksOf } from '../endBeat'
 import { checkSavedChanges, diesOnWave7, frame, leave } from './rank.fixture'
 
@@ -30,7 +28,7 @@ import { checkSavedChanges, diesOnWave7, frame, leave } from './rank.fixture'
 // its Gilded skin, both flipped on the end card.
 
 const withMastery = (model: Model, mastery: SavedMastery): Model =>
-  modifyFields(model, { mastery: () => mastery })
+  UiStruct.evolve(model, { mastery: () => mastery })
 
 const callingOf = (model: Model) => focusOf(model).player.calling
 
@@ -38,111 +36,116 @@ const callingOf = (model: Model) => focusOf(model).player.calling
 const withPistolKills = (model: Model, kills: number): Model =>
   modifyFocus(model, {
     feats: feats =>
-      modifyFields(feats, {
+      UiStruct.evolve(feats, {
         killsWith: killsWith => ({ ...killsWith, Pistol: kills }),
       }),
   })
 
 describe("a run pays its hero's track", () => {
   it.effect('10 points a wave cleared, not a win', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(diesOnWave7),
-      frame,
-      Story.model(after => {
-        expect(after.mastery.heroes).toEqual({ [callingOf(diesOnWave7)]: 60 })
-      }),
-      checkSavedChanges(changes => {
-        expect(changes).toContainEqual({
-          _tag: 'GainedMastery',
-          added: { heroes: { [callingOf(diesOnWave7)]: 60 }, guns: {} },
-        })
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(diesOnWave7)
+      s.pipe(
+        frame,
+        checkModel(after => {
+          expect(after.mastery.heroes).toEqual({ [callingOf(diesOnWave7)]: 60 })
+        }),
+        checkSavedChanges(changes => {
+          expect(changes).toContainEqual({
+            _tag: 'GainedMastery',
+            added: { heroes: { [callingOf(diesOnWave7)]: 60 }, guns: {} },
+          })
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect(
     'as an increment on what it had, and flips the level it reached',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
+      Effect.gen(function* () {
+        const s = yield* storyOf(
           withMastery(diesOnWave7, {
             heroes: { [callingOf(diesOnWave7)]: 90 },
             guns: {},
           }),
-        ),
-        frame,
-        Story.model(after => {
-          expect(after.mastery.heroes[callingOf(diesOnWave7)]).toBe(150)
-          expect(after.runGains.masteryRun.unlocks).toEqual([
-            MasteryUnlock.HeroLevel({
-              calling: callingOf(diesOnWave7),
-              level: 1,
-            }),
-          ])
-          expect(unlocksOf(after)).toContainEqual(
-            expect.objectContaining({
-              _tag: 'HeroLevel',
-              calling: callingOf(diesOnWave7),
-              level: 1,
-            }),
-          )
-        }),
-        writeSave(),
-      ),
+        )
+        s.pipe(
+          frame,
+          checkModel(after => {
+            expect(after.mastery.heroes[callingOf(diesOnWave7)]).toBe(150)
+            expect(after.runGains.masteryRun.unlocks).toEqual([
+              MasteryUnlock.HeroLevel({
+                calling: callingOf(diesOnWave7),
+                level: 1,
+              }),
+            ])
+            expect(unlocksOf(after)).toContainEqual(
+              expect.objectContaining({
+                _tag: 'HeroLevel',
+                calling: callingOf(diesOnWave7),
+                level: 1,
+              }),
+            )
+          }),
+          writeSave,
+        )
+      }),
   )
 
   it.effect('once: a run left for the menu pays and then nothing more', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(diesOnWave7),
-      leave,
-      Story.model(after => {
-        expect(after.mastery.heroes).toEqual({ [callingOf(diesOnWave7)]: 60 })
-        expect(after.runGains.masteryRun.unlocks).toEqual([])
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(diesOnWave7)
+      s.pipe(
+        leave,
+        checkModel(after => {
+          expect(after.mastery.heroes).toEqual({ [callingOf(diesOnWave7)]: 60 })
+          expect(after.runGains.masteryRun.unlocks).toEqual([])
+        }),
+        writeSave,
+      )
+    }),
   )
 })
 
 describe("a gun's kills fill its track", () => {
   it.effect('each kill with a gun is a kill on its track', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(withPistolKills(diesOnWave7, 40)),
-      frame,
-      Story.model(after => {
-        expect(after.mastery.guns).toEqual({ Pistol: 40 })
-        expect(masterySkinIn(after.mastery, 'Pistol')).toEqual(Option.none())
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(withPistolKills(diesOnWave7, 40))
+      s.pipe(
+        frame,
+        checkModel(after => {
+          expect(after.mastery.guns).toEqual({ Pistol: 40 })
+          expect(masterySkinIn(after.mastery, 'Pistol')).toEqual(Option.none())
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect('the 1,000th kill opens the Gilded skin and flips it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
+    Effect.gen(function* () {
+      const s = yield* storyOf(
         withMastery(withPistolKills(diesOnWave7, 5), {
           heroes: {},
           guns: { Pistol: 996 },
         }),
-      ),
-      frame,
-      Story.model(after => {
-        expect(after.mastery.guns['Pistol']).toBe(1001)
-        expect(masterySkinIn(after.mastery, 'Pistol')).toEqual(
-          Option.some('Gilded'),
-        )
-        expect(after.runGains.masteryRun.unlocks).toContainEqual(
-          MasteryUnlock.GunMastery({ kind: 'Pistol', skin: 'Gilded' }),
-        )
-      }),
-      writeSave(),
-    ),
+      )
+      s.pipe(
+        frame,
+        checkModel(after => {
+          expect(after.mastery.guns['Pistol']).toBe(1001)
+          expect(masterySkinIn(after.mastery, 'Pistol')).toEqual(
+            Option.some('Gilded'),
+          )
+          expect(after.runGains.masteryRun.unlocks).toContainEqual(
+            MasteryUnlock.GunMastery({ kind: 'Pistol', skin: 'Gilded' }),
+          )
+        }),
+        writeSave,
+      )
+    }),
   )
 
   test('the steps: none, Gilded at 1,000, Diamond at 2,500', () => {
@@ -177,35 +180,31 @@ describe('a level opens its prop style', () => {
   })
 
   it.effect('a swatch the track has opened is worn', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atLevel1),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedPropStyle({ style: 'Silver' }),
-      ),
-      Story.model(after => {
-        expect(after.appearance.propStyle).toBe('Silver')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(atLevel1)
+      s.pipe(
+        send(Message.ChoseProfilePropStyle({ style: 'Silver' })),
+        checkModel(after => {
+          expect(after.appearance.propStyle).toBe('Silver')
+        }),
+      )
+    }),
   )
 
   it.effect('a shut one is not', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atLevel1),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedPropStyle({ style: 'Gold' }),
-      ),
-      Story.model(after => {
-        expect(after.appearance.propStyle).toBe('Stock')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(atLevel1)
+      s.pipe(
+        send(Message.ChoseProfilePropStyle({ style: 'Gold' })),
+        checkModel(after => {
+          expect(after.appearance.propStyle).toBe('Stock')
+        }),
+      )
+    }),
   )
 
   test('a style worn goes back to Stock on a hero that has not opened it', () => {
-    const worn = modifyFields(atLevel1, {
+    const worn = UiStruct.evolve(atLevel1, {
       appearance: look => ({ ...look, propStyle: 'Silver' as const }),
     })
     expect(fitPropStyle(worn)).toBe(worn)

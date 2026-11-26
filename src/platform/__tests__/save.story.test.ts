@@ -1,11 +1,9 @@
 // @vitest-environment happy-dom
 import { Array, Effect, Option, Record, String } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { afterEach, describe, expect, it, test } from '@effect/vitest'
 
-import { LobbyBinding, ProfileBinding } from '../../app/bindings'
 import { Message } from '../../app/message'
 import {
   BreakClock,
@@ -22,25 +20,25 @@ import {
   noKills,
 } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
+import { FocusProfileElement } from '../../app/update/profile'
 import { WriteSave } from '../../app/update/save'
-import { Message as LobbyMessage } from '../../features/lobby/message'
+import { LobbyMessage } from '../../features/lobby/message'
 import { shownHints } from '../../features/onboarding/onboarding'
-import { Message as ProfileMessage } from '../../features/profile/message'
 import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
 } from '../../features/profile/profile'
-import { FocusTutorialReset } from '../../features/profile/update'
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { noSavedRunRecords } from '../../shared/playerData'
 import { DISTANT_SPAWN, loadingSave, withKeys } from '../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
+  checkModel,
   finishSplash,
   jsonOf,
+  modelAfter,
   resolveFocusLobby,
-  showDialog,
+  send,
+  steps,
   throughIntro,
   tick,
   writeSave,
@@ -133,8 +131,8 @@ const { home: _home, ...versionThreeSave } = versionFiveSave
 
 const { bests: _bests, ...versionTwoSave } = versionThreeSave
 
-const read: Model = modifyFields(loadingSave, {
-  saving: modifyFields({
+const read: Model = UiStruct.evolve(loadingSave, {
+  saving: UiStruct.evolve({
     loading: () => Loading.Loaded(),
     saveStatus: () => 'Read',
   }),
@@ -592,93 +590,92 @@ describe('loading the save', () => {
   it.effect(
     'a loaded save skips the learned hints, the practice gate, and seen intro cards',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(loadingSave),
-        Story.message(
-          Message.CompletedLoadSave({ maybeSave: Option.some(learnedSave) }),
+      modelAfter(
+        loadingSave,
+        steps(
+          send(
+            Message.CompletedLoadSave({ maybeSave: Option.some(learnedSave) }),
+          ),
+          finishSplash,
+          checkModel(current => {
+            expect(current.saving.saveStatus).toBe('Read')
+            expect(current.settings.soundSetting).toBe('Muted')
+            expect(current.settings.shakeSetting).toBe('Off')
+            expect(current.appearance).toEqual(learnedSave.appearance)
+            expect(current.homeScreenTip).toBe('Dismissed')
+            expect(TrapHint.guards.Seen(current.trapHint)).toBe(true)
+            expect(current.difficulty).toEqual({
+              chosen: 'Hard',
+              nightmare: 'Unlocked',
+            })
+            expect(current.difficultyCard).toEqual(DifficultyCard.Seen())
+            expect(current.bests.totalKills).toBe(341)
+            expect(current.bests.runsPlayed).toBe(12)
+            expect(current.bests.killsByKind.Tank).toBe(11)
+            expect(current.bests.byDifficulty.Normal.maybeFastestWinMs).toEqual(
+              Option.some(402_000),
+            )
+            expect(
+              current.bests.byDifficulty.Hard.maybeBestEndlessWave,
+            ).toEqual(Option.some(9))
+          }),
+          send(Message.ClickedCampaignButton()),
+          tick(50),
+          throughIntro,
+          checkModel(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(shownHints(current)).toEqual([])
+            expect(isPracticeGateHeld(current)).toBe(false)
+          }),
+          send(Message.ClickedStartWaveButton()),
+          checkModel(current => {
+            expect(Phase.guards.Wave(current.phase)).toBe(true)
+            expect(DebutCard.guards.Hidden(current.debutCard)).toBe(true)
+          }),
         ),
-        finishSplash,
-        Story.model(current => {
-          expect(current.saving.saveStatus).toBe('Read')
-          expect(current.settings.soundSetting).toBe('Muted')
-          expect(current.settings.shakeSetting).toBe('Off')
-          expect(current.appearance).toEqual(learnedSave.appearance)
-          expect(current.homeScreenTip).toBe('Dismissed')
-          expect(TrapHint.guards.Seen(current.trapHint)).toBe(true)
-          expect(current.difficulty).toEqual({
-            chosen: 'Hard',
-            nightmare: 'Unlocked',
-          })
-          expect(current.difficultyCard).toEqual(DifficultyCard.Seen())
-          expect(current.bests.totalKills).toBe(341)
-          expect(current.bests.runsPlayed).toBe(12)
-          expect(current.bests.killsByKind.Tank).toBe(11)
-          expect(current.bests.byDifficulty.Normal.maybeFastestWinMs).toEqual(
-            Option.some(402_000),
-          )
-          expect(current.bests.byDifficulty.Hard.maybeBestEndlessWave).toEqual(
-            Option.some(9),
-          )
-        }),
-        Story.message(Message.ClickedCampaignButton()),
-        tick(50),
-        throughIntro,
-        Story.model(current => {
-          expect(Phase.guards.Preparation(current.phase)).toBe(true)
-          expect(shownHints(current)).toEqual([])
-          expect(isPracticeGateHeld(current)).toBe(false)
-        }),
-        Story.message(Message.ClickedStartWaveButton()),
-        Story.model(current => {
-          expect(Phase.guards.Wave(current.phase)).toBe(true)
-          expect(DebutCard.guards.Hidden(current.debutCard)).toBe(true)
-        }),
       ),
   )
 
   it.effect(
     'with no save, a new player still gets the hints and the practice gate',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(loadingSave),
-        Story.message(Message.CompletedLoadSave({ maybeSave: Option.none() })),
-        finishSplash,
-        Story.message(Message.ClickedCampaignButton()),
-        showDialog(),
-        Story.message(
-          Message.ClickedDifficultyCardButton({ difficulty: 'Normal' }),
+      modelAfter(
+        loadingSave,
+        steps(
+          send(Message.CompletedLoadSave({ maybeSave: Option.none() })),
+          finishSplash,
+          send(Message.ClickedCampaignButton()),
+          send(Message.ClickedDifficultyCardButton({ difficulty: 'Normal' })),
+          writeSave,
+          tick(50),
+          throughIntro,
+          writeSave,
+          checkModel(current => {
+            expect(current.saving.saveStatus).toBe('Read')
+            expect(isPracticeGateHeld(current)).toBe(true)
+            expect(Array.map(shownHints(current), ({ id }) => id)).toContain(
+              'Move',
+            )
+          }),
         ),
-        closeDialog(),
-        writeSave(),
-        tick(50),
-        throughIntro,
-        writeSave(),
-        Story.model(current => {
-          expect(current.saving.saveStatus).toBe('Read')
-          expect(isPracticeGateHeld(current)).toBe(true)
-          expect(Array.map(shownHints(current), ({ id }) => id)).toContain(
-            'Move',
-          )
-        }),
       ),
   )
 
   it.effect(
     'storage that cannot be read falls back to the defaults and lets the game in',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(loadingSave),
-        Story.message(Message.FailedLoadSave({ reason: 'SecurityError' })),
-        finishSplash,
-        Story.model(current => {
-          expect(current.saving.saveStatus).toBe('Read')
-          expect(current.lessons).toEqual(freshLessons)
-          expect(current.settings.soundSetting).toBe('On')
-          expect(Loading.guards.Loaded(current.saving.loading)).toBe(true)
-        }),
+      modelAfter(
+        loadingSave,
+        steps(
+          send(Message.FailedLoadSave({ reason: 'SecurityError' })),
+          finishSplash,
+          checkModel(current => {
+            expect(current.saving.saveStatus).toBe('Read')
+            expect(current.lessons).toEqual(freshLessons)
+            expect(current.settings.soundSetting).toBe('On')
+            expect(Loading.guards.Loaded(current.saving.loading)).toBe(true)
+          }),
+        ),
       ),
   )
 
@@ -694,131 +691,137 @@ describe('loading the save', () => {
         killsByKind: { Shambler: 5, Gone: 9 },
       },
     }
-    return Story.story(
-      APPLICATION,
-      Story.given(loadingSave),
-      Story.message(Message.CompletedLoadSave({ maybeSave: Option.some(odd) })),
-      finishSplash,
-      Story.model(current => {
-        expect(current.introducedKinds).toEqual(['Shambler'])
-        expect(current.settings.soundSetting).toBe('Muted')
-        expect(current.bests.killsByKind).toEqual(
-          modifyFields(noKills, { Shambler: () => 5 }),
-        )
-        expect(current.bests.totalKills).toBe(341)
-      }),
+    return modelAfter(
+      loadingSave,
+      steps(
+        send(Message.CompletedLoadSave({ maybeSave: Option.some(odd) })),
+        finishSplash,
+        checkModel(current => {
+          expect(current.introducedKinds).toEqual(['Shambler'])
+          expect(current.settings.soundSetting).toBe('Muted')
+          expect(current.bests.killsByKind).toEqual(
+            UiStruct.evolve(noKills, { Shambler: () => 5 }),
+          )
+          expect(current.bests.totalKills).toBe(341)
+        }),
+      ),
     )
   })
 })
 
 describe('writing the save', () => {
   it.effect('changing a setting writes the new save', () => {
-    const muted = modifyFields(read, {
-      settings: modifyFields({ soundSetting: () => 'Muted' }),
+    const muted = UiStruct.evolve(read, {
+      settings: UiStruct.evolve({ soundSetting: () => 'Muted' }),
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(read),
-      Story.message(Message.ClickedMuteButton()),
-      Story.Command.expectExact(
-        WriteSave({
-          save: saveOf(muted),
-          changes: [
-            PlayerChange.ChangedSettings({ settings: saveOf(muted).settings }),
-          ],
-        }),
+    return modelAfter(
+      read,
+      steps(
+        send(Message.ClickedMuteButton()),
+        s =>
+          s.expectExact(
+            WriteSave.make({
+              save: saveOf(muted),
+              changes: [
+                PlayerChange.ChangedSettings({
+                  settings: saveOf(muted).settings,
+                }),
+              ],
+            }),
+          ),
+        writeSave,
       ),
-      writeSave(),
     )
   })
 
   it.effect('choosing a difficulty in the lobby writes the new save', () => {
     const settings = asVeteran(read)
-    return Story.story(
-      APPLICATION,
-      Story.given(settings),
-      Story.message(Message.ClickedPlayButton()),
-      resolveFocusLobby(),
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedDifficultyButton({ difficulty: 'Easy' }),
-      ),
-      resolveFocusLobby(),
-      Story.Command.expectExact(
-        WriteSave({
-          save: saveOf(
-            modifyFields(settings, {
-              difficulty: setting =>
-                modifyFields(setting, { chosen: () => 'Easy' }),
+    return modelAfter(
+      settings,
+      steps(
+        send(Message.ClickedPlayButton()),
+        resolveFocusLobby(),
+        send(LobbyMessage.PickedLobbyDifficulty({ difficulty: 'Easy' })),
+        resolveFocusLobby(),
+        s =>
+          s.expectExact(
+            WriteSave.make({
+              save: saveOf(
+                UiStruct.evolve(settings, {
+                  difficulty: setting =>
+                    UiStruct.evolve(setting, { chosen: () => 'Easy' }),
+                }),
+              ),
+              changes: [
+                PlayerChange.ChangedDifficulty({
+                  chosen: 'Easy',
+                  card: 'Seen',
+                }),
+              ],
             }),
           ),
-          changes: [
-            PlayerChange.ChangedDifficulty({ chosen: 'Easy', card: 'Seen' }),
-          ],
-        }),
+        writeSave,
       ),
-      writeSave(),
     )
   })
 
   it.effect(
     'answering the first-time card saves the pick and that it was seen',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(read),
-        Story.message(Message.ClickedCampaignButton()),
-        showDialog(),
-        Story.message(
-          Message.ClickedDifficultyCardButton({ difficulty: 'Hard' }),
+      modelAfter(
+        read,
+        steps(
+          send(Message.ClickedCampaignButton()),
+          send(Message.ClickedDifficultyCardButton({ difficulty: 'Hard' })),
+          writeSave,
+          checkModel(current => {
+            expect(saveOf(current).difficulty).toEqual({
+              chosen: 'Hard',
+              card: 'Seen',
+              nightmare: 'Locked',
+            })
+          }),
         ),
-        closeDialog(),
-        writeSave(),
-        Story.model(current => {
-          expect(saveOf(current).difficulty).toEqual({
-            chosen: 'Hard',
-            card: 'Seen',
-            nightmare: 'Locked',
-          })
-        }),
       ),
   )
 
   it.effect('learning a lesson writes the new save', () => {
-    const breakTime: Model = modifyFields(read, {
+    const breakTime: Model = UiStruct.evolve(read, {
       lessons: lessons =>
-        modifyFields(lessons, {
+        UiStruct.evolve(lessons, {
           move: () => Lesson.Learned({ atMs: 0 }),
           fire: () => Lesson.Learned({ atMs: 0 }),
         }),
       introducedKinds: () => ZOMBIE_KIND_ORDER,
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave: 3,
           remainingMs: 5000,
           durationMs: 20_000,
           spawns: [],
         }),
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(breakTime),
-      Story.message(Message.ClickedStartWaveButton()),
-      Story.model(current => {
-        expect(Lesson.guards.Learned(current.lessons.startWave)).toBe(true)
-      }),
-      Story.Command.expectHas(WriteSave),
-      Story.model(current => {
-        expect(saveOf(current).onboarding.lessons.startWave).toBe('Learned')
-      }),
-      writeSave(),
+    return modelAfter(
+      breakTime,
+      steps(
+        send(Message.ClickedStartWaveButton()),
+        checkModel(current => {
+          expect(Lesson.guards.Learned(current.lessons.startWave)).toBe(true)
+        }),
+        s => s.expectHas(WriteSave),
+        checkModel(current => {
+          expect(saveOf(current).onboarding.lessons.startWave).toBe('Learned')
+        }),
+        writeSave,
+      ),
     )
   })
 
   it.effect(
     'the first break is learned when that break ends, with no label in the room',
     () => {
-      const openBreak: Model = modifyFields(read, {
+      const openBreak: Model = UiStruct.evolve(read, {
         introducedKinds: () => ZOMBIE_KIND_ORDER,
         phase: () =>
           Phase.Preparation({
@@ -830,14 +833,15 @@ describe('writing the save', () => {
           }),
       })
       expect(shownHints(openBreak)).toEqual([])
-      return Story.story(
-        APPLICATION,
-        Story.given(openBreak),
-        Story.message(Message.ClickedStartWaveButton()),
-        Story.model(current => {
-          expect(saveOf(current).onboarding.lessons.openBreak).toBe('Learned')
-        }),
-        writeSave(),
+      return modelAfter(
+        openBreak,
+        steps(
+          send(Message.ClickedStartWaveButton()),
+          checkModel(current => {
+            expect(saveOf(current).onboarding.lessons.openBreak).toBe('Learned')
+          }),
+          writeSave,
+        ),
       )
     },
   )
@@ -846,50 +850,49 @@ describe('writing the save', () => {
     'the end of a run writes its kills and the run into the save',
     () => {
       const dying = modifyFocus(
-        modifyFields(read, {
+        UiStruct.evolve(read, {
           phase: () =>
             Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
           stats: stats =>
-            modifyFields(stats, {
+            UiStruct.evolve(stats, {
               kills: () =>
-                modifyFields(noKills, { Shambler: () => 4, Tank: () => 1 }),
+                UiStruct.evolve(noKills, { Shambler: () => 4, Tank: () => 1 }),
             }),
         }),
-        { player: player => modifyFields(player, { hp: () => 0 }) },
+        { player: player => UiStruct.evolve(player, { hp: () => 0 }) },
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(dying),
-        tick(50),
-        Story.model(current => {
-          expect(Phase.guards.GameOver(current.phase)).toBe(true)
-          expect(saveOf(current).bests).toEqual({
-            ...noSavedBests,
-            runsPlayed: 1,
-            totalKills: 5,
-            killsByKind: { Shambler: 4, Tank: 1 },
-          })
-        }),
-        Story.Command.expectHas(WriteSave),
-        writeSave(),
+      return modelAfter(
+        dying,
+        steps(
+          tick(50),
+          checkModel(current => {
+            expect(Phase.guards.GameOver(current.phase)).toBe(true)
+            expect(saveOf(current).bests).toEqual({
+              ...noSavedBests,
+              runsPlayed: 1,
+              totalKills: 5,
+              killsByKind: { Shambler: 4, Tank: 1 },
+            })
+          }),
+          s => s.expectHas(WriteSave),
+          writeSave,
+        ),
       )
     },
   )
 
   it.effect('kills mid-run write nothing until the run ends', () => {
-    const fighting = modifyFields(read, {
+    const fighting = UiStruct.evolve(read, {
       phase: () =>
         Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
       stats: stats =>
-        modifyFields(stats, {
-          kills: () => modifyFields(noKills, { Shambler: () => 4 }),
+        UiStruct.evolve(stats, {
+          kills: () => UiStruct.evolve(noKills, { Shambler: () => 4 }),
         }),
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(fighting),
-      tick(50),
-      Story.Command.expectNone(),
+    return modelAfter(
+      fighting,
+      steps(tick(50), s => s.expectNone()),
     )
   })
 
@@ -897,12 +900,12 @@ describe('writing the save', () => {
     'the first grab of a power-up kind writes it, and a second grab writes nothing',
     () =>
       Effect.gen(function* () {
-        const fighting = modifyFields(restoreSave(read, neverSeenSave), {
+        const fighting = UiStruct.evolve(restoreSave(read, neverSeenSave), {
           phase: () =>
             Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
         })
         const hotSauceUnder = (base: Model): Model =>
-          modifyFields(base, {
+          UiStruct.evolve(base, {
             pickups: () => [
               {
                 id: 900,
@@ -913,102 +916,108 @@ describe('writing the save', () => {
               },
             ],
           })
-        const seen = modifyFields(fighting, {
+        const seen = UiStruct.evolve(fighting, {
           seenPowerUps: () => ['RapidFire'],
         })
-        yield* Story.story(
-          APPLICATION,
-          Story.given(hotSauceUnder(fighting)),
-          tick(FIXED_STEP_MS),
-          Story.Command.expectExact(
-            WriteSave({
-              save: { ...saveOf(fighting), seenPowerUps: ['RapidFire'] },
-              changes: [PlayerChange.SawPowerUps({ kinds: ['RapidFire'] })],
-            }),
+        yield* modelAfter(
+          hotSauceUnder(fighting),
+          steps(
+            tick(FIXED_STEP_MS),
+            s =>
+              s.expectExact(
+                WriteSave.make({
+                  save: { ...saveOf(fighting), seenPowerUps: ['RapidFire'] },
+                  changes: [PlayerChange.SawPowerUps({ kinds: ['RapidFire'] })],
+                }),
+              ),
+            writeSave,
           ),
-          writeSave(),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(hotSauceUnder(seen)),
-          tick(FIXED_STEP_MS),
-          Story.model(current => {
-            expect(current.pickups).toEqual([])
-            expect(current.cosmetics.callouts[0]?.look).toBe('Named')
-          }),
-          Story.Command.expectNone(),
+        yield* modelAfter(
+          hotSauceUnder(seen),
+          steps(
+            tick(FIXED_STEP_MS),
+            checkModel(current => {
+              expect(current.pickups).toEqual([])
+              expect(current.cosmetics.callouts[0]?.look).toBe('Named')
+            }),
+            s => s.expectNone(),
+          ),
         )
       }),
   )
 
   it.effect('the power-ups seen last across a reload', () => {
-    const grabbed = modifyFields(read, {
+    const grabbed = UiStruct.evolve(read, {
       seenPowerUps: () => ['Damage', 'Heart'],
       rank: rank => grantedVeteran(rank, 0),
     })
     const json = Option.getOrThrow(encodeSave(saveOf(grabbed)))
-    return Story.story(
-      APPLICATION,
-      Story.given(loadingSave),
-      Story.message(Message.CompletedLoadSave({ maybeSave: decodeSave(json) })),
-      finishSplash,
-      Story.model(current => {
-        expect(current.seenPowerUps).toEqual(['Damage', 'Heart'])
-      }),
+    return modelAfter(
+      loadingSave,
+      steps(
+        send(Message.CompletedLoadSave({ maybeSave: decodeSave(json) })),
+        finishSplash,
+        checkModel(current => {
+          expect(current.seenPowerUps).toEqual(['Damage', 'Heart'])
+        }),
+      ),
     )
   })
 
   it.effect('a frame that changes nothing saved writes nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(read),
-      tick(50),
-      Story.Command.expectNone(),
+    modelAfter(
+      read,
+      steps(tick(50), s => s.expectNone()),
     ),
   )
 
   it.effect(
     'a frame mid-wave leaves every saved field as it was, so the save is not rebuilt',
     () => {
-      const fighting = modifyFields(restoreSave(read, learnedSave), {
+      const fighting = UiStruct.evolve(restoreSave(read, learnedSave), {
         phase: () =>
           Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(fighting),
-        Story.message(Message.PressedKey({ code: 'KeyD' })),
-        tick(FIXED_STEP_MS),
-        tick(FIXED_STEP_MS),
-        Story.Command.expectNone(),
-        Story.model(current => {
-          expect(focusOf(current).player.x).not.toBe(focusOf(fighting).player.x)
-          expect(
-            Array.filter(
-              SAVED_FIELDS,
-              field => fighting[field] !== current[field],
-            ),
-          ).toEqual([])
-          expect(hasSaveFieldsChanged(fighting, current)).toBe(false)
-        }),
+      return modelAfter(
+        fighting,
+        steps(
+          send(Message.PressedKey({ code: 'KeyD' })),
+          tick(FIXED_STEP_MS),
+          tick(FIXED_STEP_MS),
+          s => s.expectNone(),
+          checkModel(current => {
+            expect(focusOf(current).player.x).not.toBe(
+              focusOf(fighting).player.x,
+            )
+            expect(
+              Array.filter(
+                SAVED_FIELDS,
+                field => fighting[field] !== current[field],
+              ),
+            ).toEqual([])
+            expect(hasSaveFieldsChanged(fighting, current)).toBe(false)
+          }),
+        ),
       )
     },
   )
 
   test('the saved fields are all the save reads', () => {
     const played = withKeys(
-      modifyFields(restoreSave(read, learnedSave), {
+      UiStruct.evolve(restoreSave(read, learnedSave), {
         phase: () =>
           Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
         stats: stats =>
-          modifyFields(stats, {
-            kills: () => modifyFields(noKills, { Shambler: () => 4 }),
+          UiStruct.evolve(stats, {
+            kills: () => UiStruct.evolve(noKills, { Shambler: () => 4 }),
           }),
         panel: () => 'WhatsNew',
         orientation: () => 'Portrait',
-        runGains: modifyFields({
-          runTally: () => RunTally.Counted({ kills: noKills }),
-        }),
+        runGains: runGains =>
+          UiStruct.evolve(runGains, {
+            runTally: () => RunTally.Counted({ kills: noKills }),
+          }),
       }),
       3,
     )
@@ -1021,23 +1030,21 @@ describe('writing the save', () => {
   })
 
   it.effect('nothing is written before the save has been read', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(loadingSave),
-      Story.message(Message.ClickedMuteButton()),
-      Story.Command.expectNone(),
+    modelAfter(
+      loadingSave,
+      steps(send(Message.ClickedMuteButton()), s => s.expectNone()),
     ),
   )
 })
 
 describe('reset tutorial', () => {
-  const veteranHome: Model = modifyFields(read, {
+  const veteranHome: Model = UiStruct.evolve(read, {
     lessons: () => Record.map(freshLessons, () => Lesson.Learned({ atMs: 0 })),
     trapHint: () => TrapHint.Seen(),
     introducedKinds: () => ZOMBIE_KIND_ORDER,
     seenPowerUps: () => ['RapidFire', 'Pierce'],
     homeScreenTip: () => 'Dismissed',
-    settings: modifyFields({
+    settings: UiStruct.evolve({
       soundSetting: () => 'Muted',
       shakeSetting: () => 'Off',
     }),
@@ -1046,101 +1053,87 @@ describe('reset tutorial', () => {
   })
 
   it.effect('asks first, then clears the onboarding only and saves', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(veteranHome),
-      Story.message(Message.ClickedSettingsButton()),
-      showDialog(),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedResetTutorialButton(),
-      ),
-      Story.Command.expectExact(
-        FocusTutorialReset({ id: KEEP_TUTORIAL_BUTTON_ID }),
-      ),
-      Story.Command.resolve(
-        FocusTutorialReset,
-        ProfileMessage.CompletedFocusTutorialReset(),
-      ),
-      Story.model(current => {
-        expect(current.profile.tutorialReset).toBe('Asking')
-        expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
-      }),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedConfirmResetTutorialButton(),
-      ),
-      Story.Command.expectHas(WriteSave),
-      Story.model(current => {
-        expect(current.profile.tutorialReset).toBe('Done')
-        expect(current.lessons).toEqual(freshLessons)
-        expect(current.introducedKinds).toEqual([])
-        expect(current.seenPowerUps).toEqual([])
-        expect(
-          Array.map(
-            changesBetween(saveOf(veteranHome), saveOf(current)),
-            ({ _tag }) => _tag,
+    modelAfter(
+      veteranHome,
+      steps(
+        send(Message.ClickedSettingsButton()),
+        send(Message.ClickedResetTutorial()),
+        s =>
+          s.expectExact(
+            FocusProfileElement.make({
+              selector: `#${KEEP_TUTORIAL_BUTTON_ID}`,
+            }),
           ),
-        ).toEqual(['ChangedOnboarding', 'ForgotPowerUps'])
-        expect(TrapHint.guards.Unseen(current.trapHint)).toBe(true)
-        expect(current.settings.soundSetting).toBe('Muted')
-        expect(current.settings.shakeSetting).toBe('Off')
-        expect(current.appearance).toEqual(learnedSave.appearance)
-        expect(current.homeScreenTip).toBe('Dismissed')
-        expect(saveOf(current).bests).toEqual(learnedSave.bests)
-      }),
-      Story.Command.resolve(
-        FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID }),
-        ProfileMessage.CompletedFocusTutorialReset(),
+        s => s.resolve(FocusProfileElement, Component.noop),
+        checkModel(current => {
+          expect(current.profile.tutorialReset).toBe('Asking')
+          expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
+        }),
+        send(Message.ConfirmedTutorialReset()),
+        s => s.expectHas(WriteSave),
+        checkModel(current => {
+          expect(current.profile.tutorialReset).toBe('Done')
+          expect(current.lessons).toEqual(freshLessons)
+          expect(current.introducedKinds).toEqual([])
+          expect(current.seenPowerUps).toEqual([])
+          expect(
+            Array.map(
+              changesBetween(saveOf(veteranHome), saveOf(current)),
+              ({ _tag }) => _tag,
+            ),
+          ).toEqual(['ChangedOnboarding', 'ForgotPowerUps'])
+          expect(TrapHint.guards.Unseen(current.trapHint)).toBe(true)
+          expect(current.settings.soundSetting).toBe('Muted')
+          expect(current.settings.shakeSetting).toBe('Off')
+          expect(current.appearance).toEqual(learnedSave.appearance)
+          expect(current.homeScreenTip).toBe('Dismissed')
+          expect(saveOf(current).bests).toEqual(learnedSave.bests)
+        }),
+        s =>
+          s.resolve(
+            FocusProfileElement.make({
+              selector: `#${RESET_TUTORIAL_BUTTON_ID}`,
+            }),
+            Component.noop,
+          ),
+        writeSave,
       ),
-      writeSave(),
     ),
   )
 
   it.effect('keep leaves the tutorial learned and writes nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(veteranHome),
-      Story.message(Message.ClickedSettingsButton()),
-      showDialog(),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedResetTutorialButton(),
+    modelAfter(
+      veteranHome,
+      steps(
+        send(Message.ClickedSettingsButton()),
+        send(Message.ClickedResetTutorial()),
+        s => s.resolve(FocusProfileElement, Component.noop),
+        send(Message.CancelledTutorialReset()),
+        s =>
+          s.expectExact(
+            FocusProfileElement.make({
+              selector: `#${RESET_TUTORIAL_BUTTON_ID}`,
+            }),
+          ),
+        s => s.resolve(FocusProfileElement, Component.noop),
+        checkModel(current => {
+          expect(current.profile.tutorialReset).toBe('Idle')
+          expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
+        }),
       ),
-      Story.Command.resolve(
-        FocusTutorialReset,
-        ProfileMessage.CompletedFocusTutorialReset(),
-      ),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedCancelResetTutorialButton(),
-      ),
-      Story.Command.expectExact(
-        FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID }),
-      ),
-      Story.Command.resolve(
-        FocusTutorialReset,
-        ProfileMessage.CompletedFocusTutorialReset(),
-      ),
-      Story.model(current => {
-        expect(current.profile.tutorialReset).toBe('Idle')
-        expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
-      }),
     ),
   )
 
   it.effect('confirming without asking first does nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(veteranHome),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedConfirmResetTutorialButton(),
+    modelAfter(
+      veteranHome,
+      steps(
+        send(Message.ConfirmedTutorialReset()),
+        s => s.expectNone(),
+        checkModel(current => {
+          expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
+        }),
       ),
-      Story.Command.expectNone(),
-      Story.model(current => {
-        expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
-      }),
     ),
   )
 })

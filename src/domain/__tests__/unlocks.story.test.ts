@@ -1,19 +1,17 @@
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { LobbyBinding, ProfileBinding } from '../../app/bindings'
 import { Message } from '../../app/message'
 import { chooseCalling } from '../../features/heroes/callingPick'
-import { Message as LobbyMessage } from '../../features/lobby/message'
-import * as Character from '../../features/profile/blocks/look/block'
-import { CharacterBinding } from '../../features/profile/composition'
+import { LobbyMessage } from '../../features/lobby/message'
 import { homeAfterRead } from '../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
   resolveFocusLobby,
-  showDialog,
+  send,
+  storyOf,
   writeSave,
 } from '../../test/testing'
 import { noRank, pointsForRank } from '../../world/heroes/rank'
@@ -23,7 +21,7 @@ import { callingUnlocksAt, hasUnseenLook, lookUnlocksAt } from '../unlocks'
 // seen wears a badge while the Look tab or the picker is open, and is marked
 // seen on opening, with no click on the item.
 
-const reached = modifyFields(homeAfterRead, {
+const reached = UiStruct.evolve(homeAfterRead, {
   rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),
   seenUnlocks: () => ['hat:PartyHat'],
   boughtCosmetics: () => ['hero:Handyman'],
@@ -50,31 +48,25 @@ describe('the unlocks reached', () => {
 
 describe('picking an unlock', () => {
   it.effect('clears its own badge at once and leaves the other badges', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(reached),
-      Story.message(Message.ClickedCharacterButton()),
-      showDialog(),
-      writeSave(),
-      Story.messageIn(
-        [ProfileBinding, CharacterBinding],
-        Character.Message.ClickedGearOption({
-          part: 'ShirtColor',
-          value: 'Gold',
+    Effect.gen(function* () {
+      const s = yield* storyOf(reached)
+      s.pipe(
+        send(Message.ClickedCharacterButton()),
+        writeSave,
+        send(Message.ChoseProfileLook({ part: 'ShirtColor', value: 'Gold' })),
+        checkModel(current => {
+          expect(current.appearance.shirtColor).toBe('Gold')
+          expect(current.freshUnlocks).not.toContain('shirt:Gold')
+          expect(current.freshUnlocks).toContain('hat:TrafficCone')
+          expect(current.seenUnlocks).toContain('shirt:Gold')
         }),
-      ),
-      Story.model(current => {
-        expect(current.appearance.shirtColor).toBe('Gold')
-        expect(current.freshUnlocks).not.toContain('shirt:Gold')
-        expect(current.freshUnlocks).toContain('hat:TrafficCone')
-        expect(current.seenUnlocks).toContain('shirt:Gold')
-      }),
-      writeSave(),
-    ),
+        writeSave,
+      )
+    }),
   )
 
   test('a hero picked clears its badge', () => {
-    const fresh = modifyFields(reached, {
+    const fresh = UiStruct.evolve(reached, {
       freshUnlocks: () => ['calling:Handyman', 'calling:TrackStar'],
     })
     const after = chooseCalling(fresh, 'Handyman')
@@ -87,55 +79,55 @@ describe('opening the Look tab', () => {
   it.effect(
     'marks what is unseen as seen, keeps the badges for this viewing, and writes it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(reached),
-        Story.message(Message.ClickedCharacterButton()),
-        showDialog(),
-        Story.model(current => {
-          expect(current.freshUnlocks).toContain('shirt:Gold')
-          expect(current.freshUnlocks).toContain('hat:TrafficCone')
-          expect(current.freshUnlocks).not.toContain('hat:PartyHat')
-          expect(current.freshUnlocks).not.toContain('calling:Handyman')
-          expect(current.seenUnlocks).toContain('shirt:Gold')
-          expect(hasUnseenLook(16, current.seenUnlocks)).toBe(false)
-        }),
-        writeSave(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(reached)
+        s.pipe(
+          send(Message.ClickedCharacterButton()),
+          checkModel(current => {
+            expect(current.freshUnlocks).toContain('shirt:Gold')
+            expect(current.freshUnlocks).toContain('hat:TrafficCone')
+            expect(current.freshUnlocks).not.toContain('hat:PartyHat')
+            expect(current.freshUnlocks).not.toContain('calling:Handyman')
+            expect(current.seenUnlocks).toContain('shirt:Gold')
+            expect(hasUnseenLook(16, current.seenUnlocks)).toBe(false)
+          }),
+          writeSave,
+        )
+      }),
   )
 
   it.effect('shows nothing the next time', () => {
-    const seen = modifyFields(reached, {
+    const seen = UiStruct.evolve(reached, {
       seenUnlocks: () => [...lookUnlocksAt(16)],
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(seen),
-      Story.message(Message.ClickedCharacterButton()),
-      showDialog(),
-      Story.model(current => {
-        expect(current.freshUnlocks).toEqual([])
-      }),
-    )
+    return Effect.gen(function* () {
+      const s = yield* storyOf(seen)
+      s.pipe(
+        send(Message.ClickedCharacterButton()),
+        checkModel(current => {
+          expect(current.freshUnlocks).toEqual([])
+        }),
+      )
+    })
   })
 })
 
 describe('opening the picker', () => {
   it.effect('marks the callings reached as seen and badges them', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(reached),
-      Story.message(Message.ClickedPlayButton()),
-      resolveFocusLobby(),
-      Story.messageIn(LobbyBinding, LobbyMessage.ClickedHeroButton()),
-      showDialog(),
-      Story.model(current => {
-        expect(current.freshUnlocks).toContain('calling:LineCook')
-        expect(current.freshUnlocks).not.toContain('shirt:Gold')
-        expect(current.seenUnlocks).toContain('calling:LineCook')
-        expect(current.seenUnlocks).not.toContain('shirt:Gold')
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(reached)
+      s.pipe(
+        send(Message.ClickedPlayButton()),
+        resolveFocusLobby(),
+        send(LobbyMessage.RequestedLobbyHeroPicker()),
+        checkModel(current => {
+          expect(current.freshUnlocks).toContain('calling:LineCook')
+          expect(current.freshUnlocks).not.toContain('shirt:Gold')
+          expect(current.seenUnlocks).toContain('calling:LineCook')
+          expect(current.seenUnlocks).not.toContain('shirt:Gold')
+        }),
+        writeSave,
+      )
+    }),
   )
 })

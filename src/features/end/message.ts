@@ -1,10 +1,9 @@
-import { Schema } from 'effect'
-import { defineMessageUnion } from 'foldkit/message'
+import { UiSchema } from '@effect/ui'
 
 import { ShareOutcome, ShareSheet } from './share'
 
 // NOTE: the end of a run: the end card's buttons and SHARE. Their handlers
-// are in ./update.ts.
+// are in src/app/update/end.ts.
 export const endCases = {
   ClickedRetryButton: {},
   ClickedShareButton: {},
@@ -12,9 +11,7 @@ export const endCases = {
   ClickedRoomLobbyButton: {},
   ClickedLeaveRoomButton: {},
   SettledShare: { outcome: ShareOutcome },
-  CompletedSendShareEvent: {},
-  FailedSendShareEvent: { reason: Schema.String },
   CompletedDetectShareSheet: { shareSheet: ShareSheet },
 }
-export const EndMessage = defineMessageUnion(endCases)
+export const EndMessage = UiSchema.TaggedEnum(endCases)
 export type EndMessage = typeof EndMessage.Type

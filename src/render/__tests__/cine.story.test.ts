@@ -1,7 +1,6 @@
 import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Boss, type Model, Phase } from '../../app/model'
@@ -11,10 +10,12 @@ import {
   withZombies,
 } from '../../test/model.fixture'
 import {
-  APPLICATION,
   FRAME_MS,
   bulletInto,
+  checkModel,
+  modelAfter,
   openFloorSpot,
+  steps,
   tick,
   ticks,
   zombieAt,
@@ -37,7 +38,7 @@ import { STILL_GLIDE } from '../renderSchema'
 const ENTRANCE_MS = 2600
 
 const arrivingAt = (model: Model, remainingMs: number): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     boss: () =>
       Boss.Arriving({
         door: 'Front',
@@ -71,26 +72,27 @@ describe('the cinematic camera', () => {
     () => {
       const door = levelOf(midRoom).doors.Front.center
       const still = centerOf(midRoom)
-      return Story.story(
-        APPLICATION,
-        Story.given(arrivingAt(midRoom, ENTRANCE_MS)),
-        ...ticks(45, FRAME_MS),
-        Story.model(current => {
-          const glided = centerOf(current)
-          expect(Math.abs(glided.y - door.y)).toBeLessThan(
-            Math.abs(still.y - door.y),
-          )
-          const camera = cameraOf(current)
-          const { player } = focusOf(current)
-          expect(player.x).toBeGreaterThan(camera.x)
-          expect(player.x).toBeLessThan(camera.x + camera.width)
-          expect(player.y).toBeGreaterThan(camera.y)
-          expect(player.y).toBeLessThan(camera.y + camera.height)
-        }),
-        ...ticks(Math.ceil(ENTRANCE_MS / FRAME_MS) + 120, FRAME_MS),
-        Story.model(({ cameraGlide }) => {
-          expect(cameraGlide).toEqual(STILL_GLIDE)
-        }),
+      return modelAfter(
+        arrivingAt(midRoom, ENTRANCE_MS),
+        steps(
+          ticks(45, FRAME_MS),
+          checkModel(current => {
+            const glided = centerOf(current)
+            expect(Math.abs(glided.y - door.y)).toBeLessThan(
+              Math.abs(still.y - door.y),
+            )
+            const camera = cameraOf(current)
+            const { player } = focusOf(current)
+            expect(player.x).toBeGreaterThan(camera.x)
+            expect(player.x).toBeLessThan(camera.x + camera.width)
+            expect(player.y).toBeGreaterThan(camera.y)
+            expect(player.y).toBeLessThan(camera.y + camera.height)
+          }),
+          ticks(Math.ceil(ENTRANCE_MS / FRAME_MS) + 120, FRAME_MS),
+          checkModel(({ cameraGlide }) => {
+            expect(cameraGlide).toEqual(STILL_GLIDE)
+          }),
+        ),
       )
     },
   )
@@ -153,7 +155,7 @@ describe('the cinematic camera', () => {
     ).toHaveLength(2)
   })
 
-  const victim = modifyFields(
+  const victim = UiStruct.evolve(
     zombieAt(300, openFloorSpot(0).x, openFloorSpot(0).y, {
       speed: 0,
     }),
@@ -161,28 +163,29 @@ describe('the cinematic camera', () => {
       hp: () => 1,
     },
   )
-  const lastBlow = modifyFields(withZombies(playingModel, [victim]), {
+  const lastBlow = UiStruct.evolve(withZombies(playingModel, [victim]), {
     bullets: () => [bulletInto(301, victim)],
     phase: phase =>
       Phase.isAnyOf(['Wave'])(phase)
-        ? modifyFields(phase, { spawns: () => [] })
+        ? UiStruct.evolve(phase, { spawns: () => [] })
         : phase,
   })
 
   it.effect("glides to the wave's last blow, then lets it go", () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lastBlow),
-      tick(FRAME_MS),
-      Story.model(({ maybeFinisher }) => {
-        expect(Option.map(maybeFinisher, ({ x, y }) => ({ x, y }))).toEqual(
-          Option.some({ x: victim.x, y: victim.y }),
-        )
-      }),
-      ...ticks(Math.ceil(FINISHER_CINE_MS / FRAME_MS) + 1, FRAME_MS),
-      Story.model(({ maybeFinisher }) => {
-        expect(Option.isNone(maybeFinisher)).toBe(true)
-      }),
+    modelAfter(
+      lastBlow,
+      steps(
+        tick(FRAME_MS),
+        checkModel(({ maybeFinisher }) => {
+          expect(Option.map(maybeFinisher, ({ x, y }) => ({ x, y }))).toEqual(
+            Option.some({ x: victim.x, y: victim.y }),
+          )
+        }),
+        ticks(Math.ceil(FINISHER_CINE_MS / FRAME_MS) + 1, FRAME_MS),
+        checkModel(({ maybeFinisher }) => {
+          expect(Option.isNone(maybeFinisher)).toBe(true)
+        }),
+      ),
     ),
   )
 

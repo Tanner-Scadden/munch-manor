@@ -1,6 +1,6 @@
 import { Array, Function, Match, Option, Record, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
+import * as Draw from '../render/draw'
 import { ZERO_VECTOR } from '../world/step/geometry'
 import { type Fill, parseColor, pngDataUrl } from './png'
 import {
@@ -124,12 +124,12 @@ export const spriteRects: {
   (
     palette: Palette,
     anchor?: Anchor,
-  ): (pixels: ReadonlyArray<string>) => ReadonlyArray<Canvas.Rect>
+  ): (pixels: ReadonlyArray<string>) => ReadonlyArray<Draw.Rect>
   (
     pixels: ReadonlyArray<string>,
     palette: Palette,
     anchor?: Anchor,
-  ): ReadonlyArray<Canvas.Rect>
+  ): ReadonlyArray<Draw.Rect>
 } = Function.dual(
   // NOTE: data-first starts with the pixel rows, the only array argument.
   (args: IArguments): boolean => Array.isArray(args[0]),
@@ -137,9 +137,9 @@ export const spriteRects: {
     pixels: ReadonlyArray<string>,
     palette: Palette,
     anchor: Anchor = centerAnchor(pixels),
-  ): ReadonlyArray<Canvas.Rect> =>
+  ): ReadonlyArray<Draw.Rect> =>
     Array.map(pixelRuns(pixels, palette), run =>
-      Canvas.Rect({
+      Draw.Rect({
         x: run.x - anchor.x,
         y: run.y - anchor.y,
         width: run.width,
@@ -231,9 +231,9 @@ const imageAt = (
   y: number,
   width: number,
   height: number,
-): Canvas.Image => {
+): Draw.Image => {
   builtSpriteSources.add(src)
-  return Canvas.Image({ src, x, y, width, height, rendering: 'Pixelated' })
+  return Draw.Image({ src, x, y, width, height, rendering: 'Pixelated' })
 }
 
 // NOTE: how to build a prebuilt sprite's image on its own, by where it sits
@@ -245,7 +245,7 @@ const placeOf = (src: string, x: number, y: number): string =>
 
 // NOTE: a sprite's image as a source of its own: a prebuilt sprite's built
 // on first use, anything else's own source.
-export const standaloneSource = (image: Canvas.Image): string => {
+export const standaloneSource = (image: Draw.Image): string => {
   if (image.crop === undefined) {
     return image.src
   }
@@ -262,11 +262,11 @@ export const standaloneSource = (image: Canvas.Image): string => {
 export type ArtImage = Readonly<{ src: string; width: number; height: number }>
 
 export const spriteImage = (
-  sprite: ReadonlyArray<Canvas.Shape>,
+  sprite: ReadonlyArray<Draw.Shape>,
 ): Option.Option<ArtImage> =>
   pipe(
     Array.head(sprite),
-    Option.flatMap((shape: Canvas.Shape) =>
+    Option.flatMap((shape: Draw.Shape) =>
       shape._tag === 'Image'
         ? Option.some({
             src: standaloneSource(shape),
@@ -283,10 +283,10 @@ const atlasImageAt = (
   x: number,
   y: number,
   recipe: () => Option.Option<string>,
-): Canvas.Image => {
+): Draw.Image => {
   builtSpriteSources.add(hit.src)
   recipesByPlace.set(placeOf(hit.src, hit.x, hit.y), recipe)
-  return Canvas.Image({
+  return Draw.Image({
     src: hit.src,
     x,
     y,
@@ -358,7 +358,7 @@ const builtSpriteShapes = (
   palette: Palette,
   anchor: Anchor,
   width: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const runs = rowRunsOf(pixels, palette)
   if (Array.isReadonlyArrayEmpty(runs)) {
     return []
@@ -380,7 +380,7 @@ const FLASH_COLOR = '#ffffff'
 // by identity: the 3D renderer draws a flash sprite unlit
 // (src/render/iso/scene.ts). Weak, so a sprite let go is forgotten.
 const FLASH_PALETTES = new WeakSet<Palette>()
-const FLASH_SHAPES = new WeakSet<Canvas.Shape>()
+const FLASH_SHAPES = new WeakSet<Draw.Shape>()
 
 export const flashPalette = (palette: Palette): Palette => {
   const flash = Record.map(palette, () => FLASH_COLOR)
@@ -388,7 +388,7 @@ export const flashPalette = (palette: Palette): Palette => {
   return flash
 }
 
-export const isFlashShape = (shape: Canvas.Shape): boolean =>
+export const isFlashShape = (shape: Draw.Shape): boolean =>
   FLASH_SHAPES.has(shape)
 
 // GLOWS
@@ -401,8 +401,8 @@ export const isFlashShape = (shape: Canvas.Shape): boolean =>
 // their own glowing faces (src/render/iso/voxels.ts) and nothing else of
 // the body, gold buttons and all, ever glows.
 const EYE_LETTERS = new WeakMap<Palette, string>()
-const EYE_PIXELS = new WeakMap<Canvas.Shape, EyePixels>()
-const GLOW_SHAPES = new WeakSet<Canvas.Shape>()
+const EYE_PIXELS = new WeakMap<Draw.Shape, EyePixels>()
+const GLOW_SHAPES = new WeakSet<Draw.Shape>()
 
 // NOTE: a sprite's eye pixels: 1 for each pixel of its map, row by row,
 // that wears an eye's letter.
@@ -420,7 +420,7 @@ export const glowingEyes: {
   return palette
 })
 
-export const eyePixelsOf = (shape: Canvas.Shape): EyePixels | undefined =>
+export const eyePixelsOf = (shape: Draw.Shape): EyePixels | undefined =>
   EYE_PIXELS.get(shape)
 
 const eyePixelsIn = (
@@ -443,19 +443,19 @@ const eyePixelsIn = (
   return count === 0 ? undefined : { width, height, isEye }
 }
 
-export const glowing = <S extends Canvas.Shape>(shape: S): S => {
+export const glowing = <S extends Draw.Shape>(shape: S): S => {
   GLOW_SHAPES.add(shape)
   return shape
 }
 
-export const isGlowShape = (shape: Canvas.Shape): boolean =>
+export const isGlowShape = (shape: Draw.Shape): boolean =>
   GLOW_SHAPES.has(shape)
 
 const noteFlash = (
   palette: Palette,
   pixels: ReadonlyArray<string>,
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> => {
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> => {
   if (FLASH_PALETTES.has(palette)) {
     Array.forEach(shapes, shape => {
       FLASH_SHAPES.add(shape)
@@ -480,20 +480,20 @@ const noteFlash = (
 // every body each frame, so a lookup builds no key: the sheet's string
 // keeps its own hash, and the corner is one number.
 export type CropTable<V> = Readonly<{
-  get: (image: Canvas.Image) => V | undefined
+  get: (image: Draw.Image) => V | undefined
   // NOTE: every image of a sprite, set to one value.
-  setSprite: (sprite: ReadonlyArray<Canvas.Shape>, value: V) => void
+  setSprite: (sprite: ReadonlyArray<Draw.Shape>, value: V) => void
 }>
 
 // NOTE: wider than any sheet, so each corner is its own number.
 const CORNER_SPAN = 65536
 
-const cornerOf = (image: Canvas.Image): number =>
+const cornerOf = (image: Draw.Image): number =>
   (image.crop?.x ?? 0) * CORNER_SPAN + (image.crop?.y ?? 0)
 
 export const makeCropTable = <V>(): CropTable<V> => {
   const bySheet = new Map<string, Map<number, V>>()
-  const set = (image: Canvas.Image, value: V): void => {
+  const set = (image: Draw.Image, value: V): void => {
     const known = bySheet.get(image.src)
     const corners = known ?? new Map<number, V>()
     if (known === undefined) {
@@ -515,8 +515,8 @@ export const makeCropTable = <V>(): CropTable<V> => {
 
 // NOTE: whether an image is one of these sprites', by its crop.
 export const cropSetOf = (
-  sprites: ReadonlyArray<ReadonlyArray<Canvas.Shape>>,
-): ((image: Canvas.Image) => boolean) => {
+  sprites: ReadonlyArray<ReadonlyArray<Draw.Shape>>,
+): ((image: Draw.Image) => boolean) => {
   const table = makeCropTable<true>()
   Array.forEach(sprites, sprite => {
     table.setSprite(sprite, true)
@@ -531,7 +531,7 @@ export const glowingSprite = (sprite: Sprite): Sprite => {
   return sprite
 }
 
-export const isGlowingShape = (shape: Canvas.Shape): boolean =>
+export const isGlowingShape = (shape: Draw.Shape): boolean =>
   shape._tag === 'Image' && GLOWING_IMAGES.get(shape) === true
 
 // NOTE: how a sprite stands carved in the 3D world when its round default
@@ -559,7 +559,7 @@ export const deepSprite: {
   return sprite
 })
 
-export const spriteDepthOf = (shape: Canvas.Image): SpriteDepth | undefined =>
+export const spriteDepthOf = (shape: Draw.Image): SpriteDepth | undefined =>
   SPRITE_DEPTHS.get(shape)
 
 // NOTE: a sprite is one image of its pixel map, drawn with a single
@@ -570,12 +570,12 @@ export const spriteShapes: {
   (
     palette: Palette,
     anchor?: Anchor,
-  ): (pixels: ReadonlyArray<string>) => ReadonlyArray<Canvas.Shape>
+  ): (pixels: ReadonlyArray<string>) => ReadonlyArray<Draw.Shape>
   (
     pixels: ReadonlyArray<string>,
     palette: Palette,
     anchor?: Anchor,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   // NOTE: data-first starts with the pixel rows, the only array argument.
   (args: IArguments): boolean => Array.isArray(args[0]),
@@ -583,7 +583,7 @@ export const spriteShapes: {
     pixels: ReadonlyArray<string>,
     palette: Palette,
     anchor: Anchor = centerAnchor(pixels),
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const width = spriteWidth(pixels)
     const key = pixelsKeyOf(width, pixels, palette)
     return noteFlash(
@@ -650,7 +650,7 @@ const shiftBounds = (bounds: Box, x: number, y: number): Box => ({
 // NOTE: the box a list of shapes covers, in their own coordinates, for
 // laying sprites side by side (a take's tag) and the art studio's frames.
 // Paths and text are left out: no sprite is made of them.
-export const boundsOf = (shapes: ReadonlyArray<Canvas.Shape>): Box =>
+export const boundsOf = (shapes: ReadonlyArray<Draw.Shape>): Box =>
   Array.reduce(shapes, EMPTY_BOUNDS, (bounds: Box, shape): Box =>
     joinBounds(
       bounds,
@@ -666,7 +666,6 @@ export const boundsOf = (shapes: ReadonlyArray<Canvas.Shape>): Box =>
             group.translate?.y ?? 0,
           ),
         Path: () => EMPTY_BOUNDS,
-        Text: () => EMPTY_BOUNDS,
       }),
     ),
   )
@@ -674,19 +673,19 @@ export const boundsOf = (shapes: ReadonlyArray<Canvas.Shape>): Box =>
 const isWhole = (value: number | undefined): boolean =>
   value === undefined || Number.isInteger(value)
 
-const isPlainTranslate = (group: Canvas.Group): boolean =>
+const isPlainTranslate = (group: Draw.Group): boolean =>
   group.rotate === undefined &&
   group.scale === undefined &&
   group.opacity === undefined &&
   isWhole(group.translate?.x) &&
   isWhole(group.translate?.y)
 
-const isWholeRect = (rect: Canvas.Rect): boolean =>
+const isWholeRect = (rect: Draw.Rect): boolean =>
   rect.stroke === undefined &&
   Array.every([rect.x, rect.y, rect.width, rect.height], isWhole)
 
 const shapeRuns = (
-  shape: Canvas.Shape,
+  shape: Draw.Shape,
   offsetX: number,
   offsetY: number,
 ): Option.Option<ReadonlyArray<PixelRun>> =>
@@ -713,12 +712,11 @@ const shapeRuns = (
         : Option.none(),
     Circle: () => Option.none(),
     Path: () => Option.none(),
-    Text: () => Option.none(),
     Image: () => Option.none(),
   })
 
 const flattenRects = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
   offsetX: number,
   offsetY: number,
 ): Option.Option<ReadonlyArray<PixelRun>> =>
@@ -741,8 +739,8 @@ const boxOf = (runs: Array.NonEmptyReadonlyArray<PixelRun>): Box =>
 
 const bakeRuns = (
   runs: Array.NonEmptyReadonlyArray<PixelRun>,
-  fallback: () => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> => {
+  fallback: () => ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> => {
   const box = boxOf(runs)
   const width = box.right - box.left
   const height = box.bottom - box.top
@@ -777,8 +775,8 @@ const bakeRuns = (
 // in the same order. Anything else, such as a circle or a scaled group, keeps
 // its shapes as they are.
 export const bakeShapes = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> => {
+  shapes: ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> => {
   const runs = Option.getOrElse(flattenRects(shapes, 0, 0), () => [])
   return Array.isReadonlyArrayNonEmpty(runs)
     ? bakeRuns(runs, () => shapes)
@@ -807,16 +805,11 @@ const clipRun = (run: PixelRun, box: Box): Option.Option<PixelRun> => {
 // pixels of the whole list's image within them. A list that is not whole
 // rectangles keeps its shapes, uncut.
 export const bakeShapesWithin: {
-  (
-    box: Box,
-  ): (shapes: ReadonlyArray<Canvas.Shape>) => ReadonlyArray<Canvas.Shape>
-  (shapes: ReadonlyArray<Canvas.Shape>, box: Box): ReadonlyArray<Canvas.Shape>
+  (box: Box): (shapes: ReadonlyArray<Draw.Shape>) => ReadonlyArray<Draw.Shape>
+  (shapes: ReadonlyArray<Draw.Shape>, box: Box): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (
-    shapes: ReadonlyArray<Canvas.Shape>,
-    box: Box,
-  ): ReadonlyArray<Canvas.Shape> =>
+  (shapes: ReadonlyArray<Draw.Shape>, box: Box): ReadonlyArray<Draw.Shape> =>
     Option.match(flattenRects(shapes, 0, 0), {
       onNone: () => shapes,
       onSome: runs => {
@@ -832,11 +825,11 @@ export const bakeShapesWithin: {
 // image itself, which saves the painter a Group's save, restore, and
 // translate for every sprite in the scene.
 export const placeAt: {
-  (y: number, sprite: ReadonlyArray<Canvas.Shape>): (x: number) => Canvas.Shape
-  (x: number, y: number, sprite: ReadonlyArray<Canvas.Shape>): Canvas.Shape
+  (y: number, sprite: ReadonlyArray<Draw.Shape>): (x: number) => Draw.Shape
+  (x: number, y: number, sprite: ReadonlyArray<Draw.Shape>): Draw.Shape
 } = Function.dual(
   3,
-  (x: number, y: number, sprite: ReadonlyArray<Canvas.Shape>): Canvas.Shape => {
+  (x: number, y: number, sprite: ReadonlyArray<Draw.Shape>): Draw.Shape => {
     const only = sprite.length === 1 ? sprite[0] : undefined
     if (only?._tag === 'Image') {
       return {
@@ -861,26 +854,26 @@ export const placeAt: {
 export const placeScaled: {
   (
     y: number,
-    sprite: ReadonlyArray<Canvas.Shape>,
+    sprite: ReadonlyArray<Draw.Shape>,
     scaleX: number,
     scaleY: number,
-  ): (x: number) => Canvas.Shape
+  ): (x: number) => Draw.Shape
   (
     x: number,
     y: number,
-    sprite: ReadonlyArray<Canvas.Shape>,
+    sprite: ReadonlyArray<Draw.Shape>,
     scaleX: number,
     scaleY: number,
-  ): Canvas.Shape
+  ): Draw.Shape
 } = Function.dual(
   5,
   (
     x: number,
     y: number,
-    sprite: ReadonlyArray<Canvas.Shape>,
+    sprite: ReadonlyArray<Draw.Shape>,
     scaleX: number,
     scaleY: number,
-  ): Canvas.Shape => {
+  ): Draw.Shape => {
     const only = sprite.length === 1 ? sprite[0] : undefined
     if (only?._tag === 'Image') {
       return {
@@ -924,17 +917,17 @@ export const padRow: {
 export type Facing = 'Left' | 'Right'
 export type Tone = 'Normal' | 'Flash'
 
-export type Sprite = ReadonlyArray<Canvas.Shape>
+export type Sprite = ReadonlyArray<Draw.Shape>
 export type SpriteSet = Readonly<Record<Tone, Readonly<Record<Facing, Sprite>>>>
 export type SpriteFrames = Array.NonEmptyReadonlyArray<SpriteSet>
 
-type GroupFields = Omit<Canvas.Group, '_tag'>
+type GroupFields = Omit<Draw.Group, '_tag'>
 
-// NOTE: Canvas.Group re-parses every nested shape through Schema on each call,
+// NOTE: Draw.Group re-parses every nested shape through Schema on each call,
 // because its shapes field is recursive. The scene builds hundreds of Groups a
 // frame around shapes the Canvas constructors already made, so this builds the
 // same Group value without parsing the whole subtree again.
-export const group = (fields: GroupFields): Canvas.Group => ({
+export const group = (fields: GroupFields): Draw.Group => ({
   _tag: 'Group',
   shapes: fields.shapes,
   translate: fields.translate,

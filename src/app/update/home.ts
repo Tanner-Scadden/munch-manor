@@ -1,6 +1,6 @@
 import { Array, Duration, Effect, Function, Option, Schema, pipe } from 'effect'
-import { Dom, Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { Command, Component, UiStruct } from '@effect/ui'
 
 import { markJournalSeen } from '../../domain/journal'
 import { runDifficultyOf } from '../../domain/onlineRun'
@@ -11,7 +11,6 @@ import {
   HomeButton,
   type MenuPanel,
 } from '../../features/home/homeSchema'
-import { HomeMessage } from '../../features/home/message'
 import type { HelpCard } from '../../features/menus/message'
 import { MunchopediaPage } from '../../features/munchopedia/model'
 import { skipTutorial } from '../../features/onboarding/onboarding'
@@ -53,6 +52,7 @@ import {
 import type { TutorialChoice } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
 import { stepWhen } from '../../shared/stepWhen'
+import { clickById, focusById } from '../../ui/menuParts'
 import {
   chooseDifficulty,
   isLocked,
@@ -62,15 +62,6 @@ import {
 } from '../../world/run/difficulty'
 import { noModifiers } from '../../world/run/modifiers'
 import { RunMode } from '../../world/schema/worldSchema'
-import {
-  HandDialogBinding,
-  HomeScreenStepsBinding,
-  MunchopediaBinding,
-  PanelDialogBinding,
-  ProofShelfBinding,
-  UpdateGreetingBinding,
-} from '../bindings'
-import { ApplicationBlock, makeStep } from '../definition'
 import {
   MenuState,
   isAnyPanelOpen,
@@ -82,11 +73,11 @@ import {
 } from '../menuState'
 import { DifficultyCard, type Model } from '../model'
 import { returnHome } from '../runReset'
+import { closeRootDialog, openRootDialog } from './dialog'
 import { openProfile } from './profile'
 import { isPaused, startFromButton, startWhenAllowed, startsRun } from './run'
 import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
 import {
-  type UpdateReturn,
   type UpdateStep,
   combine,
   defineHandlers,
@@ -96,132 +87,89 @@ import {
   withInput,
 } from './step'
 
-// COMMAND
+// COMMANDS
 
-export const ShowInstallPrompt = ApplicationBlock.makeCommand(
-  'ShowInstallPrompt',
-  {
-    messages: [InstallMessage.CompletedShowInstallPrompt],
-    handler: function* () {
+// NOTE: Chrome's install prompt is held by the InstallPrompt service
+// (src/platform/install.ts), so the Command is a service a test fakes.
+export class ShowInstallPrompt extends Command.Service<ShowInstallPrompt>()(
+  'app/ShowInstallPrompt',
+  { args: {}, success: InstallMessage },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const installPrompt = yield* InstallPrompt
       return () =>
-        InstallPrompt.use(installPrompt =>
-          Effect.map(installPrompt.prompt, outcome =>
-            InstallMessage.CompletedShowInstallPrompt({ outcome }),
-          ),
+        Effect.map(installPrompt.prompt, outcome =>
+          InstallMessage.CompletedShowInstallPrompt({ outcome }),
         )
-    },
-  },
-)
+    }),
+  )
+}
 
-export const FocusHomeButton = ApplicationBlock.makeCommand('FocusHomeButton', {
-  args: { button: HomeButton },
-  messages: [HomeMessage.CompletedFocusHomeButton],
-  handler: function* () {
-    return ({ button }) =>
-      Dom.focus(`#${homeButtonId(button)}`).pipe(
-        Effect.ignore,
-        Effect.as(HomeMessage.CompletedFocusHomeButton()),
-      )
-  },
-})
+// NOTE: focus moves on the page once the render is committed; a button
+// not drawn is left be, and nothing is reported.
+export const FocusHomeButton = Command.make(
+  'FocusHomeButton',
+  { args: { button: HomeButton } },
+  ({ button }) => Effect.as(focusById(homeButtonId(button)), Component.noop),
+)
 
 // NOTE: B buys Rattles a coffee from the keyboard. The coffee is a real
 // link, so the key clicks it, as SHARE's key does: the browser opens the
 // link from a click, which no popup blocker stops, and the click sends
 // ClickedSupportButton like a tap.
-export const ClickSupportLink = ApplicationBlock.makeCommand(
+export const ClickSupportLink = Command.make(
   'ClickSupportLink',
-  {
-    messages: [HomeMessage.CompletedClickSupportLink],
-    handler: function* () {
-      return () =>
-        Dom.clickElement(`#${homeButtonId('Support')}`).pipe(
-          Effect.ignore,
-          Effect.as(HomeMessage.CompletedClickSupportLink()),
-        )
-    },
-  },
+  { args: {} },
+  () => Effect.as(clickById(homeButtonId('Support')), Component.noop),
 )
 
-const clickSupportLink: UpdateStep = model =>
-  isSupportShown(model) ? { model, commands: [ClickSupportLink()] } : { model }
+const clickSupportLink: UpdateStep = $ =>
+  isSupportShown($.model) ? $.run(ClickSupportLink.make()) : $.model
 
-export const FocusHandCard = ApplicationBlock.makeCommand('FocusHandCard', {
-  args: { card: HandCard },
-  messages: [HomeMessage.CompletedFocusHandCard],
-  handler: function* () {
-    return ({ card }) =>
-      Dom.focus(`#${handCardId(card)}`).pipe(
-        Effect.ignore,
-        Effect.as(HomeMessage.CompletedFocusHandCard()),
-      )
-  },
-})
+export const FocusHandCard = Command.make(
+  'FocusHandCard',
+  { args: { card: HandCard } },
+  ({ card }) => Effect.as(focusById(handCardId(card)), Component.noop),
+)
 
-export const FocusEndMenuButton = ApplicationBlock.makeCommand(
+export const FocusEndMenuButton = Command.make(
   'FocusEndMenuButton',
-  {
-    messages: [HomeMessage.CompletedFocusEndMenuButton],
-    handler: function* () {
-      return () =>
-        Dom.focus(`#${END_MENU_BUTTON_ID}`).pipe(
-          Effect.ignore,
-          Effect.as(HomeMessage.CompletedFocusEndMenuButton()),
-        )
-    },
-  },
+  { args: {} },
+  () => Effect.as(focusById(END_MENU_BUTTON_ID), Component.noop),
 )
 
 // NOTE: long enough for the gift's unwrap animation (src/features/home/menu.css) to
 // play out before the page goes.
 const UNWRAP_DURATION = Duration.millis(650)
 
-export const WaitForUnwrap = ApplicationBlock.makeCommand('WaitForUnwrap', {
-  messages: [VersionMessage.CompletedWaitForUnwrap],
-  handler: function* () {
-    return () =>
-      Effect.as(
-        Effect.sleep(UNWRAP_DURATION),
-        VersionMessage.CompletedWaitForUnwrap(),
-      )
-  },
-})
+export const WaitForUnwrap = Command.make('WaitForUnwrap', { args: {} }, () =>
+  Effect.as(
+    Effect.sleep(UNWRAP_DURATION),
+    VersionMessage.CompletedWaitForUnwrap(),
+  ),
+)
 
 // NOTE: the new build's service worker takes over first, when there is one,
 // so the reload and any later offline start run the new build. A worker that
-// fails or is slow never stops the reload.
-export const ReloadPage = ApplicationBlock.makeCommand('ReloadPage', {
-  args: { build: Schema.String },
-  messages: [
-    VersionMessage.CompletedReloadPage,
-    VersionMessage.FailedReloadPage,
-  ],
-  handler: function* () {
-    return ({ build }) =>
-      pipe(
-        Effect.ignore(activateNewBuild),
-        Effect.andThen(reloadOnto(build)),
-        Effect.as(VersionMessage.CompletedReloadPage()),
-        Effect.catch(error =>
-          Effect.succeed(
-            VersionMessage.FailedReloadPage({ reason: error.reason }),
-          ),
-        ),
-      )
-  },
-})
+// fails or is slow never stops the reload. A reload that goes leaves nothing
+// to report; one that fails wraps the gift again.
+export const ReloadPage = Command.make(
+  'ReloadPage',
+  { args: { build: Schema.String } },
+  ({ build }) =>
+    pipe(
+      Effect.ignore(activateNewBuild),
+      Effect.andThen(reloadOnto(build)),
+      Effect.match({
+        onSuccess: () => Component.noop,
+        onFailure: error =>
+          VersionMessage.FailedReloadPage({ reason: error.reason }),
+      }),
+    ),
+)
 
 // MENU
-
-// NOTE: the panel's Closed fold (src/app/composition.ts): a Difficulty panel
-// that asked before a run, closed without a pick, asks again next time.
-export const forgetAskedMode: UpdateStep = stepModel => ({
-  model: DifficultyCard.isAnyOf(['Asking'])(stepModel.difficultyCard)
-    ? modifyFields(stepModel, {
-        difficultyCard: () => DifficultyCard.Unseen(),
-      })
-    : stepModel,
-})
 
 // NOTE: Leave Run opens over the pause menu, every other panel over the
 // bare home menu.
@@ -230,17 +178,16 @@ const isPanelAllowed = (model: Model, panel: MenuPanel): boolean =>
     ? MenuState.isAnyOf(['Paused'])(menuState(model))
     : MenuState.isAnyOf(['Home'])(menuState(model))
 
-const showPanel =
-  (panel: MenuPanel): UpdateStep =>
-  stepModel => ({
-    model: withInput(
-      modifyFields(stepModel, {
+const showPanel = (panel: MenuPanel): UpdateStep =>
+  modelStep(model =>
+    withInput(
+      UiStruct.evolve(model, {
         panel: () => panel,
         maybeOpenHelpCard: () => Option.none(),
       }),
       releaseAll,
     ),
-  })
+  )
 
 // NOTE: a How to play card shows its line once focused (a keyboard) or
 // tapped (touch), and keeps it until another card takes its place.
@@ -248,171 +195,156 @@ const showHelpLine: {
   (card: HelpCard): (model: Model) => Model
   (model: Model, card: HelpCard): Model
 } = Function.dual(2, (model: Model, card: HelpCard): Model =>
-  modifyFields(model, { maybeOpenHelpCard: () => Option.some(card) }),
+  UiStruct.evolve(model, { maybeOpenHelpCard: () => Option.some(card) }),
 )
 
-const openPanel = (panel: MenuPanel) =>
-  makeStep(model =>
-    isPanelAllowed(model, panel)
-      ? Update.combineSteps([
-          showPanel(panel),
-          PanelDialogBinding.requestOpen(),
-        ])
-      : unchanged,
+const openPanel = (panel: MenuPanel): UpdateStep =>
+  stepWhen(
+    (model: Model) => isPanelAllowed(model, panel),
+    combine([showPanel(panel), openRootDialog('Panel')]),
   )
 
 // NOTE: the day's missions open from their card or U, once the card shows.
-export const openMissions = makeStep(model =>
-  isMissionCardShown(model) ? openPanel('Missions') : unchanged,
+export const openMissions: UpdateStep = stepWhen(
+  isMissionCardShown,
+  openPanel('Missions'),
 )
 
-const closePanel = makeStep(model =>
-  isAnyPanelOpen(model) ? PanelDialogBinding.requestClose() : unchanged,
+const closePanel: UpdateStep = stepWhen(
+  isAnyPanelOpen,
+  closeRootDialog('Panel'),
 )
 
 export const goHome = modelStep(model =>
   returnHome(withInput(model, releaseAll)),
 )
 
-const leaveFromMenu = makeStep(model => {
-  if (isPaused(model.phase)) {
-    return openPanel('LeaveRun')
-  } else if (isEndScreen(model.phase) && isPastRestartGrace(model)) {
-    return goHome
+const leaveFromMenu: UpdateStep = $ => {
+  if (isPaused($.model.phase)) {
+    return openPanel('LeaveRun')($)
+  } else if (isEndScreen($.model.phase) && isPastRestartGrace($.model)) {
+    return goHome($)
   } else {
-    return unchanged
+    return $.model
   }
-})
+}
 
 // NOTE: only from the open Leave Run panel: a LEAVE tapped as the panel
 // fades out after Back stays in the run.
-const leaveRun = makeStep(model =>
-  isPaused(model.phase) && isPanelOpen(model, 'LeaveRun')
-    ? Update.combineSteps([closePanel, goHome])
-    : unchanged,
+const leaveRun: UpdateStep = stepWhen(
+  (model: Model) => isPaused(model.phase) && isPanelOpen(model, 'LeaveRun'),
+  combine([closePanel, goHome]),
 )
 
 // NOTE: a controller with the leave panel up from pause: A leaves, B or
 // Start stays. The menus by controller come later (docs/INPUT_PLAN.md); this
 // is the one panel a run needs, so a pad player is never stuck in one.
-export const leaveRunFromPad = (code: string) =>
-  makeStep(model => {
-    if (!isPaused(model.phase) || !isPanelOpen(model, 'LeaveRun')) {
-      return unchanged
+export const leaveRunFromPad =
+  (code: string): UpdateStep =>
+  $ => {
+    if (!isPaused($.model.phase) || !isPanelOpen($.model, 'LeaveRun')) {
+      return $.model
     } else if (code === PAD_A) {
-      return leaveRun
+      return leaveRun($)
     } else if (code === PAD_B || code === PAD_START) {
-      return closePanel
+      return closePanel($)
     } else {
-      return unchanged
+      return $.model
     }
-  })
+  }
 
 const isEndMenuKey = (model: Model, code: string): boolean =>
   isMenuKey(code) || (isStartKey(code) && endOffer(model) === 'MenuOnly')
 
-export const menuFromKey = (code: string) =>
-  makeStep(model => (isEndMenuKey(model, code) ? leaveFromMenu : unchanged))
+export const menuFromKey = (code: string): UpdateStep =>
+  stepWhen((model: Model) => isEndMenuKey(model, code), leaveFromMenu)
 
 // NOTE: the gear opens the Profile on its Settings tab, only from the menu
 // itself, as the gear is only there.
-const openSettingsFromGear = makeStep(model =>
-  isOnHomeMenu(model) ? openProfile('Settings') : unchanged,
+const openSettingsFromGear: UpdateStep = stepWhen(
+  isOnHomeMenu,
+  openProfile('Settings'),
 )
 
 // THE MANOR HAND
 
-const openHand = makeStep(model =>
-  isOnHomeMenu(model)
-    ? Update.combineSteps([releaseInput, HandDialogBinding.requestOpen()])
-    : unchanged,
+const openHand: UpdateStep = stepWhen(
+  isOnHomeMenu,
+  combine([releaseInput, openRootDialog('Hand')]),
 )
 
 // NOTE: a card puts the hand away before it opens its panel, so the
 // panel's Done or Esc lands back on the menu, not in the hand: a card's
 // handler runs closeHand, then the card's own Step.
-const closeHand = makeStep(model =>
-  isHandOpen(model) ? HandDialogBinding.requestClose() : unchanged,
-)
+const closeHand: UpdateStep = stepWhen(isHandOpen, closeRootDialog('Hand'))
 
-const stepHandFocus: {
-  (card: HandCard): (model: Model) => UpdateReturn
-  (model: Model, card: HandCard): UpdateReturn
-} = Function.dual(2, (model: Model, card: HandCard): UpdateReturn =>
-  isHandOpen(model) && Array.contains(HAND_CARDS, card)
-    ? { model, commands: [FocusHandCard({ card })] }
-    : { model },
-)
+const stepHandFocus =
+  (card: HandCard): UpdateStep =>
+  $ =>
+    isHandOpen($.model) && Array.contains(HAND_CARDS, card)
+      ? $.run(FocusHandCard.make({ card }))
+      : $.model
 
-export const homeFocusFromKey: (code: string) => UpdateStep =
-  code => stepModel =>
+export const homeFocusFromKey =
+  (code: string): UpdateStep =>
+  $ =>
     Option.match(maybeFocusStep(code), {
-      onNone: () => ({ model: stepModel }),
+      onNone: () => $.model,
       onSome: step => {
-        if (!isOnHomeMenu(stepModel)) {
-          return { model: stepModel }
+        if (!isOnHomeMenu($.model)) {
+          return $.model
         }
 
         const button = steppedHomeFocus(
-          homeButtonsOf(stepModel),
-          stepModel.maybeHomeFocus,
+          homeButtonsOf($.model),
+          $.model.maybeHomeFocus,
           step,
         )
-        return {
-          model: modifyFields(stepModel, {
-            maybeHomeFocus: () => Option.some(button),
-          }),
-          commands: [FocusHomeButton({ button })],
-        }
+        return $.evolve({
+          maybeHomeFocus: () => Option.some(button),
+        }).run(FocusHomeButton.make({ button }))
       },
     })
 
 // HOME MENU
 
-const openWhatsNew = makeStep(model =>
-  isPanelAllowed(model, 'WhatsNew')
-    ? Update.combineSteps([modelStep(seeNews), openPanel('WhatsNew')])
-    : unchanged,
+const openWhatsNew: UpdateStep = stepWhen(
+  (model: Model) => isPanelAllowed(model, 'WhatsNew'),
+  combine([modelStep(seeNews), openPanel('WhatsNew')]),
 )
 
 // NOTE: the Dare Journal (src/features/munchopedia/) opens afresh on the
-// page asked for; an entry opened says so to its fold
-// (src/app/composition.ts). Every milestone reached is seen: the card's NEW
-// pip goes, and a page new since keeps its NEW while the journal is up.
-const openMunchopedia = (page: MunchopediaPage) =>
-  makeStep(model =>
-    isPanelAllowed(model, 'Munchopedia')
-      ? Update.combineSteps([
-          modelStep(markJournalSeen),
-          MunchopediaBinding.requestOpen({ page }),
-          openPanel('Munchopedia'),
-        ])
-      : unchanged,
+// page asked for, the root's `munchopediaPage`: the panel draws it anew as
+// it opens. Every milestone reached is seen: the card's NEW pip goes, and a
+// page new since keeps its NEW while the journal is up.
+const openMunchopedia = (page: MunchopediaPage): UpdateStep =>
+  stepWhen(
+    (model: Model) => isPanelAllowed(model, 'Munchopedia'),
+    combine([
+      modelStep(markJournalSeen),
+      modelStep(model =>
+        UiStruct.evolve(model, { munchopediaPage: () => page }),
+      ),
+      openPanel('Munchopedia'),
+    ]),
   )
 
-// NOTE: the Proof Shelf opens with nothing picked, and everything on it is
-// seen: the PROOF card's NEW pip goes, and what was new keeps its own NEW
-// while the shelf stays up.
-const openProof = makeStep(model =>
-  isPanelAllowed(model, 'Proof')
-    ? Update.combineSteps([
-        modelStep(markProofSeen),
-        ProofShelfBinding.requestOpen(),
-        openPanel('Proof'),
-      ])
-    : unchanged,
+// NOTE: the Proof Shelf opens with nothing picked, as the panel mounts it
+// afresh, and everything on it is seen: the PROOF card's NEW pip goes, and
+// what was new keeps its own NEW while the shelf stays up.
+const openProof: UpdateStep = stepWhen(
+  (model: Model) => isPanelAllowed(model, 'Proof'),
+  combine([modelStep(markProofSeen), openPanel('Proof')]),
 )
 
-const turnNews: {
-  (step: number): (model: Model) => UpdateReturn
-  (model: Model, step: number): UpdateReturn
-} = Function.dual(2, (model: Model, step: number): UpdateReturn => ({
-  model: isPanelOpen(model, 'WhatsNew')
-    ? turnNewsPage(model, step, NEWS_DAYS.length)
-    : model,
-}))
+const turnNews = (step: number): UpdateStep =>
+  modelStep(model =>
+    isPanelOpen(model, 'WhatsNew')
+      ? turnNewsPage(model, step, NEWS_DAYS.length)
+      : model,
+  )
 
-const openCard = (card: KeyedHandCard) => {
+const openCard = (card: KeyedHandCard): UpdateStep => {
   switch (card) {
     case 'WhatsNew':
       return openWhatsNew
@@ -430,25 +362,26 @@ const openCard = (card: KeyedHandCard) => {
 // NOTE: C opens the character picker on every screen that offers it, so it
 // stays with characterFromKey and is left out here. The card keys work from
 // the menu without opening the hand first.
-export const homeFromKey = (code: string) =>
-  makeStep(model => {
-    if (!isOnHomeMenu(model)) {
-      return unchanged
+export const homeFromKey =
+  (code: string): UpdateStep =>
+  $ => {
+    if (!isOnHomeMenu($.model)) {
+      return $.model
     } else if (isManorKey(code)) {
-      return openHand
+      return openHand($)
     } else if (isSupportKey(code)) {
-      return clickSupportLink
+      return clickSupportLink($)
     } else if (isSettingsKey(code)) {
-      return openProfile('Settings')
+      return openProfile('Settings')($)
     } else if (isMissionsKey(code)) {
-      return openMissions
+      return openMissions($)
     } else {
       return Option.match(maybeHandCardOfKey(code), {
-        onNone: () => unchanged,
-        onSome: card => (card === 'Character' ? unchanged : openCard(card)),
+        onNone: () => $.model,
+        onSome: card => (card === 'Character' ? unchanged : openCard(card))($),
       })
     }
-  })
+  }
 
 // DIFFICULTY
 
@@ -456,33 +389,31 @@ export const isAskingDifficultyFirst = (model: Model): boolean =>
   DifficultyCard.isAnyOf(['Unseen'])(model.difficultyCard) &&
   isOnHome(model.phase)
 
-const markAsking =
-  (mode: RunMode): UpdateStep =>
-  stepModel => ({
-    model: modifyFields(stepModel, {
+const markAsking = (mode: RunMode): UpdateStep =>
+  modelStep(model =>
+    UiStruct.evolve(model, {
       difficultyCard: () =>
         DifficultyCard.Asking({ mode, tutorial: 'Tutorial' }),
     }),
-  })
+  )
 
-const askDifficulty = (mode: RunMode) =>
-  makeStep(model =>
-    isPanelAllowed(model, 'Difficulty')
-      ? Update.combineSteps([markAsking(mode), openPanel('Difficulty')])
-      : unchanged,
+const askDifficulty = (mode: RunMode): UpdateStep =>
+  stepWhen(
+    (model: Model) => isPanelAllowed(model, 'Difficulty'),
+    combine([markAsking(mode), openPanel('Difficulty')]),
   )
 
 export const startWithMode =
   (mode: RunMode): UpdateStep =>
-  stepModel =>
-    startFromButton(stepModel, startWhenAllowed(stepModel, mode))
+  $ =>
+    startFromButton(startWhenAllowed($.model, mode))($)
 
-export const startOrAsk = (mode: RunMode) =>
-  makeStep(model =>
-    isAskingDifficultyFirst(model)
-      ? Update.combineSteps([unlockAudio, askDifficulty(mode)])
-      : startWithMode(mode),
-  )
+export const startOrAsk =
+  (mode: RunMode): UpdateStep =>
+  $ =>
+    isAskingDifficultyFirst($.model)
+      ? $.combine(unlockAudio, askDifficulty(mode))
+      : startWithMode(mode)($)
 
 // NOTE: SKIP IT starts the run as a returning player's, saved with the
 // pick (`skipTutorial`); TUTORIAL, the default, leaves the lessons be.
@@ -493,56 +424,58 @@ const TUTORIAL_PICKS: Readonly<
   Skip: skipTutorial,
 }
 
-const chooseFromCard =
-  (difficulty: Difficulty, tutorial: TutorialChoice): UpdateStep =>
-  stepModel => ({
-    model: modifyFields(
-      TUTORIAL_PICKS[tutorial](chooseDifficulty(stepModel, difficulty)),
+const chooseFromCard = (
+  difficulty: Difficulty,
+  tutorial: TutorialChoice,
+): UpdateStep =>
+  modelStep(model =>
+    UiStruct.evolve(
+      TUTORIAL_PICKS[tutorial](chooseDifficulty(model, difficulty)),
       {
         difficultyCard: () => DifficultyCard.Seen(),
       },
     ),
-  })
+  )
 
 // NOTE: the first-run card's TUTORIAL or SKIP IT, held until a difficulty
 // is picked. Only while the card asks.
-const pickTutorialChoice = (choice: TutorialChoice) =>
-  makeStep(model =>
-    DifficultyCard.match(model.difficultyCard, {
-      Unseen: () => unchanged,
-      Seen: () => unchanged,
+const pickTutorialChoice =
+  (choice: TutorialChoice): UpdateStep =>
+  $ =>
+    DifficultyCard.match($.model.difficultyCard, {
+      Unseen: () => $.model,
+      Seen: () => $.model,
       Asking: ({ mode, tutorial }) =>
-        tutorial === choice
+        (tutorial === choice
           ? unchanged
-          : Update.combineSteps([
-              modelStep(stepModel =>
-                modifyFields(stepModel, {
+          : combine([
+              modelStep(model =>
+                UiStruct.evolve(model, {
                   difficultyCard: () =>
                     DifficultyCard.Asking({ mode, tutorial: choice }),
                 }),
               ),
               playSounds([uiCue('Pop')]),
-            ]),
-    }),
-  )
+            ]))($),
+    })
 
 // NOTE: the difficulty panel opens only to ask a new player before a first
 // run. Every later pick is in the single player lobby (src/features/lobby/update.ts).
-const pickFromCard = (difficulty: Difficulty) =>
-  makeStep(model =>
-    DifficultyCard.match(model.difficultyCard, {
-      Unseen: () => unchanged,
-      Seen: () => unchanged,
+const pickFromCard =
+  (difficulty: Difficulty): UpdateStep =>
+  $ =>
+    DifficultyCard.match($.model.difficultyCard, {
+      Unseen: () => $.model,
+      Seen: () => $.model,
       Asking: ({ mode, tutorial }) =>
-        isLocked(model.difficulty, difficulty)
+        (isLocked($.model.difficulty, difficulty)
           ? unchanged
-          : Update.combineSteps([
+          : combine([
               chooseFromCard(difficulty, tutorial),
               closePanel,
               startWithMode(mode),
-            ]),
-    }),
-  )
+            ]))($),
+    })
 
 // TUTORIAL
 
@@ -551,33 +484,30 @@ const pickFromCard = (difficulty: Difficulty) =>
 // once, as a new player's first: the whole intro, alone, with no
 // modifiers. Rank, Bones, looks, bests, and the Munchopedia stay.
 const asNewPlayer = (model: Model): Model =>
-  modifyFields(forgetTutorial(model), {
-    home: home => modifyFields(home, { bots: () => [] }),
+  UiStruct.evolve(forgetTutorial(model), {
+    home: home => UiStruct.evolve(home, { bots: () => [] }),
     modifiers: () => noModifiers,
   })
 
-const replayTutorial = makeStep(model =>
-  isOnHome(model.phase) && isPanelOpen(model, 'HowToPlay')
-    ? Update.combineSteps([
-        modelStep(asNewPlayer),
-        closePanel,
-        startWithMode(RunMode.Campaign()),
-      ])
-    : unchanged,
+const replayTutorial: UpdateStep = stepWhen(
+  (model: Model) => isOnHome(model.phase) && isPanelOpen(model, 'HowToPlay'),
+  combine([
+    modelStep(asNewPlayer),
+    closePanel,
+    startWithMode(RunMode.Campaign()),
+  ]),
 )
 
-export const settleNightmareFrom =
-  (before: Model): UpdateStep =>
-  stepModel => ({
-    model: startsRun(before, stepModel)
-      ? settleNightmare(stepModel)
-      : stepModel,
-  })
+export const settleNightmareFrom = (before: Model): UpdateStep =>
+  modelStep(model =>
+    startsRun(before, model) ? settleNightmare(model) : model,
+  )
 
 export const unlockNightmareFrom = (before: Model): UpdateStep =>
   stepWhen(
-    model => isNightmareUnlockedBy(before, model, runDifficultyOf(model)),
-    model => playSounds([uiCue('PowerUp')])(unlockNightmare(model)),
+    (model: Model) =>
+      isNightmareUnlockedBy(before, model, runDifficultyOf(model)),
+    combine([modelStep(unlockNightmare), playSounds([uiCue('PowerUp')])]),
   )
 
 // INSTALL
@@ -585,41 +515,35 @@ export const unlockNightmareFrom = (before: Model): UpdateStep =>
 const dismissHomeScreenTip = (model: Model): Model =>
   model.homeScreenTip === 'Dismissed'
     ? model
-    : modifyFields(model, { homeScreenTip: () => 'Dismissed' })
+    : UiStruct.evolve(model, { homeScreenTip: () => 'Dismissed' })
 
-const openHomeScreenSteps = makeStep(model =>
-  isOnHomeMenu(model)
-    ? Update.combineSteps([releaseInput, HomeScreenStepsBinding.requestOpen()])
-    : unchanged,
+const openHomeScreenSteps: UpdateStep = stepWhen(
+  isOnHomeMenu,
+  combine([releaseInput, openRootDialog('HomeScreenSteps')]),
 )
 
-const promptInstall: UpdateStep = stepModel => ({
-  model: dismissHomeScreenTip(stepModel),
-  commands: [ShowInstallPrompt()],
-})
+const promptInstall: UpdateStep = $ =>
+  $.set(dismissHomeScreenTip($.model)).run(ShowInstallPrompt.make())
 
 // NOTE: the install tile pulses until its first tap. Chrome's own prompt
 // comes first where the browser offered one; an iPhone gets the picture
 // guide, since Safari has no prompt to show.
-const pressInstall = makeStep(model => {
-  if (!isInstallTileShown(model)) {
-    return unchanged
-  } else if (model.release.installOffer === 'Ready') {
-    return promptInstall
+const pressInstall: UpdateStep = $ => {
+  if (!isInstallTileShown($.model)) {
+    return $.model
+  } else if ($.model.release.installOffer === 'Ready') {
+    return promptInstall($)
   } else {
-    return Update.combineSteps([
-      modelStep(dismissHomeScreenTip),
-      openHomeScreenSteps,
-    ])
+    return $.combine(modelStep(dismissHomeScreenTip), openHomeScreenSteps)
   }
-})
+}
 
 const settleInstallPrompt: {
   (outcome: InstallOutcome): (model: Model) => Model
   (model: Model, outcome: InstallOutcome): Model
 } = Function.dual(2, (model: Model, outcome: InstallOutcome): Model =>
-  modifyFields(model, {
-    release: modifyFields({
+  UiStruct.evolve(model, {
+    release: UiStruct.evolve({
       installOffer: () => (outcome === 'Accepted' ? 'Installed' : 'None'),
     }),
   }),
@@ -628,28 +552,26 @@ const settleInstallPrompt: {
 // UPDATE GIFT
 
 export const unwrapUpdateGift: UpdateStep = stepWhen(
-  model => isUpdateGiftShown(model) && model.release.updateGift === 'Wrapped',
-  model =>
-    combine(model, [
-      stepModel => ({
-        model: modifyFields(stepModel, {
-          release: modifyFields({ updateGift: () => 'Unwrapping' }),
-        }),
-        commands: [WaitForUnwrap()],
-      }),
-      playSounds([uiCue('LootPop')]),
-    ]),
+  (model: Model) =>
+    isUpdateGiftShown(model) && model.release.updateGift === 'Wrapped',
+  combine([
+    $ =>
+      $.evolve({
+        release: UiStruct.evolve({ updateGift: () => 'Unwrapping' }),
+      }).run(WaitForUnwrap.make()),
+    playSounds([uiCue('LootPop')]),
+  ]),
 )
 
 export const rewrapUpdateGift = (model: Model): Model =>
-  modifyFields(model, {
-    release: modifyFields({ updateGift: () => 'Wrapped' }),
+  UiStruct.evolve(model, {
+    release: UiStruct.evolve({ updateGift: () => 'Wrapped' }),
   })
 
-export const reloadOntoNewerBuild: UpdateStep = model =>
-  Option.match(model.release.maybeNewerBuild, {
-    onNone: () => ({ model: rewrapUpdateGift(model) }),
-    onSome: build => ({ model, commands: [ReloadPage({ build })] }),
+export const reloadOntoNewerBuild: UpdateStep = $ =>
+  Option.match($.model.release.maybeNewerBuild, {
+    onNone: () => rewrapUpdateGift($.model),
+    onSome: build => $.run(ReloadPage.make({ build })),
   })
 
 // UPDATE GREETING
@@ -657,18 +579,19 @@ export const reloadOntoNewerBuild: UpdateStep = model =>
 // NOTE: the page just reloaded from the gift onto the build it unwrapped,
 // so the home menu throws a little party, once. A room link read at the
 // same boot may already have co-op open: the party goes over it.
-export const greetUpdate = (isDue: boolean) =>
-  makeStep(model =>
-    isDue &&
-    isOnHome(model.phase) &&
-    MenuState.isAnyOf(['Home', 'Coop'])(menuState(model))
-      ? UpdateGreetingBinding.requestOpen()
-      : unchanged,
+export const greetUpdate = (isDue: boolean): UpdateStep =>
+  stepWhen(
+    (model: Model) =>
+      isDue &&
+      isOnHome(model.phase) &&
+      MenuState.isAnyOf(['Home', 'Coop'])(menuState(model)),
+    openRootDialog('UpdateGreeting'),
   )
 
-export const newsFromGreeting = makeStep(() =>
-  Update.combineSteps([UpdateGreetingBinding.requestClose(), openWhatsNew]),
-)
+export const newsFromGreeting: UpdateStep = combine([
+  closeRootDialog('UpdateGreeting'),
+  openWhatsNew,
+])
 
 // END SCREENS
 
@@ -677,117 +600,92 @@ const isOfferingOnlyMenu = (model: Model): boolean =>
 
 export const focusEndMenuFrom =
   (before: Model): UpdateStep =>
-  stepModel =>
-    !isOfferingOnlyMenu(before) && isOfferingOnlyMenu(stepModel)
-      ? { model: stepModel, commands: [FocusEndMenuButton()] }
-      : { model: stepModel }
+  $ =>
+    !isOfferingOnlyMenu(before) && isOfferingOnlyMenu($.model)
+      ? $.run(FocusEndMenuButton.make())
+      : $.model
 
 // NOTE: the home menu, the MANOR hand, the panels, the pause MENU pill,
 // How to play's cards, What's New's pages, and the install tile
-// (./message.ts, src/features/menus/message.ts,
+// (src/features/home/message.ts, src/features/menus/message.ts,
 // src/features/whatsNew/message.ts, src/platform/message.ts). PLAY and
-// CO-OP open child Blocks: their handlers are the root's.
+// CO-OP have their handlers in src/app/update/lobby.ts and coop.ts.
 export const homeHandlers = defineHandlers({
-  ClickedCampaignButton: model =>
-    Update.combineSteps(model, [startOrAsk(RunMode.Campaign())]),
+  ClickedCampaignButton: startOrAsk(RunMode.Campaign()),
 
-  ClickedEndlessButton: model =>
-    Update.combineSteps(model, [startOrAsk(RunMode.Endless())]),
+  ClickedEndlessButton: startOrAsk(RunMode.Endless()),
 
-  ClickedCharacterButton: model =>
-    Update.combineSteps(model, [unlockAudio, closeHand, openProfile('Look')]),
+  ClickedCharacterButton: combine([
+    unlockAudio,
+    closeHand,
+    openProfile('Look'),
+  ]),
 
-  ClickedHowToPlayButton: model =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      closeHand,
-      openPanel('HowToPlay'),
-    ]),
+  ClickedHowToPlayButton: combine([
+    unlockAudio,
+    closeHand,
+    openPanel('HowToPlay'),
+  ]),
 
-  ClickedSettingsButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, openSettingsFromGear]),
+  ClickedSettingsButton: combine([unlockAudio, tapSound, openSettingsFromGear]),
 
   // NOTE: the coffee is a real link, so the browser opens it; this only
   // plays the tap.
-  ClickedSupportButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound]),
+  ClickedSupportButton: combine([unlockAudio, tapSound]),
 
-  CompletedClickSupportLink: model => ({ model }),
+  ClickedMenuButton: combine([unlockAudio, leaveFromMenu]),
 
-  ClickedMenuButton: model =>
-    Update.combineSteps(model, [unlockAudio, leaveFromMenu]),
+  ClickedLeaveRunButton: leaveRun,
 
-  ClickedLeaveRunButton: model => Update.combineSteps(model, [leaveRun]),
+  ClickedStayButton: closePanel,
 
-  ClickedStayButton: model => Update.combineSteps(model, [closePanel]),
+  ClickedPlayTutorialButton: replayTutorial,
 
-  ClickedPlayTutorialButton: model =>
-    Update.combineSteps(model, [replayTutorial]),
+  ClickedDifficultyCardButton: ($, { difficulty }) =>
+    pickFromCard(difficulty)($),
 
-  ClickedDifficultyCardButton: (model, { difficulty }) =>
-    Update.combineSteps(model, [pickFromCard(difficulty)]),
+  ClickedTutorialChoiceButton: ($, { choice }) => pickTutorialChoice(choice)($),
 
-  ClickedTutorialChoiceButton: (model, { choice }) =>
-    Update.combineSteps(model, [pickTutorialChoice(choice)]),
+  FocusedHomeButton: ($, { button }) =>
+    $.evolve({ maybeHomeFocus: () => Option.some(button) }),
 
-  FocusedHomeButton: (model, { button }) => ({
-    model: modifyFields(model, { maybeHomeFocus: () => Option.some(button) }),
-  }),
+  BlurredHomeButton: $ => $.evolve({ maybeHomeFocus: () => Option.none() }),
 
-  BlurredHomeButton: model => ({
-    model: modifyFields(model, { maybeHomeFocus: () => Option.none() }),
-  }),
+  ClickedWhatsNewButton: combine([unlockAudio, closeHand, openWhatsNew]),
 
-  CompletedFocusHomeButton: model => ({ model }),
+  ClickedMunchopediaButton: combine([
+    unlockAudio,
+    closeHand,
+    openMunchopedia(MunchopediaPage.List()),
+  ]),
 
-  CompletedFocusEndMenuButton: model => ({ model }),
+  ClickedProofButton: combine([unlockAudio, closeHand, openProof]),
 
-  ClickedWhatsNewButton: model =>
-    Update.combineSteps(model, [unlockAudio, closeHand, openWhatsNew]),
+  ClickedNewEntryButton: ($, { kind }) =>
+    $.combine(unlockAudio, openMunchopedia(MunchopediaPage.Entry({ kind }))),
 
-  ClickedMunchopediaButton: model =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      closeHand,
-      openMunchopedia(MunchopediaPage.List()),
-    ]),
+  ClickedManorButton: combine([unlockAudio, tapSound, openHand]),
 
-  ClickedProofButton: model =>
-    Update.combineSteps(model, [unlockAudio, closeHand, openProof]),
+  ClickedTurnHint: modelStep(seeTurnHint),
 
-  ClickedNewEntryButton: (model, { kind }) =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      openMunchopedia(MunchopediaPage.Entry({ kind })),
-    ]),
+  SteppedHandFocus: ($, { card }) => stepHandFocus(card)($),
 
-  ClickedManorButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, openHand]),
+  FocusedHelpCard: ($, { card }) => showHelpLine($.model, card),
 
-  ClickedTurnHint: model => ({ model: seeTurnHint(model) }),
+  ClickedHelpCard: ($, { card }) =>
+    $.combine(modelStep(showHelpLine(card)), unlockAudio),
 
-  SteppedHandFocus: (model, { card }) => stepHandFocus(model, card),
+  ClickedOlderNewsButton: turnNews(1),
 
-  CompletedFocusHandCard: model => ({ model }),
+  ClickedNewerNewsButton: turnNews(-1),
 
-  FocusedHelpCard: (model, { card }) => ({ model: showHelpLine(model, card) }),
+  ClickedInstallButton: combine([unlockAudio, tapSound, pressInstall]),
 
-  ClickedHelpCard: (model, { card }) => unlockAudio(showHelpLine(model, card)),
-
-  ClickedOlderNewsButton: model => turnNews(model, 1),
-
-  ClickedNewerNewsButton: model => turnNews(model, -1),
-
-  ClickedInstallButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, pressInstall]),
-
-  ChangedInstallOffer: (model, { installOffer }) => ({
-    model: modifyFields(model, {
-      release: modifyFields({ installOffer: () => installOffer }),
+  ChangedInstallOffer: ($, { installOffer }) =>
+    $.evolve({
+      release: UiStruct.evolve({ installOffer: () => installOffer }),
     }),
-  }),
 
-  CompletedShowInstallPrompt: (model, { outcome }) => ({
-    model: settleInstallPrompt(model, outcome),
-  }),
+  CompletedShowInstallPrompt: ($, { outcome }) =>
+    settleInstallPrompt($.model, outcome),
 })

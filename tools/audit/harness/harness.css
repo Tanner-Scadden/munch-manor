@@ -2,6 +2,8 @@
 @source '../../../src';
 
 .look-sheet {
+  display: block;
+  position: relative;
   width: min(840px, calc(100vw - 16px));
   height: auto;
   aspect-ratio: 168 / 268;
@@ -24,6 +26,7 @@
 }
 
 .director-card {
+  display: block;
   position: fixed;
   inset: 0;
   z-index: 2147483646;

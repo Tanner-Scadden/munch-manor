@@ -1,8 +1,8 @@
 import { Array, Context, Effect, Layer, Option, Record } from 'effect'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
-import { modifyFields } from 'foldkit/struct'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
+import { UiStruct } from '@effect/ui'
 import { expect, layer } from '@effect/vitest'
 
 import { sceneShapes } from '../../src/app/layers'
@@ -14,6 +14,7 @@ import { fighting, withActors } from '../../src/test/model.fixture'
 import { SURFACE, openFloorSpot, zombieOf } from '../../src/test/testing'
 import { imagesIn } from '../../src/test/viewReading'
 import { levelOf } from '../../src/world/level/arena'
+import { BreakClock } from '../../src/world/schema/worldSchema'
 import {
   ZOMBIE_KINDS,
   ZOMBIE_KIND_ORDER,
@@ -55,7 +56,7 @@ const keysDrawnIn = (model: Model): ReadonlyArray<string> => {
 }
 
 const measured = (model: Model): Model =>
-  modifyFields(model, { maybeSurface: () => Option.some(SURFACE) })
+  UiStruct.evolve(model, { maybeSurface: () => Option.some(SURFACE) })
 
 const HEALTH_SHARES: ReadonlyArray<number> = [1, 0.7, 0.4, 0.15]
 
@@ -78,21 +79,22 @@ const everyKindWorn: Model = withActors(
 const SCENES: Readonly<Record<string, Model>> = {
   home: measured(initialModel),
   fight: everyKindWorn,
-  paused: modifyFields(measured(fighting), {
+  paused: UiStruct.evolve(measured(fighting), {
     phase: () =>
       Phase.Paused({
         round: { _tag: 'Wave', wave: 3, elapsedMs: 4000, spawns: [] },
       }),
   }),
-  gameOver: modifyFields(measured(fighting), {
+  gameOver: UiStruct.evolve(measured(fighting), {
     phase: () => Phase.GameOver({ wave: 3 }),
   }),
-  victory: modifyFields(measured(fighting), {
+  victory: UiStruct.evolve(measured(fighting), {
     phase: () => Phase.Escaped({ wave: 10 }),
   }),
-  break: modifyFields(measured(initialModel), {
+  break: UiStruct.evolve(measured(initialModel), {
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave: 2,
         remainingMs: 15_000,
         durationMs: 20_000,

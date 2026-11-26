@@ -1,17 +1,17 @@
 // The art studio's init and update: the controls, picking and pinning, the
 // note being written and sent, and the notes coming back.
 import { Array, Option, String } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { type Component, UiStruct } from '@effect/ui'
 
 import {
   DEFAULT_VIEW,
   type Flags,
+  type Message,
   Model,
   type SavedView,
-  StudioComposition,
+  StudioDef,
   freshDoneOf,
-  makeFieldsStep,
-  makeNoopStep,
 } from './block'
 import { type Entry, entryById, tabOfEntry } from './catalog'
 import { type Capture, SaveSeen, SaveView, SendNote } from './commands'
@@ -35,9 +35,19 @@ import {
   roomTitleOf,
 } from './room'
 
-export const init = StudioComposition.makeInit((startFlags: Flags) => ({
-  model: Model.make({
-    ...Option.getOrElse(startFlags.maybeSavedView, () => DEFAULT_VIEW),
+// NOTE: the update's `$`, as the studio's handlers take it.
+type Studio$ = Component.Update<
+  Model,
+  Message,
+  never,
+  Readonly<{ flags: Flags }>,
+  {},
+  Message
+>
+
+export const init = StudioDef.init($ =>
+  Model.make({
+    ...Option.getOrElse($.props.flags.maybeSavedView, () => DEFAULT_VIEW),
     isPlaying: true,
     clockMs: 0,
     maybeHoverTile: Option.none(),
@@ -48,11 +58,11 @@ export const init = StudioComposition.makeInit((startFlags: Flags) => ({
     note: '',
     sendStatus: 'Idle',
     notes: [],
-    seenDone: startFlags.seenDone,
+    seenDone: $.props.flags.seenDone,
     isInboxOnline: true,
     cameraResets: 0,
   }),
-}))
+)
 
 // THE VIEW
 
@@ -81,10 +91,8 @@ const savedViewOf = (model: Model): SavedView => ({
 })
 
 // NOTE: a change to the saved part of the view, written to sessionStorage.
-const saved = (model: Model) => ({
-  model,
-  commands: [SaveView({ view: savedViewOf(model) })],
-})
+const saved = ($: Studio$, next: Model) =>
+  $.set(next).run(SaveView.make({ view: savedViewOf(next) }))
 
 // NOTE: what a note is about: the picked sprite, or the room on the Rooms
 // tab.
@@ -98,25 +106,18 @@ export const pickedEntry = (model: Model): Option.Option<Entry> =>
     ? Option.none()
     : Option.flatMap(model.maybeSelectedId, entryById)
 
-// NOTE: opening something marks its done notes seen, so their sparkle goes.
-const seeing = (model: Model, targetId: string) => {
+// NOTE: opening something marks its done notes seen, so their sparkle
+// goes, and keeps the view.
+const picking = ($: Studio$, next: Model, targetId: string) => {
   const seenDone = Array.appendAll(
-    model.seenDone,
-    Array.map(freshDoneOf(model, targetId), note => note.noteId),
+    next.seenDone,
+    Array.map(freshDoneOf(next, targetId), note => note.noteId),
   )
-  const isChanged = seenDone.length > model.seenDone.length
-  return {
-    model: isChanged
-      ? modifyFields(model, { seenDone: () => seenDone })
-      : model,
-    commands: Array.filter([SaveSeen({ seen: seenDone })], () => isChanged),
-  }
-}
-
-const picking = (model: Model, targetId: string) => {
-  const seen = seeing(model, targetId)
-  const view = saved(seen.model)
-  return { model: view.model, commands: [...seen.commands, ...view.commands] }
+  return seenDone.length > next.seenDone.length
+    ? saved($, UiStruct.evolve(next, { seenDone: () => seenDone })).run(
+        SaveSeen.make({ seen: seenDone }),
+      )
+    : saved($, next)
 }
 
 // THE NOTE
@@ -157,7 +158,7 @@ const captureOf = (model: Model): Capture =>
       ? { selector: '.live-shot', crop: null }
       : model.tab === 'Rooms'
         ? {
-            selector: '.room-art',
+            selector: '.room-art canvas',
             crop: Option.getOrNull(
               Option.map(model.maybeDraftArea, area =>
                 cropAround({
@@ -167,7 +168,7 @@ const captureOf = (model: Model): Capture =>
               ),
             ),
           }
-        : { selector: '.stage-art', crop: null }
+        : { selector: '.stage-art canvas', crop: null }
 
 // THE LAB
 
@@ -228,7 +229,7 @@ const stepped = (model: Model, step: number): Model =>
   Option.match(pickedEntry(model), {
     onNone: () => model,
     onSome: entry =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         isPlaying: () => false,
         clockMs: clockMs =>
           Math.max(
@@ -238,32 +239,45 @@ const stepped = (model: Model, step: number): Model =>
       }),
   })
 
-export const update = StudioComposition.makeUpdate({
-  ClickedTab: (model, { tab }) =>
+const sending = ($: Studio$, draft: NoteDraft) =>
+  $.evolve({ sendStatus: 'Sending' }).run(
+    SendNote.make({ draft, capture: captureOf($.model) }),
+  )
+
+// NOTE: update is a function Effect UI calls with its `$`, with no data-last
+// form to give it.
+// @effect-diagnostics-next-line missingPipeableSignature:off
+export const update = StudioDef.update({
+  ClickedTab: ($, { tab }) =>
     saved(
-      modifyFields(model, {
+      $,
+      UiStruct.evolve($.model, {
         tab: () => tab,
         maybeSelectedId: () => Option.none(),
         maybeDraftPin: () => Option.none(),
         maybeDraftArea: () => Option.none(),
       }),
     ),
-  ClickedZoom: (model, { zoom }) =>
-    saved(modifyFields(model, { zoom: () => zoom })),
-  ClickedBackdrop: (model, { backdrop }) =>
-    saved(modifyFields(model, { backdrop: () => backdrop })),
-  ClickedFacing: (model, { facing }) =>
-    saved(modifyFields(model, { facing: () => facing })),
-  ClickedTone: (model, { tone }) =>
-    saved(modifyFields(model, { tone: () => tone })),
-  ClickedSpeed: (model, { speed }) =>
-    saved(modifyFields(model, { speed: () => speed })),
-  ClickedOnion: model => saved(modifyFields(model, { isOnion: isOn => !isOn })),
-  ClickedCrew: model => saved(modifyFields(model, { isCrew: isOn => !isOn })),
-  ClickedGrid: model => saved(modifyFields(model, { isGridOn: isOn => !isOn })),
-  ClickedRoom: (model, { room }) =>
+  ClickedZoom: ($, { zoom }) =>
+    saved($, UiStruct.evolve($.model, { zoom: () => zoom })),
+  ClickedBackdrop: ($, { backdrop }) =>
+    saved($, UiStruct.evolve($.model, { backdrop: () => backdrop })),
+  ClickedFacing: ($, { facing }) =>
+    saved($, UiStruct.evolve($.model, { facing: () => facing })),
+  ClickedTone: ($, { tone }) =>
+    saved($, UiStruct.evolve($.model, { tone: () => tone })),
+  ClickedSpeed: ($, { speed }) =>
+    saved($, UiStruct.evolve($.model, { speed: () => speed })),
+  ClickedOnion: $ =>
+    saved($, UiStruct.evolve($.model, { isOnion: isOn => !isOn })),
+  ClickedCrew: $ =>
+    saved($, UiStruct.evolve($.model, { isCrew: isOn => !isOn })),
+  ClickedGrid: $ =>
+    saved($, UiStruct.evolve($.model, { isGridOn: isOn => !isOn })),
+  ClickedRoom: ($, { room }) =>
     picking(
-      modifyFields(model, {
+      $,
+      UiStruct.evolve($.model, {
         room: () => room,
         maybeDraftPin: () => Option.none(),
         maybeDraftArea: () => Option.none(),
@@ -271,52 +285,54 @@ export const update = StudioComposition.makeUpdate({
       }),
       roomTargetOf(room),
     ),
-  ClickedRoomToggle: model =>
+  ClickedRoomToggle: $ =>
     saved(
-      modifyFields(model, {
-        isKitchenOpen: isOpen => (model.room === 'Manor' ? !isOpen : isOpen),
-        isTwistOn: isOn => (model.room === 'Manor' ? isOn : !isOn),
+      $,
+      UiStruct.evolve($.model, {
+        isKitchenOpen: isOpen => ($.model.room === 'Manor' ? !isOpen : isOpen),
+        isTwistOn: isOn => ($.model.room === 'Manor' ? isOn : !isOn),
         maybeDraftPin: () => Option.none(),
         maybeDraftArea: () => Option.none(),
       }),
     ),
-  ClickedHouse: (model, { house }) =>
+  ClickedHouse: ($, { house }) =>
     saved(
-      modifyFields(model, {
+      $,
+      UiStruct.evolve($.model, {
         house: () => house,
         maybeDraftPin: () => Option.none(),
         maybeDraftArea: () => Option.none(),
       }),
     ),
-  ClickedLive: (model, { live }) =>
-    saved(modifyFields(model, { live: () => live })),
-  ClickedLiveTool: (model, { tool }) =>
+  ClickedLive: ($, { live }) =>
+    saved($, UiStruct.evolve($.model, { live: () => live })),
+  ClickedLiveTool: ($, { tool }) =>
     saved(
-      modifyFields(model, {
+      $,
+      UiStruct.evolve($.model, {
         liveTool: () => tool,
         maybeHoverTile: () => Option.none(),
         maybeDragFrom: () => Option.none(),
       }),
     ),
-  ClickedPlay: makeFieldsStep(() => ({ isPlaying: isPlaying => !isPlaying })),
-  ClickedStep: (model, { step }) => ({ model: stepped(model, step) }),
-  TickedFrame: (model, { deltaTime }) => ({
-    model: modifyFields(model, {
-      clockMs: clockMs => clockMs + deltaTime * model.speed,
-    }),
-  }),
-  ClickedEntry: (model, { id }) =>
+  ClickedPlay: $ => $.evolve({ isPlaying: isPlaying => !isPlaying }),
+  ClickedStep: ($, { step }) => stepped($.model, step),
+  TickedFrame: ($, { deltaTime }) =>
+    $.evolve({ clockMs: clockMs => clockMs + deltaTime * $.model.speed }),
+  ClickedEntry: ($, { id }) =>
     picking(
-      modifyFields(model, {
+      $,
+      UiStruct.evolve($.model, {
         maybeSelectedId: () => Option.some(id),
         maybeDraftPin: () => Option.none(),
         sendStatus: () => 'Idle' as const,
       }),
       id,
     ),
-  ClickedNote: (model, { tab, targetId }) =>
+  ClickedNote: ($, { tab, targetId }) =>
     picking(
-      modifyFields(model, {
+      $,
+      UiStruct.evolve($.model, {
         tab: () =>
           isRoomTarget(targetId)
             ? 'Rooms'
@@ -328,131 +344,109 @@ export const update = StudioComposition.makeUpdate({
       }),
       targetId,
     ),
-  HoveredTile: (model, { tile }) =>
+  HoveredTile: ($, { tile }) =>
     Option.exists(
-      model.maybeHoverTile,
+      $.model.maybeHoverTile,
       hover => hover.column === tile.column && hover.row === tile.row,
-    ) && Option.isNone(model.maybeDragFrom)
-      ? { model }
-      : {
-          model: modifyFields(model, {
-            maybeHoverTile: () => Option.some(tile),
-            maybeDraftArea: area =>
-              Option.match(model.maybeDragFrom, {
-                onNone: () => area,
-                onSome: from => Option.some(areaBetween(from)(tile)),
-              }),
-          }),
-        },
-  PressedRoomTile: makeFieldsStep.fromMessage(({ tile }) => ({
-    maybeDragFrom: () => Option.some(tile),
-    maybeDraftArea: () => Option.some(areaOfTile(tile)),
-  })),
-  ReleasedRoom: makeFieldsStep(() => ({ maybeDragFrom: () => Option.none() })),
-  LeftRoom: makeFieldsStep(() => ({
-    maybeHoverTile: () => Option.none(),
-    maybeDragFrom: () => Option.none(),
-  })),
-  PressedPicture: makeFieldsStep.fromMessage(({ pin }) => ({
-    maybeDraftPin: () => Option.some(pin),
-  })),
-  ClickedClearPin: makeFieldsStep(() => ({
-    maybeDraftPin: () => Option.none(),
-    maybeDraftArea: () => Option.none(),
-  })),
-  ClickedKind: makeFieldsStep.fromMessage(({ kind }) => ({
-    draftKind: () => kind,
-  })),
-  UpdatedNote: makeFieldsStep.fromMessage(({ value }) => ({
-    note: () => value,
-    sendStatus: status => (status === 'Sending' ? status : ('Idle' as const)),
-  })),
-  ClickedSend: model =>
-    Option.match(
-      Option.filter(targetIdOf(model), () => isSendable(model)),
-      {
-        onNone: () => ({ model }),
-        onSome: targetId => ({
-          model: modifyFields(model, { sendStatus: () => 'Sending' as const }),
-          commands: [
-            SendNote({
-              draft: draftOf(model, targetId),
-              capture: captureOf(model),
+    ) && Option.isNone($.model.maybeDragFrom)
+      ? $.model
+      : $.evolve({
+          maybeHoverTile: () => Option.some(tile),
+          maybeDraftArea: area =>
+            Option.match($.model.maybeDragFrom, {
+              onNone: () => area,
+              onSome: from => Option.some(areaBetween(from)(tile)),
             }),
-          ],
         }),
+  PressedRoomTile: ($, { tile }) =>
+    $.evolve({
+      maybeDragFrom: () => Option.some(tile),
+      maybeDraftArea: () => Option.some(areaOfTile(tile)),
+    }),
+  ReleasedRoom: $ =>
+    Option.isNone($.model.maybeDragFrom)
+      ? $.model
+      : $.evolve({ maybeDragFrom: () => Option.none() }),
+  LeftRoom: $ =>
+    $.evolve({
+      maybeHoverTile: () => Option.none(),
+      maybeDragFrom: () => Option.none(),
+    }),
+  PressedPicture: ($, { pin }) =>
+    $.evolve({ maybeDraftPin: () => Option.some(pin) }),
+  ClickedClearPin: $ =>
+    $.evolve({
+      maybeDraftPin: () => Option.none(),
+      maybeDraftArea: () => Option.none(),
+    }),
+  ClickedKind: ($, { kind }) => $.evolve({ draftKind: () => kind }),
+  UpdatedNote: ($, { value }) =>
+    $.evolve({
+      note: () => value,
+      sendStatus: status => (status === 'Sending' ? status : ('Idle' as const)),
+    }),
+  ClickedSend: $ =>
+    Option.match(
+      Option.filter(targetIdOf($.model), () => isSendable($.model)),
+      {
+        onNone: () => $.model,
+        onSome: targetId => sending($, draftOf($.model, targetId)),
       },
     ),
-  CompletedSendNote: makeFieldsStep(() => ({
-    note: () => '',
-    maybeDraftPin: () => Option.none(),
-    maybeDraftArea: () => Option.none(),
-    sendStatus: () => 'Sent' as const,
-  })),
-  FailedSendNote: makeFieldsStep(() => ({
-    sendStatus: () => 'Failed' as const,
-  })),
-  ReceivedNotes: (model, { notes }) =>
-    notesKey(notes) === notesKey(model.notes) && model.isInboxOnline
-      ? { model }
-      : {
-          model: modifyFields(model, {
-            notes: () => notes,
-            isInboxOnline: () => true,
-          }),
-        },
-  LostInbox: model =>
-    model.isInboxOnline
-      ? { model: modifyFields(model, { isInboxOnline: () => false }) }
-      : { model },
-  ClickedStageMode: (model, { mode }) =>
-    saved(modifyFields(model, { stageMode: () => mode })),
-  ClickedStagePreset: (model, { preset }) =>
-    saved(modifyFields(model, { stagePreset: () => preset })),
-  ClickedAutoSpin: model =>
-    saved(modifyFields(model, { isAutoSpin: isOn => !isOn })),
-  ClickedPlayCamera: makeFieldsStep(() => ({
-    isAutoSpin: () => false,
-    cameraResets: count => count + 1,
-  })),
-  ClickedLabToggle: model =>
-    saved(modifyFields(model, { isLabOpen: isOpen => !isOpen })),
-  ChangedLab: (model, { id, text }) =>
+  CompletedSendNote: $ =>
+    $.evolve({
+      note: () => '',
+      maybeDraftPin: () => Option.none(),
+      maybeDraftArea: () => Option.none(),
+      sendStatus: () => 'Sent' as const,
+    }),
+  FailedSendNote: $ => $.evolve({ sendStatus: () => 'Failed' as const }),
+  ReceivedNotes: ($, { notes }) =>
+    notesKey(notes) === notesKey($.model.notes) && $.model.isInboxOnline
+      ? $.model
+      : $.evolve({ notes: () => notes, isInboxOnline: () => true }),
+  LostInbox: $ =>
+    $.model.isInboxOnline ? $.evolve({ isInboxOnline: () => false }) : $.model,
+  ClickedStageMode: ($, { mode }) =>
+    saved($, UiStruct.evolve($.model, { stageMode: () => mode })),
+  ClickedStagePreset: ($, { preset }) =>
+    saved($, UiStruct.evolve($.model, { stagePreset: () => preset })),
+  ClickedAutoSpin: $ =>
+    saved($, UiStruct.evolve($.model, { isAutoSpin: isOn => !isOn })),
+  ClickedPlayCamera: $ =>
+    $.evolve({
+      isAutoSpin: () => false,
+      cameraResets: count => count + 1,
+    }),
+  ClickedLabToggle: $ =>
+    saved($, UiStruct.evolve($.model, { isLabOpen: isOpen => !isOpen })),
+  ChangedLab: ($, { id, text }) =>
     Option.match(
       Option.flatMap(controlById(id), control => inputValueOf(control, text)),
       {
-        onNone: () => ({ model }),
+        onNone: () => $.model,
         onSome: value =>
           saved(
-            modifyFields(model, {
+            $,
+            UiStruct.evolve($.model, {
               labEdits: edits => withEdit(edits, id, value),
             }),
           ),
       },
     ),
-  ClickedLabReset: model =>
-    saved(modifyFields(model, { labEdits: () => ({}) })),
-  ClickedPropose: model =>
+  ClickedLabReset: $ =>
+    saved($, UiStruct.evolve($.model, { labEdits: () => ({}) })),
+  ClickedPropose: $ =>
     Option.match(
       Option.filter(
-        targetIdOf(model),
+        targetIdOf($.model),
         () =>
-          Array.isReadonlyArrayNonEmpty(changesOf(model.labEdits)) &&
-          model.sendStatus !== 'Sending',
+          Array.isReadonlyArrayNonEmpty(changesOf($.model.labEdits)) &&
+          $.model.sendStatus !== 'Sending',
       ),
       {
-        onNone: () => ({ model }),
-        onSome: targetId => ({
-          model: modifyFields(model, { sendStatus: () => 'Sending' as const }),
-          commands: [
-            SendNote({
-              draft: labDraftOf(model, targetId),
-              capture: captureOf(model),
-            }),
-          ],
-        }),
+        onNone: () => $.model,
+        onSome: targetId => sending($, labDraftOf($.model, targetId)),
       },
     ),
-  CompletedSaveView: makeNoopStep(),
-  CompletedSaveSeen: makeNoopStep(),
 })

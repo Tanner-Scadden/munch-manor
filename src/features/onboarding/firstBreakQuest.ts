@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { QuestTour } from '../../domain/clientSchema'
@@ -139,9 +140,9 @@ export const isQuestOnStart = (model: Model): boolean =>
   Option.contains(questStepOf(model), 'Start')
 
 const learnDareTour = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         dareTour: lesson => learn(lesson, model.elapsedMs),
       }),
   })
@@ -149,7 +150,7 @@ const learnDareTour = (model: Model): Model =>
 // NOTE: the padlock step remembers the player walked up to it.
 const noteLockSeen = (model: Model): Model =>
   Option.contains(maybeOpenStep(model), 'Lock') && isNearPadlock(model)
-    ? modifyFields(model, {
+    ? UiStruct.evolve(model, {
         firstBreakQuest: () => QuestTour.Running({ isLockSeen: true }),
       })
     : model
@@ -166,7 +167,7 @@ export const advanceQuest: {
   QuestTour.match(model.firstBreakQuest, {
     Waiting: () =>
       isDareTourBreak(model) && !isRattlesTalking(model)
-        ? modifyFields(model, {
+        ? UiStruct.evolve(model, {
             firstBreakQuest: () => QuestTour.Running({ isLockSeen: false }),
           })
         : model,
@@ -176,7 +177,7 @@ export const advanceQuest: {
       }
       const noted = noteLockSeen(model)
       return Option.isNone(maybeOpenStep(noted))
-        ? modifyFields(noted, {
+        ? UiStruct.evolve(noted, {
             firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
           })
         : noted
@@ -185,11 +186,11 @@ export const advanceQuest: {
       if (!isQuestBreak(model)) {
         return endQuest(model)
       } else if (ageMs + deltaMs >= QUEST_LOOK_MS) {
-        return modifyFields(model, {
+        return UiStruct.evolve(model, {
           firstBreakQuest: () => QuestTour.Starting(),
         })
       } else {
-        return modifyFields(model, {
+        return UiStruct.evolve(model, {
           firstBreakQuest: () => QuestTour.Looking({ ageMs: ageMs + deltaMs }),
         })
       }
@@ -197,11 +198,11 @@ export const advanceQuest: {
     Starting: () =>
       isQuestBreak(model)
         ? model
-        : modifyFields(learnDareTour(model), {
+        : UiStruct.evolve(learnDareTour(model), {
             firstBreakQuest: () => QuestTour.Done({ ageMs: 0 }),
           }),
     Done: ({ ageMs }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         firstBreakQuest: () =>
           ageMs + deltaMs >= QUEST_DONE_MS
             ? QuestTour.Over()
@@ -216,7 +217,7 @@ export const advanceQuest: {
 export const endQuest = (model: Model): Model =>
   QuestTour.isAnyOf(['Over'])(model.firstBreakQuest)
     ? model
-    : modifyFields(learnDareTour(model), {
+    : UiStruct.evolve(learnDareTour(model), {
         firstBreakQuest: () => QuestTour.Over(),
       })
 

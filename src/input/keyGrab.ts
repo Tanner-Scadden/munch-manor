@@ -1,8 +1,8 @@
 import { Function } from 'effect'
-import type { Html } from 'foldkit/html'
-import { modifyFields } from 'foldkit/struct'
 
-import type { ApplicationViewBuilder } from '../app/composition'
+import { UiStruct } from '@effect/ui'
+
+import type { ApplicationHtml, ApplicationViewBuilder } from '../app/definition'
 import type { Model } from '../app/model'
 import { pixelArtStyle } from '../art/artSize'
 import { pixelIconUrl } from '../art/icons'
@@ -50,7 +50,7 @@ export const isGrabbedKeyUp = ({
 const MISSES_TO_WARN = 2
 
 export const noteMissedKeyDown = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     missedKeyDowns: missed => Math.min(missed + 1, MISSES_TO_WARN),
   })
 
@@ -97,31 +97,31 @@ const NO_EXTENSION_ICON = pixelIconUrl(
 // animation fades it out, and it takes no pointer. It sits at the root, so
 // moving between screens never plays it again.
 export const keyGrabToastView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isKeyGrabToastShown(model)
-    ? h.div(
-        [h.Key('key-grab-toast'), h.Class('key-grab-toast'), h.Role('status')],
-        [
-          h.span(
-            [h.Class('key-grab-icons'), h.AriaHidden(true)],
-            [
-              h.span([
-                h.Class('key-grab-icon'),
-                h.Style(pixelArtStyle(KEYBOARD_ICON)),
-              ]),
-              h.span([
-                h.Class('key-grab-icon'),
-                h.Style(pixelArtStyle(NO_EXTENSION_ICON)),
-              ]),
-            ],
-          ),
-          h.span(
-            [h.Class('key-grab-text')],
-            ['An extension is grabbing keys. Turn it off here.'],
-          ),
-        ],
-      )
-    : h.empty,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    isKeyGrabToastShown(model)
+      ? h.div
+          .key('key-grab-toast')
+          .class('key-grab-toast')
+          .attr('role', 'status')
+          .children(
+            h.span
+              .class('key-grab-icons')
+              .attr('aria-hidden', 'true')
+              .children(
+                h.span
+                  .class('key-grab-icon')
+                  .style(pixelArtStyle(KEYBOARD_ICON)),
+                h.span
+                  .class('key-grab-icon')
+                  .style(pixelArtStyle(NO_EXTENSION_ICON)),
+              ),
+            h.span
+              .class('key-grab-text')
+              .children('An extension is grabbing keys. Turn it off here.'),
+          )
+      : null,
 )

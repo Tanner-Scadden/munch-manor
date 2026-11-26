@@ -1,10 +1,17 @@
 import { Array, Option } from 'effect'
-import { Update } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Room as CoopRoom } from '../../domain/coopRoom'
 import { maybeRunRoom, runDifficultyOf } from '../../domain/onlineRun'
 import { raiseCloche } from '../../features/cloche/clocheReveal'
+import type { Model as CoopModel } from '../../features/coop/model'
+import { keepTracers } from '../../features/coop/roomState'
+import {
+  type CoopResult,
+  asRequest,
+  tickRoom,
+} from '../../features/coop/update'
 import {
   agePocketCard,
   raisePocketCardFrom,
@@ -34,8 +41,6 @@ import {
 import { aimTracers, flyTracers } from '../../world/step/firing'
 import { stopForHits, thawTick } from '../../world/step/hitStop'
 import { footfallNearness } from '../../world/zombies/zombies'
-import { CoopBinding } from '../bindings'
-import { makeStep } from '../definition'
 import {
   advanceCosmetics,
   clampFrameDelta,
@@ -62,18 +67,34 @@ import {
   strikeCues,
   thunderCues,
 } from './sound'
-import { toModel, unchanged } from './step'
+import { type UpdateStep, toModel } from './step'
 
 // The root's half of an online co-op run (MULTIPLAYER.md, Phase 2): the
 // game's own scene, HUD, and touch controls drawn from the room's
 // World. Each frame the client derives its intent from its own input and
-// camera, the co-op Submodel sends it with any press and hands back the
+// camera, co-op's room (the root's `coop` field) sends it with any press and hands back the
 // World to draw (everyone else 100 ms behind, its own player predicted)
 // and the events the drawing reached. The root puts its own seat in the
 // World's player fields (focusSeat), so every view draws it as the player,
 // then makes particles, shake, popups, and sounds from the events with its
 // own cosmetic stream, and freezes its own picture for hit-stop. The room
 // alone decides hits, keys, and deaths.
+
+// CO-OP'S RULES IN THE ROOT
+
+// NOTE: one of co-op's rules run on the root's `coop` field: its next Model
+// put in, and its Commands run. Its notice is the caller's to answer
+// (src/app/update/coop.ts, runCoop); the room's frame and its tracers
+// never give one.
+export const applyCoop =
+  (result: CoopResult): UpdateStep =>
+  $ =>
+    $.evolve({ coop: () => result.model }).run(...(result.commands ?? []))
+
+const inCoop =
+  (rule: (coop: CoopModel) => CoopResult): UpdateStep =>
+  $ =>
+    applyCoop(asRequest(rule)($.model.coop))($)
 
 // THE ROOM'S WORLD IN THE ROOT
 
@@ -82,7 +103,7 @@ import { toModel, unchanged } from './step'
 const takeOwnSeat = (own: SeatState, seats: World['seats']): World['seats'] => {
   const [first, ...rest] = seats
   return [
-    modifyFields(first, {
+    UiStruct.evolve(first, {
       intent: () => own.intent,
       purchase: () => own.purchase,
     }),
@@ -99,7 +120,7 @@ const takeRoomWorld = (
   world: World,
   events: ReadonlyArray<GameEvent>,
 ): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     phase: () => world.phase,
     pacing: () => world.pacing,
     boss: () => world.boss,
@@ -129,7 +150,7 @@ const takeRoomWorld = (
     stations: () => world.stations,
     party: () => world.party,
     seats: () => takeOwnSeat(focusOf(model), world.seats),
-    roomRun: modifyFields({
+    roomRun: UiStruct.evolve({
       maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
       maybeRoomModifiers: () => Option.some(world.modifiers),
       maybeRoomDareMark: () => Option.some(world.dareMark),
@@ -220,7 +241,7 @@ const markIntroSeen = (model: Model, world: World): Model =>
     {
       Arriving: ({ cut }) =>
         cut === 'Full'
-          ? modifyFields(model, { introSeen: () => 'Seen' })
+          ? UiStruct.evolve(model, { introSeen: () => 'Seen' })
           : model,
     },
     () => model,
@@ -228,13 +249,14 @@ const markIntroSeen = (model: Model, world: World): Model =>
 
 // NOTE: the drawing of one frame. A run starting (or the next one after the
 // end screen) resets the client's run fields first. This frame's own
-// tracers go to the co-op Block through `requestKeepTracers`. While the
-// client's own hit-stop holds, the picture stays, and the events wait in
-// the session.
-const drawRoom = (frameMs: number) =>
-  makeStep(stepModel =>
-    Option.match(maybeDrawnOf(stepModel), {
-      onNone: () => unchanged,
+// tracers are kept in co-op's room for the next. While the client's own
+// hit-stop holds, the picture stays, and the events wait in the session.
+const drawRoom =
+  (frameMs: number): UpdateStep =>
+  $ => {
+    const stepModel = $.model
+    return Option.match(maybeDrawnOf(stepModel), {
+      onNone: () => stepModel,
       onSome: ({ room, world }) => {
         const isStart =
           !isRunUnderway(stepModel.phase) && isRunUnderway(world.phase)
@@ -243,28 +265,29 @@ const drawRoom = (frameMs: number) =>
           : stepModel
         const events = heardBy(focusOf(world).player, room.frameEvents)
         const shot = traceOwnShots(base, room, world, frameMs)
-        return Update.combineSteps([
+        const confirmed = Array.filter(
+          events,
+          event =>
+            GameEvent.isAnyOf(['ZombieHit'])(event) &&
+            Option.exists(event.maybeShooter, shooter => shooter === room.slot),
+        ).length
+        return $.combine(
           toModel(
-            modifyFields(base, {
-              cosmetics: modifyFields({
+            UiStruct.evolve(base, {
+              cosmetics: UiStruct.evolve({
                 cosmeticRngState: () => shot.cosmeticRngState,
               }),
             }),
           ),
-          CoopBinding.requestKeepTracers({
-            tracers: shot.tracers,
-            fired: shot.fired,
-            looked: shot.struck,
-            confirmed: Array.filter(
-              events,
-              event =>
-                GameEvent.isAnyOf(['ZombieHit'])(event) &&
-                Option.exists(
-                  event.maybeShooter,
-                  shooter => shooter === room.slot,
-                ),
-            ).length,
-          }),
+          inCoop(coop => ({
+            model: keepTracers(
+              coop,
+              shot.tracers,
+              shot.fired,
+              shot.struck,
+              confirmed,
+            ),
+          })),
           drawTraced({
             frameMs,
             base,
@@ -274,10 +297,10 @@ const drawRoom = (frameMs: number) =>
             tracers: shot.tracers,
             isStart,
           }),
-        ])
+        )
       },
-    }),
-  )
+    })
+  }
 
 type Traced = Readonly<{
   frameMs: number
@@ -289,31 +312,31 @@ type Traced = Readonly<{
   isStart: boolean
 }>
 
-// NOTE: the rest of the frame, once the co-op Block keeps the tracers.
-const drawTraced = ({
-  frameMs,
-  base,
-  room,
-  world,
-  events,
-  tracers,
-  isStart,
-}: Traced) =>
-  makeStep(traced => {
+// NOTE: the rest of the frame, once co-op's room keeps the tracers.
+const drawTraced =
+  ({
+    frameMs,
+    base,
+    room,
+    world,
+    events,
+    tracers,
+    isStart,
+  }: Traced): UpdateStep =>
+  $ => {
+    const traced = $.model
     const thaw = thawTick(base.hitStop, frameMs)
     if (isFrozen(thaw.hitStop)) {
-      return toModel(
-        modifyFields(traced, {
-          hitStop: () => thaw.hitStop,
-          frameEvents: () => [],
-        }),
-      )
+      return UiStruct.evolve(traced, {
+        hitStop: () => thaw.hitStop,
+        frameEvents: () => [],
+      })
     }
     const applied = withWorld(
       takeRoomWorld(
-        modifyFields(traced, {
+        UiStruct.evolve(traced, {
           hitStop: () => thaw.hitStop,
-          roomRun: modifyFields({
+          roomRun: UiStruct.evolve({
             maybeCrewRunKey: key =>
               Option.orElse(
                 Option.map(room.maybeLobby, crewRunKeyOf),
@@ -322,7 +345,7 @@ const drawTraced = ({
             maybeRunNet: () => Option.some(room.session.stats.net),
           }),
         }),
-        modifyFields(world, {
+        UiStruct.evolve(world, {
           bullets: bullets => [
             ...Array.filter(
               bullets,
@@ -360,7 +383,7 @@ const drawTraced = ({
         ),
       ),
     )
-    return Update.combineSteps([
+    return $.combine(
       toModel(drawn),
       playSounds([
         ...(room.predictedShots > 0
@@ -380,13 +403,15 @@ const drawTraced = ({
       rumbleFor(events),
       playIntroSounds(base),
       playStartSoundWhen(isStart),
-    ])
-  })
+    )
+  }
 
 // NOTE: one frame of an online run: the controls go to the room through
-// the co-op Block's `requestTickRoom`, then the root draws what came back.
-export const playRoomFrame = (nowMs: number) =>
-  makeStep(stepModel => {
+// co-op's `tickRoom`, then the root draws what came back.
+export const playRoomFrame =
+  (nowMs: number): UpdateStep =>
+  $ => {
+    const stepModel = $.model
     const maybeBefore = maybeRunRoom(stepModel)
     const frameMs = clampFrameDelta(
       Option.match(maybeBefore, {
@@ -396,13 +421,15 @@ export const playRoomFrame = (nowMs: number) =>
     )
     // NOTE: a fire press goes to the room held for one frame's controls.
     const intended = refreshIntent(stepModel)
-    return Update.combineSteps([
+    return $.combine(
       toModel(withFirePressSeen(intended)),
-      CoopBinding.requestTickRoom({
-        controls: inputOfIntent(focusOf(intended).intent, 0),
-        nowMs,
-        isPictureHeld: isFrozen(thawTick(stepModel.hitStop, frameMs).hitStop),
-      }),
+      inCoop(
+        tickRoom({
+          controls: inputOfIntent(focusOf(intended).intent, 0),
+          nowMs,
+          isPictureHeld: isFrozen(thawTick(stepModel.hitStop, frameMs).hitStop),
+        }),
+      ),
       drawRoom(frameMs),
-    ])
-  })
+    )
+  }

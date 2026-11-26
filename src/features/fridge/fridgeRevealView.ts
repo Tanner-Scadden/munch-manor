@@ -1,5 +1,4 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type BakedText, bakeText, placeBaked } from '../../art/font'
@@ -23,6 +22,7 @@ import {
   viewBoxOf,
   worldToView,
 } from '../../render/camera'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { HUD_STRIP_HEIGHT, gunSlotBox } from '../../render/hudLayout'
 import { bakeRings, pixelRing } from '../../render/pixelCircle'
@@ -280,7 +280,7 @@ const wordShapes = (
   frame: RevealFrame,
   text: BakedText,
   maybeBelow: Option.Option<BakedText>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const width = text.width * WORD_SCALE
   const isRoomRight = frame.at.x + WORD_GAP_PX + width <= frame.viewRight - 2
   const x = isRoomRight
@@ -301,7 +301,7 @@ const spinShapes = (
   frame: RevealFrame,
   face: FridgePrize,
   step: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   placeAt(frame.at.x, frame.at.y, REEL_WINDOW),
   ...(Math.floor(model.elapsedMs / 60) % 2 === 0
     ? [placeAt(frame.at.x, frame.at.y, GLOW_DISC)]
@@ -319,7 +319,7 @@ const burstShapes = (
   frame: RevealFrame,
   rarity: Rarity,
   sinceMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (sinceMs >= BURST_MS || rarity === 'Dud') {
     return []
   }
@@ -352,7 +352,7 @@ const raysShapes = (
   model: Model,
   frame: RevealFrame,
   rarity: Rarity,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const [first, second] = RAYS[rarity].turns
   const turn =
     Math.floor(model.elapsedMs / RAY_TWINKLE_MS) % 2 === 0 ? first : second
@@ -392,7 +392,7 @@ const offerRingShapes = (
   rarity: Rarity,
   remainingMs: number,
   durationMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const rings = rarity === 'Rare' ? COUNTDOWNS.Rare : COUNTDOWNS.Common
   const step = Math.ceil(
     (remainingMs / Math.max(1, durationMs)) * COUNTDOWN_STEPS,
@@ -411,7 +411,7 @@ const landedShapes = (
   frame: RevealFrame,
   reveal: DoorReveal,
   sinceMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { rarity } = revealOf(reveal.prize)
   const sprite = prizeSprite(reveal.prize)
   return Option.match(reveal.maybeOffer, {
@@ -473,7 +473,7 @@ const revealShapes = (
   model: Model,
   frame: RevealFrame,
   reveal: DoorReveal,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const stage = revealStageAt(reveal.prize, reveal.elapsedMs)
   return stage._tag === 'Spinning'
     ? spinShapes(model, frame, stage.face, stage.step)
@@ -483,14 +483,11 @@ const revealShapes = (
 // NOTE: the reveal for everyone in the room, placed in the world by the
 // screen camera like the purchase tags.
 export const fridgeRevealShapes: {
-  (
-    screen: Screen,
-    camera: Camera,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape> =>
     Option.match(
       Option.flatMap(doorRevealOf(model.fridge.door), reveal =>
         Option.map(prizeSpotOf(model), spot => ({ reveal, spot })),
@@ -521,7 +518,7 @@ const PULSE_GROW_PX = 5
 const pulseShapes = (
   box: Readonly<{ x: number; y: number; width: number; height: number }>,
   share: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const grow = Math.round(PULSE_GROW_PX * share)
   const x = box.x - 1 - grow
   const y = box.y - 1 - grow
@@ -546,14 +543,11 @@ const pulseShapes = (
 // NOTE: the taken weapon's icon flies from the fridge into the gun slot
 // that now holds it, shrinking to the slot's size, and the slot pulses.
 export const prizeFlightShapes: {
-  (
-    screen: Screen,
-    camera: Camera,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape> =>
     PrizeFlight.match(model.cosmetics.prizeFlight, {
       Grounded: () => [],
       Flying: ({ prize, from, ageMs }) => {

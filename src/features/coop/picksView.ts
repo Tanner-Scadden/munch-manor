@@ -1,8 +1,11 @@
 import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
 
 import type { Lobby, PickedMode, RoomDifficulty } from '@munch/netcode'
 
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import { PROP_ICONS } from '../../art/callingArt'
 import { CROWN_ICON } from '../../art/coopIcons'
 import {
@@ -42,9 +45,9 @@ import {
   isModifierOn,
   modifiersOfMask,
 } from '../../world/run/modifiers'
-import type { CoopViewBuilder } from './composition'
-import { Message } from './message'
+import { CoopMessage } from './message'
 import {
+  CALLING_PILL,
   CALLING_PILL_ID,
   MODE_PICKS,
   canPickDifficulty,
@@ -66,46 +69,44 @@ const MODE_PICK_ICONS: Readonly<Record<PickedMode, string>> = {
 // same icons, still, with the picked one lit.
 // A pick that is not yours to change still answers a tap: it says why
 // (the host picks, or Nightmare is locked), in place.
-const pickAttributes = (
+const pickClick = (
   canPick: boolean,
-  message: Message,
+  message: CoopMessage,
   reason: NudgeReason,
-  h: CoopViewBuilder,
-) =>
-  canPick
-    ? [h.OnClick(message)]
-    : [h.AriaDisabled(true), h.OnClick(Message.ClickedPickNudge({ reason }))]
+): CoopMessage =>
+  canPick ? message : CoopMessage.ClickedCoopPickNudge({ reason })
+
+const pickDisabled = (canPick: boolean): string | undefined =>
+  canPick ? undefined : 'true'
 
 const modePickView = (
   room: Room,
   lobby: Lobby,
   mode: PickedMode,
-  h: CoopViewBuilder,
-): Html => {
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const isChosen = pickedModeOf(lobby) === mode
-  return h.keyed('button')(
-    mode,
-    [
-      h.Type('button'),
-      h.Class('coop-pick coop-mode-pick'),
-      h.DataAttribute('mode', mode),
-      h.DataAttribute('state', isChosen ? 'Chosen' : 'Other'),
-      h.AriaPressed(isChosen ? 'true' : 'false'),
-      h.AriaLabel(MODE_NAMES[mode]),
-      ...pickAttributes(
+  return h.button
+    .key(mode)
+    .attr('type', 'button')
+    .class('coop-pick coop-mode-pick')
+    .attr('data-mode', mode)
+    .attr('data-state', isChosen ? 'Chosen' : 'Other')
+    .attr('aria-pressed', String(isChosen ? 'true' : 'false'))
+    .attr('aria-label', MODE_NAMES[mode])
+    .attr('aria-disabled', pickDisabled(isPicking(room)))
+    .on(
+      'click',
+      pickClick(
         isPicking(room),
-        Message.ClickedModePick({ mode }),
+        CoopMessage.ClickedCoopModePick({ mode }),
         'HostPicks',
-        h,
       ),
-    ],
-    [
+    )
+    .children(
       iconView('coop-pick-icon', MODE_PICK_ICONS[mode], h),
-      mode === 'KeepGoing'
-        ? iconView('coop-pick-badge', TROPHY_ICON, h)
-        : h.empty,
-    ],
-  )
+      mode === 'KeepGoing' ? iconView('coop-pick-badge', TROPHY_ICON, h) : null,
+    )
 }
 
 const skullIndexOf = (difficulty: RoomDifficulty): number =>
@@ -118,42 +119,48 @@ const skullPickView = (
   room: Room,
   lobby: Lobby,
   difficulty: RoomDifficulty,
-  h: CoopViewBuilder,
-): Html => {
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const isLit = skullIndexOf(difficulty) <= skullIndexOf(lobby.difficulty)
   const isLocked = !canPickDifficulty(lobby, difficulty)
-  return h.keyed('button')(
-    difficulty,
-    [
-      h.Type('button'),
-      h.Class('coop-pick coop-skull-pick'),
-      h.DataAttribute('difficulty', difficulty),
-      h.DataAttribute(
-        'state',
-        lobby.difficulty === difficulty ? 'Chosen' : isLit ? 'Lit' : 'Other',
-      ),
-      h.AriaPressed(lobby.difficulty === difficulty ? 'true' : 'false'),
-      h.AriaLabel(
-        isLocked
-          ? `${DIFFICULTIES[difficulty].name}, locked`
-          : DIFFICULTIES[difficulty].name,
-      ),
-      ...pickAttributes(
+  return h.button
+    .key(difficulty)
+    .attr('type', 'button')
+    .class('coop-pick coop-skull-pick')
+    .attr('data-difficulty', difficulty)
+    .attr(
+      'data-state',
+      lobby.difficulty === difficulty ? 'Chosen' : isLit ? 'Lit' : 'Other',
+    )
+    .attr(
+      'aria-pressed',
+      String(lobby.difficulty === difficulty ? 'true' : 'false'),
+    )
+    .attr(
+      'aria-label',
+      isLocked
+        ? `${DIFFICULTIES[difficulty].name}, locked`
+        : DIFFICULTIES[difficulty].name,
+    )
+    .attr('aria-disabled', pickDisabled(isPicking(room) && !isLocked))
+    .on(
+      'click',
+      pickClick(
         isPicking(room) && !isLocked,
-        Message.ClickedDifficultyPick({ difficulty }),
+        CoopMessage.ClickedCoopDifficultyPick({ difficulty }),
         isLocked ? 'Locked' : 'HostPicks',
+      ),
+    )
+    .children(
+      skullFaceViews(
+        {
+          className: 'coop-pick-icon',
+          icon: isLit ? SKULL_ICONS[lobby.difficulty] : SKULL_OFF_ICON,
+          isLocked,
+        },
         h,
       ),
-    ],
-    skullFaceViews(
-      {
-        className: 'coop-pick-icon',
-        icon: isLit ? SKULL_ICONS[lobby.difficulty] : SKULL_OFF_ICON,
-        isLocked,
-      },
-      h,
-    ),
-  )
+    )
 }
 
 // NOTE: Dare's break clock beside the skulls, on Dare alone: the host's
@@ -161,24 +168,24 @@ const skullPickView = (
 const easyBreakPickView = (
   room: Room,
   lobby: Lobby,
-  h: CoopViewBuilder,
-): Html =>
-  h.keyed('button')(
-    'easy-break',
-    [
-      h.Type('button'),
-      h.Class('coop-pick easy-break-pick'),
-      h.DataAttribute('state', lobby.easyBreakSeconds > 0 ? 'On' : 'Off'),
-      h.AriaLabel(easyBreakLabel(lobby.easyBreakSeconds)),
-      ...pickAttributes(
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.button
+    .key('easy-break')
+    .attr('type', 'button')
+    .class('coop-pick easy-break-pick')
+    .attr('data-state', lobby.easyBreakSeconds > 0 ? 'On' : 'Off')
+    .attr('aria-label', easyBreakLabel(lobby.easyBreakSeconds))
+    .attr('aria-disabled', pickDisabled(isPicking(room)))
+    .on(
+      'click',
+      pickClick(
         isPicking(room),
-        Message.ClickedEasyBreakPick(),
+        CoopMessage.ClickedCoopEasyBreakPick(),
         'HostPicks',
-        h,
       ),
-    ],
-    easyBreakFaceView(lobby.easyBreakSeconds, h),
-  )
+    )
+    .children(easyBreakFaceView(lobby.easyBreakSeconds, h))
 
 // NOTE: the dare ladder's mark beside the skulls: the host's press steps it
 // through the marks they have opened on the room's difficulty, round to
@@ -188,27 +195,27 @@ const markPickView = (
   room: Room,
   lobby: Lobby,
   bestMark: number,
-  h: CoopViewBuilder,
-): Html =>
-  h.keyed('button')(
-    'dare-mark',
-    [
-      h.Type('button'),
-      h.Class('coop-pick dare-mark-pick'),
-      h.DataAttribute('state', lobby.dareMark > 0 ? 'On' : 'Off'),
-      h.DataAttribute('mark', `${lobby.dareMark}`),
-      h.AriaLabel(dareMarkLabel(lobby.dareMark)),
-      ...pickAttributes(
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.button
+    .key('dare-mark')
+    .attr('type', 'button')
+    .class('coop-pick dare-mark-pick')
+    .attr('data-state', lobby.dareMark > 0 ? 'On' : 'Off')
+    .attr('data-mark', `${lobby.dareMark}`)
+    .attr('aria-label', dareMarkLabel(lobby.dareMark))
+    .attr('aria-disabled', pickDisabled(isPicking(room)))
+    .on(
+      'click',
+      pickClick(
         isPicking(room),
-        Message.ClickedDareMarkPick({
+        CoopMessage.ClickedCoopDareMarkPick({
           mark: nextMarkOf(lobby.dareMark, bestMark),
         }),
         'HostPicks',
-        h,
       ),
-    ],
-    dareMarkFaceView(lobby.dareMark, h),
-  )
+    )
+    .children(dareMarkFaceView(lobby.dareMark, h))
 
 const isMarkPickShown = (room: Room, lobby: Lobby, bestMark: number) =>
   lobby.dareMark > 0 || (isPicking(room) && bestMark > 0)
@@ -220,61 +227,61 @@ const modifierPickView = (
   room: Room,
   lobby: Lobby,
   modifier: Modifier,
-  h: CoopViewBuilder,
-): Html => {
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const isLockedOn = isCoveredByMark(lobby.dareMark, modifier)
   const isOn =
     isLockedOn || isModifierOn(modifiersOfMask(lobby.modifiers), modifier)
-  return h.keyed('button')(
-    `modifier-${modifier}`,
-    [
-      h.Type('button'),
-      h.Class('coop-pick modifier-pick'),
-      h.DataAttribute('modifier', modifier),
-      h.DataAttribute('state', isOn ? 'On' : 'Off'),
-      h.DataAttribute('locked', isLockedOn ? 'Yes' : 'No'),
-      h.AriaPressed(isOn ? 'true' : 'false'),
-      h.AriaLabel(
-        isLockedOn
-          ? `${modifierLabel(modifier, isOn)}. Held by the dare mark`
-          : modifierLabel(modifier, isOn),
-      ),
-      ...pickAttributes(
+  return h.button
+    .key(`modifier-${modifier}`)
+    .attr('type', 'button')
+    .class('coop-pick modifier-pick')
+    .attr('data-modifier', modifier)
+    .attr('data-state', isOn ? 'On' : 'Off')
+    .attr('data-locked', isLockedOn ? 'Yes' : 'No')
+    .attr('aria-pressed', String(isOn ? 'true' : 'false'))
+    .attr(
+      'aria-label',
+      isLockedOn
+        ? `${modifierLabel(modifier, isOn)}. Held by the dare mark`
+        : modifierLabel(modifier, isOn),
+    )
+    .attr('aria-disabled', pickDisabled(isPicking(room) && !isLockedOn))
+    .on(
+      'click',
+      pickClick(
         isPicking(room) && !isLockedOn,
-        Message.ClickedModifierPick({ modifier }),
+        CoopMessage.ClickedCoopModifierPick({ modifier }),
         'HostPicks',
-        h,
       ),
-    ],
-    modifierFaceView(modifier, h),
-  )
+    )
+    .children(modifierFaceView(modifier, h))
 }
 
 // NOTE: the note a tap on a pick that is not yours leaves: it fades in
 // place over the picks (no movement), and a new tap starts it again.
-const nudgeView = (room: Room, h: CoopViewBuilder): Html =>
+const nudgeView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(room.maybeNudge, {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: ({ reason, count }) =>
-      h.keyed('span')(
-        `nudge-${count}`,
-        [
-          h.Class('coop-nudge'),
-          h.DataAttribute('reason', reason),
-          h.Role('status'),
-        ],
-        [
+      h.span
+        .key(`nudge-${count}`)
+        .class('coop-nudge')
+        .attr('data-reason', reason)
+        .attr('role', 'status')
+        .children(
           iconView(
             'coop-nudge-icon',
             reason === 'Locked' ? PADLOCK_ICON : CROWN_ICON,
             h,
           ),
-          h.span(
-            [],
-            [reason === 'Locked' ? NIGHTMARE_LOCK_NOTE : 'HOST PICKS'],
+          h.span.children(
+            reason === 'Locked' ? NIGHTMARE_LOCK_NOTE : 'HOST PICKS',
           ),
-        ],
-      ),
+        ),
   })
 
 // NOTE: the hero pill beside the mode and difficulty picks: the player's own
@@ -284,29 +291,31 @@ const nudgeView = (room: Room, h: CoopViewBuilder): Html =>
 const callingPillView = (
   room: Room,
   isPickerOpen: boolean,
-  keyCap: Html,
-  h: CoopViewBuilder,
-): Html =>
+  keyCap: ApplicationHtml | null,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(meIn(room), {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: me => {
       const calling = callingOfMember(me)
-      return h.button(
-        [
-          h.Type('button'),
-          h.Id(CALLING_PILL_ID),
-          h.Class('coop-pick coop-calling-pill'),
-          h.DataAttribute('calling', calling),
-          h.AriaLabel(
-            `Hero: ${CALLING_NAMES[calling]}. ${specialsNoteOf(calling)}. Change it`,
-          ),
-          h.AriaHasPopup('dialog'),
-          h.AriaExpanded(isPickerOpen),
-          h.AriaKeyshortcuts('Y'),
-          h.OnClick(Message.ClickedCallingPill()),
-        ],
-        [iconView('coop-calling-pill-icon', PROP_ICONS[calling], h), keyCap],
-      )
+      return h.button
+        .attr('type', 'button')
+        .id(CALLING_PILL_ID)
+        .ref(CALLING_PILL)
+        .class('coop-pick coop-calling-pill')
+        .attr('data-calling', calling)
+        .attr(
+          'aria-label',
+          `Hero: ${CALLING_NAMES[calling]}. ${specialsNoteOf(calling)}. Change it`,
+        )
+        .attr('aria-haspopup', 'dialog')
+        .attr('aria-expanded', String(isPickerOpen))
+        .attr('aria-keyshortcuts', 'Y')
+        .on('click', CoopMessage.ClickedCoopCallingPill())
+        .children(
+          iconView('coop-calling-pill-icon', PROP_ICONS[calling], h),
+          keyCap,
+        )
     },
   })
 
@@ -315,92 +324,98 @@ const callingPillView = (
 type PicksInput = {
   readonly lobby: Lobby
   readonly bestMark: number
-  readonly keyCapView: (key: string) => Html
+  readonly keyCapView: (key: string) => ApplicationHtml | null
 }
 
 type HeroPickInput = {
   readonly isPickerOpen: boolean
-  readonly keyCapView: (key: string) => Html
+  readonly keyCapView: (key: string) => ApplicationHtml | null
 }
 
 // NOTE: the hero pill in a group of its own, which the lobby sets beside
 // READY rather than among the room's picks: it is every member's, and held
 // upright it would otherwise take a row alone.
 export const heroPickView: {
-  (input: HeroPickInput, h: CoopViewBuilder): (room: Room) => Html
-  (room: Room, input: HeroPickInput, h: CoopViewBuilder): Html
+  (
+    input: HeroPickInput,
+    h: ApplicationViewBuilder,
+  ): (room: Room) => ApplicationHtml | null
+  (
+    room: Room,
+    input: HeroPickInput,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null
 } = Function.dual(
   3,
   (
     room: Room,
     { isPickerOpen, keyCapView }: HeroPickInput,
-    h: CoopViewBuilder,
-  ): Html =>
-    h.div(
-      [
-        h.Class('coop-pick-group coop-hero-pick'),
-        h.Role('group'),
-        h.AriaLabel('Hero'),
-      ],
-      [callingPillView(room, isPickerOpen, keyCapView('Y'), h)],
-    ),
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null =>
+    h.div
+      .class('coop-pick-group coop-hero-pick')
+      .attr('role', 'group')
+      .attr('aria-label', 'Hero')
+      .children(callingPillView(room, isPickerOpen, keyCapView('Y'), h)),
 )
 
 export const picksView: {
-  (input: PicksInput, h: CoopViewBuilder): (room: Room) => Html
-  (room: Room, input: PicksInput, h: CoopViewBuilder): Html
+  (
+    input: PicksInput,
+    h: ApplicationViewBuilder,
+  ): (room: Room) => ApplicationHtml | null
+  (
+    room: Room,
+    input: PicksInput,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null
 } = Function.dual(
   3,
   (
     room: Room,
     { lobby, bestMark, keyCapView }: PicksInput,
-    h: CoopViewBuilder,
-  ): Html =>
-    h.div(
-      [
-        h.Class('coop-picks'),
-        h.DataAttribute('host', isPicking(room) ? 'Picking' : 'Watching'),
-        h.AriaLabel(
-          `${MODE_NAMES[pickedModeOf(lobby)]}, ${DIFFICULTIES[lobby.difficulty].name}`,
-        ),
-      ],
-      [
-        h.div(
-          [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Mode')],
-          [
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null =>
+    h.div
+      .class('coop-picks')
+      .attr('data-host', isPicking(room) ? 'Picking' : 'Watching')
+      .attr(
+        'aria-label',
+        `${MODE_NAMES[pickedModeOf(lobby)]}, ${DIFFICULTIES[lobby.difficulty].name}`,
+      )
+      .children(
+        h.div
+          .class('coop-pick-group')
+          .attr('role', 'group')
+          .attr('aria-label', 'Mode')
+          .children(
             ...Array.map(
               Array.filter(MODE_PICKS, mode => canPickMode(lobby, mode)),
               mode => modePickView(room, lobby, mode, h),
             ),
-            isPicking(room) ? keyCapView('E') : h.empty,
-          ],
-        ),
-        h.div(
-          [
-            h.Class('coop-pick-group coop-skulls'),
-            h.Role('group'),
-            h.AriaLabel('Difficulty'),
-          ],
-          [
+            isPicking(room) ? keyCapView('E') : null,
+          ),
+        h.div
+          .class('coop-pick-group coop-skulls')
+          .attr('role', 'group')
+          .attr('aria-label', 'Difficulty')
+          .children(
             ...Array.map(DIFFICULTY_ORDER, difficulty =>
               skullPickView(room, lobby, difficulty, h),
             ),
-            isPicking(room) ? keyCapView('X') : h.empty,
+            isPicking(room) ? keyCapView('X') : null,
             isMarkPickShown(room, lobby, bestMark)
               ? markPickView(room, lobby, bestMark, h)
-              : h.empty,
+              : null,
             lobby.difficulty === 'Easy'
               ? easyBreakPickView(room, lobby, h)
-              : h.empty,
-          ],
-        ),
-        h.div(
-          [
-            h.Class('coop-pick-group modifier-group'),
-            h.Role('group'),
-            h.AriaLabel('Modifiers'),
-          ],
-          [
+              : null,
+          ),
+        h.div
+          .class('coop-pick-group modifier-group')
+          .attr('role', 'group')
+          .attr('aria-label', 'Modifiers')
+          .children(
             ...Array.map(MODIFIER_ORDER, modifier =>
               modifierPickView(room, lobby, modifier, h),
             ),
@@ -414,9 +429,7 @@ export const picksView: {
               ),
               h,
             ),
-          ],
-        ),
+          ),
         nudgeView(room, h),
-      ],
-    ),
+      ),
 )

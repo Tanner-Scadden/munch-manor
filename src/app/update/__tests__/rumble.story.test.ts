@@ -1,10 +1,8 @@
-import { Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message as ProfileMessage } from '../../../features/profile/message'
 import {
   decodeSave,
   encodeSave,
@@ -12,8 +10,14 @@ import {
   saveOf,
 } from '../../../platform/save'
 import { readyAfterRead } from '../../../test/model.fixture'
-import { APPLICATION, jsonOf, writeSave } from '../../../test/testing'
-import { ProfileBinding } from '../../bindings'
+import {
+  checkModel,
+  jsonOf,
+  send,
+  storyOf,
+  writeSave,
+} from '../../../test/testing'
+import { Message } from '../../message'
 import { initialModel } from '../../pureApp'
 
 describe('the rumble setting', () => {
@@ -22,8 +26,8 @@ describe('the rumble setting', () => {
   })
 
   test('round-trips through the save', () => {
-    const off = modifyFields(readyAfterRead, {
-      settings: modifyFields({ rumbleSetting: () => 'Off' }),
+    const off = UiStruct.evolve(readyAfterRead, {
+      settings: UiStruct.evolve({ rumbleSetting: () => 'Off' }),
     })
     const save = saveOf(off)
     expect(save.rumble).toBe('Off')
@@ -36,8 +40,8 @@ describe('the rumble setting', () => {
 
   test('a save from before controllers loads rumbling', () => {
     const { rumble: _rumble, ...withoutRumble } = saveOf(
-      modifyFields(readyAfterRead, {
-        settings: modifyFields({ shakeSetting: () => 'Off' }),
+      UiStruct.evolve(readyAfterRead, {
+        settings: UiStruct.evolve({ shakeSetting: () => 'Off' }),
       }),
     )
     const versionSeventeen = jsonOf({ ...withoutRumble, version: 17 })
@@ -47,26 +51,21 @@ describe('the rumble setting', () => {
   })
 
   it.effect('RUMBLE turns it off and on, saving each', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyAfterRead),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedSettingTile({ setting: 'Rumble' }),
-      ),
-      writeSave(),
-      Story.model(current => {
-        expect(current.settings.rumbleSetting).toBe('Off')
-        expect(saveOf(current).rumble).toBe('Off')
-      }),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedSettingTile({ setting: 'Rumble' }),
-      ),
-      writeSave(),
-      Story.model(current => {
-        expect(current.settings.rumbleSetting).toBe('On')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyAfterRead)
+      s.pipe(
+        send(Message.ClickedProfileSetting({ setting: 'Rumble' })),
+        writeSave,
+        checkModel(current => {
+          expect(current.settings.rumbleSetting).toBe('Off')
+          expect(saveOf(current).rumble).toBe('Off')
+        }),
+        send(Message.ClickedProfileSetting({ setting: 'Rumble' })),
+        writeSave,
+        checkModel(current => {
+          expect(current.settings.rumbleSetting).toBe('On')
+        }),
+      )
+    }),
   )
 })

@@ -1,5 +1,7 @@
 import { Function, Option } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { PADLOCK_ICON } from '../../../../art/icons'
 import { type Standing, sourceOf } from '../../../../domain/closet'
@@ -53,39 +55,39 @@ export const gearTagView: {
   <Message>(
     name: string,
     standing: Standing,
-    h: HtmlBuilder<Message>,
-  ): (kind: CosmeticKind) => Option.Option<Html>
+    h: Html.H<Message>,
+  ): (kind: CosmeticKind) => Option.Option<View.Content<Message>>
   <Message>(
     kind: CosmeticKind,
     name: string,
     standing: Standing,
-    h: HtmlBuilder<Message>,
-  ): Option.Option<Html>
+    h: Html.H<Message>,
+  ): Option.Option<View.Content<Message>>
 } = Function.dual(
   4,
   <Message>(
     kind: CosmeticKind,
     name: string,
     standing: Standing,
-    h: HtmlBuilder<Message>,
-  ): Option.Option<Html> => {
+    h: Html.H<Message>,
+  ): Option.Option<View.Content<Message>> => {
     const source = sourceOf(kind, name)
     return standing === 'ForSale' && source.kind === 'Sold'
       ? Option.some(
-          h.span(
-            [h.Class('look-tag'), h.AriaHidden(true)],
-            [boneCountView(source.price, 'look-price', h)],
-          ),
+          h.span
+            .class('look-tag')
+            .attr('aria-hidden', 'true')
+            .children(boneCountView(source.price, 'look-price', h)),
         )
       : standing === 'Locked' && source.kind === 'Gift'
         ? Option.some(
-            h.span(
-              [h.Class('look-tag look-need'), h.AriaHidden(true)],
-              [
+            h.span
+              .class('look-tag look-need')
+              .attr('aria-hidden', 'true')
+              .children(
                 iconView('look-lock-icon', PADLOCK_ICON, h),
                 rankMarkView(source.rank, h),
-              ],
-            ),
+              ),
           )
         : Option.none()
   },
@@ -96,64 +98,47 @@ export const gearTagView: {
 // the same red as a short price in the rows.
 export const buyPillView: {
   <Message>(
-    h: HtmlBuilder<Message>,
+    h: Html.H<Message>,
   ): (
     pill: Readonly<{ price: number; isShort: boolean; onClick: Message }>,
-  ) => Html
+  ) => View.Content<Message>
   <Message>(
     pill: Readonly<{ price: number; isShort: boolean; onClick: Message }>,
-    h: HtmlBuilder<Message>,
-  ): Html
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   2,
   <Message>(
     pill: Readonly<{ price: number; isShort: boolean; onClick: Message }>,
-    h: HtmlBuilder<Message>,
-  ): Html =>
-    h.button(
-      [
-        h.Type('button'),
-        h.Key('look-buy'),
-        h.Class('look-buy'),
-        h.AriaLabel(
-          pill.isShort
-            ? `Buy for ${pill.price} Bones, too few`
-            : `Buy for ${pill.price} Bones`,
-        ),
-        ...(pill.isShort
-          ? [h.Disabled(true), h.DataAttribute('short', 'true')]
-          : [h.OnClick(pill.onClick)]),
-      ],
-      [
-        h.span([h.Class('look-buy-word'), h.AriaHidden(true)], ['BUY']),
-        boneCountView(pill.price, 'look-buy-price', h),
-      ],
-    ),
+    h: Html.H<Message>,
+  ): View.Content<Message> => {
+    const button = h.button
+      .attrs({
+        type: 'button',
+        'aria-label': pill.isShort
+          ? `Buy for ${pill.price} Bones, too few`
+          : `Buy for ${pill.price} Bones`,
+      })
+      .key('look-buy')
+      .class('look-buy')
+    return (
+      pill.isShort
+        ? button.disabled(true).attr('data-short', 'true')
+        : button.on('click', pill.onClick)
+    ).children(
+      h.span.class('look-buy-word').attr('aria-hidden', 'true').children('BUY'),
+      boneCountView(pill.price, 'look-buy-price', h),
+    )
+  },
 )
 
-// NOTE: the attributes that play what a pick did (src/app/model.ts, ClosetCue)
-// on the one option it was for. Only the count's parity is read, so the same
-// cue twice in a row still plays.
-export const cueAttributes: {
-  <Message>(
-    h: HtmlBuilder<Message>,
-  ): (
-    cue: Readonly<{ kind: ClosetCueKind; count: number }>,
-  ) => ReadonlyArray<ReturnType<HtmlBuilder<Message>['DataAttribute']>>
-  <Message>(
-    cue: Readonly<{ kind: ClosetCueKind; count: number }>,
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<ReturnType<HtmlBuilder<Message>['DataAttribute']>>
-} = Function.dual(
-  2,
-  <Message>(
-    cue: Readonly<{ kind: ClosetCueKind; count: number }>,
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<ReturnType<HtmlBuilder<Message>['DataAttribute']>> =>
-    cue.kind === 'Still'
-      ? []
-      : [
-          h.DataAttribute('cue', cue.kind),
-          h.DataAttribute('parity', `${cue.count % 2}`),
-        ],
-)
+// NOTE: the attributes that play what a pick did (ClosetCue, in this
+// folder's model.ts) on the one option it was for, for its builder's
+// `attrs`. Only the count's parity is read, so the same cue twice in a row
+// still plays; a still cue writes neither.
+export const cueAttrs = (
+  cue: Readonly<{ kind: ClosetCueKind; count: number }>,
+): Readonly<Record<string, string | undefined>> =>
+  cue.kind === 'Still'
+    ? { 'data-cue': undefined, 'data-parity': undefined }
+    : { 'data-cue': cue.kind, 'data-parity': `${cue.count % 2}` }

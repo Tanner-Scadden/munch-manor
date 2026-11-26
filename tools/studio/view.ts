@@ -1,8 +1,6 @@
 // The art studio's page: the controls down the left, the big view and the
 // gallery (or the room) in the middle, and the notes on the right.
 import { Array, Option } from 'effect'
-import { Canvas } from 'foldkit'
-import { type Html, createKeyedLazy } from 'foldkit/html'
 
 import type { Facing } from '../../src/art/sprite'
 import { TILE_SIZE } from '../../src/shared/constants'
@@ -10,18 +8,13 @@ import {
   type Backdrop,
   Message,
   type Model,
-  StudioComposition,
-  type StudioViewBuilder,
+  StudioDef,
+  type StudioH,
+  type StudioHtml,
   freshDoneOf,
   notesFor,
 } from './block'
-import {
-  type Bounds,
-  type Entry,
-  type Tone,
-  entryById,
-  sectionsOf,
-} from './catalog'
+import { type Entry, type Tone, entryById, sectionsOf } from './catalog'
 import {
   backdropRect,
   frameIndexOf,
@@ -35,8 +28,15 @@ import {
 import { inspectorView } from './inspectorView'
 import { labToggleView, labView } from './labView'
 import { harnessQueryOf } from './liveScene'
+import {
+  type PointerKind,
+  type PointerOnPicture,
+  marksView,
+  picturePointer,
+} from './marksView'
 import type { Tile } from './notes'
-import { areaShapes, pinAt } from './pins'
+import { studioPicture } from './picture'
+import { type PictureFrame, areaMarksOf, pinAt } from './pins'
 import { roomFrameOf, roomTargetOf, tileOfPin } from './room'
 import { sidebarView } from './sidebarView'
 import { stageView } from './stageView'
@@ -45,13 +45,12 @@ import { studioWorld } from './worldStage'
 
 // GALLERY
 
-const lazyCard = createKeyedLazy()
-
 const CLOCK_STEP_MS = 100
 
 // NOTE: one card, built only from its arguments, so the lazy card below can
 // hand back the same card while none of them changed.
 const cardView = (
+  h: StudioH,
   entry: Entry,
   index: number,
   clockKey: number,
@@ -62,8 +61,7 @@ const cardView = (
   isPicked: boolean,
   isFresh: boolean,
   openCount: number,
-  h: StudioViewBuilder,
-): Html => {
+): StudioHtml => {
   const frames = entry.frames({
     facing,
     tone,
@@ -71,51 +69,40 @@ const cardView = (
   })
   const bounds = padded(spritesBounds(frames))
   const { width, height } = sizeOf(bounds, zoom)
-  return h.button(
-    [
-      h.Key(entry.id),
-      h.Class(`card${isPicked ? ' picked' : ''}${isFresh ? ' fresh' : ''}`),
-      h.Title(entry.title),
-      h.OnClick(Message.ClickedEntry({ id: entry.id })),
-    ],
-    [
-      ...(isFresh
-        ? [h.span([h.Class('badge fresh-badge')], ['✨ Updated'])]
-        : []),
-      ...(openCount > 0
-        ? [h.span([h.Class('badge note-badge')], [`💬 ${openCount}`])]
-        : []),
-      Canvas.view(
-        {
-          key: entry.id,
+  return h.button
+    .key(entry.id)
+    .class('card', isPicked && 'picked', isFresh && 'fresh')
+    .attr('title', entry.title)
+    .on('click', Message.ClickedEntry({ id: entry.id }))
+    .children(
+      isFresh && h.span.class('badge fresh-badge').children('✨ Updated'),
+      openCount > 0 &&
+        h.span.class('badge note-badge').children(`💬 ${openCount}`),
+      studioPicture(h)
+        .class('sprite')
+        .picture({
+          key: `${entry.id}|${index}|${clockKey}|${zoom}|${backdrop}|${facing}|${tone}`,
           width,
           height,
           shapes: [
             backdropRect({ width, height }, backdrop),
             zoomed(frameOf(frames, index), bounds, zoom),
           ],
-          className: 'sprite',
-        },
-        h,
-      ),
-      h.span([h.Class('card-title')], [entry.title]),
-    ],
-  )
+        }),
+      h.span.class('card-title').children(entry.title),
+    )
 }
 
 // NOTE: the card redraws only when what it shows changes: its frame, the
 // controls, or its badges. A clock-driven card (the stall) steps every
 // CLOCK_STEP_MS; any other holds its clock at zero and steps by frame.
-const card = (
-  entry: Entry,
-  model: Model,
-  h: StudioViewBuilder,
-): Html | null => {
+const card = (h: StudioH, entry: Entry, model: Model): StudioHtml => {
   const count = entry.frames(lookOf(model)).length
   const index = frameIndexOf(entry, model.clockMs, count)
   const clockKey =
     entry.isClockDriven === true ? Math.floor(model.clockMs / CLOCK_STEP_MS) : 0
-  return lazyCard(entry.id, cardView, [
+  return h.lazy(
+    cardView,
     entry,
     index,
     clockKey,
@@ -127,159 +114,116 @@ const card = (
     Array.isReadonlyArrayNonEmpty(freshDoneOf(model, entry.id)),
     Array.filter(notesFor(model, entry.id), note => note.status === 'Open')
       .length,
-    h,
-  ])
+  )
 }
 
-const galleryView = (model: Model, h: StudioViewBuilder): Html =>
-  h.main(
-    [h.Class('middle')],
-    [
-      ...Option.match(pickedEntry(model), {
-        onNone: () => [
-          h.p(
-            [h.Class('gallery-hint')],
-            ['👆 Tap anything to see it big and ask for a change.'],
-          ),
-        ],
-        onSome: entry => [stageView(model, entry, h)],
-      }),
-      h.div(
-        [h.Class('gallery')],
+const galleryView = (h: StudioH, model: Model): StudioHtml =>
+  h.main.class('middle').children(
+    Option.match(pickedEntry(model), {
+      onNone: () =>
+        h.p
+          .class('gallery-hint')
+          .children('👆 Tap anything to see it big and ask for a change.'),
+      onSome: entry => stageView(h, model, entry),
+    }),
+    h.div
+      .class('gallery')
+      .children(
         Array.map(sectionsOf(model.tab), section =>
-          h.section(
-            [h.Key(section.title)],
-            [
-              h.h2([], [section.title]),
-              h.div(
-                [h.Class('cards')],
-                Array.map(section.entries, entry => card(entry, model, h)),
-              ),
-            ],
-          ),
+          h.section
+            .key(section.title)
+            .children(
+              h.h2.children(section.title),
+              h.div
+                .class('cards')
+                .children(
+                  Array.map(section.entries, entry => card(h, entry, model)),
+                ),
+            ),
         ),
       ),
-    ],
   )
 
 // ROOMS
 
-const GRID_COLOR = 'rgba(255, 255, 255, 0.14)'
-const HOVER_COLOR = '#6fc3ff'
+// NOTE: the first grid lines in from the picture's top left, and their
+// step, in screen pixels.
+const gridOf = ({ bounds, zoom }: PictureFrame) => ({
+  step: TILE_SIZE * zoom,
+  offsetX:
+    (Math.ceil(bounds.left / TILE_SIZE) * TILE_SIZE - bounds.left) * zoom,
+  offsetY: (Math.ceil(bounds.top / TILE_SIZE) * TILE_SIZE - bounds.top) * zoom,
+})
 
-const tileBox = (tile: Tile, bounds: Bounds, zoom: number): Canvas.Shape =>
-  Canvas.Rect({
-    x: (tile.column * TILE_SIZE - bounds.left) * zoom,
-    y: (tile.row * TILE_SIZE - bounds.top) * zoom,
-    width: TILE_SIZE * zoom,
-    height: TILE_SIZE * zoom,
-    stroke: HOVER_COLOR,
-    lineWidth: 2,
-  })
+const hoverBoxOf = (tile: Tile, { bounds, zoom }: PictureFrame) => ({
+  x: (tile.column * TILE_SIZE - bounds.left) * zoom,
+  y: (tile.row * TILE_SIZE - bounds.top) * zoom,
+  size: TILE_SIZE * zoom,
+})
 
-const gridLines = (
-  bounds: Bounds,
-  zoom: number,
-  width: number,
-  height: number,
-): ReadonlyArray<Canvas.Shape> => [
-  ...Array.map(
-    Array.range(
-      Math.ceil(bounds.left / TILE_SIZE),
-      Math.floor(bounds.right / TILE_SIZE),
-    ),
-    column =>
-      Canvas.Rect({
-        x: (column * TILE_SIZE - bounds.left) * zoom,
-        y: 0,
-        width: 1,
-        height,
-        fill: GRID_COLOR,
-      }),
-  ),
-  ...Array.map(
-    Array.range(
-      Math.ceil(bounds.top / TILE_SIZE),
-      Math.floor(bounds.bottom / TILE_SIZE),
-    ),
-    row =>
-      Canvas.Rect({
-        x: 0,
-        y: (row * TILE_SIZE - bounds.top) * zoom,
-        width,
-        height: 1,
-        fill: GRID_COLOR,
-      }),
-  ),
-]
+// NOTE: what the pointer on the room means: a hover, a tile pressed to
+// start a pick, the drag let go, or gone.
+const ROOM_POINTER: {
+  readonly [Kind in PointerKind]: (tile: Tile) => Message
+} = {
+  Move: tile => Message.HoveredTile({ tile }),
+  Down: tile => Message.PressedRoomTile({ tile }),
+  Up: () => Message.ReleasedRoom(),
+  Leave: () => Message.LeftRoom(),
+}
 
-const roomView = (model: Model, h: StudioViewBuilder): Html => {
+const roomPointerMessage =
+  (frame: PictureFrame) =>
+  (pointer: PointerOnPicture): Message =>
+    ROOM_POINTER[pointer.kind](tileOfPin(pinAt(frame)(pointer)))
+
+// NOTE: what the room's picture shows, as one key.
+const roomKeyOf = (model: Model): string =>
+  `${model.room}|${model.house}|${model.isKitchenOpen}|${model.isTwistOn}|${model.zoom}|${model.backdrop}`
+
+const roomView = (h: StudioH, model: Model): StudioHtml => {
   const { shapes, bounds } = roomFrameOf(model)
   const frame = { bounds, zoom: model.zoom }
   const { width, height } = sizeOf(bounds, model.zoom)
-  return h.main(
-    [h.Class('middle')],
-    [
-      h.p(
-        [h.Class('gallery-hint')],
-        ['👆 Drag over the room to pick tiles for a note, or tap just one.'],
+  return h.main.class('middle').children(
+    h.p
+      .class('gallery-hint')
+      .children(
+        '👆 Drag over the room to pick tiles for a note, or tap just one.',
       ),
-      h.div(
-        [
-          h.Class('stage-canvases room'),
-          h.Style({ width: `${width}px`, height: `${height}px` }),
-          h.OnMouseLeave(Message.LeftRoom()),
-        ],
-        [
-          Canvas.view(
-            {
-              key: 'room-art',
-              width,
-              height,
-              shapes: [
-                backdropRect({ width, height }, model.backdrop),
-                zoomed(shapes, bounds, model.zoom),
-              ],
-              className: 'sprite room-art',
-            },
-            h,
+    h.div
+      .class('stage-canvases', 'room')
+      .style({ width: `${width}px`, height: `${height}px` })
+      .children(
+        studioPicture(h)
+          .class('sprite', 'room-art')
+          .picture({
+            key: roomKeyOf(model),
+            width,
+            height,
+            shapes: [
+              backdropRect({ width, height }, model.backdrop),
+              zoomed(shapes, bounds, model.zoom),
+            ],
+          }),
+        marksView(h, {
+          width,
+          height,
+          pins: [],
+          areas: areaMarksOf({
+            model,
+            notes: notesFor(model, roomTargetOf(model.room)),
+            frame,
+          }),
+          maybeGrid: model.isGridOn
+            ? Option.some(gridOf(frame))
+            : Option.none(),
+          maybeHover: Option.map(model.maybeHoverTile, tile =>
+            hoverBoxOf(tile, frame),
           ),
-          Canvas.view(
-            {
-              key: 'room-pins',
-              width,
-              height,
-              shapes: [
-                ...(model.isGridOn
-                  ? gridLines(bounds, model.zoom, width, height)
-                  : []),
-                ...Option.toArray(
-                  Option.map(model.maybeHoverTile, tile =>
-                    tileBox(tile, bounds, model.zoom),
-                  ),
-                ),
-                ...areaShapes({
-                  model,
-                  notes: notesFor(model, roomTargetOf(model.room)),
-                  frame,
-                }),
-              ],
-              className: 'pins',
-              onPointerMove: ({ x, y }) =>
-                Message.HoveredTile({
-                  tile: tileOfPin(pinAt(frame)({ x, y })),
-                }),
-              onPointerDown: ({ x, y }) =>
-                Message.PressedRoomTile({
-                  tile: tileOfPin(pinAt(frame)({ x, y })),
-                }),
-              onPointerUp: () => Message.ReleasedRoom(),
-            },
-            h,
-          ),
-        ],
+          pointer: picturePointer(roomPointerMessage(frame)),
+        }),
       ),
-    ],
   )
 }
 
@@ -287,74 +231,65 @@ const roomView = (model: Model, h: StudioViewBuilder): Html => {
 
 // NOTE: the manor through the game's own 3D renderer (./worldStage.ts): the
 // harness's scene in a frame, the Studio's marks over it, and the loupe.
-const liveView = (model: Model, h: StudioViewBuilder): Html => {
-  const world = studioWorld.withMessage(h)
-  return h.main(
-    [h.Class('middle')],
-    [
-      h.p(
-        [h.Class('gallery-hint')],
-        [
-          model.liveTool === 'Loupe'
-            ? '🔍 Hover the room to see its pixels up close.'
-            : '👆 Drag over the room to pick tiles for a note, or tap just one.',
-        ],
+const liveView = (h: StudioH, model: Model): StudioHtml =>
+  h.main.class('middle').children(
+    h.p
+      .class('gallery-hint')
+      .children(
+        model.liveTool === 'Loupe'
+          ? '🔍 Hover the room to see its pixels up close.'
+          : '👆 Drag over the room to pick tiles for a note, or tap just one.',
       ),
-      world(
-        [
-          h.Key('live-world'),
-          h.Class('live-world'),
-          world.Query(
-            harnessQueryOf({ scene: model.live, house: model.house }),
-          ),
-          world.Marks({
-            tool: model.liveTool,
-            isGridOn: model.isGridOn,
-            hover: Option.getOrNull(model.maybeHoverTile),
-            draft: Option.getOrNull(model.maybeDraftArea),
-            areas: Array.flatMap(
-              notesFor(model, roomTargetOf(model.room)),
-              note =>
-                note.area === null
-                  ? []
-                  : [{ area: note.area, isDone: note.status === 'Done' }],
-            ),
-          }),
-          world.OnHoverTile(tile => Message.HoveredTile({ tile })),
-          world.OnPressTile(tile => Message.PressedRoomTile({ tile })),
-          world.OnReleaseTile(() => Message.ReleasedRoom()),
-          world.Tuning(model.labEdits),
-          world.OnLeaveWorld(() => Message.LeftRoom()),
-        ],
-        [],
-      ),
-      h.div([h.Class('toolbar'), h.Role('toolbar')], [labToggleView(model, h)]),
-      ...(model.isLabOpen ? [labView(model, h)] : []),
-    ],
+    studioWorld(h)
+      .key('live-world')
+      .class('live-world')
+      .query(harnessQueryOf({ scene: model.live, house: model.house }))
+      .marks({
+        tool: model.liveTool,
+        isGridOn: model.isGridOn,
+        hover: Option.getOrNull(model.maybeHoverTile),
+        draft: Option.getOrNull(model.maybeDraftArea),
+        areas: Array.flatMap(notesFor(model, roomTargetOf(model.room)), note =>
+          note.area === null
+            ? []
+            : [{ area: note.area, isDone: note.status === 'Done' }],
+        ),
+      })
+      .tuning(model.labEdits)
+      .on('hover-tile', tile => Message.HoveredTile({ tile }))
+      .on('press-tile', tile => Message.PressedRoomTile({ tile }))
+      .on('release-tile', Message.ReleasedRoom())
+      .on('leave-world', Message.LeftRoom()),
+    h.div
+      .class('toolbar')
+      .attr('role', 'toolbar')
+      .children(labToggleView(h, model)),
+    model.isLabOpen && labView(h, model),
   )
-}
 
-// NOTE: Foldkit knows a view by the very function makeView returns, so a
-// dual wrapper would be a view it does not know.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const view = StudioComposition.makeView((model, h) => ({
-  title: `Munch Studio: ${Option.match(
+// NOTE: the page's title names what is open.
+export const titleOf = (model: Model): string =>
+  `Munch Studio: ${Option.match(
     Option.flatMap(model.maybeSelectedId, entryById),
     {
       onNone: () => model.tab,
       onSome: entry => entry.title,
     },
-  )}`,
-  body: h.div(
-    [h.Class('studio')],
-    [
-      sidebarView(model, h),
+  )}`
+
+// NOTE: a view is a function Effect UI calls with `h` and the Model, with
+// no data-last form to give it.
+// @effect-diagnostics-next-line missingPipeableSignature:off
+export const view = StudioDef.view((h, model) =>
+  h.div
+    .class('studio')
+    .children(
+      sidebarView(h, model),
       model.tab === 'Rooms'
         ? model.room === 'Live'
-          ? liveView(model, h)
-          : roomView(model, h)
-        : galleryView(model, h),
-      inspectorView(model, h),
-    ],
-  ),
-}))
+          ? liveView(h, model)
+          : roomView(h, model)
+        : galleryView(h, model),
+      inspectorView(h, model),
+    ),
+)

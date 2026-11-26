@@ -3,7 +3,8 @@
 // fight itself is src/world/zombies/boss.ts.
 
 import { Array, Function, Option, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
 import * as DetMath from '../../shared/detMath'
@@ -38,13 +39,13 @@ const isVulnerableState = Invulnerability.isAnyOf(['Vulnerable'])
 
 // FIGHT
 
-export type Fight = typeof Boss.Fighting.Type
+export type Fight = typeof Boss.cases.Fighting.Type
 
 export const modifyFight: {
   (change: (fight: Fight) => Fight): (model: World) => World
   (model: World, change: (fight: Fight) => Fight): World
 } = Function.dual(2, (model: World, change: (fight: Fight) => Fight): World =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     boss: boss => (isFightingBoss(boss) ? change(boss) : boss),
   }),
 )
@@ -53,13 +54,13 @@ export const setMove: {
   (move: BossMove): (model: World) => World
   (model: World, move: BossMove): World
 } = Function.dual(2, (model: World, move: BossMove): World =>
-  modifyFight(model, fight => modifyFields(fight, { move: () => move })),
+  modifyFight(model, fight => UiStruct.evolve(fight, { move: () => move })),
 )
 
 export const emit =
   (event: GameEvent) =>
   (model: World): World =>
-    modifyFields(model, { frameEvents: Array.append(event) })
+    UiStruct.evolve(model, { frameEvents: Array.append(event) })
 
 export const isEnraged = (boss: Boss): boolean =>
   isFightingBoss(boss) && boss.mood === 'Enraged'
@@ -138,10 +139,10 @@ const hurt = (
 ): World => {
   const { player } = seatStateAt(model, slot)
   const wounded = woundPlayer(player, damage, direction)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     seats: atSeat(slot, {
       player: () =>
-        modifyFields(wounded, {
+        UiStruct.evolve(wounded, {
           knockback: knockback => scaleVector(knockback, knockbackScale),
         }),
     }),
@@ -248,7 +249,7 @@ const globsAdvanced = (
   return Array.reduce(
     landed,
     modifyFight(model, current =>
-      modifyFields(current, {
+      UiStruct.evolve(current, {
         globs: globs =>
           pipe(
             globs,

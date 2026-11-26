@@ -1,7 +1,9 @@
 import { Array, Function, Option, pipe } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import {
@@ -176,29 +178,31 @@ const stepView = (
   index: number,
   state: StepState,
   h: ApplicationViewBuilder,
-): Html =>
-  h.keyed('li')(
-    `${index}`,
-    [
-      h.Class('quest-step'),
-      h.DataAttribute('state', state),
-      h.AriaLabel(`${look.spoken}${spokenState(state)}`),
-      ...(state === 'Now' ? [h.AriaCurrent('step')] : []),
-    ],
-    [
-      h.span([
-        h.Class('quest-step-icon'),
-        h.AriaHidden(true),
-        h.Style(pixelArtStyle(look.icon)),
-      ]),
+): ApplicationHtml =>
+  h.li
+    .key(`${index}`)
+    .class('quest-step')
+    .attr('data-state', state)
+    .attr('aria-label', `${look.spoken}${spokenState(state)}`)
+    .attr('aria-current', state === 'Now' ? 'step' : undefined)
+    .children(
+      h.span
+        .class('quest-step-icon')
+        .attr('aria-hidden', 'true')
+        .style(pixelArtStyle(look.icon)),
       state === 'Now'
-        ? h.span([h.Class('quest-step-word'), h.AriaHidden(true)], [look.word])
-        : h.empty,
+        ? h.span
+            .class('quest-step-word')
+            .attr('aria-hidden', 'true')
+            .children(look.word)
+        : null,
       state === 'Done'
-        ? h.span([h.Class('quest-step-tick'), h.AriaHidden(true)], ['✓'])
-        : h.empty,
-    ],
-  )
+        ? h.span
+            .class('quest-step-tick')
+            .attr('aria-hidden', 'true')
+            .children('✓')
+        : null,
+    )
 
 const CONFETTI = Array.makeBy(10, index => index)
 
@@ -206,28 +210,24 @@ const chapterView = (
   chapter: Chapter,
   side: Side,
   h: ApplicationViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('quest-frame')],
-    [
-      h.section(
-        [
-          h.Class('quest-tracker'),
-          h.DataAttribute('done', chapter.isDone ? 'true' : 'false'),
-          h.DataAttribute('side', side),
-          h.AriaLabel(chapter.label),
-        ],
-        [
-          chapter.isClockHeld
-            ? h.span([
-                h.Class('quest-held'),
-                h.Role('img'),
-                h.AriaLabel('The break clock waits'),
-                h.Style(pixelArtStyle(TOUR_PAUSED_ICON)),
-              ])
-            : h.empty,
-          h.ol(
-            [h.Class('quest-steps')],
+): ApplicationHtml =>
+  h.div.class('quest-frame').children(
+    h.section
+      .class('quest-tracker')
+      .attr('data-done', chapter.isDone ? 'true' : 'false')
+      .attr('data-side', side)
+      .attr('aria-label', chapter.label)
+      .children(
+        chapter.isClockHeld
+          ? h.span
+              .class('quest-held')
+              .attr('role', 'img')
+              .attr('aria-label', 'The break clock waits')
+              .style(pixelArtStyle(TOUR_PAUSED_ICON))
+          : null,
+        h.ol
+          .class('quest-steps')
+          .children(
             Array.map(chapter.steps, (look, index) =>
               stepView(
                 look,
@@ -237,39 +237,37 @@ const chapterView = (
               ),
             ),
           ),
-          chapter.isDone
-            ? h.span(
-                [h.Class('quest-confetti'), h.AriaHidden(true)],
+        chapter.isDone
+          ? h.span
+              .class('quest-confetti')
+              .attr('aria-hidden', 'true')
+              .children(
                 Array.map(CONFETTI, index =>
-                  h.span([
-                    h.Class('quest-confetti-bit'),
-                    h.Style({ '--bit': `${index}` }),
-                  ]),
+                  h.span
+                    .class('quest-confetti-bit')
+                    .style({ '--bit': `${index}` }),
                 ),
               )
-            : h.button(
-                [
-                  h.Type('button'),
-                  h.Class('quest-skip'),
-                  h.AriaLabel(chapter.skipLabel),
-                  h.OnClick(chapter.skip, { focusSelector: '.game-surface' }),
-                ],
-                ['×'],
-              ),
-        ],
+          : h.button
+              .attr('type', 'button')
+              .class('quest-skip')
+              .attr('aria-label', chapter.skipLabel)
+              .on('click', chapter.skip)
+              .children('×'),
       ),
-    ],
   )
 
 export const questTrackerView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  Option.match(
-    Option.orElse(firstBreakChapter(model), () => kitchenChapter(model)),
-    {
-      onNone: () => h.empty,
-      onSome: chapter => chapterView(chapter, sideOf(model), h),
-    },
-  ),
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    Option.match(
+      Option.orElse(firstBreakChapter(model), () => kitchenChapter(model)),
+      {
+        onNone: () => null,
+        onSome: chapter => chapterView(chapter, sideOf(model), h),
+      },
+    ),
 )

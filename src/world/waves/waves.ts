@@ -1,5 +1,6 @@
 import { Array, Function, Option, Order, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   DOOR_HALF_WIDTH_PX,
@@ -57,6 +58,7 @@ import {
   RunMode,
   type Vector,
   ZombieAction,
+  evolveRoundSpawns,
 } from '../schema/worldSchema'
 import { clamp } from '../step/geometry'
 import {
@@ -192,7 +194,7 @@ const movedSpawns = (
     const door = doors.get(spawn.pack)
     return door === undefined
       ? spawn
-      : modifyFields(spawn, { door: () => door })
+      : UiStruct.evolve(spawn, { door: () => door })
   })
 }
 
@@ -236,11 +238,9 @@ export const joinNewDoors: {
     newDoors,
     share,
   )
-  return modifyFields(model, {
-    phase: () =>
-      modifyFields(round, {
-        spawns: () => movedSpawns(round.spawns, moves),
-      }),
+  return UiStruct.evolve(model, {
+    phase: phase =>
+      evolveRoundSpawns(phase, () => movedSpawns(round.spawns, moves)),
     rngState: () => rngState,
   })
 })
@@ -313,11 +313,11 @@ export const beginPreparation: {
         )
       : [waveState, Boss.Absent()]
     const markedBoss = Boss.isAnyOf(['Waiting'])(boss)
-      ? modifyFields(boss, {
+      ? UiStruct.evolve(boss, {
           hp: hp => Math.round(hp * chunkHealthScaleOf(model.dareMark)),
         })
       : boss
-    return modifyFields(returnFallen(model), {
+    return UiStruct.evolve(returnFallen(model), {
       boss: () => markedBoss,
       frenzyPacks: () => frenzyPacksOf(spawns),
       phase: () =>
@@ -346,19 +346,18 @@ export const isEndless = (model: World): boolean =>
   RunMode.isAnyOf(['Endless'])(model.mode)
 
 export const pause = <M extends World>(model: M): M =>
-  Phase.match(model.phase, {
-    Ready: () => model,
-    Arriving: () => model,
-    Preparation: preparation =>
-      modifyWorldFields(model, {
-        phase: () => Phase.Paused({ round: preparation }),
+  modifyWorldFields(model, {
+    phase: phase =>
+      Phase.match(phase, {
+        Ready: () => phase,
+        Arriving: () => phase,
+        Preparation: preparation => Phase.Paused({ round: preparation }),
+        Wave: wave => Phase.Paused({ round: wave }),
+        Paused: () => phase,
+        Escaped: () => phase,
+        LeftEarly: () => phase,
+        GameOver: () => phase,
       }),
-    Wave: wave =>
-      modifyWorldFields(model, { phase: () => Phase.Paused({ round: wave }) }),
-    Paused: () => model,
-    Escaped: () => model,
-    LeftEarly: () => model,
-    GameOver: () => model,
   })
 
 // NOTE: a run saved before every break counted (2026-11-10) may hold the
@@ -391,9 +390,9 @@ const payReadyEarly = (
     return model
   }
   const { x, y } = focusOf(model).player
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     stats: stats =>
-      modifyFields(stats, { readyPoints: earned => earned + points }),
+      UiStruct.evolve(stats, { readyPoints: earned => earned + points }),
     frameEvents: Array.append(GameEvent.RushedIn({ x, y, points })),
   })
 }
@@ -404,7 +403,7 @@ export const startWaveEarly = (model: World): World =>
     Arriving: () => model,
     Preparation: ({ wave, spawns, clock, remainingMs }) =>
       summonAtFrontDoor(
-        modifyFields(
+        UiStruct.evolve(
           payReadyEarly(learnFromBreak(model, wave, clock), clock, remainingMs),
           { phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }) },
         ),
@@ -477,7 +476,7 @@ const spawnZombie = (model: World, spawn: PlannedSpawn): World => {
     action: arrival.action,
     frenzy: frenzyOnArrival(model.frenzyPacks, spawn),
   })
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: Array.append(zombie),
     nextEntityId: id => id + 1,
     rngState: () => speedDraw.nextState,
@@ -497,7 +496,7 @@ const isWaveCleared = (
 const keyForClear = (model: World): World => {
   const at = { x: focusOf(model).player.x, y: focusOf(model).player.y }
   return grantKeys(
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       frameEvents: Array.append(
         GameEvent.WaveCleared({ ...at, keys: KEY_RULES.perWaveCleared }),
       ),
@@ -611,9 +610,9 @@ const advanceWave = (
     targetsOf(model),
   )
   const warned = warnPacks(
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       pacing: () =>
-        modifyFields(paced.pacing, {
+        UiStruct.evolve(paced.pacing, {
           alarm: alarm => quietAlarm(alarm, worldMs),
         }),
     }),
@@ -633,9 +632,9 @@ const advanceWave = (
     released.pending.length,
     worldMs,
   )
-  const spawned = modifyFields(entered, {
+  const spawned = UiStruct.evolve(entered, {
     phase: () =>
-      modifyFields(round, {
+      UiStruct.evolve(round, {
         elapsedMs: () => clockMs,
         spawns: () => released.pending,
       }),
@@ -655,17 +654,17 @@ const countDownBreak = (
   BreakClock.match(preparation.clock, {
     Counting: () =>
       preparation.remainingMs > worldMs
-        ? modifyFields(model, {
+        ? UiStruct.evolve(model, {
             phase: () =>
-              modifyFields(preparation, {
+              UiStruct.evolve(preparation, {
                 remainingMs: remainingMs => remainingMs - worldMs,
               }),
           })
         : startWaveEarly(model),
     Waiting: ({ elapsedMs }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         phase: () =>
-          modifyFields(preparation, {
+          UiStruct.evolve(preparation, {
             clock: () => BreakClock.Waiting({ elapsedMs: elapsedMs + worldMs }),
           }),
       }),
@@ -719,7 +718,7 @@ const isDefeated = (model: World): boolean =>
 // isCrewOut): the downed are carried out with them.
 export const endWhenDefeated = (model: World): World => {
   if (isCrewOut(model)) {
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       phase: () => Phase.Escaped({ wave: roundWave(model.phase) }),
     })
   }
@@ -727,7 +726,7 @@ export const endWhenDefeated = (model: World): World => {
     return model
   }
 
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     phase: () => Phase.GameOver({ wave: roundWave(model.phase) }),
   })
 }

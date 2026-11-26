@@ -1,9 +1,9 @@
 import { Array, Function, Option, Order } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { runDifficultyOf } from '../../domain/onlineRun'
 import type { Camera } from '../../render/camera'
+import type * as Draw from '../../render/draw'
 import { pointerArrowShapes } from '../../render/pointerArrow'
 import type { Screen } from '../../render/screen'
 import { isInOpenRoom, maybeLyingAt } from '../../world/dare/dare'
@@ -75,14 +75,11 @@ export const maybeDarePointer = (model: Model): Option.Option<Vector> =>
 
 // NOTE: in the overlay canvas's pixels, from the screen camera.
 export const darePointerShapes: {
-  (
-    screen: Screen,
-    camera: Camera,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (screen: Screen, camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Draw.Shape> =>
     Option.match(maybeDarePointer(model), {
       onNone: () => [],
       onSome: mark =>

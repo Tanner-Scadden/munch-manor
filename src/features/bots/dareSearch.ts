@@ -1,5 +1,6 @@
 import { Array, Function, Option, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { isHiddenInDark } from '../../world/cellar/bulb'
 import {
@@ -278,7 +279,7 @@ export const chandelierShot: {
 // boards on the way to its room), and the keys that padlock asks: open it
 // with them in hand, or save up the keys it is short. With nothing left on
 // the list, the list is done and Uncle Chunk comes.
-export const HuntStep = defineTaggedUnion({
+export const HuntStep = UiSchema.TaggedEnum({
   Leave: {},
   Fetch: {},
   Light: {},

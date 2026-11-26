@@ -1,4 +1,4 @@
-import { modifyFields } from 'foldkit/struct'
+import { UiStruct } from '@effect/ui'
 
 import {
   DifficultyCard,
@@ -16,7 +16,7 @@ const learned = (): Lesson => Lesson.Learned({ atMs: 0 })
 // plays: no guided first break and no free Plank Pile, so the tutorial
 // never moves the balance numbers.
 export const asTutorialDone = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: () => ({
       move: learned(),
       fire: learned(),
@@ -39,9 +39,9 @@ export const asTutorialDone = (model: Model): Model =>
   })
 
 export const asVeteran = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         move: () => Lesson.Learned({ atMs: 0 }),
         fire: () => Lesson.Learned({ atMs: 0 }),
         dareTour: () => Lesson.Learned({ atMs: 0 }),

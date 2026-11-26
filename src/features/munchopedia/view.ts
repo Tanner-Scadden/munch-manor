@@ -1,21 +1,19 @@
 import { Array, Option } from 'effect'
-import type { Html } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { SHOP_TILE_ART } from '../../art/shopArt'
 import { plinthElement } from '../../render/iso/plinthElement'
 import { backButtonView } from '../../ui/cornerButtons'
 import { SHOP_GUIDE_NAME } from '../../world/names'
-import type { KillCounts, ZombieKind } from '../../world/schema/worldSchema'
+import type { ZombieKind } from '../../world/schema/entitySchema'
+import type { KillCounts } from '../../world/schema/worldSchema'
+import { Guide } from '../guide/block'
 import { GUIDE_FOCUS_IDS, isGuideOpen } from '../guide/model'
-import { GuideBinding } from './bindings'
-import type { ViewInputs } from './block'
-import {
-  MunchopediaComposition,
-  type MunchopediaViewBuilder,
-} from './composition'
 import { journalPageViews } from './journalView'
 import { Message } from './message'
-import { type Model, MunchopediaPage } from './model'
+import { type Model, MunchopediaPage, type MunchopediaProps } from './model'
 import {
   BADGES,
   type EntryFrame,
@@ -29,6 +27,9 @@ import {
   killsOf,
   plinthImageAt,
 } from './munchopedia'
+
+type H = Html.H<Message>
+type Content = View.Content<Message>
 
 // TEXT
 
@@ -58,231 +59,202 @@ const pictureView = (
   isKnown: boolean,
   altText: string,
   className: string,
-  h: MunchopediaViewBuilder,
-): Html =>
+  h: H,
+): Content =>
   Option.match(maybeFrame, {
-    onNone: () => h.span([h.Class(className)]),
-    onSome: frame =>
-      h.img([
-        h.Class(className),
-        h.Src(frame.src),
-        h.Alt(altText),
-        h.DataAttribute('known', isKnown ? 'Known' : 'Unknown'),
-        h.Style({
+    onNone: (): Content => h.span.class(className),
+    onSome: (frame): Content =>
+      h.img
+        .class(className)
+        .attrs({
+          src: frame.src,
+          alt: altText,
+          'data-known': isKnown ? 'Known' : 'Unknown',
+        })
+        .style({
           '--art-w': `${frame.width}`,
           '--art-h': `${frame.height}`,
           '--art-scale': `${pictureScale(frame)}`,
         }),
-      ]),
   })
-
-// NOTE: a known zombie stands carved in blocks, turning on a lit plinth,
-// drawn by the world's renderer (src/render/iso/plinthElement.ts); Uncle
-// Chunk is lit from below in red, his hero shot. One not met yet stays a
-// flat silhouette.
-const plinthView = (
-  inputs: ViewInputs,
-  kind: ZombieKind,
-  h: MunchopediaViewBuilder,
-): Html => {
-  const plinth = plinthElement.withMessage(h)
-  return h.div(
-    [h.Class('munch-stage munch-stage-plinth')],
-    Option.match(plinthImageAt(kind, inputs.screenMs), {
-      onNone: () => [],
-      onSome: image => [
-        plinth(
-          [
-            h.Key(`plinth-${kind}`),
-            h.Class('munch-plinth'),
-            h.Role('img'),
-            h.AriaLabel(pictureAlt(kind, true)),
-            plinth.Pose({
-              image,
-              clockMs: inputs.screenMs,
-              light: isBoss(kind) ? 'Villain' : 'Candle',
-            }),
-          ],
-          [],
-        ),
-      ],
-    }),
-  )
-}
 
 const pictureAlt = (kind: ZombieKind, isKnown: boolean): string =>
   isKnown
     ? `${entryName(kind)} shuffling along and falling apart`
     : 'A dark silhouette of a zombie you have not met yet'
 
+// NOTE: a known zombie stands carved in blocks, turning on a lit plinth,
+// drawn by the world's renderer (src/render/iso/plinthElement.ts); Uncle
+// Chunk is lit from below in red, his hero shot. One not met yet stays a
+// flat silhouette.
+const plinthView = (props: MunchopediaProps, kind: ZombieKind, h: H): Content =>
+  h.div.class('munch-stage munch-stage-plinth').children(
+    Option.match(plinthImageAt(kind, props.screenMs), {
+      onNone: () => null,
+      onSome: image =>
+        plinthElement(h)
+          .key(`plinth-${kind}`)
+          .class('munch-plinth')
+          .attrs({ role: 'img', 'aria-label': pictureAlt(kind, true) })
+          .pose({
+            image,
+            clockMs: props.screenMs,
+            light: isBoss(kind) ? 'Villain' : 'Candle',
+          }),
+    }),
+  )
+
 // LIST
 
 const tileView = (
-  inputs: ViewInputs,
+  props: MunchopediaProps,
   entry: MunchopediaEntry,
-  h: MunchopediaViewBuilder,
-): Html => {
-  const count = killsOf(inputs.killsByKind, entry.kind)
-  const isKnown = isDiscovered(inputs.killsByKind, entry.kind)
-  const isNew = isKnown && !Array.contains(inputs.openedEntries, entry.kind)
+  h: H,
+): Content => {
+  const count = killsOf(props.killsByKind, entry.kind)
+  const isKnown = isDiscovered(props.killsByKind, entry.kind)
+  const isNew = isKnown && !Array.contains(props.openedEntries, entry.kind)
   const name = isKnown ? entryName(entry.kind) : UNKNOWN_NAME
-  return h.li(
-    [h.Class('munch-tile-item')],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.Class('munch-tile'),
-          h.DataAttribute('known', isKnown ? 'Known' : 'Unknown'),
-          h.AriaLabel(
-            isKnown
-              ? `${name}, ${countText(entry.kind, count)}${isNew ? ', new entry' : ''}`
-              : 'Unknown zombie, not found yet',
+  return h.li.class('munch-tile-item').children(
+    h.button
+      .class('munch-tile')
+      .attrs({
+        type: 'button',
+        'data-known': isKnown ? 'Known' : 'Unknown',
+        'aria-label': isKnown
+          ? `${name}, ${countText(entry.kind, count)}${isNew ? ', new entry' : ''}`
+          : 'Unknown zombie, not found yet',
+      })
+      .on('click', Message.ClickedEntryButton({ kind: entry.kind }))
+      .children(
+        h.span
+          .class('munch-tile-picture')
+          .attr('aria-hidden', 'true')
+          .children(
+            pictureView(
+              firstEntryFrame(entry.kind),
+              isKnown,
+              '',
+              'munch-sprite',
+              h,
+            ),
           ),
-          h.OnClick(Message.ClickedEntryButton({ kind: entry.kind }), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          h.span(
-            [h.Class('munch-tile-picture'), h.AriaHidden(true)],
-            [
-              pictureView(
-                firstEntryFrame(entry.kind),
-                isKnown,
-                '',
-                'munch-sprite',
-                h,
-              ),
-            ],
-          ),
-          h.span([h.Class('munch-tile-name')], [name]),
-          ...(isKnown
-            ? [h.span([h.Class('munch-tile-count')], [`×${countLabel(count)}`])]
-            : []),
-          ...(isNew
-            ? [h.span([h.Class('munch-tile-new'), h.AriaHidden(true)], ['NEW'])]
-            : []),
-        ],
+        h.span.class('munch-tile-name').children(name),
+        isKnown &&
+          h.span.class('munch-tile-count').children(`×${countLabel(count)}`),
+        isNew &&
+          h.span
+            .class('munch-tile-new')
+            .attr('aria-hidden', 'true')
+            .children('NEW'),
       ),
-    ],
   )
 }
 
 // NOTE: the Shop tile beside the zombies opens the shop guide
-// (src/features/guide/), which gives it focus back when it closes. It wears
-// Rattles' face and is always known.
-const shopTileView = (h: MunchopediaViewBuilder): Html =>
-  h.li(
-    [h.Class('munch-tile-item')],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.Id(GUIDE_FOCUS_IDS.Munchopedia.opener),
-          h.Class('munch-tile munch-tile-shop'),
-          h.DataAttribute('known', 'Known'),
-          h.AriaLabel(`${SHOP_GUIDE_NAME}, what the house holds`),
-          h.OnClick(Message.ClickedShopButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          h.span(
-            [h.Class('munch-tile-picture'), h.AriaHidden(true)],
-            [
-              h.span([
-                h.Class('sg-art munch-shop-art'),
-                h.Style({
-                  backgroundImage: SHOP_TILE_ART.url,
-                  '--art-w': `${SHOP_TILE_ART.width}`,
-                  '--art-h': `${SHOP_TILE_ART.height}`,
-                }),
-              ]),
-            ],
+// (src/features/guide/), which gives it focus back when it goes back. It
+// wears Rattles' face and is always known.
+const shopTileView = (h: H): Content =>
+  h.li.class('munch-tile-item').children(
+    h.button
+      .id(GUIDE_FOCUS_IDS.opener)
+      .class('munch-tile munch-tile-shop')
+      .attrs({
+        type: 'button',
+        'data-known': 'Known',
+        'aria-label': `${SHOP_GUIDE_NAME}, what the house holds`,
+      })
+      .on('click', Message.ClickedShopButton())
+      .children(
+        h.span
+          .class('munch-tile-picture')
+          .attr('aria-hidden', 'true')
+          .children(
+            h.span.class('sg-art munch-shop-art').style({
+              backgroundImage: SHOP_TILE_ART.url,
+              '--art-w': `${SHOP_TILE_ART.width}`,
+              '--art-h': `${SHOP_TILE_ART.height}`,
+            }),
           ),
-          h.span([h.Class('munch-tile-name')], [SHOP_GUIDE_NAME]),
-        ],
+        h.span.class('munch-tile-name').children(SHOP_GUIDE_NAME),
       ),
-    ],
   )
 
-const listView = (inputs: ViewInputs, h: MunchopediaViewBuilder): Html =>
-  h.ul(
-    [h.Class('munch-list'), h.AriaLabel('Zombies')],
-    [
-      ...Array.map(MUNCHOPEDIA, entry => tileView(inputs, entry, h)),
+const listView = (props: MunchopediaProps, h: H): Content =>
+  h.ul
+    .class('munch-list')
+    .attr('aria-label', 'Zombies')
+    .children(
+      Array.map(MUNCHOPEDIA, entry => tileView(props, entry, h)),
       shopTileView(h),
-    ],
-  )
+    )
 
 // ENTRY
 
 const ENTRY_NAME_ID = 'munch-entry-name'
 
-const badgeView = (count: number, h: MunchopediaViewBuilder) =>
+const badgeView = (count: number, h: H): ReadonlyArray<Content> =>
   Array.map(BADGES, badge => {
     const isEarned = count >= badge.threshold
-    return h.li(
-      [
-        h.Class('munch-badge'),
-        h.DataAttribute('badge', badge.name),
-        h.DataAttribute('earned', isEarned ? 'Earned' : 'Unearned'),
-      ],
-      [
-        h.span([h.Class('munch-badge-count')], [countLabel(badge.threshold)]),
-        h.span(
-          [h.Class('sr-only')],
-          [isEarned ? ` ${badge.name}, earned` : ` ${badge.name}, not yet`],
-        ),
-      ],
-    )
+    return h.li
+      .class('munch-badge')
+      .attrs({
+        'data-badge': badge.name,
+        'data-earned': isEarned ? 'Earned' : 'Unearned',
+      })
+      .children(
+        h.span.class('munch-badge-count').children(countLabel(badge.threshold)),
+        h.span
+          .class('sr-only')
+          .children(
+            isEarned ? ` ${badge.name}, earned` : ` ${badge.name}, not yet`,
+          ),
+      )
   })
 
 const knownEntryView = (
   killsByKind: KillCounts,
   entry: MunchopediaEntry,
-  h: MunchopediaViewBuilder,
-): ReadonlyArray<Html> => {
+  h: H,
+): ReadonlyArray<Content> => {
   const count = killsOf(killsByKind, entry.kind)
   return [
-    h.p([h.Class('munch-bio')], [entry.bio]),
-    h.h4([h.Class('munch-heading')], ['What it does']),
-    h.p([h.Class('munch-text')], [entry.behavior]),
-    h.h4([h.Class('munch-heading')], ['How to beat it']),
-    h.p([h.Class('munch-text')], [entry.howToBeat]),
-    h.div(
-      [h.Class('munch-count-row')],
-      [
-        h.p([h.Class('munch-count')], [countText(entry.kind, count)]),
-        h.ul(
-          [h.Class('munch-badges'), h.AriaLabel('Badges')],
-          badgeView(count, h),
-        ),
-      ],
-    ),
+    h.p.class('munch-bio').children(entry.bio),
+    h.h4.class('munch-heading').children('What it does'),
+    h.p.class('munch-text').children(entry.behavior),
+    h.h4.class('munch-heading').children('How to beat it'),
+    h.p.class('munch-text').children(entry.howToBeat),
+    h.div
+      .class('munch-count-row')
+      .children(
+        h.p.class('munch-count').children(countText(entry.kind, count)),
+        h.ul
+          .class('munch-badges')
+          .attr('aria-label', 'Badges')
+          .children(badgeView(count, h)),
+      ),
   ]
 }
 
 const entryView = (
-  inputs: ViewInputs,
+  props: MunchopediaProps,
   kind: ZombieKind,
-  h: MunchopediaViewBuilder,
-): Html => {
+  h: H,
+): Content => {
   const entry = entryOf(kind)
-  const isKnown = isDiscovered(inputs.killsByKind, kind)
-  return h.article(
-    [
-      h.Class('munch-entry'),
-      h.DataAttribute('known', isKnown ? 'Known' : 'Unknown'),
-      h.AriaLabelledBy(ENTRY_NAME_ID),
-    ],
-    [
+  const isKnown = isDiscovered(props.killsByKind, kind)
+  return h.article
+    .class('munch-entry')
+    .attrs({
+      'data-known': isKnown ? 'Known' : 'Unknown',
+      'aria-labelledby': ENTRY_NAME_ID,
+    })
+    .children(
       isKnown
-        ? plinthView(inputs, kind, h)
-        : h.div(
-            [h.Class('munch-stage')],
-            [
+        ? plinthView(props, kind, h)
+        : h.div
+            .class('munch-stage')
+            .children(
               pictureView(
                 firstEntryFrame(kind),
                 false,
@@ -290,112 +262,80 @@ const entryView = (
                 'munch-sprite',
                 h,
               ),
-            ],
-          ),
-      h.div(
-        [h.Class('munch-facts')],
-        [
-          h.h3(
-            [h.Id(ENTRY_NAME_ID), h.Class('munch-name')],
-            [isKnown ? entryName(kind) : UNKNOWN_NAME],
-          ),
-          ...(isKnown
-            ? knownEntryView(inputs.killsByKind, entry, h)
-            : [h.p([h.Class('munch-bio')], [lockedHint(kind)])]),
-        ],
+            ),
+      h.div.class('munch-facts').children(
+        h.h3
+          .id(ENTRY_NAME_ID)
+          .class('munch-name')
+          .children(isKnown ? entryName(kind) : UNKNOWN_NAME),
+        isKnown
+          ? knownEntryView(props.killsByKind, entry, h)
+          : h.p.class('munch-bio').children(lockedHint(kind)),
       ),
-    ],
-  )
+    )
 }
 
 // BODY
 
-const entryActionsView = (
-  inputs: ViewInputs,
-  h: MunchopediaViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('panel-actions')],
-    [
-      backButtonView(
-        {
-          attributes: [
-            h.OnClick(Message.ClickedListButton(), { propagation: 'Stop' }),
-          ],
-          className: 'munch-back',
-          label: 'Back to every zombie',
-        },
-        h,
-      ),
-      inputs.doneButton(),
-    ],
-  )
-
-const doneRowView = (inputs: ViewInputs, h: MunchopediaViewBuilder): Html =>
-  h.div([h.Class('panel-actions')], [inputs.doneButton()])
-
-// NOTE: the shop guide stands over the zombies while it is open, with its
-// own BACK and the panel's Done.
-const guideView = (
-  model: Model,
-  inputs: ViewInputs,
-  h: MunchopediaViewBuilder,
-): Html =>
-  h.block(
-    GuideBinding.embedView({
-      slotId: 'munch-guide',
-      model: model.guide,
-      viewInputs: {
-        seenUnlocks: inputs.seenUnlocks,
-        trailingActions: () => [inputs.doneButton()],
+const entryActionsView = (done: View.Outlet, h: H): Content =>
+  h.div.class('panel-actions').children(
+    backButtonView(
+      {
+        button: h.button.on('click', Message.ClickedListButton()),
+        className: 'munch-back',
+        label: 'Back to every zombie',
       },
-    }),
+      h,
+    ),
+    done,
   )
 
-const pageView = (
-  model: Model,
-  inputs: ViewInputs,
-  h: MunchopediaViewBuilder,
-): ReadonlyArray<Html> =>
-  isGuideOpen(model.guide)
-    ? [guideView(model, inputs, h)]
-    : [
-        journalPageViews.tabs(model.page, inputs, h),
-        ...MunchopediaPage.match(model.page, {
-          List: () => [listView(inputs, h), doneRowView(inputs, h)],
-          Entry: ({ kind }) => [
-            entryView(inputs, kind, h),
-            entryActionsView(inputs, h),
-          ],
-          Things: () => [
-            journalPageViews.things(inputs, h),
-            doneRowView(inputs, h),
-          ],
-          Rooms: () => [
-            journalPageViews.rooms(inputs, h),
-            doneRowView(inputs, h),
-          ],
-          Story: ({ page }) => [
-            journalPageViews.story(inputs, page, h),
-            doneRowView(inputs, h),
-          ],
-          Heroes: () => [
-            journalPageViews.heroes(inputs, h),
-            doneRowView(inputs, h),
-          ],
-        }),
-      ]
+const doneRowView = (done: View.Outlet, h: H): Content =>
+  h.div.class('panel-actions').children(done)
+
+const pagesView = (
+  props: MunchopediaProps,
+  done: View.Outlet,
+  h: H,
+): ReadonlyArray<Content> => [
+  journalPageViews.tabs(props, h),
+  ...MunchopediaPage.match(props.page, {
+    List: () => [listView(props, h), doneRowView(done, h)],
+    Entry: ({ kind }) => [entryView(props, kind, h), entryActionsView(done, h)],
+    Things: () => [journalPageViews.things(props, h), doneRowView(done, h)],
+    Rooms: () => [journalPageViews.rooms(props, h), doneRowView(done, h)],
+    Story: ({ page }) => [
+      journalPageViews.story(props, page, h),
+      doneRowView(done, h),
+    ],
+    Heroes: () => [journalPageViews.heroes(props, h), doneRowView(done, h)],
+  }),
+]
 
 // NOTE: the panel's body under the title the root's menu panel draws. Its
 // box takes no room of its own, so the panel lays out the page and its
-// actions row as its own children.
-const view = MunchopediaComposition.makeView.withInputs<ViewInputs>(
-  (model, inputs, h) =>
-    h.div([h.Class('munch-body')], pageView(model, inputs, h)),
-)
-
-// NOTE: the Munchopedia's view, gathered here so it is not exported alone:
-// a view is a function of three arguments with no pipeable form, and
-// Foldkit knows a view by its identity. src/features/munchopedia/layer.ts
-// completes it.
-export const munchopediaImplementation = { view }
+// actions row as its own children. The shop guide stands over the zombies
+// while it is open, with its own BACK and the panel's Done (the `done`
+// slot, placed once in whichever row shows).
+export const munchopediaView = ({
+  h,
+  model,
+  props,
+  done,
+}: Readonly<{
+  h: H
+  model: Model
+  props: MunchopediaProps
+  done: View.Outlet
+}>): Content =>
+  h.div.class('munch-body').children(
+    isGuideOpen(model.guide)
+      ? Guide(h, {
+          status: model.guide,
+          seenUnlocks: props.seenUnlocks,
+          onSection: section => Message.ClickedGuideSectionButton({ section }),
+          onBack: Message.ClickedGuideBackButton(),
+          actions: done,
+        })
+      : pagesView(props, done, h),
+  )

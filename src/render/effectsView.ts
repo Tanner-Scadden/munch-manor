@@ -1,5 +1,4 @@
 import { Array, Result } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { type TextTone, textWidth } from '../art/font'
 import { group } from '../art/sprite'
@@ -78,6 +77,7 @@ import { routeSpawns } from '../world/waves/doorRoute'
 import { rattlingDoors } from '../world/waves/pacing'
 import { bossRattleDoors } from '../world/zombies/boss'
 import type { Camera } from './camera'
+import * as Draw from './draw'
 import { centeredGlyphs, centeredRect, progressBetween } from './drawing'
 import { POPUP_LIFETIME_MS } from './juice'
 import { lensOf } from './lens'
@@ -163,12 +163,12 @@ export const bulletShapes = ({
   velocityY,
   glaze,
   weapon,
-}: Bullet): ReadonlyArray<Canvas.Shape> => {
+}: Bullet): ReadonlyArray<Draw.Shape> => {
   const look = lookOf(glaze, weapon)
   const speed = Math.max(1, Math.hypot(velocityX, velocityY))
   const half = Math.floor(look.size / 2)
   return Array.map(look.segments, ({ backPx, color }) =>
-    Canvas.Rect({
+    Draw.Rect({
       x: Math.round(x - (velocityX / speed) * backPx) - half,
       y: Math.round(y - (velocityY / speed) * backPx) - half,
       width: look.size,
@@ -446,10 +446,10 @@ const isCasing = (particle: Particle): boolean =>
 const stumpShapes = (
   decal: Decal,
   isFaded: boolean,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.contains(LIMBS, decal.kind)
     ? [
-        Canvas.Rect({
+        Draw.Rect({
           x: decal.x - Math.floor(decal.width / 2) + decal.width - 1,
           y: decal.y - Math.floor(decal.height / 2),
           width: 1,
@@ -461,7 +461,7 @@ const stumpShapes = (
 
 export const decalShapes = (
   decals: ReadonlyArray<Decal>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const fadedCount = decals.length - (DECAL_MAX - DECAL_FADE_COUNT)
   return Array.flatMap(decals, (decal, index) => {
     const isFaded = index < fadedCount
@@ -493,7 +493,7 @@ const isGib = (particle: Particle): boolean =>
 
 export const gibShadow = (
   particle: Particle,
-): Result.Result<Canvas.Shape, void> =>
+): Result.Result<Draw.Shape, void> =>
   isGib(particle)
     ? Result.succeed(
         centeredRect(
@@ -541,7 +541,7 @@ const partWidth = (particle: Particle): number =>
     ? 2
     : particle.size
 
-const particleShape = (particle: Particle): Canvas.Shape => {
+const particleShape = (particle: Particle): Draw.Shape => {
   const isUpright = isCasingUpright(particle)
   const isPart = Array.contains(PARTS, particle.kind)
   const thickness = Array.contains(THICK_CASINGS, particle.kind) ? 2 : 1
@@ -577,7 +577,7 @@ export const airborneParticlesOf = (
     x: number
     footY: number
     rise: number
-    shape: Canvas.Shape
+    shape: Draw.Shape
     isGlowing: boolean
   }>
 > =>
@@ -595,7 +595,7 @@ export const airborneParticlesOf = (
 
 const particleShapesWhere =
   (isInLayer: (particle: Particle) => boolean) =>
-  (particles: ReadonlyArray<Particle>): ReadonlyArray<Canvas.Shape> =>
+  (particles: ReadonlyArray<Particle>): ReadonlyArray<Draw.Shape> =>
     Array.filterMap(particles, particle =>
       isInLayer(particle)
         ? Result.succeed(particleShape(particle))
@@ -724,7 +724,7 @@ const keptOnScreen = (
 
 export const popupShape =
   (camera: Camera) =>
-  (popup: Popup): Canvas.Shape => {
+  (popup: Popup): Draw.Shape => {
     const look = popupLook(popup)
     const progress = clamp(popup.ageMs / POPUP_LIFETIME_MS[popup.kind], 0, 1)
     const hop =
@@ -756,7 +756,7 @@ const RATTLE_SLAT_SPAN_PX = 7
 
 const rattleShapes =
   (level: Level, elapsedMs: number) =>
-  (door: DoorId): ReadonlyArray<Canvas.Shape> => {
+  (door: DoorId): ReadonlyArray<Draw.Shape> => {
     const { center, outward } = level.doors[door]
     const across = { x: -outward.y, y: outward.x }
     const shake = Math.round(Math.sin(elapsedMs / RATTLE_SHAKE_MS))
@@ -765,8 +765,8 @@ const rattleShapes =
       y: center.y + outward.y * RATTLE_EYE_DEPTH_PX,
     }
     const isBlinking = Math.floor(elapsedMs / RATTLE_BLINK_MS) % 4 === 3
-    const slat = (side: number): Canvas.Shape =>
-      Canvas.Rect({
+    const slat = (side: number): Draw.Shape =>
+      Draw.Rect({
         x:
           Math.round(
             center.x + across.x * side * RATTLE_SLAT_SPAN_PX + across.x * shake,
@@ -779,8 +779,8 @@ const rattleShapes =
         height: 2,
         fill: RATTLE_SLAT_COLOR,
       })
-    const eye = (side: number): Canvas.Shape =>
-      Canvas.Rect({
+    const eye = (side: number): Draw.Shape =>
+      Draw.Rect({
         x: Math.round(eyes.x + across.x * side * RATTLE_EYE_GAP_PX),
         y: Math.round(eyes.y + across.y * side * RATTLE_EYE_GAP_PX),
         width: 1,
@@ -790,7 +790,7 @@ const rattleShapes =
     return [slat(-1), slat(1), ...(isBlinking ? [] : [eye(-1), eye(1)])]
   }
 
-export const doorRattleShapes = (model: World): ReadonlyArray<Canvas.Shape> =>
+export const doorRattleShapes = (model: World): ReadonlyArray<Draw.Shape> =>
   Phase.isAnyOf(['Wave'])(model.phase)
     ? Array.flatMap(
         Array.dedupe([

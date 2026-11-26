@@ -1,5 +1,6 @@
 import { Array, Function, Option, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import {
   BLOOD_PER_KILL,
@@ -31,7 +32,7 @@ import {
 
 // BEHAVIOR
 
-export const Behavior = defineTaggedUnion({
+export const Behavior = UiSchema.TaggedEnum({
   Brawler: {},
   Bomber: {
     shotFuseMs: Schema.Finite,

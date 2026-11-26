@@ -1,7 +1,7 @@
 // NOTE: the harness's ready signal. The entry imports this module first, so
 // it runs before any game module can make an image. It keeps every image
-// element the page creates, through `document.createElement('img')` (what
-// Foldkit's canvas image cache uses) or `new Image()`, so the signal waits for
+// element the page creates, through `document.createElement('img')` or
+// `new Image()` (what the sprite loaders use), so the signal waits for
 // whatever images the page loads, however the game builds them: data URLs, an
 // atlas, or files.
 

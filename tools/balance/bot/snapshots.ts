@@ -1,5 +1,6 @@
 import { Array as EffectArray, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { withWorld } from '../../../src/world/schema/world'
 import { beginPreparation } from '../../../src/world/waves/waves'
@@ -123,7 +124,7 @@ export const rerolled: {
 } = Function.dual(2, (model: Model, waveSeed: number): Model => {
   const { phase } = model
   return phase._tag === 'Preparation'
-    ? withWorld(modifyFields(model, { rngState: () => waveSeed }), world =>
+    ? withWorld(UiStruct.evolve(model, { rngState: () => waveSeed }), world =>
         beginPreparation(world, phase.wave, phase.durationMs, phase.clock),
       )
     : model

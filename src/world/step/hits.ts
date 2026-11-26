@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   BULLET_RADIUS,
@@ -289,7 +290,7 @@ const skewer =
             Skewers: ({ left, struck }) =>
               left > 0
                 ? Result.succeed(
-                    modifyFields(bullet, {
+                    UiStruct.evolve(bullet, {
                       pierce: () =>
                         Pierce.Skewers({
                           left: left - 1,
@@ -327,7 +328,7 @@ export const resolveBulletHits: {
       zombie => zombie.hp <= 0 && byZombie.has(zombie.id),
     )
     const hitZombies = Array.filter(zombies, zombie => byZombie.has(zombie.id))
-    const struck = modifyFields(model, {
+    const struck = UiStruct.evolve(model, {
       bullets: Array.filterMap(skewer(hits)),
       zombies: () => zombies,
       stats: stats =>
@@ -437,7 +438,7 @@ const bumpAttacker =
   (attacker: Zombie, direction: Vector) =>
   (zombie: Zombie): Zombie =>
     zombie.id === attacker.id
-      ? modifyFields(zombie, {
+      ? UiStruct.evolve(zombie, {
           knockback: () =>
             scaleVector(
               direction,
@@ -455,7 +456,7 @@ const bitePlayer = (
   const direction = Option.getOrElse(directionBetween(attacker, player), () =>
     scaleVector(player.facing, -1),
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     seats: atSeat(slot, {
       player: () =>
         woundPlayer(
@@ -493,7 +494,7 @@ const popOnContact =
       ? Behavior.match(statsOf(zombie).behavior, {
           Brawler: () => zombie,
           Bomber: ({ contactFuseMs }) =>
-            modifyFields(zombie, {
+            UiStruct.evolve(zombie, {
               state: () => ZombieState.Fusing({ remainingMs: contactFuseMs }),
             }),
           Thrower: () => zombie,
@@ -502,7 +503,7 @@ const popOnContact =
       : zombie
 
 const popBombers = (model: World, slot: PlayerSlot): World =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     zombies: zombies =>
       sameIfUnchanged(
         zombies,
@@ -534,13 +535,13 @@ const biteOnContact = (model: World, slot: PlayerSlot): World => {
       seat.touchedMs === 0
         ? model
         : modifySeatRecord(model, slot, current =>
-            modifyFields(current, { touchedMs: () => 0 }),
+            UiStruct.evolve(current, { touchedMs: () => 0 }),
           ),
     onSome: attacker =>
       seat.touchedMs >= seat.graceMs
         ? bitePlayer(model, slot, attacker)
         : modifySeatRecord(model, slot, current =>
-            modifyFields(current, {
+            UiStruct.evolve(current, {
               touchedMs: touched => touched + FIXED_STEP_MS,
             }),
           ),

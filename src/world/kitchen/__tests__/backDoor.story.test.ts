@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT, type PlayerTick } from '@munch/netcode'
 
@@ -17,9 +16,10 @@ import {
 } from '../../../test/model.fixture'
 import { TWO_SEAT_ROOM } from '../../../test/roomTesting'
 import {
-  APPLICATION,
   holdEnter,
+  modelAfter,
   settleRunCommands,
+  steps,
 } from '../../../test/testing'
 import { type DareThing, DareThingState, Finale } from '../../dare/dareSchema'
 import { pointsForRun } from '../../heroes/rank'
@@ -73,17 +73,17 @@ const doorSpotOf = (world: World): Vector =>
   Option.getOrThrow(backDoorStandOf(levelOf(world)))
 
 const placed = (spot: Vector) => (player: World['seats'][number]['player']) =>
-  modifyFields(player, { x: () => spot.x, y: () => spot.y })
+  UiStruct.evolve(player, { x: () => spot.x, y: () => spot.y })
 
 // NOTE: a campaign break on wave 4, three waves cleared, the kitchen open,
 // and the player at the back door with `things` in the house.
 const atBackDoor = (things: ReadonlyArray<DareThing> = FOUND): Model => {
   const run = withKitchen(
     withDareThings(
-      modifyFields(freshRunModel(), {
+      UiStruct.evolve(freshRunModel(), {
         mode: () => RunMode.Campaign(),
         phase: () => kitchenBreak(4),
-        stats: stats => modifyFields(stats, { wavesCleared: () => 3 }),
+        stats: stats => UiStruct.evolve(stats, { wavesCleared: () => 3 }),
       }),
       things,
     ),
@@ -98,12 +98,7 @@ const hasBackDoorOffer = (model: Model): boolean =>
   )
 
 const heldAtDoor = (start: Model) =>
-  Story.story(
-    APPLICATION,
-    Story.given(start),
-    ...holdEnter(HOLD_TICKS),
-    settleRunCommands,
-  )
+  modelAfter(start, steps(holdEnter(HOLD_TICKS), settleRunCommands))
 
 describe('the back door alone', () => {
   it.effect('a hold in a break with a thing found leaves early', () =>
@@ -147,7 +142,7 @@ describe('the back door alone', () => {
   )
 
   it.effect('in a wave there is no back door', () => {
-    const start = modifyFields(atBackDoor(), {
+    const start = UiStruct.evolve(atBackDoor(), {
       phase: () =>
         Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     })
@@ -161,7 +156,7 @@ describe('the back door alone', () => {
     expect(hasBackDoorOffer(atBackDoor())).toBe(true)
     expect(
       hasBackDoorOffer(
-        modifyFields(atBackDoor(), { mode: () => RunMode.Endless() }),
+        UiStruct.evolve(atBackDoor(), { mode: () => RunMode.Endless() }),
       ),
     ).toBe(false)
   })
@@ -184,10 +179,10 @@ const FAR: Vector = { x: 40, y: 40 }
 // found, seat 0 at the back door and seat 1 at `second`.
 const crewRoom = (second: Vector, secondLife: Life = Life.Standing()) => {
   const opened = withKitchen(
-    modifyFields(TWO_SEAT_ROOM.world, {
+    UiStruct.evolve(TWO_SEAT_ROOM.world, {
       phase: () => kitchenBreak(4),
       dare: dare =>
-        modifyFields(dare, {
+        UiStruct.evolve(dare, {
           list: () => Array.map(FOUND, ({ kind }) => kind),
         }),
       dareThings: () => FOUND,
@@ -200,7 +195,7 @@ const crewRoom = (second: Vector, secondLife: Life = Life.Standing()) => {
       { player: placed(second) },
     ),
     1,
-    seat => modifyFields(seat, { life: () => secondLife }),
+    seat => UiStruct.evolve(seat, { life: () => secondLife }),
   )
   return { ...TWO_SEAT_ROOM, world }
 }

@@ -246,7 +246,7 @@ runAudit(
     const named = (name: string) => (n: ProfileNode) =>
       n.callFrame.functionName === name
     const buckets: Array<[string, (n: ProfileNode) => boolean]> = [
-      ['paint (Foldkit paintScene)', named('paintScene')],
+      ['paint (Pixi FlatPainter.paint)', named('paint')],
       ['scene build (sceneShapes)', named('sceneShapes')],
       ['update (harnessUpdate)', named('harnessUpdate')],
       ['snabbdom patch, minus paint', named('patch')],

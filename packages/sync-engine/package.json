@@ -18,7 +18,7 @@
     "typecheck": "effect-tsgo tsrs --noEmit"
   },
   "devDependencies": {
-    "@effect/vitest": "4.1.0",
+    "@effect/vitest": "4.1.4",
     "@munch/sqlite-wasm-effect": "workspace:*"
   },
   "peerDependencies": {

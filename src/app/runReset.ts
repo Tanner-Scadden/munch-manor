@@ -1,5 +1,6 @@
 import { Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   CaseCard,
@@ -155,7 +156,7 @@ export const freshRun = (model: Model): RunFields => ({
   screenMs: 0,
   // NOTE: SHARE's sheet and the death tip outlive a run; the rest of the end
   // card starts fresh.
-  endCard: modifyFields(model.endCard, {
+  endCard: UiStruct.evolve(model.endCard, {
     maybeShareCopiedAtMs: () => Option.none(),
     isRunCardDropped: () => false,
   }),
@@ -163,7 +164,7 @@ export const freshRun = (model: Model): RunFields => ({
   bestStreak: 0,
   party: Party.Solo(),
   seats: [
-    modifyFields(soloState, {
+    UiStruct.evolve(soloState, {
       player: () => playerOfCalling(startingCallingOf(model)),
       intent: () =>
         deriveIntent(
@@ -174,7 +175,7 @@ export const freshRun = (model: Model): RunFields => ({
     }),
   ],
   runStart: { runSeed: model.rngState, runPool: [], crewBots: [] },
-  cosmetics: modifyFields(freshCosmetics, {
+  cosmetics: UiStruct.evolve(freshCosmetics, {
     cosmeticRngState: () => cosmeticSeedOf(model.rngState),
   }),
 })

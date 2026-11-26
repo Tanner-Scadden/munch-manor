@@ -296,10 +296,13 @@
   height: 120px;
 }
 
-.game-root[data-layout='Portrait'] .look-stage .look-preview,
-.game-root[data-layout='Portrait'] .look-stage .look-preview-canvas {
+.game-root[data-layout='Portrait'] .look-stage .look-preview {
   width: 100px;
   height: 100px;
+}
+
+.game-root[data-layout='Portrait'] .look-stage .look-preview-art {
+  --preview-scale: 5;
 }
 
 .game-root[data-layout='Portrait'] .look-bounce {

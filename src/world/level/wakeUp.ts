@@ -1,11 +1,17 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { DOOR_SPAWN_SPREAD_PX, PACK_WARNING_MS } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
 import { playerCountOf } from '../party/party'
 import type { World } from '../schema/world'
-import { DoorId, Phase, type PlannedSpawn } from '../schema/worldSchema'
+import {
+  DoorId,
+  Phase,
+  type PlannedSpawn,
+  evolveRoundSpawns,
+} from '../schema/worldSchema'
 import { isFloorKind } from '../zombies/zombies'
 
 // Opening a room wakes it (docs/ROOM_RESEARCH.md, "Decided", owner
@@ -137,9 +143,9 @@ export const wakeRoom: {
     count,
     startMs,
   )
-  return modifyFields(world, {
-    phase: () =>
-      modifyFields(round, { spawns: spawns => Array.appendAll(spawns, rush) }),
+  return UiStruct.evolve(world, {
+    phase: phase =>
+      evolveRoundSpawns(phase, spawns => Array.appendAll(spawns, rush)),
     rngState: () => rngState,
   })
 })

@@ -1,5 +1,4 @@
 import { Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../app/model'
 import { group } from '../art/sprite'
@@ -22,6 +21,7 @@ import {
   scaleVector,
 } from '../world/step/geometry'
 import { glideFocus } from './cine'
+import type * as Draw from './draw'
 import { HUD_STRIP_HEIGHT, hudLayoutFor } from './hudLayout'
 import { floorRowsSeen, lensOf } from './lens'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
@@ -293,20 +293,20 @@ export const anchoredAt: {
 export const placedAt: {
   (
     anchor: Vector,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): (camera: Camera) => Canvas.Shape
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): (camera: Camera) => Draw.Shape
   (
     camera: Camera,
     anchor: Vector,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): Canvas.Shape
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): Draw.Shape
 } = Function.dual(
   3,
   (
     camera: Camera,
     anchor: Vector,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): Canvas.Shape => {
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): Draw.Shape => {
     const { translate, scale } = anchoredAt(camera, anchor)
     return group({
       translate,

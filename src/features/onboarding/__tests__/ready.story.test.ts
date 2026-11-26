@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -18,15 +17,18 @@ import { clientToView } from '../../../render/screen'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, newPlayerCardSeen } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   SHOWN_TICKS,
   SURFACE,
+  checkModel,
   hintIds,
   holdFire,
+  modelAfter,
   mouseDown,
   press,
   release,
   releaseFire,
+  send,
+  steps,
   throughIntro,
   throughIntroByTap,
   ticks,
@@ -63,71 +65,71 @@ describe('input device', () => {
   it.effect(
     'switches between touch and keyboard and mouse with the last input used',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(newPlayerCardSeen),
-        Story.model(({ lastDevice }) => {
-          expect(lastDevice).toBe('KeyboardMouse')
-        }),
-        touchDown(3, 100, 200),
-        Story.model(({ lastDevice }) => {
-          expect(lastDevice).toBe('Touch')
-        }),
-        press('KeyW'),
-        Story.model(({ lastDevice }) => {
-          expect(lastDevice).toBe('KeyboardMouse')
-        }),
-        touchDown(4, 600, 200),
-        Story.model(({ lastDevice }) => {
-          expect(lastDevice).toBe('Touch')
-        }),
-        mouseDown(600, 200),
-        Story.model(({ lastDevice }) => {
-          expect(lastDevice).toBe('KeyboardMouse')
-        }),
-        Story.message(
-          Message.CompletedDetectInputDevice({ touchControls: 'Allowed' }),
+      modelAfter(
+        newPlayerCardSeen,
+        steps(
+          checkModel(({ lastDevice }) => {
+            expect(lastDevice).toBe('KeyboardMouse')
+          }),
+          touchDown(3, 100, 200),
+          checkModel(({ lastDevice }) => {
+            expect(lastDevice).toBe('Touch')
+          }),
+          press('KeyW'),
+          checkModel(({ lastDevice }) => {
+            expect(lastDevice).toBe('KeyboardMouse')
+          }),
+          touchDown(4, 600, 200),
+          checkModel(({ lastDevice }) => {
+            expect(lastDevice).toBe('Touch')
+          }),
+          mouseDown(600, 200),
+          checkModel(({ lastDevice }) => {
+            expect(lastDevice).toBe('KeyboardMouse')
+          }),
+          send(
+            Message.CompletedDetectInputDevice({ touchControls: 'Allowed' }),
+          ),
+          checkModel(({ lastDevice }) => {
+            expect(lastDevice).toBe('Touch')
+          }),
         ),
-        Story.model(({ lastDevice }) => {
-          expect(lastDevice).toBe('Touch')
-        }),
       ),
   )
 
   it.effect('a touch on a screen bigger than a phone acts like the mouse', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(newPlayerCardSeen),
-      Story.message(
-        Message.CompletedDetectInputDevice({ touchControls: 'Blocked' }),
+    modelAfter(
+      newPlayerCardSeen,
+      steps(
+        send(Message.CompletedDetectInputDevice({ touchControls: 'Blocked' })),
+        checkModel(({ lastDevice }) => {
+          expect(lastDevice).toBe('KeyboardMouse')
+        }),
+        send(Message.ClickedCampaignButton()),
+        throughIntro,
+        touchDown(3, 100, 200),
+        checkModel(({ lastDevice, input }) => {
+          expect(lastDevice).toBe('KeyboardMouse')
+          expect(input.moveStick._tag).toBe('Idle')
+          expect(input.mouseButton._tag).toBe('Held')
+          expect(
+            Option.map(input.maybeMouseInView, ({ x }) => x),
+          ).toStrictEqual(Option.some(SURFACE_VIEW_X(100)))
+        }),
+        send(
+          Message.MovedPointer({ pointerId: 3, clientX: 400, clientY: 200 }),
+        ),
+        checkModel(({ input }) => {
+          expect(input.moveStick._tag).toBe('Idle')
+          expect(
+            Option.map(input.maybeMouseInView, ({ x }) => x),
+          ).toStrictEqual(Option.some(SURFACE_VIEW_X(400)))
+        }),
+        send(Message.ReleasedPointer({ pointerId: 3 })),
+        checkModel(({ input }) => {
+          expect(input.mouseButton._tag).toBe('Released')
+        }),
       ),
-      Story.model(({ lastDevice }) => {
-        expect(lastDevice).toBe('KeyboardMouse')
-      }),
-      Story.message(Message.ClickedCampaignButton()),
-      throughIntro,
-      touchDown(3, 100, 200),
-      Story.model(({ lastDevice, input }) => {
-        expect(lastDevice).toBe('KeyboardMouse')
-        expect(input.moveStick._tag).toBe('Idle')
-        expect(input.mouseButton._tag).toBe('Held')
-        expect(Option.map(input.maybeMouseInView, ({ x }) => x)).toStrictEqual(
-          Option.some(SURFACE_VIEW_X(100)),
-        )
-      }),
-      Story.message(
-        Message.MovedPointer({ pointerId: 3, clientX: 400, clientY: 200 }),
-      ),
-      Story.model(({ input }) => {
-        expect(input.moveStick._tag).toBe('Idle')
-        expect(Option.map(input.maybeMouseInView, ({ x }) => x)).toStrictEqual(
-          Option.some(SURFACE_VIEW_X(400)),
-        )
-      }),
-      Story.message(Message.ReleasedPointer({ pointerId: 3 })),
-      Story.model(({ input }) => {
-        expect(input.mouseButton._tag).toBe('Released')
-      }),
     ),
   )
 })
@@ -136,81 +138,86 @@ describe('onboarding hints', () => {
   it.effect(
     'keyboard hints picture the keys and the mouse, then go once each is practised',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(newPlayerCardSeen),
-        press('Enter'),
-        throughIntro,
-        release('Enter'),
-        Story.model(current => {
-          expect(hintIds(current)).toEqual(['Move', 'Fire'])
-          expect(hintTexts(current)).toEqual(['Wasd MOVE', 'Mouse AIM + SHOOT'])
-        }),
-        press('KeyD'),
-        ...ticks(MOVE_TICKS, TICK_MS),
-        release('KeyD'),
-        ...ticks(SHOWN_TICKS, TICK_MS),
-        Story.model(current => {
-          expect(hintIds(current)).toEqual(['Fire'])
-        }),
-        Story.message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
-        mouseDown(700, 100),
-        ...ticks(FIRE_TICKS, TICK_MS),
-        Story.message(Message.ReleasedPointer({ pointerId: 1 })),
-        Story.model(current => {
-          expect(hintIds(current)).toEqual([])
-          expect(isStartWaveBeckoning(current)).toBe(true)
-        }),
-        press('Enter'),
-        Story.model(current => {
-          expect(Phase.guards.Wave(current.phase)).toBe(true)
-          expect(hintIds(current)).toEqual([])
-          expect(isStartWaveBeckoning(current)).toBe(false)
-        }),
+      modelAfter(
+        newPlayerCardSeen,
+        steps(
+          press('Enter'),
+          throughIntro,
+          release('Enter'),
+          checkModel(current => {
+            expect(hintIds(current)).toEqual(['Move', 'Fire'])
+            expect(hintTexts(current)).toEqual([
+              'Wasd MOVE',
+              'Mouse AIM + SHOOT',
+            ])
+          }),
+          press('KeyD'),
+          ticks(MOVE_TICKS, TICK_MS),
+          release('KeyD'),
+          ticks(SHOWN_TICKS, TICK_MS),
+          checkModel(current => {
+            expect(hintIds(current)).toEqual(['Fire'])
+          }),
+          send(Message.MovedMouse({ clientX: 700, clientY: 100 })),
+          mouseDown(700, 100),
+          ticks(FIRE_TICKS, TICK_MS),
+          send(Message.ReleasedPointer({ pointerId: 1 })),
+          checkModel(current => {
+            expect(hintIds(current)).toEqual([])
+            expect(isStartWaveBeckoning(current)).toBe(true)
+          }),
+          press('Enter'),
+          checkModel(current => {
+            expect(Phase.guards.Wave(current.phase)).toBe(true)
+            expect(hintIds(current)).toEqual([])
+            expect(isStartWaveBeckoning(current)).toBe(false)
+          }),
+        ),
       ),
   )
 
   it.effect(
     'on touch the ghost sticks teach moving and shooting, then a tap on START WAVE',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(newPlayerCardSeen),
-        touchDown(1, 700, 200),
-        Story.message(Message.ReleasedPointer({ pointerId: 1 })),
-        Story.message(Message.ClickedCampaignButton()),
-        throughIntroByTap,
-        Story.model(current => {
-          expect(current.lastDevice).toBe('Touch')
-          expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
-          expect(hintTexts(current)).toEqual([])
-        }),
-        touchDown(2, 100, 200),
-        Story.message(
-          Message.MovedPointer({ pointerId: 2, clientX: 160, clientY: 200 }),
+      modelAfter(
+        newPlayerCardSeen,
+        steps(
+          touchDown(1, 700, 200),
+          send(Message.ReleasedPointer({ pointerId: 1 })),
+          send(Message.ClickedCampaignButton()),
+          throughIntroByTap,
+          checkModel(current => {
+            expect(current.lastDevice).toBe('Touch')
+            expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
+            expect(hintTexts(current)).toEqual([])
+          }),
+          touchDown(2, 100, 200),
+          send(
+            Message.MovedPointer({ pointerId: 2, clientX: 160, clientY: 200 }),
+          ),
+          ticks(MOVE_TICKS, TICK_MS),
+          send(Message.ReleasedPointer({ pointerId: 2 })),
+          ticks(SHOWN_TICKS, TICK_MS),
+          checkModel(current => {
+            expect(shownGhostSticks(current)).toEqual(['Aim'])
+            expect(hintTexts(current)).toEqual([])
+          }),
+          touchDown(3, 700, 200),
+          send(
+            Message.MovedPointer({ pointerId: 3, clientX: 760, clientY: 200 }),
+          ),
+          ticks(FIRE_TICKS, TICK_MS),
+          send(Message.ReleasedPointer({ pointerId: 3 })),
+          checkModel(current => {
+            expect(hintTexts(current)).toEqual([])
+            expect(isStartWaveBeckoning(current)).toBe(true)
+          }),
+          send(Message.ClickedStartWaveButton()),
+          checkModel(current => {
+            expect(hintIds(current)).toEqual([])
+            expect(isStartWaveBeckoning(current)).toBe(false)
+          }),
         ),
-        ...ticks(MOVE_TICKS, TICK_MS),
-        Story.message(Message.ReleasedPointer({ pointerId: 2 })),
-        ...ticks(SHOWN_TICKS, TICK_MS),
-        Story.model(current => {
-          expect(shownGhostSticks(current)).toEqual(['Aim'])
-          expect(hintTexts(current)).toEqual([])
-        }),
-        touchDown(3, 700, 200),
-        Story.message(
-          Message.MovedPointer({ pointerId: 3, clientX: 760, clientY: 200 }),
-        ),
-        ...ticks(FIRE_TICKS, TICK_MS),
-        Story.message(Message.ReleasedPointer({ pointerId: 3 })),
-        Story.model(current => {
-          expect(hintTexts(current)).toEqual([])
-          expect(isStartWaveBeckoning(current)).toBe(true)
-        }),
-        Story.message(Message.ClickedStartWaveButton()),
-        Story.model(current => {
-          expect(hintIds(current)).toEqual([])
-          expect(isStartWaveBeckoning(current)).toBe(false)
-        }),
       ),
   )
 })
@@ -231,14 +238,14 @@ const standing = (id: number, kind: ZombieKind, x: number): Zombie => ({
 })
 
 const shootingGallery: Model = modifyFocus(
-  modifyFields(newPlayerCardSeen, {
+  UiStruct.evolve(newPlayerCardSeen, {
     phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     zombies: () => [standing(1, 'Shambler', 130), standing(2, 'Runner', 150)],
     nextEntityId: () => 10,
   }),
   {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => 100,
         y: () => 90,
         facing: () => ({ x: 1, y: 0 }),
@@ -249,12 +256,9 @@ const shootingGallery: Model = modifyFocus(
 const SHOOTING_TICKS = 110
 
 // NOTE: the run's stats after the shooting gallery is shot out.
-const shootOut = Story.story(
-  APPLICATION,
-  Story.given(shootingGallery),
-  holdFire,
-  ...ticks(SHOOTING_TICKS, FRAME_MS),
-  releaseFire,
+const shootOut = modelAfter(
+  shootingGallery,
+  steps(holdFire, ticks(SHOOTING_TICKS, FRAME_MS), releaseFire),
 ).pipe(Effect.map(({ stats }) => stats))
 
 describe('run stats', () => {
@@ -288,44 +292,42 @@ describe('run stats', () => {
   )
 
   it.effect('a new run starts the stats over', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(shootingGallery, {
-          phase: () => Phase.GameOver({ wave: 3 }),
-          screenMs: () => RESTART_GRACE_MS,
-          stats: stats =>
-            modifyFields(stats, { shotsFired: () => 40, runMs: () => 9000 }),
+    modelAfter(
+      UiStruct.evolve(shootingGallery, {
+        phase: () => Phase.GameOver({ wave: 3 }),
+        screenMs: () => RESTART_GRACE_MS,
+        stats: stats =>
+          UiStruct.evolve(stats, { shotsFired: () => 40, runMs: () => 9000 }),
+      }),
+      steps(
+        press('Enter'),
+        throughIntro,
+        checkModel(({ stats, phase }) => {
+          expect(Phase.guards.Preparation(phase)).toBe(true)
+          expect(stats.shotsFired).toBe(0)
+          expect(stats.runMs).toBe(0)
         }),
       ),
-      press('Enter'),
-      throughIntro,
-      Story.model(({ stats, phase }) => {
-        expect(Phase.guards.Preparation(phase)).toBe(true)
-        expect(stats.shotsFired).toBe(0)
-        expect(stats.runMs).toBe(0)
-      }),
     ),
   )
 
   it.effect('a quick tap right after dying does not restart the run', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(shootingGallery, {
-          phase: () => Phase.GameOver({ wave: 3 }),
+    modelAfter(
+      UiStruct.evolve(shootingGallery, {
+        phase: () => Phase.GameOver({ wave: 3 }),
+      }),
+      steps(
+        press('Enter'),
+        checkModel(({ phase }) => {
+          expect(phase).toEqual(Phase.GameOver({ wave: 3 }))
+        }),
+        ticks(Math.ceil(RESTART_GRACE_MS / 50), 50),
+        press('Enter'),
+        throughIntro,
+        checkModel(({ phase }) => {
+          expect(Phase.guards.Preparation(phase)).toBe(true)
         }),
       ),
-      press('Enter'),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.GameOver({ wave: 3 }))
-      }),
-      ...ticks(Math.ceil(RESTART_GRACE_MS / 50), 50),
-      press('Enter'),
-      throughIntro,
-      Story.model(({ phase }) => {
-        expect(Phase.guards.Preparation(phase)).toBe(true)
-      }),
     ),
   )
 })

@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -18,9 +17,12 @@ import { initialModel } from '../../../app/pureApp'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { withPlayerAt } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   bulletInto,
+  checkModel,
   hasEvent,
+  modelAfter,
+  send,
+  steps,
   tick,
   ticks,
 } from '../../../test/testing'
@@ -62,7 +64,7 @@ const waveWith = (
   zombies: ReadonlyArray<Zombie> = [],
 ): Model =>
   withPlayerAt(
-    modifyFields(initialModel, {
+    UiStruct.evolve(initialModel, {
       maybeSurface: () =>
         Option.some({ left: 0, top: 0, width: 800, height: 400 }),
       phase: () =>
@@ -108,35 +110,36 @@ describe('the Ankle Biter', () => {
     'comes up through the floor after a quick 0.6 s telegraph, out of reach until then',
     () => {
       expect(CRAWLER_RULES.surfaceMs).toBe(600)
-      return Story.story(
-        APPLICATION,
-        Story.given(waveWith([spawnOf('Crawler', 0, 1)])),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(hasEvent(current, 'CrawlerStirred')).toBe(true)
-          expect(hasEvent(current, 'PackWarned')).toBe(false)
-          const crawler = crawlerIn(current)
-          expect(crawler.action).toEqual(
-            ZombieAction.Burrowed({
-              remainingMs: CRAWLER_RULES.surfaceMs,
-              durationMs: CRAWLER_RULES.surfaceMs,
-            }),
-          )
-          expect(distanceToPlayer(current, crawler)).toBeGreaterThanOrEqual(
-            CRAWLER_RULES.clearPx,
-          )
-        }),
-        ...ticks(framesFor(CRAWLER_RULES.surfaceMs) - 1, FRAME_MS),
-        Story.model(current => {
-          expect(
-            ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
-          ).toBe(true)
-        }),
-        ...ticks(1, FRAME_MS),
-        Story.model(current => {
-          expect(hasEvent(current, 'CrawlerSurfaced')).toBe(true)
-          expect(crawlerIn(current).action).toEqual(ZombieAction.Roaming())
-        }),
+      return modelAfter(
+        waveWith([spawnOf('Crawler', 0, 1)]),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(hasEvent(current, 'CrawlerStirred')).toBe(true)
+            expect(hasEvent(current, 'PackWarned')).toBe(false)
+            const crawler = crawlerIn(current)
+            expect(crawler.action).toEqual(
+              ZombieAction.Burrowed({
+                remainingMs: CRAWLER_RULES.surfaceMs,
+                durationMs: CRAWLER_RULES.surfaceMs,
+              }),
+            )
+            expect(distanceToPlayer(current, crawler)).toBeGreaterThanOrEqual(
+              CRAWLER_RULES.clearPx,
+            )
+          }),
+          ticks(framesFor(CRAWLER_RULES.surfaceMs) - 1, FRAME_MS),
+          checkModel(current => {
+            expect(
+              ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
+            ).toBe(true)
+          }),
+          ticks(1, FRAME_MS),
+          checkModel(current => {
+            expect(hasEvent(current, 'CrawlerSurfaced')).toBe(true)
+            expect(crawlerIn(current).action).toEqual(ZombieAction.Roaming())
+          }),
+        ),
       )
     },
   )
@@ -147,18 +150,17 @@ describe('the Ankle Biter', () => {
       CENTER_Y,
       ZombieAction.Burrowed({ remainingMs: 1000, durationMs: 1500 }),
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(waveWith([], [buried]), {
-          bullets: () => [bulletInto(700, buried, { damage: 5, knockback: 0 })],
+    return modelAfter(
+      UiStruct.evolve(waveWith([], [buried]), {
+        bullets: () => [bulletInto(700, buried, { damage: 5, knockback: 0 })],
+      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(crawlerIn(current).hp).toBe(2)
+          expect(hasEvent(current, 'ZombieHit')).toBe(false)
         }),
       ),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(crawlerIn(current).hp).toBe(2)
-        expect(hasEvent(current, 'ZombieHit')).toBe(false)
-      }),
     )
   })
 
@@ -195,25 +197,26 @@ describe('the Ankle Biter', () => {
         CENTER_Y,
         ZombieAction.Burrowed({ remainingMs: 100, durationMs: 1500 }),
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(waveWith([], [ready])),
-        ...ticks(40, FRAME_MS),
-        Story.model(current => {
-          expect(
-            ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
-          ).toBe(true)
-          expect(hasEvent(current, 'CrawlerSurfaced')).toBe(false)
-        }),
-        Story.message(Message.PressedKey({ code: 'KeyA' })),
-        ...ticks(50, FRAME_MS),
-        Story.model(current => {
-          expect(
-            ZombieAction.isAnyOf(['Roaming', 'Clinging', 'Winded'])(
-              crawlerIn(current).action,
-            ),
-          ).toBe(true)
-        }),
+      return modelAfter(
+        waveWith([], [ready]),
+        steps(
+          ticks(40, FRAME_MS),
+          checkModel(current => {
+            expect(
+              ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
+            ).toBe(true)
+            expect(hasEvent(current, 'CrawlerSurfaced')).toBe(false)
+          }),
+          send(Message.PressedKey({ code: 'KeyA' })),
+          ticks(50, FRAME_MS),
+          checkModel(current => {
+            expect(
+              ZombieAction.isAnyOf(['Roaming', 'Clinging', 'Winded'])(
+                crawlerIn(current).action,
+              ),
+            ).toBe(true)
+          }),
+        ),
       )
     },
   )
@@ -236,44 +239,46 @@ describe('the Ankle Biter', () => {
         const freeSpeeds: Array<number> = []
         const heldSpeeds: Array<number> = []
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(free),
-          tick(FRAME_MS),
-          Story.message(Message.PressedKey({ code: 'KeyD' })),
-          ...ticks(clingFrames, FRAME_MS),
-          Story.model(current => {
-            freeSpeeds.push(walked(free, clingFrames)(current))
-          }),
+        yield* modelAfter(
+          free,
+          steps(
+            tick(FRAME_MS),
+            send(Message.PressedKey({ code: 'KeyD' })),
+            ticks(clingFrames, FRAME_MS),
+            checkModel(current => {
+              freeSpeeds.push(walked(free, clingFrames)(current))
+            }),
+          ),
         )
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(held),
-          tick(FRAME_MS),
-          Story.model(current => {
-            expect(hasEvent(current, 'AnklesGrabbed')).toBe(true)
-            expect(
-              ZombieAction.isAnyOf(['Clinging'])(crawlerIn(current).action),
-            ).toBe(true)
-            expect(focusOf(current).player.hp).toBe(
-              focusOf(initialModel).player.hp,
-            )
-          }),
-          Story.message(Message.PressedKey({ code: 'KeyD' })),
-          ...ticks(clingFrames, FRAME_MS),
-          Story.model(current => {
-            heldSpeeds.push(walked(held, clingFrames)(current))
-            expect(distanceToPlayer(current, crawlerIn(current))).toBeLessThan(
-              8,
-            )
-          }),
-          ...ticks(12, FRAME_MS),
-          Story.model(current => {
-            expect(
-              ZombieAction.isAnyOf(['Winded'])(crawlerIn(current).action),
-            ).toBe(true)
-          }),
+        yield* modelAfter(
+          held,
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              expect(hasEvent(current, 'AnklesGrabbed')).toBe(true)
+              expect(
+                ZombieAction.isAnyOf(['Clinging'])(crawlerIn(current).action),
+              ).toBe(true)
+              expect(focusOf(current).player.hp).toBe(
+                focusOf(initialModel).player.hp,
+              )
+            }),
+            send(Message.PressedKey({ code: 'KeyD' })),
+            ticks(clingFrames, FRAME_MS),
+            checkModel(current => {
+              heldSpeeds.push(walked(held, clingFrames)(current))
+              expect(
+                distanceToPlayer(current, crawlerIn(current)),
+              ).toBeLessThan(8)
+            }),
+            ticks(12, FRAME_MS),
+            checkModel(current => {
+              expect(
+                ZombieAction.isAnyOf(['Winded'])(crawlerIn(current).action),
+              ).toBe(true)
+            }),
+          ),
         )
 
         const [freeSpeed] = freeSpeeds

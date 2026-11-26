@@ -72,16 +72,16 @@ export const endArrival = (world: World): World =>
 // (src/app/update/intro.ts). A co-op client skips only its own drawing, and
 // the room's clock decides the slam.
 export const skipArrival = <W extends World>(world: W): W =>
-  Phase.matchOrElse(
-    world.phase,
-    {
-      Arriving: ({ elapsedMs, cut }): W =>
-        elapsedMs >= slamAtMs(cut)
-          ? world
-          : modifyWorldFields(world, {
-              phase: (): Phase =>
-                Phase.Arriving({ elapsedMs: slamAtMs(cut), cut }),
-            }),
-    },
-    () => world,
-  )
+  modifyWorldFields(world, {
+    phase: phase =>
+      Phase.matchOrElse(
+        phase,
+        {
+          Arriving: ({ elapsedMs, cut }): Phase =>
+            elapsedMs >= slamAtMs(cut)
+              ? phase
+              : Phase.Arriving({ elapsedMs: slamAtMs(cut), cut }),
+        },
+        () => phase,
+      ),
+  })

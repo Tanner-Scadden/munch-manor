@@ -1,5 +1,6 @@
 import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { DayStamp } from '../shared/dayStamp'
 import { SavedJournal, journalAdded } from '../shared/journalData'
@@ -42,7 +43,7 @@ import { purseBonesAt } from '../shared/rankCurve'
 // are added, never written whole, so a kind seen on any device stays seen;
 // only the tutorial reset forgets them.
 
-export const PlayerChange = defineTaggedUnion({
+export const PlayerChange = UiSchema.TaggedEnum({
   ChangedSettings: { settings: SavedSettings },
   ChangedRotation: { rotation: RotationSetting },
   ChangedRumble: { rumble: RumbleSetting },
@@ -552,7 +553,7 @@ export const withUnsavedChanges: {
 // NOTE: what SETTINGS says about sync. LocalOnly is a build with no sync
 // server, such as `bun dev` or the itch.io zip. Devices counts this player's
 // linked devices, this one included.
-export const SyncState = defineTaggedUnion({
+export const SyncState = UiSchema.TaggedEnum({
   LocalOnly: {},
   Connecting: {},
   Synced: { devices: Schema.Finite },
@@ -574,7 +575,7 @@ export const syncStateText = (state: SyncState): string =>
 // its own copy of the shape). SyncState is the connection; this is the
 // data. Ready and not fresh is progress cached from an earlier session,
 // shown while the device connects or stays offline.
-export const PlayerScopeStatus = defineTaggedUnion({
+export const PlayerScopeStatus = UiSchema.TaggedEnum({
   Idle: {},
   Loading: {},
   Ready: { seq: Schema.Finite, fresh: Schema.Boolean },
@@ -585,7 +586,7 @@ export type PlayerScopeStatus = typeof PlayerScopeStatus.Type
 // NOTE: what the store hears from the sync engine: a save that changed
 // because of another device or the server, the sync status line, and how
 // far the player scope has loaded.
-export const StoreEvent = defineTaggedUnion({
+export const StoreEvent = UiSchema.TaggedEnum({
   SyncedSave: { save: PlayerSave },
   SyncStatus: { state: SyncState },
   ScopeStatus: { status: PlayerScopeStatus },
@@ -615,13 +616,13 @@ export const devicesStatusText: {
 // NOTE: whether the last run this device finished has reached the server.
 // Waiting holds the RecordedRun's mutation id, so a settlement for an older
 // run never overwrites a newer one.
-export const RunSettled = defineTaggedUnion({
+export const RunSettled = UiSchema.TaggedEnum({
   Confirmed: { seq: Schema.Finite },
   Rejected: { reason: Schema.String },
 })
 export type RunSettled = typeof RunSettled.Type
 
-export const LastRunSync = defineTaggedUnion({
+export const LastRunSync = UiSchema.TaggedEnum({
   NoRun: {},
   Waiting: { id: Schema.String },
   Confirmed: { seq: Schema.Finite },
@@ -641,7 +642,7 @@ export type LinkProblem = typeof LinkProblem.Type
 
 // NOTE: SETTINGS' "Link another device" (this device shows a code) and
 // "Use a code" (this device types one in and joins that player).
-export const LinkFlow = defineTaggedUnion({
+export const LinkFlow = UiSchema.TaggedEnum({
   Idle: {},
   Requesting: {},
   Showing: { code: Schema.String },

@@ -1,5 +1,7 @@
 import { Effect, Function, Queue, Stream } from 'effect'
 
+import { Mount } from '@effect/ui'
+
 import {
   GAME_URL,
   SHARE_TEXT_DATA,
@@ -10,10 +12,10 @@ import {
 } from '../features/end/share'
 import { listenForTouchTaps } from '../input/touchTaps'
 import { isTextField, liftFieldsOverKeyboard } from '../platform/keyboard'
-import { ApplicationBlock } from './definition'
 import {
   type MeasuredGameSurface,
   Message,
+  type PressedPointer,
   type SettledShare,
   type TappedWithTouch,
 } from './message'
@@ -64,95 +66,113 @@ export const steadyMeasurement: {
 // keyboard (src/platform/keyboard.ts). When it lets go of focus, iOS can
 // leave the page scrolled where it showed the field, so it goes back to
 // the top.
-export const MeasureGameSurface = ApplicationBlock.makeMountStream(
-  'MeasureGameSurface',
-  {
-    messages: [Message.MeasuredGameSurface],
-    handler: function* () {
-      return ({ element }) =>
-        Stream.callback<MeasuredGameSurface>(queue =>
-          Effect.acquireRelease(
-            Effect.sync(() => {
-              const sent: { last: MeasuredGameSurface | undefined } = {
-                last: undefined,
-              }
-              const emitMeasurement = (): void => {
-                const maybeNext = steadyMeasurement(
-                  sent.last,
-                  measure(element),
-                  isTextField(element.ownerDocument.activeElement),
-                )
-                if (maybeNext !== undefined) {
-                  sent.last = maybeNext
-                  Queue.offerUnsafe(queue, maybeNext)
-                }
-              }
-              const onFocusOut = (event: FocusEvent): void => {
-                const next = event.relatedTarget
-                if (
-                  !(next instanceof Element && isTextField(next)) &&
-                  (window.scrollX !== 0 || window.scrollY !== 0)
-                ) {
-                  window.scrollTo(0, 0)
-                }
-              }
-              const resizeObserver = new ResizeObserver(emitMeasurement)
-              resizeObserver.observe(element)
-              window.addEventListener('resize', emitMeasurement)
-              window.visualViewport?.addEventListener('resize', emitMeasurement)
-              element.ownerDocument.addEventListener('focusout', onFocusOut)
-              const stopLifting = liftFieldsOverKeyboard(window)
-              return {
-                resizeObserver,
-                emitMeasurement,
-                onFocusOut,
-                stopLifting,
-              }
-            }),
-            ({ resizeObserver, emitMeasurement, onFocusOut, stopLifting }) =>
-              Effect.sync(() => {
-                stopLifting()
-                resizeObserver.disconnect()
-                window.removeEventListener('resize', emitMeasurement)
-                window.visualViewport?.removeEventListener(
-                  'resize',
-                  emitMeasurement,
-                )
-                element.ownerDocument.removeEventListener(
-                  'focusout',
-                  onFocusOut,
-                )
-              }),
-          ).pipe(Effect.flatMap(() => Effect.never)),
-        )
-    },
-  },
+const measurements = (element: Element): Stream.Stream<MeasuredGameSurface> =>
+  Stream.callback<MeasuredGameSurface>(queue =>
+    Effect.acquireRelease(
+      Effect.sync(() => {
+        const sent: { last: MeasuredGameSurface | undefined } = {
+          last: undefined,
+        }
+        const emitMeasurement = (): void => {
+          const maybeNext = steadyMeasurement(
+            sent.last,
+            measure(element),
+            isTextField(element.ownerDocument.activeElement),
+          )
+          if (maybeNext !== undefined) {
+            sent.last = maybeNext
+            Queue.offerUnsafe(queue, maybeNext)
+          }
+        }
+        const onFocusOut = (event: FocusEvent): void => {
+          const next = event.relatedTarget
+          if (
+            !(next instanceof Element && isTextField(next)) &&
+            (window.scrollX !== 0 || window.scrollY !== 0)
+          ) {
+            window.scrollTo(0, 0)
+          }
+        }
+        const resizeObserver = new ResizeObserver(emitMeasurement)
+        resizeObserver.observe(element)
+        window.addEventListener('resize', emitMeasurement)
+        window.visualViewport?.addEventListener('resize', emitMeasurement)
+        element.ownerDocument.addEventListener('focusout', onFocusOut)
+        const stopLifting = liftFieldsOverKeyboard(window)
+        return {
+          resizeObserver,
+          emitMeasurement,
+          onFocusOut,
+          stopLifting,
+        }
+      }),
+      ({ resizeObserver, emitMeasurement, onFocusOut, stopLifting }) =>
+        Effect.sync(() => {
+          stopLifting()
+          resizeObserver.disconnect()
+          window.removeEventListener('resize', emitMeasurement)
+          window.visualViewport?.removeEventListener('resize', emitMeasurement)
+          element.ownerDocument.removeEventListener('focusout', onFocusOut)
+        }),
+    ).pipe(Effect.flatMap(() => Effect.never)),
+  )
+
+const PRIMARY_MOUSE_BUTTON = 0
+
+// NOTE: a press on the game surface, by its finger's own pointer id, so two
+// thumbs work at once. A Mount, as the element's `pointerdown` payload
+// carries no pointer id. A mouse presses with its primary button alone.
+const presses = (element: Element): Stream.Stream<PressedPointer> =>
+  Stream.fromEventListener<PointerEvent>(element, 'pointerdown').pipe(
+    Stream.filter(
+      event =>
+        event.pointerType !== 'mouse' || event.button === PRIMARY_MOUSE_BUTTON,
+    ),
+    Stream.map(event =>
+      Message.PressedPointer({
+        pointerId: event.pointerId,
+        device: event.pointerType === 'mouse' ? 'Mouse' : 'Touch',
+        clientX: event.clientX,
+        clientY: event.clientY,
+      }),
+    ),
+  )
+
+// NOTE: the game surface: its place on the page and the presses on it.
+export const WatchGameSurface = Mount.makeStream(
+  'WatchGameSurface',
+  { args: {} },
+  (element: Element) => Stream.merge(measurements(element), presses(element)),
+)
+
+// NOTE: a press on the pause screen's help card, which sits over the game
+// surface, as a press on the surface.
+export const PressGameSurface = Mount.makeStream(
+  'PressGameSurface',
+  { args: {} },
+  (element: Element) => presses(element),
 )
 
 // NOTE: taps on touch screens come from each finger's own pointer events,
 // so a button works with another finger on the glass (src/input/touchTaps.ts).
 // The tapped button's own OnClick sends its Message; this Mount only says a
 // finger tapped.
-export const ListenForTouchTaps = ApplicationBlock.makeMountStream(
+export const ListenForTouchTaps = Mount.makeStream(
   'ListenForTouchTaps',
-  {
-    messages: [Message.TappedWithTouch],
-    handler: function* () {
-      return ({ element }) =>
-        Stream.callback<TappedWithTouch>(queue =>
-          Effect.acquireRelease(
-            Effect.sync(() =>
-              element instanceof HTMLElement
-                ? listenForTouchTaps(element, () => {
-                    Queue.offerUnsafe(queue, Message.TappedWithTouch())
-                  })
-                : () => undefined,
-            ),
-            stopListening => Effect.sync(stopListening),
-          ).pipe(Effect.flatMap(() => Effect.never)),
-        )
-    },
-  },
+  { args: {} },
+  (element: Element) =>
+    Stream.callback<TappedWithTouch>(queue =>
+      Effect.acquireRelease(
+        Effect.sync(() =>
+          element instanceof HTMLElement
+            ? listenForTouchTaps(element, () => {
+                Queue.offerUnsafe(queue, Message.TappedWithTouch())
+              })
+            : () => undefined,
+        ),
+        stopListening => Effect.sync(stopListening),
+      ).pipe(Effect.flatMap(() => Effect.never)),
+    ),
 )
 
 // SHARE
@@ -218,24 +238,18 @@ export const listenForShareClicks: {
   },
 )
 
-export const ShareFromClick = ApplicationBlock.makeMountStream(
+export const ShareFromClick = Mount.makeStream(
   'ShareFromClick',
-  {
-    messages: [Message.SettledShare],
-    handler: function* () {
-      return ({ element }) =>
-        Stream.callback<SettledShare>(queue =>
-          Effect.acquireRelease(
-            Effect.sync(() =>
-              listenForShareClicks(element, outcome => {
-                Queue.offerUnsafe(queue, Message.SettledShare({ outcome }))
-              }),
-            ),
-            stopListening => Effect.sync(stopListening),
-          ).pipe(Effect.flatMap(() => Effect.never)),
-        )
-    },
-  },
+  { args: {} },
+  (element: Element) =>
+    Stream.callback<SettledShare>(queue =>
+      Effect.acquireRelease(
+        Effect.sync(() =>
+          listenForShareClicks(element, outcome => {
+            Queue.offerUnsafe(queue, Message.SettledShare({ outcome }))
+          }),
+        ),
+        stopListening => Effect.sync(stopListening),
+      ).pipe(Effect.flatMap(() => Effect.never)),
+    ),
 )
-
-export const mounts = [MeasureGameSurface, ListenForTouchTaps, ShareFromClick]

@@ -152,6 +152,18 @@ const ALLOWED: ReadonlyArray<
     reason:
       'whether RECORD MY RUNS shows; SavedNightmare is a save field with the same two words, not one value',
   },
+  {
+    file: 'tools/audit/harness/entry.ts',
+    name: 'container',
+    reason:
+      "its own page's #root; the game's lookup is in src/app/entry.ts, which mounts the game as it loads, so no page may import it",
+  },
+  {
+    file: 'tools/studio/entry.ts',
+    name: 'root',
+    reason:
+      "its own page's #root; the game's lookup is in src/app/entry.ts, which mounts the game as it loads, so no page may import it",
+  },
 ]
 
 const groupOf = (file: string): string =>

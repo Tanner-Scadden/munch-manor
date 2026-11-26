@@ -646,8 +646,8 @@ export type PixelDiff = Readonly<{
   diffUrl: string | null
 }>
 
-// NOTE: counts the pixels that differ between two PNG files in the page's
-// own canvas, and draws a diff with the changed pixels in magenta over a dim
+// NOTE: counts the pixels that differ between two PNG files, read in the
+// page through WebGL2, and draws a diff with the changed pixels in magenta over a dim
 // copy of the second image.
 export const comparePngs: {
   (
@@ -683,42 +683,71 @@ export const comparePngs: {
               await image.decode()
               return image
             }
+            // NOTE: an image's own RGBA read back through WebGL2: uploaded as
+            // a texture, bound to a framebuffer, and read with readPixels,
+            // rows top first as the image's, unpremultiplied, with no color
+            // conversion, so the bytes are the PNG's.
+            const gl = document.createElement('canvas').getContext('webgl2')
+            if (gl === null) {
+              throw new Error('No WebGL2 context for the pixel compare')
+            }
             // NOTE: runs in the page, where an image decodes only by a promise.
             // @effect-diagnostics-next-line asyncFunction:off
             const pixels = async (src: string) => {
               const image = await load(src)
-              const canvas = document.createElement('canvas')
-              canvas.width = image.width
-              canvas.height = image.height
-              const context = canvas.getContext('2d')
-              if (context === null) {
-                throw new Error('No 2d context for the pixel compare')
-              }
-              context.drawImage(image, 0, 0)
-              return {
-                width: image.width,
-                height: image.height,
-                data: context.getImageData(0, 0, image.width, image.height),
-              }
+              const width = image.naturalWidth
+              const height = image.naturalHeight
+              const texture = gl.createTexture()
+              gl.bindTexture(gl.TEXTURE_2D, texture)
+              gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+              gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+              gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE)
+              gl.texImage2D(
+                gl.TEXTURE_2D,
+                0,
+                gl.RGBA8,
+                width,
+                height,
+                0,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                image,
+              )
+              const framebuffer = gl.createFramebuffer()
+              gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+              gl.framebufferTexture2D(
+                gl.FRAMEBUFFER,
+                gl.COLOR_ATTACHMENT0,
+                gl.TEXTURE_2D,
+                texture,
+                0,
+              )
+              const data = new Uint8ClampedArray(width * height * 4)
+              gl.readPixels(
+                0,
+                0,
+                width,
+                height,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                data,
+              )
+              gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+              gl.deleteFramebuffer(framebuffer)
+              gl.deleteTexture(texture)
+              return { width, height, data }
             }
             const a = await pixels(first)
             const b = await pixels(second)
-            const diff = document.createElement('canvas')
-            diff.width = a.width
-            diff.height = a.height
-            const diffContext = diff.getContext('2d')
-            if (diffContext === null) {
-              throw new Error('No 2d context for the pixel diff')
-            }
-            const out = diffContext.createImageData(a.width, a.height)
+            const out = new ImageData(a.width, a.height)
             let differing = 0
             let maxDelta = 0
             let left = Infinity
             let top = Infinity
             let right = -Infinity
             let bottom = -Infinity
-            const before = a.data.data
-            const after = b.data.data
+            const before = a.data
+            const after = b.data
             const at = (data: Uint8ClampedArray, index: number) =>
               data[index] ?? 0
             for (let i = 0; i < before.length; i += 4) {
@@ -746,13 +775,27 @@ export const comparePngs: {
               }
               maxDelta = Math.max(maxDelta, delta)
             }
-            diffContext.putImageData(out, 0, 0)
+            // NOTE: the diff's pixels made a PNG with no 2D context: an
+            // ImageBitmap of them shown on a bitmaprenderer canvas, encoded.
+            // It runs in the page, where a bitmap is made only by a promise.
+            // @effect-diagnostics-next-line asyncFunction:off
+            const diffUrl = async () => {
+              const diff = document.createElement('canvas')
+              diff.width = a.width
+              diff.height = a.height
+              const renderer = diff.getContext('bitmaprenderer')
+              if (renderer === null) {
+                throw new Error('No bitmaprenderer context for the pixel diff')
+              }
+              renderer.transferFromImageBitmap(await createImageBitmap(out))
+              return diff.toDataURL('image/png')
+            }
             return {
               differing,
-              total: a.data.data.length / 4,
+              total: a.data.length / 4,
               maxDelta,
               box: differing > 0 ? { left, top, right, bottom } : null,
-              diffUrl: differing > 0 ? diff.toDataURL('image/png') : null,
+              diffUrl: differing > 0 ? await diffUrl() : null,
             }
           },
           urls,

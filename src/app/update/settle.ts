@@ -1,5 +1,7 @@
 import { Effect, Function, Option, pipe } from 'effect'
 
+import { Command, Component } from '@effect/ui'
+
 import { climbLadder, fitDareMark } from '../../domain/dareMarks'
 import { keepJournal, tallyJournalFrom } from '../../domain/journal'
 import { fitPropStyle } from '../../domain/mastery'
@@ -18,11 +20,10 @@ import {
 import { shelveRun } from '../../features/proof/proof'
 import { RunSummary } from '../../platform/analytics'
 import { maybeRunOutcome, runSummaryOf } from '../../platform/analyticsRun'
+import { PlayerStore } from '../../platform/store'
 import { sendOrQueueRunSummary } from '../../platform/summaryQueue'
 import { RUNNING_BUILD } from '../../platform/version'
 import { countRunFrom, forgetNewEntriesFrom } from '../../screens/home/home'
-import { ApplicationBlock } from '../definition'
-import { Message } from '../message'
 import type { Model } from '../model'
 import {
   focusEndMenuFrom,
@@ -33,26 +34,31 @@ import { cueMusicFrom } from './music'
 import { finishRecordingFrom } from './recording'
 import { applyRotationFrom } from './rotation'
 import { writeSaveFrom } from './save'
-import type { UpdateStep } from './step'
+import { type UpdateStep, modelStep } from './step'
 
 // COMMAND
 
-export const SendRunSummary = ApplicationBlock.makeCommand('SendRunSummary', {
-  args: { summary: RunSummary },
-  messages: [Message.CompletedSendRunSummary, Message.FailedSendRunSummary],
-  handler: function* () {
-    return ({ summary }) =>
-      pipe(
-        sendOrQueueRunSummary(summary),
-        Effect.as(Message.CompletedSendRunSummary()),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedSendRunSummary({ reason: error.reason }),
+// NOTE: a summary that cannot go out waits in the store's queue, so the
+// Model hears nothing either way: a failure is logged.
+export class SendRunSummary extends Command.Service<SendRunSummary>()(
+  'app/SendRunSummary',
+  { args: { summary: RunSummary }, success: Component.Noop },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const store = yield* PlayerStore
+      return ({ summary }) =>
+        pipe(
+          sendOrQueueRunSummary(summary),
+          Effect.provideService(PlayerStore, store),
+          Effect.catch(error =>
+            Effect.logWarning('send run summary', error.reason),
           ),
-        ),
-      )
-  },
-})
+          Effect.as(Component.noop),
+        )
+    }),
+  )
+}
 
 // ANALYTICS
 
@@ -62,32 +68,27 @@ export const SendRunSummary = ApplicationBlock.makeCommand('SendRunSummary', {
 // sends one from its own seat, by its own sharing setting.
 const sendRunSummaryFrom =
   (before: Model): UpdateStep =>
-  stepModel => {
-    if (stepModel.settings.shareStats === 'Off') {
-      return { model: stepModel }
-    }
-
-    return Option.match(
-      Option.all([maybeRunOutcome(before, stepModel), stepModel.maybeVisitId]),
-      {
-        onNone: () => ({ model: stepModel }),
-        onSome: ([outcome, visitId]) => ({
-          model: stepModel,
-          commands: [
-            SendRunSummary({
-              summary: runSummaryOf(
-                before,
-                stepModel,
-                outcome,
-                visitId,
-                RUNNING_BUILD,
+  $ =>
+    $.model.settings.shareStats === 'Off'
+      ? $.model
+      : Option.match(
+          Option.all([maybeRunOutcome(before, $.model), $.model.maybeVisitId]),
+          {
+            onNone: () => $.model,
+            onSome: ([outcome, visitId]) =>
+              $.run(
+                SendRunSummary.make({
+                  summary: runSummaryOf(
+                    before,
+                    $.model,
+                    outcome,
+                    visitId,
+                    RUNNING_BUILD,
+                  ),
+                }),
               ),
-            }),
-          ],
-        }),
-      },
-    )
-  }
+          },
+        )
 
 // AFTER A MESSAGE
 
@@ -115,40 +116,34 @@ export const afterMessage: {
     applyRotationFrom(before),
     settleNightmareFrom(before),
     unlockNightmareFrom(before),
-    stepModel => ({ model: freezeMissionsFrom(stepModel, before) }),
-    stepModel => ({ model: tallyMissionsFrom(before, stepModel) }),
-    stepModel => ({ model: tallyJournalFrom(before, stepModel) }),
-    stepModel => ({ model: earnMastery(before, stepModel) }),
-    stepModel => ({
-      model: earnRank(before, stepModel),
-    }),
-    stepModel => ({ model: payMissions(before, stepModel) }),
-    stepModel => ({ model: payPursesFrom(before, stepModel, saveWrite) }),
-    stepModel => ({ model: shelveRun(before, stepModel) }),
-    stepModel => ({ model: fitDareMark(climbLadder(before, stepModel)) }),
-    stepModel => ({ model: keepJournal(before, stepModel) }),
-    stepModel => ({
-      model: noteDeathTip(before, stepModel, runDifficultyOf(stepModel)),
-    }),
-    stepModel => ({
-      model: pickCarLine(before, noteRunEnding(before, stepModel)),
-    }),
-    stepModel => ({
-      model: countRunFrom(
+    modelStep(after => freezeMissionsFrom(after, before)),
+    modelStep(after => tallyMissionsFrom(before, after)),
+    modelStep(after => tallyJournalFrom(before, after)),
+    modelStep(after => earnMastery(before, after)),
+    modelStep(after => earnRank(before, after)),
+    modelStep(after => payMissions(before, after)),
+    modelStep(after => payPursesFrom(before, after, saveWrite)),
+    modelStep(after => shelveRun(before, after)),
+    modelStep(after => fitDareMark(climbLadder(before, after))),
+    modelStep(after => keepJournal(before, after)),
+    modelStep(after => noteDeathTip(before, after, runDifficultyOf(after))),
+    modelStep(after => pickCarLine(before, noteRunEnding(before, after))),
+    modelStep(after =>
+      countRunFrom(
         before,
         reachRecords(
           before,
-          noteRecords(before, stepModel, runDifficultyOf(stepModel)),
-          runDifficultyOf(stepModel),
+          noteRecords(before, after, runDifficultyOf(after)),
+          runDifficultyOf(after),
         ),
-        runDifficultyOf(stepModel),
+        runDifficultyOf(after),
       ),
-    }),
+    ),
     sendRunSummaryFrom(before),
     finishRecordingFrom(before),
-    stepModel => ({ model: forgetNewEntriesFrom(before, stepModel) }),
-    stepModel => ({ model: notePulledPrize(stepModel) }),
-    stepModel => ({ model: fitPropStyle(stepModel) }),
+    modelStep(after => forgetNewEntriesFrom(before, after)),
+    modelStep(notePulledPrize),
+    modelStep(fitPropStyle),
     writeSaveFrom(before, saveWrite),
   ],
 )

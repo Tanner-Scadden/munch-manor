@@ -2,21 +2,24 @@
 // turning slowly on its lit plinth (plinth.ts). The view sets its one
 // property, `pose`, each render; the element asks the world's renderer on
 // the page for the picture (element.ts), so the page keeps one WebGL
-// context, and puts it on a small 2D canvas of one canvas pixel to a game
-// pixel, stretched by a whole number of device pixels, pixelated.
+// context, and shows it on a small canvas of one canvas pixel to a game
+// pixel, stretched by a whole number of device pixels, pixelated. The
+// canvas takes the picture as an ImageBitmap (its `bitmaprenderer` context,
+// handed the bitmap whole), never a 2D context.
 
-import { Option } from 'effect'
-import { CustomElement } from 'foldkit'
+import { Effect, Option } from 'effect'
 
+import { Html } from '@effect/ui/html'
+
+import { toBrowserError } from '../../shared/describeError'
 import { drawPlinthOnWorld } from './element'
 import { type PlinthPose, PlinthPoseSchema } from './plinthPose'
 
 const TAG = 'munch-plinth'
 
-export const plinthElement = CustomElement.define({
+export const plinthElement = Html.customElement({
   tag: TAG,
   properties: { pose: PlinthPoseSchema },
-  events: {},
 })
 
 // NOTE: at most this many plinth frames a second: the turn steps a few
@@ -31,6 +34,7 @@ const plinthElementClass = () =>
     private latest: Option.Option<PlinthPose> = Option.none()
     private lastMs = Number.NEGATIVE_INFINITY
     private lastSrc = ''
+    private drawn = 0
     private readonly canvas = document.createElement('canvas')
     private readonly reducedMotion = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
@@ -83,14 +87,34 @@ const plinthElementClass = () =>
       const scale = Math.max(1, Math.floor((this.clientWidth * ratio) / size))
       canvas.style.width = `${(size * scale) / ratio}px`
       canvas.style.height = `${(size * scale) / ratio}px`
-      const context = canvas.getContext('2d')
+      const context = canvas.getContext('bitmaprenderer')
       if (context === null) {
         return false
       }
-      const image = context.createImageData(size, size)
+      const image = new ImageData(size, size)
       image.data.set(pixels.subarray(0, size * size * 4))
-      context.putImageData(image, 0, 0)
-      this.dataset['drawn'] = 'true'
+      // NOTE: each picture is numbered, so one whose bitmap comes in after a
+      // newer one's is let go of unshown.
+      this.drawn += 1
+      const drawn = this.drawn
+      Effect.runFork(
+        Effect.tryPromise({
+          try: () => createImageBitmap(image),
+          catch: toBrowserError,
+        }).pipe(
+          Effect.match({
+            onSuccess: bitmap => {
+              if (drawn === this.drawn) {
+                context.transferFromImageBitmap(bitmap)
+                this.dataset['drawn'] = 'true'
+              } else {
+                bitmap.close()
+              }
+            },
+            onFailure: () => undefined,
+          }),
+        ),
+      )
       return true
     }
   }

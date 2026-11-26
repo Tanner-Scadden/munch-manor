@@ -43,10 +43,29 @@ body {
 /* NOTE: a phone's keyboard overlays the page, which keeps its size. A
    focused field it would cover lifts above it: the game and any open
    dialog slide up by --keyboard-lift (src/platform/keyboard.ts), with no
-   animation, and back once the field lets go. */
+   animation, and back once the field lets go. A dialog lifts its viewport
+   and its hand, never the <dialog> itself: a translate on it would make it
+   the containing block of its fixed layers, shrinking them to its 0 by 0
+   box. */
 .game-root,
-dialog[open] {
+.dialog-viewport,
+.hand {
   translate: 0 calc(-1 * var(--keyboard-lift, 0px));
+}
+
+/* NOTE: a menu dialog (src/ui/dialog.ts) is ui-kit's Dialog: its slot adds
+   no box, and its viewport holds the panel in the middle of the screen,
+   over the backdrop. A press on the viewport outside the panel closes it. */
+.dialog-slot {
+  display: contents;
+}
+
+.dialog-viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .game-surface {

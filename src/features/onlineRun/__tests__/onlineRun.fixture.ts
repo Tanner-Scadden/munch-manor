@@ -1,7 +1,8 @@
-import { modifyFields } from 'foldkit/struct'
+import { UiStruct } from '@effect/ui'
 
 import { Lesson, type Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { byClass, withAttrs } from '../../../test/sceneTesting'
 import { asVeteran } from '../../../test/veteran'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -15,11 +16,15 @@ import {
 
 export const OWN_SLOT = 1
 
-export const graduated: Model = modifyFields(asVeteran(initialModel), {
+export const graduated: Model = UiStruct.evolve(asVeteran(initialModel), {
   lessons: lessons =>
-    modifyFields(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
+    UiStruct.evolve(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
 })
 
 export const roomWorld = pastArrival(
   startRoomWorld([0, OWN_SLOT], 7, DEFAULT_ROOM_SETTINGS),
 )
+
+// NOTE: co-op's own screen, by its name, as the root draws it.
+export const coopScreen = (screen: string) =>
+  withAttrs({ 'data-screen': screen })(byClass('coop'))

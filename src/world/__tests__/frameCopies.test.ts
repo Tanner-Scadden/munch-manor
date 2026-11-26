@@ -6,7 +6,6 @@
 // record made again with the same numbers) is a copy made for nothing:
 // none is allowed, and the steps after see identity and skip their own.
 import { Array, Effect, Record, Result } from 'effect'
-import { Story } from 'foldkit'
 
 import { describe, expect, it } from '@effect/vitest'
 
@@ -20,10 +19,11 @@ import {
   withDareThings,
 } from '../../test/model.fixture'
 import {
-  APPLICATION,
   FRAME_MS,
   holdFire,
+  modelAfter,
   recordTicks,
+  steps,
   ticks,
   zombieAt,
 } from '../../test/testing'
@@ -95,14 +95,14 @@ const framesFrom = (
 ): Effect.Effect<ReadonlyArray<Model>> =>
   Effect.suspend(() => {
     const frames: Array<Model> = []
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...(isFiring ? [holdFire] : []),
-      // NOTE: the first frames build what a level keeps, so the count
-      // starts after them.
-      ...ticks(5, FRAME_MS),
-      ...recordTicks(FRAMES, FRAME_MS, frames),
+    return modelAfter(
+      start,
+      steps(
+        ...(isFiring ? [holdFire] : []), // NOTE: the first frames build what a level keeps, so the count
+        // starts after them.
+        ticks(5, FRAME_MS),
+        recordTicks(FRAMES, FRAME_MS, frames),
+      ),
     ).pipe(Effect.as<ReadonlyArray<Model>>(frames))
   })
 

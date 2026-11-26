@@ -266,7 +266,7 @@ export const stepPadTab = ({
   )
 
 // NOTE: B in a dialog: an Escape on what has focus, which the dialog's own
-// keys and Foldkit's Dialog take as they take the keyboard's.
+// keys and ui-kit's Dialog take as they take the keyboard's.
 export const escapePadDialog: Effect.Effect<void> = Effect.sync(() =>
   Option.map(topDialog(), dialog => {
     const target = Option.getOrElse(

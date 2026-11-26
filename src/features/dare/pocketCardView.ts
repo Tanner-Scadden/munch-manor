@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -19,6 +18,7 @@ import { type BakedText, bakeText, placeBaked } from '../../art/font'
 import { maybeRoomIcon } from '../../art/roomIcons'
 import { type Sprite, TOP_LEFT, group, spriteShapes } from '../../art/sprite'
 import { PocketCard } from '../../domain/clientSchema'
+import type * as Draw from '../../render/draw'
 import { placeSprite, rect } from '../../render/drawing'
 import { hudLayoutFor } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
@@ -177,7 +177,7 @@ const boxSpotsOf = (count: number, width: number): ReadonlyArray<Vector> => {
 const paperShapes = (
   width: number,
   height: number = CARD_HEIGHT,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   rect(2, 2, width, height, CARD_SHADOW),
   rect(0, 0, width, height, NAPKIN_EDGE),
   rect(1, 1, width - 2, height - 2, NAPKIN),
@@ -189,7 +189,7 @@ const wordShapes = (
   words: ReadonlyArray<Word>,
   left: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(words, ({ text, lift }, index) =>
     placeBaked(text, {
       x:
@@ -209,7 +209,7 @@ const centeredWords = (
   words: ReadonlyArray<Word>,
   width: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   wordShapes(words, Math.round((width - wordsWidth(words)) / 2), y)
 
 const OUT_GAP = 5
@@ -218,7 +218,7 @@ const OUT_GAP = 5
 const outShapes = (
   width: number,
   y: number = OUT_Y,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const lineWidth = wordsWidth(OUT_WORDS) + OUT_GAP + DOOR_WIDTH
   const left = Math.round((width - lineWidth) / 2)
   return [
@@ -235,7 +235,7 @@ const outShapes = (
 
 // NOTE: a pencil box with its corners cut, drawn twice a pixel apart at a
 // corner as a hand goes round, and a ? on its top right: still to find.
-const thingBoxShapes = (): ReadonlyArray<Canvas.Shape> => [
+const thingBoxShapes = (): ReadonlyArray<Draw.Shape> => [
   rect(1, 0, BOX - 2, 1, PENCIL),
   rect(1, BOX - 1, BOX - 2, 1, PENCIL),
   rect(0, 1, 1, BOX - 2, PENCIL),
@@ -248,7 +248,7 @@ const iconShapes = (
   kind: DareKind,
   { x, y }: Vector,
   scale: number,
-): Canvas.Shape =>
+): Draw.Shape =>
   group({
     translate: { x: Math.round(x), y: Math.round(y) },
     scale: scale === 1 ? undefined : { x: scale, y: scale },
@@ -260,7 +260,7 @@ const boxedThingShapes = (
   kind: DareKind,
   spot: Vector,
   sinceMs: number,
-): Canvas.Shape => {
+): Draw.Shape => {
   const pop = lerp(POP_SCALE, 1, easeOut(clamp(sinceMs / POP_MS, 0, 1)))
   const grow = (BOX * (pop - 1)) / 2
   return group({
@@ -278,7 +278,7 @@ const scrawlShapes = (
   width: number,
   count: number,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   ...paperShapes(width),
   group({ translate: { x: 6, y: 4 }, shapes: CHICKEN }),
   ...(ageMs >= UNFOLD_MS ? centeredWords(DARE_WORDS, width, DARE_Y) : []),
@@ -304,7 +304,7 @@ const promptShapes = (
   model: Model,
   box: CardBox,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const text = model.lastDevice === 'Touch' ? TAP_PROMPT : KEY_PROMPT
   const width = text.width * BIG + PROMPT_PAD * 2 + 2
   const height = 12 + PROMPT_PAD * 2
@@ -333,7 +333,7 @@ const readingShapes = (
   model: Model,
   screen: Screen,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const kinds = cardThingsOf(model)
   const count = kinds.length
   const box = cardBoxOf(screen)
@@ -372,7 +372,7 @@ const foldingShapes = (
   screen: Screen,
   pocket: DarePocket,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const kinds = cardThingsOf(model)
   const count = kinds.length
   const box = cardBoxOf(screen)
@@ -505,7 +505,7 @@ const clueShapes = (
   model: Model,
   kind: DareKind,
   spot: Vector,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(Option.flatMap(maybeClueRoom(model, kind), maybeRoomIcon), {
     onNone: () => [],
     onSome: icon => {
@@ -521,7 +521,7 @@ const missingShapes = (
   model: Model,
   missing: ReadonlyArray<DareKind>,
   width: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.isReadonlyArrayEmpty(missing)
     ? outShapes(width, MISSING_OUT_Y)
     : Array.flatMap(
@@ -578,7 +578,7 @@ const satchelShapes = (
   fresh: ReadonlyArray<DareKind>,
   width: number,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const left = Math.round((width - SATCHEL_PX_WIDTH) / 2)
   const rowWidth = found.length * ITEM_STRIDE - (ITEM_STRIDE - DARE_SLOT_SIZE)
   const itemsLeft = left + Math.round((SATCHEL_PX_WIDTH - rowWidth) / 2)
@@ -617,7 +617,7 @@ const linesShapes = (
   found: ReadonlyArray<DareKind>,
   fresh: ReadonlyArray<DareKind>,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(found, (kind, index) => {
     const y = LINES_Y + index * LINE_STRIDE
     return dropShareOf(fresh, kind, ageMs) < DROP_FALL_SHARE
@@ -637,7 +637,7 @@ const openedShapes = (
   screen: Screen,
   ageMs: number,
   fresh: ReadonlyArray<DareKind>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { missing, found } = openedOf(model)
   const box = openedBoxOf(screen, found.length)
   const rise = Math.round(
@@ -665,19 +665,15 @@ export const pocketCardShapes: {
   (
     screen: Screen,
     pocket: DarePocket,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (
-    model: Model,
-    screen: Screen,
-    pocket: DarePocket,
-  ): ReadonlyArray<Canvas.Shape>
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen, pocket: DarePocket): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     model: Model,
     screen: Screen,
     pocket: DarePocket,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     PocketCard.match(model.pocketCard, {
       Pocketed: () => [],
       Reading: ({ ageMs }) => readingShapes(model, screen, ageMs),

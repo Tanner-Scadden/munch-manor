@@ -1,5 +1,7 @@
 import { Array, Function, Option } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { pixelArtStyle } from '../../art/artSize'
 import { portraitOf } from '../../art/coopIcons'
@@ -19,6 +21,7 @@ import { iconView, newBadgeView } from '../../ui/menuParts'
 import { boneCountView, rankMarkView } from '../../ui/rankBadgeView'
 import {
   CALLINGS,
+  type CallingStanding,
   UNLOCK_RANKS,
   callingPriceOf,
   callingStandingOf,
@@ -26,14 +29,12 @@ import {
 import { CALLING_NAMES, SPECIAL_LINES } from '../../world/names'
 
 // The picker's cards, one per hero (GAME_DESIGN.md, "Rank and Bones"),
-// shared by the home menu's picker and co-op's lobby picker: the player's own
-// look wearing the hero's prop, its name, and each special as a picture
+// shared by the solo lobby's picker and co-op's lobby picker: the player's
+// own look wearing the hero's prop, its name, and each special as a picture
 // with a short line, perks in green with a plus and drawbacks in red with a
 // minus. A locked card shows the same lines dimmed, with the padlock and the
 // rank that opens it, so a player knows what they are working toward. A
 // card for sale (its rank reached, not bought) shows its price in Bones.
-
-type ButtonAttributes<Message> = Parameters<HtmlBuilder<Message>['button']>[0]
 
 // NOTE: an object type, not Readonly<...>, so the pipeable check matches the
 // view's two signatures.
@@ -44,198 +45,198 @@ export type CardsInput<Message> = {
   // NOTE: the heroes bought (the save's bought ids), and the one for sale
   // being tried on.
   readonly bought: SavedBoughtCosmetics
-  readonly maybeTrying: Option.Option<Calling>
+  readonly trying: Calling | null
   // NOTE: the unlock ids that wear a NEW badge (src/domain/unlocks.ts).
   readonly fresh: ReadonlyArray<string>
-  // NOTE: what the caller adds to a card: its click, and the initial focus
-  // on the chosen one.
-  readonly attributesOf: (
-    calling: Calling,
-    isChosen: boolean,
-  ) => ButtonAttributes<Message>
+  // NOTE: the chosen card takes focus as the Dialog it stands in opens
+  // (ui-kit's Dialog focuses the `autofocus` element inside it).
+  readonly isChosenFocused: boolean
+  readonly onCard: (calling: Calling) => Message
+}
+
+const priceOf = (calling: Calling): number =>
+  Option.getOrElse(callingPriceOf(calling), () => 0)
+
+const LABELS: {
+  readonly [Standing in CallingStanding]: (calling: Calling) => string
+} = {
+  Owned: calling => `${CALLING_NAMES[calling]}. ${specialsNoteOf(calling)}`,
+  ForSale: calling =>
+    `${CALLING_NAMES[calling]}, for sale, ${priceOf(calling)} Bones. ${specialsNoteOf(calling)}`,
+  Locked: calling =>
+    `${CALLING_NAMES[calling]}, locked. Reach rank ${UNLOCK_RANKS[calling]} to unlock. ${specialsNoteOf(calling)}`,
 }
 
 const specialView = <Message>(
   special: Special,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.li(
-    [
-      h.Class('calling-special'),
-      h.DataAttribute('sign', special.isPerk ? 'Perk' : 'Drawback'),
-    ],
-    [
+  h: Html.H<Message>,
+): View.Content<Message> =>
+  h.li
+    .class('calling-special')
+    .attr('data-sign', special.isPerk ? 'Perk' : 'Drawback')
+    .children(
       iconView('calling-special-icon', special.art, h),
-      h.span(
-        [h.Class('calling-special-sign'), h.AriaHidden(true)],
-        [special.isPerk ? '+' : '-'],
-      ),
-      h.span([h.Class('calling-special-line')], [special.line]),
-    ],
-  )
+      h.span
+        .class('calling-special-sign')
+        .attr('aria-hidden', 'true')
+        .children(special.isPerk ? '+' : '-'),
+      h.span.class('calling-special-line').children(special.line),
+    )
+
+const needView = <Message>(
+  standing: CallingStanding,
+  calling: Calling,
+  h: Html.H<Message>,
+): View.Content<Message> | null =>
+  standing === 'Owned'
+    ? null
+    : h.span
+        .class('calling-need')
+        .children(
+          standing === 'ForSale'
+            ? boneCountView(priceOf(calling), 'calling-price', h)
+            : [
+                iconView('calling-lock-icon', PADLOCK_ICON, h),
+                rankMarkView(UNLOCK_RANKS[calling], h),
+              ],
+        )
 
 const cardView = <Message>(
   input: CardsInput<Message>,
   calling: Calling,
-  h: HtmlBuilder<Message>,
-): Html => {
+  h: Html.H<Message>,
+): View.Content<Message> => {
   const standing = callingStandingOf(calling, input.rank, input.bought)
-  const isTrying = Option.exists(
-    input.maybeTrying,
-    trying => trying === calling,
-  )
   const isChosen = calling === input.chosen
-  const need = UNLOCK_RANKS[calling]
   const specials = specialsOf(calling)
   const isNew = Array.contains(input.fresh, callingUnlockId(calling))
-  return h.button(
-    [
-      ...input.attributesOf(calling, isChosen),
-      h.Type('button'),
-      h.Class('calling-card'),
-      h.DataAttribute('calling', calling),
-      h.DataAttribute('lock', standing),
-      ...(isTrying ? [h.DataAttribute('trying', 'true')] : []),
-      ...(isChosen ? [h.DataAttribute('chosen', 'Chosen')] : []),
-      ...(isNew ? [h.DataAttribute('new', 'true')] : []),
-      h.AriaLabel(
-        standing === 'Owned'
-          ? `${CALLING_NAMES[calling]}. ${specialsNoteOf(calling)}`
-          : standing === 'ForSale'
-            ? `${CALLING_NAMES[calling]}, for sale, ${Option.getOrElse(callingPriceOf(calling), () => 0)} Bones. ${specialsNoteOf(calling)}`
-            : `${CALLING_NAMES[calling]}, locked. Reach rank ${need} to unlock. ${specialsNoteOf(calling)}`,
-      ),
-      ...(standing === 'Locked' ? [h.AriaDisabled(true)] : []),
-    ],
-    [
-      h.span(
-        [h.Class('calling-figure'), h.AriaHidden(true)],
-        [
-          h.span([
-            h.Class('calling-figure-img'),
-            h.Style(pixelArtStyle(portraitOf(input.look, calling))),
-          ]),
-        ],
-      ),
-      h.span(
-        [h.Class('calling-body'), h.AriaHidden(true)],
-        [
-          h.span(
-            [h.Class('calling-head')],
-            [
-              h.span([h.Class('calling-name')], [CALLING_NAMES[calling]]),
-              ...(isNew ? [newBadgeView(h)] : []),
-              standing === 'Owned'
-                ? h.empty
-                : h.span(
-                    [h.Class('calling-need')],
-                    standing === 'ForSale'
-                      ? [
-                          boneCountView(
-                            Option.getOrElse(callingPriceOf(calling), () => 0),
-                            'calling-price',
-                            h,
-                          ),
-                        ]
-                      : [
-                          iconView('calling-lock-icon', PADLOCK_ICON, h),
-                          rankMarkView(need, h),
-                        ],
-                  ),
-            ],
-          ),
-          h.ul(
-            [h.Class('calling-specials')],
-            Array.isReadonlyArrayEmpty(specials)
-              ? [
-                  h.li(
-                    [h.Class('calling-special calling-special-none')],
-                    [SPECIAL_LINES.noSpecials],
-                  ),
-                ]
-              : Array.map(specials, special => specialView(special, h)),
-          ),
-        ],
-      ),
-    ],
-  )
+  return h.button
+    .attrs({
+      type: 'button',
+      'data-calling': calling,
+      'data-lock': standing,
+      'aria-label': LABELS[standing](calling),
+    })
+    .class('calling-card')
+    .attr('data-trying', input.trying === calling ? 'true' : undefined)
+    .attr('data-chosen', isChosen ? 'Chosen' : undefined)
+    .attr('data-new', isNew ? 'true' : undefined)
+    .attr('aria-disabled', standing === 'Locked' ? 'true' : undefined)
+    .attr('autofocus', isChosen && input.isChosenFocused ? '' : undefined)
+    .on('click', input.onCard(calling))
+    .children(
+      h.span
+        .class('calling-figure')
+        .attr('aria-hidden', 'true')
+        .children(
+          h.span
+            .class('calling-figure-img')
+            .style(pixelArtStyle(portraitOf(input.look, calling))),
+        ),
+      h.span
+        .class('calling-body')
+        .attr('aria-hidden', 'true')
+        .children(
+          h.span
+            .class('calling-head')
+            .children(
+              h.span.class('calling-name').children(CALLING_NAMES[calling]),
+              isNew && newBadgeView(h),
+              needView(standing, calling, h),
+            ),
+          h.ul
+            .class('calling-specials')
+            .children(
+              Array.isReadonlyArrayEmpty(specials)
+                ? h.li
+                    .class('calling-special calling-special-none')
+                    .children(SPECIAL_LINES.noSpecials)
+                : Array.map(specials, special => specialView(special, h)),
+            ),
+        ),
+    )
 }
 
 export const callingCardsView: {
-  <Message>(h: HtmlBuilder<Message>): (input: CardsInput<Message>) => Html
-  <Message>(input: CardsInput<Message>, h: HtmlBuilder<Message>): Html
+  <Message>(
+    h: Html.H<Message>,
+  ): (input: CardsInput<Message>) => View.Content<Message>
+  <Message>(
+    input: CardsInput<Message>,
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   2,
-  <Message>(input: CardsInput<Message>, h: HtmlBuilder<Message>): Html =>
-    h.div(
-      [h.Class('calling-cards')],
-      Array.map(CALLINGS, calling => cardView(input, calling, h)),
-    ),
+  <Message>(
+    input: CardsInput<Message>,
+    h: Html.H<Message>,
+  ): View.Content<Message> =>
+    h.div
+      .class('calling-cards')
+      .children(Array.map(CALLINGS, calling => cardView(input, calling, h))),
 )
 
 // NOTE: the player's Bones by the title, so a price has its context. Shared
-// by the home menu's picker and co-op's lobby picker.
+// by the solo lobby's picker and co-op's lobby picker.
 export const callingBalanceView: {
-  <Message>(h: HtmlBuilder<Message>): (bones: number) => Html
-  <Message>(bones: number, h: HtmlBuilder<Message>): Html
-} = Function.dual(2, <Message>(bones: number, h: HtmlBuilder<Message>): Html =>
-  h.div(
-    [
-      h.Class('calling-balance'),
-      h.Role('group'),
-      h.AriaLabel(`${bones} Bones`),
-    ],
-    [boneCountView(bones, 'calling-balance-count', h)],
-  ),
+  <Message>(h: Html.H<Message>): (bones: number) => View.Content<Message>
+  <Message>(bones: number, h: Html.H<Message>): View.Content<Message>
+} = Function.dual(
+  2,
+  <Message>(bones: number, h: Html.H<Message>): View.Content<Message> =>
+    h.div
+      .class('calling-balance')
+      .attrs({ role: 'group', 'aria-label': `${bones} Bones` })
+      .children(boneCountView(bones, 'calling-balance-count', h)),
 )
+
+type BuyInput<Message> = Readonly<{
+  calling: Calling
+  bones: number
+  onBuy: Message
+}>
 
 // NOTE: the BUY button: a bright gold arcade button when the Bones cover
 // the hero, dim and red with how many more it needs when they do not. The
 // caller says what a tap sends.
 export const callingBuyView: {
   <Message>(
-    h: HtmlBuilder<Message>,
-  ): (
-    input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
-  ) => Html
-  <Message>(
-    input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
-    h: HtmlBuilder<Message>,
-  ): Html
+    h: Html.H<Message>,
+  ): (input: BuyInput<Message>) => View.Content<Message>
+  <Message>(input: BuyInput<Message>, h: Html.H<Message>): View.Content<Message>
 } = Function.dual(
   2,
   <Message>(
-    input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
-    h: HtmlBuilder<Message>,
-  ): Html => {
-    const price = Option.getOrElse(callingPriceOf(input.calling), () => 0)
+    input: BuyInput<Message>,
+    h: Html.H<Message>,
+  ): View.Content<Message> => {
+    const price = priceOf(input.calling)
     const lacking = Math.max(0, price - input.bones)
-    return h.button(
-      [
-        h.Type('button'),
-        h.Key('calling-buy'),
-        h.Class('calling-buy'),
-        h.AriaLabel(
+    const button = h.button
+      .key('calling-buy')
+      .class('calling-buy')
+      .attrs({
+        type: 'button',
+        'aria-label':
           lacking > 0
             ? `Buy for ${price} Bones, too few`
             : `Buy for ${price} Bones`,
-        ),
-        ...(lacking > 0
-          ? [h.Disabled(true), h.DataAttribute('short', 'true')]
-          : [h.OnClick(input.onBuy)]),
-      ],
-      [
-        h.span([h.Class('calling-buy-word'), h.AriaHidden(true)], ['BUY']),
-        boneCountView(price, 'calling-buy-price', h),
-        ...(lacking > 0
-          ? [
-              h.span(
-                [h.Class('calling-buy-need'), h.AriaHidden(true)],
-                [`NEED ${lacking} MORE`],
-              ),
-            ]
-          : []),
-      ],
+      })
+    const ready =
+      lacking > 0
+        ? button.disabled(true).attr('data-short', 'true')
+        : button.on('click', input.onBuy)
+    return ready.children(
+      h.span
+        .class('calling-buy-word')
+        .attr('aria-hidden', 'true')
+        .children('BUY'),
+      boneCountView(price, 'calling-buy-price', h),
+      lacking > 0 &&
+        h.span
+          .class('calling-buy-need')
+          .attr('aria-hidden', 'true')
+          .children(`NEED ${lacking} MORE`),
     )
   },
 )

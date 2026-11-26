@@ -1,6 +1,6 @@
 import { Array, Function, Option, Schema, String } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiSchema, UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import type { SoundEffect } from '../../audio/audio'
@@ -300,7 +300,7 @@ export const isRankedUp = (model: Model): boolean =>
 export const CALLING_FLIP_MS = 420
 export const UNLOCK_HOLD_MS = 500
 
-export const EndUnlock = defineTaggedUnion({
+export const EndUnlock = UiSchema.TaggedEnum({
   Calling: { calling: Calling },
   Gift: { kind: CosmeticKind, name: Schema.String },
   Purse: { rank: Schema.Finite, bones: Schema.Finite },
@@ -398,7 +398,7 @@ export const dismissUnlock = (model: Model): Model =>
     onNone: () => model,
     onSome: kind =>
       model.screenMs >= rankDoneMs(model, kind) && isUnlockCardUp(model, kind)
-        ? modifyFields(model, { screenMs: () => unlockGoneMs(model, kind) })
+        ? UiStruct.evolve(model, { screenMs: () => unlockGoneMs(model, kind) })
         : model,
   })
 
@@ -422,7 +422,7 @@ export const skipBeat = (model: Model): Model =>
       const atMs = beatDoneMs(model, kind)
       return model.screenMs >= atMs
         ? model
-        : modifyFields(model, { screenMs: () => atMs })
+        : UiStruct.evolve(model, { screenMs: () => atMs })
     },
   })
 
@@ -627,7 +627,7 @@ export const reachRecords: {
       ? withBests(
           after,
           bests =>
-            modifyFields(bests, {
+            UiStruct.evolve(bests, {
               maybeMostKills: maybeMost =>
                 higher(maybeMost, totalKills(after.stats)),
               maybeFurthestWave: maybeFurthest =>
@@ -655,7 +655,7 @@ export const noteRecords: {
     played: Difficulty = after.difficulty.chosen,
   ): Model =>
     !isEndScreen(before.phase) && isEndScreen(after.phase)
-      ? modifyFields(after, {
+      ? UiStruct.evolve(after, {
           runRecords: () => recordsBroken(before, after, played),
         })
       : after,
@@ -756,6 +756,6 @@ export const isRunCardHeld = (model: Model): boolean =>
 
 // NOTE: LOBBY lets the lobby in, beat or no beat.
 export const dropRunCard = (model: Model): Model =>
-  modifyFields(model, {
-    endCard: modifyFields({ isRunCardDropped: () => true }),
+  UiStruct.evolve(model, {
+    endCard: UiStruct.evolve({ isRunCardDropped: () => true }),
   })

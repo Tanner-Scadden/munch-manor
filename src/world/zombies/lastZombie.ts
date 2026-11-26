@@ -1,5 +1,6 @@
 import { Array, Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_SPEED } from '../../shared/constants'
 import { Finale } from '../dare/dareSchema'
@@ -64,8 +65,8 @@ export const advanceLastZombie: {
   const loneMs = isLastZombieDue(world) ? world.pacing.loneMs + deltaMs : 0
   return loneMs === world.pacing.loneMs
     ? world
-    : modifyFields(world, {
-        pacing: pacing => modifyFields(pacing, { loneMs: () => loneMs }),
+    : UiStruct.evolve(world, {
+        pacing: pacing => UiStruct.evolve(pacing, { loneMs: () => loneMs }),
       })
 })
 

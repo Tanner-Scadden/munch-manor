@@ -1,7 +1,9 @@
 import { Array, Function, Option, pipe } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { DARE_ICON_URLS, DARE_SILHOUETTE_URLS } from '../../art/dareArt'
 import { FOUND_CHECK_ICON, ROOMS_ICON } from '../../art/icons'
@@ -36,15 +38,13 @@ type Thing = Readonly<{ kind: DareKind; isFound: boolean }>
 const thingLabel = ({ kind, isFound }: Thing): string =>
   `${DARE_NAMES[kind]}: ${isFound ? 'found' : 'not found'}`
 
-const thingView = (thing: Thing, h: ApplicationViewBuilder): Html =>
-  h.keyed('li')(
-    thing.kind,
-    [
-      h.Class('pause-thing'),
-      h.DataAttribute('found', thing.isFound ? 'true' : 'false'),
-      h.AriaLabel(thingLabel(thing)),
-    ],
-    [
+const thingView = (thing: Thing, h: ApplicationViewBuilder): ApplicationHtml =>
+  h.li
+    .key(thing.kind)
+    .class('pause-thing')
+    .attr('data-found', thing.isFound ? 'true' : 'false')
+    .attr('aria-label', thingLabel(thing))
+    .children(
       iconView(
         'pause-thing-icon',
         thing.isFound
@@ -55,19 +55,18 @@ const thingView = (thing: Thing, h: ApplicationViewBuilder): Html =>
       ...(thing.isFound
         ? [iconView('pause-thing-check', FOUND_CHECK_ICON, h)]
         : []),
-    ],
-  )
+    )
 
 const listView = (
   things: ReadonlyArray<Thing>,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> =>
+): ReadonlyArray<ApplicationHtml> =>
   Array.isReadonlyArrayNonEmpty(things)
     ? [
-        h.ul(
-          [h.Class('pause-things'), h.AriaLabel('The dare')],
-          Array.map(things, thing => thingView(thing, h)),
-        ),
+        h.ul
+          .class('pause-things')
+          .attr('aria-label', 'The dare')
+          .children(Array.map(things, thing => thingView(thing, h))),
       ]
     : []
 
@@ -76,14 +75,17 @@ const tallyView = (
   text: string,
   label: string,
   h: ApplicationViewBuilder,
-): Html =>
-  h.li(
-    [h.Class('pause-tally'), h.AriaLabel(label)],
-    [
+): ApplicationHtml =>
+  h.li
+    .class('pause-tally')
+    .attr('aria-label', label)
+    .children(
       iconView('pause-tally-icon', icon, h),
-      h.span([h.Class('pause-tally-text'), h.AriaHidden(true)], [text]),
-    ],
-  )
+      h.span
+        .class('pause-tally-text')
+        .attr('aria-hidden', 'true')
+        .children(text),
+    )
 
 // GUNS
 
@@ -112,103 +114,106 @@ const standingOf = (gun: CarriedGun): GunStanding =>
     }),
   })
 
-const pipsView = (gun: CarriedGun, h: ApplicationViewBuilder): Html =>
-  h.span(
-    [h.Class('pause-gun-pips'), h.AriaHidden(true)],
-    Array.makeBy(maxTier(gun.kind), index =>
-      h.span([
-        h.Class('pause-gun-pip'),
-        h.DataAttribute('on', index < gun.tier ? 'true' : 'false'),
-      ]),
-    ),
-  )
+const pipsView = (
+  gun: CarriedGun,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  h.span
+    .class('pause-gun-pips')
+    .attr('aria-hidden', 'true')
+    .children(
+      Array.makeBy(maxTier(gun.kind), index =>
+        h.span
+          .class('pause-gun-pip')
+          .attr('data-on', index < gun.tier ? 'true' : 'false'),
+      ),
+    )
 
 const gunView = (
   gun: CarriedGun,
   index: number,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const art = gunArt(gun.kind, gun.tier)
   const name = tierName(gun.kind, gun.tier)
   const standing = standingOf(gun)
-  return h.keyed('li')(
-    `${index}-${gun.kind}`,
-    [
-      h.Class('pause-gun'),
-      h.DataAttribute('maxed', standing.isMaxed ? 'true' : 'false'),
-      h.AriaLabel(`${name}: ${standing.label}`),
-    ],
-    [
-      h.span([
-        h.Class('pause-gun-art'),
-        h.AriaHidden(true),
-        h.Style({
+  return h.li
+    .key(`${index}-${gun.kind}`)
+    .class('pause-gun')
+    .attr('data-maxed', standing.isMaxed ? 'true' : 'false')
+    .attr('aria-label', `${name}: ${standing.label}`)
+    .children(
+      h.span
+        .class('pause-gun-art')
+        .attr('aria-hidden', 'true')
+        .style({
           backgroundImage: art.url,
           '--art-w': `${art.width}`,
           '--art-h': `${art.height}`,
         }),
-      ]),
-      h.span(
-        [h.Class('pause-gun-body'), h.AriaHidden(true)],
-        [
-          h.span([h.Class('pause-gun-name')], [name]),
+      h.span
+        .class('pause-gun-body')
+        .attr('aria-hidden', 'true')
+        .children(
+          h.span.class('pause-gun-name').children(name),
           pipsView(gun, h),
-          h.span(
-            [h.Class('pause-gun-bar')],
-            [
-              h.span([
-                h.Class('pause-gun-fill'),
-                h.Style({ width: `${Math.round(standing.share * 100)}%` }),
-              ]),
-            ],
-          ),
-          h.span([h.Class('pause-gun-kills')], [standing.kills]),
-        ],
-      ),
-    ],
-  )
+          h.span
+            .class('pause-gun-bar')
+            .children(
+              h.span
+                .class('pause-gun-fill')
+                .style({ width: `${Math.round(standing.share * 100)}%` }),
+            ),
+          h.span.class('pause-gun-kills').children(standing.kills),
+        ),
+    )
 }
 
 // NOTE: a gun with no levels (Brain Freeze) is not listed: it has nothing
 // to climb.
-const gunsView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.ul(
-    [h.Class('pause-guns'), h.AriaLabel('Your guns')],
-    pipe(
-      carriedOf(focusOf(model).player),
-      Array.filter(gun => maxTier(gun.kind) > 0),
-      Array.map((gun, index) => gunView(gun, index, h)),
-    ),
-  )
+const gunsView = (model: Model, h: ApplicationViewBuilder): ApplicationHtml =>
+  h.ul
+    .class('pause-guns')
+    .attr('aria-label', 'Your guns')
+    .children(
+      pipe(
+        carriedOf(focusOf(model).player),
+        Array.filter(gun => maxTier(gun.kind) > 0),
+        Array.map((gun, index) => gunView(gun, index, h)),
+      ),
+    )
 
 export const pauseProgressView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
-  const keys = heldKeys(model)
-  const { found, total } = roomsOf(levelOf(model))
-  return h.div(
-    [h.Class('pause-progress'), h.Role('group'), h.AriaLabel('Progress')],
-    [
-      ...listView(dareCardOf(model), h),
-      h.ul(
-        [h.Class('pause-tallies')],
-        [
-          tallyView(
-            QUEST_KEY_ICON,
-            `${keys}`,
-            `${keys} skeleton ${keys === 1 ? 'key' : 'keys'}`,
-            h,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml => {
+    const keys = heldKeys(model)
+    const { found, total } = roomsOf(levelOf(model))
+    return h.div
+      .class('pause-progress')
+      .attr('role', 'group')
+      .attr('aria-label', 'Progress')
+      .children(
+        ...listView(dareCardOf(model), h),
+        h.ul
+          .class('pause-tallies')
+          .children(
+            tallyView(
+              QUEST_KEY_ICON,
+              `${keys}`,
+              `${keys} skeleton ${keys === 1 ? 'key' : 'keys'}`,
+              h,
+            ),
+            tallyView(
+              ROOMS_ICON,
+              `${found}/${total}`,
+              `${found} of ${total} rooms open`,
+              h,
+            ),
           ),
-          tallyView(
-            ROOMS_ICON,
-            `${found}/${total}`,
-            `${found} of ${total} rooms open`,
-            h,
-          ),
-        ],
-      ),
-      gunsView(model, h),
-    ],
-  )
-})
+        gunsView(model, h),
+      )
+  },
+)

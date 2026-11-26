@@ -1,54 +1,81 @@
 import { Effect } from 'effect'
-import { Scene, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
-import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { HomeScreenStepsBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { BreakClock, type Model, Phase } from '../../../app/model'
+import { profilePropsOf } from '../../../app/profileView'
 import { initialModel } from '../../../app/pureApp'
 import { ShowInstallPrompt } from '../../../app/update/home'
+import {
+  HOME_SCREEN_STEPS_ID,
+  PROFILE_DIALOG_ID,
+} from '../../../domain/clientSchema'
+import { InstallMessage } from '../../../platform/message'
 import { PREPARATION_MS } from '../../../shared/constants'
 import { holdingSecond } from '../../../test/arsenals'
 import {
-  APPLICATION,
-  SCENE_SUBSCRIPTIONS,
-  closeDialog,
+  ackHudSlots,
+  button,
+  byClass,
+  clickOn,
+  emitFrame,
+  emitPressedKey,
+  expectAttr,
+  expectClass,
+  expectStyle,
+  fromSubscription,
   homeUnderLobby,
-  measureSurface,
+  measureHud,
   pauseButton,
-  resolveFocusLobbyInScene,
+  pauseByButton,
+  pressHudSlot,
+  pressSurface,
+  profileDialog,
+  requestDialogClose,
+  settingsButton,
   showDialog,
+  statusLine,
+  withAttrs,
+} from '../../../test/sceneTesting'
+import {
+  modelAfter,
+  resolveFocusLobby,
+  sceneOf,
+  send,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { tierName } from '../../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 import { type Player } from '../../../world/schema/worldSchema'
+import { Profile } from '../../profile/block'
 
 const SMG_NAME = tierName('Smg', 0)
 
 const onTouch = (base: Model): Model =>
-  modifyFields(asVeteran(base), { lastDevice: () => 'Touch' })
+  UiStruct.evolve(asVeteran(base), { lastDevice: () => 'Touch' })
 
 const withSmg = (loaded: number): Player =>
-  modifyFields(focusOf(initialModel).player, {
+  UiStruct.evolve(focusOf(initialModel).player, {
     arsenal: () => holdingSecond({ kind: 'Smg', loaded, tier: 0, kills: 0 }),
   })
 
 const fightingWith = (loaded: number): Model =>
   modifyFocus(
-    modifyFields(onTouch(initialModel), {
+    UiStruct.evolve(onTouch(initialModel), {
       phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
     }),
     { player: () => withSmg(loaded) },
   )
 
 const breakWithTraps: Model = modifyFocus(
-  modifyFields(onTouch(initialModel), {
+  UiStruct.evolve(onTouch(initialModel), {
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave: 3,
         remainingMs: PREPARATION_MS,
         durationMs: PREPARATION_MS,
@@ -58,333 +85,319 @@ const breakWithTraps: Model = modifyFocus(
   { trapStock: () => ({ Barricade: 1, Turret: 1 }) },
 )
 
-const reloadButton = Scene.selector('.reload-button')
-const muteButton = Scene.role('button', { name: 'Mute sound' })
-const musicButton = Scene.role('button', { name: 'Music' })
-const fullscreenButton = Scene.role('button', { name: 'Full screen' })
-const placeTrap = Scene.role('button', { name: 'Place a Plank Pile' })
-const nextTrap = Scene.role('button', { name: 'Switch to the Grumpy Gnome' })
-const startWave = Scene.role('button', { name: 'Start wave 3 now' })
-const homeScreenTip = Scene.role('button', {
-  name: 'Add to Home Screen: show me how',
-})
-const installButton = Scene.role('button', { name: 'Install Munch Manor' })
-const frame = (deltaTime: number) =>
-  Scene.Subscription.emit(
-    SCENE_SUBSCRIPTIONS.frame,
-    Message.TickedFrame({ deltaTime }),
-  )
+// NOTE: a gun slot by its name: the reload button past the knife shares the
+// held gun's name, so a slot is looked for among the slots.
+const slotNamed = (name: string) =>
+  Locator.inside(byClass('gun-slots'), button(name))
 
-// NOTE: a finger's tap: src/input/touchTaps.ts makes it a click on the button, as
-// it does for a second finger while another holds the move stick.
-const tap = Scene.click
+const reloadButton = byClass('reload-button')
+const muteButton = button('Mute sound')
+const musicButton = button('Music')
+const fullscreenButton = button('Full screen')
+const placeTrap = button('Place a Plank Pile')
+const nextTrap = button('Switch to the Grumpy Gnome')
+const startWave = button('Start wave 3 now')
+const homeScreenTip = button('Add to Home Screen: show me how')
+const installButton = button('Install Munch Manor')
+const moveStick = withAttrs({ 'data-stick': 'move' })(byClass('touch-stick'))
+const keyBadgeIn = (locator: Locator.Locator) =>
+  Locator.inside(locator, byClass('key-badge'))
+const slotNumberIn = (locator: Locator.Locator) =>
+  Locator.inside(locator, byClass('slot-number'))
 
 // NOTE: a thumb on the left of the surface: the move stick.
-const moveThumb = Scene.pointerDown(Scene.selector('.game-surface'), {
-  pointerType: 'touch',
+const moveThumb = pressSurface({
   pointerId: 3,
+  device: 'Touch',
   clientX: 120,
   clientY: 260,
 })
+
+const PAUSED_LINE =
+  'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
 
 describe('the reload button', () => {
   it.effect(
     'is always there on touch, dim and inert with a full magazine',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(fightingWith(30)),
-        measureSurface,
-        Scene.expect(reloadButton).toExist(),
-        Scene.expect(reloadButton).toHaveAttr('aria-keyshortcuts', 'R'),
-        Scene.expect(reloadButton).toHaveAttr('data-ready', 'false'),
-        Scene.expect(reloadButton).toHaveAttr('aria-disabled', 'true'),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(fightingWith(30))
+        s.pipe(
+          measureHud,
+          expectAttr(reloadButton, 'aria-keyshortcuts', 'R'),
+          expectAttr(reloadButton, 'data-ready', 'false'),
+          expectAttr(reloadButton, 'aria-disabled', 'true'),
+        )
+          .expect(reloadButton)
+          .toExist()
+      }),
   )
 
   it.effect('reloads the held gun on a tap, and dims while it reloads', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fightingWith(20)),
-      measureSurface,
-      Scene.expect(reloadButton).toHaveAttr('data-ready', 'true'),
-      Scene.expect(reloadButton).not.toHaveAttr('aria-disabled'),
-      tap(reloadButton),
-      Scene.expect(reloadButton).toHaveAttr('data-ready', 'false'),
-      Scene.expect(
-        Scene.role('button', { name: `Reload the ${SMG_NAME}` }),
-      ).toHaveAttr('aria-disabled', 'true'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(fightingWith(20))
+      s.pipe(
+        measureHud,
+        expectAttr(reloadButton, 'data-ready', 'true'),
+        expectAttr(reloadButton, 'aria-disabled', undefined),
+        clickOn(reloadButton),
+        expectAttr(reloadButton, 'data-ready', 'false'),
+        expectAttr(
+          slotNamed(`Reload the ${SMG_NAME}`),
+          'aria-disabled',
+          'true',
+        ),
+      )
+    }),
   )
 
   it.effect(
     'with the knife out, draws the last gun and reloads it, as R does',
-    () => {
-      const knifeOut = modifyFocus(fightingWith(20), {
-        player: player => modifyFields(player, { wield: () => 'Melee' }),
-      })
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(knifeOut),
-        measureSurface,
-        Scene.expect(reloadButton).toHaveAttr(
-          'aria-label',
-          `Draw and reload the ${SMG_NAME}`,
-        ),
-        tap(reloadButton),
-        Scene.expect(
-          Scene.selector('.gun-slot-button[data-slot="Melee"]'),
-        ).toHaveAttr('data-held', 'false'),
-        Scene.expect(
-          Scene.role('button', { name: `Reload the ${SMG_NAME}` }),
-        ).toHaveAttr('data-held', 'true'),
-        Scene.expect(reloadButton).toHaveAttr('data-ready', 'false'),
-      )
-    },
+    () =>
+      Effect.gen(function* () {
+        const knifeOut = modifyFocus(fightingWith(20), {
+          player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
+        })
+        const s = yield* sceneOf(knifeOut)
+        s.pipe(
+          measureHud,
+          expectAttr(
+            reloadButton,
+            'aria-label',
+            `Draw and reload the ${SMG_NAME}`,
+          ),
+          clickOn(reloadButton),
+          expectAttr(
+            withAttrs({ 'data-slot': 'Melee' })(byClass('gun-slot-button')),
+            'data-held',
+            'false',
+          ),
+          expectAttr(slotNamed(`Reload the ${SMG_NAME}`), 'data-held', 'true'),
+          expectAttr(reloadButton, 'data-ready', 'false'),
+        )
+      }),
   )
 
   it.effect(
     'with the knife out and a full magazine, is dim but still draws the gun',
-    () => {
-      const knifeOut = modifyFocus(fightingWith(30), {
-        player: player => modifyFields(player, { wield: () => 'Melee' }),
-      })
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(knifeOut),
-        measureSurface,
-        Scene.expect(reloadButton).toHaveAttr('data-ready', 'false'),
-        Scene.expect(reloadButton).not.toHaveAttr('aria-disabled'),
-        tap(reloadButton),
-        Scene.expect(
-          Scene.role('button', { name: `Reload the ${SMG_NAME}` }),
-        ).toHaveAttr('data-held', 'true'),
-      )
-    },
+    () =>
+      Effect.gen(function* () {
+        const knifeOut = modifyFocus(fightingWith(30), {
+          player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
+        })
+        const s = yield* sceneOf(knifeOut)
+        s.pipe(
+          measureHud,
+          expectAttr(reloadButton, 'data-ready', 'false'),
+          expectAttr(reloadButton, 'aria-disabled', undefined),
+          clickOn(reloadButton),
+          expectAttr(slotNamed(`Reload the ${SMG_NAME}`), 'data-held', 'true'),
+        )
+      }),
   )
 
   it.effect('works with the move stick held by another finger', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fightingWith(20)),
-      measureSurface,
-      moveThumb,
-      Scene.expect(Scene.selector('.touch-stick[data-stick="move"]')).toExist(),
-      tap(reloadButton),
-      Scene.expect(reloadButton).toHaveAttr('data-ready', 'false'),
-      Scene.expect(Scene.selector('.touch-stick[data-stick="move"]')).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(fightingWith(20))
+      s.pipe(measureHud, moveThumb).expect(moveStick).toExist()
+      s.pipe(
+        clickOn(reloadButton),
+        expectAttr(reloadButton, 'data-ready', 'false'),
+      )
+        .expect(moveStick)
+        .toExist()
+    }),
   )
 
   it.effect('is not on a keyboard and mouse: R reloads there', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(fightingWith(20), { lastDevice: () => 'KeyboardMouse' }),
-      ),
-      measureSurface,
-      Scene.expect(reloadButton).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(
+        UiStruct.evolve(fightingWith(20), {
+          lastDevice: () => 'KeyboardMouse',
+        }),
+      )
+      s.pipe(measureHud).expect(reloadButton).toBeAbsent()
+    }),
   )
 })
 
 describe('the gun cluster', () => {
-  const cluster = Scene.selector('.gun-cluster')
-  const smgSlot = Scene.role('button', { name: `Reload the ${SMG_NAME}` })
-  const pistolSlot = Scene.role('button', { name: 'Switch to the Pop Pistol' })
-  const knifeSlot = Scene.selector('.gun-slot-button[data-slot="Melee"]')
+  const cluster = byClass('gun-cluster')
+  const smgSlot = slotNamed(`Reload the ${SMG_NAME}`)
+  const pistolSlot = slotNamed('Switch to the Pop Pistol')
+  const knifeSlot = withAttrs({ 'data-slot': 'Melee' })(
+    byClass('gun-slot-button'),
+  )
 
   it.effect('sits at the bottom middle with the held gun marked', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fightingWith(30)),
-      measureSurface,
-      // NOTE: the 2:1 surface widens the screen to 360 (src/render/screen.ts),
-      // and the gun pair stays centered on it, 20 pixels further right.
-      Scene.expect(cluster).toHaveStyle('left', `${(139 / 360) * 100}%`),
-      Scene.expect(cluster).toHaveStyle('width', `${(112 / 360) * 100}%`),
-      Scene.expect(
-        Scene.within(cluster, Scene.role('group', { name: 'Your guns' })),
-      ).toExist(),
-      Scene.expect(pistolSlot).toHaveAttr('data-held', 'false'),
-      Scene.expect(pistolSlot).toHaveStyle('left', '0%'),
-      Scene.expect(smgSlot).toHaveAttr('data-held', 'true'),
-      Scene.expect(smgSlot).toHaveStyle('left', '38.392857142857146%'),
-      Scene.expect(knifeSlot).toHaveAttr('data-held', 'false'),
-      Scene.expect(knifeSlot).toHaveStyle('left', '76.78571428571429%'),
-      Scene.expect(knifeSlot).toHaveStyle('width', '23.214285714285715%'),
-      Scene.expect(Scene.selector('.key-badge')).toBeAbsent(),
-      Scene.expect(Scene.selector('.slot-number')).toBeAbsent(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(fightingWith(30))
+      s.pipe(
+        measureHud,
+        // NOTE: the 2:1 surface widens the screen to 360
+        // (src/render/screen.ts), and the gun pair stays centered on it, 20
+        // pixels further right.
+        expectStyle(cluster, 'left', `${(139 / 360) * 100}%`),
+        expectStyle(cluster, 'width', `${(112 / 360) * 100}%`),
+        expectAttr(pistolSlot, 'data-held', 'false'),
+        expectStyle(pistolSlot, 'left', '0%'),
+        expectAttr(smgSlot, 'data-held', 'true'),
+        expectStyle(smgSlot, 'left', '38.392857142857146%'),
+        expectAttr(knifeSlot, 'data-held', 'false'),
+        expectStyle(knifeSlot, 'left', '76.78571428571429%'),
+        expectStyle(knifeSlot, 'width', '23.214285714285715%'),
+      )
+        .expect(
+          Locator.inside(
+            cluster,
+            HtmlLocator.role('group', { name: 'Your guns' }),
+          ),
+        )
+        .toExist()
+        .expect(byClass('key-badge'))
+        .toBeAbsent()
+        .expect(byClass('slot-number'))
+        .toBeAbsent()
+    }),
   )
 
   it.effect('a tap on the other gun swaps, a tap on the held gun reloads', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fightingWith(20)),
-      measureSurface,
-      tap(smgSlot),
-      Scene.expect(smgSlot).toHaveAttr('aria-disabled', 'true'),
-      tap(pistolSlot),
-      Scene.expect(
-        Scene.role('button', { name: 'Reload the Pop Pistol' }),
-      ).toHaveAttr('data-held', 'true'),
-      Scene.expect(
-        Scene.role('button', { name: `Switch to the ${SMG_NAME}` }),
-      ).toHaveAttr('data-held', 'false'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(fightingWith(20))
+      s.pipe(
+        measureHud,
+        clickOn(smgSlot),
+        expectAttr(smgSlot, 'aria-disabled', 'true'),
+        clickOn(pistolSlot),
+        expectAttr(slotNamed('Reload the Pop Pistol'), 'data-held', 'true'),
+        expectAttr(
+          slotNamed(`Switch to the ${SMG_NAME}`),
+          'data-held',
+          'false',
+        ),
+      )
+    }),
   )
 
   it.effect(
     'a tap on a slot swaps while another finger holds the move stick',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(fightingWith(20)),
-        measureSurface,
-        moveThumb,
-        tap(pistolSlot),
-        Scene.expect(
-          Scene.role('button', { name: 'Reload the Pop Pistol' }),
-        ).toHaveAttr('data-held', 'true'),
-        Scene.expect(
-          Scene.selector('.touch-stick[data-stick="move"]'),
-        ).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(fightingWith(20))
+        s.pipe(
+          measureHud,
+          moveThumb,
+          clickOn(pistolSlot),
+          expectAttr(slotNamed('Reload the Pop Pistol'), 'data-held', 'true'),
+        )
+          .expect(moveStick)
+          .toExist()
+      }),
   )
 
   it.effect('the reload button sits past the knife, in the row', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fightingWith(9)),
-      measureSurface,
-      Scene.expect(Scene.within(cluster, reloadButton)).toExist(),
-      Scene.expect(reloadButton).toHaveAttr('data-layout', 'Landscape'),
-      Scene.expect(reloadButton).toHaveStyle(
-        'left',
-        'calc(100% + 2.6785714285714284%)',
-      ),
-      Scene.expect(reloadButton).toHaveStyle('bottom', '0px'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(fightingWith(9))
+      s.pipe(
+        measureHud,
+        expectAttr(reloadButton, 'data-layout', 'Landscape'),
+        expectStyle(reloadButton, 'left', 'calc(100% + 2.6785714285714284%)'),
+        expectStyle(reloadButton, 'bottom', '0px'),
+      )
+        .expect(Locator.inside(cluster, reloadButton))
+        .toExist()
+    }),
   )
 
-  it.effect(
-    'works with keys on a keyboard, and shows them on the slots',
-    () => {
-      const onKeyboard = modifyFields(fightingWith(20), {
+  it.effect('works with keys on a keyboard, and shows them on the slots', () =>
+    Effect.gen(function* () {
+      const onKeyboard = UiStruct.evolve(fightingWith(20), {
         lastDevice: () => 'KeyboardMouse',
       })
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(onKeyboard),
-        measureSurface,
-        Scene.expect(
-          Scene.within(smgSlot, Scene.selector('.key-badge')),
-        ).toHaveText('R'),
-        Scene.expect(
-          Scene.within(pistolSlot, Scene.selector('.key-badge')),
-        ).toHaveText('Q'),
-        Scene.expect(
-          Scene.within(pistolSlot, Scene.selector('.slot-number')),
-        ).toHaveText('1'),
-        Scene.expect(
-          Scene.within(smgSlot, Scene.selector('.slot-number')),
-        ).toHaveText('2'),
-        Scene.expect(
-          Scene.within(knifeSlot, Scene.selector('.slot-number')),
-        ).toHaveText('3'),
-        Scene.expect(reloadButton).toBeAbsent(),
-        Scene.Subscription.emit(
-          SCENE_SUBSCRIPTIONS.keyboard,
-          Message.PressedKey({ code: 'KeyR' }),
-        ),
-        Scene.expect(smgSlot).toHaveAttr('aria-disabled', 'true'),
-        Scene.Subscription.emit(
-          SCENE_SUBSCRIPTIONS.keyboard,
-          Message.PressedKey({ code: 'KeyQ' }),
-        ),
-        Scene.expect(
-          Scene.role('button', { name: 'Reload the Pop Pistol' }),
-        ).toHaveAttr('data-held', 'true'),
-        Scene.click(
-          Scene.role('button', { name: `Switch to the ${SMG_NAME}` }),
-        ),
-        Scene.expect(smgSlot).toHaveAttr('data-held', 'true'),
+      const s = yield* sceneOf(onKeyboard)
+      s.pipe(measureHud)
+        .expect(keyBadgeIn(smgSlot))
+        .toHaveText('R')
+        .expect(keyBadgeIn(pistolSlot))
+        .toHaveText('Q')
+        .expect(slotNumberIn(pistolSlot))
+        .toHaveText('1')
+        .expect(slotNumberIn(smgSlot))
+        .toHaveText('2')
+        .expect(slotNumberIn(knifeSlot))
+        .toHaveText('3')
+        .expect(reloadButton)
+        .toBeAbsent()
+      s.pipe(
+        emitPressedKey('KeyR'),
+        expectAttr(smgSlot, 'aria-disabled', 'true'),
+        emitPressedKey('KeyQ'),
+        expectAttr(slotNamed('Reload the Pop Pistol'), 'data-held', 'true'),
+        clickOn(slotNamed(`Switch to the ${SMG_NAME}`)),
+        expectAttr(smgSlot, 'data-held', 'true'),
       )
-    },
+    }),
   )
 
   it.effect(
     'the knife slot, right of the guns, draws the knife and shows F',
-    () => {
-      const onKeyboard = modifyFields(fightingWith(20), {
-        lastDevice: () => 'KeyboardMouse',
-      })
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(onKeyboard),
-        measureSurface,
-        Scene.expect(
-          Scene.within(knifeSlot, Scene.selector('.key-badge')),
-        ).toHaveText('F'),
-        Scene.click(Scene.role('button', { name: 'Switch to the Knife' })),
-        Scene.expect(knifeSlot).toHaveAttr('data-held', 'true'),
-        Scene.expect(knifeSlot).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(
-          Scene.within(knifeSlot, Scene.selector('.key-badge')),
-        ).toBeAbsent(),
-        Scene.expect(
-          Scene.role('button', { name: `Switch to the ${SMG_NAME}` }),
-        ).toHaveAttr('data-held', 'false'),
-        Scene.expect(
-          Scene.within(
-            Scene.role('button', { name: `Switch to the ${SMG_NAME}` }),
-            Scene.selector('.key-badge'),
-          ),
-        ).toHaveText('Q'),
-        Scene.expect(
-          Scene.within(pistolSlot, Scene.selector('.key-badge')),
-        ).toBeAbsent(),
-        Scene.click(
-          Scene.role('button', { name: `Switch to the ${SMG_NAME}` }),
-        ),
-        Scene.expect(smgSlot).toHaveAttr('data-held', 'true'),
-        Scene.expect(knifeSlot).toHaveAttr('data-held', 'false'),
-      )
-    },
+    () =>
+      Effect.gen(function* () {
+        const onKeyboard = UiStruct.evolve(fightingWith(20), {
+          lastDevice: () => 'KeyboardMouse',
+        })
+        const smgToSwitch = slotNamed(`Switch to the ${SMG_NAME}`)
+        const s = yield* sceneOf(onKeyboard)
+        s.pipe(measureHud).expect(keyBadgeIn(knifeSlot)).toHaveText('F')
+        s.pipe(
+          clickOn(slotNamed('Switch to the Knife')),
+          expectAttr(knifeSlot, 'data-held', 'true'),
+          expectAttr(knifeSlot, 'aria-disabled', 'true'),
+          expectAttr(smgToSwitch, 'data-held', 'false'),
+        )
+          .expect(keyBadgeIn(knifeSlot))
+          .toBeAbsent()
+          .expect(keyBadgeIn(smgToSwitch))
+          .toHaveText('Q')
+          .expect(keyBadgeIn(pistolSlot))
+          .toBeAbsent()
+        s.pipe(
+          clickOn(smgToSwitch),
+          expectAttr(smgSlot, 'data-held', 'true'),
+          expectAttr(knifeSlot, 'data-held', 'false'),
+        )
+      }),
   )
 
   it.effect(
     'mid-wave a mouse click on a slot shoots through it, and a tap still draws',
     () =>
       Effect.gen(function* () {
-        const slots = Scene.selector('.gun-slots')
-        const onMouse = modifyFields(fightingWith(20), {
+        const slots = byClass('gun-slots')
+        const onMouse = UiStruct.evolve(fightingWith(20), {
           lastDevice: () => 'KeyboardMouse',
         })
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(onMouse),
-          measureSurface,
-          Scene.expect(slots).toHaveAttr('data-click', 'World'),
-          Scene.pointerDown(knifeSlot, { pointerType: 'mouse', pointerId: 1 }),
-          Scene.click(knifeSlot),
-          Scene.expect(knifeSlot).toHaveAttr('data-held', 'false'),
-          Scene.expect(smgSlot).toHaveAttr('data-held', 'true'),
-          Scene.pointerDown(knifeSlot, { pointerType: 'touch', pointerId: 7 }),
-          Scene.click(knifeSlot),
-          Scene.expect(knifeSlot).toHaveAttr('data-held', 'true'),
+        const midWave = yield* sceneOf(onMouse)
+        midWave.pipe(
+          measureHud,
+          expectAttr(slots, 'data-click', 'World'),
+          pressHudSlot({ slot: 'Melee', pointerId: 1, device: 'Mouse' }),
+          clickOn(knifeSlot),
+          expectAttr(knifeSlot, 'data-held', 'false'),
+          expectAttr(smgSlot, 'data-held', 'true'),
+          pressHudSlot({ slot: 'Melee', pointerId: 7, device: 'Touch' }),
+          clickOn(knifeSlot),
+          expectAttr(knifeSlot, 'data-held', 'true'),
         )
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(
-            modifyFocus(breakWithTraps, { player: () => withSmg(20) }),
-          ),
-          measureSurface,
-          Scene.expect(slots).toHaveAttr('data-click', 'Slot'),
-          Scene.pointerDown(knifeSlot, { pointerType: 'mouse', pointerId: 1 }),
-          Scene.click(knifeSlot),
-          Scene.expect(knifeSlot).toHaveAttr('data-held', 'true'),
+        const inBreak = yield* sceneOf(
+          modifyFocus(breakWithTraps, { player: () => withSmg(20) }),
+        )
+        inBreak.pipe(
+          measureHud,
+          expectAttr(slots, 'data-click', 'Slot'),
+          pressHudSlot({ slot: 'Melee', pointerId: 1, device: 'Mouse' }),
+          clickOn(knifeSlot),
+          expectAttr(knifeSlot, 'data-held', 'true'),
         )
       }),
   )
@@ -394,58 +407,52 @@ describe('trap icons and START WAVE', () => {
   it.effect(
     'show between waves on touch and go away when the wave starts',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(breakWithTraps),
-        measureSurface,
-        Scene.expect(placeTrap).toHaveClass('place-icon-button'),
-        Scene.expect(
-          Scene.within(Scene.selector('.gun-cluster-side'), placeTrap),
-        ).toExist(),
-        Scene.expect(
-          Scene.within(Scene.selector('.gun-cluster-side'), nextTrap),
-        ).toExist(),
-        Scene.expect(nextTrap).toHaveAttr('aria-keyshortcuts', 'G'),
-        Scene.expect(startWave).toHaveClass('start-wave-pill'),
-        Scene.expect(
-          Scene.within(Scene.selector('.gun-cluster-top'), startWave),
-        ).toExist(),
-        Scene.click(startWave),
-        Scene.expect(placeTrap).toBeAbsent(),
-        Scene.expect(nextTrap).toBeAbsent(),
-        Scene.expect(startWave).toBeAbsent(),
-        Scene.expect(Scene.selector('.gun-cluster-top')).toBeAbsent(),
-        Scene.expect(Scene.role('group', { name: 'Your guns' })).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(breakWithTraps)
+        s.pipe(
+          measureHud,
+          expectClass(placeTrap, 'place-icon-button'),
+          expectAttr(nextTrap, 'aria-keyshortcuts', 'G'),
+          expectClass(startWave, 'start-wave-pill'),
+        )
+          .expect(Locator.inside(byClass('gun-cluster-side'), placeTrap))
+          .toExist()
+          .expect(Locator.inside(byClass('gun-cluster-side'), nextTrap))
+          .toExist()
+          .expect(Locator.inside(byClass('gun-cluster-top'), startWave))
+          .toExist()
+        s.pipe(clickOn(startWave), ackHudSlots)
+          .expect(placeTrap)
+          .toBeAbsent()
+          .expect(nextTrap)
+          .toBeAbsent()
+          .expect(startWave)
+          .toBeAbsent()
+          .expect(byClass('gun-cluster-top'))
+          .toBeAbsent()
+          .expect(HtmlLocator.role('group', { name: 'Your guns' }))
+          .toExist()
+      }),
   )
 
   it.effect('are the same icons on a keyboard, with their keys', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(breakWithTraps, { lastDevice: () => 'KeyboardMouse' }),
-      ),
-      measureSurface,
-      Scene.expect(
-        Scene.within(placeTrap, Scene.selector('.key-badge')),
-      ).toHaveText('T'),
-      Scene.expect(
-        Scene.within(nextTrap, Scene.selector('.key-badge')),
-      ).toHaveText('G'),
-      Scene.expect(
-        Scene.within(startWave, Scene.selector('.key-badge')),
-      ).toHaveText('ENTER'),
-      Scene.expect(
-        Scene.within(Scene.selector('.gun-cluster-top'), startWave),
-      ).toExist(),
-      Scene.Subscription.emit(
-        SCENE_SUBSCRIPTIONS.keyboard,
-        Message.PressedKey({ code: 'KeyG' }),
-      ),
-      Scene.expect(
-        Scene.role('button', { name: 'Place a Grumpy Gnome' }),
-      ).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(
+        UiStruct.evolve(breakWithTraps, { lastDevice: () => 'KeyboardMouse' }),
+      )
+      s.pipe(measureHud)
+        .expect(keyBadgeIn(placeTrap))
+        .toHaveText('T')
+        .expect(keyBadgeIn(nextTrap))
+        .toHaveText('G')
+        .expect(keyBadgeIn(startWave))
+        .toHaveText('ENTER')
+        .expect(Locator.inside(byClass('gun-cluster-top'), startWave))
+        .toExist()
+      s.pipe(emitPressedKey('KeyG'))
+        .expect(button('Place a Grumpy Gnome'))
+        .toExist()
+    }),
   )
 })
 
@@ -453,42 +460,46 @@ describe('the corner', () => {
   it.effect(
     'has only the pause icon in a round, and the pause icon pauses',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(fightingWith(30)),
-        measureSurface,
-        Scene.expect(pauseButton).toHaveAttr('aria-keyshortcuts', 'Escape'),
-        Scene.expect(muteButton).toBeAbsent(),
-        Scene.expect(musicButton).toBeAbsent(),
-        Scene.expect(fullscreenButton).toBeAbsent(),
-        Scene.click(pauseButton),
-        Scene.expect(Scene.role('status')).toHaveText(
-          'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.',
-        ),
-        Scene.expect(pauseButton).toBeAbsent(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(fightingWith(30))
+        s.pipe(
+          measureHud,
+          expectAttr(pauseButton, 'aria-keyshortcuts', 'Escape'),
+        )
+          .expect(muteButton)
+          .toBeAbsent()
+          .expect(musicButton)
+          .toBeAbsent()
+          .expect(fullscreenButton)
+          .toBeAbsent()
+        s.pipe(pauseByButton)
+          .expect(statusLine)
+          .toHaveText(PAUSED_LINE)
+          .expect(pauseButton)
+          .toBeAbsent()
+      }),
   )
 
   it.effect(
     'the pause screen holds the audio toggles, which still toggle',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(fightingWith(30)),
-        measureSurface,
-        Scene.click(pauseButton),
-        Scene.expect(muteButton).toHaveAttr('aria-pressed', 'false'),
-        Scene.expect(muteButton).toHaveAttr('aria-keyshortcuts', 'M'),
-        Scene.expect(musicButton).toHaveAttr('aria-pressed', 'true'),
-        Scene.expect(musicButton).toHaveAttr('aria-keyshortcuts', 'N'),
-        Scene.click(muteButton),
-        Scene.expect(muteButton).toHaveAttr('aria-pressed', 'true'),
-        Scene.click(musicButton),
-        Scene.expect(musicButton).toHaveAttr('aria-pressed', 'false'),
-        Scene.expect(Scene.role('status')).toHaveText(
-          'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.',
-        ),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(fightingWith(30))
+        s.pipe(
+          measureHud,
+          pauseByButton,
+          expectAttr(muteButton, 'aria-pressed', 'false'),
+          expectAttr(muteButton, 'aria-keyshortcuts', 'M'),
+          expectAttr(musicButton, 'aria-pressed', 'true'),
+          expectAttr(musicButton, 'aria-keyshortcuts', 'N'),
+          clickOn(muteButton),
+          expectAttr(muteButton, 'aria-pressed', 'true'),
+          clickOn(musicButton),
+          expectAttr(musicButton, 'aria-pressed', 'false'),
+        )
+          .expect(statusLine)
+          .toHaveText(PAUSED_LINE)
+      }),
   )
 
   it.effect(
@@ -496,79 +507,76 @@ describe('the corner', () => {
     () =>
       Effect.gen(function* () {
         const canFill = (base: Model): Model =>
-          modifyFields(base, {
-            settings: modifyFields({ screenFit: () => 'Fullscreen' }),
+          UiStruct.evolve(base, {
+            settings: UiStruct.evolve({ screenFit: () => 'Fullscreen' }),
           })
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(canFill(initialModel)),
-          measureSurface,
-          Scene.inside(
-            Scene.selector('.home-corner'),
-            Scene.expect(fullscreenButton).toExist(),
-          ),
-          Scene.click(
-            Scene.role('button', {
-              name: 'Settings',
-            }),
-          ),
-          Scene.Command.resolve(
-            Dialog.test.ShowDialog,
-            DialogBlock.Message.SucceededShowDialog(),
-          ),
-          Scene.inside(
-            Scene.role('dialog', { name: 'Profile' }),
-            Scene.expect(fullscreenButton).toHaveAttr('aria-pressed', 'false'),
-          ),
+        const home = yield* sceneOf(canFill(initialModel))
+        home
+          .pipe(measureHud)
+          .expect(Locator.inside(byClass('home-corner'), fullscreenButton))
+          .toExist()
+        home
+          .pipe(clickOn(settingsButton), showDialog(PROFILE_DIALOG_ID))
+          .expect(profileDialog)
+          .toExist()
+        // NOTE: the Profile is a child, a leaf in the root's Scene, so its
+        // Settings tile is read in a Scene of its own, with the props the
+        // root hands it.
+        const onSettings = yield* modelAfter(
+          canFill(initialModel),
+          send(Message.ClickedSettingsButton()),
         )
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(canFill(fightingWith(30))),
-          measureSurface,
-          Scene.expect(fullscreenButton).toBeAbsent(),
-          Scene.click(pauseButton),
-          Scene.expect(fullscreenButton).toExist(),
+        const settings = yield* HtmlScene.make(
+          Profile,
+          profilePropsOf(onSettings),
         )
+        settings.check(() => {
+          vitestExpect(
+            settings.get(fullscreenButton).attrs?.['aria-pressed'],
+          ).toBe('false')
+        })
+        const fight = yield* sceneOf(canFill(fightingWith(30)))
+        fight.pipe(measureHud).expect(fullscreenButton).toBeAbsent()
+        fight.pipe(pauseByButton).expect(fullscreenButton).toExist()
       }),
   )
 })
 
 describe('the install tile', () => {
-  const onIphone: Model = modifyFields(onTouch(initialModel), {
-    settings: modifyFields({ screenFit: () => 'HomeScreen' }),
+  const onIphone: Model = UiStruct.evolve(onTouch(initialModel), {
+    settings: UiStruct.evolve({ screenFit: () => 'HomeScreen' }),
   })
-  const showSteps = [
-    Scene.Command.resolve(
-      Dialog.test.ShowDialog,
-      DialogBlock.Message.SucceededShowDialog(),
-    ),
-  ]
-  const steps = Scene.role('dialog', { name: 'Home Screen' })
+  const guide = HtmlLocator.role('dialog', { name: 'Home Screen' })
 
   it.effect('pulses by the gear on an iPhone until its first tap', () =>
     Effect.gen(function* () {
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(onIphone),
-        measureSurface,
-        Scene.inside(
-          Scene.selector('.home-corner'),
-          Scene.expect(homeScreenTip).toExist(),
+      const s = yield* sceneOf(onIphone)
+      s.pipe(measureHud, expectAttr(homeScreenTip, 'data-tip', 'Unseen'))
+        .expect(Locator.inside(byClass('home-corner'), homeScreenTip))
+        .toExist()
+        .expect(fullscreenButton)
+        .toBeAbsent()
+      s.pipe(
+        clickOn(button('Play')),
+        resolveFocusLobby(),
+        expectAttr(homeUnderLobby, 'inert', ''),
+        // NOTE: the home menu under the lobby is aria-hidden as well as
+        // inert, so its tile is looked for among hidden elements.
+        expectAttr(
+          HtmlLocator.role('button', {
+            name: 'Add to Home Screen: show me how',
+            hidden: true,
+          }),
+          'data-tip',
+          'Unseen',
         ),
-        Scene.expect(homeScreenTip).toHaveAttr('data-tip', 'Unseen'),
-        Scene.expect(fullscreenButton).toBeAbsent(),
-        Scene.click(Scene.role('button', { name: 'Play' })),
-        resolveFocusLobbyInScene(),
-        Scene.expect(homeUnderLobby).toHaveAttr('inert'),
-        Scene.expect(homeScreenTip).toHaveAttr('data-tip', 'Unseen'),
       )
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFields(onIphone, { homeScreenTip: () => 'Dismissed' }),
-        ),
-        measureSurface,
-        Scene.expect(homeScreenTip).toHaveAttr('data-tip', 'Dismissed'),
+      const dismissed = yield* sceneOf(
+        UiStruct.evolve(onIphone, { homeScreenTip: () => 'Dismissed' }),
+      )
+      dismissed.pipe(
+        measureHud,
+        expectAttr(homeScreenTip, 'data-tip', 'Dismissed'),
       )
     }),
   )
@@ -576,127 +584,120 @@ describe('the install tile', () => {
   it.effect(
     'opens the picture guide, three steps of a word each, and the X closes it',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(onIphone),
-        measureSurface,
-        Scene.expect(steps).toBeAbsent(),
-        Scene.click(homeScreenTip),
-        ...showSteps,
-        Scene.expect(steps).toExist(),
-        Scene.inside(
-          steps,
-          Scene.expectAll(Scene.all.role('listitem')).toHaveCount(3),
-        ),
-        Scene.expect(steps).toContainText('Share'),
-        Scene.expect(steps).toContainText('Add'),
-        Scene.expect(steps).toContainText('Play!'),
-        Scene.expect(steps).toContainText('Add to Home Screen'),
-        Scene.expect(homeScreenTip).toHaveAttr('data-tip', 'Dismissed'),
-        Scene.click(Scene.role('button', { name: 'Close' })),
-        Scene.Command.resolve(
-          Dialog.test.CloseDialog,
-          DialogBlock.Message.CompletedCloseDialog(),
-        ),
-        Scene.expect(steps).toBeAbsent(),
-        Scene.expect(homeScreenTip).toExist(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(onIphone)
+        s.pipe(measureHud).expect(guide).toBeAbsent()
+        s.pipe(clickOn(homeScreenTip), showDialog(HOME_SCREEN_STEPS_ID))
+          .expect(guide)
+          .toExist()
+          // NOTE: the steps are pictures, aria-hidden, so they are counted
+          // among hidden elements.
+          .expect(
+            Locator.inside(
+              guide,
+              HtmlLocator.role('listitem', { hidden: true }),
+            ),
+          )
+          .toHaveCount(3)
+          .expect(guide)
+          .toHaveText(/Share/)
+          .expect(guide)
+          .toHaveText(/Add/)
+          .expect(guide)
+          .toHaveText(/Play!/)
+          .expect(guide)
+          .toHaveText(/Add to Home Screen/)
+        s.pipe(expectAttr(homeScreenTip, 'data-tip', 'Dismissed'))
+          .expect(Locator.inside(guide, button('Close')))
+          .toExist()
+        // NOTE: the X is the Dialog's own close part, so its press comes up
+        // as the Dialog's close request.
+        s.pipe(requestDialogClose(HOME_SCREEN_STEPS_ID, 'close-press'))
+          .expect(guide)
+          .toBeAbsent()
+          .expect(homeScreenTip)
+          .toExist()
+      }),
   )
 
-  // NOTE: Escape reaches the Dialog as its own close request, which a
-  // Scene cannot raise, so the Story sends it to the open guide and the
-  // Scene draws the Model it left.
   it.effect('Escape closes the guide too', () =>
     Effect.gen(function* () {
-      const escaped = yield* Story.story(
-        APPLICATION,
-        Story.given(onIphone),
-        Story.message(Message.ClickedInstallButton()),
-        showDialog(),
-        Story.model(current => {
-          vitestExpect(current.homeScreenSteps.isOpen).toBe(true)
-        }),
-        Story.messageIn(
-          HomeScreenStepsBinding,
-          DialogBlock.Message.CanceledDialog(),
-        ),
-        closeDialog(),
-        Story.model(current => {
-          vitestExpect(current.homeScreenSteps.isOpen).toBe(false)
-        }),
+      const s = yield* sceneOf(onIphone)
+      s.pipe(
+        measureHud,
+        clickOn(homeScreenTip),
+        showDialog(HOME_SCREEN_STEPS_ID),
+        requestDialogClose(HOME_SCREEN_STEPS_ID, 'escape-key'),
       )
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(escaped),
-        measureSurface,
-        Scene.expect(steps).toBeAbsent(),
-      )
+        .expect(guide)
+        .toBeAbsent()
     }),
   )
 
   it.effect(
     'on Chrome, it shows only once the browser offers to install, and a tap asks for the prompt',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFields(onTouch(initialModel), {
-            settings: modifyFields({ screenFit: () => 'Fullscreen' }),
+      Effect.gen(function* () {
+        const s = yield* sceneOf(
+          UiStruct.evolve(onTouch(initialModel), {
+            settings: UiStruct.evolve({ screenFit: () => 'Fullscreen' }),
           }),
-        ),
-        measureSurface,
-        Scene.expect(installButton).toBeAbsent(),
-        Scene.Subscription.emit(
-          SCENE_SUBSCRIPTIONS.installOffers,
-          Message.ChangedInstallOffer({ installOffer: 'Ready' }),
-        ),
-        Scene.expect(installButton).toExist(),
-        Scene.click(installButton),
-        Scene.Command.expectExact(ShowInstallPrompt),
-        Scene.Command.resolve(
-          ShowInstallPrompt,
-          Message.CompletedShowInstallPrompt({ outcome: 'Accepted' }),
-        ),
-        Scene.expect(installButton).toBeAbsent(),
-      ),
+        )
+        s.pipe(measureHud).expect(installButton).toBeAbsent()
+        s.pipe(
+          fromSubscription(
+            'InstallOffers',
+            Message.ChangedInstallOffer({ installOffer: 'Ready' }),
+          ),
+        )
+          .expect(installButton)
+          .toExist()
+        s.pipe(clickOn(installButton))
+          .expectExact(ShowInstallPrompt.make())
+          .resolve(
+            ShowInstallPrompt,
+            InstallMessage.CompletedShowInstallPrompt({ outcome: 'Accepted' }),
+          )
+          .expect(installButton)
+          .toBeAbsent()
+      }),
   )
 
   it.effect(
     'hides in the installed app and on a desktop with no way to install',
     () =>
       Effect.gen(function* () {
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(
-            modifyFields(onIphone, {
-              settings: modifyFields({ screenFit: () => 'Installed' }),
-            }),
-          ),
-          measureSurface,
-          Scene.expect(homeScreenTip).toBeAbsent(),
-          Scene.expect(fullscreenButton).toBeAbsent(),
+        const installed = yield* sceneOf(
+          UiStruct.evolve(onIphone, {
+            settings: UiStruct.evolve({ screenFit: () => 'Installed' }),
+          }),
         )
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(
-            modifyFields(initialModel, {
-              settings: modifyFields({ screenFit: () => 'Fullscreen' }),
-            }),
-          ),
-          measureSurface,
-          Scene.expect(homeScreenTip).toBeAbsent(),
-          Scene.expect(installButton).toBeAbsent(),
+        installed
+          .pipe(measureHud)
+          .expect(homeScreenTip)
+          .toBeAbsent()
+          .expect(fullscreenButton)
+          .toBeAbsent()
+        const desktop = yield* sceneOf(
+          UiStruct.evolve(initialModel, {
+            settings: UiStruct.evolve({ screenFit: () => 'Fullscreen' }),
+          }),
         )
+        desktop
+          .pipe(measureHud)
+          .expect(homeScreenTip)
+          .toBeAbsent()
+          .expect(installButton)
+          .toBeAbsent()
       }),
   )
 })
 
 describe('the first break on screen', () => {
   it.effect('has no timer, and the timer line says so', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(breakWithTraps, {
+    Effect.gen(function* () {
+      const s = yield* sceneOf(
+        UiStruct.evolve(breakWithTraps, {
           phase: () =>
             Phase.Preparation({
               wave: 2,
@@ -706,59 +707,48 @@ describe('the first break on screen', () => {
               clock: BreakClock.Waiting({ elapsedMs: 0 }),
             }),
         }),
-      ),
-      measureSurface,
-      frame(50),
-      Scene.expect(Scene.role('timer')).toHaveText(
-        'Wave 2 starts when you are ready.',
-      ),
-      Scene.expect(
-        Scene.role('button', { name: 'Start wave 2 now' }),
-      ).toExist(),
-    ),
+      )
+      s.pipe(measureHud, emitFrame(50))
+        .expect(HtmlLocator.role('timer'))
+        .toHaveText('Wave 2 starts when you are ready.')
+        .expect(button('Start wave 2 now'))
+        .toExist()
+    }),
   )
 })
 
 describe('the title icons and the character picker', () => {
-  const showPicker = [
-    Scene.Command.resolve(
-      Dialog.test.ShowDialog,
-      DialogBlock.Message.SucceededShowDialog(),
-    ),
-  ]
-
   it.effect('the title keeps its corner clear for the picker', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(onTouch(initialModel), {
-          settings: modifyFields({ screenFit: () => 'HomeScreen' }),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(
+        UiStruct.evolve(onTouch(initialModel), {
+          settings: UiStruct.evolve({ screenFit: () => 'HomeScreen' }),
         }),
-      ),
-      measureSurface,
-      Scene.expect(muteButton).toBeAbsent(),
-      Scene.expect(homeScreenTip).toExist(),
-      Scene.click(
-        Scene.role('button', { name: 'Your character: change how you look' }),
-      ),
-      ...showPicker,
-      Scene.expect(Scene.role('dialog', { name: 'Profile' })).toExist(),
-      Scene.expect(muteButton).toBeAbsent(),
-      Scene.expect(musicButton).toBeAbsent(),
-    ),
+      )
+      s.pipe(measureHud)
+        .expect(muteButton)
+        .toBeAbsent()
+        .expect(homeScreenTip)
+        .toExist()
+      s.pipe(
+        clickOn(button('Your character: change how you look')),
+        showDialog(PROFILE_DIALOG_ID),
+      )
+        .expect(profileDialog)
+        .toExist()
+        .expect(muteButton)
+        .toBeAbsent()
+        .expect(musicButton)
+        .toBeAbsent()
+    }),
   )
 
   it.effect('C opens the Profile from the title', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(asVeteran(initialModel)),
-      measureSurface,
-      Scene.Subscription.emit(
-        SCENE_SUBSCRIPTIONS.keyboard,
-        Message.PressedKey({ code: 'KeyC' }),
-      ),
-      ...showPicker,
-      Scene.expect(Scene.role('dialog', { name: 'Profile' })).toExist(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* sceneOf(asVeteran(initialModel))
+      s.pipe(measureHud, emitPressedKey('KeyC'), showDialog(PROFILE_DIALOG_ID))
+        .expect(profileDialog)
+        .toExist()
+    }),
   )
 })

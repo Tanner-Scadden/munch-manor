@@ -1,9 +1,9 @@
 import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { Dialog } from '@foldkit/ui'
-
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import { COOP_ICON } from '../../art/coopIcons'
@@ -60,6 +60,7 @@ import { DeviceMessage } from '../../platform/message'
 import type { TutorialChoice } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
 import { closeButtonView } from '../../ui/cornerButtons'
+import type { DialogParts } from '../../ui/dialog'
 import {
   iconView,
   isKeyboard,
@@ -97,11 +98,7 @@ import {
   isTurnHintShown,
   steppedHandCard,
 } from './home'
-import {
-  homeButtonAttributes,
-  homeFocusAttributes,
-  keyBadgeView,
-} from './homeAttributes'
+import { homeButton, homeFocusAttrs, keyBadgeView } from './homeAttributes'
 import { installTileView } from './installView'
 import { updateGiftView } from './updateGift'
 
@@ -110,29 +107,27 @@ import { updateGiftView } from './updateGift'
 // NOTE: show, don't explain. PLAY is the dare your friends hand you, a
 // folded napkin card with I DARE YOU scrawled over the play mark, and the
 // lobby it opens (src/features/lobby/view.ts) is the card you fill in.
-const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      ...homeButtonAttributes('Play', h),
-      h.Class('home-play'),
-      h.DataAttribute('mode', model.home.mode),
-      h.AriaLabel('Play'),
-      h.OnClick(HomeMessage.ClickedPlayButton(), { propagation: 'Stop' }),
-    ],
-    [
-      h.span(
-        [h.Class('home-play-face')],
-        [
-          h.span(
-            [h.Class('home-play-dare'), h.AriaHidden(true)],
-            ['I DARE YOU'],
-          ),
+const playButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  homeButton(h.button, 'Play')
+    .class('home-play')
+    .attr('data-mode', model.home.mode)
+    .attr('aria-label', 'Play')
+    .on('click', HomeMessage.ClickedPlayButton())
+    .children(
+      h.span
+        .class('home-play-face')
+        .children(
+          h.span
+            .class('home-play-dare')
+            .attr('aria-hidden', 'true')
+            .children('I DARE YOU'),
           iconView('home-play-icon', PLAY_ICON, h),
-        ],
-      ),
+        ),
       ...keyBadgeView(model, 'Play', h),
-    ],
-  )
+    )
 
 // NOTE: a difficulty reads as a row of four skulls: as many lit as the
 // level, each in that level's color and face, and the fourth dim with a
@@ -141,57 +136,63 @@ const skullMeterView = (
   model: Model,
   difficulty: Difficulty,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const lit = Array.findFirstIndex(
     DIFFICULTY_ORDER,
     level => level === difficulty,
   )
   const litCount = Option.getOrElse(lit, () => 0) + 1
-  return h.span(
-    [h.Class('skull-meter'), h.AriaHidden(true)],
-    Array.map(DIFFICULTY_ORDER, (level, index) =>
-      level === 'Nightmare' && isLocked(model.difficulty, 'Nightmare')
-        ? h.span(
-            [h.Class('skull-slot')],
-            skullFaceViews(
-              { className: 'skull', icon: SKULL_OFF_ICON, isLocked: true },
+  return h.span
+    .class('skull-meter')
+    .attr('aria-hidden', 'true')
+    .children(
+      Array.map(DIFFICULTY_ORDER, (level, index) =>
+        level === 'Nightmare' && isLocked(model.difficulty, 'Nightmare')
+          ? h.span
+              .class('skull-slot')
+              .children(
+                skullFaceViews(
+                  { className: 'skull', icon: SKULL_OFF_ICON, isLocked: true },
+                  h,
+                ),
+              )
+          : iconView(
+              index < litCount ? 'skull skull-lit' : 'skull',
+              index < litCount ? SKULL_ICONS[difficulty] : SKULL_OFF_ICON,
               h,
             ),
-          )
-        : iconView(
-            index < litCount ? 'skull skull-lit' : 'skull',
-            index < litCount ? SKULL_ICONS[difficulty] : SKULL_OFF_ICON,
-            h,
-          ),
-    ),
-  )
+      ),
+    )
 }
 
 // NOTE: CO-OP is two heads, pink and teal, by PLAY, open from the first
 // visit (MULTIPLAYER.md, decision 14).
-const coopButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      ...homeButtonAttributes('Coop', h),
-      h.Class('home-coop'),
-      h.AriaLabel('Co-op: play with friends'),
-      h.OnClick(HomeMessage.ClickedCoopButton(), { propagation: 'Stop' }),
-    ],
-    [
+const coopButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  homeButton(h.button, 'Coop')
+    .class('home-coop')
+    .attr('aria-label', 'Co-op: play with friends')
+    .on('click', HomeMessage.ClickedCoopButton())
+    .children(
       iconView('home-coop-icon', COOP_ICON, h),
-      h.span([h.Class('home-coop-label')], [MULTIPLAYER_NAME]),
+      h.span.class('home-coop-label').children(MULTIPLAYER_NAME),
       ...keyBadgeView(model, 'Coop', h),
-    ],
-  )
+    )
 
-const playClusterView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.div(
-    [h.Class('home-play-cluster'), h.Role('group'), h.AriaLabel('Play')],
-    [
+const playClusterView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  h.div
+    .class('home-play-cluster')
+    .attr('role', 'group')
+    .attr('aria-label', 'Play')
+    .children(
       playButtonView(model, h),
-      IS_COOP_RELEASED ? coopButtonView(model, h) : h.empty,
-    ],
-  )
+      IS_COOP_RELEASED ? coopButtonView(model, h) : null,
+    )
 
 // THE MANOR HAND
 
@@ -296,37 +297,41 @@ const manorAriaLabel = (model: Model): string =>
 // NOTE: the badges of the cards inside bubble up to the closed MANOR button
 // as little pips, each the card's own icon with a red dot, so What's New and
 // the Munchopedia still show their news without opening the hand.
-const manorPipsView = (model: Model, h: ApplicationViewBuilder): Html =>
+const manorPipsView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Array.match(newsCards(model), {
-    onEmpty: () => h.empty,
+    onEmpty: () => null,
     onNonEmpty: cards =>
-      h.span(
-        [h.Class('manor-pips'), h.AriaHidden(true)],
-        Array.map(cards, card =>
-          h.span(
-            [h.Class('manor-pip'), h.DataAttribute('card', card)],
-            [iconView('manor-pip-icon', CARD_LOOKS[card].icon, h)],
+      h.span
+        .class('manor-pips')
+        .attr('aria-hidden', 'true')
+        .children(
+          Array.map(cards, card =>
+            h.span
+              .class('manor-pip')
+              .attr('data-card', card)
+              .children(iconView('manor-pip-icon', CARD_LOOKS[card].icon, h)),
           ),
         ),
-      ),
   })
 
-const manorButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      ...homeButtonAttributes('Manor', h),
-      h.Class('home-manor'),
-      h.AriaLabel(manorAriaLabel(model)),
-      h.AriaHasPopup('dialog'),
-      h.OnClick(HomeMessage.ClickedManorButton(), { propagation: 'Stop' }),
-    ],
-    [
+const manorButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  homeButton(h.button, 'Manor')
+    .class('home-manor')
+    .attr('aria-label', manorAriaLabel(model))
+    .attr('aria-haspopup', 'dialog')
+    .on('click', HomeMessage.ClickedManorButton())
+    .children(
       iconView('home-manor-icon', HAND_ICON, h),
-      h.span([h.Class('home-manor-label')], ['MORE']),
+      h.span.class('home-manor-label').children('MORE'),
       manorPipsView(model, h),
       ...keyBadgeView(model, 'Manor', h),
-    ],
-  )
+    )
 
 const handKeyMessage = (
   card: HandCard,
@@ -351,36 +356,32 @@ const cardBodyView = (
   model: Model,
   card: HandCard,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => [
-  h.span(
-    [h.Class('hand-card-face')],
-    [
-      h.span(
-        [h.Class('hand-card-art')],
-        [iconView('hand-card-icon', CARD_LOOKS[card].icon, h)],
-      ),
-      h.span([h.Class('hand-card-title')], [CARD_LOOKS[card].title]),
-      ...Option.match(maybeCardTally(model, card), {
-        onNone: () => [],
-        onSome: tally => [
-          h.span(
-            [
-              h.Class('hand-card-tally'),
-              h.Style({
-                '--found': `${discoveredKinds(model.bests.killsByKind).length / ENTRY_COUNT}`,
-              }),
-            ],
-            [tally],
-          ),
-        ],
-      }),
-      ...(hasNews(model, card)
-        ? [h.span([h.Class('hand-card-new'), h.AriaHidden(true)], ['NEW'])]
-        : []),
-      ...(isLinkHandCard(card)
-        ? []
-        : keyCapView(model, HAND_KEYS[card].cap, h)),
-    ],
+): ReadonlyArray<ApplicationHtml> => [
+  h.span.class('hand-card-face').children(
+    h.span
+      .class('hand-card-art')
+      .children(iconView('hand-card-icon', CARD_LOOKS[card].icon, h)),
+    h.span.class('hand-card-title').children(CARD_LOOKS[card].title),
+    ...Option.match(maybeCardTally(model, card), {
+      onNone: () => [],
+      onSome: tally => [
+        h.span
+          .class('hand-card-tally')
+          .style({
+            '--found': `${discoveredKinds(model.bests.killsByKind).length / ENTRY_COUNT}`,
+          })
+          .children(tally),
+      ],
+    }),
+    ...(hasNews(model, card)
+      ? [
+          h.span
+            .class('hand-card-new')
+            .attr('aria-hidden', 'true')
+            .children('NEW'),
+        ]
+      : []),
+    ...(isLinkHandCard(card) ? [] : keyCapView(model, HAND_KEYS[card].cap, h)),
   ),
 ]
 
@@ -388,73 +389,86 @@ const LINK_CARD_URLS: Readonly<Record<LinkHandCard, string>> = {
   Code: SOURCE_URL,
 }
 
+// NOTE: what a hand card wears, a button or the CODE link: its id, its
+// place in the fan, its label and key as attributes, and the arrow keys
+// stepping focus between the cards (the browser's own scroll held back only
+// for those). Each card chains them on its own concrete builder.
+const handCardAttrs = (
+  model: Model,
+  card: HandCard,
+): Readonly<Record<string, string | undefined>> => ({
+  id: handCardId(card),
+  class: 'hand-card',
+  'data-card': card,
+  'aria-label': cardAriaLabel(model, card),
+  'aria-keyshortcuts': isLinkHandCard(card) ? undefined : HAND_KEYS[card].name,
+})
+
+const handKeyOf =
+  (card: HandCard) =>
+  ({ key }: { readonly key: string }) =>
+    Option.getOrUndefined(handKeyMessage(card, key))
+
 const handCardView = (
   model: Model,
   card: HandCard,
   index: number,
   count: number,
-  renderInfo: Dialog.RenderInfo,
+  parts: DialogParts,
   h: ApplicationViewBuilder,
-): Html => {
-  const shared = [
-    ...(index === 0 ? renderInfo.initialFocus : []),
-    h.Id(handCardId(card)),
-    h.Class('hand-card'),
-    h.DataAttribute('card', card),
-    h.Style({ '--i': `${index}`, '--n': `${count}` }),
-    h.AriaLabel(cardAriaLabel(model, card)),
-    ...(isLinkHandCard(card) ? [] : [h.AriaKeyshortcuts(HAND_KEYS[card].name)]),
-    h.OnKeyDownPreventDefault(key => handKeyMessage(card, key)),
-  ]
-  return h.li(
-    [h.Class('hand-slot')],
-    [
-      isLinkHandCard(card)
-        ? h.a(
-            [
-              ...shared,
-              h.Href(LINK_CARD_URLS[card]),
-              h.Target('_blank'),
-              h.Rel('noopener noreferrer'),
-            ],
-            cardBodyView(model, card, h),
-          )
-        : h.button(
-            [
-              ...shared,
-              h.Type('button'),
-              h.AriaHasPopup('dialog'),
-              h.OnClick(CARD_MESSAGES[card], { propagation: 'Stop' }),
-            ],
-            cardBodyView(model, card, h),
-          ),
-    ],
-  )
+): ApplicationHtml => {
+  const fan = { '--i': `${index}`, '--n': `${count}` }
+  const body = cardBodyView(model, card, h)
+  if (isLinkHandCard(card)) {
+    const link = h.a
+      .attrs(handCardAttrs(model, card))
+      .style(fan)
+      .on('keydown', handKeyOf(card), { preventDefault: true })
+      .attr('href', LINK_CARD_URLS[card])
+      .attr('target', '_blank')
+      .attr('rel', 'noopener noreferrer')
+    return h.li
+      .class('hand-slot')
+      .children((index === 0 ? parts.initialFocus(link) : link).children(body))
+  }
+  const button = h.button
+    .attrs(handCardAttrs(model, card))
+    .style(fan)
+    .on('keydown', handKeyOf(card), { preventDefault: true })
+    .attr('type', 'button')
+    .attr('aria-haspopup', 'dialog')
+    .on('click', CARD_MESSAGES[card])
+  return h.li
+    .class('hand-slot')
+    .children(
+      (index === 0 ? parts.initialFocus(button) : button).children(body),
+    )
 }
 
 const HAND_TITLE = 'The manor'
 
 const handView = (
   model: Model,
-  renderInfo: Dialog.RenderInfo,
+  parts: DialogParts,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => {
+): ReadonlyArray<ApplicationHtml> => {
   const cards = HAND_CARDS
   return [
-    h.h2([...renderInfo.title, h.Class('sr-only')], [HAND_TITLE]),
-    h.p(
-      [...renderInfo.description, h.Class('sr-only')],
-      ['Pick a card. Arrow keys move between them.'],
-    ),
-    h.ul(
-      [h.Class('hand-cards')],
-      Array.map(cards, (card, index) =>
-        handCardView(model, card, index, cards.length, renderInfo, h),
+    parts.title(h.h2).class('sr-only').children(HAND_TITLE),
+    parts
+      .description(h.p)
+      .class('sr-only')
+      .children('Pick a card. Arrow keys move between them.'),
+    h.ul
+      .class('hand-cards')
+      .children(
+        Array.map(cards, (card, index) =>
+          handCardView(model, card, index, cards.length, parts, h),
+        ),
       ),
-    ),
     closeButtonView(
       {
-        attributes: renderInfo.closeButton,
+        button: parts.close(h.button),
         className: 'hand-close',
         label: 'Close',
       },
@@ -469,53 +483,53 @@ const handView = (
 // the canvas by screens.ts. This button sits over them, so a tap on your
 // character opens the picker. The hand's Character card is the one a
 // keyboard or a screen reader reaches.
-const heroButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('home-hero'),
-      h.Tabindex(-1),
-      h.AriaLabel('Your character: change how you look'),
-      h.AriaHasPopup('dialog'),
-      h.OnClick(HomeMessage.ClickedCharacterButton(), { propagation: 'Stop' }),
-    ],
-    [rankChipView(model, h)],
-  )
+const heroButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  h.button
+    .attr('type', 'button')
+    .class('home-hero')
+    .attr('tabindex', String(-1))
+    .attr('aria-label', 'Your character: change how you look')
+    .attr('aria-haspopup', 'dialog')
+    .on('click', HomeMessage.ClickedCharacterButton())
+    .children(rankChipView(model, h))
 
 // CORNER
 
-const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+const fullscreenButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   model.settings.screenFit === 'Fullscreen'
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Class('home-corner-button home-fullscreen'),
-          h.AriaLabel('Full screen'),
-          h.AriaPressed(model.settings.fullscreen === 'On' ? 'true' : 'false'),
-          h.OnClick(DeviceMessage.ClickedFullscreenButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [iconView('home-corner-icon', FULLSCREEN_ICON, h)],
-      )
-    : h.empty
+    ? h.button
+        .attr('type', 'button')
+        .class('home-corner-button home-fullscreen')
+        .attr('aria-label', 'Full screen')
+        .attr(
+          'aria-pressed',
+          String(model.settings.fullscreen === 'On' ? 'true' : 'false'),
+        )
+        .on('click', DeviceMessage.ClickedFullscreenButton())
+        .children(iconView('home-corner-icon', FULLSCREEN_ICON, h))
+    : null
 
 // NOTE: the gear sits in the corner itself, the coffee just inside it, and
 // full screen, where the browser can do it, inside that.
-const settingsButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      ...homeButtonAttributes('Settings', h),
-      h.Class('home-corner-button home-settings'),
-      h.AriaLabel('Settings'),
-      h.AriaHasPopup('dialog'),
-      h.OnClick(HomeMessage.ClickedSettingsButton(), { propagation: 'Stop' }),
-    ],
-    [
+const settingsButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml =>
+  homeButton(h.button, 'Settings')
+    .class('home-corner-button home-settings')
+    .attr('aria-label', 'Settings')
+    .attr('aria-haspopup', 'dialog')
+    .on('click', HomeMessage.ClickedSettingsButton())
+    .children(
       iconView('home-corner-icon', SETTINGS_ICON, h),
       ...keyBadgeView(model, 'Settings', h),
-    ],
-  )
+    )
 
 // NOTE: Buy Rattles a coffee, just left of the gear: a pixel mug with
 // steam rising from it. It is a real link, so the browser opens the tip
@@ -525,38 +539,37 @@ const COFFEE_LABEL = 'Buy Rattles a coffee'
 
 const STEAM_WISPS = 2
 
-const supportButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+const supportButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(model.release.maybeSupportUrl, {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: url =>
-      h.a(
-        [
-          ...homeFocusAttributes('Support', h),
-          h.Class('home-corner-button home-support'),
-          h.Href(url),
-          h.Target('_blank'),
-          h.Rel('noopener noreferrer'),
-          h.AriaLabel(`${COFFEE_LABEL}. Opens in a new tab`),
-          h.Title(COFFEE_LABEL),
-          h.OnClick(HomeMessage.ClickedSupportButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
+      h.a
+        .attrs(homeFocusAttrs('Support'))
+        .on('focus', HomeMessage.FocusedHomeButton({ button: 'Support' }))
+        .on('blur', HomeMessage.BlurredHomeButton())
+        .class('home-corner-button home-support')
+        .attr('href', url)
+        .attr('target', '_blank')
+        .attr('rel', 'noopener noreferrer')
+        .attr('aria-label', `${COFFEE_LABEL}. Opens in a new tab`)
+        .attr('title', COFFEE_LABEL)
+        .on('click', HomeMessage.ClickedSupportButton())
+        .children(
           ...Array.makeBy(STEAM_WISPS, wisp =>
-            h.span([
-              h.Class('home-support-steam'),
-              h.AriaHidden(true),
-              h.Style({
+            h.span
+              .class('home-support-steam')
+              .attr('aria-hidden', 'true')
+              .style({
                 '--wisp': `${wisp}`,
                 ...pixelArtStyle(COFFEE_STEAM_ICON),
               }),
-            ]),
           ),
           iconView('home-corner-icon home-support-cup', COFFEE_CUP_ICON, h),
           ...keyBadgeView(model, 'Support', h),
-        ],
-      ),
+        ),
   })
 
 // NEW ENTRY
@@ -568,53 +581,52 @@ const newEntryText = (model: Model): Option.Option<string> =>
       : entryName(kind),
   )
 
-const newEntryButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+const newEntryButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(Array.head(model.home.newEntries), {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: kind =>
-      h.button(
-        [
-          h.Type('button'),
-          h.Class('new-entry'),
-          h.AriaLabel(
-            `New Munchopedia entry: ${Option.getOrElse(newEntryText(model), () => '')}. Open it`,
-          ),
-          h.OnClick(HomeMessage.ClickedNewEntryButton({ kind }), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          h.span([h.Class('new-entry-flag')], ['NEW ENTRY!']),
-          h.span(
-            [h.Class('new-entry-name')],
-            [Option.getOrElse(newEntryText(model), () => '')],
-          ),
-        ],
-      ),
+      h.button
+        .attr('type', 'button')
+        .class('new-entry')
+        .attr(
+          'aria-label',
+          `New Munchopedia entry: ${Option.getOrElse(newEntryText(model), () => '')}. Open it`,
+        )
+        .on('click', HomeMessage.ClickedNewEntryButton({ kind }))
+        .children(
+          h.span.class('new-entry-flag').children('NEW ENTRY!'),
+          h.span
+            .class('new-entry-name')
+            .children(Option.getOrElse(newEntryText(model), () => '')),
+        ),
   })
 
 // NOTE: the end screens only tell. The entry opens from the menu.
 export const newEntryNoticeView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isEndScreen(model.phase)
-    ? Option.match(newEntryText(model), {
-        onNone: () => h.empty,
-        onSome: text =>
-          h.div(
-            [h.Class('new-entry new-entry-notice'), h.Role('status')],
-            [
-              h.span([h.Class('new-entry-flag')], ['NEW ENTRY!']),
-              h.span([h.Class('new-entry-name')], [text]),
-              h.span(
-                [h.Class('new-entry-where')],
-                ['In the Munchopedia on the menu'],
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    isEndScreen(model.phase)
+      ? Option.match(newEntryText(model), {
+          onNone: () => null,
+          onSome: text =>
+            h.div
+              .class('new-entry new-entry-notice')
+              .attr('role', 'status')
+              .children(
+                h.span.class('new-entry-flag').children('NEW ENTRY!'),
+                h.span.class('new-entry-name').children(text),
+                h.span
+                  .class('new-entry-where')
+                  .children('In the Munchopedia on the menu'),
               ),
-            ],
-          ),
-      })
-    : h.empty,
+        })
+      : null,
 )
 
 // TURN HINT
@@ -626,69 +638,67 @@ export const TURN_HINT_TEXT = 'Turn sideways to see more'
 // phone and a short line. A tap on it, or turning the phone, dismisses it
 // for good (the save keeps that). Only the pill takes taps, so it never
 // blocks a button. isPortrait is false on a keyboard and mouse.
-const turnHintView = (model: Model, h: ApplicationViewBuilder): Html =>
+const turnHintView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   isTurnHintShown(model)
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Class('home-turn-hint'),
-          h.Tabindex(-1),
-          h.AriaLabel(TURN_HINT_TEXT),
-          h.OnClick(HomeMessage.ClickedTurnHint(), { propagation: 'Stop' }),
-        ],
-        [
+    ? h.button
+        .attr('type', 'button')
+        .class('home-turn-hint')
+        .attr('tabindex', String(-1))
+        .attr('aria-label', TURN_HINT_TEXT)
+        .on('click', HomeMessage.ClickedTurnHint())
+        .children(
           iconView('home-turn-icon', TURN_PHONE_ICON, h),
-          h.span([h.Class('home-turn-text')], [TURN_HINT_TEXT]),
-        ],
-      )
-    : h.empty
+          h.span.class('home-turn-text').children(TURN_HINT_TEXT),
+        )
+    : null
 
 // HOME MENU
 
 export const homeMenuView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isOnHome(model.phase)
-    ? h.div(
-        [
-          h.Class('home-frame'),
-          h.DataAttribute('device', model.lastDevice),
-          h.DataAttribute('fit', model.settings.screenFit),
-        ],
-        [
-          h.div(
-            [h.Class('home-stage')],
-            [
-              playClusterView(model, h),
-              manorButtonView(model, h),
-              topLeftView(model, h),
-              heroButtonView(model, h),
-              newEntryButtonView(model, h),
-              beatCardView(model, h),
-              turnHintView(model, h),
-              h.div(
-                [h.Class('home-corner')],
-                [
-                  h.div(
-                    [h.Class('home-corner-row')],
-                    [
-                      fullscreenButtonView(model, h),
-                      supportButtonView(model, h),
-                      settingsButtonView(model, h),
-                    ],
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    isOnHome(model.phase)
+      ? h.div
+          .class('home-frame')
+          .attr('data-device', model.lastDevice)
+          .attr('data-fit', model.settings.screenFit)
+          .children(
+            h.div
+              .class('home-stage')
+              .children(
+                playClusterView(model, h),
+                manorButtonView(model, h),
+                topLeftView(model, h),
+                heroButtonView(model, h),
+                newEntryButtonView(model, h),
+                beatCardView(model, h),
+                turnHintView(model, h),
+                h.div
+                  .class('home-corner')
+                  .children(
+                    h.div
+                      .class('home-corner-row')
+                      .children(
+                        fullscreenButtonView(model, h),
+                        supportButtonView(model, h),
+                        settingsButtonView(model, h),
+                      ),
+                    h.div
+                      .class('home-corner-row')
+                      .children(
+                        updateGiftView(model, h),
+                        installTileView(model, h),
+                      ),
                   ),
-                  h.div(
-                    [h.Class('home-corner-row')],
-                    [updateGiftView(model, h), installTileView(model, h)],
-                  ),
-                ],
               ),
-            ],
-          ),
-        ],
-      )
-    : h.empty,
+          )
+      : null,
 )
 
 // PANELS
@@ -713,41 +723,36 @@ const CARD_KEY_ACTIONS: Readonly<Record<KeyedHandCard, string>> = {
   Proof: 'proof',
 }
 
-const menuKeysView = (h: ApplicationViewBuilder): Html =>
-  h.section(
-    [h.Class('menu-keys'), h.AriaLabelledBy(MENU_KEYS_TITLE_ID)],
-    [
-      h.h3(
-        [h.Id(MENU_KEYS_TITLE_ID), h.Class('menu-keys-title')],
-        ['On the menu'],
-      ),
-      h.ul(
-        [h.Class('help-extra')],
-        [
-          ...Array.map(
-            Array.filter(HOME_BUTTONS, button => button !== 'Bests'),
-            button =>
-              h.li(
-                [h.Class('help-extra-item')],
-                [
-                  h.kbd([h.Class('menu-key')], [HOME_KEYS[button].name]),
-                  ` ${MENU_KEY_ACTIONS[button]}`,
-                ],
+const menuKeysView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.section
+    .class('menu-keys')
+    .attr('aria-labelledby', MENU_KEYS_TITLE_ID)
+    .children(
+      h.h3
+        .id(MENU_KEYS_TITLE_ID)
+        .class('menu-keys-title')
+        .children('On the menu'),
+      h.ul.class('help-extra').children(
+        ...Array.map(
+          Array.filter(HOME_BUTTONS, button => button !== 'Bests'),
+          button =>
+            h.li
+              .class('help-extra-item')
+              .children(
+                h.kbd.class('menu-key').children(HOME_KEYS[button].name),
+                ` ${MENU_KEY_ACTIONS[button]}`,
               ),
-          ),
-          ...Array.map(KEYED_HAND_CARDS, card =>
-            h.li(
-              [h.Class('help-extra-item')],
-              [
-                h.kbd([h.Class('menu-key')], [HAND_KEYS[card].name]),
-                ` ${CARD_KEY_ACTIONS[card]}`,
-              ],
+        ),
+        ...Array.map(KEYED_HAND_CARDS, card =>
+          h.li
+            .class('help-extra-item')
+            .children(
+              h.kbd.class('menu-key').children(HAND_KEYS[card].name),
+              ` ${CARD_KEY_ACTIONS[card]}`,
             ),
-          ),
-        ],
+        ),
       ),
-    ],
-  )
+    )
 
 // DIFFICULTY
 
@@ -755,9 +760,14 @@ const freshBadgeView = (
   model: Model,
   difficulty: Difficulty,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> =>
+): ReadonlyArray<ApplicationHtml> =>
   difficulty === 'Nightmare' && model.difficulty.nightmare === 'JustUnlocked'
-    ? [h.span([h.Class('difficulty-new'), h.AriaHidden(true)], ['NEW!'])]
+    ? [
+        h.span
+          .class('difficulty-new')
+          .attr('aria-hidden', 'true')
+          .children('NEW!'),
+      ]
     : []
 
 const difficultyLabel = (model: Model, difficulty: Difficulty): string =>
@@ -771,49 +781,42 @@ const isAskingFirst = (model: Model): boolean =>
 const difficultyChoiceView = (
   model: Model,
   difficulty: Difficulty,
-  renderInfo: Dialog.RenderInfo,
+  parts: DialogParts,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const locked = isLocked(model.difficulty, difficulty)
   const isChosen = difficulty === model.difficulty.chosen
-  return h.button(
-    [
-      ...(isChosen ? renderInfo.initialFocus : []),
-      h.Type('button'),
-      h.Class('difficulty-choice'),
-      h.DataAttribute('difficulty', difficulty),
-      ...(isChosen && !isAskingFirst(model)
-        ? [h.DataAttribute('chosen', 'Chosen')]
-        : []),
-      h.AriaLabel(difficultyLabel(model, difficulty)),
-      ...(locked ? [h.AriaDisabled(true)] : []),
-      h.OnClick(HomeMessage.ClickedDifficultyCardButton({ difficulty }), {
-        focusSelector: '.game-surface',
-        propagation: 'Stop',
-      }),
-    ],
-    [
+  return (isChosen ? parts.initialFocus(h.button) : h.button)
+    .attr('type', 'button')
+    .class('difficulty-choice')
+    .attr('data-difficulty', difficulty)
+    .attr(
+      'data-chosen',
+      isChosen && !isAskingFirst(model) ? 'Chosen' : undefined,
+    )
+    .attr('aria-label', difficultyLabel(model, difficulty))
+    .attr('aria-disabled', locked ? 'true' : undefined)
+    .on('click', HomeMessage.ClickedDifficultyCardButton({ difficulty }))
+    .children(
       skullMeterView(model, difficulty, h),
-      h.span(
-        [h.Class('difficulty-name')],
-        [
+      h.span
+        .class('difficulty-name')
+        .children(
           DIFFICULTIES[difficulty].name,
           ...freshBadgeView(model, difficulty, h),
-        ],
-      ),
+        ),
       ...(locked
         ? [
-            h.span(
-              [h.Class('difficulty-unlock'), h.AriaHidden(true)],
-              [
+            h.span
+              .class('difficulty-unlock')
+              .attr('aria-hidden', 'true')
+              .children(
                 iconView('difficulty-unlock-icon', TROPHY_ICON, h),
                 iconView('difficulty-unlock-icon', SKULL_ICONS.Hard, h),
-              ],
-            ),
+              ),
           ]
         : []),
-    ],
-  )
+    )
 }
 
 // NOTE: the first-run card's TUTORIAL or SKIP IT (owner, 2026-11-07): the
@@ -837,49 +840,40 @@ const TUTORIAL_CHOICE_LABELS: Readonly<Record<TutorialChoice, string>> = {
 const tutorialChoiceView = (
   chosen: TutorialChoice,
   choice: TutorialChoice,
-  difficulty: Difficulty,
   h: ApplicationViewBuilder,
-): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('tutorial-choice'),
-      h.DataAttribute('choice', choice),
-      h.DataAttribute('state', chosen === choice ? 'Chosen' : 'Other'),
-      h.AriaPressed(chosen === choice ? 'true' : 'false'),
-      h.AriaLabel(TUTORIAL_CHOICE_LABELS[choice]),
-      h.OnClick(HomeMessage.ClickedTutorialChoiceButton({ choice }), {
-        focusSelector: `.difficulty-choice[data-difficulty="${difficulty}"]`,
-        propagation: 'Stop',
-      }),
-    ],
-    [
+): ApplicationHtml =>
+  h.button
+    .attr('type', 'button')
+    .class('tutorial-choice')
+    .attr('data-choice', choice)
+    .attr('data-state', chosen === choice ? 'Chosen' : 'Other')
+    .attr('aria-pressed', chosen === choice ? 'true' : 'false')
+    .attr('aria-label', TUTORIAL_CHOICE_LABELS[choice])
+    .on('click', HomeMessage.ClickedTutorialChoiceButton({ choice }))
+    .children(
       iconView('tutorial-choice-icon', TUTORIAL_CHOICE_ICONS[choice], h),
-      h.span(
-        [h.Class('tutorial-choice-name')],
-        [TUTORIAL_CHOICE_NAMES[choice]],
-      ),
-    ],
-  )
+      h.span
+        .class('tutorial-choice-name')
+        .children(TUTORIAL_CHOICE_NAMES[choice]),
+    )
 
 const tutorialChoicesView = (
   model: Model,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> =>
+): ReadonlyArray<ApplicationHtml> =>
   DifficultyCard.matchOrElse(
     model.difficultyCard,
     {
       Asking: ({ tutorial }) => [
-        h.div(
-          [
-            h.Class('tutorial-choices'),
-            h.Role('group'),
-            h.AriaLabel('Tutorial'),
-          ],
-          Array.map(TUTORIAL_CHOICES, choice =>
-            tutorialChoiceView(tutorial, choice, model.difficulty.chosen, h),
+        h.div
+          .class('tutorial-choices')
+          .attr('role', 'group')
+          .attr('aria-label', 'Tutorial')
+          .children(
+            Array.map(TUTORIAL_CHOICES, choice =>
+              tutorialChoiceView(tutorial, choice, h),
+            ),
           ),
-        ),
       ],
     },
     () => [],
@@ -929,16 +923,16 @@ const panelText = (model: Model, panel: MenuPanel): PanelText => {
 }
 
 const doneButtonView = (
-  { closeButton, initialFocus }: Dialog.RenderInfo,
+  parts: DialogParts,
   h: ApplicationViewBuilder,
   focus: 'TakesInitialFocus' | 'LeavesInitialFocus' = 'TakesInitialFocus',
-): Html =>
+): ApplicationHtml =>
   closeButtonView(
     {
-      attributes: [
-        ...closeButton,
-        ...(focus === 'TakesInitialFocus' ? initialFocus : []),
-      ],
+      button:
+        focus === 'TakesInitialFocus'
+          ? parts.initialFocus(parts.close(h.button))
+          : parts.close(h.button),
       className: 'panel-close',
       label: 'Close',
     },
@@ -948,28 +942,22 @@ const doneButtonView = (
 // NOTE: PLAY TUTORIAL, for a player who wants the lessons again: it starts
 // the tutorial's practice run at once, so it asks nothing first. Only at
 // home, never over a paused run.
-const playTutorialButtonView = (h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('panel-button panel-tutorial'),
-      h.OnClick(HomeMessage.ClickedPlayTutorialButton(), {
-        focusSelector: '.game-surface',
-        propagation: 'Stop',
-      }),
-    ],
-    [
+const playTutorialButtonView = (h: ApplicationViewBuilder): ApplicationHtml =>
+  h.button
+    .attr('type', 'button')
+    .class('panel-button panel-tutorial')
+    .on('click', HomeMessage.ClickedPlayTutorialButton())
+    .children(
       iconView('panel-tutorial-icon', AIM_ICON, h),
-      h.span([], ['Play tutorial']),
-    ],
-  )
+      h.span.children('Play tutorial'),
+    )
 
 // NOTE: under How to play's cards: the menu's keys on a keyboard, the pad
 // and its buttons with a controller in hand.
 const howToPlayUnder = (
   model: Model,
   h: ApplicationViewBuilder,
-): Option.Option<Html> => {
+): Option.Option<ApplicationHtml> => {
   if (isKeyboard(model)) {
     return Option.some(menuKeysView(h))
   }
@@ -980,82 +968,69 @@ const howToPlayUnder = (
 
 const panelBodyView = (
   model: Model,
-  renderInfo: Dialog.RenderInfo,
+  parts: DialogParts,
   childViews: PanelChildViews,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => {
+): ReadonlyArray<ApplicationHtml> => {
   if (model.panel === 'HowToPlay') {
     return [
-      h.div(
-        [h.Class('panel-help'), h.DataAttribute('device', model.lastDevice)],
-        howToPlayView(model, 'Interactive', h, howToPlayUnder(model, h)),
-      ),
-      h.div(
-        [h.Class('panel-actions')],
-        [
+      h.div
+        .class('panel-help')
+        .attr('data-device', model.lastDevice)
+        .children(
+          howToPlayView(model, 'Interactive', h, howToPlayUnder(model, h)),
+        ),
+      h.div
+        .class('panel-actions')
+        .children(
           ...(isOnHome(model.phase) ? [playTutorialButtonView(h)] : []),
-          doneButtonView(renderInfo, h),
-        ],
-      ),
+          doneButtonView(parts, h),
+        ),
     ]
   } else if (model.panel === 'WhatsNew') {
-    return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)
+    return whatsNewBodyView(model, doneButtonView(parts, h), h)
   } else if (model.panel === 'Munchopedia') {
-    return [
-      childViews.munchopedia(model, () => doneButtonView(renderInfo, h), h),
-    ]
+    return [childViews.munchopedia(model, doneButtonView(parts, h), h)]
   } else if (model.panel === 'Proof') {
-    return [childViews.proof(model, () => doneButtonView(renderInfo, h), h)]
+    return [childViews.proof(model, doneButtonView(parts, h), h)]
   } else if (model.panel === 'Missions') {
-    return [missionsPanelView(model, doneButtonView(renderInfo, h), h)]
+    return [missionsPanelView(model, doneButtonView(parts, h), h)]
   } else if (model.panel === 'Difficulty') {
     return [
       ...tutorialChoicesView(model, h),
-      h.div(
-        [h.Class('difficulty-choices')],
-        Array.map(DIFFICULTY_ORDER, difficulty =>
-          difficultyChoiceView(model, difficulty, renderInfo, h),
+      h.div
+        .class('difficulty-choices')
+        .children(
+          Array.map(DIFFICULTY_ORDER, difficulty =>
+            difficultyChoiceView(model, difficulty, parts, h),
+          ),
         ),
-      ),
       ...(isAskingFirst(model)
         ? []
         : [
-            h.div(
-              [h.Class('panel-actions')],
-              [doneButtonView(renderInfo, h, 'LeavesInitialFocus')],
-            ),
+            h.div
+              .class('panel-actions')
+              .children(doneButtonView(parts, h, 'LeavesInitialFocus')),
           ]),
     ]
   } else {
     return [
-      h.div(
-        [h.Class('panel-actions')],
-        [
-          h.button(
-            [
-              h.Type('button'),
-              h.Class('panel-button panel-leave'),
-              h.OnClick(HomeMessage.ClickedLeaveRunButton(), {
-                focusSelector: '.game-surface',
-                propagation: 'Stop',
-              }),
-            ],
-            ['Leave'],
-          ),
-          h.button(
-            [
-              ...renderInfo.initialFocus,
-              h.Type('button'),
-              h.Class('panel-button panel-stay'),
-              h.AriaKeyshortcuts('Escape'),
-              h.OnClick(HomeMessage.ClickedStayButton(), {
-                propagation: 'Stop',
-              }),
-            ],
-            ['Stay'],
-          ),
-        ],
-      ),
+      h.div
+        .class('panel-actions')
+        .children(
+          h.button
+            .attr('type', 'button')
+            .class('panel-button panel-leave')
+            .on('click', HomeMessage.ClickedLeaveRunButton())
+            .children('Leave'),
+          parts
+            .initialFocus(h.button)
+            .attr('type', 'button')
+            .class('panel-button panel-stay')
+            .attr('aria-keyshortcuts', 'Escape')
+            .on('click', HomeMessage.ClickedStayButton())
+            .children('Stay'),
+        ),
     ]
   }
 }
@@ -1066,38 +1041,36 @@ const panelBodyView = (
 // NOTE: the Dare Journal's zombie tally shows over its Zombies tab only.
 const isBlurbShown = (model: Model): boolean =>
   (model.panel === 'Munchopedia' &&
-    tabOfPage(model.munchopedia.page) === 'Zombies') ||
+    tabOfPage(model.munchopediaPage) === 'Zombies') ||
   model.panel === 'LeaveRun' ||
   (model.panel === 'Difficulty' && isAskingFirst(model))
 
 const panelView = (
   model: Model,
-  renderInfo: Dialog.RenderInfo,
+  parts: DialogParts,
   childViews: PanelChildViews,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => {
+): ReadonlyArray<ApplicationHtml> => {
   const text = panelText(model, model.panel)
   return [
-    h.h2([...renderInfo.title, h.Class('panel-title')], [text.title]),
-    h.p(
-      [
-        ...renderInfo.description,
-        h.Class(isBlurbShown(model) ? 'panel-blurb' : 'panel-blurb sr-only'),
-      ],
-      [text.blurb],
-    ),
-    ...panelBodyView(model, renderInfo, childViews, h),
+    parts.title(h.h2).class('panel-title').children(text.title),
+    parts
+      .description(h.p)
+      .class(isBlurbShown(model) ? 'panel-blurb' : 'panel-blurb sr-only')
+      .children(text.blurb),
+    ...panelBodyView(model, parts, childViews, h),
   ]
 }
 
-// NOTE: the child Blocks inside the menu panel, the Munchopedia and the
-// Proof Shelf. The root binds them, so it hands their views in
-// (src/app/dialogs.ts), each given the panel's Done button.
+// NOTE: the components inside the menu panel, the Munchopedia and the
+// Proof Shelf. The root draws them with its props, so it hands their views
+// in (src/app/dialogs.ts), each given the panel's Done button for its
+// `done` slot.
 type PanelChildView = (
   model: Model,
-  doneButton: () => Html,
+  done: ApplicationHtml,
   h: ApplicationViewBuilder,
-) => Html
+) => ApplicationHtml
 
 export type PanelChildViews = Readonly<{
   munchopedia: PanelChildView
@@ -1108,28 +1081,28 @@ export type PanelChildViews = Readonly<{
 // (src/app/dialogs.ts).
 export const menuPanelInsidesView: {
   (
-    renderInfo: Dialog.RenderInfo,
+    parts: DialogParts,
     childViews: PanelChildViews,
     h: ApplicationViewBuilder,
-  ): (model: Model) => ReadonlyArray<Html>
+  ): (model: Model) => ReadonlyArray<ApplicationHtml>
   (
     model: Model,
-    renderInfo: Dialog.RenderInfo,
+    parts: DialogParts,
     childViews: PanelChildViews,
     h: ApplicationViewBuilder,
-  ): ReadonlyArray<Html>
+  ): ReadonlyArray<ApplicationHtml>
 } = Function.dual(4, panelView)
 
 // NOTE: the MANOR hand's insides, for the root's hand Dialog
 // (src/app/dialogs.ts).
 export const manorHandInsidesView: {
   (
-    renderInfo: Dialog.RenderInfo,
+    parts: DialogParts,
     h: ApplicationViewBuilder,
-  ): (model: Model) => ReadonlyArray<Html>
+  ): (model: Model) => ReadonlyArray<ApplicationHtml>
   (
     model: Model,
-    renderInfo: Dialog.RenderInfo,
+    parts: DialogParts,
     h: ApplicationViewBuilder,
-  ): ReadonlyArray<Html>
+  ): ReadonlyArray<ApplicationHtml>
 } = Function.dual(3, handView)

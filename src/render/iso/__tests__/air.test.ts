@@ -1,6 +1,7 @@
 import { Array } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../../app/model'
 import { atClock, quietWave } from '../../../test/model.fixture'
@@ -41,7 +42,7 @@ describe('the air', () => {
 
   test('dust drifts only in the open rooms', () => {
     const wave = quietWave(3)
-    const opened = modifyFields(wave, {
+    const opened = UiStruct.evolve(wave, {
       level: state => openExitIn(state, WEST_EXIT),
     })
     const dust = (model: Model) =>
@@ -56,7 +57,7 @@ describe('the air', () => {
   })
 
   test('embers rise and fade as they climb', () => {
-    const opened = modifyFields(quietWave(3), {
+    const opened = UiStruct.evolve(quietWave(3), {
       level: state => openExitIn(state, WEST_EXIT),
     })
     const embers = Array.filter(

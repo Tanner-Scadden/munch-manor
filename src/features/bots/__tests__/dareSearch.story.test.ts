@@ -1,7 +1,6 @@
-import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Model, Phase } from '../../../app/model'
@@ -17,7 +16,7 @@ import {
   withKeys,
   withZombies,
 } from '../../../test/model.fixture'
-import { APPLICATION, ticks, zombieOf } from '../../../test/testing'
+import { checkModel, storyOf, ticks, zombieOf } from '../../../test/testing'
 import { DareThingState } from '../../../world/dare/dareSchema'
 import { heldKeys } from '../../../world/keys/keys'
 import { maybeStash, pantrySpotOf } from '../../../world/kitchen/pantry'
@@ -58,10 +57,10 @@ const searching = (
   room: SlotRoomId,
   roomId: string,
 ): Readonly<{ model: Model; spot: { x: number; y: number } }> => {
-  const opened = modifyFields(crewInWave(2), {
+  const opened = UiStruct.evolve(crewInWave(2), {
     phase: () => phase,
     level: () => roomOpenIn(DEFAULT_ARRANGEMENT, room),
-    runStart: modifyFields({ crewBots: () => [BOT] }),
+    runStart: UiStruct.evolve({ crewBots: () => [BOT] }),
   })
   const spot = hidingSpotIn(levelOf(opened), roomId)
   return {
@@ -94,35 +93,39 @@ const botAt = (current: Model) =>
 describe('a bot searches for the list', () => {
   it.effect('in a break it works the library hollow book out', () => {
     const { model, spot } = searching(BREAK, 'Library', LIBRARY_ROOM_ID)
-    return Story.story(
-      APPLICATION,
-      Story.given(
+    return Effect.gen(function* () {
+      const s = yield* storyOf(
         placeSeat(1, spot.x + 40, spot.y + 20)(placeSeat(0, 40, 140)(model)),
-      ),
-      ...ticks(150, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(foundBy(current)).toBe(1)
-      }),
-    )
+      )
+      s.pipe(
+        ticks(150, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(foundBy(current)).toBe(1)
+        }),
+      )
+    })
   })
 
   it.effect(
     "in a wave it yanks the cellar bulb's chain, then fetches the thing in the light",
     () => {
       const { model } = searching(QUIET_WAVE, 'Cellar', CELLAR_ROOM_ID)
-      return Story.story(
-        APPLICATION,
-        Story.given(placeSeat(1, 820, 110)(placeSeat(0, 40, 140)(model))),
-        ...ticks(60, FIXED_STEP_MS),
-        Story.model(current => {
-          expect(foundBy(current)).toBeUndefined()
-        }),
-        ...ticks(240, FIXED_STEP_MS),
-        Story.model(current => {
-          expect(current.stations.Bulb.cooldownMs).toBeGreaterThan(0)
-          expect(foundBy(current)).toBe(1)
-        }),
-      )
+      return Effect.gen(function* () {
+        const s = yield* storyOf(
+          placeSeat(1, 820, 110)(placeSeat(0, 40, 140)(model)),
+        )
+        s.pipe(
+          ticks(60, FIXED_STEP_MS),
+          checkModel(current => {
+            expect(foundBy(current)).toBeUndefined()
+          }),
+          ticks(240, FIXED_STEP_MS),
+          checkModel(current => {
+            expect(current.stations.Bulb.cooldownMs).toBeGreaterThan(0)
+            expect(foundBy(current)).toBe(1)
+          }),
+        )
+      })
     },
   )
 
@@ -141,9 +144,8 @@ describe('a bot searches for the list', () => {
   it.effect('it does not leave a fight to fetch a thing', () => {
     const { model, spot } = searching(QUIET_WAVE, 'Library', DINING_ROOM_ID)
     const start = { x: spot.x, y: spot.y + 60 }
-    return Story.story(
-      APPLICATION,
-      Story.given(
+    return Effect.gen(function* () {
+      const s = yield* storyOf(
         withZombies(
           placeSeat(1, start.x, start.y)(placeSeat(0, 300, 200)(model)),
           [
@@ -153,16 +155,18 @@ describe('a bot searches for the list', () => {
             }),
           ],
         ),
-      ),
-      ...ticks(60, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(foundBy(current)).toBeUndefined()
-        expect(botAt(current).y).toBeCloseTo(start.y, 0)
-        expect(
-          Option.getOrThrow(maybePlayerAt(current, 1)).seat.shotsFired,
-        ).toBeGreaterThan(0)
-      }),
-    )
+      )
+      s.pipe(
+        ticks(60, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(foundBy(current)).toBeUndefined()
+          expect(botAt(current).y).toBeCloseTo(start.y, 0)
+          expect(
+            Option.getOrThrow(maybePlayerAt(current, 1)).seat.shotsFired,
+          ).toBeGreaterThan(0)
+        }),
+      )
+    })
   })
 })
 
@@ -170,24 +174,25 @@ describe('a bot searches for the list', () => {
 // walk, so a bot with nothing on the list to fetch takes it in a break.
 describe('a bot runs its errands', () => {
   it.effect("in a break it takes the pantry's goodie", () => {
-    const found = modifyFields(crewInWave(2), {
+    const found = UiStruct.evolve(crewInWave(2), {
       phase: () => BREAK,
       level: level => openExitIn(level, KITCHEN_EXIT),
       pantry: () => Pantry.Stocked({ round: BREAK.wave, goodie: 'Key' }),
-      runStart: modifyFields({ crewBots: () => [BOT] }),
+      runStart: UiStruct.evolve({ crewBots: () => [BOT] }),
     })
     const spot = Option.getOrThrow(pantrySpotOf(levelOf(found)))
-    return Story.story(
-      APPLICATION,
-      Story.given(
+    return Effect.gen(function* () {
+      const s = yield* storyOf(
         placeSeat(1, spot.x + 30, spot.y + 20)(placeSeat(0, 40, 140)(found)),
-      ),
-      ...ticks(120, FIXED_STEP_MS),
-      Story.model(current => {
-        expect(Option.isNone(maybeStash(current))).toBe(true)
-        expect(heldKeys(current)).toBe(heldKeys(found) + 1)
-      }),
-    )
+      )
+      s.pipe(
+        ticks(120, FIXED_STEP_MS),
+        checkModel(current => {
+          expect(Option.isNone(maybeStash(current))).toBe(true)
+          expect(heldKeys(current)).toBe(heldKeys(found) + 1)
+        }),
+      )
+    })
   })
 })
 
@@ -199,7 +204,7 @@ describe('the hunt plan', () => {
   // NOTE: a break with every slot room boarded and one thing hidden in
   // `room`, `keys` on the crew's ring.
   const boardedOn = (room: SlotRoomId, keys: number): Model => {
-    const shut = modifyFields(crewInWave(2), {
+    const shut = UiStruct.evolve(crewInWave(2), {
       phase: () => BREAK,
       level: () => startingLevelFor(DEFAULT_ARRANGEMENT),
     })

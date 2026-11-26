@@ -1,13 +1,13 @@
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Effect } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase, type Zombie } from '../../../app/model'
 import { screenCameraOf } from '../../../render/camera'
 import { screenOf } from '../../../render/screen'
 import { quietWave } from '../../../test/model.fixture'
-import { APPLICATION, zombieAt } from '../../../test/testing'
+import { exactStoryOf, zombieAt } from '../../../test/testing'
 import { START_LEVEL } from '../../../world/level/arena'
 import { modifyFocus } from '../../../world/party/party'
 import { LAST_ZOMBIE_RULES } from '../../../world/zombies/lastZombie'
@@ -20,14 +20,14 @@ const HURRYING_MS = LAST_ZOMBIE_RULES.delayMs + 100
 
 const lastFew = (zombies: ReadonlyArray<Zombie>, loneMs: number): Model =>
   modifyFocus(
-    modifyFields(quietWave(3), {
+    UiStruct.evolve(quietWave(3), {
       phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
       zombies: () => zombies,
-      pacing: pacing => modifyFields(pacing, { loneMs: () => loneMs }),
+      pacing: pacing => UiStruct.evolve(pacing, { loneMs: () => loneMs }),
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => START_LEVEL.start.x,
           y: () => START_LEVEL.start.y,
         }),
@@ -42,16 +42,11 @@ const badgesOf = (model: Model): number =>
 
 describe('the edge badge of a hurrying last zombie', () => {
   it.effect('marks only the one out of the window, once they hurry', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lastFew([near, far], HURRYING_MS)),
-      Story.model(model => {
-        expect(badgesOf(model)).toBe(1)
-        expect(badgesOf(lastFew([near, far], LAST_ZOMBIE_RULES.delayMs))).toBe(
-          0,
-        )
-        expect(badgesOf(lastFew([near], HURRYING_MS))).toBe(0)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(lastFew([near, far], HURRYING_MS))
+      expect(badgesOf(s.model)).toBe(1)
+      expect(badgesOf(lastFew([near, far], LAST_ZOMBIE_RULES.delayMs))).toBe(0)
+      expect(badgesOf(lastFew([near], HURRYING_MS))).toBe(0)
+    }),
   )
 })

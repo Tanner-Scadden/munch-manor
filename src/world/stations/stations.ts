@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { hoistChandelier, isChandelierDown } from '../dining/chandelier'
 import { levelOf } from '../level/arena'
@@ -186,14 +187,14 @@ const advanceStation =
           timesWorked: state.timesWorked + 1,
         }
       : { workedMs, cooldownMs, timesWorked: state.timesWorked }
-    const kept = modifyFields(world, {
+    const kept = UiStruct.evolve(world, {
       stations: stations => ({ ...stations, [id]: next }),
     })
     if (!isDone) {
       return kept
     }
     const { x, y } = stationCenter(world, id)
-    return modifyFields(STATION_RULES[id].fire(kept), {
+    return UiStruct.evolve(STATION_RULES[id].fire(kept), {
       frameEvents: frameEvents => [
         ...frameEvents,
         GameEvent.StationWorked({ x, y, station: id }),

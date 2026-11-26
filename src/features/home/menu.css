@@ -547,7 +547,7 @@
 
 /* THE HAND */
 
-.hand-dialog[open] {
+.hand-dialog {
   margin: 0;
   padding: 0;
   border: 0;
@@ -749,14 +749,14 @@
 
 /* NOTE: the MORE deck is dealt out into the hand, so it leaves the stage
    while the hand is open and only the close X stands in its place. */
-.game-root:has(.hand-dialog[open]) .home-stage .home-manor {
+.game-root:has(.hand-dialog) .home-stage .home-manor {
   visibility: hidden;
 }
 
 /* NOTE: an upright phone's second line of cards stands where the turn hint
    is, so the hint goes while the hand is open rather than peek out under
    them. */
-.game-root:has(.hand-dialog[open]) .home-turn-hint {
+.game-root:has(.hand-dialog) .home-turn-hint {
   visibility: hidden;
 }
 
@@ -1828,15 +1828,9 @@
    the quicker way. A fade carries no motion, so reduced motion keeps it. */
 .panel-backdrop,
 .profile-backdrop,
-.panel-dialog[open] .panel,
-.profile-dialog[open] .profile {
+.panel-dialog .panel,
+.profile-dialog .profile {
   animation: menu-fade-in 180ms var(--menu-ease-out) both;
-}
-
-.panel-dialog[open] {
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .panel-backdrop {

@@ -5,12 +5,12 @@
 // player in a co-op room sees the same rain.
 
 import { Array, Order, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { unitOf } from '../../shared/prng'
 import type { Level } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/worldSchema'
+import type * as Draw from '../draw'
 import { rect } from '../drawing'
 import type { Box } from '../room/roomPalette'
 import { type Pane, windowPanesOf } from '../room/windows'
@@ -102,7 +102,7 @@ const rainOn = (
   pane: Pane,
   index: number,
   ms: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { glass } = pane
   const spans = columnSpansOf(pane)
   const count = Math.max(
@@ -166,7 +166,7 @@ export const paneBoxesOf = ({
   ]
 }
 
-const thrownShapes = (patch: Box, fill: string): ReadonlyArray<Canvas.Shape> =>
+const thrownShapes = (patch: Box, fill: string): ReadonlyArray<Draw.Shape> =>
   Array.map(paneBoxesOf(patch), box =>
     rect(box.x, box.y, box.width, box.height, fill),
   )
@@ -180,7 +180,7 @@ const paneShapes = (
   index: number,
   ms: number,
   strike: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   ...rainOn(pane, index, ms),
   ...(strike > 0
     ? Array.map(pane.lights, ({ x, y, width, height }) =>
@@ -205,7 +205,7 @@ const paneShapes = (
 export const stormOf = ({
   world,
   level,
-}: Readonly<{ world: World; level: Level }>): ReadonlyArray<Canvas.Shape> => {
+}: Readonly<{ world: World; level: Level }>): ReadonlyArray<Draw.Shape> => {
   const panes = windowPanesOf(level)
   const strike = strikeOf(world)
   const glass = Array.flatMap(panes, (pane, index) =>

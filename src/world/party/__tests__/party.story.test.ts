@@ -1,11 +1,11 @@
 import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   Arsenal,
+  BreakClock,
   type Bullet,
   type Difficulty,
   GameEvent,
@@ -37,8 +37,10 @@ import {
   withSeatLife,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
   countdownTicks,
+  modelAfter,
+  steps,
   ticks,
   zombieOf,
 } from '../../../test/testing'
@@ -131,56 +133,51 @@ const bulletAt = (
 
 describe('who the zombies hunt', () => {
   it.effect('each zombie walks to the standing player nearest it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          placeSeat(0, LEFT_X, ROW_Y),
-          placeSeat(1, RIGHT_X, ROW_Y),
-          current =>
-            modifyFields(current, {
-              zombies: () => [
-                zombieOf('Shambler', 900, LEFT_X + 40, ROW_Y, { speed: 30 }),
-                zombieOf('Shambler', 901, RIGHT_X - 40, ROW_Y, { speed: 30 }),
-              ],
-            }),
-        )(crewInWave(2)),
+    modelAfter(
+      pipeline(
+        placeSeat(0, LEFT_X, ROW_Y),
+        placeSeat(1, RIGHT_X, ROW_Y),
+        current =>
+          UiStruct.evolve(current, {
+            zombies: () => [
+              zombieOf('Shambler', 900, LEFT_X + 40, ROW_Y, { speed: 30 }),
+              zombieOf('Shambler', 901, RIGHT_X - 40, ROW_Y, { speed: 30 }),
+            ],
+          }),
+      )(crewInWave(2)),
+      steps(
+        ticks(30, TICK_MS),
+        checkModel(current => {
+          const [nearLeft, nearRight] = current.zombies
+          expect(nearLeft?.x).toBeLessThan(LEFT_X + 40)
+          expect(nearRight?.x).toBeGreaterThan(RIGHT_X - 40)
+          expect(
+            flowFieldsToward(MANOR, targetsOf(current), []).Narrow.moreOrigins,
+          ).toHaveLength(1)
+        }),
       ),
-      ...ticks(30, TICK_MS),
-      Story.model(current => {
-        const [nearLeft, nearRight] = current.zombies
-        expect(nearLeft?.x).toBeLessThan(LEFT_X + 40)
-        expect(nearRight?.x).toBeGreaterThan(RIGHT_X - 40)
-        expect(
-          flowFieldsToward(MANOR, targetsOf(current), []).Narrow.moreOrigins,
-        ).toHaveLength(1)
-      }),
     ),
   )
 
   it.effect('a downed player is not hunted', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          placeSeat(0, LEFT_X, ROW_Y),
-          placeSeat(1, RIGHT_X, ROW_Y, 0),
-          withSeatLife(
-            1,
-            Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
-          ),
-          current =>
-            modifyFields(current, {
-              zombies: () => [
-                zombieOf('Shambler', 900, RIGHT_X - 30, ROW_Y, { speed: 30 }),
-              ],
-            }),
-        )(crewInWave(2)),
+    modelAfter(
+      pipeline(
+        placeSeat(0, LEFT_X, ROW_Y),
+        placeSeat(1, RIGHT_X, ROW_Y, 0),
+        withSeatLife(1, Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 })),
+        current =>
+          UiStruct.evolve(current, {
+            zombies: () => [
+              zombieOf('Shambler', 900, RIGHT_X - 30, ROW_Y, { speed: 30 }),
+            ],
+          }),
+      )(crewInWave(2)),
+      steps(
+        ticks(30, TICK_MS),
+        checkModel(current => {
+          expect(current.zombies[0]?.x).toBeLessThan(RIGHT_X - 30)
+        }),
       ),
-      ...ticks(30, TICK_MS),
-      Story.model(current => {
-        expect(current.zombies[0]?.x).toBeLessThan(RIGHT_X - 30)
-      }),
     ),
   )
 })
@@ -190,23 +187,27 @@ describe('downed, revived, and bled out', () => {
     placeSeat(0, LEFT_X, ROW_Y),
     placeSeat(1, RIGHT_X, ROW_Y, 1),
     current =>
-      modifyFields(current, {
+      UiStruct.evolve(current, {
         zombies: () => [zombieOf('Shambler', 900, RIGHT_X + 5, ROW_Y)],
       }),
   )(crewInWave(2))
 
   it.effect('a player at zero hearts goes down and the run goes on', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(bitten),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(seatOf(current, 1).life._tag).toBe('Downed')
-        expect(
-          Array.some(current.frameEvents, GameEvent.isAnyOf(['PlayerDowned'])),
-        ).toBe(true)
-        expect(current.phase._tag).toBe('Wave')
-      }),
+    modelAfter(
+      bitten,
+      steps(
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(seatOf(current, 1).life._tag).toBe('Downed')
+          expect(
+            Array.some(
+              current.frameEvents,
+              GameEvent.isAnyOf(['PlayerDowned']),
+            ),
+          ).toBe(true)
+          expect(current.phase._tag).toBe('Wave')
+        }),
+      ),
     ),
   )
 
@@ -224,37 +225,34 @@ describe('downed, revived, and bled out', () => {
   it.effect(
     'a teammate standing still beside them for 2 s revives them with 2 hearts',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(downedBeside),
-        ...ticks(reviveTicks - 2, TICK_MS),
-        Story.model(current => {
-          expect(seatOf(current, 1).life._tag).toBe('Downed')
-        }),
-        ...ticks(2, TICK_MS),
-        Story.model(current => {
-          expect(seatOf(current, 1).life._tag).toBe('Standing')
-          expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
-        }),
+      modelAfter(
+        downedBeside,
+        steps(
+          ticks(reviveTicks - 2, TICK_MS),
+          checkModel(current => {
+            expect(seatOf(current, 1).life._tag).toBe('Downed')
+          }),
+          ticks(2, TICK_MS),
+          checkModel(current => {
+            expect(seatOf(current, 1).life._tag).toBe('Standing')
+            expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
+          }),
+        ),
       ),
   )
 
   it.effect('the run ends when everyone is down', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          placeSeat(0, LEFT_X, ROW_Y, 0),
-          withSeatLife(
-            1,
-            Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
-          ),
-        )(crewInWave(2)),
+    modelAfter(
+      pipeline(
+        placeSeat(0, LEFT_X, ROW_Y, 0),
+        withSeatLife(1, Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 })),
+      )(crewInWave(2)),
+      steps(
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('GameOver')
+        }),
       ),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('GameOver')
-      }),
     ),
   )
 
@@ -262,28 +260,27 @@ describe('downed, revived, and bled out', () => {
     'bled-out and downed players come back free at the next break',
     () => {
       const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          pipeline(
-            withSeatLife(1, Life.BledOut()),
-            placeSeat(1, RIGHT_X, ROW_Y, 0),
-            withSeatLife(
-              2,
-              Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
-            ),
-            placeSeat(2, LEFT_X, ROW_Y, 0),
-          )(crewInWave(4, clearing)),
+      return modelAfter(
+        pipeline(
+          withSeatLife(1, Life.BledOut()),
+          placeSeat(1, RIGHT_X, ROW_Y, 0),
+          withSeatLife(
+            2,
+            Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
+          ),
+          placeSeat(2, LEFT_X, ROW_Y, 0),
+        )(crewInWave(4, clearing)),
+        steps(
+          ticks(1, TICK_MS),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Preparation')
+            Array.forEach(playersOf(current), ({ seat }) => {
+              expect(seat.life._tag).toBe('Standing')
+            })
+            expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
+            expect(seatedAt(current, 2).player.hp).toBe(COOP_RULES.reviveHearts)
+          }),
         ),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Preparation')
-          Array.forEach(playersOf(current), ({ seat }) => {
-            expect(seat.life._tag).toBe('Standing')
-          })
-          expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
-          expect(seatedAt(current, 2).player.hp).toBe(COOP_RULES.reviveHearts)
-        }),
       )
     },
   )
@@ -292,38 +289,38 @@ describe('downed, revived, and bled out', () => {
 describe("the crew's key ring", () => {
   it.effect('a cleared wave adds a key to the one ring the crew shares', () => {
     const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
-    return Story.story(
-      APPLICATION,
-      Story.given(crewInWave(4, clearing)),
-      ...ticks(1, TICK_MS),
-      Story.model(current => {
-        expect(current.keys.held).toBe(KEY_RULES.perWaveCleared)
-      }),
+    return modelAfter(
+      crewInWave(4, clearing),
+      steps(
+        ticks(1, TICK_MS),
+        checkModel(current => {
+          expect(current.keys.held).toBe(KEY_RULES.perWaveCleared)
+        }),
+      ),
     )
   })
 
   it.effect('a kill credits the player whose shot landed, keys and all', () => {
     const keys = ZOMBIE_KINDS.Tank.keys
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(
-          placeSeat(0, LEFT_X, ROW_Y),
-          placeSeat(1, RIGHT_X, ROW_Y + 40),
-          current =>
-            modifyFields(current, {
-              zombies: () => [zombieOf('Tank', 900, 150, ROW_Y, { hp: 1 })],
-              bullets: () => [bulletAt(800, 140, ROW_Y, 300, 1)],
-            }),
-        )(crewInWave(2)),
+    return modelAfter(
+      pipeline(
+        placeSeat(0, LEFT_X, ROW_Y),
+        placeSeat(1, RIGHT_X, ROW_Y + 40),
+        current =>
+          UiStruct.evolve(current, {
+            zombies: () => [zombieOf('Tank', 900, 150, ROW_Y, { hp: 1 })],
+            bullets: () => [bulletAt(800, 140, ROW_Y, 300, 1)],
+          }),
+      )(crewInWave(2)),
+      steps(
+        ticks(2, TICK_MS),
+        checkModel(current => {
+          expect(current.keys.held).toBe(keys)
+          expect(seatOf(current, 1).kills).toBe(1)
+          expect(seatOf(current, 1).keysFound).toBe(keys)
+          expect(seatOf(current, 0).keysFound).toBe(0)
+        }),
       ),
-      ...ticks(2, TICK_MS),
-      Story.model(current => {
-        expect(current.keys.held).toBe(keys)
-        expect(seatOf(current, 1).kills).toBe(1)
-        expect(seatOf(current, 1).keysFound).toBe(keys)
-        expect(seatOf(current, 0).keysFound).toBe(0)
-      }),
     )
   })
 
@@ -365,6 +362,7 @@ describe("the crew's key ring", () => {
 
   test('a manor door is bought in full by the one player holding at it', () => {
     const preparation = Phase.Preparation({
+      clock: BreakClock.Counting(),
       wave: 3,
       remainingMs: 30_000,
       durationMs: 30_000,
@@ -390,6 +388,7 @@ describe("the crew's key ring", () => {
 
   test('a seat standing still at a door buys it alone, while a teammate shooting beside it never does', () => {
     const preparation = Phase.Preparation({
+      clock: BreakClock.Counting(),
       wave: 3,
       remainingMs: 30_000,
       durationMs: 30_000,
@@ -415,6 +414,7 @@ describe("the crew's key ring", () => {
 
   test('a ring short of the price refuses every player who holds', () => {
     const preparation = Phase.Preparation({
+      clock: BreakClock.Counting(),
       wave: 3,
       remainingMs: 30_000,
       durationMs: 30_000,
@@ -466,6 +466,7 @@ describe("the crew's key ring", () => {
 
 describe('traps per player', () => {
   const preparation = Phase.Preparation({
+    clock: BreakClock.Counting(),
     wave: 3,
     remainingMs: 30_000,
     durationMs: 30_000,
@@ -477,9 +478,9 @@ describe('traps per player', () => {
     (current: Model): Model =>
       withWorld(current, world => stockTrap(world, slot, kind))
   const plankInCrate = (current: Model): Model =>
-    modifyFields(current, {
+    UiStruct.evolve(current, {
       crates: crates =>
-        modifyFields(crates, {
+        UiStruct.evolve(crates, {
           wave: () => 3,
           crates: () => [
             {
@@ -522,7 +523,7 @@ describe('traps per player', () => {
     const east = thresholds.East.box
     const twoBoarded = pipeline(
       current =>
-        modifyFields(current, {
+        UiStruct.evolve(current, {
           traps: () => [
             Trap.Barricade({
               id: 1,
@@ -564,34 +565,36 @@ describe('traps per player', () => {
 describe('friendly fire', () => {
   const inTheLine = (current: Model): Model =>
     pipeline(placeSeat(0, LEFT_X, ROW_Y), placeSeat(1, 150, ROW_Y), world =>
-      modifyFields(world, {
+      UiStruct.evolve(world, {
         bullets: () => [bulletAt(800, 140, ROW_Y, 300, 0)],
       }),
     )(current)
 
   it.effect('a teammate’s shot passes through on Normal', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(inTheLine(crewInWave(2))),
-      ...ticks(2, TICK_MS),
-      Story.model(current => {
-        expect(seatedAt(current, 1).player.hp).toBe(PLAYER_MAX_HP)
-      }),
+    modelAfter(
+      inTheLine(crewInWave(2)),
+      steps(
+        ticks(2, TICK_MS),
+        checkModel(current => {
+          expect(seatedAt(current, 1).player.hp).toBe(PLAYER_MAX_HP)
+        }),
+      ),
     ),
   )
 
   it.effect('a teammate’s shot passes through on Nightmare too', () => {
-    const nightmare = modifyFields(crewInWave(2), {
+    const nightmare = UiStruct.evolve(crewInWave(2), {
       difficulty: difficulty =>
-        modifyFields(difficulty, { chosen: () => 'Nightmare' }),
+        UiStruct.evolve(difficulty, { chosen: () => 'Nightmare' }),
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(inTheLine(nightmare)),
-      ...ticks(2, TICK_MS),
-      Story.model(current => {
-        expect(seatedAt(current, 1).player.hp).toBe(PLAYER_MAX_HP)
-      }),
+    return modelAfter(
+      inTheLine(nightmare),
+      steps(
+        ticks(2, TICK_MS),
+        checkModel(current => {
+          expect(seatedAt(current, 1).player.hp).toBe(PLAYER_MAX_HP)
+        }),
+      ),
     )
   })
 
@@ -615,19 +618,20 @@ describe('friendly fire', () => {
 
   it.effect('single player never shoots itself', () => {
     const solo = pipeline(placeSeat(0, 150, ROW_Y), world =>
-      modifyFields(world, {
+      UiStruct.evolve(world, {
         difficulty: difficulty =>
-          modifyFields(difficulty, { chosen: () => 'Nightmare' }),
+          UiStruct.evolve(difficulty, { chosen: () => 'Nightmare' }),
         bullets: () => [bulletAt(800, 140, ROW_Y, 300, 0)],
       }),
     )(crewInWave(1))
-    return Story.story(
-      APPLICATION,
-      Story.given(solo),
-      ...ticks(2, TICK_MS),
-      Story.model(current => {
-        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-      }),
+    return modelAfter(
+      solo,
+      steps(
+        ticks(2, TICK_MS),
+        checkModel(current => {
+          expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+        }),
+      ),
     )
   })
 })
@@ -650,9 +654,9 @@ describe('the idle reload per seat', () => {
       partEmpty(0, PISTOL_MAGAZINE - 1),
       partEmpty(1, 3),
       world =>
-        modifyFields(world, {
+        UiStruct.evolve(world, {
           difficulty: difficulty =>
-            modifyFields(difficulty, { chosen: () => chosen }),
+            UiStruct.evolve(difficulty, { chosen: () => chosen }),
         }),
     )(crewInWave(2))
 
@@ -710,7 +714,7 @@ describe('difficulty scales with the player count', () => {
 
   test('one player rolls the wave exactly as single player always did', () => {
     const solo = beginPreparation(
-      modifyFields(home, { phase: () => Phase.Ready() }),
+      UiStruct.evolve(home, { phase: () => Phase.Ready() }),
       4,
       30_000,
     )
@@ -721,6 +725,7 @@ describe('difficulty scales with the player count', () => {
 describe('the world never pauses in co-op', () => {
   const breakOf = (wave: number) =>
     Phase.Preparation({
+      clock: BreakClock.Counting(),
       wave,
       remainingMs: 30_000,
       durationMs: 30_000,
@@ -751,21 +756,20 @@ describe('the world never pauses in co-op', () => {
   })
 
   it.effect('a kill never freezes the World', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        pipeline(placeSeat(0, LEFT_X, ROW_Y), current =>
-          modifyFields(current, {
-            zombies: () => [zombieOf('Shambler', 900, 150, ROW_Y, { hp: 1 })],
-            bullets: () => [bulletAt(800, 140, ROW_Y, 300, 0)],
-          }),
-        )(crewInWave(2)),
+    modelAfter(
+      pipeline(placeSeat(0, LEFT_X, ROW_Y), current =>
+        UiStruct.evolve(current, {
+          zombies: () => [zombieOf('Shambler', 900, 150, ROW_Y, { hp: 1 })],
+          bullets: () => [bulletAt(800, 140, ROW_Y, 300, 0)],
+        }),
+      )(crewInWave(2)),
+      steps(
+        ticks(2, TICK_MS),
+        checkModel(current => {
+          expect(current.zombies[0]?.hp).toBe(0)
+          expect(HitStop.isAnyOf(['Running'])(current.hitStop)).toBe(true)
+        }),
       ),
-      ...ticks(2, TICK_MS),
-      Story.model(current => {
-        expect(current.zombies[0]?.hp).toBe(0)
-        expect(HitStop.isAnyOf(['Running'])(current.hitStop)).toBe(true)
-      }),
     ),
   )
 })
@@ -777,7 +781,7 @@ describe('away and pickups', () => {
         placeSeat(0, LEFT_X, ROW_Y),
         placeSeat(1, RIGHT_X, ROW_Y),
         current =>
-          modifyFields(current, {
+          UiStruct.evolve(current, {
             zombies: () => [zombieOf('Shambler', 900, RIGHT_X + 5, ROW_Y)],
           }),
       )(crewInWave(2)),
@@ -785,7 +789,7 @@ describe('away and pickups', () => {
       'Away',
     )
     const walking = new Map([
-      [1, modifyFields(idleIntent, { move: () => ({ x: 0, y: 1 }) })],
+      [1, UiStruct.evolve(idleIntent, { move: () => ({ x: 0, y: 1 }) })],
     ])
     const stepped = stepWorld(away, walking).world
     expect(seatedAt(stepped, 1).player.hp).toBeLessThan(PLAYER_MAX_HP)
@@ -797,7 +801,7 @@ describe('away and pickups', () => {
       placeSeat(0, LEFT_X, ROW_Y, 3),
       placeSeat(1, RIGHT_X, ROW_Y, 3),
       current =>
-        modifyFields(current, {
+        UiStruct.evolve(current, {
           pickups: () => [
             { id: 950, kind: 'Heart', x: RIGHT_X, y: ROW_Y, ageMs: 0 },
           ],

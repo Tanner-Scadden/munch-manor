@@ -1064,7 +1064,7 @@ const runNextMicrotask = (callback: () => void): (() => void) => {
   }
 }
 
-// NOTE: the same scheduling Foldkit gives its own fibers. Effect's default
+// NOTE: microtask scheduling for the open's fibers. Effect's default
 // yields with setTimeout, which the browser clamps to at least 4 ms, and the
 // open yields often enough that the clamps added up to a tenth of a second.
 const OPEN_SCHEDULER = new Scheduler.MixedScheduler('async', runNextMicrotask)

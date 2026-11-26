@@ -1,13 +1,19 @@
-import { Array } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Difficulty, type Model, Phase, Tour } from '../../../app/model'
 import { OPEN_BREAK_WAVE } from '../../../shared/constants'
 import { crewInWave, home, pastTimedBreaks } from '../../../test/model.fixture'
-import { APPLICATION, press, tap, tick, ticks } from '../../../test/testing'
+import {
+  checkModel,
+  press,
+  storyOf,
+  tap,
+  tick,
+  ticks,
+} from '../../../test/testing'
 import { modifyFocus } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
 import { idleIntent } from '../../../world/schema/worldSchema'
@@ -43,10 +49,10 @@ const soloBreak = (
   difficulty: Difficulty = 'Normal',
 ): Model =>
   withWorld(
-    modifyFields(pastTimedBreaks(home), {
+    UiStruct.evolve(pastTimedBreaks(home), {
       firstBreakQuest: () => Tour.Over(),
       difficulty: setting =>
-        modifyFields(setting, { chosen: () => difficulty }),
+        UiStruct.evolve(setting, { chosen: () => difficulty }),
     }),
     world => beginPreparation(world, wave, 20_000),
   )
@@ -58,7 +64,7 @@ const crewBreak = (): Model =>
 // frame does.
 const idleFor = (start: Model, ms: number): Model =>
   advanceBreakIdle(
-    modifyFields(start, { elapsedMs: elapsedMs => elapsedMs + ms }),
+    UiStruct.evolve(start, { elapsedMs: elapsedMs => elapsedMs + ms }),
     ms,
   )
 
@@ -96,18 +102,19 @@ describe('who a break waits on', () => {
   it.effect(
     'the open break waits for Enter, however long the player takes',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(soloBreak()),
-        ...ticks(400, 100),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Preparation')
-        }),
-        tap('Enter'),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Wave')
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(soloBreak())
+        s.pipe(
+          ticks(400, 100),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Preparation')
+          }),
+          tap('Enter'),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Wave')
+          }),
+        )
+      }),
   )
 
   test.each(['Normal', 'Hard'] as const)(
@@ -148,23 +155,24 @@ describe('the nudge', () => {
   it.effect(
     'the nudge runs through frames, and Enter ends the break and the nudge',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(soloBreak()),
-        ...ticks(Math.ceil(SOLO_NUDGE_MS / 50) + 4, 50),
-        Story.model(current => {
-          expect(isWaitingOnYou(current)).toBe(true)
-        }),
-        press('Enter'),
-        Story.model(current => {
-          expect(current.phase._tag).toBe('Wave')
-          expect(isWaitingOnYou(current)).toBe(false)
-        }),
-        tick(50),
-        Story.model(current => {
-          expect(breakIdleMsOf(current)).toBe(0)
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(soloBreak())
+        s.pipe(
+          ticks(Math.ceil(SOLO_NUDGE_MS / 50) + 4, 50),
+          checkModel(current => {
+            expect(isWaitingOnYou(current)).toBe(true)
+          }),
+          press('Enter'),
+          checkModel(current => {
+            expect(current.phase._tag).toBe('Wave')
+            expect(isWaitingOnYou(current)).toBe(false)
+          }),
+          tick(50),
+          checkModel(current => {
+            expect(breakIdleMsOf(current)).toBe(0)
+          }),
+        )
+      }),
   )
 
   test('in a crew, the last one not READY is nudged soon, and a pressed READY clears it', () => {
@@ -191,15 +199,17 @@ describe('the new zombie card', () => {
     const soloWave = withWorld(home, world =>
       startWaveEarly(beginPreparation(world, 2, 1)),
     )
-    const solo = modifyFields(soloWave, { introducedKinds: () => [] })
+    const solo = UiStruct.evolve(soloWave, { introducedKinds: () => [] })
     const before = withWorld(
-      modifyFields(home, { introducedKinds: () => [] }),
+      UiStruct.evolve(home, { introducedKinds: () => [] }),
       world => beginPreparation(world, 2, 20_000),
     )
     expect(solo.phase._tag).toBe('Wave')
     expect(raiseDebutCardFrom(before, solo).debutCard._tag).toBe('Showing')
 
-    const crewBefore = modifyFields(crewBreak(), { introducedKinds: () => [] })
+    const crewBefore = UiStruct.evolve(crewBreak(), {
+      introducedKinds: () => [],
+    })
     const crewWave = withWorld(crewBefore, world => startWaveEarly(world))
     expect(Phase.isAnyOf(['Wave'])(crewWave.phase)).toBe(true)
     expect(raiseDebutCardFrom(crewBefore, crewWave).debutCard._tag).toBe(

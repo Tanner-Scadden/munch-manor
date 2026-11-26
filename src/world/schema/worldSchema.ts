@@ -2,8 +2,9 @@
 // them, apart from the client Model (src/app/model.ts), so the step a co-op
 // room runs never imports the UI, the sync engine, or the tip jar.
 
-import { Effect, Option, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+import { Function, Option, Schema } from 'effect'
+
+import { UiSchema, UiStruct } from '@effect/ui'
 
 import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '../../shared/constants'
 import { Difficulty } from '../../shared/playerData'
@@ -107,7 +108,7 @@ export type CasePrize = typeof CasePrize.Type
 // NOTE: a shot names the seat that fired it (a PlayerSlot), so a co-op
 // client can tell its own shots, which it predicts, from the room's; a
 // trap's shot names none.
-export const GameEvent = defineTaggedUnion({
+export const GameEvent = UiSchema.TaggedEnum({
   Fired: {
     x: PositionNumber,
     y: PositionNumber,
@@ -283,9 +284,9 @@ export const GameEvent = defineTaggedUnion({
   },
 })
 export type GameEvent = typeof GameEvent.Type
-export type GunLeveled = typeof GameEvent.GunLeveled.Type
+export type GunLeveled = typeof GameEvent.cases.GunLeveled.Type
 
-export const HitStop = defineTaggedUnion({
+export const HitStop = UiSchema.TaggedEnum({
   Running: { cooldownMs: MillisNumber },
   Frozen: { remainingMs: MillisNumber },
   Slowed: { remainingMs: MillisNumber, carryMs: MillisNumber },
@@ -319,7 +320,7 @@ export const Popup = Schema.Struct({
 })
 export type Popup = typeof Popup.Type
 
-export const Streak = defineTaggedUnion({
+export const Streak = UiSchema.TaggedEnum({
   Cold: {},
   Hot: { count: Schema.Finite, remainingMs: MillisNumber },
 })
@@ -399,7 +400,7 @@ type ArmamentCounts = typeof ArmamentCounts.Type
 // zombies a Kaboomer's blast takes with it), exploring (rooms opened, the
 // fireplace lit, keys from marked zombies).
 // KitchenKills counts since the last wave began, the rest the whole run.
-export const Feat = defineTaggedUnion({
+export const Feat = UiSchema.TaggedEnum({
   Kills: { count: Schema.Finite },
   KillsWith: { armament: Armament, count: Schema.Finite },
   KillsOf: { kind: ZombieKind, count: Schema.Finite },
@@ -437,7 +438,7 @@ export type FeatTally = typeof FeatTally.Type
 // NOTE: a Locked case's progress is each seat's own tally toward its feat;
 // Opened waits for the seat that finished it to take the prize; Emptied is
 // taken.
-export const CaseState = defineTaggedUnion({
+export const CaseState = UiSchema.TaggedEnum({
   Locked: {},
   Opened: { by: Schema.Finite },
   Emptied: { by: Schema.Finite },
@@ -470,7 +471,7 @@ export type PlannedSpawn = typeof PlannedSpawn.Type
 // NOTE: a Counting break starts the wave when remainingMs runs out. A
 // Waiting break has no timer: it waits for START WAVE, and its elapsedMs only
 // ages the hints and banners. remainingMs and durationMs stay put meanwhile.
-export const BreakClock = defineTaggedUnion({
+export const BreakClock = UiSchema.TaggedEnum({
   Counting: {},
   Waiting: { elapsedMs: MillisNumber },
 })
@@ -481,9 +482,7 @@ const preparationFields = {
   remainingMs: MillisNumber,
   durationMs: MillisNumber,
   spawns: Schema.Array(PlannedSpawn),
-  clock: BreakClock.pipe(
-    Schema.withConstructorDefault(Effect.succeed(BreakClock.Counting())),
-  ),
+  clock: BreakClock,
 }
 
 // NOTE: A wave's elapsedMs is its spawn clock, not wall time. It stops while
@@ -494,13 +493,13 @@ const waveFields = {
   spawns: Schema.Array(PlannedSpawn),
 }
 
-export const Round = defineTaggedUnion({
+export const Round = UiSchema.TaggedEnum({
   Preparation: preparationFields,
   Wave: waveFields,
 })
 export type Round = typeof Round.Type
 
-export const RunMode = defineTaggedUnion({
+export const RunMode = UiSchema.TaggedEnum({
   Campaign: {},
   Endless: {},
 })
@@ -515,7 +514,7 @@ export type IntroCut = typeof IntroCut.Type
 // counting up to the slam, which starts the run (src/world/run/arrival.ts).
 // LeftEarly is a run the crew left by the kitchen's back door in a break
 // (src/world/kitchen/backDoor.ts): an ending between GameOver and Escaped.
-export const Phase = defineTaggedUnion({
+export const Phase = UiSchema.TaggedEnum({
   Ready: {},
   Arriving: { elapsedMs: MillisNumber, cut: IntroCut },
   Preparation: preparationFields,
@@ -531,6 +530,38 @@ export type Phase = typeof Phase.Type
 export const isRoundActive = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase)
 
+// NOTE: a round's planned spawns changed, in a break or a wave alike; any
+// other phase as it was.
+export const evolveRoundSpawns: {
+  (
+    change: (
+      spawns: ReadonlyArray<PlannedSpawn>,
+    ) => ReadonlyArray<PlannedSpawn>,
+  ): (phase: Phase) => Phase
+  (
+    phase: Phase,
+    change: (
+      spawns: ReadonlyArray<PlannedSpawn>,
+    ) => ReadonlyArray<PlannedSpawn>,
+  ): Phase
+} = Function.dual(
+  2,
+  (
+    phase: Phase,
+    change: (
+      spawns: ReadonlyArray<PlannedSpawn>,
+    ) => ReadonlyArray<PlannedSpawn>,
+  ): Phase =>
+    Phase.matchOrElse(
+      phase,
+      {
+        Preparation: round => UiStruct.evolve(round, { spawns: change }),
+        Wave: round => UiStruct.evolve(round, { spawns: change }),
+      },
+      () => phase,
+    ),
+)
+
 // NOTE: the wave a break or a fight is about, 0 outside a round.
 export const roundWaveOf = (phase: Phase): number =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) ? phase.wave : 0
@@ -541,7 +572,7 @@ export const roundWaveOf = (phase: Phase): number =>
 // waits, so the rest of the wave comes after the boss has had the floor.
 // guestHpScale is the wave's health scale, which the guests he belches and
 // calls in take (src/world/zombies/boss.ts), apart from his own health.
-export const Boss = defineTaggedUnion({
+export const Boss = UiSchema.TaggedEnum({
   Absent: {},
   Waiting: {
     door: DoorId,
@@ -585,7 +616,7 @@ export const Hold = Schema.Struct({
 })
 export type Hold = typeof Hold.Type
 
-export const Beat = defineTaggedUnion({
+export const Beat = UiSchema.TaggedEnum({
   Flowing: {},
   Fading: {
     releaseBelow: Schema.Finite,
@@ -600,7 +631,7 @@ export const Beat = defineTaggedUnion({
 })
 export type Beat = typeof Beat.Type
 
-export const Alarm = defineTaggedUnion({
+export const Alarm = UiSchema.TaggedEnum({
   Quiet: {},
   Ringing: { remainingMs: MillisNumber },
 })
@@ -654,7 +685,7 @@ type LaserSight = typeof LaserSight.Type
 // boarded exit, the Mystery Leftovers fridge (src/world/fridge/leftovers.ts) and its
 // prize, and in the kitchen the stove bench (src/world/kitchen/stove.ts) and the gas valve
 // (src/world/kitchen/gasValve.ts).
-export const Purchasable = defineTaggedUnion({
+export const Purchasable = UiSchema.TaggedEnum({
   Exit: { exit: ExitId },
   Fridge: {},
   Prize: {},
@@ -671,7 +702,7 @@ export type Purchasable = typeof Purchasable.Type
 // Done waits for the key to be let go after a buy, so one hold buys once;
 // Spent waits for a player who bought and stands still to move before
 // standing buys again, so one buy never chains into the next.
-export const Purchase = defineTaggedUnion({
+export const Purchase = UiSchema.TaggedEnum({
   Idle: {},
   Holding: { target: Purchasable, heldMs: MillisNumber },
   Refused: {
@@ -690,14 +721,14 @@ export const isHolding = Purchase.isAnyOf(['Holding'])
 // NOTE: a kitchen oven belches fire when it is shot while Ready, then cools
 // off before it can again. The Model keeps one per oven on the map, in the
 // order the map lists them.
-export const Oven = defineTaggedUnion({
+export const Oven = UiSchema.TaggedEnum({
   Ready: {},
   Belching: { remainingMs: MillisNumber, burnedTicks: Schema.Finite },
   Cooling: { remainingMs: MillisNumber },
 })
 export type Oven = typeof Oven.Type
 
-export const TurretGun = defineTaggedUnion({
+export const TurretGun = UiSchema.TaggedEnum({
   Armed: {},
   CoolingDown: { remainingMs: MillisNumber },
 })
@@ -706,7 +737,7 @@ export type TurretGun = typeof TurretGun.Type
 // NOTE: `maxHp` is the health a trap was placed with: its kind's, or half
 // again for the Handyman's (src/world/heroes/calling.ts), so a mend fills it
 // back to that.
-export const Trap = defineTaggedUnion({
+export const Trap = UiSchema.TaggedEnum({
   Barricade: {
     id: Schema.Finite,
     door: DoorId,
@@ -726,7 +757,7 @@ export const Trap = defineTaggedUnion({
   },
 })
 export type Trap = typeof Trap.Type
-export type Turret = typeof Trap.Turret.Type
+export type Turret = typeof Trap.cases.Turret.Type
 
 export const TrapCounts = Schema.Struct({
   Barricade: Schema.Finite,
@@ -734,20 +765,20 @@ export const TrapCounts = Schema.Struct({
 })
 export type TrapCounts = typeof TrapCounts.Type
 
-export const TrapHint = defineTaggedUnion({
+export const TrapHint = UiSchema.TaggedEnum({
   Unseen: {},
   Showing: {},
   Seen: {},
 })
 export type TrapHint = typeof TrapHint.Type
 
-export const TrapNotice = defineTaggedUnion({
+export const TrapNotice = UiSchema.TaggedEnum({
   Quiet: {},
   Refused: { reason: Schema.String, remainingMs: MillisNumber },
 })
 export type TrapNotice = typeof TrapNotice.Type
 
-export const Lesson = defineTaggedUnion({
+export const Lesson = UiSchema.TaggedEnum({
   Pending: {},
   Learned: { atMs: MillisNumber },
 })
@@ -787,7 +818,7 @@ export const Practice = Schema.Struct({
 })
 export type Practice = typeof Practice.Type
 
-export const DebutCard = defineTaggedUnion({
+export const DebutCard = UiSchema.TaggedEnum({
   Hidden: {},
   Showing: { kind: ZombieKind, ageMs: MillisNumber },
 })
@@ -826,7 +857,7 @@ export const SOLO_SLOT: PlayerSlot = 0
 // next tick sounds. An Out player stepped out through the open front door
 // (src/world/dare/finale.ts): safe outside, out of the fight for good,
 // waiting for the crew.
-export const Life = defineTaggedUnion({
+export const Life = UiSchema.TaggedEnum({
   Standing: {},
   Downed: {
     bleedMs: MillisNumber,
@@ -837,7 +868,7 @@ export const Life = defineTaggedUnion({
   Out: {},
 })
 export type Life = typeof Life.Type
-export type DownedLife = typeof Life.Downed.Type
+export type DownedLife = typeof Life.cases.Downed.Type
 
 // NOTE: an Away player sent no input for a while (decided row 10): frozen
 // in place, and zombies can still hurt them.
@@ -894,7 +925,7 @@ export type SeatState = typeof SeatState.Type
 // NOTE: Solo is single player, exactly as it always played. A Crew plays by
 // co-op's rules: a downed player, READY for the break, no world pause. Both
 // hold their players in the World's `seats`, one for Solo at SOLO_SLOT.
-export const Party = defineTaggedUnion({
+export const Party = UiSchema.TaggedEnum({
   Solo: {},
   Crew: {},
 })

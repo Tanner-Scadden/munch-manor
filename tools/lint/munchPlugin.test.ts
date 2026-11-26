@@ -70,12 +70,21 @@ tester.run('stable-math', ruleOf('stable-math'), {
 })
 
 tester.run('no-conditional-step', ruleOf('no-conditional-step'), {
-  valid: ['const result = stepWhen(isDue, step)(model)'],
+  valid: [
+    'const step = stepWhen(isDue, playSounds(cues))',
+    // NOTE: a pick between two Steps, not a Step run on a condition.
+    'const step = isDue ? playSounds(cues) : unchanged',
+    // NOTE: a result built in place, as a Foldkit `{ model, commands }` was.
+    'const result = isDue ? $.run(FetchBuild.make()) : $.model',
+    'const result = isOpen ? $.evolve({ guide: closed }) : $.model',
+    'const next = isQuiet ? advance(noticed.model) : noticed.model',
+    'const result = isOff ? $.model : Option.match($.model.maybeVisitId, { onNone: () => $.model, onSome: send })',
+  ],
   invalid: [
-    one('const result = isDue ? step(model) : { model }'),
-    one(
-      'const result = isDue ? unchanged(model) : playSounds(cues)(keep(model))',
-    ),
+    one('const result = isDue($.model) ? step($) : $.model'),
+    one('const result = isOpen ? $.model : $.combine(close, forget)'),
+    one('const result = isDue ? unchanged($) : playSounds(cues)($)'),
+    one("const result = card === 'Character' ? $.model : openCard(card)($)"),
   ],
 })
 
@@ -100,9 +109,15 @@ tester.run('no-menu-field', ruleOf('no-menu-field'), {
 
 tester.run('command-beside-update', ruleOf('command-beside-update'), {
   valid: [
-    "const WriteSave = makeCommand('WriteSave', {}); const step = () => WriteSave(save)",
+    "const Focus = Command.make('Focus', { args: {} }, () => effect); const step = $ => $.run(Focus.make())",
+    "class WriteSave extends Command.Service<WriteSave>()('app/WriteSave', { args: {}, success: Message }) {}\nconst step = $ => $.run(WriteSave.make({ save }))",
   ],
-  invalid: [one("const WriteSave = Definition.makeCommand('WriteSave', {})")],
+  invalid: [
+    one("const Focus = Command.make('Focus', { args: {} }, () => effect)"),
+    one(
+      "export class WriteSave extends Command.Service<WriteSave>()('app/WriteSave', { args: {}, success: Message }) { static readonly layer = this.toLayer(() => effect) }",
+    ),
+  ],
 })
 
 tester.run('no-run-in-tests', ruleOf('no-run-in-tests'), {
@@ -120,96 +135,82 @@ tester.run('no-run-in-tests', ruleOf('no-run-in-tests'), {
 
 tester.run('no-floating-story', ruleOf('no-floating-story'), {
   valid: [
-    "it.effect('runs', () => Story.story(APPLICATION, Story.given(home)))",
-    "it.effect('runs', () => { return Scene.scene(APPLICATION, Scene.given(home)) })",
-    "it.effect.each(rows)('runs %s', row => Story.story(APPLICATION, Story.given(row)))",
-    'it.effect("binds", () => Effect.gen(function* () { const done = yield* Story.story(APPLICATION, Story.given(home)); expect(done).toBe(home) }))',
-    "it.effect('loops', () => Effect.forEach(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed)))))",
-    "it.effect('all', () => Effect.all(Array.map(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed))))))",
-    "it.effect('maps', () => Story.story(APPLICATION, Story.given(home)).pipe(Effect.map(done => done.phase)))",
-    'const bulletsAfter = (model) => Story.story(APPLICATION, Story.given(model)).pipe(Effect.map(({ bullets }) => bullets))',
-    "import { story } from 'foldkit/story'\nit.effect('bare', () => story(CO_OP, given(home)))",
-    // NOTE: the plain form over an update function runs on the spot.
-    "import { story } from 'foldkit/story'\ntest('plain', () => { story(update, given(home)) })",
-    "import { scene } from 'foldkit/scene'\ntest('plain', () => { scene(ROOT, given(home)) })",
-    "test('plain', () => { story(coopUpdate, given(home)) })",
-    "test('plain', () => { Scene.scene({ update, view }, Scene.given(home)) })",
+    "it.effect('runs', () => Effect.gen(function* () { const s = yield* Story.make(Application, {}); s.send(Message.Pressed()) }))",
+    "it.effect('runs', () => Effect.gen(function* () { const s = yield* HtmlScene.make(HeroPicker, props); s.click('Close') }))",
+    "it.effect('returns', () => Story.make(Lobby, props))",
+    "it.effect.each(rows)('runs %s', row => Effect.gen(function* () { yield* Scene.make(Proof, row) }))",
+    "it.effect('loops', () => Effect.forEach(SEEDS, seed => Story.make(Application, {}).pipe(Effect.map(s => s.given(seeded(seed))))))",
+    "it.effect('all', () => Effect.all(Array.map(SEEDS, seed => Story.make(Application, {}))))",
+    "it.effect('play', () => Effect.gen(function* () { const play = yield* HtmlPlay.make(Application, {}); yield* play.click('PLAY') }))",
+    'const started = (model) => Story.make(Application, {}).pipe(Effect.map(s => s.given(model)))',
+    // NOTE: start makes its cursor at once, with no Effect to run.
+    "test('throws', () => { assert.throws(() => HtmlScene.start(Shelf, {}).click('x')) })",
   ],
   invalid: [
+    one("test('never runs', () => Story.make(Application, {}))"),
+    one("it('never runs', () => { return HtmlScene.make(Lobby, props) })"),
     one(
-      "test('never runs', () => Story.story(APPLICATION, Story.given(home)))",
+      "it.effect('drops', () => Effect.gen(function* () { Array.forEach(SEEDS, seed => Story.make(Application, {})) }))",
     ),
     one(
-      "it('never runs', () => { return Scene.scene(APPLICATION, Scene.given(home)) })",
+      "it.effect('drops', () => Effect.gen(function* () { Array.map(SEEDS, seed => Story.make(Application, {})) }))",
     ),
     one(
-      "it.effect('drops', () => Effect.gen(function* () { Array.forEach(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed)))) }))",
+      "it.effect('drops', () => Effect.gen(function* () { Scene.make(Proof, props) }))",
     ),
     one(
-      "it.effect('drops', () => Effect.gen(function* () { Array.map(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed)))) }))",
+      "it.effect('drops', () => Effect.gen(function* () { SEEDS.forEach(function* (seed) { yield* Story.make(Application, {}) }) }))",
     ),
     one(
-      "it.effect('drops', () => Effect.gen(function* () { Story.story(APPLICATION, Story.given(home)) }))",
-    ),
-    one(
-      "it.effect('drops', () => Effect.gen(function* () { SEEDS.forEach(function* (seed) { yield* Story.story(APPLICATION, Story.given(seed)) }) }))",
-    ),
-    one(
-      "describe('a sweep', () => { Array.forEach(SEEDS, seed => { it.effect('x', () => Effect.void); Story.story(APPLICATION, Story.given(seed)) }) })",
-    ),
-    one(
-      "import { story as runStory } from 'foldkit/story'\ntest('bare', () => runStory(CO_OP, given(home)))",
-    ),
-    one(
-      "test('a Block', () => { Scene.scene({ block: ShopBlock, layer, viewInputs }, Scene.given(home)) })",
-    ),
-    one(
-      "test('a spread config', () => { Scene.scene({ ...COOP, viewInputs }, Scene.given(home)) })",
+      "describe('a sweep', () => { Array.forEach(SEEDS, seed => { it.effect('x', () => Effect.void); HtmlPlay.make(Application, {}) }) })",
     ),
   ],
 })
 
 tester.run('no-plain-story', ruleOf('no-plain-story'), {
   valid: [
-    "import { Scene, Story } from 'foldkit'\nit.effect('runs', () => Story.story(APPLICATION, Story.given(home)))",
-    "it.effect('a child', () => Scene.scene({ block: ShopBlock, layer, viewInputs }, Scene.given(home)))",
-    "it.effect('a spread config', () => Scene.scene({ ...COOP, viewInputs }, Scene.given(home)))",
+    "import { Story } from '@effect/ui/testing'\nit.effect('runs', () => Effect.gen(function* () { yield* Story.make(Application, {}) }))",
     "import { initialModel, subscriptions, type update } from '../app/pureApp'",
     "import type { update } from '../../app/pureApp'",
-    // NOTE: a view of its own over the acquired root, a custom renderer.
-    "it.effect('title', () => Story.withBlock(APPLICATION, block => Scene.scene({ update: block.update, view: titled(block.view) }, Scene.given(home))))",
+    "import { update } from '../world/step/stepWorld'",
+    "test('throws', () => { assert.throws(() => HtmlScene.start(Shelf, {}).drop(target, files)) })",
+    "test('throws', () => { expect(() => Story.start(Lobby, props).send(Message.Pressed())).toThrow() })",
   ],
   invalid: [
-    one("import { story } from 'foldkit/story'"),
-    one("import { given, scene } from 'foldkit/scene'"),
     one("import { initialModel, update } from '../../app/pureApp'"),
     one("import { init } from '../../../src/app/pureApp'"),
-    one("test('plain', () => { Story.story(update, Story.given(home)) })"),
-    one("test('plain', () => { Scene.scene(ROOT, Scene.given(home)) })"),
+    one("import { update } from '../../app/main'"),
     one(
-      "test('plain', () => { Scene.scene({ update, view }, Scene.given(home)) })",
+      "it.effect('no end check', () => Effect.sync(() => { Story.start(Application, {}).send(Message.Pressed()) }))",
     ),
+    one('const cursor = HtmlScene.start(Lobby, props)'),
   ],
 })
 
 tester.run('tap-by-click', ruleOf('tap-by-click'), {
-  valid: ['const attributes = [OnClick(Pressed()), OnPointerDown(Held())]'],
-  invalid: [one('const attributes = [h.OnPointerUp(Released())]')],
+  valid: [
+    "const button = h.button.on('click', Pressed()).on('pointerdown', Held())",
+    "node.addEventListener('pointerup', release)",
+  ],
+  invalid: [
+    one("const button = h.button.on('pointerup', Released())"),
+    one("const pad = h.div.on('touchstart', Touched())"),
+  ],
 })
 
 tester.run('seat-action-once', ruleOf('seat-action-once'), {
   valid: [
     "import { actAsLead } from './action'",
-    'const next = modifyFields(model, { hitStop: () => 0 })',
+    'const next = UiStruct.evolve(model, { hitStop: () => 0 })',
     "const next = modifyFocus(model, { laserSight: () => 'Fitted' })",
   ],
   invalid: [
     one("import { beginReload } from '../weapons'"),
-    one('const next = modifyFields(model, { traps: () => traps })'),
+    one('const next = UiStruct.evolve(model, { traps: () => traps })'),
     one('const next = modifyFocus(model, { player: player => player })'),
     one('const next = modifySeat(world, 1, { trapStock: () => stock })'),
     one(
-      'const next = modifyFields(model, { seats: atSeat(1, { selectedTrap: () => kind }) })',
+      'const next = UiStruct.evolve(model, { seats: atSeat(1, { selectedTrap: () => kind }) })',
     ),
   ],
 })
@@ -227,17 +228,19 @@ tester.run('stand-through-space', ruleOf('stand-through-space'), {
   ],
 })
 
-tester.run('no-binding-field-write', ruleOf('no-binding-field-write'), {
+tester.run('no-dialog-field-write', ruleOf('no-dialog-field-write'), {
   valid: [
-    'const step = CoopBinding.requestKeepTracers(shot)',
-    'const next = modifyFields(model, { cosmeticRngState: () => state })',
+    "const step = openRootDialog('Profile')",
+    'const next = UiStruct.evolve(model, { cosmeticRngState: () => state })',
+    'const step = $ => $.evolve({ munchopediaPage: () => page })',
+    'const next = UiStruct.evolve(model, { [FIELD_OF[dialog]]: () => openDialog })',
   ],
   invalid: [
+    one('const next = UiStruct.evolve(model, { profileDialog: () => closed })'),
+    one('const step = $ => $.evolve({ handDialog: () => openDialog })'),
     one(
-      'const next = modifyFields(model, { coop: coop => keepTracers(coop) })',
+      'const step = $ => $.set({ ...$.model, updateGreeting: closedDialog })',
     ),
-    one('const next = modifyFields(model, { profileDialog: () => closed })'),
-    one('const next = modifyFields(shop, { dialog: () => closed })'),
   ],
 })
 
@@ -288,7 +291,7 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       filename: '/repo/src/world/step/firing.ts',
     },
     {
-      code: "import { Array } from 'effect'\nimport { modifyFields } from 'foldkit/struct'",
+      code: "import { Array } from 'effect'\nimport { UiStruct } from '@effect/ui'",
       filename: '/repo/src/world/step/firing.ts',
     },
     {
@@ -312,7 +315,7 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       filename: '/repo/src/world/zombies/__tests__/bossAttacks.story.test.ts',
     },
     {
-      code: "import { Html } from 'foldkit/html'",
+      code: "import { Html } from '@effect/ui/html'",
       filename: '/repo/src/features/lobby/view.ts',
     },
     {
@@ -332,8 +335,12 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       filename: '/repo/src/render/camera.ts',
     },
     {
-      code: "import { type ApplicationViewBuilder } from '../../app/composition'",
+      code: "import { type ApplicationViewBuilder } from '../../app/definition'",
       filename: '/repo/src/features/hud/wavePreview.ts',
+    },
+    {
+      code: "import type { ApplicationHtml, ApplicationMount } from '../../app/definition'",
+      filename: '/repo/src/screens/game/hud.ts',
     },
     {
       code: "import { iconView } from '../../ui/menuParts'\nimport { maybeRunRoom } from '../../model/onlineRun'",
@@ -344,16 +351,16 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       filename: '/repo/src/render/partyView.ts',
     },
     {
-      code: "import { HeroPickerBlock } from '../heroes/block'\nimport { isPickerOpen } from '../heroes/model'\nimport { PickOutcome } from '../heroes/inMessage'",
-      filename: '/repo/src/features/lobby/steps.ts',
+      code: "import { HeroPicker } from '../heroes/block'\nimport { Events } from '../heroes/message'",
+      filename: '/repo/src/features/lobby/view.ts',
     },
     {
-      code: "import { GuideLayer } from '../guide/layer'",
-      filename: '/repo/src/features/munchopedia/layer.ts',
+      code: "import { Guide } from '../guide/block'\nimport { isGuideOpen } from '../guide/model'",
+      filename: '/repo/src/features/munchopedia/view.ts',
     },
     {
-      code: "import { CharacterBlock } from './blocks/look/block'\nimport { cleanName } from '../../model/playerName'",
-      filename: '/repo/src/features/profile/composition.ts',
+      code: "import { CharacterPicker } from './blocks/look/block'\nimport { cleanName } from '../../domain/playerName'",
+      filename: '/repo/src/features/profile/view.ts',
     },
     {
       code: "import { hudShapes } from './hud'\nimport { endOverlayShapes } from '../../features/end/endView'",
@@ -385,7 +392,7 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       errors: 1,
     },
     {
-      code: "import { Html } from 'foldkit/html'",
+      code: "import { Html } from '@effect/ui/html'",
       filename: '/repo/src/world/step/firing.ts',
       errors: 1,
     },
@@ -445,8 +452,18 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       errors: 1,
     },
     {
-      code: "import type { CoopBinding } from '../../app/bindings'",
+      code: "import type { ApplicationNoDeps } from '../../app/block'",
       filename: '/repo/src/features/end/endView.ts',
+      errors: 1,
+    },
+    {
+      code: "import type { ApplicationViewBuilder } from '../../app/composition'",
+      filename: '/repo/src/features/end/endView.ts',
+      errors: 1,
+    },
+    {
+      code: "import { callingCardsView } from '../heroes/callingCards'",
+      filename: '/repo/src/features/coop/view.ts',
       errors: 1,
     },
     {
@@ -470,13 +487,13 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       errors: 1,
     },
     {
-      code: "import { GuideBlock } from '../guide/block'",
-      filename: '/repo/src/features/lobby/bindings.ts',
+      code: "import { Guide } from '../guide/block'",
+      filename: '/repo/src/features/lobby/view.ts',
       errors: 1,
     },
     {
-      code: "import { HeroPickerBlock } from '../coop/block'",
-      filename: '/repo/src/features/heroes/view.ts',
+      code: "import { HeroPicker } from '../lobby/block'",
+      filename: '/repo/src/features/heroes/block.ts',
       errors: 1,
     },
     {

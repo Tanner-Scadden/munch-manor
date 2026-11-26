@@ -1,5 +1,7 @@
 import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { pixelArtStyle } from '../../art/artSize'
 import { portraitOf } from '../../art/coopIcons'
@@ -30,7 +32,6 @@ import {
   PROP_WORD,
 } from '../../world/names'
 import type { WeaponKind } from '../../world/schema/worldSchema'
-import type { ProfileViewBuilder } from './composition'
 import { Message } from './message'
 
 // The Profile's MASTERY tab (docs/PROGRESSION_PLAN.md, pillar D): a row
@@ -40,6 +41,9 @@ import { Message } from './message'
 // skin its kills have opened, a kills bar, and the next skin. The rules
 // are src/domain/mastery.ts's; the styles are in
 // src/features/profile/mastery.css.
+
+type ProfileViewBuilder = Html.H<Message>
+type ProfileContent = View.Content<Message>
 
 export type MasteryInputs = Readonly<{
   mastery: SavedMastery
@@ -53,37 +57,33 @@ const barView = <Reward>(
   progress: TrackProgress<Reward>,
   label: string,
   h: ProfileViewBuilder,
-): Html =>
-  h.span(
-    [
-      h.Class('mastery-bar'),
-      h.Role('img'),
-      h.AriaLabel(`${label}: ${percentOf(progress.share)} to the next level`),
-    ],
-    [
-      h.span([
-        h.Class('mastery-fill'),
-        h.Style({ width: percentOf(progress.share) }),
-      ]),
-    ],
-  )
+): ProfileContent =>
+  h.span
+    .class('mastery-bar')
+    .attr('role', 'img')
+    .attr(
+      'aria-label',
+      `${label}: ${percentOf(progress.share)} to the next level`,
+    )
+    .children(
+      h.span.class('mastery-fill').style({ width: percentOf(progress.share) }),
+    )
 
 // NOTE: the next step's reward and the count it asks, or a gold MAX.
 const nextView = <Reward>(
   progress: TrackProgress<Reward>,
   nameOf: (reward: Reward) => string,
   h: ProfileViewBuilder,
-): Html =>
+): ProfileContent =>
   Option.match(progress.maybeNext, {
-    onNone: () => h.span([h.Class('mastery-next mastery-max')], ['MAX']),
+    onNone: () => h.span.class('mastery-next mastery-max').children('MAX'),
     onSome: ({ at, reward }) =>
-      h.span(
-        [h.Class('mastery-next')],
-        [
-          h.span([h.Class('mastery-reward')], [nameOf(reward)]),
-          h.span([h.Class('mastery-count')], [`${progress.count}/${at}`]),
-        ],
-      ),
+      h.span
+        .class('mastery-next')
+        .children(
+          h.span.class('mastery-reward').children(nameOf(reward)),
+          h.span.class('mastery-count').children(`${progress.count}/${at}`),
+        ),
   })
 
 // HEROES
@@ -110,37 +110,41 @@ const swatchView = (
   calling: Calling,
   style: PropStyle,
   h: ProfileViewBuilder,
-): Html => {
+): ProfileContent => {
   const isOpen = isStyleOpen(inputs.mastery, calling, style)
   const isWorn = calling === inputs.picked && inputs.look.propStyle === style
-  const attributes = [
-    h.Class('mastery-swatch'),
-    h.DataAttribute('style', style),
-    h.DataAttribute('open', isOpen ? 'true' : 'false'),
-    ...(isWorn ? [h.DataAttribute('worn', 'true')] : []),
-    h.Style({ '--swatch': swatchColor(style) }),
-  ]
+  const label = isOpen
+    ? `${PROP_STYLE_NAMES[style]} ${PROP_WORD}`
+    : `${PROP_STYLE_NAMES[style]} ${PROP_WORD}, locked until level ${styleLevelOf(style)}`
+  const data = {
+    'data-style': style,
+    'data-open': isOpen ? 'true' : 'false',
+    'data-worn': isWorn ? 'true' : undefined,
+  }
+  const swatch = { '--swatch': swatchColor(style) }
   return calling === inputs.picked
-    ? h.button([
-        ...attributes,
-        h.Type('button'),
-        h.AriaPressed(isWorn ? 'true' : 'false'),
-        h.AriaLabel(
-          isOpen
-            ? `${PROP_STYLE_NAMES[style]} ${PROP_WORD}`
-            : `${PROP_STYLE_NAMES[style]} ${PROP_WORD}, locked until level ${styleLevelOf(style)}`,
-        ),
-        ...(isOpen ? [] : [h.AriaDisabled(true)]),
-        h.OnClick(Message.ClickedPropStyle({ style })),
-      ])
-    : h.span([...attributes, h.AriaHidden(true)])
+    ? h.button
+        .class('mastery-swatch')
+        .attrs({
+          ...data,
+          type: 'button',
+          'aria-pressed': isWorn ? 'true' : 'false',
+          'aria-label': label,
+          'aria-disabled': isOpen ? undefined : 'true',
+        })
+        .style(swatch)
+        .on('click', Message.ClickedPropStyle({ style }))
+    : h.span
+        .class('mastery-swatch')
+        .attrs({ ...data, 'aria-hidden': 'true' })
+        .style(swatch)
 }
 
 const heroRowView = (
   inputs: MasteryInputs,
   calling: Calling,
   h: ProfileViewBuilder,
-): Html => {
+): ProfileContent => {
   const progress = heroProgressOf(inputs.mastery, calling)
   const look: Appearance = {
     ...inputs.look,
@@ -150,43 +154,37 @@ const heroRowView = (
         ? inputs.look.propStyle
         : bestStyleOf(inputs.mastery, calling),
   }
-  return h.li(
-    [
-      h.Class('mastery-row'),
-      h.DataAttribute('calling', calling),
-      ...(calling === inputs.picked ? [h.DataAttribute('picked', 'true')] : []),
-    ],
-    [
-      h.span([
-        h.Class('mastery-figure'),
-        h.AriaHidden(true),
-        h.Style(pixelArtStyle(portraitOf(look, calling))),
-      ]),
-      h.span(
-        [h.Class('mastery-body')],
-        [
-          h.span(
-            [h.Class('mastery-head')],
-            [
-              h.span([h.Class('mastery-name')], [CALLING_NAMES[calling]]),
-              h.span(
-                [h.Class('mastery-level')],
-                [`LV ${progress.level}/${MAX_HERO_LEVEL}`],
-              ),
-            ],
-          ),
+  return h.li
+    .class('mastery-row')
+    .attr('data-calling', calling)
+    .attr('data-picked', calling === inputs.picked ? 'true' : undefined)
+    .children(
+      h.span
+        .class('mastery-figure')
+        .attr('aria-hidden', 'true')
+        .style(pixelArtStyle(portraitOf(look, calling))),
+      h.span
+        .class('mastery-body')
+        .children(
+          h.span
+            .class('mastery-head')
+            .children(
+              h.span.class('mastery-name').children(CALLING_NAMES[calling]),
+              h.span
+                .class('mastery-level')
+                .children(`LV ${progress.level}/${MAX_HERO_LEVEL}`),
+            ),
           barView(progress, `${CALLING_NAMES[calling]} mastery`, h),
           nextView(progress, heroRewardName, h),
-          h.span(
-            [h.Class('mastery-swatches')],
-            Array.map(PROP_STYLES, style =>
-              swatchView(inputs, calling, style, h),
+          h.span
+            .class('mastery-swatches')
+            .children(
+              Array.map(PROP_STYLES, style =>
+                swatchView(inputs, calling, style, h),
+              ),
             ),
-          ),
-        ],
-      ),
-    ],
-  )
+        ),
+    )
 }
 
 // GUNS
@@ -206,56 +204,49 @@ const gunRowView = (
   mastery: SavedMastery,
   kind: WeaponKind,
   h: ProfileViewBuilder,
-): Html => {
+): ProfileContent => {
   const progress = gunProgressOf(mastery, kind)
   const maybeSkin = masterySkinIn(mastery, kind)
-  return h.li(
-    [
-      h.Class('mastery-row mastery-gun'),
-      h.DataAttribute('gun', kind),
-      ...(Option.isSome(maybeSkin)
-        ? [h.DataAttribute('skin', maybeSkin.value)]
-        : []),
-    ],
-    [
-      h.span([
-        h.Class('mastery-gun-img'),
-        h.AriaHidden(true),
-        h.Style(pixelArtStyle(gunPictureUrl(kind, maybeSkin))),
-      ]),
-      h.span(
-        [h.Class('mastery-body')],
-        [
-          h.span(
-            [h.Class('mastery-head')],
-            [
-              h.span([h.Class('mastery-name')], [GUN_NAMES[kind]]),
-              h.span([h.Class('mastery-level')], [`${progress.count}`]),
-            ],
+  return h.li
+    .class('mastery-row mastery-gun')
+    .attr('data-gun', kind)
+    .attr('data-skin', Option.getOrUndefined(maybeSkin))
+    .children(
+      h.span
+        .class('mastery-gun-img')
+        .attr('aria-hidden', 'true')
+        .style(pixelArtStyle(gunPictureUrl(kind, maybeSkin))),
+      h.span.class('mastery-body').children(
+        h.span
+          .class('mastery-head')
+          .children(
+            h.span.class('mastery-name').children(GUN_NAMES[kind]),
+            h.span.class('mastery-level').children(`${progress.count}`),
           ),
-          barView(progress, `${GUN_NAMES[kind]} kills`, h),
-          nextView(progress, skin => MASTERY_SKIN_NAMES[skin], h),
-        ],
+        barView(progress, `${GUN_NAMES[kind]} kills`, h),
+        nextView(progress, skin => MASTERY_SKIN_NAMES[skin], h),
       ),
-    ],
-  )
+    )
 }
 
 export const masteryTabView: {
-  (h: ProfileViewBuilder): (inputs: MasteryInputs) => Html
-  (inputs: MasteryInputs, h: ProfileViewBuilder): Html
-} = Function.dual(2, (inputs: MasteryInputs, h: ProfileViewBuilder): Html =>
-  h.div(
-    [h.Class('mastery-tab')],
-    [
-      h.ul(
-        [h.Class('mastery-rows'), h.AriaLabel('Heroes')],
-        Array.map(CALLINGS, calling => heroRowView(inputs, calling, h)),
-      ),
-      h.ul(
-        [h.Class('mastery-rows'), h.AriaLabel('Guns')],
-        Array.map(MASTERY_GUNS, kind => gunRowView(inputs.mastery, kind, h)),
-      ),
-    ],
-  ),
+  (h: ProfileViewBuilder): (inputs: MasteryInputs) => ProfileContent
+  (inputs: MasteryInputs, h: ProfileViewBuilder): ProfileContent
+} = Function.dual(
+  2,
+  (inputs: MasteryInputs, h: ProfileViewBuilder): ProfileContent =>
+    h.div.class('mastery-tab').children(
+      h.ul
+        .class('mastery-rows')
+        .attr('aria-label', 'Heroes')
+        .children(
+          Array.map(CALLINGS, calling => heroRowView(inputs, calling, h)),
+        ),
+      h.ul
+        .class('mastery-rows')
+        .attr('aria-label', 'Guns')
+        .children(
+          Array.map(MASTERY_GUNS, kind => gunRowView(inputs.mastery, kind, h)),
+        ),
+    ),
 )

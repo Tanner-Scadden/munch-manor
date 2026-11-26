@@ -1,10 +1,8 @@
 import { Array, Effect, Option, Record } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { ProfileBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import {
   BreakClock,
@@ -18,6 +16,7 @@ import {
   defaultAppearance,
   freshLessons,
 } from '../../../app/model'
+import { FocusProfileElement } from '../../../app/update/profile'
 import { WriteSave } from '../../../app/update/save'
 import {
   decodeSave,
@@ -36,12 +35,15 @@ import {
   readyModel,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
+  type StoryStep,
+  checkModel,
+  expectNoCommand,
   hintIds,
+  modelAfter,
   press,
+  send,
   settleRunCommands,
-  showDialog,
+  steps,
   throughIntro,
   tick,
   writeSave,
@@ -53,8 +55,6 @@ import {
   DARE_TOUR_WAVE,
   isKitchenTourOn,
 } from '../../../world/run/tutorialRules'
-import { Message as ProfileMessage } from '../../profile/message'
-import { FocusTutorialReset } from '../../profile/update'
 import { isLearned } from '../onboarding'
 import { isRattlesTalking } from '../rattlesIntro'
 
@@ -64,14 +64,21 @@ import { isRattlesTalking } from '../rattlesIntro'
 // (owner, 2026-11-10), kept in the save. The default still plays the tutorial, and Settings' Reset tutorial brings it
 // back.
 
-const firstVisit: Model = modifyFields(newPlayerReady, {
-  saving: modifyFields({ saveStatus: () => 'Read' }),
+const firstVisit: Model = UiStruct.evolve(newPlayerReady, {
+  saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
 })
 
-const chooseTutorial = (choice: TutorialChoice) =>
-  Story.message(Message.ClickedTutorialChoiceButton({ choice }))
+const expectWrite: StoryStep = s => s.expectHas(WriteSave)
 
-const pickNormal = Story.message(
+// NOTE: focus moved to the Profile's button left standing, which reports
+// nothing back.
+const resolveFocusProfile: StoryStep = s =>
+  s.resolve(FocusProfileElement, Component.noop)
+
+const chooseTutorial = (choice: TutorialChoice) =>
+  send(Message.ClickedTutorialChoiceButton({ choice }))
+
+const pickNormal = send(
   Message.ClickedDifficultyCardButton({ difficulty: 'Normal' }),
 )
 
@@ -81,25 +88,22 @@ const pickNormal = Story.message(
 // NOTE: Rattles' hello comes before the guided break; this asks only
 // about the break, so he has been met.
 const isGuidedFirstBreakOn = (current: Model) =>
-  Story.story(
-    APPLICATION,
-    Story.given(
-      modifyFields(current, {
-        phase: () =>
-          Phase.Preparation({
-            wave: SHOP_FIRST_WAVE,
-            remainingMs: 20_000,
-            durationMs: 20_000,
-            spawns: [DISTANT_SPAWN],
-            clock: BreakClock.Waiting({ elapsedMs: 0 }),
-          }),
-        lessons: lessons =>
-          modifyFields(lessons, {
-            rattles: () => Lesson.Learned({ atMs: 0 }),
-          }),
-      }),
-    ),
-    tick(FIXED_STEP_MS),
+  modelAfter(
+    UiStruct.evolve(current, {
+      phase: () =>
+        Phase.Preparation({
+          wave: SHOP_FIRST_WAVE,
+          remainingMs: 20_000,
+          durationMs: 20_000,
+          spawns: [DISTANT_SPAWN],
+          clock: BreakClock.Waiting({ elapsedMs: 0 }),
+        }),
+      lessons: lessons =>
+        UiStruct.evolve(lessons, {
+          rattles: () => Lesson.Learned({ atMs: 0 }),
+        }),
+    }),
+    steps(tick(FIXED_STEP_MS)),
   ).pipe(
     Effect.map(
       firstBreak =>
@@ -111,29 +115,26 @@ const isGuidedFirstBreakOn = (current: Model) =>
 // NOTE: whether the same player, at the break where Rattles says hello, a
 // frame in, hears it.
 const isRattlesHelloOn = (current: Model) =>
-  Story.story(
-    APPLICATION,
-    Story.given(
-      modifyFields(current, {
-        phase: () =>
-          Phase.Preparation({
-            wave: DARE_TOUR_WAVE,
-            remainingMs: 20_000,
-            durationMs: 20_000,
-            spawns: [DISTANT_SPAWN],
-            clock: BreakClock.Waiting({ elapsedMs: 0 }),
-          }),
-      }),
-    ),
-    tick(FIXED_STEP_MS),
-    settleRunCommands,
+  modelAfter(
+    UiStruct.evolve(current, {
+      phase: () =>
+        Phase.Preparation({
+          wave: DARE_TOUR_WAVE,
+          remainingMs: 20_000,
+          durationMs: 20_000,
+          spawns: [DISTANT_SPAWN],
+          clock: BreakClock.Waiting({ elapsedMs: 0 }),
+        }),
+    }),
+    steps(tick(FIXED_STEP_MS), settleRunCommands),
   ).pipe(Effect.map(isRattlesTalking))
 
 const isKitchenTourDue = (current: Model): boolean =>
   isKitchenTourOn(
-    modifyFields(current, {
+    UiStruct.evolve(current, {
       phase: () =>
         Phase.Preparation({
+          clock: BreakClock.Counting(),
           wave: KITCHEN_FIRST_WAVE,
           remainingMs: 15_000,
           durationMs: 15_000,
@@ -156,51 +157,52 @@ describe('the first-run card', () => {
   it.effect(
     'TUTORIAL is lit by default, and SKIP IT stays lit until a difficulty starts the run',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(firstVisit),
-        Story.message(Message.ClickedCampaignButton()),
-        showDialog(),
-        Story.model(current => {
-          expect(current.difficultyCard).toEqual(
-            DifficultyCard.Asking({
-              mode: RunMode.Campaign(),
-              tutorial: 'Tutorial',
-            }),
-          )
-        }),
-        chooseTutorial('Skip'),
-        Story.model(current => {
-          expect(current.difficultyCard).toEqual(
-            DifficultyCard.Asking({
-              mode: RunMode.Campaign(),
-              tutorial: 'Skip',
-            }),
-          )
-          expect(current.lessons).toEqual(freshLessons)
-        }),
-        chooseTutorial('Tutorial'),
-        Story.model(current => {
-          expect(current.difficultyCard).toEqual(
-            DifficultyCard.Asking({
-              mode: RunMode.Campaign(),
-              tutorial: 'Tutorial',
-            }),
-          )
-        }),
+      modelAfter(
+        firstVisit,
+        steps(
+          send(Message.ClickedCampaignButton()),
+          checkModel(current => {
+            expect(current.difficultyCard).toEqual(
+              DifficultyCard.Asking({
+                mode: RunMode.Campaign(),
+                tutorial: 'Tutorial',
+              }),
+            )
+          }),
+          chooseTutorial('Skip'),
+          checkModel(current => {
+            expect(current.difficultyCard).toEqual(
+              DifficultyCard.Asking({
+                mode: RunMode.Campaign(),
+                tutorial: 'Skip',
+              }),
+            )
+            expect(current.lessons).toEqual(freshLessons)
+          }),
+          chooseTutorial('Tutorial'),
+          checkModel(current => {
+            expect(current.difficultyCard).toEqual(
+              DifficultyCard.Asking({
+                mode: RunMode.Campaign(),
+                tutorial: 'Tutorial',
+              }),
+            )
+          }),
+        ),
       ),
   )
 
   it.effect('a tutorial pick with no card up does nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(firstVisit),
-      chooseTutorial('Skip'),
-      Story.Command.expectNone(),
-      Story.model(current => {
-        expect(current.difficultyCard).toEqual(DifficultyCard.Unseen())
-        expect(current.lessons).toEqual(freshLessons)
-      }),
+    modelAfter(
+      firstVisit,
+      steps(
+        chooseTutorial('Skip'),
+        expectNoCommand,
+        checkModel(current => {
+          expect(current.difficultyCard).toEqual(DifficultyCard.Unseen())
+          expect(current.lessons).toEqual(freshLessons)
+        }),
+      ),
     ),
   )
 
@@ -208,44 +210,43 @@ describe('the first-run card', () => {
     'SKIP IT and a difficulty start a run with no practice gate, no hints, no guided first break, no kitchen tour, and no hello from Rattles, kept in the save',
     () =>
       Effect.gen(function* () {
-        const current = yield* Story.story(
-          APPLICATION,
-          Story.given(firstVisit),
-          Story.message(Message.ClickedCampaignButton()),
-          showDialog(),
-          chooseTutorial('Skip'),
-          pickNormal,
-          closeDialog(),
-          Story.Command.expectHas(WriteSave),
-          Story.model(started => {
-            expect(saveOf(started).onboarding.lessons).toEqual({
-              move: 'Learned',
-              fire: 'Learned',
-              startWave: 'Pending',
-              swap: 'Pending',
-              pickup: 'Pending',
-              timedBreaks: 'Learned',
-              openBreak: 'Learned',
-              dareTour: 'Learned',
-              dareKey: 'Learned',
-              rattles: 'Learned',
-              displayCase: 'Pending',
-              dareCard: 'Pending',
-              gunLevel: 'Pending',
-            })
-          }),
-          writeSave(),
-          tick(50),
-          tick(3000),
-          throughIntro,
-          writeSave(),
-          Story.model(later => {
-            expect(Phase.guards.Preparation(later.phase)).toBe(true)
-            expect(later.difficulty.chosen).toBe('Normal')
-            expect(isPracticeGateHeld(later)).toBe(false)
-            expect(hintIds(later)).toEqual([])
-            expect(isKitchenTourDue(later)).toBe(false)
-          }),
+        const current = yield* modelAfter(
+          firstVisit,
+          steps(
+            send(Message.ClickedCampaignButton()),
+            chooseTutorial('Skip'),
+            pickNormal,
+            expectWrite,
+            checkModel(started => {
+              expect(saveOf(started).onboarding.lessons).toEqual({
+                move: 'Learned',
+                fire: 'Learned',
+                startWave: 'Pending',
+                swap: 'Pending',
+                pickup: 'Pending',
+                timedBreaks: 'Learned',
+                openBreak: 'Learned',
+                dareTour: 'Learned',
+                dareKey: 'Learned',
+                rattles: 'Learned',
+                displayCase: 'Pending',
+                dareCard: 'Pending',
+                gunLevel: 'Pending',
+              })
+            }),
+            writeSave,
+            tick(50),
+            tick(3000),
+            throughIntro,
+            writeSave,
+            checkModel(later => {
+              expect(Phase.guards.Preparation(later.phase)).toBe(true)
+              expect(later.difficulty.chosen).toBe('Normal')
+              expect(isPracticeGateHeld(later)).toBe(false)
+              expect(hintIds(later)).toEqual([])
+              expect(isKitchenTourDue(later)).toBe(false)
+            }),
+          ),
         )
         const isGuided = yield* isGuidedFirstBreakOn(current)
         expect(isGuided).toBe(false)
@@ -266,25 +267,24 @@ describe('the first-run card', () => {
 
   it.effect('TUTORIAL, the default, starts the tutorial', () =>
     Effect.gen(function* () {
-      const current = yield* Story.story(
-        APPLICATION,
-        Story.given(firstVisit),
-        Story.message(Message.ClickedCampaignButton()),
-        showDialog(),
-        pickNormal,
-        closeDialog(),
-        writeSave(),
-        tick(50),
-        tick(3000),
-        throughIntro,
-        writeSave(),
-        Story.model(later => {
-          expect(Phase.guards.Preparation(later.phase)).toBe(true)
-          expect(isPracticeGateHeld(later)).toBe(true)
-          expect(hintIds(later)).toContain('Move')
-          expect(isKitchenTourDue(later)).toBe(true)
-          expect(later.lessons.dareTour).toEqual(Lesson.Pending())
-        }),
+      const current = yield* modelAfter(
+        firstVisit,
+        steps(
+          send(Message.ClickedCampaignButton()),
+          pickNormal,
+          writeSave,
+          tick(50),
+          tick(3000),
+          throughIntro,
+          writeSave,
+          checkModel(later => {
+            expect(Phase.guards.Preparation(later.phase)).toBe(true)
+            expect(isPracticeGateHeld(later)).toBe(true)
+            expect(hintIds(later)).toContain('Move')
+            expect(isKitchenTourDue(later)).toBe(true)
+            expect(later.lessons.dareTour).toEqual(Lesson.Pending())
+          }),
+        ),
       )
       const isGuided = yield* isGuidedFirstBreakOn(current)
       expect(isGuided).toBe(true)
@@ -295,48 +295,35 @@ describe('the first-run card', () => {
 
   it.effect("Settings' Reset tutorial brings a skipped tutorial back", () =>
     Effect.gen(function* () {
-      const skippedRun = yield* Story.story(
-        APPLICATION,
-        Story.given(firstVisit),
-        Story.message(Message.ClickedCampaignButton()),
-        showDialog(),
-        chooseTutorial('Skip'),
-        pickNormal,
-        closeDialog(),
-        writeSave(),
+      const skippedRun = yield* modelAfter(
+        firstVisit,
+        steps(
+          send(Message.ClickedCampaignButton()),
+          chooseTutorial('Skip'),
+          pickNormal,
+          writeSave,
+        ),
       )
-      const skipped = modifyFields(reloaded(skippedRun), {
-        saving: modifyFields({ saveStatus: () => 'Read' }),
+      const skipped = UiStruct.evolve(reloaded(skippedRun), {
+        saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
       })
       const isGuidedSkipped = yield* isGuidedFirstBreakOn(skipped)
       expect(isGuidedSkipped).toBe(false)
-      const reset = yield* Story.story(
-        APPLICATION,
-        Story.given(skipped),
-        Story.message(Message.ClickedSettingsButton()),
-        showDialog(),
-        Story.messageIn(
-          ProfileBinding,
-          ProfileMessage.ClickedResetTutorialButton(),
+      const reset = yield* modelAfter(
+        skipped,
+        steps(
+          send(Message.ClickedSettingsButton()),
+          send(Message.ClickedResetTutorial()),
+          resolveFocusProfile,
+          send(Message.ConfirmedTutorialReset()),
+          expectWrite,
+          checkModel(current => {
+            expect(current.lessons).toEqual(freshLessons)
+            expect(isKitchenTourDue(current)).toBe(true)
+          }),
+          resolveFocusProfile,
+          writeSave,
         ),
-        Story.Command.resolve(
-          FocusTutorialReset,
-          ProfileMessage.CompletedFocusTutorialReset(),
-        ),
-        Story.messageIn(
-          ProfileBinding,
-          ProfileMessage.ClickedConfirmResetTutorialButton(),
-        ),
-        Story.Command.expectHas(WriteSave),
-        Story.model(current => {
-          expect(current.lessons).toEqual(freshLessons)
-          expect(isKitchenTourDue(current)).toBe(true)
-        }),
-        Story.Command.resolve(
-          FocusTutorialReset,
-          ProfileMessage.CompletedFocusTutorialReset(),
-        ),
-        writeSave(),
       )
       const isGuidedReset = yield* isGuidedFirstBreakOn(reset)
       expect(isGuidedReset).toBe(true)
@@ -350,74 +337,76 @@ describe('the first-run card', () => {
 describe('PLAY TUTORIAL', () => {
   // NOTE: a returning player past every lesson, with rank, Bones spent on
   // a look, a best, kills for the Munchopedia, a bot, and a modifier.
-  const returning: Model = modifyFields(asTutorialDone(readyModel), {
+  const returning: Model = UiStruct.evolve(asTutorialDone(readyModel), {
     rank: rank =>
-      modifyFields(rank, {
+      UiStruct.evolve(rank, {
         earnedPoints: () => 4_200,
         earnedBones: () => 30,
         spentBones: () => 12,
       }),
-    appearance: appearance => modifyFields(appearance, { hat: () => 'TopHat' }),
+    appearance: appearance =>
+      UiStruct.evolve(appearance, { hat: () => 'TopHat' }),
     bests: bests =>
-      modifyFields(bests, {
+      UiStruct.evolve(bests, {
         runsPlayed: () => 12,
         totalKills: () => 40,
-        killsByKind: kills => modifyFields(kills, { Runner: () => 40 }),
+        killsByKind: kills => UiStruct.evolve(kills, { Runner: () => 40 }),
       }),
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         bots: () => [
           { name: 'Gus', calling: 'Handyman', look: defaultAppearance },
         ],
       }),
-    modifiers: modifiers => modifyFields(modifiers, { glass: () => true }),
-    saving: modifyFields({ saveStatus: () => 'Read' }),
+    modifiers: modifiers => UiStruct.evolve(modifiers, { glass: () => true }),
+    saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
   })
 
   it.effect(
     'forgets every lesson, keeps progress, and starts the practice run',
     () =>
       Effect.gen(function* () {
-        const started = yield* Story.story(
-          APPLICATION,
-          Story.given(returning),
-          press('KeyI'),
-          showDialog(),
-          Story.message(Message.ClickedPlayTutorialButton()),
-          closeDialog(),
-          Story.Command.expectHas(WriteSave),
-          Story.model(current => {
-            expect(current.lessons).toEqual(freshLessons)
-            expect(Array.every(Record.values(current.lessons), isPending)).toBe(
-              true,
-            )
-            expect(current.phase).toMatchObject({
-              _tag: 'Arriving',
-              cut: 'Full',
-            })
-            expect(RunMode.guards.Campaign(current.mode)).toBe(true)
-            expect(current.runStart.crewBots).toEqual([])
-            expect(current.modifiers).toEqual(noModifiers)
-            expect(current.firstBreakQuest).toEqual(QuestTour.Waiting())
-            expect(current.introducedKinds).toEqual([])
-            const before = saveOf(returning)
-            const after = saveOf(current)
-            expect(after.rank).toEqual(before.rank)
-            expect(after.appearance).toEqual(before.appearance)
-            expect(after.boughtCosmetics).toEqual(before.boughtCosmetics)
-            expect(after.bests).toEqual(before.bests)
-            expect(after.home.openedEntries).toEqual(before.home.openedEntries)
-            expect(after.difficulty).toEqual(before.difficulty)
-          }),
-          settleRunCommands,
-          throughIntro,
-          Story.model(later => {
-            expect(Phase.guards.Preparation(later.phase)).toBe(true)
-            expect(isPracticeGateHeld(later)).toBe(true)
-            expect(hintIds(later)).toContain('Move')
-            expect(isKitchenTourDue(later)).toBe(true)
-          }),
-          settleRunCommands,
+        const started = yield* modelAfter(
+          returning,
+          steps(
+            press('KeyI'),
+            send(Message.ClickedPlayTutorialButton()),
+            expectWrite,
+            checkModel(current => {
+              expect(current.lessons).toEqual(freshLessons)
+              expect(
+                Array.every(Record.values(current.lessons), isPending),
+              ).toBe(true)
+              expect(current.phase).toMatchObject({
+                _tag: 'Arriving',
+                cut: 'Full',
+              })
+              expect(RunMode.guards.Campaign(current.mode)).toBe(true)
+              expect(current.runStart.crewBots).toEqual([])
+              expect(current.modifiers).toEqual(noModifiers)
+              expect(current.firstBreakQuest).toEqual(QuestTour.Waiting())
+              expect(current.introducedKinds).toEqual([])
+              const before = saveOf(returning)
+              const after = saveOf(current)
+              expect(after.rank).toEqual(before.rank)
+              expect(after.appearance).toEqual(before.appearance)
+              expect(after.boughtCosmetics).toEqual(before.boughtCosmetics)
+              expect(after.bests).toEqual(before.bests)
+              expect(after.home.openedEntries).toEqual(
+                before.home.openedEntries,
+              )
+              expect(after.difficulty).toEqual(before.difficulty)
+            }),
+            settleRunCommands,
+            throughIntro,
+            checkModel(later => {
+              expect(Phase.guards.Preparation(later.phase)).toBe(true)
+              expect(isPracticeGateHeld(later)).toBe(true)
+              expect(hintIds(later)).toContain('Move')
+              expect(isKitchenTourDue(later)).toBe(true)
+            }),
+            settleRunCommands,
+          ),
         )
         const isGuided = yield* isGuidedFirstBreakOn(started)
         expect(isGuided).toBe(true)
@@ -427,15 +416,16 @@ describe('PLAY TUTORIAL', () => {
   )
 
   it.effect('does nothing while How to play is shut', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(returning),
-      Story.message(Message.ClickedPlayTutorialButton()),
-      Story.Command.expectNone(),
-      Story.model(current => {
-        expect(current.lessons).toEqual(returning.lessons)
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-      }),
+    modelAfter(
+      returning,
+      steps(
+        send(Message.ClickedPlayTutorialButton()),
+        expectNoCommand,
+        checkModel(current => {
+          expect(current.lessons).toEqual(returning.lessons)
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+        }),
+      ),
     ),
   )
 })

@@ -1,5 +1,6 @@
 import { Function, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { notePress } from '../../platform/recording'
 import { leadSeatOf } from '../../world/party/party'
@@ -22,7 +23,7 @@ import type { Model } from '../model'
 // NOTE: a recorded run (src/platform/recording.ts) keeps the press as the
 // action, so a replay applies it by the same rule.
 const pressed = (model: Model, slot: PlayerSlot, action: SeatAction): Model =>
-  modifyFields(model, { recorder: notePress(slot, action) })
+  UiStruct.evolve(model, { recorder: notePress(slot, action) })
 
 // NOTE: the Model with the action applied to its lead seat, or as it was.
 export const actAsLead: {

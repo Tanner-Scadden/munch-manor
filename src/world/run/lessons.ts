@@ -1,5 +1,6 @@
 import { Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { OPEN_BREAK_WAVE } from '../../shared/constants'
 import type { World } from '../schema/world'
@@ -63,17 +64,17 @@ export const isPracticeGateHeld = (model: World): boolean =>
 // BREAKS
 
 export const learnTimedBreaks = (model: World): World =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         timedBreaks: lesson => learn(lesson, model.elapsedMs),
       }),
   })
 
 export const learnOpenBreak = (model: World): World =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         openBreak: lesson => learn(lesson, model.elapsedMs),
       }),
   })

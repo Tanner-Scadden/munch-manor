@@ -1,5 +1,6 @@
 import { Effect, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { Command, Component } from '@effect/ui'
 
 import { maybeRunOutcome } from '../../platform/analyticsRun'
 import {
@@ -8,8 +9,7 @@ import {
   finishRecording,
 } from '../../platform/recording'
 import { uploadRecording } from '../../platform/recordingUpload'
-import { ApplicationBlock } from '../definition'
-import { Message } from '../message'
+import { PlayerStore } from '../../platform/store'
 import type { Model } from '../model'
 import { type UpdateStep, defineHandlers } from './step'
 
@@ -18,56 +18,53 @@ import { type UpdateStep, defineHandlers } from './step'
 
 // COMMAND
 
-export const UploadRecording = ApplicationBlock.makeCommand('UploadRecording', {
-  args: { recording: RunRecording },
-  messages: [Message.CompletedUploadRecording, Message.FailedUploadRecording],
-  handler: function* () {
-    return ({ recording }) =>
-      pipe(
-        uploadRecording(recording),
-        Effect.as(Message.CompletedUploadRecording()),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedUploadRecording({ reason: error.reason }),
+// NOTE: a run that cannot go up waits in the store's queue, so the Model
+// hears nothing either way: a failure is logged.
+export class UploadRecording extends Command.Service<UploadRecording>()(
+  'app/UploadRecording',
+  { args: { recording: RunRecording }, success: Component.Noop },
+) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function* () {
+      const store = yield* PlayerStore
+      return ({ recording }) =>
+        pipe(
+          uploadRecording(recording),
+          Effect.provideService(PlayerStore, store),
+          Effect.catch(error =>
+            Effect.logWarning('upload recording', error.reason),
           ),
-        ),
-      )
-  },
-})
+          Effect.as(Component.noop),
+        )
+    }),
+  )
+}
 
 // NOTE: the run ends as its summary does (maybeRunOutcome): won, lost, or
 // left. The recorder goes idle either way; a player who turned the setting
 // off mid-run sends nothing.
 export const finishRecordingFrom =
   (before: Model): UpdateStep =>
-  stepModel =>
-    RunRecorder.isAnyOf(['Recording'])(stepModel.recorder) &&
-    Option.isSome(maybeRunOutcome(before, stepModel))
-      ? {
-          model: modifyFields(stepModel, {
-            recorder: () => RunRecorder.Idle(),
-          }),
-          commands:
-            stepModel.settings.recordRuns === 'On'
-              ? Option.match(finishRecording(stepModel.recorder), {
-                  onNone: () => [],
-                  onSome: recording => [UploadRecording({ recording })],
-                })
-              : [],
-        }
-      : { model: stepModel }
+  $ =>
+    RunRecorder.isAnyOf(['Recording'])($.model.recorder) &&
+    Option.isSome(maybeRunOutcome(before, $.model))
+      ? $.evolve({ recorder: RunRecorder.Idle() }).run(
+          ...($.model.settings.recordRuns === 'On'
+            ? Option.match(finishRecording($.model.recorder), {
+                onNone: () => [],
+                onSome: recording => [UploadRecording.make({ recording })],
+              })
+            : []),
+        )
+      : $.model
 
 // HANDLERS
 
 export const recordingHandlers = defineHandlers({
   // NOTE: the boot only ever unlocks: a save read or synced as unlocked
   // stays so.
-  CompletedReadRecordUnlock: (model, { unlock }) => ({
-    model: modifyFields(model, {
+  CompletedReadRecordUnlock: ($, { unlock }) =>
+    $.evolve({
       recordUnlock: current => (unlock === 'Unlocked' ? unlock : current),
     }),
-  }),
-  CompletedStartRecordingQueue: model => ({ model }),
-  CompletedUploadRecording: model => ({ model }),
-  FailedUploadRecording: model => ({ model }),
 })

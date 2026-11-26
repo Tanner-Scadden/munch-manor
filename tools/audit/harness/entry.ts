@@ -10,50 +10,60 @@ import './harness.css'
 import {
   Array,
   Effect,
+  Fiber,
   Layer,
   Option,
   Result,
-  Schema,
   Scope,
   String,
 } from 'effect'
-import { Canvas, Dom, Program, Runtime } from 'foldkit'
-import { type Document } from 'foldkit/html'
-import { modifyFields } from 'foldkit/struct'
 
-import { ProfileDialogBinding } from '@game/app/bindings'
-import { ChildLayers } from '@game/app/block'
+import { Command, Component, Head, UiStruct } from '@effect/ui'
+import { BrowserHost } from '@effect/ui/html'
+import { ApplicationNoDeps } from '@game/app/block'
 import { LoadSave, bootCommands } from '@game/app/boot'
-import { ApplicationComposition } from '@game/app/composition'
-import { ApplicationBlock, makeNoopStep } from '@game/app/definition'
-import { EffectsLayer } from '@game/app/layer'
+import {
+  ApplicationDef,
+  type ApplicationHtml,
+  type ApplicationViewBuilder,
+} from '@game/app/definition'
+import { CommandsLayer } from '@game/app/layer'
 import { sceneShapes } from '@game/app/layers'
-import { update } from '@game/app/main'
 import type { Message } from '@game/app/message'
-import { type Model, initialModel as gameInitialModel } from '@game/app/model'
-import { update as pureUpdate } from '@game/app/pureApp'
-import { subscriptions } from '@game/app/subscriptions'
-import { managedResources } from '@game/app/update/sound'
-import { modelStep } from '@game/app/update/step'
+import type { Model } from '@game/app/model'
+import { update as pureUpdate, subscriptions } from '@game/app/pureApp'
+import type { App$ } from '@game/app/update/step'
 import { view } from '@game/app/view'
+import { audioEngineLayer } from '@game/audio/audio'
 import { quietCoopNet } from '@game/features/coop/testing'
 import { quietLayer as quietInstallPrompt } from '@game/platform/install'
 import { layer as PlayerStoreLayer } from '@game/platform/store'
 import { worldCameraFor } from '@game/render/camera'
 import { defineWorldElement, snapshotWorld } from '@game/render/iso/element'
+import {
+  defineOverlayElement,
+  overlayElement,
+} from '@game/render/iso/overlayElement'
 import { definePlinthElement } from '@game/render/iso/plinthElement'
 import { screenOf } from '@game/render/screen'
+import { GAME_TITLE } from '@game/shared/constants'
 import { RATTLES_BOX, START_LEVEL } from '@game/world/level/arena'
 
+import type * as Draw from '../../../src/render/draw'
 import { BRIDGE_KEY, type StudioBridge } from '../../studio/bridge.ts'
 import { tuneTables } from '../../studio/lab.ts'
 import { cardShapes } from './cards'
 import { type HarnessConfig, decodeHarnessConfig } from './config'
 import * as Director from './director'
-import { type DirectorWake, sceneHandlers } from './handlers'
+import {
+  type DirectorWake,
+  sceneCommandLayer,
+  sceneCommands,
+  sceneSubscriptions,
+} from './handlers'
 import { liveCoopNet } from './liveNet'
 import { LIVE_CROWD, LIVE_SEATS } from './liveRoom'
-import { type ViewHtml, lookSheetView } from './lookSheet'
+import { lookSheetView } from './lookSheet'
 import { nextFrame, settle } from './readiness'
 import { scenarioModel } from './scenario'
 import { type Scene, keepScene, logMessage, sceneOf } from './sceneUpdate'
@@ -88,7 +98,7 @@ const page: HarnessPage = {
 
 window.__shapeCounts = []
 
-const countShapes = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+const countShapes = (shapes: ReadonlyArray<Draw.Shape>): number =>
   Array.reduce(
     shapes,
     0,
@@ -115,7 +125,29 @@ const clearReady = () => {
   window.__harnessReady = false
   delete document.documentElement.dataset['harnessReady']
 }
-const markReadyWhenSettled = (number: number) => {
+// NOTE: `looksection` taps the Look tab's little tab once the Profile is
+// drawn, since the Look tab keeps which one shows in its own component.
+const tapLookSection = (maybeSection: Option.Option<string>) =>
+  Option.match(maybeSection, {
+    onNone: () => Effect.void,
+    onSome: section =>
+      Effect.andThen(
+        Effect.sync(() => {
+          const tab = document.querySelector(
+            `.look-section[data-section="${section}"]`,
+          )
+          if (tab instanceof HTMLElement) {
+            tab.click()
+          }
+        }),
+        settle(() => true),
+      ),
+  })
+
+const markReadyWhenSettled = (
+  number: number,
+  maybeLookSection: Option.Option<string>,
+) => {
   clearReady()
   Effect.runFork(
     settle(
@@ -123,6 +155,7 @@ const markReadyWhenSettled = (number: number) => {
         window.__model.saving.saveStatus !== 'Unread' &&
         page.framesRun >= framesWanted(page.settings),
     ).pipe(
+      Effect.andThen(tapLookSection(maybeLookSection)),
       Effect.andThen(
         Effect.sync(() => {
           if (number === page.sceneNumber) {
@@ -157,61 +190,12 @@ const decodeScene = (query: string): HarnessConfig | undefined =>
 const nextSceneOf = (model: Model): Scene =>
   sceneOf(
     page.settings,
-    modifyFields(scenarioModel(page.settings), {
+    UiStruct.evolve(scenarioModel(page.settings), {
       maybeSurface: () => model.maybeSurface,
       orientation: () => model.orientation,
-      saving: modifyFields({ saveStatus: () => 'Read' as const }),
+      saving: UiStruct.evolve({ saveStatus: () => 'Read' as const }),
     }),
   )
-
-// NOTE: an open dialog holds page state outside the Model: the inert,
-// hidden background, the focus trap, and the scroll lock. A dialog closed by
-// swapping the Model never runs its CloseDialog Command, so this releases
-// what every dialog holds, as that Command does, before the next scene.
-const releaseDialogs = Effect.suspend(() =>
-  Effect.forEach(
-    globalThis.Array.from(document.querySelectorAll('dialog[id]')),
-    dialog =>
-      Dom.releaseDialogResources(dialog.id).pipe(
-        Effect.flatMap(isReleased =>
-          isReleased ? Dom.unlockScroll : Effect.void,
-        ),
-      ),
-    { discard: true },
-  ),
-)
-
-// NOTE: the scene's init is the game's boot with the scene's Model: its
-// Commands (without LoadSave after the first scene), then the scene's Model
-// in place of the fresh one, and the Profile's Dialog opened through its
-// Binding when the scene asks for it.
-const harnessInit = ApplicationComposition.makeInit(() => {
-  // NOTE: the first scene boots as a page does; each later one boots from
-  // the Model the last scene left (see nextSceneOf).
-  const isFirst = Option.isNone(page.maybeCarriedModel)
-  const scene = Option.match(page.maybeCarriedModel, {
-    onNone: () => sceneOf(page.settings, scenarioModel(page.settings)),
-    onSome: nextSceneOf,
-  })
-  window.__isFrozen = page.framesRun >= page.settings.freezeAfter
-  window.__model = scene.model
-  markReadyWhenSettled(page.sceneNumber)
-  return {
-    model: gameInitialModel,
-    commands: Array.filter(
-      bootCommands(),
-      command => isFirst || command.name !== LoadSave.name,
-    ),
-    steps: [
-      modelStep(() => scene.model),
-      scene.isProfileOpen ? ProfileDialogBinding.requestOpen() : makeNoopStep(),
-      modelStep(model => {
-        window.__model = model
-        return model
-      }),
-    ],
-  }
-})
 
 // THE DIRECTOR
 
@@ -270,98 +254,54 @@ window.__director = {
   seats: () => Director.seatsOnScreen(window.__model),
 }
 
-// NOTE: the harness's update is the game's, then the director's requests,
-// then what the scene keeps (keepScene) after every dispatch, its children's
-// envelopes included.
-const ranDirector = ApplicationComposition.makeUpdate.on([
-  'RestoredPageFromCache',
-])(model => ({
-  model: directorRequests.length > 0 ? runDirectorRequests(model) : model,
-}))
-
-const keptScene = ApplicationComposition.makeUpdate.each((model, message) => {
-  if (message._tag === 'TickedFrame') {
-    page.framesRun++
-  }
-  window.__isFrozen = page.framesRun >= page.settings.freezeAfter
-  const kept = keepScene(page.settings, model, message)
-  window.__model = kept
-  return { model: kept }
-})
-
-const harnessUpdate = ApplicationComposition.makeUpdate.compose(
-  update,
-  ranDirector,
-  keptScene,
-)
-
-// NOTE: a director shot's card (cards.ts) on a canvas the screen's size in
-// game pixels, over the game. The wrapper has no box of its own, so the
-// game's root lays out as it always does.
+// NOTE: a director shot's card (cards.ts) as a picture the screen's size in
+// game pixels, painted by Pixi over the game. The wrapper has no box of its
+// own, so the game's root lays out as it always does.
 const withDirectorCard = (
   model: Model,
-  document: Document,
-  h: ViewHtml,
-): Document => {
+  body: ApplicationHtml,
+  h: ApplicationViewBuilder,
+): ApplicationHtml => {
   const screen = screenOf(model)
-  return {
-    ...document,
-    body: h.div(
-      [h.Class('director-stage')],
-      [
-        document.body,
-        ...Option.match(Director.cardNow(), {
-          onNone: () => [],
-          onSome: ({ card, age }) => [
-            Canvas.view(
-              {
-                width: screen.width,
-                height: screen.height,
-                shapes: cardShapes(card, screen, age),
-                className: 'director-card',
-                key: 'director-card',
-              },
-              h,
-            ),
-          ],
-        }),
+  return h.div.class('director-stage').children(
+    body,
+    ...Option.match(Director.cardNow(), {
+      onNone: () => [],
+      onSome: ({ card, age }) => [
+        overlayElement(h)
+          .key('director-card')
+          .class('director-card')
+          .attr('aria-hidden', 'true')
+          .picture({
+            width: screen.width,
+            height: screen.height,
+            shapes: cardShapes(card, screen, age),
+          }),
       ],
-    ),
-  }
+    }),
+  )
 }
 
-const harnessView = ApplicationComposition.makeView((model, h): Document => {
+const harnessView = (
+  h: ApplicationViewBuilder,
+  model: Model,
+): ApplicationHtml => {
   const { config, instrument } = page.settings
   if (config.looksheet) {
     return lookSheetView(h)
   }
   const t0 = performance.now()
-  const out = view(model, h)
+  const out = view(h, model)
   if (instrument) {
     window.__timings.view.push(performance.now() - t0)
     window.__timings.viewFrames.push(animationFrameTime())
   }
   return config.director ? withDirectorCard(model, out, h) : out
-})
-
-// NOTE: the game's own Block, completed with the harness's init, update,
-// and view around the game's, the game's children, and the game's handlers
-// with the scene's in front (handlers.ts).
-const harnessLayer = ApplicationBlock.makeLayer({
-  init: harnessInit,
-  update: harnessUpdate,
-  view: harnessView,
-  subscriptions,
-  managedResources,
-  EffectsLayer: Layer.mergeAll(
-    EffectsLayer,
-    sceneHandlers({ page, wake: directorWake }),
-  ),
-}).pipe(Layer.provide(ChildLayers))
+}
 
 // NOTE: the services are built once for the page and shared by every
-// scene, as one runtime shared them before scenes restarted it: the player
-// store keeps one SQLite worker.
+// scene: the player store keeps one SQLite worker, and the audio engine one
+// AudioContext.
 const harnessServices = Effect.runSync(
   Effect.flatMap(Scope.make(), scope =>
     Layer.buildWithScope(
@@ -374,6 +314,7 @@ const harnessServices = Effect.runSync(
             )
           : quietCoopNet,
         quietInstallPrompt,
+        audioEngineLayer,
       ),
       scope,
     ),
@@ -404,69 +345,107 @@ const recordUpdate = ({
   }
 }
 
-defineWorldElement()
-definePlinthElement()
+// NOTE: the scene's root: the game's own init, update, view, and
+// Subscriptions with the scene's around them, and the game's Command
+// services with the scene's in front (handlers.ts). The scene's init is the
+// game's boot with the scene's Model: its Commands, without LoadSave after
+// the first scene, as the scene answers them.
+const sceneRoot = (scene: Scene, isFirst: boolean) => {
+  const swapCommands = sceneCommands(page)
+  const swapSubscriptions = sceneSubscriptions({ page, wake: directorWake })
+  const bootOf = Array.filter(
+    bootCommands(),
+    command => isFirst || command.name !== Command.nameOf(LoadSave),
+  )
+  // NOTE: the harness's update is the game's, then the director's requests,
+  // then what the scene keeps (keepScene), with the Message logged, the
+  // Model kept on the window, and the update timed with `instrument`.
+  const harnessUpdate = ($: App$, message: Message) => {
+    const t0 = performance.now()
+    const next = ApplicationNoDeps.update($.model, message, {})
+    const durationMs = performance.now() - t0
+    logMessage(message)
+    if (message._tag === 'TickedFrame') {
+      page.framesRun++
+    }
+    window.__isFrozen = page.framesRun >= page.settings.freezeAfter
+    const directedModel =
+      message._tag === 'RestoredPageFromCache' && directorRequests.length > 0
+        ? runDirectorRequests(next.model)
+        : next.model
+    const kept = keepScene(page.settings, directedModel, message)
+    window.__model = kept
+    recordUpdate({
+      message,
+      previousModel: $.model,
+      nextModel: kept,
+      durationMs,
+    })
+    return $.set(kept).run(...swapCommands(next.commands))
+  }
+  const root = ApplicationDef.make({
+    init: $ => $.set(scene.model).run(...swapCommands(bootOf)),
+    update: harnessUpdate,
+    subscriptions: ({ model }) => swapSubscriptions(subscriptions({ model })),
+    view: harnessView,
+    head: () => [
+      Head.title(page.settings.config.looksheet ? 'Looks' : GAME_TITLE),
+    ],
+  })
+  return root.pipe(
+    Component.provide(
+      Layer.provideMerge(
+        Layer.mergeAll(CommandsLayer, sceneCommandLayer(page)),
+        Layer.succeedContext(harnessServices),
+      ),
+    ),
+  )
+}
 
-// NOTE: `nohud` hides what stands over the world (harness.css), per scene.
+const container = document.getElementById('root')
+
+// NOTE: the harness's root element is gone, so no scene can start.
+const missingContainer = (): never => {
+  throw new globalThis.Error('the harness page has no #root')
+}
+
+// NOTE: a scene's first Model: the first boots as a page does; each later
+// one boots from the Model the last scene left (see nextSceneOf).
+// `nohud` hides what stands over the world (harness.css), per scene.
 const startScene = () => {
   document.documentElement.toggleAttribute(
     'data-nohud',
     page.settings.config.nohud,
   )
-  return embedScene()
+  const isFirst = Option.isNone(page.maybeCarriedModel)
+  const scene = Option.match(page.maybeCarriedModel, {
+    onNone: () => sceneOf(page.settings, scenarioModel(page.settings)),
+    onSome: nextSceneOf,
+  })
+  window.__isFrozen = page.framesRun >= page.settings.freezeAfter
+  window.__model = scene.model
+  markReadyWhenSettled(page.sceneNumber, scene.maybeLookSection)
+  return Layer.launch(
+    BrowserHost.mount(
+      sceneRoot(scene, isFirst),
+      {},
+      container ?? missingContainer(),
+    ),
+  ).pipe(Effect.runFork)
 }
 
-const embedScene = () =>
-  Runtime.embed(
-    Program.make({
-      block: ApplicationBlock,
-      layer: harnessLayer,
-      container: document.getElementById('root'),
-      slow: {
-        show: 'Always',
-        measuredPhases: ['Update'],
-        thresholdOverrides: { Update: -1 },
-        onSlow: context => {
-          if (context._tag === 'Update') {
-            logMessage(context.message)
-            window.__model = context.nextModel
-            recordUpdate(context)
-          }
-        },
-      },
-      ...(page.settings.config.nodev ? { devTools: false as const } : {}),
-    }).provide(Layer.succeedContext(harnessServices)),
-  )
+defineWorldElement()
+defineOverlayElement()
+definePlinthElement()
 
 let running = startScene()
 
-// NOTE: the harness's empty container never came back after a scene.
-class ContainerMissing extends Schema.TaggedError<
-  ContainerMissing,
-  { readonly brand: unique symbol }
->()('ContainerMissing', { message: Schema.String }) {}
-
-const CONTAINER_FRAMES = 120
-
-// NOTE: a disposed runtime puts its empty container back on its own time,
-// so the next scene waits for `#root` before it starts.
-const containerRestored = Effect.gen(function* () {
-  for (let frame = 0; frame < CONTAINER_FRAMES; frame++) {
-    if (document.getElementById('root') !== null) {
-      return
-    }
-    yield* nextFrame
-  }
-  return yield* ContainerMissing.make({
-    message: 'the harness container did not come back',
-  })
-})
-
 // NOTE: `window.__loadScene('wave=3&start=wave')` swaps the scene in place:
-// the runtime stops, as a page leaving would, and starts again on the new
-// scene's Model. It resets what a new page would: open dialogs, focus, full
-// screen, and scroll. Wait for the ready signal afterwards. `nodev` belongs
-// to the page, not the scene.
+// the root unmounts, as a page leaving would, and mounts again on the new
+// scene's Model. It resets what a new page would: focus, full screen, and
+// scroll; the unmount closes the dialogs and lets go of what they hold.
+// Wait for the ready signal afterwards. `nodev` belongs to the page, not
+// the scene.
 const loadScene = (query: string) =>
   Effect.gen(function* () {
     const next = decodeScene(String.replace(/^\?/, '')(query))
@@ -474,7 +453,6 @@ const loadScene = (query: string) =>
       return
     }
     clearReady()
-    yield* releaseDialogs
     if (document.fullscreenElement !== null) {
       yield* Effect.promise(() =>
         document.exitFullscreen().catch(() => undefined),
@@ -485,8 +463,8 @@ const loadScene = (query: string) =>
     }
     window.scrollTo(0, 0)
     page.maybeCarriedModel = Option.some(window.__model)
-    yield* Effect.promise(() => running.dispose())
-    yield* containerRestored
+    yield* Fiber.interrupt(running)
+    yield* nextFrame
     window.__sceneError = undefined
     page.settings = settingsOf(next)
     page.framesSent = 0

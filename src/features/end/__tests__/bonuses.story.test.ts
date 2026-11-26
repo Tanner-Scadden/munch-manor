@@ -1,13 +1,12 @@
 import { Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import type { Model } from '../../../app/model'
 import { knowingDay, lastHeart } from '../../../test/model.fixture'
-import { APPLICATION, writeSave } from '../../../test/testing'
+import { checkModel, send, storyOf, writeSave } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 import {
   checkSavedChanges,
@@ -36,37 +35,38 @@ const today = (model: Model, day: string = TODAY): Model =>
   knowingDay(model, day)
 
 const doubledOn = (model: Model, day: string): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     bonuses: bonuses => ({ ...bonuses, doubledDay: day }),
   })
 
 describe('the Bones floor', () => {
   it.effect('a short run that ends on the end card pays 3 Bones', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(diesOnWave2),
-      frame,
-      Story.model(after => {
-        expect(after.rank).toMatchObject({ earnedPoints: 10, earnedBones: 3 })
-        expect(
-          Option.map(
-            after.runGains.maybeRankGain,
-            ({ bonesGained, bonuses }) => ({
-              bonesGained,
-              bonuses,
-            }),
-          ),
-        ).toEqual(Option.some({ bonesGained: 3, bonuses: ['Floor'] }))
-      }),
-      checkSavedChanges(changes => {
-        expect(changes).toContainEqual({
-          _tag: 'EarnedRank',
-          points: 10,
-          bones: 3,
-        })
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(diesOnWave2)
+      s.pipe(
+        frame,
+        checkModel(after => {
+          expect(after.rank).toMatchObject({ earnedPoints: 10, earnedBones: 3 })
+          expect(
+            Option.map(
+              after.runGains.maybeRankGain,
+              ({ bonesGained, bonuses }) => ({
+                bonesGained,
+                bonuses,
+              }),
+            ),
+          ).toEqual(Option.some({ bonesGained: 3, bonuses: ['Floor'] }))
+        }),
+        checkSavedChanges(changes => {
+          expect(changes).toContainEqual({
+            _tag: 'EarnedRank',
+            points: 10,
+            bones: 3,
+          })
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect('a run that scored nothing pays nothing', () =>
@@ -78,49 +78,51 @@ describe('the Bones floor', () => {
   )
 
   it.effect('a run left for home pays only what it earned', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(today(runAt(wave(2), 1, 0))),
-      leave,
-      Story.model(left => {
-        expect(left.rank).toMatchObject({ earnedPoints: 10, earnedBones: 1 })
-        expect(left.bonuses.doubledDay).toBeNull()
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(today(runAt(wave(2), 1, 0)))
+      s.pipe(
+        leave,
+        checkModel(left => {
+          expect(left.rank).toMatchObject({ earnedPoints: 10, earnedBones: 1 })
+          expect(left.bonuses.doubledDay).toBeNull()
+        }),
+        writeSave,
+      )
+    }),
   )
 })
 
 describe("the day's first run", () => {
   it.effect('pays its Bones twice, and marks the day', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(diesOnWave7),
-      Story.message(Message.ChangedToday({ day: TODAY })),
-      // NOTE: the day's three frozen as the day comes in.
-      writeSave(),
-      frame,
-      Story.model(after => {
-        expect(after.rank.earnedBones).toBe(12)
-        expect(after.bonuses.doubledDay).toBe(TODAY)
-        expect(
-          Option.map(after.runGains.maybeRankGain, ({ bonuses }) => bonuses),
-        ).toEqual(Option.some(['Double']))
-      }),
-      checkSavedChanges(changes => {
-        expect(changes).toContainEqual({
-          _tag: 'EarnedRank',
-          points: 60,
-          bones: 6,
-        })
-        expect(changes).toContainEqual({
-          _tag: 'DoubledFirstRun',
-          day: TODAY,
-          bones: 6,
-        })
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(diesOnWave7)
+      s.pipe(
+        send(Message.ChangedToday({ day: TODAY })),
+        // NOTE: the day's three frozen as the day comes in.
+        writeSave,
+        frame,
+        checkModel(after => {
+          expect(after.rank.earnedBones).toBe(12)
+          expect(after.bonuses.doubledDay).toBe(TODAY)
+          expect(
+            Option.map(after.runGains.maybeRankGain, ({ bonuses }) => bonuses),
+          ).toEqual(Option.some(['Double']))
+        }),
+        checkSavedChanges(changes => {
+          expect(changes).toContainEqual({
+            _tag: 'EarnedRank',
+            points: 60,
+            bones: 6,
+          })
+          expect(changes).toContainEqual({
+            _tag: 'DoubledFirstRun',
+            day: TODAY,
+            bones: 6,
+          })
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect('doubles the floor too', () =>
@@ -164,34 +166,35 @@ describe("the day's first run", () => {
 
 describe('the first escape on a difficulty', () => {
   it.effect('pays 50 Bones once, and marks the difficulty', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lastWave),
-      frame,
-      Story.model(won => {
-        expect(won.phase._tag).toBe('Escaped')
-        expect(won.rank.earnedBones).toBe(31 + 50)
-        expect(won.bonuses.escapedOn).toEqual(['Normal'])
-      }),
-      checkSavedChanges(changes => {
-        expect(changes).toContainEqual({
-          _tag: 'EarnedRank',
-          points: 315,
-          bones: 31,
-        })
-        expect(changes).toContainEqual({
-          _tag: 'EscapedFirst',
-          difficulty: 'Normal',
-        })
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(lastWave)
+      s.pipe(
+        frame,
+        checkModel(won => {
+          expect(won.phase._tag).toBe('Escaped')
+          expect(won.rank.earnedBones).toBe(31 + 50)
+          expect(won.bonuses.escapedOn).toEqual(['Normal'])
+        }),
+        checkSavedChanges(changes => {
+          expect(changes).toContainEqual({
+            _tag: 'EarnedRank',
+            points: 315,
+            bones: 31,
+          })
+          expect(changes).toContainEqual({
+            _tag: 'EscapedFirst',
+            difficulty: 'Normal',
+          })
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect('the next escape on it pays only the run', () =>
     Effect.gen(function* () {
       const won = yield* ended(
-        modifyFields(lastWave, {
+        UiStruct.evolve(lastWave, {
           bonuses: bonuses => ({ ...bonuses, escapedOn: ['Normal'] }),
         }),
       )
@@ -222,32 +225,33 @@ describe('the first escape on a difficulty', () => {
 // NOTE: a death on wave 7 (60 points, 6 Bones) that starts `short` points
 // below rank 21, with purses paid at `paid`.
 const nearRank21 = (short: number, paid: ReadonlyArray<number>): Model =>
-  modifyFields(diesOnWave7, {
+  UiStruct.evolve(diesOnWave7, {
     rank: rank =>
-      modifyFields(rank, { earnedPoints: () => pointsForRank(21) - short }),
+      UiStruct.evolve(rank, { earnedPoints: () => pointsForRank(21) - short }),
     bonuses: bonuses => ({ ...bonuses, purses: paid }),
   })
 
 describe('the rank purses', () => {
   it.effect('a run that reaches rank 21 pays its purse of 15', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(nearRank21(30, [])),
-      frame,
-      Story.model(after => {
-        expect(after.rank.earnedBones).toBe(6 + 15)
-        expect(after.bonuses.purses).toEqual([21])
-      }),
-      checkSavedChanges(changes => {
-        expect(changes).toEqual(
-          expect.arrayContaining([
-            { _tag: 'EarnedRank', points: 60, bones: 6 },
-            { _tag: 'PaidRankPurse', rank: 21 },
-          ]),
-        )
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(nearRank21(30, []))
+      s.pipe(
+        frame,
+        checkModel(after => {
+          expect(after.rank.earnedBones).toBe(6 + 15)
+          expect(after.bonuses.purses).toEqual([21])
+        }),
+        checkSavedChanges(changes => {
+          expect(changes).toEqual(
+            expect.arrayContaining([
+              { _tag: 'EarnedRank', points: 60, bones: 6 },
+              { _tag: 'PaidRankPurse', rank: 21 },
+            ]),
+          )
+        }),
+        writeSave,
+      )
+    }),
   )
 
   it.effect('a purse paid once is never paid again', () =>

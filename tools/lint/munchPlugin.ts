@@ -20,7 +20,6 @@ import {
   importedName,
   isStringLiteral,
   isWorldNamed,
-  mentions,
   propertyName,
 } from './ast.ts'
 import {
@@ -350,41 +349,51 @@ const stableMath = defineRule({
   },
 })
 
-// NOTE: the name m in `{ model: m }`, `{ model }`, or `unchanged(m)`: a
-// Step's result that changes nothing. Anything else has no name.
+// NOTE: the update `$` (Effect UI's update builder, src/app/update/step.ts)
+// in `$.model` or `unchanged($)`: a Step's result that changes nothing.
+// Every update function names its builder `$`. Anything else has no name.
 const bareModelName = (node: ESTree.Expression): string | undefined => {
-  const only =
-    node.type === 'ObjectExpression' && node.properties.length === 1
-      ? node.properties[0]
-      : undefined
   if (
-    only?.type === 'Property' &&
-    !only.computed &&
-    only.key.type === 'Identifier' &&
-    only.key.name === 'model' &&
-    only.value.type === 'Identifier'
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.object.type === 'Identifier' &&
+    node.object.name === '$' &&
+    propertyName(node) === 'model'
   ) {
-    return only.value.name
+    return node.object.name
   }
   if (
     node.type === 'CallExpression' &&
     node.callee.type === 'Identifier' &&
     node.callee.name === 'unchanged' &&
     node.arguments.length === 1 &&
-    node.arguments[0]?.type === 'Identifier'
+    node.arguments[0]?.type === 'Identifier' &&
+    node.arguments[0].name === '$'
   ) {
     return node.arguments[0].name
   }
   return undefined
 }
 
+// NOTE: Steps run on the same `$`: one applied to it (`step($)`,
+// `playSounds(cues)($)`, `leaveFor($, 'Kicked')`) or several combined
+// (`$.combine(a, b)`). A result built in place (`$.run(...)`,
+// `$.evolve({...})`, `$.set(next)`, `Option.match($.model.x, ...)`) is no
+// Step run, as Foldkit's inline `{ model, commands }` was none.
 const isStepCallOn = (
   node: ESTree.Expression,
   name: string | undefined,
 ): boolean =>
   name !== undefined &&
   node.type === 'CallExpression' &&
-  (Array.some(node.arguments, argument => mentions(argument, name)) ||
+  (Array.some(
+    node.arguments,
+    argument => argument.type === 'Identifier' && argument.name === name,
+  ) ||
+    (node.callee.type === 'MemberExpression' &&
+      node.callee.object.type === 'Identifier' &&
+      node.callee.object.name === name &&
+      propertyName(node.callee) === 'combine') ||
     isStepCallOn(node.callee, name))
 
 const noConditionalStep = defineRule({
@@ -392,12 +401,12 @@ const noConditionalStep = defineRule({
     type: 'suggestion',
     docs: {
       description:
-        'Run a Step on a condition with stepWhen, not a ternary whose other branch is { model }.',
+        'Run a Step on a condition with stepWhen, not a ternary whose other branch is $.model.',
     },
   },
   create(context) {
     return {
-      // NOTE: `cond ? step(m) : { model: m }`, either way round.
+      // NOTE: `cond ? step($) : $.model`, either way round.
       ConditionalExpression(node) {
         if (
           isStepCallOn(node.consequent, bareModelName(node.alternate)) ||
@@ -406,7 +415,7 @@ const noConditionalStep = defineRule({
           context.report({
             node,
             message:
-              'A Step run on a condition: use stepWhen(isDue, step) from src/shared/stepWhen.ts, or match the union when the condition narrows it (AGENTS.md "Code shape").',
+              'A Step run on a condition: use stepWhen(isDue, step) from src/shared/stepWhen.ts, or match the union when the condition narrows it; between two Steps, pick the Step itself (`cond ? step : unchanged`) (AGENTS.md "Code shape").',
           })
         }
       },
@@ -444,9 +453,10 @@ const noWorldSpread = defineRule({
   },
 })
 
-// NOTE: the Model fields that say which menu is up. menuState in
-// src/app/menuState.ts reads them; everything else reads menuState. A new
-// dialog Binding joins this list and MenuState together.
+// NOTE: the root's dialogs, each a DialogState field (src/ui/dialog.ts)
+// that says whether it is up. menuState in src/app/menuState.ts reads them;
+// everything else reads menuState. A new root dialog joins this list,
+// MenuState, and FIELD_OF in src/app/update/dialog.ts together.
 const DIALOG_FIELDS: ReadonlySet<string> = new Set([
   'profileDialog',
   'panelDialog',
@@ -500,39 +510,67 @@ const isCallOf = (
   ((node.callee.type === 'Identifier' && node.callee.name === name) ||
     memberName(node.callee) === name)
 
+// NOTE: `Command.make(...)`, a Command whose body needs no service.
+const isCommandMake = (node: Node | null): boolean =>
+  node?.type === 'CallExpression' &&
+  node.callee.type === 'MemberExpression' &&
+  node.callee.object.type === 'Identifier' &&
+  node.callee.object.name === 'Command' &&
+  propertyName(node.callee) === 'make'
+
+// NOTE: `Command.Service<X>()(...)`, the base of a Command over a service,
+// read through the calls and type arguments around it.
+const isCommandService = (node: Node | null): boolean =>
+  node !== null &&
+  (node.type === 'CallExpression'
+    ? isCommandService(node.callee)
+    : node.type === 'MemberExpression'
+      ? node.object.type === 'Identifier' &&
+        node.object.name === 'Command' &&
+        propertyName(node) === 'Service'
+      : false)
+
 const commandBesideUpdate = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Define a Command in the module whose update returns it, not in a module of Commands.',
+        'Define a Command in the module whose update issues it, not in a module of Commands.',
     },
   },
   create(context) {
     const commands: Array<ESTree.BindingIdentifier> = []
-    const called = new Set<string>()
+    const issued = new Set<string>()
     return {
-      // NOTE: `const X = makeCommand(...)` or `const X = Definition.makeCommand(...)`.
+      // NOTE: `const X = Command.make(...)`.
       VariableDeclarator(node) {
-        if (
-          node.id.type === 'Identifier' &&
-          isCallOf(node.init, 'makeCommand')
-        ) {
+        if (node.id.type === 'Identifier' && isCommandMake(node.init)) {
           commands.push(node.id)
         }
       },
+      // NOTE: `class X extends Command.Service<X>()(...) {}`.
+      ClassDeclaration(node) {
+        if (node.id !== null && isCommandService(node.superClass)) {
+          commands.push(node.id)
+        }
+      },
+      // NOTE: `X.make(args)`, the Command issued.
       CallExpression(node) {
-        if (node.callee.type === 'Identifier') {
-          called.add(node.callee.name)
+        if (
+          node.callee.type === 'MemberExpression' &&
+          node.callee.object.type === 'Identifier' &&
+          propertyName(node.callee) === 'make'
+        ) {
+          issued.add(node.callee.object.name)
         }
       },
       'Program:exit'() {
         Array.forEach(
-          Array.filter(commands, command => !called.has(command.name)),
+          Array.filter(commands, command => !issued.has(command.name)),
           command =>
             context.report({
               node: command,
-              message: `${command.name} is never returned here: define a Command beside the update that returns it, and its .layer joins CommandsLayer in src/app/layer.ts (AGENTS.md "Code shape").`,
+              message: `${command.name} is never issued here (${command.name}.make(...)): define a Command beside the update that runs it, and a Command.Service's .layer joins CommandsLayer in src/app/layer.ts (AGENTS.md "Code shape").`,
             }),
         )
       },
@@ -540,37 +578,45 @@ const commandBesideUpdate = defineRule({
   },
 })
 
-// NOTE: a press acts on its OnClick. src/input/touchTaps.ts makes every touch tap
-// a click from that finger's own pointer events, so a button works with
+// NOTE: a press acts on its click. src/input/touchTaps.ts makes every touch
+// tap a click from that finger's own pointer events, so a button works with
 // another finger on the glass and acts once. A handler on a touch's or a
 // mouse's release, or on a touch's start, would act beside that click, or
-// in its place on one device only. OnPointerDown stays allowed: the game
+// in its place on one device only. `pointerdown` stays allowed: the game
 // surface, the HUD slots, and the hold-to-buy button act the moment a
-// finger lands, which no click can.
-const RELEASE_HANDLERS: ReadonlySet<string> = new Set([
-  'OnTouchStart',
-  'OnTouchEnd',
-  'OnTouchCancel',
-  'OnPointerUp',
-  'OnMouseDown',
-  'OnMouseUp',
+// finger lands, which no click can. A Mount listens for a release where it
+// must (touchTaps.ts itself), never an element's `.on(...)`.
+const RELEASE_EVENTS: ReadonlySet<string> = new Set([
+  'touchstart',
+  'touchend',
+  'touchcancel',
+  'pointerup',
+  'mousedown',
+  'mouseup',
 ])
 
 const TAP_BY_CLICK_MESSAGE =
-  'Act on OnClick: src/input/touchTaps.ts turns every touch tap into a click, so the press works with another finger down and acts once. OnPointerDown is the one press handler for acting as a finger lands.'
+  "Act on .on('click', ...): src/input/touchTaps.ts turns every touch tap into a click, so the press works with another finger down and acts once. 'pointerdown' is the one press event for acting as a finger lands."
 
 const tapByClick = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Act on OnClick (made from each finger by src/input/touchTaps.ts), never on a touch or mouse release or a touch start.',
+        "Act on an element's click (made from each finger by src/input/touchTaps.ts), never on a touch or mouse release or a touch start.",
     },
   },
   create(context) {
     return {
-      MemberExpression(node) {
-        if (hasName(RELEASE_HANDLERS, propertyName(node))) {
+      // NOTE: `h.button.on('pointerup', Released())`.
+      CallExpression(node) {
+        const event = node.arguments[0]
+        if (
+          node.callee.type === 'MemberExpression' &&
+          propertyName(node.callee) === 'on' &&
+          isStringLiteral(event) &&
+          RELEASE_EVENTS.has(event.value)
+        ) {
           context.report({ node, message: TAP_BY_CLICK_MESSAGE })
         }
       },
@@ -605,7 +651,7 @@ const SEAT_ACTION_FIELDS: ReadonlySet<string> = new Set([
 // NOTE: the calls that change a seat's fields: any Model's fields, the seat a
 // screen is about, a seat by slot, and the `seats` transform.
 const SEAT_WRITERS: ReadonlyArray<string> = [
-  'modifyFields',
+  'evolve',
   'modifyFocus',
   'modifySeat',
   'atSeat',
@@ -722,55 +768,40 @@ const standThroughSpace = defineRule({
   },
 })
 
-// NOTE: the Model fields a child Block lives on through its Binding
-// (src/app/bindings.ts, the Profile's own in
-// src/features/profile/composition.ts, the lobby's in
-// src/features/lobby/bindings.ts, the Munchopedia's in
-// src/features/munchopedia/bindings.ts, and co-op's in
-// src/features/coop/bindings.ts). The parent asks the child through its
-// operations and never writes the field itself. A new Binding joins this
-// list.
-const BINDING_FIELDS: ReadonlySet<string> = new Set([
-  ...DIALOG_FIELDS,
-  'dialog',
-  'profile',
-  'tabs',
-  'character',
-  'lobby',
-  'heroPicker',
-  'heroDialog',
-  'munchopedia',
-  'guide',
-  'coop',
-])
+// NOTE: the root's dialogs open and close only through openRootDialog and
+// closeRootDialog (src/app/update/dialog.ts), which run what a close does
+// past shutting it (the Profile keeps the name, the panel forgets its
+// question). A Step that writes a dialog's DialogState field itself skips
+// that, and two ways to open one drift apart. The writers: `$.evolve({...})`
+// and `UiStruct.evolve(model, {...})`, with the changes in any argument.
+const DIALOG_WRITERS: ReadonlyArray<string> = ['evolve', 'set']
 
-const noBindingFieldWrite = defineRule({
+const noDialogFieldWrite = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        "Change a child Block's state through its Binding's operations, never by writing its field.",
+        'Open and close a root dialog through openRootDialog and closeRootDialog, never by writing its DialogState field.',
     },
   },
   create(context) {
     return {
       CallExpression(node) {
-        const changes = node.arguments[1]
-        if (
-          !isCallOf(node, 'modifyFields') ||
-          changes?.type !== 'ObjectExpression'
-        ) {
+        if (!Array.some(DIALOG_WRITERS, writer => isCallOf(node, writer))) {
           return
         }
         Array.forEach(
-          Array.filter(changes.properties, property =>
-            hasName(BINDING_FIELDS, keyName(property)),
+          Array.filter(
+            Array.flatMap(node.arguments, argument =>
+              argument.type === 'ObjectExpression' ? argument.properties : [],
+            ),
+            property => hasName(DIALOG_FIELDS, keyName(property)),
           ),
           property =>
             context.report({
               node: property,
               message:
-                'A child Block\'s field changes only through its Binding: call an operation (CoopBinding.requestKeepTracers(...)) from a makeStep (AGENTS.md "Blocks and Bindings").',
+                'A root dialog opens and closes through openRootDialog(name) and closeRootDialog(name) in src/app/update/dialog.ts, never by writing its field (AGENTS.md "Components and dialogs").',
             }),
         )
       },
@@ -785,8 +816,8 @@ const noBindingFieldWrite = defineRule({
 // src/platform/, which import each other freely) over src/world/ over
 // src/shared/. src/world/ is what the co-op room loads, so it reaches only
 // itself and src/shared/; src/shared/ reaches only itself. Both import only
-// the packages the room's bundle carries (Effect and Foldkit's pure struct
-// and schema modules) and the netcode package's types. Shipped code never
+// the packages the room's bundle carries (Effect and Effect UI's root
+// module, for UiStruct and UiSchema) and the netcode package's types. Shipped code never
 // imports a test home (src/test/) or a test's folder (__tests__/). Tests
 // may import anything.
 const SRC_PATH = /(?:^|\/)src\/(.*)$/
@@ -811,40 +842,41 @@ const FOLDERS_ALLOWED: Readonly<Record<string, ReadonlyArray<string>>> = {
   shared: ['shared'],
 }
 
-const ROOM_PACKAGES = /^(effect(\/.*)?|foldkit\/(struct|schema))$/
+const ROOM_PACKAGES = /^(effect(\/.*)?|@effect\/ui)$/
 
 const ROOM_TYPE_PACKAGES = /^@munch\/netcode$/
 
 // NOTE: the one way up: a type, never a value, of the root's one Model and
-// of its view builder. A feature's rules and views, and the client layers'
+// of its view aliases. A feature's rules and views, and the client layers'
 // drawing, read the root's Model, which is the World's fields beside the
-// client's own (src/app/model.ts); a view built with the root's builder
-// sends the root's Messages. Each is a type, so it brings no module along.
+// client's own (src/app/model.ts); a view built with the root's `h`
+// (`ApplicationViewBuilder`, returning `ApplicationHtml`) sends the root's
+// Messages, and a Mount it places is the root's (`ApplicationMount`), all in
+// src/app/definition.ts. Each is a type, so it brings no module along.
 const ROOT_TYPES: Readonly<Record<string, ReadonlyArray<string>>> = {
   'app/model': ['Model'],
-  'app/composition': ['ApplicationViewBuilder', 'ApplicationAttribute'],
+  'app/definition': [
+    'ApplicationViewBuilder',
+    'ApplicationHtml',
+    'ApplicationMount',
+  ],
 }
 
-// NOTE: a feature never imports another, but for a parent Block that binds a
-// child Block (FOLDKIT.md "File organization"): the parent imports the
-// child's contract, the files a Binding needs and nothing more.
+// NOTE: a feature never imports another, but for a parent component that
+// draws a child component (docs/EFFECT_UI_PORT.md "Children"): the parent
+// imports the child's contract, the component, its Model's Schemas, and
+// its Messages and events, and nothing more.
 const CHILD_BLOCKS: Readonly<Record<string, ReadonlyArray<string>>> = {
-  // NOTE: the single player lobby opens the hero picker from its hero card.
+  // NOTE: the single player lobby draws the hero picker from its hero card.
   lobby: ['heroes'],
-  // NOTE: co-op's lobby opens the same hero picker from its hero pill.
+  // NOTE: co-op's lobby draws the same hero picker from its hero pill.
   coop: ['heroes'],
-  // NOTE: the Munchopedia shows the guide to the house's finds on its
+  // NOTE: the Munchopedia draws the guide to the house's finds on its
   // Finds page.
   munchopedia: ['guide'],
 }
 
-const CONTRACT_FILES: ReadonlyArray<string> = [
-  'block',
-  'layer',
-  'model',
-  'message',
-  'inMessage',
-]
+const CONTRACT_FILES: ReadonlyArray<string> = ['block', 'model', 'message']
 
 const isTestPath = (path: string): boolean =>
   String.startsWith('test/')(path) || String.includes('__tests__/')(path)
@@ -924,10 +956,10 @@ const ROOT_MESSAGE_IMPORT_MESSAGE =
   'Only src/app/ imports the root\'s Message union (src/app/message.ts). Build and type a Message from its group, in the folder of the feature that sends it (AGENTS.md "Folders").'
 
 const UPWARD_MESSAGE = (folder: string, target: string): string =>
-  `src/${folder}/ imports only its own layer and the ones below it (app, then screens, then features, then ui, domain, render, art, audio, input, and platform, then world, then shared), not src/${target}. Move what both need down to the layer they share, or move the code that puts them together up. The one way up is \`import type\` of the root's Model or view builder (AGENTS.md "Folders").`
+  `src/${folder}/ imports only its own layer and the ones below it (app, then screens, then features, then ui, domain, render, art, audio, input, and platform, then world, then shared), not src/${target}. Move what both need down to the layer they share, or move the code that puts them together up. The one way up is \`import type\` of the root's Model or view aliases (AGENTS.md "Folders").`
 
 const SIBLING_MESSAGE = (feature: string, target: string): string =>
-  `src/features/${feature}/ never imports another feature (src/${target}): move what both need down, or wire them in src/app/. Only a parent Block imports the contract (${Array.join(CONTRACT_FILES, ', ')}) of a child it binds (AGENTS.md "Folders").`
+  `src/features/${feature}/ never imports another feature (src/${target}): move what both need down, or wire them in src/app/. Only a parent component imports the contract (${Array.join(CONTRACT_FILES, ', ')}) of a child it draws (AGENTS.md "Folders").`
 
 const SCREEN_MESSAGE = (screen: string, target: string): string =>
   `src/screens/${screen}/ never imports another screen (src/${target}): move what both need down to a feature or a shared layer (AGENTS.md "Folders").`
@@ -939,7 +971,7 @@ const FOLDER_IMPORTS_MESSAGE = (
   `src/${folder}/ imports only ${Array.join(
     Array.map(allowed, name => `src/${name}/`),
     ' and ',
-  )}${folder === 'world' ? ', since the co-op room loads it,' : ''} and Effect and Foldkit's struct and schema modules (AGENTS.md "Folders").`
+  )}${folder === 'world' ? ', since the co-op room loads it,' : ''} and Effect and Effect UI's root module (AGENTS.md "Folders").`
 
 // NOTE: the names a declaration imports: none for a bare or namespace
 // import, which the root's types never allow.
@@ -961,7 +993,7 @@ const folderImports = defineRule({
     type: 'problem',
     docs: {
       description:
-        'Keep the layers of src one way (app over screens over features over the client layers over world over shared), screens apart, features apart but for a parent and its child Block, src/world/ to what the co-op room may load, tests out of shipped code, and the root Message union in src/app/.',
+        'Keep the layers of src one way (app over screens over features over the client layers over world over shared), screens apart, features apart but for a parent and its child component, src/world/ to what the co-op room may load, tests out of shipped code, and the root Message union in src/app/.',
     },
   },
   create(context) {
@@ -1150,7 +1182,7 @@ export default definePlugin({
     'seat-action-once': seatActionOnce,
     'key-action-once': keyActionOnce,
     'stand-through-space': standThroughSpace,
-    'no-binding-field-write': noBindingFieldWrite,
+    'no-dialog-field-write': noDialogFieldWrite,
     'live-test-note': liveTestNote,
     'disable-needs-reason': disableNeedsReason,
     'folder-imports': folderImports,

@@ -1,105 +1,81 @@
-// @vitest-environment happy-dom
-import { Deferred, Effect, Fiber, Schema, Stream, String } from 'effect'
-import { Block, Program } from 'foldkit'
-import { defineMessageUnion } from 'foldkit/message'
+import { Array, Effect, String } from 'effect'
 
-import { expect, it } from '@effect/vitest'
+import { describe, expect, it } from '@effect/vitest'
 
-// The patch to Foldkit (patches/README.md): a Subscription with no
-// dependencies and no `when` starts its Stream once and never reads the Model
-// again. Upstream wakes its fiber on every Model change for a Stream step and
-// a Schema equivalence of `{}`, and the game's root has a dozen such entries:
-// each frame woke them all for nothing. The `slow` option reports every
-// dependency read past a budget of -1 ms, so the counts below are every read.
+import { playingModel } from '../../test/model.fixture'
+import {
+  FRAME_MS,
+  checkModel,
+  settleRunCommands,
+  storyOf,
+  tick,
+} from '../../test/testing'
+import { type Model } from '../model'
+import { subscriptions } from '../subscriptions'
 
-const MESSAGES = 30
+// The root's Subscriptions with no dependencies (src/app/subscriptions.ts)
+// start their Stream once and are never restarted by a Model change: each
+// keeps its key from frame to frame, so the runtime never closes and opens
+// it again. The list itself is kept by its gates, so a frame builds no
+// Subscription and no list.
 
-const Message = defineMessageUnion({ Ticked: {} })
-const Model = Schema.Struct({ count: Schema.Finite })
+const FRAMES = 30
 
-const CounterKey = Symbol('StaticSubscriptionsCounter')
-const CounterBlock = Block.make('StaticSubscriptionsCounter', {
-  key: CounterKey,
-  InitArgs: Schema.Tuple([]),
-  view: { kind: 'Document' },
-  Model,
-  Message,
+// NOTE: the Subscriptions on for the life of the page, by key.
+const STATIC_KEYS = [
+  'PlayerSync',
+  'Today',
+  'InstallOffers',
+  'Gamepad',
+  'Keyboard',
+  'KeyWatch',
+  'WindowBlur',
+  'PageVisibility',
+  'WindowFocus',
+  'PageRestores',
+  'PointerReleases',
+  'FullscreenChanges',
+]
+
+describe('the static Subscriptions', () => {
+  it.effect('keep their keys through every frame of a wave', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(playingModel)
+      const first = s.subscriptions
+      for (const key of STATIC_KEYS) {
+        expect(Array.filter(first, String.includes(key))).toHaveLength(1)
+      }
+      const keysOf = (keys: ReadonlyArray<string>) =>
+        Array.filter(keys, key =>
+          Array.some(STATIC_KEYS, name => String.includes(name)(key)),
+        )
+      for (let frame = 0; frame < FRAMES; frame += 1) {
+        s.pipe(tick(FRAME_MS), settleRunCommands)
+        expect(keysOf(s.subscriptions)).toEqual(keysOf(first))
+      }
+      return s.model
+    }),
+  )
+
+  it.effect('build no list on a frame whose gates stay as they were', () =>
+    Effect.gen(function* () {
+      const s = yield* storyOf(playingModel)
+      const lists: Array<ReadonlyArray<unknown>> = []
+      const listOf = (model: Model) => subscriptions({ model })
+      lists.push(listOf(s.model))
+      for (let frame = 0; frame < FRAMES; frame += 1) {
+        s.pipe(
+          tick(FRAME_MS),
+          settleRunCommands,
+          checkModel(model => {
+            lists.push(listOf(model))
+          }),
+        )
+      }
+      for (const list of lists) {
+        expect(list).toBe(lists[0])
+      }
+      return s.model
+    }),
+  )
 })
-
-const subscriptions = CounterBlock.makeSubscriptions(entry => ({
-  ticks: entry('StaticTicks', {
-    messages: [Message.Ticked],
-    handler: function* () {
-      return () =>
-        Stream.range(1, MESSAGES).pipe(Stream.map(() => Message.Ticked()))
-    },
-  }),
-  counted: entry(
-    'CountedTicks',
-    { isDone: Schema.Boolean },
-    {
-      messages: [],
-      modelToDependencies: model => ({ isDone: model.count >= MESSAGES }),
-      handler: function* () {
-        return () => Stream.empty
-      },
-    },
-  ),
-}))
-
-const Composition = CounterBlock.makeComposition()
-
-const layer = CounterBlock.makeLayer({
-  init: Composition.makeInit(() => ({ model: { count: 0 } })),
-  update: Composition.makeUpdate({
-    Ticked: model => ({ model: { count: model.count + 1 } }),
-  }),
-  view: Composition.makeView((model, h) => ({
-    title: 'counter',
-    body: h.div([], [globalThis.String(model.count)]),
-  })),
-  subscriptions,
-  EffectsLayer: subscriptions.layer,
-})
-
-// NOTE: real time: the Program renders on animation frames and its
-// Subscription fibers run on the page's own scheduler. It waits until the
-// dynamic entry has read every Model the ticks made, then counts.
-it.live('a static Subscription never reads the Model after it starts', () =>
-  Effect.gen(function* () {
-    const container = document.createElement('div')
-    container.id = 'static-subscriptions'
-    document.body.append(container)
-    // NOTE: every dependency read, by the entry's key (`<block>/<entry>`).
-    const reads = { ticks: 0, counted: 0 }
-    const isCounted = Deferred.makeUnsafe<void>()
-    const program = Program.make({
-      block: CounterBlock,
-      layer,
-      container,
-      slow: {
-        show: 'Always',
-        measuredPhases: ['SubscriptionDependencies'],
-        thresholdOverrides: { SubscriptionDependencies: -1 },
-        onSlow: context => {
-          if (context._tag !== 'SubscriptionDependencies') {
-            return
-          }
-          if (String.endsWith('/ticks')(context.subscriptionKey)) {
-            reads.ticks++
-          } else {
-            reads.counted++
-          }
-          if (reads.counted > MESSAGES) {
-            Deferred.doneUnsafe(isCounted, Effect.void)
-          }
-        },
-      },
-    })
-    const fiber = yield* Effect.forkChild(program.start())
-    yield* Deferred.await(isCounted).pipe(Effect.timeout('5 seconds'))
-    yield* Fiber.interrupt(fiber)
-    container.remove()
-    expect(reads.ticks).toBeLessThanOrEqual(1)
-  }),
-)

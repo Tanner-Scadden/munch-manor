@@ -3,8 +3,8 @@
 // not in `bun run test`. The difficulty rules are in
 // difficulty.story.test.ts.
 import { Array, Effect, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -18,20 +18,20 @@ const REPLAYED: ReadonlyArray<Difficulty> = ['Easy', 'Hard', 'Nightmare']
 
 const startedOn = (chosen: Difficulty) =>
   startedRun(
-    modifyFields(asVeteran(initialModel), {
+    UiStruct.evolve(asVeteran(initialModel), {
       maybeSurface: () => Option.some(SURFACE),
       difficulty: () => ({ chosen, nightmare: 'Unlocked' as const }),
     }),
   )
 
 const skipBreak = (started: Model): Model =>
-  modifyFields(started, {
+  UiStruct.evolve(started, {
     phase: phase =>
       Phase.match(phase, {
         Ready: () => phase,
         Arriving: () => phase,
         Preparation: preparation =>
-          modifyFields(preparation, { remainingMs: () => 0 }),
+          UiStruct.evolve(preparation, { remainingMs: () => 0 }),
         Wave: () => phase,
         Paused: () => phase,
         Escaped: () => phase,

@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import {
@@ -14,6 +13,7 @@ import {
 } from '../../art/font'
 import { badgeSprite } from '../../art/rankArt'
 import { type Sprite, group, placeAt } from '../../art/sprite'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { seatColorOf, seatModelsOf } from '../../render/partyView'
 import { playerShapes } from '../../render/playerView'
@@ -174,11 +174,11 @@ const SPARK_MS = 420
 const SPARK_REACH = 16
 
 export const sparkShapes: {
-  (y: number, ms: number): (x: number) => ReadonlyArray<Canvas.Shape>
-  (x: number, y: number, ms: number): ReadonlyArray<Canvas.Shape>
+  (y: number, ms: number): (x: number) => ReadonlyArray<Draw.Shape>
+  (x: number, y: number, ms: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (x: number, y: number, ms: number): ReadonlyArray<Canvas.Shape> => {
+  (x: number, y: number, ms: number): ReadonlyArray<Draw.Shape> => {
     const t = progressOf(ms, 0, SPARK_MS)
     if (t <= 0 || t >= 1) {
       return []
@@ -262,7 +262,7 @@ const lineCell = (
   ms: number,
   x: number,
   y: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const value = row.format(countedUp(row.value, kind, 0, ms))
   const width = 9 + textWidth(value)
   const left = Math.round(x - width / 2)
@@ -279,7 +279,7 @@ const lineCell = (
 const runLineShapes = (
   model: Model,
   board: Board,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (board.ms < rowStartMs(board.kind, 0)) {
     return []
   }
@@ -319,7 +319,7 @@ const rankShapes = (
   x: number,
   centerY: number,
   rank: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const left = x - RANK_LEFT_PX
   return [
     placeAt(
@@ -338,10 +338,7 @@ const rankShapes = (
 }
 
 // NOTE: a teammate bot has no rank, so BOT stands where the badge would.
-const botMarkShapes = (
-  x: number,
-  centerY: number,
-): ReadonlyArray<Canvas.Shape> =>
+const botMarkShapes = (x: number, centerY: number): ReadonlyArray<Draw.Shape> =>
   textShapes(
     'BOT',
     'Plain',
@@ -355,7 +352,7 @@ const headShapes = (
   board: Board,
   member: CrewMember,
   index: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const x = columnX(board, index)
   const crewTop = blockTopOf(board, index)
   const footY = crewTop + FOOT
@@ -395,7 +392,7 @@ const headShapes = (
 const ownPlateShapes = (
   model: Model,
   board: Board,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(
     Array.findFirstIndex(
       board.crew,
@@ -418,7 +415,7 @@ const ownPlateShapes = (
 const statShapes = (
   board: Board,
   winners: ReadonlyMap<CrewAward, number>,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(STAT_ROWS, (row, rowIndex) => {
     const tallyIndex = rowIndex + 1
     if (board.ms < rowStartMs(board.kind, tallyIndex)) {
@@ -472,7 +469,7 @@ const awardShapes = (
   board: Board,
   member: CrewMember,
   index: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const atMs = awardsAtMs(board.kind)
   if (board.ms < atMs) {
     return []
@@ -561,8 +558,8 @@ export const crewBoardShapes: {
     top: number,
     centerX: number,
   ): (model: Model) => Readonly<{
-    panel: ReadonlyArray<Canvas.Shape>
-    rows: ReadonlyArray<Canvas.Shape>
+    panel: ReadonlyArray<Draw.Shape>
+    rows: ReadonlyArray<Draw.Shape>
   }>
   (
     model: Model,
@@ -571,8 +568,8 @@ export const crewBoardShapes: {
     top: number,
     centerX: number,
   ): Readonly<{
-    panel: ReadonlyArray<Canvas.Shape>
-    rows: ReadonlyArray<Canvas.Shape>
+    panel: ReadonlyArray<Draw.Shape>
+    rows: ReadonlyArray<Draw.Shape>
   }>
 } = Function.dual(
   5,
@@ -583,8 +580,8 @@ export const crewBoardShapes: {
     top: number,
     centerX: number,
   ): Readonly<{
-    panel: ReadonlyArray<Canvas.Shape>
-    rows: ReadonlyArray<Canvas.Shape>
+    panel: ReadonlyArray<Draw.Shape>
+    rows: ReadonlyArray<Draw.Shape>
   }> => {
     const crew = crewOf(model)
     const columns = crewBoardColumns(model, crew.length)

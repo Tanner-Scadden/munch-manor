@@ -1,6 +1,7 @@
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../../app/model'
 import { newPlayerReady, quietWave } from '../../../test/model.fixture'
@@ -22,7 +23,7 @@ const withCrowd = (model: Model, count: number): Model => {
     x: (gap.left + gap.right) / 2,
     y: (gap.top + gap.bottom) / 2,
   }
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: () =>
       Array.makeBy(count, at =>
         zombieOf('Shambler', 900 + at, middle.x - 4 + at * 4, middle.y),
@@ -55,7 +56,7 @@ describe('chandelierShot', () => {
   })
 
   test('once it is down, there is nothing to shoot', () => {
-    const fallen = modifyFields(withCrowd(wave, CHANDELIER_CROWD), {
+    const fallen = UiStruct.evolve(withCrowd(wave, CHANDELIER_CROWD), {
       level: state => ({
         ...state,
         dropped: [...state.dropped, CHANDELIER_DROP],

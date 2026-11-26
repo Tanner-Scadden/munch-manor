@@ -1,5 +1,6 @@
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../src/app/model'
 import { initialModel } from '../../src/app/pureApp'
@@ -29,6 +30,7 @@ import {
   PARLOUR_ROOM_ID,
 } from '../../src/world/level/plan'
 import {
+  BreakClock,
   CaseState,
   Pantry,
   Phase,
@@ -54,6 +56,7 @@ const IN_DINING_ROOM = hidingSpotIn(levelOf(initialModel), DINING_ROOM_ID)
 
 // NOTE: past the kitchen tour's break, so the boards keep their price.
 const WAVE_4_BREAK = Phase.Preparation({
+  clock: BreakClock.Counting(),
   wave: 4,
   remainingMs: 15_000,
   durationMs: PREPARATION_MS,
@@ -65,7 +68,7 @@ const PRICE = EXIT_RULES.kitchenKeys
 const breakWith = (keys: number, at = IN_KITCHEN) =>
   withKeys(
     withDareThings(
-      modifyFields(asVeteran(initialModel), { phase: () => WAVE_4_BREAK }),
+      UiStruct.evolve(asVeteran(initialModel), { phase: () => WAVE_4_BREAK }),
       [
         {
           id: 0,
@@ -105,7 +108,9 @@ describe('the bot takes from the display cases', () => {
     expect(
       caseToTake(
         atCase(
-          modifyFields(asVeteran(initialModel), { phase: () => WAVE_4_BREAK }),
+          UiStruct.evolve(asVeteran(initialModel), {
+            phase: () => WAVE_4_BREAK,
+          }),
           'Smg',
           CaseState.Opened({ by: 1 }),
         ),
@@ -119,7 +124,7 @@ describe('the bot takes from the display cases', () => {
 // the cellar's waits for the bulb's light, which only a wave can yank.
 describe("the bot works a room's find", () => {
   const kitchenOpen = (model: Model): Model =>
-    modifyFields(model, { level: level => openExitIn(level, KITCHEN_EXIT) })
+    UiStruct.evolve(model, { level: level => openExitIn(level, KITCHEN_EXIT) })
 
   test('keeps still in reach of a worked find', () => {
     expect(
@@ -154,7 +159,7 @@ describe("the bot works a room's find", () => {
   })
 
   test("leaves the dark cellar's thing for the wave", () => {
-    const cellarBreak = modifyFields(
+    const cellarBreak = UiStruct.evolve(
       breakWith(0, hidingSpotIn(levelOf(initialModel), CELLAR_ROOM_ID)),
       { level: () => roomOpenIn(DEFAULT_ARRANGEMENT, 'Cellar') },
     )
@@ -167,7 +172,7 @@ describe("the bot works a room's find", () => {
 const kitchenOpenWithThingIn = (room: string): Model =>
   withKeys(
     withDareThings(
-      modifyFields(asVeteran(initialModel), {
+      UiStruct.evolve(asVeteran(initialModel), {
         phase: () => WAVE_4_BREAK,
         level: level => openExitIn(level, KITCHEN_EXIT),
       }),
@@ -197,7 +202,7 @@ describe('the bot spends keys on the hunt', () => {
 
 describe('the bot runs its errands', () => {
   test("takes the pantry's goodie while it is stocked", () => {
-    const stocked = modifyFields(atFridge(0), {
+    const stocked = UiStruct.evolve(atFridge(0), {
       pantry: () => Pantry.Stocked({ round: 5, goodie: 'Key' }),
     })
     expect(pantryTarget(stocked)).toBeDefined()

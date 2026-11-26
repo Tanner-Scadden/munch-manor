@@ -1,6 +1,7 @@
 import { Array } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../../app/model'
 import { atClock, quietWave } from '../../../test/model.fixture'
@@ -11,7 +12,7 @@ import { didStrikeBetween, mixColor, moodOf, strikeOf } from '../mood'
 // and the storm's lightning strikes on the World's clock alone.
 
 const waveAt = (elapsedMs: number, intensity: number): Model =>
-  modifyFields(quietWave(3), {
+  UiStruct.evolve(quietWave(3), {
     phase: () => Phase.Wave({ wave: 3, elapsedMs, spawns: [] }),
     intensity: () => intensity,
   })
@@ -46,7 +47,7 @@ describe('the lightning', () => {
     )
     expect(starts.length).toBeGreaterThanOrEqual(6)
     expect(starts.length).toBeLessThanOrEqual(10)
-    const home = modifyFields(wave, { phase: () => Phase.Ready() })
+    const home = UiStruct.evolve(wave, { phase: () => Phase.Ready() })
     expect(Array.every(clocks, ms => strikeOf(atClock(home, ms)) === 0)).toBe(
       true,
     )

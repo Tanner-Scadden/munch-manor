@@ -1,11 +1,11 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlCommand } from '@effect/ui/html'
 import { describe, expect, it, test } from '@effect/vitest'
 import { makeReader, makeWriter } from '@munch/netcode'
 
-import { CoopBinding } from '../../../app/bindings'
+import { Message } from '../../../app/message'
 import type { Model } from '../../../app/model'
 import { WriteSave } from '../../../app/update/save'
 import { Screen as CoopScreen } from '../../../domain/coopRoom'
@@ -13,9 +13,14 @@ import { PLAYER_MAX_HP } from '../../../shared/constants'
 import type { Calling } from '../../../shared/playerData'
 import { heroesBoughtBy, readyAfterRead } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  type StoryStep,
+  checkModel,
+  exactStoryOf,
+  modelAfter,
   resolveChangeLobby,
   resolveFocusCoop,
+  send,
+  steps,
   writeSave,
 } from '../../../test/testing'
 import { heldGun } from '../../../world/gear/weapons'
@@ -28,12 +33,9 @@ import {
   writeRoomSnapshot,
 } from '../../../world/net/roomWorld'
 import { focusOf, maybePlayerAt } from '../../../world/party/party'
-import { HeroPickerBinding } from '../../coop/bindings'
-import { Message as CoopMessage } from '../../coop/message'
 import { freshRoom } from '../../coop/roomState'
-import { ChangeLobby, FocusCoopElement } from '../../coop/steps'
+import { ChangeLobby } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf } from '../../coop/testing'
-import { Message as HeroPickerMessage } from '../../heroes/message'
 
 // A co-op room seats each player as the calling they brought (the lobby's
 // member row, packages/netcode Lobby.ts): its hearts and its gun, per seat.
@@ -109,15 +111,20 @@ describe('seating the callings', () => {
   })
 })
 
-const tapCard = (calling: Calling) =>
-  Story.messageIn(
-    [CoopBinding, HeroPickerBinding],
-    HeroPickerMessage.ClickedCard({ calling }),
-  )
+// NOTE: a hero's card tapped in the picker over co-op's lobby: the picker's
+// Picked event, as the root hears it.
+const tapCard = (calling: Calling) => send(Message.PickedCoopHero({ calling }))
+
+// NOTE: what a pick, a name, or a buy in the room asks for: the lobby's
+// change, co-op's focus, and the save.
+const expectLobbySaved: StoryStep = s =>
+  s.expectExact(ChangeLobby, HtmlCommand.Focus, WriteSave)
+
+const settleLobbySaved = steps(resolveChangeLobby, resolveFocusCoop, writeSave)
 
 describe('picking a hero in the lobby', () => {
   const pointed = (rank: number): Model =>
-    modifyFields(readyAfterRead, {
+    UiStruct.evolve(readyAfterRead, {
       rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
       boughtCosmetics: () => heroesBoughtBy(rank),
       coop: coop => ({
@@ -133,40 +140,40 @@ describe('picking a hero in the lobby', () => {
             ),
           },
         }),
-        heroPicker: { status: 'Open', maybeTrying: Option.none() },
+        heroPick: { isOpen: true, maybeTrying: Option.none() },
       }),
     })
 
   it.effect("is the player's pick at home too, and saved", () =>
-    Story.story(
-      APPLICATION,
-      Story.given(pointed(4)),
-      tapCard('Handyman'),
-      Story.Command.expectExact(ChangeLobby, FocusCoopElement, WriteSave),
-      Story.model(current => {
-        expect(current.calling).toBe('Handyman')
-        expect(focusOf(current).player.calling).toBe('Handyman')
-      }),
-      resolveChangeLobby(),
-      resolveFocusCoop(),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(pointed(4))
+      s.pipe(
+        tapCard('Handyman'),
+        expectLobbySaved,
+        checkModel(current => {
+          expect(current.calling).toBe('Handyman')
+          expect(focusOf(current).player.calling).toBe('Handyman')
+        }),
+        settleLobbySaved,
+      )
+    }),
   )
 
   it.effect('a hero the rank has not reached changes nothing at home', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(pointed(4)),
-      tapCard('LineCook'),
-      Story.model(current => {
-        expect(current.calling).toBe(pointed(4).calling)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(pointed(4))
+      s.pipe(
+        tapCard('LineCook'),
+        checkModel(current => {
+          expect(current.calling).toBe(pointed(4).calling)
+        }),
+      )
+    }),
   )
 })
 
 describe('renaming yourself in the lobby', () => {
-  const naming: Model = modifyFields(readyAfterRead, {
+  const naming: Model = UiStruct.evolve(readyAfterRead, {
     playerName: () => 'Old',
     coop: coop => ({
       ...coop,
@@ -182,36 +189,36 @@ describe('renaming yourself in the lobby', () => {
   })
 
   it.effect("is the player's name at home too, and saved", () =>
-    Story.story(
-      APPLICATION,
-      Story.given(naming),
-      Story.messageIn(CoopBinding, CoopMessage.SubmittedName()),
-      Story.Command.expectExact(ChangeLobby, FocusCoopElement, WriteSave),
-      Story.model(current => {
-        expect(current.playerName).toBe('Gravy Dave')
-      }),
-      resolveChangeLobby(),
-      resolveFocusCoop(),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(naming)
+      s.pipe(
+        send(Message.SubmittedCoopName()),
+        expectLobbySaved,
+        checkModel(current => {
+          expect(current.playerName).toBe('Gravy Dave')
+        }),
+        settleLobbySaved,
+      )
+    }),
   )
 
   it.effect('a cancelled rename changes nothing at home', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(naming),
-      Story.messageIn(CoopBinding, CoopMessage.ClickedNameCancel()),
-      Story.model(current => {
-        expect(current.playerName).toBe('Old')
-      }),
-      resolveFocusCoop(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(naming)
+      s.pipe(
+        send(Message.ClickedCoopNameCancel()),
+        checkModel(current => {
+          expect(current.playerName).toBe('Old')
+        }),
+        resolveFocusCoop,
+      )
+    }),
   )
 })
 
 describe('buying a hero in the lobby', () => {
   // NOTE: rank 7 has reached the Track Star (100 Bones); 150 are earned.
-  const trying: Model = modifyFields(readyAfterRead, {
+  const trying: Model = UiStruct.evolve(readyAfterRead, {
     rank: current => ({
       ...current,
       earnedPoints: pointsForRank(7),
@@ -231,60 +238,49 @@ describe('buying a hero in the lobby', () => {
           ),
         },
       }),
-      heroPicker: {
-        status: 'Open',
-        maybeTrying: Option.some('TrackStar' as const),
+      heroPick: {
+        isOpen: true,
+        maybeTrying: Option.some<Calling>('TrackStar'),
       },
     }),
   })
-  const clickBuy = Story.messageIn(
-    [CoopBinding, HeroPickerBinding],
-    HeroPickerMessage.ClickedBuyButton(),
-  )
+  // NOTE: BUY on the Track Star tried on: the picker's RequestedBuy event.
+  const clickBuy = send(Message.RequestedBuyCoopHero({ calling: 'TrackStar' }))
 
   it.effect(
     'spends the Bones once, saves, and the hero is the pick in the room',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(trying),
-        clickBuy,
-        Story.Command.expectExact(ChangeLobby, FocusCoopElement, WriteSave),
-        Story.model(current => {
-          expect(current.boughtCosmetics).toContain('hero:TrackStar')
-          expect(current.rank.spentBones).toBe(100)
-          expect(current.calling).toBe('TrackStar')
-          expect(current.coop.calling).toBe('TrackStar')
-          expect(current.coop.bones).toBe(50)
-          expect(current.coop.bought).toContain('hero:TrackStar')
-        }),
-        resolveChangeLobby(),
-        resolveFocusCoop(),
-        writeSave(),
-      ),
+      Effect.gen(function* () {
+        const s = yield* exactStoryOf(trying)
+        s.pipe(
+          clickBuy,
+          expectLobbySaved,
+          checkModel(current => {
+            expect(current.boughtCosmetics).toContain('hero:TrackStar')
+            expect(current.rank.spentBones).toBe(100)
+            expect(current.calling).toBe('TrackStar')
+            expect(current.coop.calling).toBe('TrackStar')
+            expect(current.coop.bones).toBe(50)
+            expect(current.coop.bought).toContain('hero:TrackStar')
+          }),
+          settleLobbySaved,
+        )
+      }),
   )
 
   // NOTE: co-op's screen put back as it was before the buy, so the second
   // tap reaches the root again.
   it.effect('a second tap buys nothing more', () =>
     Effect.gen(function* () {
-      const once = yield* Story.story(
-        APPLICATION,
-        Story.given(trying),
-        clickBuy,
-        resolveChangeLobby(),
-        resolveFocusCoop(),
-        writeSave(),
+      const once = yield* modelAfter(trying, steps(clickBuy, settleLobbySaved))
+      const s = yield* exactStoryOf(
+        UiStruct.evolve(once, {
+          coop: coop => ({ ...coop, screen: trying.coop.screen }),
+        }),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(once, {
-            coop: coop => ({ ...coop, screen: trying.coop.screen }),
-          }),
-        ),
+      s.pipe(
         clickBuy,
-        Story.model(again => {
+        checkModel(again => {
           expect(again.rank.spentBones).toBe(100)
         }),
       )
@@ -292,35 +288,37 @@ describe('buying a hero in the lobby', () => {
   )
 
   it.effect('the root checks the Bones itself, whatever co-op believes', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(trying, {
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(
+        UiStruct.evolve(trying, {
           rank: current => ({ ...current, earnedBones: 99 }),
         }),
-      ),
-      clickBuy,
-      Story.model(current => {
-        expect(current.rank.spentBones).toBe(0)
-        expect(current.boughtCosmetics).not.toContain('hero:TrackStar')
-      }),
-    ),
+      )
+      s.pipe(
+        clickBuy,
+        checkModel(current => {
+          expect(current.rank.spentBones).toBe(0)
+          expect(current.boughtCosmetics).not.toContain('hero:TrackStar')
+        }),
+      )
+    }),
   )
 
   it.effect('too few Bones buys nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(trying, {
+    Effect.gen(function* () {
+      const s = yield* exactStoryOf(
+        UiStruct.evolve(trying, {
           rank: current => ({ ...current, earnedBones: 99 }),
           coop: coop => ({ ...coop, bones: 99 }),
         }),
-      ),
-      clickBuy,
-      Story.model(current => {
-        expect(current.rank.spentBones).toBe(0)
-        expect(current.boughtCosmetics).not.toContain('hero:TrackStar')
-      }),
-    ),
+      )
+      s.pipe(
+        clickBuy,
+        checkModel(current => {
+          expect(current.rank.spentBones).toBe(0)
+          expect(current.boughtCosmetics).not.toContain('hero:TrackStar')
+        }),
+      )
+    }),
   )
 })

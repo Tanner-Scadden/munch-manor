@@ -1,5 +1,6 @@
 import { Array, Function, Order, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
 import { type Seeded, between, nextRandom } from '../../shared/prng'
@@ -191,7 +192,7 @@ type Step = Readonly<{
 const stay = (zombie: Zombie): Step => ({ zombie, events: [] })
 
 const withAction = (zombie: Zombie, action: ZombieAction): Zombie =>
-  modifyFields(zombie, { action: () => action })
+  UiStruct.evolve(zombie, { action: () => action })
 
 const surface = (zombie: Zombie, player: Vector, deltaMs: number): Step => {
   if (!isBurrowedZombieAction(zombie.action)) {
@@ -236,7 +237,7 @@ const isTouchingPlayer = (zombie: Zombie, player: Vector): boolean =>
 const cling = (zombie: Zombie, player: Vector, deltaMs: number): Step => {
   if (isClingingZombieAction(zombie.action)) {
     const { remainingMs } = zombie.action
-    const held = modifyFields(zombie, {
+    const held = UiStruct.evolve(zombie, {
       x: () => player.x + ANKLE_OFFSET.x,
       y: () => player.y + ANKLE_OFFSET.y,
       knockback: () => ({ x: 0, y: 0 }),
@@ -300,7 +301,7 @@ export const advanceCrawlers: {
     model.zombies,
     stepCrawler(zombie => nearestOf(targets, zombie), deltaMs),
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: () => Array.map(steps, ({ zombie }) => zombie),
     frameEvents: frameEvents => [
       ...frameEvents,

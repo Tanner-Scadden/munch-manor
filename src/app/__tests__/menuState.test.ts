@@ -1,6 +1,7 @@
 import { Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { Screen } from '../../domain/coopRoom'
 import { RESTART_GRACE_MS } from '../../shared/constants'
@@ -15,9 +16,9 @@ import {
 } from '../menuState'
 import { type Model, Phase } from '../model'
 
-const inCoop: Model = modifyFields(home, {
+const inCoop: Model = UiStruct.evolve(home, {
   coop: coop =>
-    modifyFields(coop, {
+    UiStruct.evolve(coop, {
       screen: () => Screen.Hub({ maybeProblem: Option.none() }),
     }),
 })
@@ -31,12 +32,12 @@ describe('menuState', () => {
     expect(tagOf(pause(veteranFighting))).toBe('Paused')
     expect(
       menuState(
-        modifyFields(home, { phase: () => Phase.GameOver({ wave: 3 }) }),
+        UiStruct.evolve(home, { phase: () => Phase.GameOver({ wave: 3 }) }),
       ),
     ).toEqual(MenuState.EndScreen({ isPastGrace: false }))
     expect(
       menuState(
-        modifyFields(home, {
+        UiStruct.evolve(home, {
           phase: () => Phase.Escaped({ wave: 10 }),
           screenMs: () => RESTART_GRACE_MS,
         }),
@@ -50,23 +51,25 @@ describe('menuState', () => {
   })
 
   test('every dialog covers the home menu, co-op, and the phase', () => {
-    expect(tagOf(modifyFields(home, { handDialog: openedDialog }))).toBe('Hand')
-    expect(tagOf(modifyFields(home, { homeScreenSteps: openedDialog }))).toBe(
-      'InstallSteps',
-    )
-    expect(tagOf(modifyFields(inCoop, { updateGreeting: openedDialog }))).toBe(
-      'UpdateGreeting',
+    expect(tagOf(UiStruct.evolve(home, { handDialog: openedDialog }))).toBe(
+      'Hand',
     )
     expect(
-      tagOf(modifyFields(veteranFighting, { handDialog: openedDialog })),
+      tagOf(UiStruct.evolve(home, { homeScreenSteps: openedDialog })),
+    ).toBe('InstallSteps')
+    expect(
+      tagOf(UiStruct.evolve(inCoop, { updateGreeting: openedDialog })),
+    ).toBe('UpdateGreeting')
+    expect(
+      tagOf(UiStruct.evolve(veteranFighting, { handDialog: openedDialog })),
     ).toBe('Hand')
     expect(
-      isOnHomeMenu(modifyFields(home, { updateGreeting: openedDialog })),
+      isOnHomeMenu(UiStruct.evolve(home, { updateGreeting: openedDialog })),
     ).toBe(false)
   })
 
   test('names the open panel and Profile tab', () => {
-    const asking = modifyFields(pause(veteranFighting), {
+    const asking = UiStruct.evolve(pause(veteranFighting), {
       panel: () => 'LeaveRun',
       panelDialog: openedDialog,
     })
@@ -74,13 +77,13 @@ describe('menuState', () => {
     expect(isPanelOpen(asking, 'HowToPlay')).toBe(false)
     expect(
       isPanelOpen(
-        modifyFields(pause(veteranFighting), { panel: () => 'LeaveRun' }),
+        UiStruct.evolve(pause(veteranFighting), { panel: () => 'LeaveRun' }),
         'LeaveRun',
       ),
     ).toBe(false)
 
-    const settings = modifyFields(home, {
-      profile: profile => modifyFields(profile, { tab: () => 'Settings' }),
+    const settings = UiStruct.evolve(home, {
+      profile: profile => UiStruct.evolve(profile, { tab: () => 'Settings' }),
       profileDialog: openedDialog,
     })
     expect(isProfileOpenOn(settings, 'Settings')).toBe(true)

@@ -3,7 +3,8 @@
 // src/world/schema/worldSchema.ts builds the World from them and re-exports them.
 
 import { Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { Calling } from '../../shared/playerData'
 import {
@@ -32,7 +33,7 @@ export const Intent = Schema.Struct({
 })
 export type Intent = typeof Intent.Type
 
-export const Invulnerability = defineTaggedUnion({
+export const Invulnerability = UiSchema.TaggedEnum({
   Vulnerable: {},
   Invulnerable: { remainingMs: MillisNumber, durationMs: MillisNumber },
 })
@@ -80,7 +81,7 @@ export type CarriedGun = typeof CarriedGun.Type
 // first gun bought or taken fills the second, and after that a new gun
 // replaces the one in the player's hands. The pistol is a gun like any
 // other: it can be traded away, and Rattles sells it back for $0.
-export const Arsenal = defineTaggedUnion({
+export const Arsenal = UiSchema.TaggedEnum({
   OneGun: { first: CarriedGun },
   HoldingFirst: { first: CarriedGun, second: CarriedGun },
   HoldingSecond: { first: CarriedGun, second: CarriedGun },
@@ -91,7 +92,7 @@ export type Arsenal = typeof Arsenal.Type
 // two gun slots"): the knife every run starts with, or the Clang Pan from
 // the Mystery Leftovers fridge, which takes the knife's place for the rest
 // of the run. The Pan's `loaded` is its dent meter, as in src/world/gear/weapons.ts.
-export const Melee = defineTaggedUnion({
+export const Melee = UiSchema.TaggedEnum({
   Knife: {},
   Pan: { pan: CarriedGun },
 })
@@ -103,7 +104,7 @@ export type Melee = typeof Melee.Type
 const Wield = Schema.Literals(['Gun', 'Melee'])
 type Wield = typeof Wield.Type
 
-export const Reload = defineTaggedUnion({
+export const Reload = UiSchema.TaggedEnum({
   Ready: {},
   Reloading: { remainingMs: MillisNumber, durationMs: MillisNumber },
 })
@@ -113,7 +114,7 @@ export type Reload = typeof Reload.Type
 // counts how long fire has been held and keeps the aim it was held at, so a
 // thumb lifting off the stick still throws where it pointed. Spent is a
 // lid that popped in the player's hands: nothing builds until fire is let go.
-export const Charge = defineTaggedUnion({
+export const Charge = UiSchema.TaggedEnum({
   Idle: {},
   Building: { heldMs: MillisNumber, aim: Point },
   Spent: {},
@@ -155,7 +156,7 @@ export const ZombieKind = Schema.Literals([
 ])
 export type ZombieKind = typeof ZombieKind.Type
 
-export const ZombieState = defineTaggedUnion({
+export const ZombieState = UiSchema.TaggedEnum({
   Walking: {},
   Fusing: { remainingMs: MillisNumber },
   Dying: { remainingMs: MillisNumber, direction: Heading },
@@ -166,7 +167,7 @@ export type ZombieState = typeof ZombieState.Type
 // is alive. A Big Leaguer heaves a Groaner, which is Carried, then Flying, then
 // Dazed where it lands. An Ankle Biter waits Burrowed under the floor, then
 // clings to the player's ankles. Winded walks like Roaming but cannot grab.
-export const ZombieAction = defineTaggedUnion({
+export const ZombieAction = UiSchema.TaggedEnum({
   Roaming: {},
   Winded: { remainingMs: MillisNumber },
   Hefting: {
@@ -205,7 +206,7 @@ export type ZombieAction = typeof ZombieAction.Type
 // members stay close. A member that drifts away from the rest Fades, then is
 // Spent for good. The pack id stays on it, so its kill still counts toward
 // the bonus for wiping out the whole pack.
-export const Frenzy = defineTaggedUnion({
+export const Frenzy = UiSchema.TaggedEnum({
   Calm: {},
   Frenzied: { pack: Schema.Finite, apartMs: MillisNumber },
   Fading: { pack: Schema.Finite, remainingMs: MillisNumber },
@@ -244,7 +245,7 @@ export type PlantedAttack = typeof PlantedAttack.Type
 // NOTE: a charge locks its target when the brace starts, so the line on the
 // floor never follows the player. The rush runs past the target by the
 // overshoot, and remainingPx counts down what is left of it.
-export const BossMove = defineTaggedUnion({
+export const BossMove = UiSchema.TaggedEnum({
   Stalking: { cooldownMs: MillisNumber },
   WindingUp: {
     attack: PlantedAttack,
@@ -268,7 +269,7 @@ export type BossMood = typeof BossMood.Type
 export const FarAttack = Schema.Literals(['Charge', 'Spit'])
 export type FarAttack = typeof FarAttack.Type
 
-export const Glob = defineTaggedUnion({
+export const Glob = UiSchema.TaggedEnum({
   Flying: {
     from: Point,
     to: Point,
@@ -282,7 +283,7 @@ export type Glob = typeof Glob.Type
 export const BulletGlaze = Schema.Literals(['Plain', 'Spicy', 'Mean', 'Skewer'])
 export type BulletGlaze = typeof BulletGlaze.Type
 
-export const Pierce = defineTaggedUnion({
+export const Pierce = UiSchema.TaggedEnum({
   Stops: {},
   Skewers: { left: Schema.Finite, struck: Schema.Array(Schema.Finite) },
 })
@@ -432,7 +433,7 @@ export const Pickup = Schema.Struct({
 })
 export type Pickup = typeof Pickup.Type
 
-export const BoostTimer = defineTaggedUnion({
+export const BoostTimer = UiSchema.TaggedEnum({
   Off: {},
   On: { remainingMs: MillisNumber, durationMs: MillisNumber },
 })
@@ -446,7 +447,7 @@ export const Boosts = Schema.Struct({
 })
 export type Boosts = typeof Boosts.Type
 
-export const Prize = defineTaggedUnion({
+export const Prize = UiSchema.TaggedEnum({
   Settled: {},
   Owed: {},
 })
@@ -485,7 +486,7 @@ export type FridgePrize = typeof FridgePrize.Type
 // NOTE: Open is a pull: the door creaks open, fog rolls out, and the prize
 // pops up: a gag flies to the seat that pulled, a weapon goes on Offering. Slammed is the fridge resting
 // after its last pull of the batch; it takes no money until it is Shut.
-export const FridgeDoor = defineTaggedUnion({
+export const FridgeDoor = UiSchema.TaggedEnum({
   Shut: {},
   Open: {
     prize: FridgePrize,
@@ -525,12 +526,12 @@ export type PantryGoodie = typeof PantryGoodie.Type
 
 // NOTE: `round` is the break it was stocked for, by its wave number, so a
 // break stocks it once and a taken stash stays Bare until the next break.
-export const Pantry = defineTaggedUnion({
+export const Pantry = UiSchema.TaggedEnum({
   Bare: { round: Schema.Finite },
   Stocked: { round: Schema.Finite, goodie: PantryGoodie },
 })
 export type Pantry = typeof Pantry.Type
-export type PantryStash = typeof Pantry.Stocked.Type
+export type PantryStash = typeof Pantry.cases.Stocked.Type
 
 // TRAP CRATES
 
@@ -549,7 +550,7 @@ export type CrateRoom = typeof CrateRoom.Type
 
 // NOTE: what a crate holds: a trap, a Pickled Heart (only while someone in
 // the crew is missing one), or nothing once taken.
-export const CrateStock = defineTaggedUnion({
+export const CrateStock = UiSchema.TaggedEnum({
   Stocked: { trap: TrapKind },
   Heart: {},
   Taken: {},
@@ -619,7 +620,7 @@ export type Cooking = typeof Cooking.Type
 // NOTE: the kitchen's gas valve (src/world/kitchen/gasValve.ts). Lit, the parlour's
 // fireplace burns for the rest of the run: `owner` turned it and is paid
 // for its kills, and `nextBurnMs` counts down to its next burn.
-export const GasValve = defineTaggedUnion({
+export const GasValve = UiSchema.TaggedEnum({
   Shut: {},
   Lit: { owner: Schema.Finite, nextBurnMs: MillisNumber },
 })

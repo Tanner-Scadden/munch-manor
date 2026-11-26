@@ -1,5 +1,4 @@
 import { Array, Effect } from 'effect'
-import { Story } from 'foldkit'
 
 import { describe, expect, it } from '@effect/vitest'
 
@@ -7,7 +6,7 @@ import type { Model } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { SHOTGUN, holdingSecond } from '../../../test/arsenals'
 import { quietWave, withArsenal } from '../../../test/model.fixture'
-import { APPLICATION, holdFire, tick } from '../../../test/testing'
+import { holdFire, modelAfter, steps, tick } from '../../../test/testing'
 import { LASER_SPREAD_SCALE } from '../../gear/powerups'
 import { modifyFocus } from '../../party/party'
 
@@ -20,11 +19,9 @@ const shotgunReady = (laserSight: 'None' | 'Fitted'): Model =>
   })
 
 const coneOf = (laserSight: 'None' | 'Fitted') =>
-  Story.story(
-    APPLICATION,
-    Story.given(shotgunReady(laserSight)),
-    holdFire,
-    tick(FIXED_STEP_MS),
+  modelAfter(
+    shotgunReady(laserSight),
+    steps(holdFire, tick(FIXED_STEP_MS)),
   ).pipe(
     Effect.map(({ bullets }) => {
       const angles = Array.map(bullets, ({ velocityX, velocityY }) =>

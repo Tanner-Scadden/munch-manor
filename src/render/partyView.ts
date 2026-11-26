@@ -1,6 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
-import { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import { seatLookOf } from '../art/seatLooks'
@@ -39,6 +39,7 @@ import {
   type Seat,
 } from '../world/schema/worldSchema'
 import type { Drawable } from './depth'
+import * as Draw from './draw'
 import { rect, ringPixels } from './drawing'
 import { barWidthOf, healthBarShapes } from './healthBarView'
 import {
@@ -87,18 +88,18 @@ export const isLeadArmed = (model: Model): boolean =>
 // NOTE: the lead's body: on its feet as `standing` draws it, or lying.
 export const leadBodyShapes: {
   (
-    standing: () => ReadonlyArray<Canvas.Shape>,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+    standing: () => ReadonlyArray<Draw.Shape>,
+  ): (model: Model) => ReadonlyArray<Draw.Shape>
   (
     model: Model,
-    standing: () => ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape>
+    standing: () => ReadonlyArray<Draw.Shape>,
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
   (
     model: Model,
-    standing: () => ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape> =>
+    standing: () => ReadonlyArray<Draw.Shape>,
+  ): ReadonlyArray<Draw.Shape> =>
     isLeadInHouse(model)
       ? Option.match(maybeLeadLyingOf(model), {
           onNone: standing,
@@ -126,7 +127,7 @@ export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
       ? Result.failVoid
       : Result.succeed({
           seat,
-          model: modifyFields(
+          model: UiStruct.evolve(
             withWorld(model, world => focusSeat(world, slot)),
             {
               appearance: () => lookOfSeat(model, slot),
@@ -156,7 +157,7 @@ const lookOfSeat = (model: Model, slot: PlayerSlot): Appearance => {
 
 export const mateShadowShapes = (
   mates: ReadonlyArray<MateModel>,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.map(mates, mate => playerShadow(focusOf(mate.model).player))
 
 // NOTE: the pixels a seat's hat stands over its head, from the look it
@@ -171,7 +172,7 @@ export const seatHatRiseOf: {
 const mateBodyShapes = ({
   model,
   seat,
-}: MateModel): ReadonlyArray<Canvas.Shape> =>
+}: MateModel): ReadonlyArray<Draw.Shape> =>
   Option.match(maybeLyingOf(seat), {
     onNone: () => [
       ...auraShapes(
@@ -221,14 +222,14 @@ const markShapes = (slot: PlayerSlot, x: number, y: number, rise: number) => {
   const left = Math.round(x) - 1
   const top = Math.round(y) - MARK_LIFT_PX - rise
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y: top,
       width: 3,
       height: 1,
       fill: seatColorOf(slot),
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: left + 1,
       y: top + 1,
       width: 1,
@@ -287,7 +288,7 @@ const reviveIconShapes = (
   y: number,
   isReviving: boolean,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(Array.get(REVIVE_ICONS, slot % REVIVE_ICONS.length), {
     onNone: () => [],
     onSome: icons => [
@@ -338,7 +339,7 @@ const reviveRingShapes = (
   x: number,
   y: number,
   reviveMs: number,
-): Canvas.Shape => {
+): Draw.Shape => {
   const step = Math.min(
     RING_STEPS,
     Math.floor((reviveMs / COOP_RULES.reviveMs) * RING_STEPS),
@@ -360,7 +361,7 @@ const reviveRingShapes = (
 // NOTE: on the floor, under everyone: each downed player's revive ring.
 export const reviveRingGroundShapes = (
   model: Model,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   isCoop(model)
     ? Array.flatMap(playersOf(model), ({ seat, player }) =>
         Option.match(maybeDownedOf(seat), {
@@ -411,9 +412,9 @@ export const NAME_LIFT_CALLING_PX =
   MEDIC_BUBBLE_TIP_LIFT_PX + MEDIC_BUBBLE_HEIGHT + MEDIC_POP_PX
 
 export const medicBubbleShape: {
-  (y: number, callMs: number): (x: number) => Canvas.Shape
-  (x: number, y: number, callMs: number): Canvas.Shape
-} = Function.dual(3, (x: number, y: number, callMs: number): Canvas.Shape => {
+  (y: number, callMs: number): (x: number) => Draw.Shape
+  (x: number, y: number, callMs: number): Draw.Shape
+} = Function.dual(3, (x: number, y: number, callMs: number): Draw.Shape => {
   const isPopping = callMs < MEDIC_POP_MS
   const shake = isPopping
     ? 0
@@ -431,7 +432,7 @@ export const medicBubbleShape: {
 // NOTE: over every player's head in co-op: their seat's mark while they
 // stand; while they are down, the bleed bar and the revive icon. A
 // bled-out body gets nothing.
-const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const seatMarkShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   isCoop(model)
     ? Array.flatMap(playersOf(model), ({ seat: { slot }, seat, player }) => {
         if (isStanding(seat)) {
@@ -465,16 +466,11 @@ const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
     : []
 
 export const mateOverheadShapes: {
-  (
-    mates: ReadonlyArray<MateModel>,
-  ): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, mates: ReadonlyArray<MateModel>): ReadonlyArray<Canvas.Shape>
+  (mates: ReadonlyArray<MateModel>): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, mates: ReadonlyArray<MateModel>): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (
-    model: Model,
-    mates: ReadonlyArray<MateModel>,
-  ): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, mates: ReadonlyArray<MateModel>): ReadonlyArray<Draw.Shape> =>
     isCoop(model)
       ? [
           ...Array.flatMap(mates, ({ model: mate, seat }) =>
@@ -497,7 +493,7 @@ export const seatModelsOf = (
 ): ReadonlyArray<Readonly<{ slot: PlayerSlot; model: Model }>> =>
   Array.map(playersOf(model), ({ seat: { slot } }) => ({
     slot,
-    model: modifyFields(
+    model: UiStruct.evolve(
       withWorld(model, world => focusSeat(world, slot)),
       {
         appearance: () => lookOfSeat(model, slot),

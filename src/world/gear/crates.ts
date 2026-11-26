@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { SHOP_FIRST_WAVE } from '../../shared/constants'
 import { nextRandom } from '../../shared/prng'
@@ -295,7 +296,7 @@ const rollFor = (world: World, rooms: ReadonlyArray<CrateRoom>): Rolled => {
         room,
         stock: CrateStock.Stocked({ trap: 'Barricade' }),
       }
-      return modifyFields(rolled, {
+      return UiStruct.evolve(rolled, {
         crates: Array.append(crate),
         rngState: () => rngState,
       })
@@ -319,7 +320,7 @@ const rollFor = (world: World, rooms: ReadonlyArray<CrateRoom>): Rolled => {
 // NOTE: every open room's crate rolls a fresh trap, in room order.
 const restock = (world: World, wave: number): World => {
   const { crates, rngState } = rollFor(world, crateRoomsOf(world))
-  return modifyFields(world, {
+  return UiStruct.evolve(world, {
     crates: () => ({ rngState, wave, crates }),
   })
 }
@@ -336,9 +337,9 @@ const addOpenedRooms = (world: World): World => {
     return world
   }
   const { crates: added, rngState } = rollFor(world, missing)
-  return modifyFields(world, {
+  return UiStruct.evolve(world, {
     crates: crates =>
-      modifyFields(crates, {
+      UiStruct.evolve(crates, {
         rngState: () => rngState,
         crates: current => Array.appendAll(current, added),
       }),
@@ -361,10 +362,10 @@ export const canTakeFind: {
 )
 
 const heal = (world: World, slot: PlayerSlot): World =>
-  modifyFields(world, {
+  UiStruct.evolve(world, {
     seats: atSeat(slot, {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           hp: hp => Math.min(maxHpOf(player), hp + 1),
         }),
     }),
@@ -379,12 +380,12 @@ const giveFind = (
   spot: Vector,
 ): World =>
   find === 'Heart'
-    ? modifyFields(heal(world, slot), {
+    ? UiStruct.evolve(heal(world, slot), {
         frameEvents: Array.append(
           GameEvent.PickupGrabbed({ x: spot.x, y: spot.y, kind: 'Heart' }),
         ),
       })
-    : modifyFields(stockTrap(world, slot, find), {
+    : UiStruct.evolve(stockTrap(world, slot, find), {
         frameEvents: Array.append(
           GameEvent.CrateTaken({ x: spot.x, y: spot.y, trap: find }),
         ),
@@ -407,14 +408,16 @@ const takeAt = (world: World, slot: PlayerSlot, index: number): World =>
     Option.match({
       onNone: () => world,
       onSome: ({ crate, find }) =>
-        modifyFields(
+        UiStruct.evolve(
           giveFind(world, slot, find, crateSpotOf(levelOf(world), crate.room)),
           {
             crates: crates =>
-              modifyFields(crates, {
+              UiStruct.evolve(crates, {
                 crates: Array.map((current, at) =>
                   at === index
-                    ? modifyFields(current, { stock: () => CrateStock.Taken() })
+                    ? UiStruct.evolve(current, {
+                        stock: () => CrateStock.Taken(),
+                      })
                     : current,
                 ),
               }),

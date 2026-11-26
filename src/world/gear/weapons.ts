@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   BULLET_LIFETIME_MS,
@@ -505,7 +506,7 @@ const boostsUpTo = (kind: WeaponKind, tier: number): ReadonlyArray<TierBoost> =>
   )
 
 const applyBoost = (stats: WeaponStats, boost: TierBoost): WeaponStats =>
-  modifyFields(stats, {
+  UiStruct.evolve(stats, {
     damage: damage => damage + boost.damage,
     fireIntervalMs: interval => Math.max(1, interval + boost.fireIntervalMs),
     magazine: magazine => Math.max(1, magazine + boost.magazine),
@@ -816,7 +817,7 @@ export const canReload = (player: Player): boolean => {
 
 export const beginReload = (player: Player): Player => {
   const { reloadMs } = heldStats(player)
-  return modifyFields(player, {
+  return UiStruct.evolve(player, {
     reload: () =>
       Reload.Reloading({ remainingMs: reloadMs, durationMs: reloadMs }),
   })
@@ -826,25 +827,25 @@ export const beginReload = (player: Player): Player => {
 // trigger's rest starts over, so the idle reload below Hard waits its full
 // time on the new gun.
 export const putGunInHand = (player: Player): Player =>
-  modifyFields(player, {
+  UiStruct.evolve(player, {
     reload: () => Reload.Ready(),
     triggerRestMs: () => 0,
   })
 
 const fillGun = (gun: CarriedGun, calling: Calling): CarriedGun =>
-  modifyFields(gun, { loaded: () => carriedMagazine(calling, gun) })
+  UiStruct.evolve(gun, { loaded: () => carriedMagazine(calling, gun) })
 
 export const finishReload = (player: Player): Player =>
-  modifyFields(player, {
+  UiStruct.evolve(player, {
     reload: () => Reload.Ready(),
     arsenal: arsenal => mapHeld(arsenal, gun => fillGun(gun, player.calling)),
   })
 
 export const spendRound = (player: Player): Player =>
-  modifyFields(player, {
+  UiStruct.evolve(player, {
     arsenal: arsenal =>
       mapHeld(arsenal, gun =>
-        modifyFields(gun, { loaded: loaded => Math.max(0, loaded - 1) }),
+        UiStruct.evolve(gun, { loaded: loaded => Math.max(0, loaded - 1) }),
       ),
   })
 
@@ -886,7 +887,9 @@ export const mapPan: {
     Melee.match(player.melee, {
       Knife: () => player,
       Pan: ({ pan }) =>
-        modifyFields(player, { melee: () => Melee.Pan({ pan: change(pan) }) }),
+        UiStruct.evolve(player, {
+          melee: () => Melee.Pan({ pan: change(pan) }),
+        }),
     }),
 )
 
@@ -899,7 +902,7 @@ export const mapCarried: {
   2,
   (player: Player, change: (gun: CarriedGun) => CarriedGun): Player =>
     mapPan(
-      modifyFields(player, { arsenal: arsenal => mapGuns(arsenal, change) }),
+      UiStruct.evolve(player, { arsenal: arsenal => mapGuns(arsenal, change) }),
       change,
     ),
 )
@@ -912,13 +915,13 @@ export const takePan: {
   (fresh: CarriedGun): (player: Player) => Player
   (player: Player, fresh: CarriedGun): Player
 } = Function.dual(2, (player: Player, fresh: CarriedGun): Player =>
-  modifyFields(player, {
+  UiStruct.evolve(player, {
     melee: () =>
       Melee.Pan({
         pan: Option.match(maybePanOf(player), {
           onNone: () => fresh,
           onSome: pan =>
-            modifyFields(pan, {
+            UiStruct.evolve(pan, {
               loaded: () => magazineOf(pan.kind, pan.tier),
             }),
         }),
@@ -948,7 +951,7 @@ export const inHandOf = (player: Player): InHand => {
 export const drawMelee = (player: Player): Player =>
   isWieldingMelee(player)
     ? player
-    : modifyFields(player, { wield: () => 'Melee' })
+    : UiStruct.evolve(player, { wield: () => 'Melee' })
 
 // NOTE: the gun in `slot` in hand. A slot with no gun leaves the arsenal
 // as it is, and a gun that changes stops a reload.
@@ -960,7 +963,7 @@ export const drawSlot: {
     heldSlotOf(player.arsenal) === slot
       ? player.arsenal
       : swapWeapon(player.arsenal)
-  const drawn = modifyFields(player, {
+  const drawn = UiStruct.evolve(player, {
     arsenal: () => arsenal,
     wield: () => 'Gun',
   })
@@ -973,7 +976,7 @@ export const drawSlot: {
 // with a gun in hand it switches to the other gun.
 export const swapInHand = (player: Player): Player =>
   isWieldingMelee(player)
-    ? modifyFields(player, { wield: () => 'Gun' })
+    ? UiStruct.evolve(player, { wield: () => 'Gun' })
     : drawSlot(player, heldSlotOf(swapWeapon(player.arsenal)))
 
 // NOTE: the Pop Pistol as a run starts with it, in the first slot.

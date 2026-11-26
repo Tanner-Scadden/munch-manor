@@ -1,6 +1,4 @@
 import { Array, Function, Option, Predicate, Record, Result } from 'effect'
-import { Canvas } from 'foldkit'
-import { type Html, createLazy } from 'foldkit/html'
 
 import { spriteWarmUpSources } from '../art/appearance'
 import { atlasRoomSources } from '../art/spriteAtlas'
@@ -34,10 +32,12 @@ import {
   worldToView,
 } from '../render/camera'
 import { cineBarShapes } from '../render/cine'
+import type * as Draw from '../render/draw'
 import { IsoLens } from '../render/iso/diorama'
 import { worldElement } from '../render/iso/element'
 import type { IsoFrame } from '../render/iso/frame'
 import { holdKeyOf } from '../render/iso/hold'
+import { overlayElement } from '../render/iso/overlayElement'
 import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
 import { everyRoomImage } from '../render/room/room'
 import { FLOOR_COLOR } from '../render/room/roomPalette'
@@ -65,7 +65,7 @@ import type { LevelSpec } from '../world/level/plan'
 import { focusOf } from '../world/party/party'
 import { isArriving } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
-import type { ApplicationViewBuilder } from './composition'
+import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
 import { type Model, Phase, defaultAppearance } from './model'
 
 // OVERLAY
@@ -73,7 +73,7 @@ import { type Model, Phase, defaultAppearance } from './model'
 const calloutLayerShapes = (
   model: Model,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   isRoundActive(model.phase)
     ? [
         ...Array.flatMap(model.cosmetics.callouts, calloutShapes(camera)),
@@ -90,7 +90,7 @@ const pointerShapes = (
   model: Model,
   screen: Screen,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.isSome(maybeTourMark(model))
     ? questEdgeShapes(model, screen, camera)
     : darePointerShapes(model, screen, camera)
@@ -99,7 +99,7 @@ const roundOverlayShapes = (
   model: Model,
   screen: Screen,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   ...cineBarShapes({ model, world: viewBoxOf(camera) }),
   ...hudStripShapes(model, screen, camera),
   ...wavePreviewShapes(model, camera),
@@ -134,12 +134,12 @@ const overlayLayerShapes = (
   model: Model,
   screen: Screen,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   isArriving(model.phase)
     ? introShapes(model, screen)
     : roundOverlayShapes(model, screen, camera)
 
-export const sceneShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+export const sceneShapes = (model: Model): ReadonlyArray<Draw.Shape> => {
   const screen = screenOf(model)
   const camera = worldCameraFor(model, screen)
   return [
@@ -150,12 +150,13 @@ export const sceneShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
 
 // OVERLAY LAYER
 
-type LastShapes = { current: ReadonlyArray<Canvas.Shape> }
+type LastShapes = { current: ReadonlyArray<Draw.Shape> }
 
-// NOTE: createLazy compares its arguments by reference, and the HUD and
-// screen overlays are rebuilt as new arrays every frame. This hands back the
-// previous array while the new one is structurally equal, so the overlay
-// canvas repaints only on frames where what it shows has changed.
+// NOTE: h.lazy compares its arguments by reference, and the HUD and screen
+// overlays are rebuilt as new arrays every frame. This hands back the
+// previous array while the new one is structurally equal, so the overlay's
+// node is kept, its picture is the one written last, and the overlay
+// repaints only on frames where what it shows has changed.
 // NOTE: shapes are plain data, so equal shapes have the same keys and equal
 // values. This walks both trees and stops at the first difference; it never
 // hashes, which Equal.equals does to every node of both trees every frame.
@@ -186,7 +187,7 @@ const isSameData = (left: unknown, right: unknown): boolean => {
 
 const keepWhileEqual =
   (last: LastShapes) =>
-  (shapes: ReadonlyArray<Canvas.Shape>): ReadonlyArray<Canvas.Shape> => {
+  (shapes: ReadonlyArray<Draw.Shape>): ReadonlyArray<Draw.Shape> => {
     if (!isSameData(last.current, shapes)) {
       last.current = shapes
     }
@@ -195,24 +196,29 @@ const keepWhileEqual =
 
 const stableOverlayShapes = keepWhileEqual({ current: [] })
 
+// NOTE: the element itself stands over the stage, the canvas it holds
+// filling it (.overlay-layer-canvas in styles.css).
+const OVERLAY_BOX = {
+  position: 'absolute',
+  inset: '0',
+  display: 'block',
+  pointerEvents: 'none',
+} as const
+
+// NOTE: the shapes first, so h.lazy keys the call by them: a new picture
+// object only when the shapes, or the screen's size, change.
 const overlayLayerView = (
+  h: ApplicationViewBuilder,
+  shapes: ReadonlyArray<Draw.Shape>,
   width: number,
   height: number,
-  shapes: ReadonlyArray<Canvas.Shape>,
-  h: ApplicationViewBuilder,
-): Html =>
-  Canvas.view(
-    {
-      key: 'overlay-layer',
-      width,
-      height,
-      shapes,
-      className: 'overlay-layer-canvas',
-    },
-    h,
-  )
-
-const lazyOverlayLayer = createLazy()
+): ApplicationHtml =>
+  overlayElement(h)
+    .key('overlay-layer')
+    .class('overlay-layer')
+    .attr('aria-hidden', 'true')
+    .style(OVERLAY_BOX)
+    .picture({ width, height, shapes })
 
 // THE WORLD
 
@@ -265,21 +271,15 @@ const worldView = (
   model: Model,
   camera: Camera,
   h: ApplicationViewBuilder,
-): Html => {
-  const world = worldElement.withMessage(h)
-  return world(
-    [
-      h.Key('world-view'),
-      h.Class('world-view'),
-      h.AriaHidden(true),
-      // NOTE: the world pixels it shows, for the audits that measure the zoom.
-      h.DataAttribute('view-width', `${camera.width}`),
-      h.DataAttribute('view-height', `${camera.height}`),
-      world.Frame(isoFrameOf(model, camera)),
-    ],
-    [],
-  )
-}
+): ApplicationHtml =>
+  worldElement(h)
+    .key('world-view')
+    .class('world-view')
+    .attr('aria-hidden', 'true')
+    // NOTE: the world pixels it shows, for the audits that measure the zoom.
+    .attr('data-view-width', `${camera.width}`)
+    .attr('data-view-height', `${camera.height}`)
+    .frame(isoFrameOf(model, camera))
 
 // LENS
 
@@ -330,61 +330,52 @@ const stageBoxStyle = (
   })
 
 export const gameStageView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
-  const screen = screenOf(model)
-  const camera = worldCameraFor(model, screen)
-  const { world } = screen
-  return h.div(
-    [h.Class('game-frame')],
-    [
-      h.div(
-        [
-          h.Key('game-stage'),
-          h.Class('game-stage'),
-          h.DataAttribute('layout', screen.layout),
-          h.Style({
-            ...stageBoxStyle(model, screen),
-            backgroundColor:
-              screen.layout === 'Landscape' ? FLOOR_COLOR : STAGE_BACKDROP,
-          }),
-        ],
-        [
-          h.div(
-            [
-              h.Key('world-window'),
-              h.Class('world-window'),
-              h.Style({
-                left: percentOf(world.x, screen.width),
-                top: percentOf(world.y, screen.height),
-                width: percentOf(world.width, screen.width),
-                height: percentOf(world.height, screen.height),
-                backgroundColor: FLOOR_COLOR,
-              }),
-            ],
-            [
-              h.div(
-                [
-                  h.Key('world-lens'),
-                  h.Class('world-lens'),
-                  h.Style(lensStyle(model, camera)),
-                ],
-                [worldView(model, camera, h)],
-              ),
-            ],
-          ),
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml => {
+    const screen = screenOf(model)
+    const camera = worldCameraFor(model, screen)
+    const { world } = screen
+    return h.div.class('game-frame').children(
+      h.div
+        .key('game-stage')
+        .class('game-stage')
+        .attr('data-layout', screen.layout)
+        .style({
+          ...stageBoxStyle(model, screen),
+          backgroundColor:
+            screen.layout === 'Landscape' ? FLOOR_COLOR : STAGE_BACKDROP,
+        })
+        .children(
+          h.div
+            .key('world-window')
+            .class('world-window')
+            .style({
+              left: percentOf(world.x, screen.width),
+              top: percentOf(world.y, screen.height),
+              width: percentOf(world.width, screen.width),
+              height: percentOf(world.height, screen.height),
+              backgroundColor: FLOOR_COLOR,
+            })
+            .children(
+              h.div
+                .key('world-lens')
+                .class('world-lens')
+                .style(lensStyle(model, camera))
+                .children(worldView(model, camera, h)),
+            ),
           thumbAreaView(screen, h),
-          lazyOverlayLayer(overlayLayerView, [
-            screen.width,
-            screen.height,
+          h.lazy(
+            overlayLayerView,
             stableOverlayShapes(
               overlayLayerShapes(model, screen, toScreenCamera(camera, screen)),
             ),
-            h,
-          ]),
-        ],
-      ),
-    ],
-  )
-})
+            screen.width,
+            screen.height,
+          ),
+        ),
+    )
+  },
+)

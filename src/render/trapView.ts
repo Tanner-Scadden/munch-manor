@@ -1,5 +1,4 @@
 import { Array, Function, Option, Result } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { type Facing, type Sprite, type Tone, group } from '../art/sprite'
 import { gunSprite } from '../art/sprites/guns'
@@ -37,6 +36,7 @@ import type { World } from '../world/schema/world'
 import { Trap, type Turret, TurretGun } from '../world/schema/worldSchema'
 import { isBreak } from '../world/waves/waves'
 import { type Drawable, glowOn } from './depth'
+import * as Draw from './draw'
 import {
   AIMING_UP,
   FULL_TURN,
@@ -121,7 +121,7 @@ const turretHealthBar = (
   center: Vector,
   hp: number,
   maxHp: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (hp >= maxHp) {
     return []
   }
@@ -130,14 +130,14 @@ const turretHealthBar = (
   const top = foot.y - GNOME_HEIGHT - HEALTH_BAR_GAP
   const left = foot.x - TURRET_HEALTH_BAR_WIDTH / 2
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: left - 1,
       y: top - 1,
       width: TURRET_HEALTH_BAR_WIDTH + 2,
       height: 3,
       fill: HEALTH_BAR_BACK_COLOR,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y: top,
       width: Math.max(1, Math.round((TURRET_HEALTH_BAR_WIDTH * hp) / maxHp)),
@@ -159,7 +159,7 @@ const gnomeShapes = (
   angle: number,
   tone: Tone,
   jolt: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const foot = turretFoot(center)
   const side: Facing = facing.x < 0 ? 'Left' : 'Right'
   const body = group({
@@ -177,7 +177,7 @@ const turretShapes = (
   level: Level,
   turret: Turret,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   gnomeShapes(
     trapCenter(level, turret),
     turret.facing,
@@ -189,13 +189,13 @@ const turretShapes = (
 const turretOverheadShapes = (
   level: Level,
   turret: Turret,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   turretHealthBar(trapCenter(level, turret), turret.hp, turret.maxHp)
 
 export const trapOverheadShapes: {
-  (level: Level): (trap: Trap) => ReadonlyArray<Canvas.Shape>
-  (trap: Trap, level: Level): ReadonlyArray<Canvas.Shape>
-} = Function.dual(2, (trap: Trap, level: Level): ReadonlyArray<Canvas.Shape> =>
+  (level: Level): (trap: Trap) => ReadonlyArray<Draw.Shape>
+  (trap: Trap, level: Level): ReadonlyArray<Draw.Shape>
+} = Function.dual(2, (trap: Trap, level: Level): ReadonlyArray<Draw.Shape> =>
   Trap.match(trap, {
     Barricade: () => [],
     Turret: turret => turretOverheadShapes(level, turret),
@@ -209,7 +209,7 @@ const turretFlashShapes = (
   level: Level,
   turret: Turret,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(msSinceTurretShot(turret.gun), {
     onNone: () => [],
     onSome: msSinceShot => {
@@ -251,11 +251,11 @@ export const trapGlowDrawables: {
 )
 
 export const trapShapes: {
-  (level: Level, elapsedMs: number): (trap: Trap) => ReadonlyArray<Canvas.Shape>
-  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+  (level: Level, elapsedMs: number): (trap: Trap) => ReadonlyArray<Draw.Shape>
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
-  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Draw.Shape> =>
     Trap.match(trap, {
       Barricade: ({ door, hitRemainingMs }) => {
         const center = trapCenter(level, trap)
@@ -285,10 +285,10 @@ const TURRET_SHADOW_WIDTH = 8
 
 export const trapShadow =
   (level: Level) =>
-  (trap: Trap): Result.Result<Canvas.Shape, void> =>
+  (trap: Trap): Result.Result<Draw.Shape, void> =>
     Trap.match(trap, {
-      Barricade: (): Result.Result<Canvas.Shape, void> => Result.failVoid,
-      Turret: (): Result.Result<Canvas.Shape, void> =>
+      Barricade: (): Result.Result<Draw.Shape, void> => Result.failVoid,
+      Turret: (): Result.Result<Draw.Shape, void> =>
         Result.succeed(
           footShadow(
             trapCenter(level, trap),
@@ -305,10 +305,7 @@ const GHOST_BLOCKED_COLOR = '#ff6b5e'
 const DOORWAY_HINT_COLOR = 'rgba(255, 224, 102, 0.8)'
 const DOORWAY_HINT_PULSE_MS = 600
 
-const ghostSprite = (
-  spot: TrapSpot,
-  model: World,
-): ReadonlyArray<Canvas.Shape> =>
+const ghostSprite = (spot: TrapSpot, model: World): ReadonlyArray<Draw.Shape> =>
   TrapSpot.match(spot, {
     Doorway: ({ door }) => {
       const center = boxCenter(spotBox(levelOf(model), spot))
@@ -333,8 +330,8 @@ const ghostSprite = (
       ),
   })
 
-const outlineShape = (box: Box, color: string): Canvas.Shape =>
-  Canvas.Rect({
+const outlineShape = (box: Box, color: string): Draw.Shape =>
+  Draw.Rect({
     x: box.left + 0.5,
     y: box.top + 0.5,
     width: box.right - box.left - 1,
@@ -343,7 +340,7 @@ const outlineShape = (box: Box, color: string): Canvas.Shape =>
     lineWidth: 1,
   })
 
-const openDoorwayHints = (model: World): ReadonlyArray<Canvas.Shape> => {
+const openDoorwayHints = (model: World): ReadonlyArray<Draw.Shape> => {
   const boarded = barricadedDoors(model.traps)
   const level = levelOf(model)
   const isLit = Math.floor(model.elapsedMs / DOORWAY_HINT_PULSE_MS) % 2 === 0
@@ -371,7 +368,7 @@ const ghostSpotOf = (model: World): Option.Option<TrapSpot> =>
 
 // NOTE: on the floor: the ghost's footprint, green where it may go and red
 // where it may not, or the open doorways' hints while no spot is picked.
-export const ghostShapes = (model: World): ReadonlyArray<Canvas.Shape> =>
+export const ghostShapes = (model: World): ReadonlyArray<Draw.Shape> =>
   isBreak(model)
     ? Option.match(maybePlacement(model, focusSlotOf(model)), {
         onNone: () => [],

@@ -1,5 +1,6 @@
 import { Array, Function, Option, String } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import { seatLook } from '../art/seatLooks'
@@ -127,9 +128,10 @@ export const addBot = (model: Model): Model => {
     calling,
     look: seatLook(botSlotOf(model, model.home.bots.length)),
   }
-  return modifyFields(model, {
-    home: home => modifyFields(home, { bots: bots => Array.append(bots, bot) }),
-    cosmetics: modifyFields({ cosmeticRngState: () => afterHero }),
+  return UiStruct.evolve(model, {
+    home: home =>
+      UiStruct.evolve(home, { bots: bots => Array.append(bots, bot) }),
+    cosmetics: UiStruct.evolve({ cosmeticRngState: () => afterHero }),
   })
 }
 
@@ -137,9 +139,9 @@ export const removeBot: {
   (index: number): (model: Model) => Model
   (model: Model, index: number): Model
 } = Function.dual(2, (model: Model, index: number): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     home: home =>
-      modifyFields(home, {
+      UiStruct.evolve(home, {
         bots: bots => Array.remove(bots, index),
       }),
   }),
@@ -151,13 +153,13 @@ export const setBotCalling: {
   (model: Model, index: number, calling: Calling): Model
 } = Function.dual(3, (model: Model, index: number, calling: Calling): Model =>
   Array.contains(ownedCallings(model.boughtCosmetics), calling)
-    ? modifyFields(model, {
+    ? UiStruct.evolve(model, {
         home: home =>
-          modifyFields(home, {
+          UiStruct.evolve(home, {
             bots: bots =>
               Array.map(bots, (bot, at) =>
                 at === index
-                  ? modifyFields(bot, { calling: () => calling })
+                  ? UiStruct.evolve(bot, { calling: () => calling })
                   : bot,
               ),
           }),

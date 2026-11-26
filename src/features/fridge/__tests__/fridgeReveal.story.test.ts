@@ -1,7 +1,6 @@
 import { Array, Effect, Option, Result } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -15,12 +14,13 @@ import type { SoundEffect } from '../../../audio/audio'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { atFridge, fridgeSeededFor } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   FIXED_FRAME,
   HOLD_TICKS,
+  checkModel,
   checkPendingSounds,
   press,
   release,
+  storyOf,
   ticks,
 } from '../../../test/testing'
 import { FRIDGE_RULES, PRIZE_ORDER } from '../../../world/fridge/leftovers'
@@ -43,9 +43,9 @@ import {
 
 const FRAME_MS = FIXED_STEP_MS
 const audibleAtFridge = (balance: number): Model =>
-  modifyFields(atFridge(balance), {
+  UiStruct.evolve(atFridge(balance), {
     audio: () => AudioState.Ready(),
-    settings: modifyFields({
+    settings: UiStruct.evolve({
       soundSetting: () => 'On',
       musicSetting: () => 'Off',
     }),
@@ -71,15 +71,12 @@ const pullMessages: ReadonlyArray<Message> = [
 const pull = (start: Model) =>
   Effect.gen(function* () {
     const steps: Array<Step> = []
-    const keep = (simulation: Story.StorySimulation<Model, Message>) =>
+    const s = yield* storyOf(start)
+    Array.forEach(pullMessages, next => {
       checkPendingSounds(sounds => {
-        steps.push({ model: simulation.model, sounds })
-      })(simulation)
-    yield* Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...Array.flatMap(pullMessages, next => [Story.message(next), keep]),
-    )
+        steps.push({ model: s.model, sounds })
+      })(s.send(next))
+    })
     return steps
   })
 
@@ -184,9 +181,9 @@ describe('the sting', () => {
 
 describe('the take', () => {
   const offering = (prize: 'Cooker' | 'Pan' | 'Freeze', slot: number): Model =>
-    modifyFields(atFridge(0), {
+    UiStruct.evolve(atFridge(0), {
       fridge: fridge =>
-        modifyFields(fridge, {
+        UiStruct.evolve(fridge, {
           door: () =>
             FridgeDoor.Offering({
               prize,
@@ -200,45 +197,52 @@ describe('the take', () => {
   it.effect(
     'a taken weapon flies into its slot, then the slot pulses and settles',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(offering('Freeze', 0)),
-        Story.model(current => {
-          expect(current.cosmetics.prizeFlight).toEqual(PrizeFlight.Grounded())
-        }),
-        press('Enter'),
-        ...ticks(HOLD_TICKS, FRAME_MS),
-        Story.model(current => {
-          expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
-            false,
-          )
-          expect(current.cosmetics.prizeFlight).toMatchObject({
-            _tag: 'Flying',
-            prize: 'Freeze',
-          })
-        }),
-        release('Enter'),
-        ...ticks(
-          Math.ceil((REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs) / FRAME_MS) +
-            1,
-          FRAME_MS,
-        ),
-        Story.model(current => {
-          expect(current.cosmetics.prizeFlight).toEqual(PrizeFlight.Grounded())
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(offering('Freeze', 0))
+        s.pipe(
+          checkModel(current => {
+            expect(current.cosmetics.prizeFlight).toEqual(
+              PrizeFlight.Grounded(),
+            )
+          }),
+          press('Enter'),
+          ticks(HOLD_TICKS, FRAME_MS),
+          checkModel(current => {
+            expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
+              false,
+            )
+            expect(current.cosmetics.prizeFlight).toMatchObject({
+              _tag: 'Flying',
+              prize: 'Freeze',
+            })
+          }),
+          release('Enter'),
+          ticks(
+            Math.ceil(
+              (REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs) / FRAME_MS,
+            ) + 1,
+            FRAME_MS,
+          ),
+          checkModel(current => {
+            expect(current.cosmetics.prizeFlight).toEqual(
+              PrizeFlight.Grounded(),
+            )
+          }),
+        )
+      }),
   )
 
   it.effect('a prize left in the fridge flies nowhere', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(offering('Pan', 0)),
-      ...ticks(Math.ceil(5000 / FRAME_MS) + 2, FRAME_MS),
-      Story.model(current => {
-        expect(current.fridge.door._tag).not.toBe('Offering')
-        expect(current.cosmetics.prizeFlight).toEqual(PrizeFlight.Grounded())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(offering('Pan', 0))
+      s.pipe(
+        ticks(Math.ceil(5000 / FRAME_MS) + 2, FRAME_MS),
+        checkModel(current => {
+          expect(current.fridge.door._tag).not.toBe('Offering')
+          expect(current.cosmetics.prizeFlight).toEqual(PrizeFlight.Grounded())
+        }),
+      )
+    }),
   )
 })
 

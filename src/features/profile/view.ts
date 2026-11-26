@@ -1,7 +1,8 @@
-import { Array, Option, String, pipe } from 'effect'
-import type { Html } from 'foldkit/html'
+import { Array, Function, Option, String } from 'effect'
 
-import { Dialog, type Tabs } from '@foldkit/ui'
+import { Mount, type View } from '@effect/ui'
+import { Tabs } from '@effect/ui-kit'
+import type { Html } from '@effect/ui/html'
 
 import {
   ACCOUNT_ICON,
@@ -46,13 +47,7 @@ import {
   linkProblemText,
 } from '../../platform/playerSync'
 import { iconView, newPipView } from '../../ui/menuParts'
-import type { ViewInputs } from './block'
-import {
-  CharacterBinding,
-  ProfileComposition,
-  type ProfileViewBuilder,
-  TabsBinding,
-} from './composition'
+import { Character } from './blocks/look/block'
 import {
   CopyLinkCodeOnClick,
   LINK_CODE_DATA,
@@ -60,13 +55,19 @@ import {
 } from './linkClipboard'
 import { masteryTabView } from './masteryView'
 import { Message, type SettingTile } from './message'
-import type { Model, ProfileTab } from './model'
+import type { Model, ProfileProps, ProfileTab } from './model'
 import {
   KEEP_TUTORIAL_BUTTON_ID,
   NAME_INPUT_ID,
   PROFILE_TABS,
+  PROFILE_TABS_ID,
   RESET_TUTORIAL_BUTTON_ID,
 } from './profile'
+
+type H = Html.H<Message>
+type Content = View.Content<Message>
+// NOTE: a child that may draw nothing.
+type MaybeContent = Content | null
 
 // TABS
 
@@ -83,156 +84,153 @@ const TAB_LOOKS: Readonly<Record<ProfileTab, TabLook>> = {
   Settings: { word: 'Settings', icon: SETTINGS_ICON },
 }
 
-// NOTE: the open tab takes the focus when the Dialog opens: the root's
-// Dialog focuses the element with its marker.
+const TAB_ITEMS = Array.map(PROFILE_TABS, value => ({ value }))
+
+type TabsParts = Parameters<NonNullable<Parameters<typeof Tabs>[1]['view']>>[0]
+
+// NOTE: the open tab takes the focus when the Dialog opens: the Dialog
+// focuses the element marked `autofocus`.
 const tabButtonView = (
-  tab: Tabs.TabInfo<ProfileTab>,
-  isNew: boolean,
-  h: ProfileViewBuilder,
-): Html =>
-  h.button(
-    [
-      ...tab.tab,
-      ...(tab.isActive
-        ? [h.DataAttribute(Dialog.initialFocusMarkerAttribute, '')]
-        : []),
-      h.Class('profile-tab'),
-      h.DataAttribute('tab', tab.value),
-    ],
-    [
-      iconView('profile-tab-icon', TAB_LOOKS[tab.value].icon, h),
-      h.span([h.Class('profile-tab-word')], [TAB_LOOKS[tab.value].word]),
-      ...(isNew && tab.value === 'Look' ? [newPipView(h)] : []),
-    ],
-  )
+  tabs: TabsParts,
+  tab: ProfileTab,
+  props: ProfileProps,
+  h: H,
+): Content =>
+  tabs
+    .tab({
+      element: h.button
+        .key(tab)
+        .class('profile-tab')
+        .attrs({
+          'data-tab': tab,
+          autofocus: tab === props.state.tab ? '' : undefined,
+        }),
+      value: tab,
+    })
+    .children(
+      iconView('profile-tab-icon', TAB_LOOKS[tab].icon, h),
+      h.span.class('profile-tab-word').children(TAB_LOOKS[tab].word),
+      props.isLookNew && tab === 'Look' && newPipView(h),
+    )
 
 // LOOK
 
-const lookTabView = (
-  model: Model,
-  inputs: ViewInputs,
-  h: ProfileViewBuilder,
-): Html =>
-  h.block(
-    CharacterBinding.embedView({
-      slotId: 'character-picker',
-      model: model.character,
-      viewInputs: {
-        ...inputs.look,
-        fx: model.fx,
-        fxCount: model.fxCount,
-        maybePreview: model.maybePreview,
-        cue: model.closetCue,
-      },
-    }),
-  )
+const lookTabView = (props: ProfileProps, h: H): Content =>
+  Character(h, {
+    key: 'character-picker',
+    props: {
+      appearance: props.appearance,
+      calling: props.calling,
+      screenMs: props.screenMs,
+      fx: props.state.fx,
+      fxCount: props.state.fxCount,
+      bought: props.bought,
+      rank: props.rank,
+      fresh: props.fresh,
+      maybePreview: props.state.maybePreview,
+      cue: props.state.closetCue,
+    },
+    onEmit: {
+      ChoseLook: ({ part, value }) => Message.ChoseLook({ part, value }),
+      FlippedLook: ({ toggle }) => Message.FlippedLook({ toggle }),
+      RolledDice: () => Message.RolledLookDice(),
+      ClickedBuy: ({ part, value }) => Message.ClickedBuyLook({ part, value }),
+    },
+  })
 
 // NAME
 
-const nameLettersView = (name: string, h: ProfileViewBuilder): Html =>
-  h.span(
-    [h.Class('name-stone-name'), h.AriaHidden(true)],
-    Array.map(Array.fromIterable(name), (letter, index) =>
-      h.span(
-        [h.Class('name-stone-letter'), h.Style({ '--i': `${index}` })],
-        [letter === ' ' ? ' ' : letter],
+const nameLettersView = (name: string, h: H): Content =>
+  h.span
+    .class('name-stone-name')
+    .attr('aria-hidden', 'true')
+    .children(
+      Array.map(Array.fromIterable(name), (letter, index) =>
+        h.span
+          .class('name-stone-letter')
+          .style({ '--i': `${index}` })
+          .children(letter),
       ),
-    ),
-  )
-
-const stoneChildren = (model: Model, h: ProfileViewBuilder) => [
-  h.span([h.Class('name-stone-rip'), h.AriaHidden(true)], ['R.I.P.']),
-  nameLettersView(shownName(model.nameDraft), h),
-  h.span([h.Class('name-stone-crack'), h.AriaHidden(true)]),
-]
+    )
 
 // NOTE: the name is carved on a tombstone, live as it is typed. A dice roll
-// swaps the stone, so its letters spin in like a slot machine each time.
-const evenStoneView = (model: Model, h: ProfileViewBuilder): Html =>
-  h.div(
-    [
-      h.Class('name-stone'),
-      h.DataAttribute('fx', model.fx),
-      h.DataAttribute('empty', model.nameDraft === '' ? 'Empty' : 'Named'),
-    ],
-    stoneChildren(model, h),
-  )
+// swaps the stone (its key turns with the effect's count), so its letters
+// spin in like a slot machine each time.
+const stoneView = (model: Model, h: H): Content =>
+  h.div
+    .key(`name-stone-${model.fxCount % 2}`)
+    .class('name-stone')
+    .attrs({
+      'data-fx': model.fx,
+      'data-empty': model.nameDraft === '' ? 'Empty' : 'Named',
+    })
+    .children(
+      h.span
+        .class('name-stone-rip')
+        .attr('aria-hidden', 'true')
+        .children('R.I.P.'),
+      nameLettersView(shownName(model.nameDraft), h),
+      h.span.class('name-stone-crack').attr('aria-hidden', 'true'),
+    )
 
-const oddStoneView = (model: Model, h: ProfileViewBuilder): Html =>
-  h.div(
-    [
-      h.Class('name-stone'),
-      h.DataAttribute('fx', model.fx),
-      h.DataAttribute('empty', model.nameDraft === '' ? 'Empty' : 'Named'),
-    ],
-    stoneChildren(model, h),
-  )
-
-const stoneView = (model: Model, h: ProfileViewBuilder): Html =>
-  model.fxCount % 2 === 0 ? evenStoneView(model, h) : oddStoneView(model, h)
-
-const namePipsView = (model: Model, h: ProfileViewBuilder): Html => {
+const namePipsView = (model: Model, h: H): Content => {
   const used = nameLength(model.nameDraft)
   const left = MAX_NAME_LENGTH - used
-  return h.div(
-    [
-      h.Class('name-pips'),
-      h.Role('img'),
-      h.AriaLabel(left === 1 ? '1 letter left' : `${left} letters left`),
-    ],
-    Array.makeBy(MAX_NAME_LENGTH, index =>
-      h.span([
-        h.Class('name-pip'),
-        h.DataAttribute('used', index < used ? 'Used' : 'Free'),
-      ]),
-    ),
-  )
+  return h.div
+    .class('name-pips')
+    .attrs({
+      role: 'img',
+      'aria-label': left === 1 ? '1 letter left' : `${left} letters left`,
+    })
+    .children(
+      Array.makeBy(MAX_NAME_LENGTH, index =>
+        h.span
+          .class('name-pip')
+          .attr('data-used', index < used ? 'Used' : 'Free'),
+      ),
+    )
 }
 
-const nameTabView = (model: Model, h: ProfileViewBuilder): Html =>
-  h.form(
-    [h.Class('name-tab'), h.OnSubmit(Message.SubmittedName())],
-    [
-      h.div(
-        [h.Class('name-yard')],
-        [
+const nameTabView = (model: Model, h: H): Content =>
+  h.form
+    .class('name-tab')
+    .on('submit', Message.SubmittedName())
+    .children(
+      h.div
+        .class('name-yard')
+        .children(
           stoneView(model, h),
-          h.span([h.Class('name-grass'), h.AriaHidden(true)]),
-        ],
-      ),
-      h.div(
-        [h.Class('name-entry')],
-        [
-          h.label([h.For(NAME_INPUT_ID), h.Class('sr-only')], ['Your name']),
-          h.input([
-            h.Id(NAME_INPUT_ID),
-            h.Class('name-input'),
-            h.Type('text'),
-            h.Name('name'),
-            h.Value(model.nameDraft),
-            h.Placeholder(DEFAULT_NAME),
-            h.Maxlength(MAX_NAME_LENGTH),
-            h.Autocomplete('off'),
-            h.Autocapitalize('words'),
-            h.Spellcheck(false),
-            h.EnterKeyHint('done'),
-            h.OnInput(value => Message.UpdatedNameDraft({ value })),
-            h.OnBlur(Message.BlurredNameInput()),
-          ]),
-          h.button(
-            [
-              h.Type('button'),
-              h.Class('profile-dice name-dice'),
-              h.AriaLabel('Roll a goofy name'),
-              h.OnClick(Message.ClickedNameDiceButton()),
-            ],
-            [iconView('profile-dice-icon', DICE_ICON, h)],
-          ),
-        ],
+          h.span.class('name-grass').attr('aria-hidden', 'true'),
+        ),
+      h.div.class('name-entry').children(
+        h.label
+          .attr('for', NAME_INPUT_ID)
+          .class('sr-only')
+          .children('Your name'),
+        h.input
+          .id(NAME_INPUT_ID)
+          .class('name-input')
+          .attrs({
+            type: 'text',
+            name: 'name',
+            placeholder: DEFAULT_NAME,
+            maxlength: `${MAX_NAME_LENGTH}`,
+            autocomplete: 'off',
+            autocapitalize: 'words',
+            spellcheck: 'false',
+            enterkeyhint: 'done',
+          })
+          .value(model.nameDraft)
+          .on('input', ({ value }) => Message.UpdatedNameDraft({ value }))
+          .on('blur', Message.BlurredNameInput()),
+        h.button
+          .attrs({ type: 'button', 'aria-label': 'Roll a goofy name' })
+          .class('profile-dice name-dice')
+          .on('click', Message.ClickedNameDiceButton())
+          .children(iconView('profile-dice-icon', DICE_ICON, h)),
       ),
       namePipsView(model, h),
-    ],
-  )
+    )
 
 // ACCOUNT
 
@@ -257,18 +255,15 @@ type SyncDot = 'Local' | 'Syncing' | 'Synced' | 'Broken'
 
 // NOTE: a dot on every device: grey on this device only, yellow while it
 // connects or waits offline, green once synced, red when sync is broken.
-const syncDot = (state: SyncState, scope: PlayerScopeStatus): SyncDot => {
-  if (scope._tag === 'Failed') {
-    return 'Broken'
-  } else {
-    return SyncState.match(state, {
-      LocalOnly: (): SyncDot => 'Local',
-      Connecting: (): SyncDot => 'Syncing',
-      Synced: (): SyncDot => 'Synced',
-      Offline: (): SyncDot => 'Syncing',
-    })
-  }
-}
+const syncDot = (state: SyncState, scope: PlayerScopeStatus): SyncDot =>
+  scope._tag === 'Failed'
+    ? 'Broken'
+    : SyncState.match(state, {
+        LocalOnly: (): SyncDot => 'Local',
+        Connecting: (): SyncDot => 'Syncing',
+        Synced: (): SyncDot => 'Synced',
+        Offline: (): SyncDot => 'Syncing',
+      })
 
 // NOTE: this device is drawn as what it is. The others are unknown, so they
 // take turns as the other kind.
@@ -286,50 +281,46 @@ const deviceKinds = (
   )
 }
 
-const devicesView = (inputs: ViewInputs, h: ProfileViewBuilder): Html => {
-  const { state, scope, lastRun } = inputs.sync
+const devicesView = (props: ProfileProps, h: H): Content => {
+  const { state, scope, lastRun } = props.sync
   const dot = syncDot(state, scope)
   const count = deviceCount(state)
-  return h.div(
-    [h.Class('account-devices'), h.DataAttribute('sync', dot)],
-    [
-      h.ul(
-        [
-          h.Class('account-device-list'),
-          h.AriaLabel(count === 1 ? 'Your device' : `Your ${count} devices`),
-        ],
-        Array.map(deviceKinds(inputs.device, state), (kind, index) =>
-          h.li(
-            [
-              h.Class('account-device'),
-              h.DataAttribute('kind', kind),
-              h.Style({ '--i': `${index}` }),
-              h.AriaLabel(
-                index === 0 ? `This ${String.toLowerCase(kind)}` : 'Linked',
+  return h.div
+    .class('account-devices')
+    .attr('data-sync', dot)
+    .children(
+      h.ul
+        .class('account-device-list')
+        .attr(
+          'aria-label',
+          count === 1 ? 'Your device' : `Your ${count} devices`,
+        )
+        .children(
+          Array.map(deviceKinds(props.device, state), (kind, index) =>
+            h.li
+              .class('account-device')
+              .attrs({
+                'data-kind': kind,
+                'aria-label':
+                  index === 0 ? `This ${String.toLowerCase(kind)}` : 'Linked',
+              })
+              .style({ '--i': `${index}` })
+              .children(
+                iconView('account-device-icon', DEVICE_ICONS[kind], h),
+                h.span.class('account-device-dot').attr('data-sync', dot),
               ),
-            ],
-            [
-              iconView('account-device-icon', DEVICE_ICONS[kind], h),
-              h.span([
-                h.Class('account-device-dot'),
-                h.DataAttribute('sync', dot),
-              ]),
-            ],
           ),
         ),
-      ),
-      h.p(
-        [
-          h.Class('account-status'),
-          h.Role('status'),
-          h.DataAttribute('sync', dot),
-          h.DataAttribute('scope', scope._tag),
-          h.DataAttribute('last-run', lastRun._tag),
-        ],
-        [devicesStatusText(state, scope)],
-      ),
-    ],
-  )
+      h.p
+        .class('account-status')
+        .attrs({
+          role: 'status',
+          'data-sync': dot,
+          'data-scope': scope._tag,
+          'data-last-run': lastRun._tag,
+        })
+        .children(devicesStatusText(state, scope)),
+    )
 }
 
 // NOTE: linking never merges. The device that types the code takes on the
@@ -341,256 +332,250 @@ export const LINK_TAKES_PROGRESS_NOTE =
 const SHOWING_TAKES_PROGRESS_NOTE =
   "The other device takes this one's progress."
 
-const bigButton = (
-  className: string,
-  icon: string,
-  word: string,
-  ariaLabel: string,
-  message: Message,
-  h: ProfileViewBuilder,
-): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class(`account-big ${className}`),
-      h.AriaLabel(ariaLabel),
-      h.OnClick(message, { propagation: 'Stop' }),
-    ],
-    [
-      iconView('account-big-icon', icon, h),
-      h.span([h.Class('account-big-word')], [word]),
-    ],
-  )
+type BigButton = Readonly<{
+  className: string
+  icon: string
+  word: string
+  ariaLabel: string
+  message: Message
+}>
+
+const bigButton = (button: BigButton, h: H): Content =>
+  h.button
+    .attrs({ type: 'button', 'aria-label': button.ariaLabel })
+    .class(`account-big ${button.className}`)
+    .on('click', button.message)
+    .children(
+      iconView('account-big-icon', button.icon, h),
+      h.span.class('account-big-word').children(button.word),
+    )
 
 const pillButton = (
   label: string,
   message: Message,
   tone: 'Go' | 'Back',
-  h: ProfileViewBuilder,
-): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class(
-        tone === 'Go' ? 'panel-button panel-stay' : 'panel-button panel-leave',
-      ),
-      h.OnClick(message, { propagation: 'Stop' }),
-    ],
-    [label],
-  )
+  h: H,
+): Content =>
+  h.button
+    .attr('type', 'button')
+    .class(
+      tone === 'Go' ? 'panel-button panel-stay' : 'panel-button panel-leave',
+    )
+    .on('click', message)
+    .children(label)
 
-const noteView = (icon: string, text: string, h: ProfileViewBuilder): Html =>
-  h.p(
-    [h.Class('account-note')],
-    [iconView('account-note-icon', icon, h), h.span([], [text])],
-  )
+const noteView = (icon: string, text: string, h: H): Content =>
+  h.p
+    .class('account-note')
+    .children(iconView('account-note-icon', icon, h), h.span.children(text))
 
-const portalView = (spin: 'Spinning' | 'Open', h: ProfileViewBuilder): Html =>
-  h.span(
-    [
-      h.Class('account-portal'),
-      h.DataAttribute('state', spin),
-      h.AriaHidden(true),
-    ],
-    [
-      h.span([h.Class('account-portal-ring')]),
+const portalView = (spin: 'Spinning' | 'Open', h: H): Content =>
+  h.span
+    .class('account-portal')
+    .attrs({ 'data-state': spin, 'aria-hidden': 'true' })
+    .children(
+      h.span.class('account-portal-ring'),
       iconView('account-portal-icon', PORTAL_ICON, h),
-    ],
-  )
+    )
 
 const LINK_CODE_COPIED = 'COPIED!'
 
 // NOTE: a tap on the code copies it (CopyLinkCodeOnClick), and COPIED!
 // flashes over it, afresh for each copy (keyed by the count), fading in
 // place, so the button never moves.
-const codeView = (code: string, copies: number, h: ProfileViewBuilder): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('account-code'),
-      h.DataAttribute(LINK_CODE_DATA, code),
-      h.AriaLabel(
-        `Link code ${Array.join(Array.fromIterable(code), ' ')}${copies > 0 ? ', copied' : ', tap to copy'}`,
+const codeView = (code: string, copies: number, h: H): Content =>
+  h.button
+    .attrs({
+      type: 'button',
+      [`data-${LINK_CODE_DATA}`]: code,
+      'aria-label': `Link code ${Array.join(Array.fromIterable(code), ' ')}${
+        copies > 0 ? ', copied' : ', tap to copy'
+      }`,
+    })
+    .class('account-code')
+    .onMount(
+      CopyLinkCodeOnClick().pipe(
+        Mount.map(() => Message.SucceededCopyLinkCode()),
       ),
-      h.OnMount(CopyLinkCodeOnClick()),
-    ],
-    [
+    )
+    .children(
       ...Array.map(Array.fromIterable(code), (letter, index) =>
-        h.span(
-          [
-            h.Class('account-code-letter'),
-            h.AriaHidden(true),
-            h.Style({ '--i': `${index}` }),
-          ],
-          [letter],
-        ),
+        h.span
+          .class('account-code-letter')
+          .attr('aria-hidden', 'true')
+          .style({ '--i': `${index}` })
+          .children(letter),
       ),
-      ...(copies > 0
-        ? [
-            h.keyed('span')(
-              `copied-${copies}`,
-              [h.Class('account-code-copied'), h.AriaHidden(true)],
-              [LINK_CODE_COPIED],
-            ),
-          ]
-        : []),
-    ],
-  )
+      copies > 0 &&
+        h.span
+          .key(`copied-${copies}`)
+          .class('account-code-copied')
+          .attr('aria-hidden', 'true')
+          .children(LINK_CODE_COPIED),
+    )
 
 const CODE_INPUT_ID = 'link-code-input'
 
-const codeEntryView = (code: string, h: ProfileViewBuilder): Html =>
-  h.form(
-    [h.Class('account-entry'), h.OnSubmit(Message.SubmittedLinkCode())],
-    [
-      h.label(
-        [h.For(CODE_INPUT_ID), h.Class('account-warning')],
-        [
+const codeEntryView = (code: string, h: H): Content =>
+  h.form
+    .class('account-entry')
+    .on('submit', Message.SubmittedLinkCode())
+    .children(
+      h.label
+        .attr('for', CODE_INPUT_ID)
+        .class('account-warning')
+        .children(
           iconView('account-note-icon', TAKES_PROGRESS_ICON, h),
-          h.span([h.Class('sr-only')], [LINK_TAKES_PROGRESS_NOTE]),
-          h.span(
-            [h.Class('account-warning-words'), h.AriaHidden(true)],
-            [
-              h.span([], ["Takes the other device's progress"]),
-              h.span(
-                [h.Class('account-warning-small')],
-                ["What's saved here is replaced"],
-              ),
-            ],
+          h.span.class('sr-only').children(LINK_TAKES_PROGRESS_NOTE),
+          h.span
+            .class('account-warning-words')
+            .attr('aria-hidden', 'true')
+            .children(
+              h.span.children("Takes the other device's progress"),
+              h.span
+                .class('account-warning-small')
+                .children("What's saved here is replaced"),
+            ),
+        ),
+      h.input
+        .id(CODE_INPUT_ID)
+        .class('account-code-input')
+        .attrs({
+          type: 'text',
+          name: 'code',
+          maxlength: '7',
+          placeholder: 'ABC234',
+          autocomplete: 'off',
+          autocapitalize: 'characters',
+          spellcheck: 'false',
+          enterkeyhint: 'go',
+        })
+        .value(code)
+        .on('input', ({ value }) => Message.UpdatedLinkCode({ value }))
+        .onMount(
+          PasteLinkCodeOnTap().pipe(
+            Mount.map(({ text, typed }) =>
+              Message.SucceededReadClipboard({ text, typed }),
+            ),
           ),
-        ],
-      ),
-      h.input([
-        h.Id(CODE_INPUT_ID),
-        h.Class('account-code-input'),
-        h.Type('text'),
-        h.Name('code'),
-        h.Value(code),
-        h.Maxlength(7),
-        h.Placeholder('ABC234'),
-        h.Autocomplete('off'),
-        h.Autocapitalize('characters'),
-        h.Spellcheck(false),
-        h.EnterKeyHint('go'),
-        h.OnInput(value => Message.UpdatedLinkCode({ value })),
-        h.OnMount(PasteLinkCodeOnTap()),
-      ]),
-      h.div(
-        [h.Class('panel-actions')],
-        [
-          h.button(
-            [h.Type('submit'), h.Class('panel-button panel-stay')],
-            ['Link'],
-          ),
+        ),
+      h.div
+        .class('panel-actions')
+        .children(
+          h.button
+            .attr('type', 'submit')
+            .class('panel-button panel-stay')
+            .children('Link'),
           pillButton('Cancel', Message.ClickedCancelLinkButton(), 'Back', h),
-        ],
-      ),
-    ],
-  )
+        ),
+    )
 
-const zapView = (device: InputDevice, h: ProfileViewBuilder): Html => {
+const zapView = (device: InputDevice, h: H): Content => {
   const here = hereOf(device)
   const other: DeviceKind = here === 'Phone' ? 'Laptop' : 'Phone'
-  return h.div(
-    [h.Class('account-zap'), h.AriaHidden(true)],
-    [
+  return h.div
+    .class('account-zap')
+    .attr('aria-hidden', 'true')
+    .children(
       iconView('account-zap-device account-zap-left', DEVICE_ICONS[other], h),
       iconView('account-zap-bolt', ZAP_ICON, h),
       iconView('account-zap-device account-zap-right', DEVICE_ICONS[here], h),
-    ],
-  )
+    )
 }
 
 const linkView = (
   linkFlow: LinkFlow,
   copies: number,
   device: InputDevice,
-  h: ProfileViewBuilder,
-): Html =>
+  h: H,
+): Content =>
   LinkFlow.match(linkFlow, {
     Idle: () =>
-      h.div(
-        [h.Class('account-actions')],
-        [
-          bigButton(
-            'account-summon',
-            PORTAL_ICON,
-            'SUMMON',
-            'Link another device',
-            Message.ClickedLinkDeviceButton(),
-            h,
-          ),
-          bigButton(
-            'account-use-code',
-            KEYPAD_ICON,
-            'USE A CODE',
-            'Use a code',
-            Message.ClickedUseCodeButton(),
-            h,
-          ),
-        ],
+      h.div.class('account-actions').children(
+        bigButton(
+          {
+            className: 'account-summon',
+            icon: PORTAL_ICON,
+            word: 'SUMMON',
+            ariaLabel: 'Link another device',
+            message: Message.ClickedLinkDeviceButton(),
+          },
+          h,
+        ),
+        bigButton(
+          {
+            className: 'account-use-code',
+            icon: KEYPAD_ICON,
+            word: 'USE A CODE',
+            ariaLabel: 'Use a code',
+            message: Message.ClickedUseCodeButton(),
+          },
+          h,
+        ),
       ),
     Requesting: () =>
-      h.div(
-        [h.Class('account-link'), h.Role('status')],
-        [
+      h.div
+        .class('account-link')
+        .attr('role', 'status')
+        .children(
           portalView('Spinning', h),
-          h.span([h.Class('sr-only')], ['Getting a code']),
-        ],
-      ),
+          h.span.class('sr-only').children('Getting a code'),
+        ),
     Showing: ({ code }) =>
-      h.div(
-        [h.Class('account-link')],
-        [
+      h.div
+        .class('account-link')
+        .children(
           portalView('Open', h),
-          h.p(
-            [h.Class('account-hint'), h.Role('status')],
-            ['Type this on your other device'],
-          ),
+          h.p
+            .class('account-hint')
+            .attr('role', 'status')
+            .children('Type this on your other device'),
           codeView(code, copies, h),
           noteView(CLOCK_ICON, '10 min, one use', h),
           noteView(TAKES_PROGRESS_ICON, SHOWING_TAKES_PROGRESS_NOTE, h),
-          h.div(
-            [h.Class('panel-actions')],
-            [pillButton('Done', Message.ClickedCancelLinkButton(), 'Go', h)],
-          ),
-        ],
-      ),
+          h.div
+            .class('panel-actions')
+            .children(
+              pillButton('Done', Message.ClickedCancelLinkButton(), 'Go', h),
+            ),
+        ),
     Entering: ({ code }) => codeEntryView(code, h),
     Redeeming: () =>
-      h.div(
-        [h.Class('account-link'), h.Role('status')],
-        [
+      h.div
+        .class('account-link')
+        .attr('role', 'status')
+        .children(
           portalView('Spinning', h),
-          h.span([h.Class('account-hint')], ['Linking']),
-        ],
-      ),
+          h.span.class('account-hint').children('Linking'),
+        ),
     Linked: () =>
-      h.div(
-        [h.Class('account-link')],
-        [
+      h.div
+        .class('account-link')
+        .children(
           zapView(device, h),
-          h.p(
-            [h.Class('account-hint account-linked'), h.Role('status')],
-            ["Linked! This device now uses your other device's progress."],
-          ),
-          h.div(
-            [h.Class('panel-actions')],
-            [pillButton('Done', Message.ClickedCancelLinkButton(), 'Go', h)],
-          ),
-        ],
-      ),
+          h.p
+            .class('account-hint account-linked')
+            .attr('role', 'status')
+            .children(
+              "Linked! This device now uses your other device's progress.",
+            ),
+          h.div
+            .class('panel-actions')
+            .children(
+              pillButton('Done', Message.ClickedCancelLinkButton(), 'Go', h),
+            ),
+        ),
     Failed: ({ problem }) =>
-      h.div(
-        [h.Class('account-link')],
-        [
-          h.p(
-            [h.Class('account-hint account-problem'), h.Role('status')],
-            [linkProblemText(problem)],
-          ),
-          h.div(
-            [h.Class('panel-actions')],
-            [
+      h.div
+        .class('account-link')
+        .children(
+          h.p
+            .class('account-hint account-problem')
+            .attr('role', 'status')
+            .children(linkProblemText(problem)),
+          h.div
+            .class('panel-actions')
+            .children(
               pillButton('Use a code', Message.ClickedUseCodeButton(), 'Go', h),
               pillButton(
                 'Cancel',
@@ -598,59 +583,50 @@ const linkView = (
                 'Back',
                 h,
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+        ),
   })
 
 export const SHARE_STATS_NOTE = 'Wave, kills, and run time. Nothing personal.'
 
 const SHARE_STATS_NOTE_ID = 'share-stats-note'
 
-const shareStatsView = (inputs: ViewInputs, h: ProfileViewBuilder): Html =>
-  h.div(
-    [h.Class('account-share')],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.Class('setting-tile account-share-tile'),
-          h.AriaLabel('Share anonymous play stats'),
-          h.AriaPressed(inputs.settings.shareStats === 'On' ? 'true' : 'false'),
-          h.AriaDescribedBy(SHARE_STATS_NOTE_ID),
-          h.OnClick(Message.ClickedSettingTile({ setting: 'ShareStats' }), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          iconView('setting-tile-icon', STATS_ICON, h),
-          h.span([h.Class('setting-tile-label')], ['STATS']),
-          h.span(
-            [h.Class('setting-tile-state'), h.AriaHidden(true)],
-            [inputs.settings.shareStats === 'On' ? 'ON' : 'OFF'],
-          ),
-        ],
+const shareStatsView = (props: ProfileProps, h: H): Content =>
+  h.div.class('account-share').children(
+    h.button
+      .attrs({
+        type: 'button',
+        'aria-label': 'Share anonymous play stats',
+        'aria-pressed': props.settings.shareStats === 'On' ? 'true' : 'false',
+        'aria-describedby': SHARE_STATS_NOTE_ID,
+      })
+      .class('setting-tile account-share-tile')
+      .on('click', Message.ClickedSettingTile({ setting: 'ShareStats' }))
+      .children(
+        iconView('setting-tile-icon', STATS_ICON, h),
+        h.span.class('setting-tile-label').children('STATS'),
+        h.span
+          .class('setting-tile-state')
+          .attr('aria-hidden', 'true')
+          .children(props.settings.shareStats === 'On' ? 'ON' : 'OFF'),
       ),
-      h.p([h.Id(SHARE_STATS_NOTE_ID), h.Class('sr-only')], [SHARE_STATS_NOTE]),
-    ],
+    h.p.id(SHARE_STATS_NOTE_ID).class('sr-only').children(SHARE_STATS_NOTE),
   )
 
-const accountTabView = (
-  model: Model,
-  inputs: ViewInputs,
-  h: ProfileViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('account-tab')],
-    [
-      devicesView(inputs, h),
-      ...(SyncState.isAnyOf(['LocalOnly'])(inputs.sync.state)
-        ? []
-        : [linkView(model.linkFlow, model.linkCodeCopies, inputs.device, h)]),
-      shareStatsView(inputs, h),
-    ],
-  )
+const accountTabView = (props: ProfileProps, h: H): Content =>
+  h.div
+    .class('account-tab')
+    .children(
+      devicesView(props, h),
+      !SyncState.isAnyOf(['LocalOnly'])(props.sync.state) &&
+        linkView(
+          props.state.linkFlow,
+          props.state.linkCodeCopies,
+          props.device,
+          h,
+        ),
+      shareStatsView(props, h),
+    )
 
 // SETTINGS
 
@@ -679,7 +655,7 @@ const shownWhen = (isShown: boolean, toggle: Toggle): ReadonlyArray<Toggle> =>
 const settingTiles = ({
   device,
   settings,
-}: ViewInputs): ReadonlyArray<Toggle> => [
+}: ProfileProps): ReadonlyArray<Toggle> => [
   {
     label: 'Sound',
     shortLabel: 'SOUND',
@@ -757,260 +733,163 @@ const settingTiles = ({
 ]
 
 // NOTE: the key a tile answers to, shown only to a keyboard player.
-const keyCapsOf = (
+const keyCapOf = (
   device: InputDevice,
   maybeKey: Option.Option<string>,
-  h: ProfileViewBuilder,
-): ReadonlyArray<Html> =>
+  h: H,
+): MaybeContent =>
   Option.match(maybeKey, {
-    onNone: () => [],
-    onSome: key =>
+    onNone: (): MaybeContent => null,
+    onSome: (key): MaybeContent =>
       device === 'KeyboardMouse'
-        ? [h.span([h.Class('home-key'), h.AriaHidden(true)], [key])]
-        : [],
+        ? h.span.class('home-key').attr('aria-hidden', 'true').children(key)
+        : null,
   })
 
-const tileView = (
-  device: InputDevice,
-  toggle: Toggle,
-  h: ProfileViewBuilder,
-): Html =>
-  h.li(
-    [h.Class('setting-tile-item')],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.Class('setting-tile'),
-          h.AriaLabel(toggle.label),
-          h.AriaPressed(toggle.isOn ? 'true' : 'false'),
-          ...Option.match(toggle.maybeKey, {
-            onNone: () => [],
-            onSome: key => [h.AriaKeyshortcuts(key)],
-          }),
-          h.OnClick(Message.ClickedSettingTile({ setting: toggle.setting }), {
-            propagation: 'Stop',
-          }),
-        ],
-        [
-          iconView(
-            'setting-tile-icon',
-            toggle.isOn ? toggle.onIcon : toggle.offIcon,
-            h,
+const tileView = (device: InputDevice, toggle: Toggle, h: H): Content =>
+  h.li.class('setting-tile-item').children(
+    h.button
+      .attrs({
+        type: 'button',
+        'aria-label': toggle.label,
+        'aria-pressed': toggle.isOn ? 'true' : 'false',
+        'aria-keyshortcuts': Option.getOrUndefined(toggle.maybeKey),
+      })
+      .class('setting-tile')
+      .on('click', Message.ClickedSettingTile({ setting: toggle.setting }))
+      .children(
+        iconView(
+          'setting-tile-icon',
+          toggle.isOn ? toggle.onIcon : toggle.offIcon,
+          h,
+        ),
+        h.span.class('setting-tile-label').children(toggle.shortLabel),
+        h.span
+          .class('setting-tile-state')
+          .attr('aria-hidden', 'true')
+          .children(
+            toggle.isOn
+              ? (toggle.states ?? ON_OFF).on
+              : (toggle.states ?? ON_OFF).off,
           ),
-          h.span([h.Class('setting-tile-label')], [toggle.shortLabel]),
-          h.span(
-            [h.Class('setting-tile-state'), h.AriaHidden(true)],
-            [
-              toggle.isOn
-                ? (toggle.states ?? ON_OFF).on
-                : (toggle.states ?? ON_OFF).off,
-            ],
-          ),
-          ...keyCapsOf(device, toggle.maybeKey, h),
-        ],
+        keyCapOf(device, toggle.maybeKey, h),
       ),
-    ],
   )
 
-const resetTutorialButtonView = (h: ProfileViewBuilder): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Id(RESET_TUTORIAL_BUTTON_ID),
-      h.Class('panel-icon-button'),
-      h.AriaLabel('Reset tutorial'),
-      h.OnClick(Message.ClickedResetTutorialButton(), { propagation: 'Stop' }),
-    ],
-    [
+const resetTutorialButtonView = (h: H): Content =>
+  h.button
+    .id(RESET_TUTORIAL_BUTTON_ID)
+    .attrs({ type: 'button', 'aria-label': 'Reset tutorial' })
+    .class('panel-icon-button')
+    .on('click', Message.ClickedResetTutorialButton())
+    .children(
       iconView('panel-icon', REWIND_ICON, h),
-      h.span([h.Class('panel-icon-label'), h.AriaHidden(true)], ['TUTORIAL']),
-    ],
-  )
+      h.span
+        .class('panel-icon-label')
+        .attr('aria-hidden', 'true')
+        .children('TUTORIAL'),
+    )
 
 // NOTE: the confirm wobbles in, so it reads as "are you sure?" at a glance.
-const askResetTutorialView = (h: ProfileViewBuilder): Html =>
-  h.div(
-    [
-      h.Class('setting-confirm'),
-      h.Role('group'),
-      h.AriaLabel('Reset tutorial'),
-    ],
-    [
-      h.p(
-        [h.Class('setting-confirm-question')],
-        [iconView('panel-icon', REWIND_ICON, h), 'Show the tips again?'],
-      ),
-      h.div(
-        [h.Class('panel-actions')],
-        [
-          h.button(
-            [
-              h.Type('button'),
-              h.Class('panel-button panel-leave'),
-              h.OnClick(Message.ClickedConfirmResetTutorialButton(), {
-                propagation: 'Stop',
-              }),
-            ],
-            ['Reset'],
-          ),
-          h.button(
-            [
-              h.Type('button'),
-              h.Id(KEEP_TUTORIAL_BUTTON_ID),
-              h.Class('panel-button panel-stay'),
-              h.OnClick(Message.ClickedCancelResetTutorialButton(), {
-                propagation: 'Stop',
-              }),
-            ],
-            ['Keep'],
-          ),
-        ],
-      ),
-    ],
-  )
+const askResetTutorialView = (h: H): Content =>
+  h.div
+    .class('setting-confirm')
+    .attrs({ role: 'group', 'aria-label': 'Reset tutorial' })
+    .children(
+      h.p
+        .class('setting-confirm-question')
+        .children(
+          iconView('panel-icon', REWIND_ICON, h),
+          'Show the tips again?',
+        ),
+      h.div
+        .class('panel-actions')
+        .children(
+          h.button
+            .attr('type', 'button')
+            .class('panel-button panel-leave')
+            .on('click', Message.ClickedConfirmResetTutorialButton())
+            .children('Reset'),
+          h.button
+            .id(KEEP_TUTORIAL_BUTTON_ID)
+            .attr('type', 'button')
+            .class('panel-button panel-stay')
+            .on('click', Message.ClickedCancelResetTutorialButton())
+            .children('Keep'),
+        ),
+    )
 
-const settingsTabView = (
-  model: Model,
-  inputs: ViewInputs,
-  h: ProfileViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('settings-tab')],
-    [
-      h.ul(
-        [h.Class('setting-tiles'), h.AriaLabel('Game settings')],
-        Array.map(settingTiles(inputs), toggle =>
-          tileView(inputs.device, toggle, h),
+const settingsTabView = (props: ProfileProps, h: H): Content =>
+  h.div.class('settings-tab').children(
+    h.ul
+      .class('setting-tiles')
+      .attr('aria-label', 'Game settings')
+      .children(
+        Array.map(settingTiles(props), toggle =>
+          tileView(props.device, toggle, h),
         ),
       ),
-      model.tutorialReset === 'Asking'
-        ? askResetTutorialView(h)
-        : h.div(
-            [h.Class('setting-footer')],
-            [
-              resetTutorialButtonView(h),
-              h.p(
-                [h.Class('setting-note'), h.Role('status')],
-                model.tutorialReset === 'Done' ? ['Tips are back.'] : [],
-              ),
-            ],
-          ),
-    ],
+    props.state.tutorialReset === 'Asking'
+      ? askResetTutorialView(h)
+      : h.div.class('setting-footer').children(
+          resetTutorialButtonView(h),
+          h.p
+            .class('setting-note')
+            .attr('role', 'status')
+            .children(props.state.tutorialReset === 'Done' && 'Tips are back.'),
+        ),
   )
 
 // PANEL
 
-type PageAttributes = Tabs.TabInfo<ProfileTab>['panel']
-
-const pageAttributes = (
-  panel: PageAttributes,
-  tab: ProfileTab,
-  h: ProfileViewBuilder,
-) => [...panel, h.Class('profile-page'), h.DataAttribute('tab', tab)]
-
-// NOTE: each tab's page is its own view, so switching tabs swaps the page
-// element and its flip-in animation plays again.
-const lookPageView = (
-  model: Model,
-  inputs: ViewInputs,
-  panel: PageAttributes,
-  h: ProfileViewBuilder,
-): Html =>
-  h.div(pageAttributes(panel, 'Look', h), [lookTabView(model, inputs, h)])
-
-const masteryPageView = (
-  _model: Model,
-  inputs: ViewInputs,
-  panel: PageAttributes,
-  h: ProfileViewBuilder,
-): Html =>
-  h.div(pageAttributes(panel, 'Mastery', h), [
-    masteryTabView(inputs.mastery, h),
-  ])
-
-const namePageView = (
-  model: Model,
-  _inputs: ViewInputs,
-  panel: PageAttributes,
-  h: ProfileViewBuilder,
-): Html => h.div(pageAttributes(panel, 'Name', h), [nameTabView(model, h)])
-
-const accountPageView = (
-  model: Model,
-  inputs: ViewInputs,
-  panel: PageAttributes,
-  h: ProfileViewBuilder,
-): Html =>
-  h.div(pageAttributes(panel, 'Account', h), [accountTabView(model, inputs, h)])
-
-const settingsPageView = (
-  model: Model,
-  inputs: ViewInputs,
-  panel: PageAttributes,
-  h: ProfileViewBuilder,
-): Html =>
-  h.div(pageAttributes(panel, 'Settings', h), [
-    settingsTabView(model, inputs, h),
-  ])
-
 const PAGE_VIEWS: Readonly<
-  Record<
-    ProfileTab,
-    (
-      model: Model,
-      inputs: ViewInputs,
-      panel: PageAttributes,
-      h: ProfileViewBuilder,
-    ) => Html
-  >
+  Record<ProfileTab, (props: ProfileProps, h: H) => Content>
 > = {
-  Look: lookPageView,
-  Mastery: masteryPageView,
-  Name: namePageView,
-  Account: accountPageView,
-  Settings: settingsPageView,
+  Look: lookTabView,
+  Mastery: (props, h) =>
+    masteryTabView(
+      { mastery: props.mastery, picked: props.picked, look: props.appearance },
+      h,
+    ),
+  Name: (props, h) => nameTabView(props.state, h),
+  Account: accountTabView,
+  Settings: settingsTabView,
 }
 
-// NOTE: the Profile's body inside the root's Dialog (src/app/view.ts): the
-// tab strip and the open tab's page.
-const view = ProfileComposition.makeView.withInputs<ViewInputs>(
-  (model, inputs, h) =>
-    h.block(
-      TabsBinding.embedView({
-        slotId: model.tabs.id,
-        model: model.tabs,
-        viewInputs: {
-          tabs: PROFILE_TABS,
-          selectedValue: model.tab,
-          ariaLabel: 'Profile',
-          orientation: inputs.isPortrait ? 'Horizontal' : 'Vertical',
-          toView: ({ tablist, tabs, activeIndex }) =>
-            h.div(
-              [h.Class('profile-body')],
-              [
-                h.div(
-                  [...tablist, h.Class('profile-tabs')],
-                  Array.map(tabs, tab =>
-                    tabButtonView(tab, inputs.isLookNew, h),
-                  ),
-                ),
-                ...pipe(
-                  tabs,
-                  Array.filter(tab => tab.index === activeIndex),
-                  Array.map(tab =>
-                    PAGE_VIEWS[tab.value](model, inputs, tab.panel, h),
-                  ),
-                ),
-              ],
-            ),
-        },
-      }),
-    ),
+// NOTE: the Profile's body inside the root's Dialog (src/app/profileView.ts):
+// the tab strip, down the side or across the top in portrait, and the open
+// tab's page. Only the open page is drawn, each keyed by its tab, so
+// switching tabs swaps the page element and its flip-in animation plays
+// again.
+export const profileView: {
+  (h: H): (props: ProfileProps) => Content
+  (props: ProfileProps, h: H): Content
+} = Function.dual(2, (props: ProfileProps, h: H): Content =>
+  Tabs(h, {
+    key: PROFILE_TABS_ID,
+    props: {
+      value: props.state.tab,
+      tabs: TAB_ITEMS,
+      orientation: props.isPortrait ? 'horizontal' : 'vertical',
+      activateOnFocus: true,
+    },
+    onEmit: { Selected: ({ value }) => Message.SelectedTab({ value }) },
+    view: tabs =>
+      tabs.root(h.div.class('profile-body')).children(
+        tabs
+          .list(h.div.class('profile-tabs').attr('aria-label', 'Profile'))
+          .children(
+            Array.map(PROFILE_TABS, tab => tabButtonView(tabs, tab, props, h)),
+          ),
+        tabs
+          .panel({
+            element: h.div
+              .key(props.state.tab)
+              .class('profile-page')
+              .attr('data-tab', props.state.tab),
+            value: props.state.tab,
+          })
+          ?.children(PAGE_VIEWS[props.state.tab](props, h)),
+      ),
+  }),
 )
-
-// NOTE: the Profile's view, gathered here so it is not exported alone: a
-// view is a function of three arguments with no pipeable form, and Foldkit
-// knows a view by its identity, so it cannot be wrapped in one.
-// src/features/profile/layer.ts completes it as the Block's Layer.
-export const profileImplementation = { view }

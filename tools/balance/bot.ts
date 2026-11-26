@@ -9,7 +9,8 @@
 // BotState (bot/state.ts) made fresh for each run.
 
 import { Array, Function, Option, Record } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { Message } from '../../src/app/message'
 import { initialModel } from '../../src/app/pureApp'
@@ -237,7 +238,7 @@ export const startedRun: {
   (seed: number, options: BotOptions): Model
 } = Function.dual(2, (seed: number, options: BotOptions): Model => {
   const ready = send(
-    modifyFields(asTutorialDone(asVeteran(initialModel)), {
+    UiStruct.evolve(asTutorialDone(asVeteran(initialModel)), {
       rngState: () => seed,
       difficulty: () => ({ chosen: options.difficulty, nightmare: 'Unlocked' }),
       calling: () => options.calling,

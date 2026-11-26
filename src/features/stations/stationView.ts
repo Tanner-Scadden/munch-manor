@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import {
   type Sprite,
@@ -10,6 +9,7 @@ import {
 } from '../../art/sprite'
 import { WINCH_HEIGHT_PX, WINCH_SLACK, WINCH_TAUT } from '../../art/winchArt'
 import type { Drawable } from '../../render/depth'
+import type * as Draw from '../../render/draw'
 import { rect } from '../../render/drawing'
 import { doorArrowShapes } from '../../render/powerupView'
 import {
@@ -284,7 +284,7 @@ const isNew = (station: StationView): boolean =>
 const ringShapes = (
   station: StationView,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const x = Math.round(station.center.x)
   const y = Math.round(station.center.y)
   if (station.setUp > 0) {
@@ -339,7 +339,7 @@ const ARROW_CLEAR_PX = 12
 const arrowShapes = (
   world: World,
   stations: ReadonlyArray<StationView>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { x, y } = focusOf(world).player
   return Option.match(
     Array.reduce(
@@ -381,7 +381,7 @@ const shownStations = (
 const notesShapes = (
   world: World,
   station: StationView,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   isToolActive(world, station.id)
     ? Array.makeBy(NOTE_COUNT, index => {
         const rise =
@@ -400,7 +400,7 @@ const notesShapes = (
 const dustShapes = (
   world: World,
   station: StationView,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   isToolActive(world, station.id)
     ? Array.makeBy(DUST_COUNT, index => {
         const share =
@@ -421,7 +421,7 @@ const dustShapes = (
 const toolOverheadShapes = (
   world: World,
   station: StationView,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   station.id === 'Gramophone'
     ? notesShapes(world, station)
     : station.id === 'Shelf'
@@ -480,7 +480,7 @@ const stationArtShapes = (
   world: World,
   station: StationView,
   { spriteOf, heightPx }: StationArt,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   placeAt(
     Math.round(station.center.x) - HALF_TILE,
     footOf(station) - heightPx,
@@ -494,11 +494,11 @@ const stationArtShapes = (
 // never under it (owner, 2026-11-15: the ring floating over the winch hid
 // its drum and crank).
 export const stationGroundShapes: {
-  (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
-  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
+  (isShown: Shown): (world: World) => ReadonlyArray<Draw.Shape>
+  (world: World, isShown: Shown): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> =>
+  (world: World, isShown: Shown): ReadonlyArray<Draw.Shape> =>
     Array.flatMap(shownStations(world, isShown), station =>
       ringShapes(station, world.elapsedMs),
     ),
@@ -534,11 +534,11 @@ export const stationDrawables: {
 // NOTE: over everything: a tool's notes or dust while it is on, and the
 // first time hint's arrow.
 export const stationOverheadShapes: {
-  (isShown: Shown): (world: World) => ReadonlyArray<Canvas.Shape>
-  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape>
+  (isShown: Shown): (world: World) => ReadonlyArray<Draw.Shape>
+  (world: World, isShown: Shown): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (world: World, isShown: Shown): ReadonlyArray<Canvas.Shape> => {
+  (world: World, isShown: Shown): ReadonlyArray<Draw.Shape> => {
     const stations = shownStations(world, isShown)
     return [
       ...Array.flatMap(stations, station => toolOverheadShapes(world, station)),

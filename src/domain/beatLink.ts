@@ -1,5 +1,6 @@
 import { Array, Function, Option, Schema, SchemaGetter } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { Calling, Difficulty } from '../shared/playerData'
 import { DareKind } from '../world/dare/dareSchema'
@@ -64,7 +65,7 @@ export type OwnPicks = typeof OwnPicks.Type
 // player's own kept to hand back. Taken lasts through the run and its end
 // card, so RETRY plays the same house again; PLAY, CO-OP, or the card's x
 // hand the picks back.
-export const BeatMyRun = defineTaggedUnion({
+export const BeatMyRun = UiSchema.TaggedEnum({
   None: {},
   Offered: { dare: FriendsDare },
   Taken: { dare: FriendsDare, own: OwnPicks },
@@ -130,10 +131,7 @@ const kindsMaskOf = (kinds: ReadonlyArray<DareKind>): number =>
   )
 
 const kindsOfMask = (mask: number): ReadonlyArray<DareKind> =>
-  Array.filter(
-    DareKind.literals,
-    (_kind, index) => (mask & (1 << index)) !== 0,
-  )
+  Array.filter(DareKind.literals, (_kind, index) => (mask & (1 << index)) !== 0)
 
 const dareOfWire = (wire: DareWire): FriendsDare => {
   const [

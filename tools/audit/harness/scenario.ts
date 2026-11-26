@@ -3,8 +3,8 @@
 // and the look, then co-op staged over it.
 
 import { Array, Option, Record, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import {
   CaseState,
   DifficultyCard,
@@ -105,7 +105,7 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
   let model = start
   const door = config.fridge
   if (door !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       fridge: fridge => ({
         ...fridge,
         door:
@@ -131,7 +131,7 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
     })
   }
   if (config.caseopen) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       cases: cases =>
         Array.map(cases, displayCase => ({
           ...displayCase,
@@ -141,13 +141,13 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
   }
   const fridgeSeed = config.fridgeseed
   if (fridgeSeed !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       loot: loot => ({ ...loot, fridgeRngState: fridgeSeed >>> 0 }),
     })
   }
   const iced = config.iced
   if (iced !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: zombies => [
         ...zombies,
         ...Array.map(ICED_SPOTS, (spot, index): Zombie => ({
@@ -174,7 +174,7 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
       { to: { x: px + 100, y: py - 4 }, remainingMs: landsInMs + 260 },
       { to: { x: px + 45, y: py - 44 }, remainingMs: landsInMs + 420 },
     ]
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       lobs: () =>
         Array.map(flights, (flight, index) => {
           const durationMs = Math.max(LID_FLIGHT_MS, flight.remainingMs + 120)
@@ -212,7 +212,7 @@ const withDareFound = (model: Model, count: number): Model => {
     Array.take(dareCardOf(model), count),
     ({ kind }) => kind,
   )
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     dareThings: things =>
       Array.map(things, thing =>
         Array.contains(kinds, thing.kind)
@@ -258,7 +258,7 @@ const atRoomFind = (
         const spot = tileCenter(tile)
         const workedMs = share * FIND_RULES[findStyleOfRoom(room)].workMs
         return modifyFocus(
-          modifyFields(model, {
+          UiStruct.evolve(model, {
             dareThings: things =>
               Array.map(things, (thing, index) =>
                 index === 0
@@ -343,11 +343,11 @@ const SEEN_PROOF = [
 ]
 
 const withSampleProof = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     proof: () => SAMPLE_PROOF,
     maybeToday: () => Option.some(PROOF_DAY),
     missions: missions =>
-      modifyFields(missions, {
+      UiStruct.evolve(missions, {
         stampedDays: () => PROOF_DAYS,
       }),
     seenUnlocks: seen => Array.union(seen, SEEN_PROOF),
@@ -363,7 +363,7 @@ const SAMPLE_MILESTONES = [
 ]
 
 const withSampleJournal = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     journal: () => ({
       ...noJournal,
       milestones: SAMPLE_MILESTONES,
@@ -396,7 +396,7 @@ const withMasteryOf = (
   config: SceneSettings['config'],
 ): Model => {
   const { heropoints, gunmastery, propstyle } = config
-  const withTracks = modifyFields(model, {
+  const withTracks = UiStruct.evolve(model, {
     mastery: mastery => ({
       heroes:
         heropoints === undefined
@@ -411,9 +411,9 @@ const withMasteryOf = (
   return propstyle === undefined
     ? withTracks
     : fitPropStyle(
-        modifyFields(withTracks, {
+        UiStruct.evolve(withTracks, {
           appearance: look =>
-            modifyFields(look, { propStyle: () => propstyle }),
+            UiStruct.evolve(look, { propStyle: () => propstyle }),
         }),
       )
 }
@@ -452,7 +452,7 @@ const withBeat = (
 ): Model =>
   beat === undefined
     ? model
-    : modifyFields(model, {
+    : UiStruct.evolve(model, {
         beatMyRun: () =>
           beat === 'offered'
             ? BeatMyRun.Offered({ dare: FRIENDS_DARE })
@@ -477,13 +477,13 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   let model = roomModel(settings)
   const runs = config.runs
   if (runs !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       bests: bests => ({ ...bests, runsPlayed: runs }),
     })
   }
   const learned = config.learned
   if (learned !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       lessons: lessons => ({
         ...lessons,
         ...Record.fromEntries(
@@ -495,7 +495,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   const traphint = config.traphint
   if (traphint !== undefined) {
     model = modifyFocus(
-      modifyFields(model, { trapHint: () => TrapHint.Showing() }),
+      UiStruct.evolve(model, { trapHint: () => TrapHint.Showing() }),
       { selectedTrap: () => traphint },
     )
   }
@@ -503,8 +503,8 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (quest !== undefined) {
     model =
       quest === 'kitchendone'
-        ? modifyFields(model, { kitchenTour: () => Tour.Done({ ageMs: 0 }) })
-        : modifyFields(model, {
+        ? UiStruct.evolve(model, { kitchenTour: () => Tour.Done({ ageMs: 0 }) })
+        : UiStruct.evolve(model, {
             firstBreakQuest: () => QUEST_STAGES[quest],
           })
   }
@@ -520,7 +520,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       isFound ? Result.succeed(kind) : Result.fail(undefined),
     )
     const shown = Array.take(found, config.satchel)
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       pocketCard: () =>
         PocketCard.Opened({
           ageMs: dareopen,
@@ -530,52 +530,52 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     })
   }
   if (pocket !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       pocketCard: () => PocketCard.Reading({ ageMs: pocket }),
     })
   }
   if (pocketfold !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       pocketCard: () => PocketCard.Folding({ ageMs: pocketfold }),
     })
   }
   const finale = config.finale
   if (finale !== undefined) {
-    model = modifyFields(withDareFound(model, dareCardOf(model).length), {
+    model = UiStruct.evolve(withDareFound(model, dareCardOf(model).length), {
       dare: dare =>
-        modifyFields(dare, {
+        UiStruct.evolve(dare, {
           finale: () => (finale === 'open' ? Finale.Open() : Finale.Summoned()),
         }),
     })
   }
   const newer = config.newer
   if (newer !== undefined) {
-    model = modifyFields(model, {
-      release: modifyFields({
+    model = UiStruct.evolve(model, {
+      release: UiStruct.evolve({
         maybeNewerBuild: () => Option.some(newer || 'next'),
       }),
     })
   }
   if (config.unwrap) {
-    model = modifyFields(model, {
-      release: modifyFields({ updateGift: () => 'Unwrapping' }),
+    model = UiStruct.evolve(model, {
+      release: UiStruct.evolve({ updateGift: () => 'Unwrapping' }),
     })
   }
   if (config.install) {
-    model = modifyFields(model, {
-      release: modifyFields({ installOffer: () => 'Ready' }),
+    model = UiStruct.evolve(model, {
+      release: UiStruct.evolve({ installOffer: () => 'Ready' }),
     })
   }
   if (config.support) {
-    model = modifyFields(model, {
-      release: modifyFields({
+    model = UiStruct.evolve(model, {
+      release: UiStruct.evolve({
         maybeSupportUrl: () =>
           Option.some('https://buy.stripe.com/test_harness'),
       }),
     })
   }
   if (config.bests) {
-    model = modifyFields(
+    model = UiStruct.evolve(
       withBests(model, current => ({
         ...current,
         maybeBestEndlessWave: Option.some(12),
@@ -587,7 +587,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   const { calling } = config
   if (calling !== undefined) {
     model = modifyFocus(
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         calling: () => calling,
         // NOTE: the hero is bought, as a run starts only with one the player owns.
         boughtCosmetics: bought =>
@@ -605,7 +605,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const { rank: rankPoints, rankgain: rankGain } = config
   if (rankPoints !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       rank: rank => ({
         ...rank,
         earnedPoints: rankPoints,
@@ -616,7 +616,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const { bones, spent, bought, hat, skin } = config
   if (bones !== undefined || spent !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       rank: rank => ({
         ...rank,
         earnedBones: bones ?? rank.earnedBones,
@@ -626,35 +626,35 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     })
   }
   if (bought !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       boughtCosmetics: current => Array.union(current, bought),
     })
   }
   if (hat !== undefined) {
-    model = modifyFields(model, {
-      appearance: look => modifyFields(look, { hat: () => hat }),
+    model = UiStruct.evolve(model, {
+      appearance: look => UiStruct.evolve(look, { hat: () => hat }),
     })
   }
   if (skin !== undefined) {
-    model = modifyFields(model, {
-      appearance: look => modifyFields(look, { gunSkin: () => skin }),
+    model = UiStruct.evolve(model, {
+      appearance: look => UiStruct.evolve(look, { gunSkin: () => skin }),
     })
   }
   model = withMasteryOf(model, config)
   if (!config.fresh) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       seenUnlocks: () => unlocksAt(rankOf(totalPointsOf(model.rank))),
     })
   }
   const prizes = config.prizes
   if (prizes !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       seenUnlocks: seen => Array.union(seen, Array.map(prizes, prizeUnlockId)),
     })
   }
   if (rankGain !== undefined && isEndScreen(model.phase)) {
-    model = modifyFields(model, {
-      runGains: modifyFields({
+    model = UiStruct.evolve(model, {
+      runGains: UiStruct.evolve({
         maybeRankGain: () =>
           Option.some({
             pointsBefore: Math.max(0, (rankPoints ?? 0) - rankGain),
@@ -668,11 +668,11 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const { mods } = config
   if (mods !== undefined) {
-    model = modifyFields(model, { modifiers: () => modifiersOfMask(mods) })
+    model = UiStruct.evolve(model, { modifiers: () => modifiersOfMask(mods) })
   }
   const { marks, dmark } = config
   if (marks !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       dareMarks: () => ({
         Easy: marks,
         Normal: Math.max(0, marks - 3),
@@ -682,13 +682,13 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     })
   }
   if (dmark !== undefined) {
-    model = modifyFields(model, { dareMark: () => dmark })
+    model = UiStruct.evolve(model, { dareMark: () => dmark })
   }
   model = withBeat(model, config.beat)
   const kills = config.kills
   if (kills !== undefined) {
     const counts = Record.fromEntries(kills)
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       bests: bests => {
         const killsByKind = { ...bests.killsByKind, ...counts }
         return {
@@ -703,7 +703,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       },
     })
   }
-  model = modifyFields(model, {
+  model = UiStruct.evolve(model, {
     home: home => ({
       ...home,
       mode: config.homemode === 'endless' ? 'Endless' : home.mode,
@@ -721,15 +721,15 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     model = withSampleJournal(model)
   }
   if (config.journalall) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       journal: journal =>
-        modifyFields(journal, { milestones: () => MilestoneId.literals }),
+        UiStruct.evolve(journal, { milestones: () => MilestoneId.literals }),
     })
   }
   model = Array.reduce(Array.range(1, config.lobbybots ?? 0), model, seated =>
     config.lobbybots === undefined ? seated : addBot(seated),
   )
-  model = modifyFields(model, {
+  model = UiStruct.evolve(model, {
     difficultyCard: () =>
       config.ask ? DifficultyCard.Unseen() : DifficultyCard.Seen(),
     difficulty: setting => ({
@@ -739,7 +739,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   })
   const ovenState = config.ovens
   if (ovenState !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       ovens: ovens =>
         Array.map(ovens, () =>
           ovenState === 'belch'
@@ -749,7 +749,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     })
   }
   if (config.slip) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: zombies => [
         ...zombies,
         ...Array.map(
@@ -783,7 +783,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   model = withLeftovers(settings, model)
   const planks = config.planks
   if (planks !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       traps: traps => [
         ...traps,
         ...Array.map(planks, (door, index) =>
@@ -800,7 +800,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const gnomes = config.gnomes
   if (gnomes !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       traps: traps => [
         ...traps,
         ...Array.map(gnomes, ([column, row], index) =>
@@ -828,7 +828,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       { x: 34, y: 40 },
       { x: 44, y: 20 },
     ]
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: zombies => [
         ...zombies,
         ...Array.map(spots.slice(0, chewers), (at, index) => ({
@@ -867,7 +867,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         ? ([['Shambler', 70, 8]] as const)
         : []),
     ]
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       zombies: zombies => [
         ...zombies,
         ...Array.map(spots, ([kind, x, y], index) => ({
@@ -892,11 +892,11 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   const house = Option.getOrElse(Array.get(ARRANGEMENTS, config.house), () =>
     Array.headNonEmpty(ARRANGEMENTS),
   )
-  model = modifyFields(model, {
+  model = UiStruct.evolve(model, {
     level: level => ({ ...level, arrangement: house }),
   })
   if (config.fallen) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       level: level => ({ ...level, dropped: [CHANDELIER_DROP] }),
       stations: stations => ({
         ...stations,
@@ -908,7 +908,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     })
   }
   if (config.valve) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       gasValve: () => GasValve.Lit({ owner: 0, nextBurnMs: 0 }),
     })
   }
@@ -916,7 +916,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (tool !== undefined) {
     const rules = TOOL_RULES[tool]
     const firedms = config.firedms
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       stations: stations => ({
         ...stations,
         [tool]:
@@ -940,19 +940,19 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const openexits = config.openexits
   if (openexits !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       level: level => ({ ...level, openExits: openexits }),
     })
   }
   const name = config.name
   if (name !== undefined) {
-    model = modifyFields(model, { playerName: () => name })
+    model = UiStruct.evolve(model, { playerName: () => name })
   }
   const sync = config.sync
   if (sync !== undefined) {
     const devices = config.devices
-    model = modifyFields(model, {
-      saving: modifyFields({
+    model = UiStruct.evolve(model, {
+      saving: UiStruct.evolve({
         syncState: () =>
           sync === 'local'
             ? SyncState.LocalOnly()
@@ -970,9 +970,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const link = config.link
   if (link !== undefined) {
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       profile: profile =>
-        modifyFields(profile, {
+        UiStruct.evolve(profile, {
           linkFlow: () =>
             link === 'requesting'
               ? LinkFlow.Requesting()
@@ -1001,7 +1001,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       beard,
       glasses,
     ] = look
-    model = modifyFields(model, {
+    model = UiStruct.evolve(model, {
       appearance: a => ({
         body: body || a.body,
         hairStyle: hairStyle || a.hairStyle,
@@ -1029,10 +1029,10 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   const wake = config.wake
   if (wake !== undefined) {
     model = withWorld(
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         phase: phase =>
           Phase.isAnyOf(['Wave'])(phase)
-            ? modifyFields(phase, { spawns: () => [] })
+            ? UiStruct.evolve(phase, { spawns: () => [] })
             : phase,
       }),
       world => wakeRoom(world, wake),

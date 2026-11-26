@@ -3,9 +3,9 @@
 // one's baked image and the box it covers, shared by the view and the note's
 // picture.
 import { Array, Option, Schema, String } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { boundsOf } from '../../src/art/sprite'
+import type * as Draw from '../../src/render/draw'
 import { roomShapes } from '../../src/render/room/room'
 import { TILE_SIZE } from '../../src/shared/constants'
 import {
@@ -91,7 +91,7 @@ export const HOUSES: ReadonlyArray<Readonly<{ house: number; label: string }>> =
   }))
 
 export type RoomFrame = Readonly<{
-  shapes: ReadonlyArray<Canvas.Shape>
+  shapes: ReadonlyArray<Draw.Shape>
   bounds: Bounds
 }>
 

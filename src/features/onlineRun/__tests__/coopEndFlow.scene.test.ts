@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Scene, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 import type { Lobby } from '@munch/netcode'
 
@@ -9,16 +8,13 @@ import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
 import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import { isRoomFrameDue, isRunOn } from '../../../domain/onlineRun'
-import {
-  APPLICATION,
-  SCENE_SUBSCRIPTIONS,
-  measureSurface,
-} from '../../../test/testing'
+import { fromSubscription, measureHud } from '../../../test/sceneTesting'
+import { modelAfter, sceneOf, send } from '../../../test/testing'
 import type { RoomWorld } from '../../../world/net/roomWorld'
 import { startWaveEarly } from '../../../world/waves/waves'
 import { freshRoom } from '../../coop/roomState'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import { OWN_SLOT, graduated, roomWorld } from './onlineRun.fixture'
+import { OWN_SLOT, coopScreen, graduated, roomWorld } from './onlineRun.fixture'
 
 // The end of an online co-op run as a client sees it. The room ends the run,
 // sends its last World, then RoomClosed on the game's socket, and puts its
@@ -39,7 +35,7 @@ const fighting: RoomWorld = {
 const wiped: RoomWorld = {
   ...fighting,
   tick: fighting.tick + END_TICK,
-  world: modifyFields(fighting.world, {
+  world: UiStruct.evolve(fighting.world, {
     phase: () => Phase.GameOver({ wave: 1 }),
   }),
 }
@@ -69,9 +65,9 @@ type Heard = Readonly<{
 // NOTE: the room as this client holds it: its lobby, the frames it has
 // heard (anchored at tick 0 on the clock's 0), and whether RoomClosed came.
 const hearing = (model: Model, { lobby, frames, isClosed }: Heard): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     coop: coop =>
-      modifyFields(coop, {
+      UiStruct.evolve(coop, {
         screen: () =>
           Screen.InRoom({
             room: {
@@ -99,27 +95,21 @@ const hearing = (model: Model, { lobby, frames, isClosed }: Heard): Model =>
   })
 
 const roomFrame = (nowMs: number) =>
-  Scene.Subscription.emit(
-    SCENE_SUBSCRIPTIONS.roomFrame,
-    Message.TickedRoomFrame({ nowMs }),
-  )
+  fromSubscription('RoomFrame', Message.TickedRoomFrame({ nowMs }))
 
 // NOTE: a wave under way, drawn from the room once.
-const midRun = Story.story(
-  APPLICATION,
-  Story.given(
-    hearing(graduated, {
-      lobby: playingLobby,
-      frames: [fighting],
-      isClosed: false,
-    }),
-  ),
-  Story.message(Message.TickedRoomFrame({ nowMs: 100 })),
+const midRun = modelAfter(
+  hearing(graduated, {
+    lobby: playingLobby,
+    frames: [fighting],
+    isClosed: false,
+  }),
+  send(Message.TickedRoomFrame({ nowMs: 100 })),
 )
 
-const lobbyShown = Scene.selector('.coop[data-screen="Lobby"]')
-const arenaShown = Scene.selector('.coop[data-screen="Arena"]')
-const cardShown = Scene.selector('.coop[data-screen="RunCard"]')
+const lobbyShown = coopScreen('Lobby')
+const arenaShown = coopScreen('Arena')
+const cardShown = coopScreen('RunCard')
 
 describe("an online co-op run's end", () => {
   it.effect(
@@ -135,16 +125,17 @@ describe("an online co-op run's end", () => {
         })
         expect(isRunOn(ended)).toBe(true)
         expect(isRoomFrameDue(ended)).toBe(true)
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(ended),
-          measureSurface,
-          Scene.expect(lobbyShown).toBeAbsent(),
-          Scene.expect(arenaShown).toExist(),
-          roomFrame(400),
-          Scene.expect(lobbyShown).toBeAbsent(),
-          Scene.expect(cardShown).toExist(),
-        )
+        const s = yield* sceneOf(ended)
+        s.pipe(measureHud)
+          .expect(lobbyShown)
+          .toBeAbsent()
+          .expect(arenaShown)
+          .toExist()
+          .pipe(roomFrame(400))
+          .expect(lobbyShown)
+          .toBeAbsent()
+          .expect(cardShown)
+          .toExist()
       }),
   )
 
@@ -158,26 +149,19 @@ describe("an online co-op run's end", () => {
           frames: [fighting],
           isClosed: false,
         })
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(early),
-          measureSurface,
-          roomFrame(200),
-          Scene.expect(lobbyShown).toBeAbsent(),
-          Scene.expect(arenaShown).toExist(),
-        )
+        const s = yield* sceneOf(early)
+        s.pipe(measureHud, roomFrame(200))
+          .expect(lobbyShown)
+          .toBeAbsent()
+          .expect(arenaShown)
+          .toExist()
         const arrived = hearing(early, {
           lobby: resultLobby,
           frames: [fighting, wiped],
           isClosed: true,
         })
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(arrived),
-          measureSurface,
-          roomFrame(400),
-          Scene.expect(cardShown).toExist(),
-        )
+        const later = yield* sceneOf(arrived)
+        later.pipe(measureHud, roomFrame(400)).expect(cardShown).toExist()
       }),
   )
 
@@ -192,12 +176,8 @@ describe("an online co-op run's end", () => {
           isClosed: true,
         })
         expect(isRoomFrameDue(cut)).toBe(false)
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(cut),
-          measureSurface,
-          Scene.expect(lobbyShown).toExist(),
-        )
+        const s = yield* sceneOf(cut)
+        s.pipe(measureHud).expect(lobbyShown).toExist()
       }),
   )
 })

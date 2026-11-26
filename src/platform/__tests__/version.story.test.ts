@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
-import { Array, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { FetchHttpClient } from 'effect/http'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { ApplicationDef } from '../../app/definition'
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
@@ -20,6 +21,7 @@ import {
   ReloadPage,
   WaitForUnwrap,
 } from '../../app/update/home'
+import type { UpdateStep } from '../../app/update/step'
 import {
   FetchBuild,
   RegisterServiceWorker,
@@ -29,7 +31,14 @@ import {
 } from '../../app/update/version'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
 import { WAVE_3_BREAK, fighting } from '../../test/model.fixture'
-import { APPLICATION, showDialog, throughIntro } from '../../test/testing'
+import {
+  checkModel,
+  modelAfter,
+  send,
+  steps,
+  throughIntro,
+  withAudioAsked,
+} from '../../test/testing'
 import { pause } from '../../world/waves/waves'
 import { isUsingServiceWorker } from '../serviceWorker'
 import {
@@ -42,171 +51,174 @@ import {
 const NEWER_BUILD = 'newer-build'
 
 const onPhase = (phase: Phase): Model =>
-  modifyFields(initialModel, { phase: () => phase })
+  UiStruct.evolve(initialModel, { phase: () => phase })
 
 describe('checking for a new build', () => {
   it.effect('the page coming back into view fetches the live build', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(initialModel),
-      Story.message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
-      Story.Command.expectNone(),
-      Story.message(Message.ChangedPageVisibility({ visibility: 'Visible' })),
-      Story.Command.expectExact(FetchBuild),
-      Story.Command.resolve(
-        FetchBuild,
-        Message.CompletedFetchBuild({ build: NEWER_BUILD }),
+    modelAfter(
+      initialModel,
+      steps(
+        send(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
+        s => s.expectNone(),
+        send(Message.ChangedPageVisibility({ visibility: 'Visible' })),
+        s => s.expectExact(FetchBuild),
+        s =>
+          s.resolve(
+            FetchBuild,
+            Message.CompletedFetchBuild({ build: NEWER_BUILD }),
+          ),
+        checkModel(current => {
+          expect(current.release.maybeNewerBuild).toStrictEqual(
+            Option.some(NEWER_BUILD),
+          )
+        }),
       ),
-      Story.model(current => {
-        expect(current.release.maybeNewerBuild).toStrictEqual(
-          Option.some(NEWER_BUILD),
-        )
-      }),
     ),
   )
 
   it.effect(
     'focus, a page restored from the cache, and the timer all fetch',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(initialModel),
-        Story.message(Message.FocusedWindow()),
-        Story.Command.expectExact(FetchBuild),
-        Story.Command.resolve(
-          FetchBuild,
-          Message.CompletedFetchBuild({ build: RUNNING_BUILD }),
-        ),
-        Story.message(Message.RestoredPageFromCache()),
-        Story.Command.expectExact(FetchBuild),
-        Story.Command.resolve(
-          FetchBuild,
-          Message.CompletedFetchBuild({ build: RUNNING_BUILD }),
-        ),
-        Story.message(Message.TickedUpdateCheck()),
-        Story.Command.expectExact(FetchBuild),
-        Story.Command.resolve(
-          FetchBuild,
-          Message.CompletedFetchBuild({ build: RUNNING_BUILD }),
+      modelAfter(
+        initialModel,
+        steps(
+          send(Message.FocusedWindow()),
+          s => s.expectExact(FetchBuild),
+          s =>
+            s.resolve(
+              FetchBuild,
+              Message.CompletedFetchBuild({ build: RUNNING_BUILD }),
+            ),
+          send(Message.RestoredPageFromCache()),
+          s => s.expectExact(FetchBuild),
+          s =>
+            s.resolve(
+              FetchBuild,
+              Message.CompletedFetchBuild({ build: RUNNING_BUILD }),
+            ),
+          send(Message.TickedUpdateCheck()),
+          s => s.expectExact(FetchBuild),
+          s =>
+            s.resolve(
+              FetchBuild,
+              Message.CompletedFetchBuild({ build: RUNNING_BUILD }),
+            ),
         ),
       ),
   )
 
   it.effect('the build already running records nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(initialModel),
-      Story.message(Message.CompletedFetchBuild({ build: RUNNING_BUILD })),
-      Story.model(current => {
-        expect(current.release.maybeNewerBuild).toStrictEqual(Option.none())
-      }),
+    modelAfter(
+      initialModel,
+      steps(
+        send(Message.CompletedFetchBuild({ build: RUNNING_BUILD })),
+        checkModel(current => {
+          expect(current.release.maybeNewerBuild).toStrictEqual(Option.none())
+        }),
+      ),
     ),
   )
 
   it.effect('a failed or offline check changes nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(initialModel),
-      Story.message(Message.FailedFetchBuild({ reason: 'Failed to fetch' })),
-      Story.model(current => {
-        expect(current).toStrictEqual(initialModel)
-      }),
-      Story.message(Message.CompletedFetchBuild({ build: NEWER_BUILD })),
-      Story.message(Message.FailedFetchBuild({ reason: 'timed out' })),
-      Story.model(current => {
-        expect(current.release.maybeNewerBuild).toStrictEqual(
-          Option.some(NEWER_BUILD),
-        )
-      }),
+    modelAfter(
+      initialModel,
+      steps(
+        send(Message.FailedFetchBuild({ reason: 'Failed to fetch' })),
+        checkModel(current => {
+          expect(current).toStrictEqual(withAudioAsked(initialModel))
+        }),
+        send(Message.CompletedFetchBuild({ build: NEWER_BUILD })),
+        send(Message.FailedFetchBuild({ reason: 'timed out' })),
+        checkModel(current => {
+          expect(current.release.maybeNewerBuild).toStrictEqual(
+            Option.some(NEWER_BUILD),
+          )
+        }),
+      ),
     ),
   )
 
   it.effect('a new build found mid-wave is kept, and the wave goes on', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(fighting),
-      Story.message(Message.CompletedFetchBuild({ build: NEWER_BUILD })),
-      Story.Command.expectNone(),
-      Story.model(current => {
-        expect(current.phase).toStrictEqual(fighting.phase)
-        expect(current.release.maybeNewerBuild).toStrictEqual(
-          Option.some(NEWER_BUILD),
-        )
-      }),
+    modelAfter(
+      fighting,
+      steps(
+        send(Message.CompletedFetchBuild({ build: NEWER_BUILD })),
+        s => s.expectNone(),
+        checkModel(current => {
+          expect(current.phase).toStrictEqual(fighting.phase)
+          expect(current.release.maybeNewerBuild).toStrictEqual(
+            Option.some(NEWER_BUILD),
+          )
+        }),
+      ),
     ),
   )
 
   it.effect(
     'tapping the gift unwraps it once, then reloads onto the newer build',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(initialModel, {
-            release: modifyFields({
-              maybeNewerBuild: () => Option.some(NEWER_BUILD),
-            }),
+      modelAfter(
+        UiStruct.evolve(initialModel, {
+          release: UiStruct.evolve({
+            maybeNewerBuild: () => Option.some(NEWER_BUILD),
           }),
-        ),
-        Story.message(Message.ClickedUpdateButton()),
-        Story.model(current => {
-          expect(current.release.updateGift).toBe('Unwrapping')
         }),
-        Story.Command.expectExact(WaitForUnwrap),
-        Story.Command.resolve(WaitForUnwrap, Message.CompletedWaitForUnwrap()),
-        Story.Command.expectExact(ReloadPage({ build: NEWER_BUILD })),
-        Story.Command.resolve(ReloadPage, Message.CompletedReloadPage()),
+        steps(
+          send(Message.ClickedUpdateButton()),
+          checkModel(current => {
+            expect(current.release.updateGift).toBe('Unwrapping')
+          }),
+          s => s.expectExact(WaitForUnwrap),
+          s => s.resolve(WaitForUnwrap, Message.CompletedWaitForUnwrap()),
+          s => s.expectExact(ReloadPage.make({ build: NEWER_BUILD })),
+          s => s.resolve(ReloadPage, Component.noop),
+        ),
       ),
   )
 
   it.effect('a second tap while it unwraps changes nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(initialModel, {
-          release: modifyFields({
-            maybeNewerBuild: () => Option.some(NEWER_BUILD),
-            updateGift: () => 'Unwrapping',
-          }),
+    modelAfter(
+      UiStruct.evolve(initialModel, {
+        release: UiStruct.evolve({
+          maybeNewerBuild: () => Option.some(NEWER_BUILD),
+          updateGift: () => 'Unwrapping',
         }),
-      ),
-      Story.message(Message.ClickedUpdateButton()),
-      Story.Command.expectNone(),
+      }),
+      steps(send(Message.ClickedUpdateButton()), s => s.expectNone()),
     ),
   )
 
   it.effect('the gift does nothing off the home menu', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(fighting, {
-          release: modifyFields({
-            maybeNewerBuild: () => Option.some(NEWER_BUILD),
-          }),
+    modelAfter(
+      UiStruct.evolve(fighting, {
+        release: UiStruct.evolve({
+          maybeNewerBuild: () => Option.some(NEWER_BUILD),
         }),
-      ),
-      Story.message(Message.ClickedUpdateButton()),
-      Story.model(current => {
-        expect(current.release.updateGift).toBe('Wrapped')
       }),
-      Story.Command.expectNone(),
+      steps(
+        send(Message.ClickedUpdateButton()),
+        checkModel(current => {
+          expect(current.release.updateGift).toBe('Wrapped')
+        }),
+        s => s.expectNone(),
+      ),
     ),
   )
 
   it.effect('the greeting opens only for the build the reload asked for', () =>
     Effect.gen(function* () {
-      yield* Story.story(
-        APPLICATION,
-        Story.given(initialModel),
-        Story.message(
-          Message.CompletedReadUpdateMarker({
-            maybeBuild: Option.some(RUNNING_BUILD),
+      yield* modelAfter(
+        initialModel,
+        steps(
+          send(
+            Message.CompletedReadUpdateMarker({
+              maybeBuild: Option.some(RUNNING_BUILD),
+            }),
+          ),
+          checkModel(current => {
+            expect(current.updateGreeting.isOpen).toBe(true)
           }),
         ),
-        Story.model(current => {
-          expect(current.updateGreeting.isOpen).toBe(true)
-        }),
-        showDialog(),
       )
       expect(isGreetingDue(RUNNING_BUILD, Option.some(RUNNING_BUILD))).toBe(
         true,
@@ -225,16 +237,18 @@ describe('the update check subscriptions', () => {
       expect(visible).toStrictEqual(
         Message.ChangedPageVisibility({ visibility: 'Visible' }),
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(initialModel),
-        Story.message(pageVisibilityMessage('hidden')),
-        Story.Command.expectNone(),
-        Story.message(visible),
-        Story.Command.expectExact(FetchBuild),
-        Story.Command.resolve(
-          FetchBuild,
-          Message.FailedFetchBuild({ reason: 'offline' }),
+      return modelAfter(
+        initialModel,
+        steps(
+          send(pageVisibilityMessage('hidden')),
+          s => s.expectNone(),
+          send(visible),
+          s => s.expectExact(FetchBuild),
+          s =>
+            s.resolve(
+              FetchBuild,
+              Message.FailedFetchBuild({ reason: 'offline' }),
+            ),
         ),
       )
     },
@@ -279,9 +293,9 @@ describe('the update check subscriptions', () => {
 
 describe('the end screens with a new version waiting', () => {
   const waiting = (phase: Phase, screenMs: number): Model =>
-    modifyFields(onPhase(phase), {
+    UiStruct.evolve(onPhase(phase), {
       screenMs: () => screenMs,
-      release: modifyFields({
+      release: UiStruct.evolve({
         maybeNewerBuild: () => Option.some(NEWER_BUILD),
       }),
     })
@@ -290,71 +304,80 @@ describe('the end screens with a new version waiting', () => {
     { name: 'Game Over', phase: Phase.GameOver({ wave: 3 }) },
     { name: 'An escape', phase: Phase.Escaped({ wave: 10 }) },
   ])('$name turns Enter into MENU and ignores E and K', ({ phase }) =>
-    Story.story(
-      APPLICATION,
-      Story.given(waiting(phase, RESTART_GRACE_MS)),
-      Story.message(Message.PressedKey({ code: 'KeyE' })),
-      Story.message(Message.PressedKey({ code: 'KeyK' })),
-      Story.message(Message.ClickedCampaignButton()),
-      Story.model(current => {
-        expect(current.phase).toStrictEqual(phase)
-      }),
-      Story.message(Message.PressedKey({ code: 'Enter' })),
-      Story.model(current => {
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(current.release.maybeNewerBuild).toStrictEqual(
-          Option.some(NEWER_BUILD),
-        )
-      }),
+    modelAfter(
+      waiting(phase, RESTART_GRACE_MS),
+      steps(
+        send(Message.PressedKey({ code: 'KeyE' })),
+        send(Message.PressedKey({ code: 'KeyK' })),
+        send(Message.ClickedCampaignButton()),
+        checkModel(current => {
+          expect(current.phase).toStrictEqual(phase)
+        }),
+        send(Message.PressedKey({ code: 'Enter' })),
+        checkModel(current => {
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+          expect(current.release.maybeNewerBuild).toStrictEqual(
+            Option.some(NEWER_BUILD),
+          )
+        }),
+      ),
     ),
   )
 
   it.effect('Enter waits out the restart grace', () => {
     const phase = Phase.GameOver({ wave: 3 })
-    return Story.story(
-      APPLICATION,
-      Story.given(waiting(phase, RESTART_GRACE_MS - 1)),
-      Story.message(Message.PressedKey({ code: 'Enter' })),
-      Story.model(current => {
-        expect(current.phase).toStrictEqual(phase)
-      }),
-      Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
-      Story.Command.expectExact(FocusEndMenuButton),
-      Story.Command.resolve(
-        FocusEndMenuButton,
-        Message.CompletedFocusEndMenuButton(),
+    return modelAfter(
+      waiting(phase, RESTART_GRACE_MS - 1),
+      steps(
+        send(Message.PressedKey({ code: 'Enter' })),
+        checkModel(current => {
+          expect(current.phase).toStrictEqual(phase)
+        }),
+        // NOTE: the early press only skips the end beat to its last frame,
+        // which puts MENU up and focuses it; the next Enter takes it.
+        s => s.expectExact(FocusEndMenuButton),
+        s => s.resolve(FocusEndMenuButton, Component.noop),
+        send(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
+        send(Message.PressedKey({ code: 'Enter' })),
+        checkModel(current => {
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+        }),
       ),
-      Story.message(Message.PressedKey({ code: 'Enter' })),
-      Story.model(current => {
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-      }),
     )
   })
 
   it.effect(
     'without a new version, Enter still starts a campaign from Game Over',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(onPhase(Phase.GameOver({ wave: 3 })), {
-            screenMs: () => RESTART_GRACE_MS,
+      modelAfter(
+        UiStruct.evolve(onPhase(Phase.GameOver({ wave: 3 })), {
+          screenMs: () => RESTART_GRACE_MS,
+        }),
+        steps(
+          send(Message.PressedKey({ code: 'Enter' })),
+          throughIntro,
+          checkModel(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
           }),
         ),
-        Story.message(Message.PressedKey({ code: 'Enter' })),
-        throughIntro,
-        Story.model(current => {
-          expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        }),
       ),
   )
 })
 
-// NOTE: each Command invocation carries its own Effect, so Commands compare
-// by name and args.
-const namesOf = (
-  commands: ReadonlyArray<Readonly<{ name: string; args?: unknown }>> = [],
-) => Array.map(commands, ({ name, args }) => [name, args])
+// NOTE: a root whose whole update is one Step, so a Story sees the
+// Commands it runs for a build other than the one the tests run as.
+const stepRoot = (step: UpdateStep) =>
+  ApplicationDef.make({
+    init: ApplicationDef.init($ => $.set(initialModel)),
+    update: $ => step($),
+    view: h => h.div([]),
+  })
+
+// NOTE: the Model and Commands one Step leaves from the start Model.
+const afterStep = (step: UpdateStep) =>
+  Effect.map(Story.make(stepRoot(step), {}), s =>
+    s.given(initialModel).send(Message.TickedUpdateCheck()),
+  )
 
 describe('the service worker', () => {
   const PRODUCTION_BUILD = 'abc123'
@@ -366,54 +389,43 @@ describe('the service worker', () => {
     expect(isUsingServiceWorker(RUNNING_BUILD)).toBe(false)
   })
 
-  test('a production build registers it once the splash is gone', () => {
-    expect(
-      namesOf(
-        registerServiceWorkerAfterSplash(initialModel, PRODUCTION_BUILD)
-          .commands,
-      ),
-    ).toStrictEqual(namesOf([RegisterServiceWorker()]))
-    expect(
-      registerServiceWorkerAfterSplash(initialModel, 'dev').commands ?? [],
-    ).toHaveLength(0)
-  })
+  it.effect('a production build registers it once the splash is gone', () =>
+    Effect.gen(function* () {
+      const production = yield* afterStep(
+        registerServiceWorkerAfterSplash(PRODUCTION_BUILD),
+      )
+      production
+        .expectExact(RegisterServiceWorker.make())
+        .resolve(RegisterServiceWorker, Component.noop)
+      const dev = yield* afterStep(registerServiceWorkerAfterSplash('dev'))
+      dev.expectNone()
+    }),
+  )
 
-  test('a newer build asks the worker to fetch it in the background', () => {
-    const found = recordRemoteBuild(initialModel, PRODUCTION_BUILD, NEWER_BUILD)
-    expect(found.model.release.maybeNewerBuild).toStrictEqual(
-      Option.some(NEWER_BUILD),
-    )
-    expect(namesOf(found.commands)).toStrictEqual(
-      namesOf([UpdateServiceWorker()]),
-    )
+  it.effect('a newer build asks the worker to fetch it in the background', () =>
+    Effect.gen(function* () {
+      const found = yield* afterStep(
+        recordRemoteBuild(PRODUCTION_BUILD, NEWER_BUILD),
+      )
+      expect(found.model.release.maybeNewerBuild).toStrictEqual(
+        Option.some(NEWER_BUILD),
+      )
+      found
+        .expectExact(UpdateServiceWorker.make())
+        .resolve(UpdateServiceWorker, Component.noop)
 
-    const same = recordRemoteBuild(
-      initialModel,
-      PRODUCTION_BUILD,
-      PRODUCTION_BUILD,
-    )
-    expect(same.model.release.maybeNewerBuild).toStrictEqual(Option.none())
-    expect(same.commands ?? []).toHaveLength(0)
+      const same = yield* afterStep(
+        recordRemoteBuild(PRODUCTION_BUILD, PRODUCTION_BUILD),
+      )
+      expect(same.model.release.maybeNewerBuild).toStrictEqual(Option.none())
+      same.expectNone()
 
-    const onDev = recordRemoteBuild(initialModel, 'dev', NEWER_BUILD)
-    expect(onDev.model.release.maybeNewerBuild).toStrictEqual(
-      Option.some(NEWER_BUILD),
-    )
-    expect(onDev.commands ?? []).toHaveLength(0)
-  })
-
-  it.effect('a failed worker command changes nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(initialModel),
-      Story.message(
-        Message.FailedRegisterServiceWorker({ reason: 'insecure' }),
-      ),
-      Story.message(Message.FailedUpdateServiceWorker({ reason: 'offline' })),
-      Story.model(current => {
-        expect(current).toStrictEqual(initialModel)
-      }),
-    ),
+      const onDev = yield* afterStep(recordRemoteBuild('dev', NEWER_BUILD))
+      expect(onDev.model.release.maybeNewerBuild).toStrictEqual(
+        Option.some(NEWER_BUILD),
+      )
+      onDev.expectNone()
+    }),
   )
 })
 

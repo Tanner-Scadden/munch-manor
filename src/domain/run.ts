@@ -1,5 +1,6 @@
 import { Array, Function } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../app/model'
 import { isObjectFirst } from '../shared/dualArgs'
@@ -64,11 +65,11 @@ export const withBests: {
     toBests: (bests: DifficultyBests) => DifficultyBests,
     chosen: Difficulty = model.difficulty.chosen,
   ): Model =>
-    modifyFields(model, {
+    UiStruct.evolve(model, {
       bests: bests =>
-        modifyFields(bests, {
+        UiStruct.evolve(bests, {
           byDifficulty: byDifficulty =>
-            modifyFields(byDifficulty, {
+            UiStruct.evolve(byDifficulty, {
               Easy: current => (chosen === 'Easy' ? toBests(current) : current),
               Normal: current =>
                 chosen === 'Normal' ? toBests(current) : current,

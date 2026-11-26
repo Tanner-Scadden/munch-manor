@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { PocketCard } from '../../domain/clientSchema'
@@ -130,19 +131,19 @@ export const raisePocketCardFrom: {
   Phase.isAnyOf(['Arriving'])(before.phase) &&
   !Phase.isAnyOf(['Arriving'])(after.phase) &&
   dareCardOf(after).length > 0
-    ? modifyFields(after, {
+    ? UiStruct.evolve(after, {
         pocketCard: () => PocketCard.Reading({ ageMs: 0 }),
       })
     : after,
 )
 
 const foldOf = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     pocketCard: () => PocketCard.Folding({ ageMs: 0 }),
     lessons: lessons =>
       isRunOn(model)
         ? lessons
-        : modifyFields(lessons, {
+        : UiStruct.evolve(lessons, {
             dareCard: lesson => learn(lesson, model.elapsedMs),
           }),
   })
@@ -196,7 +197,7 @@ const openDareCard = (model: Model): Model => {
     return model
   }
   const found = foundKindsOf(model)
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     pocketCard: () =>
       PocketCard.Opened({
         ageMs: 0,
@@ -211,7 +212,7 @@ const openDareCard = (model: Model): Model => {
 
 export const closeDareCard = (model: Model): Model =>
   isPocketCardOpened(model)
-    ? modifyFields(model, { pocketCard: () => PocketCard.Pocketed() })
+    ? UiStruct.evolve(model, { pocketCard: () => PocketCard.Pocketed() })
     : model
 
 // NOTE: the list's button and its keys: open, or put away.
@@ -264,18 +265,18 @@ export const agePocketCard: {
     Reading: ({ ageMs }) =>
       ageMs + deltaMs >= READ_MS && !isPocketCardWaiting(model)
         ? foldOf(model)
-        : modifyFields(model, {
+        : UiStruct.evolve(model, {
             pocketCard: () => PocketCard.Reading({ ageMs: ageMs + deltaMs }),
           }),
     Folding: ({ ageMs }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         pocketCard: () =>
           ageMs + deltaMs >= FOLD_MS
             ? PocketCard.Pocketed()
             : PocketCard.Folding({ ageMs: ageMs + deltaMs }),
       }),
     Opened: ({ ageMs, fresh }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         pocketCard: () => PocketCard.Opened({ ageMs: ageMs + deltaMs, fresh }),
       }),
   }),

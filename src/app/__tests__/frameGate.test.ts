@@ -1,6 +1,7 @@
 import { Array, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { home, playingModel, readyModel } from '../../test/model.fixture'
@@ -104,7 +105,7 @@ describe('the frame pace', () => {
     expect(framePaceOf(playingModel)).toBe('Play')
     expect(
       framePaceOf(
-        modifyFields(playingModel, {
+        UiStruct.evolve(playingModel, {
           phase: () => Phase.GameOver({ wave: 1 }),
         }),
       ),

@@ -1,7 +1,8 @@
 import { Array, Effect, Match } from 'effect'
-import { type Canvas, Scene, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
+import { HtmlLocator } from '@effect/ui/html/testing'
+import { Locator } from '@effect/ui/testing'
 import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../app/message'
@@ -14,23 +15,35 @@ import { isTurnHintShown } from '../../screens/home/home'
 import { TURN_HINT_TEXT } from '../../screens/home/homeView'
 import { DISTANT_SPAWN, inPortrait } from '../../test/model.fixture'
 import {
-  APPLICATION,
+  ackHudSlots,
+  byClass,
+  expectAttr,
+  expectStyle,
+  measureSurfaceAs,
+  statusLine,
+} from '../../test/sceneTesting'
+import {
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
-  measureSurfaceAs,
+  type SceneStep,
+  exactSceneOf,
+  modelAfter,
   modelAfterMessages,
+  send,
+  steps,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { rectsOf } from '../../test/viewReading'
 import { modifyFocus } from '../../world/party/party'
 import { screenCameraOf } from '../camera'
+import type * as Draw from '../draw'
 import { MELEE_SLOT_INDEX, gunSlotBox, reloadFaceOf } from '../hudLayout'
 import { screenOf, thumbAreaTop } from '../screen'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
 const boxesOf = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
   offset: Readonly<{ x: number; y: number }>,
 ): ReadonlyArray<Box> =>
   Array.flatMap(shapes, (shape): ReadonlyArray<Box> =>
@@ -49,7 +62,7 @@ const boxesOf = (
   )
 
 const onTouch = (phase: Phase): Model =>
-  modifyFields(asVeteran(initialModel), {
+  UiStruct.evolve(asVeteran(initialModel), {
     lastDevice: () => 'Touch',
     phase: () => phase,
   })
@@ -71,8 +84,13 @@ const gunSlotFills = (model: Model): ReadonlyArray<Box> =>
       rect.width === gunSlotBox(screenOf(model), 0).width - 2,
   )
 
-const root = Scene.selector('.game-root')
-const measure = (surface: typeof PHONE_PORTRAIT) => measureSurfaceAs(surface)
+const root = byClass('game-root')
+// NOTE: the surface measured, and the HUD's gun slots acknowledged where a
+// round shows them.
+const measure =
+  (surface: typeof PHONE_PORTRAIT): SceneStep =>
+  s =>
+    s.pipe(measureSurfaceAs(surface), ackHudSlots)
 
 // NOTE: the surface's MeasureGameSurface Mount reports once per Scene, so a
 // phone turning mid-scene is a new Scene on the Model the earlier
@@ -113,21 +131,13 @@ describe('the portrait HUD and thumb area', () => {
   })
 
   it.effect('the reload button sits in the row, past the melee slot', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fighting),
-      measure(PHONE_PORTRAIT),
-      Scene.expect(Scene.selector('.reload-button')).toHaveAttr(
-        'data-layout',
-        'Portrait',
-      ),
-      Scene.expect(Scene.selector('.reload-button')).toHaveStyle(
-        'bottom',
-        '0px',
-      ),
-      Scene.expect(Scene.selector('.reload-button')).toHaveStyle(
-        'height',
-        '100%',
+    Effect.map(
+      exactSceneOf(fighting),
+      steps(
+        measure(PHONE_PORTRAIT),
+        expectAttr(byClass('reload-button'), 'data-layout', 'Portrait'),
+        expectStyle(byClass('reload-button'), 'bottom', '0px'),
+        expectStyle(byClass('reload-button'), 'height', '100%'),
       ),
     ),
   )
@@ -185,26 +195,25 @@ describe('the portrait HUD and thumb area', () => {
   })
 
   it.effect('the gun cluster buttons follow the guns into the thumb area', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fighting),
-      measure(PHONE_PORTRAIT),
-      Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
-      Scene.expect(Scene.selector('.gun-cluster')).toHaveAttr(
-        'data-layout',
-        'Portrait',
+    Effect.map(
+      exactSceneOf(fighting),
+      steps(
+        measure(PHONE_PORTRAIT),
+        expectAttr(root, 'data-layout', 'Portrait'),
+        expectAttr(byClass('gun-cluster'), 'data-layout', 'Portrait'),
+        expectStyle(byClass('gun-cluster'), 'bottom', '1.2820512820512822%'),
+        sc =>
+          sc
+            .expect(
+              Locator.inside(
+                byClass('gun-cluster'),
+                HtmlLocator.role('group', { name: 'Your guns' }),
+              ),
+            )
+            .toExist(),
+        sc =>
+          sc.expect(HtmlLocator.role('button', { name: 'Pause' })).toExist(),
       ),
-      Scene.expect(Scene.selector('.gun-cluster')).toHaveStyle(
-        'bottom',
-        '1.2820512820512822%',
-      ),
-      Scene.expect(
-        Scene.within(
-          Scene.selector('.gun-cluster'),
-          Scene.role('group', { name: 'Your guns' }),
-        ),
-      ).toExist(),
-      Scene.expect(Scene.role('button', { name: 'Pause' })).toExist(),
     ),
   )
 })
@@ -212,43 +221,54 @@ describe('the portrait HUD and thumb area', () => {
 describe('turning the phone', () => {
   it.effect('switches the layout live mid-wave and keeps fighting', () =>
     Effect.gen(function* () {
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(fighting),
-        measure(PHONE_LANDSCAPE),
-        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(root).toHaveStyle('--screen-w', '388'),
-        Scene.expect(root).toHaveStyle('--screen-h', '180'),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
+      yield* Effect.map(
+        exactSceneOf(fighting),
+        steps(
+          measure(PHONE_LANDSCAPE),
+          expectAttr(root, 'data-layout', 'Landscape'),
+          expectStyle(root, '--screen-w', '388'),
+          expectStyle(root, '--screen-h', '180'),
+          sc => sc.expect(statusLine).toHaveText('Fighting wave 3.'),
+        ),
       )
       const wide = yield* remeasured(fighting, [PHONE_LANDSCAPE])
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(wide),
-        measure(PHONE_PORTRAIT),
-        Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
-        Scene.expect(root).toHaveStyle('--screen-w', '180'),
-        Scene.expect(root).toHaveStyle('--screen-h', '390'),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
-        Scene.expect(
-          Scene.role('dialog', { name: 'Turn your phone sideways' }),
-        ).toBeAbsent(),
-        Scene.expect(Scene.role('group', { name: 'Your guns' })).toExist(),
-        Scene.expect(root).toHaveStyle('--frame-top', '74'),
-        Scene.expect(Scene.selector('.thumb-area')).toExist(),
+      yield* Effect.map(
+        exactSceneOf(wide),
+        steps(
+          measure(PHONE_PORTRAIT),
+          expectAttr(root, 'data-layout', 'Portrait'),
+          expectStyle(root, '--screen-w', '180'),
+          expectStyle(root, '--screen-h', '390'),
+          sc => sc.expect(statusLine).toHaveText('Fighting wave 3.'),
+          sc =>
+            sc
+              .expect(
+                HtmlLocator.role('dialog', {
+                  name: 'Turn your phone sideways',
+                }),
+              )
+              .toBeAbsent(),
+          sc =>
+            sc
+              .expect(HtmlLocator.role('group', { name: 'Your guns' }))
+              .toExist(),
+          expectStyle(root, '--frame-top', '74'),
+          sc => sc.expect(byClass('thumb-area')).toExist(),
+        ),
       )
       const turned = yield* remeasured(fighting, [
         PHONE_LANDSCAPE,
         PHONE_PORTRAIT,
       ])
-      yield* Scene.scene(
-        APPLICATION,
-        Scene.given(turned),
-        measure(PHONE_LANDSCAPE),
-        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(root).toHaveStyle('--frame-top', '0'),
-        Scene.expect(Scene.selector('.thumb-area')).toBeAbsent(),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
+      yield* Effect.map(
+        exactSceneOf(turned),
+        steps(
+          measure(PHONE_LANDSCAPE),
+          expectAttr(root, 'data-layout', 'Landscape'),
+          expectStyle(root, '--frame-top', '0'),
+          sc => sc.expect(byClass('thumb-area')).toBeAbsent(),
+          sc => sc.expect(statusLine).toHaveText('Fighting wave 3.'),
+        ),
       )
     }),
   )
@@ -256,65 +276,66 @@ describe('turning the phone', () => {
   it.effect(
     'a keyboard and mouse keep the landscape layout in a tall window',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFields(fighting, { lastDevice: () => 'KeyboardMouse' }),
+      Effect.map(
+        exactSceneOf(
+          UiStruct.evolve(fighting, { lastDevice: () => 'KeyboardMouse' }),
         ),
-        measure(PHONE_PORTRAIT),
-        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
+        steps(
+          measure(PHONE_PORTRAIT),
+          expectAttr(root, 'data-layout', 'Landscape'),
+          sc => sc.expect(statusLine).toHaveText('Fighting wave 3.'),
+        ),
       ),
   )
 })
 
 describe('the world zoom on phones', () => {
-  const worldView = Scene.selector('.world-view')
-  const worldWindow = Scene.selector('.world-window')
+  const worldView = byClass('world-view')
+  const worldWindow = byClass('world-window')
 
   it.effect(
     'a 19.5:9 phone on its side draws 291 by 135 of the room over the whole screen',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(fighting),
-        measure(PHONE_LANDSCAPE),
-        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(worldView).toHaveAttr('data-view-width', '291'),
-        Scene.expect(worldView).toHaveAttr('data-view-height', '135'),
-        Scene.expect(worldWindow).toHaveStyle('width', '100%'),
-        Scene.expect(worldWindow).toHaveStyle('height', '100%'),
+      Effect.map(
+        exactSceneOf(fighting),
+        steps(
+          measure(PHONE_LANDSCAPE),
+          expectAttr(root, 'data-layout', 'Landscape'),
+          expectAttr(worldView, 'data-view-width', '291'),
+          expectAttr(worldView, 'data-view-height', '135'),
+          expectStyle(worldWindow, 'width', '100%'),
+          expectStyle(worldWindow, 'height', '100%'),
+        ),
       ),
   )
 
   it.effect(
     'a 16:9 phone on its side draws 240 by 135 of the room on a 320 screen',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(fighting),
-        measure({ left: 0, top: 0, width: 667, height: 375 }),
-        Scene.expect(root).toHaveStyle('--screen-w', '320'),
-        Scene.expect(worldView).toHaveAttr('data-view-width', '240'),
-        Scene.expect(worldView).toHaveAttr('data-view-height', '135'),
+      Effect.map(
+        exactSceneOf(fighting),
+        steps(
+          measure({ left: 0, top: 0, width: 667, height: 375 }),
+          expectStyle(root, '--screen-w', '320'),
+          expectAttr(worldView, 'data-view-width', '240'),
+          expectAttr(worldView, 'data-view-height', '135'),
+        ),
       ),
   )
 
   it.effect(
     'a phone held upright draws 120 by 160 of the room in the window over the thumbs',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(fighting),
-        measure(PHONE_PORTRAIT),
-        Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
-        Scene.expect(worldView).toHaveAttr('data-view-width', '120'),
-        Scene.expect(worldView).toHaveAttr('data-view-height', '160'),
-        Scene.expect(worldWindow).toHaveStyle(
-          'height',
-          `${(240 / 390) * 100}%`,
+      Effect.map(
+        exactSceneOf(fighting),
+        steps(
+          measure(PHONE_PORTRAIT),
+          expectAttr(root, 'data-layout', 'Portrait'),
+          expectAttr(worldView, 'data-view-width', '120'),
+          expectAttr(worldView, 'data-view-height', '160'),
+          expectStyle(worldWindow, 'height', `${(240 / 390) * 100}%`),
+          sc => sc.expect(byClass('thumb-area')).toExist(),
         ),
-        Scene.expect(Scene.selector('.thumb-area')).toExist(),
       ),
   )
 
@@ -322,14 +343,15 @@ describe('the world zoom on phones', () => {
     'a keyboard and mouse draw the whole room, in a wide or a tall window',
     () =>
       Effect.forEach([PHONE_LANDSCAPE, PHONE_PORTRAIT], surface =>
-        Scene.scene(
-          APPLICATION,
-          Scene.given(
-            modifyFields(fighting, { lastDevice: () => 'KeyboardMouse' }),
+        Effect.map(
+          exactSceneOf(
+            UiStruct.evolve(fighting, { lastDevice: () => 'KeyboardMouse' }),
           ),
-          measure(surface),
-          Scene.expect(worldView).toHaveAttr('data-view-width', '320'),
-          Scene.expect(worldView).toHaveAttr('data-view-height', '180'),
+          steps(
+            measure(surface),
+            expectAttr(worldView, 'data-view-width', '320'),
+            expectAttr(worldView, 'data-view-height', '180'),
+          ),
         ),
       ),
   )
@@ -339,39 +361,46 @@ describe('the portrait home menu', () => {
   it.effect(
     'keeps every slot: the player, the MORE deck, and PLAY alone with CO-OP, and no bests badge before a best',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(onTouch(Phase.Ready())),
-        measure(PHONE_PORTRAIT),
-        Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
-        Scene.expect(Scene.role('button', { name: /^More:/ })).toExist(),
-        Scene.expect(
-          Scene.role('region', { name: /^Your bests/ }),
-        ).toBeAbsent(),
-        Scene.expect(Scene.role('group', { name: 'Play' })).toExist(),
-        Scene.expect(Scene.role('button', { name: /^Play/ })).toExist(),
-        Scene.expect(
-          Scene.role('button', { name: /^Difficulty/ }),
-        ).toBeAbsent(),
-        Scene.expect(Scene.selector('.home-hero')).toExist(),
+      Effect.map(
+        exactSceneOf(onTouch(Phase.Ready())),
+        steps(
+          measure(PHONE_PORTRAIT),
+          expectAttr(root, 'data-layout', 'Portrait'),
+          sc =>
+            sc.expect(HtmlLocator.role('button', { name: /^More:/ })).toExist(),
+          sc =>
+            sc
+              .expect(HtmlLocator.role('region', { name: /^Your bests/ }))
+              .toBeAbsent(),
+          sc =>
+            sc.expect(HtmlLocator.role('group', { name: 'Play' })).toExist(),
+          sc =>
+            sc.expect(HtmlLocator.role('button', { name: /^Play/ })).toExist(),
+          sc =>
+            sc
+              .expect(HtmlLocator.role('button', { name: /^Difficulty/ }))
+              .toBeAbsent(),
+          sc => sc.expect(byClass('home-hero')).toExist(),
+        ),
       ),
   )
 })
 
 describe('the turn hint', () => {
-  const turnHint = Scene.role('button', { name: TURN_HINT_TEXT })
+  const turnHint = HtmlLocator.role('button', { name: TURN_HINT_TEXT })
 
   it.effect(
     'shows the tipping phone with its line on the portrait home menu',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(onTouch(Phase.Ready())),
-        measure(PHONE_PORTRAIT),
-        Scene.expect(turnHint).toExist(),
-        Scene.expect(Scene.selector('.home-turn-hint')).toExist(),
-        Scene.expect(Scene.selector('.home-turn-icon')).toExist(),
-        Scene.expect(Scene.text(TURN_HINT_TEXT)).toExist(),
+      Effect.map(
+        exactSceneOf(onTouch(Phase.Ready())),
+        steps(
+          measure(PHONE_PORTRAIT),
+          sc => sc.expect(turnHint).toExist(),
+          sc => sc.expect(byClass('home-turn-hint')).toExist(),
+          sc => sc.expect(byClass('home-turn-icon')).toExist(),
+          sc => sc.expect(Locator.text(TURN_HINT_TEXT)).toExist(),
+        ),
       ),
   )
 
@@ -382,23 +411,25 @@ describe('the turn hint', () => {
         const upright = yield* remeasured(onTouch(Phase.Ready()), [
           PHONE_PORTRAIT,
         ])
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(upright),
-          measure(PHONE_LANDSCAPE),
-          Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-          Scene.expect(turnHint).toBeAbsent(),
+        yield* Effect.map(
+          exactSceneOf(upright),
+          steps(
+            measure(PHONE_LANDSCAPE),
+            expectAttr(root, 'data-layout', 'Landscape'),
+            sc => sc.expect(turnHint).toBeAbsent(),
+          ),
         )
         const turnedBack = yield* remeasured(onTouch(Phase.Ready()), [
           PHONE_PORTRAIT,
           PHONE_LANDSCAPE,
         ])
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(turnedBack),
-          measure(PHONE_PORTRAIT),
-          Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
-          Scene.expect(turnHint).toBeAbsent(),
+        yield* Effect.map(
+          exactSceneOf(turnedBack),
+          steps(
+            measure(PHONE_PORTRAIT),
+            expectAttr(root, 'data-layout', 'Portrait'),
+            sc => sc.expect(turnHint).toBeAbsent(),
+          ),
         )
       }),
   )
@@ -406,14 +437,17 @@ describe('the turn hint', () => {
   it.effect(
     'goes on a tap and stays gone, leaving PLAY and the rest to tap',
     () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(onTouch(Phase.Ready())),
-        measure(PHONE_PORTRAIT),
-        Scene.expect(Scene.role('button', { name: /^Play/ })).toExist(),
-        Scene.click(turnHint),
-        Scene.expect(turnHint).toBeAbsent(),
-        Scene.expect(Scene.role('button', { name: /^Play/ })).toExist(),
+      Effect.map(
+        exactSceneOf(onTouch(Phase.Ready())),
+        steps(
+          measure(PHONE_PORTRAIT),
+          sc =>
+            sc.expect(HtmlLocator.role('button', { name: /^Play/ })).toExist(),
+          sc => sc.click(turnHint),
+          sc => sc.expect(turnHint).toBeAbsent(),
+          sc =>
+            sc.expect(HtmlLocator.role('button', { name: /^Play/ })).toExist(),
+        ),
       ),
   )
 
@@ -425,10 +459,9 @@ describe('the turn hint', () => {
           PHONE_PORTRAIT,
         ])
         vitestExpect(isTurnHintShown(upright)).toBe(true)
-        const dismissed = yield* Story.story(
-          APPLICATION,
-          Story.given(upright),
-          Story.message(Message.ClickedTurnHint()),
+        const dismissed = yield* modelAfter(
+          upright,
+          send(Message.ClickedTurnHint()),
         )
         const saved = saveOf(dismissed)
         vitestExpect(saved.home.turnHintSeen).toBe(true)
@@ -437,46 +470,49 @@ describe('the turn hint', () => {
           [PHONE_PORTRAIT],
         )
         vitestExpect(isTurnHintShown(reloaded)).toBe(false)
-        yield* Scene.scene(
-          APPLICATION,
-          Scene.given(reloaded),
-          measure(PHONE_PORTRAIT),
-          Scene.expect(turnHint).toBeAbsent(),
+        yield* Effect.map(
+          exactSceneOf(reloaded),
+          steps(measure(PHONE_PORTRAIT), sc =>
+            sc.expect(turnHint).toBeAbsent(),
+          ),
         )
       }),
   )
 
   it.effect('is not on the landscape home menu', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(onTouch(Phase.Ready())),
-      measure(PHONE_LANDSCAPE),
-      Scene.expect(Scene.role('group', { name: 'Play' })).toExist(),
-      Scene.expect(turnHint).toBeAbsent(),
+    Effect.map(
+      exactSceneOf(onTouch(Phase.Ready())),
+      steps(
+        measure(PHONE_LANDSCAPE),
+        sc => sc.expect(HtmlLocator.role('group', { name: 'Play' })).toExist(),
+        sc => sc.expect(turnHint).toBeAbsent(),
+      ),
     ),
   )
 
   it.effect('is not shown mid-run in portrait', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(fighting),
-      measure(PHONE_PORTRAIT),
-      Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
-      Scene.expect(turnHint).toBeAbsent(),
+    Effect.map(
+      exactSceneOf(fighting),
+      steps(
+        measure(PHONE_PORTRAIT),
+        expectAttr(root, 'data-layout', 'Portrait'),
+        sc => sc.expect(turnHint).toBeAbsent(),
+      ),
     ),
   )
 
   it.effect('is not shown on a keyboard and mouse in a tall window', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFields(onTouch(Phase.Ready()), {
+    Effect.map(
+      exactSceneOf(
+        UiStruct.evolve(onTouch(Phase.Ready()), {
           lastDevice: () => 'KeyboardMouse',
         }),
       ),
-      measure(PHONE_PORTRAIT),
-      Scene.expect(Scene.role('group', { name: 'Play' })).toExist(),
-      Scene.expect(turnHint).toBeAbsent(),
+      steps(
+        measure(PHONE_PORTRAIT),
+        sc => sc.expect(HtmlLocator.role('group', { name: 'Play' })).toExist(),
+        sc => sc.expect(turnHint).toBeAbsent(),
+      ),
     ),
   )
 })
@@ -500,7 +536,7 @@ describe('the portrait wave preview', () => {
         { player: player => ({ ...player, x: 40, y: 90 }) },
       ),
     )
-    const withChunk = modifyFields(breakAtWestWall, {
+    const withChunk = UiStruct.evolve(breakAtWestWall, {
       boss: () =>
         Boss.Waiting({
           door: 'North',

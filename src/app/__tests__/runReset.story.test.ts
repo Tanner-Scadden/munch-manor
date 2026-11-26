@@ -1,17 +1,18 @@
 import { Array, Effect, Record } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { readyModel } from '../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
+  checkModel,
+  modelAfter,
   press,
   release,
-  showDialog,
+  send,
+  settleRunCommands,
   startRunFromHome,
+  steps,
   ticks,
 } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
@@ -59,12 +60,13 @@ const runState = (current: Model) => ({
   trapNotice: current.cosmetics.trapNotice,
 })
 
-const leaveForHome = Story.steps(
+const leaveForHome = steps(
   press('Escape'),
+  settleRunCommands,
   press('KeyH'),
-  showDialog(),
-  Story.message(Message.ClickedLeaveRunButton()),
-  closeDialog(),
+  settleRunCommands,
+  send(Message.ClickedLeaveRunButton()),
+  settleRunCommands,
 )
 
 describe('going home', () => {
@@ -72,82 +74,75 @@ describe('going home', () => {
     'resets every run field, and the next run starts like a fresh one',
     () =>
       Effect.gen(function* () {
-        const played: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(readyModel),
-          startRunFromHome,
-          press('KeyD'),
-          press('KeyS'),
-          ...ticks(40, 16),
-          release('KeyD'),
-          release('KeyS'),
-          Story.model(current => {
-            expect(Phase.guards.Preparation(current.phase)).toBe(true)
-            expect(current.elapsedMs).toBeGreaterThan(0)
-            played.push(current)
-          }),
+        const played = yield* modelAfter(
+          readyModel,
+          steps(
+            startRunFromHome,
+            settleRunCommands,
+            press('KeyD'),
+            press('KeyS'),
+            ticks(40, 16),
+            settleRunCommands,
+            release('KeyD'),
+            release('KeyS'),
+            settleRunCommands,
+            checkModel(current => {
+              expect(Phase.guards.Preparation(current.phase)).toBe(true)
+              expect(current.elapsedMs).toBeGreaterThan(0)
+            }),
+          ),
         )
         const messy = modifyFocus(
-          modifyFields(played[0]!, {
+          UiStruct.evolve(played, {
             cameraLean: () => ({ x: 12, y: -7 }),
             cameraGlide: () => ({
               offset: { x: 40, y: 9 },
               velocity: { x: -3, y: 1 },
             }),
             hintBand: () => 'Bottom',
-            loot: loot => modifyFields(loot, { dryMs: () => 5000 }),
-            cosmetics: modifyFields({
-              dustCooldownMs: () => 90,
-              trapNotice: () =>
-                TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
-            }),
+            loot: loot => UiStruct.evolve(loot, { dryMs: () => 5000 }),
+            cosmetics: cosmetics =>
+              UiStruct.evolve(cosmetics, {
+                dustCooldownMs: () => 90,
+                trapNotice: () =>
+                  TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
+              }),
           }),
           {
             selectedTrap: () => 'Turret',
             intent: intent =>
-              modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),
+              UiStruct.evolve(intent, { move: () => ({ x: 1, y: 0 }) }),
           },
         )
 
-        const atHome: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(messy),
-          leaveForHome,
-          Story.model(current => {
-            expect(Phase.guards.Ready(current.phase)).toBe(true)
-            expect(runState(current)).toEqual(
-              runState({
-                ...readyModel,
-                loot: freshLoot(current.rngState),
-                level: freshLevel(current.rngState),
-              }),
-            )
-            atHome.push(current)
-          }),
+        const wentHome = yield* modelAfter(
+          messy,
+          steps(
+            leaveForHome,
+            checkModel(current => {
+              expect(Phase.guards.Ready(current.phase)).toBe(true)
+              expect(runState(current)).toEqual(
+                runState({
+                  ...readyModel,
+                  loot: freshLoot(current.rngState),
+                  level: freshLevel(current.rngState),
+                }),
+              )
+            }),
+          ),
         )
 
-        const wentHome = atHome[0]!
-        const freshStart: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given({ ...readyModel, rngState: wentHome.rngState }),
-          startRunFromHome,
-          Story.model(current => {
-            freshStart.push(current)
-          }),
+        const freshStart = yield* modelAfter(
+          { ...readyModel, rngState: wentHome.rngState },
+          steps(startRunFromHome, settleRunCommands),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(wentHome),
-          startRunFromHome,
-          Story.model(current => {
-            expect(Phase.guards.Preparation(current.phase)).toBe(true)
-            expect(current.phase).toEqual(freshStart[0]!.phase)
-            expect(runState(current)).toEqual(runState(freshStart[0]!))
-          }),
+        const again = yield* modelAfter(
+          wentHome,
+          steps(startRunFromHome, settleRunCommands),
         )
+        expect(Phase.guards.Preparation(again.phase)).toBe(true)
+        expect(again.phase).toEqual(freshStart.phase)
+        expect(runState(again)).toEqual(runState(freshStart))
       }),
   )
 })

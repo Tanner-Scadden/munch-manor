@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { ClocheLift } from '../../domain/clientSchema'
@@ -59,18 +60,19 @@ export const raiseCloche: {
         Option.match({
           onNone: () => after,
           onSome: ({ slot, box }) =>
-            modifyFields(after, {
-              cosmetics: modifyFields({
-                clocheLift: () =>
-                  ClocheLift.Lifting({
-                    room: after.level.arrangement[slot],
-                    at: {
-                      x: Math.round((box.left + box.right) / 2),
-                      y: Math.round((box.top + box.bottom) / 2),
-                    },
-                    ageMs: 0,
-                  }),
-              }),
+            UiStruct.evolve(after, {
+              cosmetics: cosmetics =>
+                UiStruct.evolve(cosmetics, {
+                  clocheLift: () =>
+                    ClocheLift.Lifting({
+                      room: after.level.arrangement[slot],
+                      at: {
+                        x: Math.round((box.left + box.right) / 2),
+                        y: Math.round((box.top + box.bottom) / 2),
+                      },
+                      ageMs: 0,
+                    }),
+                }),
             }),
         }),
       ),
@@ -83,13 +85,14 @@ export const ageCloche: {
   ClocheLift.match(model.cosmetics.clocheLift, {
     Resting: () => model,
     Lifting: lift =>
-      modifyFields(model, {
-        cosmetics: modifyFields({
-          clocheLift: () =>
-            lift.ageMs + frameMs >= CLOCHE_TOTAL_MS
-              ? ClocheLift.Resting()
-              : ClocheLift.Lifting({ ...lift, ageMs: lift.ageMs + frameMs }),
-        }),
+      UiStruct.evolve(model, {
+        cosmetics: cosmetics =>
+          UiStruct.evolve(cosmetics, {
+            clocheLift: () =>
+              lift.ageMs + frameMs >= CLOCHE_TOTAL_MS
+                ? ClocheLift.Resting()
+                : ClocheLift.Lifting({ ...lift, ageMs: lift.ageMs + frameMs }),
+          }),
       }),
   }),
 )

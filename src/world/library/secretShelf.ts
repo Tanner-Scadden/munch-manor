@@ -1,5 +1,6 @@
 import { Array, Option, Order } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { PLAYER_RADIUS, TILE_SIZE } from '../../shared/constants'
 import * as DetMath from '../../shared/detMath'
@@ -112,7 +113,7 @@ export const swingShelf = (world: World): World => {
         playersOf(world),
         ({ seat, player }) => isStanding(seat) && isAtBook(book, player),
       )
-        ? modifyFields(world, {
+        ? UiStruct.evolve(world, {
             level: state => openExitIn(state, SECRET_EXIT),
             frameEvents: frameEvents => [
               ...frameEvents,

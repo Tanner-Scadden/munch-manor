@@ -1,12 +1,12 @@
 // NOTE: what the harness adds to the game's update: what a scene keeps after
 // every update (`god`, `gasroom`), the Message log, and the scene's first
 // Model with the Profile, a hold, or a melee set up. Freezing, `tick`, and
-// the other scene settings that change what reaches update are handler
-// Layers in entry.ts.
+// the other scene settings that change what reaches update are in
+// handlers.ts.
 
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { Melee, type Model, type Zombie } from '@game/app/model'
 import { withInput } from '@game/app/update/step'
 import { markLooksSeen } from '@game/domain/unlocks'
@@ -14,6 +14,7 @@ import type { ProfileTab } from '@game/features/profile/model'
 import { pressHoldButton, pressKey, releaseAll } from '@game/input/input'
 import { MouseButton } from '@game/input/inputSchema'
 import { PLAYER_MAX_HP } from '@game/shared/constants'
+import { openDialog } from '@game/ui/dialog'
 import { freshGun } from '@game/world/gear/weapons'
 import { modifyFocus } from '@game/world/party/party'
 
@@ -62,13 +63,13 @@ const topUpGasbags = (gasbagRoom: number, model: Model): Model => {
       frenzy: CALM,
     }
   })
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     zombies: zombies => [...zombies, ...fresh],
     nextEntityId: id => id + missing,
   })
 }
 
-// NOTE: any dispatch's tag, a child's envelope included.
+// NOTE: any dispatch's tag.
 type TaggedMessage = Readonly<{ _tag: string }>
 
 const QUIET_MESSAGES = new Set([
@@ -82,8 +83,7 @@ const QUIET_MESSAGES = new Set([
 ])
 
 // NOTE: what the harness adds after every update: full health with `god`,
-// and fresh Kaboomers at the doors with `gasroom`. Every dispatch reaches it,
-// a child's envelope too, so it reads only the tag.
+// and fresh Kaboomers at the doors with `gasroom`. It reads only the tag.
 export const keepScene: {
   (model: Model, message: TaggedMessage): (settings: SceneSettings) => Model
   (settings: SceneSettings, model: Model, message: TaggedMessage): Model
@@ -100,10 +100,11 @@ export const keepScene: {
   },
 )
 
-// NOTE: every Message the runtime dispatches, its children's envelopes
-// included, as `Tag:ChildTag` chains, for the tap and close audits. The
-// runtime reports each update through its `slow` hook, with a budget no
-// update can beat.
+// NOTE: every Message the root's update takes, as its tag, for the tap and
+// close audits. A child component's own Messages stay in the child; what
+// reaches the root is the root's Message for the child's event (a dialog's
+// close is `ClosedDialog`). A Message that carries another (`message`) logs
+// the chain, `Tag:InnerTag`.
 export const logMessage = (incoming: unknown) => {
   const chain = (message: unknown): Array<string> =>
     typeof message === 'object' &&
@@ -118,26 +119,31 @@ export const logMessage = (incoming: unknown) => {
   }
 }
 
-// NOTE: the Profile's state open on a tab, as openProfile
-// (src/app/update/profile.ts) and the Profile's RequestedOpen set it,
-// without its menu check: the tab and the name draft, the input let go. The Dialog's own open is its Binding's
-// operation, which the scene's init runs (entry.ts).
+// NOTE: the Profile open on a tab, as openProfile (src/app/update/profile.ts)
+// opens it, without its menu check: the tab and the name draft, the input
+// let go, and its dialog open.
 const preparedProfile = (model: Model, tab: ProfileTab): Model =>
   withInput(
-    modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
+    UiStruct.evolve(tab === 'Look' ? markLooksSeen(model) : model, {
       profile: profile =>
-        modifyFields(profile, {
+        UiStruct.evolve(profile, {
           tutorialReset: () => 'Idle',
           tab: () => tab,
           fx: () => 'Still',
           nameDraft: () => model.playerName,
         }),
+      profileDialog: () => openDialog,
     }),
     releaseAll,
   )
 
-// NOTE: a scene's first Model, and whether its init opens the Profile.
-export type Scene = Readonly<{ model: Model; isProfileOpen: boolean }>
+// NOTE: a scene's first Model, and the Look tab's little tab it picks once
+// the scene is drawn (`looksection`): the Look tab keeps its little tab in
+// its own component, so the page taps it (entry.ts).
+export type Scene = Readonly<{
+  model: Model
+  maybeLookSection: Option.Option<string>
+}>
 
 const profileTabOf = (settings: SceneSettings): Option.Option<ProfileTab> => {
   const { config } = settings
@@ -159,7 +165,7 @@ const profileTabOf = (settings: SceneSettings): Option.Option<ProfileTab> => {
 }
 
 // NOTE: the scene's Model from the current config: seeded when it is frozen
-// or given a seed, with the Profile readied by `picker` or `profile`. The
+// or given a seed, with the Profile opened by `picker` or `profile`. The
 // `tick` frames it plays ahead come through the frame Subscription
 // (entry.ts), so the Commands they give run as they would frame by frame.
 export const sceneOf: {
@@ -169,37 +175,26 @@ export const sceneOf: {
   const { config, freezeAfter } = settings
   const seeded =
     config.seed !== undefined || Number.isFinite(freezeAfter)
-      ? modifyFields(model, { rngState: () => config.seed ?? 1 })
+      ? UiStruct.evolve(model, { rngState: () => config.seed ?? 1 })
       : model
   const maybeProfileTab = profileTabOf(settings)
   const opened = Option.match(maybeProfileTab, {
     onNone: () => seeded,
     onSome: tab =>
-      preparedProfile(modifyFields(seeded, { screenMs: () => 99999 }), tab),
+      preparedProfile(UiStruct.evolve(seeded, { screenMs: () => 99999 }), tab),
   })
-  const lookSection = config.looksection
-  const sectioned =
-    lookSection === undefined
-      ? opened
-      : modifyFields(opened, {
-          profile: profile =>
-            modifyFields(profile, {
-              character: picker =>
-                modifyFields(picker, { section: () => lookSection }),
-            }),
-        })
   const holding = config.hold
-    ? modifyFields(sectioned, {
+    ? UiStruct.evolve(opened, {
         input: input =>
-          sectioned.lastDevice === 'Touch'
+          opened.lastDevice === 'Touch'
             ? pressHoldButton(input, HOLD_POINTER_ID)
             : pressKey(input, 'Enter'),
       })
-    : sectioned
+    : opened
   const panned = config.pan
     ? modifyFocus(holding, {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             melee: () =>
               Melee.Pan({ pan: { ...freshGun('Pan'), tier: config.tier } }),
           }),
@@ -208,16 +203,19 @@ export const sceneOf: {
   const knifed =
     config.knife || config.stab
       ? modifyFocus(panned, {
-          player: player => modifyFields(player, { wield: () => 'Melee' }),
+          player: player => UiStruct.evolve(player, { wield: () => 'Melee' }),
         })
       : panned
   const held = config.stab
-    ? modifyFields(knifed, {
+    ? UiStruct.evolve(knifed, {
         input: input =>
-          modifyFields(input, {
+          UiStruct.evolve(input, {
             mouseButton: () => MouseButton.Held({ pointerId: STAB_POINTER_ID }),
           }),
       })
     : knifed
-  return { model: held, isProfileOpen: Option.isSome(maybeProfileTab) }
+  return {
+    model: held,
+    maybeLookSection: Option.fromUndefinedOr(config.looksection),
+  }
 })

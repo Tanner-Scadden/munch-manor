@@ -1,143 +1,72 @@
-import { Option } from 'effect'
-import { Story } from 'foldkit'
+import { Effect } from 'effect'
 
+import { HtmlLocator, HtmlScene } from '@effect/ui/html/testing'
+import { Story } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
-import { HeroPickerBlock } from '../block'
-import { InMessage, PickOutcome } from '../inMessage'
-import { HeroPickerLayer } from '../layer'
-import { Message, OutMessage } from '../message'
+import { defaultAppearance } from '../../../domain/clientSchema'
+import { HeroPicker, type HeroPickerProps } from '../block'
+import { Events, Message } from '../message'
 
-// The hero picker Block on its own: it opens and closes when asked, asks its
-// parent about a card or BUY, and plays the parent's answer. The parents'
-// sides are the solo lobby's (src/features/lobby/__tests__/story.test.ts)
-// and co-op's (src/features/coop/__tests__/lobbyEdits.story.test.ts).
+// The hero picker on its own: it holds no state, and each tap asks its
+// parent, which owns whether it is drawn, the hero tried on, and every rule.
+// The parents' sides are the solo lobby's
+// (src/features/lobby/__tests__/story.test.ts, heroBuy.story.test.ts) and
+// co-op's (src/features/coop/__tests__/lobbyEdits.story.test.ts).
 
-const PICKER = { block: HeroPickerBlock, layer: HeroPickerLayer }
+const PROPS: HeroPickerProps = {
+  look: defaultAppearance,
+  chosen: 'You',
+  trying: null,
+  rank: 10,
+  bought: [],
+  bones: 500,
+  fresh: [],
+  layout: 'Panel',
+}
 
-const opened = Story.inMessage(InMessage.RequestedOpen())
+const TRYING: HeroPickerProps = { ...PROPS, trying: 'TrackStar' }
 
-const answered = (outcome: PickOutcome) =>
-  Story.inMessage(InMessage.InformedOfOutcome({ outcome }))
+const buyButton = HtmlLocator.role('button', { name: /^Buy/ })
 
-describe('the hero picker Block', () => {
-  it.effect('starts closed, and a tap while closed asks nothing', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      Story.model(model => {
-        expect(model.status).toBe('Closed')
-      }),
-      Story.message(Message.ClickedCard({ calling: 'Handyman' })),
-      Story.expectNoOutMessage(),
-    ),
-  )
-
+describe('the hero picker', () => {
   it.effect('a card asks the parent, and changes nothing by itself', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedCard({ calling: 'TrackStar' })),
-      Story.expectOutMessage(OutMessage.PickedCard({ calling: 'TrackStar' })),
-      Story.model(model => {
-        expect(model.status).toBe('Open')
-        expect(model.maybeTrying).toEqual(Option.none())
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* Story.make(HeroPicker, PROPS)
+      s.send(Message.ClickedCard({ calling: 'TrackStar' })).emitted(
+        Events.Picked({ calling: 'TrackStar' }),
+      )
+      expect(s.model).toEqual({})
+    }),
   )
 
-  it.effect('a hero tried on waits for BUY, which asks for that hero', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedBuyButton()),
-      Story.expectNoOutMessage(),
-      answered(PickOutcome.TriedOn({ calling: 'TrackStar' })),
-      Story.model(model => {
-        expect(model.maybeTrying).toEqual(Option.some('TrackStar'))
-      }),
-      Story.message(Message.ClickedBuyButton()),
-      Story.expectOutMessage(OutMessage.ClickedBuy({ calling: 'TrackStar' })),
-    ),
+  it.effect('BUY shows only on a hero tried on, and asks for that hero', () =>
+    Effect.gen(function* () {
+      const closed = yield* HtmlScene.make(HeroPicker, PROPS)
+      closed.expect(buyButton).toBeAbsent()
+      const s = yield* HtmlScene.make(HeroPicker, TRYING)
+      s.click(buyButton).emitted(Events.RequestedBuy({ calling: 'TrackStar' }))
+    }),
   )
 
-  it.effect('too few Bones keeps the try-on; a refusal ends it', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      opened,
-      answered(PickOutcome.TriedOn({ calling: 'TrackStar' })),
-      answered(PickOutcome.Unchanged()),
-      Story.model(model => {
-        expect(model.maybeTrying).toEqual(Option.some('TrackStar'))
-      }),
-      answered(PickOutcome.TryOnEnded()),
-      Story.model(model => {
-        expect(model.maybeTrying).toEqual(Option.none())
-        expect(model.status).toBe('Open')
-      }),
-    ),
+  it.effect('the close button asks to close', () =>
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(HeroPicker, PROPS)
+      s.click(HtmlLocator.role('button', { name: 'Close' })).emitted(
+        Events.RequestedClose(),
+      )
+    }),
   )
 
-  it.effect('a hero worn closes it and ends the try-on', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      opened,
-      answered(PickOutcome.TriedOn({ calling: 'TrackStar' })),
-      answered(PickOutcome.Worn({ calling: 'TrackStar' })),
-      Story.expectNoOutMessage(),
-      Story.model(model => {
-        expect(model.status).toBe('Closed')
-        expect(model.maybeTrying).toEqual(Option.none())
-      }),
-    ),
-  )
-
-  it.effect('the close button closes it and says so', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      opened,
-      Story.message(Message.ClickedCloseButton()),
-      Story.expectOutMessage(OutMessage.Closed()),
-      Story.model(model => {
-        expect(model.status).toBe('Closed')
-      }),
-    ),
-  )
-
-  it.effect('Escape and Y close it and say so; other keys wait', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      opened,
-      Story.inMessage(InMessage.RequestedPressKey({ code: 'Enter' })),
-      Story.expectNoOutMessage(),
-      Story.model(model => {
-        expect(model.status).toBe('Open')
-      }),
-      Story.inMessage(InMessage.RequestedPressKey({ code: 'Escape' })),
-      Story.expectOutMessage(OutMessage.Closed()),
-      opened,
-      Story.inMessage(InMessage.RequestedPressKey({ code: 'KeyY' })),
-      Story.expectOutMessage(OutMessage.Closed()),
-      Story.model(model => {
-        expect(model.status).toBe('Closed')
-      }),
-    ),
-  )
-
-  it.effect('an answer that comes after it closed changes nothing', () =>
-    Story.story(
-      PICKER,
-      Story.init(),
-      answered(PickOutcome.TriedOn({ calling: 'Handyman' })),
-      Story.model(model => {
-        expect(model.maybeTrying).toEqual(Option.none())
-      }),
-    ),
+  it.effect('Escape and Y ask to close; other keys wait', () =>
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(HeroPicker, PROPS)
+      s.fireDocument('keydown', { key: 'Enter' })
+        .expectIgnored()
+        .fireDocument('keydown', { key: 'Escape' })
+        .emitted(Events.RequestedClose())
+        .fireDocument('keydown', { key: 'y' })
+        .emitted(Events.RequestedClose())
+    }),
   )
 })

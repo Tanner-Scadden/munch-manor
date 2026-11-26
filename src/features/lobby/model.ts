@@ -1,12 +1,15 @@
 import { Option, Schema } from 'effect'
 
-import { DialogBlock } from '@foldkit/ui'
+import { UiStruct } from '@effect/ui'
 
 import { Bot, HomeMode } from '../../domain/clientSchema'
+import {
+  Appearance,
+  Calling,
+  SavedBoughtCosmetics,
+} from '../../shared/playerData'
 import { Modifiers } from '../../world/run/modifiers'
 import { DifficultySetting } from '../../world/schema/worldSchema'
-import { HeroPickerBlock } from '../heroes/block'
-import { isPickerOpen } from '../heroes/model'
 
 // NOTE: every control the lobby's arrow keys walk, in order: BACK, the hero
 // card, each crew seat (a + BOT tile, or a bot's hero card with its x), the
@@ -42,8 +45,7 @@ export type LobbyControl = typeof LobbyControl.Type
 // the dare ladder's mark with the best opened on that difficulty,
 // Dare's break clock, the run modifiers, and the teammate bots, with how many bots fit (a dev
 // link's couch players take seats). The root hands it to the lobby as its
-// update context and view input, and the lobby tells the root each pick
-// (its OutMessages): the root saves the difficulty and a run reads them all.
+// props, and the lobby tells the root each pick (its events): the root saves the difficulty and a run reads them all.
 // A friend's dare taken from the home menu (src/domain/beatMyRun.ts) holds
 // them all to its link's (`lock`), with no bots.
 const PicksLock = Schema.Literals(['Open', 'FriendsDare'])
@@ -69,33 +71,123 @@ export type LobbyPicks = typeof LobbyPicks.Type
 export const LobbyStatus = Schema.Literals(['Closed', 'Open', 'Folding'])
 export type LobbyStatus = typeof LobbyStatus.Type
 
-// NOTE: the lobby's own state: where the card stands, the control in focus
-// (where the arrow keys step from), and the bot whose hero the open picker
-// chooses (an index into the picks' bots). The hero picker and the Dialog
-// it stands in are its children, on `heroPicker` and `heroDialog`.
-export const Model = Schema.Struct({
+// NOTE: the lobby as the root keeps it (Effect UI, "Who owns the state":
+// menuState, the root's keys, and the root's tests read all of it): where
+// the card stands, the control in focus (where the arrow keys step from),
+// whether the hero picker's Dialog is up, the bot whose hero it chooses (an
+// index into the picks' bots), and the hero for sale being tried on (its
+// BUY pill buys it). The Lobby component draws it from props.
+export const LobbyState = Schema.Struct({
   status: LobbyStatus,
   maybeFocus: Schema.Option(LobbyControl),
+  isHeroPickerOpen: Schema.Boolean,
   maybePickingBot: Schema.Option(Schema.Finite),
-  heroPicker: HeroPickerBlock.Model,
-  heroDialog: DialogBlock.Model,
+  maybeTrying: Schema.Option(Calling),
 })
-export type Model = typeof Model.Type
+export type LobbyState = typeof LobbyState.Type
 
-// NOTE: the lobby's own fields as it starts, closed.
-export const initialModel: Omit<Model, 'heroPicker' | 'heroDialog'> = {
+// NOTE: the lobby as a game starts, closed.
+export const initialLobby: LobbyState = {
   status: 'Closed',
   maybeFocus: Option.none(),
+  isHeroPickerOpen: false,
   maybePickingBot: Option.none(),
+  maybeTrying: Option.none(),
 }
 
-// NOTE: reads for the root, so it never reads the lobby's fields: whether
-// the lobby is up (whatever is over it), whether it is drawn at all (up, or
-// folding back into PLAY), and whether its hero picker is up.
-export const isLobbyShown = (model: Model): boolean => model.status === 'Open'
+// NOTE: reads for the root: whether the lobby is up (whatever is over it),
+// whether it is drawn at all (up, or folding back into PLAY), whether its
+// hero picker is up, and whether the lobby itself takes taps and keys (up
+// with nothing over it).
+export const isLobbyShown = (lobby: LobbyState): boolean =>
+  lobby.status === 'Open'
 
-export const isLobbyDrawn = (model: Model): boolean => model.status !== 'Closed'
+export const isLobbyDrawn = (lobby: LobbyState): boolean =>
+  lobby.status !== 'Closed'
 
-export const isHeroPickerUp = (model: Model): boolean =>
-  isLobbyShown(model) &&
-  (model.heroDialog.isOpen || isPickerOpen(model.heroPicker))
+export const isHeroPickerUp = (lobby: LobbyState): boolean =>
+  isLobbyShown(lobby) && lobby.isHeroPickerOpen
+
+export const isLobbyActive = (lobby: LobbyState): boolean =>
+  isLobbyShown(lobby) && !lobby.isHeroPickerOpen
+
+// TRANSITIONS
+
+// NOTE: the lobby opens with no control in focus and no picker up (the root
+// then focuses START, so Enter plays at once).
+export const openedLobby = (lobby: LobbyState): LobbyState =>
+  UiStruct.evolve(lobby, {
+    status: () => 'Open',
+    maybeFocus: () => Option.none(),
+    isHeroPickerOpen: () => false,
+    maybePickingBot: () => Option.none(),
+    maybeTrying: () => Option.none(),
+  })
+
+export const withLobbyFocus =
+  (maybeFocus: Option.Option<LobbyControl>) =>
+  (lobby: LobbyState): LobbyState =>
+    UiStruct.evolve(lobby, { maybeFocus: () => maybeFocus })
+
+export const withLobbyStatus =
+  (status: LobbyStatus) =>
+  (lobby: LobbyState): LobbyState =>
+    UiStruct.evolve(lobby, {
+      status: () => status,
+      maybeFocus: () => Option.none(),
+    })
+
+// NOTE: the fold back into PLAY is over; a lobby opened again before then
+// stays Open.
+export const finishedFold = (lobby: LobbyState): LobbyState =>
+  lobby.status === 'Folding' ? withLobbyStatus('Closed')(lobby) : lobby
+
+export const withoutPickingBot = (lobby: LobbyState): LobbyState =>
+  UiStruct.evolve(lobby, { maybePickingBot: () => Option.none() })
+
+// NOTE: the hero card opens the picker for the player, a bot's card for
+// that bot, with nothing tried on.
+export const openedHeroPicker =
+  (maybeBot: Option.Option<number>) =>
+  (lobby: LobbyState): LobbyState =>
+    UiStruct.evolve(lobby, {
+      isHeroPickerOpen: () => true,
+      maybePickingBot: () => maybeBot,
+      maybeTrying: () => Option.none(),
+    })
+
+// NOTE: the picker closed (Escape, the backdrop, its close button, or a
+// hero worn): the next opening chooses for the player.
+export const closedHeroPicker = (lobby: LobbyState): LobbyState =>
+  UiStruct.evolve(lobby, {
+    isHeroPickerOpen: () => false,
+    maybePickingBot: () => Option.none(),
+    maybeTrying: () => Option.none(),
+  })
+
+export const withTrying =
+  (maybeTrying: Option.Option<Calling>) =>
+  (lobby: LobbyState): LobbyState =>
+    UiStruct.evolve(lobby, { maybeTrying: () => maybeTrying })
+
+// PROPS
+
+// NOTE: what the root hands the Lobby component: the lobby's state and the
+// picks (both the root's), the player's name, look, rank, and hero (with
+// whether a new one waits), the heroes bought and the Bones (for the
+// picker's cards and BUY), the unlocks that wear a NEW badge, and whether
+// a keyboard is in hand (the key caps).
+export const LobbyProps = Schema.Struct({
+  lobby: LobbyState,
+  picks: LobbyPicks,
+  name: Schema.String,
+  look: Appearance,
+  rank: Schema.Finite,
+  calling: Calling,
+  isHeroNew: Schema.Boolean,
+  bought: SavedBoughtCosmetics,
+  bones: Schema.Finite,
+  fresh: Schema.Array(Schema.String),
+  isKeyboard: Schema.Boolean,
+})
+export type LobbyProps = typeof LobbyProps.Type

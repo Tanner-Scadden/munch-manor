@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { Array } from 'effect'
-import { Canvas } from 'foldkit'
 import { describe, expect, test } from 'vitest'
 
+import * as Draw from '../../draw'
 import { flatten, isSameLeaves } from '../flatten'
 import {
   type GroundBox,
@@ -17,9 +17,9 @@ import { UNIT, zOf } from '../space'
 // (src/render/iso/groundRects.ts, src/render/iso/painter.ts).
 
 const shadow = (x: number) =>
-  Canvas.Rect({ x, y: 20, width: 8, height: 3, fill: 'rgba(0,0,0,0.4)' })
+  Draw.Rect({ x, y: 20, width: 8, height: 3, fill: 'rgba(0,0,0,0.4)' })
 
-const decal = Canvas.Image({
+const decal = Draw.Image({
   src: 'a.png',
   x: 0,
   y: 0,
@@ -30,14 +30,14 @@ const decal = Canvas.Image({
 
 describe('the ground split', () => {
   test('takes the plain filled rectangles as quads, in order, and leaves the rest', () => {
-    const ring = Canvas.Rect({
+    const ring = Draw.Rect({
       x: 0,
       y: 0,
       width: 4,
       height: 4,
       stroke: '#f00',
     })
-    const turned = Canvas.Group({ rotate: 0.5, shapes: [shadow(30)] })
+    const turned = Draw.Group({ rotate: 0.5, shapes: [shadow(30)] })
     const { rects, rest } = splitGround(
       flatten([shadow(1), decal, ring, shadow(2), turned]),
     )
@@ -70,9 +70,9 @@ describe('the picture is drawn again only on a change', () => {
       flatten([decal, shadow(2)]),
       flatten([
         decal,
-        Canvas.Rect({ x: 1, y: 20, width: 8, height: 3, fill: '#f00' }),
+        Draw.Rect({ x: 1, y: 20, width: 8, height: 3, fill: '#f00' }),
       ]),
-      flatten([decal, Canvas.Group({ opacity: 0.5, shapes: [shadow(1)] })]),
+      flatten([decal, Draw.Group({ opacity: 0.5, shapes: [shadow(1)] })]),
       flatten([decal, shadow(1), shadow(1)]),
       flatten([decal]),
     ]
@@ -86,11 +86,11 @@ describe('a rectangle as a box on the floor', () => {
   test('its box through its groups, on whole game pixels, its opacity theirs', () => {
     const [leaf] = splitGround(
       flatten([
-        Canvas.Group({
+        Draw.Group({
           translate: { x: 10.4, y: 5 },
           opacity: 0.5,
           shapes: [
-            Canvas.Rect({
+            Draw.Rect({
               x: 1,
               y: 2,
               width: 3,

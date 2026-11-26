@@ -40,7 +40,8 @@
       button:disabled {
         opacity: 0.4;
       }
-      canvas {
+      #world {
+        display: block;
         width: min(96vw, 960px);
         aspect-ratio: 16 / 9;
         image-rendering: pixelated;
@@ -96,7 +97,7 @@
       <button id="end" disabled>END RUN</button>
       <button id="leave" disabled>LEAVE</button>
     </div>
-    <canvas id="world" width="320" height="330"></canvas>
+    <svg id="world"></svg>
     <pre id="stats"></pre>
     <pre id="status"></pre>
     <pre id="debug" hidden></pre>

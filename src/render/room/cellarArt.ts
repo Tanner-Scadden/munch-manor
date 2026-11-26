@@ -1,9 +1,9 @@
 import { Array, Function, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
 import type { Level } from '../../world/level/arena'
+import type * as Draw from '../draw'
 import { pixelArt, rect } from '../drawing'
 import {
   BASEBOARD_Y,
@@ -76,7 +76,7 @@ const FILAMENT_COLOR = '#ffb84a'
 
 const STONE_HEIGHT = 8
 
-const stoneRow = (room: Box, row: number): ReadonlyArray<Canvas.Shape> => {
+const stoneRow = (room: Box, row: number): ReadonlyArray<Draw.Shape> => {
   const y = room.y + row * STONE_HEIGHT
   const widths = Array.makeBy(
     Math.ceil(room.width / 8) + 1,
@@ -108,7 +108,7 @@ const stoneRow = (room: Box, row: number): ReadonlyArray<Canvas.Shape> => {
   })
 }
 
-export const cellarFloorShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const cellarFloorShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const rows = Math.floor(room.height / STONE_HEIGHT)
   const spot = (index: number, salt: number) => ({
     x: room.x + Math.floor(roll(index, salt) * (room.width - 20)),
@@ -155,7 +155,7 @@ export const cellarFloorShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: the loose flagstone, a hiding spot, sitting proud of the others with
 // a dark gap round it, placed by hand on the drafted map.
-export const looseStoneShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const looseStoneShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 271
   const y = room.y + 151
   return [
@@ -169,7 +169,7 @@ export const looseStoneShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: the coal heap under the chute, a hiding spot, spilling onto the
 // flagstones.
-export const coalHeapShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const coalHeapShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 44
   const y = room.y + 12
   return [
@@ -202,11 +202,7 @@ export const coalHeapShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
 
 // WALLS
 
-const stoneFaceShapes = ({
-  x,
-  y,
-  width,
-}: Span): ReadonlyArray<Canvas.Shape> => {
+const stoneFaceShapes = ({ x, y, width }: Span): ReadonlyArray<Draw.Shape> => {
   const top = y - TILE_SIZE * 2 + FACE_TOP + 2
   const baseY = y - TILE_SIZE * 2 + BASEBOARD_Y
   const courses = Math.ceil((baseY - top) / 4)
@@ -255,9 +251,9 @@ const stoneFaceShapes = ({
 // baseboard, in place of the paper and wainscot upstairs, on the north wall
 // faces in the cellar's own block.
 export const cellarWallShapes: {
-  (room: Box): (level: Level) => ReadonlyArray<Canvas.Shape>
-  (level: Level, room: Box): ReadonlyArray<Canvas.Shape>
-} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Canvas.Shape> =>
+  (room: Box): (level: Level) => ReadonlyArray<Draw.Shape>
+  (level: Level, room: Box): ReadonlyArray<Draw.Shape>
+} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(spansWithin(level, room), stoneFaceShapes),
 )
 
@@ -271,7 +267,7 @@ export const wineRackShapes = ({
   x,
   y,
   width,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const top = y - 10
   const columns = Math.floor(width / CUBBY)
   const rows = 3
@@ -328,7 +324,7 @@ export const wineRackShapes = ({
 
 // NOTE: the bottle that is not wine, a hiding spot in the north-east rack,
 // placed by hand on the drafted map: purple, and it glints.
-export const oddBottleShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const oddBottleShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const x = room.x + 276
   const y = room.y + 37
   return [
@@ -379,7 +375,7 @@ const heartJarSpotOf = (room: Box): Readonly<{ x: number; y: number }> => ({
   y: room.y + 5,
 })
 
-export const heartJarShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const heartJarShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const { x, y } = heartJarSpotOf(room)
   const shelfY = y + HEART_JAR_PIXELS.length
   const width = HEART_JARS * HEART_JAR_STEP + 1
@@ -399,7 +395,7 @@ export const heartJarShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-export const heartJarGlowShapes = (room: Box): ReadonlyArray<Canvas.Shape> => {
+export const heartJarGlowShapes = (room: Box): ReadonlyArray<Draw.Shape> => {
   const { x, y } = heartJarSpotOf(room)
   return Array.flatMap(Array.range(0, HEART_JARS - 1), jar =>
     pixelArt(x + jar * HEART_JAR_STEP, y, HEART_JAR_PIXELS, HEART_GLOW_PALETTE),
@@ -417,7 +413,7 @@ const BARREL_LID: ReadonlyArray<number> = [4, 6, 7, 7, 6, 4]
 const standingBarrel = (
   barrelX: number,
   barrelY: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const middle = barrelX + 10
   const sideTop = barrelY + 4
   return [
@@ -460,7 +456,7 @@ export const barrelsShapes = ({
   y,
   width,
   height,
-}: Box): ReadonlyArray<Canvas.Shape> => {
+}: Box): ReadonlyArray<Draw.Shape> => {
   const half = Math.floor(width / 2)
   const backY = y
   const frontY = y + Math.floor(height / 2)
@@ -485,7 +481,7 @@ export const barrelsShapes = ({
 // NOTE: the one bare bulb: its wire up into the dark, the socket, the glass
 // with its glowing filament, and a soft halo. Its pool on the floor is the
 // light mask's to draw. Drawn about the bulb's own middle.
-export const CELLAR_BULB_SHAPES: ReadonlyArray<Canvas.Shape> = [
+export const CELLAR_BULB_SHAPES: ReadonlyArray<Draw.Shape> = [
   rect(-9, -9, 19, 19, 'rgba(255, 230, 150, 0.06)'),
   rect(-6, -6, 13, 13, 'rgba(255, 230, 150, 0.08)'),
   rect(0, -40, 1, 35, WIRE_COLOR),
@@ -499,5 +495,5 @@ export const CELLAR_BULB_SHAPES: ReadonlyArray<Canvas.Shape> = [
 
 // NOTE: the bulb's sprite, built once; its rectangles above are for a room
 // image that bakes it in with everything else (the studio's preview).
-export const CELLAR_BULB_SPRITE: ReadonlyArray<Canvas.Shape> =
+export const CELLAR_BULB_SPRITE: ReadonlyArray<Draw.Shape> =
   bakeShapes(CELLAR_BULB_SHAPES)

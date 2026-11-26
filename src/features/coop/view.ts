@@ -1,5 +1,4 @@
-import { Array, Option, Order, String, pipe } from 'effect'
-import type { Html } from 'foldkit/html'
+import { Array, Function, Option, Order, String, pipe } from 'effect'
 
 import {
   type ClosedReason,
@@ -9,6 +8,10 @@ import {
   type RoomScore,
 } from '@munch/netcode'
 
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import {
   AWAY_ICON,
   CHECK_ICON,
@@ -38,24 +41,29 @@ import {
 } from '../../domain/coopRoom'
 import { bestMarkOn } from '../../domain/dareMarks'
 import { seatColorOf } from '../../render/partyView'
-import type { Appearance, Calling } from '../../shared/playerData'
+import type { SavedDareMarks } from '../../shared/dareMarkData'
+import type {
+  Appearance,
+  Calling,
+  SavedBoughtCosmetics,
+} from '../../shared/playerData'
 import { backButtonView, closeButtonView } from '../../ui/cornerButtons'
 import { dareMarkBadgeView } from '../../ui/dareMarkView'
 import { callingPropView, iconView, rankTagView } from '../../ui/menuParts'
 import { CALLING_NAMES } from '../../world/names'
-import { type Model as HeroPickerModel, isPickerOpen } from '../heroes/model'
+import { HeroPicker } from '../heroes/block'
 import { readoutOf } from './auditReadout'
-import { HeroPickerBinding } from './bindings'
-import type { ViewInputs } from './block'
-import { CoopComposition, type CoopViewBuilder } from './composition'
-import { Message } from './message'
+import { CoopMessage } from './message'
 import { type Model } from './model'
 import { askingView, poofView, queueRollView } from './motionArt'
 import { nameButtonView, namePickerView } from './namePicker'
 import { heroPickView, picksView } from './picksView'
 import {
+  CODE_INPUT,
   CODE_INPUT_ID,
+  QUICK_PLAY_BUTTON,
   QUICK_PLAY_BUTTON_ID,
+  READY_BUTTON,
   READY_BUTTON_ID,
   ROOM_CODE_LENGTH,
   isHost,
@@ -63,6 +71,19 @@ import {
 } from './roomState'
 
 // INPUTS
+
+// NOTE: what co-op reads of the root, built by src/app/coopView.ts.
+export type ViewInputs = Readonly<{
+  look: Appearance
+  isKeyboard: boolean
+  isRunCardUp: boolean
+  isRunEndComing: boolean
+  bought: SavedBoughtCosmetics
+  bones: number
+  dareMarks: SavedDareMarks
+}>
+
+type HeroPick = Model['heroPick']
 
 // NOTE: `isRunCardUp` while the root's end card shows a run's end, so the
 // lobby waits behind it until the player picks one of the card's buttons.
@@ -77,23 +98,24 @@ const lookOf = (inputs: ViewInputs, room: Room, seat: number) =>
 const keyCapView = (
   inputs: ViewInputs,
   cap: string,
-  h: CoopViewBuilder,
-): Html =>
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   inputs.isKeyboard
-    ? h.span([h.Class('coop-key'), h.AriaHidden(true)], [cap])
-    : h.empty
+    ? h.span.class('coop-key').attr('aria-hidden', 'true').children(cap)
+    : null
 
 const portraitView = (
   look: Appearance,
   className: string,
-  h: CoopViewBuilder,
+  h: ApplicationViewBuilder,
   calling: Calling = 'You',
-): Html => iconView(`coop-portrait ${className}`, portraitOf(look, calling), h)
+): ApplicationHtml | null =>
+  iconView(`coop-portrait ${className}`, portraitOf(look, calling), h)
 
-const coopCloseView = (h: CoopViewBuilder): Html =>
+const coopCloseView = (h: ApplicationViewBuilder): ApplicationHtml | null =>
   closeButtonView(
     {
-      attributes: [h.OnClick(Message.ClickedCloseButton())],
+      button: h.button.on('click', CoopMessage.ClickedCoopCloseButton()),
       className: 'coop-close',
       label: 'Close co-op',
     },
@@ -102,12 +124,12 @@ const coopCloseView = (h: CoopViewBuilder): Html =>
 
 const coopBackView = (
   label: string,
-  message: Message,
-  h: CoopViewBuilder,
-): Html =>
+  message: CoopMessage,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   backButtonView(
     {
-      attributes: [h.AriaKeyshortcuts('Escape'), h.OnClick(message)],
+      button: h.button.attr('aria-keyshortcuts', 'Escape').on('click', message),
       className: 'coop-back',
       label,
     },
@@ -140,22 +162,19 @@ const PROBLEM_LINES: Readonly<Record<CoopProblem, string>> = {
 
 const problemView = (
   maybeProblem: Option.Option<CoopProblem>,
-  h: CoopViewBuilder,
-): Html =>
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(maybeProblem, {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: problem =>
-      h.p(
-        [
-          h.Class('coop-problem'),
-          h.Role('alert'),
-          h.AriaLabel(PROBLEM_LINES[problem]),
-        ],
-        [
+      h.p
+        .class('coop-problem')
+        .attr('role', 'alert')
+        .attr('aria-label', PROBLEM_LINES[problem])
+        .children(
           iconView('coop-problem-icon', OFFLINE_ICON, h),
-          h.span([h.AriaHidden(true)], [PROBLEM_WORDS[problem]]),
-        ],
-      ),
+          h.span.attr('aria-hidden', 'true').children(PROBLEM_WORDS[problem]),
+        ),
   })
 
 // PING
@@ -171,99 +190,88 @@ const pingGrade = (rttMs: number): 'Good' | 'Ok' | 'Bad' =>
 const pingView = (
   rttMs: number,
   className: string,
-  h: CoopViewBuilder,
-): Html =>
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   rttMs <= 0
-    ? h.empty
-    : h.span(
-        [
-          h.Class(`coop-ping ${className}`),
-          h.Role('img'),
-          h.DataAttribute('ping', pingGrade(rttMs)),
-          h.AriaLabel(`${Math.round(rttMs)} ms`),
-        ],
-        [iconView('coop-ping-icon', WIFI_ICONS[pingGrade(rttMs)], h)],
-      )
+    ? null
+    : h.span
+        .class(`coop-ping ${className}`)
+        .attr('role', 'img')
+        .attr('data-ping', pingGrade(rttMs))
+        .attr('aria-label', `${Math.round(rttMs)} ms`)
+        .children(iconView('coop-ping-icon', WIFI_ICONS[pingGrade(rttMs)], h))
 
 const ownPingOf = (room: Room): number => Math.round(room.session.rttMs)
 
 // HUB
 
-const quickHeadsView = (h: CoopViewBuilder): Html =>
-  h.span(
-    [h.Class('coop-quick-heads'), h.AriaHidden(true)],
-    Array.map(Array.range(0, MAX_PLAYERS - 1), seat =>
-      portraitView(seatLook(seat), 'coop-quick-head', h),
-    ),
-  )
+const quickHeadsView = (h: ApplicationViewBuilder): ApplicationHtml | null =>
+  h.span
+    .class('coop-quick-heads')
+    .attr('aria-hidden', 'true')
+    .children(
+      Array.map(Array.range(0, MAX_PLAYERS - 1), seat =>
+        portraitView(seatLook(seat), 'coop-quick-head', h),
+      ),
+    )
 
 const hubView = (
   maybeProblem: Option.Option<CoopProblem>,
   inputs: ViewInputs,
-  h: CoopViewBuilder,
-): Html =>
-  h.keyed('div')(
-    'hub',
-    [h.Class('coop-hub')],
-    [
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div
+    .key('hub')
+    .class('coop-hub')
+    .children(
       coopCloseView(h),
-      h.h2(
-        [h.Class('coop-title'), h.AriaLabel('Co-op')],
-        [iconView('coop-title-icon', COOP_ICON, h), h.span([], ['CO-OP'])],
-      ),
-      h.button(
-        [
-          h.Type('button'),
-          h.Id(QUICK_PLAY_BUTTON_ID),
-          h.Class('coop-quick'),
-          h.AriaLabel('Quick play: join players anywhere'),
-          h.AriaKeyshortcuts('Enter'),
-          h.OnClick(Message.ClickedQuickPlayButton()),
-        ],
-        [
-          h.span(
-            [h.Class('coop-quick-face')],
-            [
+      h.h2
+        .class('coop-title')
+        .attr('aria-label', 'Co-op')
+        .children(
+          iconView('coop-title-icon', COOP_ICON, h),
+          h.span.children('CO-OP'),
+        ),
+      h.button
+        .attr('type', 'button')
+        .id(QUICK_PLAY_BUTTON_ID)
+        .ref(QUICK_PLAY_BUTTON)
+        .class('coop-quick')
+        .attr('aria-label', 'Quick play: join players anywhere')
+        .attr('aria-keyshortcuts', 'Enter')
+        .on('click', CoopMessage.ClickedCoopQuickPlayButton())
+        .children(
+          h.span
+            .class('coop-quick-face')
+            .children(
               iconView('coop-quick-icon', QUICK_ICON, h),
-              h.span([h.Class('coop-quick-label')], ['QUICK PLAY']),
+              h.span.class('coop-quick-label').children('QUICK PLAY'),
               quickHeadsView(h),
-            ],
-          ),
+            ),
           keyCapView(inputs, 'ENTER', h),
-        ],
-      ),
-      h.div(
-        [h.Class('coop-pair')],
-        [
-          h.button(
-            [
-              h.Type('button'),
-              h.Class('coop-tile coop-tile-code'),
-              h.AriaLabel('Join a friend with a code'),
-              h.OnClick(Message.ClickedCodeButton()),
-            ],
-            [
-              iconView('coop-tile-icon', CODE_ICON, h),
-              h.span([h.Class('coop-tile-label')], ['CODE']),
-            ],
+        ),
+      h.div.class('coop-pair').children(
+        h.button
+          .attr('type', 'button')
+          .class('coop-tile coop-tile-code')
+          .attr('aria-label', 'Join a friend with a code')
+          .on('click', CoopMessage.ClickedCoopCodeButton())
+          .children(
+            iconView('coop-tile-icon', CODE_ICON, h),
+            h.span.class('coop-tile-label').children('CODE'),
           ),
-          h.button(
-            [
-              h.Type('button'),
-              h.Class('coop-tile coop-tile-new'),
-              h.AriaLabel('Make a room for friends'),
-              h.OnClick(Message.ClickedCreateButton()),
-            ],
-            [
-              iconView('coop-tile-icon', NEW_ROOM_ICON, h),
-              h.span([h.Class('coop-tile-label')], ['NEW ROOM']),
-            ],
+        h.button
+          .attr('type', 'button')
+          .class('coop-tile coop-tile-new')
+          .attr('aria-label', 'Make a room for friends')
+          .on('click', CoopMessage.ClickedCoopCreateButton())
+          .children(
+            iconView('coop-tile-icon', NEW_ROOM_ICON, h),
+            h.span.class('coop-tile-label').children('NEW ROOM'),
           ),
-        ],
       ),
       problemView(maybeProblem, h),
-    ],
-  )
+    )
 
 // CODE
 
@@ -277,67 +285,67 @@ const slotState = (typed: string, index: number): string => {
   }
 }
 
-const codeSlotsView = (typed: string, h: CoopViewBuilder): Html =>
-  h.span(
-    [h.Class('coop-slots'), h.AriaHidden(true)],
-    Array.map(Array.range(0, ROOM_CODE_LENGTH - 1), index =>
-      h.span(
-        [
-          h.Class('coop-slot'),
-          h.DataAttribute('state', slotState(typed, index)),
-        ],
-        [Option.getOrElse(String.charAt(typed, index), () => '')],
+const codeSlotsView = (
+  typed: string,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.span
+    .class('coop-slots')
+    .attr('aria-hidden', 'true')
+    .children(
+      Array.map(Array.range(0, ROOM_CODE_LENGTH - 1), index =>
+        h.span
+          .class('coop-slot')
+          .attr('data-state', slotState(typed, index))
+          .children(Option.getOrElse(String.charAt(typed, index), () => '')),
       ),
-    ),
-  )
+    )
 
 const codeView = (
   typed: string,
   maybeProblem: Option.Option<CoopProblem>,
-  h: CoopViewBuilder,
-): Html =>
-  h.keyed('div')(
-    'code',
-    [h.Class('coop-code')],
-    [
-      coopBackView('Back', Message.ClickedBackButton(), h),
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div
+    .key('code')
+    .class('coop-code')
+    .children(
+      coopBackView('Back', CoopMessage.ClickedCoopBackButton(), h),
       coopCloseView(h),
       iconView('coop-code-icon', CODE_ICON, h),
-      h.form(
-        [h.Class('coop-code-form'), h.OnSubmit(Message.SubmittedCode())],
-        [
-          h.label(
-            [h.Class('coop-code-field')],
-            [
-              h.input([
-                h.Id(CODE_INPUT_ID),
-                h.Class('coop-code-input'),
-                h.AriaLabel('Room code'),
-                h.Type('text'),
-                h.Value(typed),
-                h.Autocomplete('off'),
-                h.Autocapitalize('characters'),
-                h.Spellcheck(false),
-                h.EnterKeyHint('go'),
-                h.OnInput(value => Message.UpdatedCode({ value })),
-              ]),
-              codeSlotsView(typed, h),
-            ],
+      h.form
+        .class('coop-code-form')
+        .on('submit', CoopMessage.SubmittedCoopCode())
+        .children(
+          h.label.class('coop-code-field').children(
+            h.input
+              .id(CODE_INPUT_ID)
+              .ref(CODE_INPUT)
+              .class('coop-code-input')
+              .attr('aria-label', 'Room code')
+              .attr('type', 'text')
+              .value(typed)
+              .attr('autocomplete', 'off')
+              .attr('autocapitalize', 'characters')
+              .attr('spellcheck', 'false')
+              .attr('enterkeyhint', 'go')
+              .on('input', ({ value }) =>
+                CoopMessage.UpdatedCoopCode({ value }),
+              ),
+            codeSlotsView(typed, h),
           ),
-          h.button(
-            [
-              h.Type('submit'),
-              h.Class('coop-go'),
-              h.AriaLabel('Join'),
-              h.Disabled(typed.length < ROOM_CODE_LENGTH),
-            ],
-            [iconView('coop-go-icon', QUICK_ICON, h), h.span([], ['GO'])],
-          ),
-        ],
-      ),
+          h.button
+            .attr('type', 'submit')
+            .class('coop-go')
+            .attr('aria-label', 'Join')
+            .disabled(typed.length < ROOM_CODE_LENGTH)
+            .children(
+              iconView('coop-go-icon', QUICK_ICON, h),
+              h.span.children('GO'),
+            ),
+        ),
       problemView(maybeProblem, h),
-    ],
-  )
+    )
 
 // QUEUE
 
@@ -345,21 +353,19 @@ const queueSeatView = (
   queue: Queue,
   inputs: ViewInputs,
   seat: number,
-  h: CoopViewBuilder,
-): Html => {
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const isFilled = seat < queue.waiting
   const isMe = seat === queue.position - 1
   const name = Option.getOrElse(Array.get(queue.names, seat), () => '')
   // NOTE: keyed by whether it is filled, so a player who arrives lands
   // afresh: the seat flashes and their head drops in.
-  return h.keyed('li')(
-    `seat-${seat}-${isFilled ? 'Filled' : 'Empty'}`,
-    [
-      h.Class('coop-queue-seat'),
-      h.DataAttribute('state', isFilled ? 'Filled' : 'Empty'),
-      h.DataAttribute('me', isMe ? 'Me' : 'Other'),
-    ],
-    [
+  return h.li
+    .key(`seat-${seat}-${isFilled ? 'Filled' : 'Empty'}`)
+    .class('coop-queue-seat')
+    .attr('data-state', isFilled ? 'Filled' : 'Empty')
+    .attr('data-me', isMe ? 'Me' : 'Other')
+    .children(
       isFilled
         ? portraitView(
             isMe ? inputs.look : seatLook(seat),
@@ -367,14 +373,17 @@ const queueSeatView = (
             h,
           )
         : queueRollView(h),
-      h.span([h.Class('coop-nameplate')], [isFilled ? name : '']),
-    ],
-  )
+      h.span.class('coop-nameplate').children(isFilled ? name : ''),
+    )
 }
 
-const offerView = (queue: Queue, inputs: ViewInputs, h: CoopViewBuilder) => {
+const offerView = (
+  queue: Queue,
+  inputs: ViewInputs,
+  h: ApplicationViewBuilder,
+) => {
   if (queue.offerPlayers === 0 || queue.answer === 'Waiting') {
-    return h.empty
+    return null
   }
   const heads = Array.map(Array.range(0, queue.offerPlayers - 1), seat =>
     portraitView(
@@ -385,74 +394,73 @@ const offerView = (queue: Queue, inputs: ViewInputs, h: CoopViewBuilder) => {
       h,
     ),
   )
-  return h.div(
-    [h.Class('coop-offer')],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.Class('coop-offer-start'),
-          h.DataAttribute('answer', queue.answer),
-          h.AriaLabel(
-            `Start with ${queue.offerPlayers} players. ${queue.accepted} said yes`,
-          ),
-          h.AriaPressed(queue.answer === 'Accepted' ? 'true' : 'false'),
-          h.OnClick(Message.ClickedAcceptOfferButton()),
-        ],
-        [
-          h.span(
-            [h.Class('coop-offer-label')],
-            [`START WITH ${queue.offerPlayers}?`],
-          ),
-          h.span([h.Class('coop-offer-heads'), h.AriaHidden(true)], heads),
-          keyCapView(inputs, 'ENTER', h),
-        ],
+  return h.div.class('coop-offer').children(
+    h.button
+      .attr('type', 'button')
+      .class('coop-offer-start')
+      .attr('data-answer', queue.answer)
+      .attr(
+        'aria-label',
+        `Start with ${queue.offerPlayers} players. ${queue.accepted} said yes`,
+      )
+      .attr('aria-pressed', queue.answer === 'Accepted' ? 'true' : 'false')
+      .on('click', CoopMessage.ClickedCoopAcceptOfferButton())
+      .children(
+        h.span
+          .class('coop-offer-label')
+          .children(`START WITH ${queue.offerPlayers}?`),
+        h.span
+          .class('coop-offer-heads')
+          .attr('aria-hidden', 'true')
+          .children(heads),
+        keyCapView(inputs, 'ENTER', h),
       ),
-      queue.answer === 'Accepted'
-        ? h.empty
-        : h.button(
-            [
-              h.Type('button'),
-              h.Class('coop-offer-wait'),
-              h.AriaLabel('Keep waiting for four'),
-              h.OnClick(Message.ClickedKeepWaitingButton()),
-            ],
-            [iconView('coop-offer-wait-icon', WAIT_ICON, h)],
-          ),
-    ],
+    queue.answer === 'Accepted'
+      ? null
+      : h.button
+          .attr('type', 'button')
+          .class('coop-offer-wait')
+          .attr('aria-label', 'Keep waiting for four')
+          .on('click', CoopMessage.ClickedCoopKeepWaitingButton())
+          .children(iconView('coop-offer-wait-icon', WAIT_ICON, h)),
   )
 }
 
 const queueView = (
   queue: Queue,
   inputs: ViewInputs,
-  h: CoopViewBuilder,
-): Html =>
-  h.keyed('div')(
-    'queue',
-    [h.Class('coop-queue'), h.DataAttribute('answer', queue.answer)],
-    [
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div
+    .key('queue')
+    .class('coop-queue')
+    .attr('data-answer', queue.answer)
+    .children(
       closeButtonView(
         {
-          attributes: [h.OnClick(Message.ClickedCancelQueueButton())],
+          button: h.button.on(
+            'click',
+            CoopMessage.ClickedCoopCancelQueueButton(),
+          ),
           className: 'coop-close',
           label: 'Stop looking',
         },
         h,
       ),
       iconView('coop-queue-icon', QUICK_ICON, h),
-      h.ol(
-        [
-          h.Class('coop-queue-seats'),
-          h.AriaLabel(`${queue.waiting} of ${queue.groupSize} players here`),
-        ],
-        Array.map(Array.range(0, Math.max(1, queue.groupSize) - 1), seat =>
-          queueSeatView(queue, inputs, seat, h),
+      h.ol
+        .class('coop-queue-seats')
+        .attr(
+          'aria-label',
+          `${queue.waiting} of ${queue.groupSize} players here`,
+        )
+        .children(
+          Array.map(Array.range(0, Math.max(1, queue.groupSize) - 1), seat =>
+            queueSeatView(queue, inputs, seat, h),
+          ),
         ),
-      ),
       offerView(queue, inputs, h),
-    ],
-  )
+    )
 
 // LOBBY
 
@@ -460,93 +468,95 @@ const ROOM_CODE_COPIED = 'COPIED!'
 
 // NOTE: a tap on the code copies it, and COPIED! flashes over it, afresh
 // for each copy (keyed by the count), fading in place.
-const roomCodeView = (room: Room, h: CoopViewBuilder): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('coop-room-code'),
-      h.AriaLabel(
-        `Room code ${Array.join(String.split('')(room.code), ' ')}${room.codeCopies > 0 ? ', copied' : ', tap to copy'}`,
-      ),
-      h.OnClick(Message.ClickedRoomCode()),
-    ],
-    [
+const roomCodeView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.button
+    .attr('type', 'button')
+    .class('coop-room-code')
+    .attr(
+      'aria-label',
+      `Room code ${Array.join(String.split('')(room.code), ' ')}${room.codeCopies > 0 ? ', copied' : ', tap to copy'}`,
+    )
+    .on('click', CoopMessage.ClickedCoopRoomCode())
+    .children(
       ...Array.map(String.split('')(room.code), symbol =>
-        h.span(
-          [h.Class('coop-room-code-symbol'), h.AriaHidden(true)],
-          [symbol],
-        ),
+        h.span
+          .class('coop-room-code-symbol')
+          .attr('aria-hidden', 'true')
+          .children(symbol),
       ),
       ...(room.codeCopies > 0
         ? [
-            h.keyed('span')(
-              `copied-${room.codeCopies}`,
-              [h.Class('coop-room-code-copied'), h.AriaHidden(true)],
-              [ROOM_CODE_COPIED],
-            ),
+            h.span
+              .key(`copied-${room.codeCopies}`)
+              .class('coop-room-code-copied')
+              .attr('aria-hidden', 'true')
+              .children(ROOM_CODE_COPIED),
           ]
         : []),
-    ],
-  )
+    )
 
-const shareButtonView = (room: Room, h: CoopViewBuilder): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('coop-share'),
-      h.DataAttribute('share', room.share),
-      h.AriaLabel(
-        room.share === 'Copied'
-          ? 'Link copied'
-          : 'I dare you: share the room link',
-      ),
-      h.OnClick(Message.ClickedShareButton()),
-    ],
-    [
+const shareButtonView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.button
+    .attr('type', 'button')
+    .class('coop-share')
+    .attr('data-share', room.share)
+    .attr(
+      'aria-label',
+      room.share === 'Copied'
+        ? 'Link copied'
+        : 'I dare you: share the room link',
+    )
+    .on('click', CoopMessage.ClickedCoopShareButton())
+    .children(
       iconView(
         'coop-share-icon',
         room.share === 'Idle' ? SHARE_ICON : CHECK_ICON,
         h,
       ),
       iconView('coop-share-link', LINK_ICON, h),
-    ],
-  )
+    )
 
-const leaveButtonView = (room: Room, h: CoopViewBuilder): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('coop-leave'),
-      h.AriaLabel('Leave the room'),
-      h.Disabled(room.departure === 'Leaving'),
-      h.OnClick(Message.ClickedLeaveButton()),
-    ],
-    [iconView('coop-leave-icon', LEAVE_ICON, h)],
-  )
+const leaveButtonView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.button
+    .attr('type', 'button')
+    .class('coop-leave')
+    .attr('aria-label', 'Leave the room')
+    .disabled(room.departure === 'Leaving')
+    .on('click', CoopMessage.ClickedCoopLeaveButton())
+    .children(iconView('coop-leave-icon', LEAVE_ICON, h))
 
 const seatView = (
   room: Room,
   lobby: Lobby,
   inputs: ViewInputs,
   seat: number,
-  h: CoopViewBuilder,
-): Html =>
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(
     Array.findFirst(lobby.members, member => member.slot === seat),
     {
       onNone: () =>
-        h.keyed('li')(
-          `seat-${seat}`,
-          [
-            h.Class('coop-seat'),
-            h.DataAttribute('state', 'Empty'),
-            h.AriaLabel('Empty seat'),
-          ],
-          [
-            h.span([h.Class('coop-seat-empty'), h.AriaHidden(true)], ['+']),
+        h.li
+          .key(`seat-${seat}`)
+          .class('coop-seat')
+          .attr('data-state', 'Empty')
+          .attr('aria-label', 'Empty seat')
+          .children(
+            h.span
+              .class('coop-seat-empty')
+              .attr('aria-hidden', 'true')
+              .children('+'),
             poofView('Leave', h),
-          ],
-        ),
+          ),
       onSome: member => memberSeatView(room, lobby, inputs, member, h),
     },
   )
@@ -587,21 +597,19 @@ const memberSeatView = (
   lobby: Lobby,
   inputs: ViewInputs,
   member: LobbyMember,
-  h: CoopViewBuilder,
-): Html => {
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const isMe = Option.exists(room.maybePlayerId, id => id === member.playerId)
   const isTheHost = lobby.host === member.playerId
   const canKick = isHost(room) && !isMe && lobby.status === 'Lobby'
   const label = seatLabelOf(member, { isMe, isTheHost })
-  return h.keyed('li')(
-    member.playerId,
-    [
-      h.Class('coop-seat'),
-      h.DataAttribute('state', member.ready ? 'Ready' : 'Here'),
-      h.DataAttribute('me', isMe ? 'Me' : 'Other'),
-      h.AriaLabel(label),
-    ],
-    [
+  return h.li
+    .key(member.playerId)
+    .class('coop-seat')
+    .attr('data-state', member.ready ? 'Ready' : 'Here')
+    .attr('data-me', isMe ? 'Me' : 'Other')
+    .attr('aria-label', label)
+    .children(
       portraitView(
         lookOf(inputs, room, member.slot),
         'coop-seat-head',
@@ -609,53 +617,52 @@ const memberSeatView = (
         callingOfMember(member),
       ),
       poofView('Arrive', h),
-      isTheHost ? iconView(crownClassOf(room), CROWN_ICON, h) : h.empty,
+      isTheHost ? iconView(crownClassOf(room), CROWN_ICON, h) : null,
       ...(isTheHost
         ? dareMarkBadgeView(lobby.dareMark, 'coop-seat-dare-mark', h)
         : []),
       member.ready
-        ? h.span(
-            [h.Class('coop-stamp'), h.AriaHidden(true)],
-            [iconView('coop-stamp-icon', CHECK_ICON, h)],
-          )
-        : h.empty,
-      h.div(
-        [h.Class('coop-nameline')],
-        [
+        ? h.span
+            .class('coop-stamp')
+            .attr('aria-hidden', 'true')
+            .children(iconView('coop-stamp-icon', CHECK_ICON, h))
+        : null,
+      h.div
+        .class('coop-nameline')
+        .children(
           rankTagView('coop-rank', member.rank, 2, h),
           callingPropView('coop-calling', callingOfMember(member), h),
           isMe && lobby.status === 'Lobby'
             ? nameButtonView(member.name, h)
-            : h.span(
-                [h.Class('coop-nameplate'), h.AriaHidden(true)],
-                [member.name],
-              ),
-        ],
-      ),
+            : h.span
+                .class('coop-nameplate')
+                .attr('aria-hidden', 'true')
+                .children(member.name),
+        ),
       pingView(
         isMe && ownPingOf(room) > 0 ? ownPingOf(room) : member.pingMs,
         'coop-seat-ping',
         h,
       ),
       canKick
-        ? h.button(
-            [
-              h.Type('button'),
-              h.Class('coop-kick'),
-              h.AriaLabel(`Kick ${member.name}`),
-              h.Title(`Kick ${member.name}`),
-              h.OnClick(
-                Message.ClickedKickButton({ playerId: member.playerId }),
-              ),
-            ],
-            [
+        ? h.button
+            .attr('type', 'button')
+            .class('coop-kick')
+            .attr('aria-label', `Kick ${member.name}`)
+            .attr('title', `Kick ${member.name}`)
+            .on(
+              'click',
+              CoopMessage.ClickedCoopKickButton({ playerId: member.playerId }),
+            )
+            .children(
               iconView('coop-kick-icon', KICK_ICON, h),
-              h.span([h.Class('coop-kick-word'), h.AriaHidden(true)], ['KICK']),
-            ],
-          )
-        : h.empty,
-    ],
-  )
+              h.span
+                .class('coop-kick-word')
+                .attr('aria-hidden', 'true')
+                .children('KICK'),
+            )
+        : null,
+    )
 }
 
 // NOTE: the last run's icon by how the room closed: a trophy for an
@@ -673,31 +680,29 @@ const resultView = (
   room: Room,
   lobby: Lobby,
   inputs: ViewInputs,
-  h: CoopViewBuilder,
-): Html =>
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(lobby.result, {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: result =>
-      h.div(
-        [h.Class('coop-result'), h.AriaLabel('Last run')],
-        [
+      h.div
+        .class('coop-result')
+        .attr('aria-label', 'Last run')
+        .children(
           iconView('coop-result-icon', RESULT_ICONS[result.reason], h),
-          h.ol(
-            [h.Class('coop-result-scores')],
+          h.ol.class('coop-result-scores').children(
             pipe(
               result.scores,
               Array.sort(BY_SCORE_DESCENDING),
               Array.map((score, index) =>
-                h.keyed('li')(
-                  score.playerId,
-                  [
-                    h.Class('coop-result-score'),
-                    h.AriaLabel(scoreLabelOf(lobby, score, index)),
-                  ],
-                  [
+                h.li
+                  .key(score.playerId)
+                  .class('coop-result-score')
+                  .attr('aria-label', scoreLabelOf(lobby, score, index))
+                  .children(
                     index === 0 && score.score > 0
                       ? iconView('coop-result-crown', CROWN_ICON, h)
-                      : h.empty,
+                      : null,
                     portraitView(
                       lookOf(inputs, room, score.slot),
                       'coop-result-head',
@@ -715,14 +720,14 @@ const resultView = (
                       callingAt(lobby, score.slot),
                       h,
                     ),
-                    h.span([h.AriaHidden(true)], [`${score.score}`]),
-                  ],
-                ),
+                    h.span
+                      .attr('aria-hidden', 'true')
+                      .children(`${score.score}`),
+                  ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
   })
 
 // NOTE: a score read aloud: who, their rank, their hero (nothing for
@@ -770,67 +775,65 @@ const callingAt = (lobby: Lobby, slot: number): Calling =>
 const readyButtonView = (
   room: Room,
   inputs: ViewInputs,
-  h: CoopViewBuilder,
-): Html => {
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const isReady = Option.exists(meIn(room), me => me.ready)
-  return h.button(
-    [
-      h.Type('button'),
-      h.Id(READY_BUTTON_ID),
-      h.Class('coop-ready'),
-      h.DataAttribute('ready', isReady ? 'Ready' : 'NotReady'),
-      h.AriaPressed(isReady ? 'true' : 'false'),
-      h.AriaKeyshortcuts('Enter'),
-      h.Disabled(Option.isNone(meIn(room))),
-      h.OnClick(Message.ClickedReadyButton()),
-    ],
-    [
-      h.span(
-        [h.Class('coop-ready-face')],
-        [
+  return h.button
+    .attr('type', 'button')
+    .id(READY_BUTTON_ID)
+    .ref(READY_BUTTON)
+    .class('coop-ready')
+    .attr('data-ready', isReady ? 'Ready' : 'NotReady')
+    .attr('aria-pressed', isReady ? 'true' : 'false')
+    .attr('aria-keyshortcuts', 'Enter')
+    .disabled(Option.isNone(meIn(room)))
+    .on('click', CoopMessage.ClickedCoopReadyButton())
+    .children(
+      h.span
+        .class('coop-ready-face')
+        .children(
           iconView('coop-ready-icon', CHECK_ICON, h),
-          h.span([h.Class('coop-ready-label')], ['READY']),
-        ],
-      ),
+          h.span.class('coop-ready-label').children('READY'),
+        ),
       keyCapView(inputs, 'ENTER', h),
-    ],
-  )
+    )
 }
 
 const lobbyView = (
   room: Room,
-  heroPicker: HeroPickerModel,
+  heroPick: HeroPick,
   inputs: ViewInputs,
-  h: CoopViewBuilder,
-): Html =>
-  h.keyed('div')(
-    'lobby',
-    [h.Class('coop-lobby')],
-    [
-      h.div(
-        [h.Class('coop-lobby-top')],
-        [
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div
+    .key('lobby')
+    .class('coop-lobby')
+    .children(
+      h.div
+        .class('coop-lobby-top')
+        .children(
           leaveButtonView(room, h),
           roomCodeView(room, h),
           shareButtonView(room, h),
-        ],
-      ),
+        ),
       Option.match(room.maybeLobby, {
         onNone: () => askingView(RoomRequest.Create(), h),
         onSome: lobby =>
-          h.ol(
-            [h.Class('coop-seats'), h.AriaLabel('Players')],
-            Array.map(Array.range(0, MAX_PLAYERS - 1), seat =>
-              seatView(room, lobby, inputs, seat, h),
+          h.ol
+            .class('coop-seats')
+            .attr('aria-label', 'Players')
+            .children(
+              Array.map(Array.range(0, MAX_PLAYERS - 1), seat =>
+                seatView(room, lobby, inputs, seat, h),
+              ),
             ),
-          ),
       }),
       Option.match(room.maybeLobby, {
-        onNone: () => h.empty,
+        onNone: () => null,
         onSome: lobby => resultView(room, lobby, inputs, h),
       }),
       Option.match(room.maybeLobby, {
-        onNone: () => h.empty,
+        onNone: () => null,
         onSome: lobby =>
           picksView(
             room,
@@ -842,135 +845,143 @@ const lobbyView = (
             h,
           ),
       }),
-      h.div(
-        [h.Class('coop-ready-row')],
-        [
-          Option.match(room.maybeLobby, {
-            onNone: () => h.empty,
-            onSome: () =>
-              heroPickView(
-                room,
-                {
-                  isPickerOpen: isPickerOpen(heroPicker),
-                  keyCapView: key => keyCapView(inputs, key, h),
-                },
-                h,
-              ),
-          }),
-          readyButtonView(room, inputs, h),
-        ],
+      h.div.class('coop-ready-row').children(
+        Option.match(room.maybeLobby, {
+          onNone: () => null,
+          onSome: () =>
+            heroPickView(
+              room,
+              {
+                isPickerOpen: heroPick.isOpen,
+                keyCapView: key => keyCapView(inputs, key, h),
+              },
+              h,
+            ),
+        }),
+        readyButtonView(room, inputs, h),
       ),
       Option.match(meIn(room), {
-        onNone: () => h.empty,
+        onNone: () => null,
         onSome: me =>
-          h.block(
-            HeroPickerBinding.embedView({
-              slotId: 'coop-hero-picker',
-              model: heroPicker,
-              viewInputs: {
-                look: lookOf(inputs, room, me.slot),
-                chosen: callingOfMember(me),
-                rank: me.rank,
-                bought: inputs.bought,
-                bones: inputs.bones,
-                fresh: [],
-                layout: 'Overlay',
-              },
-            }),
-          ),
+          heroPick.isOpen &&
+          HeroPicker(h, {
+            key: 'coop-hero-picker',
+            props: {
+              look: lookOf(inputs, room, me.slot),
+              chosen: callingOfMember(me),
+              trying: Option.getOrNull(heroPick.maybeTrying),
+              rank: me.rank,
+              bought: inputs.bought,
+              bones: inputs.bones,
+              fresh: [],
+              layout: 'Overlay',
+            },
+            onEmit: {
+              Picked: ({ calling }) => CoopMessage.PickedCoopHero({ calling }),
+              RequestedBuy: ({ calling }) =>
+                CoopMessage.RequestedBuyCoopHero({ calling }),
+              RequestedClose: () => CoopMessage.RequestedCloseCoopHeroPicker(),
+            },
+          }),
       }),
       namePickerView(room, h),
-    ],
-  )
+    )
 
 // ARENA
 
-const countdownView = (room: Room, h: CoopViewBuilder): Html =>
-  h.keyed('div')(
-    `countdown-${Option.match(room.maybeLobby, { onNone: () => 0, onSome: lobby => lobby.round })}`,
-    [h.Class('coop-countdown'), h.AriaHidden(true)],
-    Array.map(['3', '2', '1', 'GO!'], (word, index) =>
-      h.keyed('span')(
-        word,
-        [
-          h.Class('coop-countdown-word'),
-          h.Style({ animationDelay: `${index * 0.6}s` }),
-        ],
-        [word],
+const countdownView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div
+    .key(
+      `countdown-${Option.match(room.maybeLobby, { onNone: () => 0, onSome: lobby => lobby.round })}`,
+    )
+    .class('coop-countdown')
+    .attr('aria-hidden', 'true')
+    .children(
+      Array.map(['3', '2', '1', 'GO!'], (word, index) =>
+        h.span
+          .key(word)
+          .class('coop-countdown-word')
+          .style({ animationDelay: `${index * 0.6}s` })
+          .children(word),
       ),
-    ),
-  )
+    )
 
 // NOTE: Zz while the link tries again; past 20 seconds it says LOST THE ROOM
 // and offers the way out, with the tries going on behind it.
-const awayView = (room: Room, h: CoopViewBuilder): Html =>
+const awayView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   room.link === 'Reconnecting' || room.link === 'Lost'
-    ? h.div(
-        [h.Class('coop-away'), h.Role('status'), h.AriaLabel('Reconnecting')],
-        [
+    ? h.div
+        .class('coop-away')
+        .attr('role', 'status')
+        .attr('aria-label', 'Reconnecting')
+        .children(
           iconView('coop-away-icon', AWAY_ICON, h),
-          room.link === 'Lost' ? lostView(room, h) : h.empty,
-        ],
-      )
-    : h.empty
+          room.link === 'Lost' ? lostView(room, h) : null,
+        )
+    : null
 
-const lostView = (room: Room, h: CoopViewBuilder): Html =>
-  h.div(
-    [h.Class('coop-away-lost')],
-    [
-      h.p(
-        [h.Class('coop-problem'), h.Role('alert')],
-        [
-          iconView('coop-problem-icon', OFFLINE_ICON, h),
-          h.span([], ['LOST THE ROOM']),
-        ],
+const lostView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div.class('coop-away-lost').children(
+    h.p
+      .class('coop-problem')
+      .attr('role', 'alert')
+      .children(
+        iconView('coop-problem-icon', OFFLINE_ICON, h),
+        h.span.children('LOST THE ROOM'),
       ),
-      h.button(
-        [
-          h.Type('button'),
-          h.Class('coop-leave'),
-          h.AriaLabel('Leave the room'),
-          h.Disabled(room.departure === 'Leaving'),
-          h.OnClick(Message.ClickedLeaveButton()),
-        ],
-        [
-          iconView('coop-leave-icon', LEAVE_ICON, h),
-          h.span([h.AriaHidden(true)], ['LEAVE']),
-        ],
+    h.button
+      .attr('type', 'button')
+      .class('coop-leave')
+      .attr('aria-label', 'Leave the room')
+      .disabled(room.departure === 'Leaving')
+      .on('click', CoopMessage.ClickedCoopLeaveButton())
+      .children(
+        iconView('coop-leave-icon', LEAVE_ICON, h),
+        h.span.attr('aria-hidden', 'true').children('LEAVE'),
       ),
-    ],
   )
 
 // NOTE: the link's numbers, for the audit harness and the curious: the
 // round trip, what came down, and how far your own player was corrected.
-const netView = (room: Room, h: CoopViewBuilder): Html => {
+const netView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const { stats } = room.session
-  return h.div([
-    h.Class('coop-net'),
-    h.AriaHidden(true),
-    h.DataAttribute('rtt', `${Math.round(room.session.rttMs)}`),
-    h.DataAttribute('bytes-in', `${stats.bytesIn}`),
-    h.DataAttribute('frames-in', `${stats.framesIn}`),
-    h.DataAttribute('inputs-out', `${stats.inputsOut}`),
-    h.DataAttribute('since', `${stats.sinceMs}`),
-    h.DataAttribute('now', `${room.session.renderedMs}`),
-    h.DataAttribute('corrections', `${stats.corrections}`),
-    h.DataAttribute('correction-px', `${stats.maxCorrectionPx.toFixed(1)}`),
-    h.DataAttribute('stalls', `${stats.stalls}`),
-    h.DataAttribute('longest-stall', `${stats.longestStallMs}`),
-    h.DataAttribute('resyncs', `${stats.resyncs}`),
-    h.DataAttribute('slot', `${room.slot}`),
-    h.DataAttribute('looked-hits', `${room.hits.looked}`),
-    h.DataAttribute('confirmed-hits', `${room.hits.confirmed}`),
-    h.DataAttribute('delay', `${Math.round(room.session.interpolationMs)}`),
-    h.DataAttribute(
-      'world',
+  return h.div
+    .class('coop-net')
+    .attr('aria-hidden', 'true')
+    .attr('data-rtt', `${Math.round(room.session.rttMs)}`)
+    .attr('data-bytes-in', `${stats.bytesIn}`)
+    .attr('data-frames-in', `${stats.framesIn}`)
+    .attr('data-inputs-out', `${stats.inputsOut}`)
+    .attr('data-since', `${stats.sinceMs}`)
+    .attr('data-now', `${room.session.renderedMs}`)
+    .attr('data-corrections', `${stats.corrections}`)
+    .attr('data-correction-px', `${stats.maxCorrectionPx.toFixed(1)}`)
+    .attr('data-stalls', `${stats.stalls}`)
+    .attr('data-longest-stall', `${stats.longestStallMs}`)
+    .attr('data-resyncs', `${stats.resyncs}`)
+    .attr('data-slot', `${room.slot}`)
+    .attr('data-looked-hits', `${room.hits.looked}`)
+    .attr('data-confirmed-hits', `${room.hits.confirmed}`)
+    .attr('data-delay', `${Math.round(room.session.interpolationMs)}`)
+    .attr(
+      'data-world',
       Option.match(room.maybeWorld, {
         onNone: () => '',
         onSome: readoutOf,
       }),
-    ),
-  ])
+    )
 }
 
 // NOTE: the run itself is the game's own scene under this overlay
@@ -979,61 +990,64 @@ const netView = (room: Room, h: CoopViewBuilder): Html => {
 // socket reconnects, and the trophy when the run ends.
 // NOTE: every player's bars in their seat's color, your own from your
 // own pings and the rest as the room last shared them.
-const arenaPingsView = (room: Room, h: CoopViewBuilder): Html =>
-  h.div(
-    [h.Class('coop-arena-pings'), h.AriaLabel('Connections')],
-    Array.map(
-      Array.sort(
-        Array.dedupe(
-          Array.append(
-            Array.map(room.session.rtts, ping => ping.slot),
-            room.slot,
-          ),
-        ),
-        Order.Number,
-      ),
-      slot =>
-        h.keyed('span')(
-          `ping-${slot}`,
-          [
-            h.Class('coop-arena-ping'),
-            h.Style({ borderColor: seatColorOf(slot) }),
-          ],
-          [
-            pingView(
-              slot === room.slot
-                ? ownPingOf(room)
-                : Option.getOrElse(
-                    Option.map(
-                      Array.findFirst(
-                        room.session.rtts,
-                        ping => ping.slot === slot,
-                      ),
-                      ping => ping.rttMs,
-                    ),
-                    () => 0,
-                  ),
-              'coop-arena-ping-bars',
-              h,
+const arenaPingsView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div
+    .class('coop-arena-pings')
+    .attr('aria-label', 'Connections')
+    .children(
+      Array.map(
+        Array.sort(
+          Array.dedupe(
+            Array.append(
+              Array.map(room.session.rtts, ping => ping.slot),
+              room.slot,
             ),
-          ],
+          ),
+          Order.Number,
         ),
-    ),
-  )
+        slot =>
+          h.span
+            .key(`ping-${slot}`)
+            .class('coop-arena-ping')
+            .style({ borderColor: seatColorOf(slot) })
+            .children(
+              pingView(
+                slot === room.slot
+                  ? ownPingOf(room)
+                  : Option.getOrElse(
+                      Option.map(
+                        Array.findFirst(
+                          room.session.rtts,
+                          ping => ping.slot === slot,
+                        ),
+                        ping => ping.rttMs,
+                      ),
+                      () => 0,
+                    ),
+                'coop-arena-ping-bars',
+                h,
+              ),
+            ),
+      ),
+    )
 
-const arenaView = (room: Room, h: CoopViewBuilder): Html =>
-  h.div(
-    [h.Class('coop-arena')],
-    [
+const arenaView = (
+  room: Room,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
+  h.div
+    .class('coop-arena')
+    .children(
       countdownView(room, h),
       awayView(room, h),
-      h.div(
-        [h.Class('coop-arena-hud')],
-        [leaveButtonView(room, h), arenaPingsView(room, h)],
-      ),
+      h.div
+        .class('coop-arena-hud')
+        .children(leaveButtonView(room, h), arenaPingsView(room, h)),
       netView(room, h),
-    ],
-  )
+    )
 
 // NOTE: while the root's end card is up the room's choices are its buttons
 // (PLAY AGAIN, LOBBY, LEAVE in src/screens/game/menus.ts), so co-op draws nothing over
@@ -1041,16 +1055,16 @@ const arenaView = (room: Room, h: CoopViewBuilder): Html =>
 // the root has drawn the run's end keeps the arena up until the card comes.
 const roomView = (
   room: Room,
-  heroPicker: HeroPickerModel,
+  heroPick: HeroPick,
   inputs: ViewInputs,
-  h: CoopViewBuilder,
-): Html => {
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   if (inputs.isRunCardUp) {
-    return h.empty
+    return null
   } else if (!isInLobby(room) || inputs.isRunEndComing) {
     return arenaView(room, h)
   } else {
-    return lobbyView(room, heroPicker, inputs, h)
+    return lobbyView(room, heroPick, inputs, h)
   }
 }
 
@@ -1074,29 +1088,39 @@ const screenName = (model: Model, inputs: ViewInputs): string =>
     InRoom: ({ room }) => roomScreenName(room, inputs),
   })
 
-// NOTE: Foldkit knows a view by the very function makeView returns (its view
-// inputs are registered against it), so a dual wrapper would be a view it
-// does not know; the Block and the Scene tests need this one.
-// @effect-diagnostics-next-line missingPipeableSignature:off
-export const view = CoopComposition.makeView.withInputs<ViewInputs>(
-  (model, inputs, h) =>
+// NOTE: co-op over the game, drawn by the root (src/app/coopView.ts).
+export const coopScreenView: {
+  (
+    inputs: ViewInputs,
+    h: ApplicationViewBuilder,
+  ): (model: Model) => ApplicationHtml | null
+  (
+    model: Model,
+    inputs: ViewInputs,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    inputs: ViewInputs,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null =>
     Screen.isAnyOf(['Closed'])(model.screen)
-      ? h.empty
-      : h.section(
-          [
-            h.Class('coop'),
-            h.DataAttribute('screen', screenName(model, inputs)),
-            h.AriaLabel('Co-op'),
-          ],
-          [
+      ? null
+      : h.section
+          .class('coop')
+          .attr('data-screen', screenName(model, inputs))
+          .attr('aria-label', 'Co-op')
+          .children(
             Screen.match(model.screen, {
+              Closed: () => null,
               Hub: ({ maybeProblem }) => hubView(maybeProblem, inputs, h),
               Code: ({ typed, maybeProblem }) =>
                 codeView(typed, maybeProblem, h),
               Asking: ({ request }) => askingView(request, h),
               Queue: ({ queue }) => queueView(queue, inputs, h),
-              InRoom: ({ room }) => roomView(room, model.heroPicker, inputs, h),
+              InRoom: ({ room }) => roomView(room, model.heroPick, inputs, h),
             }),
-          ],
-        ),
+          ),
 )

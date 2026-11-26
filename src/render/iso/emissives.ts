@@ -11,13 +11,13 @@
 // The sparks stand with the glowing billboards (scene.ts, `isGlowShape`).
 
 import { Array, Option, Result } from 'effect'
-import type { Canvas } from 'foldkit'
 import type { Application } from 'pixi.js'
 
 import { Container3D, FlatMaterial } from '@pixi/3d'
 
 import type { Level } from '../../world/level/arena'
 import { CELLAR_ROOM_ID, LIBRARY_ROOM_ID } from '../../world/level/plan'
+import type * as Draw from '../draw'
 import { heartJarGlowShapes } from '../room/cellarArt'
 import { isRoomOpen, roomBoxOf } from '../room/room'
 import type { Box } from '../room/roomPalette'
@@ -32,20 +32,20 @@ import { artQuadsOver } from './wallQuads'
 const inRoom = (
   level: Level,
   roomId: string,
-  shapesOf: (room: Box) => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
+  shapesOf: (room: Box) => ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> =>
   isRoomOpen(level, roomId)
     ? Array.flatMap(Array.fromOption(roomBoxOf(level, roomId)), shapesOf)
     : []
 
 // NOTE: every glow the level has in its open rooms, in game pixels on the
 // level's picture.
-const glowShapesOf = (level: Level): ReadonlyArray<Canvas.Shape> => [
+const glowShapesOf = (level: Level): ReadonlyArray<Draw.Shape> => [
   ...inRoom(level, LIBRARY_ROOM_ID, roseGlowShapes),
   ...inRoom(level, CELLAR_ROOM_ID, heartJarGlowShapes),
 ]
 
-const boxesOf = (shapes: ReadonlyArray<Canvas.Shape>): ReadonlyArray<Box> =>
+const boxesOf = (shapes: ReadonlyArray<Draw.Shape>): ReadonlyArray<Box> =>
   Array.filterMap(shapes, shape =>
     shape._tag === 'Rect'
       ? Result.succeed({

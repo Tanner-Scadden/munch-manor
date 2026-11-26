@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { GameEvent, type Model } from '../../../app/model'
@@ -14,11 +13,13 @@ import {
   withPlayerAt,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   changeModel,
+  checkModel,
   holdFire,
+  modelAfter,
   press,
   release,
+  steps,
   tick,
   ticks,
 } from '../../../test/testing'
@@ -49,8 +50,9 @@ const AT_CLEAT = {
 const AWAY = { x: AT_CLEAT.x + 60, y: AT_CLEAT.y }
 
 const withChandelierDown = (model: Model): Model =>
-  modifyFields(model, {
-    level: state => modifyFields(state, { dropped: () => [CHANDELIER_DROP] }),
+  UiStruct.evolve(model, {
+    level: state =>
+      UiStruct.evolve(state, { dropped: () => [CHANDELIER_DROP] }),
   })
 
 const atCleat = (model: Model): Model =>
@@ -64,157 +66,160 @@ describe('the chandelier cleat', () => {
   it.effect('standing at it in a wave winches the fallen chandelier up', () =>
     Effect.gen(function* () {
       const events: Array<GameEvent> = []
-      yield* Story.story(
-        APPLICATION,
-        Story.given(atCleat(fallenWave)),
-        ...ticks(Math.floor(SET_UP_TICKS / 2), FRAME_MS),
-        Story.model(current => {
-          expect(isWorkingStation(current, 0)).toBe(true)
-          expect(isChandelierDown(current)).toBe(true)
-          expect(workedOf(current)).toBeGreaterThan(CLEAT.setUpMs / 3)
-        }),
-        ...Array.flatMap(
-          Array.makeBy(Math.ceil(SET_UP_TICKS / 2) + 1, () => 0),
-          () => [
-            tick(FRAME_MS),
-            Story.model((current: Model) => {
-              events.push(
-                ...Array.filter(
-                  current.frameEvents,
-                  GameEvent.guards.StationWorked,
-                ),
-              )
-            }),
-          ],
+      yield* modelAfter(
+        atCleat(fallenWave),
+        steps(
+          ticks(Math.floor(SET_UP_TICKS / 2), FRAME_MS),
+          checkModel(current => {
+            expect(isWorkingStation(current, 0)).toBe(true)
+            expect(isChandelierDown(current)).toBe(true)
+            expect(workedOf(current)).toBeGreaterThan(CLEAT.setUpMs / 3)
+          }),
+          ...Array.flatMap(
+            Array.makeBy(Math.ceil(SET_UP_TICKS / 2) + 1, () => 0),
+            () => [
+              tick(FRAME_MS),
+              checkModel((current: Model) => {
+                events.push(
+                  ...Array.filter(
+                    current.frameEvents,
+                    GameEvent.guards.StationWorked,
+                  ),
+                )
+              }),
+            ],
+          ),
+          checkModel(current => {
+            expect(isChandelierDown(current)).toBe(false)
+            expect(current.stations.Cleat.timesWorked).toBe(1)
+            expect(current.stations.Cleat.cooldownMs).toBeGreaterThan(
+              CLEAT.cooldownMs - 200,
+            )
+            expect(isWorkingStation(current, 0)).toBe(false)
+          }),
         ),
-        Story.model(current => {
-          expect(isChandelierDown(current)).toBe(false)
-          expect(current.stations.Cleat.timesWorked).toBe(1)
-          expect(current.stations.Cleat.cooldownMs).toBeGreaterThan(
-            CLEAT.cooldownMs - 200,
-          )
-          expect(isWorkingStation(current, 0)).toBe(false)
-        }),
       )
       expect(events).toHaveLength(1)
     }),
   )
 
   it.effect('a player at work on it cannot shoot', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atCleat(fallenWave)),
-      holdFire,
-      ...ticks(20, FRAME_MS),
-      Story.model(current => {
-        expect(isWorkingStation(current, 0)).toBe(true)
-        expect(current.bullets).toEqual([])
-        expect(workedOf(current)).toBeGreaterThan(0)
-      }),
+    modelAfter(
+      atCleat(fallenWave),
+      steps(
+        holdFire,
+        ticks(20, FRAME_MS),
+        checkModel(current => {
+          expect(isWorkingStation(current, 0)).toBe(true)
+          expect(current.bullets).toEqual([])
+          expect(workedOf(current)).toBeGreaterThan(0)
+        }),
+      ),
     ),
   )
 
   it.effect('the same player shoots once the chandelier is up', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atCleat(quietWave(2))),
-      holdFire,
-      ...ticks(20, FRAME_MS),
-      Story.model(current => {
-        expect(isWorkingStation(current, 0)).toBe(false)
-        expect(current.bullets).not.toEqual([])
-      }),
+    modelAfter(
+      atCleat(quietWave(2)),
+      steps(
+        holdFire,
+        ticks(20, FRAME_MS),
+        checkModel(current => {
+          expect(isWorkingStation(current, 0)).toBe(false)
+          expect(current.bullets).not.toEqual([])
+        }),
+      ),
     ),
   )
 
   it.effect(
     'a step away pauses the work, and it drains while nobody works',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(atCleat(fallenWave)),
-        ...ticks(Math.floor(SET_UP_TICKS / 2), FRAME_MS),
-        Story.model(current => {
-          expect(workedOf(current)).toBeGreaterThan(CLEAT.setUpMs / 3)
-        }),
-        changeModel(model => withPlayerAt(model, AWAY.x, AWAY.y)),
-        ...ticks(30, FRAME_MS),
-        Story.model(current => {
-          expect(isWorkingStation(current, 0)).toBe(false)
-          expect(workedOf(current)).toBeLessThan(CLEAT.setUpMs / 2)
-          expect(workedOf(current)).toBeGreaterThan(0)
-          expect(isChandelierDown(current)).toBe(true)
-        }),
-        ...ticks(SET_UP_TICKS * 2, FRAME_MS),
-        Story.model(current => {
-          expect(workedOf(current)).toBe(0)
-          expect(isChandelierDown(current)).toBe(true)
-        }),
+      modelAfter(
+        atCleat(fallenWave),
+        steps(
+          ticks(Math.floor(SET_UP_TICKS / 2), FRAME_MS),
+          checkModel(current => {
+            expect(workedOf(current)).toBeGreaterThan(CLEAT.setUpMs / 3)
+          }),
+          changeModel(model => withPlayerAt(model, AWAY.x, AWAY.y)),
+          ticks(30, FRAME_MS),
+          checkModel(current => {
+            expect(isWorkingStation(current, 0)).toBe(false)
+            expect(workedOf(current)).toBeLessThan(CLEAT.setUpMs / 2)
+            expect(workedOf(current)).toBeGreaterThan(0)
+            expect(isChandelierDown(current)).toBe(true)
+          }),
+          ticks(SET_UP_TICKS * 2, FRAME_MS),
+          checkModel(current => {
+            expect(workedOf(current)).toBe(0)
+            expect(isChandelierDown(current)).toBe(true)
+          }),
+        ),
       ),
   )
 
   it.effect('walking past it works nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(atCleat(fallenWave)),
-      press('KeyS'),
-      ...ticks(10, FRAME_MS),
-      Story.model(current => {
-        expect(workedOf(current)).toBe(0)
-      }),
-      release('KeyS'),
+    modelAfter(
+      atCleat(fallenWave),
+      steps(
+        press('KeyS'),
+        ticks(10, FRAME_MS),
+        checkModel(current => {
+          expect(workedOf(current)).toBe(0)
+        }),
+        release('KeyS'),
+      ),
     ),
   )
 
   it.effect(
     'once it fires it cools down: the chandelier dropped again waits',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          atCleat(
-            modifyFields(fallenWave, {
-              stations: stations =>
-                modifyFields(stations, {
-                  Cleat: cleat =>
-                    modifyFields(cleat, {
-                      cooldownMs: () => 1000,
-                      timesWorked: () => 1,
-                    }),
-                }),
-            }),
-          ),
+      modelAfter(
+        atCleat(
+          UiStruct.evolve(fallenWave, {
+            stations: stations =>
+              UiStruct.evolve(stations, {
+                Cleat: cleat =>
+                  UiStruct.evolve(cleat, {
+                    cooldownMs: () => 1000,
+                    timesWorked: () => 1,
+                  }),
+              }),
+          }),
         ),
-        ...ticks(30, FRAME_MS),
-        Story.model(current => {
-          expect(isWorkingStation(current, 0)).toBe(false)
-          expect(workedOf(current)).toBe(0)
-          expect(current.stations.Cleat.cooldownMs).toBeLessThan(1000)
-        }),
-        ...ticks(40, FRAME_MS),
-        Story.model(current => {
-          expect(current.stations.Cleat.cooldownMs).toBe(0)
-          expect(isWorkingStation(current, 0)).toBe(true)
-          expect(workedOf(current)).toBeGreaterThan(0)
-        }),
+        steps(
+          ticks(30, FRAME_MS),
+          checkModel(current => {
+            expect(isWorkingStation(current, 0)).toBe(false)
+            expect(workedOf(current)).toBe(0)
+            expect(current.stations.Cleat.cooldownMs).toBeLessThan(1000)
+          }),
+          ticks(40, FRAME_MS),
+          checkModel(current => {
+            expect(current.stations.Cleat.cooldownMs).toBe(0)
+            expect(isWorkingStation(current, 0)).toBe(true)
+            expect(workedOf(current)).toBeGreaterThan(0)
+          }),
+        ),
       ),
   )
 
   it.effect('in a break the cleat waits', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        atCleat(
-          withChandelierDown(
-            modifyFields(quietWave(2), { phase: () => breakBefore(3) }),
-          ),
+    modelAfter(
+      atCleat(
+        withChandelierDown(
+          UiStruct.evolve(quietWave(2), { phase: () => breakBefore(3) }),
         ),
       ),
-      ...ticks(30, FRAME_MS),
-      Story.model(current => {
-        expect(isWorkingStation(current, 0)).toBe(false)
-        expect(workedOf(current)).toBe(0)
-      }),
+      steps(
+        ticks(30, FRAME_MS),
+        checkModel(current => {
+          expect(isWorkingStation(current, 0)).toBe(false)
+          expect(workedOf(current)).toBe(0)
+        }),
+      ),
     ),
   )
 })
@@ -236,11 +241,7 @@ describe('the cleat in co-op', () => {
   it.effect('each player working adds their own share', () =>
     Effect.gen(function* () {
       const after = (model: Model) =>
-        Story.story(
-          APPLICATION,
-          Story.given(model),
-          ...ticks(30, FRAME_MS),
-        ).pipe(Effect.map(workedOf))
+        modelAfter(model, ticks(30, FRAME_MS)).pipe(Effect.map(workedOf))
       const one = yield* after(pair(1))
       const two = yield* after(pair(2))
       expect(one).toBeGreaterThan(0)
@@ -249,14 +250,15 @@ describe('the cleat in co-op', () => {
   )
 
   it.effect('two players set it up in half the time', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(pair(2)),
-      ...ticks(Math.ceil(SET_UP_TICKS / 2) + 2, FRAME_MS),
-      Story.model(current => {
-        expect(isChandelierDown(current)).toBe(false)
-        expect(current.stations.Cleat.timesWorked).toBe(1)
-      }),
+    modelAfter(
+      pair(2),
+      steps(
+        ticks(Math.ceil(SET_UP_TICKS / 2) + 2, FRAME_MS),
+        checkModel(current => {
+          expect(isChandelierDown(current)).toBe(false)
+          expect(current.stations.Cleat.timesWorked).toBe(1)
+        }),
+      ),
     ),
   )
 })

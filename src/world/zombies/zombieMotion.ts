@@ -1,5 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   CONTACT_ALLOWANCE_PX,
@@ -420,7 +421,7 @@ const advanceZombie = (
   const nextKnockback = decayedKnockback(knockback, seconds)
   const hitRemainingMs = countDown(zombie.hitRemainingMs, deltaMs)
   const state = tickZombieState(zombie.state, deltaMs)
-  // NOTE: Object.is, as modifyFields compares, so a -0 is a change.
+  // NOTE: Object.is, as UiStruct.evolve compares, so a -0 is a change.
   return Object.is(moved.x, zombie.x) &&
     Object.is(moved.y, zombie.y) &&
     nextKnockback === knockback &&
@@ -516,7 +517,7 @@ export const recordFootfalls: {
   (deltaMs: number): (model: World) => World
   (model: World, deltaMs: number): World
 } = Function.dual(2, (model: World, deltaMs: number): World =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     frameEvents: frameEvents =>
       appendOrSame(
         frameEvents,

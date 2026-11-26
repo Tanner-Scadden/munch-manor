@@ -1,5 +1,4 @@
 import { Option } from 'effect'
-import { Canvas } from 'foldkit'
 
 import { MS_PER_SECOND } from '../shared/constants'
 import { firingStats, withLaserSight } from '../world/gear/powerups'
@@ -15,6 +14,7 @@ import { focusOf } from '../world/party/party'
 import type { Vector } from '../world/schema/entitySchema'
 import type { World } from '../world/schema/world'
 import { addVectors, scaleVector } from '../world/step/geometry'
+import * as Draw from './draw'
 
 // NOTE: the sight is a shop upgrade for the run, and it shows for any aim,
 // keys or pointer. A gun that shoots straight gets a laser line, and one that
@@ -47,11 +47,11 @@ const reachAlong = (
 ): Vector =>
   findReach(level, from, addVectors(from, scaleVector(direction, length)))
 
-const laserShapes = (from: Vector, to: Vector): ReadonlyArray<Canvas.Shape> => [
-  Canvas.Path({
+const laserShapes = (from: Vector, to: Vector): ReadonlyArray<Draw.Shape> => [
+  Draw.Path({
     instructions: [
-      Canvas.MoveTo({ x: from.x, y: from.y }),
-      Canvas.LineTo({ x: to.x, y: to.y }),
+      Draw.MoveTo({ x: from.x, y: from.y }),
+      Draw.LineTo({ x: to.x, y: to.y }),
     ],
     stroke: LASER_COLOR,
     lineWidth: 1,
@@ -62,13 +62,13 @@ const fanShapes = (
   from: Vector,
   left: Vector,
   right: Vector,
-): ReadonlyArray<Canvas.Shape> => [
-  Canvas.Path({
+): ReadonlyArray<Draw.Shape> => [
+  Draw.Path({
     instructions: [
-      Canvas.MoveTo({ x: from.x, y: from.y }),
-      Canvas.LineTo({ x: left.x, y: left.y }),
-      Canvas.LineTo({ x: right.x, y: right.y }),
-      Canvas.Close(),
+      Draw.MoveTo({ x: from.x, y: from.y }),
+      Draw.LineTo({ x: left.x, y: left.y }),
+      Draw.LineTo({ x: right.x, y: right.y }),
+      Draw.Close(),
     ],
     fill: FAN_FILL,
     stroke: FAN_EDGE_COLOR,
@@ -76,7 +76,7 @@ const fanShapes = (
   }),
 ]
 
-export const aimSightShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
+export const aimSightShapes = (model: World): ReadonlyArray<Draw.Shape> => {
   if (!hasSight(model)) {
     return []
   }

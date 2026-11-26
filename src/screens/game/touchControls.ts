@@ -1,7 +1,11 @@
-import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
+import { Array, Function, Option, Schema, Stream } from 'effect'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import { Mount } from '@effect/ui'
+
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import {
@@ -106,40 +110,41 @@ const isButtonFirst = (args: IArguments): boolean =>
 export const iconButtonView: {
   (
     h: ApplicationViewBuilder,
-    children?: ReadonlyArray<Html>,
-  ): (button: IconButton) => Html
+    children?: ReadonlyArray<ApplicationHtml | null>,
+  ): (button: IconButton) => ApplicationHtml
   (
     button: IconButton,
     h: ApplicationViewBuilder,
-    children?: ReadonlyArray<Html>,
-  ): Html
+    children?: ReadonlyArray<ApplicationHtml | null>,
+  ): ApplicationHtml
 } = Function.dual(
   isButtonFirst,
   (
     button: IconButton,
     h: ApplicationViewBuilder,
-    children: ReadonlyArray<Html> = [],
-  ): Html =>
-    h.button(
-      [
-        h.Type('button'),
-        h.Class(`icon-button ${button.className}`),
-        h.AriaLabel(button.label),
-        ...(button.keys === undefined ? [] : [h.AriaKeyshortcuts(button.keys)]),
-        ...(button.maybePressed === undefined
-          ? []
-          : [h.AriaPressed(button.maybePressed ? 'true' : 'false')]),
-        h.OnClick(button.message, { focusSelector: '.game-surface' }),
-      ],
-      [
-        h.span([
-          h.Class('icon-button-glyph'),
-          h.AriaHidden(true),
-          h.Style(pixelArtStyle(button.icon)),
-        ]),
+    children: ReadonlyArray<ApplicationHtml | null> = [],
+  ): ApplicationHtml =>
+    h.button
+      .attr('type', 'button')
+      .class(`icon-button ${button.className}`)
+      .attr('aria-label', button.label)
+      .attr('aria-keyshortcuts', button.keys)
+      .attr(
+        'aria-pressed',
+        button.maybePressed === undefined
+          ? undefined
+          : button.maybePressed
+            ? 'true'
+            : 'false',
+      )
+      .on('click', button.message)
+      .children(
+        h.span
+          .class('icon-button-glyph')
+          .attr('aria-hidden', 'true')
+          .style(pixelArtStyle(button.icon)),
         ...children,
-      ],
-    ),
+      ),
 )
 
 const isOnTouch = (model: Model): boolean => model.lastDevice === 'Touch'
@@ -155,10 +160,10 @@ const keyBadgeView = (
   model: Model,
   key: string,
   h: ApplicationViewBuilder,
-): Html =>
+): ApplicationHtml | null =>
   isKeyboard(model)
-    ? h.span([h.Class('key-badge'), h.AriaHidden(true)], [key])
-    : h.empty
+    ? h.span.class('key-badge').attr('aria-hidden', 'true').children(key)
+    : null
 
 // NOTE: a key's cap shows to a keyboard player only: a touch player taps
 // and a controller player's buttons get their own pictures later
@@ -170,13 +175,13 @@ const slotNumberView = (
   model: Model,
   number: string,
   h: ApplicationViewBuilder,
-): Html =>
+): ApplicationHtml | null =>
   isKeyboard(model)
-    ? h.span([h.Class('slot-number'), h.AriaHidden(true)], [number])
-    : h.empty
+    ? h.span.class('slot-number').attr('aria-hidden', 'true').children(number)
+    : null
 
-const keyShortcuts = (keys: ReadonlyArray<string>, h: ApplicationViewBuilder) =>
-  h.AriaKeyshortcuts(Array.join(keys, ' '))
+const keyShortcuts = (keys: ReadonlyArray<string>): string =>
+  Array.join(keys, ' ')
 
 // GUN SLOTS
 
@@ -208,26 +213,34 @@ const PRIMARY_MOUSE_BUTTON = 0
 // NOTE: every press on a slot, by its pointer's type, before its click. A
 // mouse press mid-wave is a shot at the world beneath and its click passes
 // through (isSlotPressAShot in src/app/update/play.ts); a touch keeps the tap.
-const toPressedHudSlot = (
-  pointerType: string,
-  button: number,
-  _screenX: number,
-  _screenY: number,
-  _timeStamp: number,
-  clientX: number,
-  clientY: number,
-  pointerId: number,
+// A Mount, as the element's own `pointerdown` carries no pointer id, and a
+// mouse shot is released by its id (ReleasedPointer).
+const pressedHudSlotOf = (
+  event: PointerEvent,
 ): Option.Option<PressedHudSlot> =>
-  pointerType === 'mouse' && button !== PRIMARY_MOUSE_BUTTON
+  event.pointerType === 'mouse' && event.button !== PRIMARY_MOUSE_BUTTON
     ? Option.none()
     : Option.some(
         InputMessage.PressedHudSlot({
-          pointerId,
-          device: pointerType === 'mouse' ? 'Mouse' : 'Touch',
-          clientX,
-          clientY,
+          pointerId: event.pointerId,
+          device: event.pointerType === 'mouse' ? 'Mouse' : 'Touch',
+          clientX: event.clientX,
+          clientY: event.clientY,
         }),
       )
+
+// NOTE: each slot's Mount names its slot, so a Scene can tell them apart
+// (src/features/hud/__tests__/mobileHud.scene.test.ts).
+export const PressHudSlot = Mount.makeStream(
+  'PressHudSlot',
+  { args: { slot: Schema.Literals(['First', 'Second', 'Melee']) } },
+  (node: HTMLElement) =>
+    Stream.fromEventListener<PointerEvent>(node, 'pointerdown').pipe(
+      Stream.flatMap(event =>
+        Stream.fromIterable(Option.toArray(pressedHudSlotOf(event))),
+      ),
+    ),
+)
 
 // NOTE: the key that reaches a gun slot: R reloads the held gun, Q swaps
 // to the other; with the knife out, Q goes back to the last gun held.
@@ -257,37 +270,36 @@ const gunSlotButtonView = (
   screen: Screen,
   { slot, name }: SlotGun,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const isHeld =
     !isWieldingMelee(focusOf(model).player) &&
     slot === heldSlotOf(focusOf(model).player.arsenal)
   const maybeKey = gunSlotKey(model, slot)
-  return h.keyed('button')(
-    slot,
-    [
-      h.Type('button'),
-      h.Class('gun-slot-button'),
-      h.DataAttribute('slot', slot),
-      h.DataAttribute('held', isHeld ? 'true' : 'false'),
-      h.AriaLabel(isHeld ? `Reload the ${name}` : `Switch to the ${name}`),
-      keyShortcuts([...Option.toArray(maybeKey), SLOT_NUMBER[slot]], h),
-      ...(isHeld && !canReload(focusOf(model).player)
-        ? [h.AriaDisabled(true)]
-        : []),
-      h.Style(slotSpan(screen, SLOT_INDEX[slot])),
-      h.OnPointerDown(toPressedHudSlot),
-      h.OnClick(RunButtonMessage.ClickedGunSlot({ slot }), {
-        focusSelector: '.game-surface',
-      }),
-    ],
-    [
+  return h.button
+    .key(slot)
+    .attr('type', 'button')
+    .class('gun-slot-button')
+    .attr('data-slot', slot)
+    .attr('data-held', isHeld ? 'true' : 'false')
+    .attr('aria-label', isHeld ? `Reload the ${name}` : `Switch to the ${name}`)
+    .attr(
+      'aria-keyshortcuts',
+      keyShortcuts([...Option.toArray(maybeKey), SLOT_NUMBER[slot]]),
+    )
+    .attr(
+      'aria-disabled',
+      isHeld && !canReload(focusOf(model).player) ? 'true' : undefined,
+    )
+    .style(slotSpan(screen, SLOT_INDEX[slot]))
+    .onMount(PressHudSlot({ slot }))
+    .on('click', RunButtonMessage.ClickedGunSlot({ slot }))
+    .children(
       Option.match(maybeKey, {
-        onNone: () => h.empty,
+        onNone: () => null,
         onSome: key => keyBadgeView(model, key, h),
       }),
       slotNumberView(model, SLOT_NUMBER[slot], h),
-    ],
-  )
+    )
 }
 
 // NOTE: the melee slot, right of the guns: a tap draws the knife or the
@@ -296,54 +308,46 @@ const meleeSlotButtonView = (
   model: Model,
   screen: Screen,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const isHeld = isWieldingMelee(focusOf(model).player)
   const name = meleeNameOf(focusOf(model).player)
-  return h.keyed('button')(
-    'Melee',
-    [
-      h.Type('button'),
-      h.Class('gun-slot-button'),
-      h.DataAttribute('slot', 'Melee'),
-      h.DataAttribute('held', isHeld ? 'true' : 'false'),
-      h.AriaLabel(isHeld ? `The ${name} is in hand` : `Switch to the ${name}`),
-      keyShortcuts(['F', MELEE_NUMBER], h),
-      ...(isHeld ? [h.AriaDisabled(true)] : []),
-      h.Style(slotSpan(screen, MELEE_SLOT_INDEX)),
-      h.OnPointerDown(toPressedHudSlot),
-      h.OnClick(RunButtonMessage.ClickedMeleeSlot(), {
-        focusSelector: '.game-surface',
-      }),
-    ],
-    [
-      isHeld ? h.empty : keyBadgeView(model, 'F', h),
+  return h.button
+    .key('Melee')
+    .attr('type', 'button')
+    .class('gun-slot-button')
+    .attr('data-slot', 'Melee')
+    .attr('data-held', isHeld ? 'true' : 'false')
+    .attr(
+      'aria-label',
+      isHeld ? `The ${name} is in hand` : `Switch to the ${name}`,
+    )
+    .attr('aria-keyshortcuts', keyShortcuts(['F', MELEE_NUMBER]))
+    .attr('aria-disabled', isHeld ? 'true' : undefined)
+    .style(slotSpan(screen, MELEE_SLOT_INDEX))
+    .onMount(PressHudSlot({ slot: 'Melee' }))
+    .on('click', RunButtonMessage.ClickedMeleeSlot())
+    .children(
+      isHeld ? null : keyBadgeView(model, 'F', h),
       slotNumberView(model, MELEE_NUMBER, h),
-    ],
-  )
+    )
 }
 
 const gunSlotsView = (
   model: Model,
   screen: Screen,
   h: ApplicationViewBuilder,
-): Html =>
-  h.div(
-    [
-      h.Class('gun-slots'),
-      h.Role('group'),
-      h.AriaLabel('Your guns'),
-      h.DataAttribute(
-        'click',
-        Phase.isAnyOf(['Wave'])(model.phase) ? 'World' : 'Slot',
-      ),
-    ],
-    [
+): ApplicationHtml =>
+  h.div
+    .class('gun-slots')
+    .attr('role', 'group')
+    .attr('aria-label', 'Your guns')
+    .attr('data-click', Phase.isAnyOf(['Wave'])(model.phase) ? 'World' : 'Slot')
+    .children(
       ...Array.map(slotGuns(model), gun =>
         gunSlotButtonView(model, screen, gun, h),
       ),
       meleeSlotButtonView(model, screen, h),
-    ],
-  )
+    )
 
 // RELOAD
 
@@ -376,7 +380,7 @@ const reloadButtonView = (
   model: Model,
   screen: Screen,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const gun = gunName(
     model,
     focusSlotOf(model),
@@ -384,41 +388,37 @@ const reloadButtonView = (
   )
   const isMeleeOut = isWieldingMelee(focusOf(model).player)
   const isReady = canReload(focusOf(model).player)
-  return h.button(
-    [
-      h.Type('button'),
-      h.Class('reload-button'),
-      h.DataAttribute('ready', isReady ? 'true' : 'false'),
-      h.DataAttribute('layout', screen.layout),
-      h.AriaLabel(
-        isMeleeOut ? `Draw and reload the ${gun}` : `Reload the ${gun}`,
-      ),
-      h.AriaKeyshortcuts('R'),
-      ...(isReady || isMeleeOut ? [] : [h.AriaDisabled(true)]),
-      h.Style(reloadSpot(screen)),
-      h.OnClick(RunButtonMessage.ClickedReloadButton(), {
-        focusSelector: '.game-surface',
-      }),
-    ],
-    [
-      h.span([
-        h.Class('reload-face'),
-        h.AriaHidden(true),
-        h.Style({
+  return h.button
+    .attr('type', 'button')
+    .class('reload-button')
+    .attr('data-ready', isReady ? 'true' : 'false')
+    .attr('data-layout', screen.layout)
+    .attr(
+      'aria-label',
+      isMeleeOut ? `Draw and reload the ${gun}` : `Reload the ${gun}`,
+    )
+    .attr('aria-keyshortcuts', 'R')
+    .attr('aria-disabled', isReady || isMeleeOut ? undefined : 'true')
+    .style(reloadSpot(screen))
+    .on('click', RunButtonMessage.ClickedReloadButton())
+    .children(
+      h.span
+        .class('reload-face')
+        .attr('aria-hidden', 'true')
+        .style({
           width: hudPixels(reloadFaceOf(screen).width),
           height: hudPixels(reloadFaceOf(screen).height),
           ...pixelArtStyle(RELOAD_ICON),
         }),
-      ]),
-    ],
-  )
+    )
 }
 
 const reloadView = (
   model: Model,
   screen: Screen,
   h: ApplicationViewBuilder,
-): Html => (isOnTouch(model) ? reloadButtonView(model, screen, h) : h.empty)
+): ApplicationHtml | null =>
+  isOnTouch(model) ? reloadButtonView(model, screen, h) : null
 
 // UTILITY ICONS
 
@@ -427,56 +427,52 @@ const PLACE_REASON_ID = 'place-trap-reason'
 const placeReasonView = (
   { verdict }: Placement,
   h: ApplicationViewBuilder,
-): Html =>
+): ApplicationHtml | null =>
   PlaceVerdict.match(verdict, {
-    Placeable: () => h.empty,
+    Placeable: () => null,
     Blocked: ({ reason }) =>
-      h.span([h.Id(PLACE_REASON_ID), h.Class('sr-only')], [reason]),
+      h.span.id(PLACE_REASON_ID).class('sr-only').children(reason),
   })
 
 const placeIconView = (
   model: Model,
   placement: Placement,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const { kind, verdict } = placement
   const isBlocked = PlaceVerdict.isAnyOf(['Blocked'])(verdict)
-  return h.button(
-    [
-      h.Type('button'),
-      h.Class('icon-button cluster-button place-icon-button'),
-      h.DataAttribute(
-        'beckon',
-        TrapHint.isAnyOf(['Showing'])(model.trapHint) ? 'true' : 'false',
-      ),
-      h.AriaLabel(`Place a ${TRAPS[kind].name}`),
-      h.AriaKeyshortcuts('T'),
-      ...(isBlocked
-        ? [h.AriaDisabled(true), h.AriaDescribedBy(PLACE_REASON_ID)]
-        : []),
-      h.OnClick(RunButtonMessage.ClickedPlaceTrapButton(), {
-        focusSelector: '.game-surface',
-      }),
-    ],
-    [
-      h.span([
-        h.Class('icon-button-glyph'),
-        h.AriaHidden(true),
-        h.Style(pixelArtStyle(TRAP_BUTTON_ICONS[kind])),
-      ]),
-      h.span(
-        [h.Class('icon-button-badge'), h.AriaHidden(true)],
-        [`x${focusOf(model).trapStock[kind]}`],
-      ),
+  return h.button
+    .attr('type', 'button')
+    .class('icon-button cluster-button place-icon-button')
+    .attr(
+      'data-beckon',
+      TrapHint.isAnyOf(['Showing'])(model.trapHint) ? 'true' : 'false',
+    )
+    .attr('aria-label', `Place a ${TRAPS[kind].name}`)
+    .attr('aria-keyshortcuts', 'T')
+    .attr('aria-disabled', isBlocked ? 'true' : undefined)
+    .attr('aria-describedby', isBlocked ? PLACE_REASON_ID : undefined)
+    .on('click', RunButtonMessage.ClickedPlaceTrapButton())
+    .children(
+      h.span
+        .class('icon-button-glyph')
+        .attr('aria-hidden', 'true')
+        .style(pixelArtStyle(TRAP_BUTTON_ICONS[kind])),
+      h.span
+        .class('icon-button-badge')
+        .attr('aria-hidden', 'true')
+        .children(`x${focusOf(model).trapStock[kind]}`),
       keyBadgeView(model, 'T', h),
       placeReasonView(placement, h),
-    ],
-  )
+    )
 }
 
-const nextTrapIconView = (model: Model, h: ApplicationViewBuilder): Html =>
+const nextTrapIconView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Option.match(maybeNextKind(model, focusSlotOf(model)), {
-    onNone: () => h.empty,
+    onNone: () => null,
     onSome: kind =>
       iconButtonView(
         {
@@ -494,7 +490,7 @@ const nextTrapIconView = (model: Model, h: ApplicationViewBuilder): Html =>
 const trapIconsView = (
   model: Model,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> =>
+): ReadonlyArray<ApplicationHtml | null> =>
   Phase.isAnyOf(['Preparation'])(model.phase)
     ? Option.match(maybePlacement(model, focusSlotOf(model)), {
         onNone: () => [],
@@ -557,45 +553,42 @@ const sideStyle = (
 // NOTE: a downed player's MEDIC! (src/world/party/medic.ts): a red cross over the row,
 // there only while they are down. It glows while the last shout still
 // rings, and a tap while it cools does nothing.
-const medicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
+const medicButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null => {
   const { seat } = focusOf(model)
   return isDowned(seat)
-    ? h.button(
-        [
-          h.Type('button'),
-          h.Class('icon-button cluster-button medic-button'),
-          h.DataAttribute('fresh', isCallFresh(seat) ? 'true' : 'false'),
-          h.AriaLabel(MEDIC_WORD),
-          h.AriaKeyshortcuts('Enter'),
-          h.OnClick(RunButtonMessage.ClickedMedicButton(), {
-            focusSelector: '.game-surface',
-          }),
-        ],
-        [
-          h.span([
-            h.Class('icon-button-glyph'),
-            h.AriaHidden(true),
-            h.Style(pixelArtStyle(MEDIC_ICON)),
-          ]),
+    ? h.button
+        .attr('type', 'button')
+        .class('icon-button cluster-button medic-button')
+        .attr('data-fresh', isCallFresh(seat) ? 'true' : 'false')
+        .attr('aria-label', MEDIC_WORD)
+        .attr('aria-keyshortcuts', 'Enter')
+        .on('click', RunButtonMessage.ClickedMedicButton())
+        .children(
+          h.span
+            .class('icon-button-glyph')
+            .attr('aria-hidden', 'true')
+            .style(pixelArtStyle(MEDIC_ICON)),
           keyBadgeView(model, 'ENTER', h),
-        ],
-      )
-    : h.empty
+        )
+    : null
 }
 
 const clusterSideView = (
   model: Model,
   screen: Screen,
   h: ApplicationViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('gun-cluster-side'), h.Style(sideStyle(model, screen))],
-    [
+): ApplicationHtml =>
+  h.div
+    .class('gun-cluster-side')
+    .style(sideStyle(model, screen))
+    .children(
       medicButtonView(model, h),
       holdButtonView(model, h),
       ...trapIconsView(model, h),
-    ],
-  )
+    )
 
 // START WAVE
 
@@ -620,75 +613,61 @@ const startWaveLabel = (model: Model, wave: number): string => {
 // NOTE: the first break tour's last step (src/features/onboarding/firstBreakQuest.ts):
 // a big gold arrow bobs over START WAVE, wherever the layout puts it, with
 // the key's cap beside it for a keyboard player. No words.
-const startWavePointView = (model: Model, h: ApplicationViewBuilder): Html =>
+const startWavePointView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   isQuestOnStart(model)
-    ? h.div(
-        [h.Class('start-wave-point'), h.AriaHidden(true)],
-        [
-          h.span([
-            h.Class('start-wave-point-arrow'),
-            h.Style(pixelArtStyle(QUEST_START_ARROW_ICON)),
-          ]),
+    ? h.div
+        .class('start-wave-point')
+        .attr('aria-hidden', 'true')
+        .children(
+          h.span
+            .class('start-wave-point-arrow')
+            .style(pixelArtStyle(QUEST_START_ARROW_ICON)),
           isKeyboard(model)
-            ? h.span([h.Class('start-wave-point-key')], ['ENTER'])
-            : h.empty,
-        ],
-      )
-    : h.empty
+            ? h.span.class('start-wave-point-key').children('ENTER')
+            : null,
+        )
+    : null
 
 const startWaveButtonView = (
   model: Model,
   screen: Screen,
   h: ApplicationViewBuilder,
-): Html =>
+): ApplicationHtml | null =>
   Phase.match(model.phase, {
-    Ready: () => h.empty,
-    Arriving: () => h.empty,
+    Ready: () => null,
+    Arriving: () => null,
     Preparation: ({ wave }) =>
-      h.div(
-        [
-          h.Class('gun-cluster-top'),
-          h.Style({
-            left: percentOf(
-              gunPairWidthOf(screen) / 2,
-              gunClusterBox(screen).width,
-            ),
-          }),
-        ],
-        [
-          h.button(
-            [
-              h.Type('button'),
-              h.Class(
-                isOnTouch(model) ? 'start-wave-pill' : 'start-wave-button',
-              ),
-              h.Style(isOnTouch(model) ? { width: `${START_WAVE_PX}px` } : {}),
-              h.AriaLabel(startWaveLabel(model, wave)),
-              h.DataAttribute('ready', leadSeatOf(model).readiness),
-              h.DataAttribute(
-                'beckon',
-                isStartWaveBeckoning(model) ? 'true' : 'false',
-              ),
-              h.DataAttribute(
-                'nudge',
-                isWaitingOnYou(model) ? 'true' : 'false',
-              ),
-              h.DataAttribute('tour', isQuestOnStart(model) ? 'true' : 'false'),
-              h.AriaKeyshortcuts('Enter'),
-              h.OnClick(RunButtonMessage.ClickedStartWaveButton(), {
-                focusSelector: '.game-surface',
-              }),
-            ],
-            [startWaveWord(model), keyBadgeView(model, 'ENTER', h)],
+      h.div
+        .class('gun-cluster-top')
+        .style({
+          left: percentOf(
+            gunPairWidthOf(screen) / 2,
+            gunClusterBox(screen).width,
           ),
+        })
+        .children(
+          h.button
+            .attr('type', 'button')
+            .class(isOnTouch(model) ? 'start-wave-pill' : 'start-wave-button')
+            .style(isOnTouch(model) ? { width: `${START_WAVE_PX}px` } : {})
+            .attr('aria-label', startWaveLabel(model, wave))
+            .attr('data-ready', leadSeatOf(model).readiness)
+            .attr('data-beckon', isStartWaveBeckoning(model) ? 'true' : 'false')
+            .attr('data-nudge', isWaitingOnYou(model) ? 'true' : 'false')
+            .attr('data-tour', isQuestOnStart(model) ? 'true' : 'false')
+            .attr('aria-keyshortcuts', 'Enter')
+            .on('click', RunButtonMessage.ClickedStartWaveButton())
+            .children(startWaveWord(model), keyBadgeView(model, 'ENTER', h)),
           startWavePointView(model, h),
-        ],
-      ),
-    Wave: () => h.empty,
-    Paused: () => h.empty,
-    Escaped: () => h.empty,
-    LeftEarly: () => h.empty,
-    GameOver: () => h.empty,
+        ),
+    Wave: () => null,
+    Paused: () => null,
+    Escaped: () => null,
+    LeftEarly: () => null,
+    GameOver: () => null,
   })
 
 // GUN CLUSTER
@@ -697,82 +676,73 @@ const clusterView = (
   model: Model,
   screen: Screen,
   h: ApplicationViewBuilder,
-): Html => {
+): ApplicationHtml => {
   const cluster = gunClusterBox(screen)
-  return h.div(
-    [h.Class('hud-tap-frame')],
-    [
-      h.div(
-        [h.Class('hud-tap-stage')],
-        [
-          h.div(
-            [
-              h.Class('gun-cluster'),
-              h.DataAttribute('device', model.lastDevice),
-              h.DataAttribute('layout', screen.layout),
-              h.Style({
-                left: percentOf(cluster.x, screen.width),
-                width: percentOf(cluster.width, screen.width),
-                bottom: percentOf(
-                  screen.height - cluster.y - cluster.height,
-                  screen.height,
-                ),
-                height: `max(48px, ${percentOf(cluster.height, screen.height)})`,
-              }),
-            ],
-            [
-              gunSlotsView(model, screen, h),
-              reloadView(model, screen, h),
-              clusterSideView(model, screen, h),
-              startWaveButtonView(model, screen, h),
-            ],
+  return h.div.class('hud-tap-frame').children(
+    h.div.class('hud-tap-stage').children(
+      h.div
+        .class('gun-cluster')
+        .attr('data-device', model.lastDevice)
+        .attr('data-layout', screen.layout)
+        .style({
+          left: percentOf(cluster.x, screen.width),
+          width: percentOf(cluster.width, screen.width),
+          bottom: percentOf(
+            screen.height - cluster.y - cluster.height,
+            screen.height,
           ),
-        ],
-      ),
-    ],
+          height: `max(48px, ${percentOf(cluster.height, screen.height)})`,
+        })
+        .children(
+          gunSlotsView(model, screen, h),
+          reloadView(model, screen, h),
+          clusterSideView(model, screen, h),
+          startWaveButtonView(model, screen, h),
+        ),
+    ),
   )
 }
 
 export const gunClusterView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isClusterUp(model) ? clusterView(model, screenOf(model), h) : h.empty,
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    isClusterUp(model) ? clusterView(model, screenOf(model), h) : null,
 )
 
 // STICKS
 
 export const stickView: {
-  (label: string, h: ApplicationViewBuilder): (stick: Stick) => Html
-  (stick: Stick, label: string, h: ApplicationViewBuilder): Html
+  (label: string, h: ApplicationViewBuilder): (stick: Stick) => ApplicationHtml
+  (stick: Stick, label: string, h: ApplicationViewBuilder): ApplicationHtml
 } = Function.dual(
   3,
-  (stick: Stick, label: string, h: ApplicationViewBuilder): Html =>
+  (
+    stick: Stick,
+    label: string,
+    h: ApplicationViewBuilder,
+  ): ApplicationHtml | null =>
     Stick.match(stick, {
-      Idle: () => h.empty,
+      Idle: () => null,
       Active: active => {
         const offset = thumbOffset(active)
-        return h.div(
-          [
-            h.Class('touch-stick'),
-            h.DataAttribute('stick', label),
-            h.AriaHidden(true),
-            h.Style({
-              left: `${active.originX - STICK_RADIUS_PX}px`,
-              top: `${active.originY - STICK_RADIUS_PX}px`,
-              width: `${STICK_RADIUS_PX * 2}px`,
-              height: `${STICK_RADIUS_PX * 2}px`,
+        return h.div
+          .class('touch-stick')
+          .attr('data-stick', label)
+          .attr('aria-hidden', 'true')
+          .style({
+            left: `${active.originX - STICK_RADIUS_PX}px`,
+            top: `${active.originY - STICK_RADIUS_PX}px`,
+            width: `${STICK_RADIUS_PX * 2}px`,
+            height: `${STICK_RADIUS_PX * 2}px`,
+          })
+          .children(
+            h.div.class('touch-stick-thumb').style({
+              transform: `translate(${offset.x}px, ${offset.y}px)`,
             }),
-          ],
-          [
-            h.div([
-              h.Class('touch-stick-thumb'),
-              h.Style({
-                transform: `translate(${offset.x}px, ${offset.y}px)`,
-              }),
-            ]),
-          ],
-        )
+          )
       },
     }),
 )
@@ -784,39 +754,38 @@ const preparationTimerView = (
   remainingMs: number,
   clock: BreakClock,
   h: ApplicationViewBuilder,
-): Html =>
-  h.p(
-    [h.Class('sr-only'), h.Role('timer')],
-    [
+): ApplicationHtml =>
+  h.p
+    .class('sr-only')
+    .attr('role', 'timer')
+    .children(
       BreakClock.match(clock, {
         Counting: () =>
           `${secondsLeft(remainingMs)} seconds until wave ${wave}.`,
         Waiting: () => `Wave ${wave} starts when you are ready.`,
       }),
-    ],
-  )
+    )
 
 export const preparationControlsView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  Phase.match(model.phase, {
-    Ready: () => h.empty,
-    Arriving: () => h.empty,
-    Preparation: ({ wave, remainingMs, clock }) =>
-      h.div(
-        [],
-        [
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    Phase.match(model.phase, {
+      Ready: () => null,
+      Arriving: () => null,
+      Preparation: ({ wave, remainingMs, clock }) =>
+        h.div.children(
           preparationTimerView(wave, remainingMs, clock, h),
           wavePreviewView(wave, model.boss, h),
-        ],
-      ),
-    Wave: () => h.empty,
-    Paused: () => h.empty,
-    Escaped: () => h.empty,
-    LeftEarly: () => h.empty,
-    GameOver: () => h.empty,
-  }),
+        ),
+      Wave: () => null,
+      Paused: () => null,
+      Escaped: () => null,
+      LeftEarly: () => null,
+      GameOver: () => null,
+    }),
 )
 
 // GHOST STICKS
@@ -827,24 +796,30 @@ const GHOST_LABELS: Readonly<Record<GhostStick, string>> = {
 }
 
 export const ghostSticksView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  Array.match(shownGhostSticks(model), {
-    onEmpty: () => h.empty,
-    onNonEmpty: ghosts =>
-      h.div(
-        [h.Class('ghost-sticks'), h.AriaHidden(true)],
-        Array.map(ghosts, ghost =>
-          h.keyed('div')(
-            ghost,
-            [h.Class('ghost-stick'), h.DataAttribute('ghost', ghost)],
-            [
-              h.div([h.Class('ghost-stick-thumb')]),
-              h.span([h.Class('ghost-stick-label')], [GHOST_LABELS[ghost]]),
-            ],
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    Array.match(shownGhostSticks(model), {
+      onEmpty: () => null,
+      onNonEmpty: ghosts =>
+        h.div
+          .class('ghost-sticks')
+          .attr('aria-hidden', 'true')
+          .children(
+            Array.map(ghosts, ghost =>
+              h.div
+                .key(ghost)
+                .class('ghost-stick')
+                .attr('data-ghost', ghost)
+                .children(
+                  h.div.class('ghost-stick-thumb'),
+                  h.span
+                    .class('ghost-stick-label')
+                    .children(GHOST_LABELS[ghost]),
+                ),
+            ),
           ),
-        ),
-      ),
-  }),
+    }),
 )

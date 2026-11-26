@@ -1,13 +1,10 @@
 import { Function, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { isOpen as isCoopScreenOpen } from '../features/coop/update'
 import { MenuPanel } from '../features/home/homeSchema'
-import {
-  isHeroPickerUp,
-  isLobbyDrawn as isLobbyDrawnIn,
-  isLobbyShown,
-} from '../features/lobby/model'
+import { isHeroPickerUp, isLobbyShown } from '../features/lobby/model'
 import { ProfileTab } from '../features/profile/model'
 import { tabOf } from '../features/profile/profile'
 import { RESTART_GRACE_MS } from '../shared/constants'
@@ -18,7 +15,7 @@ import { type Model, Phase } from './model'
 // has one answer. The dialogs come first, top to bottom, then the hero
 // picker over the single player lobby, the lobby, co-op's own screens, and the phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
 // (munch/no-menu-field).
-export const MenuState = defineTaggedUnion({
+export const MenuState = UiSchema.TaggedEnum({
   Profile: { tab: ProfileTab },
   Panel: { panel: MenuPanel },
   Hand: {},
@@ -83,11 +80,6 @@ export const isOnHomeMenu = (model: Model): boolean =>
 
 // NOTE: the lobby is on screen, whatever dialog is over it (the hero picker).
 export const isLobbyUp = (model: Model): boolean => isLobbyShown(model.lobby)
-
-// NOTE: the dare card is drawn: up, or folding back into PLAY after CHICKEN
-// OUT, when the home menu is already in charge again.
-export const isLobbyDrawn = (model: Model): boolean =>
-  isLobbyDrawnIn(model.lobby)
 
 export const isLobbyOpen = (model: Model): boolean =>
   MenuState.isAnyOf(['Lobby'])(menuState(model))

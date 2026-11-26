@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -23,9 +22,12 @@ import {
 } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   bulletInto,
+  checkModel,
   hasEvent,
+  modelAfter,
+  send,
+  steps,
   tick,
   ticks,
   zombieById,
@@ -58,7 +60,7 @@ const GROANER = zombieOf('Shambler', GROANER_ID, CENTER_X + 52, CENTER_Y, {
 })
 
 const sceneWith = (zombies: ReadonlyArray<Zombie>): Model =>
-  modifyFields(initialModel, {
+  UiStruct.evolve(initialModel, {
     maybeSurface: () =>
       Option.some({ left: 0, top: 0, width: 800, height: 400 }),
     phase: () => Phase.Wave({ wave: 6, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
@@ -74,126 +76,132 @@ const FACING_PLAYER = Math.PI
 const atPlayer = (scene: Model): Model =>
   modifyFocus(scene, {
     player: player =>
-      modifyFields(player, { x: () => PLAYER_AT.x, y: () => PLAYER_AT.y }),
+      UiStruct.evolve(player, { x: () => PLAYER_AT.x, y: () => PLAYER_AT.y }),
   })
 
 describe('the Big Leaguer', () => {
   it.effect(
     'grabs a Groaner beside it, winds up with it overhead, and lobs it at the player',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(sceneWith([CHUCKER, GROANER])),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(hasEvent(current, 'ZombieGrabbed')).toBe(true)
-          expect(zombieById(current, CHUCKER_ID).action).toEqual(
-            ZombieAction.Hefting({
-              victimId: GROANER_ID,
-              remainingMs: CHUCKER_RULES.heftMs,
-              durationMs: CHUCKER_RULES.heftMs,
-            }),
-          )
-          expect(zombieById(current, GROANER_ID).action).toEqual(
-            ZombieAction.Carried({ byId: CHUCKER_ID }),
-          )
-        }),
-        ...ticks(HEFT_FRAMES - 2, FRAME_MS),
-        Story.model(current => {
-          expect(
-            ZombieAction.isAnyOf(['Hefting'])(
-              zombieById(current, CHUCKER_ID).action,
-            ),
-          ).toBe(true)
-          const carried = zombieById(current, GROANER_ID)
-          expect(ZombieAction.isAnyOf(['Carried'])(carried.action)).toBe(true)
-          expect(carried.x).toBe(zombieById(current, CHUCKER_ID).x)
-        }),
-        ...ticks(2, FRAME_MS),
-        Story.model(current => {
-          expect(hasEvent(current, 'ZombieThrown')).toBe(true)
-          expect(
-            ZombieAction.isAnyOf(['Winded'])(
-              zombieById(current, CHUCKER_ID).action,
-            ),
-          ).toBe(true)
-          const chucker = zombieById(current, CHUCKER_ID)
-          expect(zombieById(current, GROANER_ID).action).toMatchObject({
-            _tag: 'Flying',
-            to: { x: focusOf(current).player.x, y: focusOf(current).player.y },
-            from: { x: chucker.x, y: chucker.y },
-            durationMs: CHUCKER_RULES.flightMs,
-          })
-        }),
+      modelAfter(
+        sceneWith([CHUCKER, GROANER]),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(hasEvent(current, 'ZombieGrabbed')).toBe(true)
+            expect(zombieById(current, CHUCKER_ID).action).toEqual(
+              ZombieAction.Hefting({
+                victimId: GROANER_ID,
+                remainingMs: CHUCKER_RULES.heftMs,
+                durationMs: CHUCKER_RULES.heftMs,
+              }),
+            )
+            expect(zombieById(current, GROANER_ID).action).toEqual(
+              ZombieAction.Carried({ byId: CHUCKER_ID }),
+            )
+          }),
+          ticks(HEFT_FRAMES - 2, FRAME_MS),
+          checkModel(current => {
+            expect(
+              ZombieAction.isAnyOf(['Hefting'])(
+                zombieById(current, CHUCKER_ID).action,
+              ),
+            ).toBe(true)
+            const carried = zombieById(current, GROANER_ID)
+            expect(ZombieAction.isAnyOf(['Carried'])(carried.action)).toBe(true)
+            expect(carried.x).toBe(zombieById(current, CHUCKER_ID).x)
+          }),
+          ticks(2, FRAME_MS),
+          checkModel(current => {
+            expect(hasEvent(current, 'ZombieThrown')).toBe(true)
+            expect(
+              ZombieAction.isAnyOf(['Winded'])(
+                zombieById(current, CHUCKER_ID).action,
+              ),
+            ).toBe(true)
+            const chucker = zombieById(current, CHUCKER_ID)
+            expect(zombieById(current, GROANER_ID).action).toMatchObject({
+              _tag: 'Flying',
+              to: {
+                x: focusOf(current).player.x,
+                y: focusOf(current).player.y,
+              },
+              from: { x: chucker.x, y: chucker.y },
+              durationMs: CHUCKER_RULES.flightMs,
+            })
+          }),
+        ),
       ),
   )
 
   it.effect(
     'the thrown Groaner hurts the player on its mark, lies dazed a moment, then gets up',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(sceneWith([CHUCKER, GROANER])),
-        ...ticks(HEFT_FRAMES + 1, FRAME_MS),
-        Story.model(current => {
+      modelAfter(
+        sceneWith([CHUCKER, GROANER]),
+        steps(
+          ticks(HEFT_FRAMES + 1, FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+          }),
+          ticks(FLIGHT_FRAMES - 2, FRAME_MS),
+          checkModel(current => {
+            expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+            expect(
+              ZombieAction.isAnyOf(['Flying'])(
+                zombieById(current, GROANER_ID).action,
+              ),
+            ).toBe(true)
+          }),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(hasEvent(current, 'ZombieLanded')).toBe(true)
+            expect(focusOf(current).player.hp).toBe(
+              PLAYER_MAX_HP - CHUCKER_RULES.landDamage,
+            )
+            const landed = zombieById(current, GROANER_ID)
+            expect(ZombieAction.isAnyOf(['Dazed'])(landed.action)).toBe(true)
+            expect(
+              Math.hypot(
+                landed.x - focusOf(current).player.x,
+                landed.y - focusOf(current).player.y,
+              ),
+            ).toBeLessThan(CHUCKER_RULES.landRadius + 8)
+          }),
+          ticks(framesFor(CHUCKER_RULES.dazedMs) - 1, FRAME_MS),
+          checkModel(current => {
+            expect(
+              ZombieAction.isAnyOf(['Dazed'])(
+                zombieById(current, GROANER_ID).action,
+              ),
+            ).toBe(true)
+          }),
+          ticks(framesFor(HIT_STOP_HURT_MS) + 2, FRAME_MS),
+          checkModel(current => {
+            expect(zombieById(current, GROANER_ID).action).toEqual(
+              ZombieAction.Roaming(),
+            )
+          }),
+        ),
+      ),
+  )
+
+  it.effect('a player who steps off the mark is not hurt by the landing', () =>
+    modelAfter(
+      sceneWith([CHUCKER, GROANER]),
+      steps(
+        ticks(HEFT_FRAMES + 1, FRAME_MS),
+        send(Message.PressedKey({ code: 'KeyW' })),
+        ticks(FLIGHT_FRAMES, FRAME_MS),
+        checkModel(current => {
           expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-        }),
-        ...ticks(FLIGHT_FRAMES - 2, FRAME_MS),
-        Story.model(current => {
-          expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-          expect(
-            ZombieAction.isAnyOf(['Flying'])(
-              zombieById(current, GROANER_ID).action,
-            ),
-          ).toBe(true)
-        }),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(hasEvent(current, 'ZombieLanded')).toBe(true)
-          expect(focusOf(current).player.hp).toBe(
-            PLAYER_MAX_HP - CHUCKER_RULES.landDamage,
-          )
-          const landed = zombieById(current, GROANER_ID)
-          expect(ZombieAction.isAnyOf(['Dazed'])(landed.action)).toBe(true)
-          expect(
-            Math.hypot(
-              landed.x - focusOf(current).player.x,
-              landed.y - focusOf(current).player.y,
-            ),
-          ).toBeLessThan(CHUCKER_RULES.landRadius + 8)
-        }),
-        ...ticks(framesFor(CHUCKER_RULES.dazedMs) - 1, FRAME_MS),
-        Story.model(current => {
           expect(
             ZombieAction.isAnyOf(['Dazed'])(
               zombieById(current, GROANER_ID).action,
             ),
           ).toBe(true)
         }),
-        ...ticks(framesFor(HIT_STOP_HURT_MS) + 2, FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, GROANER_ID).action).toEqual(
-            ZombieAction.Roaming(),
-          )
-        }),
       ),
-  )
-
-  it.effect('a player who steps off the mark is not hurt by the landing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(sceneWith([CHUCKER, GROANER])),
-      ...ticks(HEFT_FRAMES + 1, FRAME_MS),
-      Story.message(Message.PressedKey({ code: 'KeyW' })),
-      ...ticks(FLIGHT_FRAMES, FRAME_MS),
-      Story.model(current => {
-        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-        expect(
-          ZombieAction.isAnyOf(['Dazed'])(
-            zombieById(current, GROANER_ID).action,
-          ),
-        ).toBe(true)
-      }),
     ),
   )
 
@@ -201,7 +209,7 @@ describe('the Big Leaguer', () => {
     'a Big Leaguer shot down mid-heave drops its Groaner, dazed',
     () => {
       const midHeave = sceneWith([
-        modifyFields(CHUCKER, {
+        UiStruct.evolve(CHUCKER, {
           action: () =>
             ZombieAction.Hefting({
               victimId: GROANER_ID,
@@ -209,34 +217,33 @@ describe('the Big Leaguer', () => {
               durationMs: CHUCKER_RULES.heftMs,
             }),
         }),
-        modifyFields(GROANER, {
+        UiStruct.evolve(GROANER, {
           x: () => CHUCKER.x,
           action: () => ZombieAction.Carried({ byId: CHUCKER_ID }),
         }),
       ])
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(midHeave, {
-            bullets: () => [
-              bulletInto(900, CHUCKER, { damage: 20, knockback: 0 }),
-            ],
+      return modelAfter(
+        UiStruct.evolve(midHeave, {
+          bullets: () => [
+            bulletInto(900, CHUCKER, { damage: 20, knockback: 0 }),
+          ],
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(
+              ZombieState.isAnyOf(['Dying'])(
+                zombieById(current, CHUCKER_ID).state,
+              ),
+            ).toBe(true)
+            expect(
+              ZombieAction.isAnyOf(['Dazed'])(
+                zombieById(current, GROANER_ID).action,
+              ),
+            ).toBe(true)
+            expect(hasEvent(current, 'ZombieThrown')).toBe(false)
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(
-            ZombieState.isAnyOf(['Dying'])(
-              zombieById(current, CHUCKER_ID).state,
-            ),
-          ).toBe(true)
-          expect(
-            ZombieAction.isAnyOf(['Dazed'])(
-              zombieById(current, GROANER_ID).action,
-            ),
-          ).toBe(true)
-          expect(hasEvent(current, 'ZombieThrown')).toBe(false)
-        }),
       )
     },
   )
@@ -244,38 +251,40 @@ describe('the Big Leaguer', () => {
   it.effect(
     'with no Groaner to throw it walks in like any other zombie',
     () => {
-      const far = modifyFields(CHUCKER, {
+      const far = UiStruct.evolve(CHUCKER, {
         x: () => CENTER_X + 100,
         speed: () => 20,
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(sceneWith([far])),
-        ...ticks(30, FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, CHUCKER_ID).x).toBeLessThan(far.x - 4)
-          expect(
-            ZombieAction.isAnyOf(['Roaming'])(
-              zombieById(current, CHUCKER_ID).action,
-            ),
-          ).toBe(true)
-        }),
+      return modelAfter(
+        sceneWith([far]),
+        steps(
+          ticks(30, FRAME_MS),
+          checkModel(current => {
+            expect(zombieById(current, CHUCKER_ID).x).toBeLessThan(far.x - 4)
+            expect(
+              ZombieAction.isAnyOf(['Roaming'])(
+                zombieById(current, CHUCKER_ID).action,
+              ),
+            ).toBe(true)
+          }),
+        ),
       )
     },
   )
 
   it.effect('a thrown zombie gets up riled: it runs faster for good', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(sceneWith([CHUCKER, GROANER])),
-      ...ticks(HEFT_FRAMES + FLIGHT_FRAMES, FRAME_MS),
-      Story.model(current => {
-        const landed = zombieById(current, GROANER_ID)
-        expect(ZombieAction.isAnyOf(['Dazed'])(landed.action)).toBe(true)
-        expect(landed.speed).toBeCloseTo(
-          GROANER.speed * CHUCKER_RULES.landedPace,
-        )
-      }),
+    modelAfter(
+      sceneWith([CHUCKER, GROANER]),
+      steps(
+        ticks(HEFT_FRAMES + FLIGHT_FRAMES, FRAME_MS),
+        checkModel(current => {
+          const landed = zombieById(current, GROANER_ID)
+          expect(ZombieAction.isAnyOf(['Dazed'])(landed.action)).toBe(true)
+          expect(landed.speed).toBeCloseTo(
+            GROANER.speed * CHUCKER_RULES.landedPace,
+          )
+        }),
+      ),
     ),
   )
 
@@ -283,16 +292,17 @@ describe('the Big Leaguer', () => {
     const hotfoot = zombieOf('Runner', GROANER_ID, CENTER_X + 52, CENTER_Y, {
       hp: 2,
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(sceneWith([CHUCKER, hotfoot])),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(hasEvent(current, 'ZombieGrabbed')).toBe(true)
-        expect(zombieById(current, GROANER_ID).action).toEqual(
-          ZombieAction.Carried({ byId: CHUCKER_ID }),
-        )
-      }),
+    return modelAfter(
+      sceneWith([CHUCKER, hotfoot]),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(hasEvent(current, 'ZombieGrabbed')).toBe(true)
+          expect(zombieById(current, GROANER_ID).action).toEqual(
+            ZombieAction.Carried({ byId: CHUCKER_ID }),
+          )
+        }),
+      ),
     )
   })
 
@@ -301,15 +311,16 @@ describe('the Big Leaguer', () => {
     const far = zombieOf('Shambler', GROANER_ID, CHUCKER.x + 80, CENTER_Y, {
       hp: 3,
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        atPlayer(sceneWith([modifyFields(CHUCKER, { speed: () => 20 }), far])),
+    return modelAfter(
+      atPlayer(sceneWith([UiStruct.evolve(CHUCKER, { speed: () => 20 }), far])),
+      steps(
+        ticks(10, FRAME_MS),
+        checkModel(current => {
+          expect(zombieById(current, CHUCKER_ID).x).toBeGreaterThan(
+            CHUCKER.x + 2,
+          )
+        }),
       ),
-      ...ticks(10, FRAME_MS),
-      Story.model(current => {
-        expect(zombieById(current, CHUCKER_ID).x).toBeGreaterThan(CHUCKER.x + 2)
-      }),
     )
   })
 })
@@ -352,7 +363,7 @@ const shotInto = (
 })
 
 const withBullets = (scene: Model, bullets: ReadonlyArray<Bullet>): Model =>
-  modifyFields(scene, { bullets: () => bullets })
+  UiStruct.evolve(scene, { bullets: () => bullets })
 
 const isShielding = (zombie: Zombie): boolean =>
   ZombieAction.isAnyOf(['Shielding'])(zombie.action)
@@ -378,24 +389,25 @@ describe('the Big Leaguer shield', () => {
       const groaner = zombieOf('Shambler', HELD_ID, CENTER_X + 52, CENTER_Y, {
         hp: 3,
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(atPlayer(sceneWith([leaguer, runner, groaner]))),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(hasEvent(current, 'ShieldRaised')).toBe(true)
-          const raised = zombieById(current, LEAGUER_ID)
-          expect(isShielding(raised)).toBe(true)
-          expect(zombieById(current, HELD_ID).action).toEqual(
-            ZombieAction.Shielded({ byId: LEAGUER_ID }),
-          )
-        }),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, HELD_ID).x).toBeLessThan(
-            zombieById(current, LEAGUER_ID).x,
-          )
-        }),
+      return modelAfter(
+        atPlayer(sceneWith([leaguer, runner, groaner])),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(hasEvent(current, 'ShieldRaised')).toBe(true)
+            const raised = zombieById(current, LEAGUER_ID)
+            expect(isShielding(raised)).toBe(true)
+            expect(zombieById(current, HELD_ID).action).toEqual(
+              ZombieAction.Shielded({ byId: LEAGUER_ID }),
+            )
+          }),
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(zombieById(current, HELD_ID).x).toBeLessThan(
+              zombieById(current, LEAGUER_ID).x,
+            )
+          }),
+        ),
       )
     },
   )
@@ -407,38 +419,38 @@ describe('the Big Leaguer shield', () => {
       zombieOf('Tank', 32, CENTER_X + 46, CENTER_Y + 4, { hp: 30 }),
       zombieOf('Boss', 33, CENTER_X + 48, CENTER_Y - 4, { hp: 90 }),
     ]
-    return Story.story(
-      APPLICATION,
-      Story.given(atPlayer(sceneWith([leaguer, ...others]))),
-      ...ticks(3, FRAME_MS),
-      Story.model(current => {
-        expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(false)
-        Array.forEach(others, other =>
-          expect(zombieById(current, other.id).action).toEqual(
-            ZombieAction.Roaming(),
-          ),
-        )
-      }),
+    return modelAfter(
+      atPlayer(sceneWith([leaguer, ...others])),
+      steps(
+        ticks(3, FRAME_MS),
+        checkModel(current => {
+          expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(false)
+          Array.forEach(others, other =>
+            expect(zombieById(current, other.id).action).toEqual(
+              ZombieAction.Roaming(),
+            ),
+          )
+        }),
+      ),
     )
   })
 
   it.effect('taking a hit from afar makes him raise a shield too', () => {
     const leaguer = leaguerAt(CENTER_X + 110)
     const runner = zombieOf('Runner', 30, CENTER_X + 116, CENTER_Y, { hp: 2 })
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        withBullets(atPlayer(sceneWith([leaguer, runner])), [
-          shotInto(5, leaguer, { x: 0, y: 1 }),
-        ]),
+    return modelAfter(
+      withBullets(atPlayer(sceneWith([leaguer, runner])), [
+        shotInto(5, leaguer, { x: 0, y: 1 }),
+      ]),
+      steps(
+        ticks(2, FRAME_MS),
+        checkModel(current => {
+          expect(zombieById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
+          expect(zombieById(current, LEAGUER_ID).action).toEqual(
+            expect.objectContaining({ _tag: 'Shielding', victimId: 30 }),
+          )
+        }),
       ),
-      ...ticks(2, FRAME_MS),
-      Story.model(current => {
-        expect(zombieById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
-        expect(zombieById(current, LEAGUER_ID).action).toEqual(
-          expect.objectContaining({ _tag: 'Shielding', victimId: 30 }),
-        )
-      }),
     )
   })
 
@@ -446,18 +458,17 @@ describe('the Big Leaguer shield', () => {
     'a shot from the front hits the zombie he holds instead of him',
     () => {
       const [leaguer, held] = shielding(CENTER_X + 40)
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          withBullets(atPlayer(sceneWith([leaguer!, held!])), [
-            shotInto(5, leaguer!, { x: 1, y: 0 }),
-          ]),
+      return modelAfter(
+        withBullets(atPlayer(sceneWith([leaguer!, held!])), [
+          shotInto(5, leaguer!, { x: 1, y: 0 }),
+        ]),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            expect(zombieById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP)
+            expect(zombieById(current, HELD_ID).hp).toBe(1)
+          }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP)
-          expect(zombieById(current, HELD_ID).hp).toBe(1)
-        }),
       )
     },
   )
@@ -478,16 +489,15 @@ describe('the Big Leaguer shield', () => {
           ),
         ]
         yield* Effect.forEach(shots, shot =>
-          Story.story(
-            APPLICATION,
-            Story.given(
-              withBullets(atPlayer(sceneWith([leaguer!, held!])), [shot]),
+          modelAfter(
+            withBullets(atPlayer(sceneWith([leaguer!, held!])), [shot]),
+            steps(
+              tick(FRAME_MS),
+              checkModel(current => {
+                expect(zombieById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP - 2)
+                expect(zombieById(current, HELD_ID).hp).toBe(3)
+              }),
             ),
-            tick(FRAME_MS),
-            Story.model(current => {
-              expect(zombieById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP - 2)
-              expect(zombieById(current, HELD_ID).hp).toBe(3)
-            }),
           ),
         )
       }),
@@ -500,15 +510,16 @@ describe('the Big Leaguer shield', () => {
       hp: 0,
       state: ZombieState.Fusing({ remainingMs: 0 }),
     }
-    return Story.story(
-      APPLICATION,
-      Story.given(atPlayer(sceneWith([leaguer!, held!, bomber]))),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(hasEvent(current, 'Exploded')).toBe(true)
-        expect(zombieById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
-        expect(zombieById(current, HELD_ID).hp).toBe(3)
-      }),
+    return modelAfter(
+      atPlayer(sceneWith([leaguer!, held!, bomber])),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(hasEvent(current, 'Exploded')).toBe(true)
+          expect(zombieById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
+          expect(zombieById(current, HELD_ID).hp).toBe(3)
+        }),
+      ),
     )
   })
 
@@ -519,21 +530,22 @@ describe('the Big Leaguer shield', () => {
         hp: 3,
       })
       const frames: Array<boolean> = []
-      yield* Story.story(
-        APPLICATION,
-        Story.given(atPlayer(sceneWith([leaguer!, held!, spare]))),
-        ...Array.flatMap(
-          Array.makeBy(framesFor(CHUCKER_RULES.shieldMs) - 2, () => 0),
-          () => [
-            tick(FRAME_MS),
-            Story.model((current: Model) => {
-              frames.push(
-                ZombieAction.isAnyOf(['Hefting'])(
-                  zombieById(current, LEAGUER_ID).action,
-                ) || hasEvent(current, 'ZombieThrown'),
-              )
-            }),
-          ],
+      yield* modelAfter(
+        atPlayer(sceneWith([leaguer!, held!, spare])),
+        steps(
+          ...Array.flatMap(
+            Array.makeBy(framesFor(CHUCKER_RULES.shieldMs) - 2, () => 0),
+            () => [
+              tick(FRAME_MS),
+              checkModel((current: Model) => {
+                frames.push(
+                  ZombieAction.isAnyOf(['Hefting'])(
+                    zombieById(current, LEAGUER_ID).action,
+                  ) || hasEvent(current, 'ZombieThrown'),
+                )
+              }),
+            ],
+          ),
         ),
       )
       expect(frames).not.toContain(true)
@@ -547,29 +559,28 @@ describe('the Big Leaguer shield', () => {
       const spare = zombieOf('Runner', 50, CENTER_X + 46, CENTER_Y + 6, {
         hp: 2,
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          withBullets(atPlayer(sceneWith([leaguer!, held!, spare])), [
-            shotInto(5, leaguer!, { x: 1, y: 0 }),
-          ]),
+      return modelAfter(
+        withBullets(atPlayer(sceneWith([leaguer!, held!, spare])), [
+          shotInto(5, leaguer!, { x: 1, y: 0 }),
+        ]),
+        steps(
+          ticks(2, FRAME_MS),
+          checkModel(current => {
+            expect(zombieById(current, LEAGUER_ID).action).toEqual(
+              expect.objectContaining({ _tag: 'Winded' }),
+            )
+          }),
+          ticks(framesFor(CHUCKER_RULES.shieldCooldownMs) - 4, FRAME_MS),
+          checkModel(current => {
+            expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(false)
+          }),
+          ticks(6, FRAME_MS),
+          checkModel(current => {
+            expect(zombieById(current, LEAGUER_ID).action).toEqual(
+              expect.objectContaining({ _tag: 'Shielding', victimId: 50 }),
+            )
+          }),
         ),
-        ...ticks(2, FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, LEAGUER_ID).action).toEqual(
-            expect.objectContaining({ _tag: 'Winded' }),
-          )
-        }),
-        ...ticks(framesFor(CHUCKER_RULES.shieldCooldownMs) - 4, FRAME_MS),
-        Story.model(current => {
-          expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(false)
-        }),
-        ...ticks(6, FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, LEAGUER_ID).action).toEqual(
-            expect.objectContaining({ _tag: 'Shielding', victimId: 50 }),
-          )
-        }),
       )
     },
   )
@@ -578,22 +589,23 @@ describe('the Big Leaguer shield', () => {
     'the shield drops after its time is up and the held zombie stumbles off dazed',
     () => {
       const [leaguer, held] = shielding(CENTER_X + 40)
-      return Story.story(
-        APPLICATION,
-        Story.given(atPlayer(sceneWith([leaguer!, held!]))),
-        ...ticks(framesFor(CHUCKER_RULES.shieldMs) - 2, FRAME_MS),
-        Story.model(current => {
-          expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(true)
-        }),
-        ...ticks(3, FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, LEAGUER_ID).action).toEqual(
-            expect.objectContaining({ _tag: 'Winded' }),
-          )
-          expect(zombieById(current, HELD_ID).action).toEqual(
-            expect.objectContaining({ _tag: 'Dazed' }),
-          )
-        }),
+      return modelAfter(
+        atPlayer(sceneWith([leaguer!, held!])),
+        steps(
+          ticks(framesFor(CHUCKER_RULES.shieldMs) - 2, FRAME_MS),
+          checkModel(current => {
+            expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(true)
+          }),
+          ticks(3, FRAME_MS),
+          checkModel(current => {
+            expect(zombieById(current, LEAGUER_ID).action).toEqual(
+              expect.objectContaining({ _tag: 'Winded' }),
+            )
+            expect(zombieById(current, HELD_ID).action).toEqual(
+              expect.objectContaining({ _tag: 'Dazed' }),
+            )
+          }),
+        ),
       )
     },
   )

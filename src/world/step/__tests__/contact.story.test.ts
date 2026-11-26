@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import {
@@ -19,7 +18,14 @@ import {
 } from '../../../shared/constants'
 import { holdingSecond } from '../../../test/arsenals'
 import { openFloorWave } from '../../../test/model.fixture'
-import { APPLICATION, holdFire, ticks, zombieOf } from '../../../test/testing'
+import {
+  checkModel,
+  holdFire,
+  modelAfter,
+  steps,
+  tick,
+  zombieOf,
+} from '../../../test/testing'
 import { WEAPONS } from '../../gear/weapons'
 import { focusOf, modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS, bodyRadiusOf } from '../../zombies/zombies'
@@ -43,9 +49,9 @@ const sceneOf = (
   zombies: ReadonlyArray<Zombie>,
   { isSteadfast = false }: Readonly<{ isSteadfast?: boolean }> = {},
 ): Model =>
-  modifyFocus(modifyFields(fightingBase, { zombies: () => zombies }), {
+  modifyFocus(UiStruct.evolve(fightingBase, { zombies: () => zombies }), {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => PLAYER_X,
         y: () => PLAYER_Y,
         facing: () => ({ x: 1, y: 0 }),
@@ -82,16 +88,19 @@ const playFrames = (
 ): Effect.Effect<ReadonlyArray<Model>> =>
   Effect.suspend(() => {
     const frames: Array<Model> = []
-    return Story.story(
-      APPLICATION,
-      Story.given(start),
-      ...before,
-      ...Array.flatMap(ticks(count, deltaTime), frame => [
-        frame,
-        Story.model((current: Model) => {
-          frames.push(current)
-        }),
-      ]),
+    return modelAfter(
+      start,
+      steps(
+        ...before,
+        ...Array.makeBy(count, () =>
+          steps(
+            tick(deltaTime),
+            checkModel((current: Model) => {
+              frames.push(current)
+            }),
+          ),
+        ),
+      ),
     ).pipe(Effect.as<ReadonlyArray<Model>>(frames))
   })
 
@@ -178,7 +187,7 @@ describe('zombies stop at the player', () => {
 describe('point-blank shots', () => {
   it.effect('a pistol shot kills a zombie standing on the player', () =>
     Effect.gen(function* () {
-      const dazed = modifyFields(
+      const dazed = UiStruct.evolve(
         zombieOf('Shambler', 1, PLAYER_X - 1, PLAYER_Y, { hp: 1 }),
         {
           action: () =>
@@ -204,7 +213,7 @@ describe('point-blank shots', () => {
     'every Barn Buster pellet hits a zombie on the player and knocks it away',
     () =>
       Effect.gen(function* () {
-        const dazed = modifyFields(
+        const dazed = UiStruct.evolve(
           zombieOf('Shambler', 1, PLAYER_X, PLAYER_Y, { hp: 50 }),
           {
             action: () =>
@@ -213,7 +222,7 @@ describe('point-blank shots', () => {
         )
         const start = modifyFocus(sceneOf([dazed], { isSteadfast: true }), {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               arsenal: () =>
                 holdingSecond({
                   kind: 'Shotgun',

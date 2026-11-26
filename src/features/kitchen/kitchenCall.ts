@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { KitchenCall, Tour } from '../../domain/clientSchema'
@@ -69,13 +70,13 @@ export const advanceKitchenCall: {
   }
   const wave = roundWaveOf(model.phase)
   if (isOpenedThisFrame(model)) {
-    return modifyFields(model, {
+    return UiStruct.evolve(model, {
       kitchenCall: () => KitchenCall.Opened({ ageMs: 0 }),
     })
   }
   return KitchenCall.match(model.kitchenCall, {
     Opened: ({ ageMs }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         kitchenCall: () =>
           KitchenCall.Opened({
             ageMs: Math.min(ageMs + frameMs, OPENED_CAP_MS),
@@ -83,7 +84,7 @@ export const advanceKitchenCall: {
       }),
     Quiet: () =>
       isCallDue(model, wave)
-        ? modifyFields(model, {
+        ? UiStruct.evolve(model, {
             kitchenCall: () =>
               KitchenCall.Calling({ wave, remainingMs: CALL_MS }),
           })
@@ -93,8 +94,8 @@ export const advanceKitchenCall: {
       !Phase.isAnyOf(['Preparation'])(model.phase) ||
       wave !== calledWave ||
       !isBoardsUp(model)
-        ? modifyFields(model, { kitchenCall: () => quietAt(calledWave) })
-        : modifyFields(model, {
+        ? UiStruct.evolve(model, { kitchenCall: () => quietAt(calledWave) })
+        : UiStruct.evolve(model, {
             kitchenCall: () =>
               KitchenCall.Calling({
                 wave: calledWave,

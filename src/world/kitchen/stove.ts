@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Calling } from '../../shared/playerData'
 import { nextRandom } from '../../shared/prng'
@@ -182,11 +183,11 @@ export const stoveOffers: {
 // NOTE: a gun holds one perk, so a new one takes the old one's place. A
 // Hearty gun cooked into another keeps no rounds over its new magazine.
 const cooked = (player: Player, perk: GunPerk): Player =>
-  modifyFields(player, {
+  UiStruct.evolve(player, {
     arsenal: arsenal =>
       mapHeld(arsenal, gun => {
         const withPerk: CarriedGun = { ...gun, perk }
-        return modifyFields(withPerk, {
+        return UiStruct.evolve(withPerk, {
           loaded: loaded =>
             Math.min(loaded, carriedMagazine(player.calling, withPerk)),
         })
@@ -211,11 +212,11 @@ export const cookGun: {
       }
       const wave = world.stove.wave
       return Option.some(
-        modifyFields(spendKeys(world, price), {
+        UiStruct.evolve(spendKeys(world, price), {
           seats: atSeat(slot, {
             player: current => cooked(current, perk),
             cooking: cooking =>
-              modifyFields(cooking, {
+              UiStruct.evolve(cooking, {
                 cooks: cooks => cooks + 1,
                 lastWave: () => wave,
               }),

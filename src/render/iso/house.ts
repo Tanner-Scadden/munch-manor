@@ -4,7 +4,6 @@
 // furniture's shadows are cast through.
 
 import { Array, Option, Record, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 import { type Application, Graphics, Rectangle } from 'pixi.js'
 
 import {
@@ -24,6 +23,7 @@ import {
   type CoverKind,
   WALL_SYMBOL,
 } from '../../world/level/tileGrid'
+import type * as Draw from '../draw'
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from '../room/escapeCover'
 import { roomArtOf } from '../room/room'
 import { COVER_DRAWINGS, coverBlocks } from '../room/roomCover'
@@ -328,7 +328,7 @@ type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
 const drawingOf = (
   kind: CoverKind,
-): ((box: Box, level: Level) => ReadonlyArray<Canvas.Shape>) =>
+): ((box: Box, level: Level) => ReadonlyArray<Draw.Shape>) =>
   isEscapeCoverKind(kind) ? ESCAPE_COVER_DRAWINGS[kind] : COVER_DRAWINGS[kind]
 
 const FAINT_FILL = /^rgba\([^)]*,\s*([\d.]+)\)$/
@@ -380,7 +380,7 @@ export type Plant = Readonly<{
   caster: Cutout
 }>
 
-const boundsOf = (rects: ReadonlyArray<Canvas.Rect>): Bounds =>
+const boundsOf = (rects: ReadonlyArray<Draw.Rect>): Bounds =>
   Array.reduce(
     rects,
     {
@@ -399,7 +399,7 @@ const boundsOf = (rects: ReadonlyArray<Canvas.Rect>): Bounds =>
 
 const bakeRects = (
   app: Application,
-  rects: ReadonlyArray<Canvas.Rect>,
+  rects: ReadonlyArray<Draw.Rect>,
   bounds: Bounds,
 ): Cutout['texture'] => {
   const graphics = new Graphics()

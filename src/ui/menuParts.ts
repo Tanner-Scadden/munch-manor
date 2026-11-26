@@ -1,5 +1,7 @@
-import { Function, Option } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+import { Effect, Function, Option } from 'effect'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import type { Model } from '../app/model'
 import { pixelArtStyle } from '../art/artSize'
@@ -18,16 +20,26 @@ import { badgeTierOf } from '../world/heroes/rank'
 // NOTE: a pixel icon as a background image, hidden from screen readers.
 // Generic over the Message, so the root's views and co-op's both use it.
 export const iconView: {
-  <Message>(icon: string, h: HtmlBuilder<Message>): (className: string) => Html
-  <Message>(className: string, icon: string, h: HtmlBuilder<Message>): Html
+  <Message>(
+    icon: string,
+    h: Html.H<Message>,
+  ): (className: string) => View.Content<Message>
+  <Message>(
+    className: string,
+    icon: string,
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   3,
-  <Message>(className: string, icon: string, h: HtmlBuilder<Message>): Html =>
-    h.span([
-      h.Class(className),
-      h.AriaHidden(true),
-      h.Style(pixelArtStyle(icon)),
-    ]),
+  <Message>(
+    className: string,
+    icon: string,
+    h: Html.H<Message>,
+  ): View.Content<Message> =>
+    h.span
+      .class(className)
+      .attr('aria-hidden', 'true')
+      .style(pixelArtStyle(icon)),
 )
 
 // NOTE: one level's skull in a row of difficulty skulls. A locked level
@@ -36,20 +48,20 @@ export const iconView: {
 // skull's own dimming never greys it.
 export const skullFaceViews: {
   <Message>(
-    h: HtmlBuilder<Message>,
+    h: Html.H<Message>,
   ): (face: {
     readonly className: string
     readonly icon: string
     readonly isLocked: boolean
-  }) => ReadonlyArray<Html>
+  }) => ReadonlyArray<View.Content<Message>>
   <Message>(
     face: {
       readonly className: string
       readonly icon: string
       readonly isLocked: boolean
     },
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<Html>
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>>
 } = Function.dual(
   2,
   <Message>(
@@ -58,8 +70,8 @@ export const skullFaceViews: {
       readonly icon: string
       readonly isLocked: boolean
     },
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<Html> =>
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>> =>
     face.isLocked
       ? [
           iconView(face.className, SKULL_OFF_ICON, h),
@@ -75,24 +87,27 @@ export const skullFaceViews: {
 export const callingPropView: {
   <Message>(
     calling: Calling,
-    h: HtmlBuilder<Message>,
-  ): (className: string) => Html
-  <Message>(className: string, calling: Calling, h: HtmlBuilder<Message>): Html
+    h: Html.H<Message>,
+  ): (className: string) => View.Content<Message> | null
+  <Message>(
+    className: string,
+    calling: Calling,
+    h: Html.H<Message>,
+  ): View.Content<Message> | null
 } = Function.dual(
   3,
   <Message>(
     className: string,
     calling: Calling,
-    h: HtmlBuilder<Message>,
-  ): Html =>
+    h: Html.H<Message>,
+  ): View.Content<Message> | null =>
     calling === 'You'
-      ? h.empty
-      : h.span([
-          h.Class(className),
-          h.DataAttribute('calling', calling),
-          h.AriaHidden(true),
-          h.Style(pixelArtStyle(PROP_ICONS[calling])),
-        ]),
+      ? null
+      : h.span
+          .class(className)
+          .attr('data-calling', calling)
+          .attr('aria-hidden', 'true')
+          .style(pixelArtStyle(PROP_ICONS[calling])),
 )
 
 // RANK BADGES
@@ -100,25 +115,35 @@ export const callingPropView: {
 // NOTE: a rank's badge as an image, `scale` times its pixels, for the
 // home menu, the Profile, and co-op's lobby.
 export const rankBadgeImgView: {
-  <Message>(scale: number, h: HtmlBuilder<Message>): (rank: number) => Html
-  <Message>(rank: number, scale: number, h: HtmlBuilder<Message>): Html
+  <Message>(
+    scale: number,
+    h: Html.H<Message>,
+  ): (rank: number) => View.Content<Message>
+  <Message>(
+    rank: number,
+    scale: number,
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   3,
-  <Message>(rank: number, scale: number, h: HtmlBuilder<Message>): Html =>
+  <Message>(
+    rank: number,
+    scale: number,
+    h: Html.H<Message>,
+  ): View.Content<Message> =>
     Option.match(badgeImage(badgeTierOf(rank)), {
-      onNone: () => h.span([h.Class('rank-badge-img')]),
+      onNone: () => h.span.class('rank-badge-img'),
       onSome: image =>
-        h.img([
-          h.Class('rank-badge-img'),
-          h.Src(image.src),
-          h.Alt(''),
-          h.AriaHidden(true),
-          h.Style({
+        h.img
+          .class('rank-badge-img')
+          .attr('src', image.src)
+          .attr('alt', '')
+          .attr('aria-hidden', 'true')
+          .style({
             width: `${image.width * scale}px`,
             height: `${image.height * scale}px`,
             '--art-w': `${image.width}`,
           }),
-        ]),
     }),
 )
 
@@ -128,33 +153,30 @@ export const rankTagView: {
   <Message>(
     rank: number,
     scale: number,
-    h: HtmlBuilder<Message>,
-  ): (className: string) => Html
+    h: Html.H<Message>,
+  ): (className: string) => View.Content<Message>
   <Message>(
     className: string,
     rank: number,
     scale: number,
-    h: HtmlBuilder<Message>,
-  ): Html
+    h: Html.H<Message>,
+  ): View.Content<Message>
 } = Function.dual(
   4,
   <Message>(
     className: string,
     rank: number,
     scale: number,
-    h: HtmlBuilder<Message>,
-  ): Html =>
-    h.span(
-      [
-        h.Class(className),
-        h.DataAttribute('tier', badgeTierOf(rank)),
-        h.AriaHidden(true),
-      ],
-      [
+    h: Html.H<Message>,
+  ): View.Content<Message> =>
+    h.span
+      .class(className)
+      .attr('data-tier', badgeTierOf(rank))
+      .attr('aria-hidden', 'true')
+      .children(
         rankBadgeImgView(rank, scale, h),
-        h.span([h.Class('rank-number')], [`${rank}`]),
-      ],
-    ),
+        h.span.class('rank-number').children(`${rank}`),
+      ),
 )
 
 // KEY CAPS
@@ -166,22 +188,22 @@ export const isKeyboard = (model: Model): boolean =>
 export const keyCapView: {
   <Message>(
     cap: string,
-    h: HtmlBuilder<Message>,
-  ): (model: Model) => ReadonlyArray<Html>
+    h: Html.H<Message>,
+  ): (model: Model) => ReadonlyArray<View.Content<Message>>
   <Message>(
     model: Model,
     cap: string,
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<Html>
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>>
 } = Function.dual(
   3,
   <Message>(
     model: Model,
     cap: string,
-    h: HtmlBuilder<Message>,
-  ): ReadonlyArray<Html> =>
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>> =>
     isKeyboard(model)
-      ? [h.span([h.Class('home-key'), h.AriaHidden(true)], [cap])]
+      ? [h.span.class('home-key').attr('aria-hidden', 'true').children(cap)]
       : [],
 )
 
@@ -196,10 +218,28 @@ export const percentOf: {
 )
 
 // NOTE: the NEW tag on a card or option that holds something new.
-export const newBadgeView = <Message>(h: HtmlBuilder<Message>): Html =>
-  h.span([h.Class('look-new'), h.AriaHidden(true)], ['NEW'])
+export const newBadgeView = <Message>(
+  h: Html.H<Message>,
+): View.Content<Message> =>
+  h.span.class('look-new').attr('aria-hidden', 'true').children('NEW')
 
 // NOTE: a red dot on a button that holds something new, for the Profile's
 // Look tab, the hero button on the home menu, and the character pill.
-export const newPipView = <Message>(h: HtmlBuilder<Message>): Html =>
-  h.span([h.Class('new-pip'), h.AriaHidden(true)])
+export const newPipView = <Message>(
+  h: Html.H<Message>,
+): View.Content<Message> => h.span.class('new-pip').attr('aria-hidden', 'true')
+
+// ON THE PAGE
+
+// NOTE: focus moved to, or a click made on, the element with an id, for a
+// Command's body: a Command runs once its render is committed, so the
+// element is on the page if the view drew it, and one not drawn is left be.
+export const focusById = (id: string): Effect.Effect<void> =>
+  Effect.sync(() => {
+    document.getElementById(id)?.focus()
+  })
+
+export const clickById = (id: string): Effect.Effect<void> =>
+  Effect.sync(() => {
+    document.getElementById(id)?.click()
+  })

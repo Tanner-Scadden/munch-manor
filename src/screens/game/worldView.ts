@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { group } from '../../art/sprite'
@@ -53,6 +52,7 @@ import {
 import { cellarDarkOf } from '../../render/cellarDark'
 import { type Drawable, depthSortedShapes } from '../../render/depth'
 import { isBehindWall } from '../../render/doorways'
+import type * as Draw from '../../render/draw'
 import {
   bulletShapes,
   doorRattleShapes,
@@ -187,7 +187,7 @@ const groundShapes = (
   camera: Camera,
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   ...kitchenLeakShapes(model),
   ...ovenGlowShapes(model),
   ...kitchenGearGroundShapes(model),
@@ -221,8 +221,8 @@ const fadedBy =
   (fadeOf: (zombie: Zombie) => number) =>
   (
     zombie: Zombie,
-    shapes: ReadonlyArray<Canvas.Shape>,
-  ): ReadonlyArray<Canvas.Shape> => {
+    shapes: ReadonlyArray<Draw.Shape>,
+  ): ReadonlyArray<Draw.Shape> => {
     const opacity = fadeOf(zombie)
     return opacity >= 1 ? shapes : [group({ shapes, opacity })]
   }
@@ -325,7 +325,7 @@ const overheadShapes = (
   camera: Camera,
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   ...hungChandelierShapes(model),
   ...ovenFlameShapes(model),
   ...Array.flatMap(model.traps, trapOverheadShapes(levelOf(model))),
@@ -444,11 +444,11 @@ export const worldStrataOf: {
 // a frame shows, as plain data for the tests and the tools (the sprite atlas,
 // the audit harness) that read the world's shapes.
 export const worldLayerShapes: {
-  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+  (camera: Camera): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => {
+  (model: Model, camera: Camera): ReadonlyArray<Draw.Shape> => {
     const { ground, standing, overhead } = worldStrataOf(model, camera)
     return [
       group({

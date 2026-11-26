@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { bakeShapes, deepSprite, group, placeAt } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
@@ -9,6 +8,7 @@ import { COVER_SYMBOLS, type CoverKind } from '../../world/level/tileGrid'
 import { secretShelfOf } from '../../world/library/secretShelf'
 import type { Player, Zombie } from '../../world/schema/entitySchema'
 import type { Drawable } from '../depth'
+import type * as Draw from '../draw'
 import { playerFootY } from '../playerView'
 import { zombieFootY } from '../zombieGroundView'
 import { ESCAPE_COVER_DRAWINGS, isEscapeCoverKind } from './escapeCover'
@@ -70,7 +70,7 @@ export type TallCover = Readonly<{
   right: number
   artTop: number
   footY: number
-  shapes: ReadonlyArray<Canvas.Shape>
+  shapes: ReadonlyArray<Draw.Shape>
 }>
 
 const drawingOf = (
@@ -78,7 +78,7 @@ const drawingOf = (
 ): ((
   box: Readonly<{ x: number; y: number; width: number; height: number }>,
   level: Level,
-) => ReadonlyArray<Canvas.Shape>) =>
+) => ReadonlyArray<Draw.Shape>) =>
   isEscapeCoverKind(kind) ? ESCAPE_COVER_DRAWINGS[kind] : COVER_DRAWINGS[kind]
 
 // NOTE: a faint glow on the floor around a piece (a candle's, a
@@ -94,11 +94,11 @@ const alphaOf = (fill: string): number =>
     Option.getOrElse(() => 1),
   )
 
-const isGlow = (shape: Canvas.Shape): boolean =>
+const isGlow = (shape: Draw.Shape): boolean =>
   shape._tag === 'Rect' && alphaOf(shape.fill ?? '') < GLOW_ALPHA
 
 const boundsOf = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+  shapes: ReadonlyArray<Draw.Shape>,
 ): Option.Option<Readonly<{ left: number; top: number; right: number }>> =>
   Array.reduce(
     shapes,

@@ -1,11 +1,11 @@
-import { Array, Option, Record, String, pipe } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option, Record, String, pipe } from 'effect'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { ProfileBinding } from '../../../../../app/bindings'
+import { Message } from '../../../../../app/message'
 import { type Model, Reload, defaultAppearance } from '../../../../../app/model'
+import { FocusProfileElement } from '../../../../../app/update/profile'
 import { WriteSave } from '../../../../../app/update/save'
 import { playerPixels, randomAppearance } from '../../../../../art/appearance'
 import {
@@ -36,7 +36,15 @@ import {
   SoldHat,
 } from '../../../../../shared/playerData'
 import { readyAfterRead } from '../../../../../test/model.fixture'
-import { APPLICATION, writeSave } from '../../../../../test/testing'
+import {
+  type StoryStep,
+  checkModel,
+  expectNoCommand,
+  modelAfter,
+  send,
+  steps,
+  writeSave,
+} from '../../../../../test/testing'
 import {
   bonesBalanceOf,
   noRank,
@@ -44,15 +52,12 @@ import {
   rankOf,
 } from '../../../../../world/heroes/rank'
 import { focusOf } from '../../../../../world/party/party'
-import { CharacterBinding } from '../../../composition'
-import { FocusLookOption } from '../../../inMessageUpdate'
-import { Message as ProfileMessage } from '../../../message'
-import * as Character from '../block'
+import { pickLook, rollLookDice } from '../../../__tests__/profile.fixture'
 
-// The earned looks (src/domain/closet.ts, src/app/update/look.ts): hats, shirt
-// colors, prints, and gun skins are worn, bought with Bones, or gifted by
-// rank, picked in the Look tab's rows (a look for sale is tried on first),
-// and a worn hat shows over a calling's prop.
+// The earned looks (src/domain/closet.ts, src/app/update/profile.ts): hats,
+// shirt colors, prints, and gun skins are worn, bought with Bones, or gifted
+// by rank, picked in the Look tab's rows (a look for sale is tried on
+// first), and a worn hat shows over a calling's prop.
 
 const HATS = [...GiftHat.literals, ...SoldHat.literals]
 
@@ -61,23 +66,22 @@ const closetWith = (
   look: Partial<Appearance> = {},
   bought: ReadonlyArray<string> = [],
 ): Model =>
-  modifyFields(readyAfterRead, {
+  UiStruct.evolve(readyAfterRead, {
     rank: () => ({ ...noRank, ...rank }),
     boughtCosmetics: () => bought,
     appearance: current => ({ ...current, ...look }),
-    profile: profile => modifyFields(profile, { tab: () => 'Look' }),
-    profileDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
+    profile: profile => UiStruct.evolve(profile, { tab: () => 'Look' }),
+    profileDialog: dialog => UiStruct.evolve(dialog, { isOpen: () => true }),
   })
 
 const rankPoints = (rank: number): Partial<SavedRank> => ({
   earnedPoints: pointsForRank(rank),
 })
 
-const pick = (part: LookPart, value: string) =>
-  Story.messageIn(
-    [ProfileBinding, CharacterBinding],
-    Character.Message.ClickedGearOption({ part, value }),
-  )
+// NOTE: the root's Story from `model` through `each`, its end check run as
+// the Story's scope closes.
+const story = (model: Model, ...each: ReadonlyArray<StoryStep>) =>
+  Effect.asVoid(modelAfter(model, steps(...each)))
 
 const withLook = (look: Partial<Appearance>): Appearance => ({
   ...defaultAppearance,
@@ -113,20 +117,29 @@ const SOLD = [
   },
 ] as const
 
-const buy = () =>
-  Story.messageIn(
-    [ProfileBinding, CharacterBinding],
-    Character.Message.ClickedBuyButton(),
+// NOTE: the BUY pill on the look being tried on, as the root hears it.
+const buy = (part: LookPart, value: string): StoryStep =>
+  send(Message.ClickedBuyProfileLook({ part, value }))
+
+// NOTE: focus moves to the look just bought, its BUY pill gone.
+const focusedBought = (part: LookPart, value: string): StoryStep =>
+  steps(
+    s =>
+      s.expectHas(
+        FocusProfileElement.make({
+          selector: `[data-look-option="${part}.${value}"]`,
+        }),
+      ),
+    s => s.resolve(FocusProfileElement, Component.noop),
   )
 
 describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
   it.effect('a pick only tries it on: nothing is spent, worn, or saved', () => {
     const before = closetWith({ earnedBones: 80 })
-    return Story.story(
-      APPLICATION,
-      Story.given(before),
-      pick(part, name),
-      Story.model(current => {
+    return story(
+      before,
+      pickLook(part, name),
+      checkModel(current => {
         expect(current.profile.maybePreview).toEqual(
           Option.some({ part, value: name }),
         )
@@ -135,7 +148,7 @@ describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
         expect(current.rank.spentBones).toBe(0)
         expect(saveOf(current)).toEqual(saveOf(before))
       }),
-      Story.Command.expectNone(),
+      expectNoCommand,
     )
   })
 
@@ -143,17 +156,16 @@ describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
     'the BUY pill spends its price, owns it for good, and puts it on',
     () => {
       const before = closetWith({ earnedBones: 80 })
-      const after = modifyFields(before, {
+      const after = UiStruct.evolve(before, {
         appearance: current => ({ ...current, [field]: name }),
         boughtCosmetics: () => [id],
         rank: rank => ({ ...rank, spentBones: price }),
       })
-      return Story.story(
-        APPLICATION,
-        Story.given(before),
-        pick(part, name),
-        buy(),
-        Story.model(current => {
+      return story(
+        before,
+        pickLook(part, name),
+        buy(part, name),
+        checkModel(current => {
           expect(current.appearance[field]).toBe(name)
           expect(current.boughtCosmetics).toEqual([id])
           expect(bonesBalanceOf(current.rank)).toBe(80 - price)
@@ -164,91 +176,83 @@ describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
             kind: 'Bought',
           })
         }),
-        Story.Command.expectHas(FocusLookOption),
-        Story.Command.expectHas(WriteSave),
-        Story.Command.resolve(
-          FocusLookOption,
-          ProfileMessage.CompletedFocusLookOption(),
-        ),
-        Story.Command.expectExact(
-          WriteSave({
-            save: saveOf(after),
-            changes: [
-              PlayerChange.ChangedAppearance({ appearance: after.appearance }),
-              PlayerChange.BoughtCosmetic({ id }),
-            ],
-          }),
-        ),
-        writeSave(),
+        s => s.expectHas(WriteSave),
+        focusedBought(part, name),
+        s =>
+          s.expectExact(
+            WriteSave.make({
+              save: saveOf(after),
+              changes: [
+                PlayerChange.ChangedAppearance({
+                  appearance: after.appearance,
+                }),
+                PlayerChange.BoughtCosmetic({ id }),
+              ],
+            }),
+          ),
+        writeSave,
       )
     },
   )
 
   it.effect('short of Bones a pick still tries it on and BUY only shakes', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(closetWith({ earnedBones: price - 1 })),
-      pick(part, name),
-      Story.model(current => {
+    story(
+      closetWith({ earnedBones: price - 1 }),
+      pickLook(part, name),
+      checkModel(current => {
         expect(Option.isSome(current.profile.maybePreview)).toBe(true)
       }),
-      buy(),
-      Story.model(current => {
+      buy(part, name),
+      checkModel(current => {
         expect(current.appearance[field]).toBe(defaultAppearance[field])
         expect(current.boughtCosmetics).toEqual([])
         expect(bonesBalanceOf(current.rank)).toBe(price - 1)
         expect(current.profile.closetCue.kind).toBe('Short')
         expect(Option.isSome(current.profile.maybePreview)).toBe(true)
       }),
-      Story.Command.expectNone(),
+      expectNoCommand,
     ),
   )
 
   it.effect('picking the worn look ends the try-on and changes nothing', () => {
     const before = closetWith({ earnedBones: 200 })
-    return Story.story(
-      APPLICATION,
-      Story.given(before),
-      pick(part, name),
-      pick(part, before.appearance[field]),
-      Story.model(current => {
+    return story(
+      before,
+      pickLook(part, name),
+      pickLook(part, before.appearance[field]),
+      checkModel(current => {
         expect(Option.isNone(current.profile.maybePreview)).toBe(true)
         expect(current.appearance).toEqual(before.appearance)
       }),
-      Story.Command.expectNone(),
+      expectNoCommand,
     )
   })
 
   it.effect('rolling the dice ends the try-on', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(closetWith({ earnedBones: 200 })),
-      pick(part, name),
-      Story.messageIn(
-        [ProfileBinding, CharacterBinding],
-        Character.Message.ClickedDiceButton(),
-      ),
-      Story.model(current => {
+    story(
+      closetWith({ earnedBones: 200 }),
+      pickLook(part, name),
+      rollLookDice,
+      checkModel(current => {
         expect(Option.isNone(current.profile.maybePreview)).toBe(true)
         expect(current.boughtCosmetics).toEqual([])
       }),
-      writeSave(),
+      writeSave,
     ),
   )
 
   it.effect('is paid once: owned, a pick wears it and costs nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(closetWith({ earnedBones: 200 }, {}, [id])),
-      pick(part, name),
-      Story.model(current => {
+    story(
+      closetWith({ earnedBones: 200 }, {}, [id]),
+      pickLook(part, name),
+      checkModel(current => {
         expect(current.appearance[field]).toBe(name)
         expect(current.boughtCosmetics).toEqual([id])
         expect(current.rank.spentBones).toBe(0)
         expect(current.profile.closetCue.kind).not.toBe('Bought')
         expect(Option.isNone(current.profile.maybePreview)).toBe(true)
       }),
-      writeSave(),
+      writeSave,
     ),
   )
 })
@@ -257,38 +261,31 @@ describe('the Bones', () => {
   it.effect(
     'the balance is earned plus the veteran grant minus what is spent',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          closetWith({ earnedBones: 30, veteranBones: 20, spentBones: 0 }),
-        ),
-        pick('Hat', 'Fez'),
-        buy(),
-        Story.model(current => {
+      story(
+        closetWith({ earnedBones: 30, veteranBones: 20, spentBones: 0 }),
+        pickLook('Hat', 'Fez'),
+        buy('Hat', 'Fez'),
+        checkModel(current => {
           expect(current.boughtCosmetics).toEqual(['Fez'])
           expect(bonesBalanceOf(current.rank)).toBe(0)
         }),
-        Story.Command.resolve(
-          FocusLookOption,
-          ProfileMessage.CompletedFocusLookOption(),
-        ),
-        writeSave(),
+        focusedBought('Hat', 'Fez'),
+        writeSave,
       ),
   )
 
   it.effect(
     'the same shake twice in a row still replays: the count moves',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(closetWith({})),
-        pick('Hat', 'Fez'),
-        buy(),
-        Story.model(current => {
+      story(
+        closetWith({}),
+        pickLook('Hat', 'Fez'),
+        buy('Hat', 'Fez'),
+        checkModel(current => {
           expect(current.profile.closetCue.count).toBe(1)
         }),
-        buy(),
-        Story.model(current => {
+        buy('Hat', 'Fez'),
+        checkModel(current => {
           expect(current.profile.closetCue.count).toBe(2)
         }),
       ),
@@ -313,16 +310,15 @@ describe('gifts', () => {
     '$kind $name is locked below rank $rank and shakes',
     gift => {
       const part = PART_OF_KIND[gift.kind]
-      return Story.story(
-        APPLICATION,
-        Story.given(closetWith(rankPoints(gift.rank - 1))),
-        pick(part, gift.name),
-        Story.model(current => {
+      return story(
+        closetWith(rankPoints(gift.rank - 1)),
+        pickLook(part, gift.name),
+        checkModel(current => {
           expect(current.profile.closetCue.kind).toBe('Short')
           expect(current.appearance).toEqual(readyAfterRead.appearance)
           expect(current.boughtCosmetics).toEqual([])
         }),
-        Story.Command.expectNone(),
+        expectNoCommand,
       )
     },
   )
@@ -331,17 +327,16 @@ describe('gifts', () => {
     const part = PART_OF_KIND[gift.kind]
     const before = closetWith(rankPoints(gift.rank))
     expect(rankOf(before.rank.earnedPoints)).toBe(gift.rank)
-    return Story.story(
-      APPLICATION,
-      Story.given(before),
-      pick(part, gift.name),
-      Story.model(current => {
+    return story(
+      before,
+      pickLook(part, gift.name),
+      checkModel(current => {
         expect(current.boughtCosmetics).toEqual([])
         expect(current.rank.spentBones).toBe(0)
         expect(current.profile.closetCue.kind).not.toBe('Short')
         expect(current.appearance).not.toEqual(readyAfterRead.appearance)
       }),
-      writeSave(),
+      writeSave,
     )
   })
 
@@ -396,14 +391,13 @@ describe('gifts', () => {
 
 describe('wearing', () => {
   it.effect('a free color and print are put on with a pick', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(closetWith({})),
-      pick('ShirtColor', 'Red'),
-      writeSave(),
-      pick('Print', 'Stripes'),
-      writeSave(),
-      Story.model(current => {
+    story(
+      closetWith({}),
+      pickLook('ShirtColor', 'Red'),
+      writeSave,
+      pickLook('Print', 'Stripes'),
+      writeSave,
+      checkModel(current => {
         expect(current.appearance.shirtColor).toBe('Red')
         expect(current.appearance.print).toBe('Stripes')
         expect(current.rank.spentBones).toBe(0)
@@ -412,16 +406,13 @@ describe('wearing', () => {
   )
 
   it.effect('the hat and skin worn go back with the free options', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        closetWith({}, { hat: 'Fez', gunSkin: 'Candy' }, ['Fez', 'skin:Candy']),
-      ),
-      pick('Hat', 'None'),
-      writeSave(),
-      pick('GunSkin', 'Stock'),
-      writeSave(),
-      Story.model(current => {
+    story(
+      closetWith({}, { hat: 'Fez', gunSkin: 'Candy' }, ['Fez', 'skin:Candy']),
+      pickLook('Hat', 'None'),
+      writeSave,
+      pickLook('GunSkin', 'Stock'),
+      writeSave,
+      checkModel(current => {
         expect(current.appearance.hat).toBe('None')
         expect(current.appearance.gunSkin).toBe('Stock')
         expect(current.boughtCosmetics).toEqual(['Fez', 'skin:Candy'])
@@ -430,26 +421,24 @@ describe('wearing', () => {
   )
 
   it.effect('picking the one worn writes nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(closetWith({}, { shirtColor: 'Teal' })),
-      pick('ShirtColor', 'Teal'),
-      Story.model(current => {
+    story(
+      closetWith({}, { shirtColor: 'Teal' }),
+      pickLook('ShirtColor', 'Teal'),
+      checkModel(current => {
         expect(current.appearance.shirtColor).toBe('Teal')
       }),
-      Story.Command.expectNone(),
+      expectNoCommand,
     ),
   )
 
   it.effect('another owned hat replaces the worn one', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(closetWith({}, { hat: 'Fez' }, ['Fez', 'Colander'])),
-      pick('Hat', 'Colander'),
-      Story.model(current => {
+    story(
+      closetWith({}, { hat: 'Fez' }, ['Fez', 'Colander']),
+      pickLook('Hat', 'Colander'),
+      checkModel(current => {
         expect(current.appearance.hat).toBe('Colander')
       }),
-      writeSave(),
+      writeSave,
     ),
   )
 
@@ -458,21 +447,17 @@ describe('wearing', () => {
       'Fez',
       'skin:Candy',
     ])
-    return Story.story(
-      APPLICATION,
-      Story.given(onLook),
-      Story.messageIn(
-        [ProfileBinding, CharacterBinding],
-        Character.Message.ClickedDiceButton(),
-      ),
-      Story.model(current => {
+    return story(
+      onLook,
+      rollLookDice,
+      checkModel(current => {
         expect(current.appearance.hat).toBe('Fez')
         expect(current.appearance.gunSkin).toBe('Candy')
         expect(current.appearance.hairStyle).not.toBe(
           onLook.appearance.hairStyle,
         )
       }),
-      writeSave(),
+      writeSave,
     )
   })
 })

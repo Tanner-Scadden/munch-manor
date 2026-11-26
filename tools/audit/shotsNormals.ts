@@ -52,7 +52,10 @@ runHarnessAudit(
           const page = yield* openPage(browser, viewport)
           const query = look === 'flat' ? `${scene.query}&flat` : scene.query
           yield* gotoScene(page, harnessUrl(query, deviceQuery(viewport)))
-          yield* shot(page, `normals-${tag}-${viewport.name}-${scene.name}-${look}`)
+          yield* shot(
+            page,
+            `normals-${tag}-${viewport.name}-${scene.name}-${look}`,
+          )
           yield* closePage(page)
         }
       }

@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
 
+import type * as Draw from '../render/draw'
 import {
   ALERT_GLYPH_COLOR,
   COIN_COLOR,
@@ -180,9 +180,9 @@ const cellRow = ({ mark, width }: Cell, row: number): string =>
 const placeCells = (
   cells: ReadonlyArray<Cell>,
   left: number,
-  toShapes: (mark: Mark, x: number) => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> => {
-  const shapes: Array<Canvas.Shape> = []
+  toShapes: (mark: Mark, x: number) => ReadonlyArray<Draw.Shape>,
+): ReadonlyArray<Draw.Shape> => {
+  const shapes: Array<Draw.Shape> = []
   let x = left
   for (const { mark, width } of cells) {
     shapes.push(...toShapes(mark, x))
@@ -191,10 +191,10 @@ const placeCells = (
   return shapes
 }
 
-const keyAt = (x: number, top: number): Canvas.Shape =>
+const keyAt = (x: number, top: number): Draw.Shape =>
   placeAt(x, top - KEY_LIFT, KEY_SPRITE)
 
-const coinShapes = (text: string): ReadonlyArray<Canvas.Shape> =>
+const coinShapes = (text: string): ReadonlyArray<Draw.Shape> =>
   String.includes(KEY_SYMBOL)(text)
     ? placeCells(cellsOf(text), 0, (mark, x) =>
         mark.kind === 'Key' ? [keyAt(x, 0)] : [],
@@ -311,14 +311,14 @@ export const textShapes: {
     x: number,
     y: number,
     align: Align,
-  ): (text: string) => ReadonlyArray<Canvas.Shape>
+  ): (text: string) => ReadonlyArray<Draw.Shape>
   (
     text: string,
     tone: TextTone,
     x: number,
     y: number,
     align: Align,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   5,
   (
@@ -327,7 +327,7 @@ export const textShapes: {
     x: number,
     y: number,
     align: Align,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const top = Math.round(y)
     return placeCells(
       cellsOf(text),
@@ -371,14 +371,14 @@ export type Placement = Readonly<{
 }>
 
 export const placeBaked: {
-  (arg1: Placement): (self: BakedText) => Canvas.Shape
-  (self: BakedText, arg1: Placement): Canvas.Shape
+  (arg1: Placement): (self: BakedText) => Draw.Shape
+  (self: BakedText, arg1: Placement): Draw.Shape
 } = Function.dual(
   2,
   (
     { width, sprite }: BakedText,
     { x, y, align, scale = 1, opacity }: Placement,
-  ): Canvas.Shape => {
+  ): Draw.Shape => {
     const left = alignedLeft(x, width * scale, align)
     return scale === 1 && opacity === undefined
       ? placeAt(left, Math.round(y), sprite)

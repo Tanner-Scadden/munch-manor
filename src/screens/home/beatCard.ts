@@ -1,7 +1,9 @@
 import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type {
+  ApplicationHtml,
+  ApplicationViewBuilder,
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import { pixelArtStyle } from '../../art/artSize'
 import { PROP_ICONS } from '../../art/callingArt'
@@ -52,20 +54,24 @@ const OUTCOME_WORDS: Readonly<Record<DareOutcome, string>> = {
 const dareLabel = (dare: FriendsDare): string =>
   `Beat my run: a friend ${OUTCOME_WORDS[dare.outcome]} on wave ${dare.wave}, ${DIFFICULTIES[dare.difficulty].name}, as the ${CALLING_NAMES[dare.hero]}, with ${dare.found.length} of the dare's things. Play their house`
 
-const thingsView = (dare: FriendsDare, h: ApplicationViewBuilder): Html =>
+const thingsView = (
+  dare: FriendsDare,
+  h: ApplicationViewBuilder,
+): ApplicationHtml | null =>
   Array.match(dare.found, {
-    onEmpty: () => h.empty,
+    onEmpty: () => null,
     onNonEmpty: found =>
-      h.span(
-        [h.Class('beat-card-things'), h.AriaHidden(true)],
-        Array.map(found, thing =>
-          h.span([
-            h.Class('beat-card-thing'),
-            h.Title(DARE_NAMES[thing]),
-            h.Style(pixelArtStyle(DARE_ICON_URLS[thing])),
-          ]),
+      h.span
+        .class('beat-card-things')
+        .attr('aria-hidden', 'true')
+        .children(
+          Array.map(found, thing =>
+            h.span
+              .class('beat-card-thing')
+              .attr('title', DARE_NAMES[thing])
+              .style(pixelArtStyle(DARE_ICON_URLS[thing])),
+          ),
         ),
-      ),
   })
 
 // NOTE: a thing the friend's list rolls from that this player has not
@@ -74,104 +80,92 @@ const unopenedView = (
   model: Model,
   dare: FriendsDare,
   h: ApplicationViewBuilder,
-): Html =>
+): ApplicationHtml | null =>
   Array.match(unopenedThingsOf(model, dare), {
-    onEmpty: () => h.empty,
+    onEmpty: () => null,
     onNonEmpty: things =>
-      h.span(
-        [h.Class('beat-card-unopened')],
-        [
+      h.span
+        .class('beat-card-unopened')
+        .children(
           ...Array.map(things, thing =>
-            h.span([
-              h.Class('beat-card-thing beat-card-thing-dim'),
-              h.AriaHidden(true),
-              h.Style(pixelArtStyle(DARE_SILHOUETTE_URLS[thing])),
-            ]),
+            h.span
+              .class('beat-card-thing beat-card-thing-dim')
+              .attr('aria-hidden', 'true')
+              .style(pixelArtStyle(DARE_SILHOUETTE_URLS[thing])),
           ),
-          h.span([h.Class('beat-card-unopened-mark')], ['?']),
-          h.span(
-            [h.Class('sr-only')],
-            [
+          h.span.class('beat-card-unopened-mark').children('?'),
+          h.span
+            .class('sr-only')
+            .children(
               `Their list can hold ${things.length === 1 ? 'a thing' : 'things'} you have not opened yet.`,
-            ],
-          ),
-        ],
-      ),
+            ),
+        ),
   })
 
 const resultView = (
   model: Model,
   dare: FriendsDare,
   h: ApplicationViewBuilder,
-): Html =>
-  h.span(
-    [h.Class('beat-card-result')],
-    [
-      h.span(
-        [
-          h.Class('beat-card-stamp'),
-          h.DataAttribute('outcome', dare.outcome),
-          h.AriaHidden(true),
-        ],
-        [OUTCOME_STAMPS[dare.outcome]],
-      ),
+): ApplicationHtml =>
+  h.span
+    .class('beat-card-result')
+    .children(
+      h.span
+        .class('beat-card-stamp')
+        .attr('data-outcome', dare.outcome)
+        .attr('aria-hidden', 'true')
+        .children(OUTCOME_STAMPS[dare.outcome]),
       iconView('beat-card-hero', PROP_ICONS[dare.hero], h),
       iconView('beat-card-skull', SKULL_ICONS[dare.difficulty], h),
       ...(dare.dareMark > 0
         ? [iconView('beat-card-mark', markIcon(dare.dareMark), h)]
         : []),
-      h.span(
-        [h.Class('beat-card-wave'), h.AriaHidden(true)],
-        [`W${dare.wave}`],
-      ),
+      h.span
+        .class('beat-card-wave')
+        .attr('aria-hidden', 'true')
+        .children(`W${dare.wave}`),
       thingsView(dare, h),
       unopenedView(model, dare, h),
-    ],
-  )
+    )
 
 export const beatCardView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isBeatCardShown(model)
-    ? Option.match(maybeShownDareOf(model), {
-        onNone: () => h.empty,
-        onSome: dare =>
-          h.div(
-            [h.Class('beat-card')],
-            [
-              h.button(
-                [
-                  h.Type('button'),
-                  h.Id(BEAT_CARD_ID),
-                  h.Class('beat-card-take'),
-                  h.AriaLabel(dareLabel(dare)),
-                  h.OnClick(HomeMessage.ClickedBeatMyRunButton(), {
-                    propagation: 'Stop',
-                  }),
-                ],
-                [
-                  h.span(
-                    [h.Class('beat-card-flag'), h.AriaHidden(true)],
-                    ['BEAT MY RUN!'],
-                  ),
+  (h: ApplicationViewBuilder): (model: Model) => ApplicationHtml | null
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null
+} = Function.dual(
+  2,
+  (model: Model, h: ApplicationViewBuilder): ApplicationHtml | null =>
+    isBeatCardShown(model)
+      ? Option.match(maybeShownDareOf(model), {
+          onNone: () => null,
+          onSome: dare =>
+            h.div.class('beat-card').children(
+              h.button
+                .attr('type', 'button')
+                .id(BEAT_CARD_ID)
+                .class('beat-card-take')
+                .attr('aria-label', dareLabel(dare))
+                .on('click', HomeMessage.ClickedBeatMyRunButton())
+                .children(
+                  h.span
+                    .class('beat-card-flag')
+                    .attr('aria-hidden', 'true')
+                    .children('BEAT MY RUN!'),
                   resultView(model, dare, h),
-                ],
-              ),
+                ),
               closeButtonView(
                 {
-                  attributes: [
-                    h.OnClick(HomeMessage.ClickedDismissBeatMyRunButton(), {
-                      propagation: 'Stop',
-                    }),
-                  ],
+                  // NOTE: a sibling of the take button, not inside it, so
+                  // its click never reaches the take's.
+                  button: h.button.on(
+                    'click',
+                    HomeMessage.ClickedDismissBeatMyRunButton(),
+                  ),
                   className: 'beat-card-close',
                   label: "Let the friend's dare go",
                 },
                 h,
               ),
-            ],
-          ),
-      })
-    : h.empty,
+            ),
+        })
+      : null,
 )

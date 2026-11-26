@@ -1,14 +1,19 @@
-import { Array, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option } from 'effect'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { CaseState, Feat, type Model } from '../../../app/model'
 import { featCountOf } from '../../../render/featLockView'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { AT_CASE, atCase, playingModel } from '../../../test/model.fixture'
-import { APPLICATION, holdFire, tick, zombieOf } from '../../../test/testing'
+import {
+  checkModel,
+  holdFire,
+  storyOf,
+  tick,
+  zombieOf,
+} from '../../../test/testing'
 import { focusOf } from '../../../world/party/party'
 
 // The count on a display case's lock (src/render/featLockView.ts), read off
@@ -22,7 +27,7 @@ const countOn = (model: Model): Option.Option<string> =>
   )
 
 // NOTE: a 1-hp Groaner a step east of the player at a case asking 3 kills.
-const threeKillCase = modifyFields(
+const threeKillCase = UiStruct.evolve(
   atCase(playingModel, 'Shotgun', CaseState.Locked(), Feat.Kills({ count: 3 })),
   {
     zombies: () => [
@@ -36,18 +41,19 @@ const threeKillCase = modifyFields(
 
 describe('the case lock count', () => {
   it.effect('a kill moves the count on the lock', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(threeKillCase),
-      Story.model(current => {
-        expect(countOn(current)).toEqual(Option.some('0/3'))
-      }),
-      holdFire,
-      tick(FIXED_STEP_MS),
-      Story.model(current => {
-        expect(countOn(current)).toEqual(Option.some('1/3'))
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(threeKillCase)
+      s.pipe(
+        checkModel(current => {
+          expect(countOn(current)).toEqual(Option.some('0/3'))
+        }),
+        holdFire,
+        tick(FIXED_STEP_MS),
+        checkModel(current => {
+          expect(countOn(current)).toEqual(Option.some('1/3'))
+        }),
+      )
+    }),
   )
 
   test('a feat done once shows no count, only its ring', () => {

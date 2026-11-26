@@ -1,146 +1,147 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
-import { LobbyBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
-import { Message as HeroPickerMessage } from '../../../features/heroes/message'
-import { Message as LobbyMessage } from '../../../features/lobby/message'
+import { LobbyMessage } from '../../../features/lobby/message'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { heroesBoughtBy, readyModel } from '../../../test/model.fixture'
 import {
-  APPLICATION,
-  closeDialog,
+  checkModel,
   openLobbyByKey,
   press,
   resolveFocusLobby,
-  showDialog,
+  send,
   startedRun,
+  steps,
+  storyOf,
+  tapLobbyHero,
   throughIntro,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 import { atSeatBy, playersOf } from '../../../world/party/party'
 import { SOLO_SLOT } from '../../../world/schema/worldSchema'
 import { earnRank } from '../../end/rankRun'
-import { HeroPickerBinding } from '../../lobby/bindings'
 import { isHeroPickerUp } from '../../lobby/model'
 
 // Teammate bots in the single player lobby (src/domain/bots.ts, src/features/lobby/update.ts):
 // + BOT seats one, the x sends it home, its hero card picks its hero, START
 // runs with them seated, and RETRY keeps them.
 
-const ranked = modifyFields(readyModel, {
+const ranked = UiStruct.evolve(readyModel, {
   rank: rank => ({ ...rank, earnedPoints: pointsForRank(15) }),
   boughtCosmetics: () => heroesBoughtBy(15),
 })
 
-const addOne = [
-  Story.messageIn(LobbyBinding, LobbyMessage.ClickedAddBotButton()),
+const addOne = steps(
+  send(LobbyMessage.RequestedAddLobbyBot()),
   resolveFocusLobby(),
-] as const
+)
 
 describe('+ BOT', () => {
   it.effect(
     'seats a bot with a goofy name and a hero, and moves focus to START',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(readyModel),
-        openLobbyByKey,
-        ...addOne,
-        Story.model(current => {
-          expect(current.home.bots).toHaveLength(1)
-          const [bot] = current.home.bots
-          expect(bot?.name).not.toBe('')
-          expect(bot?.calling).toBe('You')
-          expect(current.lobby.maybeFocus).toEqual(Option.some('Start'))
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(readyModel)
+        s.pipe(
+          openLobbyByKey,
+          addOne,
+          checkModel(current => {
+            expect(current.home.bots).toHaveLength(1)
+            const [bot] = current.home.bots
+            expect(bot?.name).not.toBe('')
+            expect(bot?.calling).toBe('You')
+            expect(current.lobby.maybeFocus).toEqual(Option.some('Start'))
+          }),
+        )
+      }),
   )
 
   it.effect('B does the same from the keyboard', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      openLobbyByKey,
-      press('KeyB'),
-      resolveFocusLobby(),
-      Story.model(current => {
-        expect(current.home.bots).toHaveLength(1)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByKey,
+        press('KeyB'),
+        resolveFocusLobby(),
+        checkModel(current => {
+          expect(current.home.bots).toHaveLength(1)
+        }),
+      )
+    }),
   )
 
   it.effect(
     'fills up to three seats with three different names, and no more',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(readyModel),
-        openLobbyByKey,
-        ...addOne,
-        ...addOne,
-        ...addOne,
-        ...addOne,
-        Story.model(current => {
-          expect(current.home.bots).toHaveLength(3)
-          const names = Array.map(current.home.bots, bot => bot.name)
-          expect(new Set(names).size).toBe(3)
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(readyModel)
+        s.pipe(
+          openLobbyByKey,
+          addOne,
+          addOne,
+          addOne,
+          addOne,
+          checkModel(current => {
+            expect(current.home.bots).toHaveLength(3)
+            const names = Array.map(current.home.bots, bot => bot.name)
+            expect(new Set(names).size).toBe(3)
+          }),
+        )
+      }),
   )
 
   it.effect(
     'a bot picks its hero from the heroes the player has unlocked',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(ranked),
-        openLobbyByKey,
-        ...addOne,
-        ...addOne,
-        ...addOne,
-        Story.model(current => {
-          expect(current.home.bots).toHaveLength(3)
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(ranked)
+        s.pipe(
+          openLobbyByKey,
+          addOne,
+          addOne,
+          addOne,
+          checkModel(current => {
+            expect(current.home.bots).toHaveLength(3)
+          }),
+        )
+      }),
   )
 
   it.effect('does nothing outside the lobby', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      Story.messageIn(LobbyBinding, LobbyMessage.ClickedAddBotButton()),
-      Story.model(current => {
-        expect(current.home.bots).toHaveLength(0)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        send(LobbyMessage.RequestedAddLobbyBot()),
+        checkModel(current => {
+          expect(current.home.bots).toHaveLength(0)
+        }),
+      )
+    }),
   )
 })
 
 describe('the x on a bot', () => {
   it.effect('sends it home and leaves the others seated', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      openLobbyByKey,
-      ...addOne,
-      ...addOne,
-      Story.model(current => {
-        expect(current.home.bots).toHaveLength(2)
-      }),
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedDropBotButton({ index: 0 }),
-      ),
-      resolveFocusLobby(),
-      Story.model(current => {
-        expect(current.home.bots).toHaveLength(1)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByKey,
+        addOne,
+        addOne,
+        checkModel(current => {
+          expect(current.home.bots).toHaveLength(2)
+        }),
+        send(LobbyMessage.RequestedDropLobbyBot({ index: 0 })),
+        resolveFocusLobby(),
+        checkModel(current => {
+          expect(current.home.bots).toHaveLength(1)
+        }),
+      )
+    }),
   )
 })
 
@@ -148,176 +149,155 @@ describe("a bot's hero card", () => {
   it.effect(
     'opens the hero picker for that bot, and a pick changes only its hero',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(ranked),
-        openLobbyByKey,
-        ...addOne,
-        Story.messageIn(
-          LobbyBinding,
-          LobbyMessage.ClickedBotHeroButton({ index: 0 }),
-        ),
-        showDialog(),
-        Story.model(current => {
-          expect(isHeroPickerUp(current.lobby)).toBe(true)
-          expect(current.lobby.maybePickingBot).toEqual(Option.some(0))
-        }),
-        Story.messageIn(
-          [LobbyBinding, HeroPickerBinding],
-          HeroPickerMessage.ClickedCard({ calling: 'LineCook' }),
-        ),
-        closeDialog(),
-        Story.model(current => {
-          expect(current.home.bots[0]?.calling).toBe('LineCook')
-          expect(current.calling).toBe(readyModel.calling)
-          expect(current.lobby.maybePickingBot).toEqual(Option.none())
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(ranked)
+        s.pipe(
+          openLobbyByKey,
+          addOne,
+          send(LobbyMessage.RequestedLobbyBotHeroPicker({ index: 0 })),
+          checkModel(current => {
+            expect(isHeroPickerUp(current.lobby)).toBe(true)
+            expect(current.lobby.maybePickingBot).toEqual(Option.some(0))
+          }),
+          tapLobbyHero('LineCook'),
+          checkModel(current => {
+            expect(current.home.bots[0]?.calling).toBe('LineCook')
+            expect(current.calling).toBe(readyModel.calling)
+            expect(current.lobby.maybePickingBot).toEqual(Option.none())
+          }),
+        )
+      }),
   )
 
   it.effect('your own hero card still picks your hero', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(ranked),
-      openLobbyByKey,
-      ...addOne,
-      Story.messageIn(LobbyBinding, LobbyMessage.ClickedHeroButton()),
-      showDialog(),
-      Story.messageIn(
-        [LobbyBinding, HeroPickerBinding],
-        HeroPickerMessage.ClickedCard({ calling: 'Handyman' }),
-      ),
-      closeDialog(),
-      Story.model(current => {
-        expect(current.calling).toBe('Handyman')
-        expect(current.home.bots[0]?.calling).not.toBe(undefined)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(ranked)
+      s.pipe(
+        openLobbyByKey,
+        addOne,
+        send(LobbyMessage.RequestedLobbyHeroPicker()),
+        tapLobbyHero('Handyman'),
+        checkModel(current => {
+          expect(current.calling).toBe('Handyman')
+          expect(current.home.bots[0]?.calling).not.toBe(undefined)
+        }),
+      )
+    }),
   )
 
   it.effect('cannot pick a hero the rank has not reached', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      openLobbyByKey,
-      ...addOne,
-      Story.messageIn(
-        LobbyBinding,
-        LobbyMessage.ClickedBotHeroButton({ index: 0 }),
-      ),
-      showDialog(),
-      Story.messageIn(
-        [LobbyBinding, HeroPickerBinding],
-        HeroPickerMessage.ClickedCard({ calling: 'LineCook' }),
-      ),
-      Story.model(current => {
-        expect(current.home.bots[0]?.calling).toBe('You')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByKey,
+        addOne,
+        send(LobbyMessage.RequestedLobbyBotHeroPicker({ index: 0 })),
+        tapLobbyHero('LineCook'),
+        checkModel(current => {
+          expect(current.home.bots[0]?.calling).toBe('You')
+        }),
+      )
+    }),
   )
 })
 
 describe('the arrow keys with bots', () => {
   it.effect('stop on the + BOT tile, then on a seated bot and its x', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      openLobbyByKey,
-      press('ArrowRight'),
-      resolveFocusLobby('Back'),
-      press('ArrowRight'),
-      resolveFocusLobby('Hero'),
-      press('ArrowRight'),
-      resolveFocusLobby('Bot1'),
-      press('ArrowRight'),
-      resolveFocusLobby('Campaign'),
-      press('ArrowLeft'),
-      resolveFocusLobby('Bot1'),
-      Story.messageIn(LobbyBinding, LobbyMessage.ClickedAddBotButton()),
-      resolveFocusLobby(),
-      press('ArrowLeft'),
-      resolveFocusLobby('Glass'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByKey,
+        press('ArrowRight'),
+        resolveFocusLobby('Back'),
+        press('ArrowRight'),
+        resolveFocusLobby('Hero'),
+        press('ArrowRight'),
+        resolveFocusLobby('Bot1'),
+        press('ArrowRight'),
+        resolveFocusLobby('Campaign'),
+        press('ArrowLeft'),
+        resolveFocusLobby('Bot1'),
+        send(LobbyMessage.RequestedAddLobbyBot()),
+        resolveFocusLobby(),
+        press('ArrowLeft'),
+        resolveFocusLobby('Glass'),
+      )
+    }),
   )
 
   it.effect('walk a seated bot, its x, then the next empty seat', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      openLobbyByKey,
-      ...addOne,
-      press('ArrowRight'),
-      resolveFocusLobby('Back'),
-      press('ArrowRight'),
-      resolveFocusLobby('Hero'),
-      press('ArrowRight'),
-      resolveFocusLobby('Bot1'),
-      press('ArrowRight'),
-      resolveFocusLobby('Drop1'),
-      press('ArrowRight'),
-      resolveFocusLobby('Bot2'),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByKey,
+        addOne,
+        press('ArrowRight'),
+        resolveFocusLobby('Back'),
+        press('ArrowRight'),
+        resolveFocusLobby('Hero'),
+        press('ArrowRight'),
+        resolveFocusLobby('Bot1'),
+        press('ArrowRight'),
+        resolveFocusLobby('Drop1'),
+        press('ArrowRight'),
+        resolveFocusLobby('Bot2'),
+      )
+    }),
   )
 })
 
 describe('START with bots', () => {
-  const withCrew: Model = modifyFields(ranked, {
+  const withCrew: Model = UiStruct.evolve(ranked, {
     calling: () => 'Handyman',
   })
 
   it.effect(
     'seats them as a crew of the heroes they picked, and RETRY keeps them',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(withCrew),
-        openLobbyByKey,
-        ...addOne,
-        ...addOne,
-        Story.messageIn(
-          LobbyBinding,
-          LobbyMessage.ClickedBotHeroButton({ index: 1 }),
-        ),
-        showDialog(),
-        Story.messageIn(
-          [LobbyBinding, HeroPickerBinding],
-          HeroPickerMessage.ClickedCard({ calling: 'TrackStar' }),
-        ),
-        closeDialog(),
-        Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
-        throughIntro,
-        Story.model(current => {
-          expect(Phase.guards.Preparation(current.phase)).toBe(true)
-          expect(current.party._tag).toBe('Crew')
-          expect(playersOf(current)).toHaveLength(3)
-          expect(current.runStart.crewBots).toHaveLength(2)
-          const callings = Array.map(
-            playersOf(current),
-            ({ player }) => player.calling,
-          )
-          expect(callings[0]).toBe('Handyman')
-          expect(callings[2]).toBe('TrackStar')
-        }),
-        Story.message(Message.TickedFrame({ deltaTime: 16 })),
-        Story.model(current => {
-          expect(current.phase._tag).not.toBe('Ready')
-        }),
-      ),
+      Effect.gen(function* () {
+        const s = yield* storyOf(withCrew)
+        s.pipe(
+          openLobbyByKey,
+          addOne,
+          addOne,
+          send(LobbyMessage.RequestedLobbyBotHeroPicker({ index: 1 })),
+          tapLobbyHero('TrackStar'),
+          send(LobbyMessage.RequestedStartFromLobby()),
+          throughIntro,
+          checkModel(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(current.party._tag).toBe('Crew')
+            expect(playersOf(current)).toHaveLength(3)
+            expect(current.runStart.crewBots).toHaveLength(2)
+            const callings = Array.map(
+              playersOf(current),
+              ({ player }) => player.calling,
+            )
+            expect(callings[0]).toBe('Handyman')
+            expect(callings[2]).toBe('TrackStar')
+          }),
+          send(Message.TickedFrame({ deltaTime: 16 })),
+          checkModel(current => {
+            expect(current.phase._tag).not.toBe('Ready')
+          }),
+        )
+      }),
   )
 
   it.effect('a run with no bots is single player, as ever', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyModel),
-      openLobbyByKey,
-      press('Enter'),
-      throughIntro,
-      Story.model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.party._tag).toBe('Solo')
-        expect(current.runStart.crewBots).toHaveLength(0)
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyModel)
+      s.pipe(
+        openLobbyByKey,
+        press('Enter'),
+        throughIntro,
+        checkModel(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.party._tag).toBe('Solo')
+          expect(current.runStart.crewBots).toHaveLength(0)
+        }),
+      )
+    }),
   )
 
   it.effect(
@@ -326,9 +306,9 @@ describe('START with bots', () => {
       Effect.gen(function* () {
         const spawnsOf = (bots: number) =>
           startedRun(
-            modifyFields(withCrew, {
+            UiStruct.evolve(withCrew, {
               home: home =>
-                modifyFields(home, {
+                UiStruct.evolve(home, {
                   bots: () =>
                     Array.makeBy(bots, () => ({
                       name: 'Bolts',
@@ -351,9 +331,9 @@ describe('START with bots', () => {
   it.effect('RETRY plays with the same bots and heroes', () =>
     Effect.gen(function* () {
       const run = yield* startedRun(
-        modifyFields(withCrew, {
+        UiStruct.evolve(withCrew, {
           home: home =>
-            modifyFields(home, {
+            UiStruct.evolve(home, {
               bots: () => [
                 {
                   name: 'Gizmo',
@@ -364,17 +344,16 @@ describe('START with bots', () => {
             }),
         }),
       )
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(run, {
-            phase: () => Phase.GameOver({ wave: 2 }),
-            screenMs: () => RESTART_GRACE_MS,
-          }),
-        ),
-        Story.message(Message.ClickedRetryButton()),
+      const s = yield* storyOf(
+        UiStruct.evolve(run, {
+          phase: () => Phase.GameOver({ wave: 2 }),
+          screenMs: () => RESTART_GRACE_MS,
+        }),
+      )
+      s.pipe(
+        send(Message.ClickedRetryButton()),
         throughIntro,
-        Story.model(current => {
+        checkModel(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(playersOf(current)).toHaveLength(2)
           expect(current.runStart.crewBots[0]?.name).toBe('Gizmo')
@@ -388,9 +367,9 @@ describe('START with bots', () => {
 describe('rank for a run with bots', () => {
   // NOTE: a run started with three bots seated.
   const botted = startedRun(
-    modifyFields(readyModel, {
+    UiStruct.evolve(readyModel, {
       home: home =>
-        modifyFields(home, {
+        UiStruct.evolve(home, {
           bots: () =>
             Array.makeBy(3, index => ({
               name: `Bot${index}`,
@@ -402,10 +381,10 @@ describe('rank for a run with bots', () => {
   )
 
   const revivedFour = (run: Model) =>
-    modifyFields(run, {
+    UiStruct.evolve(run, {
       seats: atSeatBy(SOLO_SLOT, state =>
-        modifyFields(state, {
-          seat: seat => modifyFields(seat, { revives: () => 4 }),
+        UiStruct.evolve(state, {
+          seat: seat => UiStruct.evolve(seat, { revives: () => 4 }),
         }),
       ),
       phase: () => Phase.GameOver({ wave: 3 }),
@@ -419,7 +398,7 @@ describe('rank for a run with bots', () => {
       const run = yield* botted
       const withoutRevives = earnRank(
         run,
-        modifyFields(run, { phase: () => Phase.GameOver({ wave: 3 }) }),
+        UiStruct.evolve(run, { phase: () => Phase.GameOver({ wave: 3 }) }),
       ).rank.earnedPoints
       expect(pointsOf(run, run)).toBe(withoutRevives)
     }),
@@ -428,8 +407,8 @@ describe('rank for a run with bots', () => {
   it.effect('the same revives in a crew of people do pay', () =>
     Effect.gen(function* () {
       const run = yield* botted
-      const people = modifyFields(run, {
-        runStart: modifyFields({ crewBots: () => [] }),
+      const people = UiStruct.evolve(run, {
+        runStart: UiStruct.evolve({ crewBots: () => [] }),
       })
       expect(pointsOf(run, people)).toBeGreaterThan(pointsOf(run, run))
     }),

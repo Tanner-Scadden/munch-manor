@@ -1,10 +1,9 @@
 import { Function } from 'effect'
-import type { Html } from 'foldkit/html'
 
 import type {
-  ApplicationAttribute,
+  ApplicationHtml,
   ApplicationViewBuilder,
-} from '../../app/composition'
+} from '../../app/definition'
 import type { Model } from '../../app/model'
 import type { HomeButton } from '../../features/home/homeSchema'
 import { HomeMessage } from '../../features/home/message'
@@ -18,59 +17,45 @@ export const keyBadgeView: {
   (
     button: HomeButton,
     h: ApplicationViewBuilder,
-  ): (model: Model) => ReadonlyArray<Html>
+  ): (model: Model) => ReadonlyArray<ApplicationHtml>
   (
     model: Model,
     button: HomeButton,
     h: ApplicationViewBuilder,
-  ): ReadonlyArray<Html>
+  ): ReadonlyArray<ApplicationHtml>
 } = Function.dual(
   3,
   (
     model: Model,
     button: HomeButton,
     h: ApplicationViewBuilder,
-  ): ReadonlyArray<Html> => keyCapView(model, HOME_KEYS[button].cap, h),
+  ): ReadonlyArray<ApplicationHtml> =>
+    keyCapView(model, HOME_KEYS[button].cap, h),
 )
 
-// NOTE: what every home button shares, a link like the coffee too: its id,
-// its key, and focus for the arrow keys.
-export const homeFocusAttributes: {
-  (
-    h: ApplicationViewBuilder,
-  ): (button: HomeButton) => ReadonlyArray<ApplicationAttribute>
-  (
-    button: HomeButton,
-    h: ApplicationViewBuilder,
-  ): ReadonlyArray<ApplicationAttribute>
-} = Function.dual(
-  2,
-  (
-    button: HomeButton,
-    h: ApplicationViewBuilder,
-  ): ReadonlyArray<ApplicationAttribute> => [
-    h.Id(homeButtonId(button)),
-    h.AriaKeyshortcuts(HOME_KEYS[button].name),
-    h.OnFocus(HomeMessage.FocusedHomeButton({ button })),
-    h.OnBlur(HomeMessage.BlurredHomeButton()),
-  ],
-)
+// NOTE: a home button's builder. Effect UI's PartTarget types `attr`
+// loosely, so a helper chains on the concrete builder, typed, and applies
+// any part last (Effect UI's "Headless parts").
+type HomeButtonBuilder = ReturnType<ApplicationViewBuilder['button']['attr']>
 
-export const homeButtonAttributes: {
-  (
-    h: ApplicationViewBuilder,
-  ): (button: HomeButton) => ReadonlyArray<ApplicationAttribute>
-  (
-    button: HomeButton,
-    h: ApplicationViewBuilder,
-  ): ReadonlyArray<ApplicationAttribute>
+// NOTE: what every home control shares, a link like the coffee too: its id
+// and its key, as attributes for `.attrs`, beside its focus Messages.
+export const homeFocusAttrs = (
+  button: HomeButton,
+): Readonly<Record<string, string>> => ({
+  id: homeButtonId(button),
+  'aria-keyshortcuts': HOME_KEYS[button].name,
+})
+
+export const homeButton: {
+  (button: HomeButton): (b: HomeButtonBuilder) => HomeButtonBuilder
+  (b: HomeButtonBuilder, button: HomeButton): HomeButtonBuilder
 } = Function.dual(
   2,
-  (
-    button: HomeButton,
-    h: ApplicationViewBuilder,
-  ): ReadonlyArray<ApplicationAttribute> => [
-    h.Type('button'),
-    ...homeFocusAttributes(button, h),
-  ],
+  (b: HomeButtonBuilder, button: HomeButton): HomeButtonBuilder =>
+    b
+      .attr('type', 'button')
+      .attrs(homeFocusAttrs(button))
+      .on('focus', HomeMessage.FocusedHomeButton({ button }))
+      .on('blur', HomeMessage.BlurredHomeButton()),
 )

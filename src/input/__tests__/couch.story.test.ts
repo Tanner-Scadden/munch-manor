@@ -1,22 +1,23 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { localPlayersIn } from '../../app/boot'
 import { Message } from '../../app/message'
-import { type Model, Phase } from '../../app/model'
+import { BreakClock, type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { cameraFocus } from '../../render/camera'
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { DISTANT_SPAWN, atSeat } from '../../test/model.fixture'
 import {
-  APPLICATION,
   SURFACE,
+  checkModel,
   press,
   release,
+  send,
   startedRun,
+  storyOf,
   ticks,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -35,7 +36,7 @@ import { type World } from '../../world/schema/world'
 const TICK_MS = FIXED_STEP_MS
 
 const onTheCouch = (count: number): Model =>
-  modifyFields(asVeteran(initialModel), {
+  UiStruct.evolve(asVeteran(initialModel), {
     maybeSurface: () => Option.some(SURFACE),
     localPlayers: () => count,
   })
@@ -43,16 +44,17 @@ const onTheCouch = (count: number): Model =>
 const started = (count: number) => startedRun(onTheCouch(count))
 
 const inWave = (current: Model): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   })
 
 const fighting = (count: number) => started(count).pipe(Effect.map(inWave))
 
 const inBreak = (current: Model): Model =>
-  modifyFields(current, {
+  UiStruct.evolve(current, {
     phase: () =>
       Phase.Preparation({
+        clock: BreakClock.Counting(),
         wave: 3,
         remainingMs: 30_000,
         durationMs: 30_000,
@@ -98,12 +100,12 @@ describe('player 2 on IJKL', () => {
   it.effect('walks with IJKL while player 1 stands still', () =>
     Effect.gen(function* () {
       const before = yield* fighting(2)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(before),
+
+      const s = yield* storyOf(before)
+      s.pipe(
         press('KeyL'),
-        ...ticks(20, TICK_MS),
-        Story.model(current => {
+        ticks(20, TICK_MS),
+        checkModel(current => {
           expect(mateAt(current, 1).player.x).toBeGreaterThan(
             mateAt(before, 1).player.x,
           )
@@ -117,12 +119,12 @@ describe('player 2 on IJKL', () => {
   it.effect('fires with U, and the shot is theirs', () =>
     Effect.gen(function* () {
       const before = yield* fighting(2)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(before),
+
+      const s = yield* storyOf(before)
+      s.pipe(
         press('KeyU'),
-        ...ticks(2, TICK_MS),
-        Story.model(current => {
+        ticks(2, TICK_MS),
+        checkModel(current => {
           expect(current.bullets.length).toBeGreaterThan(0)
           expect(
             Array.every(current.bullets, ({ shooter }) => shooter === 1),
@@ -138,18 +140,18 @@ describe('player 2 on IJKL', () => {
   it.effect("player 3's numpad 3 draws their knife, not player 1's", () =>
     Effect.gen(function* () {
       const before = yield* fighting(3)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(before),
+
+      const s = yield* storyOf(before)
+      s.pipe(
         press('Numpad3'),
         release('Numpad3'),
-        Story.model(current => {
+        checkModel(current => {
           expect(mateAt(current, 2).player.wield).toBe('Melee')
           expect(focusOf(current).player.wield).toBe('Gun')
         }),
         press('Digit3'),
         release('Digit3'),
-        Story.model(current => {
+        checkModel(current => {
           expect(focusOf(current).player.wield).toBe('Melee')
         }),
       )
@@ -159,19 +161,19 @@ describe('player 2 on IJKL', () => {
   it.effect('the break ends once both players press READY', () =>
     Effect.gen(function* () {
       const run = yield* started(2)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(inBreak(run)),
+
+      const s = yield* storyOf(inBreak(run))
+      s.pipe(
         press('Enter'),
         release('Enter'),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
+        ticks(1, TICK_MS),
+        checkModel(current => {
           expect(current.phase._tag).toBe('Preparation')
         }),
         press('KeyY'),
         release('KeyY'),
-        ...ticks(1, TICK_MS),
-        Story.model(current => {
+        ticks(1, TICK_MS),
+        checkModel(current => {
           expect(current.phase._tag).toBe('Wave')
         }),
       )
@@ -186,13 +188,13 @@ describe('one camera for the couch', () => {
       const apart = atSeat(
         atSeat(pair, 0, world =>
           modifyFocus(world, {
-            player: player => modifyFields(player, { x: () => 100 }),
+            player: player => UiStruct.evolve(player, { x: () => 100 }),
           }),
         ),
         1,
         world =>
           modifyFocus(world, {
-            player: player => modifyFields(player, { x: () => 200 }),
+            player: player => UiStruct.evolve(player, { x: () => 200 }),
           }),
       )
       expect(cameraFocus(apart).x).toBe(150)
@@ -211,13 +213,14 @@ describe('one camera for the couch', () => {
 
 describe('keys outside a run', () => {
   it.effect('player 2’s keys are player 1’s menu keys at home', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(onTheCouch(2)),
-      Story.message(Message.PressedKey({ code: 'KeyU' })),
-      Story.model(current => {
-        expect(current.phase._tag).toBe('Ready')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(onTheCouch(2))
+      s.pipe(
+        send(Message.PressedKey({ code: 'KeyU' })),
+        checkModel(current => {
+          expect(current.phase._tag).toBe('Ready')
+        }),
+      )
+    }),
   )
 })

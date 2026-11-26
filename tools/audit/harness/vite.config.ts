@@ -5,7 +5,6 @@ import tailwindcss from '@tailwindcss/vite'
 
 import { encodeJson } from '../../json.ts'
 import { spriteAtlas } from '../../sprites/vitePlugin.ts'
-import { foldkitBrandingViews } from '../../vite/viewIdentity.ts'
 
 const encodeString = encodeJson(Schema.String)
 
@@ -27,7 +26,7 @@ const isProfile = settings.isProfile
 export default defineConfig({
   root: import.meta.dirname,
   publicDir: `${GAME}/public`,
-  plugins: [tailwindcss(), ...foldkitBrandingViews(), spriteAtlas()],
+  plugins: [tailwindcss(), spriteAtlas()],
   define: {
     __BUILD_ID__: encodeString('dev'),
     'import.meta.env.VITE_COOP': encodeString('On'),

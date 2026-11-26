@@ -1,10 +1,8 @@
 import { Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { Message as ProfileMessage } from '../../../features/profile/message'
 import {
   decodeSave,
   encodeSave,
@@ -13,12 +11,14 @@ import {
 } from '../../../platform/save'
 import { loadingSave, readyAfterRead } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  type StoryStep,
+  checkModel,
   finishSplash,
   jsonOf,
+  send,
+  storyOf,
   writeSave,
 } from '../../../test/testing'
-import { ProfileBinding } from '../../bindings'
 import { Message } from '../../message'
 import { type Model } from '../../model'
 import { initialModel } from '../../pureApp'
@@ -26,18 +26,19 @@ import { ApplyRotation } from '../rotation'
 import { FetchBuild } from '../version'
 
 const onPhone = (base: Model): Model =>
-  modifyFields(base, { orientationLock: () => 'Supported' })
+  UiStruct.evolve(base, { orientationLock: () => 'Supported' })
 
-const applied = (rotation: 'Landscape' | 'Auto') =>
-  Story.Command.resolve(
-    ApplyRotation({ rotation }),
-    Message.CompletedApplyRotation(),
-  )
+const applied =
+  (rotation: 'Landscape' | 'Auto'): StoryStep =>
+  s =>
+    s.resolve(ApplyRotation.make({ rotation }), Component.noop)
+
+const clickRotate = send(Message.ClickedProfileSetting({ setting: 'Rotation' }))
 
 describe('the rotation setting in the save', () => {
   test('round-trips through the save', () => {
-    const auto = modifyFields(readyAfterRead, {
-      settings: modifyFields({ rotationSetting: () => 'Auto' }),
+    const auto = UiStruct.evolve(readyAfterRead, {
+      settings: UiStruct.evolve({ rotationSetting: () => 'Auto' }),
     })
     const save = saveOf(auto)
     expect(save.rotation).toBe('Auto')
@@ -51,8 +52,8 @@ describe('the rotation setting in the save', () => {
 
   test('a save from before the rotation loads locked to landscape', () => {
     const { rotation: _rotation, ...withoutRotation } = saveOf(
-      modifyFields(readyAfterRead, {
-        settings: modifyFields({ shakeSetting: () => 'Off' }),
+      UiStruct.evolve(readyAfterRead, {
+        settings: UiStruct.evolve({ shakeSetting: () => 'Off' }),
       }),
     )
     const versionSeven = jsonOf({ ...withoutRotation, version: 7 })
@@ -63,71 +64,63 @@ describe('the rotation setting in the save', () => {
 })
 
 describe('applying the rotation', () => {
-  it.effect(
-    'a loaded save on a phone that can lock applies its rotation',
-    () => {
+  it.effect('a loaded save on a phone that can lock applies its rotation', () =>
+    Effect.gen(function* () {
       const autoSave = {
         ...saveOf(readyAfterRead),
         rotation: 'Auto' as const,
       }
-      return Story.story(
-        APPLICATION,
-        Story.given(onPhone(loadingSave)),
-        Story.message(
-          Message.CompletedLoadSave({ maybeSave: Option.some(autoSave) }),
-        ),
+      const s = yield* storyOf(onPhone(loadingSave))
+      s.pipe(
+        send(Message.CompletedLoadSave({ maybeSave: Option.some(autoSave) })),
         finishSplash,
         applied('Auto'),
-        Story.model(current => {
+        checkModel(current => {
           expect(current.settings.rotationSetting).toBe('Auto')
         }),
       )
-    },
+    }),
   )
 
   it.effect(
     'finding a phone that can lock locks it to landscape by default',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(readyAfterRead),
-        Story.message(
-          Message.CompletedDetectOrientationLock({
-            orientationLock: 'Supported',
+      Effect.gen(function* () {
+        const s = yield* storyOf(readyAfterRead)
+        s.pipe(
+          send(
+            Message.CompletedDetectOrientationLock({
+              orientationLock: 'Supported',
+            }),
+          ),
+          applied('Landscape'),
+          checkModel(current => {
+            expect(current.orientationLock).toBe('Supported')
+            expect(current.settings.rotationSetting).toBe('Landscape')
           }),
-        ),
-        applied('Landscape'),
-        Story.model(current => {
-          expect(current.orientationLock).toBe('Supported')
-          expect(current.settings.rotationSetting).toBe('Landscape')
-        }),
-      ),
+        )
+      }),
   )
 
   it.effect('ROTATE switches to Auto and back, applying and saving each', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(onPhone(readyAfterRead)),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
-      ),
-      applied('Auto'),
-      writeSave(),
-      Story.model(current => {
-        expect(current.settings.rotationSetting).toBe('Auto')
-        expect(saveOf(current).rotation).toBe('Auto')
-      }),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
-      ),
-      applied('Landscape'),
-      writeSave(),
-      Story.model(current => {
-        expect(current.settings.rotationSetting).toBe('Landscape')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(onPhone(readyAfterRead))
+      s.pipe(
+        clickRotate,
+        applied('Auto'),
+        writeSave,
+        checkModel(current => {
+          expect(current.settings.rotationSetting).toBe('Auto')
+          expect(saveOf(current).rotation).toBe('Auto')
+        }),
+        clickRotate,
+        applied('Landscape'),
+        writeSave,
+        checkModel(current => {
+          expect(current.settings.rotationSetting).toBe('Landscape')
+        }),
+      )
+    }),
   )
 
   it.effect(
@@ -135,44 +128,48 @@ describe('applying the rotation', () => {
     () =>
       Effect.gen(function* () {
         const auto = onPhone(
-          modifyFields(readyAfterRead, {
-            settings: modifyFields({ rotationSetting: () => 'Auto' }),
+          UiStruct.evolve(readyAfterRead, {
+            settings: UiStruct.evolve({ rotationSetting: () => 'Auto' }),
           }),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(auto),
-          Story.message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
-          applied('Auto'),
-        )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(modifyFields(auto, { pageVisibility: () => 'Hidden' })),
-          Story.message(
-            Message.ChangedPageVisibility({ visibility: 'Visible' }),
+        yield* Effect.scoped(
+          Effect.map(storyOf(auto), s =>
+            s.pipe(
+              send(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
+              applied('Auto'),
+            ),
           ),
-          applied('Auto'),
-          Story.Command.resolve(
-            FetchBuild,
-            Message.FailedFetchBuild({ reason: 'test' }),
+        )
+        yield* Effect.scoped(
+          Effect.map(
+            storyOf(UiStruct.evolve(auto, { pageVisibility: () => 'Hidden' })),
+            s =>
+              s
+                .pipe(
+                  send(
+                    Message.ChangedPageVisibility({ visibility: 'Visible' }),
+                  ),
+                  applied('Auto'),
+                )
+                .resolve(
+                  FetchBuild,
+                  Message.FailedFetchBuild({ reason: 'test' }),
+                ),
           ),
         )
       }),
   )
 
   it.effect('a desktop or an iPhone never locks and ignores ROTATE', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(readyAfterRead),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
-      ),
-      Story.message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
-      Story.Command.expectNone(),
-      Story.model(current => {
-        expect(current.settings.rotationSetting).toBe('Landscape')
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(readyAfterRead)
+      s.pipe(
+        clickRotate,
+        send(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
+        checkModel(current => {
+          expect(current.settings.rotationSetting).toBe('Landscape')
+        }),
+      ).expectNone()
+    }),
   )
 })

@@ -1,11 +1,11 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import {
   AudioState,
+  BreakClock,
   type Difficulty,
   type Model,
   Phase,
@@ -23,10 +23,12 @@ import {
   withSeat,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
+  checkModel,
   checkPendingArgs,
+  modelAfter,
   settleRunCommands,
   startRunFromHome,
+  steps,
   tagsOf,
   tick,
 } from '../../../test/testing'
@@ -59,17 +61,16 @@ const DIFFICULTIES: ReadonlyArray<Difficulty> = [
 ]
 
 const readyOn = (difficulty: Difficulty, seed: number): Model =>
-  modifyFields(readyModel, {
+  UiStruct.evolve(readyModel, {
     rngState: () => seed,
-    difficulty: setting => modifyFields(setting, { chosen: () => difficulty }),
+    difficulty: setting =>
+      UiStruct.evolve(setting, { chosen: () => difficulty }),
   })
 
 const startedOn = (difficulty: Difficulty, seed: number) =>
-  Story.story(
-    APPLICATION,
-    Story.given(readyOn(difficulty, seed)),
-    startRunFromHome,
-    settleRunCommands,
+  modelAfter(
+    readyOn(difficulty, seed),
+    steps(startRunFromHome, settleRunCommands),
   )
 
 const START_ROOM_SPOT = hidingSpotIn(levelOf(quietWave(2)), DINING_ROOM_ID)
@@ -182,22 +183,21 @@ describe('the list', () => {
   )
 
   it.effect('Endless, stay the night, has no list and no card', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(readyOn('Normal', 5), {
-          home: home => modifyFields(home, { mode: () => 'Endless' }),
+    modelAfter(
+      UiStruct.evolve(readyOn('Normal', 5), {
+        home: home => UiStruct.evolve(home, { mode: () => 'Endless' }),
+      }),
+      steps(
+        startRunFromHome,
+        settleRunCommands,
+        checkModel(started => {
+          expect(started.mode).toEqual(RunMode.Endless())
+          expect(started.dare.list).toEqual([])
+          expect(started.dareThings).toEqual([])
+          expect(dareCardOf(started)).toEqual([])
+          expect(isDareListDone(started)).toBe(false)
         }),
       ),
-      startRunFromHome,
-      settleRunCommands,
-      Story.model(started => {
-        expect(started.mode).toEqual(RunMode.Endless())
-        expect(started.dare.list).toEqual([])
-        expect(started.dareThings).toEqual([])
-        expect(dareCardOf(started)).toEqual([])
-        expect(isDareListDone(started)).toBe(false)
-      }),
     ),
   )
 })
@@ -213,40 +213,42 @@ describe('finding a thing', () => {
         START_ROOM_SPOT.x + 40,
         START_ROOM_SPOT.y,
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(far),
-        tick(FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(isDareListDone(current)).toBe(false)
-          expect(current.dareThings[0]?.state._tag).toBe('Hidden')
-        }),
+      return modelAfter(
+        far,
+        steps(
+          tick(FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(isDareListDone(current)).toBe(false)
+            expect(current.dareThings[0]?.state._tag).toBe('Hidden')
+          }),
+        ),
       ).pipe(
         Effect.flatMap(() =>
-          Story.story(
-            APPLICATION,
-            Story.given(
-              withPlayerAt(far, START_ROOM_SPOT.x, START_ROOM_SPOT.y),
+          modelAfter(
+            withPlayerAt(far, START_ROOM_SPOT.x, START_ROOM_SPOT.y),
+            steps(
+              tick(FRAME_MS),
+              settleRunCommands,
+              checkModel(current => {
+                expect(current.dareThings[0]?.state).toEqual(
+                  DareThingState.Found({ slot: 0 }),
+                )
+                expect(tagsOf(current.frameEvents)).toContain('DareFound')
+                expect(tagsOf(current.frameEvents)).toContain('DareListDone')
+                expect(isDareListDone(current)).toBe(true)
+                expect(dareCardOf(current)).toEqual([
+                  { kind: 'SilverSpoon', isFound: true },
+                ])
+              }),
+              tick(FRAME_MS),
+              settleRunCommands,
+              checkModel(current => {
+                expect(tagsOf(current.frameEvents)).not.toContain(
+                  'DareListDone',
+                )
+              }),
             ),
-            tick(FRAME_MS),
-            settleRunCommands,
-            Story.model(current => {
-              expect(current.dareThings[0]?.state).toEqual(
-                DareThingState.Found({ slot: 0 }),
-              )
-              expect(tagsOf(current.frameEvents)).toContain('DareFound')
-              expect(tagsOf(current.frameEvents)).toContain('DareListDone')
-              expect(isDareListDone(current)).toBe(true)
-              expect(dareCardOf(current)).toEqual([
-                { kind: 'SilverSpoon', isFound: true },
-              ])
-            }),
-            tick(FRAME_MS),
-            settleRunCommands,
-            Story.model(current => {
-              expect(tagsOf(current.frameEvents)).not.toContain('DareListDone')
-            }),
           ),
         ),
       )
@@ -272,26 +274,26 @@ describe('finding a thing', () => {
             ),
           ),
         ).toBe(true)
-        yield* Story.story(
-          APPLICATION,
-          Story.given(shut),
-          Story.model(current => {
+        yield* modelAfter(
+          shut,
+          checkModel(current => {
             expect(current.dareThings[0]?.state._tag).toBe('Hidden')
           }),
         )
-        const opened = modifyFields(shut, {
+        const opened = UiStruct.evolve(shut, {
           level: level => openExitIn(level, KITCHEN_EXIT),
         })
-        yield* Story.story(
-          APPLICATION,
-          Story.given(opened),
-          tick(FRAME_MS),
-          settleRunCommands,
-          Story.model(current => {
-            expect(current.dareThings[0]?.state).toEqual(
-              DareThingState.Hidden({ ...KITCHEN_SPOT, workedMs: FRAME_MS }),
-            )
-          }),
+        yield* modelAfter(
+          opened,
+          steps(
+            tick(FRAME_MS),
+            settleRunCommands,
+            checkModel(current => {
+              expect(current.dareThings[0]?.state).toEqual(
+                DareThingState.Hidden({ ...KITCHEN_SPOT, workedMs: FRAME_MS }),
+              )
+            }),
+          ),
         )
       }),
   )
@@ -305,12 +307,12 @@ describe('finding a thing', () => {
         at: Readonly<{ x: number; y: number }>,
       ): Model =>
         withPlayerAt(
-          modifyFields(
+          UiStruct.evolve(
             withDareThings(quietWave(3), [hiddenAt(0, 'MusicBox', box)]),
             {
               audio: () => AudioState.Ready(),
               elapsedMs: () => BEAT_EDGE_MS,
-              settings: modifyFields({ musicSetting: () => 'Off' }),
+              settings: UiStruct.evolve({ musicSetting: () => 'Off' }),
             },
           ),
           at.x,
@@ -322,19 +324,20 @@ describe('finding a thing', () => {
       ) =>
         Effect.suspend(() => {
           const heard: Array<{ volume: number; pan: number }> = []
-          return Story.story(
-            APPLICATION,
-            Story.given(listening(box, at)),
-            tick(FRAME_MS),
-            checkPendingArgs(Story.Command.argsOf(PlayPlaced))(placed => {
-              heard.push(
-                ...Array.map(
-                  Array.filter(placed, ({ sound }) => sound === 'MusicBox'),
-                  ({ volume, pan }) => ({ volume, pan }),
-                ),
-              )
-            }),
-            settleRunCommands,
+          return modelAfter(
+            listening(box, at),
+            steps(
+              tick(FRAME_MS),
+              checkPendingArgs(PlayPlaced)(placed => {
+                heard.push(
+                  ...Array.map(
+                    Array.filter(placed, ({ sound }) => sound === 'MusicBox'),
+                    ({ volume, pan }) => ({ volume, pan }),
+                  ),
+                )
+              }),
+              settleRunCommands,
+            ),
           ).pipe(Effect.as(heard))
         })
       const fromSpot = (dx: number) => ({
@@ -372,29 +375,30 @@ describe('the crew', () => {
           withSeat(seatCrew(world, 2), 1, seat =>
             modifyFocus(seat, {
               player: player =>
-                modifyFields(player, {
+                UiStruct.evolve(player, {
                   x: () => START_ROOM_SPOT.x,
                   y: () => START_ROOM_SPOT.y,
                 }),
             }),
           ),
       )
-      return Story.story(
-        APPLICATION,
-        Story.given(crew),
-        tick(FRAME_MS),
-        settleRunCommands,
-        Story.model(current => {
-          expect(current.dareThings[0]?.state).toEqual(
-            DareThingState.Found({ slot: 1 }),
-          )
-          expect(focusOf(current).seat.slot).toBe(0)
-          expect(dareCardOf(current)[0]).toEqual({
-            kind: 'SilverSpoon',
-            isFound: true,
-          })
-          expect(isDareListDone(current)).toBe(true)
-        }),
+      return modelAfter(
+        crew,
+        steps(
+          tick(FRAME_MS),
+          settleRunCommands,
+          checkModel(current => {
+            expect(current.dareThings[0]?.state).toEqual(
+              DareThingState.Found({ slot: 1 }),
+            )
+            expect(focusOf(current).seat.slot).toBe(0)
+            expect(dareCardOf(current)[0]).toEqual({
+              kind: 'SilverSpoon',
+              isFound: true,
+            })
+            expect(isDareListDone(current)).toBe(true)
+          }),
+        ),
       )
     },
   )
@@ -402,33 +406,33 @@ describe('the crew', () => {
 
 describe('a run between waves', () => {
   it.effect('a break keeps the hunt on', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withPlayerAt(
-          modifyFields(
-            withDareThings(quietWave(3), [
-              hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT),
-            ]),
-            {
-              phase: () =>
-                Phase.Preparation({
-                  wave: 4,
-                  remainingMs: 60_000,
-                  durationMs: 60_000,
-                  spawns: [DISTANT_SPAWN],
-                }),
-            },
-          ),
-          START_ROOM_SPOT.x,
-          START_ROOM_SPOT.y,
+    modelAfter(
+      withPlayerAt(
+        UiStruct.evolve(
+          withDareThings(quietWave(3), [
+            hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT),
+          ]),
+          {
+            phase: () =>
+              Phase.Preparation({
+                clock: BreakClock.Counting(),
+                wave: 4,
+                remainingMs: 60_000,
+                durationMs: 60_000,
+                spawns: [DISTANT_SPAWN],
+              }),
+          },
         ),
+        START_ROOM_SPOT.x,
+        START_ROOM_SPOT.y,
       ),
-      tick(FRAME_MS),
-      settleRunCommands,
-      Story.model(current => {
-        expect(isDareListDone(current)).toBe(true)
-      }),
+      steps(
+        tick(FRAME_MS),
+        settleRunCommands,
+        checkModel(current => {
+          expect(isDareListDone(current)).toBe(true)
+        }),
+      ),
     ),
   )
 })

@@ -1,5 +1,4 @@
 import { Option } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import {
   type Palette,
@@ -15,6 +14,7 @@ import { backDoorBoxOf, isBackDoorOpen } from '../world/kitchen/backDoor'
 import { levelOf } from '../world/level/arena'
 import type { World } from '../world/schema/world'
 import type { Drawable } from './depth'
+import type * as Draw from './draw'
 import { rect } from './drawing'
 
 // The kitchen's back door to the garden (src/world/kitchen/backDoor.ts),
@@ -158,7 +158,7 @@ const glowShapes = (
   x: number,
   y: number,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   group({
     opacity: 0.18 + 0.1 * Math.sin((elapsedMs / GLOW_PERIOD_MS) * Math.PI * 2),
     shapes: [

@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import type { Model } from '../../../app/model'
@@ -11,7 +10,7 @@ import {
   withActors,
   withPlayerAt,
 } from '../../../test/model.fixture'
-import { APPLICATION, recordTicks, zombieAt } from '../../../test/testing'
+import { modelAfter, recordTicks, zombieAt } from '../../../test/testing'
 import { levelOf, openExitIn } from '../arena'
 import { KITCHEN_EXIT } from '../exits'
 import { doorSpawnPoint, isInsideRoomAt } from '../tileQueries'
@@ -20,7 +19,7 @@ import { doorSpawnPoint, isInsideRoomAt } from '../tileQueries'
 // due at the dining room's west door just below it. The flow field's way in
 // for that zombie runs out through the yard and in at the window, nearer the
 // player: steering by the field alone walked it there out of sight.
-const kitchenOpen: Model = modifyFields(quietWave(3), {
+const kitchenOpen: Model = UiStruct.evolve(quietWave(3), {
   level: state => openExitIn(state, KITCHEN_EXIT),
 })
 const LEVEL = levelOf(kitchenOpen)
@@ -45,15 +44,12 @@ describe('a zombie at its door', () => {
   it.effect('walks in through that door, not round the yard to another', () =>
     Effect.gen(function* () {
       const frames: Array<Model> = []
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          withActors(
-            withPlayerAt(kitchenOpen, BY_THE_WINDOW.x, BY_THE_WINDOW.y),
-            [zombieAt(1, AT_THE_WEST_DOOR.x, AT_THE_WEST_DOOR.y)],
-          ),
+      yield* modelAfter(
+        withActors(
+          withPlayerAt(kitchenOpen, BY_THE_WINDOW.x, BY_THE_WINDOW.y),
+          [zombieAt(1, AT_THE_WEST_DOOR.x, AT_THE_WEST_DOOR.y)],
         ),
-        ...recordTicks(90, FIXED_STEP_MS, frames),
+        recordTicks(90, FIXED_STEP_MS, frames),
       )
 
       const track = Array.flatMap(frames, ({ zombies }) =>

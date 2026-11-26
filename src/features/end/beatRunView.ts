@@ -1,10 +1,10 @@
 import { Array, Function } from 'effect'
-import type { Canvas } from 'foldkit'
 
 import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
 import { textShapes, textWidth } from '../../art/font'
 import { group, placeAt } from '../../art/sprite'
 import type { DareOutcome } from '../../domain/beatLink'
+import type * as Draw from '../../render/draw'
 import type { BeatComparison, BeatVerdict } from './beatRun'
 
 // A friend's dare on its end card (src/features/end/beatRun.ts): the
@@ -29,15 +29,22 @@ const OUTCOME_SHORT: Readonly<Record<DareOutcome, string>> = {
 // NOTE: the verdict and its line, centered on `centerX` at `y`, the
 // verdict loud and the line as the quip would be.
 export const beatVerdictShapes: {
-  (centerX: number, y: number): (comparison: BeatComparison) => ReadonlyArray<Canvas.Shape>
-  (comparison: BeatComparison, centerX: number, y: number): ReadonlyArray<Canvas.Shape>
+  (
+    centerX: number,
+    y: number,
+  ): (comparison: BeatComparison) => ReadonlyArray<Draw.Shape>
+  (
+    comparison: BeatComparison,
+    centerX: number,
+    y: number,
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   3,
   (
     { verdict, line }: BeatComparison,
     centerX: number,
     y: number,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const word = VERDICT_WORDS[verdict]
     const gap = line === '' ? 0 : TEXT_GAP + 1
     const width = textWidth(word) + gap + textWidth(line)
@@ -57,11 +64,11 @@ export const beatVerdictShapes: {
 
 // NOTE: the friend's result centered on `centerX` at the text's top `y`.
 export const friendRowShapes: {
-  (centerX: number, y: number): (comparison: BeatComparison) => Canvas.Shape
-  (comparison: BeatComparison, centerX: number, y: number): Canvas.Shape
+  (centerX: number, y: number): (comparison: BeatComparison) => Draw.Shape
+  (comparison: BeatComparison, centerX: number, y: number): Draw.Shape
 } = Function.dual(
   3,
-  ({ friend }: BeatComparison, centerX: number, y: number): Canvas.Shape => {
+  ({ friend }: BeatComparison, centerX: number, y: number): Draw.Shape => {
     const label = `PAL ${OUTCOME_SHORT[friend.outcome]} ${friend.wave}`
     const iconsWidth = friend.found.length * ICON_STRIDE
     const width =

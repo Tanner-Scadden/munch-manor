@@ -1,12 +1,11 @@
 import { Effect, Option, Schema } from 'effect'
 import { FetchHttpClient } from 'effect/http'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
+import { Story } from '@effect/ui/testing'
 import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
 import { MAX_PLAYERS } from '@munch/netcode'
 
-import { ProfileBinding } from '../../app/bindings'
 import { GenerateVisitId } from '../../app/boot'
 import { Message } from '../../app/message'
 import {
@@ -24,7 +23,6 @@ import {
 import { initialModel } from '../../app/pureApp'
 import { WriteSave } from '../../app/update/save'
 import { SendRunSummary } from '../../app/update/settle'
-import { Message as ProfileMessage } from '../../features/profile/message'
 import { InputDevice } from '../../input/inputSchema'
 import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
 import {
@@ -35,10 +33,14 @@ import {
 import {
   APPLICATION,
   SURFACE,
+  type StoryStep,
   bootWithoutVisitId,
-  closeDialog,
+  checkModel,
   jsonOf,
-  showDialog,
+  resolveSentSummary,
+  send,
+  settleRunCommands,
+  storyOf,
   writeSave,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -71,7 +73,7 @@ import { saveOf } from '../save'
 
 const VISIT_ID = '0123456789abcdef'
 
-const home: Model = modifyFields(asVeteran(initialModel), {
+const home: Model = UiStruct.evolve(asVeteran(initialModel), {
   maybeSurface: () => Option.some(SURFACE),
   maybeVisitId: () => Option.some(VISIT_ID),
 })
@@ -91,16 +93,16 @@ const runnerAt = (x: number, y: number): Zombie => ({
   frenzy: Frenzy.Calm(),
 })
 
-const midRun: Model = modifyFields(home, {
+const midRun: Model = UiStruct.evolve(home, {
   phase: () => Phase.Wave({ wave: 4, elapsedMs: 4000, spawns: [] }),
-  difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
+  difficulty: setting => UiStruct.evolve(setting, { chosen: () => 'Hard' }),
   lastDevice: () => 'Touch',
-  settings: modifyFields({ screenFit: () => 'Installed' }),
-  keys: ring => modifyFields(ring, { spent: () => 3 }),
+  settings: UiStruct.evolve({ screenFit: () => 'Installed' }),
+  keys: ring => UiStruct.evolve(ring, { spent: () => 3 }),
   stats: () =>
-    modifyFields(freshStats, {
+    UiStruct.evolve(freshStats, {
       kills: () =>
-        modifyFields(noKills, { Shambler: () => 30, Runner: () => 4 }),
+        UiStruct.evolve(noKills, { Shambler: () => 30, Runner: () => 4 }),
       heartsLost: () => 2,
       powerUpsGrabbed: () => 1,
       trapsPlaced: () => 2,
@@ -111,16 +113,16 @@ const midRun: Model = modifyFields(home, {
 })
 
 const lastHeart: Model = modifyFocus(
-  modifyFields(midRun, {
+  UiStruct.evolve(midRun, {
     zombies: () => [runnerAt(START_LEVEL.start.x + 2, START_LEVEL.start.y)],
   }),
-  { player: player => modifyFields(player, { hp: () => 1 }) },
+  { player: player => UiStruct.evolve(player, { hp: () => 1 }) },
 )
 
 // NOTE: the tenth wave with the front door open and the player on its
 // sill: the next frame walks out.
 const finalWave: Model = escaping(
-  modifyFields(midRun, {
+  UiStruct.evolve(midRun, {
     phase: () =>
       Phase.Wave({
         wave: FINAL_WAVE,
@@ -141,7 +143,7 @@ const expectedSummary = (
   mode: 'Campaign',
   difficulty: 'Hard',
   runMs: Math.round(200_000 + FRAME_MS),
-  kills: modifyFields(noKills, { Shambler: () => 30, Runner: () => 4 }),
+  kills: UiStruct.evolve(noKills, { Shambler: () => 30, Runner: () => 4 }),
   heartsLost: 2,
   powerUpsGrabbed: 1,
   trapsPlaced: 2,
@@ -391,7 +393,7 @@ describe('the run summary schema', () => {
   test('the frame time lands in a bucket by its average', () => {
     const at = (activeFrames: number, activeFrameMs: number) =>
       frameTimeBucket(
-        modifyFields(freshStats, {
+        UiStruct.evolve(freshStats, {
           activeFrames: () => activeFrames,
           activeFrameMs: () => activeFrameMs,
         }),
@@ -405,259 +407,225 @@ describe('the run summary schema', () => {
   })
 })
 
+// NOTE: one frame of the run, the one that ends it or not.
+const frame: StoryStep = send(Message.TickedFrame({ deltaTime: FRAME_MS }))
+
+// NOTE: a run's end, `model` one frame before it, sending exactly
+// `summary`, with the end's sounds, cues, and save settled.
+const sends = (model: Model, summary: RunSummary, check?: StoryStep) =>
+  Effect.gen(function* () {
+    const s = yield* storyOf(model)
+    s.pipe(frame, check ?? (current => current))
+      .expectHas(SendRunSummary.make({ summary }))
+      .pipe(resolveSentSummary, settleRunCommands)
+  })
+
 describe('sending at the end of a run', () => {
   const lostWith = (modifiers: Modifiers): Model =>
-    modifyFields(lastHeart, { modifiers: () => modifiers })
+    UiStruct.evolve(lastHeart, { modifiers: () => modifiers })
 
   it.effect('the modifiers that were on go in the summary as a mask', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lostWith({ ...noModifiers, glass: true, broke: true })),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.Command.expectHas(
-        SendRunSummary({
-          summary: expectedSummary({
-            outcome: { _tag: 'GameOver', killedBy: 'Runner' },
-            wave: 4,
-            heartsLost: 3,
-            frameTime: 'Under17Ms',
-            modifiers: 12,
-          }),
-        }),
-      ),
-      Story.Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
+    sends(
+      lostWith({ ...noModifiers, glass: true, broke: true }),
+      expectedSummary({
+        outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+        wave: 4,
+        heartsLost: 3,
+        frameTime: 'Under17Ms',
+        modifiers: 12,
+      }),
     ),
   )
 
   it.effect('Friendly Fire with no teammate to hit is not counted', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        lostWith({ ...noModifiers, friendlyFire: true, bigCrowd: true }),
-      ),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.Command.expectHas(
-        SendRunSummary({
-          summary: expectedSummary({
-            outcome: { _tag: 'GameOver', killedBy: 'Runner' },
-            wave: 4,
-            heartsLost: 3,
-            frameTime: 'Under17Ms',
-            modifiers: 2,
-          }),
-        }),
-      ),
-      Story.Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
+    sends(
+      lostWith({ ...noModifiers, friendlyFire: true, bigCrowd: true }),
+      expectedSummary({
+        outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+        wave: 4,
+        heartsLost: 3,
+        frameTime: 'Under17Ms',
+        modifiers: 2,
+      }),
     ),
   )
 
   it.effect('Game Over sends the run with what killed the player', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lastHeart),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.model(({ phase }) => {
+    sends(
+      lastHeart,
+      expectedSummary({
+        outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+        wave: 4,
+        heartsLost: 3,
+        frameTime: 'Under17Ms',
+      }),
+      checkModel(({ phase }) => {
         expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
       }),
-      Story.Command.expectHas(
-        SendRunSummary({
-          summary: expectedSummary({
-            outcome: { _tag: 'GameOver', killedBy: 'Runner' },
-            wave: 4,
-            heartsLost: 3,
-            frameTime: 'Under17Ms',
-          }),
-        }),
-      ),
-      Story.Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
     ),
   )
 
   it.effect('an escape sends the won run at its wave', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(finalWave),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.model(({ phase }) => {
+    sends(
+      finalWave,
+      expectedSummary({
+        outcome: { _tag: 'Escaped' },
+        wave: FINAL_WAVE,
+      }),
+      checkModel(({ phase }) => {
         expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
       }),
-      Story.Command.expectHas(
-        SendRunSummary({
-          summary: expectedSummary({
-            outcome: { _tag: 'Escaped' },
-            wave: FINAL_WAVE,
-          }),
-        }),
-      ),
-      Story.Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
     ),
   )
 
   it.effect('an escape counts the things on the list it found', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withDareThings(finalWave, [
-          {
-            id: 0,
-            kind: 'SilverSpoon',
-            state: DareThingState.Found({ slot: 0 }),
-          },
-          {
-            id: 1,
-            kind: 'MusicBox',
-            state: DareThingState.Found({ slot: 0 }),
-          },
-        ]),
-      ),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.Command.expectHas(
-        SendRunSummary({
-          summary: expectedSummary({
-            outcome: { _tag: 'Escaped' },
-            wave: FINAL_WAVE,
-            dareItemsFound: 2,
-          }),
-        }),
-      ),
-      Story.Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
+    sends(
+      withDareThings(finalWave, [
+        {
+          id: 0,
+          kind: 'SilverSpoon',
+          state: DareThingState.Found({ slot: 0 }),
+        },
+        {
+          id: 1,
+          kind: 'MusicBox',
+          state: DareThingState.Found({ slot: 0 }),
+        },
+      ]),
+      expectedSummary({
+        outcome: { _tag: 'Escaped' },
+        wave: FINAL_WAVE,
+        dareItemsFound: 2,
+      }),
     ),
   )
 
   it.effect(
     'leaving from the pause MENU sends the run as a Quit, read before it resets',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(pause(midRun)),
-        Story.message(Message.PressedKey({ code: 'KeyH' })),
-        showDialog(),
-        Story.message(Message.ClickedLeaveRunButton()),
-        closeDialog(),
-        Story.model(({ phase, stats }) => {
-          expect(Phase.guards.Ready(phase)).toBe(true)
-          expect(stats).toEqual(freshStats)
-        }),
-        Story.Command.expectHas(
-          SendRunSummary({
-            summary: expectedSummary({
-              outcome: { _tag: 'Quit' },
-              wave: 4,
-              runMs: 200_000,
-              device: 'KeyboardMouse',
-            }),
+      Effect.gen(function* () {
+        const s = yield* storyOf(pause(midRun))
+        s.pipe(
+          send(Message.PressedKey({ code: 'KeyH' })),
+          send(Message.ClickedLeaveRunButton()),
+          checkModel(({ phase, stats }) => {
+            expect(Phase.guards.Ready(phase)).toBe(true)
+            expect(stats).toEqual(freshStats)
           }),
-        ),
-        Story.Command.resolve(
-          SendRunSummary,
-          Message.CompletedSendRunSummary(),
-        ),
-      ),
+        )
+          .expectHas(
+            SendRunSummary.make({
+              summary: expectedSummary({
+                outcome: { _tag: 'Quit' },
+                wave: 4,
+                runMs: 200_000,
+                device: 'KeyboardMouse',
+              }),
+            }),
+          )
+          .pipe(resolveSentSummary, settleRunCommands)
+      }),
   )
 
+  // NOTE: a send that fails is logged in the Command itself, which reports
+  // nothing back, as a send that goes out does.
   it.effect('a failed send changes nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lastHeart),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.Command.resolve(
-        SendRunSummary,
-        Message.FailedSendRunSummary({ reason: 'offline' }),
-      ),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
-      }),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(lastHeart)
+      s.pipe(
+        frame,
+        resolveSentSummary,
+        checkModel(({ phase }) => {
+          expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
+        }),
+        settleRunCommands,
+      )
+    }),
   )
+
+  // NOTE: the frame's other Commands (its sounds, cues, and save) settled,
+  // nothing is left: no summary.
+  const sendsNothing = (model: Model, check: StoryStep) =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const s = yield* storyOf(model)
+        s.pipe(frame, check, settleRunCommands).expectNone()
+      }),
+    )
 
   it.effect(
     'nothing is sent with sharing off, or before the visit has an id',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(lastHeart, {
-              settings: modifyFields({ shareStats: () => 'Off' }),
-            }),
-          ),
-          Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-          Story.model(({ phase }) => {
+        yield* sendsNothing(
+          UiStruct.evolve(lastHeart, {
+            settings: UiStruct.evolve({ shareStats: () => 'Off' }),
+          }),
+          checkModel(({ phase }) => {
             expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
           }),
-          Story.Command.expectNone(),
         )
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(finalWave, { maybeVisitId: () => Option.none() }),
-          ),
-          Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-          Story.model(({ phase }) => {
+        yield* sendsNothing(
+          UiStruct.evolve(finalWave, { maybeVisitId: () => Option.none() }),
+          checkModel(({ phase }) => {
             expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
           }),
-          Story.Command.expectNone(),
         )
       }),
   )
 
   it.effect('a frame mid-wave sends nothing', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(midRun),
-      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      Story.Command.expectNone(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(midRun)
+      s.pipe(frame).expectNone()
+    }),
   )
 })
 
 describe('the sharing setting', () => {
   it.effect('the toggle turns sharing off and saves it', () => {
-    const saved = modifyFields(home, {
-      saving: modifyFields({ saveStatus: () => 'Read' }),
+    const saved = UiStruct.evolve(home, {
+      saving: UiStruct.evolve({ saveStatus: () => 'Read' }),
     })
-    const off = modifyFields(saved, {
-      settings: modifyFields({ shareStats: () => 'Off' }),
+    const off = UiStruct.evolve(saved, {
+      settings: UiStruct.evolve({ shareStats: () => 'Off' }),
     })
-    return Story.story(
-      APPLICATION,
-      Story.given(saved),
-      Story.messageIn(
-        ProfileBinding,
-        ProfileMessage.ClickedSettingTile({ setting: 'ShareStats' }),
-      ),
-      Story.model(({ settings: { shareStats } }) => {
-        expect(shareStats).toBe('Off')
-      }),
-      Story.Command.expectExact(
-        WriteSave({
-          save: saveOf(off),
-          changes: [
-            PlayerChange.ChangedSettings({ settings: saveOf(off).settings }),
-          ],
+    return Effect.gen(function* () {
+      const s = yield* storyOf(saved)
+      s.pipe(
+        send(Message.ClickedProfileSetting({ setting: 'ShareStats' })),
+        checkModel(({ settings: { shareStats } }) => {
+          expect(shareStats).toBe('Off')
         }),
-      ),
-      writeSave(),
-    )
+      )
+        .expectExact(
+          WriteSave.make({
+            save: saveOf(off),
+            changes: [
+              PlayerChange.ChangedSettings({ settings: saveOf(off).settings }),
+            ],
+          }),
+        )
+        .pipe(writeSave)
+    })
   })
 
   it.effect('the visit id comes from a Command at start', () =>
-    Story.story(
-      APPLICATION,
-      Story.init(),
-      Story.model(({ maybeVisitId }) => {
-        expect(maybeVisitId).toEqual(Option.none())
-      }),
-      Story.Command.expectHas(GenerateVisitId()),
-      Story.Command.resolve(
-        GenerateVisitId(),
-        Message.CompletedGenerateVisitId({ visitId: VISIT_ID }),
-      ),
-      Story.model(({ maybeVisitId }) => {
-        expect(maybeVisitId).toEqual(Option.some(VISIT_ID))
-      }),
-      bootWithoutVisitId,
-    ),
+    Effect.gen(function* () {
+      const s = yield* Story.make(APPLICATION, {})
+      expect(s.model.maybeVisitId).toEqual(Option.none())
+      s.expectHas(GenerateVisitId.make())
+        .resolve(
+          GenerateVisitId,
+          Message.CompletedGenerateVisitId({ visitId: VISIT_ID }),
+        )
+        .pipe(
+          checkModel(({ maybeVisitId }) => {
+            expect(maybeVisitId).toEqual(Option.some(VISIT_ID))
+          }),
+          bootWithoutVisitId,
+        )
+    }),
   )
 })
 

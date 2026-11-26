@@ -1,6 +1,7 @@
 import { Array, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { BoostTimer, type Model, Phase, idleBoosts } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
@@ -22,7 +23,7 @@ import { focusOf, modifyFocus } from '../../../world/party/party'
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
 const twoBoosts: Model = modifyFocus(
-  modifyFields(initialModel, {
+  UiStruct.evolve(initialModel, {
     phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
   }),
   {
@@ -135,7 +136,7 @@ describe("a gun slot's level bar", () => {
   const withSmg = (tier: number, kills: number): Model =>
     modifyFocus(twoBoosts, {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           arsenal: () =>
             holdingSecond({ kind: 'Smg', loaded: 30, tier, kills }),
         }),

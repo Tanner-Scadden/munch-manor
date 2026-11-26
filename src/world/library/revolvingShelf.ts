@@ -1,5 +1,6 @@
 import { Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { TILE_PLAYER_SOLID, hasTileFlag, levelOf } from '../level/arena'
 import { boxCenter, distanceToBox } from '../level/tileGrid'
@@ -42,7 +43,10 @@ export const spinShelf = (world: World): World => {
           !hasTileFlag(level, tileIndexAt(level, through), TILE_PLAYER_SOLID)
           ? modifySeat(current, slot, {
               player: each =>
-                modifyFields(each, { x: () => through.x, y: () => through.y }),
+                UiStruct.evolve(each, {
+                  x: () => through.x,
+                  y: () => through.y,
+                }),
             })
           : current
       })

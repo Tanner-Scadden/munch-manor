@@ -1,5 +1,4 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { playerSprites } from '../../art/appearance'
@@ -42,6 +41,7 @@ import {
   shownHints,
 } from '../../features/onboarding/onboarding'
 import type { InputDevice } from '../../input/inputSchema'
+import * as Draw from '../../render/draw'
 import {
   type FrameSpan,
   type Screen,
@@ -84,8 +84,8 @@ const TITLE_SCALE = 2
 // NOTE: a backdrop reaches well past the landscape screen, so in portrait,
 // where these screens are drawn over the world window, it still dims the
 // HUD band and the thumb area. The canvas clips what is past its edges.
-const backdrop = (fill: string): Canvas.Shape =>
-  Canvas.Rect({
+const backdrop = (fill: string): Draw.Shape =>
+  Draw.Rect({
     x: -VIEW_WIDTH,
     y: -VIEW_HEIGHT * 2,
     width: VIEW_WIDTH * 3,
@@ -101,7 +101,7 @@ const centered = (
   y: number,
   scale = 1,
   opacity?: number,
-): Canvas.Shape =>
+): Draw.Shape =>
   placeBaked(baked, { x: CENTER_X, y, align: 'Center', scale, opacity })
 
 export const waveLabel: {
@@ -210,7 +210,7 @@ const hintOpacity = (ageMs: number): number =>
 
 const hintPartShapes =
   (left: number, top: number, height: number, ageMs: number) =>
-  ({ icon, maybeWords, x }: BakedHintPart): ReadonlyArray<Canvas.Shape> => [
+  ({ icon, maybeWords, x }: BakedHintPart): ReadonlyArray<Draw.Shape> => [
     placeAt(
       left + x,
       top + Math.floor((height - icon.height) / 2),
@@ -232,7 +232,7 @@ const hintRowShapes = (
   row: BakedHintRow,
   top: number,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const opacity = hintOpacity(ageMs)
   if (opacity <= 0) {
     return []
@@ -243,7 +243,7 @@ const hintRowShapes = (
     group({
       opacity,
       shapes: [
-        Canvas.Rect({
+        Draw.Rect({
           x: left - HINT_PAD_X,
           y: top,
           width: row.width + HINT_PAD_X * 2,
@@ -277,7 +277,7 @@ const hintPlacementsOf = (model: Model): ReadonlyArray<HintPlacement> => {
   return placements
 }
 
-const hintShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const hintShapes = (model: Model): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(hintPlacementsOf(model), ({ row, top, ageMs }) =>
     hintRowShapes(row, top, ageMs),
   )
@@ -372,9 +372,9 @@ const bannerPlate = (
   left: number,
   right: number,
   maybeSubtitle: Option.Option<BakedText>,
-): Canvas.Shape => {
+): Draw.Shape => {
   const top = BAND_TOP[band] - BANNER_PLATE_PAD_Y
-  return Canvas.Rect({
+  return Draw.Rect({
     x: left - BANNER_PLATE_PAD_X,
     y: top,
     width: right - left + 2 * BANNER_PLATE_PAD_X,
@@ -393,7 +393,7 @@ const bannerAt = (
   band: HintBand,
   title: BakedText,
   maybeSubtitle: Option.Option<BakedText>,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const [left, right] = centeredSpan(
     Math.max(
       title.width * TITLE_SCALE,
@@ -427,7 +427,7 @@ const iconBanner = (
   title: BakedText,
   maybeTagline: Option.Option<BakedText>,
   shownMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const hop =
     shownMs < NEW_KIND_HOP_MS
       ? 1 + 0.5 * Math.sin((Math.PI * shownMs) / NEW_KIND_HOP_MS)
@@ -479,7 +479,7 @@ const newKindBanner = (
   band: HintBand,
   kind: ZombieKind,
   shownMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { title, tagline } = KIND_BANNERS[kind]
   return iconBanner(
     band,
@@ -514,7 +514,7 @@ const beefierBanner = (
   band: HintBand,
   wave: number,
   shownMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (shownMs >= NEW_KIND_BANNER_MS) {
     return []
   }
@@ -542,7 +542,7 @@ const debutBanner = (
   wave: number,
   shownMs: number,
   isCrew: boolean,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Option.match(Array.head(debutKinds(wave)), {
     onNone: () => beefierBanner(band, wave, shownMs),
     onSome: kind =>
@@ -555,7 +555,7 @@ const preparationBanner = (
   model: Model,
   wave: number,
   msIntoPreparation: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (wave === 1) {
     return bannerAt(model.hintBand, GET_READY, Option.none())
   } else if (msIntoPreparation < WAVE_CLEARED_BANNER_MS) {
@@ -570,7 +570,7 @@ const preparationBanner = (
   }
 }
 
-const alarmBanner = (model: Model): ReadonlyArray<Canvas.Shape> =>
+const alarmBanner = (model: Model): ReadonlyArray<Draw.Shape> =>
   Alarm.match(model.pacing.alarm, {
     Quiet: () => [],
     Ringing: () => bannerAt(model.hintBand, DINNER_BELL, Option.none()),
@@ -580,7 +580,7 @@ const waveBanner = (
   model: Model,
   wave: number,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   elapsedMs < WAVE_BANNER_MS
     ? bannerAt(
         model.hintBand,
@@ -600,12 +600,12 @@ export const maybeBannerBand = (model: Model): Option.Option<BannerBand> => {
   const shapes = Phase.matchOrElse(
     model.phase,
     {
-      Preparation: ({ wave }): ReadonlyArray<Canvas.Shape> =>
+      Preparation: ({ wave }): ReadonlyArray<Draw.Shape> =>
         preparationBanner(model, wave, msIntoPhase(model.phase)),
-      Wave: ({ wave, elapsedMs }): ReadonlyArray<Canvas.Shape> =>
+      Wave: ({ wave, elapsedMs }): ReadonlyArray<Draw.Shape> =>
         isDebutCardUp(model) ? [] : waveBanner(model, wave, elapsedMs),
     },
-    (): ReadonlyArray<Canvas.Shape> => [],
+    (): ReadonlyArray<Draw.Shape> => [],
   )
   const top = BAND_TOP[model.hintBand]
   return Array.isReadonlyArrayEmpty(shapes)
@@ -671,20 +671,20 @@ const cardSlideX = (span: FrameSpan, ageMs: number): number => {
   }
 }
 
-const cardTimerShapes = (ageMs: number): ReadonlyArray<Canvas.Shape> => {
+const cardTimerShapes = (ageMs: number): ReadonlyArray<Draw.Shape> => {
   const left = CENTER_X - CARD_TIMER_WIDTH / 2
   const remaining = Math.round(
     CARD_TIMER_WIDTH * clamp(1 - ageMs / DEBUT_CARD_MS, 0, 1),
   )
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y: CARD_TIMER_Y,
       width: CARD_TIMER_WIDTH,
       height: 2,
       fill: CARD_TIMER_BACK,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: left,
       y: CARD_TIMER_Y,
       width: remaining,
@@ -698,7 +698,7 @@ const debutCardShapes = (
   span: FrameSpan,
   kind: ZombieKind,
   ageMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const { name, pitch } = CARD_TEXTS[kind]
   const scale = cardSpriteScale(kind)
   const stride = Math.floor(ageMs / CARD_STRIDE_MS)
@@ -707,14 +707,14 @@ const debutCardShapes = (
     group({
       translate: { x: cardSlideX(span, ageMs), y: 0 },
       shapes: [
-        Canvas.Rect({
+        Draw.Rect({
           x: span.left,
           y: CARD_TOP - 1,
           width: span.width,
           height: CARD_BOTTOM - CARD_TOP + 2,
           fill: CARD_EDGE,
         }),
-        Canvas.Rect({
+        Draw.Rect({
           x: span.left,
           y: CARD_TOP,
           width: span.width,
@@ -722,7 +722,7 @@ const debutCardShapes = (
           fill: CARD_FILL,
         }),
         centered(NEW_ZOMBIE, CARD_HEADING_Y, 1, isBlinkOn(ageMs) ? 1 : 0.6),
-        Canvas.Rect({
+        Draw.Rect({
           x: CENTER_X - 4 * scale,
           y: CARD_FEET_Y - scale,
           width: 8 * scale,
@@ -745,7 +745,7 @@ const debutCardShapes = (
 const debutCardOverlay = (
   model: Model,
   span: FrameSpan,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   DebutCard.match(model.debutCard, {
     Hidden: () => [],
     Showing: ({ kind, ageMs }) => debutCardShapes(span, kind, ageMs),
@@ -936,10 +936,10 @@ const logoLineShapes =
   (
     letters: ReadonlyArray<LogoLetter>,
     lineIndex: number,
-  ): ReadonlyArray<Canvas.Shape> => {
+  ): ReadonlyArray<Draw.Shape> => {
     const left = Math.round(CENTER_X - lineWidth(letters) / 2)
     const top = LOGO_TOP + lineIndex * LOGO_LINE_PX
-    const shapes: Array<Canvas.Shape> = []
+    const shapes: Array<Draw.Shape> = []
     let x = left
     for (const [index, letter] of letters.entries()) {
       const phase = screenMs / LOGO_BOB_MS + (index + lineIndex * 2) * 0.9
@@ -952,7 +952,7 @@ const logoLineShapes =
     return shapes
   }
 
-export const logoShapes = (screenMs: number): ReadonlyArray<Canvas.Shape> =>
+export const logoShapes = (screenMs: number): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(LOGO_LINES, logoLineShapes(screenMs))
 
 // ALPHA CHIP
@@ -965,21 +965,21 @@ const ALPHA_DROP = 9
 const ALPHA_FILL = '#c4232b'
 const ALPHA_EDGE = '#140c10'
 
-const alphaChipShapes = (): ReadonlyArray<Canvas.Shape> => {
+const alphaChipShapes = (): ReadonlyArray<Draw.Shape> => {
   const lastLine = Option.getOrElse(Array.last(LOGO_LINES), () => [])
   const width = ALPHA.width + ALPHA_PAD_X * 2
   const height = GLYPH_HEIGHT + ALPHA_PAD_Y * 2
   const left = Math.round(CENTER_X + lineWidth(lastLine) / 2 + ALPHA_GAP)
   const top = LOGO_TOP + (LOGO_LINES.length - 1) * LOGO_LINE_PX + ALPHA_DROP
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: left - 1,
       y: top - 1,
       width: width + 2,
       height: height + 2,
       fill: ALPHA_EDGE,
     }),
-    Canvas.Rect({ x: left, y: top, width, height, fill: ALPHA_FILL }),
+    Draw.Rect({ x: left, y: top, width, height, fill: ALPHA_FILL }),
     placeBaked(ALPHA, {
       x: left + ALPHA_PAD_X,
       y: top + ALPHA_PAD_Y,
@@ -988,7 +988,7 @@ const alphaChipShapes = (): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-const ALPHA_CHIP: ReadonlyArray<Canvas.Shape> = alphaChipShapes()
+const ALPHA_CHIP: ReadonlyArray<Draw.Shape> = alphaChipShapes()
 
 // PARADE
 
@@ -1014,7 +1014,7 @@ const PARADE_SHADOW = 'rgba(0, 0, 0, 0.35)'
 
 const marcherShapes =
   (span: FrameSpan, screenMs: number) =>
-  (marcher: Marcher): ReadonlyArray<Canvas.Shape> => {
+  (marcher: Marcher): ReadonlyArray<Draw.Shape> => {
     const travelled =
       marcher.offset + (marcher.speed * screenMs) / MS_PER_SECOND
     const along = (travelled % (span.width + PARADE_MARGIN * 2)) - PARADE_MARGIN
@@ -1027,7 +1027,7 @@ const marcherShapes =
     const stride = Math.floor(travelled / stats.stridePx)
     const facing = marcher.direction === 1 ? 'Right' : 'Left'
     return [
-      Canvas.Rect({
+      Draw.Rect({
         x: x - 4,
         y: marcher.y,
         width: 8,
@@ -1044,7 +1044,7 @@ const marcherShapes =
 const paradeShapes = (
   span: FrameSpan,
   screenMs: number,
-): ReadonlyArray<Canvas.Shape> =>
+): ReadonlyArray<Draw.Shape> =>
   Array.flatMap(PARADE, marcherShapes(span, screenMs))
 
 // READY
@@ -1062,8 +1062,8 @@ const runnerShapes = (
   calling: Calling,
   gun: WeaponKind,
   screenMs: number,
-): ReadonlyArray<Canvas.Shape> => [
-  Canvas.Rect({
+): ReadonlyArray<Draw.Shape> => [
+  Draw.Rect({
     x: HERO_X - 3 * HERO_SCALE,
     y: HERO_FEET_Y - HERO_SCALE,
     width: 7 * HERO_SCALE,
@@ -1090,7 +1090,7 @@ const runnerShapes = (
 const readyShapes = (
   model: Model,
   span: FrameSpan,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   TITLE_BACKDROP,
   ...paradeShapes(span, model.screenMs),
   ...runnerShapes(
@@ -1114,7 +1114,7 @@ const pausedShapes = (
   model: Model,
   wave: number,
   resumeY: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   DIM_BACKDROP,
   centered(PAUSED, PAUSED_Y, TITLE_SCALE),
   ...textShapes(
@@ -1139,11 +1139,11 @@ const resumeYFor = (screen: Screen): number =>
     : screen.height - landscapeFrameOffset(screen).y - PORTRAIT_RESUME_LIFT
 
 export const overlayShapes: {
-  (screen: Screen): (model: Model) => ReadonlyArray<Canvas.Shape>
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape>
+  (screen: Screen): (model: Model) => ReadonlyArray<Draw.Shape>
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   2,
-  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
+  (model: Model, screen: Screen): ReadonlyArray<Draw.Shape> =>
     Phase.match(model.phase, {
       Ready: () => readyShapes(model, frameSpanOf(screen)),
       Arriving: () => readyShapes(model, frameSpanOf(screen)),

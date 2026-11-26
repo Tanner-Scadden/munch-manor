@@ -47,11 +47,6 @@ export default defineConfig({
         /(menu|profile|shop|styles|coop|calling|closet|lobby|proof|journal|mastery)\.css/,
       ],
     },
-    server: {
-      deps: {
-        inline: ['foldkit', '@foldkit/ui', '@foldkit/devtools'],
-      },
-    },
     projects: [
       {
         extends: true,

@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import * as DetMath from '../../shared/detMath'
 import { KEY_RULES, grantKeys } from '../keys/keys'
@@ -162,7 +163,7 @@ export const advanceFrenzy: {
   (model: World, deltaMs: number): World
 } = Function.dual(2, (model: World, deltaMs: number): World =>
   hasAnyFrenzy(model.zombies)
-    ? modifyFields(model, {
+    ? UiStruct.evolve(model, {
         zombies: zombies =>
           Array.map(zombies, zombie => {
             if (!isWalking(zombie)) {
@@ -171,7 +172,7 @@ export const advanceFrenzy: {
             const frenzy = nextFrenzy(zombies, deltaMs)(zombie)
             return frenzy === zombie.frenzy
               ? zombie
-              : modifyFields(zombie, { frenzy: () => frenzy })
+              : UiStruct.evolve(zombie, { frenzy: () => frenzy })
           }),
       })
     : model,
@@ -205,7 +206,7 @@ const tallyPack =
   (entry: FrenzyPack): FrenzyPack => {
     const killed = Array.filter(kills, kill => kill.pack === entry.pack).length
     return killed > 0
-      ? modifyFields(entry, { left: left => Math.max(0, left - killed) })
+      ? UiStruct.evolve(entry, { left: left => Math.max(0, left - killed) })
       : entry
   }
 
@@ -235,7 +236,7 @@ export const keyWipedPacks: {
     entry => (entry.left <= 0 ? Result.succeed(entry) : Result.fail(entry)),
   )
   const wipes = Array.getSomes(Array.map(wiped, wipeEvent(kills)))
-  const tallied: World = modifyFields(after, {
+  const tallied: World = UiStruct.evolve(after, {
     frenzyPacks: () => standing,
     frameEvents: frameEvents => [...frameEvents, ...wipes],
   })

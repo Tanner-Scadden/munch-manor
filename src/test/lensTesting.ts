@@ -2,8 +2,6 @@
 // turn, the floor a camera really shows, and points compared past the
 // float noise of the lens there and back (src/render/lens.ts).
 
-import { Story } from 'foldkit'
-
 import { Message } from '../app/message'
 import {
   type LensFrame,
@@ -12,7 +10,9 @@ import {
   screenToFloorDirection,
 } from '../render/lens'
 import { STICK_RADIUS_PX } from '../shared/constants'
+import { hypot } from '../shared/detMath'
 import type { Vector } from '../world/schema/entitySchema'
+import { type StoryStep, send, steps } from './testing'
 
 const WALK_THUMB = 71
 
@@ -20,11 +20,11 @@ const WALK_THUMB = 71
 // toward a direction on the floor, as the screen shows it through the lens,
 // so the player walks straight that way on the game's map: for the tests
 // about where a walk ends, not about which key walks where.
-export const walkToward = (direction: Vector) => {
+export const walkToward = (direction: Vector): StoryStep => {
   const onScreen = floorToScreenDirection(direction)
-  const length = Math.max(1e-9, Math.hypot(onScreen.x, onScreen.y))
-  return Story.steps(
-    Story.message(
+  const length = Math.max(1e-9, hypot(onScreen.x, onScreen.y))
+  return steps(
+    send(
       Message.PressedPointer({
         pointerId: WALK_THUMB,
         device: 'Touch',
@@ -32,7 +32,7 @@ export const walkToward = (direction: Vector) => {
         clientY: 200,
       }),
     ),
-    Story.message(
+    send(
       Message.MovedPointer({
         pointerId: WALK_THUMB,
         clientX: 100 + (onScreen.x / length) * STICK_RADIUS_PX,
@@ -43,7 +43,7 @@ export const walkToward = (direction: Vector) => {
 }
 
 // NOTE: the walking thumb lifted, so the player stops.
-export const releaseWalk = Story.message(
+export const releaseWalk: StoryStep = send(
   Message.ReleasedPointer({ pointerId: WALK_THUMB }),
 )
 

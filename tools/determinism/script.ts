@@ -6,11 +6,12 @@
 // engines comes from the game, not from the script. God mode refills the
 // hearts, so a weak pistol-only player lets the room fill to the alive cap.
 //
-// It imports only the game, effect, and foldkit: no DOM, no Node, no Bun, so
+// It imports only the game, effect, and Effect UI's struct helpers: no DOM, no Node, no Bun, so
 // it runs the same in Bun, Node, Chrome, and workerd.
 
 import { Array, Function, Predicate } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { Message } from '../../src/app/message'
 import { Lesson, type Model, Phase } from '../../src/app/model'
@@ -150,9 +151,9 @@ const driveFrame = (model: Model, frame: number): Model =>
 // this harness is copied over an older commit to play it the same way: the
 // script plays a save past the tutorial, with no guided first break.
 const pastTutorial = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         move: () => Lesson.Learned({ atMs: 0 }),
         fire: () => Lesson.Learned({ atMs: 0 }),
         startWave: () => Lesson.Learned({ atMs: 0 }),
@@ -202,7 +203,7 @@ export const startedRun: {
   (seed: number, mode: ScriptMode): Model
 } = Function.dual(2, (seed: number, mode: ScriptMode): Model => {
   const ready = send(
-    modifyFields(pastTutorial(asVeteran(initialModel)), {
+    UiStruct.evolve(pastTutorial(asVeteran(initialModel)), {
       rngState: () => seed,
       difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),
     }),
@@ -218,7 +219,7 @@ const godMode = (model: Model): Model =>
   leadOf(model).player.hp === PLAYER_MAX_HP
     ? model
     : withLeadPlayer(model, player =>
-        modifyFields(player, { hp: () => PLAYER_MAX_HP }),
+        UiStruct.evolve(player, { hp: () => PLAYER_MAX_HP }),
       )
 
 export const isPlaying = (model: Model): boolean =>

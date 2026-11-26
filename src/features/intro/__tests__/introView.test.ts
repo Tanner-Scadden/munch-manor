@@ -1,10 +1,11 @@
 import { Array, Match, Option } from 'effect'
-import type { Canvas } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+
+import { UiStruct } from '@effect/ui'
 
 import { type Model, Phase } from '../../../app/model'
 import { PICTURE_HEIGHT, PICTURE_WIDTH } from '../../../art/introArt'
+import type * as Draw from '../../../render/draw'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
@@ -21,7 +22,7 @@ import { introShapes, widestFriendBubble } from '../introView'
 // whole screen, and its picture sits inside it at a whole scale.
 
 const arrivingAt = (cut: IntroCut, elapsedMs: number): Model =>
-  modifyFields(readyModel, {
+  UiStruct.evolve(readyModel, {
     phase: () => Phase.Arriving({ elapsedMs, cut }),
   })
 
@@ -33,7 +34,7 @@ const momentsOf = (cut: IntroCut): ReadonlyArray<number> =>
     index => index * EVERY_FRAME_MS,
   )
 
-const groupOf = (shape: Canvas.Shape | undefined) =>
+const groupOf = (shape: Draw.Shape | undefined) =>
   Match.value(shape).pipe(
     Match.when({ _tag: 'Group' }, group => group),
     Match.orElse(() => undefined),
@@ -98,7 +99,7 @@ describe('the intro drawn', () => {
     groupOf(
       groupOf(
         introShapes(
-          modifyFields(arrivingAt(cut, ms), {
+          UiStruct.evolve(arrivingAt(cut, ms), {
             maybeCarLine: () =>
               hasLine ? Option.some(FRIEND_LINES.Munched[0]) : Option.none(),
           }),

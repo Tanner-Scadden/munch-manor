@@ -1,7 +1,9 @@
 import { Array, Function, Option, Result } from 'effect'
-import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
+import { evolveFor } from '../../shared/evolve'
 import { sameIfUnchanged } from '../../shared/sameList'
 import { activeModifiersOf } from '../run/dareLadder'
 import { GLASS_START_HEARTS } from '../run/modifiers'
@@ -111,7 +113,7 @@ export const focusOf = (world: World): SeatState => world.seats[0]
 
 export const leadSeatOf = (world: World): Seat => focusOf(world).seat
 
-const modifySeatFields = makeModifyFieldsFor<SeatState>()
+const modifySeatFields = evolveFor<SeatState>()
 
 type SeatTransforms = Parameters<typeof modifySeatFields>[1]
 
@@ -164,8 +166,8 @@ export const playerAt: {
 type Seats = World['seats']
 
 // NOTE: the `seats` transform that changes the seat at `slot` and leaves
-// the others, for a `modifyFields` that also changes other World fields:
-// `modifyFields(world, { bullets: ..., seats: atSeat(slot, { player: ... }) })`.
+// the others, for a `UiStruct.evolve` that also changes other World fields:
+// `UiStruct.evolve(world, { bullets: ..., seats: atSeat(slot, { player: ... }) })`.
 // A slot not in the World changes nothing.
 export const atSeatBy: {
   (
@@ -288,7 +290,7 @@ export const modifySeatRecord: {
     slot: PlayerSlot,
     change: (seat: Seat) => Seat,
   ): M =>
-    updateSeat(world, slot, state => modifyFields(state, { seat: change })),
+    updateSeat(world, slot, state => UiStruct.evolve(state, { seat: change })),
 )
 
 // NOTE: a step for each seat that `isIncluded` lets in, the rest left as
@@ -427,7 +429,7 @@ export const withStartingHearts = (world: World): World =>
     ? forEachSeat(world, (current, slot) =>
         modifySeat(current, slot, {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               hp: hp => Math.min(hp, GLASS_START_HEARTS),
             }),
         }),
@@ -448,7 +450,7 @@ export const creditKills: {
 } = Function.dual(3, (world: World, slot: PlayerSlot, kills: number): World =>
   kills > 0
     ? modifyCrewSeat(world, slot, seat =>
-        modifyFields(seat, { kills: count => count + kills }),
+        UiStruct.evolve(seat, { kills: count => count + kills }),
       )
     : world,
 )
@@ -458,7 +460,7 @@ export const creditRevive: {
   (world: World, slot: PlayerSlot): World
 } = Function.dual(2, (world: World, slot: PlayerSlot): World =>
   modifyCrewSeat(world, slot, seat =>
-    modifyFields(seat, { revives: count => count + 1 }),
+    UiStruct.evolve(seat, { revives: count => count + 1 }),
   ),
 )
 
@@ -472,7 +474,7 @@ export const creditShots: {
   (world: World, slot: PlayerSlot, fired: number, hit: number): World =>
     fired > 0 || hit > 0
       ? modifyCrewSeat(world, slot, seat =>
-          modifyFields(seat, {
+          UiStruct.evolve(seat, {
             shotsFired: count => count + fired,
             shotsHit: count => count + hit,
           }),
@@ -485,7 +487,7 @@ export const creditShots: {
 const MATE_SPACING_PX = 14
 
 const freshSeat = (slot: PlayerSlot): Seat =>
-  modifyFields(soloSeat, { slot: () => slot })
+  UiStruct.evolve(soloSeat, { slot: () => slot })
 
 // NOTE: a new run's crew: the lead at slot 0 where single player starts,
 // and each teammate beside them, with their own copy of every per-player
@@ -498,7 +500,7 @@ export const seatCrew: {
     COOP_RULES.maxPlayers,
     Math.max(1, Math.floor(count)),
   )
-  const lead = modifyFields(focusOf(world), {
+  const lead = UiStruct.evolve(focusOf(world), {
     seat: () => freshSeat(SOLO_SLOT),
   })
   if (players <= 1) {
@@ -511,10 +513,10 @@ export const seatCrew: {
     const slot = index + 1
     const side = slot % 2 === 1 ? 1 : -1
     const step = Math.ceil(slot / 2)
-    return modifyFields(lead, {
+    return UiStruct.evolve(lead, {
       seat: () => freshSeat(slot),
       player: player =>
-        modifyFields(player, { x: x => x + side * step * MATE_SPACING_PX }),
+        UiStruct.evolve(player, { x: x => x + side * step * MATE_SPACING_PX }),
     })
   })
   return modifyWorldFields(world, {
@@ -542,7 +544,7 @@ export const setPresence: {
   3,
   (world: World, slot: PlayerSlot, presence: Presence): World =>
     modifySeatRecord(world, slot, seat =>
-      modifyFields(seat, { presence: () => presence }),
+      UiStruct.evolve(seat, { presence: () => presence }),
     ),
 )
 

@@ -3,7 +3,8 @@
 // World's Schema (src/world/schema/worldSchema.ts) reads them with no cycle.
 
 import { type Array, Schema } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import { MillisNumber, Point, PositionNumber } from '../schema/wireNumber'
 
@@ -43,7 +44,7 @@ export const HOUSE_THINGS: Array.NonEmptyReadonlyArray<DareKind> = [
 // thing its own way, a rummage, a hollow book, the dumbwaiter, or a walk
 // onto it). A thing is Found, by the seat's slot that found it, for the
 // whole crew.
-export const DareThingState = defineTaggedUnion({
+export const DareThingState = UiSchema.TaggedEnum({
   Hidden: { x: PositionNumber, y: PositionNumber, workedMs: MillisNumber },
   Found: { slot: Schema.Finite },
 })
@@ -62,7 +63,7 @@ export type DareThing = typeof DareThing.Type
 // falls, his big key in the air from where he fell to the front door's
 // lock; Open once it lands and the door swings open. Who has stepped out
 // through it is each seat's own Life.Out.
-export const Finale = defineTaggedUnion({
+export const Finale = UiSchema.TaggedEnum({
   Hunting: {},
   Summoned: {},
   KeyFlying: {

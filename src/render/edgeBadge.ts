@@ -1,6 +1,5 @@
-import { Canvas } from 'foldkit'
-
 import { bakeShapes } from '../art/sprite'
+import * as Draw from './draw'
 
 // The small square badge pinned to the window's edge toward someone out of
 // sight: a teammate in co-op, in their seat's color
@@ -10,30 +9,30 @@ import { bakeShapes } from '../art/sprite'
 export const EDGE_BADGE_PX = 9
 export const EDGE_BADGE_INK = '#1a0f14'
 
-export const edgeBadgeOf = (color: string): ReadonlyArray<Canvas.Shape> =>
+export const edgeBadgeOf = (color: string): ReadonlyArray<Draw.Shape> =>
   bakeShapes([
-    Canvas.Rect({
+    Draw.Rect({
       x: 1,
       y: 0,
       width: EDGE_BADGE_PX - 2,
       height: EDGE_BADGE_PX,
       fill: EDGE_BADGE_INK,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: 0,
       y: 1,
       width: EDGE_BADGE_PX,
       height: EDGE_BADGE_PX - 2,
       fill: EDGE_BADGE_INK,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: 1,
       y: 1,
       width: EDGE_BADGE_PX - 2,
       height: EDGE_BADGE_PX - 2,
       fill: color,
     }),
-    Canvas.Rect({
+    Draw.Rect({
       x: 3,
       y: 3,
       width: EDGE_BADGE_PX - 6,

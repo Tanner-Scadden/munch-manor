@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import { dareItemsFoundOf } from '../dare/dare'
 import { Finale } from '../dare/dareSchema'
@@ -164,7 +165,7 @@ export const backDoorOffers = (world: World): ReadonlyArray<Offer> =>
 export const leaveEarly = (world: World): Option.Option<World> =>
   isBackDoorOpen(world) && isCrewAtBackDoor(world)
     ? Option.some(
-        modifyFields(world, {
+        UiStruct.evolve(world, {
           phase: () => Phase.LeftEarly({ wave: roundWaveOf(world.phase) }),
         }),
       )

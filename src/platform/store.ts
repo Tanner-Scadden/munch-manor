@@ -10,7 +10,8 @@ import {
   Stream,
   pipe,
 } from 'effect'
-import { defineTaggedUnion } from 'foldkit/schema'
+
+import { UiSchema } from '@effect/ui'
 
 import {
   LinkProblem,
@@ -51,7 +52,7 @@ const OpenDatabase = Schema.declare(
     typeof value === 'object' && value !== null && 'persistence' in value,
 )
 
-const Backend = defineTaggedUnion({
+const Backend = UiSchema.TaggedEnum({
   Sqlite: { database: OpenDatabase },
   LocalStorage: { reason: Schema.String },
 })

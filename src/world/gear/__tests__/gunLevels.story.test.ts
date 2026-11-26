@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
@@ -33,14 +32,16 @@ import {
   withSeat,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   HOLD_TICKS,
   RESTART_GRACE_TICKS,
   bulletInto,
+  checkModel,
   doomed,
   holdEnter,
   holdFire,
+  modelAfter,
   press,
+  steps,
   throughIntro,
   tick,
   zombieAt,
@@ -136,25 +137,29 @@ describe('kills level a gun', () => {
   it.effect(
     'the 40th kill makes it Beefy, with a callout and a bigger magazine',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(killShot(holdingSecond(gunAt('Smg', 0, 39)), 'Smg')),
-        tick(FRAME_MS),
-        Story.model(current => {
-          const smg = spareGunOf(current)
-          expect([smg.tier, smg.kills]).toEqual([1, 40])
-          expect(smg.loaded).toBe(magazineOf('Smg', 1))
-          expect(
-            Array.map(leveledIn(current), ({ weapon, tier }) => [weapon, tier]),
-          ).toEqual([['Smg', 1]])
-          expect(
-            Array.map(current.cosmetics.levelCallouts, ({ weapon, tier }) => [
-              weapon,
-              tier,
-            ]),
-          ).toEqual([['Smg', 1]])
-          expect(tierName('Smg', smg.tier)).toBe('Beefy Chatterbox')
-        }),
+      modelAfter(
+        killShot(holdingSecond(gunAt('Smg', 0, 39)), 'Smg'),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            const smg = spareGunOf(current)
+            expect([smg.tier, smg.kills]).toEqual([1, 40])
+            expect(smg.loaded).toBe(magazineOf('Smg', 1))
+            expect(
+              Array.map(leveledIn(current), ({ weapon, tier }) => [
+                weapon,
+                tier,
+              ]),
+            ).toEqual([['Smg', 1]])
+            expect(
+              Array.map(current.cosmetics.levelCallouts, ({ weapon, tier }) => [
+                weapon,
+                tier,
+              ]),
+            ).toEqual([['Smg', 1]])
+            expect(tierName('Smg', smg.tier)).toBe('Beefy Chatterbox')
+          }),
+        ),
       ),
   )
 
@@ -162,160 +167,161 @@ describe('kills level a gun', () => {
     "the old manor's guns level the same way: a 40th kill makes them Beefy",
     () =>
       Effect.forEach(['Rifle', 'Blunderbuss'] as const, kind =>
-        Story.story(
-          APPLICATION,
-          Story.given(killShot(holdingSecond(gunAt(kind, 0, 39)), kind)),
-          tick(FRAME_MS),
-          Story.model(current => {
-            const leveled = spareGunOf(current)
-            expect([leveled.kind, leveled.tier, leveled.kills]).toEqual([
-              kind,
-              1,
-              40,
-            ])
-            expect(
-              Array.map(leveledIn(current), ({ weapon, tier }) => [
-                weapon,
-                tier,
-              ]),
-            ).toEqual([[kind, 1]])
-          }),
+        modelAfter(
+          killShot(holdingSecond(gunAt(kind, 0, 39)), kind),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              const leveled = spareGunOf(current)
+              expect([leveled.kind, leveled.tier, leveled.kills]).toEqual([
+                kind,
+                1,
+                40,
+              ])
+              expect(
+                Array.map(leveledIn(current), ({ weapon, tier }) => [
+                  weapon,
+                  tier,
+                ]),
+              ).toEqual([[kind, 1]])
+            }),
+          ),
         ),
       ),
   )
 
   it.effect('a kill short of the next tier only counts', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(killShot(holdingSecond(gunAt('Smg', 1, 118)), 'Smg')),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect([spareGunOf(current).tier, spareGunOf(current).kills]).toEqual([
-          1, 119,
-        ])
-        expect(leveledIn(current)).toEqual([])
-        expect(current.cosmetics.levelCallouts).toEqual([])
-      }),
+    modelAfter(
+      killShot(holdingSecond(gunAt('Smg', 1, 118)), 'Smg'),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect([spareGunOf(current).tier, spareGunOf(current).kills]).toEqual(
+            [1, 119],
+          )
+          expect(leveledIn(current)).toEqual([])
+          expect(current.cosmetics.levelCallouts).toEqual([])
+        }),
+      ),
     ),
   )
 
   it.effect('the 250th kill makes it 3000, and it climbs no further', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(killShot(holdingSecond(gunAt('Smg', 2, 249)), 'Smg')),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(spareGunOf(current).tier).toBe(3)
-        expect(spareGunOf(current).kills).toBe(250)
-        expect(maybeLevelProgress(spareGunOf(current))).toEqual(Option.none())
-      }),
+    modelAfter(
+      killShot(holdingSecond(gunAt('Smg', 2, 249)), 'Smg'),
+      steps(
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(spareGunOf(current).tier).toBe(3)
+          expect(spareGunOf(current).kills).toBe(250)
+          expect(maybeLevelProgress(spareGunOf(current))).toEqual(Option.none())
+        }),
+      ),
     ),
   )
 
   it.effect('a kill levels the gun that made it, not the one beside it', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        killShot(
-          Arsenal.HoldingFirst({
-            first: { ...STARTING_PISTOL, kills: 39 },
-            second: gunAt('Smg', 0, 10),
-          }),
-          'Pistol',
-        ),
+    modelAfter(
+      killShot(
+        Arsenal.HoldingFirst({
+          first: { ...STARTING_PISTOL, kills: 39 },
+          second: gunAt('Smg', 0, 10),
+        }),
+        'Pistol',
       ),
-      tick(FRAME_MS),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(pistolOf(player).tier).toBe(1)
-        expect(pistolOf(player).kills).toBe(40)
-        expect(tierOf(player, 'Smg')).toBe(0)
-        expect(
-          Option.map(maybeSpareGun(player.arsenal), ({ kills }) => kills),
-        ).toEqual(Option.some(10))
-      }),
+      steps(
+        tick(FRAME_MS),
+        checkModel(({ seats: [{ player }] }) => {
+          expect(pistolOf(player).tier).toBe(1)
+          expect(pistolOf(player).kills).toBe(40)
+          expect(tierOf(player, 'Smg')).toBe(0)
+          expect(
+            Option.map(maybeSpareGun(player.arsenal), ({ kills }) => kills),
+          ).toEqual(Option.some(10))
+        }),
+      ),
     ),
   )
 })
 
 describe('a gun keeps its level while carried', () => {
   it.effect('a swapped-out gun keeps its kills and tier', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(killShot(holdingSecond(gunAt('Smg', 1, 50)), 'Pistol')),
-      press('KeyQ'),
-      tick(FRAME_MS),
-      Story.model(current => {
-        const { player } = focusOf(current)
-        expect(pistolOf(player).kills).toBe(1)
-        expect(spareGunOf(current)).toEqual(gunAt('Smg', 1, 50))
-      }),
-      press('KeyQ'),
-      tick(FRAME_MS),
-      Story.model(current => {
-        expect(spareGunOf(current).tier).toBe(1)
-        expect(spareGunOf(current).kills).toBe(50)
-      }),
+    modelAfter(
+      killShot(holdingSecond(gunAt('Smg', 1, 50)), 'Pistol'),
+      steps(
+        press('KeyQ'),
+        tick(FRAME_MS),
+        checkModel(current => {
+          const { player } = focusOf(current)
+          expect(pistolOf(player).kills).toBe(1)
+          expect(spareGunOf(current)).toEqual(gunAt('Smg', 1, 50))
+        }),
+        press('KeyQ'),
+        tick(FRAME_MS),
+        checkModel(current => {
+          expect(spareGunOf(current).tier).toBe(1)
+          expect(spareGunOf(current).kills).toBe(50)
+        }),
+      ),
     ),
   )
 
   it.effect(
     'a gun from a case replaces the gun in hand, which takes its kills and level with it, and arrives fresh',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          atOpenedCase(
-            modifyFocus(
-              modifyFields(newPlayerReady, {
-                lessons: () => settledLessons,
-              }),
-              {
-                player: player =>
-                  modifyFields(player, {
-                    arsenal: () => holdingSecond(gunAt('Smg', 2, 130)),
-                  }),
-              },
-            ),
-            'Shotgun',
+      modelAfter(
+        atOpenedCase(
+          modifyFocus(
+            UiStruct.evolve(newPlayerReady, {
+              lessons: () => settledLessons,
+            }),
+            {
+              player: player =>
+                UiStruct.evolve(player, {
+                  arsenal: () => holdingSecond(gunAt('Smg', 2, 130)),
+                }),
+            },
           ),
+          'Shotgun',
         ),
-        ...holdEnter(HOLD_TICKS),
-        Story.model(current => {
-          expect(maybeSpareGun(focusOf(current).player.arsenal)).toEqual(
-            Option.some(freshGun('Shotgun')),
-          )
-          expect(tierOf(focusOf(current).player, 'Smg')).toBe(0)
-        }),
+        steps(
+          holdEnter(HOLD_TICKS),
+          checkModel(current => {
+            expect(maybeSpareGun(focusOf(current).player.arsenal)).toEqual(
+              Option.some(freshGun('Shotgun')),
+            )
+            expect(tierOf(focusOf(current).player, 'Smg')).toBe(0)
+          }),
+        ),
       ),
   )
 
   it.effect('a new run starts every gun at its base tier with no kills', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFocus(
-          modifyFields(newPlayerReady, {
-            phase: () => Phase.GameOver({ wave: 5 }),
-          }),
-          {
-            player: player =>
-              modifyFields(player, {
-                arsenal: () =>
-                  Arsenal.HoldingSecond({
-                    first: { ...STARTING_PISTOL, tier: 3, kills: 260 },
-                    second: gunAt('Smg', 2, 150),
-                  }),
-              }),
-          },
-        ),
+    modelAfter(
+      modifyFocus(
+        UiStruct.evolve(newPlayerReady, {
+          phase: () => Phase.GameOver({ wave: 5 }),
+        }),
+        {
+          player: player =>
+            UiStruct.evolve(player, {
+              arsenal: () =>
+                Arsenal.HoldingSecond({
+                  first: { ...STARTING_PISTOL, tier: 3, kills: 260 },
+                  second: gunAt('Smg', 2, 150),
+                }),
+            }),
+        },
       ),
-      ...Array.makeBy(RESTART_GRACE_TICKS, () => tick(GRACE_TICK_MS)),
-      press('Enter'),
-      throughIntro,
-      Story.model(({ phase, seats: [{ player }] }) => {
-        expect(Phase.guards.Preparation(phase)).toBe(true)
-        expect(player.arsenal).toEqual(pistolOnly())
-      }),
+      steps(
+        ...Array.makeBy(RESTART_GRACE_TICKS, () => tick(GRACE_TICK_MS)),
+        press('Enter'),
+        throughIntro,
+        checkModel(({ phase, seats: [{ player }] }) => {
+          expect(Phase.guards.Preparation(phase)).toBe(true)
+          expect(player.arsenal).toEqual(pistolOnly())
+        }),
+      ),
     ),
   )
 
@@ -323,28 +329,35 @@ describe('a gun keeps its level while carried', () => {
     Effect.gen(function* () {
       const firing = (arsenal: Arsenal): Model =>
         modifyFocus(quietWave(3), {
-          player: player => modifyFields(player, { arsenal: () => arsenal }),
+          player: player => UiStruct.evolve(player, { arsenal: () => arsenal }),
         })
-      yield* Story.story(
-        APPLICATION,
-        Story.given(firing(pistolOnly({ ...STARTING_PISTOL, tier: 3 }))),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(({ bullets }) => {
-          expect(
-            Array.map(bullets, ({ damage, knockback }) => [damage, knockback]),
-          ).toEqual([[2, statsAt('Pistol', 3).knockback]])
-        }),
+      yield* modelAfter(
+        firing(pistolOnly({ ...STARTING_PISTOL, tier: 3 })),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(({ bullets }) => {
+            expect(
+              Array.map(bullets, ({ damage, knockback }) => [
+                damage,
+                knockback,
+              ]),
+            ).toEqual([[2, statsAt('Pistol', 3).knockback]])
+          }),
+        ),
       )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(firing(holdingSecond(gunAt('Shotgun', 1, 40)))),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(({ bullets }) => {
-          expect(bullets.length).toBe(statsAt('Shotgun', 1).pellets)
-          expect(bullets.length).toBeGreaterThan(statsAt('Shotgun', 0).pellets)
-        }),
+      yield* modelAfter(
+        firing(holdingSecond(gunAt('Shotgun', 1, 40))),
+        steps(
+          holdFire,
+          tick(FRAME_MS),
+          checkModel(({ bullets }) => {
+            expect(bullets.length).toBe(statsAt('Shotgun', 1).pellets)
+            expect(bullets.length).toBeGreaterThan(
+              statsAt('Shotgun', 0).pellets,
+            )
+          }),
+        ),
       )
     }),
   )
@@ -354,29 +367,30 @@ describe('a fridge weapon levels on its own kills', () => {
   it.effect("the Clang Pan's 40th kill makes it Beefy", () => {
     const ahead = zombieAt(300, doomed.x - 2, doomed.y, { hp: 1 })
     const swinging = modifyFocus(
-      modifyFields(quietWave(4), { zombies: () => [ahead] }),
+      UiStruct.evolve(quietWave(4), { zombies: () => [ahead] }),
       {
         player: player =>
-          modifyFields(player, {
+          UiStruct.evolve(player, {
             facing: () => ({ x: 1, y: 0 }),
             melee: () => Melee.Pan({ pan: gunAt('Pan', 0, 39) }),
             wield: () => 'Melee',
           }),
       },
     )
-    return Story.story(
-      APPLICATION,
-      Story.given(swinging),
-      holdFire,
-      tick(FRAME_MS),
-      Story.model(current => {
-        const pan = Option.getOrThrow(maybePanOf(focusOf(current).player))
-        expect([pan.tier, pan.kills]).toEqual([1, 40])
-        expect(Array.map(leveledIn(current), ({ weapon }) => weapon)).toEqual([
-          'Pan',
-        ])
-        expect(pistolOf(focusOf(current).player).kills).toBe(0)
-      }),
+    return modelAfter(
+      swinging,
+      steps(
+        holdFire,
+        tick(FRAME_MS),
+        checkModel(current => {
+          const pan = Option.getOrThrow(maybePanOf(focusOf(current).player))
+          expect([pan.tier, pan.kills]).toEqual([1, 40])
+          expect(Array.map(leveledIn(current), ({ weapon }) => weapon)).toEqual(
+            ['Pan'],
+          )
+          expect(pistolOf(focusOf(current).player).kills).toBe(0)
+        }),
+      ),
     )
   })
 })
@@ -390,14 +404,14 @@ describe('kills in a co-op room', () => {
       withSeat(world, slot, seatWorld =>
         modifyFocus(seatWorld, {
           player: player =>
-            modifyFields(player, {
+            UiStruct.evolve(player, {
               arsenal: () => holdingSecond(gunAt('Smg', 0, 39)),
             }),
         }),
       )
-    const room = modifyFields(started, {
+    const room = UiStruct.evolve(started, {
       world: world =>
-        modifyFields(armed(1)(armed(0)(world)), {
+        UiStruct.evolve(armed(1)(armed(0)(world)), {
           phase: () => WAVE,
           zombies: () => [target],
           bullets: () => [shotWith('Smg', target, 1)],

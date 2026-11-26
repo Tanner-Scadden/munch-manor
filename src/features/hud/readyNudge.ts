@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { QuestTour } from '../../domain/clientSchema'
@@ -53,7 +54,7 @@ export const advanceBreakIdle: {
   if (isIdle === Option.isSome(model.maybeBreakIdleSinceMs)) {
     return model
   }
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     maybeBreakIdleSinceMs: () =>
       isIdle ? Option.some(model.elapsedMs - worldMs) : Option.none(),
   })

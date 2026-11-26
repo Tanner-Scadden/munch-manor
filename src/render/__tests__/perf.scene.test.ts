@@ -1,8 +1,7 @@
-import { Array, Effect, Option, String, pipe } from 'effect'
-import { type Canvas, Scene } from 'foldkit'
-import type { Html } from 'foldkit/html'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Effect, Option, Predicate, pipe } from 'effect'
 
+import { UiStruct } from '@effect/ui'
+import type { Locator } from '@effect/ui/testing'
 import { describe, expect, it } from '@effect/vitest'
 
 import { sceneShapes } from '../../app/layers'
@@ -53,12 +52,17 @@ import {
 } from '../../shared/constants'
 import { holdingSecond } from '../../test/arsenals'
 import {
-  APPLICATION,
-  CELLAR_SPOT,
-  SCENE_SUBSCRIPTIONS,
-  WIDE_SURFACE,
-  jsonOf,
+  ackHudSlots,
+  byClass,
+  fromSubscription,
   measureSurfaceAs,
+} from '../../test/sceneTesting'
+import {
+  type AppScene,
+  CELLAR_SPOT,
+  WIDE_SURFACE,
+  exactSceneOf,
+  jsonOf,
   scoring,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -82,6 +86,8 @@ import { rollSpawns } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import { BOSS_RULES } from '../../world/zombies/bossRules'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
+import type * as Draw from '../draw'
+import { type Leaf, flatten } from '../iso/flatten'
 import { type Decal, DecalKind, type Particle } from '../renderSchema'
 
 // WORST-CASE ROOMS
@@ -143,7 +149,7 @@ const FRENZY_PACK = 77
 // pulsing hard beside the player, and a frenzied pack with its steam.
 const stagedZombie = (zombie: Zombie, index: number): Zombie => {
   if (index === CHUCKER_INDEX) {
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       kind: () => 'Thrower',
       action: () =>
         ZombieAction.Hefting({
@@ -153,14 +159,14 @@ const stagedZombie = (zombie: Zombie, index: number): Zombie => {
         }),
     })
   } else if (index === CARRIED_INDEX) {
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       kind: () => 'Shambler',
       x: () => 30 + ((CHUCKER_INDEX * 37) % 260),
       y: () => 30 + ((CHUCKER_INDEX * 23) % 120),
       action: () => ZombieAction.Carried({ byId: 1000 + CHUCKER_INDEX }),
     })
   } else if (index === FLYING_INDEX) {
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       kind: () => 'Shambler',
       action: () =>
         ZombieAction.Flying({
@@ -171,20 +177,20 @@ const stagedZombie = (zombie: Zombie, index: number): Zombie => {
         }),
     })
   } else if (index === BURROWED_INDEX) {
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       kind: () => 'Crawler',
       action: () =>
         ZombieAction.Burrowed({ remainingMs: 100, durationMs: 1500 }),
     })
   } else if (index === GLOWING_INDEX) {
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       x: () => 172,
       y: () => 92,
       hp: () => 1,
       maxHp: () => 3,
     })
   } else if (Array.contains(FRENZIED_INDICES, index)) {
-    return modifyFields(zombie, {
+    return UiStruct.evolve(zombie, {
       frenzy: () => Frenzy.Frenzied({ pack: FRENZY_PACK, apartMs: 0 }),
     })
   } else {
@@ -343,9 +349,9 @@ const WORST_GLOBS: ReadonlyArray<Glob> = [
 // tutorial hint is drawn. The budgets were recorded without hints.
 const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
   const started = startOrResume(
-    modifyFields(asVeteran(initialModel), {
+    UiStruct.evolve(asVeteran(initialModel), {
       lessons: lessons =>
-        modifyFields(lessons, {
+        UiStruct.evolve(lessons, {
           pickup: () => Lesson.Learned({ atMs: 0 }),
           swap: () => Lesson.Learned({ atMs: 0 }),
         }),
@@ -354,12 +360,12 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
   )
   const [rngState, spawns] = rollSpawns(started.rngState, wave)
   return modifyFocus(
-    modifyFields(started, {
+    UiStruct.evolve(started, {
       rngState: () => rngState,
       maybeSurface: () => Option.some(WIDE_SURFACE),
       phase: () => Phase.Wave({ wave, elapsedMs: 30_000, spawns }),
       pacing: pacing =>
-        modifyFields(pacing, {
+        UiStruct.evolve(pacing, {
           warnedPacks: () => Array.map(spawns, ({ pack }) => pack),
           alarm: () => Alarm.Ringing({ remainingMs: 1000 }),
         }),
@@ -388,7 +394,7 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
       streak: () => Streak.Hot({ count: 12, remainingMs: 900 }),
       stats: scoring(98_760),
       keys: ring => ({ ...ring, held: 99 }),
-      cosmetics: modifyFields({
+      cosmetics: UiStruct.evolve({
         particles: () => Array.makeBy(PARTICLE_MAX, particleAt),
         decals: () => Array.makeBy(DECAL_MAX, decalAt),
         blasts: () => Array.makeBy(BLAST_MAX / 2, blastAt),
@@ -411,118 +417,19 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
 
 // COUNTING PAINTER
 
-type PaintCounts = {
+type PaintCounts = Readonly<{
   paintOps: number
   fillStyleChanges: number
   shapesPainted: number
-  imagesDrawn: number
-}
+}>
 
-const emptyCounts = (): PaintCounts => ({
+const NOTHING_PAINTED: PaintCounts = {
   paintOps: 0,
   fillStyleChanges: 0,
   shapesPainted: 0,
-  imagesDrawn: 0,
-})
-
-const countingContext = (counts: PaintCounts) => {
-  const savedFills: Array<string> = []
-  const state = { fill: '' }
-  const paint = () => {
-    counts.paintOps += 1
-  }
-  const ignore = () => undefined
-  const drawImage = () => {
-    counts.paintOps += 1
-    counts.imagesDrawn += 1
-  }
-  return {
-    get fillStyle() {
-      return state.fill
-    },
-    set fillStyle(next: string) {
-      if (next !== state.fill) {
-        counts.fillStyleChanges += 1
-      }
-      state.fill = next
-    },
-    strokeStyle: '',
-    lineWidth: 1,
-    lineCap: 'butt',
-    lineJoin: 'miter',
-    globalAlpha: 1,
-    font: '',
-    textAlign: 'left',
-    textBaseline: 'alphabetic',
-    imageSmoothingEnabled: true,
-    save: () => {
-      counts.shapesPainted += 1
-      savedFills.push(state.fill)
-    },
-    restore: () => {
-      state.fill = savedFills.pop() ?? state.fill
-    },
-    fillRect: paint,
-    strokeRect: paint,
-    fill: paint,
-    stroke: paint,
-    fillText: paint,
-    strokeText: paint,
-    drawImage,
-    clearRect: ignore,
-    beginPath: ignore,
-    closePath: ignore,
-    arc: ignore,
-    moveTo: ignore,
-    lineTo: ignore,
-    quadraticCurveTo: ignore,
-    bezierCurveTo: ignore,
-    translate: ignore,
-    rotate: ignore,
-    scale: ignore,
-    getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
-  }
 }
 
-type CanvasNode = NonNullable<Html>
-
-// NOTE: the world is drawn in 3D (src/render/iso/), on no Foldkit canvas,
-// so the canvases measured here are the overlay's: the HUD, the banners, and
-// the markers over the world.
-const canvasNodes = (node: Html | string): ReadonlyArray<CanvasNode> => {
-  if (node === null || typeof node === 'string') {
-    return []
-  } else if (node.sel !== undefined && String.startsWith('canvas')(node.sel)) {
-    return [node]
-  } else {
-    return Array.flatMap(node.children ?? [], canvasNodes)
-  }
-}
-
-// NOTE: Foldkit's Canvas paints from the canvas element's snabbdom insert and
-// postpatch hooks, and snabbdom skips both when a render hands back the same
-// VNode it rendered the time before. So a canvas whose VNode is new is one
-// the browser repaints that frame, and running its insert hook against a
-// counting context measures that frame's paint work through Foldkit's own
-// painter.
-const paintCanvases = (
-  previous: ReadonlyArray<CanvasNode>,
-  current: ReadonlyArray<CanvasNode>,
-): PaintCounts => {
-  const counts = emptyCounts()
-  const context = countingContext(counts)
-  Array.forEach(current, (node, index) => {
-    if (Option.contains(Array.get(previous, index), node)) {
-      return
-    }
-    const element = document.createElement('canvas')
-    Object.defineProperty(element, 'getContext', { value: () => context })
-    node.data?.hook?.insert?.({ ...node, elm: element })
-  })
-  return counts
-}
-
-const flatImageCount = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+const flatImageCount = (shapes: ReadonlyArray<Draw.Shape>): number =>
   Array.reduce(
     shapes,
     0,
@@ -532,12 +439,73 @@ const flatImageCount = (shapes: ReadonlyArray<Canvas.Shape>): number =>
       (shape._tag === 'Group' ? flatImageCount(shape.shapes) : 0),
   )
 
-const flatShapeCount = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+const flatShapeCount = (shapes: ReadonlyArray<Draw.Shape>): number =>
   Array.reduce(
     shapes,
     0,
     (count, shape) =>
       count + 1 + (shape._tag === 'Group' ? flatShapeCount(shape.shapes) : 0),
+  )
+
+const fillOf = (leaf: Leaf): Option.Option<string> =>
+  leaf.shape._tag === 'Image'
+    ? Option.none()
+    : Option.some(leaf.shape.fill ?? '')
+
+// NOTE: the work the overlay's painter (FlatPainter in src/render/iso/
+// painter.ts) does for a picture: a Sprite or a Graphics call per leaf of
+// the flattened shapes (its paint operations), a change of fill between
+// one vector leaf and the next (a new style in the Graphics' batch), and
+// every shape and group the picture holds (its shapes painted).
+const paintOf = (shapes: ReadonlyArray<Draw.Shape>): PaintCounts => {
+  const leaves = flatten(shapes)
+  const fills = Array.getSomes(Array.map(leaves, fillOf))
+  const fillStyleChanges = Array.reduce(
+    fills,
+    { count: 0, last: '' },
+    ({ count, last }, fill) => ({
+      count: fill === last ? count : count + 1,
+      last: fill,
+    }),
+  ).count
+  return {
+    paintOps: leaves.length,
+    fillStyleChanges,
+    shapesPainted: flatShapeCount(shapes),
+  }
+}
+
+type OverlayShapes = ReadonlyArray<Draw.Shape>
+
+const isOverlayPicture = (
+  value: unknown,
+): value is Readonly<{ shapes: OverlayShapes }> =>
+  Predicate.hasProperty(value, 'shapes') && Array.isArray(value.shapes)
+
+// NOTE: the picture the overlay element is handed this render.
+// OverlayScene.paint skips a picture that is the same object as the one it
+// painted last, so a frame whose picture is kept paints nothing.
+const overlayPictureOf = (s: AppScene): Option.Option<unknown> =>
+  pipe(
+    Array.head(s.all(byClass('overlay-layer'))),
+    Option.flatMap((node: Locator.Node) =>
+      Option.fromNullishOr(node.props?.['picture']),
+    ),
+  )
+
+// NOTE: what a frame paints, from the picture before it.
+const paintBetween = (
+  previous: Option.Option<unknown>,
+  current: Option.Option<unknown>,
+): PaintCounts =>
+  pipe(
+    current,
+    Option.filter(isOverlayPicture),
+    Option.filter(picture => !Option.contains(previous, picture)),
+    Option.match({
+      onNone: () => NOTHING_PAINTED,
+      onSome: picture => paintOf(picture.shapes),
+    }),
   )
 
 type FrameCost = Readonly<{
@@ -550,33 +518,24 @@ type FrameCost = Readonly<{
 
 type Measured = FrameCost & Readonly<{ imagesBuilt: number }>
 
-// NOTE: the canvases of the frame once the surface is measured, and of the
-// next frame, once the mouse moves: the steady frame. Kept from the Scene's
-// taps, since a Scene compares no two views.
+// NOTE: the overlay's picture of the frame once the surface is measured,
+// and of the next frame, once the mouse moves: the steady frame.
 const measureFrames = Effect.fnUntraced(function* (model: Model) {
-  const renders: Array<ReadonlyArray<CanvasNode>> = []
-  const keep = Scene.tap<Model, Message>(({ html }) => {
-    renders.push(canvasNodes(html))
-  })
-  yield* Scene.scene(
-    APPLICATION,
-    Scene.given(model),
-    measureSurfaceAs(WIDE_SURFACE),
-    keep,
-    Scene.Subscription.emit(
-      SCENE_SUBSCRIPTIONS.mouseAim,
-      Message.MovedMouse({ clientX: 900, clientY: 300 }),
-    ),
-    keep,
-  )
-  const [beforeLast = [], last = []] = renders
-  const steady = paintCanvases(beforeLast, last)
+  const s = yield* exactSceneOf(model)
+  s.pipe(measureSurfaceAs(WIDE_SURFACE), ackHudSlots)
+  const beforeLast = overlayPictureOf(s)
+  fromSubscription(
+    'MouseAim',
+    Message.MovedMouse({ clientX: 900, clientY: 300 }),
+  )(s)
+  const last = overlayPictureOf(s)
+  const steady = paintBetween(beforeLast, last)
   return {
     shapesBuilt: flatShapeCount(sceneShapes(model)),
     steadyPaintOps: steady.paintOps,
     steadyFillStyleChanges: steady.fillStyleChanges,
     steadyShapesPainted: steady.shapesPainted,
-    fullRepaintPaintOps: paintCanvases([], last).paintOps,
+    fullRepaintPaintOps: paintBetween(Option.none(), last).paintOps,
     imagesBuilt: flatImageCount(sceneShapes(model)),
   } satisfies Measured
 })
@@ -610,7 +569,7 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // valve spark add 3. The room measured 2656 shapes, 1577 steady paint
 // operations, 1564 fill changes, 1659 shapes painted, and 2986 on a full
 // repaint.
-// Then drawing every fixed sprite, glyph, and baked text as one Canvas.Image
+// Then drawing every fixed sprite, glyph, and baked text as one Draw.Image
 // instead of a Rect per pixel run cut the room from 2656 shapes, 1577 steady
 // paint operations, and 2986 on a full repaint to 687, 543, and 1120,
 // with 458 fill changes and 581 shapes painted. What is left is mostly
@@ -653,6 +612,13 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // shapesBuilt still counts every shape a frame builds for it, while the
 // paint budgets now measure the overlay alone, well under the old numbers.
 // The 3D frame's own cost is `bun run perf:check`'s to gate.
+// The Effect UI port (November 2026) drew the overlay with Pixi from one
+// picture of `Draw` shapes in place of the canvases, so the paint budgets
+// now count its painter: a leaf of the flattened picture a paint operation,
+// a change of fill between vector leaves a fill change, and every shape and
+// group a shape painted. A picture kept the same object paints nothing (a
+// mouse move leaves the overlay as it was), and the full repaint measured
+// about 100 operations, so the budgets stand with room.
 const BUDGET: FrameCost = {
   shapesBuilt: 800,
   steadyPaintOps: 650,
@@ -680,7 +646,7 @@ const BUDGET_KEYS: ReadonlyArray<keyof FrameCost> = [
 const kitchenRoom = (wave: number): Model => {
   const room = fullRoom(RunMode.Campaign(), wave, 2)
   return modifyFocus(
-    modifyFields(room, {
+    UiStruct.evolve(room, {
       level: level => openExitIn(level, KITCHEN_EXIT),
       ovens: ovens =>
         Array.map(ovens, () =>
@@ -689,7 +655,7 @@ const kitchenRoom = (wave: number): Model => {
       zombies: zombies =>
         Array.map(zombies, (zombie, index) =>
           index % 2 === 0
-            ? modifyFields(zombie, {
+            ? UiStruct.evolve(zombie, {
                 x: () => 30 + ((index * 17) % 150),
                 y: () => -110 + ((index * 23) % 100),
               })
@@ -697,7 +663,7 @@ const kitchenRoom = (wave: number): Model => {
         ),
     }),
     {
-      player: player => modifyFields(player, { x: () => 100, y: () => -40 }),
+      player: player => UiStruct.evolve(player, { x: () => 100, y: () => -40 }),
     },
   )
 }
@@ -709,11 +675,11 @@ const kitchenRoom = (wave: number): Model => {
 const cellarRoom = (wave: number): Model => {
   const room = fullRoom(RunMode.Campaign(), wave, 2)
   return modifyFocus(
-    modifyFields(room, {
+    UiStruct.evolve(room, {
       level: level => Array.reduce([EAST_EXIT, FAR_EXIT], level, openExitIn),
       zombies: zombies =>
         Array.map(zombies, (zombie, index) =>
-          modifyFields(zombie, {
+          UiStruct.evolve(zombie, {
             x: () => 690 + ((index * 37) % 300),
             y: () => 25 + ((index * 23) % 145),
           }),
@@ -721,7 +687,7 @@ const cellarRoom = (wave: number): Model => {
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => CELLAR_SPOT.x,
           y: () => CELLAR_SPOT.y,
           recoilRemainingMs: () => 40,
@@ -738,7 +704,7 @@ const cellarRoom = (wave: number): Model => {
 const rolledCellarRoom = (wave: number): Model => {
   const room = fullRoom(RunMode.Campaign(), wave, 2)
   return modifyFocus(
-    modifyFields(room, {
+    UiStruct.evolve(room, {
       level: () =>
         Array.reduce(
           [KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT, SECRET_EXIT],
@@ -751,12 +717,12 @@ const rolledCellarRoom = (wave: number): Model => {
         ),
       zombies: zombies =>
         Array.map(zombies, (zombie, index) =>
-          modifyFields(zombie, {
+          UiStruct.evolve(zombie, {
             x: () => -300 + ((index * 37) % 300),
             y: () => 65 + ((index * 23) % 145),
           }),
         ),
-      cosmetics: modifyFields({
+      cosmetics: UiStruct.evolve({
         clocheLift: () =>
           ClocheLift.Lifting({
             room: PARLOUR_ROOM_ID,
@@ -767,7 +733,7 @@ const rolledCellarRoom = (wave: number): Model => {
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           x: () => -40,
           y: () => 130,
           recoilRemainingMs: () => 40,
@@ -787,9 +753,9 @@ const fridgeFight = (
   recoilMs: number,
 ): Model =>
   modifyFocus(
-    modifyFields(room, {
+    UiStruct.evolve(room, {
       fridge: fridge =>
-        modifyFields(fridge, {
+        UiStruct.evolve(fridge, {
           door: () =>
             FridgeDoor.Open({
               prize: 'Freeze',
@@ -813,7 +779,7 @@ const fridgeFight = (
       zombies: zombies =>
         Array.map(zombies, (zombie, index) =>
           index % 3 === 0 && zombie.kind !== 'Boss'
-            ? modifyFields(zombie, {
+            ? UiStruct.evolve(zombie, {
                 action: () =>
                   index % 2 === 0
                     ? ZombieAction.Frozen({
@@ -827,13 +793,13 @@ const fridgeFight = (
               })
             : zombie,
         ),
-      cosmetics: modifyFields({
+      cosmetics: UiStruct.evolve({
         blasts: () => [{ x: 140, y: -70, radius: 34, ageMs: 60 }],
       }),
     }),
     {
       player: player =>
-        modifyFields(player, {
+        UiStruct.evolve(player, {
           arsenal: () => holdingSecond(spare),
           charge: () => charge,
           recoilRemainingMs: () => recoilMs,
@@ -889,6 +855,8 @@ describe('Frame cost', () => {
       Effect.gen(function* () {
         const measured = yield* measureFrames(model)
         const report = `measured ${jsonOf(measured)}\nbudget   ${jsonOf(BUDGET)}`
+        // NOTE: an overlay picture painted at all, so the budgets measure one.
+        expect(measured.fullRepaintPaintOps, report).toBeGreaterThan(0)
         Array.forEach(BUDGET_KEYS, key => {
           expect(
             measured[key],

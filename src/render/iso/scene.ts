@@ -25,7 +25,6 @@
 // same frame draws the same picture, as a screenshot or a video wants.
 
 import { Array, Effect, Option } from 'effect'
-import type { Canvas } from 'foldkit'
 import { Application, Texture } from 'pixi.js'
 
 import {
@@ -56,6 +55,7 @@ import type { Level } from '../../world/level/arena'
 import { levelOf, standingLevelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
 import type { Drawable } from '../depth'
+import type * as Draw from '../draw'
 import {
   airborneParticlesOf,
   decalShapes,
@@ -834,7 +834,7 @@ export class IsoScene {
   }
 
   // NOTE: a boost's aura as blocks round the feet, the frame the game drew.
-  private standAura(image: Canvas.Image, matrix: Leaf['matrix']): void {
+  private standAura(image: Draw.Image, matrix: Leaf['matrix']): void {
     Option.match(auraFrameOf(image), {
       onNone: () => undefined,
       onSome: ({ kind, frame }) => {
@@ -851,7 +851,7 @@ export class IsoScene {
 
   // NOTE: a goodie's glow as a ring of lights on the floor under it.
   private standPickupRing(
-    circle: Canvas.Circle,
+    circle: Draw.Circle,
     matrix: Leaf['matrix'],
     footY: number,
     elapsedMs: number,

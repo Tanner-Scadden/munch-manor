@@ -1,5 +1,7 @@
 import { Function } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+
+import type { View } from '@effect/ui'
+import type { Html } from '@effect/ui/html'
 
 import { CLOCK_ICON } from '../art/icons'
 import { iconView } from './menuParts'
@@ -20,15 +22,23 @@ export const easyBreakLabel = (seconds: number): string =>
     : 'Break clock, none: waits for READY'
 
 export const easyBreakFaceView: {
-  <Message>(h: HtmlBuilder<Message>): (seconds: number) => ReadonlyArray<Html>
-  <Message>(seconds: number, h: HtmlBuilder<Message>): ReadonlyArray<Html>
+  <Message>(
+    h: Html.H<Message>,
+  ): (seconds: number) => ReadonlyArray<View.Content<Message>>
+  <Message>(
+    seconds: number,
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>>
 } = Function.dual(
   2,
-  <Message>(seconds: number, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  <Message>(
+    seconds: number,
+    h: Html.H<Message>,
+  ): ReadonlyArray<View.Content<Message>> => [
     iconView('coop-pick-icon easy-break-icon', CLOCK_ICON, h),
-    h.span(
-      [h.Class('easy-break-value'), h.AriaHidden(true)],
-      [easyBreakText(seconds)],
-    ),
+    h.span
+      .class('easy-break-value')
+      .attr('aria-hidden', 'true')
+      .children(easyBreakText(seconds)),
   ],
 )

@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import type { Model } from '../../app/model'
 import { RattlesIntro } from '../../domain/clientSchema'
@@ -40,9 +41,9 @@ const isMeetingBreak = (model: Model): boolean =>
   isPending(model.lessons.rattles)
 
 const learnRattles = (model: Model): Model =>
-  modifyFields(model, {
+  UiStruct.evolve(model, {
     lessons: lessons =>
-      modifyFields(lessons, {
+      UiStruct.evolve(lessons, {
         rattles: lesson => learn(lesson, model.elapsedMs),
       }),
   })
@@ -59,12 +60,12 @@ export const advanceRattlesIntro: {
   RattlesIntro.match(model.rattlesIntro, {
     Waiting: () =>
       isMeetingBreak(model)
-        ? modifyFields(learnRattles(model), {
+        ? UiStruct.evolve(learnRattles(model), {
             rattlesIntro: () => RattlesIntro.Talking({ ageMs: 0 }),
           })
         : model,
     Talking: ({ ageMs }) =>
-      modifyFields(model, {
+      UiStruct.evolve(model, {
         rattlesIntro: () =>
           !Phase.isAnyOf(['Preparation'])(model.phase) ||
           ageMs + deltaMs >= RATTLES_INTRO_MS

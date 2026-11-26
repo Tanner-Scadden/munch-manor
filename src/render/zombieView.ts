@@ -1,5 +1,4 @@
 import { Array, Function, Option } from 'effect'
-import { Canvas } from 'foldkit'
 
 import {
   type Facing,
@@ -54,6 +53,7 @@ import {
   wearOf,
 } from '../world/zombies/zombies'
 import { STANDING_POSE, bossPose } from './bossPoseView'
+import * as Draw from './draw'
 import {
   FULL_TURN,
   HEALTH_BAR_GAP,
@@ -175,9 +175,9 @@ const sparkShapes = (
   tip: Vector,
   flick: number,
   count: number,
-): ReadonlyArray<Canvas.Shape> => [
+): ReadonlyArray<Draw.Shape> => [
   glowing(
-    Canvas.Rect({
+    Draw.Rect({
       x: tip.x,
       y: tip.y,
       width: 1,
@@ -191,7 +191,7 @@ const sparkShapes = (
       () => Array.headNonEmpty(SPARK_RAYS),
     )
     return glowing(
-      Canvas.Rect({
+      Draw.Rect({
         x: tip.x + ray.x,
         y: tip.y + ray.y,
         width: 1,
@@ -212,7 +212,7 @@ const fuseShapes = (
   stride: number,
   facing: Facing,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const urgency = fuseUrgency(zombie, player, stage)
   const length = fuseLengthAt(urgency)
   const flick = Math.floor((elapsedMs + zombie.id * 31) / sparkMsAt(urgency))
@@ -230,7 +230,7 @@ const FUSE_CLEARANCE_PX = 5
 
 export const zombieHealthBarShapes = (
   zombie: Zombie,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const stats = statsOf(zombie)
   if (
     !isGrounded(zombie) ||
@@ -264,7 +264,7 @@ const steamShapes = (
   zombie: Zombie,
   elapsedMs: number,
   headY: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (!Frenzy.isAnyOf(['Frenzied'])(zombie.frenzy)) {
     return []
   }
@@ -272,7 +272,7 @@ const steamShapes = (
     ((elapsedMs + zombie.id * 173) % STEAM_CYCLE_MS) / STEAM_CYCLE_MS
   const side = zombie.id % 2 === 0 ? 1 : -1
   return [
-    Canvas.Rect({
+    Draw.Rect({
       x: Math.round(zombie.x) + side * (2 + Math.round(phase * 2)),
       y: headY - 1 - Math.round(phase * STEAM_RISE_PX),
       width: phase < 0.5 ? 1 : 2,
@@ -299,13 +299,13 @@ const iceBlock = (kind: ZombieKind): Sprite => {
   const width = Math.round(ZOMBIE_KINDS[kind].bodyRadius * 2) + 4
   const height = ZOMBIE_SPRITES[kind].height + 3
   return bakeShapes([
-    Canvas.Rect({ x: 0, y: 0, width, height, fill: ICE_FACE }),
-    Canvas.Rect({ x: 0, y: 0, width, height: 1, fill: ICE_EDGE }),
-    Canvas.Rect({ x: 0, y: 0, width: 1, height, fill: ICE_EDGE }),
-    Canvas.Rect({ x: width - 1, y: 0, width: 1, height, fill: ICE_EDGE }),
-    Canvas.Rect({ x: 0, y: height - 1, width, height: 1, fill: ICE_EDGE }),
-    Canvas.Rect({ x: 2, y: 2, width: 1, height: 3, fill: ICE_SHINE }),
-    Canvas.Rect({ x: 3, y: 2, width: 2, height: 1, fill: ICE_SHINE }),
+    Draw.Rect({ x: 0, y: 0, width, height, fill: ICE_FACE }),
+    Draw.Rect({ x: 0, y: 0, width, height: 1, fill: ICE_EDGE }),
+    Draw.Rect({ x: 0, y: 0, width: 1, height, fill: ICE_EDGE }),
+    Draw.Rect({ x: width - 1, y: 0, width: 1, height, fill: ICE_EDGE }),
+    Draw.Rect({ x: 0, y: height - 1, width, height: 1, fill: ICE_EDGE }),
+    Draw.Rect({ x: 2, y: 2, width: 1, height: 3, fill: ICE_SHINE }),
+    Draw.Rect({ x: 3, y: 2, width: 2, height: 1, fill: ICE_SHINE }),
   ])
 }
 
@@ -323,7 +323,7 @@ const iceShapes = (
   zombie: Zombie,
   foot: Vector,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const action = zombie.action
   if (ZombieAction.isAnyOf(['Frozen'])(action)) {
     const isBlinking =
@@ -352,7 +352,7 @@ const iceShapes = (
         { x: 3 - phase, y: foot.y - 2 },
       ],
       ({ x, y }, index) =>
-        Canvas.Rect({
+        Draw.Rect({
           x: Math.round(foot.x + x),
           y: Math.round(y),
           width: index % 2 === 0 ? 2 : 1,
@@ -368,7 +368,7 @@ const iceShapes = (
 const dazeStarShapes = (
   zombie: Zombie,
   elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (!ZombieAction.isAnyOf(['Dazed', 'Reeling'])(zombie.action)) {
     return []
   }
@@ -381,7 +381,7 @@ const dazeStarShapes = (
       (FULL_TURN * elapsedMs) / DAZE_STAR_MS +
       (FULL_TURN * index) / stars +
       zombie.id
-    return Canvas.Rect({
+    return Draw.Rect({
       x: Math.round(zombie.x + Math.cos(angle) * 5),
       y: Math.round(zombie.y - 3 + Math.sin(angle) * 2),
       width: size,
@@ -397,7 +397,7 @@ const walkingZombieShapes = (
   elapsedMs: number,
   boss: Boss,
   loneMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   if (ZombieAction.isAnyOf(['Burrowed'])(zombie.action)) {
     return []
   }
@@ -488,7 +488,7 @@ const fusingZombieShapes = (
   zombie: Zombie,
   player: Player,
   remainingMs: number,
-): ReadonlyArray<Canvas.Shape> => {
+): ReadonlyArray<Draw.Shape> => {
   const stats = statsOf(zombie)
   const sprites = wornFramesAt(zombie.kind, wearOf(zombie))
   const swell = 1 + FUSE_SWELL * (1 - clamp(remainingMs / FUSE_SWELL_MS, 0, 1))
@@ -523,7 +523,7 @@ const toppleShape = ({
   progress,
   direction,
   sprite,
-}: DeathPose): Canvas.Shape => {
+}: DeathPose): Draw.Shape => {
   const pop = Math.sin(
     Math.PI * progressBetween(progress, 0, ZOMBIE_DEATH_POP_END),
   )
@@ -566,7 +566,7 @@ const tumbleShape = ({
   progress,
   direction,
   sprite,
-}: DeathPose): Canvas.Shape => {
+}: DeathPose): Draw.Shape => {
   const eased = 1 - (1 - progress) * (1 - progress)
   const foot = footPosition(zombie, statsOf(zombie).footOffset)
   const spin = direction.x >= 0 ? 1 : -1
@@ -598,7 +598,7 @@ const slumpShape = ({
   progress,
   direction,
   sprite,
-}: DeathPose): Canvas.Shape => {
+}: DeathPose): Draw.Shape => {
   const isShuddering = progress < SLUMP_SHUDDER_END
   const fall = progressBetween(progress, SLUMP_SHUDDER_END, SLUMP_FALL_END)
   const landing = Math.sin(
@@ -625,7 +625,7 @@ const slumpShape = ({
 }
 
 const DEATH_POSES: Readonly<
-  Record<DeathStyle, (pose: DeathPose) => Canvas.Shape>
+  Record<DeathStyle, (pose: DeathPose) => Draw.Shape>
 > = {
   Topple: toppleShape,
   Tumble: tumbleShape,
@@ -637,7 +637,7 @@ const dyingZombieShape = (
   zombie: Zombie,
   remainingMs: number,
   direction: Vector,
-): Canvas.Shape => {
+): Draw.Shape => {
   const stats = statsOf(zombie)
   return DEATH_POSES[stats.deathStyle]({
     zombie,
@@ -656,14 +656,14 @@ export const zombieShapes: {
     elapsedMs: number,
     boss: Boss,
     loneMs: number,
-  ): (zombie: Zombie) => ReadonlyArray<Canvas.Shape>
+  ): (zombie: Zombie) => ReadonlyArray<Draw.Shape>
   (
     zombie: Zombie,
     player: Player,
     elapsedMs: number,
     boss: Boss,
     loneMs: number,
-  ): ReadonlyArray<Canvas.Shape>
+  ): ReadonlyArray<Draw.Shape>
 } = Function.dual(
   5,
   (
@@ -672,7 +672,7 @@ export const zombieShapes: {
     elapsedMs: number,
     boss: Boss,
     loneMs: number,
-  ): ReadonlyArray<Canvas.Shape> =>
+  ): ReadonlyArray<Draw.Shape> =>
     ZombieState.match(zombie.state, {
       Walking: () =>
         walkingZombieShapes(zombie, player, elapsedMs, boss, loneMs),

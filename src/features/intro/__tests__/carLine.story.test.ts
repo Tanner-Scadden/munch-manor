@@ -1,7 +1,6 @@
 import { Array, Effect, Option } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
@@ -19,8 +18,11 @@ import {
   withDareThings,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   checkPendingArgs,
+  modelAfter,
+  send,
+  steps,
+  storyOf,
   tick,
   writeSave,
 } from '../../../test/testing'
@@ -33,7 +35,7 @@ import { QUICK_DEATH_WAVE } from '../carLine'
 // the friends for that ending, never the one they said last.
 
 const inWave = (wave: number): Model =>
-  modifyFields(readyAfterRead, {
+  UiStruct.evolve(readyAfterRead, {
     mode: () => RunMode.Campaign(),
     phase: () => Phase.Wave({ wave, elapsedMs: 4000, spawns: [] }),
   })
@@ -42,7 +44,7 @@ const inWave = (wave: number): Model =>
 // its sill: the next frame walks out.
 const walkingOut: Model = escaping(
   withDareThings(
-    modifyFields(readyAfterRead, {
+    UiStruct.evolve(readyAfterRead, {
       mode: () => RunMode.Campaign(),
       phase: () =>
         Phase.Wave({ wave: 10, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
@@ -55,12 +57,10 @@ const walkingOut: Model = escaping(
 )
 
 const endingAfter = (model: Model) =>
-  Story.story(
-    APPLICATION,
-    Story.given(model),
-    tick(FIXED_STEP_MS),
-    writeSave(),
-  ).pipe(Effect.map(({ lastRunEnding }) => lastRunEnding))
+  Effect.map(
+    modelAfter(model, steps(tick(FIXED_STEP_MS), writeSave)),
+    ({ lastRunEnding }) => lastRunEnding,
+  )
 
 const lineOf = (model: Model): Option.Option<string> => model.maybeCarLine
 
@@ -71,14 +71,10 @@ const isLineFor = (ending: RunEnding, model: Model): boolean =>
 
 // NOTE: RETRY from an end screen, `model` with its run ended so.
 const retriedAfter = (model: Model) =>
-  Story.story(
-    APPLICATION,
-    Story.given(model),
-    Story.message(Message.ClickedRetryButton()),
-  )
+  modelAfter(model, send(Message.ClickedRetryButton()))
 
 const onEndScreen = (ending: RunEnding, wave: number): Model =>
-  modifyFields(readyModel, {
+  UiStruct.evolve(readyModel, {
     mode: () => RunMode.Campaign(),
     phase: () => Phase.GameOver({ wave }),
     screenMs: () => 60_000,
@@ -105,36 +101,30 @@ describe('how the last run ended', () => {
   )
 
   it.effect('is saved, and synced as its own change', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(lastHeart(inWave(6))),
-      tick(FIXED_STEP_MS),
-      checkPendingArgs(Story.Command.argsOf(WriteSave))(writes => {
-        expect(Array.map(writes, ({ save }) => save.lastRun)).toContain(
-          'Munched',
-        )
-        expect(Array.flatMap(writes, ({ changes }) => changes)).toContainEqual(
-          PlayerChange.EndedRun({ lastRun: 'Munched' }),
-        )
-      }),
-      writeSave(),
-    ),
+    Effect.gen(function* () {
+      const s = yield* storyOf(lastHeart(inWave(6)))
+      s.pipe(
+        tick(FIXED_STEP_MS),
+        checkPendingArgs(WriteSave)(writes => {
+          expect(Array.map(writes, ({ save }) => save.lastRun)).toContain(
+            'Munched',
+          )
+          expect(
+            Array.flatMap(writes, ({ changes }) => changes),
+          ).toContainEqual(PlayerChange.EndedRun({ lastRun: 'Munched' }))
+        }),
+        writeSave,
+      )
+    }),
   )
 })
 
 describe('the friends in the car', () => {
   it.effect('the very first run opens on a line about the dare', () =>
-    Effect.map(
-      Story.story(
-        APPLICATION,
-        Story.given(onEndScreen('NoRunYet', 5)),
-        Story.message(Message.ClickedRetryButton()),
-      ),
-      after => {
-        expect(after.phase._tag).toBe('Arriving')
-        expect(isLineFor('NoRunYet', after)).toBe(true)
-      },
-    ),
+    Effect.map(retriedAfter(onEndScreen('NoRunYet', 5)), after => {
+      expect(after.phase._tag).toBe('Arriving')
+      expect(isLineFor('NoRunYet', after)).toBe(true)
+    }),
   )
 
   it.effect('a line for each ending', () =>
@@ -157,7 +147,7 @@ describe('the friends in the car', () => {
           FRIEND_LINES.Munched[seed % FRIEND_LINES.Munched.length] ?? ''
         return Effect.map(
           retriedAfter(
-            modifyFields(onEndScreen('Munched', 5), {
+            UiStruct.evolve(onEndScreen('Munched', 5), {
               rngState: () => seed * 7919,
               maybeCarLine: () => Option.some(last),
             }),

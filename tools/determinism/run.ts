@@ -1,7 +1,7 @@
 // Plays the script and records the gameplay hash every N frames. Pure apart
 // from the optional callback, so it runs in every engine the harness checks.
 
-import { modifyFields } from 'foldkit/struct'
+import { UiStruct } from '@effect/ui'
 
 import { type Model, initialHitStop } from '../../src/app/model'
 import type { Checkpoint } from './diff'
@@ -62,7 +62,7 @@ export const runScript = (options: RunOptions & RunHooks): RunReport => {
     const played = afterFrame(playFrame(model, frame, options.pattern))
     model =
       options.noHitStop === true
-        ? modifyFields(played, { hitStop: () => initialHitStop })
+        ? UiStruct.evolve(played, { hitStop: () => initialHitStop })
         : played
     onFrame?.(frame, model)
     if (frame % options.every === options.every - 1) {

@@ -1,5 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+
+import { UiStruct } from '@effect/ui'
 
 import {
   BULLET_MAX,
@@ -164,7 +165,7 @@ const loadOf = (
   const boosted = laserSight === 'Fitted' ? withLaserSight(fired) : fired
   const glaze = bulletGlaze(boosts)
   return {
-    stats: modifyFields(boosted, {
+    stats: UiStruct.evolve(boosted, {
       damage: damage => perkDamage(gun, damage),
     }),
     weapon: gun.kind,
@@ -214,14 +215,14 @@ const shoot = (
       shooterOf(model, slot),
     ),
   )
-  const fired = modifyFields(model, {
+  const fired = UiStruct.evolve(model, {
     bullets: bullets => Array.takeRight([...bullets, ...pellets], BULLET_MAX),
     nextEntityId: id => id + pellets.length,
     rngState: () => rngState,
     stats: runStats => countShots(runStats, pellets.length),
     seats: atSeat(slot, {
       player: () => {
-        const cycled = modifyFields(player, {
+        const cycled = UiStruct.evolve(player, {
           fireCooldownMs: cooldown => cooldown + stats.fireIntervalMs - deltaMs,
           recoilRemainingMs: () => stats.recoilMs,
         })
@@ -263,7 +264,7 @@ const coolTrigger = (
 ): World =>
   modifySeat(model, slot, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         fireCooldownMs: cooldown =>
           nextFireCooldown(cooldown, deltaMs, isTriggerHeld),
       }),
@@ -281,10 +282,10 @@ const autoReload = (
     direction: player.facing,
     weapon: heldWeapon(player.arsenal),
   })
-  return modifyFields(model, {
+  return UiStruct.evolve(model, {
     seats: atSeat(slot, {
       player: () =>
-        beginReload(modifyFields(player, { fireCooldownMs: () => 0 })),
+        beginReload(UiStruct.evolve(player, { fireCooldownMs: () => 0 })),
     }),
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -306,7 +307,7 @@ const restTrigger = (
   const { intent } = seatStateAt(model, slot)
   return modifySeat(model, slot, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         triggerRestMs: rest =>
           intent.trigger === 'Held' || isWieldingMelee(player)
             ? 0
@@ -401,7 +402,7 @@ export const tickReload: {
         remainingMs > deltaMs
           ? modifySeat(model, slot, {
               player: () =>
-                modifyFields(player, {
+                UiStruct.evolve(player, {
                   reload: () =>
                     Reload.Reloading({
                       remainingMs: remainingMs - deltaMs,
@@ -409,7 +410,7 @@ export const tickReload: {
                     }),
                 }),
             })
-          : modifyFields(model, {
+          : UiStruct.evolve(model, {
               seats: atSeat(slot, { player: () => finishReload(player) }),
               frameEvents: Array.append(
                 GameEvent.Reloaded({
@@ -433,7 +434,7 @@ const isInsideArena = (level: Level, point: Vector): boolean =>
 const advanceBullet =
   (seconds: number, deltaMs: number) =>
   (bullet: Bullet): Bullet =>
-    modifyFields(bullet, {
+    UiStruct.evolve(bullet, {
       x: x => x + bullet.velocityX * seconds,
       y: y => y + bullet.velocityY * seconds,
       remainingMs: remainingMs => remainingMs - deltaMs,
@@ -495,7 +496,7 @@ const advanceBullets = (
   model: World,
   seconds: number,
   deltaMs: number,
-): World => modifyFields(model, bulletFlightOf(model, seconds, deltaMs))
+): World => UiStruct.evolve(model, bulletFlightOf(model, seconds, deltaMs))
 
 // LAG COMPENSATION
 
@@ -544,7 +545,7 @@ export const catchUpShots: {
       const now = new Map(
         Array.map(current.zombies, zombie => [zombie.id, zombie] as const),
       )
-      const rewound = modifyFields(current, {
+      const rewound = UiStruct.evolve(current, {
         zombies: zombies =>
           Array.map(zombies, zombie =>
             Option.match(Option.fromNullishOr(then.get(zombie.id)), {
@@ -560,7 +561,7 @@ export const catchUpShots: {
         seconds,
         current.nextEntityId,
       )
-      return modifyFields(struck, {
+      return UiStruct.evolve(struck, {
         zombies: zombies =>
           Array.map(zombies, zombie =>
             Option.match(Option.fromNullishOr(now.get(zombie.id)), {

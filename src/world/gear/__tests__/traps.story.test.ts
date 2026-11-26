@@ -1,11 +1,11 @@
 import { Array, Effect, Option, Result } from 'effect'
-import { Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
+import { UiStruct } from '@effect/ui'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
+  BreakClock,
   GameEvent,
   Invulnerability,
   type Model,
@@ -35,14 +35,17 @@ import {
   trapReady,
 } from '../../../test/model.fixture'
 import {
-  APPLICATION,
   BELOW_NORTH_DOOR,
+  checkModel,
   countdownTicks,
   holdFire,
   holdFireToward,
+  modelAfter,
   press,
   recordTicks,
   release,
+  send,
+  steps,
   throughIntro,
   tick,
   ticks,
@@ -78,6 +81,7 @@ const readyModel: Model = trapReady
 
 const preparing = (spawns: ReadonlyArray<PlannedSpawn> = [DISTANT_SPAWN]) =>
   Phase.Preparation({
+    clock: BreakClock.Counting(),
     wave: 2,
     remainingMs: 15_000,
     durationMs: PREPARATION_MS,
@@ -91,7 +95,7 @@ const withPlayer = (
 ): Model =>
   modifyFocus(base, {
     player: player =>
-      modifyFields(player, {
+      UiStruct.evolve(player, {
         x: () => x,
         y: () => y,
         facing: () => facing,
@@ -107,7 +111,7 @@ const stocked = (
   facing: Vector = { x: 1, y: 0 },
 ): Model =>
   modifyFocus(
-    modifyFields(withPlayer(readyModel, at, facing), {
+    UiStruct.evolve(withPlayer(readyModel, at, facing), {
       phase: () => preparing(),
       trapHint: () => TrapHint.Showing(),
     }),
@@ -146,7 +150,7 @@ const fightingWith = (
   zombies: ReadonlyArray<Zombie>,
   playerAt: Vector,
 ): Model =>
-  modifyFields(withPlayer(readyModel, playerAt), {
+  UiStruct.evolve(withPlayer(readyModel, playerAt), {
     phase: () => WAVE_2_FIGHT,
     traps: () => traps,
     zombies: () => zombies,
@@ -175,59 +179,62 @@ describe('placing a barricade', () => {
     'T boards up the doorway the player stands next to, with a dust puff',
     () => {
       const start = stocked(1, 0)
-      return Story.story(
-        APPLICATION,
-        Story.given(start),
-        press('KeyT'),
-        Story.model(
-          ({
-            traps,
-            seats: [{ trapStock }],
-            trapHint,
-            nextEntityId,
-            cosmetics: { particles },
-          }) => {
-            expect(traps).toEqual([barricade(start.nextEntityId, 'North')])
-            expect(trapStock.Barricade).toBe(0)
-            expect(trapHint).toEqual(TrapHint.Seen())
-            expect(nextEntityId).toBe(start.nextEntityId + 1)
-            expect(
-              Array.filter(particles, ({ kind }) => kind === 'Dust').length,
-            ).toBeGreaterThan(0)
-          },
+      return modelAfter(
+        start,
+        steps(
+          press('KeyT'),
+          checkModel(
+            ({
+              traps,
+              seats: [{ trapStock }],
+              trapHint,
+              nextEntityId,
+              cosmetics: { particles },
+            }) => {
+              expect(traps).toEqual([barricade(start.nextEntityId, 'North')])
+              expect(trapStock.Barricade).toBe(0)
+              expect(trapHint).toEqual(TrapHint.Seen())
+              expect(nextEntityId).toBe(start.nextEntityId + 1)
+              expect(
+                Array.filter(particles, ({ kind }) => kind === 'Dust').length,
+              ).toBeGreaterThan(0)
+            },
+          ),
         ),
       )
     },
   )
 
   it.effect('the PLACE button boards it up too', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(stocked(1, 0)),
-      Story.message(Message.ClickedPlaceTrapButton()),
-      Story.model(({ traps }) => {
-        expect(Array.map(traps, trap => trap._tag)).toEqual(['Barricade'])
-      }),
+    modelAfter(
+      stocked(1, 0),
+      steps(
+        send(Message.ClickedPlaceTrapButton()),
+        checkModel(({ traps }) => {
+          expect(Array.map(traps, trap => trap._tag)).toEqual(['Barricade'])
+        }),
+      ),
     ),
   )
 
   it.effect('a player standing in the doorway is nudged into the room', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(stocked(1, 0, { x: 5, y: WEST_Y })),
-      press('KeyT'),
-      Story.model(({ traps, seats: [{ player }] }) => {
-        expect(traps).toHaveLength(1)
-        expect(player.x).toBeGreaterThanOrEqual(
-          MANOR.thresholds.West.box.right + PLAYER_RADIUS,
-        )
-      }),
-      ...ticks(5, FRAME_MS),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(player.x).toBeGreaterThanOrEqual(
-          MANOR.thresholds.West.box.right + PLAYER_RADIUS,
-        )
-      }),
+    modelAfter(
+      stocked(1, 0, { x: 5, y: WEST_Y }),
+      steps(
+        press('KeyT'),
+        checkModel(({ traps, seats: [{ player }] }) => {
+          expect(traps).toHaveLength(1)
+          expect(player.x).toBeGreaterThanOrEqual(
+            MANOR.thresholds.West.box.right + PLAYER_RADIUS,
+          )
+        }),
+        ticks(5, FRAME_MS),
+        checkModel(({ seats: [{ player }] }) => {
+          expect(player.x).toBeGreaterThanOrEqual(
+            MANOR.thresholds.West.box.right + PLAYER_RADIUS,
+          )
+        }),
+      ),
     ),
   )
 
@@ -235,75 +242,76 @@ describe('placing a barricade', () => {
     'placement is refused away from a doorway, outside Preparation, and over the limit',
     () =>
       Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(stocked(1, 0, ROOM_MIDDLE)),
-          press('KeyT'),
-          Story.model(current => {
-            expect(current.traps).toEqual([])
-            expect(focusOf(current).trapStock.Barricade).toBe(1)
-            expect(refusal(current)).toEqual(
-              Option.some('Stand in a doorway to board it up'),
-            )
-          }),
-        )
-
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(stocked(1, 0), { phase: () => WAVE_2_FIGHT }),
-          ),
-          press('KeyT'),
-          Story.model(current => {
-            expect(current.traps).toEqual([])
-            expect(refusal(current)).toEqual(
-              Option.some('Traps go down between waves'),
-            )
-          }),
-        )
-
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(stocked(1, 0), {
-              traps: () => [barricade(1, 'West'), barricade(2, 'East')],
+        yield* modelAfter(
+          stocked(1, 0, ROOM_MIDDLE),
+          steps(
+            press('KeyT'),
+            checkModel(current => {
+              expect(current.traps).toEqual([])
+              expect(focusOf(current).trapStock.Barricade).toBe(1)
+              expect(refusal(current)).toEqual(
+                Option.some('Stand in a doorway to board it up'),
+              )
             }),
           ),
-          press('KeyT'),
-          Story.model(current => {
-            expect(current.traps).toHaveLength(2)
-            expect(focusOf(current).trapStock.Barricade).toBe(1)
-            expect(refusal(current)).toEqual(Option.some('Two Plank Piles max'))
-          }),
         )
 
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            modifyFields(stocked(1, 0), {
-              traps: () => [barricade(1, 'North')],
+        yield* modelAfter(
+          UiStruct.evolve(stocked(1, 0), { phase: () => WAVE_2_FIGHT }),
+          steps(
+            press('KeyT'),
+            checkModel(current => {
+              expect(current.traps).toEqual([])
+              expect(refusal(current)).toEqual(
+                Option.some('Traps go down between waves'),
+              )
             }),
           ),
-          press('KeyT'),
-          Story.model(current => {
-            expect(current.traps).toHaveLength(1)
-            expect(refusal(current)).toEqual(
-              Option.some('This doorway is already boarded up'),
-            )
+        )
+
+        yield* modelAfter(
+          UiStruct.evolve(stocked(1, 0), {
+            traps: () => [barricade(1, 'West'), barricade(2, 'East')],
           }),
+          steps(
+            press('KeyT'),
+            checkModel(current => {
+              expect(current.traps).toHaveLength(2)
+              expect(focusOf(current).trapStock.Barricade).toBe(1)
+              expect(refusal(current)).toEqual(
+                Option.some('Two Plank Piles max'),
+              )
+            }),
+          ),
+        )
+
+        yield* modelAfter(
+          UiStruct.evolve(stocked(1, 0), {
+            traps: () => [barricade(1, 'North')],
+          }),
+          steps(
+            press('KeyT'),
+            checkModel(current => {
+              expect(current.traps).toHaveLength(1)
+              expect(refusal(current)).toEqual(
+                Option.some('This doorway is already boarded up'),
+              )
+            }),
+          ),
         )
       }),
   )
 
   it.effect('the refusal notice fades after a moment', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(stocked(1, 0, ROOM_MIDDLE)),
-      press('KeyT'),
-      ...ticks(40, LONG_FRAME_MS),
-      Story.model(current => {
-        expect(current.cosmetics.trapNotice).toEqual(TrapNotice.Quiet())
-      }),
+    modelAfter(
+      stocked(1, 0, ROOM_MIDDLE),
+      steps(
+        press('KeyT'),
+        ticks(40, LONG_FRAME_MS),
+        checkModel(current => {
+          expect(current.cosmetics.trapNotice).toEqual(TrapNotice.Quiet())
+        }),
+      ),
     ),
   )
 })
@@ -312,19 +320,20 @@ describe('placing a turret', () => {
   it.effect(
     'T sets a Grumpy Gnome on the free tile in front of the player',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(stocked(0, 1, ROOM_MIDDLE)),
-        press('KeyT'),
-        Story.model(({ traps, seats: [{ trapStock }] }) => {
-          expect(traps).toHaveLength(1)
-          const placed = Option.getOrThrow(Array.head(traps))
-          expect(placed._tag).toBe('Turret')
-          expect(
-            Trap.guards.Turret(placed) && [placed.column, placed.row],
-          ).toEqual([17, 9])
-          expect(trapStock.Turret).toBe(0)
-        }),
+      modelAfter(
+        stocked(0, 1, ROOM_MIDDLE),
+        steps(
+          press('KeyT'),
+          checkModel(({ traps, seats: [{ trapStock }] }) => {
+            expect(traps).toHaveLength(1)
+            const placed = Option.getOrThrow(Array.head(traps))
+            expect(placed._tag).toBe('Turret')
+            expect(
+              Trap.guards.Turret(placed) && [placed.column, placed.row],
+            ).toEqual([17, 9])
+            expect(trapStock.Turret).toBe(0)
+          }),
+        ),
       ),
   )
 
@@ -333,14 +342,15 @@ describe('placing a turret', () => {
     () =>
       Effect.gen(function* () {
         const refusedWith = (start: Model, reason: string) =>
-          Story.story(
-            APPLICATION,
-            Story.given(start),
-            press('KeyT'),
-            Story.model(current => {
-              expect(current.traps).toEqual(start.traps)
-              expect(refusal(current)).toEqual(Option.some(reason))
-            }),
+          modelAfter(
+            start,
+            steps(
+              press('KeyT'),
+              checkModel(current => {
+                expect(current.traps).toEqual(start.traps)
+                expect(refusal(current)).toEqual(Option.some(reason))
+              }),
+            ),
           )
 
         yield* refusedWith(
@@ -352,7 +362,7 @@ describe('placing a turret', () => {
           'Doorways are for Plank Piles',
         )
         yield* refusedWith(
-          modifyFields(stocked(0, 1, ROOM_MIDDLE), {
+          UiStruct.evolve(stocked(0, 1, ROOM_MIDDLE), {
             traps: () => [turret(1, 3, 9), turret(2, 25, 9)],
           }),
           'All 2 Grumpy Gnomes are out',
@@ -367,7 +377,7 @@ describe('placing a turret', () => {
         // NOTE: where the new Gnome went: every Turret but the one placed
         // before.
         const placedTile = (start: Model) =>
-          Story.story(APPLICATION, Story.given(start), press('KeyT')).pipe(
+          modelAfter(start, press('KeyT')).pipe(
             Effect.map(({ traps }) =>
               Array.filterMap(traps, trap =>
                 Trap.guards.Turret(trap) && trap.id !== 1
@@ -381,7 +391,7 @@ describe('placing a turret', () => {
           stocked(0, 1, { x: 168, y: 95 }, { x: 1, y: 0 }),
         )
         const nearest = yield* placedTile(
-          modifyFields(stocked(0, 1, ROOM_MIDDLE), {
+          UiStruct.evolve(stocked(0, 1, ROOM_MIDDLE), {
             traps: () => [turret(1, 17, 9)],
           }),
         )
@@ -408,57 +418,57 @@ describe('placing a turret', () => {
   it.effect(
     'G and the NEXT button switch between the kinds the player owns',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(stocked(1, 1)),
-        press('KeyG'),
-        Story.model(({ seats: [{ selectedTrap }] }) => {
-          expect(selectedTrap).toBe('Turret')
-        }),
-        Story.message(Message.ClickedNextTrapButton()),
-        Story.model(({ seats: [{ selectedTrap }] }) => {
-          expect(selectedTrap).toBe('Barricade')
-        }),
-        press('KeyT'),
-        Story.model(({ traps, seats: [{ selectedTrap, trapStock }] }) => {
-          expect(Array.map(traps, trap => trap._tag)).toEqual(['Barricade'])
-          expect(trapStock).toEqual({ Barricade: 0, Turret: 1 })
-          expect(selectedTrap).toBe('Barricade')
-        }),
-        press('KeyG'),
-        Story.model(({ seats: [{ selectedTrap }] }) => {
-          expect(selectedTrap).toBe('Barricade')
-        }),
-        release('KeyG'),
-        press('KeyS'),
-        ...ticks(4, LONG_FRAME_MS),
-        release('KeyS'),
-        press('KeyT'),
-        Story.model(({ traps }) => {
-          expect(Array.map(traps, trap => trap._tag)).toEqual([
-            'Barricade',
-            'Turret',
-          ])
-        }),
+      modelAfter(
+        stocked(1, 1),
+        steps(
+          press('KeyG'),
+          checkModel(({ seats: [{ selectedTrap }] }) => {
+            expect(selectedTrap).toBe('Turret')
+          }),
+          send(Message.ClickedNextTrapButton()),
+          checkModel(({ seats: [{ selectedTrap }] }) => {
+            expect(selectedTrap).toBe('Barricade')
+          }),
+          press('KeyT'),
+          checkModel(({ traps, seats: [{ selectedTrap, trapStock }] }) => {
+            expect(Array.map(traps, trap => trap._tag)).toEqual(['Barricade'])
+            expect(trapStock).toEqual({ Barricade: 0, Turret: 1 })
+            expect(selectedTrap).toBe('Barricade')
+          }),
+          press('KeyG'),
+          checkModel(({ seats: [{ selectedTrap }] }) => {
+            expect(selectedTrap).toBe('Barricade')
+          }),
+          release('KeyG'),
+          press('KeyS'),
+          ticks(4, LONG_FRAME_MS),
+          release('KeyS'),
+          press('KeyT'),
+          checkModel(({ traps }) => {
+            expect(Array.map(traps, trap => trap._tag)).toEqual([
+              'Barricade',
+              'Turret',
+            ])
+          }),
+        ),
       ),
   )
 
   it.effect('the trap selection stays put outside a round', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(stocked(1, 1), {
-          phase: () => Phase.Escaped({ wave: 10 }),
+    modelAfter(
+      UiStruct.evolve(stocked(1, 1), {
+        phase: () => Phase.Escaped({ wave: 10 }),
+      }),
+      steps(
+        press('KeyG'),
+        checkModel(({ seats: [{ selectedTrap }] }) => {
+          expect(selectedTrap).toBe('Barricade')
+        }),
+        send(Message.ClickedNextTrapButton()),
+        checkModel(({ seats: [{ selectedTrap }] }) => {
+          expect(selectedTrap).toBe('Barricade')
         }),
       ),
-      press('KeyG'),
-      Story.model(({ seats: [{ selectedTrap }] }) => {
-        expect(selectedTrap).toBe('Barricade')
-      }),
-      Story.message(Message.ClickedNextTrapButton()),
-      Story.model(({ seats: [{ selectedTrap }] }) => {
-        expect(selectedTrap).toBe('Barricade')
-      }),
     ),
   )
 })
@@ -496,22 +506,19 @@ describe('barricades and pathing', () => {
     () =>
       Effect.gen(function* () {
         const frames: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            fightingWith(
-              [barricade(1, 'North')],
-              [
-                zombieOf('Shambler', 50, northSpawn.x, northSpawn.y, {
-                  speed: 40,
-                }),
-              ],
-              // NOTE: by the West door, so the way round through the yard
-              // is shorter than chewing through the North door's planks.
-              { x: 40, y: 45 },
-            ),
+        yield* modelAfter(
+          fightingWith(
+            [barricade(1, 'North')],
+            [
+              zombieOf('Shambler', 50, northSpawn.x, northSpawn.y, {
+                speed: 40,
+              }),
+            ],
+            // NOTE: by the West door, so the way round through the yard
+            // is shorter than chewing through the North door's planks.
+            { x: 40, y: 45 },
           ),
-          ...recordTicks(240, LONG_FRAME_MS, frames),
+          recordTicks(240, LONG_FRAME_MS, frames),
         )
 
         const positions = Array.flatMap(frames, ({ zombies }) => zombies)
@@ -535,25 +542,22 @@ describe('barricades and pathing', () => {
     () =>
       Effect.gen(function* () {
         const frames: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            fightingWith(
-              [
-                barricade(1, 'North'),
-                barricade(2, 'West'),
-                barricade(3, 'East'),
-                barricade(4, 'South'),
-              ],
-              [
-                zombieOf('Shambler', 50, northSpawn.x, northSpawn.y, {
-                  speed: 40,
-                }),
-              ],
-              ROOM_MIDDLE,
-            ),
+        yield* modelAfter(
+          fightingWith(
+            [
+              barricade(1, 'North'),
+              barricade(2, 'West'),
+              barricade(3, 'East'),
+              barricade(4, 'South'),
+            ],
+            [
+              zombieOf('Shambler', 50, northSpawn.x, northSpawn.y, {
+                speed: 40,
+              }),
+            ],
+            ROOM_MIDDLE,
           ),
-          ...recordTicks(520, LONG_FRAME_MS, frames),
+          recordTicks(520, LONG_FRAME_MS, frames),
         )
 
         expect(
@@ -578,20 +582,17 @@ describe('barricades and pathing', () => {
     () =>
       Effect.gen(function* () {
         const frames: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            fightingWith(
-              [barricade(1, 'North')],
-              [
-                zombieOf('Shambler', 50, northSpawn.x, northSpawn.y, {
-                  speed: 40,
-                }),
-              ],
-              { x: NORTH_X, y: 32 },
-            ),
+        yield* modelAfter(
+          fightingWith(
+            [barricade(1, 'North')],
+            [
+              zombieOf('Shambler', 50, northSpawn.x, northSpawn.y, {
+                speed: 40,
+              }),
+            ],
+            { x: NORTH_X, y: 32 },
           ),
-          ...recordTicks(60, LONG_FRAME_MS, frames),
+          recordTicks(60, LONG_FRAME_MS, frames),
         )
 
         const last = Option.getOrThrow(Array.last(frames))
@@ -611,24 +612,21 @@ describe('barricade damage', () => {
     () =>
       Effect.gen(function* () {
         const frames: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            fightingWith(
-              [barricade(1, 'North')],
-              [
-                zombieOf(
-                  'Shambler',
-                  50,
-                  pressedAgainstNorth.x,
-                  pressedAgainstNorth.y,
-                  { speed: 30 },
-                ),
-              ],
-              { x: NORTH_X, y: 40 },
-            ),
+        yield* modelAfter(
+          fightingWith(
+            [barricade(1, 'North')],
+            [
+              zombieOf(
+                'Shambler',
+                50,
+                pressedAgainstNorth.x,
+                pressedAgainstNorth.y,
+                { speed: 30 },
+              ),
+            ],
+            { x: NORTH_X, y: 40 },
           ),
-          ...recordTicks(500, LONG_FRAME_MS, frames),
+          recordTicks(500, LONG_FRAME_MS, frames),
         )
 
         const hps = Array.filterMap(frames, ({ traps }) =>
@@ -676,16 +674,13 @@ describe('barricade damage', () => {
   it.effect('a Big Lug hits it much harder than a Groaner', () =>
     Effect.gen(function* () {
       const chewedAfterOneSecond = (kind: ZombieKind) =>
-        Story.story(
-          APPLICATION,
-          Story.given(
-            fightingWith(
-              [barricade(1, 'North')],
-              [zombieOf(kind, 50, NORTH_X, 2, { speed: 20 })],
-              { x: NORTH_X, y: 40 },
-            ),
+        modelAfter(
+          fightingWith(
+            [barricade(1, 'North')],
+            [zombieOf(kind, 50, NORTH_X, 2, { speed: 20 })],
+            { x: NORTH_X, y: 40 },
           ),
-          ...ticks(20, LONG_FRAME_MS),
+          ticks(20, LONG_FRAME_MS),
         ).pipe(
           Effect.map(({ traps }) =>
             Option.match(Array.head(traps), {
@@ -705,32 +700,34 @@ describe('barricade damage', () => {
   it.effect(
     'the player cannot walk through a barricade but bullets fly through it',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(
-            fightingWith([barricade(1, 'West')], [], { x: 20, y: WEST_Y }),
-            {
-              player: player =>
-                modifyFields(player, { facing: () => ({ x: -1, y: 0 }) }),
-            },
-          ),
+      modelAfter(
+        modifyFocus(
+          fightingWith([barricade(1, 'West')], [], { x: 20, y: WEST_Y }),
+          {
+            player: player =>
+              UiStruct.evolve(player, { facing: () => ({ x: -1, y: 0 }) }),
+          },
         ),
-        press('KeyA'),
-        holdFireToward({ x: -1, y: 0 }),
-        ...ticks(Math.ceil(FIRE_INTERVAL_MS / FRAME_MS) + 2, FRAME_MS),
-        Story.model(({ seats: [{ player }], frameEvents, bullets }) => {
-          expect(player.x).toBeCloseTo(
-            MANOR.thresholds.West.box.right + PLAYER_RADIUS,
-            1,
-          )
-          expect(frameEvents).not.toContainEqual(
-            expect.objectContaining({ _tag: 'BulletStruck' }),
-          )
-          expect(
-            Array.some(bullets, ({ x }) => x < MANOR.thresholds.West.box.right),
-          ).toBe(true)
-        }),
+        steps(
+          press('KeyA'),
+          holdFireToward({ x: -1, y: 0 }),
+          ticks(Math.ceil(FIRE_INTERVAL_MS / FRAME_MS) + 2, FRAME_MS),
+          checkModel(({ seats: [{ player }], frameEvents, bullets }) => {
+            expect(player.x).toBeCloseTo(
+              MANOR.thresholds.West.box.right + PLAYER_RADIUS,
+              1,
+            )
+            expect(frameEvents).not.toContainEqual(
+              expect.objectContaining({ _tag: 'BulletStruck' }),
+            )
+            expect(
+              Array.some(
+                bullets,
+                ({ x }) => x < MANOR.thresholds.West.box.right,
+              ),
+            ).toBe(true)
+          }),
+        ),
       ),
   )
 })
@@ -745,30 +742,25 @@ describe('bursts and traps', () => {
         state: ZombieState.Fusing({ remainingMs: 0 }),
       }
       const burstDamage = 15
-      return Story.story(
-        APPLICATION,
-        Story.given(
-          fightingWith(
-            [
-              barricade(1, 'North'),
-              turret(2, NORTH_X / 10, 3),
-              turret(3, 5, 14),
-            ],
-            [blast],
-            ROOM_MIDDLE,
-          ),
+      return modelAfter(
+        fightingWith(
+          [barricade(1, 'North'), turret(2, NORTH_X / 10, 3), turret(3, 5, 14)],
+          [blast],
+          ROOM_MIDDLE,
         ),
-        tick(FRAME_MS),
-        Story.model(({ traps, frameEvents }) => {
-          expect(Array.map(traps, ({ id, hp }) => [id, hp])).toEqual([
-            [1, TRAPS.Barricade.hp - burstDamage],
-            [2, TRAPS.Turret.hp - burstDamage],
-            [3, TRAPS.Turret.hp],
-          ])
-          expect(
-            Array.filter(frameEvents, GameEvent.guards.TrapBroken),
-          ).toEqual([])
-        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ traps, frameEvents }) => {
+            expect(Array.map(traps, ({ id, hp }) => [id, hp])).toEqual([
+              [1, TRAPS.Barricade.hp - burstDamage],
+              [2, TRAPS.Turret.hp - burstDamage],
+              [3, TRAPS.Turret.hp],
+            ])
+            expect(
+              Array.filter(frameEvents, GameEvent.guards.TrapBroken),
+            ).toEqual([])
+          }),
+        ),
       )
     },
   )
@@ -778,16 +770,13 @@ describe('bursts and traps', () => {
     () =>
       Effect.gen(function* () {
         const frames: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            fightingWith(
-              [barricade(1, 'North', 10)],
-              [zombieOf('Exploder', 60, NORTH_X, 1, { speed: 20 })],
-              { x: NORTH_X, y: 60 },
-            ),
+        yield* modelAfter(
+          fightingWith(
+            [barricade(1, 'North', 10)],
+            [zombieOf('Exploder', 60, NORTH_X, 1, { speed: 20 })],
+            { x: NORTH_X, y: 60 },
           ),
-          ...recordTicks(60, FRAME_MS, frames),
+          recordTicks(60, FRAME_MS, frames),
         )
 
         expect(eventsOf(frames, GameEvent.guards.Exploded)).toHaveLength(1)
@@ -810,35 +799,34 @@ describe('turrets', () => {
         const near = tough(71, { x: 140, y: 95 })
         const cooldownTicks = countdownTicks(PEA_INTERVAL_MS)
         const frames: Array<Model> = []
-        yield* Story.story(
-          APPLICATION,
-          Story.given(
-            fightingWith(
-              [turret(1, TURRET_TILE.column, TURRET_TILE.row)],
-              [far, near],
-              { x: 40, y: 160 },
-            ),
+        yield* modelAfter(
+          fightingWith(
+            [turret(1, TURRET_TILE.column, TURRET_TILE.row)],
+            [far, near],
+            { x: 40, y: 160 },
           ),
-          tick(FRAME_MS),
-          Story.model(current => {
-            const shots = firedPeas(current)
-            expect(shots).toHaveLength(1)
-            const shot = Option.getOrThrow(Array.head(shots))
-            expect(
-              GameEvent.guards.Fired(shot) && shot.direction.x,
-            ).toBeCloseTo(-1)
-            const placed = Option.getOrThrow(Array.head(current.traps))
-            expect(Trap.guards.Turret(placed) && placed.gun).toEqual(
-              TurretGun.CoolingDown({ remainingMs: PEA_INTERVAL_MS }),
-            )
-            expect(
-              Array.filter(
-                current.bullets,
-                ({ weapon }) => weapon === 'Peashooter',
-              ),
-            ).toHaveLength(1)
-          }),
-          ...recordTicks(cooldownTicks + 1, FRAME_MS, frames),
+          steps(
+            tick(FRAME_MS),
+            checkModel(current => {
+              const shots = firedPeas(current)
+              expect(shots).toHaveLength(1)
+              const shot = Option.getOrThrow(Array.head(shots))
+              expect(
+                GameEvent.guards.Fired(shot) && shot.direction.x,
+              ).toBeCloseTo(-1)
+              const placed = Option.getOrThrow(Array.head(current.traps))
+              expect(Trap.guards.Turret(placed) && placed.gun).toEqual(
+                TurretGun.CoolingDown({ remainingMs: PEA_INTERVAL_MS }),
+              )
+              expect(
+                Array.filter(
+                  current.bullets,
+                  ({ weapon }) => weapon === 'Peashooter',
+                ),
+              ).toHaveLength(1)
+            }),
+            recordTicks(cooldownTicks + 1, FRAME_MS, frames),
+          ),
         )
 
         const shotFrames = Array.filterMap(frames, (frame, index) =>
@@ -856,85 +844,80 @@ describe('turrets', () => {
       const visible = tough(73, { x: 230, y: 145 })
       const behindCouch = [turret(1, 16, 14)]
 
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          fightingWith(behindCouch, [hidden, visible], { x: 40, y: 160 }),
+      yield* modelAfter(
+        fightingWith(behindCouch, [hidden, visible], { x: 40, y: 160 }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(current => {
+            const shot = Option.getOrThrow(Array.head(firedPeas(current)))
+            expect(
+              GameEvent.guards.Fired(shot) && shot.direction.x,
+            ).toBeGreaterThan(0.9)
+          }),
         ),
-        tick(FRAME_MS),
-        Story.model(current => {
-          const shot = Option.getOrThrow(Array.head(firedPeas(current)))
-          expect(
-            GameEvent.guards.Fired(shot) && shot.direction.x,
-          ).toBeGreaterThan(0.9)
-        }),
       )
 
-      yield* Story.story(
-        APPLICATION,
-        Story.given(fightingWith(behindCouch, [hidden], { x: 40, y: 160 })),
-        ...ticks(10, FRAME_MS),
-        Story.model(current => {
-          expect(firedPeas(current)).toEqual([])
-          expect(current.bullets).toEqual([])
-        }),
+      yield* modelAfter(
+        fightingWith(behindCouch, [hidden], { x: 40, y: 160 }),
+        steps(
+          ticks(10, FRAME_MS),
+          checkModel(current => {
+            expect(firedPeas(current)).toEqual([])
+            expect(current.bullets).toEqual([])
+          }),
+        ),
       )
 
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          fightingWith(
-            [turret(1, TURRET_TILE.column, TURRET_TILE.row)],
-            [tough(74, { x: turretCenter.x + TURRET_RANGE_PX + 6, y: 95 })],
-            { x: 40, y: 160 },
-          ),
+      yield* modelAfter(
+        fightingWith(
+          [turret(1, TURRET_TILE.column, TURRET_TILE.row)],
+          [tough(74, { x: turretCenter.x + TURRET_RANGE_PX + 6, y: 95 })],
+          { x: 40, y: 160 },
         ),
-        ...ticks(10, FRAME_MS),
-        Story.model(current => {
-          expect(current.bullets).toEqual([])
-        }),
+        steps(
+          ticks(10, FRAME_MS),
+          checkModel(current => {
+            expect(current.bullets).toEqual([])
+          }),
+        ),
       )
     }),
   )
 
   it.effect('its peas kill zombies', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        fightingWith(
-          [turret(1, TURRET_TILE.column, TURRET_TILE.row)],
-          [zombieOf('Runner', 75, 200, 95)],
-          { x: 40, y: 160 },
-        ),
+    modelAfter(
+      fightingWith(
+        [turret(1, TURRET_TILE.column, TURRET_TILE.row)],
+        [zombieOf('Runner', 75, 200, 95)],
+        { x: 40, y: 160 },
       ),
-      ...ticks(Math.ceil((2 * PEA_INTERVAL_MS + 500) / FRAME_MS), FRAME_MS),
-      Story.model(({ zombies }) => {
-        expect(
-          Array.every(
-            Array.filter(zombies, ({ id }) => id === 75),
-            ({ hp }) => hp <= 0,
-          ),
-        ).toBe(true)
-      }),
+      steps(
+        ticks(Math.ceil((2 * PEA_INTERVAL_MS + 500) / FRAME_MS), FRAME_MS),
+        checkModel(({ zombies }) => {
+          expect(
+            Array.every(
+              Array.filter(zombies, ({ id }) => id === 75),
+              ({ hp }) => hp <= 0,
+            ),
+          ).toBe(true)
+        }),
+      ),
     ),
   )
 
   it.effect('zombies next to a turret chew it and it breaks with a pop', () =>
     Effect.gen(function* () {
       const frames: Array<Model> = []
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          // NOTE: on the open floor under the dining room's north wall,
-          // east of the sideboard: the Big Lug comes up at the player
-          // across the gnome.
-          fightingWith(
-            [turret(1, 25, 4)],
-            [zombieOf('Tank', 76, 255, 57, { speed: 20 })],
-            { x: 255, y: 22 },
-          ),
+      yield* modelAfter(
+        // NOTE: on the open floor under the dining room's north wall,
+        // east of the sideboard: the Big Lug comes up at the player
+        // across the gnome.
+        fightingWith(
+          [turret(1, 25, 4)],
+          [zombieOf('Tank', 76, 255, 57, { speed: 20 })],
+          { x: 255, y: 22 },
         ),
-        ...recordTicks(60, LONG_FRAME_MS, frames),
+        recordTicks(60, LONG_FRAME_MS, frames),
       )
 
       expect(eventsOf(frames, GameEvent.guards.TrapBroken)).toEqual([
@@ -954,77 +937,74 @@ describe('between waves', () => {
   it.effect(
     'traps stay where they were and keep their damage into the next wave',
     () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(readyModel, {
-            phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
-            traps: () => damagedTraps,
+      modelAfter(
+        UiStruct.evolve(readyModel, {
+          phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
+          traps: () => damagedTraps,
+        }),
+        steps(
+          tick(FRAME_MS),
+          checkModel(({ phase, traps }) => {
+            expect(Phase.guards.Preparation(phase) && phase.wave).toBe(3)
+            expect(
+              Array.map(traps, ({ id, hp, _tag }) => [id, _tag, hp]),
+            ).toEqual([
+              [1, 'Barricade', TRAPS.Barricade.hp / 2],
+              [2, 'Turret', TRAPS.Turret.hp / 2],
+            ])
           }),
         ),
-        tick(FRAME_MS),
-        Story.model(({ phase, traps }) => {
-          expect(Phase.guards.Preparation(phase) && phase.wave).toBe(3)
-          expect(
-            Array.map(traps, ({ id, hp, _tag }) => [id, _tag, hp]),
-          ).toEqual([
-            [1, 'Barricade', TRAPS.Barricade.hp / 2],
-            [2, 'Turret', TRAPS.Turret.hp / 2],
-          ])
-        }),
       ),
   )
 
   it.effect('a new run clears every trap and the trap pack', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFocus(
-          modifyFields(readyModel, {
-            phase: () => Phase.GameOver({ wave: 4 }),
-            screenMs: () => RESTART_GRACE_MS,
-            traps: () => damagedTraps,
-          }),
-          {
-            trapStock: () => ({ Barricade: 2, Turret: 1 }),
-            selectedTrap: () => 'Turret',
-          },
-        ),
+    modelAfter(
+      modifyFocus(
+        UiStruct.evolve(readyModel, {
+          phase: () => Phase.GameOver({ wave: 4 }),
+          screenMs: () => RESTART_GRACE_MS,
+          traps: () => damagedTraps,
+        }),
+        {
+          trapStock: () => ({ Barricade: 2, Turret: 1 }),
+          selectedTrap: () => 'Turret',
+        },
       ),
-      press('Enter'),
-      throughIntro,
-      Story.model(({ phase, traps, seats: [{ trapStock, selectedTrap }] }) => {
-        expect(Phase.guards.Preparation(phase) && phase.wave).toBe(1)
-        expect(traps).toEqual([])
-        expect(trapStock).toEqual({ Barricade: 0, Turret: 0 })
-        expect(selectedTrap).toBe('Barricade')
-      }),
+      steps(
+        press('Enter'),
+        throughIntro,
+        checkModel(({ phase, traps, seats: [{ trapStock, selectedTrap }] }) => {
+          expect(Phase.guards.Preparation(phase) && phase.wave).toBe(1)
+          expect(traps).toEqual([])
+          expect(trapStock).toEqual({ Barricade: 0, Turret: 0 })
+          expect(selectedTrap).toBe('Barricade')
+        }),
+      ),
     ),
   )
 })
 
 describe('trap determinism', () => {
   const playWithTraps = (seed: number) =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(stocked(1, 1), {
-          rngState: () => seed,
-          phase: () => preparing(PLANNED_SPAWNS),
-          introducedKinds: () => ZOMBIE_KIND_ORDER,
-        }),
-      ),
-      press('KeyT'),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(preparing(PLANNED_SPAWNS))
+    modelAfter(
+      UiStruct.evolve(stocked(1, 1), {
+        rngState: () => seed,
+        phase: () => preparing(PLANNED_SPAWNS),
+        introducedKinds: () => ZOMBIE_KIND_ORDER,
       }),
-      press('KeyS'),
-      ...ticks(30, FRAME_MS),
-      release('KeyS'),
-      press('KeyT'),
-      press('Enter'),
-      holdFire,
-      ...ticks(400, FRAME_MS),
+      steps(
+        press('KeyT'),
+        checkModel(({ phase }) => {
+          expect(phase).toEqual(preparing(PLANNED_SPAWNS))
+        }),
+        press('KeyS'),
+        ticks(30, FRAME_MS),
+        release('KeyS'),
+        press('KeyT'),
+        press('Enter'),
+        holdFire,
+        ticks(400, FRAME_MS),
+      ),
     )
 
   it.effect('a wave with traps replays identically from the same seed', () =>
