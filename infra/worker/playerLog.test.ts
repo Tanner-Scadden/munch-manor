@@ -116,12 +116,22 @@ const deviceOf = (identity: Identity, server: Server) =>
 
 const DURABLE_OBJECT_BOUND_PARAMETERS = 100
 
-const asDurableObjectSqlite: Statement.Transformer = statement =>
-  statement.compile()[1].length > DURABLE_OBJECT_BOUND_PARAMETERS
+const DURABLE_OBJECT_COMPOUND_SELECT_TERMS = 5
+
+const compoundTermsOf = (sql: string) => String.split(sql, 'UNION ALL').length
+
+const asDurableObjectSqlite: Statement.Transformer = statement => {
+  const [sql, parameters] = statement.compile()
+  return parameters.length > DURABLE_OBJECT_BOUND_PARAMETERS
     ? Effect.die(
-        `too many SQL variables: ${statement.compile()[1].length} over ${DURABLE_OBJECT_BOUND_PARAMETERS}`,
+        `too many SQL variables: ${parameters.length} over ${DURABLE_OBJECT_BOUND_PARAMETERS}`,
       )
-    : Effect.succeed(statement)
+    : compoundTermsOf(sql) > DURABLE_OBJECT_COMPOUND_SELECT_TERMS
+      ? Effect.die(
+          `too many terms in compound SELECT: ${compoundTermsOf(sql)} over ${DURABLE_OBJECT_COMPOUND_SELECT_TERMS}`,
+        )
+      : Effect.succeed(statement)
+}
 
 const BIG_BATCH = 48
 const EVENT_KINDS = 5

@@ -1,4 +1,4 @@
-import { Array, Order, Predicate } from 'effect'
+import { Array, Order, Predicate, Record } from 'effect'
 import * as Clock from 'effect/Clock'
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
@@ -100,6 +100,22 @@ const PlayerProjection = Layer.effectDiscard(createPlayerTables).pipe(
 )
 
 const ENTRIES_PER_STATEMENT = 16
+const ENTRIES_PER_EVENT_LOOKUP = 4
+const EVENTS_PER_LOOKUP = 4
+
+const lookupChunksOf = (
+  batch: ReadonlyArray<EventJournal.Entry>,
+): Array<Array.NonEmptyArray<EventJournal.Entry>> =>
+  Array.map(
+    Array.chunksOf(
+      Array.flatMap(
+        Record.values(Array.groupBy(batch, entry => entry.event)),
+        sameEvent => Array.chunksOf(sameEvent, ENTRIES_PER_EVENT_LOOKUP),
+      ),
+      EVENTS_PER_LOOKUP,
+    ),
+    chunk => Array.flatten(chunk),
+  )
 
 const bySequence = Order.mapInput(
   Order.Number,
@@ -130,9 +146,8 @@ export const DurableObjectStorage = Layer.effect(
           batch === undefined
             ? storage.entriesAfter(storeId, entry)
             : Effect.map(
-                Effect.forEach(
-                  Array.chunksOf(batch, ENTRIES_PER_STATEMENT),
-                  chunk => storage.entriesAfter(storeId, entry, chunk),
+                Effect.forEach(lookupChunksOf(batch), chunk =>
+                  storage.entriesAfter(storeId, entry, chunk),
                 ),
                 chunks => oncePerSequence(Array.flatten(chunks)),
               ),
