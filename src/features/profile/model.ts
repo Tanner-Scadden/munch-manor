@@ -6,12 +6,7 @@ import {
   OrientationLock,
   ScreenFit,
 } from '../../platform/deviceSchema'
-import {
-  LastRunSync,
-  LinkFlow,
-  PlayerScopeStatus,
-  SyncState,
-} from '../../platform/playerSync'
+import { LinkFlow, SyncState } from '../../platform/playerSync'
 import { SavedMastery } from '../../shared/masteryData'
 import {
   Appearance,
@@ -107,8 +102,6 @@ export const ProfileProps = Schema.Struct({
   device: InputDevice,
   sync: Schema.Struct({
     state: SyncState,
-    scope: PlayerScopeStatus,
-    lastRun: LastRunSync,
   }),
   settings: ProfileSettings,
 })

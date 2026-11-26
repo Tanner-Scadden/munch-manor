@@ -1,4 +1,4 @@
-import { Array, Function, Option, Record, Schema } from 'effect'
+import { Function, Option, Record, Schema } from 'effect'
 
 export const MasterySkin = Schema.Literals(['Gilded', 'Diamond'])
 export type MasterySkin = typeof MasterySkin.Type
@@ -80,8 +80,3 @@ export const gunKillsOf: {
 } = Function.dual(2, (mastery: SavedMastery, kind: string): number =>
   countIn(mastery.guns, kind),
 )
-
-export const masteryRowsOf = (
-  counts: Counts,
-): ReadonlyArray<readonly [string, number]> =>
-  Array.filter(Record.toEntries(counts), ([, count]) => count > 0)

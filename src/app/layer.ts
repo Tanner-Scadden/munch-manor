@@ -19,7 +19,7 @@ import { ShowInstallPrompt } from './update/home'
 import { CueMusic } from './update/music'
 import { RedeemLinkCode, RequestLinkCode } from './update/profile'
 import { UploadRecording } from './update/recording'
-import { AwaitRunSettled, ReloadSyncedSave, WriteSave } from './update/save'
+import { ReloadSyncedSave, WriteSave } from './update/save'
 import { SendRunSummary } from './update/settle'
 import {
   AcquireAudioEngine,
@@ -40,7 +40,6 @@ export const CommandsLayer = Layer.mergeAll(
   RequestLinkCode.layer,
   RedeemLinkCode.layer,
   WriteSave.layer,
-  AwaitRunSettled.layer,
   ReloadSyncedSave.layer,
   ShowInstallPrompt.layer,
   AcquireAudioEngine.layer,

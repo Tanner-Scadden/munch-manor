@@ -2,117 +2,77 @@ import {
   Array,
   Context,
   Effect,
-  type Exit,
+  Exit,
   Function,
   Layer,
   Option,
   Predicate,
-  Record,
+  Ref,
   Result,
   Scheduler,
   Schema,
   Scope,
+  Semaphore,
   Stream,
+  Struct,
+  SubscriptionRef,
   pipe,
 } from 'effect'
+import {
+  type Event,
+  type EventGroup,
+  EventLog,
+  EventLogMessage,
+  SqlEventJournal,
+} from 'effect/eventlog'
 import { SqlClient } from 'effect/sql'
 
+import { TokenUnavailable } from '@munch/netcode/browser'
 import {
   Browser,
   type Persistence,
   SqliteClient,
   type SqliteClientService,
 } from '@munch/sqlite-wasm-effect'
-import {
-  type IdentityApi,
-  IdentityFailure,
-  IdentityRefused,
-  type LocalDatabase,
-  type Replica,
-  ScopeStatus,
-  Settled,
-  type Sync,
-  SyncStatus,
-  type Transport,
-  TransportError,
-  makeDeviceIdentity,
-  makeReplica,
-  randomId,
-  startSync,
-} from '@munch/sync-engine'
 
+import { PlayerSave } from '../shared/playerData'
+import { newIdentity, playerStoreOf } from '../shared/sessionApi'
 import { API_ORIGIN } from './apiOrigin'
-import { ClimbedDareLadder } from './dareMarkScope'
+import { dropOldTables, readOldSave } from './legacyTables'
 import {
-  GainedMastery,
-  GunKillsRow,
-  HeroMasteryRow,
-  gunRowsOf,
-  heroRowsOf,
-  masteryOfRows,
-} from './masteryScope'
-import {
-  ClaimedMission,
-  ProgressedMissions,
-  RerolledMission,
-  RolledMissions,
-  StampedMissionDay,
-} from './missionScope'
-import {
-  BoughtCosmetic,
-  BoughtRow,
-  ChangedAppearance,
-  ChangedCalling,
-  ChangedDifficulty,
-  ChangedHome,
-  ChangedName,
-  ChangedOnboarding,
-  ChangedRecordRuns,
-  ChangedRotation,
-  ChangedRumble,
-  ChangedSettings,
-  DoubledFirstRun,
-  EarnedRank,
-  EndedRun,
-  EscapedFirst,
-  ForgotPowerUps,
-  GrantedVeteranRank,
-  KeptJournal,
-  KillsRow,
-  PLAYER_COLUMNS,
-  PaidRankPurse,
+  type EarnedEvents,
+  type MissionEvents,
+  PLAYER_ROW_KEY,
+  PlayerLogSchema,
   PlayerRow,
-  PlayerScope,
-  ReachedRecords,
-  RecordedRun,
-  SawPowerUps,
-  SawUnlocks,
-  SeededPlayer,
-  ShelvedProof,
-  UnlockedNightmare,
-  UnlockedRecording,
-  boughtRowsOfSave,
-  killsRowsOfSave,
-  playerScopeId,
+  type PlayerRowFields,
+  type SetEvents,
+} from './playerEvents'
+import {
+  PROJECTION_TABLES,
+  PlayerHandlers,
+  ValueRow,
+  createPlayerTables,
+  dropPlayerTables,
+  readPlayerRow,
+  readPlayerSave,
   rowOfSave,
-} from './playerScope'
+} from './playerProjection'
 import {
-  LinkProblem,
-  PlayerChange,
-  PlayerScopeStatus,
-  RunSettled,
-  StoreEvent,
-  SyncState,
-} from './playerSync'
-import { ProofRow, encodedProofRows, proofOfRow } from './proofScope'
-import { type RoomAccess, makeRoomAccess } from './roomReplica'
+  type LinkRefused,
+  type PlayerRemote,
+  type SyncSetup,
+  browserSetup,
+  connectPlayerRemote,
+  redeemWith,
+} from './playerRemote'
+import { LinkProblem, PlayerChange, StoreEvent, SyncState } from './playerSync'
 import {
-  type PlayerSave,
-  SAVE_VERSION,
-  type SaveStorageError,
-  readLegacySave,
-  writeLegacySave,
-} from './save'
+  type RoomAccess,
+  type RoomSession,
+  makeRoomAccess,
+} from './roomReplica'
+import { type SaveStorageError, readLegacySave, writeLegacySave } from './save'
 import {
   STORE_NAME,
   releaseEarlyStoreWorker,
@@ -120,7 +80,7 @@ import {
   takeStoreWorker,
 } from './storeEarly'
 
-export { KillsRow, PlayerRow, killsRowsOfSave, rowOfSave }
+export type { SyncSetup }
 
 const PLAYER_MIGRATIONS = {
   '0001_create_player': Effect.gen(function* () {
@@ -179,90 +139,20 @@ const RECORD_UNLOCK_KEY = 'record-unlock'
 const RECORD_UNLOCKED = 'Unlocked'
 
 const LEGACY_IMPORT_KEY = 'legacy-local-storage-import'
-const SYNC_SEED_KEY = 'sync-seed'
+const OLD_TABLES_KEY = 'player-scope-dropped'
+const IDENTITY_KEY = 'player-identity'
+const ORIGIN_KEY = 'player-identity-origin'
 
-const LegacyImport = Schema.Literals(['Imported', 'Absent'])
-type LegacyImport = typeof LegacyImport.Type
+const IdentityOrigin = Schema.Literals(['Created', 'Linked'])
+type IdentityOrigin = typeof IdentityOrigin.Type
 
-const SyncSeed = Schema.Literals(['Seeded', 'Absent'])
-type SyncSeed = typeof SyncSeed.Type
+const isLinkedOrigin = Schema.is(Schema.Literal('Linked'))
 
-const MetaRow = Schema.Struct({ value: Schema.String })
+const JOURNAL_PREFIX = 'effect_event_'
 
-const DevicesRow = Schema.Struct({ count: Schema.Finite })
+const TableRow = Schema.Struct({ name: Schema.String })
 
-const boughtCosmeticsOf = (
-  rows: ReadonlyArray<BoughtRow>,
-): ReadonlyArray<string> => Array.map(rows, ({ id }) => id)
-
-const saveOfRow = (
-  row: PlayerRow,
-  kills: ReadonlyArray<KillsRow>,
-  bought: ReadonlyArray<BoughtRow>,
-  proof: ReadonlyArray<ProofRow>,
-  mastery: Readonly<{
-    heroes: ReadonlyArray<HeroMasteryRow>
-    guns: ReadonlyArray<GunKillsRow>
-  }>,
-): PlayerSave => ({
-  version: SAVE_VERSION,
-  onboarding: row.onboarding,
-  homeScreenTip: row.home_screen_tip,
-  settings: {
-    sound: row.sound,
-    music: row.music,
-    shake: row.shake,
-    shareStats: row.share_stats,
-    cursor: row.cursor,
-  },
-  appearance: row.appearance,
-  difficulty: {
-    chosen: row.difficulty,
-    card: row.difficulty_card,
-    nightmare: row.nightmare,
-  },
-  bests: {
-    runsPlayed: row.runs_played,
-    totalKills: row.total_kills,
-    killsByKind: Record.fromEntries(
-      Array.map(kills, ({ kind, kills: count }): readonly [string, number] => [
-        kind,
-        count,
-      ]),
-    ),
-    byDifficulty: row.difficulty_bests,
-  },
-  home: row.home,
-  seenPowerUps: row.seen_power_ups,
-  seenUnlocks: row.seen_unlocks,
-  rotation: row.rotation,
-  rumble: row.rumble,
-  recordRuns: row.record_runs,
-  recordUnlock: row.record_unlock,
-  name: row.name,
-  calling: row.calling,
-  boughtCosmetics: boughtCosmeticsOf(bought),
-  records: row.run_records,
-  rank: {
-    earnedPoints: row.rank_points,
-    earnedBones: row.rank_bones,
-    veteranPoints: row.veteran_points,
-    veteranBones: row.veteran_bones,
-    isVeteranGranted: row.veteran_granted === 1,
-    spentBones: row.spent_bones,
-  },
-  bonuses: {
-    doubledDay: row.doubled_day,
-    escapedOn: row.escaped_on,
-    purses: row.purses,
-  },
-  lastRun: row.last_run,
-  missions: row.missions,
-  journal: row.journal,
-  dareMarks: row.dare_marks,
-  proof: Array.map(proof, proofOfRow),
-  mastery: masteryOfRows(mastery),
-})
+const META_TABLE = 'store_meta'
 
 export interface LegacySave {
   readonly read: Effect.Effect<Option.Option<PlayerSave>, SaveStorageError>
@@ -275,10 +165,7 @@ export interface PlayerDatabase {
   readonly write: (
     save: PlayerSave,
     changes: ReadonlyArray<PlayerChange>,
-  ) => Effect.Effect<Option.Option<string>, PlayerDatabaseError>
-  readonly awaitSettled: (
-    id: string,
-  ) => Effect.Effect<RunSettled, PlayerDatabaseError>
+  ) => Effect.Effect<void, PlayerDatabaseError>
   readonly events: Stream.Stream<StoreEvent>
   readonly requestLinkCode: Effect.Effect<string, PlayerDatabaseError>
   readonly redeemLinkCode: (
@@ -315,168 +202,129 @@ class PlayerDatabaseError extends Schema.TaggedError<
 const toDatabaseError = (error: { readonly message: string }) =>
   PlayerDatabaseError.make({ reason: error.message, problem: 'Unavailable' })
 
-const linkProblemOf = (failure: IdentityFailure): LinkProblem =>
-  IdentityFailure.match(failure, {
-    Unauthorized: (): LinkProblem => 'Unavailable',
-    PlayerTaken: (): LinkProblem => 'Unavailable',
-    WrongCode: (): LinkProblem => 'WrongCode',
-    TooManyTries: (): LinkProblem => 'TooManyTries',
-    RateLimited: (): LinkProblem => 'TooManyTries',
-    BadRequest: (): LinkProblem => 'WrongCode',
-    Unavailable: (): LinkProblem => 'Offline',
-  })
+const unavailable = (reason: string) => () =>
+  PlayerDatabaseError.make({ reason, problem: 'Unavailable' })
 
-const fromRefused = (error: IdentityRefused) =>
-  PlayerDatabaseError.make({
-    reason: error.failure._tag,
-    problem: linkProblemOf(error.failure),
-  })
+const fromRefused = (error: LinkRefused) =>
+  PlayerDatabaseError.make({ reason: error.problem, problem: error.problem })
 
-const readKills = (client: SqliteClientService) =>
-  pipe(
-    client.query(KillsRow, client.sql`SELECT kind, kills FROM kills_by_kind`),
-    Effect.catchTag('SchemaError', () => Effect.succeed([])),
-  )
+type PlayerEvents = EventGroup.Events<
+  typeof SetEvents | typeof EarnedEvents | typeof MissionEvents
+>
 
-const readBought = (client: SqliteClientService) =>
-  pipe(
-    client.query(BoughtRow, client.sql`SELECT id FROM bought_cosmetics`),
-    Effect.catchTag('SchemaError', () => Effect.succeed([])),
-  )
+type PlayerItem = {
+  readonly [Tag in Event.Tag<PlayerEvents>]: {
+    readonly event: Tag
+    readonly payload: Event.PayloadWithTag<PlayerEvents, Tag>
+  }
+}[Event.Tag<PlayerEvents>]
 
-const readProof = (client: SqliteClientService) =>
-  pipe(
-    client.query(
-      ProofRow,
-      client.sql`SELECT thing, difficulty, wave, hero, crew, day, ending FROM proof`,
-    ),
-    Effect.catchTag('SchemaError', () => Effect.succeed([])),
-  )
+type RowPatch = Partial<Omit<PlayerRowFields, 'id'>>
 
-const readMastery = (client: SqliteClientService) =>
-  Effect.gen(function* () {
-    const heroes = yield* pipe(
-      client.query(
-        HeroMasteryRow,
-        client.sql`SELECT hero, points FROM hero_mastery`,
-      ),
-      Effect.catchTag('SchemaError', () => Effect.succeed([])),
-    )
-    const guns = yield* pipe(
-      client.query(
-        GunKillsRow,
-        client.sql`SELECT gun, kills FROM kills_by_gun`,
-      ),
-      Effect.catchTag('SchemaError', () => Effect.succeed([])),
-    )
-    return { heroes, guns }
-  })
+type Written = Readonly<{
+  patch: RowPatch
+  events: ReadonlyArray<PlayerItem>
+}>
 
-const readView = (client: SqliteClientService) =>
-  Effect.gen(function* () {
-    const sql = client.sql
-    const rows = yield* pipe(
-      client.query(
-        PlayerRow,
-        sql`SELECT ${sql.literal(Array.join(PLAYER_COLUMNS, ', '))} FROM player WHERE id = 1`,
-      ),
-      Effect.catchTag('SchemaError', () => Effect.succeed([])),
-    )
-    const maybeRow = Array.head(rows)
-    if (Option.isNone(maybeRow)) {
-      return Option.none<PlayerSave>()
-    }
-    const kills = yield* readKills(client)
-    const bought = yield* readBought(client)
-    const proof = yield* readProof(client)
-    const mastery = yield* readMastery(client)
-    return Option.some(saveOfRow(maybeRow.value, kills, bought, proof, mastery))
-  })
+const patchOf = (patch: RowPatch): Written => ({ patch, events: [] })
 
-const readDevices = (client: SqliteClientService) =>
-  pipe(
-    client.query(
-      DevicesRow,
-      client.sql`SELECT count FROM linked_devices WHERE id = 1`,
-    ),
-    Effect.map(rows =>
-      Option.match(Array.head(rows), {
-        onNone: () => 1,
-        onSome: row => row.count,
+const eventOf = (item: PlayerItem): Written => ({ patch: {}, events: [item] })
+
+const writtenOf = (save: PlayerSave, change: PlayerChange): Written =>
+  PlayerChange.match(change, {
+    ChangedSettings: ({ settings }) => patchOf({ ...settings }),
+    ChangedRotation: ({ rotation }) => patchOf({ rotation }),
+    ChangedRumble: ({ rumble }) => patchOf({ rumble }),
+    ChangedRecordRuns: ({ recordRuns }) => patchOf({ recordRuns }),
+    ChangedName: ({ name }) => patchOf({ name }),
+    ChangedAppearance: ({ appearance }) => patchOf({ appearance }),
+    ChangedDifficulty: ({ chosen, card }) => patchOf({ chosen, card }),
+    ChangedOnboarding: ({ onboarding, homeScreenTip }) =>
+      patchOf({ onboarding, homeScreenTip }),
+    ChangedHome: ({ home }) => patchOf({ home }),
+    SawPowerUps: () => patchOf({ seenPowerUps: save.seenPowerUps }),
+    ForgotPowerUps: () => patchOf({ seenPowerUps: save.seenPowerUps }),
+    EndedRun: ({ lastRun }) => patchOf({ lastRun }),
+    ChangedCalling: ({ calling }) => patchOf({ calling }),
+    UnlockedNightmare: () =>
+      eventOf({ event: 'UnlockedNightmare', payload: {} }),
+    UnlockedRecording: () =>
+      eventOf({ event: 'UnlockedRecording', payload: {} }),
+    SawUnlocks: ({ ids }) => eventOf({ event: 'SawUnlocks', payload: { ids } }),
+    RecordedRun: ({ runs, totalKills, kills, bests }) =>
+      eventOf({
+        event: 'RecordedRun',
+        payload: { runs, totalKills, kills, bests },
       }),
-    ),
-    Effect.tapError(error =>
-      Effect.logWarning('Could not read the linked device count', error),
-    ),
-    Effect.orElseSucceed(() => 1),
-  )
+    ReachedRecords: ({ records }) =>
+      eventOf({ event: 'ReachedRecords', payload: { records } }),
+    EarnedRank: ({ points, bones }) =>
+      eventOf({ event: 'EarnedRank', payload: { points, bones } }),
+    GrantedVeteranRank: ({ points, bones }) =>
+      eventOf({ event: 'GrantedVeteranRank', payload: { points, bones } }),
+    BoughtCosmetic: ({ id }) =>
+      eventOf({ event: 'BoughtCosmetic', payload: { id } }),
+    DoubledFirstRun: ({ day, bones }) =>
+      eventOf({ event: 'DoubledFirstRun', payload: { day, bones } }),
+    EscapedFirst: ({ difficulty }) =>
+      eventOf({ event: 'EscapedFirst', payload: { difficulty } }),
+    PaidRankPurse: ({ rank }) =>
+      eventOf({ event: 'PaidRankPurse', payload: { rank } }),
+    ProgressedMissions: ({ day, progress, coop }) =>
+      eventOf({
+        event: 'ProgressedMissions',
+        payload: { day, progress, coop },
+      }),
+    RolledMissions: ({ day, rolled }) =>
+      eventOf({ event: 'RolledMissions', payload: { day, rolled } }),
+    RerolledMission: ({ day, reroll }) =>
+      eventOf({ event: 'RerolledMission', payload: { day, reroll } }),
+    ClaimedMission: ({ day, mission }) =>
+      eventOf({ event: 'ClaimedMission', payload: { day, mission } }),
+    StampedMissionDay: ({ day }) =>
+      eventOf({ event: 'StampedMissionDay', payload: { day } }),
+    ShelvedProof: ({ entry }) =>
+      eventOf({ event: 'ShelvedProof', payload: { entry } }),
+    KeptJournal: ({ added }) =>
+      eventOf({ event: 'KeptJournal', payload: { added } }),
+    GainedMastery: ({ added }) =>
+      eventOf({ event: 'GainedMastery', payload: { added } }),
+    ClimbedDareLadder: ({ difficulty, mark }) =>
+      eventOf({ event: 'ClimbedDareLadder', payload: { difficulty, mark } }),
+  })
 
-const writeWhole = (
-  sql: SqlClient.SqlClient,
+const itemsOf = (
   save: PlayerSave,
-): Effect.Effect<void, PlayerDatabaseError> =>
+  changes: ReadonlyArray<PlayerChange>,
+): ReadonlyArray<PlayerItem> => {
+  const written = Array.map(changes, change => writtenOf(save, change))
+  const patch = Array.reduce(
+    written,
+    {},
+    (merged: RowPatch, next): RowPatch => ({ ...merged, ...next.patch }),
+  )
+  const events = Array.flatMap(written, next => next.events)
+  return Array.isReadonlyArrayEmpty(Struct.keys(patch))
+    ? events
+    : Array.append(events, PlayerRow.patch(PLAYER_ROW_KEY, patch))
+}
+
+const seedItems = (
+  save: PlayerSave,
+): Array.NonEmptyReadonlyArray<PlayerItem> => [
+  { event: 'Seeded', payload: { save: Struct.omit(save, ['version']) } },
+  PlayerRow.set(rowOfSave(save, PLAYER_ROW_KEY)),
+]
+
+const readMeta = (sql: SqlClient.SqlClient, key: string) =>
   pipe(
-    Effect.all([
-      Schema.encodeEffect(PlayerRow)(rowOfSave(save)),
-      encodedProofRows(save.proof),
-    ]),
-    Effect.flatMap(([encoded, proofRows]) =>
-      Effect.all([
-        sql`INSERT INTO player ${sql.insert({ id: 1, ...encoded })}
-        ON CONFLICT (id) DO UPDATE SET ${sql.literal(
-          Array.join(
-            Array.map(
-              PLAYER_COLUMNS,
-              column => `${column} = excluded.${column}`,
-            ),
-            ', ',
-          ),
-        )}`,
-        sql`DELETE FROM kills_by_kind`,
-        Array.match(killsRowsOfSave(save), {
-          onEmpty: () => Effect.void,
-          onNonEmpty: rows =>
-            sql`INSERT INTO kills_by_kind ${sql.insert(rows)}`,
-        }),
-        sql`DELETE FROM bought_cosmetics`,
-        Array.match(boughtRowsOfSave(save), {
-          onEmpty: () => Effect.void,
-          onNonEmpty: rows =>
-            sql`INSERT INTO bought_cosmetics ${sql.insert(rows)}`,
-        }),
-        sql`DELETE FROM proof`,
-        Array.match(proofRows, {
-          onEmpty: () => Effect.void,
-          onNonEmpty: rows => sql`INSERT INTO proof ${sql.insert(rows)}`,
-        }),
-        sql`DELETE FROM hero_mastery`,
-        Array.match(heroRowsOf(save.mastery), {
-          onEmpty: () => Effect.void,
-          onNonEmpty: rows => sql`INSERT INTO hero_mastery ${sql.insert(rows)}`,
-        }),
-        sql`DELETE FROM kills_by_gun`,
-        Array.match(gunRowsOf(save.mastery), {
-          onEmpty: () => Effect.void,
-          onNonEmpty: rows => sql`INSERT INTO kills_by_gun ${sql.insert(rows)}`,
-        }),
-      ]),
-    ),
-    sql.withTransaction,
-    Effect.asVoid,
-    Effect.mapError(toDatabaseError),
+    sql`SELECT value FROM store_meta WHERE key = ${key}`,
+    Effect.flatMap(Schema.decodeUnknownEffect(Schema.Array(ValueRow))),
+    Effect.map(rows => Option.map(Array.head(rows), ({ value }) => value)),
   )
 
-const readMeta = (client: SqliteClientService, key: string) =>
-  Effect.map(
-    client.query(
-      MetaRow,
-      client.sql`SELECT value FROM store_meta WHERE key = ${key}`,
-    ),
-    rows => Array.head(rows),
-  )
-
-const markMeta = (client: SqliteClientService, key: string, value: string) =>
-  client.sql`INSERT INTO store_meta ${client.sql.insert({ key, value })}
+const markMeta = (sql: SqlClient.SqlClient, key: string, value: string) =>
+  sql`INSERT INTO store_meta ${sql.insert({ key, value })}
     ON CONFLICT (key) DO UPDATE SET value = excluded.value`
 
 type QueueTable = Readonly<{ table: string; limit: number }>
@@ -536,152 +384,70 @@ const clearRows = (client: SqliteClientService, { table }: QueueTable) =>
     Effect.mapError(toDatabaseError),
   )
 
-const importLegacy = (client: SqliteClientService, legacy: LegacySave) =>
-  pipe(
-    Effect.gen(function* () {
-      const existing = yield* readView(client)
-      if (Option.isSome(existing)) {
-        return existing
-      }
-      const mark = yield* readMeta(client, LEGACY_IMPORT_KEY)
-      if (Option.isSome(mark)) {
-        return Option.none<PlayerSave>()
-      }
-      const maybeLegacy = yield* pipe(
-        legacy.read,
-        Effect.catch(error =>
-          Effect.as(
-            Effect.logWarning(
-              'Could not read the localStorage save to import',
-              error.reason,
-            ),
-            Option.none<PlayerSave>(),
-          ),
-        ),
-      )
-      yield* Option.match(maybeLegacy, {
-        onNone: () => Effect.void,
-        onSome: save => writeWhole(client.sql, save),
-      })
-      const imported: LegacyImport = Option.isSome(maybeLegacy)
-        ? 'Imported'
-        : 'Absent'
-      yield* markMeta(client, LEGACY_IMPORT_KEY, imported)
-      return maybeLegacy
-    }),
-    client.transaction,
-    Effect.mapError(toDatabaseError),
+type Identity = EventLog.Identity['Service']
+
+const decodeIdentity = (value: string): Option.Option<Identity> =>
+  Option.liftThrowable(EventLog.decodeIdentityString)(value)
+
+const logLayer = (sql: SqlClient.SqlClient, identity: Identity) =>
+  EventLog.layer(PlayerLogSchema, PlayerHandlers).pipe(
+    Layer.provideMerge(SqlEventJournal.layer()),
+    Layer.provide(Layer.effectDiscard(createPlayerTables)),
+    Layer.provide(Layer.succeed(EventLog.Identity, identity)),
+    Layer.provide(
+      Layer.succeed(
+        EventLog.CurrentStoreId,
+        EventLogMessage.StoreId.make(playerStoreOf(identity.publicKey)),
+      ),
+    ),
+    Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)),
   )
 
-export interface SyncSetup {
-  readonly identityApi: IdentityApi
-  readonly transports: Array.NonEmptyReadonlyArray<Transport>
-}
+type Running = Readonly<{
+  identity: Identity
+  log: EventLog.EventLog['Service']
+  scope: Scope.Closeable
+  maybeRemote: Option.Option<PlayerRemote>
+}>
 
-const offlineApi: IdentityApi = {
-  challenge: Effect.fail(
-    IdentityRefused.make({
-      failure: IdentityFailure.cases.Unavailable.make({}),
-    }),
-  ),
-  session: () =>
-    Effect.fail(
-      IdentityRefused.make({
-        failure: IdentityFailure.cases.Unavailable.make({}),
-      }),
-    ),
-  link: () =>
-    Effect.fail(
-      IdentityRefused.make({
-        failure: IdentityFailure.cases.Unavailable.make({}),
-      }),
-    ),
-  redeem: () =>
-    Effect.fail(
-      IdentityRefused.make({
-        failure: IdentityFailure.cases.Unavailable.make({}),
-      }),
-    ),
-}
-
-const runChange = (replica: Replica, change: PlayerChange) =>
-  PlayerChange.match(change, {
-    ChangedSettings: ({ settings }) =>
-      replica.run(ChangedSettings, { settings }),
-    ChangedRotation: ({ rotation }) =>
-      replica.run(ChangedRotation, { rotation }),
-    ChangedRumble: ({ rumble }) => replica.run(ChangedRumble, { rumble }),
-    ChangedRecordRuns: ({ recordRuns }) =>
-      replica.run(ChangedRecordRuns, { recordRuns }),
-    ChangedName: ({ name }) => replica.run(ChangedName, { name }),
-    ChangedAppearance: ({ appearance }) =>
-      replica.run(ChangedAppearance, { appearance }),
-    UnlockedNightmare: () => replica.run(UnlockedNightmare, {}),
-    UnlockedRecording: () => replica.run(UnlockedRecording, {}),
-    ChangedDifficulty: ({ chosen, card }) =>
-      replica.run(ChangedDifficulty, { chosen, card }),
-    ChangedOnboarding: ({ onboarding, homeScreenTip }) =>
-      replica.run(ChangedOnboarding, { onboarding, homeScreenTip }),
-    ChangedHome: ({ home }) => replica.run(ChangedHome, { home }),
-    SawPowerUps: ({ kinds }) => replica.run(SawPowerUps, { kinds }),
-    SawUnlocks: ({ ids }) => replica.run(SawUnlocks, { ids }),
-    ForgotPowerUps: () => replica.run(ForgotPowerUps, {}),
-    RecordedRun: ({ runs, totalKills, kills, bests }) =>
-      replica.run(RecordedRun, { runs, totalKills, kills, bests }),
-    ReachedRecords: ({ records }) => replica.run(ReachedRecords, { records }),
-    ChangedCalling: ({ calling }) => replica.run(ChangedCalling, { calling }),
-    EarnedRank: ({ points, bones }) =>
-      replica.run(EarnedRank, { points, bones }),
-    BoughtCosmetic: ({ id }) => replica.run(BoughtCosmetic, { id }),
-    GrantedVeteranRank: ({ points, bones }) =>
-      replica.run(GrantedVeteranRank, { points, bones }),
-    DoubledFirstRun: ({ day, bones }) =>
-      replica.run(DoubledFirstRun, { day, bones }),
-    EscapedFirst: ({ difficulty }) => replica.run(EscapedFirst, { difficulty }),
-    PaidRankPurse: ({ rank }) => replica.run(PaidRankPurse, { rank }),
-    EndedRun: ({ lastRun }) => replica.run(EndedRun, { lastRun }),
-    ProgressedMissions: ({ day, progress, coop }) =>
-      replica.run(ProgressedMissions, { day, progress, coop }),
-    RolledMissions: ({ day, rolled }) =>
-      replica.run(RolledMissions, { day, rolled }),
-    RerolledMission: ({ day, reroll }) =>
-      replica.run(RerolledMission, { day, reroll }),
-    ClaimedMission: ({ day, mission }) =>
-      replica.run(ClaimedMission, { day, mission }),
-    StampedMissionDay: ({ day }) => replica.run(StampedMissionDay, { day }),
-    ShelvedProof: ({ entry }) => replica.run(ShelvedProof, { entry }),
-    KeptJournal: ({ added }) => replica.run(KeptJournal, { added }),
-    GainedMastery: ({ added }) => replica.run(GainedMastery, { added }),
-    ClimbedDareLadder: ({ difficulty, mark }) =>
-      replica.run(ClimbedDareLadder, { difficulty, mark }),
+const dropJournal = (sql: SqlClient.SqlClient) =>
+  Effect.gen(function* () {
+    const tables = yield* pipe(
+      sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE ${`${JOURNAL_PREFIX}%`}`,
+      Effect.flatMap(Schema.decodeUnknownEffect(Schema.Array(TableRow))),
+    )
+    yield* Effect.forEach(
+      tables,
+      ({ name }) => sql`DROP TABLE IF EXISTS ${sql(name)}`,
+      { discard: true },
+    )
+    yield* Effect.provideService(dropPlayerTables, SqlClient.SqlClient, sql)
   })
 
-const sameSyncState = Schema.toEquivalence(SyncState)
-
-const scopeStatusOf = (status: ScopeStatus): PlayerScopeStatus =>
-  ScopeStatus.match(status, {
-    Idle: (): PlayerScopeStatus => PlayerScopeStatus.Idle(),
-    Loading: (): PlayerScopeStatus => PlayerScopeStatus.Loading(),
-    Ready: ({ seq, fresh }): PlayerScopeStatus =>
-      PlayerScopeStatus.Ready({ seq, fresh }),
-    Failed: ({ reason }): PlayerScopeStatus =>
-      PlayerScopeStatus.Failed({ reason }),
-  })
-
-const runSettledOf = (settled: Settled): RunSettled =>
-  Settled.match(settled, {
-    Confirmed: ({ seq }): RunSettled => RunSettled.Confirmed({ seq }),
-    Rejected: ({ code, reason }): RunSettled =>
-      RunSettled.Rejected({ reason: `${code}: ${reason}` }),
-  })
-
-const stateOf = (status: SyncStatus, devices: number): SyncState =>
-  SyncStatus.match(status, {
-    Online: (): SyncState => SyncState.Synced({ devices }),
-    Following: (): SyncState => SyncState.Synced({ devices }),
-    Connecting: ({ attempt }): SyncState =>
-      attempt === 0 ? SyncState.Connecting() : SyncState.Offline({ devices }),
-    Offline: (): SyncState => SyncState.Offline({ devices }),
+const readLegacyOnce = (sql: SqlClient.SqlClient, legacy: LegacySave) =>
+  Effect.gen(function* () {
+    const imported = yield* readMeta(sql, LEGACY_IMPORT_KEY)
+    if (Option.isSome(imported)) {
+      return Option.none<PlayerSave>()
+    }
+    const maybeLegacy = yield* pipe(
+      legacy.read,
+      Effect.catch(error =>
+        Effect.as(
+          Effect.logWarning(
+            'Could not read the localStorage save to import',
+            error.reason,
+          ),
+          Option.none<PlayerSave>(),
+        ),
+      ),
+    )
+    yield* markMeta(
+      sql,
+      LEGACY_IMPORT_KEY,
+      Option.isSome(maybeLegacy) ? 'Imported' : 'Absent',
+    )
+    return maybeLegacy
   })
 
 export const makePlayerDatabase: {
@@ -705,129 +471,261 @@ export const makePlayerDatabase: {
   ): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope> =>
     Effect.gen(function* () {
       const sql = client.sql
+      const outer = yield* Effect.scope
       yield* pipe(
         client.migrate(PLAYER_MIGRATIONS),
         Effect.mapError(toDatabaseError),
       )
       const status = yield* client.status
+      const lock = yield* Semaphore.make(1)
+      const lastSave = yield* Ref.make(Option.none<PlayerSave>())
+      const syncState = yield* SubscriptionRef.make<SyncState>(
+        Option.isSome(maybeSetup)
+          ? SyncState.Connecting()
+          : SyncState.LocalOnly(),
+      )
 
-      const identity = yield* pipe(
-        makeDeviceIdentity({
-          sql,
-          api: Option.match(maybeSetup, {
-            onNone: () => offlineApi,
-            onSome: setup => setup.identityApi,
-          }),
-        }),
-        Effect.mapError(toDatabaseError),
-      )
-      const playerId = yield* Effect.mapError(identity.playerId, fromRefused)
-      const database: LocalDatabase = {
+      const readSave = Effect.provideService(
+        readPlayerSave,
+        SqlClient.SqlClient,
         sql,
-        changes: client.changes,
-        role: Effect.map(client.status, current => current.role),
-      }
-      const replica = yield* pipe(
-        makeReplica({
-          definition: PlayerScope,
-          database,
-          scope: playerScopeId(playerId),
-        }),
-        Effect.mapError(toDatabaseError),
       )
+
+      const start = (identity: Identity) =>
+        Effect.gen(function* () {
+          const scope = yield* Scope.fork(outer)
+          const context = yield* pipe(
+            Layer.buildWithScope(logLayer(sql, identity), scope),
+            Effect.onError(cause => Scope.close(scope, Exit.failCause(cause))),
+          )
+          const maybeRemote = yield* Option.match(maybeSetup, {
+            onNone: () => Effect.succeedNone,
+            onSome: setup =>
+              pipe(
+                connectPlayerRemote(setup, identity),
+                Effect.tap(remote =>
+                  Effect.forkScoped(
+                    Stream.runForEach(remote.state, next =>
+                      SubscriptionRef.set(syncState, next),
+                    ),
+                  ),
+                ),
+                Effect.provideContext(context),
+                Scope.provide(scope),
+                Effect.asSome,
+              ),
+          })
+          const running: Running = {
+            identity,
+            log: Context.get(context, EventLog.EventLog),
+            scope,
+            maybeRemote,
+          }
+          return running
+        })
+
+      const stored = yield* pipe(
+        readMeta(sql, IDENTITY_KEY),
+        Effect.mapBoth({
+          onSuccess: Option.flatMap(decodeIdentity),
+          onFailure: toDatabaseError,
+        }),
+      )
+      const identity = yield* Option.match(stored, {
+        onSome: Effect.succeed,
+        onNone: () =>
+          Effect.tap(newIdentity, created =>
+            pipe(
+              Effect.all([
+                markMeta(
+                  sql,
+                  IDENTITY_KEY,
+                  EventLog.encodeIdentityString(created),
+                ),
+                markMeta(sql, ORIGIN_KEY, 'Created' satisfies IdentityOrigin),
+              ]),
+              sql.withTransaction,
+              Effect.mapError(toDatabaseError),
+            ),
+          ),
+      })
+      const first = yield* Effect.mapError(start(identity), toDatabaseError)
+      const current = yield* Ref.make(first)
+
+      const originOf = Effect.map(readMeta(sql, ORIGIN_KEY), origin =>
+        Option.exists(origin, isLinkedOrigin) ? 'Linked' : 'Created',
+      )
+
+      const seed = (running: Running, save: PlayerSave) =>
+        running.log.writeMany({
+          schema: PlayerLogSchema,
+          events: seedItems(save),
+        })
 
       yield* pipe(
         Effect.gen(function* () {
-          const seeded = yield* readMeta(client, SYNC_SEED_KEY)
-          if (Option.isSome(seeded)) {
+          const dropped = yield* readMeta(sql, OLD_TABLES_KEY)
+          if (Option.isSome(dropped)) {
             return
           }
-          const maybeSave = yield* importLegacy(client, legacy)
-          yield* Option.match(maybeSave, {
-            onNone: () => Effect.void,
-            onSome: save => Effect.asVoid(replica.run(SeededPlayer, { save })),
-          })
-          const mark: SyncSeed = Option.isSome(maybeSave) ? 'Seeded' : 'Absent'
-          yield* markMeta(client, SYNC_SEED_KEY, mark)
+          const running = yield* Ref.get(current)
+          const maybeSaved = yield* readSave
+          const origin = yield* originOf
+          if (Option.isNone(maybeSaved) && origin === 'Created') {
+            const maybeOld = yield* readOldSave
+            const maybeSave = Option.isSome(maybeOld)
+              ? maybeOld
+              : yield* readLegacyOnce(sql, legacy)
+            yield* Option.match(maybeSave, {
+              onNone: () => Effect.void,
+              onSome: save => seed(running, save),
+            })
+          }
+          yield* dropOldTables
+          yield* markMeta(sql, OLD_TABLES_KEY, 'Dropped')
         }),
-        client.transaction,
-        Effect.mapError(error =>
-          error._tag === 'PlayerDatabaseError'
-            ? error
-            : PlayerDatabaseError.make({
-                reason: error.message,
-                problem: 'Unavailable',
-              }),
-        ),
+        Effect.provideService(SqlClient.SqlClient, sql),
+        effect => lock.withPermit(effect),
+        Effect.mapError(error => toDatabaseError({ message: String(error) })),
+      )
+
+      const load = pipe(
+        readSave,
+        Effect.tap(maybeSave => Ref.set(lastSave, maybeSave)),
       )
 
       const write = (save: PlayerSave, changes: ReadonlyArray<PlayerChange>) =>
-        pipe(
-          Effect.gen(function* () {
-            const current = yield* readView(client)
-            if (Option.isNone(current)) {
-              yield* replica.run(SeededPlayer, { save })
-              return Option.none<string>()
-            }
-            const ran = yield* Effect.forEach(changes, change =>
-              pipe(
-                runChange(replica, change),
-                Effect.map(id =>
-                  change._tag === 'RecordedRun'
-                    ? Option.some(id)
-                    : Option.none<string>(),
-                ),
-                Effect.catchTag('MutationRejected', error =>
-                  Effect.as(
-                    Effect.logWarning(
-                      `Dropped ${change._tag}, which the player scope rejects`,
-                      error.reason,
-                    ),
-                    Option.none<string>(),
+        lock.withPermit(
+          pipe(
+            Effect.gen(function* () {
+              const running = yield* Ref.get(current)
+              const maybeRow = yield* Effect.provideService(
+                readPlayerRow,
+                SqlClient.SqlClient,
+                sql,
+              )
+              if (Option.isNone(maybeRow)) {
+                if ((yield* originOf) === 'Created') {
+                  yield* seed(running, save)
+                  yield* Ref.set(lastSave, Option.some(save))
+                }
+                return
+              }
+              yield* Array.match(itemsOf(save, changes), {
+                onEmpty: () => Effect.void,
+                onNonEmpty: events =>
+                  Effect.asVoid(
+                    running.log.writeMany({ schema: PlayerLogSchema, events }),
                   ),
-                ),
-              ),
-            )
-            return Option.isSome(maybeSetup)
-              ? Array.last(Array.getSomes(ran))
-              : Option.none<string>()
-          }),
-          client.transaction,
-          Effect.mapError(toDatabaseError),
+              })
+              yield* Ref.set(lastSave, Option.some(save))
+            }),
+            Effect.mapError(error =>
+              toDatabaseError({ message: String(error) }),
+            ),
+          ),
         )
 
-      const maybeSync: Option.Option<Sync> = yield* Option.match(maybeSetup, {
-        onNone: () => Effect.succeedNone,
-        onSome: setup =>
+      const restart = (startAs: Identity, wipe: boolean) =>
+        lock.withPermit(
           Effect.gen(function* () {
-            const clientId = yield* randomId(9)
-            const sync = yield* startSync({
-              replica,
-              transports: setup.transports,
-              credentials: pipe(
-                identity.session,
-                Effect.mapBoth({
-                  onSuccess: session => ({ token: session.token, clientId }),
-                  onFailure: error =>
-                    TransportError.make({ reason: error.failure._tag }),
-                }),
-              ),
-              refreshCredentials: identity.invalidate,
-            })
-            return Option.some(sync)
+            const running = yield* Ref.get(current)
+            yield* Scope.close(running.scope, Exit.void)
+            if (wipe) {
+              yield* dropJournal(sql)
+            }
+            yield* SubscriptionRef.set(
+              syncState,
+              Option.isSome(maybeSetup)
+                ? SyncState.Connecting()
+                : SyncState.LocalOnly(),
+            )
+            const next = yield* start(startAs)
+            yield* Ref.set(current, next)
           }),
-      })
+        )
+
+      const redeemLinkCode = (code: string) =>
+        Effect.gen(function* () {
+          const setup = yield* Effect.mapError(
+            Effect.fromOption(maybeSetup),
+            unavailable('No sync'),
+          )
+          const encoded = yield* Effect.mapError(
+            redeemWith(setup, code),
+            fromRefused,
+          )
+          const linked = yield* Effect.mapError(
+            Effect.fromOption(decodeIdentity(encoded)),
+            unavailable('Bad identity'),
+          )
+          const running = yield* Ref.get(current)
+          if (linked.publicKey === running.identity.publicKey) {
+            return
+          }
+          yield* pipe(
+            Effect.all([
+              markMeta(sql, IDENTITY_KEY, encoded),
+              markMeta(sql, ORIGIN_KEY, 'Linked' satisfies IdentityOrigin),
+            ]),
+            sql.withTransaction,
+            Effect.mapError(toDatabaseError),
+          )
+          yield* Ref.set(lastSave, Option.none())
+          yield* Effect.mapError(restart(linked, true), toDatabaseError)
+        })
+
+      const followOtherTabs = pipe(
+        client.changes,
+        Stream.filter(changes =>
+          Array.some(changes, change => change.table === META_TABLE),
+        ),
+        Stream.runForEach(() =>
+          Effect.gen(function* () {
+            const maybeEncoded = yield* readMeta(sql, IDENTITY_KEY)
+            const maybeStored = Option.flatMap(maybeEncoded, decodeIdentity)
+            const running = yield* Ref.get(current)
+            yield* Option.match(
+              Option.filter(
+                maybeStored,
+                next => next.publicKey !== running.identity.publicKey,
+              ),
+              {
+                onNone: () => Effect.void,
+                onSome: next => restart(next, false),
+              },
+            )
+          }),
+        ),
+        Effect.catchCause(cause =>
+          Effect.logError('Could not follow another tab linking', cause),
+        ),
+      )
+      yield* Effect.forkScoped(followOtherTabs)
+
+      const sameSave = Schema.toEquivalence(PlayerSave)
 
       const savedChanges: Stream.Stream<StoreEvent> = pipe(
-        replica.remoteChanges,
-        Stream.mapEffect(() =>
-          pipe(
-            readView(client),
-            Effect.tapError(error =>
-              Effect.logError('Could not read the save sync changed', error),
-            ),
-            Effect.orElseSucceed(() => Option.none<PlayerSave>()),
+        client.changes,
+        Stream.filter(changes =>
+          Array.some(changes, change =>
+            Array.contains(PROJECTION_TABLES, change.table),
           ),
+        ),
+        Stream.mapEffect(() =>
+          Effect.gen(function* () {
+            const maybeSave = yield* readSave
+            const before = yield* Ref.get(lastSave)
+            const isNew = Option.match(maybeSave, {
+              onNone: () => false,
+              onSome: save =>
+                !Option.exists(before, known => sameSave(known, save)),
+            })
+            if (isNew) {
+              yield* Ref.set(lastSave, maybeSave)
+            }
+            return isNew ? maybeSave : Option.none<PlayerSave>()
+          }),
         ),
         Stream.filterMap(maybeSave =>
           Option.match(maybeSave, {
@@ -837,43 +735,18 @@ export const makePlayerDatabase: {
         ),
       )
 
-      const statusChanges: Stream.Stream<StoreEvent> = Option.match(maybeSync, {
-        onNone: () =>
-          Stream.make(StoreEvent.SyncStatus({ state: SyncState.LocalOnly() })),
-        onSome: sync =>
-          pipe(
-            Stream.merge(
-              Stream.map(sync.status, next => ({ status: next })),
-              Stream.mapEffect(
-                Stream.concat(Stream.make(undefined), replica.remoteChanges),
-                () =>
-                  Effect.map(sync.current, current => ({ status: current })),
-              ),
-            ),
-            Stream.mapEffect(({ status: current }) =>
-              Effect.map(readDevices(client), devices =>
-                StoreEvent.SyncStatus({ state: stateOf(current, devices) }),
-              ),
-            ),
-            Stream.changesWith((a, b) => sameSyncState(a.state, b.state)),
-          ),
-      })
+      const sameState = Schema.toEquivalence(SyncState)
 
-      const redeemLinkCode = (code: string) =>
-        Effect.gen(function* () {
-          const linked = yield* Effect.mapError(
-            identity.redeem(code),
-            fromRefused,
-          )
-          yield* Effect.mapError(
-            replica.switchScope(playerScopeId(linked.playerId)),
-            toDatabaseError,
-          )
-          yield* Option.match(maybeSync, {
-            onNone: () => Effect.void,
-            onSome: sync => sync.reconnect,
-          })
-        })
+      const statusChanges: Stream.Stream<StoreEvent> = pipe(
+        SubscriptionRef.changes(syncState),
+        Stream.changesWith(sameState),
+        Stream.map(state => StoreEvent.SyncStatus({ state })),
+      )
+
+      const remoteOf = Effect.map(
+        Ref.get(current),
+        running => running.maybeRemote,
+      )
 
       const maybeRoomAccess: Option.Option<RoomAccess> = yield* Option.match(
         maybeSetup,
@@ -882,45 +755,48 @@ export const makePlayerDatabase: {
           onSome: setup =>
             Effect.asSome(
               makeRoomAccess({
-                database,
-                identity,
+                database: {
+                  sql,
+                  changes: client.changes,
+                  role: Effect.map(client.status, now => now.role),
+                },
+                session: Effect.map(Ref.get(current), running =>
+                  Option.match(running.maybeRemote, {
+                    onNone: (): RoomSession => ({
+                      playerId: running.identity.publicKey,
+                      token: Effect.fail(
+                        TokenUnavailable.make({ reason: 'Offline' }),
+                      ),
+                      invalidate: Effect.void,
+                    }),
+                    onSome: remote => remote.session,
+                  }),
+                ),
                 transports: setup.transports,
               }),
             ),
         },
       )
 
-      const scopeChanges: Stream.Stream<StoreEvent> = Stream.map(
-        replica.status,
-        next => StoreEvent.ScopeStatus({ status: scopeStatusOf(next) }),
-      )
-
       return {
         persistence: status.persistence,
-        load: readView(client).pipe(Effect.mapError(toDatabaseError)),
+        load: Effect.mapError(load, toDatabaseError),
         write,
-        awaitSettled: id =>
-          pipe(
-            replica.awaitSettled(id),
-            Effect.mapBoth({
-              onSuccess: runSettledOf,
-              onFailure: toDatabaseError,
-            }),
-          ),
-        events: Stream.mergeAll([savedChanges, statusChanges, scopeChanges], {
-          concurrency: 'unbounded',
-        }),
-        requestLinkCode: Effect.mapBoth(identity.createLinkCode, {
-          onSuccess: response => response.code,
-          onFailure: fromRefused,
-        }),
+        events: Stream.merge(savedChanges, statusChanges),
+        requestLinkCode: Effect.flatMap(remoteOf, maybeRemote =>
+          Option.match(maybeRemote, {
+            onNone: () => Effect.fail(unavailable('No sync')()),
+            onSome: remote =>
+              Effect.mapError(remote.createLinkCode, fromRefused),
+          }),
+        ),
         redeemLinkCode,
         maybeRoomAccess,
         queueSummary: body => queueRow(client, SUMMARY_QUEUE, body),
         takeQueuedSummary: takeRow(client, SUMMARY_QUEUE),
         clearQueuedSummaries: clearRows(client, SUMMARY_QUEUE),
-        isRecordUnlocked: Effect.mapBoth(readMeta(client, RECORD_UNLOCK_KEY), {
-          onSuccess: Option.exists(({ value }) => value === RECORD_UNLOCKED),
+        isRecordUnlocked: Effect.mapBoth(readMeta(sql, RECORD_UNLOCK_KEY), {
+          onSuccess: Option.contains(RECORD_UNLOCKED),
           onFailure: toDatabaseError,
         }),
         queueRecording: body => queueRow(client, RECORDING_QUEUE, body),
@@ -929,18 +805,6 @@ export const makePlayerDatabase: {
       }
     }),
 )
-
-const browserSetup = (origin: string): Effect.Effect<SyncSetup> =>
-  Effect.map(
-    Effect.promise(() => import('@munch/sync-engine/browser')),
-    browser => ({
-      identityApi: browser.httpIdentityApi(origin),
-      transports: [
-        browser.webSocketTransport(origin),
-        browser.httpTransport(origin),
-      ],
-    }),
-  )
 
 export const openPlayerDatabase: {
   (

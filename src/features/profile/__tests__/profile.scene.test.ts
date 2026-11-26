@@ -51,7 +51,7 @@ const onTouch: Model = UiStruct.evolve(homeAfterRead, {
 const synced: Model = UiStruct.evolve(homeAfterRead, {
   saving: saving =>
     UiStruct.evolve(saving, {
-      syncState: () => SyncState.Synced({ devices: 2 }),
+      syncState: () => SyncState.Synced(),
     }),
 })
 
@@ -73,7 +73,8 @@ const lacks = (locator: Locator.Locator, name: string) =>
     }),
   )
 
-const selected = (name: string) => has(profileTab(name), { 'aria-selected': 'true' })
+const selected = (name: string) =>
+  has(profileTab(name), { 'aria-selected': 'true' })
 
 const atTab = (name: string) =>
   inPanel(s =>
@@ -255,7 +256,7 @@ describe('the Profile', () => {
         selected('Account'),
         see(s =>
           s
-            .expect(HtmlLocator.role('list', { name: 'Your 2 devices' }))
+            .expect(HtmlLocator.role('list', { name: 'Your device' }))
             .toExist()
             .expect(HtmlLocator.role('status'))
             .toExist(),

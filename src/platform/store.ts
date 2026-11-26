@@ -16,7 +16,6 @@ import { UiSchema } from '@effect/ui'
 import {
   LinkProblem,
   type PlayerChange,
-  type RunSettled,
   StoreEvent,
   SyncState,
 } from './playerSync'
@@ -57,8 +56,7 @@ export class PlayerStore extends Context.Service<
     readonly write: (
       save: PlayerSave,
       changes: ReadonlyArray<PlayerChange>,
-    ) => Effect.Effect<Option.Option<string>, StoreError>
-    readonly awaitSettled: (id: string) => Effect.Effect<RunSettled, StoreError>
+    ) => Effect.Effect<void, StoreError>
     readonly events: Stream.Stream<StoreEvent>
     readonly requestLinkCode: Effect.Effect<string, LinkError>
     readonly redeemLinkCode: (code: string) => Effect.Effect<void, LinkError>
@@ -121,7 +119,7 @@ const writeTo = (
   backend: Backend,
   save: PlayerSave,
   changes: ReadonlyArray<PlayerChange>,
-): Effect.Effect<Option.Option<string>, StoreError> =>
+): Effect.Effect<void, StoreError> =>
   Backend.match(backend, {
     Sqlite: ({ database }) => {
       const written = pipe(
@@ -132,12 +130,11 @@ const writeTo = (
         ? written
         : Effect.gen(function* () {
             const legacyWritten = yield* Effect.exit(writeLegacy(save))
-            const maybeRunId = yield* written
+            yield* written
             yield* legacyWritten
-            return maybeRunId
           })
     },
-    LocalStorage: () => Effect.as(writeLegacy(save), Option.none<string>()),
+    LocalStorage: () => writeLegacy(save),
   })
 
 const localOnly: Stream.Stream<StoreEvent> = Stream.make(
@@ -206,13 +203,6 @@ export const layer: Layer.Layer<PlayerStore> = Layer.effect(
               Effect.logError('The save was not written', error.reason),
             ),
           ),
-        ),
-      awaitSettled: id =>
-        Effect.flatMap(
-          Effect.mapError(database, error =>
-            StoreError.make({ reason: error.problem }),
-          ),
-          opened => Effect.mapError(opened.awaitSettled(id), toStoreError),
         ),
       events: Stream.unwrap(
         Effect.map(backend, current =>

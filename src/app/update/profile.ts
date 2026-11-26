@@ -1,7 +1,6 @@
 import { Effect, Function, Option, Schema, String, pipe } from 'effect'
 
 import { Command, Component, UiStruct } from '@effect/ui'
-import { normalizeCode } from '@munch/sync-engine'
 
 import { randomAppearance } from '../../art/appearance'
 import {
@@ -47,7 +46,7 @@ import {
   withoutPreview,
 } from '../../features/profile/steps'
 import { isCharacterKey } from '../../input/input'
-import { LinkFlow } from '../../platform/playerSync'
+import { LinkFlow, normalizeCode } from '../../platform/playerSync'
 import { forgetTutorial } from '../../platform/save'
 import { PlayerStore } from '../../platform/store'
 import {

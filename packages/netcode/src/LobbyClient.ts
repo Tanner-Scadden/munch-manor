@@ -15,23 +15,17 @@ import {
 import { HttpClient, HttpClientRequest, HttpClientResponse } from 'effect/http'
 
 import {
-  type IdentityError,
-  type IdentityRefused,
   type Mutation,
   PING_JSON,
   PROTOCOL_VERSION as SYNC_PROTOCOL_VERSION,
   ServerMessage,
-  type SessionResponse,
-  type StoredKey,
   decodeServerMessage,
   encodeArgs,
   encodeClientMessage,
-  importKey,
   makeMutationId,
   mutationVersions,
-  sessionMessage,
 } from '@munch/sync-engine'
-import { httpIdentityApi, withFetch } from '@munch/sync-engine/browser'
+import { withFetch } from '@munch/sync-engine/browser'
 
 import {
   CreateRequest,
@@ -66,39 +60,6 @@ export class LobbyOffline extends Schema.TaggedError<
 >()('LobbyOffline', {
   reason: Schema.String,
 }) {}
-
-export const signInDevice: {
-  (
-    key: StoredKey,
-    playerId: string,
-  ): (
-    origin: string,
-  ) => Effect.Effect<SessionResponse, IdentityError | IdentityRefused>
-  (
-    origin: string,
-    key: StoredKey,
-    playerId: string,
-  ): Effect.Effect<SessionResponse, IdentityError | IdentityRefused>
-} = Function.dual(
-  3,
-  (
-    origin: string,
-    key: StoredKey,
-    playerId: string,
-  ): Effect.Effect<SessionResponse, IdentityError | IdentityRefused> =>
-    Effect.gen(function* () {
-      const api = httpIdentityApi(origin)
-      const deviceKey = yield* importKey(key)
-      const { nonce } = yield* api.challenge
-      const signature = yield* deviceKey.sign(sessionMessage(nonce, playerId))
-      return yield* api.session({
-        publicKey: key.publicKey,
-        playerId,
-        nonce,
-        signature,
-      })
-    }),
-)
 
 const unavailable = () =>
   RoomRequestFailed.make({ refusal: RoomRefusal.cases.Unavailable.make({}) })

@@ -9,6 +9,7 @@ import * as SqlClient from 'effect/sql/SqlClient'
 import * as SqliteClient from '@effect/sql-sqlite-bun/SqliteClient'
 import { type Connection, OPENED } from '@munch/sync-engine'
 
+import { type LinkCodeBook, makeLinkCodeBook } from './linkCodes.ts'
 import type { Socket } from './syncCore.ts'
 
 const TaggedJson = Schema.fromJsonString(Schema.Struct({ _tag: Schema.String }))
@@ -48,3 +49,8 @@ export const fakeSocket = (): Socket & { readonly sent: Array<string> } => {
       }),
   }
 }
+
+export const linkCodeBook: Effect.Effect<LinkCodeBook, never, Scope.Scope> =
+  Effect.flatMap(memory, sql =>
+    Effect.provideService(makeLinkCodeBook, SqlClient.SqlClient, sql),
+  )

@@ -8,50 +8,32 @@ import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
 import * as Schema from 'effect/Schema'
 import * as Scope from 'effect/Scope'
-import * as Semaphore from 'effect/Semaphore'
 import type * as SqlClient from 'effect/sql/SqlClient'
 
 import type { DurableObjectState } from '@cloudflare/workers-types'
 import * as SqliteClient from '@effect/sql-sqlite-do/SqliteClient'
-import type { Unauthorized } from '@munch/sync-engine'
 import {
   Actor,
   type Authenticate,
   type Connection,
   type Delta,
-  type Directory,
-  IDENTITY_PATHS,
-  IdentityFailure,
-  IdentityRefused,
   OPENED,
-  RedeemRequest,
   type ScopeDefinition,
   type ScopeServer,
-  ServerMessage,
-  SessionRequest,
+  type ServerMessage,
   decodeExchange,
   encodeExchangeReply,
   encodeServerMessage,
   handleMessage,
   handleRaw,
-  identityFailureStatus,
-  makeDirectory,
   makeScopeServer,
-  parseScopeId,
-  verifyToken,
 } from '@munch/sync-engine'
 
-import {
-  LinkedDevices,
-  PlayerScope,
-  playerScopeId,
-} from '../../src/platform/playerScope.ts'
-import { PLAYER_SCOPE_KIND } from '../../src/platform/playerScopeParts.ts'
 import { SavedDareMarks, noDareMarks } from '../../src/shared/dareMarkData.ts'
-import { SavedJournal } from '../../src/shared/journalData.ts'
+import { playerStoreOf } from '../../src/shared/sessionApi.ts'
+import { verifyToken } from './sessionToken.ts'
 
 const MAX_EXCHANGE_BYTES = 64 * 1024
-const MAX_IDENTITY_BYTES = 4 * 1024
 
 export const CORS_HEADERS: Readonly<Record<string, string>> = {
   'access-control-allow-origin': '*',
@@ -72,15 +54,14 @@ export const json: {
     }),
 )
 
-const encodeIdentityFailure = Schema.encodeEffect(
-  Schema.fromJsonString(IdentityFailure),
+const BadRequestJson = Schema.fromJsonString(
+  Schema.TaggedStruct('BadRequest', { reason: Schema.String }),
 )
 
-export const failureResponse = (
-  failure: IdentityFailure,
-): Effect.Effect<Response> =>
-  Effect.map(Effect.orDie(encodeIdentityFailure(failure)), text =>
-    json(identityFailureStatus(failure), text),
+const badRequestResponse = (reason: string): Effect.Effect<Response> =>
+  Effect.map(
+    Effect.orDie(Schema.encodeEffect(BadRequestJson)({ _tag: 'BadRequest', reason })),
+    text => json(400, text),
   )
 
 export class SyncSetupFailed extends Schema.TaggedError<
@@ -110,10 +91,7 @@ export const syncErrorResponse = (
 ): Effect.Effect<Response> =>
   effect.pipe(
     Effect.catchTags({
-      BadSyncBody: error =>
-        failureResponse(
-          IdentityFailure.cases.BadRequest.make({ reason: error.reason }),
-        ),
+      BadSyncBody: error => badRequestResponse(error.reason),
       SyncSetupFailed: error =>
         Effect.as(
           Effect.logError('Sync setup failed', error.cause),
@@ -148,7 +126,6 @@ export const tryCall: {
 )
 
 export const NIGHTMARE_PATH = '/internal/nightmare'
-const SCOPE_HEADER = 'x-sync-scope'
 
 export type PlayerFacts = Readonly<{
   unlocked: boolean
@@ -161,53 +138,6 @@ const NO_FACTS: PlayerFacts = {
   milestones: [],
   marks: noDareMarks,
 }
-
-const PlayerRows = Schema.Array(
-  Schema.Struct({
-    nightmare: Schema.String,
-    journal: Schema.String.pipe(Schema.optionalKey),
-    dare_marks: Schema.String.pipe(Schema.optionalKey),
-  }),
-)
-const decodeDareMarks = Schema.decodeUnknownOption(
-  Schema.fromJsonString(SavedDareMarks),
-)
-const decodePlayerRows = Schema.decodeUnknownOption(PlayerRows)
-const decodeJournal = Schema.decodeUnknownOption(
-  Schema.fromJsonString(SavedJournal),
-)
-
-export const playerFactsIn = (
-  tables: Readonly<Record<string, ReadonlyArray<unknown>>>,
-): PlayerFacts =>
-  Option.match(
-    Option.flatMap(decodePlayerRows(tables['player'] ?? []), Array.head),
-    {
-      onNone: () => NO_FACTS,
-      onSome: row => ({
-        unlocked: row.nightmare === 'Unlocked',
-        milestones: Option.match(
-          Option.flatMap(Option.fromUndefinedOr(row.journal), decodeJournal),
-          {
-            onNone: () => [],
-            onSome: journal => journal.milestones,
-          },
-        ),
-        marks: Option.getOrElse(
-          Option.flatMap(
-            Option.fromUndefinedOr(row.dare_marks),
-            decodeDareMarks,
-          ),
-          () => noDareMarks,
-        ),
-      }),
-    },
-  )
-
-export const playerFactsOf = (host: ScopeHost): Effect.Effect<PlayerFacts> =>
-  Effect.map(Effect.orDie(host.server.snapshot), snapshot =>
-    snapshot._tag === 'Snapshot' ? playerFactsIn(snapshot.tables) : NO_FACTS,
-  )
 
 const NightmareAnswer = Schema.fromJsonString(
   Schema.Struct({
@@ -223,28 +153,21 @@ export const encodeNightmareAnswer = (
 ): Effect.Effect<string> =>
   Effect.orDie(Schema.encodeEffect(NightmareAnswer)(facts))
 
-type ScopeAnswer = Readonly<{
+type StoreAnswer = Readonly<{
   ok: boolean
   text: () => Promise<string>
 }>
 
-type FetchScope = (
-  scope: string,
-  url: string,
-  headers: Readonly<Record<string, string>>,
-) => Promise<ScopeAnswer>
+type FetchStore = (store: string, url: string) => Promise<StoreAnswer>
 
-export const readPlayerFacts: {
-  (playerId: string): (fetchScope: FetchScope) => Effect.Effect<PlayerFacts>
-  (fetchScope: FetchScope, playerId: string): Effect.Effect<PlayerFacts>
+export const askPlayerFacts: {
+  (playerId: string): (fetchStore: FetchStore) => Effect.Effect<PlayerFacts>
+  (fetchStore: FetchStore, playerId: string): Effect.Effect<PlayerFacts>
 } = Function.dual(
   2,
-  (fetchScope: FetchScope, playerId: string): Effect.Effect<PlayerFacts> => {
-    const scope = playerScopeId(playerId)
-    return tryCall('read the player facts', () =>
-      fetchScope(scope, `https://sync${NIGHTMARE_PATH}`, {
-        [SCOPE_HEADER]: scope,
-      }),
+  (fetchStore: FetchStore, playerId: string): Effect.Effect<PlayerFacts> =>
+    tryCall('read the player facts', () =>
+      fetchStore(playerStoreOf(playerId), `https://player${NIGHTMARE_PATH}`),
     ).pipe(
       Effect.flatMap(response =>
         response.ok
@@ -262,8 +185,7 @@ export const readPlayerFacts: {
         }),
       ),
       Effect.orElseSucceed(() => NO_FACTS),
-    )
-  },
+    ),
 )
 
 export const setupOnce = <A, E>(
@@ -334,14 +256,6 @@ export const bearerOf = (request: Request): Option.Option<string> =>
         : Option.none(),
   )
 
-export const playerScopeOf = (url: URL): Option.Option<string> =>
-  Option.flatMap(Option.fromNullishOr(url.searchParams.get('scope')), scope =>
-    Option.filter(
-      parseScopeId(scope),
-      address => address.kind === PLAYER_SCOPE_KIND,
-    ).pipe(Option.as(scope)),
-  )
-
 export interface Socket {
   readonly send: (message: string) => void
   readonly connection: Connection
@@ -366,11 +280,6 @@ export interface ScopeHost {
     readonly response: Response
     readonly applied: ReadonlyArray<Delta>
   }>
-  readonly linkedDevices: (
-    count: number,
-    id: string,
-    everyone: ReadonlyArray<Socket>,
-  ) => Effect.Effect<void>
 }
 
 const encodeAll = (messages: ReadonlyArray<ServerMessage>) =>
@@ -493,260 +402,6 @@ export const makeScopeHost: {
       const exchange = (body: string, everyone: ReadonlyArray<Socket>) =>
         Effect.map(exchangeWith(body, everyone), result => result.response)
 
-      const linkedDevices = (
-        count: number,
-        id: string,
-        everyone: ReadonlyArray<Socket>,
-      ) =>
-        Effect.gen(function* () {
-          const outcome = yield* Effect.orDie(
-            server.runServer(LinkedDevices, { count }, id),
-          )
-          if (outcome._tag === 'Applied') {
-            const head = yield* Effect.orDie(server.head)
-            yield* deliver(
-              [
-                ServerMessage.cases.Deltas.make({
-                  scope: server.scope,
-                  head,
-                  deltas: [outcome.delta],
-                }),
-              ],
-              joinedOf(everyone),
-            )
-          }
-        })
-
-      return { server, onMessage, exchange, exchangeWith, linkedDevices }
+      return { server, onMessage, exchange, exchangeWith }
     }),
 )
-
-export interface DirectoryRequest {
-  readonly path: string
-  readonly body: string
-  readonly bearer: Option.Option<string>
-}
-
-export interface Linked {
-  readonly playerId: string
-  readonly devices: number
-  readonly deviceId: string
-}
-
-const decodeBody = <A, I>(schema: Schema.Codec<A, I>, body: string) =>
-  Effect.mapError(
-    Schema.decodeEffect(Schema.fromJsonString(schema))(body),
-    error =>
-      IdentityRefused.make({
-        failure: IdentityFailure.cases.BadRequest.make({
-          reason: error.message,
-        }),
-      }),
-  )
-
-const claimsFrom = (
-  secret: string,
-  bearer: Option.Option<string>,
-  nowMs: number,
-) =>
-  Option.match(bearer, {
-    onNone: () =>
-      Effect.fail(
-        IdentityRefused.make({
-          failure: IdentityFailure.cases.Unauthorized.make({
-            reason: 'No token',
-          }),
-        }),
-      ),
-    onSome: token =>
-      Effect.mapError(
-        verifyToken(secret, token, nowMs),
-        (error: Unauthorized) =>
-          IdentityRefused.make({
-            failure: IdentityFailure.cases.Unauthorized.make({
-              reason: error.reason,
-            }),
-          }),
-      ),
-  })
-
-const ok = <A, I>(
-  schema: Schema.Codec<A, I>,
-  value: A,
-): Effect.Effect<Response> =>
-  Effect.map(
-    Effect.orDie(Schema.encodeEffect(Schema.fromJsonString(schema))(value)),
-    text => json(200, text),
-  )
-
-export const SessionResponseJson = Schema.Struct({
-  token: Schema.String,
-  deviceId: Schema.String,
-  playerId: Schema.String,
-  devices: Schema.Finite,
-  expiresMs: Schema.Finite,
-})
-
-const LinkCodeJson = Schema.Struct({
-  code: Schema.String,
-  expiresMs: Schema.Finite,
-})
-
-export const handleDirectory: {
-  (
-    secret: string,
-    request: DirectoryRequest,
-    nowMs: number,
-  ): (directory: Directory) => Effect.Effect<{
-    readonly response: Response
-    readonly linked: Option.Option<Linked>
-  }>
-  (
-    directory: Directory,
-    secret: string,
-    request: DirectoryRequest,
-    nowMs: number,
-  ): Effect.Effect<{
-    readonly response: Response
-    readonly linked: Option.Option<Linked>
-  }>
-} = Function.dual(
-  4,
-  (
-    directory: Directory,
-    secret: string,
-    request: DirectoryRequest,
-    nowMs: number,
-  ): Effect.Effect<{
-    readonly response: Response
-    readonly linked: Option.Option<Linked>
-  }> =>
-    Effect.gen(function* () {
-      if (
-        new TextEncoder().encode(request.body).byteLength > MAX_IDENTITY_BYTES
-      ) {
-        const response = yield* failureResponse(
-          IdentityFailure.cases.BadRequest.make({ reason: 'Too large' }),
-        )
-        return { response, linked: Option.none() }
-      }
-      if (request.path === IDENTITY_PATHS.session) {
-        const body = yield* decodeBody(SessionRequest, request.body)
-        const session = yield* directory.session(body, nowMs)
-        const response = yield* ok(SessionResponseJson, session)
-        return { response, linked: Option.none() }
-      }
-      if (request.path === IDENTITY_PATHS.link) {
-        const claims = yield* claimsFrom(secret, request.bearer, nowMs)
-        const code = yield* directory.createLinkCode(claims, nowMs)
-        const response = yield* ok(LinkCodeJson, code)
-        return { response, linked: Option.none() }
-      }
-      if (request.path === IDENTITY_PATHS.redeem) {
-        const claims = yield* claimsFrom(secret, request.bearer, nowMs)
-        const body = yield* decodeBody(RedeemRequest, request.body)
-        const redeemed = yield* directory.redeem(claims, body.code, nowMs)
-        const response = yield* ok(SessionResponseJson, redeemed.session)
-        return {
-          response,
-          linked: Option.some({
-            playerId: redeemed.session.playerId,
-            devices: redeemed.session.devices,
-            deviceId: redeemed.session.deviceId,
-          }),
-        }
-      }
-      const response = yield* failureResponse(
-        IdentityFailure.cases.BadRequest.make({ reason: 'No such path' }),
-      )
-      return { response, linked: Option.none() }
-    }).pipe(
-      Effect.catchTag('IdentityRefused', error =>
-        Effect.map(failureResponse(error.failure), response => ({
-          response,
-          linked: Option.none(),
-        })),
-      ),
-    ),
-)
-
-export const scopeHostOnce: {
-  <E>(
-    scope: string,
-    secret: string,
-  ): (
-    sql: Layer.Layer<SqlClient.SqlClient, E>,
-  ) => Effect.Effect<Effect.Effect<ScopeHost, SyncSetupFailed>>
-  <E>(
-    sql: Layer.Layer<SqlClient.SqlClient, E>,
-    scope: string,
-    secret: string,
-  ): Effect.Effect<Effect.Effect<ScopeHost, SyncSetupFailed>>
-} = Function.dual(
-  3,
-  <E>(
-    sql: Layer.Layer<SqlClient.SqlClient, E>,
-    scope: string,
-    secret: string,
-  ): Effect.Effect<Effect.Effect<ScopeHost, SyncSetupFailed>> =>
-    setupOnce(
-      buildOn(sql, makeScopeHost(scope, authenticateWith(secret), PlayerScope)),
-    ),
-)
-
-export interface DirectoryHost {
-  readonly fetch: (request: Request) => Effect.Effect<Response>
-}
-
-export const makeDirectoryHost = <E>(options: {
-  readonly sql: Layer.Layer<SqlClient.SqlClient, E>
-  readonly secret: string
-  readonly tellScope: (linked: Linked) => Effect.Effect<void, SyncCallFailed>
-}): Effect.Effect<DirectoryHost> =>
-  Effect.gen(function* () {
-    const lock = yield* Semaphore.make(1)
-    const directory = yield* setupOnce(
-      buildOn(options.sql, makeDirectory(options.secret)),
-    )
-    const fetch = (request: Request) =>
-      syncErrorResponse(
-        Effect.gen(function* () {
-          const ready = yield* directory
-          const body = yield* tryCall('read the body', () => request.text())
-          const nowMs = yield* Clock.currentTimeMillis
-          const handled = yield* lock.withPermit(
-            handleDirectory(
-              ready,
-              options.secret,
-              directoryRequestOf(request, body),
-              nowMs,
-            ),
-          )
-          if (Option.isSome(handled.linked)) {
-            yield* options
-              .tellScope(handled.linked.value)
-              .pipe(
-                Effect.catchTag('SyncCallFailed', error =>
-                  Effect.logWarning(
-                    `Telling the scope about a link failed: ${error.step}`,
-                    error.cause,
-                  ),
-                ),
-              )
-          }
-          return handled.response
-        }),
-      )
-    return { fetch }
-  })
-
-const directoryRequestOf = (
-  request: Request,
-  body: string,
-): DirectoryRequest => ({
-  path: new URL(request.url).pathname,
-  body,
-  bearer: bearerOf(request),
-})
-
-export { playerScopeId }

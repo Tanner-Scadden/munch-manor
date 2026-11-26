@@ -2,7 +2,7 @@
 
 A small sync engine for [Effect](https://effect.website) 4. State lives in **scopes**, each with one authority. Every change is a **mutation**: a named, versioned, Schema-typed event whose apply function is plain SQL, the same statements on the client and on the server. The client applies its own mutations at once and keeps them in an outbox; the server orders them, may refuse them, and sends back what it accepted. The client then rebuilds its view from what the server confirmed and replays what is still pending.
 
-It lives in the Munch Manor repo while the API settles, with Munch Manor's player scope as its first user, and will move to its own repo and npm package later. The name is a placeholder.
+It lives in the Munch Manor repo while the API settles, with Munch Manor's co-op lobby (`room:<code>`) as its user, and will move to its own repo and npm package later. The name is a placeholder.
 
 ```sh
 bun add @munch/sync-engine effect@^4.0.0
@@ -103,11 +103,8 @@ const sync =
   startSync({
     replica,
     transports: [webSocketTransport(origin), httpTransport(origin)],
-    credentials: Effect.map(identity.session, s => ({
-      token: s.token,
-      clientId,
-    })),
-    refreshCredentials: identity.invalidate,
+    credentials: Effect.map(session.token, token => ({ token, clientId })),
+    refreshCredentials: session.invalidate,
   })
 ```
 
@@ -117,7 +114,7 @@ const sync =
 | `receive(msg)`     | Applies one server message and says what happened: `Applied`, `Resync`, `Confirmed`, `Rejected`, `Failed` |
 | `pending`          | The outbox, oldest first, as protocol envelopes                                                           |
 | `confirmedSeq`     | The last seq the confirmed tables hold                                                                    |
-| `switchScope(id)`  | Drops this kind's tables and outbox and points it at another scope, as linking a device does              |
+| `switchScope(id)`  | Drops this kind's tables and outbox and points it at another scope              |
 | `remoteChanges`    | Fires on every commit that applied something from the server, on every tab                                |
 | `localChanges`     | Fires on every commit that changed the outbox, on every tab                                               |
 | `status`           | The scope's `ScopeStatus` now and on every change, on every tab                                           |
@@ -172,32 +169,17 @@ JSON, decoded with the Schemas in `src/Protocol.ts` on both ends. `PROTOCOL_VERS
 - **Heartbeat.** `PING_JSON` and `PONG_JSON` are exact strings, so a Durable Object can answer them with a WebSocket auto-response without waking.
 - **HTTP fallback.** `POST /sync/exchange?scope=<id>` with an array of client messages, a `Hello` first, answers with the array of server messages a socket would have received.
 
-## Identity and linking
+## Authentication
 
-No accounts. On first launch a device makes an ECDSA P-256 key pair and a random 22-character player id, kept in its own `sync_device` table. To sync:
-
-1. `POST /sync/challenge` returns a nonce: random bytes, an expiry two minutes out, and an HMAC of both, so the server keeps no state.
-2. The device signs `munch-sync-session:v1:<nonce>:<playerId>` and posts its public key, player id, nonce, and signature to `POST /sync/session`.
-3. The server checks the nonce's MAC and expiry and the signature, then maps the device (the SHA-256 of its public key) to a player: a known device keeps its player; a new one registers the id it made, unless another device holds it.
-4. It answers with a session token: the device id, player id, and expiry, HMAC-signed, good for a day. The `Hello` and the identity requests carry it.
-
-A token after a challenge, rather than a signature per request, keeps each Durable Object message to a cheap HMAC check and the private key to one signature a day.
-
-**Linking.** Device A asks `POST /sync/link` (with its token) for a code: six symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (no 0, O, 1, or I), single use, good for ten minutes, one live code per player. Device B posts it to `POST /sync/link/redeem` with its own token. The server maps B's device to A's player and returns a new token; B calls `switchScope`, dropping its own player's data, and joins A's scope with a snapshot. Five wrong, expired, or malformed codes lock a device out of redeeming for ten minutes, and the edge rate limits identity requests per address.
-
-`makeDeviceIdentity({ sql, api })` is the client side and `makeDirectory(secret)` the server side; `IdentityApi` is the seam between them (`httpIdentityApi(origin)` in the browser).
+The engine signs no one in. The host authenticates each `Hello`'s `token` with its own `Authenticate` function (an `Actor` or `Unauthorized`), and the client gets its token from its caller through `credentials`. Munch Manor mints that token from the player's EventLog identity (`Session.Mint` on the player's socket, `infra/worker/sessionToken.ts`).
 
 ## Limits
 
 - **One instance per scope kind on a client.** Tables are named by kind, so a client mirrors one `player` scope at a time. Two leaderboards would need per-instance table names.
 - **No blobs or bigints in snapshots.** Snapshot rows carry null, numbers, and strings.
-- **No cross-scope outbox.** A server mutation in another scope is made by calling that scope's server; Munch Manor does this by hand for the linked device count. A failed call is not retried.
+- **No cross-scope outbox.** A server mutation in another scope is made by calling that scope's server; A failed call is not retried.
 - **Applied ids are kept for the last 20,000 seqs.** A mutation retried after more than that many others in its scope could apply twice.
 - **A snapshot can briefly double a pending mutation** that the server applied but whose delta the client missed: the view shows it twice until its ack (which comes on the next push) settles it.
-- **The private key is stored extractable** as a JWK in SQLite and imported non-extractable on each load. SQLite cannot hold a `CryptoKey`; IndexedDB could, at the cost of a second store.
-- **Replaying a captured session request** within its two-minute nonce window would mint a token for that device. Requests go over TLS; a single-use nonce store would close this.
-- **Linking replaces the joining device's progress** with the other device's. Merging two players is not supported.
-- **Rooms with real conflicts** are untested: Munch Manor only ships the player scope so far.
 
 ## Files
 
@@ -209,13 +191,9 @@ A token after a challenge, rather than a signature per request, keeps each Durab
 | `src/Server.ts`    | `ScopeServer`, the log, dedupe, snapshots, compaction, and the host's handler  |
 | `src/Replica.ts`   | The client: outbox, confirmed and view tables, rebuild plus replay             |
 | `src/Sync.ts`      | Transports, channels, the sync loop, backoff, heartbeat, and status            |
-| `src/Identity.ts`  | Device keys, signatures, challenges, tokens, and the identity request Schemas  |
-| `src/Pairing.ts`   | Link codes and the rules for wrong tries, as pure functions                    |
-| `src/Directory.ts` | The server's devices, players, and link codes over any `SqlClient`             |
-| `src/Device.ts`    | The client's key pair, player id, and session token                            |
-| `src/Browser.ts`   | The WebSocket and HTTP transports and the HTTP identity client                 |
+| `src/Browser.ts`   | The WebSocket and HTTP transports                                              |
 | `src/InProcess.ts` | An in-process host and a seeded fake network, for tests                        |
 
 ## Tests
 
-`bun run test` in this folder (the repo's `bun run test` runs them too), in Node over sqlite-wasm's in-memory databases: one per client and one per scope on the in-process host. They cover rebuild plus replay, duplicate and out of order deltas, rejections, idempotency, permissions, unknown names and versions, server mutations, snapshot joins and log trimming, two devices converging under a seeded network that drops (closing the connection), duplicates, and reorders messages with one of them offline for a while and a slot both claim, follower tabs, the pairing rules, tokens and keys, linking end to end through a Directory, and the protocol codecs.
+`bun run test` in this folder (the repo's `bun run test` runs them too), in Node over sqlite-wasm's in-memory databases: one per client and one per scope on the in-process host. They cover rebuild plus replay, duplicate and out of order deltas, rejections, idempotency, permissions, unknown names and versions, server mutations, snapshot joins and log trimming, two devices converging under a seeded network that drops (closing the connection), duplicates, and reorders messages with one of them offline for a while and a slot both claim, follower tabs, the HTTP transport, and the protocol codecs.

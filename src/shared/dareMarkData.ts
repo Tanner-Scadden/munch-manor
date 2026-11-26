@@ -2,7 +2,7 @@ import { Function, Schema } from 'effect'
 
 export const TOP_MARK = 8
 
-export const Mark = Schema.Int.check(
+const Mark = Schema.Int.check(
   Schema.isBetween({ minimum: 0, maximum: TOP_MARK }),
 )
 

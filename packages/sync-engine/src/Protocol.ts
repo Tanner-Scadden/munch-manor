@@ -136,3 +136,8 @@ export const encodeExchangeReply = (input: ExchangeReply) =>
 
 export const PING_JSON = '{"_tag":"Ping"}'
 export const PONG_JSON = '{"_tag":"Pong"}'
+
+export const SCOPE_PATHS = {
+  socket: '/sync/socket',
+  exchange: '/sync/exchange',
+}

@@ -977,10 +977,6 @@
   animation: dot-pulse 0.9s ease-in-out infinite alternate;
 }
 
-.account-device-dot[data-sync='Broken'] {
-  background: var(--menu-red);
-}
-
 @keyframes dot-pulse {
   to {
     scale: 1.35;

@@ -19,7 +19,7 @@ import {
   cleanCalling,
   cleanRank,
 } from '@munch/netcode'
-import { PING_JSON, PONG_JSON, verifyToken } from '@munch/sync-engine'
+import { PING_JSON, PONG_JSON } from '@munch/sync-engine'
 
 import {
   type Made,
@@ -33,6 +33,7 @@ import {
   joinRoomIn,
   ticketOf,
 } from './roomCalls.ts'
+import { verifyToken } from './sessionToken.ts'
 import type { SyncBindings } from './sync.ts'
 import { json, tryCall } from './syncCore.ts'
 

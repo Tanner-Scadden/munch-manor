@@ -1,6 +1,16 @@
-import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
+import {
+  Array,
+  Function,
+  Option,
+  Record,
+  Result,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
 
 import { UiSchema } from '@effect/ui'
+import { CODE_ALPHABET } from '@munch/netcode'
 
 import { DayStamp } from '../shared/dayStamp'
 import { SavedJournal, journalAdded } from '../shared/journalData'
@@ -517,8 +527,8 @@ export const withUnsavedChanges: {
 export const SyncState = UiSchema.TaggedEnum({
   LocalOnly: {},
   Connecting: {},
-  Synced: { devices: Schema.Finite },
-  Offline: { devices: Schema.Finite },
+  Synced: {},
+  Offline: {},
 })
 export type SyncState = typeof SyncState.Type
 
@@ -526,58 +536,15 @@ export const syncStateText = (state: SyncState): string =>
   SyncState.match(state, {
     LocalOnly: () => 'Saved on this device',
     Connecting: () => 'Connecting',
-    Synced: ({ devices }) =>
-      devices > 1 ? `Synced. Linked to ${devices} devices` : 'Synced',
+    Synced: () => 'Synced',
     Offline: () => 'Offline, will sync',
   })
-
-export const PlayerScopeStatus = UiSchema.TaggedEnum({
-  Idle: {},
-  Loading: {},
-  Ready: { seq: Schema.Finite, fresh: Schema.Boolean },
-  Failed: { reason: Schema.String },
-})
-export type PlayerScopeStatus = typeof PlayerScopeStatus.Type
 
 export const StoreEvent = UiSchema.TaggedEnum({
   SyncedSave: { save: PlayerSave },
   SyncStatus: { state: SyncState },
-  ScopeStatus: { status: PlayerScopeStatus },
 })
 export type StoreEvent = typeof StoreEvent.Type
-
-export const devicesStatusText: {
-  (scope: PlayerScopeStatus): (state: SyncState) => string
-  (state: SyncState, scope: PlayerScopeStatus): string
-} = Function.dual(2, (state: SyncState, scope: PlayerScopeStatus): string => {
-  if (state._tag === 'LocalOnly') {
-    return syncStateText(state)
-  } else if (scope._tag === 'Failed') {
-    return 'Sync is not working on this device'
-  } else if (
-    state._tag === 'Connecting' &&
-    scope._tag === 'Ready' &&
-    !scope.fresh
-  ) {
-    return 'Connecting. Showing saved progress'
-  } else {
-    return syncStateText(state)
-  }
-})
-
-export const RunSettled = UiSchema.TaggedEnum({
-  Confirmed: { seq: Schema.Finite },
-  Rejected: { reason: Schema.String },
-})
-export type RunSettled = typeof RunSettled.Type
-
-export const LastRunSync = UiSchema.TaggedEnum({
-  NoRun: {},
-  Waiting: { id: Schema.String },
-  Confirmed: { seq: Schema.Finite },
-  Rejected: { reason: Schema.String },
-})
-export type LastRunSync = typeof LastRunSync.Type
 
 export const LinkProblem = Schema.Literals([
   'WrongCode',
@@ -597,6 +564,18 @@ export const LinkFlow = UiSchema.TaggedEnum({
   Failed: { problem: LinkProblem },
 })
 export type LinkFlow = typeof LinkFlow.Type
+
+const LINK_CODE_LENGTH = 6
+
+const LINK_CODE_PATTERN = new RegExp(
+  `^[${CODE_ALPHABET}]{${LINK_CODE_LENGTH}}$`,
+)
+
+export const normalizeCode = (input: string): Option.Option<string> =>
+  Option.liftPredicate(
+    pipe(input, String.toUpperCase, String.replaceAll(/[\s-]/g, '')),
+    code => LINK_CODE_PATTERN.test(code),
+  )
 
 export const linkProblemText = (problem: LinkProblem): string => {
   if (problem === 'WrongCode') {

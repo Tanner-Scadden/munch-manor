@@ -70,7 +70,6 @@ const fakeStore = (
         ),
       ),
       write: () => unused,
-      awaitSettled: () => unused,
       events: Stream.empty,
       requestLinkCode: unused,
       redeemLinkCode: () => unused,

@@ -155,8 +155,6 @@ const LEGACY_CLIENT_FIELDS = [
   'loading',
   'saveStatus',
   'syncState',
-  'playerScopeStatus',
-  'lastRunSync',
   'writesInFlight',
   'unsavedChanges',
   'syncedSave',

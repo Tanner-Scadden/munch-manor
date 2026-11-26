@@ -2,18 +2,16 @@
 
 Mastery (hero points, gun kills) synced with Effect's own EventLog, with no code from `@munch/sync-engine`.
 
-| File             | What it is                                                                                                                                                                                                                                   |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mastery.ts`     | The `GainedMastery` event (keyed by run id) and its handler, an add-only SQL projection the client and server share                                                                                                                          |
-| `serverParts.ts` | Owner-only authorization (store `player:<publicKey>`), a store mapping that pins a store to its Durable Object, the server's handlers                                                                                                         |
-| `device.ts`      | A device: `SqlEventJournal` and the projection on one SQLite, `EventLogRemote.layerUnencrypted` over a WebSocket with `RpcSerialization.layerSchemaBinary`                                                                                  |
-| `server.ts`      | `EventLogServerUnencrypted` on Bun's HTTP server, for `run.ts`                                                                                                                                                                               |
-| `doProtocol.ts`  | An `RpcServer.Protocol` over a Durable Object's hibernation WebSockets, a port of Alchemy's `RpcWebSocket` (Apache-2.0) to a plain DO class and any serializer. It keeps each socket's open `changes` requests and signed-in key in its attachment and replays them on wake; a socket that wakes with any other request open is closed 1012 so its client retries |
-| `worker.ts`      | The `EventLogStore` Durable Object: `EventLogServerUnencrypted.layerNoRpcServer` on `SqlEventLogServerUnencrypted` over `@effect/sql-sqlite-do`, one object per player store, its handlers wrapped to sign a woken client back in from its saved key. `/eventlog/<store>/activation` reports the instance, the subscriptions resumed, and why any socket closed on wake |
-| `alchemy.run.ts` | The preview deploy: `bun alchemy deploy spike/eventlog/alchemy.run.ts --stage eventlog`                                                                                                                                                       |
-| `eventlog-sync.excalidraw` | The diagram: the sync path, hibernation, the save split, the rules                                                                                                                                                                   |
-| `run.ts`         | Bun end to end: `bun spike/eventlog/run.ts`                                                                                                                                                                                                   |
-| `runDo.ts`       | The same against the Durable Object in local workerd: `bun spike/eventlog/runDo.ts` (`IDLE_SECONDS=40` to idle longer, `PING_SECONDS` for the client's ping, `REMOTE=<host>` for a deploy)                                                                                                                       |
+The spike's code is gone: it shipped as the player log. Its files live on in the commits before the move (`git log -- infra/spike/eventlog`), and their production versions are:
+
+| Spike file       | Now                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `mastery.ts`     | `src/platform/playerEvents.ts` and `src/platform/playerProjection.ts`, the whole save                                    |
+| `serverParts.ts` | `infra/worker/playerLogCore.ts`: owner-only authorization, the store pinned to its object, the handlers, `Session.*`     |
+| `doProtocol.ts`  | `infra/worker/doProtocol.ts`                                                                                              |
+| `worker.ts`      | `infra/worker/playerLog.ts`, the `PlayerLog` Durable Object                                                              |
+| `device.ts`      | the client's store in `src/platform/`                                                                                     |
+| `run.ts`, `runDo.ts`, `server.ts`, `alchemy.run.ts` | `infra/worker/playerLog.test.ts` and the main deploy                                                   |
 
 ## What passed (both runs)
 

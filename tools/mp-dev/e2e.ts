@@ -37,10 +37,9 @@ import {
   followLobby,
   joinRoom,
   roomSocketUrl,
-  signInDevice,
   startQuickPlay,
 } from '@munch/netcode/browser'
-import { type Mutation, generateKey, makePlayerId } from '@munch/sync-engine'
+import type { Mutation } from '@munch/sync-engine'
 
 import {
   type OwnSeat,
@@ -49,6 +48,8 @@ import {
 } from '../../src/world/net/roomWorld'
 import { playersOf } from '../../src/world/party/party'
 import { localOrigin, startWorkerd } from './local'
+import { newIdentity } from '../../src/shared/sessionApi'
+import { mintSession } from './session'
 
 class CheckFailed extends Schema.TaggedError<
   CheckFailed,
@@ -101,9 +102,8 @@ const eventually = (
 const signIn = (name: string) =>
   Effect.gen(function* () {
     const origin = yield* originOf
-    const key = yield* generateKey
-    const playerId = yield* makePlayerId
-    const session = yield* signInDevice(origin, key, playerId)
+    const identity = yield* newIdentity
+    const session = yield* mintSession(origin, identity)
     const nowMs = yield* Clock.currentTimeMillis
     const player: Player = {
       name,

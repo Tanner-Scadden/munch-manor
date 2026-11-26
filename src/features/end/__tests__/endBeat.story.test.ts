@@ -8,7 +8,7 @@ import { AudioState, type Model, Phase, RunMode } from '../../../app/model'
 import { SendShareEvent } from '../../../app/update/end'
 import { PlaySound } from '../../../app/update/sound'
 import { withBests } from '../../../domain/run'
-import { mergeRunRecords } from '../../../platform/playerScope'
+import { mergeRunRecords } from '../../../platform/playerProjection'
 import { RUNNING_BUILD } from '../../../platform/version'
 import { bestsFor } from '../../../screens/home/home'
 import {

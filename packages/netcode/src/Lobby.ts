@@ -12,7 +12,6 @@ import { SqlClient, type SqlError } from 'effect/sql'
 
 import {
   type ApplyContext,
-  CODE_ALPHABET,
   type DeviceActor,
   MutationRejected,
   type Row,
@@ -23,6 +22,8 @@ import {
 } from '@munch/sync-engine'
 
 import { ClosedReason } from './Protocol'
+
+export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 export const ROOM_SCOPE_KIND = 'room'
 export const ROOM_CODE_LENGTH = 5

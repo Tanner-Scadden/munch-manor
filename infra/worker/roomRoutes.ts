@@ -14,7 +14,7 @@ import {
   normalizeRoomCode,
   roomScopeId,
 } from '@munch/netcode'
-import { verifyToken } from '@munch/sync-engine'
+import { verifyToken } from './sessionToken.ts'
 
 import { type GameRoomBindings, refusalResponse } from './gameRoom.ts'
 import { ROOM_CODE_HEADER } from './gameRoomCore.ts'

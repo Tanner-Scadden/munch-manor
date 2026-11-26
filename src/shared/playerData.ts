@@ -394,6 +394,23 @@ export const SavedBests = Schema.Struct({
 })
 export type SavedBests = typeof SavedBests.Type
 
+const noSavedDifficultyBests: SavedDifficultyBests = {
+  fastestWinMs: null,
+  bestEndlessWave: null,
+}
+
+export const noSavedBests: SavedBests = {
+  runsPlayed: 0,
+  totalKills: 0,
+  killsByKind: {},
+  byDifficulty: {
+    Easy: noSavedDifficultyBests,
+    Normal: noSavedDifficultyBests,
+    Hard: noSavedDifficultyBests,
+    Nightmare: noSavedDifficultyBests,
+  },
+}
+
 export const SavedBestRun = Schema.Struct({
   wave: Schema.Finite,
   things: Schema.Array(Schema.String),

@@ -41,11 +41,11 @@ import {
   type Delta,
   ServerMessage,
   decodeArgs,
-  verifyToken,
 } from '@munch/sync-engine'
 
 import { lookCodeOf, lookOfCode } from '../../src/shared/lookCodes.ts'
 import { callingOfCode } from '../../src/shared/playerData.ts'
+import { verifyToken } from './sessionToken.ts'
 import {
   type ScopeHost,
   type ScopeHostFailed,

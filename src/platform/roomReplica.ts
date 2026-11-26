@@ -7,9 +7,8 @@ import {
   lobbyOfSnapshot,
   roomScopeId,
 } from '@munch/netcode'
-import { TokenUnavailable } from '@munch/netcode/browser'
+import type { TokenUnavailable } from '@munch/netcode/browser'
 import {
-  type DeviceIdentity,
   type LocalDatabase,
   type Mutation,
   type Replica,
@@ -42,18 +41,37 @@ export interface RoomAccess {
   ) => Effect.Effect<void, CoopProblem>
 }
 
+export interface RoomSession {
+  readonly playerId: string
+  readonly token: Effect.Effect<string, TokenUnavailable>
+  readonly invalidate: Effect.Effect<void>
+}
+
 type RoomAccessOptions = Readonly<{
   database: LocalDatabase
-  identity: DeviceIdentity
+  session: Effect.Effect<RoomSession>
   transports: Array.NonEmptyReadonlyArray<Transport>
 }>
+
+export type { Transport }
+
+export const browserTransports = (
+  origin: string,
+): Effect.Effect<Array.NonEmptyReadonlyArray<Transport>> =>
+  Effect.map(
+    Effect.promise(() => import('@munch/sync-engine/browser')),
+    browser => [
+      browser.webSocketTransport(origin),
+      browser.httpTransport(origin),
+    ],
+  )
 
 const toAccessError = (error: { readonly message: string }) =>
   RoomAccessError.make({ reason: error.message })
 
 export const makeRoomAccess = ({
   database,
-  identity,
+  session,
   transports,
 }: RoomAccessOptions): Effect.Effect<RoomAccess> =>
   Effect.gen(function* () {
@@ -93,14 +111,17 @@ export const makeRoomAccess = ({
             replica,
             transports,
             credentials: pipe(
-              identity.session,
+              Effect.flatMap(session, active => active.token),
               Effect.mapBoth({
-                onSuccess: session => ({ token: session.token, clientId }),
+                onSuccess: token => ({ token, clientId }),
                 onFailure: error =>
-                  TransportError.make({ reason: error.failure._tag }),
+                  TransportError.make({ reason: error.reason }),
               }),
             ),
-            refreshCredentials: identity.invalidate,
+            refreshCredentials: Effect.flatMap(
+              session,
+              active => active.invalidate,
+            ),
           })
           return pipe(
             Stream.concat(
@@ -136,17 +157,8 @@ export const makeRoomAccess = ({
       })
 
     return {
-      playerId: Effect.mapError(identity.playerId, error =>
-        RoomAccessError.make({ reason: error.failure._tag }),
-      ),
-      token: pipe(
-        identity.session,
-        Effect.mapBoth({
-          onSuccess: session => session.token,
-          onFailure: error =>
-            TokenUnavailable.make({ reason: error.failure._tag }),
-        }),
-      ),
+      playerId: Effect.map(session, active => active.playerId),
+      token: Effect.flatMap(session, active => active.token),
       canFollow: Effect.map(database.role, role => role === 'Leader'),
       followRoom,
       writeRoom: (by: string, change: LobbyChange | 'Left') =>

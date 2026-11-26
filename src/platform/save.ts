@@ -65,7 +65,6 @@ import { decodeSave, encodeSave } from './saveVersions'
 export {
   decodeSave,
   encodeSave,
-  noSavedBests,
   unpickedDifficulty,
   unvisitedHome,
 } from './saveVersions'
@@ -77,6 +76,7 @@ export {
   SavedLesson,
   SavedRunRecords,
   SavedTrapHint,
+  noSavedBests,
 } from '../shared/playerData'
 
 export const SAVE_KEY = 'munch-manor:save'

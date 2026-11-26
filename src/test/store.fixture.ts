@@ -1,4 +1,5 @@
 import {
+  Clock,
   Context,
   Effect,
   Function,
@@ -7,28 +8,26 @@ import {
   Ref,
   Schedule,
   type Scope,
+  String,
 } from 'effect'
+import { EventLogServer, EventLogServerUnencrypted } from 'effect/eventlog'
+import type { Rpc } from 'effect/rpc'
+import { RpcTest } from 'effect/rpc'
 import { SqlClient } from 'effect/sql'
 import { TestClock } from 'effect/testing'
 
+import { CODE_ALPHABET } from '@munch/netcode'
 import { SqliteClient, type SqliteOpenError } from '@munch/sqlite-wasm-effect'
 import { type Hub, makeHub } from '@munch/sqlite-wasm-effect/in-process'
-import {
-  Actor,
-  type IdentityApi,
-  IdentityFailure,
-  IdentityRefused,
-  Unauthorized,
-  makeChallenge,
-  makeDirectory,
-  verifyToken,
-} from '@munch/sync-engine'
-import { type Host, makeHost } from '@munch/sync-engine/in-process'
-import { settle } from '@munch/sync-engine/testing'
 
 import { defaultAppearance } from '../app/model'
-import { LinkedDevices, PlayerScope } from '../platform/playerScope'
+import { PlayerLogSchema } from '../platform/playerEvents'
+import {
+  PlayerHandlers,
+  createPlayerTables,
+} from '../platform/playerProjection'
 import { changesBetween } from '../platform/playerSync'
+import type { Transport } from '../platform/roomReplica'
 import {
   type PlayerSave,
   SAVE_VERSION,
@@ -47,6 +46,13 @@ import { noMastery } from '../shared/masteryData'
 import { noMissions } from '../shared/missionData'
 import { noBonuses, noSavedRunRecords } from '../shared/playerData'
 import { noProof } from '../shared/proofData'
+import {
+  PlayerLogRpcs,
+  RedeemAnswer,
+  SessionRefused,
+  SessionRpcs,
+  playerStoreOf,
+} from '../shared/sessionApi'
 import { noRank } from '../world/heroes/rank'
 
 export const legacySave: PlayerSave = {
@@ -210,78 +216,143 @@ export const muted = (save: PlayerSave): PlayerSave => ({
   settings: { ...save.settings, sound: 'On' },
 })
 
-const SECRET = 'store-test-secret'
+const SESSION_MS = 3_600_000
 
-const openServerDatabase = () =>
-  Effect.gen(function* () {
-    const hub = yield* makeHub()
-    return yield* Effect.orDie(sqlOn(hub))
+const PLAYER_STORE_PREFIX = 'player:'
+
+const forbidden = (publicKey: string, storeId: string) =>
+  new EventLogServerUnencrypted.EventLogServerAuthError({
+    reason: 'Forbidden',
+    publicKey,
+    message: `${publicKey} may not use ${storeId}`,
   })
+
+const ownerOnly = (publicKey: string, storeId: string) =>
+  storeId === playerStoreOf(publicKey)
+    ? Effect.void
+    : Effect.fail(forbidden(publicKey, storeId))
+
+const OwnerOnly = Layer.succeed(
+  EventLogServerUnencrypted.EventLogServerAuthorization,
+  {
+    authorizeWrite: ({ publicKey, storeId }) => ownerOnly(publicKey, storeId),
+    authorizeRead: ({ publicKey, storeId }) => ownerOnly(publicKey, storeId),
+    authorizeIdentity: () => Effect.void,
+  },
+)
+
+const PlayerStores = Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+  resolve: ({ storeId, publicKey }) =>
+    String.startsWith(PLAYER_STORE_PREFIX)(storeId)
+      ? Effect.succeed(storeId)
+      : Effect.fail(
+          new EventLogServerUnencrypted.EventLogServerStoreError({
+            reason: 'NotFound',
+            publicKey,
+            storeId,
+          }),
+        ),
+  hasStore: ({ storeId }) =>
+    Effect.succeed(String.startsWith(PLAYER_STORE_PREFIX)(storeId)),
+})
+
+const notSignedIn = () => SessionRefused.make({ problem: 'NotSignedIn' })
+
+const signedInKey = (client: Rpc.ServerClient) =>
+  Effect.mapError(
+    Effect.fromOption(
+      Option.flatMap(
+        Context.getOption(
+          client.annotations,
+          EventLogServer.AuthenticatedIdentities,
+        ),
+        keys => Option.fromIterable(keys),
+      ),
+    ),
+    notSignedIn,
+  )
+
+const testLinkCodeOf = (count: number) =>
+  `LNKCD${Option.getOrElse(String.charAt(CODE_ALPHABET, count), () => 'Z')}`
+
+const sessionHandlers = (codes: Ref.Ref<ReadonlyMap<string, string>>) =>
+  SessionRpcs.toLayer({
+    'Session.Mint': (_, { client }) =>
+      Effect.gen(function* () {
+        const publicKey = yield* signedInKey(client)
+        const nowMs = yield* Clock.currentTimeMillis
+        return { token: `token-${publicKey}`, expiresMs: nowMs + SESSION_MS }
+      }),
+    'Session.CreateLinkCode': ({ identity }, { client }) =>
+      Effect.gen(function* () {
+        yield* signedInKey(client)
+        const nowMs = yield* Clock.currentTimeMillis
+        const code = yield* Ref.modify(codes, known => {
+          const next = testLinkCodeOf(known.size)
+          return [next, new Map([...known, [next, identity]])]
+        })
+        return { code, expiresMs: nowMs + SESSION_MS }
+      }),
+  })
+
+const NO_TRANSPORT: Transport = { name: 'none', open: () => Effect.never }
 
 export const makeServer = Effect.gen(function* () {
-  const directorySql = yield* openServerDatabase()
-  const directory = yield* Effect.provideService(
-    makeDirectory(SECRET),
-    SqlClient.SqlClient,
-    directorySql,
+  const hub = yield* makeHub()
+  const codes = yield* Ref.make<ReadonlyMap<string, string>>(new Map())
+  const projection = Layer.effectDiscard(createPlayerTables).pipe(
+    Layer.provideMerge(PlayerHandlers),
+    Layer.provide(hub.layer()),
   )
-  const host: Host = yield* makeHost({
-    definitions: [PlayerScope],
-    openDatabase: openServerDatabase,
-    authenticate: token =>
-      Effect.flatMap(
-        Effect.orDie(Effect.clockWith(clock => clock.currentTimeMillis)),
-        now =>
-          Effect.mapBoth(verifyToken(SECRET, token, now), {
-            onFailure: error => Unauthorized.make({ reason: error.reason }),
-            onSuccess: claims =>
-              Actor.cases.Device.make({
-                playerId: claims.playerId,
-                deviceId: claims.deviceId,
-              }),
-          }),
-      ),
-  })
-  const clock = yield* Effect.clockWith(Effect.succeed)
-  const now = () => clock.currentTimeMillisUnsafe()
-  const claimsOf = (token: string) =>
-    Effect.mapError(verifyToken(SECRET, token, now()), error =>
-      IdentityRefused.make({
-        failure: IdentityFailure.cases.Unauthorized.make({
-          reason: error.reason,
-        }),
-      }),
-    )
-  const api: IdentityApi = {
-    challenge: Effect.suspend(() =>
-      Effect.map(Effect.orDie(makeChallenge(SECRET, now())), nonce => ({
-        nonce,
-      })),
+  const handlers = yield* Layer.build(
+    Layer.mergeAll(
+      EventLogServerUnencrypted.layerNoRpcServer(PlayerLogSchema, projection),
+      sessionHandlers(codes),
+    ).pipe(
+      Layer.provide([
+        OwnerOnly,
+        PlayerStores,
+        EventLogServerUnencrypted.layerStorageMemory,
+      ]),
     ),
-    session: request => directory.session(request, now()),
-    link: token =>
-      Effect.flatMap(claimsOf(token), claims =>
-        directory.createLinkCode(claims, now()),
+  )
+  const setup: SyncSetup = {
+    connect: () =>
+      Effect.provideContext(RpcTest.makeClient(PlayerLogRpcs), handlers),
+    redeem: code =>
+      Effect.map(Ref.get(codes), known =>
+        Option.match(Option.fromNullishOr(known.get(code)), {
+          onNone: () =>
+            RedeemAnswer.cases.Refused.make({ problem: 'WrongCode' }),
+          onSome: identity => RedeemAnswer.cases.Redeemed.make({ identity }),
+        }),
       ),
-    redeem: (token, code) =>
-      Effect.gen(function* () {
-        const claims = yield* claimsOf(token)
-        const redeemed = yield* directory.redeem(claims, code, now())
-        const server = yield* Effect.orDie(
-          host.server(`player:${redeemed.session.playerId}`),
-        )
-        yield* Effect.orDie(
-          server.runServer(
-            LinkedDevices,
-            { count: redeemed.session.devices },
-            `linked-${redeemed.session.deviceId}-${redeemed.session.devices}`,
-          ),
-        )
-        return redeemed.session
-      }),
+    transports: [NO_TRANSPORT],
   }
-  return { host, api }
+  return { setup }
 })
+
+const SETTLE_STEP = '10 millis'
+const SETTLE_TURNS = 20
+const SETTLE_LIMIT = '30 seconds'
+
+const driveClock: Effect.Effect<never> = Effect.forever(
+  Effect.andThen(
+    Effect.repeat(Effect.yieldNow, { times: SETTLE_TURNS - 1 }),
+    TestClock.adjust(SETTLE_STEP),
+  ),
+)
+
+const settle = <A, E, R>(
+  wait: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> =>
+  Effect.raceFirst(
+    Effect.timeoutOrElse(wait, {
+      duration: SETTLE_LIMIT,
+      orElse: () => Effect.die('Still waiting after 30 s of test clock'),
+    }),
+    driveClock,
+  )
 
 export const until: {
   <A>(
@@ -307,11 +378,7 @@ export const until: {
 
 export const linkedPair = Effect.gen(function* () {
   const server = yield* makeServer
-  const network = yield* server.host.network()
-  const setup = Option.some<SyncSetup>({
-    identityApi: server.api,
-    transports: [network.transport],
-  })
+  const setup = Option.some(server.setup)
   const value_1 = yield* makeHub()
   const phone = yield* openSyncingOn(
     value_1,

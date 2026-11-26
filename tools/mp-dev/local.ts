@@ -14,6 +14,8 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
+import { LINK_REDEEM_PATH } from '../../src/shared/sessionApi'
+
 const here = import.meta.dirname
 
 const localPort = Effect.map(
@@ -56,14 +58,14 @@ const api :Workerd.Worker = (
   compatibilityDate = "2026-10-01",
   bindings = [
     (name = "SYNC_SECRET", text = "local-mp-dev-secret"),
-    (name = "SYNC_SCOPES", durableObjectNamespace = "SyncScope"),
-    (name = "SYNC_DIRECTORY", durableObjectNamespace = "SyncDirectory"),
+    (name = "PLAYER_LOGS", durableObjectNamespace = "PlayerLog"),
+    (name = "LINK_CODES", durableObjectNamespace = "LinkCodes"),
     (name = "GAME_ROOMS", durableObjectNamespace = "GameRoom"),
     (name = "MATCHMAKER", durableObjectNamespace = "Matchmaker"),
   ],
   durableObjectNamespaces = [
-    (className = "SyncScope", uniqueKey = "mp-dev-sync-scope", enableSql = true),
-    (className = "SyncDirectory", uniqueKey = "mp-dev-sync-directory", enableSql = true),
+    (className = "PlayerLog", uniqueKey = "mp-dev-player-log", enableSql = true),
+    (className = "LinkCodes", uniqueKey = "mp-dev-link-codes", enableSql = true),
     (className = "GameRoom", uniqueKey = "mp-dev-game-room", enableSql = true),
     (className = "Matchmaker", uniqueKey = "mp-dev-matchmaker", enableSql = true),
   ],
@@ -122,11 +124,9 @@ const buildWorker = ({ infra, outdir, storage }: Dirs, port: number) =>
     return config
   })
 
-const answersChallenge = (origin: string) =>
+const answersPreflight = (origin: string) =>
   HttpClient.execute(
-    HttpClientRequest.post(`${origin}/sync/challenge`).pipe(
-      HttpClientRequest.bodyText('{}'),
-    ),
+    HttpClientRequest.options(`${origin}${LINK_REDEEM_PATH}`),
   ).pipe(
     Effect.mapError(() => WorkerdFailed.make({ message: 'Not answering yet' })),
     Effect.filterOrFail(
@@ -166,7 +166,7 @@ export const startWorkerd: Effect.Effect<
     )
   const running = { current: spawn() }
   yield* Effect.addFinalizer(() => Effect.sync(() => running.current.kill()))
-  const ready = Effect.retry(answersChallenge(`http://127.0.0.1:${port}`), {
+  const ready = Effect.retry(answersPreflight(`http://127.0.0.1:${port}`), {
     schedule: Schedule.spaced('100 millis'),
     times: 100,
   })

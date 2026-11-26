@@ -38,10 +38,10 @@ import {
 } from '@munch/netcode'
 import {
   Connection,
-  IDENTITY_PATHS,
   OPENED,
   PING_JSON,
   PONG_JSON,
+  SCOPE_PATHS,
 } from '@munch/sync-engine'
 
 import { thingsOpenedBy } from '../../src/world/dare/milestones.ts'
@@ -73,8 +73,8 @@ import {
   type PlayerFacts,
   type Socket,
   type SyncSetupFailed,
+  askPlayerFacts,
   json,
-  readPlayerFacts,
   sqlOf,
   syncErrorResponse,
   tryCall,
@@ -559,10 +559,9 @@ export class GameRoom {
   }
 
   private factsOf(playerId: string): Effect.Effect<PlayerFacts> {
-    const scopes = this.env.SYNC_SCOPES
-    return readPlayerFacts(
-      (scope, url, headers) =>
-        scopes.get(scopes.idFromName(scope)).fetch(url, { headers }),
+    const logs = this.env.PLAYER_LOGS
+    return askPlayerFacts(
+      (store, url) => logs.get(logs.idFromName(store)).fetch(url),
       playerId,
     )
   }
@@ -676,7 +675,7 @@ export class GameRoom {
     const hostFor = this.hostFor(scope)
     return Effect.gen({ self: this }, function* () {
       const host = yield* hostFor
-      if (url.pathname === IDENTITY_PATHS.socket) {
+      if (url.pathname === SCOPE_PATHS.socket) {
         return yield* this.accept(SYNC_TAG, {
           _tag: 'Sync',
           scope,
@@ -690,7 +689,7 @@ export class GameRoom {
           socket: yield* Effect.sync(() => SecureRandom.uuidV4Unsafe()),
         })
       }
-      if (url.pathname === IDENTITY_PATHS.exchange) {
+      if (url.pathname === SCOPE_PATHS.exchange) {
         const body = yield* tryCall('read the body', () => request.text())
         const everyone = this.syncSockets()
         const result = yield* this.lock.withPermit(
