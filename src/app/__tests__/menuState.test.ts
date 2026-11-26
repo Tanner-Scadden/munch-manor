@@ -5,7 +5,7 @@ import { UiStruct } from '@effect/ui'
 
 import { Screen } from '../../domain/coopRoom'
 import { RESTART_GRACE_MS } from '../../shared/constants'
-import { home, openedDialog, veteranFighting } from '../../test/model.fixture'
+import { home, veteranFighting } from '../../test/model.fixture'
 import { pause } from '../../world/waves/waves'
 import {
   MenuState,
@@ -15,6 +15,7 @@ import {
   menuState,
 } from '../menuState'
 import { type Model, Phase } from '../model'
+import { RootDialog } from '../rootDialog'
 
 const inCoop: Model = UiStruct.evolve(home, {
   coop: coop =>
@@ -51,27 +52,37 @@ describe('menuState', () => {
   })
 
   test('every dialog covers the home menu, co-op, and the phase', () => {
-    expect(tagOf(UiStruct.evolve(home, { handDialog: openedDialog }))).toBe(
-      'Hand',
-    )
     expect(
-      tagOf(UiStruct.evolve(home, { homeScreenSteps: openedDialog })),
-    ).toBe('InstallSteps')
-    expect(
-      tagOf(UiStruct.evolve(inCoop, { updateGreeting: openedDialog })),
-    ).toBe('UpdateGreeting')
-    expect(
-      tagOf(UiStruct.evolve(veteranFighting, { handDialog: openedDialog })),
+      tagOf(UiStruct.evolve(home, { rootDialog: () => RootDialog.Hand })),
     ).toBe('Hand')
     expect(
-      isOnHomeMenu(UiStruct.evolve(home, { updateGreeting: openedDialog })),
+      tagOf(
+        UiStruct.evolve(home, { rootDialog: () => RootDialog.HomeScreenSteps }),
+      ),
+    ).toBe('InstallSteps')
+    expect(
+      tagOf(
+        UiStruct.evolve(inCoop, {
+          rootDialog: () => RootDialog.UpdateGreeting,
+        }),
+      ),
+    ).toBe('UpdateGreeting')
+    expect(
+      tagOf(
+        UiStruct.evolve(veteranFighting, { rootDialog: () => RootDialog.Hand }),
+      ),
+    ).toBe('Hand')
+    expect(
+      isOnHomeMenu(
+        UiStruct.evolve(home, { rootDialog: () => RootDialog.UpdateGreeting }),
+      ),
     ).toBe(false)
   })
 
   test('names the open panel and Profile tab', () => {
     const asking = UiStruct.evolve(pause(veteranFighting), {
       panel: () => 'LeaveRun',
-      panelDialog: openedDialog,
+      rootDialog: () => RootDialog.Panel,
     })
     expect(isPanelOpen(asking, 'LeaveRun')).toBe(true)
     expect(isPanelOpen(asking, 'HowToPlay')).toBe(false)
@@ -84,7 +95,7 @@ describe('menuState', () => {
 
     const settings = UiStruct.evolve(home, {
       profile: profile => UiStruct.evolve(profile, { tab: () => 'Settings' }),
-      profileDialog: openedDialog,
+      rootDialog: () => RootDialog.Profile,
     })
     expect(isProfileOpenOn(settings, 'Settings')).toBe(true)
     expect(isProfileOpenOn(settings, 'Look')).toBe(false)

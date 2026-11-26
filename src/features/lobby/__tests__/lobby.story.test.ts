@@ -58,8 +58,8 @@ describe('PLAY opens the lobby', () => {
           press('KeyO'),
           checkModel(current => {
             expect(MenuState.isAnyOf(['Lobby'])(menuState(current))).toBe(true)
-            expect(current.handDialog.isOpen).toBe(false)
-            expect(current.profileDialog.isOpen).toBe(false)
+            expect(current.rootDialog._tag).not.toBe('Hand')
+            expect(current.rootDialog._tag).not.toBe('Profile')
           }),
         )
       }),
@@ -341,7 +341,7 @@ describe('what skips the lobby', () => {
       Effect.gen(function* () {
         const s = yield* storyOf(
           UiStruct.evolve(initialModel, {
-            difficultyCard: () => DifficultyCard.Unseen(),
+            difficultyCard: () => DifficultyCard.Unseen,
           }),
         )
         s.pipe(

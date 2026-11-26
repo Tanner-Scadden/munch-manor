@@ -416,13 +416,7 @@ const noWorldSpread = defineRule({
   },
 })
 
-const DIALOG_FIELDS: ReadonlySet<string> = new Set([
-  'profileDialog',
-  'panelDialog',
-  'handDialog',
-  'homeScreenSteps',
-  'updateGreeting',
-])
+const DIALOG_FIELDS: ReadonlySet<string> = new Set(['rootDialog'])
 
 const memberName = (node: Node): string | undefined =>
   node.type === 'MemberExpression' &&
@@ -445,7 +439,7 @@ const noMenuField = defineRule({
         const name = memberName(node)
         const owner = memberName(node.object)
         if (
-          (name === 'isOpen' && hasName(DIALOG_FIELDS, owner)) ||
+          hasName(DIALOG_FIELDS, name) ||
           (name === 'screen' && owner === 'coop')
         ) {
           context.report({
@@ -703,7 +697,7 @@ const noDialogFieldWrite = defineRule({
     type: 'problem',
     docs: {
       description:
-        'Open and close a root dialog through openRootDialog and closeRootDialog, never by writing its DialogState field.',
+        'Open and close a root dialog through openRootDialog and closeRootDialog, never by writing the rootDialog field.',
     },
   },
   create(context) {

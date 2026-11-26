@@ -347,7 +347,7 @@ describe('the Big Lug armor', () => {
         const lug = lugAt(hp)
         const scene = withScene([lug], [bulletInto(500, lug, { damage: 9 })])
         yield* modelAfter(
-          UiStruct.evolve(scene, { audio: () => AudioState.Ready() }),
+          UiStruct.evolve(scene, { audio: () => AudioState.Ready }),
           steps(tick(FRAME_MS), hear),
         )
         const landed: Array<Model> = []

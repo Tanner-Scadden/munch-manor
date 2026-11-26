@@ -125,7 +125,7 @@ const { bests: _bests, ...versionTwoSave } = versionThreeSave
 
 const read: Model = UiStruct.evolve(loadingSave, {
   saving: UiStruct.evolve({
-    loading: () => Loading.Loaded(),
+    loading: () => Loading.Loaded,
     saveStatus: () => 'Read',
   }),
 })
@@ -590,7 +590,7 @@ describe('loading the save', () => {
               chosen: 'Hard',
               nightmare: 'Unlocked',
             })
-            expect(current.difficultyCard).toEqual(DifficultyCard.Seen())
+            expect(current.difficultyCard).toEqual(DifficultyCard.Seen)
             expect(current.bests.totalKills).toBe(341)
             expect(current.bests.runsPlayed).toBe(12)
             expect(current.bests.killsByKind.Tank).toBe(11)
@@ -655,7 +655,7 @@ describe('loading the save', () => {
             expect(current.saving.saveStatus).toBe('Read')
             expect(current.lessons).toEqual(freshLessons)
             expect(current.settings.soundSetting).toBe('On')
-            expect(Loading.guards.Loaded(current.saving.loading)).toBe(true)
+            expect(Loading.$is('Loaded')(current.saving.loading)).toBe(true)
           }),
         ),
       ),
@@ -1048,13 +1048,13 @@ describe('reset tutorial', () => {
           ),
         s => s.resolve(FocusProfileElement, Component.noop),
         checkModel(current => {
-          expect(current.profile.tutorialReset).toBe('Asking')
+          expect(current.profile.tutorialReset._tag).toBe('Asking')
           expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
         }),
         send(Message.ConfirmedTutorialReset()),
         s => s.expectHas(WriteSave),
         checkModel(current => {
-          expect(current.profile.tutorialReset).toBe('Done')
+          expect(current.profile.tutorialReset._tag).toBe('Done')
           expect(current.lessons).toEqual(freshLessons)
           expect(current.introducedKinds).toEqual([])
           expect(current.seenPowerUps).toEqual([])
@@ -1099,7 +1099,7 @@ describe('reset tutorial', () => {
           ),
         s => s.resolve(FocusProfileElement, Component.noop),
         checkModel(current => {
-          expect(current.profile.tutorialReset).toBe('Idle')
+          expect(current.profile.tutorialReset._tag).toBe('Idle')
           expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
         }),
       ),

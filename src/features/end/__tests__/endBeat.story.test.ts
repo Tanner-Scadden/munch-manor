@@ -60,7 +60,7 @@ const onEndScreen = (phase: Phase, screenMs: number): Model =>
 
 const audible = (base: Model): Model =>
   UiStruct.evolve(base, {
-    audio: () => AudioState.Ready(),
+    audio: () => AudioState.Ready,
     settings: UiStruct.evolve({ soundSetting: () => 'On' as const }),
   })
 

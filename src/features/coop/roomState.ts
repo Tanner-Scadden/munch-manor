@@ -14,7 +14,6 @@ import {
 } from '@munch/netcode'
 
 import {
-  type CoopProblem,
   type OwnPlayer,
   type Presses,
   type Room,
@@ -71,15 +70,6 @@ export const withScreen: {
   (model: Model, screen: Screen): Model
 } = Function.dual(2, (model: Model, screen: Screen): Model =>
   UiStruct.evolve(model, { screen: () => screen }),
-)
-
-export const hub: {
-  (maybeProblem: Option.Option<CoopProblem>): (model: Model) => Model
-  (model: Model, maybeProblem: Option.Option<CoopProblem>): Model
-} = Function.dual(
-  2,
-  (model: Model, maybeProblem: Option.Option<CoopProblem>): Model =>
-    withScreen(model, Screen.Hub({ maybeProblem })),
 )
 
 export const freshRoom: {

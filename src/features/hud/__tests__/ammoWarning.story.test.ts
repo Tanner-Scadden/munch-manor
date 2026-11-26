@@ -35,9 +35,9 @@ const smg = (loaded: number): CarriedGun => ({ ...freshGun('Smg'), loaded })
 const fightingWith = (second: CarriedGun, first = STARTING_PISTOL): Model =>
   modifyFocus(
     UiStruct.evolve(initialModel, {
-      difficultyCard: () => DifficultyCard.Seen(),
+      difficultyCard: () => DifficultyCard.Seen,
       maybeSurface: () => Option.some(SURFACE),
-      audio: () => AudioState.Ready(),
+      audio: () => AudioState.Ready,
       phase: () =>
         Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
       settings: UiStruct.evolve({ musicSetting: () => 'Off' }),

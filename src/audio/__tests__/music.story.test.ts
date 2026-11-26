@@ -120,7 +120,7 @@ describe('music follows the phase', () => {
     'the title creeps, START goes quiet for the intro, cued once audio is ready',
     () =>
       Effect.gen(function* () {
-        const s = yield* exactStoryOf(titleScreen(AudioState.Locked()))
+        const s = yield* exactStoryOf(titleScreen(AudioState.Locked))
         s.pipe(
           press('Enter'),
           c => c.expectHas(AcquireAudioEngine),
@@ -150,7 +150,7 @@ describe('music follows the phase', () => {
     () =>
       Effect.gen(function* () {
         const heard: Array<SoundEffect> = []
-        const s = yield* storyOf(titleScreen(AudioState.Ready()))
+        const s = yield* storyOf(titleScreen(AudioState.Ready))
         s.pipe(
           press('Enter'),
           resolveFocusLobby(),
@@ -192,7 +192,7 @@ describe('music follows the phase', () => {
     'a wave romps, a pause ducks it, a resume restores it, and a cleared wave sneaks back with a stinger',
     () =>
       Effect.gen(function* () {
-        const s = yield* storyOf(preparing(1, [], AudioState.Ready()))
+        const s = yield* storyOf(preparing(1, [], AudioState.Ready))
         s.pipe(
           press('Enter'),
           c =>
@@ -235,7 +235,7 @@ describe('music follows the phase', () => {
     () =>
       Effect.gen(function* () {
         const s = yield* storyOf(
-          escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
+          escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready)),
         )
         s.pipe(
           press('Enter'),
@@ -270,7 +270,7 @@ describe('music follows the phase', () => {
     Effect.gen(function* () {
       const s = yield* storyOf(
         modifyFocus(
-          UiStruct.evolve(fighting(3, AudioState.Ready()), {
+          UiStruct.evolve(fighting(3, AudioState.Ready), {
             zombies: () => [
               {
                 id: 100,
@@ -314,7 +314,7 @@ describe('music follows the phase', () => {
     'a frame that changes nothing about the phase sends no music Command',
     () =>
       Effect.gen(function* () {
-        const s = yield* storyOf(fighting(2, AudioState.Ready()))
+        const s = yield* storyOf(fighting(2, AudioState.Ready))
         s.pipe(tick(FRAME_MS), tick(FRAME_MS), c => c.expectNone())
       }),
   )
@@ -326,10 +326,10 @@ describe('music only plays when it can be heard', () => {
     () =>
       Effect.gen(function* () {
         const silentStates = [
-          AudioState.Locked(),
-          AudioState.Unlocking(),
-          AudioState.Suspended(),
-          AudioState.Unavailable(),
+          AudioState.Locked,
+          AudioState.Unlocking,
+          AudioState.Suspended,
+          AudioState.Unavailable,
         ]
         yield* Effect.forEach(silentStates, audio =>
           Effect.gen(function* () {
@@ -360,7 +360,7 @@ describe('music only plays when it can be heard', () => {
   it.effect('with music off, a phase change sends no music Command', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(
-        UiStruct.evolve(preparing(1, [FAR_AWAY_SPAWN], AudioState.Ready()), {
+        UiStruct.evolve(preparing(1, [FAR_AWAY_SPAWN], AudioState.Ready), {
           settings: UiStruct.evolve({ musicSetting: () => 'Off' }),
         }),
       )
@@ -376,7 +376,7 @@ describe('music only plays when it can be heard', () => {
 
   it.effect('N toggles music off and back on', () =>
     Effect.gen(function* () {
-      const s = yield* storyOf(fighting(2, AudioState.Ready()))
+      const s = yield* storyOf(fighting(2, AudioState.Ready))
       s.pipe(
         press('KeyN'),
         checkModel(({ settings: { musicSetting } }) => {
@@ -402,12 +402,12 @@ describe('music only plays when it can be heard', () => {
 
   it.effect('the music button toggles music and unlocks audio', () =>
     Effect.gen(function* () {
-      const s = yield* exactStoryOf(titleScreen(AudioState.Locked()))
+      const s = yield* exactStoryOf(titleScreen(AudioState.Locked))
       s.pipe(
         send(Message.ClickedMusicButton()),
         checkModel(({ settings: { musicSetting }, audio }) => {
           expect(musicSetting).toBe('Off')
-          expect(audio).toEqual(AudioState.Unlocking())
+          expect(audio).toEqual(AudioState.Unlocking)
         }),
         c => c.expectExact(AcquireAudioEngine),
         c => c.keepPending(AcquireAudioEngine),
@@ -428,7 +428,7 @@ describe('music only plays when it can be heard', () => {
     'the music button on an audible title stops and restarts the creep loop',
     () =>
       Effect.gen(function* () {
-        const s = yield* storyOf(titleScreen(AudioState.Ready()))
+        const s = yield* storyOf(titleScreen(AudioState.Ready))
         s.pipe(
           send(Message.ClickedMusicButton()),
           c =>
@@ -452,7 +452,7 @@ describe('music only plays when it can be heard', () => {
 
   it.effect('wave 10 of a hunt still romps, with the list not done', () =>
     Effect.gen(function* () {
-      const s = yield* storyOf(fighting(FINAL_WAVE, AudioState.Ready()))
+      const s = yield* storyOf(fighting(FINAL_WAVE, AudioState.Ready))
       s.pipe(
         press('KeyM'),
         resolveCue('Silence'),
@@ -469,7 +469,7 @@ describe('music only plays when it can be heard', () => {
   it.effect('Endless stampedes from wave 10, with no list', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(
-        UiStruct.evolve(fighting(FINAL_WAVE, AudioState.Ready()), {
+        UiStruct.evolve(fighting(FINAL_WAVE, AudioState.Ready), {
           mode: () => RunMode.Endless(),
         }),
       )
@@ -488,7 +488,7 @@ describe('music only plays when it can be heard', () => {
 
   it.effect('mute silences the music, and unmuting brings it back', () =>
     Effect.gen(function* () {
-      const s = yield* storyOf(holdingOut(AudioState.Ready()))
+      const s = yield* storyOf(holdingOut(AudioState.Ready))
       s.pipe(
         press('KeyM'),
         checkModel(({ settings: { soundSetting, musicSetting } }) => {
@@ -517,7 +517,7 @@ describe('music only plays when it can be heard', () => {
     'a hidden tab silences the title music, and coming back resumes it',
     () =>
       Effect.gen(function* () {
-        const s = yield* storyOf(titleScreen(AudioState.Ready()))
+        const s = yield* storyOf(titleScreen(AudioState.Ready))
         s.pipe(
           send(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
           c =>
@@ -549,7 +549,7 @@ describe('music only plays when it can be heard', () => {
     Effect.gen(function* () {
       const s = yield* storyOf(
         UiStruct.evolve(
-          escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
+          escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready)),
           { settings: UiStruct.evolve({ soundSetting: () => 'Muted' }) },
         ),
       )
@@ -574,7 +574,7 @@ describe('the end stingers stop when the music goes quiet', () => {
 
   it.effect('mute during the escape stinger stops it', () =>
     Effect.gen(function* () {
-      const s = yield* storyOf(escapedScreen(AudioState.Ready()))
+      const s = yield* storyOf(escapedScreen(AudioState.Ready))
       s.pipe(
         press('KeyM'),
         checkModel(({ settings: { soundSetting } }) => {
@@ -592,7 +592,7 @@ describe('the end stingers stop when the music goes quiet', () => {
   it.effect('turning music off during the Game Over stinger stops it', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(
-        UiStruct.evolve(escapedScreen(AudioState.Ready()), {
+        UiStruct.evolve(escapedScreen(AudioState.Ready), {
           phase: () => Phase.GameOver({ wave: 4 }),
         }),
       )
@@ -613,7 +613,7 @@ describe('the end stingers stop when the music goes quiet', () => {
   it.effect('unmuting on the escape screen does not replay the stinger', () =>
     Effect.gen(function* () {
       const s = yield* storyOf(
-        UiStruct.evolve(escapedScreen(AudioState.Ready()), {
+        UiStruct.evolve(escapedScreen(AudioState.Ready), {
           settings: UiStruct.evolve({ soundSetting: () => 'Muted' }),
         }),
       )

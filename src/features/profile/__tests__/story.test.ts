@@ -12,7 +12,7 @@ import {
   RequestLinkCode,
   takeSyncedName,
 } from '../../../app/update/profile'
-import { LinkFlow } from '../../../platform/playerSync'
+import { LinkFlow } from '../../../platform/linkFlow'
 import { readyAfterRead } from '../../../test/model.fixture'
 import {
   type StoryStep,
@@ -27,6 +27,7 @@ import { noRank } from '../../../world/heroes/rank'
 import { Profile } from '../block'
 import { Events, Message as ProfileMessage } from '../message'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from '../profile'
+import { TutorialReset } from '../resetFlow'
 import { profileOpenOn } from './profile.fixture'
 
 const PROPS = profilePropsOf(profileOpenOn('Settings'))
@@ -78,7 +79,7 @@ describe('the Profile on the root', () => {
         profile: profile =>
           UiStruct.evolve(profile, {
             nameDraft: () => 'x',
-            tutorialReset: () => 'Done',
+            tutorialReset: () => TutorialReset.Done,
             fx: () => 'Spin',
           }),
       })
@@ -92,12 +93,12 @@ describe('the Profile on the root', () => {
             const s = yield* storyOf(named)
             s.pipe(
               send(open),
-              checkModel(({ profile, profileDialog }) => {
-                expect(profileDialog.isOpen).toBe(true)
+              checkModel(({ profile, rootDialog }) => {
+                expect(rootDialog._tag).toBe('Profile')
                 expect(profile.tab).toBe(tab)
                 expect(profile.nameDraft).toBe('Hambone')
                 expect(profile.fx).toBe('Still')
-                expect(profile.tutorialReset).toBe('Idle')
+                expect(profile.tutorialReset._tag).toBe('Idle')
               }),
               settleRunCommands,
             )
@@ -187,18 +188,18 @@ describe('the Profile on the root', () => {
         s.pipe(
           send(Message.ConfirmedTutorialReset()),
           checkModel(({ profile }) => {
-            expect(profile.tutorialReset).toBe('Idle')
+            expect(profile.tutorialReset._tag).toBe('Idle')
           }),
         ).expectNone()
         s.pipe(
           send(Message.ClickedResetTutorial()),
           checkModel(({ profile }) => {
-            expect(profile.tutorialReset).toBe('Asking')
+            expect(profile.tutorialReset._tag).toBe('Asking')
           }),
           focused(KEEP_TUTORIAL_BUTTON_ID),
           send(Message.ConfirmedTutorialReset()),
           checkModel(({ profile }) => {
-            expect(profile.tutorialReset).toBe('Done')
+            expect(profile.tutorialReset._tag).toBe('Done')
           }),
           focused(RESET_TUTORIAL_BUTTON_ID),
           settleRunCommands,
@@ -377,7 +378,7 @@ describe("the Profile's link code", () => {
         send(Message.ClickedCancelLink()),
         send(Message.ReadLinkClipboard({ text: 'KZ7QWM', typed: '' })),
         checkModel(({ profile }) => {
-          expect(profile.linkFlow).toEqual(LinkFlow.Idle())
+          expect(profile.linkFlow).toEqual(LinkFlow.Idle)
         }),
       )
     }),

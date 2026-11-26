@@ -23,7 +23,7 @@ import {
   unwrapUpdateGift,
 } from './home'
 import { tapSound, unlockAudio } from './sound'
-import { type UpdateStep, combine, defineHandlers, modelStep } from './step'
+import { type UpdateStep, combine, defineHandlers } from './step'
 
 export class FetchBuild extends Command.Service<FetchBuild>()(
   'app/FetchBuild',
@@ -116,5 +116,5 @@ export const versionHandlers = defineHandlers({
     newsFromGreeting,
   ]),
 
-  FailedReloadPage: modelStep(rewrapUpdateGift),
+  FailedReloadPage: rewrapUpdateGift,
 })

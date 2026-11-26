@@ -8,6 +8,7 @@ import type { Locator } from '@effect/ui/testing'
 import { Message } from '../../../app/message'
 import type { Model } from '../../../app/model'
 import { profilePropsOf } from '../../../app/profileView'
+import { RootDialog } from '../../../app/rootDialog'
 import type { LookPart } from '../../../domain/looks'
 import { readyAfterRead } from '../../../test/model.fixture'
 import { button, byClass, withAttrs } from '../../../test/sceneTesting'
@@ -28,7 +29,7 @@ import type { ProfileTab } from '../model'
 export const profileOpenOn = (tab: ProfileTab): Model =>
   UiStruct.evolve(readyAfterRead, {
     profile: profile => UiStruct.evolve(profile, { tab: () => tab }),
-    profileDialog: dialog => UiStruct.evolve(dialog, { isOpen: () => true }),
+    rootDialog: () => RootDialog.Profile,
   })
 
 const rootMessageOf = (event: Events): Message =>

@@ -36,6 +36,7 @@ import {
 } from '../../../test/testing'
 import { type ProfileTab } from '../model'
 import { PROFILE_TABS } from '../profile'
+import { TutorialReset } from '../resetFlow'
 import { profileOpenOn } from './profile.fixture'
 
 const selectTab = (tab: ProfileTab): StoryStep =>
@@ -43,9 +44,9 @@ const selectTab = (tab: ProfileTab): StoryStep =>
 
 const expectOpenOn = (tab: ProfileTab): StoryStep =>
   checkModel((current: Model) => {
-    expect(current.profileDialog.isOpen).toBe(true)
+    expect(current.rootDialog._tag).toBe('Profile')
     expect(current.profile.tab).toBe(tab)
-    expect(current.panelDialog.isOpen).toBe(false)
+    expect(current.rootDialog._tag).not.toBe('Panel')
   })
 
 const typed = (value: string): StoryStep =>
@@ -99,7 +100,7 @@ describe('the Profile', () => {
             s.pipe(
               send(sent),
               checkModel(current => {
-                expect(current.profileDialog.isOpen).toBe(false)
+                expect(current.rootDialog._tag).not.toBe('Profile')
               }),
               settleRunCommands,
             )
@@ -116,14 +117,16 @@ describe('the Profile', () => {
         const s = yield* storyOf(
           UiStruct.evolve(profileOpenOn('Settings'), {
             profile: profile =>
-              UiStruct.evolve(profile, { tutorialReset: () => 'Asking' }),
+              UiStruct.evolve(profile, {
+                tutorialReset: () => TutorialReset.Asking,
+              }),
           }),
         )
         s.pipe(
           selectTab('Account'),
           checkModel(current => {
             expect(current.profile.tab).toBe('Account')
-            expect(current.profile.tutorialReset).toBe('Idle')
+            expect(current.profile.tutorialReset._tag).toBe('Idle')
           }),
           selectTab('Name'),
           checkModel(current => {
@@ -138,7 +141,7 @@ describe('the Profile', () => {
     Effect.gen(function* () {
       const s = yield* exactStoryOf(
         UiStruct.evolve(profileOpenOn('Look'), {
-          audio: () => AudioState.Ready(),
+          audio: () => AudioState.Ready,
         }),
       )
       s.pipe(selectTab('Name'))
@@ -240,7 +243,7 @@ describe('the name', () => {
         typed('Tot Terror'),
         closeProfile,
         checkModel(current => {
-          expect(current.profileDialog.isOpen).toBe(false)
+          expect(current.rootDialog._tag).not.toBe('Profile')
           expect(current.playerName).toBe('Tot Terror')
         }),
         writeSave,

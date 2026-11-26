@@ -221,7 +221,7 @@ export const logMusic = (
 const musicCuesOf = (heard: Model) =>
   Array.filter(
     update(
-      UiStruct.evolve(heard, { audio: () => AudioState.Suspended() }),
+      UiStruct.evolve(heard, { audio: () => AudioState.Suspended }),
       Message.CompletedResumeAudio({ playback: 'Running' }),
     ).commands,
     command => command.name === Command.nameOf(CueMusic),
@@ -229,7 +229,7 @@ const musicCuesOf = (heard: Model) =>
 
 const audible = (model: Model): Model =>
   UiStruct.evolve(model, {
-    audio: () => AudioState.Ready(),
+    audio: () => AudioState.Ready,
     pageVisibility: () => 'Visible' as const,
     settings: UiStruct.evolve({
       soundSetting: () => 'On' as const,

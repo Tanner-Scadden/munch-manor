@@ -13,6 +13,7 @@ import {
   NEWS_ICON,
   SPARKLE_ICON,
 } from '../../art/icons'
+import { UpdateGift } from '../../domain/clientSchema'
 import {
   type NewsBullet,
   maybeNewestNewsDay,
@@ -55,9 +56,12 @@ export const updateGiftView: {
           .attr('type', 'button')
           .id('home-gift')
           .class('home-corner-button home-gift')
-          .attr('data-state', model.release.updateGift)
+          .attr('data-state', model.release.updateGift._tag)
           .attr('aria-label', UPDATE_GIFT_LABEL)
-          .attr('aria-busy', String(model.release.updateGift === 'Unwrapping'))
+          .attr(
+            'aria-busy',
+            String(UpdateGift.$is('Unwrapping')(model.release.updateGift)),
+          )
           .on('click', VersionMessage.ClickedUpdateButton())
           .children(
             giftArtView(h),

@@ -27,6 +27,7 @@ import {
   versionCases,
 } from '../platform/message'
 import { ZombieKind } from '../world/schema/worldSchema'
+import { DialogName } from './rootDialog'
 
 export const frameCases = {
   TickedFrame: { deltaTime: Schema.Finite },
@@ -36,15 +37,6 @@ export const frameCases = {
   CompletedReadRoomLink: { maybeCode: Schema.Option(Schema.String) },
   CompletedReadBeatLink: { maybeDare: Schema.Option(FriendsDare) },
 }
-
-export const DialogName = Schema.Literals([
-  'Profile',
-  'Panel',
-  'Hand',
-  'HomeScreenSteps',
-  'UpdateGreeting',
-])
-export type DialogName = typeof DialogName.Type
 
 export const dialogCases = {
   ClosedDialog: { dialog: DialogName },

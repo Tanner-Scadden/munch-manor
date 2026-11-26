@@ -531,7 +531,7 @@ describe('New zombie card', () => {
         const s = yield* sceneOf(
           UiStruct.evolve(initialModel, {
             lastDevice: () => 'Touch',
-            difficultyCard: () => DifficultyCard.Seen(),
+            difficultyCard: () => DifficultyCard.Seen,
           }),
         )
         steps(

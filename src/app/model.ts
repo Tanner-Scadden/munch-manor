@@ -113,7 +113,6 @@ import {
   noBonuses,
 } from '../shared/playerData'
 import { SavedProof, noProof } from '../shared/proofData'
-import { DialogState, closedDialog } from '../ui/dialog'
 import { DareKind } from '../world/dare/dareSchema'
 import { rollCases } from '../world/feats/cases'
 import { noRank } from '../world/heroes/rank'
@@ -154,6 +153,7 @@ import {
   shutValve,
   stillShake,
 } from '../world/schema/worldSchema'
+import { RootDialog } from './rootDialog'
 
 export * from '../domain/clientSchema'
 export * from '../world/schema/worldSchema'
@@ -169,7 +169,7 @@ const Saving = Schema.Struct({
 type Saving = typeof Saving.Type
 
 const freshSaving: Saving = {
-  loading: Loading.Loaded(),
+  loading: Loading.Loaded,
   saveStatus: 'Unread',
   syncState: SyncState.LocalOnly(),
   writesInFlight: 0,
@@ -240,7 +240,7 @@ type Release = typeof Release.Type
 
 const freshRelease: Release = {
   maybeNewerBuild: Option.none(),
-  updateGift: 'Wrapped',
+  updateGift: UpdateGift.Wrapped,
   installOffer: 'None',
   maybeSupportUrl: maybeSupportUrlOf(SUPPORT_URL),
 }
@@ -352,15 +352,12 @@ export const Model = Schema.Struct({
   runRecords: Schema.Array(RunRecord),
   audio: AudioState,
   homeScreenTip: HomeScreenTip,
-  homeScreenSteps: DialogState,
   pageVisibility: PageVisibility,
   missedKeyDowns: Schema.Finite,
-  updateGreeting: DialogState,
   appearance: Appearance,
   profile: Profile.Model,
   lobby: Lobby.LobbyState,
   munchopediaPage: MunchopediaPage,
-  profileDialog: DialogState,
   playerName: PlayerName,
   coop: Coop.Model,
   recordUnlock: RecordUnlock,
@@ -372,8 +369,7 @@ export const Model = Schema.Struct({
   maybeHomeFocus: Schema.Option(HomeButton),
   panel: MenuPanel,
   maybeOpenHelpCard: Schema.Option(HelpCard),
-  panelDialog: DialogState,
-  handDialog: DialogState,
+  rootDialog: RootDialog,
   bests: PlayerBests,
   rank: SavedRank,
   bonuses: SavedBonuses,
@@ -435,13 +431,9 @@ export const initialModel: OwnModel = {
   phase: Phase.Ready(),
   profile: Profile.initialModel,
   lobby: Lobby.initialLobby,
-  homeScreenSteps: closedDialog,
   munchopediaPage: MunchopediaPage.List(),
   coop: Coop.initialModel,
-  updateGreeting: closedDialog,
-  profileDialog: closedDialog,
-  panelDialog: closedDialog,
-  handDialog: closedDialog,
+  rootDialog: RootDialog.Shut,
   pacing: calmPacing,
   boss: Boss.Absent(),
   frenzyPacks: [],
@@ -451,7 +443,7 @@ export const initialModel: OwnModel = {
   modifiers: noModifiers,
   easyBreakSeconds: 0,
   dareMark: 0,
-  difficultyCard: DifficultyCard.Unseen(),
+  difficultyCard: DifficultyCard.Unseen,
   zombies: [],
   bullets: [],
   lobs: [],
@@ -508,7 +500,7 @@ export const initialModel: OwnModel = {
   stats: freshStats,
   screenMs: 0,
   runRecords: [],
-  audio: AudioState.Locked(),
+  audio: AudioState.Locked,
   homeScreenTip: 'Unseen',
   pageVisibility: 'Visible',
   missedKeyDowns: 0,

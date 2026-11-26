@@ -20,13 +20,15 @@ import {
 } from '@game/app/model'
 import { BeatMyRun, type FriendsDare } from '@game/domain/beatLink'
 import { addBot } from '@game/domain/bots'
+import { UpdateGift } from '@game/domain/clientSchema'
 import { milestoneUnlockId } from '@game/domain/journal'
 import { MASTERY_GUNS, fitPropStyle } from '@game/domain/mastery'
 import { isEndScreen, withBests } from '@game/domain/run'
 import { unlocksAt } from '@game/domain/unlocks'
 import { prizeUnlockId } from '@game/features/guide/shopGuide'
 import { maybeNewestNewsDay } from '@game/features/whatsNew/changelog'
-import { LinkFlow, SyncState } from '@game/platform/playerSync'
+import { LinkFlow } from '@game/platform/linkFlow'
+import { SyncState } from '@game/platform/playerSync'
 import { noJournal } from '@game/shared/journalData'
 import { heroIdOf } from '@game/shared/playerData'
 import { BIG_KEY, type SavedProof } from '@game/shared/proofData'
@@ -529,7 +531,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   if (config.unwrap) {
     model = UiStruct.evolve(model, {
-      release: UiStruct.evolve({ updateGift: () => 'Unwrapping' }),
+      release: UiStruct.evolve({ updateGift: () => UpdateGift.Unwrapping }),
     })
   }
   if (config.install) {
@@ -701,7 +703,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   )
   model = UiStruct.evolve(model, {
     difficultyCard: () =>
-      config.ask ? DifficultyCard.Unseen() : DifficultyCard.Seen(),
+      config.ask ? DifficultyCard.Unseen : DifficultyCard.Seen,
     difficulty: setting => ({
       chosen: config.difficulty ?? setting.chosen,
       nightmare: config.nightmare ?? setting.nightmare,
@@ -933,7 +935,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         UiStruct.evolve(profile, {
           linkFlow: () =>
             link === 'requesting'
-              ? LinkFlow.Requesting()
+              ? LinkFlow.Requesting
               : link === 'showing'
                 ? LinkFlow.Showing({ code: 'KZ7QWM' })
                 : link === 'entering'
@@ -941,7 +943,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
                   : link === 'redeeming'
                     ? LinkFlow.Redeeming({ code: 'KZ7QWM' })
                     : link === 'linked'
-                      ? LinkFlow.Linked()
+                      ? LinkFlow.Linked
                       : LinkFlow.Failed({ problem: 'WrongCode' }),
         }),
     })

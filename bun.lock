@@ -12,6 +12,7 @@
         "@munch/sync-engine": "workspace:*",
         "@pixi/3d": "0.1.0",
         "effect": "4.1.4",
+        "effect-machine": "0.32.1",
         "pixi.js": "8.23.0",
       },
       "devDependencies": {
@@ -466,6 +467,8 @@
     "earcut": ["earcut@3.2.4", "", {}, "sha512-FHc6yNpnTORB0tM5kmZ03iD2mDuNakDE2lvf4Hw1XkfxtEHIGVi01B/GqUSwx+NcC1WGjidAfpTXzeALtPtfpg=="],
 
     "effect": ["effect@4.1.4", "", {}, "sha512-Tgrv/9FN+TZYyOn8XSli+fVqAfwDrDAkiX5Uu9vztINb675VTQdhD0gWI5Kzvhlh9QqzjZvw72iugqw5pwoghQ=="],
+
+    "effect-machine": ["effect-machine@0.32.1", "", { "peerDependencies": { "effect": ">=4.0.0 <5" } }, "sha512-0JoUFYpPCXPPysZl8PchsTeNr+UATZ6w3kJGNdscip5keuRTwoULkv396LqI0E7lDkfbuWsWlxjOyDo/nsacow=="],
 
     "enhanced-resolve": ["enhanced-resolve@5.26.0", "", { "dependencies": { "graceful-fs": "^4.2.4", "tapable": "^2.3.3" } }, "sha512-9vhedylFonb2YGogzUKX6+Ja72gOJbN1QHAqdrvqLwhdl/QWbKopzoUC9EbQNVsAns/bx/4uyqalrQAoy1IByw=="],
 

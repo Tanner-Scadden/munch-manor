@@ -2,13 +2,14 @@ import { Array, Function, Option } from 'effect'
 
 import { UiStruct } from '@effect/ui'
 import { Melee, type Model, type Zombie } from '@game/app/model'
+import { RootDialog } from '@game/app/rootDialog'
 import { withInput } from '@game/app/update/step'
 import { markLooksSeen } from '@game/domain/unlocks'
 import type { ProfileTab } from '@game/features/profile/model'
+import { TutorialReset } from '@game/features/profile/resetFlow'
 import { pressHoldButton, pressKey, releaseAll } from '@game/input/input'
 import { MouseButton } from '@game/input/inputSchema'
 import { PLAYER_MAX_HP } from '@game/shared/constants'
-import { openDialog } from '@game/ui/dialog'
 import { freshGun } from '@game/world/gear/weapons'
 import { modifyFocus } from '@game/world/party/party'
 
@@ -105,12 +106,12 @@ const preparedProfile = (model: Model, tab: ProfileTab): Model =>
     UiStruct.evolve(tab === 'Look' ? markLooksSeen(model) : model, {
       profile: profile =>
         UiStruct.evolve(profile, {
-          tutorialReset: () => 'Idle',
+          tutorialReset: () => TutorialReset.Idle,
           tab: () => tab,
           fx: () => 'Still',
           nameDraft: () => model.playerName,
         }),
-      profileDialog: () => openDialog,
+      rootDialog: () => RootDialog.Profile,
     }),
     releaseAll,
   )

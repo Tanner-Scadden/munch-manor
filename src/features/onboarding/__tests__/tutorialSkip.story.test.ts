@@ -182,7 +182,7 @@ describe('the first-run card', () => {
         chooseTutorial('Skip'),
         expectNoCommand,
         checkModel(current => {
-          expect(current.difficultyCard).toEqual(DifficultyCard.Unseen())
+          expect(current.difficultyCard).toEqual(DifficultyCard.Unseen)
           expect(current.lessons).toEqual(freshLessons)
         }),
       ),

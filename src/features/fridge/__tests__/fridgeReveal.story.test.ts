@@ -40,7 +40,7 @@ import {
 const FRAME_MS = FIXED_STEP_MS
 const audibleAtFridge = (balance: number): Model =>
   UiStruct.evolve(atFridge(balance), {
-    audio: () => AudioState.Ready(),
+    audio: () => AudioState.Ready,
     settings: UiStruct.evolve({
       soundSetting: () => 'On',
       musicSetting: () => 'Off',

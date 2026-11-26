@@ -92,7 +92,7 @@ describe('wading through a roof leak', () => {
       Effect.suspend(() => {
         const sounds: Array<string> = []
         return modelAfter(
-          UiStruct.evolve(playerAt(at), { audio: () => AudioState.Ready() }),
+          UiStruct.evolve(playerAt(at), { audio: () => AudioState.Ready }),
           steps(
             press('KeyD'),
             ...Array.makeBy(SPLASH_STEPS, () =>

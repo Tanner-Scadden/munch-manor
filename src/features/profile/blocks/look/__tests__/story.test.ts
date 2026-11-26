@@ -245,7 +245,7 @@ describe('Character', () => {
           Effect.gen(function* () {
             const s = yield* storyOf(given_)
             s.send(Message.PressedKey({ code: 'KeyC' }))
-            expect(s.model.profileDialog.isOpen).toBe(true)
+            expect(s.model.rootDialog._tag).toBe('Profile')
             expect(s.model.profile.tab).toBe('Look')
             settleRunCommands(s)
           })
@@ -263,7 +263,7 @@ describe('Character', () => {
           }),
           steps(send(Message.PressedKey({ code: 'KeyC' })), settleRunCommands),
         )
-        expect(midRun.profileDialog.isOpen).toBe(false)
+        expect(midRun.rootDialog._tag).not.toBe('Profile')
         const inGrace = yield* modelAfter(
           UiStruct.evolve(home, {
             phase: () => Phase.GameOver({ wave: 3 }),
@@ -271,7 +271,7 @@ describe('Character', () => {
           }),
           steps(send(Message.ClickedCharacterButton()), settleRunCommands),
         )
-        expect(inGrace.profileDialog.isOpen).toBe(false)
+        expect(inGrace.rootDialog._tag).not.toBe('Profile')
       }),
   )
 

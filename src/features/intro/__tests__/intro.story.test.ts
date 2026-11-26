@@ -210,7 +210,7 @@ describe('the intro', () => {
       Effect.gen(function* () {
         const s = yield* storyOf(
           UiStruct.evolve(readyModel, {
-            audio: () => AudioState.Ready(),
+            audio: () => AudioState.Ready,
             settings: UiStruct.evolve({ musicSetting: () => 'Off' }),
           }),
         )

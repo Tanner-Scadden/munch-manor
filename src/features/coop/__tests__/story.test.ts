@@ -127,8 +127,7 @@ const matched = Message.ReceivedQuickPlayEvent({
 const TWO = [memberOf(0, 'Ana'), memberOf(1, 'Bo')]
 
 const queueAnswerOf = (current: Model) =>
-  Screen.isAnyOf(['Queue'])(current.coop.screen) &&
-  current.coop.screen.queue.answer
+  Screen.$is('Queue')(current.coop.screen) && current.coop.screen.queue.answer
 
 describe('co-op hub', () => {
   it.effect('the X on the hub closes co-op and tells the root', () =>
@@ -588,7 +587,7 @@ const pressSeat =
 
 const roomIn = (driven: Driven) =>
   Option.getOrThrow(
-    Screen.isAnyOf(['InRoom'])(driven.coop.screen)
+    Screen.$is('InRoom')(driven.coop.screen)
       ? Option.some(driven.coop.screen.room)
       : Option.none(),
   )

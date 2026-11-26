@@ -15,8 +15,8 @@ import {
   steps,
   writeSave,
 } from '../../test/testing'
+import { LinkFlow } from '../linkFlow'
 import {
-  LinkFlow,
   PlayerChange,
   SyncState,
   changesBetween,
@@ -27,7 +27,7 @@ import { type PlayerSave, saveOf } from '../save'
 
 const read: Model = UiStruct.evolve(initialModel, {
   saving: UiStruct.evolve({
-    loading: () => Loading.Loaded(),
+    loading: () => Loading.Loaded,
     saveStatus: () => 'Read',
   }),
 })
@@ -189,7 +189,7 @@ describe('linking a device', () => {
       steps(
         send(Message.ClickedLinkDevice()),
         checkModel(current => {
-          expect(current.profile.linkFlow).toEqual(LinkFlow.Requesting())
+          expect(current.profile.linkFlow).toEqual(LinkFlow.Requesting)
         }),
         s => s.expectExact(RequestLinkCode),
         s =>
@@ -204,7 +204,7 @@ describe('linking a device', () => {
         }),
         send(Message.ClickedCancelLink()),
         checkModel(current => {
-          expect(current.profile.linkFlow).toEqual(LinkFlow.Idle())
+          expect(current.profile.linkFlow).toEqual(LinkFlow.Idle)
         }),
       ),
     ),
@@ -242,7 +242,7 @@ describe('linking a device', () => {
         send(Message.SubmittedLinkCode()),
         s => s.resolve(RedeemLinkCode, Message.SucceededRedeemLinkCode()),
         checkModel(current => {
-          expect(current.profile.linkFlow).toEqual(LinkFlow.Linked())
+          expect(current.profile.linkFlow).toEqual(LinkFlow.Linked)
         }),
       ),
     ),
@@ -255,7 +255,7 @@ describe('linking a device', () => {
         send(Message.SubmittedLinkCode()),
         s => s.expectNone(),
         checkModel(current => {
-          expect(current.profile.linkFlow).toEqual(LinkFlow.Idle())
+          expect(current.profile.linkFlow).toEqual(LinkFlow.Idle)
         }),
       ),
     ),

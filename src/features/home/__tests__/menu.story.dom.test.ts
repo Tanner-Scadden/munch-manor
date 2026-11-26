@@ -238,14 +238,14 @@ describe('leaving a run', () => {
         const s = yield* storyOf(pause(veteranFighting))
         s.pipe(
           send(Message.PressedKey({ code: 'KeyH' })),
-          checkModel(({ panel, panelDialog, phase }) => {
+          checkModel(({ panel, rootDialog, phase }) => {
             expect(panel).toBe('LeaveRun')
-            expect(panelDialog.isOpen).toBe(true)
+            expect(rootDialog._tag).toBe('Panel')
             expect(Phase.guards.Paused(phase)).toBe(true)
           }),
           send(Message.ClosedDialog({ dialog: 'Panel' })),
-          checkModel(({ panelDialog, phase }) => {
-            expect(panelDialog.isOpen).toBe(false)
+          checkModel(({ rootDialog, phase }) => {
+            expect(rootDialog._tag).not.toBe('Panel')
             expect(Phase.guards.Paused(phase)).toBe(true)
           }),
         )
@@ -261,9 +261,9 @@ describe('leaving a run', () => {
           send(Message.PressedKey({ code: 'KeyH' })),
           send(Message.ClosedDialog({ dialog: 'Panel' })),
           send(Message.ClickedLeaveRunButton()),
-          checkModel(({ panel, panelDialog, phase }) => {
+          checkModel(({ panel, rootDialog, phase }) => {
             expect(panel).toBe('LeaveRun')
-            expect(panelDialog.isOpen).toBe(false)
+            expect(rootDialog._tag).not.toBe('Panel')
             expect(Phase.guards.Paused(phase)).toBe(true)
           }),
         )
@@ -284,9 +284,9 @@ describe('leaving a run', () => {
       const s5 = yield* storyOf(veteranFighting)
       s5.pipe(
         send(Message.PressedKey({ code: 'KeyH' })),
-        checkModel(({ phase, panelDialog }) => {
+        checkModel(({ phase, rootDialog }) => {
           expect(Phase.guards.Wave(phase)).toBe(true)
-          expect(panelDialog.isOpen).toBe(false)
+          expect(rootDialog._tag).not.toBe('Panel')
         }),
       )
       const s6 = yield* storyOf(
@@ -461,7 +461,7 @@ describe('the loading splash', () => {
           resolveProgress(5),
           resolveSplashEnd,
           checkModel(({ saving: { loading } }) => {
-            expect(loading).toEqual(Loading.Loaded())
+            expect(loading).toEqual(Loading.Loaded)
           }),
           send(Message.CompletedAwaitFirstFrame()),
           t => t.expectNone(),

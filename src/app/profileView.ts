@@ -14,6 +14,7 @@ import { rankOf, totalPointsOf } from '../world/heroes/rank'
 import type { ApplicationHtml, ApplicationViewBuilder } from './definition'
 import { Message } from './message'
 import type { Model } from './model'
+import { isRootDialogOpen } from './rootDialog'
 
 export const profilePropsOf = (model: Model): ProfileProps => ({
   state: model.profile,
@@ -97,7 +98,7 @@ export const profileDialogView: {
     dialogShellView({
       h,
       id: PROFILE_DIALOG_ID,
-      isOpen: model.profileDialog.isOpen,
+      isOpen: isRootDialogOpen(model, 'Profile'),
       dialogClass: 'profile-dialog',
       backdropClass: 'profile-backdrop',
       panelClass: 'profile',

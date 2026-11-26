@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 
 import { Component, UiStruct } from '@effect/ui'
 import { describe, expect, it } from '@effect/vitest'
@@ -6,12 +6,7 @@ import { describe, expect, it } from '@effect/vitest'
 import { BeatMyRun } from '../../../domain/beatLink'
 import { Screen } from '../../../domain/coopRoom'
 import type { ProfileTab } from '../../../features/profile/model'
-import {
-  home,
-  openedDialog,
-  readyModel,
-  veteranFighting,
-} from '../../../test/model.fixture'
+import { home, readyModel, veteranFighting } from '../../../test/model.fixture'
 import {
   type AppStory,
   type StoryStep,
@@ -27,6 +22,7 @@ import { pause } from '../../../world/waves/waves'
 import { menuState } from '../../menuState'
 import { Message } from '../../message'
 import { type Model, Phase } from '../../model'
+import { RootDialog } from '../../rootDialog'
 import { FocusHomeButton } from '../home'
 import { FocusLobbyControl } from '../lobby'
 import {
@@ -81,16 +77,19 @@ const withPad = (model: Model): Model =>
   })
 
 const withPanel = (model: Model, panel: Model['panel']): Model =>
-  UiStruct.evolve(model, { panel: () => panel, panelDialog: openedDialog })
+  UiStruct.evolve(model, {
+    panel: () => panel,
+    rootDialog: () => RootDialog.Panel,
+  })
 
 const onProfileTab = (tab: ProfileTab): Model =>
   UiStruct.evolve(withPad(home), {
     profile: profile => UiStruct.evolve(profile, { tab: () => tab }),
-    profileDialog: openedDialog,
+    rootDialog: () => RootDialog.Profile,
   })
 
 const inHand: Model = UiStruct.evolve(withPad(home), {
-  handDialog: openedDialog,
+  rootDialog: () => RootDialog.Hand,
 })
 
 const inCoop: Model = UiStruct.evolve(withPad(home), {
@@ -300,16 +299,18 @@ describe('a controller in the menus', () => {
     )
 
     it.effect('the install guide and the update greeting close on B', () =>
-      modelAfter(
-        UiStruct.evolve(withPad(home), {
-          homeScreenSteps: openedDialog,
-          updateGreeting: openedDialog,
-        }),
-        steps(
-          pressPad(B),
-          s => s.expectExact(EscapePadDialog.make()),
-          resolveEscape,
-        ),
+      Effect.forEach(
+        [RootDialog.HomeScreenSteps, RootDialog.UpdateGreeting],
+        dialog =>
+          modelAfter(
+            UiStruct.evolve(withPad(home), { rootDialog: () => dialog }),
+            steps(
+              pressPad(B),
+              s => s.expectExact(EscapePadDialog.make()),
+              resolveEscape,
+            ),
+          ),
+        { discard: true },
       ),
     )
   })
@@ -357,7 +358,7 @@ describe('a controller in the menus', () => {
           s =>
             s.resolve(FocusHomeButton.make({ button: 'Play' }), Component.noop),
           checkModel(({ beatMyRun }) => {
-            expect(BeatMyRun.isAnyOf(['None'])(beatMyRun)).toBe(true)
+            expect(BeatMyRun.$is('None')(beatMyRun)).toBe(true)
           }),
         ),
       ),

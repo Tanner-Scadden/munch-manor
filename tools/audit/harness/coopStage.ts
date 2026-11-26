@@ -162,7 +162,7 @@ const coopScreen = (
     )
   switch (stage) {
     case 'tile':
-      return Screen.Closed()
+      return Screen.Closed
     case 'hub':
       return Screen.Hub({ maybeProblem: Option.none() })
     case 'problem':
@@ -329,23 +329,18 @@ const withModifiersPicked = (
   mask: number,
   dareMark: number,
 ): CoopModel.Screen =>
-  CoopModel.Screen.matchOrElse(
-    screen,
-    {
-      InRoom: ({ room }) =>
-        CoopModel.Screen.InRoom({
-          room: {
-            ...room,
-            maybeLobby: Option.map(room.maybeLobby, lobby => ({
-              ...lobby,
-              modifiers: mask,
-              dareMark,
-            })),
-          },
-        }),
-    },
-    () => screen,
-  )
+  CoopModel.Screen.$is('InRoom')(screen)
+    ? CoopModel.Screen.InRoom({
+        room: {
+          ...screen.room,
+          maybeLobby: Option.map(screen.room.maybeLobby, lobby => ({
+            ...lobby,
+            modifiers: mask,
+            dareMark,
+          })),
+        },
+      })
+    : screen
 
 const pickerOf = (stage: HarnessConfig['coop']): CoopState['heroPick'] => {
   if (stage === 'heroes') {

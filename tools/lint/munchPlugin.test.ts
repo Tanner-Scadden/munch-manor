@@ -98,7 +98,7 @@ tester.run('no-menu-field', ruleOf('no-menu-field'), {
     'const open = model.door.isOpen',
   ],
   invalid: [
-    one('const open = model.profileDialog.isOpen'),
+    one("const open = model.rootDialog._tag === 'Profile'"),
     one('const screen = model.coop.screen'),
   ],
 })
@@ -228,14 +228,14 @@ tester.run('no-dialog-field-write', ruleOf('no-dialog-field-write'), {
     "const step = openRootDialog('Profile')",
     'const next = UiStruct.evolve(model, { cosmeticRngState: () => state })',
     'const step = $ => $.evolve({ munchopediaPage: () => page })',
-    'const next = UiStruct.evolve(model, { [FIELD_OF[dialog]]: () => openDialog })',
+    "const step = closeRootDialog('Hand')",
   ],
   invalid: [
-    one('const next = UiStruct.evolve(model, { profileDialog: () => closed })'),
-    one('const step = $ => $.evolve({ handDialog: () => openDialog })'),
     one(
-      'const step = $ => $.set({ ...$.model, updateGreeting: closedDialog })',
+      'const next = UiStruct.evolve(model, { rootDialog: () => RootDialog.Shut })',
     ),
+    one('const step = $ => $.evolve({ rootDialog: () => RootDialog.Hand })'),
+    one('const step = $ => $.set({ ...$.model, rootDialog: RootDialog.Shut })'),
   ],
 })
 

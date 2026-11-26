@@ -52,7 +52,7 @@ const room = (code: string) =>
 export const coopSubscriptions = (model: Model) => {
   const maybeCode = Option.map(maybeRoomOf(model), ({ code }) => code)
   return [
-    Screen.isAnyOf(['Queue'])(model.screen) && quickPlay(model),
+    Screen.$is('Queue')(model.screen) && quickPlay(model),
     Option.isSome(maybeCode) && lobby(maybeCode.value),
     Option.isSome(maybeCode) && room(maybeCode.value),
   ] as const

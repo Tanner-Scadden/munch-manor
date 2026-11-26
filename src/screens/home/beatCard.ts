@@ -24,7 +24,7 @@ import { DIFFICULTIES } from '../../world/run/difficulty'
 export const isBeatCardShown = (model: Model): boolean =>
   isOnHome(model.phase) &&
   Option.isSome(maybeShownDareOf(model)) &&
-  DifficultyCard.isAnyOf(['Seen'])(model.difficultyCard) &&
+  DifficultyCard.$is('Seen')(model.difficultyCard) &&
   isLearned(model.lessons.move) &&
   isLearned(model.lessons.fire)
 

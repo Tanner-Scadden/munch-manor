@@ -6,7 +6,8 @@ import {
   OrientationLock,
   ScreenFit,
 } from '../../platform/deviceSchema'
-import { LinkFlow, SyncState } from '../../platform/playerSync'
+import { LinkFlow } from '../../platform/linkFlow'
+import { SyncState } from '../../platform/playerSync'
 import { SavedMastery } from '../../shared/masteryData'
 import {
   Appearance,
@@ -24,8 +25,7 @@ import {
   SoundSetting,
 } from '../../shared/playerData'
 import { ClosetCue, LookPreview, ProfileFx } from './blocks/look/model'
-
-const TutorialReset = Schema.Literals(['Idle', 'Asking', 'Done'])
+import { TutorialReset } from './resetFlow'
 
 export const ProfileTab = Schema.Literals([
   'Look',
@@ -66,9 +66,9 @@ export const initialModel: Model = {
   fxCount: 0,
   closetCue: { part: 'Hat', value: 'None', kind: 'Still', count: 0 },
   maybePreview: Option.none(),
-  linkFlow: LinkFlow.Idle(),
+  linkFlow: LinkFlow.Idle,
   linkCodeCopies: 0,
-  tutorialReset: 'Idle',
+  tutorialReset: TutorialReset.Idle,
 }
 
 const ProfileSettings = Schema.Struct({

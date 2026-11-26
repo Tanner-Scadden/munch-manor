@@ -39,12 +39,8 @@ import {
   shownName,
 } from '../../domain/playerName'
 import type { InputDevice } from '../../input/inputSchema'
-import {
-  LinkFlow,
-  SyncState,
-  linkProblemText,
-  syncStateText,
-} from '../../platform/playerSync'
+import { LinkFlow, linkProblemText } from '../../platform/linkFlow'
+import { SyncState, syncStateText } from '../../platform/playerSync'
 import { iconView, newPipView } from '../../ui/menuParts'
 import { Character } from './blocks/look/block'
 import {
@@ -62,6 +58,7 @@ import {
   PROFILE_TABS_ID,
   RESET_TUTORIAL_BUTTON_ID,
 } from './profile'
+import { TutorialReset } from './resetFlow'
 
 type H = Html.H<Message>
 type Content = View.Content<Message>
@@ -427,7 +424,7 @@ const linkView = (
   device: InputDevice,
   h: H,
 ): Content =>
-  LinkFlow.match(linkFlow, {
+  LinkFlow.$match(linkFlow, {
     Idle: () =>
       h.div.class('account-actions').children(
         bigButton(
@@ -757,14 +754,17 @@ const settingsTabView = (props: ProfileProps, h: H): Content =>
           tileView(props.device, toggle, h),
         ),
       ),
-    props.state.tutorialReset === 'Asking'
+    TutorialReset.$is('Asking')(props.state.tutorialReset)
       ? askResetTutorialView(h)
       : h.div.class('setting-footer').children(
           resetTutorialButtonView(h),
           h.p
             .class('setting-note')
             .attr('role', 'status')
-            .children(props.state.tutorialReset === 'Done' && 'Tips are back.'),
+            .children(
+              TutorialReset.$is('Done')(props.state.tutorialReset) &&
+                'Tips are back.',
+            ),
         ),
   )
 

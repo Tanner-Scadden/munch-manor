@@ -28,6 +28,7 @@ import {
   recordRemoteBuild,
   registerServiceWorkerAfterSplash,
 } from '../../app/update/version'
+import { UpdateGift } from '../../domain/clientSchema'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
 import { WAVE_3_BREAK, fighting } from '../../test/model.fixture'
 import {
@@ -165,7 +166,7 @@ describe('checking for a new build', () => {
         steps(
           send(Message.ClickedUpdateButton()),
           checkModel(current => {
-            expect(current.release.updateGift).toBe('Unwrapping')
+            expect(current.release.updateGift._tag).toBe('Unwrapping')
           }),
           s => s.expectExact(WaitForUnwrap),
           s => s.resolve(WaitForUnwrap, Message.CompletedWaitForUnwrap()),
@@ -180,11 +181,30 @@ describe('checking for a new build', () => {
       UiStruct.evolve(initialModel, {
         release: UiStruct.evolve({
           maybeNewerBuild: () => Option.some(NEWER_BUILD),
-          updateGift: () => 'Unwrapping',
+          updateGift: () => UpdateGift.Unwrapping,
         }),
       }),
       steps(send(Message.ClickedUpdateButton()), s => s.expectNone()),
     ),
+  )
+
+  it.effect(
+    'an unwrap that lands after the gift is wrapped again never reloads',
+    () =>
+      modelAfter(
+        UiStruct.evolve(initialModel, {
+          release: UiStruct.evolve({
+            maybeNewerBuild: () => Option.some(NEWER_BUILD),
+          }),
+        }),
+        steps(
+          send(Message.CompletedWaitForUnwrap()),
+          checkModel(current => {
+            expect(current.release.updateGift._tag).toBe('Wrapped')
+          }),
+          s => s.expectNone(),
+        ),
+      ),
   )
 
   it.effect('the gift does nothing off the home menu', () =>
@@ -197,7 +217,7 @@ describe('checking for a new build', () => {
       steps(
         send(Message.ClickedUpdateButton()),
         checkModel(current => {
-          expect(current.release.updateGift).toBe('Wrapped')
+          expect(current.release.updateGift._tag).toBe('Wrapped')
         }),
         s => s.expectNone(),
       ),
@@ -215,7 +235,7 @@ describe('checking for a new build', () => {
             }),
           ),
           checkModel(current => {
-            expect(current.updateGreeting.isOpen).toBe(true)
+            expect(current.rootDialog._tag).toBe('UpdateGreeting')
           }),
         ),
       )
