@@ -339,7 +339,6 @@ const syncMessageOf = (event: StoreEvent) =>
   StoreEvent.match(event, {
     SyncedSave: ({ save }) => Message.UpdatedSyncedSave({ save }),
     SyncStatus: ({ state }) => Message.UpdatedSyncStatus({ state }),
-    ScopeStatus: ({ status }) => Message.UpdatedPlayerScopeStatus({ status }),
   })
 
 const animationFrames = (pace: FramePace) =>

@@ -4,7 +4,7 @@ import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 
 import { describe, expect, it } from '@effect/vitest'
-import { signToken } from '@munch/sync-engine'
+import { signToken } from './sessionToken.ts'
 
 import {
   GZIP_CONTENT_TYPE,

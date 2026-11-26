@@ -3,8 +3,7 @@ import { FetchHttpClient } from 'effect/http'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { httpIdentityApi, httpTransport } from '../src/Browser'
-import { IdentityFailure, IdentityRefused } from '../src/Identity'
+import { httpTransport } from '../src/Browser'
 import { decodeExchange } from '../src/Protocol'
 
 const ORIGIN = 'https://sync.example.test'
@@ -44,80 +43,6 @@ const exitWith = <A, E>(
   fetch: typeof globalThis.fetch,
   effect: Effect.Effect<A, E>,
 ) => Effect.exit(Effect.provideService(effect, FetchHttpClient.Fetch, fetch))
-
-describe('the browser identity client', () => {
-  it.effect('posts JSON and decodes the answer', () =>
-    Effect.gen(function* () {
-      const { seen, fetch } = fakeFetch([
-        () => Response.json({ code: 'ABC-123', expiresMs: 1_000 }),
-      ])
-      const exit = yield* exitWith(
-        fetch,
-        httpIdentityApi(ORIGIN).link('token-1'),
-      )
-      expect(exit).toEqual(Exit.succeed({ code: 'ABC-123', expiresMs: 1_000 }))
-      expect(seen).toHaveLength(1)
-      expect(seen[0]?.url).toBe(`${ORIGIN}/sync/link`)
-      expect(seen[0]?.method).toBe('POST')
-      expect(seen[0]?.body).toBe('{}')
-      expect(seen[0]?.headers.get('content-type')).toBe('application/json')
-      expect(seen[0]?.headers.get('authorization')).toBe('Bearer token-1')
-      expect(seen[0]?.headers.has('traceparent')).toBe(false)
-    }),
-  )
-
-  it.effect('a refusal decodes its failure', () =>
-    Effect.gen(function* () {
-      const { fetch } = fakeFetch([
-        () => Response.json({ _tag: 'WrongCode' }, { status: 400 }),
-      ])
-      const exit = yield* exitWith(
-        fetch,
-        httpIdentityApi(ORIGIN).redeem('token-1', 'ABC-123'),
-      )
-      expect(exit).toEqual(
-        Exit.fail(
-          IdentityRefused.make({
-            failure: IdentityFailure.cases.WrongCode.make({}),
-          }),
-        ),
-      )
-    }),
-  )
-
-  it.effect('a refusal without a failure, or no answer, is Unavailable', () =>
-    Effect.gen(function* () {
-      const unavailable = Option.some(
-        IdentityRefused.make({
-          failure: IdentityFailure.cases.Unavailable.make({}),
-        }),
-      )
-      const errorOf = (exit: Exit.Exit<unknown, IdentityRefused>) =>
-        Exit.findErrorOption(exit)
-      const { fetch: proxyPage } = fakeFetch([
-        () => new Response('<html>Bad gateway</html>', { status: 502 }),
-      ])
-      const value = yield* exitWith(
-        proxyPage,
-        httpIdentityApi(ORIGIN).challenge,
-      )
-      expect(errorOf(value)).toEqual(unavailable)
-      const offline: typeof globalThis.fetch = () =>
-        Promise.reject(new TypeError('Failed to fetch'))
-      const value_1 = yield* exitWith(
-        offline,
-        httpIdentityApi(ORIGIN).challenge,
-      )
-      expect(errorOf(value_1)).toEqual(unavailable)
-      const { fetch: garbled } = fakeFetch([() => Response.json({ nope: 1 })])
-      const value_2 = yield* exitWith(
-        garbled,
-        httpIdentityApi(ORIGIN).challenge,
-      )
-      expect(errorOf(value_2)).toEqual(unavailable)
-    }),
-  )
-})
 
 describe('the HTTP transport', () => {
   const hello = {

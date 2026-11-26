@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
@@ -18,13 +19,16 @@ import {
   deleteExpiredRuns,
   makeHandler,
 } from './api.ts'
+import { linkStoreOf, routeLink } from './linkCodes.ts'
+import { routePlayerLog } from './playerLog.ts'
 import { routeRecording } from './recordings.ts'
 import { routeRoom } from './roomRoutes.ts'
 import { type SyncBindings, routeSync } from './sync.ts'
 
 export { GameRoom } from './gameRoom.ts'
 export { Matchmaker } from './matchmaker.ts'
-export { SyncDirectory, SyncScope } from './sync.ts'
+export { LinkCodes } from './linkCodes.ts'
+export { PlayerLog } from './playerLog.ts'
 
 export type Bindings = SyncBindings &
   Readonly<{
@@ -57,15 +61,33 @@ const cleanUp = (env: Bindings, scheduledMs: number) =>
     }),
   )
 
+const ROUTES: ReadonlyArray<
+  (
+    request: Request,
+    env: Bindings,
+  ) => Effect.Effect<Option.Option<Response>>
+> = [
+  (request, env) => routePlayerLog(request, env),
+  (request, env) =>
+    routeLink(request, {
+      limiter: env.SYNC_BY_ADDRESS,
+      store: linkStoreOf(env.LINK_CODES),
+    }),
+  (request, env) => routeSync(request, env),
+  (request, env) => routeRoom(request, env),
+  (request, env) => routeRecording(request, env),
+]
+
+const NOT_ROUTED: Effect.Effect<Option.Option<Response>> = Effect.succeedNone
+
+const routed = (request: Request, env: Bindings) =>
+  Array.reduce(ROUTES, NOT_ROUTED, (prior, route) =>
+    Effect.filterOrElse(prior, Option.isSome, () => route(request, env)),
+  )
+
 const respond = (request: Request, env: Bindings) =>
   Effect.flatMap(
-    Effect.filterOrElse(
-      Effect.filterOrElse(routeSync(request, env), Option.isSome, () =>
-        routeRoom(request, env),
-      ),
-      Option.isSome,
-      () => routeRecording(request, env),
-    ),
+    routed(request, env),
     Option.match({
       onSome: Effect.succeed,
       onNone: () =>

@@ -6,7 +6,6 @@ import {
   Option,
   Queue,
   Ref,
-  Schema,
   type Scope,
   Semaphore,
   Stream,
@@ -19,21 +18,11 @@ import {
   HttpClientResponse,
 } from 'effect/http'
 
-import type { IdentityApi } from './Device'
-import {
-  ChallengeResponse,
-  IDENTITY_PATHS,
-  IdentityFailure,
-  IdentityRefused,
-  LinkCodeResponse,
-  RedeemRequest,
-  SessionRequest,
-  SessionResponse,
-} from './Identity'
 import {
   ClientMessage,
   ExchangeReply,
   type HelloMessage,
+  SCOPE_PATHS,
   ServerMessage,
   decodeServerMessage,
   encodeClientMessage,
@@ -45,14 +34,14 @@ const OPEN_TIMEOUT = '10 seconds'
 const HTTP_SESSION = '5 minutes'
 
 const socketUrl = (origin: string, scope: string): string => {
-  const url = new URL(IDENTITY_PATHS.socket, origin)
+  const url = new URL(SCOPE_PATHS.socket, origin)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   url.searchParams.set('scope', scope)
   return url.toString()
 }
 
 const exchangeUrl = (origin: string, scope: string): string => {
-  const url = new URL(IDENTITY_PATHS.exchange, origin)
+  const url = new URL(SCOPE_PATHS.exchange, origin)
   url.searchParams.set('scope', scope)
   return url.toString()
 }
@@ -255,83 +244,4 @@ export const httpTransport = (origin: string): Transport => ({
       )
       return { send, messages: Stream.fromQueue(inbox) }
     }),
-})
-
-const unavailable = (): IdentityRefused =>
-  IdentityRefused.make({
-    failure: IdentityFailure.cases.Unavailable.make({}),
-  })
-
-const refusedFrom = (response: HttpClientResponse.HttpClientResponse) =>
-  pipe(
-    HttpClientResponse.schemaBodyJson(IdentityFailure)(response),
-    Effect.orElseSucceed(() => IdentityFailure.cases.Unavailable.make({})),
-    Effect.flatMap(failure => Effect.fail(IdentityRefused.make({ failure }))),
-  )
-
-const call = <A, I, E>(
-  schema: Schema.Codec<A, I>,
-  request: Effect.Effect<HttpClientRequest.HttpClientRequest, E>,
-): Effect.Effect<A, IdentityRefused> =>
-  pipe(
-    request,
-    Effect.flatMap(HttpClient.execute),
-    Effect.mapError(unavailable),
-    Effect.flatMap(response =>
-      response.status >= 200 && response.status < 300
-        ? Effect.mapError(
-            HttpClientResponse.schemaBodyJson(schema)(response),
-            unavailable,
-          )
-        : refusedFrom(response),
-    ),
-    withFetch,
-  )
-
-const post = <A, I>(
-  url: string,
-  schema: Schema.Codec<A, I>,
-  body: A,
-  token?: string,
-) =>
-  pipe(
-    HttpClientRequest.post(url),
-    request =>
-      token === undefined
-        ? request
-        : HttpClientRequest.bearerToken(request, token),
-    HttpClientRequest.schemaBodyJson(schema)(body),
-  )
-
-const NoBody = Schema.Struct({})
-
-export const httpIdentityApi = (origin: string): IdentityApi => ({
-  challenge: call(
-    ChallengeResponse,
-    post(new URL(IDENTITY_PATHS.challenge, origin).toString(), NoBody, {}),
-  ),
-  session: request =>
-    call(
-      SessionResponse,
-      post(
-        new URL(IDENTITY_PATHS.session, origin).toString(),
-        SessionRequest,
-        request,
-      ),
-    ),
-  link: token =>
-    call(
-      LinkCodeResponse,
-      post(new URL(IDENTITY_PATHS.link, origin).toString(), NoBody, {}, token),
-    ),
-  redeem: (token, code) =>
-    call(
-      SessionResponse,
-      post(
-        new URL(IDENTITY_PATHS.redeem, origin).toString(),
-        RedeemRequest,
-        { code },
-        token,
-      ),
-    ),
 })

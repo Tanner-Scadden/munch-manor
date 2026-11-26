@@ -5,7 +5,7 @@ import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 import * as Result from 'effect/Result'
 
-import { verifyToken } from '@munch/sync-engine'
+import { verifyToken } from './sessionToken.ts'
 
 import {
   GZIP_CONTENT_TYPE,

@@ -69,12 +69,7 @@ import {
   PageVisibility,
   ScreenFit,
 } from '../platform/deviceSchema'
-import {
-  LastRunSync,
-  PlayerChange,
-  PlayerScopeStatus,
-  SyncState,
-} from '../platform/playerSync'
+import { PlayerChange, SyncState } from '../platform/playerSync'
 import { RunRecorder } from '../platform/recording'
 import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
 import {
@@ -167,8 +162,6 @@ const Saving = Schema.Struct({
   loading: Loading,
   saveStatus: SaveStatus,
   syncState: SyncState,
-  playerScopeStatus: PlayerScopeStatus,
-  lastRunSync: LastRunSync,
   writesInFlight: Schema.Finite,
   unsavedChanges: Schema.Array(PlayerChange),
   syncedSave: SyncedSaveState,
@@ -179,8 +172,6 @@ const freshSaving: Saving = {
   loading: Loading.Loaded(),
   saveStatus: 'Unread',
   syncState: SyncState.LocalOnly(),
-  playerScopeStatus: PlayerScopeStatus.Idle(),
-  lastRunSync: LastRunSync.NoRun(),
   writesInFlight: 0,
   unsavedChanges: [],
   syncedSave: 'Current',

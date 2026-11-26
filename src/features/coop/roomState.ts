@@ -3,6 +3,7 @@ import { Array, Function, Option, String, pipe } from 'effect'
 import { UiStruct } from '@effect/ui'
 import { Html } from '@effect/ui/html'
 import {
+  CODE_ALPHABET,
   type Lobby,
   type LobbyMember,
   type PickedMode,
@@ -11,7 +12,6 @@ import {
   canHostPickNightmare,
   normalizeRoomCode,
 } from '@munch/netcode'
-import { CODE_ALPHABET } from '@munch/sync-engine'
 
 import {
   type CoopProblem,

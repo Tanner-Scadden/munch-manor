@@ -7,11 +7,7 @@ import { Message } from '../../app/message'
 import { Loading, type Model } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { RedeemLinkCode, RequestLinkCode } from '../../app/update/profile'
-import {
-  AwaitRunSettled,
-  ReloadSyncedSave,
-  WriteSave,
-} from '../../app/update/save'
+import { ReloadSyncedSave, WriteSave } from '../../app/update/save'
 import {
   checkModel,
   modelAfter,
@@ -20,14 +16,10 @@ import {
   writeSave,
 } from '../../test/testing'
 import {
-  LastRunSync,
   LinkFlow,
   PlayerChange,
-  PlayerScopeStatus,
-  RunSettled,
   SyncState,
   changesBetween,
-  devicesStatusText,
   syncStateText,
   withUnsavedChanges,
 } from '../playerSync'
@@ -166,17 +158,15 @@ describe('the sync status line', () => {
         steps(
           send(
             Message.UpdatedSyncStatus({
-              state: SyncState.Synced({ devices: 2 }),
+              state: SyncState.Synced(),
             }),
           ),
           checkModel(current => {
-            expect(syncStateText(current.saving.syncState)).toBe(
-              'Synced. Linked to 2 devices',
-            )
+            expect(syncStateText(current.saving.syncState)).toBe('Synced')
           }),
           send(
             Message.UpdatedSyncStatus({
-              state: SyncState.Offline({ devices: 2 }),
+              state: SyncState.Offline(),
             }),
           ),
           checkModel(current => {
@@ -186,161 +176,9 @@ describe('the sync status line', () => {
           }),
         ),
       )
-      expect(syncStateText(SyncState.Synced({ devices: 1 }))).toBe('Synced')
+      expect(syncStateText(SyncState.Connecting())).toBe('Connecting')
       expect(syncStateText(SyncState.LocalOnly())).toBe('Saved on this device')
     }),
-  )
-})
-
-describe('the player scope status', () => {
-  it.effect(
-    'cached progress shows while connecting, and a refused scope says so',
-    () =>
-      Effect.gen(function* () {
-        const cached = PlayerScopeStatus.Ready({ seq: 7, fresh: false })
-        yield* modelAfter(
-          read,
-          steps(
-            send(Message.UpdatedSyncStatus({ state: SyncState.Connecting() })),
-            send(Message.UpdatedPlayerScopeStatus({ status: cached })),
-            checkModel(current => {
-              expect(current.saving.playerScopeStatus).toEqual(cached)
-              expect(
-                devicesStatusText(
-                  current.saving.syncState,
-                  current.saving.playerScopeStatus,
-                ),
-              ).toBe('Connecting. Showing saved progress')
-            }),
-            send(
-              Message.UpdatedPlayerScopeStatus({
-                status: PlayerScopeStatus.Ready({ seq: 8, fresh: true }),
-              }),
-            ),
-            send(
-              Message.UpdatedSyncStatus({
-                state: SyncState.Synced({ devices: 1 }),
-              }),
-            ),
-            checkModel(current => {
-              expect(
-                devicesStatusText(
-                  current.saving.syncState,
-                  current.saving.playerScopeStatus,
-                ),
-              ).toBe('Synced')
-            }),
-            s => s.expectNone(),
-          ),
-        )
-        expect(
-          devicesStatusText(
-            SyncState.Offline({ devices: 1 }),
-            PlayerScopeStatus.Failed({ reason: 'Forbidden: no' }),
-          ),
-        ).toBe('Sync is not working on this device')
-        expect(
-          devicesStatusText(SyncState.LocalOnly(), PlayerScopeStatus.Idle()),
-        ).toBe('Saved on this device')
-      }),
-  )
-})
-
-describe('a recorded run reaching the server', () => {
-  it.effect(
-    'waits on the run the write recorded, then knows it was confirmed',
-    () =>
-      modelAfter(
-        read,
-        steps(
-          send(Message.ClickedMuteButton()),
-          s =>
-            s.resolve(
-              WriteSave,
-              Message.CompletedWriteSaveWithRun({ runId: 'run-0001' }),
-            ),
-          checkModel(current => {
-            expect(current.saving.writesInFlight).toBe(0)
-            expect(current.saving.lastRunSync).toEqual(
-              LastRunSync.Waiting({ id: 'run-0001' }),
-            )
-          }),
-          s => s.expectHas(AwaitRunSettled.make({ runId: 'run-0001' })),
-          s =>
-            s.resolve(
-              AwaitRunSettled,
-              Message.SettledRecordedRun({
-                runId: 'run-0001',
-                settled: RunSettled.Confirmed({ seq: 12 }),
-              }),
-            ),
-          checkModel(current => {
-            expect(current.saving.lastRunSync).toEqual(
-              LastRunSync.Confirmed({ seq: 12 }),
-            )
-          }),
-        ),
-      ),
-  )
-
-  it.effect(
-    'a rejected run says why, and an older run never overwrites a newer one',
-    () =>
-      modelAfter(
-        UiStruct.evolve(read, {
-          saving: UiStruct.evolve({
-            lastRunSync: () => LastRunSync.Waiting({ id: 'run-0002' }),
-          }),
-        }),
-        steps(
-          send(
-            Message.SettledRecordedRun({
-              runId: 'run-0001',
-              settled: RunSettled.Confirmed({ seq: 3 }),
-            }),
-          ),
-          checkModel(current => {
-            expect(current.saving.lastRunSync).toEqual(
-              LastRunSync.Waiting({ id: 'run-0002' }),
-            )
-          }),
-          send(
-            Message.SettledRecordedRun({
-              runId: 'run-0002',
-              settled: RunSettled.Rejected({
-                reason: 'Precondition: too many',
-              }),
-            }),
-          ),
-          checkModel(current => {
-            expect(current.saving.lastRunSync).toEqual(
-              LastRunSync.Rejected({ reason: 'Precondition: too many' }),
-            )
-          }),
-          s => s.expectNone(),
-        ),
-      ),
-  )
-
-  it.effect('a wait the store could not finish stops claiming to know', () =>
-    modelAfter(
-      UiStruct.evolve(read, {
-        saving: UiStruct.evolve({
-          lastRunSync: () => LastRunSync.Waiting({ id: 'run-0003' }),
-        }),
-      }),
-      steps(
-        send(
-          Message.FailedAwaitRunSettled({
-            runId: 'run-0003',
-            reason: 'closed',
-          }),
-        ),
-        checkModel(current => {
-          expect(current.saving.lastRunSync).toEqual(LastRunSync.NoRun())
-        }),
-      ),
-    ),
   )
 })
 

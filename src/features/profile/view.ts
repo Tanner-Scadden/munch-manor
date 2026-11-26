@@ -41,10 +41,9 @@ import {
 import type { InputDevice } from '../../input/inputSchema'
 import {
   LinkFlow,
-  type PlayerScopeStatus,
   SyncState,
-  devicesStatusText,
   linkProblemText,
+  syncStateText,
 } from '../../platform/playerSync'
 import { iconView, newPipView } from '../../ui/menuParts'
 import { Character } from './blocks/look/block'
@@ -224,81 +223,47 @@ const DEVICE_ICONS: Readonly<Record<DeviceKind, string>> = {
   Laptop: LAPTOP_ICON,
 }
 
-const MAX_DEVICES_SHOWN = 4
+type SyncDot = 'Local' | 'Syncing' | 'Synced'
 
-const deviceCount = (state: SyncState): number =>
+const syncDot = (state: SyncState): SyncDot =>
   SyncState.match(state, {
-    LocalOnly: () => 1,
-    Connecting: () => 1,
-    Synced: ({ devices }) => Math.max(1, devices),
-    Offline: ({ devices }) => Math.max(1, devices),
+    LocalOnly: (): SyncDot => 'Local',
+    Connecting: (): SyncDot => 'Syncing',
+    Synced: (): SyncDot => 'Synced',
+    Offline: (): SyncDot => 'Syncing',
   })
-
-type SyncDot = 'Local' | 'Syncing' | 'Synced' | 'Broken'
-
-const syncDot = (state: SyncState, scope: PlayerScopeStatus): SyncDot =>
-  scope._tag === 'Failed'
-    ? 'Broken'
-    : SyncState.match(state, {
-        LocalOnly: (): SyncDot => 'Local',
-        Connecting: (): SyncDot => 'Syncing',
-        Synced: (): SyncDot => 'Synced',
-        Offline: (): SyncDot => 'Syncing',
-      })
 
 const hereOf = (device: InputDevice): DeviceKind =>
   device === 'Touch' ? 'Phone' : 'Laptop'
 
-const deviceKinds = (
-  device: InputDevice,
-  state: SyncState,
-): ReadonlyArray<DeviceKind> => {
-  const here = hereOf(device)
-  const other: DeviceKind = here === 'Phone' ? 'Laptop' : 'Phone'
-  return Array.makeBy(Math.min(MAX_DEVICES_SHOWN, deviceCount(state)), index =>
-    index % 2 === 0 ? here : other,
-  )
-}
-
 const devicesView = (props: ProfileProps, h: H): Content => {
-  const { state, scope, lastRun } = props.sync
-  const dot = syncDot(state, scope)
-  const count = deviceCount(state)
+  const { state } = props.sync
+  const dot = syncDot(state)
+  const kind = hereOf(props.device)
   return h.div
     .class('account-devices')
     .attr('data-sync', dot)
     .children(
       h.ul
         .class('account-device-list')
-        .attr(
-          'aria-label',
-          count === 1 ? 'Your device' : `Your ${count} devices`,
-        )
+        .attr('aria-label', 'Your device')
         .children(
-          Array.map(deviceKinds(props.device, state), (kind, index) =>
-            h.li
-              .class('account-device')
-              .attrs({
-                'data-kind': kind,
-                'aria-label':
-                  index === 0 ? `This ${String.toLowerCase(kind)}` : 'Linked',
-              })
-              .style({ '--i': `${index}` })
-              .children(
-                iconView('account-device-icon', DEVICE_ICONS[kind], h),
-                h.span.class('account-device-dot').attr('data-sync', dot),
-              ),
-          ),
+          h.li
+            .class('account-device')
+            .attrs({
+              'data-kind': kind,
+              'aria-label': `This ${String.toLowerCase(kind)}`,
+            })
+            .style({ '--i': '0' })
+            .children(
+              iconView('account-device-icon', DEVICE_ICONS[kind], h),
+              h.span.class('account-device-dot').attr('data-sync', dot),
+            ),
         ),
       h.p
         .class('account-status')
-        .attrs({
-          role: 'status',
-          'data-sync': dot,
-          'data-scope': scope._tag,
-          'data-last-run': lastRun._tag,
-        })
-        .children(devicesStatusText(state, scope)),
+        .attrs({ role: 'status', 'data-sync': dot })
+        .children(syncStateText(state)),
     )
 }
 

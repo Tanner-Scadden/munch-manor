@@ -18,9 +18,9 @@ export const decodeRows: {
     Effect.orDie(Schema.decodeUnknownEffect(Schema.Array(schema))(rows)),
 )
 
-export const base64Url = (bytes: Uint8Array): string => Base64Url.encode(bytes)
+const base64Url = (bytes: Uint8Array): string => Base64Url.encode(bytes)
 
-export const randomBytes = (length: number): Effect.Effect<Uint8Array> =>
+const randomBytes = (length: number): Effect.Effect<Uint8Array> =>
   Effect.sync(() => crypto.getRandomValues(new Uint8Array(length)))
 
 export const randomId = (bytes: number): Effect.Effect<string> =>

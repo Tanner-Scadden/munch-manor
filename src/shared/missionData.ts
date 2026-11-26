@@ -1,6 +1,6 @@
 import { Array, Function, Option, Record, Schema } from 'effect'
 
-import { DayStamp } from './dayStamp'
+import { DayStamp, laterDay } from './dayStamp'
 
 export const MissionId = Schema.Literals([
   'HotfootKills',
@@ -265,16 +265,13 @@ export const freezeOn: {
   },
 )
 
-const later = (a: DayStamp | null, b: DayStamp | null): DayStamp | null =>
-  a === null ? b : b === null ? a : a >= b ? a : b
-
 export const mergeMissions: {
   (reached: SavedMissions): (kept: SavedMissions) => SavedMissions
   (kept: SavedMissions, reached: SavedMissions): SavedMissions
 } = Function.dual(
   2,
   (kept: SavedMissions, reached: SavedMissions): SavedMissions => {
-    const day = later(kept.day, reached.day)
+    const day = laterDay(kept.day, reached.day)
     const sameDay = (saved: SavedMissions): SavedMissions =>
       saved.day === day ? saved : { ...noMissions, day }
     const a = sameDay(kept)

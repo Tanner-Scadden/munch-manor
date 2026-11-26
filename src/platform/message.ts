@@ -12,12 +12,7 @@ import {
   PageVisibility,
   ScreenFit,
 } from './deviceSchema'
-import {
-  PlayerChange,
-  PlayerScopeStatus,
-  RunSettled,
-  SyncState,
-} from './playerSync'
+import { PlayerChange, SyncState } from './playerSync'
 import { PlayerSave } from './save'
 
 export const pageCases = {
@@ -70,7 +65,6 @@ export const saveCases = {
   CompletedLoadSave: { maybeSave: Schema.Option(PlayerSave) },
   FailedLoadSave: { reason: Schema.String },
   CompletedWriteSave: {},
-  CompletedWriteSaveWithRun: { runId: Schema.String },
   FailedWriteSave: {
     reason: Schema.String,
     changes: Schema.Array(PlayerChange),
@@ -78,9 +72,6 @@ export const saveCases = {
   UpdatedSyncedSave: { save: PlayerSave },
   CompletedReloadSyncedSave: { maybeSave: Schema.Option(PlayerSave) },
   UpdatedSyncStatus: { state: SyncState },
-  UpdatedPlayerScopeStatus: { status: PlayerScopeStatus },
-  SettledRecordedRun: { runId: Schema.String, settled: RunSettled },
-  FailedAwaitRunSettled: { runId: Schema.String, reason: Schema.String },
 }
 export const SaveMessage = UiSchema.TaggedEnum(saveCases)
 

@@ -5,9 +5,7 @@ import { Command, Component, UiStruct } from '@effect/ui'
 import { grantVeteran, payPurses } from '../../features/end/rankRun'
 import { LoadMessage, SaveMessage } from '../../platform/message'
 import {
-  LastRunSync,
   PlayerChange,
-  RunSettled,
   changesBetween,
   withUnsavedChanges,
 } from '../../platform/playerSync'
@@ -61,37 +59,9 @@ export class WriteSave extends Command.Service<WriteSave>()('app/WriteSave', {
       return ({ save, changes }) =>
         store.write(save, changes).pipe(
           Effect.match({
-            onSuccess: maybeRunId =>
-              Option.match(maybeRunId, {
-                onNone: () => SaveMessage.CompletedWriteSave(),
-                onSome: runId =>
-                  SaveMessage.CompletedWriteSaveWithRun({ runId }),
-              }),
+            onSuccess: () => SaveMessage.CompletedWriteSave(),
             onFailure: error =>
               SaveMessage.FailedWriteSave({ reason: error.reason, changes }),
-          }),
-        )
-    }),
-  )
-}
-
-export class AwaitRunSettled extends Command.Service<AwaitRunSettled>()(
-  'app/AwaitRunSettled',
-  { args: { runId: Schema.String }, success: SaveMessage },
-) {
-  static readonly layer = this.toLayer(
-    Effect.gen(function* () {
-      const store = yield* PlayerStore
-      return ({ runId }) =>
-        store.awaitSettled(runId).pipe(
-          Effect.match({
-            onSuccess: settled =>
-              SaveMessage.SettledRecordedRun({ runId, settled }),
-            onFailure: error =>
-              SaveMessage.FailedAwaitRunSettled({
-                runId,
-                reason: error.reason,
-              }),
           }),
         )
     }),
@@ -248,46 +218,6 @@ const finishWrite: UpdateStep = $ => {
     : next
 }
 
-const finishWriteWithRun =
-  (runId: string): UpdateStep =>
-  $ =>
-    $.combine(finishWrite, waited =>
-      waited
-        .evolve({
-          saving: UiStruct.evolve({
-            lastRunSync: LastRunSync.Waiting({ id: runId }),
-          }),
-        })
-        .run(AwaitRunSettled.make({ runId })),
-    )
-
-const isWaitingFor = (model: Model, runId: string): boolean =>
-  model.saving.lastRunSync._tag === 'Waiting' &&
-  model.saving.lastRunSync.id === runId
-
-const settleRun =
-  (runId: string, settled: RunSettled): UpdateStep =>
-  $ =>
-    isWaitingFor($.model, runId)
-      ? $.evolve({
-          saving: UiStruct.evolve({
-            lastRunSync: RunSettled.match(settled, {
-              Confirmed: ({ seq }) => LastRunSync.Confirmed({ seq }),
-              Rejected: ({ reason }) => LastRunSync.Rejected({ reason }),
-            }),
-          }),
-        })
-      : $.model
-
-const forgetRunWait =
-  (runId: string): UpdateStep =>
-  $ =>
-    isWaitingFor($.model, runId)
-      ? $.evolve({
-          saving: UiStruct.evolve({ lastRunSync: LastRunSync.NoRun() }),
-        })
-      : $.model
-
 const failWrite = (changes: ReadonlyArray<PlayerChange>): UpdateStep =>
   combine([
     modelStep(model =>
@@ -323,8 +253,6 @@ export const saveHandlers = defineHandlers({
 
   CompletedWriteSave: finishWrite,
 
-  CompletedWriteSaveWithRun: ($, { runId }) => finishWriteWithRun(runId)($),
-
   FailedWriteSave: ($, { changes }) => failWrite(changes)($),
 
   UpdatedSyncedSave: ($, { save }) => takeSyncedSave(save)($),
@@ -337,13 +265,6 @@ export const saveHandlers = defineHandlers({
 
   UpdatedSyncStatus: ($, { state }) =>
     $.evolve({ saving: UiStruct.evolve({ syncState: state }) }),
-
-  UpdatedPlayerScopeStatus: ($, { status }) =>
-    $.evolve({ saving: UiStruct.evolve({ playerScopeStatus: status }) }),
-
-  SettledRecordedRun: ($, { runId, settled }) => settleRun(runId, settled)($),
-
-  FailedAwaitRunSettled: ($, { runId }) => forgetRunWait(runId)($),
 
   CompletedGenerateVisitId: ($, { visitId }) =>
     $.evolve({ maybeVisitId: Option.some(visitId) }),

@@ -8,9 +8,14 @@ The Cloudflare side of Munch Manor, declared with [Alchemy](https://alchemy.run/
 | `github.ts`                                        | The narrow CI token and the two GitHub Actions secrets it is written to                              |
 | `worker/api.ts`                                    | The analytics `HttpApi`: `POST /api/runs` and `GET /api/health`, its errors, and the handlers        |
 | `worker/rules.ts`                                  | The pure rules: the size cap, the rate limit decision, the daily address hash input, and the D1 row  |
-| `worker/main.ts`                                   | The Worker entry: `/sync` paths to sync, the rest to analytics, and the daily retention cleanup      |
-| `worker/sync.ts`                                   | The sync Durable Objects (`SyncScope`, `SyncDirectory`) and the `/sync` routes                       |
-| `worker/syncCore.ts`                               | The sync logic they run, kept apart so the tests cover it without the Workers runtime                |
+| `worker/main.ts`                                   | The Worker entry: the player log, links, `/sync`, rooms, and recordings in turn, the rest to analytics, and the daily retention cleanup |
+| `worker/playerLog.ts`                              | The `PlayerLog` Durable Object (one per player store) and the `/eventlog` route                      |
+| `worker/playerLogCore.ts`                          | What it serves apart from the runtime: EventLog's server, owner-only, the projection, `Session.*`    |
+| `worker/doProtocol.ts`                             | An `RpcServer.Protocol` over a Durable Object's hibernation WebSockets, resuming `changes` on wake   |
+| `worker/linkCodes.ts`                              | The `LinkCodes` Durable Object, its code book, and the `/link/redeem` route                          |
+| `worker/sessionToken.ts`                           | The session token: signed claims (device, player, expiry) every room and recording call checks      |
+| `worker/sync.ts`                                   | The `/sync` routes left: a co-op room's lobby scope, forwarded to its `GameRoom`                     |
+| `worker/syncCore.ts`                               | What the Durable Objects share: setup once, SQL on DO storage, errors, the player facts call         |
 | `worker/gameRoom.ts`                               | The co-op `GameRoom` Durable Object (a room's lobby scope and its run) and the `/room` routes        |
 | `worker/gameRoomCore.ts`                           | The room's logic apart from the runtime: the scope host, reactions, the Hello answer, the alarm      |
 | `worker/matchmaker.ts`, `worker/matchmakerCore.ts` | QUICK PLAY's `Matchmaker` Durable Object and its logic                                               |
@@ -67,22 +72,25 @@ bun run test                                # the Worker's tests (vitest under B
 
 Alchemy skips the build when no input changed, and `alchemy drift` does not notice a Worker that something else overwrote. Use `--force` to put the declared version back.
 
-## Sync
+## Player sync
 
-The same API Worker serves `/sync` for the sync engine (see "What phase 4 built" in `PLATFORM.md` and `packages/sync-engine/README.md`). Keeping it in one Worker gives the game one API origin and one deploy.
+The same API Worker serves each player's save on `effect/eventlog` (see "What phase 4 built" in `PLATFORM.md` and `docs/EVENTLOG_MIGRATION.md`). Keeping it in one Worker gives the game one API origin and one deploy.
 
-| Path                         | Goes to                                        | What it does                                                        |
-| ---------------------------- | ---------------------------------------------- | ------------------------------------------------------------------- |
-| `POST /sync/challenge`       | the Worker                                     | A stateless, MACed nonce for the device to sign                     |
-| `POST /sync/session`         | `SyncDirectory`                                | Trades a signed nonce for a session token, registering a new device |
-| `POST /sync/link`            | `SyncDirectory`                                | A link code for the token's player                                  |
-| `POST /sync/link/redeem`     | `SyncDirectory`, then the player's `SyncScope` | Moves the device to the code's player and records the device count  |
-| `GET /sync/socket?scope=`    | the scope's `SyncScope`                        | The WebSocket, accepted with the Hibernation API                    |
-| `POST /sync/exchange?scope=` | the scope's `SyncScope`                        | The HTTP fallback: a batch of protocol messages in, the replies out |
+| Path                          | Goes to                     | What it does                                                                                     |
+| ----------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `GET /eventlog?store=player:<key>` | that store's `PlayerLog` | The WebSocket: `EventLogRemoteRpcs` and `SessionRpcs` over schema-binary RPC, hibernating     |
+| `POST /link/redeem`           | `LinkCodes`                 | Trades a link code for the identity it holds, once; 30 tries a minute per address               |
+| `/sync/*?scope=room:<code>`   | the code's `GameRoom`       | A co-op room's lobby scope (see below)                                                           |
 
-- **Durable Objects.** `SyncScope` (one per `player:<id>`, by name) and `SyncDirectory` (one, named `directory`) are SQLite backed, so they run on the free plan, and declared as `Cloudflare.DurableObject` bindings on the API Worker; Alchemy adds them as new SQLite classes. Their SQL goes through `@effect/sql-sqlite-do` 4.1.0. They are plain classes with `fetch` and `webSocketMessage`, so the bundle never imports `cloudflare:workers`.
-- **Secrets and limits.** `SyncSecret` (an `Alchemy.Random` per stage) signs tokens and nonces. `SYNC_BY_ADDRESS` (namespace 7103) allows 30 identity requests a minute per address. Sockets and exchanges need a valid token in their Hello.
-- **The shared files.** The Worker bundles `src/platform/playerScope.ts`, `src/shared/playerData.ts`, and the engine against infra's Effect, the same way as `src/platform/analytics.ts`.
+- **`PlayerLog`.** One per store, by name (`player:<publicKey>`), SQLite backed. It runs `EventLogServerUnencrypted` on `SqlEventLogServerUnencrypted` with the game's own projection (`src/platform/playerProjection.ts`), so the object holds the player's facts as the game does. Only the store's owner may read or write it, and a store sent to the wrong object is refused. Over its socket a signed in device asks:
+  - `Session.Mint`: a session token (24 hours) for the signed in player, which the rooms, QUICK PLAY, and recordings check. A socket that has not signed in is refused `NotSignedIn`.
+  - `Session.CreateLinkCode`: a code that holds the device's identity string for 10 minutes in `LinkCodes`, one per player. The identity must be the signed in one.
+- **Hibernation.** `doProtocol.ts` keeps each socket's open `changes` requests and its signed in key in the socket's attachment, and on wake hands them to `RpcServer` again; a socket that wakes with any other request open is closed 1012 and its client reconnects.
+- **`LinkCodes`.** One object, named `link-codes`. A redeem deletes its code and answers the identity, so the new device signs in as that player; a wrong, used, or expired code is `WrongCode`, and an address past `SYNC_BY_ADDRESS` (namespace 7103) is `TooManyTries`.
+- **Player facts.** `GameRoom` asks the host's `PlayerLog` at `/internal/nightmare` for the Nightmare unlock, the milestones, and the dare marks, read off the projection.
+- **Secrets.** `SyncSecret` (an `Alchemy.Random` per stage) signs session tokens.
+- **Deploying the move.** The deploy that brought `PlayerLog` and `LinkCodes` also deleted `SyncScope` and `SyncDirectory` and their data (Alchemy writes `deleted_classes`). Durable Object class changes cannot ride a gradual rollout, so it goes at 100%.
+- **The shared files.** The Worker bundles `src/shared/sessionApi.ts`, `src/platform/playerEvents.ts`, and `src/platform/playerProjection.ts` against infra's Effect, the same way as `src/platform/analytics.ts`.
 
 ## Co-op rooms
 
@@ -97,7 +105,7 @@ On every stage the API Worker also serves co-op rooms (see "What Phases 2 and 3 
 | `/sync/*?scope=room:<code>` | the code's `GameRoom` | The room's lobby scope over the sync engine                                    |
 
 - **Durable Objects.** `GameRoom` (one per room, named `room:<code>`) and `Matchmaker` (one, named `matchmaker`), both SQLite backed, added by Alchemy as new SQLite classes on the stages that bind them. A room runs a timer loop only during a run, so it hibernates in its lobby; the Matchmaker hibernates while nobody waits.
-- **Locally.** `bun tools/mp-dev/local.ts` runs this Worker (sync and rooms, no analytics) in `node_modules/.bin/workerd`, and `bun run mp:e2e` (from the repo root) plays three players and a QUICK PLAY group through it.
+- **Locally.** `bun tools/mp-dev/local.ts` runs this Worker (the player log, links, and rooms, no analytics) in `node_modules/.bin/workerd`, and `bun run mp:e2e` (from the repo root) plays three players and a QUICK PLAY group through it.
 - **Logs.** The API Worker keeps Workers Logs (`API_OBSERVABILITY` in `alchemy.run.ts`). Each co-op run's end is one `RoomGameEnded` line with every seat's round trip, late inputs, reconnects, and the room's tick lag: see "Reading the room's logs" in `PLATFORM.md`. Live: `bunx wrangler tail munch-manor-api --format json --search RoomGameEnded`.
 - **On a preview.** `bun run heavy -- --shared bun tools/audit/mp.ts https://munch-manor-mp-dev-pr-<n>.tanner-scadden.workers.dev/ 4` from the repo root.
 

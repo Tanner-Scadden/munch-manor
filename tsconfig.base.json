@@ -35,6 +35,9 @@
         "allowedExperimentalApis": ["@effect/ui", "@effect/ui-kit"],
         "allowedUnstableApis": [
           "effect/sql",
+          "effect/eventlog",
+          "effect/rpc",
+          "effect/socket",
           "effect/reactivity",
           "effect/http",
           "effect/http-api",

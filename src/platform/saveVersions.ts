@@ -19,7 +19,6 @@ import {
   SavedBests,
   SavedBoughtCosmetics,
   SavedDifficulty,
-  type SavedDifficultyBests,
   SavedHome,
   SavedOnboarding,
   SavedPowerUps,
@@ -30,6 +29,7 @@ import {
   ShareStatsSetting,
   SoundSetting,
   noBonuses,
+  noSavedBests,
   noSavedRunRecords,
 } from '../shared/playerData'
 import { noProof } from '../shared/proofData'
@@ -375,23 +375,6 @@ export const unpickedDifficulty: SavedDifficulty = {
   chosen: 'Normal',
   card: 'Unseen',
   nightmare: 'Locked',
-}
-
-const noSavedDifficultyBests: SavedDifficultyBests = {
-  fastestWinMs: null,
-  bestEndlessWave: null,
-}
-
-export const noSavedBests: SavedBests = {
-  runsPlayed: 0,
-  totalKills: 0,
-  killsByKind: {},
-  byDifficulty: {
-    Easy: noSavedDifficultyBests,
-    Normal: noSavedDifficultyBests,
-    Hard: noSavedDifficultyBests,
-    Nightmare: noSavedDifficultyBests,
-  },
 }
 
 export const unvisitedHome: SavedHome = {

@@ -102,8 +102,8 @@ const Analytics = Effect.gen(function* () {
         namespaceId: RATE_LIMIT_NAMESPACES.address,
         simple: { limit: RUNS_PER_ADDRESS_PER_MINUTE, period: 60 },
       }),
-      SYNC_SCOPES: Cloudflare.DurableObject('SyncScope'),
-      SYNC_DIRECTORY: Cloudflare.DurableObject('SyncDirectory'),
+      PLAYER_LOGS: Cloudflare.DurableObject('PlayerLog'),
+      LINK_CODES: Cloudflare.DurableObject('LinkCodes'),
       SYNC_SECRET: syncSecret,
       SYNC_BY_ADDRESS: Cloudflare.RateLimit('SYNC_BY_ADDRESS', {
         namespaceId: RATE_LIMIT_NAMESPACES.sync,

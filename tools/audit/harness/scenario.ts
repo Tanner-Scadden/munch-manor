@@ -26,11 +26,7 @@ import { isEndScreen, withBests } from '@game/domain/run'
 import { unlocksAt } from '@game/domain/unlocks'
 import { prizeUnlockId } from '@game/features/guide/shopGuide'
 import { maybeNewestNewsDay } from '@game/features/whatsNew/changelog'
-import {
-  LinkFlow,
-  PlayerScopeStatus,
-  SyncState,
-} from '@game/platform/playerSync'
+import { LinkFlow, SyncState } from '@game/platform/playerSync'
 import { noJournal } from '@game/shared/journalData'
 import { heroIdOf } from '@game/shared/playerData'
 import { BIG_KEY, type SavedProof } from '@game/shared/proofData'
@@ -917,7 +913,6 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const sync = config.sync
   if (sync !== undefined) {
-    const devices = config.devices
     model = UiStruct.evolve(model, {
       saving: UiStruct.evolve({
         syncState: () =>
@@ -926,12 +921,8 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
             : sync === 'connecting'
               ? SyncState.Connecting()
               : sync === 'offline'
-                ? SyncState.Offline({ devices })
-                : SyncState.Synced({ devices }),
-        playerScopeStatus: () =>
-          sync === 'broken'
-            ? PlayerScopeStatus.Failed({ reason: 'harness' })
-            : PlayerScopeStatus.Ready({ seq: 1, fresh: sync === 'synced' }),
+                ? SyncState.Offline()
+                : SyncState.Synced(),
       }),
     })
   }

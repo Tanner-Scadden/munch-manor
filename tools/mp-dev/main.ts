@@ -12,6 +12,7 @@ import {
   String,
   pipe,
 } from 'effect'
+import { EventLog } from 'effect/eventlog'
 
 import type { Matchmaking } from '@munch/netcode'
 import {
@@ -37,16 +38,8 @@ import {
   followLobby,
   joinRoom,
   roomSocketUrl,
-  signInDevice,
   startQuickPlay,
 } from '@munch/netcode/browser'
-import {
-  type IdentityError,
-  type SessionResponse,
-  StoredKeyJson,
-  generateKey,
-  makePlayerId,
-} from '@munch/sync-engine'
 
 import { nextAnimationFrame } from '../../src/platform/splash'
 import { MANOR, levelOf } from '../../src/world/level/arena'
@@ -59,6 +52,8 @@ import {
 } from '../../src/world/net/roomWorld'
 import { playersOf } from '../../src/world/party/party'
 import { SeatAction } from '../../src/world/step/stepWorld'
+import { newIdentity } from '../../src/shared/sessionApi'
+import { type Identity, type MintedSession, mintSession } from './session'
 
 declare const __MP_API_ORIGIN__: string
 
@@ -126,24 +121,20 @@ const params = new URLSearchParams(location.search)
 const apiOrigin = (): string =>
   params.get('api') ?? (__MP_API_ORIGIN__ || location.origin)
 
-const Identity = Schema.Struct({ key: StoredKeyJson, playerId: Schema.String })
-const IdentityJson = Schema.fromJsonString(Identity)
-type Identity = typeof Identity.Type
+const decodeIdentity = Option.liftThrowable(EventLog.decodeIdentityString)
 
-const loadIdentity: Effect.Effect<
-  Identity,
-  IdentityError | Schema.SchemaError
-> = Effect.gen(function* () {
+const loadIdentity: Effect.Effect<Identity> = Effect.gen(function* () {
   const stored = Option.flatMap(
     Option.fromNullishOr(sessionStorage.getItem(IDENTITY_KEY)),
-    Schema.decodeOption(IdentityJson),
+    decodeIdentity,
   )
   if (Option.isSome(stored)) {
     return stored.value
   }
-  const identity = { key: yield* generateKey, playerId: yield* makePlayerId }
-  const text = yield* Schema.encodeEffect(IdentityJson)(identity)
-  yield* Effect.sync(() => sessionStorage.setItem(IDENTITY_KEY, text))
+  const identity = yield* newIdentity
+  yield* Effect.sync(() =>
+    sessionStorage.setItem(IDENTITY_KEY, EventLog.encodeIdentityString(identity)),
+  )
   return identity
 })
 
@@ -151,7 +142,7 @@ const makeToken = (
   origin: string,
   identity: Identity,
 ): Effect.Effect<Effect.Effect<string, TokenUnavailable>> =>
-  Effect.map(Ref.make<Option.Option<SessionResponse>>(Option.none()), cached =>
+  Effect.map(Ref.make<Option.Option<MintedSession>>(Option.none()), cached =>
     Effect.gen(function* () {
       const nowMs = yield* Clock.currentTimeMillis
       const current = yield* Ref.get(cached)
@@ -162,14 +153,8 @@ const makeToken = (
         return current.value.token
       }
       const session = yield* Effect.mapError(
-        signInDevice(origin, identity.key, identity.playerId),
-        error =>
-          TokenUnavailable.make({
-            reason:
-              error._tag === 'IdentityRefused'
-                ? error.failure._tag
-                : error.reason,
-          }),
+        mintSession(origin, identity),
+        error => TokenUnavailable.make({ reason: error.reason }),
       )
       yield* Ref.set(cached, Option.some(session))
       return session.token
@@ -921,11 +906,11 @@ const main = Effect.gen(function* () {
   const token = yield* makeToken(origin, identity)
   yield* Effect.retry(token, { times: 3 })
   yield* say(
-    `Signed in as ${shortId(identity.playerId)}${isBot ? ' (bot)' : ''}.`,
+    `Signed in as ${shortId(identity.publicKey)}${isBot ? ' (bot)' : ''}.`,
   )
   const code = yield* pickRoom(origin, token)
   yield* say(`In room ${code}.`)
-  return yield* Effect.scoped(playRoom(origin, code, identity.playerId, token))
+  return yield* Effect.scoped(playRoom(origin, code, identity.publicKey, token))
 })
 
 Effect.runFork(

@@ -93,11 +93,15 @@ type ProfileTab = 'Look' | 'Name' | 'Account' | 'Settings'
 const openTab = (page: Page, tab: ProfileTab) =>
   Effect.gen(function* () {
     const open = yield* attempt(() =>
-      page.locator('.profile-dialog[open]').count(),
+      page.locator('.profile-dialog:popover-open').count(),
     )
     if (open === 0) {
       yield* attempt(() => page.click('#home-settings'))
-      yield* attempt(() => page.waitForSelector('.profile-dialog[open]'))
+      yield* attempt(() =>
+        page.waitForSelector('.profile-dialog:popover-open', {
+          state: 'attached',
+        }),
+      )
     }
     yield* attempt(() => page.getByRole('tab', { name: tab }).click())
     yield* wait(300)
@@ -105,7 +109,9 @@ const openTab = (page: Page, tab: ProfileTab) =>
 
 const closePanel = (page: Page) =>
   Effect.gen(function* () {
-    const open = yield* attempt(() => page.locator('dialog[open]').count())
+    const open = yield* attempt(() =>
+      page.locator('dialog:popover-open').count(),
+    )
     if (open > 0) {
       yield* attempt(() => page.keyboard.press('Escape'))
       yield* wait(400)
@@ -413,12 +419,11 @@ const checkSync = (base: string) =>
         .waitFor({ timeout: SYNC_TIMEOUT }),
     )
     yield* check(true, 'device B links with the code')
-    const bLine = yield* waitForLine(
-      b.page,
-      /Linked to 2 devices/,
-      SYNC_TIMEOUT,
+    const bLine = yield* waitForLine(b.page, /^Synced/, SYNC_TIMEOUT)
+    yield* check(
+      String.startsWith('Synced')(bLine),
+      `device B says "${bLine}" after linking`,
     )
-    yield* check(/Linked to 2 devices/.test(bLine), `device B says "${bLine}"`)
     const bName = yield* shownName(b.page)
     yield* check(bName === NAME, `device B shows A's name ("${bName}")`)
     const bMusicLinked = yield* setting(b.page, 'Music')
@@ -438,13 +443,9 @@ const checkSync = (base: string) =>
     yield* closeLook(b.page)
     const bLinkedDot = yield* hasNewsDot(b.page)
     yield* check(!bLinkedDot, "device B shows A's What's New as seen")
-    const aLine = yield* waitForLine(
-      a.page,
-      /Linked to 2 devices/,
-      SYNC_TIMEOUT,
-    )
+    const aLine = yield* waitForLine(a.page, /^Synced/, SYNC_TIMEOUT)
     yield* check(
-      /Linked to 2 devices/.test(aLine),
+      String.startsWith('Synced')(aLine),
       `device A says "${aLine}" without a reload`,
     )
 

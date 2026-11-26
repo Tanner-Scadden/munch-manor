@@ -22,7 +22,6 @@ import {
   PROTOCOL_VERSION,
   encodeArgs,
   mutationVersions,
-  signToken,
 } from '@munch/sync-engine'
 
 import { introForRound, roomSettingsOf } from '../../src/world/net/roomWorld.ts'
@@ -36,6 +35,7 @@ import {
   makeRoomHost,
   reactionsOf,
 } from './gameRoomCore.ts'
+import { signToken } from './sessionToken.ts'
 import {
   decodeTagged,
   fakeSocket,

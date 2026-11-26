@@ -33,8 +33,6 @@ export const profilePropsOf = (model: Model): ProfileProps => ({
   device: model.lastDevice,
   sync: {
     state: model.saving.syncState,
-    scope: model.saving.playerScopeStatus,
-    lastRun: model.saving.lastRunSync,
   },
   settings: {
     sound: model.settings.soundSetting,

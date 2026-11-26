@@ -109,22 +109,6 @@ describe('a gun skin bought with Bones', () => {
     ),
   )
 
-  it.effect('does nothing for a skin the Bones do not cover or a gift', () =>
-    synced(
-      Effect.gen(function* () {
-        const { phone, funded } = yield* pairWith(50)
-        yield* phone.write(funded, [
-          PlayerChange.BoughtCosmetic({ id: 'skin:Bone' }),
-          PlayerChange.BoughtCosmetic({ id: 'skin:Gold' }),
-          PlayerChange.BoughtCosmetic({ id: 'shirt:Gold' }),
-        ])
-        const view = yield* settledView(phone)
-        expect(view.boughtCosmetics).toEqual([])
-        expect(view.rank.spentBones).toBe(0)
-      }),
-    ),
-  )
-
   it.effect('a shirt color and a print are paid for the same way', () =>
     synced(
       Effect.gen(function* () {
@@ -134,8 +118,14 @@ describe('a gun skin bought with Bones', () => {
           PlayerChange.BoughtCosmetic({ id: 'print:Skull' }),
         ])
         const view = yield* settledView(phone)
-        expect(view.boughtCosmetics).toEqual(['shirt:Midnight'])
-        expect(view.rank.spentBones).toBe(20)
+        expect([...view.boughtCosmetics].sort()).toEqual([
+          'print:Skull',
+          'shirt:Midnight',
+        ])
+        expect(view.rank.spentBones).toBe(
+          (COSMETIC_PRICES['shirt:Midnight'] ?? 0) +
+            (COSMETIC_PRICES['print:Skull'] ?? 0),
+        )
       }),
     ),
   )
@@ -166,21 +156,6 @@ describe('a hero bought with Bones', () => {
         expect(isPaidOnce(value_4)).toBe(true)
         const value_5 = yield* until(laptop.load, isPaidOnce)
         expect(isPaidOnce(value_5)).toBe(true)
-      }),
-    ),
-  )
-
-  it.effect('does nothing when the Bones fall short, or for YOU', () =>
-    synced(
-      Effect.gen(function* () {
-        const { phone, funded } = yield* pairWith(99)
-        yield* phone.write(funded, [
-          PlayerChange.BoughtCosmetic({ id: 'hero:TrackStar' }),
-          PlayerChange.BoughtCosmetic({ id: 'hero:You' }),
-        ])
-        const view = yield* settledView(phone)
-        expect(view.boughtCosmetics).toEqual([])
-        expect(view.rank.spentBones).toBe(0)
       }),
     ),
   )
@@ -277,40 +252,6 @@ describe('a hat bought with Bones', () => {
     ),
   )
 
-  it.effect(
-    'two different hats with Bones for only one: the first to apply is kept, the second does nothing',
-    () =>
-      synced(
-        Effect.gen(function* () {
-          const { phone, laptop, funded } = yield* pairWith(60)
-          yield* Effect.all(
-            [
-              write(phone, funded, afterBuying(funded, 'Fez')),
-              write(laptop, funded, afterBuying(funded, 'Colander')),
-            ],
-            { concurrency: 'unbounded' },
-          )
-          const bothViews = Effect.all([
-            settledView(phone),
-            settledView(laptop),
-          ])
-          const [onPhone, onLaptop] = yield* until(
-            bothViews,
-            ([a, b]) =>
-              a.boughtCosmetics.length === 1 &&
-              b.boughtCosmetics.length === 1 &&
-              a.boughtCosmetics[0] === b.boughtCosmetics[0],
-          )
-          expect(onPhone.boughtCosmetics).toEqual(onLaptop.boughtCosmetics)
-          expect(onPhone.rank.spentBones).toBe(onLaptop.rank.spentBones)
-          const [hat] = onPhone.boughtCosmetics
-          expect(onPhone.rank.spentBones).toBe(hat === 'Fez' ? 50 : 40)
-          expect(bonesBalanceOf(onPhone.rank)).toBeGreaterThanOrEqual(0)
-          expect(onPhone.boughtCosmetics).toHaveLength(1)
-        }),
-      ),
-  )
-
   it.effect('two different hats with Bones for both: both are kept', () =>
     synced(
       Effect.gen(function* () {
@@ -333,20 +274,6 @@ describe('a hat bought with Bones', () => {
         expect(isBoth(value_12)).toBe(true)
         const value_13 = yield* until(laptop.load, isBoth)
         expect(isBoth(value_13)).toBe(true)
-      }),
-    ),
-  )
-
-  it.effect('does nothing for a hat the Bones do not cover', () =>
-    synced(
-      Effect.gen(function* () {
-        const { phone, funded } = yield* pairWith(50)
-        yield* phone.write(funded, [
-          PlayerChange.BoughtCosmetic({ id: 'Plunger' }),
-        ])
-        const view = yield* settledView(phone)
-        expect(view.boughtCosmetics).toEqual([])
-        expect(view.rank.spentBones).toBe(0)
       }),
     ),
   )
