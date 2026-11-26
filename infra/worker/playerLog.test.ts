@@ -1,4 +1,4 @@
-import { String } from 'effect'
+import { Array, String } from 'effect'
 import * as Clock from 'effect/Clock'
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
@@ -7,13 +7,16 @@ import * as Option from 'effect/Option'
 import * as Schedule from 'effect/Schedule'
 import type * as Scope from 'effect/Scope'
 import {
+  EventJournal,
   EventLog,
   EventLogMessage,
   EventLogRemote,
+  EventLogServerUnencrypted,
   SqlEventJournal,
 } from 'effect/eventlog'
 import { RpcTest } from 'effect/rpc'
 import * as SqlClient from 'effect/sql/SqlClient'
+import * as Statement from 'effect/sql/Statement'
 
 import { describe, expect, it } from '@effect/vitest'
 
@@ -32,7 +35,11 @@ import {
   playerStoreOf,
 } from '../../src/shared/sessionApi.ts'
 import type { LinkCodeBook } from './linkCodes.ts'
-import { type LinkCodeRequest, playerLogHandlers } from './playerLogCore.ts'
+import {
+  DurableObjectStorage,
+  type LinkCodeRequest,
+  playerLogHandlers,
+} from './playerLogCore.ts'
 import { verifyToken } from './sessionToken.ts'
 import { askPlayerFacts, encodeNightmareAnswer } from './syncCore.ts'
 import { linkCodeBook, memory } from './testing.ts'
@@ -65,7 +72,10 @@ const deviceOf = (identity: Identity, server: Server) =>
     const sql = yield* memory
     const client = yield* clientOf(server)
     return yield* Layer.build(
-      Layer.effect(EventLogRemote.EventLogRemote, EventLogRemote.makeUnencrypted).pipe(
+      Layer.effect(
+        EventLogRemote.EventLogRemote,
+        EventLogRemote.makeUnencrypted,
+      ).pipe(
         Layer.provideMerge(
           EventLog.layer(PlayerLogSchema, PlayerHandlers).pipe(
             Layer.provideMerge(Layer.effectDiscard(createPlayerTables)),
@@ -93,15 +103,37 @@ const deviceOf = (identity: Identity, server: Server) =>
         sql,
         signedIn: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
           Effect.provideService(
-            Context.get(context, EventLogRemote.EventLogRemote).whenAuthenticated(
-              effect,
-            ),
+            Context.get(
+              context,
+              EventLogRemote.EventLogRemote,
+            ).whenAuthenticated(effect),
             EventLog.Identity,
             identity,
           ),
       })),
     )
   })
+
+const DURABLE_OBJECT_BOUND_PARAMETERS = 100
+
+const asDurableObjectSqlite: Statement.Transformer = statement =>
+  statement.compile()[1].length > DURABLE_OBJECT_BOUND_PARAMETERS
+    ? Effect.die(
+        `too many SQL variables: ${statement.compile()[1].length} over ${DURABLE_OBJECT_BOUND_PARAMETERS}`,
+      )
+    : Effect.succeed(statement)
+
+const BIG_BATCH = 48
+const EVENT_KINDS = 5
+
+const bigBatch = Array.makeBy(BIG_BATCH, index =>
+  EventJournal.Entry.make({
+    id: EventJournal.makeEntryIdUnsafe({ msecs: index + 1 }),
+    event: `Event${index % EVENT_KINDS}`,
+    primaryKey: `key${index}`,
+    payload: new Uint8Array(1),
+  }),
+)
 
 const factsOn = (sql: SqlClient.SqlClient) =>
   Effect.provideService(readPlayerFacts, SqlClient.SqlClient, sql)
@@ -133,6 +165,40 @@ const signedInSetup: Effect.Effect<
   return { owner, server, book }
 })
 
+describe("the player object's storage", () => {
+  it.effect(
+    'stores and looks up a batch too big for one Durable Object statement',
+    () =>
+      Effect.gen(function* () {
+        const sql = yield* memory
+        const context = yield* Layer.build(
+          DurableObjectStorage.pipe(
+            Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)),
+          ),
+        )
+        const storage = Context.get(context, EventLogServerUnencrypted.Storage)
+        const storeId = EventLogMessage.StoreId.make('player')
+        const written = yield* storage.withTransaction(
+          storage.write(storeId, bigBatch),
+        )
+        const found = yield* storage.entriesAfter(
+          storeId,
+          Array.headNonEmpty(bigBatch),
+          bigBatch,
+        )
+        expect(Array.map(found, entry => entry.remoteSequence)).toEqual(
+          Array.map(written, entry => entry.remoteSequence),
+        )
+        expect(found).toHaveLength(BIG_BATCH)
+      }).pipe(
+        Effect.provideService(
+          Statement.CurrentTransformer,
+          asDurableObjectSqlite,
+        ),
+      ),
+  )
+})
+
 describe('the player log', () => {
   it.live(
     'a socket that has not signed in gets no session token (live: the remote retries on a timer)',
@@ -141,9 +207,7 @@ describe('the player log', () => {
         const { server } = yield* signedInSetup
         const client = yield* clientOf(server)
         const exit = yield* Effect.flip(client['Session.Mint']())
-        expect(exit).toEqual(
-          SessionRefused.make({ problem: 'NotSignedIn' }),
-        )
+        expect(exit).toEqual(SessionRefused.make({ problem: 'NotSignedIn' }))
       }),
   )
 
@@ -153,9 +217,7 @@ describe('the player log', () => {
       Effect.gen(function* () {
         const { owner, server } = yield* signedInSetup
         const device = yield* deviceOf(owner, server)
-        const session = yield* device.signedIn(
-          device.client['Session.Mint'](),
-        )
+        const session = yield* device.signedIn(device.client['Session.Mint']())
         const nowMs = yield* Clock.currentTimeMillis
         const claims = yield* verifyToken(SECRET, session.token, nowMs)
         expect(claims.playerId).toBe(owner.publicKey)
@@ -176,9 +238,7 @@ describe('the player log', () => {
         const exit = yield* Effect.flip(
           device.signedIn(device.client['Session.Mint']()),
         )
-        expect(exit).toEqual(
-          SessionRefused.make({ problem: 'NotSignedIn' }),
-        )
+        expect(exit).toEqual(SessionRefused.make({ problem: 'NotSignedIn' }))
       }),
   )
 
@@ -238,14 +298,10 @@ describe('the player log', () => {
             identity: EventLog.encodeIdentityString(stranger),
           }),
         )
-        expect(notMine).toEqual(
-          SessionRefused.make({ problem: 'NotSignedIn' }),
-        )
+        expect(notMine).toEqual(SessionRefused.make({ problem: 'NotSignedIn' }))
         const typed = `${String.slice(0, 3)(code.code)}-${String.toLowerCase(String.slice(3)(code.code))}`
         const redeemed = yield* book.redeem(typed)
-        expect(redeemed).toEqual(
-          RedeemAnswer.cases.Redeemed.make({ identity }),
-        )
+        expect(redeemed).toEqual(RedeemAnswer.cases.Redeemed.make({ identity }))
         const twice = yield* book.redeem(code.code)
         expect(twice).toEqual(
           RedeemAnswer.cases.Refused.make({ problem: 'WrongCode' }),

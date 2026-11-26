@@ -1,4 +1,4 @@
-import { Array, Predicate } from 'effect'
+import { Array, Order, Predicate } from 'effect'
 import * as Clock from 'effect/Clock'
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
@@ -7,6 +7,7 @@ import * as Option from 'effect/Option'
 import * as Redacted from 'effect/Redacted'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import {
+  type EventJournal,
   EventLog,
   EventLogMessage,
   EventLogServer,
@@ -29,7 +30,6 @@ import {
 } from '../../src/shared/sessionApi.ts'
 import { sessionUnavailable } from './linkCodes.ts'
 import { SESSION_TTL_MS, signToken } from './sessionToken.ts'
-
 
 export const CHANGES_TAG = EventLogMessage.ChangesRpc._tag
 export const AUTHENTICATE_TAG = EventLogMessage.AuthenticateRpc._tag
@@ -99,6 +99,47 @@ const PlayerProjection = Layer.effectDiscard(createPlayerTables).pipe(
   Layer.provideMerge(PlayerHandlers),
 )
 
+const ENTRIES_PER_STATEMENT = 16
+
+const bySequence = Order.mapInput(
+  Order.Number,
+  (remoteEntry: EventJournal.RemoteEntry) => remoteEntry.remoteSequence,
+)
+
+const oncePerSequence = (
+  remoteEntries: ReadonlyArray<EventJournal.RemoteEntry>,
+): Array<EventJournal.RemoteEntry> =>
+  Array.sort(
+    Array.dedupeWith(
+      remoteEntries,
+      (left, right) => left.remoteSequence === right.remoteSequence,
+    ),
+    bySequence,
+  )
+
+export const DurableObjectStorage = Layer.effect(
+  EventLogServerUnencrypted.Storage,
+  Effect.map(
+    SqlEventLogServerUnencrypted.makeStorage({
+      insertBatchSize: ENTRIES_PER_STATEMENT,
+    }),
+    storage =>
+      EventLogServerUnencrypted.Storage.of({
+        ...storage,
+        entriesAfter: (storeId, entry, batch) =>
+          batch === undefined
+            ? storage.entriesAfter(storeId, entry)
+            : Effect.map(
+                Effect.forEach(
+                  Array.chunksOf(batch, ENTRIES_PER_STATEMENT),
+                  chunk => storage.entriesAfter(storeId, entry, chunk),
+                ),
+                chunks => oncePerSequence(Array.flatten(chunks)),
+              ),
+      }),
+  ),
+)
+
 const restoreSession = (
   client: Rpc.ServerClient,
   sessionOf: (clientId: number) => Option.Option<string>,
@@ -121,8 +162,7 @@ const restoreSession = (
 }
 
 const isHandler = (entry: unknown): entry is Rpc.Handler<string> =>
-  Predicate.hasProperty(entry, 'handler') &&
-  Predicate.isFunction(entry.handler)
+  Predicate.hasProperty(entry, 'handler') && Predicate.isFunction(entry.handler)
 
 const restoringSessions = <A, E, R>(
   handlers: Layer.Layer<A, E, R>,
@@ -161,7 +201,10 @@ const signedInKey = (
   isHere: (storeId: string) => boolean,
 ): Effect.Effect<string, SessionRefused> =>
   Option.flatMap(
-    Context.getOption(client.annotations, EventLogServer.AuthenticatedIdentities),
+    Context.getOption(
+      client.annotations,
+      EventLogServer.AuthenticatedIdentities,
+    ),
     keys =>
       Array.findFirst(globalThis.Array.from(keys), key =>
         isHere(playerStoreOf(key)),
@@ -179,7 +222,9 @@ const deviceOf = (client: Rpc.ServerClient): Effect.Effect<string> =>
       }),
   })
 
-const identityKeyOf = (identity: string): Effect.Effect<string, SessionRefused> =>
+const identityKeyOf = (
+  identity: string,
+): Effect.Effect<string, SessionRefused> =>
   Effect.try({
     try: () => EventLog.decodeIdentityString(identity).publicKey,
     catch: notSignedIn,
@@ -221,9 +266,5 @@ export const playerLogHandlers = (options: PlayerLogOptions) =>
     ),
     options.sessionOf,
   ).pipe(
-    Layer.provide([
-      OwnerOnly,
-      pinnedTo(options.isHere),
-      SqlEventLogServerUnencrypted.layerStorage(),
-    ]),
+    Layer.provide([OwnerOnly, pinnedTo(options.isHere), DurableObjectStorage]),
   )
